@@ -2,5 +2,12 @@
 
 devkitPro / libnx target for Digimon World 3.
 
-Scaffold placeholder — Phase 1 will add a minimal `.nro` (framebuffer + pad +
-nxlink logging) before any game code is linked.
+## Build
+
+```bash
+# from repo root
+./tools/dk.sh make -C platforms/switch
+# artifact: platforms/switch/dw3-switch.nro
+```
+
+No game data is required for this Phase 1 skeleton.
