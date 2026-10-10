@@ -3,6 +3,9 @@ project(dw3-pc C)
 
 set(CMAKE_C_STANDARD 11)
 set(PSYZ_RENDERER "sdl3_gpu" CACHE STRING "PSY-Z renderer")
+# Propagate before add_subdirectory(port). Default us; EU: -DDW3_VERSION=eu
+set(DW3_VERSION "us" CACHE STRING "Game disc version: us or eu")
+set_property(CACHE DW3_VERSION PROPERTY STRINGS us eu)
 
 add_subdirectory(${CMAKE_SOURCE_DIR}/../../vendor/psyz/psyz ${CMAKE_BINARY_DIR}/psyz)
 add_subdirectory(${CMAKE_SOURCE_DIR}/../../port ${CMAKE_BINARY_DIR}/port)
@@ -22,6 +25,14 @@ target_include_directories(dw3-pc PRIVATE
   ${CMAKE_SOURCE_DIR}/../../port/include
   ${CMAKE_SOURCE_DIR}/../../vendor/psyz/psyz/include
 )
+string(TOLOWER "${DW3_VERSION}" _dw3_pc_ver)
+if(_dw3_pc_ver STREQUAL "eu")
+  target_compile_definitions(dw3-pc PRIVATE VERSION_EU=1 DW3_DEFAULT_RUNTIME="runtime/eu")
+elseif(_dw3_pc_ver STREQUAL "us")
+  target_compile_definitions(dw3-pc PRIVATE VERSION_US=1 DW3_DEFAULT_RUNTIME="runtime/us")
+else()
+  message(FATAL_ERROR "DW3_VERSION must be us or eu (got '${DW3_VERSION}')")
+endif()
 # Host overrides must appear before psyz so SsSetTableSize / pad APIs win.
 # whole-archive field/battle/menu/cardgame objs (named .data/.bss for overlay restore).
 # start-group: engine↔field cross-archive undefineds (FLAGS_00, UI helpers).
@@ -73,4 +84,8 @@ target_link_options(dw3-pc PRIVATE
 )
 target_include_directories(psyz PRIVATE ${CMAKE_SOURCE_DIR}/../../vendor/psyz/psyz/include)
 target_compile_definitions(psyz PRIVATE __psyz)
-psyz_title(dw3-pc "dw3-pc Phase 2")
+if(_dw3_pc_ver STREQUAL "eu")
+  psyz_title(dw3-pc "dw3-pc EU")
+else()
+  psyz_title(dw3-pc "dw3-pc Phase 2")
+endif()

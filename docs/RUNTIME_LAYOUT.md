@@ -36,10 +36,17 @@ From a completed disc extract + file map (`docs/DISC_SETUP.md`):
 python3 tools/pack_runtime.py --version us --disks disks/us --out runtime/us
 python3 tools/build_file_map.py --check runtime/us/files_us.json \
   --file-table vendor/dw3_decomp/src/engine/file/file_table.c
+
+# EU (owner disc; same layout, SLES_039.36 + files_eu.json):
+python3 tools/pack_runtime.py --version eu --disks disks/eu --out runtime/eu
+python3 tools/build_file_map.py --check runtime/eu/files_eu.json \
+  --file-table vendor/dw3_decomp/src/engine/file/file_table.c
 ```
 
 `pack_runtime.py` refuses to run if `files_<ver>.json` is missing. If
 `--out` already exists and is non-empty, pass `--force` to wipe it first.
+EU `dw3-pc` link uses `-DDW3_VERSION=eu` (`docs/P3_EU_BUILD.md`); run still
+needs a local `runtime/eu` tree (gitignored).
 
 ## Boot image
 

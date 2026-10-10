@@ -102,6 +102,15 @@ from `platforms/switch/` until the surface is stable.
 - **Hardware:** not run in this session — ROADMAP P4.2 stays open until 60 fps
   is measured on a real Switch. Details: [P4.2_VIDEO.md](P4.2_VIDEO.md).
 
+## P4.3 audio (2026-10-10)
+
+- **Stack:** libnx `audren` / `audrv` (renderer bus 48 kHz; voice 44.1 kHz).
+- **API:** `Psyz_AudioInit` thread pulls `Psyz_SpuPullSamples` (PSP-shaped).
+- **Sample:** `platforms/switch/source/main.c` `audio_hello` + weak 440 Hz
+  SPU stub until PSY-Z is linked.
+- **Hardware:** not run in this session — ROADMAP P4.3 stays open until a
+  libsnd sample plays without underruns. Details: [P4.3_AUDIO.md](P4.3_AUDIO.md).
+
 ## Blockers / environment notes
 
 | Blocker | Impact |
@@ -109,12 +118,31 @@ from `platforms/switch/` until the surface is stable.
 | NTFS / drvfs checkout (`/mnt/windows/...`) | Default `./tools/dk.sh make -C platforms/switch` cannot `mkdir build` as non-root. Use `DW3_DK_TMPBUILD=/tmp/dw3-dk-build ./tools/dk.sh make -C platforms/switch`, a Linux/ext4 clone, or CI. |
 | No host `/opt/devkitpro` | Local Switch builds go through Docker (`tools/dk.sh`). |
 | No SDL3 pacman package | SDL3-dkp path needs a from-source recipe every time (fallback only). |
-| No Switch hardware here | P4.2 code builds; 60 fps docked/handheld not validated. |
+| No Switch hardware here | P4.2/P4.3 code can build; 60 fps and audren underrun checks not validated. |
+| PSY-Z not linked on Switch yet | P4.3 uses weak SPU stubs; libsnd done-when needs P4.7 link. |
 | Phase 3 PC bring-up | Switch host remains a side track; do not block PC movies/audio. |
+
+## Validation targets (hardware vs emulator)
+
+**Gate for ticking P4.x done-when items:** owner OLED Switch (Atmosphere,
+**hbmenu**), with **nxlink** when useful for stderr/FPS.
+
+Local Switch emulators on the owner dev machine (paths **outside git**, not
+CI) may be used later for optional **smoke** before copying an `.nro` to SD.
+That path is **deferred** — no emulator runs are required for current work.
+
+| Resource | Path (owner machine) | Notes |
+|---|---|---|
+| Ryubing (Ryujinx fork) | `/mnt/windows/Jogos/emuladores/Ryubing` (+ Ryubing-Canary tarball) | **Preferred** for homebrew `.nro` smoke when enabled |
+| Eden (Yuzu-line) | `/mnt/windows/Jogos/emuladores/Eden-Linux-*.AppImage` | Secondary; may diverge from hardware |
+
+Emulator smoke **does not** satisfy P4.2 done-when (**60 fps on hardware** —
+see [P4.2_VIDEO.md](P4.2_VIDEO.md)). DuckStation is PS1-only and irrelevant
+here.
 
 ## Next steps
 
-1. ~~P4.2: implement `nx_gpu.c` present path~~ — code done; **hardware fps check** open.
-2. P4.3: `nx_audio.c` / `audren`.
+1. ~~P4.2: implement `nx_gpu.c` present path~~ — code on PR #21; **hardware fps check** open.
+2. ~~P4.3: `nx_audio.c` / `audren`~~ — host wiring on PR #23; **hardware + libsnd** open.
 3. Do not vendor SDL3 into git; if revisited, document a `tools/` fetch+build
    helper only.

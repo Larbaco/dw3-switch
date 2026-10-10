@@ -4,6 +4,9 @@
 Copies AAA/, the version executable, and files_<ver>.json into --out.
 The boot TIM (executable tail at OVERLAY_VRAM) is Phase 2; until then a
 BOOT_IMAGE.txt stub is written instead of inventing boot_tim.bin bytes.
+
+Versions: --version us|eu (SLUS_014.36 / SLES_039.36). EU dw3-pc link uses
+-DDW3_VERSION=eu; packing still needs owner disks/eu (see docs/P3_EU_BUILD.md).
 """
 
 from __future__ import annotations

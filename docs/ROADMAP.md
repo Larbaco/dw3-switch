@@ -188,9 +188,10 @@ objs; live PASS 237/237; only `WSTAG460` left stubbed (host
 `updateWanderer` SEGV). **Phase 3 gate met** (`docs/P3_GATE.md`): US
 continuous start→movie→Lobby→Tamer→Genji→field @ `a5ae93a` (Lobby
 `0x9004@0x203` / patch `0036`); `DW3_FORCE_WIN` accepted for gate (P3.3
-class; pad KO follow-up); EU playthrough not required; EU `dw3-pc` link
-not scaffolded (engine `-DVERSION_EU` 43/43 OK — see gate doc). P3.9 may
-run on a side track.
+class; pad KO follow-up); EU playthrough not required. **EU `dw3-pc` link
+scaffold** (`docs/P3_EU_BUILD.md`): `-DDW3_VERSION=eu` +
+`overlay_table_eu.c` configure/link; `runtime/eu` / playthrough still open.
+P3.9 may run on a side track.
 
 Objective: the full game loop runs on PC: field, stages, battle, menus,
 audio, movies.
@@ -270,8 +271,10 @@ audio, movies.
   file-bridge mix; `DW3_AUTO_PAD=start` + `0034` → Start-skip →
   `mode=0xE00`; **owner audible XA** on real Pulse/PipeWire DAC after
   SDL rebuild (`SDL_PULSEAUDIO=ON` + `-DSDL_X11_XSCRNSAVER=OFF`).
-  Follow-up: video presentation (half-width + flat mid-grey fixed on
-  `phase3-pc-bringup`; further polish may remain; not blocking tick).
+  Follow-up: video presentation — half-width + mid-grey on
+  `phase3-pc-bringup`; **recognizable MOVIEOPN frames** on
+  `phase3-gpu-glitch` (LP64-safe MDEC quant upload + sync slice order;
+  see `docs/P3_GPU_GLITCHES.md`). Title/field sprite polish still open.
   Done when: the opening movies play with audio and can be skipped.
 - [x] **P3.8 Stage sweep.** `STAGSLCT` linked (`dw3_p38_stagslct`); patch
   `0030` + `tools/stage_sweep.py`. **Done-when evidence**
@@ -315,10 +318,18 @@ console.
   `platforms/switch/psyz_backend/nx_gpu.c` (docked 1080p / handheld 720p,
   `eglSwapInterval(1)`). `.nro` builds via Docker (`DW3_DK_TMPBUILD` on
   NTFS). **Not ticked:** no Switch hardware in session to measure 60 fps.
-  See `docs/P4.2_VIDEO.md`.
+  Owner machine has local Ryubing/Eden installs (optional deferred `.nro`
+  smoke; **not** P4.2 done-when). Gate: OLED + hbmenu / nxlink. See
+  `docs/P4.2_VIDEO.md`.
 - [ ] **P4.3 Audio.** `audren` output thread fed by PSY-Z's SPU mixer at
   44.1 kHz.
   Done when: libsnd sample plays without underruns.
+  **Status (2026-10-10):** audren thread + `Psyz_Audio*` in
+  `platforms/switch/psyz_backend/nx_audio.c` (44.1 kHz voice, weak SPU
+  tone stub, `audio_hello` sample). `.nro` builds via Docker
+  (`DW3_DK_TMPBUILD`). **Not ticked:** no Switch hardware for underrun/
+  listen check; full PSY-Z libsnd not linked yet (P4.7). See
+  `docs/P4.3_AUDIO.md`.
 - [ ] **P4.4 Input.** `hid` → PS1 pad bits, including the digital/analog
   modes `PadInfoMode`/`PadSetMainMode` expect; rumble via `PadSetAct` →
   HD rumble (optional).

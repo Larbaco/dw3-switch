@@ -36,8 +36,9 @@ const Dw3OverlayDesc *dw3_overlay_find(int32_t file_id);
  * Returns 0 on success, -1 if file_id is unknown or file_id == 0. */
 int dw3_overlay_restore(int32_t file_id);
 
-/* US title-path table (STDWTITL). Call once at host bring-up (E6). */
+/* Title-path overlay tables (STDWTITL + field/battle/menus/…). Call once. */
 void dw3_overlay_register_us_title(void);
+void dw3_overlay_register_eu_title(void);
 
 #ifdef __cplusplus
 }
