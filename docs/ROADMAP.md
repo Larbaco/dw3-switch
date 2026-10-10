@@ -69,9 +69,9 @@ Status: **in progress** (plan:
 [`docs/superpowers/plans/2026-10-10-phase2-pc-bringup.md`](superpowers/plans/2026-10-10-phase2-pc-bringup.md);
 parallel tracks `phase2-engine` + `phase2-io`).
 
-Tracking: Waves 1–2 done (E1/E2 + I1/I2). Wave 3 E3/P2.3 done on
-`phase2-engine` @ `f31635b`; next E4 (P2.4). Port code stays on
-`phase2-engine` / `phase2-io` until a PR; this ROADMAP on `main` is
+Tracking: Waves 1–2 done (E1/E2 + I1/I2). Wave 3 E4/P2.4 done on
+`phase2-engine` @ `4611e8d`; next E5 (P2.6 overlays). Port code stays
+on `phase2-engine` / `phase2-io` until a PR; this ROADMAP on `main` is
 synced each wave for visibility only (no unfinished merge).
 
 Objective: compile the decomp's **executable** modules (`src/engine/`) for
@@ -102,7 +102,7 @@ the host, replace MIPS-only pieces, and reach the title screen on PC.
   mapped to PSY-Z's software GTE under `PORT_HOST`.
   Done when: no `__asm__` remains in the host build and `grep -r mtc2`
   over the preprocessed output is empty.
-- [ ] **P2.4 64-bit audit, part 1 (engine).** Replace literal sizes with
+- [x] **P2.4 64-bit audit, part 1 (engine).** Replace literal sizes with
   `sizeof` in `src/engine` (`HEAP.zero(&GFX.prim, 0x18)`,
   `PAD_DATA_SIZE`, `MemBlock` split constant), fix `freeFilesFrom` to
   take an offset/symbol, remove pointer↔`u32` casts in engine code.
