@@ -1,0 +1,74 @@
+Upstream-bound: no
+
+PORT_HOST: keep MemCard + MemCardFuncs in one MemCardSystem object so
+MEMCARD_SYSTEM.funcs matches on LP64 (adjacent globals gain align gap;
+writeInfo was calling setHeader and staying status==0).
+
+--- a/include/engine/memcard.h	2026-10-10 05:05:46.602092200 -0300
++++ b/include/engine/memcard.h	2026-10-10 07:17:42.664063703 -0300
+@@ -154,8 +154,19 @@
+ long MemCardUnformat(long chan);
+ long MemCardGetDirentry(long chan, char *name, CardDirEntry *dir, long *files, long ofs, long max);
+ 
++#if PORT_HOST
++/* Contiguous card+funcs so MEMCARD_SYSTEM cast matches (LP64 align gap). */
++typedef struct MemCardSystem {
++    MemCard card;
++    MemCardFuncs funcs;
++} MemCardSystem;
++extern MemCardSystem g_dw3_memcard;
++#define MEMCARD (g_dw3_memcard.card)
++#define MEMCARD_FUNCS (g_dw3_memcard.funcs)
++#else
+ extern MemCard MEMCARD;
+ extern MemCardFuncs MEMCARD_FUNCS;
++#endif
+ extern s32 MEMCARD_SYNC_CMDS[]; /* the MemCardSync command of each MEMCARD_OP_* */
+ extern char STR_ALL_FILES[]; /* the directory pattern that matches every file */
+ 
+--- a/include/menus/memory_card.h	2026-10-10 05:05:46.609703500 -0300
++++ b/include/menus/memory_card.h	2026-10-10 07:17:42.664211302 -0300
+@@ -129,12 +129,17 @@
+ 
+ /* MEMCARD followed by MEMCARD_FUNCS, as STGMCARD_runSaves reaches the functions:
+    through MEMCARD's address. */
++#if PORT_HOST
++/* MemCardSystem typedef + g_dw3_memcard live in engine/memcard.h */
++#define MEMCARD_SYSTEM (g_dw3_memcard)
++#else
+ typedef struct MemCardSystem {
+     /* 0x000 */ MemCard card;
+     /* 0x328 */ MemCardFuncs funcs;
+ } MemCardSystem;
+ 
+ #define MEMCARD_SYSTEM (*(MemCardSystem *)&MEMCARD)
++#endif
+ 
+ /* A text window of the details (STGMCARD_detailWindows) */
+ typedef struct MemCardWindowSpec {
+--- a/src/engine/memcard/memcard.c	2026-10-10 05:05:46.674009300 -0300
++++ b/src/engine/memcard/memcard.c	2026-10-10 07:17:42.664339943 -0300
+@@ -452,12 +452,23 @@
+     return sum;
+ }
+ 
++#if PORT_HOST
++MemCardSystem g_dw3_memcard = {
++    { 0 },
++    {
++        initMemCard, setSaveFileName, setSaveHeader, checkMemCard, acceptMemCard, readSave,
++        writeSave, listSaves, createSave, formatMemCard, unformatMemCard, verifyChecksum,
++        computeChecksum,
++    },
++};
++#else
+ MemCard MEMCARD = { 0 };
+ 
+ MemCardFuncs MEMCARD_FUNCS = {
+     initMemCard, setSaveFileName, setSaveHeader, checkMemCard, acceptMemCard, readSave, writeSave,
+     listSaves, createSave, formatMemCard, unformatMemCard, verifyChecksum, computeChecksum,
+ };
++#endif
+ 
+ /* The commands of memCardCommand's operations */
+ s32 MEMCARD_SYNC_CMDS[MEMCARD_OP_UNFORMAT + 1] = { 7, 8, 9, 10 };

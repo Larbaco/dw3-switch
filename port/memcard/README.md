@@ -20,24 +20,22 @@ on disk so saves stay DuckStation-importable.
 Set the directory with `memcard_host_set_dir(...)`; the host then
 reads/writes `<dir>/memcard0.mcr` and `<dir>/memcard1.mcr`.
 
-## API surface (why not `MemCard*`)
+## API surface
+
+| Layer | Role |
+|---|---|
+| `memcard_host_*` | Byte/sector I/O on the 128 KiB image |
+| `psyz_card_wrap.c` | `-Wl,--wrap=_card_read/_card_write` → `memcard_host_*` + PSY-Z completion events |
+| `memcard_libmcrd.c` | Host `MemCard*` (libmcrd) filesystem on the same `.mcr` via `_card_*` |
 
 Game code (`vendor/dw3_decomp` `src/engine/memcard/memcard.c`) talks
-PSY-Q **`MemCard*`** via PSY-Z `libmcrd`.
+PSY-Q **`MemCard*`**. PSY-Z stubs raw `_card_*` without sector payloads;
+this port supplies both the wrap and a minimal directory/file layer so
+STGMCARD save/load hits real `.mcr` bytes (P3.4 evidence in
+`docs/P3.4_MENUS.md`).
 
-PSY-Z today:
-
-- Maps `bu00:` / `bu10:` to host **directories** of save files
-  (`Psyz_AdjustPath` / `_bu_init`).
-- Stubs raw `_card_read` / `_card_write` (completion events only; no
-  sector image).
-
-There is **no** PSY-Z hook yet for a 128 KiB `.mcr` file. This port layer
-therefore exposes a thin **`memcard_host_*`** API with the same sector
-contract as libcard (`memcard_host_read_sector` /
-`memcard_host_write_sector`). Wave 4 (engine integration) should wire
-PSY-Z’s `_card_*` stubs (or a `Psyz_*` callback if upstream adds one) to
-this backend — do not invent a second high-level `MemCard*` stack here.
+LP64 note: patch `0028` keeps `MemCard` + `MemCardFuncs` in one
+`g_dw3_memcard` object so `MEMCARD_SYSTEM.funcs` is not misaligned.
 
 ## Build (tiny host CLI)
 
@@ -60,6 +58,3 @@ CI does **not** run DuckStation. Owner follow-up when convenient:
 2. Confirm Digimon World 3 sees the save (or at least a valid empty card).
 3. Export / copy a card from DuckStation back over `memcard0.mcr` and confirm
    the PC host still reads the expected bytes at the same offsets.
-
-That manual check is what closes ROADMAP P2.7’s “save written on PC loads
-in DuckStation and vice versa” criterion after engine wiring.

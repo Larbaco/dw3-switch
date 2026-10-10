@@ -344,8 +344,8 @@ walk/door still open.
 
 - [x] **Step 1: Link each overlay; open from field.** (`dw3_p34_menus`, `DW3_FORCE_MENU`)
 - [ ] **Step 2: End-to-end smoke per menu; save via `STGMCARD` writes `.mcr`.**
-  (open/return proven; STGMCARD write pending on card events — `docs/P3.4_MENUS.md`)
-- [ ] **Step 3: Tick P3.4; commit + push.** (partial docs + READY_FOR_MAIN only)
+  (open/return proven; STGMCARD force-save → `.mcr` proven — `docs/P3.4_MENUS.md`)
+- [ ] **Step 3: Tick P3.4; commit + push.** (partial: `READY_FOR_MAIN_ROADMAP_SYNC: P3.4_MEMCARD`)
 
 **Done when:** each listed menu works end-to-end; save uses P2.7.
 

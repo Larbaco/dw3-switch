@@ -7,7 +7,6 @@
 #include <libgte.h>
 #include <libgpu.h>
 #include <libetc.h>
-#include <libmcrd.h>
 #include <libsnd.h>
 #include <libpress.h>
 
@@ -102,82 +101,7 @@ SVECTOR *ApplyMatrixSV(MATRIX *m, SVECTOR *v0, SVECTOR *v1) {
 
 /* libpad: see psyz_pad_host.c (linked into dw3-pc so PadGetState wins). */
 
-/* --- libmcrd --- */
-
-void MemCardInit(long val) { (void)val; }
-
-void MemCardStart(void) {}
-
-long MemCardSync(long mode, long *cmds, long *result) {
-    (void)mode;
-    if (cmds) {
-        *cmds = 0;
-    }
-    if (result) {
-        *result = 0;
-    }
-    return 1;
-}
-
-long MemCardExist(long chan) {
-    (void)chan;
-    return 1;
-}
-
-long MemCardAccept(long chan) {
-    (void)chan;
-    return 1;
-}
-
-long MemCardReadFile(
-    long chan, char *file, unsigned long *adrs, long offset, long bytes) {
-    (void)chan;
-    (void)file;
-    (void)adrs;
-    (void)offset;
-    (void)bytes;
-    return 1;
-}
-
-long MemCardWriteFile(
-    long chan, char *file, unsigned long *adrs, long offset, long bytes) {
-    (void)chan;
-    (void)file;
-    (void)adrs;
-    (void)offset;
-    (void)bytes;
-    return 1;
-}
-
-long MemCardGetDirentry(long chan, char *name, struct DIRENTRY *dir,
-                        long *files, long ofs, long max) {
-    (void)chan;
-    (void)name;
-    (void)dir;
-    (void)ofs;
-    (void)max;
-    if (files) {
-        *files = 0;
-    }
-    return 0;
-}
-
-long MemCardCreateFile(long chan, char *filename, long blocks) {
-    (void)chan;
-    (void)filename;
-    (void)blocks;
-    return 0;
-}
-
-long MemCardFormat(long chan) {
-    (void)chan;
-    return 0;
-}
-
-long MemCardUnformat(long chan) {
-    (void)chan;
-    return 0;
-}
+/* libmcrd: see port/memcard/memcard_libmcrd.c (MemCard* → .mcr via _card_*). */
 
 /* --- libsnd --- */
 

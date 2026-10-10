@@ -93,8 +93,13 @@ add_library(dw3_cdfs OBJECT
 )
 add_library(dw3_memcard OBJECT
   "${CMAKE_CURRENT_SOURCE_DIR}/memcard/memcard_host.c"
+  "${CMAKE_CURRENT_SOURCE_DIR}/memcard/memcard_libmcrd.c"
   "${CMAKE_CURRENT_SOURCE_DIR}/memcard/psyz_card_wrap.c"
 )
+target_include_directories(dw3_memcard PRIVATE
+  "${PSYZ_INCLUDE}"
+)
+target_compile_definitions(dw3_memcard PRIVATE __psyz)
 
 # Include order: port host → PSY-Z (Psy-Q names) → decomp headers/sources.
 # port/include/common.h shadows decomp common.h so gnu89 does not redefine
