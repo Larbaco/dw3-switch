@@ -168,7 +168,9 @@ Tracking: Phase 3 on `phase3-pc-bringup`. P3.1 done. **P3.2 Done-when
 met** (`docs/P3.2_FIELD.md`). WSTAG790 linked @ `481d4d0` (post-name
 chamber OK). **P3.3 Done-when met** @ `a4d7e64`: `FIGHTSTG`+`WFIGHTMN`+
 `STFGTREP`; forced win → report XP/levels → return to `FIELDSTG`
-(`docs/P3.3_BATTLE.md`). **P3.6 investigation** on main
+(`docs/P3.3_BATTLE.md`). **P3.4 partial** @ `99133d5`: menus linked +
+field open/return (`docs/P3.4_MENUS.md` on branch); STGMCARD `.mcr`
+save blocked on memcard event completion. **P3.6 investigation** on main
 (`docs/P3.6_AUDIO.md` from `phase3-audio-spike`): blocker PSY-Z
 `_SsSeqPlay` `NOT_IMPLEMENTED` — Done-when not met.
 
@@ -201,8 +203,14 @@ audio, movies.
   door. Follow-up: real wilderness encounter + pad-driven KO.
   Done when: a random encounter completes and returns to the field with
   stats applied.
-- [ ] **P3.4 Menus and shops.** `STSTATUS`, `STITSHOP`, `STGTRAIN`,
-  `STGDGLAB`, `STGMCARD`, `STDGNAME`, `STPLNMET`.
+- [ ] **P3.4 Menus and shops.** Linked on `phase3-pc-bringup` @ `99133d5`
+  (`dw3_p34_menus`); patches `0026`/`0027` + `DW3_FORCE_MENU` /
+  `DW3_AUTO_MENU_RETURN`. **Partial evidence** (`docs/P3.4_MENUS.md` on
+  branch): each opens from field via `leaveField` and returns to
+  `FIELDSTG`; `STGMCARD` save mode entry proven; **blocker:**
+  `MEMCARD_SYSTEM.write` stays pending (no `_card_write` / `.mcr`
+  mutation yet). Pad-driven START→status and NPC script entries still
+  open.
   Done when: each opens from the field, works end-to-end, and saving via
   `STGMCARD` uses P2.7.
 - [ ] **P3.5 Card game.** `CARDGAME`, `STCRDDEK`, `STCRDSHP`, `STCRDABM`.
