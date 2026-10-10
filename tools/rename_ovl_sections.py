@@ -6,6 +6,7 @@
 from __future__ import annotations
 
 import argparse
+import os
 import shutil
 import subprocess
 import sys
@@ -14,6 +15,19 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 TEMPLATE = ROOT / "tools" / "merge_ovl_sections.ld"
+
+
+def _tool(name: str) -> str:
+    """Resolve a binutils tool that can read the objects being packed.
+
+    These are target objects, so a cross build must use the *target* binutils —
+    a host `ld` cannot merge AArch64 objects. Callers pass the toolchain through
+    the environment (the Switch build does); with nothing set we use the bare
+    name, which is what the PC build has always done and must keep doing.
+    """
+    return os.environ.get(f"DW3_{name.upper()}") or (
+        os.environ.get("DW3_BINUTILS_PREFIX", "") + name
+    )
 
 
 def main() -> int:
@@ -35,7 +49,7 @@ def main() -> int:
         script.write_text(script_text)
         out = tmp_path / "merged.o"
         subprocess.check_call(
-            ["ld", "-r", "-T", str(script), "-o", str(out), *objs]
+            [_tool("ld"), "-r", "-T", str(script), "-o", str(out), *objs]
         )
         shutil.copy2(out, dst)
 

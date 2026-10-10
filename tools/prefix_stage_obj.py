@@ -6,6 +6,7 @@
 from __future__ import annotations
 
 import argparse
+import os
 import shutil
 import subprocess
 import sys
@@ -16,8 +17,24 @@ ROOT = Path(__file__).resolve().parents[1]
 TEMPLATE = ROOT / "tools" / "merge_ovl_sections.ld"
 
 
+def _tool(name: str) -> str:
+    """Resolve a binutils tool that can read the objects being packed.
+
+    These are target objects, so a cross build must use the *target* binutils —
+    a host `nm`/`objcopy`/`ld` cannot read or merge AArch64 objects. Callers pass
+    the toolchain through the environment (the Switch build does); with nothing
+    set we use the bare name, which is what the PC build has always done and
+    must keep doing.
+    """
+    return os.environ.get(f"DW3_{name.upper()}") or (
+        os.environ.get("DW3_BINUTILS_PREFIX", "") + name
+    )
+
+
 def nm_defined(path: Path) -> list[str]:
-    out = subprocess.check_output(["nm", "-g", "--defined-only", str(path)], text=True)
+    out = subprocess.check_output(
+        [_tool("nm"), "-g", "--defined-only", str(path)], text=True
+    )
     names: list[str] = []
     for line in out.splitlines():
         parts = line.split()
@@ -58,7 +75,7 @@ def main() -> int:
         map_file = tmp_path / "redefs.txt"
         map_file.write_text("\n".join(redefs) + ("\n" if redefs else ""))
         prefixed = tmp_path / "prefixed.o"
-        cmd = ["objcopy"]
+        cmd = [_tool("objcopy")]
         if redefs:
             cmd += [f"--redefine-syms={map_file}"]
         cmd += [str(src), str(prefixed)]
@@ -68,7 +85,7 @@ def main() -> int:
         script.write_text(script_text)
         merged = tmp_path / "merged.o"
         subprocess.check_call(
-            ["ld", "-r", "-T", str(script), "-o", str(merged), str(prefixed)]
+            [_tool("ld"), "-r", "-T", str(script), "-o", str(merged), str(prefixed)]
         )
         shutil.copy2(merged, dst)
 
