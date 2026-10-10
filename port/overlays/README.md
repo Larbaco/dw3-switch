@@ -49,7 +49,7 @@ Unlinked stages get weak stubs from `tools/gen_stage_stubs.py`.
 | `WSTAG780` | `474` / `0x1DA` | Kusanagi street (new-game start) |
 | `WSTAG785` | `475` / `0x1DB` | Online Center (door target) |
 | `WSTAG790` | `476` / `0x1DC` | Chamber Room (post-name) |
-| `WSTAG200`…`760` + Amaterasu twins (batch1–4; skip `WSTAG460`) | see `docs/P3.8_STAGES.md` | Early hubs through West/Byakko/North |
+| `WSTAG200`…`895` + Amaterasu twins (batch1–6; skip `WSTAG460`) | see `docs/P3.8_STAGES.md` | All US stages except known-bad `WSTAG460` |
 | `FIGHTSTG` | `0x159` | Battle mode (P3.3) |
 | `WFIGHTMN` | `0x1FA` | Normal battle sub-overlay (P3.3) |
 | `STFGTREP` | `0x1C2` | Battle report / XP apply (P3.3) |
