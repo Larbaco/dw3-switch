@@ -342,9 +342,10 @@ walk/door still open.
 
 **Files:** link `STSTATUS`, `STITSHOP`, `STGTRAIN`, `STGDGLAB`, `STGMCARD`, `STDGNAME`, `STPLNMET`; memcard uses P2.7.
 
-- [ ] **Step 1: Link each overlay; open from field.**
+- [x] **Step 1: Link each overlay; open from field.** (`dw3_p34_menus`, `DW3_FORCE_MENU`)
 - [ ] **Step 2: End-to-end smoke per menu; save via `STGMCARD` writes `.mcr`.**
-- [ ] **Step 3: Tick P3.4; commit + push.**
+  (open/return proven; STGMCARD write pending on card events — `docs/P3.4_MENUS.md`)
+- [ ] **Step 3: Tick P3.4; commit + push.** (partial docs + READY_FOR_MAIN only)
 
 **Done when:** each listed menu works end-to-end; save uses P2.7.
 

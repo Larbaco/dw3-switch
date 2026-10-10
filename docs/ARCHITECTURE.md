@@ -65,7 +65,8 @@ See [SURVEY.md](SURVEY.md) for the evidence behind each point.
 - P3.2 (in progress): field/stage bring-up uses **objcopy / `ld -r`** to
   prefix stage globals and rename `.data`/`.bss` into per-overlay sections
   (`dw3data_*` / `dw3bss_*`); `overlay_sections.c` snapshots them for
-  restore. Weak mode stubs omit linked overlays (`FIELDSTG`, `STPLNMET`).
+  restore. Weak mode stubs omit linked overlays (`FIELDSTG`, `STPLNMET`,
+  battle P3.3, menus P3.4).
 
 ## Non-goals (for now)
 

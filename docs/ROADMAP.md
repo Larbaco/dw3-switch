@@ -167,6 +167,8 @@ Status: **in progress** (branch `phase3-pc-bringup`; plan:
 Tracking: Phase 3 on `phase3-pc-bringup`. P3.1 done. **P3.2 Done-when
 met** (+ WSTAG790 follow-up). **P3.3 Done-when met:** forced encounter
 → `STFGTREP` (XP/levels) → return to `FIELDSTG` (`docs/P3.3_BATTLE.md`).
+**P3.4 partial:** menus linked + field open/return (`docs/P3.4_MENUS.md`);
+STGMCARD `.mcr` save still blocked on memcard event completion.
 P3.6 / P3.9 may run on side tracks.
 
 Objective: the full game loop runs on PC: field, stages, battle, menus,
@@ -204,7 +206,13 @@ audio, movies.
   Done when: a random encounter completes and returns to the field with
   stats applied.
 - [ ] **P3.4 Menus and shops.** `STSTATUS`, `STITSHOP`, `STGTRAIN`,
-  `STGDGLAB`, `STGMCARD`, `STDGNAME`, `STPLNMET`.
+  `STGDGLAB`, `STGMCARD`, `STDGNAME`, `STPLNMET` linked (`dw3_p34_menus`);
+  patches `0026`/`0027` + `DW3_FORCE_MENU` / `DW3_AUTO_MENU_RETURN`.
+  **Partial evidence** (`docs/P3.4_MENUS.md`): each opens from field via
+  `leaveField` and returns to `FIELDSTG`; `STGMCARD` save mode entry
+  proven; **blocker:** STGMCARD `MEMCARD_SYSTEM.write` stays pending
+  (no `_card_write` / `.mcr` mutation yet). Pad-driven START→status and
+  NPC script entries still open.
   Done when: each opens from the field, works end-to-end, and saving via
   `STGMCARD` uses P2.7.
 - [ ] **P3.5 Card game.** `CARDGAME`, `STCRDDEK`, `STCRDSHP`, `STCRDABM`.

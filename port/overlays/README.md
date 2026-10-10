@@ -52,13 +52,19 @@ Unlinked stages get weak stubs from `tools/gen_stage_stubs.py`.
 | `FIGHTSTG` | `0x159` | Battle mode (P3.3) |
 | `WFIGHTMN` | `0x1FA` | Normal battle sub-overlay (P3.3) |
 | `STFGTREP` | `0x1C2` | Battle report / XP apply (P3.3) |
+| `STSTATUS` | `0x1F9` | Field menu screens (P3.4) |
+| `STITSHOP` | `0x1F7` | Item shop (P3.4) |
+| `STGTRAIN` | `0x1F6` | Training gym (P3.4) |
+| `STGDGLAB` | `0x1DF` | Digimon Lab (P3.4) |
+| `STGMCARD` | `0x1E3` | Memory card (P3.4) |
+| `STDGNAME` | `0x154` | Partner nickname (P3.4) |
 
 `overlay_table_us.c` registers the rows above; `CNTY_SEL` stays out for US.
 Host objects use named `.data`/`.bss` sections (`tools/rename_ovl_sections.py`,
 `tools/merge_ovl_sections.ld`) and snapshots in `overlay_sections.c`. Stage TUs
 are symbol-prefixed (`tools/prefix_stage_obj.py`) and linked via `dw3_p32_field`;
-battle via `dw3_p33_battle`. Runtime notes: `docs/P3.2_FIELD.md`,
-`docs/P3.3_BATTLE.md`.
+battle via `dw3_p33_battle`; menus via `dw3_p34_menus`. Runtime notes:
+`docs/P3.2_FIELD.md`, `docs/P3.3_BATTLE.md`, `docs/P3.4_MENUS.md`.
 
 ### Host test
 
