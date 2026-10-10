@@ -176,21 +176,17 @@ UI cancel** (no `AUTO_MENU_RETURN`); **STGMCARD save + load** via P2.7
 **P3.5 Done-when met**
 (`READY_FOR_MAIN_ROADMAP_SYNC: P3.5`, `docs/P3.5_CARDGAME.md`): force-win
 → prize item → `FIELDSTG`; album `cardsSeen` 29→33 via vanilla
-`STCRDSHP_openPack` `addCards` (host win `addCards` gated off). **P3.7
-in progress** (`READY_FOR_MAIN_ROADMAP_SYNC: P3.7_IN_PROGRESS`,
-`docs/P3.7_MOVIES.md`): Wave 1 soft MDEC; Wave 2 VLC (bsdec); Wave 3
-file-backed STR + `StCdInterrupt`; Wave 4 file-bridge XA decode/mix
-(logs + `sdlaudio.raw`); present wave (DMA/RGB24 + FB dump); still need
-smooth play + owner listen + Start-skip; default skip remains
-`MODE_TITLE`.
+`STCRDSHP_openPack` `addCards` (host win `addCards` gated off). **P3.7 Done-when met** (`READY_FOR_MAIN_ROADMAP_SYNC: P3.7`,
+`docs/P3.7_MOVIES.md`): sustained STR play + XA mix + Start-skip →
+`MODE_TITLE`; owner audible DAC still residual. Default skip remains
+`MODE_TITLE` (`0010`).
 **P3.8 Done-when met** (`READY_FOR_MAIN_ROADMAP_SYNC: P3.8`,
 `docs/P3.8_STAGES.md`): `STAGSLCT` + batches 1–6 link 238/239 US stage
 objs; live PASS 237/237; only `WSTAG460` left stubbed (host
 `updateWanderer` SEGV). **Phase 3 gate not met** (`docs/P3_GATE.md`):
-automated intro reaches `MODE_OPENING_2` (`0xE02`); MDEC/VLC/stream/XA/
-present dump wired (merged into bringup); remaining walls are continued
-play / listen / skip (`docs/P3.7_MOVIES.md`).
-No start→first-boss segment. P3.6 / P3.9 may run on side tracks.
+automated intro / story path still needs work beyond movie skip; P3.6
+audio SEP still open. No start→first-boss segment. P3.6 / P3.9 may run
+on side tracks.
 
 Objective: the full game loop runs on PC: field, stages, battle, menus,
 audio, movies.
@@ -253,18 +249,15 @@ audio, movies.
   SFX, reverb settings the game sets. Verify `SsSeqCalledTbyT` timing
   from the vsync callback.
   Done when: title music, field music change on stage switch, battle SFX.
-- [ ] **P3.7 Movies.** Title STR playback through PSY-Z `libpress` +
+- [x] **P3.7 Movies.** Title STR playback through PSY-Z `libpress` +
   streaming (`CdRead2`, `StSetRing`) from raw-sector `.STR` files packed
-  in P1.6. **In progress** (`docs/P3.7_MOVIES.md`,
-  `READY_FOR_MAIN_ROADMAP_SYNC: P3.7_IN_PROGRESS`): Wave 1 soft MDEC
-  (`test_mdec` 28/28); Wave 2 `DecDCTvlc2`/`Build` via `port/movies` +
-  bsdec; Wave 3 file-backed STR + `StCdInterrupt`; Wave 4 file-bridge
-  XA (`CdlModeRT` decode/mix; `sdlaudio.raw` non-silent); **present wave
-  merged** into `phase3-pc-bringup` (MDEC-out DMA + RGB24 LoadImage + FB
-  dump nonzero). Task 5: FB dump reconfirmed; play stalls after ~3 frames;
-  Start-skip inject ready (`DW3_AUTO_PAD=start` + patch `0034`) but blocked
-  on that stall; owner listen still DAC. Checkbox unticked until play +
-  audio + Start-skip.
+  in P1.6. **Done-when evidence** (`docs/P3.7_MOVIES.md`,
+  `READY_FOR_MAIN_ROADMAP_SYNC: P3.7`): Wave 1–4 + present + Task 5 —
+  ring backpressure fix (no STR drop on full); sustained `DecDCTout`
+  frame done #330+; FB dump nonzero; XA file-bridge mix (`sdlaudio.raw`);
+  `DW3_AUTO_PAD=start` + patch `0034` → `dw3-movie: Start-skip` →
+  `mode=0xE00`. Follow-up: owner listen on a real DAC (this SDL build
+  has no Pulse/ALSA).
   Done when: the opening movies play with audio and can be skipped.
 - [x] **P3.8 Stage sweep.** `STAGSLCT` linked (`dw3_p38_stagslct`); patch
   `0030` + `tools/stage_sweep.py`. **Done-when evidence**

@@ -9,7 +9,7 @@ libnx backend exists.
 |---|---|
 | Upstream | https://github.com/Xeeynamo/psyz.git |
 | Working fork (submodule URL) | https://github.com/Larbaco/psyz.git |
-| Commit | `79e53ae2395ffd6f845a538dc3378359677b75b5` (`dw3-movie-present-gpu` on XA tip `16b20f4`: LoadImage submit for nested MDEC slices) |
+| Commit | `47e281dbd1cdd4c86144f0075c997a8df314bc48` (`dw3-str-ring-backpressure`: STR ring backpressure; prior tip `79e53ae` LoadImage submit) |
 | Base upstream | `fac9bd58ccd8a0c35e31c6354528f9d625e9bdd1` |
 | License | MIT — see [`vendor/psyz/LICENSE`](../vendor/psyz/LICENSE) |
 

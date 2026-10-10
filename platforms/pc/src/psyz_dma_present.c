@@ -109,7 +109,8 @@ void __wrap_DecDCTout(u_long *buf, int size) {
     g_dout_depth--;
     if (g_dout_depth == 0u) {
         g_dout_top_done++;
-        if (g_dout_top_done <= 3u) {
+        if (g_dout_top_done <= 5u || g_dout_top_done == 10u ||
+            (g_dout_top_done % 30u) == 0u) {
             fprintf(stderr,
                     "dw3-present: DecDCTout frame done #%u slices=%u "
                     "rgb24_loads=%u rgb24=%d\n",

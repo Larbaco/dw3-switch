@@ -59,7 +59,8 @@ SDL_VIDEODRIVER=offscreen DW3_START_MODE=0xE01 DW3_RUNTIME=runtime/us \
   timeout -s KILL 45 ./build/pc/dw3-pc --runtime runtime/us
 ```
 
-See `docs/P3.7_MOVIES.md` (present wave). XA / Start-skip still open.
+See `docs/P3.7_MOVIES.md` (Task 5: sustained play + Start-skip). Owner
+listen on a real DAC still residual.
 
 Pad unit check (no window): `gcc …` via `tools/tests/test_pad_host.py` or
 the commands in that file.

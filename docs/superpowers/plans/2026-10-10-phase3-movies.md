@@ -283,21 +283,20 @@ Documented decode/mix + owner-listen gap (Wave 4); not faked as audible.
 - Modify: `docs/P3.7_MOVIES.md`, `docs/ROADMAP.md` (on `main` sync)
 - Possibly: pad inject `DW3_AUTO_PAD` if needed to press Start during movie for automation
 
-- [ ] **Step 1: Manual/auto skip**
+- [x] **Step 1: Manual/auto skip**
 
-Prep landed: `DW3_AUTO_PAD=start` holds Start; patch `0034` accepts
-`getHeld` + logs. **Not green:** playback stalls in `waitFrameDecoded`
-after ~3 frames so skip check / `MODE_TITLE` transition never observed.
+Root cause: ring-full `StCdInterrupt` dropped STR sectors. Fix: backpressure.
+`DW3_AUTO_PAD=start` + `0034` → `dw3-movie: Start-skip` → `mode=0xE00`.
 
-- [ ] **Step 2: Default boot still `MODE_TITLE` without `DW3_START_MODE`**
+- [x] **Step 2: Default boot still `MODE_TITLE` without `DW3_START_MODE`**
 
-Boots `0xE00` then title advances to `0xE01` + STR once decode works.
+Boots `0xE00` first; title may advance to `0xE01` + STR (skip works).
 
 - [x] **Step 3: Fill evidence table (play / XA / skip) in `P3.7_MOVIES.md`**
 
-Table filled honestly; P3.7 **not** ticked (play+skip incomplete; listen owner).
+Play + XA + skip green; P3.7 ticked; owner listen residual.
 
-- [ ] **Step 4: Commit on bringup + docs sync commit on `main` + push both; update PR #4**
+- [x] **Step 4: Commit on bringup + docs sync commit on `main` + push both; update PR #4**
 
 ---
 
