@@ -50,7 +50,13 @@ export VPATH	:=	$(foreach dir,$(SOURCES),$(CURDIR)/$(dir)) \
 
 export DEPSDIR	:=	$(CURDIR)/$(BUILD)
 
-CFILES		:=	$(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.c)))
+# CMake game image only. These include PSY-Z and do not belong in the
+# host_hello sample: the Makefile does not link libpsyz, and CI does not
+# check out vendor/psyz for this target.
+#   boot_main.c   game main(); calls dw3_game_main
+#   nx_input.c    Psyz_Pads* (needs libpsyz)
+#   nx_present.c  __real_LoadImage and the other --wrap targets
+CFILES		:=	$(filter-out boot_main.c nx_input.c nx_present.c,$(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.c))))
 CPPFILES	:=	$(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.cpp)))
 SFILES		:=	$(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.s)))
 

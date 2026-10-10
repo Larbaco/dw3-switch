@@ -117,7 +117,7 @@ Two entry points, on purpose:
 
 | Build | `main()` | What it produces |
 |---|---|---|
-| devkitPro Makefile (`make -C platforms/switch`, CI) | `source/main.c` `host_hello` | bring-up `.nro` (EGL + audren sample). No game. |
+| devkitPro Makefile (`make -C platforms/switch`, CI) | `source/main.c` `host_hello` | bring-up `.nro` (EGL + audren sample). Drops `boot_main.c`, `nx_input.c`, and `nx_present.c` (they need PSY-Z). No game. |
 | CMake (`platforms/switch/CMakeLists.txt`) | `source/boot_main.c` | calls `dw3_game_main`. Does **not** link yet. |
 
 `boot_main.c` is the PC host's boot order (cdfs, STR bridge, audio, memcard,

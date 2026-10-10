@@ -36,7 +36,9 @@ LibHac-based loaders reject the file — Ryujinx dies with
 image against PSY-Z for aarch64. It mirrors `platforms/pc/CMakeLists.txt` and
 reuses `port/CMakeLists.txt` verbatim (same `--whole-archive` overlay libs and
 `__start_dw3data_*` section keeps). The devkitPro Makefile above stays for the
-standalone bring-up sample.
+standalone bring-up sample. It globs `source/*.c` and `psyz_backend/*.c`, then
+filters out `boot_main.c`, `nx_input.c`, and `nx_present.c` — those three need
+PSY-Z, which this sample does not link. CI builds this Makefile `.nro` only.
 
 Cross-compile with devkitA64's toolchain file — the Makefile path needs
 `DEVKITPRO`; this one needs CMake inside the devkitPro image, which is what
