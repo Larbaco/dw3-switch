@@ -26,6 +26,9 @@ laid out in [docs/ROADMAP.md](docs/ROADMAP.md) and the layering in
 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). Plan: PC bring-up over
 PSY-Z first, then a libnx backend.
 
+Localization (PT-BR first, then other languages) is a Phase 6 goal after
+the playable Switch port (Phase 5 gate); see P6.6–P6.8 in the roadmap.
+
 ## Setup
 
 ```bash

@@ -236,6 +236,9 @@ Gate: start → first boss on hardware, both versions.
 
 ## Phase 6 — Polish and options
 
+Starts only after the Phase 5 gate (playable port on hardware). Localization
+is an explicit project goal in this phase, not during bring-up.
+
 - [ ] **P6.1** Integer scaling / aspect options; optional widescreen
   where the GTE projection allows.
 - [ ] **P6.2** PAL/NTSC and EU/US selection at boot; language from EU
@@ -244,6 +247,24 @@ Gate: start → first boss on hardware, both versions.
 - [ ] **P6.4** Fast-forward / frame-skip toggles for grinding (optional).
 - [ ] **P6.5** Release packaging: `.nro` + `README` for own-disc setup;
   never ship data.
+- [ ] **P6.6 Localization goal.** Record that translation / localization
+  comes after the playable port (Phase 5): language packs live in the
+  owner runtime data layout; remap / charset glue in `port/`; host
+  (`platforms/*`) only for homebrew chrome. No gettext-style layer; no
+  game assets in git. Short note in `docs/` when the approach is chosen.
+  Done when: the note exists and this section is the roadmap source of
+  truth for i18n scope.
+- [ ] **P6.7 Language packs (PT-BR first).** Tooling and/or pack steps so
+  the owner can replace (or remap) message tables and, if needed, font
+  glyphs for Brazilian Portuguese on top of the P1.6 layout, preferably
+  against the EU build that already indexes text by `LANGUAGE`.
+  Done when: a short playthrough (title → field dialogue) shows PT-BR
+  with the owner's pack and no shipped assets in the repo.
+- [ ] **P6.8 Extra locales.** Same pack mechanism for other languages;
+  selection via existing EU `LANGUAGE` / `CNTY_SEL` slots or a
+  `port/cdfs` id remap without rebuilding the `.nro` for each locale.
+  Done when: a second owner-supplied language switches at boot or
+  country select and renders in-game text correctly.
 
 ## Cross-cutting rules
 
