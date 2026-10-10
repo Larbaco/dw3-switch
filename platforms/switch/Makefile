@@ -66,6 +66,12 @@ export LIBPATHS	:=	$(foreach dir,$(LIBDIRS),-L$(dir)/lib)
 
 export APP_TITLE APP_AUTHOR APP_VERSION
 
+# switch_rules' %.nro rule is `elf2nro $< $@ $(NROFLAGS)` — it never passes
+# --nacp itself. Without this the .nro carries elf2nro's stock "HOMEBREW" NACP
+# and no asset section: hbmenu shows no title/version/author, and LibHac-based
+# loaders (Ryujinx) throw NullReferenceException in Nro.OpenNroAssetSection.
+export NROFLAGS	:=	--nacp=$(OUTPUT).nacp
+
 .PHONY: $(BUILD) clean all
 
 all: $(BUILD)
