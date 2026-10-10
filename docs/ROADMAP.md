@@ -65,20 +65,29 @@ disc.
 
 ## Phase 2 — Port glue and engine bring-up on PC
 
+Status: **in progress** (plan:
+[`docs/superpowers/plans/2026-10-10-phase2-pc-bringup.md`](superpowers/plans/2026-10-10-phase2-pc-bringup.md);
+parallel tracks `phase2-engine` + `phase2-io`).
+
+Tracking: Waves 1–2 done on the feature branches (E1/E2 + I1/I2). Port
+code stays on `phase2-engine` / `phase2-io` until a PR; this ROADMAP on
+`main` is synced each wave for visibility only (no unfinished merge).
+
 Objective: compile the decomp's **executable** modules (`src/engine/`) for
 the host, replace MIPS-only pieces, and reach the title screen on PC.
 
-- [ ] **P2.1 Source selection and flags.** `port/CMakeLists.txt` (or
-  `port/sources.mk`) that lists the decomp's C through the version's
-  `C_SRC` rule, builds with the GCC 2.8.1-semantics flags from
+- [x] **P2.1 Source selection and flags.** `port/CMakeLists.txt` builds
+  US `src/engine/**/*.c` from `build/decomp-src` (via
+  `tools/apply_patches.sh`) with the GCC 2.8.1-semantics flags from
   `mk/toolchain/gcc.mk` (`-std=gnu89 -fsigned-char -fno-builtin
   -fno-strict-aliasing -fwrapv -fno-delete-null-pointer-checks
   -fno-aggressive-loop-optimizations -fno-zero-initialized-in-bss
-  -fno-common -fno-toplevel-reorder`), `VERSION_US/EU`, PSY-Z include
-  path first.
+  -fno-common -fno-toplevel-reorder`), `VERSION_US`, `PORT_HOST`,
+  port/PSY-Z includes first. Target: `dw3_engine_objs` (43 objects on
+  `phase2-engine`).
   Done when: `src/engine/**/*.c` compiles to objects on x86_64 with
   `-Werror=implicit-function-declaration -Werror=int-conversion`.
-- [ ] **P2.2 Patch mechanism for the submodule.** `port/patches/*.patch`
+- [x] **P2.2 Patch mechanism for the submodule.** `port/patches/*.patch`
   applied by `tools/apply_patches.sh` into a build copy (never in-place),
   with a `--check` that fails if the submodule moved. Policy in
   `docs/PATCHES.md`: every patch states whether it is upstream-bound
@@ -98,12 +107,10 @@ the host, replace MIPS-only pieces, and reach the title screen on PC.
   Match-neutral changes go upstream.
   Done when: `-Wpointer-to-int-cast -Wint-to-pointer-cast` are clean for
   `src/engine` and `make compare` upstream still says `OK`.
-- [ ] **P2.5 CD → filesystem.** `port/cdfs/`: implement the file-id read
-  path the engine uses (`CD_READER.readFile` semantics, `FILE_TABLE`
-  sector counts, `cdReadyCallback`-style completion) over
-  `files_<ver>.json` and host files; keep PSY-Z's `libcd` only for STR
-  streaming. Sector/EOF pitfalls for the host layer:
-  [CDFS_NOTES.md](CDFS_NOTES.md).
+- [x] **P2.5 CD → filesystem.** `port/cdfs/` on `phase2-io`: file-id read
+  path over a host map (`files_<ver>.json` + files), with mini fixture
+  tests; keep PSY-Z's `libcd` only for STR streaming. Sector/EOF pitfalls
+  for the host layer: [CDFS_NOTES.md](CDFS_NOTES.md).
   Done when: `FILE_CACHE.load(id)` returns byte-identical buffers to the
   disc for a sample of ids (unit test with the owner's data, skipped in
   CI).
@@ -115,9 +122,9 @@ the host, replace MIPS-only pieces, and reach the title screen on PC.
   `.data` **only when the id changes**, and zero its `.bss`.
   Done when: two different stages and the same stage twice behave as on
   PS1 (globals reset vs. preserved), checked by a host test.
-- [ ] **P2.7 Memory card → file.** `port/memcard/`: back `MemCard*`
-  calls with a 128 KiB PS1-format card image per slot on disk, so saves
-  stay importable/exportable (`.mcr`).
+- [x] **P2.7 Memory card → file.** `port/memcard/` on `phase2-io`: 128 KiB
+  PS1-format `.mcr` host backend per slot + fixture tests (DuckStation
+  import/export remains an owner check).
   Done when: a save written on PC loads in DuckStation and vice versa.
 - [ ] **P2.8 Boot to title on PC.** Link engine + `STDWTITL` + `CNTY_SEL`
   (EU) and run `main()` under PSY-Z.
