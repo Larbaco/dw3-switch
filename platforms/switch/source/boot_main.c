@@ -170,6 +170,16 @@ int main(int argc, char **argv) {
     }
 
     g_prev_vsync_cb = Psyz_SetVSyncCb(dw3_nx_vsync_pump);
+    {
+        /* Self-check, because the callback marker never appeared: registering
+         * again must hand back our own callback, which proves the global took.
+         * If got == want and the callback still never runs, the fault is
+         * elsewhere and the marker itself is lying. */
+        PsyzVSyncCb got = Psyz_SetVSyncCb(dw3_nx_vsync_pump);
+        INFOF("vsync cb: prev=%p got=%p want=%p",
+              (void *)g_prev_vsync_cb, (void *)got,
+              (void *)dw3_nx_vsync_pump);
+    }
     INFOF("entering dw3_game_main()");
     return dw3_game_main();
 }
