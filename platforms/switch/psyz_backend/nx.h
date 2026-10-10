@@ -80,6 +80,27 @@ void dw3_nx_input_init(void);
  * runtime path (and before dw3_nx_log_open, which writes under it). */
 bool dw3_nx_fs_mount_sd(void);
 
+/* --- P4.7 renderer (switch_gpu.c) -------------------------------------- */
+
+/* Which part of VRAM the game asked to display, filled from PSY-Z's
+ * Draw_Display* handlers (PutDispEnv / SetDispMask / SetVideoMode). */
+typedef struct Dw3NxDisplay {
+    int on;    /* Draw_DisplayEnable */
+    int x;     /* top-left in VRAM coordinates */
+    int y;
+    int width; /* on-screen size in pixels */
+    int height;
+} Dw3NxDisplay;
+
+void dw3_nx_switch_gpu_display(Dw3NxDisplay *out);
+
+/* The 1024x512 RGB555 VRAM the rasterizer draws into. Behind an accessor so
+ * nx_gpu.c does not have to include PSY-Z's private rasterizer header. */
+const uint16_t *dw3_nx_switch_gpu_vram(void);
+
+/* Upload a VRAM region and draw it, letterboxed onto the EGL surface. */
+void dw3_nx_gpu_present(const uint16_t *vram, int dx, int dy, int dw, int dh);
+
 /* PSY-Z platform symbols (see vendor/psyz src/psyz/os.h, include/psyz/input.h,
  * include/psyz/video.h and include/psyz/log.h for the contracts). */
 void psyz_log(unsigned int level, const char *file, unsigned int line,

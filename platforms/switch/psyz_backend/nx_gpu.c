@@ -242,16 +242,27 @@ bool dw3_nx_gpu_swap(void) {
  *   mode == 0  present, then wait for the next frame; return scanlines elapsed
  *   mode >  0  report scanlines elapsed without waiting
  *
- * A scanline is approximated as 64 us, as PSY-Z does. Presenting is
- * dw3_nx_gpu_swap()'s job and eglSwapBuffers already blocks on vsync at swap
- * interval 1, so that call *is* the frame pacing — no extra sleep. The real
- * renderer (Stage 3) is what will drive this once it exists.
+ * A scanline is approximated as 64 us, as PSY-Z does. mode == 0 presents the
+ * VRAM the rasterizer produced (see dw3_nx_gpu_present below); eglSwapBuffers
+ * already blocks on vsync at swap interval 1, so that call *is* the frame
+ * pacing — no extra sleep.
  */
 int Psyz_VideoVSync(int mode) {
     static uint32_t last_vsync_us;
+    static int entered;
     uint64_t now_us64 = armTicksToNs(armGetSystemTick()) / 1000ULL;
     uint32_t now_us = (uint32_t)now_us64;
     unsigned short lines;
+
+    /* One-shot: VSync() calls this *before* the vsync callback, so if the boot
+     * hangs with no callback marker, this says whether it got this far.
+     * psyz_log directly rather than PSY-Z's INFOF macro: this file must not
+     * include PSY-Z headers next to the EGL ones (they redirect libc names). */
+    if (!entered) {
+        entered = 1;
+        psyz_log(1, "nx_gpu.c", __LINE__, __func__,
+                 "Psyz_VideoVSync first call (mode=%d)", mode);
+    }
 
     if (mode < 0) {
         return (int)(now_us64 * 60 / 1000000ULL);
@@ -259,8 +270,204 @@ int Psyz_VideoVSync(int mode) {
     /* 32-bit subtraction, so the ~71 min microsecond wrap cancels out. */
     lines = (unsigned short)((now_us - last_vsync_us) >> 6);
     if (mode == 0) {
+        Dw3NxDisplay disp;
+
+        dw3_nx_switch_gpu_display(&disp);
+        if (disp.on) {
+            /* One-shot: "the screen is black" has two very different causes —
+             * the game never unmasked the display, or it did and drew into a
+             * VRAM the presenter is not showing. This separates them, and the
+             * rect is the other half of it: a present of the wrong VRAM
+             * rectangle looks exactly like a wrong picture. */
+            static int logged_on;
+
+            if (!logged_on) {
+                logged_on = 1;
+                psyz_log(1, "nx_gpu.c", __LINE__, __func__,
+                         "display on: vram %d,%d %dx%d -> surface %ux%u",
+                         disp.x, disp.y, disp.width, disp.height, s_width,
+                         s_height);
+            }
+            dw3_nx_gpu_present(dw3_nx_switch_gpu_vram(), disp.x, disp.y,
+                               disp.width, disp.height);
+        } else {
+            /* SetDispMask said "no display"; on hardware that is a black
+             * screen, so do not keep showing the last frame. */
+            dw3_nx_gpu_clear(0.0f, 0.0f, 0.0f, 1.0f);
+        }
         dw3_nx_gpu_swap();
+        if (entered == 1) {
+            entered = 2;
+            psyz_log(1, "nx_gpu.c", __LINE__, __func__,
+                     "first present+swap done");
+        }
         last_vsync_us = (uint32_t)(armTicksToNs(armGetSystemTick()) / 1000ULL);
     }
     return lines;
+}
+
+/* --- VRAM present (P4.7 Stage 3) --------------------------------------- */
+
+#define DW3_NX_VRAM_W 1024
+#define DW3_NX_VRAM_H 512
+
+static GLuint s_vram_tex;
+static GLuint s_quad_prog;
+static GLuint s_quad_vbo;
+static GLint s_attr_pos = -1;
+static GLint s_attr_t = -1;
+static GLint s_uni_uv0 = -1;
+static GLint s_uni_uv1 = -1;
+static GLint s_uni_tex = -1;
+
+/* PS1 VRAM is 1024x512 RGB555 and GL_UNSIGNED_SHORT_5_5_5_1 is that layout with
+ * the mask bit landing in alpha, so the upload needs no conversion. */
+static const char *QUAD_VS =
+    "attribute vec2 a_pos;\n"
+    "attribute vec2 a_t;\n"
+    "varying vec2 v_t;\n"
+    "void main() { v_t = a_t; gl_Position = vec4(a_pos, 0.0, 1.0); }\n";
+
+static const char *QUAD_FS =
+    "precision mediump float;\n"
+    "varying vec2 v_t;\n"
+    "uniform vec2 u_uv0;\n"
+    "uniform vec2 u_uv1;\n"
+    "uniform sampler2D u_tex;\n"
+    "void main() { gl_FragColor = texture2D(u_tex, u_uv0 + v_t * (u_uv1 - u_uv0)); }\n";
+
+static GLuint compile_shader(GLenum type, const char *src) {
+    GLuint sh = glCreateShader(type);
+    GLint ok = 0;
+
+    glShaderSource(sh, 1, &src, NULL);
+    glCompileShader(sh);
+    glGetShaderiv(sh, GL_COMPILE_STATUS, &ok);
+    if (!ok) {
+        char log[512];
+        glGetShaderInfoLog(sh, sizeof(log), NULL, log);
+        fprintf(stderr, "nx_gpu: shader %u failed: %s\n", (unsigned)type, log);
+        glDeleteShader(sh);
+        return 0;
+    }
+    return sh;
+}
+
+static bool present_init(void) {
+    /* The quad spans clip space; a_t runs 0..1 with 0 at the top-left so the
+     * fragment shader can map it onto a VRAM sub-rectangle. */
+    static const float quad[] = {
+        /* a_pos      a_t      */
+        -1.0f, -1.0f, 0.0f, 1.0f, /* bottom-left  */
+        1.0f,  -1.0f, 1.0f, 1.0f, /* bottom-right */
+        -1.0f, 1.0f,  0.0f, 0.0f, /* top-left     */
+        1.0f,  1.0f,  1.0f, 0.0f, /* top-right    */
+    };
+    GLuint vs = compile_shader(GL_VERTEX_SHADER, QUAD_VS);
+    GLuint fs = compile_shader(GL_FRAGMENT_SHADER, QUAD_FS);
+    GLint ok = 0;
+
+    if (!vs || !fs) {
+        if (vs) {
+            glDeleteShader(vs);
+        }
+        if (fs) {
+            glDeleteShader(fs);
+        }
+        return false;
+    }
+    s_quad_prog = glCreateProgram();
+    glAttachShader(s_quad_prog, vs);
+    glAttachShader(s_quad_prog, fs);
+    glLinkProgram(s_quad_prog);
+    glGetProgramiv(s_quad_prog, GL_LINK_STATUS, &ok);
+    glDeleteShader(vs);
+    glDeleteShader(fs);
+    if (!ok) {
+        char log[512];
+        glGetProgramInfoLog(s_quad_prog, sizeof(log), NULL, log);
+        fprintf(stderr, "nx_gpu: quad program link failed: %s\n", log);
+        return false;
+    }
+
+    s_attr_pos = glGetAttribLocation(s_quad_prog, "a_pos");
+    s_attr_t = glGetAttribLocation(s_quad_prog, "a_t");
+    s_uni_uv0 = glGetUniformLocation(s_quad_prog, "u_uv0");
+    s_uni_uv1 = glGetUniformLocation(s_quad_prog, "u_uv1");
+    s_uni_tex = glGetUniformLocation(s_quad_prog, "u_tex");
+
+    glGenBuffers(1, &s_quad_vbo);
+    glBindBuffer(GL_ARRAY_BUFFER, s_quad_vbo);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(quad), quad, GL_STATIC_DRAW);
+
+    glGenTextures(1, &s_vram_tex);
+    glBindTexture(GL_TEXTURE_2D, s_vram_tex);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, DW3_NX_VRAM_W, DW3_NX_VRAM_H, 0,
+                 GL_RGBA, GL_UNSIGNED_SHORT_5_5_5_1, NULL);
+    return true;
+}
+
+void dw3_nx_gpu_present(const uint16_t *vram, int dx, int dy, int dw, int dh) {
+    float src_aspect;
+    float dst_aspect;
+    int vx;
+    int vy;
+    int vw;
+    int vh;
+
+    if (!s_ready || !vram || dw <= 0 || dh <= 0) {
+        return;
+    }
+    /* A dock/handheld switch recreates the EGL context, which drops every GL
+     * object. glIsTexture reports the stale names as invalid, so this heals
+     * itself instead of the mode-change path having to remember to. */
+    if (!s_quad_prog || !glIsTexture(s_vram_tex)) {
+        if (!present_init()) {
+            return;
+        }
+    }
+
+    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT);
+
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, s_vram_tex);
+    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, DW3_NX_VRAM_W, DW3_NX_VRAM_H,
+                    GL_RGBA, GL_UNSIGNED_SHORT_5_5_5_1, vram);
+
+    /* Letterbox rather than stretch: a 320x240 frame on a 16:9 surface would
+     * otherwise be visibly wrong. */
+    src_aspect = (float)dw / (float)dh;
+    dst_aspect = (float)s_width / (float)s_height;
+    if (src_aspect > dst_aspect) {
+        vw = (int)s_width;
+        vh = (int)((float)s_width / src_aspect);
+    } else {
+        vh = (int)s_height;
+        vw = (int)((float)s_height * src_aspect);
+    }
+    vx = ((int)s_width - vw) / 2;
+    vy = ((int)s_height - vh) / 2;
+    glViewport(vx, vy, vw, vh);
+
+    glUseProgram(s_quad_prog);
+    glUniform2f(s_uni_uv0, (float)dx / (float)DW3_NX_VRAM_W,
+                (float)dy / (float)DW3_NX_VRAM_H);
+    glUniform2f(s_uni_uv1, (float)(dx + dw) / (float)DW3_NX_VRAM_W,
+                (float)(dy + dh) / (float)DW3_NX_VRAM_H);
+    glUniform1i(s_uni_tex, 0);
+
+    glBindBuffer(GL_ARRAY_BUFFER, s_quad_vbo);
+    glEnableVertexAttribArray((GLuint)s_attr_pos);
+    glVertexAttribPointer((GLuint)s_attr_pos, 2, GL_FLOAT, GL_FALSE,
+                          sizeof(float) * 4, (const void *)0);
+    glEnableVertexAttribArray((GLuint)s_attr_t);
+    glVertexAttribPointer((GLuint)s_attr_t, 2, GL_FLOAT, GL_FALSE,
+                          sizeof(float) * 4,
+                          (const void *)(sizeof(float) * 2));
+    glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 }

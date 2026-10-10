@@ -53,11 +53,31 @@ static PsyzVSyncCb g_prev_vsync_cb;
  *    process exits — abrupt, but the alternative is a homebrew that ignores the
  *    home button.
  */
+/* Runs once per frame from PSY-Z's vsync hook, to service the CD/STR bridge
+ * (StCdIntrFlag + Psyz_CdPumpStream), exactly as the PC host does, so streaming
+ * movies keep their sectors coming.
+ *
+ * Deliberately does NOT call appletMainLoop(): it wraps appletGetMessage, which
+ * *blocks* until the applet sends something, and this runs inside the game's
+ * frame — the first call hung the boot before its first frame. libnx's own docs
+ * scope it to "within a main loop", which dw3_game_main() never returns to.
+ * Quitting is the game's own business: its loop polls Psyz_QuitRequested.
+ */
 static void dw3_nx_vsync_pump(void) {
-    if (!appletMainLoop()) {
-        INFOF("quit requested; leaving the game loop");
-        exit(0);
+    static unsigned pumps;
+
+    /* The pump runs once per VSync(), from inside it, *after* the frame was
+     * presented — so the count is a boot progress meter for free. The game's
+     * own boot path makes five calls before its main loop (four VSync(0) and a
+     * VSync(3) in src/engine/system/main.c), then one per frame; a count that
+     * stops at 3 says the game never reached the loop's first frame, and which
+     * call it stopped on says what it was doing. Logged one by one up to 16 and
+     * then at powers of two, so a healthy boot stays logarithmic. */
+    pumps++;
+    if (pumps <= 16 || (pumps & (pumps - 1)) == 0) {
+        INFOF("vsync pump #%u", pumps);
     }
+
     if (StCdIntrFlag) {
         StCdInterrupt();
         StCdIntrFlag = 0;
@@ -126,6 +146,7 @@ static int init_paths(void) {
 #else
     dw3_overlay_register_us_title();
 #endif
+    INFOF("overlay table registered");
     return 0;
 }
 
@@ -157,6 +178,16 @@ int main(int argc, char **argv) {
     }
 
     g_prev_vsync_cb = Psyz_SetVSyncCb(dw3_nx_vsync_pump);
+    {
+        /* Self-check, because the callback marker never appeared: registering
+         * again must hand back our own callback, which proves the global took.
+         * If got == want and the callback still never runs, the fault is
+         * elsewhere and the marker itself is lying. */
+        PsyzVSyncCb got = Psyz_SetVSyncCb(dw3_nx_vsync_pump);
+        INFOF("vsync cb: prev=%p got=%p want=%p",
+              (void *)g_prev_vsync_cb, (void *)got,
+              (void *)dw3_nx_vsync_pump);
+    }
     INFOF("entering dw3_game_main()");
     return dw3_game_main();
 }

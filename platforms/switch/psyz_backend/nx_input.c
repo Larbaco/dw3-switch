@@ -31,6 +31,7 @@
 static PadState s_pad;
 
 void dw3_nx_input_init(void) {
+    psyz_log(1, "nx_input.c", __LINE__, __func__, "padConfigureInput");
     padConfigureInput(1, HidNpadStyleSet_NpadStandard);
     padInitializeDefault(&s_pad);
 }
@@ -121,7 +122,29 @@ void Psyz_PadsPoll(void) {
     HidAnalogStickState stick;
     u_long pressed;
 
+    /* One-shot: PSY-Z reads pads on every vsync, and the boot stopped between
+     * the first video call returning and the vsync callback — which is
+     * ReadPadsOnVsync() -> here. If this logs and the next one does not,
+     * padUpdate() is what blocks. */
+    {
+        static int entered;
+
+        if (!entered) {
+            entered = 1;
+            psyz_log(1, "nx_input.c", __LINE__, __func__, "PadsPoll entered");
+        }
+    }
+
     padUpdate(&s_pad);
+    {
+        static int logged;
+
+        if (!logged) {
+            logged = 1;
+            psyz_log(1, "nx_input.c", __LINE__, __func__,
+                     "padUpdate returned");
+        }
+    }
     pressed = held_buttons(padGetButtons(&s_pad));
     stick = padGetStickPos(&s_pad, 0);
 

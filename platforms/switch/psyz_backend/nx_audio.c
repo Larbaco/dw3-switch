@@ -62,7 +62,19 @@ static size_t s_mempool_size;
 static size_t s_buf_bytes;
 
 static Thread s_thread;
-static Mutex s_mutex;
+/* Recursive, and it has to be. PSY-Z's audio lock is re-entrant by contract,
+ * not by accident: the mixer pulls CD samples from inside the SPU tick
+ * (psyz_spu.c spu_tick -> Psyz_CdPullSamples) and Psyz_CdPullSamples takes the
+ * audio lock (libcd.c). So the audio thread re-enters this lock from inside it
+ * on every buffer fill. Both other PSY-Z backends are recursive — SDL mutexes
+ * are documented recursive, and the PSP implements recursion by hand with
+ * lock_owner/lock_depth (psp_audio.c) — while libnx's plain Mutex is not, and
+ * blocks on the re-entry without ever comparing the owner. A plain Mutex here
+ * wedged the whole port: the audio thread deadlocked against itself, and the
+ * game thread then blocked on the same lock in its first libcd call
+ * (CdInit -> CD_cw(CdlDemute) -> psyz_demute -> Psyz_AudioLock), which is
+ * exactly where the boot stopped. */
+static RMutex s_mutex;
 static volatile int s_stop;
 static volatile int s_paused;
 static volatile uint64_t s_underruns;
@@ -77,13 +89,13 @@ void Psyz_AudioDestroy(void);
 static void fill_wavebuf(AudioDriverWaveBuf *wb) {
     short *pcm = (short *)wb->data_raw;
 
-    mutexLock(&s_mutex);
+    rmutexLock(&s_mutex);
     if (s_paused) {
         memset(pcm, 0, s_buf_bytes);
     } else {
         Psyz_SpuPullSamples(pcm, BUF_FRAMES);
     }
-    mutexUnlock(&s_mutex);
+    rmutexUnlock(&s_mutex);
 
     armDCacheFlush(pcm, s_buf_bytes);
 }
@@ -132,7 +144,7 @@ int Psyz_AudioInit(void) {
     }
 
     Psyz_SpuInit();
-    mutexInit(&s_mutex);
+    rmutexInit(&s_mutex);
     s_stop = 0;
     s_paused = 0;
     s_underruns = 0;
@@ -269,13 +281,13 @@ void Psyz_AudioDestroy(void) {
 
 void Psyz_AudioLock(void) {
     if (s_audio_init) {
-        mutexLock(&s_mutex);
+        rmutexLock(&s_mutex);
     }
 }
 
 void Psyz_AudioUnlock(void) {
     if (s_audio_init) {
-        mutexUnlock(&s_mutex);
+        rmutexUnlock(&s_mutex);
     }
 }
 

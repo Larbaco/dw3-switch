@@ -14,6 +14,8 @@
 
 #include <switch.h>
 
+#include <psyz/log.h>
+
 /* Mirrors PSYZ_OS_FOREVER from vendor/psyz/psyz/src/psyz/os.h, which is a
  * PSY-Z-private header and deliberately not on the include path. */
 #define DW3_NX_OS_FOREVER UINT32_MAX
@@ -25,7 +27,18 @@
 #define DW3_NX_OS_THREAD_PRIO 0x1C
 #define DW3_NX_OS_THREAD_STACK 0x10000 /* matches nx_audio.c */
 
+/* See Psyz_OsBellWait: boot-hang instrumentation, remove once understood. */
+static uint64_t s_bell_waits;
+static uint64_t s_bell_rings;
+
 uint32_t Psyz_OsNowUs(void) {
+    /* One-shot: is the emulated clock being used at all before the hang? */
+    static int logged;
+
+    if (!logged) {
+        logged = 1;
+        INFOF("OsNowUs first call");
+    }
     /* 32-bit microseconds, wrapping like the PSP's sceKernelGetSystemTimeLow;
      * callers compare two readings through their signed difference. */
     return (uint32_t)(armTicksToNs(armGetSystemTick()) / 1000ULL);
@@ -73,13 +86,29 @@ void *Psyz_OsBellCreate(void) {
 }
 
 void Psyz_OsBellRing(void *bell) {
+    s_bell_rings++;
     if (bell) {
         eventFire((Event *)bell);
     }
 }
 
 void Psyz_OsBellWait(void *bell, uint32_t timeout_us) {
+    /* Instrumentation while the boot hangs before its first frame: PSY-Z's
+     * kernel event loop is the prime suspect, and its shape (how often, with
+     * which timeout, and whether anything ever rings) distinguishes "the poll
+     * loop is spinning" from "the IRQ thread never signals".
+     *
+     * Logged at powers of two so a runaway loop shows up logarithmically
+     * instead of flooding — every line here is a file write. Remove once the
+     * boot is understood. */
+    uint64_t n = ++s_bell_waits;
     uint64_t ns;
+
+    if (n <= 8 || (n & (n - 1)) == 0) {
+        INFOF("bell wait #%llu timeout_us=%u rings=%llu",
+              (unsigned long long)n, timeout_us,
+              (unsigned long long)s_bell_rings);
+    }
 
     if (!bell) {
         return;
@@ -96,10 +125,18 @@ static void thread_trampoline(void *arg) {
 }
 
 /* The game's loop polls this to notice that it should stop. The PSP backend
- * reads a flag its exit callback sets; on libnx, appletMainLoop() *is* that
- * check (it services the applet and reports whether to keep running). The vsync
- * pump polls it too, so the home menu stays alive between game frames. */
-int Psyz_QuitRequested(void) { return appletMainLoop() ? 0 : 1; }
+ * reads a flag its exit callback sets.
+ *
+ * Do NOT reach for appletMainLoop() here, which is the obvious-looking answer:
+ * it wraps appletGetMessage, which blocks until the applet sends something, and
+ * the game polls this from inside its frame loop — the first call hangs. The
+ * libnx equivalent of the PSP exit callback is an applet hook
+ * (appletSetHook with AppletHookType_OnExitRequest) setting a flag; until that
+ * is wired, report "no quit requested" so the game keeps running.
+ *
+ * Consequence, and it is a real one: the home button's exit request is ignored.
+ * Tracked with the other exit/sleep work in docs/ROADMAP.md P5.3. */
+int Psyz_QuitRequested(void) { return 0; }
 
 int Psyz_OsThreadStart(void (*fn)(void), const char *name) {
     /* PSY-Z hands over a bare function pointer, so the Thread object and the
@@ -107,11 +144,11 @@ int Psyz_OsThreadStart(void (*fn)(void), const char *name) {
      * these threads live as long as the process. */
     Thread *t = malloc(sizeof(*t));
     void **slot = malloc(sizeof(*slot));
-    (void)name;
 
     if (!t || !slot) {
         free(t);
         free(slot);
+        ERRORF("thread %s: out of memory", name);
         return -1;
     }
     *slot = (void *)fn;
@@ -121,10 +158,17 @@ int Psyz_OsThreadStart(void (*fn)(void), const char *name) {
                               -2))) {
         free(t);
         free(slot);
+        ERRORF("threadCreate(%s) failed", name);
         return -1;
     }
     if (R_FAILED(threadStart(t))) {
+        ERRORF("threadStart(%s) failed", name);
         return -1;
     }
+    /* PSY-Z picks its kernel poll cadence from whether this succeeded
+     * (kernel.c: irq_thread_state < 0 -> 1 ms waits, else 100 ms), so knowing
+     * it here separates "the poll loop spins" from "the IRQ thread never
+     * signals". */
+    INFOF("thread started: %s", name);
     return 0;
 }
