@@ -31,3 +31,11 @@ ticks — US path is the PC bring-up default.
   armed (US NOTICK should prevent the latter)
 - SDL audio callback (`Psyz_SpuPullSamples`) running so keyed voices are
   audible even before SEP sequencing is implemented upstream
+
+## Tick probe (P3.6 track)
+
+`tools/audio_tick_probe/probe_ss_seq_called.sh` counts gdb hits on
+`SsSeqCalledTbyT` during title boot. Proven 2026-10-10:
+`AUDIO_TICK_HITS=120` on bringup `dw3-pc` + owner `runtime/us` (no
+libsnd edits). Remaining A6 work is `_SsSeqPlay` / MIDI → voice, not the
+vsync pump.

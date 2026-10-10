@@ -183,10 +183,13 @@ Start-skip → `MODE_TITLE` and XA decode/mix (Wave 4) proven on PC;
 **P3.8 Done-when met** (`READY_FOR_MAIN_ROADMAP_SYNC: P3.8`,
 `docs/P3.8_STAGES.md`): `STAGSLCT` + batches 1–6 link 238/239 US stage
 objs; live PASS 237/237; only `WSTAG460` left stubbed (host
-`updateWanderer` SEGV). **Phase 3 gate not met** (`docs/P3_GATE.md`):
+`updateWanderer` SEGV). **P3.6 audio track active** on `phase3-audio`
+(`READY_FOR_MAIN_ROADMAP_SYNC: P3.6_TRACK_ACTIVE`, `docs/P3.6_AUDIO.md`):
+docs + `SsSeqCalledTbyT` gdb probe; `_SsSeqPlay`/SEP impl deferred while
+bringup owns `vendor/psyz` churn. **P3.9 harness track** may run on
+`phase3-harness`. **Phase 3 gate not met** (`docs/P3_GATE.md`):
 automated intro / story path still needs work beyond movie skip; P3.6
-audio SEP still open. No start→first-boss segment. P3.6 / P3.9 may run
-on side tracks.
+audio SEP still open. No start→first-boss segment.
 
 Objective: the full game loop runs on PC: field, stages, battle, menus,
 audio, movies.
@@ -247,7 +250,11 @@ audio, movies.
   Done when: a card battle can be won and the album updates.
 - [ ] **P3.6 Audio.** libsnd path through PSY-Z: VAB banks, SEP music,
   SFX, reverb settings the game sets. Verify `SsSeqCalledTbyT` timing
-  from the vsync callback.
+  from the vsync callback. **Track active** on `phase3-audio`
+  (`docs/P3.6_AUDIO.md`, `tools/audio_tick_probe/`): tick pump proven on
+  title boot; SEP/`_SsSeqPlay` implementation deferred pending psyz
+  ownership (separate Larbaco/psyz branch off bringup tip). Checkbox
+  stays open until done-when.
   Done when: title music, field music change on stage switch, battle SFX.
 - [ ] **P3.7 Movies.** Title STR playback through PSY-Z `libpress` +
   streaming (`CdRead2`, `StSetRing`) from raw-sector `.STR` files packed
@@ -274,8 +281,8 @@ audio, movies.
 
 Gate: a full playthrough segment (start → first boss) on PC without
 crashes; both versions build. **Not met** — see `docs/P3_GATE.md`
-(proven: title/field/name/walk + forced battle; blocked: movies/audio,
-first boss, `WSTAG460`, P3.9 oracle).
+(proven: title/field/name/walk + forced battle + movie play/skip;
+blocked: audio SEP, first boss, `WSTAG460`, P3.9 oracle).
 
 ## Phase 4 — Switch host for PSY-Z
 
