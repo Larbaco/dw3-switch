@@ -185,9 +185,10 @@ skip remains `MODE_TITLE` (`0010`).
 `docs/P3.8_STAGES.md`): `STAGSLCT` + batches 1–6 link 238/239 US stage
 objs; live PASS 237/237; only `WSTAG460` left stubbed (host
 `updateWanderer` SEGV). **Phase 3 gate not met** (`docs/P3_GATE.md`):
-automated intro / story path still needs work beyond movie skip; P3.6
-audio done-when met (see below; evidence on `phase3-audio-impl` / PR #13). No
-start→first-boss segment. P3.9 may run on a side track.
+honest intro→`0xE02` Start-skip→Asuka Lobby proven on `phase3-pc-bringup`;
+first boss = Genji event battle on `WSTAG200` (enter + `FORCE_WIN` via
+progress aids). Still no continuous start→Genji (Lobby→Tamer Service gap).
+P3.9 may run on a side track.
 
 Objective: the full game loop runs on PC: field, stages, battle, menus,
 audio, movies.
@@ -284,8 +285,8 @@ audio, movies.
 
 Gate: a full playthrough segment (start → first boss) on PC without
 crashes; both versions build. **Not met** — see `docs/P3_GATE.md`
-(proven: title/field/name/walk + forced battle; blocked: movies/audio,
-first boss, `WSTAG460`, P3.9 oracle).
+(intro→movie→Asuka + Genji via aids; blocked: continuous Lobby→Genji,
+playable KO, `WSTAG460`, P3.9 oracle).
 
 ## Phase 4 — Switch host for PSY-Z
 
