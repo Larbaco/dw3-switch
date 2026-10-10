@@ -70,6 +70,7 @@ tools/apply_patches.sh           # refresh build/decomp-src + apply
 | `0035-PORT_HOST-p36-playsound-keyon-log.patch` | no | P3.6: capped `dw3: SsUtKeyOn` / `SsSepPlay` logs from `playSound` (`phase3-pc-bringup` series; listed on `main` for evidence traceability) |
 | `0036-PORT_HOST-p3-force-npc-mode-gate.patch` | no | P3 gate: `DW3_FORCE_NPC_ACTION=code[@mode][:value]`; mode mismatch keeps `force_once` (Lobby `0x9004@0x203` → event 9) |
 | `0037-PORT_HOST-p3-movie-loadimage-before-dout.patch` | no | P3 GPU: under `PORT_HOST`, `LoadImage` completed MDEC slice before next `DecDCTout` (sync soft-MDEC double-buf) |
+| `0038-PORT_HOST-timblock-pixels-u32.patch` | no | P3 GPU R1: host `TimBlock.pixels` is `u32[]` so `LoadImage` starts at file offset 12 (LP64 `u_long` padded to 16 and skipped 2 halfwords) |
 
 `tools/apply_patches.sh --check` applies the series in order (stacked
 patches on the same file are valid).

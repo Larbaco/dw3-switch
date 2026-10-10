@@ -52,6 +52,7 @@ static int g_disp_x_scaled_logged;
 static int g_mdec_env_logged;
 static int g_slice_stash_logged;
 static int g_rgb24_latch_cleared_logged;
+static unsigned g_put_disp_count;
 
 typedef struct Dw3SliceStash {
     const void *ptr;
@@ -289,15 +290,39 @@ void __wrap_DecDCTout(u_long *buf, int size) {
     }
 }
 
+static void dw3_maybe_dump_disp(void) {
+    const char *at;
+    unsigned want;
+    char *end;
+
+    at = getenv("DW3_FB_DUMP_DISP");
+    if (at == NULL || at[0] == '\0' || g_fb_dumped) {
+        return;
+    }
+    want = (unsigned)strtoul(at, &end, 0);
+    if (end == at || g_put_disp_count < want) {
+        return;
+    }
+    fprintf(stderr,
+            "dw3-present: disp dump request frame=%u rgb24_loads=%u "
+            "rgb24=%d (0 loads => title, never entered MDEC RGB24)\n",
+            g_put_disp_count, g_rgb24_loads, g_disp_rgb24);
+    dw3_present_dump_fb("disp frame");
+}
+
 DISPENV *__wrap_PutDispEnv(DISPENV *env) {
+    DISPENV *ret;
     DISPENV tmp;
 
     if (env == NULL) {
         return __real_PutDispEnv(env);
     }
+    g_put_disp_count++;
     g_disp_rgb24 = env->isrgb24 ? 1 : 0;
     if (!env->isrgb24 || env->disp.x == 0) {
-        return __real_PutDispEnv(env);
+        ret = __real_PutDispEnv(env);
+        dw3_maybe_dump_disp();
+        return ret;
     }
     /* Match RGB24 LoadImage pixel placement (halfword x * 2/3). */
     tmp = *env;
@@ -308,7 +333,9 @@ DISPENV *__wrap_PutDispEnv(DISPENV *env) {
                 "dw3-present: PutDispEnv rgb24 disp.x %d -> %d (pixel)\n",
                 env->disp.x, tmp.disp.x);
     }
-    return __real_PutDispEnv(&tmp);
+    ret = __real_PutDispEnv(&tmp);
+    dw3_maybe_dump_disp();
+    return ret;
 }
 
 static u16 *rgb888_packed_to_5551(const u8 *src, int pixel_w, int h) {
@@ -351,10 +378,9 @@ int __wrap_LoadImage(RECT *rect, u_long *p) {
     src = stashed != NULL ? stashed : (const uint8_t *)p;
 
     /* MDEC movie strips are always 24 halfwords wide. Do not reuse
-     * PutDispEnv(isrgb24) here: title TIM/CLUT LoadImage runs in the title
-     * loader before the next flip clears DISPENV, so a latched g_disp_rgb24
-     * after STR playback shreds sprites (R1). Strip geometry is enough for
-     * frames before isrgb24 is set. */
+     * PutDispEnv(isrgb24) here: a latched flag after STR would run later
+     * LoadImage through the RGB888 converter. Title shred (R1) is the
+     * TimBlock.pixels alignment in patch 0038, not this latch. */
     use_rgb24 = (rect->w == 24 && rect->h >= 192);
     if (!use_rgb24) {
         if (g_disp_rgb24) {

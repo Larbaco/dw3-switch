@@ -1,0 +1,55 @@
+Upstream-bound: no
+Subject: [PORT_HOST] TimBlock pixels stay at file offset 12
+
+On PS1 u_long is 4 bytes, so TimBlock.pixels follows the 12-byte TIM
+block header. Host u_long is 8 bytes, so the flexible array aligns to
+16 and LoadImage starts two halfwords into the payload. Indexed
+sprites and CLUTs shift by 2 (title logo/copyright shred). u32 pixels[]
+keeps offset 12. RGB24 movie strips do not use TimBlock.
+
+--- a/include/engine/gfx.h
++++ b/include/engine/gfx.h
+@@ -288,7 +288,16 @@ typedef struct TimBlock {
+     /* 0x6 */ u16 y;
+     /* 0x8 */ u16 w; /* in halfwords */
+     /* 0xA */ u16 h;
++#if PORT_HOST
++    /* Host u_long is 8 bytes and would pad this array to offset 16. */
++    /* 0xC */ u32 pixels[FLEXIBLE];
++#else
+     /* 0xC */ u_long pixels[FLEXIBLE];
++#endif
+ } TimBlock;
++#if PORT_HOST
++typedef char dw3_timblock_pixels_at_12[
++    (__builtin_offsetof(TimBlock, pixels) == 12) ? 1 : -1];
++#endif
+ 
+ /* Where timLoaderLoad is in a TIM: its words, then its blocks, which their
+    sizes in bytes take it past */
+--- a/src/engine/gfx/tim_loader.c
++++ b/src/engine/gfx/tim_loader.c
+@@ -45,7 +45,11 @@ void timLoaderLoad(void *tim) {
+             clut.y = TIM_LOADER->clutY;
+             clut.w = p.block->w;
+             clut.h = p.block->h;
++#if PORT_HOST
++            LoadImage(&clut, (u_long *)p.block->pixels);
++#else
+             LoadImage(&clut, p.block->pixels);
++#endif
+             break;
+         }
+         p.byte += p.block->size;
+@@ -54,7 +58,11 @@ void timLoaderLoad(void *tim) {
+     image.y = TIM_LOADER->imageY;
+     image.w = p.block->w;
+     image.h = p.block->h;
++#if PORT_HOST
++    LoadImage(&image, (u_long *)p.block->pixels);
++#else
+     LoadImage(&image, p.block->pixels);
++#endif
+     TIM_LOADER->w = image.w;
+     TIM_LOADER->h = image.h;
+ }
