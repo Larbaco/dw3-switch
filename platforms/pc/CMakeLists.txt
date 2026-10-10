@@ -45,6 +45,7 @@ target_link_options(dw3-pc PRIVATE
   "-Wl,--wrap=PadSetActAlign"
   # P3.7 present: MDEC-out DMA IRQ + RGB24 LoadImage for STR movies
   "-Wl,--wrap=DMACallback"
+  "-Wl,--wrap=DecDCTReset"
   "-Wl,--wrap=DecDCTout"
   "-Wl,--wrap=LoadImage"
   "-Wl,--wrap=PutDispEnv"

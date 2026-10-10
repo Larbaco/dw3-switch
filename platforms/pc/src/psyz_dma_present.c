@@ -13,7 +13,12 @@
  * stores expanded frames at 0 and 320. Leaving disp.x=480 shows only the
  * right 160px of the frame (classic half-width glitch).
  *
- * Linked with -Wl,--wrap=DMACallback,DecDCTout,LoadImage,PutDispEnv.
+ * Linked with
+ * -Wl,--wrap=DMACallback,DecDCTReset,DecDCTout,LoadImage,PutDispEnv.
+ *
+ * DecDCTReset on PSY-Z only clears soft-MDEC state; Sony's MDEC_reset also
+ * uploads default quant/IDCT. Without that, AC run-levels decode to flat
+ * mid-grey (quant[i]==0). Host wrap re-uploads Psy-Q defaults via PutEnv.
  */
 #include <libetc.h>
 #include <libgpu.h>
@@ -35,6 +40,7 @@ static unsigned g_dout_depth;
 static unsigned g_dout_top_done;
 static int g_fb_dumped;
 static int g_disp_x_scaled_logged;
+static int g_mdec_env_logged;
 
 static void dw3_present_dump_fb(const char *why) {
     const char *path;
@@ -52,6 +58,8 @@ static void dw3_present_dump_fb(const char *why) {
     int y1 = -1;
     int x;
     int y;
+    unsigned uniq = 0;
+    unsigned char seen[256];
 
     if (g_fb_dumped) {
         return;
@@ -60,18 +68,25 @@ static void dw3_present_dump_fb(const char *why) {
     if (path == NULL || path[0] == '\0') {
         return;
     }
-    rgb = Psyz_VideoAllocCapturedFrame(&w, &h);
+    /* Prefer full VRAM dump for movies: captured display buffer can miss
+     * the RGB24 double-buffer band that LoadImage wrote. */
+    rgb = Psyz_VideoAllocVramDump(&w, &h);
     if (rgb == NULL || w <= 0 || h <= 0) {
-        rgb = Psyz_VideoAllocVramDump(&w, &h);
+        rgb = Psyz_VideoAllocCapturedFrame(&w, &h);
     }
     if (rgb == NULL || w <= 0 || h <= 0) {
         fprintf(stderr, "dw3-present: FB dump failed (%s)\n", why);
         return;
     }
     nbytes = (size_t)w * (size_t)h * 3u;
+    memset(seen, 0, sizeof(seen));
     for (i = 0; i < nbytes; i++) {
         if (rgb[i] != 0) {
             nonzero++;
+        }
+        if (!seen[rgb[i]]) {
+            seen[rgb[i]] = 1;
+            uniq++;
         }
     }
     for (y = 0; y < h; y++) {
@@ -106,14 +121,29 @@ static void dw3_present_dump_fb(const char *why) {
     g_fb_dumped = 1;
     fprintf(stderr,
             "dw3-present: FB dump %s %dx%d wrote=%zu nonzero=%ld "
-            "bbox=%d,%d-%d,%d (%s)\n",
-            path, w, h, wrote, nonzero, x0, y0, x1, y1, why);
+            "uniq8=%u bbox=%d,%d-%d,%d (%s)\n",
+            path, w, h, wrote, nonzero, uniq, x0, y0, x1, y1, why);
 }
 
 void *__real_DMACallback(int dma, void (*func)());
+void __real_DecDCTReset(int mode);
 void __real_DecDCTout(u_long *buf, int size);
 int __real_LoadImage(RECT *rect, u_long *p);
 DISPENV *__real_PutDispEnv(DISPENV *env);
+
+void __wrap_DecDCTReset(int mode) {
+    DECDCTENV env;
+
+    __real_DecDCTReset(mode);
+    /* Soft MDEC starts with zero quant/IDCT; upload Psy-Q defaults. */
+    DecDCTGetEnv(&env);
+    DecDCTPutEnv(&env);
+    if (!g_mdec_env_logged) {
+        g_mdec_env_logged = 1;
+        fprintf(stderr,
+                "dw3-present: DecDCTReset → PutEnv default quant/IDCT tables\n");
+    }
+}
 
 void *__wrap_DMACallback(int dma, void (*func)()) {
     void *prev = NULL;
@@ -149,9 +179,11 @@ void __wrap_DecDCTout(u_long *buf, int size) {
                     g_dout_top_done, g_slice_cb_count, g_rgb24_loads,
                     g_disp_rgb24);
         }
-        /* Dump after RGB24 present origin is latched (see PutDispEnv wrap). */
+        /* Dump after RGB24 present origin is latched (see PutDispEnv wrap).
+         * Default frame 30: MOVIEOPN fc=1 is solid DC+EOB fade-in; fc≈30 has
+         * dense AC and proves non-flat content once quant tables are loaded. */
         if (g_disp_rgb24 && g_rgb24_loads >= 20u && !g_fb_dumped) {
-            unsigned want = 2u;
+            unsigned want = 30u;
             const char *env_frame = getenv("DW3_FB_DUMP_FRAME");
 
             if (env_frame != NULL && env_frame[0] != '\0') {
@@ -245,11 +277,35 @@ int __wrap_LoadImage(RECT *rect, u_long *p) {
     rc = __real_LoadImage(&pr, (u_long *)converted);
     free(converted);
     g_rgb24_loads++;
-    if (g_rgb24_loads == 1u || g_rgb24_loads == 20u) {
+    if (g_rgb24_loads == 1u || g_rgb24_loads == 20u ||
+        g_rgb24_loads == 581u) {
+        const u8 *s = (const u8 *)p;
+        size_t nbytes = (size_t)pixel_w * (size_t)rect->h * 3u;
+        size_t i;
+        unsigned minv = 255;
+        unsigned maxv = 0;
+        unsigned uniq = 0;
+        unsigned char seen[256];
+        unsigned long sum = 0;
+
+        memset(seen, 0, sizeof(seen));
+        for (i = 0; i < nbytes; i++) {
+            unsigned v = s[i];
+            if (v < minv)
+                minv = v;
+            if (v > maxv)
+                maxv = v;
+            sum += v;
+            if (!seen[v]) {
+                seen[v] = 1;
+                uniq++;
+            }
+        }
         fprintf(stderr,
                 "dw3-present: RGB24 LoadImage #%u %dx%d hw -> %dx%d px at "
-                "(%d,%d)\n",
-                g_rgb24_loads, rect->w, rect->h, pr.w, pr.h, pr.x, pr.y);
+                "(%d,%d) src min=%u max=%u avg=%.1f uniq8=%u\n",
+                g_rgb24_loads, rect->w, rect->h, pr.w, pr.h, pr.x, pr.y, minv,
+                maxv, sum / (double)nbytes, uniq);
     }
     return rc;
 }
