@@ -386,14 +386,23 @@ console.
   and `nx_gpu.c` presents `SoftwareRasterizer_GetVram()` as a GLES2 texture.
   An earlier note here said the link stops on those 20 — that was before the
   renderer landed; trust this one.
-  **Boot: it reaches the game and stops inside `CdInit()`.** In Ryubing the
-  image gets through SD mount, cdfs, audio, memcard, boot TIM, overlay table,
-  `Psyz_SetVSyncCb`, and four of the five `VSync` calls in the game's boot
-  path (`build/decomp-src/src/engine/system/main.c`), presenting frames on
-  each. It then enters `CdInit()` (the CD block right after `SetDispMask(1)`)
-  and never returns — so it never reaches the game's main loop and nothing is
-  drawn. That is the current blocker, pinned by trace, not by guesswork.
-  **Not ticked:** no title on hardware, and none in the emulator yet.
+  **Boot: it boots and draws the title.** In Ryubing the image gets through SD
+  mount, cdfs, audio, memcard, boot TIM, overlay table, `Psyz_SetVSyncCb`, all
+  five `VSync` calls in the game's boot path
+  (`build/decomp-src/src/engine/system/main.c`), and into the main loop. It
+  flips display buffers (`PutDispEnv` alternating `y=0` / `y=256`) and renders
+  the title screen — logo, "Please Start Button", the Bandai copyright line —
+  animating frame to frame. Screenshots: `/tmp/dw3-shot-boot1.png`,
+  `boot2.png` (800x480, owner machine).
+  **The one blocker that stood in the way was not a CD bug.** The boot stopped
+  inside `CdInit()`; the cause was `Psyz_AudioLock` on a non-recursive libnx
+  `Mutex`, while PSY-Z's audio lock is re-entrant by contract (the SPU tick
+  pulls CD samples, which re-takes it). Fixed by making it an `RMutex` — six
+  lines in `nx_audio.c`. The boot-stop trace and the full reasoning are in
+  `docs/SWITCH_BACKEND.md`.
+  **Not ticked:** the done-when is the title **on hardware**, and this is the
+  emulator. The image is also still visibly noisy (dither/pixel-format
+  fidelity) and no pad input has been sent through it yet.
   See `docs/SWITCH_BACKEND.md` for the boot-stop evidence and the emulator
   logging traps.
 

@@ -202,7 +202,53 @@ Also worth knowing: nothing logged after `CdInit` means the PSY-Z IRQ thread
 never started and `Psyz_OsNowUs` was never called — both would have logged.
 The block is upstream of both.
 
-P4.7 stays open: nothing renders, so there is no title on hardware.
+### Root cause: a self-deadlocked audio lock, not the CD
+
+`CdInit()` was innocent. It is simply the **first `libcd` call in the boot
+path**, and `CD_init()` ends in `CD_cw(CdlDemute, …)` → `psyz_demute()` →
+`Psyz_AudioLock()` — the game thread's first ever audio lock. It blocked
+because the audio thread had already wedged that lock against itself:
+
+```
+audio thread   fill_wavebuf(): mutexLock(s_mutex)
+               Psyz_SpuPullSamples()
+               psyz_spu.c spu_tick(): CD ring below low water
+               Psyz_CdPullSamples()          (libcd.c)
+               Psyz_AudioLock() -> mutexLock(s_mutex)   same thread, blocked
+game thread    CD_init -> CD_cw(CdlDemute) -> psyz_demute()
+               Psyz_AudioLock() -> the lock nobody will release
+```
+
+**PSY-Z's audio lock is re-entrant by contract**, and all three backends say
+so except ours: SDL mutexes are documented recursive
+(`SDL_mutex.h`, `SDL_THREAD_PTHREAD_RECURSIVE_MUTEX`), the PSP implements
+recursion by hand (`psp_audio.c` `lock_owner`/`lock_depth`), and libnx's plain
+`Mutex` is neither — `svcArbitrateLock` blocks on a non-zero word without
+comparing the owner, while `RMutex` (`rmutexInit`/`rmutexLock`) is the
+recursive one. Six lines in `nx_audio.c` fixed it.
+
+`nx_os.c` deliberately keeps its plain `Mutex` for `Psyz_OsLockCreate`: the
+PSP's is a plain non-recursive semaphore too, and PSY-Z's `KernelLock` carries
+its own `lock_owner` guard.
+
+Why this cost so much to find, and the lesson: the trace, not the reading.
+Reading `CD_init` and `CD_command` says every call returns — `D_800B5718[0x0E]`
+is `0`, so `cd_cw` skips `Setloc`, and the `CdlSetmode`/`CdlDemute` arms have
+no failing path. The block was one call further down, in code the CD path only
+touches because the SPU mixer shares the lock. A `--wrap` trace (all six
+wrappers are temporary, remove with the rest) is what moved it from "somewhere
+in this window" to "inside `CdInit`", and a subagent reading the PSY-Z CD and
+kernel paths cold is what found the cycle.
+
+### What it looks like now
+
+The boot runs into the main loop, alternates `PutDispEnv` between `y=0` and
+`y=256` (double buffer), and draws the title: logo, "Please Start Button",
+copyright line, animating frame to frame. The image is still visibly noisy —
+dithering or pixel-format fidelity in the VRAM→GLES2 path, not yet
+investigated. No pad input has been exercised through it yet.
+
+P4.7 stays open: the done-when is the title on **hardware**.
 
 ## P4.2 video (2026-10-10)
 
@@ -284,14 +330,12 @@ here.
 
 1. ~~P4.2: implement `nx_gpu.c` present path~~ — code on PR #21; **hardware fps check** open.
 2. ~~P4.3: `nx_audio.c` / `audren`~~ — host wiring on PR #23; **hardware + libsnd** open.
-3. **P4.7 boot path:** `source/boot_main.c` is in the CMake target and calls
-   `dw3_game_main`. The Makefile `source/main.c` sample stays. **The blocker is
-   now the boot, not the link** — the image links and reaches the game, then
-   blocks inside `CdInit()` (evidence above).
+3. **P4.7 boot path:** done as far as the emulator can take it — the game
+   boots into its main loop and draws the title. **The done-when is hardware**,
+   and `docs/ROADMAP.md` keeps P4.7 unticked for exactly that reason.
 4. **P4.7 renderer:** done as a thin adapter over the in-tree
    `software_rasterizer`, presenting `SoftwareRasterizer_GetVram()` through
-   `nx_gpu.c`'s EGL surface. It presents frames; whether it draws the *right*
-   pixels is unverified, because the boot never gets far enough to draw
-   anything but a cleared VRAM.
+   `nx_gpu.c`'s EGL surface. It draws the title. **Open:** the picture is
+   noisy (dither/pixel-format), and nothing has driven the pad through it.
 5. Do not vendor SDL3 into git; if revisited, document a `tools/` fetch+build
    helper only.
