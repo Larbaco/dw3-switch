@@ -55,6 +55,7 @@ tools/apply_patches.sh           # refresh build/decomp-src + apply
 | `0020-PORT_HOST-p32-boot-mode-and-stage-log.patch` | no | P3.2: `DW3_START_MODE` / `DW3_AUTO_DOOR_*`, stage pick log |
 | `0021-PORT_HOST-field-null-slots-and-state-zero.patch` | no | P3.2: NULL `slots` guard + `FieldState` zero through `init` |
 | `0022-match-neutral-drawcallback-void-arg.patch` | yes | P3.2: `DrawCallback.arg` / layer add-callback APIs as `void*` (LP64; fixes `FIELDSTG_drawActor` SEGV) |
+| `0023-PORT_HOST-p32-script-leave-walk-evidence.patch` | no | P3.2: `SCRIPT_LEAVE`/`leaveField`/`moveByPad` logs; `DW3_FAST_SCRIPT`; `DW3_PROGRESS` |
 
 `tools/apply_patches.sh --check` applies the series in order (stacked
 patches on the same file are valid).

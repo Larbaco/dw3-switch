@@ -164,9 +164,9 @@ pad state connected; GPU polish open; merged via PR #3).
 Status: **in progress** (branch `phase3-pc-bringup`; plan:
 [`docs/superpowers/plans/2026-10-10-phase3-pc-game-loop.md`](superpowers/plans/2026-10-10-phase3-pc-game-loop.md)).
 
-Tracking: Phase 3 on `phase3-pc-bringup`. P3.1 done. P3.2 **link + stage
-switch logged**; `FIELDSTG_drawActor` SEGV **fixed** (`0022`); Done-when
-still open on interactive walk + physical door (see `docs/P3.2_FIELD.md`).
+Tracking: Phase 3 on `phase3-pc-bringup`. P3.1 done. **P3.2 Done-when
+met** (pad walk + `SCRIPT_LEAVE` 780→785 + name entry; see
+`docs/P3.2_FIELD.md`). Follow-up: link WSTAG790 (`0x2D9`) after name.
 P3.6 / P3.9 may run on side tracks.
 
 Objective: the full game loop runs on PC: field, stages, battle, menus,
@@ -185,13 +185,12 @@ audio, movies.
   WSTAG920–974 (`LANGUAGE`); battle `draw`/`lights`/`model_mesh` (PSY-Z
   gaps). Full overlay link lands with P3.2+. Upstream `make compare`
   blocker unchanged (`docs/PATCHES.md`).
-- [ ] **P3.2 Field + first stage.** `FIELDSTG` + `WSTAG260` scripts +
-  starting town `WSTAG780` (door → `WSTAG785`) + `STPLNMET`. **Landed:**
-  `dw3_p32_field` + overlay table with real `.data` snapshots; patches
-  `0020`/`0021`/`0022`; logged path `0x2D7`→stage 474→`AUTO_DOOR`→`0x2D8`/475
-  and `0x500` STPLNMET; drawActor SEGV fixed (`DrawCallback.arg` → `void*`,
-  `docs/P3.2_FIELD.md`). **Open:** interactive walk + physical door
-  (AUTO_DOOR alone does not satisfy Done-when).
+- [x] **P3.2 Field + first stage.** `FIELDSTG` + `WSTAG260` scripts +
+  starting town `WSTAG780` (door → `WSTAG785`) + `STPLNMET`. Patches
+  `0020`–`0023` + `DW3_AUTO_PAD` host inject. **Done-when evidence**
+  (`docs/P3.2_FIELD.md`): pad `moveByPad` moves actor (Δy on 780/785);
+  real `SCRIPT_LEAVE`/`leaveField` 474→475 (not `AUTO_DOOR`); name
+  `0x500` then back to 475. Follow-up: WSTAG790 (`0x2D9`) not linked.
   Done when: new game → name entry → first field area is walkable and a
   door changes stage.
 - [ ] **P3.3 Battle.** `FIGHTSTG` + `WFIGHTMN` (+ `WFIGHTTS` from the debug

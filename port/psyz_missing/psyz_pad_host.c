@@ -12,6 +12,7 @@
 #include <psyz/input.h>
 #include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
 
 #ifndef PadStateDiscon
 #define PadStateDiscon 0
@@ -43,6 +44,53 @@ static int g_logged_buttons;
 static int port_index(int port) { return (port >> 4) & 1; }
 
 static void dw3_pad_host_debug_buttons(void);
+static void dw3_auto_pad_inject(void);
+
+/* Raw PS1 digital bits (libetc / PSY-Z), active in the pressed mask. */
+enum {
+    DW3_RAW_CROSS = 1 << 6,
+    DW3_RAW_UP = 1 << 12,
+    DW3_RAW_RIGHT = 1 << 13,
+    DW3_RAW_DOWN = 1 << 14,
+    DW3_RAW_LEFT = 1 << 15
+};
+
+static void dw3_auto_pad_inject(void) {
+    const char *env;
+    unsigned mask = 0;
+    static unsigned frame;
+    char buf[DW3_PAD_BUF_LEN];
+    int confirm = 0;
+    int walk = 0;
+
+    env = getenv("DW3_AUTO_PAD");
+    if (env == NULL || env[0] == '\0') {
+        return;
+    }
+    if (strstr(env, "confirm") != NULL) {
+        confirm = 1;
+    }
+    if (strstr(env, "walk") != NULL) {
+        walk = 1;
+    }
+    if (!confirm && !walk) {
+        return;
+    }
+    frame++;
+    if (walk) {
+        mask |= DW3_RAW_UP;
+    }
+    /* Pulse Cross so PAD_PRESSED sees edges for dialogue / menus. */
+    if (confirm && (frame % 8u) == 1u) {
+        mask |= DW3_RAW_CROSS;
+    }
+    memset(buf, 0, sizeof(buf));
+    buf[0] = 0x00;
+    buf[1] = (char)PSYZ_CTRL_DIGITAL_PAD;
+    buf[2] = (char)((~(mask >> 8)) & 0xFF);
+    buf[3] = (char)((~mask) & 0xFF);
+    Psyz_PadsSet(0, buf, DW3_PAD_BUF_LEN);
+}
 
 static void refresh_port(int idx) {
     if (idx < 0 || idx > 1 || g_pad_rx[idx] == NULL) {
@@ -102,6 +150,7 @@ int PadChkVsync(void) {
     if (!g_pad_started) {
         return 0;
     }
+    dw3_auto_pad_inject();
     refresh_port(0);
     refresh_port(1);
     dw3_pad_host_debug_buttons();
