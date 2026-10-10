@@ -1,0 +1,124 @@
+Upstream-bound: no
+Subject: [PORT_HOST] Game entry, boot TIM upload, skip opening movies
+
+Rename main to dw3_game_main for the PC host bootstrap; upload boot TIM
+from STAGE_VRAM (preloaded with runtime/us/boot_tim.bin); start at
+MODE_TITLE so Phase 2 can reach the title screen without STR movies.
+Quit when PSY-Z requests window close. Log mode entry for host bring-up.
+Call ResetGraph before the first SetDispMask (PSY-Z GPU table).
+Skip the TIM ID with a +4 byte offset on 64-bit hosts.
+
+--- a/src/engine/system/main.c
++++ b/src/engine/system/main.c
+@@ -2,6 +2,10 @@
+ #include <libgs.h>
+ #include <libetc.h>
+ #include <libsnd.h>
++#if PORT_HOST
++/* Avoid psyz.h here: it pulls POSIX open/read that clash with game.h. */
++int Psyz_QuitRequested(void);
++#endif
+ 
+ /* -G8 unit: small variables defined here are reached through $gp, in the small data (.sdata) */
+ /* Where the boot image, the 320x480 TIM loaded after the executable, goes in VRAM */
+@@ -9,7 +13,11 @@
+ static void *ROOT_TASK = NULL; /* the task that runs the game mode */
+ 
+ /* Starts the hardware, the libraries and the engine, then runs a frame per iteration */
++#if PORT_HOST
++int dw3_game_main(void) {
++#else
+ int main(void) {
++#endif
+     RECT rect;
+     GsIMAGE tim;
+     u_char param[8];
+@@ -25,6 +33,10 @@
+ #endif
+     ResetCallback();
+     VSync(0);
++#if PORT_HOST
++    /* PSY-Z needs the GPU jump table from ResetGraph before SetDispMask. */
++    ResetGraph(0);
++#endif
+     SetDispMask(0);
+     ResetGraph(0);
+     GFX.funcs.reset();
+@@ -42,23 +54,18 @@
+     GFX.funcs.setDisplayMode(320, 640, 1, 0);
+     PutDispEnv(&GFX.disp[0]);
+     VSync(0);
++    /* GsGetTimInfo takes the TIM after its ID word */
++    /* Host: PC bootstrap preloads STAGE_VRAM from runtime/us/boot_tim.bin.
++     * On 64-bit, u_long is 8 bytes — do not use pointer+1 to skip the 4-byte ID. */
+ #if PORT_HOST
+-    /*
+-     * Boot TIM: on PS1 the packed exe tail sits at OVERLAY_VRAM and main
+-     * reads it through SUB_OVERLAY_ADDRESS. Host expects runtime/us/boot_tim.bin
+-     * (see docs/RUNTIME_LAYOUT.md). Until cdfs/E6 wires that path, skip the
+-     * upload so bring-up can proceed without the TIM bytes.
+-     */
+-    (void)tim;
+-    (void)BOOT_IMAGE_RECT;
++    GsGetTimInfo((u_long *)((u8 *)SUB_OVERLAY_ADDRESS + 4), &tim);
+ #else
+-    /* GsGetTimInfo takes the TIM after its ID word */
+     GsGetTimInfo((u_long *)SUB_OVERLAY_ADDRESS + 1, &tim);
++#endif
+     VSync(0);
+-    LoadImage(&BOOT_IMAGE_RECT, tim.pixel);
++    LoadImage(&BOOT_IMAGE_RECT, (u_long *)tim.pixel);
+     DrawSync(0);
+     VSync(0);
+-#endif
+     SetDispMask(1);
+     CdInit();
+     CdSetDebug(0);
+@@ -80,6 +87,11 @@
+      * requested), free everything the mode allocated and start the new one.
+      */
+     for (;;) {
++#if PORT_HOST
++        if (Psyz_QuitRequested()) {
++            return 0;
++        }
++#endif
+         if (ROOT_TASK == NULL) {
+             GFX.funcs.freePrimBuffers();
+             GFX.funcs.reset();
+--- a/src/engine/game/state.c
++++ b/src/engine/game/state.c
+@@ -4,7 +4,11 @@
+ /* Clears the save data and sets up a new game */
+ void newGame(void) {
+     HEAP.zero(&GAME, GAME_SAVE_SIZE);
+-#if VERSION_US
++#if PORT_HOST
++    /* Phase 2: skip opening STR movies; go straight to the title screen. */
++    GAME.mode = MODE_TITLE;
++    GAME.nextMode = MODE_TITLE;
++#elif VERSION_US
+     GAME.mode = MODE_OPENING;
+     GAME.nextMode = MODE_OPENING;
+ #elif VERSION_EU
+--- a/src/engine/system/overlay.c
++++ b/src/engine/system/overlay.c
+@@ -2,6 +2,7 @@
+ 
+ #if PORT_HOST
+ #include "overlay_host.h"
++#include <stdio.h>
+ #endif
+ 
+ /* Each mode's overlay (mode >> 8): its entry point and its file */
+@@ -35,6 +36,10 @@
+     default:
+         OVERLAY_LOADER.loadModeOverlay();
+         children[0] = MODE_ENTRY_POINTS[GAME.funcs.getMode() >> 8]();
++#if PORT_HOST
++        fprintf(stderr, "dw3: mode=0x%x title_entry=%p\n",
++                (unsigned)GAME.funcs.getMode(), (void *)children[0]);
++#endif
+         task->nextState(task);
+         break;
+     case 1:

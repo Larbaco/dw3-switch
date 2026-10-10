@@ -1,0 +1,21 @@
+Upstream-bound: no
+Subject: [PORT_HOST] TimCursor word pointer is 32-bit
+
+On PS1 u_long is 32-bit, so TimCursor.word++ advances one TIM word. On
+host u_long is 64-bit and breaks TIM parsing / LoadImage. Use u32*.
+
+--- a/include/engine/gfx.h
++++ b/include/engine/gfx.h
+@@ -294,7 +294,12 @@
+ /* Where timLoaderLoad is in a TIM: its words, then its blocks, which their
+    sizes in bytes take it past */
+ typedef union TimCursor {
++#if PORT_HOST
++    /* PS1 u_long is 32-bit; host u_long is 64-bit and would skip TIM words. */
++    u32 *word;
++#else
+     u_long *word;
++#endif
+     u8 *byte;
+     TimBlock *block;
+ } TimCursor;

@@ -14,7 +14,8 @@
 
 enum {
     DW3_HOST_OVERLAY_BYTES = 0x40000, /* 256 KiB */
-    DW3_HOST_STAGE_BYTES = 0x40000    /* 256 KiB */
+    /* Boot TIM is ~300 KiB (320x480 16-bit); keep headroom for sub-overlays. */
+    DW3_HOST_STAGE_BYTES = 0x80000 /* 512 KiB */
 };
 
 /* Match decomp overlay.h: extern u8 OVERLAY_VRAM[] / STAGE_VRAM[] */

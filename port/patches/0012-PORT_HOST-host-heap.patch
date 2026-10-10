@@ -1,0 +1,34 @@
+Upstream-bound: no
+Subject: [PORT_HOST] Host heap storage instead of PS1 HEAP_END
+
+Point HEAP_BASE/HEAP_END at port/overlays/host_heap.c BSS so initHeap
+does not use the fixed PS1 address 0x801FF000 on the host.
+
+--- a/include/engine/heap.h
++++ b/include/engine/heap.h
+@@ -9,7 +9,15 @@
+ #include <libgpu.h>
+ 
+ /* The heap: a doubly linked list of blocks from HEAP_START to HEAP_END */
++#if PORT_HOST
++/* Host storage in port/overlays/host_heap.c (not PS1 VRAM addresses). */
++extern unsigned char DW3_HOST_HEAP[];
++extern const unsigned long DW3_HOST_HEAP_SIZE;
++#define HEAP_BASE ((MemBlock *)(void *)DW3_HOST_HEAP)
++#define HEAP_END ((MemBlock *)(void *)(DW3_HOST_HEAP + DW3_HOST_HEAP_SIZE))
++#else
+ #define HEAP_END ((MemBlock *)0x801FF000)
++#endif
+ 
+ /* MemBlock.tag */
+ #define MEM_FREE 0
+@@ -62,7 +70,9 @@
+ 
+ extern Heap HEAP;
+ extern MemBlock *HEAP_START;
++#if !PORT_HOST
+ /* The heap's first block, after the overlays: a linker symbol (tools/link_heap.py) */
+ extern MemBlock HEAP_BASE[];
++#endif
+ 
+ #endif /* DW3_HEAP_H */

@@ -51,11 +51,39 @@ endif()
 add_library(dw3_engine OBJECT ${DW3_ENGINE_SOURCES})
 add_dependencies(dw3_engine dw3_decomp_patched)
 
-# Host overlay address buffers (P2.3) + static restore model (P2.6).
+# US title overlay (STDWTITL) — P2.8 / E6.
+set(DW3_TITLE_SOURCES
+  "${DECOMP_SRC}/src/menus/title/scene.c"
+  "${DECOMP_SRC}/src/menus/title/logo.c"
+  "${DECOMP_SRC}/src/menus/title/movie.c"
+  "${DECOMP_SRC}/src/menus/title/glint.c"
+  "${DECOMP_SRC}/src/menus/title/splash.c"
+  "${DECOMP_SRC}/src/menus/title/title_loader.c"
+  "${DECOMP_SRC}/src/menus/title/slides.c"
+  "${DECOMP_SRC}/src/menus/title/menu.c"
+  "${DECOMP_SRC}/src/menus/title/edge_fade.c"
+  "${DECOMP_SRC}/src/menus/title/background.c"
+  "${DECOMP_SRC}/src/menus/title/title.c"
+  "${DECOMP_SRC}/src/menus/title/data/stdwtitl.c"
+  "${DECOMP_SRC}/src/menus/title/data/title.c"
+  "${DECOMP_SRC}/src/menus/title/data/movie.c"
+)
+add_library(dw3_title OBJECT ${DW3_TITLE_SOURCES})
+add_dependencies(dw3_title dw3_decomp_patched)
+
+# Host overlay address buffers (P2.3) + static restore model (P2.6) + title stubs.
 add_library(dw3_host_overlays OBJECT
   "${CMAKE_CURRENT_SOURCE_DIR}/overlays/host_vram.c"
+  "${CMAKE_CURRENT_SOURCE_DIR}/overlays/host_heap.c"
   "${CMAKE_CURRENT_SOURCE_DIR}/overlays/overlay_host.c"
   "${CMAKE_CURRENT_SOURCE_DIR}/overlays/overlay_table_us.c"
+  "${CMAKE_CURRENT_SOURCE_DIR}/overlays/mode_stubs.c"
+  "${CMAKE_CURRENT_SOURCE_DIR}/overlays/boot_tim_host.c"
+)
+
+# Psy-Q APIs missing from the pinned PSY-Z build (title bring-up).
+add_library(dw3_psyz_missing OBJECT
+  "${CMAKE_CURRENT_SOURCE_DIR}/psyz_missing/psyz_missing.c"
 )
 
 # CD → filesystem file-id reads (P2.5) and 128 KiB .mcr slots (P2.7).
@@ -64,12 +92,13 @@ add_library(dw3_cdfs OBJECT
 )
 add_library(dw3_memcard OBJECT
   "${CMAKE_CURRENT_SOURCE_DIR}/memcard/memcard_host.c"
+  "${CMAKE_CURRENT_SOURCE_DIR}/memcard/psyz_card_wrap.c"
 )
 
 # Include order: port host → PSY-Z (Psy-Q names) → decomp headers/sources.
 # port/include/common.h shadows decomp common.h so gnu89 does not redefine
 # s8/u8 against PSY-Z's psyz/types.h.
-target_include_directories(dw3_engine PRIVATE
+set(_DW3_GAME_INCLUDES
   "${CMAKE_CURRENT_SOURCE_DIR}/include"
   "${CMAKE_CURRENT_SOURCE_DIR}/overlays"
   "${CMAKE_CURRENT_SOURCE_DIR}/cdfs"
@@ -79,6 +108,31 @@ target_include_directories(dw3_engine PRIVATE
   "${DECOMP_SRC}/src"
   "${DECOMP_SRC}/src/field/stages"
 )
+set(_DW3_GAME_DEFS
+  VERSION_US=1
+  PORT_HOST=1
+  SKIP_ASM=1
+  __psyz
+)
+set(_DW3_GAME_OPTS
+  -std=gnu89
+  -fsigned-char
+  -fno-builtin
+  -fno-strict-aliasing
+  -fwrapv
+  -fno-delete-null-pointer-checks
+  -fno-aggressive-loop-optimizations
+  -fno-zero-initialized-in-bss
+  -fno-common
+  -fno-toplevel-reorder
+  -Werror=implicit-function-declaration
+  -Werror=int-conversion
+  -Werror=pointer-to-int-cast
+  -Werror=int-to-pointer-cast
+)
+
+target_include_directories(dw3_engine PRIVATE ${_DW3_GAME_INCLUDES})
+target_include_directories(dw3_title PRIVATE ${_DW3_GAME_INCLUDES})
 target_include_directories(dw3_host_overlays PRIVATE
   "${CMAKE_CURRENT_SOURCE_DIR}/overlays"
 )
@@ -88,18 +142,23 @@ target_include_directories(dw3_cdfs PUBLIC
 target_include_directories(dw3_memcard PUBLIC
   "${CMAKE_CURRENT_SOURCE_DIR}/memcard"
 )
-
-target_compile_definitions(dw3_engine PRIVATE
-  VERSION_US=1
-  PORT_HOST=1
-  SKIP_ASM=1
-  __psyz
+target_include_directories(dw3_psyz_missing PRIVATE
+  "${PSYZ_INCLUDE}"
 )
+target_compile_definitions(dw3_psyz_missing PRIVATE __psyz)
+
+target_compile_definitions(dw3_engine PRIVATE ${_DW3_GAME_DEFS})
+target_compile_definitions(dw3_title PRIVATE ${_DW3_GAME_DEFS})
 target_compile_definitions(dw3_host_overlays PRIVATE
   PORT_HOST=1
 )
 
 set_target_properties(dw3_engine PROPERTIES
+  C_STANDARD 90
+  C_STANDARD_REQUIRED ON
+  C_EXTENSIONS ON
+)
+set_target_properties(dw3_title PROPERTIES
   C_STANDARD 90
   C_STANDARD_REQUIRED ON
   C_EXTENSIONS ON
@@ -119,34 +178,29 @@ set_target_properties(dw3_memcard PROPERTIES
   C_STANDARD_REQUIRED ON
   C_EXTENSIONS ON
 )
-
-# Host-relevant subset of vendor/dw3_decomp/mk/toolchain/gcc.mk GCC_CFLAGS.
-target_compile_options(dw3_engine PRIVATE
-  -std=gnu89
-  -fsigned-char
-  -fno-builtin
-  -fno-strict-aliasing
-  -fwrapv
-  -fno-delete-null-pointer-checks
-  -fno-aggressive-loop-optimizations
-  -fno-zero-initialized-in-bss
-  -fno-common
-  -fno-toplevel-reorder
-  -Werror=implicit-function-declaration
-  -Werror=int-conversion
-  -Werror=pointer-to-int-cast
-  -Werror=int-to-pointer-cast
+set_target_properties(dw3_psyz_missing PROPERTIES
+  C_STANDARD 11
+  C_STANDARD_REQUIRED ON
+  C_EXTENSIONS ON
 )
 
-# Archive forces object compilation without linking into the PC stub (has its own main).
+# Host-relevant subset of vendor/dw3_decomp/mk/toolchain/gcc.mk GCC_CFLAGS.
+target_compile_options(dw3_engine PRIVATE ${_DW3_GAME_OPTS})
+target_compile_options(dw3_title PRIVATE ${_DW3_GAME_OPTS})
+
+# Archive for the PC host: engine + title + port glue (host main is separate).
 add_library(dw3_engine_objs STATIC
   $<TARGET_OBJECTS:dw3_engine>
+  $<TARGET_OBJECTS:dw3_title>
   $<TARGET_OBJECTS:dw3_host_overlays>
   $<TARGET_OBJECTS:dw3_cdfs>
   $<TARGET_OBJECTS:dw3_memcard>
+  $<TARGET_OBJECTS:dw3_psyz_missing>
 )
 set_target_properties(dw3_engine_objs PROPERTIES
   OUTPUT_NAME dw3_engine
   LINKER_LANGUAGE C
 )
-add_dependencies(dw3_engine_objs dw3_engine dw3_host_overlays dw3_cdfs dw3_memcard)
+add_dependencies(dw3_engine_objs
+  dw3_engine dw3_title dw3_host_overlays dw3_cdfs dw3_memcard dw3_psyz_missing)
+

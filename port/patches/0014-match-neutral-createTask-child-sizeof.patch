@@ -1,0 +1,49 @@
+Upstream-bound: yes
+Subject: [match-neutral] createTask child pointer sizes via sizeof(void *)
+
+Literal childrenSize 4 meant one pointer on PS1; on LP64 that undersizes the
+child array so writing children[0] corrupts the next MemBlock header.
+Count children with sizeof(void *) and pass sizeof(Task *) at one-pointer
+call sites (same codegen on PS1 where sizeof(void *) == 4).
+
+--- a/src/engine/task/task.c	2026-10-10 03:06:46.444759200 -0300
++++ b/src/engine/task/task.c	2026-10-10 04:33:42.338735540 -0300
+@@ -75,14 +75,14 @@
+ 
+ /*
+  * Allocates a zeroed task of `size` bytes (header included) with room for
+- * childrenSize / 4 child tasks. A nonzero id also registers it (findTask).
++ * childrenSize / sizeof(void *) child tasks. A nonzero id also registers it (findTask).
+  */
+ void *createTaskWithId(void (*update)(), s32 size, s32 childrenSize, s32 id) {
+     Task *task = HEAP.allocZeroed(size, MEM_MODE);
+ 
+     if (childrenSize != 0) {
+         task->children = HEAP.allocZeroed(childrenSize, MEM_MODE);
+-        task->childCount = childrenSize / 4;
++        task->childCount = childrenSize / (s32)sizeof(void *);
+     }
+     task->setState = taskSetState;
+     task->setSubstate = taskSetSubstate;
+--- a/src/engine/system/overlay.c	2026-10-10 04:33:42.194475455 -0300
++++ b/src/engine/system/overlay.c	2026-10-10 04:33:42.340282322 -0300
+@@ -55,7 +55,7 @@
+ 
+ /* Creates the task that runs the current mode (updateModeTask) */
+ void *createModeTask(void) {
+-    return createTask(updateModeTask, sizeof(Task), 4);
++    return createTask(updateModeTask, sizeof(Task), sizeof(Task *));
+ }
+ 
+ /* Copies the overlay of the current mode (mode >> 8) to OVERLAY_ADDRESS */
+--- a/src/engine/text/cursor.c	2026-10-10 03:06:46.445022200 -0300
++++ b/src/engine/text/cursor.c	2026-10-10 04:33:42.341824822 -0300
+@@ -90,7 +90,7 @@
+ 
+ /* A menu cursor on a layer at (x, y) */
+ Cursor *createCursor(s16 layerId, s32 depth, s16 x, s16 y) {
+-    Cursor *task = createTask(updateCursor, sizeof(Cursor), 4);
++    Cursor *task = createTask(updateCursor, sizeof(Cursor), sizeof(Task *));
+ 
+     task->layerId = layerId;
+     task->depth = depth;

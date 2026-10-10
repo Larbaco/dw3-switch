@@ -124,7 +124,10 @@ check_patches_with_git_apply() {
   trap "rm -rf -- '$tmp'" EXIT
 
   copy_src_to "$tmp"
-  apply_patches_to "$tmp" 1
+  # Apply for real in order: later patches may stack on earlier ones
+  # (e.g. 0010 on 0005's main.c). A pristine --check per file would reject
+  # a valid series.
+  apply_patches_to "$tmp" 0
   trap - EXIT
   rm -rf -- "$tmp"
 }

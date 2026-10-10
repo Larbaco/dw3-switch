@@ -1,0 +1,21 @@
+Upstream-bound: no
+Subject: [PORT_HOST] Pump VSync while waiting for FLIP_PENDING
+
+drawFrame spins until vsyncCallback clears FLIP_PENDING. On PS1 that is
+an IRQ; on PSY-Z, VSyncCallbacks only run from VSync()/KernelVBlank. Pump
+VSync(0) in the wait so the host does not deadlock before FILE_CACHE and
+sound updates.
+
+--- a/src/engine/gfx/display.c
++++ b/src/engine/gfx/display.c
+@@ -72,6 +72,10 @@
+     DrawSync(0);
+     FLIP_PENDING = 1;
+     while (*(volatile s32 *)&FLIP_PENDING != 0) {
++#if PORT_HOST
++        /* PSY-Z runs VSyncCallbacks from VSync()/KernelVBlank, not an IRQ. */
++        VSync(0);
++#endif
+     }
+     if (GFX.prim != NULL) {
+         for (i = 0; i < LAYER_COUNT; i++) {
