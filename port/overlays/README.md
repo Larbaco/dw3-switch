@@ -65,7 +65,9 @@ Unlinked stages get weak stubs from `tools/gen_stage_stubs.py`.
 | `STCRDABM` | `0x177` | Card album (P3.5) |
 | `STAGSLCT` | `0x176` | Debug stage select (P3.8) |
 
-`overlay_table_us.c` registers the rows above; `CNTY_SEL` stays out for US.
+`overlay_table_us.c` registers the rows above for US; `overlay_table_eu.c`
+is selected with `-DDW3_VERSION=eu` (see `docs/P3_EU_BUILD.md`). `CNTY_SEL`
+stays weak-stubbed (EU country-select overlay not linked yet).
 Host objects use named `.data`/`.bss` sections (`tools/rename_ovl_sections.py`,
 `tools/merge_ovl_sections.ld`) and snapshots in `overlay_sections.c`. Stage TUs
 are symbol-prefixed (`tools/prefix_stage_obj.py`) and linked via `dw3_p32_field`;

@@ -81,8 +81,12 @@ static const char *env_or(const char *key, const char *fallback) {
     return (v != NULL && v[0] != '\0') ? v : fallback;
 }
 
+#ifndef DW3_DEFAULT_RUNTIME
+#define DW3_DEFAULT_RUNTIME "runtime/us"
+#endif
+
 static int init_paths(int argc, char **argv) {
-    const char *root = env_or("DW3_RUNTIME", "runtime/us");
+    const char *root = env_or("DW3_RUNTIME", DW3_DEFAULT_RUNTIME);
     const char *memdir = env_or("DW3_MEMCARD_DIR", NULL);
     char memcard_buf[512];
     char boot_path[512];
@@ -141,7 +145,11 @@ static int init_paths(int argc, char **argv) {
     }
     fprintf(stderr, "dw3-pc: boot TIM loaded from %s\n", boot_path);
 
+#if defined(VERSION_EU) && VERSION_EU
+    dw3_overlay_register_eu_title();
+#else
     dw3_overlay_register_us_title();
+#endif
     return 0;
 }
 

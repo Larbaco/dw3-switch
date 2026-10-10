@@ -188,9 +188,10 @@ objs; live PASS 237/237; only `WSTAG460` left stubbed (host
 `updateWanderer` SEGV). **Phase 3 gate met** (`docs/P3_GATE.md`): US
 continuous start→movie→Lobby→Tamer→Genji→field @ `a5ae93a` (Lobby
 `0x9004@0x203` / patch `0036`); `DW3_FORCE_WIN` accepted for gate (P3.3
-class; pad KO follow-up); EU playthrough not required; EU `dw3-pc` link
-not scaffolded (engine `-DVERSION_EU` 43/43 OK — see gate doc). P3.9 may
-run on a side track.
+class; pad KO follow-up); EU playthrough not required. **EU `dw3-pc` link
+scaffold** (`docs/P3_EU_BUILD.md`): `-DDW3_VERSION=eu` +
+`overlay_table_eu.c` configure/link; `runtime/eu` / playthrough still open.
+P3.9 may run on a side track.
 
 Objective: the full game loop runs on PC: field, stages, battle, menus,
 audio, movies.
