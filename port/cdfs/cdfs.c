@@ -13,6 +13,9 @@ typedef struct {
     uint32_t id;
     char path[CDFS_PATH_MAX];
     uint32_t map_bytes; /* 0 = use on-disk size */
+    uint32_t lba;       /* absolute disc LBA; 0 if unknown */
+    uint32_t sectors;   /* extent length in sectors; 0 if unknown */
+    uint32_t form;      /* 1 = Form1/2048, 2 = Form2 pack, 0 unknown */
 } CdfsEntry;
 
 static char g_root[CDFS_ROOT_MAX];
@@ -99,7 +102,8 @@ static int path_is_safe_relative(const char *path) {
     return 1;
 }
 
-static int entries_push(uint32_t id, const char *path, uint32_t map_bytes) {
+static int entries_push(uint32_t id, const char *path, uint32_t map_bytes,
+                        uint32_t lba, uint32_t sectors, uint32_t form) {
     CdfsEntry *e;
 
     if (path == NULL || path[0] == '\0' || strlen(path) >= CDFS_PATH_MAX) {
@@ -121,6 +125,9 @@ static int entries_push(uint32_t id, const char *path, uint32_t map_bytes) {
     e->id = id;
     memcpy(e->path, path, strlen(path) + 1);
     e->map_bytes = map_bytes;
+    e->lba = lba;
+    e->sectors = sectors;
+    e->form = form;
     return 0;
 }
 
@@ -312,9 +319,13 @@ static const char *skip_value(const char *p) {
 }
 
 static const char *parse_file_object(const char *p, char *path_out, size_t path_len,
-                                     uint32_t *bytes_out) {
+                                     uint32_t *bytes_out, uint32_t *lba_out,
+                                     uint32_t *sectors_out, uint32_t *form_out) {
     path_out[0] = '\0';
     *bytes_out = 0;
+    *lba_out = 0;
+    *sectors_out = 0;
+    *form_out = 0;
 
     p = skip_ws(p);
     if (*p != '{') {
@@ -343,6 +354,21 @@ static const char *parse_file_object(const char *p, char *path_out, size_t path_
             }
         } else if (strcmp(key, "bytes") == 0) {
             p = parse_u32(p, bytes_out);
+            if (p == NULL) {
+                return NULL;
+            }
+        } else if (strcmp(key, "lba") == 0) {
+            p = parse_u32(p, lba_out);
+            if (p == NULL) {
+                return NULL;
+            }
+        } else if (strcmp(key, "sectors") == 0) {
+            p = parse_u32(p, sectors_out);
+            if (p == NULL) {
+                return NULL;
+            }
+        } else if (strcmp(key, "form") == 0) {
+            p = parse_u32(p, form_out);
             if (p == NULL) {
                 return NULL;
             }
@@ -378,6 +404,9 @@ static const char *parse_files_object(const char *p) {
         char key[CDFS_KEY_MAX];
         char path[CDFS_PATH_MAX];
         uint32_t map_bytes = 0;
+        uint32_t lba = 0;
+        uint32_t sectors = 0;
+        uint32_t form = 0;
         uint32_t id;
         char *end = NULL;
 
@@ -393,12 +422,13 @@ static const char *parse_files_object(const char *p) {
         if (*p != ':') {
             return NULL;
         }
-        p = parse_file_object(p + 1, path, sizeof(path), &map_bytes);
+        p = parse_file_object(p + 1, path, sizeof(path), &map_bytes, &lba,
+                              &sectors, &form);
         if (p == NULL) {
             return NULL;
         }
         if (path[0] != '\0') {
-            if (entries_push(id, path, map_bytes) != 0) {
+            if (entries_push(id, path, map_bytes, lba, sectors, form) != 0) {
                 return NULL;
             }
         }
@@ -594,6 +624,109 @@ int cdfs_read(uint32_t id, void *buf, size_t buflen) {
     }
     (void)e->map_bytes; /* map bytes is advisory; host file is source of truth */
     return (int)sz;
+}
+
+int cdfs_read_at(uint32_t id, void *buf, size_t offset, size_t len) {
+    const CdfsEntry *e;
+    char path[CDFS_ROOT_MAX + CDFS_PATH_MAX];
+    FILE *fp;
+    uint32_t sz;
+    size_t n;
+    size_t want;
+
+    if (buf == NULL) {
+        return -1;
+    }
+    if (len == 0) {
+        return 0;
+    }
+    e = find_entry(id);
+    if (e == NULL) {
+        return -1;
+    }
+    if (join_path(path, sizeof(path), e->path) != 0) {
+        return -1;
+    }
+    if (host_file_size(path, &sz) != 0) {
+        return -1;
+    }
+    memset(buf, 0, len);
+    if (offset >= (size_t)sz) {
+        return 0;
+    }
+    want = len;
+    if (offset + want > (size_t)sz) {
+        want = (size_t)sz - offset;
+    }
+    fp = fopen(path, "rb");
+    if (fp == NULL) {
+        return -1;
+    }
+    if (fseek(fp, (long)offset, SEEK_SET) != 0) {
+        fclose(fp);
+        return -1;
+    }
+    n = fread(buf, 1, want, fp);
+    fclose(fp);
+    if (n != want) {
+        return -1;
+    }
+    (void)e->map_bytes;
+    return (int)n;
+}
+
+int cdfs_join_root(const char *rel, char *out, size_t outlen) {
+    return join_path(out, outlen, rel);
+}
+
+int cdfs_lookup_lba(uint32_t lba, uint32_t *id_out, char *relpath_out,
+                    size_t relpath_len, uint32_t *base_lba_out,
+                    uint32_t *sectors_out, uint32_t *form_out) {
+    size_t i;
+
+    for (i = 0; i < g_count; i++) {
+        const CdfsEntry *e = &g_entries[i];
+        uint32_t nsec;
+
+        if (e->lba == 0 || e->path[0] == '\0') {
+            continue;
+        }
+        nsec = e->sectors;
+        if (nsec == 0) {
+            /* Fall back to on-disk size / 2048 when map omits sectors. */
+            char path[CDFS_ROOT_MAX + CDFS_PATH_MAX];
+            uint32_t sz;
+            if (join_path(path, sizeof(path), e->path) != 0 ||
+                host_file_size(path, &sz) != 0) {
+                continue;
+            }
+            nsec = (sz + 2047u) / 2048u;
+        }
+        if (lba < e->lba || lba >= e->lba + nsec) {
+            continue;
+        }
+        if (id_out) {
+            *id_out = e->id;
+        }
+        if (relpath_out && relpath_len > 0) {
+            size_t n = strlen(e->path);
+            if (n + 1 > relpath_len) {
+                return -1;
+            }
+            memcpy(relpath_out, e->path, n + 1);
+        }
+        if (base_lba_out) {
+            *base_lba_out = e->lba;
+        }
+        if (sectors_out) {
+            *sectors_out = nsec;
+        }
+        if (form_out) {
+            *form_out = e->form;
+        }
+        return 0;
+    }
+    return -1;
 }
 
 void cdfs_poll(void) {

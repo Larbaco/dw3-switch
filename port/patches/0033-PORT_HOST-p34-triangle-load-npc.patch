@@ -1,0 +1,280 @@
+Upstream-bound: no
+Subject: [PORT_HOST] P3.4 Triangle return, memcard load, NPC proximity
+
+DW3_FORCE_MCARD_LOAD force-read path; AUTO_MENU_RETURN skip for load;
+STSTATUS Triangle cancel logs; DW3_FORCE_FIELD_POS / SHOP_FLAG / TALK_AHEAD.
+
+--- a/src/menus/memory_card/screen.c
++++ b/src/menus/memory_card/screen.c
+@@ -25,11 +25,17 @@
+ #if PORT_HOST
+             {
+                 const char *force = getenv("DW3_FORCE_MCARD_SAVE");
++                const char *load = getenv("DW3_FORCE_MCARD_LOAD");
+                 if (force != NULL && force[0] != '\0' && screen->loading == 0) {
+                     fprintf(stderr, "dw3: DW3_FORCE_MCARD_SAVE skip file wait\n");
+                     screen->nextState(screen);
+                     break;
+                 }
++                if (load != NULL && load[0] != '\0' && screen->loading != 0) {
++                    fprintf(stderr, "dw3: DW3_FORCE_MCARD_LOAD skip file wait\n");
++                    screen->nextState(screen);
++                    break;
++                }
+             }
+ #endif
+             if (STGMCARD_funcs.filesLoading() == 0 && SOUND.isLoading() == 0) {
+--- a/src/menus/memory_card/saves.c
++++ b/src/menus/memory_card/saves.c
+@@ -377,6 +377,13 @@
+ /* Loads from the selected slot: an empty one only tells so and goes back to the
+    pick (501), else shows the loading message and starts the panel */
+ static inline void STGMCARD_startLoad(MemCardSaves *saves, MemCardSavesWindows *win) {
++#if PORT_HOST
++    if (STGMCARD_funcs.infoBuf == NULL || STGMCARD_funcs.dataBuf == NULL) {
++        fprintf(stderr, "dw3: STGMCARD_startLoad missing buffers\n");
++        saves->substate = 601;
++        return;
++    }
++#endif
+     if (STGMCARD_funcs.infoBuf->saves[STGMCARD_funcs.slot].name[0] == 0) {
+         win->windows[1]->setString(win->windows[1], FILE_CACHE.load(TEXT_FILE(TEXT_MEMORY_CARD)), 0x18);
+         saves->prompting = 1;
+@@ -400,19 +407,85 @@
+         if (status == 1) {
+             if (MEMCARD_SYSTEM.funcs.computeChecksum(&STGMCARD_funcs.dataBuf->bytes[SAVE_CHECKED], sizeof(GameSave) - SAVE_CHECKED) &
+                 ~STGMCARD_funcs.dataBuf->game.checksum) {
++#if PORT_HOST
++                {
++                    u8 got = STGMCARD_funcs.dataBuf->game.checksum;
++                    u8 calc = MEMCARD_SYSTEM.funcs.computeChecksum(
++                        &STGMCARD_funcs.dataBuf->bytes[SAVE_CHECKED],
++                        sizeof(GameSave) - SAVE_CHECKED);
++                    fprintf(stderr,
++                            "dw3: STGMCARD_loadSave checksum fail version=%d got=%u calc=%u\n",
++                            STGMCARD_funcs.dataBuf->game.version, got, calc);
++                    /* Host force-load: accept version-matched payload from .mcr
++                       (P2.7 read path proven; quirky &~ check can disagree). */
++                    if (getenv("DW3_FORCE_MCARD_LOAD") != NULL &&
++                        STGMCARD_funcs.dataBuf->game.version == MEMCARD_SAVE_VERSION) {
++                        s32 before_money = GAME.money;
++                        GAME.money = -1;
++                        GAME_SAVE = STGMCARD_funcs.dataBuf->save;
++                        fprintf(stderr,
++                                "dw3: STGMCARD_loadSave ok (force) money %d->%d progress=%d\n",
++                                before_money, GAME.money, GAME.progress);
++                        fprintf(stderr, "dw3: STGMCARD force-load done, leaving\n");
++                        saves->hide(saves);
++                        return;
++                    }
++                }
++                if (getenv("DW3_FORCE_MCARD_LOAD") != NULL) {
++                    saves->hide(saves);
++                    return;
++                }
++#endif
+                 saves->result = 8;
+                 STGMCARD_closeMenuForError(saves, win);
+             } else if (STGMCARD_funcs.dataBuf->game.version != MEMCARD_SAVE_VERSION && saves->screen->loading != 0) {
++#if PORT_HOST
++                fprintf(stderr, "dw3: STGMCARD_loadSave version fail got=%d\n",
++                        STGMCARD_funcs.dataBuf->game.version);
++                if (getenv("DW3_FORCE_MCARD_LOAD") != NULL) {
++                    saves->hide(saves);
++                    return;
++                }
++#endif
+                 saves->result = 8;
+                 STGMCARD_closeMenuForError(saves, win);
+             } else {
++#if PORT_HOST
++                {
++                    s32 before_money = GAME.money;
++                    s32 before_progress = GAME.progress;
++                    if (getenv("DW3_FORCE_MCARD_LOAD") != NULL) {
++                        GAME.money = -1;
++                        fprintf(stderr,
++                                "dw3: STGMCARD_loadSave before clobber money=%d progress=%d\n",
++                                before_money, before_progress);
++                    }
++                }
++#endif
+                 GAME_SAVE = STGMCARD_funcs.dataBuf->save;
++#if PORT_HOST
++                fprintf(stderr,
++                        "dw3: STGMCARD_loadSave ok port=%d slot=%d money=%d progress=%d\n",
++                        saves->port, STGMCARD_funcs.slot, GAME.money, GAME.progress);
++                if (getenv("DW3_FORCE_MCARD_LOAD") != NULL) {
++                    fprintf(stderr, "dw3: STGMCARD force-load done, leaving\n");
++                    saves->hide(saves);
++                    return;
++                }
++#endif
+                 win->panel->start(win->panel, 2, 0x14);
+                 saves->substate = 500;
+                 win->menu->substate = 0;
+                 saves->backToPick = 0;
+             }
+         } else {
++#if PORT_HOST
++            fprintf(stderr, "dw3: STGMCARD_loadSave read status=%d\n", status);
++            if (getenv("DW3_FORCE_MCARD_LOAD") != NULL) {
++                saves->hide(saves);
++                return;
++            }
++#endif
+             saves->result = status - 1;
+             STGMCARD_closeMenuForError(saves, win);
+         }
+@@ -893,6 +966,7 @@
+ #if PORT_HOST
+         {
+             const char *force = getenv("DW3_FORCE_MCARD_SAVE");
++            const char *load = getenv("DW3_FORCE_MCARD_LOAD");
+             if (force != NULL && force[0] != '\0' && saves->screen->loading == 0) {
+                 STGMCARD_funcs.slot = 0;
+                 saves->port = 0;
+@@ -900,6 +974,14 @@
+                 saves->substate = 51;
+                 break;
+             }
++            if (load != NULL && load[0] != '\0' && saves->screen->loading != 0) {
++                STGMCARD_funcs.slot = 0;
++                saves->port = 0;
++                fprintf(stderr, "dw3: DW3_FORCE_MCARD_LOAD from open -> loadSave slot=0\n");
++                /* Skip startLoad (needs info section UI); buffers exist from loadFiles. */
++                saves->substate = 71;
++                break;
++            }
+         }
+ #endif
+         STGMCARD_openSaves(saves, win);
+@@ -932,6 +1014,7 @@
+ #if PORT_HOST
+         {
+             const char *force = getenv("DW3_FORCE_MCARD_SAVE");
++            const char *load = getenv("DW3_FORCE_MCARD_LOAD");
+             if (force != NULL && force[0] != '\0' && saves->screen->loading == 0) {
+                 STGMCARD_funcs.slot = 0;
+                 saves->port = 0;
+@@ -939,6 +1022,13 @@
+                 saves->substate = 51;
+                 break;
+             }
++            if (load != NULL && load[0] != '\0' && saves->screen->loading != 0) {
++                STGMCARD_funcs.slot = 0;
++                saves->port = 0;
++                fprintf(stderr, "dw3: DW3_FORCE_MCARD_LOAD jump to startLoad slot=0\n");
++                saves->substate = 70;
++                break;
++            }
+         }
+ #endif
+         STGMCARD_openSlots(saves, win);
+--- a/src/engine/system/overlay.c
++++ b/src/engine/system/overlay.c
+@@ -190,7 +190,8 @@
+             s32 overlay = MODE_OVERLAY(mode);
+ 
+             if (ret != NULL && ret[0] != '\0' &&
+-                getenv("DW3_FORCE_MCARD_SAVE") == NULL) {
++                getenv("DW3_FORCE_MCARD_SAVE") == NULL &&
++                getenv("DW3_FORCE_MCARD_LOAD") == NULL) {
+                 need_frames = strtol(ret, &end, 0);
+                 if (need_frames < 1) {
+                     need_frames = 180;
+--- a/src/engine/menu/field_menu.c
++++ b/src/engine/menu/field_menu.c
+@@ -230,8 +230,15 @@
+         SOUND.playSound(SOUND_MENU_CANCEL);
+         done = 1;
+         if (GAME.funcs.getMode() == MODE_STATUS) {
++#if PORT_HOST
++            fprintf(stderr, "dw3: STSTATUS Triangle cancel -> fieldMode=0x%x\n",
++                    (unsigned)GAME.fieldMode);
++#endif
+             task->step = 0;
+         } else {
++#if PORT_HOST
++            fprintf(stderr, "dw3: field menu Triangle cancel (stay field)\n");
++#endif
+             task->step = 1;
+         }
+     }
+--- a/src/field/field_mode/field.c
++++ b/src/field/field_mode/field.c
+@@ -514,6 +514,60 @@
+                     break;
+                 }
+                 {
++                    const char *pos = getenv("DW3_FORCE_FIELD_POS");
++                    static s32 pos_done;
++                    if (pos != NULL && pos[0] != '\0' && !pos_done &&
++                        children->actors[0] != NULL) {
++                        char *end = NULL;
++                        long x = strtol(pos, &end, 0);
++                        long y = 0;
++                        long dir = -1;
++                        if (end != pos && (*end == ',' || *end == ':')) {
++                            y = strtol(end + 1, &end, 0);
++                            if (*end == ',' || *end == ':') {
++                                dir = strtol(end + 1, NULL, 0);
++                            }
++                            children->actors[0]->pos.x = (s32)x << 8;
++                            children->actors[0]->pos.y = (s32)y << 8;
++                            children->actors[0]->tile.x = (s32)x;
++                            children->actors[0]->tile.y = (s32)y;
++                            if (dir >= 0) {
++                                children->actors[0]->dir = (s32)dir;
++                            }
++                            pos_done = 1;
++                            fprintf(stderr,
++                                    "dw3: DW3_FORCE_FIELD_POS x=%ld y=%ld dir=%ld\n",
++                                    x, y, dir);
++                        }
++                    }
++                }
++                {
++                    const char *shop = getenv("DW3_FORCE_SHOP_FLAG");
++                    static s32 shop_done;
++                    if (shop != NULL && shop[0] != '\0' && !shop_done) {
++                        /* WSTAG245 actor1: FLAG(0x1A,0xE) unlocks 0x7A00 shop talk. */
++                        FLAGS_00.applyAction(FLAG(0x1A, 0xE), 1);
++                        if (GAME.funcs.getPartyMember(0) < 0) {
++                            GAME.funcs.setParty(0);
++                        }
++                        shop_done = 1;
++                        fprintf(stderr, "dw3: DW3_FORCE_SHOP_FLAG FLAG(0x1A,0xE)=1\n");
++                    }
++                }
++                {
++                    const char *talk = getenv("DW3_FORCE_TALK_AHEAD");
++                    static s32 talk_armed;
++                    if (talk != NULL && talk[0] != '\0' && !talk_armed &&
++                        children->actors[0] != NULL) {
++                        FLAGS_00.applyAction(FIELD_FLAG_TALK_AHEAD, 1);
++                        talk_armed = 1;
++                        fprintf(stderr,
++                                "dw3: DW3_FORCE_TALK_AHEAD at tile=(%d,%d) dir=%d\n",
++                                children->actors[0]->tile.x, children->actors[0]->tile.y,
++                                children->actors[0]->dir);
++                    }
++                }
++                {
+                     const char *npc = getenv("DW3_FORCE_NPC_ACTION");
+                     if (npc != NULL && npc[0] != '\0' && dw3_host_menu_force_once()) {
+                         long code = strtol(npc, &end, 0);
+--- a/src/field/field_mode/actor_control.c
++++ b/src/field/field_mode/actor_control.c
+@@ -211,6 +211,11 @@
+                             actor->setSubstate(actor, actor->flying != 0 ? ACTOR_FLOAT : ACTOR_STAND);
+                             actor->control = NULL;
+                             result = FIELDSTG_state.acting = 1;
++#if PORT_HOST
++                            fprintf(stderr,
++                                    "dw3: talkToActorAt hit key1=0x%x tile=(%d,%d)\n",
++                                    target->key1, target->tile.x, target->tile.y);
++#endif
+                             break;
+                     }
+                 }

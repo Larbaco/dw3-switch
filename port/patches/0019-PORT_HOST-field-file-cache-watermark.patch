@@ -1,0 +1,23 @@
+Upstream-bound: no
+Subject: [PORT_HOST] Field file-cache watermark as heap offset (P3.1)
+
+FILE_CACHE.freeFrom took void* after patch 0007; the PS1 literal
+0x8015C674 is HEAP_BASE(0x800AA800)+0xB1E74 on US. On host use that
+offset from HEAP_BASE so -Werror=int-conversion stays clean and the
+watermark tracks the relocatable heap.
+
+--- a/src/field/field_mode/field.c
++++ b/src/field/field_mode/field.c
+@@ -494,7 +494,12 @@
+     s32 mode;
+ 
+     if (FIELDSTG_keepsFileCache() == 0) {
++#if PORT_HOST
++        /* US PS1: 0x8015C674 == HEAP_BASE(0x800AA800) + 0xB1E74 */
++        FILE_CACHE.freeFrom((u8 *)HEAP_BASE + 0xB1E74);
++#else
+         FILE_CACHE.freeFrom(0x8015C674);
++#endif
+     }
+     setUpFieldScreen();
+     if (FIELDSTG_keepsFileCache() == 0) {

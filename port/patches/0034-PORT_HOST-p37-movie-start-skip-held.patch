@@ -1,0 +1,41 @@
+Upstream-bound: no
+Subject: [PORT_HOST] P3.7 movie Start-skip accepts held Start
+
+Host decode is slow enough that a Start edge can be missed between
+readPad samples around DecDCTin/out. Accept getHeld(Start) under
+PORT_HOST (players hold Start) and log TASK_KILL for evidence.
+
+--- a/src/menus/title/movie.c
++++ b/src/menus/title/movie.c
+@@ -2,6 +2,7 @@
+ 
+ #include "menus/title.h"
+ #if PORT_HOST
++#include <stdio.h>
+ /* PSY-Z implements StCdInterrupt but omits it from libcd.h. */
+ void StCdInterrupt(void);
+ #endif
+@@ -170,9 +171,23 @@
+         DecDCTout(STDWTITL_decEnv.imgbuf[STDWTITL_decEnv.imgid], STDWTITL_decEnv.slice.w * STDWTITL_decEnv.slice.h / 2);
+         STDWTITL_decodeNextFrame(&STDWTITL_decEnv);
+         STDWTITL_waitFrameDecoded(&STDWTITL_decEnv, 0);
++#if PORT_HOST
++        /* Slow host decode can span many vsyncs inside DecDCTin/out; a
++         * Start edge from AUTO_PAD is easy to miss between readPad samples.
++         * Accept held Start too (real players hold the button). */
++        if (STDWTITL_movieEnded == 1 ||
++            (PAD.getPressed(0) & (1 << PAD_START)) ||
++            (PAD.getHeld(0) & (1 << PAD_START))) {
++            fprintf(stderr, "dw3-movie: Start-skip -> TASK_KILL ended=%d\n",
++                    STDWTITL_movieEnded);
++            fflush(stderr);
++            task->setState(task, TASK_KILL);
++        }
++#else
+         if (STDWTITL_movieEnded == 1 || (PAD.getPressed(0) & (1 << PAD_START))) {
+             task->setState(task, TASK_KILL);
+         }
++#endif
+         break;
+     case TASK_DONE:
+         break;

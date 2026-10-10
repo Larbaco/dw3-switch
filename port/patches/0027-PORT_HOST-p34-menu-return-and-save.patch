@@ -1,0 +1,55 @@
+Upstream-bound: no
+Subject: [PORT_HOST] P3.4 auto menu return
+
+DW3_AUTO_MENU_RETURN=<frames> requests GAME.fieldMode after a menu overlay
+runs (disabled while DW3_FORCE_MCARD_SAVE is set).
+
+--- a/src/engine/system/overlay.c
++++ b/src/engine/system/overlay.c
+@@ -71,6 +71,46 @@
+                 }
+             }
+         }
++        {
++            const char *ret = getenv("DW3_AUTO_MENU_RETURN");
++            static s32 menu_frames;
++            static s32 menu_mode;
++            long need_frames = 180;
++            char *end = NULL;
++            s32 mode = GAME.funcs.getMode();
++            s32 overlay = MODE_OVERLAY(mode);
++
++            if (ret != NULL && ret[0] != '\0' &&
++                getenv("DW3_FORCE_MCARD_SAVE") == NULL) {
++                need_frames = strtol(ret, &end, 0);
++                if (need_frames < 1) {
++                    need_frames = 180;
++                }
++                {
++                    static s32 logged;
++                    if (!logged) {
++                        fprintf(stderr, "dw3: AUTO_MENU_RETURN frames=%ld\n", need_frames);
++                        logged = 1;
++                    }
++                }
++                if (overlay == MODE_STATUS || overlay == MODE_ITEM_SHOP ||
++                    overlay == MODE_TRAINING || overlay == MODE_DIGI_LAB ||
++                    overlay == MODE_CONTINUE || overlay == MODE_NAMING ||
++                    overlay == MODE_PLAYER_NAME) {
++                    if (menu_mode != mode) {
++                        menu_mode = mode;
++                        menu_frames = 0;
++                    }
++                    if (++menu_frames >= (s32)need_frames && GAME.fieldMode != 0) {
++                        fprintf(stderr,
++                                "dw3: AUTO_MENU_RETURN mode=0x%x -> fieldMode=0x%x\n",
++                                (unsigned)mode, (unsigned)GAME.fieldMode);
++                        GAME.funcs.requestMode(GAME.fieldMode, 0);
++                        menu_frames = -0x7fffffff;
++                    }
++                }
++            }
++        }
+ #endif
+         if (GAME.funcs.isModeChangePending() != 0) {
+             task->setState(task, TASK_KILL);

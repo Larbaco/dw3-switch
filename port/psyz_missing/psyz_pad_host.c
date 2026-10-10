@@ -12,6 +12,7 @@
 #include <psyz/input.h>
 #include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
 
 #ifndef PadStateDiscon
 #define PadStateDiscon 0
@@ -43,6 +44,125 @@ static int g_logged_buttons;
 static int port_index(int port) { return (port >> 4) & 1; }
 
 static void dw3_pad_host_debug_buttons(void);
+static void dw3_auto_pad_inject(void);
+
+/* Raw PS1 digital bits in PadData.buttons (active-low in the wire buffer).
+ * US readPadButtons remaps face buttons from RAW_* (12/13/14). */
+enum {
+    DW3_RAW_SELECT = 1 << 0,
+    DW3_RAW_START = 1 << 3,
+    DW3_RAW_UP = 1 << 4,
+    DW3_RAW_RIGHT = 1 << 5,
+    DW3_RAW_DOWN = 1 << 6,
+    DW3_RAW_LEFT = 1 << 7,
+    DW3_RAW_TRIANGLE = 1 << 12,
+    DW3_RAW_CIRCLE = 1 << 13,
+    DW3_RAW_CROSS = 1 << 14,
+    DW3_RAW_SQUARE = 1 << 15
+};
+
+static void dw3_auto_pad_inject(void) {
+    const char *env;
+    unsigned mask = 0;
+    static unsigned frame;
+    char buf[DW3_PAD_BUF_LEN];
+    int confirm = 0;
+    int walk = 0;
+    int start = 0;
+    int cancel = 0;
+    int status = 0;
+    int status_return = 0;
+    int talk = 0;
+
+    env = getenv("DW3_AUTO_PAD");
+    if (env == NULL || env[0] == '\0') {
+        return;
+    }
+    if (strstr(env, "confirm") != NULL) {
+        confirm = 1;
+    }
+    if (strstr(env, "walk") != NULL) {
+        walk = 1;
+    }
+    if (strstr(env, "start") != NULL) {
+        start = 1;
+    }
+    if (strstr(env, "cancel") != NULL) {
+        cancel = 1;
+    }
+    /* status_return: Start→Cross→Triangle UI cancel (no AUTO_MENU_RETURN). */
+    if (strstr(env, "status_return") != NULL) {
+        status_return = 1;
+        status = 1;
+    } else if (strstr(env, "status") != NULL) {
+        status = 1;
+    }
+    if (strstr(env, "talk") != NULL) {
+        talk = 1;
+    }
+    if (!confirm && !walk && !start && !cancel && !status && !talk) {
+        return;
+    }
+    frame++;
+    if (walk) {
+        mask |= DW3_RAW_UP;
+    }
+    /* Hold a few frames per pulse — PadGetState refresh between PadChkVsync
+     * and readPad can miss a single-sample edge. */
+    if (confirm && !status && (frame % 16u) >= 1u && (frame % 16u) <= 4u) {
+        mask |= DW3_RAW_CROSS;
+    }
+    /* Hold Start for movie skip (PORT patch also accepts getHeld). Pulse log
+     * once so headless runs show inject without flooding. */
+    if (start && !status && frame >= 2u) {
+        mask |= DW3_RAW_START;
+        if (frame == 2u) {
+            fprintf(stderr, "dw3-pad: AUTO_PAD start hold from frame=%u\n",
+                    frame);
+            fflush(stderr);
+        }
+    }
+    /* status: Start (open field menu) → Cross (MODE_STATUS) → Triangle.
+     * status_return phases Triangle alone after entry so STSTATUS UI cancel
+     * can return to field without DW3_AUTO_MENU_RETURN. */
+    if (status) {
+        if (frame >= 180u && frame < (status_return ? 900u : 2400u) &&
+            (frame % 45u) >= 1u && (frame % 45u) <= 6u) {
+            mask |= DW3_RAW_START;
+        }
+        if (frame >= 500u && frame < (status_return ? 1100u : 100000u) &&
+            (frame % 16u) >= 1u && (frame % 16u) <= 4u) {
+            mask |= DW3_RAW_CROSS;
+        }
+        if (frame >= (status_return ? 1300u : 1200u) &&
+            (frame % 18u) >= 1u && (frame % 18u) <= 5u) {
+            mask |= DW3_RAW_TRIANGLE;
+        }
+    }
+    /* cancel: Triangle pulses; with FORCE_MENU into STSTATUS use a long
+     * delay so the item screen reaches its choose-options substate. */
+    if (cancel && !status && frame >= 600u && (frame % 18u) >= 1u &&
+        (frame % 18u) <= 5u) {
+        mask |= DW3_RAW_TRIANGLE;
+    }
+    /* talk: delayed Cross pulses for NPC face-tile talk after warp. */
+    if (talk && !status && frame >= 400u && (frame % 24u) >= 1u &&
+        (frame % 24u) <= 4u) {
+        mask |= DW3_RAW_CROSS;
+    }
+    memset(buf, 0, sizeof(buf));
+    buf[0] = 0x00;
+    buf[1] = (char)PSYZ_CTRL_DIGITAL_PAD;
+    /* PadData.buttons is a native u16 over bytes [2],[3]. PS1 wire order is
+     * MSB at [2], but this LE host overlays the u16 as LSB-first — store the
+     * active-low mask in native u16 byte order so readPadButtons sees RAW_*. */
+    {
+        unsigned short wire = (unsigned short)(~mask);
+        buf[2] = (char)(wire & 0xFF);
+        buf[3] = (char)((wire >> 8) & 0xFF);
+    }
+    Psyz_PadsSet(0, buf, DW3_PAD_BUF_LEN);
+}
 
 static void refresh_port(int idx) {
     if (idx < 0 || idx > 1 || g_pad_rx[idx] == NULL) {
@@ -102,6 +222,7 @@ int PadChkVsync(void) {
     if (!g_pad_started) {
         return 0;
     }
+    dw3_auto_pad_inject();
     refresh_port(0);
     refresh_port(1);
     dw3_pad_host_debug_buttons();

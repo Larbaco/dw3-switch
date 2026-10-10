@@ -1,0 +1,207 @@
+Upstream-bound: no
+Subject: [PORT_HOST] P3.5 authentic album via STCRDSHP pack open
+
+Gate FORCE_CARD_WIN host addCards behind DW3_FORCE_CARD_WIN_ADDCARDS
+(default off). DW3_FORCE_PACK_OPEN seeds pack item 91, selects Open Pack,
+confirms pack open so vanilla GAME.funcs.addCards updates cardsSeen;
+logs STCRDSHP_openPack cardsSeen delta; AFTER_CARD_ALBUM waits for field
+then opens STCRDABM (leaves shop to fieldMode after pack).
+
+diff --git a/src/cardgame/card_battle/battle.c b/src/cardgame/card_battle/battle.c
+--- a/src/cardgame/card_battle/battle.c
++++ b/src/cardgame/card_battle/battle.c
+@@ -2558,19 +2558,23 @@ void CARDGAME_updateBattle(CardBattle *battle, CardBattleItems *items) {
+                             s32 seen_before = 0;
+                             s32 seen_after = 0;
+                             s32 awarded = -1;
++                            const char *aid = getenv("DW3_FORCE_CARD_WIN_ADDCARDS");
+ 
+                             for (card = 0; card < CARD_COUNT; card++) {
+                                 if (GAME.cardsSeen[card] != 0) {
+                                     seen_before++;
+                                 }
+                             }
+-                            /* Battle prize is an item; album needs addCards. Award
+-                               the first unseen card so cardsSeen advances on win. */
+-                            for (card = 0; card < CARD_COUNT; card++) {
+-                                if (GAME.cardsSeen[card] == 0) {
+-                                    GAME.funcs.addCards(card, 1);
+-                                    awarded = card;
+-                                    break;
++                            /* Opt-in host aid only. Default FORCE_CARD_WIN awards the
++                               prize item; album growth belongs on STCRDSHP pack open
++                               (GAME.funcs.addCards) or a real prize->card path. */
++                            if (aid != NULL && aid[0] != '\0' && aid[0] != '0') {
++                                for (card = 0; card < CARD_COUNT; card++) {
++                                    if (GAME.cardsSeen[card] == 0) {
++                                        GAME.funcs.addCards(card, 1);
++                                        awarded = card;
++                                        break;
++                                    }
+                                 }
+                             }
+                             for (card = 0; card < CARD_COUNT; card++) {
+diff --git a/src/cardgame/card_packs/pack_open.c b/src/cardgame/card_packs/pack_open.c
+--- a/src/cardgame/card_packs/pack_open.c
++++ b/src/cardgame/card_packs/pack_open.c
+@@ -1,6 +1,12 @@
+ /* The screen that opens a card pack from the bag, and the packs' cards */
+ 
+ #include "cardgame/card_packs.h"
++#if PORT_HOST
++#include "cardgame/album.h"
++#include <stdio.h>
++char *getenv(const char *name);
++extern s32 DW3_afterCardAlbumArm;
++#endif
+ 
+ /* Creates the screen's windows and cursor */
+ void STCRDSHP_createPackOpenWindows(CardPackOpen *open, CardPackOpenWindows *win) {
+@@ -349,6 +355,21 @@ static inline void STCRDSHP_choosePack(CardPackOpen *open, CardPackOpenWindows *
+             open->cursor = last;
+         }
+     }
++#if PORT_HOST
++    {
++        static s32 force_open_latched;
++        const char *fp = getenv("DW3_FORCE_PACK_OPEN");
++
++        if (!force_open_latched && fp != NULL && fp[0] != '\0' && fp[0] != '0') {
++            force_open_latched = 1;
++            SOUND.playSound(SOUND_SELECT);
++            open->substate = 10;
++            fprintf(stderr, "dw3: DW3_FORCE_PACK_OPEN confirm open pack item=%d\n",
++                    (int)open->packs[open->cursor]);
++            return;
++        }
++    }
++#endif
+     if (cursor != open->cursor) {
+         SOUND.playSound(SOUND_CURSOR);
+         win->cursor->setPos(win->cursor, (open->cursor % 2) * 0x83 + 0x1D, (open->cursor % 8) / 2 * 0xE + 0x39);
+@@ -398,11 +419,53 @@ static inline void STCRDSHP_openPack(CardPackOpen *open, CardPackOpenWindows *wi
+                 index = i;
+             }
+         }
++#if PORT_HOST
++        {
++            s32 card;
++            s32 seen_before = 0;
++            s32 seen_after = 0;
++
++            for (card = 0; card < CARD_COUNT; card++) {
++                if (GAME.cardsSeen[card] != 0) {
++                    seen_before++;
++                }
++            }
++#endif
+         for (i = 0; i < 6; i++) {
+             slot = RANDOM.next() % 16;
+             open->cards[i] = STCRDSHP_packs[index].slots[i][slot];
+             GAME.funcs.addCards(open->cards[i], 1);
+         }
++#if PORT_HOST
++            for (card = 0; card < CARD_COUNT; card++) {
++                if (GAME.cardsSeen[card] != 0) {
++                    seen_after++;
++                }
++            }
++            fprintf(stderr,
++                    "dw3: STCRDSHP_openPack item=%d cards=%d,%d,%d,%d,%d,%d "
++                    "cardsSeen=%d->%d (real addCards)\n",
++                    (int)pack, (int)open->cards[0], (int)open->cards[1],
++                    (int)open->cards[2], (int)open->cards[3], (int)open->cards[4],
++                    (int)open->cards[5], (int)seen_before, (int)seen_after);
++            {
++                const char *after = getenv("DW3_AFTER_CARD_ALBUM");
++
++                if (after != NULL && after[0] != '\0' && after[0] != '0') {
++                    DW3_afterCardAlbumArm = 1;
++                    fprintf(stderr,
++                            "dw3: DW3_AFTER_CARD_ALBUM armed after STCRDSHP pack open\n");
++                    /* Leave shop to field so AFTER_CARD_ALBUM can open album. */
++                    if (GAME.fieldMode != 0) {
++                        GAME.funcs.requestMode(GAME.fieldMode, 0);
++                        fprintf(stderr,
++                                "dw3: DW3_FORCE_PACK_OPEN leave shop -> fieldMode=0x%x\n",
++                                (unsigned)GAME.fieldMode);
++                    }
++                }
++            }
++        }
++#endif
+         GAME.items[pack]--;
+         win->grid = STCRDSHP_createGrid(open->shop, open->cards);
+         open->card = 0;
+diff --git a/src/cardgame/card_packs/shop.c b/src/cardgame/card_packs/shop.c
+--- a/src/cardgame/card_packs/shop.c
++++ b/src/cardgame/card_packs/shop.c
+@@ -2,6 +2,10 @@
+    the files it loads; its helpers; and the shops' stock and prices */
+ 
+ #include "cardgame/card_packs.h"
++#if PORT_HOST
++#include <stdio.h>
++char *getenv(const char *name);
++#endif
+ 
+ /* Creates the shop's windows and its cursor */
+ void STCRDSHP_createShopWindows(CardShop *shop, CardShopWindows *win) {
+@@ -110,6 +114,26 @@ void STCRDSHP_drawShop(CardShop *shop) {
+    triangle leaves the shop */
+ static inline void STCRDSHP_chooseOption(CardShop *shop, CardShopWindows *win) {
+     s32 cursor;
++#if PORT_HOST
++    {
++        static s32 force_pack_latched;
++        const char *fp = getenv("DW3_FORCE_PACK_OPEN");
++
++        if (!force_pack_latched && fp != NULL && fp[0] != '\0' && fp[0] != '0') {
++            force_pack_latched = 1;
++            if (GAME.items[91] <= 0) {
++                GAME.items[91] = 1;
++                fprintf(stderr, "dw3: DW3_FORCE_PACK_OPEN seed items[91]=1 (card pack)\n");
++            }
++            shop->cursor = 1; /* Open Pack */
++            win->cursor->setPos(win->cursor, 0x9A, shop->cursor * 14 + 0x35);
++            SOUND.playSound(SOUND_SELECT);
++            shop->substate = 10;
++            fprintf(stderr, "dw3: DW3_FORCE_PACK_OPEN choose Open Pack\n");
++            return;
++        }
++    }
++#endif
+ 
+     cursor = shop->cursor;
+     if (PAD_PRESSED(PAD_UP) || PAD_REPEATED(PAD_UP)) {
+diff --git a/src/engine/system/overlay.c b/src/engine/system/overlay.c
+--- a/src/engine/system/overlay.c
++++ b/src/engine/system/overlay.c
+@@ -81,10 +81,15 @@ void updateModeTask(Task *task, Task **children) {
+             s32 overlay = MODE_OVERLAY(mode);
+ 
+             if (DW3_afterCardAlbumArm != 0) {
+-                if (overlay == MODE_CARD_GAME) {
++                if (overlay == MODE_CARD_GAME || overlay == MODE_CARD_SHOP ||
++                    overlay == MODE_DECK_EDITOR) {
++                    /* Wait until shop/battle teardown returns to field. */
+                     after_frames = 0;
+-                } else if (overlay != MODE_CARD_ALBUM) {
+-                    if (++after_frames >= 90) {
++                } else if (overlay == MODE_CARD_ALBUM) {
++                    after_frames = 0;
++                } else if (mode == GAME.fieldMode ||
++                           MODE_OVERLAY(mode) == MODE_OVERLAY(GAME.fieldMode)) {
++                    if (++after_frames >= 60) {
+                         fprintf(stderr,
+                                 "dw3: DW3_AFTER_CARD_ALBUM mode=0x%x -> MODE_CARD_ALBUM cardsSeen probe\n",
+                                 (unsigned)mode);
+@@ -92,6 +97,8 @@ void updateModeTask(Task *task, Task **children) {
+                         DW3_afterCardAlbumArm = 0;
+                         after_frames = 0;
+                     }
++                } else {
++                    after_frames = 0;
+                 }
+             } else {
+                 after_frames = 0;

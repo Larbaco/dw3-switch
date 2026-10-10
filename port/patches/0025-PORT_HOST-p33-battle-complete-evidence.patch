@@ -1,0 +1,207 @@
+Upstream-bound: no
+Subject: [PORT_HOST] P3.3 battle complete evidence (FORCE_WIN + report)
+
+DW3_FORCE_WIN queues BATTLE_WON once the battle menu is running.
+DW3_FORCE_ENCOUNTER seeds fieldMode for report return and logs party
+HP/XP before battle. STFGTREP logs addExp and post-report party stats.
+Guard empty drop-item pool (count==0) on host.
+
+--- a/src/battle/battle_mode/start.c
++++ b/src/battle/battle_mode/start.c
+@@ -44,6 +44,26 @@
+                     if (BATTLE_SETUP.music == 0) {
+                         BATTLE_SETUP.music = 0x6004000A;
+                     }
++                    /* Report / flee return to fieldMode; seed a real field mode. */
++                    if (GAME.fieldMode == 0) {
++                        GAME.fieldMode = MODE_NEW_GAME;
++                        fprintf(stderr, "dw3: DW3_FORCE_ENCOUNTER fieldMode=0x%x\n",
++                                (unsigned)GAME.fieldMode);
++                    }
++                    {
++                        s32 m;
++                        for (m = 0; m < 3; m++) {
++                            s32 p = GAME.funcs.getPartyMember(m);
++                            if (p >= 0) {
++                                PartnerStats *st = GAME.funcs.getPartnerStats(p);
++                                fprintf(stderr,
++                                        "dw3: party[%d] partner=%d hp=%d/%d exp=%d lv=%d (pre-battle)\n",
++                                        (int)m, (int)p,
++                                        (int)st->stats[STAT_HP], (int)st->stats[STAT_MAX_HP],
++                                        (int)st->exp, (int)st->stats[STAT_LEVEL]);
++                            }
++                        }
++                    }
+                     fprintf(stderr,
+                             "dw3: DW3_FORCE_ENCOUNTER=%ld stage=%d fighter0=%d\n",
+                             n, (int)BATTLE_SETUP.stage,
+--- a/src/battle/normal_battle/menu.c
++++ b/src/battle/normal_battle/menu.c
+@@ -5,6 +5,10 @@
+    table off its 8-byte place. */
+ 
+ #include "battle/normal_battle.h"
++#if PORT_HOST
++#include <stdio.h>
++char *getenv(const char *name);
++#endif
+ 
+ /* Sets the battle's kind from the mode it came from and the battle: the
+    escape, UNK2, no-damage and final battles, or a normal one */
+@@ -198,6 +202,30 @@
+         }
+         break;
+     case 1:
++#if PORT_HOST
++        {
++            static int force_win_done;
++            const char *fw = getenv("DW3_FORCE_WIN");
++
++            if (!force_win_done && fw != NULL && fw[0] != '\0' && fw[0] != '0') {
++                s32 m;
++                force_win_done = 1;
++                for (m = 0; m < 3; m++) {
++                    s32 p = GAME.funcs.getPartyMember(m);
++                    if (p >= 0) {
++                        PartnerStats *st = GAME.funcs.getPartnerStats(p);
++                        fprintf(stderr,
++                                "dw3: party[%d] partner=%d hp=%d/%d exp=%d lv=%d (force-win)\n",
++                                (int)m, (int)p,
++                                (int)st->stats[STAT_HP], (int)st->stats[STAT_MAX_HP],
++                                (int)st->exp, (int)st->stats[STAT_LEVEL]);
++                    }
++                }
++                FIGHTSTG_endBattle(BATTLE_WON);
++                fprintf(stderr, "dw3: DW3_FORCE_WIN queued BATTLE_WON\n");
++            }
++        }
++#endif
+         WFIGHTMN_runTurn(task);
+         switchConfusionMusic(task);
+         break;
+@@ -487,6 +515,12 @@
+                     count++;
+                 }
+             }
++#if PORT_HOST
++            if (count == 0) {
++                BATTLE_RESULT.item = 0;
++            } else
++#endif
++            {
+             pick = RANDOM.next() % count;
+             count = 0;
+             for (i = 0; i < 3; i++) {
+@@ -509,6 +543,7 @@
+             if (BATTLE_SETUP.hasPrize == 1) {
+                 BATTLE_RESULT.item = BATTLE_SETUP.prize;
+             }
++            }
+         }
+         for (member = 0; member < 3; member++) {
+             partner = GAME.funcs.getPartyMember(member);
+@@ -554,6 +589,11 @@
+             if (FIGHTSTG_battle.state.kind != BATTLE_KIND_FINAL_LAST) {
+                 mode = MODE_BATTLE_REPORT;
+             }
++#if PORT_HOST
++            fprintf(stderr, "dw3: WFIGHTMN_endBattle result=%d requestMode=0x%x fieldMode=0x%x\n",
++                    (int)FIGHTSTG_events.funcs.result, (unsigned)mode,
++                    (unsigned)GAME.fieldMode);
++#endif
+             GAME.funcs.requestMode(mode, 0);
+             break;
+         case BATTLE_LOST:
+--- a/src/battle/report/report.c
++++ b/src/battle/report/report.c
+@@ -2,6 +2,9 @@
+    money and the item won, and its files. */
+ 
+ #include "battle/report.h"
++#if PORT_HOST
++#include <stdio.h>
++#endif
+ 
+ /* Creates the report's text windows: the exp, its label and the two-line
+    message */
+@@ -305,6 +308,10 @@
+                 break;
+             }
+             report->nextState(report);
++#if PORT_HOST
++            fprintf(stderr, "dw3: STFGTREP report battle=%d\n",
++                    (int)BATTLE_RESULT.battle);
++#endif
+             STFGTREP_createWindows(report, children);
+             for (i = 0; i < 3; i++) {
+                 if (GAME.funcs.getPartyMember(i) >= 0) {
+@@ -354,6 +361,24 @@
+     case TASK_DONE:
+         break;
+     case TASK_KILL:
++#if PORT_HOST
++        {
++            s32 m;
++            for (m = 0; m < 3; m++) {
++                s32 p = GAME.funcs.getPartyMember(m);
++                if (p >= 0) {
++                    PartnerStats *st = GAME.funcs.getPartnerStats(p);
++                    fprintf(stderr,
++                            "dw3: party[%d] partner=%d hp=%d/%d exp=%d lv=%d (post-report)\n",
++                            (int)m, (int)p,
++                            (int)st->stats[STAT_HP], (int)st->stats[STAT_MAX_HP],
++                            (int)st->exp, (int)st->stats[STAT_LEVEL]);
++                }
++            }
++            fprintf(stderr, "dw3: STFGTREP return fieldMode=0x%x\n",
++                    (unsigned)GAME.fieldMode);
++        }
++#endif
+         GAME.funcs.requestMode(GAME.fieldMode, 0);
+         break;
+     }
+--- a/src/battle/report/scene.c
++++ b/src/battle/report/scene.c
+@@ -2,6 +2,9 @@
+    (src/shared). */
+ 
+ #include "battle/report.h"
++#if PORT_HOST
++#include <stdio.h>
++#endif
+ 
+ /* The mode's scene: resets the graphics, makes the screen layer and creates
+    the report */
+@@ -33,6 +36,9 @@
+ 
+ /* The mode's entry point (MODE_ENTRY_POINTS) */
+ Task *STFGTREP_start(void) {
++#if PORT_HOST
++    fprintf(stderr, "dw3: STFGTREP_start\n");
++#endif
+     return createTask(STFGTREP_updateScene, sizeof(Task), sizeof(Task *));
+ }
+ 
+--- a/src/battle/report/growth.c
++++ b/src/battle/report/growth.c
+@@ -2,6 +2,9 @@
+    Digimon it learns, its Digimon's exp, levels and skills. */
+ 
+ #include "battle/report.h"
++#if PORT_HOST
++#include <stdio.h>
++#endif
+ 
+ /* Raises a partner's max HP, max MP, battle stats and, up to level 40, its
+    resistances for a new level, by its growth (DIGIMON_DATA) and at random */
+@@ -86,6 +89,10 @@
+     if (stats->exp > 999999) {
+         stats->exp = 999999;
+     }
++#if PORT_HOST
++    fprintf(stderr, "dw3: STFGTREP_addExp partner=%d +%d -> exp=%d\n",
++            (int)partner, (int)exp, (int)stats->exp);
++#endif
+     leveled = 0;
+     /* two statements: the match depends on it, since the level is loaded
+        into the register that counts the levels */

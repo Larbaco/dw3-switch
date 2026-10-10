@@ -1,0 +1,184 @@
+Upstream-bound: no
+Subject: [PORT_HOST] P3.2 script leave log, fast script, walk log, progress
+
+Evidence aids for Done-when: log SCRIPT_LEAVE/leaveField and moveByPad;
+DW3_FAST_SCRIPT skips event waits/boxes so intro SCRIPT_LEAVE can run;
+DW3_PROGRESS overrides story step after newGame (free-walk without intro).
+
+diff -ruN a/src/engine/game/state.c b/src/engine/game/state.c
+--- a/src/engine/game/state.c	2026-10-10 05:54:24.217398469 -0300
++++ b/src/engine/game/state.c	2026-10-10 05:55:01.006059583 -0300
+@@ -44,6 +44,21 @@
+     GAME.countdown[2] = 0;
+     GAME.unusedC = -1;
+     initNewGameData();
++#if PORT_HOST
++    {
++        const char *prog = getenv("DW3_PROGRESS");
++        char *end = NULL;
++        long value;
++
++        if (prog != NULL && prog[0] != '\0') {
++            value = strtol(prog, &end, 0);
++            if (end != prog && value >= 0) {
++                GAME.progress = (s32)value;
++                fprintf(stderr, "dw3: DW3_PROGRESS=%ld\n", value);
++            }
++        }
++    }
++#endif
+     GAME.battleSteps = (RANDOM.next() & 0x1FF) + 0x200;
+ }
+ 
+diff -ruN a/src/field/field_mode/actor_control.c b/src/field/field_mode/actor_control.c
+--- a/src/field/field_mode/actor_control.c	2026-10-10 05:05:46.000000000 -0300
++++ b/src/field/field_mode/actor_control.c	2026-10-10 05:55:01.006408445 -0300
+@@ -4,6 +4,9 @@
+    them would move the next one's table. */
+ 
+ #include "field/field_mode.h"
++#if PORT_HOST
++#include <stdio.h>
++#endif
+ 
+ /* Whether a flying actor runs into the map at an offset from it: a cell that
+    isn't free, a wall higher than it or a ceiling lower than it (FLIGHT_WALL,
+@@ -116,6 +119,18 @@
+    FIELDSTG_padDirs), or stops it when none is held */
+ void FIELDSTG_moveByPad(Actor *actor, s32 pad) {
+     if (pad != 0 && FIELDSTG_state.menuOpen == 0) {
++#if PORT_HOST
++        {
++            static s32 walk_logs;
++            if (walk_logs < 30) {
++                fprintf(stderr,
++                        "dw3: moveByPad pad=0x%x pos=(%d,%d) tile=(%d,%d) sub=%d\n",
++                        pad, actor->pos.x, actor->pos.y, actor->tile.x, actor->tile.y,
++                        actor->substate);
++                walk_logs++;
++            }
++        }
++#endif
+         actor->dir = FIELDSTG_padDirs[pad];
+         if (actor->walks != 0) {
+             if (actor->substate != ACTOR_WALK) {
+diff -ruN a/src/field/field_mode/event.c b/src/field/field_mode/event.c
+--- a/src/field/field_mode/event.c	2026-10-10 05:54:24.204397928 -0300
++++ b/src/field/field_mode/event.c	2026-10-10 05:55:01.006511096 -0300
+@@ -3,6 +3,22 @@
+    data/fieldstg.c). */
+ 
+ #include "field/field_mode.h"
++#if PORT_HOST
++#include <stdio.h>
++char *getenv(const char *name);
++static s32 dw3_fast_script(void) {
++    static s32 init;
++    static s32 on;
++    const char *env;
++
++    if (!init) {
++        env = getenv("DW3_FAST_SCRIPT");
++        on = env != NULL && env[0] != '\0' && env[0] != '0';
++        init = 1;
++    }
++    return on;
++}
++#endif
+ 
+ /* The actor of an event's cast with the id, below the script commands' ids
+    (0x320) */
+@@ -163,6 +179,12 @@
+                     switch (sub) {
+                     case 0:
+                     default:
++#if PORT_HOST
++                        if (dw3_fast_script()) {
++                            pc += 2;
++                            break;
++                        }
++#endif
+                         if (task->wait == 0) {
+                             task->wait = pc[1];
+                         }
+@@ -173,6 +195,16 @@
+                         }
+                         break;
+                     case 1:
++#if PORT_HOST
++                        if (dw3_fast_script()) {
++                            if (children->boxes[0] != NULL) {
++                                children->boxes[0]->setState(children->boxes[0], TASK_KILL);
++                                children->boxes[0] = NULL;
++                            }
++                            pc += 1;
++                            break;
++                        }
++#endif
+                         if (children->boxes[0] != NULL) {
+                             running = 0;
+                         } else {
+@@ -180,6 +212,16 @@
+                         }
+                         break;
+                     case 2:
++#if PORT_HOST
++                        if (dw3_fast_script()) {
++                            actor = FIELDSTG_findEventActor(task, pc[1]);
++                            if (actor != NULL) {
++                                actor->walking = 0;
++                            }
++                            pc += 2;
++                            break;
++                        }
++#endif
+                         actor = FIELDSTG_findEventActor(task, pc[1]);
+                         if (actor != NULL && actor->isWalking(actor)) {
+                             running = 0;
+@@ -188,6 +230,12 @@
+                         }
+                         break;
+                     case 3:
++#if PORT_HOST
++                        if (dw3_fast_script()) {
++                            pc += 2;
++                            break;
++                        }
++#endif
+                         actor = FIELDSTG_findEventActor(task, pc[1]);
+                         if (actor == NULL || actor->isAnimDone(actor)) {
+                             pc += 2;
+@@ -196,6 +244,9 @@
+                         }
+                         break;
+                     case 4:
++#if PORT_HOST
++                        fprintf(stderr, "dw3: SCRIPT_LEAVE mode=0x%x\n", (unsigned)pc[1]);
++#endif
+                         FIELDSTG_leaveField(pc[1], -1, pc[2] << 8, pc[3] << 8, pc[4]);
+                         running = 0;
+                         task->setState(task, TASK_DONE);
+diff -ruN a/src/field/field_mode/field.c b/src/field/field_mode/field.c
+--- a/src/field/field_mode/field.c	2026-10-10 05:54:24.214398344 -0300
++++ b/src/field/field_mode/field.c	2026-10-10 05:55:01.006234032 -0300
+@@ -5,6 +5,9 @@
+    only the same object's 8-byte alignment makes */
+ 
+ #include "field/field_mode.h"
++#if PORT_HOST
++#include <stdio.h>
++#endif
+ 
+ /* Has the battle's files read while the transition plays */
+ static inline void requestBattleFiles(void) {
+@@ -705,6 +708,10 @@
+ 
+ /* Leaves the field for a mode now (the executable calls it by this name) */
+ void FIELDSTG_leaveField(s32 mode, s32 arg, s32 x, s32 y, s32 dir) {
++#if PORT_HOST
++    fprintf(stderr, "dw3: leaveField mode=0x%x arg=%d pos=(%d,%d) dir=%d\n",
++            (unsigned)mode, arg, x, y, dir);
++#endif
+     FIELDSTG_leaveFieldAfter(mode, arg, x, y, dir, 0);
+ }
+ 

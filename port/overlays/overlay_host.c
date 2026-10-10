@@ -4,6 +4,7 @@
 
 #include "overlay_host.h"
 
+#include <stdio.h>
 #include <string.h>
 
 static const Dw3OverlayDesc *g_table;
@@ -32,6 +33,7 @@ int dw3_overlay_restore(int32_t file_id) {
     const Dw3OverlayDesc *desc = dw3_overlay_find(file_id);
 
     if (desc == NULL) {
+        fprintf(stderr, "dw3: overlay restore file=0x%x UNKNOWN\n", (unsigned)file_id);
         return -1;
     }
     if (desc->data != NULL && desc->data_init != NULL && desc->data_size > 0) {
@@ -40,5 +42,16 @@ int dw3_overlay_restore(int32_t file_id) {
     if (desc->bss != NULL && desc->bss_size > 0) {
         memset(desc->bss, 0, desc->bss_size);
     }
+    fprintf(stderr, "dw3: overlay restore file=0x%x data=%zu bss=%zu entry=%p\n",
+            (unsigned)file_id, desc->data_size, desc->bss_size, (void *)desc->entry);
     return 0;
+}
+
+int dw3_host_menu_force_once(void) {
+    static int done;
+    if (done) {
+        return 0;
+    }
+    done = 1;
+    return 1;
 }

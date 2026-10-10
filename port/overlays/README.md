@@ -25,41 +25,54 @@ bss_size}`.
 Host zeros `.bss` on id change even though the PS1 CD image does not clear
 it after a `memcpy`; that keeps the static model deterministic.
 
-### Symbol-prefix strategy: **generated headers** (not objcopy)
+### Symbol-prefix strategy (P3.2)
 
-**Choice for this port: generated `#define` / wrap headers per overlay or
-stage TU**, not `objcopy --prefix-symbols`.
+Phase 2 kept only `STDWTITL` linked. P3.2 uniquifies **stage** globals with
+`tools/prefix_stage_obj.py` (`objcopy --redefine-syms`) and packs mode
+overlays with `tools/rename_ovl_sections.py` (`ld -r` + section rename /
+`merge_ovl_sections.ld`). Writable sections become `dw3data_<name>` /
+`dw3bss_<name>`; GNU ld supplies `__start_`/`__stop_` orphans.
+`overlay_sections.c` binds those into `Dw3OverlayDesc` snapshots.
 
-Reasons:
+Unlinked stages get weak stubs from `tools/gen_stage_stubs.py`.
+`mode_stubs.c` must **not** weak-stub overlays that are really linked
+(archive pull / strong defs).
 
-1. Overlays and stages are compiled from **C sources** (decomp), not from
-   prebuilt MIPS objects. Prefixing at the preprocessor / compile unit
-   boundary fits the patch-copy build.
-2. Engine tables (`MODE_ENTRY_POINTS`) must keep **stable unprefixed
-   entry names** (`STDWTITL_start`, …). Generated headers can rename
-   colliding globals (`setupStage`, `stageObjects`, …) while leaving the
-   exported `*_start` symbols alone. `objcopy --prefix-symbols` would
-   rename everything and force a second redefine/alias pass.
-3. Stage files share identical global names across hundreds of TUs; a
-   per-stage generated header (or compile definition) is the
-   straightforward way to uniquify them in one linked image.
+### US overlay table (title + field path)
 
-`objcopy --prefix-symbols` remains a fallback if we ever ingest opaque
-`.o` blobs; it is not the Phase 2 default.
-
-E6 will add the generator (or hand-maintained wrap headers) when more
-than the title overlay is linked. Until then the restore API and US
-title table stub are in place.
-
-### Title-path overlay list (US)
-
-| Overlay | File id (US) | Needed for title? |
+| Overlay | File id (US) | Role |
 |---|---|---|
-| `STDWTITL` | `0x1C1` | **yes** — title mode |
-| `CNTY_SEL` | `0x157` | **no** for US (country select is EU-oriented; skip unless a path requires it) |
+| `STDWTITL` | `0x1C1` | Title |
+| `FIELDSTG` | `0x158` | Field mode |
+| `STPLNMET` | `0x1F8` | Player name (new game) |
+| `WSTAG260` | `462` / `0x1CE` | Story scripts (data) |
+| `WSTAG780` | `474` / `0x1DA` | Kusanagi street (new-game start) |
+| `WSTAG785` | `475` / `0x1DB` | Online Center (door target) |
+| `WSTAG790` | `476` / `0x1DC` | Chamber Room (post-name) |
+| `WSTAG200`…`895` + Amaterasu twins (batch1–6; skip `WSTAG460`) | see `docs/P3.8_STAGES.md` | All US stages except known-bad `WSTAG460` |
+| `FIGHTSTG` | `0x159` | Battle mode (P3.3) |
+| `WFIGHTMN` | `0x1FA` | Normal battle sub-overlay (P3.3) |
+| `STFGTREP` | `0x1C2` | Battle report / XP apply (P3.3) |
+| `STSTATUS` | `0x1F9` | Field menu screens (P3.4) |
+| `STITSHOP` | `0x1F7` | Item shop (P3.4) |
+| `STGTRAIN` | `0x1F6` | Training gym (P3.4) |
+| `STGDGLAB` | `0x1DF` | Digimon Lab (P3.4) |
+| `STGMCARD` | `0x1E3` | Memory card (P3.4) |
+| `STDGNAME` | `0x154` | Partner nickname (P3.4) |
+| `CARDGAME` | `0x153` | Card battle (P3.5) |
+| `STCRDDEK` | `0x1BC` | Deck editor (P3.5) |
+| `STCRDSHP` | `0x1C0` | Card pack shop (P3.5) |
+| `STCRDABM` | `0x177` | Card album (P3.5) |
+| `STAGSLCT` | `0x176` | Debug stage select (P3.8) |
 
-`overlay_table_us.c` registers `STDWTITL`. Full `.data` / `.bss` snapshots
-for that overlay land when it is linked in E6 / P2.8.
+`overlay_table_us.c` registers the rows above; `CNTY_SEL` stays out for US.
+Host objects use named `.data`/`.bss` sections (`tools/rename_ovl_sections.py`,
+`tools/merge_ovl_sections.ld`) and snapshots in `overlay_sections.c`. Stage TUs
+are symbol-prefixed (`tools/prefix_stage_obj.py`) and linked via `dw3_p32_field`;
+battle via `dw3_p33_battle`; menus via `dw3_p34_menus`; cardgame via
+`dw3_p35_cardgame`; stage select via `dw3_p38_stagslct`. Runtime notes:
+`docs/P3.2_FIELD.md`, `docs/P3.3_BATTLE.md`, `docs/P3.4_MENUS.md`,
+`docs/P3.5_CARDGAME.md`, `docs/P3.8_STAGES.md`.
 
 ### Host test
 

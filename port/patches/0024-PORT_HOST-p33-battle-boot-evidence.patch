@@ -1,0 +1,93 @@
+Upstream-bound: no
+Subject: [PORT_HOST] P3.3 battle boot evidence and forced encounter
+
+Log FIGHTSTG_start / WFIGHTMN load path. DW3_FORCE_ENCOUNTER=<n> seeds
+BATTLE_SETUP from FIELDSTG_encounters[n] (and default stage/music) so
+DW3_START_MODE=0x600 can enter a normal battle without a field door.
+Calls setParty(0) when the party is empty (normally STPLNMET / Tamer
+Service) so story event battles (e.g. Genji) do not SEGV in computeStats.
+
+--- a/src/battle/battle_mode/start.c.base	2026-10-10 06:09:50.391837493 -0300
++++ b/src/battle/battle_mode/start.c	2026-10-10 06:09:50.387537619 -0300
+@@ -1,6 +1,12 @@
+ /* FIGHTSTG's root task, which the mode starts (FIGHTSTG_start). */
+ 
+ #include "battle/battle_mode.h"
++#if PORT_HOST
++#include "field/field_mode.h"
++#include <stdio.h>
++char *getenv(const char *name);
++long strtol(const char *nptr, char **endptr, int base);
++#endif
+ 
+ /* The mode's root task: loads WFIGHTTS (the battle test, with the mode's
+    argument) or WFIGHTMN and starts it, then runs the battle's update */
+@@ -8,13 +14,59 @@
+     switch (task->state) {
+     case TASK_INIT:
+     default:
++#if PORT_HOST
++        {
++            const char *enc = getenv("DW3_FORCE_ENCOUNTER");
++            char *end = NULL;
++            long n;
++            s32 i;
++
++            /* Name entry / Tamer Service normally call setParty; seed a
++             * starter when story aids boot past that (event battles too). */
++            if (GAME.funcs.getPartyMember(0) < 0) {
++                GAME.funcs.setParty(0);
++                fprintf(stderr, "dw3: FIGHTSTG setParty(0) (empty party)\n");
++            }
++            if (enc != NULL && enc[0] != '\0') {
++                n = strtol(enc, &end, 0);
++                if (end != enc && n >= 0) {
++                    BATTLE_SETUP.battle = (s32)n;
++                    BATTLE_SETUP.ambushChance = FIELDSTG_encounters[n].ambushChance;
++                    BATTLE_SETUP.encounterKind = FIELDSTG_encounters[n].kind;
++                    for (i = 0; i < 12; i++) {
++                        BATTLE_SETUP.blocks[i] = FIELDSTG_encounters[n].blocks[i];
++                    }
++                    for (i = 0; i < 3; i++) {
++                        BATTLE_SETUP.enemies[i] = *FIELDSTG_encounters[n].enemies[i];
++                    }
++                    if (BATTLE_SETUP.stage == 0) {
++                        BATTLE_SETUP.stage = 1;
++                    }
++                    if (BATTLE_SETUP.music == 0) {
++                        BATTLE_SETUP.music = 0x6004000A;
++                    }
++                    fprintf(stderr,
++                            "dw3: DW3_FORCE_ENCOUNTER=%ld stage=%d fighter0=%d\n",
++                            n, (int)BATTLE_SETUP.stage,
++                            (int)BATTLE_SETUP.enemies[0].fighter);
++                }
++            }
++        }
++#endif
+         if (GAME.funcs.getModeArg()) {
+             OVERLAY_LOADER.loadSubOverlay(FILE_WFIGHTTS);
+             BATTLE_SETUP.stage = FIGHTSTG_randomStage();
+             children[0] = WFIGHTTS_start();
++#if PORT_HOST
++            fprintf(stderr, "dw3: FIGHTSTG loaded WFIGHTTS\n");
++#endif
+         } else {
+             OVERLAY_LOADER.loadSubOverlay(FILE_WFIGHTMN);
+             children[0] = WFIGHTMN_start();
++#if PORT_HOST
++            fprintf(stderr, "dw3: FIGHTSTG loaded WFIGHTMN menu=%p\n",
++                    (void *)children[0]);
++#endif
+         }
+         FIGHTSTG_battle.setSpeed(0);
+         task->nextState(task);
+@@ -30,5 +82,8 @@
+ 
+ /* The mode's entry point (MODE_ENTRY_POINTS): starts the root task */
+ Task *FIGHTSTG_start(void) {
++#if PORT_HOST
++    fprintf(stderr, "dw3: FIGHTSTG_start\n");
++#endif
+     return createTask(FIGHTSTG_updateRoot, sizeof(Task), sizeof(Task *));
+ }

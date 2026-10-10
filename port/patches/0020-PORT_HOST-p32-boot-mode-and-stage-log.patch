@@ -1,0 +1,122 @@
+Upstream-bound: no
+Subject: [PORT_HOST] P3.2 start-mode env, stage pick log, auto door
+
+DW3_START_MODE overrides post-newGame mode for logged field bring-up.
+FIELDSTG_pickStage logs stage file; DW3_AUTO_DOOR_MODE requests a second
+field mode after DW3_AUTO_DOOR_FRAMES (default 90). Avoid stdlib.h (game
+atoi/random clash); declare getenv/strtol only.
+
+diff -ruN a/src/engine/game/state.c b/src/engine/game/state.c
+--- a/src/engine/game/state.c
++++ b/src/engine/game/state.c
+@@ -1,5 +1,10 @@
+ #include "engine/game.h"
+ #include "field/field_map.h"
++#if PORT_HOST
++#include <stdio.h>
++char *getenv(const char *name);
++long strtol(const char *nptr, char **endptr, int base);
++#endif
+ 
+ /* Clears the save data and sets up a new game */
+ void newGame(void) {
+@@ -15,6 +20,22 @@
+     GAME.mode = MODE_COUNTRY_SELECT;
+     GAME.nextMode = MODE_COUNTRY_SELECT;
+ #endif
++#if PORT_HOST
++    {
++        const char *start = getenv("DW3_START_MODE");
++        char *end = NULL;
++        long mode;
++
++        if (start != NULL && start[0] != '\0') {
++            mode = strtol(start, &end, 0);
++            if (end != start && mode > 0) {
++                GAME.mode = (s32)mode;
++                GAME.nextMode = (s32)mode;
++                fprintf(stderr, "dw3: DW3_START_MODE=0x%lx\n", mode);
++            }
++        }
++    }
++#endif
+     GAME.digivolveDemo = 1;
+     GAME.countdown[0] = 1;
+     GAME.countdown[1] = 8;
+diff -ruN a/src/engine/system/overlay.c b/src/engine/system/overlay.c
+--- a/src/engine/system/overlay.c
++++ b/src/engine/system/overlay.c
+@@ -3,6 +3,8 @@
+ #if PORT_HOST
+ #include "overlay_host.h"
+ #include <stdio.h>
++char *getenv(const char *name);
++long strtol(const char *nptr, char **endptr, int base);
+ #endif
+ 
+ /* Each mode's overlay (mode >> 8): its entry point and its file */
+@@ -37,12 +39,39 @@
+         OVERLAY_LOADER.loadModeOverlay();
+         children[0] = MODE_ENTRY_POINTS[GAME.funcs.getMode() >> 8]();
+ #if PORT_HOST
+-        fprintf(stderr, "dw3: mode=0x%x title_entry=%p\n",
++        fprintf(stderr, "dw3: mode=0x%x mode_entry=%p\n",
+                 (unsigned)GAME.funcs.getMode(), (void *)children[0]);
+ #endif
+         task->nextState(task);
+         break;
+     case 1:
++#if PORT_HOST
++        {
++            const char *door = getenv("DW3_AUTO_DOOR_MODE");
++            const char *frames_env = getenv("DW3_AUTO_DOOR_FRAMES");
++            static s32 door_frames;
++            long door_mode;
++            long need_frames = 90;
++            char *end = NULL;
++
++            if (door != NULL && door[0] != '\0' && GAME.funcs.getMode() == MODE_NEW_GAME) {
++                if (frames_env != NULL && frames_env[0] != '\0') {
++                    need_frames = strtol(frames_env, &end, 0);
++                    if (need_frames < 1) {
++                        need_frames = 90;
++                    }
++                }
++                if (++door_frames >= (s32)need_frames) {
++                    door_mode = strtol(door, &end, 0);
++                    if (end != door && door_mode > 0) {
++                        fprintf(stderr, "dw3: AUTO_DOOR requestMode=0x%lx\n", door_mode);
++                        GAME.funcs.requestMode((s32)door_mode, 0);
++                        door_frames = -0x7fffffff;
++                    }
++                }
++            }
++        }
++#endif
+         if (GAME.funcs.isModeChangePending() != 0) {
+             task->setState(task, TASK_KILL);
+         }
+diff -ruN a/src/field/field_mode/state.c b/src/field/field_mode/state.c
+--- a/src/field/field_mode/state.c
++++ b/src/field/field_mode/state.c
+@@ -2,6 +2,9 @@
+    the mode and the battles of a place */
+ 
+ #include "field/field_mode.h"
++#if PORT_HOST
++#include <stdio.h>
++#endif
+ 
+ /* The file entry index of FIELDSTG_fileEntries */
+ s32 FIELDSTG_getFileEntry(s32 index) {
+@@ -45,6 +48,10 @@
+         while (1) {
+         }
+     }
++#if PORT_HOST
++    fprintf(stderr, "dw3: FIELDSTG_pickStage mode=0x%x stageFile=%d init=%p\n",
++            (unsigned)mode, FIELDSTG_state.stageFile, (void *)FIELDSTG_state.stageInit);
++#endif
+ }
+ 
+ /* The battles of the place id in a stage's list, or NULL */
