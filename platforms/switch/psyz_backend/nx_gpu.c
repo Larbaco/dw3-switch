@@ -413,6 +413,45 @@ static bool present_init(void) {
     return true;
 }
 
+/* TEMPORARY probe: dump the raw VRAM the rasterizer produced, before any GL
+ * touches it. The picture on screen is speckled and the question that decides
+ * where to work is whether the noise is already in this buffer or is added by
+ * the upload below — the first is PSY-Z's rasterizer (dead code until this
+ * port), the second is our GLES2 present. Comparing the dump against a
+ * screenshot answers it in one run.
+ *
+ * Raw little-endian u16, 1024x512, no header and deliberately no conversion:
+ * converting here would bake in an assumption about the pixel layout, which is
+ * one of the things under suspicion. Two frames, 60 presents apart, so the
+ * pair also says whether the noise is static (in the source art) or changes
+ * frame to frame. Remove with the rest of the boot instrumentation. */
+static void dump_vram(const uint16_t *vram) {
+    static unsigned presents;
+    static const unsigned at[] = {60, 120};
+    char path[64];
+    FILE *f;
+    int i;
+
+    presents++;
+    for (i = 0; i < (int)(sizeof(at) / sizeof(at[0])); i++) {
+        if (presents != at[i]) {
+            continue;
+        }
+        snprintf(path, sizeof(path), "sdmc:/switch/dw3/vram%u.bin", presents);
+        f = fopen(path, "wb");
+        if (!f) {
+            psyz_log(1, "nx_gpu.c", __LINE__, __func__,
+                     "vram dump: fopen(%s) failed", path);
+            return;
+        }
+        fwrite(vram, sizeof(uint16_t), 1024u * 512u, f);
+        fclose(f);
+        psyz_log(1, "nx_gpu.c", __LINE__, __func__,
+                 "vram dump: %s written, %u bytes (raw LE u16 1024x512)",
+                 path, 1024u * 512u * 2u);
+    }
+}
+
 void dw3_nx_gpu_present(const uint16_t *vram, int dx, int dy, int dw, int dh) {
     float src_aspect;
     float dst_aspect;
@@ -424,6 +463,7 @@ void dw3_nx_gpu_present(const uint16_t *vram, int dx, int dy, int dw, int dh) {
     if (!s_ready || !vram || dw <= 0 || dh <= 0) {
         return;
     }
+    dump_vram(vram);
     /* A dock/handheld switch recreates the EGL context, which drops every GL
      * object. glIsTexture reports the stale names as invalid, so this heals
      * itself instead of the mode-change path having to remember to. */
