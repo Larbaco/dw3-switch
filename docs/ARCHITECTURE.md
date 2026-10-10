@@ -73,3 +73,5 @@ See [SURVEY.md](SURVEY.md) for the evidence behind each point.
   parity is a later native/`port/` effort; see [COMMUNITY_QOL.md](COMMUNITY_QOL.md))
 - Shipping texture packs or original art (owner overlays only; see
   [TEXTURE_PACKS.md](TEXTURE_PACKS.md))
+- Shipping a forced “modded” default: port-added features are opt-in via
+  the Phase 9 options menu ([PORT_OPTIONS.md](PORT_OPTIONS.md))
