@@ -126,6 +126,31 @@ shared timeline — local-only progress is not enough.
 - Cheats, piracy tooling, or bypassing console security beyond normal
   homebrew (Atmosphere + homebrew `.nro`) assumptions
 
+## Cursor Cloud specific instructions
+
+PC host is the loop to verify here. Switch `.nro` builds stay on GitHub Actions
+(`devkitpro/devkita64`); this VM has no Docker daemon.
+
+- Default `cc` is Clang 18. It links with GCC 14's libstdc++, so
+  `libstdc++-14-dev` must be installed or CMake's C++ compiler check fails.
+- There is no `/dev/dri`. `sdl3_gpu` needs `mesa-vulkan-drivers` (lavapipe).
+  A good run logs `SDL_GPU with driver vulkan`.
+- `git submodule update --init --recursive` fails while codeberg.org returns
+  HTTP 429 for `vendor/psyz/nugget/third_party/xmake-psx` (PS1 matching
+  toolchain). The PC host only needs `vendor/dw3_decomp` and
+  `vendor/psyz/external/SDL`.
+- Build and test from the repo root:
+
+```bash
+cmake -S platforms/pc -B build/pc -G Ninja -DPSYZ_RENDERER=sdl3_gpu
+cmake --build build/pc -j"$(nproc)"
+python3 -m pytest tools/tests -v
+```
+
+- Run `./build/pc/dw3-pc` with `DISPLAY` set (this desktop uses `:1`) and a
+  writable `XDG_RUNTIME_DIR`. The window title is `dw3-pc Phase 1`. Close it
+  to quit.
+
 ## First actions for a new session
 
 1. Read this file, `README.md`, and `docs/ROADMAP.md`.
