@@ -65,6 +65,10 @@ disc.
 
 ## Phase 2 — Port glue and engine bring-up on PC
 
+Status: **in progress** (plan:
+[`docs/superpowers/plans/2026-10-10-phase2-pc-bringup.md`](superpowers/plans/2026-10-10-phase2-pc-bringup.md);
+parallel tracks `phase2-engine` + `phase2-io`).
+
 Objective: compile the decomp's **executable** modules (`src/engine/`) for
 the host, replace MIPS-only pieces, and reach the title screen on PC.
 
@@ -102,7 +106,8 @@ the host, replace MIPS-only pieces, and reach the title screen on PC.
   path the engine uses (`CD_READER.readFile` semantics, `FILE_TABLE`
   sector counts, `cdReadyCallback`-style completion) over
   `files_<ver>.json` and host files; keep PSY-Z's `libcd` only for STR
-  streaming.
+  streaming. Sector/EOF pitfalls for the host layer:
+  [CDFS_NOTES.md](CDFS_NOTES.md).
   Done when: `FILE_CACHE.load(id)` returns byte-identical buffers to the
   disc for a sample of ids (unit test with the owner's data, skipped in
   CI).
@@ -289,7 +294,9 @@ list: [COMMUNITY_QOL.md](COMMUNITY_QOL.md).
 - [ ] **P7.3 Binary-patch limits.** Expand the checklist in
   [COMMUNITY_QOL.md](COMMUNITY_QOL.md): which QoL changes ride on patched
   data vs which require native reimplementation because EXE/overlay
-  patches do not load into the `.nro`.
+  patches do not load into the `.nro`. Seed inventory from the
+  OpenWorld2003 launcher catalog (`source/*.json`) is already in that
+  doc; still need a pass against a **pinned combined QoL patch beta**.
   Done when: the checklist covers the combined patch feature list at a
   chosen beta version.
 - [ ] **P7.4 Feature parity (native).** Reimplement agreed QoL systems
