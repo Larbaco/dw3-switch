@@ -155,6 +155,12 @@ target_link_options(dw3-switch PRIVATE
   "-Wl,--wrap=DecDCTout"
   "-Wl,--wrap=LoadImage"
   "-Wl,--wrap=PutDispEnv"
+  # TEMPORARY boot-stop trace (nx_present.c); see the comment there.
+  "-Wl,--wrap=SetDispMask"
+  "-Wl,--wrap=CdInit"
+  "-Wl,--wrap=CdSetDebug"
+  "-Wl,--wrap=SetGraphDebug"
+  "-Wl,--wrap=CdControl"
   # Keep the named overlay .data/.bss orphan sections (overlay_sections.c).
   "-Wl,--undefined=__start_dw3data_fieldstg"
   "-Wl,--undefined=__start_dw3data_stplnmet"
