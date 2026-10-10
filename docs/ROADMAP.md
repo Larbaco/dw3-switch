@@ -69,10 +69,10 @@ Status: **in progress** (plan:
 [`docs/superpowers/plans/2026-10-10-phase2-pc-bringup.md`](superpowers/plans/2026-10-10-phase2-pc-bringup.md);
 parallel tracks `phase2-engine` + `phase2-io`).
 
-Tracking: Waves 1–2 done (E1/E2 + I1/I2). Wave 3 E4/P2.4 done on
-`phase2-engine` @ `4611e8d`; next E5 (P2.6 overlays). Port code stays
-on `phase2-engine` / `phase2-io` until a PR; this ROADMAP on `main` is
-synced each wave for visibility only (no unfinished merge).
+Tracking: Waves 1–2 done (E1/E2 + I1/I2). Wave 3 E5/P2.6 done on
+`phase2-engine` @ `cd8b8f4`; next Wave 4 merge IO + E6/P2.8 title boot.
+Port code stays on `phase2-engine` / `phase2-io` until a PR; this ROADMAP
+on `main` is synced each wave for visibility only (no unfinished merge).
 
 Objective: compile the decomp's **executable** modules (`src/engine/`) for
 the host, replace MIPS-only pieces, and reach the title screen on PC.
@@ -116,7 +116,7 @@ the host, replace MIPS-only pieces, and reach the title screen on PC.
   Done when: `FILE_CACHE.load(id)` returns byte-identical buffers to the
   disc for a sample of ids (unit test with the owner's data, skipped in
   CI).
-- [ ] **P2.6 Static overlay model.** `port/overlays/`: generate per-binary
+- [x] **P2.6 Static overlay model.** `port/overlays/`: generate per-binary
   symbol prefixes for the 21 overlays + stages (objcopy
   `--prefix-symbols` or a generated `#define` header), a table
   `{file id → entry, data start/end}` and `loadModeOverlay` /
