@@ -2,7 +2,7 @@ name: ci
 
 on:
   push:
-    branches: [main, phase1-toolchains-hosts]
+    branches: [main, phase1-toolchains-hosts, phase2-engine, phase2-io]
   pull_request:
 
 jobs:
@@ -12,6 +12,8 @@ jobs:
       - uses: actions/checkout@v4
         with:
           submodules: recursive
+      - name: Check decomp patches
+        run: tools/apply_patches.sh --check
       - name: Install deps
         run: |
           # Prefer apt packages over SDL_*_OFF flags (see docs/PSYZ.md).

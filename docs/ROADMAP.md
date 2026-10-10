@@ -82,7 +82,7 @@ the host, replace MIPS-only pieces, and reach the title screen on PC.
   path first.
   Done when: `src/engine/**/*.c` compiles to objects on x86_64 with
   `-Werror=implicit-function-declaration -Werror=int-conversion`.
-- [ ] **P2.2 Patch mechanism for the submodule.** `port/patches/*.patch`
+- [x] **P2.2 Patch mechanism for the submodule.** `port/patches/*.patch`
   applied by `tools/apply_patches.sh` into a build copy (never in-place),
   with a `--check` that fails if the submodule moved. Policy in
   `docs/PATCHES.md`: every patch states whether it is upstream-bound
