@@ -72,14 +72,14 @@ parallel tracks `phase2-engine` + `phase2-io`).
 Objective: compile the decomp's **executable** modules (`src/engine/`) for
 the host, replace MIPS-only pieces, and reach the title screen on PC.
 
-- [ ] **P2.1 Source selection and flags.** `port/CMakeLists.txt` (or
-  `port/sources.mk`) that lists the decomp's C through the version's
-  `C_SRC` rule, builds with the GCC 2.8.1-semantics flags from
+- [x] **P2.1 Source selection and flags.** `port/CMakeLists.txt` builds
+  US `src/engine/**/*.c` from `build/decomp-src` (via
+  `tools/apply_patches.sh`) with the GCC 2.8.1-semantics flags from
   `mk/toolchain/gcc.mk` (`-std=gnu89 -fsigned-char -fno-builtin
   -fno-strict-aliasing -fwrapv -fno-delete-null-pointer-checks
   -fno-aggressive-loop-optimizations -fno-zero-initialized-in-bss
-  -fno-common -fno-toplevel-reorder`), `VERSION_US/EU`, PSY-Z include
-  path first.
+  -fno-common -fno-toplevel-reorder`), `VERSION_US`, `PORT_HOST`,
+  port/PSY-Z includes first. Target: `dw3_engine_objs`.
   Done when: `src/engine/**/*.c` compiles to objects on x86_64 with
   `-Werror=implicit-function-declaration -Werror=int-conversion`.
 - [x] **P2.2 Patch mechanism for the submodule.** `port/patches/*.patch`
