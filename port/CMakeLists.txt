@@ -1,5 +1,6 @@
-# US engine object library from the patched decomp copy (build/decomp-src).
+# Engine object library from the patched decomp copy (build/decomp-src).
 # See docs/ROADMAP.md P2.1 and docs/superpowers/plans/2026-10-10-phase2-pc-bringup.md Task E2.
+# Version select: -DDW3_VERSION=us|eu (default us). See docs/P3_EU_BUILD.md.
 
 cmake_minimum_required(VERSION 3.21)
 
@@ -7,6 +8,20 @@ set(DW3_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/..")
 set(DECOMP_SRC "${DW3_ROOT}/build/decomp-src")
 set(PSYZ_INCLUDE "${DW3_ROOT}/vendor/psyz/psyz/include")
 set(APPLY_PATCHES "${DW3_ROOT}/tools/apply_patches.sh")
+
+set(DW3_VERSION "us" CACHE STRING "Game disc version: us or eu")
+set_property(CACHE DW3_VERSION PROPERTY STRINGS us eu)
+string(TOLOWER "${DW3_VERSION}" _dw3_ver)
+if(_dw3_ver STREQUAL "us")
+  set(DW3_VERSION_MACRO "VERSION_US=1")
+  set(DW3_OVERLAY_TABLE "${CMAKE_CURRENT_SOURCE_DIR}/overlays/overlay_table_us.c")
+elseif(_dw3_ver STREQUAL "eu")
+  set(DW3_VERSION_MACRO "VERSION_EU=1")
+  set(DW3_OVERLAY_TABLE "${CMAKE_CURRENT_SOURCE_DIR}/overlays/overlay_table_eu.c")
+else()
+  message(FATAL_ERROR "DW3_VERSION must be us or eu (got '${DW3_VERSION}')")
+endif()
+message(STATUS "DW3_VERSION=${_dw3_ver} (${DW3_VERSION_MACRO})")
 
 if(NOT EXISTS "${APPLY_PATCHES}")
   message(FATAL_ERROR "missing ${APPLY_PATCHES}")
@@ -77,7 +92,7 @@ add_library(dw3_host_overlays OBJECT
   "${CMAKE_CURRENT_SOURCE_DIR}/overlays/host_heap.c"
   "${CMAKE_CURRENT_SOURCE_DIR}/overlays/overlay_host.c"
   "${CMAKE_CURRENT_SOURCE_DIR}/overlays/overlay_sections.c"
-  "${CMAKE_CURRENT_SOURCE_DIR}/overlays/overlay_table_us.c"
+  "${DW3_OVERLAY_TABLE}"
   "${CMAKE_CURRENT_SOURCE_DIR}/overlays/mode_stubs.c"
   "${CMAKE_CURRENT_SOURCE_DIR}/overlays/boot_tim_host.c"
 )
@@ -135,7 +150,7 @@ set(_DW3_GAME_INCLUDES
   "${DECOMP_SRC}/src/field/stages"
 )
 set(_DW3_GAME_DEFS
-  VERSION_US=1
+  ${DW3_VERSION_MACRO}
   PORT_HOST=1
   SKIP_ASM=1
   __psyz
@@ -176,6 +191,7 @@ target_compile_definitions(dw3_psyz_missing PRIVATE __psyz)
 target_compile_definitions(dw3_engine PRIVATE ${_DW3_GAME_DEFS})
 target_compile_definitions(dw3_title PRIVATE ${_DW3_GAME_DEFS})
 target_compile_definitions(dw3_host_overlays PRIVATE
+  ${DW3_VERSION_MACRO}
   PORT_HOST=1
 )
 
@@ -226,8 +242,11 @@ file(GLOB_RECURSE DW3_P31_SOURCES CONFIGURE_DEPENDS
 list(FILTER DW3_P31_SOURCES EXCLUDE REGEX "\\.inc\\.c$")
 list(FILTER DW3_P31_SOURCES EXCLUDE REGEX "/menus/title/")
 # US build: EU-only extra-chapter stages (WSTAG920–974) reference LANGUAGE.
-list(FILTER DW3_P31_SOURCES EXCLUDE REGEX
-  "/wstag9(2[0-9]|3[0-9]|4[0-9]|5[0-9]|6[0-9]|7[0-4])\\.c$")
+# EU build keeps them (LANGUAGE comes from src/engine/data/eu_settings.c).
+if(_dw3_ver STREQUAL "us")
+  list(FILTER DW3_P31_SOURCES EXCLUDE REGEX
+    "/wstag9(2[0-9]|3[0-9]|4[0-9]|5[0-9]|6[0-9]|7[0-4])\\.c$")
+endif()
 # PSY-Z / libgs gaps (not pointer↔int): see docs/P3.1_64BIT_AUDIT.md.
 list(FILTER DW3_P31_SOURCES EXCLUDE REGEX
   "/battle/battle_mode/(draw|lights|model_mesh)\\.c$")

@@ -143,7 +143,7 @@ scaffold work — out of Phase 3 gate scope. EU playthrough was not run.
 |---|---|
 | Pad-driven Genji KO | `FORCE_WIN` skips attack/KO sequence |
 | Free-pad Lobby → event 9 | Aid substitutes for walking up to Digimon Center NPC |
-| EU `dw3-pc` link + runtime | CMake / overlay table / file-id scaffold (P6.2 / P7.2) |
+| EU `dw3-pc` runtime + playthrough | Link scaffold in `docs/P3_EU_BUILD.md`; owner `runtime/eu` + CNTY_SEL still open |
 | P3.9 Harness | Owner DuckStation oracle + capture fill (side track) |
 | `WSTAG460` | Host `updateWanderer` SEGV; weak stub only |
 

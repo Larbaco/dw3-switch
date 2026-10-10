@@ -1,8 +1,9 @@
 # platforms/pc — PSY-Z host (Phase 2 title bring-up)
 
 Desktop host using vendored PSY-Z (`vendor/psyz`, `sdl3_gpu`). Links the
-US engine + `STDWTITL` + `port/` glue. Switch-specific code stays under
-`platforms/switch/`.
+engine + `STDWTITL` + `port/` glue (default **US**). Switch-specific code
+stays under `platforms/switch/`. EU link: `-DDW3_VERSION=eu` in a separate
+build tree (`docs/P3_EU_BUILD.md`).
 
 ## Build
 
@@ -12,6 +13,11 @@ From the repository root:
 cmake -S platforms/pc -B build/pc -G Ninja -DPSYZ_RENDERER=sdl3_gpu
 cmake --build build/pc -j"$(nproc)"
 test -x build/pc/dw3-pc
+
+# EU (separate tree; needs owner runtime/eu to run):
+cmake -S platforms/pc -B build/pc-eu -G Ninja \
+  -DDW3_VERSION=eu -DPSYZ_RENDERER=sdl3_gpu -DSDL_X11_XSCRNSAVER=OFF
+ninja -C build/pc-eu dw3-pc
 ```
 
 If system `cmake` is missing, this host has used:
