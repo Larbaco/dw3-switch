@@ -184,10 +184,13 @@ Done-when not met. **P3.7 blocked** on `phase3-pc-bringup` @
 `1f20556` (`READY_FOR_MAIN_ROADMAP_SYNC: P3.7_BLOCKED`,
 `docs/P3.7_MOVIES.md`): `DW3_START_MODE=0xE01` reaches movie path;
 PSY-Z `MDEC_*` / `StCdInterrupt` stubs + no CD track for
-`MOVIEOPN.STR`; default skip `MODE_TITLE` retained. **P3.9 design** on
-`phase3-harness` @ `3064486`: `docs/P3.9_COMPARE.md` + stub
-`tools/compare_ref.py` (`--dry-run`); checkbox unticked until
-title/field/battle captures.
+`MOVIEOPN.STR`; default skip `MODE_TITLE` retained. **P3.8 partial** on
+`phase3-pc-bringup` @ `1a08f43` (`READY_FOR_MAIN_ROADMAP_SYNC:
+P3.8_PARTIAL`, `docs/P3.8_STAGES.md`): `STAGSLCT` linked; live
+STAGSLCT→field→select PASS for `0x2d7`/`2d8`/`2d9`; 235/239 US stages
+still stubbed. **P3.9 design** on `phase3-harness` @ `3064486`:
+`docs/P3.9_COMPARE.md` + stub `tools/compare_ref.py` (`--dry-run`);
+checkbox unticked until title/field/battle captures.
 
 Objective: the full game loop runs on PC: field, stages, battle, menus,
 audio, movies.
@@ -253,8 +256,10 @@ audio, movies.
   default skip `MODE_TITLE` retained. Checkbox unticked until play +
   audio + Start-skip.
   Done when: the opening movies play with audio and can be skipped.
-- [ ] **P3.8 Stage sweep.** Use `STAGSLCT` (debug stage select) to load
-  every stage of the version and log crashes/asserts.
+- [ ] **P3.8 Stage sweep.** Partial on `phase3-pc-bringup` @ `1a08f43`
+  (`docs/P3.8_STAGES.md`, `READY_FOR_MAIN_ROADMAP_SYNC: P3.8_PARTIAL`):
+  `STAGSLCT` linked; PASS for linked `0x2d7`/`2d8`/`2d9`; 235 stages
+  stubbed. Checkbox unticked until all stages load and return to select.
   Done when: all stages load and return to the select screen.
 - [ ] **P3.9 Reference comparison harness.** Script that boots the same
   save in DuckStation and the PC build and captures screenshots for
