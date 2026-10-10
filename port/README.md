@@ -8,7 +8,7 @@ Platform-independent pieces between the host (PC / Switch) and game C from
 | Path | Role |
 |---|---|
 | `CMakeLists.txt` | `dw3_engine` OBJECT library (`src/engine/**/*.c`, US flags) |
-| `include/` | Host headers first on the include path (`common.h`, `libpad.h`) |
+| `include/` | Host headers first (`common.h`, `libpad.h`, `libgte.h`/`libgs.h` fill-ins) |
 | `patches/` | Build-copy patches; see [`docs/PATCHES.md`](../docs/PATCHES.md) |
 
 ## Engine objects (P2.1)
