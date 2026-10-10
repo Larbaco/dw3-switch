@@ -56,7 +56,8 @@ export DEPSDIR	:=	$(CURDIR)/$(BUILD)
 #   boot_main.c   game main(); calls dw3_game_main
 #   nx_input.c    Psyz_Pads* (needs libpsyz)
 #   nx_present.c  __real_LoadImage and the other --wrap targets
-CFILES		:=	$(filter-out boot_main.c nx_input.c nx_present.c,$(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.c))))
+#   switch_gpu.c  Draw_* forwards; includes PSY-Z's private rasterizer.h
+CFILES		:=	$(filter-out boot_main.c nx_input.c nx_present.c switch_gpu.c,$(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.c))))
 CPPFILES	:=	$(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.cpp)))
 SFILES		:=	$(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.s)))
 

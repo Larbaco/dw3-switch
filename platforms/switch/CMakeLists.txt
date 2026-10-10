@@ -88,7 +88,7 @@ add_executable(dw3-switch
   ${CMAKE_CURRENT_SOURCE_DIR}/../../port/psyz_missing/psyz_pad_host.c
 )
 
-target_compile_definitions(dw3-switch PRIVATE ${_dw3_ver_macro})
+target_compile_definitions(dw3-switch PRIVATE ${_dw3_ver_macro} DW3_NX_GAME_IMAGE)
 
 # EGL/GLES2 come from devkitPro's switch-* portlibs, not from libnx, and they
 # ship no CMake config packages — so the toolchain leaves them off the search

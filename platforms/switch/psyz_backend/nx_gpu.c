@@ -270,6 +270,7 @@ int Psyz_VideoVSync(int mode) {
     /* 32-bit subtraction, so the ~71 min microsecond wrap cancels out. */
     lines = (unsigned short)((now_us - last_vsync_us) >> 6);
     if (mode == 0) {
+#ifdef DW3_NX_GAME_IMAGE
         Dw3NxDisplay disp;
 
         dw3_nx_switch_gpu_display(&disp);
@@ -295,6 +296,7 @@ int Psyz_VideoVSync(int mode) {
              * screen, so do not keep showing the last frame. */
             dw3_nx_gpu_clear(0.0f, 0.0f, 0.0f, 1.0f);
         }
+#endif
         dw3_nx_gpu_swap();
         if (entered == 1) {
             entered = 2;

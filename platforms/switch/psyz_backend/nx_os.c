@@ -14,7 +14,11 @@
 
 #include <switch.h>
 
-#include <psyz/log.h>
+/* psyz_log is declared in nx.h. Do not include <psyz/log.h>: the Makefile
+ * host_hello sample compiles this file and has no PSY-Z include path.
+ * Levels match psyz/log.h: I = 1, E = 3. */
+#define DW3_NX_INFO(...) psyz_log(1, __FILE__, __LINE__, __func__, __VA_ARGS__)
+#define DW3_NX_ERROR(...) psyz_log(3, __FILE__, __LINE__, __func__, __VA_ARGS__)
 
 /* Mirrors PSYZ_OS_FOREVER from vendor/psyz/psyz/src/psyz/os.h, which is a
  * PSY-Z-private header and deliberately not on the include path. */
@@ -37,7 +41,7 @@ uint32_t Psyz_OsNowUs(void) {
 
     if (!logged) {
         logged = 1;
-        INFOF("OsNowUs first call");
+        DW3_NX_INFO("OsNowUs first call");
     }
     /* 32-bit microseconds, wrapping like the PSP's sceKernelGetSystemTimeLow;
      * callers compare two readings through their signed difference. */
@@ -105,7 +109,7 @@ void Psyz_OsBellWait(void *bell, uint32_t timeout_us) {
     uint64_t ns;
 
     if (n <= 8 || (n & (n - 1)) == 0) {
-        INFOF("bell wait #%llu timeout_us=%u rings=%llu",
+        DW3_NX_INFO("bell wait #%llu timeout_us=%u rings=%llu",
               (unsigned long long)n, timeout_us,
               (unsigned long long)s_bell_rings);
     }
@@ -148,7 +152,7 @@ int Psyz_OsThreadStart(void (*fn)(void), const char *name) {
     if (!t || !slot) {
         free(t);
         free(slot);
-        ERRORF("thread %s: out of memory", name);
+        DW3_NX_ERROR("thread %s: out of memory", name);
         return -1;
     }
     *slot = (void *)fn;
@@ -158,17 +162,17 @@ int Psyz_OsThreadStart(void (*fn)(void), const char *name) {
                               -2))) {
         free(t);
         free(slot);
-        ERRORF("threadCreate(%s) failed", name);
+        DW3_NX_ERROR("threadCreate(%s) failed", name);
         return -1;
     }
     if (R_FAILED(threadStart(t))) {
-        ERRORF("threadStart(%s) failed", name);
+        DW3_NX_ERROR("threadStart(%s) failed", name);
         return -1;
     }
     /* PSY-Z picks its kernel poll cadence from whether this succeeded
      * (kernel.c: irq_thread_state < 0 -> 1 ms waits, else 100 ms), so knowing
      * it here separates "the poll loop spins" from "the IRQ thread never
      * signals". */
-    INFOF("thread started: %s", name);
+    DW3_NX_INFO("thread started: %s", name);
     return 0;
 }
