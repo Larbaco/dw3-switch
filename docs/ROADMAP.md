@@ -185,10 +185,10 @@ skip remains `MODE_TITLE` (`0010`).
 `docs/P3.8_STAGES.md`): `STAGSLCT` + batches 1–6 link 238/239 US stage
 objs; live PASS 237/237; only `WSTAG460` left stubbed (host
 `updateWanderer` SEGV). **Phase 3 gate not met** (`docs/P3_GATE.md`):
-honest intro→`0xE02` Start-skip→Asuka Lobby proven on `phase3-pc-bringup`;
-first boss = Genji event battle on `WSTAG200` (enter + `FORCE_WIN` via
-progress aids). Still no continuous start→Genji (Lobby→Tamer Service gap).
-P3.9 may run on a side track.
+US continuous start→movie→Lobby→Tamer→Genji→`FORCE_WIN`→field proven
+(`0x9004@0x203` Lobby `START_EVENT` aid, patch `0036`); EU PC image
+still unclaimed (blocks “both versions build”). P3.9 may run on a side
+track.
 
 Objective: the full game loop runs on PC: field, stages, battle, menus,
 audio, movies.
@@ -257,8 +257,8 @@ audio, movies.
   WSTAG780→785 banks `0x29`→`0x1B` (`SsSepPlay` / `SEP note-on`
   seq 2→3); battle `DW3_FORCE_ENCOUNTER`/`FORCE_WIN` → battle SEP
   `0x6004000a` + `SsUtKeyOn` (`SOUND_COUNT` / PLAYER00) + non-silent
-  raw. Patch `0035` evidence logs (PR #13). Follow-up: pitch bend /
-  matching midiread / owner Pulse listen.
+  raw. Patch `0035` evidence logs. Follow-up: pitch bend / matching
+  midiread / owner Pulse listen.
   Done when: title music, field music change on stage switch, battle SFX.
 - [x] **P3.7 Movies.** Title STR playback through PSY-Z `libpress` +
   streaming (`CdRead2`, `StSetRing`) from raw-sector `.STR` files packed
@@ -268,7 +268,8 @@ audio, movies.
   file-bridge mix; `DW3_AUTO_PAD=start` + `0034` → Start-skip →
   `mode=0xE00`; **owner audible XA** on real Pulse/PipeWire DAC after
   SDL rebuild (`SDL_PULSEAUDIO=ON` + `-DSDL_X11_XSCRNSAVER=OFF`).
-  Follow-up: video presentation (half-width + flat mid-grey fixed on `phase3-pc-bringup`; further polish may remain; not blocking tick).
+  Follow-up: video presentation (half-width + flat mid-grey fixed on
+  `phase3-pc-bringup`; further polish may remain; not blocking tick).
   Done when: the opening movies play with audio and can be skipped.
 - [x] **P3.8 Stage sweep.** `STAGSLCT` linked (`dw3_p38_stagslct`); patch
   `0030` + `tools/stage_sweep.py`. **Done-when evidence**
@@ -285,24 +286,20 @@ audio, movies.
 
 Gate: a full playthrough segment (start → first boss) on PC without
 crashes; both versions build. **Not met** — see `docs/P3_GATE.md`
-(intro→movie→Asuka + Genji via aids; blocked: continuous Lobby→Genji,
-playable KO, `WSTAG460`, P3.9 oracle).
+(US continuous start→Genji evidenced; blocked: EU build, pad Genji KO,
+`WSTAG460`, P3.9 oracle).
 
 ## Phase 4 — Switch host for PSY-Z
 
 Objective: a libnx backend so the Phase 3 image runs unchanged on the
 console.
 
-- [x] **P4.1 Backend spike.** Two short experiments, documented in
+- [ ] **P4.1 Backend spike.** Two short experiments, documented in
   `docs/SWITCH_BACKEND.md`: (a) build devkitPro's SDL3 branch from source
-  and assess PSY-Z's `sdl3_*` backend; (b) sketch a native libnx backend
+  and run PSY-Z's `sdl3_*` backend; (b) sketch a native libnx backend
   following PSY-Z's PSP layout (`gpu`, `input`, `audio`, `os`, `file`,
   `log`, `module`). Pick one.
   Done when: the decision and its reasons are written down.
-  **Decision (2026-10-10):** native libnx (`platforms/switch/psyz_backend/`).
-  dkp `switch-sdl-3.4` builds (`libSDL3.a`) but has no SDL_GPU and is not
-  in pacman; unsuitable for PSY-Z's PC `sdl3_gpu` default. See
-  `docs/SWITCH_BACKEND.md`.
 - [ ] **P4.2 Video.** Present PSY-Z's VRAM/framebuffer via EGL + OpenGL
   (mesa/nouveau on libnx) or deko3d; 60 Hz vsync; docked/handheld
   resolution switch.
@@ -461,44 +458,6 @@ the port or committing assets. Details: [TEXTURE_PACKS.md](TEXTURE_PACKS.md).
   Done when: a `--check` mode exists. Does **not** block the Phase 8 gate.
 
 Gate: P8.2 works with an owner-supplied minimal pack. P8.4 is best-effort.
-
-## Phase 9 — Port options menu
-
-Starts after the Phase 8 gate in the planned order (or earlier once at
-least one non-vanilla port feature exists to toggle). Goal: a title / main
-menu entry that exposes toggles for **every port-added feature** that is
-not part of the original PS1 game, with vanilla-safe defaults and
-persistence on owner storage. Details: [PORT_OPTIONS.md](PORT_OPTIONS.md).
-
-- [x] **P9.1 Goal note.** Document scope (port-only toggles), layering
-  (`port/` registry + owner config file; hosts stay thin), and that
-  defaults preserve original PS1 behaviour.
-  Done when: [PORT_OPTIONS.md](PORT_OPTIONS.md) exists and the README
-  points at Phase 9 / that note.
-- [ ] **P9.2 Menu entry and shell.** Add a port options entry on the
-  title / main menu that opens and closes a dedicated screen without
-  breaking the vanilla title flow (PC and Switch).
-  Done when: the screen is reachable from the main menu and returns
-  cleanly to it.
-- [ ] **P9.3 Toggle registry.** Maintain a registry of non-native features
-  (Phase 6–8 items and later), each with a default equivalent to stock
-  behaviour (or documented exception).
-  Done when: flipping a stub or real flag from the menu has a documented
-  effect (safe no-op allowed for not-yet-wired features).
-- [ ] **P9.4 Persistence.** Load/save the option file under the owner
-  runtime layout (PC directory / `sdmc:/switch/dw3/…`); values survive
-  process exit.
-  Done when: a toggled value remains after restarting the host or
-  returning from hbmenu.
-- [ ] **P9.5 Wire real features.** Connect registry entries to real port
-  flags as Phases 6–8 land; mark unavailable items N/A in
-  [PORT_OPTIONS.md](PORT_OPTIONS.md) rather than hiding the menu.
-  Done when: every shipped non-native feature is either togglable here or
-  explicitly documented as N/A. Evolves with the roadmap; does **not**
-  require all of P6–P8 complete for the Phase 9 gate.
-
-Gate: P9.2 + P9.4 with at least one persistent toggle (stub or real).
-P9.5 stays best-effort as features ship.
 
 ## Cross-cutting rules
 
