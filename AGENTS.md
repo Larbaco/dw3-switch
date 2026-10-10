@@ -29,11 +29,13 @@ If docs disagree with code, trust code and update the docs in the same change.
 ## Repository layout (boundaries)
 
 ```
+platforms/pc/       PC host (PSY-Z / SDL3 bring-up)
 platforms/switch/   Switch host only (libnx, present, audio, input, FS)
 port/               Platform-independent glue (CD→FS, overlays, memcard)
-tools/              Extract/pack helpers for Switch layout
+tools/              Extract/pack helpers for Switch/PC runtime layout
 docs/               Design notes for THIS port
-vendor/dw3_decomp/  Upstream submodule — reference + game C source
+vendor/dw3_decomp/  Upstream decomp (git submodule)
+vendor/psyz/        PSY-Z Psy-Q shim (git submodule, Phase 1+)
 ```
 
 Rules:
@@ -50,8 +52,9 @@ Rules:
 
 ## Technical directives
 
-1. **Shim, don’t reimplement the console.** Prefer Psy-Q compatible layers
-   (PsyCross / PSY-Z style) over a from-scratch GPU/GTE/SPU stack.
+1. **Shim, don’t reimplement the console.** Prefer **PSY-Z** (Psy-Q compatible)
+   over a from-scratch GPU/GTE/SPU stack; PsyCross-style layers only when PSY-Z
+   does not cover a needed API.
 2. **PC bring-up before Switch polish** when a change is easier to validate on
    desktop; keep the Switch host thin.
 3. **No matching-build cargo on Switch.** Byte-identical PS1 output is the

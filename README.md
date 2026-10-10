@@ -12,11 +12,16 @@ obtained copy of *Digimon World 3* (USA, `SLUS-01436`) or *Digimon World 2003*
 ```
 dw3-switch/
 ├── docs/                 # design notes and milestones
+├── platforms/pc/         # PC bring-up host (CMake, PSY-Z, SDL3)
 ├── platforms/switch/     # libnx / homebrew host (EGL, audio, input, FS)
 ├── port/                 # platform-independent glue (loaders, shims)
 ├── tools/                # asset extract / pack helpers
-└── vendor/dw3_decomp/    # upstream decomp (git submodule)
+├── vendor/dw3_decomp/    # upstream decomp (git submodule)
+└── vendor/psyz/          # PSY-Z Psy-Q shim (git submodule, Phase 1+)
 ```
+
+Phase 1 desktop bring-up uses **CMake** to build `platforms/pc/` against the
+**PSY-Z** submodule (`vendor/psyz`) and SDL3 before tightening the Switch host.
 
 ## Status
 
