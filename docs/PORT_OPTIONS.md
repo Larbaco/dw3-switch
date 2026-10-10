@@ -43,6 +43,7 @@ explicitly marked N/A in this note.
 | Localization | Active language pack (if port-selected) | Phase 6 |
 | Community QoL parity | Share EXP, quest log HUD, NPC bubbles, Fast Start, … | Phase 7 |
 | Texture packs | Enable overlay / select pack name | Phase 8 |
+| Upscaling research | FSR-class / other present upscale if a spike ships (default off; may stay N/A) | Phase 11 |
 
 Defaults: **off** or equivalent to stock PS1 behaviour unless a feature is
 purely host presentation with no gameplay impact (document exceptions).

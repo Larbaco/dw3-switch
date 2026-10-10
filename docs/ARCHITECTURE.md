@@ -79,3 +79,5 @@ See [SURVEY.md](SURVEY.md) for the evidence behind each point.
   [TEXTURE_PACKS.md](TEXTURE_PACKS.md))
 - Shipping a forced “modded” default: port-added features are opt-in via
   the Phase 9 options menu ([PORT_OPTIONS.md](PORT_OPTIONS.md))
+- Promising FSR/DLSS as a port requirement (Phase 11 is research-only; see
+  [UPSCALING.md](UPSCALING.md))

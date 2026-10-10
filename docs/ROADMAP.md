@@ -522,6 +522,35 @@ persistence on owner storage. Details: [PORT_OPTIONS.md](PORT_OPTIONS.md).
 Gate: P9.2 + P9.4 with at least one persistent toggle (stub or real).
 P9.5 stays best-effort as features ship.
 
+## Phase 11 — Upscaling research (FSR / DLSS)
+
+Investigation only — **not** a port gate and **not** necessarily achievable.
+Planned after Phase 10 (native Switch residual) when that phase exists on
+the branch; otherwise start only after the Phase 9 gate and a stable GPU
+present path (P4.2 / P6.1). Details: [UPSCALING.md](UPSCALING.md).
+
+- [x] **P11.1 Goal note.** Record FSR vs DLSS scope: PC-first spike,
+  DLSS never on Switch, temporal upscalers likely blocked without motion
+  vectors from PSY-Z, spatial / FSR1-style as the realistic first probe.
+  Done when: [UPSCALING.md](UPSCALING.md) exists and the README points at
+  Phase 11 / that note.
+- [ ] **P11.2 Feasibility spike (PC first).** Inspect whether the present
+  path exposes usable color (and any depth/motion); prototype a spatial
+  upscale (FSR1-style or sharp filter) on the PC host and write go/no-go
+  with captures or a clear blocker.
+  Done when: [UPSCALING.md](UPSCALING.md) has a dated conclusion for PC.
+- [ ] **P11.3 Switch follow-up — optional.** Revisit only if P11.2 is go
+  and the libnx present backend (EGL/deko3d) can host the same pass;
+  otherwise mark N/A.
+  Done when: Switch is go, no-go, or N/A with reasons. Does **not** block
+  the Phase 11 gate.
+- [ ] **P11.4 Product integration — optional.** If anything ships, expose
+  it via Phase 9 (default off). Leaving the track as research-only forever
+  is an acceptable outcome.
+  Done when: a toggle exists or the note states research-only.
+
+Gate: P11.1 + P11.2 (written conclusion). P11.3–P11.4 are best-effort.
+
 ## Cross-cutting rules
 
 - Record every non-obvious decision as a short note in `docs/`.
