@@ -72,6 +72,7 @@ tools/apply_patches.sh           # refresh build/decomp-src + apply
 | `0037-PORT_HOST-p3-movie-loadimage-before-dout.patch` | no | P3 GPU: under `PORT_HOST`, `LoadImage` completed MDEC slice before next `DecDCTout` (sync soft-MDEC double-buf) |
 | `0038-PORT_HOST-timblock-pixels-u32.patch` | no | P3 GPU R1: host `TimBlock.pixels` is `u32[]` so `LoadImage` starts at file offset 12 (LP64 `u_long` padded to 16 and skipped 2 halfwords) |
 | `0039-PORT_HOST-battle-mesh-ot-stride.patch` | no | P3 GPU R4: `FIGHTSTG_drawMesh` OT index steps by `sizeof(OT_TYPE)` so host `{addr,len}` entries are not split |
+| `0040-PORT_HOST-p39-force-party.patch` | no | P3.9: optional `DW3_FORCE_PARTY=<0\|1\|2>` selects `STARTER_PARTIES` before a forced encounter (Monmon lead = 1) |
 
 `tools/apply_patches.sh --check` applies the series in order (stacked
 patches on the same file are valid).

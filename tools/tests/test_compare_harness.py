@@ -25,13 +25,16 @@ def test_battle_pc_env_strips_force_win():
             "DW3_AUTO_PAD": "confirm",
             "DW3_START_MODE": "title",
             "DW3_FORCE_ENCOUNTER": "99",
+            "DW3_FORCE_PARTY": "0",
             "HOME": "/tmp",
         },
         "battle",
-        1,
+        34,
+        party=1,
     )
     assert env["DW3_START_MODE"] == "0x600"
-    assert env["DW3_FORCE_ENCOUNTER"] == "1"
+    assert env["DW3_FORCE_ENCOUNTER"] == "34"
+    assert env["DW3_FORCE_PARTY"] == "1"
     assert "DW3_FORCE_WIN" not in env
     assert "DW3_AUTO_PAD" not in env
     assert env["HOME"] == "/tmp"
@@ -40,13 +43,19 @@ def test_battle_pc_env_strips_force_win():
 def test_title_env_clears_battle_aids():
     mod = load()
     env = mod.pc_subject_env(
-        {"DW3_START_MODE": "0x600", "DW3_FORCE_WIN": "1", "DW3_FORCE_ENCOUNTER": "1"},
+        {
+            "DW3_START_MODE": "0x600",
+            "DW3_FORCE_WIN": "1",
+            "DW3_FORCE_ENCOUNTER": "1",
+            "DW3_FORCE_PARTY": "1",
+        },
         "title",
-        1,
+        34,
     )
     assert "DW3_START_MODE" not in env
     assert "DW3_FORCE_WIN" not in env
     assert "DW3_FORCE_ENCOUNTER" not in env
+    assert "DW3_FORCE_PARTY" not in env
 
 
 def test_battle_duck_path_without_anchor_is_blocked():

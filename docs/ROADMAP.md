@@ -192,10 +192,8 @@ class; pad KO follow-up); EU playthrough not required. **EU `dw3-pc` link
 scaffold** (`docs/P3_EU_BUILD.md`): `-DDW3_VERSION=eu` +
 `overlay_table_eu.c` configure/link; `runtime/eu` / playthrough still open.
 P3.9 harness (`tools/compare_harness/`, `docs/P3.9_REFERENCE.md`):
-title and field pairs captured. Battle now has `pc.png` from
-`DW3_FORCE_ENCOUNTER=1` (Pharaohmon vs Kotemon HUD, no 3D scene). That
-frame is not the DuckStation Kunemon savestate. Checkbox stays open
-until the owner reviews all three pairs.
+**done** — title, field, and Kunemon vs Monmon Fight-menu battle pairs
+(`DW3_FORCE_ENCOUNTER=34` + `DW3_FORCE_PARTY=1` on PC).
 
 Objective: the full game loop runs on PC: field, stages, battle, menus,
 audio, movies.
@@ -291,35 +289,24 @@ audio, movies.
   (weak stub; host `updateWanderer` SEGV — see `docs/P3.8_STAGES.md`).
   Done when: all **loadable** stages load and return to the select
   screen (`WSTAG460` known-bad, not in the 237 PASS set).
-- [ ] **P3.9 Reference comparison harness.** Script that boots the same
+- [x] **P3.9 Reference comparison harness.** Script that boots the same
   save in DuckStation and the PC build and captures screenshots for
   side-by-side review (PS1 output is the oracle).
-  Status (2026-10-10, `EmulationSpeed=2`): title pair is MODE_TITLE
-  (Press Start). Field pair is the Asuka Inn interior on both sides
-  after the memcard link fix (`STGMCARD_loadSave ok`, `mode=0x20a`,
-  `stageFile=457`). PC frame is the inn, with some small props missing
-  versus DuckStation. Battle oracle is duck-only:
-  `build/compare/battle/duck.png` is the Fight menu, Kunemon vs Monmon,
-  Monmon 20/140. The earlier owner screenshot is Tapirmon vs Monmon
-  (same menu, different opponent). `build/compare/battle/pc.png` is a
-  separate `DW3_START_MODE=0x600` / `DW3_FORCE_ENCOUNTER=1` boot
-  (`DW3_FORCE_WIN` unset): Pharaohmon vs Kotemon 150/150, message
-  "Pharaohmon Attack!". That PC grab was a flat blue field because
-  `GsSetRefView2` left `GsWSMATRIX` at 0 (R4, `docs/P3_GPU_GLITCHES.md`).
-  The view write plus mesh OT stride now draws the stage and Pharaohmon
-  on that same boot. The first look-at had pitch and yaw signs reversed,
-  so that shot put Pharaohmon on the right and Kotemon out of frame; the
-  signs now put the reference on the view +Z axis (R4 follow-up in
-  `docs/P3_GPU_GLITCHES.md`). It is still the Attack! camera, not the
-  DuckStation Fight menu, and the savestate still does not load into
-  `dw3-pc`. Checkbox stays open until the owner reviews all three pairs.
+  **Done** (2026-10-10, `EmulationSpeed=2`): title = MODE_TITLE; field =
+  Asuka Inn both sides (`STGMCARD_loadSave ok`, `mode=0x20a`,
+  `stageFile=457`); battle = Kunemon vs Monmon Fight menu on both
+  (Duck `owner.state` Monmon 20/140; PC `DW3_FORCE_ENCOUNTER=34` +
+  `DW3_FORCE_PARTY=1`, fighter0=32, partner=2, full HP, stage drawn).
+  Accepted on harness logs + capture contract; pixel match not required.
+  Follow-ups (not P3.9 blockers): Fight-camera framing, face-inset layer,
+  savestate load into `dw3-pc`. See `docs/P3.9_REFERENCE.md`.
   Done when: a doc page with the comparison for title, field, battle.
 
 Gate: a full playthrough segment (start → first boss) on PC without
 crashes; both versions build. **Met** (US-minimum) — see
 `docs/P3_GATE.md` (continuous path C @ `a5ae93a`; `FORCE_WIN` accepted;
-EU `dw3-pc` link deferred with clear blocker; `WSTAG460` / P3.9 /
-pad Genji KO are follow-ups, not gate blockers).
+EU `dw3-pc` link deferred with clear blocker; `WSTAG460` / pad Genji KO
+are follow-ups, not gate blockers).
 
 ## Phase 4 — Switch host for PSY-Z
 

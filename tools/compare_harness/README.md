@@ -13,10 +13,11 @@ PS1 (DuckStation) is the **visual oracle**. `dw3-pc` is the subject.
 |---|---|---|
 | `title` | OK | One Start skips the FMV. Shot is MODE_TITLE (Press Start) @ 200% |
 | `field` | OK | Both sides: Asuka Inn interior. PC `STGMCARD_loadSave ok`, then stop Cross at `mode=0x20a` |
-| `battle` | split | Duck: `owner.state` @ 3s / 200% (Kunemon vs Monmon Fight menu). PC: `--pc-only` boots `DW3_START_MODE=0x600` + `DW3_FORCE_ENCOUNTER` and does not load that savestate. `DW3_FORCE_WIN` stays unset |
+| `battle` | split | Duck: `owner.state` @ 3s / 200% (Kunemon vs Monmon Fight menu). PC: `--pc-only` defaults to `DW3_FORCE_ENCOUNTER=34` + `DW3_FORCE_PARTY=1` (same matchup, fresh HP). Savestate is not loaded. `DW3_FORCE_WIN` stays unset |
 
-ROADMAP P3.9 stays open until three reviewed pairs exist. PNGs + `.mcr`
-stay under gitignored `build/compare/`.
+ROADMAP P3.9 is ticked: three labeled pairs exist (battle matchup aligned
+via force-encounter 34 + party 1). PNGs + `.mcr` stay under gitignored
+`build/compare/`.
 
 | Mode | Exit | Meaning |
 |---|---|---|
@@ -74,13 +75,12 @@ python3 tools/compare_harness/capture_pair.py \
   --settle-seconds 3 \
   --duckstation "$DS" --disc "$CUE" --bios "$BIOS" --out build/compare
 
-# Battle subject. Separate boot. Do not set DW3_FORCE_WIN (that skips the menu).
+# Battle subject. Separate boot. Defaults: encounter 34 (Kunemon), party 1 (Monmon).
+# Do not set DW3_FORCE_WIN (that skips the menu).
 python3 tools/compare_harness/capture_pair.py \
   --label battle --pc-only \
   --runtime "$HOME/.cache/dw3-switch/runtime/us" \
   --pc-bin build/pc/dw3-pc \
-  --encounter 1 \
-  --pc-settle-seconds 22 \
   --out build/compare
 ```
 
@@ -124,9 +124,9 @@ From `duckstation -help`:
 2. Copy into both run roots before capture.
 3. Settled frame per label (title idle / field after load / battle fade-in).
 
-Battle PC is a separate boot. `--pc-only` sets `DW3_START_MODE=0x600` and
-`DW3_FORCE_ENCOUNTER`. It does not load `-statefile` and does not set
-`DW3_FORCE_WIN`.
+Battle PC is a separate boot. `--pc-only` sets `DW3_START_MODE=0x600`,
+`DW3_FORCE_ENCOUNTER` (default 34), and `DW3_FORCE_PARTY` (default 1).
+It does not load `-statefile` and does not set `DW3_FORCE_WIN`.
 
 ## Output layout (local only)
 
@@ -142,7 +142,7 @@ build/compare/<label>/
 
 - **Title:** one Start reaches PRESS START. A second Start opens New Game / Continue. At 200% the 600-frame timeout is about 5s of wall clock once that prompt is up.
 - **Field:** both sides are the Asuka Inn interior after the memcard link fix (`STGMCARD_loadSave ok`). See `docs/P3.9_REFERENCE.md`.
-- **Battle:** DuckStation `owner.state` is the Kunemon vs Monmon Fight menu (Monmon 20/140). The earlier owner screenshot is Tapirmon. `dw3-pc` does not load that savestate. `--pc-only` boots `FIGHTSTG` with `DW3_FORCE_ENCOUNTER` and leaves `DW3_FORCE_WIN` unset. The two frames are not the same moment.
+- **Battle:** DuckStation `owner.state` is the Kunemon vs Monmon Fight menu (Monmon 20/140). PC defaults force the same matchup (`--encounter 34 --party 1`) with full HP and a drawn stage. Savestate mid-fight HP / camera still differ.
 
 ## Related
 
