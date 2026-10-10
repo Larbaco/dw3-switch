@@ -87,14 +87,17 @@ add_library(dw3_psyz_missing OBJECT
   "${CMAKE_CURRENT_SOURCE_DIR}/psyz_missing/psyz_missing.c"
 )
 
-# P3.7 Wave 2: DecDCTvlc2 / DecDCTvlcBuild / DecDCTvlc via nugget bsdec.
+# P3.7 Wave 2–3: VLC (bsdec) + file-backed STR stream bridge.
 set(BSDEC_DIR "${DW3_ROOT}/vendor/psyz/nugget/bsdec")
 add_library(dw3_movies OBJECT
   "${CMAKE_CURRENT_SOURCE_DIR}/movies/dct_vlc.c"
+  "${CMAKE_CURRENT_SOURCE_DIR}/movies/str_stream.c"
   "${BSDEC_DIR}/bsdec.c"
 )
 target_include_directories(dw3_movies PRIVATE
   "${BSDEC_DIR}"
+  "${CMAKE_CURRENT_SOURCE_DIR}/cdfs"
+  "${CMAKE_CURRENT_SOURCE_DIR}/movies"
   "${PSYZ_INCLUDE}"
 )
 target_compile_definitions(dw3_movies PRIVATE __psyz)

@@ -1,6 +1,8 @@
 /*
  * PC host bootstrap (P2.8): init cdfs + memcard + overlays, load boot TIM,
  * then enter the decomp game loop (dw3_game_main).
+ *
+ * P3.7 Task 3: install file-backed STR CD bridge and pump StCdIntrFlag.
  */
 #include <psyz.h>
 
@@ -8,12 +10,29 @@
 #include "cdfs.h"
 #include "memcard_host.h"
 #include "overlay_host.h"
+#include "str_stream.h"
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
 int dw3_game_main(void);
+
+extern volatile int StCdIntrFlag;
+void StCdInterrupt(void);
+
+static PsyzVSyncCb g_prev_vsync_cb;
+
+static void dw3_pc_vsync_pump(void) {
+    if (StCdIntrFlag) {
+        StCdInterrupt();
+        StCdIntrFlag = 0;
+    }
+    Psyz_CdPumpStream();
+    if (g_prev_vsync_cb) {
+        g_prev_vsync_cb();
+    }
+}
 
 static const char *env_or(const char *key, const char *fallback) {
     const char *v = getenv(key);
@@ -45,6 +64,8 @@ static int init_paths(int argc, char **argv) {
     }
     fprintf(stderr, "dw3-pc: cdfs root=%s\n", root);
 
+    dw3_str_stream_install_cd_bridge();
+
     if (memdir == NULL) {
         snprintf(memcard_buf, sizeof(memcard_buf), "%s/memcard", root);
         memdir = memcard_buf;
@@ -74,6 +95,7 @@ int main(int argc, char **argv) {
     if (init_paths(argc, argv) != 0) {
         return 1;
     }
+    g_prev_vsync_cb = Psyz_SetVSyncCb(dw3_pc_vsync_pump);
     fprintf(stderr, "dw3-pc: entering dw3_game_main()\n");
     return dw3_game_main();
 }

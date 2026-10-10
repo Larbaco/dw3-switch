@@ -16,6 +16,7 @@ add_executable(dw3-pc
 target_include_directories(dw3-pc PRIVATE
   ${CMAKE_SOURCE_DIR}/../../port/cdfs
   ${CMAKE_SOURCE_DIR}/../../port/memcard
+  ${CMAKE_SOURCE_DIR}/../../port/movies
   ${CMAKE_SOURCE_DIR}/../../port/overlays
   ${CMAKE_SOURCE_DIR}/../../port/include
   ${CMAKE_SOURCE_DIR}/../../vendor/psyz/psyz/include
