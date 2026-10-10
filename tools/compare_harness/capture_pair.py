@@ -65,8 +65,20 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument(
         "--encounter",
         type=int,
+        default=34,
+        help=(
+            "DW3_FORCE_ENCOUNTER index for the battle PC subject "
+            "(default 34 = Kunemon, matches the DuckStation Fight-menu oracle)"
+        ),
+    )
+    p.add_argument(
+        "--party",
+        type=int,
         default=1,
-        help="DW3_FORCE_ENCOUNTER index for the battle PC subject (default 1)",
+        help=(
+            "DW3_FORCE_PARTY starter set for the battle PC subject "
+            "(0 Kotemon lead, 1 Monmon lead, 2 Kumamon lead; default 1)"
+        ),
     )
     p.add_argument(
         "--pc-settle-seconds",
@@ -144,7 +156,7 @@ def print_plan(args: argparse.Namespace) -> None:
         )
         log(
             f"  pc battle:   DW3_START_MODE=0x600 DW3_FORCE_ENCOUNTER={args.encounter} "
-            f"menu-settle={extra:.0f}s (no DW3_FORCE_WIN)"
+            f"DW3_FORCE_PARTY={args.party} menu-settle={extra:.0f}s (no DW3_FORCE_WIN)"
         )
     log(f"  out:         {args.out / args.label}/")
 
@@ -173,10 +185,18 @@ def validate_capture(args: argparse.Namespace) -> int | None:
     if want_pc and args.label == "battle" and args.encounter < 0:
         log("--encounter must be >= 0")
         return 2
+    if want_pc and args.label == "battle" and args.party not in (0, 1, 2):
+        log("--party must be 0, 1, or 2")
+        return 2
     return None
 
 
-def pc_subject_env(base: dict[str, str], label: str, encounter: int) -> dict[str, str]:
+def pc_subject_env(
+    base: dict[str, str],
+    label: str,
+    encounter: int,
+    party: int = 1,
+) -> dict[str, str]:
     """Env for dw3-pc. Battle boots FIGHTSTG; the DuckStation savestate is not applied.
 
     DW3_FORCE_WIN is removed so the command menu is not skipped.
@@ -187,10 +207,12 @@ def pc_subject_env(base: dict[str, str], label: str, encounter: int) -> dict[str
     env.pop("DW3_PROGRESS", None)
     env.pop("DW3_FORCE_WIN", None)
     env.pop("DW3_FORCE_ENCOUNTER", None)
+    env.pop("DW3_FORCE_PARTY", None)
     env.pop("DW3_START_MODE", None)
     if label == "battle":
         env["DW3_START_MODE"] = "0x600"
         env["DW3_FORCE_ENCOUNTER"] = str(encounter)
+        env["DW3_FORCE_PARTY"] = str(party)
     return env
 
 
@@ -710,14 +732,16 @@ def capture_dw3_pc(
     runtime: Path,
     out_png: Path,
     memcard_dir: Path | None,
-    encounter: int = 1,
+    encounter: int = 34,
+    party: int = 1,
     pc_settle_seconds: float | None = None,
 ) -> Path | None:
     """Subject frame.
 
     Title/field leave DW3_START_MODE unset so patch 0010 stays MODE_TITLE.
-    Battle sets DW3_START_MODE=0x600 and DW3_FORCE_ENCOUNTER. It does not
-    load a DuckStation savestate and does not set DW3_FORCE_WIN.
+    Battle sets DW3_START_MODE=0x600, DW3_FORCE_ENCOUNTER, and
+    DW3_FORCE_PARTY. It does not load a DuckStation savestate and does not
+    set DW3_FORCE_WIN.
 
     PSY-Z keyboard: Return=Start, x=Cross, s=Triangle.
     """
@@ -732,11 +756,12 @@ def capture_dw3_pc(
     cmd = [str(pc_bin.resolve()), "--runtime", str(runtime.resolve())]
     if memcard_dir is not None:
         cmd += ["--memcard-dir", str(memcard_dir.resolve())]
-    env = pc_subject_env(os.environ, label, encounter)
+    env = pc_subject_env(os.environ, label, encounter, party)
     if label == "battle":
         log(
             "pc battle env: DW3_START_MODE=0x600 "
-            f"DW3_FORCE_ENCOUNTER={encounter} DW3_FORCE_WIN unset"
+            f"DW3_FORCE_ENCOUNTER={encounter} DW3_FORCE_PARTY={party} "
+            "DW3_FORCE_WIN unset"
         )
     launch = cmd
     stdbuf = shutil.which("stdbuf")
@@ -937,6 +962,7 @@ def main(argv: list[str] | None = None) -> int:
             out_png=pc_png,
             memcard_dir=pc_memdir,
             encounter=args.encounter,
+            party=args.party,
             pc_settle_seconds=args.pc_settle_seconds,
         )
 
@@ -955,7 +981,8 @@ def main(argv: list[str] | None = None) -> int:
     if args.label == "battle" and want_pc:
         battle_note = (
             f"pc FIGHTSTG via DW3_START_MODE=0x600 "
-            f"DW3_FORCE_ENCOUNTER={args.encounter}; no DW3_FORCE_WIN; "
+            f"DW3_FORCE_ENCOUNTER={args.encounter} "
+            f"DW3_FORCE_PARTY={args.party}; no DW3_FORCE_WIN; "
             "savestate is not loaded into dw3-pc. "
         )
     elif args.label == "battle":

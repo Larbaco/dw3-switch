@@ -38,14 +38,21 @@ explicitly marked N/A in this note.
 
 | Feature area | Examples | Roadmap |
 |---|---|---|
-| Display / timing | Integer scale, widescreen, NTSC host options beyond stock | Phase 6 |
-| Convenience | Fast-forward / frame-skip | Phase 6 |
+| Display / timing | Integer scale, **widescreen** (wanted; default 4:3), PAL pacing 50 vs 60, NTSC host options | Phase 6 (+ P4 present) |
+| Convenience | Fast-forward / frame-skip (hold button + multiplier) | Phase 6 |
 | Localization | Active language pack (if port-selected) | Phase 6 |
 | Community QoL parity | Share EXP, quest log HUD, NPC bubbles, Fast Start, … | Phase 7 |
 | Texture packs | Enable overlay / select pack name | Phase 8 |
+| Switch host | Rumble on/intensity, confirm A/B layout, `swkbd` name, CRT/sharp, BGM/SFX volumes, system-language hint | Phase 10 (+ P4.4 / P5.3 always-on lifecycle) |
 
 Defaults: **off** or equivalent to stock PS1 behaviour unless a feature is
 purely host presentation with no gameplay impact (document exceptions).
+Widescreen defaults **off** (4:3) but remains a first-class toggle when P6.1
+lands — not a “skip” item.
+
+Always-on (not toggles; see [SWITCH_FEATURES.md](SWITCH_FEATURES.md)):
+focus-loss pause + delta clamp, memcard write-through/flush, rotating
+`.mcr` backups, docked/handheld re-present, vsync wait.
 
 ## Persistence
 

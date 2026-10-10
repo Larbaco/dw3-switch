@@ -175,6 +175,7 @@ dw3-switch/
 | [docs/P2.8_TITLE_BOOT.md](docs/P2.8_TITLE_BOOT.md) | Title screen evidence |
 | [docs/P3.2_FIELD.md](docs/P3.2_FIELD.md) … [P3.8](docs/P3.8_STAGES.md) | Phase 3 subsystem notes |
 | [docs/COMMUNITY_QOL.md](docs/COMMUNITY_QOL.md) / [TEXTURE_PACKS](docs/TEXTURE_PACKS.md) / [PORT_OPTIONS](docs/PORT_OPTIONS.md) | Later optional features |
+| [docs/SWITCH_FEATURES.md](docs/SWITCH_FEATURES.md) | Native Switch residual features (Phase 10) |
 
 Hosts: [platforms/pc/README.md](platforms/pc/README.md),
 [platforms/switch/README.md](platforms/switch/README.md).

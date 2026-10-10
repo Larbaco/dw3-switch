@@ -1,0 +1,37 @@
+Upstream-bound: no
+Subject: [PORT_HOST] P3.9 DW3_FORCE_PARTY for compare harness
+
+Optional DW3_FORCE_PARTY=<0|1|2> picks STARTER_PARTIES before a forced
+encounter so the PC battle subject can use Monmon (set 1) to match the
+DuckStation Kunemon Fight-menu oracle. Default empty-party seed stays
+setParty(0).
+
+--- a/src/battle/battle_mode/start.c	2026-10-10 18:42:50.118705600 -0300
++++ b/src/battle/battle_mode/start.c	2026-10-10 18:42:53.500244713 -0300
+@@ -17,13 +17,24 @@
+ #if PORT_HOST
+         {
+             const char *enc = getenv("DW3_FORCE_ENCOUNTER");
++            const char *party_env = getenv("DW3_FORCE_PARTY");
+             char *end = NULL;
+             long n;
+             s32 i;
+ 
+             /* Name entry / Tamer Service normally call setParty; seed a
+-             * starter when story aids boot past that (event battles too). */
+-            if (GAME.funcs.getPartyMember(0) < 0) {
++             * starter when story aids boot past that (event battles too).
++             * DW3_FORCE_PARTY selects STARTER_PARTIES[n] (0 Kotemon lead,
++             * 1 Monmon lead, 2 Kumamon lead) for P3.9-style compare boots.
++             */
++            if (party_env != NULL && party_env[0] != '\0') {
++                n = strtol(party_env, &end, 0);
++                if (end == party_env || n < 0 || n > 2) {
++                    n = 0;
++                }
++                GAME.funcs.setParty((s32)n);
++                fprintf(stderr, "dw3: FIGHTSTG setParty(%ld) (DW3_FORCE_PARTY)\n", n);
++            } else if (GAME.funcs.getPartyMember(0) < 0) {
+                 GAME.funcs.setParty(0);
+                 fprintf(stderr, "dw3: FIGHTSTG setParty(0) (empty party)\n");
+             }

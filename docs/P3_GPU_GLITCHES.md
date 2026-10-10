@@ -93,6 +93,26 @@ SDL_VIDEODRIVER=offscreen SDL_AUDIODRIVER=dummy \
 # expect: display crop is the stage and a fighter, not flat blue (59,115,233)
 ```
 
+### R4 follow-up — Attack camera aim
+
+The first view write drew the stage, and it aimed beside the reference. `ratan2(y, x)` matches Psy-Q / `decomp/src/libgte/ratan.c` (first argument is the opposite side). `RotMatrix`’s view +Z row is `(-sin yaw, sin pitch, cos yaw · cos pitch)`, so the yaw that points +Z at `(dx, dz)` is `-ratan2(dx, dz)` and the pitch that includes `dy` is `+ratan2(dy, xz)`. The first port used the opposite pair of signs.
+
+Same boot, first `GsSetRefView2` (`vp=-2432,-1920,-11136`, `vr=1408,-2496,4864`). Offline check with PSY-Z `RotMatrix` / `ratan2` / `ApplyMatrix`:
+
+| | `GsWSMATRIX.t` | reference in view space |
+|---|---|---|
+| Before | `4957,1556,10325` | `7458,-1094,14637` (right of the axis) |
+| After | `-225,2320,11322` | `12,3,16463` (on +Z) |
+
+`SetGeomOffset` stays `(0, 0)`. The battle 3D layers add GPU offset `(0xA0, 0x78)` (`FIGHTSTG_CREATE_LAYERS`), so a point on the view axis lands at the center of the 320×240 crop. Frame 90 before the sign fix: grass, mesa, and sky, Pharaohmon cut off on the right, Kotemon not in the crop. After: Pharaohmon large near center, Kotemon in the lower right, ground filling the frame. That is still the Pharaohmon **Attack!** camera, not the DuckStation Fight menu (Kunemon vs Monmon). P3.9 stays open.
+
+Checked and left as they are:
+
+- `rz >> 12` matches `battle_camera.c` (`view.rz = current.rz << 12`). This camera’s roll is 0, so the roll sign is not exercised.
+- Translation is `-R * eye` via `ApplyMatrix`. The eye maps to the origin. `ApplyMatrix` takes an `SVECTOR`; this viewpoint fits in 16 bits.
+- `super` is multiplied (`CompMatrix`). This idle view’s super is identity (rot 0, translation 0). `CompMatrix` narrows the child translation to `short` before rotating it; this frame’s `t` fits.
+- `GsSetProjection` still forwards a positive `h` to `SetGeomScreen`. The framing change did not need a different `H`.
+
 ## Prior fixed (P3.7, already on main)
 
 | ID | Symptom | Doc |

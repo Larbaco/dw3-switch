@@ -119,8 +119,8 @@ only the portable `psyz_spu.c` plus the SDL-free `sdl3_software.c` rasterizer,
 while the platform symbols keep coming from `platforms/switch/psyz_backend/`.
 The split is deliberate: the submodule only had to stop pulling SDL, so the
 backend stays in this repo per the P4.1 decision. `vendor/psyz` is pinned to
-`dw3-switch-backend` @ `15afac1` on the fork. The game image still does not
-finish linking (see below).
+`dw3-switch-backend` @ `15afac1` on the fork. The game image links and draws
+the title in Ryubing; the hardware done-when is still open (see below).
 
 ## P4.7 (2026-10-10)
 
