@@ -239,7 +239,8 @@ audio, movies.
   Triangle UI cancel** (no `AUTO_MENU_RETURN`); **STGMCARD force-save +
   force-load** via P2.7 `.mcr`; pad `AUTO_PAD=status`; NPC applyAction
   shop/lab/naming/gym; WSTAG245 warped `talkToActorAt` → shop.
-  Follow-up: free pad walk-up; load checksum equality.
+  Follow-up: free pad walk-up. Load checksum on a DuckStation US card
+  matches (`port/memcard` next-block-minus-1 links; see that README).
   Done when: each opens from the field, works end-to-end, and saving via
   `STGMCARD` uses P2.7.
 - [x] **P3.5 Card game.** Linked (`dw3_p35_cardgame`); patches `0029`/

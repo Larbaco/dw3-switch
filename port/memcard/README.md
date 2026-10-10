@@ -11,11 +11,22 @@ on disk so saves stay DuckStation-importable.
 | 1 (port B / `bu10`) | `memcard1.mcr` |
 
 - Size: **131072** bytes (1024 × 128-byte frames).
-- Format: raw PS1 card image (same payload DuckStation accepts as `.mcr` /
-  `.mcd` — no DexDrive / VGS wrapper header).
+- Format: raw PS1 card image. A DuckStation `.mcd` of 131072 bytes is the
+  same image as `memcard0.mcr` (no DexDrive / VGS wrapper, no conversion).
 - Fresh images use the DuckStation-style empty format: `"MC"` header frame,
   free directory frames, broken-sector list, write-test frame; data area
   filled with `0xFF`.
+- Directory bytes 8–9 are the **next block number minus 1** (0..14 means
+  blocks 1..15), or `0xFFFF` on the last block. Data for block N starts at
+  byte `N * 8192`. Reads and writes both use that BIOS encoding.
+
+A US `BASLUS-01436DMW3-USA` save is 4 blocks with 3 icon frames. Its data
+section starts at file offset `0x300` and is `0x26BC` bytes, so it crosses
+into block 2. Treating the link halfword as an absolute block number re-reads
+block 1 for that tail. `STGMCARD_loadSave` then reports
+`checksum fail version=3 got=67 calc=129` on a save whose real XOR is 67
+(`Failed to access.`). The intact card loads once the link is decoded as
+minus 1.
 
 Set the directory with `memcard_host_set_dir(...)`; the host then
 reads/writes `<dir>/memcard0.mcr` and `<dir>/memcard1.mcr`.
@@ -47,7 +58,9 @@ gcc -std=c11 -Wall -Wextra -O2 \
 ```
 
 `tools/tests/test_memcard.py` builds that CLI and checks read/write at a
-known sector offset against `tools/testdata/memcard/`.
+known sector offset against `tools/testdata/memcard/`. It also builds
+`tools/memcard_chain_test.c` and checks a BIOS-style link (`1` means block
+2) plus a host write of the same encoding.
 
 ## Owner DuckStation round-trip (manual)
 
