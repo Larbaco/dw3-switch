@@ -54,9 +54,15 @@ static PsyzVSyncCb g_prev_vsync_cb;
  *    home button.
  */
 static void dw3_nx_vsync_pump(void) {
+    static int first_frame_logged;
+
     if (!appletMainLoop()) {
         INFOF("quit requested; leaving the game loop");
         exit(0);
+    }
+    if (!first_frame_logged) {
+        first_frame_logged = 1;
+        INFOF("first vsync callback reached");
     }
     if (StCdIntrFlag) {
         StCdInterrupt();
@@ -126,6 +132,7 @@ static int init_paths(void) {
 #else
     dw3_overlay_register_us_title();
 #endif
+    INFOF("overlay table registered");
     return 0;
 }
 

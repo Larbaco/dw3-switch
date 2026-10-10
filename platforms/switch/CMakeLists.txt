@@ -112,6 +112,11 @@ target_include_directories(dw3-switch PRIVATE
   ${CMAKE_CURRENT_SOURCE_DIR}/../../port/overlays
   ${CMAKE_CURRENT_SOURCE_DIR}/../../port/include
   ${CMAKE_CURRENT_SOURCE_DIR}/../../vendor/psyz/psyz/include
+  # PSY-Z's private renderer seam: src/draw.h (the Draw_* contract) and
+  # src/platform/rasterizer.h (the CPU rasterizer's vtable). switch_gpu.c is the
+  # only consumer — the rasterizer has no public API to include instead.
+  ${CMAKE_CURRENT_SOURCE_DIR}/../../vendor/psyz/psyz/src
+  ${CMAKE_CURRENT_SOURCE_DIR}/../../vendor/psyz/psyz/src/platform
 )
 
 target_link_directories(dw3-switch PRIVATE ${DW3_NX_PORTLIBS}/lib)
