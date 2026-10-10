@@ -65,6 +65,7 @@ tools/apply_patches.sh           # refresh build/decomp-src + apply
 | `0030-PORT_HOST-p38-stage-sweep.patch` | no | P3.8: `DW3_FORCE_STAGE` / `DW3_AUTO_STAGE_RETURN` / `STAGE_SWEEP_*`; STAGSLCT `StageSelectWindows` children; host BIOS ROM stub; skip TASK_KILL overwrite when FORCE_STAGE |
 | `0031-PORT_HOST-p34-npc-and-cd-partial.patch` | no | P3.4: `CD_READER.read` offset/partial via `cdfs_read_at`; `DW3_FORCE_NPC_ACTION` → `setParty` if empty + `FLAGS_00.applyAction` |
 | `0032-PORT_HOST-p35-pack-album-evidence.patch` | no | P3.5: gate win `addCards` behind `DW3_FORCE_CARD_WIN_ADDCARDS`; `DW3_FORCE_PACK_OPEN` → real `STCRDSHP_openPack` `addCards`; AFTER album waits for field |
+| `0033-PORT_HOST-p34-triangle-load-npc.patch` | no | P3.4: `DW3_FORCE_MCARD_LOAD`; Triangle cancel logs; `DW3_FORCE_FIELD_POS` / `DW3_FORCE_SHOP_FLAG`; `AUTO_MENU_RETURN` skips load |
 
 `tools/apply_patches.sh --check` applies the series in order (stacked
 patches on the same file are valid).

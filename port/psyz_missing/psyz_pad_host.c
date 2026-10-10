@@ -71,6 +71,8 @@ static void dw3_auto_pad_inject(void) {
     int start = 0;
     int cancel = 0;
     int status = 0;
+    int status_return = 0;
+    int talk = 0;
 
     env = getenv("DW3_AUTO_PAD");
     if (env == NULL || env[0] == '\0') {
@@ -88,10 +90,17 @@ static void dw3_auto_pad_inject(void) {
     if (strstr(env, "cancel") != NULL) {
         cancel = 1;
     }
-    if (strstr(env, "status") != NULL) {
+    /* status_return: Start→Cross→Triangle UI cancel (no AUTO_MENU_RETURN). */
+    if (strstr(env, "status_return") != NULL) {
+        status_return = 1;
+        status = 1;
+    } else if (strstr(env, "status") != NULL) {
         status = 1;
     }
-    if (!confirm && !walk && !start && !cancel && !status) {
+    if (strstr(env, "talk") != NULL) {
+        talk = 1;
+    }
+    if (!confirm && !walk && !start && !cancel && !status && !talk) {
         return;
     }
     frame++;
@@ -106,22 +115,33 @@ static void dw3_auto_pad_inject(void) {
     if (start && !status && frame >= 90u && frame < 98u) {
         mask |= DW3_RAW_START;
     }
-    /* status: repeated Start (field boot is slow) → Cross → Triangle. */
+    /* status: Start (open field menu) → Cross (MODE_STATUS) → Triangle.
+     * status_return phases Triangle alone after entry so STSTATUS UI cancel
+     * can return to field without DW3_AUTO_MENU_RETURN. */
     if (status) {
-        if (frame >= 180u && frame < 2400u && (frame % 45u) >= 1u &&
-            (frame % 45u) <= 6u) {
+        if (frame >= 180u && frame < (status_return ? 900u : 2400u) &&
+            (frame % 45u) >= 1u && (frame % 45u) <= 6u) {
             mask |= DW3_RAW_START;
         }
-        if (frame >= 360u && (frame % 16u) >= 1u && (frame % 16u) <= 4u) {
+        if (frame >= 500u && frame < (status_return ? 1100u : 100000u) &&
+            (frame % 16u) >= 1u && (frame % 16u) <= 4u) {
             mask |= DW3_RAW_CROSS;
         }
-        if (frame >= 1200u && (frame % 20u) >= 1u && (frame % 20u) <= 4u) {
+        if (frame >= (status_return ? 1300u : 1200u) &&
+            (frame % 18u) >= 1u && (frame % 18u) <= 5u) {
             mask |= DW3_RAW_TRIANGLE;
         }
     }
-    if (cancel && !status && frame >= 240u && (frame % 16u) >= 1u &&
-        (frame % 16u) <= 4u) {
+    /* cancel: Triangle pulses; with FORCE_MENU into STSTATUS use a long
+     * delay so the item screen reaches its choose-options substate. */
+    if (cancel && !status && frame >= 600u && (frame % 18u) >= 1u &&
+        (frame % 18u) <= 5u) {
         mask |= DW3_RAW_TRIANGLE;
+    }
+    /* talk: delayed Cross pulses for NPC face-tile talk after warp. */
+    if (talk && !status && frame >= 400u && (frame % 24u) >= 1u &&
+        (frame % 24u) <= 4u) {
+        mask |= DW3_RAW_CROSS;
     }
     memset(buf, 0, sizeof(buf));
     buf[0] = 0x00;

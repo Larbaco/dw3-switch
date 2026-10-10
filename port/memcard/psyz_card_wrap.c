@@ -25,9 +25,13 @@ static int chan_to_slot(long chan) {
     return (int)port;
 }
 
-/* Mirror PSY-Z card_op event completion via the real stub after I/O. */
+/* Mirror PSY-Z card_op event completion via the real stub after I/O.
+ * Do not pass the caller buf into __real__card_read — PSY-Z's stub does not
+ * fill sectors and would clobber host data (breaks STGMCARD load). */
 long __wrap__card_read(long chan, long block, unsigned char *buf) {
     int slot = chan_to_slot(chan);
+    unsigned char scratch[MEMCARD_HOST_SECTOR_SIZE];
+    long ev;
 
     if (slot < 0 || buf == NULL || block < 0 ||
         (unsigned long)block >= MEMCARD_HOST_SECTORS) {
@@ -39,11 +43,23 @@ long __wrap__card_read(long chan, long block, unsigned char *buf) {
     if (memcard_host_read_sector(slot, (int)block, buf) != 0) {
         return 0;
     }
-    return __real__card_read(chan, block, buf);
+    {
+        static int logged;
+        if (logged < 3) {
+            fprintf(stderr, "dw3: _card_read ok chan=%ld block=%ld slot=%d (.mcr)\n",
+                    chan, block, slot);
+            logged++;
+        }
+    }
+    memcpy(scratch, buf, sizeof(scratch));
+    ev = __real__card_read(chan, block, scratch);
+    (void)ev;
+    return 1;
 }
 
 long __wrap__card_write(long chan, long block, unsigned char *buf) {
     int slot = chan_to_slot(chan);
+    long ev;
 
     if (slot < 0 || buf == NULL || block < 0 ||
         (unsigned long)block >= MEMCARD_HOST_SECTORS) {
@@ -56,5 +72,7 @@ long __wrap__card_write(long chan, long block, unsigned char *buf) {
     }
     fprintf(stderr, "dw3: _card_write ok chan=%ld block=%ld slot=%d (.mcr)\n", chan,
             block, slot);
-    return __real__card_write(chan, block, buf);
+    ev = __real__card_write(chan, block, buf);
+    (void)ev;
+    return 1;
 }

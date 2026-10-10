@@ -168,12 +168,11 @@ Tracking: Phase 3 on `phase3-pc-bringup` (P3.5 merged from
 `phase3-cardgame` @ `fcff119`). P3.1 done. **P3.2 Done-when met** (+
 WSTAG790 follow-up). **P3.3 Done-when met:** forced encounter →
 `STFGTREP` (XP/levels) → return to `FIELDSTG` (`docs/P3.3_BATTLE.md`).
-**P3.4 partial:** menus linked + field open/return; **STGMCARD save →
-`.mcr` proven**; **pad START→`MODE_STATUS`→field** (no
-`FORCE_FIELD_MENU`); **FORCE_NPC shop/lab/naming/gym return**
-(`docs/P3.4_MENUS.md`, `READY_FOR_MAIN_ROADMAP_SYNC: P3.4_GYM_NPC` /
-`P3.4_MENUS_PAD2` / `P3.4_MEMCARD`). Triangle UI return, real NPC
-walk-up, load e2e still open. Done-when checkbox stays open. **P3.5 Done-when met**
+**P3.4 Done-when met** (`READY_FOR_MAIN_ROADMAP_SYNC: P3.4`,
+`docs/P3.4_MENUS.md`): menus open/return from field; **STSTATUS Triangle
+UI cancel** (no `AUTO_MENU_RETURN`); **STGMCARD save + load** via P2.7
+`.mcr`; pad START→status; FORCE_NPC shop/lab/naming/gym. Follow-up: real
+NPC walk-up talk. **P3.5 Done-when met**
 (`READY_FOR_MAIN_ROADMAP_SYNC: P3.5`, `docs/P3.5_CARDGAME.md`): force-win
 → prize item → `FIELDSTG`; album `cardsSeen` 29→33 via vanilla
 `STCRDSHP_openPack` `addCards` (host win `addCards` gated off). **P3.7
@@ -221,17 +220,16 @@ audio, movies.
   wilderness encounter + pad-driven KO (`WFIGHTTS` optional).
   Done when: a random encounter completes and returns to the field with
   stats applied.
-- [ ] **P3.4 Menus and shops.** `STSTATUS`, `STITSHOP`, `STGTRAIN`,
+- [x] **P3.4 Menus and shops.** `STSTATUS`, `STITSHOP`, `STGTRAIN`,
   `STGDGLAB`, `STGMCARD`, `STDGNAME`, `STPLNMET` linked (`dw3_p34_menus`);
-  patches `0026`/`0027`/`0028`/`0031` + `DW3_FORCE_MENU` /
+  patches `0026`/`0027`/`0028`/`0031`/`0033` + `DW3_FORCE_MENU` /
   `DW3_AUTO_MENU_RETURN` / `DW3_FORCE_MCARD_SAVE` /
-  `DW3_FORCE_NPC_ACTION`. **Partial evidence** (`docs/P3.4_MENUS.md`):
-  each opens from field via `leaveField` and returns to `FIELDSTG`;
-  **STGMCARD force-save mutates `memcard0.mcr`** via P2.7; **pad
-  `AUTO_PAD=status` START→`MODE_STATUS`→field**; NPC applyAction
-  shop/lab/naming/gym return (`READY_FOR_MAIN_ROADMAP_SYNC:
-  P3.4_GYM_NPC`). Still open: Triangle UI return, real NPC walk-up,
-  load e2e. Checkbox stays unticked (Done-when not fully honest yet).
+  `DW3_FORCE_MCARD_LOAD` / `DW3_FORCE_NPC_ACTION`. **Done-when evidence**
+  (`docs/P3.4_MENUS.md`, `READY_FOR_MAIN_ROADMAP_SYNC: P3.4`): each opens
+  from field via `leaveField` and returns to `FIELDSTG`; **STSTATUS
+  Triangle UI cancel** (no `AUTO_MENU_RETURN`); **STGMCARD force-save +
+  force-load** via P2.7 `.mcr`; pad `AUTO_PAD=status`; NPC applyAction
+  shop/lab/naming/gym. Follow-up: real NPC proximity/talk.
   Done when: each opens from the field, works end-to-end, and saving via
   `STGMCARD` uses P2.7.
 - [x] **P3.5 Card game.** Linked (`dw3_p35_cardgame`); patches `0029`/
