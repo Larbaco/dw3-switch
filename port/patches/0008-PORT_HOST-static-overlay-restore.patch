@@ -1,0 +1,63 @@
+Upstream-bound: no
+Subject: [PORT_HOST] Static overlay restore instead of CD memcpy
+
+loadModeOverlay / loadSubOverlay call dw3_overlay_restore (port/overlays)
+when the tracked id changes; same id preserves globals. See P2.6.
+
+--- a/src/engine/system/overlay.c
++++ b/src/engine/system/overlay.c
+@@ -1,5 +1,9 @@
+ #include "engine/game.h"
+ 
++#if PORT_HOST
++#include "overlay_host.h"
++#endif
++
+ /* Each mode's overlay (mode >> 8): its entry point and its file */
+ Task *(*MODE_ENTRY_POINTS[23])(void) = {
+     NULL, NULL, FIELDSTG_start, FIELDSTG_start,
+@@ -52,6 +56,20 @@
+ /* Copies the overlay of the current mode (mode >> 8) to OVERLAY_ADDRESS */
+ void loadModeOverlay(void) {
+     s32 id = GAME.funcs.getMode() >> 8;
++#if PORT_HOST
++    /*
++     * Static overlay model (P2.6): restore initial .data and zero .bss for
++     * MODE_OVERLAY_FILES[id] only when the mode index changes. Same mode
++     * re-entry preserves overlay globals (PS1 memcpy-skip semantics).
++     */
++    if (OVERLAY_LOADER.mode != id) {
++        OVERLAY_LOADER.mode = id;
++        OVERLAY_LOADER.subOverlay = -1;
++        if (MODE_OVERLAY_FILES[id] != 0) {
++            (void)dw3_overlay_restore(MODE_OVERLAY_FILES[id]);
++        }
++    }
++#else
+     u8 *src;
+     void *dst;
+ 
+@@ -62,10 +80,17 @@
+         dst = OVERLAY_ADDRESS;
+         memcpy(dst, src, FILE_TABLE.getSectorCount(MODE_OVERLAY_FILES[id]) * CD_SECTOR_SIZE);
+     }
++#endif
+ }
+ 
+ /* Copies a file to the second overlay area (SUB_OVERLAY_ADDRESS) */
+ void loadSubOverlay(s32 id) {
++#if PORT_HOST
++    if (OVERLAY_LOADER.subOverlay != id) {
++        OVERLAY_LOADER.subOverlay = id;
++        (void)dw3_overlay_restore(id);
++    }
++#else
+     u8 *src;
+     void *dst;
+ 
+@@ -75,4 +100,5 @@
+         dst = SUB_OVERLAY_ADDRESS;
+         memcpy(dst, src, FILE_TABLE.getSectorCount(id) * CD_SECTOR_SIZE);
+     }
++#endif
+ }

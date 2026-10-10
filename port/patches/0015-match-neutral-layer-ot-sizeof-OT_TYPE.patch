@@ -1,0 +1,22 @@
+Upstream-bound: yes
+Subject: [match-neutral] layer OT alloc uses sizeof(OT_TYPE)
+
+PSY-Z defines OT_TYPE as {u_long tag; u_long len} on LP64 hosts, while
+the decomp allocated otLen * sizeof(u_long). ClearOTagR then wrote past
+the block and corrupted the heap. sizeof(OT_TYPE) matches sizeof(u_long)
+on real PS1 (OT_TYPE is u_long there).
+
+--- a/src/engine/gfx/layer.c
++++ b/src/engine/gfx/layer.c
+@@ -388,8 +388,9 @@
+     layer->env = *env;
+     layer->otShift = otShift;
+     layer->otLen = OT_LENGTHS[otShift - 1];
+-    layer->ot[0] = HEAP.alloc(layer->otLen * sizeof(u_long), MEM_MODE);
+-    layer->ot[1] = HEAP.alloc(layer->otLen * sizeof(u_long), MEM_MODE);
++    /* OT_TYPE is u_long on PS1; under __psyz it is {tag,len} (2 u_long). */
++    layer->ot[0] = HEAP.alloc(layer->otLen * sizeof(OT_TYPE), MEM_MODE);
++    layer->ot[1] = HEAP.alloc(layer->otLen * sizeof(OT_TYPE), MEM_MODE);
+     ClearOTagR(layer->ot[0], layer->otLen);
+     ClearOTagR(layer->ot[1], layer->otLen);
+     layer->setBgColor = layerSetBgColor;

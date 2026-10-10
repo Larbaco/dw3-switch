@@ -1,0 +1,75 @@
+Upstream-bound: no
+Subject: [PORT_HOST] Map engine/gte.h macros to PSY-Z software GTE
+
+Replace MIPS __asm__/mtc2 macros with PSY-Z host GTE under PORT_HOST
+(ROADMAP P2.3 / SURVEY). Gap macros use Psyz_GteDataWrite/Command.
+
+--- a/include/engine/gte.h
++++ b/include/engine/gte.h
+@@ -1,6 +1,59 @@
+ #ifndef GTE_H
+ #define GTE_H
+ 
++#if PORT_HOST
++/*
++ * Host: map engine GTE macros onto PSY-Z software GTE (__psyz libgte.h).
++ * Fill macros PSY-Z does not yet expose using the register/command API.
++ */
++#include <libgte.h>
++#include <psyz/gte.h>
++
++#ifndef gte_ldsv
++#define gte_ldsv(r0)                                                           \
++    do {                                                                       \
++        const SVECTOR *_sv = (const SVECTOR *)(r0);                            \
++        Psyz_GteDataWrite(9, (unsigned int)(unsigned short)_sv->vx);           \
++        Psyz_GteDataWrite(10, (unsigned int)(unsigned short)_sv->vy);          \
++        Psyz_GteDataWrite(11, (unsigned int)(unsigned short)_sv->vz);          \
++    } while (0)
++#endif
++
++#ifndef gte_stsv
++#define gte_stsv(r0)                                                           \
++    do {                                                                       \
++        SVECTOR *_sv = (SVECTOR *)(r0);                                        \
++        _sv->vx = (short)Psyz_GteDataRead(9);                                  \
++        _sv->vy = (short)Psyz_GteDataRead(10);                                 \
++        _sv->vz = (short)Psyz_GteDataRead(11);                                 \
++    } while (0)
++#endif
++
++#ifndef gte_gpf12
++/* sf=1 GPF — same encoding as the MIPS .word 0x4B98003D */
++#define gte_gpf12() Psyz_GteCommand(0x198003D)
++#endif
++
++#ifndef gte_ncs
++/* NCS — same encoding as the MIPS .word 0x4AC8041E */
++#define gte_ncs() Psyz_GteCommand(0x0C8041E)
++#endif
++
++#ifndef gte_ldv0_unaligned
++#define gte_ldv0_unaligned(r0) gte_ldv0((SVECTOR *)(r0))
++#endif
++
++#ifndef gte_ldsxy3
++#define gte_ldsxy3(r0, r1, r2)                                                 \
++    do {                                                                       \
++        Psyz_GteDataWrite(12, (unsigned int)(r0));                             \
++        Psyz_GteDataWrite(13, (unsigned int)(r1));                             \
++        Psyz_GteDataWrite(14, (unsigned int)(r2));                             \
++    } while (0)
++#endif
++
++#else /* !PORT_HOST */
++
+ /* The GTE instructions that C can't say, as the SDK's inline_c.h has them
+    but with the real encodings in place of the ones DMPSX patches. The SDK's
+    gtemac.h builds its larger macros (gte_MulMatrix0, gte_CompMatrix...)
+@@ -271,4 +324,6 @@
+ 
+ #include <gtemac.h>
+ 
++#endif /* PORT_HOST */
++
+ #endif /* GTE_H */

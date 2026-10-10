@@ -23,13 +23,46 @@ BOOT_IMAGE_STUB = """\
 Boot image (boot_tim.bin) — not packed yet
 ==========================================
 
-On the original disc the boot TIM lives in the executable's tail, loaded at
-OVERLAY_VRAM (see vendor/dw3_decomp docs and main()'s BOOT_IMAGE_RECT).
-
-Phase 1 pack_runtime.py does not invent those bytes. A decomp/assets extract
-of the tail will produce boot_tim.bin here in Phase 2. Until then, hosts that
-need a boot framebuffer should stub or skip LoadImage of the boot TIM.
+On the original disc the boot TIM lives in the executable's tail at
+STAGE_VRAM / SUB_OVERLAY_ADDRESS (see vendor/dw3_decomp docs and main()'s
+BOOT_IMAGE_RECT). pack_runtime.py extracts it from the version executable
+when possible; if that fails, hosts should stub or skip LoadImage.
 """
+
+# US / EU load addresses from vendor/dw3_decomp docs/binaries.md
+_EXE_LOAD = 0x80010000
+_STAGE_VRAM = {
+    "us": 0x800A4CA4,
+    "eu": 0x800A5DE0,
+}
+
+
+def _extract_boot_tim(exe: Path, version: str, out: Path) -> bool:
+    """Pull the 320x480 16-bit TIM from the PS-X EXE at STAGE_VRAM."""
+    import struct
+
+    data = exe.read_bytes()
+    if len(data) < 0x800 or data[:8] != b"PS-X EXE":
+        return False
+    stage = _STAGE_VRAM[version]
+    off = 0x800 + (stage - _EXE_LOAD)
+    if off + 8 > len(data) or data[off : off + 4] != b"\x10\x00\x00\x00":
+        return False
+    flag = struct.unpack_from("<I", data, off + 4)[0]
+    pos = off + 8
+    if flag & 8:
+        if pos + 4 > len(data):
+            return False
+        clut_size = struct.unpack_from("<I", data, pos)[0]
+        pos += clut_size
+    if pos + 4 > len(data):
+        return False
+    img_size = struct.unpack_from("<I", data, pos)[0]
+    end = pos + img_size
+    if end > len(data) or img_size < 12:
+        return False
+    out.write_bytes(data[off:end])
+    return True
 
 
 def _count_files(root: Path) -> int:
@@ -91,10 +124,13 @@ def pack(version: str, disks: Path, out: Path, *, force: bool = False) -> int:
     shutil.copy2(map_src, out / map_name)
 
     boot_src = disks / "boot_tim.bin"
+    boot_dst = out / "boot_tim.bin"
     boot_note = "BOOT_IMAGE.txt (stub)"
     if boot_src.is_file():
-        shutil.copy2(boot_src, out / "boot_tim.bin")
+        shutil.copy2(boot_src, boot_dst)
         boot_note = "boot_tim.bin (copied from disks)"
+    elif _extract_boot_tim(exe_src, version, boot_dst):
+        boot_note = "boot_tim.bin (extracted from executable)"
     else:
         (out / "BOOT_IMAGE.txt").write_text(BOOT_IMAGE_STUB, encoding="utf-8")
 

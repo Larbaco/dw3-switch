@@ -1,0 +1,23 @@
+Upstream-bound: no
+Subject: [PORT_HOST] SetSpadStack/ResetSpadStack no-ops on host
+
+Scratchpad stack switching is MIPS/scratchpad-only. Under PORT_HOST run
+task update() on the normal stack (ROADMAP P2.3 / SURVEY).
+
+--- a/src/engine/task/registry.c	2026-10-10 03:06:46.444579000 -0300
++++ b/src/engine/task/registry.c	2026-10-10 03:24:09.575575779 -0300
+@@ -62,9 +62,14 @@
+ }
+ 
+ /* The update runs with its stack in the scratchpad */
++#if PORT_HOST
++#define SetSpadStack(addr) ((void)(addr))
++#define ResetSpadStack() ((void)0)
++#else
+ #define SetSpadStack(addr) \
+     __asm__ volatile("move $8,%0\n\tsw $29,0($8)\n\taddiu $8,$8,-16\n\tmove $29,$8" : : "r"(addr) : "$8", "memory")
+ #define ResetSpadStack() __asm__ volatile("addiu $29,$29,16\n\tlw $29,0($29)" : : : "memory")
++#endif
+ 
+ /* One frame of a task and its children; returns NULL once the task is gone */
+ Task *executeTask(Task *task) {

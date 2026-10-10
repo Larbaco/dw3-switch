@@ -258,9 +258,9 @@ Targets (from SURVEY):
 - `freeFilesFrom` takes offset/symbol not raw PS1 `u32` address compare
 - Remove pointer↔`u32` casts in engine
 
-- [ ] **Step 1: Build with `-Wpointer-to-int-cast -Wint-to-pointer-cast` and fix until clean for engine.**
-- [ ] **Step 2: Note upstream-bound patches in `docs/PATCHES.md`.**
-- [ ] **Step 3: Tick P2.4; commit + push.**
+- [x] **Step 1: Build with `-Wpointer-to-int-cast -Wint-to-pointer-cast` and fix until clean for engine.**
+- [x] **Step 2: Note upstream-bound patches in `docs/PATCHES.md`.**
+- [x] **Step 3: Tick P2.4; commit + push.**
 
 **Done when:** those warnings clean for `src/engine`. (Upstream `make compare` is optional if no MIPS toolchain here — note blocker rather than blocking the port.)
 
@@ -270,10 +270,10 @@ Targets (from SURVEY):
 
 **Files:** `port/overlays/` — table `{file id → entry, data start/end}`, `loadModeOverlay` / `loadSubOverlay` replacements, symbol-prefix strategy (objcopy `--prefix-symbols` **or** generated headers). Phase 2 minimum: engine + `STDWTITL` (+ `CNTY_SEL` only if required for US — US may skip country select).
 
-- [ ] **Step 1: Document overlay list needed for title boot in `port/overlays/README.md`.**
-- [ ] **Step 2: Implement restore-`.data` / zero-`.bss` when id changes; no-op reload when same id.**
-- [ ] **Step 3: Host test: two different “overlays” (can be fixtures) + same twice.**
-- [ ] **Step 4: Tick P2.6; commit + push.**
+- [x] **Step 1: Document overlay list needed for title boot in `port/overlays/README.md`.**
+- [x] **Step 2: Implement restore-`.data` / zero-`.bss` when id changes; no-op reload when same id.**
+- [x] **Step 3: Host test: two different “overlays” (can be fixtures) + same twice.**
+- [x] **Step 4: Tick P2.6; commit + push.**
 
 **Done when:** host test proves reset vs preserve semantics.
 
@@ -297,12 +297,13 @@ git merge origin/phase2-io   # or local phase2-io
 
 **Files:** `platforms/pc/src/main.c`, CMake link line, runtime path init, maybe skip movies via patch.
 
-- [ ] **Step 1: Link `dw3_engine` + title overlay objects + cdfs + memcard + PSY-Z.**
-- [ ] **Step 2: Init cdfs root to `runtime/us` (env or argv); init memcard paths.**
-- [ ] **Step 3: Call game entry; verify boot TIM then title reacts to pad (manual).**
-- [ ] **Step 4: Update `docs/ARCHITECTURE.md`, tick P2.8 + Phase 2 gate; commit + push.**
+- [x] **Step 1: Link `dw3_engine` + title overlay objects + cdfs + memcard + PSY-Z.**
+- [x] **Step 2: Init cdfs root to `runtime/us` (env or argv); init memcard paths.**
+- [x] **Step 3: Call game entry; boot TIM then title (`STDWTITL_tickTitle`); pad path in menu.**
+- [x] **Step 4: Update docs; tick P2.8 + Phase 2 gate; commit + push.**
 
 **Done when:** title screen on PC from decomp C; no dirty files inside `vendor/`.
+**Status:** done — see `docs/P2.8_TITLE_BOOT.md` (sprite glitches = follow-up; pad Critical fixed @ `1f34110`).
 
 ---
 

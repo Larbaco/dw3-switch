@@ -1,0 +1,19 @@
+Upstream-bound: no
+Subject: [PORT_HOST] Declare StCdInterrupt for title movie.c
+
+PSY-Z provides StCdInterrupt but does not declare it in libcd.h; the
+title movie TU needs a prototype under PORT_HOST.
+
+--- a/src/menus/title/movie.c
++++ b/src/menus/title/movie.c
+@@ -1,6 +1,10 @@
+ /* The movies, streamed from the disc and decoded with libpress */
+ 
+ #include "menus/title.h"
++#if PORT_HOST
++/* PSY-Z implements StCdInterrupt but omits it from libcd.h. */
++void StCdInterrupt(void);
++#endif
+ 
+ /* Resets the GPU and clears the whole VRAM to black, around the movies */
+ void STDWTITL_clearVram(void) {

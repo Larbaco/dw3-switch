@@ -1,0 +1,24 @@
+Upstream-bound: no
+Subject: [PORT_HOST] Complete types in game_bss.c before definitions
+
+Matching builds rely on incomplete struct commons; host GCC needs the
+full FieldMenuChoice / CdSectorHeader types before the objects.
+
+--- a/src/engine/data/game_bss.c	2026-10-10 03:06:46.435367600 -0300
++++ b/src/engine/data/game_bss.c	2026-10-10 03:24:09.575718233 -0300
+@@ -1,4 +1,8 @@
++#if PORT_HOST
++#include "engine/game.h"
++#else
+ #include "common.h"
++#endif
+ 
+ /*
+  * The executable's .bss that no module can hold. The modules leave these
+@@ -32,4 +36,6 @@
+  * only now: GCC emits the commons in the order of their first declaration,
+  * and the header's would come before the others.
+  */
++#if !PORT_HOST
+ #include "engine/game.h"
++#endif

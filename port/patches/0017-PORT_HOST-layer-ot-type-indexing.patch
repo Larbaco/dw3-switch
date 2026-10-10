@@ -1,0 +1,86 @@
+Upstream-bound: no
+Subject: [PORT_HOST] PSY-Z OT_TYPE indexing in layer draw path
+
+Under __psyz, OT_TYPE is {u_long addr; u_long len} (16 bytes on LP64).
+Indexing the OT as u_long* and the PS1 24-bit empty-skip walk corrupt GPU
+packets. Use OT_TYPE* for draw/getOtEntry and skip the 24-bit walk on host.
+
+--- a/src/engine/gfx/layer.c
++++ b/src/engine/gfx/layer.c
+@@ -109,6 +109,10 @@
+ 
+ /* Links every run of empty OT entries past itself, so the GPU skips it */
+ void layerSkipEmptyOt(Layer *layer) {
++#if PORT_HOST
++    /* PS1 24-bit OT walk is invalid for PSY-Z OT_TYPE {addr,len}. */
++    (void)layer;
++#else
+     u_long mask = 0xFFFFFF;
+     u_long *ot = layer->ot[GFX.buffer];
+     u_long *p = ot + layer->otLen - 1;
+@@ -124,27 +128,42 @@
+         }
+         p = q;
+     }
++#endif
+ }
+ 
+ /* Layer method: sends the OT of the finished buffer, after its DRAWENV with the layer's offset */
+ void layerDraw(Layer *layer) {
+     DRAWENV env = layer->env;
+     DR_ENV *dr;
++#if PORT_HOST
++    OT_TYPE *otBase;
++    OT_TYPE *tag;
++#else
+     u_long *ot;
+     u_long *tag;
++#endif
+ 
+     env.ofs[0] = layer->offsetX;
+     env.ofs[1] = layer->offsetY;
+     layerSkipEmptyOt(layer);
+     dr = GFX.prim;
++#if PORT_HOST
++    otBase = (OT_TYPE *)layer->ot[GFX.buffer];
++    tag = &otBase[layer->otLen - 1];
++#else
+     ot = layer->ot[GFX.buffer] + layer->otLen;
+     tag = ot - 1;
++#endif
+     if (GFX.buffer != 0) {
+         env.clip.y += 256;
+         env.ofs[1] += 256;
+     }
+     SetDrawEnv(dr, &env);
++#if PORT_HOST
++    addPrim(tag, dr);
++#else
+     addPrim(ot - 1, dr);
++#endif
+     dr++;
+     GFX.prim = dr;
+     DrawOTag(tag);
+@@ -152,14 +171,22 @@
+ 
+ /* Layer method: the OT entry at `depth` in the buffer being drawn */
+ u_long *layerGetOtEntry(Layer *layer, s32 depth) {
++#if PORT_HOST
++    return (u_long *)&((OT_TYPE *)layer->ot[GFX.buffer])[depth];
++#else
+     return layer->ot[GFX.buffer] + depth;
++#endif
+ }
+ 
+ /* Layer method: the OT entry for a 16-bit Z, scaled to the OT's length */
+ u_long *layerGetOtEntryZ(Layer *layer, s32 z) {
+     s32 i = z >> (16 - layer->otShift);
+ 
++#if PORT_HOST
++    return (u_long *)&((OT_TYPE *)layer->ot[GFX.buffer])[i];
++#else
+     return layer->ot[GFX.buffer] + i;
++#endif
+ }
+ 
+ /* Layer method: the OT of the buffer being drawn */

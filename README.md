@@ -17,12 +17,14 @@ that C, runs it on a modern Psy-Q–compatible shim
 
 ## Status
 
-**Phase 1 complete** — reproducible PC and Switch host skeletons, Docker/CI
-toolchains, and an owner-disc → runtime pack pipeline.
+**Phase 2 (PC title) reached:** `dw3-pc` links engine + `STDWTITL` + cdfs/
+memcard + PSY-Z and boots to the US title screen from decomp C (GPU polish
+open). See [docs/P2.8_TITLE_BOOT.md](docs/P2.8_TITLE_BOOT.md) and
+[docs/ROADMAP.md](docs/ROADMAP.md). Phase 1 host/CI/pack tools remain;
+layering in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
-**Not playable yet.** Game C from the decomp is not linked in; the next goal
-is Phase 2 (engine bring-up on PC, aiming at the title screen). See
-[docs/ROADMAP.md](docs/ROADMAP.md).
+**Not playable yet.** Title boots on PC; field/battle and Switch polish are
+later phases. See [docs/ROADMAP.md](docs/ROADMAP.md).
 
 Later phases cover a playable Switch build, localization, optional community
 QoL compatibility, and texture-pack overlays — only after the port gates land.

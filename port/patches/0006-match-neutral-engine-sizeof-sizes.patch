@@ -1,0 +1,77 @@
+Upstream-bound: yes
+Subject: [match-neutral] sizeof/offsetof for engine 64-bit sizes
+
+Replace PS1-literal byte counts with sizeof/offsetof so host (LP64)
+clears/allocates the intended fields (ROADMAP P2.4 / SURVEY).
+
+--- a/include/engine/pad.h
++++ b/include/engine/pad.h
+@@ -4,6 +4,7 @@
+ /* Controllers and the demo recorder (pad/) */
+ 
+ #include "common.h"
++#include <stddef.h>
+ #include <sys/types.h>
+ #include <libgte.h>
+ #include <libgpu.h>
+@@ -98,9 +99,6 @@
+ #define PAD_FLAG_INITIALIZED 0x40000000
+ #define PAD_FLAG_MULTITAP 0x80000000
+ 
+-/* The bytes PadState keeps before its methods, which initPad clears */
+-#define PAD_DATA_SIZE 0x3E0
+-
+ /*
+  * A demo replays recorded pad data (one raw buffer a frame, up to
+  * DEMO_FRAME_COUNT frames) instead of the pad, except for Start.
+@@ -136,6 +134,9 @@
+     /* 0x420 */ s32 (*isDemoPlaying)();
+ } PadState;
+ 
++/* The bytes PadState keeps before its methods, which initPad clears */
++#define PAD_DATA_SIZE offsetof(PadState, init)
++
+ /* One button of pad 1: newly pressed, auto-repeated while held, or held */
+ #define PAD_PRESSED(button) ((PAD.getPressed(0) >> PAD.getButtonBit(0, button)) & 1)
+ #define PAD_REPEATED(button) ((PAD.getRepeated(0) >> PAD.getButtonBit(0, button)) & 1)
+--- a/src/engine/gfx/display.c
++++ b/src/engine/gfx/display.c
+@@ -2,6 +2,7 @@
+ #include <libgs.h>
+ #include <libetc.h>
+ #include <libsnd.h>
++#include <stddef.h>
+ 
+ /* Small variables, addressed through $gp (see the Makefile) */
+ static s32 GFX_STARTED = 0;
+@@ -130,7 +131,7 @@
+                 i--;
+             }
+         }
+-        HEAP.zero(&GFX.prim, 0x18);
++        HEAP.zero(&GFX.prim, offsetof(GfxState, disp) - offsetof(GfxState, prim));
+     } else {
+         GFX.buffer = 1;
+         GFX.dispBuffer = 0;
+--- a/src/engine/system/heap.c
++++ b/src/engine/system/heap.c
+@@ -91,7 +91,7 @@
+     u32 splitSize;
+ 
+     size = (size + 3) >> 2 << 2;
+-    splitSize = size + 20;
++    splitSize = size + sizeof(MemBlock) + 8;
+     for (b = HEAP.first; b->tag != MEM_END; b = b->next) {
+         if (b->tag == MEM_FREE) {
+             avail = (u8 *)b->next - (u8 *)b - sizeof(MemBlock);
+--- a/src/engine/menu/inn.c
++++ b/src/engine/menu/inn.c
+@@ -341,7 +341,7 @@
+ 
+ /* Starts the inn of the current game mode on a layer */
+ Inn *createInn(s32 layerId) {
+-    Inn *task = createTask(updateInn, 0xA0, sizeof(InnChildren));
++    Inn *task = createTask(updateInn, sizeof(Inn), sizeof(InnChildren));
+ 
+     task->layerId = layerId;
+     task->depth = 1;

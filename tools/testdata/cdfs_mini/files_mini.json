@@ -1,0 +1,27 @@
+{
+  "version": "us",
+  "executable": "SLUS_014.36",
+  "files": {
+    "1": {
+      "path": "AAA/PRO/ALPHA.PRO",
+      "lba": 100,
+      "sectors": 1,
+      "bytes": 11,
+      "form": 1
+    },
+    "2": {
+      "path": "AAA/DAT/BETA.DAT",
+      "lba": 101,
+      "sectors": 1,
+      "bytes": 16,
+      "form": 1
+    },
+    "10": {
+      "path": "AAA/PRO/GAMMA.PRO",
+      "lba": 102,
+      "sectors": 1,
+      "bytes": 7,
+      "form": 1
+    }
+  }
+}

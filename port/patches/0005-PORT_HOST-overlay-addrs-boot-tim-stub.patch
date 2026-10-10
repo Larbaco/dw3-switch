@@ -1,0 +1,43 @@
+Upstream-bound: no
+Subject: [PORT_HOST] Host overlay address symbols + boot TIM stub
+
+OVERLAY_ADDRESS/SUB_OVERLAY_ADDRESS come from port/overlays on host.
+Boot TIM upload skipped until runtime/us/boot_tim.bin is wired (E6);
+see docs/RUNTIME_LAYOUT.md (ROADMAP P2.3).
+
+--- a/src/engine/system/main.c
++++ b/src/engine/system/main.c
+@@ -42,12 +42,23 @@
+     GFX.funcs.setDisplayMode(320, 640, 1, 0);
+     PutDispEnv(&GFX.disp[0]);
+     VSync(0);
++#if PORT_HOST
++    /*
++     * Boot TIM: on PS1 the packed exe tail sits at OVERLAY_VRAM and main
++     * reads it through SUB_OVERLAY_ADDRESS. Host expects runtime/us/boot_tim.bin
++     * (see docs/RUNTIME_LAYOUT.md). Until cdfs/E6 wires that path, skip the
++     * upload so bring-up can proceed without the TIM bytes.
++     */
++    (void)tim;
++    (void)BOOT_IMAGE_RECT;
++#else
+     /* GsGetTimInfo takes the TIM after its ID word */
+     GsGetTimInfo((u_long *)SUB_OVERLAY_ADDRESS + 1, &tim);
+     VSync(0);
+     LoadImage(&BOOT_IMAGE_RECT, tim.pixel);
+     DrawSync(0);
+     VSync(0);
++#endif
+     SetDispMask(1);
+     CdInit();
+     CdSetDebug(0);
+@@ -88,5 +99,9 @@
+ 
+ /* Where the modes' overlays (the .PRO files of AAA/PRO) load, after the
+  * executable, and the stages and other sub-overlays, after CARDGAME. */
++#if PORT_HOST
++/* Host buffers + OVERLAY_ADDRESS / SUB_OVERLAY_ADDRESS: port/overlays/host_vram.c */
++#else
+ void *const OVERLAY_ADDRESS = OVERLAY_VRAM;
+ void *const SUB_OVERLAY_ADDRESS = STAGE_VRAM;
++#endif
