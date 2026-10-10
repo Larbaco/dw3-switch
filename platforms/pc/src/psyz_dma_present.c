@@ -8,6 +8,11 @@
  * STRs are 24-bit. Convert halfword-packed RGB888 → RGB5551 in pixel
  * coordinates before the real LoadImage so present/FB dump show real frames.
  *
+ * PutDispEnv must use the same halfword→pixel X scale when isrgb24: movie
+ * double-buffers sit at disp.x 0 and 480 (PS1 halfwords), but LoadImage
+ * stores expanded frames at 0 and 320. Leaving disp.x=480 shows only the
+ * right 160px of the frame (classic half-width glitch).
+ *
  * Linked with -Wl,--wrap=DMACallback,DecDCTout,LoadImage,PutDispEnv.
  */
 #include <libetc.h>
@@ -29,6 +34,7 @@ static unsigned g_rgb24_loads;
 static unsigned g_dout_depth;
 static unsigned g_dout_top_done;
 static int g_fb_dumped;
+static int g_disp_x_scaled_logged;
 
 static void dw3_present_dump_fb(const char *why) {
     const char *path;
@@ -40,6 +46,12 @@ static void dw3_present_dump_fb(const char *why) {
     size_t wrote;
     long nonzero = 0;
     size_t i;
+    int x0 = -1;
+    int x1 = -1;
+    int y0 = -1;
+    int y1 = -1;
+    int x;
+    int y;
 
     if (g_fb_dumped) {
         return;
@@ -62,6 +74,25 @@ static void dw3_present_dump_fb(const char *why) {
             nonzero++;
         }
     }
+    for (y = 0; y < h; y++) {
+        for (x = 0; x < w; x++) {
+            size_t off = ((size_t)y * (size_t)w + (size_t)x) * 3u;
+            if (rgb[off] | rgb[off + 1] | rgb[off + 2]) {
+                if (x0 < 0 || x < x0) {
+                    x0 = x;
+                }
+                if (x1 < 0 || x > x1) {
+                    x1 = x;
+                }
+                if (y0 < 0 || y < y0) {
+                    y0 = y;
+                }
+                if (y1 < 0 || y > y1) {
+                    y1 = y;
+                }
+            }
+        }
+    }
     fp = fopen(path, "wb");
     if (fp == NULL) {
         fprintf(stderr, "dw3-present: cannot write %s\n", path);
@@ -74,8 +105,9 @@ static void dw3_present_dump_fb(const char *why) {
     free(rgb);
     g_fb_dumped = 1;
     fprintf(stderr,
-            "dw3-present: FB dump %s %dx%d wrote=%zu nonzero=%ld (%s)\n", path,
-            w, h, wrote, nonzero, why);
+            "dw3-present: FB dump %s %dx%d wrote=%zu nonzero=%ld "
+            "bbox=%d,%d-%d,%d (%s)\n",
+            path, w, h, wrote, nonzero, x0, y0, x1, y1, why);
 }
 
 void *__real_DMACallback(int dma, void (*func)());
@@ -117,18 +149,44 @@ void __wrap_DecDCTout(u_long *buf, int size) {
                     g_dout_top_done, g_slice_cb_count, g_rgb24_loads,
                     g_disp_rgb24);
         }
-        /* Dump after a RGB24 frame so PutDispEnv(isrgb24) has latched. */
+        /* Dump after RGB24 present origin is latched (see PutDispEnv wrap). */
         if (g_disp_rgb24 && g_rgb24_loads >= 20u && !g_fb_dumped) {
-            dw3_present_dump_fb("after RGB24 frame");
+            unsigned want = 2u;
+            const char *env_frame = getenv("DW3_FB_DUMP_FRAME");
+
+            if (env_frame != NULL && env_frame[0] != '\0') {
+                int n = atoi(env_frame);
+                if (n > 0) {
+                    want = (unsigned)n;
+                }
+            }
+            if (g_dout_top_done >= want) {
+                dw3_present_dump_fb("after RGB24 frame");
+            }
         }
     }
 }
 
 DISPENV *__wrap_PutDispEnv(DISPENV *env) {
-    if (env != NULL) {
-        g_disp_rgb24 = env->isrgb24 ? 1 : 0;
+    DISPENV tmp;
+
+    if (env == NULL) {
+        return __real_PutDispEnv(env);
     }
-    return __real_PutDispEnv(env);
+    g_disp_rgb24 = env->isrgb24 ? 1 : 0;
+    if (!env->isrgb24 || env->disp.x == 0) {
+        return __real_PutDispEnv(env);
+    }
+    /* Match RGB24 LoadImage pixel placement (halfword x * 2/3). */
+    tmp = *env;
+    tmp.disp.x = (short)(env->disp.x * 2 / 3);
+    if (!g_disp_x_scaled_logged) {
+        g_disp_x_scaled_logged = 1;
+        fprintf(stderr,
+                "dw3-present: PutDispEnv rgb24 disp.x %d -> %d (pixel)\n",
+                env->disp.x, tmp.disp.x);
+    }
+    return __real_PutDispEnv(&tmp);
 }
 
 static u16 *rgb888_packed_to_5551(const u8 *src, int pixel_w, int h) {
