@@ -208,19 +208,19 @@ Expected: link OK; no duplicate `DecDCTvlc2`.
   - `int dw3_str_stream_read_sector(uint8_t out[2352]);` synthesizing headers if pack is 2048
   - Working `StCdInterrupt` filling `StSetRing` buffer so `StGetNext` returns frames
 
-- [ ] **Step 1: Map movie LBA/file id → `AAA/STR/MOVIEOPN.STR`**
+- [x] **Step 1: Map movie LBA/file id → `AAA/STR/MOVIEOPN.STR`**
 
 Use existing runtime map / cdfs file table. Document path resolution in `str_stream.h`.
 
-- [ ] **Step 2: Sector adapter (2048 → ring view)**
+- [x] **Step 2: Sector adapter (2048 → ring view)**
 
 Prefer synthesizing Mode2/Form2 2352-byte sectors from 2048-byte payloads if PSY-Z ring expects them; document choice in `P3.7_MOVIES.md`.
 
-- [ ] **Step 3: Implement `StCdInterrupt` + allow stream modes**
+- [x] **Step 3: Implement `StCdInterrupt` + allow stream modes**
 
 In `libcd.c`: stop `NOT_IMPLEMENTED` on `StCdInterrupt`; stop rejecting `CdlModeSize1` / `CdlModeStream` / `CdlModeStream2` when file bridge is active; make `open_track_at_cd_pos` succeed via file bridge for movie LBAs.
 
-- [ ] **Step 4: Host pump**
+- [x] **Step 4: Host pump**
 
 Mirror `vendor/psyz/samples/movie/movie.c`:
 
@@ -234,7 +234,7 @@ if (StCdIntrFlag) {
 }
 ```
 
-- [ ] **Step 5: Smoke `DW3_START_MODE=0xE01` past INIT**
+- [x] **Step 5: Smoke `DW3_START_MODE=0xE01` past INIT**
 
 ```bash
 SDL_VIDEODRIVER=dummy DW3_START_MODE=0xE01 DW3_RUNTIME=runtime/us \
@@ -243,7 +243,7 @@ SDL_VIDEODRIVER=dummy DW3_START_MODE=0xE01 DW3_RUNTIME=runtime/us \
 
 Expected logs: no `MDEC_* not implemented`; no `no track found for sector …` for MOVIEOPN; `StGetNext` / frame path advances (may still be silent).
 
-- [ ] **Step 6: Commit + push; ROADMAP sync (stream in progress)**
+- [x] **Step 6: Commit + push; ROADMAP sync (stream in progress)**
 
 ---
 

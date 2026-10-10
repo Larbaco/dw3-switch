@@ -178,16 +178,16 @@ UI cancel** (no `AUTO_MENU_RETURN`); **STGMCARD save + load** via P2.7
 → prize item → `FIELDSTG`; album `cardsSeen` 29→33 via vanilla
 `STCRDSHP_openPack` `addCards` (host win `addCards` gated off). **P3.7
 in progress** (`READY_FOR_MAIN_ROADMAP_SYNC: P3.7_IN_PROGRESS`,
-`docs/P3.7_MOVIES.md`): Wave 1 soft MDEC under `MDEC_*`; Wave 2 VLC
-(`DecDCTvlc2`/`Build` via nugget `bsdec`); still blocked on
-`StCdInterrupt` / file-backed STR / XA / Start-skip; default skip
-remains `MODE_TITLE`. **P3.8 Done-when met** (`READY_FOR_MAIN_ROADMAP_SYNC: P3.8`,
+`docs/P3.7_MOVIES.md`): Wave 1 soft MDEC; Wave 2 VLC (bsdec); Wave 3
+file-backed STR + `StCdInterrupt` (`StGetNext` advances); still need
+XA + present/play + Start-skip; default skip remains `MODE_TITLE`.
+**P3.8 Done-when met** (`READY_FOR_MAIN_ROADMAP_SYNC: P3.8`,
 `docs/P3.8_STAGES.md`): `STAGSLCT` + batches 1–6 link 238/239 US stage
 objs; live PASS 237/237; only `WSTAG460` left stubbed (host
 `updateWanderer` SEGV). **Phase 3 gate not met** (`docs/P3_GATE.md`):
-automated intro reaches `MODE_OPENING_2` (`0xE02`); MDEC/VLC wired —
-remaining walls are stream / XA (`docs/P3.7_MOVIES.md`). No
-start→first-boss segment. P3.6 / P3.9 may run on side tracks.
+automated intro reaches `MODE_OPENING_2` (`0xE02`); MDEC/VLC/stream
+wired — remaining walls are XA + present/skip (`docs/P3.7_MOVIES.md`).
+No start→first-boss segment. P3.6 / P3.9 may run on side tracks.
 
 Objective: the full game loop runs on PC: field, stages, battle, menus,
 audio, movies.
@@ -254,10 +254,11 @@ audio, movies.
   streaming (`CdRead2`, `StSetRing`) from raw-sector `.STR` files packed
   in P1.6. **In progress** (`docs/P3.7_MOVIES.md`,
   `READY_FOR_MAIN_ROADMAP_SYNC: P3.7_IN_PROGRESS`): Wave 1 soft MDEC
-  under `MDEC_*` (`test_mdec` 28/28); Wave 2 `DecDCTvlc2`/`Build` via
-  `port/movies` + nugget `bsdec`; still need stream, XA, Start-skip.
-  Default skip `MODE_TITLE` (patch `0010`) retained. Checkbox unticked
-  until play + audio + Start-skip.
+  (`test_mdec` 28/28); Wave 2 `DecDCTvlc2`/`Build` via `port/movies` +
+  bsdec; Wave 3 file-backed STR + `StCdInterrupt` (smoke: bridge opens
+  `MOVIEOPN.STR`, first frame ready / `StGetNext` advances). Still need
+  XA, present/play, Start-skip. Default skip `MODE_TITLE` (patch `0010`)
+  retained. Checkbox unticked until play + audio + Start-skip.
   Done when: the opening movies play with audio and can be skipped.
 - [x] **P3.8 Stage sweep.** `STAGSLCT` linked (`dw3_p38_stagslct`); patch
   `0030` + `tools/stage_sweep.py`. **Done-when evidence**
