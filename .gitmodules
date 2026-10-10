@@ -3,4 +3,4 @@
 	url = https://github.com/ReGame-Labs/dw3_decomp.git
 [submodule "vendor/psyz"]
 	path = vendor/psyz
-	url = https://github.com/Xeeynamo/psyz.git
+	url = https://github.com/Larbaco/psyz.git
