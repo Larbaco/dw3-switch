@@ -319,6 +319,12 @@ console.
 - [ ] **P4.3 Audio.** `audren` output thread fed by PSY-Z's SPU mixer at
   44.1 kHz.
   Done when: libsnd sample plays without underruns.
+  **Status (2026-10-10):** audren thread + `Psyz_Audio*` in
+  `platforms/switch/psyz_backend/nx_audio.c` (44.1 kHz voice, weak SPU
+  tone stub, `audio_hello` sample). `.nro` builds via Docker
+  (`DW3_DK_TMPBUILD`). **Not ticked:** no Switch hardware for underrun/
+  listen check; full PSY-Z libsnd not linked yet (P4.7). See
+  `docs/P4.3_AUDIO.md`.
 - [ ] **P4.4 Input.** `hid` → PS1 pad bits, including the digital/analog
   modes `PadInfoMode`/`PadSetMainMode` expect; rumble via `PadSetAct` →
   HD rumble (optional).
