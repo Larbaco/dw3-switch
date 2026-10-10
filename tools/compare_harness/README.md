@@ -13,7 +13,7 @@ PS1 (DuckStation) is the **visual oracle**. `dw3-pc` is the subject.
 |---|---|---|
 | `title` | OK | One Start skips the FMV. Shot is MODE_TITLE (Press Start) @ 200% |
 | `field` | OK | Both sides: Asuka Inn interior. PC `STGMCARD_loadSave ok`, then stop Cross at `mode=0x20a` |
-| `battle` | Blocked | Needs mid-fight `--statefile`. Do not invent a PNG |
+| `battle` | duck-only | `owner.state` @ 3s / 200% is the Fight menu (Kunemon vs Monmon, Monmon 20/140). No `pc.png` |
 
 ROADMAP P3.9 stays open until three reviewed pairs exist. PNGs + `.mcr`
 stay under gitignored `build/compare/`.
@@ -65,7 +65,7 @@ python3 tools/compare_harness/capture_pair.py \
   --label field --save "$SRC" \
   --duckstation "$DS" --disc "$CUE" --bios "$BIOS" --out build/compare
 
-# Battle, after the owner drops a savestate (gitignored):
+# Battle: owner.state is on disk (gitignored). Duck-only; do not invent pc.png.
 python3 tools/compare_harness/capture_pair.py \
   --label battle --duck-only --no-auto-load \
   --statefile build/compare/battle/owner.state \
@@ -126,8 +126,8 @@ build/compare/<label>/
 ## Blockers (honest)
 
 - **Title:** one Start reaches PRESS START. A second Start opens New Game / Continue. At 200% the 600-frame timeout is about 5s of wall clock once that prompt is up.
-- **Field:** DuckStation Continue from the owner card reaches the Asuka Inn interior. `dw3-pc` loads the same `memcard0.mcr` and stops on "Failed to access" (`STGMCARD_loadSave` checksum `got=67 calc=129`).
-- **Battle:** blocked until `build/compare/battle/owner.state` exists.
+- **Field:** both sides are the Asuka Inn interior after the memcard link fix (`STGMCARD_loadSave ok`). See `docs/P3.9_REFERENCE.md`.
+- **Battle:** oracle captured duck-only from `owner.state`. The loaded frame is Kunemon vs Monmon (Fight, Monmon 20/140). The earlier owner screenshot is Tapirmon. No PC subject from this savestate.
 
 ## Related
 

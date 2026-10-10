@@ -191,9 +191,9 @@ continuous start→movie→Lobby→Tamer→Genji→field @ `a5ae93a` (Lobby
 class; pad KO follow-up); EU playthrough not required. **EU `dw3-pc` link
 scaffold** (`docs/P3_EU_BUILD.md`): `-DDW3_VERSION=eu` +
 `overlay_table_eu.c` configure/link; `runtime/eu` / playthrough still open.
-P3.9 harness scaffold (`tools/compare_harness/`, `docs/P3.9_REFERENCE.md`)
-may land from `phase3-harness`; checkbox stays open until title/field/battle
-pairs are reviewed.
+P3.9 harness (`tools/compare_harness/`, `docs/P3.9_REFERENCE.md`):
+title and field pairs captured; battle oracle is duck-only (Fight menu).
+Checkbox stays open until the owner reviews all three pairs.
 
 Objective: the full game loop runs on PC: field, stages, battle, menus,
 audio, movies.
@@ -296,8 +296,12 @@ audio, movies.
   (Press Start). Field pair is the Asuka Inn interior on both sides
   after the memcard link fix (`STGMCARD_loadSave ok`, `mode=0x20a`,
   `stageFile=457`). PC frame is the inn, with some small props missing
-  versus DuckStation. Battle waits on `build/compare/battle/owner.state`
-  (DuckStation F2 mid-fight). Checkbox stays open.
+  versus DuckStation. Battle oracle is duck-only:
+  `build/compare/battle/duck.png` is the Fight menu, Kunemon vs Monmon,
+  Monmon 20/140. The earlier owner screenshot is Tapirmon vs Monmon
+  (same menu, different opponent). No `pc.png` — the savestate does not
+  load into `dw3-pc`. Checkbox stays open until the owner reviews all
+  three pairs.
   Done when: a doc page with the comparison for title, field, battle.
 
 Gate: a full playthrough segment (start → first boss) on PC without
