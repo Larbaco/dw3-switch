@@ -1,0 +1,1984 @@
+Upstream-bound: yes
+Subject: [match-neutral] 64-bit audit for overlays + stages (P3.1)
+
+Replace literal createTask sizes/children with sizeof/offsetof (and
+STAGE_CHILDREN_SIZE as N * sizeof(Task *)), make stage_select save arg
+signed-safe (-0x80000000), store task pointers as void* (same width as
+s32 on PS1) for field script commands and GFX vsync callbacks, and fix
+FIGHTSTG_getActiveFighter pointer arithmetic.
+
+--- a/include/battle/battle_mode/battle.h	2026-10-10 01:44:11.203469300 -0300
++++ b/include/battle/battle_mode/battle.h	2026-10-10 05:14:42.786438462 -0300
+@@ -491,7 +491,7 @@
+     s32 offset = row * sizeof(FIGHTSTG_battle.state.fighters[0]);
+     BattleFighter *slot = &FIGHTSTG_battle.state.fighters[0][FIGHTSTG_battle.state.active[row]];
+ 
+-    return (BattleFighter *)(offset + (s32)slot);
++    return (BattleFighter *)((u8 *)slot + offset);
+ }
+ 
+ #endif /* FIGHTSTG_BATTLE_H */
+--- a/include/battle/battle_mode/menu.h	2026-10-10 01:44:11.208332700 -0300
++++ b/include/battle/battle_mode/menu.h	2026-10-10 05:11:59.452856784 -0300
+@@ -439,6 +439,6 @@
+ void FIGHTSTG_setConfusedName(ConfusedMenu *task, ConfusedMenuWindows *windows, s32 side);
+ void FIGHTSTG_showConfusedMessage(ConfusedMenu *task, s32 index, s32 unused);
+ void FIGHTSTG_drawCursorSprites(MenuCursor *task);
+-void FIGHTSTG_drawCursorBar(s32 arg);
++void FIGHTSTG_drawCursorBar(void *arg);
+ 
+ #endif /* FIGHTSTG_MENU_H */
+--- a/include/engine/gfx.h	2026-10-10 05:09:00.813012507 -0300
++++ b/include/engine/gfx.h	2026-10-10 05:11:37.742215419 -0300
+@@ -58,8 +58,8 @@
+  * Times are in vsyncs; the counters keep 8 fractional bits.
+  */
+ typedef struct GfxState {
+-    /* 0x00 */ void (*vsyncFunc)(s32 arg);
+-    /* 0x04 */ s32 vsyncArg;
++    /* 0x00 */ void (*vsyncFunc)(void *arg);
++    /* 0x04 */ void *vsyncArg;
+     /* 0x08 */ s32 frameCount;
+     /* 0x0C */ s32 frameCounter;
+     /* 0x10 */ s32 time; /* vsyncs since boot */
+--- a/include/field/field_mode.h	2026-10-10 01:44:11.263010000 -0300
++++ b/include/field/field_mode.h	2026-10-10 05:12:15.242577798 -0300
+@@ -291,7 +291,7 @@
+ typedef struct EventChildren {
+     /* 0x00 */ struct Task *task; /* start's */
+     /* 0x04 */ struct Speech *boxes[3]; /* the script's message boxes */
+-    /* 0x10 */ s32 scripts[10]; /* FIELDSTG_createScriptCommand's tasks */
++    /* 0x10 */ void *scripts[10]; /* FIELDSTG_createScriptCommand's tasks */
+ } EventChildren;
+ 
+ /* --- script.c --- */
+@@ -299,7 +299,7 @@
+ /* An entry of the script command table FIELDSTG_scriptCommands (ids from 0x320) */
+ typedef struct ScriptCommand {
+     /* 0x0 */ s32 id;
+-    /* 0x4 */ s32 (*create)(s32 id); /* creates the command's task */
++    /* 0x4 */ void *(*create)(s32 id); /* creates the command's task */
+     /* 0x8 */ void (*handle)(); /* (task, command, arg): each command's task has its own type */
+ } ScriptCommand;
+ 
+@@ -963,8 +963,8 @@
+ void FIELDSTG_toScreenPos(Vec2 *pos);
+ void FIELDSTG_clearScriptFlag(void);
+ ScriptCommand *FIELDSTG_findScriptCommand(s32 id);
+-s32 FIELDSTG_createScriptCommand(s32 id);
+-void FIELDSTG_handleScriptCommand(s32 task, s32 id, s32 command, s32 arg);
++void *FIELDSTG_createScriptCommand(s32 id);
++void FIELDSTG_handleScriptCommand(void *task, s32 id, s32 command, s32 arg);
+ 
+ /* battle.c */
+ void FIELDSTG_rollBattleSteps(void);
+--- a/src/battle/battle_mode/counterattack.c	2026-10-10 01:44:11.317437000 -0300
++++ b/src/battle/battle_mode/counterattack.c	2026-10-10 05:11:37.712976926 -0300
+@@ -199,7 +199,7 @@
+ /* Starts SIDE's counterattack (FIGHTSTG_updateCounterattack) to RECEIVED
+    damage; NOKNOCKOUTEVENT keeps a knockout from queueing its event */
+ Counterattack *FIGHTSTG_startCounterattack(s32 side, s32 received, s32 noKnockOutEvent) {
+-    Counterattack *task = createTask(FIGHTSTG_updateCounterattack, sizeof(Counterattack), 4);
++    Counterattack *task = createTask(FIGHTSTG_updateCounterattack, sizeof(Counterattack), sizeof(Task *));
+ 
+     task->side = side;
+     task->received = received;
+--- a/src/battle/battle_mode/cursor.c	2026-10-10 01:44:11.318753800 -0300
++++ b/src/battle/battle_mode/cursor.c	2026-10-10 05:12:15.242823475 -0300
+@@ -8,8 +8,8 @@
+ /* The vsync callback while the list is open: draws the picked line's bar,
+    moving through its frames, and the bar off the line picked before when the
+    pick has changed, over the frame being drawn. The match depends on the task
+-   coming as the callback's s32 argument, cast into a variable. */
+-void FIGHTSTG_drawCursorBar(s32 arg) {
++   coming as the callback's void* argument. */
++void FIGHTSTG_drawCursorBar(void *arg) {
+     MenuCursor *task = (MenuCursor *)arg;
+     u_long *saved;
+     s32 i;
+@@ -97,7 +97,7 @@
+         case 2:
+         default:
+             GFX.vsyncFunc = FIGHTSTG_drawCursorBar;
+-            GFX.vsyncArg = (s32)task;
++            GFX.vsyncArg = task;
+             /* fallthrough */
+         case 0:
+         case 1:
+--- a/src/battle/battle_mode/entrance.c	2026-10-10 01:44:11.330684200 -0300
++++ b/src/battle/battle_mode/entrance.c	2026-10-10 05:11:37.713083654 -0300
+@@ -174,7 +174,7 @@
+ /* Starts a fighter's entrance: Digimon id on the player's side (side 0) or
+    the enemy's */
+ Entrance *FIGHTSTG_startEntrance(s32 id, s32 side, s32 weak) {
+-    Entrance *task = createTask(FIGHTSTG_updateEntrance, sizeof(Entrance), 0xC);
++    Entrance *task = createTask(FIGHTSTG_updateEntrance, sizeof(Entrance), 3 * sizeof(Task *));
+ 
+     task->key1 = id;
+     if (side) {
+--- a/src/battle/battle_mode/message.c	2026-10-10 01:44:11.349657300 -0300
++++ b/src/battle/battle_mode/message.c	2026-10-10 05:11:37.713192407 -0300
+@@ -438,7 +438,7 @@
+ 
+ /* Creates a battle message box (FIGHTSTG_updateMessage) */
+ BattleMessageBox *FIGHTSTG_createMessage(void) {
+-    BattleMessageBox *task = createTask(FIGHTSTG_updateMessage, sizeof(BattleMessageBox), 8);
++    BattleMessageBox *task = createTask(FIGHTSTG_updateMessage, sizeof(BattleMessageBox), 2 * sizeof(Task *));
+ 
+     task->show = FIGHTSTG_showMessage;
+     task->finish = FIGHTSTG_finishMessage;
+--- a/src/battle/battle_mode/model_mesh.c	2026-10-10 01:44:11.351975300 -0300
++++ b/src/battle/battle_mode/model_mesh.c	2026-10-10 05:12:27.136938967 -0300
+@@ -453,7 +453,7 @@
+     s32 high = file & 0xFFFF0000;
+     s32 *entry = FILE_CACHE.getEntry(file);
+     s32 count = entry[1] + 1;
+-    Model *model = createTaskWithId(FIGHTSTG_updateModel, sizeof(Model), (entry[1] + 2) * 4, BATTLE_TASK_MODEL);
++    Model *model = createTaskWithId(FIGHTSTG_updateModel, sizeof(Model), (entry[1] + 2) * (s32)sizeof(Task *), BATTLE_TASK_MODEL);
+     s32 i;
+ 
+     model->bones = HEAP.alloc(count * sizeof(ModelBone), 2);
+--- a/src/battle/battle_mode/stage.c	2026-10-10 01:44:11.370005100 -0300
++++ b/src/battle/battle_mode/stage.c	2026-10-10 05:11:37.713289869 -0300
+@@ -211,7 +211,7 @@
+ /* Creates the fight stage (id 0x15), which loads stage id and fades it in
+    over fadeInTime */
+ FightStage *FIGHTSTG_createStage(s32 id, s32 fadeInTime) {
+-    FightStage *task = createTaskWithId(FIGHTSTG_updateStage, sizeof(FightStage), 4, BATTLE_TASK_STAGE);
++    FightStage *task = createTaskWithId(FIGHTSTG_updateStage, sizeof(FightStage), sizeof(Task *), BATTLE_TASK_STAGE);
+ 
+     task->setStage = FIGHTSTG_setStage;
+     task->stage = id;
+--- a/src/battle/report/partner.c	2026-10-10 01:44:11.404340200 -0300
++++ b/src/battle/report/partner.c	2026-10-10 05:11:59.452612096 -0300
+@@ -509,7 +509,7 @@
+ 
+ /* Creates the panel of party member index, who gets exp */
+ ReportPartner *STFGTREP_createPartner(FightReport *report, s32 index, s32 exp) {
+-    ReportPartner *partner = createTask(STFGTREP_updatePartner, sizeof(ReportPartner), 0x30);
++    ReportPartner *partner = createTask(STFGTREP_updatePartner, sizeof(ReportPartner), sizeof(ReportPartnerWindows));
+ 
+     partner->show = STFGTREP_showPartner;
+     partner->hide = STFGTREP_hidePartner;
+--- a/src/battle/report/report.c	2026-10-10 01:44:11.406110500 -0300
++++ b/src/battle/report/report.c	2026-10-10 05:11:59.452753024 -0300
+@@ -361,7 +361,7 @@
+ 
+ /* Creates the report (STFGTREP_updateReport) on the screen layer */
+ FightReport *STFGTREP_createScreen(void) {
+-    FightReport *report = createTask(STFGTREP_updateReport, sizeof(FightReport), 0x1C);
++    FightReport *report = createTask(STFGTREP_updateReport, sizeof(FightReport), sizeof(FightReportChildren));
+ 
+     report->layer = SCREEN_LAYER;
+     report->depth = 7;
+--- a/src/battle/report/scene.c	2026-10-10 01:44:11.407433000 -0300
++++ b/src/battle/report/scene.c	2026-10-10 05:11:37.713386457 -0300
+@@ -33,7 +33,7 @@
+ 
+ /* The mode's entry point (MODE_ENTRY_POINTS) */
+ Task *STFGTREP_start(void) {
+-    return createTask(STFGTREP_updateScene, sizeof(Task), 4);
++    return createTask(STFGTREP_updateScene, sizeof(Task), sizeof(Task *));
+ }
+ 
+ #include "shared/start_fader.inc.c"
+--- a/src/cardgame/card_battle/battle.c	2026-10-10 01:44:11.416448800 -0300
++++ b/src/cardgame/card_battle/battle.c	2026-10-10 05:12:27.136634885 -0300
+@@ -2552,7 +2552,7 @@
+ /* Creates the card battle against opponent arg (CARDGAME_loadOpponent), with
+    its functions, and loads its sound bank */
+ CardBattle *CARDGAME_createBattle(s32 arg) {
+-    CardBattle *battle = createTask(CARDGAME_updateBattle, sizeof(CardBattle), 7 * 4);
++    CardBattle *battle = createTask(CARDGAME_updateBattle, sizeof(CardBattle), 7 * sizeof(Task *));
+ 
+     battle->shufflePile = CARDGAME_shufflePile;
+     battle->sortCards = CARDGAME_sortCards;
+--- a/src/cardgame/card_battle/deck_choice.c	2026-10-10 01:44:11.428186600 -0300
++++ b/src/cardgame/card_battle/deck_choice.c	2026-10-10 05:12:27.136140562 -0300
+@@ -229,7 +229,7 @@
+     s32 i;
+ 
+     initCardDrawer(&drawer);
+-    window = createTask(CARDGAME_updateDeckWindow, sizeof(CardDeckWindow), 7 * 4);
++    window = createTask(CARDGAME_updateDeckWindow, sizeof(CardDeckWindow), 7 * sizeof(Task *));
+     for (i = 0; i < 6; i++) {
+         window->counts[i] = 0;
+     }
+--- a/src/cardgame/card_battle/fader.c	2026-10-10 01:44:11.431863600 -0300
++++ b/src/cardgame/card_battle/fader.c	2026-10-10 05:11:37.713474110 -0300
+@@ -110,7 +110,7 @@
+ 
+ /* Creates a fader, with the semi-transparency rate BLEND */
+ CardFader *CARDGAME_createFader(u8 blend) {
+-    CardFader *fader = createTask(CARDGAME_tickFader, sizeof(CardFader), 4);
++    CardFader *fader = createTask(CARDGAME_tickFader, sizeof(CardFader), sizeof(Task *));
+ 
+     fader->setColor = CARDGAME_setFaderColor;
+     fader->start = CARDGAME_startFade;
+--- a/src/cardgame/card_battle/scene.c	2026-10-10 01:44:11.449039300 -0300
++++ b/src/cardgame/card_battle/scene.c	2026-10-10 05:11:37.713569156 -0300
+@@ -49,5 +49,5 @@
+ 
+ /* The mode's entry point (MODE_ENTRY_POINTS) */
+ Task *CARDGAME_start(void) {
+-    return createTask(CARDGAME_updateScene, sizeof(Task), 4);
++    return createTask(CARDGAME_updateScene, sizeof(Task), sizeof(Task *));
+ }
+--- a/src/cardgame/card_battle/screen.c	2026-10-10 01:44:11.450926700 -0300
++++ b/src/cardgame/card_battle/screen.c	2026-10-10 05:12:27.136828062 -0300
+@@ -682,7 +682,7 @@
+ 
+ /* Creates the card screen over cards, with its functions */
+ CardScreen *CARDGAME_createScreen(s16 *cards) {
+-    CardScreen *screen = createTask(CARDGAME_updateScreen, sizeof(CardScreen), 14 * 4);
++    CardScreen *screen = createTask(CARDGAME_updateScreen, sizeof(CardScreen), 14 * sizeof(Task *));
+ 
+     screen->setPanelValue = CARDGAME_setPanelValue;
+     screen->openGauge = CARDGAME_openGauge;
+--- a/src/debug/sound_test/sound_test.c	2026-10-10 01:44:11.493295900 -0300
++++ b/src/debug/sound_test/sound_test.c	2026-10-10 05:11:37.714427171 -0300
+@@ -631,7 +631,7 @@
+ 
+ /* Creates the sound test's root task */
+ Task *SOUNDTST_start(void) {
+-    return createTask(SOUNDTST_updateScene, sizeof(Task), 4);
++    return createTask(SOUNDTST_updateScene, sizeof(Task), sizeof(Task *));
+ }
+ 
+ /* Moves a list's cursor by delta within its count, scrolling the eight lines
+--- a/src/debug/stage_select/stage_select.c	2026-10-10 01:44:11.499759000 -0300
++++ b/src/debug/stage_select/stage_select.c	2026-10-10 05:11:37.715317348 -0300
+@@ -55,7 +55,7 @@
+     {"\x82\x72\x82\x73\x82\x63\x82\x64\x82\x62\x82\x6A", "\x83\x74\x83\x48\x83\x8B\x83\x5F\x82\xD6\x82\xF1\x82\xB5\x82\xE3\x82\xA4", MODE_DECK_EDITOR, 0}, /* "ＳＴＤＥＣＫ" "フォルダへんしゅう" */
+     {"\x82\x72\x82\x73\x82\x62\x82\x63\x82\x72\x82\x6F", "\x83\x4A\x81\x5B\x83\x68\x83\x56\x83\x87\x83\x62\x83\x76", MODE_CARD_SHOP, 0}, /* "ＳＴＣＤＳＰ" "カードショップ" */
+     {SEPARATOR, SEPARATOR, 0, 0},
+-    {"\x82\x72\x82\x73\x82\x6C\x82\x62\x82\x71\x82\x63", "\x83\x5A\x81\x5B\x83\x75", MODE_CONTINUE, (s32)0x80000000}, /* "ＳＴＭＣＲＤ" "セーブ" */
++    {"\x82\x72\x82\x73\x82\x6C\x82\x62\x82\x71\x82\x63", "\x83\x5A\x81\x5B\x83\x75", MODE_CONTINUE, -0x80000000}, /* "ＳＴＭＣＲＤ" "セーブ" */
+     {"\x82\x72\x82\x73\x82\x6C\x82\x62\x82\x71\x82\x63", "\x83\x8D\x81\x5B\x83\x68", MODE_CONTINUE, 0}, /* "ＳＴＭＣＲＤ" "ロード" */
+     {SEPARATOR, SEPARATOR, 0, 0},
+     {"\x82\x72\x82\x73\x82\x73\x82\x68\x82\x73\x82\x6B", "\x83\x5E\x83\x43\x83\x67\x83\x8B\x82\xAA\x82\xDF\x82\xF1", MODE_TITLE, 0}, /* "ＳＴＴＩＴＬ" "タイトルがめん" */
+@@ -398,7 +398,7 @@
+     {"\x82\x72\x82\x73\x82\x63\x82\x64\x82\x62\x82\x6A", "\x83\x74\x83\x48\x83\x8B\x83\x5F\x82\xD6\x82\xF1\x82\xB5\x82\xE3\x82\xA4", MODE_DECK_EDITOR, 0}, /* "ＳＴＤＥＣＫ" "フォルダへんしゅう" */
+     {"\x82\x72\x82\x73\x82\x62\x82\x63\x82\x72\x82\x6F", "\x83\x4A\x81\x5B\x83\x68\x83\x56\x83\x87\x83\x62\x83\x76", MODE_CARD_SHOP, 0}, /* "ＳＴＣＤＳＰ" "カードショップ" */
+     {SEPARATOR, SEPARATOR, 0, 0},
+-    {"\x82\x72\x82\x73\x82\x6C\x82\x62\x82\x71\x82\x63", "\x83\x5A\x81\x5B\x83\x75", MODE_CONTINUE, (s32)0x80000000}, /* "ＳＴＭＣＲＤ" "セーブ" */
++    {"\x82\x72\x82\x73\x82\x6C\x82\x62\x82\x71\x82\x63", "\x83\x5A\x81\x5B\x83\x75", MODE_CONTINUE, -0x80000000}, /* "ＳＴＭＣＲＤ" "セーブ" */
+     {"\x82\x72\x82\x73\x82\x6C\x82\x62\x82\x71\x82\x63", "\x83\x8D\x81\x5B\x83\x68", MODE_CONTINUE, 0}, /* "ＳＴＭＣＲＤ" "ロード" */
+     {SEPARATOR, SEPARATOR, 0, 0},
+     {"\x82\x72\x82\x73\x82\x73\x82\x68\x82\x73\x82\x6B", "\x83\x5E\x83\x43\x83\x67\x83\x8B\x82\xAA\x82\xDF\x82\xF1", MODE_TITLE, 0}, /* "ＳＴＴＩＴＬ" "タイトルがめん" */
+@@ -701,7 +701,7 @@
+ 
+ /* Creates the stage select's root task */
+ Task *STAGSLCT_start(void) {
+-    return createTask(STAGSLCT_updateScene, sizeof(Task), 4);
++    return createTask(STAGSLCT_updateScene, sizeof(Task), sizeof(Task *));
+ }
+ 
+ /* Moves the cursor by delta to the next line with a scene, scrolling the
+--- a/src/field/field_mode/actor.c	2026-10-10 01:44:11.594295300 -0300
++++ b/src/field/field_mode/actor.c	2026-10-10 05:11:37.711651607 -0300
+@@ -126,7 +126,7 @@
+  * global allocator (the European version matches either way).
+  */
+ Actor *FIELDSTG_createActor(s32 key1, s32 kind, s32 image, FieldActorEntry *entry) {
+-    Actor *actor = createTaskWithId(FIELDSTG_updateActor, sizeof(Actor), 0x10, FIELD_TASK_ACTOR);
++    Actor *actor = createTaskWithId(FIELDSTG_updateActor, sizeof(Actor), 4 * sizeof(Task *), FIELD_TASK_ACTOR);
+     s32 keepsDir;
+ 
+     setActorMethods(actor);
+--- a/src/field/field_mode/banner.c	2026-10-10 01:44:11.602136700 -0300
++++ b/src/field/field_mode/banner.c	2026-10-10 05:11:37.711800923 -0300
+@@ -239,7 +239,7 @@
+ /* Creates the area name banner, which closes at once unless show; the
+    player is frozen until it ends */
+ Task *FIELDSTG_createBanner(s32 show) {
+-    Task *task = createTaskWithId(FIELDSTG_updateBanner, sizeof(AreaBanner), 8, FIELD_TASK_BANNER);
++    Task *task = createTaskWithId(FIELDSTG_updateBanner, sizeof(AreaBanner), 2 * sizeof(Task *), FIELD_TASK_BANNER);
+ 
+     task->key1 = show;
+     FIELDSTG_state.frozen = 1;
+--- a/src/field/field_mode/event.c	2026-10-10 01:44:11.618679600 -0300
++++ b/src/field/field_mode/event.c	2026-10-10 05:11:37.715599484 -0300
+@@ -30,7 +30,7 @@
+     s32 set = op[2]; /* or the command */
+     s32 dir = op[3]; /* or its argument */
+     Actor *actor;
+-    s32 target;
++    void *target;
+     s32 i;
+ 
+     if (id < 0x320) {
+@@ -39,19 +39,19 @@
+             actor->setPose(actor, set, dir);
+         }
+     } else {
+-        target = (s32)TASK_REGISTRY.funcs.find(id, -1, -1);
+-        if (target == 0) {
++        target = TASK_REGISTRY.funcs.find(id, -1, -1);
++        if (target == NULL) {
+             for (i = 0; i < 10; i++) {
+-                if (children->scripts[i] == 0) {
++                if (children->scripts[i] == NULL) {
+                     children->scripts[i] = FIELDSTG_createScriptCommand(id);
+-                    if (children->scripts[i] != 0) {
++                    if (children->scripts[i] != NULL) {
+                         target = children->scripts[i];
+                     }
+                     break;
+                 }
+             }
+         }
+-        if (target != 0) {
++        if (target != NULL) {
+             FIELDSTG_handleScriptCommand(target, id, set, dir);
+         }
+     }
+@@ -248,7 +248,7 @@
+ /* Starts the event id of FieldState.events: its script, start and end, and
+    its text; the player stands still, except for the events 8000 to 8999 */
+ EventTask *FIELDSTG_startEvent(s32 id) {
+-    EventTask *task = createTask(FIELDSTG_runEvent, sizeof(EventTask), 0x38);
++    EventTask *task = createTask(FIELDSTG_runEvent, sizeof(EventTask), 14 * sizeof(Task *));
+     FieldEvent *entry;
+     Task *other;
+     s32 text;
+--- a/src/field/field_mode/hidden_spots.c	2026-10-10 01:44:11.625515700 -0300
++++ b/src/field/field_mode/hidden_spots.c	2026-10-10 05:11:37.712050592 -0300
+@@ -151,7 +151,7 @@
+ /* Creates the hidden spots, the map objects of animation 0xFF, and hides the
+    prize in one (or where it was, in the same mode) */
+ HiddenSpots *FIELDSTG_createHiddenSpots(s32 count) {
+-    HiddenSpots *task = createTaskWithId(FIELDSTG_updateHiddenSpots, sizeof(HiddenSpots), 8, FIELD_TASK_HIDDEN_SPOTS);
++    HiddenSpots *task = createTaskWithId(FIELDSTG_updateHiddenSpots, sizeof(HiddenSpots), 2 * sizeof(Task *), FIELD_TASK_HIDDEN_SPOTS);
+     StageTile *object;
+     s32 i;
+     s32 n;
+--- a/src/field/field_mode/map_objects.c	2026-10-10 01:44:11.629905900 -0300
++++ b/src/field/field_mode/map_objects.c	2026-10-10 05:11:37.712142042 -0300
+@@ -140,7 +140,7 @@
+ 
+ /* Creates the map's objects, with their sprites */
+ MapObjects *FIELDSTG_createMapObjects(s32 sprites, StageTile *objects) {
+-    MapObjects *task = createTask(FIELDSTG_updateMapObjects, sizeof(MapObjects), 4);
++    MapObjects *task = createTask(FIELDSTG_updateMapObjects, sizeof(MapObjects), sizeof(Task *));
+ 
+     task->objects = objects;
+     task->sprites = sprites;
+--- a/src/field/field_mode/map_streamer.c	2026-10-10 01:44:11.631102400 -0300
++++ b/src/field/field_mode/map_streamer.c	2026-10-10 05:12:59.306319019 -0300
+@@ -365,7 +365,7 @@
+ 
+ /* Creates the map streamer of a file */
+ MapStreamer *FIELDSTG_createMapStreamer(s32 file) {
+-    MapStreamer *task = createTaskWithId(FIELDSTG_runMapStreamer, sizeof(MapStreamer), 0x7C, FIELD_TASK_MAP);
++    MapStreamer *task = createTaskWithId(FIELDSTG_runMapStreamer, sizeof(MapStreamer), sizeof(StreamPool), FIELD_TASK_MAP);
+ 
+     task->file = file;
+     task->getSize = FIELDSTG_getMapSize;
+--- a/src/field/field_mode/script.c	2026-10-10 01:44:11.632037800 -0300
++++ b/src/field/field_mode/script.c	2026-10-10 05:12:15.242734000 -0300
+@@ -78,7 +78,7 @@
+ }
+ 
+ /* Creates the task of script command id, or returns 0 */
+-s32 FIELDSTG_createScriptCommand(s32 id) {
++void *FIELDSTG_createScriptCommand(s32 id) {
+     ScriptCommand *cmd = FIELDSTG_findScriptCommand(id);
+     s32 ret = 0;
+ 
+@@ -90,7 +90,7 @@
+ 
+ /* Hands the task of script command id a command and its argument, through
+    the command's handle */
+-void FIELDSTG_handleScriptCommand(s32 task, s32 id, s32 command, s32 arg) {
++void FIELDSTG_handleScriptCommand(void *task, s32 id, s32 command, s32 arg) {
+     ScriptCommand *cmd = FIELDSTG_findScriptCommand(id);
+ 
+     if (cmd != NULL && cmd->handle != NULL) {
+--- a/src/field/field_mode/speech.c	2026-10-10 01:44:11.632974100 -0300
++++ b/src/field/field_mode/speech.c	2026-10-10 05:11:37.712237337 -0300
+@@ -62,7 +62,7 @@
+ /* Creates the speech of an event's text entry: a message box, or a talk box
+    of a type */
+ Speech *FIELDSTG_createSpeech(Actor *actor, s32 entry, s32 type, s32 isMessage) {
+-    Speech *task = createTask(FIELDSTG_updateSpeech, sizeof(Speech), 4);
++    Speech *task = createTask(FIELDSTG_updateSpeech, sizeof(Speech), sizeof(Task *));
+ 
+     task->actor = actor;
+     task->entry = entry;
+@@ -75,7 +75,7 @@
+ /* Creates the talk box of an actor's text entry, on the side of the screen
+    away from where it faces and the edges */
+ Speech *FIELDSTG_createTalk(Actor *actor, s32 entry) {
+-    Speech *task = createTask(FIELDSTG_updateSpeech, sizeof(Speech), 4);
++    Speech *task = createTask(FIELDSTG_updateSpeech, sizeof(Speech), sizeof(Task *));
+     Vec2 pos;
+ 
+     task->actor = actor;
+--- a/src/field/field_mode/start.c	2026-10-10 01:44:11.634105200 -0300
++++ b/src/field/field_mode/start.c	2026-10-10 05:11:37.712320662 -0300
+@@ -32,5 +32,5 @@
+ 
+ /* FIELDSTG's entry point: creates its root task */
+ Task *FIELDSTG_start(void) {
+-    return createTask(FIELDSTG_updateRoot, sizeof(Task), 0xC);
++    return createTask(FIELDSTG_updateRoot, sizeof(Task), 3 * sizeof(Task *));
+ }
+--- a/src/field/field_mode/story.c	2026-10-10 01:44:11.636147300 -0300
++++ b/src/field/field_mode/story.c	2026-10-10 05:11:37.712404963 -0300
+@@ -70,7 +70,7 @@
+ 
+ /* Creates the story events, and loads the field's sound bank and files */
+ StoryEvents *FIELDSTG_createStoryEvents(void *owner) {
+-    StoryEvents *task = createTask(FIELDSTG_runStoryEvents, sizeof(StoryEvents), 8);
++    StoryEvents *task = createTask(FIELDSTG_runStoryEvents, sizeof(StoryEvents), 2 * sizeof(Task *));
+ 
+     task->owner = owner;
+     FIELDSTG_initFuncs[0]();
+--- a/src/field/field_mode/trigger.c	2026-10-10 01:44:11.638779400 -0300
++++ b/src/field/field_mode/trigger.c	2026-10-10 05:11:37.712489303 -0300
+@@ -237,7 +237,7 @@
+ 
+ /* Creates the triggers */
+ Triggers *FIELDSTG_createTriggers(s32 sheetEntry, StageSlot *slots) {
+-    Triggers *task = createTask(FIELDSTG_updateTriggers, sizeof(Triggers), 8);
++    Triggers *task = createTask(FIELDSTG_updateTriggers, sizeof(Triggers), 2 * sizeof(Task *));
+ 
+     task->sheetEntry = sheetEntry;
+     return task;
+--- a/src/field/stages/amaterasu_city/wstag226.c	2026-10-10 01:44:11.648593800 -0300
++++ b/src/field/stages/amaterasu_city/wstag226.c	2026-10-10 05:12:41.691324960 -0300
+@@ -141,7 +141,7 @@
+     }
+ }
+ 
+-#define STAGE_CHILDREN_SIZE 0x8
++#define STAGE_CHILDREN_SIZE (2 * sizeof(Task *))
+ #include "common/start_stage.inc.c"
+ 
+ /* After event 935, with Teddy, Kail and Kurt: moves the story on to its step 0x26 */
+--- a/src/field/stages/amaterasu_city/wstag233.c	2026-10-10 01:44:11.651653200 -0300
++++ b/src/field/stages/amaterasu_city/wstag233.c	2026-10-10 05:12:41.688900774 -0300
+@@ -15,7 +15,7 @@
+ #include "common/create_tile_anims_58.inc.c"
+ 
+ #include "common/update_stage_tile_anims.inc.c"
+-#define STAGE_CHILDREN_SIZE 4
++#define STAGE_CHILDREN_SIZE sizeof(Task *)
+ #include "common/start_stage.inc.c"
+ 
+ #if VERSION_US
+--- a/src/field/stages/amaterasu_city/wstag261.c	2026-10-10 01:44:11.661902100 -0300
++++ b/src/field/stages/amaterasu_city/wstag261.c	2026-10-10 05:12:41.688012478 -0300
+@@ -53,7 +53,7 @@
+     }
+ }
+ 
+-#define STAGE_CHILDREN_SIZE 4
++#define STAGE_CHILDREN_SIZE sizeof(Task *)
+ #include "common/start_stage.inc.c"
+ 
+ /* the color the setup copies to FIELDSTG_state.spriteColor */
+--- a/src/field/stages/amaterasu_city/wstag306.c	2026-10-10 01:44:11.674358400 -0300
++++ b/src/field/stages/amaterasu_city/wstag306.c	2026-10-10 05:12:41.687659186 -0300
+@@ -52,7 +52,7 @@
+     }
+ }
+ 
+-#define STAGE_CHILDREN_SIZE 0x8
++#define STAGE_CHILDREN_SIZE (2 * sizeof(Task *))
+ #include "common/start_stage.inc.c"
+ 
+ #if VERSION_US
+--- a/src/field/stages/amaterasu_city/wstag311.c	2026-10-10 01:44:11.676413400 -0300
++++ b/src/field/stages/amaterasu_city/wstag311.c	2026-10-10 05:12:41.689926747 -0300
+@@ -436,7 +436,7 @@
+     }
+ }
+ 
+-#define STAGE_CHILDREN_SIZE 0x1C
++#define STAGE_CHILDREN_SIZE (7 * sizeof(Task *))
+ #include "common/start_stage.inc.c"
+ #include "common/step_animation.inc.c"
+ #include "common/draw_stage_effect.inc.c"
+--- a/src/field/stages/amaterasu_city/wstag326.c	2026-10-10 01:44:11.681276900 -0300
++++ b/src/field/stages/amaterasu_city/wstag326.c	2026-10-10 05:12:41.689538978 -0300
+@@ -62,7 +62,7 @@
+ 
+ /* Command 834 of the event scripts: creates its task (updateCommand834) with the given id */
+ void *createCommand834(s32 arg) {
+-    return createTaskWithId(updateCommand834, 0x50, 0, arg);
++    return createTaskWithId(updateCommand834, sizeof(Task), 0, arg);
+ }
+ 
+ /* Command 834 of the event scripts: told 0x35A, swaps the map objects back (TASK_DONE) */
+@@ -92,7 +92,7 @@
+     }
+ }
+ 
+-#define STAGE_CHILDREN_SIZE 0x8
++#define STAGE_CHILDREN_SIZE (2 * sizeof(Task *))
+ #include "common/start_stage.inc.c"
+ 
+ /*
+--- a/src/field/stages/amaterasu_city/wstag923.c	2026-10-10 01:44:11.682840500 -0300
++++ b/src/field/stages/amaterasu_city/wstag923.c	2026-10-10 05:12:41.687861190 -0300
+@@ -9,7 +9,7 @@
+ #include "field/stage.h"
+ 
+ #include "common/update_stage.inc.c"
+-#define STAGE_CHILDREN_SIZE 4
++#define STAGE_CHILDREN_SIZE sizeof(Task *)
+ #include "common/start_stage.inc.c"
+ 
+ const CVECTOR stageColor = { 0x54, 0x67, 0x96, 0x00 };
+--- a/src/field/stages/amaterasu_city/wstag925.c	2026-10-10 01:44:11.687129800 -0300
++++ b/src/field/stages/amaterasu_city/wstag925.c	2026-10-10 05:12:41.690609232 -0300
+@@ -28,7 +28,7 @@
+     }
+ }
+ 
+-#define STAGE_CHILDREN_SIZE 4
++#define STAGE_CHILDREN_SIZE sizeof(Task *)
+ #include "common/start_stage.inc.c"
+ 
+ /*
+--- a/src/field/stages/amaterasu_city/wstag927.c	2026-10-10 01:44:11.689860900 -0300
++++ b/src/field/stages/amaterasu_city/wstag927.c	2026-10-10 05:12:41.687030423 -0300
+@@ -37,7 +37,7 @@
+     }
+ }
+ 
+-#define STAGE_CHILDREN_SIZE 0x8
++#define STAGE_CHILDREN_SIZE (2 * sizeof(Task *))
+ #include "common/start_stage.inc.c"
+ 
+ /* After event 1608, with Kurt: starts the stage's event battle 0 and keeps it from playing again */
+--- a/src/field/stages/amaterasu_city/wstag931.c	2026-10-10 01:44:11.695439400 -0300
++++ b/src/field/stages/amaterasu_city/wstag931.c	2026-10-10 05:12:41.689034880 -0300
+@@ -8,7 +8,7 @@
+ #include "field/stage.h"
+ 
+ #include "common/update_stage.inc.c"
+-#define STAGE_CHILDREN_SIZE 4
++#define STAGE_CHILDREN_SIZE sizeof(Task *)
+ #include "common/start_stage.inc.c"
+ 
+ /* Sets the stage up: its map, actors and events, playing SHOP1BGM */
+--- a/src/field/stages/amaterasu_city/wstag934.c	2026-10-10 01:44:11.700227000 -0300
++++ b/src/field/stages/amaterasu_city/wstag934.c	2026-10-10 05:10:20.201093677 -0300
+@@ -44,7 +44,7 @@
+ 
+ /* Creates the stage task (updateStage) of the given owner */
+ StageTask *startStage(void *owner) {
+-    StageTask *task = createTask(updateStage, 0x58, 8);
++    StageTask *task = createTask(updateStage, sizeof(StageTask), 2 * sizeof(Task *));
+ 
+     task->owner = owner;
+     stageFuncs.setup();
+--- a/src/field/stages/amaterasu_city/wstag937.c	2026-10-10 01:44:11.705280000 -0300
++++ b/src/field/stages/amaterasu_city/wstag937.c	2026-10-10 05:12:41.690133083 -0300
+@@ -9,7 +9,7 @@
+ #include "field/stage.h"
+ 
+ #include "common/update_stage.inc.c"
+-#define STAGE_CHILDREN_SIZE 4
++#define STAGE_CHILDREN_SIZE sizeof(Task *)
+ #include "common/start_stage.inc.c"
+ 
+ /* Sets the stage up: its map and actors, playing SHOP2BGM */
+--- a/src/field/stages/amaterasu_city/wstag939.c	2026-10-10 01:44:11.708846800 -0300
++++ b/src/field/stages/amaterasu_city/wstag939.c	2026-10-10 05:12:41.688459229 -0300
+@@ -8,7 +8,7 @@
+ #include "field/stage.h"
+ 
+ #include "common/update_stage.inc.c"
+-#define STAGE_CHILDREN_SIZE 4
++#define STAGE_CHILDREN_SIZE sizeof(Task *)
+ #include "common/start_stage.inc.c"
+ 
+ /* Sets the stage up: its map and actors, playing the ambience ENV_0003 */
+--- a/src/field/stages/asuka_city/wstag210.c	2026-10-10 01:44:11.712784800 -0300
++++ b/src/field/stages/asuka_city/wstag210.c	2026-10-10 05:12:41.679253622 -0300
+@@ -398,7 +398,7 @@
+     }
+ }
+ 
+-#define STAGE_CHILDREN_SIZE 4
++#define STAGE_CHILDREN_SIZE sizeof(Task *)
+ #include "common/start_stage.inc.c"
+ 
+ /* After event 310, with Kail: sets flag 0x4005 and keeps it from playing again */
+--- a/src/field/stages/asuka_city/wstag212.c	2026-10-10 01:44:11.716025500 -0300
++++ b/src/field/stages/asuka_city/wstag212.c	2026-10-10 05:12:41.676813587 -0300
+@@ -152,7 +152,7 @@
+     }
+ }
+ 
+-#define STAGE_CHILDREN_SIZE 4
++#define STAGE_CHILDREN_SIZE sizeof(Task *)
+ #include "common/start_stage.inc.c"
+ 
+ /*
+--- a/src/field/stages/asuka_city/wstag225.c	2026-10-10 01:44:11.719621100 -0300
++++ b/src/field/stages/asuka_city/wstag225.c	2026-10-10 05:12:41.679940274 -0300
+@@ -142,7 +142,7 @@
+     }
+ }
+ 
+-#define STAGE_CHILDREN_SIZE 4
++#define STAGE_CHILDREN_SIZE sizeof(Task *)
+ #include "common/start_stage.inc.c"
+ 
+ /* After event 5, with Account Clerk: moves the story on to its step 2 */
+--- a/src/field/stages/asuka_city/wstag232.c	2026-10-10 01:44:11.722782600 -0300
++++ b/src/field/stages/asuka_city/wstag232.c	2026-10-10 05:12:41.677569303 -0300
+@@ -15,7 +15,7 @@
+ #include "common/create_tile_anims_58.inc.c"
+ 
+ #include "common/update_stage_tile_anims.inc.c"
+-#define STAGE_CHILDREN_SIZE 4
++#define STAGE_CHILDREN_SIZE sizeof(Task *)
+ #include "common/start_stage.inc.c"
+ 
+ #if VERSION_US
+--- a/src/field/stages/asuka_city/wstag245.c	2026-10-10 01:44:11.729272400 -0300
++++ b/src/field/stages/asuka_city/wstag245.c	2026-10-10 05:12:41.682650915 -0300
+@@ -6,7 +6,7 @@
+ #include "field/stage.h"
+ 
+ #include "common/update_stage.inc.c"
+-#define STAGE_CHILDREN_SIZE 4
++#define STAGE_CHILDREN_SIZE sizeof(Task *)
+ #include "common/start_stage.inc.c"
+ 
+ #if VERSION_US
+--- a/src/field/stages/asuka_city/wstag280.c	2026-10-10 01:44:11.738509600 -0300
++++ b/src/field/stages/asuka_city/wstag280.c	2026-10-10 05:12:41.677209267 -0300
+@@ -145,7 +145,7 @@
+     }
+ }
+ 
+-#define STAGE_CHILDREN_SIZE 4
++#define STAGE_CHILDREN_SIZE sizeof(Task *)
+ #include "common/start_stage.inc.c"
+ 
+ #if VERSION_US
+--- a/src/field/stages/asuka_city/wstag285.c	2026-10-10 01:44:11.740116200 -0300
++++ b/src/field/stages/asuka_city/wstag285.c	2026-10-10 05:12:41.677968227 -0300
+@@ -33,7 +33,7 @@
+     }
+ }
+ 
+-#define STAGE_CHILDREN_SIZE 4
++#define STAGE_CHILDREN_SIZE sizeof(Task *)
+ #include "common/start_stage.inc.c"
+ 
+ /* Clears the flag of the story so far */
+--- a/src/field/stages/asuka_city/wstag295.c	2026-10-10 01:44:11.743156500 -0300
++++ b/src/field/stages/asuka_city/wstag295.c	2026-10-10 05:12:41.677418289 -0300
+@@ -26,7 +26,7 @@
+     }
+ }
+ 
+-#define STAGE_CHILDREN_SIZE 4
++#define STAGE_CHILDREN_SIZE sizeof(Task *)
+ #include "common/start_stage.inc.c"
+ 
+ /*
+--- a/src/field/stages/asuka_city/wstag300.c	2026-10-10 01:44:11.745269600 -0300
++++ b/src/field/stages/asuka_city/wstag300.c	2026-10-10 05:12:41.678791978 -0300
+@@ -24,7 +24,7 @@
+     }
+ }
+ 
+-#define STAGE_CHILDREN_SIZE 4
++#define STAGE_CHILDREN_SIZE sizeof(Task *)
+ #include "common/start_stage.inc.c"
+ 
+ /*
+--- a/src/field/stages/asuka_city/wstag305.c	2026-10-10 01:44:11.748047800 -0300
++++ b/src/field/stages/asuka_city/wstag305.c	2026-10-10 05:12:41.680896573 -0300
+@@ -80,7 +80,7 @@
+     }
+ }
+ 
+-#define STAGE_CHILDREN_SIZE 0x8
++#define STAGE_CHILDREN_SIZE (2 * sizeof(Task *))
+ #include "common/start_stage.inc.c"
+ 
+ /* After event 350, with Kail, Game Master and DO Guard: keeps it from playing again */
+--- a/src/field/stages/asuka_city/wstag310.c	2026-10-10 01:44:11.750211900 -0300
++++ b/src/field/stages/asuka_city/wstag310.c	2026-10-10 05:12:41.678350036 -0300
+@@ -451,7 +451,7 @@
+     }
+ }
+ 
+-#define STAGE_CHILDREN_SIZE 0x18
++#define STAGE_CHILDREN_SIZE (6 * sizeof(Task *))
+ #include "common/start_stage.inc.c"
+ #include "common/step_animation.inc.c"
+ 
+--- a/src/field/stages/asuka_city/wstag325.c	2026-10-10 01:44:11.754954600 -0300
++++ b/src/field/stages/asuka_city/wstag325.c	2026-10-10 05:12:41.677763290 -0300
+@@ -61,7 +61,7 @@
+ 
+ /* Command 833 of the event scripts: creates its task (updateCommand833) with the given id */
+ void *createCommand833(s32 arg) {
+-    return createTaskWithId(updateCommand833, 0x50, 0, arg);
++    return createTaskWithId(updateCommand833, sizeof(Task), 0, arg);
+ }
+ 
+ /* Ends the task when map object 0x35A is triggered */
+@@ -88,7 +88,7 @@
+     }
+ }
+ 
+-#define STAGE_CHILDREN_SIZE 0x8
++#define STAGE_CHILDREN_SIZE (2 * sizeof(Task *))
+ #include "common/start_stage.inc.c"
+ 
+ /* After event 375, with Datamon: lets event 376 start and starts the stage's event battle 0 */
+--- a/src/field/stages/bai_hu_city/wstag676.c	2026-10-10 01:44:11.757621400 -0300
++++ b/src/field/stages/bai_hu_city/wstag676.c	2026-10-10 05:12:41.699779369 -0300
+@@ -23,7 +23,7 @@
+     }
+ }
+ 
+-#define STAGE_CHILDREN_SIZE 4
++#define STAGE_CHILDREN_SIZE sizeof(Task *)
+ #include "common/start_stage.inc.c"
+ 
+ /*
+--- a/src/field/stages/byakko_city/wstag675.c	2026-10-10 01:44:11.762226400 -0300
++++ b/src/field/stages/byakko_city/wstag675.c	2026-10-10 05:12:41.724956405 -0300
+@@ -22,7 +22,7 @@
+     }
+ }
+ 
+-#define STAGE_CHILDREN_SIZE 4
++#define STAGE_CHILDREN_SIZE sizeof(Task *)
+ #include "common/start_stage.inc.c"
+ 
+ /* After event 390: keeps it from playing again */
+--- a/src/field/stages/byakko_city/wstag680.c	2026-10-10 01:44:11.764109700 -0300
++++ b/src/field/stages/byakko_city/wstag680.c	2026-10-10 05:12:41.724474995 -0300
+@@ -188,7 +188,7 @@
+     }
+ }
+ 
+-#define STAGE_CHILDREN_SIZE 4
++#define STAGE_CHILDREN_SIZE sizeof(Task *)
+ #include "common/start_stage.inc.c"
+ 
+ #if VERSION_US
+--- a/src/field/stages/byakko_city/wstag685.c	2026-10-10 01:44:11.765476700 -0300
++++ b/src/field/stages/byakko_city/wstag685.c	2026-10-10 05:12:41.724685019 -0300
+@@ -22,7 +22,7 @@
+     }
+ }
+ 
+-#define STAGE_CHILDREN_SIZE 4
++#define STAGE_CHILDREN_SIZE sizeof(Task *)
+ #include "common/start_stage.inc.c"
+ 
+ /* After event 413, with the player: moves the story on to its step 0x10 */
+--- a/src/field/stages/central_sector/wstag200.c	2026-10-10 01:44:11.768916900 -0300
++++ b/src/field/stages/central_sector/wstag200.c	2026-10-10 05:12:41.683924649 -0300
+@@ -24,7 +24,7 @@
+     }
+ }
+ 
+-#define STAGE_CHILDREN_SIZE 4
++#define STAGE_CHILDREN_SIZE sizeof(Task *)
+ #include "common/start_stage.inc.c"
+ 
+ /*
+--- a/src/field/stages/central_sector/wstag205.c	2026-10-10 01:44:11.776539900 -0300
++++ b/src/field/stages/central_sector/wstag205.c	2026-10-10 05:12:41.684999090 -0300
+@@ -98,7 +98,7 @@
+     }
+ }
+ 
+-#define STAGE_CHILDREN_SIZE 4
++#define STAGE_CHILDREN_SIZE sizeof(Task *)
+ #include "common/start_stage.inc.c"
+ 
+ /*
+--- a/src/field/stages/central_sector/wstag206.c	2026-10-10 01:44:11.778323600 -0300
++++ b/src/field/stages/central_sector/wstag206.c	2026-10-10 05:12:41.686183895 -0300
+@@ -30,7 +30,7 @@
+     }
+ }
+ 
+-#define STAGE_CHILDREN_SIZE 4
++#define STAGE_CHILDREN_SIZE sizeof(Task *)
+ #include "common/start_stage.inc.c"
+ 
+ /* After event 730, with Knightmon: starts the stage's event battle 0 */
+--- a/src/field/stages/central_sector/wstag330.c	2026-10-10 01:44:11.783322000 -0300
++++ b/src/field/stages/central_sector/wstag330.c	2026-10-10 05:12:41.685371321 -0300
+@@ -6,7 +6,7 @@
+ #include "field/stage.h"
+ 
+ #include "common/update_stage.inc.c"
+-#define STAGE_CHILDREN_SIZE 4
++#define STAGE_CHILDREN_SIZE sizeof(Task *)
+ #include "common/start_stage.inc.c"
+ 
+ const CVECTOR stageColor = { 0x80, 0x80, 0x80, 0x00 };
+--- a/src/field/stages/central_sector/wstag335.c	2026-10-10 01:44:11.787171700 -0300
++++ b/src/field/stages/central_sector/wstag335.c	2026-10-10 05:12:41.686740344 -0300
+@@ -23,7 +23,7 @@
+     }
+ }
+ 
+-#define STAGE_CHILDREN_SIZE 0x38
++#define STAGE_CHILDREN_SIZE (14 * sizeof(Task *))
+ #include "common/start_stage.inc.c"
+ 
+ /* Defined below, after the code that uses them */
+--- a/src/field/stages/central_sector/wstag920.c	2026-10-10 01:44:11.797304500 -0300
++++ b/src/field/stages/central_sector/wstag920.c	2026-10-10 05:12:41.684662470 -0300
+@@ -8,7 +8,7 @@
+ #include "field/stage.h"
+ 
+ #include "common/update_stage.inc.c"
+-#define STAGE_CHILDREN_SIZE 4
++#define STAGE_CHILDREN_SIZE sizeof(Task *)
+ #include "common/start_stage.inc.c"
+ 
+ const CVECTOR stageColor = { 0x54, 0x67, 0x96, 0x00 };
+--- a/src/field/stages/central_sector/wstag922.c	2026-10-10 01:44:11.800819500 -0300
++++ b/src/field/stages/central_sector/wstag922.c	2026-10-10 05:12:41.685543414 -0300
+@@ -8,7 +8,7 @@
+ #include "field/stage.h"
+ 
+ #include "common/update_stage.inc.c"
+-#define STAGE_CHILDREN_SIZE 4
++#define STAGE_CHILDREN_SIZE sizeof(Task *)
+ #include "common/start_stage.inc.c"
+ 
+ const CVECTOR stageColor = { 0x54, 0x67, 0x96, 0x00 };
+--- a/src/field/stages/central_sector/wstag940.c	2026-10-10 01:44:11.802838400 -0300
++++ b/src/field/stages/central_sector/wstag940.c	2026-10-10 05:12:41.685852560 -0300
+@@ -8,7 +8,7 @@
+ #include "field/stage.h"
+ 
+ #include "common/update_stage.inc.c"
+-#define STAGE_CHILDREN_SIZE 4
++#define STAGE_CHILDREN_SIZE sizeof(Task *)
+ #include "common/start_stage.inc.c"
+ 
+ const CVECTOR stageColor = { 0x80, 0x80, 0x80, 0x00 };
+--- a/src/field/stages/common/create_far_sprites.inc.c	2026-10-10 01:44:11.811142700 -0300
++++ b/src/field/stages/common/create_far_sprites.inc.c	2026-10-10 05:09:16.155279004 -0300
+@@ -1,4 +1,4 @@
+ /* Creates the updateFarSprites task */
+ void *createFarSprites(void) {
+-    return createTask(updateFarSprites, 0x50, 0);
++    return createTask(updateFarSprites, sizeof(Task), 0);
+ }
+--- a/src/field/stages/common/create_tile_anims_54.inc.c	2026-10-10 01:44:11.817798400 -0300
++++ b/src/field/stages/common/create_tile_anims_54.inc.c	2026-10-10 05:09:16.155526879 -0300
+@@ -1,4 +1,5 @@
++#include <stddef.h>
+ /* Creates the updateTileAnims task, 0x54 bytes */
+ void *createTileAnims(void) {
+-    return createTask(updateTileAnims, 0x54, 0);
++    return createTask(updateTileAnims, offsetof(StageTileAnims, anims) + 1 * sizeof(AnimState), 0);
+ }
+--- a/src/field/stages/common/create_tile_anims_58.inc.c	2026-10-10 01:44:11.819026100 -0300
++++ b/src/field/stages/common/create_tile_anims_58.inc.c	2026-10-10 05:09:16.155586440 -0300
+@@ -1,4 +1,5 @@
++#include <stddef.h>
+ /* Creates the updateTileAnims task, 0x58 bytes */
+ void *createTileAnims(void) {
+-    return createTask(updateTileAnims, 0x58, 0);
++    return createTask(updateTileAnims, offsetof(StageTileAnims, anims) + 2 * sizeof(AnimState), 0);
+ }
+--- a/src/field/stages/common/create_tile_anims_5c.inc.c	2026-10-10 01:44:11.820087100 -0300
++++ b/src/field/stages/common/create_tile_anims_5c.inc.c	2026-10-10 05:09:16.155643039 -0300
+@@ -1,4 +1,5 @@
++#include <stddef.h>
+ /* Creates the updateTileAnims task, 0x5C bytes */
+ void *createTileAnims(void) {
+-    return createTask(updateTileAnims, 0x5C, 0);
++    return createTask(updateTileAnims, offsetof(StageTileAnims, anims) + 3 * sizeof(AnimState), 0);
+ }
+--- a/src/field/stages/common/create_timer.inc.c	2026-10-10 01:44:11.826753900 -0300
++++ b/src/field/stages/common/create_timer.inc.c	2026-10-10 05:10:20.201649834 -0300
+@@ -1,4 +1,4 @@
+ /* Creates the updateTimer task */
+ void *createTimer(void) {
+-    return createTask(updateTimer, sizeof(StageTask), 0x4);
++    return createTask(updateTimer, sizeof(StageTask), sizeof(Task *));
+ }
+--- a/src/field/stages/common/start_stage.inc.c	2026-10-10 01:44:11.838155100 -0300
++++ b/src/field/stages/common/start_stage.inc.c	2026-10-10 05:12:41.726215120 -0300
+@@ -7,7 +7,7 @@
+  */
+ 
+ #ifndef STAGE_CHILDREN_SIZE
+-#define STAGE_CHILDREN_SIZE 0
++#define STAGE_CHILDREN_SIZE (0 * sizeof(Task *))
+ #endif
+ StageTask *startStage(void *owner) {
+     StageTask *task = createTask(updateStage, sizeof(StageTask), STAGE_CHILDREN_SIZE);
+--- a/src/field/stages/east_sector/wstag355.c	2026-10-10 01:44:11.879740200 -0300
++++ b/src/field/stages/east_sector/wstag355.c	2026-10-10 05:12:41.710027369 -0300
+@@ -6,7 +6,7 @@
+ #include "field/stage.h"
+ 
+ #include "common/update_stage.inc.c"
+-#define STAGE_CHILDREN_SIZE 0x50
++#define STAGE_CHILDREN_SIZE (20 * sizeof(Task *))
+ #include "common/start_stage.inc.c"
+ 
+ /* Defined below, after the code that uses them */
+--- a/src/field/stages/east_sector/wstag375.c	2026-10-10 01:44:11.891612300 -0300
++++ b/src/field/stages/east_sector/wstag375.c	2026-10-10 05:12:41.702720762 -0300
+@@ -66,7 +66,7 @@
+     }
+ }
+ 
+-#define STAGE_CHILDREN_SIZE 0x8
++#define STAGE_CHILDREN_SIZE (2 * sizeof(Task *))
+ #include "common/start_stage.inc.c"
+ 
+ /* After event 1260, with Pharaohmon: lets event 1261 start and starts the stage's event battle 0 */
+--- a/src/field/stages/east_sector/wstag376.c	2026-10-10 01:44:11.892984300 -0300
++++ b/src/field/stages/east_sector/wstag376.c	2026-10-10 05:12:41.712287240 -0300
+@@ -26,7 +26,7 @@
+     }
+ }
+ 
+-#define STAGE_CHILDREN_SIZE 4
++#define STAGE_CHILDREN_SIZE sizeof(Task *)
+ #include "common/start_stage.inc.c"
+ 
+ /*
+--- a/src/field/stages/east_sector/wstag385.c	2026-10-10 01:44:11.898107600 -0300
++++ b/src/field/stages/east_sector/wstag385.c	2026-10-10 05:12:41.710469831 -0300
+@@ -23,7 +23,7 @@
+     }
+ }
+ 
+-#define STAGE_CHILDREN_SIZE 4
++#define STAGE_CHILDREN_SIZE sizeof(Task *)
+ #include "common/start_stage.inc.c"
+ 
+ /* After event 1275, with Armormon: lets event 1276 start and starts the stage's event battle 0 */
+--- a/src/field/stages/east_sector/wstag395.c	2026-10-10 01:44:11.902898000 -0300
++++ b/src/field/stages/east_sector/wstag395.c	2026-10-10 05:12:41.701203499 -0300
+@@ -29,7 +29,7 @@
+     }
+ }
+ 
+-#define STAGE_CHILDREN_SIZE 4
++#define STAGE_CHILDREN_SIZE sizeof(Task *)
+ #include "common/start_stage.inc.c"
+ 
+ /* After event 80, with Teddy: keeps it from playing again */
+--- a/src/field/stages/east_sector/wstag400.c	2026-10-10 01:44:11.906246700 -0300
++++ b/src/field/stages/east_sector/wstag400.c	2026-10-10 05:12:41.701651369 -0300
+@@ -22,7 +22,7 @@
+     }
+ }
+ 
+-#define STAGE_CHILDREN_SIZE 4
++#define STAGE_CHILDREN_SIZE sizeof(Task *)
+ #include "common/start_stage.inc.c"
+ 
+ /* After event 1300, with the player: keeps it from playing again */
+--- a/src/field/stages/east_sector/wstag405.c	2026-10-10 01:44:11.909666200 -0300
++++ b/src/field/stages/east_sector/wstag405.c	2026-10-10 05:12:41.708692077 -0300
+@@ -31,7 +31,7 @@
+     }
+ }
+ 
+-#define STAGE_CHILDREN_SIZE 0x8
++#define STAGE_CHILDREN_SIZE (2 * sizeof(Task *))
+ #include "common/start_stage.inc.c"
+ 
+ /* After event 60, with MasterTyranno: lets event 61 start and starts the stage's event battle 0 */
+--- a/src/field/stages/east_sector/wstag406.c	2026-10-10 01:44:11.911094500 -0300
++++ b/src/field/stages/east_sector/wstag406.c	2026-10-10 05:12:41.711117495 -0300
+@@ -32,7 +32,7 @@
+     }
+ }
+ 
+-#define STAGE_CHILDREN_SIZE 0x8
++#define STAGE_CHILDREN_SIZE (2 * sizeof(Task *))
+ #include "common/start_stage.inc.c"
+ 
+ /*
+--- a/src/field/stages/east_sector/wstag415.c	2026-10-10 01:44:11.916076600 -0300
++++ b/src/field/stages/east_sector/wstag415.c	2026-10-10 05:12:41.709102134 -0300
+@@ -464,7 +464,7 @@
+     }
+ }
+ 
+-#define STAGE_CHILDREN_SIZE 0xC
++#define STAGE_CHILDREN_SIZE (3 * sizeof(Task *))
+ #include "common/start_stage.inc.c"
+ 
+ /* After event 150, with the player: starts the stage's event battle 0 and sets flag 0x4018 */
+--- a/src/field/stages/east_sector/wstag420.c	2026-10-10 01:44:11.918230700 -0300
++++ b/src/field/stages/east_sector/wstag420.c	2026-10-10 05:12:41.712017081 -0300
+@@ -22,7 +22,7 @@
+     }
+ }
+ 
+-#define STAGE_CHILDREN_SIZE 4
++#define STAGE_CHILDREN_SIZE sizeof(Task *)
+ #include "common/start_stage.inc.c"
+ 
+ /* After event 70, with Seiryu Leader: lets event 71 start and starts the stage's event battle 1 */
+--- a/src/field/stages/east_sector/wstag421.c	2026-10-10 01:44:11.919898000 -0300
++++ b/src/field/stages/east_sector/wstag421.c	2026-10-10 05:12:41.700978491 -0300
+@@ -39,7 +39,7 @@
+     }
+ }
+ 
+-#define STAGE_CHILDREN_SIZE 4
++#define STAGE_CHILDREN_SIZE sizeof(Task *)
+ #include "common/start_stage.inc.c"
+ 
+ /*
+--- a/src/field/stages/east_sector/wstag949.c	2026-10-10 01:44:11.927725700 -0300
++++ b/src/field/stages/east_sector/wstag949.c	2026-10-10 05:12:41.710650607 -0300
+@@ -58,7 +58,7 @@
+     }
+ }
+ 
+-#define STAGE_CHILDREN_SIZE 0x8
++#define STAGE_CHILDREN_SIZE (2 * sizeof(Task *))
+ #include "common/start_stage.inc.c"
+ 
+ const CVECTOR stageColor = { 0x80, 0x80, 0x80, 0x00 };
+--- a/src/field/stages/east_sector/wstag951.c	2026-10-10 01:44:11.930595000 -0300
++++ b/src/field/stages/east_sector/wstag951.c	2026-10-10 05:12:41.710941652 -0300
+@@ -8,7 +8,7 @@
+ #include "field/stage.h"
+ 
+ #include "common/update_stage.inc.c"
+-#define STAGE_CHILDREN_SIZE 4
++#define STAGE_CHILDREN_SIZE sizeof(Task *)
+ #include "common/start_stage.inc.c"
+ 
+ const CVECTOR stageColor = { 0x54, 0x67, 0x96, 0x00 };
+--- a/src/field/stages/east_sector/wstag952.c	2026-10-10 01:44:11.931839600 -0300
++++ b/src/field/stages/east_sector/wstag952.c	2026-10-10 05:12:41.712132480 -0300
+@@ -8,7 +8,7 @@
+ #include "field/stage.h"
+ 
+ #include "common/update_stage.inc.c"
+-#define STAGE_CHILDREN_SIZE 4
++#define STAGE_CHILDREN_SIZE sizeof(Task *)
+ #include "common/start_stage.inc.c"
+ 
+ /* Sets the stage up: its map, actors and battles, playing the ambience ENV_0006 */
+--- a/src/field/stages/east_sector/wstag953.c	2026-10-10 01:44:11.933740200 -0300
++++ b/src/field/stages/east_sector/wstag953.c	2026-10-10 05:12:41.711538380 -0300
+@@ -8,7 +8,7 @@
+ #include "field/stage.h"
+ 
+ #include "common/update_stage.inc.c"
+-#define STAGE_CHILDREN_SIZE 4
++#define STAGE_CHILDREN_SIZE sizeof(Task *)
+ #include "common/start_stage.inc.c"
+ 
+ const CVECTOR stageColor = { 0x54, 0x67, 0x96, 0x00 };
+--- a/src/field/stages/east_sector/wstag954.c	2026-10-10 01:44:11.935130000 -0300
++++ b/src/field/stages/east_sector/wstag954.c	2026-10-10 05:12:41.701790459 -0300
+@@ -30,7 +30,7 @@
+     }
+ }
+ 
+-#define STAGE_CHILDREN_SIZE 0x8
++#define STAGE_CHILDREN_SIZE (2 * sizeof(Task *))
+ #include "common/start_stage.inc.c"
+ 
+ /* Sets the stage up: its map, actors and battles, playing the ambience ENV_0007 */
+--- a/src/field/stages/east_sector/wstag956.c	2026-10-10 01:44:11.938026700 -0300
++++ b/src/field/stages/east_sector/wstag956.c	2026-10-10 05:12:41.709515323 -0300
+@@ -8,7 +8,7 @@
+ #include "field/stage.h"
+ 
+ #include "common/update_stage.inc.c"
+-#define STAGE_CHILDREN_SIZE 4
++#define STAGE_CHILDREN_SIZE sizeof(Task *)
+ #include "common/start_stage.inc.c"
+ 
+ /* Sets the stage up: its map, actors and battles, playing SEIR_BGM */
+--- a/src/field/stages/kusanagi_city/wstag780.c	2026-10-10 01:44:11.941571400 -0300
++++ b/src/field/stages/kusanagi_city/wstag780.c	2026-10-10 05:12:41.718329881 -0300
+@@ -5,6 +5,7 @@
+  */
+ 
+ #include "common.h"
++#include <stddef.h>
+ #include "field/stage.h"
+ /* Defined below, after the code that uses them */
+ extern u8 flyerFrames[];
+@@ -206,7 +207,7 @@
+ 
+ /* Creates the task of updateEffect with KEY as its key1 */
+ void *createEffect(s32 key) {
+-    Task *task = createTask(updateEffect, 0x60, 0);
++    StageEffect *task = createTask(updateEffect, offsetof(StageEffect, clutAnim), 0);
+ 
+     task->key1 = key;
+     return task;
+@@ -307,7 +308,7 @@
+ 
+ /* Creates the stage's six effects and its looping map objects (updateEffectSet) */
+ void *createEffectSet(void) {
+-    return createTask(updateEffectSet, 0x50, 0x1C);
++    return createTask(updateEffectSet, sizeof(Task), 7 * sizeof(Task *));
+ }
+ 
+ /* Lets out the flyers of the sets that are on, where their children are free */
+@@ -460,7 +461,7 @@
+ 
+ /* Creates the task of updateFlyerGate with id ARG */
+ void *createCommand800(s32 arg) {
+-    return createTaskWithId(updateFlyerGate, sizeof(StageFlyerGate), 0x10, arg);
++    return createTaskWithId(updateFlyerGate, sizeof(StageFlyerGate), 4 * sizeof(Task *), arg);
+ }
+ 
+ /* Draws the 40 quads, those of kind 0 and 1 with the frames of the animations */
+@@ -607,7 +608,7 @@
+     }
+ }
+ 
+-#define STAGE_CHILDREN_SIZE 0xC
++#define STAGE_CHILDREN_SIZE (3 * sizeof(Task *))
+ #include "common/start_stage.inc.c"
+ 
+ /* After event 0, with Junior, Ivy and Teddy: moves the story on to its step 0 */
+--- a/src/field/stages/kusanagi_city/wstag785.c	2026-10-10 01:44:11.943438800 -0300
++++ b/src/field/stages/kusanagi_city/wstag785.c	2026-10-10 05:12:41.717940164 -0300
+@@ -268,7 +268,7 @@
+     }
+ }
+ 
+-#define STAGE_CHILDREN_SIZE 0x8
++#define STAGE_CHILDREN_SIZE (2 * sizeof(Task *))
+ #include "common/start_stage.inc.c"
+ 
+ /* After event 1, with Junior, Teddy, Account Clerk and Ivy: moves the story on to its step 1 */
+--- a/src/field/stages/kusanagi_city/wstag790.c	2026-10-10 01:44:11.944634500 -0300
++++ b/src/field/stages/kusanagi_city/wstag790.c	2026-10-10 05:12:41.718539598 -0300
+@@ -170,7 +170,7 @@
+     }
+ }
+ 
+-#define STAGE_CHILDREN_SIZE 0xC
++#define STAGE_CHILDREN_SIZE (3 * sizeof(Task *))
+ #include "common/start_stage.inc.c"
+ 
+ #if VERSION_US
+--- a/src/field/stages/network_break/wstag545.c	2026-10-10 01:44:11.948719700 -0300
++++ b/src/field/stages/network_break/wstag545.c	2026-10-10 05:12:41.728409869 -0300
+@@ -305,7 +305,7 @@
+     }
+ }
+ 
+-#define STAGE_CHILDREN_SIZE 0xC
++#define STAGE_CHILDREN_SIZE (3 * sizeof(Task *))
+ #include "common/start_stage.inc.c"
+ 
+ /*
+--- a/src/field/stages/north_sector/wstag730.c	2026-10-10 01:44:11.975773300 -0300
++++ b/src/field/stages/north_sector/wstag730.c	2026-10-10 05:12:41.715350778 -0300
+@@ -14,7 +14,7 @@
+ #include "common/create_tile_anims_54.inc.c"
+ 
+ #include "common/update_stage_tile_anims.inc.c"
+-#define STAGE_CHILDREN_SIZE 4
++#define STAGE_CHILDREN_SIZE sizeof(Task *)
+ #include "common/start_stage.inc.c"
+ 
+ #if VERSION_US
+--- a/src/field/stages/north_sector/wstag731.c	2026-10-10 01:44:11.977279300 -0300
++++ b/src/field/stages/north_sector/wstag731.c	2026-10-10 05:12:41.714791733 -0300
+@@ -15,7 +15,7 @@
+ #include "common/create_tile_anims_54.inc.c"
+ 
+ #include "common/update_stage_tile_anims.inc.c"
+-#define STAGE_CHILDREN_SIZE 4
++#define STAGE_CHILDREN_SIZE sizeof(Task *)
+ #include "common/start_stage.inc.c"
+ 
+ #if VERSION_US
+--- a/src/field/stages/north_sector/wstag735.c	2026-10-10 01:44:11.978871500 -0300
++++ b/src/field/stages/north_sector/wstag735.c	2026-10-10 05:12:41.717254516 -0300
+@@ -31,7 +31,7 @@
+     }
+ }
+ 
+-#define STAGE_CHILDREN_SIZE 0x2C
++#define STAGE_CHILDREN_SIZE (11 * sizeof(Task *))
+ #include "common/start_stage.inc.c"
+ #include "common/step_animation.inc.c"
+ #include "common/draw_stage_effect.inc.c"
+--- a/src/field/stages/north_sector/wstag736.c	2026-10-10 01:44:11.980396100 -0300
++++ b/src/field/stages/north_sector/wstag736.c	2026-10-10 05:12:41.713553572 -0300
+@@ -32,7 +32,7 @@
+     }
+ }
+ 
+-#define STAGE_CHILDREN_SIZE 0x2C
++#define STAGE_CHILDREN_SIZE (11 * sizeof(Task *))
+ #include "common/start_stage.inc.c"
+ #include "common/step_animation.inc.c"
+ #include "common/draw_stage_effect.inc.c"
+--- a/src/field/stages/north_sector/wstag740.c	2026-10-10 01:44:11.981805700 -0300
++++ b/src/field/stages/north_sector/wstag740.c	2026-10-10 05:12:41.715891612 -0300
+@@ -34,7 +34,7 @@
+     }
+ }
+ 
+-#define STAGE_CHILDREN_SIZE 4
++#define STAGE_CHILDREN_SIZE sizeof(Task *)
+ #include "common/start_stage.inc.c"
+ 
+ #include "common/step_state_animation_once.inc.c"
+--- a/src/field/stages/north_sector/wstag741.c	2026-10-10 01:44:11.983475500 -0300
++++ b/src/field/stages/north_sector/wstag741.c	2026-10-10 05:12:41.715175550 -0300
+@@ -38,7 +38,7 @@
+     }
+ }
+ 
+-#define STAGE_CHILDREN_SIZE 0x8
++#define STAGE_CHILDREN_SIZE (2 * sizeof(Task *))
+ #include "common/start_stage.inc.c"
+ 
+ #include "common/step_state_animation_once.inc.c"
+--- a/src/field/stages/north_sector/wstag745.c	2026-10-10 01:44:11.984885900 -0300
++++ b/src/field/stages/north_sector/wstag745.c	2026-10-10 05:12:41.716094530 -0300
+@@ -81,7 +81,7 @@
+     }
+ }
+ 
+-#define STAGE_CHILDREN_SIZE 0x58
++#define STAGE_CHILDREN_SIZE (22 * sizeof(Task *))
+ #include "common/start_stage.inc.c"
+ #include "common/step_animation.inc.c"
+ #include "common/draw_stage_effect.inc.c"
+--- a/src/field/stages/north_sector/wstag746.c	2026-10-10 01:44:11.986434000 -0300
++++ b/src/field/stages/north_sector/wstag746.c	2026-10-10 05:12:41.716696679 -0300
+@@ -82,7 +82,7 @@
+     }
+ }
+ 
+-#define STAGE_CHILDREN_SIZE 0x58
++#define STAGE_CHILDREN_SIZE (22 * sizeof(Task *))
+ #include "common/start_stage.inc.c"
+ #include "common/step_animation.inc.c"
+ #include "common/draw_stage_effect.inc.c"
+--- a/src/field/stages/north_sector/wstag750.c	2026-10-10 01:44:11.988136400 -0300
++++ b/src/field/stages/north_sector/wstag750.c	2026-10-10 05:12:41.713331185 -0300
+@@ -144,7 +144,7 @@
+     }
+ }
+ 
+-#define STAGE_CHILDREN_SIZE 0xC
++#define STAGE_CHILDREN_SIZE (3 * sizeof(Task *))
+ #include "common/start_stage.inc.c"
+ #include "common/step_animation.inc.c"
+ #include "common/draw_stage_effect.inc.c"
+--- a/src/field/stages/north_sector/wstag755.c	2026-10-10 01:44:11.989969600 -0300
++++ b/src/field/stages/north_sector/wstag755.c	2026-10-10 05:12:41.714505222 -0300
+@@ -23,7 +23,7 @@
+     }
+ }
+ 
+-#define STAGE_CHILDREN_SIZE 4
++#define STAGE_CHILDREN_SIZE sizeof(Task *)
+ #include "common/start_stage.inc.c"
+ 
+ /*
+--- a/src/field/stages/north_sector/wstag756.c	2026-10-10 01:44:11.991309900 -0300
++++ b/src/field/stages/north_sector/wstag756.c	2026-10-10 05:12:41.716293453 -0300
+@@ -26,7 +26,7 @@
+     }
+ }
+ 
+-#define STAGE_CHILDREN_SIZE 4
++#define STAGE_CHILDREN_SIZE sizeof(Task *)
+ #include "common/start_stage.inc.c"
+ 
+ /*
+--- a/src/field/stages/south_sector/wstag440.c	2026-10-10 01:44:12.012364300 -0300
++++ b/src/field/stages/south_sector/wstag440.c	2026-10-10 05:12:41.723363523 -0300
+@@ -22,7 +22,7 @@
+     }
+ }
+ 
+-#define STAGE_CHILDREN_SIZE 4
++#define STAGE_CHILDREN_SIZE sizeof(Task *)
+ #include "common/start_stage.inc.c"
+ 
+ /* After event 152, with the player: moves the story on to its step 7 */
+--- a/src/field/stages/south_sector/wstag445.c	2026-10-10 01:44:12.015797700 -0300
++++ b/src/field/stages/south_sector/wstag445.c	2026-10-10 05:12:41.719070317 -0300
+@@ -25,7 +25,7 @@
+     }
+ }
+ 
+-#define STAGE_CHILDREN_SIZE 4
++#define STAGE_CHILDREN_SIZE sizeof(Task *)
+ #include "common/start_stage.inc.c"
+ 
+ /*
+--- a/src/field/stages/south_sector/wstag450.c	2026-10-10 01:44:12.019515400 -0300
++++ b/src/field/stages/south_sector/wstag450.c	2026-10-10 05:12:41.723106030 -0300
+@@ -25,7 +25,7 @@
+     }
+ }
+ 
+-#define STAGE_CHILDREN_SIZE 4
++#define STAGE_CHILDREN_SIZE sizeof(Task *)
+ #include "common/start_stage.inc.c"
+ 
+ /* After event 1279, with Paildramon: lets event 1280 start and starts the stage's event battle 1 */
+--- a/src/field/stages/south_sector/wstag455.c	2026-10-10 01:44:12.022470000 -0300
++++ b/src/field/stages/south_sector/wstag455.c	2026-10-10 05:12:41.724265999 -0300
+@@ -77,7 +77,7 @@
+     }
+ }
+ 
+-#define STAGE_CHILDREN_SIZE 4
++#define STAGE_CHILDREN_SIZE sizeof(Task *)
+ #include "common/start_stage.inc.c"
+ 
+ /* After event 360, with the player: sets flag 0x4007 (which decides whether actor 0 appears) */
+--- a/src/field/stages/south_sector/wstag460.c	2026-10-10 01:44:12.025622400 -0300
++++ b/src/field/stages/south_sector/wstag460.c	2026-10-10 05:12:41.722518372 -0300
+@@ -66,7 +66,7 @@
+ 
+ /* Creates the task of updateCommand830 with the given id */
+ void *createCommand830(s32 id) {
+-    return createTaskWithId(updateCommand830, 0x50, 0x24, id);
++    return createTaskWithId(updateCommand830, sizeof(Task), 9 * sizeof(Task *), id);
+ }
+ 
+ #include "common/step_tile_animation.inc.c"
+@@ -426,7 +426,7 @@
+     }
+ }
+ 
+-#define STAGE_CHILDREN_SIZE 4
++#define STAGE_CHILDREN_SIZE sizeof(Task *)
+ #include "common/start_stage.inc.c"
+ 
+ /*
+--- a/src/field/stages/south_sector/wstag475.c	2026-10-10 01:44:12.033174600 -0300
++++ b/src/field/stages/south_sector/wstag475.c	2026-10-10 05:12:41.722672090 -0300
+@@ -31,7 +31,7 @@
+     }
+ }
+ 
+-#define STAGE_CHILDREN_SIZE 4
++#define STAGE_CHILDREN_SIZE sizeof(Task *)
+ #include "common/start_stage.inc.c"
+ 
+ /* After event 180, with Voice and Sepikmon: keeps it from playing again */
+--- a/src/field/stages/south_sector/wstag480.c	2026-10-10 01:44:12.036955900 -0300
++++ b/src/field/stages/south_sector/wstag480.c	2026-10-10 05:12:41.719716211 -0300
+@@ -31,7 +31,7 @@
+     }
+ }
+ 
+-#define STAGE_CHILDREN_SIZE 0x8
++#define STAGE_CHILDREN_SIZE (2 * sizeof(Task *))
+ #include "common/start_stage.inc.c"
+ 
+ /* After event 170, with Zanbamon: lets event 171 start and starts the stage's event battle 0 */
+--- a/src/field/stages/south_sector/wstag481.c	2026-10-10 01:44:12.038493500 -0300
++++ b/src/field/stages/south_sector/wstag481.c	2026-10-10 05:12:41.720541758 -0300
+@@ -32,7 +32,7 @@
+     }
+ }
+ 
+-#define STAGE_CHILDREN_SIZE 4
++#define STAGE_CHILDREN_SIZE sizeof(Task *)
+ #include "common/start_stage.inc.c"
+ 
+ /* the color the setup copies to FIELDSTG_state.spriteColor */
+--- a/src/field/stages/south_sector/wstag490.c	2026-10-10 01:44:12.043961000 -0300
++++ b/src/field/stages/south_sector/wstag490.c	2026-10-10 05:12:41.723591085 -0300
+@@ -25,7 +25,7 @@
+     }
+ }
+ 
+-#define STAGE_CHILDREN_SIZE 4
++#define STAGE_CHILDREN_SIZE sizeof(Task *)
+ #include "common/start_stage.inc.c"
+ 
+ /*
+--- a/src/field/stages/south_sector/wstag500.c	2026-10-10 01:44:12.051316800 -0300
++++ b/src/field/stages/south_sector/wstag500.c	2026-10-10 05:12:41.723952963 -0300
+@@ -6,7 +6,7 @@
+ #include "field/stage.h"
+ 
+ #include "common/update_stage.inc.c"
+-#define STAGE_CHILDREN_SIZE 4
++#define STAGE_CHILDREN_SIZE sizeof(Task *)
+ #include "common/start_stage.inc.c"
+ 
+ /*
+--- a/src/field/stages/south_sector/wstag525.c	2026-10-10 01:44:12.054650200 -0300
++++ b/src/field/stages/south_sector/wstag525.c	2026-10-10 05:12:41.719926598 -0300
+@@ -22,7 +22,7 @@
+     }
+ }
+ 
+-#define STAGE_CHILDREN_SIZE 4
++#define STAGE_CHILDREN_SIZE sizeof(Task *)
+ #include "common/start_stage.inc.c"
+ 
+ /* After event 550, with Nick and Keith: lets event 551 of WSTAG620 start */
+--- a/src/field/stages/south_sector/wstag526.c	2026-10-10 01:44:12.056561400 -0300
++++ b/src/field/stages/south_sector/wstag526.c	2026-10-10 05:12:41.721768507 -0300
+@@ -74,7 +74,7 @@
+ 
+ /* Creates the task of updateCommand829 with an id */
+ void *createCommand829(s32 arg) {
+-    return createTaskWithId(updateCommand829, 0x50, 0x30, arg);
++    return createTaskWithId(updateCommand829, sizeof(Task), 12 * sizeof(Task *), arg);
+ }
+ 
+ #include "common/step_tile_animation.inc.c"
+@@ -570,7 +570,7 @@
+     }
+ }
+ 
+-#define STAGE_CHILDREN_SIZE 4
++#define STAGE_CHILDREN_SIZE sizeof(Task *)
+ #include "common/start_stage.inc.c"
+ 
+ /*
+--- a/src/field/stages/south_sector/wstag535.c	2026-10-10 01:44:12.060863400 -0300
++++ b/src/field/stages/south_sector/wstag535.c	2026-10-10 05:12:41.720327674 -0300
+@@ -23,7 +23,7 @@
+     }
+ }
+ 
+-#define STAGE_CHILDREN_SIZE 4
++#define STAGE_CHILDREN_SIZE sizeof(Task *)
+ #include "common/start_stage.inc.c"
+ 
+ /* After event 1262, with Zanbamon: lets event 1263 start and starts the stage's event battle 0 */
+--- a/src/field/stages/south_sector/wstag537.c	2026-10-10 01:44:12.062781800 -0300
++++ b/src/field/stages/south_sector/wstag537.c	2026-10-10 05:12:41.722263970 -0300
+@@ -24,7 +24,7 @@
+     }
+ }
+ 
+-#define STAGE_CHILDREN_SIZE 4
++#define STAGE_CHILDREN_SIZE sizeof(Task *)
+ #include "common/start_stage.inc.c"
+ 
+ /* After event 700, with Suzaku Leader: keeps it from playing again */
+--- a/src/field/stages/south_sector/wstag538.c	2026-10-10 01:44:12.064030200 -0300
++++ b/src/field/stages/south_sector/wstag538.c	2026-10-10 05:12:41.721970115 -0300
+@@ -27,7 +27,7 @@
+     }
+ }
+ 
+-#define STAGE_CHILDREN_SIZE 4
++#define STAGE_CHILDREN_SIZE sizeof(Task *)
+ #include "common/start_stage.inc.c"
+ 
+ /*
+--- a/src/field/stages/spy_satellite/wstag810.c	2026-10-10 01:44:12.067002700 -0300
++++ b/src/field/stages/spy_satellite/wstag810.c	2026-10-10 05:12:41.712809993 -0300
+@@ -112,7 +112,7 @@
+ 
+ /* Creates the tile pair object of animations ANIM and ANIM + 1 with the id ARG */
+ static inline void *createTilePairN(s32 arg, s32 anim) {
+-    StageTilePairN *task = createTaskWithId(updateTilePairN, 0x68, 0, arg);
++    StageTilePairN *task = createTaskWithId(updateTilePairN, sizeof(StageTilePairN), 0, arg);
+ 
+     task->anim = anim;
+     task->done = 0;
+@@ -136,7 +136,7 @@
+ 
+ /* Creates the tile pair object of animations anim and anim + 1, started in TASK_DONE */
+ void *createTilePairNDone(s32 anim) {
+-    StageTilePairN *task = createTask(updateTilePairN, 0x68, 0);
++    StageTilePairN *task = createTask(updateTilePairN, sizeof(StageTilePairN), 0);
+ 
+     task->anim = anim;
+     task->done = 1;
+@@ -179,7 +179,7 @@
+     }
+ }
+ 
+-#define STAGE_CHILDREN_SIZE 0x104
++#define STAGE_CHILDREN_SIZE (65 * sizeof(Task *))
+ #include "common/start_stage.inc.c"
+ #include "common/step_animation.inc.c"
+ #include "common/draw_stage_effect.inc.c"
+--- a/src/field/stages/spy_satellite/wstag815.c	2026-10-10 01:44:12.069068900 -0300
++++ b/src/field/stages/spy_satellite/wstag815.c	2026-10-10 05:10:20.200123962 -0300
+@@ -65,7 +65,7 @@
+ 
+ /* Creates the spy satellite's background (updateBackground) */
+ void *createBackground(void) {
+-    return createTask(updateBackground, 0x60, 0);
++    return createTask(updateBackground, sizeof(StageTask), 0);
+ }
+ 
+ /* Creates the background, the stage's five effects and the event object of flags 0x4072/0x40A9 */
+@@ -95,7 +95,7 @@
+ 
+ /* Creates the stage task (id 0x17) and calls the first function of its table */
+ StageTask *startStage(void *owner) {
+-    StageTask *task = createTaskWithId(updateStage, sizeof(StageTask), 0x1C, FIELD_TASK_LAUNCHER);
++    StageTask *task = createTaskWithId(updateStage, sizeof(StageTask), 7 * sizeof(Task *), FIELD_TASK_LAUNCHER);
+ 
+     task->owner = owner;
+     stageFuncs[0]();
+--- a/src/field/stages/spy_satellite/wstag820.c	2026-10-10 01:44:12.070722900 -0300
++++ b/src/field/stages/spy_satellite/wstag820.c	2026-10-10 05:12:41.712523424 -0300
+@@ -88,7 +88,7 @@
+     }
+ }
+ 
+-#define STAGE_CHILDREN_SIZE 0x14
++#define STAGE_CHILDREN_SIZE (5 * sizeof(Task *))
+ #include "common/start_stage.inc.c"
+ #include "common/step_animation.inc.c"
+ #include "common/draw_stage_effect.inc.c"
+--- a/src/field/stages/suzaku_city/wstag520.c	2026-10-10 01:44:12.075181000 -0300
++++ b/src/field/stages/suzaku_city/wstag520.c	2026-10-10 05:12:41.725509459 -0300
+@@ -22,7 +22,7 @@
+     }
+ }
+ 
+-#define STAGE_CHILDREN_SIZE 4
++#define STAGE_CHILDREN_SIZE sizeof(Task *)
+ #include "common/start_stage.inc.c"
+ 
+ /*
+--- a/src/field/stages/undersea_base/wstag795.c	2026-10-10 01:44:12.141426900 -0300
++++ b/src/field/stages/undersea_base/wstag795.c	2026-10-10 05:12:41.727845568 -0300
+@@ -184,7 +184,7 @@
+     }
+ }
+ 
+-#define STAGE_CHILDREN_SIZE 0xC
++#define STAGE_CHILDREN_SIZE (3 * sizeof(Task *))
+ #include "common/start_stage.inc.c"
+ 
+ /* After event 830, with the player: keeps it from playing again */
+--- a/src/field/stages/undersea_base/wstag800.c	2026-10-10 01:44:12.143539700 -0300
++++ b/src/field/stages/undersea_base/wstag800.c	2026-10-10 05:12:41.728139175 -0300
+@@ -289,7 +289,7 @@
+     }
+ }
+ 
+-#define STAGE_CHILDREN_SIZE 0x20
++#define STAGE_CHILDREN_SIZE (8 * sizeof(Task *))
+ #include "common/start_stage.inc.c"
+ #include "common/step_animation.inc.c"
+ #include "common/draw_stage_effect.inc.c"
+--- a/src/field/stages/undersea_base/wstag805.c	2026-10-10 01:44:12.145290800 -0300
++++ b/src/field/stages/undersea_base/wstag805.c	2026-10-10 05:12:41.727571897 -0300
+@@ -345,7 +345,7 @@
+     }
+ }
+ 
+-#define STAGE_CHILDREN_SIZE 0xC
++#define STAGE_CHILDREN_SIZE (3 * sizeof(Task *))
+ #include "common/start_stage.inc.c"
+ 
+ /*
+--- a/src/field/stages/west_sector/wstag550.c	2026-10-10 01:44:12.148238100 -0300
++++ b/src/field/stages/west_sector/wstag550.c	2026-10-10 05:12:41.675289408 -0300
+@@ -25,7 +25,7 @@
+     }
+ }
+ 
+-#define STAGE_CHILDREN_SIZE 4
++#define STAGE_CHILDREN_SIZE sizeof(Task *)
+ #include "common/start_stage.inc.c"
+ 
+ /*
+--- a/src/field/stages/west_sector/wstag555.c	2026-10-10 01:44:12.151362100 -0300
++++ b/src/field/stages/west_sector/wstag555.c	2026-10-10 05:12:41.674161784 -0300
+@@ -16,7 +16,7 @@
+ #include "common/create_tile_anims_5c.inc.c"
+ 
+ #include "common/update_stage_tile_anims.inc.c"
+-#define STAGE_CHILDREN_SIZE 0x8
++#define STAGE_CHILDREN_SIZE (2 * sizeof(Task *))
+ #include "common/start_stage.inc.c"
+ 
+ /* After event 380, with Numemon: keeps it from playing again */
+--- a/src/field/stages/west_sector/wstag565.c	2026-10-10 01:44:12.157169700 -0300
++++ b/src/field/stages/west_sector/wstag565.c	2026-10-10 05:12:41.670661753 -0300
+@@ -22,7 +22,7 @@
+     }
+ }
+ 
+-#define STAGE_CHILDREN_SIZE 4
++#define STAGE_CHILDREN_SIZE sizeof(Task *)
+ #include "common/start_stage.inc.c"
+ 
+ /* After event 1271, with Taomon: lets event 1272 start and starts the stage's event battle 0 */
+--- a/src/field/stages/west_sector/wstag575.c	2026-10-10 01:44:12.163294500 -0300
++++ b/src/field/stages/west_sector/wstag575.c	2026-10-10 05:12:41.674000860 -0300
+@@ -22,7 +22,7 @@
+     }
+ }
+ 
+-#define STAGE_CHILDREN_SIZE 4
++#define STAGE_CHILDREN_SIZE sizeof(Task *)
+ #include "common/start_stage.inc.c"
+ 
+ /* After event 422, with Numemon: keeps it from playing again */
+--- a/src/field/stages/west_sector/wstag580.c	2026-10-10 01:44:12.166566000 -0300
++++ b/src/field/stages/west_sector/wstag580.c	2026-10-10 05:12:41.672253305 -0300
+@@ -29,7 +29,7 @@
+     }
+ }
+ 
+-#define STAGE_CHILDREN_SIZE 4
++#define STAGE_CHILDREN_SIZE sizeof(Task *)
+ #include "common/start_stage.inc.c"
+ 
+ /* After event 440, with Numemon: sets flag 0x1C1F and keeps it from playing again */
+--- a/src/field/stages/west_sector/wstag585.c	2026-10-10 01:44:12.169533600 -0300
++++ b/src/field/stages/west_sector/wstag585.c	2026-10-10 05:12:41.674522848 -0300
+@@ -22,7 +22,7 @@
+     }
+ }
+ 
+-#define STAGE_CHILDREN_SIZE 4
++#define STAGE_CHILDREN_SIZE sizeof(Task *)
+ #include "common/start_stage.inc.c"
+ 
+ /* After event 460, with the player: keeps it from playing again */
+--- a/src/field/stages/west_sector/wstag605.c	2026-10-10 01:44:12.181187100 -0300
++++ b/src/field/stages/west_sector/wstag605.c	2026-10-10 05:12:41.672679448 -0300
+@@ -22,7 +22,7 @@
+     }
+ }
+ 
+-#define STAGE_CHILDREN_SIZE 4
++#define STAGE_CHILDREN_SIZE sizeof(Task *)
+ #include "common/start_stage.inc.c"
+ 
+ /*
+--- a/src/field/stages/west_sector/wstag606.c	2026-10-10 01:44:12.182647700 -0300
++++ b/src/field/stages/west_sector/wstag606.c	2026-10-10 05:12:41.673572914 -0300
+@@ -26,7 +26,7 @@
+     }
+ }
+ 
+-#define STAGE_CHILDREN_SIZE 4
++#define STAGE_CHILDREN_SIZE sizeof(Task *)
+ #include "common/start_stage.inc.c"
+ 
+ /*
+--- a/src/field/stages/west_sector/wstag615.c	2026-10-10 01:44:12.188735700 -0300
++++ b/src/field/stages/west_sector/wstag615.c	2026-10-10 05:12:41.673812909 -0300
+@@ -22,7 +22,7 @@
+     }
+ }
+ 
+-#define STAGE_CHILDREN_SIZE 4
++#define STAGE_CHILDREN_SIZE sizeof(Task *)
+ #include "common/start_stage.inc.c"
+ 
+ /*
+--- a/src/field/stages/west_sector/wstag616.c	2026-10-10 01:44:12.190604600 -0300
++++ b/src/field/stages/west_sector/wstag616.c	2026-10-10 05:12:41.675828089 -0300
+@@ -26,7 +26,7 @@
+     }
+ }
+ 
+-#define STAGE_CHILDREN_SIZE 4
++#define STAGE_CHILDREN_SIZE sizeof(Task *)
+ #include "common/start_stage.inc.c"
+ 
+ /*
+--- a/src/field/stages/west_sector/wstag620.c	2026-10-10 01:44:12.192676800 -0300
++++ b/src/field/stages/west_sector/wstag620.c	2026-10-10 05:12:41.674865335 -0300
+@@ -157,7 +157,7 @@
+     }
+ }
+ 
+-#define STAGE_CHILDREN_SIZE 0x8
++#define STAGE_CHILDREN_SIZE (2 * sizeof(Task *))
+ #include "common/start_stage.inc.c"
+ 
+ /*
+--- a/src/field/stages/west_sector/wstag625.c	2026-10-10 01:44:12.195850100 -0300
++++ b/src/field/stages/west_sector/wstag625.c	2026-10-10 05:12:41.671888117 -0300
+@@ -143,7 +143,7 @@
+     }
+ }
+ 
+-#define STAGE_CHILDREN_SIZE 0x8
++#define STAGE_CHILDREN_SIZE (2 * sizeof(Task *))
+ #include "common/start_stage.inc.c"
+ 
+ /*
+--- a/src/field/stages/west_sector/wstag630.c	2026-10-10 01:44:12.197463300 -0300
++++ b/src/field/stages/west_sector/wstag630.c	2026-10-10 05:12:41.672858103 -0300
+@@ -16,7 +16,7 @@
+ #include "common/create_tile_anims_5c.inc.c"
+ 
+ #include "common/update_stage_tile_anims.inc.c"
+-#define STAGE_CHILDREN_SIZE 4
++#define STAGE_CHILDREN_SIZE sizeof(Task *)
+ #include "common/start_stage.inc.c"
+ 
+ #if VERSION_US
+--- a/src/field/stages/west_sector/wstag635.c	2026-10-10 01:44:12.200585100 -0300
++++ b/src/field/stages/west_sector/wstag635.c	2026-10-10 05:12:41.673193580 -0300
+@@ -20,7 +20,7 @@
+ 
+ #include "common/update_stage_tile_anims_places.inc.c"
+ 
+-#define STAGE_CHILDREN_SIZE 4
++#define STAGE_CHILDREN_SIZE sizeof(Task *)
+ #include "common/start_stage.inc.c"
+ 
+ #if VERSION_US
+--- a/src/field/stages/west_sector/wstag640.c	2026-10-10 01:44:12.203832000 -0300
++++ b/src/field/stages/west_sector/wstag640.c	2026-10-10 05:12:41.675481283 -0300
+@@ -20,7 +20,7 @@
+ 
+ #include "common/update_stage_tile_anims_places.inc.c"
+ 
+-#define STAGE_CHILDREN_SIZE 4
++#define STAGE_CHILDREN_SIZE sizeof(Task *)
+ #include "common/start_stage.inc.c"
+ 
+ #if VERSION_US
+--- a/src/field/stages/west_sector/wstag645.c	2026-10-10 01:44:12.207500200 -0300
++++ b/src/field/stages/west_sector/wstag645.c	2026-10-10 05:12:41.671599899 -0300
+@@ -16,7 +16,7 @@
+ #include "common/create_tile_anims_5c.inc.c"
+ 
+ #include "common/update_stage_tile_anims.inc.c"
+-#define STAGE_CHILDREN_SIZE 4
++#define STAGE_CHILDREN_SIZE sizeof(Task *)
+ #include "common/start_stage.inc.c"
+ 
+ #if VERSION_US
+--- a/src/field/stages/west_sector/wstag655.c	2026-10-10 01:44:12.213739200 -0300
++++ b/src/field/stages/west_sector/wstag655.c	2026-10-10 05:12:41.676002518 -0300
+@@ -22,7 +22,7 @@
+     }
+ }
+ 
+-#define STAGE_CHILDREN_SIZE 4
++#define STAGE_CHILDREN_SIZE sizeof(Task *)
+ #include "common/start_stage.inc.c"
+ 
+ /*
+--- a/src/field/stages/zhu_que_city/wstag521.c	2026-10-10 01:44:12.225588000 -0300
++++ b/src/field/stages/zhu_que_city/wstag521.c	2026-10-10 05:12:41.718734371 -0300
+@@ -23,7 +23,7 @@
+     }
+ }
+ 
+-#define STAGE_CHILDREN_SIZE 4
++#define STAGE_CHILDREN_SIZE sizeof(Task *)
+ #include "common/start_stage.inc.c"
+ 
+ /*
+--- a/src/menus/digimon_lab/entry_list.c	2026-10-10 01:44:12.231347500 -0300
++++ b/src/menus/digimon_lab/entry_list.c	2026-10-10 05:12:41.666601743 -0300
+@@ -342,7 +342,7 @@
+ /* Creates the list of a partner's entries (task): only its slots unless
+    ALLENTRIES; CLOSABLE lets triangle close it */
+ LabEntryList *STGDGLAB_createEntryList(s32 partner, s32 allEntries, s32 closable) {
+-    LabEntryList *panel = createTask(STGDGLAB_updateEntryList, sizeof(LabEntryList), 0x70);
++    LabEntryList *panel = createTask(STGDGLAB_updateEntryList, sizeof(LabEntryList), sizeof(LabEntryListWindows));
+ 
+     panel->close = STGDGLAB_closeEntryList;
+     panel->layer = SCREEN_LAYER;
+--- a/src/menus/digimon_lab/entry_panel.c	2026-10-10 01:44:12.233188300 -0300
++++ b/src/menus/digimon_lab/entry_panel.c	2026-10-10 05:12:41.666754298 -0300
+@@ -491,7 +491,7 @@
+ /* Creates the second screen's panel (task) where one of the partner's entries
+    is picked for one of its three slots */
+ LabEntryPanel *STGDGLAB_createEntryPanel(s32 partner, s32 slot) {
+-    LabEntryPanel *panel = createTask(STGDGLAB_updateEntryPanel, sizeof(LabEntryPanel), 0xA0);
++    LabEntryPanel *panel = createTask(STGDGLAB_updateEntryPanel, sizeof(LabEntryPanel), sizeof(LabEntryPanelWindows));
+ 
+     panel->layer = SCREEN_LAYER;
+     panel->depth = 6;
+--- a/src/menus/digimon_lab/party_screen.c	2026-10-10 01:44:12.237991200 -0300
++++ b/src/menus/digimon_lab/party_screen.c	2026-10-10 05:12:41.666865027 -0300
+@@ -435,7 +435,7 @@
+ /* Creates the main menu's first screen (task), where a partner joins the party
+    in the member's place */
+ Task *STGDGLAB_createPartyScreen(Lab *lab) {
+-    LabPartyScreen *screen = createTask(STGDGLAB_updatePartyScreen, sizeof(LabPartyScreen), 0x38);
++    LabPartyScreen *screen = createTask(STGDGLAB_updatePartyScreen, sizeof(LabPartyScreen), sizeof(LabPartyScreenWindows));
+ 
+     screen->layer = SCREEN_LAYER;
+     screen->depth = 2;
+--- a/src/menus/digimon_lab/recipe_screen.c	2026-10-10 01:44:12.239593200 -0300
++++ b/src/menus/digimon_lab/recipe_screen.c	2026-10-10 05:12:41.666962926 -0300
+@@ -666,7 +666,7 @@
+ /* Creates the main menu's third screen (task), the recipes, and fades the
+    menu's page out */
+ Task *STGDGLAB_createRecipeScreen(Lab *lab) {
+-    LabRecipeScreen *screen = createTask(STGDGLAB_updateRecipeScreen, sizeof(LabRecipeScreen), 0x1C);
++    LabRecipeScreen *screen = createTask(STGDGLAB_updateRecipeScreen, sizeof(LabRecipeScreen), sizeof(LabRecipeScreenWindows));
+ 
+     screen->layer = SCREEN_LAYER;
+     screen->depth = 2;
+--- a/src/menus/digimon_lab/skill_panel.c	2026-10-10 01:44:12.243554300 -0300
++++ b/src/menus/digimon_lab/skill_panel.c	2026-10-10 05:12:41.667051443 -0300
+@@ -346,7 +346,7 @@
+ /* Creates the second screen's skill panel (task) for a slot of a partner (the
+    MEMBER parameter is a partner id, from getPartyMember) */
+ LabSkillPanel *STGDGLAB_createSkillPanel(s32 member, s32 slot) {
+-    LabSkillPanel *panel = createTask(STGDGLAB_updateSkillPanel, sizeof(LabSkillPanel), 0x5C);
++    LabSkillPanel *panel = createTask(STGDGLAB_updateSkillPanel, sizeof(LabSkillPanel), sizeof(LabSkillPanelWindows));
+ 
+     panel->layer = SCREEN_LAYER;
+     panel->depth = 2;
+--- a/src/menus/digimon_lab/slot_screen.c	2026-10-10 01:44:12.245163200 -0300
++++ b/src/menus/digimon_lab/slot_screen.c	2026-10-10 05:12:41.667144400 -0300
+@@ -430,7 +430,7 @@
+ 
+ /* Creates the main menu's second screen (task), the party member's three slots */
+ Task *STGDGLAB_createSlotScreen(Lab *lab) {
+-    LabSlotScreen *screen = createTask(STGDGLAB_updateSlotScreen, sizeof(LabSlotScreen), 0x60);
++    LabSlotScreen *screen = createTask(STGDGLAB_updateSlotScreen, sizeof(LabSlotScreen), sizeof(LabSlotScreenWindows));
+ 
+     screen->layer = SCREEN_LAYER;
+     screen->depth = 6;
+--- a/src/menus/field_menu/demo_screen.c	2026-10-10 01:44:12.249409900 -0300
++++ b/src/menus/field_menu/demo_screen.c	2026-10-10 05:12:41.666172532 -0300
+@@ -437,7 +437,7 @@
+    set GAME.digivolveDemo */
+ Task *STSTATUS_createDemoScreen(FieldMenuScreen *menu, s32 extra) {
+     /* its windows are PartyScreenWindows without the fader */
+-    PartyScreen *screen = createTask(STSTATUS_updateDemoScreen, sizeof(PartyScreen), 0x9C);
++    PartyScreen *screen = createTask(STSTATUS_updateDemoScreen, sizeof(PartyScreen), sizeof(PartyScreenWindows));
+ 
+     screen->layer = SCREEN_LAYER;
+     screen->depth = 6;
+--- a/src/menus/field_menu/map_screen.c	2026-10-10 01:44:12.259646400 -0300
++++ b/src/menus/field_menu/map_screen.c	2026-10-10 05:11:37.713688056 -0300
+@@ -320,7 +320,7 @@
+ /* Creates the map screen (task): the map of the first half of the game or, in the
+    late game, of the second (FILE_STATUS_BG + 2), and requests its area names */
+ Task *STSTATUS_createMapScreen(FieldMenuScreen *menu, s32 extra) {
+-    StatusMapScreen *screen = createTask(STSTATUS_updateMapScreen, sizeof(StatusMapScreen), 4);
++    StatusMapScreen *screen = createTask(STSTATUS_updateMapScreen, sizeof(StatusMapScreen), sizeof(Task *));
+ 
+     screen->layer = SCREEN_LAYER;
+     screen->depth = 5;
+--- a/src/menus/gym/menu.c	2026-10-10 01:44:12.273197600 -0300
++++ b/src/menus/gym/menu.c	2026-10-10 05:12:27.137035981 -0300
+@@ -435,7 +435,7 @@
+ 
+ /* Creates the training menu */
+ TrainMenu *STGTRAIN_createMenu(TrainScreen *screen) {
+-    TrainMenu *menu = createTask(STGTRAIN_updateMenu, sizeof(TrainMenu), 0x10);
++    TrainMenu *menu = createTask(STGTRAIN_updateMenu, sizeof(TrainMenu), 4 * sizeof(Task *));
+ 
+     menu->open = STGTRAIN_openMenu;
+     menu->close = STGTRAIN_closeMenu;
+--- a/src/menus/gym/scene.c	2026-10-10 01:44:12.276501300 -0300
++++ b/src/menus/gym/scene.c	2026-10-10 05:11:37.713782368 -0300
+@@ -43,5 +43,5 @@
+ 
+ /* The mode's entry point (MODE_ENTRY_POINTS): starts the root task */
+ Task *STGTRAIN_start(void) {
+-    return createTask(STGTRAIN_updateRoot, sizeof(Task), 4);
++    return createTask(STGTRAIN_updateRoot, sizeof(Task), sizeof(Task *));
+ }
+--- a/src/menus/gym/screen.c	2026-10-10 01:44:12.278524900 -0300
++++ b/src/menus/gym/screen.c	2026-10-10 05:12:41.667446256 -0300
+@@ -654,7 +654,7 @@
+ 
+ /* Creates the training screen */
+ TrainScreen *STGTRAIN_createScreen(void) {
+-    TrainScreen *screen = createTask(STGTRAIN_updateScreen, sizeof(TrainScreen), 0x80);
++    TrainScreen *screen = createTask(STGTRAIN_updateScreen, sizeof(TrainScreen), sizeof(TrainScreenWindows));
+     s32 sign;
+ 
+     screen->showStats = STGTRAIN_showStatChanges;
+--- a/src/menus/item_shop/info.c	2026-10-10 01:44:12.290323300 -0300
++++ b/src/menus/item_shop/info.c	2026-10-10 05:12:41.667336766 -0300
+@@ -868,7 +868,7 @@
+ /* Creates the details panel (task) of the item selected, when buying or
+    selling */
+ ShopInfo *STITSHOP_createInfo(s32 selling, s32 item) {
+-    ShopInfo *info = createTask(STITSHOP_updateInfo, sizeof(ShopInfo), 0xAC);
++    ShopInfo *info = createTask(STITSHOP_updateInfo, sizeof(ShopInfo), sizeof(ShopInfoWindows));
+ 
+     info->showItem = STITSHOP_setInfoItem;
+     info->close = STITSHOP_closeInfo;
+--- a/src/menus/item_shop/item_list.c	2026-10-10 01:44:12.291901000 -0300
++++ b/src/menus/item_shop/item_list.c	2026-10-10 05:12:41.667226788 -0300
+@@ -344,7 +344,7 @@
+ /* Creates the item list (task) of a dialog: the items of the shop type when
+    buying, the bag's of the item type when selling */
+ ShopItemList *STITSHOP_createItemList(ShopDialog *dialog, s32 type, s32 selling) {
+-    ShopItemList *list = createTask(STITSHOP_updateItemList, sizeof(ShopItemList), 0x50);
++    ShopItemList *list = createTask(STITSHOP_updateItemList, sizeof(ShopItemList), sizeof(ShopItemListWindows));
+ 
+     list->start = STITSHOP_startItemList;
+     list->close = STITSHOP_closeItemList;
+--- a/src/menus/memory_card/info.c	2026-10-10 01:44:12.303550600 -0300
++++ b/src/menus/memory_card/info.c	2026-10-10 05:12:59.306186631 -0300
+@@ -200,7 +200,7 @@
+ 
+ /* Creates the details window (task) of the save list */
+ MemCardInfo *STGMCARD_createInfo(MemCardSaves *saves) {
+-    MemCardInfo *info = createTask(STGMCARD_updateInfo, sizeof(MemCardInfo), 0x4C);
++    MemCardInfo *info = createTask(STGMCARD_updateInfo, sizeof(MemCardInfo), 19 * sizeof(TextWindow *));
+ 
+     info->show = STGMCARD_showInfo;
+     info->hide = STGMCARD_hideInfo;
+--- a/src/menus/memory_card/menu.c	2026-10-10 01:44:12.305198600 -0300
++++ b/src/menus/memory_card/menu.c	2026-10-10 05:11:37.713875872 -0300
+@@ -185,7 +185,7 @@
+ 
+ /* Creates the slot picker (task) of the save list */
+ MemCardMenu *STGMCARD_createMenu(MemCardSaves *saves) {
+-    MemCardMenu *menu = createTask(STGMCARD_updateMenu, sizeof(MemCardMenu), 4);
++    MemCardMenu *menu = createTask(STGMCARD_updateMenu, sizeof(MemCardMenu), sizeof(Task *));
+ 
+     menu->reset = STGMCARD_resetMenu;
+     menu->slideInHeader = STGMCARD_slideInHeader;
+--- a/src/menus/memory_card/screen.c	2026-10-10 01:44:12.311282900 -0300
++++ b/src/menus/memory_card/screen.c	2026-10-10 05:11:37.713973005 -0300
+@@ -81,7 +81,7 @@
+ /* Creates the screen's main task, with what it needs from the mode it was
+    opened from and the one it was opened for */
+ MemCardScreen *STGMCARD_createScreen(void) {
+-    MemCardScreen *screen = createTask(STGMCARD_updateScreen, sizeof(MemCardScreen), 8);
++    MemCardScreen *screen = createTask(STGMCARD_updateScreen, sizeof(MemCardScreen), 2 * sizeof(Task *));
+     s32 mode;
+     s32 prev;
+     s32 i;
+--- a/src/menus/player_name/welcome.c	2026-10-10 01:44:12.335290000 -0300
++++ b/src/menus/player_name/welcome.c	2026-10-10 05:11:37.714065914 -0300
+@@ -93,7 +93,7 @@
+ 
+ /* Creates the welcome (task), the first thing the screen shows */
+ NameDialog *STPLNMET_createWelcome(PlayerNameScreen *screen) {
+-    NameDialog *task = createTask(STPLNMET_updateWelcome, sizeof(NameDialog), 8);
++    NameDialog *task = createTask(STPLNMET_updateWelcome, sizeof(NameDialog), 2 * sizeof(Task *));
+ 
+     task->screen = screen;
+     return task;
