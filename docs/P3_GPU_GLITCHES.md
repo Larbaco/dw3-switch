@@ -26,7 +26,7 @@ Prefer `SDL_VIDEODRIVER=offscreen` (or a real display) for present — not
 |---|---|---|---|
 | G1 | Movie frames = macroblock garbage (after half-width / mid-grey fixes) | `DecDCTPutEnv` → `MDEC_in((u_long *)mdec_iq, …)` on LP64 skips/misaligns `u32` quant/IDCT tables | Host `__wrap_DecDCTReset` uploads via `Psyz_MdecCommand` with byte-accurate pointers (`platforms/pc/src/psyz_dma_present.c`) |
 | G2 | Same garbage / torn strips under sync MDEC | `STDWTITL_onSliceDecoded` starts next `DecDCTout` before `LoadImage`; nested sync callbacks reuse two `imgbuf`s | Patch `0037` (LoadImage first under `PORT_HOST`) + DecDCTout slice stash in present wrap |
-| G3 | Title TIM shred risk from RGB24 heuristic | `(w % 3 == 0 && h >= 192)` treated any tall upload as RGB24 | MDEC strip geometry only (`w == 24 && h >= 192`); dropped stale `isrgb24` latch on `LoadImage` (R1) |
+| G3 | Non-MDEC `LoadImage` could take the RGB888 path | `(w % 3 == 0 && h >= 192)` plus a latched `isrgb24` after STR | MDEC strip geometry only (`w == 24 && h >= 192`); drop the stale latch on non-MDEC uploads. Owner confirmed after PR #28 that opening movies are clean and the title menu is still shredded — that remaining shred is R1, not this latch |
 
 ### Evidence (G1/G2)
 
@@ -49,11 +49,30 @@ Offline oracle (no present): assemble `MOVIEOPN.STR` frame → `bsdec` →
 
 | ID | Area | Symptom | Repro | Notes |
 |---|---|---|---|---|
-| R1 | Title | Logo / copyright shredded; solid green bar (P2.8) | unset `DW3_START_MODE`; windowed or capture after `mode=0xE00` | **Fixed (G3 follow-up):** `g_disp_rgb24` stayed set after STR; title `timLoaderLoad` ran before `PutDispEnv` cleared it → TIM/CLUT through RGB888 converter. Re-verify window + FB dump; residual OT/tpage polish TBD |
+| R1 | Title | Logo / copyright vertical shred, column offsets, solid green bar, chromatic blocks. Circuit background mostly OK | Path B (no movie): unset `DW3_START_MODE`. Dump the settled title with `DW3_FB_DUMP_DISP=180` (see below). Log must show `rgb24_loads=0` | **Cause (path B, `rgb24_loads=0`):** `TimBlock.pixels` is `u_long[]`. PS1 `u_long` is 4 bytes so pixels sit at file offset 12. Host `u_long` is 8 bytes, so the flexible array aligns to 16 and every `timLoaderLoad` `LoadImage` starts two halfwords into the payload. Title VRAM rows match `TLOGOUSA` TIM0 at a constant shift of 2 (linear k=2, 254/254); the CLUT at y=496 matches the same shift (254/256). A software render of that skip reproduces the shredded DIGIMON wordmark. Sprites themselves are correct (`tpage` bpp=1, CLUT y=496). Patch `0038` stores `pixels` as `u32[]` so the offset stays 12. **Open until the owner re-confirms the window.** Do not use `DW3_START_MODE=0xE00` as title evidence: the title times out into STR and a movie-frame dump is not the menu |
 | R2 | Movie present | Double-buffer B / captured 320×480 may be empty while VRAM A is good; possible tear if sampling mid-flip | `DW3_START_MODE=0xE01` + windowed present | PSY-Z `Draw_SetDisplayMode` still ignores `isrgb24` (stores as 5551 via host) |
 | R3 | Field | Sprite / VRAM tiling polish | `DW3_START_MODE=0x200` (FIELDSTG + WSTAG260) | Boot reaches field; visual oracle = P3.9 / DuckStation |
 | R4 | Battle | Same class as field once `FIGHTSTG` is up | `DW3_FORCE_ENCOUNTER` / P3.3 recipes in `docs/P3.3_BATTLE.md` | Not re-proven on this branch beyond mode entry |
 | R5 | PSY-Z LP64 | Upstream `MDEC_in` + `u32` static tables | — | Prefer small psyz fix on a dedicated branch; host wrap is enough for PC |
+
+### Re-verify R1 (owner)
+
+Unset `DW3_START_MODE`. Path B never enters the RGB24 movie upload
+(`rgb24_loads=0`). Expect a readable DIGIMON wordmark, WORLD 3 emblem,
+and copyright — not vertical slices or a solid green bar. R1 stays open
+until that window is confirmed.
+
+```bash
+SDL_VIDEODRIVER=offscreen SDL_AUDIODRIVER=dummy \
+  DW3_RUNTIME=runtime/us \
+  DW3_FB_DUMP=build/title-evidence/title-b-disp180.ppm \
+  DW3_FB_DUMP_DISP=180 \
+  timeout -s KILL 25 ./build/pc/dw3-pc --runtime runtime/us
+# expect: "disp dump request frame=180 rgb24_loads=0 rgb24=0"
+# expect: mode still 0xe00 at that line (timeout to 0xe01 is later)
+```
+
+Movies stay on the G1/G2 recipe (`DW3_START_MODE=0xE01`, `w==24` strips).
 
 ## Prior fixed (P3.7, already on main)
 
