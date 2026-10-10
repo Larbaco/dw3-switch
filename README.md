@@ -25,11 +25,11 @@ Phase 1 desktop bring-up uses **CMake** to build `platforms/pc/` against the
 
 ## Status
 
-Scaffold plus a porting survey of the decomp ([docs/SURVEY.md](docs/SURVEY.md)).
-The upstream decompilation is complete for both versions; the port work is
-laid out in [docs/ROADMAP.md](docs/ROADMAP.md) and the layering in
-[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). Plan: PC bring-up over
-PSY-Z first, then a libnx backend.
+**Phase 1 complete:** PC host (`dw3-pc` + PSY-Z), Switch `.nro` skeleton
+(CI), disc → `files_us.json` → `runtime/us/` pack tools, and Docker/CI
+toolchains. Survey: [docs/SURVEY.md](docs/SURVEY.md). Next is Phase 2
+(port glue + engine bring-up on PC) per [docs/ROADMAP.md](docs/ROADMAP.md);
+layering in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 ## Setup
 

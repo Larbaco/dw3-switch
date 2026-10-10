@@ -56,6 +56,13 @@ game code yet.
 Gate: PC window + Switch `.nro` skeleton + `files_us.json` for the owner's
 disc.
 
+**Gate passed** (2026-10-10): P1.1–P1.7 complete. Local: `pytest tools/tests`
+(4 passed), `files_us.json` `--check` on `disks/us/` and `runtime/us/`,
+`build/pc/dw3-pc` present. Switch `.nro`: CI run
+[`38028432267`](https://github.com/Larbaco/dw3-switch/actions/runs/38028432267)
+(NTFS/Docker host cannot write `platforms/switch/build/` — see
+`tools/docker/README.md`).
+
 ## Phase 2 — Port glue and engine bring-up on PC
 
 Objective: compile the decomp's **executable** modules (`src/engine/`) for
