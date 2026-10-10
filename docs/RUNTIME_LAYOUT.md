@@ -38,7 +38,8 @@ python3 tools/build_file_map.py --check runtime/us/files_us.json \
   --file-table vendor/dw3_decomp/src/engine/file/file_table.c
 ```
 
-`pack_runtime.py` refuses to run if `files_<ver>.json` is missing.
+`pack_runtime.py` refuses to run if `files_<ver>.json` is missing. If
+`--out` already exists and is non-empty, pass `--force` to wipe it first.
 
 ## Boot image
 

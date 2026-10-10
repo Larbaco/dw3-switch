@@ -94,3 +94,81 @@ def test_pack_refuses_missing_map(tmp_path):
     )
     assert r.returncode != 0
     assert "files_us.json" in (r.stderr + r.stdout)
+
+
+def test_pack_allows_empty_existing_out(tmp_path):
+    disks = tmp_path / "disks"
+    out = tmp_path / "runtime"
+    out.mkdir()
+    _write_disks(disks)
+
+    r = subprocess.run(
+        [
+            sys.executable,
+            str(PACK),
+            "--version",
+            "us",
+            "--disks",
+            str(disks),
+            "--out",
+            str(out),
+        ],
+        capture_output=True,
+        text=True,
+    )
+    assert r.returncode == 0, r.stderr
+    assert (out / "AAA" / "PRO" / "X.PRO").is_file()
+
+
+def test_pack_refuses_nonempty_out_without_force(tmp_path):
+    disks = tmp_path / "disks"
+    out = tmp_path / "runtime"
+    out.mkdir()
+    keep = out / "keep_me.txt"
+    keep.write_text("do-not-delete\n", encoding="utf-8")
+    _write_disks(disks)
+
+    r = subprocess.run(
+        [
+            sys.executable,
+            str(PACK),
+            "--version",
+            "us",
+            "--disks",
+            str(disks),
+            "--out",
+            str(out),
+        ],
+        capture_output=True,
+        text=True,
+    )
+    assert r.returncode != 0
+    assert "--force" in (r.stderr + r.stdout)
+    assert keep.read_text(encoding="utf-8") == "do-not-delete\n"
+
+
+def test_pack_force_wipes_nonempty_out(tmp_path):
+    disks = tmp_path / "disks"
+    out = tmp_path / "runtime"
+    out.mkdir()
+    (out / "stale.txt").write_text("gone\n", encoding="utf-8")
+    _write_disks(disks)
+
+    r = subprocess.run(
+        [
+            sys.executable,
+            str(PACK),
+            "--version",
+            "us",
+            "--disks",
+            str(disks),
+            "--out",
+            str(out),
+            "--force",
+        ],
+        capture_output=True,
+        text=True,
+    )
+    assert r.returncode == 0, r.stderr
+    assert not (out / "stale.txt").exists()
+    assert (out / "AAA" / "PRO" / "X.PRO").is_file()

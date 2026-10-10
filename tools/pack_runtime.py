@@ -38,7 +38,29 @@ def _count_files(root: Path) -> int:
     return sum(1 for p in root.rglob("*") if p.is_file())
 
 
-def pack(version: str, disks: Path, out: Path) -> int:
+def _prepare_out(out: Path, force: bool) -> int:
+    """Ensure --out is ready. Refuse to wipe a non-empty tree without --force."""
+    if not out.exists():
+        out.mkdir(parents=True)
+        return 0
+    if not out.is_dir():
+        print(f"error: --out is not a directory: {out}", file=sys.stderr)
+        return 1
+    if any(out.iterdir()):
+        if not force:
+            print(
+                f"error: {out} exists and is non-empty; "
+                f"pass --force to wipe it before packing",
+                file=sys.stderr,
+            )
+            return 1
+        shutil.rmtree(out)
+        out.mkdir(parents=True)
+        return 0
+    return 0
+
+
+def pack(version: str, disks: Path, out: Path, *, force: bool = False) -> int:
     map_name = f"files_{version}.json"
     map_src = disks / map_name
     if not map_src.is_file():
@@ -60,9 +82,8 @@ def pack(version: str, disks: Path, out: Path) -> int:
         print(f"error: AAA directory not found: {aaa_src}", file=sys.stderr)
         return 1
 
-    if out.exists():
-        shutil.rmtree(out)
-    out.mkdir(parents=True)
+    if _prepare_out(out, force) != 0:
+        return 1
 
     aaa_dst = out / "AAA"
     shutil.copytree(aaa_src, aaa_dst)
@@ -101,8 +122,13 @@ def main(argv: Optional[List[str]] = None) -> int:
         required=True,
         help="runtime output root (e.g. runtime/us)",
     )
+    parser.add_argument(
+        "--force",
+        action="store_true",
+        help="wipe a non-empty --out directory before packing",
+    )
     args = parser.parse_args(argv)
-    return pack(args.version, args.disks, args.out)
+    return pack(args.version, args.disks, args.out, force=args.force)
 
 
 if __name__ == "__main__":
