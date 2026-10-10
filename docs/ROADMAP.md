@@ -173,9 +173,10 @@ WSTAG790 follow-up). **P3.3 Done-when met:** forced encounter →
 `FORCE_FIELD_MENU`); **FORCE_NPC shop/lab/naming return** (gym NPC
 SEGV) (`docs/P3.4_MENUS.md`, `READY_FOR_MAIN_ROADMAP_SYNC:
 P3.4_MENUS_PAD2` / `P3.4_MEMCARD`). Triangle UI return, real NPC
-walk-up, gym NPC SEGV, load e2e still open. **P3.5 partial** (`docs/P3.5_CARDGAME.md`): force-win → prize
-item + return to `FIELDSTG` proven; album `cardsSeen` 29→30 is host
-`DW3_FORCE_CARD_WIN` `addCards` aid, not vanilla prize→album. **P3.7
+walk-up, gym NPC SEGV, load e2e still open. **P3.5 Done-when met**
+(`READY_FOR_MAIN_ROADMAP_SYNC: P3.5`, `docs/P3.5_CARDGAME.md`): force-win
+→ prize item → `FIELDSTG`; album `cardsSeen` 29→33 via vanilla
+`STCRDSHP_openPack` `addCards` (host win `addCards` gated off). **P3.7
 blocked** (`READY_FOR_MAIN_ROADMAP_SYNC: P3.7_BLOCKED`,
 `docs/P3.7_MOVIES.md`): `DW3_START_MODE=0xE01` reaches movie path;
 PSY-Z `MDEC_*` / `StCdInterrupt` stubs + no CD track for
@@ -232,14 +233,15 @@ audio, movies.
   unticked until full Done-when.
   Done when: each opens from the field, works end-to-end, and saving via
   `STGMCARD` uses P2.7.
-- [ ] **P3.5 Card game.** Linked (`dw3_p35_cardgame`); patch `0029`
-  (renumbered from cardgame `0028` after P3.4 took `0028`) +
-  `DW3_FORCE_CARD_WIN` / `DW3_AFTER_CARD_ALBUM` / reuse
-  `DW3_FORCE_MENU`. **Partial evidence** (`docs/P3.5_CARDGAME.md`):
-  force-win applies prize item → `CARDGAME return` → `FIELDSTG` (no
-  SEGV); optional `DW3_AFTER_CARD_ALBUM` → `STCRDABM`. Album
-  `cardsSeen` 29→30 is host `addCards` on `FORCE_CARD_WIN`, not vanilla
-  prize→album. Checkbox stays unticked until real album path.
+- [x] **P3.5 Card game.** Linked (`dw3_p35_cardgame`); patches `0029`/
+  `0032` + `DW3_FORCE_CARD_WIN` / `DW3_FORCE_PACK_OPEN` /
+  `DW3_AFTER_CARD_ALBUM` / reuse `DW3_FORCE_MENU`. **Done-when
+  evidence** (`docs/P3.5_CARDGAME.md`,
+  `READY_FOR_MAIN_ROADMAP_SYNC: P3.5`): force-win prize → `FIELDSTG`;
+  `STCRDSHP_openPack` real `addCards` `cardsSeen` 29→33 →
+  `STCRDABM` 33 → field. Host win `addCards` default off
+  (`DW3_FORCE_CARD_WIN_ADDCARDS`). Follow-up: pad battle, NPC/script
+  entry.
   Done when: a card battle can be won and the album updates.
 - [ ] **P3.6 Audio.** libsnd path through PSY-Z: VAB banks, SEP music,
   SFX, reverb settings the game sets. Verify `SsSeqCalledTbyT` timing
