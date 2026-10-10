@@ -69,10 +69,10 @@ Status: **in progress** (plan:
 [`docs/superpowers/plans/2026-10-10-phase2-pc-bringup.md`](superpowers/plans/2026-10-10-phase2-pc-bringup.md);
 parallel tracks `phase2-engine` + `phase2-io`).
 
-Tracking: Waves 1–2 done (E1/E2 + I1/I2). Wave 3 E5/P2.6 done on
-`phase2-engine` @ `cd8b8f4`; next Wave 4 merge IO + E6/P2.8 title boot.
-Port code stays on `phase2-engine` / `phase2-io` until a PR; this ROADMAP
-on `main` is synced each wave for visibility only (no unfinished merge).
+Tracking: Wave 4 started — `phase2-io` merged into `phase2-engine` @
+`9b2592e`; next E6/P2.8 title boot on PC.
+Port code stays on `phase2-engine` until a PR; this ROADMAP on `main` is
+synced each wave for visibility only (no unfinished merge).
 
 Objective: compile the decomp's **executable** modules (`src/engine/`) for
 the host, replace MIPS-only pieces, and reach the title screen on PC.
