@@ -23,7 +23,7 @@ Branch tip at evidence time: see git (`phase3-pc-bringup`). Local logs under
 | Start → field playable without crash | **partial** (see Proven) |
 | Reach / defeat first story boss | **no** |
 | EU build claimed | **no** (US only) |
-| Audio / movies on the segment | **partial** (P3.7 Done-when met on PC; P3.6 SEP still open; gate segment not end-to-end) |
+| Audio / movies on the segment | **partial** (P3.7 play/skip + XA mix proven; owner DAC listen + ROADMAP tick open; P3.6 SEP still open; gate segment not end-to-end) |
 
 ## Proven (automated, headless `SDL_VIDEODRIVER=dummy`)
 
@@ -120,7 +120,7 @@ Documented separately and already ticked on main ROADMAP:
 |---|---|
 | **Start → first boss** | Intro leaves to `0xE02` movie; post-movie Asuka boot aids stop short of any boss |
 | **P3.6 Audio** | PSY-Z `_SsSeqPlay` ASM gap (`docs/P3.6_AUDIO.md`) |
-| **P3.7 Movies** | **Done-when met** — sustained play + XA mix + Start-skip (`docs/P3.7_MOVIES.md`); owner DAC listen residual |
+| **P3.7 Movies** | **In progress** — sustained play + Start-skip + XA decode/mix (`docs/P3.7_MOVIES.md`); owner audible DAC listen required before ROADMAP tick |
 | **P3.9 Harness** | Needs owner DuckStation oracle + capture fill |
 | **WSTAG460** | Host `updateWanderer` SEGV; weak stub only |
 | **EU playthrough** | Not in gate claim |

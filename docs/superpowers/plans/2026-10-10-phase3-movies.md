@@ -285,18 +285,23 @@ Documented decode/mix + owner-listen gap (Wave 4); not faked as audible.
 
 - [x] **Step 1: Manual/auto skip**
 
-Root cause: ring-full `StCdInterrupt` dropped STR sectors. Fix: backpressure.
-`DW3_AUTO_PAD=start` + `0034` → `dw3-movie: Start-skip` → `mode=0xE00`.
+Root cause: ring-full `StCdInterrupt` dropped STR sectors. Fix: backpressure
+(PSY-Z `47e281d`). `DW3_AUTO_PAD=start` + `0034` → `dw3-movie: Start-skip` →
+`mode=0xE00`.
 
 - [x] **Step 2: Default boot still `MODE_TITLE` without `DW3_START_MODE`**
 
-Boots `0xE00` first; title may advance to `0xE01` + STR (skip works).
+Patch `0010` unchanged; boots `0xE00` first; title may advance to `0xE01` + STR
+(skip works).
 
 - [x] **Step 3: Fill evidence table (play / XA / skip) in `P3.7_MOVIES.md`**
 
-Play + XA + skip green; P3.7 ticked; owner listen residual.
+Play + skip + XA mix rows filled; Task 5 used `SDL_AUDIODRIVER=dummy` — owner
+DAC listen still **open**. Do **not** tick ROADMAP until audible listen passes.
 
-- [x] **Step 4: Commit on bringup + docs sync commit on `main` + push both; update PR #4**
+- [ ] **Step 4: Commit on bringup + docs sync commit on `main` + push both; update PR #4**
+
+Tick ROADMAP `- [x] **P3.7 Movies.**` only after owner audible listen.
 
 ---
 
