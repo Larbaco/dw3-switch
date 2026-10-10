@@ -181,10 +181,11 @@ blocked** (`READY_FOR_MAIN_ROADMAP_SYNC: P3.7_BLOCKED`,
 `docs/P3.7_MOVIES.md`): `DW3_START_MODE=0xE01` reaches movie path;
 PSY-Z `MDEC_*` / `StCdInterrupt` stubs + no CD track for
 `MOVIEOPN.STR` LBA; default skip remains `MODE_TITLE`. **P3.8 partial**
-(`READY_FOR_MAIN_ROADMAP_SYNC: P3.8_BATCH3`, `docs/P3.8_STAGES.md`):
-`STAGSLCT` linked; batch1 +13 + batch2 +31 + batch3 +40 (Amaterasu
-270–325 twins + Central/East/Seiryu/South); 88 linked host objs; live
-PASS 87/87; 151 US stages still stubbed. P3.6 / P3.9 may run on side tracks.
+(`READY_FOR_MAIN_ROADMAP_SYNC: P3.8_BATCH4`, `docs/P3.8_STAGES.md`):
+`STAGSLCT` linked; batch1 +13 + batch2 +31 + batch3 +40 + batch4 +54
+(South/Suzaku/Network + West/Byakko/North; `WSTAG460` still stubbed);
+142 linked host objs; live PASS 141/141; 97 US stages still stubbed.
+P3.6 / P3.9 may run on side tracks.
 
 Objective: the full game loop runs on PC: field, stages, battle, menus,
 audio, movies.
@@ -256,12 +257,13 @@ audio, movies.
   audio + Start-skip.
   Done when: the opening movies play with audio and can be skipped.
 - [ ] **P3.8 Stage sweep.** `STAGSLCT` linked (`dw3_p38_stagslct`); patch
-  `0030` + `tools/stage_sweep.py`. **Partial batch3** (`docs/P3.8_STAGES.md`,
-  `READY_FOR_MAIN_ROADMAP_SYNC: P3.8_BATCH3`): batch1 +13 early
-  Asuka/Central; batch2 +31; batch3 +40 Amaterasu 270–325 twins +
-  Central/East/Seiryu/South (88 linked host objs; 151 stubs). Live PASS
-  87/87 in `build/p38-sweep/results.tsv`. Checkbox unticked until all
-  stages load and return to select.
+  `0030` + `tools/stage_sweep.py`. **Partial batch4** (`docs/P3.8_STAGES.md`,
+  `READY_FOR_MAIN_ROADMAP_SYNC: P3.8_BATCH4`): batch1 +13 early
+  Asuka/Central; batch2 +31; batch3 +40 Amaterasu/Central/East/Seiryu/South;
+  batch4 +54 South/Suzaku/Network + West/Byakko/North (`WSTAG460` stubbed;
+  142 linked host objs; 97 stubs). Live PASS 141/141 in
+  `build/p38-sweep/results.tsv`. Checkbox unticked until all stages load
+  and return to select.
   Done when: all stages load and return to the select screen.
 - [ ] **P3.9 Reference comparison harness.** Script that boots the same
   save in DuckStation and the PC build and captures screenshots for

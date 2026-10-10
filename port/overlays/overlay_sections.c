@@ -384,6 +384,223 @@ extern char __start_dw3data_wstag470[];
 extern char __stop_dw3data_wstag470[];
 extern char __start_dw3bss_wstag470[];
 extern char __stop_dw3bss_wstag470[];
+/* P3.8 batch 4 — South/Suzaku/Network + West/Byakko/North */
+extern char __start_dw3data_wstag480[];
+extern char __stop_dw3data_wstag480[];
+extern char __start_dw3bss_wstag480[];
+extern char __stop_dw3bss_wstag480[];
+extern char __start_dw3data_wstag485[];
+extern char __stop_dw3data_wstag485[];
+extern char __start_dw3bss_wstag485[];
+extern char __stop_dw3bss_wstag485[];
+extern char __start_dw3data_wstag490[];
+extern char __stop_dw3data_wstag490[];
+extern char __start_dw3bss_wstag490[];
+extern char __stop_dw3bss_wstag490[];
+extern char __start_dw3data_wstag495[];
+extern char __stop_dw3data_wstag495[];
+extern char __start_dw3bss_wstag495[];
+extern char __stop_dw3bss_wstag495[];
+extern char __start_dw3data_wstag500[];
+extern char __stop_dw3data_wstag500[];
+extern char __start_dw3bss_wstag500[];
+extern char __stop_dw3bss_wstag500[];
+extern char __start_dw3data_wstag505[];
+extern char __stop_dw3data_wstag505[];
+extern char __start_dw3bss_wstag505[];
+extern char __stop_dw3bss_wstag505[];
+extern char __start_dw3data_wstag520[];
+extern char __stop_dw3data_wstag520[];
+extern char __start_dw3bss_wstag520[];
+extern char __stop_dw3bss_wstag520[];
+extern char __start_dw3data_wstag525[];
+extern char __stop_dw3data_wstag525[];
+extern char __start_dw3bss_wstag525[];
+extern char __stop_dw3bss_wstag525[];
+extern char __start_dw3data_wstag530[];
+extern char __stop_dw3data_wstag530[];
+extern char __start_dw3bss_wstag530[];
+extern char __stop_dw3bss_wstag530[];
+extern char __start_dw3data_wstag535[];
+extern char __stop_dw3data_wstag535[];
+extern char __start_dw3bss_wstag535[];
+extern char __stop_dw3bss_wstag535[];
+extern char __start_dw3data_wstag537[];
+extern char __stop_dw3data_wstag537[];
+extern char __start_dw3bss_wstag537[];
+extern char __stop_dw3bss_wstag537[];
+extern char __start_dw3data_wstag540[];
+extern char __stop_dw3data_wstag540[];
+extern char __start_dw3bss_wstag540[];
+extern char __stop_dw3bss_wstag540[];
+extern char __start_dw3data_wstag545[];
+extern char __stop_dw3data_wstag545[];
+extern char __start_dw3bss_wstag545[];
+extern char __stop_dw3bss_wstag545[];
+extern char __start_dw3data_wstag550[];
+extern char __stop_dw3data_wstag550[];
+extern char __start_dw3bss_wstag550[];
+extern char __stop_dw3bss_wstag550[];
+extern char __start_dw3data_wstag555[];
+extern char __stop_dw3data_wstag555[];
+extern char __start_dw3bss_wstag555[];
+extern char __stop_dw3bss_wstag555[];
+extern char __start_dw3data_wstag560[];
+extern char __stop_dw3data_wstag560[];
+extern char __start_dw3bss_wstag560[];
+extern char __stop_dw3bss_wstag560[];
+extern char __start_dw3data_wstag565[];
+extern char __stop_dw3data_wstag565[];
+extern char __start_dw3bss_wstag565[];
+extern char __stop_dw3bss_wstag565[];
+extern char __start_dw3data_wstag570[];
+extern char __stop_dw3data_wstag570[];
+extern char __start_dw3bss_wstag570[];
+extern char __stop_dw3bss_wstag570[];
+extern char __start_dw3data_wstag575[];
+extern char __stop_dw3data_wstag575[];
+extern char __start_dw3bss_wstag575[];
+extern char __stop_dw3bss_wstag575[];
+extern char __start_dw3data_wstag580[];
+extern char __stop_dw3data_wstag580[];
+extern char __start_dw3bss_wstag580[];
+extern char __stop_dw3bss_wstag580[];
+extern char __start_dw3data_wstag585[];
+extern char __stop_dw3data_wstag585[];
+extern char __start_dw3bss_wstag585[];
+extern char __stop_dw3bss_wstag585[];
+extern char __start_dw3data_wstag590[];
+extern char __stop_dw3data_wstag590[];
+extern char __start_dw3bss_wstag590[];
+extern char __stop_dw3bss_wstag590[];
+extern char __start_dw3data_wstag595[];
+extern char __stop_dw3data_wstag595[];
+extern char __start_dw3bss_wstag595[];
+extern char __stop_dw3bss_wstag595[];
+extern char __start_dw3data_wstag600[];
+extern char __stop_dw3data_wstag600[];
+extern char __start_dw3bss_wstag600[];
+extern char __stop_dw3bss_wstag600[];
+extern char __start_dw3data_wstag605[];
+extern char __stop_dw3data_wstag605[];
+extern char __start_dw3bss_wstag605[];
+extern char __stop_dw3bss_wstag605[];
+extern char __start_dw3data_wstag610[];
+extern char __stop_dw3data_wstag610[];
+extern char __start_dw3bss_wstag610[];
+extern char __stop_dw3bss_wstag610[];
+extern char __start_dw3data_wstag615[];
+extern char __stop_dw3data_wstag615[];
+extern char __start_dw3bss_wstag615[];
+extern char __stop_dw3bss_wstag615[];
+extern char __start_dw3data_wstag620[];
+extern char __stop_dw3data_wstag620[];
+extern char __start_dw3bss_wstag620[];
+extern char __stop_dw3bss_wstag620[];
+extern char __start_dw3data_wstag625[];
+extern char __stop_dw3data_wstag625[];
+extern char __start_dw3bss_wstag625[];
+extern char __stop_dw3bss_wstag625[];
+extern char __start_dw3data_wstag630[];
+extern char __stop_dw3data_wstag630[];
+extern char __start_dw3bss_wstag630[];
+extern char __stop_dw3bss_wstag630[];
+extern char __start_dw3data_wstag635[];
+extern char __stop_dw3data_wstag635[];
+extern char __start_dw3bss_wstag635[];
+extern char __stop_dw3bss_wstag635[];
+extern char __start_dw3data_wstag640[];
+extern char __stop_dw3data_wstag640[];
+extern char __start_dw3bss_wstag640[];
+extern char __stop_dw3bss_wstag640[];
+extern char __start_dw3data_wstag645[];
+extern char __stop_dw3data_wstag645[];
+extern char __start_dw3bss_wstag645[];
+extern char __stop_dw3bss_wstag645[];
+extern char __start_dw3data_wstag650[];
+extern char __stop_dw3data_wstag650[];
+extern char __start_dw3bss_wstag650[];
+extern char __stop_dw3bss_wstag650[];
+extern char __start_dw3data_wstag655[];
+extern char __stop_dw3data_wstag655[];
+extern char __start_dw3bss_wstag655[];
+extern char __stop_dw3bss_wstag655[];
+extern char __start_dw3data_wstag660[];
+extern char __stop_dw3data_wstag660[];
+extern char __start_dw3bss_wstag660[];
+extern char __stop_dw3bss_wstag660[];
+extern char __start_dw3data_wstag675[];
+extern char __stop_dw3data_wstag675[];
+extern char __start_dw3bss_wstag675[];
+extern char __stop_dw3bss_wstag675[];
+extern char __start_dw3data_wstag680[];
+extern char __stop_dw3data_wstag680[];
+extern char __start_dw3bss_wstag680[];
+extern char __stop_dw3bss_wstag680[];
+extern char __start_dw3data_wstag685[];
+extern char __stop_dw3data_wstag685[];
+extern char __start_dw3bss_wstag685[];
+extern char __stop_dw3bss_wstag685[];
+extern char __start_dw3data_wstag690[];
+extern char __stop_dw3data_wstag690[];
+extern char __start_dw3bss_wstag690[];
+extern char __stop_dw3bss_wstag690[];
+extern char __start_dw3data_wstag695[];
+extern char __stop_dw3data_wstag695[];
+extern char __start_dw3bss_wstag695[];
+extern char __stop_dw3bss_wstag695[];
+extern char __start_dw3data_wstag700[];
+extern char __stop_dw3data_wstag700[];
+extern char __start_dw3bss_wstag700[];
+extern char __stop_dw3bss_wstag700[];
+extern char __start_dw3data_wstag705[];
+extern char __stop_dw3data_wstag705[];
+extern char __start_dw3bss_wstag705[];
+extern char __stop_dw3bss_wstag705[];
+extern char __start_dw3data_wstag710[];
+extern char __stop_dw3data_wstag710[];
+extern char __start_dw3bss_wstag710[];
+extern char __stop_dw3bss_wstag710[];
+extern char __start_dw3data_wstag715[];
+extern char __stop_dw3data_wstag715[];
+extern char __start_dw3bss_wstag715[];
+extern char __stop_dw3bss_wstag715[];
+extern char __start_dw3data_wstag720[];
+extern char __stop_dw3data_wstag720[];
+extern char __start_dw3bss_wstag720[];
+extern char __stop_dw3bss_wstag720[];
+extern char __start_dw3data_wstag725[];
+extern char __stop_dw3data_wstag725[];
+extern char __start_dw3bss_wstag725[];
+extern char __stop_dw3bss_wstag725[];
+extern char __start_dw3data_wstag730[];
+extern char __stop_dw3data_wstag730[];
+extern char __start_dw3bss_wstag730[];
+extern char __stop_dw3bss_wstag730[];
+extern char __start_dw3data_wstag735[];
+extern char __stop_dw3data_wstag735[];
+extern char __start_dw3bss_wstag735[];
+extern char __stop_dw3bss_wstag735[];
+extern char __start_dw3data_wstag740[];
+extern char __stop_dw3data_wstag740[];
+extern char __start_dw3bss_wstag740[];
+extern char __stop_dw3bss_wstag740[];
+extern char __start_dw3data_wstag745[];
+extern char __stop_dw3data_wstag745[];
+extern char __start_dw3bss_wstag745[];
+extern char __stop_dw3bss_wstag745[];
+extern char __start_dw3data_wstag750[];
+extern char __stop_dw3data_wstag750[];
+extern char __start_dw3bss_wstag750[];
+extern char __stop_dw3bss_wstag750[];
+extern char __start_dw3data_wstag755[];
+extern char __stop_dw3data_wstag755[];
+extern char __start_dw3bss_wstag755[];
+extern char __stop_dw3bss_wstag755[];
+extern char __start_dw3data_wstag760[];
+extern char __stop_dw3data_wstag760[];
+extern char __start_dw3bss_wstag760[];
+extern char __stop_dw3bss_wstag760[];
 
 
 extern char __start_dw3data_fightstg[];
@@ -771,6 +988,180 @@ void dw3_overlay_bind_p38_batch3c_sections(
     bind_section(wstag470, __start_dw3data_wstag470, __stop_dw3data_wstag470,
                  __start_dw3bss_wstag470, __stop_dw3bss_wstag470);
 }
+void dw3_overlay_bind_p38_batch4a_sections(
+    Dw3OverlayDesc *wstag480,
+    Dw3OverlayDesc *wstag485,
+    Dw3OverlayDesc *wstag490,
+    Dw3OverlayDesc *wstag495,
+    Dw3OverlayDesc *wstag500,
+    Dw3OverlayDesc *wstag505,
+    Dw3OverlayDesc *wstag520,
+    Dw3OverlayDesc *wstag525,
+    Dw3OverlayDesc *wstag530,
+    Dw3OverlayDesc *wstag535,
+    Dw3OverlayDesc *wstag537,
+    Dw3OverlayDesc *wstag540,
+    Dw3OverlayDesc *wstag545) {
+    bind_section(wstag480, __start_dw3data_wstag480, __stop_dw3data_wstag480,
+                 __start_dw3bss_wstag480, __stop_dw3bss_wstag480);
+    bind_section(wstag485, __start_dw3data_wstag485, __stop_dw3data_wstag485,
+                 __start_dw3bss_wstag485, __stop_dw3bss_wstag485);
+    bind_section(wstag490, __start_dw3data_wstag490, __stop_dw3data_wstag490,
+                 __start_dw3bss_wstag490, __stop_dw3bss_wstag490);
+    bind_section(wstag495, __start_dw3data_wstag495, __stop_dw3data_wstag495,
+                 __start_dw3bss_wstag495, __stop_dw3bss_wstag495);
+    bind_section(wstag500, __start_dw3data_wstag500, __stop_dw3data_wstag500,
+                 __start_dw3bss_wstag500, __stop_dw3bss_wstag500);
+    bind_section(wstag505, __start_dw3data_wstag505, __stop_dw3data_wstag505,
+                 __start_dw3bss_wstag505, __stop_dw3bss_wstag505);
+    bind_section(wstag520, __start_dw3data_wstag520, __stop_dw3data_wstag520,
+                 __start_dw3bss_wstag520, __stop_dw3bss_wstag520);
+    bind_section(wstag525, __start_dw3data_wstag525, __stop_dw3data_wstag525,
+                 __start_dw3bss_wstag525, __stop_dw3bss_wstag525);
+    bind_section(wstag530, __start_dw3data_wstag530, __stop_dw3data_wstag530,
+                 __start_dw3bss_wstag530, __stop_dw3bss_wstag530);
+    bind_section(wstag535, __start_dw3data_wstag535, __stop_dw3data_wstag535,
+                 __start_dw3bss_wstag535, __stop_dw3bss_wstag535);
+    bind_section(wstag537, __start_dw3data_wstag537, __stop_dw3data_wstag537,
+                 __start_dw3bss_wstag537, __stop_dw3bss_wstag537);
+    bind_section(wstag540, __start_dw3data_wstag540, __stop_dw3data_wstag540,
+                 __start_dw3bss_wstag540, __stop_dw3bss_wstag540);
+    bind_section(wstag545, __start_dw3data_wstag545, __stop_dw3data_wstag545,
+                 __start_dw3bss_wstag545, __stop_dw3bss_wstag545);
+}
+
+void dw3_overlay_bind_p38_batch4b_sections(
+    Dw3OverlayDesc *wstag550,
+    Dw3OverlayDesc *wstag555,
+    Dw3OverlayDesc *wstag560,
+    Dw3OverlayDesc *wstag565,
+    Dw3OverlayDesc *wstag570,
+    Dw3OverlayDesc *wstag575,
+    Dw3OverlayDesc *wstag580,
+    Dw3OverlayDesc *wstag585,
+    Dw3OverlayDesc *wstag590,
+    Dw3OverlayDesc *wstag595,
+    Dw3OverlayDesc *wstag600,
+    Dw3OverlayDesc *wstag605,
+    Dw3OverlayDesc *wstag610,
+    Dw3OverlayDesc *wstag615,
+    Dw3OverlayDesc *wstag620) {
+    bind_section(wstag550, __start_dw3data_wstag550, __stop_dw3data_wstag550,
+                 __start_dw3bss_wstag550, __stop_dw3bss_wstag550);
+    bind_section(wstag555, __start_dw3data_wstag555, __stop_dw3data_wstag555,
+                 __start_dw3bss_wstag555, __stop_dw3bss_wstag555);
+    bind_section(wstag560, __start_dw3data_wstag560, __stop_dw3data_wstag560,
+                 __start_dw3bss_wstag560, __stop_dw3bss_wstag560);
+    bind_section(wstag565, __start_dw3data_wstag565, __stop_dw3data_wstag565,
+                 __start_dw3bss_wstag565, __stop_dw3bss_wstag565);
+    bind_section(wstag570, __start_dw3data_wstag570, __stop_dw3data_wstag570,
+                 __start_dw3bss_wstag570, __stop_dw3bss_wstag570);
+    bind_section(wstag575, __start_dw3data_wstag575, __stop_dw3data_wstag575,
+                 __start_dw3bss_wstag575, __stop_dw3bss_wstag575);
+    bind_section(wstag580, __start_dw3data_wstag580, __stop_dw3data_wstag580,
+                 __start_dw3bss_wstag580, __stop_dw3bss_wstag580);
+    bind_section(wstag585, __start_dw3data_wstag585, __stop_dw3data_wstag585,
+                 __start_dw3bss_wstag585, __stop_dw3bss_wstag585);
+    bind_section(wstag590, __start_dw3data_wstag590, __stop_dw3data_wstag590,
+                 __start_dw3bss_wstag590, __stop_dw3bss_wstag590);
+    bind_section(wstag595, __start_dw3data_wstag595, __stop_dw3data_wstag595,
+                 __start_dw3bss_wstag595, __stop_dw3bss_wstag595);
+    bind_section(wstag600, __start_dw3data_wstag600, __stop_dw3data_wstag600,
+                 __start_dw3bss_wstag600, __stop_dw3bss_wstag600);
+    bind_section(wstag605, __start_dw3data_wstag605, __stop_dw3data_wstag605,
+                 __start_dw3bss_wstag605, __stop_dw3bss_wstag605);
+    bind_section(wstag610, __start_dw3data_wstag610, __stop_dw3data_wstag610,
+                 __start_dw3bss_wstag610, __stop_dw3bss_wstag610);
+    bind_section(wstag615, __start_dw3data_wstag615, __stop_dw3data_wstag615,
+                 __start_dw3bss_wstag615, __stop_dw3bss_wstag615);
+    bind_section(wstag620, __start_dw3data_wstag620, __stop_dw3data_wstag620,
+                 __start_dw3bss_wstag620, __stop_dw3bss_wstag620);
+}
+
+void dw3_overlay_bind_p38_batch4c_sections(
+    Dw3OverlayDesc *wstag625,
+    Dw3OverlayDesc *wstag630,
+    Dw3OverlayDesc *wstag635,
+    Dw3OverlayDesc *wstag640,
+    Dw3OverlayDesc *wstag645,
+    Dw3OverlayDesc *wstag650,
+    Dw3OverlayDesc *wstag655,
+    Dw3OverlayDesc *wstag660,
+    Dw3OverlayDesc *wstag675,
+    Dw3OverlayDesc *wstag680,
+    Dw3OverlayDesc *wstag685) {
+    bind_section(wstag625, __start_dw3data_wstag625, __stop_dw3data_wstag625,
+                 __start_dw3bss_wstag625, __stop_dw3bss_wstag625);
+    bind_section(wstag630, __start_dw3data_wstag630, __stop_dw3data_wstag630,
+                 __start_dw3bss_wstag630, __stop_dw3bss_wstag630);
+    bind_section(wstag635, __start_dw3data_wstag635, __stop_dw3data_wstag635,
+                 __start_dw3bss_wstag635, __stop_dw3bss_wstag635);
+    bind_section(wstag640, __start_dw3data_wstag640, __stop_dw3data_wstag640,
+                 __start_dw3bss_wstag640, __stop_dw3bss_wstag640);
+    bind_section(wstag645, __start_dw3data_wstag645, __stop_dw3data_wstag645,
+                 __start_dw3bss_wstag645, __stop_dw3bss_wstag645);
+    bind_section(wstag650, __start_dw3data_wstag650, __stop_dw3data_wstag650,
+                 __start_dw3bss_wstag650, __stop_dw3bss_wstag650);
+    bind_section(wstag655, __start_dw3data_wstag655, __stop_dw3data_wstag655,
+                 __start_dw3bss_wstag655, __stop_dw3bss_wstag655);
+    bind_section(wstag660, __start_dw3data_wstag660, __stop_dw3data_wstag660,
+                 __start_dw3bss_wstag660, __stop_dw3bss_wstag660);
+    bind_section(wstag675, __start_dw3data_wstag675, __stop_dw3data_wstag675,
+                 __start_dw3bss_wstag675, __stop_dw3bss_wstag675);
+    bind_section(wstag680, __start_dw3data_wstag680, __stop_dw3data_wstag680,
+                 __start_dw3bss_wstag680, __stop_dw3bss_wstag680);
+    bind_section(wstag685, __start_dw3data_wstag685, __stop_dw3data_wstag685,
+                 __start_dw3bss_wstag685, __stop_dw3bss_wstag685);
+}
+
+void dw3_overlay_bind_p38_batch4d_sections(
+    Dw3OverlayDesc *wstag690,
+    Dw3OverlayDesc *wstag695,
+    Dw3OverlayDesc *wstag700,
+    Dw3OverlayDesc *wstag705,
+    Dw3OverlayDesc *wstag710,
+    Dw3OverlayDesc *wstag715,
+    Dw3OverlayDesc *wstag720,
+    Dw3OverlayDesc *wstag725,
+    Dw3OverlayDesc *wstag730,
+    Dw3OverlayDesc *wstag735,
+    Dw3OverlayDesc *wstag740,
+    Dw3OverlayDesc *wstag745,
+    Dw3OverlayDesc *wstag750,
+    Dw3OverlayDesc *wstag755,
+    Dw3OverlayDesc *wstag760) {
+    bind_section(wstag690, __start_dw3data_wstag690, __stop_dw3data_wstag690,
+                 __start_dw3bss_wstag690, __stop_dw3bss_wstag690);
+    bind_section(wstag695, __start_dw3data_wstag695, __stop_dw3data_wstag695,
+                 __start_dw3bss_wstag695, __stop_dw3bss_wstag695);
+    bind_section(wstag700, __start_dw3data_wstag700, __stop_dw3data_wstag700,
+                 __start_dw3bss_wstag700, __stop_dw3bss_wstag700);
+    bind_section(wstag705, __start_dw3data_wstag705, __stop_dw3data_wstag705,
+                 __start_dw3bss_wstag705, __stop_dw3bss_wstag705);
+    bind_section(wstag710, __start_dw3data_wstag710, __stop_dw3data_wstag710,
+                 __start_dw3bss_wstag710, __stop_dw3bss_wstag710);
+    bind_section(wstag715, __start_dw3data_wstag715, __stop_dw3data_wstag715,
+                 __start_dw3bss_wstag715, __stop_dw3bss_wstag715);
+    bind_section(wstag720, __start_dw3data_wstag720, __stop_dw3data_wstag720,
+                 __start_dw3bss_wstag720, __stop_dw3bss_wstag720);
+    bind_section(wstag725, __start_dw3data_wstag725, __stop_dw3data_wstag725,
+                 __start_dw3bss_wstag725, __stop_dw3bss_wstag725);
+    bind_section(wstag730, __start_dw3data_wstag730, __stop_dw3data_wstag730,
+                 __start_dw3bss_wstag730, __stop_dw3bss_wstag730);
+    bind_section(wstag735, __start_dw3data_wstag735, __stop_dw3data_wstag735,
+                 __start_dw3bss_wstag735, __stop_dw3bss_wstag735);
+    bind_section(wstag740, __start_dw3data_wstag740, __stop_dw3data_wstag740,
+                 __start_dw3bss_wstag740, __stop_dw3bss_wstag740);
+    bind_section(wstag745, __start_dw3data_wstag745, __stop_dw3data_wstag745,
+                 __start_dw3bss_wstag745, __stop_dw3bss_wstag745);
+    bind_section(wstag750, __start_dw3data_wstag750, __stop_dw3data_wstag750,
+                 __start_dw3bss_wstag750, __stop_dw3bss_wstag750);
+    bind_section(wstag755, __start_dw3data_wstag755, __stop_dw3data_wstag755,
+                 __start_dw3bss_wstag755, __stop_dw3bss_wstag755);
+    bind_section(wstag760, __start_dw3data_wstag760, __stop_dw3data_wstag760,
+                 __start_dw3bss_wstag760, __stop_dw3bss_wstag760);
+}
+
 void dw3_overlay_bind_battle_sections(Dw3OverlayDesc *fightstg, Dw3OverlayDesc *wfightmn,
                                       Dw3OverlayDesc *stfgtrep) {
     bind_section(fightstg, __start_dw3data_fightstg, __stop_dw3data_fightstg,
