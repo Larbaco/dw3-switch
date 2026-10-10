@@ -8,11 +8,14 @@ libnx backend exists.
 | Field | Value |
 |---|---|
 | Upstream | https://github.com/Xeeynamo/psyz.git |
-| Commit | `fac9bd58ccd8a0c35e31c6354528f9d625e9bdd1` |
+| Working fork (submodule URL) | https://github.com/Larbaco/psyz.git |
+| Commit | `bf4445758c889be736c85ec80e67a2adddfa6151` (`dw3-mdec-wire`: soft MDEC under `MDEC_*`) |
+| Base upstream | `fac9bd58ccd8a0c35e31c6354528f9d625e9bdd1` |
 | License | MIT — see [`vendor/psyz/LICENSE`](../vendor/psyz/LICENSE) |
 
 Update the pin intentionally; call out submodule SHA changes in the
-commit message.
+commit message. Submodule URL is the Larbaco fork until the MDEC wire
+lands on Xeeynamo/psyz (READ-only upstream).
 
 ## Recursive submodules
 

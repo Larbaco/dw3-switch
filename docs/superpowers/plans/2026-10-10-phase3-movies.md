@@ -49,14 +49,14 @@ Game path (do not rewrite): `vendor/dw3_decomp/src/menus/title/movie.c` uses `Cd
 - Consumes: `Psyz_MdecReset`, `Psyz_MdecCommand`, `Psyz_MdecRead` from `mdec.h`
 - Produces: real `MDEC_reset` / `MDEC_in` / `MDEC_out` / sync / status matching Psy-Q call patterns used by `DecDCTReset` / `DecDCTin` / `DecDCTout` in `decomp/src/libpress/libpress.c`
 
-- [ ] **Step 1: Read how `DecDCTin`/`DecDCTout` call MDEC**
+- [x] **Step 1: Read how `DecDCTin`/`DecDCTout` call MDEC**
 
 Confirm from `vendor/psyz/decomp/src/libpress/libpress.c`:
 - `DecDCTReset` → `MDEC_reset(mode)`
 - `DecDCTin` → mutates command word then `MDEC_in(buf, *(u_short*)buf)`
 - `DecDCTout` → `MDEC_out(buf, size)`
 
-- [ ] **Step 2: Implement `MDEC_*` via soft MDEC**
+- [x] **Step 2: Implement `MDEC_*` via soft MDEC**
 
 In `libpress.c`, replace `NOT_IMPLEMENTED` bodies with a mapping such as:
 
@@ -99,7 +99,7 @@ u_long MDEC_status(void) { return 0; }
 
 Adjust the `MDEC_in` word-count convention until `DecDCTPutEnv` + `test_mdec` semantics agree (iq command `0x40000001` with 32 words total → command + 31 data **or** command included in size as libpress does — verify against `mdec_iq` array length 33 entries / `MDEC_in(..., 32)`).
 
-- [ ] **Step 3: Build and run PSY-Z `test_mdec`**
+- [x] **Step 3: Build and run PSY-Z `test_mdec`**
 
 ```bash
 cmake -S vendor/psyz/psyz -B build/psyz-test -G Ninja
@@ -110,7 +110,7 @@ ctest --test-dir build/psyz-test -R mdec --output-on-failure
 
 Expected: PASS (or document exact target if ctest name differs).
 
-- [ ] **Step 4: Commit + push (submodule note)**
+- [x] **Step 4: Commit + push (submodule note)**
 
 ```bash
 # If vendor/psyz is a submodule with its own git: commit inside submodule first,
@@ -125,7 +125,7 @@ EOF
 git push
 ```
 
-- [ ] **Step 5: Sync ROADMAP note on main (in progress, not ticked)**
+- [x] **Step 5: Sync ROADMAP note on main (in progress, not ticked)**
 
 Docs-only: P3.7 status → in progress / MDEC wired; checkbox stays `[ ]`.
 
