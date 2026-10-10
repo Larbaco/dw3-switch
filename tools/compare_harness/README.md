@@ -9,17 +9,27 @@ PS1 (DuckStation) is the **visual oracle**. `dw3-pc` is the subject.
 
 ## Status
 
-Automated **boot/oracle capture** works for `title` (DuckStation + own disc
-+ BIOS). Field/battle still need a shared `.mcr` or `-statefile` + pad;
-ROADMAP P3.9 stays open until all three labels have reviewed pairs.
+| Label | Automation | Notes |
+|---|---|---|
+| `title` | OK | Boot/FMV @ 100% |
+| `field` | Partial | Loads owner `.mcd` via auto Start/Cross; last shot was in-game Items menu |
+| `battle` | Blocked | Needs mid-fight `--statefile` (F2) |
+
+ROADMAP P3.9 stays open until three reviewed pairs exist. PNGs + `.mcr`
+stay under gitignored `build/compare/`.
 
 | Mode | Exit | Meaning |
 |---|---|---|
 | `--dry-run` | 0 | Print plan; no assets required |
-| `--label title` (live) | 0 | BIOS check + boot + F10 → `build/compare/title/duck.png` |
-| `--label field\|battle` without `--save` | 3 | Blocked (no settled scene) |
+| `--label title` | 0 | Boot + F10 |
+| `--label field` + `--save` | 0 | Stage card + auto-load + F10 |
+| `--label field\|battle` without `--save`/`--statefile` | 3 | Blocked |
 
-Screenshots stay under gitignored `build/compare/` (never commit game PNGs).
+Owner card on this machine:
+
+`~/.local/share/duckstation/memcards/Digimon World 3 (USA)_1.mcd`
+
+→ staged to `build/compare/memcard0.mcr` (never commit).
 
 ## Emulation speed (required: 100%)
 
@@ -37,38 +47,38 @@ DuckStation has **no CLI flag** for speed (checked AppImage `-help`,
 Also: `SetupWizardIncomplete=false`, `ConfirmPowerOff=false`,
 `BIOS/PathNTSCU=scph1001.bin`, `Folders/Screenshots` → harness shots dir.
 
-## One-command owner/agent recipe (unattended title/boot)
-
-From this worktree (defaults match the owner machine paths):
+## One-liners (this machine)
 
 ```bash
+cd /mnt/windows/Jogos/dw3-switch/.worktrees/phase3-harness
+DS=/mnt/windows/Jogos/emuladores/duckstation
+CUE="/mnt/windows/Jogos/PS1/Digimon World 3/Digimon World 3.cue"
+BIOS="$HOME/.local/share/duckstation/bios/scph1001.bin"
+SRC="$HOME/.local/share/duckstation/memcards/Digimon World 3 (USA)_1.mcd"
+
+# Title / boot
 python3 tools/compare_harness/capture_pair.py \
-  --label title \
-  --duck-only \
-  --settle-seconds 20 \
-  --out build/compare
+  --label title --duck-only --settle-seconds 25 \
+  --duckstation "$DS" --disc "$CUE" --bios "$BIOS" --out build/compare
+
+# Field (auto-load from memcard; ~2–3 min @ 100%)
+python3 tools/compare_harness/capture_pair.py \
+  --label field --duck-only --save "$SRC" --settle-seconds 160 \
+  --duckstation "$DS" --disc "$CUE" --bios "$BIOS" --out build/compare
+
+# Field/battle from F2 savestate (preferred settled frame)
+python3 tools/compare_harness/capture_pair.py \
+  --label field --duck-only --no-auto-load --statefile /path/to.state \
+  --settle-seconds 3 --duckstation "$DS" --disc "$CUE" --out build/compare
 ```
 
-Explicit paths:
+Needs: `DISPLAY`, `xdotool`, `wmctrl`. Pad1 is temporarily rebound to
+keyboard (`Enter`/`K`/arrows) during auto-load, then restored.
+
+Dry-run:
 
 ```bash
-python3 tools/compare_harness/capture_pair.py \
-  --label title \
-  --duck-only \
-  --duckstation /mnt/windows/Jogos/emuladores/duckstation \
-  --disc "/mnt/windows/Jogos/PS1/Digimon World 3/Digimon World 3.cue" \
-  --bios "$HOME/.local/share/duckstation/bios/scph1001.bin" \
-  --settle-seconds 20 \
-  --out build/compare
-```
-
-Needs: `DISPLAY` + `xdotool` (F10 → native screenshot). Optional PC pair
-omits `--duck-only` and passes `--pc-bin` / `--runtime` when present.
-
-Dry-run (no GUI):
-
-```bash
-python3 tools/compare_harness/capture_pair.py --dry-run --label title
+python3 tools/compare_harness/capture_pair.py --dry-run --label field --save "$SRC"
 ```
 
 ## DuckStation CLI (what exists / what does not)
