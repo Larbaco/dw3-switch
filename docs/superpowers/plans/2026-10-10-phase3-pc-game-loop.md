@@ -354,10 +354,13 @@ walk/door still open.
 ### Task A5: P3.5 Card game
 
 **Files:** `CARDGAME`, `STCRDDEK`, `STCRDSHP`, `STCRDABM`.
+Branch: `phase3-cardgame` (separate worktree from P3.4 memcard work).
 
-- [ ] **Step 1: Link card overlays.**
+- [x] **Step 1: Link card overlays.** (`dw3_p35_cardgame`, patch `0028`)
 - [ ] **Step 2: Win a card battle; album updates.**
-- [ ] **Step 3: Tick P3.5; commit + push.**
+  (force prize proven; post-win return SEGV + album update still open —
+  `docs/P3.5_CARDGAME.md`)
+- [ ] **Step 3: Tick P3.5; commit + push.** (partial docs only; Done-when unmet)
 
 **Done when:** card battle winnable; album updates.
 
