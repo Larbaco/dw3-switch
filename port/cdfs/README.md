@@ -10,7 +10,8 @@ root (`docs/RUNTIME_LAYOUT.md`), using the same JSON shape as
 2. Host calls `cdfs_load_map(NULL)` to load `<root>/files_us.json`
    (falls back to `files_eu.json`), or passes an explicit map path.
 3. Each JSON entry under `"files"` is `"<id>": { "path": "...", "bytes": N, ... }`.
-   Relative `path` is joined to the root (`AAA/PRO/...`, etc.).
+   Relative `path` is joined to the root (`AAA/PRO/...`, etc.). Absolute paths
+   and any `.` / `..` (or empty) path components are rejected at map load.
 4. `cdfs_file_size(id)` / `cdfs_read(id, buf, buflen)` open that host file
    and return **payload bytes as stored on disk** (byte-identical to the
    packed tree). The JSON `bytes` field is advisory; on-disk size wins.

@@ -50,10 +50,62 @@ int cdfs_set_root(const char *root) {
     return 0;
 }
 
+/* Map paths must be relative under the runtime root: no absolute paths,
+ * no empty / "." / ".." components ( / and \\ separators). */
+static int path_is_safe_relative(const char *path) {
+    const char *p;
+    const char *start;
+
+    if (path == NULL || path[0] == '\0') {
+        return 0;
+    }
+    if (path[0] == '/' || path[0] == '\\') {
+        return 0;
+    }
+    /* Windows drive / UNC-style absolute. */
+    if (((path[0] >= 'A' && path[0] <= 'Z') || (path[0] >= 'a' && path[0] <= 'z')) &&
+        path[1] == ':') {
+        return 0;
+    }
+
+    p = path;
+    start = p;
+    while (*p) {
+        if (*p == '/' || *p == '\\') {
+            size_t len = (size_t)(p - start);
+            if (len == 0) {
+                return 0; /* consecutive separators */
+            }
+            if ((len == 1 && start[0] == '.') ||
+                (len == 2 && start[0] == '.' && start[1] == '.')) {
+                return 0;
+            }
+            p++;
+            start = p;
+            continue;
+        }
+        p++;
+    }
+    {
+        size_t len = (size_t)(p - start);
+        if (len == 0) {
+            return 0; /* trailing separator */
+        }
+        if ((len == 1 && start[0] == '.') ||
+            (len == 2 && start[0] == '.' && start[1] == '.')) {
+            return 0;
+        }
+    }
+    return 1;
+}
+
 static int entries_push(uint32_t id, const char *path, uint32_t map_bytes) {
     CdfsEntry *e;
 
     if (path == NULL || path[0] == '\0' || strlen(path) >= CDFS_PATH_MAX) {
+        return -1;
+    }
+    if (!path_is_safe_relative(path)) {
         return -1;
     }
     if (g_count == g_cap) {
@@ -86,6 +138,9 @@ static int join_path(char *out, size_t outlen, const char *rel) {
     int n;
 
     if (g_root[0] == '\0') {
+        return -1;
+    }
+    if (!path_is_safe_relative(rel)) {
         return -1;
     }
     n = snprintf(out, outlen, "%s/%s", g_root, rel);

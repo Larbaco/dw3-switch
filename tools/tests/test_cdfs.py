@@ -111,6 +111,79 @@ def test_unknown_id_fails(cdfs_cat: Path):
     assert r.returncode != 0
 
 
+def test_rejects_dotdot_escape_in_map(cdfs_cat: Path, tmp_path: Path):
+    """Map paths with ../ must not escape the runtime root."""
+    import json
+
+    root = tmp_path / "runtime"
+    root.mkdir()
+    outside = tmp_path / "secret.dat"
+    outside.write_bytes(b"LEAK")
+    evil_map = {
+        "version": "us",
+        "executable": "SLUS_014.36",
+        "files": {
+            "1": {
+                "path": "../secret.dat",
+                "lba": 1,
+                "sectors": 1,
+                "bytes": 4,
+                "form": 1,
+            }
+        },
+    }
+    map_path = tmp_path / "evil.json"
+    map_path.write_text(json.dumps(evil_map) + "\n", encoding="utf-8")
+
+    r = _run_cat(
+        cdfs_cat,
+        "--root",
+        str(root),
+        "--map",
+        str(map_path),
+        "1",
+        check=False,
+    )
+    assert r.returncode != 0
+    assert b"LEAK" not in r.stdout
+
+
+def test_rejects_absolute_map_path(cdfs_cat: Path, tmp_path: Path):
+    import json
+
+    root = tmp_path / "runtime"
+    root.mkdir()
+    target = tmp_path / "abs.dat"
+    target.write_bytes(b"ABS")
+    evil_map = {
+        "version": "us",
+        "executable": "SLUS_014.36",
+        "files": {
+            "1": {
+                "path": str(target),
+                "lba": 1,
+                "sectors": 1,
+                "bytes": 3,
+                "form": 1,
+            }
+        },
+    }
+    map_path = tmp_path / "abs.json"
+    map_path.write_text(json.dumps(evil_map) + "\n", encoding="utf-8")
+
+    r = _run_cat(
+        cdfs_cat,
+        "--root",
+        str(root),
+        "--map",
+        str(map_path),
+        "1",
+        check=False,
+    )
+    assert r.returncode != 0
+    assert b"ABS" not in r.stdout
+
+
 def test_python_map_layout_matches_contract():
     """Fixture JSON shape matches build_file_map.py / pack_runtime output."""
     import json
