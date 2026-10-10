@@ -60,7 +60,7 @@ tools/apply_patches.sh           # refresh build/decomp-src + apply
 | `0025-PORT_HOST-p33-battle-complete-evidence.patch` | no | P3.3: `DW3_FORCE_WIN` → report; `fieldMode` seed; party HP/XP logs; STFGTREP return |
 | `0026-PORT_HOST-p34-menu-evidence.patch` | no | P3.4: `DW3_FORCE_MENU` / `DW3_FORCE_FIELD_MENU` (host latch); menu `setParty`/`fieldMode`/`modeArg`; `startFade` guard; menu return logs; `DW3_FORCE_MCARD_SAVE` |
 | `0027-PORT_HOST-p34-menu-return-and-save.patch` | no | P3.4: `DW3_AUTO_MENU_RETURN` requests `fieldMode` after N menu frames |
-| `0028-PORT_HOST-p35-cardgame-evidence.patch` | no | P3.5: card-mode seed/`modeArg`; `CARDGAME`/`STCRDABM` logs; `DW3_FORCE_CARD_WIN`; `AUTO_MENU_RETURN` for deck/album/shop; host `CARDGAME_markedCounts` (PS1 `undefined_syms` alias) |
+| `0028-PORT_HOST-p35-cardgame-evidence.patch` | no | P3.5: card-mode seed/`modeArg`; `DW3_FORCE_CARD_WIN` + win `addCards`; return log before `TASK_KILL`; `DW3_AFTER_CARD_ALBUM`; `AUTO_MENU_RETURN` for deck/album/shop; host `CARDGAME_markedCounts` |
 
 `tools/apply_patches.sh --check` applies the series in order (stacked
 patches on the same file are valid).

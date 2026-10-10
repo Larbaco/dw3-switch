@@ -357,10 +357,10 @@ walk/door still open.
 Branch: `phase3-cardgame` (separate worktree from P3.4 memcard work).
 
 - [x] **Step 1: Link card overlays.** (`dw3_p35_cardgame`, patch `0028`)
-- [ ] **Step 2: Win a card battle; album updates.**
-  (force prize proven; post-win return SEGV + album update still open —
+- [x] **Step 2: Win a card battle; album updates.**
+  (force-win → `addCards`/`cardsSeen` → field → `STCRDABM` → field;
   `docs/P3.5_CARDGAME.md`)
-- [ ] **Step 3: Tick P3.5; commit + push.** (partial docs only; Done-when unmet)
+- [x] **Step 3: Tick P3.5; commit + push.** (Done-when met on `phase3-cardgame`)
 
 **Done when:** card battle winnable; album updates.
 

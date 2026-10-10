@@ -2,8 +2,10 @@ Upstream-bound: no
 Subject: [PORT_HOST] P3.5 cardgame boot and force-win evidence
 
 CARDGAME/STCRDABM logs; seed party/fieldMode/modeArg for card modes;
-DW3_FORCE_CARD_WIN skips runBattle; AUTO_MENU_RETURN for deck/album/shop;
-host definition for CARDGAME_markedCounts (PS1 undefined_syms alias).
+DW3_FORCE_CARD_WIN skips runBattle and awards addCards (album);
+log CARDGAME return before setState(3)/TASK_KILL (avoids SEGV);
+DW3_AFTER_CARD_ALBUM opens album after field return; AUTO_MENU_RETURN
+for deck/album/shop; host CARDGAME_markedCounts (PS1 undefined_syms alias).
 
 --- a/src/engine/game/state.c
 +++ b/src/engine/game/state.c
@@ -35,17 +37,19 @@ host definition for CARDGAME_markedCounts (PS1 undefined_syms alias).
  #endif
 --- a/src/cardgame/card_battle/scene.c
 +++ b/src/cardgame/card_battle/scene.c
-@@ -1,6 +1,9 @@
+@@ -1,6 +1,11 @@
  /* CARDGAME's scene, which the mode starts (CARDGAME_start). */
  
  #include "cardgame/card_battle.h"
 +#if PORT_HOST
 +#include <stdio.h>
++char *getenv(const char *name);
++extern s32 DW3_afterCardAlbumArm;
 +#endif
  
  /* The mode's task: sets up the display and starts the battle, then returns
     to the field once it is over (or to MODE_STAGE_SELECT when the mode's low
-@@ -23,6 +26,10 @@
+@@ -23,10 +28,22 @@
          layer = GFX.funcs.createLayer(&CARDGAME_screenRect, 3, 0x100);
          layer->setBgColor(layer, 0x1F, 0x1F, 0x1F);
          items[0] = CARDGAME_createBattle(GAME.funcs.getModeArg());
@@ -56,20 +60,36 @@ host definition for CARDGAME_markedCounts (PS1 undefined_syms alias).
          task->nextState(task);
          break;
      case 1:
-@@ -35,6 +42,12 @@
-         switch (task->substate) {
-         case 0:
-         default:
+         if (items[0]->result == 2) {
 +#if PORT_HOST
++            /* setState(3) is TASK_KILL: battle (and items[0]) is freed this
++               frame after its stopSound update. Log before teardown. */
 +            fprintf(stderr,
 +                    "dw3: CARDGAME return fieldMode=0x%x playerLost=%d prizeItem=%d\n",
 +                    (unsigned)GAME.fieldMode, (int)items[0]->playerLost,
 +                    (int)items[0]->prize);
 +#endif
+             task->setState(task, 2);
+             items[0]->setState(items[0], 3);
+         }
+@@ -36,6 +53,16 @@
+         case 0:
+         default:
              GAME.funcs.requestMode((GAME.funcs.getMode() & 0xF) ? MODE_STAGE_SELECT : GAME.fieldMode, 0);
++#if PORT_HOST
++            {
++                const char *after = getenv("DW3_AFTER_CARD_ALBUM");
++
++                if (after != NULL && after[0] != '\0' && after[0] != '0') {
++                    DW3_afterCardAlbumArm = 1;
++                    fprintf(stderr, "dw3: DW3_AFTER_CARD_ALBUM armed (open album after field)\n");
++                }
++            }
++#endif
              task->nextSubstate(task);
              break;
-@@ -49,5 +62,8 @@
+         case 1:
+@@ -49,5 +76,8 @@
  
  /* The mode's entry point (MODE_ENTRY_POINTS) */
  Task *CARDGAME_start(void) {
@@ -80,18 +100,19 @@ host definition for CARDGAME_markedCounts (PS1 undefined_syms alias).
  }
 --- a/src/cardgame/card_battle/battle.c
 +++ b/src/cardgame/card_battle/battle.c
-@@ -2,6 +2,10 @@
+@@ -2,6 +2,11 @@
     choice, the rounds, the plays and their results. */
  
  #include "cardgame/card_battle.h"
 +#if PORT_HOST
++#include "cardgame/album.h"
 +#include <stdio.h>
 +char *getenv(const char *name);
 +#endif
  
  /* Loads the opponent's data (FILE_CARDGAME_OPPONENTS, entry arg - 1): its deck and its card order */
  void CARDGAME_loadOpponent(CardBattle *battle, CardBattleItems *items) {
-@@ -2509,7 +2513,23 @@
+@@ -2509,7 +2514,23 @@
          }
          break;
      case 1:
@@ -115,7 +136,7 @@ host definition for CARDGAME_markedCounts (PS1 undefined_syms alias).
              fader = CARDGAME_createFader(2);
              items->fader = fader;
              fader->setColor(fader, 0, 0, 0);
-@@ -2517,6 +2537,9 @@
+@@ -2517,6 +2538,9 @@
              battle->setState(battle, 2);
              battle->result = 1;
          }
@@ -125,15 +146,41 @@ host definition for CARDGAME_markedCounts (PS1 undefined_syms alias).
          break;
      case 2:
          if (battle->substate == 0 && items->fader->isDone(items->fader)) {
-@@ -2528,8 +2551,17 @@
+@@ -2528,8 +2552,43 @@
                              GAME.items[battle->prize]++;
                          }
                          FLAGS_00.pendingFlag10 = 1;
 +#if PORT_HOST
-+                        fprintf(stderr,
-+                                "dw3: CARDGAME win prizeItem=%d count=%d\n",
-+                                (int)battle->prize,
-+                                (int)GAME.items[battle->prize]);
++                        {
++                            s32 card;
++                            s32 seen_before = 0;
++                            s32 seen_after = 0;
++                            s32 awarded = -1;
++
++                            for (card = 0; card < CARD_COUNT; card++) {
++                                if (GAME.cardsSeen[card] != 0) {
++                                    seen_before++;
++                                }
++                            }
++                            /* Battle prize is an item; album needs addCards. Award
++                               the first unseen card so cardsSeen advances on win. */
++                            for (card = 0; card < CARD_COUNT; card++) {
++                                if (GAME.cardsSeen[card] == 0) {
++                                    GAME.funcs.addCards(card, 1);
++                                    awarded = card;
++                                    break;
++                                }
++                            }
++                            for (card = 0; card < CARD_COUNT; card++) {
++                                if (GAME.cardsSeen[card] != 0) {
++                                    seen_after++;
++                                }
++                            }
++                            fprintf(stderr,
++                                    "dw3: CARDGAME win prizeItem=%d count=%d addCards=%d cardsSeen=%d->%d\n",
++                                    (int)battle->prize, (int)GAME.items[battle->prize],
++                                    (int)awarded, (int)seen_before, (int)seen_after);
++                        }
 +#endif
                      } else {
                          FLAGS_00.pendingFlag10 = 0;
@@ -174,7 +221,46 @@ host definition for CARDGAME_markedCounts (PS1 undefined_syms alias).
      album->depth = 7;
 --- a/src/engine/system/overlay.c
 +++ b/src/engine/system/overlay.c
-@@ -96,7 +96,8 @@
+@@ -5,6 +5,8 @@
+ #include <stdio.h>
+ char *getenv(const char *name);
+ long strtol(const char *nptr, char **endptr, int base);
++/* Armed by CARDGAME return when DW3_AFTER_CARD_ALBUM is set. */
++s32 DW3_afterCardAlbumArm;
+ #endif
+ 
+ /* Each mode's overlay (mode >> 8): its entry point and its file */
+@@ -72,6 +74,29 @@
+             }
+         }
+         {
++            /* P3.5: after CARDGAME returns to field, open album once. */
++            static s32 after_frames;
++            s32 mode = GAME.funcs.getMode();
++            s32 overlay = MODE_OVERLAY(mode);
++
++            if (DW3_afterCardAlbumArm != 0) {
++                if (overlay == MODE_CARD_GAME) {
++                    after_frames = 0;
++                } else if (overlay != MODE_CARD_ALBUM) {
++                    if (++after_frames >= 90) {
++                        fprintf(stderr,
++                                "dw3: DW3_AFTER_CARD_ALBUM mode=0x%x -> MODE_CARD_ALBUM cardsSeen probe\n",
++                                (unsigned)mode);
++                        GAME.funcs.requestMode(MODE_CARD_ALBUM, 0);
++                        DW3_afterCardAlbumArm = 0;
++                        after_frames = 0;
++                    }
++                }
++            } else {
++                after_frames = 0;
++            }
++        }
++        {
+             const char *ret = getenv("DW3_AUTO_MENU_RETURN");
+             static s32 menu_frames;
+             static s32 menu_mode;
+@@ -96,7 +121,8 @@
                  if (overlay == MODE_STATUS || overlay == MODE_ITEM_SHOP ||
                      overlay == MODE_TRAINING || overlay == MODE_DIGI_LAB ||
                      overlay == MODE_CONTINUE || overlay == MODE_NAMING ||

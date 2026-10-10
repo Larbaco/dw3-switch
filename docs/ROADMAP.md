@@ -169,10 +169,10 @@ for P3.5). P3.1 done. **P3.2 Done-when met** (+ WSTAG790 follow-up).
 **P3.3 Done-when met:** forced encounter → `STFGTREP` (XP/levels) →
 return to `FIELDSTG` (`docs/P3.3_BATTLE.md`). **P3.4 partial:** menus
 linked + field open/return (`docs/P3.4_MENUS.md`); STGMCARD `.mcr` save
-still blocked on memcard event completion. **P3.5 partial** on
-`phase3-cardgame`: card overlays linked; boot + force prize; album/deck/
-shop open/return (`docs/P3.5_CARDGAME.md`); Done-when blocked on post-win
-return + album update. P3.6 / P3.9 may run on side tracks.
+still blocked on memcard event completion. **P3.5 Done-when met** on
+`phase3-cardgame` (`docs/P3.5_CARDGAME.md`): force-win → `addCards`/
+`cardsSeen` → return to `FIELDSTG` → album UI confirms → field again.
+P3.6 / P3.9 may run on side tracks.
 
 Objective: the full game loop runs on PC: field, stages, battle, menus,
 audio, movies.
@@ -218,13 +218,14 @@ audio, movies.
   NPC script entries still open.
   Done when: each opens from the field, works end-to-end, and saving via
   `STGMCARD` uses P2.7.
-- [ ] **P3.5 Card game.** Linked on `phase3-cardgame` (`dw3_p35_cardgame`);
-  patch `0028` + `DW3_FORCE_CARD_WIN` / reuse `DW3_FORCE_MENU`.
-  **Partial evidence** (`docs/P3.5_CARDGAME.md`): overlays register; boot
-  `MODE_CARD_GAME`; force-win applies prize item; `STCRDABM`/
-  `STCRDDEK`/`STCRDSHP` open/return from field. **Blockers:** SEGV after
-  prize before field return; album/`cardsSeen` not updated by battle
-  prize (item path); pad-driven fight still open.
+- [x] **P3.5 Card game.** Linked on `phase3-cardgame` (`dw3_p35_cardgame`);
+  patch `0028` + `DW3_FORCE_CARD_WIN` / `DW3_AFTER_CARD_ALBUM` / reuse
+  `DW3_FORCE_MENU`. **Done-when evidence** (`docs/P3.5_CARDGAME.md`):
+  force-win applies prize item + `addCards` (`cardsSeen` 29→30) →
+  `CARDGAME return` → `FIELDSTG` → `STCRDABM_createAlbum cardsSeen=30` →
+  `AUTO_MENU_RETURN` to field. Root cause of prior SEGV: case-2 log after
+  `setState(3)`/`TASK_KILL` freed `items[0]`. Follow-up: pad-driven fight
+  + NPC/script entry.
   Done when: a card battle can be won and the album updates.
 - [ ] **P3.6 Audio.** libsnd path through PSY-Z: VAB banks, SEP music,
   SFX, reverb settings the game sets. Verify `SsSeqCalledTbyT` timing
