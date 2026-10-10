@@ -7,9 +7,9 @@
 | Game logic (matching C) | `vendor/dw3_decomp/src` | PS1 game code; keep as upstream, patch via port glue |
 | PsyQ headers (reference) | `vendor/dw3_decomp/external/psyq_headers` | API surface the game expects |
 | Psy-Q shim | `vendor/psyz` (pinned submodule) | PSY-Z: libgpu/libgte/libgs/libcd/libsnd/libpress/libmcrd in portable C; see `docs/PSYZ.md` |
-| Host (PC) | `platforms/pc` | PSY-Z SDL3 bring-up skeleton (`CMakeLists.txt` + stub main); debugging target |
+| Host (PC) | `platforms/pc` | PSY-Z SDL3 host: links engine + `STDWTITL` + cdfs/memcard; debugging target |
 | Host (Switch) | `platforms/switch` | libnx backend for PSY-Z: present, audio, input, FS, log |
-| Port glue | `port` | Static overlay table, CD→FS by file id, memcard image, patches to the decomp |
+| Port glue | `port` | Overlays, cdfs, memcard, PSY-Z gap stubs, decomp patches (`build/decomp-src`) |
 | Disc → runtime | `tools/` + `docs/DISC_SETUP.md` / `docs/RUNTIME_LAYOUT.md` | `build_file_map.py` / `pack_runtime.py`: owner disc → `runtime/<ver>/` (PC) or SD layout |
 
 ## Runtime model (target)
@@ -60,6 +60,9 @@ See [SURVEY.md](SURVEY.md) for the evidence behind each point.
   GTE, overlay address symbols + static restore in `port/overlays/`
   (P2.6: restore `.data` / zero `.bss` on id change; generated-header
   symbol prefixes for colliding overlay/stage globals).
+- P2.8: PC host calls `dw3_game_main` after cdfs/memcard/boot TIM init;
+  `CD_READER` via cdfs; US `STDWTITL` linked; title mode draws (GPU polish
+  open) — see `docs/P2.8_TITLE_BOOT.md`.
 
 ## Non-goals (for now)
 

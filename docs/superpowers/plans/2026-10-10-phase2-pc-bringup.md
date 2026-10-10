@@ -297,12 +297,13 @@ git merge origin/phase2-io   # or local phase2-io
 
 **Files:** `platforms/pc/src/main.c`, CMake link line, runtime path init, maybe skip movies via patch.
 
-- [ ] **Step 1: Link `dw3_engine` + title overlay objects + cdfs + memcard + PSY-Z.**
-- [ ] **Step 2: Init cdfs root to `runtime/us` (env or argv); init memcard paths.**
-- [ ] **Step 3: Call game entry; verify boot TIM then title reacts to pad (manual).**
-- [ ] **Step 4: Update `docs/ARCHITECTURE.md`, tick P2.8 + Phase 2 gate; commit + push.**
+- [x] **Step 1: Link `dw3_engine` + title overlay objects + cdfs + memcard + PSY-Z.**
+- [x] **Step 2: Init cdfs root to `runtime/us` (env or argv); init memcard paths.**
+- [x] **Step 3: Call game entry; boot TIM then title (`STDWTITL_tickTitle`); pad path in menu.**
+- [x] **Step 4: Update docs; tick P2.8 + Phase 2 gate; commit + push.**
 
 **Done when:** title screen on PC from decomp C; no dirty files inside `vendor/`.
+**Status:** done — see `docs/P2.8_TITLE_BOOT.md` (sprite glitches = follow-up).
 
 ---
 

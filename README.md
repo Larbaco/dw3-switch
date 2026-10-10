@@ -25,10 +25,10 @@ Phase 1 desktop bring-up uses **CMake** to build `platforms/pc/` against the
 
 ## Status
 
-**Phase 1 complete:** PC host (`dw3-pc` + PSY-Z), Switch `.nro` skeleton
-(CI), disc → `files_us.json` → `runtime/us/` pack tools, and Docker/CI
-toolchains. Survey: [docs/SURVEY.md](docs/SURVEY.md). Next is Phase 2
-(port glue + engine bring-up on PC) per [docs/ROADMAP.md](docs/ROADMAP.md);
+**Phase 2 (PC title) reached:** `dw3-pc` links engine + `STDWTITL` + cdfs/
+memcard + PSY-Z and boots to the US title screen from decomp C (GPU polish
+open). See [docs/P2.8_TITLE_BOOT.md](docs/P2.8_TITLE_BOOT.md) and
+[docs/ROADMAP.md](docs/ROADMAP.md). Phase 1 host/CI/pack tools remain;
 layering in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 Localization (PT-BR first, then other languages) is a Phase 6 goal after

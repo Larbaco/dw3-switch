@@ -47,9 +47,10 @@ On PS1 the boot TIM is the executable's tail, resident at `OVERLAY_VRAM`
 before overlays overwrite that region (`BOOT_IMAGE_RECT` in
 `vendor/dw3_decomp/src/engine/system/main.c`). The packer writes
 `BOOT_IMAGE.txt` explaining the gap; extract the tail into
-`runtime/us/boot_tim.bin` when assets are available. Under `PORT_HOST`,
-`main` currently **skips** the TIM upload (stub in patch `0005`) until E6
-wires a host file read; see `port/overlays/README.md`.
+`runtime/us/boot_tim.bin` when assets are available. `pack_runtime.py`
+extracts the TIM from the version executable (STAGE_VRAM) when
+`disks/<ver>/boot_tim.bin` is missing. The PC host loads it into
+`STAGE_VRAM` before `dw3_game_main` (see `docs/P2.8_TITLE_BOOT.md`).
 
 ## Git
 

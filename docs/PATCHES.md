@@ -41,6 +41,18 @@ tools/apply_patches.sh           # refresh build/decomp-src + apply
 | `0006-match-neutral-engine-sizeof-sizes.patch` | yes | `sizeof`/`offsetof` for `PAD_DATA_SIZE`, `GFX.prim` clear span, `MemBlock` split, `createInn` |
 | `0007-match-neutral-engine-pointer-casts.patch` | yes | `freeFilesFrom(void *)`; archive/text pointer+offset (no pointer↔`u32`/`s32`) |
 | `0008-PORT_HOST-static-overlay-restore.patch` | no | `loadModeOverlay` / `loadSubOverlay` → `dw3_overlay_restore` (P2.6) |
+| `0009-PORT_HOST-cdfs-cd-reader.patch` | no | `CD_READER.read` → `cdfs_read` (sync; offset 0) |
+| `0010-PORT_HOST-game-entry-boot-tim-title.patch` | no | `dw3_game_main`, boot TIM upload, `MODE_TITLE`, quit, mode log |
+| `0011-PORT_HOST-stcdinterrupt-decl.patch` | no | Declare `StCdInterrupt` for title `movie.c` |
+| `0012-PORT_HOST-host-heap.patch` | no | `HEAP_BASE`/`HEAP_END` → `port/overlays/host_heap.c` |
+| `0013-PORT_HOST-timcursor-u32.patch` | no | `TimCursor.word` is `u32 *` on host (not 64-bit `u_long *`) |
+| `0014-match-neutral-createTask-child-sizeof.patch` | yes | `childrenSize / sizeof(void *)`; mode/cursor `sizeof(Task *)` |
+| `0015-match-neutral-layer-ot-sizeof-OT_TYPE.patch` | yes | OT alloc uses `sizeof(OT_TYPE)` (PSY-Z `{tag,len}`) |
+| `0016-PORT_HOST-flip-pending-vsync-pump.patch` | no | `VSync(0)` while spinning on `FLIP_PENDING` |
+| `0017-PORT_HOST-layer-ot-type-indexing.patch` | no | Host OT_TYPE indexing; skip 24-bit empty-OT walk |
+
+`tools/apply_patches.sh --check` applies the series in order (stacked
+patches on the same file are valid).
 
 ### Upstream `make compare` (P2.4)
 
