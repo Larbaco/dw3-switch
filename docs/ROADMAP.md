@@ -164,25 +164,30 @@ pad state connected; GPU polish open; merged via PR #3).
 Status: **in progress** (branch `phase3-pc-bringup`; plan:
 [`docs/superpowers/plans/2026-10-10-phase3-pc-game-loop.md`](superpowers/plans/2026-10-10-phase3-pc-game-loop.md)).
 
-Tracking: Phase 3 on `phase3-pc-bringup` (+ sibling `phase3-cardgame`
-for P3.5; sibling `phase3-harness` for P3.9 design). P3.1 done.
-**P3.2 Done-when met** (`docs/P3.2_FIELD.md`). WSTAG790 linked @
-`481d4d0` (post-name chamber OK). **P3.3 Done-when met** @ `a4d7e64`:
-`FIGHTSTG`+`WFIGHTMN`+`STFGTREP`; forced win → report XP/levels →
-return to `FIELDSTG` (`docs/P3.3_BATTLE.md`). **P3.4 partial** @
-`95fb20b` (`READY_FOR_MAIN_ROADMAP_SYNC: P3.4_MEMCARD`): menus linked +
-field open/return; **STGMCARD force-save mutates `memcard0.mcr`** via
-P2.7 (`docs/P3.4_MENUS.md` on branch). Pad-driven START→status and NPC
-script entries still open. **P3.5 partial** on `phase3-pc-bringup`
-(merged from `phase3-cardgame` @ `2df364f`): force-win → prize item +
-return to `FIELDSTG` proven; album `cardsSeen` 29→30 is host
+Tracking: Phase 3 on `phase3-pc-bringup` (+ sibling `phase3-harness`
+for P3.9 design). P3.1 done. **P3.2 Done-when met** (`docs/P3.2_FIELD.md`).
+WSTAG790 linked @ `481d4d0` (post-name chamber OK). **P3.3 Done-when
+met** @ `a4d7e64`: `FIGHTSTG`+`WFIGHTMN`+`STFGTREP`; forced win →
+report XP/levels → return to `FIELDSTG` (`docs/P3.3_BATTLE.md`).
+**P3.4 partial** @ `95fb20b` (`READY_FOR_MAIN_ROADMAP_SYNC:
+P3.4_MEMCARD`): menus linked + field open/return; **STGMCARD
+force-save mutates `memcard0.mcr`** via P2.7 (`docs/P3.4_MENUS.md` on
+branch). Pad-driven START→status and NPC script entries still open.
+**P3.5 partial** on `phase3-pc-bringup` (merged from `phase3-cardgame`
+@ `fcff119` / `2df364f`): force-win → prize item + return to
+`FIELDSTG` proven; album `cardsSeen` 29→30 is host
 `DW3_FORCE_CARD_WIN` `addCards` aid, not vanilla prize→album
 (`docs/P3.5_CARDGAME.md`). Checkbox stays unticked until the real album
 path. **P3.6 investigation** on main (`docs/P3.6_AUDIO.md` from
 `phase3-audio-spike`): blocker PSY-Z `_SsSeqPlay` `NOT_IMPLEMENTED` —
-Done-when not met. **P3.9 design** on `phase3-harness` @ `3064486`:
-`docs/P3.9_COMPARE.md` + stub `tools/compare_ref.py` (`--dry-run`);
-checkbox unticked until title/field/battle captures.
+Done-when not met. **P3.7 blocked** on `phase3-pc-bringup` @
+`1f20556` (`READY_FOR_MAIN_ROADMAP_SYNC: P3.7_BLOCKED`,
+`docs/P3.7_MOVIES.md`): `DW3_START_MODE=0xE01` reaches movie path;
+PSY-Z `MDEC_*` / `StCdInterrupt` stubs + no CD track for
+`MOVIEOPN.STR`; default skip `MODE_TITLE` retained. **P3.9 design** on
+`phase3-harness` @ `3064486`: `docs/P3.9_COMPARE.md` + stub
+`tools/compare_ref.py` (`--dry-run`); checkbox unticked until
+title/field/battle captures.
 
 Objective: the full game loop runs on PC: field, stages, battle, menus,
 audio, movies.
@@ -242,7 +247,11 @@ audio, movies.
   Done when: title music, field music change on stage switch, battle SFX.
 - [ ] **P3.7 Movies.** Title STR playback through PSY-Z `libpress` +
   streaming (`CdRead2`, `StSetRing`) from raw-sector `.STR` files packed
-  in P1.6.
+  in P1.6. **Blocked** on `phase3-pc-bringup` @ `1f20556`
+  (`docs/P3.7_MOVIES.md`, `READY_FOR_MAIN_ROADMAP_SYNC: P3.7_BLOCKED`):
+  boot attempt `DW3_START_MODE=0xE01` hits `MDEC_*` / stream stubs;
+  default skip `MODE_TITLE` retained. Checkbox unticked until play +
+  audio + Start-skip.
   Done when: the opening movies play with audio and can be skipped.
 - [ ] **P3.8 Stage sweep.** Use `STAGSLCT` (debug stage select) to load
   every stage of the version and log crashes/asserts.
