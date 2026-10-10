@@ -13,12 +13,19 @@
  * stores expanded frames at 0 and 320. Leaving disp.x=480 shows only the
  * right 160px of the frame (classic half-width glitch).
  *
+ * Soft MDEC completes synchronously. STDWTITL_onSliceDecoded starts the next
+ * DecDCTout before LoadImage of the completed slice, relying on async DMA +
+ * two imgbufs. Nested sync callbacks overwrite those bufs before LoadImage
+ * runs → macroblock garbage in VRAM. Stash each DecDCTout payload and feed
+ * LoadImage from the oldest unconsumed stash for that pointer.
+ *
  * Linked with
  * -Wl,--wrap=DMACallback,DecDCTReset,DecDCTout,LoadImage,PutDispEnv.
  *
  * DecDCTReset on PSY-Z only clears soft-MDEC state; Sony's MDEC_reset also
  * uploads default quant/IDCT. Without that, AC run-levels decode to flat
- * mid-grey (quant[i]==0). Host wrap re-uploads Psy-Q defaults via PutEnv.
+ * mid-grey (quant[i]==0). Host wrap uploads Psy-Q defaults via
+ * Psyz_MdecCommand (libpress PutEnv→MDEC_in is LP64-unsafe on u32 tables).
  */
 #include <libetc.h>
 #include <libgpu.h>
@@ -31,6 +38,8 @@
 #include <string.h>
 
 enum { DW3_DMA_CHANS = 8, DW3_DMA_MDEC_OUT = 1 };
+/* One MOVIEOPN frame = 20 strips; keep headroom for nesting. */
+enum { DW3_SLICE_STASH_SLOTS = 32, DW3_SLICE_STASH_BYTES = 0x4E00 };
 
 static void (*g_dma_cb[DW3_DMA_CHANS])(void);
 static int g_disp_rgb24;
@@ -41,6 +50,70 @@ static unsigned g_dout_top_done;
 static int g_fb_dumped;
 static int g_disp_x_scaled_logged;
 static int g_mdec_env_logged;
+static int g_slice_stash_logged;
+
+typedef struct Dw3SliceStash {
+    const void *ptr;
+    int nbytes;
+    int consumed;
+    unsigned seq;
+    uint8_t data[DW3_SLICE_STASH_BYTES];
+} Dw3SliceStash;
+
+static Dw3SliceStash g_slice_stash[DW3_SLICE_STASH_SLOTS];
+static unsigned g_slice_stash_write;
+static unsigned g_slice_stash_seq;
+
+static void dw3_slice_stash_push(const void *buf, int nbytes) {
+    Dw3SliceStash *slot;
+
+    if (buf == NULL || nbytes <= 0) {
+        return;
+    }
+    if (nbytes > DW3_SLICE_STASH_BYTES) {
+        nbytes = DW3_SLICE_STASH_BYTES;
+    }
+    slot = &g_slice_stash[g_slice_stash_write % DW3_SLICE_STASH_SLOTS];
+    g_slice_stash_write++;
+    slot->ptr = buf;
+    slot->nbytes = nbytes;
+    slot->consumed = 0;
+    slot->seq = ++g_slice_stash_seq;
+    memcpy(slot->data, buf, (size_t)nbytes);
+    if (!g_slice_stash_logged) {
+        g_slice_stash_logged = 1;
+        fprintf(stderr,
+                "dw3-present: DecDCTout slice stash armed (sync MDEC "
+                "double-buf)\n");
+    }
+}
+
+static const uint8_t *dw3_slice_stash_take(const void *buf) {
+    unsigned i;
+    Dw3SliceStash *best = NULL;
+
+    if (buf == NULL || g_slice_stash_seq == 0u) {
+        return NULL;
+    }
+    /* Newest unconsumed entry for this pointer. Nested sync callbacks
+     * LoadImage on the way back out of the stack (innermost first), which
+     * matches LIFO per imgbuf pointer. */
+    for (i = 0; i < DW3_SLICE_STASH_SLOTS; i++) {
+        Dw3SliceStash *slot = &g_slice_stash[i];
+
+        if (slot->ptr != buf || slot->nbytes <= 0 || slot->consumed) {
+            continue;
+        }
+        if (best == NULL || slot->seq > best->seq) {
+            best = slot;
+        }
+    }
+    if (best == NULL) {
+        return NULL;
+    }
+    best->consumed = 1;
+    return best->data;
+}
 
 static void dw3_present_dump_fb(const char *why) {
     const char *path;
@@ -131,17 +204,31 @@ void __real_DecDCTout(u_long *buf, int size);
 int __real_LoadImage(RECT *rect, u_long *p);
 DISPENV *__real_PutDispEnv(DISPENV *env);
 
-void __wrap_DecDCTReset(int mode) {
-    DECDCTENV env;
+/* PSY-Z private soft-MDEC entry (libpress MDEC_in is LP64-unsafe for u32[]). */
+int Psyz_MdecCommand(uint32_t command, const void *data, size_t words);
 
-    __real_DecDCTReset(mode);
-    /* Soft MDEC starts with zero quant/IDCT; upload Psy-Q defaults. */
+static void dw3_mdec_upload_default_tables(void) {
+    DECDCTENV env;
+    uint8_t quant[128];
+
     DecDCTGetEnv(&env);
-    DecDCTPutEnv(&env);
+    /* libpress DecDCTPutEnv → MDEC_in((u_long *)mdec_iq, 32) indexes a u32[]
+     * table through u_long* — on LP64 that skips the first quant word and
+     * feeds misaligned tables (macroblock garbage with non-zero AC). */
+    memcpy(quant, env.iq_y, 64);
+    memcpy(quant + 64, env.iq_c, 64);
+    Psyz_MdecCommand(0x40000001u, quant, 32);
+    Psyz_MdecCommand(0x60000000u, env.dct, 32);
+}
+
+void __wrap_DecDCTReset(int mode) {
+    __real_DecDCTReset(mode);
+    dw3_mdec_upload_default_tables();
     if (!g_mdec_env_logged) {
         g_mdec_env_logged = 1;
         fprintf(stderr,
-                "dw3-present: DecDCTReset → PutEnv default quant/IDCT tables\n");
+                "dw3-present: DecDCTReset → Psyz_MdecCommand default "
+                "quant/IDCT (LP64-safe)\n");
     }
 }
 
@@ -159,6 +246,8 @@ void *__wrap_DMACallback(int dma, void (*func)()) {
 void __wrap_DecDCTout(u_long *buf, int size) {
     g_dout_depth++;
     __real_DecDCTout(buf, size);
+    /* Preserve slice bytes before nested sync callbacks reuse imgbufs. */
+    dw3_slice_stash_push(buf, size > 0 ? size * 4 : 0);
     /* Soft MDEC finishes synchronously; raise MDEC-out DMA callback. */
     if (g_dma_cb[DW3_DMA_MDEC_OUT] != NULL) {
         g_dma_cb[DW3_DMA_MDEC_OUT]();
@@ -250,14 +339,20 @@ int __wrap_LoadImage(RECT *rect, u_long *p) {
     int pixel_w;
     int rc;
     int use_rgb24;
+    const uint8_t *src;
+    const uint8_t *stashed;
 
     if (rect == NULL || p == NULL || rect->w <= 0 || rect->h <= 0) {
         return __real_LoadImage(rect, p);
     }
-    /* PutDispEnv(isrgb24) often latches after the first movie frame; STR
-     * slices are halfword-width multiples of 3 and tall (≥192). */
-    use_rgb24 =
-        g_disp_rgb24 || ((rect->w % 3) == 0 && rect->h >= 192);
+    /* Prefer stashed DecDCTout bytes: sync nested callbacks reuse imgbufs. */
+    stashed = dw3_slice_stash_take(p);
+    src = stashed != NULL ? stashed : (const uint8_t *)p;
+
+    /* PutDispEnv(isrgb24) often latches after the first movie frame. Only
+     * treat classic MDEC strips (w==24 halfwords, tall) as RGB24 — a broad
+     * (w%3==0 && h>=192) heuristic shreds title TIM uploads. */
+    use_rgb24 = g_disp_rgb24 || (rect->w == 24 && rect->h >= 192);
     if (!use_rgb24) {
         return __real_LoadImage(rect, p);
     }
@@ -267,7 +362,7 @@ int __wrap_LoadImage(RECT *rect, u_long *p) {
     if (pixel_w <= 0) {
         return __real_LoadImage(rect, p);
     }
-    converted = rgb888_packed_to_5551((const u8 *)p, pixel_w, rect->h);
+    converted = rgb888_packed_to_5551(src, pixel_w, rect->h);
     if (converted == NULL) {
         return __real_LoadImage(rect, p);
     }
@@ -279,7 +374,6 @@ int __wrap_LoadImage(RECT *rect, u_long *p) {
     g_rgb24_loads++;
     if (g_rgb24_loads == 1u || g_rgb24_loads == 20u ||
         g_rgb24_loads == 581u) {
-        const u8 *s = (const u8 *)p;
         size_t nbytes = (size_t)pixel_w * (size_t)rect->h * 3u;
         size_t i;
         unsigned minv = 255;
@@ -290,7 +384,7 @@ int __wrap_LoadImage(RECT *rect, u_long *p) {
 
         memset(seen, 0, sizeof(seen));
         for (i = 0; i < nbytes; i++) {
-            unsigned v = s[i];
+            unsigned v = src[i];
             if (v < minv)
                 minv = v;
             if (v > maxv)
@@ -303,9 +397,9 @@ int __wrap_LoadImage(RECT *rect, u_long *p) {
         }
         fprintf(stderr,
                 "dw3-present: RGB24 LoadImage #%u %dx%d hw -> %dx%d px at "
-                "(%d,%d) src min=%u max=%u avg=%.1f uniq8=%u\n",
+                "(%d,%d) src min=%u max=%u avg=%.1f uniq8=%u stash=%d\n",
                 g_rgb24_loads, rect->w, rect->h, pr.w, pr.h, pr.x, pr.y, minv,
-                maxv, sum / (double)nbytes, uniq);
+                maxv, sum / (double)nbytes, uniq, stashed != NULL);
     }
     return rc;
 }

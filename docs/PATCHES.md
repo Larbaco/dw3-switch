@@ -69,6 +69,7 @@ tools/apply_patches.sh           # refresh build/decomp-src + apply
 | `0034-PORT_HOST-p37-movie-start-skip-held.patch` | no | P3.7: movie Start-skip also accepts `getHeld(Start)` + logs `dw3-movie: Start-skip` under `PORT_HOST` |
 | `0035-PORT_HOST-p36-playsound-keyon-log.patch` | no | P3.6: capped `dw3: SsUtKeyOn` / `SsSepPlay` logs from `playSound` (`phase3-pc-bringup` series; listed on `main` for evidence traceability) |
 | `0036-PORT_HOST-p3-force-npc-mode-gate.patch` | no | P3 gate: `DW3_FORCE_NPC_ACTION=code[@mode][:value]`; mode mismatch keeps `force_once` (Lobby `0x9004@0x203` → event 9) |
+| `0037-PORT_HOST-p3-movie-loadimage-before-dout.patch` | no | P3 GPU: under `PORT_HOST`, `LoadImage` completed MDEC slice before next `DecDCTout` (sync soft-MDEC double-buf) |
 
 `tools/apply_patches.sh --check` applies the series in order (stacked
 patches on the same file are valid).
