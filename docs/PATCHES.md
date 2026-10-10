@@ -67,7 +67,7 @@ tools/apply_patches.sh           # refresh build/decomp-src + apply
 | `0032-PORT_HOST-p35-pack-album-evidence.patch` | no | P3.5: gate win `addCards` behind `DW3_FORCE_CARD_WIN_ADDCARDS`; `DW3_FORCE_PACK_OPEN` → real `STCRDSHP_openPack` `addCards`; AFTER album waits for field |
 | `0033-PORT_HOST-p34-triangle-load-npc.patch` | no | P3.4: `DW3_FORCE_MCARD_LOAD`; Triangle cancel logs; `DW3_FORCE_FIELD_POS` / `SHOP_FLAG` / `TALK_AHEAD`; `talkToActorAt` log; `AUTO_MENU_RETURN` skips load |
 | `0034-PORT_HOST-p37-movie-start-skip-held.patch` | no | P3.7: movie Start-skip also accepts `getHeld(Start)` + logs `dw3-movie: Start-skip` under `PORT_HOST` |
-| `0035-PORT_HOST-p36-playsound-keyon-log.patch` | no | P3.6: capped `dw3: SsUtKeyOn` / `SsSepPlay` logs from `playSound` |
+| `0035-PORT_HOST-p36-playsound-keyon-log.patch` | no | P3.6: capped `dw3: SsUtKeyOn` / `SsSepPlay` logs from `playSound` (`phase3-pc-bringup` series; listed on `main` for evidence traceability) |
 | `0036-PORT_HOST-p3-force-npc-mode-gate.patch` | no | P3 gate: `DW3_FORCE_NPC_ACTION=code[@mode][:value]`; mode mismatch keeps `force_once` (Lobby `0x9004@0x203` → event 9) |
 
 `tools/apply_patches.sh --check` applies the series in order (stacked

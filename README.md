@@ -27,7 +27,8 @@ layering in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 later phases. See [docs/ROADMAP.md](docs/ROADMAP.md).
 
 Later phases cover a playable Switch build, localization, optional community
-QoL compatibility, and texture-pack overlays — only after the port gates land.
+QoL compatibility, texture-pack overlays, and a title-menu port options
+screen (toggles for non-vanilla features) — only after the port gates land.
 Details live in the roadmap and linked design notes, not here.
 
 ## Upstream
@@ -144,6 +145,7 @@ dw3-switch/
 | [docs/PSYZ.md](docs/PSYZ.md) | PSY-Z pin and renderer notes |
 | [docs/COMMUNITY_QOL.md](docs/COMMUNITY_QOL.md) | Optional QoL compatibility (later) |
 | [docs/TEXTURE_PACKS.md](docs/TEXTURE_PACKS.md) | Texture pack overlays (later) |
+| [docs/PORT_OPTIONS.md](docs/PORT_OPTIONS.md) | Title-menu toggles for port-only features (later) |
 
 ## Requirements
 

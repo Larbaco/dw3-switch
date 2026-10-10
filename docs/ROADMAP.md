@@ -259,8 +259,8 @@ audio, movies.
   WSTAG780→785 banks `0x29`→`0x1B` (`SsSepPlay` / `SEP note-on`
   seq 2→3); battle `DW3_FORCE_ENCOUNTER`/`FORCE_WIN` → battle SEP
   `0x6004000a` + `SsUtKeyOn` (`SOUND_COUNT` / PLAYER00) + non-silent
-  raw. Patch `0035` evidence logs. Follow-up: pitch bend / matching
-  midiread / owner Pulse listen.
+  raw. Patch `0035` evidence logs (PR #13). Follow-up: pitch bend /
+  matching midiread / owner Pulse listen.
   Done when: title music, field music change on stage switch, battle SFX.
 - [x] **P3.7 Movies.** Title STR playback through PSY-Z `libpress` +
   streaming (`CdRead2`, `StSetRing`) from raw-sector `.STR` files packed
@@ -465,6 +465,44 @@ the port or committing assets. Details: [TEXTURE_PACKS.md](TEXTURE_PACKS.md).
   Done when: a `--check` mode exists. Does **not** block the Phase 8 gate.
 
 Gate: P8.2 works with an owner-supplied minimal pack. P8.4 is best-effort.
+
+## Phase 9 — Port options menu
+
+Starts after the Phase 8 gate in the planned order (or earlier once at
+least one non-vanilla port feature exists to toggle). Goal: a title / main
+menu entry that exposes toggles for **every port-added feature** that is
+not part of the original PS1 game, with vanilla-safe defaults and
+persistence on owner storage. Details: [PORT_OPTIONS.md](PORT_OPTIONS.md).
+
+- [x] **P9.1 Goal note.** Document scope (port-only toggles), layering
+  (`port/` registry + owner config file; hosts stay thin), and that
+  defaults preserve original PS1 behaviour.
+  Done when: [PORT_OPTIONS.md](PORT_OPTIONS.md) exists and the README
+  points at Phase 9 / that note.
+- [ ] **P9.2 Menu entry and shell.** Add a port options entry on the
+  title / main menu that opens and closes a dedicated screen without
+  breaking the vanilla title flow (PC and Switch).
+  Done when: the screen is reachable from the main menu and returns
+  cleanly to it.
+- [ ] **P9.3 Toggle registry.** Maintain a registry of non-native features
+  (Phase 6–8 items and later), each with a default equivalent to stock
+  behaviour (or documented exception).
+  Done when: flipping a stub or real flag from the menu has a documented
+  effect (safe no-op allowed for not-yet-wired features).
+- [ ] **P9.4 Persistence.** Load/save the option file under the owner
+  runtime layout (PC directory / `sdmc:/switch/dw3/…`); values survive
+  process exit.
+  Done when: a toggled value remains after restarting the host or
+  returning from hbmenu.
+- [ ] **P9.5 Wire real features.** Connect registry entries to real port
+  flags as Phases 6–8 land; mark unavailable items N/A in
+  [PORT_OPTIONS.md](PORT_OPTIONS.md) rather than hiding the menu.
+  Done when: every shipped non-native feature is either togglable here or
+  explicitly documented as N/A. Evolves with the roadmap; does **not**
+  require all of P6–P8 complete for the Phase 9 gate.
+
+Gate: P9.2 + P9.4 with at least one persistent toggle (stub or real).
+P9.5 stays best-effort as features ship.
 
 ## Cross-cutting rules
 

@@ -53,6 +53,9 @@ such as `-DSDL_X11_XSCRNSAVER=OFF` (and audio backends OFF) until
 
 ## Switch
 
-There is no public SDL3 package for Nintendo Switch homebrew. The
-libnx present/audio/input backend for PSY-Z is Phase 4 work; do not
-assume the PC `sdl3_gpu` path ports as-is.
+There is still no **pacman** SDL3 package for Switch homebrew (portlibs
+ship SDL2 only). `devkitPro/SDL` branches `switch-sdl-3.2` /
+`switch-sdl-3.4` build from source under `devkita64`, but they expose
+GLES renderers without SDL_GPU — so PSY-Z's PC default `sdl3_gpu` does
+not apply. P4.1 chose a **native libnx** backend instead; see
+[SWITCH_BACKEND.md](SWITCH_BACKEND.md).
