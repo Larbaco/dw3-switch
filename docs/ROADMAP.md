@@ -164,10 +164,10 @@ pad state connected; GPU polish open; merged via PR #3).
 Status: **in progress** (branch `phase3-pc-bringup`; plan:
 [`docs/superpowers/plans/2026-10-10-phase3-pc-game-loop.md`](superpowers/plans/2026-10-10-phase3-pc-game-loop.md)).
 
-Tracking: Phase 3 on `phase3-pc-bringup` @ `bd62f1f` (P3.2_LINK). P3.1 done (`0018` + `0019`,
-`dw3_p31_audit` 432 objs). P3.2 **in progress**: `FIELDSTG` + `STPLNMET` +
-`WSTAG260`/`780`/`785` link into `dw3-pc` (named `.data`/`.bss` restore);
-walk/door runtime not proven yet. P3.6 / P3.9 may run on side tracks.
+Tracking: Phase 3 on `phase3-pc-bringup` @ `766f19b`. P3.1 done (`0018` + `0019`,
+`dw3_p31_audit` 432 objs). P3.2 **in progress / BLOCKED**: `FIELDSTG_drawActor`
+SEGV after stage load. Link done; door 780→785 logged; walkable Done-when not
+met (`docs/P3.2_FIELD.md`). P3.6 / P3.9 may run on side tracks.
 
 Objective: the full game loop runs on PC: field, stages, battle, menus,
 audio, movies.
@@ -181,15 +181,12 @@ audio, movies.
   `LANGUAGE`; battle `draw`/`lights`/`model_mesh` PSY-Z gaps):
   `docs/P3.1_64BIT_AUDIT.md` on that branch. Full overlay link with P3.2+.
   Upstream `make compare` blocker unchanged (`docs/PATCHES.md`).
-- [ ] **P3.2 Field + first stage.** `FIELDSTG` + `WSTAG260` scripts + the
-  starting town (`WSTAG780` / door to `WSTAG785`), with map, actors, text
-  windows and triggers. **Link progress:** CMake `dw3_p32_field` packs
-  host overlay objects (`tools/prefix_stage_obj.py`,
-  `rename_ovl_sections.py`, `gen_stage_stubs.py`); US table registers
-  `FIELDSTG`/`STPLNMET`/`WSTAG260`/`780`/`785` with section snapshots
-  (`port/overlays/overlay_sections.c`); `dw3-pc` links with
-  `--whole-archive` + `--start-group`. Remaining: runtime path new game →
-  name entry → walkable field + door.
+- [ ] **P3.2 Field + first stage.** `FIELDSTG` + `WSTAG260` scripts +
+  starting town `WSTAG780` (door → `WSTAG785`) + `STPLNMET`. **Landed:**
+  `dw3_p32_field` + overlay table with real `.data` snapshots; patches
+  `0020`/`0021`; logged path `0x2D7`→stage 474→`AUTO_DOOR`→`0x2D8`/475 and
+  `0x500` STPLNMET (`docs/P3.2_FIELD.md`). **Blocker:** SEGV in
+  `FIELDSTG_drawActor` before a stable walkable field.
   Done when: new game → name entry → first field area is walkable and a
   door changes stage.
 - [ ] **P3.3 Battle.** `FIGHTSTG` + `WFIGHTMN` (+ `WFIGHTTS` from the debug
