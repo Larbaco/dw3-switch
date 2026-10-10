@@ -165,8 +165,10 @@ Status: **in progress** (branch `phase3-pc-bringup`; plan:
 [`docs/superpowers/plans/2026-10-10-phase3-pc-game-loop.md`](superpowers/plans/2026-10-10-phase3-pc-game-loop.md)).
 
 Tracking: Phase 3 on `phase3-pc-bringup`. P3.1 done. **P3.2 Done-when
-met** (pad walk + `SCRIPT_LEAVE` 780→785 + name entry; see
-`docs/P3.2_FIELD.md`). Follow-up: link WSTAG790 (`0x2D9`) after name.
+met** (`docs/P3.2_FIELD.md`). WSTAG790 linked @ `481d4d0` (post-name
+chamber OK). **P3.3 in progress** @ `56c94bc`: `FIGHTSTG`+`WFIGHTMN`
+boot via `FORCE_ENCOUNTER` (`docs/P3.3_BATTLE.md`); Done-when NOT met.
+Next: finish fight, `STFGTREP`, field return + stats.
 
 Objective: the full game loop runs on PC: field, stages, battle, menus,
 audio, movies.
@@ -185,11 +187,14 @@ audio, movies.
   `0020`–`0023` + `DW3_AUTO_PAD` host inject. **Done-when evidence**
   (`docs/P3.2_FIELD.md`): pad `moveByPad` moves actor (Δy on 780/785);
   real `SCRIPT_LEAVE`/`leaveField` 474→475 (not `AUTO_DOOR`); name
-  `0x500` then back to 475. Follow-up: WSTAG790 (`0x2D9`) not linked.
+  `0x500` then back to 475. Follow-up: WSTAG790 (`0x2D9`) linked @
+  `481d4d0` (post-name chamber OK; see `docs/P3.2_FIELD.md`).
   Done when: new game → name entry → first field area is walkable and a
   door changes stage.
-- [ ] **P3.3 Battle.** `FIGHTSTG` + `WFIGHTMN` (+ `WFIGHTTS` from the debug
-  menu), models, camera, effects, `STFGTREP` report.
+- [ ] **P3.3 Battle.** `FIGHTSTG` + `WFIGHTMN` linked; forced
+  `MODE_BATTLE` boots via `DW3_FORCE_ENCOUNTER` (`docs/P3.3_BATTLE.md`
+  @ `56c94bc`). Still open: finish fight, `STFGTREP`, field return +
+  stats; `WFIGHTTS` optional.
   Done when: a random encounter completes and returns to the field with
   stats applied.
 - [ ] **P3.4 Menus and shops.** `STSTATUS`, `STITSHOP`, `STGTRAIN`,
