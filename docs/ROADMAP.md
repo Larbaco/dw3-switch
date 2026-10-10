@@ -69,9 +69,10 @@ Status: **in progress** (plan:
 [`docs/superpowers/plans/2026-10-10-phase2-pc-bringup.md`](superpowers/plans/2026-10-10-phase2-pc-bringup.md);
 parallel tracks `phase2-engine` + `phase2-io`).
 
-Tracking: Waves 1–2 done on the feature branches (E1/E2 + I1/I2). Port
-code stays on `phase2-engine` / `phase2-io` until a PR; this ROADMAP on
-`main` is synced each wave for visibility only (no unfinished merge).
+Tracking: Waves 1–2 done (E1/E2 + I1/I2). Wave 3 E3/P2.3 done on
+`phase2-engine` @ `f31635b`; next E4 (P2.4). Port code stays on
+`phase2-engine` / `phase2-io` until a PR; this ROADMAP on `main` is
+synced each wave for visibility only (no unfinished merge).
 
 Objective: compile the decomp's **executable** modules (`src/engine/`) for
 the host, replace MIPS-only pieces, and reach the title screen on PC.
@@ -93,10 +94,11 @@ the host, replace MIPS-only pieces, and reach the title screen on PC.
   `docs/PATCHES.md`: every patch states whether it is upstream-bound
   (match-neutral) or port-only.
   Done when: an empty patch series round-trips and CI runs the check.
-- [ ] **P2.3 Replace MIPS-only code.** `SetSpadStack`/`ResetSpadStack`
+- [x] **P2.3 Replace MIPS-only code.** `SetSpadStack`/`ResetSpadStack`
   → no-ops under `PORT_HOST`; `allocMemHigh` returns the pointer;
-  `OVERLAY_ADDRESS`/`SUB_OVERLAY_ADDRESS` become host symbols; boot TIM
-  read from the packed exe tail; GTE macros in `include/engine/gte.h`
+  `OVERLAY_ADDRESS`/`SUB_OVERLAY_ADDRESS` become host symbols
+  (`port/overlays/host_vram.c`); boot TIM stubbed pending
+  `runtime/us/boot_tim.bin` (E6); GTE macros in `include/engine/gte.h`
   mapped to PSY-Z's software GTE under `PORT_HOST`.
   Done when: no `__asm__` remains in the host build and `grep -r mtc2`
   over the preprocessed output is empty.
