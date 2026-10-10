@@ -21,11 +21,11 @@ target_include_directories(dw3-pc PRIVATE
   ${CMAKE_SOURCE_DIR}/../../vendor/psyz/psyz/include
 )
 # Host overrides must appear before psyz so SsSetTableSize / pad APIs win.
-# whole-archive field/battle/menu objs (named .data/.bss for overlay restore).
+# whole-archive field/battle/menu/cardgame objs (named .data/.bss for overlay restore).
 # start-group: engine↔field cross-archive undefineds (FLAGS_00, UI helpers).
 target_link_libraries(dw3-pc PRIVATE
   "-Wl,--start-group"
-  "-Wl,--whole-archive" dw3_p32_field dw3_p33_battle dw3_p34_menus
+  "-Wl,--whole-archive" dw3_p32_field dw3_p33_battle dw3_p34_menus dw3_p35_cardgame
   "-Wl,--no-whole-archive"
   dw3_engine_objs
   "-Wl,--end-group"
@@ -40,7 +40,7 @@ target_link_options(dw3-pc PRIVATE
   "-Wl,--wrap=PadInitMtap"
   "-Wl,--wrap=PadSetAct"
   "-Wl,--wrap=PadSetActAlign"
-  # Keep P3.2–P3.4 named overlay .data/.bss orphan sections (overlay_sections.c).
+  # Keep P3.2–P3.5 named overlay .data/.bss orphan sections (overlay_sections.c).
   "-Wl,--undefined=__start_dw3data_fieldstg"
   "-Wl,--undefined=__start_dw3data_stplnmet"
   "-Wl,--undefined=__start_dw3data_wstag260"
@@ -56,6 +56,10 @@ target_link_options(dw3-pc PRIVATE
   "-Wl,--undefined=__start_dw3data_stgdglab"
   "-Wl,--undefined=__start_dw3data_stgmcard"
   "-Wl,--undefined=__start_dw3data_stdgname"
+  "-Wl,--undefined=__start_dw3data_cardgame"
+  "-Wl,--undefined=__start_dw3data_stcrddek"
+  "-Wl,--undefined=__start_dw3data_stcrdshp"
+  "-Wl,--undefined=__start_dw3data_stcrdabm"
 )
 target_include_directories(psyz PRIVATE ${CMAKE_SOURCE_DIR}/../../vendor/psyz/psyz/include)
 target_compile_definitions(psyz PRIVATE __psyz)

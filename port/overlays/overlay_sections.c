@@ -90,6 +90,26 @@ extern char __stop_dw3data_stdgname[];
 extern char __start_dw3bss_stdgname[];
 extern char __stop_dw3bss_stdgname[];
 
+extern char __start_dw3data_cardgame[];
+extern char __stop_dw3data_cardgame[];
+extern char __start_dw3bss_cardgame[];
+extern char __stop_dw3bss_cardgame[];
+
+extern char __start_dw3data_stcrddek[];
+extern char __stop_dw3data_stcrddek[];
+extern char __start_dw3bss_stcrddek[];
+extern char __stop_dw3bss_stcrddek[];
+
+extern char __start_dw3data_stcrdshp[];
+extern char __stop_dw3data_stcrdshp[];
+extern char __start_dw3bss_stcrdshp[];
+extern char __stop_dw3bss_stcrdshp[];
+
+extern char __start_dw3data_stcrdabm[];
+extern char __stop_dw3data_stcrdabm[];
+extern char __start_dw3bss_stcrdabm[];
+extern char __stop_dw3bss_stcrdabm[];
+
 static void bind_section(Dw3OverlayDesc *desc, char *data, char *data_end, char *bss,
                          char *bss_end) {
     size_t data_size;
@@ -168,4 +188,16 @@ void dw3_overlay_bind_menu_sections(Dw3OverlayDesc *ststatus, Dw3OverlayDesc *st
                  __start_dw3bss_stgmcard, __stop_dw3bss_stgmcard);
     bind_section(stdgname, __start_dw3data_stdgname, __stop_dw3data_stdgname,
                  __start_dw3bss_stdgname, __stop_dw3bss_stdgname);
+}
+
+void dw3_overlay_bind_cardgame_sections(Dw3OverlayDesc *cardgame, Dw3OverlayDesc *stcrddek,
+                                        Dw3OverlayDesc *stcrdshp, Dw3OverlayDesc *stcrdabm) {
+    bind_section(cardgame, __start_dw3data_cardgame, __stop_dw3data_cardgame,
+                 __start_dw3bss_cardgame, __stop_dw3bss_cardgame);
+    bind_section(stcrddek, __start_dw3data_stcrddek, __stop_dw3data_stcrddek,
+                 __start_dw3bss_stcrddek, __stop_dw3bss_stcrddek);
+    bind_section(stcrdshp, __start_dw3data_stcrdshp, __stop_dw3data_stcrdshp,
+                 __start_dw3bss_stcrdshp, __stop_dw3bss_stcrdshp);
+    bind_section(stcrdabm, __start_dw3data_stcrdabm, __stop_dw3data_stcrdabm,
+                 __start_dw3bss_stcrdabm, __stop_dw3bss_stcrdabm);
 }

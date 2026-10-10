@@ -58,13 +58,18 @@ Unlinked stages get weak stubs from `tools/gen_stage_stubs.py`.
 | `STGDGLAB` | `0x1DF` | Digimon Lab (P3.4) |
 | `STGMCARD` | `0x1E3` | Memory card (P3.4) |
 | `STDGNAME` | `0x154` | Partner nickname (P3.4) |
+| `CARDGAME` | `0x153` | Card battle (P3.5) |
+| `STCRDDEK` | `0x1BC` | Deck editor (P3.5) |
+| `STCRDSHP` | `0x1C0` | Card pack shop (P3.5) |
+| `STCRDABM` | `0x177` | Card album (P3.5) |
 
 `overlay_table_us.c` registers the rows above; `CNTY_SEL` stays out for US.
 Host objects use named `.data`/`.bss` sections (`tools/rename_ovl_sections.py`,
 `tools/merge_ovl_sections.ld`) and snapshots in `overlay_sections.c`. Stage TUs
 are symbol-prefixed (`tools/prefix_stage_obj.py`) and linked via `dw3_p32_field`;
-battle via `dw3_p33_battle`; menus via `dw3_p34_menus`. Runtime notes:
-`docs/P3.2_FIELD.md`, `docs/P3.3_BATTLE.md`, `docs/P3.4_MENUS.md`.
+battle via `dw3_p33_battle`; menus via `dw3_p34_menus`; cardgame via
+`dw3_p35_cardgame`. Runtime notes: `docs/P3.2_FIELD.md`, `docs/P3.3_BATTLE.md`,
+`docs/P3.4_MENUS.md`, `docs/P3.5_CARDGAME.md`.
 
 ### Host test
 

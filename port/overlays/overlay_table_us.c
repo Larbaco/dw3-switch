@@ -1,9 +1,9 @@
 /*
- * US overlay table for title + field + battle + menus (P2.6 / P2.8 / P3.2–P3.4).
+ * US overlay table for title + field + battle + menus + cardgame (P2.6–P3.5).
  *
  * Linked overlays: STDWTITL, FIELDSTG, STPLNMET, WSTAG260/780/785/790,
  * FIGHTSTG, WFIGHTMN, STFGTREP, STSTATUS, STITSHOP, STGTRAIN, STGDGLAB,
- * STGMCARD, STDGNAME.
+ * STGMCARD, STDGNAME, CARDGAME, STCRDDEK, STCRDSHP, STCRDABM.
  * .data/.bss snapshots are bound from named sections at register time.
  */
 #ifndef PORT_HOST
@@ -31,6 +31,10 @@
 #define DW3_FILE_STGDGLAB 0x1DF
 #define DW3_FILE_STGMCARD 0x1E3
 #define DW3_FILE_STDGNAME 0x154
+#define DW3_FILE_CARDGAME 0x153
+#define DW3_FILE_STCRDDEK 0x1BC
+#define DW3_FILE_STCRDSHP 0x1C0
+#define DW3_FILE_STCRDABM 0x177
 
 void *STDWTITL_start(void);
 void *FIELDSTG_start(void);
@@ -43,6 +47,10 @@ void *STGTRAIN_start(void);
 void *STGDGLAB_createScene(void);
 void *STGMCARD_start(void);
 void *STDGNAME_start(void);
+void *CARDGAME_start(void);
+void *STCRDDEK_start(void);
+void *STCRDSHP_start(void);
+void *STCRDABM_start(void);
 
 void dw3_overlay_bind_field_sections(Dw3OverlayDesc *fieldstg, Dw3OverlayDesc *stplnmet,
                                      Dw3OverlayDesc *wstag260, Dw3OverlayDesc *wstag780,
@@ -52,6 +60,8 @@ void dw3_overlay_bind_battle_sections(Dw3OverlayDesc *fightstg, Dw3OverlayDesc *
 void dw3_overlay_bind_menu_sections(Dw3OverlayDesc *ststatus, Dw3OverlayDesc *stitshop,
                                     Dw3OverlayDesc *stgtrain, Dw3OverlayDesc *stgdglab,
                                     Dw3OverlayDesc *stgmcard, Dw3OverlayDesc *stdgname);
+void dw3_overlay_bind_cardgame_sections(Dw3OverlayDesc *cardgame, Dw3OverlayDesc *stcrddek,
+                                        Dw3OverlayDesc *stcrdshp, Dw3OverlayDesc *stcrdabm);
 
 static Dw3OverlayDesc g_us_overlays[] = {
     {DW3_FILE_STDWTITL, NULL, NULL, NULL, 0, NULL, 0},
@@ -70,6 +80,10 @@ static Dw3OverlayDesc g_us_overlays[] = {
     {DW3_FILE_STGDGLAB, NULL, NULL, NULL, 0, NULL, 0},
     {DW3_FILE_STGMCARD, NULL, NULL, NULL, 0, NULL, 0},
     {DW3_FILE_STDGNAME, NULL, NULL, NULL, 0, NULL, 0},
+    {DW3_FILE_CARDGAME, NULL, NULL, NULL, 0, NULL, 0},
+    {DW3_FILE_STCRDDEK, NULL, NULL, NULL, 0, NULL, 0},
+    {DW3_FILE_STCRDSHP, NULL, NULL, NULL, 0, NULL, 0},
+    {DW3_FILE_STCRDABM, NULL, NULL, NULL, 0, NULL, 0},
 };
 
 void dw3_overlay_register_us_title(void) {
@@ -90,22 +104,30 @@ void dw3_overlay_register_us_title(void) {
     g_us_overlays[13].entry = (Dw3OverlayEntry)STGDGLAB_createScene;
     g_us_overlays[14].entry = (Dw3OverlayEntry)STGMCARD_start;
     g_us_overlays[15].entry = (Dw3OverlayEntry)STDGNAME_start;
+    g_us_overlays[16].entry = (Dw3OverlayEntry)CARDGAME_start;
+    g_us_overlays[17].entry = (Dw3OverlayEntry)STCRDDEK_start;
+    g_us_overlays[18].entry = (Dw3OverlayEntry)STCRDSHP_start;
+    g_us_overlays[19].entry = (Dw3OverlayEntry)STCRDABM_start;
 
     dw3_overlay_bind_field_sections(&g_us_overlays[1], &g_us_overlays[2], &g_us_overlays[3],
                                     &g_us_overlays[4], &g_us_overlays[5], &g_us_overlays[6]);
     dw3_overlay_bind_battle_sections(&g_us_overlays[7], &g_us_overlays[8], &g_us_overlays[9]);
     dw3_overlay_bind_menu_sections(&g_us_overlays[10], &g_us_overlays[11], &g_us_overlays[12],
                                    &g_us_overlays[13], &g_us_overlays[14], &g_us_overlays[15]);
+    dw3_overlay_bind_cardgame_sections(&g_us_overlays[16], &g_us_overlays[17], &g_us_overlays[18],
+                                       &g_us_overlays[19]);
 
     dw3_overlay_set_table(g_us_overlays,
                           sizeof(g_us_overlays) / sizeof(g_us_overlays[0]));
     fprintf(stderr,
             "dw3: registered US overlays STDWTITL/FIELDSTG/STPLNMET/"
             "WSTAG260/780/785/790/FIGHTSTG/WFIGHTMN/STFGTREP/"
-            "STSTATUS/STITSHOP/STGTRAIN/STGDGLAB/STGMCARD/STDGNAME "
-            "entries=%p/%p/%p/%p/%p/%p/%p/%p/%p/%p/%p\n",
+            "STSTATUS/STITSHOP/STGTRAIN/STGDGLAB/STGMCARD/STDGNAME/"
+            "CARDGAME/STCRDDEK/STCRDSHP/STCRDABM "
+            "entries=%p/%p/%p/%p/%p/%p/%p/%p/%p/%p/%p/%p/%p/%p/%p\n",
             (void *)STDWTITL_start, (void *)FIELDSTG_start, (void *)STPLNMET_start,
             (void *)FIGHTSTG_start, (void *)STFGTREP_start, (void *)STSTATUS_start,
             (void *)STITSHOP_start, (void *)STGTRAIN_start, (void *)STGDGLAB_createScene,
-            (void *)STGMCARD_start, (void *)STDGNAME_start);
+            (void *)STGMCARD_start, (void *)STDGNAME_start, (void *)CARDGAME_start,
+            (void *)STCRDDEK_start, (void *)STCRDSHP_start, (void *)STCRDABM_start);
 }

@@ -1,0 +1,197 @@
+Upstream-bound: no
+Subject: [PORT_HOST] P3.5 cardgame boot and force-win evidence
+
+CARDGAME/STCRDABM logs; seed party/fieldMode/modeArg for card modes;
+DW3_FORCE_CARD_WIN skips runBattle; AUTO_MENU_RETURN for deck/album/shop;
+host definition for CARDGAME_markedCounts (PS1 undefined_syms alias).
+
+--- a/src/engine/game/state.c
++++ b/src/engine/game/state.c
+@@ -81,16 +81,22 @@
+         }
+         if (mode == MODE_STATUS || mode == MODE_ITEM_SHOP || mode == MODE_TRAINING ||
+             mode == MODE_DIGI_LAB || mode == MODE_CONTINUE || mode == MODE_NAMING ||
+-            mode == MODE_PLAYER_NAME || (force != NULL && force[0] != '\0')) {
++            mode == MODE_PLAYER_NAME || mode == MODE_CARD_GAME ||
++            mode == MODE_DECK_EDITOR || mode == MODE_CARD_ALBUM ||
++            mode == MODE_CARD_SHOP || (force != NULL && force[0] != '\0')) {
+             if (GAME.funcs.getPartyMember(0) < 0) {
+                 GAME.funcs.setParty(0);
+-                fprintf(stderr, "dw3: P3.4 setParty(0) for menu bring-up\n");
++                fprintf(stderr, "dw3: P3.4/P3.5 setParty(0) for menu/card bring-up\n");
+             }
+             if (GAME.fieldMode == 0) {
+                 GAME.fieldMode = MODE_NEW_GAME;
+-                fprintf(stderr, "dw3: P3.4 seed fieldMode=0x%x\n",
++                fprintf(stderr, "dw3: P3.4/P3.5 seed fieldMode=0x%x\n",
+                         (unsigned)GAME.fieldMode);
+             }
++            if (mode == MODE_CARD_GAME && GAME.modeArg == 0) {
++                GAME.modeArg = 1; /* opponent index is arg-1 */
++                fprintf(stderr, "dw3: P3.5 default CARDGAME modeArg=1\n");
++            }
+         }
+     }
+ #endif
+--- a/src/cardgame/card_battle/scene.c
++++ b/src/cardgame/card_battle/scene.c
+@@ -1,6 +1,9 @@
+ /* CARDGAME's scene, which the mode starts (CARDGAME_start). */
+ 
+ #include "cardgame/card_battle.h"
++#if PORT_HOST
++#include <stdio.h>
++#endif
+ 
+ /* The mode's task: sets up the display and starts the battle, then returns
+    to the field once it is over (or to MODE_STAGE_SELECT when the mode's low
+@@ -23,6 +26,10 @@
+         layer = GFX.funcs.createLayer(&CARDGAME_screenRect, 3, 0x100);
+         layer->setBgColor(layer, 0x1F, 0x1F, 0x1F);
+         items[0] = CARDGAME_createBattle(GAME.funcs.getModeArg());
++#if PORT_HOST
++        fprintf(stderr, "dw3: CARDGAME createBattle arg=%d fieldMode=0x%x\n",
++                (int)GAME.funcs.getModeArg(), (unsigned)GAME.fieldMode);
++#endif
+         task->nextState(task);
+         break;
+     case 1:
+@@ -35,6 +42,12 @@
+         switch (task->substate) {
+         case 0:
+         default:
++#if PORT_HOST
++            fprintf(stderr,
++                    "dw3: CARDGAME return fieldMode=0x%x playerLost=%d prizeItem=%d\n",
++                    (unsigned)GAME.fieldMode, (int)items[0]->playerLost,
++                    (int)items[0]->prize);
++#endif
+             GAME.funcs.requestMode((GAME.funcs.getMode() & 0xF) ? MODE_STAGE_SELECT : GAME.fieldMode, 0);
+             task->nextSubstate(task);
+             break;
+@@ -49,5 +62,8 @@
+ 
+ /* The mode's entry point (MODE_ENTRY_POINTS) */
+ Task *CARDGAME_start(void) {
++#if PORT_HOST
++    fprintf(stderr, "dw3: CARDGAME_start\n");
++#endif
+     return createTask(CARDGAME_updateScene, sizeof(Task), sizeof(Task *));
+ }
+--- a/src/cardgame/card_battle/battle.c
++++ b/src/cardgame/card_battle/battle.c
+@@ -2,6 +2,10 @@
+    choice, the rounds, the plays and their results. */
+ 
+ #include "cardgame/card_battle.h"
++#if PORT_HOST
++#include <stdio.h>
++char *getenv(const char *name);
++#endif
+ 
+ /* Loads the opponent's data (FILE_CARDGAME_OPPONENTS, entry arg - 1): its deck and its card order */
+ void CARDGAME_loadOpponent(CardBattle *battle, CardBattleItems *items) {
+@@ -2509,7 +2513,23 @@
+         }
+         break;
+     case 1:
++#if PORT_HOST
++        {
++            static s32 force_win_latched;
++            const char *fw = getenv("DW3_FORCE_CARD_WIN");
++            s32 force = 0;
++
++            if (!force_win_latched && fw != NULL && fw[0] != '\0') {
++                force_win_latched = 1;
++                force = 1;
++                battle->playerLost = 0;
++                fprintf(stderr, "dw3: DW3_FORCE_CARD_WIN skip runBattle prize=%d\n",
++                        (int)battle->prize);
++            }
++            if (force || CARDGAME_runBattle(battle, items)) {
++#else
+         if (CARDGAME_runBattle(battle, items)) {
++#endif
+             fader = CARDGAME_createFader(2);
+             items->fader = fader;
+             fader->setColor(fader, 0, 0, 0);
+@@ -2517,6 +2537,9 @@
+             battle->setState(battle, 2);
+             battle->result = 1;
+         }
++#if PORT_HOST
++        }
++#endif
+         break;
+     case 2:
+         if (battle->substate == 0 && items->fader->isDone(items->fader)) {
+@@ -2528,8 +2551,17 @@
+                             GAME.items[battle->prize]++;
+                         }
+                         FLAGS_00.pendingFlag10 = 1;
++#if PORT_HOST
++                        fprintf(stderr,
++                                "dw3: CARDGAME win prizeItem=%d count=%d\n",
++                                (int)battle->prize,
++                                (int)GAME.items[battle->prize]);
++#endif
+                     } else {
+                         FLAGS_00.pendingFlag10 = 0;
++#if PORT_HOST
++                        fprintf(stderr, "dw3: CARDGAME loss (no prize)\n");
++#endif
+                     }
+                 }
+                 battle->result = 2;
+--- a/src/cardgame/album/album.c
++++ b/src/cardgame/album/album.c
+@@ -1,4 +1,7 @@
+ #include "cardgame/album.h"
++#if PORT_HOST
++#include <stdio.h>
++#endif
+ 
+ /* The cursor's CLUT row on each frame of its blink */
+ s32 STCRDABM_cursorBlink[6] = {0, 1, 2, 3, 2, 1};
+@@ -723,6 +726,18 @@
+ /* Creates the album (task), on the top layer */
+ CardAlbum *STCRDABM_createAlbum(void) {
+     CardAlbum *album = createTask(STCRDABM_updateAlbum, sizeof(CardAlbum), sizeof(CardAlbumWindows));
++#if PORT_HOST
++    {
++        s32 seen = 0;
++        s32 i;
++        for (i = 0; i < CARD_COUNT; i++) {
++            if (GAME.cardsSeen[i] != 0) {
++                seen++;
++            }
++        }
++        fprintf(stderr, "dw3: STCRDABM_createAlbum cardsSeen=%d\n", (int)seen);
++    }
++#endif
+ 
+     album->layer = SCREEN_LAYER;
+     album->depth = 7;
+--- a/src/engine/system/overlay.c
++++ b/src/engine/system/overlay.c
+@@ -96,7 +96,8 @@
+                 if (overlay == MODE_STATUS || overlay == MODE_ITEM_SHOP ||
+                     overlay == MODE_TRAINING || overlay == MODE_DIGI_LAB ||
+                     overlay == MODE_CONTINUE || overlay == MODE_NAMING ||
+-                    overlay == MODE_PLAYER_NAME) {
++                    overlay == MODE_PLAYER_NAME || overlay == MODE_DECK_EDITOR ||
++                    overlay == MODE_CARD_ALBUM || overlay == MODE_CARD_SHOP) {
+                     if (menu_mode != mode) {
+                         menu_mode = mode;
+                         menu_frames = 0;
+--- a/src/cardgame/card_battle/data/cardgame_3.c
++++ b/src/cardgame/card_battle/data/cardgame_3.c
+@@ -187,4 +187,8 @@
+    would: two 2-byte variables 2 bytes apart fit commons that the linker laid
+    out, not word-aligned C definitions. */
+ u8 CARDGAME_slotMoveCounts[8] = {0};
++#if PORT_HOST
++/* PS1 links this as CARDGAME_slotMoveCounts+2 (undefined_syms_cardgame.txt). */
++u8 CARDGAME_markedCounts[2] = {0};
++#endif
+ CardMessageWindow CARDGAME_savedScreenState = {0};
