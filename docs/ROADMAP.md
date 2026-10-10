@@ -164,10 +164,12 @@ pad state connected; GPU polish open; merged via PR #3).
 Status: **in progress** (branch `phase3-pc-bringup`; plan:
 [`docs/superpowers/plans/2026-10-10-phase3-pc-game-loop.md`](superpowers/plans/2026-10-10-phase3-pc-game-loop.md)).
 
-Tracking: Phase 3 on `phase3-pc-bringup` @ `766f19b`. P3.1 done (`0018` + `0019`,
-`dw3_p31_audit` 432 objs). P3.2 **in progress / BLOCKED**: `FIELDSTG_drawActor`
-SEGV after stage load. Link done; door 780→785 logged; walkable Done-when not
-met (`docs/P3.2_FIELD.md`). P3.6 / P3.9 may run on side tracks.
+Tracking: Phase 3 on `phase3-pc-bringup` @ `05bad46`. P3.1 done (`0018` + `0019`,
+`dw3_p31_audit` 432 objs). P3.2 **in progress**: `FIELDSTG_drawActor` SEGV
+**fixed** (`DrawCallback.arg` → `void*`, patch `0022`). Link done; door 780→785
+logged via AUTO_DOOR; Done-when still needs interactive walk + physical door
+(`docs/P3.2_FIELD.md`). Next: prove walkable field + door. P3.6 / P3.9 may run
+on side tracks.
 
 Objective: the full game loop runs on PC: field, stages, battle, menus,
 audio, movies.
@@ -184,9 +186,10 @@ audio, movies.
 - [ ] **P3.2 Field + first stage.** `FIELDSTG` + `WSTAG260` scripts +
   starting town `WSTAG780` (door → `WSTAG785`) + `STPLNMET`. **Landed:**
   `dw3_p32_field` + overlay table with real `.data` snapshots; patches
-  `0020`/`0021`; logged path `0x2D7`→stage 474→`AUTO_DOOR`→`0x2D8`/475 and
-  `0x500` STPLNMET (`docs/P3.2_FIELD.md`). **Blocker:** SEGV in
-  `FIELDSTG_drawActor` before a stable walkable field.
+  `0020`/`0021`/`0022`; logged path `0x2D7`→stage 474→`AUTO_DOOR`→`0x2D8`/475
+  and `0x500` STPLNMET; drawActor SEGV fixed (`DrawCallback.arg` → `void*`,
+  `docs/P3.2_FIELD.md`). **Open:** interactive walk + physical door
+  (AUTO_DOOR alone does not satisfy Done-when).
   Done when: new game → name entry → first field area is walkable and a
   door changes stage.
 - [ ] **P3.3 Battle.** `FIGHTSTG` + `WFIGHTMN` (+ `WFIGHTTS` from the debug
