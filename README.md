@@ -20,7 +20,11 @@ dw3-switch/
 
 ## Status
 
-Scaffold only. Next steps are documented in [docs/ROADMAP.md](docs/ROADMAP.md).
+Scaffold plus a porting survey of the decomp ([docs/SURVEY.md](docs/SURVEY.md)).
+The upstream decompilation is complete for both versions; the port work is
+laid out in [docs/ROADMAP.md](docs/ROADMAP.md) and the layering in
+[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). Plan: PC bring-up over
+PSY-Z first, then a libnx backend.
 
 ## Setup
 
@@ -38,8 +42,11 @@ disc into a local `disks/` tree when you are ready to build game code paths
 
 ## Requirements (planned)
 
-- [devkitPro](https://devkitpro.org/) with `switch-dev`
+- [devkitPro](https://devkitpro.org/) with `switch-dev` (or Docker:
+  `devkitpro/devkita64`)
 - libnx, mesa/EGL (or deko3d path TBD)
+- [PSY-Z](https://github.com/Xeeynamo/psyz) as the Psy-Q shim (submodule, Phase 1)
+- SDL3 + CMake for the PC bring-up host
 - Own disc image for assets
 
 ## License
