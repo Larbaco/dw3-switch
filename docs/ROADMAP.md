@@ -165,17 +165,20 @@ Status: **in progress** (branch `phase3-pc-bringup`; plan:
 [`docs/superpowers/plans/2026-10-10-phase3-pc-game-loop.md`](superpowers/plans/2026-10-10-phase3-pc-game-loop.md)).
 
 Tracking: Phase 3 on `phase3-pc-bringup` (P3.5 merged from
-`phase3-cardgame`). P3.1 done. **P3.2 Done-when met** (+ WSTAG790
-follow-up). **P3.3 Done-when met:** forced encounter → `STFGTREP`
-(XP/levels) → return to `FIELDSTG` (`docs/P3.3_BATTLE.md`). **P3.4
-partial:** menus linked + field open/return; **STGMCARD save → `.mcr`
-proven** (`docs/P3.4_MENUS.md`, `READY_FOR_MAIN_ROADMAP_SYNC:
+`phase3-cardgame` @ `fcff119`). P3.1 done. **P3.2 Done-when met** (+
+WSTAG790 follow-up). **P3.3 Done-when met:** forced encounter →
+`STFGTREP` (XP/levels) → return to `FIELDSTG` (`docs/P3.3_BATTLE.md`).
+**P3.4 partial:** menus linked + field open/return; **STGMCARD save →
+`.mcr` proven** (`docs/P3.4_MENUS.md`, `READY_FOR_MAIN_ROADMAP_SYNC:
 P3.4_MEMCARD`). Pad-driven START→status and NPC script entries still
 open. **P3.5 partial** (`docs/P3.5_CARDGAME.md`): force-win → prize
 item + return to `FIELDSTG` proven; album `cardsSeen` 29→30 is host
-`DW3_FORCE_CARD_WIN` `addCards` aid, not vanilla prize→album. Checkbox
-stays unticked until the real album path.
-P3.6 / P3.9 may run on side tracks.
+`DW3_FORCE_CARD_WIN` `addCards` aid, not vanilla prize→album. **P3.7
+blocked** (`READY_FOR_MAIN_ROADMAP_SYNC: P3.7_BLOCKED`,
+`docs/P3.7_MOVIES.md`): `DW3_START_MODE=0xE01` reaches movie path;
+PSY-Z `MDEC_*` / `StCdInterrupt` stubs + no CD track for
+`MOVIEOPN.STR` LBA; default skip remains `MODE_TITLE`. P3.6 / P3.9 may
+run on side tracks.
 
 Objective: the full game loop runs on PC: field, stages, battle, menus,
 audio, movies.
@@ -236,7 +239,11 @@ audio, movies.
   Done when: title music, field music change on stage switch, battle SFX.
 - [ ] **P3.7 Movies.** Title STR playback through PSY-Z `libpress` +
   streaming (`CdRead2`, `StSetRing`) from raw-sector `.STR` files packed
-  in P1.6.
+  in P1.6. **Blocked** (`docs/P3.7_MOVIES.md`,
+  `READY_FOR_MAIN_ROADMAP_SYNC: P3.7_BLOCKED`): boot attempt
+  `DW3_START_MODE=0xE01` hits `MDEC_*` / stream stubs; default skip
+  `MODE_TITLE` (patch `0010`) retained. Checkbox unticked until play +
+  audio + Start-skip.
   Done when: the opening movies play with audio and can be skipped.
 - [ ] **P3.8 Stage sweep.** Use `STAGSLCT` (debug stage select) to load
   every stage of the version and log crashes/asserts.
