@@ -186,8 +186,8 @@ skip remains `MODE_TITLE` (`0010`).
 objs; live PASS 237/237; only `WSTAG460` left stubbed (host
 `updateWanderer` SEGV). **Phase 3 gate not met** (`docs/P3_GATE.md`):
 automated intro / story path still needs work beyond movie skip; P3.6
-title SEP partial on `phase3-pc-bringup` (see below). No
-start→first-boss segment. P3.6 / P3.9 may run on side tracks.
+audio done-when met (see below; evidence on `phase3-audio-impl` / PR #13). No
+start→first-boss segment. P3.9 may run on a side track.
 
 Objective: the full game loop runs on PC: field, stages, battle, menus,
 audio, movies.
@@ -246,16 +246,19 @@ audio, movies.
   (`DW3_FORCE_CARD_WIN_ADDCARDS`). Follow-up: pad battle, NPC/script
   entry.
   Done when: a card battle can be won and the album updates.
-- [ ] **P3.6 Audio.** libsnd path through PSY-Z: VAB banks, SEP music,
+- [x] **P3.6 Audio.** libsnd path through PSY-Z: VAB banks, SEP music,
   SFX, reverb settings the game sets. Verify `SsSeqCalledTbyT` timing
   from the vsync callback.
+  **Done-when evidence** (`docs/P3.6_AUDIO.md`,
+  `READY_FOR_MAIN_ROADMAP_SYNC: P3.6`): tick pump; psyz `dw3-seq-sep`
+  @ `9e6c124` host `_SsSeqPlay` + note-on (sotn-decomp seqread port,
+  not matching ASM); title bank `0x47` SEP + non-silent raw; field
+  WSTAG780→785 banks `0x29`→`0x1B` (`SsSepPlay` / `SEP note-on`
+  seq 2→3); battle `DW3_FORCE_ENCOUNTER`/`FORCE_WIN` → battle SEP
+  `0x6004000a` + `SsUtKeyOn` (`SOUND_COUNT` / PLAYER00) + non-silent
+  raw. Patch `0035` evidence logs (PR #13). Follow-up: pitch bend /
+  matching midiread / owner Pulse listen.
   Done when: title music, field music change on stage switch, battle SFX.
-  Progress (`docs/P3.6_AUDIO.md`, `READY_FOR_MAIN_ROADMAP_SYNC:
-  P3.6_SEP_PARTIAL`): tick pump proven; psyz `dw3-seq-sep` @ `9e6c124`
-  host `_SsSeqPlay` + note-on (sotn-decomp seqread port, not matching
-  ASM); title bank `0x47` → `SEP note-on` logs + non-silent
-  `sdlaudio.raw` (peak≈31k). Field/battle still open; checkbox stays
-  until full done-when.
 - [x] **P3.7 Movies.** Title STR playback through PSY-Z `libpress` +
   streaming (`CdRead2`, `StSetRing`) from raw-sector `.STR` files packed
   in P1.6. **Done-when evidence** (`docs/P3.7_MOVIES.md`,

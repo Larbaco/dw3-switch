@@ -23,7 +23,7 @@ Branch tip at evidence time: see git (`phase3-pc-bringup`). Local logs under
 | Start → field playable without crash | **partial** (see Proven) |
 | Reach / defeat first story boss | **no** |
 | EU build claimed | **no** (US only) |
-| Audio / movies on the segment | **partial** (P3.7 Done-when met — play/skip + audible XA; video presentation follow-up; P3.6 partial host SEP — title note-on evidence; field/battle open; gate segment not end-to-end) |
+| Audio / movies on the segment | **partial** (P3.6 + P3.7 Done-when met — title/field/battle audio + play/skip + audible XA; video presentation follow-up; gate segment not end-to-end) |
 
 ## Proven (automated, headless `SDL_VIDEODRIVER=dummy`)
 
@@ -119,7 +119,7 @@ Documented separately and already ticked on main ROADMAP:
 | Item | Why |
 |---|---|
 | **Start → first boss** | Intro leaves to `0xE02` movie; post-movie Asuka boot aids stop short of any boss |
-| **P3.6 Audio** | Partial host SEP — title bank `0x47` note-on + mix (`docs/P3.6_AUDIO.md`); field music / battle SFX still open |
+| **P3.6 Audio** | **Done-when met** (`docs/P3.6_AUDIO.md`) — title/field/battle via host SEQ/SEP + `SsUtKeyOn`; pitch-bend/matching midiread follow-up |
 | **P3.7 Movies** | **Done-when met** (`docs/P3.7_MOVIES.md`) — play + Start-skip + owner audible XA; video presentation quality still a follow-up |
 | **P3.9 Harness** | Needs owner DuckStation oracle + capture fill |
 | **WSTAG460** | Host `updateWanderer` SEGV; weak stub only |
@@ -130,18 +130,14 @@ Documented separately and already ticked on main ROADMAP:
 Autonomy should pause on these; port glue alone cannot close the gate:
 
 1. **Post-movie intro / story progress** past `0xE01`/`0xE02` toward the
-   first boss (P3.7 Done-when met; video presentation quality still a
+   first boss (P3.6/P3.7 Done-when met; video presentation quality still a
    follow-up; automated intro wall may remain). Soft `MDEC_*` is wired.
 2. **Owner DuckStation** — P3.9 visual oracle / screenshot harness.
 3. **WSTAG460** — optional for “all loadable stages”; required if gate
    or P3.8 is reinterpreted as 239/239 including Reliability Spot.
-4. **First-boss segment** — either owner pad playthrough once intro/movie
-   path allows, or a new story-progress aid that reaches the first boss
-   without lying about the gate.
-
-P3.6 is **not** a hard pause here: host `_SsSeqPlay` / SEP note-on exists
-(psyz `dw3-seq-sep`); title music evidence is in `docs/P3.6_AUDIO.md`.
-Field music and battle SFX remain open for the done-when.
+4. **First-boss segment** — either owner pad playthrough once movies
+   allow, or a new story-progress aid that reaches the first boss without
+   lying about the gate.
 
 ## Honesty rule
 
