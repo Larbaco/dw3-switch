@@ -79,3 +79,6 @@ See [SURVEY.md](SURVEY.md) for the evidence behind each point.
   [TEXTURE_PACKS.md](TEXTURE_PACKS.md))
 - Shipping a forced “modded” default: port-added features are opt-in via
   the Phase 9 options menu ([PORT_OPTIONS.md](PORT_OPTIONS.md))
+- Duplicating Switch host work in Phase 10 that already belongs to P4–P6
+  (present, pad/rumble, saves, scale/widescreen, turbo); see
+  [SWITCH_FEATURES.md](SWITCH_FEATURES.md)

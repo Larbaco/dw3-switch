@@ -552,6 +552,40 @@ persistence on owner storage. Details: [PORT_OPTIONS.md](PORT_OPTIONS.md).
 Gate: P9.2 + P9.4 with at least one persistent toggle (stub or real).
 P9.5 stays best-effort as features ship.
 
+## Phase 10 — Native Switch features (residual)
+
+Starts after the Phase 9 gate in the planned order (earlier only to wire
+applet behaviours already required by P4/P5). Goal: inventory and finish
+Switch-native UX that is **not** already owned by P4–P6 / P9 — see
+[SWITCH_FEATURES.md](SWITCH_FEATURES.md). Do not re-implement scaling,
+rumble, saves, turbo, or widescreen here; those stay in their phases.
+
+- [x] **P10.1 Goal note.** Document the ownership split (P4–P6/P9 vs
+  residual Switch items), homebrew caveats, and skip list (amiibo, touch
+  in-game, save states, NSO cloud).
+  Done when: [SWITCH_FEATURES.md](SWITCH_FEATURES.md) exists and the
+  README points at Phase 10 / that note.
+- [ ] **P10.2 Lifecycle hardening.** Confirm P5.3 focus/sleep clamp and
+  flush behaviour on hardware; fill any gaps in `nx_os` / applet hooks.
+  Done when: HOME sleep/resume and clean exit smoke tests pass with
+  saves intact.
+- [ ] **P10.3 Presentation modes.** Docked vs handheld already in P4.2;
+  verify operation-mode switches do not break the frame loop once the
+  game is linked, and that P6.1 scale/widescreen options apply on both.
+  Done when: dock/undock during title or field keeps a stable present path.
+- [ ] **P10.4 Rumble polish — optional.** Intensity slider and event
+  tuning on top of P4.4 `PadSetAct` → HD rumble; Lite-safe no-op.
+  Done when: toggleable from Phase 9 or marked N/A if hardware lacks
+  actuators.
+- [ ] **P10.5 Extra applets — optional.** `swkbd` name entry, system
+  language hint, CRT/sharp filters, multi-card / user-folder saves;
+  Capture/album best-effort. Skip amiibo/gyro/touch-in-game.
+  Done when: each item is either wired + toggled or explicitly N/A in
+  [SWITCH_FEATURES.md](SWITCH_FEATURES.md). Does **not** block the Phase
+  10 gate.
+
+Gate: P10.2 (+ P10.3 once present is live). P10.4–P10.5 are best-effort.
+
 ## Cross-cutting rules
 
 - Record every non-obvious decision as a short note in `docs/`.
