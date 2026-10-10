@@ -72,7 +72,7 @@ Plan:
 
 Tracking: Phase 2 complete on `phase2-engine` @ `1f34110` (pad
 `PadInitDirect`→`InitPAD` / wrap `PadGetState`; headless Start bit
-proven). PR to `main`. Phase 3 not started.
+proven). Merged to `main` via PR #3 (`e1f048b`).
 
 Objective: compile the decomp's **executable** modules (`src/engine/`) for
 the host, replace MIPS-only pieces, and reach the title screen on PC.
@@ -157,9 +157,17 @@ the host, replace MIPS-only pieces, and reach the title screen on PC.
 
 Gate: title screen on PC from the decomp's C, no local edits inside
 `vendor/`. **Passed** on `phase2-engine` @ `1f34110` (title draws +
-pad state connected; GPU polish open; PR to `main`).
+pad state connected; GPU polish open; merged via PR #3).
 
 ## Phase 3 — Game bring-up on PC
+
+Status: **in progress** (branch `phase3-pc-bringup`; plan:
+[`docs/superpowers/plans/2026-10-10-phase3-pc-game-loop.md`](superpowers/plans/2026-10-10-phase3-pc-game-loop.md)).
+
+Tracking: Phase 3 started after PR #3 merge (`main` @ `e1f048b`). Worktree
+`.worktrees/phase3-pc-bringup`. P3.1 (64-bit audit overlays+stages) is the
+active Core task; P3.6 investigation and P3.9 harness scaffold may run on
+side tracks per the plan.
 
 Objective: the full game loop runs on PC: field, stages, battle, menus,
 audio, movies.
