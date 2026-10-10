@@ -372,6 +372,17 @@ console.
 - [ ] **P4.7 Boot the game.** Link the Phase 3 image against the Switch
   backend and run from hbmenu.
   Done when: title screen on hardware.
+  **Status (2026-10-10):** the image **links** for aarch64 — CMake entry point
+  `platforms/switch/CMakeLists.txt` (reuses `port/CMakeLists.txt` verbatim),
+  `vendor/psyz` on its `NintendoSwitch` branch, and the platform units filled in
+  `platforms/switch/psyz_backend/` (`psyz_log`, `Psyz_Os*`, `MyPadInit`/
+  `Psyz_PadsPoll`, `Psyz_VideoVSync`, the `__wrap_*` present hooks), which closed
+  all 15 undefined symbols. `dw3-switch.nro` builds. **Remaining:** the boot
+  path (`source/main.c` still runs the `host_hello` sample and never calls
+  `dw3_game_main`) and the renderer — nothing implements PSY-Z's `Draw_*` on
+  Switch, and `libgpu.o` is not even pulled into the link, so those 21 symbols
+  are latent. **Not ticked:** no hardware, and the game does not boot anywhere
+  yet. See `docs/SWITCH_BACKEND.md`.
 
 Gate: title + field + battle on a Switch.
 

@@ -70,11 +70,14 @@ Four things there are load-bearing and easy to trip over:
 - **Do not use a login shell** (`bash -l`): `/etc/profile` rewrites `PATH` and
   drops `devkitA64/bin`, which is where `aarch64-none-elf-nm` lives.
 
-Status (P4.7 Stage 1): everything compiles for aarch64 and the link is reached.
-It currently stops on the platform-backend contract that `psyz_backend/` has yet
-to fill — `psyz_log`, the `Psyz_Os*` group, `MyPadInit`/`Psyz_PadsPoll`,
-`Psyz_VideoVSync`, and the `__wrap_LoadImage`/`__wrap_PutDispEnv` pair the link
-options request. See [docs/SWITCH_BACKEND.md](../../docs/SWITCH_BACKEND.md).
+Status (P4.7): the game image **links** for aarch64, and `nx_create_nro` turns it
+into a well-formed `.nro` (16.7 MB `.elf`). What is missing is the boot path —
+`source/main.c` is still the `host_hello` sample and never calls
+`dw3_game_main` — and the renderer, because nothing yet implements PSY-Z's
+`Draw_*` contract on Switch. That contract is *latent*, not absent: `libgpu.o` is
+not pulled into the link today (`nm` shows 21 `U Draw_*` inside it), so those
+symbols appear the moment anything drives the GPU. See
+[docs/SWITCH_BACKEND.md](../../docs/SWITCH_BACKEND.md).
 
 ## PSY-Z backend (Phase 4)
 

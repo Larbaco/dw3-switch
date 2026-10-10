@@ -89,9 +89,34 @@ inside the container. Skeleton `.nro` still builds that way on ext4.
 See [platforms/switch/psyz_backend/README.md](../platforms/switch/psyz_backend/README.md)
 and [docs/P4.2_VIDEO.md](P4.2_VIDEO.md).
 
-Wiring into PSY-Z (P4.7): either a `CMAKE_SYSTEM_NAME` / `__SWITCH__`
-branch in the submodule (upstream-bound) or keep supplying platform symbols
-from `platforms/switch/` until the surface is stable.
+Wiring into PSY-Z (resolved in P4.7): the submodule gained a
+`CMAKE_SYSTEM_NAME STREQUAL "NintendoSwitch"` branch that skips SDL3 and appends
+only the portable `psyz_spu.c` plus the SDL-free `sdl3_software.c` rasterizer,
+while the platform symbols keep coming from `platforms/switch/psyz_backend/`.
+The split is deliberate: the submodule only had to stop pulling SDL, so the
+backend stays in this repo per the P4.1 decision. `vendor/psyz` is pinned to
+branch `dw3-switch-backend` on the fork.
+
+## P4.7 (2026-10-10)
+
+The Phase 3 game image now **links** for aarch64 through
+`platforms/switch/CMakeLists.txt`, which mirrors `platforms/pc/CMakeLists.txt`
+and reuses `port/CMakeLists.txt` verbatim — same `--whole-archive` overlay libs,
+same ~20 `-Wl,--undefined=__start_dw3data_*` flags. `dw3-switch.nro` builds
+(8.5 MiB, well-formed: 22725-byte NACP asset section).
+
+Three things the toolchain does not do for us, all now handled in that
+CMakeLists: EGL/GLES2 headers come from the `switch-*` portlibs (no CMake config
+packages, so the dirs are explicit); `libEGL.a` carries nouveau's C++ `nv50_ir`
+codegen, so the link must go through g++ (the Makefile's `LD := $(CXX)`); and the
+overlay packing steps need the *target* binutils, passed as absolute paths
+because a login shell's `/etc/profile` drops `devkitA64/bin` from `PATH`.
+
+**What still does not exist:** a boot path — `source/main.c` is still the
+`host_hello` sample and never calls `dw3_game_main` — and a renderer. Nothing
+implements `Draw_*` on Switch, and note that `libgpu.o` is not currently pulled
+into the link at all, so those 21 symbols are *latent* rather than absent: they
+appear as soon as anything drives the GPU. P4.7 stays open.
 
 ## P4.2 video (2026-10-10)
 
@@ -172,5 +197,12 @@ here.
 
 1. ~~P4.2: implement `nx_gpu.c` present path~~ — code on PR #21; **hardware fps check** open.
 2. ~~P4.3: `nx_audio.c` / `audren`~~ — host wiring on PR #23; **hardware + libsnd** open.
-3. Do not vendor SDL3 into git; if revisited, document a `tools/` fetch+build
+3. **P4.7 boot path:** replace `platforms/switch/source/main.c` with the analogue
+   of `platforms/pc/src/main.c` (cdfs root/map, memcard, boot TIM, overlay table,
+   vsync pump) and call `dw3_game_main`. Needs a fsdev `sdmc:` mount first, and
+   `dw3_nx_log_open()` right after it so the run is diagnosable.
+4. **P4.7 renderer:** the `Draw_*` contract plus the `Psyz_Video*` family. The
+   thin route is an adapter over the in-tree `software_rasterizer`, presenting
+   `SoftwareRasterizer_GetVram()` through `nx_gpu.c`'s EGL surface.
+5. Do not vendor SDL3 into git; if revisited, document a `tools/` fetch+build
    helper only.
