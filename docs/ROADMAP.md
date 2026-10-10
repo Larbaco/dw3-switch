@@ -168,7 +168,9 @@ Tracking: Phase 3 on `phase3-pc-bringup`. P3.1 done. **P3.2 Done-when
 met** (`docs/P3.2_FIELD.md`). WSTAG790 linked @ `481d4d0` (post-name
 chamber OK). **P3.3 in progress** @ `56c94bc`: `FIGHTSTG`+`WFIGHTMN`
 boot via `FORCE_ENCOUNTER` (`docs/P3.3_BATTLE.md`); Done-when NOT met.
-Next: finish fight, `STFGTREP`, field return + stats.
+Next: finish fight, `STFGTREP`, field return + stats. **P3.6
+investigation** on main (`docs/P3.6_AUDIO.md` from `phase3-audio-spike`):
+blocker PSY-Z `_SsSeqPlay` `NOT_IMPLEMENTED` — Done-when not met.
 
 Objective: the full game loop runs on PC: field, stages, battle, menus,
 audio, movies.
@@ -206,8 +208,9 @@ audio, movies.
 - [ ] **P3.6 Audio.** libsnd path through PSY-Z: VAB banks, SEP music,
   SFX, reverb settings the game sets. Verify `SsSeqCalledTbyT` timing
   from the vsync callback.
-  Investigation (Task S1): `docs/P3.6_AUDIO.md` on `phase3-audio-spike`
-  — blockers listed; no Core CMake. Implementation = Task A6.
+  Investigation (Task S1): `docs/P3.6_AUDIO.md` (from `phase3-audio-spike`)
+  — blocker PSY-Z `_SsSeqPlay` `NOT_IMPLEMENTED`; no Core CMake.
+  Implementation = Task A6.
   Done when: title music, field music change on stage switch, battle SFX.
 - [ ] **P3.7 Movies.** Title STR playback through PSY-Z `libpress` +
   streaming (`CdRead2`, `StSetRing`) from raw-sector `.STR` files packed
