@@ -254,21 +254,26 @@ Expected logs: no `MDEC_* not implemented`; no `no track found for sector …` f
 - Modify: `platforms/pc` audio init path so `Psyz_AudioInit` succeeds for validation runs
 - Docs: `docs/P3.7_MOVIES.md`
 
-- [ ] **Step 1: Confirm `CdlModeRT` + XA filter path runs during movie**
+- [x] **Step 1: Confirm `CdlModeRT` + XA filter path runs during movie**
 
-Game already sets stream with RT. Ensure file-backed sectors deliver XA submode data the SPU CD pull expects.
+Game already sets stream with RT. File-bridge sectors deliver XA submode
+(`0x64`/`ci=0x01`); `xa_read_raw_sector` uses `Psyz_CdSetReadCB`.
 
-- [ ] **Step 2: Run with real SDL audio (not dummy-only)**
+- [x] **Step 2: Run with real SDL audio (not dummy-only)**
 
 ```bash
 DW3_START_MODE=0xE01 DW3_RUNTIME=runtime/us ./build/pc/dw3-pc --runtime runtime/us
 ```
 
-Expected: log shows audio init OK; XA/RT active; owner can hear opening audio.
+On this host SDL has no Pulse/ALSA: `Psyz_AudioInit` falls back to
+`dummy`; mix proven with `SDL_AUDIODRIVER=disk` → `sdlaudio.raw`
+(peak≈20k). Owner listen on a real DAC still required for done-when.
 
-- [ ] **Step 3: Document listen evidence in `P3.7_MOVIES.md`**
+- [x] **Step 3: Document listen evidence in `P3.7_MOVIES.md`**
 
-- [ ] **Step 4: Commit + push**
+Documented decode/mix + owner-listen gap (Wave 4); not faked as audible.
+
+- [x] **Step 4: Commit + push**
 
 ---
 

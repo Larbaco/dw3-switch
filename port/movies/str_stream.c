@@ -4,10 +4,13 @@
 
 #include <libcd.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #define STR_USER_BYTES 2048
+#define STR_FORM2_USER 2324
 #define STR_RAW_BYTES 2352
+#define STR_VIDEO_MAGIC 0x0160
 
 typedef struct {
     int open;
@@ -21,6 +24,10 @@ typedef struct {
 } StrStream;
 
 static StrStream g_str;
+static FILE *g_disc_bin;
+static int g_disc_bin_tried;
+static int g_xa_hdr_logged;
+static int g_disc_bin_logged;
 
 static void encode_bcd_byte(int v, u_char *out) {
     if (v < 0) {
@@ -32,11 +39,23 @@ static void encode_bcd_byte(int v, u_char *out) {
     *out = (u_char)(((v / 10) << 4) | (v % 10));
 }
 
-static void fill_mode2_headers(int abs_lba, uint8_t out[STR_RAW_BYTES]) {
+static int is_video_user(const uint8_t user[STR_USER_BYTES]) {
+    uint16_t magic = (uint16_t)user[0] | ((uint16_t)user[1] << 8);
+    return magic == STR_VIDEO_MAGIC;
+}
+
+/* Subheader matches raw US MOVIEOPN.STR Mode2/Form2 sectors:
+ * video: file=1 chan=1 submode=Data|Form2|RT (0x68) ci=0
+ * XA:    file=1 chan=1 submode=Audio|Form2|RT (0x64) ci=stereo 4-bit 37800 (0x01)
+ */
+static void fill_mode2_headers(int abs_lba, int xa_audio,
+                               uint8_t out[STR_RAW_BYTES]) {
     int total = abs_lba + 150;
     int mm = total / (75 * 60);
     int ss = (total / 75) % 60;
     int ff = total % 75;
+    uint8_t submode = xa_audio ? 0x64 : 0x68;
+    uint8_t ci = xa_audio ? 0x01 : 0x00;
 
     memset(out, 0, STR_RAW_BYTES);
     /* Sync */
@@ -48,15 +67,61 @@ static void fill_mode2_headers(int abs_lba, uint8_t out[STR_RAW_BYTES]) {
     encode_bcd_byte(ss, &out[13]);
     encode_bcd_byte(ff, &out[14]);
     out[15] = 0x02;
-    /* Subheader (Form2 | RealTime | Data): file=1 chan=1 submode=0x64 */
+    /* Subheader (duplicated) */
     out[16] = 0x01;
     out[17] = 0x01;
-    out[18] = 0x64;
-    out[19] = 0x00;
+    out[18] = submode;
+    out[19] = ci;
     out[20] = 0x01;
     out[21] = 0x01;
-    out[22] = 0x64;
-    out[23] = 0x00;
+    out[22] = submode;
+    out[23] = ci;
+}
+
+static FILE *disc_bin_fp(void) {
+    const char *path;
+
+    if (g_disc_bin) {
+        return g_disc_bin;
+    }
+    if (g_disc_bin_tried) {
+        return NULL;
+    }
+    g_disc_bin_tried = 1;
+    path = getenv("DW3_DISC_BIN");
+    if (!path || !path[0]) {
+        return NULL;
+    }
+    g_disc_bin = fopen(path, "rb");
+    if (!g_disc_bin) {
+        fprintf(stderr, "dw3-str: DW3_DISC_BIN open failed: %s\n", path);
+        return NULL;
+    }
+    fprintf(stderr, "dw3-str: raw disc bin for Form2 XA: %s\n", path);
+    return g_disc_bin;
+}
+
+static int read_raw_disc_sector(int lba, uint8_t out[STR_RAW_BYTES]) {
+    FILE *fp = disc_bin_fp();
+    long off;
+
+    if (!fp || lba < 0) {
+        return -1;
+    }
+    off = (long)lba * (long)STR_RAW_BYTES;
+    if (fseek(fp, off, SEEK_SET) != 0) {
+        return -1;
+    }
+    if (fread(out, 1, STR_RAW_BYTES, fp) != STR_RAW_BYTES) {
+        return -1;
+    }
+    if (g_disc_bin_logged < 1) {
+        fprintf(stderr,
+                "dw3-str: raw bin sector %d submode=0x%02x ci=0x%02x\n", lba,
+                out[18], out[19]);
+        g_disc_bin_logged++;
+    }
+    return 0;
 }
 
 static int open_path(uint32_t id, const char *rel, uint32_t base_lba,
@@ -128,16 +193,29 @@ void dw3_str_stream_close(void) {
         g_str.fp = NULL;
     }
     memset(&g_str, 0, sizeof(g_str));
+    if (g_disc_bin) {
+        fclose(g_disc_bin);
+        g_disc_bin = NULL;
+    }
+    g_disc_bin_tried = 0;
 }
 
 int dw3_str_stream_read_sector(int lba, uint8_t out[STR_RAW_BYTES]) {
     long off;
     size_t n;
     uint8_t user[STR_USER_BYTES];
+    int xa_audio;
 
     if (!out || open_for_lba(lba) != 0) {
         return -1;
     }
+
+    /* Prefer owner raw Mode2/2352 bin when set: packed STR truncates Form2
+     * user data at 2048 (drops last 2 XA ADPCM blocks). */
+    if (g_str.form == 2 && read_raw_disc_sector(lba, out) == 0) {
+        return 0;
+    }
+
     off = (long)((uint32_t)lba - g_str.base_lba) * (long)STR_USER_BYTES;
     if (fseek(g_str.fp, off, SEEK_SET) != 0) {
         return -1;
@@ -147,9 +225,19 @@ int dw3_str_stream_read_sector(int lba, uint8_t out[STR_RAW_BYTES]) {
     if (n == 0) {
         return -1;
     }
-    fill_mode2_headers(lba, out);
+    xa_audio = !is_video_user(user);
+    fill_mode2_headers(lba, xa_audio, out);
     memcpy(out + 24, user, STR_USER_BYTES);
-    /* Remaining Form2 user (2324-2048) + EDC stay zero from fill. */
+    /* Remaining Form2 user (2324-2048) + EDC stay zero from fill when the
+     * raw disc bin is unavailable — XA decode still gets 16/18 blocks. */
+    if (xa_audio && g_xa_hdr_logged < 1) {
+        fprintf(stderr,
+                "dw3-str: XA sector %d via packed 2048 (submode=0x%02x "
+                "ci=0x%02x; set DW3_DISC_BIN for full Form2)\n",
+                lba, out[18], out[19]);
+        g_xa_hdr_logged++;
+    }
+    (void)STR_FORM2_USER;
     return 0;
 }
 
@@ -167,4 +255,6 @@ int dw3_str_cd_read_cb(struct PsyzCdRead *read) {
 void dw3_str_stream_install_cd_bridge(void) {
     Psyz_CdSetReadCB(dw3_str_cd_read_cb);
     fprintf(stderr, "dw3-str: installed Psyz_CdSetReadCB file bridge\n");
+    /* Probe optional disc bin early so logs are near bridge install. */
+    (void)disc_bin_fp();
 }

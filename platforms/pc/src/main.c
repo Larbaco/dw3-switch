@@ -2,9 +2,12 @@
  * PC host bootstrap (P2.8): init cdfs + memcard + overlays, load boot TIM,
  * then enter the decomp game loop (dw3_game_main).
  *
- * P3.7 Task 3: install file-backed STR CD bridge and pump StCdIntrFlag.
+ * P3.7 Task 3–4: file-backed STR CD bridge, StCdIntrFlag pump, XA evidence
+ * drain when the SDL audio device is missing/headless.
  */
 #include <psyz.h>
+#include <psyz/audio.h>
+#include <psyz/spu.h>
 
 #include "boot_tim_host.h"
 #include "cdfs.h"
@@ -22,6 +25,44 @@ extern volatile int StCdIntrFlag;
 void StCdInterrupt(void);
 
 static PsyzVSyncCb g_prev_vsync_cb;
+static int g_audio_ok;
+static int g_xa_mix_logged;
+static unsigned g_xa_drain_frames;
+
+static void dw3_pc_xa_evidence_drain(void) {
+    short buf[1024 * 2];
+    int i;
+    long peak = 0;
+    long abs_sum = 0;
+
+    /* SDL callback pulls when AudioInit succeeded; otherwise drain here so
+     * file-bridge XA → SPU mix can still be proven from logs. */
+    if (g_audio_ok) {
+        return;
+    }
+    Psyz_SpuPullSamples(buf, 1024);
+    g_xa_drain_frames += 1024;
+    if (g_xa_mix_logged) {
+        return;
+    }
+    for (i = 0; i < 1024 * 2; i++) {
+        long v = buf[i];
+        if (v < 0) {
+            v = -v;
+        }
+        abs_sum += v;
+        if (v > peak) {
+            peak = v;
+        }
+    }
+    if (peak > 64 || g_xa_drain_frames > 44100u * 3u) {
+        fprintf(stderr,
+                "dw3-xa: SPU mix drain frames=%u peak=%ld mean_abs=%ld "
+                "(no SDL playback device; owner listen still required)\n",
+                g_xa_drain_frames, peak, abs_sum / (1024 * 2));
+        g_xa_mix_logged = 1;
+    }
+}
 
 static void dw3_pc_vsync_pump(void) {
     if (StCdIntrFlag) {
@@ -29,6 +70,7 @@ static void dw3_pc_vsync_pump(void) {
         StCdIntrFlag = 0;
     }
     Psyz_CdPumpStream();
+    dw3_pc_xa_evidence_drain();
     if (g_prev_vsync_cb) {
         g_prev_vsync_cb();
     }
@@ -65,6 +107,18 @@ static int init_paths(int argc, char **argv) {
     fprintf(stderr, "dw3-pc: cdfs root=%s\n", root);
 
     dw3_str_stream_install_cd_bridge();
+
+    /* Eager audio init so CdlModeRT XA has a device (or we log failure and
+     * fall back to the vsync SPU drain for decode/mix evidence). */
+    if (Psyz_AudioInit() == 0) {
+        g_audio_ok = 1;
+        fprintf(stderr, "dw3-pc: Psyz_AudioInit OK\n");
+    } else {
+        g_audio_ok = 0;
+        fprintf(stderr,
+                "dw3-pc: Psyz_AudioInit failed — XA decode/mix will be "
+                "drained on vsync for logs; audible listen needs a device\n");
+    }
 
     if (memdir == NULL) {
         snprintf(memcard_buf, sizeof(memcard_buf), "%s/memcard", root);

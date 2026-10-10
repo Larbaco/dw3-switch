@@ -1,9 +1,15 @@
-/* File-backed STR stream bridge (P3.7 Wave 3 / Task 3).
+/* File-backed STR stream bridge (P3.7 Wave 3–4).
  *
  * Resolves movie LBAs from FILE_TABLE.getPos / CdlLOC against the packed
  * runtime map (files_us.json → AAA/STR/*.STR). Host packs store 2048-byte
  * user payloads per sector (form: 2); the bridge synthesizes Mode2/Form2
- * 2352-byte sectors for PSY-Z libcd (CdReady / StCdInterrupt).
+ * 2352-byte sectors for PSY-Z libcd (CdReady / StCdInterrupt / XA pull).
+ *
+ * Video vs XA: user magic 0x0160 → Data|Form2|RT subheader; otherwise
+ * Audio|Form2|RT + stereo CI so CdlModeRT XA decode accepts the sector.
+ *
+ * Optional: DW3_DISC_BIN=/path/to/game.bin (Mode2/2352) supplies full
+ * Form2 user data (packed STR truncates XA at 2048 bytes).
  *
  * Path resolution:
  *   CdlLOC / absolute LBA → cdfs_lookup_lba → <runtime>/<path>
