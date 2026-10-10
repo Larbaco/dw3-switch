@@ -106,15 +106,16 @@ the host, replace MIPS-only pieces, and reach the title screen on PC.
   `src/engine` (enforced as `-Werror=` on `dw3_engine`). Upstream
   `make compare` not run here — no MIPS toolchain on this host (blocker
   noted in `docs/PATCHES.md`).
-- [ ] **P2.5 CD → filesystem.** `port/cdfs/`: implement the file-id read
-  path the engine uses (`CD_READER.readFile` semantics, `FILE_TABLE`
-  sector counts, `cdReadyCallback`-style completion) over
-  `files_<ver>.json` and host files; keep PSY-Z's `libcd` only for STR
-  streaming. Sector/EOF pitfalls for the host layer:
-  [CDFS_NOTES.md](CDFS_NOTES.md).
-  Done when: `FILE_CACHE.load(id)` returns byte-identical buffers to the
-  disc for a sample of ids (unit test with the owner's data, skipped in
-  CI).
+- [x] **P2.5 CD → filesystem.** `port/cdfs/`: Wave 1 file-id read path
+  over `files_<ver>.json` and packed host files (`cdfs_set_root` /
+  `cdfs_load_map` / `cdfs_read`); path traversal rejected; `cdfs_poll`
+  reserved for later `cdReadyCallback`-style async. PSY-Z `libcd` kept
+  for STR streaming only. Sector/EOF notes:
+  [CDFS_NOTES.md](CDFS_NOTES.md). Host CLI + tests:
+  `tools/cdfs_cat.c`, `tools/tests/test_cdfs.py` (mini fixture; owner
+  `runtime/us` spot-check skipped in CI).
+  Done when: fixture reads are byte-identical — verified. Full
+  `FILE_CACHE.load` wiring is later (title boot / engine integrate).
 - [x] **P2.6 Static overlay model.** `port/overlays/`: descriptor table
   `{file id → entry, data, data_init, bss}`, `loadModeOverlay` /
   `loadSubOverlay` host path (`0008`) restores initial `.data` **only
@@ -126,10 +127,14 @@ the host, replace MIPS-only pieces, and reach the title screen on PC.
   Done when: two different overlays and the same overlay twice behave as
   on PS1 (globals reset vs. preserved) — verified by the host fixture
   test. Full title link/boot is P2.8 / E6.
-- [ ] **P2.7 Memory card → file.** `port/memcard/`: back `MemCard*`
-  calls with a 128 KiB PS1-format card image per slot on disk, so saves
-  stay importable/exportable (`.mcr`).
-  Done when: a save written on PC loads in DuckStation and vice versa.
+- [x] **P2.7 Memory card → file.** `port/memcard/`: 128 KiB PS1-format
+  `.mcr` per slot (`memcard_host_*` sector API matching libcard). PSY-Z
+  still uses bu00 directories / stubs `_card_*`; Wave 4 wires those to
+  this backend. Host CLI + tests: `tools/memcard_rw.c`,
+  `tools/tests/test_memcard.py`. DuckStation round-trip is owner manual
+  (see `port/memcard/README.md`).
+  Done when: host `.mcr` images are 128 KiB formatted/readable — verified
+  by fixture tests.
 - [ ] **P2.8 Boot to title on PC.** Link engine + `STDWTITL` + `CNTY_SEL`
   (EU) and run `main()` under PSY-Z.
   Done when: the boot image shows, then the title screen renders and

@@ -58,12 +58,22 @@ add_library(dw3_host_overlays OBJECT
   "${CMAKE_CURRENT_SOURCE_DIR}/overlays/overlay_table_us.c"
 )
 
+# CD → filesystem file-id reads (P2.5) and 128 KiB .mcr slots (P2.7).
+add_library(dw3_cdfs OBJECT
+  "${CMAKE_CURRENT_SOURCE_DIR}/cdfs/cdfs.c"
+)
+add_library(dw3_memcard OBJECT
+  "${CMAKE_CURRENT_SOURCE_DIR}/memcard/memcard_host.c"
+)
+
 # Include order: port host → PSY-Z (Psy-Q names) → decomp headers/sources.
 # port/include/common.h shadows decomp common.h so gnu89 does not redefine
 # s8/u8 against PSY-Z's psyz/types.h.
 target_include_directories(dw3_engine PRIVATE
   "${CMAKE_CURRENT_SOURCE_DIR}/include"
   "${CMAKE_CURRENT_SOURCE_DIR}/overlays"
+  "${CMAKE_CURRENT_SOURCE_DIR}/cdfs"
+  "${CMAKE_CURRENT_SOURCE_DIR}/memcard"
   "${PSYZ_INCLUDE}"
   "${DECOMP_SRC}/include"
   "${DECOMP_SRC}/src"
@@ -71,6 +81,12 @@ target_include_directories(dw3_engine PRIVATE
 )
 target_include_directories(dw3_host_overlays PRIVATE
   "${CMAKE_CURRENT_SOURCE_DIR}/overlays"
+)
+target_include_directories(dw3_cdfs PUBLIC
+  "${CMAKE_CURRENT_SOURCE_DIR}/cdfs"
+)
+target_include_directories(dw3_memcard PUBLIC
+  "${CMAKE_CURRENT_SOURCE_DIR}/memcard"
 )
 
 target_compile_definitions(dw3_engine PRIVATE
@@ -90,6 +106,16 @@ set_target_properties(dw3_engine PROPERTIES
 )
 set_target_properties(dw3_host_overlays PROPERTIES
   C_STANDARD 90
+  C_STANDARD_REQUIRED ON
+  C_EXTENSIONS ON
+)
+set_target_properties(dw3_cdfs PROPERTIES
+  C_STANDARD 11
+  C_STANDARD_REQUIRED ON
+  C_EXTENSIONS ON
+)
+set_target_properties(dw3_memcard PROPERTIES
+  C_STANDARD 11
   C_STANDARD_REQUIRED ON
   C_EXTENSIONS ON
 )
@@ -116,9 +142,11 @@ target_compile_options(dw3_engine PRIVATE
 add_library(dw3_engine_objs STATIC
   $<TARGET_OBJECTS:dw3_engine>
   $<TARGET_OBJECTS:dw3_host_overlays>
+  $<TARGET_OBJECTS:dw3_cdfs>
+  $<TARGET_OBJECTS:dw3_memcard>
 )
 set_target_properties(dw3_engine_objs PROPERTIES
   OUTPUT_NAME dw3_engine
   LINKER_LANGUAGE C
 )
-add_dependencies(dw3_engine_objs dw3_engine dw3_host_overlays)
+add_dependencies(dw3_engine_objs dw3_engine dw3_host_overlays dw3_cdfs dw3_memcard)
