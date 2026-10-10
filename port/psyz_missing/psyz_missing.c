@@ -72,37 +72,7 @@ SVECTOR *ApplyMatrixSV(MATRIX *m, SVECTOR *v0, SVECTOR *v1) {
     return v1;
 }
 
-/* --- libpad / libetc --- */
-
-void PadInitDirect(unsigned char *pad1, unsigned char *pad2) {
-    (void)pad1;
-    (void)pad2;
-}
-
-void PadStopCom(void) {}
-
-int PadChkVsync(void) { return 1; }
-
-int PadInfoMode(int port, int term, int offs) {
-    (void)port;
-    (void)term;
-    (void)offs;
-    return 0;
-}
-
-int PadSetMainMode(int port, int offs, int lock) {
-    (void)port;
-    (void)offs;
-    (void)lock;
-    return 1;
-}
-
-int PadInfoAct(int port, int actno, int term) {
-    (void)port;
-    (void)actno;
-    (void)term;
-    return 0;
-}
+/* libpad: see psyz_pad_host.c (linked into dw3-pc so PadGetState wins). */
 
 /* --- libmcrd --- */
 

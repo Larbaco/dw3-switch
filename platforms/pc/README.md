@@ -44,6 +44,10 @@ python3 tools/pack_runtime.py --version us --disks disks/us --out runtime/us --f
 # env alternatives: DW3_RUNTIME, DW3_MEMCARD_DIR
 ```
 
-Expect `dw3: mode=0xe00 title_entry=...` then the title window (logo may be
-glitched; see `docs/P2.8_TITLE_BOOT.md`). Close the window to quit
-(`Psyz_QuitRequested`).
+Expect `dw3: mode=0xe00 title_entry=...`, `dw3-pad: port 0 connected`, then
+the title window (logo may be glitched; see `docs/P2.8_TITLE_BOOT.md`).
+Keyboard: Enter=Start, arrows=D-pad (PSY-Z SDL map). Close the window to
+quit (`Psyz_QuitRequested`).
+
+Pad unit check (no window): `gcc …` via `tools/tests/test_pad_host.py` or
+the commands in that file.

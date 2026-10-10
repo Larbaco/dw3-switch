@@ -135,19 +135,19 @@ the host, replace MIPS-only pieces, and reach the title screen on PC.
   (see `port/memcard/README.md`).
   Done when: host `.mcr` images are 128 KiB formatted/readable — verified
   by fixture tests.
-- [x] **P2.8 Boot to title on PC.** (E6 / 2026-10-10): `dw3-pc` links
-  engine + `STDWTITL` + cdfs + memcard + PSY-Z; `DW3_RUNTIME`/`--runtime`
-  (default `runtime/us`), memcard dir, `boot_tim.bin`, `dw3_game_main()`.
-  Movies skipped (`MODE_TITLE`). Title loader completes; `STDWTITL_tickTitle`
-  runs (menu / PRESS START path). Screenshot shows recognizable title
-  (circuit BG + logo fragments; sprite/VRAM glitches remain — follow-up).
-  Pad is the title menu’s `PAD_PRESSED` path via PSY-Z. `vendor/` clean.
+- [x] **P2.8 Boot to title on PC.** (E6 / 2026-10-10; pad fix 2026-10-10):
+  `dw3-pc` links engine + `STDWTITL` + cdfs + memcard + PSY-Z; boots to
+  title. Host libpad: `PadInitDirect` → `InitPAD`, `PadGetState` returns
+  connected (`PadStateFindCTP1`) when PSY-Z/SDL has a pad/keyboard frame
+  (PSY-Z's stub always returned Discon). Proven headless:
+  `pytest tools/tests/test_pad_host.py` (injected Start bit in RX buffer).
+  Title still shows GPU glitches (follow-up). `vendor/` clean.
   Details: `docs/P2.8_TITLE_BOOT.md`.
   Done when: the boot image shows, then the title screen renders and
   reacts to the pad on PC (movies may be skipped at this point).
 
 Gate: title screen on PC from the decomp's C, no local edits inside
-`vendor/`. **Passed** (title draws from decomp C; GPU polish open).
+`vendor/`. **Passed** (title draws + pad state connected; GPU polish open).
 
 ## Phase 3 — Game bring-up on PC
 
