@@ -45,6 +45,16 @@ extern char __stop_dw3data_wstag790[];
 extern char __start_dw3bss_wstag790[];
 extern char __stop_dw3bss_wstag790[];
 
+extern char __start_dw3data_fightstg[];
+extern char __stop_dw3data_fightstg[];
+extern char __start_dw3bss_fightstg[];
+extern char __stop_dw3bss_fightstg[];
+
+extern char __start_dw3data_wfightmn[];
+extern char __stop_dw3data_wfightmn[];
+extern char __start_dw3bss_wfightmn[];
+extern char __stop_dw3bss_wfightmn[];
+
 static void bind_section(Dw3OverlayDesc *desc, char *data, char *data_end, char *bss,
                          char *bss_end) {
     size_t data_size;
@@ -96,4 +106,11 @@ void dw3_overlay_bind_field_sections(Dw3OverlayDesc *fieldstg, Dw3OverlayDesc *s
                  __start_dw3bss_wstag785, __stop_dw3bss_wstag785);
     bind_section(wstag790, __start_dw3data_wstag790, __stop_dw3data_wstag790,
                  __start_dw3bss_wstag790, __stop_dw3bss_wstag790);
+}
+
+void dw3_overlay_bind_battle_sections(Dw3OverlayDesc *fightstg, Dw3OverlayDesc *wfightmn) {
+    bind_section(fightstg, __start_dw3data_fightstg, __stop_dw3data_fightstg,
+                 __start_dw3bss_fightstg, __stop_dw3bss_fightstg);
+    bind_section(wfightmn, __start_dw3data_wfightmn, __stop_dw3data_wfightmn,
+                 __start_dw3bss_wfightmn, __stop_dw3bss_wfightmn);
 }

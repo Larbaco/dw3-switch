@@ -382,7 +382,67 @@ set_target_properties(dw3_p32_field PROPERTIES
 )
 add_dependencies(dw3_p32_field dw3_p32_field_objs)
 
-# Archive for the PC host: engine + title + port glue (field objs separate).
+# ---------------------------------------------------------------------------
+# P3.3: FIGHTSTG + WFIGHTMN with named .data/.bss for static overlay restore.
+# ---------------------------------------------------------------------------
+file(GLOB DW3_FIGHT_SOURCES CONFIGURE_DEPENDS
+  "${DECOMP_SRC}/src/battle/battle_mode/*.c")
+list(FILTER DW3_FIGHT_SOURCES EXCLUDE REGEX "\\.inc\\.c$")
+list(LENGTH DW3_FIGHT_SOURCES _dw3_fight_count)
+if(_dw3_fight_count EQUAL 0)
+  message(FATAL_ERROR "no FIGHTSTG sources under ${DECOMP_SRC}/src/battle/battle_mode")
+endif()
+
+file(GLOB DW3_WFIGHTMN_SOURCES CONFIGURE_DEPENDS
+  "${DECOMP_SRC}/src/battle/normal_battle/*.c"
+  "${DECOMP_SRC}/src/battle/normal_battle/data/*.c")
+list(FILTER DW3_WFIGHTMN_SOURCES EXCLUDE REGEX "\\.inc\\.c$")
+list(LENGTH DW3_WFIGHTMN_SOURCES _dw3_wfightmn_count)
+if(_dw3_wfightmn_count EQUAL 0)
+  message(FATAL_ERROR "no WFIGHTMN sources under ${DECOMP_SRC}/src/battle/normal_battle")
+endif()
+
+dw3_compile_c_objects(DW3_FIGHT_OBJECTS ${DW3_FIGHT_SOURCES})
+dw3_compile_c_objects(DW3_WFIGHTMN_OBJECTS ${DW3_WFIGHTMN_SOURCES})
+
+add_custom_command(
+  OUTPUT "${DW3_HOST_OVL_DIR}/fightstg.host.o"
+  COMMAND ${CMAKE_COMMAND} -E env PYTHONUNBUFFERED=1
+    "${CMAKE_COMMAND}" -E rm -f "${DW3_HOST_OVL_DIR}/fightstg.host.o"
+  COMMAND python3 "${RENAME_OVL_SECTIONS}" fightstg
+    "${DW3_HOST_OVL_DIR}/fightstg.host.o"
+    ${DW3_FIGHT_OBJECTS}
+  DEPENDS ${DW3_FIGHT_OBJECTS} "${RENAME_OVL_SECTIONS}"
+  COMMENT "P3.3 pack FIGHTSTG host overlay object"
+  VERBATIM
+)
+add_custom_command(
+  OUTPUT "${DW3_HOST_OVL_DIR}/wfightmn.host.o"
+  COMMAND python3 "${RENAME_OVL_SECTIONS}" wfightmn
+    "${DW3_HOST_OVL_DIR}/wfightmn.host.o"
+    ${DW3_WFIGHTMN_OBJECTS}
+  DEPENDS ${DW3_WFIGHTMN_OBJECTS} "${RENAME_OVL_SECTIONS}"
+  COMMENT "P3.3 pack WFIGHTMN host overlay object"
+  VERBATIM
+)
+
+set(DW3_P33_HOST_OBJECTS
+  "${DW3_HOST_OVL_DIR}/fightstg.host.o"
+  "${DW3_HOST_OVL_DIR}/wfightmn.host.o"
+)
+set_source_files_properties(${DW3_P33_HOST_OBJECTS} PROPERTIES
+  EXTERNAL_OBJECT TRUE
+  GENERATED TRUE
+)
+add_custom_target(dw3_p33_battle_objs DEPENDS ${DW3_P33_HOST_OBJECTS})
+
+add_library(dw3_p33_battle STATIC ${DW3_P33_HOST_OBJECTS})
+set_target_properties(dw3_p33_battle PROPERTIES
+  LINKER_LANGUAGE C
+)
+add_dependencies(dw3_p33_battle dw3_p33_battle_objs)
+
+# Archive for the PC host: engine + title + port glue (field/battle objs separate).
 add_library(dw3_engine_objs STATIC
   $<TARGET_OBJECTS:dw3_engine>
   $<TARGET_OBJECTS:dw3_title>

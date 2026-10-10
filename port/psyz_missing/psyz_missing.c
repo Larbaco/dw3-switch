@@ -5,6 +5,7 @@
  */
 #include <libgs.h>
 #include <libgte.h>
+#include <libgpu.h>
 #include <libetc.h>
 #include <libmcrd.h>
 #include <libsnd.h>
@@ -18,6 +19,17 @@ MATRIX GsLIGHTWSMATRIX;
 void GsInit3D(void) {}
 
 void GsSetProjection(long h) { (void)h; }
+
+void GsSetLightMode(int mode) { (void)mode; }
+
+/* PSY-Z has no host GsSetFlatLight; accept Psy-Q GsF_LIGHT (port/include). */
+int Dw3_GsSetFlatLight(int id, GsF_LIGHT *light) {
+    (void)id;
+    (void)light;
+    return 0;
+}
+
+void GsSetRefView2(GsRVIEW2 *pv) { (void)pv; }
 
 /* Not declared in PSY-Z libgs.h yet. */
 void GsGetTimInfo(unsigned long *addr, GsIMAGE *img);
@@ -54,9 +66,25 @@ void GsGetTimInfo(unsigned long *addr, GsIMAGE *img) {
     (void)flag;
 }
 
+/* --- libgpu (draw interrupt helpers unused on host GPU path) --- */
+
+u_long *BreakDraw(void) { return 0; }
+
+void ContinueDraw(u_long *inst_ot, u_long *cont_ot) {
+    (void)inst_ot;
+    (void)cont_ot;
+}
+
+int IsIdleGPU(int maxcount) {
+    (void)maxcount;
+    return 0;
+}
+
 /* --- libgte --- */
 
 MATRIX *RotMatrixYXZ_gte(SVECTOR *r, MATRIX *m) { return RotMatrixYXZ(r, m); }
+
+MATRIX *RotMatrixZYX_gte(SVECTOR *r, MATRIX *m) { return RotMatrixZYX(r, m); }
 
 /* Psy-Q signature: SVECTOR out (not VECTOR). */
 SVECTOR *ApplyMatrixSV(MATRIX *m, SVECTOR *v0, SVECTOR *v1) {

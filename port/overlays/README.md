@@ -48,12 +48,16 @@ Unlinked stages get weak stubs from `tools/gen_stage_stubs.py`.
 | `WSTAG260` | `462` / `0x1CE` | Story scripts (data) |
 | `WSTAG780` | `474` / `0x1DA` | Kusanagi street (new-game start) |
 | `WSTAG785` | `475` / `0x1DB` | Online Center (door target) |
+| `WSTAG790` | `476` / `0x1DC` | Chamber Room (post-name) |
+| `FIGHTSTG` | `0x159` | Battle mode (P3.3) |
+| `WFIGHTMN` | `0x1FA` | Normal battle sub-overlay (P3.3) |
 
 `overlay_table_us.c` registers the rows above; `CNTY_SEL` stays out for US.
 Host objects use named `.data`/`.bss` sections (`tools/rename_ovl_sections.py`,
 `tools/merge_ovl_sections.ld`) and snapshots in `overlay_sections.c`. Stage TUs
-are symbol-prefixed (`tools/prefix_stage_obj.py`) and linked via `dw3_p32_field`.
-P3.2 runtime status: `docs/P3.2_FIELD.md`.
+are symbol-prefixed (`tools/prefix_stage_obj.py`) and linked via `dw3_p32_field`;
+battle via `dw3_p33_battle`. Runtime notes: `docs/P3.2_FIELD.md`,
+`docs/P3.3_BATTLE.md`.
 
 ### Host test
 

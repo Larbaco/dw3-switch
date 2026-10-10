@@ -16,7 +16,8 @@ typedef struct Task Task;
     }
 
 DW3_MODE_STUB(STCRDDEK_start)
-DW3_MODE_STUB(FIGHTSTG_start)
+/* FIGHTSTG_start comes from P3.3 host overlay objects — do not weak-stub. */
+DW3_MODE_STUB(WFIGHTTS_start)
 DW3_MODE_STUB(CARDGAME_start)
 DW3_MODE_STUB(SOUNDTST_start)
 DW3_MODE_STUB(SHOCKTST_start)
