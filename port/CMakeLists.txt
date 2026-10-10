@@ -337,6 +337,24 @@ dw3_host_stage(wstag260 "wstag260.c")
 dw3_host_stage(wstag780 "kusanagi_city/wstag780.c")
 dw3_host_stage(wstag785 "kusanagi_city/wstag785.c")
 dw3_host_stage(wstag790 "kusanagi_city/wstag790.c")
+# P3.8 batch 1: early-game / SCRIPT_LEAVE-connected from 780/785/790
+dw3_host_stage(wstag200 "central_sector/wstag200.c")
+dw3_host_stage(wstag201 "central_sector/wstag201.c")
+dw3_host_stage(wstag206 "central_sector/wstag206.c")
+dw3_host_stage(wstag210 "asuka_city/wstag210.c")
+dw3_host_stage(wstag212 "asuka_city/wstag212.c")
+dw3_host_stage(wstag220 "asuka_city/wstag220.c")
+dw3_host_stage(wstag225 "asuka_city/wstag225.c")
+dw3_host_stage(wstag230 "asuka_city/wstag230.c")
+dw3_host_stage(wstag235 "asuka_city/wstag235.c")
+dw3_host_stage(wstag240 "asuka_city/wstag240.c")
+dw3_host_stage(wstag245 "asuka_city/wstag245.c")
+dw3_host_stage(wstag250 "asuka_city/wstag250.c")
+dw3_host_stage(wstag255 "asuka_city/wstag255.c")
+
+set(DW3_LINKED_STAGES
+  WSTAG260,WSTAG780,WSTAG785,WSTAG790,WSTAG200,WSTAG201,WSTAG206,WSTAG210,WSTAG212,WSTAG220,WSTAG225,WSTAG230,WSTAG235,WSTAG240,WSTAG245,WSTAG250,WSTAG255
+)
 
 set(DW3_STAGE_STUBS_C "${DW3_HOST_OVL_DIR}/stage_stubs.c")
 set(DW3_STAGE_STUBS_O "${DW3_HOST_OVL_DIR}/stage_stubs.o")
@@ -344,7 +362,7 @@ add_custom_command(
   OUTPUT "${DW3_STAGE_STUBS_C}"
   COMMAND python3 "${GEN_STAGE_STUBS}"
     --stages-h "${DECOMP_SRC}/include/field/stages.h"
-    --exclude WSTAG260,WSTAG780,WSTAG785,WSTAG790
+    --exclude "${DW3_LINKED_STAGES}"
     -o "${DW3_STAGE_STUBS_C}"
   DEPENDS
     "${GEN_STAGE_STUBS}"
@@ -371,6 +389,19 @@ set(DW3_P32_HOST_OBJECTS
   "${DW3_HOST_OVL_DIR}/wstag780.host.o"
   "${DW3_HOST_OVL_DIR}/wstag785.host.o"
   "${DW3_HOST_OVL_DIR}/wstag790.host.o"
+  "${DW3_HOST_OVL_DIR}/wstag200.host.o"
+  "${DW3_HOST_OVL_DIR}/wstag201.host.o"
+  "${DW3_HOST_OVL_DIR}/wstag206.host.o"
+  "${DW3_HOST_OVL_DIR}/wstag210.host.o"
+  "${DW3_HOST_OVL_DIR}/wstag212.host.o"
+  "${DW3_HOST_OVL_DIR}/wstag220.host.o"
+  "${DW3_HOST_OVL_DIR}/wstag225.host.o"
+  "${DW3_HOST_OVL_DIR}/wstag230.host.o"
+  "${DW3_HOST_OVL_DIR}/wstag235.host.o"
+  "${DW3_HOST_OVL_DIR}/wstag240.host.o"
+  "${DW3_HOST_OVL_DIR}/wstag245.host.o"
+  "${DW3_HOST_OVL_DIR}/wstag250.host.o"
+  "${DW3_HOST_OVL_DIR}/wstag255.host.o"
   "${DW3_STAGE_STUBS_O}"
 )
 set_source_files_properties(${DW3_P32_HOST_OBJECTS} PROPERTIES

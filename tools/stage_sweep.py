@@ -18,8 +18,44 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 FIELDSTG = ROOT / "vendor/dw3_decomp/src/field/field_mode/data/fieldstg.c"
-LINKED = {"WSTAG260", "WSTAG780", "WSTAG785", "WSTAG790"}
-LIVE_DEFAULT = ("0x2d7", "0x2d8", "0x2d9")
+LINKED = {
+    "WSTAG260",
+    "WSTAG780",
+    "WSTAG785",
+    "WSTAG790",
+    # P3.8 batch 1 — early-game / connected from 780/785/790
+    "WSTAG200",
+    "WSTAG201",
+    "WSTAG206",
+    "WSTAG210",
+    "WSTAG212",
+    "WSTAG220",
+    "WSTAG225",
+    "WSTAG230",
+    "WSTAG235",
+    "WSTAG240",
+    "WSTAG245",
+    "WSTAG250",
+    "WSTAG255",
+}
+LIVE_DEFAULT = (
+    "0x2d7",
+    "0x2d8",
+    "0x2d9",
+    "0x200",
+    "0x270",
+    "0x272",
+    "0x203",
+    "0x204",
+    "0x206",
+    "0x207",
+    "0x208",
+    "0x20a",
+    "0x20c",
+    "0x20d",
+    "0x20e",
+    "0x20f",
+)
 
 
 def parse_us_stages() -> list[tuple[int, int, str]]:
