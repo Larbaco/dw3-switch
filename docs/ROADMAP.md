@@ -292,6 +292,10 @@ audio, movies.
 - [ ] **P3.9 Reference comparison harness.** Script that boots the same
   save in DuckStation and the PC build and captures screenshots for
   side-by-side review (PS1 output is the oracle).
+  Status (2026-10-10, `EmulationSpeed=2`): title pair is MODE_TITLE
+  (Press Start). Field oracle is the Asuka Inn interior from the owner
+  card. PC field stops on STGMCARD "Failed to access" (checksum).
+  Battle waits on `build/compare/battle/owner.state`.
   Done when: a doc page with the comparison for title, field, battle.
 
 Gate: a full playthrough segment (start → first boss) on PC without
