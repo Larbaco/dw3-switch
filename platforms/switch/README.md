@@ -30,6 +30,52 @@ LibHac-based loaders reject the file — Ryujinx dies with
 16 KiB asset section past the executable: `file size - NRO size field`
 (`0x18` in the header) should be 16440.
 
+### CMake build — the game image (P4.7, in progress)
+
+`platforms/switch/CMakeLists.txt` is the entry point that links the Phase 3 game
+image against PSY-Z for aarch64. It mirrors `platforms/pc/CMakeLists.txt` and
+reuses `port/CMakeLists.txt` verbatim (same `--whole-archive` overlay libs and
+`__start_dw3data_*` section keeps). The devkitPro Makefile above stays for the
+standalone bring-up sample.
+
+Cross-compile with devkitA64's toolchain file — the Makefile path needs
+`DEVKITPRO`; this one needs CMake inside the devkitPro image, which is what
+`tools/dk.sh` provides:
+
+```bash
+DW3=/mnt/windows/Jogos/dw3-switch/.worktrees/<worktree>   # or any checkout
+docker run --rm \
+  -v "$DW3:$DW3:ro" -v /tmp/dw3-nx-build:"$DW3/build" \
+  -v /path/to/main/.git:/path/to/main/.git:ro -w "$DW3" \
+  -e DEVKITPRO=/opt/devkitpro \
+  -e GIT_CONFIG_COUNT=1 -e GIT_CONFIG_KEY_0=safe.directory -e GIT_CONFIG_VALUE_0='*' \
+  -e PATH="/opt/devkitpro/tools/bin:/opt/devkitpro/devkitA64/bin:/usr/bin:/bin" \
+  devkitpro/devkita64:latest bash -c \
+  'cmake -S platforms/switch -B build/switch -G Ninja \
+     -DCMAKE_TOOLCHAIN_FILE=/opt/devkitpro/cmake/Switch.cmake &&
+   cmake --build build/switch -j"$(nproc)"'
+```
+
+Four things there are load-bearing and easy to trip over:
+
+- **Source mounted read-only, `build/` redirected to ext4.** Nothing the build
+  needs to write lives outside `build/` ([tools/apply_patches.sh](../../tools/apply_patches.sh)
+  writes `build/decomp-src`), and drvfs cannot be written by the container user.
+- **Mount at the same absolute path as the host.** `vendor/dw3_decomp` is a
+  submodule, and in a git worktree its `.git` pointer resolves into the *main*
+  repo — mounting at a different prefix (or not mounting the main `.git`) makes
+  `apply_patches.sh` fail with `fatal: not a git repository`.
+- **`safe.directory`**, because the container runs as a different uid than the
+  checkout owner.
+- **Do not use a login shell** (`bash -l`): `/etc/profile` rewrites `PATH` and
+  drops `devkitA64/bin`, which is where `aarch64-none-elf-nm` lives.
+
+Status (P4.7 Stage 1): everything compiles for aarch64 and the link is reached.
+It currently stops on the platform-backend contract that `psyz_backend/` has yet
+to fill — `psyz_log`, the `Psyz_Os*` group, `MyPadInit`/`Psyz_PadsPoll`,
+`Psyz_VideoVSync`, and the `__wrap_LoadImage`/`__wrap_PutDispEnv` pair the link
+options request. See [docs/SWITCH_BACKEND.md](../../docs/SWITCH_BACKEND.md).
+
 ## PSY-Z backend (Phase 4)
 
 P4.1 chose a **native libnx** backend (not SDL3-dkp). `psyz_backend/nx_gpu.c`

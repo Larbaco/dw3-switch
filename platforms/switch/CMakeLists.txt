@@ -1,0 +1,185 @@
+# Nintendo Switch host (libnx) — P4.7.
+#
+# Links the Phase 3 game image (decomp engine + overlays + stages + port/ glue)
+# against PSY-Z built for aarch64. The platform layer and the renderer are
+# supplied by psyz_backend/ — P4.1 decided the backend lives in this tree rather
+# than in the PSY-Z submodule (see docs/SWITCH_BACKEND.md). The PC host
+# (platforms/pc) remains the bring-up target; this one has to produce the .nro.
+#
+# Cross-compile with devkitA64's toolchain file. tools/dk.sh runs exactly this
+# inside the devkitPro image, so no local devkitPro install is needed:
+#
+#   cmake -S platforms/switch -B build/switch -G Ninja \
+#     -DCMAKE_TOOLCHAIN_FILE=$DEVKITPRO/cmake/Switch.cmake
+#   cmake --build build/switch
+#   # → build/switch/dw3-switch.nro
+#
+# Architecture, -D__SWITCH__, switch.specs and -lnx/-lm all come from the
+# toolchain's Platform/NintendoSwitch.cmake; only the portlibs are listed here.
+# See platforms/switch/README.md.
+
+cmake_minimum_required(VERSION 3.21)
+# CXX is needed for the link, not for our sources: libEGL.a carries nouveau's
+# nv50_ir codegen, which is C++ and needs libstdc++. The devkitPro Makefile
+# build works around the same thing with `LD := $(CXX)`.
+project(dw3-switch C CXX)
+
+set(CMAKE_C_STANDARD 11)
+set(DW3_VERSION "us" CACHE STRING "Game disc version: us or eu")
+set_property(CACHE DW3_VERSION PROPERTY STRINGS us eu)
+
+if(NOT CMAKE_SYSTEM_NAME STREQUAL "NintendoSwitch")
+  message(FATAL_ERROR
+    "configure platforms/switch with devkitA64's toolchain file "
+    "(-DCMAKE_TOOLCHAIN_FILE=$DEVKITPRO/cmake/Switch.cmake); "
+    "got CMAKE_SYSTEM_NAME='${CMAKE_SYSTEM_NAME}'")
+endif()
+
+# The overlay packing steps in port/ run `ld -r`/`objcopy`/`nm` over *target*
+# objects, so they must use the target binutils — see the DW3_PACK_ENV block in
+# port/CMakeLists.txt. Pass the absolute paths CMake detected for this toolchain
+# rather than a prefixed name looked up on PATH: devkitA64's `nm` lives in
+# devkitA64/bin, which a login shell's /etc/profile drops from PATH (its gcc is
+# unaffected only because CMake invokes the compiler by absolute path).
+set(DW3_LD "${CMAKE_LINKER}")
+set(DW3_OBJCOPY "${CMAKE_OBJCOPY}")
+set(DW3_NM "${CMAKE_NM}")
+foreach(_dw3_tool IN ITEMS DW3_LD DW3_OBJCOPY DW3_NM)
+  if(NOT EXISTS "${${_dw3_tool}}")
+    message(FATAL_ERROR
+      "${_dw3_tool} is '${${_dw3_tool}}' — CMake did not detect this "
+      "toolchain's binutils. Pass -D${_dw3_tool}=<path> (or "
+      "DW3_BINUTILS_PREFIX) pointing at the target tools.")
+  endif()
+endforeach()
+message(STATUS "target binutils: ld=${DW3_LD} objcopy=${DW3_OBJCOPY} nm=${DW3_NM}")
+
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../../vendor/psyz/psyz
+                 ${CMAKE_BINARY_DIR}/psyz)
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../../port ${CMAKE_BINARY_DIR}/port)
+
+string(TOLOWER "${DW3_VERSION}" _dw3_ver)
+if(_dw3_ver STREQUAL "us")
+  set(_dw3_ver_macro VERSION_US=1)
+elseif(_dw3_ver STREQUAL "eu")
+  set(_dw3_ver_macro VERSION_EU=1)
+else()
+  message(FATAL_ERROR "DW3_VERSION must be us or eu (got '${DW3_VERSION}')")
+endif()
+message(STATUS "DW3_VERSION=${_dw3_ver} (${_dw3_ver_macro})")
+
+# Host backend units. Globbed to match the devkitPro Makefile, which compiles
+# psyz_backend/*.c wholesale — P4.4-P4.6 fill in the placeholder units.
+file(GLOB DW3_NX_BACKEND_SOURCES CONFIGURE_DEPENDS
+  "${CMAKE_CURRENT_SOURCE_DIR}/psyz_backend/*.c")
+
+add_executable(dw3-switch
+  source/main.c
+  ${DW3_NX_BACKEND_SOURCES}
+  # Shared 64-bit host glue: PSY-Z's SeqStruct grows with 64-bit pointers and
+  # would overflow the game's PS1-sized table. Not PC-specific (aarch64 is LP64
+  # too) — it should move to port/; see docs/SWITCH_BACKEND.md.
+  ${CMAKE_CURRENT_SOURCE_DIR}/../pc/src/psyz_host_overrides.c
+  # Direct TU so PadGetState / PadInitDirect win over PSY-Z's libetc stubs in
+  # libpsyz.a, exactly as the PC host does it.
+  ${CMAKE_CURRENT_SOURCE_DIR}/../../port/psyz_missing/psyz_pad_host.c
+)
+
+target_compile_definitions(dw3-switch PRIVATE ${_dw3_ver_macro})
+
+# EGL/GLES2 come from devkitPro's switch-* portlibs, not from libnx, and they
+# ship no CMake config packages — so the toolchain leaves them off the search
+# path and the include/link dirs have to be explicit.
+if(NOT DEVKITPRO)
+  set(DEVKITPRO "$ENV{DEVKITPRO}")
+endif()
+set(DW3_NX_PORTLIBS "${DEVKITPRO}/portlibs/switch")
+if(NOT IS_DIRECTORY "${DW3_NX_PORTLIBS}")
+  message(FATAL_ERROR
+    "portlibs not found at '${DW3_NX_PORTLIBS}' — install the switch-* "
+    "portlibs (switch-mesa / switch-egl) or set DEVKITPRO")
+endif()
+
+target_include_directories(dw3-switch PRIVATE
+  ${DW3_NX_PORTLIBS}/include
+  ${CMAKE_CURRENT_SOURCE_DIR}/psyz_backend
+  ${CMAKE_CURRENT_SOURCE_DIR}/../../port/cdfs
+  ${CMAKE_CURRENT_SOURCE_DIR}/../../port/memcard
+  ${CMAKE_CURRENT_SOURCE_DIR}/../../port/movies
+  ${CMAKE_CURRENT_SOURCE_DIR}/../../port/overlays
+  ${CMAKE_CURRENT_SOURCE_DIR}/../../port/include
+  ${CMAKE_CURRENT_SOURCE_DIR}/../../vendor/psyz/psyz/include
+)
+
+target_link_directories(dw3-switch PRIVATE ${DW3_NX_PORTLIBS}/lib)
+
+# Same archive strategy as platforms/pc: --whole-archive keeps the per-overlay
+# objects (their named .data/.bss sections are what overlay_sections.c snapshots
+# for restore), and --start-group resolves the engine↔field cross-references.
+# Link through g++ so libstdc++ comes along (nouveau codegen inside libEGL.a).
+set_target_properties(dw3-switch PROPERTIES LINKER_LANGUAGE CXX)
+
+target_link_libraries(dw3-switch PRIVATE
+  "-Wl,--start-group"
+  "-Wl,--whole-archive" dw3_p32_field dw3_p33_battle dw3_p34_menus dw3_p35_cardgame
+    dw3_p38_stagslct
+  "-Wl,--no-whole-archive"
+  dw3_engine_objs
+  "-Wl,--end-group"
+  psyz
+  # libnx's -lnx/-lm come from the platform module.
+  EGL GLESv2 glapi drm_nouveau
+)
+
+target_link_options(dw3-switch PRIVATE
+  # Memcard routing (port/memcard/psyz_card_wrap.c).
+  "-Wl,--wrap=_card_read"
+  "-Wl,--wrap=_card_write"
+  # Beat PSY-Z's libetc pad stubs.
+  "-Wl,--wrap=PadGetState"
+  "-Wl,--wrap=PadStartCom"
+  "-Wl,--wrap=PadInitMtap"
+  "-Wl,--wrap=PadSetAct"
+  "-Wl,--wrap=PadSetActAlign"
+  # P3.7 MDEC movie present.
+  "-Wl,--wrap=DMACallback"
+  "-Wl,--wrap=DecDCTReset"
+  "-Wl,--wrap=DecDCTout"
+  "-Wl,--wrap=LoadImage"
+  "-Wl,--wrap=PutDispEnv"
+  # Keep the named overlay .data/.bss orphan sections (overlay_sections.c).
+  "-Wl,--undefined=__start_dw3data_fieldstg"
+  "-Wl,--undefined=__start_dw3data_stplnmet"
+  "-Wl,--undefined=__start_dw3data_wstag260"
+  "-Wl,--undefined=__start_dw3data_wstag780"
+  "-Wl,--undefined=__start_dw3data_wstag785"
+  "-Wl,--undefined=__start_dw3data_wstag790"
+  "-Wl,--undefined=__start_dw3data_fightstg"
+  "-Wl,--undefined=__start_dw3data_wfightmn"
+  "-Wl,--undefined=__start_dw3data_stfgtrep"
+  "-Wl,--undefined=__start_dw3data_ststatus"
+  "-Wl,--undefined=__start_dw3data_stitshop"
+  "-Wl,--undefined=__start_dw3data_stgtrain"
+  "-Wl,--undefined=__start_dw3data_stgdglab"
+  "-Wl,--undefined=__start_dw3data_stgmcard"
+  "-Wl,--undefined=__start_dw3data_stdgname"
+  "-Wl,--undefined=__start_dw3data_cardgame"
+  "-Wl,--undefined=__start_dw3data_stcrddek"
+  "-Wl,--undefined=__start_dw3data_stcrdshp"
+  "-Wl,--undefined=__start_dw3data_stcrdabm"
+  "-Wl,--undefined=__start_dw3data_stagslct"
+)
+
+# .nacp + .nro from the devkitPro platform module. Passing NACP is what stops
+# elf2nro falling back to its stock "HOMEBREW" asset section — the trap the
+# Makefile build hit (see platforms/switch/README.md).
+nx_generate_nacp(
+  OUTPUT "${CMAKE_BINARY_DIR}/dw3-switch.nacp"
+  NAME "dw3-switch"
+  AUTHOR "dw3-switch"
+  VERSION "0.5.0"
+)
+nx_create_nro(dw3-switch
+  OUTPUT "${CMAKE_BINARY_DIR}/dw3-switch.nro"
+  NACP "${CMAKE_BINARY_DIR}/dw3-switch.nacp"
+)
