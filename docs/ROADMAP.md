@@ -181,9 +181,10 @@ blocked** (`READY_FOR_MAIN_ROADMAP_SYNC: P3.7_BLOCKED`,
 `docs/P3.7_MOVIES.md`): `DW3_START_MODE=0xE01` reaches movie path;
 PSY-Z `MDEC_*` / `StCdInterrupt` stubs + no CD track for
 `MOVIEOPN.STR` LBA; default skip remains `MODE_TITLE`. **P3.8 partial**
-(`READY_FOR_MAIN_ROADMAP_SYNC: P3.8_BATCH1`, `docs/P3.8_STAGES.md`):
-`STAGSLCT` linked; batch1 +13 early Asuka/Central stages; 222 US
-stages still stubbed. P3.6 / P3.9 may run on side tracks.
+(`READY_FOR_MAIN_ROADMAP_SYNC: P3.8_BATCH2`, `docs/P3.8_STAGES.md`):
+`STAGSLCT` linked; batch1 +13 + batch2 +31 (Central/Asuka + Amaterasu
+twins); 48 linked host objs; live PASS 47/47; 191 US stages still
+stubbed. P3.6 / P3.9 may run on side tracks.
 
 Objective: the full game loop runs on PC: field, stages, battle, menus,
 audio, movies.
@@ -256,11 +257,12 @@ audio, movies.
   audio + Start-skip.
   Done when: the opening movies play with audio and can be skipped.
 - [ ] **P3.8 Stage sweep.** `STAGSLCT` linked (`dw3_p38_stagslct`); patch
-  `0030` + `tools/stage_sweep.py`. **Partial batch1** (`docs/P3.8_STAGES.md`,
-  `READY_FOR_MAIN_ROADMAP_SYNC: P3.8_BATCH1`): +13 early Asuka/Central
-  stages connected from `780`/`785`/`790` (17 linked host objs; 222
-  stubs). Live PASS list in `build/p38-sweep/results.tsv`.
-  Checkbox unticked until all stages load and return to select.
+  `0030` + `tools/stage_sweep.py`. **Partial batch2** (`docs/P3.8_STAGES.md`,
+  `READY_FOR_MAIN_ROADMAP_SYNC: P3.8_BATCH2`): batch1 +13 early
+  Asuka/Central; batch2 +31 remaining early Central/Asuka + Amaterasu
+  twins (48 linked host objs; 191 stubs). Live PASS 47/47 in
+  `build/p38-sweep/results.tsv`. Checkbox unticked until all stages load
+  and return to select.
   Done when: all stages load and return to the select screen.
 - [ ] **P3.9 Reference comparison harness.** Script that boots the same
   save in DuckStation and the PC build and captures screenshots for

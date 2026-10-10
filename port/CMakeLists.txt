@@ -351,9 +351,41 @@ dw3_host_stage(wstag240 "asuka_city/wstag240.c")
 dw3_host_stage(wstag245 "asuka_city/wstag245.c")
 dw3_host_stage(wstag250 "asuka_city/wstag250.c")
 dw3_host_stage(wstag255 "asuka_city/wstag255.c")
+# P3.8 batch 2: remaining early Central/Asuka + Amaterasu twins
+dw3_host_stage(wstag202 "central_sector/wstag202.c")
+dw3_host_stage(wstag203 "central_sector/wstag203.c")
+dw3_host_stage(wstag205 "central_sector/wstag205.c")
+dw3_host_stage(wstag218 "central_sector/wstag218.c")
+dw3_host_stage(wstag219 "central_sector/wstag219.c")
+dw3_host_stage(wstag232 "asuka_city/wstag232.c")
+dw3_host_stage(wstag237 "asuka_city/wstag237.c")
+dw3_host_stage(wstag270 "asuka_city/wstag270.c")
+dw3_host_stage(wstag275 "asuka_city/wstag275.c")
+dw3_host_stage(wstag280 "asuka_city/wstag280.c")
+dw3_host_stage(wstag285 "asuka_city/wstag285.c")
+dw3_host_stage(wstag290 "asuka_city/wstag290.c")
+dw3_host_stage(wstag295 "asuka_city/wstag295.c")
+dw3_host_stage(wstag300 "asuka_city/wstag300.c")
+dw3_host_stage(wstag305 "asuka_city/wstag305.c")
+dw3_host_stage(wstag310 "asuka_city/wstag310.c")
+dw3_host_stage(wstag315 "asuka_city/wstag315.c")
+dw3_host_stage(wstag320 "asuka_city/wstag320.c")
+dw3_host_stage(wstag325 "asuka_city/wstag325.c")
+dw3_host_stage(wstag211 "amaterasu_city/wstag211.c")
+dw3_host_stage(wstag221 "amaterasu_city/wstag221.c")
+dw3_host_stage(wstag226 "amaterasu_city/wstag226.c")
+dw3_host_stage(wstag231 "amaterasu_city/wstag231.c")
+dw3_host_stage(wstag233 "amaterasu_city/wstag233.c")
+dw3_host_stage(wstag236 "amaterasu_city/wstag236.c")
+dw3_host_stage(wstag238 "amaterasu_city/wstag238.c")
+dw3_host_stage(wstag241 "amaterasu_city/wstag241.c")
+dw3_host_stage(wstag246 "amaterasu_city/wstag246.c")
+dw3_host_stage(wstag251 "amaterasu_city/wstag251.c")
+dw3_host_stage(wstag256 "amaterasu_city/wstag256.c")
+dw3_host_stage(wstag261 "amaterasu_city/wstag261.c")
 
 set(DW3_LINKED_STAGES
-  WSTAG260,WSTAG780,WSTAG785,WSTAG790,WSTAG200,WSTAG201,WSTAG206,WSTAG210,WSTAG212,WSTAG220,WSTAG225,WSTAG230,WSTAG235,WSTAG240,WSTAG245,WSTAG250,WSTAG255
+  WSTAG260,WSTAG780,WSTAG785,WSTAG790,WSTAG200,WSTAG201,WSTAG206,WSTAG210,WSTAG212,WSTAG220,WSTAG225,WSTAG230,WSTAG235,WSTAG240,WSTAG245,WSTAG250,WSTAG255,WSTAG202,WSTAG203,WSTAG205,WSTAG218,WSTAG219,WSTAG232,WSTAG237,WSTAG270,WSTAG275,WSTAG280,WSTAG285,WSTAG290,WSTAG295,WSTAG300,WSTAG305,WSTAG310,WSTAG315,WSTAG320,WSTAG325,WSTAG211,WSTAG221,WSTAG226,WSTAG231,WSTAG233,WSTAG236,WSTAG238,WSTAG241,WSTAG246,WSTAG251,WSTAG256,WSTAG261
 )
 
 set(DW3_STAGE_STUBS_C "${DW3_HOST_OVL_DIR}/stage_stubs.c")
@@ -402,6 +434,37 @@ set(DW3_P32_HOST_OBJECTS
   "${DW3_HOST_OVL_DIR}/wstag245.host.o"
   "${DW3_HOST_OVL_DIR}/wstag250.host.o"
   "${DW3_HOST_OVL_DIR}/wstag255.host.o"
+  "${DW3_HOST_OVL_DIR}/wstag202.host.o"
+  "${DW3_HOST_OVL_DIR}/wstag203.host.o"
+  "${DW3_HOST_OVL_DIR}/wstag205.host.o"
+  "${DW3_HOST_OVL_DIR}/wstag218.host.o"
+  "${DW3_HOST_OVL_DIR}/wstag219.host.o"
+  "${DW3_HOST_OVL_DIR}/wstag232.host.o"
+  "${DW3_HOST_OVL_DIR}/wstag237.host.o"
+  "${DW3_HOST_OVL_DIR}/wstag270.host.o"
+  "${DW3_HOST_OVL_DIR}/wstag275.host.o"
+  "${DW3_HOST_OVL_DIR}/wstag280.host.o"
+  "${DW3_HOST_OVL_DIR}/wstag285.host.o"
+  "${DW3_HOST_OVL_DIR}/wstag290.host.o"
+  "${DW3_HOST_OVL_DIR}/wstag295.host.o"
+  "${DW3_HOST_OVL_DIR}/wstag300.host.o"
+  "${DW3_HOST_OVL_DIR}/wstag305.host.o"
+  "${DW3_HOST_OVL_DIR}/wstag310.host.o"
+  "${DW3_HOST_OVL_DIR}/wstag315.host.o"
+  "${DW3_HOST_OVL_DIR}/wstag320.host.o"
+  "${DW3_HOST_OVL_DIR}/wstag325.host.o"
+  "${DW3_HOST_OVL_DIR}/wstag211.host.o"
+  "${DW3_HOST_OVL_DIR}/wstag221.host.o"
+  "${DW3_HOST_OVL_DIR}/wstag226.host.o"
+  "${DW3_HOST_OVL_DIR}/wstag231.host.o"
+  "${DW3_HOST_OVL_DIR}/wstag233.host.o"
+  "${DW3_HOST_OVL_DIR}/wstag236.host.o"
+  "${DW3_HOST_OVL_DIR}/wstag238.host.o"
+  "${DW3_HOST_OVL_DIR}/wstag241.host.o"
+  "${DW3_HOST_OVL_DIR}/wstag246.host.o"
+  "${DW3_HOST_OVL_DIR}/wstag251.host.o"
+  "${DW3_HOST_OVL_DIR}/wstag256.host.o"
+  "${DW3_HOST_OVL_DIR}/wstag261.host.o"
   "${DW3_STAGE_STUBS_O}"
 )
 set_source_files_properties(${DW3_P32_HOST_OBJECTS} PROPERTIES

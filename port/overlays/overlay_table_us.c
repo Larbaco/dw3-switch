@@ -4,6 +4,7 @@
  *
  * Linked overlays: STDWTITL, FIELDSTG, STPLNMET, WSTAG260/780/785/790,
  * P3.8 batch1 WSTAG200/201/206/210/212/220/225/230/235/240/245/250/255,
+ * P3.8 batch2 remaining early Central/Asuka + Amaterasu twins,
  * FIGHTSTG, WFIGHTMN, STFGTREP, STSTATUS, STITSHOP, STGTRAIN, STGDGLAB,
  * STGMCARD, STDGNAME, CARDGAME, STCRDDEK, STCRDSHP, STCRDABM, STAGSLCT.
  * .data/.bss snapshots are bound from named sections at register time.
@@ -37,6 +38,37 @@
 #define DW3_FILE_WSTAG245 0x1CB /* 459 */
 #define DW3_FILE_WSTAG250 0x1CC /* 460 */
 #define DW3_FILE_WSTAG255 0x1CD /* 461 */
+#define DW3_FILE_WSTAG202 0x1FD /* 509 */
+#define DW3_FILE_WSTAG203 0x1FE /* 510 */
+#define DW3_FILE_WSTAG205 0x1C4 /* 452 */
+#define DW3_FILE_WSTAG218 0x225 /* 549 */
+#define DW3_FILE_WSTAG219 0x23F /* 575 */
+#define DW3_FILE_WSTAG232 0x244 /* 580 */
+#define DW3_FILE_WSTAG237 0x28C /* 652 */
+#define DW3_FILE_WSTAG270 0x1CF /* 463 */
+#define DW3_FILE_WSTAG275 0x1D0 /* 464 */
+#define DW3_FILE_WSTAG280 0x1D1 /* 465 */
+#define DW3_FILE_WSTAG285 0x2A7 /* 679 */
+#define DW3_FILE_WSTAG290 0x29E /* 670 */
+#define DW3_FILE_WSTAG295 0x35B /* 859 */
+#define DW3_FILE_WSTAG300 0x341 /* 833 */
+#define DW3_FILE_WSTAG305 0x33D /* 829 */
+#define DW3_FILE_WSTAG310 0x335 /* 821 */
+#define DW3_FILE_WSTAG315 0x3F6 /* 1014 */
+#define DW3_FILE_WSTAG320 0x296 /* 662 */
+#define DW3_FILE_WSTAG325 0x43C /* 1084 */
+#define DW3_FILE_WSTAG211 0x209 /* 521 */
+#define DW3_FILE_WSTAG221 0x241 /* 577 */
+#define DW3_FILE_WSTAG226 0x242 /* 578 */
+#define DW3_FILE_WSTAG231 0x243 /* 579 */
+#define DW3_FILE_WSTAG233 0x261 /* 609 */
+#define DW3_FILE_WSTAG236 0x270 /* 624 */
+#define DW3_FILE_WSTAG238 0x291 /* 657 */
+#define DW3_FILE_WSTAG241 0x2AA /* 682 */
+#define DW3_FILE_WSTAG246 0x2AE /* 686 */
+#define DW3_FILE_WSTAG251 0x2AF /* 687 */
+#define DW3_FILE_WSTAG256 0x283 /* 643 */
+#define DW3_FILE_WSTAG261 0x2B8 /* 696 */
 #define DW3_FILE_FIGHTSTG 0x159
 #define DW3_FILE_WFIGHTMN 0x1FA
 #define DW3_FILE_STFGTREP 0x1C2
@@ -78,6 +110,39 @@ void dw3_overlay_bind_p38_batch1_sections(
     Dw3OverlayDesc *wstag225, Dw3OverlayDesc *wstag230, Dw3OverlayDesc *wstag235,
     Dw3OverlayDesc *wstag240, Dw3OverlayDesc *wstag245, Dw3OverlayDesc *wstag250,
     Dw3OverlayDesc *wstag255);
+void dw3_overlay_bind_p38_batch2a_sections(
+    Dw3OverlayDesc *wstag202,
+    Dw3OverlayDesc *wstag203,
+    Dw3OverlayDesc *wstag205,
+    Dw3OverlayDesc *wstag218,
+    Dw3OverlayDesc *wstag219,
+    Dw3OverlayDesc *wstag232,
+    Dw3OverlayDesc *wstag237,
+    Dw3OverlayDesc *wstag270,
+    Dw3OverlayDesc *wstag275,
+    Dw3OverlayDesc *wstag280,
+    Dw3OverlayDesc *wstag285,
+    Dw3OverlayDesc *wstag290,
+    Dw3OverlayDesc *wstag295,
+    Dw3OverlayDesc *wstag300,
+    Dw3OverlayDesc *wstag305,
+    Dw3OverlayDesc *wstag310,
+    Dw3OverlayDesc *wstag315,
+    Dw3OverlayDesc *wstag320,
+    Dw3OverlayDesc *wstag325);
+void dw3_overlay_bind_p38_batch2b_sections(
+    Dw3OverlayDesc *wstag211,
+    Dw3OverlayDesc *wstag221,
+    Dw3OverlayDesc *wstag226,
+    Dw3OverlayDesc *wstag231,
+    Dw3OverlayDesc *wstag233,
+    Dw3OverlayDesc *wstag236,
+    Dw3OverlayDesc *wstag238,
+    Dw3OverlayDesc *wstag241,
+    Dw3OverlayDesc *wstag246,
+    Dw3OverlayDesc *wstag251,
+    Dw3OverlayDesc *wstag256,
+    Dw3OverlayDesc *wstag261);
 void dw3_overlay_bind_battle_sections(Dw3OverlayDesc *fightstg, Dw3OverlayDesc *wfightmn,
                                       Dw3OverlayDesc *stfgtrep);
 void dw3_overlay_bind_menu_sections(Dw3OverlayDesc *ststatus, Dw3OverlayDesc *stitshop,
@@ -122,6 +187,37 @@ enum {
     OVL_WSTAG245,
     OVL_WSTAG250,
     OVL_WSTAG255,
+    OVL_WSTAG202,
+    OVL_WSTAG203,
+    OVL_WSTAG205,
+    OVL_WSTAG218,
+    OVL_WSTAG219,
+    OVL_WSTAG232,
+    OVL_WSTAG237,
+    OVL_WSTAG270,
+    OVL_WSTAG275,
+    OVL_WSTAG280,
+    OVL_WSTAG285,
+    OVL_WSTAG290,
+    OVL_WSTAG295,
+    OVL_WSTAG300,
+    OVL_WSTAG305,
+    OVL_WSTAG310,
+    OVL_WSTAG315,
+    OVL_WSTAG320,
+    OVL_WSTAG325,
+    OVL_WSTAG211,
+    OVL_WSTAG221,
+    OVL_WSTAG226,
+    OVL_WSTAG231,
+    OVL_WSTAG233,
+    OVL_WSTAG236,
+    OVL_WSTAG238,
+    OVL_WSTAG241,
+    OVL_WSTAG246,
+    OVL_WSTAG251,
+    OVL_WSTAG256,
+    OVL_WSTAG261,
     OVL_COUNT
 };
 
@@ -160,6 +256,37 @@ static Dw3OverlayDesc g_us_overlays[OVL_COUNT] = {
     {DW3_FILE_WSTAG245, NULL, NULL, NULL, 0, NULL, 0},
     {DW3_FILE_WSTAG250, NULL, NULL, NULL, 0, NULL, 0},
     {DW3_FILE_WSTAG255, NULL, NULL, NULL, 0, NULL, 0},
+    {DW3_FILE_WSTAG202, NULL, NULL, NULL, 0, NULL, 0},
+    {DW3_FILE_WSTAG203, NULL, NULL, NULL, 0, NULL, 0},
+    {DW3_FILE_WSTAG205, NULL, NULL, NULL, 0, NULL, 0},
+    {DW3_FILE_WSTAG218, NULL, NULL, NULL, 0, NULL, 0},
+    {DW3_FILE_WSTAG219, NULL, NULL, NULL, 0, NULL, 0},
+    {DW3_FILE_WSTAG232, NULL, NULL, NULL, 0, NULL, 0},
+    {DW3_FILE_WSTAG237, NULL, NULL, NULL, 0, NULL, 0},
+    {DW3_FILE_WSTAG270, NULL, NULL, NULL, 0, NULL, 0},
+    {DW3_FILE_WSTAG275, NULL, NULL, NULL, 0, NULL, 0},
+    {DW3_FILE_WSTAG280, NULL, NULL, NULL, 0, NULL, 0},
+    {DW3_FILE_WSTAG285, NULL, NULL, NULL, 0, NULL, 0},
+    {DW3_FILE_WSTAG290, NULL, NULL, NULL, 0, NULL, 0},
+    {DW3_FILE_WSTAG295, NULL, NULL, NULL, 0, NULL, 0},
+    {DW3_FILE_WSTAG300, NULL, NULL, NULL, 0, NULL, 0},
+    {DW3_FILE_WSTAG305, NULL, NULL, NULL, 0, NULL, 0},
+    {DW3_FILE_WSTAG310, NULL, NULL, NULL, 0, NULL, 0},
+    {DW3_FILE_WSTAG315, NULL, NULL, NULL, 0, NULL, 0},
+    {DW3_FILE_WSTAG320, NULL, NULL, NULL, 0, NULL, 0},
+    {DW3_FILE_WSTAG325, NULL, NULL, NULL, 0, NULL, 0},
+    {DW3_FILE_WSTAG211, NULL, NULL, NULL, 0, NULL, 0},
+    {DW3_FILE_WSTAG221, NULL, NULL, NULL, 0, NULL, 0},
+    {DW3_FILE_WSTAG226, NULL, NULL, NULL, 0, NULL, 0},
+    {DW3_FILE_WSTAG231, NULL, NULL, NULL, 0, NULL, 0},
+    {DW3_FILE_WSTAG233, NULL, NULL, NULL, 0, NULL, 0},
+    {DW3_FILE_WSTAG236, NULL, NULL, NULL, 0, NULL, 0},
+    {DW3_FILE_WSTAG238, NULL, NULL, NULL, 0, NULL, 0},
+    {DW3_FILE_WSTAG241, NULL, NULL, NULL, 0, NULL, 0},
+    {DW3_FILE_WSTAG246, NULL, NULL, NULL, 0, NULL, 0},
+    {DW3_FILE_WSTAG251, NULL, NULL, NULL, 0, NULL, 0},
+    {DW3_FILE_WSTAG256, NULL, NULL, NULL, 0, NULL, 0},
+    {DW3_FILE_WSTAG261, NULL, NULL, NULL, 0, NULL, 0},
 };
 
 void dw3_overlay_register_us_title(void) {
@@ -198,6 +325,37 @@ void dw3_overlay_register_us_title(void) {
     g_us_overlays[OVL_WSTAG245].entry = NULL;
     g_us_overlays[OVL_WSTAG250].entry = NULL;
     g_us_overlays[OVL_WSTAG255].entry = NULL;
+    g_us_overlays[OVL_WSTAG202].entry = NULL;
+    g_us_overlays[OVL_WSTAG203].entry = NULL;
+    g_us_overlays[OVL_WSTAG205].entry = NULL;
+    g_us_overlays[OVL_WSTAG218].entry = NULL;
+    g_us_overlays[OVL_WSTAG219].entry = NULL;
+    g_us_overlays[OVL_WSTAG232].entry = NULL;
+    g_us_overlays[OVL_WSTAG237].entry = NULL;
+    g_us_overlays[OVL_WSTAG270].entry = NULL;
+    g_us_overlays[OVL_WSTAG275].entry = NULL;
+    g_us_overlays[OVL_WSTAG280].entry = NULL;
+    g_us_overlays[OVL_WSTAG285].entry = NULL;
+    g_us_overlays[OVL_WSTAG290].entry = NULL;
+    g_us_overlays[OVL_WSTAG295].entry = NULL;
+    g_us_overlays[OVL_WSTAG300].entry = NULL;
+    g_us_overlays[OVL_WSTAG305].entry = NULL;
+    g_us_overlays[OVL_WSTAG310].entry = NULL;
+    g_us_overlays[OVL_WSTAG315].entry = NULL;
+    g_us_overlays[OVL_WSTAG320].entry = NULL;
+    g_us_overlays[OVL_WSTAG325].entry = NULL;
+    g_us_overlays[OVL_WSTAG211].entry = NULL;
+    g_us_overlays[OVL_WSTAG221].entry = NULL;
+    g_us_overlays[OVL_WSTAG226].entry = NULL;
+    g_us_overlays[OVL_WSTAG231].entry = NULL;
+    g_us_overlays[OVL_WSTAG233].entry = NULL;
+    g_us_overlays[OVL_WSTAG236].entry = NULL;
+    g_us_overlays[OVL_WSTAG238].entry = NULL;
+    g_us_overlays[OVL_WSTAG241].entry = NULL;
+    g_us_overlays[OVL_WSTAG246].entry = NULL;
+    g_us_overlays[OVL_WSTAG251].entry = NULL;
+    g_us_overlays[OVL_WSTAG256].entry = NULL;
+    g_us_overlays[OVL_WSTAG261].entry = NULL;
 
     dw3_overlay_bind_field_sections(&g_us_overlays[OVL_FIELDSTG], &g_us_overlays[OVL_STPLNMET],
                                     &g_us_overlays[OVL_WSTAG260], &g_us_overlays[OVL_WSTAG780],
@@ -208,6 +366,19 @@ void dw3_overlay_register_us_title(void) {
         &g_us_overlays[OVL_WSTAG225], &g_us_overlays[OVL_WSTAG230], &g_us_overlays[OVL_WSTAG235],
         &g_us_overlays[OVL_WSTAG240], &g_us_overlays[OVL_WSTAG245], &g_us_overlays[OVL_WSTAG250],
         &g_us_overlays[OVL_WSTAG255]);
+    dw3_overlay_bind_p38_batch2a_sections(
+        &g_us_overlays[OVL_WSTAG202], &g_us_overlays[OVL_WSTAG203], &g_us_overlays[OVL_WSTAG205],
+        &g_us_overlays[OVL_WSTAG218], &g_us_overlays[OVL_WSTAG219], &g_us_overlays[OVL_WSTAG232],
+        &g_us_overlays[OVL_WSTAG237], &g_us_overlays[OVL_WSTAG270], &g_us_overlays[OVL_WSTAG275],
+        &g_us_overlays[OVL_WSTAG280], &g_us_overlays[OVL_WSTAG285], &g_us_overlays[OVL_WSTAG290],
+        &g_us_overlays[OVL_WSTAG295], &g_us_overlays[OVL_WSTAG300], &g_us_overlays[OVL_WSTAG305],
+        &g_us_overlays[OVL_WSTAG310], &g_us_overlays[OVL_WSTAG315], &g_us_overlays[OVL_WSTAG320],
+        &g_us_overlays[OVL_WSTAG325]);
+    dw3_overlay_bind_p38_batch2b_sections(
+        &g_us_overlays[OVL_WSTAG211], &g_us_overlays[OVL_WSTAG221], &g_us_overlays[OVL_WSTAG226],
+        &g_us_overlays[OVL_WSTAG231], &g_us_overlays[OVL_WSTAG233], &g_us_overlays[OVL_WSTAG236],
+        &g_us_overlays[OVL_WSTAG238], &g_us_overlays[OVL_WSTAG241], &g_us_overlays[OVL_WSTAG246],
+        &g_us_overlays[OVL_WSTAG251], &g_us_overlays[OVL_WSTAG256], &g_us_overlays[OVL_WSTAG261]);
     dw3_overlay_bind_battle_sections(&g_us_overlays[OVL_FIGHTSTG], &g_us_overlays[OVL_WFIGHTMN],
                                      &g_us_overlays[OVL_STFGTREP]);
     dw3_overlay_bind_menu_sections(&g_us_overlays[OVL_STSTATUS], &g_us_overlays[OVL_STITSHOP],
@@ -220,8 +391,7 @@ void dw3_overlay_register_us_title(void) {
     dw3_overlay_set_table(g_us_overlays, OVL_COUNT);
     fprintf(stderr,
             "dw3: registered US overlays STDWTITL/FIELDSTG/STPLNMET/"
-            "WSTAG260/780/785/790 + P3.8 batch1 "
-            "(200/201/206/210/212/220/225/230/235/240/245/250/255)/"
+            "WSTAG260/780/785/790 + P3.8 batch1+2 stages/"
             "FIGHTSTG/WFIGHTMN/STFGTREP/"
             "STSTATUS/STITSHOP/STGTRAIN/STGDGLAB/STGMCARD/STDGNAME/"
             "CARDGAME/STCRDDEK/STCRDSHP/STCRDABM/STAGSLCT "
