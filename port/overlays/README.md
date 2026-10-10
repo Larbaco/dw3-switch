@@ -51,6 +51,7 @@ Unlinked stages get weak stubs from `tools/gen_stage_stubs.py`.
 | `WSTAG790` | `476` / `0x1DC` | Chamber Room (post-name) |
 | `FIGHTSTG` | `0x159` | Battle mode (P3.3) |
 | `WFIGHTMN` | `0x1FA` | Normal battle sub-overlay (P3.3) |
+| `STFGTREP` | `0x1C2` | Battle report / XP apply (P3.3) |
 
 `overlay_table_us.c` registers the rows above; `CNTY_SEL` stays out for US.
 Host objects use named `.data`/`.bss` sections (`tools/rename_ovl_sections.py`,

@@ -57,6 +57,7 @@ tools/apply_patches.sh           # refresh build/decomp-src + apply
 | `0022-match-neutral-drawcallback-void-arg.patch` | yes | P3.2: `DrawCallback.arg` / layer add-callback APIs as `void*` (LP64; fixes `FIELDSTG_drawActor` SEGV) |
 | `0023-PORT_HOST-p32-script-leave-walk-evidence.patch` | no | P3.2: `SCRIPT_LEAVE`/`leaveField`/`moveByPad` logs; `DW3_FAST_SCRIPT`; `DW3_PROGRESS` |
 | `0024-PORT_HOST-p33-battle-boot-evidence.patch` | no | P3.3: `FIGHTSTG` boot logs; `DW3_FORCE_ENCOUNTER` seeds `BATTLE_SETUP` + `setParty(0)` |
+| `0025-PORT_HOST-p33-battle-complete-evidence.patch` | no | P3.3: `DW3_FORCE_WIN` → report; `fieldMode` seed; party HP/XP logs; STFGTREP return |
 
 `tools/apply_patches.sh --check` applies the series in order (stacked
 patches on the same file are valid).

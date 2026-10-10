@@ -165,10 +165,9 @@ Status: **in progress** (branch `phase3-pc-bringup`; plan:
 [`docs/superpowers/plans/2026-10-10-phase3-pc-game-loop.md`](superpowers/plans/2026-10-10-phase3-pc-game-loop.md)).
 
 Tracking: Phase 3 on `phase3-pc-bringup`. P3.1 done. **P3.2 Done-when
-met** (+ WSTAG790 follow-up). **P3.3 started:** `FIGHTSTG` + `WFIGHTMN`
-linked; forced `MODE_BATTLE` boots into `WFIGHTMN` without SEGV
-(`docs/P3.3_BATTLE.md`) — Done-when (complete fight → field + stats)
-not met. P3.6 / P3.9 may run on side tracks.
+met** (+ WSTAG790 follow-up). **P3.3 Done-when met:** forced encounter
+→ `STFGTREP` (XP/levels) → return to `FIELDSTG` (`docs/P3.3_BATTLE.md`).
+P3.6 / P3.9 may run on side tracks.
 
 Objective: the full game loop runs on PC: field, stages, battle, menus,
 audio, movies.
@@ -196,11 +195,12 @@ audio, movies.
   (`docs/P3.2_FIELD.md`).
   Done when: new game → name entry → first field area is walkable and a
   door changes stage.
-- [ ] **P3.3 Battle.** `FIGHTSTG` + `WFIGHTMN` linked (`dw3_p33_battle`);
-  host GTE/libgs gaps filled enough to compile draw/lights/mesh; patch
-  `0024` + `DW3_FORCE_ENCOUNTER` boots `MODE_BATTLE` → `WFIGHTMN` (see
-  `docs/P3.3_BATTLE.md`). Still open: finish a fight, link `STFGTREP`,
-  field random encounter → return with stats; `WFIGHTTS` optional.
+- [x] **P3.3 Battle.** `FIGHTSTG` + `WFIGHTMN` + `STFGTREP` linked
+  (`dw3_p33_battle`); patches `0024`/`0025` + `DW3_FORCE_ENCOUNTER` /
+  `DW3_FORCE_WIN` / `DW3_AUTO_PAD=confirm`. **Done-when evidence**
+  (`docs/P3.3_BATTLE.md`): win → report applies XP/levels → return to
+  `FIELDSTG` (`0x2d7` / stage 474) with walk + door. Follow-up: real
+  wilderness encounter + pad-driven KO (`WFIGHTTS` optional).
   Done when: a random encounter completes and returns to the field with
   stats applied.
 - [ ] **P3.4 Menus and shops.** `STSTATUS`, `STITSHOP`, `STGTRAIN`,

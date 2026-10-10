@@ -325,11 +325,14 @@ walk/door still open.
 
 ### Task A3: P3.3 Battle
 
-**Files:** link `FIGHTSTG` + `WFIGHTMN` (+ `WFIGHTTS` optional from debug); battle patches; ROADMAP.
+**Status:** Done-when met on `phase3-pc-bringup` — see `docs/P3.3_BATTLE.md`
+(`DW3_FORCE_ENCOUNTER` + `DW3_FORCE_WIN` + `STFGTREP` → field).
 
-- [ ] **Step 1: Link battle overlays; fix remaining 64-bit / MIPS issues that surface at link/run.**
-- [ ] **Step 2: Trigger random encounter from field; complete fight; return with stats.**
-- [ ] **Step 3: Tick P3.3; commit + push.**
+**Files:** link `FIGHTSTG` + `WFIGHTMN` + `STFGTREP` (+ `WFIGHTTS` optional); battle patches; ROADMAP.
+
+- [x] **Step 1: Link battle overlays; fix remaining 64-bit / MIPS issues that surface at link/run.**
+- [x] **Step 2: Trigger encounter (forced for bring-up); complete fight; return with stats.**
+- [x] **Step 3: Tick P3.3; commit + push.**
 
 **Done when:** encounter completes and returns to field with stats applied.
 

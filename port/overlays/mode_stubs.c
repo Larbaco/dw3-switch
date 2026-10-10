@@ -29,6 +29,6 @@ DW3_MODE_STUB(STITSHOP_start)
 DW3_MODE_STUB(STSTATUS_start)
 DW3_MODE_STUB(STCRDABM_start)
 DW3_MODE_STUB(STCRDSHP_start)
-DW3_MODE_STUB(STFGTREP_start)
+/* STFGTREP_start comes from P3.3 host overlay objects — do not weak-stub. */
 DW3_MODE_STUB(STAGSLCT_start)
 DW3_MODE_STUB(CNTY_SEL_start)
