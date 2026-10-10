@@ -51,6 +51,7 @@ static int g_fb_dumped;
 static int g_disp_x_scaled_logged;
 static int g_mdec_env_logged;
 static int g_slice_stash_logged;
+static int g_rgb24_latch_cleared_logged;
 
 typedef struct Dw3SliceStash {
     const void *ptr;
@@ -349,11 +350,23 @@ int __wrap_LoadImage(RECT *rect, u_long *p) {
     stashed = dw3_slice_stash_take(p);
     src = stashed != NULL ? stashed : (const uint8_t *)p;
 
-    /* PutDispEnv(isrgb24) often latches after the first movie frame. Only
-     * treat classic MDEC strips (w==24 halfwords, tall) as RGB24 — a broad
-     * (w%3==0 && h>=192) heuristic shreds title TIM uploads. */
-    use_rgb24 = g_disp_rgb24 || (rect->w == 24 && rect->h >= 192);
+    /* MDEC movie strips are always 24 halfwords wide. Do not reuse
+     * PutDispEnv(isrgb24) here: title TIM/CLUT LoadImage runs in the title
+     * loader before the next flip clears DISPENV, so a latched g_disp_rgb24
+     * after STR playback shreds sprites (R1). Strip geometry is enough for
+     * frames before isrgb24 is set. */
+    use_rgb24 = (rect->w == 24 && rect->h >= 192);
     if (!use_rgb24) {
+        if (g_disp_rgb24) {
+            g_disp_rgb24 = 0;
+            if (!g_rgb24_latch_cleared_logged) {
+                g_rgb24_latch_cleared_logged = 1;
+                fprintf(stderr,
+                        "dw3-present: non-MDEC LoadImage %dx%d — cleared "
+                        "stale rgb24 latch\n",
+                        rect->w, rect->h);
+            }
+        }
         return __real_LoadImage(rect, p);
     }
 

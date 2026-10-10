@@ -26,7 +26,7 @@ Prefer `SDL_VIDEODRIVER=offscreen` (or a real display) for present — not
 |---|---|---|---|
 | G1 | Movie frames = macroblock garbage (after half-width / mid-grey fixes) | `DecDCTPutEnv` → `MDEC_in((u_long *)mdec_iq, …)` on LP64 skips/misaligns `u32` quant/IDCT tables | Host `__wrap_DecDCTReset` uploads via `Psyz_MdecCommand` with byte-accurate pointers (`platforms/pc/src/psyz_dma_present.c`) |
 | G2 | Same garbage / torn strips under sync MDEC | `STDWTITL_onSliceDecoded` starts next `DecDCTout` before `LoadImage`; nested sync callbacks reuse two `imgbuf`s | Patch `0037` (LoadImage first under `PORT_HOST`) + DecDCTout slice stash in present wrap |
-| G3 | Title TIM shred risk from RGB24 heuristic | `(w % 3 == 0 && h >= 192)` treated any tall upload as RGB24 | Heuristic tightened to `w == 24 && h >= 192` (MDEC strip) or latched `isrgb24` |
+| G3 | Title TIM shred risk from RGB24 heuristic | `(w % 3 == 0 && h >= 192)` treated any tall upload as RGB24 | MDEC strip geometry only (`w == 24 && h >= 192`); dropped stale `isrgb24` latch on `LoadImage` (R1) |
 
 ### Evidence (G1/G2)
 
@@ -49,7 +49,7 @@ Offline oracle (no present): assemble `MOVIEOPN.STR` frame → `bsdec` →
 
 | ID | Area | Symptom | Repro | Notes |
 |---|---|---|---|---|
-| R1 | Title | Logo / copyright shredded; solid green bar (P2.8) | unset `DW3_START_MODE`; windowed or capture after `mode=0xE00` | TIM/CLUT / OT / tpage — not movie RGB24. G3 removes one false path only |
+| R1 | Title | Logo / copyright shredded; solid green bar (P2.8) | unset `DW3_START_MODE`; windowed or capture after `mode=0xE00` | **Fixed (G3 follow-up):** `g_disp_rgb24` stayed set after STR; title `timLoaderLoad` ran before `PutDispEnv` cleared it → TIM/CLUT through RGB888 converter. Re-verify window + FB dump; residual OT/tpage polish TBD |
 | R2 | Movie present | Double-buffer B / captured 320×480 may be empty while VRAM A is good; possible tear if sampling mid-flip | `DW3_START_MODE=0xE01` + windowed present | PSY-Z `Draw_SetDisplayMode` still ignores `isrgb24` (stores as 5551 via host) |
 | R3 | Field | Sprite / VRAM tiling polish | `DW3_START_MODE=0x200` (FIELDSTG + WSTAG260) | Boot reaches field; visual oracle = P3.9 / DuckStation |
 | R4 | Battle | Same class as field once `FIGHTSTG` is up | `DW3_FORCE_ENCOUNTER` / P3.3 recipes in `docs/P3.3_BATTLE.md` | Not re-proven on this branch beyond mode entry |
