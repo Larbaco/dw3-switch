@@ -164,10 +164,11 @@ pad state connected; GPU polish open; merged via PR #3).
 Status: **in progress** (branch `phase3-pc-bringup`; plan:
 [`docs/superpowers/plans/2026-10-10-phase3-pc-game-loop.md`](superpowers/plans/2026-10-10-phase3-pc-game-loop.md)).
 
-Tracking: Phase 3 on `phase3-pc-bringup`. P3.1 done (`0018` + `0019`,
-`dw3_p31_audit` 432 objs). P3.2 **in progress**: `FIELDSTG` + `STPLNMET` +
-`WSTAG260`/`780`/`785` link into `dw3-pc` (named `.data`/`.bss` restore);
-walk/door runtime not proven yet. P3.6 / P3.9 may run on side tracks.
+Tracking: Phase 3 on `phase3-pc-bringup` @ `bd62f1f` (P3.2_LINK). P3.1 done
+(`0018` + `0019`, `dw3_p31_audit` 432 objs). P3.2 **in progress**:
+`FIELDSTG` + `STPLNMET` + `WSTAG260`/`780`/`785` link into `dw3-pc` (named
+`.data`/`.bss` restore); walk/door runtime not proven yet. P3.6 / P3.9 may
+run on side tracks.
 
 Objective: the full game loop runs on PC: field, stages, battle, menus,
 audio, movies.
