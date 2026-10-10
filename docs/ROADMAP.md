@@ -177,10 +177,10 @@ UI cancel** (no `AUTO_MENU_RETURN`); **STGMCARD save + load** via P2.7
 (`READY_FOR_MAIN_ROADMAP_SYNC: P3.5`, `docs/P3.5_CARDGAME.md`): force-win
 → prize item → `FIELDSTG`; album `cardsSeen` 29→33 via vanilla
 `STCRDSHP_openPack` `addCards` (host win `addCards` gated off). **P3.7
-blocked** (`READY_FOR_MAIN_ROADMAP_SYNC: P3.7_BLOCKED`,
-`docs/P3.7_MOVIES.md`): `DW3_START_MODE=0xE01` reaches movie path;
-PSY-Z `MDEC_*` / `StCdInterrupt` stubs + no CD track for
-`MOVIEOPN.STR` LBA; default skip remains `MODE_TITLE`. **P3.8 Done-when met** (`READY_FOR_MAIN_ROADMAP_SYNC: P3.8`,
+in progress** (`READY_FOR_MAIN_ROADMAP_SYNC: P3.7_IN_PROGRESS`,
+`docs/P3.7_MOVIES.md`): Wave 1 soft MDEC wired under `MDEC_*`;
+still blocked on VLC / `StCdInterrupt` / file-backed STR / XA;
+default skip remains `MODE_TITLE`. **P3.8 Done-when met** (`READY_FOR_MAIN_ROADMAP_SYNC: P3.8`,
 `docs/P3.8_STAGES.md`): `STAGSLCT` + batches 1–6 link 238/239 US stage
 objs; live PASS 237/237; only `WSTAG460` left stubbed (host
 `updateWanderer` SEGV). **Phase 3 gate not met** (`docs/P3_GATE.md`):
@@ -250,11 +250,11 @@ audio, movies.
   Done when: title music, field music change on stage switch, battle SFX.
 - [ ] **P3.7 Movies.** Title STR playback through PSY-Z `libpress` +
   streaming (`CdRead2`, `StSetRing`) from raw-sector `.STR` files packed
-  in P1.6. **Blocked** (`docs/P3.7_MOVIES.md`,
-  `READY_FOR_MAIN_ROADMAP_SYNC: P3.7_BLOCKED`): boot attempt
-  `DW3_START_MODE=0xE01` hits `MDEC_*` / stream stubs; default skip
-  `MODE_TITLE` (patch `0010`) retained. Checkbox unticked until play +
-  audio + Start-skip.
+  in P1.6. **In progress** (`docs/P3.7_MOVIES.md`,
+  `READY_FOR_MAIN_ROADMAP_SYNC: P3.7_IN_PROGRESS`): Wave 1 wires soft
+  MDEC under `MDEC_*` (`test_mdec` 28/28); still need VLC, stream,
+  XA, Start-skip. Default skip `MODE_TITLE` (patch `0010`) retained.
+  Checkbox unticked until play + audio + Start-skip.
   Done when: the opening movies play with audio and can be skipped.
 - [x] **P3.8 Stage sweep.** `STAGSLCT` linked (`dw3_p38_stagslct`); patch
   `0030` + `tools/stage_sweep.py`. **Done-when evidence**
