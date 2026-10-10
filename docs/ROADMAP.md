@@ -372,17 +372,21 @@ console.
 - [ ] **P4.7 Boot the game.** Link the Phase 3 image against the Switch
   backend and run from hbmenu.
   Done when: title screen on hardware.
-  **Status (2026-10-10):** the image **links** for aarch64 — CMake entry point
-  `platforms/switch/CMakeLists.txt` (reuses `port/CMakeLists.txt` verbatim),
-  `vendor/psyz` on its `NintendoSwitch` branch, and the platform units filled in
-  `platforms/switch/psyz_backend/` (`psyz_log`, `Psyz_Os*`, `MyPadInit`/
-  `Psyz_PadsPoll`, `Psyz_VideoVSync`, the `__wrap_*` present hooks), which closed
-  all 15 undefined symbols. `dw3-switch.nro` builds. **Remaining:** the boot
-  path (`source/main.c` still runs the `host_hello` sample and never calls
-  `dw3_game_main`) and the renderer — nothing implements PSY-Z's `Draw_*` on
-  Switch, and `libgpu.o` is not even pulled into the link, so those 21 symbols
-  are latent. **Not ticked:** no hardware, and the game does not boot anywhere
-  yet. See `docs/SWITCH_BACKEND.md`.
+  **Status (2026-10-10):** `platforms/switch/CMakeLists.txt` compiles the Phase 3
+  image for aarch64 (reuses `port/CMakeLists.txt`; overlay packing uses target
+  binutils). `vendor/psyz` is pinned to `dw3-switch-backend` @ `15afac1`
+  (NintendoSwitch, no SDL). `psyz_backend/` supplies `psyz_log`, `Psyz_Os*`,
+  pad, `Psyz_VideoVSync`, and the `__wrap_*` hooks — that closed the earlier
+  15 undefined platform symbols. `source/boot_main.c` is the CMake `main()` and
+  calls `dw3_game_main`. The devkitPro Makefile still builds `source/main.c`
+  (`host_hello`: EGL + audren sample); that is the `.nro` CI produces.
+  **Link (rebuilt after rebase onto current main):** `dw3_game_main` pulls
+  `libgpu.o` in, and the link stops on **20** undefined `Draw_*` symbols.
+  `libgpu.o` also references `Draw_SetHorizontalGrid` (21 undefined in the
+  object); the linker did not demand that one. No game `.elf` / `.nro` from
+  this CMake link. An earlier “links, ~8.5 MiB `.nro`” note was the image
+  *before* the boot path pulled `libgpu.o`. **Not ticked:** no title on
+  hardware, and the game image does not link yet. See `docs/SWITCH_BACKEND.md`.
 
 Gate: title + field + battle on a Switch.
 

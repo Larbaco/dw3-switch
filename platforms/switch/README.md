@@ -70,14 +70,13 @@ Four things there are load-bearing and easy to trip over:
 - **Do not use a login shell** (`bash -l`): `/etc/profile` rewrites `PATH` and
   drops `devkitA64/bin`, which is where `aarch64-none-elf-nm` lives.
 
-Status (P4.7): the game image **links** for aarch64, and `nx_create_nro` turns it
-into a well-formed `.nro` (16.7 MB `.elf`). What is missing is the boot path —
-`source/main.c` is still the `host_hello` sample and never calls
-`dw3_game_main` — and the renderer, because nothing yet implements PSY-Z's
-`Draw_*` contract on Switch. That contract is *latent*, not absent: `libgpu.o` is
-not pulled into the link today (`nm` shows 21 `U Draw_*` inside it), so those
-symbols appear the moment anything drives the GPU. See
-[docs/SWITCH_BACKEND.md](../../docs/SWITCH_BACKEND.md).
+Status (P4.7, rebuilt 2026-10-10 after rebase onto current `main`): the CMake
+target compiles, then the link **fails**. `source/boot_main.c` calls
+`dw3_game_main`, which pulls `libgpu.o`, and the link stops on 20 undefined
+`Draw_*` symbols (listed in [docs/SWITCH_BACKEND.md](../../docs/SWITCH_BACKEND.md)).
+There is no game `.elf` and no game `.nro` from this build. The Makefile path
+above is unchanged: it still links `source/main.c` (`host_hello`) and is the
+`.nro` CI builds. P4.7 stays open — no title on hardware.
 
 ## PSY-Z backend (Phase 4)
 
