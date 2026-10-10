@@ -323,9 +323,11 @@ console.
   `platforms/switch/psyz_backend/nx_gpu.c` (docked 1080p / handheld 720p,
   `eglSwapInterval(1)`). `.nro` builds via Docker (`DW3_DK_TMPBUILD` on
   NTFS). **Not ticked:** no Switch hardware in session to measure 60 fps.
-  Owner machine has local Ryubing/Eden installs (optional deferred `.nro`
-  smoke; **not** P4.2 done-when). Gate: OLED + hbmenu / nxlink. See
-  `docs/P4.2_VIDEO.md`.
+  Owner machine has local Ryubing/Eden installs.
+  **Ryubing smoke (2026-10-10):** the `.nro` loads and its clear/present
+  loop animates in Ryubing 1.3.339-canary — plumbing confirmed; emulator fps
+  is **not** the done-when. Gate: OLED + hbmenu / nxlink. See
+  `docs/P4.2_VIDEO.md`, `docs/SWITCH_BACKEND.md`.
 - [ ] **P4.3 Audio.** `audren` output thread fed by PSY-Z's SPU mixer at
   44.1 kHz.
   Done when: libsnd sample plays without underruns.
@@ -333,9 +335,10 @@ console.
   `platforms/switch/psyz_backend/nx_audio.c` (44.1 kHz voice, weak SPU
   tone stub; combined `host_hello` with P4.2 EGL after rebase onto
   `675f1cf`). `.nro` builds via Docker
-  (`DW3_DK_TMPBUILD`). **Not ticked:** no Switch hardware for underrun/
-  listen check; full PSY-Z libsnd not linked yet (P4.7). See
-  `docs/P4.3_AUDIO.md`.
+  (`DW3_DK_TMPBUILD`). **Ryubing smoke (2026-10-10):** the guest reaches
+  `audren` — session acquired, `Initialize` (REV4), renderer started.
+  **Not ticked:** no Switch hardware for underrun/listen check; full PSY-Z
+  libsnd not linked yet (P4.7). See `docs/P4.3_AUDIO.md`.
 - [ ] **P4.4 Input.** `hid` → PS1 pad bits, including the digital/analog
   modes `PadInfoMode`/`PadSetMainMode` expect; rumble via `PadSetAct` →
   HD rumble (optional).

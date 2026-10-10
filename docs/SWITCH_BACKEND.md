@@ -127,14 +127,42 @@ from `platforms/switch/` until the surface is stable.
 **Gate for ticking P4.x done-when items:** owner OLED Switch (Atmosphere,
 **hbmenu**), with **nxlink** when useful for stderr/FPS.
 
-Local Switch emulators on the owner dev machine (paths **outside git**, not
-CI) may be used later for optional **smoke** before copying an `.nro` to SD.
-That path is **deferred** — no emulator runs are required for current work.
+### Ryubing smoke loop (active since 2026-10-10)
+
+The owner dev machine runs the `.nro` in **Ryubing** 1.3.339-canary
+(`/mnt/windows/Jogos/emuladores/Ryubing`, source checkout with a built
+`build/Ryujinx`). This is an **active pre-hardware loop**, not the deferred
+path this doc used to describe — it exercises the host without a console.
+
+```bash
+export DOTNET_ROOT="$HOME/.dotnet"   # framework-dependent build; not /usr/share/dotnet
+R=/mnt/windows/Jogos/emuladores/Ryubing
+$R/build/Ryujinx --use-main-config <path>/dw3-switch.nro
+```
+
+Proven on 2026-10-10 with the combined `gpu_hello` + `audio_hello` sample:
+EGL/GLES2 present renders and animates; `audren` acquires a session,
+initializes (REV4) and starts; `SurfaceFlinger` creates a layer and nvdrv is
+reached; the window title shows the app's own title/version read from the
+embedded NACP.
+
+Caveats — do not over-read a green smoke:
+
+| Caveat | Detail |
+|---|---|
+| **`--no-gui` headless does not work** | Loads the NRO, then `GUI.RenderLoop` dies with `Image initialization failed` (reproduces on unrelated homebrew too). Use the GUI path. |
+| **Guest stderr is invisible** | `platforms/switch` logs with `fprintf(stderr)` expecting **nxlink**; Ryubing loads the `.nro` directly, so `host_hello:` lines and the fps counter never surface. P4.2's frame-rate number is **not** obtainable this way — and emulator fps would not be meaningful anyway. |
+| **The `.nro` needs an embedded NACP** | Without it LibHac-based loaders reject the file outright. Fix and rationale: [platforms/switch/README.md](../platforms/switch/README.md). |
+| **Updating Ryubing is blocked on this LAN** | `git.ryujinx.app` and `update.ryujinx.app` resolve to `91.239.78.255`, unreachable here (80/443/22 blocked); the old GitHub mirrors 404. The installed canary is what we have. |
+
+Screenshot shape: launch the GUI, `xdotool windowsize <wid> 640 360` (the owner
+config opens fullscreen on an ultrawide), then `import -window <wid> out.png`.
 
 | Resource | Path (owner machine) | Notes |
 |---|---|---|
-| Ryubing (Ryujinx fork) | `/mnt/windows/Jogos/emuladores/Ryubing` (+ Ryubing-Canary tarball) | **Preferred** for homebrew `.nro` smoke when enabled |
-| Eden (Yuzu-line) | `/mnt/windows/Jogos/emuladores/Eden-Linux-*.AppImage` | Secondary; may diverge from hardware |
+| Ryubing (Ryujinx fork) | `/mnt/windows/Jogos/emuladores/Ryubing` | **Active** smoke; canary 1.3.339; needs `DOTNET_ROOT=$HOME/.dotnet` |
+| Ryubing Flatpak (`io.github.ryubing.Ryujinx`) | system install | 1.3.3 stable, **no `prod.keys` configured** — not usable as-is |
+| Eden (Yuzu-line) | `/mnt/windows/Jogos/emuladores/Eden-Linux-*.AppImage` | Untried secondary |
 
 Emulator smoke **does not** satisfy P4.2 done-when (**60 fps on hardware** —
 see [P4.2_VIDEO.md](P4.2_VIDEO.md)). DuckStation is PS1-only and irrelevant
