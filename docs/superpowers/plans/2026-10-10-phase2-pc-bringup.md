@@ -270,10 +270,10 @@ Targets (from SURVEY):
 
 **Files:** `port/overlays/` — table `{file id → entry, data start/end}`, `loadModeOverlay` / `loadSubOverlay` replacements, symbol-prefix strategy (objcopy `--prefix-symbols` **or** generated headers). Phase 2 minimum: engine + `STDWTITL` (+ `CNTY_SEL` only if required for US — US may skip country select).
 
-- [ ] **Step 1: Document overlay list needed for title boot in `port/overlays/README.md`.**
-- [ ] **Step 2: Implement restore-`.data` / zero-`.bss` when id changes; no-op reload when same id.**
-- [ ] **Step 3: Host test: two different “overlays” (can be fixtures) + same twice.**
-- [ ] **Step 4: Tick P2.6; commit + push.**
+- [x] **Step 1: Document overlay list needed for title boot in `port/overlays/README.md`.**
+- [x] **Step 2: Implement restore-`.data` / zero-`.bss` when id changes; no-op reload when same id.**
+- [x] **Step 3: Host test: two different “overlays” (can be fixtures) + same twice.**
+- [x] **Step 4: Tick P2.6; commit + push.**
 
 **Done when:** host test proves reset vs preserve semantics.
 

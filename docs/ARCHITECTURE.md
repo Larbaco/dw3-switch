@@ -57,7 +57,9 @@ See [SURVEY.md](SURVEY.md) for the evidence behind each point.
   compatibility (`.mcr`) is a goal, not a stretch.
 - MIPS-only constructs (P2.3 done for engine host): scratchpad stack
   no-ops, `allocMemHigh` returns the pointer, GTE macros → PSY-Z software
-  GTE, overlay address symbols in `port/overlays/` (restore model P2.6).
+  GTE, overlay address symbols + static restore in `port/overlays/`
+  (P2.6: restore `.data` / zero `.bss` on id change; generated-header
+  symbol prefixes for colliding overlay/stage globals).
 
 ## Non-goals (for now)
 

@@ -40,6 +40,7 @@ tools/apply_patches.sh           # refresh build/decomp-src + apply
 | `0005-PORT_HOST-overlay-addrs-boot-tim-stub.patch` | no | Host overlay addrs from `port/overlays`; boot TIM upload stubbed |
 | `0006-match-neutral-engine-sizeof-sizes.patch` | yes | `sizeof`/`offsetof` for `PAD_DATA_SIZE`, `GFX.prim` clear span, `MemBlock` split, `createInn` |
 | `0007-match-neutral-engine-pointer-casts.patch` | yes | `freeFilesFrom(void *)`; archive/text pointer+offset (no pointer↔`u32`/`s32`) |
+| `0008-PORT_HOST-static-overlay-restore.patch` | no | `loadModeOverlay` / `loadSubOverlay` → `dw3_overlay_restore` (P2.6) |
 
 ### Upstream `make compare` (P2.4)
 

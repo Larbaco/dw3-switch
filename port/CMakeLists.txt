@@ -51,9 +51,11 @@ endif()
 add_library(dw3_engine OBJECT ${DW3_ENGINE_SOURCES})
 add_dependencies(dw3_engine dw3_decomp_patched)
 
-# Host overlay address buffers (P2.3); restore semantics are E5 / P2.6.
+# Host overlay address buffers (P2.3) + static restore model (P2.6).
 add_library(dw3_host_overlays OBJECT
   "${CMAKE_CURRENT_SOURCE_DIR}/overlays/host_vram.c"
+  "${CMAKE_CURRENT_SOURCE_DIR}/overlays/overlay_host.c"
+  "${CMAKE_CURRENT_SOURCE_DIR}/overlays/overlay_table_us.c"
 )
 
 # Include order: port host → PSY-Z (Psy-Q names) → decomp headers/sources.
@@ -61,10 +63,14 @@ add_library(dw3_host_overlays OBJECT
 # s8/u8 against PSY-Z's psyz/types.h.
 target_include_directories(dw3_engine PRIVATE
   "${CMAKE_CURRENT_SOURCE_DIR}/include"
+  "${CMAKE_CURRENT_SOURCE_DIR}/overlays"
   "${PSYZ_INCLUDE}"
   "${DECOMP_SRC}/include"
   "${DECOMP_SRC}/src"
   "${DECOMP_SRC}/src/field/stages"
+)
+target_include_directories(dw3_host_overlays PRIVATE
+  "${CMAKE_CURRENT_SOURCE_DIR}/overlays"
 )
 
 target_compile_definitions(dw3_engine PRIVATE

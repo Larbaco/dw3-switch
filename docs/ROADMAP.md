@@ -115,14 +115,17 @@ the host, replace MIPS-only pieces, and reach the title screen on PC.
   Done when: `FILE_CACHE.load(id)` returns byte-identical buffers to the
   disc for a sample of ids (unit test with the owner's data, skipped in
   CI).
-- [ ] **P2.6 Static overlay model.** `port/overlays/`: generate per-binary
-  symbol prefixes for the 21 overlays + stages (objcopy
-  `--prefix-symbols` or a generated `#define` header), a table
-  `{file id → entry, data start/end}` and `loadModeOverlay` /
-  `loadSubOverlay` replacements that restore the overlay's initial
-  `.data` **only when the id changes**, and zero its `.bss`.
-  Done when: two different stages and the same stage twice behave as on
-  PS1 (globals reset vs. preserved), checked by a host test.
+- [x] **P2.6 Static overlay model.** `port/overlays/`: descriptor table
+  `{file id → entry, data, data_init, bss}`, `loadModeOverlay` /
+  `loadSubOverlay` host path (`0008`) restores initial `.data` **only
+  when the id changes** and zeros `.bss`; same id preserves. Symbol
+  prefixes: **generated headers** (documented in
+  `port/overlays/README.md`; not objcopy). US title table registers
+  `STDWTITL` (`CNTY_SEL` skipped). Host test:
+  `tools/tests/test_overlay_host.py`.
+  Done when: two different overlays and the same overlay twice behave as
+  on PS1 (globals reset vs. preserved) — verified by the host fixture
+  test. Full title link/boot is P2.8 / E6.
 - [ ] **P2.7 Memory card → file.** `port/memcard/`: back `MemCard*`
   calls with a 128 KiB PS1-format card image per slot on disk, so saves
   stay importable/exportable (`.mcr`).
