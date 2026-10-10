@@ -171,8 +171,9 @@ WSTAG790 follow-up). **P3.3 Done-when met:** forced encounter →
 **P3.4 Done-when met** (`READY_FOR_MAIN_ROADMAP_SYNC: P3.4`,
 `docs/P3.4_MENUS.md`): menus open/return from field; **STSTATUS Triangle
 UI cancel** (no `AUTO_MENU_RETURN`); **STGMCARD save + load** via P2.7
-`.mcr`; pad START→status; FORCE_NPC shop/lab/naming/gym. Follow-up: real
-NPC walk-up talk. **P3.5 Done-when met**
+`.mcr`; pad START→status; FORCE_NPC shop/lab/naming/gym; **WSTAG245
+`talkToActorAt` → shop** (warped proximity). Follow-up: free pad walk-up.
+**P3.5 Done-when met**
 (`READY_FOR_MAIN_ROADMAP_SYNC: P3.5`, `docs/P3.5_CARDGAME.md`): force-win
 → prize item → `FIELDSTG`; album `cardsSeen` 29→33 via vanilla
 `STCRDSHP_openPack` `addCards` (host win `addCards` gated off). **P3.7
@@ -229,7 +230,8 @@ audio, movies.
   from field via `leaveField` and returns to `FIELDSTG`; **STSTATUS
   Triangle UI cancel** (no `AUTO_MENU_RETURN`); **STGMCARD force-save +
   force-load** via P2.7 `.mcr`; pad `AUTO_PAD=status`; NPC applyAction
-  shop/lab/naming/gym. Follow-up: real NPC proximity/talk.
+  shop/lab/naming/gym; WSTAG245 warped `talkToActorAt` → shop.
+  Follow-up: free pad walk-up; load checksum equality.
   Done when: each opens from the field, works end-to-end, and saving via
   `STGMCARD` uses P2.7.
 - [x] **P3.5 Card game.** Linked (`dw3_p35_cardgame`); patches `0029`/
