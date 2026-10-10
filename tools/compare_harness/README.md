@@ -9,102 +9,118 @@ PS1 (DuckStation) is the **visual oracle**. `dw3-pc` is the subject.
 
 ## Status
 
-Scaffold only. `capture_pair.py` accepts the planned CLI and exits:
+Automated **boot/oracle capture** works for `title` (DuckStation + own disc
++ BIOS). Field/battle still need a shared `.mcr` or `-statefile` + pad;
+ROADMAP P3.9 stays open until all three labels have reviewed pairs.
 
 | Mode | Exit | Meaning |
 |---|---|---|
-| `--dry-run` | 0 | Print capture plan; no disc / BIOS / binary needed |
-| default | 2 | Capture not implemented yet |
+| `--dry-run` | 0 | Print plan; no assets required |
+| `--label title` (live) | 0 | BIOS check + boot + F10 → `build/compare/title/duck.png` |
+| `--label field\|battle` without `--save` | 3 | Blocked (no settled scene) |
 
-Real captures and ticking ROADMAP P3.9 wait on owner DuckStation + saves.
-Do not claim done-when without PNGs under a local (gitignored) out dir.
+Screenshots stay under gitignored `build/compare/` (never commit game PNGs).
+
+## Emulation speed (required: 100%)
+
+DuckStation has **no CLI flag** for speed (checked AppImage `-help`,
+0.1-12074). The harness always rewrites
+`~/.local/share/duckstation/settings.ini` before launch:
+
+| Key | Value | Meaning |
+|---|---|---|
+| `Main/EmulationSpeed` | `1` | Normal realtime (100%). **`0` = uncapped** (thousands %) — do not use |
+| `Main/FastForwardSpeed` | `1` | Cap FF at 100% if somehow triggered |
+| `Main/TurboSpeed` | `1` | Cap turbo at 100% |
+| Hotkey `FastForward` | *(unbound)* | Tab cannot race the settle window |
+
+Also: `SetupWizardIncomplete=false`, `ConfirmPowerOff=false`,
+`BIOS/PathNTSCU=scph1001.bin`, `Folders/Screenshots` → harness shots dir.
+
+## One-command owner/agent recipe (unattended title/boot)
+
+From this worktree (defaults match the owner machine paths):
+
+```bash
+python3 tools/compare_harness/capture_pair.py \
+  --label title \
+  --duck-only \
+  --settle-seconds 20 \
+  --out build/compare
+```
+
+Explicit paths:
+
+```bash
+python3 tools/compare_harness/capture_pair.py \
+  --label title \
+  --duck-only \
+  --duckstation /mnt/windows/Jogos/emuladores/duckstation \
+  --disc "/mnt/windows/Jogos/PS1/Digimon World 3/Digimon World 3.cue" \
+  --bios "$HOME/.local/share/duckstation/bios/scph1001.bin" \
+  --settle-seconds 20 \
+  --out build/compare
+```
+
+Needs: `DISPLAY` + `xdotool` (F10 → native screenshot). Optional PC pair
+omits `--duck-only` and passes `--pc-bin` / `--runtime` when present.
+
+Dry-run (no GUI):
+
+```bash
+python3 tools/compare_harness/capture_pair.py --dry-run --label title
+```
+
+## DuckStation CLI (what exists / what does not)
+
+From `duckstation -help`:
+
+| Flag | Use |
+|---|---|
+| `-batch` | Exit after power-off |
+| `-fastboot` | Skip BIOS intro (not game movies) |
+| `-nofullscreen` | Windowed |
+| `-earlyconsole` | Early log |
+| `-- <disc>` | Boot cue/bin (spaces OK after `--`) |
+| `-state` / `-statefile` | Load save state (field/battle later) |
+| screenshot / quit-after-N-frames | **Not available** — harness uses F10 hotkey |
 
 ## Owner prerequisites (not in git)
 
 | Item | Role |
 |---|---|
-| Own US disc → `runtime/us/` | PC data root (`docs/RUNTIME_LAYOUT.md`, `tools/pack_runtime.py`) |
-| DuckStation + US BIN/CUE | Oracle boot; BIOS as DuckStation requires |
-| Shared `memcard0.mcr` (128 KiB) | Same slot-0 card for both sides (`port/memcard/README.md`) |
-| `build/pc/dw3-pc` | Subject binary from Core (`phase3-pc-bringup`) |
-| Optional env | `DW3_START_MODE`, `DW3_PROGRESS`, `DW3_MEMCARD_DIR`, … |
+| DuckStation AppImage | Oracle host |
+| BIOS `scph1001.bin` under data `bios/` | Own BIOS only — never downloaded by harness |
+| US BIN/CUE | Boot path |
+| Own disc → `runtime/us/` | PC subject data |
+| Shared `memcard0.mcr` | Field/battle same-save |
+| `build/pc/dw3-pc` | Subject binary (Core) |
 
-Synthetic empty card for layout checks only:
+## Same-save contract (field/battle)
 
-`tools/testdata/memcard/empty_slot.mcr` (not a gameplay save).
-
-## Same-save contract
-
-1. Export or produce one `memcard0.mcr` both sides accept.
-2. Copy it into **both** run roots before capture (do not let one side
-   rewrite the card mid-harness unless the label is a save test).
-3. Boot to a **settled frame** per label (title idle, field after load,
-   battle after fade-in or report — pick one and stick to it).
-
-## How to run (today)
-
-From the repo root (or this worktree):
-
-```bash
-# Validate args / print plan — no assets required
-python3 tools/compare_harness/capture_pair.py --dry-run \
-  --label title \
-  --runtime runtime/us \
-  --save path/to/memcard0.mcr \
-  --duckstation /path/to/duckstation \
-  --pc-bin build/pc/dw3-pc
-
-# Future capture (exits 2 until implemented)
-python3 tools/compare_harness/capture_pair.py \
-  --label field \
-  --runtime runtime/us \
-  --save runtime/us/memcard/memcard0.mcr \
-  --duckstation "$HOME/Applications/duckstation" \
-  --pc-bin build/pc/dw3-pc \
-  --out build/compare
-```
+1. One `memcard0.mcr` both sides accept.
+2. Copy into both run roots before capture.
+3. Settled frame per label (title idle / field after load / battle fade-in).
 
 ## Output layout (local only)
 
-Never commit screenshots or disc images. Prefer:
-
 ```
 build/compare/<label>/
-  duck.png    # DuckStation oracle
-  pc.png      # dw3-pc subject
-  pair.md     # settle criterion + human verdict
+  duck.png
+  pc.png          # optional
+  pair.md
+  duckstation.log
 ```
 
-Fill the review tables in `docs/P3.9_REFERENCE.md` with paths/notes; keep
-PNGs out of git.
+## Blockers (honest)
 
-## Capture flow (target)
-
-```
-                    shared memcard0.mcr
-                            |
-            +---------------+---------------+
-            v                               v
-   DuckStation (oracle)              dw3-pc (subject)
-   boot → settle → PNG               boot → settle → PNG
-            |                               |
-            +---------> build/compare/<label>/
-```
-
-1. Pack `runtime/us`, build `dw3-pc`, place shared `.mcr`.
-2. Oracle: launch DuckStation, load card / boot game, settle, save `duck.png`.
-3. Subject: run `dw3-pc --runtime …` with the same card dir; grab `pc.png`
-   (SDL hotkey or future host capture hook).
-4. Write `pair.md`; update `docs/P3.9_REFERENCE.md` verdict rows.
-
-## Merge note
-
-This track merges into Core (`phase3-pc-bringup`) before the Phase 3 gate,
-then Task A9 fills real captures. Draft PR may target `main` for review
-isolation; land via Core if ROADMAP/game trees conflict.
+- **Title settle:** opening movies may still be playing after N seconds at
+  100%; pad skip or save state needed for true `MODE_TITLE`.
+- **Field / battle:** need shared `.mcr` or DuckStation `-statefile`.
+- **PC pair:** best-effort window grab when `dw3-pc` + runtime exist.
 
 ## Related
 
-- ROADMAP **P3.9** (checkbox open until captures)
-- `docs/P3.9_REFERENCE.md` — title / field / battle review skeleton
-- Plan Task H1: `docs/superpowers/plans/2026-10-10-phase3-pc-game-loop.md`
+- ROADMAP **P3.9** (checkbox open until three reviewed captures)
+- `docs/P3.9_REFERENCE.md`
+- Plan Task H1 / A9
