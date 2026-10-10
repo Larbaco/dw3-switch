@@ -9,7 +9,12 @@ Override the Switch image with `DW3_DK_IMAGE=...`.
 
 ## WSL / drvfs (Windows mounts)
 
-`tools/dk.sh` runs Docker with `-u $(id -u):$(id -g)` so build artifacts are owned by your user. On WSL, checkouts under `/mnt/windows` (drvfs/NTFS) often cannot create or write `platforms/*/build/` inside the container (permission denied). Use a Linux/ext4 clone (e.g. `~/src/dw3-switch`) or CI with a normal Linux workspace for Switch builds via this wrapper.
+`tools/dk.sh` runs Docker with `-u $(id -u):$(id -g)` so build artifacts are owned by your user. On WSL, checkouts under `/mnt/windows` (drvfs/NTFS) often cannot create or write `platforms/*/build/` inside the container (permission denied). Prefer a Linux/ext4 clone (e.g. `~/src/dw3-switch`) or CI. For the NTFS checkout, overlay build/out on ext4:
+
+```bash
+DW3_DK_TMPBUILD=/tmp/dw3-dk-build ./tools/dk.sh make -C platforms/switch
+# rsyncs platforms/switch → ext4, builds there, copies dw3-switch.nro back
+```
 
 ## Optional: build dkp SDL3 from source (P4.1 experiment)
 

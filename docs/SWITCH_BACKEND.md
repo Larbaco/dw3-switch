@@ -76,39 +76,45 @@ inside the container. Skeleton `.nro` still builds that way on ext4.
 
 ## Experiment B — native libnx sketch (PSP layout)
 
-Sketch tree (stubs only; not linked into the Phase 1 `.nro` yet):
+| PSY-Z PSP file | Switch file | Intended libnx / stack | Status |
+|---|---|---|---|
+| `psp_gpu.c` | `nx_gpu.c` | EGL + OpenGL ES 2 (mesa/nouveau); PSY-Z VRAM blit later | **P4.2 linked** (`gpu_hello`) |
+| `psp_input.c` | `nx_input.c` | `pad` / `hid` → PS1 pad bits (P4.4) | empty TU |
+| `psp_audio.c` (+ SAS on PSP) | `nx_audio.c` | `audren` thread; software SPU like PC (`psyz_spu.c`) (P4.3) | empty TU |
+| `psp_os.c` | `nx_os.c` | libnx threads / mutex / time | empty TU |
+| `psp_file.c` | `nx_file.c` | `romfs:` / `sdmc:` paths for P1.6 layout (P4.5) | empty TU |
+| `psp_log.c` | `nx_log.c` | stdout / nxlink | empty TU |
+| `psp_module_*.c` | `nx_module.c` | static dispatch table — no `dlopen` (P4.6) | empty TU |
 
-| PSY-Z PSP file | Switch sketch | Intended libnx / stack |
-|---|---|---|
-| `psp_gpu.c` | `nx_gpu.c` | EGL + OpenGL ES (mesa/nouveau) or deko3d; present PSY-Z VRAM (P4.2) |
-| `psp_input.c` | `nx_input.c` | `pad` / `hid` → PS1 pad bits (P4.4) |
-| `psp_audio.c` (+ SAS on PSP) | `nx_audio.c` | `audren` thread; software SPU like PC (`psyz_spu.c`) (P4.3) |
-| `psp_os.c` | `nx_os.c` | libnx threads / mutex / time |
-| `psp_file.c` | `nx_file.c` | `romfs:` / `sdmc:` paths for P1.6 layout (P4.5) |
-| `psp_log.c` | `nx_log.c` | stdout / nxlink |
-| `psp_module_*.c` | `nx_module.c` | static dispatch table — no `dlopen` (P4.6) |
+See [platforms/switch/psyz_backend/README.md](../platforms/switch/psyz_backend/README.md)
+and [docs/P4.2_VIDEO.md](P4.2_VIDEO.md).
 
-See [platforms/switch/psyz_backend/README.md](../platforms/switch/psyz_backend/README.md).
+Wiring into PSY-Z (P4.7): either a `CMAKE_SYSTEM_NAME` / `__SWITCH__`
+branch in the submodule (upstream-bound) or keep supplying platform symbols
+from `platforms/switch/` until the surface is stable.
 
-Wiring into PSY-Z (later, P4.2+): either a `CMAKE_SYSTEM_NAME` / `__SWITCH__`
-branch in the submodule (upstream-bound) or an object library in
-`platforms/switch/` that supplies the same platform symbols the PSP files
-provide. Prefer keeping Switch files in this repo until the surface is stable.
+## P4.2 video (2026-10-10)
+
+- **Stack:** EGL + OpenGL ES 2 (`-lEGL -lGLESv2 -lglapi -ldrm_nouveau`).
+- **Sample:** `platforms/switch/source/main.c` clear-color `gpu_hello` with
+  `eglSwapInterval(1)` and docked 1920×1080 / handheld 1280×720 via
+  recreate-on-`appletGetOperationMode`.
+- **Hardware:** not run in this session — ROADMAP P4.2 stays open until 60 fps
+  is measured on a real Switch. Details: [P4.2_VIDEO.md](P4.2_VIDEO.md).
 
 ## Blockers / environment notes
 
 | Blocker | Impact |
 |---|---|
-| NTFS / drvfs checkout (`/mnt/windows/...`) | `./tools/dk.sh make -C platforms/switch` cannot `mkdir build` as non-root. Use Linux/ext4 clone, CI, or an isolated `/tmp` build volume. |
+| NTFS / drvfs checkout (`/mnt/windows/...`) | Default `./tools/dk.sh make -C platforms/switch` cannot `mkdir build` as non-root. Use `DW3_DK_TMPBUILD=/tmp/dw3-dk-build ./tools/dk.sh make -C platforms/switch`, a Linux/ext4 clone, or CI. |
 | No host `/opt/devkitpro` | Local Switch builds go through Docker (`tools/dk.sh`). |
-| No SDL3 pacman package | SDL3-dkp path needs a from-source recipe every time. |
-| No hardware validation in this spike | Decision is from compile + API fit, not docked/handheld playtest. |
-| Phase 3 gate still open | Switch host work is a side track; do not block PC movies/audio. |
+| No SDL3 pacman package | SDL3-dkp path needs a from-source recipe every time (fallback only). |
+| No Switch hardware here | P4.2 code builds; 60 fps docked/handheld not validated. |
+| Phase 3 PC bring-up | Switch host remains a side track; do not block PC movies/audio. |
 
-## Next steps (after P4.1)
+## Next steps
 
-1. P4.2: implement `nx_gpu.c` present path (EGL/GLES first; deko3d if needed).
-2. Keep Phase 1 `source/main.c` skeleton until the backend can own `main` /
-   applet loop.
+1. ~~P4.2: implement `nx_gpu.c` present path~~ — code done; **hardware fps check** open.
+2. P4.3: `nx_audio.c` / `audren`.
 3. Do not vendor SDL3 into git; if revisited, document a `tools/` fetch+build
    helper only.
