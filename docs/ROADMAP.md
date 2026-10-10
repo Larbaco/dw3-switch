@@ -170,10 +170,10 @@ WSTAG790 follow-up). **P3.3 Done-when met:** forced encounter →
 `STFGTREP` (XP/levels) → return to `FIELDSTG` (`docs/P3.3_BATTLE.md`).
 **P3.4 partial:** menus linked + field open/return; **STGMCARD save →
 `.mcr` proven**; **pad START→`MODE_STATUS`→field** (no
-`FORCE_FIELD_MENU`); **FORCE_NPC shop/lab/naming return** (gym NPC
-SEGV) (`docs/P3.4_MENUS.md`, `READY_FOR_MAIN_ROADMAP_SYNC:
-P3.4_MENUS_PAD2` / `P3.4_MEMCARD`). Triangle UI return, real NPC
-walk-up, gym NPC SEGV, load e2e still open. **P3.5 Done-when met**
+`FORCE_FIELD_MENU`); **FORCE_NPC shop/lab/naming/gym return**
+(`docs/P3.4_MENUS.md`, `READY_FOR_MAIN_ROADMAP_SYNC: P3.4_GYM_NPC` /
+`P3.4_MENUS_PAD2` / `P3.4_MEMCARD`). Triangle UI return, real NPC
+walk-up, load e2e still open. Done-when checkbox stays open. **P3.5 Done-when met**
 (`READY_FOR_MAIN_ROADMAP_SYNC: P3.5`, `docs/P3.5_CARDGAME.md`): force-win
 → prize item → `FIELDSTG`; album `cardsSeen` 29→33 via vanilla
 `STCRDSHP_openPack` `addCards` (host win `addCards` gated off). **P3.7
@@ -228,10 +228,9 @@ audio, movies.
   each opens from field via `leaveField` and returns to `FIELDSTG`;
   **STGMCARD force-save mutates `memcard0.mcr`** via P2.7; **pad
   `AUTO_PAD=status` START→`MODE_STATUS`→field**; NPC applyAction
-  shop/lab/naming return (gym NPC SEGV)
-  (`READY_FOR_MAIN_ROADMAP_SYNC: P3.4_MENUS_PAD2`). Still open: Triangle
-  UI return, real NPC walk-up, gym NPC SEGV, load e2e. Checkbox stays
-  unticked until full Done-when.
+  shop/lab/naming/gym return (`READY_FOR_MAIN_ROADMAP_SYNC:
+  P3.4_GYM_NPC`). Still open: Triangle UI return, real NPC walk-up,
+  load e2e. Checkbox stays unticked (Done-when not fully honest yet).
   Done when: each opens from the field, works end-to-end, and saving via
   `STGMCARD` uses P2.7.
 - [x] **P3.5 Card game.** Linked (`dw3_p35_cardgame`); patches `0029`/
