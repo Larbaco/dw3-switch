@@ -183,7 +183,9 @@ PSY-Z `MDEC_*` / `StCdInterrupt` stubs + no CD track for
 `MOVIEOPN.STR` LBA; default skip remains `MODE_TITLE`. **P3.8 Done-when met** (`READY_FOR_MAIN_ROADMAP_SYNC: P3.8`,
 `docs/P3.8_STAGES.md`): `STAGSLCT` + batches 1–6 link 238/239 US stage
 objs; live PASS 237/237; only `WSTAG460` left stubbed (host
-`updateWanderer` SEGV). P3.6 / P3.9 may run on side tracks.
+`updateWanderer` SEGV). **Phase 3 gate not met** (`docs/P3_GATE.md`):
+automated intro reaches `MODE_OPENING_2` (`0xE02`) / `MDEC_*` stubs;
+no start→first-boss segment. P3.6 / P3.9 may run on side tracks.
 
 Objective: the full game loop runs on PC: field, stages, battle, menus,
 audio, movies.
@@ -267,7 +269,9 @@ audio, movies.
   Done when: a doc page with the comparison for title, field, battle.
 
 Gate: a full playthrough segment (start → first boss) on PC without
-crashes; both versions build.
+crashes; both versions build. **Not met** — see `docs/P3_GATE.md`
+(proven: title/field/name/walk + forced battle; blocked: movies/audio,
+first boss, `WSTAG460`, P3.9 oracle).
 
 ## Phase 4 — Switch host for PSY-Z
 
