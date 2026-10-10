@@ -40,6 +40,11 @@ extern char __stop_dw3data_wstag785[];
 extern char __start_dw3bss_wstag785[];
 extern char __stop_dw3bss_wstag785[];
 
+extern char __start_dw3data_wstag790[];
+extern char __stop_dw3data_wstag790[];
+extern char __start_dw3bss_wstag790[];
+extern char __stop_dw3bss_wstag790[];
+
 static void bind_section(Dw3OverlayDesc *desc, char *data, char *data_end, char *bss,
                          char *bss_end) {
     size_t data_size;
@@ -78,7 +83,7 @@ static void bind_section(Dw3OverlayDesc *desc, char *data, char *data_end, char 
 
 void dw3_overlay_bind_field_sections(Dw3OverlayDesc *fieldstg, Dw3OverlayDesc *stplnmet,
                                      Dw3OverlayDesc *wstag260, Dw3OverlayDesc *wstag780,
-                                     Dw3OverlayDesc *wstag785) {
+                                     Dw3OverlayDesc *wstag785, Dw3OverlayDesc *wstag790) {
     bind_section(fieldstg, __start_dw3data_fieldstg, __stop_dw3data_fieldstg,
                  __start_dw3bss_fieldstg, __stop_dw3bss_fieldstg);
     bind_section(stplnmet, __start_dw3data_stplnmet, __stop_dw3data_stplnmet,
@@ -89,4 +94,6 @@ void dw3_overlay_bind_field_sections(Dw3OverlayDesc *fieldstg, Dw3OverlayDesc *s
                  __start_dw3bss_wstag780, __stop_dw3bss_wstag780);
     bind_section(wstag785, __start_dw3data_wstag785, __stop_dw3data_wstag785,
                  __start_dw3bss_wstag785, __stop_dw3bss_wstag785);
+    bind_section(wstag790, __start_dw3data_wstag790, __stop_dw3data_wstag790,
+                 __start_dw3bss_wstag790, __stop_dw3bss_wstag790);
 }

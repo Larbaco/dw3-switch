@@ -222,8 +222,8 @@ set_target_properties(dw3_p31_audit PROPERTIES
 )
 
 # ---------------------------------------------------------------------------
-# P3.2: FIELDSTG + STPLNMET + WSTAG260/780/785 with prefixed stage symbols and
-# named .data/.bss sections for static overlay restore.
+# P3.2: FIELDSTG + STPLNMET + WSTAG260/780/785/790 with prefixed stage symbols
+# and named .data/.bss sections for static overlay restore.
 # ---------------------------------------------------------------------------
 set(PREFIX_STAGE_OBJ "${DW3_ROOT}/tools/prefix_stage_obj.py")
 set(RENAME_OVL_SECTIONS "${DW3_ROOT}/tools/rename_ovl_sections.py")
@@ -331,6 +331,7 @@ endfunction()
 dw3_host_stage(wstag260 "wstag260.c")
 dw3_host_stage(wstag780 "kusanagi_city/wstag780.c")
 dw3_host_stage(wstag785 "kusanagi_city/wstag785.c")
+dw3_host_stage(wstag790 "kusanagi_city/wstag790.c")
 
 set(DW3_STAGE_STUBS_C "${DW3_HOST_OVL_DIR}/stage_stubs.c")
 set(DW3_STAGE_STUBS_O "${DW3_HOST_OVL_DIR}/stage_stubs.o")
@@ -338,7 +339,7 @@ add_custom_command(
   OUTPUT "${DW3_STAGE_STUBS_C}"
   COMMAND python3 "${GEN_STAGE_STUBS}"
     --stages-h "${DECOMP_SRC}/include/field/stages.h"
-    --exclude WSTAG260,WSTAG780,WSTAG785
+    --exclude WSTAG260,WSTAG780,WSTAG785,WSTAG790
     -o "${DW3_STAGE_STUBS_C}"
   DEPENDS
     "${GEN_STAGE_STUBS}"
@@ -364,6 +365,7 @@ set(DW3_P32_HOST_OBJECTS
   "${DW3_HOST_OVL_DIR}/wstag260.host.o"
   "${DW3_HOST_OVL_DIR}/wstag780.host.o"
   "${DW3_HOST_OVL_DIR}/wstag785.host.o"
+  "${DW3_HOST_OVL_DIR}/wstag790.host.o"
   "${DW3_STAGE_STUBS_O}"
 )
 set_source_files_properties(${DW3_P32_HOST_OBJECTS} PROPERTIES

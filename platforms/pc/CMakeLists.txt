@@ -45,6 +45,7 @@ target_link_options(dw3-pc PRIVATE
   "-Wl,--undefined=__start_dw3data_wstag260"
   "-Wl,--undefined=__start_dw3data_wstag780"
   "-Wl,--undefined=__start_dw3data_wstag785"
+  "-Wl,--undefined=__start_dw3data_wstag790"
 )
 target_include_directories(psyz PRIVATE ${CMAKE_SOURCE_DIR}/../../vendor/psyz/psyz/include)
 target_compile_definitions(psyz PRIVATE __psyz)

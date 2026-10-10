@@ -166,8 +166,9 @@ Status: **in progress** (branch `phase3-pc-bringup`; plan:
 
 Tracking: Phase 3 on `phase3-pc-bringup`. P3.1 done. **P3.2 Done-when
 met** (pad walk + `SCRIPT_LEAVE` 780→785 + name entry; see
-`docs/P3.2_FIELD.md`). Follow-up: link WSTAG790 (`0x2D9`) after name.
-P3.6 / P3.9 may run on side tracks.
+`docs/P3.2_FIELD.md`). Follow-up **WSTAG790** (`0x2D9` / file 476)
+linked — post-name leave reaches Chamber Room without SEGV. Next: P3.3
+battle. P3.6 / P3.9 may run on side tracks.
 
 Objective: the full game loop runs on PC: field, stages, battle, menus,
 audio, movies.
@@ -190,7 +191,9 @@ audio, movies.
   `0020`–`0023` + `DW3_AUTO_PAD` host inject. **Done-when evidence**
   (`docs/P3.2_FIELD.md`): pad `moveByPad` moves actor (Δy on 780/785);
   real `SCRIPT_LEAVE`/`leaveField` 474→475 (not `AUTO_DOOR`); name
-  `0x500` then back to 475. Follow-up: WSTAG790 (`0x2D9`) not linked.
+  `0x500` then back to 475. Follow-up: **WSTAG790** (`0x2D9` / 476)
+  linked — FAST path `SCRIPT_LEAVE`→`pickStage` 476 without SEGV
+  (`docs/P3.2_FIELD.md`).
   Done when: new game → name entry → first field area is walkable and a
   door changes stage.
 - [ ] **P3.3 Battle.** `FIGHTSTG` + `WFIGHTMN` (+ `WFIGHTTS` from the debug
