@@ -1,0 +1,50 @@
+Upstream-bound: no
+Subject: [PORT_HOST] P3 gate: FORCE_NPC_ACTION optional @mode gate
+
+Allow DW3_FORCE_NPC_ACTION=code[@mode][:value] so START_EVENT(4)
+(0x9004 → event 9, Digimon Center "download partners now?") can wait
+until Asuka Lobby (0x203) on a continuous new-game path without firing
+on earlier field modes. Mode mismatch does not consume
+dw3_host_menu_force_once().
+
+--- a/src/field/field_mode/field.c	2026-10-10 13:57:31.977334275 -0300
++++ b/src/field/field_mode/field.c	2026-10-10 13:57:23.769289934 -0300
+@@ -569,16 +569,34 @@
+                 }
+                 {
+                     const char *npc = getenv("DW3_FORCE_NPC_ACTION");
+-                    if (npc != NULL && npc[0] != '\0' && dw3_host_menu_force_once()) {
++                    if (npc != NULL && npc[0] != '\0') {
+                         long code = strtol(npc, &end, 0);
+                         long value = 1;
++                        long mode_gate = -1;
++                        char *mode_end = NULL;
++
++                        if (end != npc && *end == '@') {
++                            mode_gate = strtol(end + 1, &mode_end, 0);
++                            if (mode_end != end + 1) {
++                                end = mode_end;
++                            }
++                        }
+                         if (end != npc && *end == ':') {
+                             value = strtol(end + 1, NULL, 0);
+                         }
+-                        if (end != npc && code > 0) {
++                        if (end == npc || code <= 0) {
++                            /* ignore malformed */
++                        } else if (mode_gate >= 0 &&
++                                   GAME.funcs.getMode() != (s32)mode_gate) {
++                            /* wait for target field mode; keep force_once */
++                        } else if (dw3_host_menu_force_once()) {
+                             fprintf(stderr,
+-                                    "dw3: DW3_FORCE_NPC_ACTION applyAction code=0x%lx value=%ld\n",
+-                                    code, value);
++                                    "dw3: DW3_FORCE_NPC_ACTION applyAction "
++                                    "code=0x%lx value=%ld mode=0x%x progress=%d "
++                                    "partySet=%d\n",
++                                    code, value,
++                                    (unsigned)GAME.funcs.getMode(),
++                                    GAME.progress, GAME.partySet);
+                             GAME.fieldMode = GAME.funcs.getMode();
+                             GAME.fieldPos = children->actors[0]->pos;
+                             GAME.fieldDir = children->actors[0]->dir;
