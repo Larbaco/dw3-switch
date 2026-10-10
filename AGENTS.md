@@ -148,7 +148,7 @@ python3 -m pytest tools/tests -v
 ```
 
 - Run `./build/pc/dw3-pc` with `DISPLAY` set (this desktop uses `:1`) and a
-  writable `XDG_RUNTIME_DIR`. The window title is `dw3-pc Phase 1`. Close it
+  writable `XDG_RUNTIME_DIR`. The window title is `dw3-pc Phase 2`. Close it
   to quit.
 
 ## First actions for a new session
