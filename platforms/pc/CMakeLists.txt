@@ -21,7 +21,15 @@ target_include_directories(dw3-pc PRIVATE
   ${CMAKE_SOURCE_DIR}/../../vendor/psyz/psyz/include
 )
 # Host overrides must appear before psyz so SsSetTableSize / pad APIs win.
-target_link_libraries(dw3-pc PRIVATE dw3_engine_objs psyz)
+# whole-archive field objs (named .data/.bss for overlay restore).
+# start-group: engine↔field cross-archive undefineds (FLAGS_00, UI helpers).
+target_link_libraries(dw3-pc PRIVATE
+  "-Wl,--start-group"
+  "-Wl,--whole-archive" dw3_p32_field "-Wl,--no-whole-archive"
+  dw3_engine_objs
+  "-Wl,--end-group"
+  psyz
+)
 target_link_options(dw3-pc PRIVATE
   "-Wl,--wrap=_card_read"
   "-Wl,--wrap=_card_write"
@@ -31,6 +39,12 @@ target_link_options(dw3-pc PRIVATE
   "-Wl,--wrap=PadInitMtap"
   "-Wl,--wrap=PadSetAct"
   "-Wl,--wrap=PadSetActAlign"
+  # Keep P3.2 named overlay .data/.bss orphan sections (overlay_sections.c).
+  "-Wl,--undefined=__start_dw3data_fieldstg"
+  "-Wl,--undefined=__start_dw3data_stplnmet"
+  "-Wl,--undefined=__start_dw3data_wstag260"
+  "-Wl,--undefined=__start_dw3data_wstag780"
+  "-Wl,--undefined=__start_dw3data_wstag785"
 )
 target_include_directories(psyz PRIVATE ${CMAKE_SOURCE_DIR}/../../vendor/psyz/psyz/include)
 target_compile_definitions(psyz PRIVATE __psyz)

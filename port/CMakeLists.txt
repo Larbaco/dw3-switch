@@ -76,6 +76,7 @@ add_library(dw3_host_overlays OBJECT
   "${CMAKE_CURRENT_SOURCE_DIR}/overlays/host_vram.c"
   "${CMAKE_CURRENT_SOURCE_DIR}/overlays/host_heap.c"
   "${CMAKE_CURRENT_SOURCE_DIR}/overlays/overlay_host.c"
+  "${CMAKE_CURRENT_SOURCE_DIR}/overlays/overlay_sections.c"
   "${CMAKE_CURRENT_SOURCE_DIR}/overlays/overlay_table_us.c"
   "${CMAKE_CURRENT_SOURCE_DIR}/overlays/mode_stubs.c"
   "${CMAKE_CURRENT_SOURCE_DIR}/overlays/boot_tim_host.c"
@@ -220,7 +221,166 @@ set_target_properties(dw3_p31_audit PROPERTIES
   C_EXTENSIONS ON
 )
 
-# Archive for the PC host: engine + title + port glue (host main is separate).
+# ---------------------------------------------------------------------------
+# P3.2: FIELDSTG + STPLNMET + WSTAG260/780/785 with prefixed stage symbols and
+# named .data/.bss sections for static overlay restore.
+# ---------------------------------------------------------------------------
+set(PREFIX_STAGE_OBJ "${DW3_ROOT}/tools/prefix_stage_obj.py")
+set(RENAME_OVL_SECTIONS "${DW3_ROOT}/tools/rename_ovl_sections.py")
+set(GEN_STAGE_STUBS "${DW3_ROOT}/tools/gen_stage_stubs.py")
+set(DW3_HOST_OVL_DIR "${CMAKE_CURRENT_BINARY_DIR}/host_ovl")
+file(MAKE_DIRECTORY "${DW3_HOST_OVL_DIR}")
+
+set(_DW3_COMPILE_INCLUDES "")
+foreach(_inc IN LISTS _DW3_GAME_INCLUDES)
+  list(APPEND _DW3_COMPILE_INCLUDES "-I${_inc}")
+endforeach()
+set(_DW3_COMPILE_DEFS "")
+foreach(_def IN LISTS _DW3_GAME_DEFS)
+  list(APPEND _DW3_COMPILE_DEFS "-D${_def}")
+endforeach()
+
+file(GLOB DW3_FIELD_SOURCES CONFIGURE_DEPENDS
+  "${DECOMP_SRC}/src/field/field_mode/*.c"
+  "${DECOMP_SRC}/src/field/field_mode/data/*.c")
+list(FILTER DW3_FIELD_SOURCES EXCLUDE REGEX "\\.inc\\.c$")
+list(LENGTH DW3_FIELD_SOURCES _dw3_field_count)
+if(_dw3_field_count EQUAL 0)
+  message(FATAL_ERROR "no FIELDSTG sources under ${DECOMP_SRC}/src/field/field_mode")
+endif()
+
+set(DW3_STPLNMET_SOURCES
+  "${DECOMP_SRC}/src/menus/player_name/backdrop.c"
+  "${DECOMP_SRC}/src/menus/player_name/choice.c"
+  "${DECOMP_SRC}/src/menus/player_name/confirm.c"
+  "${DECOMP_SRC}/src/menus/player_name/name_entry.c"
+  "${DECOMP_SRC}/src/menus/player_name/scene.c"
+  "${DECOMP_SRC}/src/menus/player_name/screen.c"
+  "${DECOMP_SRC}/src/menus/player_name/welcome.c"
+  "${DECOMP_SRC}/src/menus/player_name/data/stplnmet.c"
+)
+
+function(dw3_compile_c_objects out_var)
+  set(_outs "")
+  foreach(_src IN LISTS ARGN)
+    get_filename_component(_base "${_src}" NAME_WE)
+    get_filename_component(_dir "${_src}" DIRECTORY)
+    string(REPLACE "${DECOMP_SRC}/" "" _rel "${_dir}")
+    string(REPLACE "/" "_" _rel_flat "${_rel}")
+    set(_obj "${DW3_HOST_OVL_DIR}/${_rel_flat}_${_base}.o")
+    add_custom_command(
+      OUTPUT "${_obj}"
+      COMMAND ${CMAKE_C_COMPILER} -c
+        ${_DW3_GAME_OPTS}
+        ${_DW3_COMPILE_DEFS}
+        ${_DW3_COMPILE_INCLUDES}
+        -o "${_obj}"
+        "${_src}"
+      DEPENDS "${_src}" dw3_decomp_patched
+      COMMENT "P3.2 compile ${_rel}/${_base}.c"
+      VERBATIM
+    )
+    list(APPEND _outs "${_obj}")
+  endforeach()
+  set(${out_var} "${_outs}" PARENT_SCOPE)
+endfunction()
+
+dw3_compile_c_objects(DW3_FIELD_OBJECTS ${DW3_FIELD_SOURCES})
+dw3_compile_c_objects(DW3_STPLNMET_OBJECTS ${DW3_STPLNMET_SOURCES})
+
+add_custom_command(
+  OUTPUT "${DW3_HOST_OVL_DIR}/fieldstg.host.o"
+  COMMAND ${CMAKE_COMMAND} -E env PYTHONUNBUFFERED=1
+    "${CMAKE_COMMAND}" -E rm -f "${DW3_HOST_OVL_DIR}/fieldstg.host.o"
+  COMMAND python3 "${RENAME_OVL_SECTIONS}" fieldstg
+    "${DW3_HOST_OVL_DIR}/fieldstg.host.o"
+    ${DW3_FIELD_OBJECTS}
+  DEPENDS ${DW3_FIELD_OBJECTS} "${RENAME_OVL_SECTIONS}"
+  COMMENT "P3.2 pack FIELDSTG host overlay object"
+  VERBATIM
+)
+add_custom_command(
+  OUTPUT "${DW3_HOST_OVL_DIR}/stplnmet.host.o"
+  COMMAND python3 "${RENAME_OVL_SECTIONS}" stplnmet
+    "${DW3_HOST_OVL_DIR}/stplnmet.host.o"
+    ${DW3_STPLNMET_OBJECTS}
+  DEPENDS ${DW3_STPLNMET_OBJECTS} "${RENAME_OVL_SECTIONS}"
+  COMMENT "P3.2 pack STPLNMET host overlay object"
+  VERBATIM
+)
+
+function(dw3_host_stage stage src_rel)
+  set(_src "${DECOMP_SRC}/src/field/stages/${src_rel}")
+  set(_raw "${DW3_HOST_OVL_DIR}/${stage}.raw.o")
+  set(_host "${DW3_HOST_OVL_DIR}/${stage}.host.o")
+  add_custom_command(
+    OUTPUT "${_host}"
+    COMMAND ${CMAKE_C_COMPILER} -c
+      ${_DW3_GAME_OPTS}
+      ${_DW3_COMPILE_DEFS}
+      ${_DW3_COMPILE_INCLUDES}
+      -o "${_raw}"
+      "${_src}"
+    COMMAND python3 "${PREFIX_STAGE_OBJ}" "${stage}" "${_raw}" "${_host}"
+    DEPENDS "${_src}" dw3_decomp_patched "${PREFIX_STAGE_OBJ}"
+    COMMENT "P3.2 stage ${stage}"
+    VERBATIM
+  )
+endfunction()
+
+dw3_host_stage(wstag260 "wstag260.c")
+dw3_host_stage(wstag780 "kusanagi_city/wstag780.c")
+dw3_host_stage(wstag785 "kusanagi_city/wstag785.c")
+
+set(DW3_STAGE_STUBS_C "${DW3_HOST_OVL_DIR}/stage_stubs.c")
+set(DW3_STAGE_STUBS_O "${DW3_HOST_OVL_DIR}/stage_stubs.o")
+add_custom_command(
+  OUTPUT "${DW3_STAGE_STUBS_C}"
+  COMMAND python3 "${GEN_STAGE_STUBS}"
+    --stages-h "${DECOMP_SRC}/include/field/stages.h"
+    --exclude WSTAG260,WSTAG780,WSTAG785
+    -o "${DW3_STAGE_STUBS_C}"
+  DEPENDS
+    "${GEN_STAGE_STUBS}"
+    "${DECOMP_SRC}/include/field/stages.h"
+    dw3_decomp_patched
+  COMMENT "P3.2 generate weak stage stubs"
+  VERBATIM
+)
+add_custom_command(
+  OUTPUT "${DW3_STAGE_STUBS_O}"
+  COMMAND ${CMAKE_C_COMPILER} -c -std=c11 -Wall
+    -DPORT_HOST=1
+    -o "${DW3_STAGE_STUBS_O}"
+    "${DW3_STAGE_STUBS_C}"
+  DEPENDS "${DW3_STAGE_STUBS_C}"
+  COMMENT "P3.2 compile stage stubs"
+  VERBATIM
+)
+
+set(DW3_P32_HOST_OBJECTS
+  "${DW3_HOST_OVL_DIR}/fieldstg.host.o"
+  "${DW3_HOST_OVL_DIR}/stplnmet.host.o"
+  "${DW3_HOST_OVL_DIR}/wstag260.host.o"
+  "${DW3_HOST_OVL_DIR}/wstag780.host.o"
+  "${DW3_HOST_OVL_DIR}/wstag785.host.o"
+  "${DW3_STAGE_STUBS_O}"
+)
+set_source_files_properties(${DW3_P32_HOST_OBJECTS} PROPERTIES
+  EXTERNAL_OBJECT TRUE
+  GENERATED TRUE
+)
+add_custom_target(dw3_p32_field_objs DEPENDS ${DW3_P32_HOST_OBJECTS})
+
+# Whole-archive field/stage host objects so named .data/.bss sections land in
+# the final link (orphan __start_/__stop_ symbols from overlay_sections.c).
+add_library(dw3_p32_field STATIC ${DW3_P32_HOST_OBJECTS})
+set_target_properties(dw3_p32_field PROPERTIES
+  LINKER_LANGUAGE C
+)
+add_dependencies(dw3_p32_field dw3_p32_field_objs)
+
+# Archive for the PC host: engine + title + port glue (field objs separate).
 add_library(dw3_engine_objs STATIC
   $<TARGET_OBJECTS:dw3_engine>
   $<TARGET_OBJECTS:dw3_title>

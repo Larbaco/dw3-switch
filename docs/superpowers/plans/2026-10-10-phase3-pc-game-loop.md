@@ -304,14 +304,18 @@ if __name__ == "__main__":
 
 ### Task A2: P3.2 Field + first stage
 
+**Status:** link scaffold done — `dw3_p32_field` + US table
+(`FIELDSTG`/`STPLNMET`/`WSTAG260`/`780`/`785`); `dw3-pc` links. Runtime
+walk/door still open.
+
 **Files:** `port/CMakeLists.txt` (link `FIELDSTG` + starting town stage e.g. `WSTAG260`), `port/overlays/*`, patches as needed, `platforms/pc`, `docs/ROADMAP.md`.
 
 **Interfaces:**
 - Consumes: P3.1 clean overlays; cdfs file ids; static overlay restore
 - Produces: new game → name entry → walkable first field; door changes stage
 
-- [ ] **Step 1: Identify US starting stage file ids / overlay names from `docs/SURVEY.md` + decomp `stages` tables.**
-- [ ] **Step 2: Link FIELDSTG + required shared field objects; register overlay restore entries.**
+- [x] **Step 1: Identify US starting stage file ids / overlay names from `docs/SURVEY.md` + decomp `stages` tables.**
+- [x] **Step 2: Link FIELDSTG + required shared field objects; register overlay restore entries.**
 - [ ] **Step 3: Boot path: title → new game → `STPLNMET` if required → field.**
 - [ ] **Step 4: Manual verify walk + door; tick P3.2; commit + push.**
 

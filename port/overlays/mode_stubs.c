@@ -1,6 +1,7 @@
 /*
- * Weak stubs for mode overlays not linked in the Phase 2 title bring-up.
- * STDWTITL_start comes from the real title sources.
+ * Weak stubs for mode overlays not yet linked into the host image.
+ * STDWTITL_start comes from title sources; FIELDSTG / STPLNMET from P3.2
+ * host overlay objects (do not stub those — weak defs block archive pull).
  */
 #ifndef PORT_HOST
 #error "port/overlays/mode_stubs.c is host-only"
@@ -14,9 +15,7 @@ typedef struct Task Task;
         return (Task *)0;                                                      \
     }
 
-DW3_MODE_STUB(FIELDSTG_start)
 DW3_MODE_STUB(STCRDDEK_start)
-DW3_MODE_STUB(STPLNMET_start)
 DW3_MODE_STUB(FIGHTSTG_start)
 DW3_MODE_STUB(CARDGAME_start)
 DW3_MODE_STUB(SOUNDTST_start)
