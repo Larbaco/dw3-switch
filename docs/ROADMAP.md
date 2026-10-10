@@ -133,11 +133,11 @@ the host, replace MIPS-only pieces, and reach the title screen on PC.
   on PS1 (globals reset vs. preserved) — verified by the host fixture
   test. Full title link/boot is P2.8 / E6.
 - [x] **P2.7 Memory card → file.** `port/memcard/`: 128 KiB PS1-format
-  `.mcr` per slot (`memcard_host_*` sector API matching libcard). PSY-Z
-  still uses bu00 directories / stubs `_card_*`; Wave 4 wires those to
-  this backend. Host CLI + tests: `tools/memcard_rw.c`,
-  `tools/tests/test_memcard.py`. DuckStation round-trip is owner manual
-  (see `port/memcard/README.md`).
+  `.mcr` per slot (`memcard_host_*` sector API matching libcard). Engine
+  wiring on `phase3-pc-bringup` @ `95fb20b`: `memcard_libmcrd.c` +
+  `--wrap=_card_*` (STGMCARD save evidence). Host CLI + tests:
+  `tools/memcard_rw.c`, `tools/tests/test_memcard.py`. DuckStation
+  round-trip is owner manual (see `port/memcard/README.md`).
   Done when: host `.mcr` images are 128 KiB formatted/readable — verified
   by fixture tests.
 - [x] **P2.8 Boot to title on PC.** (E6 / 2026-10-10; pad fix 2026-10-10):
@@ -169,9 +169,10 @@ for P3.5). P3.1 done. **P3.2 Done-when met** (`docs/P3.2_FIELD.md`).
 WSTAG790 linked @ `481d4d0` (post-name chamber OK). **P3.3 Done-when
 met** @ `a4d7e64`: `FIGHTSTG`+`WFIGHTMN`+`STFGTREP`; forced win →
 report XP/levels → return to `FIELDSTG` (`docs/P3.3_BATTLE.md`).
-**P3.4 partial** @ `99133d5`: menus linked + field open/return
-(`docs/P3.4_MENUS.md` on branch); STGMCARD `.mcr` save blocked on
-memcard event completion. **P3.5 partial** on `phase3-cardgame` @
+**P3.4 partial** @ `95fb20b` (`READY_FOR_MAIN_ROADMAP_SYNC:
+P3.4_MEMCARD`): menus linked + field open/return; **STGMCARD force-save
+mutates `memcard0.mcr`** via P2.7 (`docs/P3.4_MENUS.md` on branch).
+Pad-driven START→status and NPC script entries still open. **P3.5 partial** on `phase3-cardgame` @
 `e5fcc83`: overlays linked/boot; force prize OK; SEGV after prize;
 album not updating (`docs/P3.5_CARDGAME.md`). **P3.6 investigation** on
 main (`docs/P3.6_AUDIO.md` from `phase3-audio-spike`): blocker PSY-Z
@@ -206,14 +207,14 @@ audio, movies.
   door. Follow-up: real wilderness encounter + pad-driven KO.
   Done when: a random encounter completes and returns to the field with
   stats applied.
-- [ ] **P3.4 Menus and shops.** Linked on `phase3-pc-bringup` @ `99133d5`
-  (`dw3_p34_menus`); patches `0026`/`0027` + `DW3_FORCE_MENU` /
-  `DW3_AUTO_MENU_RETURN`. **Partial evidence** (`docs/P3.4_MENUS.md` on
-  branch): each opens from field via `leaveField` and returns to
-  `FIELDSTG`; `STGMCARD` save mode entry proven; **blocker:**
-  `MEMCARD_SYSTEM.write` stays pending (no `_card_write` / `.mcr`
-  mutation yet). Pad-driven START→status and NPC script entries still
-  open.
+- [ ] **P3.4 Menus and shops.** Linked on `phase3-pc-bringup` @ `95fb20b`
+  (`dw3_p34_menus`); patches `0026`/`0027`/`0028` + `DW3_FORCE_MENU` /
+  `DW3_AUTO_MENU_RETURN` / `DW3_FORCE_MCARD_SAVE`. **Partial evidence**
+  (`docs/P3.4_MENUS.md` on branch): each opens from field via `leaveField`
+  and returns to `FIELDSTG`; **STGMCARD force-save mutates `memcard0.mcr`**
+  (`MemCard*` + `_card_write` wrap → P2.7). Still open: pad-driven
+  START→status, NPC script entries, load e2e. Checkbox stays unticked
+  until full Done-when.
   Done when: each opens from the field, works end-to-end, and saving via
   `STGMCARD` uses P2.7.
 - [ ] **P3.5 Card game.** Linked on `phase3-cardgame` @ `e5fcc83`
