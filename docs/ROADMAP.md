@@ -185,7 +185,10 @@ Start-skip; default skip remains `MODE_TITLE`.
 **P3.8 Done-when met** (`READY_FOR_MAIN_ROADMAP_SYNC: P3.8`,
 `docs/P3.8_STAGES.md`): `STAGSLCT` + batches 1–6 link 238/239 US stage
 objs; live PASS 237/237; only `WSTAG460` left stubbed (host
-`updateWanderer` SEGV). **Phase 3 gate not met** (`docs/P3_GATE.md`):
+`updateWanderer` SEGV). **P3.9 harness track active** on
+`phase3-harness` (draft PR; `tools/compare_harness/`,
+`docs/P3.9_REFERENCE.md`); checkbox stays open until real DuckStation +
+`dw3-pc` captures. **Phase 3 gate not met** (`docs/P3_GATE.md`):
 automated intro reaches `MODE_OPENING_2` (`0xE02`); MDEC/VLC/stream/XA
 wired — remaining walls are present/listen/skip (`docs/P3.7_MOVIES.md`).
 No start→first-boss segment. P3.6 / P3.9 may run on side tracks.
