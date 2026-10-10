@@ -8,26 +8,107 @@
 #include <libgpu.h>
 #include <libetc.h>
 #include <libsnd.h>
+#include <stdio.h>
 
 /* --- libgs --- */
 
 MATRIX GsWSMATRIX;
 MATRIX GsLIGHTWSMATRIX;
 
-void GsInit3D(void) {}
+static void dw3_matrix_identity(MATRIX *m) {
+    int i;
+    int j;
 
-void GsSetProjection(long h) { (void)h; }
+    for (i = 0; i < 3; i++) {
+        for (j = 0; j < 3; j++) {
+            m->m[i][j] = (i == j) ? 4096 : 0;
+        }
+        m->t[i] = 0;
+    }
+}
+
+void GsInit3D(void) {
+    /* BSS leaves both matrices at 0. A zero world-screen matrix collapses
+     * every RTPS to one point, which is how the battle scene vanished. */
+    dw3_matrix_identity(&GsWSMATRIX);
+    dw3_matrix_identity(&GsLIGHTWSMATRIX);
+}
+
+void GsSetProjection(long h) {
+    /* layerLoadView passes the battle camera's proj here. H == 0 breaks RTPS. */
+    if (h > 0) {
+        SetGeomScreen(h);
+    }
+}
 
 void GsSetLightMode(int mode) { (void)mode; }
 
-/* PSY-Z has no host GsSetFlatLight; accept Psy-Q GsF_LIGHT (port/include). */
+/* PSY-Z has no host GsSetFlatLight; accept Psy-Q GsF_LIGHT (port/include).
+ * Directional colors are still a follow-up. SetBackColor (real) supplies
+ * ambient, and GsInit3D leaves GsLIGHTWSMATRIX as identity so ncs is not
+ * fed a zero matrix. */
 int Dw3_GsSetFlatLight(int id, GsF_LIGHT *light) {
     (void)id;
     (void)light;
     return 0;
 }
 
-void GsSetRefView2(GsRVIEW2 *pv) { (void)pv; }
+/* Viewpoint and reference are in super's space. super->coord maps that
+ * space to its parent. Battle's idle camera passes an identity super.
+ * ratan2's first argument is the one its table treats as the opposite
+ * side (decomp ratan.c): ratan2(dx, dz) is the yaw from +Z toward +X,
+ * 4096 units per turn, matching RotMatrix. Battle stores rz << 12. */
+static void dw3_look_at(const GsRVIEW2 *pv, MATRIX *out) {
+    long dx = pv->vrx - pv->vpx;
+    long dy = pv->vry - pv->vpy;
+    long dz = pv->vrz - pv->vpz;
+    long xz = SquareRoot0(dx * dx + dz * dz);
+    SVECTOR ang;
+    SVECTOR eye;
+    VECTOR cam;
+
+    if (xz == 0) {
+        xz = 1;
+    }
+    ang.vx = (short)(-ratan2(dy, xz));
+    ang.vy = (short)ratan2(dx, dz);
+    ang.vz = (short)(pv->rz >> 12);
+    ang.pad = 0;
+    RotMatrix(&ang, out);
+
+    eye.vx = (short)pv->vpx;
+    eye.vy = (short)pv->vpy;
+    eye.vz = (short)pv->vpz;
+    eye.pad = 0;
+    ApplyMatrix(out, &eye, &cam);
+    out->t[0] = (int)(-cam.vx);
+    out->t[1] = (int)(-cam.vy);
+    out->t[2] = (int)(-cam.vz);
+}
+
+void GsSetRefView2(GsRVIEW2 *pv) {
+    MATRIX local;
+    static int logged;
+
+    if (pv == NULL) {
+        return;
+    }
+    dw3_look_at(pv, &local);
+    if (pv->super != NULL) {
+        CompMatrix(&pv->super->coord, &local, &GsWSMATRIX);
+    } else {
+        GsWSMATRIX = local;
+    }
+    if (!logged) {
+        logged = 1;
+        fprintf(stderr,
+                "dw3: GsSetRefView2 vp=%d,%d,%d vr=%d,%d,%d "
+                "m00=%d m11=%d m22=%d t=%d,%d,%d\n",
+                pv->vpx, pv->vpy, pv->vpz, pv->vrx, pv->vry, pv->vrz,
+                GsWSMATRIX.m[0][0], GsWSMATRIX.m[1][1], GsWSMATRIX.m[2][2],
+                GsWSMATRIX.t[0], GsWSMATRIX.t[1], GsWSMATRIX.t[2]);
+    }
+}
 
 /* Not declared in PSY-Z libgs.h yet. */
 void GsGetTimInfo(unsigned long *addr, GsIMAGE *img);
