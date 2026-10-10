@@ -118,14 +118,15 @@ check_patches_with_git_apply() {
 
   local tmp
   tmp="$(mktemp -d "${TMPDIR:-/tmp}/dw3-patch-check.XXXXXX")"
-  cleanup() { rm -rf -- "$tmp"; }
-  # EXIT (not RETURN): die() calls exit, which skips RETURN traps.
-  trap cleanup EXIT
+  # Expand path now: a function closing over local tmp is unbound under
+  # set -u when EXIT fires after a set -e failure (not die/exit).
+  # shellcheck disable=SC2064
+  trap "rm -rf -- '$tmp'" EXIT
 
   copy_src_to "$tmp"
   apply_patches_to "$tmp" 1
   trap - EXIT
-  cleanup
+  rm -rf -- "$tmp"
 }
 
 require_src
