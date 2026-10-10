@@ -146,7 +146,7 @@ Docs-only: P3.7 status → in progress / MDEC wired; checkbox stays `[ ]`.
   - `int DecDCTvlc2(u_long* bs, u_long* buf, DECDCTTAB table);`
   - Return 0 on success (match Psy-Q / game expectation in `movie.c`)
 
-- [ ] **Step 1: Spike bsdec against one frame from MOVIEOPN.STR**
+- [x] **Step 1: Spike bsdec against one frame from MOVIEOPN.STR**
 
 ```bash
 # Owner runtime (not in git). Extract first BS frame bytes with a tiny
@@ -158,11 +158,14 @@ print("manual spike — document result in P3.7_MOVIES.md")
 PY
 ```
 
-- [ ] **Step 2: Implement `DecDCTvlcBuild`**
+Skipped on bring-up host: `runtime/us` symlink broken / STR absent.
+Documented in `docs/P3.7_MOVIES.md`.
+
+- [x] **Step 2: Implement `DecDCTvlcBuild`**
 
 If bsdec does not need Sony’s `DECDCTTAB`, build a valid table shape the game allocates (`STDWTITL_vlcTable`) or no-op fill that `DecDCTvlc2` ignores — but **must not** leave the current silent success that feeds garbage to MDEC. Prefer: Build populates whatever `DecDCTvlc2` reads; if using bsdec-only path, Build can memset/mark ready and `DecDCTvlc2` ignores `table`.
 
-- [ ] **Step 3: Implement `DecDCTvlc2` wrapping bsdec**
+- [x] **Step 3: Implement `DecDCTvlc2` wrapping bsdec**
 
 ```c
 #include "bsdec.h"
@@ -178,7 +181,7 @@ int DecDCTvlc2(u_long *bs, u_long *buf, DECDCTTAB table) {
 
 Remove the no-op from `psyz_missing.c` to avoid duplicate symbols.
 
-- [ ] **Step 4: Link into `dw3-pc` and compile**
+- [x] **Step 4: Link into `dw3-pc` and compile**
 
 ```bash
 cmake --build build/pc --target dw3-pc
@@ -186,7 +189,7 @@ cmake --build build/pc --target dw3-pc
 
 Expected: link OK; no duplicate `DecDCTvlc2`.
 
-- [ ] **Step 5: Commit + push; ROADMAP sync (VLC in progress)**
+- [x] **Step 5: Commit + push; ROADMAP sync (VLC in progress)**
 
 ---
 
