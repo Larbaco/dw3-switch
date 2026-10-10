@@ -296,12 +296,12 @@ Patch `0010` unchanged; boots `0xE00` first; title may advance to `0xE01` + STR
 
 - [x] **Step 3: Fill evidence table (play / XA / skip) in `P3.7_MOVIES.md`**
 
-Play + skip + XA mix rows filled; Task 5 used `SDL_AUDIODRIVER=dummy` — owner
-DAC listen still **open**. Do **not** tick ROADMAP until audible listen passes.
+Play + skip + XA mix rows filled; owner audible DAC listen **PASS** (Pulse
+rebuild). Video presentation quality noted as follow-up (not blocking).
 
-- [ ] **Step 4: Commit on bringup + docs sync commit on `main` + push both; update PR #4**
+- [x] **Step 4: Commit on bringup + docs sync commit on `main` + push both; update PR #4**
 
-Tick ROADMAP `- [x] **P3.7 Movies.**` only after owner audible listen.
+ROADMAP `- [x] **P3.7 Movies.**` after owner audible listen.
 
 ---
 
