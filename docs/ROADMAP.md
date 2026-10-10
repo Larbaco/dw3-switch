@@ -186,8 +186,8 @@ skip remains `MODE_TITLE` (`0010`).
 objs; live PASS 237/237; only `WSTAG460` left stubbed (host
 `updateWanderer` SEGV). **Phase 3 gate not met** (`docs/P3_GATE.md`):
 automated intro / story path still needs work beyond movie skip; P3.6
-audio SEP still open. No start→first-boss segment. P3.6 / P3.9 may run
-on side tracks.
+title SEP partial on `phase3-audio-impl` (see below). No
+start→first-boss segment. P3.6 / P3.9 may run on side tracks.
 
 Objective: the full game loop runs on PC: field, stages, battle, menus,
 audio, movies.
@@ -250,6 +250,12 @@ audio, movies.
   SFX, reverb settings the game sets. Verify `SsSeqCalledTbyT` timing
   from the vsync callback.
   Done when: title music, field music change on stage switch, battle SFX.
+  Progress (`docs/P3.6_AUDIO.md`, `READY_FOR_MAIN_ROADMAP_SYNC:
+  P3.6_SEP_PARTIAL`): tick pump proven; psyz `dw3-seq-sep` @ `9e6c124`
+  host `_SsSeqPlay` + note-on (sotn-decomp seqread port, not matching
+  ASM); title bank `0x47` → `SEP note-on` logs + non-silent
+  `sdlaudio.raw` (peak≈31k). Field/battle still open; checkbox stays
+  until full done-when.
 - [x] **P3.7 Movies.** Title STR playback through PSY-Z `libpress` +
   streaming (`CdRead2`, `StSetRing`) from raw-sector `.STR` files packed
   in P1.6. **Done-when evidence** (`docs/P3.7_MOVIES.md`,

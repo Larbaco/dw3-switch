@@ -102,14 +102,6 @@ SVECTOR *ApplyMatrixSV(MATRIX *m, SVECTOR *v0, SVECTOR *v1) {
 
 /* libmcrd: see port/memcard/memcard_libmcrd.c (MemCard* → .mcr via _card_*). */
 
-/* --- libsnd --- */
-
-void SsSepSetDecrescendo(short sep_access_num, short seq_num, short vol,
-                         long v_time) {
-    (void)sep_access_num;
-    (void)seq_num;
-    (void)vol;
-    (void)v_time;
-}
+/* libsnd SsSepSetDecrescendo — implemented in vendor/psyz midiread_host.c */
 
 /* libpress DecDCTvlc* — see port/movies/dct_vlc.c (bsdec). */

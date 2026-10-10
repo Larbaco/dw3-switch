@@ -45,3 +45,4 @@ __pycache__/
 
 # Git worktrees
 .worktrees/
+sdlaudio.raw
