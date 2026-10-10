@@ -70,9 +70,10 @@ port code pending PR merge to `main`. Title reaches a recognizable US
 screen; sprite/VRAM glitches remain. Plan:
 [`docs/superpowers/plans/2026-10-10-phase2-pc-bringup.md`](superpowers/plans/2026-10-10-phase2-pc-bringup.md)).
 
-Tracking: Phase 2 gate met on `phase2-engine` @ `221169d`; PR next;
-Phase 3 not started. This ROADMAP on `main` is docs-synced for visibility
-only (no feature-branch merge yet).
+Tracking: Phase 2 gate claimed on `phase2-engine` @ `221169d`; pad
+Critical fixed on `phase2-engine` @ `1f34110`; P2.8 gate pending
+re-review/PR. Phase 3 not started. This ROADMAP on `main` is docs-synced
+for visibility only (no feature-branch merge yet).
 
 Objective: compile the decomp's **executable** modules (`src/engine/`) for
 the host, replace MIPS-only pieces, and reach the title screen on PC.
