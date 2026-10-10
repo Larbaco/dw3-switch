@@ -85,4 +85,4 @@ ISO file).
 ## Layout notes
 
 - Output tree: `disks/us/` (exe, `AAA/`, overlays, etc.) plus `files_us.json`.
-- Runtime packing for SD/PC paths is a later Phase 1 task (`pack_runtime.py`).
+- Runtime packing for SD/PC paths: `tools/pack_runtime.py` → see `docs/RUNTIME_LAYOUT.md`.

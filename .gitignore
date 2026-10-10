@@ -18,6 +18,7 @@ platforms/*/build/
 
 # Game data (bring your own disc)
 /disks/
+/runtime/
 /romfs/game/
 *.bin
 *.cue
