@@ -180,14 +180,16 @@ UI cancel** (no `AUTO_MENU_RETURN`); **STGMCARD save + load** via P2.7
 in progress** (`READY_FOR_MAIN_ROADMAP_SYNC: P3.7_IN_PROGRESS`,
 `docs/P3.7_MOVIES.md`): Wave 1 soft MDEC; Wave 2 VLC (bsdec); Wave 3
 file-backed STR + `StCdInterrupt`; Wave 4 file-bridge XA decode/mix
-(logs + `sdlaudio.raw`); still need present/play + owner listen +
-Start-skip; default skip remains `MODE_TITLE`.
+(logs + `sdlaudio.raw`); present wave (DMA/RGB24 + FB dump); still need
+smooth play + owner listen + Start-skip; default skip remains
+`MODE_TITLE`.
 **P3.8 Done-when met** (`READY_FOR_MAIN_ROADMAP_SYNC: P3.8`,
 `docs/P3.8_STAGES.md`): `STAGSLCT` + batches 1–6 link 238/239 US stage
 objs; live PASS 237/237; only `WSTAG460` left stubbed (host
 `updateWanderer` SEGV). **Phase 3 gate not met** (`docs/P3_GATE.md`):
-automated intro reaches `MODE_OPENING_2` (`0xE02`); MDEC/VLC/stream/XA
-wired — remaining walls are present/listen/skip (`docs/P3.7_MOVIES.md`).
+automated intro reaches `MODE_OPENING_2` (`0xE02`); MDEC/VLC/stream/XA/
+present dump wired — remaining walls are smooth play/listen/skip
+(`docs/P3.7_MOVIES.md`).
 No start→first-boss segment. P3.6 / P3.9 may run on side tracks.
 
 Objective: the full game loop runs on PC: field, stages, battle, menus,
@@ -257,8 +259,10 @@ audio, movies.
   `READY_FOR_MAIN_ROADMAP_SYNC: P3.7_IN_PROGRESS`): Wave 1 soft MDEC
   (`test_mdec` 28/28); Wave 2 `DecDCTvlc2`/`Build` via `port/movies` +
   bsdec; Wave 3 file-backed STR + `StCdInterrupt`; Wave 4 file-bridge
-  XA (`CdlModeRT` decode/mix; `sdlaudio.raw` non-silent). Still need
-  present/play, owner listen on a real DAC, Start-skip. Default skip
+  XA (`CdlModeRT` decode/mix; `sdlaudio.raw` non-silent); **present wave**
+  (`phase3-movies-present`: MDEC-out DMA wrap + RGB24 LoadImage + FB dump
+  nonzero pixels). Still need smooth play, owner listen on a real DAC,
+  Start-skip. Default skip
   `MODE_TITLE` (patch `0010`) retained. Checkbox unticked until play +
   audio + Start-skip.
   Done when: the opening movies play with audio and can be skipped.

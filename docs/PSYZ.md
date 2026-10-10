@@ -9,7 +9,7 @@ libnx backend exists.
 |---|---|
 | Upstream | https://github.com/Xeeynamo/psyz.git |
 | Working fork (submodule URL) | https://github.com/Larbaco/psyz.git |
-| Commit | `16b20f4967943943b57eaf3800d9b1e46b17a8e5` (`dw3-mdec-wire`: soft MDEC + stream + file-bridge XA + dummy audio fallback) |
+| Commit | `79e53ae2395ffd6f845a538dc3378359677b75b5` (`dw3-movie-present-gpu` on XA tip `16b20f4`: LoadImage submit for nested MDEC slices) |
 | Base upstream | `fac9bd58ccd8a0c35e31c6354528f9d625e9bdd1` |
 | License | MIT — see [`vendor/psyz/LICENSE`](../vendor/psyz/LICENSE) |
 

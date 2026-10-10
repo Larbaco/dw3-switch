@@ -10,6 +10,7 @@ add_subdirectory(${CMAKE_SOURCE_DIR}/../../port ${CMAKE_BINARY_DIR}/port)
 add_executable(dw3-pc
   src/main.c
   src/psyz_host_overrides.c
+  src/psyz_dma_present.c
   # Direct TU so PadGetState / PadInitDirect win over PSY-Z stubs in libpsyz.a
   ${CMAKE_SOURCE_DIR}/../../port/psyz_missing/psyz_pad_host.c
 )
@@ -42,6 +43,11 @@ target_link_options(dw3-pc PRIVATE
   "-Wl,--wrap=PadInitMtap"
   "-Wl,--wrap=PadSetAct"
   "-Wl,--wrap=PadSetActAlign"
+  # P3.7 present: MDEC-out DMA IRQ + RGB24 LoadImage for STR movies
+  "-Wl,--wrap=DMACallback"
+  "-Wl,--wrap=DecDCTout"
+  "-Wl,--wrap=LoadImage"
+  "-Wl,--wrap=PutDispEnv"
   # Keep P3.2–P3.5 named overlay .data/.bss orphan sections (overlay_sections.c).
   "-Wl,--undefined=__start_dw3data_fieldstg"
   "-Wl,--undefined=__start_dw3data_stplnmet"

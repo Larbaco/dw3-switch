@@ -49,5 +49,17 @@ the title window (logo may be glitched; see `docs/P2.8_TITLE_BOOT.md`).
 Keyboard: Enter=Start, arrows=D-pad (PSY-Z SDL map). Close the window to
 quit (`Psyz_QuitRequested`).
 
+### Opening movie present smoke (P3.7)
+
+```bash
+ln -sfn "$HOME/.cache/dw3-switch/runtime/us" runtime/us
+# Prefer offscreen or a real display — dummy has no SDL_GPU backend.
+SDL_VIDEODRIVER=offscreen DW3_START_MODE=0xE01 DW3_RUNTIME=runtime/us \
+  DW3_FB_DUMP=build/movie-evidence/opening.ppm \
+  timeout -s KILL 45 ./build/pc/dw3-pc --runtime runtime/us
+```
+
+See `docs/P3.7_MOVIES.md` (present wave). XA / Start-skip still open.
+
 Pad unit check (no window): `gcc …` via `tools/tests/test_pad_host.py` or
 the commands in that file.
