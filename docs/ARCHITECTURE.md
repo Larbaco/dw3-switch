@@ -61,5 +61,7 @@ See [SURVEY.md](SURVEY.md) for the evidence behind each point.
 ## Non-goals (for now)
 
 - Byte-identical matching builds on Switch
-- Shipping any original assets in git
+- Shipping any original assets, BIOS, or third-party patches in git
 - Official eShop packaging
+- Running PS1 EXE/overlay binary patches inside the `.nro` (community QoL
+  parity is a later native/`port/` effort; see [COMMUNITY_QOL.md](COMMUNITY_QOL.md))

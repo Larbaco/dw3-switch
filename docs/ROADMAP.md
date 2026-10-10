@@ -266,6 +266,55 @@ is an explicit project goal in this phase, not during bring-up.
   Done when: a second owner-supplied language switches at boot or
   country select and renders in-game text correctly.
 
+Gate: polish options from P6.1–P6.5 land as needed; localization P6.6–P6.8
+may still be in progress when Phase 7 starts only if the Phase 5 playable
+gate and the Phase 6 packaging baseline (P6.5) are already met. Prefer
+finishing P6.2 (EU language / NTSC) before QoL parity work that assumes PAL
+language slots.
+
+## Phase 7 — Community QoL and companion compatibility
+
+Starts after the playable port (Phase 5) and the Phase 6 packaging /
+host-options baseline. Goal: optional compatibility with the Digimon World
+2003 community QoL ecosystem (combined Quality of Life patch and its
+upstream mods; companion app when a protocol exists). Details and project
+list: [COMMUNITY_QOL.md](COMMUNITY_QOL.md).
+
+- [x] **P7.1 Inventory and boundaries.** Document the projects named with
+  the QoL announcement (combined patch, Flawe, guiomatos Initial Pack
+  Customizer, markisha64 NTSC/definitive-style work, DW3-DS-Android
+  companion), what is disc-patch vs code, and that this repo never ships
+  patches or ISOs.
+  Done when: [COMMUNITY_QOL.md](COMMUNITY_QOL.md) exists and the README
+  points at Phase 7 / that note.
+- [ ] **P7.2 Patched EU disc as data source.** Document and extend the
+  P1.5–P1.6 pipeline so an owner-applied EU patch (xdelta/PPF or
+  equivalent) can be extracted, mapped, and packed like vanilla.
+  Done when: a patched EU tree produces a runtime layout and the port
+  reaches title/field on PC or Switch without obvious asset regressions.
+- [ ] **P7.3 Binary-patch limits.** Expand the checklist in
+  [COMMUNITY_QOL.md](COMMUNITY_QOL.md): which QoL changes ride on patched
+  data vs which require native reimplementation because EXE/overlay
+  patches do not load into the `.nro`.
+  Done when: the checklist covers the combined patch feature list at a
+  chosen beta version.
+- [ ] **P7.4 Feature parity (native).** Reimplement agreed QoL systems
+  against the decomp via `port/` / `port/patches/` (battle/progression,
+  Share EXP, exploration/menus, starter/Fast Start, timing parity with
+  P6.2), crediting upstream authors. Scope is the checklist from P7.1/P7.3,
+  not every beta experiment at once.
+  Done when: a short native playthrough covers that subset without a
+  patched PS1 EXE.
+- [ ] **P7.5 Companion (DS-Android) — optional.** If the companion
+  documents a port-friendly interface (save export, IPC, or similar), add
+  a thin bridge on PC and/or Switch host; otherwise mark the blocker in
+  [COMMUNITY_QOL.md](COMMUNITY_QOL.md).
+  Done when: a smoke test with the companion works, or the note records an
+  explicit blocker. Does **not** block the Phase 7 gate.
+
+Gate: owner-patched EU data path works (P7.2) and the agreed native QoL
+subset from P7.4 is playable. Companion (P7.5) is best-effort.
+
 ## Cross-cutting rules
 
 - Record every non-obvious decision as a short note in `docs/`.
