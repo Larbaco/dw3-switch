@@ -151,15 +151,7 @@ long MemCardUnformat(long chan) {
     return 0;
 }
 
-/* --- libsnd --- */
-
-void SsSepSetDecrescendo(short sep_access_num, short seq_num, short vol,
-                         long v_time) {
-    (void)sep_access_num;
-    (void)seq_num;
-    (void)vol;
-    (void)v_time;
-}
+/* libsnd SsSepSetDecrescendo — implemented in vendor/psyz midiread_host.c */
 
 /* --- libpress (movies skipped at MODE_TITLE) --- */
 
