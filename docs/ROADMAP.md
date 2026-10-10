@@ -48,9 +48,10 @@ game code yet.
   Done when: `pack_runtime.py` output passes `build_file_map.py --check`
   and `.gitignore` covers it. Documented in `docs/RUNTIME_LAYOUT.md`;
   local `runtime/us/` packs with `BOOT_IMAGE.txt` stub (boot TIM Phase 2).
-- [ ] **P1.7 CI.** GitHub Actions building P1.3 and P1.4 in Docker on
+- [x] **P1.7 CI.** GitHub Actions building P1.3 and P1.4 in Docker on
   every push (no game data; PSY-Z sample + skeleton only).
-  Done when: a green run on `master`.
+  Done when: a green run on `main` / `phase1-toolchains-hosts`
+  (verified: run `38028432267`).
 
 Gate: PC window + Switch `.nro` skeleton + `files_us.json` for the owner's
 disc.
