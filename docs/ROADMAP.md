@@ -65,9 +65,14 @@ disc.
 
 ## Phase 2 — Port glue and engine bring-up on PC
 
-Status: **in progress** (plan:
-[`docs/superpowers/plans/2026-10-10-phase2-pc-bringup.md`](superpowers/plans/2026-10-10-phase2-pc-bringup.md);
-parallel tracks `phase2-engine` + `phase2-io`).
+Status: **complete** (gate met on `phase2-engine` @ `1f34110`;
+title from decomp C; pad Critical re-reviewed APPROVE; GPU polish open.
+Plan:
+[`docs/superpowers/plans/2026-10-10-phase2-pc-bringup.md`](superpowers/plans/2026-10-10-phase2-pc-bringup.md)).
+
+Tracking: Phase 2 complete on `phase2-engine` @ `1f34110` (pad
+`PadInitDirect`→`InitPAD` / wrap `PadGetState`; headless Start bit
+proven). PR to `main`. Phase 3 not started.
 
 Objective: compile the decomp's **executable** modules (`src/engine/`) for
 the host, replace MIPS-only pieces, and reach the title screen on PC.
@@ -136,18 +141,23 @@ the host, replace MIPS-only pieces, and reach the title screen on PC.
   Done when: host `.mcr` images are 128 KiB formatted/readable — verified
   by fixture tests.
 - [x] **P2.8 Boot to title on PC.** (E6 / 2026-10-10; pad fix 2026-10-10):
-  `dw3-pc` links engine + `STDWTITL` + cdfs + memcard + PSY-Z; boots to
-  title. Host libpad: `PadInitDirect` → `InitPAD`, `PadGetState` returns
+  `dw3-pc` links engine + `STDWTITL` + cdfs + memcard + PSY-Z;
+  `DW3_RUNTIME`/`--runtime` (default `runtime/us`), memcard dir,
+  `boot_tim.bin`, `dw3_game_main()`. Movies skipped (`MODE_TITLE`).
+  Title loader completes; `STDWTITL_tickTitle` runs (menu / PRESS START).
+  Host libpad: `PadInitDirect` → `InitPAD`, `PadGetState` returns
   connected (`PadStateFindCTP1`) when PSY-Z/SDL has a pad/keyboard frame
   (PSY-Z's stub always returned Discon). Proven headless:
   `pytest tools/tests/test_pad_host.py` (injected Start bit in RX buffer).
-  Title still shows GPU glitches (follow-up). `vendor/` clean.
+  Screenshot: recognizable title (circuit BG + logo fragments;
+  sprite/VRAM glitches remain — follow-up). `vendor/` clean.
   Details: `docs/P2.8_TITLE_BOOT.md`.
   Done when: the boot image shows, then the title screen renders and
   reacts to the pad on PC (movies may be skipped at this point).
 
 Gate: title screen on PC from the decomp's C, no local edits inside
-`vendor/`. **Passed** (title draws + pad state connected; GPU polish open).
+`vendor/`. **Passed** on `phase2-engine` @ `1f34110` (title draws +
+pad state connected; GPU polish open; PR to `main`).
 
 ## Phase 3 — Game bring-up on PC
 
@@ -333,6 +343,35 @@ list: [COMMUNITY_QOL.md](COMMUNITY_QOL.md).
 
 Gate: owner-patched EU data path works (P7.2) and the agreed native QoL
 subset from P7.4 is playable. Companion (P7.5) is best-effort.
+
+## Phase 8 — Texture pack compatibility
+
+Starts after the Phase 7 gate in the planned order (or earlier only if the
+P1.6 runtime layout and a stable TIM/draw path already exist to validate
+against). Goal: owners can overlay replacement textures without forking
+the port or committing assets. Details: [TEXTURE_PACKS.md](TEXTURE_PACKS.md).
+
+- [x] **P8.1 Goal note.** Document that texture packs live in the owner
+  runtime data layout, resolve through `port/` (file id / path overlay),
+  keep hosts thin, and never ship textures in git.
+  Done when: [TEXTURE_PACKS.md](TEXTURE_PACKS.md) exists and the README
+  points at Phase 8 / that note.
+- [ ] **P8.2 Pack layout.** Define the on-disk convention (e.g.
+  `texture_packs/<name>/` keyed by file id or mirrored paths) aligned with
+  P1.6 and `port/cdfs`, with fallback to the vanilla runtime file when a
+  pack entry is absent.
+  Done when: a minimal owner pack replaces at least one visible texture on
+  title or field (PC or Switch).
+- [ ] **P8.3 Formats and scaling.** Document accepted formats (native TIM
+  first) and rules for upscaled or alternate formats, including VRAM /
+  emulation limits.
+  Done when: [TEXTURE_PACKS.md](TEXTURE_PACKS.md) states what is supported
+  for the gate vs deferred.
+- [ ] **P8.4 Tooling — optional.** `tools/` helper to validate or pack a
+  texture pack against `files_*.json` (report missing/extra ids).
+  Done when: a `--check` mode exists. Does **not** block the Phase 8 gate.
+
+Gate: P8.2 works with an owner-supplied minimal pack. P8.4 is best-effort.
 
 ## Cross-cutting rules
 

@@ -303,7 +303,7 @@ git merge origin/phase2-io   # or local phase2-io
 - [x] **Step 4: Update docs; tick P2.8 + Phase 2 gate; commit + push.**
 
 **Done when:** title screen on PC from decomp C; no dirty files inside `vendor/`.
-**Status:** done — see `docs/P2.8_TITLE_BOOT.md` (sprite glitches = follow-up).
+**Status:** done — see `docs/P2.8_TITLE_BOOT.md` (sprite glitches = follow-up; pad Critical fixed @ `1f34110`).
 
 ---
 

@@ -71,3 +71,5 @@ See [SURVEY.md](SURVEY.md) for the evidence behind each point.
 - Official eShop packaging
 - Running PS1 EXE/overlay binary patches inside the `.nro` (community QoL
   parity is a later native/`port/` effort; see [COMMUNITY_QOL.md](COMMUNITY_QOL.md))
+- Shipping texture packs or original art (owner overlays only; see
+  [TEXTURE_PACKS.md](TEXTURE_PACKS.md))
