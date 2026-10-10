@@ -87,6 +87,23 @@ add_library(dw3_psyz_missing OBJECT
   "${CMAKE_CURRENT_SOURCE_DIR}/psyz_missing/psyz_missing.c"
 )
 
+# P3.7 Wave 2: DecDCTvlc2 / DecDCTvlcBuild / DecDCTvlc via nugget bsdec.
+set(BSDEC_DIR "${DW3_ROOT}/vendor/psyz/nugget/bsdec")
+add_library(dw3_movies OBJECT
+  "${CMAKE_CURRENT_SOURCE_DIR}/movies/dct_vlc.c"
+  "${BSDEC_DIR}/bsdec.c"
+)
+target_include_directories(dw3_movies PRIVATE
+  "${BSDEC_DIR}"
+  "${PSYZ_INCLUDE}"
+)
+target_compile_definitions(dw3_movies PRIVATE __psyz)
+set_target_properties(dw3_movies PROPERTIES
+  C_STANDARD 11
+  C_STANDARD_REQUIRED ON
+  C_EXTENSIONS ON
+)
+
 # CD → filesystem file-id reads (P2.5) and 128 KiB .mcr slots (P2.7).
 add_library(dw3_cdfs OBJECT
   "${CMAKE_CURRENT_SOURCE_DIR}/cdfs/cdfs.c"
@@ -1117,11 +1134,13 @@ add_library(dw3_engine_objs STATIC
   $<TARGET_OBJECTS:dw3_cdfs>
   $<TARGET_OBJECTS:dw3_memcard>
   $<TARGET_OBJECTS:dw3_psyz_missing>
+  $<TARGET_OBJECTS:dw3_movies>
 )
 set_target_properties(dw3_engine_objs PROPERTIES
   OUTPUT_NAME dw3_engine
   LINKER_LANGUAGE C
 )
 add_dependencies(dw3_engine_objs
-  dw3_engine dw3_title dw3_host_overlays dw3_cdfs dw3_memcard dw3_psyz_missing)
+  dw3_engine dw3_title dw3_host_overlays dw3_cdfs dw3_memcard dw3_psyz_missing
+  dw3_movies)
 

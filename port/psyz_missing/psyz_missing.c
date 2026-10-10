@@ -8,7 +8,6 @@
 #include <libgpu.h>
 #include <libetc.h>
 #include <libsnd.h>
-#include <libpress.h>
 
 /* --- libgs --- */
 
@@ -113,13 +112,4 @@ void SsSepSetDecrescendo(short sep_access_num, short seq_num, short vol,
     (void)v_time;
 }
 
-/* --- libpress (movies skipped at MODE_TITLE) --- */
-
-int DecDCTvlc2(u_long *bs, u_long *buf, DECDCTTAB table) {
-    (void)bs;
-    (void)buf;
-    (void)table;
-    return 0;
-}
-
-void DecDCTvlcBuild(u_short *table) { (void)table; }
+/* libpress DecDCTvlc* — see port/movies/dct_vlc.c (bsdec). */
