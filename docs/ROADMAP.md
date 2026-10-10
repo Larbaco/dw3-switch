@@ -283,12 +283,16 @@ first boss, `WSTAG460`, P3.9 oracle).
 Objective: a libnx backend so the Phase 3 image runs unchanged on the
 console.
 
-- [ ] **P4.1 Backend spike.** Two short experiments, documented in
+- [x] **P4.1 Backend spike.** Two short experiments, documented in
   `docs/SWITCH_BACKEND.md`: (a) build devkitPro's SDL3 branch from source
-  and run PSY-Z's `sdl3_*` backend; (b) sketch a native libnx backend
+  and assess PSY-Z's `sdl3_*` backend; (b) sketch a native libnx backend
   following PSY-Z's PSP layout (`gpu`, `input`, `audio`, `os`, `file`,
   `log`, `module`). Pick one.
   Done when: the decision and its reasons are written down.
+  **Decision (2026-10-10):** native libnx (`platforms/switch/psyz_backend/`).
+  dkp `switch-sdl-3.4` builds (`libSDL3.a`) but has no SDL_GPU and is not
+  in pacman; unsuitable for PSY-Z's PC `sdl3_gpu` default. See
+  `docs/SWITCH_BACKEND.md`.
 - [ ] **P4.2 Video.** Present PSY-Z's VRAM/framebuffer via EGL + OpenGL
   (mesa/nouveau on libnx) or deko3d; 60 Hz vsync; docked/handheld
   resolution switch.
