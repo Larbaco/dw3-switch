@@ -274,6 +274,20 @@ int Psyz_VideoVSync(int mode) {
 
         dw3_nx_switch_gpu_display(&disp);
         if (disp.on) {
+            /* One-shot: "the screen is black" has two very different causes —
+             * the game never unmasked the display, or it did and drew into a
+             * VRAM the presenter is not showing. This separates them, and the
+             * rect is the other half of it: a present of the wrong VRAM
+             * rectangle looks exactly like a wrong picture. */
+            static int logged_on;
+
+            if (!logged_on) {
+                logged_on = 1;
+                psyz_log(1, "nx_gpu.c", __LINE__, __func__,
+                         "display on: vram %d,%d %dx%d -> surface %ux%u",
+                         disp.x, disp.y, disp.width, disp.height, s_width,
+                         s_height);
+            }
             dw3_nx_gpu_present(dw3_nx_switch_gpu_vram(), disp.x, disp.y,
                                disp.width, disp.height);
         } else {

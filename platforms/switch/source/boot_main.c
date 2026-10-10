@@ -64,12 +64,20 @@ static PsyzVSyncCb g_prev_vsync_cb;
  * Quitting is the game's own business: its loop polls Psyz_QuitRequested.
  */
 static void dw3_nx_vsync_pump(void) {
-    static int first_frame_logged;
+    static unsigned pumps;
 
-    if (!first_frame_logged) {
-        first_frame_logged = 1;
-        INFOF("first vsync callback reached");
+    /* The pump runs once per VSync(), from inside it, *after* the frame was
+     * presented — so the count is a boot progress meter for free. The game's
+     * own boot path makes five calls before its main loop (four VSync(0) and a
+     * VSync(3) in src/engine/system/main.c), then one per frame; a count that
+     * stops at 3 says the game never reached the loop's first frame, and which
+     * call it stopped on says what it was doing. Logged one by one up to 16 and
+     * then at powers of two, so a healthy boot stays logarithmic. */
+    pumps++;
+    if (pumps <= 16 || (pumps & (pumps - 1)) == 0) {
+        INFOF("vsync pump #%u", pumps);
     }
+
     if (StCdIntrFlag) {
         StCdInterrupt();
         StCdIntrFlag = 0;
