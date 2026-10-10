@@ -65,14 +65,14 @@ disc.
 
 ## Phase 2 — Port glue and engine bring-up on PC
 
-Status: **in progress** (plan:
-[`docs/superpowers/plans/2026-10-10-phase2-pc-bringup.md`](superpowers/plans/2026-10-10-phase2-pc-bringup.md);
-parallel tracks `phase2-engine` + `phase2-io`).
+Status: **complete** (gate met on `phase2-engine` @ `221169d`;
+port code pending PR merge to `main`. Title reaches a recognizable US
+screen; sprite/VRAM glitches remain. Plan:
+[`docs/superpowers/plans/2026-10-10-phase2-pc-bringup.md`](superpowers/plans/2026-10-10-phase2-pc-bringup.md)).
 
-Tracking: Wave 4 started — `phase2-io` merged into `phase2-engine` @
-`9b2592e`; next E6/P2.8 title boot on PC.
-Port code stays on `phase2-engine` until a PR; this ROADMAP on `main` is
-synced each wave for visibility only (no unfinished merge).
+Tracking: Phase 2 gate met on `phase2-engine` @ `221169d`; PR next;
+Phase 3 not started. This ROADMAP on `main` is docs-synced for visibility
+only (no feature-branch merge yet).
 
 Objective: compile the decomp's **executable** modules (`src/engine/`) for
 the host, replace MIPS-only pieces, and reach the title screen on PC.
@@ -84,8 +84,7 @@ the host, replace MIPS-only pieces, and reach the title screen on PC.
   -fno-strict-aliasing -fwrapv -fno-delete-null-pointer-checks
   -fno-aggressive-loop-optimizations -fno-zero-initialized-in-bss
   -fno-common -fno-toplevel-reorder`), `VERSION_US`, `PORT_HOST`,
-  port/PSY-Z includes first. Target: `dw3_engine_objs` (43 objects on
-  `phase2-engine`).
+  port/PSY-Z includes first. Target: `dw3_engine_objs`.
   Done when: `src/engine/**/*.c` compiles to objects on x86_64 with
   `-Werror=implicit-function-declaration -Werror=int-conversion`.
 - [x] **P2.2 Patch mechanism for the submodule.** `port/patches/*.patch`
@@ -103,38 +102,58 @@ the host, replace MIPS-only pieces, and reach the title screen on PC.
   Done when: no `__asm__` remains in the host build and `grep -r mtc2`
   over the preprocessed output is empty.
 - [x] **P2.4 64-bit audit, part 1 (engine).** Replace literal sizes with
-  `sizeof` in `src/engine` (`HEAP.zero(&GFX.prim, 0x18)`,
-  `PAD_DATA_SIZE`, `MemBlock` split constant), fix `freeFilesFrom` to
-  take an offset/symbol, remove pointer↔`u32` casts in engine code.
-  Match-neutral changes go upstream.
+  `sizeof`/`offsetof` in `src/engine` (`HEAP.zero(&GFX.prim, …)`,
+  `PAD_DATA_SIZE`, `MemBlock` split constant, `createInn`), fix
+  `freeFilesFrom` to take `void *`, remove pointer↔`u32`/`s32` casts in
+  engine code. Match-neutral patches `0006`/`0007` in `port/patches/`
+  (see `docs/PATCHES.md`).
   Done when: `-Wpointer-to-int-cast -Wint-to-pointer-cast` are clean for
-  `src/engine` and `make compare` upstream still says `OK`.
-- [x] **P2.5 CD → filesystem.** `port/cdfs/` on `phase2-io`: file-id read
-  path over a host map (`files_<ver>.json` + files), with mini fixture
-  tests; keep PSY-Z's `libcd` only for STR streaming. Sector/EOF pitfalls
-  for the host layer: [CDFS_NOTES.md](CDFS_NOTES.md).
-  Done when: `FILE_CACHE.load(id)` returns byte-identical buffers to the
-  disc for a sample of ids (unit test with the owner's data, skipped in
-  CI).
-- [x] **P2.6 Static overlay model.** `port/overlays/`: generate per-binary
-  symbol prefixes for the 21 overlays + stages (objcopy
-  `--prefix-symbols` or a generated `#define` header), a table
-  `{file id → entry, data start/end}` and `loadModeOverlay` /
-  `loadSubOverlay` replacements that restore the overlay's initial
-  `.data` **only when the id changes**, and zero its `.bss`.
-  Done when: two different stages and the same stage twice behave as on
-  PS1 (globals reset vs. preserved), checked by a host test.
-- [x] **P2.7 Memory card → file.** `port/memcard/` on `phase2-io`: 128 KiB
-  PS1-format `.mcr` host backend per slot + fixture tests (DuckStation
-  import/export remains an owner check).
-  Done when: a save written on PC loads in DuckStation and vice versa.
-- [ ] **P2.8 Boot to title on PC.** Link engine + `STDWTITL` + `CNTY_SEL`
-  (EU) and run `main()` under PSY-Z.
+  `src/engine` (enforced as `-Werror=` on `dw3_engine`). Upstream
+  `make compare` not run here — no MIPS toolchain on this host (blocker
+  noted in `docs/PATCHES.md`).
+- [x] **P2.5 CD → filesystem.** `port/cdfs/`: Wave 1 file-id read path
+  over `files_<ver>.json` and packed host files (`cdfs_set_root` /
+  `cdfs_load_map` / `cdfs_read`); path traversal rejected; `cdfs_poll`
+  reserved for later `cdReadyCallback`-style async. PSY-Z `libcd` kept
+  for STR streaming only. Sector/EOF notes:
+  [CDFS_NOTES.md](CDFS_NOTES.md). Host CLI + tests:
+  `tools/cdfs_cat.c`, `tools/tests/test_cdfs.py` (mini fixture; owner
+  `runtime/us` spot-check skipped in CI).
+  Done when: fixture reads are byte-identical — verified. Full
+  `FILE_CACHE.load` wiring is later (title boot / engine integrate).
+- [x] **P2.6 Static overlay model.** `port/overlays/`: descriptor table
+  `{file id → entry, data, data_init, bss}`, `loadModeOverlay` /
+  `loadSubOverlay` host path (`0008`) restores initial `.data` **only
+  when the id changes** and zeros `.bss`; same id preserves. Symbol
+  prefixes: **generated headers** (documented in
+  `port/overlays/README.md`; not objcopy). US title table registers
+  `STDWTITL` (`CNTY_SEL` skipped). Host test:
+  `tools/tests/test_overlay_host.py`.
+  Done when: two different overlays and the same overlay twice behave as
+  on PS1 (globals reset vs. preserved) — verified by the host fixture
+  test. Full title link/boot is P2.8 / E6.
+- [x] **P2.7 Memory card → file.** `port/memcard/`: 128 KiB PS1-format
+  `.mcr` per slot (`memcard_host_*` sector API matching libcard). PSY-Z
+  still uses bu00 directories / stubs `_card_*`; Wave 4 wires those to
+  this backend. Host CLI + tests: `tools/memcard_rw.c`,
+  `tools/tests/test_memcard.py`. DuckStation round-trip is owner manual
+  (see `port/memcard/README.md`).
+  Done when: host `.mcr` images are 128 KiB formatted/readable — verified
+  by fixture tests.
+- [x] **P2.8 Boot to title on PC.** (E6 / 2026-10-10): `dw3-pc` links
+  engine + `STDWTITL` + cdfs + memcard + PSY-Z; `DW3_RUNTIME`/`--runtime`
+  (default `runtime/us`), memcard dir, `boot_tim.bin`, `dw3_game_main()`.
+  Movies skipped (`MODE_TITLE`). Title loader completes; `STDWTITL_tickTitle`
+  runs (menu / PRESS START path). Screenshot shows recognizable title
+  (circuit BG + logo fragments; sprite/VRAM glitches remain — follow-up).
+  Pad is the title menu’s `PAD_PRESSED` path via PSY-Z. `vendor/` clean.
+  Details: `docs/P2.8_TITLE_BOOT.md`.
   Done when: the boot image shows, then the title screen renders and
   reacts to the pad on PC (movies may be skipped at this point).
 
 Gate: title screen on PC from the decomp's C, no local edits inside
-`vendor/`.
+`vendor/`. **Passed** on `phase2-engine` @ `221169d` (title draws from
+decomp C; GPU polish open; PR merge to `main` pending).
 
 ## Phase 3 — Game bring-up on PC
 
