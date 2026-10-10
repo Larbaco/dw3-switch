@@ -52,6 +52,8 @@ tools/apply_patches.sh           # refresh build/decomp-src + apply
 | `0017-PORT_HOST-layer-ot-type-indexing.patch` | no | Host OT_TYPE indexing; skip 24-bit empty-OT walk |
 | `0018-match-neutral-overlay-64bit-audit.patch` | yes | P3.1: overlay/stage `createTask` sizeof, mode-arg save flag, `void*` script/vsync pointers, pointer+offset casts |
 | `0019-PORT_HOST-field-file-cache-watermark.patch` | no | P3.1: `FILE_CACHE.freeFrom` uses `HEAP_BASE+0xB1E74` on host |
+| `0020-PORT_HOST-p32-boot-mode-and-stage-log.patch` | no | P3.2: `DW3_START_MODE` / `DW3_AUTO_DOOR_*`, stage pick log |
+| `0021-PORT_HOST-field-null-slots-and-state-zero.patch` | no | P3.2: NULL `slots` guard + `FieldState` zero through `init` |
 
 `tools/apply_patches.sh --check` applies the series in order (stacked
 patches on the same file are valid).

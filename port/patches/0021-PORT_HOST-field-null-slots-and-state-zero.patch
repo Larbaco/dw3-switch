@@ -1,0 +1,37 @@
+Upstream-bound: no
+Subject: [PORT_HOST] FieldState clear to init; NULL slots in file loader
+
+HEAP.zero(&FIELDSTG_state, 100) is the PS1 prefix before method pointers;
+on LP64 those sit later — clear through offsetof(FieldState, init).
+WSTAG780 (and other stages) leave FieldState.slots NULL; FIELDSTG_createTriggers
+already guards, but FIELDSTG_requestSlotFiles did not and SEGV'd on host.
+
+--- a/src/field/field_mode/file_loader.c
++++ b/src/field/field_mode/file_loader.c
+@@ -26,6 +26,11 @@
+     s32 climbs = 0;
+     s32 drops = 0;
+     s32 gauges = 0;
+ 
++#if PORT_HOST
++    if (entry == NULL) {
++        return;
++    }
++#endif
+     for (; entry->type != 0; entry++) {
+         switch (entry->type) {
+         case SLOT_CLIMB_UP:
+--- a/src/field/field_mode/state.c
++++ b/src/field/field_mode/state.c
+@@ -33,7 +33,11 @@
+     }
+ #endif
+     mode = GAME.funcs.getMode();
++#if PORT_HOST
++    HEAP.zero(&FIELDSTG_state, offsetof(FieldState, init));
++#else
+     HEAP.zero(&FIELDSTG_state, 100);
++#endif
+     while (1) {
+         if (entry->mode == mode) {
+             FIELDSTG_state.stageFile = entry->file;

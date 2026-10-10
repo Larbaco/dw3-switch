@@ -50,6 +50,10 @@ Unlinked stages get weak stubs from `tools/gen_stage_stubs.py`.
 | `WSTAG785` | `475` / `0x1DB` | Online Center (door target) |
 
 `overlay_table_us.c` registers the rows above; `CNTY_SEL` stays out for US.
+Host objects use named `.data`/`.bss` sections (`tools/rename_ovl_sections.py`,
+`tools/merge_ovl_sections.ld`) and snapshots in `overlay_sections.c`. Stage TUs
+are symbol-prefixed (`tools/prefix_stage_obj.py`) and linked via `dw3_p32_field`.
+P3.2 runtime status: `docs/P3.2_FIELD.md`.
 
 ### Host test
 
