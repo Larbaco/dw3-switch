@@ -283,17 +283,23 @@ Documented decode/mix + owner-listen gap (Wave 4); not faked as audible.
 - Modify: `docs/P3.7_MOVIES.md`, `docs/ROADMAP.md` (on `main` sync)
 - Possibly: pad inject `DW3_AUTO_PAD` if needed to press Start during movie for automation
 
-- [ ] **Step 1: Manual/auto skip**
+- [x] **Step 1: Manual/auto skip**
 
 During playback, Start → movie task kills → `MODE_TITLE` (or next mode from `STDWTITL_movies[]`). Also verify natural end if feasible.
+**Done** — `DW3_AUTO_PAD=start` → `dw3-movie: Start-skip` + `mode=0xE00` (Task 5).
 
-- [ ] **Step 2: Default boot still `MODE_TITLE` without `DW3_START_MODE`**
+- [x] **Step 2: Default boot still `MODE_TITLE` without `DW3_START_MODE`**
 
-- [ ] **Step 3: Fill evidence table (play / XA / skip) in `P3.7_MOVIES.md`**
+Patch `0010` unchanged; default lands `0xE00` first.
 
-Only if all three pass: set status unblocked / done; tick ROADMAP `- [x] **P3.7 Movies.**`
+- [x] **Step 3: Fill evidence table (play / XA / skip) in `P3.7_MOVIES.md`**
+
+Play + skip + XA mix rows filled; Task 5 used `SDL_AUDIODRIVER=dummy` — owner
+DAC listen still **open**. Do **not** tick ROADMAP until audible listen passes.
 
 - [ ] **Step 4: Commit on bringup + docs sync commit on `main` + push both; update PR #4**
+
+Tick ROADMAP `- [x] **P3.7 Movies.**` only after owner audible listen.
 
 ---
 
