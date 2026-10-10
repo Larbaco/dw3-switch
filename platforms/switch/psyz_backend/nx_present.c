@@ -58,10 +58,18 @@ int __wrap_LoadImage(RECT *rect, u_long *p) {
 }
 
 DISPENV *__wrap_PutDispEnv(DISPENV *env) {
+    /* This one runs twice per frame, so it ratchets like CdControl below: the
+     * boot's own calls, then powers of two. Unconditional, it is ~120 lines a
+     * second once the game is drawing. */
+    static unsigned calls;
     DISPENV *r = __real_PutDispEnv(env);
 
-    INFOF("trace: PutDispEnv -> disp(%d,%d %dx%d)", r ? r->disp.x : -1,
-          r ? r->disp.y : -1, r ? r->disp.w : -1, r ? r->disp.h : -1);
+    calls++;
+    if (calls <= 8 || (calls & (calls - 1)) == 0) {
+        INFOF("trace: PutDispEnv #%u -> disp(%d,%d %dx%d)", calls,
+              r ? r->disp.x : -1, r ? r->disp.y : -1, r ? r->disp.w : -1,
+              r ? r->disp.h : -1);
+    }
     return r;
 }
 
