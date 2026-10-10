@@ -191,7 +191,9 @@ continuous start→movie→Lobby→Tamer→Genji→field @ `a5ae93a` (Lobby
 class; pad KO follow-up); EU playthrough not required. **EU `dw3-pc` link
 scaffold** (`docs/P3_EU_BUILD.md`): `-DDW3_VERSION=eu` +
 `overlay_table_eu.c` configure/link; `runtime/eu` / playthrough still open.
-P3.9 may run on a side track.
+P3.9 harness scaffold (`tools/compare_harness/`, `docs/P3.9_REFERENCE.md`)
+may land from `phase3-harness`; checkbox stays open until title/field/battle
+pairs are reviewed.
 
 Objective: the full game loop runs on PC: field, stages, battle, menus,
 audio, movies.
