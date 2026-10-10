@@ -96,13 +96,16 @@ the host, replace MIPS-only pieces, and reach the title screen on PC.
   mapped to PSY-Z's software GTE under `PORT_HOST`.
   Done when: no `__asm__` remains in the host build and `grep -r mtc2`
   over the preprocessed output is empty.
-- [ ] **P2.4 64-bit audit, part 1 (engine).** Replace literal sizes with
-  `sizeof` in `src/engine` (`HEAP.zero(&GFX.prim, 0x18)`,
-  `PAD_DATA_SIZE`, `MemBlock` split constant), fix `freeFilesFrom` to
-  take an offset/symbol, remove pointer↔`u32` casts in engine code.
-  Match-neutral changes go upstream.
+- [x] **P2.4 64-bit audit, part 1 (engine).** Replace literal sizes with
+  `sizeof`/`offsetof` in `src/engine` (`HEAP.zero(&GFX.prim, …)`,
+  `PAD_DATA_SIZE`, `MemBlock` split constant, `createInn`), fix
+  `freeFilesFrom` to take `void *`, remove pointer↔`u32`/`s32` casts in
+  engine code. Match-neutral patches `0006`/`0007` in `port/patches/`
+  (see `docs/PATCHES.md`).
   Done when: `-Wpointer-to-int-cast -Wint-to-pointer-cast` are clean for
-  `src/engine` and `make compare` upstream still says `OK`.
+  `src/engine` (enforced as `-Werror=` on `dw3_engine`). Upstream
+  `make compare` not run here — no MIPS toolchain on this host (blocker
+  noted in `docs/PATCHES.md`).
 - [ ] **P2.5 CD → filesystem.** `port/cdfs/`: implement the file-id read
   path the engine uses (`CD_READER.readFile` semantics, `FILE_TABLE`
   sector counts, `cdReadyCallback`-style completion) over

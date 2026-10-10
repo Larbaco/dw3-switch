@@ -102,6 +102,8 @@ target_compile_options(dw3_engine PRIVATE
   -fno-toplevel-reorder
   -Werror=implicit-function-declaration
   -Werror=int-conversion
+  -Werror=pointer-to-int-cast
+  -Werror=int-to-pointer-cast
 )
 
 # Archive forces object compilation without linking into the PC stub (has its own main).

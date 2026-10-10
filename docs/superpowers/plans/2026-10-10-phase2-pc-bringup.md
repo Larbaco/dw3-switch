@@ -258,9 +258,9 @@ Targets (from SURVEY):
 - `freeFilesFrom` takes offset/symbol not raw PS1 `u32` address compare
 - Remove pointer↔`u32` casts in engine
 
-- [ ] **Step 1: Build with `-Wpointer-to-int-cast -Wint-to-pointer-cast` and fix until clean for engine.**
-- [ ] **Step 2: Note upstream-bound patches in `docs/PATCHES.md`.**
-- [ ] **Step 3: Tick P2.4; commit + push.**
+- [x] **Step 1: Build with `-Wpointer-to-int-cast -Wint-to-pointer-cast` and fix until clean for engine.**
+- [x] **Step 2: Note upstream-bound patches in `docs/PATCHES.md`.**
+- [x] **Step 3: Tick P2.4; commit + push.**
 
 **Done when:** those warnings clean for `src/engine`. (Upstream `make compare` is optional if no MIPS toolchain here — note blocker rather than blocking the port.)
 

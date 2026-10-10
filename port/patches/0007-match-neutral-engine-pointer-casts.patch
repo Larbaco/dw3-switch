@@ -1,0 +1,80 @@
+Upstream-bound: yes
+Subject: [match-neutral] pointer-safe freeFilesFrom / archive entry
+
+freeFilesFrom takes a void* threshold (not a raw PS1 u32 address);
+archive entry lookups use pointer + offset instead of pointer↔s32
+casts (ROADMAP P2.4 / SURVEY).
+
+--- a/include/engine/file.h
++++ b/include/engine/file.h
+@@ -92,7 +92,7 @@
+     /* 0x414 */ void *(*load)(u32 file);
+     /* 0x418 */ void (*free)(s32 file);
+     /* 0x41C */ void (*freeAll)(void);
+-    /* 0x420 */ void (*freeFrom)(u32 addr);
++    /* 0x420 */ void (*freeFrom)(void *addr);
+     /* 0x424 */ void *(*getEntry)(u32 fileAndIndex);
+     /* 0x428 */ void *(*getArchiveEntry)(s32 index, void *archive);
+     /* 0x42C */ void (*markCached)(void);
+@@ -135,7 +135,7 @@
+ void *loadFile(u32 file);
+ void freeFile(s32 file);
+ void freeAllFiles(void);
+-void freeFilesFrom(u32 addr);
++void freeFilesFrom(void *addr);
+ void *getFileEntry(u32 fileAndIndex);
+ void *getArchiveEntry(s32 index, void *archive);
+ void markCachedFiles(void);
+--- a/src/engine/file/file_cache.c
++++ b/src/engine/file/file_cache.c
+@@ -202,16 +202,16 @@
+ }
+ 
+ /* Frees the files that reach past addr (to load something there) */
+-void freeFilesFrom(u32 addr) {
++void freeFilesFrom(void *addr) {
+     FileSlot *slot = FILE_CACHE.slots;
+     s32 i;
+-    u32 end;
++    u8 *end;
+ 
+     for (i = 0; i < FILE_CACHE_SLOTS; i++, slot++) {
+         if (slot->file != 0) {
+-            end = (u32)slot->data + 0x20;
++            end = (u8 *)slot->data + 0x20;
+             end += FILE_TABLE.getSectorCount(slot->file) * CD_SECTOR_SIZE;
+-            if (end >= addr) {
++            if (end >= (u8 *)addr) {
+                 HEAP.free(slot->data);
+                 slot->file = 0;
+                 slot->data = NULL;
+@@ -231,15 +231,14 @@
+     s32 index = fileAndIndex & 0xFFFF;
+     s32 *table = loadFile(fileAndIndex >> 16);
+ 
+-    /* summed as integers: as pointer arithmetic GCC swaps the operands */
+-    return (void *)(table[index] + (s32)table);
++    return (u8 *)table + table[index];
+ }
+ 
+ /* Entry `index` (the low 16 bits) of an archive already in memory */
+ void *getArchiveEntry(s32 index, void *archive) {
+     s32 *table = archive;
+ 
+-    return (void *)(table[index & 0xFFFF] + (s32)table); /* as in getFileEntry */
++    return (u8 *)table + table[index & 0xFFFF];
+ }
+ 
+ /* markCachedFiles + touchMarkedFiles: refresh the files cached before a load */
+--- a/src/engine/text/text_window.c
++++ b/src/engine/text/text_window.c
+@@ -334,8 +334,7 @@
+                 pos += 2;
+                 break;
+             case 2:
+-                /* summed as integers: as pointer arithmetic GCC swaps the operands */
+-                p = (u8 *)(pos + (s32)obj->text[0].data);
++                p = obj->text[0].data + pos;
+                 c = p[1];
+                 switch (c) {
+                 default:

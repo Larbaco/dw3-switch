@@ -38,3 +38,12 @@ tools/apply_patches.sh           # refresh build/decomp-src + apply
 | `0003-PORT_HOST-allocMemHigh-return-pointer.patch` | no | `allocMemHigh` returns the pointer under `PORT_HOST` (not v0) |
 | `0004-PORT_HOST-gte-software-macros.patch` | no | `include/engine/gte.h` → PSY-Z software GTE under `PORT_HOST` |
 | `0005-PORT_HOST-overlay-addrs-boot-tim-stub.patch` | no | Host overlay addrs from `port/overlays`; boot TIM upload stubbed |
+| `0006-match-neutral-engine-sizeof-sizes.patch` | yes | `sizeof`/`offsetof` for `PAD_DATA_SIZE`, `GFX.prim` clear span, `MemBlock` split, `createInn` |
+| `0007-match-neutral-engine-pointer-casts.patch` | yes | `freeFilesFrom(void *)`; archive/text pointer+offset (no pointer↔`u32`/`s32`) |
+
+### Upstream `make compare` (P2.4)
+
+Match-neutral patches 0006/0007 are intended to stay byte-identical on
+PS1, but this host has no MIPS/Psy-Q toolchain image for
+`vendor/dw3_decomp` `make compare`. Blocker: run compare in the decomp’s
+Docker/toolchain when available before opening the upstream PR.
