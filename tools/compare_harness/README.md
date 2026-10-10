@@ -11,9 +11,9 @@ PS1 (DuckStation) is the **visual oracle**. `dw3-pc` is the subject.
 
 | Label | Automation | Notes |
 |---|---|---|
-| `title` | OK | Boot/FMV @ 100% |
-| `field` | Partial | Loads owner `.mcd` via auto Start/Cross; last shot was in-game Items menu |
-| `battle` | Blocked | Needs mid-fight `--statefile` (F2) |
+| `title` | OK | One Start skips the FMV. Shot is MODE_TITLE (Press Start) @ 200% |
+| `field` | OK | Both sides: Asuka Inn interior. PC `STGMCARD_loadSave ok`, then stop Cross at `mode=0x20a` |
+| `battle` | Blocked | Needs mid-fight `--statefile`. Do not invent a PNG |
 
 ROADMAP P3.9 stays open until three reviewed pairs exist. PNGs + `.mcr`
 stay under gitignored `build/compare/`.
@@ -31,7 +31,7 @@ Owner card on this machine:
 
 → staged to `build/compare/memcard0.mcr` (never commit).
 
-## Emulation speed (required: 100%)
+## Emulation speed (required: 200%)
 
 DuckStation has **no CLI flag** for speed (checked AppImage `-help`,
 0.1-12074). The harness always rewrites
@@ -39,10 +39,10 @@ DuckStation has **no CLI flag** for speed (checked AppImage `-help`,
 
 | Key | Value | Meaning |
 |---|---|---|
-| `Main/EmulationSpeed` | `1` | Normal realtime (100%). **`0` = uncapped** (thousands %) — do not use |
-| `Main/FastForwardSpeed` | `1` | Cap FF at 100% if somehow triggered |
-| `Main/TurboSpeed` | `1` | Cap turbo at 100% |
-| Hotkey `FastForward` | *(unbound)* | Tab cannot race the settle window |
+| `Main/EmulationSpeed` | `2` | 200%. `1` is 100%. **`0` = uncapped** — do not use |
+| `Main/FastForwardSpeed` | `2` | Cap FF at 200% if somehow triggered |
+| `Main/TurboSpeed` | `2` | Cap turbo at 200% |
+| Hotkey `FastForward` | *(unbound)* | A stray toggle cannot jump to uncapped |
 
 Also: `SetupWizardIncomplete=false`, `ConfirmPowerOff=false`,
 `BIOS/PathNTSCU=scph1001.bin`, `Folders/Screenshots` → harness shots dir.
@@ -50,26 +50,27 @@ Also: `SetupWizardIncomplete=false`, `ConfirmPowerOff=false`,
 ## One-liners (this machine)
 
 ```bash
-cd /mnt/windows/Jogos/dw3-switch/.worktrees/phase3-harness
 DS=/mnt/windows/Jogos/emuladores/duckstation
 CUE="/mnt/windows/Jogos/PS1/Digimon World 3/Digimon World 3.cue"
 BIOS="$HOME/.local/share/duckstation/bios/scph1001.bin"
 SRC="$HOME/.local/share/duckstation/memcards/Digimon World 3 (USA)_1.mcd"
 
-# Title / boot
+# Title: one Start, then PRESS START. Sequenced waits ignore --settle-seconds.
 python3 tools/compare_harness/capture_pair.py \
-  --label title --duck-only --settle-seconds 25 \
+  --label title \
   --duckstation "$DS" --disc "$CUE" --bios "$BIOS" --out build/compare
 
-# Field (auto-load from memcard; ~2–3 min @ 100%)
+# Field: same card, Continue, leave "Loaded."
 python3 tools/compare_harness/capture_pair.py \
-  --label field --duck-only --save "$SRC" --settle-seconds 160 \
+  --label field --save "$SRC" \
   --duckstation "$DS" --disc "$CUE" --bios "$BIOS" --out build/compare
 
-# Field/battle from F2 savestate (preferred settled frame)
+# Battle, after the owner drops a savestate (gitignored):
 python3 tools/compare_harness/capture_pair.py \
-  --label field --duck-only --no-auto-load --statefile /path/to.state \
-  --settle-seconds 3 --duckstation "$DS" --disc "$CUE" --out build/compare
+  --label battle --duck-only --no-auto-load \
+  --statefile build/compare/battle/owner.state \
+  --settle-seconds 3 \
+  --duckstation "$DS" --disc "$CUE" --bios "$BIOS" --out build/compare
 ```
 
 Needs: `DISPLAY`, `xdotool`, `wmctrl`. Pad1 is temporarily rebound to
@@ -124,10 +125,9 @@ build/compare/<label>/
 
 ## Blockers (honest)
 
-- **Title settle:** opening movies may still be playing after N seconds at
-  100%; pad skip or save state needed for true `MODE_TITLE`.
-- **Field / battle:** need shared `.mcr` or DuckStation `-statefile`.
-- **PC pair:** best-effort window grab when `dw3-pc` + runtime exist.
+- **Title:** one Start reaches PRESS START. A second Start opens New Game / Continue. At 200% the 600-frame timeout is about 5s of wall clock once that prompt is up.
+- **Field:** DuckStation Continue from the owner card reaches the Asuka Inn interior. `dw3-pc` loads the same `memcard0.mcr` and stops on "Failed to access" (`STGMCARD_loadSave` checksum `got=67 calc=129`).
+- **Battle:** blocked until `build/compare/battle/owner.state` exists.
 
 ## Related
 

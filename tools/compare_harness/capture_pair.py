@@ -44,7 +44,8 @@ def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
         description=(
             "Capture DuckStation (oracle) and optionally dw3-pc (subject) "
-            "frames for P3.9. Speed forced to EmulationSpeed=1 via settings.ini."
+            "frames for P3.9. Speed forced to EmulationSpeed=2 (200%) via settings.ini. "
+            "0 is uncapped; do not use it."
         )
     )
     p.add_argument("--label", required=True, choices=LABELS)
@@ -152,9 +153,10 @@ def patch_duckstation_settings(
     cp["Main"]["ConfirmPowerOff"] = "false"
     cp["Main"]["SaveStateOnExit"] = "false"
     cp["Main"]["StartFullscreen"] = "false"
-    cp["Main"]["EmulationSpeed"] = "1"
-    cp["Main"]["FastForwardSpeed"] = "1"
-    cp["Main"]["TurboSpeed"] = "1"
+    # 1 = 100%, 2 = 200%, 0 = uncapped. Never write 0.
+    cp["Main"]["EmulationSpeed"] = "2"
+    cp["Main"]["FastForwardSpeed"] = "2"
+    cp["Main"]["TurboSpeed"] = "2"
     cp["Main"]["SyncToHostRefreshRate"] = "false"
     cp["Main"]["InhibitScreensaver"] = "false"
     cp["Main"]["PauseOnFocusLoss"] = "false"
@@ -166,7 +168,7 @@ def patch_duckstation_settings(
     cp["Folders"]["Screenshots"] = str(screenshots_dir)
 
     cp["Hotkeys"]["Screenshot"] = "Keyboard/F10"
-    # Do not bind FastForward — keep settle at 100%.
+    # Do not bind FastForward. FastForwardSpeed=2 caps a stray toggle at 200%.
     if cp.has_option("Hotkeys", "FastForward"):
         cp.remove_option("Hotkeys", "FastForward")
     if cp.has_option("Hotkeys", "ToggleFastForward"):
@@ -189,7 +191,7 @@ def patch_duckstation_settings(
         log("Pad1 temporarily set to keyboard (Start=Enter, Cross=K)")
 
     _write_ini(settings, cp)
-    log(f"patched {settings} (EmulationSpeed=1)")
+    log(f"patched {settings} (EmulationSpeed=2, 200%)")
     return prev_pad
 
 
@@ -367,15 +369,84 @@ def send_keys(wid: str, *keys: str, pause: float = 0.35) -> None:
     )
     for key in keys:
         subprocess.run(
-            ["xdotool", "key", "--window", wid, key],
+            ["xdotool", "keydown", "--window", wid, key],
+            check=False,
+            capture_output=True,
+        )
+        time.sleep(0.12)
+        subprocess.run(
+            ["xdotool", "keyup", "--window", wid, key],
             check=False,
             capture_output=True,
         )
         time.sleep(pause)
 
 
+def _wid(wid: str) -> str:
+    return wait_for_window(timeout=5.0) or wid
+
+
+def settle_title_press_start(wid: str) -> str:
+    """One Start skips the opening FMV. A second Start opens New Game / Continue.
+
+    MODE_TITLE returns to the movie after 600 frames with no Start.
+    At EmulationSpeed=2 that window is about 5s of wall clock once PRESS
+    START is up, so the idle after the skip stays inside it.
+    """
+    log("title: wait 8s for opening movie @ EmulationSpeed=2")
+    time.sleep(8.0)
+    wid = _wid(wid)
+    log("title: Start once (skip FMV -> MODE_TITLE)")
+    send_keys(wid, "Return", pause=0.2)
+    log("title: idle 5s for logo / PRESS START")
+    time.sleep(5.0)
+    return _wid(wid)
+
+
+def settle_field_continue(wid: str, *, start_key: str, cross_key: str) -> str:
+    """Skip FMV, Start, Cross on Continue (default cursor), then stop.
+
+    Extra Start after the load opens the field menu. This sequence does not
+    press Start again after Continue.
+    """
+    log("field: wait 8s for opening movie @ EmulationSpeed=2")
+    time.sleep(8.0)
+    wid = _wid(wid)
+    log("field: Start once to skip FMV")
+    send_keys(wid, start_key, pause=0.2)
+    log("field: idle 4s on PRESS START")
+    time.sleep(4.0)
+    wid = _wid(wid)
+    log("field: Start to show New Game / Continue")
+    send_keys(wid, start_key, pause=0.3)
+    time.sleep(1.5)
+    wid = _wid(wid)
+    log("field: Cross (Continue is the default cursor)")
+    send_keys(wid, cross_key, pause=0.3)
+    # Slot list, then the "Loaded." card screen. A later Cross leaves it.
+    # Cross only — Start after the load opens the field menu.
+    log("field: Cross pulses while the card reads (10s)")
+    deadline = time.time() + 10.0
+    while time.time() < deadline:
+        wid = _wid(wid)
+        send_keys(wid, cross_key, pause=0.2)
+        time.sleep(1.6)
+    # "Loaded." waits on a Cross edge (STGMCARD_waitLoadedMessage). One tap
+    # often lands before prompting=1. A few edges, then stop so the field
+    # fade is not mashed into a menu.
+    log("field: idle 3s on Loaded, then Cross edges")
+    time.sleep(3.0)
+    for _ in range(3):
+        wid = _wid(wid)
+        send_keys(wid, cross_key, pause=0.4)
+        time.sleep(1.8)
+    log("field: idle 8s for the field fade-in")
+    time.sleep(8.0)
+    return _wid(wid)
+
+
 def auto_load_pad(wid: str, settle_seconds: float) -> None:
-    """Best-effort: skip movies (Start/Enter) then Cross(K) toward Continue/Load."""
+    """Legacy spam. Field/title use the sequenced settles instead."""
     log(f"auto-load pad for {settle_seconds:.0f}s (Enter=Start, k=Cross)")
     deadline = time.time() + settle_seconds
     phase_menu_at = time.time() + min(90.0, settle_seconds * 0.55)
@@ -423,6 +494,7 @@ def take_screenshot(wid: str, shots: Path, out_png: Path) -> Path:
 
 def capture_duckstation(
     *,
+    label: str,
     duckstation: Path,
     disc: Path,
     bios: Path,
@@ -440,7 +512,9 @@ def capture_duckstation(
         raise FileNotFoundError(f"--statefile not found: {statefile}")
 
     shots = DS_DATA / "screenshots_harness"
-    prev_pad = patch_duckstation_settings(shots, keyboard_pad=auto_load)
+    # Title skip and field Continue both need the temporary keyboard pad.
+    use_pad = statefile is None and (label == "title" or auto_load)
+    prev_pad = patch_duckstation_settings(shots, keyboard_pad=use_pad)
     for old in shots.glob("*.png"):
         old.unlink()
 
@@ -473,10 +547,17 @@ def capture_duckstation(
             if not wid:
                 raise RuntimeError("DuckStation window not found (DISPLAY/xdotool?)")
             log(f"window id={wid}")
-            if auto_load and statefile is None:
+            if statefile is not None or not use_pad:
+                log(f"settling {settle_seconds:.0f}s at EmulationSpeed=2")
+                time.sleep(settle_seconds)
+            elif label == "title":
+                wid = settle_title_press_start(wid)
+            elif label == "field" and auto_load:
+                wid = settle_field_continue(wid, start_key="Return", cross_key="k")
+            elif auto_load:
                 auto_load_pad(wid, settle_seconds)
             else:
-                log(f"settling {settle_seconds:.0f}s at EmulationSpeed=1")
+                log(f"settling {settle_seconds:.0f}s at EmulationSpeed=2")
                 time.sleep(settle_seconds)
             wid = wait_for_window(timeout=15.0) or wid
             take_screenshot(wid, shots, out_png)
@@ -501,13 +582,46 @@ def capture_duckstation(
         restore_pad1(prev_pad)
 
 
+def wait_pc_window(timeout: float = 30.0) -> str | None:
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        r = subprocess.run(
+            ["xdotool", "search", "--name", "dw3-pc"],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        ids = [x for x in r.stdout.split() if x.isdigit()]
+        if ids:
+            return ids[-1]
+        time.sleep(0.4)
+    return None
+
+
+def grab_pc_window(wid: str, out_png: Path) -> None:
+    subprocess.run(["import", "-window", wid, str(out_png)], check=True)
+
+
+def log_contains(path: Path, needle: str) -> bool:
+    try:
+        data = path.read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return False
+    return needle in data
+
+
 def capture_dw3_pc(
     *,
+    label: str,
     pc_bin: Path,
     runtime: Path,
     out_png: Path,
-    settle_seconds: float,
+    memcard_dir: Path | None,
 ) -> Path | None:
+    """Subject frame. Unset DW3_START_MODE so patch 0010 stays MODE_TITLE.
+
+    PSY-Z keyboard: Return=Start, x=Cross, s=Triangle.
+    """
     if not pc_bin.is_file():
         log(f"skip pc: binary missing ({pc_bin})")
         return None
@@ -517,12 +631,22 @@ def capture_dw3_pc(
     out_png.parent.mkdir(parents=True, exist_ok=True)
     log_path = out_png.parent / "dw3-pc.log"
     cmd = [str(pc_bin.resolve()), "--runtime", str(runtime.resolve())]
+    if memcard_dir is not None:
+        cmd += ["--memcard-dir", str(memcard_dir.resolve())]
     env = os.environ.copy()
-    env.setdefault("DW3_START_MODE", "title")
-    log("launch pc: " + " ".join(cmd))
+    env.pop("DW3_START_MODE", None)
+    env.pop("DW3_AUTO_PAD", None)
+    env.pop("DW3_FORCE_MCARD_LOAD", None)
+    env.pop("DW3_PROGRESS", None)
+    launch = cmd
+    stdbuf = shutil.which("stdbuf")
+    if stdbuf:
+        # Line-buffer so the field settle can see mode=0x20a before the next Cross.
+        launch = [stdbuf, "-oL", "-eL", *cmd]
+    log("launch pc: " + " ".join(launch))
     with log_path.open("w", encoding="utf-8") as logf:
         proc = subprocess.Popen(
-            cmd,
+            launch,
             stdout=logf,
             stderr=subprocess.STDOUT,
             env=env,
@@ -530,18 +654,48 @@ def capture_dw3_pc(
             cwd=str(pc_bin.resolve().parent.parent.parent),
         )
     try:
-        time.sleep(max(5.0, settle_seconds * 0.25))
-        r = subprocess.run(
-            ["xdotool", "search", "--name", "dw3"],
-            capture_output=True,
-            text=True,
-            check=False,
-        )
-        ids = [x for x in r.stdout.split() if x.isdigit()]
-        if not ids:
+        wid = wait_pc_window(timeout=40.0)
+        if not wid:
             log("skip pc capture: no window")
             return None
-        subprocess.run(["import", "-window", ids[-1], str(out_png)], check=True)
+        log(f"pc window id={wid}")
+        if label == "title":
+            # Logo + PRESS START. The 600-frame timeout leaves MODE_TITLE.
+            log("pc title: idle 6s on MODE_TITLE")
+            time.sleep(6.0)
+        elif label == "field":
+            log("pc field: idle 5s then Start / Cross Continue")
+            time.sleep(5.0)
+            wid = wait_pc_window(timeout=5.0) or wid
+            send_keys(wid, "Return", pause=0.3)
+            time.sleep(2.0)
+            wid = wait_pc_window(timeout=5.0) or wid
+            send_keys(wid, "x", pause=0.3)
+            # Cross leaves "Loaded." The next Cross on the inn floor hits
+            # talkToActorAt and opens "Save here?". Stop when field mode is up.
+            log("pc field: Cross until mode=0x20a, then stop")
+            deadline = time.time() + 28.0
+            entered = False
+            while time.time() < deadline:
+                if log_contains(log_path, "mode=0x20a"):
+                    entered = True
+                    break
+                wid = wait_pc_window(timeout=3.0) or wid
+                send_keys(wid, "x", pause=0.2)
+                time.sleep(1.2)
+            if entered:
+                log("pc field: field mode up; idle 10s with no further Cross")
+            else:
+                log("pc field: mode=0x20a not seen; idle 10s anyway")
+            time.sleep(10.0)
+            wid = wait_pc_window(timeout=5.0) or wid
+        else:
+            time.sleep(5.0)
+        wid = wait_pc_window(timeout=5.0) or wid
+        grab_pc_window(wid, out_png)
+        if not out_png.is_file() or out_png.stat().st_size < 1000:
+            log(f"pc capture tiny or missing: {out_png}")
+            return None
         return out_png
     except (FileNotFoundError, subprocess.CalledProcessError) as exc:
         log(f"skip pc capture: {exc}")
@@ -575,7 +729,7 @@ def write_pair_md(
         f"""# Pair review — {label}
 
 - Date: {time.strftime('%Y-%m-%d')}
-- Settle: {settle:.0f}s @ EmulationSpeed=1
+- Settle: {settle:.0f}s wall @ EmulationSpeed=2 (200%)
 - Save: `{save if save else 'none'}`
 - DuckStation: `{duck if duck else 'missing'}`
 - dw3-pc: `{pc if pc else 'skipped/missing'}`
@@ -616,22 +770,29 @@ def main(argv: list[str] | None = None) -> int:
         return 2
 
     staged: Path | None = None
+    pc_memdir: Path | None = None
     if args.save is not None:
         try:
             staged = stage_memcard(args.save, harness_card)
         except (OSError, ValueError) as exc:
             log(f"stage save failed: {exc}")
             return 1
+        if args.label == "field":
+            pc_memdir = args.out / "pc-memcard"
+            pc_memdir.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(staged, pc_memdir / "memcard0.mcr")
+            log(f"pc card: {pc_memdir / 'memcard0.mcr'}")
 
     try:
         capture_duckstation(
+            label=args.label,
             duckstation=args.duckstation,
             disc=args.disc,
             bios=args.bios,
             out_png=duck_png,
             settle_seconds=settle,
             statefile=args.statefile,
-            auto_load=auto_load and args.label != "title",
+            auto_load=auto_load,
         )
     except Exception as exc:
         log(f"duck capture failed: {exc}")
@@ -640,10 +801,11 @@ def main(argv: list[str] | None = None) -> int:
     pc_path: Path | None = None
     if not args.duck_only:
         pc_path = capture_dw3_pc(
+            label=args.label,
             pc_bin=args.pc_bin,
             runtime=args.runtime,
             out_png=pc_png,
-            settle_seconds=settle,
+            memcard_dir=pc_memdir,
         )
 
     notes = (
