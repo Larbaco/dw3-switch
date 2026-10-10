@@ -74,6 +74,30 @@ machine that user often cannot create `platforms/switch/build/` on the
 checkout mount. The SDL3 experiment used an isolated `/tmp` volume as root
 inside the container. Skeleton `.nro` still builds that way on ext4.
 
+### Building the game image (CMake target)
+
+The CMake build does **not** go through `tools/dk.sh`. It needs the worktree
+mounted at its own absolute path (the `build.ninja` paths are absolute), the
+`build/` directory shadowed by an ext4 volume (`docker run -v <ext4>:/…/build`
+*after* the worktree mount — `build/` is on NTFS otherwise and the object
+files, the packed overlays and `decomp-src` all land there), the main repo's
+`.git` for the worktree's submodule pointers, and no login shell:
+
+```bash
+W=/mnt/windows/Jogos/dw3-switch/.worktrees/p4-renderer
+docker run --rm \
+  -v "$W:$W" -v /tmp/dw3-nx-renderer:"$W/build" \
+  -v /mnt/windows/Jogos/dw3-switch/.git:/mnt/windows/Jogos/dw3-switch/.git:ro \
+  -e DEVKITPRO=/opt/devkitpro \
+  -e PATH=/opt/devkitpro/tools/bin:/opt/devkitpro/devkitA64/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin \
+  -e GIT_CONFIG_COUNT=1 -e GIT_CONFIG_KEY_0=safe.directory -e GIT_CONFIG_VALUE_0='*' \
+  -w "$W" devkitpro/devkita64:latest ninja -C "$W/build/switch"
+```
+
+An incremental build is ~10 s (three objects and a link); a clean one is 1144
+targets. Changing `target_link_options` re-runs CMake and rebuilds the world,
+so batch link-flag edits.
+
 ## Experiment B — native libnx sketch (PSP layout)
 
 | PSY-Z PSP file | Switch file | Intended libnx / stack | Status |
@@ -118,13 +142,14 @@ Two entry points, on purpose:
 | Build | `main()` | What it produces |
 |---|---|---|
 | devkitPro Makefile (`make -C platforms/switch`, CI) | `source/main.c` `host_hello` | bring-up `.nro` (EGL + audren sample). Drops `boot_main.c`, `nx_input.c`, and `nx_present.c` (they need PSY-Z). No game. |
-| CMake (`platforms/switch/CMakeLists.txt`) | `source/boot_main.c` | calls `dw3_game_main`. Does **not** link yet. |
+| CMake (`platforms/switch/CMakeLists.txt`) | `source/boot_main.c` | calls `dw3_game_main`. Links, and produces the game `.nro`. |
 
 `boot_main.c` is the PC host's boot order (cdfs, STR bridge, audio, memcard,
 boot TIM, overlay table, vsync pump) plus the SD mount, pad source, and EGL
-surface. Referencing `dw3_game_main` pulls `libgpu.o` into the link. Rebuilt
-on 2026-10-10 after rebase onto current `main`: compile succeeds, then the
-link stops on these **20** undefined symbols, all `Draw_*`:
+surface. Referencing `dw3_game_main` pulls `libgpu.o` into the link, which is
+what demanded the 20 `Draw_*` symbols below — for a while that link stop *was*
+the state of P4.7, and it is kept here because the symbol list is what
+`switch_gpu.c` had to satisfy:
 
 `Draw_ClearImage`, `Draw_DisplayArea`, `Draw_DisplayEnable`,
 `Draw_DisplayHorizontalRange`, `Draw_DisplayVerticalRange`, `Draw_ExequeSync`,
@@ -134,10 +159,49 @@ link stops on these **20** undefined symbols, all `Draw_*`:
 `Draw_SetTextureWindow`, `Draw_StoreImage`.
 
 `nm -u` on `libgpu.o` also lists `Draw_SetHorizontalGrid` (21 undefined in the
-object). The link did not demand it. No `dw3-switch.elf` and no game `.nro`
-from this configure. The earlier “links, 8.5 MiB `.nro` / 16.7 MB `.elf`”
-note was the image *before* `boot_main.c` pulled `libgpu.o` in — those
-platform symbols (log, `Psyz_Os*`, pad, vsync, `__wrap_*`) do resolve now.
+object). The linker does not demand it.
+
+**All of that links now.** `psyz_backend/switch_gpu.c` implements the `Draw_*`
+family as forwards to PSY-Z's in-tree CPU rasterizer (`software_rasterizer`,
+`src/platform/sdl3_software.c`), with `nx_gpu.c` uploading
+`SoftwareRasterizer_GetVram()` as a GLES2 texture. 1144 objects, 0 undefined
+symbols, 17.4 MB `.elf` → 8.9 MB `.nro`. Two traps worth keeping: the
+rasterizer's own `rasterizer.h` does `#define RECT PS1_RECT` around its
+`draw.h` include, so image-taking forwards must be signed `PS1_RECT*`; and
+`nx_gpu.c` must not include PSY-Z headers next to the EGL ones (they redirect
+libc names), which is why its probes call `psyz_log` directly.
+
+### Boot stop (2026-10-10): the game runs, then blocks in `CdInit()`
+
+In Ryubing the image gets through the whole host bring-up and well into the
+game's own boot (`build/decomp-src/src/engine/system/main.c`):
+
+```
+[init_paths] cdfs root=sdmc:/switch/dw3/us
+[init_paths] Psyz_AudioInit OK / memcard dir / boot TIM / overlay table
+[main] entering dw3_game_main()
+[Psyz_VideoVSync] first call (mode=0) → first present+swap done
+[dw3_nx_vsync_pump] vsync pump #1  #2  #3  #4
+trace: LoadImage(0,0 320x480) -> 0        <- pins #4 to the VSync after LoadImage
+trace: SetDispMask(1) -> / <-
+trace: CdInit ->                          <- entered, never returns
+```
+
+The pump prints once per `VSync()` from inside it, so the count is a boot
+progress meter: the game's boot path makes five `VSync` calls before its main
+loop (four `VSync(0)`, then a `VSync(3)` past the CD block), and #5 never
+comes. The window between #4 and #5 is five calls long —
+`SetDispMask(1)`, `CdInit()`, `CdSetDebug()`, `SetGraphDebug()`, and
+`while (CdControl(CdlSetmode, param, 0) == 0) { }` — and the two that ran are
+in the trace. Reading that window does not explain the stop, which is why the
+answer came from a trace rather than from another reading: `D_800B5718[0x0E]`
+is `0`, so `cd_cw` skips `Setloc`, and `CD_command`'s `CdlSetmode` arm can only
+fail on a NULL param. The PC host links the same PSY-Z and boots to the title.
+
+Also worth knowing: nothing logged after `CdInit` means the PSY-Z IRQ thread
+never started and `Psyz_OsNowUs` was never called — both would have logged.
+The block is upstream of both.
+
 P4.7 stays open: nothing renders, so there is no title on hardware.
 
 ## P4.2 video (2026-10-10)
@@ -198,7 +262,8 @@ Caveats — do not over-read a green smoke:
 | Caveat | Detail |
 |---|---|
 | **`--no-gui` headless does not work** | Loads the NRO, then `GUI.RenderLoop` dies with `Image initialization failed` (reproduces on unrelated homebrew too). Use the GUI path. |
-| **Guest stderr is invisible** | `platforms/switch` logs with `fprintf(stderr)` expecting **nxlink**; Ryubing loads the `.nro` directly, so `host_hello:` lines and the fps counter never surface. P4.2's frame-rate number is **not** obtainable this way — and emulator fps would not be meaningful anyway. |
+| **Read the guest log only through `svcOutputDebugString`** | `psyz_log` writes three sinks: stderr (invisible here — it expects **nxlink**), `sdmc:/switch/dw3/dw3.log`, and `svcOutputDebugString`, which Ryubing logs at warning level into `~/.config/Ryujinx/Logs/*.log`, live and timestamped. **Use the emulator log.** The `sdmc:` path is a *mirror* of the emulated card and Ryubing does not write guest file data through as the guest flushes: reading `dw3.log` while the emulator is up shows a log that has quietly stopped short, which reads exactly like a hang. It cost one wrong conclusion (a "the vsync callback never runs" contradiction that was pure flush lag) before the third sink existed. |
+| **A stop in the log is not a crash** | The emulator ran 6 minutes with a black window and exited cleanly on request; guest threads 28/30 were parked in `ArbitrateLock` at teardown. Confirm with `~/.config/Ryujinx/Logs/` and `import -window <wid>` before calling anything hung. |
 | **The `.nro` needs an embedded NACP** | Without it LibHac-based loaders reject the file outright. Fix and rationale: [platforms/switch/README.md](../platforms/switch/README.md). |
 | **Updating Ryubing is blocked on this LAN** | `git.ryujinx.app` and `update.ryujinx.app` resolve to `91.239.78.255`, unreachable here (80/443/22 blocked); the old GitHub mirrors 404. The installed canary is what we have. |
 
@@ -220,11 +285,13 @@ here.
 1. ~~P4.2: implement `nx_gpu.c` present path~~ — code on PR #21; **hardware fps check** open.
 2. ~~P4.3: `nx_audio.c` / `audren`~~ — host wiring on PR #23; **hardware + libsnd** open.
 3. **P4.7 boot path:** `source/boot_main.c` is in the CMake target and calls
-   `dw3_game_main`. The Makefile `source/main.c` sample stays. The game image
-   does not link until the renderer symbols below exist.
-4. **P4.7 renderer:** the 20 `Draw_*` symbols the link reports (plus
-   `Draw_SetHorizontalGrid` in `libgpu.o`). The thin route is an adapter over
-   the in-tree `software_rasterizer`, presenting `SoftwareRasterizer_GetVram()`
-   through `nx_gpu.c`'s EGL surface.
+   `dw3_game_main`. The Makefile `source/main.c` sample stays. **The blocker is
+   now the boot, not the link** — the image links and reaches the game, then
+   blocks inside `CdInit()` (evidence above).
+4. **P4.7 renderer:** done as a thin adapter over the in-tree
+   `software_rasterizer`, presenting `SoftwareRasterizer_GetVram()` through
+   `nx_gpu.c`'s EGL surface. It presents frames; whether it draws the *right*
+   pixels is unverified, because the boot never gets far enough to draw
+   anything but a cleared VRAM.
 5. Do not vendor SDL3 into git; if revisited, document a `tools/` fetch+build
    helper only.

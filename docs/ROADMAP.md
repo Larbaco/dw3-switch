@@ -376,17 +376,26 @@ console.
   image for aarch64 (reuses `port/CMakeLists.txt`; overlay packing uses target
   binutils). `vendor/psyz` is pinned to `dw3-switch-backend` @ `15afac1`
   (NintendoSwitch, no SDL). `psyz_backend/` supplies `psyz_log`, `Psyz_Os*`,
-  pad, `Psyz_VideoVSync`, and the `__wrap_*` hooks — that closed the earlier
-  15 undefined platform symbols. `source/boot_main.c` is the CMake `main()` and
-  calls `dw3_game_main`. The devkitPro Makefile still builds `source/main.c`
-  (`host_hello`: EGL + audren sample); that is the `.nro` CI produces.
-  **Link (rebuilt after rebase onto current main):** `dw3_game_main` pulls
-  `libgpu.o` in, and the link stops on **20** undefined `Draw_*` symbols.
-  `libgpu.o` also references `Draw_SetHorizontalGrid` (21 undefined in the
-  object); the linker did not demand that one. No game `.elf` / `.nro` from
-  this CMake link. An earlier “links, ~8.5 MiB `.nro`” note was the image
-  *before* the boot path pulled `libgpu.o`. **Not ticked:** no title on
-  hardware, and the game image does not link yet. See `docs/SWITCH_BACKEND.md`.
+  pad, `Psyz_VideoVSync`, and the `__wrap_*` hooks. `source/boot_main.c` is the
+  CMake `main()` and calls `dw3_game_main`. The devkitPro Makefile still builds
+  `source/main.c` (`host_hello`: EGL + audren sample); that is the `.nro` CI
+  produces.
+  **Link: it links.** 1144 objects, 0 undefined symbols, 17.4 MB `.elf` →
+  8.9 MB `.nro`. The 20 undefined `Draw_*` symbols are gone:
+  `psyz_backend/switch_gpu.c` forwards them to PSY-Z's in-tree CPU rasterizer
+  and `nx_gpu.c` presents `SoftwareRasterizer_GetVram()` as a GLES2 texture.
+  An earlier note here said the link stops on those 20 — that was before the
+  renderer landed; trust this one.
+  **Boot: it reaches the game and stops inside `CdInit()`.** In Ryubing the
+  image gets through SD mount, cdfs, audio, memcard, boot TIM, overlay table,
+  `Psyz_SetVSyncCb`, and four of the five `VSync` calls in the game's boot
+  path (`build/decomp-src/src/engine/system/main.c`), presenting frames on
+  each. It then enters `CdInit()` (the CD block right after `SetDispMask(1)`)
+  and never returns — so it never reaches the game's main loop and nothing is
+  drawn. That is the current blocker, pinned by trace, not by guesswork.
+  **Not ticked:** no title on hardware, and none in the emulator yet.
+  See `docs/SWITCH_BACKEND.md` for the boot-stop evidence and the emulator
+  logging traps.
 
 Gate: title + field + battle on a Switch.
 
