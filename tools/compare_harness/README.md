@@ -12,7 +12,7 @@ PS1 (DuckStation) is the **visual oracle**. `dw3-pc` is the subject.
 | Label | Automation | Notes |
 |---|---|---|
 | `title` | OK | One Start skips the FMV. Shot is MODE_TITLE (Press Start) @ 200% |
-| `field` | Partial | DuckStation: Asuka Inn interior from the owner card. `dw3-pc` hits STGMCARD "Failed to access" (checksum) |
+| `field` | OK | Both sides: Asuka Inn interior. PC `STGMCARD_loadSave ok`, then stop Cross at `mode=0x20a` |
 | `battle` | Blocked | Needs mid-fight `--statefile`. Do not invent a PNG |
 
 ROADMAP P3.9 stays open until three reviewed pairs exist. PNGs + `.mcr`

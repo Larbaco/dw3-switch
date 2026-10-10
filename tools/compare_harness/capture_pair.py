@@ -602,6 +602,14 @@ def grab_pc_window(wid: str, out_png: Path) -> None:
     subprocess.run(["import", "-window", wid, str(out_png)], check=True)
 
 
+def log_contains(path: Path, needle: str) -> bool:
+    try:
+        data = path.read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return False
+    return needle in data
+
+
 def capture_dw3_pc(
     *,
     label: str,
@@ -630,10 +638,15 @@ def capture_dw3_pc(
     env.pop("DW3_AUTO_PAD", None)
     env.pop("DW3_FORCE_MCARD_LOAD", None)
     env.pop("DW3_PROGRESS", None)
-    log("launch pc: " + " ".join(cmd))
+    launch = cmd
+    stdbuf = shutil.which("stdbuf")
+    if stdbuf:
+        # Line-buffer so the field settle can see mode=0x20a before the next Cross.
+        launch = [stdbuf, "-oL", "-eL", *cmd]
+    log("launch pc: " + " ".join(launch))
     with log_path.open("w", encoding="utf-8") as logf:
         proc = subprocess.Popen(
-            cmd,
+            launch,
             stdout=logf,
             stderr=subprocess.STDOUT,
             env=env,
@@ -658,21 +671,23 @@ def capture_dw3_pc(
             time.sleep(2.0)
             wid = wait_pc_window(timeout=5.0) or wid
             send_keys(wid, "x", pause=0.3)
-            # Host runs at realtime, not EmulationSpeed=2, so the card read
-            # takes longer than the DuckStation settle.
-            deadline = time.time() + 22.0
+            # Cross leaves "Loaded." The next Cross on the inn floor hits
+            # talkToActorAt and opens "Save here?". Stop when field mode is up.
+            log("pc field: Cross until mode=0x20a, then stop")
+            deadline = time.time() + 28.0
+            entered = False
             while time.time() < deadline:
+                if log_contains(log_path, "mode=0x20a"):
+                    entered = True
+                    break
                 wid = wait_pc_window(timeout=3.0) or wid
                 send_keys(wid, "x", pause=0.2)
-                time.sleep(2.2)
-            log("pc field: idle, then Cross edges to leave Loaded")
-            time.sleep(4.0)
-            for _ in range(3):
-                wid = wait_pc_window(timeout=5.0) or wid
-                send_keys(wid, "x", pause=0.4)
-                time.sleep(1.8)
-            log("pc field: idle 12s for field fade-in")
-            time.sleep(12.0)
+                time.sleep(1.2)
+            if entered:
+                log("pc field: field mode up; idle 10s with no further Cross")
+            else:
+                log("pc field: mode=0x20a not seen; idle 10s anyway")
+            time.sleep(10.0)
             wid = wait_pc_window(timeout=5.0) or wid
         else:
             time.sleep(5.0)
