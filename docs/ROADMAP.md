@@ -161,7 +161,8 @@ pad state connected; GPU polish open; merged via PR #3).
 
 ## Phase 3 — Game bring-up on PC
 
-Status: **in progress** (branch `phase3-pc-bringup`; plan:
+Status: **complete** (gate met on `phase3-pc-bringup` @ `a5ae93a`;
+plan:
 [`docs/superpowers/plans/2026-10-10-phase3-pc-game-loop.md`](superpowers/plans/2026-10-10-phase3-pc-game-loop.md)).
 
 Tracking: Phase 3 on `phase3-pc-bringup` (P3.5 merged from
@@ -184,11 +185,12 @@ skip remains `MODE_TITLE` (`0010`).
 **P3.8 Done-when met** (`READY_FOR_MAIN_ROADMAP_SYNC: P3.8`,
 `docs/P3.8_STAGES.md`): `STAGSLCT` + batches 1–6 link 238/239 US stage
 objs; live PASS 237/237; only `WSTAG460` left stubbed (host
-`updateWanderer` SEGV). **Phase 3 gate not met** (`docs/P3_GATE.md`):
-US continuous start→movie→Lobby→Tamer→Genji→`FORCE_WIN`→field proven
-(`0x9004@0x203` Lobby `START_EVENT` aid, patch `0036`); EU PC image
-still unclaimed (blocks “both versions build”). P3.9 may run on a side
-track.
+`updateWanderer` SEGV). **Phase 3 gate met** (`docs/P3_GATE.md`): US
+continuous start→movie→Lobby→Tamer→Genji→field @ `a5ae93a` (Lobby
+`0x9004@0x203` / patch `0036`); `DW3_FORCE_WIN` accepted for gate (P3.3
+class; pad KO follow-up); EU playthrough not required; EU `dw3-pc` link
+not scaffolded (engine `-DVERSION_EU` 43/43 OK — see gate doc). P3.9 may
+run on a side track.
 
 Objective: the full game loop runs on PC: field, stages, battle, menus,
 audio, movies.
@@ -285,21 +287,26 @@ audio, movies.
   Done when: a doc page with the comparison for title, field, battle.
 
 Gate: a full playthrough segment (start → first boss) on PC without
-crashes; both versions build. **Not met** — see `docs/P3_GATE.md`
-(US continuous start→Genji evidenced; blocked: EU build, pad Genji KO,
-`WSTAG460`, P3.9 oracle).
+crashes; both versions build. **Met** (US-minimum) — see
+`docs/P3_GATE.md` (continuous path C @ `a5ae93a`; `FORCE_WIN` accepted;
+EU `dw3-pc` link deferred with clear blocker; `WSTAG460` / P3.9 /
+pad Genji KO are follow-ups, not gate blockers).
 
 ## Phase 4 — Switch host for PSY-Z
 
 Objective: a libnx backend so the Phase 3 image runs unchanged on the
 console.
 
-- [ ] **P4.1 Backend spike.** Two short experiments, documented in
+- [x] **P4.1 Backend spike.** Two short experiments, documented in
   `docs/SWITCH_BACKEND.md`: (a) build devkitPro's SDL3 branch from source
-  and run PSY-Z's `sdl3_*` backend; (b) sketch a native libnx backend
+  and assess PSY-Z's `sdl3_*` backend; (b) sketch a native libnx backend
   following PSY-Z's PSP layout (`gpu`, `input`, `audio`, `os`, `file`,
   `log`, `module`). Pick one.
   Done when: the decision and its reasons are written down.
+  **Decision (2026-10-10):** native libnx (`platforms/switch/psyz_backend/`).
+  dkp `switch-sdl-3.4` builds (`libSDL3.a`) but has no SDL_GPU and is not
+  in pacman; unsuitable for PSY-Z's PC `sdl3_gpu` default. See
+  `docs/SWITCH_BACKEND.md`.
 - [ ] **P4.2 Video.** Present PSY-Z's VRAM/framebuffer via EGL + OpenGL
   (mesa/nouveau on libnx) or deko3d; 60 Hz vsync; docked/handheld
   resolution switch.
