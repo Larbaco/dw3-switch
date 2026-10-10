@@ -164,14 +164,17 @@ pad state connected; GPU polish open; merged via PR #3).
 Status: **in progress** (branch `phase3-pc-bringup`; plan:
 [`docs/superpowers/plans/2026-10-10-phase3-pc-game-loop.md`](superpowers/plans/2026-10-10-phase3-pc-game-loop.md)).
 
-Tracking: Phase 3 on `phase3-pc-bringup`. P3.1 done. **P3.2 Done-when
-met** (`docs/P3.2_FIELD.md`). WSTAG790 linked @ `481d4d0` (post-name
-chamber OK). **P3.3 Done-when met** @ `a4d7e64`: `FIGHTSTG`+`WFIGHTMN`+
-`STFGTREP`; forced win → report XP/levels → return to `FIELDSTG`
-(`docs/P3.3_BATTLE.md`). **P3.4 partial** @ `99133d5`: menus linked +
-field open/return (`docs/P3.4_MENUS.md` on branch); STGMCARD `.mcr`
-save blocked on memcard event completion. **P3.6 investigation** on main
-(`docs/P3.6_AUDIO.md` from `phase3-audio-spike`): blocker PSY-Z
+Tracking: Phase 3 on `phase3-pc-bringup` (+ sibling `phase3-cardgame`
+for P3.5). P3.1 done. **P3.2 Done-when met** (`docs/P3.2_FIELD.md`).
+WSTAG790 linked @ `481d4d0` (post-name chamber OK). **P3.3 Done-when
+met** @ `a4d7e64`: `FIGHTSTG`+`WFIGHTMN`+`STFGTREP`; forced win →
+report XP/levels → return to `FIELDSTG` (`docs/P3.3_BATTLE.md`).
+**P3.4 partial** @ `99133d5`: menus linked + field open/return
+(`docs/P3.4_MENUS.md` on branch); STGMCARD `.mcr` save blocked on
+memcard event completion. **P3.5 partial** on `phase3-cardgame` @
+`e5fcc83`: overlays linked/boot; force prize OK; SEGV after prize;
+album not updating (`docs/P3.5_CARDGAME.md`). **P3.6 investigation** on
+main (`docs/P3.6_AUDIO.md` from `phase3-audio-spike`): blocker PSY-Z
 `_SsSeqPlay` `NOT_IMPLEMENTED` — Done-when not met.
 
 Objective: the full game loop runs on PC: field, stages, battle, menus,
@@ -213,7 +216,13 @@ audio, movies.
   open.
   Done when: each opens from the field, works end-to-end, and saving via
   `STGMCARD` uses P2.7.
-- [ ] **P3.5 Card game.** `CARDGAME`, `STCRDDEK`, `STCRDSHP`, `STCRDABM`.
+- [ ] **P3.5 Card game.** Linked on `phase3-cardgame` @ `e5fcc83`
+  (`dw3_p35_cardgame`); patch `0028` + `DW3_FORCE_CARD_WIN` / reuse
+  `DW3_FORCE_MENU`. **Partial evidence** (`docs/P3.5_CARDGAME.md`):
+  overlays register; boot `MODE_CARD_GAME`; force-win applies prize
+  item; `STCRDABM`/`STCRDDEK`/`STCRDSHP` open/return from field.
+  **Blockers:** SEGV after prize before field return; album/`cardsSeen`
+  not updated by battle prize (item path).
   Done when: a card battle can be won and the album updates.
 - [ ] **P3.6 Audio.** libsnd path through PSY-Z: VAB banks, SEP music,
   SFX, reverb settings the game sets. Verify `SsSeqCalledTbyT` timing
