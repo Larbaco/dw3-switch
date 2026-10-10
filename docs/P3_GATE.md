@@ -119,14 +119,16 @@ Attempted host compile with decomp-correct `-DVERSION_EU` (not
 |---|---|
 | All `src/engine/**/*.c` (43 TUs) under `-DVERSION_EU` | **OK** |
 | `src/menus/title/**/*.c` (21 TUs) under `-DVERSION_EU` | **OK** |
-| Full EU `dw3-pc` CMake/link | **blocked** |
+| Full EU `dw3-pc` CMake/link | **OK** (link scaffold — `docs/P3_EU_BUILD.md`) |
+| Owner `runtime/eu` smoke-boot / EU playthrough | **open** (not run) |
 
-**Blocker (honest):** `port/CMakeLists.txt` hardcodes `VERSION_US=1`; host
-overlay registration is `port/overlays/overlay_table_us.c` with US file ids
-(`FILE_FIELDSTG` is `0x158` US / `0x166` EU). No `DW3_VERSION=eu` (or
-equivalent) target, no `overlay_table_eu.c`, no owner `runtime/eu` /
-`disks/eu` on this host. Wiring an EU `dw3-pc` image is Phase 6/P7.2-class
-scaffold work — out of Phase 3 gate scope. EU playthrough was not run.
+**Status (honest):** Before `phase3-eu`, `port/CMakeLists.txt` hardcoded
+`VERSION_US=1` and `overlay_table_us.c` only (`FILE_FIELDSTG` `0x158` US /
+`0x166` EU). **Link scaffold** (`-DDW3_VERSION=eu`, `overlay_table_eu.c`,
+`runtime/eu` default) landed post-gate; configure+link proven without owner
+disc assets. Run still needs packed `runtime/eu` from owner `disks/eu`;
+`CNTY_SEL` remains stubbed. EU playthrough was not run and is not required
+for the Phase 3 gate.
 
 ## Aids used on the continuous path (honest)
 
