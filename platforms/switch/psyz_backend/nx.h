@@ -61,4 +61,34 @@ void Psyz_AudioUnlock(void);
 void Psyz_AudioPause(void);
 void Psyz_AudioUnpause(void);
 
+/* --- P4.5 log / time / threads (nx_log.c, nx_os.c) --------------------- */
+
+/* Open sdmc:/switch/dw3/dw3.log. Call once the SD card is mounted; until then
+ * psyz_log writes to stderr only. The file is what makes a smoke run
+ * diagnosable, because Ryubing loads the .nro directly and there is no nxlink
+ * to receive guest stderr (see docs/SWITCH_BACKEND.md). */
+void dw3_nx_log_open(void);
+
+/* --- P4.4 input (nx_input.c) ------------------------------------------- */
+
+/* padConfigureInput + padInitializeDefault. Call once at boot. */
+void dw3_nx_input_init(void);
+
+/* PSY-Z platform symbols (see vendor/psyz src/psyz/os.h, include/psyz/input.h,
+ * include/psyz/video.h and include/psyz/log.h for the contracts). */
+void psyz_log(unsigned int level, const char *file, unsigned int line,
+              const char *func, const char *fmt, ...);
+uint32_t Psyz_OsNowUs(void);
+uintptr_t Psyz_OsThreadSelf(void);
+void *Psyz_OsLockCreate(void);
+void Psyz_OsLock(void *lock);
+void Psyz_OsUnlock(void *lock);
+void *Psyz_OsBellCreate(void);
+void Psyz_OsBellRing(void *bell);
+void Psyz_OsBellWait(void *bell, uint32_t timeout_us);
+int Psyz_OsThreadStart(void (*fn)(void), const char *name);
+void MyPadInit(int mode);
+void Psyz_PadsPoll(void);
+int Psyz_VideoVSync(int mode);
+
 #endif /* DW3_SWITCH_PSYZ_NX_H */

@@ -232,3 +232,35 @@ bool dw3_nx_gpu_swap(void) {
     }
     return eglSwapBuffers(s_display, s_surface) == EGL_TRUE;
 }
+
+/* --- PSY-Z video contract (P4.7) --------------------------------------- */
+
+/* Mirrors the timing half of sdl3_common.h's Psyz_VideoVSync: PSY-Z calls this
+ * through VSync() (libapi.c) with
+ *
+ *   mode <  0  query — return the current frame number
+ *   mode == 0  present, then wait for the next frame; return scanlines elapsed
+ *   mode >  0  report scanlines elapsed without waiting
+ *
+ * A scanline is approximated as 64 us, as PSY-Z does. Presenting is
+ * dw3_nx_gpu_swap()'s job and eglSwapBuffers already blocks on vsync at swap
+ * interval 1, so that call *is* the frame pacing — no extra sleep. The real
+ * renderer (Stage 3) is what will drive this once it exists.
+ */
+int Psyz_VideoVSync(int mode) {
+    static uint32_t last_vsync_us;
+    uint64_t now_us64 = armTicksToNs(armGetSystemTick()) / 1000ULL;
+    uint32_t now_us = (uint32_t)now_us64;
+    unsigned short lines;
+
+    if (mode < 0) {
+        return (int)(now_us64 * 60 / 1000000ULL);
+    }
+    /* 32-bit subtraction, so the ~71 min microsecond wrap cancels out. */
+    lines = (unsigned short)((now_us - last_vsync_us) >> 6);
+    if (mode == 0) {
+        dw3_nx_gpu_swap();
+        last_vsync_us = (uint32_t)(armTicksToNs(armGetSystemTick()) / 1000ULL);
+    }
+    return lines;
+}
