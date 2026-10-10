@@ -66,6 +66,7 @@ tools/apply_patches.sh           # refresh build/decomp-src + apply
 | `0031-PORT_HOST-p34-npc-and-cd-partial.patch` | no | P3.4: `CD_READER.read` offset/partial via `cdfs_read_at`; `DW3_FORCE_NPC_ACTION` → `setParty` if empty + `FLAGS_00.applyAction` |
 | `0032-PORT_HOST-p35-pack-album-evidence.patch` | no | P3.5: gate win `addCards` behind `DW3_FORCE_CARD_WIN_ADDCARDS`; `DW3_FORCE_PACK_OPEN` → real `STCRDSHP_openPack` `addCards`; AFTER album waits for field |
 | `0033-PORT_HOST-p34-triangle-load-npc.patch` | no | P3.4: `DW3_FORCE_MCARD_LOAD`; Triangle cancel logs; `DW3_FORCE_FIELD_POS` / `SHOP_FLAG` / `TALK_AHEAD`; `talkToActorAt` log; `AUTO_MENU_RETURN` skips load |
+| `0034-PORT_HOST-p37-movie-start-skip-held.patch` | no | P3.7: movie Start-skip also accepts `getHeld(Start)` + logs `dw3-movie: Start-skip` under `PORT_HOST` |
 
 `tools/apply_patches.sh --check` applies the series in order (stacked
 patches on the same file are valid).

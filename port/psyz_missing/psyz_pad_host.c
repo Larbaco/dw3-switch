@@ -112,8 +112,15 @@ static void dw3_auto_pad_inject(void) {
     if (confirm && !status && (frame % 16u) >= 1u && (frame % 16u) <= 4u) {
         mask |= DW3_RAW_CROSS;
     }
-    if (start && !status && frame >= 90u && frame < 98u) {
+    /* Hold Start for movie skip (PORT patch also accepts getHeld). Pulse log
+     * once so headless runs show inject without flooding. */
+    if (start && !status && frame >= 2u) {
         mask |= DW3_RAW_START;
+        if (frame == 2u) {
+            fprintf(stderr, "dw3-pad: AUTO_PAD start hold from frame=%u\n",
+                    frame);
+            fflush(stderr);
+        }
     }
     /* status: Start (open field menu) → Cross (MODE_STATUS) → Triangle.
      * status_return phases Triangle alone after entry so STSTATUS UI cancel

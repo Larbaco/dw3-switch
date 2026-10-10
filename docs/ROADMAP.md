@@ -188,8 +188,8 @@ smooth play + owner listen + Start-skip; default skip remains
 objs; live PASS 237/237; only `WSTAG460` left stubbed (host
 `updateWanderer` SEGV). **Phase 3 gate not met** (`docs/P3_GATE.md`):
 automated intro reaches `MODE_OPENING_2` (`0xE02`); MDEC/VLC/stream/XA/
-present dump wired — remaining walls are smooth play/listen/skip
-(`docs/P3.7_MOVIES.md`).
+present dump wired (merged into bringup); remaining walls are continued
+play / listen / skip (`docs/P3.7_MOVIES.md`).
 No start→first-boss segment. P3.6 / P3.9 may run on side tracks.
 
 Objective: the full game loop runs on PC: field, stages, battle, menus,
@@ -259,11 +259,11 @@ audio, movies.
   `READY_FOR_MAIN_ROADMAP_SYNC: P3.7_IN_PROGRESS`): Wave 1 soft MDEC
   (`test_mdec` 28/28); Wave 2 `DecDCTvlc2`/`Build` via `port/movies` +
   bsdec; Wave 3 file-backed STR + `StCdInterrupt`; Wave 4 file-bridge
-  XA (`CdlModeRT` decode/mix; `sdlaudio.raw` non-silent); **present wave**
-  (`phase3-movies-present`: MDEC-out DMA wrap + RGB24 LoadImage + FB dump
-  nonzero pixels). Still need smooth play, owner listen on a real DAC,
-  Start-skip. Default skip
-  `MODE_TITLE` (patch `0010`) retained. Checkbox unticked until play +
+  XA (`CdlModeRT` decode/mix; `sdlaudio.raw` non-silent); **present wave
+  merged** into `phase3-pc-bringup` (MDEC-out DMA + RGB24 LoadImage + FB
+  dump nonzero). Task 5: FB dump reconfirmed; play stalls after ~3 frames;
+  Start-skip inject ready (`DW3_AUTO_PAD=start` + patch `0034`) but blocked
+  on that stall; owner listen still DAC. Checkbox unticked until play +
   audio + Start-skip.
   Done when: the opening movies play with audio and can be skipped.
 - [x] **P3.8 Stage sweep.** `STAGSLCT` linked (`dw3_p38_stagslct`); patch

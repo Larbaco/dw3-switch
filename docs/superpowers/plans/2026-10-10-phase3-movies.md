@@ -285,13 +285,17 @@ Documented decode/mix + owner-listen gap (Wave 4); not faked as audible.
 
 - [ ] **Step 1: Manual/auto skip**
 
-During playback, Start → movie task kills → `MODE_TITLE` (or next mode from `STDWTITL_movies[]`). Also verify natural end if feasible.
+Prep landed: `DW3_AUTO_PAD=start` holds Start; patch `0034` accepts
+`getHeld` + logs. **Not green:** playback stalls in `waitFrameDecoded`
+after ~3 frames so skip check / `MODE_TITLE` transition never observed.
 
 - [ ] **Step 2: Default boot still `MODE_TITLE` without `DW3_START_MODE`**
 
-- [ ] **Step 3: Fill evidence table (play / XA / skip) in `P3.7_MOVIES.md`**
+Boots `0xE00` then title advances to `0xE01` + STR once decode works.
 
-Only if all three pass: set status unblocked / done; tick ROADMAP `- [x] **P3.7 Movies.**`
+- [x] **Step 3: Fill evidence table (play / XA / skip) in `P3.7_MOVIES.md`**
+
+Table filled honestly; P3.7 **not** ticked (play+skip incomplete; listen owner).
 
 - [ ] **Step 4: Commit on bringup + docs sync commit on `main` + push both; update PR #4**
 
