@@ -56,7 +56,7 @@ tools/apply_patches.sh           # refresh build/decomp-src + apply
 | `0021-PORT_HOST-field-null-slots-and-state-zero.patch` | no | P3.2: NULL `slots` guard + `FieldState` zero through `init` |
 | `0022-match-neutral-drawcallback-void-arg.patch` | yes | P3.2: `DrawCallback.arg` / layer add-callback APIs as `void*` (LP64; fixes `FIELDSTG_drawActor` SEGV) |
 | `0023-PORT_HOST-p32-script-leave-walk-evidence.patch` | no | P3.2: `SCRIPT_LEAVE`/`leaveField`/`moveByPad` logs; `DW3_FAST_SCRIPT`; `DW3_PROGRESS` |
-| `0024-PORT_HOST-p33-battle-boot-evidence.patch` | no | P3.3: `FIGHTSTG` boot logs; `DW3_FORCE_ENCOUNTER` seeds `BATTLE_SETUP` + `setParty(0)` |
+| `0024-PORT_HOST-p33-battle-boot-evidence.patch` | no | P3.3: `FIGHTSTG` boot logs; empty-party `setParty(0)` for all battles; `DW3_FORCE_ENCOUNTER` seeds `BATTLE_SETUP` |
 | `0025-PORT_HOST-p33-battle-complete-evidence.patch` | no | P3.3: `DW3_FORCE_WIN` → report; `fieldMode` seed; party HP/XP logs; STFGTREP return |
 | `0026-PORT_HOST-p34-menu-evidence.patch` | no | P3.4: `DW3_FORCE_MENU` / `DW3_FORCE_FIELD_MENU` (host latch); menu `setParty`/`fieldMode`/`modeArg`; `startFade` guard; menu return logs; `DW3_FORCE_MCARD_SAVE` |
 | `0027-PORT_HOST-p34-menu-return-and-save.patch` | no | P3.4: `DW3_AUTO_MENU_RETURN` requests `fieldMode` after N menu frames |

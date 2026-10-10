@@ -4,7 +4,8 @@ Subject: [PORT_HOST] P3.3 battle boot evidence and forced encounter
 Log FIGHTSTG_start / WFIGHTMN load path. DW3_FORCE_ENCOUNTER=<n> seeds
 BATTLE_SETUP from FIELDSTG_encounters[n] (and default stage/music) so
 DW3_START_MODE=0x600 can enter a normal battle without a field door.
-Calls setParty(0) when the party is empty (normally STPLNMET).
+Calls setParty(0) when the party is empty (normally STPLNMET / Tamer
+Service) so story event battles (e.g. Genji) do not SEGV in computeStats.
 
 --- a/src/battle/battle_mode/start.c.base	2026-10-10 06:09:50.391837493 -0300
 +++ b/src/battle/battle_mode/start.c	2026-10-10 06:09:50.387537619 -0300
@@ -21,7 +22,7 @@ Calls setParty(0) when the party is empty (normally STPLNMET).
  
  /* The mode's root task: loads WFIGHTTS (the battle test, with the mode's
     argument) or WFIGHTMN and starts it, then runs the battle's update */
-@@ -8,13 +14,58 @@
+@@ -8,13 +14,59 @@
      switch (task->state) {
      case TASK_INIT:
      default:
@@ -32,14 +33,15 @@ Calls setParty(0) when the party is empty (normally STPLNMET).
 +            long n;
 +            s32 i;
 +
++            /* Name entry / Tamer Service normally call setParty; seed a
++             * starter when story aids boot past that (event battles too). */
++            if (GAME.funcs.getPartyMember(0) < 0) {
++                GAME.funcs.setParty(0);
++                fprintf(stderr, "dw3: FIGHTSTG setParty(0) (empty party)\n");
++            }
 +            if (enc != NULL && enc[0] != '\0') {
 +                n = strtol(enc, &end, 0);
 +                if (end != enc && n >= 0) {
-+                    /* Name entry normally calls setParty; force a starter for boot. */
-+                    if (GAME.funcs.getPartyMember(0) < 0) {
-+                        GAME.funcs.setParty(0);
-+                        fprintf(stderr, "dw3: DW3_FORCE_ENCOUNTER setParty(0)\n");
-+                    }
 +                    BATTLE_SETUP.battle = (s32)n;
 +                    BATTLE_SETUP.ambushChance = FIELDSTG_encounters[n].ambushChance;
 +                    BATTLE_SETUP.encounterKind = FIELDSTG_encounters[n].kind;
@@ -80,7 +82,7 @@ Calls setParty(0) when the party is empty (normally STPLNMET).
          }
          FIGHTSTG_battle.setSpeed(0);
          task->nextState(task);
-@@ -30,5 +81,8 @@
+@@ -30,5 +82,8 @@
  
  /* The mode's entry point (MODE_ENTRY_POINTS): starts the root task */
  Task *FIGHTSTG_start(void) {
