@@ -40,3 +40,6 @@ __pycache__/
 # Logs / temp
 *.log
 /tmp/
+
+# Git worktrees
+.worktrees/
