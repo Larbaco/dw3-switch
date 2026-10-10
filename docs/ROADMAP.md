@@ -165,18 +165,22 @@ Status: **in progress** (branch `phase3-pc-bringup`; plan:
 [`docs/superpowers/plans/2026-10-10-phase3-pc-game-loop.md`](superpowers/plans/2026-10-10-phase3-pc-game-loop.md)).
 
 Tracking: Phase 3 on `phase3-pc-bringup` (+ sibling `phase3-cardgame`
-for P3.5). P3.1 done. **P3.2 Done-when met** (`docs/P3.2_FIELD.md`).
-WSTAG790 linked @ `481d4d0` (post-name chamber OK). **P3.3 Done-when
-met** @ `a4d7e64`: `FIGHTSTG`+`WFIGHTMN`+`STFGTREP`; forced win →
-report XP/levels → return to `FIELDSTG` (`docs/P3.3_BATTLE.md`).
-**P3.4 partial** @ `95fb20b` (`READY_FOR_MAIN_ROADMAP_SYNC:
-P3.4_MEMCARD`): menus linked + field open/return; **STGMCARD force-save
-mutates `memcard0.mcr`** via P2.7 (`docs/P3.4_MENUS.md` on branch).
-Pad-driven START→status and NPC script entries still open. **P3.5 partial** on `phase3-cardgame` @
+for P3.5; sibling `phase3-harness` for P3.9 design). P3.1 done.
+**P3.2 Done-when met** (`docs/P3.2_FIELD.md`). WSTAG790 linked @
+`481d4d0` (post-name chamber OK). **P3.3 Done-when met** @ `a4d7e64`:
+`FIGHTSTG`+`WFIGHTMN`+`STFGTREP`; forced win → report XP/levels →
+return to `FIELDSTG` (`docs/P3.3_BATTLE.md`). **P3.4 partial** @
+`95fb20b` (`READY_FOR_MAIN_ROADMAP_SYNC: P3.4_MEMCARD`): menus linked +
+field open/return; **STGMCARD force-save mutates `memcard0.mcr`** via
+P2.7 (`docs/P3.4_MENUS.md` on branch). Pad-driven START→status and NPC
+script entries still open. **P3.5 partial** on `phase3-cardgame` @
 `e5fcc83`: overlays linked/boot; force prize OK; SEGV after prize;
 album not updating (`docs/P3.5_CARDGAME.md`). **P3.6 investigation** on
 main (`docs/P3.6_AUDIO.md` from `phase3-audio-spike`): blocker PSY-Z
-`_SsSeqPlay` `NOT_IMPLEMENTED` — Done-when not met.
+`_SsSeqPlay` `NOT_IMPLEMENTED` — Done-when not met. **P3.9 design** on
+`phase3-harness` @ `3064486`: `docs/P3.9_COMPARE.md` + stub
+`tools/compare_ref.py` (`--dry-run`); checkbox unticked until
+title/field/battle captures.
 
 Objective: the full game loop runs on PC: field, stages, battle, menus,
 audio, movies.
