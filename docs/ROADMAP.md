@@ -169,10 +169,12 @@ for P3.9 design). P3.1 done. **P3.2 Done-when met** (`docs/P3.2_FIELD.md`).
 WSTAG790 linked @ `481d4d0` (post-name chamber OK). **P3.3 Done-when
 met** @ `a4d7e64`: `FIGHTSTG`+`WFIGHTMN`+`STFGTREP`; forced win →
 report XP/levels → return to `FIELDSTG` (`docs/P3.3_BATTLE.md`).
-**P3.4 partial** @ `95fb20b` (`READY_FOR_MAIN_ROADMAP_SYNC:
-P3.4_MEMCARD`): menus linked + field open/return; **STGMCARD
-force-save mutates `memcard0.mcr`** via P2.7 (`docs/P3.4_MENUS.md` on
-branch). Pad-driven START→status and NPC script entries still open.
+**P3.4 partial** @ `9672017` (`READY_FOR_MAIN_ROADMAP_SYNC:
+P3.4_MENUS_PAD` / `P3.4_MEMCARD`): menus linked + field open/return;
+**STGMCARD force-save → `.mcr`**; pad START→`MODE_STATUS` (LE pad
+fix); `FORCE_NPC_ACTION` shop/gym/lab leaveField
+(`docs/P3.4_MENUS.md` on branch). Triangle return, real NPC walk-up,
+load e2e still open.
 **P3.5 partial** on `phase3-pc-bringup` (merged from `phase3-cardgame`
 @ `fcff119` / `2df364f`): force-win → prize item + return to
 `FIELDSTG` proven; album `cardsSeen` 29→30 is host
@@ -185,9 +187,9 @@ Done-when not met. **P3.7 blocked** on `phase3-pc-bringup` @
 `docs/P3.7_MOVIES.md`): `DW3_START_MODE=0xE01` reaches movie path;
 PSY-Z `MDEC_*` / `StCdInterrupt` stubs + no CD track for
 `MOVIEOPN.STR`; default skip `MODE_TITLE` retained. **P3.8 partial** on
-`phase3-pc-bringup` @ `1a08f43` (`READY_FOR_MAIN_ROADMAP_SYNC:
-P3.8_PARTIAL`, `docs/P3.8_STAGES.md`): `STAGSLCT` linked; live
-STAGSLCT→field→select PASS for `0x2d7`/`2d8`/`2d9`; 235/239 US stages
+`phase3-pc-bringup` @ `bbb22c4` (`READY_FOR_MAIN_ROADMAP_SYNC:
+P3.8_BATCH1`, `docs/P3.8_STAGES.md`): `STAGSLCT` + batch1 (+13 early
+Asuka/Central stages); live PASS 16/16 walk modes; 222/239 US stages
 still stubbed. **P3.9 design** on `phase3-harness` @ `3064486`:
 `docs/P3.9_COMPARE.md` + stub `tools/compare_ref.py` (`--dry-run`);
 checkbox unticked until title/field/battle captures.
@@ -221,14 +223,13 @@ audio, movies.
   door. Follow-up: real wilderness encounter + pad-driven KO.
   Done when: a random encounter completes and returns to the field with
   stats applied.
-- [ ] **P3.4 Menus and shops.** Linked on `phase3-pc-bringup` @ `95fb20b`
-  (`dw3_p34_menus`); patches `0026`/`0027`/`0028` + `DW3_FORCE_MENU` /
-  `DW3_AUTO_MENU_RETURN` / `DW3_FORCE_MCARD_SAVE`. **Partial evidence**
-  (`docs/P3.4_MENUS.md` on branch): each opens from field via `leaveField`
-  and returns to `FIELDSTG`; **STGMCARD force-save mutates `memcard0.mcr`**
-  (`MemCard*` + `_card_write` wrap → P2.7). Still open: pad-driven
-  START→status, NPC script entries, load e2e. Checkbox stays unticked
-  until full Done-when.
+- [ ] **P3.4 Menus and shops.** Linked on `phase3-pc-bringup` @ `9672017`
+  (`dw3_p34_menus`); patches `0026`–`0028`/`0031` + `DW3_FORCE_MENU` /
+  `DW3_AUTO_MENU_RETURN` / `DW3_FORCE_MCARD_SAVE` /
+  `DW3_FORCE_NPC_ACTION`. **Partial evidence** (`docs/P3.4_MENUS.md` on
+  branch): open/return; **STGMCARD save → `.mcr`**; pad START→status;
+  FORCE_NPC shop/gym/lab. Still open: Triangle return, real NPC walk-up,
+  load e2e. Checkbox stays unticked until full Done-when.
   Done when: each opens from the field, works end-to-end, and saving via
   `STGMCARD` uses P2.7.
 - [ ] **P3.5 Card game.** Linked on `phase3-pc-bringup` (from
@@ -256,10 +257,11 @@ audio, movies.
   default skip `MODE_TITLE` retained. Checkbox unticked until play +
   audio + Start-skip.
   Done when: the opening movies play with audio and can be skipped.
-- [ ] **P3.8 Stage sweep.** Partial on `phase3-pc-bringup` @ `1a08f43`
-  (`docs/P3.8_STAGES.md`, `READY_FOR_MAIN_ROADMAP_SYNC: P3.8_PARTIAL`):
-  `STAGSLCT` linked; PASS for linked `0x2d7`/`2d8`/`2d9`; 235 stages
-  stubbed. Checkbox unticked until all stages load and return to select.
+- [ ] **P3.8 Stage sweep.** Partial batch1 on `phase3-pc-bringup` @
+  `bbb22c4` (`docs/P3.8_STAGES.md`, `READY_FOR_MAIN_ROADMAP_SYNC:
+  P3.8_BATCH1`): +13 early Asuka/Central stages; live PASS 16/16 walk
+  modes; 222 stubs. Checkbox unticked until all stages load and return
+  to select.
   Done when: all stages load and return to the select screen.
 - [ ] **P3.9 Reference comparison harness.** Script that boots the same
   save in DuckStation and the PC build and captures screenshots for
