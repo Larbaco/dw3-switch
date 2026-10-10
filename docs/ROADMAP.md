@@ -175,14 +175,13 @@ audio, movies.
 - [x] **P3.1 64-bit audit, part 2 (overlays + stages).** Same rules as
   P2.4 across `src/field`, `src/battle`, `src/cardgame`, `src/menus`,
   `src/debug`. Match-neutral patch `0018` (`port/patches/`): literal
-  `createTask` sizes → `sizeof`/`offsetof`, `STAGE_CHILDREN_SIZE` as
-  `N * sizeof(Task *)`, stage_select save arg `-0x80000000`, field
-  script/`GFX.vsync` task pointers as `void*` (PS1 width-neutral).
-  Done when: warnings clean for linked units — engine+title still build
-  with `-Werror=pointer-to-int-cast -Werror=int-to-pointer-cast`; full
-  overlay object libs land with P3.2+ (remaining cast noise checked as
-  those TUs are linked). Upstream `make compare` blocker unchanged
-  (`docs/PATCHES.md`).
+  `createTask` sizes → `sizeof`, children as `N * sizeof(Task *)`,
+  `STAGE_SELECT_MODE_ARG_SAVE`, field script/`GFX.vsync` as `void*`,
+  pointer+offset for map/fighter/menu casts. Evidence:
+  `docs/P3.1_64BIT_AUDIT.md` (apply `--check`; representative TUs
+  `-Werror=pointer-to-int-cast -Werror=int-to-pointer-cast`;
+  `dw3_engine_objs` still builds). Full overlay libs land with P3.2+.
+  Upstream `make compare` blocker unchanged (`docs/PATCHES.md`).
 - [ ] **P3.2 Field + first stage.** `FIELDSTG` + `WSTAG260` scripts + the
   starting town stage, with map, actors, text windows and triggers.
   Done when: new game → name entry → first field area is walkable and a

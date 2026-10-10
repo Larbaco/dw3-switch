@@ -80,12 +80,14 @@ mkdir -p "$MAIN/.worktrees"
 git -C "$MAIN" worktree add "$MAIN/.worktrees/phase3-pc-bringup" -b phase3-pc-bringup
 ```
 
-- [ ] **Step 2: Commit plan + “Phase 3 in progress” on `phase3-pc-bringup`; push `-u`**
-- [ ] **Step 3: Docs-only sync to `main`:** copy plan + ROADMAP Phase 3 status; commit `docs: start Phase 3 ROADMAP tracking`; push `main` (no force).
+- [x] **Step 2: Commit plan + “Phase 3 in progress” on `phase3-pc-bringup`; push `-u`**
+- [x] **Step 3: Docs-only sync to `main`:** copy plan + ROADMAP Phase 3 status; commit `docs: start Phase 3 ROADMAP tracking`; push `main` (no force).
 
 ---
 
 ### Task A1 (Wave 1): P3.1 64-bit audit — overlays + stages
+
+**Status:** done — `port/patches/0018-match-neutral-overlay-64bit-audit.patch`; see `docs/P3.1_64BIT_AUDIT.md`.
 
 **Files:**
 - Create: `port/patches/0018-match-neutral-overlay-createTask-sizeof.patch` (and further `0019+` if split helps review)
