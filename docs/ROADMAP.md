@@ -280,6 +280,10 @@ first boss, `WSTAG460`, P3.9 oracle).
 
 ## Phase 4 — Switch host for PSY-Z
 
+Status: **P4.1 done** on `phase4-backend-spike` @ `4e86ab3` (draft PR
+[#10](https://github.com/Larbaco/dw3-switch/pull/10)) — chose native
+libnx; full write-up `docs/SWITCH_BACKEND.md` lands with that PR.
+
 Objective: a libnx backend so the Phase 3 image runs unchanged on the
 console.
 
