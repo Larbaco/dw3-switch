@@ -1,0 +1,48 @@
+Upstream-bound: no
+PORT_HOST: yes
+P3.6: log SsUtKeyOn / SsSepPlay from playSound (capped) for audio evidence.
+
+--- a/src/engine/sound/sound.c
++++ b/src/engine/sound/sound.c
+@@ -1,6 +1,10 @@
+ #include "engine/game.h"
+ #include "libsnd.h"
+ 
++#if PORT_HOST
++#include <stdio.h>
++#endif
++
+ /* Each bank's files (SOUND_BANK_FILES[id]) */
+ #if VERSION_US
+ SoundFiles SOUND_FILES_01 = {370, 357, 0x1650000, 0x1720000, {0x1650001, 0x1650002, 0}};
+@@ -234,8 +238,30 @@
+             SOUND.music = packed;
+         }
+         if (keyOn) {
++#if PORT_HOST
++            {
++                static int s_keyOnLog;
++                if (s_keyOnLog < 48) {
++                    fprintf(stderr,
++                            "dw3: SsUtKeyOn packed=0x%x bank=%d vab=%d prog=%d tone=%d note=%d\n",
++                            (unsigned)packed, id, SOUND.banks[slot].vabId, prog, tone, note);
++                    s_keyOnLog++;
++                }
++            }
++#endif
+             voice = SsUtKeyOn(SOUND.banks[slot].vabId, prog, tone, note, 0, SOUND_VOLUME_MAX, SOUND_VOLUME_MAX);
+         } else {
++#if PORT_HOST
++            {
++                static int s_sepPlayLog;
++                if (s_sepPlayLog < 48) {
++                    fprintf(stderr,
++                            "dw3: SsSepPlay packed=0x%x bank=%d seq=%d sep=%d exclusive=%d\n",
++                            (unsigned)packed, id, seq, sep, exclusive);
++                    s_sepPlayLog++;
++                }
++            }
++#endif
+             id = sep;
+             SsSepStop(SOUND.banks[slot].seqs[seq], id);
+             SsSepSetVol(SOUND.banks[slot].seqs[seq], id, SOUND_VOLUME_MAX, SOUND_VOLUME_MAX);
