@@ -26,7 +26,8 @@ Prefer `SDL_VIDEODRIVER=offscreen` (or a real display) for present — not
 |---|---|---|---|
 | G1 | Movie frames = macroblock garbage (after half-width / mid-grey fixes) | `DecDCTPutEnv` → `MDEC_in((u_long *)mdec_iq, …)` on LP64 skips/misaligns `u32` quant/IDCT tables | Host `__wrap_DecDCTReset` uploads via `Psyz_MdecCommand` with byte-accurate pointers (`platforms/pc/src/psyz_dma_present.c`) |
 | G2 | Same garbage / torn strips under sync MDEC | `STDWTITL_onSliceDecoded` starts next `DecDCTout` before `LoadImage`; nested sync callbacks reuse two `imgbuf`s | Patch `0037` (LoadImage first under `PORT_HOST`) + DecDCTout slice stash in present wrap |
-| G3 | Non-MDEC `LoadImage` could take the RGB888 path | `(w % 3 == 0 && h >= 192)` plus a latched `isrgb24` after STR | MDEC strip geometry only (`w == 24 && h >= 192`); drop the stale latch on non-MDEC uploads. Owner confirmed after PR #28 that opening movies are clean and the title menu is still shredded — that remaining shred is R1, not this latch |
+| G3 | Non-MDEC `LoadImage` could take the RGB888 path | `(w % 3 == 0 && h >= 192)` plus a latched `isrgb24` after STR | MDEC strip geometry only (`w == 24 && h >= 192`); drop the stale latch on non-MDEC uploads. Owner confirmed after PR #28 that movies stayed clean while the title menu was still shredded — that shred was R1 |
+| R1 | Title logo / copyright vertical shred, column offsets, solid green bar | Host `TimBlock.pixels` is `u_long[]`. PS1 `u_long` is 4 bytes (pixels at file offset 12); host `u_long` is 8, so the flexible array aligns to 16 and `LoadImage` starts two halfwords into the payload. Path B dump (`rgb24_loads=0`) matched `TLOGOUSA` at shift 2 | Patch `0038`: `pixels` is `u32[]` so the offset stays 12. **Owner window confirm (2026-10-10):** title menu readable after pull of #29 |
 
 ### Evidence (G1/G2)
 
@@ -49,18 +50,18 @@ Offline oracle (no present): assemble `MOVIEOPN.STR` frame → `bsdec` →
 
 | ID | Area | Symptom | Repro | Notes |
 |---|---|---|---|---|
-| R1 | Title | Logo / copyright vertical shred, column offsets, solid green bar, chromatic blocks. Circuit background mostly OK | Path B (no movie): unset `DW3_START_MODE`. Dump the settled title with `DW3_FB_DUMP_DISP=180` (see below). Log must show `rgb24_loads=0` | **Cause (path B, `rgb24_loads=0`):** `TimBlock.pixels` is `u_long[]`. PS1 `u_long` is 4 bytes so pixels sit at file offset 12. Host `u_long` is 8 bytes, so the flexible array aligns to 16 and every `timLoaderLoad` `LoadImage` starts two halfwords into the payload. Title VRAM rows match `TLOGOUSA` TIM0 at a constant shift of 2 (linear k=2, 254/254); the CLUT at y=496 matches the same shift (254/256). A software render of that skip reproduces the shredded DIGIMON wordmark. Sprites themselves are correct (`tpage` bpp=1, CLUT y=496). Patch `0038` stores `pixels` as `u32[]` so the offset stays 12. **Open until the owner re-confirms the window.** Do not use `DW3_START_MODE=0xE00` as title evidence: the title times out into STR and a movie-frame dump is not the menu |
 | R2 | Movie present | Double-buffer B / captured 320×480 may be empty while VRAM A is good; possible tear if sampling mid-flip | `DW3_START_MODE=0xE01` + windowed present | PSY-Z `Draw_SetDisplayMode` still ignores `isrgb24` (stores as 5551 via host) |
 | R3 | Field | Sprite / VRAM tiling polish | `DW3_START_MODE=0x200` (FIELDSTG + WSTAG260) | Boot reaches field; visual oracle = P3.9 / DuckStation |
 | R4 | Battle | Same class as field once `FIGHTSTG` is up | `DW3_FORCE_ENCOUNTER` / P3.3 recipes in `docs/P3.3_BATTLE.md` | Not re-proven on this branch beyond mode entry |
 | R5 | PSY-Z LP64 | Upstream `MDEC_in` + `u32` static tables | — | Prefer small psyz fix on a dedicated branch; host wrap is enough for PC |
 
-### Re-verify R1 (owner)
+### R1 evidence
 
-Unset `DW3_START_MODE`. Path B never enters the RGB24 movie upload
-(`rgb24_loads=0`). Expect a readable DIGIMON wordmark, WORLD 3 emblem,
-and copyright — not vertical slices or a solid green bar. R1 stays open
-until that window is confirmed.
+Path B (unset `DW3_START_MODE`) never enters the RGB24 movie upload
+(`rgb24_loads=0`). Before `0038`, title VRAM rows matched `TLOGOUSA`
+at a constant shift of 2. Owner confirmed the window on 2026-10-10:
+DIGIMON wordmark, WORLD 3, and copyright readable. Do not use
+`DW3_START_MODE=0xE00` as title evidence — that path times out into STR.
 
 ```bash
 SDL_VIDEODRIVER=offscreen SDL_AUDIODRIVER=dummy \
