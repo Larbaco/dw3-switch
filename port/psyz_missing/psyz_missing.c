@@ -54,10 +54,14 @@ int Dw3_GsSetFlatLight(int id, GsF_LIGHT *light) {
 }
 
 /* Viewpoint and reference are in super's space. super->coord maps that
- * space to its parent. Battle's idle camera passes an identity super.
- * ratan2's first argument is the one its table treats as the opposite
- * side (decomp ratan.c): ratan2(dx, dz) is the yaw from +Z toward +X,
- * 4096 units per turn, matching RotMatrix. Battle stores rz << 12. */
+ * space to its parent. Battle's idle camera passes an identity super
+ * (rot 0, translation 0); CompMatrix is still required for cameras that
+ * do not. ratan2(y, x) is atan2(y, x) (decomp ratan.c; Psy-Q header).
+ * RotMatrix's view +Z row is (-sin yaw, sin pitch, cos yaw * cos pitch),
+ * so the yaw that aims +Z at (dx, dz) is -ratan2(dx, dz), and the pitch
+ * that includes dy is +ratan2(dy, xz). The opposite signs leave the
+ * reference off the view axis (battle vp=-2432,-1920,-11136 lands at
+ * view x≈7458 instead of ≈0). Battle stores rz << 12. */
 static void dw3_look_at(const GsRVIEW2 *pv, MATRIX *out) {
     long dx = pv->vrx - pv->vpx;
     long dy = pv->vry - pv->vpy;
@@ -70,8 +74,8 @@ static void dw3_look_at(const GsRVIEW2 *pv, MATRIX *out) {
     if (xz == 0) {
         xz = 1;
     }
-    ang.vx = (short)(-ratan2(dy, xz));
-    ang.vy = (short)ratan2(dx, dz);
+    ang.vx = (short)ratan2(dy, xz);
+    ang.vy = (short)(-ratan2(dx, dz));
     ang.vz = (short)(pv->rz >> 12);
     ang.pad = 0;
     RotMatrix(&ang, out);
