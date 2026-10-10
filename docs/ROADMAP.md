@@ -164,25 +164,22 @@ pad state connected; GPU polish open; merged via PR #3).
 Status: **in progress** (branch `phase3-pc-bringup`; plan:
 [`docs/superpowers/plans/2026-10-10-phase3-pc-game-loop.md`](superpowers/plans/2026-10-10-phase3-pc-game-loop.md)).
 
-Tracking: Phase 3 started after PR #3 merge (`main` @ `e1f048b`). Worktree
-`.worktrees/phase3-pc-bringup`. P3.1 done (`0018`); P3.2 (field + first stage) is the
-active Core task; P3.6 investigation and P3.9 harness scaffold may run on
-side tracks per the plan.
+Tracking: Phase 3 on `phase3-pc-bringup` @ `b538d66` (P3.1_FIX). P3.1 done
+(`0018` + `0019`, `dw3_p31_audit` 432 objs). P3.2 (field + first stage) is
+the active Core task; P3.6 / P3.9 may run on side tracks per the plan.
 
 Objective: the full game loop runs on PC: field, stages, battle, menus,
 audio, movies.
 
 - [x] **P3.1 64-bit audit, part 2 (overlays + stages).** Same rules as
   P2.4 across `src/field`, `src/battle`, `src/cardgame`, `src/menus`,
-  `src/debug`. Match-neutral patch `0018` (`port/patches/`): literal
-  `createTask` sizes → `sizeof`/`offsetof`, `STAGE_CHILDREN_SIZE` as
-  `N * sizeof(Task *)`, stage_select save arg `-0x80000000`, field
-  script/`GFX.vsync` task pointers as `void*` (PS1 width-neutral).
-  Done when: warnings clean for linked units — engine+title still build
-  with `-Werror=pointer-to-int-cast -Werror=int-to-pointer-cast`; full
-  overlay object libs land with P3.2+ (remaining cast noise checked as
-  those TUs are linked). Upstream `make compare` blocker unchanged
-  (`docs/PATCHES.md`).
+  `src/debug`. On `phase3-pc-bringup`: match-neutral `0018` + PORT_HOST
+  `0019`; CMake `dw3_p31_audit` under
+  `-Werror=pointer-to-int-cast -Werror=int-to-pointer-cast` (432 objs);
+  `dw3_engine_objs` still builds. Evidence / exclusions (EU WSTAG920–974
+  `LANGUAGE`; battle `draw`/`lights`/`model_mesh` PSY-Z gaps):
+  `docs/P3.1_64BIT_AUDIT.md` on that branch. Full overlay link with P3.2+.
+  Upstream `make compare` blocker unchanged (`docs/PATCHES.md`).
 - [ ] **P3.2 Field + first stage.** `FIELDSTG` + `WSTAG260` scripts + the
   starting town stage, with map, actors, text windows and triggers.
   Done when: new game → name entry → first field area is walkable and a
