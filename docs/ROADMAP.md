@@ -186,10 +186,11 @@ Done-when not met. **P3.7 blocked** on `phase3-pc-bringup` @
 `docs/P3.7_MOVIES.md`): `DW3_START_MODE=0xE01` reaches movie path;
 PSY-Z `MDEC_*` / `StCdInterrupt` stubs + no CD track for
 `MOVIEOPN.STR`; default skip `MODE_TITLE` retained. **P3.8 partial** on
-`phase3-pc-bringup` @ `bbb22c4` (`READY_FOR_MAIN_ROADMAP_SYNC:
-P3.8_BATCH1`, `docs/P3.8_STAGES.md`): `STAGSLCT` + batch1 (+13 early
-Asuka/Central stages); live PASS 16/16 walk modes; 222/239 US stages
-still stubbed. **P3.9 design** on `phase3-harness` @ `3064486`:
+`phase3-pc-bringup` @ `e4d55e9` (`READY_FOR_MAIN_ROADMAP_SYNC:
+P3.8_BATCH2`, `docs/P3.8_STAGES.md`): `STAGSLCT` + batch1 (+13) +
+batch2 (+31 Central/Asuka + Amaterasu twins); 48 linked host objs;
+live PASS 47/47 walk modes; 191/239 US stages still stubbed.
+**P3.9 design** on `phase3-harness` @ `3064486`:
 `docs/P3.9_COMPARE.md` + stub `tools/compare_ref.py` (`--dry-run`);
 checkbox unticked until title/field/battle captures.
 
@@ -257,11 +258,11 @@ audio, movies.
   default skip `MODE_TITLE` retained. Checkbox unticked until play +
   audio + Start-skip.
   Done when: the opening movies play with audio and can be skipped.
-- [ ] **P3.8 Stage sweep.** Partial batch1 on `phase3-pc-bringup` @
-  `bbb22c4` (`docs/P3.8_STAGES.md`, `READY_FOR_MAIN_ROADMAP_SYNC:
-  P3.8_BATCH1`): +13 early Asuka/Central stages; live PASS 16/16 walk
-  modes; 222 stubs. Checkbox unticked until all stages load and return
-  to select.
+- [ ] **P3.8 Stage sweep.** Partial batch2 on `phase3-pc-bringup` @
+  `e4d55e9` (`docs/P3.8_STAGES.md`, `READY_FOR_MAIN_ROADMAP_SYNC:
+  P3.8_BATCH2`): batch1 +13 + batch2 +31 (Central/Asuka + Amaterasu
+  twins); 48 linked; live PASS 47/47; 191 stubs. Checkbox unticked
+  until all stages load and return to select.
   Done when: all stages load and return to the select screen.
 - [ ] **P3.9 Reference comparison harness.** Script that boots the same
   save in DuckStation and the PC build and captures screenshots for
