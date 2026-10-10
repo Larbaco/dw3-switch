@@ -63,6 +63,7 @@ tools/apply_patches.sh           # refresh build/decomp-src + apply
 | `0028-PORT_HOST-memcard-system-bundle.patch` | no | P3.4: `g_dw3_memcard` contiguous `MemCard`+`MemCardFuncs` (LP64 `MEMCARD_SYSTEM` cast) |
 | `0029-PORT_HOST-p35-cardgame-evidence.patch` | no | P3.5: card-mode seed/`modeArg`; `DW3_FORCE_CARD_WIN` + win `addCards`; return log before `TASK_KILL`; `DW3_AFTER_CARD_ALBUM`; `AUTO_MENU_RETURN` for deck/album/shop; host `CARDGAME_markedCounts` |
 | `0030-PORT_HOST-p38-stage-sweep.patch` | no | P3.8: `DW3_FORCE_STAGE` / `DW3_AUTO_STAGE_RETURN` / `STAGE_SWEEP_*`; STAGSLCT `StageSelectWindows` children; host BIOS ROM stub; skip TASK_KILL overwrite when FORCE_STAGE |
+| `0031-PORT_HOST-p34-npc-and-cd-partial.patch` | no | P3.4: `CD_READER.read` offset/partial via `cdfs_read_at`; `DW3_FORCE_NPC_ACTION` → `FLAGS_00.applyAction` |
 
 `tools/apply_patches.sh --check` applies the series in order (stacked
 patches on the same file are valid).

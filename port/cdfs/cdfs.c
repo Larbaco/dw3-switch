@@ -596,6 +596,55 @@ int cdfs_read(uint32_t id, void *buf, size_t buflen) {
     return (int)sz;
 }
 
+int cdfs_read_at(uint32_t id, void *buf, size_t offset, size_t len) {
+    const CdfsEntry *e;
+    char path[CDFS_ROOT_MAX + CDFS_PATH_MAX];
+    FILE *fp;
+    uint32_t sz;
+    size_t n;
+    size_t want;
+
+    if (buf == NULL) {
+        return -1;
+    }
+    if (len == 0) {
+        return 0;
+    }
+    e = find_entry(id);
+    if (e == NULL) {
+        return -1;
+    }
+    if (join_path(path, sizeof(path), e->path) != 0) {
+        return -1;
+    }
+    if (host_file_size(path, &sz) != 0) {
+        return -1;
+    }
+    memset(buf, 0, len);
+    if (offset >= (size_t)sz) {
+        return 0;
+    }
+    want = len;
+    if (offset + want > (size_t)sz) {
+        want = (size_t)sz - offset;
+    }
+    fp = fopen(path, "rb");
+    if (fp == NULL) {
+        return -1;
+    }
+    if (fseek(fp, (long)offset, SEEK_SET) != 0) {
+        fclose(fp);
+        return -1;
+    }
+    n = fread(buf, 1, want, fp);
+    fclose(fp);
+    if (n != want) {
+        return -1;
+    }
+    (void)e->map_bytes;
+    return (int)n;
+}
+
 void cdfs_poll(void) {
     /* Wave 1: reads complete synchronously inside cdfs_read. */
 }

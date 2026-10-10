@@ -1,0 +1,59 @@
+Upstream-bound: no
+Subject: [PORT_HOST] P3.4 pad/NPC evidence + host CD partial reads
+
+Fix CD_READER.read for offset/partial sector windows (map streamer).
+DW3_FORCE_NPC_ACTION runs FLAGS_00.applyAction (0x7A/0x94/0x7C leaveField).
+
+--- a/src/engine/file/cd_reader.c
++++ b/src/engine/file/cd_reader.c
+@@ -134,16 +134,17 @@
+     }
+     CD_READER.sectorCount = sectorCount;
+     CD_READER.state = CD_READ_IDLE;
+-    if (buffer == NULL || sectorCount <= 0 || offset != 0) {
++    if (buffer == NULL || sectorCount <= 0) {
+         return;
+     }
+     want = (size_t)sectorCount * (size_t)CD_SECTOR_SIZE;
+-    HEAP.zero(buffer, (s32)want);
+     fileSize = cdfs_file_size((uint32_t)file);
+-    if (fileSize == (uint32_t)-1 || want < (size_t)fileSize) {
++    if (fileSize == (uint32_t)-1) {
+         return;
+     }
+-    n = cdfs_read((uint32_t)file, buffer, want);
++    /* Partial and offset reads (map streamer / tiles) via cdfs_read_at. */
++    n = cdfs_read_at((uint32_t)file, buffer,
++                     (size_t)offset * (size_t)CD_SECTOR_SIZE, want);
+     if (n < 0) {
+         return;
+     }
+--- a/src/field/field_mode/field.c
++++ b/src/field/field_mode/field.c
+@@ -513,6 +513,26 @@
+                     task->nextSubstate(task);
+                     break;
+                 }
++                {
++                    const char *npc = getenv("DW3_FORCE_NPC_ACTION");
++                    if (npc != NULL && npc[0] != '\0' && dw3_host_menu_force_once()) {
++                        long code = strtol(npc, &end, 0);
++                        long value = 1;
++                        if (end != npc && *end == ':') {
++                            value = strtol(end + 1, NULL, 0);
++                        }
++                        if (end != npc && code > 0) {
++                            fprintf(stderr,
++                                    "dw3: DW3_FORCE_NPC_ACTION applyAction code=0x%lx value=%ld\n",
++                                    code, value);
++                            GAME.fieldMode = GAME.funcs.getMode();
++                            GAME.fieldPos = children->actors[0]->pos;
++                            GAME.fieldDir = children->actors[0]->dir;
++                            FLAGS_00.applyAction((s32)code, (s32)value);
++                            break;
++                        }
++                    }
++                }
+             }
+ #endif
+             if (GAME.progress < 4 || !(PAD.getPressed(0) & (1 << PAD_START))) {

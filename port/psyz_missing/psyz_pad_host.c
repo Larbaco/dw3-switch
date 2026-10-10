@@ -70,6 +70,7 @@ static void dw3_auto_pad_inject(void) {
     int walk = 0;
     int start = 0;
     int cancel = 0;
+    int status = 0;
 
     env = getenv("DW3_AUTO_PAD");
     if (env == NULL || env[0] == '\0') {
@@ -87,28 +88,52 @@ static void dw3_auto_pad_inject(void) {
     if (strstr(env, "cancel") != NULL) {
         cancel = 1;
     }
-    if (!confirm && !walk && !start && !cancel) {
+    if (strstr(env, "status") != NULL) {
+        status = 1;
+    }
+    if (!confirm && !walk && !start && !cancel && !status) {
         return;
     }
     frame++;
     if (walk) {
         mask |= DW3_RAW_UP;
     }
-    /* Pulse buttons so PAD_PRESSED sees edges for dialogue / menus. */
-    if (confirm && (frame % 8u) == 1u) {
+    /* Hold a few frames per pulse — PadGetState refresh between PadChkVsync
+     * and readPad can miss a single-sample edge. */
+    if (confirm && !status && (frame % 16u) >= 1u && (frame % 16u) <= 4u) {
         mask |= DW3_RAW_CROSS;
     }
-    if (start && frame >= 90u && frame < 98u) {
+    if (start && !status && frame >= 90u && frame < 98u) {
         mask |= DW3_RAW_START;
     }
-    if (cancel && frame >= 240u && (frame % 16u) == 1u) {
+    /* status: repeated Start (field boot is slow) → Cross → Triangle. */
+    if (status) {
+        if (frame >= 180u && frame < 2400u && (frame % 45u) >= 1u &&
+            (frame % 45u) <= 6u) {
+            mask |= DW3_RAW_START;
+        }
+        if (frame >= 360u && (frame % 16u) >= 1u && (frame % 16u) <= 4u) {
+            mask |= DW3_RAW_CROSS;
+        }
+        if (frame >= 1200u && (frame % 20u) >= 1u && (frame % 20u) <= 4u) {
+            mask |= DW3_RAW_TRIANGLE;
+        }
+    }
+    if (cancel && !status && frame >= 240u && (frame % 16u) >= 1u &&
+        (frame % 16u) <= 4u) {
         mask |= DW3_RAW_TRIANGLE;
     }
     memset(buf, 0, sizeof(buf));
     buf[0] = 0x00;
     buf[1] = (char)PSYZ_CTRL_DIGITAL_PAD;
-    buf[2] = (char)((~(mask >> 8)) & 0xFF);
-    buf[3] = (char)((~mask) & 0xFF);
+    /* PadData.buttons is a native u16 over bytes [2],[3]. PS1 wire order is
+     * MSB at [2], but this LE host overlays the u16 as LSB-first — store the
+     * active-low mask in native u16 byte order so readPadButtons sees RAW_*. */
+    {
+        unsigned short wire = (unsigned short)(~mask);
+        buf[2] = (char)(wire & 0xFF);
+        buf[3] = (char)((wire >> 8) & 0xFF);
+    }
     Psyz_PadsSet(0, buf, DW3_PAD_BUF_LEN);
 }
 

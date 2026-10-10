@@ -27,6 +27,11 @@ uint32_t cdfs_file_size(uint32_t id);
  * Returns -1 if id is unknown, the file is missing, or buflen < size. */
 int cdfs_read(uint32_t id, void *buf, size_t buflen);
 
+/* Read `len` bytes at byte `offset` into buf (partial / sector window).
+ * Short reads at EOF zero-fill the remainder of buf.
+ * Returns bytes copied from the file (0..len), or -1 on error. */
+int cdfs_read_at(uint32_t id, void *buf, size_t offset, size_t len);
+
 /* Wave 1: no-op. Reserved for async completion / cdReadyCallback poll. */
 void cdfs_poll(void);
 
