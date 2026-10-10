@@ -190,7 +190,7 @@ objs; live PASS 237/237; only `WSTAG460` left stubbed (host
 `docs/P3.9_REFERENCE.md`); checkbox stays open until real DuckStation +
 `dw3-pc` captures. **Phase 3 gate not met** (`docs/P3_GATE.md`):
 automated intro reaches `MODE_OPENING_2` (`0xE02`); MDEC/VLC/stream/XA
-wired — remaining walls are present/listen/skip (`docs/P3.7_MOVIES.md`).
+present dump wired — remaining walls are smooth play/listen/skip (`docs/P3.7_MOVIES.md`).
 No start→first-boss segment. P3.6 / P3.9 may run on side tracks.
 
 Objective: the full game loop runs on PC: field, stages, battle, menus,
@@ -260,8 +260,9 @@ audio, movies.
   `READY_FOR_MAIN_ROADMAP_SYNC: P3.7_IN_PROGRESS`): Wave 1 soft MDEC
   (`test_mdec` 28/28); Wave 2 `DecDCTvlc2`/`Build` via `port/movies` +
   bsdec; Wave 3 file-backed STR + `StCdInterrupt`; Wave 4 file-bridge
-  XA (`CdlModeRT` decode/mix; `sdlaudio.raw` non-silent). Still need
-  present/play, owner listen on a real DAC, Start-skip. Default skip
+  XA (`CdlModeRT` decode/mix; `sdlaudio.raw` non-silent); **present wave**
+  (`phase3-movies-present`: MDEC-out DMA + RGB24 LoadImage + FB dump).
+  Still need smooth play, owner listen on a real DAC, Start-skip. Default skip
   `MODE_TITLE` (patch `0010`) retained. Checkbox unticked until play +
   audio + Start-skip.
   Done when: the opening movies play with audio and can be skipped.
