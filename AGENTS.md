@@ -65,13 +65,28 @@ Rules:
 
 ## Git and safety
 
-- Commit frequently
+This repo is followed from more than one machine. Keep the **remote** as the
+shared timeline — local-only progress is not enough.
+
+- **Commit frequently** after each small, reviewable unit of work (scaffold,
+  fix, doc note, stub). Prefer several small commits over one large dump.
+- **Push frequently** after those commits: `git push -u origin HEAD` on the
+  first push of a branch, then `git push`. Do not leave finished work only on
+  the local disk between sessions.
+- Work on a named feature/topic branch when the change is more than a tiny
+  doc tweak; keep that branch on the remote so another PC can `git fetch` /
+  `git pull` and continue.
+- At session start on any machine: `git fetch` / `git pull` (or rebase onto
+  the tracking branch) before editing, so you do not diverge from what was
+  pushed elsewhere.
 - Do not force-push, or rewrite history unless asked.
 - Do not change git config.
 - Stage files explicitly; do not `git add .` / `git add -A`.
 - Do not commit secrets, keys, disc images, or extracted game trees.
 - Submodule updates (`vendor/dw3_decomp`) must be intentional and called out
   in the commit message.
+- For this project, frequent commit + push is the default (no need to wait for
+  an explicit “commit/push” prompt each time), unless the owner says to hold.
 
 ## Working style
 
@@ -92,5 +107,8 @@ Rules:
 ## First actions for a new session
 
 1. Read this file, `README.md`, and `docs/ROADMAP.md`.
-2. Check `git status` and submodule state.
+2. `git fetch` / sync with the remote tracking branch; check `git status` and
+   submodule state.
 3. Continue the current roadmap phase; do not restart scaffolding.
+4. Before ending a session (or when leaving a coherent checkpoint), commit and
+   push so another PC can pick up from the remote.
