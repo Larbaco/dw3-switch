@@ -249,9 +249,20 @@ bool dw3_nx_gpu_swap(void) {
  */
 int Psyz_VideoVSync(int mode) {
     static uint32_t last_vsync_us;
+    static int entered;
     uint64_t now_us64 = armTicksToNs(armGetSystemTick()) / 1000ULL;
     uint32_t now_us = (uint32_t)now_us64;
     unsigned short lines;
+
+    /* One-shot: VSync() calls this *before* the vsync callback, so if the boot
+     * hangs with no callback marker, this says whether it got this far.
+     * psyz_log directly rather than PSY-Z's INFOF macro: this file must not
+     * include PSY-Z headers next to the EGL ones (they redirect libc names). */
+    if (!entered) {
+        entered = 1;
+        psyz_log(1, "nx_gpu.c", __LINE__, __func__,
+                 "Psyz_VideoVSync first call (mode=%d)", mode);
+    }
 
     if (mode < 0) {
         return (int)(now_us64 * 60 / 1000000ULL);
@@ -271,6 +282,11 @@ int Psyz_VideoVSync(int mode) {
             dw3_nx_gpu_clear(0.0f, 0.0f, 0.0f, 1.0f);
         }
         dw3_nx_gpu_swap();
+        if (entered == 1) {
+            entered = 2;
+            psyz_log(1, "nx_gpu.c", __LINE__, __func__,
+                     "first present+swap done");
+        }
         last_vsync_us = (uint32_t)(armTicksToNs(armGetSystemTick()) / 1000ULL);
     }
     return lines;

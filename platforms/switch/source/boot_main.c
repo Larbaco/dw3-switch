@@ -53,13 +53,19 @@ static PsyzVSyncCb g_prev_vsync_cb;
  *    process exits — abrupt, but the alternative is a homebrew that ignores the
  *    home button.
  */
+/* Runs once per frame from PSY-Z's vsync hook, to service the CD/STR bridge
+ * (StCdIntrFlag + Psyz_CdPumpStream), exactly as the PC host does, so streaming
+ * movies keep their sectors coming.
+ *
+ * Deliberately does NOT call appletMainLoop(): it wraps appletGetMessage, which
+ * *blocks* until the applet sends something, and this runs inside the game's
+ * frame — the first call hung the boot before its first frame. libnx's own docs
+ * scope it to "within a main loop", which dw3_game_main() never returns to.
+ * Quitting is the game's own business: its loop polls Psyz_QuitRequested.
+ */
 static void dw3_nx_vsync_pump(void) {
     static int first_frame_logged;
 
-    if (!appletMainLoop()) {
-        INFOF("quit requested; leaving the game loop");
-        exit(0);
-    }
     if (!first_frame_logged) {
         first_frame_logged = 1;
         INFOF("first vsync callback reached");
