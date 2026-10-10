@@ -26,6 +26,22 @@ This is **not** an emulator wrapper project and **not** a remake from scratch.
 
 If docs disagree with code, trust code and update the docs in the same change.
 
+### Documentation must track roadmap progress
+
+Do not leave `docs/` (or the layout bits in `README.md` / this file) stale
+after a real advance. In the **same commit** (or the immediate follow-up
+commit before push) as a roadmap step:
+
+- Tick or rewrite the matching task in `docs/ROADMAP.md` (checkbox, status,
+  “done when”, blockers). Mark a phase/gate done only when it actually is.
+- Update `docs/ARCHITECTURE.md` when layering, hosts, shims, or loaders
+  change.
+- Update `README.md` (and the layout block in this file) when directories,
+  build entry points, or how-to-run change.
+- Add or refresh a short note under `docs/` for non-obvious decisions;
+  chat history is not documentation.
+- Prefer one small doc touch per advance over a big catch-up later.
+
 ## Repository layout (boundaries)
 
 ```
@@ -94,7 +110,10 @@ shared timeline — local-only progress is not enough.
 - Prefer extending existing scaffold paths over inventing parallel trees.
 - When blocked on missing hardware/SDK (devkitPro, real Switch), say what is
   missing and leave the tree in a buildable or clearly stubbed state.
-- Record non-obvious decisions in `docs/` (short notes), not only in chat.
+  Reflect that blocker in `docs/ROADMAP.md` (or a short `docs/` note) so the
+  next session/PC does not rediscover it only from chat.
+- Treat doc updates as part of “done”, not a later chore. A feature commit
+  that advances the roadmap without touching the relevant docs is incomplete.
 
 ## Out of scope (unless explicitly requested)
 
@@ -110,5 +129,6 @@ shared timeline — local-only progress is not enough.
 2. `git fetch` / sync with the remote tracking branch; check `git status` and
    submodule state.
 3. Continue the current roadmap phase; do not restart scaffolding.
-4. Before ending a session (or when leaving a coherent checkpoint), commit and
-   push so another PC can pick up from the remote.
+4. Before ending a session (or when leaving a coherent checkpoint), ensure
+   roadmap/docs match what landed, then commit and push so another PC can
+   pick up from the remote.
