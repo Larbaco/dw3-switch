@@ -1,39 +1,36 @@
-# Runtime data layout (PC + Switch)
+# Runtime data layout
 
-Shared relative tree for Digimon World 3 disc data after extract + pack.
-PC and Switch hosts use the same layout; only the root path differs.
-
-Game bytes stay out of git (`/disks/`, `/runtime/` are gitignored).
+Shared relative layout for the Phase 1+ hosts. PC and Switch use the same
+paths under a version root; only the mount prefix differs.
 
 ## Paths
 
 | Host | Root |
 |---|---|
-| PC (dev) | `runtime/us/` (or `runtime/eu/`) under the repo |
-| Switch SD | `sdmc:/switch/dw3/us/` (or `.../eu/`) |
+| PC (dev) | `runtime/<ver>/` (repo-local, gitignored) |
+| Switch SD | `sdmc:/switch/dw3/<ver>/` |
 
-Phase 1 documents the Switch path only; the `.nro` does not load this tree yet.
-
-## Tree (US)
+`<ver>` is `us` or `eu`. Example US trees:
 
 ```text
-runtime/us/                 # or sdmc:/switch/dw3/us/
-  files_us.json             # file-id → ISO path / LBA map (from build_file_map.py)
-  SLUS_014.36               # executable
-  BOOT_IMAGE.txt            # Phase 1 stub (see boot image below)
-  # boot_tim.bin            # Phase 2+: exe-tail TIM when extract is available
-  AAA/                      # disc AAA tree (PRO overlays, assets, …)
+runtime/us/                    # PC
+sdmc:/switch/dw3/us/           # Switch (same relative layout)
+  files_us.json
+  SLUS_014.36
+  BOOT_IMAGE.txt               # Phase 1 stub; see below
+  # boot_tim.bin               # Phase 2+ when exe-tail extract exists
+  AAA/
     PRO/
-      *.PRO
-    …
+    DAT/
+    STR/
+    ...
 ```
 
-EU uses `files_eu.json` and `SLES_039.36` with the same `AAA/` shape.
+EU uses `files_eu.json` and `SLES_039.36` instead of the US names.
 
-## How to produce
+## Packing
 
-Prerequisites: owner extract at `disks/<ver>/` including `files_<ver>.json`
-(see `docs/DISC_SETUP.md` / Task 7).
+From a completed disc extract + file map (`docs/DISC_SETUP.md`):
 
 ```bash
 python3 tools/pack_runtime.py --version us --disks disks/us --out runtime/us
@@ -45,19 +42,12 @@ python3 tools/build_file_map.py --check runtime/us/files_us.json \
 
 ## Boot image
 
-On disc, the boot TIM is the executable tail loaded at `OVERLAY_VRAM`
-(`0x80082448` US; see `docs/SURVEY.md` and decomp `main()` / `BOOT_IMAGE_RECT`).
+On PS1 the boot TIM is the executable's tail, resident at `OVERLAY_VRAM`
+before overlays overwrite that region (`BOOT_IMAGE_RECT` in
+`vendor/dw3_decomp/src/engine/system/main.c`). Phase 1 does **not** invent
+`boot_tim.bin`. The packer writes `BOOT_IMAGE.txt` explaining the gap; Phase 2
+will extract the tail into `boot_tim.bin` when the decomp/assets path is wired.
 
-Phase 1 does **not** invent `boot_tim.bin`. If `disks/<ver>/boot_tim.bin` is
-absent, the packer writes `BOOT_IMAGE.txt` explaining the Phase 2 extract.
-Hosts that need a boot framebuffer should stub or skip that `LoadImage` until
-then.
+## Git
 
-## Relationship to `disks/`
-
-| Dir | Role |
-|---|---|
-| `disks/<ver>/` | Raw extract + map (source of truth for packing) |
-| `runtime/<ver>/` | Host-facing subset: map, exe, `AAA/`, boot stub/bin |
-
-Do not commit either tree.
+`/runtime/` is gitignored. Never commit game bytes from `disks/` or `runtime/`.

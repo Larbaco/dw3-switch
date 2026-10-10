@@ -41,12 +41,13 @@ game code yet.
 - [x] **P1.5 Disc extraction + file-id map.** `tools/build_file_map.py` +
   tests; owner US extract documented in `docs/DISC_SETUP.md`; local
   `disks/us/files_us.json` maps 2194 ids and `--check` passes.
-- [ ] **P1.6 Runtime data layout.** Define and document the on-SD layout
+- [x] **P1.6 Runtime data layout.** Define and document the on-SD layout
   (`sdmc:/switch/dw3/<ver>/AAA/...` + `files_<ver>.json` + exe tail boot
   image) and the equivalent PC directory. Add `tools/pack_runtime.py` to
   produce it from `disks/<ver>/`.
   Done when: `pack_runtime.py` output passes `build_file_map.py --check`
-  and `.gitignore` covers it.
+  and `.gitignore` covers it. Documented in `docs/RUNTIME_LAYOUT.md`;
+  local `runtime/us/` packs with `BOOT_IMAGE.txt` stub (boot TIM Phase 2).
 - [ ] **P1.7 CI.** GitHub Actions building P1.3 and P1.4 in Docker on
   every push (no game data; PSY-Z sample + skeleton only).
   Done when: a green run on `master`.
