@@ -60,6 +60,29 @@ Observed sequence (`build/p3-gate/newgame_field.log`):
 No further story progress without a movie skip/bridge or owner pad past
 this cutscene on a path that does not need decode.
 
+US `STDWTITL_movies[1]` (mode `0xE02` → movie index 1) would next
+request field mode `0x207` (`WSTAG225`) after a successful decode. That
+landing is proven only via host boot aids below — not through the movie.
+
+### Post-movie Asuka (host boot past `0xE02`)
+
+```bash
+# Free walk on the post-movie landing stage (skip event 5)
+SDL_VIDEODRIVER=dummy \
+  DW3_START_MODE=0x207 DW3_PROGRESS=2 DW3_AUTO_PAD=walk \
+  ./build/pc/dw3-pc --runtime runtime/us
+# FIELDSTG_pickStage mode=0x207 stageFile=455; moveByPad Δy observed
+
+# Natural progress=1 + FAST event 5 → Asuka City Server (WSTAG210)
+SDL_VIDEODRIVER=dummy \
+  DW3_START_MODE=0x207 DW3_PROGRESS=1 DW3_FAST_SCRIPT=1 \
+  DW3_AUTO_PAD=confirm ./build/pc/dw3-pc --runtime runtime/us
+# SCRIPT_LEAVE mode=0x203 → FIELDSTG_pickStage stageFile=453 (WSTAG210)
+```
+
+This advances **toward** early Asuka story, not to the first boss. No
+automated story flags / wilderness walk / boss fight beyond this.
+
 ### Free pad walk (skip intro)
 
 ```bash
@@ -94,7 +117,7 @@ Documented separately and already ticked on main ROADMAP:
 
 | Item | Why |
 |---|---|
-| **Start → first boss** | Intro leaves to `0xE02` movie; no boss scripted/automated |
+| **Start → first boss** | Intro leaves to `0xE02` movie; post-movie Asuka boot aids stop short of any boss |
 | **P3.6 Audio** | PSY-Z `_SsSeqPlay` ASM gap (`docs/P3.6_AUDIO.md`) |
 | **P3.7 Movies** | `MDEC_*` / stream / LBA track (`docs/P3.7_MOVIES.md`) |
 | **P3.9 Harness** | Needs owner DuckStation oracle + capture fill |

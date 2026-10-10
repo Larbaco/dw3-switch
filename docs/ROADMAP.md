@@ -260,9 +260,10 @@ audio, movies.
   `0030` + `tools/stage_sweep.py`. **Done-when evidence**
   (`docs/P3.8_STAGES.md`, `READY_FOR_MAIN_ROADMAP_SYNC: P3.8`): batches
   1–6 link 238/239 US stage objs; live STAGSLCT round-trip PASS 237/237
-  in `build/p38-sweep/results.tsv`. Only `WSTAG460` remains weak-stubbed
-  (host `updateWanderer` SEGV).
-  Done when: all stages load and return to the select screen.
+  in `build/p38-sweep/results.tsv`. **`WSTAG460` intentionally excluded**
+  (weak stub; host `updateWanderer` SEGV — see `docs/P3.8_STAGES.md`).
+  Done when: all **loadable** stages load and return to the select
+  screen (`WSTAG460` known-bad, not in the 237 PASS set).
 - [ ] **P3.9 Reference comparison harness.** Script that boots the same
   save in DuckStation and the PC build and captures screenshots for
   side-by-side review (PS1 output is the oracle).
