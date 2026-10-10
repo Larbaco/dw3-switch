@@ -38,12 +38,9 @@ game code yet.
 - [x] **P1.4 Switch host skeleton (`.nro`).** `platforms/switch/` libnx
   console/pad skeleton; build via `./tools/dk.sh make -C platforms/switch`
   (on Linux/ext4; see Docker README for WSL mounts).
-- [ ] **P1.5 Disc extraction + file-id map.** Document the owner-side
-  steps (`tools/extract_disc.py` from the decomp into `disks/<ver>/`) and
-  add `tools/build_file_map.py` that reads the ISO directory records and
-  `FILE_SECTORS` to emit `files_<ver>.json` (`id → path, sectors, form`).
-  Done when: every id in `FILE_SECTORS` resolves to exactly one path for
-  the version, with a `--check` mode that reports gaps.
+- [x] **P1.5 Disc extraction + file-id map.** `tools/build_file_map.py` +
+  tests; owner US extract documented in `docs/DISC_SETUP.md`; local
+  `disks/us/files_us.json` maps 2194 ids and `--check` passes.
 - [ ] **P1.6 Runtime data layout.** Define and document the on-SD layout
   (`sdmc:/switch/dw3/<ver>/AAA/...` + `files_<ver>.json` + exe tail boot
   image) and the equivalent PC directory. Add `tools/pack_runtime.py` to
