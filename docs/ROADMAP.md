@@ -102,7 +102,8 @@ the host, replace MIPS-only pieces, and reach the title screen on PC.
   path the engine uses (`CD_READER.readFile` semantics, `FILE_TABLE`
   sector counts, `cdReadyCallback`-style completion) over
   `files_<ver>.json` and host files; keep PSY-Z's `libcd` only for STR
-  streaming.
+  streaming. Sector/EOF pitfalls for the host layer:
+  [CDFS_NOTES.md](CDFS_NOTES.md).
   Done when: `FILE_CACHE.load(id)` returns byte-identical buffers to the
   disc for a sample of ids (unit test with the owner's data, skipped in
   CI).
@@ -289,7 +290,9 @@ list: [COMMUNITY_QOL.md](COMMUNITY_QOL.md).
 - [ ] **P7.3 Binary-patch limits.** Expand the checklist in
   [COMMUNITY_QOL.md](COMMUNITY_QOL.md): which QoL changes ride on patched
   data vs which require native reimplementation because EXE/overlay
-  patches do not load into the `.nro`.
+  patches do not load into the `.nro`. Seed inventory from the
+  OpenWorld2003 launcher catalog (`source/*.json`) is already in that
+  doc; still need a pass against a **pinned combined QoL patch beta**.
   Done when: the checklist covers the combined patch feature list at a
   chosen beta version.
 - [ ] **P7.4 Feature parity (native).** Reimplement agreed QoL systems
@@ -308,6 +311,35 @@ list: [COMMUNITY_QOL.md](COMMUNITY_QOL.md).
 
 Gate: owner-patched EU data path works (P7.2) and the agreed native QoL
 subset from P7.4 is playable. Companion (P7.5) is best-effort.
+
+## Phase 8 — Texture pack compatibility
+
+Starts after the Phase 7 gate in the planned order (or earlier only if the
+P1.6 runtime layout and a stable TIM/draw path already exist to validate
+against). Goal: owners can overlay replacement textures without forking
+the port or committing assets. Details: [TEXTURE_PACKS.md](TEXTURE_PACKS.md).
+
+- [x] **P8.1 Goal note.** Document that texture packs live in the owner
+  runtime data layout, resolve through `port/` (file id / path overlay),
+  keep hosts thin, and never ship textures in git.
+  Done when: [TEXTURE_PACKS.md](TEXTURE_PACKS.md) exists and the README
+  points at Phase 8 / that note.
+- [ ] **P8.2 Pack layout.** Define the on-disk convention (e.g.
+  `texture_packs/<name>/` keyed by file id or mirrored paths) aligned with
+  P1.6 and `port/cdfs`, with fallback to the vanilla runtime file when a
+  pack entry is absent.
+  Done when: a minimal owner pack replaces at least one visible texture on
+  title or field (PC or Switch).
+- [ ] **P8.3 Formats and scaling.** Document accepted formats (native TIM
+  first) and rules for upscaled or alternate formats, including VRAM /
+  emulation limits.
+  Done when: [TEXTURE_PACKS.md](TEXTURE_PACKS.md) states what is supported
+  for the gate vs deferred.
+- [ ] **P8.4 Tooling — optional.** `tools/` helper to validate or pack a
+  texture pack against `files_*.json` (report missing/extra ids).
+  Done when: a `--check` mode exists. Does **not** block the Phase 8 gate.
+
+Gate: P8.2 works with an owner-supplied minimal pack. P8.4 is best-effort.
 
 ## Cross-cutting rules
 
