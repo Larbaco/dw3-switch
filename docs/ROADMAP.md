@@ -206,6 +206,8 @@ audio, movies.
 - [ ] **P3.6 Audio.** libsnd path through PSY-Z: VAB banks, SEP music,
   SFX, reverb settings the game sets. Verify `SsSeqCalledTbyT` timing
   from the vsync callback.
+  Investigation (Task S1): `docs/P3.6_AUDIO.md` on `phase3-audio-spike`
+  — blockers listed; no Core CMake. Implementation = Task A6.
   Done when: title music, field music change on stage switch, battle SFX.
 - [ ] **P3.7 Movies.** Title STR playback through PSY-Z `libpress` +
   streaming (`CdRead2`, `StSetRing`) from raw-sector `.STR` files packed
