@@ -11,9 +11,15 @@ include $(DEVKITPRO)/libnx/switch_rules
 #---------------------------------------------------------------------------------
 TARGET		:=	dw3-switch
 BUILD		:=	build
-SOURCES		:=	source
+SOURCES		:=	source psyz_backend
 DATA		:=	data
-INCLUDES	:=	include
+INCLUDES	:=	include psyz_backend
+# Artifacts (.nro/.elf/.nacp). Override for NTFS/Docker (see tools/dk.sh).
+OUTDIR		?=	$(CURDIR)
+
+APP_TITLE	:=	dw3-switch gpu_hello
+APP_AUTHOR	:=	dw3-switch
+APP_VERSION	:=	0.4.2
 #---------------------------------------------------------------------------------
 ARCH	:=	-march=armv8-a+crc+crypto -mtune=cortex-a57 -mtp=soft -fPIE
 
@@ -27,7 +33,7 @@ CXXFLAGS	:= $(CFLAGS) -fno-rtti -fno-exceptions
 ASFLAGS	:=	-g $(ARCH)
 LDFLAGS	=	-specs=$(DEVKITPRO)/libnx/switch.specs -g $(ARCH) -Wl,-Map,$(notdir $*.map)
 
-LIBS	:= -lnx
+LIBS	:= -lEGL -lGLESv2 -lglapi -ldrm_nouveau -lnx -lm
 
 #---------------------------------------------------------------------------------
 LIBDIRS	:= $(PORTLIBS) $(LIBNX)
@@ -36,7 +42,7 @@ LIBDIRS	:= $(PORTLIBS) $(LIBNX)
 ifneq ($(BUILD),$(notdir $(CURDIR)))
 #---------------------------------------------------------------------------------
 
-export OUTPUT	:=	$(CURDIR)/$(TARGET)
+export OUTPUT	:=	$(OUTDIR)/$(TARGET)
 export TOPDIR	:=	$(CURDIR)
 
 export VPATH	:=	$(foreach dir,$(SOURCES),$(CURDIR)/$(dir)) \
@@ -48,11 +54,8 @@ CFILES		:=	$(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.c)))
 CPPFILES	:=	$(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.cpp)))
 SFILES		:=	$(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.s)))
 
-ifeq ($(strip $(CPPFILES)),)
-	export LD	:=	$(CC)
-else
-	export LD	:=	$(CXX)
-endif
+# mesa/EGL pulls C++ (nouveau codegen); always link with g++.
+export LD	:=	$(CXX)
 
 export OFILES_SRC	:=	$(CPPFILES:.cpp=.o) $(CFILES:.c=.o) $(SFILES:.s=.o)
 export OFILES 	:=	$(OFILES_SRC)
@@ -61,17 +64,23 @@ export INCLUDE	:=	$(foreach dir,$(INCLUDES),-I$(CURDIR)/$(dir)) \
 			-I$(CURDIR)/$(BUILD)
 export LIBPATHS	:=	$(foreach dir,$(LIBDIRS),-L$(dir)/lib)
 
+export APP_TITLE APP_AUTHOR APP_VERSION
+
 .PHONY: $(BUILD) clean all
 
 all: $(BUILD)
 
 $(BUILD):
 	@[ -d $@ ] || mkdir -p $@
+	@[ -d $(OUTDIR) ] || mkdir -p $(OUTDIR)
 	@$(MAKE) --no-print-directory -C $(BUILD) -f $(CURDIR)/Makefile
 
 clean:
 	@echo clean ...
-	@rm -fr $(BUILD) $(TARGET).nro $(TARGET).nacp $(TARGET).elf
+	@rm -f $(OUTPUT).nro $(OUTPUT).nacp $(OUTPUT).elf
+	@# Clear contents only — $(BUILD) may be a Docker bind mount (DW3_DK_TMPBUILD).
+	@if [ -d $(BUILD) ]; then find $(BUILD) -mindepth 1 -maxdepth 1 -exec rm -rf {} +; fi
+	@rmdir $(BUILD) 2>/dev/null || true
 
 #---------------------------------------------------------------------------------
 else

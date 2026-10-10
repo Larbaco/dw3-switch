@@ -108,17 +108,20 @@ steps: [docs/DISC_SETUP.md](docs/DISC_SETUP.md) and
 python3 tools/pack_runtime.py --version us --disks disks/us --out runtime/us
 ```
 
-### Switch `.nro` skeleton
+### Switch `.nro` (P4.2 `gpu_hello`)
 
 Uses Docker + [devkitPro](https://devkitpro.org/) via `tools/dk.sh` (see
 [tools/docker/README.md](tools/docker/README.md) for WSL/NTFS mount notes):
 
 ```bash
 ./tools/dk.sh make -C platforms/switch
-# → platforms/switch/dw3-switch.nro
+# NTFS checkout:
+DW3_DK_TMPBUILD=/tmp/dw3-dk-build ./tools/dk.sh make -C platforms/switch
+# → platforms/switch/dw3-switch.nro (EGL clear + vsync sample)
 ```
 
-No game data is required for the Phase 1 skeleton.
+No game data required. Hardware 60 fps check still open —
+[docs/P4.2_VIDEO.md](docs/P4.2_VIDEO.md).
 
 ## Repository layout
 
@@ -143,6 +146,8 @@ dw3-switch/
 | [docs/DISC_SETUP.md](docs/DISC_SETUP.md) | Owner disc → `disks/<ver>/` |
 | [docs/RUNTIME_LAYOUT.md](docs/RUNTIME_LAYOUT.md) | PC / SD runtime tree |
 | [docs/PSYZ.md](docs/PSYZ.md) | PSY-Z pin and renderer notes |
+| [docs/SWITCH_BACKEND.md](docs/SWITCH_BACKEND.md) | Switch PSY-Z host decision (P4.1+) |
+| [docs/P4.2_VIDEO.md](docs/P4.2_VIDEO.md) | EGL `gpu_hello` present path |
 | [docs/COMMUNITY_QOL.md](docs/COMMUNITY_QOL.md) | Optional QoL compatibility (later) |
 | [docs/TEXTURE_PACKS.md](docs/TEXTURE_PACKS.md) | Texture pack overlays (later) |
 | [docs/PORT_OPTIONS.md](docs/PORT_OPTIONS.md) | Title-menu toggles for port-only features (later) |
