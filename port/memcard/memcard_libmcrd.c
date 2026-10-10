@@ -159,6 +159,34 @@ static int find_file_frame(int slot, const char *file) {
     return -1;
 }
 
+/* Directory bytes 8-9: next block number minus 1 (0..14 → blocks 1..15),
+ * or 0xFFFF on the last block. psx-spx "Directory Frames". */
+static int dir_next_block(const uint8_t *frame, unsigned *out_block) {
+    unsigned link = (unsigned)frame[8] | ((unsigned)frame[9] << 8);
+
+    if (link == 0xFFFFu) {
+        return 0;
+    }
+    if (link >= MC_DIR_FRAMES) {
+        return -1;
+    }
+    *out_block = link + 1u;
+    return 1;
+}
+
+static void dir_store_next(uint8_t *frame, unsigned next_block) {
+    unsigned link;
+
+    if (next_block == 0) {
+        frame[8] = 0xFF;
+        frame[9] = 0xFF;
+        return;
+    }
+    link = next_block - 1u;
+    frame[8] = (uint8_t)(link & 0xFF);
+    frame[9] = (uint8_t)((link >> 8) & 0xFF);
+}
+
 static int alloc_blocks(int slot, int blocks, int *out_first) {
     int chain[16];
     int n = 0;
@@ -191,11 +219,9 @@ static int alloc_blocks(int slot, int blocks, int *out_first) {
             frame[0] = MC_ALLOC_MID;
         }
         if (b + 1 < n) {
-            frame[8] = (uint8_t)(chain[b + 1] & 0xFF);
-            frame[9] = (uint8_t)((chain[b + 1] >> 8) & 0xFF);
+            dir_store_next(frame, (unsigned)chain[b + 1]);
         } else {
-            frame[8] = 0xFF;
-            frame[9] = 0xFF;
+            dir_store_next(frame, 0);
         }
         if (write_frame(slot, idx, frame) != 0) {
             return -1;
@@ -214,9 +240,10 @@ static int file_byte_offset(int slot, int first_frame, long file_ofs,
         return -1;
     }
     while (left >= (long)MC_BLOCK_SIZE) {
-        unsigned next = (unsigned)frame[8] | ((unsigned)frame[9] << 8);
+        unsigned next = 0;
+        int link = dir_next_block(frame, &next);
 
-        if (next == 0xFFFFu || next == 0) {
+        if (link != 1 || next == block) {
             return -1;
         }
         block = next;

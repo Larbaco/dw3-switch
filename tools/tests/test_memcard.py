@@ -156,6 +156,34 @@ def test_byte_offset_read_write(memcard_rw: Path, tmp_path: Path):
     assert disk[TEST_OFFSET + 16 : TEST_OFFSET + 16 + len(payload)] == payload
 
 
+def test_bios_block_link_and_host_write(tmp_path: Path):
+    """Next-block halfword is block number minus 1 (DuckStation / BIOS)."""
+    build_dir = tmp_path / "chain_build"
+    build_dir.mkdir()
+    exe = build_dir / "memcard_chain_test"
+    cmd = [
+        "gcc",
+        "-std=c11",
+        "-Wall",
+        "-Wextra",
+        "-Werror",
+        "-Wno-stringop-truncation",
+        "-O2",
+        "-o",
+        str(exe),
+        str(ROOT / "tools" / "memcard_chain_test.c"),
+        str(ROOT / "port" / "memcard" / "memcard_libmcrd.c"),
+        str(HOST_C),
+        f"-I{ROOT / 'port' / 'memcard'}",
+    ]
+    r = subprocess.run(cmd, capture_output=True, text=True)
+    assert r.returncode == 0, r.stderr + r.stdout
+    card_dir = tmp_path / "cards"
+    r = subprocess.run([str(exe), str(card_dir)], capture_output=True, text=True)
+    assert r.returncode == 0, r.stderr + r.stdout
+    assert "ok" in r.stdout
+
+
 def test_rejects_out_of_range_offset(memcard_rw: Path, tmp_path: Path):
     card_dir = tmp_path / "cards"
     card_dir.mkdir()
