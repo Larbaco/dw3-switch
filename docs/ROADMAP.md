@@ -184,8 +184,10 @@ default skip remains `MODE_TITLE`. **P3.8 Done-when met** (`READY_FOR_MAIN_ROADM
 `docs/P3.8_STAGES.md`): `STAGSLCT` + batches 1–6 link 238/239 US stage
 objs; live PASS 237/237; only `WSTAG460` left stubbed (host
 `updateWanderer` SEGV). **Phase 3 gate not met** (`docs/P3_GATE.md`):
-automated intro reaches `MODE_OPENING_2` (`0xE02`) / `MDEC_*` stubs;
-no start→first-boss segment. P3.6 / P3.9 may run on side tracks.
+automated intro reaches `MODE_OPENING_2` (`0xE02`); Wave 1 cleared
+`MDEC_*` stubs — remaining walls are VLC / `StCdInterrupt` / STR stream
+/ XA (`docs/P3.7_MOVIES.md`). No start→first-boss segment. P3.6 / P3.9
+may run on side tracks.
 
 Objective: the full game loop runs on PC: field, stages, battle, menus,
 audio, movies.

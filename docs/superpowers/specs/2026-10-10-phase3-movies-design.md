@@ -38,9 +38,8 @@ Documented in `docs/P3.7_MOVIES.md`:
 
 | Gap | Where |
 |---|---|
-| `MDEC_*` stubs | `vendor/psyz/psyz/src/psyz/libpress.c` → `NOT_IMPLEMENTED` |
-| Soft MDEC unwired | `mdec.c` (`Psyz_Mdec*`) in CMake but not called from `MDEC_*` |
-| `DecDCTvlc` stub | same `libpress.c`; `DecDCTvlc2` / `Build` port no-ops |
+| Soft MDEC under `MDEC_*` | **Done (Wave 1)** — `libpress.c` → `Psyz_Mdec*`; pin `docs/PSYZ.md` |
+| `DecDCTvlc` stub | `libpress.c` still `NOT_IMPLEMENTED`; `DecDCTvlc2` / `Build` port no-ops |
 | `StCdInterrupt` stub | `vendor/psyz/psyz/src/psyz/libcd.c` |
 | No track at movie LBA | packed `runtime/.../AAA/STR/*.STR` is 2048-byte extracts, not a cue track |
 | Audio device | `Psyz_AudioInit` must succeed for XA validation |
