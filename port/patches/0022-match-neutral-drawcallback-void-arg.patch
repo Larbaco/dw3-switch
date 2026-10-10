@@ -1,0 +1,52 @@
+Upstream-bound: yes
+Subject: [match-neutral] DrawCallback.arg is void* (LP64-safe)
+
+Layer draw callbacks pass actor/task pointers through DrawCallback.arg.
+Storing that as s32 truncates high bits on host LP64 and SEGVs in
+FIELDSTG_drawActor (and any other sorted/plain draw callback). On ILP32
+void* and s32 are the same width, so layout stays match-neutral.
+
+--- a/include/engine/gfx.h
++++ b/include/engine/gfx.h
+@@ -116,8 +116,8 @@
+ struct DrawCallback {
+     /* 0x00 */ s32 priority;
+     /* 0x04 */ s32 param;
+-    /* 0x08 */ void (*func)(s32 arg, void *layer, s32 param);
+-    /* 0x0C */ s32 arg;
++    /* 0x08 */ void (*func)(void *arg, void *layer, s32 param);
++    /* 0x0C */ void *arg;
+     /* 0x10 */ struct DrawCallback *next;
+ };
+ 
+@@ -369,8 +369,8 @@
+ void layerFree(Layer *layer);
+ void layerResetCallbacks(Layer *layer);
+ void layerAllocCallbacks(Layer *layer, s32 count);
+-void layerAddSortedCallback(Layer *layer, void (*func)(s32, void *, s32), s32 arg, s32 priority, s32 param);
+-void layerAddCallback(Layer *layer, void (*func)(s32, void *, s32), s32 arg);
++void layerAddSortedCallback(Layer *layer, void (*func)(void *, void *, s32), void *arg, s32 priority, s32 param);
++void layerAddCallback(Layer *layer, void (*func)(void *, void *, s32), void *arg);
+ void layerRunCallbacks(Layer *layer);
+ void layerSetKeepView(Layer *layer, s32 enable, s32 projection);
+ void layerLoadView(Layer *layer);
+--- a/src/engine/gfx/layer.c
++++ b/src/engine/gfx/layer.c
+@@ -277,7 +277,7 @@
+ }
+ 
+ /* Layer method: adds a draw callback in order of priority, highest first */
+-void layerAddSortedCallback(Layer *layer, void (*func)(s32, void *, s32), s32 arg, s32 priority, s32 param) {
++void layerAddSortedCallback(Layer *layer, void (*func)(void *, void *, s32), void *arg, s32 priority, s32 param) {
+     DrawCallback *cur;
+     DrawCallback *prev;
+     DrawCallback *e;
+@@ -320,7 +320,7 @@
+ }
+ 
+ /* Layer method: adds a draw callback at the end of the list */
+-void layerAddCallback(Layer *layer, void (*func)(s32, void *, s32), s32 arg) {
++void layerAddCallback(Layer *layer, void (*func)(void *, void *, s32), void *arg) {
+     DrawCallback *cb;
+ 
+     if (layer->callbackCount < layer->callbackCap) {

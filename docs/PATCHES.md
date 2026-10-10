@@ -54,13 +54,14 @@ tools/apply_patches.sh           # refresh build/decomp-src + apply
 | `0019-PORT_HOST-field-file-cache-watermark.patch` | no | P3.1: `FILE_CACHE.freeFrom` uses `HEAP_BASE+0xB1E74` on host |
 | `0020-PORT_HOST-p32-boot-mode-and-stage-log.patch` | no | P3.2: `DW3_START_MODE` / `DW3_AUTO_DOOR_*`, stage pick log |
 | `0021-PORT_HOST-field-null-slots-and-state-zero.patch` | no | P3.2: NULL `slots` guard + `FieldState` zero through `init` |
+| `0022-match-neutral-drawcallback-void-arg.patch` | yes | P3.2: `DrawCallback.arg` / layer add-callback APIs as `void*` (LP64; fixes `FIELDSTG_drawActor` SEGV) |
 
 `tools/apply_patches.sh --check` applies the series in order (stacked
 patches on the same file are valid).
 
 ### Upstream `make compare` (P2.4 / P3.1)
 
-Match-neutral patches 0006/0007/0018 are intended to stay byte-identical
+Match-neutral patches 0006/0007/0018/0022 are intended to stay byte-identical
 on PS1, but this host has no MIPS/Psy-Q toolchain image for
 `vendor/dw3_decomp` `make compare`. Blocker: run compare in the decomp’s
 Docker/toolchain when available before opening the upstream PR.
