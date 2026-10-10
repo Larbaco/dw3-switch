@@ -12,19 +12,24 @@ obtained copy of *Digimon World 3* (USA, `SLUS-01436`) or *Digimon World 2003*
 ```
 dw3-switch/
 ├── docs/                 # design notes and milestones
+├── platforms/pc/         # PC bring-up host (CMake, PSY-Z, SDL3)
 ├── platforms/switch/     # libnx / homebrew host (EGL, audio, input, FS)
 ├── port/                 # platform-independent glue (loaders, shims)
 ├── tools/                # asset extract / pack helpers
-└── vendor/dw3_decomp/    # upstream decomp (git submodule)
+├── vendor/dw3_decomp/    # upstream decomp (git submodule)
+└── vendor/psyz/          # PSY-Z Psy-Q shim (git submodule, Phase 1+)
 ```
+
+Phase 1 desktop bring-up uses **CMake** to build `platforms/pc/` against the
+**PSY-Z** submodule (`vendor/psyz`) and SDL3 before tightening the Switch host.
 
 ## Status
 
-Scaffold plus a porting survey of the decomp ([docs/SURVEY.md](docs/SURVEY.md)).
-The upstream decompilation is complete for both versions; the port work is
-laid out in [docs/ROADMAP.md](docs/ROADMAP.md) and the layering in
-[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). Plan: PC bring-up over
-PSY-Z first, then a libnx backend.
+**Phase 1 complete:** PC host (`dw3-pc` + PSY-Z), Switch `.nro` skeleton
+(CI), disc → `files_us.json` → `runtime/us/` pack tools, and Docker/CI
+toolchains. Survey: [docs/SURVEY.md](docs/SURVEY.md). Next is Phase 2
+(port glue + engine bring-up on PC) per [docs/ROADMAP.md](docs/ROADMAP.md);
+layering in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 Localization (PT-BR first, then other languages) is a Phase 6 goal after
 the playable Switch port (Phase 5 gate); see P6.6–P6.8 in the roadmap.

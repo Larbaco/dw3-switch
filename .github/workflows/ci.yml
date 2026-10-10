@@ -1,0 +1,50 @@
+name: ci
+
+on:
+  push:
+    branches: [main, phase1-toolchains-hosts]
+  pull_request:
+
+jobs:
+  pc:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - name: Install deps
+        run: |
+          # Prefer apt packages over SDL_*_OFF flags (see docs/PSYZ.md).
+          # Core: cmake/ninja/GL. XSS + ALSA/Pulse avoid screensaver/audio OFF.
+          # X11/EGL/wayland bits keep SDL3 configure happy on Ubuntu runners.
+          sudo apt-get update
+          sudo apt-get install -y \
+            cmake ninja-build pkg-config \
+            libgl1-mesa-dev libegl1-mesa-dev libgles2-mesa-dev \
+            libx11-dev libxext-dev libxrandr-dev libxcursor-dev \
+            libxfixes-dev libxi-dev libxss-dev libxtst-dev \
+            libxkbcommon-dev \
+            libasound2-dev libpulse-dev \
+            libwayland-dev libdecor-0-dev
+      - name: Configure & build PC host
+        run: |
+          cmake -S platforms/pc -B build/pc -G Ninja -DPSYZ_RENDERER=sdl3_gpu
+          cmake --build build/pc -j"$(nproc)"
+          test -x build/pc/dw3-pc
+      - name: Unit tests (tools)
+        run: |
+          python3 -m pip install pytest
+          python3 -m pytest tools/tests -v
+
+  switch:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build .nro in devkitA64
+        run: |
+          docker run --rm \
+            -e DEVKITPRO=/opt/devkitpro \
+            -v "$PWD:/dw3-switch" -w /dw3-switch \
+            devkitpro/devkita64:latest \
+            make -C platforms/switch
+          test -f platforms/switch/dw3-switch.nro

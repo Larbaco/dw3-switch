@@ -29,45 +29,39 @@ Objective: every build target exists as a reproducible command, and the
 owner's disc can be turned into the layout the port reads, without any
 game code yet.
 
-- [ ] **P1.1 Build environments in Docker.** `tools/docker/` with two
-  images: the decomp's (`vendor/dw3_decomp/Dockerfile`, reused) and
-  `devkitpro/devkita64` for Switch. Wrapper `tools/dk.sh <cmd>` runs a
-  command in the devkitA64 image with the repo mounted.
-  Done when: `tools/dk.sh make -C platforms/switch` works on a clean
-  machine with only Docker.
-- [ ] **P1.2 Vendor PSY-Z.** Add `vendor/psyz` as a submodule, pin a
-  commit, note the license. Decide `-DPSYZ_RENDERER` default for PC
-  (`sdl3_gl` vs software) in `docs/`.
-  Done when: PSY-Z's `samples/gpu_hello` builds and runs on this PC from
-  our tree.
-- [ ] **P1.3 PC host skeleton.** `platforms/pc/` with a CMake project
-  that links PSY-Z and a stub `main` (clear screen, read a pad, print to
-  stdout). This is the bring-up target for Phases 2–3.
-  Done when: `cmake -B build/pc && cmake --build build/pc` yields a
-  window that closes on input.
-- [ ] **P1.4 Switch host skeleton (`.nro`).** `platforms/switch/` Makefile
-  on libnx: console/framebuffer, hid pad read, nxlink stdout, romfs mount,
-  clean exit to hbmenu. No PSY-Z yet.
-  Done when: the `.nro` boots on hardware or in an emulator, shows a
-  status screen and logs over nxlink.
-- [ ] **P1.5 Disc extraction + file-id map.** Document the owner-side
-  steps (`tools/extract_disc.py` from the decomp into `disks/<ver>/`) and
-  add `tools/build_file_map.py` that reads the ISO directory records and
-  `FILE_SECTORS` to emit `files_<ver>.json` (`id → path, sectors, form`).
-  Done when: every id in `FILE_SECTORS` resolves to exactly one path for
-  the version, with a `--check` mode that reports gaps.
-- [ ] **P1.6 Runtime data layout.** Define and document the on-SD layout
+- [x] **P1.1 Build environments in Docker.** `tools/dk.sh` +
+  `devkitpro/devkita64` (drvfs/NTFS note in `tools/docker/README.md`).
+- [x] **P1.2 Vendor PSY-Z.** Submodule `vendor/psyz` @ `fac9bd58`;
+  renderer default `sdl3_gpu` in `docs/PSYZ.md`.
+- [x] **P1.3 PC host skeleton.** `platforms/pc/` links PSY-Z; stub
+  `dw3-pc` builds with CMake/Ninja.
+- [x] **P1.4 Switch host skeleton (`.nro`).** `platforms/switch/` libnx
+  console/pad skeleton; build via `./tools/dk.sh make -C platforms/switch`
+  (on Linux/ext4; see Docker README for WSL mounts).
+- [x] **P1.5 Disc extraction + file-id map.** `tools/build_file_map.py` +
+  tests; owner US extract documented in `docs/DISC_SETUP.md`; local
+  `disks/us/files_us.json` maps 2194 ids and `--check` passes.
+- [x] **P1.6 Runtime data layout.** Define and document the on-SD layout
   (`sdmc:/switch/dw3/<ver>/AAA/...` + `files_<ver>.json` + exe tail boot
   image) and the equivalent PC directory. Add `tools/pack_runtime.py` to
   produce it from `disks/<ver>/`.
   Done when: `pack_runtime.py` output passes `build_file_map.py --check`
-  and `.gitignore` covers it.
-- [ ] **P1.7 CI.** GitHub Actions building P1.3 and P1.4 in Docker on
+  and `.gitignore` covers it. Documented in `docs/RUNTIME_LAYOUT.md`;
+  local `runtime/us/` packs with `BOOT_IMAGE.txt` stub (boot TIM Phase 2).
+- [x] **P1.7 CI.** GitHub Actions building P1.3 and P1.4 in Docker on
   every push (no game data; PSY-Z sample + skeleton only).
-  Done when: a green run on `master`.
+  Done when: a green run on `main` / `phase1-toolchains-hosts`
+  (verified: run `38028432267`).
 
 Gate: PC window + Switch `.nro` skeleton + `files_us.json` for the owner's
 disc.
+
+**Gate passed** (2026-10-10): P1.1–P1.7 complete. Local: `pytest tools/tests`
+(4 passed), `files_us.json` `--check` on `disks/us/` and `runtime/us/`,
+`build/pc/dw3-pc` present. Switch `.nro`: CI run
+[`38028432267`](https://github.com/Larbaco/dw3-switch/actions/runs/38028432267)
+(NTFS/Docker host cannot write `platforms/switch/build/` — see
+`tools/docker/README.md`).
 
 ## Phase 2 — Port glue and engine bring-up on PC
 
