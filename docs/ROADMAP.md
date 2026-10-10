@@ -171,9 +171,10 @@ follow-up). **P3.3 Done-when met:** forced encounter → `STFGTREP`
 partial:** menus linked + field open/return; **STGMCARD save → `.mcr`
 proven** (`docs/P3.4_MENUS.md`, `READY_FOR_MAIN_ROADMAP_SYNC:
 P3.4_MEMCARD`). Pad-driven START→status and NPC script entries still
-open. **P3.5 Done-when met** (`docs/P3.5_CARDGAME.md`): force-win →
-`addCards`/`cardsSeen` → return to `FIELDSTG` → album UI confirms →
-field again.
+open. **P3.5 partial** (`docs/P3.5_CARDGAME.md`): force-win → prize
+item + return to `FIELDSTG` proven; album `cardsSeen` 29→30 is host
+`DW3_FORCE_CARD_WIN` `addCards` aid, not vanilla prize→album. Checkbox
+stays unticked until the real album path.
 P3.6 / P3.9 may run on side tracks.
 
 Objective: the full game loop runs on PC: field, stages, battle, menus,
@@ -220,14 +221,14 @@ audio, movies.
   entries, load e2e. Checkbox stays unticked until full Done-when.
   Done when: each opens from the field, works end-to-end, and saving via
   `STGMCARD` uses P2.7.
-- [x] **P3.5 Card game.** Linked (`dw3_p35_cardgame`); patch `0029` +
+- [ ] **P3.5 Card game.** Linked (`dw3_p35_cardgame`); patch `0029`
+  (renumbered from cardgame `0028` after P3.4 took `0028`) +
   `DW3_FORCE_CARD_WIN` / `DW3_AFTER_CARD_ALBUM` / reuse
-  `DW3_FORCE_MENU`. **Done-when evidence** (`docs/P3.5_CARDGAME.md`):
-  force-win applies prize item + `addCards` (`cardsSeen` 29→30) →
-  `CARDGAME return` → `FIELDSTG` → `STCRDABM_createAlbum cardsSeen=30` →
-  `AUTO_MENU_RETURN` to field. Root cause of prior SEGV: case-2 log after
-  `setState(3)`/`TASK_KILL` freed `items[0]`. Follow-up: pad-driven fight
-  + NPC/script entry.
+  `DW3_FORCE_MENU`. **Partial evidence** (`docs/P3.5_CARDGAME.md`):
+  force-win applies prize item → `CARDGAME return` → `FIELDSTG` (no
+  SEGV); optional `DW3_AFTER_CARD_ALBUM` → `STCRDABM`. Album
+  `cardsSeen` 29→30 is host `addCards` on `FORCE_CARD_WIN`, not vanilla
+  prize→album. Checkbox stays unticked until real album path.
   Done when: a card battle can be won and the album updates.
 - [ ] **P3.6 Audio.** libsnd path through PSY-Z: VAB banks, SEP music,
   SFX, reverb settings the game sets. Verify `SsSeqCalledTbyT` timing
