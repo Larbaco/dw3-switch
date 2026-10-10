@@ -9,7 +9,7 @@ libnx backend exists.
 |---|---|
 | Upstream | https://github.com/Xeeynamo/psyz.git |
 | Working fork (submodule URL) | https://github.com/Larbaco/psyz.git |
-| Commit | `6dea3e72db4c235e7f9238aa5cc1fe39b3284864` (`dw3-mdec-wire`: soft MDEC + weak `DecDCTvlc` + `StCdInterrupt` / stream latch) |
+| Commit | `16b20f4967943943b57eaf3800d9b1e46b17a8e5` (`dw3-mdec-wire`: soft MDEC + stream + file-bridge XA + dummy audio fallback) |
 | Base upstream | `fac9bd58ccd8a0c35e31c6354528f9d625e9bdd1` |
 | License | MIT — see [`vendor/psyz/LICENSE`](../vendor/psyz/LICENSE) |
 
