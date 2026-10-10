@@ -30,7 +30,8 @@ Branch tip at evidence time: see git (`phase3-pc-bringup`). Local logs under
 ### Title land then movie attempt
 
 Unset `DW3_START_MODE`: boots `MODE_TITLE` (`0xE00`), then title flow
-requests `MODE_OPENING` (`0xE01`) → `MDEC_*` stubs (same as P3.7).
+requests `MODE_OPENING` (`0xE01`) → movie path (VLC / stream / XA still
+open; `MDEC_*` wired in Wave 1 — see `docs/P3.7_MOVIES.md`).
 
 ```bash
 SDL_VIDEODRIVER=dummy ./build/pc/dw3-pc --runtime runtime/us
@@ -55,7 +56,7 @@ Observed sequence (`build/p3-gate/newgame_field.log`):
 | Name entry | `0x500` | `STPLNMET` |
 | Back to Online Center | `0x2D8` | 475 |
 | Chamber Room | `0x2D9` | `WSTAG790` file 476 |
-| **Hard stop** | `0xE02` | `MODE_OPENING_2` → `MDEC_*` stubs |
+| **Hard stop** | `0xE02` | `MODE_OPENING_2` → VLC / stream / XA (MDEC wired) |
 
 No further story progress without a movie skip/bridge or owner pad past
 this cutscene on a path that does not need decode.
@@ -119,7 +120,7 @@ Documented separately and already ticked on main ROADMAP:
 |---|---|
 | **Start → first boss** | Intro leaves to `0xE02` movie; post-movie Asuka boot aids stop short of any boss |
 | **P3.6 Audio** | PSY-Z `_SsSeqPlay` ASM gap (`docs/P3.6_AUDIO.md`) |
-| **P3.7 Movies** | `MDEC_*` / stream / LBA track (`docs/P3.7_MOVIES.md`) |
+| **P3.7 Movies** | VLC / `StCdInterrupt` / STR stream / XA (`docs/P3.7_MOVIES.md`); MDEC Wave 1 done |
 | **P3.9 Harness** | Needs owner DuckStation oracle + capture fill |
 | **WSTAG460** | Host `updateWanderer` SEGV; weak stub only |
 | **EU playthrough** | Not in gate claim |
@@ -129,9 +130,9 @@ Documented separately and already ticked on main ROADMAP:
 Autonomy should pause on these; port glue alone cannot close the gate:
 
 1. **PSY-Z `_SsSeqPlay`** (and SEP note-on path) — P3.6 title/field/battle music.
-2. **PSY-Z `MDEC_*` + STR streaming** (or an honest host skip that still
+2. **PSY-Z VLC + STR streaming / XA** (or an honest host skip that still
    advances story state past `0xE01`/`0xE02`) — P3.7 and the automated
-   intro wall above.
+   intro wall above. Soft `MDEC_*` is wired (Wave 1).
 3. **Owner DuckStation** — P3.9 visual oracle / screenshot harness.
 4. **WSTAG460** — optional for “all loadable stages”; required if gate
    or P3.8 is reinterpreted as 239/239 including Reliability Spot.
