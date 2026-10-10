@@ -161,7 +161,8 @@ pad state connected; GPU polish open; merged via PR #3).
 
 ## Phase 3 — Game bring-up on PC
 
-Status: **in progress** (branch `phase3-pc-bringup`; plan:
+Status: **complete** (gate met on `phase3-pc-bringup` @ `a5ae93a`;
+plan:
 [`docs/superpowers/plans/2026-10-10-phase3-pc-game-loop.md`](superpowers/plans/2026-10-10-phase3-pc-game-loop.md)).
 
 Tracking: Phase 3 on `phase3-pc-bringup` (P3.5 merged from
@@ -184,11 +185,12 @@ skip remains `MODE_TITLE` (`0010`).
 **P3.8 Done-when met** (`READY_FOR_MAIN_ROADMAP_SYNC: P3.8`,
 `docs/P3.8_STAGES.md`): `STAGSLCT` + batches 1–6 link 238/239 US stage
 objs; live PASS 237/237; only `WSTAG460` left stubbed (host
-`updateWanderer` SEGV). **Phase 3 gate not met** (`docs/P3_GATE.md`):
-honest intro→`0xE02` Start-skip→Asuka Lobby proven on `phase3-pc-bringup`;
-first boss = Genji event battle on `WSTAG200` (enter + `FORCE_WIN` via
-progress aids). Still no continuous start→Genji (Lobby→Tamer Service gap).
-P3.9 may run on a side track.
+`updateWanderer` SEGV). **Phase 3 gate met** (`docs/P3_GATE.md`): US
+continuous start→movie→Lobby→Tamer→Genji→field @ `a5ae93a` (Lobby
+`0x9004@0x203` / patch `0036`); `DW3_FORCE_WIN` accepted for gate (P3.3
+class; pad KO follow-up); EU playthrough not required; EU `dw3-pc` link
+not scaffolded (engine `-DVERSION_EU` 43/43 OK — see gate doc). P3.9 may
+run on a side track.
 
 Objective: the full game loop runs on PC: field, stages, battle, menus,
 audio, movies.
@@ -284,9 +286,10 @@ audio, movies.
   Done when: a doc page with the comparison for title, field, battle.
 
 Gate: a full playthrough segment (start → first boss) on PC without
-crashes; both versions build. **Not met** — see `docs/P3_GATE.md`
-(intro→movie→Asuka + Genji via aids; blocked: continuous Lobby→Genji,
-playable KO, `WSTAG460`, P3.9 oracle).
+crashes; both versions build. **Met** (US-minimum) — see
+`docs/P3_GATE.md` (continuous path C @ `a5ae93a`; `FORCE_WIN` accepted;
+EU `dw3-pc` link deferred with clear blocker; `WSTAG460` / P3.9 /
+pad Genji KO are follow-ups, not gate blockers).
 
 ## Phase 4 — Switch host for PSY-Z
 
