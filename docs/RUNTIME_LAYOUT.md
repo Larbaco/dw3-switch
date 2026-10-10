@@ -45,9 +45,11 @@ python3 tools/build_file_map.py --check runtime/us/files_us.json \
 
 On PS1 the boot TIM is the executable's tail, resident at `OVERLAY_VRAM`
 before overlays overwrite that region (`BOOT_IMAGE_RECT` in
-`vendor/dw3_decomp/src/engine/system/main.c`). Phase 1 does **not** invent
-`boot_tim.bin`. The packer writes `BOOT_IMAGE.txt` explaining the gap; Phase 2
-will extract the tail into `boot_tim.bin` when the decomp/assets path is wired.
+`vendor/dw3_decomp/src/engine/system/main.c`). The packer writes
+`BOOT_IMAGE.txt` explaining the gap; extract the tail into
+`runtime/us/boot_tim.bin` when assets are available. Under `PORT_HOST`,
+`main` currently **skips** the TIM upload (stub in patch `0005`) until E6
+wires a host file read; see `port/overlays/README.md`.
 
 ## Git
 

@@ -1,0 +1,57 @@
+Upstream-bound: no
+Subject: [PORT_HOST] allocMemHigh returns the allocated pointer
+
+Matching builds rely on the pointer left in v0 after tryAllocMemHigh.
+Under PORT_HOST return it explicitly (ROADMAP P2.3 / SURVEY).
+
+--- a/src/engine/system/heap.c
++++ b/src/engine/system/heap.c
+@@ -154,11 +154,22 @@
+ }
+ 
+ /* The block is returned in v0, left there by tryAllocMemHigh */
++#if PORT_HOST
++void *allocMemHigh(s32 size, s32 tag) {
++    void *ptr;
++
++    while ((ptr = tryAllocMemHigh(size, tag)) == NULL) {
++        FILE_CACHE.evictOldest();
++    }
++    return ptr;
++}
++#else
+ void allocMemHigh(s32 size, s32 tag) {
+     while (tryAllocMemHigh(size, tag) == 0) {
+         FILE_CACHE.evictOldest();
+     }
+ }
++#endif
+ 
+ /* allocMem, cleared */
+ void *allocMemZeroed(s32 size, s32 tag) {
+@@ -189,7 +200,11 @@
+     freeMem,
+     freeMemByTag,
+     allocMem,
++#if PORT_HOST
++    allocMemHigh,
++#else
+     (void *(*)(s32, s32))allocMemHigh,
++#endif
+     allocMemZeroed,
+     zeroMem,
+     (void (*)(void *, s32, s32))fillMem,
+--- a/include/engine/heap.h
++++ b/include/engine/heap.h
+@@ -50,7 +50,11 @@
+ void zeroMem(void *dst, s32 size);
+ void fillMem(s8 *dst, s8 value, s32 count);
+ void *allocMem(s32 size, s32 tag);
++#if PORT_HOST
++void *allocMemHigh(s32 size, s32 tag);
++#else
+ void allocMemHigh(s32 size, s32 tag);
++#endif
+ void *allocMemZeroed(s32 size, s32 tag);
+ void lockMem(void *ptr, s32 lock);
+ void *tryAllocMem(u32 size, s32 tag);

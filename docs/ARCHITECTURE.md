@@ -55,9 +55,9 @@ See [SURVEY.md](SURVEY.md) for the evidence behind each point.
   generated from the owner's disc.
 - The saved part of `GameState` has no pointers, so PS1 save format
   compatibility (`.mcr`) is a goal, not a stretch.
-- MIPS-only constructs to compile out: scratchpad stack in
-  `task/registry.c`, `allocMemHigh` returning via `v0`, GTE inline asm in
-  `include/engine/gte.h`.
+- MIPS-only constructs (P2.3 done for engine host): scratchpad stack
+  no-ops, `allocMemHigh` returns the pointer, GTE macros → PSY-Z software
+  GTE, overlay address symbols in `port/overlays/` (restore model P2.6).
 
 ## Non-goals (for now)
 

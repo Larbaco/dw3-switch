@@ -10,6 +10,7 @@ Platform-independent pieces between the host (PC / Switch) and game C from
 | `CMakeLists.txt` | `dw3_engine` OBJECT library (`src/engine/**/*.c`, US flags) |
 | `include/` | Host headers first (`common.h`, `libpad.h`, `libgte.h`/`libgs.h` fill-ins) |
 | `patches/` | Build-copy patches; see [`docs/PATCHES.md`](../docs/PATCHES.md) |
+| `overlays/` | Host `OVERLAY_ADDRESS` / VRAM buffers (P2.3); restore model in P2.6 |
 
 ## Engine objects (P2.1)
 

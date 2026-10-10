@@ -51,6 +51,11 @@ endif()
 add_library(dw3_engine OBJECT ${DW3_ENGINE_SOURCES})
 add_dependencies(dw3_engine dw3_decomp_patched)
 
+# Host overlay address buffers (P2.3); restore semantics are E5 / P2.6.
+add_library(dw3_host_overlays OBJECT
+  "${CMAKE_CURRENT_SOURCE_DIR}/overlays/host_vram.c"
+)
+
 # Include order: port host → PSY-Z (Psy-Q names) → decomp headers/sources.
 # port/include/common.h shadows decomp common.h so gnu89 does not redefine
 # s8/u8 against PSY-Z's psyz/types.h.
@@ -68,8 +73,16 @@ target_compile_definitions(dw3_engine PRIVATE
   SKIP_ASM=1
   __psyz
 )
+target_compile_definitions(dw3_host_overlays PRIVATE
+  PORT_HOST=1
+)
 
 set_target_properties(dw3_engine PROPERTIES
+  C_STANDARD 90
+  C_STANDARD_REQUIRED ON
+  C_EXTENSIONS ON
+)
+set_target_properties(dw3_host_overlays PROPERTIES
   C_STANDARD 90
   C_STANDARD_REQUIRED ON
   C_EXTENSIONS ON
@@ -92,9 +105,12 @@ target_compile_options(dw3_engine PRIVATE
 )
 
 # Archive forces object compilation without linking into the PC stub (has its own main).
-add_library(dw3_engine_objs STATIC $<TARGET_OBJECTS:dw3_engine>)
+add_library(dw3_engine_objs STATIC
+  $<TARGET_OBJECTS:dw3_engine>
+  $<TARGET_OBJECTS:dw3_host_overlays>
+)
 set_target_properties(dw3_engine_objs PROPERTIES
   OUTPUT_NAME dw3_engine
   LINKER_LANGUAGE C
 )
-add_dependencies(dw3_engine_objs dw3_engine)
+add_dependencies(dw3_engine_objs dw3_engine dw3_host_overlays)

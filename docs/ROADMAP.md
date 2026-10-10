@@ -88,10 +88,11 @@ the host, replace MIPS-only pieces, and reach the title screen on PC.
   `docs/PATCHES.md`: every patch states whether it is upstream-bound
   (match-neutral) or port-only.
   Done when: an empty patch series round-trips and CI runs the check.
-- [ ] **P2.3 Replace MIPS-only code.** `SetSpadStack`/`ResetSpadStack`
+- [x] **P2.3 Replace MIPS-only code.** `SetSpadStack`/`ResetSpadStack`
   → no-ops under `PORT_HOST`; `allocMemHigh` returns the pointer;
-  `OVERLAY_ADDRESS`/`SUB_OVERLAY_ADDRESS` become host symbols; boot TIM
-  read from the packed exe tail; GTE macros in `include/engine/gte.h`
+  `OVERLAY_ADDRESS`/`SUB_OVERLAY_ADDRESS` become host symbols
+  (`port/overlays/host_vram.c`); boot TIM stubbed pending
+  `runtime/us/boot_tim.bin` (E6); GTE macros in `include/engine/gte.h`
   mapped to PSY-Z's software GTE under `PORT_HOST`.
   Done when: no `__asm__` remains in the host build and `grep -r mtc2`
   over the preprocessed output is empty.
