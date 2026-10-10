@@ -602,6 +602,34 @@ set_target_properties(dw3_p35_cardgame PROPERTIES
 )
 add_dependencies(dw3_p35_cardgame dw3_p35_cardgame_objs)
 
+# ---------------------------------------------------------------------------
+# P3.8: STAGSLCT debug stage select with named .data/.bss restore.
+# ---------------------------------------------------------------------------
+file(GLOB DW3_STAGSLCT_SOURCES CONFIGURE_DEPENDS
+  "${DECOMP_SRC}/src/debug/stage_select/*.c")
+list(FILTER DW3_STAGSLCT_SOURCES EXCLUDE REGEX "\\.inc\\.c$")
+list(LENGTH DW3_STAGSLCT_SOURCES _dw3_stagslct_count)
+if(_dw3_stagslct_count EQUAL 0)
+  message(FATAL_ERROR "P3.8 STAGSLCT sources missing under ${DECOMP_SRC}/src/debug/stage_select")
+endif()
+
+dw3_host_menu_overlay(stagslct ${DW3_STAGSLCT_SOURCES})
+
+set(DW3_P38_HOST_OBJECTS
+  "${DW3_HOST_OVL_DIR}/stagslct.host.o"
+)
+set_source_files_properties(${DW3_P38_HOST_OBJECTS} PROPERTIES
+  EXTERNAL_OBJECT TRUE
+  GENERATED TRUE
+)
+add_custom_target(dw3_p38_stagslct_objs DEPENDS ${DW3_P38_HOST_OBJECTS})
+
+add_library(dw3_p38_stagslct STATIC ${DW3_P38_HOST_OBJECTS})
+set_target_properties(dw3_p38_stagslct PROPERTIES
+  LINKER_LANGUAGE C
+)
+add_dependencies(dw3_p38_stagslct dw3_p38_stagslct_objs)
+
 # Archive for the PC host: engine + title + port glue (field/battle/menu objs separate).
 add_library(dw3_engine_objs STATIC
   $<TARGET_OBJECTS:dw3_engine>

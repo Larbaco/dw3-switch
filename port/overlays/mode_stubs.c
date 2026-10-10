@@ -21,5 +21,5 @@ DW3_MODE_STUB(SOUNDTST_start)
 DW3_MODE_STUB(SHOCKTST_start)
 /* STGTRAIN / STDGNAME / STGMCARD / STGDGLAB / STITSHOP / STSTATUS: P3.4 linked. */
 /* STFGTREP_start comes from P3.3 host overlay objects — do not weak-stub. */
-DW3_MODE_STUB(STAGSLCT_start)
+/* STAGSLCT_start: P3.8 linked — do not weak-stub. */
 DW3_MODE_STUB(CNTY_SEL_start)

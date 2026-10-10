@@ -177,8 +177,10 @@ item + return to `FIELDSTG` proven; album `cardsSeen` 29→30 is host
 blocked** (`READY_FOR_MAIN_ROADMAP_SYNC: P3.7_BLOCKED`,
 `docs/P3.7_MOVIES.md`): `DW3_START_MODE=0xE01` reaches movie path;
 PSY-Z `MDEC_*` / `StCdInterrupt` stubs + no CD track for
-`MOVIEOPN.STR` LBA; default skip remains `MODE_TITLE`. P3.6 / P3.9 may
-run on side tracks.
+`MOVIEOPN.STR` LBA; default skip remains `MODE_TITLE`. **P3.8 partial**
+(`READY_FOR_MAIN_ROADMAP_SYNC: P3.8_PARTIAL`, `docs/P3.8_STAGES.md`):
+`STAGSLCT` linked; STAGSLCT→field→STAGSLCT PASS for `0x2d7`/`2d8`/`2d9`;
+235 US stages still stubbed. P3.6 / P3.9 may run on side tracks.
 
 Objective: the full game loop runs on PC: field, stages, battle, menus,
 audio, movies.
@@ -245,8 +247,12 @@ audio, movies.
   `MODE_TITLE` (patch `0010`) retained. Checkbox unticked until play +
   audio + Start-skip.
   Done when: the opening movies play with audio and can be skipped.
-- [ ] **P3.8 Stage sweep.** Use `STAGSLCT` (debug stage select) to load
-  every stage of the version and log crashes/asserts.
+- [ ] **P3.8 Stage sweep.** `STAGSLCT` linked (`dw3_p38_stagslct`); patch
+  `0030` + `tools/stage_sweep.py`. **Partial** (`docs/P3.8_STAGES.md`,
+  `READY_FOR_MAIN_ROADMAP_SYNC: P3.8_PARTIAL`): live PASS for linked
+  `WSTAG780`/`785`/`790` (`0x2d7`/`2d8`/`2d9`) STAGSLCT→field→select;
+  235/239 US `FIELDSTG_stages` still weak stubs (sample `0x200` SEGV).
+  Checkbox unticked until all stages load and return to select.
   Done when: all stages load and return to the select screen.
 - [ ] **P3.9 Reference comparison harness.** Script that boots the same
   save in DuckStation and the PC build and captures screenshots for

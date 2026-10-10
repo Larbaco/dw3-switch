@@ -110,6 +110,11 @@ extern char __stop_dw3data_stcrdabm[];
 extern char __start_dw3bss_stcrdabm[];
 extern char __stop_dw3bss_stcrdabm[];
 
+extern char __start_dw3data_stagslct[];
+extern char __stop_dw3data_stagslct[];
+extern char __start_dw3bss_stagslct[];
+extern char __stop_dw3bss_stagslct[];
+
 static void bind_section(Dw3OverlayDesc *desc, char *data, char *data_end, char *bss,
                          char *bss_end) {
     size_t data_size;
@@ -201,3 +206,9 @@ void dw3_overlay_bind_cardgame_sections(Dw3OverlayDesc *cardgame, Dw3OverlayDesc
     bind_section(stcrdabm, __start_dw3data_stcrdabm, __stop_dw3data_stcrdabm,
                  __start_dw3bss_stcrdabm, __stop_dw3bss_stcrdabm);
 }
+
+void dw3_overlay_bind_stagslct_sections(Dw3OverlayDesc *stagslct) {
+    bind_section(stagslct, __start_dw3data_stagslct, __stop_dw3data_stagslct,
+                 __start_dw3bss_stagslct, __stop_dw3bss_stagslct);
+}
+

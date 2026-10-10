@@ -1,0 +1,162 @@
+Upstream-bound: no
+Subject: [PORT_HOST] P3.8 STAGSLCT stage sweep aids
+
+DW3_FORCE_STAGE from MODE_STAGE_SELECT; DW3_AUTO_STAGE_RETURN back to
+STAGSLCT; STAGE_SWEEP_PASS / DW3_STAGE_SWEEP_EXIT. Seed party on
+MODE_STAGE_SELECT boot. Allocate StageSelectWindows children; stub
+BIOS ROM read; skip TASK_KILL cursor requestMode when FORCE_STAGE set.
+
+--- a/src/engine/system/overlay.c
++++ b/src/engine/system/overlay.c
+@@ -5,6 +5,7 @@
+ #include <stdio.h>
+ char *getenv(const char *name);
+ long strtol(const char *nptr, char **endptr, int base);
++void exit(int status);
+ /* Armed by CARDGAME return when DW3_AFTER_CARD_ALBUM is set. */
+ s32 DW3_afterCardAlbumArm;
+ #endif
+@@ -97,6 +98,82 @@
+             }
+         }
+         {
++            /* P3.8: STAGSLCT → stage → return sweep aids. */
++            const char *force = getenv("DW3_FORCE_STAGE");
++            const char *force_frames = getenv("DW3_FORCE_STAGE_FRAMES");
++            const char *ret_stage = getenv("DW3_AUTO_STAGE_RETURN");
++            const char *sweep_exit = getenv("DW3_STAGE_SWEEP_EXIT");
++            static s32 force_stage_frames;
++            static s32 stage_return_frames;
++            static s32 forced_stage_mode;
++            static s32 saw_stage_load;
++            static s32 saw_select_return;
++            long need_force = 30;
++            long need_return = 120;
++            char *end = NULL;
++            s32 mode = GAME.funcs.getMode();
++
++            if (force_frames != NULL && force_frames[0] != '\0') {
++                need_force = strtol(force_frames, &end, 0);
++                if (need_force < 1) {
++                    need_force = 30;
++                }
++            }
++            if (ret_stage != NULL && ret_stage[0] != '\0') {
++                need_return = strtol(ret_stage, &end, 0);
++                if (need_return < 1) {
++                    need_return = 120;
++                }
++            }
++
++            if (force != NULL && force[0] != '\0' && mode == MODE_STAGE_SELECT &&
++                forced_stage_mode == 0) {
++                if (++force_stage_frames >= (s32)need_force) {
++                    long stage_mode = strtol(force, &end, 0);
++                    if (end != force && stage_mode > 0) {
++                        if (GAME.funcs.getPartyMember(0) < 0) {
++                            GAME.funcs.setParty(0);
++                            fprintf(stderr, "dw3: P3.8 setParty(0) for stage sweep\n");
++                        }
++                        fprintf(stderr, "dw3: DW3_FORCE_STAGE requestMode=0x%lx\n",
++                                stage_mode);
++                        GAME.funcs.requestMode((s32)stage_mode, 0);
++                        forced_stage_mode = (s32)stage_mode;
++                        force_stage_frames = -0x7fffffff;
++                        saw_stage_load = 0;
++                        saw_select_return = 0;
++                        stage_return_frames = 0;
++                    }
++                }
++            }
++
++            if (forced_stage_mode != 0 && mode == forced_stage_mode) {
++                saw_stage_load = 1;
++                if (ret_stage != NULL && ret_stage[0] != '\0') {
++                    if (++stage_return_frames >= (s32)need_return) {
++                        fprintf(stderr,
++                                "dw3: AUTO_STAGE_RETURN mode=0x%x -> MODE_STAGE_SELECT\n",
++                                (unsigned)mode);
++                        GAME.funcs.requestMode(MODE_STAGE_SELECT, 0);
++                        stage_return_frames = -0x7fffffff;
++                    }
++                }
++            }
++
++            if (forced_stage_mode != 0 && saw_stage_load != 0 &&
++                mode == MODE_STAGE_SELECT && saw_select_return == 0) {
++                saw_select_return = 1;
++                fprintf(stderr,
++                        "dw3: STAGE_SWEEP_PASS mode=0x%x returned to STAGSLCT\n",
++                        (unsigned)forced_stage_mode);
++                if (sweep_exit != NULL && sweep_exit[0] != '\0' &&
++                    sweep_exit[0] != '0') {
++                    fprintf(stderr, "dw3: STAGE_SWEEP_EXIT after pass\n");
++                    exit(0);
++                }
++            }
++        }
++        {
+             const char *ret = getenv("DW3_AUTO_MENU_RETURN");
+             static s32 menu_frames;
+             static s32 menu_mode;
+--- a/src/engine/game/state.c
++++ b/src/engine/game/state.c
+@@ -83,7 +83,8 @@
+             mode == MODE_DIGI_LAB || mode == MODE_CONTINUE || mode == MODE_NAMING ||
+             mode == MODE_PLAYER_NAME || mode == MODE_CARD_GAME ||
+             mode == MODE_DECK_EDITOR || mode == MODE_CARD_ALBUM ||
+-            mode == MODE_CARD_SHOP || (force != NULL && force[0] != '\0')) {
++            mode == MODE_CARD_SHOP || mode == MODE_STAGE_SELECT ||
++            (force != NULL && force[0] != '\0')) {
+             if (GAME.funcs.getPartyMember(0) < 0) {
+                 GAME.funcs.setParty(0);
+                 fprintf(stderr, "dw3: P3.4/P3.5 setParty(0) for menu/card bring-up\n");
+--- a/src/debug/stage_select/stage_select.c
++++ b/src/debug/stage_select/stage_select.c
+@@ -1,4 +1,7 @@
+ #include "debug/stage_select.h"
++#if PORT_HOST
++char *getenv(const char *name);
++#endif
+ 
+ #if VERSION_EU
+ /* "＞": the European overlay has 0x39 in the byte that pads it, where GCC
+@@ -757,7 +760,12 @@
+     if (sel->biosShown == 0) {
+         win->bios = createTextWindow(SCREEN_LAYER, 1, 0x10, 0x20);
+         /* the BIOS version string in the ROM, in full-width Shift-JIS */
++#if PORT_HOST
++        /* PS1 ROM window is not mapped on host; use a fixed SCPH-style tag. */
++        src = (u8 *)"SCPH1001  ";
++#else
+         src = (u8 *)0x1FC0012C;
++#endif
+         for (i = 0; i < 10; i++, src++) {
+             /* the match depends on the breaks out of a do/while (0): loop.c
+                moves the letter's and the dash's blocks up after the digit's,
+@@ -1046,6 +1054,16 @@
+         }
+         break;
+     case TASK_KILL:
++#if PORT_HOST
++        /* P3.8: DW3_FORCE_STAGE already requested the target mode from
++           updateModeTask; do not let the cursor entry overwrite it (entry 0
++           is MODE_STAGE_SELECT). */
++        if (getenv("DW3_FORCE_STAGE") != NULL && getenv("DW3_FORCE_STAGE")[0] != '\0') {
++            GAME.stageSelectTop = sel->top;
++            GAME.stageSelectCursor = sel->cursor;
++            break;
++        }
++#endif
+         if (STAGSLCT_entries[sel->top + sel->cursor].arg & 0x8000) {
+             GAME.funcs.requestMode(STAGSLCT_entries[sel->top + sel->cursor].scene, 0);
+             GAME.progress = STAGSLCT_entries[sel->top + sel->cursor].arg & 0xFF;
+@@ -1063,7 +1081,7 @@
+ 
+ /* Creates the stage select */
+ Task *STAGSLCT_createStageSelect(void) {
+-    return createTask(STAGSLCT_updateStageSelect, sizeof(StageSelect), 0);
++    return createTask(STAGSLCT_updateStageSelect, sizeof(StageSelect), sizeof(StageSelectWindows));
+ }
+ 
+ #if VERSION_EU

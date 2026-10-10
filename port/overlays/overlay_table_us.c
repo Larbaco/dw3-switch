@@ -1,9 +1,10 @@
 /*
- * US overlay table for title + field + battle + menus + cardgame (P2.6–P3.5).
+ * US overlay table for title + field + battle + menus + cardgame + STAGSLCT
+ * (P2.6–P3.8).
  *
  * Linked overlays: STDWTITL, FIELDSTG, STPLNMET, WSTAG260/780/785/790,
  * FIGHTSTG, WFIGHTMN, STFGTREP, STSTATUS, STITSHOP, STGTRAIN, STGDGLAB,
- * STGMCARD, STDGNAME, CARDGAME, STCRDDEK, STCRDSHP, STCRDABM.
+ * STGMCARD, STDGNAME, CARDGAME, STCRDDEK, STCRDSHP, STCRDABM, STAGSLCT.
  * .data/.bss snapshots are bound from named sections at register time.
  */
 #ifndef PORT_HOST
@@ -35,6 +36,7 @@
 #define DW3_FILE_STCRDDEK 0x1BC
 #define DW3_FILE_STCRDSHP 0x1C0
 #define DW3_FILE_STCRDABM 0x177
+#define DW3_FILE_STAGSLCT 0x176
 
 void *STDWTITL_start(void);
 void *FIELDSTG_start(void);
@@ -51,6 +53,7 @@ void *CARDGAME_start(void);
 void *STCRDDEK_start(void);
 void *STCRDSHP_start(void);
 void *STCRDABM_start(void);
+void *STAGSLCT_start(void);
 
 void dw3_overlay_bind_field_sections(Dw3OverlayDesc *fieldstg, Dw3OverlayDesc *stplnmet,
                                      Dw3OverlayDesc *wstag260, Dw3OverlayDesc *wstag780,
@@ -62,6 +65,7 @@ void dw3_overlay_bind_menu_sections(Dw3OverlayDesc *ststatus, Dw3OverlayDesc *st
                                     Dw3OverlayDesc *stgmcard, Dw3OverlayDesc *stdgname);
 void dw3_overlay_bind_cardgame_sections(Dw3OverlayDesc *cardgame, Dw3OverlayDesc *stcrddek,
                                         Dw3OverlayDesc *stcrdshp, Dw3OverlayDesc *stcrdabm);
+void dw3_overlay_bind_stagslct_sections(Dw3OverlayDesc *stagslct);
 
 static Dw3OverlayDesc g_us_overlays[] = {
     {DW3_FILE_STDWTITL, NULL, NULL, NULL, 0, NULL, 0},
@@ -84,6 +88,7 @@ static Dw3OverlayDesc g_us_overlays[] = {
     {DW3_FILE_STCRDDEK, NULL, NULL, NULL, 0, NULL, 0},
     {DW3_FILE_STCRDSHP, NULL, NULL, NULL, 0, NULL, 0},
     {DW3_FILE_STCRDABM, NULL, NULL, NULL, 0, NULL, 0},
+    {DW3_FILE_STAGSLCT, NULL, NULL, NULL, 0, NULL, 0},
 };
 
 void dw3_overlay_register_us_title(void) {
@@ -108,6 +113,7 @@ void dw3_overlay_register_us_title(void) {
     g_us_overlays[17].entry = (Dw3OverlayEntry)STCRDDEK_start;
     g_us_overlays[18].entry = (Dw3OverlayEntry)STCRDSHP_start;
     g_us_overlays[19].entry = (Dw3OverlayEntry)STCRDABM_start;
+    g_us_overlays[20].entry = (Dw3OverlayEntry)STAGSLCT_start;
 
     dw3_overlay_bind_field_sections(&g_us_overlays[1], &g_us_overlays[2], &g_us_overlays[3],
                                     &g_us_overlays[4], &g_us_overlays[5], &g_us_overlays[6]);
@@ -116,6 +122,7 @@ void dw3_overlay_register_us_title(void) {
                                    &g_us_overlays[13], &g_us_overlays[14], &g_us_overlays[15]);
     dw3_overlay_bind_cardgame_sections(&g_us_overlays[16], &g_us_overlays[17], &g_us_overlays[18],
                                        &g_us_overlays[19]);
+    dw3_overlay_bind_stagslct_sections(&g_us_overlays[20]);
 
     dw3_overlay_set_table(g_us_overlays,
                           sizeof(g_us_overlays) / sizeof(g_us_overlays[0]));
@@ -123,11 +130,12 @@ void dw3_overlay_register_us_title(void) {
             "dw3: registered US overlays STDWTITL/FIELDSTG/STPLNMET/"
             "WSTAG260/780/785/790/FIGHTSTG/WFIGHTMN/STFGTREP/"
             "STSTATUS/STITSHOP/STGTRAIN/STGDGLAB/STGMCARD/STDGNAME/"
-            "CARDGAME/STCRDDEK/STCRDSHP/STCRDABM "
-            "entries=%p/%p/%p/%p/%p/%p/%p/%p/%p/%p/%p/%p/%p/%p/%p\n",
+            "CARDGAME/STCRDDEK/STCRDSHP/STCRDABM/STAGSLCT "
+            "entries=%p/%p/%p/%p/%p/%p/%p/%p/%p/%p/%p/%p/%p/%p/%p/%p\n",
             (void *)STDWTITL_start, (void *)FIELDSTG_start, (void *)STPLNMET_start,
             (void *)FIGHTSTG_start, (void *)STFGTREP_start, (void *)STSTATUS_start,
             (void *)STITSHOP_start, (void *)STGTRAIN_start, (void *)STGDGLAB_createScene,
             (void *)STGMCARD_start, (void *)STDGNAME_start, (void *)CARDGAME_start,
-            (void *)STCRDDEK_start, (void *)STCRDSHP_start, (void *)STCRDABM_start);
+            (void *)STCRDDEK_start, (void *)STCRDSHP_start, (void *)STCRDABM_start,
+            (void *)STAGSLCT_start);
 }
