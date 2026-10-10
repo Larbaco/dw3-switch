@@ -1,6 +1,6 @@
 /*
  * Bind host overlay descriptors to named .data/.bss sections produced by
- * tools/prefix_stage_obj.py (stages) and ld -r + objcopy (FIELDSTG / STPLNMET).
+ * tools/prefix_stage_obj.py (stages) and ld -r + objcopy (mode overlays).
  *
  * GNU ld provides __start_<sec> / __stop_<sec> for referenced orphan sections.
  */
@@ -59,6 +59,36 @@ extern char __start_dw3data_stfgtrep[];
 extern char __stop_dw3data_stfgtrep[];
 extern char __start_dw3bss_stfgtrep[];
 extern char __stop_dw3bss_stfgtrep[];
+
+extern char __start_dw3data_ststatus[];
+extern char __stop_dw3data_ststatus[];
+extern char __start_dw3bss_ststatus[];
+extern char __stop_dw3bss_ststatus[];
+
+extern char __start_dw3data_stitshop[];
+extern char __stop_dw3data_stitshop[];
+extern char __start_dw3bss_stitshop[];
+extern char __stop_dw3bss_stitshop[];
+
+extern char __start_dw3data_stgtrain[];
+extern char __stop_dw3data_stgtrain[];
+extern char __start_dw3bss_stgtrain[];
+extern char __stop_dw3bss_stgtrain[];
+
+extern char __start_dw3data_stgdglab[];
+extern char __stop_dw3data_stgdglab[];
+extern char __start_dw3bss_stgdglab[];
+extern char __stop_dw3bss_stgdglab[];
+
+extern char __start_dw3data_stgmcard[];
+extern char __stop_dw3data_stgmcard[];
+extern char __start_dw3bss_stgmcard[];
+extern char __stop_dw3bss_stgmcard[];
+
+extern char __start_dw3data_stdgname[];
+extern char __stop_dw3data_stdgname[];
+extern char __start_dw3bss_stdgname[];
+extern char __stop_dw3bss_stdgname[];
 
 static void bind_section(Dw3OverlayDesc *desc, char *data, char *data_end, char *bss,
                          char *bss_end) {
@@ -121,4 +151,21 @@ void dw3_overlay_bind_battle_sections(Dw3OverlayDesc *fightstg, Dw3OverlayDesc *
                  __start_dw3bss_wfightmn, __stop_dw3bss_wfightmn);
     bind_section(stfgtrep, __start_dw3data_stfgtrep, __stop_dw3data_stfgtrep,
                  __start_dw3bss_stfgtrep, __stop_dw3bss_stfgtrep);
+}
+
+void dw3_overlay_bind_menu_sections(Dw3OverlayDesc *ststatus, Dw3OverlayDesc *stitshop,
+                                    Dw3OverlayDesc *stgtrain, Dw3OverlayDesc *stgdglab,
+                                    Dw3OverlayDesc *stgmcard, Dw3OverlayDesc *stdgname) {
+    bind_section(ststatus, __start_dw3data_ststatus, __stop_dw3data_ststatus,
+                 __start_dw3bss_ststatus, __stop_dw3bss_ststatus);
+    bind_section(stitshop, __start_dw3data_stitshop, __stop_dw3data_stitshop,
+                 __start_dw3bss_stitshop, __stop_dw3bss_stitshop);
+    bind_section(stgtrain, __start_dw3data_stgtrain, __stop_dw3data_stgtrain,
+                 __start_dw3bss_stgtrain, __stop_dw3bss_stgtrain);
+    bind_section(stgdglab, __start_dw3data_stgdglab, __stop_dw3data_stgdglab,
+                 __start_dw3bss_stgdglab, __stop_dw3bss_stgdglab);
+    bind_section(stgmcard, __start_dw3data_stgmcard, __stop_dw3data_stgmcard,
+                 __start_dw3bss_stgmcard, __stop_dw3bss_stgmcard);
+    bind_section(stdgname, __start_dw3data_stdgname, __stop_dw3data_stdgname,
+                 __start_dw3bss_stdgname, __stop_dw3bss_stdgname);
 }

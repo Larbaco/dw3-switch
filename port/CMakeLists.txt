@@ -462,7 +462,85 @@ set_target_properties(dw3_p33_battle PROPERTIES
 )
 add_dependencies(dw3_p33_battle dw3_p33_battle_objs)
 
-# Archive for the PC host: engine + title + port glue (field/battle objs separate).
+# ---------------------------------------------------------------------------
+# P3.4: menu / shop overlays with named .data/.bss restore.
+# STPLNMET is already packed with P3.2 field objs.
+# ---------------------------------------------------------------------------
+function(dw3_host_menu_overlay name)
+  set(_srcs ${ARGN})
+  list(LENGTH _srcs _n)
+  if(_n EQUAL 0)
+    message(FATAL_ERROR "dw3_host_menu_overlay(${name}): no sources")
+  endif()
+  dw3_compile_c_objects(_objs ${_srcs})
+  add_custom_command(
+    OUTPUT "${DW3_HOST_OVL_DIR}/${name}.host.o"
+    COMMAND ${CMAKE_COMMAND} -E env PYTHONUNBUFFERED=1
+      "${CMAKE_COMMAND}" -E rm -f "${DW3_HOST_OVL_DIR}/${name}.host.o"
+    COMMAND python3 "${RENAME_OVL_SECTIONS}" "${name}"
+      "${DW3_HOST_OVL_DIR}/${name}.host.o"
+      ${_objs}
+    DEPENDS ${_objs} "${RENAME_OVL_SECTIONS}"
+    COMMENT "P3.4 pack ${name} host overlay object"
+    VERBATIM
+  )
+endfunction()
+
+file(GLOB DW3_STSTATUS_SOURCES CONFIGURE_DEPENDS
+  "${DECOMP_SRC}/src/menus/field_menu/*.c")
+list(FILTER DW3_STSTATUS_SOURCES EXCLUDE REGEX "\\.inc\\.c$")
+
+file(GLOB DW3_STITSHOP_SOURCES CONFIGURE_DEPENDS
+  "${DECOMP_SRC}/src/menus/item_shop/*.c"
+  "${DECOMP_SRC}/src/menus/item_shop/data/*.c")
+list(FILTER DW3_STITSHOP_SOURCES EXCLUDE REGEX "\\.inc\\.c$")
+
+file(GLOB DW3_STGTRAIN_SOURCES CONFIGURE_DEPENDS
+  "${DECOMP_SRC}/src/menus/gym/*.c")
+list(FILTER DW3_STGTRAIN_SOURCES EXCLUDE REGEX "\\.inc\\.c$")
+
+file(GLOB DW3_STGDGLAB_SOURCES CONFIGURE_DEPENDS
+  "${DECOMP_SRC}/src/menus/digimon_lab/*.c")
+list(FILTER DW3_STGDGLAB_SOURCES EXCLUDE REGEX "\\.inc\\.c$")
+
+file(GLOB DW3_STGMCARD_SOURCES CONFIGURE_DEPENDS
+  "${DECOMP_SRC}/src/menus/memory_card/*.c"
+  "${DECOMP_SRC}/src/menus/memory_card/data/*.c")
+list(FILTER DW3_STGMCARD_SOURCES EXCLUDE REGEX "\\.inc\\.c$")
+
+file(GLOB DW3_STDGNAME_SOURCES CONFIGURE_DEPENDS
+  "${DECOMP_SRC}/src/menus/partner_name/*.c"
+  "${DECOMP_SRC}/src/menus/partner_name/data/*.c")
+list(FILTER DW3_STDGNAME_SOURCES EXCLUDE REGEX "\\.inc\\.c$")
+
+dw3_host_menu_overlay(ststatus ${DW3_STSTATUS_SOURCES})
+dw3_host_menu_overlay(stitshop ${DW3_STITSHOP_SOURCES})
+dw3_host_menu_overlay(stgtrain ${DW3_STGTRAIN_SOURCES})
+dw3_host_menu_overlay(stgdglab ${DW3_STGDGLAB_SOURCES})
+dw3_host_menu_overlay(stgmcard ${DW3_STGMCARD_SOURCES})
+dw3_host_menu_overlay(stdgname ${DW3_STDGNAME_SOURCES})
+
+set(DW3_P34_HOST_OBJECTS
+  "${DW3_HOST_OVL_DIR}/ststatus.host.o"
+  "${DW3_HOST_OVL_DIR}/stitshop.host.o"
+  "${DW3_HOST_OVL_DIR}/stgtrain.host.o"
+  "${DW3_HOST_OVL_DIR}/stgdglab.host.o"
+  "${DW3_HOST_OVL_DIR}/stgmcard.host.o"
+  "${DW3_HOST_OVL_DIR}/stdgname.host.o"
+)
+set_source_files_properties(${DW3_P34_HOST_OBJECTS} PROPERTIES
+  EXTERNAL_OBJECT TRUE
+  GENERATED TRUE
+)
+add_custom_target(dw3_p34_menu_objs DEPENDS ${DW3_P34_HOST_OBJECTS})
+
+add_library(dw3_p34_menus STATIC ${DW3_P34_HOST_OBJECTS})
+set_target_properties(dw3_p34_menus PROPERTIES
+  LINKER_LANGUAGE C
+)
+add_dependencies(dw3_p34_menus dw3_p34_menu_objs)
+
+# Archive for the PC host: engine + title + port glue (field/battle/menu objs separate).
 add_library(dw3_engine_objs STATIC
   $<TARGET_OBJECTS:dw3_engine>
   $<TARGET_OBJECTS:dw3_title>

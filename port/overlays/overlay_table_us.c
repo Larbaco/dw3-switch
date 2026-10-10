@@ -1,8 +1,9 @@
 /*
- * US overlay table for title + field + battle bring-up (P2.6 / P2.8 / P3.2 / P3.3).
+ * US overlay table for title + field + battle + menus (P2.6 / P2.8 / P3.2–P3.4).
  *
  * Linked overlays: STDWTITL, FIELDSTG, STPLNMET, WSTAG260/780/785/790,
- * FIGHTSTG, WFIGHTMN, STFGTREP.
+ * FIGHTSTG, WFIGHTMN, STFGTREP, STSTATUS, STITSHOP, STGTRAIN, STGDGLAB,
+ * STGMCARD, STDGNAME.
  * .data/.bss snapshots are bound from named sections at register time.
  */
 #ifndef PORT_HOST
@@ -24,18 +25,33 @@
 #define DW3_FILE_FIGHTSTG 0x159
 #define DW3_FILE_WFIGHTMN 0x1FA
 #define DW3_FILE_STFGTREP 0x1C2
+#define DW3_FILE_STSTATUS 0x1F9
+#define DW3_FILE_STITSHOP 0x1F7
+#define DW3_FILE_STGTRAIN 0x1F6
+#define DW3_FILE_STGDGLAB 0x1DF
+#define DW3_FILE_STGMCARD 0x1E3
+#define DW3_FILE_STDGNAME 0x154
 
 void *STDWTITL_start(void);
 void *FIELDSTG_start(void);
 void *STPLNMET_start(void);
 void *FIGHTSTG_start(void);
 void *STFGTREP_start(void);
+void *STSTATUS_start(void);
+void *STITSHOP_start(void);
+void *STGTRAIN_start(void);
+void *STGDGLAB_createScene(void);
+void *STGMCARD_start(void);
+void *STDGNAME_start(void);
 
 void dw3_overlay_bind_field_sections(Dw3OverlayDesc *fieldstg, Dw3OverlayDesc *stplnmet,
                                      Dw3OverlayDesc *wstag260, Dw3OverlayDesc *wstag780,
                                      Dw3OverlayDesc *wstag785, Dw3OverlayDesc *wstag790);
 void dw3_overlay_bind_battle_sections(Dw3OverlayDesc *fightstg, Dw3OverlayDesc *wfightmn,
                                       Dw3OverlayDesc *stfgtrep);
+void dw3_overlay_bind_menu_sections(Dw3OverlayDesc *ststatus, Dw3OverlayDesc *stitshop,
+                                    Dw3OverlayDesc *stgtrain, Dw3OverlayDesc *stgdglab,
+                                    Dw3OverlayDesc *stgmcard, Dw3OverlayDesc *stdgname);
 
 static Dw3OverlayDesc g_us_overlays[] = {
     {DW3_FILE_STDWTITL, NULL, NULL, NULL, 0, NULL, 0},
@@ -48,6 +64,12 @@ static Dw3OverlayDesc g_us_overlays[] = {
     {DW3_FILE_FIGHTSTG, NULL, NULL, NULL, 0, NULL, 0},
     {DW3_FILE_WFIGHTMN, NULL, NULL, NULL, 0, NULL, 0},
     {DW3_FILE_STFGTREP, NULL, NULL, NULL, 0, NULL, 0},
+    {DW3_FILE_STSTATUS, NULL, NULL, NULL, 0, NULL, 0},
+    {DW3_FILE_STITSHOP, NULL, NULL, NULL, 0, NULL, 0},
+    {DW3_FILE_STGTRAIN, NULL, NULL, NULL, 0, NULL, 0},
+    {DW3_FILE_STGDGLAB, NULL, NULL, NULL, 0, NULL, 0},
+    {DW3_FILE_STGMCARD, NULL, NULL, NULL, 0, NULL, 0},
+    {DW3_FILE_STDGNAME, NULL, NULL, NULL, 0, NULL, 0},
 };
 
 void dw3_overlay_register_us_title(void) {
@@ -62,17 +84,28 @@ void dw3_overlay_register_us_title(void) {
     g_us_overlays[7].entry = (Dw3OverlayEntry)FIGHTSTG_start;
     g_us_overlays[8].entry = NULL;
     g_us_overlays[9].entry = (Dw3OverlayEntry)STFGTREP_start;
+    g_us_overlays[10].entry = (Dw3OverlayEntry)STSTATUS_start;
+    g_us_overlays[11].entry = (Dw3OverlayEntry)STITSHOP_start;
+    g_us_overlays[12].entry = (Dw3OverlayEntry)STGTRAIN_start;
+    g_us_overlays[13].entry = (Dw3OverlayEntry)STGDGLAB_createScene;
+    g_us_overlays[14].entry = (Dw3OverlayEntry)STGMCARD_start;
+    g_us_overlays[15].entry = (Dw3OverlayEntry)STDGNAME_start;
 
     dw3_overlay_bind_field_sections(&g_us_overlays[1], &g_us_overlays[2], &g_us_overlays[3],
                                     &g_us_overlays[4], &g_us_overlays[5], &g_us_overlays[6]);
     dw3_overlay_bind_battle_sections(&g_us_overlays[7], &g_us_overlays[8], &g_us_overlays[9]);
+    dw3_overlay_bind_menu_sections(&g_us_overlays[10], &g_us_overlays[11], &g_us_overlays[12],
+                                   &g_us_overlays[13], &g_us_overlays[14], &g_us_overlays[15]);
 
     dw3_overlay_set_table(g_us_overlays,
                           sizeof(g_us_overlays) / sizeof(g_us_overlays[0]));
     fprintf(stderr,
             "dw3: registered US overlays STDWTITL/FIELDSTG/STPLNMET/"
-            "WSTAG260/780/785/790/FIGHTSTG/WFIGHTMN/STFGTREP "
-            "entries=%p/%p/%p/%p/%p\n",
+            "WSTAG260/780/785/790/FIGHTSTG/WFIGHTMN/STFGTREP/"
+            "STSTATUS/STITSHOP/STGTRAIN/STGDGLAB/STGMCARD/STDGNAME "
+            "entries=%p/%p/%p/%p/%p/%p/%p/%p/%p/%p/%p\n",
             (void *)STDWTITL_start, (void *)FIELDSTG_start, (void *)STPLNMET_start,
-            (void *)FIGHTSTG_start, (void *)STFGTREP_start);
+            (void *)FIGHTSTG_start, (void *)STFGTREP_start, (void *)STSTATUS_start,
+            (void *)STITSHOP_start, (void *)STGTRAIN_start, (void *)STGDGLAB_createScene,
+            (void *)STGMCARD_start, (void *)STDGNAME_start);
 }
