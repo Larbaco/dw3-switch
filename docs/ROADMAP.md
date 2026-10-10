@@ -165,7 +165,7 @@ Status: **complete** (gate met on `phase3-pc-bringup` @ `a5ae93a`;
 plan:
 [`docs/superpowers/plans/2026-10-10-phase3-pc-game-loop.md`](superpowers/plans/2026-10-10-phase3-pc-game-loop.md)).
 
-Tracking: Phase 3 on `phase3-pc-bringup` (P3.5 merged from
+Tracking: Phase 3 on `main` / `phase3-pc-bringup` (P3.5 merged from
 `phase3-cardgame` @ `fcff119`). P3.1 done. **P3.2 Done-when met** (+
 WSTAG790 follow-up). **P3.3 Done-when met:** forced encounter →
 `STFGTREP` (XP/levels) → return to `FIELDSTG` (`docs/P3.3_BATTLE.md`).
