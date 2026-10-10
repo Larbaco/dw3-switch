@@ -1,0 +1,39 @@
+Upstream-bound: no
+Subject: [PORT_HOST] P3 movie LoadImage before next DecDCTout
+
+Soft MDEC finishes synchronously. Nesting DecDCTout before LoadImage in
+STDWTITL_onSliceDecoded overwrites the two slice imgbufs, so VRAM gets
+macroblock garbage. On host, upload the completed slice first.
+
+--- a/src/menus/title/movie.c
++++ b/src/menus/title/movie.c
+@@ -120,6 +120,21 @@
+         rect.x += 480;
+     }
+     rect.y = 36;
++#if PORT_HOST
++    /* Soft MDEC completes inside DecDCTout before this callback returns. Starting
++     * the next DecDCTout before LoadImage reuses the two imgbufs and destroys
++     * the slice we are about to upload. Load first, then kick the next DMA. */
++    DrawSync(0);
++    LoadImage(&rect, STDWTITL_decEnv.imgbuf[id]);
++    if (STDWTITL_decEnv.slice.x < STDWTITL_decEnv.rect[STDWTITL_decEnv.rectid].x + STDWTITL_decEnv.rect[STDWTITL_decEnv.rectid].w) {
++        DecDCTout(STDWTITL_decEnv.imgbuf[STDWTITL_decEnv.imgid], STDWTITL_decEnv.slice.w * STDWTITL_decEnv.slice.h / 2);
++    } else {
++        STDWTITL_decEnv.isdone = 1;
++        STDWTITL_decEnv.rectid = STDWTITL_decEnv.rectid == 0;
++        STDWTITL_decEnv.slice.x = STDWTITL_decEnv.rect[STDWTITL_decEnv.rectid].x;
++        STDWTITL_decEnv.slice.y = STDWTITL_decEnv.rect[STDWTITL_decEnv.rectid].y;
++    }
++#else
+     if (STDWTITL_decEnv.slice.x < STDWTITL_decEnv.rect[STDWTITL_decEnv.rectid].x + STDWTITL_decEnv.rect[STDWTITL_decEnv.rectid].w) {
+         DecDCTout(STDWTITL_decEnv.imgbuf[STDWTITL_decEnv.imgid], STDWTITL_decEnv.slice.w * STDWTITL_decEnv.slice.h / 2);
+     } else {
+@@ -130,6 +145,7 @@
+     }
+     DrawSync(0);
+     LoadImage(&rect, STDWTITL_decEnv.imgbuf[id]);
++#endif
+ }
+ 
+ /* Waits until the MDEC has decoded the whole frame (switching buffers itself if it

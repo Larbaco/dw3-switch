@@ -271,8 +271,10 @@ audio, movies.
   file-bridge mix; `DW3_AUTO_PAD=start` + `0034` → Start-skip →
   `mode=0xE00`; **owner audible XA** on real Pulse/PipeWire DAC after
   SDL rebuild (`SDL_PULSEAUDIO=ON` + `-DSDL_X11_XSCRNSAVER=OFF`).
-  Follow-up: video presentation (half-width + flat mid-grey fixed on
-  `phase3-pc-bringup`; further polish may remain; not blocking tick).
+  Follow-up: video presentation — half-width + mid-grey on
+  `phase3-pc-bringup`; **recognizable MOVIEOPN frames** on
+  `phase3-gpu-glitch` (LP64-safe MDEC quant upload + sync slice order;
+  see `docs/P3_GPU_GLITCHES.md`). Title/field sprite polish still open.
   Done when: the opening movies play with audio and can be skipped.
 - [x] **P3.8 Stage sweep.** `STAGSLCT` linked (`dw3_p38_stagslct`); patch
   `0030` + `tools/stage_sweep.py`. **Done-when evidence**
