@@ -58,6 +58,8 @@ tools/apply_patches.sh           # refresh build/decomp-src + apply
 | `0023-PORT_HOST-p32-script-leave-walk-evidence.patch` | no | P3.2: `SCRIPT_LEAVE`/`leaveField`/`moveByPad` logs; `DW3_FAST_SCRIPT`; `DW3_PROGRESS` |
 | `0024-PORT_HOST-p33-battle-boot-evidence.patch` | no | P3.3: `FIGHTSTG` boot logs; `DW3_FORCE_ENCOUNTER` seeds `BATTLE_SETUP` + `setParty(0)` |
 | `0025-PORT_HOST-p33-battle-complete-evidence.patch` | no | P3.3: `DW3_FORCE_WIN` → report; `fieldMode` seed; party HP/XP logs; STFGTREP return |
+| `0026-PORT_HOST-p34-menu-evidence.patch` | no | P3.4: `DW3_FORCE_MENU` / `DW3_FORCE_FIELD_MENU` (host latch); menu `setParty`/`fieldMode`/`modeArg`; `startFade` guard; menu return logs; `DW3_FORCE_MCARD_SAVE` |
+| `0027-PORT_HOST-p34-menu-return-and-save.patch` | no | P3.4: `DW3_AUTO_MENU_RETURN` requests `fieldMode` after N menu frames |
 
 `tools/apply_patches.sh --check` applies the series in order (stacked
 patches on the same file are valid).

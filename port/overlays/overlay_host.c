@@ -46,3 +46,12 @@ int dw3_overlay_restore(int32_t file_id) {
             (unsigned)file_id, desc->data_size, desc->bss_size, (void *)desc->entry);
     return 0;
 }
+
+int dw3_host_menu_force_once(void) {
+    static int done;
+    if (done) {
+        return 0;
+    }
+    done = 1;
+    return 1;
+}

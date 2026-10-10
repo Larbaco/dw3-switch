@@ -46,13 +46,19 @@ static int port_index(int port) { return (port >> 4) & 1; }
 static void dw3_pad_host_debug_buttons(void);
 static void dw3_auto_pad_inject(void);
 
-/* Raw PS1 digital bits (libetc / PSY-Z), active in the pressed mask. */
+/* Raw PS1 digital bits in PadData.buttons (active-low in the wire buffer).
+ * US readPadButtons remaps face buttons from RAW_* (12/13/14). */
 enum {
-    DW3_RAW_CROSS = 1 << 6,
-    DW3_RAW_UP = 1 << 12,
-    DW3_RAW_RIGHT = 1 << 13,
-    DW3_RAW_DOWN = 1 << 14,
-    DW3_RAW_LEFT = 1 << 15
+    DW3_RAW_SELECT = 1 << 0,
+    DW3_RAW_START = 1 << 3,
+    DW3_RAW_UP = 1 << 4,
+    DW3_RAW_RIGHT = 1 << 5,
+    DW3_RAW_DOWN = 1 << 6,
+    DW3_RAW_LEFT = 1 << 7,
+    DW3_RAW_TRIANGLE = 1 << 12,
+    DW3_RAW_CIRCLE = 1 << 13,
+    DW3_RAW_CROSS = 1 << 14,
+    DW3_RAW_SQUARE = 1 << 15
 };
 
 static void dw3_auto_pad_inject(void) {
@@ -62,6 +68,8 @@ static void dw3_auto_pad_inject(void) {
     char buf[DW3_PAD_BUF_LEN];
     int confirm = 0;
     int walk = 0;
+    int start = 0;
+    int cancel = 0;
 
     env = getenv("DW3_AUTO_PAD");
     if (env == NULL || env[0] == '\0') {
@@ -73,16 +81,28 @@ static void dw3_auto_pad_inject(void) {
     if (strstr(env, "walk") != NULL) {
         walk = 1;
     }
-    if (!confirm && !walk) {
+    if (strstr(env, "start") != NULL) {
+        start = 1;
+    }
+    if (strstr(env, "cancel") != NULL) {
+        cancel = 1;
+    }
+    if (!confirm && !walk && !start && !cancel) {
         return;
     }
     frame++;
     if (walk) {
         mask |= DW3_RAW_UP;
     }
-    /* Pulse Cross so PAD_PRESSED sees edges for dialogue / menus. */
+    /* Pulse buttons so PAD_PRESSED sees edges for dialogue / menus. */
     if (confirm && (frame % 8u) == 1u) {
         mask |= DW3_RAW_CROSS;
+    }
+    if (start && frame >= 90u && frame < 98u) {
+        mask |= DW3_RAW_START;
+    }
+    if (cancel && frame >= 240u && (frame % 16u) == 1u) {
+        mask |= DW3_RAW_TRIANGLE;
     }
     memset(buf, 0, sizeof(buf));
     buf[0] = 0x00;

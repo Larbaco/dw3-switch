@@ -6,6 +6,7 @@
  */
 #include "memcard_host.h"
 
+#include <stdio.h>
 #include <string.h>
 
 /* Provided by the linker when using --wrap. */
@@ -49,7 +50,11 @@ long __wrap__card_write(long chan, long block, unsigned char *buf) {
         return 0;
     }
     if (memcard_host_write_sector(slot, (int)block, buf) != 0) {
+        fprintf(stderr, "dw3: _card_write fail chan=%ld block=%ld slot=%d\n", chan,
+                block, slot);
         return 0;
     }
+    fprintf(stderr, "dw3: _card_write ok chan=%ld block=%ld slot=%d (.mcr)\n", chan,
+            block, slot);
     return __real__card_write(chan, block, buf);
 }

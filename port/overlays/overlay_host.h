@@ -44,3 +44,7 @@ void dw3_overlay_register_us_title(void);
 #endif
 
 #endif /* DW3_OVERLAY_HOST_H */
+
+/* P3.4: latch so DW3_FORCE_MENU fires once per process. */
+int dw3_host_menu_force_once(void);
+
