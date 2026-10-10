@@ -315,7 +315,9 @@ console.
   `platforms/switch/psyz_backend/nx_gpu.c` (docked 1080p / handheld 720p,
   `eglSwapInterval(1)`). `.nro` builds via Docker (`DW3_DK_TMPBUILD` on
   NTFS). **Not ticked:** no Switch hardware in session to measure 60 fps.
-  See `docs/P4.2_VIDEO.md`.
+  Owner machine has local Ryubing/Eden installs (optional deferred `.nro`
+  smoke; **not** P4.2 done-when). Gate: OLED + hbmenu / nxlink. See
+  `docs/P4.2_VIDEO.md`.
 - [ ] **P4.3 Audio.** `audren` output thread fed by PSY-Z's SPU mixer at
   44.1 kHz.
   Done when: libsnd sample plays without underruns.
