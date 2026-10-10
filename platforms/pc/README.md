@@ -1,9 +1,10 @@
-# platforms/pc — PSY-Z host skeleton (Phase 1)
+# platforms/pc — PSY-Z host (Phase 2 title bring-up)
 
-Desktop bring-up host using vendored PSY-Z (`vendor/psyz`) with the
-`sdl3_gpu` renderer. Switch-specific code stays under `platforms/switch/`.
+Desktop host using vendored PSY-Z (`vendor/psyz`, `sdl3_gpu`). Links the
+US engine + `STDWTITL` + `port/` glue. Switch-specific code stays under
+`platforms/switch/`.
 
-## Smoke build (acceptance)
+## Build
 
 From the repository root:
 
@@ -13,32 +14,13 @@ cmake --build build/pc -j"$(nproc)"
 test -x build/pc/dw3-pc
 ```
 
-Binary path: `build/pc/dw3-pc`.
-
 If system `cmake` is missing, this host has used:
 
 `/home/larbaco/Documents/Pessoal/llamacpp/.deps/cmake/bin/cmake`
 
 Ninja may be at `~/.local/bin/ninja`.
 
-## Dependencies
-
-Prefer installing SDL3 Linux build deps via apt rather than disabling
-backends permanently:
-
-```bash
-sudo apt-get install -y build-essential pkg-config ninja-build \
-  libgl1-mesa-dev libxss-dev \
-  libasound2-dev libpulse-dev
-```
-
-See [SDL3 Linux build dependencies](https://wiki.libsdl.org/SDL3/README-linux#build-dependencies)
-and `docs/PSYZ.md`.
-
 ### Configure fallback (missing optional packages)
-
-If configure fails on `XSCRNSAVER` / audio backends (no `libxss-dev` or
-ALSA/Pulse), the flags that worked for Task 4 on this host are:
 
 ```bash
 cmake -S platforms/pc -B build/pc -G Ninja \
@@ -48,13 +30,20 @@ cmake -S platforms/pc -B build/pc -G Ninja \
   -DSDL_PULSEAUDIO=OFF -DSDL_SNDIO=OFF
 ```
 
-Install the apt packages above when possible so these OFF flags are
-unnecessary.
+## Runtime data (own disc)
+
+```bash
+# disks/us on a Linux FS (see docs/DISC_SETUP.md for NTFS DUMMY. note)
+python3 tools/pack_runtime.py --version us --disks disks/us --out runtime/us --force
+```
 
 ## Run
 
 ```bash
-./build/pc/dw3-pc
+./build/pc/dw3-pc --runtime runtime/us
+# env alternatives: DW3_RUNTIME, DW3_MEMCARD_DIR
 ```
 
-Close the window to quit (`Psyz_QuitRequested`).
+Expect `dw3: mode=0xe00 title_entry=...` then the title window (logo may be
+glitched; see `docs/P2.8_TITLE_BOOT.md`). Close the window to quit
+(`Psyz_QuitRequested`).

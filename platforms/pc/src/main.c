@@ -1,60 +1,79 @@
+/*
+ * PC host bootstrap (P2.8): init cdfs + memcard + overlays, load boot TIM,
+ * then enter the decomp game loop (dw3_game_main).
+ */
 #include <psyz.h>
-#include <libgpu.h>
-#include <libetc.h>
+
+#include "boot_tim_host.h"
+#include "cdfs.h"
+#include "memcard_host.h"
+#include "overlay_host.h"
+
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
-#define SCREEN_WIDTH 320
-#define SCREEN_HEIGHT 240
-#define OTSIZE 1
+int dw3_game_main(void);
 
-typedef struct DB {
-    DRAWENV draw;
-    DISPENV disp;
-    OT_TYPE ot[OTSIZE];
-} DB;
-
-static DB db[2];
-static DB *cdb;
-u_long _ramsize = 0x00200000;
-u_long _stacksize = 0x00004000;
-
-static void init_graphics(void) {
-    SetDefDrawEnv(&db[0].draw, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
-    SetDefDrawEnv(&db[1].draw, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
-    SetDefDispEnv(&db[0].disp, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
-    SetDefDispEnv(&db[1].disp, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
-    SetVideoMode(MODE_NTSC);
-    ResetGraph(0);
-    PutDrawEnv(&db[0].draw);
-    PutDispEnv(&db[0].disp);
-    ClearOTag(db[0].ot, OTSIZE);
-    ClearOTag(db[1].ot, OTSIZE);
-    SetDispMask(1);
-    cdb = &db[0];
+static const char *env_or(const char *key, const char *fallback) {
+    const char *v = getenv(key);
+    return (v != NULL && v[0] != '\0') ? v : fallback;
 }
 
-static void present(void) {
-    cdb = (cdb == &db[0]) ? &db[1] : &db[0];
-    DrawSync(0);
-    VSync(0);
-    ClearImage(&cdb->draw.clip, 16, 32, 64);
-    DrawOTag(&cdb->ot[0]);
+static int init_paths(int argc, char **argv) {
+    const char *root = env_or("DW3_RUNTIME", "runtime/us");
+    const char *memdir = env_or("DW3_MEMCARD_DIR", NULL);
+    char memcard_buf[512];
+    char boot_path[512];
+    int i;
+
+    for (i = 1; i < argc; i++) {
+        if (strcmp(argv[i], "--runtime") == 0 && i + 1 < argc) {
+            root = argv[++i];
+        } else if (strcmp(argv[i], "--memcard-dir") == 0 && i + 1 < argc) {
+            memdir = argv[++i];
+        }
+    }
+
+    if (cdfs_set_root(root) != 0) {
+        fprintf(stderr, "dw3-pc: cdfs_set_root(%s) failed\n", root);
+        return -1;
+    }
+    if (cdfs_load_map(NULL) != 0) {
+        fprintf(stderr, "dw3-pc: cdfs_load_map under %s failed\n", root);
+        return -1;
+    }
+    fprintf(stderr, "dw3-pc: cdfs root=%s\n", root);
+
+    if (memdir == NULL) {
+        snprintf(memcard_buf, sizeof(memcard_buf), "%s/memcard", root);
+        memdir = memcard_buf;
+    }
+    if (memcard_host_set_dir(memdir) != 0) {
+        fprintf(stderr, "dw3-pc: memcard_host_set_dir(%s) failed\n", memdir);
+        return -1;
+    }
+    if (memcard_host_ensure(0) != 0 || memcard_host_ensure(1) != 0) {
+        fprintf(stderr, "dw3-pc: memcard ensure failed under %s\n", memdir);
+        return -1;
+    }
+    fprintf(stderr, "dw3-pc: memcard dir=%s\n", memdir);
+
+    snprintf(boot_path, sizeof(boot_path), "%s/boot_tim.bin", root);
+    if (dw3_host_load_boot_tim(boot_path) != 0) {
+        fprintf(stderr, "dw3-pc: boot TIM load failed (%s)\n", boot_path);
+        return -1;
+    }
+    fprintf(stderr, "dw3-pc: boot TIM loaded from %s\n", boot_path);
+
+    dw3_overlay_register_us_title();
+    return 0;
 }
 
 int main(int argc, char **argv) {
-    (void)argc;
-    (void)argv;
-    int frame = 0;
-    init_graphics();
-    FntLoad(960, 256);
-    SetDumpFnt(FntOpen(8, 16, SCREEN_WIDTH, SCREEN_HEIGHT, 0, 512));
-    printf("dw3-pc Phase 1 skeleton\n");
-    while (!Psyz_QuitRequested()) {
-        FntPrint("dw3-pc Phase 1\n");
-        FntPrint("frame %d\n", frame++);
-        FntPrint("close window to quit\n");
-        FntFlush(-1);
-        present();
+    if (init_paths(argc, argv) != 0) {
+        return 1;
     }
-    return 0;
+    fprintf(stderr, "dw3-pc: entering dw3_game_main()\n");
+    return dw3_game_main();
 }
