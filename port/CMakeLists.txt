@@ -188,6 +188,38 @@ set_target_properties(dw3_psyz_missing PROPERTIES
 target_compile_options(dw3_engine PRIVATE ${_DW3_GAME_OPTS})
 target_compile_options(dw3_title PRIVATE ${_DW3_GAME_OPTS})
 
+# P3.1: compile-only audit of overlay/stage TUs under cast warning-as-error.
+# Not linked into dw3_engine_objs until P3.2+ brings overlays in for real.
+# Title sources stay on dw3_title (exclude to avoid duplicate OBJECT membership).
+file(GLOB_RECURSE DW3_P31_SOURCES CONFIGURE_DEPENDS
+  "${DECOMP_SRC}/src/field/*.c"
+  "${DECOMP_SRC}/src/battle/*.c"
+  "${DECOMP_SRC}/src/cardgame/*.c"
+  "${DECOMP_SRC}/src/menus/*.c"
+  "${DECOMP_SRC}/src/debug/*.c")
+list(FILTER DW3_P31_SOURCES EXCLUDE REGEX "\\.inc\\.c$")
+list(FILTER DW3_P31_SOURCES EXCLUDE REGEX "/menus/title/")
+# US build: EU-only extra-chapter stages (WSTAG920–974) reference LANGUAGE.
+list(FILTER DW3_P31_SOURCES EXCLUDE REGEX
+  "/wstag9(2[0-9]|3[0-9]|4[0-9]|5[0-9]|6[0-9]|7[0-4])\\.c$")
+# PSY-Z / libgs gaps (not pointer↔int): see docs/P3.1_64BIT_AUDIT.md.
+list(FILTER DW3_P31_SOURCES EXCLUDE REGEX
+  "/battle/battle_mode/(draw|lights|model_mesh)\\.c$")
+list(LENGTH DW3_P31_SOURCES _dw3_p31_count)
+if(_dw3_p31_count EQUAL 0)
+  message(FATAL_ERROR "no P3.1 audit .c under ${DECOMP_SRC}/src/{field,battle,cardgame,menus,debug}")
+endif()
+add_library(dw3_p31_audit OBJECT ${DW3_P31_SOURCES})
+add_dependencies(dw3_p31_audit dw3_decomp_patched)
+target_include_directories(dw3_p31_audit PRIVATE ${_DW3_GAME_INCLUDES})
+target_compile_definitions(dw3_p31_audit PRIVATE ${_DW3_GAME_DEFS})
+target_compile_options(dw3_p31_audit PRIVATE ${_DW3_GAME_OPTS})
+set_target_properties(dw3_p31_audit PROPERTIES
+  C_STANDARD 90
+  C_STANDARD_REQUIRED ON
+  C_EXTENSIONS ON
+)
+
 # Archive for the PC host: engine + title + port glue (host main is separate).
 add_library(dw3_engine_objs STATIC
   $<TARGET_OBJECTS:dw3_engine>
