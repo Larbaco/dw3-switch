@@ -11,7 +11,7 @@
 #include <GLES2/gl2.h>
 
 int dw3_nx_backend_sketch_version(void) {
-    return 2; /* P4.2: real EGL present path */
+    return 3; /* P4.2 EGL present + P4.3 audren Psyz_Audio* */
 }
 
 static EGLDisplay s_display = EGL_NO_DISPLAY;

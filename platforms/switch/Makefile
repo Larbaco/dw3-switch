@@ -17,9 +17,9 @@ INCLUDES	:=	include psyz_backend
 # Artifacts (.nro/.elf/.nacp). Override for NTFS/Docker (see tools/dk.sh).
 OUTDIR		?=	$(CURDIR)
 
-APP_TITLE	:=	dw3-switch gpu_hello
+APP_TITLE	:=	dw3-switch host_hello
 APP_AUTHOR	:=	dw3-switch
-APP_VERSION	:=	0.4.2
+APP_VERSION	:=	0.4.3
 #---------------------------------------------------------------------------------
 ARCH	:=	-march=armv8-a+crc+crypto -mtune=cortex-a57 -mtp=soft -fPIE
 
