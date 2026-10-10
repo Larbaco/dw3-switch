@@ -95,6 +95,12 @@ static void thread_trampoline(void *arg) {
     (*(void (**)(void))arg)();
 }
 
+/* The game's loop polls this to notice that it should stop. The PSP backend
+ * reads a flag its exit callback sets; on libnx, appletMainLoop() *is* that
+ * check (it services the applet and reports whether to keep running). The vsync
+ * pump polls it too, so the home menu stays alive between game frames. */
+int Psyz_QuitRequested(void) { return appletMainLoop() ? 0 : 1; }
+
 int Psyz_OsThreadStart(void (*fn)(void), const char *name) {
     /* PSY-Z hands over a bare function pointer, so the Thread object and the
      * argument slot have to outlive this call. Both are leaked on purpose:

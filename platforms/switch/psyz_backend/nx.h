@@ -74,6 +74,12 @@ void dw3_nx_log_open(void);
 /* padConfigureInput + padInitializeDefault. Call once at boot. */
 void dw3_nx_input_init(void);
 
+/* --- P4.5 filesystem (nx_file.c) --------------------------------------- */
+
+/* fsdevMountSdmc() + create sdmc:/switch/dw3. Call before anything opens a
+ * runtime path (and before dw3_nx_log_open, which writes under it). */
+bool dw3_nx_fs_mount_sd(void);
+
 /* PSY-Z platform symbols (see vendor/psyz src/psyz/os.h, include/psyz/input.h,
  * include/psyz/video.h and include/psyz/log.h for the contracts). */
 void psyz_log(unsigned int level, const char *file, unsigned int line,
@@ -90,5 +96,6 @@ int Psyz_OsThreadStart(void (*fn)(void), const char *name);
 void MyPadInit(int mode);
 void Psyz_PadsPoll(void);
 int Psyz_VideoVSync(int mode);
+int Psyz_QuitRequested(void);
 
 #endif /* DW3_SWITCH_PSYZ_NX_H */
