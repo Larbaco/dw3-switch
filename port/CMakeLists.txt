@@ -383,9 +383,50 @@ dw3_host_stage(wstag246 "amaterasu_city/wstag246.c")
 dw3_host_stage(wstag251 "amaterasu_city/wstag251.c")
 dw3_host_stage(wstag256 "amaterasu_city/wstag256.c")
 dw3_host_stage(wstag261 "amaterasu_city/wstag261.c")
+# P3.8 batch 3: Amaterasu twins of Asuka 270-325 + Central/East/Seiryu/South
+dw3_host_stage(wstag271 "amaterasu_city/wstag271.c")
+dw3_host_stage(wstag276 "amaterasu_city/wstag276.c")
+dw3_host_stage(wstag281 "amaterasu_city/wstag281.c")
+dw3_host_stage(wstag286 "amaterasu_city/wstag286.c")
+dw3_host_stage(wstag291 "amaterasu_city/wstag291.c")
+dw3_host_stage(wstag296 "amaterasu_city/wstag296.c")
+dw3_host_stage(wstag301 "amaterasu_city/wstag301.c")
+dw3_host_stage(wstag306 "amaterasu_city/wstag306.c")
+dw3_host_stage(wstag311 "amaterasu_city/wstag311.c")
+dw3_host_stage(wstag316 "amaterasu_city/wstag316.c")
+dw3_host_stage(wstag321 "amaterasu_city/wstag321.c")
+dw3_host_stage(wstag326 "amaterasu_city/wstag326.c")
+dw3_host_stage(wstag330 "central_sector/wstag330.c")
+dw3_host_stage(wstag335 "central_sector/wstag335.c")
+dw3_host_stage(wstag340 "central_sector/wstag340.c")
+dw3_host_stage(wstag345 "central_sector/wstag345.c")
+dw3_host_stage(wstag350 "east_sector/wstag350.c")
+dw3_host_stage(wstag355 "east_sector/wstag355.c")
+dw3_host_stage(wstag360 "east_sector/wstag360.c")
+dw3_host_stage(wstag365 "east_sector/wstag365.c")
+dw3_host_stage(wstag370 "east_sector/wstag370.c")
+dw3_host_stage(wstag375 "east_sector/wstag375.c")
+dw3_host_stage(wstag380 "east_sector/wstag380.c")
+dw3_host_stage(wstag385 "east_sector/wstag385.c")
+dw3_host_stage(wstag395 "east_sector/wstag395.c")
+dw3_host_stage(wstag400 "east_sector/wstag400.c")
+dw3_host_stage(wstag405 "east_sector/wstag405.c")
+dw3_host_stage(wstag410 "east_sector/wstag410.c")
+dw3_host_stage(wstag415 "east_sector/wstag415.c")
+dw3_host_stage(wstag420 "east_sector/wstag420.c")
+dw3_host_stage(wstag425 "seiryu_city/wstag425.c")
+dw3_host_stage(wstag430 "seiryu_city/wstag430.c")
+dw3_host_stage(wstag435 "seiryu_city/wstag435.c")
+dw3_host_stage(wstag440 "south_sector/wstag440.c")
+dw3_host_stage(wstag445 "south_sector/wstag445.c")
+dw3_host_stage(wstag450 "south_sector/wstag450.c")
+dw3_host_stage(wstag455 "south_sector/wstag455.c")
+dw3_host_stage(wstag475 "south_sector/wstag475.c")
+dw3_host_stage(wstag465 "south_sector/wstag465.c")
+dw3_host_stage(wstag470 "south_sector/wstag470.c")
 
 set(DW3_LINKED_STAGES
-  WSTAG260,WSTAG780,WSTAG785,WSTAG790,WSTAG200,WSTAG201,WSTAG206,WSTAG210,WSTAG212,WSTAG220,WSTAG225,WSTAG230,WSTAG235,WSTAG240,WSTAG245,WSTAG250,WSTAG255,WSTAG202,WSTAG203,WSTAG205,WSTAG218,WSTAG219,WSTAG232,WSTAG237,WSTAG270,WSTAG275,WSTAG280,WSTAG285,WSTAG290,WSTAG295,WSTAG300,WSTAG305,WSTAG310,WSTAG315,WSTAG320,WSTAG325,WSTAG211,WSTAG221,WSTAG226,WSTAG231,WSTAG233,WSTAG236,WSTAG238,WSTAG241,WSTAG246,WSTAG251,WSTAG256,WSTAG261
+  WSTAG260,WSTAG780,WSTAG785,WSTAG790,WSTAG200,WSTAG201,WSTAG206,WSTAG210,WSTAG212,WSTAG220,WSTAG225,WSTAG230,WSTAG235,WSTAG240,WSTAG245,WSTAG250,WSTAG255,WSTAG202,WSTAG203,WSTAG205,WSTAG218,WSTAG219,WSTAG232,WSTAG237,WSTAG270,WSTAG275,WSTAG280,WSTAG285,WSTAG290,WSTAG295,WSTAG300,WSTAG305,WSTAG310,WSTAG315,WSTAG320,WSTAG325,WSTAG211,WSTAG221,WSTAG226,WSTAG231,WSTAG233,WSTAG236,WSTAG238,WSTAG241,WSTAG246,WSTAG251,WSTAG256,WSTAG261,WSTAG271,WSTAG276,WSTAG281,WSTAG286,WSTAG291,WSTAG296,WSTAG301,WSTAG306,WSTAG311,WSTAG316,WSTAG321,WSTAG326,WSTAG330,WSTAG335,WSTAG340,WSTAG345,WSTAG350,WSTAG355,WSTAG360,WSTAG365,WSTAG370,WSTAG375,WSTAG380,WSTAG385,WSTAG395,WSTAG400,WSTAG405,WSTAG410,WSTAG415,WSTAG420,WSTAG425,WSTAG430,WSTAG435,WSTAG440,WSTAG445,WSTAG450,WSTAG455,WSTAG475,WSTAG465,WSTAG470
 )
 
 set(DW3_STAGE_STUBS_C "${DW3_HOST_OVL_DIR}/stage_stubs.c")
@@ -465,6 +506,46 @@ set(DW3_P32_HOST_OBJECTS
   "${DW3_HOST_OVL_DIR}/wstag251.host.o"
   "${DW3_HOST_OVL_DIR}/wstag256.host.o"
   "${DW3_HOST_OVL_DIR}/wstag261.host.o"
+  "${DW3_HOST_OVL_DIR}/wstag271.host.o"
+  "${DW3_HOST_OVL_DIR}/wstag276.host.o"
+  "${DW3_HOST_OVL_DIR}/wstag281.host.o"
+  "${DW3_HOST_OVL_DIR}/wstag286.host.o"
+  "${DW3_HOST_OVL_DIR}/wstag291.host.o"
+  "${DW3_HOST_OVL_DIR}/wstag296.host.o"
+  "${DW3_HOST_OVL_DIR}/wstag301.host.o"
+  "${DW3_HOST_OVL_DIR}/wstag306.host.o"
+  "${DW3_HOST_OVL_DIR}/wstag311.host.o"
+  "${DW3_HOST_OVL_DIR}/wstag316.host.o"
+  "${DW3_HOST_OVL_DIR}/wstag321.host.o"
+  "${DW3_HOST_OVL_DIR}/wstag326.host.o"
+  "${DW3_HOST_OVL_DIR}/wstag330.host.o"
+  "${DW3_HOST_OVL_DIR}/wstag335.host.o"
+  "${DW3_HOST_OVL_DIR}/wstag340.host.o"
+  "${DW3_HOST_OVL_DIR}/wstag345.host.o"
+  "${DW3_HOST_OVL_DIR}/wstag350.host.o"
+  "${DW3_HOST_OVL_DIR}/wstag355.host.o"
+  "${DW3_HOST_OVL_DIR}/wstag360.host.o"
+  "${DW3_HOST_OVL_DIR}/wstag365.host.o"
+  "${DW3_HOST_OVL_DIR}/wstag370.host.o"
+  "${DW3_HOST_OVL_DIR}/wstag375.host.o"
+  "${DW3_HOST_OVL_DIR}/wstag380.host.o"
+  "${DW3_HOST_OVL_DIR}/wstag385.host.o"
+  "${DW3_HOST_OVL_DIR}/wstag395.host.o"
+  "${DW3_HOST_OVL_DIR}/wstag400.host.o"
+  "${DW3_HOST_OVL_DIR}/wstag405.host.o"
+  "${DW3_HOST_OVL_DIR}/wstag410.host.o"
+  "${DW3_HOST_OVL_DIR}/wstag415.host.o"
+  "${DW3_HOST_OVL_DIR}/wstag420.host.o"
+  "${DW3_HOST_OVL_DIR}/wstag425.host.o"
+  "${DW3_HOST_OVL_DIR}/wstag430.host.o"
+  "${DW3_HOST_OVL_DIR}/wstag435.host.o"
+  "${DW3_HOST_OVL_DIR}/wstag440.host.o"
+  "${DW3_HOST_OVL_DIR}/wstag445.host.o"
+  "${DW3_HOST_OVL_DIR}/wstag450.host.o"
+  "${DW3_HOST_OVL_DIR}/wstag455.host.o"
+  "${DW3_HOST_OVL_DIR}/wstag475.host.o"
+  "${DW3_HOST_OVL_DIR}/wstag465.host.o"
+  "${DW3_HOST_OVL_DIR}/wstag470.host.o"
   "${DW3_STAGE_STUBS_O}"
 )
 set_source_files_properties(${DW3_P32_HOST_OBJECTS} PROPERTIES
