@@ -275,6 +275,26 @@ set(GEN_STAGE_STUBS "${DW3_ROOT}/tools/gen_stage_stubs.py")
 set(DW3_HOST_OVL_DIR "${CMAKE_CURRENT_BINARY_DIR}/host_ovl")
 file(MAKE_DIRECTORY "${DW3_HOST_OVL_DIR}")
 
+# The packing scripts below run `ld -r`/`objcopy`/`nm` over *target* objects, so
+# a cross build has to point them at the target binutils — see the contract in
+# tools/rename_ovl_sections.py. Nothing set here means the bare names, which is
+# what the PC build uses and must keep using. The consumer's top-level
+# CMakeLists supplies these; platforms/switch passes the absolute paths CMake
+# detected for its toolchain, so nothing depends on PATH.
+set(_dw3_pack_env_args "")
+if(DW3_BINUTILS_PREFIX)
+  list(APPEND _dw3_pack_env_args "DW3_BINUTILS_PREFIX=${DW3_BINUTILS_PREFIX}")
+endif()
+foreach(_dw3_tool IN ITEMS LD OBJCOPY NM)
+  if(DW3_${_dw3_tool})
+    list(APPEND _dw3_pack_env_args "DW3_${_dw3_tool}=${DW3_${_dw3_tool}}")
+  endif()
+endforeach()
+set(DW3_PACK_ENV)
+if(_dw3_pack_env_args)
+  list(APPEND DW3_PACK_ENV "${CMAKE_COMMAND}" -E env ${_dw3_pack_env_args})
+endif()
+
 set(_DW3_COMPILE_INCLUDES "")
 foreach(_inc IN LISTS _DW3_GAME_INCLUDES)
   list(APPEND _DW3_COMPILE_INCLUDES "-I${_inc}")
@@ -336,7 +356,7 @@ add_custom_command(
   OUTPUT "${DW3_HOST_OVL_DIR}/fieldstg.host.o"
   COMMAND ${CMAKE_COMMAND} -E env PYTHONUNBUFFERED=1
     "${CMAKE_COMMAND}" -E rm -f "${DW3_HOST_OVL_DIR}/fieldstg.host.o"
-  COMMAND python3 "${RENAME_OVL_SECTIONS}" fieldstg
+  COMMAND ${DW3_PACK_ENV} python3 "${RENAME_OVL_SECTIONS}" fieldstg
     "${DW3_HOST_OVL_DIR}/fieldstg.host.o"
     ${DW3_FIELD_OBJECTS}
   DEPENDS ${DW3_FIELD_OBJECTS} "${RENAME_OVL_SECTIONS}"
@@ -345,7 +365,7 @@ add_custom_command(
 )
 add_custom_command(
   OUTPUT "${DW3_HOST_OVL_DIR}/stplnmet.host.o"
-  COMMAND python3 "${RENAME_OVL_SECTIONS}" stplnmet
+  COMMAND ${DW3_PACK_ENV} python3 "${RENAME_OVL_SECTIONS}" stplnmet
     "${DW3_HOST_OVL_DIR}/stplnmet.host.o"
     ${DW3_STPLNMET_OBJECTS}
   DEPENDS ${DW3_STPLNMET_OBJECTS} "${RENAME_OVL_SECTIONS}"
@@ -365,7 +385,7 @@ function(dw3_host_stage stage src_rel)
       ${_DW3_COMPILE_INCLUDES}
       -o "${_raw}"
       "${_src}"
-    COMMAND python3 "${PREFIX_STAGE_OBJ}" "${stage}" "${_raw}" "${_host}"
+    COMMAND ${DW3_PACK_ENV} python3 "${PREFIX_STAGE_OBJ}" "${stage}" "${_raw}" "${_host}"
     DEPENDS "${_src}" dw3_decomp_patched "${PREFIX_STAGE_OBJ}"
     COMMENT "P3.2 stage ${stage}"
     VERBATIM
@@ -942,7 +962,7 @@ add_custom_command(
   OUTPUT "${DW3_HOST_OVL_DIR}/fightstg.host.o"
   COMMAND ${CMAKE_COMMAND} -E env PYTHONUNBUFFERED=1
     "${CMAKE_COMMAND}" -E rm -f "${DW3_HOST_OVL_DIR}/fightstg.host.o"
-  COMMAND python3 "${RENAME_OVL_SECTIONS}" fightstg
+  COMMAND ${DW3_PACK_ENV} python3 "${RENAME_OVL_SECTIONS}" fightstg
     "${DW3_HOST_OVL_DIR}/fightstg.host.o"
     ${DW3_FIGHT_OBJECTS}
   DEPENDS ${DW3_FIGHT_OBJECTS} "${RENAME_OVL_SECTIONS}"
@@ -951,7 +971,7 @@ add_custom_command(
 )
 add_custom_command(
   OUTPUT "${DW3_HOST_OVL_DIR}/wfightmn.host.o"
-  COMMAND python3 "${RENAME_OVL_SECTIONS}" wfightmn
+  COMMAND ${DW3_PACK_ENV} python3 "${RENAME_OVL_SECTIONS}" wfightmn
     "${DW3_HOST_OVL_DIR}/wfightmn.host.o"
     ${DW3_WFIGHTMN_OBJECTS}
   DEPENDS ${DW3_WFIGHTMN_OBJECTS} "${RENAME_OVL_SECTIONS}"
@@ -960,7 +980,7 @@ add_custom_command(
 )
 add_custom_command(
   OUTPUT "${DW3_HOST_OVL_DIR}/stfgtrep.host.o"
-  COMMAND python3 "${RENAME_OVL_SECTIONS}" stfgtrep
+  COMMAND ${DW3_PACK_ENV} python3 "${RENAME_OVL_SECTIONS}" stfgtrep
     "${DW3_HOST_OVL_DIR}/stfgtrep.host.o"
     ${DW3_STFGTREP_OBJECTS}
   DEPENDS ${DW3_STFGTREP_OBJECTS} "${RENAME_OVL_SECTIONS}"
@@ -1000,7 +1020,7 @@ function(dw3_host_menu_overlay name)
     OUTPUT "${DW3_HOST_OVL_DIR}/${name}.host.o"
     COMMAND ${CMAKE_COMMAND} -E env PYTHONUNBUFFERED=1
       "${CMAKE_COMMAND}" -E rm -f "${DW3_HOST_OVL_DIR}/${name}.host.o"
-    COMMAND python3 "${RENAME_OVL_SECTIONS}" "${name}"
+    COMMAND ${DW3_PACK_ENV} python3 "${RENAME_OVL_SECTIONS}" "${name}"
       "${DW3_HOST_OVL_DIR}/${name}.host.o"
       ${_objs}
     DEPENDS ${_objs} "${RENAME_OVL_SECTIONS}"
