@@ -133,11 +133,11 @@ the host, replace MIPS-only pieces, and reach the title screen on PC.
   on PS1 (globals reset vs. preserved) — verified by the host fixture
   test. Full title link/boot is P2.8 / E6.
 - [x] **P2.7 Memory card → file.** `port/memcard/`: 128 KiB PS1-format
-  `.mcr` per slot (`memcard_host_*` sector API matching libcard). Engine
-  wiring on `phase3-pc-bringup` @ `95fb20b`: `memcard_libmcrd.c` +
-  `--wrap=_card_*` (STGMCARD save evidence). Host CLI + tests:
-  `tools/memcard_rw.c`, `tools/tests/test_memcard.py`. DuckStation
-  round-trip is owner manual (see `port/memcard/README.md`).
+  `.mcr` per slot (`memcard_host_*` sector API matching libcard).
+  Engine path: `memcard_libmcrd.c` (`MemCard*`) + `--wrap=_card_read/
+  _card_write` → `memcard_host_*` (P3.4 STGMCARD save evidence). Host CLI
+  + tests: `tools/memcard_rw.c`, `tools/tests/test_memcard.py`.
+  DuckStation round-trip is owner manual (see `port/memcard/README.md`).
   Done when: host `.mcr` images are 128 KiB formatted/readable — verified
   by fixture tests.
 - [x] **P2.8 Boot to title on PC.** (E6 / 2026-10-10; pad fix 2026-10-10):
@@ -168,12 +168,11 @@ Tracking: Phase 3 on `phase3-pc-bringup` (P3.5 merged from
 `phase3-cardgame` @ `fcff119`). P3.1 done. **P3.2 Done-when met** (+
 WSTAG790 follow-up). **P3.3 Done-when met:** forced encounter →
 `STFGTREP` (XP/levels) → return to `FIELDSTG` (`docs/P3.3_BATTLE.md`).
-**P3.4 partial:** menus linked + field open/return; **STGMCARD save →
-`.mcr` proven**; **pad START→`MODE_STATUS`→field** (no
-`FORCE_FIELD_MENU`); **FORCE_NPC shop/lab/naming/gym return**
-(`docs/P3.4_MENUS.md`, `READY_FOR_MAIN_ROADMAP_SYNC: P3.4_GYM_NPC` /
-`P3.4_MENUS_PAD2` / `P3.4_MEMCARD`). Triangle UI return, real NPC
-walk-up, load e2e still open. Done-when checkbox stays open. **P3.5 Done-when met**
+**P3.4 Done-when met** (`READY_FOR_MAIN_ROADMAP_SYNC: P3.4`,
+`docs/P3.4_MENUS.md`): menus open/return from field; **STSTATUS Triangle
+UI cancel** (no `AUTO_MENU_RETURN`); **STGMCARD save + load** via P2.7
+`.mcr`; pad START→status; FORCE_NPC shop/lab/naming/gym. Follow-up: real
+NPC walk-up talk. **P3.5 Done-when met**
 (`READY_FOR_MAIN_ROADMAP_SYNC: P3.5`, `docs/P3.5_CARDGAME.md`): force-win
 → prize item → `FIELDSTG`; album `cardsSeen` 29→33 via vanilla
 `STCRDSHP_openPack` `addCards` (host win `addCards` gated off). **P3.7
@@ -181,82 +180,82 @@ blocked** (`READY_FOR_MAIN_ROADMAP_SYNC: P3.7_BLOCKED`,
 `docs/P3.7_MOVIES.md`): `DW3_START_MODE=0xE01` reaches movie path;
 PSY-Z `MDEC_*` / `StCdInterrupt` stubs + no CD track for
 `MOVIEOPN.STR` LBA; default skip remains `MODE_TITLE`. **P3.8 partial**
-(`READY_FOR_MAIN_ROADMAP_SYNC: P3.8_BATCH4`, `docs/P3.8_STAGES.md` on
-`phase3-pc-bringup` @ `b6fa96b`): `STAGSLCT` linked; batch1 +13 +
-batch2 +31 + batch3 +40 + batch4 +54 (South/Suzaku/Network +
-West/Byakko/North; `WSTAG460` still stubbed); 142 linked host objs;
-live PASS 141/141; 97 US stages still stubbed. P3.6 / P3.9 may run on
-side tracks.
+(`READY_FOR_MAIN_ROADMAP_SYNC: P3.8_BATCH4`, `docs/P3.8_STAGES.md`):
+`STAGSLCT` linked; batch1 +13 + batch2 +31 + batch3 +40 + batch4 +54
+(South/Suzaku/Network + West/Byakko/North; `WSTAG460` still stubbed);
+142 linked host objs; live PASS 141/141; 97 US stages still stubbed.
+P3.6 / P3.9 may run on side tracks.
 
 Objective: the full game loop runs on PC: field, stages, battle, menus,
 audio, movies.
 
 - [x] **P3.1 64-bit audit, part 2 (overlays + stages).** Same rules as
   P2.4 across `src/field`, `src/battle`, `src/cardgame`, `src/menus`,
-  `src/debug`. On `phase3-pc-bringup`: match-neutral `0018` + PORT_HOST
-  `0019`; CMake `dw3_p31_audit` under
-  `-Werror=pointer-to-int-cast -Werror=int-to-pointer-cast` (432 objs);
-  `dw3_engine_objs` still builds. Evidence / exclusions (EU WSTAG920–974
-  `LANGUAGE`; battle `draw`/`lights`/`model_mesh` PSY-Z gaps):
-  `docs/P3.1_64BIT_AUDIT.md` on that branch. Full overlay link with P3.2+.
-  Upstream `make compare` blocker unchanged (`docs/PATCHES.md`).
+  `src/debug`. Match-neutral `0018` + PORT_HOST `0019` (`port/patches/`):
+  literal `createTask` sizes → `sizeof`, children as `N * sizeof(Task *)`,
+  `STAGE_SELECT_MODE_ARG_SAVE`, field script/`GFX.vsync` as `void*`,
+  pointer+offset for map/fighter/menu casts, field `freeFrom` heap
+  watermark. Evidence: `docs/P3.1_64BIT_AUDIT.md` — `apply_patches.sh
+  --check`; `ninja -C build/pc dw3_p31_audit` (432 objs under
+  `-Werror=pointer-to-int-cast -Werror=int-to-pointer-cast`);
+  `dw3_engine_objs` still builds. Excluded with compiler evidence: EU-only
+  WSTAG920–974 (`LANGUAGE`); battle `draw`/`lights`/`model_mesh` (PSY-Z
+  gaps). Full overlay link lands with P3.2+. Upstream `make compare`
+  blocker unchanged (`docs/PATCHES.md`).
 - [x] **P3.2 Field + first stage.** `FIELDSTG` + `WSTAG260` scripts +
   starting town `WSTAG780` (door → `WSTAG785`) + `STPLNMET`. Patches
   `0020`–`0023` + `DW3_AUTO_PAD` host inject. **Done-when evidence**
   (`docs/P3.2_FIELD.md`): pad `moveByPad` moves actor (Δy on 780/785);
   real `SCRIPT_LEAVE`/`leaveField` 474→475 (not `AUTO_DOOR`); name
-  `0x500` then back to 475. Follow-up: WSTAG790 (`0x2D9`) linked @
-  `481d4d0` (post-name chamber OK; see `docs/P3.2_FIELD.md`).
+  `0x500` then back to 475. Follow-up: **WSTAG790** (`0x2D9` / 476)
+  linked — FAST path `SCRIPT_LEAVE`→`pickStage` 476 without SEGV
+  (`docs/P3.2_FIELD.md`).
   Done when: new game → name entry → first field area is walkable and a
   door changes stage.
-- [x] **P3.3 Battle.** `FIGHTSTG` + `WFIGHTMN` + `STFGTREP` linked on
-  `phase3-pc-bringup` @ `a4d7e64`; patches `0024`/`0025` +
-  `DW3_FORCE_ENCOUNTER` / `DW3_FORCE_WIN` / `DW3_AUTO_PAD=confirm`.
-  **Done-when evidence** (`docs/P3.3_BATTLE.md`): win → report applies
-  XP/levels → return to `FIELDSTG` (`0x2d7` / stage 474) with walk +
-  door. Follow-up: real wilderness encounter + pad-driven KO.
+- [x] **P3.3 Battle.** `FIGHTSTG` + `WFIGHTMN` + `STFGTREP` linked
+  (`dw3_p33_battle`); patches `0024`/`0025` + `DW3_FORCE_ENCOUNTER` /
+  `DW3_FORCE_WIN` / `DW3_AUTO_PAD=confirm`. **Done-when evidence**
+  (`docs/P3.3_BATTLE.md`): win → report applies XP/levels → return to
+  `FIELDSTG` (`0x2d7` / stage 474) with walk + door. Follow-up: real
+  wilderness encounter + pad-driven KO (`WFIGHTTS` optional).
   Done when: a random encounter completes and returns to the field with
   stats applied.
-- [ ] **P3.4 Menus and shops.** `STSTATUS`, `STITSHOP`, `STGTRAIN`,
+- [x] **P3.4 Menus and shops.** `STSTATUS`, `STITSHOP`, `STGTRAIN`,
   `STGDGLAB`, `STGMCARD`, `STDGNAME`, `STPLNMET` linked (`dw3_p34_menus`);
-  patches `0026`/`0027`/`0028`/`0031` + `DW3_FORCE_MENU` /
+  patches `0026`/`0027`/`0028`/`0031`/`0033` + `DW3_FORCE_MENU` /
   `DW3_AUTO_MENU_RETURN` / `DW3_FORCE_MCARD_SAVE` /
-  `DW3_FORCE_NPC_ACTION`. **Partial evidence** (`docs/P3.4_MENUS.md`):
-  each opens from field via `leaveField` and returns to `FIELDSTG`;
-  **STGMCARD force-save mutates `memcard0.mcr`** via P2.7; **pad
-  `AUTO_PAD=status` START→`MODE_STATUS`→field**; NPC applyAction
-  shop/lab/naming/gym return (`READY_FOR_MAIN_ROADMAP_SYNC:
-  P3.4_GYM_NPC`). Still open: Triangle UI return, real NPC walk-up,
-  load e2e. Checkbox stays unticked (Done-when not fully honest yet).
+  `DW3_FORCE_MCARD_LOAD` / `DW3_FORCE_NPC_ACTION`. **Done-when evidence**
+  (`docs/P3.4_MENUS.md`, `READY_FOR_MAIN_ROADMAP_SYNC: P3.4`): each opens
+  from field via `leaveField` and returns to `FIELDSTG`; **STSTATUS
+  Triangle UI cancel** (no `AUTO_MENU_RETURN`); **STGMCARD force-save +
+  force-load** via P2.7 `.mcr`; pad `AUTO_PAD=status`; NPC applyAction
+  shop/lab/naming/gym. Follow-up: real NPC proximity/talk.
   Done when: each opens from the field, works end-to-end, and saving via
   `STGMCARD` uses P2.7.
-- [x] **P3.5 Card game.** Linked on `phase3-pc-bringup` @ `0537713`
-  (from `phase3-cardgame` @ `2df364f`, `dw3_p35_cardgame`); patches
-  `0029`/`0032` + `DW3_FORCE_CARD_WIN` / `DW3_FORCE_PACK_OPEN` /
-  `DW3_AFTER_CARD_ALBUM`. **Done-when evidence** (`docs/P3.5_CARDGAME.md`,
+- [x] **P3.5 Card game.** Linked (`dw3_p35_cardgame`); patches `0029`/
+  `0032` + `DW3_FORCE_CARD_WIN` / `DW3_FORCE_PACK_OPEN` /
+  `DW3_AFTER_CARD_ALBUM` / reuse `DW3_FORCE_MENU`. **Done-when
+  evidence** (`docs/P3.5_CARDGAME.md`,
   `READY_FOR_MAIN_ROADMAP_SYNC: P3.5`): force-win prize → `FIELDSTG`;
-  `STCRDSHP_openPack` real `addCards` `cardsSeen` 29→33 → `STCRDABM`
-  33 → field. Host win `addCards` default off. Follow-up: pad battle,
-  NPC/script entry.
+  `STCRDSHP_openPack` real `addCards` `cardsSeen` 29→33 →
+  `STCRDABM` 33 → field. Host win `addCards` default off
+  (`DW3_FORCE_CARD_WIN_ADDCARDS`). Follow-up: pad battle, NPC/script
+  entry.
   Done when: a card battle can be won and the album updates.
 - [ ] **P3.6 Audio.** libsnd path through PSY-Z: VAB banks, SEP music,
   SFX, reverb settings the game sets. Verify `SsSeqCalledTbyT` timing
   from the vsync callback.
-  Investigation (Task S1): `docs/P3.6_AUDIO.md` (from `phase3-audio-spike`)
-  — blocker PSY-Z `_SsSeqPlay` `NOT_IMPLEMENTED`; no Core CMake.
-  Implementation = Task A6.
   Done when: title music, field music change on stage switch, battle SFX.
 - [ ] **P3.7 Movies.** Title STR playback through PSY-Z `libpress` +
   streaming (`CdRead2`, `StSetRing`) from raw-sector `.STR` files packed
-  in P1.6. **Blocked** on `phase3-pc-bringup` @ `1f20556`
-  (`docs/P3.7_MOVIES.md`, `READY_FOR_MAIN_ROADMAP_SYNC: P3.7_BLOCKED`):
-  boot attempt `DW3_START_MODE=0xE01` hits `MDEC_*` / stream stubs;
-  default skip `MODE_TITLE` retained. Checkbox unticked until play +
+  in P1.6. **Blocked** (`docs/P3.7_MOVIES.md`,
+  `READY_FOR_MAIN_ROADMAP_SYNC: P3.7_BLOCKED`): boot attempt
+  `DW3_START_MODE=0xE01` hits `MDEC_*` / stream stubs; default skip
+  `MODE_TITLE` (patch `0010`) retained. Checkbox unticked until play +
   audio + Start-skip.
   Done when: the opening movies play with audio and can be skipped.
 - [ ] **P3.8 Stage sweep.** `STAGSLCT` linked (`dw3_p38_stagslct`); patch
-  `0030` + `tools/stage_sweep.py`. **Partial batch4** on
-  `phase3-pc-bringup` @ `b6fa96b` (`docs/P3.8_STAGES.md`,
+  `0030` + `tools/stage_sweep.py`. **Partial batch4** (`docs/P3.8_STAGES.md`,
   `READY_FOR_MAIN_ROADMAP_SYNC: P3.8_BATCH4`): batch1 +13 early
   Asuka/Central; batch2 +31; batch3 +40 Amaterasu/Central/East/Seiryu/South;
   batch4 +54 South/Suzaku/Network + West/Byakko/North (`WSTAG460` stubbed;

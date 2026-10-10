@@ -80,12 +80,14 @@ mkdir -p "$MAIN/.worktrees"
 git -C "$MAIN" worktree add "$MAIN/.worktrees/phase3-pc-bringup" -b phase3-pc-bringup
 ```
 
-- [ ] **Step 2: Commit plan + “Phase 3 in progress” on `phase3-pc-bringup`; push `-u`**
-- [ ] **Step 3: Docs-only sync to `main`:** copy plan + ROADMAP Phase 3 status; commit `docs: start Phase 3 ROADMAP tracking`; push `main` (no force).
+- [x] **Step 2: Commit plan + “Phase 3 in progress” on `phase3-pc-bringup`; push `-u`**
+- [x] **Step 3: Docs-only sync to `main`:** copy plan + ROADMAP Phase 3 status; commit `docs: start Phase 3 ROADMAP tracking`; push `main` (no force).
 
 ---
 
 ### Task A1 (Wave 1): P3.1 64-bit audit — overlays + stages
+
+**Status:** done — `0018` + `0019`, CMake `dw3_p31_audit` (432 objs); see `docs/P3.1_64BIT_AUDIT.md`.
 
 **Files:**
 - Create: `port/patches/0018-match-neutral-overlay-createTask-sizeof.patch` (and further `0019+` if split helps review)
@@ -302,14 +304,18 @@ if __name__ == "__main__":
 
 ### Task A2: P3.2 Field + first stage
 
+**Status:** link scaffold done — `dw3_p32_field` + US table
+(`FIELDSTG`/`STPLNMET`/`WSTAG260`/`780`/`785`); `dw3-pc` links. Runtime
+walk/door still open.
+
 **Files:** `port/CMakeLists.txt` (link `FIELDSTG` + starting town stage e.g. `WSTAG260`), `port/overlays/*`, patches as needed, `platforms/pc`, `docs/ROADMAP.md`.
 
 **Interfaces:**
 - Consumes: P3.1 clean overlays; cdfs file ids; static overlay restore
 - Produces: new game → name entry → walkable first field; door changes stage
 
-- [ ] **Step 1: Identify US starting stage file ids / overlay names from `docs/SURVEY.md` + decomp `stages` tables.**
-- [ ] **Step 2: Link FIELDSTG + required shared field objects; register overlay restore entries.**
+- [x] **Step 1: Identify US starting stage file ids / overlay names from `docs/SURVEY.md` + decomp `stages` tables.**
+- [x] **Step 2: Link FIELDSTG + required shared field objects; register overlay restore entries.**
 - [ ] **Step 3: Boot path: title → new game → `STPLNMET` if required → field.**
 - [ ] **Step 4: Manual verify walk + door; tick P3.2; commit + push.**
 
@@ -319,11 +325,14 @@ if __name__ == "__main__":
 
 ### Task A3: P3.3 Battle
 
-**Files:** link `FIGHTSTG` + `WFIGHTMN` (+ `WFIGHTTS` optional from debug); battle patches; ROADMAP.
+**Status:** Done-when met on `phase3-pc-bringup` — see `docs/P3.3_BATTLE.md`
+(`DW3_FORCE_ENCOUNTER` + `DW3_FORCE_WIN` + `STFGTREP` → field).
 
-- [ ] **Step 1: Link battle overlays; fix remaining 64-bit / MIPS issues that surface at link/run.**
-- [ ] **Step 2: Trigger random encounter from field; complete fight; return with stats.**
-- [ ] **Step 3: Tick P3.3; commit + push.**
+**Files:** link `FIGHTSTG` + `WFIGHTMN` + `STFGTREP` (+ `WFIGHTTS` optional); battle patches; ROADMAP.
+
+- [x] **Step 1: Link battle overlays; fix remaining 64-bit / MIPS issues that surface at link/run.**
+- [x] **Step 2: Trigger encounter (forced for bring-up); complete fight; return with stats.**
+- [x] **Step 3: Tick P3.3; commit + push.**
 
 **Done when:** encounter completes and returns to field with stats applied.
 
@@ -333,9 +342,10 @@ if __name__ == "__main__":
 
 **Files:** link `STSTATUS`, `STITSHOP`, `STGTRAIN`, `STGDGLAB`, `STGMCARD`, `STDGNAME`, `STPLNMET`; memcard uses P2.7.
 
-- [ ] **Step 1: Link each overlay; open from field.**
+- [x] **Step 1: Link each overlay; open from field.** (`dw3_p34_menus`, `DW3_FORCE_MENU`)
 - [ ] **Step 2: End-to-end smoke per menu; save via `STGMCARD` writes `.mcr`.**
-- [ ] **Step 3: Tick P3.4; commit + push.**
+  (open/return + Triangle cancel + STGMCARD save/load — `docs/P3.4_MENUS.md`)
+- [x] **Step 3: Tick P3.4; commit + push.** (`READY_FOR_MAIN_ROADMAP_SYNC: P3.4`)
 
 **Done when:** each listed menu works end-to-end; save uses P2.7.
 
@@ -344,10 +354,13 @@ if __name__ == "__main__":
 ### Task A5: P3.5 Card game
 
 **Files:** `CARDGAME`, `STCRDDEK`, `STCRDSHP`, `STCRDABM`.
+Branch: `phase3-cardgame` (separate worktree from P3.4 memcard work).
 
-- [ ] **Step 1: Link card overlays.**
-- [ ] **Step 2: Win a card battle; album updates.**
-- [ ] **Step 3: Tick P3.5; commit + push.**
+- [x] **Step 1: Link card overlays.** (`dw3_p35_cardgame`, patch `0029`)
+- [x] **Step 2: Win a card battle; album updates.**
+  (force-win → `addCards`/`cardsSeen` → field → `STCRDABM` → field;
+  `docs/P3.5_CARDGAME.md`)
+- [x] **Step 3: Tick P3.5; commit + push.** (Done-when met on `phase3-cardgame`)
 
 **Done when:** card battle winnable; album updates.
 
