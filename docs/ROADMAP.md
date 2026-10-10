@@ -304,9 +304,12 @@ audio, movies.
   (same menu, different opponent). `build/compare/battle/pc.png` is a
   separate `DW3_START_MODE=0x600` / `DW3_FORCE_ENCOUNTER=1` boot
   (`DW3_FORCE_WIN` unset): Pharaohmon vs Kotemon 150/150, message
-  "Pharaohmon Attack!", no battlefield models. The savestate still does
-  not load into `dw3-pc`. Checkbox stays open until the owner reviews
-  all three pairs.
+  "Pharaohmon Attack!". That PC grab was a flat blue field because
+  `GsSetRefView2` left `GsWSMATRIX` at 0 (R4, `docs/P3_GPU_GLITCHES.md`).
+  The view write plus mesh OT stride now draws the stage and Pharaohmon
+  on that same boot. It is still not the DuckStation Fight menu, and the
+  savestate still does not load into `dw3-pc`. Checkbox stays open until
+  the owner reviews all three pairs.
   Done when: a doc page with the comparison for title, field, battle.
 
 Gate: a full playthrough segment (start → first boss) on PC without

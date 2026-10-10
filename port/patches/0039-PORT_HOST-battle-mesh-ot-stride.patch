@@ -1,0 +1,24 @@
+Upstream-bound: no
+Subject: [PORT_HOST] battle mesh OT index uses OT_TYPE stride
+
+FIGHTSTG_drawMesh indexes the layer OT as a u_long*. Under __psyz,
+OT_TYPE is {addr, len} (two u_longs). HUD goes through getOtEntry
+(patch 0017) and shows. Mesh prims were linked into the middle of an
+entry, so DrawOTag never walked them. On PS1 OT_TYPE is u_long.
+
+--- a/src/battle/battle_mode/model_mesh.c
++++ b/src/battle/battle_mode/model_mesh.c
+@@ -785,7 +785,12 @@
+             } else {
+                 gte_AverageZ3(otz, z1, z2, &otz);
+             }
+-            state->ot = state->otBase + otz;
++#if PORT_HOST
++            /* OT_TYPE is two u_longs; otz is an entry index (see 0017). */
++            state->ot = state->otBase + otz * (s32)(sizeof(OT_TYPE) / sizeof(u_long));
++#else
++            state->ot = state->otBase + otz;
++#endif
+             if (state->gouraud) {
+                 FIGHTSTG_addMeshPolyGT(state);
+             } else {

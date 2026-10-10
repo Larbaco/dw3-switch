@@ -28,6 +28,7 @@ Prefer `SDL_VIDEODRIVER=offscreen` (or a real display) for present — not
 | G2 | Same garbage / torn strips under sync MDEC | `STDWTITL_onSliceDecoded` starts next `DecDCTout` before `LoadImage`; nested sync callbacks reuse two `imgbuf`s | Patch `0037` (LoadImage first under `PORT_HOST`) + DecDCTout slice stash in present wrap |
 | G3 | Non-MDEC `LoadImage` could take the RGB888 path | `(w % 3 == 0 && h >= 192)` plus a latched `isrgb24` after STR | MDEC strip geometry only (`w == 24 && h >= 192`); drop the stale latch on non-MDEC uploads. Owner confirmed after PR #28 that movies stayed clean while the title menu was still shredded — that shred was R1 |
 | R1 | Title logo / copyright vertical shred, column offsets, solid green bar | Host `TimBlock.pixels` is `u_long[]`. PS1 `u_long` is 4 bytes (pixels at file offset 12); host `u_long` is 8, so the flexible array aligns to 16 and `LoadImage` starts two halfwords into the payload. Path B dump (`rgb24_loads=0`) matched `TLOGOUSA` at shift 2 | Patch `0038`: `pixels` is `u32[]` so the offset stays 12. **Owner window confirm (2026-10-10):** title menu readable after pull of #29 |
+| R4 | Battle HUD with a flat blue field (no stage, no fighters) | `FIGHTSTG_drawMesh` was linked and called. `GsSetRefView2` was a no-op, so `GsWSMATRIX` stayed 0 and RTPS collapsed the mesh. Mesh OT writes also used a `u_long` stride while host `OT_TYPE` is 16 bytes (HUD uses `getOtEntry`, so the plates still showed) | `GsSetRefView2` writes the look-at into `GsWSMATRIX` (`port/psyz_missing/psyz_missing.c`). `GsSetProjection` calls `SetGeomScreen`. Patch `0039` indexes the mesh OT by `sizeof(OT_TYPE)`. `GsSetFlatLight` is still a no-op |
 
 ### Evidence (G1/G2)
 
@@ -52,7 +53,6 @@ Offline oracle (no present): assemble `MOVIEOPN.STR` frame → `bsdec` →
 |---|---|---|---|---|
 | R2 | Movie present | Double-buffer B / captured 320×480 may be empty while VRAM A is good; possible tear if sampling mid-flip | `DW3_START_MODE=0xE01` + windowed present | PSY-Z `Draw_SetDisplayMode` still ignores `isrgb24` (stores as 5551 via host) |
 | R3 | Field | Sprite / VRAM tiling polish | `DW3_START_MODE=0x200` (FIELDSTG + WSTAG260) | Boot reaches field; visual oracle = P3.9 / DuckStation |
-| R4 | Battle | Same class as field once `FIGHTSTG` is up | `DW3_FORCE_ENCOUNTER` / P3.3 recipes in `docs/P3.3_BATTLE.md` | Not re-proven on this branch beyond mode entry |
 | R5 | PSY-Z LP64 | Upstream `MDEC_in` + `u32` static tables | — | Prefer small psyz fix on a dedicated branch; host wrap is enough for PC |
 
 ### R1 evidence
@@ -74,6 +74,24 @@ SDL_VIDEODRIVER=offscreen SDL_AUDIODRIVER=dummy \
 ```
 
 Movies stay on the G1/G2 recipe (`DW3_START_MODE=0xE01`, `w==24` strips).
+
+### R4 evidence
+
+`draw` / `lights` / `model_mesh` are not missing from the `FIGHTSTG` link. `port/CMakeLists.txt` excludes them only from the compile-only `dw3_p31_audit` target. `DW3_FIGHT_SOURCES` globs every `battle_mode/*.c`, and `nm` shows `FIGHTSTG_drawMesh` / `FIGHTSTG_queueMeshDraw` as defined text. A gdb stop on the pre-fix binary (`DW3_START_MODE=0x600`, `DW3_FORCE_ENCOUNTER=1`, no `DW3_FORCE_WIN`) hit both, with `GsSetRefView2` called as `vp=-2432,-1920,-11136 vr=1408,-2496,4864` while `GsWSMATRIX` was still all zeros. `isMeshOnScreen` kept running. The blue field is the stage `setBgColor`, not a missing overlay.
+
+After the view write and the OT stride patch, the same boot's display crop (frame 90, `rgb24_loads=0`) shows the grass stage, the mesa, and Pharaohmon, with the name plates and the "Attack!" box still up. That is the Attack! camera, not the DuckStation Fight menu (Kunemon vs Monmon). `GsSetFlatLight` still discards the three directional lights. This frame did not need them to stop being a flat blue quad.
+
+```bash
+SDL_VIDEODRIVER=offscreen SDL_AUDIODRIVER=dummy \
+  DW3_START_MODE=0x600 DW3_FORCE_ENCOUNTER=1 \
+  DW3_RUNTIME=runtime/us \
+  DW3_FB_DUMP=build/battle-evidence/r4.ppm \
+  DW3_FB_DUMP_DISP=90 \
+  timeout -s KILL 28 ./build/pc/dw3-pc --runtime runtime/us
+# expect: dw3: GsSetRefView2 vp=-2432,-1920,-11136 ... m00 != 0
+# expect: FIGHTSTG loaded WFIGHTMN, no DW3_FORCE_WIN
+# expect: display crop is the stage and a fighter, not flat blue (59,115,233)
+```
 
 ## Prior fixed (P3.7, already on main)
 
