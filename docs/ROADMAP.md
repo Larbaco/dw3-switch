@@ -176,10 +176,11 @@ UI cancel** (no `AUTO_MENU_RETURN`); **STGMCARD save + load** via P2.7
 **P3.5 Done-when met**
 (`READY_FOR_MAIN_ROADMAP_SYNC: P3.5`, `docs/P3.5_CARDGAME.md`): force-win
 → prize item → `FIELDSTG`; album `cardsSeen` 29→33 via vanilla
-`STCRDSHP_openPack` `addCards` (host win `addCards` gated off). **P3.7 in progress** (`docs/P3.7_MOVIES.md`): sustained STR play +
-Start-skip → `MODE_TITLE` and XA decode/mix (Wave 4) proven on PC;
-**done-when not met** until owner audible DAC listen (Task 5 used
-`SDL_AUDIODRIVER=dummy`). Default skip remains `MODE_TITLE` (`0010`).
+`STCRDSHP_openPack` `addCards` (host win `addCards` gated off). **P3.7 Done-when met** (`READY_FOR_MAIN_ROADMAP_SYNC: P3.7`,
+`docs/P3.7_MOVIES.md`): sustained STR play + Start-skip → `MODE_TITLE` +
+XA decode/mix + **owner audible DAC listen** (Pulse rebuild). Follow-up:
+video presentation quality (frames/decode/skip already evidenced). Default
+skip remains `MODE_TITLE` (`0010`).
 **P3.8 Done-when met** (`READY_FOR_MAIN_ROADMAP_SYNC: P3.8`,
 `docs/P3.8_STAGES.md`): `STAGSLCT` + batches 1–6 link 238/239 US stage
 objs; live PASS 237/237; only `WSTAG460` left stubbed (host
@@ -249,15 +250,15 @@ audio, movies.
   SFX, reverb settings the game sets. Verify `SsSeqCalledTbyT` timing
   from the vsync callback.
   Done when: title music, field music change on stage switch, battle SFX.
-- [ ] **P3.7 Movies.** Title STR playback through PSY-Z `libpress` +
+- [x] **P3.7 Movies.** Title STR playback through PSY-Z `libpress` +
   streaming (`CdRead2`, `StSetRing`) from raw-sector `.STR` files packed
-  in P1.6. **Progress** (`docs/P3.7_MOVIES.md`): Wave 1–4 + present +
-  Task 5 — ring backpressure fix (no STR drop on full); sustained
-  `DecDCTout` frame done #330+; FB dump nonzero; XA file-bridge mix
-  (`sdlaudio.raw`); `DW3_AUTO_PAD=start` + patch `0034` →
-  `dw3-movie: Start-skip` → `mode=0xE00`. **Blocks tick:** owner audible
-  listen on a real DAC (Task 5 runs used `SDL_AUDIODRIVER=dummy`; this SDL
-  build has no Pulse/ALSA).
+  in P1.6. **Done-when evidence** (`docs/P3.7_MOVIES.md`,
+  `READY_FOR_MAIN_ROADMAP_SYNC: P3.7`): Wave 1–4 + present + Task 5 —
+  ring backpressure; sustained `DecDCTout` #330+; FB dump nonzero; XA
+  file-bridge mix; `DW3_AUTO_PAD=start` + `0034` → Start-skip →
+  `mode=0xE00`; **owner audible XA** on real Pulse/PipeWire DAC after
+  SDL rebuild (`SDL_PULSEAUDIO=ON` + `-DSDL_X11_XSCRNSAVER=OFF`).
+  Follow-up: video presentation quality (not blocking tick).
   Done when: the opening movies play with audio and can be skipped.
 - [x] **P3.8 Stage sweep.** `STAGSLCT` linked (`dw3_p38_stagslct`); patch
   `0030` + `tools/stage_sweep.py`. **Done-when evidence**

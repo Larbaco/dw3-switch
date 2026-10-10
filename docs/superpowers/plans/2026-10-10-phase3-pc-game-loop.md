@@ -386,11 +386,12 @@ Branch: `phase3-cardgame` (separate worktree from P3.4 memcard work).
 
 **Files:** PSY-Z `libpress` + streaming (`CdRead2`, `StSetRing`); raw-sector `.STR` from P1.6 layout; skip path retained for bring-up.
 
-- [ ] **Step 1: Wire STR streaming from runtime pack.**
-- [ ] **Step 2: Opening movies play with audio; Start skips.**
-- [ ] **Step 3: Tick P3.7; commit + push.**
+- [x] **Step 1: Wire STR streaming from runtime pack.**
+- [x] **Step 2: Opening movies play with audio; Start skips.**
+- [x] **Step 3: Tick P3.7; commit + push.**
 
 **Done when:** opening movies play with audio and can be skipped.
+(Met — owner audible XA; video presentation quality follow-up.)
 
 ---
 
