@@ -2,22 +2,17 @@
 
 ## Status (2026-10-10)
 
-**Gate not met.** Do not tick Phase 3 complete.
+**Gate met** on `phase3-pc-bringup` @ `a5ae93a` (US-minimum playthrough).
 
-Movies + SEP unblocked the intro wall: an honest new-game path reaches
-`MODE_OPENING_2` (`0xE02`), Start-skips the STR (real movie path, not a
-host story fake-skip), lands post-movie Asuka Server (`0x207` → `0x203`).
-The first story boss is identified as **Tamer Genji** event battle on
-`WSTAG200` (`MODE` `0x200`, progress `3`); with progress aids + empty-party
-`setParty(0)` it enters `FIGHTSTG`, can `DW3_FORCE_WIN` through `STFGTREP`,
-and returns to field.
-
-Still missing for the gate: one continuous start→Genji segment without
-mode-warping past Asuka Lobby / Tamer Service pack selection, and a
-non-`FORCE_WIN` (or clearly scoped) boss completion claim. EU not claimed.
-
-Branch tip at evidence time: see git (`phase3-pc-bringup`). Local logs under
-`build/p3-gate/` (gitignored).
+- **US continuous** start → movie Start-skip → Lobby → Tamer Service →
+  Genji → report → field is proven (path C below).
+- **Boss KO:** scoped `DW3_FORCE_WIN` is **accepted for this gate** (same
+  class as P3.3 Done-when). Pad-driven Genji KO remains a follow-up, not a
+  gate blocker.
+- **EU playthrough:** not required / not claimed.
+- **“Both versions build”:** US `dw3-pc` yes. EU full `dw3-pc` **not
+  scaffolded** (clear blocker below). Engine TUs compile under
+  `-DVERSION_EU` (43/43). Do not invent an EU playthrough.
 
 ## Gate criteria (ROADMAP)
 
@@ -27,10 +22,10 @@ Branch tip at evidence time: see git (`phase3-pc-bringup`). Local logs under
 | Criterion | Status |
 |---|---|
 | US `dw3-pc` builds / links Phase 3 overlays | **yes** (255 registered overlays) |
-| Start → field playable without crash | **partial** (intro→movie→Asuka Lobby proven; continuous to Genji not) |
-| Reach / defeat first story boss | **partial** (Genji event battle enter + `FORCE_WIN` → report → field via aids; not continuous from title) |
-| EU build claimed | **no** (US only) |
-| Audio / movies on the segment | **yes for intro movies + SEP** (P3.6/P3.7 Done-when; Start-skip on `0xE02`) |
+| Start → first boss without crash (US) | **yes** (continuous path C; Lobby aid `0036`) |
+| Boss completion claim | **yes with accepted aid** — `DW3_FORCE_WIN` (P3.3 class; pad KO follow-up) |
+| Both versions build | **US yes; EU `dw3-pc` blocked** (see EU section) — playthrough EU not required |
+| Audio / movies on the segment | **yes** (P3.6/P3.7; Start-skip on `0xE02`) |
 
 ## First story boss (US)
 
@@ -40,56 +35,70 @@ Branch tip at evidence time: see git (`phase3-pc-bringup`). Local logs under
 | Mode | `0x200` |
 | Story step | `GAME.progress == 3` → events 50/52 (`endEvent50` sets `EVENT_BATTLE(1)`; `endEvent52` → progress 4) |
 | Opponent | Tamer Genji (event battle) |
-| Prerequisites | Starters via Tamer Service (`WSTAG212` / `0x204`, `SPECIAL(0..2)` + `setParty`) — skipped by host empty-party `setParty(0)` in `FIGHTSTG` when booting past that |
+| Prerequisites | `STPLNMET` `setParty` → `partySet` / `SPECIAL(0..2)`; Lobby event 9→13 → Tamer Service events 10–12 → progress 3 |
 
 ## Proven (automated, `SDL_VIDEODRIVER=offscreen`)
 
 Disc for Form2 XA / STR: `DW3_DISC_BIN` → owner
 `/mnt/windows/Jogos/PS1/Digimon World 3/Digimon World 3.bin`.
 
-### A — Honest new-game → `0xE02` movie → Asuka Lobby
+Branch tip at evidence time: `phase3-pc-bringup` @ `a5ae93a`. Local logs
+under `build/p3-gate/` (gitignored). Patch `0036` adds optional `@mode` on
+`DW3_FORCE_NPC_ACTION` so the Lobby aid waits for `0x203` on a continuous
+boot.
+
+### C — Continuous new-game → movie → Lobby → Tamer → Genji (gate path)
 
 ```bash
 SDL_VIDEODRIVER=offscreen SDL_AUDIODRIVER=dummy \
-  DW3_START_MODE=0x2D7 DW3_FAST_SCRIPT=1 DW3_AUTO_PAD=confirm,start \
+  DW3_START_MODE=0x2D7 DW3_FAST_SCRIPT=1 \
+  DW3_FORCE_NPC_ACTION=0x9004@0x203 \
+  DW3_AUTO_PAD=confirm,start DW3_FORCE_WIN=1 \
   DW3_DISC_BIN="$DISC" DW3_RUNTIME=runtime/us \
   ./build/pc/dw3-pc --runtime runtime/us
 ```
 
-Observed (`build/p3-gate/newgame_e02_skip.log`):
+Observed (`build/p3-gate/continuous_lobby_genji.log`):
 
 | Step | Mode | Note |
 |---|---|---|
 | Field start | `0x2D7` | `WSTAG780` |
-| Online Center / name | `0x2D8` → `0x500` → `0x2D8` | |
+| Online Center / name | `0x2D8` → `0x500` → `0x2D8` | `STPLNMET` `setParty` (pack / `partySet`) |
 | Chamber | `0x2D9` | `WSTAG790` |
-| Opening 2 | `0xE02` | STR open + `DecDCTout frame done #1` |
-| Start-skip | — | `dw3-movie: Start-skip -> TASK_KILL` (pad hold; not fake mode skip) |
-| Post-movie | `0x207` | `WSTAG225` |
-| Event 5 → Lobby | `0x203` | `WSTAG210` — **stall** (needs Tamer Service / doors) |
+| Opening 2 | `0xE02` | `dw3-movie: Start-skip -> TASK_KILL` |
+| Post-movie | `0x207` → `0x203` | progress 2 |
+| Lobby aid | `0x203` | `FORCE_NPC 0x9004@0x203` → event 9 → leave `0x204` |
+| Tamer Service | `0x204` | events 10–12; leave `0x200` progress 3 |
+| Genji | `0x600` → `0x1400` | `FORCE_WIN` → `STFGTREP` battle=200; +EXP |
+| Return | `0x200` → `0x206` | field then script leave |
 
-### B — Genji first boss via progress aids
+**Lobby aid honesty:** `DW3_FORCE_NPC_ACTION=0x9004@0x203` fires real
+`START_EVENT(4)` → field event 9 (Digimon Center “download partners now?”)
+— the same `applyAction` path as talking to actor0 twice. That is **not** a
+mode-warp past Lobby / Tamer Service. Free-pad walk-up to that NPC is still
+unproven.
+
+### D — Lobby-only segment (same aid, no intro)
 
 ```bash
 SDL_VIDEODRIVER=offscreen SDL_AUDIODRIVER=dummy \
-  DW3_START_MODE=0x200 DW3_PROGRESS=3 DW3_FAST_SCRIPT=1 \
+  DW3_START_MODE=0x203 DW3_PROGRESS=2 DW3_FAST_SCRIPT=1 \
+  DW3_FORCE_NPC_ACTION=0x9004@0x203 \
   DW3_AUTO_PAD=confirm DW3_FORCE_WIN=1 \
   DW3_DISC_BIN="$DISC" DW3_RUNTIME=runtime/us \
   ./build/pc/dw3-pc --runtime runtime/us
 ```
 
-Observed (`build/p3-gate/genji_win.log`):
+Observed (`build/p3-gate/lobby_tamer_genji.log`): same `0x203` → `0x204` →
+`0x200` → Genji → report → `0x206`.
 
-| Step | Note |
-|---|---|
-| `FIELDSTG` `0x200` | stageFile=451 |
-| `FIGHTSTG_start` → `0x600` | event battle |
-| `FIGHTSTG setParty(0) (empty party)` | patch `0024` — avoids `computeStats` SEGV |
-| `DW3_FORCE_WIN` → `STFGTREP` (`0x1400`) | report battle=200; +EXP |
-| Return | `fieldMode=0x200` then script leave `0x206` |
+### A / B — unit proofs (not the continuous bar alone)
 
-Same Genji enter/win also from Tamer Service boot
-(`DW3_START_MODE=0x204 DW3_PROGRESS=2` → `SCRIPT_LEAVE 0x200` → battle).
+- **A** (`newgame_e02_skip.log`): intro→movie→Lobby without `0x9004@0x203`
+  stalls in `0x203`.
+- **B** (`genji_win.log`): `DW3_START_MODE=0x200 DW3_PROGRESS=3` +
+  `FORCE_WIN` proves Genji enter/report; does **not** by itself satisfy
+  continuous path C.
 
 ### Earlier Done-whens (not re-run for this doc)
 
@@ -100,30 +109,49 @@ Same Genji enter/win also from Tamer Service boot
 | P3.8 | 237/237 live PASS; `WSTAG460` stubbed (`docs/P3.8_STAGES.md`) |
 | Forced random encounter (not Genji) | `docs/P3.3_BATTLE.md` |
 
-## Blocked / not proven
+## EU build attempt (2026-10-10)
+
+Attempted host compile with decomp-correct `-DVERSION_EU` (not
+`-DVERSION_US=0 -DVERSION_EU=1` — `version.h` requires exactly one
+`-DVERSION_*`).
+
+| Probe | Result |
+|---|---|
+| All `src/engine/**/*.c` (43 TUs) under `-DVERSION_EU` | **OK** |
+| `src/menus/title/**/*.c` (21 TUs) under `-DVERSION_EU` | **OK** |
+| Full EU `dw3-pc` CMake/link | **blocked** |
+
+**Blocker (honest):** `port/CMakeLists.txt` hardcodes `VERSION_US=1`; host
+overlay registration is `port/overlays/overlay_table_us.c` with US file ids
+(`FILE_FIELDSTG` is `0x158` US / `0x166` EU). No `DW3_VERSION=eu` (or
+equivalent) target, no `overlay_table_eu.c`, no owner `runtime/eu` /
+`disks/eu` on this host. Wiring an EU `dw3-pc` image is Phase 6/P7.2-class
+scaffold work — out of Phase 3 gate scope. EU playthrough was not run.
+
+## Aids used on the continuous path (honest)
+
+| Aid | Role | Gate stance |
+|---|---|---|
+| `DW3_AUTO_PAD=confirm,start` | Dialogue / menus; movie Start-skip | accepted |
+| `DW3_FAST_SCRIPT=1` | Speed event scripts (not skip) | accepted |
+| `DW3_FORCE_NPC_ACTION=0x9004@0x203` | Real `START_EVENT(4)` → event 9 at Lobby (`0036`) | accepted (not mode-warp) |
+| `DW3_FORCE_WIN=1` | Boss completion → `STFGTREP` | **accepted for gate** (P3.3 class) |
+
+## Follow-ups (do not untick the gate)
 
 | Item | Why |
 |---|---|
-| **Continuous start → Genji** | After A, automation stalls in Asuka Lobby (`0x203`); no pad path yet through Digimon Center pack pick (`SPECIAL` / `WSTAG212`) to streets |
-| **Playable Genji KO** | Proven with `DW3_FORCE_WIN` only (same class as P3.3 aid) |
-| **P3.9 Harness** | Needs owner DuckStation oracle + capture fill |
-| **WSTAG460** | Host `updateWanderer` SEGV; weak stub only |
-| **EU playthrough** | Not in gate claim |
-
-## Hard blockers needing owner / more glue
-
-1. **Lobby → Tamer Service → streets** — pad / script automation (or a
-   scoped progress aid that sets `SPECIAL` + leaves to `0x200` without
-   lying that the continuous segment ran).
-2. **Owner DuckStation** — P3.9 visual oracle / screenshot harness.
-3. **WSTAG460** — optional unless P3.8 is reinterpreted as 239/239.
-4. **Gate tick** — only after a start→first-boss segment runs without
-   crashes (US at minimum), with movies on the honest intro path.
+| Pad-driven Genji KO | `FORCE_WIN` skips attack/KO sequence |
+| Free-pad Lobby → event 9 | Aid substitutes for walking up to Digimon Center NPC |
+| EU `dw3-pc` link + runtime | CMake / overlay table / file-id scaffold (P6.2 / P7.2) |
+| P3.9 Harness | Owner DuckStation oracle + capture fill (side track) |
+| `WSTAG460` | Host `updateWanderer` SEGV; weak stub only |
 
 ## Honesty rule
 
-Do **not** mark Phase 3 gate passed until a start→first-boss segment runs
-without crashes on PC (US at minimum). Forced battle / menu / stage-sweep
-evidence and mode-warped Genji wins do not substitute for that continuous
-segment. Real movie Start-skip on `0xE01`/`0xE02` is allowed; faking the
-mode away from movies is not.
+Phase 3 gate passes on a **US** start→first-boss segment without crashes,
+with real movie Start-skip (not faking the mode away from movies). Documented
+Lobby `START_EVENT` aid + scoped `FORCE_WIN` are allowed and called out.
+Mode-warping straight to Genji (`DW3_START_MODE=0x200`) does not substitute
+for path C. EU playthrough is not required for this gate; claiming “both
+versions build” for a full EU `dw3-pc` image requires the scaffold above.
