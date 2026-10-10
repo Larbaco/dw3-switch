@@ -122,6 +122,24 @@ from `platforms/switch/` until the surface is stable.
 | PSY-Z not linked on Switch yet | P4.3 uses weak SPU stubs; libsnd done-when needs P4.7 link. |
 | Phase 3 PC bring-up | Switch host remains a side track; do not block PC movies/audio. |
 
+## Validation targets (hardware vs emulator)
+
+**Gate for ticking P4.x done-when items:** owner OLED Switch (Atmosphere,
+**hbmenu**), with **nxlink** when useful for stderr/FPS.
+
+Local Switch emulators on the owner dev machine (paths **outside git**, not
+CI) may be used later for optional **smoke** before copying an `.nro` to SD.
+That path is **deferred** — no emulator runs are required for current work.
+
+| Resource | Path (owner machine) | Notes |
+|---|---|---|
+| Ryubing (Ryujinx fork) | `/mnt/windows/Jogos/emuladores/Ryubing` (+ Ryubing-Canary tarball) | **Preferred** for homebrew `.nro` smoke when enabled |
+| Eden (Yuzu-line) | `/mnt/windows/Jogos/emuladores/Eden-Linux-*.AppImage` | Secondary; may diverge from hardware |
+
+Emulator smoke **does not** satisfy P4.2 done-when (**60 fps on hardware** —
+see [P4.2_VIDEO.md](P4.2_VIDEO.md)). DuckStation is PS1-only and irrelevant
+here.
+
 ## Next steps
 
 1. ~~P4.2: implement `nx_gpu.c` present path~~ — code on PR #21; **hardware fps check** open.
