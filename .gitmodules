@@ -1,0 +1,3 @@
+[submodule "vendor/dw3_decomp"]
+	path = vendor/dw3_decomp
+	url = https://github.com/ReGame-Labs/dw3_decomp.git

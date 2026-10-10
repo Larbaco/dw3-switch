@@ -1,0 +1,42 @@
+# Build
+/build/
+/out/
+*.o
+*.a
+*.nro
+*.nso
+*.nsp
+*.nacp
+*.elf
+*.map
+
+# Toolchains / local overrides
+/local.mk
+.env
+.env.*
+
+# Game data (bring your own disc)
+/disks/
+/romfs/game/
+*.bin
+*.cue
+*.iso
+*.img
+
+# IDE / OS
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+.idea/
+.DS_Store
+Thumbs.db
+*~
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+
+# Logs / temp
+*.log
+/tmp/
