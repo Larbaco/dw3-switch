@@ -165,19 +165,24 @@ Status: **in progress** (branch `phase3-pc-bringup`; plan:
 [`docs/superpowers/plans/2026-10-10-phase3-pc-game-loop.md`](superpowers/plans/2026-10-10-phase3-pc-game-loop.md)).
 
 Tracking: Phase 3 started after PR #3 merge (`main` @ `e1f048b`). Worktree
-`.worktrees/phase3-pc-bringup`. P3.1 (64-bit audit overlays+stages) is the
+`.worktrees/phase3-pc-bringup`. P3.1 done (`0018`); P3.2 (field + first stage) is the
 active Core task; P3.6 investigation and P3.9 harness scaffold may run on
 side tracks per the plan.
 
 Objective: the full game loop runs on PC: field, stages, battle, menus,
 audio, movies.
 
-- [ ] **P3.1 64-bit audit, part 2 (overlays + stages).** Same rules as
+- [x] **P3.1 64-bit audit, part 2 (overlays + stages).** Same rules as
   P2.4 across `src/field`, `src/battle`, `src/cardgame`, `src/menus`,
-  `src/debug` (11 literal `createTask` sizes, `(s32)0x80000000` mode arg
-  in `stage_select.c`, `(Task *)` function-pointer casts).
-  Done when: warnings clean tree-wide; upstream PRs opened for the
-  neutral ones.
+  `src/debug`. Match-neutral patch `0018` (`port/patches/`): literal
+  `createTask` sizes → `sizeof`/`offsetof`, `STAGE_CHILDREN_SIZE` as
+  `N * sizeof(Task *)`, stage_select save arg `-0x80000000`, field
+  script/`GFX.vsync` task pointers as `void*` (PS1 width-neutral).
+  Done when: warnings clean for linked units — engine+title still build
+  with `-Werror=pointer-to-int-cast -Werror=int-to-pointer-cast`; full
+  overlay object libs land with P3.2+ (remaining cast noise checked as
+  those TUs are linked). Upstream `make compare` blocker unchanged
+  (`docs/PATCHES.md`).
 - [ ] **P3.2 Field + first stage.** `FIELDSTG` + `WSTAG260` scripts + the
   starting town stage, with map, actors, text windows and triggers.
   Done when: new game → name entry → first field area is walkable and a

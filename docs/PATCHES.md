@@ -50,6 +50,7 @@ tools/apply_patches.sh           # refresh build/decomp-src + apply
 | `0015-match-neutral-layer-ot-sizeof-OT_TYPE.patch` | yes | OT alloc uses `sizeof(OT_TYPE)` (PSY-Z `{tag,len}`) |
 | `0016-PORT_HOST-flip-pending-vsync-pump.patch` | no | `VSync(0)` while spinning on `FLIP_PENDING` |
 | `0017-PORT_HOST-layer-ot-type-indexing.patch` | no | Host OT_TYPE indexing; skip 24-bit empty-OT walk |
+| `0018-match-neutral-overlay-64bit-audit.patch` | yes | P3.1: overlay/stage `createTask` sizeof + `void*` script/vsync pointers |
 
 `tools/apply_patches.sh --check` applies the series in order (stacked
 patches on the same file are valid).
