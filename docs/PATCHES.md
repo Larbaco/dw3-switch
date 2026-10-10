@@ -33,4 +33,5 @@ tools/apply_patches.sh           # refresh build/decomp-src + apply
 
 | Patch | Upstream-bound | Notes |
 |---|---|---|
-| *(none yet)* | — | Empty series for P2.2 bring-up |
+| `0001-PORT_HOST-scratchpad-stack-noops.patch` | no | `SetSpadStack` / `ResetSpadStack` no-ops under `PORT_HOST` |
+| `0002-PORT_HOST-game_bss-complete-types.patch` | no | Include complete types before `game_bss.c` object defs on host |
