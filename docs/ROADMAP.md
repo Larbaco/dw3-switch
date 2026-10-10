@@ -166,11 +166,11 @@ Status: **in progress** (branch `phase3-pc-bringup`; plan:
 
 Tracking: Phase 3 on `phase3-pc-bringup`. P3.1 done. **P3.2 Done-when
 met** (`docs/P3.2_FIELD.md`). WSTAG790 linked @ `481d4d0` (post-name
-chamber OK). **P3.3 in progress** @ `56c94bc`: `FIGHTSTG`+`WFIGHTMN`
-boot via `FORCE_ENCOUNTER` (`docs/P3.3_BATTLE.md`); Done-when NOT met.
-Next: finish fight, `STFGTREP`, field return + stats. **P3.6
-investigation** on main (`docs/P3.6_AUDIO.md` from `phase3-audio-spike`):
-blocker PSY-Z `_SsSeqPlay` `NOT_IMPLEMENTED` — Done-when not met.
+chamber OK). **P3.3 Done-when met** @ `a4d7e64`: `FIGHTSTG`+`WFIGHTMN`+
+`STFGTREP`; forced win → report XP/levels → return to `FIELDSTG`
+(`docs/P3.3_BATTLE.md`). **P3.6 investigation** on main
+(`docs/P3.6_AUDIO.md` from `phase3-audio-spike`): blocker PSY-Z
+`_SsSeqPlay` `NOT_IMPLEMENTED` — Done-when not met.
 
 Objective: the full game loop runs on PC: field, stages, battle, menus,
 audio, movies.
@@ -193,10 +193,12 @@ audio, movies.
   `481d4d0` (post-name chamber OK; see `docs/P3.2_FIELD.md`).
   Done when: new game → name entry → first field area is walkable and a
   door changes stage.
-- [ ] **P3.3 Battle.** `FIGHTSTG` + `WFIGHTMN` linked; forced
-  `MODE_BATTLE` boots via `DW3_FORCE_ENCOUNTER` (`docs/P3.3_BATTLE.md`
-  @ `56c94bc`). Still open: finish fight, `STFGTREP`, field return +
-  stats; `WFIGHTTS` optional.
+- [x] **P3.3 Battle.** `FIGHTSTG` + `WFIGHTMN` + `STFGTREP` linked on
+  `phase3-pc-bringup` @ `a4d7e64`; patches `0024`/`0025` +
+  `DW3_FORCE_ENCOUNTER` / `DW3_FORCE_WIN` / `DW3_AUTO_PAD=confirm`.
+  **Done-when evidence** (`docs/P3.3_BATTLE.md`): win → report applies
+  XP/levels → return to `FIELDSTG` (`0x2d7` / stage 474) with walk +
+  door. Follow-up: real wilderness encounter + pad-driven KO.
   Done when: a random encounter completes and returns to the field with
   stats applied.
 - [ ] **P3.4 Menus and shops.** `STSTATUS`, `STITSHOP`, `STGTRAIN`,
