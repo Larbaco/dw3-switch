@@ -39,6 +39,9 @@ ecosystem (and companion app, if a protocol exists) is Phase 7; see
 [docs/ROADMAP.md](docs/ROADMAP.md) and
 [docs/COMMUNITY_QOL.md](docs/COMMUNITY_QOL.md).
 
+Texture pack overlays (owner data, TIM-first) are a Phase 8 goal; see
+[docs/TEXTURE_PACKS.md](docs/TEXTURE_PACKS.md).
+
 ## Setup
 
 ```bash
