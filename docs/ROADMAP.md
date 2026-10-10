@@ -169,10 +169,11 @@ Tracking: Phase 3 on `phase3-pc-bringup` (P3.5 merged from
 WSTAG790 follow-up). **P3.3 Done-when met:** forced encounter →
 `STFGTREP` (XP/levels) → return to `FIELDSTG` (`docs/P3.3_BATTLE.md`).
 **P3.4 partial:** menus linked + field open/return; **STGMCARD save →
-`.mcr` proven**; **pad START→`MODE_STATUS`** + **FORCE_NPC shop/gym/lab
-leaveField** (`docs/P3.4_MENUS.md`, `READY_FOR_MAIN_ROADMAP_SYNC:
-P3.4_MENUS_PAD` / `P3.4_MEMCARD`). Triangle return, real NPC walk-up,
-load e2e still open. **P3.5 partial** (`docs/P3.5_CARDGAME.md`): force-win → prize
+`.mcr` proven**; **pad START→`MODE_STATUS`→field** (no
+`FORCE_FIELD_MENU`); **FORCE_NPC shop/lab/naming return** (gym NPC
+SEGV) (`docs/P3.4_MENUS.md`, `READY_FOR_MAIN_ROADMAP_SYNC:
+P3.4_MENUS_PAD2` / `P3.4_MEMCARD`). Triangle UI return, real NPC
+walk-up, gym NPC SEGV, load e2e still open. **P3.5 partial** (`docs/P3.5_CARDGAME.md`): force-win → prize
 item + return to `FIELDSTG` proven; album `cardsSeen` 29→30 is host
 `DW3_FORCE_CARD_WIN` `addCards` aid, not vanilla prize→album. **P3.7
 blocked** (`READY_FOR_MAIN_ROADMAP_SYNC: P3.7_BLOCKED`,
@@ -219,13 +220,15 @@ audio, movies.
   stats applied.
 - [ ] **P3.4 Menus and shops.** `STSTATUS`, `STITSHOP`, `STGTRAIN`,
   `STGDGLAB`, `STGMCARD`, `STDGNAME`, `STPLNMET` linked (`dw3_p34_menus`);
-  patches `0026`/`0027`/`0028` + `DW3_FORCE_MENU` / `DW3_AUTO_MENU_RETURN`
-  / `DW3_FORCE_MCARD_SAVE`. **Partial evidence** (`docs/P3.4_MENUS.md`):
+  patches `0026`/`0027`/`0028`/`0031` + `DW3_FORCE_MENU` /
+  `DW3_AUTO_MENU_RETURN` / `DW3_FORCE_MCARD_SAVE` /
+  `DW3_FORCE_NPC_ACTION`. **Partial evidence** (`docs/P3.4_MENUS.md`):
   each opens from field via `leaveField` and returns to `FIELDSTG`;
-  **STGMCARD force-save mutates `memcard0.mcr`** via P2.7 (`MemCard*` +
-  `_card_write` wrap); pad START→`MODE_STATUS`; `DW3_FORCE_NPC_ACTION`
-  shop/gym/lab (`READY_FOR_MAIN_ROADMAP_SYNC: P3.4_MENUS_PAD`). Still
-  open: Triangle return, real NPC walk-up, load e2e. Checkbox stays
+  **STGMCARD force-save mutates `memcard0.mcr`** via P2.7; **pad
+  `AUTO_PAD=status` START→`MODE_STATUS`→field**; NPC applyAction
+  shop/lab/naming return (gym NPC SEGV)
+  (`READY_FOR_MAIN_ROADMAP_SYNC: P3.4_MENUS_PAD2`). Still open: Triangle
+  UI return, real NPC walk-up, gym NPC SEGV, load e2e. Checkbox stays
   unticked until full Done-when.
   Done when: each opens from the field, works end-to-end, and saving via
   `STGMCARD` uses P2.7.
