@@ -545,6 +545,63 @@ set_target_properties(dw3_p34_menus PROPERTIES
 )
 add_dependencies(dw3_p34_menus dw3_p34_menu_objs)
 
+# ---------------------------------------------------------------------------
+# P3.5: CARDGAME + STCRDDEK + STCRDSHP + STCRDABM with named .data/.bss restore.
+# Reuses dw3_host_menu_overlay (same ld -r / section rename packing).
+# ---------------------------------------------------------------------------
+file(GLOB DW3_CARDGAME_SOURCES CONFIGURE_DEPENDS
+  "${DECOMP_SRC}/src/cardgame/card_battle/*.c"
+  "${DECOMP_SRC}/src/cardgame/card_battle/data/*.c")
+list(FILTER DW3_CARDGAME_SOURCES EXCLUDE REGEX "\\.inc\\.c$")
+
+file(GLOB DW3_STCRDDEK_SOURCES CONFIGURE_DEPENDS
+  "${DECOMP_SRC}/src/cardgame/deck_editor/*.c"
+  "${DECOMP_SRC}/src/cardgame/deck_editor/data/*.c")
+list(FILTER DW3_STCRDDEK_SOURCES EXCLUDE REGEX "\\.inc\\.c$")
+
+file(GLOB DW3_STCRDSHP_SOURCES CONFIGURE_DEPENDS
+  "${DECOMP_SRC}/src/cardgame/card_packs/*.c")
+list(FILTER DW3_STCRDSHP_SOURCES EXCLUDE REGEX "\\.inc\\.c$")
+
+file(GLOB DW3_STCRDABM_SOURCES CONFIGURE_DEPENDS
+  "${DECOMP_SRC}/src/cardgame/album/*.c")
+list(FILTER DW3_STCRDABM_SOURCES EXCLUDE REGEX "\\.inc\\.c$")
+
+list(LENGTH DW3_CARDGAME_SOURCES _dw3_cardgame_count)
+list(LENGTH DW3_STCRDDEK_SOURCES _dw3_stcrddek_count)
+list(LENGTH DW3_STCRDSHP_SOURCES _dw3_stcrdshp_count)
+list(LENGTH DW3_STCRDABM_SOURCES _dw3_stcrdabm_count)
+if(_dw3_cardgame_count EQUAL 0 OR _dw3_stcrddek_count EQUAL 0 OR
+   _dw3_stcrdshp_count EQUAL 0 OR _dw3_stcrdabm_count EQUAL 0)
+  message(FATAL_ERROR
+    "P3.5 cardgame sources missing under ${DECOMP_SRC}/src/cardgame "
+    "(cardgame=${_dw3_cardgame_count} dek=${_dw3_stcrddek_count} "
+    "shp=${_dw3_stcrdshp_count} abm=${_dw3_stcrdabm_count})")
+endif()
+
+dw3_host_menu_overlay(cardgame ${DW3_CARDGAME_SOURCES})
+dw3_host_menu_overlay(stcrddek ${DW3_STCRDDEK_SOURCES})
+dw3_host_menu_overlay(stcrdshp ${DW3_STCRDSHP_SOURCES})
+dw3_host_menu_overlay(stcrdabm ${DW3_STCRDABM_SOURCES})
+
+set(DW3_P35_HOST_OBJECTS
+  "${DW3_HOST_OVL_DIR}/cardgame.host.o"
+  "${DW3_HOST_OVL_DIR}/stcrddek.host.o"
+  "${DW3_HOST_OVL_DIR}/stcrdshp.host.o"
+  "${DW3_HOST_OVL_DIR}/stcrdabm.host.o"
+)
+set_source_files_properties(${DW3_P35_HOST_OBJECTS} PROPERTIES
+  EXTERNAL_OBJECT TRUE
+  GENERATED TRUE
+)
+add_custom_target(dw3_p35_cardgame_objs DEPENDS ${DW3_P35_HOST_OBJECTS})
+
+add_library(dw3_p35_cardgame STATIC ${DW3_P35_HOST_OBJECTS})
+set_target_properties(dw3_p35_cardgame PROPERTIES
+  LINKER_LANGUAGE C
+)
+add_dependencies(dw3_p35_cardgame dw3_p35_cardgame_objs)
+
 # Archive for the PC host: engine + title + port glue (field/battle/menu objs separate).
 add_library(dw3_engine_objs STATIC
   $<TARGET_OBJECTS:dw3_engine>

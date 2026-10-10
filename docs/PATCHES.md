@@ -61,6 +61,7 @@ tools/apply_patches.sh           # refresh build/decomp-src + apply
 | `0026-PORT_HOST-p34-menu-evidence.patch` | no | P3.4: `DW3_FORCE_MENU` / `DW3_FORCE_FIELD_MENU` (host latch); menu `setParty`/`fieldMode`/`modeArg`; `startFade` guard; menu return logs; `DW3_FORCE_MCARD_SAVE` |
 | `0027-PORT_HOST-p34-menu-return-and-save.patch` | no | P3.4: `DW3_AUTO_MENU_RETURN` requests `fieldMode` after N menu frames |
 | `0028-PORT_HOST-memcard-system-bundle.patch` | no | P3.4: `g_dw3_memcard` contiguous `MemCard`+`MemCardFuncs` (LP64 `MEMCARD_SYSTEM` cast) |
+| `0029-PORT_HOST-p35-cardgame-evidence.patch` | no | P3.5: card-mode seed/`modeArg`; `DW3_FORCE_CARD_WIN` + win `addCards`; return log before `TASK_KILL`; `DW3_AFTER_CARD_ALBUM`; `AUTO_MENU_RETURN` for deck/album/shop; host `CARDGAME_markedCounts` |
 
 `tools/apply_patches.sh --check` applies the series in order (stacked
 patches on the same file are valid).

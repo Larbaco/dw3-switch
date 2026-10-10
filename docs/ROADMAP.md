@@ -164,12 +164,16 @@ pad state connected; GPU polish open; merged via PR #3).
 Status: **in progress** (branch `phase3-pc-bringup`; plan:
 [`docs/superpowers/plans/2026-10-10-phase3-pc-game-loop.md`](superpowers/plans/2026-10-10-phase3-pc-game-loop.md)).
 
-Tracking: Phase 3 on `phase3-pc-bringup`. P3.1 done. **P3.2 Done-when
-met** (+ WSTAG790 follow-up). **P3.3 Done-when met:** forced encounter
-→ `STFGTREP` (XP/levels) → return to `FIELDSTG` (`docs/P3.3_BATTLE.md`).
-**P3.4 partial:** menus linked + field open/return; **STGMCARD save →
-`.mcr` proven** (`docs/P3.4_MENUS.md`, `READY_FOR_MAIN_ROADMAP_SYNC:
-P3.4_MEMCARD`). Pad-driven START→status and NPC script entries still open.
+Tracking: Phase 3 on `phase3-pc-bringup` (P3.5 merged from
+`phase3-cardgame`). P3.1 done. **P3.2 Done-when met** (+ WSTAG790
+follow-up). **P3.3 Done-when met:** forced encounter → `STFGTREP`
+(XP/levels) → return to `FIELDSTG` (`docs/P3.3_BATTLE.md`). **P3.4
+partial:** menus linked + field open/return; **STGMCARD save → `.mcr`
+proven** (`docs/P3.4_MENUS.md`, `READY_FOR_MAIN_ROADMAP_SYNC:
+P3.4_MEMCARD`). Pad-driven START→status and NPC script entries still
+open. **P3.5 Done-when met** (`docs/P3.5_CARDGAME.md`): force-win →
+`addCards`/`cardsSeen` → return to `FIELDSTG` → album UI confirms →
+field again.
 P3.6 / P3.9 may run on side tracks.
 
 Objective: the full game loop runs on PC: field, stages, battle, menus,
@@ -216,7 +220,14 @@ audio, movies.
   entries, load e2e. Checkbox stays unticked until full Done-when.
   Done when: each opens from the field, works end-to-end, and saving via
   `STGMCARD` uses P2.7.
-- [ ] **P3.5 Card game.** `CARDGAME`, `STCRDDEK`, `STCRDSHP`, `STCRDABM`.
+- [x] **P3.5 Card game.** Linked (`dw3_p35_cardgame`); patch `0029` +
+  `DW3_FORCE_CARD_WIN` / `DW3_AFTER_CARD_ALBUM` / reuse
+  `DW3_FORCE_MENU`. **Done-when evidence** (`docs/P3.5_CARDGAME.md`):
+  force-win applies prize item + `addCards` (`cardsSeen` 29→30) →
+  `CARDGAME return` → `FIELDSTG` → `STCRDABM_createAlbum cardsSeen=30` →
+  `AUTO_MENU_RETURN` to field. Root cause of prior SEGV: case-2 log after
+  `setState(3)`/`TASK_KILL` freed `items[0]`. Follow-up: pad-driven fight
+  + NPC/script entry.
   Done when: a card battle can be won and the album updates.
 - [ ] **P3.6 Audio.** libsnd path through PSY-Z: VAB banks, SEP music,
   SFX, reverb settings the game sets. Verify `SsSeqCalledTbyT` timing
