@@ -1,18 +1,13 @@
 #!/usr/bin/env python3
-"""P3.9 reference comparison harness stub.
-
-Boots the same save in DuckStation (oracle) and dw3-pc (subject), captures
-screenshots for side-by-side review. See docs/P3.9_COMPARE.md.
-
-This stub documents the CLI. With --dry-run it exits 0 without needing
-disc images, BIOS, DuckStation, or a built binary.
-"""
+"""Capture DuckStation vs dw3-pc frames for the same save/label (P3.9)."""
 
 from __future__ import annotations
 
 import argparse
 import sys
 from pathlib import Path
+
+LABELS = ("title", "field", "battle")
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -24,8 +19,9 @@ def build_parser() -> argparse.ArgumentParser:
     )
     p.add_argument(
         "--label",
-        default="title",
-        help="scene label: title, field, battle, or custom (default: title)",
+        required=True,
+        choices=LABELS,
+        help="scene label: title, field, or battle",
     )
     p.add_argument(
         "--runtime",
@@ -68,15 +64,16 @@ def build_parser() -> argparse.ArgumentParser:
 def print_plan(args: argparse.Namespace) -> None:
     save = args.save if args.save is not None else Path("<unset>")
     out_dir = args.out / args.label
-    print("compare_ref: dry-run plan (P3.9)", file=sys.stderr)
-    print(f"  label:       {args.label}", file=sys.stderr)
-    print(f"  runtime:     {args.runtime}", file=sys.stderr)
+    print(
+        f"compare_harness: stub label={args.label} runtime={args.runtime}",
+        file=sys.stderr,
+    )
     print(f"  save (.mcr): {save}", file=sys.stderr)
     print(f"  duckstation: {args.duckstation or '<unset>'}", file=sys.stderr)
     print(f"  pc-bin:      {args.pc_bin}", file=sys.stderr)
     print(f"  out:         {out_dir}/{{duck,pc}}.png + pair.md", file=sys.stderr)
     print(
-        "  next: implement oracle/subject capture; see docs/P3.9_COMPARE.md",
+        "  next: implement oracle/subject capture; see tools/compare_harness/README.md",
         file=sys.stderr,
     )
 
@@ -87,12 +84,12 @@ def main(argv: list[str] | None = None) -> int:
         print_plan(args)
         return 0
     print(
-        "compare_ref: capture not implemented yet; use --dry-run "
-        "(see docs/P3.9_COMPARE.md)",
+        "compare_harness: capture not implemented yet; use --dry-run "
+        "(see tools/compare_harness/README.md)",
         file=sys.stderr,
     )
     return 2
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    raise SystemExit(main())
