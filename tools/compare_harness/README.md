@@ -13,7 +13,7 @@ PS1 (DuckStation) is the **visual oracle**. `dw3-pc` is the subject.
 |---|---|---|
 | `title` | OK | One Start skips the FMV. Shot is MODE_TITLE (Press Start) @ 200% |
 | `field` | OK | Both sides: Asuka Inn interior. PC `STGMCARD_loadSave ok`, then stop Cross at `mode=0x20a` |
-| `battle` | duck-only | `owner.state` @ 3s / 200% is the Fight menu (Kunemon vs Monmon, Monmon 20/140). No `pc.png` |
+| `battle` | split | Duck: `owner.state` @ 3s / 200% (Kunemon vs Monmon Fight menu). PC: `--pc-only` boots `DW3_START_MODE=0x600` + `DW3_FORCE_ENCOUNTER` and does not load that savestate. `DW3_FORCE_WIN` stays unset |
 
 ROADMAP P3.9 stays open until three reviewed pairs exist. PNGs + `.mcr`
 stay under gitignored `build/compare/`.
@@ -23,7 +23,9 @@ stay under gitignored `build/compare/`.
 | `--dry-run` | 0 | Print plan; no assets required |
 | `--label title` | 0 | Boot + F10 |
 | `--label field` + `--save` | 0 | Stage card + auto-load + F10 |
-| `--label field\|battle` without `--save`/`--statefile` | 3 | Blocked |
+| `--label field\|battle` duck path without `--save`/`--statefile` | 3 | Blocked |
+| `--label battle --pc-only` | 0 | PC FIGHTSTG only. No DuckStation, no savestate |
+| `--duck-only` and `--pc-only` together | 2 | Pick one |
 
 Owner card on this machine:
 
@@ -65,12 +67,21 @@ python3 tools/compare_harness/capture_pair.py \
   --label field --save "$SRC" \
   --duckstation "$DS" --disc "$CUE" --bios "$BIOS" --out build/compare
 
-# Battle: owner.state is on disk (gitignored). Duck-only; do not invent pc.png.
+# Battle oracle. The savestate does not boot dw3-pc.
 python3 tools/compare_harness/capture_pair.py \
   --label battle --duck-only --no-auto-load \
   --statefile build/compare/battle/owner.state \
   --settle-seconds 3 \
   --duckstation "$DS" --disc "$CUE" --bios "$BIOS" --out build/compare
+
+# Battle subject. Separate boot. Do not set DW3_FORCE_WIN (that skips the menu).
+python3 tools/compare_harness/capture_pair.py \
+  --label battle --pc-only \
+  --runtime "$HOME/.cache/dw3-switch/runtime/us" \
+  --pc-bin build/pc/dw3-pc \
+  --encounter 1 \
+  --pc-settle-seconds 22 \
+  --out build/compare
 ```
 
 Needs: `DISPLAY`, `xdotool`, `wmctrl`. Pad1 is temporarily rebound to
@@ -104,7 +115,7 @@ From `duckstation -help`:
 | BIOS `scph1001.bin` under data `bios/` | Own BIOS only — never downloaded by harness |
 | US BIN/CUE | Boot path |
 | Own disc → `runtime/us/` | PC subject data |
-| Shared `memcard0.mcr` | Field/battle same-save |
+| Shared `memcard0.mcr` | Field same-save. Battle oracle is a savestate. Battle PC ignores it |
 | `build/pc/dw3-pc` | Subject binary (Core) |
 
 ## Same-save contract (field/battle)
@@ -112,6 +123,10 @@ From `duckstation -help`:
 1. One `memcard0.mcr` both sides accept.
 2. Copy into both run roots before capture.
 3. Settled frame per label (title idle / field after load / battle fade-in).
+
+Battle PC is a separate boot. `--pc-only` sets `DW3_START_MODE=0x600` and
+`DW3_FORCE_ENCOUNTER`. It does not load `-statefile` and does not set
+`DW3_FORCE_WIN`.
 
 ## Output layout (local only)
 
@@ -127,7 +142,7 @@ build/compare/<label>/
 
 - **Title:** one Start reaches PRESS START. A second Start opens New Game / Continue. At 200% the 600-frame timeout is about 5s of wall clock once that prompt is up.
 - **Field:** both sides are the Asuka Inn interior after the memcard link fix (`STGMCARD_loadSave ok`). See `docs/P3.9_REFERENCE.md`.
-- **Battle:** oracle captured duck-only from `owner.state`. The loaded frame is Kunemon vs Monmon (Fight, Monmon 20/140). The earlier owner screenshot is Tapirmon. No PC subject from this savestate.
+- **Battle:** DuckStation `owner.state` is the Kunemon vs Monmon Fight menu (Monmon 20/140). The earlier owner screenshot is Tapirmon. `dw3-pc` does not load that savestate. `--pc-only` boots `FIGHTSTG` with `DW3_FORCE_ENCOUNTER` and leaves `DW3_FORCE_WIN` unset. The two frames are not the same moment.
 
 ## Related
 

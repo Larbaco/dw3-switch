@@ -54,13 +54,25 @@ def build_parser() -> argparse.ArgumentParser:
         "--save",
         type=Path,
         default=None,
-        help="128 KiB slot-0 .mcr/.mcd (required for field/battle)",
+        help="128 KiB slot-0 .mcr/.mcd (required for field, and for duck battle)",
     )
     p.add_argument(
         "--statefile",
         type=Path,
         default=None,
-        help="optional DuckStation -statefile (best for settled field/battle)",
+        help="DuckStation -statefile for the oracle only (does not boot dw3-pc)",
+    )
+    p.add_argument(
+        "--encounter",
+        type=int,
+        default=1,
+        help="DW3_FORCE_ENCOUNTER index for the battle PC subject (default 1)",
+    )
+    p.add_argument(
+        "--pc-settle-seconds",
+        type=float,
+        default=None,
+        help="extra idle after FIGHTSTG loads WFIGHTMN, before the PC grab",
     )
     p.add_argument(
         "--duckstation",
@@ -93,6 +105,11 @@ def build_parser() -> argparse.ArgumentParser:
         help="disable pad spam (use with --statefile)",
     )
     p.add_argument("--duck-only", action="store_true")
+    p.add_argument(
+        "--pc-only",
+        action="store_true",
+        help="capture dw3-pc only; battle uses FORCE_ENCOUNTER, not -statefile",
+    )
     p.add_argument("--dry-run", action="store_true")
     return p
 
@@ -105,14 +122,76 @@ def default_settle(label: str) -> float:
     return 25.0 if label == "title" else 150.0
 
 
+# Idle after "FIGHTSTG loaded WFIGHTMN" so the intro can reach the command menu.
+# DW3_FORCE_WIN is never set; that path skips the menu.
+PC_BATTLE_MENU_SETTLE = 22.0
+PC_BATTLE_LOG_TIMEOUT = 150.0
+
+
 def print_plan(args: argparse.Namespace) -> None:
     settle = args.settle_seconds or default_settle(args.label)
     log(f"plan label={args.label} settle={settle}s")
     log(f"  save:        {args.save or '<unset>'}")
-    log(f"  statefile:   {args.statefile or '<unset>'}")
+    log(f"  statefile:   {args.statefile or '<unset>'} (duck only)")
     log(f"  duckstation: {args.duckstation or '<unset>'}")
     log(f"  disc:        {args.disc or '<unset>'}")
+    log(f"  duck-only:   {args.duck_only}  pc-only: {args.pc_only}")
+    if args.label == "battle" and not args.duck_only:
+        extra = (
+            args.pc_settle_seconds
+            if args.pc_settle_seconds is not None
+            else PC_BATTLE_MENU_SETTLE
+        )
+        log(
+            f"  pc battle:   DW3_START_MODE=0x600 DW3_FORCE_ENCOUNTER={args.encounter} "
+            f"menu-settle={extra:.0f}s (no DW3_FORCE_WIN)"
+        )
     log(f"  out:         {args.out / args.label}/")
+
+
+def validate_capture(args: argparse.Namespace) -> int | None:
+    """Return an exit code when the plan cannot run, else None."""
+    if args.duck_only and args.pc_only:
+        log("pass only one of --duck-only and --pc-only")
+        return 2
+    want_duck = not args.pc_only
+    want_pc = not args.duck_only
+    if (
+        want_duck
+        and args.label in ("field", "battle")
+        and args.save is None
+        and args.statefile is None
+    ):
+        log(f"label={args.label} duck capture needs --save and/or --statefile")
+        return 3
+    if want_pc and args.label == "field" and args.save is None:
+        log("label=field PC capture needs --save")
+        return 3
+    if want_duck and (args.duckstation is None or args.disc is None):
+        log("need --duckstation and --disc")
+        return 2
+    if want_pc and args.label == "battle" and args.encounter < 0:
+        log("--encounter must be >= 0")
+        return 2
+    return None
+
+
+def pc_subject_env(base: dict[str, str], label: str, encounter: int) -> dict[str, str]:
+    """Env for dw3-pc. Battle boots FIGHTSTG; the DuckStation savestate is not applied.
+
+    DW3_FORCE_WIN is removed so the command menu is not skipped.
+    """
+    env = dict(base)
+    env.pop("DW3_AUTO_PAD", None)
+    env.pop("DW3_FORCE_MCARD_LOAD", None)
+    env.pop("DW3_PROGRESS", None)
+    env.pop("DW3_FORCE_WIN", None)
+    env.pop("DW3_FORCE_ENCOUNTER", None)
+    env.pop("DW3_START_MODE", None)
+    if label == "battle":
+        env["DW3_START_MODE"] = "0x600"
+        env["DW3_FORCE_ENCOUNTER"] = str(encounter)
+    return env
 
 
 def check_bios(bios: Path) -> Path:
@@ -610,6 +689,20 @@ def log_contains(path: Path, needle: str) -> bool:
     return needle in data
 
 
+def wait_for_log(
+    path: Path, needle: str, timeout: float, proc: subprocess.Popen
+) -> bool:
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        if proc.poll() is not None:
+            log(f"pc exited {proc.returncode} before {needle!r}")
+            return False
+        if log_contains(path, needle):
+            return True
+        time.sleep(0.4)
+    return False
+
+
 def capture_dw3_pc(
     *,
     label: str,
@@ -617,8 +710,14 @@ def capture_dw3_pc(
     runtime: Path,
     out_png: Path,
     memcard_dir: Path | None,
+    encounter: int = 1,
+    pc_settle_seconds: float | None = None,
 ) -> Path | None:
-    """Subject frame. Unset DW3_START_MODE so patch 0010 stays MODE_TITLE.
+    """Subject frame.
+
+    Title/field leave DW3_START_MODE unset so patch 0010 stays MODE_TITLE.
+    Battle sets DW3_START_MODE=0x600 and DW3_FORCE_ENCOUNTER. It does not
+    load a DuckStation savestate and does not set DW3_FORCE_WIN.
 
     PSY-Z keyboard: Return=Start, x=Cross, s=Triangle.
     """
@@ -633,11 +732,12 @@ def capture_dw3_pc(
     cmd = [str(pc_bin.resolve()), "--runtime", str(runtime.resolve())]
     if memcard_dir is not None:
         cmd += ["--memcard-dir", str(memcard_dir.resolve())]
-    env = os.environ.copy()
-    env.pop("DW3_START_MODE", None)
-    env.pop("DW3_AUTO_PAD", None)
-    env.pop("DW3_FORCE_MCARD_LOAD", None)
-    env.pop("DW3_PROGRESS", None)
+    env = pc_subject_env(os.environ, label, encounter)
+    if label == "battle":
+        log(
+            "pc battle env: DW3_START_MODE=0x600 "
+            f"DW3_FORCE_ENCOUNTER={encounter} DW3_FORCE_WIN unset"
+        )
     launch = cmd
     stdbuf = shutil.which("stdbuf")
     if stdbuf:
@@ -689,6 +789,37 @@ def capture_dw3_pc(
                 log("pc field: mode=0x20a not seen; idle 10s anyway")
             time.sleep(10.0)
             wid = wait_pc_window(timeout=5.0) or wid
+        elif label == "battle":
+            # WFIGHTMN load is the menu overlay, not yet the command list.
+            # Extra idle covers the intro so the grab is a fight frame.
+            # Do not press Cross and do not set DW3_FORCE_WIN.
+            menu_settle = (
+                pc_settle_seconds
+                if pc_settle_seconds is not None
+                else PC_BATTLE_MENU_SETTLE
+            )
+            loaded = wait_for_log(
+                log_path,
+                "FIGHTSTG loaded WFIGHTMN",
+                PC_BATTLE_LOG_TIMEOUT,
+                proc,
+            )
+            if log_contains(log_path, "DW3_FORCE_WIN queued"):
+                log("pc battle: FORCE_WIN fired; command menu was skipped")
+            if loaded:
+                log(f"pc battle: WFIGHTMN loaded; idle {menu_settle:.0f}s")
+            else:
+                log(
+                    "pc battle: WFIGHTMN log not seen; "
+                    f"idle {menu_settle:.0f}s anyway"
+                )
+            time.sleep(menu_settle)
+            wid = wait_pc_window(timeout=5.0) or wid
+            subprocess.run(
+                ["xdotool", "windowactivate", "--sync", wid],
+                check=False,
+                capture_output=True,
+            )
         else:
             time.sleep(5.0)
         wid = wait_pc_window(timeout=5.0) or wid
@@ -719,7 +850,7 @@ def write_pair_md(
     path: Path,
     *,
     label: str,
-    settle: float,
+    settle_text: str,
     duck: Path | None,
     pc: Path | None,
     save: Path | None,
@@ -729,7 +860,7 @@ def write_pair_md(
         f"""# Pair review — {label}
 
 - Date: {time.strftime('%Y-%m-%d')}
-- Settle: {settle:.0f}s wall @ EmulationSpeed=2 (200%)
+- Settle: {settle_text}
 - Save: `{save if save else 'none'}`
 - DuckStation: `{duck if duck else 'missing'}`
 - dw3-pc: `{pc if pc else 'skipped/missing'}`
@@ -746,6 +877,12 @@ def main(argv: list[str] | None = None) -> int:
         print_plan(args)
         return 0
 
+    blocked = validate_capture(args)
+    if blocked is not None:
+        return blocked
+
+    want_duck = not args.pc_only
+    want_pc = not args.duck_only
     settle = (
         args.settle_seconds
         if args.settle_seconds is not None
@@ -761,17 +898,9 @@ def main(argv: list[str] | None = None) -> int:
     pc_png = out_dir / "pc.png"
     harness_card = args.out / "memcard0.mcr"
 
-    if args.label in ("field", "battle") and args.save is None and args.statefile is None:
-        log(f"label={args.label} needs --save and/or --statefile")
-        return 3
-
-    if args.duckstation is None or args.disc is None:
-        log("need --duckstation and --disc")
-        return 2
-
     staged: Path | None = None
     pc_memdir: Path | None = None
-    if args.save is not None:
+    if args.save is not None and want_duck:
         try:
             staged = stage_memcard(args.save, harness_card)
         except (OSError, ValueError) as exc:
@@ -783,39 +912,65 @@ def main(argv: list[str] | None = None) -> int:
             shutil.copy2(staged, pc_memdir / "memcard0.mcr")
             log(f"pc card: {pc_memdir / 'memcard0.mcr'}")
 
-    try:
-        capture_duckstation(
-            label=args.label,
-            duckstation=args.duckstation,
-            disc=args.disc,
-            bios=args.bios,
-            out_png=duck_png,
-            settle_seconds=settle,
-            statefile=args.statefile,
-            auto_load=auto_load,
-        )
-    except Exception as exc:
-        log(f"duck capture failed: {exc}")
-        return 1
+    if want_duck:
+        try:
+            capture_duckstation(
+                label=args.label,
+                duckstation=args.duckstation,
+                disc=args.disc,
+                bios=args.bios,
+                out_png=duck_png,
+                settle_seconds=settle,
+                statefile=args.statefile,
+                auto_load=auto_load,
+            )
+        except Exception as exc:
+            log(f"duck capture failed: {exc}")
+            return 1
 
     pc_path: Path | None = None
-    if not args.duck_only:
+    if want_pc:
         pc_path = capture_dw3_pc(
             label=args.label,
             pc_bin=args.pc_bin,
             runtime=args.runtime,
             out_png=pc_png,
             memcard_dir=pc_memdir,
+            encounter=args.encounter,
+            pc_settle_seconds=args.pc_settle_seconds,
         )
 
+    if want_pc and not want_duck and args.label == "battle":
+        shown = (
+            args.pc_settle_seconds
+            if args.pc_settle_seconds is not None
+            else PC_BATTLE_MENU_SETTLE
+        )
+        settle_text = (
+            f"{shown:.0f}s after FIGHTSTG loaded WFIGHTMN (DW3_FORCE_WIN unset)"
+        )
+    else:
+        settle_text = f"{settle:.0f}s wall @ EmulationSpeed=2 (200%)"
+
+    if args.label == "battle" and want_pc:
+        battle_note = (
+            f"pc FIGHTSTG via DW3_START_MODE=0x600 "
+            f"DW3_FORCE_ENCOUNTER={args.encounter}; no DW3_FORCE_WIN; "
+            "savestate is not loaded into dw3-pc. "
+        )
+    elif args.label == "battle":
+        battle_note = "duck-only; savestate is not applied to dw3-pc. "
+    else:
+        battle_note = ""
     notes = (
         f"label={args.label}; card={staged}; statefile={args.statefile}; "
-        f"auto_load={auto_load}. PNGs gitignored under build/compare/."
+        f"auto_load={auto_load}. {battle_note}"
+        "PNGs gitignored under build/compare/."
     )
     write_pair_md(
         out_dir / "pair.md",
         label=args.label,
-        settle=settle,
+        settle_text=settle_text,
         duck=duck_png if duck_png.is_file() else None,
         pc=pc_path,
         save=staged,
