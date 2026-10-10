@@ -17,19 +17,25 @@ that C, runs it on a modern Psy-Q–compatible shim
 
 ## Status
 
-**Phase 2 (PC title) reached:** `dw3-pc` links engine + `STDWTITL` + cdfs/
-memcard + PSY-Z and boots to the US title screen from decomp C (GPU polish
-open). See [docs/P2.8_TITLE_BOOT.md](docs/P2.8_TITLE_BOOT.md) and
-[docs/ROADMAP.md](docs/ROADMAP.md). Phase 1 host/CI/pack tools remain;
-layering in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+High-level phase map — details and checkboxes live in
+[docs/ROADMAP.md](docs/ROADMAP.md).
 
-**Not playable yet.** Title boots on PC; field/battle and Switch polish are
-later phases. See [docs/ROADMAP.md](docs/ROADMAP.md).
+| Phase | Summary |
+|---|---|
+| **0–1** | Repo, submodules, disc→runtime tools, PC + Switch **skeleton** builds, CI |
+| **2** | **Done** — `dw3-pc` boots US title from decomp C ([P2.8](docs/P2.8_TITLE_BOOT.md)) |
+| **3** | **Done (US gate met)** — full PC loop through stage sweep; [Phase 3 gate](docs/P3_GATE.md) (**start → first boss**) **met** on US; P3.9 comparison harness scaffolded; EU `dw3-pc` link still a follow-up |
+| **4** | **In progress** — P4.1 **done** ([SWITCH_BACKEND](docs/SWITCH_BACKEND.md)); P4.2 video + P4.3 audio scaffolds on libnx (not hardware done-when yet); game still not linked on Switch |
+| **5–8** | Playable Switch, polish, optional QoL / texture packs (after gates) |
 
-Later phases cover a playable Switch build, localization, optional community
-QoL compatibility, texture-pack overlays, and a title-menu port options
-screen (toggles for non-vanilla features) — only after the port gates land.
-Details live in the roadmap and linked design notes, not here.
+**Playable end-to-end?** Not yet as a shipped product. On PC the documented US
+gate path (title → movie → lobby → Tamer → Genji → field) runs with env aids
+where noted in [docs/P3_GATE.md](docs/P3_GATE.md). GPU polish, pad-only Genji
+KO, and `WSTAG460` are open follow-ups. The Switch `.nro` builds P4.2
+`gpu_hello` (EGL sample) and P4.3 audio hello — **no linked game** yet; see
+[platforms/switch/psyz_backend/](platforms/switch/psyz_backend/).
+
+Layering: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 ## Upstream
 
@@ -87,25 +93,44 @@ cd dw3-switch
 git submodule update --init --recursive
 ```
 
-### PC host smoke build
+### PC build (`dw3-pc`)
 
-Needs CMake, Ninja, and SDL3 build dependencies (see
-[platforms/pc/README.md](platforms/pc/README.md)):
+Needs CMake, Ninja, and SDL3 build dependencies — see
+[platforms/pc/README.md](platforms/pc/README.md) (including optional Pulse/PipeWire
+for audible movie/audio bring-up).
 
 ```bash
+tools/apply_patches.sh
 cmake -S platforms/pc -B build/pc -G Ninja -DPSYZ_RENDERER=sdl3_gpu
 cmake --build build/pc -j"$(nproc)"
 # → build/pc/dw3-pc
 ```
 
-### Disc → runtime layout (optional until Phase 2)
+### Disc → runtime layout (required to run the game)
 
-Extract your disc and build the file-id map, then pack a runtime tree. Full
-steps: [docs/DISC_SETUP.md](docs/DISC_SETUP.md) and
+Extract your disc and pack the file-id tree the port reads. Full steps:
+[docs/DISC_SETUP.md](docs/DISC_SETUP.md),
 [docs/RUNTIME_LAYOUT.md](docs/RUNTIME_LAYOUT.md).
 
 ```bash
-python3 tools/pack_runtime.py --version us --disks disks/us --out runtime/us
+python3 tools/pack_runtime.py --version us --disks disks/us --out runtime/us --force
+```
+
+### Run (US, own data)
+
+```bash
+./build/pc/dw3-pc --runtime runtime/us
+# or: DW3_RUNTIME=runtime/us ./build/pc/dw3-pc
+```
+
+Expect title mode logs and a window (keyboard: Enter = Start). Headless smoke
+tests and bring-up env vars (`DW3_START_MODE`, `DW3_AUTO_PAD`, …) are documented
+under [docs/P3_GATE.md](docs/P3_GATE.md) and per-task notes (`docs/P3.*.md`).
+
+### Tooling self-check (no disc)
+
+```bash
+pytest tools/tests -q
 ```
 
 ### Switch `.nro` (P4.2 `gpu_hello`)
@@ -127,13 +152,13 @@ No game data required. Hardware 60 fps check still open —
 
 ```
 dw3-switch/
-├── docs/                 # design notes and milestones for this port
-├── platforms/pc/         # PC bring-up host (CMake, PSY-Z, SDL3)
-├── platforms/switch/     # libnx / homebrew host
-├── port/                 # platform-independent glue (loaders, shims)
-├── tools/                # disc extract / pack helpers
-├── vendor/dw3_decomp/    # upstream decomp (git submodule)
-└── vendor/psyz/          # PSY-Z (git submodule)
+├── docs/                      # design notes, roadmap, phase evidence
+├── platforms/pc/              # PC host (CMake, PSY-Z, SDL3) → dw3-pc
+├── platforms/switch/          # libnx host + psyz_backend/ (Phase 4+)
+├── port/                      # cdfs, overlays, memcard, decomp patches
+├── tools/                     # disc extract / pack / test helpers
+├── vendor/dw3_decomp/         # upstream decomp (git submodule)
+└── vendor/psyz/               # PSY-Z (git submodule)
 ```
 
 ## Documentation
@@ -142,23 +167,33 @@ dw3-switch/
 |---|---|
 | [docs/ROADMAP.md](docs/ROADMAP.md) | Phases, gates, what’s next |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Host / PSY-Z / game layering |
+| [docs/P3_GATE.md](docs/P3_GATE.md) | Phase 3 “start → first boss” honesty checklist |
 | [docs/SURVEY.md](docs/SURVEY.md) | Decomp facts that drive the port |
+| [docs/PATCHES.md](docs/PATCHES.md) | Decomp patch policy and series |
 | [docs/DISC_SETUP.md](docs/DISC_SETUP.md) | Owner disc → `disks/<ver>/` |
 | [docs/RUNTIME_LAYOUT.md](docs/RUNTIME_LAYOUT.md) | PC / SD runtime tree |
 | [docs/PSYZ.md](docs/PSYZ.md) | PSY-Z pin and renderer notes |
-| [docs/SWITCH_BACKEND.md](docs/SWITCH_BACKEND.md) | Switch PSY-Z host decision (P4.1+) |
-| [docs/P4.2_VIDEO.md](docs/P4.2_VIDEO.md) | EGL `gpu_hello` present path |
+| [docs/SWITCH_BACKEND.md](docs/SWITCH_BACKEND.md) | Switch PSY-Z backend decision (P4.1) |
+| [docs/P2.8_TITLE_BOOT.md](docs/P2.8_TITLE_BOOT.md) | Title screen bring-up evidence |
+| [docs/P3.2_FIELD.md](docs/P3.2_FIELD.md) … [P3.8](docs/P3.8_STAGES.md) | Phase 3 subsystem evidence (field, battle, menus, card game, movies, audio, stages) |
+| [docs/P4.2_VIDEO.md](docs/P4.2_VIDEO.md) | EGL `gpu_hello` present path (P4.2, in progress) |
+| [docs/P4.3_AUDIO.md](docs/P4.3_AUDIO.md) | audren hello path (P4.3, in progress) |
+| [docs/P3.9_REFERENCE.md](docs/P3.9_REFERENCE.md) | DuckStation vs PC screenshot harness (scaffold) |
 | [docs/COMMUNITY_QOL.md](docs/COMMUNITY_QOL.md) | Optional QoL compatibility (later) |
 | [docs/TEXTURE_PACKS.md](docs/TEXTURE_PACKS.md) | Texture pack overlays (later) |
 | [docs/PORT_OPTIONS.md](docs/PORT_OPTIONS.md) | Title-menu toggles for port-only features (later) |
+
+Hosts: [platforms/pc/README.md](platforms/pc/README.md),
+[platforms/switch/README.md](platforms/switch/README.md).
+Port glue: [port/README.md](port/README.md).
 
 ## Requirements
 
 - **PC:** CMake, Ninja, SDL3 deps — [platforms/pc/README.md](platforms/pc/README.md)
 - **Switch:** [devkitPro](https://devkitpro.org/) `switch-dev`, or Docker image
   `devkitpro/devkita64` via `./tools/dk.sh`
-- **PSY-Z** submodule (already vendored for Phase 1)
-- **Own disc** for any game-data path
+- **PSY-Z** submodule (vendored; pin in [docs/PSYZ.md](docs/PSYZ.md))
+- **Own disc** for runtime data and in-game bring-up
 
 ## License
 

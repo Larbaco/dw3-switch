@@ -22,16 +22,25 @@ See `port/memcard/README.md` for the `.mcr` host backend and DuckStation note.
 | `overlays/` | Host VRAM symbols + static restore (`overlay_host`, P2.6) |
 | `cdfs/` | File-id → packed runtime reads (P2.5) |
 | `memcard/` | 128 KiB `.mcr` slot images (P2.7) |
+| `psyz_missing/` | PSY-Z gap stubs linked ahead of vendored libs (e.g. MDEC, movie path) |
 
-## Engine objects (P2.1)
+## Build (engine + PC host)
 
-From the repo root (or `platforms/pc`):
+From the repo root:
 
 ```bash
 tools/apply_patches.sh
 cmake -S platforms/pc -B build/pc -G Ninja -DPSYZ_RENDERER=sdl3_gpu
+cmake --build build/pc -j"$(nproc)"
+# → build/pc/dw3-pc (calls dw3_game_main after cdfs/memcard/boot TIM init)
+```
+
+To compile engine objects only:
+
+```bash
 cmake --build build/pc --target dw3_engine_objs -j"$(nproc)"
 ```
 
-The PC stub (`dw3-pc`) still does not call game `main`; it only depends on
-`dw3_engine_objs` so the engine compiles in the same configure.
+Runtime layout from your disc: [`docs/DISC_SETUP.md`](../docs/DISC_SETUP.md),
+[`docs/RUNTIME_LAYOUT.md`](../docs/RUNTIME_LAYOUT.md). Run:
+`./build/pc/dw3-pc --runtime runtime/us`.
