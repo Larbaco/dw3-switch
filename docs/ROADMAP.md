@@ -328,7 +328,8 @@ console.
   Done when: libsnd sample plays without underruns.
   **Status (2026-10-10):** audren thread + `Psyz_Audio*` in
   `platforms/switch/psyz_backend/nx_audio.c` (44.1 kHz voice, weak SPU
-  tone stub, `audio_hello` sample). `.nro` builds via Docker
+  tone stub; combined `host_hello` with P4.2 EGL after rebase onto
+  `675f1cf`). `.nro` builds via Docker
   (`DW3_DK_TMPBUILD`). **Not ticked:** no Switch hardware for underrun/
   listen check; full PSY-Z libsnd not linked yet (P4.7). See
   `docs/P4.3_AUDIO.md`.
