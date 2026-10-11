@@ -391,8 +391,9 @@ console.
   lines in `nx_audio.c`. The boot-stop trace and the full reasoning are in
   `docs/SWITCH_BACKEND.md`.
   **Not ticked:** the done-when is the title **on hardware**, and this is the
-  emulator. The image is also still visibly noisy (dither/pixel-format
-  fidelity) and no pad input has been sent through it yet.
+  emulator. The speckle was the GLES2 upload reading RGB555 backwards;
+  `nx_gpu.c` now expands to opaque RGBA8888 (dump-confirmed, Ryubing frame
+  still open). No pad input has been sent through it yet.
   See `docs/SWITCH_BACKEND.md` for the boot-stop evidence and the emulator
   logging traps.
 

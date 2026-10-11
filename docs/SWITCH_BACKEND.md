@@ -274,9 +274,15 @@ kernel paths cold is what found the cycle.
 
 The boot runs into the main loop, alternates `PutDispEnv` between `y=0` and
 `y=256` (double buffer), and draws the title: logo, "Please Start Button",
-copyright line, animating frame to frame. The image is still visibly noisy —
-dithering or pixel-format fidelity in the VRAM→GLES2 path, not yet
-investigated. No pad input has been exercised through it yet.
+copyright line, animating frame to frame. The speckle was not in the
+rasterizer. `vram60.bin` / `vram120.bin` decoded as PS1 RGB555 (R in bits
+0–4) are a clean title; the only motion between them is the blinking prompt.
+`GL_UNSIGNED_SHORT_5_5_5_1` reads that halfword backwards (R in bits 15–11),
+which is the speckled window. `nx_gpu.c` now expands to RGBA8888 the way
+`ConvertRgb5551ToRgba8888` does, with alpha forced opaque, before
+`glTexSubImage2D`. Confirmed by decoding the dump (`/tmp/vram60-ps1-2x.png`);
+a Ryubing frame of this `.nro` is still the owner's look. No pad input has
+been exercised through it yet.
 
 P4.7 stays open: the done-when is the title on **hardware**.
 
