@@ -93,6 +93,10 @@ static int s_disp_y;
 static int s_disp_w;
 static int s_disp_h;
 static int s_disp_mode_w;
+/* 24-bit movie mode only. The 480-line bit is not enough: an early PutDispEnv
+ * with disp.h=640 sets it before the title, and presenting that height crops
+ * the menu. isrgb24 is the movie. */
+static int s_disp_rgb24;
 
 void Draw_DisplayEnable(unsigned int on) { s_disp_on = (int)on; }
 
@@ -131,6 +135,7 @@ void Draw_SetDisplayMode(DisplayMode *mode) {
             break;
         }
     }
+    s_disp_rgb24 = mode->rgb24 ? 1 : 0;
 }
 
 void dw3_nx_switch_gpu_display(Dw3NxDisplay *out) {
@@ -146,7 +151,10 @@ void dw3_nx_switch_gpu_display(Dw3NxDisplay *out) {
      * (the "3") and left the logo sitting to the right. Height stays on the
      * vertical range, which is already in scanlines. */
     out->width = s_disp_mode_w > 0 ? s_disp_mode_w : (s_disp_w > 0 ? s_disp_w : 320);
-    out->height = s_disp_h > 0 ? s_disp_h : 240;
+    /* Title keeps the vertical range (scanlines). A 24-bit movie leaves that
+     * range at 240: SetDefDispEnv zeros screen.h, so PutDispEnv never refreshes
+     * it, while the frame itself is 416 lines starting at y=36. */
+    out->height = s_disp_rgb24 ? 480 : (s_disp_h > 0 ? s_disp_h : 240);
 }
 
 const uint16_t *dw3_nx_switch_gpu_vram(void) {

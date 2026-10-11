@@ -280,10 +280,14 @@ int Psyz_VideoVSync(int mode) {
              * VRAM the presenter is not showing. This separates them, and the
              * rect is the other half of it: a present of the wrong VRAM
              * rectangle looks exactly like a wrong picture. */
-            static int logged_on;
+            /* Size only. The movie double-buffer flips x every frame; logging
+             * that fills the guest log and is not a mode change. */
+            static int prev_w = -1;
+            static int prev_h = -1;
 
-            if (!logged_on) {
-                logged_on = 1;
+            if (disp.width != prev_w || disp.height != prev_h) {
+                prev_w = disp.width;
+                prev_h = disp.height;
                 psyz_log(1, "nx_gpu.c", __LINE__, __func__,
                          "display on: vram %d,%d %dx%d -> surface %ux%u",
                          disp.x, disp.y, disp.width, disp.height, s_width,
