@@ -152,10 +152,16 @@ void dw3_nx_switch_gpu_display(Dw3NxDisplay *out) {
      * (the "3") and left the logo sitting to the right. Height stays on the
      * vertical range, which is already in scanlines. */
     out->width = s_disp_mode_w > 0 ? s_disp_mode_w : (s_disp_w > 0 ? s_disp_w : 320);
-    /* Title keeps the vertical range (scanlines). A 24-bit movie leaves that
-     * range at 240: SetDefDispEnv zeros screen.h, so PutDispEnv never refreshes
-     * it, while the frame itself is 416 lines starting at y=36. */
-    out->height = s_disp_rgb24 ? 480 : (s_disp_h > 0 ? s_disp_h : 240);
+    /* Title keeps the vertical range (scanlines). A 24-bit movie sets the
+     * display to 480, but STDWTITL_onSliceDecoded writes the 416-line picture
+     * at VRAM y=36. The lines above and below that are blank, and sampling
+     * them is the small bar over and under the video. */
+    if (s_disp_rgb24) {
+        out->y = 36;
+        out->height = 416;
+    } else {
+        out->height = s_disp_h > 0 ? s_disp_h : 240;
+    }
     /* Aspect inputs. These stay the display ranges even when the blit
      * height is 480: PSY-Z does not treat that framebuffer as 2:3. */
     out->range_w = s_disp_w;

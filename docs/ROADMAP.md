@@ -411,8 +411,9 @@ console.
   has been sent through it yet.
   **Present aspect:** the viewport uses PSY-Z's display-range aspect
   (`(4/3) * (horiz/256) / (vert/240)`), the same rule as the PC host. The
-  sampled rectangle stays 320×480 for the movie (and the display-mode width
-  for the title); that pixel ratio is not the shape on screen. On a docked
+  sampled rectangle for the movie is the 416-line picture at VRAM y=36
+  (the 480-line display has blank lines above and below it). The title uses
+  the display-mode width. That pixel ratio is not the shape on screen. On a docked
   1920×1080 surface the picture is 4:3 at full height, with side bars only.
   A Ryubing window set to 21:9 still shrinks that framebuffer and adds bars
   at the top and bottom. That is the emulator aspect, not a crop in the port.
