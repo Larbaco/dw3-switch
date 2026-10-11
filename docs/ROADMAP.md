@@ -465,6 +465,9 @@ speed.
   flush+upload+present us). After the FIGHTSTG gate, field should stay
   near `tris_enq≈0` / `frames_blit`; battle may show `frames_mesh`. See
   [NXLINK_DEBUG.md](NXLINK_DEBUG.md).
+  **On-screen debug overlay:** `--nxlink` also defaults `DW3_NX_DEBUG_OVERLAY`
+  (HUD after present: FPS, mode file, mesh window). Toggle Minus+L+R. Not a
+  substitute for P5.4 crash reporting. See [DEBUG_OVERLAY.md](DEBUG_OVERLAY.md).
   During PSY-Z init the log recorded `KernelInit: cannot create the kernel
   synchronisation objects`. The game continued. The failed object (mutex
   or event) is not identified. That defect is open and is not the
@@ -493,6 +496,9 @@ speed.
 - [ ] **P5.4 Error reporting.** Crash handler that writes a log + last
   mode/stage id to SD; assert overlay.
   Done when: a forced fault produces a readable report.
+  Note: the P5.2 nxlink on-screen HUD (`DW3_NX_DEBUG_OVERLAY`,
+  [DEBUG_OVERLAY.md](DEBUG_OVERLAY.md)) is triage-only and leaves a hook
+  comment for a future crash overlay; it does not satisfy this task.
 - [ ] **P5.5 Stage sweep on hardware.** P3.8 again on the console.
 
 Gate: start → first boss on hardware, both versions.
