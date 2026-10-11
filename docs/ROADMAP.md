@@ -368,8 +368,9 @@ console.
   (NintendoSwitch, no SDL). `psyz_backend/` supplies `psyz_log`, `Psyz_Os*`,
   pad, `Psyz_VideoVSync`, and the `__wrap_*` hooks. `source/boot_main.c` is the
   CMake `main()` and calls `dw3_game_main`. The devkitPro Makefile still builds
-  `source/main.c` (`host_hello`: EGL + audren sample); that is the `.nro` CI
-  produces.
+  `source/main.c` (`host_hello`: EGL + audren sample); that is the `.nro`
+  CI job `switch` produces. Job `switch-game` builds the CMake game image
+  and does not publish it. A GitHub Release of that image is P6.5.
   **Link: it links.** 1144 objects, 0 undefined symbols, 17.4 MB `.elf` →
   8.9 MB `.nro`. The 20 undefined `Draw_*` symbols are gone:
   `psyz_backend/switch_gpu.c` forwards them to PSY-Z's in-tree CPU rasterizer
@@ -434,6 +435,27 @@ is an explicit project goal in this phase, not during bring-up.
 - [ ] **P6.4** Fast-forward / frame-skip toggles for grinding (optional).
 - [ ] **P6.5** Release packaging: `.nro` + `README` for own-disc setup;
   never ship data.
+  Done when: a deliberate GitHub Release (`workflow_dispatch` or a `v*`
+  tag) attaches the CMake game `.nro` (`build/switch/dw3-switch.nro`,
+  `source/boot_main.c` calling `dw3_game_main`) and
+  `platforms/switch/release/README.txt`, and those assets contain no
+  disc, BIOS, or extracted game files.
+  **Status (2026-10-10):** this task only, started before the Phase 5
+  gate because the owner asked. Phase 6 has not started. P6.1–P6.4 and
+  P6.6+ are untouched. P4.7 stays open. Its done-when is still the title
+  on hardware, not a GitHub Release.
+  `.github/workflows/switch-release.yml` builds that game `.nro` in
+  `devkitpro/devkita64` and publishes a prerelease. CI job `switch` in
+  `ci.yml` still builds the Makefile `host_hello` sample and is not the
+  game. CI job `switch-game` builds the same CMake `.nro` on pull
+  requests, uploads it as an Actions artifact, and does not create a
+  Release.
+  The binary reads the owner's US tree from `sdmc:/switch/dw3/us`
+  (`DW3_DEFAULT_RUNTIME` in `platforms/switch/source/boot_main.c`). EU,
+  later, is `sdmc:/switch/dw3/eu`. The owner packs the tree
+  (`docs/DISC_SETUP.md`, `tools/pack_runtime.py`). Git and the release
+  do not contain it.
+  **Not ticked** until a release run publishes those two files.
 - [ ] **P6.6 Localization goal.** Record that translation / localization
   comes after the playable port (Phase 5): language packs live in the
   owner runtime data layout; remap / charset glue in `port/`; host
