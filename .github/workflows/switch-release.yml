@@ -56,7 +56,7 @@ jobs:
           git -C vendor/psyz submodule update --init nugget external/SDL
 
       - name: Build the CMake game .nro
-        run: tools/build_switch_game.sh
+        run: bash tools/build_switch_game.sh
 
       - name: Pack the two release files
         run: |

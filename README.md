@@ -158,7 +158,7 @@ artifact. It does not open a Release.
 git submodule update --init vendor/dw3_decomp vendor/psyz
 git -C vendor/psyz submodule update --init nugget external/SDL
 # do not --recursive nugget: codeberg xmake-psx returns HTTP 429
-./tools/build_switch_game.sh
+bash tools/build_switch_game.sh
 # → build/switch/dw3-switch.nro
 ```
 

@@ -67,7 +67,7 @@ jobs:
           # nugget without --recursive: codeberg xmake-psx returns HTTP 429.
           git -C vendor/psyz submodule update --init nugget external/SDL
       - name: Build CMake game .nro
-        run: tools/build_switch_game.sh
+        run: bash tools/build_switch_game.sh
       - name: Upload game .nro artifact
         uses: actions/upload-artifact@v4
         with:
