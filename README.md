@@ -207,9 +207,13 @@ on `workflow_dispatch` or a `v*` tag. It is a prerelease. Assets are
 No disc data.
 
 The latest preview release is
-[v0.6.5-preview.7](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.7).
-It uploads only the sampled VRAM rectangle and loads one field tile per
-frame. It does not change the CPU or GPU clock.
+[v0.6.5-preview.8](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.8).
+Each field area reads its map file once. Later tiles copy from that buffer.
+It does not change the CPU or GPU clock, and it has not been timed on the
+OLED yet.
+[v0.6.5-preview.7](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.7)
+uploads only the sampled VRAM rectangle and loads one field tile per frame.
+An OLED log from that build averaged about 59 FPS.
 [v0.6.5-preview.6](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.6)
 raised the CPU to 1785 MHz. Do not install that file.
 [v0.6.5-preview.5](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.5)
