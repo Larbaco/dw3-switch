@@ -1,6 +1,7 @@
-"""One field-tile read per frame on the host CD reader.
+"""One fread of a field map, then copies. A second tile in the same frame
+succeeds and does not set a busy flag.
 
-No disc and no devkitPro: builds port/cdfs with the host pace test.
+No disc and no devkitPro: builds port/cdfs with the host tile test.
 """
 
 from __future__ import annotations
@@ -32,6 +33,7 @@ def tile_pace_test(tmp_path_factory) -> Path:
         str(TEST_C),
         str(CDFS_C),
         f"-I{ROOT / 'port' / 'cdfs'}",
+        "-Wl,--wrap=fread",
     ]
     r = subprocess.run(cmd, capture_output=True, text=True)
     assert r.returncode == 0, r.stderr + r.stdout
@@ -40,7 +42,7 @@ def tile_pace_test(tmp_path_factory) -> Path:
     return out
 
 
-def test_one_field_tile_per_frame(tile_pace_test: Path):
+def test_one_map_fread_then_copies(tile_pace_test: Path):
     r = subprocess.run(
         [str(tile_pace_test)],
         capture_output=True,
@@ -48,4 +50,4 @@ def test_one_field_tile_per_frame(tile_pace_test: Path):
         check=False,
     )
     assert r.returncode == 0, r.stderr + r.stdout
-    assert "OK: one field tile per frame" in r.stdout
+    assert "OK: one map fread, later tiles are copies" in r.stdout

@@ -17,10 +17,13 @@ root (`docs/RUNTIME_LAYOUT.md`), using the same JSON shape as
    packed tree). The JSON `bytes` field is advisory; on-disk size wins.
 
 `cdfs_read` and `cdfs_read_at` finish before they return. A field-map
-tile goes through `cdfs_read_field_tile`: the bytes are copied immediately,
-then the reader stays busy until `cdfs_poll`. `vsyncCallback` calls
-`cdfs_poll` once per VSync, so `FIELDSTG_requestTiles` starts one tile
-per frame. Full-file and offset-0 reads are not held.
+tile goes through `cdfs_read_field_tile`. The first tile of a file id
+reads that whole file into one resident buffer. A different id replaces
+it. Later tiles copy from the buffer, and the reader is idle when the
+call returns, so a second tile in the same frame succeeds. `cdfs_shutdown`
+frees the buffer. `cdfs_poll` is a no-op. Map headers and `FILE_CACHE`
+stay on `cdfs_read_at`. Preview.7 held one tile per frame until
+`cdfs_poll`; that hold is gone.
 
 ## Out of scope
 

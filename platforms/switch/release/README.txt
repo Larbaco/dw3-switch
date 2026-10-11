@@ -1,16 +1,21 @@
 Digimon World 3 / 2003, Switch homebrew preview
 
-This release is v0.6.5-preview.7. It keeps the two performance changes
-from preview.6 that do not touch the clocks:
+This release is v0.6.5-preview.8. On top of preview.7, each field area
+reads its map file from the SD card once. Later tiles in that area are
+copies from that buffer. The next area replaces the buffer. Movies still
+arrive at 150 sectors per second. This build does not call
+clkrstSetClockRate or appletSetCpuBoostMode. The CPU and GPU stay at the
+rate the console set.
 
-  the present path uploads only the sampled VRAM rectangle
-  a field map loads one tile per frame
+Preview.7 already uploaded only the sampled VRAM rectangle, and it loaded
+one field tile per frame. An OLED log from that build is already recorded:
+mean about 59 FPS, and some 60-frame windows of about 1.51 s. The
+KernelInit error from that boot is still open. This preview.8 file has
+not been timed on the OLED.
 
-Preview.6 also raised the CPU to 1785 MHz. That is removed. This build
-does not call clkrstSetClockRate or appletSetCpuBoostMode. The CPU and
-GPU stay at the rate the console set. Reboot the Switch once before
-this test if preview.6 already ran: a HOME press on that build can
-leave 1785 MHz set, and this build will not change it back.
+Preview.6 raised the CPU to 1785 MHz. That is removed. Reboot the Switch
+once before this test if preview.6 already ran: a HOME press on that
+build can leave 1785 MHz set, and this build will not change it back.
 
 Preview.5 already had the progress bar, the left stick, and the US
 runtime extract. Those stay. The opening-video picture is unchanged.
@@ -20,8 +25,8 @@ and a slot 2 save loaded after the memory-card fix that is in this
 build.
 
 Every 60 frames the log prints one line, frame dt us=. About 1000000
-is 60 Hz. About 2000000 is 30 Hz. That number has not been read on the
-OLED yet.
+is 60 Hz. About 2000000 is 30 Hz. Preview.7 already recorded that line
+on the OLED. This preview.8 file has not been timed there.
 
 boot_tim.bin is not a disc image. A CUE whose FILE name is missing still
 selects the only other .bin in that directory when the file is large
