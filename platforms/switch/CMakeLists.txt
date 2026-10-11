@@ -205,7 +205,10 @@ nx_generate_nacp(
   AUTHOR "dw3-switch"
   VERSION "0.5.0"
 )
+# ICON is the 256x256 baseline JPEG elf2nro embeds. The nxlink build
+# only changes DW3_NRO_NAME, so both game images pick up the same file.
 nx_create_nro(dw3-switch
   OUTPUT "${CMAKE_BINARY_DIR}/${DW3_NRO_NAME}.nro"
   NACP "${CMAKE_BINARY_DIR}/${DW3_NRO_NAME}.nacp"
+  ICON "${CMAKE_SOURCE_DIR}/assets/icon.jpg"
 )

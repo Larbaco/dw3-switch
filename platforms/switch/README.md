@@ -100,6 +100,8 @@ shows up in the Actions UI only after that file is on `main`. A tag push
 runs it from the tagged commit. Assets are that `.nro` and
 [`release/README.txt`](release/README.txt). No disc data.
 
+Launcher art is in `assets/` next to this host. `icon.png` is the 256×256 source, and `icon.jpg` is the 256×256 baseline JPEG that `nx_create_nro` embeds with `ICON` for both the normal and nxlink game images. `banner.png` is the same mark at 1280×720. Sphaira draws an app-store details banner at 848×208, so `banner_848x208.png` is that size of the same art; the homebrew grid scales the 256 JPEG and does not need its own file. This is original port chrome, not game artwork.
+
 ### Development build with live nxlink logs
 
 The standard CMake build remains unchanged and does not require a network
