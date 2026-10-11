@@ -33,6 +33,7 @@
 #include "frame_dt.h"
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include <switch.h>
@@ -352,6 +353,9 @@ static int init_paths(void) {
         ERRORF("memcard ensure failed under %s", memdir);
         return -1;
     }
+    /* Dirty flat saves flush on clean exit (P5.3). Psyz_QuitRequested is
+     * still 0 and vsync does not call appletMainLoop — HOME remains a gap. */
+    atexit(memcard_host_shutdown);
     INFOF("memcard dir=%s", memdir);
 
     snprintf(boot_path, sizeof(boot_path), "%s/boot_tim.bin", root);
@@ -440,6 +444,7 @@ int main(int argc, char **argv) {
     INFOF("entering dw3_game_main()");
     {
         int game_result = dw3_game_main();
+        memcard_host_shutdown();
 #ifdef DW3_NXLINK_STDIO
         dw3_nxlink_stdio_shutdown();
 #endif
