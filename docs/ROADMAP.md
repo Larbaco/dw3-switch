@@ -450,8 +450,10 @@ speed.
   `software_rasterizer.push_prim`.
   **Approach A (in progress).** Draw OT triangle polys (POLY_GT / POLY_FT
   and equivalents) on a GLES3 mesh FBO; keep sprites/UI on the RGB555
-  software blit. See [P5.2_BATTLE_GPU.md](P5.2_BATTLE_GPU.md). OLED 60 Hz
-  proof for battle is a follow-up preview measurement. P5.2 stays open.
+  software blit. See [P5.2_BATTLE_GPU.md](P5.2_BATTLE_GPU.md). Landed on
+  `main` as #69 (`973daf3`). `v0.6.5-preview.9` is the hardware cut;
+  OLED `frame dt us=` for field vs battle is pending until that nxlink
+  run. Battle 60 Hz proof is still open. P5.2 stays open.
   During PSY-Z init the log recorded `KernelInit: cannot create the kernel
   synchronisation objects`. The game continued. The failed object (mutex
   or event) is not identified. That defect is open and is not the

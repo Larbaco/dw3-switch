@@ -207,10 +207,13 @@ on `workflow_dispatch` or a `v*` tag. It is a prerelease. Assets are
 No disc data.
 
 The latest preview release is
-[v0.6.5-preview.8](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.8).
-Each field area reads its map file once. Later tiles copy from that buffer.
-It does not change the CPU or GPU clock, and it has not been timed on the
-OLED yet.
+[v0.6.5-preview.9](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.9).
+Battle mesh triangles draw on a GLES3 mesh FBO; sprites and UI stay on the
+software RGB555 blit. It does not change the CPU or GPU clock. OLED
+timing for this build is pending.
+[v0.6.5-preview.8](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.8)
+holds one field map in RAM so later tiles copy from that buffer. An OLED
+log from that build: field about 60 Hz, battle Fight-menu idle about 46 Hz.
 [v0.6.5-preview.7](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.7)
 uploads only the sampled VRAM rectangle and loads one field tile per frame.
 An OLED log from that build averaged about 59 FPS.
