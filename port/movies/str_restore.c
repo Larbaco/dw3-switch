@@ -21,16 +21,26 @@
 #define COPY_CHUNK (256 * 1024)
 #define PROGRESS_EVERY (8 * 1024 * 1024)
 
-static void (*g_progress)(const char *msg);
+static void (*g_progress)(const char *msg, unsigned long long done,
+                          unsigned long long total);
+static unsigned long long g_bytes_done;
+static unsigned long long g_bytes_total;
 
-void dw3_str_restore_set_progress(void (*fn)(const char *msg)) { g_progress = fn; }
+void dw3_str_restore_set_progress(
+    void (*fn)(const char *msg, unsigned long long done, unsigned long long total)) {
+    g_progress = fn;
+}
+
+static void report(const char *msg) {
+    if (g_progress != NULL) {
+        g_progress(msg, g_bytes_done, g_bytes_total);
+    }
+}
 
 static void note(const char *msg) {
     fprintf(stderr, "dw3-str: %s\n", msg);
     fflush(stderr);
-    if (g_progress != NULL) {
-        g_progress(msg);
-    }
+    report(msg);
 }
 
 static void note_fmt(const char *fmt, const char *a, unsigned long b) {
@@ -83,6 +93,8 @@ static int is_mode2_sync(const unsigned char *s) {
 struct Need {
     int count;
     unsigned long long min_image;
+    /* Sum of sectors*2352 for form-2 STR files that are not raw yet. */
+    unsigned long long bytes;
 };
 
 static int count_need(const CdfsMapInfo *info, void *user) {
@@ -102,6 +114,7 @@ static int count_need(const CdfsMapInfo *info, void *user) {
     } else {
         return 0;
     }
+    need->bytes += expect;
     {
         unsigned long long end =
             ((unsigned long long)info->lba + (unsigned long long)info->sectors) *
@@ -193,11 +206,17 @@ static int restore_one(const CdfsMapInfo *info, void *user) {
             goto done;
         }
         done += nread;
+        g_bytes_done += (unsigned long long)nread;
         if (done >= next_note || done == expect) {
             char buf[128];
             snprintf(buf, sizeof(buf), "restore %s %llu/%llu", info->path, done, expect);
             note(buf);
             next_note += PROGRESS_EVERY;
+        } else {
+            /* Every chunk, so the host can repaint on its own clock.
+             * PROGRESS_EVERY stays the log interval. Swapping here would
+             * wait on vsync and throttle the copy. */
+            report(NULL);
         }
     }
     if (fclose(out) != 0) {
@@ -242,6 +261,8 @@ int dw3_str_restore_from_disc(void) {
     char bin_path[1024];
     char msg[1100];
 
+    g_bytes_done = 0;
+    g_bytes_total = 0;
     memset(&need, 0, sizeof(need));
     if (cdfs_visit(count_need, &need) != 0) {
         return -1;
@@ -249,12 +270,14 @@ int dw3_str_restore_from_disc(void) {
     if (need.count == 0) {
         return 0;
     }
+    g_bytes_total = need.bytes;
     if (dw3_str_find_disc(cdfs_root(), bin_path, sizeof(bin_path), need.min_image) != 0) {
         note("STR still 2048-byte; put the Mode2 BIN/CUE next to the runtime "
              "(or set DW3_DISC_BIN) to restore XA");
         return 0;
     }
 
+    /* boot_main.c holds the opening sweep on the "restoring " prefix. */
     snprintf(msg, sizeof(msg), "restoring %d STR from %s", need.count, bin_path);
     note(msg);
 

@@ -63,8 +63,9 @@ sdmc:/switch/dw3/Digimon World 3.bin
 sdmc:/switch/dw3/us/AAA/STR/    # rewritten in place on first launch
 ```
 
-The first launch copies about 260 MB and the screen stays a dark blue
-while the log says `restore`. The next launch only checks file sizes.
+The first launch copies about 260 MB. On Switch the screen keeps the
+dark blue clear and draws a progress bar while the log says `restore`
+(see `docs/P3.7_MOVIES.md`). The next launch only checks file sizes.
 The same rewrite can be done on the PC before copying:
 
 ```bash

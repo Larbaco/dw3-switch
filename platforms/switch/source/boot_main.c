@@ -104,11 +104,160 @@ static void dw3_nx_vsync_pump(void) {
     }
 }
 
-static void str_restore_progress(const char *msg) {
-    /* Swap once per note so a multi-minute SD copy is not a black screen. */
-    INFOF("%s", msg);
+/* eglSwapBuffers waits for vsync. Byte ticks arrive every 256 KiB; painting
+ * each one would cap the copy near one chunk per refresh. Present on the
+ * log lines (a file starting, the 8 MiB marks, a file finishing) and, between
+ * those, about every 300 ms. The "restoring N STR" line holds a sweep for
+ * a few refreshes before fread blocks. */
+#define STR_RESTORE_PAINT_US 300000ull
+#define STR_RESTORE_INTRO_US 400000ull
+
+static uint64_t restore_now_us(void) {
+    return armTicksToNs(armGetSystemTick()) / 1000ULL;
+}
+
+static int sweep_origin(int origin, int span, int sweep_w, uint64_t now_us,
+                        uint64_t period_us) {
+    int travel;
+    uint64_t t;
+
+    if (sweep_w > span) {
+        sweep_w = span;
+    }
+    travel = span - sweep_w;
+    if (travel < 0) {
+        travel = 0;
+    }
+    if (period_us == 0) {
+        return origin;
+    }
+    t = now_us % period_us;
+    return origin + (int)(((uint64_t)travel * t) / period_us);
+}
+
+/* Dark blue field plus a bar. done == 0 draws a sweep on the whole track
+ * so the first frame is not a flat clear. After that, the filled width is
+ * done/total and a slower sweep crosses whatever is left. */
+static void paint_str_restore(unsigned long long done, unsigned long long total) {
+    Dw3NxGpuInfo info;
+    int margin;
+    int bar_w;
+    int bar_h;
+    int bar_x;
+    int bar_y;
+    uint64_t now_us;
+
+    dw3_nx_gpu_get_info(&info);
     dw3_nx_gpu_clear(0.02f, 0.06f, 0.12f, 1.0f);
-    dw3_nx_gpu_swap();
+    if (info.width < 32 || info.height < 32) {
+        return;
+    }
+
+    margin = (int)info.width / 10;
+    bar_w = (int)info.width - margin * 2;
+    bar_h = (int)info.height / 16;
+    if (bar_h < 24) {
+        bar_h = 24;
+    }
+    if (bar_h > 72) {
+        bar_h = 72;
+    }
+    if (bar_w < 8) {
+        return;
+    }
+    bar_x = margin;
+    bar_y = ((int)info.height - bar_h) / 2;
+    now_us = restore_now_us();
+
+    dw3_nx_gpu_fill_rect(bar_x, bar_y, bar_w, bar_h, 0.10f, 0.18f, 0.28f, 1.0f);
+
+    if (total == 0 || done == 0) {
+        int sweep_w = bar_w / 5;
+        if (sweep_w < 16) {
+            sweep_w = 16;
+        }
+        if (sweep_w > bar_w) {
+            sweep_w = bar_w;
+        }
+        dw3_nx_gpu_fill_rect(sweep_origin(bar_x, bar_w, sweep_w, now_us, 1200000ull),
+                             bar_y, sweep_w, bar_h, 0.45f, 0.82f, 0.95f, 1.0f);
+        return;
+    }
+
+    {
+        double frac = (double)done / (double)total;
+        int fill_w;
+        int rest;
+        int sweep_w;
+
+        if (frac > 1.0) {
+            frac = 1.0;
+        }
+        fill_w = (int)(frac * (double)bar_w + 0.5);
+        if (fill_w > bar_w) {
+            fill_w = bar_w;
+        }
+        if (fill_w > 0) {
+            dw3_nx_gpu_fill_rect(bar_x, bar_y, fill_w, bar_h, 0.28f, 0.62f, 0.95f,
+                                 1.0f);
+        }
+        rest = bar_w - fill_w;
+        if (rest <= 0) {
+            return;
+        }
+        sweep_w = rest / 3;
+        if (sweep_w < 8) {
+            sweep_w = 8;
+        }
+        if (sweep_w > rest) {
+            sweep_w = rest;
+        }
+        dw3_nx_gpu_fill_rect(
+            sweep_origin(bar_x + fill_w, rest, sweep_w, now_us, 1600000ull), bar_y,
+            sweep_w, bar_h, 0.16f, 0.32f, 0.48f, 1.0f);
+    }
+}
+
+static void str_restore_progress(const char *msg, unsigned long long done,
+                                 unsigned long long total) {
+    static uint64_t last_paint_us;
+    static unsigned long long last_done;
+    static int painted;
+    uint64_t now;
+    int first_bytes;
+
+    if (msg != NULL) {
+        INFOF("%s", msg);
+    }
+    now = restore_now_us();
+    first_bytes = painted && last_done == 0 && done > 0;
+    if (painted && msg == NULL && !first_bytes &&
+        (now - last_paint_us) < STR_RESTORE_PAINT_US) {
+        return;
+    }
+    /* The copy's first log line is "restoring N STR from ...". Hold the
+     * sweep there. Other notes (no disc image) paint a single frame. */
+    if (!painted && done == 0 && msg != NULL &&
+        strncmp(msg, "restoring ", sizeof("restoring ") - 1) == 0) {
+        uint64_t intro_start = now;
+        int frames = 0;
+        /* Cap the refreshes so a swap that does not block, or a clock that
+         * does not advance, cannot sit in this loop. */
+        do {
+            paint_str_restore(done, total);
+            if (!dw3_nx_gpu_swap()) {
+                break;
+            }
+            frames++;
+        } while (frames < 40 &&
+                 (restore_now_us() - intro_start) < STR_RESTORE_INTRO_US);
+    } else {
+        paint_str_restore(done, total);
+        dw3_nx_gpu_swap();
+    }
+    last_paint_us = restore_now_us();
+    last_done = done;
+    painted = 1;
 }
 
 static const char *env_or(const char *key, const char *fallback) {

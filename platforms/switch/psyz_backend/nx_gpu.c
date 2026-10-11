@@ -221,9 +221,42 @@ void dw3_nx_gpu_clear(float r, float g, float b, float a) {
     if (!s_ready) {
         return;
     }
+    glDisable(GL_SCISSOR_TEST);
     glViewport(0, 0, (GLsizei)s_width, (GLsizei)s_height);
     glClearColor(r, g, b, a);
     glClear(GL_COLOR_BUFFER_BIT);
+}
+
+void dw3_nx_gpu_fill_rect(int x, int y, int w, int h, float r, float g, float b,
+                          float a) {
+    if (!s_ready || w <= 0 || h <= 0 || s_width == 0 || s_height == 0) {
+        return;
+    }
+    if (x < 0) {
+        w += x;
+        x = 0;
+    }
+    if (y < 0) {
+        h += y;
+        y = 0;
+    }
+    if (w <= 0 || h <= 0) {
+        return;
+    }
+    if ((uint32_t)x >= s_width || (uint32_t)y >= s_height) {
+        return;
+    }
+    if ((uint32_t)x + (uint32_t)w > s_width) {
+        w = (int)(s_width - (uint32_t)x);
+    }
+    if ((uint32_t)y + (uint32_t)h > s_height) {
+        h = (int)(s_height - (uint32_t)y);
+    }
+    glEnable(GL_SCISSOR_TEST);
+    glScissor((GLint)x, (GLint)y, (GLsizei)w, (GLsizei)h);
+    glClearColor(r, g, b, a);
+    glClear(GL_COLOR_BUFFER_BIT);
+    glDisable(GL_SCISSOR_TEST);
 }
 
 bool dw3_nx_gpu_swap(void) {
@@ -479,6 +512,7 @@ void dw3_nx_gpu_present(const uint16_t *vram, int dx, int dy, int dw, int dh,
         }
     }
 
+    glDisable(GL_SCISSOR_TEST);
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT);
 

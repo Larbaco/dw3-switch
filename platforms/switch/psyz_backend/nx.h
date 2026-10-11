@@ -32,6 +32,9 @@ void dw3_nx_gpu_get_info(Dw3NxGpuInfo *out);
 
 /* Clear + present helpers used by the gpu_hello sample (and later PSY-Z). */
 void dw3_nx_gpu_clear(float r, float g, float b, float a);
+/* Scissor-clear one rectangle. Origin is the bottom-left of the surface. */
+void dw3_nx_gpu_fill_rect(int x, int y, int w, int h, float r, float g, float b,
+                          float a);
 /* Swap buffers; EGL swap interval 1 ≈ 60 Hz vsync when the display is 60 Hz. */
 bool dw3_nx_gpu_swap(void);
 

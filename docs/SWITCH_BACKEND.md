@@ -317,8 +317,11 @@ and again from `StGetNext`, so a ~15 fps STR (about 10 sectors per frame,
 that gap as silence, which stretches the soundtrack by 18/16. The pump is
 now 150 sectors/s. Full-speed audio needs the STR files as raw 2352.
 The `.nro` rewrites them on first launch when the Mode2 BIN/CUE sits in
-`sdmc:/switch/dw3/` (or `DW3_DISC_BIN` / `DW3_DISC_CUE`). The screen stays
-dark blue and the log prints `restore` until that copy finishes.
+`sdmc:/switch/dw3/` (or `DW3_DISC_BIN` / `DW3_DISC_CUE`). The screen keeps
+the dark blue clear and draws a progress bar while that copy runs: bytes
+written this run over the form-2 extents still to rewrite, with a sweep
+before the first byte. The log still prints `restore`. This bar was not
+run on an OLED.
 
 ### OLED (2026-10-10/11)
 

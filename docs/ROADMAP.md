@@ -388,6 +388,9 @@ console.
   `v0.6.5-preview.4` ignores `boot_tim.bin` and accepts that CUE when the
   directory has one other `.bin` large enough to cover the STR extents.
   `dw3-switch-nxlink.nro` is the file that prints the restore log.
+  The restore screen draws a progress bar during that copy (bytes written
+  this run over the form-2 extents still to rewrite), with a sweep before
+  the first byte. Not run on an OLED.
   Until the disc image is on the card the sound stays slow. The runtime
   came from the owner's US
   disc and is not in git. P4.4 Joy-Con and Pro Controller, P4.5 cdfs on

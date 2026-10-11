@@ -60,8 +60,14 @@ void dw3_str_stream_install_cd_bridge(void);
  * disc image is not an error. Returns -1 if a rewrite was needed and failed. */
 int dw3_str_restore_from_disc(void);
 
-/* Optional note during a rewrite (Switch paints a frame from this). */
-void dw3_str_restore_set_progress(void (*fn)(const char *msg));
+/* Optional callback during a rewrite. The Switch host paints from this.
+ * msg is NULL on a byte tick, which is not a new log line. done is bytes
+ * written this run. total is the sum of the form-2 STR extents that still
+ * need a rewrite. done is 0 before the first byte. A NULL callback leaves
+ * the stderr log as the only output. */
+void dw3_str_restore_set_progress(void (*fn)(const char *msg,
+                                             unsigned long long done,
+                                             unsigned long long total));
 
 #ifdef __cplusplus
 }
