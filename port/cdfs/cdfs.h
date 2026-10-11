@@ -30,8 +30,17 @@ int cdfs_read(uint32_t id, void *buf, size_t buflen);
 
 /* Read `len` bytes at byte `offset` into buf (partial / sector window).
  * Short reads at EOF zero-fill the remainder of buf.
- * Returns bytes copied from the file (0..len), or -1 on error. */
+ * Returns bytes copied from the file (0..len), or -1 on error.
+ * Not paced: file-cache and map-header reads use this. */
 int cdfs_read_at(uint32_t id, void *buf, size_t offset, size_t len);
+
+/* Field-map tile (a sector window). Copies bytes immediately, then stays
+ * busy until cdfs_poll() so FIELDSTG_requestTiles keeps one tile per frame.
+ * A call while busy reads nothing and returns -1. */
+int cdfs_read_field_tile(uint32_t id, void *buf, size_t offset, size_t len);
+
+/* Nonzero after a successful cdfs_read_field_tile until the next cdfs_poll. */
+int cdfs_field_tile_busy(void);
 
 /* Resolve absolute disc LBA to the map entry that covers it.
  * On success fills optional outs and returns 0; -1 if no entry. */
@@ -58,7 +67,8 @@ typedef struct CdfsMapInfo {
  * fn's non-zero value. */
 int cdfs_visit(int (*fn)(const CdfsMapInfo *info, void *user), void *user);
 
-/* Wave 1: no-op. Reserved for async completion / cdReadyCallback poll. */
+/* Frame boundary for the field-tile hold. vsyncCallback calls this once
+ * per VSync. Also safe to call when no tile read is held. */
 void cdfs_poll(void);
 
 /* Free map state (optional; next cdfs_load_map replaces the table). */
