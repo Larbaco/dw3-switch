@@ -428,6 +428,19 @@ speed.
   The frame-time check that used to be the P4.2 done-when lives here.
   Done when: no frame over 16.7 ms in field and battle benchmarks,
   docked and handheld.
+  **CPU clock and frame spacing (2026-10-11).** Boot calls
+  `clkrstSetClockRate` once on `PcvModuleId_CpuBus` at 1785 MHz. The applet
+  boost in the devkitA64 libnx this tree builds against is
+  `appletSetCpuBoostMode` with `ApmCpuBoostMode_FastLoad`, and that mode also
+  forces the GPU to 76.8 MHz. Boot leaves the GPU clock where the console
+  set it. 1785 MHz draws more current than the 1020 MHz handheld default, so
+  the unit runs warmer and the battery lasts less time. Boot stores the
+  previous rate and restores it if the process exits cleanly. A HOME kill
+  skips that restore. A failed call is logged and boot continues. `eglSwapInterval` stays at 1, so present still
+  waits for vsync. The vsync pump writes one `frame dt us=` line for the
+  microseconds between samples 60 pumps apart. The first sample only stores
+  the time. P5.2 stays open: there is still no OLED field or battle frame
+  measured under 16.7 ms.
 - [ ] **P5.3 Save handling.** Card images under `sdmc:/switch/dw3/saves/`,
   import/export of `.mcr`, sleep/exit safety (flush on `appletMainLoop`
   exit).
