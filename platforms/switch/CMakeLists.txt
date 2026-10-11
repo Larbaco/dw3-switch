@@ -155,6 +155,8 @@ target_link_options(dw3-switch PRIVATE
   "-Wl,--wrap=DecDCTout"
   "-Wl,--wrap=LoadImage"
   "-Wl,--wrap=PutDispEnv"
+  "-Wl,--wrap=StGetNext"
+  "-Wl,--wrap=StFreeRing"
   # TEMPORARY boot-stop trace (nx_present.c); see the comment there.
   "-Wl,--wrap=SetDispMask"
   "-Wl,--wrap=CdInit"

@@ -394,7 +394,30 @@ console.
   **Not ticked:** the done-when is the title **on hardware**, and this is the
   emulator. The speckle was the GLES2 upload reading RGB555 backwards;
   `nx_gpu.c` expands to opaque RGBA8888. The owner confirmed the decoded
-  dump. No pad input has been sent through it yet.
+  dump. The remaining menu offset was the present width: the horizontal
+  range is 256 dot-clock tenths, and using it as the blit width cropped a
+  320-wide frame. The blit width now follows the display mode.
+  **Opening movie (Ryubing, 2026-10-10):** XA already played. The picture
+  froze because `DecDCTout` never raised the MDEC-out IRQ, so no slice reached
+  `LoadImage`, and the 24-bit buffer was still presented at the title's 240
+  lines. The Switch present now matches the PC path (DMA callback, RGB24
+  expand, quant/IDCT upload, slice stash). 24-bit mode presents 480 lines;
+  the title stays on the vertical range. After that, `StGetNext` could sit on
+  a body sector while the frame header was the previous slot, and the writer
+  blocked. The host wrapper steps back onto that header, or drops a leftover
+  tail and scans for the next ready frame. Guest log: `DecDCTout frame done`
+  through thousands of frames with changing signatures, present flips
+  `320x480`, then the attract loop returns to the title and starts the movie
+  again (Bandai card). Not ticked: done-when is still hardware. No pad input
+  has been sent through it yet.
+  **Present aspect:** the viewport uses PSY-Z's display-range aspect
+  (`(4/3) * (horiz/256) / (vert/240)`), the same rule as the PC host. The
+  sampled rectangle for the movie is the 416-line picture at VRAM y=36
+  (the 480-line display has blank lines above and below it). The title uses
+  the display-mode width. That pixel ratio is not the shape on screen. On a docked
+  1920×1080 surface the picture is 4:3 at full height, with side bars only.
+  A Ryubing window set to 21:9 still shrinks that framebuffer and adds bars
+  at the top and bottom. That is the emulator aspect, not a crop in the port.
   See `docs/SWITCH_BACKEND.md` for the boot-stop evidence and the emulator
   logging traps.
 
