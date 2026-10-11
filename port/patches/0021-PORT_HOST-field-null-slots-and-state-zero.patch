@@ -1,8 +1,11 @@
 Upstream-bound: no
-Subject: [PORT_HOST] FieldState clear to init; NULL slots in file loader
+Subject: [PORT_HOST] FieldState clear stops before defaultStart; NULL slots
 
-HEAP.zero(&FIELDSTG_state, 100) is the PS1 prefix before method pointers;
-on LP64 those sit later — clear through offsetof(FieldState, init).
+HEAP.zero(&FIELDSTG_state, 100) is the PS1 prefix, offsetof(defaultStart).
+On LP64 that prefix is larger, but defaultStart and defaultStartDir still
+sit in front of the method pointers and must survive pickStage: leaveField
+stores the door spawn there. Zeroing through offsetof(init) wiped it, so the
+next room spawned the player at (0, 0).
 WSTAG780 (and other stages) leave FieldState.slots NULL; FIELDSTG_createTriggers
 already guards, but FIELDSTG_requestSlotFiles did not and SEGV'd on host.
 
@@ -28,7 +31,7 @@ already guards, but FIELDSTG_requestSlotFiles did not and SEGV'd on host.
  #endif
      mode = GAME.funcs.getMode();
 +#if PORT_HOST
-+    HEAP.zero(&FIELDSTG_state, offsetof(FieldState, init));
++    HEAP.zero(&FIELDSTG_state, offsetof(FieldState, defaultStart));
 +#else
      HEAP.zero(&FIELDSTG_state, 100);
 +#endif
