@@ -69,16 +69,6 @@ static void dw3_nxlink_stdio_shutdown(void) {
 }
 #endif
 
-/* Runs once per frame from PSY-Z's vsync hook. Two jobs:
- *
- *  - service the CD/STR bridge (StCdIntrFlag + Psyz_CdPumpStream), exactly as
- *    the PC host does, so streaming movies keep their sectors coming;
- *  - keep the console's applet loop alive. dw3_game_main() never returns to
- *    main(), so this callback is the only place the home menu can be polled. If
- *    the user asks to quit there is no way to unwind the game's loop, so the
- *    process exits — abrupt, but the alternative is a homebrew that ignores the
- *    home button.
- */
 /* Runs once per frame from PSY-Z's vsync hook, to service the CD/STR bridge
  * (StCdIntrFlag + Psyz_CdPumpStream), exactly as the PC host does, so streaming
  * movies keep their sectors coming.
