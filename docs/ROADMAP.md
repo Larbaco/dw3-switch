@@ -400,7 +400,10 @@ console.
   `memcard/` from the Mode2 BIN when that tree is missing
   (`port/cdfs/runtime_extract.c`). A tree that is already complete only
   stats. Checked with a synthetic image in `tools/tests/test_runtime_extract.py`.
-  Not run on the OLED. EU is unchanged. See `docs/RUNTIME_LAYOUT.md`.
+  Not run on the OLED. `v0.6.5-preview.5` is the hardware test of that
+  extract, the copy progress bar, and the left stick. The opening-video
+  picture is unchanged from preview.4. EU is unchanged. See
+  `docs/RUNTIME_LAYOUT.md`.
   **Still open:** P4.4's Joy-Con + Pro / analog checks, P4.5's formal P2.5 CDFS
   suite on the SD, and P4.6's complete overlay sweep on hardware. The preview.4
   log proves several runtime paths, not those full acceptance suites.
@@ -477,7 +480,9 @@ tick does not start Phase 6.
   [run 38103023231](https://github.com/Larbaco/dw3-switch/actions/runs/38103023231)).
   That `.nro` is 8927429 bytes. It still crops the title and freezes the
   movie.
-  Current prerelease is `v0.6.5-preview.2`
+  `v0.6.5-preview.5` is the later hardware test (progress bar, left stick,
+  US extract from the BIN). The picture prerelease remains
+  `v0.6.5-preview.2`
   ([release](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.2),
   [run 38113420519](https://github.com/Larbaco/dw3-switch/actions/runs/38113420519)),
   cut from `8273a91`. Assets are `dw3-switch.nro` (8935621 bytes) and

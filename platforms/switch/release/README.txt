@@ -1,15 +1,19 @@
 Digimon World 3 / 2003, Switch homebrew preview
 
-This release is a hardware test of the opening movie. It is cut from
-the movie-str-pace branch, not from main. Both game files pace the CD
-at 150 sectors/s and, on first launch, rewrite 2048-byte STR files from
-your disc image so the soundtrack keeps all 18 XA blocks.
+This release is a hardware test cut from main. It has the preview.4
+movie pace and STR restore, plus three things that image did not:
 
-v0.6.5-preview.3 selected us/boot_tim.bin, the only .bin inside the
-runtime tree, and did not reach the disc image one directory up. This
-build ignores boot_tim.bin. The CUE may name a BIN that is not the file
-on the card; the only other .bin next to that CUE is used when it is
-large enough to cover the STR files.
+  a progress bar while a long copy runs
+  the left stick, published as an analog pad
+  a US runtime built from the Mode2 BIN when us/ is missing
+
+The opening-video picture is the same as preview.4. The menu picture
+on that OLED run looked right. The stick and the full extract have not
+been seen on hardware yet.
+
+boot_tim.bin is not a disc image. A CUE whose FILE name is missing still
+selects the only other .bin in that directory when the file is large
+enough.
 
 This release has three files.
 
@@ -50,11 +54,17 @@ Install the test build
 
     nxlink -a <Switch-IP> -s dw3-switch-nxlink.nro
 
-  The first boot copies about 260 MB. The screen stays dark blue and the
-  log prints "restore" until that finishes. The next boot only checks
-  file sizes. Then let the opening movie play. Picture and sound should
-  stay together. A failed nxlink connection still boots, and the same
-  lines go to sdmc:/switch/dw3/dw3.log.
+  If us/ is missing, the first boot builds it from the BIN. The screen
+  stays dark blue and draws a bar. The log says "extracting". That copy
+  is the whole runtime, not only the movies. If us/ is already there,
+  boot only checks sizes, then rewrites any STR that is still 2048 bytes
+  per sector. That rewrite logs "restore" and uses the same bar. The
+  next boot only stats.
+
+  The left stick should walk the player. The d-pad, face buttons, Start
+  and Select still work with the stick centred. nxlink should show
+  kind=0x73. A failed nxlink connection still boots, and the same lines
+  go to sdmc:/switch/dw3/dw3.log.
 
   dw3-switch.nro is the same test without a socket. Copy it to
   sdmc:/switch/dw3-switch.nro and launch it from hbmenu when you do not
