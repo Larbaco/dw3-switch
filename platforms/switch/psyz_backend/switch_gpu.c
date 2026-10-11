@@ -84,15 +84,19 @@ int Draw_ExequeSync(void) { return software_rasterizer.exeque_sync(); }
  * conversion in the range setters: the horizontal range arrives in tenths of a
  * pixel, the vertical one in scanlines.
  *
- * Not modelled yet: PAL, 24bpp and the interlace flag. The title and field
- * modes are NTSC 15bpp, so this is enough for first light; a game mode that
- * changes them will render at the wrong size rather than not at all. */
+ * PAL is recorded only so the present aspect uses the 288-line vref.
+ * Interlace is still ignored. 24bpp selects the movie blit height. */
 static int s_disp_on;
 static int s_disp_x;
 static int s_disp_y;
 static int s_disp_w;
 static int s_disp_h;
 static int s_disp_mode_w;
+static int s_disp_pal;
+/* 24-bit movie mode only. The 480-line bit is not enough: an early PutDispEnv
+ * with disp.h=640 sets it before the title, and presenting that height crops
+ * the menu. isrgb24 is the movie. */
+static int s_disp_rgb24;
 
 void Draw_DisplayEnable(unsigned int on) { s_disp_on = (int)on; }
 
@@ -131,6 +135,8 @@ void Draw_SetDisplayMode(DisplayMode *mode) {
             break;
         }
     }
+    s_disp_rgb24 = mode->rgb24 ? 1 : 0;
+    s_disp_pal = mode->pal ? 1 : 0;
 }
 
 void dw3_nx_switch_gpu_display(Dw3NxDisplay *out) {
@@ -140,10 +146,27 @@ void dw3_nx_switch_gpu_display(Dw3NxDisplay *out) {
     out->on = s_disp_on;
     out->x = s_disp_x;
     out->y = s_disp_y;
-    /* The range setters win when the game provides them; these are the fallback
-     * for a mode that only calls PutDispEnv. */
-    out->width = s_disp_w > 0 ? s_disp_w : (s_disp_mode_w > 0 ? s_disp_mode_w : 320);
-    out->height = s_disp_h > 0 ? s_disp_h : 240;
+    /* Blit width is the display mode, matching the PC present. The horizontal
+     * range is in tenths of a dot clock and comes out 256 for this title, so
+     * using it as the width cropped the right 64 columns of a 320-wide frame
+     * (the "3") and left the logo sitting to the right. Height stays on the
+     * vertical range, which is already in scanlines. */
+    out->width = s_disp_mode_w > 0 ? s_disp_mode_w : (s_disp_w > 0 ? s_disp_w : 320);
+    /* Title keeps the vertical range (scanlines). A 24-bit movie sets the
+     * display to 480, but STDWTITL_onSliceDecoded writes the 416-line picture
+     * at VRAM y=36. The lines above and below that are blank, and sampling
+     * them is the small bar over and under the video. */
+    if (s_disp_rgb24) {
+        out->y = 36;
+        out->height = 416;
+    } else {
+        out->height = s_disp_h > 0 ? s_disp_h : 240;
+    }
+    /* Aspect inputs. These stay the display ranges even when the blit
+     * height is 480: PSY-Z does not treat that framebuffer as 2:3. */
+    out->range_w = s_disp_w;
+    out->range_h = s_disp_h;
+    out->pal = s_disp_pal;
 }
 
 const uint16_t *dw3_nx_switch_gpu_vram(void) {

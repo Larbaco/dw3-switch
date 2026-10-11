@@ -247,6 +247,8 @@ bool dw3_nx_gpu_swap(void) {
  * already blocks on vsync at swap interval 1, so that call *is* the frame
  * pacing — no extra sleep.
  */
+static float dw3_nx_display_aspect(int range_w, int range_h, int pal);
+
 int Psyz_VideoVSync(int mode) {
     static uint32_t last_vsync_us;
     static int entered;
@@ -280,17 +282,23 @@ int Psyz_VideoVSync(int mode) {
              * VRAM the presenter is not showing. This separates them, and the
              * rect is the other half of it: a present of the wrong VRAM
              * rectangle looks exactly like a wrong picture. */
-            static int logged_on;
+            /* Size only. The movie double-buffer flips x every frame; logging
+             * that fills the guest log and is not a mode change. */
+            static int prev_w = -1;
+            static int prev_h = -1;
 
-            if (!logged_on) {
-                logged_on = 1;
+            if (disp.width != prev_w || disp.height != prev_h) {
+                prev_w = disp.width;
+                prev_h = disp.height;
                 psyz_log(1, "nx_gpu.c", __LINE__, __func__,
                          "display on: vram %d,%d %dx%d -> surface %ux%u",
                          disp.x, disp.y, disp.width, disp.height, s_width,
                          s_height);
             }
             dw3_nx_gpu_present(dw3_nx_switch_gpu_vram(), disp.x, disp.y,
-                               disp.width, disp.height);
+                               disp.width, disp.height,
+                               dw3_nx_display_aspect(disp.range_w, disp.range_h,
+                                                     disp.pal));
         } else {
             /* SetDispMask said "no display"; on hardware that is a black
              * screen, so do not keep showing the last frame. */
@@ -439,8 +447,20 @@ static bool present_init(void) {
     return true;
 }
 
-void dw3_nx_gpu_present(const uint16_t *vram, int dx, int dy, int dw, int dh) {
-    float src_aspect;
+/* Same rule as sdl3_common.h GetCurrentGameAspectRatio(PSYZ_ASPECT_DISPLAY):
+ * (4/3) * (horizontal_range/256) / (vertical_range / vref). The ranges are
+ * the CRT beam window, not the VRAM rectangle. A 320x480 24-bit movie keeps
+ * vertical_range 240, so this is 4:3. Using dw/dh instead made a 2:3 strip. */
+static float dw3_nx_display_aspect(int range_w, int range_h, int pal) {
+    float vref = pal ? 288.0f : 240.0f;
+    float horiz = range_w > 0 ? (float)range_w : 256.0f;
+    float vert = range_h > 0 ? (float)range_h : 240.0f;
+
+    return (4.0f / 3.0f) * (horiz / 256.0f) / (vert / vref);
+}
+
+void dw3_nx_gpu_present(const uint16_t *vram, int dx, int dy, int dw, int dh,
+                        float src_aspect) {
     float dst_aspect;
     int vx;
     int vy;
@@ -468,19 +488,36 @@ void dw3_nx_gpu_present(const uint16_t *vram, int dx, int dy, int dw, int dh) {
     glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, DW3_NX_VRAM_W, DW3_NX_VRAM_H,
                     GL_RGBA, GL_UNSIGNED_BYTE, s_vram_rgba);
 
-    /* Letterbox rather than stretch: a 320x240 frame on a 16:9 surface would
-     * otherwise be visibly wrong. */
-    src_aspect = (float)dw / (float)dh;
+    /* Fit the display aspect into the framebuffer. Full height, side bars
+     * on 16:9. Do not crop, and do not use the VRAM pixel ratio: dw/dh for
+     * the movie is 320/480. */
+    if (src_aspect <= 0.0f) {
+        src_aspect = 4.0f / 3.0f;
+    }
     dst_aspect = (float)s_width / (float)s_height;
     if (src_aspect > dst_aspect) {
         vw = (int)s_width;
-        vh = (int)((float)s_width / src_aspect);
+        vh = (int)((float)s_width / src_aspect + 0.5f);
     } else {
         vh = (int)s_height;
-        vw = (int)((float)s_height * src_aspect);
+        vw = (int)((float)s_height * src_aspect + 0.5f);
     }
     vx = ((int)s_width - vw) / 2;
     vy = ((int)s_height - vh) / 2;
+    {
+        static int prev_vw = -1;
+        static int prev_vh = -1;
+
+        if (vw != prev_vw || vh != prev_vh) {
+            prev_vw = vw;
+            prev_vh = vh;
+            psyz_log(1, "nx_gpu.c", __LINE__, __func__,
+                     "present viewport %d,%d %dx%d aspect %.3f on %ux%u "
+                     "(vram %d,%d %dx%d)",
+                     vx, vy, vw, vh, src_aspect, s_width, s_height, dx, dy,
+                     dw, dh);
+        }
+    }
     glViewport(vx, vy, vw, vh);
 
     glUseProgram(s_quad_prog);

@@ -90,6 +90,12 @@ typedef struct Dw3NxDisplay {
     int y;
     int width; /* on-screen size in pixels */
     int height;
+    /* PSY-Z display ranges (not the VRAM blit). Horizontal is in dots,
+     * vertical in scanlines. Present uses these for aspect, the same way
+     * the PC host does: a 480-line 24-bit frame stays 4:3. */
+    int range_w;
+    int range_h;
+    int pal; /* DisplayMode.pal: 0 = NTSC vref 240, 1 = PAL vref 288 */
 } Dw3NxDisplay;
 
 void dw3_nx_switch_gpu_display(Dw3NxDisplay *out);
@@ -98,8 +104,11 @@ void dw3_nx_switch_gpu_display(Dw3NxDisplay *out);
  * nx_gpu.c does not have to include PSY-Z's private rasterizer header. */
 const uint16_t *dw3_nx_switch_gpu_vram(void);
 
-/* Upload a VRAM region and draw it, letterboxed onto the EGL surface. */
-void dw3_nx_gpu_present(const uint16_t *vram, int dx, int dy, int dw, int dh);
+/* Upload a VRAM region and draw it, letterboxed onto the EGL surface.
+ * src_aspect is PSY-Z's display-range aspect (4:3 for this title). The
+ * dw/dh arguments are only the sampled rectangle. */
+void dw3_nx_gpu_present(const uint16_t *vram, int dx, int dy, int dw, int dh,
+                        float src_aspect);
 
 /* PSY-Z platform symbols (see vendor/psyz src/psyz/os.h, include/psyz/input.h,
  * include/psyz/video.h and include/psyz/log.h for the contracts). */
