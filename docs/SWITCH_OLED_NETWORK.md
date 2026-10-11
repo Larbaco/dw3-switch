@@ -29,16 +29,27 @@ to PASV and listed the root.
 
 ## NXLink
 
-TCP port `28280` accepted a connection during the same check. This confirms
-that a listener is reachable at the expected NXLink port, but does **not**
-verify a full NXLink upload or live stdio session. The `nxlink` client is not
-installed in this host environment, and no NRO was sent or launched. Do not
-treat the open port alone as proof that Sphaira's NXLink transfer/callback works.
+TCP port `28280` accepted a connection during the initial check. The host had
+Docker and the `devkitpro/devkita64:latest` image, so the NXLink client was run
+against the existing local game image (no build or file modification):
 
-For game NRO development, the existing [Switch build instructions](../platforms/switch/README.md#development-build-with-live-nxlink-logs)
-document the NXLink build and client flow. That flow can transfer and launch a
-binary on the console, so confirm before using it on a live session. An FTP
-probe and a TCP connect check are the non-writing checks performed here.
+```sh
+docker run --rm --network host \\
+  -v /tmp/dw3-video-oled-build/switch:/nro:ro \\
+  devkitpro/devkita64:latest \\
+  nxlink -a 192.168.31.235 -s /nro/dw3-switch.nro
+```
+
+The client exited with status 1 and printed `recv: Connection reset by peer`
+then `Invalid response`. Therefore, a TCP listener is reachable but an NXLink
+upload/launch and live stdio session were **not** confirmed. The command is a
+transfer-and-launch attempt; do not repeat it on a live session without
+expecting it to replace the current Sphaira screen if accepted.
+
+For the project's NXLink development flow, see the [Switch build instructions](../platforms/switch/README.md#development-build-with-live-nxlink-logs).
+Sphaira documents NXLink as configurable under its Network options. Verify
+that NXLink is enabled there before another test. No FTP write operation was
+attempted.
 
 ## Recheck after DHCP changes
 

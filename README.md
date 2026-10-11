@@ -28,7 +28,7 @@ Checkboxes: [docs/ROADMAP.md](docs/ROADMAP.md). Phase 3 gate:
 
 Layering: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). OLED network notes:
 [docs/SWITCH_OLED_NETWORK.md](docs/SWITCH_OLED_NETWORK.md) (FTP verified;
-NXLink listener reachable, protocol transfer not verified).
+NXLink attempt reset by peer, transfer not verified).
 
 ### On an OLED, 2026-10-11
 
