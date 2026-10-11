@@ -1,17 +1,16 @@
 Digimon World 3 / 2003, Switch homebrew preview
 
-This release is v0.6.5-preview.8. On top of preview.7, each field area
-reads its map file from the SD card once. Later tiles in that area are
-copies from that buffer. The next area replaces the buffer. Movies still
-arrive at 150 sectors per second. This build does not call
+This release is v0.6.5-preview.9. On top of preview.8, battle mesh
+triangles (POLY_GT / POLY_FT and equivalents) draw on a GLES3 mesh FBO.
+Sprites and UI stay on the software RGB555 blit. This build does not call
 clkrstSetClockRate or appletSetCpuBoostMode. The CPU and GPU stay at the
 rate the console set.
 
-Preview.7 already uploaded only the sampled VRAM rectangle, and it loaded
-one field tile per frame. An OLED log from that build is already recorded:
-mean about 59 FPS, and some 60-frame windows of about 1.51 s. The
-KernelInit error from that boot is still open. This preview.8 file has
-not been timed on the OLED.
+Preview.8 already held one field map in RAM so later tiles copy from that
+buffer, and it kept movies at 150 sectors per second. An OLED log from
+that build is already recorded: field about 60 Hz (mean frame dt us about
+1000279 per 60 frames), battle Fight-menu idle about 46 Hz (mean about
+1293264). This preview.9 file has not been timed on the OLED yet.
 
 Preview.6 raised the CPU to 1785 MHz. That is removed. Reboot the Switch
 once before this test if preview.6 already ran: a HOME press on that
@@ -25,8 +24,10 @@ and a slot 2 save loaded after the memory-card fix that is in this
 build.
 
 Every 60 frames the log prints one line, frame dt us=. About 1000000
-is 60 Hz. About 2000000 is 30 Hz. Preview.7 already recorded that line
-on the OLED. This preview.8 file has not been timed there.
+is 60 Hz. About 2000000 is 30 Hz. Preview.8 already recorded that line
+on the OLED for field and battle. This preview.9 file has not been timed
+there. Look for nx_mesh / GLES3 mesh FBO ready on boot, and mesh gpu:
+lines in battle.
 
 boot_tim.bin is not a disc image. A CUE whose FILE name is missing still
 selects the only other .bin in that directory when the file is large
