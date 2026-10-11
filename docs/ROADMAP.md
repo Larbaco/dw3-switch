@@ -359,7 +359,7 @@ console.
   if PSY-Z's module API is required, provide a static `Psyz_ModuleOpen`
   that dispatches to the linked table.
   Done when: all overlays switch on hardware.
-- [ ] **P4.7 Boot the game.** Link the Phase 3 image against the Switch
+- [x] **P4.7 Boot the game.** Link the Phase 3 image against the Switch
   backend and run from hbmenu.
   Done when: title screen on hardware.
   **Status (2026-10-10):** `platforms/switch/CMakeLists.txt` compiles the Phase 3
@@ -390,29 +390,26 @@ console.
   pulls CD samples, which re-takes it). Fixed by making it an `RMutex` — six
   lines in `nx_audio.c`. The boot-stop trace and the full reasoning are in
   `docs/SWITCH_BACKEND.md`.
-  **The one blocker that stood in the way was not a CD bug.** The boot stopped
-  inside `CdInit()`; the cause was `Psyz_AudioLock` on a non-recursive libnx
-  `Mutex`, while PSY-Z's audio lock is re-entrant by contract (the SPU tick
-  pulls CD samples, which re-takes it). Fixed by making it an `RMutex` — six
-  lines in `nx_audio.c`. The boot-stop trace and the full reasoning are in
-  `docs/SWITCH_BACKEND.md`.
-  **OLED hardware smoke (2026-10-10):** the owner installed the US runtime and
-  launched the CMake game NRO from hbmenu. The first attempt exited at
+  **OLED hardware smoke (2026-10-10/11):** the owner installed the US runtime
+  and launched the CMake game NRO from hbmenu. The first attempt exited at
   `memcard_host_ensure()` because `sdmc:/switch/dw3/us/memcard/` was absent;
   the log had already reached the SD runtime root and `Psyz_AudioInit OK`.
-  Creating the empty directory allowed the next launch to run (owner report).
+  Creating the empty directory allowed launch. The owner then confirmed the
+  game reached the main menu and loaded a new game correctly on the OLED.
   The tested NRO was built from current `main` plus the P4.4/P4.5 commits in a
   temporary tree (1144/1144 CMake targets; 8.9 MB NRO). The file-map/runtime
   data came from the owner's US CUE/BIN and was not added to git. The earlier
   display speckle was traced to RGB555 upload order; `nx_gpu.c` expands pixels
   to opaque RGBA8888, and the decoded dump was confirmed by the owner.
-  **Still not ticked:** the owner reported that the game ran, but did not
-  explicitly confirm the title screen or controller behavior. P4.7's done-when
-  is the title screen on hardware; P4.4/P4.5 retain their separate control/CDFS
-  tests. See `docs/RUNTIME_LAYOUT.md` for the required memory-card directory and
+  **P4.7 title-screen done-when is met on hardware.** The wider Phase 4 gate
+  (title + field + battle) is not yet established. P4.4's Joy-Con and Pro
+  Controller checks and P4.5's cdfs test suite against SD still need explicit
+  evidence; P4.6 overlay switching on hardware also remains unverified. See
+  `docs/RUNTIME_LAYOUT.md` for the required memory-card directory and
   `docs/SWITCH_BACKEND.md` for the boot-stop evidence and emulator logging traps.
 
-Gate: title + field + battle on a Switch.
+  **Gate:** title + field + battle on a Switch. **Not yet met:** this smoke
+  confirms main menu and new-game loading, but not field and battle playthrough.
 
 ## Phase 5 — Playable on Switch
 

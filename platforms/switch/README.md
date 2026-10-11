@@ -78,12 +78,14 @@ feature commits. It compiled 1144 targets and emitted an 8.9 MB NRO. The
 Makefile build above remains the separate `host_hello` bring-up sample and is
 still the `.nro` CI builds; it does not contain the game.
 
-**OLED smoke:** the owner launched the combined game NRO from hbmenu after
-installing the US runtime. Its first attempt stopped because the runtime lacked
-`us/memcard/`; creating that empty directory allowed the next launch to run.
-The title screen and controller behavior were not explicitly confirmed, so P4.7
-remains open. The Switch runtime layout and first-boot memory-card requirement
-are documented in [docs/RUNTIME_LAYOUT.md](../../docs/RUNTIME_LAYOUT.md).
+**OLED smoke (2026-10-10/11):** the owner installed the US runtime and launched
+the combined game NRO from hbmenu. The first attempt stopped because the runtime
+lacked `us/memcard/`; creating that empty directory allowed launch. The owner
+then confirmed the game reached the main menu and loaded a new game correctly.
+The P4.7 title-screen done-when is met on hardware; the wider Phase 4 gate and
+P4.4/P4.5/P4.6's separate hardware checks remain open. The Switch runtime layout
+and first-boot memory-card requirement are documented in
+[docs/RUNTIME_LAYOUT.md](../../docs/RUNTIME_LAYOUT.md).
 
 ## PSY-Z backend (Phase 4)
 
