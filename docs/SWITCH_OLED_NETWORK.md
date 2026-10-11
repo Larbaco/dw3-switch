@@ -29,27 +29,30 @@ to PASV and listed the root.
 
 ## NXLink
 
-TCP port `28280` accepted a connection during the initial check. The host had
-Docker and the `devkitpro/devkita64:latest` image, so the NXLink client was run
-against the existing local game image (no build or file modification):
+TCP port `28280` accepted a connection. The first attempt, using a local
+preview image while the owner was interacting with the Switch, exited with
+`recv: Connection reset by peer` / `Invalid response`.
+
+A retry with the official [preview 7 NXLink NRO](https://github.com/Larbaco/dw3-switch/releases/download/v0.6.5-preview.7/dw3-switch-nxlink.nro)
+succeeded. The release SHA-256 was verified as
+`cc9d50da954db98acc9f3d38840bd602e809d9c2d66d40ab499e5d871160dec4`.
+The NXLink client reported `Sending dw3-switch-nxlink.nro, 8964293 bytes`,
+then `server active ...` and `nxlink stdio connected (fd=3)`. The NRO booted
+on the OLED and emitted game logs, confirming transfer, launch, and the live
+stdio callback. The host-side client was then stopped; that did not stop the
+homebrew running on the Switch.
+
+Command used (the release asset was mounted read-only):
 
 ```sh
 docker run --rm --network host \\
-  -v /tmp/dw3-video-oled-build/switch:/nro:ro \\
+  -v /tmp/dw3-preview7-nxlink:/nro:ro \\
   devkitpro/devkita64:latest \\
-  nxlink -a 192.168.31.235 -s /nro/dw3-switch.nro
+  nxlink -a 192.168.31.235 -s /nro/dw3-switch-nxlink.nro
 ```
 
-The client exited with status 1 and printed `recv: Connection reset by peer`
-then `Invalid response`. Therefore, a TCP listener is reachable but an NXLink
-upload/launch and live stdio session were **not** confirmed. The command is a
-transfer-and-launch attempt; do not repeat it on a live session without
-expecting it to replace the current Sphaira screen if accepted.
-
-For the project's NXLink development flow, see the [Switch build instructions](../platforms/switch/README.md#development-build-with-live-nxlink-logs).
-Sphaira documents NXLink as configurable under its Network options. Verify
-that NXLink is enabled there before another test. No FTP write operation was
-attempted.
+For the project's NXLink development build flow, see the [Switch build instructions](../platforms/switch/README.md#development-build-with-live-nxlink-logs).
+No FTP write operation was attempted.
 
 ## Recheck after DHCP changes
 
