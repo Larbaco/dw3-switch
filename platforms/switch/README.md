@@ -72,13 +72,18 @@ Four things there are load-bearing and easy to trip over:
 - **Do not use a login shell** (`bash -l`): `/etc/profile` rewrites `PATH` and
   drops `devkitA64/bin`, which is where `aarch64-none-elf-nm` lives.
 
-Status (P4.7, rebuilt 2026-10-10 after rebase onto current `main`): the CMake
-target compiles, then the link **fails**. `source/boot_main.c` calls
-`dw3_game_main`, which pulls `libgpu.o`, and the link stops on 20 undefined
-`Draw_*` symbols (listed in [docs/SWITCH_BACKEND.md](../../docs/SWITCH_BACKEND.md)).
-There is no game `.elf` and no game `.nro` from this build. The Makefile path
-above is unchanged: it still links `source/main.c` (`host_hello`) and is the
-`.nro` CI builds. P4.7 stays open — no title on hardware.
+**Current CMake status (2026-10-10):** the full game image links and produces a
+`.nro`; the temporary combined build used current `main` plus the P4.4/P4.5
+feature commits. It compiled 1144 targets and emitted an 8.9 MB NRO. The
+Makefile build above remains the separate `host_hello` bring-up sample and is
+still the `.nro` CI builds; it does not contain the game.
+
+**OLED smoke:** the owner launched the combined game NRO from hbmenu after
+installing the US runtime. Its first attempt stopped because the runtime lacked
+`us/memcard/`; creating that empty directory allowed the next launch to run.
+The title screen and controller behavior were not explicitly confirmed, so P4.7
+remains open. The Switch runtime layout and first-boot memory-card requirement
+are documented in [docs/RUNTIME_LAYOUT.md](../../docs/RUNTIME_LAYOUT.md).
 
 ## PSY-Z backend (Phase 4)
 
