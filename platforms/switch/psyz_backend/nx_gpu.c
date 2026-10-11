@@ -4,6 +4,7 @@
 #include "nx.h"
 #include "nx_mesh.h"
 #include "nx_mesh_debug.h"
+#include "nx_vram_dump.h"
 #include "nx_vram_pack.h"
 
 #include <stdio.h>
@@ -691,6 +692,10 @@ void dw3_nx_gpu_present(const uint16_t *vram, int dx, int dy, int dw, int dh,
 #if DW3_NX_DEBUG_MESH
     dw3_nx_mesh_debug_note_present(use_mesh,
                                    (uint32_t)(gpu_now_us() - present_t0));
+#endif
+#if DW3_NX_DUMP_VRAM
+    /* After composite so the mesh FBO still holds this frame's triangles. */
+    dw3_nx_vram_dump_battle_once(vram, dx, dy, dw, dh, use_mesh);
 #endif
     dw3_nx_mesh_end_frame();
 }

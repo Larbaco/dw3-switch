@@ -5,10 +5,10 @@ nxlink TCP stream.
 
 ## Builds
 
-| Binary | Command | nxlink stdio | Mesh summary |
-|---|---|---|---|
-| Release / SD | `./tools/build_switch_game.sh` | off | off |
-| Dev (nxlink) | `./tools/build_switch_game.sh --nxlink` | on | **on** (default) |
+| Binary | Command | nxlink stdio | Mesh summary | Battle dump |
+|---|---|---|---|---|
+| Release / SD | `./tools/build_switch_game.sh` | off | off | off |
+| Dev (nxlink) | `./tools/build_switch_game.sh --nxlink` | on | **on** (default) | **on** (default) |
 
 The nxlink NRO lands at `build/switch-nxlink/dw3-switch-nxlink.nro`.
 
@@ -97,3 +97,37 @@ Use the summary to confirm the gate:
 Pair with existing `dw3: mode=` / `FIELDSTG_pickStage` / fight-stage lines.
 `upload_us` staying near zero on Fight-menu idle (unchanged VRAM) is the
 dirty-sample path working.
+
+## Battle VRAM / mesh FBO dump (`DW3_NX_DUMP_VRAM`)
+
+Default **on** for `--nxlink` builds. On the **first** `mesh+ui` present
+(typically the first FIGHTSTG frame that composites the mesh FBO), the game
+writes the current display rect to the SD card and logs one nxlink line
+starting with `vram dump:`. It does **not** stream the pixels over nxlink.
+
+Files (display rect only, usually 320×240):
+
+| Path | Contents | Approx size |
+|---|---|---|
+| `sdmc:/switch/dw3/dump_vram_display.rgb555` | CPU VRAM RGB555, tight rows | ~150 KiB |
+| `sdmc:/switch/dw3/dump_vram_display.ppm` | Same, P6 for a quick look | ~225 KiB |
+| `sdmc:/switch/dw3/dump_mesh_fbo.rgba` | Mesh FBO `glReadPixels` RGBA8 | ~300 KiB |
+| `sdmc:/switch/dw3/dump_mesh_fbo.ppm` | Same, P6 | ~225 KiB |
+
+The log line reports write ok/fail, non-black pixel counts, and mean RGB so
+you can tell whether the mesh FBO had content without opening the files.
+
+Retrieve with Sphaira FTP (anonymous, TCP **5000**, PASV), for example:
+
+```sh
+curl --ftp-pasv -O ftp://<switch-ip>:5000/sdmc:/switch/dw3/dump_mesh_fbo.ppm
+curl --ftp-pasv -O ftp://<switch-ip>:5000/sdmc:/switch/dw3/dump_vram_display.ppm
+```
+
+Override:
+
+```bash
+cmake -S platforms/switch -B build/switch-nxlink \
+  -DCMAKE_TOOLCHAIN_FILE=$DEVKITPRO/cmake/Switch.cmake \
+  -DDW3_NXLINK_STDIO=ON -DDW3_NX_DUMP_VRAM=OFF
+```
