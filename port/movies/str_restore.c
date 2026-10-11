@@ -8,14 +8,13 @@
 #include "str_stream.h"
 
 #include "cdfs.h"
+#include "str_disc.h"
 
 #include <ctype.h>
-#include <dirent.h>
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <strings.h>
 #include <sys/stat.h>
 
 #define STR_RAW_BYTES 2352
@@ -83,6 +82,7 @@ static int is_mode2_sync(const unsigned char *s) {
 
 struct Need {
     int count;
+    unsigned long long min_image;
 };
 
 static int count_need(const CdfsMapInfo *info, void *user) {
@@ -97,232 +97,25 @@ static int count_need(const CdfsMapInfo *info, void *user) {
     expect = (unsigned long long)info->sectors * (unsigned long long)STR_RAW_BYTES;
     if (cdfs_join_root(info->path, abs, sizeof(abs)) != 0) {
         need->count++;
-        return 0;
-    }
-    if (file_size(abs, &sz) != 0 || sz != expect) {
+    } else if (file_size(abs, &sz) != 0 || sz != expect) {
         need->count++;
-    }
-    return 0;
-}
-
-static void dirname_of(const char *path, char *out, size_t n) {
-    const char *slash = strrchr(path, '/');
-    const char *bslash = strrchr(path, '\\');
-    const char *sep = slash;
-    size_t len;
-
-    if (bslash != NULL && (sep == NULL || bslash > sep)) {
-        sep = bslash;
-    }
-    if (sep == NULL) {
-        snprintf(out, n, ".");
-        return;
-    }
-    len = (size_t)(sep - path);
-    if (len == 0) {
-        snprintf(out, n, "/");
-        return;
-    }
-    if (len >= n) {
-        len = n - 1;
-    }
-    memcpy(out, path, len);
-    out[len] = '\0';
-}
-
-static int is_absolute_path(const char *path) {
-    if (path[0] == '/' || path[0] == '\\') {
-        return 1;
-    }
-    /* sdmc:/... or C:/... */
-    if (strchr(path, ':') != NULL) {
-        return 1;
-    }
-    return 0;
-}
-
-static int join_dir(const char *dir, const char *name, char *out, size_t n) {
-    size_t ld = strlen(dir);
-    int need_slash = ld > 0 && dir[ld - 1] != '/' && dir[ld - 1] != '\\';
-
-    if (is_absolute_path(name)) {
-        snprintf(out, n, "%s", name);
+    } else {
         return 0;
     }
-    if (snprintf(out, n, "%s%s%s", dir, need_slash ? "/" : "", name) >= (int)n) {
-        return -1;
+    {
+        unsigned long long end =
+            ((unsigned long long)info->lba + (unsigned long long)info->sectors) *
+            (unsigned long long)STR_RAW_BYTES;
+        if (end > need->min_image) {
+            need->min_image = end;
+        }
     }
     return 0;
-}
-
-/* FILE "name" BINARY  or  FILE name BINARY. Writes the bin path next to the cue. */
-static int bin_from_cue(const char *cue_path, char *out, size_t n) {
-    FILE *fp;
-    char line[512];
-    char dir[512];
-    char name[256];
-
-    fp = fopen(cue_path, "rb");
-    if (fp == NULL) {
-        return -1;
-    }
-    name[0] = '\0';
-    while (fgets(line, sizeof(line), fp) != NULL) {
-        char *p = line;
-        while (*p == ' ' || *p == '\t') {
-            p++;
-        }
-        if (strncasecmp(p, "FILE", 4) != 0 || (p[4] != ' ' && p[4] != '\t')) {
-            continue;
-        }
-        p += 4;
-        while (*p == ' ' || *p == '\t') {
-            p++;
-        }
-        if (*p == '"') {
-            char *end;
-            p++;
-            end = strchr(p, '"');
-            if (end == NULL || (size_t)(end - p) >= sizeof(name)) {
-                fclose(fp);
-                return -1;
-            }
-            memcpy(name, p, (size_t)(end - p));
-            name[end - p] = '\0';
-        } else {
-            size_t i = 0;
-            while (*p != '\0' && *p != ' ' && *p != '\t' && *p != '\r' && *p != '\n' &&
-                   i + 1 < sizeof(name)) {
-                name[i++] = *p++;
-            }
-            name[i] = '\0';
-        }
-        break;
-    }
-    fclose(fp);
-    if (name[0] == '\0') {
-        return -1;
-    }
-    dirname_of(cue_path, dir, sizeof(dir));
-    return join_dir(dir, name, out, n);
 }
 
 static int exists_file(const char *path) {
     unsigned long long sz;
     return path != NULL && path[0] != '\0' && file_size(path, &sz) == 0;
-}
-
-static int ext_is(const char *name, const char *ext) {
-    size_t n = strlen(name);
-    size_t e = strlen(ext);
-    size_t i;
-
-    if (n < e) {
-        return 0;
-    }
-    for (i = 0; i < e; i++) {
-        if (tolower((unsigned char)name[n - e + i]) != tolower((unsigned char)ext[i])) {
-            return 0;
-        }
-    }
-    return 1;
-}
-
-/* Prefer disc.cue, then the only *.cue, then disc.bin, then the only *.bin. */
-static int disc_in_dir(const char *dir, char *out, size_t n) {
-    char cue_named[1024];
-    char bin_named[1024];
-    char only_cue[1024];
-    char only_bin[1024];
-    char resolved[1024];
-    int cues = 0;
-    int bins = 0;
-    DIR *d;
-    struct dirent *ent;
-
-    snprintf(cue_named, sizeof(cue_named), "%s/disc.cue", dir);
-    if (bin_from_cue(cue_named, resolved, sizeof(resolved)) == 0 && exists_file(resolved)) {
-        snprintf(out, n, "%s", resolved);
-        return 0;
-    }
-    snprintf(bin_named, sizeof(bin_named), "%s/disc.bin", dir);
-
-    d = opendir(dir);
-    if (d == NULL) {
-        if (exists_file(bin_named)) {
-            snprintf(out, n, "%s", bin_named);
-            return 0;
-        }
-        return -1;
-    }
-    only_cue[0] = '\0';
-    only_bin[0] = '\0';
-    while ((ent = readdir(d)) != NULL) {
-        char full[1024];
-        if (ent->d_name[0] == '.') {
-            continue;
-        }
-        if (snprintf(full, sizeof(full), "%s/%s", dir, ent->d_name) >= (int)sizeof(full)) {
-            continue;
-        }
-        if (ext_is(ent->d_name, ".cue")) {
-            cues++;
-            snprintf(only_cue, sizeof(only_cue), "%s", full);
-        } else if (ext_is(ent->d_name, ".bin")) {
-            bins++;
-            snprintf(only_bin, sizeof(only_bin), "%s", full);
-        }
-    }
-    closedir(d);
-
-    if (cues == 1 && bin_from_cue(only_cue, resolved, sizeof(resolved)) == 0 &&
-        exists_file(resolved)) {
-        snprintf(out, n, "%s", resolved);
-        return 0;
-    }
-    if (exists_file(bin_named)) {
-        snprintf(out, n, "%s", bin_named);
-        return 0;
-    }
-    if (bins == 1 && exists_file(only_bin)) {
-        snprintf(out, n, "%s", only_bin);
-        return 0;
-    }
-    return -1;
-}
-
-static int find_disc(char *out, size_t n) {
-    const char *env;
-    const char *root;
-    char parent[512];
-    char resolved[1024];
-
-    env = getenv("DW3_DISC_BIN");
-    if (exists_file(env)) {
-        snprintf(out, n, "%s", env);
-        return 0;
-    }
-    env = getenv("DW3_DISC_CUE");
-    if (env != NULL && env[0] != '\0' && bin_from_cue(env, resolved, sizeof(resolved)) == 0 &&
-        exists_file(resolved)) {
-        snprintf(out, n, "%s", resolved);
-        return 0;
-    }
-
-    root = cdfs_root();
-    if (root == NULL || root[0] == '\0') {
-        return -1;
-    }
-    if (disc_in_dir(root, out, n) == 0) {
-        return 0;
-    }
-    dirname_of(root, parent, sizeof(parent));
-    if (parent[0] != '\0' && strcmp(parent, ".") != 0 && strcmp(parent, root) != 0) {
-        if (disc_in_dir(parent, out, n) == 0) {
-            return 0;
-        }
-    }
-    return -1;
 }
 
 struct CopyCtx {
@@ -456,7 +249,7 @@ int dw3_str_restore_from_disc(void) {
     if (need.count == 0) {
         return 0;
     }
-    if (find_disc(bin_path, sizeof(bin_path)) != 0) {
+    if (dw3_str_find_disc(cdfs_root(), bin_path, sizeof(bin_path), need.min_image) != 0) {
         note("STR still 2048-byte; put the Mode2 BIN/CUE next to the runtime "
              "(or set DW3_DISC_BIN) to restore XA");
         return 0;

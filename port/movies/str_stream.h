@@ -52,7 +52,10 @@ void dw3_str_stream_install_cd_bridge(void);
 
 /* If a Mode2/2352 BIN is next to the runtime (or named by DW3_DISC_BIN /
  * DW3_DISC_CUE) and a form-2 STR is still the 2048-byte extract, rewrite
- * that file in place as raw sectors. Already-restored files are left alone.
+ * that file in place as raw sectors. boot_tim.bin is not a disc image.
+ * A CUE whose FILE name is missing still selects the only other .bin in
+ * that directory when the file covers the STR extents. Already-restored
+ * files are left alone.
  * Returns 0 when there is nothing to do or the rewrite finished. A missing
  * disc image is not an error. Returns -1 if a rewrite was needed and failed. */
 int dw3_str_restore_from_disc(void);

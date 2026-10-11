@@ -5,6 +5,12 @@ the movie-str-pace branch, not from main. Both game files pace the CD
 at 150 sectors/s and, on first launch, rewrite 2048-byte STR files from
 your disc image so the soundtrack keeps all 18 XA blocks.
 
+v0.6.5-preview.3 selected us/boot_tim.bin, the only .bin inside the
+runtime tree, and did not reach the disc image one directory up. This
+build ignores boot_tim.bin. The CUE may name a BIN that is not the file
+on the card; the only other .bin next to that CUE is used when it is
+large enough to cover the STR files.
+
 This release has three files.
 
   dw3-switch-nxlink.nro    the test build. Same game, log on the PC.

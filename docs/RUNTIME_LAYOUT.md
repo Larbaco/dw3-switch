@@ -52,7 +52,10 @@ the last two XA ADPCM blocks and the opening soundtrack runs slow. On
 boot, the game rewrites any such file to raw Mode2/2352 when it can see
 the owner's disc image. It looks for `DW3_DISC_BIN`, `DW3_DISC_CUE`, then
 `disc.cue` / `disc.bin` / a single `*.cue` or `*.bin` in the runtime root
-and in the parent directory. Put the pair here on the card:
+and in the parent directory. `boot_tim.bin` is never a disc image. A CUE
+whose `FILE` name is not on the card still selects the only other `.bin`
+in that directory when the file is large enough to cover the STR extents.
+Put the pair here on the card:
 
 ```text
 sdmc:/switch/dw3/Digimon World 3.cue

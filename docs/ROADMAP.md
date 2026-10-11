@@ -379,7 +379,14 @@ console.
   that playback fills with silence. This branch paces the pump at
   double-speed (150 sectors/s) and rewrites a 2048-byte `AAA/STR/` from
   the owner's BIN/CUE on first launch (`sdmc:/switch/dw3/*.cue` plus the
-  `.bin`, or `DW3_DISC_BIN`). `v0.6.5-preview.3` is that hardware test.
+  `.bin`, or `DW3_DISC_BIN`). `v0.6.5-preview.3` (nxlink, OLED) reached
+  the boot log. Restore selected `sdmc:/switch/dw3/us/boot_tim.bin`, the
+  only `.bin` in the runtime root, and short-read all 13 STR files. The
+  disc image was one directory up. The CUE names
+  `Digimon World 3 (USA).bin`; the file on the card is
+  `Digimon World 3.bin`. No STR was overwritten.
+  `v0.6.5-preview.4` ignores `boot_tim.bin` and accepts that CUE when the
+  directory has one other `.bin` large enough to cover the STR extents.
   `dw3-switch-nxlink.nro` is the file that prints the restore log.
   Until the disc image is on the card the sound stays slow. The runtime
   came from the owner's US
