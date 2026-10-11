@@ -98,6 +98,36 @@ An incremental build is ~10 s (three objects and a link); a clean one is 1144
 targets. Changing `target_link_options` re-runs CMake and rebuilds the world,
 so batch link-flag edits.
 
+**A fresh worktree needs two more things before that build works**, and both
+fail in ways that look unrelated to the cause:
+
+1. `git submodule update --init vendor/dw3_decomp vendor/psyz` in the new
+   worktree (worktrees do not carry submodule checkouts), **and then**
+   `git -C vendor/psyz submodule update --init nugget` — a nested submodule.
+   Without it the *configure* step dies with
+   `Cannot find source file: …/vendor/psyz/nugget/bsdec/bsdec.c` and the
+   misleading follow-up `No SOURCES given to target: dw3_movies`.
+2. Configure before building. `ninja` alone in a worktree with no
+   `build/switch` has nothing to do:
+
+```bash
+W=/mnt/windows/Jogos/dw3-switch/.worktrees/<name>
+docker run --rm -v "$W:$W" -v /tmp/dw3-nxf-build:"$W/build" \
+  -v /mnt/windows/Jogos/dw3-switch/.git:/mnt/windows/Jogos/dw3-switch/.git:ro \
+  -e DEVKITPRO=/opt/devkitpro \
+  -e PATH=/opt/devkitpro/tools/bin:/opt/devkitpro/devkitA64/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin \
+  -e GIT_CONFIG_COUNT=1 -e GIT_CONFIG_KEY_0=safe.directory -e GIT_CONFIG_VALUE_0='*' \
+  -w "$W" devkitpro/devkita64:latest \
+  cmake -S "$W/platforms/switch" -B "$W/build/switch" -G Ninja \
+    -DCMAKE_TOOLCHAIN_FILE=/opt/devkitpro/cmake/Switch.cmake \
+    -DCMAKE_BUILD_TYPE=Release
+```
+
+The main repo's `.git` is mounted read-only because a worktree's submodules
+keep their gitdirs there and `tools/apply_patches.sh` runs `git -C
+vendor/dw3_decomp rev-parse` at configure time; the `safe.directory` env is
+what lets that git call run as a different uid than the mount's owner.
+
 ## Experiment B — native libnx sketch (PSP layout)
 
 | PSY-Z PSP file | Switch file | Intended libnx / stack | Status |
@@ -244,9 +274,15 @@ kernel paths cold is what found the cycle.
 
 The boot runs into the main loop, alternates `PutDispEnv` between `y=0` and
 `y=256` (double buffer), and draws the title: logo, "Please Start Button",
-copyright line, animating frame to frame. The image is still visibly noisy —
-dithering or pixel-format fidelity in the VRAM→GLES2 path, not yet
-investigated. No pad input has been exercised through it yet.
+copyright line, animating frame to frame. The speckle was not in the
+rasterizer. `vram60.bin` / `vram120.bin` decoded as PS1 RGB555 (R in bits
+0–4) are a clean title; the only motion between them is the blinking prompt.
+`GL_UNSIGNED_SHORT_5_5_5_1` reads that halfword backwards (R in bits 15–11),
+which is the speckled window. `nx_gpu.c` now expands to RGBA8888 the way
+`ConvertRgb5551ToRgba8888` does, with alpha forced opaque, before
+`glTexSubImage2D`. The owner confirmed that decode
+(`/tmp/vram60-ps1-2x.png`, 2026-10-10). The temporary VRAM dump is gone.
+No pad input has been exercised through it yet.
 
 P4.7 stays open: the done-when is the title on **hardware**.
 

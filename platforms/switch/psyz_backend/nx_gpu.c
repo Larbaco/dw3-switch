@@ -322,8 +322,34 @@ static GLint s_uni_uv0 = -1;
 static GLint s_uni_uv1 = -1;
 static GLint s_uni_tex = -1;
 
-/* PS1 VRAM is 1024x512 RGB555 and GL_UNSIGNED_SHORT_5_5_5_1 is that layout with
- * the mask bit landing in alpha, so the upload needs no conversion. */
+/* PS1 VRAM is 1024x512 RGB555, little-endian: R in bits 0–4, G in 5–9, B in
+ * 10–14, mask in bit 15. GLES2's GL_UNSIGNED_SHORT_5_5_5_1 is the other
+ * order (R in bits 15–11), and this port has no GL_UNSIGNED_SHORT_1_5_5_5_REV.
+ * Uploading the halfword raw scrambles every channel — that was the speckled
+ * title. Expand on the CPU the way PSY-Z's ConvertRgb5551ToRgba8888 does.
+ * Alpha is forced opaque: bit 15 is the PS1 mask, not coverage, and this
+ * present path does not blend. */
+static uint8_t s_vram_rgba[DW3_NX_VRAM_W * DW3_NX_VRAM_H * 4];
+
+static uint8_t color_5to8(unsigned int c5) {
+    return (uint8_t)((c5 * 255u + 15u) / 31u);
+}
+
+static void expand_rgb555(const uint16_t *src) {
+    uint8_t *dst = s_vram_rgba;
+    size_t n = (size_t)DW3_NX_VRAM_W * DW3_NX_VRAM_H;
+    size_t i;
+
+    for (i = 0; i < n; i++) {
+        uint16_t v = src[i];
+        dst[0] = color_5to8(v & 0x1Fu);
+        dst[1] = color_5to8((v >> 5) & 0x1Fu);
+        dst[2] = color_5to8((v >> 10) & 0x1Fu);
+        dst[3] = 0xFFu;
+        dst += 4;
+    }
+}
+
 static const char *QUAD_VS =
     "attribute vec2 a_pos;\n"
     "attribute vec2 a_t;\n"
@@ -409,7 +435,7 @@ static bool present_init(void) {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, DW3_NX_VRAM_W, DW3_NX_VRAM_H, 0,
-                 GL_RGBA, GL_UNSIGNED_SHORT_5_5_5_1, NULL);
+                 GL_RGBA, GL_UNSIGNED_BYTE, NULL);
     return true;
 }
 
@@ -437,9 +463,10 @@ void dw3_nx_gpu_present(const uint16_t *vram, int dx, int dy, int dw, int dh) {
     glClear(GL_COLOR_BUFFER_BIT);
 
     glActiveTexture(GL_TEXTURE0);
+    expand_rgb555(vram);
     glBindTexture(GL_TEXTURE_2D, s_vram_tex);
     glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, DW3_NX_VRAM_W, DW3_NX_VRAM_H,
-                    GL_RGBA, GL_UNSIGNED_SHORT_5_5_5_1, vram);
+                    GL_RGBA, GL_UNSIGNED_BYTE, s_vram_rgba);
 
     /* Letterbox rather than stretch: a 320x240 frame on a 16:9 surface would
      * otherwise be visibly wrong. */
