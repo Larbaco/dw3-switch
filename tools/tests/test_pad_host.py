@@ -47,3 +47,16 @@ def test_pad_get_state_connected_and_start_bit(pad_host_test: Path):
     assert "Start" in r.stdout
     # Connect log from pad host
     assert "PadInitDirect" in r.stderr or "connected" in r.stderr.lower() or "OK:" in r.stdout
+
+
+def test_pad_mode_table_and_set_main_mode(pad_host_test: Path):
+    """PadInfoMode CurExOffs/IdTable + PadSetMainMode drive the controller mode.
+
+    This is the contract the decomp's src/engine/pad/port.c relies on:
+    lockPadMode round-trips PadInfoMode(InfoModeCurExOffs) into PadSetMainMode,
+    and readPadButtons switches on PAD_ID_DIGITAL (4) / PAD_ID_ANALOG (7).
+    """
+    r = subprocess.run([str(pad_host_test)], capture_output=True, text=True)
+    assert r.returncode == 0, r.stderr + r.stdout
+    assert "mode table" in r.stdout
+    assert "PadSetMainMode" in r.stdout

@@ -149,15 +149,23 @@ void Psyz_PadsPoll(void) {
     stick = padGetStickPos(&s_pad, 0);
 
     /* The game picks the controller kind through PadInfoMode/PadSetMainMode;
-     * ask PSY-Z what it wants rather than assuming. */
+     * ask PSY-Z what it wants rather than assuming. PSY-Z/libapi defaults every
+     * port to PSYZ_CTRL_DIGITAL_PAD. */
     kind = Psyz_PadsSetKind(0, 0, PSYZ_CTRL_QUERY_KIND);
+    /* The decomp only recognises a controller whose kind's high nibble is 4 or
+     * 7 (PAD_ID_DIGITAL / PAD_ID_ANALOG in vendor/dw3_decomp engine/pad/pad.h,
+     * tested by readPadButtons). PSY-Z's PSYZ_CTRL_ANALOG_STICK (0x53, high
+     * nibble 5) matches neither, so a Switch pad is reported as the analogous,
+     * recognised ANALOG_PAD (0x73) instead; the wire layout is identical. */
+    if (kind == PSYZ_CTRL_ANALOG_STICK) {
+        kind = PSYZ_CTRL_ANALOG_PAD;
+    }
 
     memset(frame, 0, sizeof(frame));
     frame[0] = 0x00;
     frame[1] = (char)kind;
     switch (kind) {
     case PSYZ_CTRL_ANALOG_PAD:
-    case PSYZ_CTRL_ANALOG_STICK:
         /* See sdl3_common.h BuildPadFrame: PSY-Q's high byte (d-pad,
          * Start/Select) goes in wire byte 2 and the low byte (face buttons,
          * L1/R1) in wire byte 3, both active low. */
