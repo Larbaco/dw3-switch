@@ -2,6 +2,7 @@
  * Modelled on switchbrew/switch-examples graphics/opengl/es2gears.
  * PSY-Z InitPlatform / VRAM blit lands later; this owns the host surface. */
 #include "nx.h"
+#include "nx_mesh.h"
 #include "nx_vram_pack.h"
 
 #include <stdio.h>
@@ -9,10 +10,10 @@
 #include <string.h>
 
 #include <EGL/egl.h>
-#include <GLES2/gl2.h>
+#include <GLES3/gl3.h>
 
 int dw3_nx_backend_sketch_version(void) {
-    return 3; /* P4.2 EGL present + P4.3 audren Psyz_Audio* */
+    return 4; /* P4.2 present + P4.3 audio + P5.2 mesh FBO */
 }
 
 static EGLDisplay s_display = EGL_NO_DISPLAY;
@@ -39,6 +40,7 @@ static bool current_docked(void) {
 }
 
 static void deinit_egl(void) {
+    dw3_nx_mesh_shutdown();
     if (s_display != EGL_NO_DISPLAY) {
         eglMakeCurrent(s_display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
         if (s_context != EGL_NO_CONTEXT) {
@@ -56,6 +58,10 @@ static void deinit_egl(void) {
 }
 
 static bool init_egl(NWindow *win) {
+    EGLConfig config;
+    EGLint num_configs = 0;
+    int use_es3 = 0;
+
     s_display = eglGetDisplay(EGL_DEFAULT_DISPLAY);
     if (s_display == EGL_NO_DISPLAY) {
         fprintf(stderr, "nx_gpu: eglGetDisplay failed: 0x%x\n", eglGetError());
@@ -72,19 +78,36 @@ static bool init_egl(NWindow *win) {
         goto fail_display;
     }
 
-    EGLConfig config;
-    EGLint num_configs = 0;
-    static const EGLint fb_attribs[] = {
-        EGL_RENDERABLE_TYPE, EGL_OPENGL_ES2_BIT,
-        EGL_RED_SIZE, 8,
-        EGL_GREEN_SIZE, 8,
-        EGL_BLUE_SIZE, 8,
-        EGL_ALPHA_SIZE, 8,
-        EGL_DEPTH_SIZE, 0,
-        EGL_STENCIL_SIZE, 0,
-        EGL_NONE,
-    };
-    eglChooseConfig(s_display, fb_attribs, &config, 1, &num_configs);
+    /* Prefer ES3 for the battle mesh path; fall back to ES2 (software only). */
+    {
+        static const EGLint fb_es3[] = {
+            EGL_RENDERABLE_TYPE, EGL_OPENGL_ES3_BIT,
+            EGL_RED_SIZE, 8,
+            EGL_GREEN_SIZE, 8,
+            EGL_BLUE_SIZE, 8,
+            EGL_ALPHA_SIZE, 8,
+            EGL_DEPTH_SIZE, 0,
+            EGL_STENCIL_SIZE, 0,
+            EGL_NONE,
+        };
+        eglChooseConfig(s_display, fb_es3, &config, 1, &num_configs);
+        if (num_configs > 0) {
+            use_es3 = 1;
+        }
+    }
+    if (num_configs == 0) {
+        static const EGLint fb_es2[] = {
+            EGL_RENDERABLE_TYPE, EGL_OPENGL_ES2_BIT,
+            EGL_RED_SIZE, 8,
+            EGL_GREEN_SIZE, 8,
+            EGL_BLUE_SIZE, 8,
+            EGL_ALPHA_SIZE, 8,
+            EGL_DEPTH_SIZE, 0,
+            EGL_STENCIL_SIZE, 0,
+            EGL_NONE,
+        };
+        eglChooseConfig(s_display, fb_es2, &config, 1, &num_configs);
+    }
     if (num_configs == 0) {
         fprintf(stderr, "nx_gpu: eglChooseConfig failed: 0x%x\n", eglGetError());
         goto fail_display;
@@ -96,11 +119,13 @@ static bool init_egl(NWindow *win) {
         goto fail_display;
     }
 
-    static const EGLint ctx_attribs[] = {
-        EGL_CONTEXT_CLIENT_VERSION, 2,
-        EGL_NONE,
-    };
-    s_context = eglCreateContext(s_display, config, EGL_NO_CONTEXT, ctx_attribs);
+    {
+        const EGLint ctx_attribs[] = {
+            EGL_CONTEXT_CLIENT_VERSION, use_es3 ? 3 : 2,
+            EGL_NONE,
+        };
+        s_context = eglCreateContext(s_display, config, EGL_NO_CONTEXT, ctx_attribs);
+    }
     if (s_context == EGL_NO_CONTEXT) {
         fprintf(stderr, "nx_gpu: eglCreateContext failed: 0x%x\n", eglGetError());
         goto fail_surface;
@@ -116,6 +141,13 @@ static bool init_egl(NWindow *win) {
 
     glViewport(0, 0, (GLsizei)s_width, (GLsizei)s_height);
     s_ready = true;
+    if (use_es3) {
+        if (!dw3_nx_mesh_init()) {
+            fprintf(stderr, "nx_gpu: mesh init failed; software triangles only\n");
+        }
+    } else {
+        fprintf(stderr, "nx_gpu: ES2 context; mesh GPU path disabled\n");
+    }
     return true;
 
 fail_context:
@@ -354,12 +386,18 @@ int Psyz_VideoVSync(int mode) {
 
 static GLuint s_vram_tex;
 static GLuint s_quad_prog;
+static GLuint s_ui_prog;
 static GLuint s_quad_vbo;
 static GLint s_attr_pos = -1;
 static GLint s_attr_t = -1;
 static GLint s_uni_uv0 = -1;
 static GLint s_uni_uv1 = -1;
 static GLint s_uni_tex = -1;
+static GLint s_ui_attr_pos = -1;
+static GLint s_ui_attr_t = -1;
+static GLint s_ui_uv0 = -1;
+static GLint s_ui_uv1 = -1;
+static GLint s_ui_tex = -1;
 
 /* Scratch for one tight rectangle. A full 1024×512 frame still fits; present
  * only fills and uploads the sampled (dw × dh) region. */
@@ -379,6 +417,19 @@ static const char *QUAD_FS =
     "uniform sampler2D u_tex;\n"
     "void main() { gl_FragColor = texture2D(u_tex, u_uv0 + v_t * (u_uv1 - u_uv0)); }\n";
 
+/* Overlay CPU VRAM (sprites/UI). Drop cleared black so the mesh FBO shows. */
+static const char *UI_FS =
+    "precision mediump float;\n"
+    "varying vec2 v_t;\n"
+    "uniform vec2 u_uv0;\n"
+    "uniform vec2 u_uv1;\n"
+    "uniform sampler2D u_tex;\n"
+    "void main() {\n"
+    "  vec4 c = texture2D(u_tex, u_uv0 + v_t * (u_uv1 - u_uv0));\n"
+    "  if (c.r + c.g + c.b < 0.002) discard;\n"
+    "  gl_FragColor = c;\n"
+    "}\n";
+
 static GLuint compile_shader(GLenum type, const char *src) {
     GLuint sh = glCreateShader(type);
     GLint ok = 0;
@@ -396,6 +447,30 @@ static GLuint compile_shader(GLenum type, const char *src) {
     return sh;
 }
 
+static GLuint link_simple(GLuint vs, const char *fs_src) {
+    GLuint fs = compile_shader(GL_FRAGMENT_SHADER, fs_src);
+    GLuint prog;
+    GLint ok = 0;
+
+    if (!fs) {
+        return 0;
+    }
+    prog = glCreateProgram();
+    glAttachShader(prog, vs);
+    glAttachShader(prog, fs);
+    glLinkProgram(prog);
+    glGetProgramiv(prog, GL_LINK_STATUS, &ok);
+    glDeleteShader(fs);
+    if (!ok) {
+        char log[512];
+        glGetProgramInfoLog(prog, sizeof(log), NULL, log);
+        fprintf(stderr, "nx_gpu: program link failed: %s\n", log);
+        glDeleteProgram(prog);
+        return 0;
+    }
+    return prog;
+}
+
 static bool present_init(void) {
     /* The quad spans clip space; a_t runs 0..1 with 0 at the top-left so the
      * fragment shader can map it onto a VRAM sub-rectangle. */
@@ -407,29 +482,14 @@ static bool present_init(void) {
         1.0f,  1.0f,  1.0f, 0.0f, /* top-right    */
     };
     GLuint vs = compile_shader(GL_VERTEX_SHADER, QUAD_VS);
-    GLuint fs = compile_shader(GL_FRAGMENT_SHADER, QUAD_FS);
-    GLint ok = 0;
 
-    if (!vs || !fs) {
-        if (vs) {
-            glDeleteShader(vs);
-        }
-        if (fs) {
-            glDeleteShader(fs);
-        }
+    if (!vs) {
         return false;
     }
-    s_quad_prog = glCreateProgram();
-    glAttachShader(s_quad_prog, vs);
-    glAttachShader(s_quad_prog, fs);
-    glLinkProgram(s_quad_prog);
-    glGetProgramiv(s_quad_prog, GL_LINK_STATUS, &ok);
+    s_quad_prog = link_simple(vs, QUAD_FS);
+    s_ui_prog = link_simple(vs, UI_FS);
     glDeleteShader(vs);
-    glDeleteShader(fs);
-    if (!ok) {
-        char log[512];
-        glGetProgramInfoLog(s_quad_prog, sizeof(log), NULL, log);
-        fprintf(stderr, "nx_gpu: quad program link failed: %s\n", log);
+    if (!s_quad_prog || !s_ui_prog) {
         return false;
     }
 
@@ -438,6 +498,11 @@ static bool present_init(void) {
     s_uni_uv0 = glGetUniformLocation(s_quad_prog, "u_uv0");
     s_uni_uv1 = glGetUniformLocation(s_quad_prog, "u_uv1");
     s_uni_tex = glGetUniformLocation(s_quad_prog, "u_tex");
+    s_ui_attr_pos = glGetAttribLocation(s_ui_prog, "a_pos");
+    s_ui_attr_t = glGetAttribLocation(s_ui_prog, "a_t");
+    s_ui_uv0 = glGetUniformLocation(s_ui_prog, "u_uv0");
+    s_ui_uv1 = glGetUniformLocation(s_ui_prog, "u_uv1");
+    s_ui_tex = glGetUniformLocation(s_ui_prog, "u_tex");
 
     glGenBuffers(1, &s_quad_vbo);
     glBindBuffer(GL_ARRAY_BUFFER, s_quad_vbo);
@@ -477,10 +542,15 @@ void dw3_nx_gpu_present(const uint16_t *vram, int dx, int dy, int dw, int dh,
     int py;
     int pw;
     int ph;
+    int use_mesh;
 
     if (!s_ready || !vram || dw <= 0 || dh <= 0) {
         return;
     }
+    /* Flush any deferred mesh before we composite. */
+    dw3_nx_mesh_flush(vram);
+    use_mesh = dw3_nx_mesh_has_content();
+
     /* A dock/handheld switch recreates the EGL context, which drops every GL
      * object. glIsTexture reports the stale names as invalid, so this heals
      * itself instead of the mode-change path having to remember to. */
@@ -499,6 +569,7 @@ void dw3_nx_gpu_present(const uint16_t *vram, int dx, int dy, int dw, int dh,
     }
 
     glDisable(GL_SCISSOR_TEST);
+    glDisable(GL_BLEND);
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT);
 
@@ -526,6 +597,7 @@ void dw3_nx_gpu_present(const uint16_t *vram, int dx, int dy, int dw, int dh,
     {
         static int prev_vw = -1;
         static int prev_vh = -1;
+        static uint64_t prev_mesh_prims;
 
         if (vw != prev_vw || vh != prev_vh) {
             prev_vw = vw;
@@ -536,23 +608,60 @@ void dw3_nx_gpu_present(const uint16_t *vram, int dx, int dy, int dw, int dh,
                      vx, vy, vw, vh, src_aspect, s_width, s_height, dx, dy,
                      dw, dh);
         }
+        if (use_mesh) {
+            uint64_t prims = dw3_nx_mesh_prims_flushed();
+
+            if (prims != prev_mesh_prims &&
+                (prev_mesh_prims == 0 || (prims - prev_mesh_prims) >= 1000u)) {
+                prev_mesh_prims = prims;
+                psyz_log(1, "nx_gpu.c", __LINE__, __func__,
+                         "mesh gpu: %llu tris flushed (composite on)",
+                         (unsigned long long)prims);
+            }
+        }
     }
-    glViewport(vx, vy, vw, vh);
 
-    glUseProgram(s_quad_prog);
-    glUniform2f(s_uni_uv0, (float)dx / (float)DW3_NX_VRAM_W,
-                (float)dy / (float)DW3_NX_VRAM_H);
-    glUniform2f(s_uni_uv1, (float)(dx + dw) / (float)DW3_NX_VRAM_W,
-                (float)(dy + dh) / (float)DW3_NX_VRAM_H);
-    glUniform1i(s_uni_tex, 0);
-
-    glBindBuffer(GL_ARRAY_BUFFER, s_quad_vbo);
-    glEnableVertexAttribArray((GLuint)s_attr_pos);
-    glVertexAttribPointer((GLuint)s_attr_pos, 2, GL_FLOAT, GL_FALSE,
-                          sizeof(float) * 4, (const void *)0);
-    glEnableVertexAttribArray((GLuint)s_attr_t);
-    glVertexAttribPointer((GLuint)s_attr_t, 2, GL_FLOAT, GL_FALSE,
-                          sizeof(float) * 4,
-                          (const void *)(sizeof(float) * 2));
-    glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+    /* Mesh first (3D), then CPU VRAM. With mesh: discard cleared black so UI
+     * sprites sit on top. Without mesh: opaque blit as before. */
+    if (use_mesh) {
+        dw3_nx_mesh_present(dx, dy, dw, dh, vx, vy, vw, vh);
+        glViewport(vx, vy, vw, vh);
+        glUseProgram(s_ui_prog);
+        glUniform2f(s_ui_uv0, (float)dx / (float)DW3_NX_VRAM_W,
+                    (float)dy / (float)DW3_NX_VRAM_H);
+        glUniform2f(s_ui_uv1, (float)(dx + dw) / (float)DW3_NX_VRAM_W,
+                    (float)(dy + dh) / (float)DW3_NX_VRAM_H);
+        glUniform1i(s_ui_tex, 0);
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, s_vram_tex);
+        glBindBuffer(GL_ARRAY_BUFFER, s_quad_vbo);
+        glEnableVertexAttribArray((GLuint)s_ui_attr_pos);
+        glVertexAttribPointer((GLuint)s_ui_attr_pos, 2, GL_FLOAT, GL_FALSE,
+                              sizeof(float) * 4, (const void *)0);
+        glEnableVertexAttribArray((GLuint)s_ui_attr_t);
+        glVertexAttribPointer((GLuint)s_ui_attr_t, 2, GL_FLOAT, GL_FALSE,
+                              sizeof(float) * 4,
+                              (const void *)(sizeof(float) * 2));
+        glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+    } else {
+        glViewport(vx, vy, vw, vh);
+        glUseProgram(s_quad_prog);
+        glUniform2f(s_uni_uv0, (float)dx / (float)DW3_NX_VRAM_W,
+                    (float)dy / (float)DW3_NX_VRAM_H);
+        glUniform2f(s_uni_uv1, (float)(dx + dw) / (float)DW3_NX_VRAM_W,
+                    (float)(dy + dh) / (float)DW3_NX_VRAM_H);
+        glUniform1i(s_uni_tex, 0);
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, s_vram_tex);
+        glBindBuffer(GL_ARRAY_BUFFER, s_quad_vbo);
+        glEnableVertexAttribArray((GLuint)s_attr_pos);
+        glVertexAttribPointer((GLuint)s_attr_pos, 2, GL_FLOAT, GL_FALSE,
+                              sizeof(float) * 4, (const void *)0);
+        glEnableVertexAttribArray((GLuint)s_attr_t);
+        glVertexAttribPointer((GLuint)s_attr_t, 2, GL_FLOAT, GL_FALSE,
+                              sizeof(float) * 4,
+                              (const void *)(sizeof(float) * 2));
+        glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+    }
+    dw3_nx_mesh_end_frame();
 }

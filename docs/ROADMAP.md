@@ -441,7 +441,17 @@ speed.
   overlays, slot 1 loaded, field walking, then `FIGHTSTG`. The log client
   closed while the battle was still running. 156 samples of 60 VSyncs:
   mean 1.017 s (about 16.96 ms/frame, about 59 FPS). Some windows reached
-  1.51 s (about 25.2 ms/frame across those 60 frames). P5.2 stays open.
+  1.51 s (about 25.2 ms/frame across those 60 frames).
+  **Preview.8 OLED (2026-10-11).** Map preload shipped
+  (`v0.6.5-preview.8`). Field ~60 Hz (mean `frame dt us` ~1000279 per 60
+  frames). Battle Fight-menu idle ~46 Hz (mean ~1293264 across three
+  fights). Battle remains the limiter. PC `sdl3_gpu` does not call
+  `RasterTriangle` for that scene; Switch still did via
+  `software_rasterizer.push_prim`.
+  **Approach A (in progress).** Draw OT triangle polys (POLY_GT / POLY_FT
+  and equivalents) on a GLES3 mesh FBO; keep sprites/UI on the RGB555
+  software blit. See [P5.2_BATTLE_GPU.md](P5.2_BATTLE_GPU.md). OLED 60 Hz
+  proof for battle is a follow-up preview measurement. P5.2 stays open.
   During PSY-Z init the log recorded `KernelInit: cannot create the kernel
   synchronisation objects`. The game continued. The failed object (mutex
   or event) is not identified. That defect is open and is not the
@@ -449,8 +459,7 @@ speed.
   and is the known partial path. The port now preloads the map: one
   `fread` on the first tile of that file id, later tiles copy from RAM,
   and a different id replaces the buffer. Movies stay at 150 sectors/s.
-  That preload has not been timed on the OLED. See
-  [STATIC_SD_LOAD.md](STATIC_SD_LOAD.md).
+  See [STATIC_SD_LOAD.md](STATIC_SD_LOAD.md).
 - [ ] **P5.3 Save handling.** The port's own save on owner storage, plus
   sleep/exit safety (flush on `appletMainLoop` exit). The running game
   does not import or export emulator memory cards. That interchange is an
