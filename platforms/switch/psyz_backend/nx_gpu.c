@@ -2,6 +2,7 @@
  * Modelled on switchbrew/switch-examples graphics/opengl/es2gears.
  * PSY-Z InitPlatform / VRAM blit lands later; this owns the host surface. */
 #include "nx.h"
+#include "nx_vram_pack.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -351,9 +352,6 @@ int Psyz_VideoVSync(int mode) {
 
 /* --- VRAM present (P4.7 Stage 3) --------------------------------------- */
 
-#define DW3_NX_VRAM_W 1024
-#define DW3_NX_VRAM_H 512
-
 static GLuint s_vram_tex;
 static GLuint s_quad_prog;
 static GLuint s_quad_vbo;
@@ -363,33 +361,9 @@ static GLint s_uni_uv0 = -1;
 static GLint s_uni_uv1 = -1;
 static GLint s_uni_tex = -1;
 
-/* PS1 VRAM is 1024x512 RGB555, little-endian: R in bits 0–4, G in 5–9, B in
- * 10–14, mask in bit 15. GLES2's GL_UNSIGNED_SHORT_5_5_5_1 is the other
- * order (R in bits 15–11), and this port has no GL_UNSIGNED_SHORT_1_5_5_5_REV.
- * Uploading the halfword raw scrambles every channel — that was the speckled
- * title. Expand on the CPU the way PSY-Z's ConvertRgb5551ToRgba8888 does.
- * Alpha is forced opaque: bit 15 is the PS1 mask, not coverage, and this
- * present path does not blend. */
+/* Scratch for one tight rectangle. A full 1024×512 frame still fits; present
+ * only fills and uploads the sampled (dw × dh) region. */
 static uint8_t s_vram_rgba[DW3_NX_VRAM_W * DW3_NX_VRAM_H * 4];
-
-static uint8_t color_5to8(unsigned int c5) {
-    return (uint8_t)((c5 * 255u + 15u) / 31u);
-}
-
-static void expand_rgb555(const uint16_t *src) {
-    uint8_t *dst = s_vram_rgba;
-    size_t n = (size_t)DW3_NX_VRAM_W * DW3_NX_VRAM_H;
-    size_t i;
-
-    for (i = 0; i < n; i++) {
-        uint16_t v = src[i];
-        dst[0] = color_5to8(v & 0x1Fu);
-        dst[1] = color_5to8((v >> 5) & 0x1Fu);
-        dst[2] = color_5to8((v >> 10) & 0x1Fu);
-        dst[3] = 0xFFu;
-        dst += 4;
-    }
-}
 
 static const char *QUAD_VS =
     "attribute vec2 a_pos;\n"
@@ -499,6 +473,10 @@ void dw3_nx_gpu_present(const uint16_t *vram, int dx, int dy, int dw, int dh,
     int vy;
     int vw;
     int vh;
+    int px;
+    int py;
+    int pw;
+    int ph;
 
     if (!s_ready || !vram || dw <= 0 || dh <= 0) {
         return;
@@ -512,15 +490,22 @@ void dw3_nx_gpu_present(const uint16_t *vram, int dx, int dy, int dw, int dh,
         }
     }
 
+    /* Shader samples (dx, dy, dw, dh). Upload that rectangle into the
+     * texture created in present_init. A rect that clamps to nothing skips
+     * the frame the same way a zero size does. */
+    if (dw3_nx_pack_rgb555_rect(vram, dx, dy, dw, dh, s_vram_rgba, &px, &py,
+                                &pw, &ph) == 0) {
+        return;
+    }
+
     glDisable(GL_SCISSOR_TEST);
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT);
 
     glActiveTexture(GL_TEXTURE0);
-    expand_rgb555(vram);
     glBindTexture(GL_TEXTURE_2D, s_vram_tex);
-    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, DW3_NX_VRAM_W, DW3_NX_VRAM_H,
-                    GL_RGBA, GL_UNSIGNED_BYTE, s_vram_rgba);
+    glTexSubImage2D(GL_TEXTURE_2D, 0, px, py, pw, ph, GL_RGBA, GL_UNSIGNED_BYTE,
+                    s_vram_rgba);
 
     /* Fit the display aspect into the framebuffer. Full height, side bars
      * on 16:9. Do not crop, and do not use the VRAM pixel ratio: dw/dh for

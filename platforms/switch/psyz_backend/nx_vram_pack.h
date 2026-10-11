@@ -1,0 +1,27 @@
+/* RGB555 → tight RGBA8888 pack for the GLES2 VRAM upload.
+ * No GL types: the host test compiles this without devkitPro or GLES. */
+#ifndef DW3_NX_VRAM_PACK_H
+#define DW3_NX_VRAM_PACK_H
+
+#include <stddef.h>
+#include <stdint.h>
+
+#define DW3_NX_VRAM_W 1024
+#define DW3_NX_VRAM_H 512
+
+/* Expand the VRAM rectangle (dx, dy, dw, dh) into dst.
+ *
+ * src is RGB555 with a row stride of DW3_NX_VRAM_W pixels: R in bits 0–4,
+ * G in 5–9, B in 10–14. Bit 15 is the PS1 mask and is ignored. Each channel
+ * expands with (c5 * 255 + 15) / 31 and alpha is 0xFF.
+ *
+ * The rectangle is clamped to 1024×512. dst receives out_w pixels per row
+ * and out_h rows, tightly packed (GLES2 has no core GL_UNPACK_ROW_LENGTH).
+ * Returns the packed pixel count (out_w * out_h), or 0 when the clamped
+ * size is empty. out_x/out_y/out_w/out_h receive the clamped origin and size.
+ */
+size_t dw3_nx_pack_rgb555_rect(const uint16_t *src, int dx, int dy, int dw,
+                               int dh, uint8_t *dst, int *out_x, int *out_y,
+                               int *out_w, int *out_h);
+
+#endif
