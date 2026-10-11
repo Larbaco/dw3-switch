@@ -27,6 +27,7 @@ project(dw3-switch C CXX)
 set(CMAKE_C_STANDARD 11)
 set(DW3_VERSION "us" CACHE STRING "Game disc version: us or eu")
 set_property(CACHE DW3_VERSION PROPERTY STRINGS us eu)
+option(DW3_NXLINK_STDIO "Redirect game stdout/stderr through nxlink (development only)" OFF)
 
 if(NOT CMAKE_SYSTEM_NAME STREQUAL "NintendoSwitch")
   message(FATAL_ERROR
@@ -89,6 +90,15 @@ add_executable(dw3-switch
 )
 
 target_compile_definitions(dw3-switch PRIVATE ${_dw3_ver_macro} DW3_NX_GAME_IMAGE)
+
+set(DW3_NRO_NAME "dw3-switch")
+set(DW3_NACP_NAME "dw3-switch")
+if(DW3_NXLINK_STDIO)
+  target_compile_definitions(dw3-switch PRIVATE DW3_NXLINK_STDIO=1)
+  set(DW3_NRO_NAME "dw3-switch-nxlink")
+  set(DW3_NACP_NAME "dw3-switch nxlink dev")
+  message(STATUS "nxlink stdio enabled for development NRO")
+endif()
 
 # EGL/GLES2 come from devkitPro's switch-* portlibs, not from libnx, and they
 # ship no CMake config packages — so the toolchain leaves them off the search
@@ -190,12 +200,12 @@ target_link_options(dw3-switch PRIVATE
 # elf2nro falling back to its stock "HOMEBREW" asset section — the trap the
 # Makefile build hit (see platforms/switch/README.md).
 nx_generate_nacp(
-  OUTPUT "${CMAKE_BINARY_DIR}/dw3-switch.nacp"
-  NAME "dw3-switch"
+  OUTPUT "${CMAKE_BINARY_DIR}/${DW3_NRO_NAME}.nacp"
+  NAME "${DW3_NACP_NAME}"
   AUTHOR "dw3-switch"
   VERSION "0.5.0"
 )
 nx_create_nro(dw3-switch
-  OUTPUT "${CMAKE_BINARY_DIR}/dw3-switch.nro"
-  NACP "${CMAKE_BINARY_DIR}/dw3-switch.nacp"
+  OUTPUT "${CMAKE_BINARY_DIR}/${DW3_NRO_NAME}.nro"
+  NACP "${CMAKE_BINARY_DIR}/${DW3_NRO_NAME}.nacp"
 )

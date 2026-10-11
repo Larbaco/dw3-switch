@@ -79,9 +79,9 @@ Status (P4.7): the CMake target links. `source/boot_main.c` calls
 points an earlier link stop was missing, and `nx_gpu.c` presents the
 software rasterizer. A clean build is about 1144 objects and an 8.9 MB
 `.nro` at `build/switch/dw3-switch.nro`. The title draws in Ryubing, and
-the owner has also launched a game `.nro` from hbmenu on an OLED Switch
-(main menu and a new game). That hardware file was built before the
-picture fix, so it still cropped the title. The first boot needs an empty
+the owner has launched the game from hbmenu on an OLED Switch, reaching the
+main menu and loading a new game. Current `main` also contains the title-width,
+4:3 aspect and movie-picture sampling fixes. The first boot needs an empty
 `sdmc:/switch/dw3/us/memcard/` or it stops in `memcard_host_ensure()`.
 See [docs/SWITCH_BACKEND.md](../../docs/SWITCH_BACKEND.md) and
 [docs/RUNTIME_LAYOUT.md](../../docs/RUNTIME_LAYOUT.md).
@@ -99,6 +99,55 @@ on `workflow_dispatch` or a `v*` tag, marked a prerelease. `workflow_dispatch`
 shows up in the Actions UI only after that file is on `main`. A tag push
 runs it from the tagged commit. Assets are that `.nro` and
 [`release/README.txt`](release/README.txt). No disc data.
+
+### Development build with live nxlink logs
+
+The standard CMake build remains unchanged and does not require a network
+connection:
+
+```bash
+./tools/build_switch_game.sh
+# build/switch/dw3-switch.nro
+```
+
+For live stdout/stderr on the development host, opt in to a separate NRO and
+build directory:
+
+```bash
+./tools/build_switch_game.sh --nxlink
+# build/switch-nxlink/dw3-switch-nxlink.nro
+```
+
+This option defines `DW3_NXLINK_STDIO` only for the CMake game image. The
+Makefile `host_hello` sample and standard/release NRO are unaffected. The
+nxlink NRO initializes libnx's default socket service before calling
+`nxlinkStdio()` and does so before input, SD mount and game logging. The socket
+result and stdio fd are recorded in `dw3.log`; connection failure is nonfatal.
+Logs continue going to `dw3.log` on SD and `svcOutputDebugString` as before.
+
+libnx obtains the nxlink host address from a special final argv token supplied
+by the NetLoader. Start with hbmenu's NetLoader (press **Y**) if a third-party
+launcher does not establish the callback stream; successful NRO transfer alone
+does not prove the callback connection is configured.
+
+To launch and receive the log stream:
+
+1. Put the OLED and development host on the same reachable network.
+2. Open hbmenu on the Switch, press **Y** for NetLoader and note its IP; leave
+   NetLoader waiting for a connection.
+3. On the host, start the upload and listener (replace the address as needed):
+
+   ```bash
+   docker run --rm --network host \
+     -v "$PWD/build/switch-nxlink:/nro:ro" \
+     devkitpro/devkita64:latest \
+     nxlink -a 192.168.1.42 -s /nro/dw3-switch-nxlink.nro
+   ```
+
+   If `nxlink` is installed on the host, the equivalent is
+   `nxlink -a <Switch-IP> -s build/switch-nxlink/dw3-switch-nxlink.nro`.
+   The host firewall must allow the nxlink connection. The standard NRO does
+   not call `nxlinkStdio()` and remains the no-network fallback.
 
 Current preview: [v0.6.5-preview.2](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.2)
 (`dw3-switch.nro`, 8935621 bytes, plus `README.txt`, commit `8273a91`).
