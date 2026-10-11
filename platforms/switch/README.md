@@ -120,9 +120,15 @@ build directory:
 
 This option defines `DW3_NXLINK_STDIO` only for the CMake game image. The
 Makefile `host_hello` sample and standard/release NRO are unaffected. The
-nxlink NRO calls `nxlinkStdio()` before input, SD mount and the game logger; a
-connection failure is nonfatal. Logs continue going to `dw3.log` on SD and
-`svcOutputDebugString` as before.
+nxlink NRO initializes libnx's default socket service before calling
+`nxlinkStdio()` and does so before input, SD mount and game logging. The socket
+result and stdio fd are recorded in `dw3.log`; connection failure is nonfatal.
+Logs continue going to `dw3.log` on SD and `svcOutputDebugString` as before.
+
+libnx obtains the nxlink host address from a special final argv token supplied
+by the NetLoader. Start with hbmenu's NetLoader (press **Y**) if a third-party
+launcher does not establish the callback stream; successful NRO transfer alone
+does not prove the callback connection is configured.
 
 To launch and receive the log stream:
 

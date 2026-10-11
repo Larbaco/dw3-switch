@@ -14,6 +14,10 @@
  * yet (PSY-Z's Draw_* has no Switch implementation) — see docs/SWITCH_BACKEND.md
  * and docs/ROADMAP.md P4.7.
  */
+#ifdef DW3_NXLINK_STDIO
+#include <unistd.h>
+#endif
+
 #include <psyz.h>
 #include <psyz/log.h>
 
@@ -31,6 +35,11 @@
 
 #include <switch.h>
 
+#ifdef DW3_NXLINK_STDIO
+/* PSY-Z maps close() to psyz_close(), which has no Switch implementation. */
+#undef close
+#endif
+
 int dw3_game_main(void);
 
 extern volatile int StCdIntrFlag;
@@ -42,6 +51,23 @@ void StCdInterrupt(void);
 #endif
 
 static PsyzVSyncCb g_prev_vsync_cb;
+
+#ifdef DW3_NXLINK_STDIO
+static int g_nxlink_socket_initialized;
+static Result g_nxlink_socket_result;
+static int g_nxlink_fd = -1;
+
+static void dw3_nxlink_stdio_shutdown(void) {
+    if (g_nxlink_fd >= 0) {
+        close(g_nxlink_fd);
+        g_nxlink_fd = -1;
+    }
+    if (g_nxlink_socket_initialized) {
+        socketExit();
+        g_nxlink_socket_initialized = 0;
+    }
+}
+#endif
 
 /* Runs once per frame from PSY-Z's vsync hook. Two jobs:
  *
@@ -155,16 +181,20 @@ int main(int argc, char **argv) {
     (void)argv;
 
 #ifdef DW3_NXLINK_STDIO
-    /* Connect before input, SD mount, or any game logger can fail. nxlink is
-     * optional even in this development build: keep booting if no host listens. */
-    {
-        int nxlink_fd = nxlinkStdio();
-
-        if (nxlink_fd < 0) {
-            fprintf(stderr, "nxlink stdio connection failed (%d); continuing\n",
-                    nxlink_fd);
+    /* libnx nxlinkConnectToHost uses the default socket service. Initialize it
+     * before asking nxlink to open the callback connection to the host. */
+    g_nxlink_socket_result = socketInitializeDefault();
+    if (R_FAILED(g_nxlink_socket_result)) {
+        fprintf(stderr, "nxlink socketInitializeDefault failed (0x%08x)\n",
+                (unsigned)g_nxlink_socket_result);
+    } else {
+        g_nxlink_socket_initialized = 1;
+        g_nxlink_fd = nxlinkStdio();
+        if (g_nxlink_fd < 0) {
+            fprintf(stderr, "nxlinkStdio failed (%d); continuing\n",
+                    g_nxlink_fd);
         } else {
-            fprintf(stderr, "nxlink stdio connected (fd=%d)\n", nxlink_fd);
+            fprintf(stderr, "nxlink stdio connected (fd=%d)\n", g_nxlink_fd);
         }
     }
 #endif
@@ -181,14 +211,24 @@ int main(int argc, char **argv) {
         ERRORF("sdmc: mount failed; runtime paths will not resolve");
     }
     dw3_nx_log_open();
+#ifdef DW3_NXLINK_STDIO
+    INFOF("nxlink socket init=0x%08x stdio fd=%d",
+          (unsigned)g_nxlink_socket_result, g_nxlink_fd);
+#endif
 
     if (!dw3_nx_gpu_init()) {
         ERRORF("dw3_nx_gpu_init failed");
+#ifdef DW3_NXLINK_STDIO
+        dw3_nxlink_stdio_shutdown();
+#endif
         return 1;
     }
     INFOF("EGL/GLES2 surface up");
 
     if (init_paths() != 0) {
+#ifdef DW3_NXLINK_STDIO
+        dw3_nxlink_stdio_shutdown();
+#endif
         return 1;
     }
 
@@ -204,5 +244,11 @@ int main(int argc, char **argv) {
               (void *)dw3_nx_vsync_pump);
     }
     INFOF("entering dw3_game_main()");
-    return dw3_game_main();
+    {
+        int game_result = dw3_game_main();
+#ifdef DW3_NXLINK_STDIO
+        dw3_nxlink_stdio_shutdown();
+#endif
+        return game_result;
+    }
 }
