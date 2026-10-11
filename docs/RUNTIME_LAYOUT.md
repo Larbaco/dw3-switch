@@ -80,6 +80,21 @@ sound stays slow until a disc image is visible at startup.
 EU `dw3-pc` link uses `-DDW3_VERSION=eu` (`docs/P3_EU_BUILD.md`); run still
 needs a local `runtime/eu` tree (gitignored).
 
+### Runtime is still required at boot
+
+The Switch game currently boots from the extracted version tree, for example
+`sdmc:/switch/dw3/us/`: `files_us.json`, `SLUS_014.36`, `boot_tim.bin`,
+`AAA/…`, and the `memcard/` directory. The optional disc BIN/CUE is used to
+rewrite the 13 packed Form-2 `.STR` movie files to raw 2352-byte sectors; it is
+not a substitute for the executable, file map, boot image, or the rest of the
+extracted runtime. On 2026-10-11 the owner removed `us/` and the game no longer
+started, confirming this dependency.
+
+Starting directly from the disc image by extracting everything needed at
+startup is a desired future direction reported by the owner, but is **not
+implemented**. Current setup still requires the owner-packed runtime tree;
+assets remain outside Git and are never bundled in the NRO or repository.
+
 ### Memory-card directory
 
 The Switch host expects `<runtime-root>/memcard/` to exist. On first boot,

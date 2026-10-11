@@ -372,33 +372,31 @@ console.
   own bars on top of that framebuffer.
   **OLED (2026-10-10/11):** hbmenu reached the main menu and loaded a new
   game after an empty `sdmc:/switch/dw3/us/memcard/` was created. That
-  `.nro` was `main` plus the P4.4/P4.5 commits, before the picture fix.
-  `v0.6.5-preview.2` is the picture fix. On that image the opening movie
-  picture runs fast and the soundtrack runs slow: the CD pump was feeding
-  sectors at the display rate, and the 2048-byte STR drops two XA blocks
-  that playback fills with silence. This branch paces the pump at
-  double-speed (150 sectors/s) and rewrites a 2048-byte `AAA/STR/` from
-  the owner's BIN/CUE on first launch (`sdmc:/switch/dw3/*.cue` plus the
-  `.bin`, or `DW3_DISC_BIN`). `v0.6.5-preview.3` (nxlink, OLED) reached
-  the boot log. Restore selected `sdmc:/switch/dw3/us/boot_tim.bin`, the
-  only `.bin` in the runtime root, and short-read all 13 STR files. The
-  disc image was one directory up. The CUE names
-  `Digimon World 3 (USA).bin`; the file on the card is
-  `Digimon World 3.bin`. No STR was overwritten.
-  `v0.6.5-preview.4` ignores `boot_tim.bin` and accepts that CUE when the
-  directory has one other `.bin` large enough to cover the STR extents.
-  `dw3-switch-nxlink.nro` is the file that prints the restore log.
-  The restore screen draws a progress bar during that copy (bytes written
-  this run over the form-2 extents still to rewrite), with a sweep before
-  the first byte. Not run on an OLED.
-  Until the disc image is on the card the sound stays slow. The runtime
-  came from the owner's US
-  disc and is not in git. P4.4 Joy-Con and Pro Controller, P4.5 cdfs on
-  the SD, and P4.6 overlay switching on hardware stay open.
+  earlier `.nro` was built before the current picture fixes. The movie pacing
+  branch restores packed 2048-byte `AAA/STR/` from the owner's BIN/CUE on first
+  launch; the runtime itself remains an extracted US tree and is not in Git.
+  `v0.6.5-preview.3` selected `us/boot_tim.bin` by mistake and short-read all
+  13 STR files. `v0.6.5-preview.4` ignores that file and finds the parent BIN
+  despite the CUE track-name mismatch.
+  **Preview.4 OLED evidence:** nxlink connected; the log selected
+  `sdmc:/switch/dw3/Digimon World 3.bin`, restored **13 STRs with 0 failures**,
+  decoded XA, and reported movie frames ready through at least #150 before
+  Start-skip. It returned to title and entered field stages. The owner reports
+  several map transitions, a working battle, and game audio sounding perfect.
+  They report the opening picture still has the same visual problems; the
+  analog stick has no function. New saves were created on both memory cards,
+  but loading them after restart remains untested. Deleting `us/` stopped the
+  game from booting, confirming the extracted runtime is still required; startup
+  extraction of the complete runtime from BIN is only a desired follow-up and
+  was not implemented. See `docs/P3.7_MOVIES.md` and
+  `docs/RUNTIME_LAYOUT.md` for the full evidence and limits.
+  **Still open:** P4.4's Joy-Con + Pro / analog checks, P4.5's formal P2.5 CDFS
+  suite on the SD, and P4.6's complete overlay sweep on hardware. The preview.4
+  log proves several runtime paths, not those full acceptance suites.
 
-  **Gate:** title + field + battle on a Switch. **Not met.** The smoke
-  confirms the main menu and a new game. Field and battle on hardware
-  are still open.
+  **Gate:** title + field + battle on a Switch. **Met (2026-10-11)** from the
+  OLED preview.4 run: main menu/new game, multiple map transitions, and battle
+  were owner-confirmed. This does not close the individual P4.4–P4.6 criteria.
 
 ## Phase 5 — Playable on Switch
 
@@ -416,6 +414,10 @@ speed.
 - [ ] **P5.3 Save handling.** Card images under `sdmc:/switch/dw3/saves/`,
   import/export of `.mcr`, sleep/exit safety (flush on `appletMainLoop`
   exit).
+  **Preview.4 OLED observation (2026-10-11):** the owner reports creating new
+  saves on both memory cards; nxlink logged memcard writes. Reopening/loading
+  those saves after restart was not tested, and save import/export and exit
+  safety remain open.
   Done when: a PS1 save imported on Switch continues the game.
 - [ ] **P5.4 Error reporting.** Crash handler that writes a log + last
   mode/stage id to SD; assert overlay.
