@@ -29,6 +29,7 @@
 #include "str_stream.h"
 
 #include "../psyz_backend/nx.h"
+#include "frame_dt.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -52,6 +53,15 @@ void StCdInterrupt(void);
 #endif
 
 static PsyzVSyncCb g_prev_vsync_cb;
+
+/* 1785 MHz is the CPU rate of applet FastLoad. That applet mode also pins the
+ * GPU at 76.8 MHz in this libnx, so boot sets CpuBus through clkrst and does
+ * not open a GPU clock session. */
+#define DW3_NX_CPU_HZ 1785000000u
+
+static uint64_t restore_now_us(void) {
+    return armTicksToNs(armGetSystemTick()) / 1000ULL;
+}
 
 #ifdef DW3_NXLINK_STDIO
 static int g_nxlink_socket_initialized;
@@ -95,6 +105,18 @@ static void dw3_nx_vsync_pump(void) {
         INFOF("vsync pump #%u", pumps);
     }
 
+    /* One line per 60 pumps: microseconds since the previous 60-pump sample.
+     * The first sample only stores the baseline, so the first line is the
+     * second sample. */
+    {
+        static Dw3FrameDt frame_dt;
+        uint64_t dt_us;
+
+        if (dw3_frame_dt_sample(&frame_dt, pumps, restore_now_us(), &dt_us)) {
+            INFOF("frame dt us=%llu", (unsigned long long)dt_us);
+        }
+    }
+
     if (StCdIntrFlag) {
         StCdInterrupt();
         StCdIntrFlag = 0;
@@ -112,10 +134,6 @@ static void dw3_nx_vsync_pump(void) {
  * a few refreshes before fread blocks. */
 #define STR_RESTORE_PAINT_US 300000ull
 #define STR_RESTORE_INTRO_US 400000ull
-
-static uint64_t restore_now_us(void) {
-    return armTicksToNs(armGetSystemTick()) / 1000ULL;
-}
 
 static int sweep_origin(int origin, int span, int sweep_w, uint64_t now_us,
                         uint64_t period_us) {
@@ -340,6 +358,29 @@ static int init_paths(void) {
     return 0;
 }
 
+/* Once, after the log file is open. A failed call keeps the console clock
+ * and boot continues. */
+static void dw3_nx_raise_cpu_clock(void) {
+    ClkrstSession session;
+    Result rc;
+
+    rc = clkrstInitialize();
+    if (R_SUCCEEDED(rc)) {
+        /* unk=3 matches the official sysmodule open in clkrst.h. */
+        rc = clkrstOpenSession(&session, PcvModuleId_CpuBus, 3);
+        if (R_SUCCEEDED(rc)) {
+            rc = clkrstSetClockRate(&session, DW3_NX_CPU_HZ);
+            clkrstCloseSession(&session);
+        }
+        clkrstExit();
+    }
+    if (R_FAILED(rc)) {
+        ERRORF("cpu clock rc=0x%08x", (unsigned)rc);
+        return;
+    }
+    INFOF("cpu clock rc=0x%08x hz=%u", (unsigned)rc, DW3_NX_CPU_HZ);
+}
+
 int main(int argc, char **argv) {
     (void)argc;
     (void)argv;
@@ -375,6 +416,7 @@ int main(int argc, char **argv) {
         ERRORF("sdmc: mount failed; runtime paths will not resolve");
     }
     dw3_nx_log_open();
+    dw3_nx_raise_cpu_clock();
 #ifdef DW3_NXLINK_STDIO
     INFOF("nxlink socket init=0x%08x stdio fd=%d",
           (unsigned)g_nxlink_socket_result, g_nxlink_fd);
