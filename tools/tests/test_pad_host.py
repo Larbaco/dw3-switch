@@ -33,6 +33,7 @@ def pad_host_test(tmp_path_factory) -> Path:
         str(PAD_HOST_C),
         f"-I{PSYZ_INC}",
         f"-I{PORT_INC}",
+        f"-I{ROOT / 'platforms' / 'switch' / 'psyz_backend'}",
     ]
     r = subprocess.run(cmd, capture_output=True, text=True)
     assert r.returncode == 0, r.stderr + r.stdout
@@ -60,3 +61,5 @@ def test_pad_mode_table_and_set_main_mode(pad_host_test: Path):
     assert r.returncode == 0, r.stderr + r.stdout
     assert "mode table" in r.stdout
     assert "PadSetMainMode" in r.stdout
+    assert "deadzone=8192" in r.stdout
+    assert "0x41/0x53 -> 0x73" in r.stdout
