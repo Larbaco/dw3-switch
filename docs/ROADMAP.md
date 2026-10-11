@@ -432,6 +432,12 @@ speed.
   saves on both memory cards; nxlink logged memcard writes. Reopening/loading
   those saves after restart was not tested, and save import/export and exit
   safety remain open.
+  **Preview.5 OLED (2026-10-11):** a DuckStation card in slot 1 loads. A save
+  the game created in slot 2 closed the process back to the launcher.
+  `MemCardWriteFile` was storing a frame XOR in data byte `0x7F`, which is
+  the high byte of that slot's partner index. The slot list then indexed
+  past `STGMCARD_partnerIcons`. Data frames now keep that byte. Import/export
+  and exit flush stay open.
   Done when: a PS1 save imported on Switch continues the game.
 - [ ] **P5.4 Error reporting.** Crash handler that writes a log + last
   mode/stage id to SD; assert overlay.

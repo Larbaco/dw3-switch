@@ -28,6 +28,14 @@ block 1 for that tail. `STGMCARD_loadSave` then reports
 (`Failed to access.`). The intact card loads once the link is decoded as
 minus 1.
 
+Byte `0x7F` is a frame XOR only on block 0 (header, directory, broken-sector
+list). Data frames keep all 128 bytes. Overwriting that byte on a data frame
+replaces the high byte of any field that ends on the sector boundary. The
+second slot's partner index is one of those fields; the slot list then
+indexes `STGMCARD_partnerIcons` with a huge value and the process faults
+back to the launcher. `MemCardWriteFile` leaves data-frame byte `0x7F` as
+the game wrote it.
+
 Set the directory with `memcard_host_set_dir(...)`; the host then
 reads/writes `<dir>/memcard0.mcr` and `<dir>/memcard1.mcr`.
 
