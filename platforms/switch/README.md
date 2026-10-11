@@ -149,8 +149,11 @@ To launch and receive the log stream:
    The host firewall must allow the nxlink connection. The standard NRO does
    not call `nxlinkStdio()` and remains the no-network fallback.
 
-First preview: [v0.6.5-preview.1](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.1)
-(`dw3-switch.nro`, 8927429 bytes, plus `README.txt`).
+Current preview: [v0.6.5-preview.2](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.2)
+(`dw3-switch.nro`, 8935621 bytes, plus `README.txt`, commit `8273a91`).
+[v0.6.5-preview.1](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.1)
+is the earlier 8927429-byte file. It still crops the title and freezes
+the movie.
 
 The running game reads the owner's US files from `sdmc:/switch/dw3/us`
 (`DW3_DEFAULT_RUNTIME` in `source/boot_main.c`). Packing steps:
@@ -163,8 +166,11 @@ full-height fit in pull request #53.
 
 ## PSY-Z backend (Phase 4)
 
-P4.1 chose a **native libnx** backend (not SDL3-dkp). `psyz_backend/nx_gpu.c`
-and `nx_audio.c` are linked; other units are empty placeholders for P4.4–P4.6.
+P4.1 chose a **native libnx** backend (not SDL3-dkp). `nx_gpu.c` presents
+VRAM. `nx_audio.c` feeds audren from the SPU in the CMake image.
+`nx_input.c` and the SD mount in `boot_main.c` are the P4.4 and P4.5 host
+paths. `nx_module.c` stays a static dispatch, with no `dlopen`. Hardware
+checks for P4.3 through P4.6 are still open.
 Decision: [docs/SWITCH_BACKEND.md](../../docs/SWITCH_BACKEND.md).
 
 ## Test targets
@@ -172,6 +178,6 @@ Decision: [docs/SWITCH_BACKEND.md](../../docs/SWITCH_BACKEND.md).
 | Target | Role |
 |---|---|
 | **OLED Switch (Atmosphere + hbmenu)** | **Primary gate** for Phase 4 host work — copy `dw3-switch.nro` to SD, launch from hbmenu; use **nxlink** for stderr/FPS when debugging. |
-| **Local Switch emulators (owner machine)** | **Active** smoke loop since 2026-10-10: Ryubing 1.3.339-canary loads and renders the `.nro` (EGL/GLES2 present animates, `audren` starts). Paths live outside this repo (not vendored). Eden (Yuzu-line AppImages) untried. Emulator runs do **not** satisfy P4.2/P4.3 done-when (hardware fps / underruns). |
+| **Local Switch emulators (owner machine)** | **Active** smoke loop since 2026-10-10: Ryubing 1.3.339-canary loads and renders the `.nro` (EGL/GLES2 present animates, `audren` starts). Paths live outside this repo (not vendored). Eden (Yuzu-line AppImages) untried. Emulator runs do not satisfy P4.3 (underruns on hardware) or the field and battle gate. |
 
 Owner-local install hints (not in git): Ryubing at `/mnt/windows/Jogos/emuladores/Ryubing` (needs `DOTNET_ROOT=$HOME/.dotnet`); Eden AppImages at `/mnt/windows/Jogos/emuladores/Eden-Linux-*.AppImage`. Guest `stderr` is invisible in Ryubing (it expects nxlink), and `--no-gui` headless fails at `Image initialization failed` — use the GUI. Details: [docs/SWITCH_BACKEND.md](../../docs/SWITCH_BACKEND.md#ryubing-smoke-loop-active-since-2026-10-10).

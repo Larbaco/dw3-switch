@@ -12,9 +12,11 @@ Approach, in order:
 3. Only then polish for the handheld.
 
 Each task has an id (`P<phase>.<n>`), an objective and a "done when". Tasks
-inside a phase are roughly ordered; phases do not start until the gate of
-the previous one passes. No time estimates on purpose. Facts behind the
-tasks are in [SURVEY.md](SURVEY.md); layering is in
+inside a phase are roughly ordered. The previous phase's gate is the bar
+for starting the next phase's real work. A goal note written early
+(P7.1, P8.1, P9.1, P10.1) or a packaging task the owner asked for early
+(P6.5) does not start that phase. No time estimates on purpose. Facts
+behind the tasks are in [SURVEY.md](SURVEY.md); layering is in
 [ARCHITECTURE.md](ARCHITECTURE.md).
 
 ## Phase 0 — Repository (done)
@@ -66,7 +68,7 @@ disc.
 ## Phase 2 — Port glue and engine bring-up on PC
 
 Status: **complete** (gate met on `phase2-engine` @ `1f34110`;
-title from decomp C; pad Critical re-reviewed APPROVE; GPU polish open.
+title from decomp C; pad Critical re-reviewed APPROVE.
 Plan:
 [`docs/superpowers/plans/2026-10-10-phase2-pc-bringup.md`](superpowers/plans/2026-10-10-phase2-pc-bringup.md)).
 
@@ -157,7 +159,8 @@ the host, replace MIPS-only pieces, and reach the title screen on PC.
 
 Gate: title screen on PC from the decomp's C, no local edits inside
 `vendor/`. **Passed** on `phase2-engine` @ `1f34110` (title draws +
-pad state connected; GPU polish open; merged via PR #3).
+pad state connected; merged via PR #3). Field sprite polish is a
+Phase 3 follow-up (`docs/P3_GPU_GLITCHES.md`), not this gate.
 
 ## Phase 3 — Game bring-up on PC
 
@@ -323,30 +326,23 @@ console.
   dkp `switch-sdl-3.4` builds (`libSDL3.a`) but has no SDL_GPU and is not
   in pacman; unsuitable for PSY-Z's PC `sdl3_gpu` default. See
   `docs/SWITCH_BACKEND.md`.
-- [ ] **P4.2 Video.** Present PSY-Z's VRAM/framebuffer via EGL + OpenGL
-  (mesa/nouveau on libnx) or deko3d; 60 Hz vsync; docked/handheld
-  resolution switch.
-  Done when: `gpu_hello`-level sample renders at 60 fps on hardware.
-  **Status (2026-10-10):** EGL + GLES2 path + `gpu_hello` sample landed in
-  `platforms/switch/psyz_backend/nx_gpu.c` (docked 1080p / handheld 720p,
-  `eglSwapInterval(1)`). `.nro` builds via Docker (`DW3_DK_TMPBUILD` on
-  NTFS). **Not ticked:** no Switch hardware in session to measure 60 fps.
-  Owner machine has local Ryubing/Eden installs.
-  **Ryubing smoke (2026-10-10):** the `.nro` loads and its clear/present
-  loop animates in Ryubing 1.3.339-canary — plumbing confirmed; emulator fps
-  is **not** the done-when. Gate: OLED + hbmenu / nxlink. See
-  `docs/P4.2_VIDEO.md`, `docs/SWITCH_BACKEND.md`.
+- [x] **P4.2 Video.** Present PSY-Z's VRAM via EGL + GLES2, with vsync
+  and docked 1920×1080 / handheld 1280×720 framebuffer sizes.
+  Done when: the game image presents the title framebuffer on hardware.
+  **Status (2026-10-11):** `nx_gpu.c` presents
+  `SoftwareRasterizer_GetVram()` (`eglSwapInterval(1)`). The OLED showed
+  the title from hbmenu. Measuring frame time on handheld clocks moved to
+  P5.2. Dock/undock while the game is running stays P10.3. The
+  `gpu_hello` clear loop is the Makefile `host_hello` sample, not this
+  done-when. See `docs/P4.2_VIDEO.md`.
 - [ ] **P4.3 Audio.** `audren` output thread fed by PSY-Z's SPU mixer at
   44.1 kHz.
-  Done when: libsnd sample plays without underruns.
-  **Status (2026-10-10):** audren thread + `Psyz_Audio*` in
-  `platforms/switch/psyz_backend/nx_audio.c` (44.1 kHz voice, weak SPU
-  tone stub; combined `host_hello` with P4.2 EGL after rebase onto
-  `675f1cf`). `.nro` builds via Docker
-  (`DW3_DK_TMPBUILD`). **Ryubing smoke (2026-10-10):** the guest reaches
-  `audren` — session acquired, `Initialize` (REV4), renderer started.
-  **Not ticked:** no Switch hardware for underrun/listen check; full PSY-Z
-  libsnd not linked yet (P4.7). See `docs/P4.3_AUDIO.md`.
+  Done when: libsnd sample plays without underruns on hardware.
+  **Status (2026-10-11):** the CMake game image links PSY-Z's SPU.
+  Opening-movie XA played in Ryubing. The Makefile `host_hello` sample
+  still uses the weak 440 Hz stub in `nx_audio.c`. **Not ticked:** no
+  hardware listen, and no underrun count on device. See
+  `docs/P4.3_AUDIO.md`.
 - [ ] **P4.4 Input.** `hid` → PS1 pad bits, including the digital/analog
   modes `PadInfoMode`/`PadSetMainMode` expect; rumble via `PadSetAct` →
   HD rumble (optional).
@@ -362,77 +358,29 @@ console.
 - [x] **P4.7 Boot the game.** Link the Phase 3 image against the Switch
   backend and run from hbmenu.
   Done when: title screen on hardware.
-  **Status (2026-10-10):** `platforms/switch/CMakeLists.txt` compiles the Phase 3
-  image for aarch64 (reuses `port/CMakeLists.txt`; overlay packing uses target
-  binutils). `vendor/psyz` is pinned to `dw3-switch-backend` @ `15afac1`
-  (NintendoSwitch, no SDL). `psyz_backend/` supplies `psyz_log`, `Psyz_Os*`,
-  pad, `Psyz_VideoVSync`, and the `__wrap_*` hooks. `source/boot_main.c` is the
-  CMake `main()` and calls `dw3_game_main`. The devkitPro Makefile still builds
-  `source/main.c` (`host_hello`: EGL + audren sample); that is the `.nro`
-  CI job `switch` produces. Job `switch-game` builds the CMake game image
-  and does not publish it. A GitHub Release of that image is P6.5.
-  **Link: it links.** 1144 objects, 0 undefined symbols, 17.4 MB `.elf` →
-  8.9 MB `.nro`. The 20 undefined `Draw_*` symbols are gone:
-  `psyz_backend/switch_gpu.c` forwards them to PSY-Z's in-tree CPU rasterizer
-  and `nx_gpu.c` presents `SoftwareRasterizer_GetVram()` as a GLES2 texture.
-  An earlier note here said the link stops on those 20 — that was before the
-  renderer landed; trust this one.
-  **Boot: it boots and draws the title.** In Ryubing the image gets through SD
-  mount, cdfs, audio, memcard, boot TIM, overlay table, `Psyz_SetVSyncCb`, all
-  five `VSync` calls in the game's boot path
-  (`build/decomp-src/src/engine/system/main.c`), and into the main loop. It
-  flips display buffers (`PutDispEnv` alternating `y=0` / `y=256`) and renders
-  the title screen — logo, "Please Start Button", the Bandai copyright line —
-  animating frame to frame. Screenshots: `/tmp/dw3-shot-boot1.png`,
-  `boot2.png` (800x480, owner machine).
-  **The one blocker that stood in the way was not a CD bug.** The boot stopped
-  inside `CdInit()`; the cause was `Psyz_AudioLock` on a non-recursive libnx
-  `Mutex`, while PSY-Z's audio lock is re-entrant by contract (the SPU tick
-  pulls CD samples, which re-takes it). Fixed by making it an `RMutex` — six
-  lines in `nx_audio.c`. The boot-stop trace and the full reasoning are in
-  `docs/SWITCH_BACKEND.md`.
-  The speckle was the GLES2 upload reading RGB555 backwards; `nx_gpu.c`
-  expands to opaque RGBA8888. The owner confirmed the decoded dump. The menu
-  offset was the present width: the horizontal range is 256 dot-clock tenths,
-  and using it as the blit width cropped a 320-wide frame. The blit width now
-  follows the display mode.
-  **Opening movie (Ryubing, 2026-10-10):** XA already played. The picture
-  froze because `DecDCTout` never raised the MDEC-out IRQ, so no slice reached
-  `LoadImage`, and the 24-bit buffer was still presented at the title's 240
-  lines. The Switch present now matches the PC path (DMA callback, RGB24
-  expand, quant/IDCT upload, slice stash). 24-bit mode presents 480 lines;
-  the title stays on the vertical range. After that, `StGetNext` could sit on
-  a body sector while the frame header was the previous slot, and the writer
-  blocked. The host wrapper steps back onto that header, or drops a leftover
-  tail and scans for the next ready frame. Guest log: `DecDCTout frame done`
-  through thousands of frames with changing signatures, present flips
-  `320x480`, then the attract loop returns to the title and starts the movie
-  again (Bandai card).
-  **Present aspect:** the viewport uses PSY-Z's display-range aspect
-  (`(4/3) * (horiz/256) / (vert/240)`), the same rule as the PC host. The
-  sampled rectangle for the movie is the 416-line picture at VRAM y=36
-  (the 480-line display has blank lines above and below it). The title uses
-  the display-mode width. That pixel ratio is not the shape on screen. On a
-  docked 1920×1080 surface the picture is 4:3 at full height, with side bars
-  only. A Ryubing window set to 21:9 still shrinks that framebuffer and adds
-  bars at the top and bottom. That is the emulator aspect, not a crop in the
-  port.
-  **OLED hardware smoke (2026-10-10/11):** the owner installed the US runtime
-  and launched a CMake game `.nro` from hbmenu. The first attempt exited at
-  `memcard_host_ensure()` because `sdmc:/switch/dw3/us/memcard/` was absent;
-  the log had already reached the SD runtime root and `Psyz_AudioInit OK`.
-  Creating the empty directory allowed launch. The owner then confirmed the
-  game reached the main menu and loaded a new game on the OLED. That `.nro`
-  was `main` plus the P4.4/P4.5 commits, before the picture fix, so it still
-  cropped the title and froze the movie. The runtime came from the owner's
-  US disc and was not added to git. P4.4's Joy-Con and Pro Controller checks,
-  P4.5's cdfs suite against SD, and P4.6 overlay switching on hardware are
-  still open. See `docs/RUNTIME_LAYOUT.md` for the memory-card directory and
-  `docs/SWITCH_BACKEND.md` for the boot-stop evidence and emulator logging
-  traps.
+  **Status (2026-10-11):** the CMake image links (1144 objects, about
+  8.9 MB `.nro`) and `boot_main.c` calls `dw3_game_main`. The link story,
+  the `CdInit` audio-lock stop, and the RGB555 upload are in
+  `docs/SWITCH_BACKEND.md`. CI job `switch` still builds the Makefile
+  `host_hello` sample. Job `switch-game` builds this image and does not
+  publish it. A GitHub Release is P6.5.
+  Picture, current rule: the title blit width follows
+  `Draw_SetDisplayMode` (320). The movie sample is the 416-line picture
+  at VRAM y=36. The viewport uses the PC display-range aspect,
+  `(4/3) * (horiz/256) / (vert/240)`. On a docked 1920×1080 surface that
+  is 4:3 at full height, with side bars. A 21:9 emulator window adds its
+  own bars on top of that framebuffer.
+  **OLED (2026-10-10/11):** hbmenu reached the main menu and loaded a new
+  game after an empty `sdmc:/switch/dw3/us/memcard/` was created. That
+  `.nro` was `main` plus the P4.4/P4.5 commits, before the picture fix.
+  `v0.6.5-preview.2` is the picture fix. The owner is running it. This
+  note does not record that result. The runtime came from the owner's US
+  disc and is not in git. P4.4 Joy-Con and Pro Controller, P4.5 cdfs on
+  the SD, and P4.6 overlay switching on hardware stay open.
 
-  **Gate:** title + field + battle on a Switch. **Not yet met:** this smoke
-  confirms main menu and new-game loading, but not field and battle playthrough.
+  **Gate:** title + field + battle on a Switch. **Not met.** The smoke
+  confirms the main menu and a new game. Field and battle on hardware
+  are still open.
 
 ## Phase 5 — Playable on Switch
 
@@ -443,8 +391,10 @@ speed.
   sized for the console; no allocations after init in the frame loop.
   Done when: a 2-hour session shows flat memory in a debug overlay.
 - [ ] **P5.2 Performance pass.** Profile GTE/GPU emulation and the
-  drawing path on handheld clocks; software vs. GL renderer decision.
-  Done when: no frame over 16.7 ms in field and battle benchmarks.
+  drawing path on handheld clocks. Decide software vs. a GL renderer.
+  The frame-time check that used to be the P4.2 done-when lives here.
+  Done when: no frame over 16.7 ms in field and battle benchmarks,
+  docked and handheld.
 - [ ] **P5.3 Save handling.** Card images under `sdmc:/switch/dw3/saves/`,
   import/export of `.mcr`, sleep/exit safety (flush on `appletMainLoop`
   exit).
@@ -459,7 +409,9 @@ Gate: start → first boss on hardware, both versions.
 ## Phase 6 — Polish and options
 
 Starts only after the Phase 5 gate (playable port on hardware). Localization
-is an explicit project goal in this phase, not during bring-up.
+is an explicit project goal in this phase, not during bring-up. P6.5 is
+the exception: packaging was done early because the owner asked. That
+tick does not start Phase 6.
 
 - [ ] **P6.1** Integer scaling / aspect options; optional widescreen
   where the GTE projection allows.
@@ -474,10 +426,9 @@ is an explicit project goal in this phase, not during bring-up.
   `source/boot_main.c` calling `dw3_game_main`) and
   `platforms/switch/release/README.txt`, and those assets contain no
   disc, BIOS, or extracted game files.
-  **Status (2026-10-10):** this task only, started before the Phase 5
-  gate because the owner asked. Phase 6 has not started. P6.1–P6.4 and
-  P6.6+ are untouched. P4.7 stays open. Its done-when is still the title
-  on hardware, not a GitHub Release.
+  **Status (2026-10-11):** this task only. Phase 6 has not started.
+  P6.1–P6.4 and P6.6+ are untouched. P4.7 is ticked on its own
+  done-when (title on hardware). A release is not that done-when.
   `.github/workflows/switch-release.yml` builds that game `.nro` in
   `devkitpro/devkita64` and publishes a prerelease. CI job `switch` in
   `ci.yml` still builds the Makefile `host_hello` sample and is not the
@@ -490,11 +441,18 @@ is an explicit project goal in this phase, not during bring-up.
   later, is `sdmc:/switch/dw3/eu`. The owner packs the tree
   (`docs/DISC_SETUP.md`, `tools/pack_runtime.py`). Git and the release
   do not contain it.
-  **Ticked** on tag `v0.6.5-preview.1`
+  **Ticked** on `v0.6.5-preview.1`
   ([release](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.1),
   [run 38103023231](https://github.com/Larbaco/dw3-switch/actions/runs/38103023231)).
-  Assets are `dw3-switch.nro` (8927429 bytes, the CMake game image) and
-  `README.txt`. Marked a prerelease. No other files.
+  That `.nro` is 8927429 bytes. It still crops the title and freezes the
+  movie.
+  Current prerelease is `v0.6.5-preview.2`
+  ([release](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.2),
+  [run 38113420519](https://github.com/Larbaco/dw3-switch/actions/runs/38113420519)),
+  cut from `8273a91`. Assets are `dw3-switch.nro` (8935621 bytes) and
+  `README.txt`. It has the display-mode title width and the full-height
+  movie. Still a prerelease. No other files. Hardware result of that
+  file is not recorded here yet.
 - [ ] **P6.6 Localization goal.** Record that translation / localization
   comes after the playable port (Phase 5): language packs live in the
   owner runtime data layout; remap / charset glue in `port/`; host
@@ -523,7 +481,8 @@ language slots.
 ## Phase 7 — Community QoL and companion compatibility
 
 Starts after the playable port (Phase 5) and the Phase 6 packaging /
-host-options baseline. Goal: optional compatibility with the Digimon World
+host-options baseline. P7.1 is an early note. The phase has not started.
+Goal: optional compatibility with the Digimon World
 2003 community QoL ecosystem (combined Quality of Life patch and its
 upstream mods; companion app when a protocol exists). Details and project
 list: [COMMUNITY_QOL.md](COMMUNITY_QOL.md).
@@ -569,7 +528,8 @@ subset from P7.4 is playable. Companion (P7.5) is best-effort.
 
 Starts after the Phase 7 gate in the planned order (or earlier only if the
 P1.6 runtime layout and a stable TIM/draw path already exist to validate
-against). Goal: owners can overlay replacement textures without forking
+against). P8.1 is an early note. The phase has not started.
+Goal: owners can overlay replacement textures without forking
 the port or committing assets. Details: [TEXTURE_PACKS.md](TEXTURE_PACKS.md).
 
 - [x] **P8.1 Goal note.** Document that texture packs live in the owner
@@ -597,7 +557,8 @@ Gate: P8.2 works with an owner-supplied minimal pack. P8.4 is best-effort.
 ## Phase 9 — Port options menu
 
 Starts after the Phase 8 gate in the planned order (or earlier once at
-least one non-vanilla port feature exists to toggle). Goal: a title / main
+least one non-vanilla port feature exists to toggle). P9.1 is an early
+note. The phase has not started. Goal: a title / main
 menu entry that exposes toggles for **every port-added feature** that is
 not part of the original PS1 game, with vanilla-safe defaults and
 persistence on owner storage. Details: [PORT_OPTIONS.md](PORT_OPTIONS.md).
@@ -635,7 +596,8 @@ P9.5 stays best-effort as features ship.
 ## Phase 10 — Native Switch features (residual)
 
 Starts after the Phase 9 gate in the planned order (earlier only to wire
-applet behaviours already required by P4/P5). Goal: inventory and finish
+applet behaviours already required by P4/P5). P10.1 is an early note.
+The phase has not started. Goal: inventory and finish
 Switch-native UX that is **not** already owned by P4–P6 / P9 — see
 [SWITCH_FEATURES.md](SWITCH_FEATURES.md). Do not re-implement scaling,
 rumble, saves, turbo, or widescreen here; those stay in their phases.
@@ -671,6 +633,8 @@ Gate: P10.2 (+ P10.3 once present is live). P10.4–P10.5 are best-effort.
 - Record every non-obvious decision as a short note in `docs/`.
 - Changes to the decomp go through `port/patches/` first; upstream PRs for
   anything match-neutral; submodule bumps are explicit commits.
-- CI builds PC and Switch skeletons on every push; game-data tests run
-  locally only.
+- CI job `pc` builds the PC host. Job `switch` builds the Makefile
+  `host_hello` sample. Job `switch-game` builds the CMake game `.nro` on
+  pull requests and uploads an Actions artifact. A GitHub Release is
+  `switch-release.yml` only. Game-data tests run locally.
 - Keep `platforms/switch/` thin: platform backend only, no game logic.

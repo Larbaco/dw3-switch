@@ -150,7 +150,8 @@ while the platform symbols keep coming from `platforms/switch/psyz_backend/`.
 The split is deliberate: the submodule only had to stop pulling SDL, so the
 backend stays in this repo per the P4.1 decision. `vendor/psyz` is pinned to
 `dw3-switch-backend` @ `15afac1` on the fork. The game image links and draws
-the title in Ryubing; the hardware done-when is still open (see below).
+the title. P4.7 is ticked: the owner reached the main menu on an OLED.
+Field and battle on hardware are still the phase gate.
 
 ## P4.7 (2026-10-10)
 
@@ -282,27 +283,67 @@ which is the speckled window. `nx_gpu.c` now expands to RGBA8888 the way
 `ConvertRgb5551ToRgba8888` does, with alpha forced opaque, before
 `glTexSubImage2D`. The owner confirmed that decode
 (`/tmp/vram60-ps1-2x.png`, 2026-10-10). The temporary VRAM dump is gone.
-No pad input has been exercised through it yet.
 
-P4.7 stays open: the done-when is the title on **hardware**.
+### Picture (2026-10-11)
 
-## P4.2 video (2026-10-10)
+Current present rule, also the short form in `docs/ROADMAP.md` P4.7:
+
+- Title blit width follows `Draw_SetDisplayMode` (320). The horizontal
+  range is 256 dot-clock tenths and cropped the "3" when used as the width.
+- Movie sample is the 416-line picture at VRAM y=36. The 480-line display
+  has blank lines above and below that picture. An intermediate log that
+  said "24-bit mode presents 480 lines" and "present flips 320x480" is the
+  step before that crop. Do not treat it as the rule.
+- Viewport aspect is the PC display-range formula,
+  `(4/3) * (horiz/256) / (vert/240)`. On a docked 1920×1080 surface the
+  picture is 4:3 at full height, with side bars. A Ryubing window set to
+  21:9 letterboxes that framebuffer. That is the emulator aspect.
+
+Opening movie, why it used to be audible and frozen: `DecDCTout` never
+raised MDEC-out, so no slice reached `LoadImage`. The Switch present now
+matches the PC path (DMA callback, RGB24 expand, quant/IDCT upload, slice
+stash). After that, `StGetNext` could sit on a body sector while the frame
+header was the previous slot. `__wrap_StGetNext` steps back onto that
+header, or drops a leftover tail and scans for the next ready frame.
+The owner confirmed the movie plays in Ryubing, then confirmed the y=36
+crop fills the height.
+
+### OLED (2026-10-10/11)
+
+The owner launched a CMake game `.nro` from hbmenu. The first attempt
+exited in `memcard_host_ensure()` because `sdmc:/switch/dw3/us/memcard/`
+was missing. The log had already reached the SD runtime root and
+`Psyz_AudioInit OK`. Creating the empty directory allowed launch. The
+owner then reached the main menu and loaded a new game. That file was
+`main` plus the P4.4/P4.5 commits, before the picture fix, so it still
+cropped the title and froze the movie. `v0.6.5-preview.2` (`8273a91`) is
+the picture fix. The owner started that file on hardware while this note
+was written. The result is not recorded here.
+
+P4.7 is ticked on that menu boot. P4.4 Joy-Con and Pro Controller, P4.5
+cdfs on the SD, and P4.6 overlay switching on hardware stay open. The
+phase gate is still title + field + battle.
+
+## P4.2 video (2026-10-11)
 
 - **Stack:** EGL + OpenGL ES 2 (`-lEGL -lGLESv2 -lglapi -ldrm_nouveau`).
 - **Sample:** `platforms/switch/source/main.c` clear-color `gpu_hello` with
   `eglSwapInterval(1)` and docked 1920×1080 / handheld 1280×720 via
   recreate-on-`appletGetOperationMode`.
-- **Hardware:** not run in this session — ROADMAP P4.2 stays open until 60 fps
-  is measured on a real Switch. Details: [P4.2_VIDEO.md](P4.2_VIDEO.md).
+- **Hardware:** the OLED showed the title framebuffer. That ticks P4.2.
+  Frame time on handheld clocks is P5.2. Dock/undock while playing is
+  P10.3. Details: [P4.2_VIDEO.md](P4.2_VIDEO.md).
 
-## P4.3 audio (2026-10-10)
+## P4.3 audio (2026-10-11)
 
 - **Stack:** libnx `audren` / `audrv` (renderer bus 48 kHz; voice 44.1 kHz).
 - **API:** `Psyz_AudioInit` thread pulls `Psyz_SpuPullSamples` (PSP-shaped).
-- **Sample:** `platforms/switch/source/main.c` `audio_hello` + weak 440 Hz
-  SPU stub until PSY-Z is linked.
-- **Hardware:** not run in this session — ROADMAP P4.3 stays open until a
-  libsnd sample plays without underruns. Details: [P4.3_AUDIO.md](P4.3_AUDIO.md).
+- **Game image:** the CMake `.nro` links PSY-Z's SPU. Opening-movie XA
+  played in Ryubing.
+- **Sample:** Makefile `host_hello` (`source/main.c`) still uses the weak
+  440 Hz stub. That stub is not the game.
+- **Hardware:** P4.3 stays open until a libsnd path is heard on device
+  without underruns. Details: [P4.3_AUDIO.md](P4.3_AUDIO.md).
 
 ## Blockers / environment notes
 
@@ -311,9 +352,8 @@ P4.7 stays open: the done-when is the title on **hardware**.
 | NTFS / drvfs checkout (`/mnt/windows/...`) | Default `./tools/dk.sh make -C platforms/switch` cannot `mkdir build` as non-root. Use `DW3_DK_TMPBUILD=/tmp/dw3-dk-build ./tools/dk.sh make -C platforms/switch`, a Linux/ext4 clone, or CI. |
 | No host `/opt/devkitpro` | Local Switch builds go through Docker (`tools/dk.sh`). |
 | No SDL3 pacman package | SDL3-dkp path needs a from-source recipe every time (fallback only). |
-| No Switch hardware here | P4.2/P4.3 code can build; 60 fps and audren underrun checks not validated. |
-| PSY-Z not linked on Switch yet | P4.3 uses weak SPU stubs; libsnd done-when needs P4.7 link. |
-| Phase 3 PC bring-up | Switch host remains a side track; do not block PC movies/audio. |
+| Frame time and underruns | P4.2 present is ticked. P5.2 still wants 16.7 ms on handheld. P4.3 still wants a hardware listen without underruns. |
+| `host_hello` weak SPU stub | The Makefile sample still stubs `Psyz_SpuPullSamples`. The CMake game image links the real SPU. |
 
 ## Validation targets (hardware vs emulator)
 
@@ -358,20 +398,19 @@ config opens fullscreen on an ultrawide), then `import -window <wid> out.png`.
 | Ryubing Flatpak (`io.github.ryubing.Ryujinx`) | system install | 1.3.3 stable, **no `prod.keys` configured** — not usable as-is |
 | Eden (Yuzu-line) | `/mnt/windows/Jogos/emuladores/Eden-Linux-*.AppImage` | Untried secondary |
 
-Emulator smoke **does not** satisfy P4.2 done-when (**60 fps on hardware** —
-see [P4.2_VIDEO.md](P4.2_VIDEO.md)). DuckStation is PS1-only and irrelevant
-here.
+Emulator smoke does not satisfy P4.3 (underruns on hardware) or the Phase 4
+gate (field and battle on the OLED). P4.2's present-on-hardware evidence is
+the OLED title, not an emulator fps number. DuckStation is PS1-only and
+irrelevant here.
 
 ## Next steps
 
-1. ~~P4.2: implement `nx_gpu.c` present path~~ — code on PR #21; **hardware fps check** open.
-2. ~~P4.3: `nx_audio.c` / `audren`~~ — host wiring on PR #23; **hardware + libsnd** open.
-3. **P4.7 boot path:** done as far as the emulator can take it — the game
-   boots into its main loop and draws the title. **The done-when is hardware**,
-   and `docs/ROADMAP.md` keeps P4.7 unticked for exactly that reason.
-4. **P4.7 renderer:** done as a thin adapter over the in-tree
-   `software_rasterizer`, presenting `SoftwareRasterizer_GetVram()` through
-   `nx_gpu.c`'s EGL surface. It draws the title. **Open:** the picture is
-   noisy (dither/pixel-format), and nothing has driven the pad through it.
+1. P4.2 present and P4.7 title-on-hardware are ticked. `v0.6.5-preview.2`
+   is the picture fix. Record the OLED result of that file when the owner
+   reports it.
+2. P4.3 stays open: hear libsnd on hardware without underruns.
+3. P4.4 Joy-Con and Pro Controller, P4.5 cdfs on the SD, and P4.6 overlay
+   switching on hardware are still open. The phase gate is field and battle.
+4. P5.2 owns the 16.7 ms frame-time check. Do not put it back on P4.2.
 5. Do not vendor SDL3 into git; if revisited, document a `tools/` fetch+build
    helper only.

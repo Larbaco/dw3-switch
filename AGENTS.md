@@ -138,8 +138,10 @@ an Actions artifact. A GitHub Release is only
 `.github/workflows/switch-release.yml` (`workflow_dispatch` or a `v*` tag),
 and it is a prerelease. `workflow_dispatch` is listed only once that file
 is on `main`. Tag `v0.6.5-preview.1` is the first preview
-(8927429-byte game `.nro` plus `README.txt`). Do not publish the sample
-`.nro` as the game.
+(8927429-byte game `.nro` plus `README.txt`). It still crops the title
+and freezes the movie. Current preview is `v0.6.5-preview.2` at `8273a91`
+(8935621 bytes), with the display-mode title width and the full-height
+movie. Do not publish the sample `.nro` as the game.
 
 The game image needs `vendor/psyz/nugget` as well as `external/SDL`, without
 `--recursive` on nugget. Missing `nugget/bsdec/bsdec.c` shows up as
