@@ -207,10 +207,13 @@ on `workflow_dispatch` or a `v*` tag. It is a prerelease. Assets are
 No disc data.
 
 The latest preview release is
-[v0.6.5-preview.9](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.9).
-Battle mesh triangles draw on a GLES3 mesh FBO; sprites and UI stay on the
-software RGB555 blit. It does not change the CPU or GPU clock. OLED
-timing for this build is pending.
+[v0.6.5-preview.10](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.10).
+Battle mesh is gated to FIGHTSTG (PR #71); field stays on the software
+blit. PR #72 adds sampled `mesh dbg:` lines on the nxlink log. It does
+not change the CPU or GPU clock.
+[v0.6.5-preview.9](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.9)
+enabled mesh for every mode and broke the field picture on OLED. Do not
+install that file for field play.
 [v0.6.5-preview.8](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.8)
 holds one field map in RAM so later tiles copy from that buffer. An OLED
 log from that build: field about 60 Hz, battle Fight-menu idle about 46 Hz.

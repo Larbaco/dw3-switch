@@ -1,16 +1,24 @@
 Digimon World 3 / 2003, Switch homebrew preview
 
-This release is v0.6.5-preview.9. On top of preview.8, battle mesh
-triangles (POLY_GT / POLY_FT and equivalents) draw on a GLES3 mesh FBO.
-Sprites and UI stay on the software RGB555 blit. This build does not call
+This release is v0.6.5-preview.10. It keeps battle mesh triangles on a
+GLES3 mesh FBO, but only while FIGHTSTG is active (PR #71). Field and
+other modes stay on the software RGB555 blit so the map does not show
+the cyan stripes and rug holes that broke preview.9. PR #72 adds a
+sampled mesh dbg: line about once per second on the nxlink stdio log
+(tris_enq, frames_mesh, frames_blit). This build does not call
 clkrstSetClockRate or appletSetCpuBoostMode. The CPU and GPU stay at the
 rate the console set.
+
+Do not install preview.9 for field play. That cut enabled mesh for every
+mode and broke the field picture on OLED.
 
 Preview.8 already held one field map in RAM so later tiles copy from that
 buffer, and it kept movies at 150 sectors per second. An OLED log from
 that build is already recorded: field about 60 Hz (mean frame dt us about
 1000279 per 60 frames), battle Fight-menu idle about 46 Hz (mean about
-1293264). This preview.9 file has not been timed on the OLED yet.
+1293264). Preview.9 battle timing on OLED was much slower (about
+2931384 us per 60 frames). Use this preview.10 file for the gated mesh
+plus mesh dbg triage.
 
 Preview.6 raised the CPU to 1785 MHz. That is removed. Reboot the Switch
 once before this test if preview.6 already ran: a HOME press on that
@@ -24,10 +32,9 @@ and a slot 2 save loaded after the memory-card fix that is in this
 build.
 
 Every 60 frames the log prints one line, frame dt us=. About 1000000
-is 60 Hz. About 2000000 is 30 Hz. Preview.8 already recorded that line
-on the OLED for field and battle. This preview.9 file has not been timed
-there. Look for nx_mesh / GLES3 mesh FBO ready on boot, and mesh gpu:
-lines in battle.
+is 60 Hz. About 2000000 is 30 Hz. On field, mesh dbg: should show
+tris_enq near 0 and frames_blit dominant. On FIGHTSTG, frames_mesh and
+tris may rise. Look for nx_mesh / GLES3 mesh FBO ready on boot.
 
 boot_tim.bin is not a disc image. A CUE whose FILE name is missing still
 selects the only other .bin in that directory when the file is large
