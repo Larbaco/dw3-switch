@@ -1,8 +1,11 @@
 /*
- * PSY-Z libcard raw sector backend → port/memcard .mcr images.
+ * PSY-Z libcard raw sector backend → legacy 128 KiB .mcr images.
  *
- * Linked with -Wl,--wrap=_card_read -Wl,--wrap=_card_write so calls from
- * PSY-Z / game code hit the host .mcr files instead of the stub events.
+ * Runtime STGMCARD traffic uses MemCard* → flat saveN.bin (no _card_*).
+ * These wraps remain for any residual PSY-Z sector path and for tools that
+ * still touch memcardN.mcr fixtures.
+ *
+ * Linked with -Wl,--wrap=_card_read -Wl,--wrap=_card_write.
  */
 #include "memcard_host.h"
 
@@ -25,9 +28,6 @@ static int chan_to_slot(long chan) {
     return (int)port;
 }
 
-/* Mirror PSY-Z card_op event completion via the real stub after I/O.
- * Do not pass the caller buf into __real__card_read — PSY-Z's stub does not
- * fill sectors and would clobber host data (breaks STGMCARD load). */
 long __wrap__card_read(long chan, long block, unsigned char *buf) {
     int slot = chan_to_slot(chan);
     unsigned char scratch[MEMCARD_HOST_SECTOR_SIZE];
@@ -37,7 +37,7 @@ long __wrap__card_read(long chan, long block, unsigned char *buf) {
         (unsigned long)block >= MEMCARD_HOST_SECTORS) {
         return 0;
     }
-    if (memcard_host_ensure(slot) != 0) {
+    if (memcard_host_legacy_ensure(slot) != 0) {
         return 0;
     }
     if (memcard_host_read_sector(slot, (int)block, buf) != 0) {
@@ -46,7 +46,8 @@ long __wrap__card_read(long chan, long block, unsigned char *buf) {
     {
         static int logged;
         if (logged < 3) {
-            fprintf(stderr, "dw3: _card_read ok chan=%ld block=%ld slot=%d (.mcr)\n",
+            fprintf(stderr,
+                    "dw3: _card_read ok chan=%ld block=%ld slot=%d (.mcr)\n",
                     chan, block, slot);
             logged++;
         }
