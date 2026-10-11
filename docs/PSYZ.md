@@ -9,8 +9,8 @@ libnx backend exists.
 |---|---|
 | Upstream | https://github.com/Xeeynamo/psyz.git |
 | Working fork (submodule URL) | https://github.com/Larbaco/psyz.git |
-| Commit | `3da68e5` (`dw3-str-pace`: STR pump at 150 sectors/s; parent `15afac1` Switch build, `5598654` ring wrap) |
-| Base upstream | `fac9bd58ccd8a0c35e31c6354528f9d625e9bdd1` |
+| Commit | `eb0393b` (`dw3-str-pace`: STR pump at 150 sectors/s; parent `8dbed91` Switch build, `d67f0b4` ring wrap) |
+| Base upstream | `6d01339aadf16c5c9d6e44f44c0d66514752e472` |
 | License | MIT — see [`vendor/psyz/LICENSE`](../vendor/psyz/LICENSE) |
 
 Update the pin intentionally; call out submodule SHA changes in the
