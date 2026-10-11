@@ -91,8 +91,13 @@ command CI runs (ext4 checkout, `devkitpro/devkita64`, no login shell).
 Pull requests upload `build/switch/dw3-switch.nro` as the Actions artifact
 `dw3-switch-game-nro`. A GitHub Release is
 [`.github/workflows/switch-release.yml`](../../.github/workflows/switch-release.yml),
-on `workflow_dispatch` or a `v*` tag, marked a prerelease. Assets are
-that `.nro` and [`release/README.txt`](release/README.txt). No disc data.
+on `workflow_dispatch` or a `v*` tag, marked a prerelease. `workflow_dispatch`
+shows up in the Actions UI only after that file is on `main`. A tag push
+runs it from the tagged commit. Assets are that `.nro` and
+[`release/README.txt`](release/README.txt). No disc data.
+
+First preview: [v0.6.5-preview.1](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.1)
+(`dw3-switch.nro`, 8927429 bytes, plus `README.txt`).
 
 The running game reads the owner's US files from `sdmc:/switch/dw3/us`
 (`DW3_DEFAULT_RUNTIME` in `source/boot_main.c`). Packing steps:

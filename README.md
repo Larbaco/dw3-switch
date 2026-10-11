@@ -25,7 +25,7 @@ Details and checkboxes: [docs/ROADMAP.md](docs/ROADMAP.md). Gate honesty:
 | **0–2** | **Done** — toolchains, disc→runtime pipeline, US title boot from decomp C ([P2.8](docs/P2.8_TITLE_BOOT.md)) |
 | **3** | **Gate met (US)** — field, battle, menus, card game, movies, SEP audio, stage sweep on PC; start→first boss (Genji) on a continuous US path with documented bring-up aids ([P3 gate](docs/P3_GATE.md)). **Open:** P3.9 DuckStation compare harness (title/field captured; battle oracle partial), EU playthrough, pad-driven boss KO, [GPU/sprite polish](docs/P3_GPU_GLITCHES.md), `WSTAG460` stub |
 | **4** | **In progress.** Native libnx PSY-Z backend ([P4.1](docs/SWITCH_BACKEND.md)). CI job `switch` builds the Makefile EGL + audren sample ([P4.2](docs/P4.2_VIDEO.md), [P4.3](docs/P4.3_AUDIO.md)). The CMake game image links, and the title draws in Ryubing. P4.7 stays open until that title is on hardware. |
-| **5–8** | Playable Switch, then polish. P6.5 (own-disc `.nro` packaging) is the only Phase 6 task in progress, and it started before the Phase 5 gate. P6.1–P6.4 and P6.6+ have not started. |
+| **5–8** | Playable Switch, then polish. P6.5 own-disc packaging is done as prerelease [v0.6.5-preview.1](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.1), started before the Phase 5 gate. Phase 6 as a whole has not started. P6.1–P6.4 and P6.6+ have not started. |
 
 **Can you play on PC today?** Yes, with your **own US disc** packed to
 `runtime/us`: title through early story is reachable in `dw3-pc`. Expect
@@ -163,10 +163,13 @@ bash tools/build_switch_game.sh
 ```
 
 A release is [`.github/workflows/switch-release.yml`](.github/workflows/switch-release.yml):
-`workflow_dispatch` with a `v*` tag, or a push of a `v*` tag. The run
-publishes `dw3-switch.nro` and
+`workflow_dispatch` with a `v*` tag, or a push of a `v*` tag. The dispatch
+button appears after the workflow is on `main`. The run publishes
+`dw3-switch.nro` and
 [`platforms/switch/release/README.txt`](platforms/switch/release/README.txt)
-as a **prerelease**. Copy the `.nro` to `sdmc:/switch/dw3-switch.nro`
+as a **prerelease**. First one:
+[v0.6.5-preview.1](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.1)
+(8927429-byte game `.nro` and `README.txt` only). Copy the `.nro` to `sdmc:/switch/dw3-switch.nro`
 (Atmosphere + hbmenu). Copy your own packed US tree to
 `sdmc:/switch/dw3/us/` (`files_us.json`, `SLUS_014.36`, `boot_tim.bin`,
 `AAA/...`). EU later uses `sdmc:/switch/dw3/eu/`. The release contains

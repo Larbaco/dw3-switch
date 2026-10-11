@@ -136,7 +136,10 @@ The game image is `tools/build_switch_game.sh` (CMake, `boot_main` →
 `dw3_game_main`). Pull requests build it as job `switch-game` and upload
 an Actions artifact. A GitHub Release is only
 `.github/workflows/switch-release.yml` (`workflow_dispatch` or a `v*` tag),
-and it is a prerelease. Do not publish the sample `.nro` as the game.
+and it is a prerelease. `workflow_dispatch` is listed only once that file
+is on `main`. Tag `v0.6.5-preview.1` is the first preview
+(8927429-byte game `.nro` plus `README.txt`). Do not publish the sample
+`.nro` as the game.
 
 The game image needs `vendor/psyz/nugget` as well as `external/SDL`, without
 `--recursive` on nugget. Missing `nugget/bsdec/bsdec.c` shows up as

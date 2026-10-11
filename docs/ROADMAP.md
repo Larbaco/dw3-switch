@@ -433,7 +433,7 @@ is an explicit project goal in this phase, not during bring-up.
   `CNTY_SEL`.
 - [ ] **P6.3** PGXP-style vertex precision from PSY-Z if it stays stable.
 - [ ] **P6.4** Fast-forward / frame-skip toggles for grinding (optional).
-- [ ] **P6.5** Release packaging: `.nro` + `README` for own-disc setup;
+- [x] **P6.5** Release packaging: `.nro` + `README` for own-disc setup;
   never ship data.
   Done when: a deliberate GitHub Release (`workflow_dispatch` or a `v*`
   tag) attaches the CMake game `.nro` (`build/switch/dw3-switch.nro`,
@@ -449,13 +449,18 @@ is an explicit project goal in this phase, not during bring-up.
   `ci.yml` still builds the Makefile `host_hello` sample and is not the
   game. CI job `switch-game` builds the same CMake `.nro` on pull
   requests, uploads it as an Actions artifact, and does not create a
-  Release.
+  Release. `workflow_dispatch` resolves only after this file is on
+  `main`. A `v*` tag runs the workflow from that commit.
   The binary reads the owner's US tree from `sdmc:/switch/dw3/us`
   (`DW3_DEFAULT_RUNTIME` in `platforms/switch/source/boot_main.c`). EU,
   later, is `sdmc:/switch/dw3/eu`. The owner packs the tree
   (`docs/DISC_SETUP.md`, `tools/pack_runtime.py`). Git and the release
   do not contain it.
-  **Not ticked** until a release run publishes those two files.
+  **Ticked** on tag `v0.6.5-preview.1`
+  ([release](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.1),
+  [run 38103023231](https://github.com/Larbaco/dw3-switch/actions/runs/38103023231)).
+  Assets are `dw3-switch.nro` (8927429 bytes, the CMake game image) and
+  `README.txt`. Marked a prerelease. No other files.
 - [ ] **P6.6 Localization goal.** Record that translation / localization
   comes after the playable port (Phase 5): language packs live in the
   owner runtime data layout; remap / charset glue in `port/`; host
