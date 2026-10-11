@@ -1,0 +1,82 @@
+Upstream-bound: no
+Subject: [PORT_HOST] Field tiles copy one resident map
+
+Drop the one-tile busy hold. readFile with done != NULL still calls
+cdfs_read_field_tile, which keeps one map file in a host buffer.
+isCdReading is idle when that call returns, so a second tile in the
+same frame proceeds. vsyncCallback and FILE_CACHE.load no longer
+call cdfs_poll.
+
+--- a/src/engine/file/cd_reader.c
++++ b/src/engine/file/cd_reader.c
+@@ -96,12 +96,6 @@
+ 
+ /* Whether the CD reader is busy */
+ s32 isCdReading(void) {
+-#if PORT_HOST
+-    /* Field-tile fread is already done; the hold lasts until cdfs_poll. */
+-    if (cdfs_field_tile_busy() != 0) {
+-        return 1;
+-    }
+-#endif
+     return CD_READER.state != CD_READ_IDLE;
+ }
+ 
+@@ -148,8 +142,8 @@
+     if (fileSize == (uint32_t)-1) {
+         return;
+     }
+-    /* Map header and file cache stay on cdfs_read_at (no per-frame hold).
+-       A field tile passes done and is paced to one read per cdfs_poll. */
++    /* Map header and file cache stay on cdfs_read_at.
++       A field tile (done != NULL) copies from the one resident map. */
+     if (done != NULL) {
+         n = cdfs_read_field_tile((uint32_t)file, buffer,
+                                  (size_t)offset * (size_t)CD_SECTOR_SIZE, want);
+--- a/src/engine/file/file_cache.c
++++ b/src/engine/file/file_cache.c
+@@ -2,9 +2,6 @@
+ #include <libgs.h>
+ #include <libetc.h>
+ #include <libsnd.h>
+-#if PORT_HOST
+-#include "cdfs.h"
+-#endif
+ 
+ /* The file cache */
+ FileCache FILE_CACHE = {
+@@ -168,11 +165,6 @@
+         return slot->data;
+     }
+     while (CD_READER.isBusy() != 0) {
+-#if PORT_HOST
+-        /* Tile bytes are already copied. The hold only paces requestTiles;
+-           a synchronous load must not spin until the next vblank. */
+-        cdfs_poll();
+-#endif
+     }
+     waitForFile(file);
+     return findFileSlot(file)->data;
+--- a/src/engine/gfx/display.c
++++ b/src/engine/gfx/display.c
+@@ -3,9 +3,6 @@
+ #include <libetc.h>
+ #include <libsnd.h>
+ #include <stddef.h>
+-#if PORT_HOST
+-#include "cdfs.h"
+-#endif
+ 
+ /* Small variables, addressed through $gp (see the Makefile) */
+ static s32 GFX_STARTED = 0;
+@@ -16,10 +13,6 @@
+  * finished buffer and ticks the music
+  */
+ void vsyncCallback(void) {
+-#if PORT_HOST
+-    /* One field tile per frame. Runs once per VSync, before the next update. */
+-    cdfs_poll();
+-#endif
+ #if VERSION_US
+     GFX.timeCounter += VSYNC_STEP_NTSC;
+     GFX.frameTimeCounter += VSYNC_STEP_NTSC;

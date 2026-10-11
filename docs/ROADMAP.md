@@ -431,8 +431,8 @@ speed.
   **Stock clocks (2026-10-11).** `v0.6.5-preview.6` raised the CPU to
   1785 MHz. That change is reverted. Do not call `clkrstSetClockRate` or
   `appletSetCpuBoostMode`. The CPU and GPU stay at the rate the console
-  set. Performance work is the sampled-rectangle upload, one field tile
-  per frame, and the raster, on those stock clocks. `eglSwapInterval`
+  set. Performance work is the sampled-rectangle upload, one fread of
+  the field map per area, and the raster, on those stock clocks. `eglSwapInterval`
   stays at 1, so present still waits for vsync. The vsync pump writes one
   `frame dt us=` line for the microseconds between samples 60 pumps
   apart. The first sample only stores the time. About 1000000 is 60 Hz.
@@ -446,9 +446,11 @@ speed.
   synchronisation objects`. The game continued. The failed object (mutex
   or event) is not identified. That defect is open and is not the
   map-preload work. `VSync(n>1) is not fully implemented` was logged once
-  and is the known partial path. The next load change is one `fread` of
-  the map file when the area opens, then copies from RAM. Movies stay at
-  150 sectors/s. See [STATIC_SD_LOAD.md](STATIC_SD_LOAD.md).
+  and is the known partial path. The port now preloads the map: one
+  `fread` on the first tile of that file id, later tiles copy from RAM,
+  and a different id replaces the buffer. Movies stay at 150 sectors/s.
+  That preload has not been timed on the OLED. See
+  [STATIC_SD_LOAD.md](STATIC_SD_LOAD.md).
 - [ ] **P5.3 Save handling.** The port's own save on owner storage, plus
   sleep/exit safety (flush on `appletMainLoop` exit). The running game
   does not import or export emulator memory cards. That interchange is an

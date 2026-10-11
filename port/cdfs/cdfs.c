@@ -22,8 +22,11 @@ static char g_root[CDFS_ROOT_MAX];
 static CdfsEntry *g_entries;
 static size_t g_count;
 static size_t g_cap;
-/* One field tile has been read this frame. Cleared by cdfs_poll. */
-static int g_field_tile_busy;
+/* One field-map file. A different id replaces it. Freed on shutdown. */
+static int g_map_loaded;
+static uint32_t g_map_id;
+static unsigned char *g_map_buf;
+static size_t g_map_len;
 
 static void entries_clear(void) {
     free(g_entries);
@@ -32,10 +35,18 @@ static void entries_clear(void) {
     g_cap = 0;
 }
 
+static void map_release(void) {
+    free(g_map_buf);
+    g_map_buf = NULL;
+    g_map_len = 0;
+    g_map_id = 0;
+    g_map_loaded = 0;
+}
+
 void cdfs_shutdown(void) {
     entries_clear();
+    map_release();
     g_root[0] = '\0';
-    g_field_tile_busy = 0;
 }
 
 int cdfs_set_root(const char *root) {
@@ -678,22 +689,90 @@ int cdfs_read_at(uint32_t id, void *buf, size_t offset, size_t len) {
     return (int)n;
 }
 
-int cdfs_field_tile_busy(void) { return g_field_tile_busy; }
+/* One fopen of this id. Later tiles of the same id copy from g_map_buf. */
+static int map_load(uint32_t id) {
+    const CdfsEntry *e;
+    char path[CDFS_ROOT_MAX + CDFS_PATH_MAX];
+    FILE *fp;
+    long sz;
+    unsigned char *buf;
+    size_t n;
 
-int cdfs_read_field_tile(uint32_t id, void *buf, size_t offset, size_t len) {
-    int n;
-
-    if (g_field_tile_busy) {
+    e = find_entry(id);
+    if (e == NULL) {
         return -1;
     }
-    n = cdfs_read_at(id, buf, offset, len);
-    if (n < 0) {
-        return n;
+    if (join_path(path, sizeof(path), e->path) != 0) {
+        return -1;
     }
-    /* Bytes are in buf. Stay busy so the decomp loop does not start
-     * another tile before the next frame. */
-    g_field_tile_busy = 1;
-    return n;
+    fp = fopen(path, "rb");
+    if (fp == NULL) {
+        return -1;
+    }
+    if (fseek(fp, 0, SEEK_END) != 0) {
+        fclose(fp);
+        return -1;
+    }
+    sz = ftell(fp);
+    if (sz < 0 || (unsigned long)sz > 0xFFFFFFFFul) {
+        fclose(fp);
+        return -1;
+    }
+    if (fseek(fp, 0, SEEK_SET) != 0) {
+        fclose(fp);
+        return -1;
+    }
+    buf = (unsigned char *)malloc((size_t)sz == 0 ? 1 : (size_t)sz);
+    if (buf == NULL) {
+        fclose(fp);
+        return -1;
+    }
+    n = 0;
+    if (sz > 0) {
+        n = fread(buf, 1, (size_t)sz, fp);
+    }
+    fclose(fp);
+    if (n != (size_t)sz) {
+        free(buf);
+        return -1;
+    }
+    map_release();
+    g_map_buf = buf;
+    g_map_len = (size_t)sz;
+    g_map_id = id;
+    g_map_loaded = 1;
+    return 0;
+}
+
+static int map_hold(uint32_t id) {
+    if (g_map_loaded && g_map_id == id) {
+        return 0;
+    }
+    return map_load(id);
+}
+
+int cdfs_read_field_tile(uint32_t id, void *buf, size_t offset, size_t len) {
+    size_t want;
+
+    if (buf == NULL) {
+        return -1;
+    }
+    if (len == 0) {
+        return 0;
+    }
+    if (map_hold(id) != 0) {
+        return -1;
+    }
+    memset(buf, 0, len);
+    if (offset >= g_map_len) {
+        return 0;
+    }
+    want = len;
+    if (offset + want > g_map_len) {
+        want = g_map_len - offset;
+    }
+    memcpy(buf, g_map_buf + offset, want);
+    return (int)want;
 }
 
 int cdfs_join_root(const char *rel, char *out, size_t outlen) {
@@ -778,5 +857,5 @@ int cdfs_lookup_lba(uint32_t lba, uint32_t *id_out, char *relpath_out,
 }
 
 void cdfs_poll(void) {
-    g_field_tile_busy = 0;
+    /* The one-tile hold is gone. Kept so older callers still link. */
 }

@@ -23,18 +23,23 @@ reader is a file. The delivery is still one sector at a time.
 
 ## What still imitates a CD
 
-The decomp still calls `CD_READER`. On the host, patches `0009`, `0031`,
-and `0041` finish the copy before `readFile` returns and leave the reader
-idle, except for one case.
+The decomp still calls `CD_READER`. On the host, patches `0009` and `0031`
+finish the copy before `readFile` returns and leave the reader idle.
+Patch `0041` was the preview.7 exception: one field tile per frame.
+Patch `0042` removes that hold. Movies still imitate a CD.
 
-Field tiles. `FIELDSTG_seekStream` (`vendor/dw3_decomp/src/field/field_mode/stream.c`)
-is the only caller that passes a non-NULL `done` pointer.
-`cdfs_read_field_tile` copies the tile and sets `g_field_tile_busy`.
-`isCdReading` stays true until `cdfs_poll`, which `vsyncCallback` calls
-once per VSync. That is why preview.7 issues one tile per frame. The bytes
-are already in RAM; the flag only blocks the next `fread`. Without the
-flag, one frame used to open the map file once per visible tile, up to
-about 30 times, and walking hitched.
+Field tiles, on preview.7. `FIELDSTG_seekStream`
+(`vendor/dw3_decomp/src/field/field_mode/stream.c`) is the only caller
+that passes a non-NULL `done` pointer. That build's `cdfs_read_field_tile`
+copied the tile and set `g_field_tile_busy`. `isCdReading` stayed true
+until `cdfs_poll`, which `vsyncCallback` called once per VSync. That is
+why preview.7 issues one tile per frame. The bytes were already in RAM;
+the flag only blocked the next `fread`. Without the flag, and without a
+resident map, one frame used to open the map file once per visible tile,
+up to about 30 times, and walking hitched.
+
+This branch drops that flag. The first tile of a file id reads the whole
+map once. Later tiles copy from that buffer. See the minimal step below.
 
 Movies and XA. `STDWTITL_readStream` fills a 32-sector ring.
 `dw3_str_cd_read_cb` reads the static `.STR` by LBA. `Psyz_CdPumpStream`
@@ -47,7 +52,7 @@ and that pass only checks the size.
 
 ## What can drop the CD model
 
-Field, yes. Preload the whole map file once, when the area opens. Tile
+Field, yes, and this branch does it. Preload the whole map file once, when the area opens. Tile
 reads become a copy from that buffer, `*done = 1`, reader idle on return.
 `FIELDSTG_requestTiles` may then copy every visible tile in the same call.
 Those copies are into buffers the streamer already allocated. The SD is
@@ -72,6 +77,11 @@ copies `offset * 2048` from that buffer. Remove `g_field_tile_busy`.
 pace (the VSync hook and the one inside `FILE_CACHE.load`). Header and
 cache reads stay on `cdfs_read_at`. The decomp is unchanged. Movie pace
 is unchanged.
+
+**Status.** That minimal step is the code on this branch. The first
+tile read of an id does the one `fread` (there is no separate map-open
+hook that can see the id without that read). Preview.7 stays the
+one-tile pace. This branch has not been timed on the OLED.
 
 **Later.** Ordinary file reads use a byte offset. LBA stays inside the
 movie callback. `files_us.json` and the numeric id stay, because the
