@@ -26,7 +26,9 @@ Checkboxes: [docs/ROADMAP.md](docs/ROADMAP.md). Phase 3 gate:
 | 4 | Gate met on hardware for title, field, and battle. P4.2, P4.4, and P4.7 are ticked. Still open: P4.3 underrun count, the P4.5 CDFS suite, and the P4.6 overlay sweep. |
 | 5 to 10 | Phase 5 is open. P5.2 is the 16.7 ms bar (soft battle default ON after all-black mesh dumps; field mesh gated). P5.3 flat `saveN.bin` + deferred flush landed; OLED MC1→MC2 save PASS and STGMCARD 100-frame bar owner-confirmed on load ([P5.3_FLAT_SAVE](docs/P5.3_FLAT_SAVE.md)). HOME/`appletMainLoop` quit flush still open. P6.5 packaging is done and does not start Phase 6. Phases 6 through 10 otherwise have not started. P7.1, P8.1, P9.1, and P10.1 are early notes. See [SWITCH_FEATURES](docs/SWITCH_FEATURES.md). |
 
-Layering: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+Layering: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). OLED network notes:
+[docs/SWITCH_OLED_NETWORK.md](docs/SWITCH_OLED_NETWORK.md) (FTP verified;
+NXLink listener reachable, protocol transfer not verified).
 
 ### On an OLED, 2026-10-11
 
