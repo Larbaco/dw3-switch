@@ -53,11 +53,12 @@ Install your own disc data
 
     [init_paths] cdfs root=sdmc:/switch/dw3/us
 
-Known gap on this build
+Picture
 
-  Menus are cropped to 256 pixels wide. The fix is pull request 45
-  (https://github.com/Larbaco/dw3-switch/pull/45) and is not in main yet.
-  This preview is cut from main, so it still has the crop.
+  A release cut from current main shows the title at the display-mode
+  width and the opening movie at full height (4:3, side bars only).
+  v0.6.5-preview.1 was cut earlier, from main before that picture work.
+  That file still crops the title to 256 pixels and freezes the movie.
 
 Digimon and Digimon World are trademarks of their owners. This is an
 unofficial fan project. It is not affiliated with Bandai Namco or Nintendo.

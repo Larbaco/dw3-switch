@@ -104,9 +104,9 @@ The running game reads the owner's US files from `sdmc:/switch/dw3/us`
 [docs/DISC_SETUP.md](../../docs/DISC_SETUP.md) and
 [docs/RUNTIME_LAYOUT.md](../../docs/RUNTIME_LAYOUT.md).
 
-Menus on current `main` are cropped to 256 pixels wide. The fix is
-[pull request #45](https://github.com/Larbaco/dw3-switch/pull/45) and is
-not in this tree yet.
+The title blit width follows the display mode (320, not the 256-wide
+horizontal range). That landed with the movie present and the 4:3
+full-height fit in pull request #53.
 
 ## PSY-Z backend (Phase 4)
 
