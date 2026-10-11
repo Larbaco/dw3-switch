@@ -1,7 +1,9 @@
 # port/memcard — 128 KiB PS1 `.mcr` host backend
 
-Persists each memory-card **slot** as a raw 128 KiB PlayStation card image
-on disk so saves stay DuckStation-importable.
+Persists each memory-card **slot** as a raw 128 KiB image because the
+decomp still speaks the card API. The running port does not import or
+export emulator cards. Interchange with DuckStation or another emulator
+is an external tool, roadmap P9.6, and it is not linked into the game.
 
 ## On-disk layout
 
@@ -11,8 +13,9 @@ on disk so saves stay DuckStation-importable.
 | 1 (port B / `bu10`) | `memcard1.mcr` |
 
 - Size: **131072** bytes (1024 × 128-byte frames).
-- Format: raw PS1 card image. A DuckStation `.mcd` of 131072 bytes is the
-  same image as `memcard0.mcr` (no DexDrive / VGS wrapper, no conversion).
+- Format: raw 131072-byte card image, no DexDrive / VGS wrapper. That is
+  the file this library writes today. Opening it in an emulator is P9.6,
+  a separate tool, not a job of this library.
 - Fresh images use the DuckStation-style empty format: `"MC"` header frame,
   free directory frames, broken-sector list, write-test frame; data area
   filled with `0xFF`.

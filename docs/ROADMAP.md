@@ -449,9 +449,10 @@ speed.
   and is the known partial path. The next load change is one `fread` of
   the map file when the area opens, then copies from RAM. Movies stay at
   150 sectors/s. See [STATIC_SD_LOAD.md](STATIC_SD_LOAD.md).
-- [ ] **P5.3 Save handling.** Card images under `sdmc:/switch/dw3/saves/`,
-  import/export of `.mcr`, sleep/exit safety (flush on `appletMainLoop`
-  exit).
+- [ ] **P5.3 Save handling.** The port's own save on owner storage, plus
+  sleep/exit safety (flush on `appletMainLoop` exit). The running game
+  does not import or export emulator memory cards. That interchange is an
+  external tool, P9.6.
   **Preview.4 OLED observation (2026-10-11):** the owner reports creating new
   saves on both memory cards; nxlink logged memcard writes. Reopening/loading
   those saves after restart was not tested, and save import/export and exit
@@ -462,8 +463,8 @@ speed.
   the high byte of that slot's partner index. The slot list then indexed
   past `STGMCARD_partnerIcons`. Data frames now keep that byte. On the
   `32989c3` `.nro` the same day, the owner saved and loaded slot 2.
-  Import/export and exit flush stay open.
-  Done when: a PS1 save imported on Switch continues the game.
+  Exit flush stays open. Emulator card conversion is P9.6, not this task.
+  Done when: a save this port wrote loads after a clean exit and a relaunch.
 - [ ] **P5.4 Error reporting.** Crash handler that writes a log + last
   mode/stage id to SD; assert overlay.
   Done when: a forced fault produces a readable report.
@@ -660,8 +661,16 @@ persistence on owner storage. Details: [PORT_OPTIONS.md](PORT_OPTIONS.md).
   explicitly documented as N/A. Evolves with the roadmap; does **not**
   require all of P6–P8 complete for the Phase 9 gate.
 
+- [ ] **P9.6 External save converter — later.** A tool under `tools/`, not
+  linked into the game, converts between this port's save file and a raw
+  PlayStation memory-card image. The port runtime does not do that
+  conversion. This item does not block the Phase 9 gate and may land
+  after Phase 9.
+  Done when: the tool reads a port save and writes a 128 KiB card image,
+  and the reverse, without the game calling it.
+
 Gate: P9.2 + P9.4 with at least one persistent toggle (stub or real).
-P9.5 stays best-effort as features ship.
+P9.5 stays best-effort as features ship. P9.6 does not block the gate.
 
 ## Phase 10 — Native Switch features (residual)
 
