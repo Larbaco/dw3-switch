@@ -348,6 +348,12 @@ console.
   HD rumble (optional).
   Done when: title and field controls work with Joy-Con and Pro
   Controller.
+  **Status (2026-10-11):** the Switch host publishes `PSYZ_CTRL_ANALOG_PAD`
+  (`0x73`) and maps the left stick through a centre dead zone of 8192.
+  D-pad, buttons, Start and Select stay in the button word. Rumble is
+  still the P10.4 stub. **Not ticked:** Joy-Con and Pro Controller are
+  not both proven on hardware, and the OLED retest of the stick is still
+  open. See `docs/P4.4_INPUT_STATUS.md`.
 - [ ] **P4.5 Filesystem + log + time.** `romfs:`/`sdmc:` for the runtime
   layout from P1.6, nxlink/stdout logging, `VSync`/`RCnt` timing.
   Done when: P2.5's cdfs tests pass on hardware against the SD layout.
@@ -385,8 +391,9 @@ console.
   several map transitions, a working battle, and game audio sounding perfect.
   The main menu picture looks right. The visual errors are in the opening
   video, and they remain after the STR rewrite. The analog stick has no
-  function. New saves were created on both memory cards, but loading
-  them after restart remains untested. Deleting `us/` stopped the
+  function in that build (`kind=0x41`). The host now publishes the left
+  stick; the OLED retest is still open (P4.4). New saves were created
+  on both memory cards, but loading them after restart remains untested. Deleting `us/` stopped the
   game from booting, confirming the extracted runtime is still required; startup
   extraction of the complete runtime from BIN is only a desired follow-up and
   was not implemented. See `docs/P3.7_MOVIES.md` and

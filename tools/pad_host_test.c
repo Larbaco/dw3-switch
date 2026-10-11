@@ -18,6 +18,8 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "nx_stick.h"
+
 enum { BUF_LEN = 34 };
 
 static char g_frames[2][BUF_LEN];
@@ -185,9 +187,47 @@ int main(void) {
     CHECK(PadSetMainMode(0, 2, 3) == 0, "PadSetMainMode offs=2 (past table) accepted");
     CHECK(PadSetMainMode(0x10, 0, 3) == 0, "PadSetMainMode on disconnected port 1 accepted");
 
+    /* Left stick: host dead zone, then the decomp's STICK_LOW / STICK_HIGH.
+     * A centred or drifting-under-8192 sample stays at 0x80, so it does not
+     * walk. Full deflection still crosses 0x40 / 0xC0. Y positive is up. */
+    CHECK(dw3_nx_stick_axis(0, 0) == 0x80, "rest X=%d", dw3_nx_stick_axis(0, 0));
+    CHECK(dw3_nx_stick_axis(DW3_NX_STICK_DEADZONE - 1, 0) == 0x80,
+          "drift +%d X=%d", DW3_NX_STICK_DEADZONE - 1,
+          dw3_nx_stick_axis(DW3_NX_STICK_DEADZONE - 1, 0));
+    CHECK(dw3_nx_stick_axis(-(DW3_NX_STICK_DEADZONE - 1), 1) == 0x80,
+          "drift -%d Y=%d", DW3_NX_STICK_DEADZONE - 1,
+          dw3_nx_stick_axis(-(DW3_NX_STICK_DEADZONE - 1), 1));
+    CHECK(dw3_nx_stick_axis(DW3_NX_STICK_DEADZONE, 0) == 0x9F,
+          "deadzone edge X=%d want 0x9F",
+          dw3_nx_stick_axis(DW3_NX_STICK_DEADZONE, 0));
+    CHECK(dw3_nx_stick_axis(DW3_NX_STICK_DEADZONE, 0) > 0x40 &&
+              dw3_nx_stick_axis(DW3_NX_STICK_DEADZONE, 0) < 0xC0,
+          "deadzone edge must not walk");
+    CHECK(dw3_nx_stick_axis(-DW3_NX_STICK_DEADZONE, 0) == 0x61,
+          "deadzone edge -X=%d want 0x61",
+          dw3_nx_stick_axis(-DW3_NX_STICK_DEADZONE, 0));
+    CHECK(dw3_nx_stick_axis(DW3_NX_STICK_AXIS_MAX, 0) == 0xFF,
+          "full right=%d", dw3_nx_stick_axis(DW3_NX_STICK_AXIS_MAX, 0));
+    CHECK(dw3_nx_stick_axis(-DW3_NX_STICK_AXIS_MAX, 0) == 0x01,
+          "full left=%d", dw3_nx_stick_axis(-DW3_NX_STICK_AXIS_MAX, 0));
+    CHECK(dw3_nx_stick_axis(DW3_NX_STICK_AXIS_MAX, 1) == 0x01,
+          "full up=%d", dw3_nx_stick_axis(DW3_NX_STICK_AXIS_MAX, 1));
+    CHECK(dw3_nx_stick_axis(-DW3_NX_STICK_AXIS_MAX, 1) == 0xFF,
+          "full down=%d", dw3_nx_stick_axis(-DW3_NX_STICK_AXIS_MAX, 1));
+    CHECK(dw3_nx_publish_kind(PSYZ_CTRL_DIGITAL_PAD) == PSYZ_CTRL_ANALOG_PAD,
+          "digital kind was not published as analog");
+    CHECK(dw3_nx_publish_kind(PSYZ_CTRL_ANALOG_STICK) == PSYZ_CTRL_ANALOG_PAD,
+          "ANALOG_STICK kind was not normalised");
+    CHECK(dw3_nx_publish_kind(PSYZ_CTRL_ANALOG_PAD) == PSYZ_CTRL_ANALOG_PAD,
+          "ANALOG_PAD kind changed");
+    CHECK(dw3_nx_publish_kind(PSYZ_CTRL_DISCONNECTED) == PSYZ_CTRL_DISCONNECTED,
+          "disconnect was rewritten");
+
     printf("OK: PadGetState=%d CurExID=%d pressed=0x%04x (Start)\n", state, mode,
            (unsigned)pressed);
     printf("OK: mode table digital ExOffs=0 analog ExOffs=1; "
            "PadSetMainMode switches the published kind and rejects bad args\n");
+    printf("OK: left stick deadzone=%d kind 0x41/0x53 -> 0x73\n",
+           DW3_NX_STICK_DEADZONE);
     return 0;
 }

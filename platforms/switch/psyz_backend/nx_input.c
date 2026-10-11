@@ -13,6 +13,7 @@
  *   Switch Y (west)  -> PS1 Square   (left)    PADRleft
  */
 #include "nx.h"
+#include "nx_stick.h"
 
 #include <string.h>
 
@@ -32,6 +33,9 @@ static PadState s_pad;
 
 void dw3_nx_input_init(void) {
     psyz_log(1, "nx_input.c", __LINE__, __func__, "padConfigureInput");
+    /* NpadStandard is Pro (FullKey), a Joy-Con pair in the rails
+     * (Handheld), and a Joy-Con pair off the rails (JoyDual).
+     * padInitializeDefault reads player 1 and Handheld. */
     padConfigureInput(1, HidNpadStyleSet_NpadStandard);
     padInitializeDefault(&s_pad);
 }
@@ -95,22 +99,6 @@ static u_long held_buttons(u64 k) {
     return pressed;
 }
 
-/* hid reports a signed stick; PS1 wants 0..0xFF around 0x80, with Y inverted. */
-static int stick_axis(int32_t value, int invert) {
-    int scaled = 0x80 + (int)(((int64_t)value * 127) / 32767);
-
-    if (invert) {
-        scaled = 0x100 - scaled;
-    }
-    if (scaled < 0) {
-        scaled = 0;
-    }
-    if (scaled > 0xFF) {
-        scaled = 0xFF;
-    }
-    return scaled;
-}
-
 void MyPadInit(int mode) {
     (void)mode;
     dw3_nx_input_init();
@@ -146,19 +134,24 @@ void Psyz_PadsPoll(void) {
         }
     }
     pressed = held_buttons(padGetButtons(&s_pad));
-    stick = padGetStickPos(&s_pad, 0);
+    /* Left stick of whichever style libnx merged into sticks[0]. See
+     * nx_stick.h. The d-pad, face buttons, Start and Select stay in
+     * `pressed` and are written below even when this stick is centred. */
+    stick = padGetStickPos(&s_pad, DW3_NX_LEFT_STICK);
 
-    /* The game picks the controller kind through PadInfoMode/PadSetMainMode;
-     * ask PSY-Z what it wants rather than assuming. PSY-Z/libapi defaults every
-     * port to PSYZ_CTRL_DIGITAL_PAD. */
+    /* PSY-Z/libapi defaults every port to DIGITAL_PAD. readPadButtons only
+     * turns the left stick into d-pad bits for ANALOG_PAD, so a connected
+     * Switch pad is published as that kind. PadSetMainMode can still select
+     * digital; the next poll puts analog back, because that is the mode the
+     * stick needs. Disconnect is not rewritten. */
     kind = Psyz_PadsSetKind(0, 0, PSYZ_CTRL_QUERY_KIND);
-    /* The decomp only recognises a controller whose kind's high nibble is 4 or
-     * 7 (PAD_ID_DIGITAL / PAD_ID_ANALOG in vendor/dw3_decomp engine/pad/pad.h,
-     * tested by readPadButtons). PSY-Z's PSYZ_CTRL_ANALOG_STICK (0x53, high
-     * nibble 5) matches neither, so a Switch pad is reported as the analogous,
-     * recognised ANALOG_PAD (0x73) instead; the wire layout is identical. */
-    if (kind == PSYZ_CTRL_ANALOG_STICK) {
-        kind = PSYZ_CTRL_ANALOG_PAD;
+    {
+        PsyzControllerKind published = dw3_nx_publish_kind(kind);
+
+        if (published != kind) {
+            Psyz_PadsSetKind(0, 0, published);
+            kind = published;
+        }
     }
 
     memset(frame, 0, sizeof(frame));
@@ -171,12 +164,28 @@ void Psyz_PadsPoll(void) {
          * L1/R1) in wire byte 3, both active low. */
         frame[2] = (char)(~(pressed >> 8) & 0xFF);
         frame[3] = (char)(~pressed & 0xFF);
-        /* A Switch controller has one stick: it drives the PS1 left stick and
-         * the right one stays centred. */
+        /* Right stick stays centred. The left stick is the PS1 left stick:
+         * wire bytes 6 and 7, which the decomp reads as analog[2] and
+         * analog[3]. Y is inverted in dw3_nx_stick_axis. */
         frame[4] = (char)0x80;
         frame[5] = (char)0x80;
-        frame[6] = (char)stick_axis(stick.x, 0);
-        frame[7] = (char)stick_axis(stick.y, 1);
+        frame[6] = (char)dw3_nx_stick_axis(stick.x, 0);
+        frame[7] = (char)dw3_nx_stick_axis(stick.y, 1);
+        {
+            static int logged_stick;
+
+            /* Wait until libnx reports a style, so this one line is the
+             * controller model (Handheld / FullKey / JoyDual) and not the
+             * empty poll before the pad is connected. */
+            if (!logged_stick && padGetStyleSet(&s_pad) != 0) {
+                logged_stick = 1;
+                psyz_log(1, "nx_input.c", __LINE__, __func__,
+                         "left stick kind=0x%02x style=0x%x handheld=%d "
+                         "deadzone=%d",
+                         (unsigned)kind, (unsigned)padGetStyleSet(&s_pad),
+                         padIsHandheld(&s_pad) ? 1 : 0, DW3_NX_STICK_DEADZONE);
+            }
+        }
         break;
     case PSYZ_CTRL_DIGITAL_PAD:
         frame[2] = (char)(~(pressed >> 8) & 0xFF);
