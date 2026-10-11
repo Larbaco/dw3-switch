@@ -22,6 +22,8 @@ static char g_root[CDFS_ROOT_MAX];
 static CdfsEntry *g_entries;
 static size_t g_count;
 static size_t g_cap;
+/* One field tile has been read this frame. Cleared by cdfs_poll. */
+static int g_field_tile_busy;
 
 static void entries_clear(void) {
     free(g_entries);
@@ -33,6 +35,7 @@ static void entries_clear(void) {
 void cdfs_shutdown(void) {
     entries_clear();
     g_root[0] = '\0';
+    g_field_tile_busy = 0;
 }
 
 int cdfs_set_root(const char *root) {
@@ -675,6 +678,24 @@ int cdfs_read_at(uint32_t id, void *buf, size_t offset, size_t len) {
     return (int)n;
 }
 
+int cdfs_field_tile_busy(void) { return g_field_tile_busy; }
+
+int cdfs_read_field_tile(uint32_t id, void *buf, size_t offset, size_t len) {
+    int n;
+
+    if (g_field_tile_busy) {
+        return -1;
+    }
+    n = cdfs_read_at(id, buf, offset, len);
+    if (n < 0) {
+        return n;
+    }
+    /* Bytes are in buf. Stay busy so the decomp loop does not start
+     * another tile before the next frame. */
+    g_field_tile_busy = 1;
+    return n;
+}
+
 int cdfs_join_root(const char *rel, char *out, size_t outlen) {
     return join_path(out, outlen, rel);
 }
@@ -757,5 +778,5 @@ int cdfs_lookup_lba(uint32_t lba, uint32_t *id_out, char *relpath_out,
 }
 
 void cdfs_poll(void) {
-    /* Wave 1: reads complete synchronously inside cdfs_read. */
+    g_field_tile_busy = 0;
 }

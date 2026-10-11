@@ -16,8 +16,11 @@ root (`docs/RUNTIME_LAYOUT.md`), using the same JSON shape as
    and return **payload bytes as stored on disk** (byte-identical to the
    packed tree). The JSON `bytes` field is advisory; on-disk size wins.
 
-Wave 1 completion is **synchronous**: `cdfs_read` finishes before return.
-`cdfs_poll` is a no-op reserved for later `cdReadyCallback`-style async.
+`cdfs_read` and `cdfs_read_at` finish before they return. A field-map
+tile goes through `cdfs_read_field_tile`: the bytes are copied immediately,
+then the reader stays busy until `cdfs_poll`. `vsyncCallback` calls
+`cdfs_poll` once per VSync, so `FIELDSTG_requestTiles` starts one tile
+per frame. Full-file and offset-0 reads are not held.
 
 ## Out of scope
 
