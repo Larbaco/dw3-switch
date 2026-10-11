@@ -395,7 +395,19 @@ console.
   `nx_gpu.c` expands to opaque RGBA8888. The owner confirmed the decoded
   dump. The remaining menu offset was the present width: the horizontal
   range is 256 dot-clock tenths, and using it as the blit width cropped a
-  320-wide frame. The blit width now follows the display mode. No pad input
+  320-wide frame. The blit width now follows the display mode.
+  **Opening movie (Ryubing, 2026-10-10):** XA already played. The picture
+  froze because `DecDCTout` never raised the MDEC-out IRQ, so no slice reached
+  `LoadImage`, and the 24-bit buffer was still presented at the title's 240
+  lines. The Switch present now matches the PC path (DMA callback, RGB24
+  expand, quant/IDCT upload, slice stash). 24-bit mode presents 480 lines;
+  the title stays on the vertical range. After that, `StGetNext` could sit on
+  a body sector while the frame header was the previous slot, and the writer
+  blocked. The host wrapper steps back onto that header, or drops a leftover
+  tail and scans for the next ready frame. Guest log: `DecDCTout frame done`
+  through thousands of frames with changing signatures, present flips
+  `320x480`, then the attract loop returns to the title and starts the movie
+  again (Bandai card). Not ticked: done-when is still hardware. No pad input
   has been sent through it yet.
   See `docs/SWITCH_BACKEND.md` for the boot-stop evidence and the emulator
   logging traps.
