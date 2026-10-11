@@ -38,11 +38,14 @@ jobs:
           python3 -m pip install pytest
           python3 -m pytest tools/tests -v
 
+  # Makefile host_hello sample (EGL + audren). Not the game image.
+  # The game .nro is job switch-game below, and a Release only from
+  # .github/workflows/switch-release.yml.
   switch:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
-      - name: Build .nro in devkitA64
+      - name: Build sample .nro in devkitA64
         run: |
           docker run --rm \
             -e DEVKITPRO=/opt/devkitpro \
@@ -50,3 +53,24 @@ jobs:
             devkitpro/devkita64:latest \
             make -C platforms/switch
           test -f platforms/switch/dw3-switch.nro
+
+  switch-game:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: false
+      - name: Init game submodules
+        run: |
+          git submodule update --init vendor/dw3_decomp vendor/psyz
+          # nugget without --recursive: codeberg xmake-psx returns HTTP 429.
+          git -C vendor/psyz submodule update --init nugget external/SDL
+      - name: Build CMake game .nro
+        run: bash tools/build_switch_game.sh
+      - name: Upload game .nro artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: dw3-switch-game-nro
+          path: build/switch/dw3-switch.nro
+          if-no-files-found: error

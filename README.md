@@ -24,17 +24,19 @@ Details and checkboxes: [docs/ROADMAP.md](docs/ROADMAP.md). Gate honesty:
 |---|---|
 | **0–2** | **Done** — toolchains, disc→runtime pipeline, US title boot from decomp C ([P2.8](docs/P2.8_TITLE_BOOT.md)) |
 | **3** | **Gate met (US)** — full PC loop (field, battle, menus, card game, movies, SEP, stage sweep); start→Genji with documented aids. **P3.9** DuckStation compare harness **done** ([P3.9](docs/P3.9_REFERENCE.md)). **Open:** EU playthrough, pad-driven boss KO, PC [GPU/battle polish](docs/P3_GPU_GLITCHES.md), `WSTAG460` stub |
-| **4** | **In progress** — native libnx PSY-Z backend ([P4.1](docs/SWITCH_BACKEND.md)). **P4.7:** CMake game image **links** and reaches **US title** in Ryubing with owner SD layout (CPU rasterizer + GLES2 present; **not** P4 gate / hardware yet). CI still builds the smaller **host_hello** `.nro` (EGL + audren sample) via Makefile |
-| **5–10** | Playable Switch on hardware, packaging, port-options menu, optional QoL / texture packs / residual Switch UX ([SWITCH_FEATURES](docs/SWITCH_FEATURES.md)) |
+| **4** | **In progress** — native libnx PSY-Z backend ([P4.1](docs/SWITCH_BACKEND.md)). The CMake game image links. The title draws in Ryubing, and an OLED boot reached the main menu. The wider Phase 4 gate (field + battle) is still open. CI job `switch` builds the **host_hello** sample; job `switch-game` builds the game `.nro` |
+| **5–10** | Playable Switch, packaging, port-options menu, optional QoL / texture packs / residual Switch UX ([SWITCH_FEATURES](docs/SWITCH_FEATURES.md)). P6.5 own-disc packaging exists as prerelease [v0.6.5-preview.1](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.1). Phase 6 as a whole has not started |
 
 **Can you play on PC today?** Yes, with your **own US disc** packed to
 `runtime/us`: title through early story in `dw3-pc`. Expect rough visuals in
 some scenes; not a finished retail build.
 
-**Switch today?** Two binaries: (1) **host sample** — no game data, animates
-clear/present + audren. (2) **Game `.nro`** (CMake) — needs the P1.6 runtime
-on SD; title screen has been exercised in Ryubing with owner data; real hardware
-and pad-driven play are still Phase 4–5 work.
+**Switch today?** Two binaries. `make -C platforms/switch` is the homebrew
+sample, with no game loop. The CMake `.nro` is the game. It reads your files
+from `sdmc:/switch/dw3/us`. A GitHub Release of that `.nro` is deliberate
+(`workflow_dispatch` or a `v*` tag) and marked a preview. The release does
+not include disc data. The first preview still crops the title; current main
+does not.
 
 Layering: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
@@ -148,13 +150,39 @@ On WSL/NTFS mounts use `DW3_DK_TMPBUILD=/tmp/dw3-dk-build`.
 # → platforms/switch/dw3-switch.nro  (EGL present + audren hello)
 ```
 
-**Game image** (CMake — links Phase 3 + PSY-Z Switch backend; needs runtime on SD to play):
+This is the **combined EGL + audren** bring-up binary. CI job `switch`
+builds it. It is not the game.
+
+### Switch game `.nro` (CMake)
+
+`platforms/switch/CMakeLists.txt` links `source/boot_main.c`, which calls
+`dw3_game_main`. Output: `build/switch/dw3-switch.nro` (about 8.9 MB).
+CI job `switch-game` builds it on pull requests and uploads an Actions
+artifact. It does not open a Release. The full mount recipe is in
+[platforms/switch/README.md](platforms/switch/README.md).
 
 ```bash
-# Full docker/cmake recipe (worktree paths, read-only mount): platforms/switch/README.md
+git submodule update --init vendor/dw3_decomp vendor/psyz
+git -C vendor/psyz submodule update --init nugget external/SDL
+# do not --recursive nugget: codeberg xmake-psx returns HTTP 429
+bash tools/build_switch_game.sh
+# → build/switch/dw3-switch.nro
 ```
 
-Backend code: [platforms/switch/psyz_backend/](platforms/switch/psyz_backend/).
+A release is [`.github/workflows/switch-release.yml`](.github/workflows/switch-release.yml):
+`workflow_dispatch` with a `v*` tag, or a push of a `v*` tag. The dispatch
+button appears after the workflow is on `main`. The run publishes
+`dw3-switch.nro` and
+[`platforms/switch/release/README.txt`](platforms/switch/release/README.txt)
+as a **prerelease**. First one:
+[v0.6.5-preview.1](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.1)
+(8927429-byte game `.nro` and `README.txt` only). Copy the `.nro` to `sdmc:/switch/dw3-switch.nro`
+(Atmosphere + hbmenu). Copy your own packed US tree to
+`sdmc:/switch/dw3/us/` (`files_us.json`, `SLUS_014.36`, `boot_tim.bin`,
+`AAA/...`). EU later uses `sdmc:/switch/dw3/eu/`. The release contains
+no game bytes.
+
+Backend: [platforms/switch/psyz_backend/](platforms/switch/psyz_backend/).
 Boot evidence: [docs/SWITCH_BACKEND.md](docs/SWITCH_BACKEND.md).
 
 ## Repository layout

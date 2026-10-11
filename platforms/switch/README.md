@@ -37,8 +37,10 @@ image against PSY-Z for aarch64. It mirrors `platforms/pc/CMakeLists.txt` and
 reuses `port/CMakeLists.txt` verbatim (same `--whole-archive` overlay libs and
 `__start_dw3data_*` section keeps). The devkitPro Makefile above stays for the
 standalone bring-up sample. It globs `source/*.c` and `psyz_backend/*.c`, then
-filters out `boot_main.c`, `nx_input.c`, and `nx_present.c` — those three need
-PSY-Z, which this sample does not link. CI builds this Makefile `.nro` only.
+filters out `boot_main.c`, `nx_input.c`, and `nx_present.c`. Those three need
+PSY-Z, which this sample does not link. CI job `switch` builds this Makefile
+`.nro` only. Job `switch-game` builds the CMake game image and does not
+publish a Release.
 
 Cross-compile with devkitA64's toolchain file — the Makefile path needs
 `DEVKITPRO`; this one needs CMake inside the devkitPro image, which is what
@@ -72,13 +74,43 @@ Four things there are load-bearing and easy to trip over:
 - **Do not use a login shell** (`bash -l`): `/etc/profile` rewrites `PATH` and
   drops `devkitA64/bin`, which is where `aarch64-none-elf-nm` lives.
 
-Status (P4.7, rebuilt 2026-10-10 after rebase onto current `main`): the CMake
-target compiles, then the link **fails**. `source/boot_main.c` calls
-`dw3_game_main`, which pulls `libgpu.o`, and the link stops on 20 undefined
-`Draw_*` symbols (listed in [docs/SWITCH_BACKEND.md](../../docs/SWITCH_BACKEND.md)).
-There is no game `.elf` and no game `.nro` from this build. The Makefile path
-above is unchanged: it still links `source/main.c` (`host_hello`) and is the
-`.nro` CI builds. P4.7 stays open — no title on hardware.
+Status (P4.7): the CMake target links. `source/boot_main.c` calls
+`dw3_game_main`. `psyz_backend/switch_gpu.c` supplies the `Draw_*` entry
+points an earlier link stop was missing, and `nx_gpu.c` presents the
+software rasterizer. A clean build is about 1144 objects and an 8.9 MB
+`.nro` at `build/switch/dw3-switch.nro`. The title draws in Ryubing, and
+the owner has also launched a game `.nro` from hbmenu on an OLED Switch
+(main menu and a new game). That hardware file was built before the
+picture fix, so it still cropped the title. The first boot needs an empty
+`sdmc:/switch/dw3/us/memcard/` or it stops in `memcard_host_ensure()`.
+See [docs/SWITCH_BACKEND.md](../../docs/SWITCH_BACKEND.md) and
+[docs/RUNTIME_LAYOUT.md](../../docs/RUNTIME_LAYOUT.md).
+
+The Makefile path above is unchanged. It still links `source/main.c`
+(`host_hello`). CI job `switch` builds that sample. Release packaging
+does not publish it.
+
+The game `.nro` is this CMake target. `tools/build_switch_game.sh` is the
+command CI runs (ext4 checkout, `devkitpro/devkita64`, no login shell).
+Pull requests upload `build/switch/dw3-switch.nro` as the Actions artifact
+`dw3-switch-game-nro`. A GitHub Release is
+[`.github/workflows/switch-release.yml`](../../.github/workflows/switch-release.yml),
+on `workflow_dispatch` or a `v*` tag, marked a prerelease. `workflow_dispatch`
+shows up in the Actions UI only after that file is on `main`. A tag push
+runs it from the tagged commit. Assets are that `.nro` and
+[`release/README.txt`](release/README.txt). No disc data.
+
+First preview: [v0.6.5-preview.1](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.1)
+(`dw3-switch.nro`, 8927429 bytes, plus `README.txt`).
+
+The running game reads the owner's US files from `sdmc:/switch/dw3/us`
+(`DW3_DEFAULT_RUNTIME` in `source/boot_main.c`). Packing steps:
+[docs/DISC_SETUP.md](../../docs/DISC_SETUP.md) and
+[docs/RUNTIME_LAYOUT.md](../../docs/RUNTIME_LAYOUT.md).
+
+The title blit width follows the display mode (320, not the 256-wide
+horizontal range). That landed with the movie present and the 4:3
+full-height fit in pull request #53.
 
 ## PSY-Z backend (Phase 4)
 
