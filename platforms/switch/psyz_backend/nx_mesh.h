@@ -4,6 +4,7 @@
 #define DW3_NX_MESH_H
 
 #include <stdbool.h>
+#include <stddef.h>
 #include <stdint.h>
 
 #define DW3_NX_MESH_TPAGE_NOTEXTURE 0x8000u
@@ -59,6 +60,11 @@ uint64_t dw3_nx_mesh_prims_flushed(void);
  * rectangle (vx,vy,vw,vh) in window pixels. */
 void dw3_nx_mesh_present(int dx, int dy, int dw, int dh, int vx, int vy, int vw,
                          int vh);
+
+/* Read the mesh FBO display rect into tightly packed RGBA8888 (GL origin).
+ * Returns bytes written, or 0 on failure. */
+size_t dw3_nx_mesh_read_rect_rgba(int dx, int dy, int dw, int dh, uint8_t *dst,
+                                  size_t dst_cap);
 
 /* Drop the per-frame "had mesh" flag after present (FBO contents stay). */
 void dw3_nx_mesh_end_frame(void);

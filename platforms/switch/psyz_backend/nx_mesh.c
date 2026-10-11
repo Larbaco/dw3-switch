@@ -731,4 +731,34 @@ void dw3_nx_mesh_present(int dx, int dy, int dw, int dh, int vx, int vy, int vw,
     glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 }
 
+size_t dw3_nx_mesh_read_rect_rgba(int dx, int dy, int dw, int dh, uint8_t *dst,
+                                  size_t dst_cap) {
+    GLint prev_fbo = 0;
+    size_t need;
+    GLenum err;
+
+    if (!s_ready || !dst || dw <= 0 || dh <= 0) {
+        return 0;
+    }
+    if (dx < 0 || dy < 0 || dx + dw > DW3_NX_VRAM_W || dy + dh > DW3_NX_VRAM_H) {
+        return 0;
+    }
+    need = (size_t)dw * (size_t)dh * 4u;
+    if (dst_cap < need) {
+        return 0;
+    }
+    glGetIntegerv(GL_FRAMEBUFFER_BINDING, &prev_fbo);
+    glBindFramebuffer(GL_FRAMEBUFFER, s_mesh_fbo);
+    glPixelStorei(GL_PACK_ALIGNMENT, 1);
+    while (glGetError() != GL_NO_ERROR) {
+    }
+    glReadPixels(dx, dy, dw, dh, GL_RGBA, GL_UNSIGNED_BYTE, dst);
+    err = glGetError();
+    glBindFramebuffer(GL_FRAMEBUFFER, (GLuint)prev_fbo);
+    if (err != GL_NO_ERROR) {
+        return 0;
+    }
+    return need;
+}
+
 void dw3_nx_mesh_end_frame(void) { s_had_content = false; }
