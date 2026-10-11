@@ -51,6 +51,7 @@ typedef struct CdfsMapInfo {
     uint32_t lba;
     uint32_t sectors;
     uint32_t form;
+    uint32_t bytes; /* JSON byte length; 0 if the map omitted it */
 } CdfsMapInfo;
 
 /* Call fn for each map entry. fn returns non-zero to stop. Returns 0, or the

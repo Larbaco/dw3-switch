@@ -23,9 +23,10 @@ Wave 1 completion is **synchronous**: `cdfs_read` finishes before return.
 
 - PSY-Z `libcd` / `St*` **STR movie streaming** (keep that on the sector
   path).
-- Re-encoding Mode-2/2352 sectors; this layer serves already-extracted
-  user-data files from the P1.6 pack layout. See `docs/CDFS_NOTES.md`
-  (sector fidelity checklist for owner tests).
+- Re-encoding inside `cdfs_read`. That call serves files already stored
+  under the runtime root. `runtime_extract.c` is the US boot path that
+  fills the root from a Mode2/2352 BIN (Form-1 user data, raw Form-2
+  `.STR`). See `docs/RUNTIME_LAYOUT.md`.
 
 ## Build (tiny host CLI)
 

@@ -156,7 +156,9 @@ is the earlier 8927429-byte file. It still crops the title and freezes
 the movie.
 
 The running game reads the owner's US files from `sdmc:/switch/dw3/us`
-(`DW3_DEFAULT_RUNTIME` in `source/boot_main.c`). Packing steps:
+(`DW3_DEFAULT_RUNTIME` in `source/boot_main.c`). If that directory is
+missing, US boot extracts it from the Mode2 BIN/CUE in the parent folder.
+Packing steps:
 [docs/DISC_SETUP.md](../../docs/DISC_SETUP.md) and
 [docs/RUNTIME_LAYOUT.md](../../docs/RUNTIME_LAYOUT.md).
 
