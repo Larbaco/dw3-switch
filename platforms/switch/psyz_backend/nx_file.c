@@ -15,13 +15,19 @@
 
 #include <switch.h>
 
-/* Kept in sync with DW3_DEFAULT_RUNTIME in source/main.c. */
+/* Parent of the version root that source/boot_main.c resolves as
+ * DW3_DEFAULT_RUNTIME (sdmc:/switch/dw3/<ver>/); see docs/RUNTIME_LAYOUT.md. */
 #define DW3_NX_SD_DIR "sdmc:/switch/dw3"
 
 bool dw3_nx_fs_mount_sd(void) {
     Result rc = fsdevMountSdmc();
 
-    if (R_FAILED(rc)) {
+    /* fsdevMountSdmc() "initializes and mounts the sdmc device if accessible",
+     * and mounting a device that is already mounted fails. That is not a reason
+     * to report the runtime root unreachable: hbmenu, another homebrew or a
+     * re-entry can have mounted sdmc: first, and then the paths resolve fine.
+     * The devoptab is the source of truth, not the Result. */
+    if (R_FAILED(rc) && fsdevGetDeviceFileSystem("sdmc") == NULL) {
         return false;
     }
     /* EEXIST is the normal case on a second run. */

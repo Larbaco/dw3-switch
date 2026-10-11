@@ -368,8 +368,9 @@ console.
   (NintendoSwitch, no SDL). `psyz_backend/` supplies `psyz_log`, `Psyz_Os*`,
   pad, `Psyz_VideoVSync`, and the `__wrap_*` hooks. `source/boot_main.c` is the
   CMake `main()` and calls `dw3_game_main`. The devkitPro Makefile still builds
-  `source/main.c` (`host_hello`: EGL + audren sample); that is the `.nro` CI
-  produces.
+  `source/main.c` (`host_hello`: EGL + audren sample); that is the `.nro`
+  CI job `switch` produces. Job `switch-game` builds the CMake game image
+  and does not publish it. A GitHub Release of that image is P6.5.
   **Link: it links.** 1144 objects, 0 undefined symbols, 17.4 MB `.elf` →
   8.9 MB `.nro`. The 20 undefined `Draw_*` symbols are gone:
   `psyz_backend/switch_gpu.c` forwards them to PSY-Z's in-tree CPU rasterizer
@@ -390,23 +391,45 @@ console.
   pulls CD samples, which re-takes it). Fixed by making it an `RMutex` — six
   lines in `nx_audio.c`. The boot-stop trace and the full reasoning are in
   `docs/SWITCH_BACKEND.md`.
+  The speckle was the GLES2 upload reading RGB555 backwards; `nx_gpu.c`
+  expands to opaque RGBA8888. The owner confirmed the decoded dump. The menu
+  offset was the present width: the horizontal range is 256 dot-clock tenths,
+  and using it as the blit width cropped a 320-wide frame. The blit width now
+  follows the display mode.
+  **Opening movie (Ryubing, 2026-10-10):** XA already played. The picture
+  froze because `DecDCTout` never raised the MDEC-out IRQ, so no slice reached
+  `LoadImage`, and the 24-bit buffer was still presented at the title's 240
+  lines. The Switch present now matches the PC path (DMA callback, RGB24
+  expand, quant/IDCT upload, slice stash). 24-bit mode presents 480 lines;
+  the title stays on the vertical range. After that, `StGetNext` could sit on
+  a body sector while the frame header was the previous slot, and the writer
+  blocked. The host wrapper steps back onto that header, or drops a leftover
+  tail and scans for the next ready frame. Guest log: `DecDCTout frame done`
+  through thousands of frames with changing signatures, present flips
+  `320x480`, then the attract loop returns to the title and starts the movie
+  again (Bandai card).
+  **Present aspect:** the viewport uses PSY-Z's display-range aspect
+  (`(4/3) * (horiz/256) / (vert/240)`), the same rule as the PC host. The
+  sampled rectangle for the movie is the 416-line picture at VRAM y=36
+  (the 480-line display has blank lines above and below it). The title uses
+  the display-mode width. That pixel ratio is not the shape on screen. On a
+  docked 1920×1080 surface the picture is 4:3 at full height, with side bars
+  only. A Ryubing window set to 21:9 still shrinks that framebuffer and adds
+  bars at the top and bottom. That is the emulator aspect, not a crop in the
+  port.
   **OLED hardware smoke (2026-10-10/11):** the owner installed the US runtime
-  and launched the CMake game NRO from hbmenu. The first attempt exited at
+  and launched a CMake game `.nro` from hbmenu. The first attempt exited at
   `memcard_host_ensure()` because `sdmc:/switch/dw3/us/memcard/` was absent;
   the log had already reached the SD runtime root and `Psyz_AudioInit OK`.
   Creating the empty directory allowed launch. The owner then confirmed the
-  game reached the main menu and loaded a new game correctly on the OLED.
-  The tested NRO was built from current `main` plus the P4.4/P4.5 commits in a
-  temporary tree (1144/1144 CMake targets; 8.9 MB NRO). The file-map/runtime
-  data came from the owner's US CUE/BIN and was not added to git. The earlier
-  display speckle was traced to RGB555 upload order; `nx_gpu.c` expands pixels
-  to opaque RGBA8888, and the decoded dump was confirmed by the owner.
-  **P4.7 title-screen done-when is met on hardware.** The wider Phase 4 gate
-  (title + field + battle) is not yet established. P4.4's Joy-Con and Pro
-  Controller checks and P4.5's cdfs test suite against SD still need explicit
-  evidence; P4.6 overlay switching on hardware also remains unverified. See
-  `docs/RUNTIME_LAYOUT.md` for the required memory-card directory and
-  `docs/SWITCH_BACKEND.md` for the boot-stop evidence and emulator logging traps.
+  game reached the main menu and loaded a new game on the OLED. That `.nro`
+  was `main` plus the P4.4/P4.5 commits, before the picture fix, so it still
+  cropped the title and froze the movie. The runtime came from the owner's
+  US disc and was not added to git. P4.4's Joy-Con and Pro Controller checks,
+  P4.5's cdfs suite against SD, and P4.6 overlay switching on hardware are
+  still open. See `docs/RUNTIME_LAYOUT.md` for the memory-card directory and
+  `docs/SWITCH_BACKEND.md` for the boot-stop evidence and emulator logging
+  traps.
 
   **Gate:** title + field + battle on a Switch. **Not yet met:** this smoke
   confirms main menu and new-game loading, but not field and battle playthrough.
@@ -444,8 +467,34 @@ is an explicit project goal in this phase, not during bring-up.
   `CNTY_SEL`.
 - [ ] **P6.3** PGXP-style vertex precision from PSY-Z if it stays stable.
 - [ ] **P6.4** Fast-forward / frame-skip toggles for grinding (optional).
-- [ ] **P6.5** Release packaging: `.nro` + `README` for own-disc setup;
+- [x] **P6.5** Release packaging: `.nro` + `README` for own-disc setup;
   never ship data.
+  Done when: a deliberate GitHub Release (`workflow_dispatch` or a `v*`
+  tag) attaches the CMake game `.nro` (`build/switch/dw3-switch.nro`,
+  `source/boot_main.c` calling `dw3_game_main`) and
+  `platforms/switch/release/README.txt`, and those assets contain no
+  disc, BIOS, or extracted game files.
+  **Status (2026-10-10):** this task only, started before the Phase 5
+  gate because the owner asked. Phase 6 has not started. P6.1–P6.4 and
+  P6.6+ are untouched. P4.7 stays open. Its done-when is still the title
+  on hardware, not a GitHub Release.
+  `.github/workflows/switch-release.yml` builds that game `.nro` in
+  `devkitpro/devkita64` and publishes a prerelease. CI job `switch` in
+  `ci.yml` still builds the Makefile `host_hello` sample and is not the
+  game. CI job `switch-game` builds the same CMake `.nro` on pull
+  requests, uploads it as an Actions artifact, and does not create a
+  Release. `workflow_dispatch` resolves only after this file is on
+  `main`. A `v*` tag runs the workflow from that commit.
+  The binary reads the owner's US tree from `sdmc:/switch/dw3/us`
+  (`DW3_DEFAULT_RUNTIME` in `platforms/switch/source/boot_main.c`). EU,
+  later, is `sdmc:/switch/dw3/eu`. The owner packs the tree
+  (`docs/DISC_SETUP.md`, `tools/pack_runtime.py`). Git and the release
+  do not contain it.
+  **Ticked** on tag `v0.6.5-preview.1`
+  ([release](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.1),
+  [run 38103023231](https://github.com/Larbaco/dw3-switch/actions/runs/38103023231)).
+  Assets are `dw3-switch.nro` (8927429 bytes, the CMake game image) and
+  `README.txt`. Marked a prerelease. No other files.
 - [ ] **P6.6 Localization goal.** Record that translation / localization
   comes after the playable port (Phase 5): language packs live in the
   owner runtime data layout; remap / charset glue in `port/`; host

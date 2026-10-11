@@ -1,0 +1,95 @@
+# Deliberate preview of the CMake game image.
+# CI job `switch` in ci.yml still builds the Makefile host_hello sample.
+# CI job `switch-game` builds this same game .nro on pull requests and
+# does not create a Release.
+name: switch-release
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag (must match v*, for example v0.6.5-preview.1)"
+        required: true
+        type: string
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: false
+
+      - name: Check the tag
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          INPUT_TAG: ${{ inputs.tag }}
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+            tag="$INPUT_TAG"
+          else
+            tag="$REF_NAME"
+          fi
+          case "$tag" in
+            v?* ) ;;
+            *) echo "tag must look like v0.6.5-preview.1, got: $tag" >&2; exit 1 ;;
+          esac
+          case "$tag" in
+            *[!A-Za-z0-9._-]*)
+              echo "tag has characters outside A-Za-z0-9._-" >&2
+              exit 1
+              ;;
+          esac
+          echo "RELEASE_TAG=$tag" >> "$GITHUB_ENV"
+
+      - name: Init game submodules
+        run: |
+          git submodule update --init vendor/dw3_decomp vendor/psyz
+          git -C vendor/psyz submodule update --init nugget external/SDL
+
+      - name: Build the CMake game .nro
+        run: bash tools/build_switch_game.sh
+
+      - name: Pack the two release files
+        run: |
+          set -euo pipefail
+          rm -rf dist
+          mkdir dist
+          cp build/switch/dw3-switch.nro dist/dw3-switch.nro
+          cp platforms/switch/release/README.txt dist/README.txt
+          find dist -type f -printf '%f\n' | sort > /tmp/dist-got
+          printf 'README.txt\ndw3-switch.nro\n' > /tmp/dist-want
+          diff -u /tmp/dist-want /tmp/dist-got
+          if find dist -type f \( -name '*.bin' -o -name '*.cue' -o -name '*.iso' -o -name '*.img' \) | grep -q .; then
+            echo "refusing to publish disc images" >&2
+            exit 1
+          fi
+          if grep -a -F -q 'sdmc:/switch/dw3/us' dist/dw3-switch.nro; then
+            :
+          else
+            echo "dist nro is not the game image" >&2
+            exit 1
+          fi
+
+      - name: Publish prerelease
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ env.RELEASE_TAG }}
+          target_commitish: ${{ github.sha }}
+          name: dw3-switch ${{ env.RELEASE_TAG }} preview
+          prerelease: true
+          make_latest: false
+          generate_release_notes: false
+          body_path: platforms/switch/release/README.txt
+          fail_on_unmatched_files: true
+          files: |
+            dist/dw3-switch.nro
+            dist/README.txt
