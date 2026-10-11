@@ -29,6 +29,9 @@
 #ifndef InfoModeCurExOffs
 #define InfoModeCurExOffs 3
 #endif
+#ifndef InfoModeIdTable
+#define InfoModeIdTable 4
+#endif
 
 /* PSY-Z libapi (avoid libapi.h type clashes with decomp headers). */
 int InitPAD(char *bufA, int lenA, char *bufB, int lenB);
@@ -40,6 +43,7 @@ static unsigned char *g_pad_rx[2];
 static int g_pad_started;
 static int g_logged_connected;
 static int g_logged_buttons;
+static int g_logged_main_mode;
 
 static int port_index(int port) { return (port >> 4) & 1; }
 
@@ -60,6 +64,33 @@ enum {
     DW3_RAW_CROSS = 1 << 14,
     DW3_RAW_SQUARE = 1 << 15
 };
+
+/*
+ * The controller mode ID table libpad's PadInfoMode/PadSetMainMode index into
+ * (libetc.h: InfoModeCurExOffs is the offset of the *active* mode in this
+ * table; PadSetMainMode's `offs` is the offset of the mode to switch to). A
+ * DualShock only ever exposes a digital pad (0x41) and an analog pad (0x73).
+ * Those are exactly the two the decomp recognises: readPadButtons takes
+ * PadInfoMode(InfoModeCurExID, 0) and compares it to PAD_ID_DIGITAL (4) and
+ * PAD_ID_ANALOG (7), i.e. the kind's high nibble. PSY-Z's ANALOG_STICK (0x53,
+ * high nibble 5) is deliberately absent — it matches neither.
+ */
+static const unsigned char g_pad_mode_table[] = {
+    (unsigned char)PSYZ_CTRL_DIGITAL_PAD,
+    (unsigned char)PSYZ_CTRL_ANALOG_PAD,
+};
+
+/* Offset of `kind` in the table above, or 0 when it is not a table entry. */
+static int mode_table_offset(unsigned char kind) {
+    int i;
+
+    for (i = 0; i < (int)sizeof(g_pad_mode_table); i++) {
+        if (g_pad_mode_table[i] == kind) {
+            return i;
+        }
+    }
+    return 0;
+}
 
 static void dw3_auto_pad_inject(void) {
     const char *env;
@@ -200,6 +231,7 @@ void PadInitDirect(unsigned char *pad1, unsigned char *pad2) {
     g_pad_started = 0;
     g_logged_connected = 0;
     g_logged_buttons = 0;
+    g_logged_main_mode = 0;
     InitPAD((char *)pad1, DW3_PAD_BUF_LEN, (char *)pad2, DW3_PAD_BUF_LEN);
     fprintf(stderr, "dw3-pad: PadInitDirect -> InitPAD\n");
 }
@@ -257,7 +289,6 @@ int PadInfoMode(int port, int term, int offs) {
     unsigned char *buf;
     unsigned char kind;
 
-    (void)offs;
     if (idx < 0 || idx > 1 || g_pad_rx[idx] == NULL) {
         return 0;
     }
@@ -273,16 +304,59 @@ int PadInfoMode(int port, int term, int offs) {
     case InfoModeCurExID:
         return (int)(kind >> 4);
     case InfoModeCurExOffs:
-        return 0;
+        /* Offset of the active mode in the mode ID table. lockPadMode passes
+         * this straight back to PadSetMainMode, so the two must agree. */
+        return mode_table_offset(kind);
+    case InfoModeIdTable:
+        /* The mode ID at the requested table offset (0 past the end). */
+        if (offs < 0 || offs >= (int)sizeof(g_pad_mode_table)) {
+            return 0;
+        }
+        return (int)g_pad_mode_table[offs];
     default:
         return 0;
     }
 }
 
+/*
+ * port.c lockPadMode sends PadSetMainMode(id, PadInfoMode(id, InfoModeCurExOffs,
+ * 0), PAD_MODE_LOCKED/UNLOCKED) to pin the pad's mode-selector button. `offs`
+ * selects the mode to switch to from the table above, so the mode is handed to
+ * PSY-Z: the platform backend builds its next frame from that kind (PC
+ * sdl3_common.h BuildPadFrame, Switch nx_input.c), and the switch shows up on
+ * the following PadGetState/PadChkVsync, as a real controller's would. The lock
+ * bits only describe the (absent) selector button, so they are interpreted for
+ * the log rather than acted on.
+ */
 int PadSetMainMode(int port, int offs, int lock) {
-    (void)port;
-    (void)offs;
-    (void)lock;
+    int idx = port_index(port);
+    unsigned char *buf;
+
+    if (idx < 0 || idx > 1 || g_pad_rx[idx] == NULL) {
+        return 0;
+    }
+    if (offs < 0 || offs >= (int)sizeof(g_pad_mode_table)) {
+        return 0;
+    }
+    buf = g_pad_rx[idx];
+    refresh_port(idx);
+    if (!buf_connected(buf)) {
+        return 0;
+    }
+    Psyz_PadsSetKind(idx, 0, (PsyzControllerKind)g_pad_mode_table[offs]);
+    if (!g_logged_main_mode) {
+        /* lock bit 1: 1 = change the selector state, 0 = keep it; bit 0 then
+         * says locked (1) or unlocked (0). */
+        const char *selector = (lock & 0x2) == 0
+                                   ? "unchanged"
+                                   : ((lock & 0x1) ? "locked" : "unlocked");
+
+        g_logged_main_mode = 1;
+        fprintf(stderr,
+                "dw3-pad: PadSetMainMode port=%d offs=%d lock=%d -> kind=0x%02x "
+                "(selector %s)\n",
+                idx, offs, lock, (unsigned)g_pad_mode_table[offs], selector);
+    }
     return 1;
 }
 
