@@ -28,6 +28,15 @@ set(CMAKE_C_STANDARD 11)
 set(DW3_VERSION "us" CACHE STRING "Game disc version: us or eu")
 set_property(CACHE DW3_VERSION PROPERTY STRINGS us eu)
 option(DW3_NXLINK_STDIO "Redirect game stdout/stderr through nxlink (development only)" OFF)
+# Default ON for a fresh --nxlink configure (separate build dir); OFF for the
+# standard release NRO. Override with -DDW3_NX_DEBUG_MESH=OFF|ON.
+if(DW3_NXLINK_STDIO)
+  set(_dw3_mesh_dbg_default ON)
+else()
+  set(_dw3_mesh_dbg_default OFF)
+endif()
+option(DW3_NX_DEBUG_MESH "Sampled GLES mesh/present debug summary (nxlink)"
+       ${_dw3_mesh_dbg_default})
 
 if(NOT CMAKE_SYSTEM_NAME STREQUAL "NintendoSwitch")
   message(FATAL_ERROR
@@ -98,6 +107,10 @@ if(DW3_NXLINK_STDIO)
   set(DW3_NRO_NAME "dw3-switch-nxlink")
   set(DW3_NACP_NAME "dw3-switch nxlink dev")
   message(STATUS "nxlink stdio enabled for development NRO")
+endif()
+if(DW3_NX_DEBUG_MESH)
+  target_compile_definitions(dw3-switch PRIVATE DW3_NX_DEBUG_MESH=1)
+  message(STATUS "nx mesh debug summary enabled (DW3_NX_DEBUG_MESH)")
 endif()
 
 # EGL/GLES2 come from devkitPro's switch-* portlibs, not from libnx, and they

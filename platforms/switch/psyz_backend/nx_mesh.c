@@ -1,6 +1,7 @@
 /* P5.2 — GLES3 mesh FBO for OT triangle polys (battle 3D).
  * Shaders adapted from vendor/psyz sdl3_gl.c (ES 3.00). UI stays on CPU VRAM. */
 #include "nx_mesh.h"
+#include "nx_mesh_debug.h"
 #include "nx_vram_pack.h"
 
 #include <stddef.h>
@@ -9,6 +10,14 @@
 #include <string.h>
 
 #include <GLES3/gl3.h>
+
+#if DW3_NX_DEBUG_MESH
+#include <switch.h>
+
+static uint64_t mesh_now_us(void) {
+    return armTicksToNs(armGetSystemTick()) / 1000ULL;
+}
+#endif
 
 enum { MESH_MAX_VTX = 8192, MESH_MAX_IDX = MESH_MAX_VTX / 4 * 6 };
 
@@ -401,6 +410,12 @@ static void draw_indices(int start, int end) {
 static void flush_locked(const uint16_t *cpu_vram) {
     int start;
     GLint prev_fbo = 0;
+    int tris;
+#if DW3_NX_DEBUG_MESH
+    uint64_t t0;
+    uint64_t t1;
+    uint64_t t2;
+#endif
 
     if (!s_ready || s_n_vtx == 0 || s_n_idx == 0) {
         s_n_vtx = 0;
@@ -408,11 +423,19 @@ static void flush_locked(const uint16_t *cpu_vram) {
         return;
     }
 
+    tris = s_n_idx / 3;
+#if DW3_NX_DEBUG_MESH
+    t0 = mesh_now_us();
+    t1 = t0;
+#endif
     glGetIntegerv(GL_FRAMEBUFFER_BINDING, &prev_fbo);
     /* Full 1024×512 RGBA pack+upload dominates OLED when done every flush.
      * Fight-menu idle rarely touches VRAM; reuse the GL sample until dirty. */
     if (s_sample_dirty) {
         upload_sample_vram(cpu_vram);
+#if DW3_NX_DEBUG_MESH
+        t1 = mesh_now_us();
+#endif
     }
 
     glBindFramebuffer(GL_FRAMEBUFFER, s_mesh_fbo);
@@ -493,13 +516,18 @@ static void flush_locked(const uint16_t *cpu_vram) {
         }
     }
 
-    s_prims_flushed += (uint64_t)(s_n_idx / 3);
+    s_prims_flushed += (uint64_t)tris;
     s_had_content = true;
     s_n_vtx = 0;
     s_n_idx = 0;
 
     glBindFramebuffer(GL_FRAMEBUFFER, (GLuint)prev_fbo);
     glDisable(GL_SCISSOR_TEST);
+#if DW3_NX_DEBUG_MESH
+    t2 = mesh_now_us();
+    dw3_nx_mesh_debug_note_flush((uint32_t)(t2 - t0), (uint32_t)(t1 - t0),
+                                 tris);
+#endif
 }
 
 bool dw3_nx_mesh_init(void) {
@@ -668,6 +696,7 @@ void dw3_nx_mesh_enqueue(const Dw3NxMeshVertex *v, int nverts,
     }
     s_n_vtx += nverts;
     s_n_idx += nidx;
+    dw3_nx_mesh_debug_note_enqueue(nidx);
 }
 
 void dw3_nx_mesh_flush(const uint16_t *cpu_vram) { flush_locked(cpu_vram); }

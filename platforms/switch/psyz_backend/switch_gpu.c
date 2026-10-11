@@ -20,6 +20,7 @@
 #include "rasterizer.h"
 #include "nx.h"
 #include "nx_mesh.h"
+#include "nx_mesh_debug.h"
 #include "overlay_host.h"
 
 #include <string.h>
@@ -234,6 +235,7 @@ static int try_push_mesh_poly(u_long *packets, int max_len) {
 
     dw3_nx_mesh_enqueue(v, n_vertices, idx, n_indices,
                         (const uint16_t *)SoftwareRasterizer_GetVram());
+    dw3_nx_mesh_debug_note_poly_code(code, is_textured);
     return max_len - len;
 }
 
@@ -364,6 +366,15 @@ int Draw_PushPrim(u_long *packets, int max_len) {
     if (consumed > 0) {
         return consumed;
     }
+#if DW3_NX_DEBUG_MESH
+    if (packets && max_len > 0) {
+        int code = (int)(*packets >> 24) & 0xFF;
+
+        if (!(code & 0x40) && (code & TRIANGLE) && !dw3_nx_mesh_available()) {
+            dw3_nx_mesh_debug_note_soft_fallback();
+        }
+    }
+#endif
     return software_rasterizer.push_prim(packets, max_len);
 }
 
