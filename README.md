@@ -123,8 +123,9 @@ EU link scaffold (separate build tree, needs `runtime/eu`):
 python3 tools/pack_runtime.py --version us --disks disks/us --out runtime/us --force
 ```
 
-On Switch, copy the packed tree to the SD path in `RUNTIME_LAYOUT.md`
-(`sdmc:/switch/dw3/us/…`).
+On Switch, copy the packed tree to `sdmc:/switch/dw3/us/`. Create an empty
+`sdmc:/switch/dw3/us/memcard/` before the first launch, or boot stops in
+`memcard_host_ensure()`.
 
 ### Run (US, PC)
 
@@ -170,7 +171,12 @@ git -C vendor/psyz submodule update --init nugget external/SDL
 # do not --recursive nugget: codeberg xmake-psx returns HTTP 429
 bash tools/build_switch_game.sh
 # → build/switch/dw3-switch.nro
+# live host logs: bash tools/build_switch_game.sh --nxlink
+# → build/switch-nxlink/dw3-switch-nxlink.nro
 ```
+
+`--nxlink` is a development binary. It is not the release. Launch steps are
+in [platforms/switch/README.md](platforms/switch/README.md).
 
 A release is [`.github/workflows/switch-release.yml`](.github/workflows/switch-release.yml):
 `workflow_dispatch` with a `v*` tag, or a push of a `v*` tag. The dispatch
@@ -221,6 +227,7 @@ dw3-switch/
 | [docs/SWITCH_BACKEND.md](docs/SWITCH_BACKEND.md) | Switch backend, CMake game build, Ryubing title boot |
 | [docs/SWITCH_FEATURES.md](docs/SWITCH_FEATURES.md) | Residual Switch UX inventory (Phase 10) |
 | [docs/P4.2_VIDEO.md](docs/P4.2_VIDEO.md) / [P4.3_AUDIO.md](docs/P4.3_AUDIO.md) | Switch EGL / audren bring-up |
+| [docs/P4.4_INPUT_STATUS.md](docs/P4.4_INPUT_STATUS.md) / [P4.5](docs/P4.5_STATUS.md) / [P4.6](docs/P4.6_MODULES_STATUS.md) | Pad, SD, and static overlays. Hardware checks still open |
 | [docs/P2.8_TITLE_BOOT.md](docs/P2.8_TITLE_BOOT.md) | PC title screen evidence |
 | [docs/P3.2_FIELD.md](docs/P3.2_FIELD.md) … [P3.8](docs/P3.8_STAGES.md) | Phase 3 subsystem notes |
 | [docs/COMMUNITY_QOL.md](docs/COMMUNITY_QOL.md) / [TEXTURE_PACKS](docs/TEXTURE_PACKS.md) / [PORT_OPTIONS](docs/PORT_OPTIONS.md) | Later optional features |
