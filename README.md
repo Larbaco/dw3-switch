@@ -23,18 +23,20 @@ Details and checkboxes: [docs/ROADMAP.md](docs/ROADMAP.md). Gate honesty:
 | Phase | Summary |
 |---|---|
 | **0–2** | **Done** — toolchains, disc→runtime pipeline, US title boot from decomp C ([P2.8](docs/P2.8_TITLE_BOOT.md)) |
-| **3** | **Gate met (US)** — field, battle, menus, card game, movies, SEP audio, stage sweep on PC; start→first boss (Genji) on a continuous US path with documented bring-up aids ([P3 gate](docs/P3_GATE.md)). **Open:** P3.9 DuckStation compare harness (title/field captured; battle oracle partial), EU playthrough, pad-driven boss KO, [GPU/sprite polish](docs/P3_GPU_GLITCHES.md), `WSTAG460` stub |
-| **4** | **In progress.** Native libnx PSY-Z backend ([P4.1](docs/SWITCH_BACKEND.md)). CI job `switch` builds the Makefile EGL + audren sample ([P4.2](docs/P4.2_VIDEO.md), [P4.3](docs/P4.3_AUDIO.md)). The CMake game image links, and the title draws in Ryubing. P4.7 stays open until that title is on hardware. |
-| **5–8** | Playable Switch, then polish. P6.5 own-disc packaging is done as prerelease [v0.6.5-preview.1](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.1), started before the Phase 5 gate. Phase 6 as a whole has not started. P6.1–P6.4 and P6.6+ have not started. |
+| **3** | **Gate met (US)** — full PC loop (field, battle, menus, card game, movies, SEP, stage sweep); start→Genji with documented aids. **P3.9** DuckStation compare harness **done** ([P3.9](docs/P3.9_REFERENCE.md)). **Open:** EU playthrough, pad-driven boss KO, PC [GPU/battle polish](docs/P3_GPU_GLITCHES.md), `WSTAG460` stub |
+| **4** | **In progress** — native libnx PSY-Z backend ([P4.1](docs/SWITCH_BACKEND.md)). The CMake game image links. The title draws in Ryubing, and an OLED boot reached the main menu. The wider Phase 4 gate (field + battle) is still open. CI job `switch` builds the **host_hello** sample; job `switch-game` builds the game `.nro` |
+| **5–10** | Playable Switch, packaging, port-options menu, optional QoL / texture packs / residual Switch UX ([SWITCH_FEATURES](docs/SWITCH_FEATURES.md)). P6.5 own-disc packaging exists as prerelease [v0.6.5-preview.1](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.1). Phase 6 as a whole has not started |
 
 **Can you play on PC today?** Yes, with your **own US disc** packed to
-`runtime/us`: title through early story is reachable in `dw3-pc`. Expect
-visual rough edges and developer env vars for some automated paths; it is not
-a finished retail experience. **Switch:** two binaries. `make -C platforms/switch`
-is the homebrew sample, with no game loop. The CMake `.nro` is the game. It
-reads your files from `sdmc:/switch/dw3/us`. A GitHub Release of that `.nro`
-is deliberate (`workflow_dispatch` or a `v*` tag) and marked a preview. The
-release does not include disc data.
+`runtime/us`: title through early story in `dw3-pc`. Expect rough visuals in
+some scenes; not a finished retail build.
+
+**Switch today?** Two binaries. `make -C platforms/switch` is the homebrew
+sample, with no game loop. The CMake `.nro` is the game. It reads your files
+from `sdmc:/switch/dw3/us`. A GitHub Release of that `.nro` is deliberate
+(`workflow_dispatch` or a `v*` tag) and marked a preview. The release does
+not include disc data. The first preview still crops the title; current main
+does not.
 
 Layering: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
@@ -43,7 +45,7 @@ Layering: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 | Project | Role |
 |---|---|
 | [ReGame-Labs/dw3_decomp](https://github.com/ReGame-Labs/dw3_decomp) | Matching PS1 decomp — game logic source (`vendor/dw3_decomp`) |
-| [Xeeynamo/psyz](https://github.com/Xeeynamo/psyz) | Psy-Q compatible shim (GPU/GTE/CD/SPU surface) (`vendor/psyz`) |
+| [Xeeynamo/psyz](https://github.com/Xeeynamo/psyz) | Psy-Q compatible shim (GPU/GTE/CD/SPU surface) (`vendor/psyz`; Switch fork pin in [PSYZ.md](docs/PSYZ.md)) |
 
 This repository owns the **hosts**, **port glue**, and **disc → runtime tools**.
 Prefer patches here (`port/`, `platforms/`) over editing the decomp submodule
@@ -118,7 +120,10 @@ EU link scaffold (separate build tree, needs `runtime/eu`):
 python3 tools/pack_runtime.py --version us --disks disks/us --out runtime/us --force
 ```
 
-### Run (US)
+On Switch, copy the packed tree to the SD path in `RUNTIME_LAYOUT.md`
+(`sdmc:/switch/dw3/us/…`).
+
+### Run (US, PC)
 
 ```bash
 ./build/pc/dw3-pc --runtime runtime/us
@@ -133,15 +138,16 @@ Keyboard: Enter = Start, arrows = D-pad. Bring-up env vars (`DW3_START_MODE`,
 python3 -m pytest tools/tests -q
 ```
 
-### Switch `.nro` (Phase 4 host sample)
+### Switch builds (Phase 4)
 
-Docker + [devkitPro](https://devkitpro.org/) via `tools/dk.sh`
-([tools/docker/README.md](tools/docker/README.md) — WSL/NTFS: use
-`DW3_DK_TMPBUILD`):
+Docker + devkitPro via `tools/dk.sh` — [tools/docker/README.md](tools/docker/README.md).
+On WSL/NTFS mounts use `DW3_DK_TMPBUILD=/tmp/dw3-dk-build`.
+
+**Host sample** (what CI builds — no game data):
 
 ```bash
 ./tools/dk.sh make -C platforms/switch
-# → platforms/switch/dw3-switch.nro
+# → platforms/switch/dw3-switch.nro  (EGL present + audren hello)
 ```
 
 This is the **combined EGL + audren** bring-up binary. CI job `switch`
@@ -152,7 +158,8 @@ builds it. It is not the game.
 `platforms/switch/CMakeLists.txt` links `source/boot_main.c`, which calls
 `dw3_game_main`. Output: `build/switch/dw3-switch.nro` (about 8.9 MB).
 CI job `switch-game` builds it on pull requests and uploads an Actions
-artifact. It does not open a Release.
+artifact. It does not open a Release. The full mount recipe is in
+[platforms/switch/README.md](platforms/switch/README.md).
 
 ```bash
 git submodule update --init vendor/dw3_decomp vendor/psyz
@@ -176,7 +183,7 @@ as a **prerelease**. First one:
 no game bytes.
 
 Backend: [platforms/switch/psyz_backend/](platforms/switch/psyz_backend/).
-Host notes: [platforms/switch/README.md](platforms/switch/README.md).
+Boot evidence: [docs/SWITCH_BACKEND.md](docs/SWITCH_BACKEND.md).
 
 ## Repository layout
 
@@ -184,11 +191,11 @@ Host notes: [platforms/switch/README.md](platforms/switch/README.md).
 dw3-switch/
 ├── docs/                      # roadmap, gates, phase evidence
 ├── platforms/pc/              # PSY-Z + SDL3 → dw3-pc
-├── platforms/switch/          # libnx + psyz_backend/ (Phase 4)
+├── platforms/switch/          # Makefile sample + CMake game target, psyz_backend/
 ├── port/                      # overlays, cdfs, memcard, movies, patches
 ├── tools/                     # pack/extract, stage_sweep, compare_harness, …
 ├── vendor/dw3_decomp/         # upstream decomp (submodule)
-└── vendor/psyz/               # PSY-Z (submodule)
+└── vendor/psyz/               # PSY-Z (submodule; Switch backend branch when building NX game)
 ```
 
 ## Documentation
@@ -198,19 +205,19 @@ dw3-switch/
 | [docs/ROADMAP.md](docs/ROADMAP.md) | Phases, gates, what’s next |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Host / PSY-Z / game layering |
 | [docs/P3_GATE.md](docs/P3_GATE.md) | Phase 3 gate (US start → first boss) — **met** |
-| [docs/P3.9_REFERENCE.md](docs/P3.9_REFERENCE.md) | DuckStation vs PC screenshot harness |
+| [docs/P3.9_REFERENCE.md](docs/P3.9_REFERENCE.md) | DuckStation vs PC screenshot harness — **done** |
 | [docs/P3_EU_BUILD.md](docs/P3_EU_BUILD.md) | EU `-DDW3_VERSION=eu` scaffold |
-| [docs/P3_GPU_GLITCHES.md](docs/P3_GPU_GLITCHES.md) | PC present / sprite follow-ups |
+| [docs/P3_GPU_GLITCHES.md](docs/P3_GPU_GLITCHES.md) | PC present / battle mesh follow-ups |
 | [docs/SURVEY.md](docs/SURVEY.md) | Decomp facts that drive the port |
 | [docs/PATCHES.md](docs/PATCHES.md) | Decomp patch policy and series |
 | [docs/DISC_SETUP.md](docs/DISC_SETUP.md) / [RUNTIME_LAYOUT](docs/RUNTIME_LAYOUT.md) | Owner disc → runtime tree |
 | [docs/PSYZ.md](docs/PSYZ.md) | PSY-Z pin and renderer notes |
-| [docs/SWITCH_BACKEND.md](docs/SWITCH_BACKEND.md) | Switch backend decision + smoke loop |
+| [docs/SWITCH_BACKEND.md](docs/SWITCH_BACKEND.md) | Switch backend, CMake game build, Ryubing title boot |
+| [docs/SWITCH_FEATURES.md](docs/SWITCH_FEATURES.md) | Residual Switch UX inventory (Phase 10) |
 | [docs/P4.2_VIDEO.md](docs/P4.2_VIDEO.md) / [P4.3_AUDIO.md](docs/P4.3_AUDIO.md) | Switch EGL / audren bring-up |
-| [docs/P2.8_TITLE_BOOT.md](docs/P2.8_TITLE_BOOT.md) | Title screen evidence |
+| [docs/P2.8_TITLE_BOOT.md](docs/P2.8_TITLE_BOOT.md) | PC title screen evidence |
 | [docs/P3.2_FIELD.md](docs/P3.2_FIELD.md) … [P3.8](docs/P3.8_STAGES.md) | Phase 3 subsystem notes |
 | [docs/COMMUNITY_QOL.md](docs/COMMUNITY_QOL.md) / [TEXTURE_PACKS](docs/TEXTURE_PACKS.md) / [PORT_OPTIONS](docs/PORT_OPTIONS.md) | Later optional features |
-| [docs/SWITCH_FEATURES.md](docs/SWITCH_FEATURES.md) | Native Switch residual features (Phase 10) |
 
 Hosts: [platforms/pc/README.md](platforms/pc/README.md),
 [platforms/switch/README.md](platforms/switch/README.md).
@@ -222,7 +229,7 @@ Compare harness: [tools/compare_harness/README.md](tools/compare_harness/README.
 - **PC:** CMake, Ninja, SDL3 — [platforms/pc/README.md](platforms/pc/README.md)
 - **Switch:** devkitPro `switch-dev`, or `devkitpro/devkita64` via `./tools/dk.sh`
 - **PSY-Z** submodule (pin: [docs/PSYZ.md](docs/PSYZ.md))
-- **Own disc** for in-game runtime data
+- **Own disc** for in-game runtime data (PC dir or Switch SD layout)
 
 ## License
 
