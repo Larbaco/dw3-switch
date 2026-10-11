@@ -121,6 +121,45 @@ shared timeline — local-only progress is not enough.
   next session/PC does not rediscover it only from chat.
 - Treat doc updates as part of “done”, not a later chore. A feature commit
   that advances the roadmap without touching the relevant docs is incomplete.
+- In multi-agent sessions, follow **Orchestration** below: subagents own
+  investigation, coding, builds/tests, commits, and PRs; the parent agent
+  orchestrates and merges.
+
+## Orchestration (Cursor / multi-agent)
+
+The parent chat agent is the **orchestrator**. It plans, reviews, merges PRs,
+and updates the owner. It does **not** run investigations, tests, or coding
+itself when a subagent can.
+
+**Subagents** own: investigation, measurement, implementation, local
+builds/tests, commits, and opening PRs.
+
+Each coding or investigation workstream uses its **own git branch** and its
+**own git worktree**. Prefer `/tmp/dw3-<topic>` on ext4. Avoid writing build
+trees on the NTFS checkout at `/mnt/windows/Jogos/dw3-switch` when
+Docker/devkitPro builds need a local filesystem.
+
+Subagents **commit frequently** (small reviewable units) and **push** the
+topic branch. When the workstream is done they **open a PR** against `main`.
+The orchestrator **reviews and merges** (comment + squash merge is fine when
+GitHub blocks self-approve). Do not leave finished work only local.
+
+Reference notes that are not for git may go under
+`~/.cursor/projects/mnt-windows-Jogos-dw3-switch/notes/` (cursorignored).
+
+Keep the existing **Git and safety** rules; this section clarifies multi-agent
+roles. Frequent commit + push remains the project default unless the owner
+says to hold.
+
+Switch game builds on this desktop: use the local Docker image
+`devkitpro/devkita64:latest` via `tools/build_switch_game.sh` / `tools/dk.sh`.
+Every preview or beta must ship an nxlink `.nro` too.
+
+Do **not** probe TCP 28280 before `nxlink -s` (an empty connect breaks hbmenu
+NetLoader with `err=11`). Prefer hbmenu **Y** NetLoader over Sphaira grid for
+nxlink upload.
+
+Do not overclock (see technical directive 7).
 
 ## Out of scope (unless explicitly requested)
 
@@ -175,8 +214,10 @@ python3 -m pytest tools/tests -v
 
 1. Read this file, `README.md`, and `docs/ROADMAP.md`.
 2. `git fetch` / sync with the remote tracking branch; check `git status` and
-   submodule state.
+   submodule state. For a coding/investigation workstream, use a fresh branch
+   and worktree (see **Orchestration**); do not assume the primary checkout
+   is free.
 3. Continue the current roadmap phase; do not restart scaffolding.
-4. Before ending a session (or when leaving a coherent checkpoint), ensure
-   roadmap/docs match what landed, then commit and push so another PC can
-   pick up from the remote.
+4. Before ending a workstream (or when leaving a coherent checkpoint), ensure
+   roadmap/docs match what landed, then commit, push, and open a PR so the
+   orchestrator can review/merge and another PC can pick up from the remote.
