@@ -440,7 +440,9 @@ speed.
   waits for vsync. The vsync pump writes one `frame dt us=` line for the
   microseconds between samples 60 pumps apart. The first sample only stores
   the time. P5.2 stays open: there is still no OLED field or battle frame
-  measured under 16.7 ms.
+  measured under 16.7 ms. `v0.6.5-preview.6` is the hardware test of that
+  clock, the 60-frame log, the sampled-rectangle upload, and one field
+  tile per frame.
 - [ ] **P5.3 Save handling.** Card images under `sdmc:/switch/dw3/saves/`,
   import/export of `.mcr`, sleep/exit safety (flush on `appletMainLoop`
   exit).
@@ -504,7 +506,9 @@ tick does not start Phase 6.
   That `.nro` is 8927429 bytes. It still crops the title and freezes the
   movie.
   `v0.6.5-preview.5` is the later hardware test (progress bar, left stick,
-  US extract from the BIN). The picture prerelease remains
+  US extract from the BIN). `v0.6.5-preview.6` is the performance test
+  after that (sampled-rectangle upload, 1785 MHz CPU, one field tile per
+  frame). The picture prerelease remains
   `v0.6.5-preview.2`
   ([release](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.2),
   [run 38113420519](https://github.com/Larbaco/dw3-switch/actions/runs/38113420519)),

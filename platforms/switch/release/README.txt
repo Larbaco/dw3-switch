@@ -1,15 +1,25 @@
 Digimon World 3 / 2003, Switch homebrew preview
 
-This release is a hardware test cut from main. It has the preview.4
-movie pace and STR restore, plus three things that image did not:
+This release is v0.6.5-preview.6, cut from main after 34135c8. It is
+the hardware test of three performance changes that preview.5 did not
+have:
 
-  a progress bar while a long copy runs
-  the left stick, published as an analog pad
-  a US runtime built from the Mode2 BIN when us/ is missing
+  the present path uploads only the sampled VRAM rectangle
+  the CPU clock is raised to 1785 MHz for the process
+  a field map loads one tile per frame
 
-The opening-video picture is the same as preview.4. The menu picture
-on that OLED run looked right. The stick and the full extract have not
-been seen on hardware yet.
+Preview.5 already had the progress bar, the left stick, and the US
+runtime extract. Those stay. The opening-video picture is unchanged.
+On the OLED, the menu picture looked right, the left stick walked on
+handheld Joy-Con and on a Pro Controller, a DuckStation card loaded,
+and a slot 2 save loaded after the memory-card fix that is in this
+build.
+
+The CPU returns to the previous rate if the process exits cleanly. A
+HOME press can leave 1785 MHz set until the next launch. The GPU clock
+is not changed. Every 60 frames the log prints one line, frame dt us=.
+About 1000000 is 60 Hz. About 2000000 is 30 Hz. That number has not
+been read on the OLED yet.
 
 boot_tim.bin is not a disc image. A CUE whose FILE name is missing still
 selects the only other .bin in that directory when the file is large
@@ -24,10 +34,10 @@ This release has three files.
 There is no game data in these files. No disc image, no BIOS, no extracted
 tree. You supply that from a copy you own.
 
-This is a prerelease. The title screen boots in Ryubing. It is not a
-playable port on hardware. It is also not the small EGL + audren sample
-that `make -C platforms/switch` produces. CI job `switch` builds that
-sample. Do not install the sample and expect the game.
+This is a prerelease. An OLED has reached the title, the field, and
+battle. It is not a finished port. It is also not the small EGL + audren
+sample that `make -C platforms/switch` produces. CI job `switch` builds
+that sample. Do not install the sample and expect the game.
 
 What you need
 
