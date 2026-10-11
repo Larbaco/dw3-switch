@@ -110,6 +110,10 @@ static int init_paths(int argc, char **argv) {
     }
     fprintf(stderr, "dw3-pc: cdfs root=%s\n", root);
 
+    if (dw3_str_restore_from_disc() != 0) {
+        fprintf(stderr, "dw3-pc: STR restore failed; movie XA may stay slow\n");
+    }
+
     dw3_str_stream_install_cd_bridge();
 
     /* Eager audio init so CdlModeRT XA has a device (or we log failure and

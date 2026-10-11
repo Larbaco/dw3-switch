@@ -46,8 +46,54 @@ python3 tools/build_file_map.py --check runtime/eu/files_eu.json \
 
 `pack_runtime.py` refuses to run if `files_<ver>.json` is missing. If
 `--out` already exists and is non-empty, pass `--force` to wipe it first.
+
+Form-2 `.STR` files in the extract are 2048 bytes per sector. That drops
+the last two XA ADPCM blocks and the opening soundtrack runs slow. On
+boot, the game rewrites any such file to raw Mode2/2352 when it can see
+the owner's disc image. It looks for `DW3_DISC_BIN`, `DW3_DISC_CUE`, then
+`disc.cue` / `disc.bin` / a single `*.cue` or `*.bin` in the runtime root
+and in the parent directory. `boot_tim.bin` is never a disc image. A CUE
+whose `FILE` name is not on the card still selects the only other `.bin`
+in that directory when the file is large enough to cover the STR extents.
+Put the pair here on the card:
+
+```text
+sdmc:/switch/dw3/Digimon World 3.cue
+sdmc:/switch/dw3/Digimon World 3.bin
+sdmc:/switch/dw3/us/AAA/STR/    # rewritten in place on first launch
+```
+
+The first launch copies about 260 MB. On Switch the screen keeps the
+dark blue clear and draws a progress bar while the log says `restore`
+(see `docs/P3.7_MOVIES.md`). The next launch only checks file sizes.
+The same rewrite can be done on the PC before copying:
+
+```bash
+python3 tools/restore_form2_str.py \
+  --runtime runtime/us \
+  --bin "/path/to/Digimon World 3.bin"
+```
+
+A tree left at 2048 still boots; the movie picture is paced, and the
+sound stays slow until a disc image is visible at startup.
+
 EU `dw3-pc` link uses `-DDW3_VERSION=eu` (`docs/P3_EU_BUILD.md`); run still
 needs a local `runtime/eu` tree (gitignored).
+
+### Runtime is still required at boot
+
+The Switch game currently boots from the extracted version tree, for example
+`sdmc:/switch/dw3/us/`: `files_us.json`, `SLUS_014.36`, `boot_tim.bin`,
+`AAA/…`, and the `memcard/` directory. The optional disc BIN/CUE is used to
+rewrite the 13 packed Form-2 `.STR` movie files to raw 2352-byte sectors; it is
+not a substitute for the executable, file map, boot image, or the rest of the
+extracted runtime. On 2026-10-11 the owner removed `us/` and the game no longer
+started, confirming this dependency.
+
+Starting directly from the disc image by extracting everything needed at
+startup is a desired future direction reported by the owner, but is **not
+implemented**. Current setup still requires the owner-packed runtime tree;
+assets remain outside Git and are never bundled in the NRO or repository.
 
 ### Memory-card directory
 

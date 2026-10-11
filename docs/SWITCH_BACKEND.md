@@ -148,8 +148,9 @@ Wiring into PSY-Z (P4.7, partial): the submodule gained a
 only the portable `psyz_spu.c` plus the SDL-free `sdl3_software.c` rasterizer,
 while the platform symbols keep coming from `platforms/switch/psyz_backend/`.
 The split is deliberate: the submodule only had to stop pulling SDL, so the
-backend stays in this repo per the P4.1 decision. `vendor/psyz` is pinned to
-`dw3-switch-backend` @ `15afac1` on the fork. The game image links and draws
+backend stays in this repo per the P4.1 decision. That Switch CMake change is
+`dw3-switch-backend` @ `8dbed91` on the fork. The submodule pin is
+`dw3-str-pace` @ `eb0393b` (see [PSYZ.md](PSYZ.md)). The game image links and draws
 the title. P4.7 is ticked: the owner reached the main menu on an OLED.
 Field and battle on hardware are still the phase gate.
 
@@ -307,6 +308,20 @@ header was the previous slot. `__wrap_StGetNext` steps back onto that
 header, or drops a leftover tail and scans for the next ready frame.
 The owner confirmed the movie plays in Ryubing, then confirmed the y=36
 crop fills the height.
+
+Opening movie clock (2026-10-11): the picture ran fast and the sound ran
+slow on hardware. The pump was delivering up to 8 sectors on every VSync
+and again from `StGetNext`, so a ~15 fps STR (about 10 sectors per frame,
+150 sectors/s at CD 2×) finished a frame every 60 Hz refresh. The packed
+2048-byte STR also drops the last two XA ADPCM blocks; the decoder plays
+that gap as silence, which stretches the soundtrack by 18/16. The pump is
+now 150 sectors/s. Full-speed audio needs the STR files as raw 2352.
+The `.nro` rewrites them on first launch when the Mode2 BIN/CUE sits in
+`sdmc:/switch/dw3/` (or `DW3_DISC_BIN` / `DW3_DISC_CUE`). The screen keeps
+the dark blue clear and draws a progress bar while that copy runs: bytes
+written this run over the form-2 extents still to rewrite, with a sweep
+before the first byte. The log still prints `restore`. This bar was not
+run on an OLED.
 
 ### OLED (2026-10-10/11)
 

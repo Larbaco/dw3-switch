@@ -1,9 +1,10 @@
 /* File-backed STR stream bridge (P3.7 Wave 3–4).
  *
  * Resolves movie LBAs from FILE_TABLE.getPos / CdlLOC against the packed
- * runtime map (files_us.json → AAA/STR/*.STR). Host packs store 2048-byte
- * user payloads per sector (form: 2); the bridge synthesizes Mode2/Form2
- * 2352-byte sectors for PSY-Z libcd (CdReady / StCdInterrupt / XA pull).
+ * runtime map (files_us.json → AAA/STR/*.STR). A restored STR is raw
+ * Mode2/2352, one sector per map sector. An older pack is 2048-byte user
+ * payloads; the bridge synthesizes Mode2/Form2 around those and the last
+ * two XA ADPCM blocks are missing unless DW3_DISC_BIN is set.
  *
  * Video vs XA: user magic 0x0160 → Data|Form2|RT subheader; otherwise
  * Audio|Form2|RT + stereo CI so CdlModeRT XA decode accepts the sector.
@@ -48,6 +49,25 @@ int dw3_str_cd_read_cb(struct PsyzCdRead *read);
 
 /* Register the CD read CB (call after cdfs_load_map). */
 void dw3_str_stream_install_cd_bridge(void);
+
+/* If a Mode2/2352 BIN is next to the runtime (or named by DW3_DISC_BIN /
+ * DW3_DISC_CUE) and a form-2 STR is still the 2048-byte extract, rewrite
+ * that file in place as raw sectors. boot_tim.bin is not a disc image.
+ * A CUE whose FILE name is missing still selects the only other .bin in
+ * that directory when the file covers the STR extents. Already-restored
+ * files are left alone.
+ * Returns 0 when there is nothing to do or the rewrite finished. A missing
+ * disc image is not an error. Returns -1 if a rewrite was needed and failed. */
+int dw3_str_restore_from_disc(void);
+
+/* Optional callback during a rewrite. The Switch host paints from this.
+ * msg is NULL on a byte tick, which is not a new log line. done is bytes
+ * written this run. total is the sum of the form-2 STR extents that still
+ * need a rewrite. done is 0 before the first byte. A NULL callback leaves
+ * the stderr log as the only output. */
+void dw3_str_restore_set_progress(void (*fn)(const char *msg,
+                                             unsigned long long done,
+                                             unsigned long long total));
 
 #ifdef __cplusplus
 }
