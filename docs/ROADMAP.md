@@ -458,8 +458,13 @@ speed.
   showed severe GLES artifacts (blue stripe column, rug blobs, missing
   walls, neon outlines) because field OT triangles hit the mesh path and
   the black-discard composite. Follow-up: gate mesh to FIGHTSTG only +
-  dirty sample-VRAM upload. Battle 60 Hz proof is still open. P5.2 stays
-  open.
+  dirty sample-VRAM upload (#71). Battle 60 Hz proof is still open. P5.2
+  stays open.
+  **Nxlink mesh debug:** `--nxlink` builds default `DW3_NX_DEBUG_MESH` and
+  emit a sampled `mesh dbg:` line next to `frame dt us=` (tris / path /
+  flush+upload+present us). After the FIGHTSTG gate, field should stay
+  near `tris_enq≈0` / `frames_blit`; battle may show `frames_mesh`. See
+  [NXLINK_DEBUG.md](NXLINK_DEBUG.md).
   During PSY-Z init the log recorded `KernelInit: cannot create the kernel
   synchronisation objects`. The game continued. The failed object (mutex
   or event) is not identified. That defect is open and is not the
