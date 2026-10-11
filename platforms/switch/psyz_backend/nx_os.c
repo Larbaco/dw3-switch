@@ -166,6 +166,13 @@ int Psyz_OsThreadStart(void (*fn)(void), const char *name) {
         return -1;
     }
     if (R_FAILED(threadStart(t))) {
+        /* threadCreate() succeeded, so *t is a live libnx thread handle. Freeing
+         * it here (as the threadCreate failure path does) would leave the kernel
+         * a pointer into freed memory; the handle has to be closed first. The
+         * thread never ran, so the trampoline argument slot can go with it. */
+        threadClose(t);
+        free(t);
+        free(slot);
         DW3_NX_ERROR("threadStart(%s) failed", name);
         return -1;
     }
