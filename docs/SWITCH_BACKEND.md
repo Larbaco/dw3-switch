@@ -194,10 +194,12 @@ the state of P4.7, and it is kept here because the symbol list is what
 object). The linker does not demand it.
 
 **All of that links now.** `psyz_backend/switch_gpu.c` implements the `Draw_*`
-family: OT triangle polys go to `nx_mesh.c` (GLES3 FBO, P5.2 approach A);
-sprites/tiles/lines still hit PSY-Z's in-tree CPU rasterizer
-(`software_rasterizer`, `src/platform/sdl3_software.c`). `nx_gpu.c` presents
-mesh then CPU VRAM (zero-color discard for UI). See
+family: OT triangle polys go to `nx_mesh.c` (GLES3 FBO, P5.2 approach A)
+**only while the mode overlay is FIGHTSTG**; field and other modes keep the
+full software path. Sprites/tiles/lines always hit PSY-Z's in-tree CPU
+rasterizer (`software_rasterizer`, `src/platform/sdl3_software.c`).
+`nx_gpu.c` presents mesh then CPU VRAM (zero-color discard for UI) when the
+mesh path drew that frame; otherwise the opaque blit. See
 [P5.2_BATTLE_GPU.md](P5.2_BATTLE_GPU.md). Two traps worth keeping: the
 rasterizer's own `rasterizer.h` does `#define RECT PS1_RECT` around its
 `draw.h` include, so image-taking forwards must be signed `PS1_RECT*`; and

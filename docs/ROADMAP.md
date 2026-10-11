@@ -451,9 +451,15 @@ speed.
   **Approach A (in progress).** Draw OT triangle polys (POLY_GT / POLY_FT
   and equivalents) on a GLES3 mesh FBO; keep sprites/UI on the RGB555
   software blit. See [P5.2_BATTLE_GPU.md](P5.2_BATTLE_GPU.md). Landed on
-  `main` as #69 (`973daf3`). `v0.6.5-preview.9` is the hardware cut;
-  OLED `frame dt us=` for field vs battle is pending until that nxlink
-  run. Battle 60 Hz proof is still open. P5.2 stays open.
+  `main` as #69 (`973daf3`). `v0.6.5-preview.9` is the hardware cut.
+  **preview.9 OLED regression (2026-10-11).** Mesh activated, but field
+  steady mean `frame dt us` ~1436113 (~41.8 Hz) vs preview.8 ~60 Hz, and
+  Fight-menu idle ~2931384 (~20.5 Hz) vs ~46 Hz. Field interiors also
+  showed severe GLES artifacts (blue stripe column, rug blobs, missing
+  walls, neon outlines) because field OT triangles hit the mesh path and
+  the black-discard composite. Follow-up: gate mesh to FIGHTSTG only +
+  dirty sample-VRAM upload. Battle 60 Hz proof is still open. P5.2 stays
+  open.
   During PSY-Z init the log recorded `KernelInit: cannot create the kernel
   synchronisation objects`. The game continued. The failed object (mutex
   or event) is not identified. That defect is open and is not the

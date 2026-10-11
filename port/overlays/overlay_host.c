@@ -9,10 +9,12 @@
 
 static const Dw3OverlayDesc *g_table;
 static size_t g_count;
+static int32_t g_mode_file_id;
 
 void dw3_overlay_set_table(const Dw3OverlayDesc *table, size_t count) {
     g_table = table;
     g_count = count;
+    g_mode_file_id = 0;
 }
 
 const Dw3OverlayDesc *dw3_overlay_find(int32_t file_id) {
@@ -42,10 +44,17 @@ int dw3_overlay_restore(int32_t file_id) {
     if (desc->bss != NULL && desc->bss_size > 0) {
         memset(desc->bss, 0, desc->bss_size);
     }
+    /* Mode overlays own an entry point; sub-overlays (WFIGHTMN, stages, …)
+     * must not clobber the tracked mode file used by the mesh gate. */
+    if (desc->entry != NULL) {
+        g_mode_file_id = file_id;
+    }
     fprintf(stderr, "dw3: overlay restore file=0x%x data=%zu bss=%zu entry=%p\n",
             (unsigned)file_id, desc->data_size, desc->bss_size, (void *)desc->entry);
     return 0;
 }
+
+int32_t dw3_overlay_current_mode_file(void) { return g_mode_file_id; }
 
 int dw3_host_menu_force_once(void) {
     static int done;
