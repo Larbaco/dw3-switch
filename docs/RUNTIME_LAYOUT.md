@@ -120,9 +120,11 @@ the restore, because `eglSwapBuffers` waits for vsync.
 ### Memory-card directory
 
 The Switch host expects `<runtime-root>/memcard/` to exist. US boot creates
-that empty directory when the runtime root exists. It does not create or
-replace `memcard0.mcr` / `memcard1.mcr`. `memcard_host_ensure()` still formats
-those files when they are absent.
+that empty directory when the runtime root exists. Saves are `save0.bin` /
+`save1.bin` (plus optional `saveN.name`). An empty directory is enough;
+`memcard_host_ensure()` does not invent a save file. Older `memcardN.mcr`
+images from this port migrate once into the flat file and are renamed to
+`.mcr.bak` (see `port/memcard/README.md`).
 
 The runtime packer does not preserve empty directories. A packed tree copied
 by hand, and any EU tree, still needs the directory created first:
