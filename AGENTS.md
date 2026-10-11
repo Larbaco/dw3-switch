@@ -81,6 +81,10 @@ Rules:
    or redistributable ROMs.
 6. **Keep Phase 0/1 honest.** A minimal `.nro` (boot, framebuffer, pad, log)
    comes before linking game code.
+7. **Do not overclock.** Leave the CPU and GPU clocks where the console
+   set them. Do not call `clkrstSetClockRate` or `appletSetCpuBoostMode`.
+   Performance work stays on the present path, the field-tile pace, and
+   the raster.
 
 ## Git and safety
 

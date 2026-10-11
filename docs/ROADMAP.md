@@ -428,21 +428,16 @@ speed.
   The frame-time check that used to be the P4.2 done-when lives here.
   Done when: no frame over 16.7 ms in field and battle benchmarks,
   docked and handheld.
-  **CPU clock and frame spacing (2026-10-11).** Boot calls
-  `clkrstSetClockRate` once on `PcvModuleId_CpuBus` at 1785 MHz. The applet
-  boost in the devkitA64 libnx this tree builds against is
-  `appletSetCpuBoostMode` with `ApmCpuBoostMode_FastLoad`, and that mode also
-  forces the GPU to 76.8 MHz. Boot leaves the GPU clock where the console
-  set it. 1785 MHz draws more current than the 1020 MHz handheld default, so
-  the unit runs warmer and the battery lasts less time. Boot stores the
-  previous rate and restores it if the process exits cleanly. A HOME kill
-  skips that restore. A failed call is logged and boot continues. `eglSwapInterval` stays at 1, so present still
-  waits for vsync. The vsync pump writes one `frame dt us=` line for the
-  microseconds between samples 60 pumps apart. The first sample only stores
-  the time. P5.2 stays open: there is still no OLED field or battle frame
-  measured under 16.7 ms. `v0.6.5-preview.6` is the hardware test of that
-  clock, the 60-frame log, the sampled-rectangle upload, and one field
-  tile per frame.
+  **Stock clocks (2026-10-11).** `v0.6.5-preview.6` raised the CPU to
+  1785 MHz. That change is reverted. Do not call `clkrstSetClockRate` or
+  `appletSetCpuBoostMode`. The CPU and GPU stay at the rate the console
+  set. Performance work is the sampled-rectangle upload, one field tile
+  per frame, and the raster, on those stock clocks. `eglSwapInterval`
+  stays at 1, so present still waits for vsync. The vsync pump writes one
+  `frame dt us=` line for the microseconds between samples 60 pumps
+  apart. The first sample only stores the time. About 1000000 is 60 Hz.
+  About 2000000 is 30 Hz. P5.2 stays open: there is still no OLED field
+  or battle frame measured under 16.7 ms.
 - [ ] **P5.3 Save handling.** Card images under `sdmc:/switch/dw3/saves/`,
   import/export of `.mcr`, sleep/exit safety (flush on `appletMainLoop`
   exit).
@@ -506,9 +501,10 @@ tick does not start Phase 6.
   That `.nro` is 8927429 bytes. It still crops the title and freezes the
   movie.
   `v0.6.5-preview.5` is the later hardware test (progress bar, left stick,
-  US extract from the BIN). `v0.6.5-preview.6` is the performance test
-  after that (sampled-rectangle upload, 1785 MHz CPU, one field tile per
-  frame). The picture prerelease remains
+  US extract from the BIN). `v0.6.5-preview.6` raised the CPU to 1785 MHz
+  and is not the build to install. `v0.6.5-preview.7` is the performance
+  test after that revert: sampled-rectangle upload and one field tile per
+  frame, on the console's own clocks. The picture prerelease remains
   `v0.6.5-preview.2`
   ([release](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.2),
   [run 38113420519](https://github.com/Larbaco/dw3-switch/actions/runs/38113420519)),

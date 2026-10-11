@@ -49,6 +49,10 @@ If `sdmc:/switch/dw3/us/` is missing, US boot extracts the runtime from
 that BIN. `v0.6.5-preview.5` is the hardware test of the copy progress
 bar, the left stick, and this extract.
 
+The CPU and GPU stay at the rate the console set. `v0.6.5-preview.6`
+raised the CPU to 1785 MHz. That is reverted. Do not put that file on
+the Switch.
+
 Still open on hardware: a P4.3 underrun count, the formal P4.5 CDFS suite,
 the full P4.6 overlay sweep, P5.2, and the P5.3 flush on exit.
 
@@ -195,15 +199,19 @@ on `workflow_dispatch` or a `v*` tag. It is a prerelease. Assets are
 No disc data.
 
 The latest preview release is
-[v0.6.5-preview.5](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.5).
-It is the hardware test of the progress bar, the left stick, and the US
+[v0.6.5-preview.7](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.7).
+It uploads only the sampled VRAM rectangle and loads one field tile per
+frame. It does not change the CPU or GPU clock.
+[v0.6.5-preview.6](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.6)
+raised the CPU to 1785 MHz. Do not install that file.
+[v0.6.5-preview.5](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.5)
+is the hardware test of the progress bar, the left stick, and the US
 BIN extract. The picture prerelease is
 [v0.6.5-preview.2](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.2)
 (`8273a91`, 8935621 bytes): display-mode title width and the full-height
 movie.
 [v0.6.5-preview.1](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.1)
 is the earlier 8927429-byte file. It crops the title and freezes the movie.
-There is no preview release newer than preview.5.
 
 A local game build is the same script and needs devkitPro. On a Windows
 mount, set `DW3_DK_TMPBUILD=/tmp/dw3-dk-build`. Mount notes:

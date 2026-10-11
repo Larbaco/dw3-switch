@@ -32,7 +32,6 @@
 #include "frame_dt.h"
 
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 
 #include <switch.h>
@@ -53,11 +52,6 @@ void StCdInterrupt(void);
 #endif
 
 static PsyzVSyncCb g_prev_vsync_cb;
-
-/* 1785 MHz is the CPU rate of applet FastLoad. That applet mode also pins the
- * GPU at 76.8 MHz in this libnx, so boot sets CpuBus through clkrst and does
- * not open a GPU clock session. */
-#define DW3_NX_CPU_HZ 1785000000u
 
 static uint64_t restore_now_us(void) {
     return armTicksToNs(armGetSystemTick()) / 1000ULL;
@@ -358,64 +352,6 @@ static int init_paths(void) {
     return 0;
 }
 
-/* The rate clkrst reported before the raise. Restored on a clean exit so
- * hbmenu does not keep 1785 MHz. A HOME kill skips atexit. */
-static uint32_t g_cpu_hz_prev;
-static int g_cpu_clock_raised;
-
-static void dw3_nx_restore_cpu_clock(void) {
-    ClkrstSession session;
-    Result rc;
-
-    if (!g_cpu_clock_raised) {
-        return;
-    }
-    g_cpu_clock_raised = 0;
-    rc = clkrstInitialize();
-    if (R_FAILED(rc)) {
-        return;
-    }
-    rc = clkrstOpenSession(&session, PcvModuleId_CpuBus, 3);
-    if (R_SUCCEEDED(rc)) {
-        clkrstSetClockRate(&session, g_cpu_hz_prev);
-        clkrstCloseSession(&session);
-    }
-    clkrstExit();
-}
-
-/* Once, after the log file is open. A failed call keeps the console clock
- * and boot continues. */
-static void dw3_nx_raise_cpu_clock(void) {
-    ClkrstSession session;
-    Result rc;
-    uint32_t prev = 0;
-
-    rc = clkrstInitialize();
-    if (R_SUCCEEDED(rc)) {
-        /* unk=3 matches the official sysmodule open in clkrst.h. */
-        rc = clkrstOpenSession(&session, PcvModuleId_CpuBus, 3);
-        if (R_SUCCEEDED(rc)) {
-            rc = clkrstGetClockRate(&session, &prev);
-            if (R_SUCCEEDED(rc)) {
-                g_cpu_hz_prev = prev;
-                rc = clkrstSetClockRate(&session, DW3_NX_CPU_HZ);
-                if (R_SUCCEEDED(rc)) {
-                    g_cpu_clock_raised = 1;
-                    atexit(dw3_nx_restore_cpu_clock);
-                }
-            }
-            clkrstCloseSession(&session);
-        }
-        clkrstExit();
-    }
-    if (R_FAILED(rc)) {
-        ERRORF("cpu clock rc=0x%08x", (unsigned)rc);
-        return;
-    }
-    INFOF("cpu clock rc=0x%08x hz=%u prev=%u", (unsigned)rc, DW3_NX_CPU_HZ,
-          g_cpu_hz_prev);
-}
-
 int main(int argc, char **argv) {
     (void)argc;
     (void)argv;
@@ -451,7 +387,6 @@ int main(int argc, char **argv) {
         ERRORF("sdmc: mount failed; runtime paths will not resolve");
     }
     dw3_nx_log_open();
-    dw3_nx_raise_cpu_clock();
 #ifdef DW3_NXLINK_STDIO
     INFOF("nxlink socket init=0x%08x stdio fd=%d",
           (unsigned)g_nxlink_socket_result, g_nxlink_fd);
