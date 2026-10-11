@@ -52,6 +52,13 @@ must not change game branches that treat “instant” as a different code path
 (OpenWorld2003 hit a typing-speed `0` bug that stalled underwater room
 loads).
 
+## Static files after the first extract
+
+The US tree on the SD is already the source of bytes. Field tiles are the
+remaining ordinary read that still pretends the drive is busy. Movies keep
+a 150 sector/s delivery because the picture and the XA share one STR.
+Decision and the preview.7 frame-time log: [STATIC_SD_LOAD.md](STATIC_SD_LOAD.md).
+
 ## Related tasks
 
 - P1.5 / P1.6 — map + pack layout

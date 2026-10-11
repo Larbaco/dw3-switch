@@ -436,8 +436,19 @@ speed.
   stays at 1, so present still waits for vsync. The vsync pump writes one
   `frame dt us=` line for the microseconds between samples 60 pumps
   apart. The first sample only stores the time. About 1000000 is 60 Hz.
-  About 2000000 is 30 Hz. P5.2 stays open: there is still no OLED field
-  or battle frame measured under 16.7 ms.
+  About 2000000 is 30 Hz.
+  **Preview.7 OLED log (2026-10-11).** Nxlink boot, EGL 1280×720, 255
+  overlays, slot 1 loaded, field walking, then `FIGHTSTG`. The log client
+  closed while the battle was still running. 156 samples of 60 VSyncs:
+  mean 1.017 s (about 16.96 ms/frame, about 59 FPS). Some windows reached
+  1.51 s (about 25.2 ms/frame across those 60 frames). P5.2 stays open.
+  During PSY-Z init the log recorded `KernelInit: cannot create the kernel
+  synchronisation objects`. The game continued. The failed object (mutex
+  or event) is not identified. That defect is open and is not the
+  map-preload work. `VSync(n>1) is not fully implemented` was logged once
+  and is the known partial path. The next load change is one `fread` of
+  the map file when the area opens, then copies from RAM. Movies stay at
+  150 sectors/s. See [STATIC_SD_LOAD.md](STATIC_SD_LOAD.md).
 - [ ] **P5.3 Save handling.** Card images under `sdmc:/switch/dw3/saves/`,
   import/export of `.mcr`, sleep/exit safety (flush on `appletMainLoop`
   exit).

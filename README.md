@@ -53,8 +53,16 @@ The CPU and GPU stay at the rate the console set. `v0.6.5-preview.6`
 raised the CPU to 1785 MHz. That is reverted. Do not put that file on
 the Switch.
 
+`v0.6.5-preview.7` reached the field and a battle on the OLED. Across 156
+samples of 60 frames the mean was about 59 FPS, with some 60-frame windows
+near 25 ms/frame. PSY-Z logged `KernelInit: cannot create the kernel
+synchronisation objects` once and continued. The load design that follows
+from that session is [docs/STATIC_SD_LOAD.md](docs/STATIC_SD_LOAD.md):
+the map file is read once per area; movies keep their sector pace.
+
 Still open on hardware: a P4.3 underrun count, the formal P4.5 CDFS suite,
-the full P4.6 overlay sweep, P5.2, and the P5.3 flush on exit.
+the full P4.6 overlay sweep, P5.2, the kernel sync-object error, and the
+P5.3 flush on exit.
 
 **PC today.** Yes, with your own US disc packed to `runtime/us`. Expect
 rough visuals in some scenes.
