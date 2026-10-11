@@ -18,6 +18,7 @@ typedef struct {
     uint32_t base_lba;
     uint32_t sectors;
     uint32_t form;
+    uint32_t stride; /* 2048 user payload, or 2352 raw Mode2 */
     char relpath[512];
     char path[1024];
     FILE *fp;
@@ -146,12 +147,20 @@ static int open_path(uint32_t id, const char *rel, uint32_t base_lba,
     g_str.base_lba = base_lba;
     g_str.sectors = sectors;
     g_str.form = form;
+    g_str.stride = STR_USER_BYTES;
+    if (sectors > 0 && fseek(g_str.fp, 0, SEEK_END) == 0) {
+        long sz = ftell(g_str.fp);
+        if (sz == (long)sectors * (long)STR_RAW_BYTES) {
+            g_str.stride = STR_RAW_BYTES;
+        }
+        fseek(g_str.fp, 0, SEEK_SET);
+    }
     snprintf(g_str.relpath, sizeof(g_str.relpath), "%s", rel);
     snprintf(g_str.path, sizeof(g_str.path), "%s", abs);
     fprintf(stderr,
-            "dw3-str: open id=%u lba=%u sectors=%u form=%u path=%s\n",
+            "dw3-str: open id=%u lba=%u sectors=%u form=%u stride=%u path=%s\n",
             (unsigned)id, (unsigned)base_lba, (unsigned)sectors,
-            (unsigned)form, abs);
+            (unsigned)form, (unsigned)g_str.stride, abs);
     return 0;
 }
 
@@ -210,6 +219,20 @@ int dw3_str_stream_read_sector(int lba, uint8_t out[STR_RAW_BYTES]) {
         return -1;
     }
 
+    /* A restored STR is already one raw Mode2 sector per map sector, so the
+     * last two XA ADPCM blocks are in the file. The 2048-byte extract is
+     * not: those blocks are gone, and zero-filling them stretches XA. */
+    if (g_str.stride == STR_RAW_BYTES) {
+        off = (long)((uint32_t)lba - g_str.base_lba) * (long)STR_RAW_BYTES;
+        if (fseek(g_str.fp, off, SEEK_SET) != 0) {
+            return -1;
+        }
+        if (fread(out, 1, STR_RAW_BYTES, g_str.fp) != STR_RAW_BYTES) {
+            return -1;
+        }
+        return 0;
+    }
+
     /* Prefer owner raw Mode2/2352 bin when set: packed STR truncates Form2
      * user data at 2048 (drops last 2 XA ADPCM blocks). */
     if (g_str.form == 2 && read_raw_disc_sector(lba, out) == 0) {
@@ -233,7 +256,8 @@ int dw3_str_stream_read_sector(int lba, uint8_t out[STR_RAW_BYTES]) {
     if (xa_audio && g_xa_hdr_logged < 1) {
         fprintf(stderr,
                 "dw3-str: XA sector %d via packed 2048 (submode=0x%02x "
-                "ci=0x%02x; set DW3_DISC_BIN for full Form2)\n",
+                "ci=0x%02x; last 2 ADPCM blocks missing, soundtrack "
+                "stretched — restore_form2_str.py or DW3_DISC_BIN)\n",
                 lba, out[18], out[19]);
         g_xa_hdr_logged++;
     }

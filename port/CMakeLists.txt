@@ -107,6 +107,7 @@ set(BSDEC_DIR "${DW3_ROOT}/vendor/psyz/nugget/bsdec")
 add_library(dw3_movies OBJECT
   "${CMAKE_CURRENT_SOURCE_DIR}/movies/dct_vlc.c"
   "${CMAKE_CURRENT_SOURCE_DIR}/movies/str_stream.c"
+  "${CMAKE_CURRENT_SOURCE_DIR}/movies/str_restore.c"
   "${BSDEC_DIR}/bsdec.c"
 )
 target_include_directories(dw3_movies PRIVATE

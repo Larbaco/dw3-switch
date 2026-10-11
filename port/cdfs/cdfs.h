@@ -42,6 +42,21 @@ int cdfs_lookup_lba(uint32_t lba, uint32_t *id_out, char *relpath_out,
 /* Absolute path under the runtime root for a relative map path. */
 int cdfs_join_root(const char *rel, char *out, size_t outlen);
 
+/* Runtime root set by cdfs_set_root, or "" if unset. */
+const char *cdfs_root(void);
+
+typedef struct CdfsMapInfo {
+    uint32_t id;
+    const char *path; /* valid only for the duration of the visit callback */
+    uint32_t lba;
+    uint32_t sectors;
+    uint32_t form;
+} CdfsMapInfo;
+
+/* Call fn for each map entry. fn returns non-zero to stop. Returns 0, or the
+ * fn's non-zero value. */
+int cdfs_visit(int (*fn)(const CdfsMapInfo *info, void *user), void *user);
+
 /* Wave 1: no-op. Reserved for async completion / cdReadyCallback poll. */
 void cdfs_poll(void);
 

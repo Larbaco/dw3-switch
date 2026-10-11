@@ -88,6 +88,13 @@ static void dw3_nx_vsync_pump(void) {
     }
 }
 
+static void str_restore_progress(const char *msg) {
+    /* Swap once per note so a multi-minute SD copy is not a black screen. */
+    INFOF("%s", msg);
+    dw3_nx_gpu_clear(0.02f, 0.06f, 0.12f, 1.0f);
+    dw3_nx_gpu_swap();
+}
+
 static const char *env_or(const char *key, const char *fallback) {
     const char *v = getenv(key);
     return (v != NULL && v[0] != '\0') ? v : fallback;
@@ -108,6 +115,14 @@ static int init_paths(void) {
         return -1;
     }
     INFOF("cdfs root=%s", root);
+
+    /* First launch with a 2048-byte STR extract: if the owner's BIN/CUE is
+     * on the card, rewrite AAA/STR as raw Mode2 so XA keeps all 18 blocks.
+     * Later boots only stat the files. */
+    dw3_str_restore_set_progress(str_restore_progress);
+    if (dw3_str_restore_from_disc() != 0) {
+        ERRORF("STR restore failed; opening-movie audio may stay slow");
+    }
 
     dw3_str_stream_install_cd_bridge();
 

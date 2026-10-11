@@ -308,6 +308,17 @@ header, or drops a leftover tail and scans for the next ready frame.
 The owner confirmed the movie plays in Ryubing, then confirmed the y=36
 crop fills the height.
 
+Opening movie clock (2026-10-11): the picture ran fast and the sound ran
+slow on hardware. The pump was delivering up to 8 sectors on every VSync
+and again from `StGetNext`, so a ~15 fps STR (about 10 sectors per frame,
+150 sectors/s at CD 2×) finished a frame every 60 Hz refresh. The packed
+2048-byte STR also drops the last two XA ADPCM blocks; the decoder plays
+that gap as silence, which stretches the soundtrack by 18/16. The pump is
+now 150 sectors/s. Full-speed audio needs the STR files as raw 2352.
+The `.nro` rewrites them on first launch when the Mode2 BIN/CUE sits in
+`sdmc:/switch/dw3/` (or `DW3_DISC_BIN` / `DW3_DISC_CUE`). The screen stays
+dark blue and the log prints `restore` until that copy finishes.
+
 ### OLED (2026-10-10/11)
 
 The owner launched a CMake game `.nro` from hbmenu. The first attempt

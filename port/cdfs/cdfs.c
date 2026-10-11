@@ -679,6 +679,32 @@ int cdfs_join_root(const char *rel, char *out, size_t outlen) {
     return join_path(out, outlen, rel);
 }
 
+const char *cdfs_root(void) { return g_root; }
+
+int cdfs_visit(int (*fn)(const CdfsMapInfo *info, void *user), void *user) {
+    size_t i;
+
+    if (fn == NULL) {
+        return -1;
+    }
+    for (i = 0; i < g_count; i++) {
+        const CdfsEntry *e = &g_entries[i];
+        CdfsMapInfo info;
+        int rc;
+
+        info.id = e->id;
+        info.path = e->path;
+        info.lba = e->lba;
+        info.sectors = e->sectors;
+        info.form = e->form;
+        rc = fn(&info, user);
+        if (rc != 0) {
+            return rc;
+        }
+    }
+    return 0;
+}
+
 int cdfs_lookup_lba(uint32_t lba, uint32_t *id_out, char *relpath_out,
                     size_t relpath_len, uint32_t *base_lba_out,
                     uint32_t *sectors_out, uint32_t *form_out) {

@@ -9,7 +9,7 @@ libnx backend exists.
 |---|---|
 | Upstream | https://github.com/Xeeynamo/psyz.git |
 | Working fork (submodule URL) | https://github.com/Larbaco/psyz.git |
-| Commit | `559865467dc2f8f6a32bafd87f57803e8aa51d8b` (`dw3-str-ring-wrap`: STR ring wrap id=1 sentinel; base `9e6c124` SEQ/SEP) |
+| Commit | `3da68e5` (`dw3-str-pace`: STR pump at 150 sectors/s; parent `15afac1` Switch build, `5598654` ring wrap) |
 | Base upstream | `fac9bd58ccd8a0c35e31c6354528f9d625e9bdd1` |
 | License | MIT — see [`vendor/psyz/LICENSE`](../vendor/psyz/LICENSE) |
 

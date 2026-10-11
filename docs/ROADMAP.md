@@ -373,8 +373,14 @@ console.
   **OLED (2026-10-10/11):** hbmenu reached the main menu and loaded a new
   game after an empty `sdmc:/switch/dw3/us/memcard/` was created. That
   `.nro` was `main` plus the P4.4/P4.5 commits, before the picture fix.
-  `v0.6.5-preview.2` is the picture fix. The owner is running it. This
-  note does not record that result. The runtime came from the owner's US
+  `v0.6.5-preview.2` is the picture fix. On that image the opening movie
+  picture runs fast and the soundtrack runs slow: the CD pump was feeding
+  sectors at the display rate, and the 2048-byte STR drops two XA blocks
+  that playback fills with silence. The pump is now double-speed
+  (150 sectors/s). The `.nro` rewrites a 2048-byte `AAA/STR/` from the
+  owner's BIN/CUE on first launch (`sdmc:/switch/dw3/*.cue` plus the
+  `.bin`, or `DW3_DISC_BIN`). Until that image is on the card the sound
+  stays slow. The runtime came from the owner's US
   disc and is not in git. P4.4 Joy-Con and Pro Controller, P4.5 cdfs on
   the SD, and P4.6 overlay switching on hardware stay open.
 
