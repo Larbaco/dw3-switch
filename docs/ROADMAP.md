@@ -343,17 +343,18 @@ console.
   still uses the weak 440 Hz stub in `nx_audio.c`. **Not ticked:** no
   hardware listen, and no underrun count on device. See
   `docs/P4.3_AUDIO.md`.
-- [ ] **P4.4 Input.** `hid` → PS1 pad bits, including the digital/analog
+- [x] **P4.4 Input.** `hid` → PS1 pad bits, including the digital/analog
   modes `PadInfoMode`/`PadSetMainMode` expect; rumble via `PadSetAct` →
   HD rumble (optional).
   Done when: title and field controls work with Joy-Con and Pro
   Controller.
   **Status (2026-10-11):** the Switch host publishes `PSYZ_CTRL_ANALOG_PAD`
   (`0x73`) and maps the left stick through a centre dead zone of 8192.
-  D-pad, buttons, Start and Select stay in the button word. Rumble is
-  still the P10.4 stub. **OLED (2026-10-11):** the left stick walks in
-  handheld (`style=0x3`, `handheld=1` on the preview.5 boot). **Not ticked:**
-  a Pro Controller is not proven yet. See `docs/P4.4_INPUT_STATUS.md`.
+  D-pad, buttons, Start and Select stay in the button word. **OLED:** the
+  owner confirmed the left stick on handheld Joy-Con (`style=0x3`,
+  `handheld=1` on the preview.5 boot) and on a Pro Controller. Rumble
+  stays the P10.4 stub and is optional for this item. See
+  `docs/P4.4_INPUT_STATUS.md`.
 - [ ] **P4.5 Filesystem + log + time.** `romfs:`/`sdmc:` for the runtime
   layout from P1.6, nxlink/stdout logging, `VSync`/`RCnt` timing.
   Done when: P2.5's cdfs tests pass on hardware against the SD layout.
@@ -390,10 +391,10 @@ console.
   Start-skip. It returned to title and entered field stages. The owner reports
   several map transitions, a working battle, and game audio sounding perfect.
   The main menu picture looks right. The visual errors are in the opening
-  video, and they remain after the STR rewrite.   The analog stick has no
+  video, and they remain after the STR rewrite. The analog stick has no
   function in that build (`kind=0x41`). The host now publishes the left
-  stick, and on preview.5 the owner confirmed it walks (P4.4; Pro Controller
-  still open). New saves on both cards load: slot 1 was a DuckStation card,
+  stick, and on preview.5 the owner confirmed it walks with handheld
+  Joy-Con and with a Pro Controller (P4.4). New saves on both cards load: slot 1 was a DuckStation card,
   and slot 2 loads after the data-frame fix in `994c42a`.
   Deleting `us/` stopped that
   preview.4 image, which only rewrote STR files. US boot now extracts
@@ -405,14 +406,14 @@ console.
   extract, the copy progress bar, and the left stick. The opening-video
   picture is unchanged from preview.4. EU is unchanged. See
   `docs/RUNTIME_LAYOUT.md`.
-  **Still open:** P4.4's Pro Controller pass, P4.5's formal P2.5 CDFS
-  suite on the SD, and P4.6's complete overlay sweep on hardware. Handheld
-  Joy-Con, including the left stick, is proven. The preview.4
+  **Still open:** P4.5's formal P2.5 CDFS suite on the SD, and P4.6's
+  complete overlay sweep on hardware. P4.4 is ticked: handheld Joy-Con and
+  a Pro Controller both walk with the left stick. The preview.4
   log proves several runtime paths, not those full acceptance suites.
 
   **Gate:** title + field + battle on a Switch. **Met (2026-10-11)** from the
   OLED preview.4 run: main menu/new game, multiple map transitions, and battle
-  were owner-confirmed. This does not close the individual P4.4–P4.6 criteria.
+  were owner-confirmed. This does not close the individual P4.5–P4.6 criteria.
 
 ## Phase 5 — Playable on Switch
 
