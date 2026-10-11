@@ -193,59 +193,60 @@ static int test_shutdown_flush(const char *dir) {
     return 0;
 }
 
-/* Build a 4-block linked file inside a legacy .mcr and migrate it. */
-static int test_migrate_from_mcr(const char *dir) {
-    uint8_t *img;
+/* Write a contiguous block chain: first..first+blocks-1 with product name. */
+static void plant_file(uint8_t *img, int first, int blocks, const char *prod,
+                       uint8_t fill, uint8_t mark0, uint8_t mark127) {
     uint8_t frame[MEMCARD_HOST_SECTOR_SIZE];
-    char mcr_path[768];
-    char bak_path[768];
-    char flat_path[768];
-    FILE *fp;
     int b;
     int s;
-    char name[] = SAVE_NAME;
-    unsigned char got[128];
+    uint32_t size = (uint32_t)blocks * 0x2000u;
 
-    img = (uint8_t *)malloc(MEMCARD_HOST_SIZE);
-    if (img == NULL) {
-        return 1;
-    }
-    memcard_host_format_image(img);
+    for (b = 0; b < blocks; b++) {
+        int idx = first + b;
 
-    /* Directory: blocks 1-4, links stored as next-block-minus-1. */
-    for (b = 1; b <= 4; b++) {
         memset(frame, 0, sizeof(frame));
-        if (b == 1) {
+        if (b == 0) {
             frame[0] = 0x51;
-            frame[4] = 0x00;
-            frame[5] = 0x80; /* 0x8000 */
-            memcpy(frame + 0x0A, SAVE_NAME, 20);
-            frame[8] = 1; /* next block 2 */
-            frame[9] = 0;
-        } else if (b < 4) {
+            frame[4] = (uint8_t)(size & 0xFF);
+            frame[5] = (uint8_t)((size >> 8) & 0xFF);
+            frame[6] = (uint8_t)((size >> 16) & 0xFF);
+            frame[7] = (uint8_t)((size >> 24) & 0xFF);
+            {
+                size_t n = strlen(prod);
+                if (n > 20) {
+                    n = 20;
+                }
+                memcpy(frame + 0x0A, prod, n);
+            }
+        } else if (b + 1 < blocks) {
             frame[0] = 0x52;
-            frame[8] = (uint8_t)b; /* next = b+1 → store b */
-            frame[9] = 0;
         } else {
             frame[0] = 0x53;
+        }
+        if (b + 1 < blocks) {
+            unsigned link = (unsigned)(first + b + 1) - 1u;
+            frame[8] = (uint8_t)(link & 0xFF);
+            frame[9] = (uint8_t)((link >> 8) & 0xFF);
+        } else {
             frame[8] = 0xFF;
             frame[9] = 0xFF;
         }
         frame[0x7F] = frame_xor(frame);
-        memcpy(img + (size_t)b * MEMCARD_HOST_SECTOR_SIZE, frame, sizeof(frame));
+        memcpy(img + (size_t)idx * MEMCARD_HOST_SECTOR_SIZE, frame,
+               sizeof(frame));
         for (s = 0; s < 64; s++) {
-            memset(img + (size_t)b * 0x2000u + (size_t)s * 128u, (uint8_t)(0x10 + b),
-                   128);
-        }
-        /* Put a recognizable pattern at file offset 0. */
-        if (b == 1) {
-            img[0x2000] = 0xD3;
-            img[0x2000 + 127] = 0x77;
+            memset(img + (size_t)idx * 0x2000u + (size_t)s * 128u, fill, 128);
         }
     }
+    img[(size_t)first * 0x2000u] = mark0;
+    img[(size_t)first * 0x2000u + 127u] = mark127;
+}
+
+static int write_mcr(const char *dir, const uint8_t *img) {
+    char mcr_path[768];
+    FILE *fp;
 
     if (join_path(mcr_path, sizeof(mcr_path), dir, "memcard0.mcr") != 0) {
-        free(img);
         return 1;
     }
     fp = fopen(mcr_path, "wb");
@@ -253,47 +254,83 @@ static int test_migrate_from_mcr(const char *dir) {
         if (fp) {
             fclose(fp);
         }
-        free(img);
         fprintf(stderr, "write mcr fixture failed\n");
         return 1;
     }
     fclose(fp);
+    return 0;
+}
+
+static int file_exists(const char *path) {
+    FILE *fp = fopen(path, "rb");
+    if (fp == NULL) {
+        return 0;
+    }
+    fclose(fp);
+    return 1;
+}
+
+/* OTHERGAME at block 1, DW3 at blocks 5-8 — must pick DW3 by name. */
+static int test_migrate_prefers_dw3_name(const char *dir) {
+    uint8_t *img;
+    char mcr_path[768];
+    char bak_path[768];
+    char flat_path[768];
+    char name_path[768];
+    char name_buf[32];
+    FILE *fp;
+    char name[] = SAVE_NAME;
+    unsigned char got[128];
+    size_t nr;
+
+    img = (uint8_t *)malloc(MEMCARD_HOST_SIZE);
+    if (img == NULL) {
+        return 1;
+    }
+    memcard_host_format_image(img);
+    plant_file(img, 1, 2, "OTHERGAME-SAVE-FILE", 0x11, 0xAA, 0xBB);
+    plant_file(img, 5, 4, SAVE_NAME, 0x22, 0xD3, 0x77);
+    if (write_mcr(dir, img) != 0) {
+        free(img);
+        return 1;
+    }
     free(img);
 
     memcard_host_shutdown();
     if (memcard_host_set_dir(dir) != 0 || memcard_host_ensure(0) != 0) {
-        fprintf(stderr, "migrate ensure failed\n");
+        fprintf(stderr, "name-pick ensure failed\n");
         return 1;
     }
     if (!memcard_host_has_file(0)) {
-        fprintf(stderr, "migrate did not load flat save\n");
+        fprintf(stderr, "name-pick: no flat save\n");
         return 1;
     }
-    if (join_path(flat_path, sizeof(flat_path), dir, "save0.bin") != 0) {
+    if (strcmp(memcard_host_file_name(0), SAVE_NAME) != 0) {
+        fprintf(stderr, "name-pick: got name '%s'\n", memcard_host_file_name(0));
         return 1;
     }
-    fp = fopen(flat_path, "rb");
+    if (join_path(flat_path, sizeof(flat_path), dir, "save0.bin") != 0 ||
+        join_path(bak_path, sizeof(bak_path), dir, "memcard0.mcr.bak") != 0 ||
+        join_path(mcr_path, sizeof(mcr_path), dir, "memcard0.mcr") != 0 ||
+        join_path(name_path, sizeof(name_path), dir, "save0.name") != 0) {
+        return 1;
+    }
+    if (!file_exists(flat_path) || !file_exists(bak_path) ||
+        file_exists(mcr_path)) {
+        fprintf(stderr, "name-pick: unexpected flat/bak/mcr presence\n");
+        return 1;
+    }
+    fp = fopen(name_path, "rb");
     if (fp == NULL) {
-        fprintf(stderr, "save0.bin not created\n");
+        fprintf(stderr, "name-pick: save0.name missing\n");
         return 1;
     }
+    nr = fread(name_buf, 1, sizeof(name_buf) - 1, fp);
     fclose(fp);
-    if (join_path(bak_path, sizeof(bak_path), dir, "memcard0.mcr.bak") != 0) {
+    name_buf[nr] = '\0';
+    if (strcmp(name_buf, SAVE_NAME) != 0) {
+        fprintf(stderr, "name-pick: sidecar '%s'\n", name_buf);
         return 1;
-    }
-    fp = fopen(bak_path, "rb");
-    if (fp == NULL) {
-        fprintf(stderr, "memcard0.mcr.bak missing\n");
-        return 1;
-    }
-    fclose(fp);
-    {
-        FILE *still = fopen(mcr_path, "rb");
-        if (still != NULL) {
-            fclose(still);
-            fprintf(stderr, "memcard0.mcr still present (expected rename)\n");
-            return 1;
-        }
     }
 
     MemCardInit(0);
@@ -301,11 +338,123 @@ static int test_migrate_from_mcr(const char *dir) {
     memset(got, 0, sizeof(got));
     if (MemCardReadFile(CHAN0, name, (unsigned long *)got, 0, 128) != 1 ||
         !sync_ok()) {
-        fprintf(stderr, "migrated read failed\n");
+        fprintf(stderr, "name-pick read failed\n");
         return 1;
     }
     if (got[0] != 0xD3 || got[127] != 0x77) {
-        fprintf(stderr, "migrated bytes %02x/%02x\n", got[0], got[127]);
+        fprintf(stderr, "name-pick bytes %02x/%02x (wanted DW3, not OTHER)\n",
+                got[0], got[127]);
+        return 1;
+    }
+    return 0;
+}
+
+/* Corrupt short flat must not block migration from a valid .mcr. */
+static int test_bad_flat_then_migrate(const char *dir) {
+    uint8_t *img;
+    char flat_path[768];
+    char bad_path[768];
+    char bak_path[768];
+    FILE *fp;
+    char name[] = SAVE_NAME;
+    unsigned char got[128];
+    uint8_t junk[100];
+
+    if (join_path(flat_path, sizeof(flat_path), dir, "save0.bin") != 0) {
+        return 1;
+    }
+    memset(junk, 0x5E, sizeof(junk));
+    fp = fopen(flat_path, "wb");
+    if (fp == NULL || fwrite(junk, 1, sizeof(junk), fp) != sizeof(junk)) {
+        if (fp) {
+            fclose(fp);
+        }
+        fprintf(stderr, "write bad flat failed\n");
+        return 1;
+    }
+    fclose(fp);
+
+    img = (uint8_t *)malloc(MEMCARD_HOST_SIZE);
+    if (img == NULL) {
+        return 1;
+    }
+    memcard_host_format_image(img);
+    plant_file(img, 1, 4, SAVE_NAME, 0x33, 0xC1, 0xC2);
+    if (write_mcr(dir, img) != 0) {
+        free(img);
+        return 1;
+    }
+    free(img);
+
+    memcard_host_shutdown();
+    if (memcard_host_set_dir(dir) != 0 || memcard_host_ensure(0) != 0) {
+        fprintf(stderr, "bad-flat ensure failed\n");
+        return 1;
+    }
+    if (!memcard_host_has_file(0)) {
+        fprintf(stderr, "bad-flat: migrate did not produce save\n");
+        return 1;
+    }
+    if (join_path(bad_path, sizeof(bad_path), dir, "save0.bin.bad") != 0 ||
+        join_path(bak_path, sizeof(bak_path), dir, "memcard0.mcr.bak") != 0) {
+        return 1;
+    }
+    if (!file_exists(bad_path) || !file_exists(bak_path)) {
+        fprintf(stderr, "bad-flat: missing .bad or .bak\n");
+        return 1;
+    }
+
+    MemCardInit(0);
+    MemCardStart();
+    memset(got, 0, sizeof(got));
+    if (MemCardReadFile(CHAN0, name, (unsigned long *)got, 0, 128) != 1 ||
+        !sync_ok()) {
+        fprintf(stderr, "bad-flat read failed\n");
+        return 1;
+    }
+    if (got[0] != 0xC1 || got[127] != 0xC2) {
+        fprintf(stderr, "bad-flat bytes %02x/%02x\n", got[0], got[127]);
+        return 1;
+    }
+    return 0;
+}
+
+/* Only OTHERGAME on the card: leave .mcr alone, no flat save. */
+static int test_migrate_skips_non_dw3(const char *dir) {
+    uint8_t *img;
+    char mcr_path[768];
+    char bak_path[768];
+    char flat_path[768];
+
+    img = (uint8_t *)malloc(MEMCARD_HOST_SIZE);
+    if (img == NULL) {
+        return 1;
+    }
+    memcard_host_format_image(img);
+    plant_file(img, 1, 2, "OTHERGAME-SAVE-FILE", 0x44, 0x11, 0x22);
+    if (write_mcr(dir, img) != 0) {
+        free(img);
+        return 1;
+    }
+    free(img);
+
+    memcard_host_shutdown();
+    if (memcard_host_set_dir(dir) != 0 || memcard_host_ensure(0) != 0) {
+        fprintf(stderr, "skip-non-dw3 ensure failed\n");
+        return 1;
+    }
+    if (memcard_host_has_file(0)) {
+        fprintf(stderr, "skip-non-dw3: unexpected flat save\n");
+        return 1;
+    }
+    if (join_path(mcr_path, sizeof(mcr_path), dir, "memcard0.mcr") != 0 ||
+        join_path(bak_path, sizeof(bak_path), dir, "memcard0.mcr.bak") != 0 ||
+        join_path(flat_path, sizeof(flat_path), dir, "save0.bin") != 0) {
+        return 1;
+    }
+    if (!file_exists(mcr_path) || file_exists(bak_path) ||
+        file_exists(flat_path)) {
+        fprintf(stderr, "skip-non-dw3: .mcr should stay; no .bak/flat\n");
         return 1;
     }
     return 0;
@@ -336,8 +485,20 @@ int main(int argc, char **argv) {
     }
     memcard_host_shutdown();
 
-    if (join_path(sub, sizeof(sub), dir, "migrate") != 0 || make_dir(sub) != 0 ||
-        test_migrate_from_mcr(sub) != 0) {
+    if (join_path(sub, sizeof(sub), dir, "migrate_name") != 0 ||
+        make_dir(sub) != 0 || test_migrate_prefers_dw3_name(sub) != 0) {
+        return 1;
+    }
+    memcard_host_shutdown();
+
+    if (join_path(sub, sizeof(sub), dir, "bad_flat") != 0 || make_dir(sub) != 0 ||
+        test_bad_flat_then_migrate(sub) != 0) {
+        return 1;
+    }
+    memcard_host_shutdown();
+
+    if (join_path(sub, sizeof(sub), dir, "skip_other") != 0 ||
+        make_dir(sub) != 0 || test_migrate_skips_non_dw3(sub) != 0) {
         return 1;
     }
     memcard_host_shutdown();

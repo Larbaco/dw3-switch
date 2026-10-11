@@ -24,12 +24,15 @@ external tool, roadmap **P9.6**, and is not linked into the game.
 
 ### One-time migration from `.mcr`
 
-If `saveN.bin` is missing and `memcardN.mcr` exists (this port's older
-128 KiB image), `memcard_host_ensure` extracts the first first-block game
-file using the BIOS next-block-minus-1 directory link, writes `saveN.bin`
-(+ sidecar), and renames the image to `memcardN.mcr.bak`. The `.mcr` is
-**not** deleted without rename. Empty formatted cards with no game file
-are left alone (no flat save created).
+If `saveN.bin` is missing (or present but the wrong size — quarantined as
+`saveN.bin.bad`) and `memcardN.mcr` exists, `memcard_host_ensure` scans
+all directory frames for a Digimon World 3 product name
+(`BASLUS-01436DMW3-USA`, `BESLES-03936DMW3-EUR`, or `BISLPS-03446DMW3-JPN`),
+extracts that file via the BIOS next-block-minus-1 link, writes
+`saveN.bin` (+ sidecar), and only then renames the image to
+`memcardN.mcr.bak`. Other games' first-block entries are ignored. If no
+DW3 name matches, the `.mcr` is left untouched and no flat save is
+created.
 
 Do **not** put a frame XOR on data-frame byte `0x7F`. That byte is game
 data (e.g. partner index high byte). Flat saves never apply frame XOR.

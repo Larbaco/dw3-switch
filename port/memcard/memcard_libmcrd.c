@@ -61,11 +61,16 @@ static int chan_to_slot(long chan) {
     return (int)port;
 }
 
-/* After a write burst, any other MemCard* call commits dirty RAM once. */
-static void flush_if_dirty(int slot) {
-    if (slot >= 0) {
-        (void)memcard_host_flush(slot);
+/* After a write burst, any other MemCard* call commits dirty RAM once.
+ * Returns -1 if flush failed (caller should surface McErrCardInvalid). */
+static int flush_if_dirty(int slot) {
+    if (slot < 0) {
+        return -1;
     }
+    if (memcard_host_flush(slot) != 0 || memcard_host_flush_failed(slot)) {
+        return -1;
+    }
+    return 0;
 }
 
 static int name_matches(int slot, const char *file) {
@@ -122,7 +127,10 @@ long MemCardExist(long chan) {
     if (slot < 0) {
         return 0;
     }
-    flush_if_dirty(slot);
+    if (flush_if_dirty(slot) != 0) {
+        pending_set(McFuncExist, McErrCardInvalid);
+        return 1;
+    }
     if (memcard_host_ensure(slot) != 0) {
         pending_set(McFuncExist, McErrCardNotExist);
         return 1;
@@ -137,7 +145,10 @@ long MemCardAccept(long chan) {
     if (slot < 0) {
         return 0;
     }
-    flush_if_dirty(slot);
+    if (flush_if_dirty(slot) != 0) {
+        pending_set(McFuncAccept, McErrCardInvalid);
+        return 1;
+    }
     if (memcard_host_ensure(slot) != 0) {
         pending_set(McFuncAccept, McErrCardNotExist);
         return 1;
@@ -155,7 +166,10 @@ long MemCardReadFile(long chan, char *file, unsigned long *adrs, long offset,
         (bytes & (long)(MEMCARD_HOST_SECTOR_SIZE - 1)) != 0) {
         return 0;
     }
-    flush_if_dirty(slot);
+    if (flush_if_dirty(slot) != 0) {
+        pending_set(McFuncReadFile, McErrCardInvalid);
+        return 1;
+    }
     if (memcard_host_ensure(slot) != 0) {
         pending_set(McFuncReadFile, McErrCardNotExist);
         return 1;
@@ -216,7 +230,12 @@ long MemCardGetDirentry(long chan, char *name, HostDirEntry *dir, long *files,
     if (slot < 0) {
         return McErrCardNotExist;
     }
-    flush_if_dirty(slot);
+    if (flush_if_dirty(slot) != 0) {
+        if (files) {
+            *files = 0;
+        }
+        return McErrCardInvalid;
+    }
     if (memcard_host_ensure(slot) != 0) {
         if (files) {
             *files = 0;
@@ -252,7 +271,9 @@ long MemCardCreateFile(long chan, char *filename, long blocks) {
     if (slot < 0 || filename == NULL) {
         return McErrCardInvalid;
     }
-    flush_if_dirty(slot);
+    if (flush_if_dirty(slot) != 0) {
+        return McErrCardInvalid;
+    }
     if (memcard_host_ensure(slot) != 0) {
         return McErrCardNotExist;
     }

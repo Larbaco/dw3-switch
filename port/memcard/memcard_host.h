@@ -70,6 +70,9 @@ void memcard_host_shutdown(void);
 unsigned memcard_host_flush_count(int slot);
 void memcard_host_reset_flush_count(int slot);
 
+/* Non-zero if the last flush attempt for this slot failed (still dirty). */
+int memcard_host_flush_failed(int slot);
+
 /* Legacy 128 KiB sector helpers (fixtures / migration tooling). */
 int memcard_host_legacy_ensure(int slot);
 int memcard_host_read(int slot, uint32_t offset, void *buf, size_t len);

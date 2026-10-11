@@ -17,8 +17,16 @@ typedef struct MemSlot {
     char name[21];
     int present; /* resident flat save loaded or created */
     int dirty;
+    int flush_failed;
     unsigned flush_count;
 } MemSlot;
+
+/* Product file names Digimon World 3 uses (decomp SAVE_FILE_NAMES). */
+static const char *const k_dw3_save_names[] = {
+    "BASLUS-01436DMW3-USA",
+    "BESLES-03936DMW3-EUR",
+    "BISLPS-03446DMW3-JPN",
+};
 
 static char g_dir[MEMCARD_DIR_MAX];
 static MemSlot g_slots[MEMCARD_HOST_SLOTS];
@@ -152,6 +160,7 @@ static void slot_clear_ram(int slot) {
     s->name[0] = '\0';
     s->present = 0;
     s->dirty = 0;
+    s->flush_failed = 0;
 }
 
 static int slot_alloc(int slot) {
@@ -279,54 +288,120 @@ static void dir_name(const uint8_t *frame, char *out, size_t outlen) {
     out[i] = '\0';
 }
 
-/* Extract the first first-block file from a legacy 128 KiB image into dest.
- * Walks directory next-block-minus-1 links (same rule as the old libmcrd). */
+static int is_dw3_save_name(const char *name) {
+    size_t i;
+
+    if (name == NULL || name[0] == '\0') {
+        return 0;
+    }
+    for (i = 0; i < sizeof(k_dw3_save_names) / sizeof(k_dw3_save_names[0]);
+         i++) {
+        if (strcmp(name, k_dw3_save_names[i]) == 0) {
+            return 1;
+        }
+    }
+    return 0;
+}
+
+/* Copy one directory-linked file starting at first_frame into dest. */
+static int extract_file_chain(const uint8_t *img, int first_frame, uint8_t *dest) {
+    unsigned block = (unsigned)first_frame;
+    unsigned got = 0;
+
+    memset(dest, 0, MEMCARD_FLAT_SIZE);
+    while (got < MEMCARD_FLAT_SIZE) {
+        const uint8_t *dir_frame;
+        const uint8_t *src;
+        unsigned next = 0;
+        int link;
+        size_t chunk;
+
+        if (block < 1 || block > MC_DIR_FRAMES) {
+            return -1;
+        }
+        src = img + (size_t)block * MC_BLOCK_SIZE;
+        chunk = MC_BLOCK_SIZE;
+        if (got + chunk > MEMCARD_FLAT_SIZE) {
+            chunk = MEMCARD_FLAT_SIZE - got;
+        }
+        memcpy(dest + got, src, chunk);
+        got += (unsigned)chunk;
+        if (got >= MEMCARD_FLAT_SIZE) {
+            return 0;
+        }
+        dir_frame = img + (size_t)block * MEMCARD_HOST_SECTOR_SIZE;
+        link = dir_next_block(dir_frame, &next);
+        if (link != 1) {
+            /* Short file: keep what we copied (zero-padded). */
+            return 0;
+        }
+        block = next;
+    }
+    return 0;
+}
+
+/* Extract a Digimon World 3 save by product name, not the first 0x51 entry.
+ * Scans all directory frames; leaves the image alone if none match. */
 static int extract_flat_from_mcr(const uint8_t *img, uint8_t *dest, char *name_out,
                                  size_t name_outlen) {
     int frame_i;
 
-    memset(dest, 0, MEMCARD_FLAT_SIZE);
     for (frame_i = 1; frame_i <= MC_DIR_FRAMES; frame_i++) {
         const uint8_t *dir = img + (size_t)frame_i * MEMCARD_HOST_SECTOR_SIZE;
-        unsigned block;
-        unsigned got = 0;
+        char name[21];
 
         if (dir[0] != MC_ALLOC_FIRST) {
             continue;
         }
-        dir_name(dir, name_out, name_outlen);
-        block = (unsigned)frame_i;
-        while (got < MEMCARD_FLAT_SIZE) {
-            const uint8_t *dir_frame;
-            const uint8_t *src;
-            unsigned next = 0;
-            int link;
-            size_t chunk;
-
-            if (block < 1 || block > MC_DIR_FRAMES) {
-                return -1;
+        dir_name(dir, name, sizeof(name));
+        if (!is_dw3_save_name(name)) {
+            continue;
+        }
+        if (extract_file_chain(img, frame_i, dest) != 0) {
+            return -1;
+        }
+        if (name_out != NULL && name_outlen > 0) {
+            size_t n = strlen(name);
+            if (n + 1 > name_outlen) {
+                n = name_outlen - 1;
             }
-            src = img + (size_t)block * MC_BLOCK_SIZE;
-            chunk = MC_BLOCK_SIZE;
-            if (got + chunk > MEMCARD_FLAT_SIZE) {
-                chunk = MEMCARD_FLAT_SIZE - got;
-            }
-            memcpy(dest + got, src, chunk);
-            got += (unsigned)chunk;
-            if (got >= MEMCARD_FLAT_SIZE) {
-                return 0;
-            }
-            dir_frame = img + (size_t)block * MEMCARD_HOST_SECTOR_SIZE;
-            link = dir_next_block(dir_frame, &next);
-            if (link != 1) {
-                /* Short file: keep what we copied (zero-padded). */
-                return 0;
-            }
-            block = next;
+            memcpy(name_out, name, n);
+            name_out[n] = '\0';
         }
         return 0;
     }
     return -1;
+}
+
+static int quarantine_bad_flat(int slot) {
+    char path[MEMCARD_PATH_MAX];
+    char bad[MEMCARD_PATH_MAX + 8];
+    char npath[MEMCARD_PATH_MAX];
+    char nbad[MEMCARD_PATH_MAX + 8];
+    int n;
+
+    if (flat_path(slot, path, sizeof(path)) != 0) {
+        return -1;
+    }
+    n = snprintf(bad, sizeof(bad), "%s.bad", path);
+    if (n < 0 || (size_t)n >= sizeof(bad)) {
+        return -1;
+    }
+    remove(bad);
+    if (rename(path, bad) != 0) {
+        fprintf(stderr, "dw3: memcard: cannot quarantine %s -> %s (%s)\n", path,
+                bad, strerror(errno));
+        return -1;
+    }
+    fprintf(stderr, "dw3: memcard: quarantined corrupt flat as %s\n", bad);
+    if (name_path(slot, npath, sizeof(npath)) == 0) {
+        n = snprintf(nbad, sizeof(nbad), "%s.bad", npath);
+        if (n >= 0 && (size_t)n < sizeof(nbad)) {
+            remove(nbad);
+            (void)rename(npath, nbad);
+        }
+    }
+    return 0;
 }
 
 static int atomic_write_file(const char *path, const uint8_t *data, size_t len) {
@@ -432,9 +507,12 @@ static int migrate_legacy_mcr(int slot) {
     name[0] = '\0';
     if (extract_flat_from_mcr(img, g_slots[slot].data, name, sizeof(name)) !=
         0) {
-        /* Empty formatted card: no game file to migrate. */
+        /* No DW3 product save — leave .mcr untouched (do not rename to .bak). */
         free(img);
         slot_clear_ram(slot);
+        fprintf(stderr,
+                "dw3: memcard migrate: no DW3 save in %s (left in place)\n",
+                mcr_path);
         return 0;
     }
     free(img);
@@ -447,6 +525,7 @@ static int migrate_legacy_mcr(int slot) {
     }
     (void)write_name_sidecar(slot);
 
+    /* Rename only after a successful DW3 extract + flat write. */
     n = snprintf(bak_path, sizeof(bak_path), "%s.bak", mcr_path);
     if (n >= 0 && (size_t)n < sizeof(bak_path)) {
         if (rename(mcr_path, bak_path) != 0) {
@@ -454,8 +533,9 @@ static int migrate_legacy_mcr(int slot) {
                     "dw3: memcard migrate: kept %s (rename to .bak failed: %s)\n",
                     mcr_path, strerror(errno));
         } else {
-            fprintf(stderr, "dw3: memcard migrate slot=%d -> %s (from %s.bak)\n",
-                    slot, flat, memcard_host_legacy_slot_name(slot));
+            fprintf(stderr,
+                    "dw3: memcard migrate slot=%d name=%s -> %s (from %s.bak)\n",
+                    slot, name, flat, memcard_host_legacy_slot_name(slot));
         }
     }
     return 0;
@@ -555,15 +635,25 @@ int memcard_host_flush(int slot) {
         return 0;
     }
     if (flat_path(slot, path, sizeof(path)) != 0) {
+        g_slots[slot].flush_failed = 1;
+        fprintf(stderr, "dw3: memcard flush FAILED slot=%d (bad path)\n", slot);
         return -1;
     }
     if (atomic_write_file(path, g_slots[slot].data, MEMCARD_FLAT_SIZE) != 0) {
+        g_slots[slot].flush_failed = 1;
+        fprintf(stderr, "dw3: memcard flush FAILED slot=%d path=%s (%s)\n", slot,
+                path, strerror(errno));
         return -1;
     }
     if (write_name_sidecar(slot) != 0) {
+        g_slots[slot].flush_failed = 1;
+        fprintf(stderr,
+                "dw3: memcard flush FAILED slot=%d (name sidecar) path=%s\n",
+                slot, path);
         return -1;
     }
     g_slots[slot].dirty = 0;
+    g_slots[slot].flush_failed = 0;
     g_slots[slot].flush_count++;
     return 0;
 }
@@ -593,6 +683,13 @@ void memcard_host_reset_flush_count(int slot) {
     }
 }
 
+int memcard_host_flush_failed(int slot) {
+    if (!slot_ok(slot)) {
+        return 0;
+    }
+    return g_slots[slot].flush_failed;
+}
+
 int memcard_host_ensure(int slot) {
     char path[MEMCARD_PATH_MAX];
     FILE *fp;
@@ -609,7 +706,14 @@ int memcard_host_ensure(int slot) {
     fp = fopen(path, "rb");
     if (fp != NULL) {
         fclose(fp);
-        return load_flat_from_disk(slot);
+        if (load_flat_from_disk(slot) == 0) {
+            return 0;
+        }
+        /* Wrong size / unreadable: quarantine and fall through to .mcr. */
+        fprintf(stderr,
+                "dw3: memcard: bad flat %s (wrong size or read error)\n", path);
+        (void)quarantine_bad_flat(slot);
+        slot_clear_ram(slot);
     }
     /* One-time migration from this port's older 128 KiB image. */
     if (migrate_legacy_mcr(slot) != 0) {
@@ -625,6 +729,7 @@ void memcard_host_shutdown(void) {
     for (slot = 0; slot < MEMCARD_HOST_SLOTS; slot++) {
         slot_clear_ram(slot);
         g_slots[slot].flush_count = 0;
+        g_slots[slot].flush_failed = 0;
     }
     g_dir[0] = '\0';
 }
