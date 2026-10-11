@@ -131,6 +131,20 @@ shared timeline — local-only progress is not enough.
 PC host is the loop to verify here. Switch `.nro` builds stay on GitHub Actions
 (`devkitpro/devkita64`); this VM has no Docker daemon.
 
+CI job `switch` is `make -C platforms/switch`, the `host_hello` sample.
+The game image is `tools/build_switch_game.sh` (CMake, `boot_main` →
+`dw3_game_main`). Pull requests build it as job `switch-game` and upload
+an Actions artifact. A GitHub Release is only
+`.github/workflows/switch-release.yml` (`workflow_dispatch` or a `v*` tag),
+and it is a prerelease. `workflow_dispatch` is listed only once that file
+is on `main`. Tag `v0.6.5-preview.1` is the first preview
+(8927429-byte game `.nro` plus `README.txt`). Do not publish the sample
+`.nro` as the game.
+
+The game image needs `vendor/psyz/nugget` as well as `external/SDL`, without
+`--recursive` on nugget. Missing `nugget/bsdec/bsdec.c` shows up as
+"No SOURCES given to target: dw3_movies".
+
 - Default `cc` is Clang 18. It links with GCC 14's libstdc++, so
   `libstdc++-14-dev` must be installed or CMake's C++ compiler check fails.
 - There is no `/dev/dri`. `sdl3_gpu` needs `mesa-vulkan-drivers` (lavapipe).
