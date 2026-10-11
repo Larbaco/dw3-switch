@@ -78,9 +78,13 @@ Status (P4.7): the CMake target links. `source/boot_main.c` calls
 `dw3_game_main`. `psyz_backend/switch_gpu.c` supplies the `Draw_*` entry
 points an earlier link stop was missing, and `nx_gpu.c` presents the
 software rasterizer. A clean build is about 1144 objects and an 8.9 MB
-`.nro` at `build/switch/dw3-switch.nro`. The title draws in Ryubing.
-P4.7 stays open until that title is on hardware. See
-[docs/SWITCH_BACKEND.md](../../docs/SWITCH_BACKEND.md).
+`.nro` at `build/switch/dw3-switch.nro`. The title draws in Ryubing, and
+the owner has also launched a game `.nro` from hbmenu on an OLED Switch
+(main menu and a new game). That hardware file was built before the
+picture fix, so it still cropped the title. The first boot needs an empty
+`sdmc:/switch/dw3/us/memcard/` or it stops in `memcard_host_ensure()`.
+See [docs/SWITCH_BACKEND.md](../../docs/SWITCH_BACKEND.md) and
+[docs/RUNTIME_LAYOUT.md](../../docs/RUNTIME_LAYOUT.md).
 
 The Makefile path above is unchanged. It still links `source/main.c`
 (`host_hello`). CI job `switch` builds that sample. Release packaging

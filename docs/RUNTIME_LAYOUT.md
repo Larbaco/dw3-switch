@@ -17,13 +17,14 @@ runtime/us/                    # PC
 sdmc:/switch/dw3/us/           # Switch (same relative layout)
   files_us.json
   SLUS_014.36
-  BOOT_IMAGE.txt               # Phase 1 stub; see below
-  # boot_tim.bin               # Phase 2+ when exe-tail extract exists
+  boot_tim.bin                 # extracted by packer when available
+  # BOOT_IMAGE.txt             # fallback if the executable tail is unavailable
   AAA/
     PRO/
     DAT/
     STR/
     ...
+  memcard/                     # required on Switch; can start empty
 ```
 
 EU uses `files_eu.json` and `SLES_039.36` instead of the US names.
@@ -47,6 +48,23 @@ python3 tools/build_file_map.py --check runtime/eu/files_eu.json \
 `--out` already exists and is non-empty, pass `--force` to wipe it first.
 EU `dw3-pc` link uses `-DDW3_VERSION=eu` (`docs/P3_EU_BUILD.md`); run still
 needs a local `runtime/eu` tree (gitignored).
+
+### Memory-card directory
+
+The Switch host expects `<runtime-root>/memcard/` to exist. On first boot,
+`memcard_host_ensure()` creates formatted `memcard0.mcr` / `memcard1.mcr` files
+when they are absent, but it does not create their parent directory. The
+runtime packer does not preserve empty directories, so create the directory
+before copying a freshly packed runtime to the SD card:
+
+```bash
+mkdir -p runtime/us/memcard
+```
+
+For the OLED layout this is `sdmc:/switch/dw3/us/memcard/`. An empty directory
+is enough; existing memory-card images should be preserved rather than
+replaced with blank ones. The 2026-10-10 hardware smoke initially stopped at
+`memcard_host_ensure()` until the empty directory was created.
 
 ## Boot image
 

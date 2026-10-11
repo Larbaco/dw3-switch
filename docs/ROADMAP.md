@@ -359,7 +359,7 @@ console.
   if PSY-Z's module API is required, provide a static `Psyz_ModuleOpen`
   that dispatches to the linked table.
   Done when: all overlays switch on hardware.
-- [ ] **P4.7 Boot the game.** Link the Phase 3 image against the Switch
+- [x] **P4.7 Boot the game.** Link the Phase 3 image against the Switch
   backend and run from hbmenu.
   Done when: title screen on hardware.
   **Status (2026-10-10):** `platforms/switch/CMakeLists.txt` compiles the Phase 3
@@ -391,12 +391,11 @@ console.
   pulls CD samples, which re-takes it). Fixed by making it an `RMutex` — six
   lines in `nx_audio.c`. The boot-stop trace and the full reasoning are in
   `docs/SWITCH_BACKEND.md`.
-  **Not ticked:** the done-when is the title **on hardware**, and this is the
-  emulator. The speckle was the GLES2 upload reading RGB555 backwards;
-  `nx_gpu.c` expands to opaque RGBA8888. The owner confirmed the decoded
-  dump. The remaining menu offset was the present width: the horizontal
-  range is 256 dot-clock tenths, and using it as the blit width cropped a
-  320-wide frame. The blit width now follows the display mode.
+  The speckle was the GLES2 upload reading RGB555 backwards; `nx_gpu.c`
+  expands to opaque RGBA8888. The owner confirmed the decoded dump. The menu
+  offset was the present width: the horizontal range is 256 dot-clock tenths,
+  and using it as the blit width cropped a 320-wide frame. The blit width now
+  follows the display mode.
   **Opening movie (Ryubing, 2026-10-10):** XA already played. The picture
   froze because `DecDCTout` never raised the MDEC-out IRQ, so no slice reached
   `LoadImage`, and the 24-bit buffer was still presented at the title's 240
@@ -408,20 +407,32 @@ console.
   tail and scans for the next ready frame. Guest log: `DecDCTout frame done`
   through thousands of frames with changing signatures, present flips
   `320x480`, then the attract loop returns to the title and starts the movie
-  again (Bandai card). Not ticked: done-when is still hardware. No pad input
-  has been sent through it yet.
+  again (Bandai card).
   **Present aspect:** the viewport uses PSY-Z's display-range aspect
   (`(4/3) * (horiz/256) / (vert/240)`), the same rule as the PC host. The
   sampled rectangle for the movie is the 416-line picture at VRAM y=36
   (the 480-line display has blank lines above and below it). The title uses
-  the display-mode width. That pixel ratio is not the shape on screen. On a docked
-  1920×1080 surface the picture is 4:3 at full height, with side bars only.
-  A Ryubing window set to 21:9 still shrinks that framebuffer and adds bars
-  at the top and bottom. That is the emulator aspect, not a crop in the port.
-  See `docs/SWITCH_BACKEND.md` for the boot-stop evidence and the emulator
-  logging traps.
+  the display-mode width. That pixel ratio is not the shape on screen. On a
+  docked 1920×1080 surface the picture is 4:3 at full height, with side bars
+  only. A Ryubing window set to 21:9 still shrinks that framebuffer and adds
+  bars at the top and bottom. That is the emulator aspect, not a crop in the
+  port.
+  **OLED hardware smoke (2026-10-10/11):** the owner installed the US runtime
+  and launched a CMake game `.nro` from hbmenu. The first attempt exited at
+  `memcard_host_ensure()` because `sdmc:/switch/dw3/us/memcard/` was absent;
+  the log had already reached the SD runtime root and `Psyz_AudioInit OK`.
+  Creating the empty directory allowed launch. The owner then confirmed the
+  game reached the main menu and loaded a new game on the OLED. That `.nro`
+  was `main` plus the P4.4/P4.5 commits, before the picture fix, so it still
+  cropped the title and froze the movie. The runtime came from the owner's
+  US disc and was not added to git. P4.4's Joy-Con and Pro Controller checks,
+  P4.5's cdfs suite against SD, and P4.6 overlay switching on hardware are
+  still open. See `docs/RUNTIME_LAYOUT.md` for the memory-card directory and
+  `docs/SWITCH_BACKEND.md` for the boot-stop evidence and emulator logging
+  traps.
 
-Gate: title + field + battle on a Switch.
+  **Gate:** title + field + battle on a Switch. **Not yet met:** this smoke
+  confirms main menu and new-game loading, but not field and battle playthrough.
 
 ## Phase 5 — Playable on Switch
 
