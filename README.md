@@ -25,7 +25,7 @@ Details and checkboxes: [docs/ROADMAP.md](docs/ROADMAP.md). Gate honesty:
 | **0–2** | **Done** — toolchains, disc→runtime pipeline, US title boot from decomp C ([P2.8](docs/P2.8_TITLE_BOOT.md)) |
 | **3** | **Gate met (US)** — full PC loop (field, battle, menus, card game, movies, SEP, stage sweep); start→Genji with documented aids. **P3.9** DuckStation compare harness **done** ([P3.9](docs/P3.9_REFERENCE.md)). **Open:** EU playthrough, pad-driven boss KO, PC [GPU/battle polish](docs/P3_GPU_GLITCHES.md), `WSTAG460` stub |
 | **4** | **In progress** — native libnx PSY-Z backend ([P4.1](docs/SWITCH_BACKEND.md)). The CMake game image links. The title draws in Ryubing, and an OLED boot reached the main menu. The wider Phase 4 gate (field + battle) is still open. CI job `switch` builds the **host_hello** sample; job `switch-game` builds the game `.nro` |
-| **5–10** | Playable Switch, packaging, port-options menu, optional QoL / texture packs / residual Switch UX ([SWITCH_FEATURES](docs/SWITCH_FEATURES.md)). P6.5 own-disc packaging exists as prerelease [v0.6.5-preview.1](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.1). Phase 6 as a whole has not started |
+| **5–10** | Playable Switch, packaging, port-options menu, optional QoL / texture packs / residual Switch UX ([SWITCH_FEATURES](docs/SWITCH_FEATURES.md)). P6.5 own-disc packaging exists. Current prerelease is [v0.6.5-preview.2](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.2). [v0.6.5-preview.1](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.1) is the earlier crop. Phase 6 as a whole has not started. P7.1, P8.1, P9.1, and P10.1 are early notes |
 
 **Can you play on PC today?** Yes, with your **own US disc** packed to
 `runtime/us`: title through early story in `dw3-pc`. Expect rough visuals in
@@ -35,8 +35,11 @@ some scenes; not a finished retail build.
 sample, with no game loop. The CMake `.nro` is the game. It reads your files
 from `sdmc:/switch/dw3/us`. A GitHub Release of that `.nro` is deliberate
 (`workflow_dispatch` or a `v*` tag) and marked a preview. The release does
-not include disc data. The first preview still crops the title; current main
-does not.
+not include disc data. [v0.6.5-preview.1](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.1)
+still crops the title and freezes the movie.
+[v0.6.5-preview.2](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.2)
+is current `main` (`8273a91`): display-mode title width and the full-height
+movie.
 
 Layering: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
@@ -174,9 +177,12 @@ A release is [`.github/workflows/switch-release.yml`](.github/workflows/switch-r
 button appears after the workflow is on `main`. The run publishes
 `dw3-switch.nro` and
 [`platforms/switch/release/README.txt`](platforms/switch/release/README.txt)
-as a **prerelease**. First one:
+as a **prerelease**. Current one:
+[v0.6.5-preview.2](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.2)
+(8935621-byte game `.nro` and `README.txt` only, commit `8273a91`).
 [v0.6.5-preview.1](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.1)
-(8927429-byte game `.nro` and `README.txt` only). Copy the `.nro` to `sdmc:/switch/dw3-switch.nro`
+is the earlier 8927429-byte file, with the cropped title and the frozen
+movie. Copy the `.nro` to `sdmc:/switch/dw3-switch.nro`
 (Atmosphere + hbmenu). Copy your own packed US tree to
 `sdmc:/switch/dw3/us/` (`files_us.json`, `SLUS_014.36`, `boot_tim.bin`,
 `AAA/...`). EU later uses `sdmc:/switch/dw3/eu/`. The release contains

@@ -60,8 +60,9 @@ See [SURVEY.md](SURVEY.md) for the evidence behind each point.
   GTE, overlay address symbols + static restore in `port/overlays/`
   (P2.6: restore `.data` / zero `.bss` on id change).
 - P2.8: PC host calls `dw3_game_main` after cdfs/memcard/boot TIM init;
-  `CD_READER` via cdfs; US `STDWTITL` linked; title mode draws (GPU polish
-  open) — see `docs/P2.8_TITLE_BOOT.md`.
+  `CD_READER` via cdfs; US `STDWTITL` linked; title mode draws. Later
+  picture work is in `docs/P3_GPU_GLITCHES.md`. See
+  `docs/P2.8_TITLE_BOOT.md`.
 - P3.2 (in progress): field/stage bring-up uses **objcopy / `ld -r`** to
   prefix stage globals and rename `.data`/`.bss` into per-overlay sections
   (`dw3data_*` / `dw3bss_*`); `overlay_sections.c` snapshots them for
