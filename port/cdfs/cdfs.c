@@ -697,6 +697,7 @@ int cdfs_visit(int (*fn)(const CdfsMapInfo *info, void *user), void *user) {
         info.lba = e->lba;
         info.sectors = e->sectors;
         info.form = e->form;
+        info.bytes = e->map_bytes;
         rc = fn(&info, user);
         if (rc != 0) {
             return rc;

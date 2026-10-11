@@ -63,9 +63,12 @@ sdmc:/switch/dw3/Digimon World 3.bin
 sdmc:/switch/dw3/us/AAA/STR/    # rewritten in place on first launch
 ```
 
-The first launch copies about 260 MB. On Switch the screen keeps the
-dark blue clear and draws a progress bar while the log says `restore`
-(see `docs/P3.7_MOVIES.md`). The next launch only checks file sizes.
+A US tree created by the startup extract below already stores `.STR` as
+raw sectors, so this rewrite only stats those files. A tree packed earlier
+at 2048 bytes per sector still takes the rewrite. That copy is about 260 MB.
+On Switch the screen keeps the dark blue clear and draws a progress bar
+while the log says `restore` (see `docs/P3.7_MOVIES.md`). The next launch
+only checks file sizes.
 The same rewrite can be done on the PC before copying:
 
 ```bash
@@ -80,36 +83,56 @@ sound stays slow until a disc image is visible at startup.
 EU `dw3-pc` link uses `-DDW3_VERSION=eu` (`docs/P3_EU_BUILD.md`); run still
 needs a local `runtime/eu` tree (gitignored).
 
-### Runtime is still required at boot
+### US boot extracts the runtime when the tree is missing
 
-The Switch game currently boots from the extracted version tree, for example
-`sdmc:/switch/dw3/us/`: `files_us.json`, `SLUS_014.36`, `boot_tim.bin`,
-`AAA/…`, and the `memcard/` directory. The optional disc BIN/CUE is used to
-rewrite the 13 packed Form-2 `.STR` movie files to raw 2352-byte sectors; it is
-not a substitute for the executable, file map, boot image, or the rest of the
-extracted runtime. On 2026-10-11 the owner removed `us/` and the game no longer
-started, confirming this dependency.
+`dw3_runtime_ensure()` in `port/cdfs/runtime_extract.c` runs from the PC and
+Switch boot paths before `cdfs_load_map`. US only. EU still needs a packed
+`runtime/eu` or `sdmc:/switch/dw3/eu`.
 
-Starting directly from the disc image by extracting everything needed at
-startup is a desired future direction reported by the owner, but is **not
-implemented**. Current setup still requires the owner-packed runtime tree;
-assets remain outside Git and are never bundled in the NRO or repository.
+When `files_us.json`, `SLUS_014.36`, `boot_tim.bin`, and every mapped file
+are already in the runtime root, boot only stats them. A Form-2 `.STR` whose
+size is `sectors * 2048` still counts, and the rewrite above upgrades it when
+a disc image is visible. The second boot does not read the BIN.
+
+When that tree is missing and the same BIN search as the STR rewrite finds a
+Mode2/2352 image, boot creates the runtime root (`DW3_RUNTIME`, or
+`sdmc:/switch/dw3/us` / `runtime/us`) and extracts:
+
+| Output | What is written |
+|---|---|
+| `files_us.json` | Linked `FILE_SECTORS` / `FILE_SECTOR_COUNTS` joined to ISO9660 paths, the same way `tools/build_file_map.py` builds the map. The JSON is not required to already exist. |
+| `SLUS_014.36` and other Form-1 files | 2048-byte user payload at offset 24 of each 2352-byte sector. |
+| `AAA/STR/*.STR` | Raw Mode2 sectors, `FILE_SECTOR_COUNTS * 2352`. |
+| `boot_tim.bin` | PS-X EXE tail at US `STAGE_VRAM` `0x800A4CA4`, load `0x80010000`. Same parse as `pack_runtime.py`. |
+| `memcard/` | Empty directory. It is not on the disc. |
+
+A missing disc image is not a boot failure when the tree is already present.
+A missing tree and a missing disc image still fails at `cdfs_load_map`.
+Preview.4 only rewrote the 13 `.STR` files; removing `us/` on 2026-10-11
+stopped that build. This extract is the follow-up. It was checked with a
+synthetic Mode2 image (`tools/tests/test_runtime_extract.py`). It has not
+been run on the OLED. The NRO and the git tree still contain no game bytes.
+
+On Switch the copy drives the same progress hook as the STR rewrite
+(`dw3_str_restore_set_progress`). The bar swaps about every 300 ms, matching
+the restore, because `eglSwapBuffers` waits for vsync.
 
 ### Memory-card directory
 
-The Switch host expects `<runtime-root>/memcard/` to exist. On first boot,
-`memcard_host_ensure()` creates formatted `memcard0.mcr` / `memcard1.mcr` files
-when they are absent, but it does not create their parent directory. The
-runtime packer does not preserve empty directories, so create the directory
-before copying a freshly packed runtime to the SD card:
+The Switch host expects `<runtime-root>/memcard/` to exist. US boot creates
+that empty directory when the runtime root exists. It does not create or
+replace `memcard0.mcr` / `memcard1.mcr`. `memcard_host_ensure()` still formats
+those files when they are absent.
+
+The runtime packer does not preserve empty directories. A packed tree copied
+by hand, and any EU tree, still needs the directory created first:
 
 ```bash
 mkdir -p runtime/us/memcard
 ```
 
 For the OLED layout this is `sdmc:/switch/dw3/us/memcard/`. An empty directory
-is enough; existing memory-card images should be preserved rather than
-replaced with blank ones. The 2026-10-10 hardware smoke initially stopped at
+is enough. The 2026-10-10 hardware smoke initially stopped at
 `memcard_host_ensure()` until the empty directory was created.
 
 ## Boot image
@@ -120,7 +143,8 @@ before overlays overwrite that region (`BOOT_IMAGE_RECT` in
 `BOOT_IMAGE.txt` explaining the gap; extract the tail into
 `runtime/us/boot_tim.bin` when assets are available. `pack_runtime.py`
 extracts the TIM from the version executable (STAGE_VRAM) when
-`disks/<ver>/boot_tim.bin` is missing. The PC host loads it into
+`disks/<ver>/boot_tim.bin` is missing. US boot uses that same tail parse
+when it extracts `SLUS_014.36` from the BIN. The PC host loads the file into
 `STAGE_VRAM` before `dw3_game_main` (see `docs/P2.8_TITLE_BOOT.md`).
 
 ## Git

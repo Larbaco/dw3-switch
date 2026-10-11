@@ -8,6 +8,7 @@
 #include "str_stream.h"
 
 #include "cdfs.h"
+#include "runtime_extract.h"
 #include "str_disc.h"
 
 #include <ctype.h>
@@ -29,6 +30,17 @@ static unsigned long long g_bytes_total;
 void dw3_str_restore_set_progress(
     void (*fn)(const char *msg, unsigned long long done, unsigned long long total)) {
     g_progress = fn;
+}
+
+void dw3_str_restore_emit(const char *msg, unsigned long long done,
+                          unsigned long long total) {
+    if (msg != NULL) {
+        fprintf(stderr, "dw3-str: %s\n", msg);
+        fflush(stderr);
+    }
+    if (g_progress != NULL) {
+        g_progress(msg, done, total);
+    }
 }
 
 static void report(const char *msg) {

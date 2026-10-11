@@ -393,11 +393,14 @@ console.
   video, and they remain after the STR rewrite. The analog stick has no
   function in that build (`kind=0x41`). The host now publishes the left
   stick; the OLED retest is still open (P4.4). New saves were created
-  on both memory cards, but loading them after restart remains untested. Deleting `us/` stopped the
-  game from booting, confirming the extracted runtime is still required; startup
-  extraction of the complete runtime from BIN is only a desired follow-up and
-  was not implemented. See `docs/P3.7_MOVIES.md` and
-  `docs/RUNTIME_LAYOUT.md` for the full evidence and limits.
+  on both memory cards, but loading them after restart remains untested.
+  Deleting `us/` stopped that
+  preview.4 image, which only rewrote STR files. US boot now extracts
+  `files_us.json`, `SLUS_014.36`, `boot_tim.bin`, `AAA/…`, and an empty
+  `memcard/` from the Mode2 BIN when that tree is missing
+  (`port/cdfs/runtime_extract.c`). A tree that is already complete only
+  stats. Checked with a synthetic image in `tools/tests/test_runtime_extract.py`.
+  Not run on the OLED. EU is unchanged. See `docs/RUNTIME_LAYOUT.md`.
   **Still open:** P4.4's Joy-Con + Pro / analog checks, P4.5's formal P2.5 CDFS
   suite on the SD, and P4.6's complete overlay sweep on hardware. The preview.4
   log proves several runtime paths, not those full acceptance suites.

@@ -189,10 +189,11 @@ as a **prerelease**. Current one:
 [v0.6.5-preview.1](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.1)
 is the earlier 8927429-byte file, with the cropped title and the frozen
 movie. Copy the `.nro` to `sdmc:/switch/dw3-switch.nro`
-(Atmosphere + hbmenu). Copy your own packed US tree to
-`sdmc:/switch/dw3/us/` (`files_us.json`, `SLUS_014.36`, `boot_tim.bin`,
-`AAA/...`). EU later uses `sdmc:/switch/dw3/eu/`. The release contains
-no game bytes.
+(Atmosphere + hbmenu). On a US card, `sdmc:/switch/dw3/us/` can be absent:
+startup extracts `files_us.json`, `SLUS_014.36`, `boot_tim.bin`, `AAA/…`,
+and an empty `memcard/` from the Mode2 BIN/CUE next to that directory.
+A tree that is already there is left in place. EU still needs a packed
+`sdmc:/switch/dw3/eu/`. The release contains no game bytes.
 
 Backend: [platforms/switch/psyz_backend/](platforms/switch/psyz_backend/).
 Boot evidence: [docs/SWITCH_BACKEND.md](docs/SWITCH_BACKEND.md).

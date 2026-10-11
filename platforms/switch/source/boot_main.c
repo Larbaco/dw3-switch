@@ -25,6 +25,7 @@
 #include "cdfs.h"
 #include "memcard_host.h"
 #include "overlay_host.h"
+#include "runtime_extract.h"
 #include "str_stream.h"
 
 #include "../psyz_backend/nx.h"
@@ -235,10 +236,11 @@ static void str_restore_progress(const char *msg, unsigned long long done,
         (now - last_paint_us) < STR_RESTORE_PAINT_US) {
         return;
     }
-    /* The copy's first log line is "restoring N STR from ...". Hold the
-     * sweep there. Other notes (no disc image) paint a single frame. */
+    /* The first log line is "restoring N STR ..." or "extracting runtime ...".
+     * Hold the sweep there. Other notes paint a single frame. */
     if (!painted && done == 0 && msg != NULL &&
-        strncmp(msg, "restoring ", sizeof("restoring ") - 1) == 0) {
+        (strncmp(msg, "restoring ", sizeof("restoring ") - 1) == 0 ||
+         strncmp(msg, "extracting ", sizeof("extracting ") - 1) == 0)) {
         uint64_t intro_start = now;
         int frames = 0;
         /* Cap the refreshes so a swap that does not block, or a clock that
@@ -271,6 +273,16 @@ static int init_paths(void) {
     char memcard_buf[512];
     char boot_path[512];
 
+    /* US: a card with the BIN and no us/ tree is filled in here. A tree that
+     * is already complete only stats. The bar is the same callback the STR
+     * rewrite uses, so register it first. EU does not extract. */
+    dw3_str_restore_set_progress(str_restore_progress);
+#if defined(VERSION_US) && VERSION_US
+    if (dw3_runtime_ensure(root) != 0) {
+        ERRORF("runtime extract failed");
+        return -1;
+    }
+#endif
     if (cdfs_set_root(root) != 0) {
         ERRORF("cdfs_set_root(%s) failed", root);
         return -1;
@@ -281,10 +293,8 @@ static int init_paths(void) {
     }
     INFOF("cdfs root=%s", root);
 
-    /* First launch with a 2048-byte STR extract: if the owner's BIN/CUE is
-     * on the card, rewrite AAA/STR as raw Mode2 so XA keeps all 18 blocks.
-     * Later boots only stat the files. */
-    dw3_str_restore_set_progress(str_restore_progress);
+    /* Packed 2048-byte STR files still need a raw rewrite. An extract that
+     * just wrote sectors*2352 only stats here. */
     if (dw3_str_restore_from_disc() != 0) {
         ERRORF("STR restore failed; opening-movie audio may stay slow");
     }

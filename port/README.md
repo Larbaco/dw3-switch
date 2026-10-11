@@ -3,7 +3,7 @@
 Platform-independent pieces between the host (PC / Switch) and game C from
 `vendor/dw3_decomp` (via the patched copy in `build/decomp-src/`).
 
-- CD / file table → host filesystem (`port/cdfs/` — Wave 1 file-id reads)
+- CD / file table → host filesystem (`port/cdfs/` — file-id reads, and US BIN extract at boot)
 - Overlay and stage loading (`port/overlays/` — static restore, P2.6)
 - Memory card virtualization (`port/memcard/` — 128 KiB `.mcr` per slot)
 - Build flags that drop matching-only PS1 constraints

@@ -127,6 +127,10 @@ set_target_properties(dw3_movies PROPERTIES
 # CD → filesystem file-id reads (P2.5) and 128 KiB .mcr slots (P2.7).
 add_library(dw3_cdfs OBJECT
   "${CMAKE_CURRENT_SOURCE_DIR}/cdfs/cdfs.c"
+  "${CMAKE_CURRENT_SOURCE_DIR}/cdfs/runtime_extract.c"
+)
+target_include_directories(dw3_cdfs PRIVATE
+  "${CMAKE_CURRENT_SOURCE_DIR}/movies"
 )
 add_library(dw3_memcard OBJECT
   "${CMAKE_CURRENT_SOURCE_DIR}/memcard/memcard_host.c"

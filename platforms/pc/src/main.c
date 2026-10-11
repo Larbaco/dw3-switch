@@ -13,6 +13,7 @@
 #include "cdfs.h"
 #include "memcard_host.h"
 #include "overlay_host.h"
+#include "runtime_extract.h"
 #include "str_stream.h"
 
 #include <stdio.h>
@@ -100,6 +101,12 @@ static int init_paths(int argc, char **argv) {
         }
     }
 
+#if defined(VERSION_US) && VERSION_US
+    if (dw3_runtime_ensure(root) != 0) {
+        fprintf(stderr, "dw3-pc: runtime extract failed\n");
+        return -1;
+    }
+#endif
     if (cdfs_set_root(root) != 0) {
         fprintf(stderr, "dw3-pc: cdfs_set_root(%s) failed\n", root);
         return -1;
