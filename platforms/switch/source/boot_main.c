@@ -154,6 +154,21 @@ int main(int argc, char **argv) {
     (void)argc;
     (void)argv;
 
+#ifdef DW3_NXLINK_STDIO
+    /* Connect before input, SD mount, or any game logger can fail. nxlink is
+     * optional even in this development build: keep booting if no host listens. */
+    {
+        int nxlink_fd = nxlinkStdio();
+
+        if (nxlink_fd < 0) {
+            fprintf(stderr, "nxlink stdio connection failed (%d); continuing\n",
+                    nxlink_fd);
+        } else {
+            fprintf(stderr, "nxlink stdio connected (fd=%d)\n", nxlink_fd);
+        }
+    }
+#endif
+
     /* Order matters: the pad and the SD mount have to be up before anything
      * opens a runtime path, and the log file is opened as early as it can be so
      * a boot that dies does so with its reasons on disk — Ryubing has no nxlink
