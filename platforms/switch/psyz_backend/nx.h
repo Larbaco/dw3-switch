@@ -77,6 +77,9 @@ void dw3_nx_log_open(void);
 /* padConfigureInput + padInitializeDefault. Call once at boot. */
 void dw3_nx_input_init(void);
 
+/* Raw hid buttons from the last Psyz_PadsPoll / padUpdate (0 before first). */
+uint64_t dw3_nx_input_buttons_raw(void);
+
 /* --- P4.5 filesystem (nx_file.c) --------------------------------------- */
 
 /* fsdevMountSdmc() + create sdmc:/switch/dw3. Call before anything opens a

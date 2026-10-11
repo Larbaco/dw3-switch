@@ -30,6 +30,7 @@
 #endif
 
 static PadState s_pad;
+static u64 s_last_buttons;
 
 void dw3_nx_input_init(void) {
     psyz_log(1, "nx_input.c", __LINE__, __func__, "padConfigureInput");
@@ -133,7 +134,8 @@ void Psyz_PadsPoll(void) {
                      "padUpdate returned");
         }
     }
-    pressed = held_buttons(padGetButtons(&s_pad));
+    s_last_buttons = padGetButtons(&s_pad);
+    pressed = held_buttons(s_last_buttons);
     /* Left stick of whichever style libnx merged into sticks[0]. See
      * nx_stick.h. The d-pad, face buttons, Start and Select stay in
      * `pressed` and are written below even when this stick is centred. */
@@ -206,3 +208,5 @@ void Psyz_PadsPoll(void) {
     memset(frame, 0xFF, sizeof(frame));
     Psyz_PadsSet(1, frame, sizeof(frame));
 }
+
+uint64_t dw3_nx_input_buttons_raw(void) { return (uint64_t)s_last_buttons; }
