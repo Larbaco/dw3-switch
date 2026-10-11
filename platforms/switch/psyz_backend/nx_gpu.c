@@ -3,6 +3,7 @@
  * PSY-Z InitPlatform / VRAM blit lands later; this owns the host surface. */
 #include "nx.h"
 #include "nx_mesh.h"
+#include "nx_mesh_debug.h"
 #include "nx_vram_pack.h"
 
 #include <stdio.h>
@@ -11,6 +12,12 @@
 
 #include <EGL/egl.h>
 #include <GLES3/gl3.h>
+
+#if DW3_NX_DEBUG_MESH
+static uint64_t gpu_now_us(void) {
+    return armTicksToNs(armGetSystemTick()) / 1000ULL;
+}
+#endif
 
 int dw3_nx_backend_sketch_version(void) {
     return 4; /* P4.2 present + P4.3 audio + P5.2 mesh FBO */
@@ -543,6 +550,9 @@ void dw3_nx_gpu_present(const uint16_t *vram, int dx, int dy, int dw, int dh,
     int pw;
     int ph;
     int use_mesh;
+#if DW3_NX_DEBUG_MESH
+    uint64_t present_t0 = 0;
+#endif
 
     if (!s_ready || !vram || dw <= 0 || dh <= 0) {
         return;
@@ -550,6 +560,10 @@ void dw3_nx_gpu_present(const uint16_t *vram, int dx, int dy, int dw, int dh,
     /* Flush any deferred mesh before we composite. */
     dw3_nx_mesh_flush(vram);
     use_mesh = dw3_nx_mesh_has_content();
+#if DW3_NX_DEBUG_MESH
+    /* present_us is composite/blit only; flush/upload are counted separately. */
+    present_t0 = gpu_now_us();
+#endif
 
     /* A dock/handheld switch recreates the EGL context, which drops every GL
      * object. glIsTexture reports the stale names as invalid, so this heals
@@ -598,16 +612,27 @@ void dw3_nx_gpu_present(const uint16_t *vram, int dx, int dy, int dw, int dh,
         static int prev_vw = -1;
         static int prev_vh = -1;
         static uint64_t prev_mesh_prims;
+#if DW3_NX_DEBUG_MESH
+        static int prev_use_mesh = -1;
+#endif
 
         if (vw != prev_vw || vh != prev_vh) {
             prev_vw = vw;
             prev_vh = vh;
             psyz_log(1, "nx_gpu.c", __LINE__, __func__,
                      "present viewport %d,%d %dx%d aspect %.3f on %ux%u "
-                     "(vram %d,%d %dx%d)",
+                     "(vram %d,%d %dx%d) mesh_avail=%d",
                      vx, vy, vw, vh, src_aspect, s_width, s_height, dx, dy,
-                     dw, dh);
+                     dw, dh, dw3_nx_mesh_available() ? 1 : 0);
         }
+#if DW3_NX_DEBUG_MESH
+        if (use_mesh != prev_use_mesh) {
+            prev_use_mesh = use_mesh;
+            psyz_log(1, "nx_gpu.c", __LINE__, __func__,
+                     "present path: %s",
+                     use_mesh ? "mesh+ui" : "opaque_blit");
+        }
+#endif
         if (use_mesh) {
             uint64_t prims = dw3_nx_mesh_prims_flushed();
 
@@ -663,5 +688,9 @@ void dw3_nx_gpu_present(const uint16_t *vram, int dx, int dy, int dw, int dh,
                               (const void *)(sizeof(float) * 2));
         glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
     }
+#if DW3_NX_DEBUG_MESH
+    dw3_nx_mesh_debug_note_present(use_mesh,
+                                   (uint32_t)(gpu_now_us() - present_t0));
+#endif
     dw3_nx_mesh_end_frame();
 }
