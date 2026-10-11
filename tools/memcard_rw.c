@@ -1,13 +1,18 @@
-/* Tiny host helper for port/memcard sector/byte I/O.
+/* Tiny host helper for port/memcard flat + legacy I/O.
  *
  * Usage:
  *   memcard_rw --dir DIR ensure --slot N
+ *   memcard_rw --dir DIR legacy-ensure --slot N
+ *   memcard_rw --dir DIR flat-read --slot N --offset OFF --len LEN
+ *   memcard_rw --dir DIR flat-write --slot N --offset OFF --hex HEX
+ *   memcard_rw --dir DIR flush --slot N
  *   memcard_rw --dir DIR read --slot N --offset OFF --len LEN
  *   memcard_rw --dir DIR write --slot N --offset OFF --hex HEXBYTES
  *   memcard_rw --dir DIR read-sector --slot N --sector S
  *   memcard_rw --dir DIR write-sector --slot N --sector S --hex HEXBYTES
  *
- * read / read-sector write raw bytes to stdout.
+ * flat-* operate on the resident saveN.bin image. read/write/sector still
+ * target legacy memcardN.mcr fixtures.
  */
 #include "memcard_host.h"
 
@@ -20,11 +25,15 @@ static void usage(const char *argv0) {
     fprintf(stderr,
             "usage:\n"
             "  %s --dir DIR ensure --slot N\n"
+            "  %s --dir DIR legacy-ensure --slot N\n"
+            "  %s --dir DIR flat-read --slot N --offset OFF --len LEN\n"
+            "  %s --dir DIR flat-write --slot N --offset OFF --hex HEX\n"
+            "  %s --dir DIR flush --slot N\n"
             "  %s --dir DIR read --slot N --offset OFF --len LEN\n"
             "  %s --dir DIR write --slot N --offset OFF --hex HEX\n"
             "  %s --dir DIR read-sector --slot N --sector S\n"
             "  %s --dir DIR write-sector --slot N --sector S --hex HEX\n",
-            argv0, argv0, argv0, argv0, argv0);
+            argv0, argv0, argv0, argv0, argv0, argv0, argv0, argv0, argv0);
 }
 
 static int parse_u32(const char *s, uint32_t *out) {
@@ -143,6 +152,92 @@ int main(int argc, char **argv) {
     if (strcmp(cmd, "ensure") == 0) {
         if (memcard_host_ensure(slot) != 0) {
             fprintf(stderr, "error: ensure failed\n");
+            return 1;
+        }
+        return 0;
+    }
+
+    if (strcmp(cmd, "legacy-ensure") == 0) {
+        if (memcard_host_legacy_ensure(slot) != 0) {
+            fprintf(stderr, "error: legacy-ensure failed\n");
+            return 1;
+        }
+        return 0;
+    }
+
+    if (strcmp(cmd, "flush") == 0) {
+        if (memcard_host_flush(slot) != 0) {
+            fprintf(stderr, "error: flush failed\n");
+            return 1;
+        }
+        return 0;
+    }
+
+    if (strcmp(cmd, "flat-read") == 0) {
+        uint8_t *buf;
+        int n;
+
+        if (!have_offset || !have_len || len == 0) {
+            usage(argv[0]);
+            return 2;
+        }
+        if (memcard_host_ensure(slot) != 0 || !memcard_host_has_file(slot)) {
+            fprintf(stderr, "error: no flat save\n");
+            return 1;
+        }
+        buf = (uint8_t *)malloc(len);
+        if (buf == NULL) {
+            fprintf(stderr, "error: oom\n");
+            return 1;
+        }
+        n = memcard_host_file_read(slot, offset, buf, len);
+        if (n < 0 || (uint32_t)n != len) {
+            fprintf(stderr, "error: flat-read failed\n");
+            free(buf);
+            return 1;
+        }
+        if (fwrite(buf, 1, len, stdout) != len) {
+            fprintf(stderr, "error: short stdout write\n");
+            free(buf);
+            return 1;
+        }
+        free(buf);
+        return 0;
+    }
+
+    if (strcmp(cmd, "flat-write") == 0) {
+        uint8_t *buf = NULL;
+        size_t buflen = 0;
+        int n;
+
+        if (!have_offset || hex == NULL) {
+            usage(argv[0]);
+            return 2;
+        }
+        if (parse_hex(hex, &buf, &buflen) != 0 || buflen == 0) {
+            fprintf(stderr, "error: bad --hex\n");
+            return 2;
+        }
+        if (memcard_host_ensure(slot) != 0) {
+            free(buf);
+            fprintf(stderr, "error: ensure failed\n");
+            return 1;
+        }
+        if (!memcard_host_has_file(slot)) {
+            if (memcard_host_create_file(slot, "BASLUS-01436DMW3-USA") != 0) {
+                free(buf);
+                fprintf(stderr, "error: create failed\n");
+                return 1;
+            }
+        }
+        n = memcard_host_file_write(slot, offset, buf, buflen);
+        free(buf);
+        if (n < 0 || (size_t)n != buflen) {
+            fprintf(stderr, "error: flat-write failed\n");
+            return 1;
+        }
+        if (memcard_host_flush(slot) != 0) {
+            fprintf(stderr, "error: flush failed\n");
             return 1;
         }
         return 0;
