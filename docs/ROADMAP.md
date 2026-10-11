@@ -392,8 +392,8 @@ console.
   `docs/SWITCH_BACKEND.md`.
   **Not ticked:** the done-when is the title **on hardware**, and this is the
   emulator. The speckle was the GLES2 upload reading RGB555 backwards;
-  `nx_gpu.c` now expands to opaque RGBA8888 (dump-confirmed, Ryubing frame
-  still open). No pad input has been sent through it yet.
+  `nx_gpu.c` expands to opaque RGBA8888. The owner confirmed the decoded
+  dump. No pad input has been sent through it yet.
   See `docs/SWITCH_BACKEND.md` for the boot-stop evidence and the emulator
   logging traps.
 

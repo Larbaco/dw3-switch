@@ -280,9 +280,9 @@ rasterizer. `vram60.bin` / `vram120.bin` decoded as PS1 RGB555 (R in bits
 `GL_UNSIGNED_SHORT_5_5_5_1` reads that halfword backwards (R in bits 15–11),
 which is the speckled window. `nx_gpu.c` now expands to RGBA8888 the way
 `ConvertRgb5551ToRgba8888` does, with alpha forced opaque, before
-`glTexSubImage2D`. Confirmed by decoding the dump (`/tmp/vram60-ps1-2x.png`);
-a Ryubing frame of this `.nro` is still the owner's look. No pad input has
-been exercised through it yet.
+`glTexSubImage2D`. The owner confirmed that decode
+(`/tmp/vram60-ps1-2x.png`, 2026-10-10). The temporary VRAM dump is gone.
+No pad input has been exercised through it yet.
 
 P4.7 stays open: the done-when is the title on **hardware**.
 
