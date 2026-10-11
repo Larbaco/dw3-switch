@@ -194,10 +194,11 @@ the state of P4.7, and it is kept here because the symbol list is what
 object). The linker does not demand it.
 
 **All of that links now.** `psyz_backend/switch_gpu.c` implements the `Draw_*`
-family as forwards to PSY-Z's in-tree CPU rasterizer (`software_rasterizer`,
-`src/platform/sdl3_software.c`), with `nx_gpu.c` uploading
-`SoftwareRasterizer_GetVram()` as a GLES2 texture. 1144 objects, 0 undefined
-symbols, 17.4 MB `.elf` → 8.9 MB `.nro`. Two traps worth keeping: the
+family: OT triangle polys go to `nx_mesh.c` (GLES3 FBO, P5.2 approach A);
+sprites/tiles/lines still hit PSY-Z's in-tree CPU rasterizer
+(`software_rasterizer`, `src/platform/sdl3_software.c`). `nx_gpu.c` presents
+mesh then CPU VRAM (zero-color discard for UI). See
+[P5.2_BATTLE_GPU.md](P5.2_BATTLE_GPU.md). Two traps worth keeping: the
 rasterizer's own `rasterizer.h` does `#define RECT PS1_RECT` around its
 `draw.h` include, so image-taking forwards must be signed `PS1_RECT*`; and
 `nx_gpu.c` must not include PSY-Z headers next to the EGL ones (they redirect

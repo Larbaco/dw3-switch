@@ -21,7 +21,7 @@ typedef struct Dw3NxGpuInfo {
     bool docked; /* AppletOperationMode_Console */
 } Dw3NxGpuInfo;
 
-/* Create EGL + GLES2 on nwindowGetDefault(); applies docked/handheld size. */
+/* Create EGL + GLES3 (mesh) with GLES2 fallback on nwindowGetDefault(). */
 bool dw3_nx_gpu_init(void);
 void dw3_nx_gpu_shutdown(void);
 
