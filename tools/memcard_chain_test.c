@@ -180,6 +180,31 @@ static int test_host_write_link(const char *dir) {
             return 1;
         }
     }
+    /* 0x22 repeated an odd number of times XORs back to 0x22, so the loop
+     * above does not catch a data-sector checksum overwrite. */
+    memset(head, 0x00, sizeof(head));
+    head[0] = 0x01;
+    head[127] = 0x5A;
+    if (MemCardWriteFile(0, name, (unsigned long *)head, 128, 128) != 1 ||
+        !sync_ok()) {
+        fprintf(stderr, "write payload tail failed\n");
+        return 1;
+    }
+    memset(head, 0, sizeof(head));
+    if (MemCardReadFile(0, name, (unsigned long *)head, 128, 128) != 1 ||
+        !sync_ok()) {
+        fprintf(stderr, "read payload tail failed\n");
+        return 1;
+    }
+    if (head[0] != 0x01 || head[127] != 0x5A) {
+        fprintf(stderr, "data byte 127 = 0x%02x (wanted 0x5A)\n", head[127]);
+        return 1;
+    }
+    if (memcard_host_read_sector(0, 1, frame) != 0 ||
+        frame[0x7F] != frame_xor(frame)) {
+        fprintf(stderr, "directory checksum missing\n");
+        return 1;
+    }
     return 0;
 }
 

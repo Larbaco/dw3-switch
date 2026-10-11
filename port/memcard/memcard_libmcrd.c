@@ -88,8 +88,14 @@ static int read_frame(int slot, int frame, uint8_t *buf) {
     return 0;
 }
 
+/* Header, directory, and broken-sector frames (block 0, sectors 0..63)
+ * store an XOR in byte 0x7F. Data frames are the file payload: byte 0x7F
+ * is game data. Replacing it shifts any field that sits on a sector tail
+ * (the slot's partner index) and the list faults when it draws the icon. */
 static int write_frame(int slot, int frame, uint8_t *buf) {
-    buf[0x7F] = frame_checksum(buf);
+    if (frame < 64) {
+        buf[0x7F] = frame_checksum(buf);
+    }
     if (_card_write((long)slot << 4, frame, buf) != 1) {
         return -1;
     }
