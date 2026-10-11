@@ -376,11 +376,13 @@ console.
   `v0.6.5-preview.2` is the picture fix. On that image the opening movie
   picture runs fast and the soundtrack runs slow: the CD pump was feeding
   sectors at the display rate, and the 2048-byte STR drops two XA blocks
-  that playback fills with silence. The pump is now double-speed
-  (150 sectors/s). The `.nro` rewrites a 2048-byte `AAA/STR/` from the
-  owner's BIN/CUE on first launch (`sdmc:/switch/dw3/*.cue` plus the
-  `.bin`, or `DW3_DISC_BIN`). Until that image is on the card the sound
-  stays slow. The runtime came from the owner's US
+  that playback fills with silence. This branch paces the pump at
+  double-speed (150 sectors/s) and rewrites a 2048-byte `AAA/STR/` from
+  the owner's BIN/CUE on first launch (`sdmc:/switch/dw3/*.cue` plus the
+  `.bin`, or `DW3_DISC_BIN`). `v0.6.5-preview.3` is that hardware test.
+  `dw3-switch-nxlink.nro` is the file that prints the restore log.
+  Until the disc image is on the card the sound stays slow. The runtime
+  came from the owner's US
   disc and is not in git. P4.4 Joy-Con and Pro Controller, P4.5 cdfs on
   the SD, and P4.6 overlay switching on hardware stay open.
 

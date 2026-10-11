@@ -56,26 +56,41 @@ jobs:
           git -C vendor/psyz submodule update --init nugget external/SDL
 
       - name: Build the CMake game .nro
-        run: bash tools/build_switch_game.sh
+        run: |
+          bash tools/build_switch_game.sh
+          bash tools/build_switch_game.sh --nxlink
 
-      - name: Pack the two release files
+      - name: Pack the release files
         run: |
           set -euo pipefail
           rm -rf dist
           mkdir dist
           cp build/switch/dw3-switch.nro dist/dw3-switch.nro
+          cp build/switch-nxlink/dw3-switch-nxlink.nro dist/dw3-switch-nxlink.nro
           cp platforms/switch/release/README.txt dist/README.txt
           find dist -type f -printf '%f\n' | sort > /tmp/dist-got
-          printf 'README.txt\ndw3-switch.nro\n' > /tmp/dist-want
+          printf 'README.txt\ndw3-switch-nxlink.nro\ndw3-switch.nro\n' > /tmp/dist-want
           diff -u /tmp/dist-want /tmp/dist-got
           if find dist -type f \( -name '*.bin' -o -name '*.cue' -o -name '*.iso' -o -name '*.img' \) | grep -q .; then
             echo "refusing to publish disc images" >&2
             exit 1
           fi
-          if grep -a -F -q 'sdmc:/switch/dw3/us' dist/dw3-switch.nro; then
+          for nro in dist/dw3-switch.nro dist/dw3-switch-nxlink.nro; do
+            if grep -a -F -q 'sdmc:/switch/dw3/us' "$nro"; then
+              :
+            else
+              echo "$nro is not the game image" >&2
+              exit 1
+            fi
+          done
+          if grep -a -F -q 'nxlink stdio connected' dist/dw3-switch-nxlink.nro; then
             :
           else
-            echo "dist nro is not the game image" >&2
+            echo "nxlink nro was not built with DW3_NXLINK_STDIO" >&2
+            exit 1
+          fi
+          if grep -a -F -q 'nxlink stdio connected' dist/dw3-switch.nro; then
+            echo "standard nro must not call nxlinkStdio" >&2
             exit 1
           fi
 
@@ -92,4 +107,5 @@ jobs:
           fail_on_unmatched_files: true
           files: |
             dist/dw3-switch.nro
+            dist/dw3-switch-nxlink.nro
             dist/README.txt

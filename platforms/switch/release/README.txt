@@ -1,11 +1,17 @@
 Digimon World 3 / 2003, Switch homebrew preview
 
-This release has two files.
+This release is a hardware test of the opening movie. It is cut from
+the movie-str-pace branch, not from main. Both game files pace the CD
+at 150 sectors/s and, on first launch, rewrite 2048-byte STR files from
+your disc image so the soundtrack keeps all 18 XA blocks.
 
-  dw3-switch.nro    the game. CMake build. source/boot_main.c calls dw3_game_main.
-  README.txt        this file.
+This release has three files.
 
-There is no game data in either file. No disc image, no BIOS, no extracted
+  dw3-switch-nxlink.nro    the test build. Same game, log on the PC.
+  dw3-switch.nro           the same game, no network.
+  README.txt               this file.
+
+There is no game data in these files. No disc image, no BIOS, no extracted
 tree. You supply that from a copy you own.
 
 This is a prerelease. The title screen boots in Ryubing. It is not a
@@ -21,13 +27,32 @@ What you need
   SLES-03936, is a later boot option. When that exists the tree goes in
   sdmc:/switch/dw3/eu/.
 
-Install the homebrew
+Install the test build
 
-  Copy dw3-switch.nro to the SD card:
+  Copy dw3-switch-nxlink.nro to:
 
-    sdmc:/switch/dw3-switch.nro
+    sdmc:/switch/dw3-switch-nxlink.nro
 
-  Launch it from hbmenu.
+  Put your own Mode2 BIN and CUE next to the US tree, not inside it:
+
+    sdmc:/switch/dw3/Digimon World 3.cue
+    sdmc:/switch/dw3/Digimon World 3.bin
+    sdmc:/switch/dw3/us/
+
+  Open hbmenu, press Y for NetLoader, and leave it waiting. On the PC,
+  same network:
+
+    nxlink -a <Switch-IP> -s dw3-switch-nxlink.nro
+
+  The first boot copies about 260 MB. The screen stays dark blue and the
+  log prints "restore" until that finishes. The next boot only checks
+  file sizes. Then let the opening movie play. Picture and sound should
+  stay together. A failed nxlink connection still boots, and the same
+  lines go to sdmc:/switch/dw3/dw3.log.
+
+  dw3-switch.nro is the same test without a socket. Copy it to
+  sdmc:/switch/dw3-switch.nro and launch it from hbmenu when you do not
+  want the host log.
 
 Install your own disc data
 
