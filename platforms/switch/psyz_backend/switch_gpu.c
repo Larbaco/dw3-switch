@@ -20,8 +20,13 @@
 #include "rasterizer.h"
 #include "nx.h"
 #include "nx_mesh.h"
+#include "overlay_host.h"
 
 #include <string.h>
+
+/* US / EU FILE_FIGHTSTG (engine/overlay.h). Mesh GPU is battle-only. */
+#define DW3_FILE_FIGHTSTG_US 0x159
+#define DW3_FILE_FIGHTSTG_EU 0x167
 
 /* GP0 code bits (same as PSY-Z sdl3_draw.h). */
 #define SEMITRANSP 0x02
@@ -43,6 +48,16 @@ static int s_area_x1 = 1023;
 static int s_area_y1 = 511;
 
 static short s11(short v) { return (short)(((v & 0x7FF) ^ 1024) - 1024); }
+
+/* preview.9 routed field POLY_GT through the mesh FBO + black-discard UI
+ * composite and corrupted interiors while also costing ~1.4× field dt.
+ * Only FIGHTSTG (mode overlay file) may enqueue. */
+static int mesh_battle_active(void) {
+    int32_t mode_file = dw3_overlay_current_mode_file();
+
+    return mode_file == DW3_FILE_FIGHTSTG_US ||
+           mode_file == DW3_FILE_FIGHTSTG_EU;
+}
 
 static int write_packet(Dw3NxMeshVertex *v, int code, int n, u_long *packet,
                         uint16_t *p_out) {
@@ -136,7 +151,8 @@ static int try_push_mesh_poly(u_long *packets, int max_len) {
     int n_indices;
     int i;
 
-    if (!dw3_nx_mesh_available() || max_len <= 0 || !packets) {
+    if (!dw3_nx_mesh_available() || !mesh_battle_active() || max_len <= 0 ||
+        !packets) {
         return 0;
     }
     code = (int)(*packets >> 24) & 0xFF;
@@ -272,7 +288,11 @@ void Draw_SetAreaEnd(int x, int y) {
 }
 
 void Draw_SetOffset(int x, int y) {
-    dw3_nx_mesh_flush((const uint16_t *)SoftwareRasterizer_GetVram());
+    if (mesh_battle_active()) {
+        dw3_nx_mesh_flush((const uint16_t *)SoftwareRasterizer_GetVram());
+    } else {
+        dw3_nx_mesh_discard();
+    }
     software_rasterizer.offset(x, y);
     dw3_nx_mesh_set_offset(x, y);
 }
@@ -282,9 +302,14 @@ void Draw_SetMask(int bit0, int bit1) {
 }
 
 void Draw_ClearImage(PS1_RECT *rect, u_char r, u_char g, u_char b) {
-    dw3_nx_mesh_flush((const uint16_t *)SoftwareRasterizer_GetVram());
+    if (mesh_battle_active()) {
+        dw3_nx_mesh_flush((const uint16_t *)SoftwareRasterizer_GetVram());
+    } else {
+        dw3_nx_mesh_discard();
+    }
     software_rasterizer.clear_image(rect, r, g, b);
-    if (rect && rect->w > 0 && rect->h > 0) {
+    dw3_nx_mesh_mark_vram_dirty();
+    if (mesh_battle_active() && rect && rect->w > 0 && rect->h > 0) {
         dw3_nx_mesh_clear_rect(rect->x, rect->y, rect->w, rect->h,
                                (float)r / 255.0f, (float)g / 255.0f,
                                (float)b / 255.0f);
@@ -292,18 +317,32 @@ void Draw_ClearImage(PS1_RECT *rect, u_char r, u_char g, u_char b) {
 }
 
 void Draw_LoadImage(PS1_RECT *rect, u_long *p) {
-    dw3_nx_mesh_flush((const uint16_t *)SoftwareRasterizer_GetVram());
+    if (mesh_battle_active()) {
+        dw3_nx_mesh_flush((const uint16_t *)SoftwareRasterizer_GetVram());
+    } else {
+        dw3_nx_mesh_discard();
+    }
     software_rasterizer.load_image(rect, p);
+    dw3_nx_mesh_mark_vram_dirty();
 }
 
 void Draw_StoreImage(PS1_RECT *rect, u_long *p) {
-    dw3_nx_mesh_flush((const uint16_t *)SoftwareRasterizer_GetVram());
+    if (mesh_battle_active()) {
+        dw3_nx_mesh_flush((const uint16_t *)SoftwareRasterizer_GetVram());
+    } else {
+        dw3_nx_mesh_discard();
+    }
     software_rasterizer.store_image(rect, p);
 }
 
 void Draw_MoveImage(PS1_RECT *rect, unsigned int x, unsigned int y) {
-    dw3_nx_mesh_flush((const uint16_t *)SoftwareRasterizer_GetVram());
+    if (mesh_battle_active()) {
+        dw3_nx_mesh_flush((const uint16_t *)SoftwareRasterizer_GetVram());
+    } else {
+        dw3_nx_mesh_discard();
+    }
     software_rasterizer.move_image(rect, x, y);
+    dw3_nx_mesh_mark_vram_dirty();
 }
 
 void Draw_ResetBuffer(void) {
@@ -311,7 +350,11 @@ void Draw_ResetBuffer(void) {
 }
 
 void Draw_FlushBuffer(void) {
-    dw3_nx_mesh_flush((const uint16_t *)SoftwareRasterizer_GetVram());
+    if (mesh_battle_active()) {
+        dw3_nx_mesh_flush((const uint16_t *)SoftwareRasterizer_GetVram());
+    } else {
+        dw3_nx_mesh_discard();
+    }
     software_rasterizer.flush_buffer();
 }
 
@@ -325,7 +368,11 @@ int Draw_PushPrim(u_long *packets, int max_len) {
 }
 
 int Draw_ExequeSync(void) {
-    dw3_nx_mesh_flush((const uint16_t *)SoftwareRasterizer_GetVram());
+    if (mesh_battle_active()) {
+        dw3_nx_mesh_flush((const uint16_t *)SoftwareRasterizer_GetVram());
+    } else {
+        dw3_nx_mesh_discard();
+    }
     return software_rasterizer.exeque_sync();
 }
 

@@ -20,6 +20,7 @@ typedef enum {
 
 static bool s_ready;
 static bool s_had_content;
+static bool s_sample_dirty = true;
 static uint64_t s_prims_flushed;
 
 static int s_off_x;
@@ -333,6 +334,7 @@ static void upload_sample_vram(const uint16_t *cpu_vram) {
     glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
     glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, DW3_NX_VRAM_W, DW3_NX_VRAM_H,
                     GL_RGBA, GL_UNSIGNED_BYTE, s_pack_rgba);
+    s_sample_dirty = false;
 }
 
 static void set_blend(MeshBlend mode) {
@@ -407,7 +409,11 @@ static void flush_locked(const uint16_t *cpu_vram) {
     }
 
     glGetIntegerv(GL_FRAMEBUFFER_BINDING, &prev_fbo);
-    upload_sample_vram(cpu_vram);
+    /* Full 1024×512 RGBA pack+upload dominates OLED when done every flush.
+     * Fight-menu idle rarely touches VRAM; reuse the GL sample until dirty. */
+    if (s_sample_dirty) {
+        upload_sample_vram(cpu_vram);
+    }
 
     glBindFramebuffer(GL_FRAMEBUFFER, s_mesh_fbo);
     glViewport(0, 0, DW3_NX_VRAM_W, DW3_NX_VRAM_H);
@@ -561,6 +567,7 @@ bool dw3_nx_mesh_init(void) {
     s_n_vtx = 0;
     s_n_idx = 0;
     s_had_content = false;
+    s_sample_dirty = true;
     s_ready = true;
     fprintf(stderr, "nx_mesh: GLES3 mesh FBO ready\n");
     return true;
@@ -571,6 +578,14 @@ void dw3_nx_mesh_shutdown(void) { destroy_gl(); }
 bool dw3_nx_mesh_reinit(void) { return dw3_nx_mesh_init(); }
 
 bool dw3_nx_mesh_available(void) { return s_ready; }
+
+void dw3_nx_mesh_discard(void) {
+    s_n_vtx = 0;
+    s_n_idx = 0;
+    s_had_content = false;
+}
+
+void dw3_nx_mesh_mark_vram_dirty(void) { s_sample_dirty = true; }
 
 void dw3_nx_mesh_set_offset(int x, int y) {
     x %= DW3_NX_VRAM_W;

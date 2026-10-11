@@ -31,6 +31,12 @@ bool dw3_nx_mesh_reinit(void);
 
 bool dw3_nx_mesh_available(void);
 
+/* Drop pending verts / "had content" without drawing (leave battle → field). */
+void dw3_nx_mesh_discard(void);
+
+/* CPU VRAM changed (LoadImage / Clear / Move); next flush re-uploads sample. */
+void dw3_nx_mesh_mark_vram_dirty(void);
+
 void dw3_nx_mesh_set_offset(int x, int y);
 void dw3_nx_mesh_set_area(int x0, int y0, int x1, int y1);
 void dw3_nx_mesh_set_tpage(uint16_t tpage, int dither_env);

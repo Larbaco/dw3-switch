@@ -36,6 +36,10 @@ const Dw3OverlayDesc *dw3_overlay_find(int32_t file_id);
  * Returns 0 on success, -1 if file_id is unknown or file_id == 0. */
 int dw3_overlay_restore(int32_t file_id);
 
+/* Last restored mode overlay (desc->entry != NULL). Sub-overlays do not
+ * update this. Used by the Switch mesh gate (FIGHTSTG only). 0 = none. */
+int32_t dw3_overlay_current_mode_file(void);
+
 /* Title-path overlay tables (STDWTITL + field/battle/menus/…). Call once. */
 void dw3_overlay_register_us_title(void);
 void dw3_overlay_register_eu_title(void);

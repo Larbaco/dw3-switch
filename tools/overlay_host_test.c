@@ -16,6 +16,7 @@
 
 #define FILE_OVL_A 0x101
 #define FILE_OVL_B 0x102
+#define FILE_OVL_SUB 0x103
 
 #define MODE_A 2
 #define MODE_B 3
@@ -30,6 +31,11 @@ static const unsigned char ovl_b_data_init[8] = {
     0xB0, 0xB1, 0xB2, 0xB3, 0xB4, 0xB5, 0xB6, 0xB7};
 static unsigned char ovl_b_bss[4];
 
+static unsigned char ovl_sub_data[8];
+static const unsigned char ovl_sub_data_init[8] = {
+    0xC0, 0xC1, 0xC2, 0xC3, 0xC4, 0xC5, 0xC6, 0xC7};
+static unsigned char ovl_sub_bss[4];
+
 static void *entry_a(void) { return NULL; }
 static void *entry_b(void) { return NULL; }
 
@@ -38,6 +44,9 @@ static const Dw3OverlayDesc g_fixtures[] = {
      ovl_a_bss, sizeof(ovl_a_bss)},
     {FILE_OVL_B, entry_b, ovl_b_data, ovl_b_data_init, sizeof(ovl_b_data),
      ovl_b_bss, sizeof(ovl_b_bss)},
+    /* Sub-overlay: entry NULL (like WFIGHTMN). Must not update mode file. */
+    {FILE_OVL_SUB, NULL, ovl_sub_data, ovl_sub_data_init, sizeof(ovl_sub_data),
+     ovl_sub_bss, sizeof(ovl_sub_bss)},
 };
 
 /* Mirrors OVERLAY_LOADER + loadModeOverlay / loadSubOverlay host paths. */
@@ -80,6 +89,9 @@ int main(void) {
     if (load_mode(MODE_A, FILE_OVL_A) != 0) {
         return fail("load A");
     }
+    if (dw3_overlay_current_mode_file() != FILE_OVL_A) {
+        return fail("mode file not A after load A");
+    }
     if (memcmp(ovl_a_data, ovl_a_data_init, sizeof(ovl_a_data)) != 0) {
         return fail("A data not restored");
     }
@@ -103,6 +115,9 @@ int main(void) {
     if (load_mode(MODE_B, FILE_OVL_B) != 0) {
         return fail("load B");
     }
+    if (dw3_overlay_current_mode_file() != FILE_OVL_B) {
+        return fail("mode file not B after load B");
+    }
     if (memcmp(ovl_b_data, ovl_b_data_init, sizeof(ovl_b_data)) != 0) {
         return fail("B data not restored");
     }
@@ -124,26 +139,51 @@ int main(void) {
         return fail("A bss not zeroed after mode change");
     }
 
-    /* Sub-overlay: same twice preserves; different resets. */
+    /* Sub-overlay (entry NULL): same twice preserves; does not touch mode. */
     g_sub = -1;
-    memset(ovl_b_data, 0xFF, sizeof(ovl_b_data));
-    memset(ovl_b_bss, 0xEE, sizeof(ovl_b_bss));
-    if (load_sub(FILE_OVL_B) != 0) {
-        return fail("sub load B");
+    memset(ovl_sub_data, 0xFF, sizeof(ovl_sub_data));
+    memset(ovl_sub_bss, 0xEE, sizeof(ovl_sub_bss));
+    if (load_sub(FILE_OVL_SUB) != 0) {
+        return fail("sub load SUB");
     }
-    ovl_b_data[1] = 0x55;
-    ovl_b_bss[1] = 0x66;
-    if (load_sub(FILE_OVL_B) != 1) {
+    if (dw3_overlay_current_mode_file() != FILE_OVL_A) {
+        return fail("sub load clobbered mode file");
+    }
+    if (memcmp(ovl_sub_data, ovl_sub_data_init, sizeof(ovl_sub_data)) != 0) {
+        return fail("SUB data not restored");
+    }
+    if (ovl_sub_bss[0] || ovl_sub_bss[1] || ovl_sub_bss[2] || ovl_sub_bss[3]) {
+        return fail("SUB bss not zeroed");
+    }
+    ovl_sub_data[1] = 0x55;
+    ovl_sub_bss[1] = 0x66;
+    if (load_sub(FILE_OVL_SUB) != 1) {
         return fail("same sub should preserve");
     }
-    if (ovl_b_data[1] != 0x55 || ovl_b_bss[1] != 0x66) {
+    if (ovl_sub_data[1] != 0x55 || ovl_sub_bss[1] != 0x66) {
         return fail("same sub mutated state lost");
     }
-    if (load_sub(FILE_OVL_A) != 0) {
-        return fail("sub switch to A");
+    if (dw3_overlay_current_mode_file() != FILE_OVL_A) {
+        return fail("mode file changed after same sub");
     }
-    if (memcmp(ovl_a_data, ovl_a_data_init, sizeof(ovl_a_data)) != 0) {
-        return fail("sub A data not restored");
+
+    /* Force a second restore of SUB (new tracked id) via mode B then A+sub. */
+    if (load_mode(MODE_B, FILE_OVL_B) != 0) {
+        return fail("load B before sub reset");
+    }
+    if (load_mode(MODE_A, FILE_OVL_A) != 0) {
+        return fail("reload A before sub reset");
+    }
+    g_sub = -1;
+    ovl_sub_data[1] = 0x77;
+    if (load_sub(FILE_OVL_SUB) != 0) {
+        return fail("sub reset after mode bounce");
+    }
+    if (ovl_sub_data[1] != ovl_sub_data_init[1]) {
+        return fail("SUB not reset after mode bounce");
+    }
+    if (dw3_overlay_current_mode_file() != FILE_OVL_A) {
+        return fail("mode file not A after sub reset");
     }
 
     puts("OK: overlay reset vs preserve");
