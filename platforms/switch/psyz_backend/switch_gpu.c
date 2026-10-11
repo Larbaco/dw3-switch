@@ -140,9 +140,12 @@ void dw3_nx_switch_gpu_display(Dw3NxDisplay *out) {
     out->on = s_disp_on;
     out->x = s_disp_x;
     out->y = s_disp_y;
-    /* The range setters win when the game provides them; these are the fallback
-     * for a mode that only calls PutDispEnv. */
-    out->width = s_disp_w > 0 ? s_disp_w : (s_disp_mode_w > 0 ? s_disp_mode_w : 320);
+    /* Blit width is the display mode, matching the PC present. The horizontal
+     * range is in tenths of a dot clock and comes out 256 for this title, so
+     * using it as the width cropped the right 64 columns of a 320-wide frame
+     * (the "3") and left the logo sitting to the right. Height stays on the
+     * vertical range, which is already in scanlines. */
+    out->width = s_disp_mode_w > 0 ? s_disp_mode_w : (s_disp_w > 0 ? s_disp_w : 320);
     out->height = s_disp_h > 0 ? s_disp_h : 240;
 }
 

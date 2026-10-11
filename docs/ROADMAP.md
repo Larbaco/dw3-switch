@@ -393,7 +393,10 @@ console.
   **Not ticked:** the done-when is the title **on hardware**, and this is the
   emulator. The speckle was the GLES2 upload reading RGB555 backwards;
   `nx_gpu.c` expands to opaque RGBA8888. The owner confirmed the decoded
-  dump. No pad input has been sent through it yet.
+  dump. The remaining menu offset was the present width: the horizontal
+  range is 256 dot-clock tenths, and using it as the blit width cropped a
+  320-wide frame. The blit width now follows the display mode. No pad input
+  has been sent through it yet.
   See `docs/SWITCH_BACKEND.md` for the boot-stop evidence and the emulator
   logging traps.
 
