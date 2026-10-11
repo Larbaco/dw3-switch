@@ -8,7 +8,7 @@
 | PsyQ headers (reference) | `vendor/dw3_decomp/external/psyq_headers` | API surface the game expects |
 | Psy-Q shim | `vendor/psyz` (pinned submodule) | PSY-Z: libgpu/libgte/libgs/libcd/libsnd/libpress/libmcrd in portable C; see `docs/PSYZ.md` |
 | Host (PC) | `platforms/pc` | PSY-Z SDL3 host: links engine + `STDWTITL` + cdfs/memcard; debugging target |
-| Host (Switch) | `platforms/switch` | Native libnx PSY-Z backend (`psyz_backend/`); P4.2 EGL+GLES2 present (`nx_gpu.c` / `gpu_hello`); audio/input/FS later |
+| Host (Switch) | `platforms/switch` | Native libnx PSY-Z backend (`psyz_backend/`); P4.2 EGL+GLES2 present (`nx_gpu.c` / `gpu_hello`); letterbox uses the PC display-range aspect (4:3 at full framebuffer height, side bars on 16:9); audio/input/FS later |
 | Port glue | `port` | Overlays, cdfs, memcard, PSY-Z gap stubs, decomp patches (`build/decomp-src`) |
 | Disc → runtime | `tools/` + `docs/DISC_SETUP.md` / `docs/RUNTIME_LAYOUT.md` | `build_file_map.py` / `pack_runtime.py`: owner disc → `runtime/<ver>/` (PC) or SD layout |
 

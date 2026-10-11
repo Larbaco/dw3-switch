@@ -409,6 +409,13 @@ console.
   `320x480`, then the attract loop returns to the title and starts the movie
   again (Bandai card). Not ticked: done-when is still hardware. No pad input
   has been sent through it yet.
+  **Present aspect:** the viewport uses PSY-Z's display-range aspect
+  (`(4/3) * (horiz/256) / (vert/240)`), the same rule as the PC host. The
+  sampled rectangle stays 320×480 for the movie (and the display-mode width
+  for the title); that pixel ratio is not the shape on screen. On a docked
+  1920×1080 surface the picture is 4:3 at full height, with side bars only.
+  A Ryubing window set to 21:9 still shrinks that framebuffer and adds bars
+  at the top and bottom. That is the emulator aspect, not a crop in the port.
   See `docs/SWITCH_BACKEND.md` for the boot-stop evidence and the emulator
   logging traps.
 
