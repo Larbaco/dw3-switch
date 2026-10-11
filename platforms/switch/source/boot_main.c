@@ -358,18 +358,52 @@ static int init_paths(void) {
     return 0;
 }
 
+/* The rate clkrst reported before the raise. Restored on a clean exit so
+ * hbmenu does not keep 1785 MHz. A HOME kill skips atexit. */
+static uint32_t g_cpu_hz_prev;
+static int g_cpu_clock_raised;
+
+static void dw3_nx_restore_cpu_clock(void) {
+    ClkrstSession session;
+    Result rc;
+
+    if (!g_cpu_clock_raised) {
+        return;
+    }
+    g_cpu_clock_raised = 0;
+    rc = clkrstInitialize();
+    if (R_FAILED(rc)) {
+        return;
+    }
+    rc = clkrstOpenSession(&session, PcvModuleId_CpuBus, 3);
+    if (R_SUCCEEDED(rc)) {
+        clkrstSetClockRate(&session, g_cpu_hz_prev);
+        clkrstCloseSession(&session);
+    }
+    clkrstExit();
+}
+
 /* Once, after the log file is open. A failed call keeps the console clock
  * and boot continues. */
 static void dw3_nx_raise_cpu_clock(void) {
     ClkrstSession session;
     Result rc;
+    uint32_t prev = 0;
 
     rc = clkrstInitialize();
     if (R_SUCCEEDED(rc)) {
         /* unk=3 matches the official sysmodule open in clkrst.h. */
         rc = clkrstOpenSession(&session, PcvModuleId_CpuBus, 3);
         if (R_SUCCEEDED(rc)) {
-            rc = clkrstSetClockRate(&session, DW3_NX_CPU_HZ);
+            rc = clkrstGetClockRate(&session, &prev);
+            if (R_SUCCEEDED(rc)) {
+                g_cpu_hz_prev = prev;
+                rc = clkrstSetClockRate(&session, DW3_NX_CPU_HZ);
+                if (R_SUCCEEDED(rc)) {
+                    g_cpu_clock_raised = 1;
+                    atexit(dw3_nx_restore_cpu_clock);
+                }
+            }
             clkrstCloseSession(&session);
         }
         clkrstExit();
@@ -378,7 +412,8 @@ static void dw3_nx_raise_cpu_clock(void) {
         ERRORF("cpu clock rc=0x%08x", (unsigned)rc);
         return;
     }
-    INFOF("cpu clock rc=0x%08x hz=%u", (unsigned)rc, DW3_NX_CPU_HZ);
+    INFOF("cpu clock rc=0x%08x hz=%u prev=%u", (unsigned)rc, DW3_NX_CPU_HZ,
+          g_cpu_hz_prev);
 }
 
 int main(int argc, char **argv) {

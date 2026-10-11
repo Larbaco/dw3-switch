@@ -434,8 +434,9 @@ speed.
   `appletSetCpuBoostMode` with `ApmCpuBoostMode_FastLoad`, and that mode also
   forces the GPU to 76.8 MHz. Boot leaves the GPU clock where the console
   set it. 1785 MHz draws more current than the 1020 MHz handheld default, so
-  the unit runs warmer and the battery lasts less time. A failed call is
-  logged and boot continues. `eglSwapInterval` stays at 1, so present still
+  the unit runs warmer and the battery lasts less time. Boot stores the
+  previous rate and restores it if the process exits cleanly. A HOME kill
+  skips that restore. A failed call is logged and boot continues. `eglSwapInterval` stays at 1, so present still
   waits for vsync. The vsync pump writes one `frame dt us=` line for the
   microseconds between samples 60 pumps apart. The first sample only stores
   the time. P5.2 stays open: there is still no OLED field or battle frame
