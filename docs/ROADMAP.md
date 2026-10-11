@@ -383,9 +383,10 @@ console.
   decoded XA, and reported movie frames ready through at least #150 before
   Start-skip. It returned to title and entered field stages. The owner reports
   several map transitions, a working battle, and game audio sounding perfect.
-  They report the opening picture still has the same visual problems; the
-  analog stick has no function. New saves were created on both memory cards,
-  but loading them after restart remains untested. Deleting `us/` stopped the
+  The main menu picture looks right. The visual errors are in the opening
+  video, and they remain after the STR rewrite. The analog stick has no
+  function. New saves were created on both memory cards, but loading
+  them after restart remains untested. Deleting `us/` stopped the
   game from booting, confirming the extracted runtime is still required; startup
   extraction of the complete runtime from BIN is only a desired follow-up and
   was not implemented. See `docs/P3.7_MOVIES.md` and
