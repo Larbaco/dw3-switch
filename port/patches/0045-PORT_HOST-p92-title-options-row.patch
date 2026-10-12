@@ -14,32 +14,7 @@ with the resident game font. Select remains a shortcut without shoulders.
  #endif
  
  /* The menu's sprites: the European version has them for each language */
-@@ -17,6 +18,24 @@
- void STDWTITL_drawMenu(TitleMenuTask *task) {
-     SpriteDrawer sprite;
- 
-+#if PORT_HOST
-+    if (task->showOptions && task->state == TASK_DONE) {
-+        /* Submit the label before its background: OT insertion is reversed. */
-+        dw3_port_title_options_draw(task->layerId, 79,
-+            DW3_TITLE_ROW_Y(DW3_TITLE_PORT_OPTIONS),
-+            task->selection == DW3_TITLE_PORT_OPTIONS);
-+        /* The selected cursor supplies its own bright frame; do not
-+         * overdraw it with the dim background after reversed OT insertion. */
-+        if (task->selection != DW3_TITLE_PORT_OPTIONS || !task->showCursor) {
-+            initSpriteDrawer(&sprite);
-+            sprite.setLayerId(task->layerId, 0);
-+            sprite.setTexture(0x280, STDWTITL_TEXTURE_Y);
-+            sprite.setClutRow(1);
-+            sprite.draw(FILE_CACHE.getEntry(STDWTITL_spriteBank), 7, 79,
-+                        DW3_TITLE_ROW_Y(DW3_TITLE_PORT_OPTIONS) - 1);
-+        }
-+    }
-+#endif
-     if (task->showCursor) {
-         initSpriteDrawer(&sprite);
-         sprite.setLayerId(task->layerId, 0);
-@@ -24,7 +43,13 @@
+@@ -24,8 +25,23 @@
          sprite.setClutRow(task->blink);
          sprite.draw(FILE_CACHE.getEntry(STDWTITL_spriteBank), 7,
                      STDWTITL_menuCursorPositions[task->selection].x,
@@ -49,11 +24,22 @@ with the resident game font. Select remains a shortcut without shoulders.
 +                        STDWTITL_menuCursorPositions[task->selection].y) - 1);
 +#else
                      STDWTITL_menuCursorPositions[task->selection].y - 1);
+-    }
 +#endif
-     }
++    }
++#if PORT_HOST
++    if (task->showOptions && task->state == TASK_DONE) {
++        /* The selected original cursor is already in the OT, so it paints
++         * after the new label and stripe background, just like vanilla. */
++        dw3_port_title_options_draw(task->layerId, 79,
++            DW3_TITLE_ROW_Y(DW3_TITLE_PORT_OPTIONS),
++            task->selection == DW3_TITLE_PORT_OPTIONS);
++    }
++#endif
      if (task->showOptions == 0) {
          initSpriteDrawer(&sprite);
-@@ -41,7 +66,12 @@
+         sprite.setLayerId(task->layerId, 0);
+@@ -41,7 +57,12 @@
          initSpriteDrawer(&sprite);
          sprite.setLayerId(task->layerId, 0);
          sprite.setTexture(0x280, STDWTITL_TEXTURE_Y);
@@ -66,7 +52,7 @@ with the resident game font. Select remains a shortcut without shoulders.
          sprite.draw(FILE_CACHE.getEntry(STDWTITL_spriteBank), MENU_SPRITE(2), task->options[1].x, task->options[1].y);
      }
  }
-@@ -109,12 +139,20 @@
+@@ -109,12 +130,20 @@
      case 0:
      default:
          task->showOptions = 1;
@@ -87,7 +73,7 @@ with the resident game font. Select remains a shortcut without shoulders.
          task->nextSubstate(task);
          break;
      case 1:
-@@ -123,7 +161,8 @@
+@@ -123,7 +152,8 @@
          if (dw3_port_options_is_open()) {
              break;
          }
@@ -97,7 +83,7 @@ with the resident game font. Select remains a shortcut without shoulders.
              dw3_port_options_open();
              SOUND.playSound(SOUND_SELECT);
              break;
-@@ -133,15 +172,35 @@
+@@ -133,15 +163,35 @@
              if (task->selection != 0) {
                  SOUND.playSound(SOUND_CURSOR);
              }
@@ -133,7 +119,7 @@ with the resident game font. Select remains a shortcut without shoulders.
              task->timer = 0;
              SOUND.playSound(SOUND_SELECT);
              task->nextSubstate(task);
-@@ -170,6 +229,9 @@
+@@ -170,6 +220,9 @@
     seconds), blinks and spreads out the two options; then moves between new game
     and continue, and the confirm button blinks the option and sets choice */
  void STDWTITL_tickMenu(TitleMenuTask *task) {
@@ -143,7 +129,7 @@ with the resident game font. Select remains a shortcut without shoulders.
      switch (task->state) {
      case TASK_INIT:
      default:
-@@ -189,7 +251,7 @@
+@@ -189,7 +242,7 @@
      case TASK_DONE:
          runOptions(task);
  #if PORT_HOST
@@ -152,7 +138,7 @@ with the resident game font. Select remains a shortcut without shoulders.
              dw3_port_options_tick();
          }
  #endif
-@@ -201,9 +263,6 @@
+@@ -201,9 +254,6 @@
  #if PORT_HOST
      if (dw3_port_options_is_open()) {
          dw3_port_options_draw();

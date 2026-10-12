@@ -109,8 +109,10 @@ through `PORT_HOST`; `port/options/title_entry.c` draws the added label
 with the game's resident proportional font and blue/dark-blue palettes.
 The original title labels are pre-rendered sprites, so this new label
 uses the in-game font rather than an identical new title sprite. No
-owner artwork or generated asset is bundled. The original cursor frame
-is reused at all three rows, at y=148/164/180 above the copyright.
+owner artwork or generated asset is bundled. The added row reproduces
+the buttons' one-pixel black/grey stripes with opaque tiles; the original
+cursor frame highlights only the selected row. Draw ordering keeps that
+frame above the added background. Rows are at y=148/164/180 above the copyright.
 PRESS START retains its separate two-sprite spread animation, then the
 three-row layout appears when the options state starts.
 

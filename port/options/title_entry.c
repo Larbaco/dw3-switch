@@ -19,9 +19,11 @@ void dw3_port_title_options_draw(int layer_id, int x, int y, int selected) {
     u_long *ot = layer->getOtEntry(layer, 0);
     PrimPtr prim;
     Glyph *glyph;
+    TILE *tiles;
     int width = 0;
     int i;
     int code;
+    int panel_x = x;
 
     /* Title has already loaded FONT. Reuse its proportional glyph advances
      * and blue CLUTs, without allocating a task or loading a second font. */
@@ -54,5 +56,18 @@ void dw3_port_title_options_draw(int layer_id, int x, int y, int selected) {
         }
         x += glyph->advance + glyph->dx;
     }
-    GFX.funcs.setPrim(prim.any);
+    /* Same one-pixel black/grey stripe rhythm as the title button sprites.
+     * Submitted after the letters so the reversed OT paints it underneath.
+     * The original selection cursor is drawn separately, only when selected. */
+    tiles = (TILE *)prim.any;
+    for (i = 0; i < 14; i++) {
+        int shade = (i & 1) ? 8 : 32;
+        setTile(tiles);
+        setRGB0(tiles, shade, shade, shade);
+        setXY0(tiles, panel_x, y + i);
+        setWH(tiles, 164, 1);
+        addPrim(ot, tiles);
+        tiles++;
+    }
+    GFX.funcs.setPrim(tiles);
 }

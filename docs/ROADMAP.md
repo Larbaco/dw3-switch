@@ -751,7 +751,8 @@ PS1 game, with vanilla-safe defaults and persistence on owner storage.
   on title NG/Continue; Triangle closes; stub registry; unit tests.
   **Three-row follow-up:** title now has Start / Port options / Continue,
   original cursor + vanilla choices; new label uses the resident game
-  font. Confirm opens the shell, Triangle returns to the middle row;
+  font and a matching opaque striped button background. Only the
+  selected row has the original cursor frame. Confirm opens the shell, Triangle returns to the middle row;
   Select remains a shortcut without shoulder chords. Independent PC
   visual/input validation and Switch hardware confirmation remain open.
   Done when: the screen is reachable from the main menu and returns
