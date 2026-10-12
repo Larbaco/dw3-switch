@@ -2,7 +2,9 @@
  * Shaders adapted from vendor/psyz sdl3_gl.c (ES 3.00). UI stays on CPU VRAM. */
 #include "nx_mesh.h"
 #include "nx_mesh_debug.h"
+#include "nx_battle_mode.h"
 #include "nx_vram_pack.h"
+#include "nx.h"
 
 #include <stddef.h>
 #include <stdio.h>
@@ -67,15 +69,17 @@ static uint16_t s_idx[MESH_MAX_IDX];
 static int s_n_vtx;
 static int s_n_idx;
 
-/* Last ClearImage rect (DIAG ssquad redraw after flush so magenta verts
- * cannot hide the known cyan inset). */
-static int s_diag_clear_x;
-static int s_diag_clear_y;
-static int s_diag_clear_w;
-static int s_diag_clear_h;
-static int s_diag_clear_valid;
-
 static uint8_t s_pack_rgba[DW3_NX_VRAM_W * DW3_NX_VRAM_H * 4];
+
+/* Hardcoded fullscreen clip-space strip (ignores ClearImage rect). */
+static const float SSQUAD_FULL_NDC[] = {
+    -1.0f, -1.0f, 0.0f, 1.0f, 1.0f, -1.0f, 1.0f, 1.0f,
+    -1.0f, 1.0f,  0.0f, 0.0f, 1.0f, 1.0f,  1.0f, 0.0f,
+};
+
+static int diag_ssquad_wanted(void) {
+    return dw3_nx_mesh_diag_enabled() && dw3_nx_battle_mode_use_solid();
+}
 
 static const char *MESH_VS =
     "#version 300 es\n"
@@ -557,11 +561,9 @@ static void flush_locked(const uint16_t *cpu_vram) {
     glBindFramebuffer(GL_FRAMEBUFFER, (GLuint)prev_fbo);
     glDisable(GL_SCISSOR_TEST);
 
-    /* DIAG: re-paint cyan ssquad after game verts so constant-magenta solid
-     * tris cannot hide the known clip-space inset. */
-    if (dw3_nx_mesh_diag_enabled() && s_diag_clear_valid) {
-        dw3_nx_mesh_diag_ssquad(s_diag_clear_x, s_diag_clear_y, s_diag_clear_w,
-                                s_diag_clear_h);
+    /* DIAG+solid: cyan fullscreen after game verts (may cover magenta tris). */
+    if (diag_ssquad_wanted()) {
+        dw3_nx_mesh_diag_ssquad(0, 0, DW3_NX_VRAM_W, DW3_NX_VRAM_H);
     }
 #if DW3_NX_DEBUG_MESH
     t2 = mesh_now_us();
@@ -680,69 +682,75 @@ int dw3_nx_mesh_diag_enabled(void) {
 
 void dw3_nx_mesh_diag_ssquad(int x, int y, int w, int h) {
     GLint prev_fbo = 0;
+    GLuint vbo;
+    GLint pos_loc;
     static unsigned ssquad_log_n;
-    float ndc[16];
-    float x0;
-    float x1;
-    float y0;
-    float y1;
-    float mx;
-    float my;
+    static unsigned ssquad_skip_n;
+    GLenum err;
 
-    if (!s_ready || !s_ssquad_prog || !s_ssquad_vbo || w <= 0 || h <= 0) {
+    /* Geometry ignores ClearImage rect: always fullscreen NDC -1..1.
+     * x,y,w,h are call-site context for logs only. */
+    (void)x;
+    (void)y;
+    (void)w;
+    (void)h;
+
+    if (!s_ready) {
+        ssquad_skip_n++;
+        if (ssquad_skip_n <= 16u || (ssquad_skip_n % 64u) == 0u) {
+            fprintf(stderr,
+                    "DIAG ssquad skip (#%u): not ready (ctx %d,%d %dx%d)\n",
+                    ssquad_skip_n, x, y, w, h);
+            fflush(stderr);
+        }
         return;
     }
-    if (x < 0) {
-        w += x;
-        x = 0;
-    }
-    if (y < 0) {
-        h += y;
-        y = 0;
-    }
-    if (x >= DW3_NX_VRAM_W || y >= DW3_NX_VRAM_H) {
+    if (!s_ssquad_prog) {
+        ssquad_skip_n++;
+        if (ssquad_skip_n <= 16u || (ssquad_skip_n % 64u) == 0u) {
+            fprintf(stderr,
+                    "DIAG ssquad skip (#%u): no prog (vbo=%u blit_vbo=%u "
+                    "ctx %d,%d %dx%d)\n",
+                    ssquad_skip_n, (unsigned)s_ssquad_vbo,
+                    (unsigned)s_blit_vbo, x, y, w, h);
+            fflush(stderr);
+        }
         return;
     }
-    if (x + w > DW3_NX_VRAM_W) {
-        w = DW3_NX_VRAM_W - x;
+    if (s_ssquad_pos < 0) {
+        ssquad_skip_n++;
+        if (ssquad_skip_n <= 16u || (ssquad_skip_n % 64u) == 0u) {
+            fprintf(stderr,
+                    "DIAG ssquad skip (#%u): a_pos loc=%d (ctx %d,%d %dx%d)\n",
+                    ssquad_skip_n, (int)s_ssquad_pos, x, y, w, h);
+            fflush(stderr);
+        }
+        return;
     }
-    if (y + h > DW3_NX_VRAM_H) {
-        h = DW3_NX_VRAM_H - y;
+    /* Prefer dedicated VBO; fall back to blit_vbo (same fullscreen NDC). */
+    vbo = s_ssquad_vbo ? s_ssquad_vbo : s_blit_vbo;
+    if (!vbo) {
+        ssquad_skip_n++;
+        if (ssquad_skip_n <= 16u || (ssquad_skip_n % 64u) == 0u) {
+            fprintf(stderr,
+                    "DIAG ssquad skip (#%u): no vbo (ctx %d,%d %dx%d)\n",
+                    ssquad_skip_n, x, y, w, h);
+            fflush(stderr);
+        }
+        return;
     }
-    if (w <= 0 || h <= 0) {
+    if (!s_mesh_fbo) {
+        ssquad_skip_n++;
+        if (ssquad_skip_n <= 16u || (ssquad_skip_n % 64u) == 0u) {
+            fprintf(stderr,
+                    "DIAG ssquad skip (#%u): no mesh fbo (ctx %d,%d %dx%d)\n",
+                    ssquad_skip_n, x, y, w, h);
+            fflush(stderr);
+        }
         return;
     }
 
-    /* Same PS1→NDC scale as MESH_VS (no drawOffset): large inset inside the
-     * ClearImage rect so magenta border stays if present samples this band. */
-    x0 = (float)x / 512.0f - 1.0f;
-    x1 = (float)(x + w) / 512.0f - 1.0f;
-    y0 = (float)y / 256.0f - 1.0f;
-    y1 = (float)(y + h) / 256.0f - 1.0f;
-    mx = (x1 - x0) * 0.12f;
-    my = (y1 - y0) * 0.12f;
-    x0 += mx;
-    x1 -= mx;
-    y0 += my;
-    y1 -= my;
-    /* TRIANGLE_STRIP: BL/BR/TL/TR with dummy UV slots (FS ignores a_t). */
-    ndc[0] = x0;
-    ndc[1] = y0;
-    ndc[2] = 0.0f;
-    ndc[3] = 1.0f;
-    ndc[4] = x1;
-    ndc[5] = y0;
-    ndc[6] = 1.0f;
-    ndc[7] = 1.0f;
-    ndc[8] = x0;
-    ndc[9] = y1;
-    ndc[10] = 0.0f;
-    ndc[11] = 0.0f;
-    ndc[12] = x1;
-    ndc[13] = y1;
-    ndc[14] = 1.0f;
-    ndc[15] = 0.0f;
-
+    pos_loc = s_ssquad_pos;
     glGetIntegerv(GL_FRAMEBUFFER_BINDING, &prev_fbo);
     glBindFramebuffer(GL_FRAMEBUFFER, s_mesh_fbo);
     glViewport(0, 0, DW3_NX_VRAM_W, DW3_NX_VRAM_H);
@@ -752,28 +760,32 @@ void dw3_nx_mesh_diag_ssquad(int x, int y, int w, int h) {
     glDisable(GL_CULL_FACE);
 
     glUseProgram(s_ssquad_prog);
-    /* Contrasting cyan on magenta clear — bypasses MESH_VS / game verts. */
+    /* Contrasting cyan — bypasses MESH_VS / GTE / game packet verts. */
     glUniform4f(s_ssquad_color, 0.0f, 1.0f, 1.0f, 1.0f);
-    glBindBuffer(GL_ARRAY_BUFFER, s_ssquad_vbo);
-    glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(ndc), ndc);
-    glEnableVertexAttribArray((GLuint)s_ssquad_pos);
-    glVertexAttribPointer((GLuint)s_ssquad_pos, 2, GL_FLOAT, GL_FALSE,
+    glBindBuffer(GL_ARRAY_BUFFER, vbo);
+    if (vbo == s_ssquad_vbo) {
+        glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(SSQUAD_FULL_NDC),
+                        SSQUAD_FULL_NDC);
+    }
+    glEnableVertexAttribArray((GLuint)pos_loc);
+    glVertexAttribPointer((GLuint)pos_loc, 2, GL_FLOAT, GL_FALSE,
                           sizeof(float) * 4, (const void *)0);
     glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+    err = glGetError();
 
     glBindFramebuffer(GL_FRAMEBUFFER, (GLuint)prev_fbo);
     s_had_content = true;
-    s_diag_clear_x = x;
-    s_diag_clear_y = y;
-    s_diag_clear_w = w;
-    s_diag_clear_h = h;
-    s_diag_clear_valid = 1;
 
     ssquad_log_n++;
-    if (ssquad_log_n <= 8u || (ssquad_log_n % 64u) == 0u) {
-        fprintf(stderr, "DIAG ssquad drawn (#%u rect %d,%d %dx%d cyan)\n",
-                ssquad_log_n, x, y, w, h);
+    if (ssquad_log_n <= 16u || (ssquad_log_n % 64u) == 0u) {
+        fprintf(stderr,
+                "DIAG ssquad drawn (#%u fullscreen NDC cyan glerr=0x%x "
+                "vbo=%u ctx %d,%d %dx%d)\n",
+                ssquad_log_n, (unsigned)err, (unsigned)vbo, x, y, w, h);
         fflush(stderr);
+        psyz_log(1, "nx_mesh.c", __LINE__, __func__,
+                 "DIAG ssquad drawn #%u fullscreen cyan glerr=0x%x",
+                 ssquad_log_n, (unsigned)err);
     }
 }
 
@@ -897,6 +909,11 @@ void dw3_nx_mesh_present(int dx, int dy, int dw, int dh, int vx, int vy, int vw,
                          int vh) {
     if (!s_ready || !s_had_content || dw <= 0 || dh <= 0 || vw <= 0 || vh <= 0) {
         return;
+    }
+    /* DIAG+solid: paint cyan into mesh FBO immediately before the blit so a
+     * later ClearImage / flush order cannot erase the falsifier. */
+    if (diag_ssquad_wanted()) {
+        dw3_nx_mesh_diag_ssquad(dx, dy, dw, dh);
     }
     glDisable(GL_SCISSOR_TEST);
     glDisable(GL_BLEND);

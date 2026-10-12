@@ -38,8 +38,9 @@ bool dw3_nx_mesh_available(void);
  * black-discard). Default off — does not change release soft battle. */
 int dw3_nx_mesh_diag_enabled(void);
 
-/* DIAG + gpu-solid: after magenta clear, paint a large clip-space cyan quad
- * into the clear rect (no game verts / GTE). Sets had_content for present. */
+/* DIAG + gpu-solid: paint a hardcoded fullscreen NDC cyan quad into the mesh
+ * FBO (ignores ClearImage rect; x,y,w,h are log context only). No GTE/packets.
+ * Sets had_content for present. Logs skips with reason. */
 void dw3_nx_mesh_diag_ssquad(int x, int y, int w, int h);
 
 /* Drop pending verts / "had content" without drawing (leave battle → field). */
