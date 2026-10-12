@@ -116,3 +116,34 @@ default **off**, fast-forward) are document-only until P9.3.
 Headless smoke: `DW3_AUTO_PAD=start,select` then
 `DW3_PORT_OPTIONS_FB_DUMP=/tmp/dw3-p92-options-ttb/shell.ppm`
 `DW3_PORT_OPTIONS_QUIT_AFTER_DUMP=1`.
+
+## PC validation (2026-10-12)
+
+Tested `main` commit `1d33f4d` with the owner's US runtime, separate
+temporary memory-card storage, and the `sdl3_gpu` PC build. The SDL build
+used `SDL_X11_XSCRNSAVER=OFF` because that optional development dependency
+was absent. The two `test_port_options.py` checks passed.
+
+The automated title-to-shell framebuffer dump was legible at 320x240;
+both stub values started OFF. A separate keyboard test on a private Xvfb
+display confirmed the following after the intro and PRESS START flow:
+
+- Backspace opens the shell while New Game / Continue are shown.
+- X changes the selected stub, Down moves to the second row, and X changes
+  that stub too. Both show ON and log a safe no-op; the title remains active.
+- S closes the shell and returns to the same Continue selection.
+- Backspace reopens it with the in-process stub values retained; S closes
+  it again. This is not disk persistence (P9.4 is still open).
+- X on Continue after closing reaches the vanilla memory-card load screen
+  (`STGMCARD_createScreen loading=1`), confirming the title flow resumes.
+
+Local evidence is under `/tmp/dw3-menu-evidence/`: `shell.ppm`,
+`isolated-sequence.png`, `isolated-toggled.png`, `isolated-closed.png`,
+`isolated-reopened.png`, `isolated-continue.png`, `ttb.log`, and
+`isolated.log`. Screenshots include owner-disc artwork and are not committed.
+UI automation must use a private display, never the owner's active desktop.
+
+**Visual follow-up:** the title hint `Select/Backspace: Port options` clips
+at the right edge of its 240-pixel panel. The shell itself is legible.
+No feature code changed in this validation. Switch input/chord validation,
+the third cursor row, and the P9.2 cross-host completion remain open.

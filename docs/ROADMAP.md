@@ -746,6 +746,12 @@ PS1 game, with vanilla-safe defaults and persistence on owner storage.
   [PORT_OPTIONS.md](PORT_OPTIONS.md) Entry investigation).
   **In progress (PC):** Select/Backspace MVP opens `port/options` shell
   on title NG/Continue; Triangle closes; stub registry; unit tests.
+  **PC validation (2026-10-12):** title-to-shell framebuffer captured;
+  private-display keyboard test confirms Backspace open, X/Down stub
+  changes, S close, reopen, and vanilla Continue/load flow after close.
+  Both defaults OFF; changes remain safe no-ops and are not persisted.
+  Two shell/glyph tests passed. Title hint clips at its right edge;
+  follow-up tracked in [PORT_OPTIONS.md](PORT_OPTIONS.md).
   Switch Minus mapping + third cursor row still open.
   Done when: the screen is reachable from the main menu and returns
   cleanly to it (PC + Switch; TTB print on PC).
