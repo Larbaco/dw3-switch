@@ -86,7 +86,8 @@ shipped seed).
 | `tris enq/flush=…` | Last completed `Dw3NxMeshDebugWindow` (when `DW3_NX_DEBUG_MESH`) |
 | `frames m/b/soft=…` | Same window |
 | `flush/up/pres us=…` | Optional timing from the same window |
-| `build: nxlink mesh dump` | Which compile flags are defined |
+| `build: diag solid <tip>` | When `DW3_NX_MESH_DIAG` (tip = short git hash) |
+| `build: nxlink mesh dump` | Non-DIAG builds: which compile flags are defined |
 
 Stage `stageFile` is **not** scraped from logs. MVP shows mode file id only;
 a future latch can expose the last restored sub-overlay without touching

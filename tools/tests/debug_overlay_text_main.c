@@ -29,12 +29,23 @@ int main(void) {
     build.nxlink = 1;
     build.mesh_dbg = 1;
     build.dump_vram = 1;
+    build.mesh_diag = 0;
+    build.tip = NULL;
 
     n = dw3_debug_overlay_format(lines, DW3_DBG_OVERLAY_MAX_LINES, 1000000ull,
                                  0x15a, 1, "soft", &mesh, &build);
     printf("line_count=%d\n", n);
     for (i = 0; i < n; i++) {
         printf("L%d=%s\n", i, lines[i]);
+    }
+
+    build.mesh_diag = 1;
+    build.tip = "60b45e7";
+    n = dw3_debug_overlay_format(lines, DW3_DBG_OVERLAY_MAX_LINES, 1000000ull,
+                                 0x15a, 1, "gpu-solid", &mesh, &build);
+    printf("diag_line_count=%d\n", n);
+    for (i = 0; i < n; i++) {
+        printf("D%d=%s\n", i, lines[i]);
     }
     return 0;
 }

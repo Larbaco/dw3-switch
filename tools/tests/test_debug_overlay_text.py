@@ -54,6 +54,13 @@ def test_hud_lines_include_mesh_and_build(overlay_text_output):
     assert "mesh" in overlay_text_output[f"L{int(overlay_text_output['line_count']) - 1}"]
 
 
+def test_hud_diag_build_replaces_stale_dump_tag(overlay_text_output):
+    last = overlay_text_output[f"D{int(overlay_text_output['diag_line_count']) - 1}"]
+    assert last == "build: diag solid 60b45e7"
+    assert "dump" not in last
+    assert overlay_text_output["D3"] == "battle=gpu-solid"
+
+
 def test_hud_glyph_bits_are_lsb_left(tmp_path):
     """font8x8 row bytes: bit 0 is leftmost (MSB-as-left mirrored OLED text)."""
     out = tmp_path / "dbg_glyph"
