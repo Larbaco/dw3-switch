@@ -11,14 +11,16 @@
 
 #if DW3_NX_DUMP_VRAM
 
-/* First mesh+ui present only: write display-rect CPU VRAM + mesh FBO to
- * sdmc:/switch/dw3/ and log one nxlink line. Later calls are no-ops. */
+/* One-shot FIGHTSTG present dump to sdmc:/switch/dw3/. Mesh path waits until
+ * prims_flushed is large enough (first ~20-tri present was all-black). Soft
+ * battle (opaque blit) dumps on the first FIGHTSTG present. */
 void dw3_nx_vram_dump_battle_once(const uint16_t *vram, int dx, int dy, int dw,
-                                  int dh, int mesh_active);
+                                  int dh, int mesh_active,
+                                  uint64_t prims_flushed);
 
 #else
 
-#define dw3_nx_vram_dump_battle_once(vram, dx, dy, dw, dh, mesh_active) \
+#define dw3_nx_vram_dump_battle_once(vram, dx, dy, dw, dh, mesh_active, prims) \
     ((void)0)
 
 #endif /* DW3_NX_DUMP_VRAM */

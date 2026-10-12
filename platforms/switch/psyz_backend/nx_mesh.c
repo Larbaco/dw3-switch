@@ -138,10 +138,11 @@ static const char *MESH_FS =
     "flat in uvec4 v_texWindow;\n"
     "uniform sampler2D u_texVram;\n"
     "out vec4 FragColor;\n"
+    /* No dFdx/dFdy: Tegra/nouveau GLES helpers can widen UV steps and push
+     * CLUT samples off the page (black FBO while tris_flush stays huge). */
     "uvec2 resolveTexel() {\n"
-    "  vec2 texelStep = vec2(abs(dFdx(v_rawUV.x)), abs(dFdy(v_rawUV.y)));\n"
-    "  vec2 uv = v_rawUV - 0.5 * texelStep + 1.0 / 512.0;\n"
-    "  uvec2 texel = uvec2(clamp(floor(uv), vec2(0.0), vec2(255.0)));\n"
+    "  uvec2 texel = uvec2(clamp(floor(v_rawUV + 1.0 / 512.0), vec2(0.0),\n"
+    "                            vec2(255.0)));\n"
     "  return (texel & v_texWindow.xy) | v_texWindow.zw;\n"
     "}\n"
     "uint rgb5551ToU16(vec4 c) {\n"
@@ -749,9 +750,12 @@ size_t dw3_nx_mesh_read_rect_rgba(int dx, int dy, int dw, int dh, uint8_t *dst,
     }
     glGetIntegerv(GL_FRAMEBUFFER_BINDING, &prev_fbo);
     glBindFramebuffer(GL_FRAMEBUFFER, s_mesh_fbo);
+    /* Ensure flush/draw into the FBO completed before the SD dump read. */
+    glFinish();
     glPixelStorei(GL_PACK_ALIGNMENT, 1);
     while (glGetError() != GL_NO_ERROR) {
     }
+    /* GL origin is bottom-left; PS1 VRAM y matches this FBO (same as present). */
     glReadPixels(dx, dy, dw, dh, GL_RGBA, GL_UNSIGNED_BYTE, dst);
     err = glGetError();
     glBindFramebuffer(GL_FRAMEBUFFER, (GLuint)prev_fbo);

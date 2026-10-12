@@ -460,11 +460,18 @@ speed.
   the black-discard composite. Follow-up: gate mesh to FIGHTSTG only +
   dirty sample-VRAM upload (#71). Battle 60 Hz proof is still open. P5.2
   stays open.
+  **preview.10 dump (2026-10-11).** With GLES mesh on FIGHTSTG, SD dumps of
+  the display rect + mesh FBO were all-black (`nonblack=0`) while
+  `tris_flush` was huge; first dump was a 21-tri prologue present. Soft
+  battle escape (`DW3_NX_MESH_SOFT_BATTLE`, default ON) restores software
+  `RasterTriangle` + opaque blit under the FIGHTSTG gate until a dump
+  shows `mesh_nonblack > 0`. See [P5.2_BATTLE_GPU.md](P5.2_BATTLE_GPU.md).
   **Nxlink mesh debug:** `--nxlink` builds default `DW3_NX_DEBUG_MESH` and
   emit a sampled `mesh dbg:` line next to `frame dt us=` (tris / path /
   flush+upload+present us). After the FIGHTSTG gate, field should stay
-  near `tris_enq≈0` / `frames_blit`; battle may show `frames_mesh`. See
-  [NXLINK_DEBUG.md](NXLINK_DEBUG.md).
+  near `tris_enq≈0` / `frames_blit`; with soft battle, battle stays on
+  `frames_blit` / `soft=`; with soft OFF, battle may show `frames_mesh`.
+  See [NXLINK_DEBUG.md](NXLINK_DEBUG.md).
   **On-screen debug overlay:** `--nxlink` also defaults `DW3_NX_DEBUG_OVERLAY`
   (HUD after present: FPS, mode file, mesh window). Toggle Minus+L+R. Not a
   substitute for P5.4 crash reporting. See [DEBUG_OVERLAY.md](DEBUG_OVERLAY.md).

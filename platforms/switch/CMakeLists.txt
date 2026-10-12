@@ -44,6 +44,14 @@ option(DW3_NX_DUMP_VRAM "Write battle VRAM/mesh FBO dumps under sdmc:/switch/dw3
 # On-screen HUD (FPS / mode / mesh). Same nxlink default as mesh debug.
 option(DW3_NX_DEBUG_OVERLAY "On-screen debug overlay HUD (nxlink)"
        ${_dw3_mesh_dbg_default})
+# Recovery: keep FIGHTSTG gate but force software RasterTriangle in battle.
+# preview.10 dumps showed mesh FBO all-black while tris_flush was huge; opaque
+# software present restores a readable fight until mesh sampling draws non-black.
+# Override with -DDW3_NX_MESH_SOFT_BATTLE=OFF to exercise the GLES mesh path.
+# Runtime: DW3_MESH_SOFT=0 forces mesh; DW3_MESH_SOFT=1 forces software.
+option(DW3_NX_MESH_SOFT_BATTLE
+       "Force software RasterTriangle in FIGHTSTG (mesh FBO recovery)"
+       ON)
 
 if(NOT CMAKE_SYSTEM_NAME STREQUAL "NintendoSwitch")
   message(FATAL_ERROR
@@ -126,6 +134,13 @@ endif()
 if(DW3_NX_DEBUG_OVERLAY)
   target_compile_definitions(dw3-switch PRIVATE DW3_NX_DEBUG_OVERLAY=1)
   message(STATUS "nx on-screen debug overlay enabled (DW3_NX_DEBUG_OVERLAY)")
+endif()
+if(DW3_NX_MESH_SOFT_BATTLE)
+  target_compile_definitions(dw3-switch PRIVATE DW3_NX_MESH_SOFT_BATTLE=1)
+  message(STATUS "nx battle mesh soft RasterTriangle (DW3_NX_MESH_SOFT_BATTLE)")
+else()
+  target_compile_definitions(dw3-switch PRIVATE DW3_NX_MESH_SOFT_BATTLE=0)
+  message(STATUS "nx battle GLES mesh path enabled (DW3_NX_MESH_SOFT_BATTLE=OFF)")
 endif()
 
 # EGL/GLES2 come from devkitPro's switch-* portlibs, not from libnx, and they
