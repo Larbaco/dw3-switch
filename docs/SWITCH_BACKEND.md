@@ -341,9 +341,11 @@ was written. The result is not recorded here.
 P4.7 is ticked on that menu boot. P4.4 is ticked later the same day:
 handheld Joy-Con and a Pro Controller both walk with the left stick.
 P4.5 is ticked via the formal host CDFS suite against the packed P1.6
-tree (`tools/cdfs_suite`, `docs/P4.5_STATUS.md`). P4.6 overlay switching
-on hardware stays open. The phase gate (title + field + battle) was met
-on preview.4.
+tree (`tools/cdfs_suite`, `docs/P4.5_STATUS.md`). P4.6 no-`dlopen` is
+decided; the OLED overlay-restore checklist in
+`docs/P4.6_MODULES_STATUS.md` still needs a hardware evidence row before
+the ROADMAP box is ticked. The phase gate (title + field + battle) was
+met on preview.4.
 
 ## P4.2 video (2026-10-11)
 
@@ -431,9 +433,9 @@ irrelevant here.
    reports it.
 2. P4.3 stays open: hear libsnd on hardware without underruns.
 3. P4.4 and P4.5 are ticked (stick on OLED; formal CDFS suite on packed
-   runtime / SD layout — `docs/P4.5_STATUS.md`). P4.6 overlay switching
-   on hardware is still open. The phase gate (field and battle) was met
-   on preview.4.
+   runtime / SD layout — `docs/P4.5_STATUS.md`). P4.6 still needs an OLED
+   restore-checklist evidence row (`docs/P4.6_MODULES_STATUS.md`). The
+   phase gate (field and battle) was met on preview.4.
 4. P5.2 owns the 16.7 ms frame-time check. Do not put it back on P4.2.
 5. Do not vendor SDL3 into git; if revisited, document a `tools/` fetch+build
    helper only.

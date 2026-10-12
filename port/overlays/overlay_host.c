@@ -33,9 +33,12 @@ const Dw3OverlayDesc *dw3_overlay_find(int32_t file_id) {
 
 int dw3_overlay_restore(int32_t file_id) {
     const Dw3OverlayDesc *desc = dw3_overlay_find(file_id);
+    const char *kind;
 
     if (desc == NULL) {
-        fprintf(stderr, "dw3: overlay restore file=0x%x UNKNOWN\n", (unsigned)file_id);
+        /* Stable marker for P4.6 OLED nxlink sweeps (see docs/P4.6_MODULES_STATUS.md). */
+        fprintf(stderr, "dw3: overlay restore file=0x%x kind=unknown UNKNOWN\n",
+                (unsigned)file_id);
         return -1;
     }
     if (desc->data != NULL && desc->data_init != NULL && desc->data_size > 0) {
@@ -48,9 +51,15 @@ int dw3_overlay_restore(int32_t file_id) {
      * must not clobber the tracked mode file used by the mesh gate. */
     if (desc->entry != NULL) {
         g_mode_file_id = file_id;
+        kind = "mode";
+    } else {
+        kind = "sub";
     }
-    fprintf(stderr, "dw3: overlay restore file=0x%x data=%zu bss=%zu entry=%p\n",
-            (unsigned)file_id, desc->data_size, desc->bss_size, (void *)desc->entry);
+    /* kind=mode|sub is for nxlink sweep parsers; entry pointer stays for triage. */
+    fprintf(stderr,
+            "dw3: overlay restore file=0x%x kind=%s data=%zu bss=%zu entry=%p\n",
+            (unsigned)file_id, kind, desc->data_size, desc->bss_size,
+            (void *)desc->entry);
     return 0;
 }
 
