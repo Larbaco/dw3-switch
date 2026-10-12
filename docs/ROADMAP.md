@@ -54,6 +54,9 @@ game code yet.
   every push (no game data; PSY-Z sample + skeleton only).
   Done when: a green run on `main` / `phase1-toolchains-hosts`
   (verified: run `38028432267`).
+  Current host CI initializes only required submodule paths, including
+  `nugget/bsdec` for PC and Switch movies; it skips the unused PS1 matching
+  toolchain. See [CI_SUBMODULES.md](CI_SUBMODULES.md).
 
 Gate: PC window + Switch `.nro` skeleton + `files_us.json` for the owner's
 disc.

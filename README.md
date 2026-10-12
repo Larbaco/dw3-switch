@@ -130,16 +130,14 @@ gitignored. Releases do not ship them.
 git clone <this-repo-url> dw3-switch
 cd dw3-switch
 git submodule update --init vendor/dw3_decomp vendor/psyz
-git -C vendor/psyz submodule update --init external/SDL
+git -C vendor/psyz submodule update --init nugget external/SDL
 ```
 
-The PC host needs those two checkouts. The Switch game image also needs
-`nugget`, without a recursive init. A recursive init of nugget fetches
-`third_party/xmake-psx` from codeberg.org and gets HTTP 429.
-
-```bash
-git -C vendor/psyz submodule update --init nugget
-```
+Both the PC host and Switch game image need `nugget/bsdec` for movies,
+as well as SDL. Do not recursively initialize nugget: its
+`third_party/xmake-psx` is a PS1 matching toolchain, unused by these hosts,
+and fetching it can fail with Codeberg HTTP 429/503. CI uses the explicit
+paths above; see [docs/CI_SUBMODULES.md](docs/CI_SUBMODULES.md).
 
 ### PC build
 
