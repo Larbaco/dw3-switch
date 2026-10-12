@@ -71,14 +71,101 @@ static int s_n_idx;
 
 static uint8_t s_pack_rgba[DW3_NX_VRAM_W * DW3_NX_VRAM_H * 4];
 
-/* Hardcoded fullscreen clip-space strip (ignores ClearImage rect). */
-static const float SSQUAD_FULL_NDC[] = {
-    -1.0f, -1.0f, 0.0f, 1.0f, 1.0f, -1.0f, 1.0f, 1.0f,
-    -1.0f, 1.0f,  0.0f, 0.0f, 1.0f, 1.0f,  1.0f, 0.0f,
+/* Tiny cyan corner (NDC) — DIAG alive marker; does not cover game verts.
+ * Fullscreen cyan was OLED-proven (ssquad2); that cover is retired. */
+static const float SSQUAD_CORNER_NDC[] = {
+    -1.0f, -1.0f, 0.0f, 1.0f, -0.85f, -1.0f, 1.0f, 1.0f,
+    -1.0f, -0.85f, 0.0f, 0.0f, -0.85f, -0.85f, 1.0f, 0.0f,
 };
 
-static int diag_ssquad_wanted(void) {
+static int diag_solid_wanted(void) {
     return dw3_nx_mesh_diag_enabled() && dw3_nx_battle_mode_use_solid();
+}
+
+/* Same clip-space map as MESH_VS (PS1 screen + u_drawOffset → NDC). */
+static void diag_ps1_to_ndc(int16_t x, int16_t y, float *ox, float *oy) {
+    *ox = (((float)x + (float)s_off_x) / 512.0f) - 1.0f;
+    *oy = (((float)y + (float)s_off_y) / 256.0f) - 1.0f;
+}
+
+static void diag_note_xy(const Dw3NxMeshVertex *v, int nverts, int *xmin,
+                         int *xmax, int *ymin, int *ymax) {
+    int i;
+
+    if (!v || nverts <= 0 || !xmin) {
+        return;
+    }
+    for (i = 0; i < nverts; i++) {
+        int x = (int)v[i].x;
+        int y = (int)v[i].y;
+
+        if (x < *xmin) {
+            *xmin = x;
+        }
+        if (x > *xmax) {
+            *xmax = x;
+        }
+        if (y < *ymin) {
+            *ymin = y;
+        }
+        if (y > *ymax) {
+            *ymax = y;
+        }
+    }
+}
+
+/* Draw one packet triangle in NDC yellow via BLIT_VS (bypass MESH_VS attrs). */
+static void diag_overlay_game_tri_ndc(const Dw3NxMeshVertex *a,
+                                      const Dw3NxMeshVertex *b,
+                                      const Dw3NxMeshVertex *c) {
+    float ndc[12];
+    GLint prev_fbo = 0;
+    GLenum err;
+    static unsigned overlay_n;
+
+    if (!s_ready || !s_ssquad_prog || !s_ssquad_vbo || s_ssquad_pos < 0 || !a ||
+        !b || !c) {
+        return;
+    }
+    diag_ps1_to_ndc(a->x, a->y, &ndc[0], &ndc[1]);
+    ndc[2] = 0.0f;
+    ndc[3] = 1.0f;
+    diag_ps1_to_ndc(b->x, b->y, &ndc[4], &ndc[5]);
+    ndc[6] = 0.0f;
+    ndc[7] = 1.0f;
+    diag_ps1_to_ndc(c->x, c->y, &ndc[8], &ndc[9]);
+    ndc[10] = 0.0f;
+    ndc[11] = 1.0f;
+
+    glGetIntegerv(GL_FRAMEBUFFER_BINDING, &prev_fbo);
+    glBindFramebuffer(GL_FRAMEBUFFER, s_mesh_fbo);
+    glViewport(0, 0, DW3_NX_VRAM_W, DW3_NX_VRAM_H);
+    glDisable(GL_SCISSOR_TEST);
+    glDisable(GL_BLEND);
+    glDisable(GL_DEPTH_TEST);
+    glDisable(GL_CULL_FACE);
+    glUseProgram(s_ssquad_prog);
+    glUniform4f(s_ssquad_color, 1.0f, 1.0f, 0.0f, 1.0f);
+    glBindBuffer(GL_ARRAY_BUFFER, s_ssquad_vbo);
+    glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(ndc), ndc);
+    glEnableVertexAttribArray((GLuint)s_ssquad_pos);
+    glVertexAttribPointer((GLuint)s_ssquad_pos, 2, GL_FLOAT, GL_FALSE,
+                          sizeof(float) * 4, (const void *)0);
+    glDrawArrays(GL_TRIANGLES, 0, 3);
+    err = glGetError();
+    glBindFramebuffer(GL_FRAMEBUFFER, (GLuint)prev_fbo);
+
+    overlay_n++;
+    if (overlay_n <= 16u || (overlay_n % 64u) == 0u) {
+        fprintf(stderr,
+                "DIAG solid overlay tri #%u yellow NDC "
+                "(ps1 %d,%d / %d,%d / %d,%d) +off %d,%d → "
+                "ndc (%.3f,%.3f)/(%.3f,%.3f)/(%.3f,%.3f) glerr=0x%x\n",
+                overlay_n, (int)a->x, (int)a->y, (int)b->x, (int)b->y,
+                (int)c->x, (int)c->y, s_off_x, s_off_y, ndc[0], ndc[1],
+                ndc[4], ndc[5], ndc[8], ndc[9], (unsigned)err);
+        fflush(stderr);
+    }
 }
 
 static const char *MESH_VS =
@@ -555,16 +642,40 @@ static void flush_locked(const uint16_t *cpu_vram) {
 
     s_prims_flushed += (uint64_t)tris;
     s_had_content = true;
+
+    /* DIAG+solid: log batch + overlay first packet tri in NDC yellow (MESH_VS
+     * math on CPU, BLIT_VS draw). Fullscreen cyan retired after OLED CYAN. */
+    if (diag_solid_wanted() && s_n_idx >= 3) {
+        static unsigned flush_log_n;
+        int xmin = 32767;
+        int xmax = -32768;
+        int ymin = 32767;
+        int ymax = -32768;
+        const Dw3NxMeshVertex *t0v = &s_vtx[s_idx[0]];
+        const Dw3NxMeshVertex *t1v = &s_vtx[s_idx[1]];
+        const Dw3NxMeshVertex *t2v = &s_vtx[s_idx[2]];
+
+        diag_note_xy(s_vtx, s_n_vtx, &xmin, &xmax, &ymin, &ymax);
+        flush_log_n++;
+        if (flush_log_n <= 16u || (flush_log_n % 64u) == 0u) {
+            fprintf(stderr,
+                    "DIAG solid flush #%u tris=%d vtx=%d xy=[%d..%d],[%d..%d] "
+                    "off=%d,%d area=%d,%d..%d,%d\n",
+                    flush_log_n, tris, s_n_vtx, xmin, xmax, ymin, ymax,
+                    s_off_x, s_off_y, s_area_x0, s_area_y0, s_area_x1,
+                    s_area_y1);
+            fflush(stderr);
+        }
+        diag_overlay_game_tri_ndc(t0v, t1v, t2v);
+        /* Tiny cyan corner — DIAG alive without covering magenta verts. */
+        dw3_nx_mesh_diag_ssquad(0, 0, DW3_NX_VRAM_W, DW3_NX_VRAM_H);
+    }
+
     s_n_vtx = 0;
     s_n_idx = 0;
 
     glBindFramebuffer(GL_FRAMEBUFFER, (GLuint)prev_fbo);
     glDisable(GL_SCISSOR_TEST);
-
-    /* DIAG+solid: cyan fullscreen after game verts (may cover magenta tris). */
-    if (diag_ssquad_wanted()) {
-        dw3_nx_mesh_diag_ssquad(0, 0, DW3_NX_VRAM_W, DW3_NX_VRAM_H);
-    }
 #if DW3_NX_DEBUG_MESH
     t2 = mesh_now_us();
     dw3_nx_mesh_debug_note_flush((uint32_t)(t2 - t0), (uint32_t)(t1 - t0),
@@ -674,8 +785,10 @@ int dw3_nx_mesh_diag_enabled(void) {
     }
     if (cached) {
         fprintf(stderr,
-                "nx_mesh: DIAG on (gpu-solid magenta clear+verts + cyan "
-                "ssquad, mesh-only present; soft default unchanged)\n");
+                "nx_mesh: DIAG on (gpu-solid magenta clear+verts; yellow NDC "
+                "overlay of first packet tri + cyan corner; mesh-only present; "
+                "soft default unchanged; fullscreen cyan retired after OLED "
+                "ssquad2)\n");
     }
     return cached;
 }
@@ -688,8 +801,8 @@ void dw3_nx_mesh_diag_ssquad(int x, int y, int w, int h) {
     static unsigned ssquad_skip_n;
     GLenum err;
 
-    /* Geometry ignores ClearImage rect: always fullscreen NDC -1..1.
-     * x,y,w,h are call-site context for logs only. */
+    /* Tiny cyan corner only (present already falsified by OLED ssquad2 CYAN).
+     * x,y,w,h are call-site context for logs. */
     (void)x;
     (void)y;
     (void)w;
@@ -727,7 +840,6 @@ void dw3_nx_mesh_diag_ssquad(int x, int y, int w, int h) {
         }
         return;
     }
-    /* Prefer dedicated VBO; fall back to blit_vbo (same fullscreen NDC). */
     vbo = s_ssquad_vbo ? s_ssquad_vbo : s_blit_vbo;
     if (!vbo) {
         ssquad_skip_n++;
@@ -760,12 +872,11 @@ void dw3_nx_mesh_diag_ssquad(int x, int y, int w, int h) {
     glDisable(GL_CULL_FACE);
 
     glUseProgram(s_ssquad_prog);
-    /* Contrasting cyan — bypasses MESH_VS / GTE / game packet verts. */
     glUniform4f(s_ssquad_color, 0.0f, 1.0f, 1.0f, 1.0f);
     glBindBuffer(GL_ARRAY_BUFFER, vbo);
     if (vbo == s_ssquad_vbo) {
-        glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(SSQUAD_FULL_NDC),
-                        SSQUAD_FULL_NDC);
+        glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(SSQUAD_CORNER_NDC),
+                        SSQUAD_CORNER_NDC);
     }
     glEnableVertexAttribArray((GLuint)pos_loc);
     glVertexAttribPointer((GLuint)pos_loc, 2, GL_FLOAT, GL_FALSE,
@@ -779,12 +890,12 @@ void dw3_nx_mesh_diag_ssquad(int x, int y, int w, int h) {
     ssquad_log_n++;
     if (ssquad_log_n <= 16u || (ssquad_log_n % 64u) == 0u) {
         fprintf(stderr,
-                "DIAG ssquad drawn (#%u fullscreen NDC cyan glerr=0x%x "
+                "DIAG ssquad drawn (#%u corner NDC cyan glerr=0x%x "
                 "vbo=%u ctx %d,%d %dx%d)\n",
                 ssquad_log_n, (unsigned)err, (unsigned)vbo, x, y, w, h);
         fflush(stderr);
         psyz_log(1, "nx_mesh.c", __LINE__, __func__,
-                 "DIAG ssquad drawn #%u fullscreen cyan glerr=0x%x",
+                 "DIAG ssquad drawn #%u corner cyan glerr=0x%x",
                  ssquad_log_n, (unsigned)err);
     }
 }
@@ -890,6 +1001,25 @@ void dw3_nx_mesh_enqueue(const Dw3NxMeshVertex *v, int nverts,
     if (s_n_vtx + nverts > MESH_MAX_VTX || s_n_idx + nidx > MESH_MAX_IDX) {
         return;
     }
+    if (diag_solid_wanted()) {
+        static unsigned enq_log_n;
+        int xmin = 32767;
+        int xmax = -32768;
+        int ymin = 32767;
+        int ymax = -32768;
+
+        diag_note_xy(v, nverts, &xmin, &xmax, &ymin, &ymax);
+        enq_log_n++;
+        if (enq_log_n <= 16u || (enq_log_n % 256u) == 0u) {
+            fprintf(stderr,
+                    "DIAG solid enqueue #%u nverts=%d nidx=%d "
+                    "xy=[%d..%d],[%d..%d] off=%d,%d rgb=%u,%u,%u tpage=0x%x\n",
+                    enq_log_n, nverts, nidx, xmin, xmax, ymin, ymax, s_off_x,
+                    s_off_y, (unsigned)v[0].r, (unsigned)v[0].g,
+                    (unsigned)v[0].b, (unsigned)v[0].tpage);
+            fflush(stderr);
+        }
+    }
     memcpy(s_vtx + s_n_vtx, v, (size_t)nverts * sizeof(Dw3NxMeshVertex));
     for (i = 0; i < nidx; i++) {
         s_idx[s_n_idx + i] = (uint16_t)(idx[i] + (uint16_t)s_n_vtx);
@@ -910,11 +1040,7 @@ void dw3_nx_mesh_present(int dx, int dy, int dw, int dh, int vx, int vy, int vw,
     if (!s_ready || !s_had_content || dw <= 0 || dh <= 0 || vw <= 0 || vh <= 0) {
         return;
     }
-    /* DIAG+solid: paint cyan into mesh FBO immediately before the blit so a
-     * later ClearImage / flush order cannot erase the falsifier. */
-    if (diag_ssquad_wanted()) {
-        dw3_nx_mesh_diag_ssquad(dx, dy, dw, dh);
-    }
+    /* No fullscreen cyan before blit — present/FBO already OK (ssquad2). */
     glDisable(GL_SCISSOR_TEST);
     glDisable(GL_BLEND);
     glViewport(vx, vy, vw, vh);

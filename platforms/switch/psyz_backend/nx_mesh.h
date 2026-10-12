@@ -33,14 +33,15 @@ bool dw3_nx_mesh_reinit(void);
 bool dw3_nx_mesh_available(void);
 
 /* Preview.18 blue triage: env DW3_MESH_DIAG=1 or -DDW3_NX_MESH_DIAG=ON.
- * Magenta ClearImage + constant-magenta verts on gpu-solid; clip-space cyan
- * ssquad after clear (bypass GTE/packet verts); mesh-only present (no UI
- * black-discard). Default off — does not change release soft battle. */
+ * Magenta ClearImage + constant-magenta verts on gpu-solid; mesh-only present
+ * (no UI black-discard). After OLED ssquad2 CYAN (present OK), DIAG no longer
+ * paints a fullscreen cyan cover — solid game-vert spike logs XY/offset and
+ * overlays one packet tri in NDC yellow plus a tiny cyan corner marker.
+ * Default off — does not change release soft battle. */
 int dw3_nx_mesh_diag_enabled(void);
 
-/* DIAG + gpu-solid: paint a hardcoded fullscreen NDC cyan quad into the mesh
- * FBO (ignores ClearImage rect; x,y,w,h are log context only). No GTE/packets.
- * Sets had_content for present. Logs skips with reason. */
+/* DIAG + gpu-solid: tiny cyan NDC corner marker (present proven by ssquad2).
+ * x,y,w,h are log context only. Kept for call sites / re-falsify. */
 void dw3_nx_mesh_diag_ssquad(int x, int y, int w, int h);
 
 /* Drop pending verts / "had content" without drawing (leave battle → field). */
