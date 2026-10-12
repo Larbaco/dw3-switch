@@ -501,8 +501,8 @@ speed.
   survey + DIAG spike (`DW3_NX_MESH_DIAG`): magenta clear/green verts + mesh-only
   present —
   [P5.2_SWITCH_GPU_OPTIONS.md](P5.2_SWITCH_GPU_OPTIONS.md). OLED: magenta
-  clear confirmed; ssquad2 fullscreen cyan ⇒ present/FBO OK; next is solid
-  packet verts (yellow NDC overlay + XY/offset logs; no play-code port).
+  clear confirmed; ssquad2 fullscreen cyan ⇒ present/FBO OK. The following
+  solid-packet colour test used yellow NDC overlay + XY/offset logs.
   Later OLED `g3cb66dd`: green packet solids paint and soft remains OK;
   gpu-tex has no UI under DIAG by design. Remaining texture/artifact cause
   is unproven. PR #89 corrects cyan/rim markers to the presented crop in
