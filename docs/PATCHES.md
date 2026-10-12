@@ -75,6 +75,7 @@ tools/apply_patches.sh           # refresh build/decomp-src + apply
 | `0040-PORT_HOST-p39-force-party.patch` | no | P3.9: optional `DW3_FORCE_PARTY=<0\|1\|2>` selects `STARTER_PARTIES` before a forced encounter (Monmon lead = 1) |
 | `0041-PORT_HOST-field-tile-one-per-frame.patch` | no | Preview.7: host field-tile read stays busy until `cdfs_poll` (once per VSync) so `FIELDSTG_requestTiles` issues one tile per frame. Superseded by `0042` |
 | `0042-PORT_HOST-field-map-preload.patch` | no | Drop the one-tile hold. A field tile (`done != NULL`) copies from one resident map file; `isCdReading` is idle when `readFile` returns |
+| `0043-PORT_HOST-stgcard-panel-frames.patch` | no | P5.3: host `MEMCARD_LOAD_FRAMES` / `MEMCARD_SAVE_FRAMES` → 100 (flat sector pace; PS1 kept ~1239/1266) |
 
 `tools/apply_patches.sh --check` applies the series in order (stacked
 patches on the same file are valid).

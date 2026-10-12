@@ -1,0 +1,135 @@
+STGMCARD progress bar — slow then sudden fast
+=============================================
+Date: 2026-10-11
+Owner: Thiago (OLED)
+Tip context: 1af94ef (#82 flat-save EEXIST); preview.16 nxlink
+Log: /tmp/dw3-preview16/nxlink.log
+  load:  STGMCARD_createScreen loading=1 → STGMCARD_loadSave ok port=1 slot=2
+  save:  STGMCARD_createScreen loading=0 → STGMCARD_writeSave port=1 slot=1 status=1
+No flush FAILED in this session. No overclock / no save delete used.
+
+Verdict
+-------
+Not a host I/O bug and not SD latency on the bar itself.
+The bar is a **frame-paced UI panel** calibrated for PS1 card timings.
+With flat saves, MemCard* is memcpy (instant); the engine still issues
+**one 128-byte sector per game frame**. I/O finishes after ~80 frames
+(~6% of the panel’s planned duration), then the panel switches to a
+fast “finish to 100%” phase. That is exactly “lento no começo, depois
+acelera de uma vez”.
+
+Evidence (decomp)
+-----------------
+1) Panel (vendor/dw3_decomp/.../panel.c)
+   - start(panel, 1, MEMCARD_*_FRAMES): substate 1 fills to 95% (0xF33)
+     at rate = ONE / duration per frame.
+   - On I/O success: start(panel, 2, 0x14) → last stretch over 20 frames
+     at ONE/20 (much faster rate). scale.vx is NOT reset.
+
+2) Durations (menus/memory_card.h, US)
+   - MEMCARD_LOAD_FRAMES = 1239
+   - MEMCARD_SAVE_FRAMES = 1266
+   Authentic PS1: ~41 s at 30 fps to reach ~95% while the card works.
+
+3) STGMCARD (menus/memory_card/saves.c)
+   - startLoad/startSave only start the panel; they do not drive %.
+   - loadSave/writeSave call MEMCARD_SYSTEM.funcs.read/write each frame
+     while status==0; on status==1 they kick panel substate 2.
+
+4) Engine sector pacing (engine/memcard/memcard.c)
+   - readSave/writeSave: “a sector a call” (CARD_SECTOR_SIZE = 0x80).
+   - Each call: MemCardReadFile/WriteFile one sector, return 0 until
+     progress >= size, then return 1.
+   - GameSave ~0x26BC → 78 sectors; info section 0x100 → 2 sectors.
+   - Save path: writeInfo (2) + writeSave (78) ≈ 80 sector-frames
+     (+ a couple of Exist/Accept check frames).
+
+5) Port MemCard* (port/memcard/memcard_libmcrd.c)
+   - Read/Write complete in the same call (memcpy into RAM image).
+   - MemCardSync clears pending immediately — no PS1 wait.
+   - No usleep/sleep/delay per sector on the flat path.
+   - Flush is deferred (rename-atomic) on the next non-write MemCard*
+     after a write burst — not what paces the bar fill.
+
+Bar math (port, ~60 Hz)
+-----------------------
+load:  ~78 sector-frames → scale ≈ 78 * (4096/1239) ≈ 258 (~6.3%)
+       then phase 2 ≈ 19 frames to 100%.
+       Wall: ~1.3 s crawl + ~0.3 s rush.
+save:  ~80 sector-frames → same shape (~6% then rush).
+
+On real PS1 the same panel stays in phase 1 for ~1240 frames while
+async card I/O runs, so the fill looks linear and the final 20-frame
+snap is only the last 5%.
+
+nxlink correlation (preview.16)
+-------------------------------
+boot_main logs `frame dt us` once per **60** VSync pumps. Values ~1.0e6
+during STGMCARD mean ~60 Hz amortized, not 1 fps.
+createScreen → loadSave/writeSave lines are menu lifetime, not bar-only
+wall time; there is no per-sector timing in the log (none needed — the
+decomp pacing alone explains the feel).
+No `memcard flush FAILED` around the successful writeSave.
+
+Secondary note (not the slow→fast shape)
+----------------------------------------
+On save, writeSave’s opening checkMemCard → MemCardExist can flush the
+dirty info section before data sectors. That may hitch one frame mid-
+operation; it does not create the two-phase bar curve.
+
+Root-cause hypothesis (ranked)
+------------------------------
+1) **Primary:** Panel duration (1239/1266 frames) vs host I/O that only
+   lasts ~80 frames of sector pacing → phase-1 crawl then phase-2 snap.
+2) Not: accidental per-sector sleep in port flat path (none present).
+3) Not: SD flush pacing the visible fill (flush is after / between
+   sections, not the panel rate).
+
+Options for owner (no code change until you pick)
+-------------------------------------------------
+A) **Leave as authentic PS1 bar.** Keep decomp panel + sector pacing.
+   Feel stays “slow then snaps” on host; matches original duration
+   intent but not original smoothness. Zero risk.
+
+B) **Shorten panel duration on port only** (patch or #ifdef around
+   MEMCARD_LOAD_FRAMES / MEMCARD_SAVE_FRAMES, or wrap startPanel).
+   Aim duration ≈ sector count (~80–120) so phase 1 reaches ~95% as
+   I/O ends; phase 2 stays a short finish. Small, UI-only, Switch/PC.
+
+C) **Accelerate sector pacing on port only** (e.g. multiple sectors per
+   readSave/writeSave call, or complete the section in one call when
+   MemCard* is sync). Bar would almost skip phase 1 and mostly show
+   the 20-frame finish — snappier, less “PS1 card” feel. Touches
+   engine memcard path (prefer port/patches, not upstream rewrite).
+
+Not recommended without a chosen option: speculative “speed up bar”
+hacks that mix B+C without measuring, or overclock.
+
+Fix PR
+------
+Option B landed on `perf/stgcard-bar` (patch 0043, host frames=100).
+Open PR against main; OLED retest load/save bar feel after rebuild.
+
+Next
+----
+Done for B. OLED smoke: load MC2 + save, confirm bar tracks I/O (no
+~1240-frame crawl). Options A/C not taken.
+
+Owner choice + landing (2026-10-11)
+----------------------------------
+Owner chose **option B** (shorten panel duration on port only).
+
+Landed on branch `perf/stgcard-bar`:
+- Patch: `port/patches/0043-PORT_HOST-stgcard-panel-frames.patch`
+- Under `PORT_HOST`: `MEMCARD_LOAD_FRAMES` / `MEMCARD_SAVE_FRAMES` = **100**
+  (was US 1239 / 1266; EU 1240 / 1267 untouched outside PORT_HOST).
+- Why 100: ~78–80 sector-frames of real work + a little headroom for a
+  readable bar (~1.7 s phase 1 at 60 Hz). Phase 2 remains 20 frames.
+- Docs: `docs/P5.3_FLAT_SAVE.md`, `docs/ROADMAP.md` P5.3, `docs/PATCHES.md`,
+  `port/memcard/README.md`.
+- Test: `tools/tests/test_stgcard_panel_frames.py`.
+- No change to flat-save correctness, flush policy, or OLED save files.
+- No overclock; no sector batching (option C not taken).
+
+Expected OLED feel after rebuild: bar rises with load/save instead of
+crawling ~6% then snapping; short finish to 100% still present.

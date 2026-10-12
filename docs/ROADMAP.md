@@ -515,6 +515,11 @@ speed.
   `STGMCARD_writeSave … status=1` (no EEXIST). FTP flats: `save0.bin`
   still money=50/progress=4; `save1.bin` slot2 money=26/progress=4
   (checksum OK). Cross-port overwrite flush PASS.
+  **STGMCARD bar pace (option B, 2026-10-11):** panel crawl→snap was the
+  PS1 `MEMCARD_*_FRAMES` (~1239/1266) vs ~80 flat sector-frames, not SD
+  I/O. Port-only patch `0043` sets both to **100** under `PORT_HOST`
+  (phase-2 finish stays 20 frames). Flush / flat correctness unchanged.
+  See [P5.3_FLAT_SAVE.md](P5.3_FLAT_SAVE.md).
   **Still open:** HOME / `appletMainLoop` quit path (`Psyz_QuitRequested`
   still 0); sleep/focus flush; clean-exit + relaunch reload smoke still
   worth a dedicated pass. Emulator conversion remains P9.6.

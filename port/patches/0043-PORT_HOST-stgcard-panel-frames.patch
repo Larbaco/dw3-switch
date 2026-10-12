@@ -1,0 +1,28 @@
+Upstream-bound: no
+Subject: [PORT_HOST] Shorten STGMCARD load/save panel duration
+
+PS1 panel durations (~1239/1266 frames) match async memory-card wait.
+On the port, flat MemCard* is memcpy and the engine still issues one
+128-byte sector per frame (~78-80 sector-frames). With the PS1 constants
+the bar crawls to ~6% then phase 2 (20 frames) snaps to 100%.
+
+Override to 100 frames under PORT_HOST so phase 1 tracks real sector
+work with a short readable fill. Phase-2 start(panel, 2, 0x14) is
+unchanged. Flat-save flush policy is untouched.
+
+--- a/include/menus/memory_card.h
++++ b/include/menus/memory_card.h
+@@ -102,7 +102,12 @@
+ #define SAVE_CHECKED 4
+ 
+ /* The durations of the panels shown while loading and saving */
+-#if VERSION_US
++#if PORT_HOST
++/* Flat MemCard* finishes ~78-80 sector-frames; PS1 used ~1240 for async
++   card wait. 100 frames ≈ sector work + readable fill; phase 2 still 20. */
++#define MEMCARD_LOAD_FRAMES 100
++#define MEMCARD_SAVE_FRAMES 100
++#elif VERSION_US
+ #define MEMCARD_LOAD_FRAMES 1239
+ #define MEMCARD_SAVE_FRAMES 1266
+ #elif VERSION_EU
