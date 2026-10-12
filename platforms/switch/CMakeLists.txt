@@ -56,7 +56,7 @@ option(DW3_NX_MESH_SOFT_BATTLE
 # OLED blue triage (see docs/P5.2_SWITCH_GPU_OPTIONS.md). Default OFF.
 # Runtime: DW3_MESH_DIAG=1. Does not flip soft_battle default.
 option(DW3_NX_MESH_DIAG
-       "Mesh diag: magenta clear/verts on gpu-solid, mesh-only present"
+       "Mesh diag: magenta clear/verts + cyan ssquad on gpu-solid, mesh-only present"
        OFF)
 
 if(NOT CMAKE_SYSTEM_NAME STREQUAL "NintendoSwitch")

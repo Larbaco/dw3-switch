@@ -365,6 +365,11 @@ void Draw_ClearImage(PS1_RECT *rect, u_char r, u_char g, u_char b) {
             cb = 1.0f;
         }
         dw3_nx_mesh_clear_rect(rect->x, rect->y, rect->w, rect->h, cr, cg, cb);
+        /* DIAG: clip-space cyan ssquad after clear — splits present OK vs
+         * GTE/packet/transform broken (no game verts). */
+        if (dw3_nx_mesh_diag_enabled() && dw3_nx_battle_mode_use_solid()) {
+            dw3_nx_mesh_diag_ssquad(rect->x, rect->y, rect->w, rect->h);
+        }
     }
 }
 

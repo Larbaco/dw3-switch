@@ -47,9 +47,11 @@ static GLuint s_mesh_fbo;
 static GLuint s_sample_tex;
 static GLuint s_prog;
 static GLuint s_blit_prog;
+static GLuint s_ssquad_prog;
 static GLuint s_vbo;
 static GLuint s_ebo;
 static GLuint s_blit_vbo;
+static GLuint s_ssquad_vbo;
 static GLint s_u_draw_offset = -1;
 static GLint s_u_tex_vram = -1;
 static GLint s_blit_uv0 = -1;
@@ -57,6 +59,8 @@ static GLint s_blit_uv1 = -1;
 static GLint s_blit_tex = -1;
 static GLint s_blit_pos = -1;
 static GLint s_blit_t = -1;
+static GLint s_ssquad_color = -1;
+static GLint s_ssquad_pos = -1;
 
 static Dw3NxMeshVertex s_vtx[MESH_MAX_VTX];
 static uint16_t s_idx[MESH_MAX_IDX];
@@ -231,6 +235,14 @@ static const char *BLIT_FS =
     "  FragColor = texture(u_tex, u_uv0 + v_t * (u_uv1 - u_uv0));\n"
     "}\n";
 
+/* DIAG: solid colour from clip-space verts (BLIT_VS); no PS1 / GTE path. */
+static const char *SSQUAD_FS =
+    "#version 300 es\n"
+    "precision mediump float;\n"
+    "uniform vec4 u_color;\n"
+    "out vec4 FragColor;\n"
+    "void main() { FragColor = u_color; }\n";
+
 static GLuint compile_shader(GLenum type, const char *src) {
     GLuint sh = glCreateShader(type);
     GLint ok = 0;
@@ -289,6 +301,10 @@ static void destroy_gl(void) {
         glDeleteProgram(s_blit_prog);
         s_blit_prog = 0;
     }
+    if (s_ssquad_prog) {
+        glDeleteProgram(s_ssquad_prog);
+        s_ssquad_prog = 0;
+    }
     if (s_vbo) {
         glDeleteBuffers(1, &s_vbo);
         s_vbo = 0;
@@ -300,6 +316,10 @@ static void destroy_gl(void) {
     if (s_blit_vbo) {
         glDeleteBuffers(1, &s_blit_vbo);
         s_blit_vbo = 0;
+    }
+    if (s_ssquad_vbo) {
+        glDeleteBuffers(1, &s_ssquad_vbo);
+        s_ssquad_vbo = 0;
     }
     if (s_mesh_fbo) {
         glDeleteFramebuffers(1, &s_mesh_fbo);
@@ -545,7 +565,8 @@ bool dw3_nx_mesh_init(void) {
 
     s_prog = link_program(MESH_VS, MESH_FS);
     s_blit_prog = link_program(BLIT_VS, BLIT_FS);
-    if (!s_prog || !s_blit_prog) {
+    s_ssquad_prog = link_program(BLIT_VS, SSQUAD_FS);
+    if (!s_prog || !s_blit_prog || !s_ssquad_prog) {
         destroy_gl();
         return false;
     }
@@ -556,6 +577,8 @@ bool dw3_nx_mesh_init(void) {
     s_blit_tex = glGetUniformLocation(s_blit_prog, "u_tex");
     s_blit_pos = glGetAttribLocation(s_blit_prog, "a_pos");
     s_blit_t = glGetAttribLocation(s_blit_prog, "a_t");
+    s_ssquad_color = glGetUniformLocation(s_ssquad_prog, "u_color");
+    s_ssquad_pos = glGetAttribLocation(s_ssquad_prog, "a_pos");
 
     glGenTextures(1, &s_sample_tex);
     glBindTexture(GL_TEXTURE_2D, s_sample_tex);
@@ -597,6 +620,11 @@ bool dw3_nx_mesh_init(void) {
     glBindBuffer(GL_ARRAY_BUFFER, s_blit_vbo);
     glBufferData(GL_ARRAY_BUFFER, sizeof(blit_quad), blit_quad, GL_STATIC_DRAW);
 
+    /* DIAG clip-space ssquad VBO (updated per ClearImage rect). */
+    glGenBuffers(1, &s_ssquad_vbo);
+    glBindBuffer(GL_ARRAY_BUFFER, s_ssquad_vbo);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(float) * 16, NULL, GL_DYNAMIC_DRAW);
+
     s_n_vtx = 0;
     s_n_idx = 0;
     s_had_content = false;
@@ -629,10 +657,103 @@ int dw3_nx_mesh_diag_enabled(void) {
     }
     if (cached) {
         fprintf(stderr,
-                "nx_mesh: DIAG on (gpu-solid magenta clear+verts, "
-                "mesh-only present; soft default unchanged)\n");
+                "nx_mesh: DIAG on (gpu-solid magenta clear+verts + cyan "
+                "ssquad, mesh-only present; soft default unchanged)\n");
     }
     return cached;
+}
+
+void dw3_nx_mesh_diag_ssquad(int x, int y, int w, int h) {
+    GLint prev_fbo = 0;
+    static unsigned ssquad_log_n;
+    float ndc[16];
+    float x0;
+    float x1;
+    float y0;
+    float y1;
+    float mx;
+    float my;
+
+    if (!s_ready || !s_ssquad_prog || !s_ssquad_vbo || w <= 0 || h <= 0) {
+        return;
+    }
+    if (x < 0) {
+        w += x;
+        x = 0;
+    }
+    if (y < 0) {
+        h += y;
+        y = 0;
+    }
+    if (x >= DW3_NX_VRAM_W || y >= DW3_NX_VRAM_H) {
+        return;
+    }
+    if (x + w > DW3_NX_VRAM_W) {
+        w = DW3_NX_VRAM_W - x;
+    }
+    if (y + h > DW3_NX_VRAM_H) {
+        h = DW3_NX_VRAM_H - y;
+    }
+    if (w <= 0 || h <= 0) {
+        return;
+    }
+
+    /* Same PS1→NDC scale as MESH_VS (no drawOffset): large inset inside the
+     * ClearImage rect so magenta border stays if present samples this band. */
+    x0 = (float)x / 512.0f - 1.0f;
+    x1 = (float)(x + w) / 512.0f - 1.0f;
+    y0 = (float)y / 256.0f - 1.0f;
+    y1 = (float)(y + h) / 256.0f - 1.0f;
+    mx = (x1 - x0) * 0.12f;
+    my = (y1 - y0) * 0.12f;
+    x0 += mx;
+    x1 -= mx;
+    y0 += my;
+    y1 -= my;
+    /* TRIANGLE_STRIP: BL/BR/TL/TR with dummy UV slots (FS ignores a_t). */
+    ndc[0] = x0;
+    ndc[1] = y0;
+    ndc[2] = 0.0f;
+    ndc[3] = 1.0f;
+    ndc[4] = x1;
+    ndc[5] = y0;
+    ndc[6] = 1.0f;
+    ndc[7] = 1.0f;
+    ndc[8] = x0;
+    ndc[9] = y1;
+    ndc[10] = 0.0f;
+    ndc[11] = 0.0f;
+    ndc[12] = x1;
+    ndc[13] = y1;
+    ndc[14] = 1.0f;
+    ndc[15] = 0.0f;
+
+    glGetIntegerv(GL_FRAMEBUFFER_BINDING, &prev_fbo);
+    glBindFramebuffer(GL_FRAMEBUFFER, s_mesh_fbo);
+    glViewport(0, 0, DW3_NX_VRAM_W, DW3_NX_VRAM_H);
+    glDisable(GL_SCISSOR_TEST);
+    glDisable(GL_BLEND);
+    glDisable(GL_DEPTH_TEST);
+    glDisable(GL_CULL_FACE);
+
+    glUseProgram(s_ssquad_prog);
+    /* Contrasting cyan on magenta clear — bypasses MESH_VS / game verts. */
+    glUniform4f(s_ssquad_color, 0.0f, 1.0f, 1.0f, 1.0f);
+    glBindBuffer(GL_ARRAY_BUFFER, s_ssquad_vbo);
+    glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(ndc), ndc);
+    glEnableVertexAttribArray((GLuint)s_ssquad_pos);
+    glVertexAttribPointer((GLuint)s_ssquad_pos, 2, GL_FLOAT, GL_FALSE,
+                          sizeof(float) * 4, (const void *)0);
+    glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+
+    glBindFramebuffer(GL_FRAMEBUFFER, (GLuint)prev_fbo);
+    s_had_content = true;
+
+    ssquad_log_n++;
+    if (ssquad_log_n <= 8u || (ssquad_log_n % 64u) == 0u) {
+        fprintf(stderr, "DIAG ssquad drawn (#%u rect %d,%d %dx%d cyan)\n",
+                ssquad_log_n, x, y, w, h);
+    }
 }
 
 void dw3_nx_mesh_discard(void) {
