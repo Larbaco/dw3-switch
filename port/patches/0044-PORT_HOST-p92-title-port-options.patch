@@ -1,0 +1,62 @@
+Upstream-bound: no
+Subject: [PORT_HOST] P9.2 title Select opens port options shell
+
+While New Game/Continue are shown (runOptions case 1), PAD_SELECT opens
+port/options without setting TitleMenuTask.choice or leaveTitle. Triangle
+(or Select again) closes via dw3_port_options_*; stay MODE_TITLE.
+
+--- a/src/menus/title/menu.c
++++ b/src/menus/title/menu.c
+@@ -1,6 +1,9 @@
+ /* "PRESS START", then the two options (new game, continue) */
+ 
+ #include "menus/title.h"
++#if PORT_HOST
++#include "port_options.h"
++#endif
+ 
+ /* The menu's sprites: the European version has them for each language */
+ #if VERSION_US
+@@ -115,6 +118,17 @@
+         task->nextSubstate(task);
+         break;
+     case 1:
++#if PORT_HOST
++        /* Port options shell: Select opens; never set choice / leaveTitle. */
++        if (dw3_port_options_is_open()) {
++            break;
++        }
++        if (PAD_PRESSED(PAD_SELECT)) {
++            dw3_port_options_open();
++            SOUND.playSound(SOUND_SELECT);
++            break;
++        }
++#endif
+         if (PAD_PRESSED(PAD_UP) || PAD_REPEATED(PAD_UP)) {
+             if (task->selection != 0) {
+                 SOUND.playSound(SOUND_CURSOR);
+@@ -174,11 +188,24 @@
+         break;
+     case TASK_DONE:
+         runOptions(task);
++#if PORT_HOST
++        if (dw3_port_options_is_open()) {
++            dw3_port_options_tick();
++        }
++#endif
+         break;
+     case TASK_KILL:
+         return;
+     }
+     STDWTITL_drawMenu(task);
++#if PORT_HOST
++    if (dw3_port_options_is_open()) {
++        dw3_port_options_draw();
++    } else if (task->state == TASK_DONE && task->showOptions != 0 &&
++               task->substate == 1) {
++        dw3_port_options_draw_hint();
++    }
++#endif
+ }
+ 
+ /* Shows "PRESS START" (the task's show), only while it waits */

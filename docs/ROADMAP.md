@@ -744,8 +744,11 @@ PS1 game, with vanilla-safe defaults and persistence on owner storage.
   breaking the vanilla title flow (PC and Switch). Hook: `PORT_HOST`
   glue on `STDWTITL` `runOptions` + shell in `port/options/` (see
   [PORT_OPTIONS.md](PORT_OPTIONS.md) Entry investigation).
+  **In progress (PC):** Select/Backspace MVP opens `port/options` shell
+  on title NG/Continue; Triangle closes; stub registry; unit tests.
+  Switch Minus mapping + third cursor row still open.
   Done when: the screen is reachable from the main menu and returns
-  cleanly to it.
+  cleanly to it (PC + Switch; TTB print on PC).
 - [ ] **P9.3 Toggle registry.** Maintain a registry of non-native features
   (Phase 6–8 items and later), each with a default equivalent to stock
   behaviour (or documented exception).

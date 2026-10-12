@@ -104,6 +104,7 @@ static void dw3_auto_pad_inject(void) {
     int status = 0;
     int status_return = 0;
     int talk = 0;
+    int select = 0;
 
     env = getenv("DW3_AUTO_PAD");
     if (env == NULL || env[0] == '\0') {
@@ -131,7 +132,12 @@ static void dw3_auto_pad_inject(void) {
     if (strstr(env, "talk") != NULL) {
         talk = 1;
     }
-    if (!confirm && !walk && !start && !cancel && !status && !talk) {
+    /* select: delayed Select pulses (P9.2 title → port options). */
+    if (strstr(env, "select") != NULL) {
+        select = 1;
+    }
+    if (!confirm && !walk && !start && !cancel && !status && !talk &&
+        !select) {
         return;
     }
     frame++;
@@ -180,6 +186,17 @@ static void dw3_auto_pad_inject(void) {
     if (talk && !status && frame >= 400u && (frame % 24u) >= 1u &&
         (frame % 24u) <= 4u) {
         mask |= DW3_RAW_CROSS;
+    }
+    /* select: after title options spread (~frame 400+ with start), pulse
+     * Select a few times so P9.2 can open the port-options shell. */
+    if (select && !status && frame >= 420u && frame < 520u &&
+        (frame % 20u) >= 1u && (frame % 20u) <= 4u) {
+        mask |= DW3_RAW_SELECT;
+        if (frame == 421u) {
+            fprintf(stderr, "dw3-pad: AUTO_PAD select pulse from frame=%u\n",
+                    frame);
+            fflush(stderr);
+        }
     }
     memset(buf, 0, sizeof(buf));
     buf[0] = 0x00;
