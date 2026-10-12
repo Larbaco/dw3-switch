@@ -56,6 +56,11 @@ option(DW3_NX_DEBUG_MEM "Sampled memory-budget summary (nxlink)"
 option(DW3_NX_MESH_SOFT_BATTLE
        "Force software RasterTriangle in FIGHTSTG (mesh FBO recovery)"
        ON)
+# P5.4: deliberate null write after boot so the exception handler can be
+# verified on hardware. Soft default OFF — never on in release/preview NROs.
+option(DW3_NX_FORCE_CRASH
+       "Force a CPU fault after boot (P5.4 crash-report smoke only)"
+       OFF)
 
 if(NOT CMAKE_SYSTEM_NAME STREQUAL "NintendoSwitch")
   message(FATAL_ERROR
@@ -104,6 +109,11 @@ message(STATUS "DW3_DEFAULT_RUNTIME=${_dw3_default_runtime}")
 # psyz_backend/*.c wholesale — P4.4-P4.6 fill in the placeholder units.
 file(GLOB DW3_NX_BACKEND_SOURCES CONFIGURE_DEPENDS
   "${CMAKE_CURRENT_SOURCE_DIR}/psyz_backend/*.c")
+# P5.4: keep the crash TU visible in the target recipe (also matched by the
+# glob above — list() REMOVE_DUPLICATES drops the second path).
+list(APPEND DW3_NX_BACKEND_SOURCES
+  "${CMAKE_CURRENT_SOURCE_DIR}/psyz_backend/nx_crash.c")
+list(REMOVE_DUPLICATES DW3_NX_BACKEND_SOURCES)
 
 add_executable(dw3-switch
   # boot_main.c is the game boot path and owns main(). source/main.c stays the
@@ -215,6 +225,12 @@ if(DW3_NX_MESH_SOFT_BATTLE)
 else()
   target_compile_definitions(dw3-switch PRIVATE DW3_NX_MESH_SOFT_BATTLE=0)
   message(STATUS "nx battle GLES mesh path enabled (DW3_NX_MESH_SOFT_BATTLE=OFF)")
+endif()
+if(DW3_NX_FORCE_CRASH)
+  target_compile_definitions(dw3-switch PRIVATE DW3_NX_FORCE_CRASH=1)
+  message(STATUS "nx FORCE crash after boot enabled (DW3_NX_FORCE_CRASH) — P5.4 only")
+else()
+  target_compile_definitions(dw3-switch PRIVATE DW3_NX_FORCE_CRASH=0)
 endif()
 
 # EGL/GLES2 come from devkitPro's switch-* portlibs, not from libnx, and they

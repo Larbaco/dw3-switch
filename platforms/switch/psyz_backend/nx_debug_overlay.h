@@ -34,7 +34,7 @@ void dw3_nx_debug_overlay_draw(uint32_t fb_w, uint32_t fb_h);
 /* Drop GLES objects (dock recreate / gpu_shutdown). */
 void dw3_nx_debug_overlay_invalidate_gl(void);
 
-/* P5.4 crash/assert overlay hook — not implemented here. */
+/* On-screen crash/assert overlay still open; SD report is docs/P5.4_CRASH.md. */
 /* void dw3_nx_debug_overlay_crash_hook(const char *msg); */
 
 #else /* !DW3_NX_DEBUG_OVERLAY */
