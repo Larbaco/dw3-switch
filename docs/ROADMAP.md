@@ -533,15 +533,18 @@ speed.
   See [P5.3_FLAT_SAVE.md](P5.3_FLAT_SAVE.md).
   **Preview.17 OLED (2026-10-12):** owner confirmed option B bar feel is
   correct for **load and save** (tip `413efb8` / #84). Keep 100 frames.
-  **Still open:** HOME / `appletMainLoop` quit path (`Psyz_QuitRequested`
-  still 0); sleep/focus flush. Cross-port overwrite and Continue after
-  preview.14 PASS; a dedicated clean-exit + relaunch smoke is still nice
-  but no longer the P5.3 OLED save blocker. Emulator conversion remains
-  P9.6.
+  **HOME quit flush (2026-10-12):** Switch vsync drains non-blocking
+  `appletMainLoop` (current libnx `appletGetMessage` timeout 0), sets
+  `Psyz_QuitRequested`, calls `memcard_host_flush_all`, and uses
+  `appletLockExit` for a cleanup window. See
+  [P5.3_FLAT_SAVE.md](P5.3_FLAT_SAVE.md).
+  **Still open:** sleep/focus-loss flush + time-delta clamp (P10.2);
+  OLED smoke that HOME after SAVE / mid-write-section leaves flats
+  intact and Continue reloads. Emulator conversion remains P9.6.
   **Preview.4 / .5 notes (kept):** earlier `.mcr` writes and the data-frame
   XOR fault (`0x7F` / partner index) are historical; XOR must stay off
   data frames. Done when: a save this port wrote loads after a clean exit
-  and a relaunch on hardware (HOME path optional follow-up / P10.2).
+  (including HOME) and a relaunch on hardware.
 - [ ] **P5.4 Error reporting.** Crash handler that writes a log + last
   mode/stage id to SD; assert overlay.
   Done when: a forced fault produces a readable report.

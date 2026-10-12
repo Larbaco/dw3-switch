@@ -45,8 +45,9 @@ data (e.g. partner index high byte). Flat saves never apply frame XOR.
   performs **one** rename-atomic write of the whole `saveN.bin`
   (`saveN.bin.tmp` → remove dest → rename; required on FAT/exFAT).
 - Hosts register `atexit(memcard_host_shutdown)` and also call shutdown if
-  `dw3_game_main` returns. Abrupt HOME kill still skips that path; see
-  [docs/P5.3_FLAT_SAVE.md](../../docs/P5.3_FLAT_SAVE.md).
+  `dw3_game_main` returns. On Switch, HOME / `ExitRequested` also runs
+  `memcard_host_flush_all` from the vsync applet drain before teardown;
+  see [docs/P5.3_FLAT_SAVE.md](../../docs/P5.3_FLAT_SAVE.md).
 
 ### Synthetic directory
 
