@@ -238,7 +238,7 @@ void dw3_port_options_draw(void) {
                  g_stubs[i].label, g_stubs[i].value ? "ON" : "OFF");
         lines[n++] = buf;
     }
-    snprintf(line3, sizeof(line3), "Triangle/Backspace: Back");
+    snprintf(line3, sizeof(line3), "Triangle (S): Back");
     lines[n++] = line3;
 
     dw3_port_text_draw_panel((int)ox + 32, (int)oy + 40, 256, 72, lines, n);
