@@ -7,9 +7,12 @@
 #ifndef DW3_PORT_OPTIONS_TEST
 #include "port_text.h"
 #include <libgpu.h>
+#include "engine/pad.h"
+/* Psyz_VideoAlloc* capture is PC/PSY-Z only — compile out on Switch. */
+#if defined(DW3_PC_HOST)
 #include <psyz/video.h>
 #include <stdlib.h>
-#include "engine/pad.h"
+#endif
 #endif
 
 enum { DW3_PORT_OPT_STUBS = 2 };
@@ -161,7 +164,7 @@ void dw3_port_options_tick(void) {
 #endif
 }
 
-#ifndef DW3_PORT_OPTIONS_TEST
+#if !defined(DW3_PORT_OPTIONS_TEST) && defined(DW3_PC_HOST)
 static void dw3_port_options_maybe_fb_dump(void) {
     const char *path;
     unsigned char *rgb;
@@ -242,7 +245,9 @@ void dw3_port_options_draw(void) {
     lines[n++] = line3;
 
     dw3_port_text_draw_panel((int)ox + 32, (int)oy + 40, 256, 72, lines, n);
+#if defined(DW3_PC_HOST)
     dw3_port_options_maybe_fb_dump();
+#endif
 #endif
 }
 
