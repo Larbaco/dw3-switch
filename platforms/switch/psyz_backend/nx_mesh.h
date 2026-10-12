@@ -33,10 +33,11 @@ bool dw3_nx_mesh_reinit(void);
 bool dw3_nx_mesh_available(void);
 
 /* Preview.18 blue triage: env DW3_MESH_DIAG=1 or -DDW3_NX_MESH_DIAG=ON.
- * Magenta ClearImage + constant-magenta verts on gpu-solid; mesh-only present
- * (no UI black-discard). After OLED ssquad2 CYAN (present OK), DIAG no longer
- * paints a fullscreen cyan cover — solid game-vert spike logs XY/offset and
- * overlays one packet tri in NDC yellow plus a tiny cyan corner marker.
+ * Magenta ClearImage + constant bright-green MESH_VS verts on gpu-solid
+ * (contrast split after OLED same-color ambiguity); mesh-only present (no UI
+ * black-discard). After OLED ssquad2 CYAN (present OK), DIAG no longer paints
+ * a fullscreen cyan cover — solid game-vert spike logs XY/offset and overlays
+ * one packet tri in NDC yellow plus a tiny cyan corner marker.
  * Default off — does not change release soft battle. */
 int dw3_nx_mesh_diag_enabled(void);
 

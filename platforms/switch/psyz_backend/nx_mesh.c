@@ -694,7 +694,7 @@ static void flush_locked(const uint16_t *cpu_vram) {
         }
         diag_overlay_game_tri_ndc(t0v, t1v, t2v);
         overlay_drawn = 1;
-        /* Tiny cyan corner — DIAG alive without covering magenta verts. */
+        /* Tiny cyan corner — DIAG alive without covering green verts. */
         dw3_nx_mesh_diag_ssquad(0, 0, DW3_NX_VRAM_W, DW3_NX_VRAM_H);
         while ((e = glGetError()) != GL_NO_ERROR) {
             glerr = e;
@@ -830,10 +830,10 @@ int dw3_nx_mesh_diag_enabled(void) {
     }
     if (cached) {
         fprintf(stderr,
-                "nx_mesh: DIAG on (gpu-solid magenta clear+verts; yellow NDC "
-                "overlay of first packet tri + cyan corner; mesh-only present; "
-                "soft default unchanged; fullscreen cyan retired after OLED "
-                "ssquad2)\n");
+                "nx_mesh: DIAG on (gpu-solid magenta clear + green MESH_VS "
+                "verts; yellow NDC overlay of first packet tri + cyan corner; "
+                "mesh-only present; soft default unchanged; fullscreen cyan "
+                "retired after OLED ssquad2)\n");
     }
     return cached;
 }

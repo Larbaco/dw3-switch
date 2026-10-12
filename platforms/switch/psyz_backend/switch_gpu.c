@@ -258,13 +258,14 @@ static int try_push_mesh_poly(u_long *packets, int max_len) {
     /* gpu-solid (#79 ladder): ignore texture/CLUT; vertex colour only. */
     if (dw3_nx_battle_mode_use_solid()) {
         tpage = (uint16_t)(tpage | DW3_NX_MESH_TPAGE_NOTEXTURE);
-        /* DIAG: constant magenta verts — if screen stays setBgColor blue,
-         * fragments are not landing on the presented band. */
+        /* DIAG: constant bright-green verts (clear stays magenta) so OLED can
+         * tell MESH_VS solids from the pink clear. If only magenta remains,
+         * packet verts are not painting the presented band. */
         if (dw3_nx_mesh_diag_enabled()) {
             for (i = 0; i < n_vertices; i++) {
-                v[i].r = 255;
-                v[i].g = 0;
-                v[i].b = 255;
+                v[i].r = 0;
+                v[i].g = 255;
+                v[i].b = 0;
                 v[i].a = 0xFF;
             }
         }
@@ -366,7 +367,7 @@ void Draw_ClearImage(PS1_RECT *rect, u_char r, u_char g, u_char b) {
         }
         dw3_nx_mesh_clear_rect(rect->x, rect->y, rect->w, rect->h, cr, cg, cb);
         /* Present/FBO sample already OK (OLED ssquad2 CYAN). Do not cover the
-         * magenta clear with fullscreen cyan — solid game verts must be visible. */
+         * magenta clear with fullscreen cyan — green solid verts must show. */
     }
 }
 
