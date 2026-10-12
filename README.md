@@ -225,7 +225,16 @@ on `workflow_dispatch` or a `v*` tag. It is a prerelease. Assets are
 The release tag becomes the NACP version (compressed for hbmenu) and the
 `dw3: version=` boot line. No disc data.
 
-The latest **tagged** preview release is
+The current standard preview is
+[v0.6.5-preview.20](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.20),
+cut after #106 with the title Port options shell (#100) and empty
+`StGetNext` scan cache (#106). The menu is PC-validated; Switch navigation
+and the movie optimization's OLED gain remain unmeasured. Its switches
+are stubs with no gameplay effects or persistence. GPU diagnostics stay
+disabled and software battle stays the default. Preview.19 was a separate
+PR #89 diagnostic cut, not the standard playable baseline.
+
+An earlier tagged preview release is
 [v0.6.5-preview.10](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.10).
 Battle mesh is gated to FIGHTSTG (PR #71); field stays on the software
 blit. PR #72 adds sampled `mesh dbg:` lines on the nxlink log. After

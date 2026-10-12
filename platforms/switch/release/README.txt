@@ -1,28 +1,30 @@
 Digimon World 3 / 2003, Switch homebrew preview
 
-This release is v0.6.5-preview.18. It keeps battle mesh gated to FIGHTSTG
-only (field stays software RGB555). Cold-boot battle default is still
-software RasterTriangle (soft) so the fight picture stays readable.
+This release is v0.6.5-preview.20, built from main after PR #106.
+Battle defaults to software RasterTriangle; field stays software RGB555.
+GPU diagnostic instrumentation is disabled in this release. PR #89 is
+still separate and its OLED investigation is not part of this cut.
 
 New in this preview
 
-  Battle render A/B (FIGHTSTG only). Edge chord Minus + ZL + ZR cycles:
+  Title menu: Start / Port options / Continue (#100). The port-options
+  shell was validated on PC. Its current switches are stubs: they have
+  no gameplay effects and are not persisted. Switch navigation remains
+  to be confirmed on hardware.
 
-    soft       software RasterTriangle (default; picture OK)
-    soft+bbox  stub today — same as soft; logs "not yet"
-    gpu-solid  mesh FBO with solid vertex colour (ignore texture/CLUT)
-    gpu-tex    existing textured mesh path (may be black; OK to compare)
+  Movie polling: cache empty StGetNext ring scans, with invalidation
+  when stream production, position, or playback changes (#106).
+  Build and automated validation passed. OLED playback and performance
+  still need measurement; this release makes no FPS or movie-fix claim.
 
-  Each change logs once: nx_mesh: battle_mode=…
-  On the nxlink HUD, the line battle= shows the current token.
-  Field never uses the mesh path. Do not overclock.
+  Battle render A/B remains FIGHTSTG-only. Minus + ZL + ZR cycles:
+    soft / soft+bbox (stub) / gpu-solid / gpu-tex.
+  Soft is the cold-boot default. GPU modes remain experimental.
+  Toggle the nxlink debug HUD with Minus + L + R.
 
-  Debug HUD is slightly smaller than preview.10+ (#78): 2× glyphs at
-  720p handheld, 3× at 1080p docked. LSB-left glyph bits (#81) stay.
-  Toggle HUD with Minus + L + R (nxlink build).
-
-  STGMCARD load/save bar (option B, 100 frames, #84) was confirmed OK
-  on OLED in preview.17 for both load and save. Unchanged here.
+  Existing own-disc extraction, left-stick input, flat saves, and the
+  STGMCARD load/save progress bar remain available. The opening-video
+  picture has known errors; the port is still a prerelease.
 
 This build does not call clkrstSetClockRate or appletSetCpuBoostMode.
 The CPU and GPU stay at the rate the console set.
