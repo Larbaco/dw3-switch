@@ -193,7 +193,8 @@ continuous start→movie→Lobby→Tamer→Genji→field @ `a5ae93a` (Lobby
 `0x9004@0x203` / patch `0036`); `DW3_FORCE_WIN` accepted for gate (P3.3
 class; pad KO follow-up); EU playthrough not required. **EU `dw3-pc` link
 scaffold** (`docs/P3_EU_BUILD.md`): `-DDW3_VERSION=eu` +
-`overlay_table_eu.c` configure/link; `runtime/eu` / playthrough still open.
+`overlay_table_eu.c` configure/link; owner EU disc pack + PC smoke to
+opening movie validated (2026-10-12); playthrough / OLED EU still open.
 P3.9 harness (`tools/compare_harness/`, `docs/P3.9_REFERENCE.md`):
 **done** — title, field, and Kunemon vs Monmon Fight-menu battle pairs
 (`DW3_FORCE_ENCOUNTER=34` + `DW3_FORCE_PARTY=1` on PC).

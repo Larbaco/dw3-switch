@@ -55,9 +55,9 @@ What you need
 
   Atmosphere and the Homebrew Menu, the usual homebrew setup.
   A legally obtained US disc, Digimon World 3, product code SLUS-01436.
-  This binary looks for the US tree only. EU, Digimon World 2003,
-  SLES-03936, is a later boot option. When that exists the tree goes in
-  sdmc:/switch/dw3/eu/.
+  This US binary looks for sdmc:/switch/dw3/us/. An EU Digimon World 2003
+  (SLES-03936) NRO is built with tools/build_switch_game.sh --eu and reads
+  a pre-packed tree at sdmc:/switch/dw3/eu/ (no BIN auto-extract for EU).
 
 Install the test build
 

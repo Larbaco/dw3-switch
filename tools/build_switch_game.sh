@@ -15,37 +15,69 @@
 # for vendor/psyz/nugget/third_party/xmake-psx. Missing
 # nugget/bsdec/bsdec.c fails configure as
 # "No SOURCES given to target: dw3_movies".
+#
+# Disc version: default US. Pass --eu (or DW3_VERSION=eu) for Digimon World
+# 2003. EU still needs a pre-packed sdmc:/switch/dw3/eu/ tree — boot extract
+# from BIN is US-only (see docs/RUNTIME_LAYOUT.md).
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 IMAGE="${DW3_DK_IMAGE:-devkitpro/devkita64:latest}"
 NXLINK_STDIO=OFF
-BUILD_DIR="${ROOT}/build/switch"
-NRO_NAME="dw3-switch"
+DW3_VERSION="$(echo "${DW3_VERSION:-us}" | tr '[:upper:]' '[:lower:]')"
 
-if (( $# > 1 )); then
-  echo "usage: $0 [--nxlink]" >&2
+usage() {
+  echo "usage: $0 [--eu] [--nxlink]"
+  echo "  default   US game NRO at build/switch/dw3-switch.nro"
+  echo "  --eu      EU game NRO at build/switch-eu/dw3-switch.nro"
+  echo "  --nxlink  nxlink development NRO (build/switch[-eu]-nxlink/)"
+}
+
+while (( $# > 0 )); do
+  case "$1" in
+    --eu)
+      DW3_VERSION=eu
+      ;;
+    --nxlink)
+      NXLINK_STDIO=ON
+      ;;
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    *)
+      echo "unknown option: $1" >&2
+      usage >&2
+      exit 2
+      ;;
+  esac
+  shift
+done
+
+if [[ "${DW3_VERSION}" != "us" && "${DW3_VERSION}" != "eu" ]]; then
+  echo "DW3_VERSION must be us or eu (got '${DW3_VERSION}')" >&2
   exit 2
 fi
-case "${1:-}" in
-  "") ;;
-  --nxlink)
-    NXLINK_STDIO=ON
+
+if [[ "${DW3_VERSION}" == "eu" ]]; then
+  if [[ "${NXLINK_STDIO}" == "ON" ]]; then
+    BUILD_DIR="${ROOT}/build/switch-eu-nxlink"
+    NRO_NAME="dw3-switch-nxlink"
+  else
+    BUILD_DIR="${ROOT}/build/switch-eu"
+    NRO_NAME="dw3-switch"
+  fi
+  RUNTIME_PATH="sdmc:/switch/dw3/eu"
+else
+  if [[ "${NXLINK_STDIO}" == "ON" ]]; then
     BUILD_DIR="${ROOT}/build/switch-nxlink"
     NRO_NAME="dw3-switch-nxlink"
-    ;;
-  -h|--help)
-    echo "usage: $0 [--nxlink]"
-    echo "  default   build the standard game NRO at build/switch/dw3-switch.nro"
-    echo "  --nxlink  build the nxlink development NRO at build/switch-nxlink/dw3-switch-nxlink.nro"
-    exit 0
-    ;;
-  *)
-    echo "unknown option: $1" >&2
-    echo "usage: $0 [--nxlink]" >&2
-    exit 2
-    ;;
-esac
+  else
+    BUILD_DIR="${ROOT}/build/switch"
+    NRO_NAME="dw3-switch"
+  fi
+  RUNTIME_PATH="sdmc:/switch/dw3/us"
+fi
 NRO="${BUILD_DIR}/${NRO_NAME}.nro"
 
 if ! command -v docker >/dev/null 2>&1; then
@@ -76,6 +108,7 @@ docker run --rm \
   -e DEVKITPRO=/opt/devkitpro \
   -e DW3_SWITCH_BUILD_DIR="${BUILD_DIR}" \
   -e DW3_NXLINK_STDIO="${NXLINK_STDIO}" \
+  -e DW3_VERSION="${DW3_VERSION}" \
   -e GIT_CONFIG_COUNT=1 \
   -e GIT_CONFIG_KEY_0=safe.directory \
   -e GIT_CONFIG_VALUE_0='*' \
@@ -87,11 +120,16 @@ docker run --rm \
   bash -c 'cmake -S platforms/switch -B "$DW3_SWITCH_BUILD_DIR" -G Ninja \
     -DCMAKE_TOOLCHAIN_FILE=/opt/devkitpro/cmake/Switch.cmake \
     -DCMAKE_BUILD_TYPE=Release \
+    -DDW3_VERSION="$DW3_VERSION" \
     -DDW3_NXLINK_STDIO="$DW3_NXLINK_STDIO" && \
     cmake --build "$DW3_SWITCH_BUILD_DIR" -j"$(nproc)"'
 
 if ! grep -F -x -q "DW3_NXLINK_STDIO:BOOL=${NXLINK_STDIO}" "${BUILD_DIR}/CMakeCache.txt"; then
   echo "CMake cache does not match requested nxlink mode (${NXLINK_STDIO})" >&2
+  exit 1
+fi
+if ! grep -F -q "DW3_VERSION:STRING=${DW3_VERSION}" "${BUILD_DIR}/CMakeCache.txt"; then
+  echo "CMake cache does not match requested DW3_VERSION (${DW3_VERSION})" >&2
   exit 1
 fi
 
@@ -102,8 +140,8 @@ fi
 
 # boot_main.c is the only TU that embeds this path. The Makefile sample
 # does not compile that file, so a hit here means this is the game image.
-if ! grep -a -F -q 'sdmc:/switch/dw3/us' "${NRO}"; then
-  echo "${NRO} does not contain the game runtime path; refusing to treat it as the game" >&2
+if ! grep -a -F -q "${RUNTIME_PATH}" "${NRO}"; then
+  echo "${NRO} does not contain the game runtime path (${RUNTIME_PATH}); refusing to treat it as the game" >&2
   exit 1
 fi
 
@@ -113,4 +151,4 @@ if [[ "${bytes}" -lt 6000000 ]]; then
   exit 1
 fi
 
-echo "game .nro ${NRO} (${bytes} bytes)"
+echo "game .nro ${NRO} (${bytes} bytes, DW3_VERSION=${DW3_VERSION})"

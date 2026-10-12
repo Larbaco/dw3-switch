@@ -167,12 +167,14 @@ saves, soft battle default, debug HUD, STGMCARD bar). Picture baseline:
 is the earlier 8927429-byte file. It still crops the title and freezes
 the movie.
 
-The running game reads the owner's US files from `sdmc:/switch/dw3/us`
-(`DW3_DEFAULT_RUNTIME` in `source/boot_main.c`). If that directory is
+The default US image reads the owner's files from `sdmc:/switch/dw3/us`
+(`DW3_DEFAULT_RUNTIME` from CMake `DW3_VERSION`). If that directory is
 missing, US boot extracts it from the Mode2 BIN/CUE in the parent folder.
-Packing steps:
-[docs/DISC_SETUP.md](../../docs/DISC_SETUP.md) and
-[docs/RUNTIME_LAYOUT.md](../../docs/RUNTIME_LAYOUT.md).
+EU: `./tools/build_switch_game.sh --eu` → `sdmc:/switch/dw3/eu` (pre-packed
+tree required; no EU BIN extract yet). Packing:
+[docs/DISC_SETUP.md](../../docs/DISC_SETUP.md),
+[docs/RUNTIME_LAYOUT.md](../../docs/RUNTIME_LAYOUT.md),
+[docs/P3_EU_BUILD.md](../../docs/P3_EU_BUILD.md).
 
 The title blit width follows the display mode (320, not the 256-wide
 horizontal range). That landed with the movie present and the 4:3

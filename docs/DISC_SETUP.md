@@ -86,3 +86,40 @@ ISO file).
 
 - Output tree: `disks/us/` (exe, `AAA/`, overlays, etc.) plus `files_us.json`.
 - Runtime packing for SD/PC paths: `tools/pack_runtime.py` → see `docs/RUNTIME_LAYOUT.md`.
+
+## EU (Digimon World 2003) extract
+
+Same tools, different executable and map. Prefer an ext4 cache symlink for
+`disks/eu` (NTFS rejects `DUMMY.` the same way as US).
+
+```bash
+mkdir -p "$HOME/.cache/dw3-switch/disks/eu"
+mkdir -p disks
+ln -sfn "$HOME/.cache/dw3-switch/disks/eu" disks/eu
+
+# Owner MODE2/2352 .bin (example Redump name; pass the .bin path directly)
+python3 vendor/dw3_decomp/tools/extract_disc.py \
+  "/path/to/Digimon World 2003 (Europe)....bin" \
+  disks/eu
+
+python3 tools/build_file_map.py \
+  --bin "/path/to/Digimon World 2003 (Europe)....bin" \
+  --version eu \
+  --file-table vendor/dw3_decomp/src/engine/file/file_table.c \
+  --out disks/eu/files_eu.json
+
+python3 tools/build_file_map.py --check disks/eu/files_eu.json \
+  --file-table vendor/dw3_decomp/src/engine/file/file_table.c
+
+python3 tools/pack_runtime.py --version eu --disks disks/eu --out runtime/eu --force
+mkdir -p runtime/eu/memcard
+```
+
+| Field | Value |
+|---|---|
+| Product / EXE | `SLES_039.36` (`BESLES-03936`) |
+| Map | `files_eu.json` |
+| Boot TIM | extracted from EXE by `pack_runtime.py` when missing |
+| FIGHTSTG file id | `0x167` (US `0x159`) |
+
+EU `dw3-pc` / Switch: `docs/P3_EU_BUILD.md`. Never commit `disks/` or `runtime/`.
