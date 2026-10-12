@@ -332,6 +332,34 @@ static void rebuild_pixels(void) {
         0
 #endif
         ;
+    build.mesh_diag = dw3_nx_mesh_diag_enabled() ? 1 : 0;
+    build.tip = NULL;
+#ifndef DW3_NRO_VERSION_STR
+#define DW3_NRO_VERSION_STR "unknown"
+#endif
+    /* Tip from full version …-gABCDEF0 (prefer after "-g"). */
+    {
+        static char tip_buf[8];
+        const char *ver = DW3_NRO_VERSION_STR;
+        const char *g = strstr(ver, "-g");
+        size_t n = 0;
+
+        tip_buf[0] = '\0';
+        if (g && g[2] != '\0') {
+            g += 2;
+            while (g[n] != '\0' && n < 7u &&
+                   ((g[n] >= '0' && g[n] <= '9') ||
+                    (g[n] >= 'a' && g[n] <= 'f') ||
+                    (g[n] >= 'A' && g[n] <= 'F'))) {
+                tip_buf[n] = g[n];
+                n++;
+            }
+            tip_buf[n] = '\0';
+            if (n > 0u) {
+                build.tip = tip_buf;
+            }
+        }
+    }
 
     s_line_count = dw3_debug_overlay_format(
         s_lines, HUD_ROWS, s_dt_us, dw3_overlay_current_mode_file(), s_use_mesh,

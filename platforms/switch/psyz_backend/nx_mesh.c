@@ -643,32 +643,77 @@ static void flush_locked(const uint16_t *cpu_vram) {
     s_prims_flushed += (uint64_t)tris;
     s_had_content = true;
 
-    /* DIAG+solid: log batch + overlay first packet tri in NDC yellow (MESH_VS
-     * math on CPU, BLIT_VS draw). Fullscreen cyan retired after OLED CYAN. */
+    /* DIAG+solid: summarize batch + overlay first packet tri in NDC yellow
+     * (MESH_VS math on CPU, BLIT_VS draw). Fullscreen cyan retired. */
     if (diag_solid_wanted() && s_n_idx >= 3) {
         static unsigned flush_log_n;
         int xmin = 32767;
         int xmax = -32768;
         int ymin = 32767;
         int ymax = -32768;
+        int ox_min = 32767;
+        int ox_max = -32768;
+        int oy_min = 32767;
+        int oy_max = -32768;
+        int outside = 0;
+        int i;
+        int overlay_drawn = 0;
+        GLenum glerr = GL_NO_ERROR;
+        GLenum e;
         const Dw3NxMeshVertex *t0v = &s_vtx[s_idx[0]];
         const Dw3NxMeshVertex *t1v = &s_vtx[s_idx[1]];
         const Dw3NxMeshVertex *t2v = &s_vtx[s_idx[2]];
+        /* Active buffer half: y0..y0+239 where y0 is 0 or 256. */
+        int band_y0 = (s_off_y >= 256) ? 256 : 0;
+        int band_y1 = band_y0 + 239;
 
         diag_note_xy(s_vtx, s_n_vtx, &xmin, &xmax, &ymin, &ymax);
-        flush_log_n++;
-        if (flush_log_n <= 16u || (flush_log_n % 64u) == 0u) {
-            fprintf(stderr,
-                    "DIAG solid flush #%u tris=%d vtx=%d xy=[%d..%d],[%d..%d] "
-                    "off=%d,%d area=%d,%d..%d,%d\n",
-                    flush_log_n, tris, s_n_vtx, xmin, xmax, ymin, ymax,
-                    s_off_x, s_off_y, s_area_x0, s_area_y0, s_area_x1,
-                    s_area_y1);
-            fflush(stderr);
+        for (i = 0; i < s_n_vtx; i++) {
+            int sx = (int)s_vtx[i].x + s_off_x;
+            int sy = (int)s_vtx[i].y + s_off_y;
+
+            if (sx < ox_min) {
+                ox_min = sx;
+            }
+            if (sx > ox_max) {
+                ox_max = sx;
+            }
+            if (sy < oy_min) {
+                oy_min = sy;
+            }
+            if (sy > oy_max) {
+                oy_max = sy;
+            }
+            if (sx < 0 || sx > 319 || sy < band_y0 || sy > band_y1) {
+                outside++;
+            }
+        }
+        /* Drain pre-overlay GL errors from the mesh draw. */
+        while ((e = glGetError()) != GL_NO_ERROR) {
+            glerr = e;
         }
         diag_overlay_game_tri_ndc(t0v, t1v, t2v);
+        overlay_drawn = 1;
         /* Tiny cyan corner — DIAG alive without covering magenta verts. */
         dw3_nx_mesh_diag_ssquad(0, 0, DW3_NX_VRAM_W, DW3_NX_VRAM_H);
+        while ((e = glGetError()) != GL_NO_ERROR) {
+            glerr = e;
+        }
+        flush_log_n++;
+        if (flush_log_n <= 16u || (flush_log_n % 64u) == 0u) {
+            int pct = (s_n_vtx > 0) ? (outside * 100) / s_n_vtx : 0;
+
+            fprintf(stderr,
+                    "DIAG solid flush #%u tris=%d vtx=%d "
+                    "xy=[%d..%d],[%d..%d] post=[%d..%d],[%d..%d] "
+                    "out=%d/%d (%d%%) off=%d,%d area=%d,%d..%d,%d "
+                    "overlay=%d glerr=0x%x\n",
+                    flush_log_n, tris, s_n_vtx, xmin, xmax, ymin, ymax, ox_min,
+                    ox_max, oy_min, oy_max, outside, s_n_vtx, pct, s_off_x,
+                    s_off_y, s_area_x0, s_area_y0, s_area_x1, s_area_y1,
+                    overlay_drawn, (unsigned)glerr);
+            fflush(stderr);
+        }
     }
 
     s_n_vtx = 0;
@@ -1010,7 +1055,8 @@ void dw3_nx_mesh_enqueue(const Dw3NxMeshVertex *v, int nverts,
 
         diag_note_xy(v, nverts, &xmin, &xmax, &ymin, &ymax);
         enq_log_n++;
-        if (enq_log_n <= 16u || (enq_log_n % 256u) == 0u) {
+        /* Quieter than flush: first few + sparse samples (flush carries summary). */
+        if (enq_log_n <= 8u || (enq_log_n % 512u) == 0u) {
             fprintf(stderr,
                     "DIAG solid enqueue #%u nverts=%d nidx=%d "
                     "xy=[%d..%d],[%d..%d] off=%d,%d rgb=%u,%u,%u tpage=0x%x\n",

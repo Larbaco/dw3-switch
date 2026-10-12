@@ -27,6 +27,8 @@ typedef struct Dw3DebugOverlayBuildFlags {
     int nxlink;
     int mesh_dbg;
     int dump_vram;
+    int mesh_diag;      /* DW3_NX_MESH_DIAG / DW3_MESH_DIAG */
+    const char *tip;    /* optional short git tip, e.g. "60b45e7" */
 } Dw3DebugOverlayBuildFlags;
 
 /* Hz from a 60-pump microsecond window. Returns 0 if dt_us == 0. */
@@ -89,17 +91,28 @@ static inline int dw3_debug_overlay_format(
 
     build_buf[0] = '\0';
     if (build) {
-        if (build->nxlink) {
+        /* DIAG nxlink builds: prefer "diag solid" + tip over stale
+         * "nxlink mesh dump" (VRAM-dump era). */
+        if (build->mesh_diag) {
             bp += snprintf(build_buf + bp, sizeof(build_buf) - (size_t)bp,
-                           "%snxlink", bp ? " " : "");
-        }
-        if (build->mesh_dbg) {
-            bp += snprintf(build_buf + bp, sizeof(build_buf) - (size_t)bp,
-                           "%smesh", bp ? " " : "");
-        }
-        if (build->dump_vram) {
-            bp += snprintf(build_buf + bp, sizeof(build_buf) - (size_t)bp,
-                           "%sdump", bp ? " " : "");
+                           "diag solid");
+            if (build->tip && build->tip[0] != '\0') {
+                bp += snprintf(build_buf + bp, sizeof(build_buf) - (size_t)bp,
+                               " %s", build->tip);
+            }
+        } else {
+            if (build->nxlink) {
+                bp += snprintf(build_buf + bp, sizeof(build_buf) - (size_t)bp,
+                               "%snxlink", bp ? " " : "");
+            }
+            if (build->mesh_dbg) {
+                bp += snprintf(build_buf + bp, sizeof(build_buf) - (size_t)bp,
+                               "%smesh", bp ? " " : "");
+            }
+            if (build->dump_vram) {
+                bp += snprintf(build_buf + bp, sizeof(build_buf) - (size_t)bp,
+                               "%sdump", bp ? " " : "");
+            }
         }
     }
     if (bp == 0) {

@@ -46,6 +46,12 @@ static void log_mode(Dw3NxBattleMode mode) {
                 "nx_mesh: soft+bbox not yet — using soft (see "
                 "P5.2_BATTLE_GPU_IDEAS.md idea H)\n");
     }
+    if (mode == DW3_NX_BATTLE_GPU_SOLID && dw3_nx_mesh_diag_enabled()) {
+        /* One-shot enter breadcrumb for OLED triage (rate: once per enter). */
+        fprintf(stderr,
+                "DIAG solid enter present=mesh_only_diag soft=0\n");
+        fflush(stderr);
+    }
 }
 
 void dw3_nx_battle_mode_init(void) {
