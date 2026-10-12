@@ -30,7 +30,9 @@ or opaque VRAM blit), **before** `eglSwapBuffers`. The overlay never owns the
 game framebuffer permanently: it is a second GLES pass (textured corner quad)
 on the current EGL surface, then the existing swap proceeds.
 
-P5.4 crash / assert overlay is out of scope; leave a hook comment only.
+P5.4 **on-screen** crash / assert overlay is still out of scope here; leave
+a hook comment only. The SD text report is separate — see
+[P5.4_CRASH.md](P5.4_CRASH.md).
 
 ## Toggle
 
@@ -129,4 +131,5 @@ mirror the same fields with SDL debug text; no PC HUD in the MVP.
 ## Related
 
 - P5.2 mesh / present: [P5.2_BATTLE_GPU.md](P5.2_BATTLE_GPU.md), [NXLINK_DEBUG.md](NXLINK_DEBUG.md)
-- P5.4 crash overlay: still open in [ROADMAP.md](ROADMAP.md) (separate from this HUD)
+- P5.4 SD crash report: [P5.4_CRASH.md](P5.4_CRASH.md) (landed); on-screen
+  assert overlay still open in [ROADMAP.md](ROADMAP.md)

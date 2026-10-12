@@ -10,11 +10,13 @@
 static const Dw3OverlayDesc *g_table;
 static size_t g_count;
 static int32_t g_mode_file_id;
+static int32_t g_sub_file_id;
 
 void dw3_overlay_set_table(const Dw3OverlayDesc *table, size_t count) {
     g_table = table;
     g_count = count;
     g_mode_file_id = 0;
+    g_sub_file_id = 0;
 }
 
 const Dw3OverlayDesc *dw3_overlay_find(int32_t file_id) {
@@ -53,6 +55,7 @@ int dw3_overlay_restore(int32_t file_id) {
         g_mode_file_id = file_id;
         kind = "mode";
     } else {
+        g_sub_file_id = file_id;
         kind = "sub";
     }
     /* kind=mode|sub is for nxlink sweep parsers; entry pointer stays for triage. */
@@ -64,6 +67,8 @@ int dw3_overlay_restore(int32_t file_id) {
 }
 
 int32_t dw3_overlay_current_mode_file(void) { return g_mode_file_id; }
+
+int32_t dw3_overlay_current_sub_file(void) { return g_sub_file_id; }
 
 int dw3_host_menu_force_once(void) {
     static int done;

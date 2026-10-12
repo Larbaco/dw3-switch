@@ -29,6 +29,7 @@
 #include "str_stream.h"
 
 #include "../psyz_backend/nx.h"
+#include "../psyz_backend/nx_crash.h"
 #include "../psyz_backend/nx_debug_overlay.h"
 #include "../psyz_backend/nx_mesh_debug.h"
 #if DW3_NX_DEBUG_OVERLAY
@@ -482,6 +483,8 @@ int main(int argc, char **argv) {
     INFOF("nxlink socket init=0x%08x stdio fd=%d",
           (unsigned)g_nxlink_socket_result, g_nxlink_fd);
 #endif
+    /* P5.4: SD crash report sink. Does not touch memcard atexit / quit-flush. */
+    dw3_nx_crash_install();
 
     /* HOME exit request: give the process ~15s to flush and leave main()
      * instead of an immediate force-kill (see appletLockExit). */
@@ -528,6 +531,10 @@ int main(int argc, char **argv) {
               (void *)dw3_nx_vsync_pump);
     }
     INFOF("entering dw3_game_main()");
+#if DW3_NX_FORCE_CRASH
+    /* Debug builds only — see docs/P5.4_CRASH.md. */
+    dw3_nx_crash_force_fault();
+#endif
     {
         int game_result = dw3_game_main();
         memcard_host_shutdown();

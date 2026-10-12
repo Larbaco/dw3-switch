@@ -554,9 +554,15 @@ speed.
 - [ ] **P5.4 Error reporting.** Crash handler that writes a log + last
   mode/stage id to SD; assert overlay.
   Done when: a forced fault produces a readable report.
-  Note: the P5.2 nxlink on-screen HUD (`DW3_NX_DEBUG_OVERLAY`,
-  [DEBUG_OVERLAY.md](DEBUG_OVERLAY.md)) is triage-only and leaves a hook
-  comment for a future crash overlay; it does not satisfy this task.
+  **SD crash report (2026-10-12):** `__libnx_exception_handler` writes
+  `sdmc:/switch/dw3/crash_report.txt` (version, reason, mode/stage file
+  ids, PC/LR/FAR/ESR). Install from `boot_main` after SD+log open; does
+  not touch P5.3 memcard atexit. Force-fault: `-DDW3_NX_FORCE_CRASH=ON`
+  (soft default OFF). See [P5.4_CRASH.md](P5.4_CRASH.md).
+  **Still open:** on-screen assert overlay (HUD hook in
+  [DEBUG_OVERLAY.md](DEBUG_OVERLAY.md) remains triage-only).
+  Note: the P5.2 nxlink on-screen HUD (`DW3_NX_DEBUG_OVERLAY`) is not a
+  substitute for this task.
 - [ ] **P5.5 Stage sweep on hardware.** P3.8 again on the console.
 
 Gate: start → first boss on hardware, both versions.
