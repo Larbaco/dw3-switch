@@ -1,0 +1,150 @@
+Upstream-bound: no
+Subject: [PORT_HOST] Add a third title row between New Game and Continue
+
+Keep original sprites, cursor and vanilla choices; draw the port label
+with the resident game font. Select remains a shortcut without shoulders.
+
+--- a/src/menus/title/menu.c
++++ b/src/menus/title/menu.c
+@@ -3,6 +3,7 @@
+ #include "menus/title.h"
+ #if PORT_HOST
+ #include "port_options.h"
++#include "port_title_options.h"
+ #endif
+ 
+ /* The menu's sprites: the European version has them for each language */
+@@ -24,8 +25,23 @@
+         sprite.setClutRow(task->blink);
+         sprite.draw(FILE_CACHE.getEntry(STDWTITL_spriteBank), 7,
+                     STDWTITL_menuCursorPositions[task->selection].x,
++#if PORT_HOST
++                    (task->showOptions && task->state == TASK_DONE ?
++                        DW3_TITLE_ROW_Y(task->selection) :
++                        STDWTITL_menuCursorPositions[task->selection].y) - 1);
++#else
+                     STDWTITL_menuCursorPositions[task->selection].y - 1);
+-    }
++#endif
++    }
++#if PORT_HOST
++    if (task->showOptions && task->state == TASK_DONE) {
++        /* The selected original cursor is already in the OT, so it paints
++         * after the new label and stripe background, just like vanilla. */
++        dw3_port_title_options_draw(task->layerId, 79,
++            DW3_TITLE_ROW_Y(DW3_TITLE_PORT_OPTIONS),
++            task->selection == DW3_TITLE_PORT_OPTIONS);
++    }
++#endif
+     if (task->showOptions == 0) {
+         initSpriteDrawer(&sprite);
+         sprite.setLayerId(task->layerId, 0);
+@@ -41,7 +57,12 @@
+         initSpriteDrawer(&sprite);
+         sprite.setLayerId(task->layerId, 0);
+         sprite.setTexture(0x280, STDWTITL_TEXTURE_Y);
++#if PORT_HOST
++        sprite.setClutRow(task->selection != (task->state == TASK_DONE ?
++                          DW3_TITLE_CONTINUE : 1));
++#else
+         sprite.setClutRow(task->selection != 1);
++#endif
+         sprite.draw(FILE_CACHE.getEntry(STDWTITL_spriteBank), MENU_SPRITE(2), task->options[1].x, task->options[1].y);
+     }
+ }
+@@ -109,12 +130,20 @@
+     case 0:
+     default:
+         task->showOptions = 1;
++#if PORT_HOST
++        task->selection = DW3_TITLE_CONTINUE;
++#else
+         task->selection = 1;
++#endif
+         task->showCursor = 1;
+         task->options[0].x = STDWTITL_menuCursorPositions[0].x;
+         task->options[0].y = STDWTITL_menuCursorPositions[0].y;
+         task->options[1].x = STDWTITL_menuCursorPositions[1].x;
+         task->options[1].y = STDWTITL_menuCursorPositions[1].y;
++#if PORT_HOST
++        task->options[0].y = DW3_TITLE_ROW_Y(DW3_TITLE_NEW_GAME);
++        task->options[1].y = DW3_TITLE_ROW_Y(DW3_TITLE_CONTINUE);
++#endif
+         task->nextSubstate(task);
+         break;
+     case 1:
+@@ -123,7 +152,8 @@
+         if (dw3_port_options_is_open()) {
+             break;
+         }
+-        if (PAD_PRESSED(PAD_SELECT)) {
++        if (PAD_PRESSED(PAD_SELECT) && !PAD_HELD(PAD_L1) &&
++            !PAD_HELD(PAD_R1) && !PAD_HELD(PAD_L2) && !PAD_HELD(PAD_R2)) {
+             dw3_port_options_open();
+             SOUND.playSound(SOUND_SELECT);
+             break;
+@@ -133,15 +163,35 @@
+             if (task->selection != 0) {
+                 SOUND.playSound(SOUND_CURSOR);
+             }
++#if PORT_HOST
++            if (task->selection > DW3_TITLE_NEW_GAME) {
++                task->selection--;
++            }
++#else
+             task->selection = 0;
++#endif
+         }
+         if (PAD_PRESSED(PAD_DOWN) || PAD_REPEATED(PAD_DOWN)) {
++#if PORT_HOST
++            if (task->selection < DW3_TITLE_CONTINUE) {
++                SOUND.playSound(SOUND_CURSOR);
++                task->selection++;
++            }
++#else
+             if (task->selection != 1) {
+                 SOUND.playSound(SOUND_CURSOR);
+             }
+             task->selection = 1;
++#endif
+         }
+         if (PAD_PRESSED(PAD_CROSS)) {
++#if PORT_HOST
++            if (task->selection == DW3_TITLE_PORT_OPTIONS) {
++                dw3_port_options_open();
++                SOUND.playSound(SOUND_SELECT);
++                break;
++            }
++#endif
+             task->timer = 0;
+             SOUND.playSound(SOUND_SELECT);
+             task->nextSubstate(task);
+@@ -170,6 +220,9 @@
+    seconds), blinks and spreads out the two options; then moves between new game
+    and continue, and the confirm button blinks the option and sets choice */
+ void STDWTITL_tickMenu(TitleMenuTask *task) {
++#if PORT_HOST
++    int options_were_open = dw3_port_options_is_open();
++#endif
+     switch (task->state) {
+     case TASK_INIT:
+     default:
+@@ -189,7 +242,7 @@
+     case TASK_DONE:
+         runOptions(task);
+ #if PORT_HOST
+-        if (dw3_port_options_is_open()) {
++        if (options_were_open && dw3_port_options_is_open()) {
+             dw3_port_options_tick();
+         }
+ #endif
+@@ -201,9 +254,6 @@
+ #if PORT_HOST
+     if (dw3_port_options_is_open()) {
+         dw3_port_options_draw();
+-    } else if (task->state == TASK_DONE && task->showOptions != 0 &&
+-               task->substate == 1) {
+-        dw3_port_options_draw_hint();
+     }
+ #endif
+ }

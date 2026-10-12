@@ -70,6 +70,12 @@ See [SURVEY.md](SURVEY.md) for the evidence behind each point.
   snapshots them for restore. Weak stubs remain only for intentionally
   unlinked overlays (e.g. `WSTAG460`).
 
+The P9.2 title entry is game-layer `PORT_HOST` patch glue in
+`port/patches/0044*` / `0045*`, with the shared shell and resident-font
+title label in `port/options/`. It uses the original title cursor and
+retains New Game/Continue choices. Hosts supply input/present only;
+neither the Switch diagnostic HUD nor a host-specific menu owns this UI.
+
 ## Non-goals (for now)
 
 - Byte-identical matching builds on Switch
