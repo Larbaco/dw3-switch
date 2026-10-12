@@ -29,9 +29,26 @@ int main(void) {
     build.nxlink = 1;
     build.mesh_dbg = 1;
     build.dump_vram = 1;
+    build.mem_dbg = 1;
 
-    n = dw3_debug_overlay_format(lines, DW3_DBG_OVERLAY_MAX_LINES, 1000000ull,
-                                 0x15a, 1, "soft", &mesh, &build);
+    {
+        Dw3DebugOverlayMemSnap mem;
+
+        memset(&mem, 0, sizeof(mem));
+        mem.valid = 1;
+        mem.heap_ok = 1;
+        mem.heap_used_kib = 1200;
+        mem.heap_arena_kib = 8192;
+        mem.heap_used_hw_kib = 1400;
+        mem.file_cache_kib = 200;
+        mem.file_cache_hw_kib = 250;
+        mem.libc_used_kib = 400;
+        mem.libc_used_hw_kib = 450;
+
+        n = dw3_debug_overlay_format(lines, DW3_DBG_OVERLAY_MAX_LINES,
+                                     1000000ull, 0x15a, 1, "soft", &mesh, &mem,
+                                     &build);
+    }
     printf("line_count=%d\n", n);
     for (i = 0; i < n; i++) {
         printf("L%d=%s\n", i, lines[i]);

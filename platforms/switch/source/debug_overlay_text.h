@@ -23,10 +23,24 @@ typedef struct Dw3DebugOverlayMeshSnap {
     uint32_t soft_fallback;
 } Dw3DebugOverlayMeshSnap;
 
+/* P5.1 memory-budget HUD fields (KiB). valid=0 → omit / show n/a. */
+typedef struct Dw3DebugOverlayMemSnap {
+    int valid;
+    int heap_ok;
+    uint64_t heap_used_kib;
+    uint64_t heap_arena_kib;
+    uint64_t heap_used_hw_kib;
+    uint64_t file_cache_kib;
+    uint64_t file_cache_hw_kib;
+    uint64_t libc_used_kib;
+    uint64_t libc_used_hw_kib;
+} Dw3DebugOverlayMemSnap;
+
 typedef struct Dw3DebugOverlayBuildFlags {
     int nxlink;
     int mesh_dbg;
     int dump_vram;
+    int mem_dbg;
 } Dw3DebugOverlayBuildFlags;
 
 /* Hz from a 60-pump microsecond window. Returns 0 if dt_us == 0. */
@@ -43,7 +57,7 @@ static inline double dw3_debug_overlay_fps(uint64_t dt_us) {
 static inline int dw3_debug_overlay_format(
     char lines[][DW3_DBG_OVERLAY_LINE_CHARS], int max_lines, uint64_t dt_us,
     int32_t mode_file, int use_mesh, const char *battle_mode,
-    const Dw3DebugOverlayMeshSnap *mesh,
+    const Dw3DebugOverlayMeshSnap *mesh, const Dw3DebugOverlayMemSnap *mem,
     const Dw3DebugOverlayBuildFlags *build) {
     int n = 0;
     double fps;
@@ -87,6 +101,20 @@ static inline int dw3_debug_overlay_format(
         DW3_OL_LINE("mesh win=n/a (no DW3_NX_DEBUG_MESH)");
     }
 
+    if (mem && mem->valid && mem->heap_ok) {
+        DW3_OL_LINE("heap %llu/%lluK hw=%lluK",
+                    (unsigned long long)mem->heap_used_kib,
+                    (unsigned long long)mem->heap_arena_kib,
+                    (unsigned long long)mem->heap_used_hw_kib);
+        DW3_OL_LINE("fc=%lluK hw=%lluK libc=%lluK",
+                    (unsigned long long)mem->file_cache_kib,
+                    (unsigned long long)mem->file_cache_hw_kib,
+                    (unsigned long long)mem->libc_used_kib);
+    } else if (mem && mem->valid) {
+        DW3_OL_LINE("heap n/a libc=%lluK",
+                    (unsigned long long)mem->libc_used_kib);
+    }
+
     build_buf[0] = '\0';
     if (build) {
         if (build->nxlink) {
@@ -100,6 +128,10 @@ static inline int dw3_debug_overlay_format(
         if (build->dump_vram) {
             bp += snprintf(build_buf + bp, sizeof(build_buf) - (size_t)bp,
                            "%sdump", bp ? " " : "");
+        }
+        if (build->mem_dbg) {
+            bp += snprintf(build_buf + bp, sizeof(build_buf) - (size_t)bp,
+                           "%smem", bp ? " " : "");
         }
     }
     if (bp == 0) {

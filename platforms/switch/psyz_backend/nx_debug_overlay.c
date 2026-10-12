@@ -155,6 +155,7 @@ static int s_chord_was_down;
 static uint64_t s_dt_us;
 static int s_use_mesh;
 static Dw3DebugOverlayMeshSnap s_mesh;
+static Dw3DebugOverlayMemSnap s_mem;
 static char s_lines[HUD_ROWS][DW3_DBG_OVERLAY_LINE_CHARS];
 static int s_line_count;
 static int s_dirty = 1;
@@ -332,10 +333,17 @@ static void rebuild_pixels(void) {
         0
 #endif
         ;
+    build.mem_dbg =
+#if DW3_NX_DEBUG_MEM
+        1
+#else
+        0
+#endif
+        ;
 
     s_line_count = dw3_debug_overlay_format(
         s_lines, HUD_ROWS, s_dt_us, dw3_overlay_current_mode_file(), s_use_mesh,
-        dw3_nx_battle_mode_token(), &s_mesh, &build);
+        dw3_nx_battle_mode_token(), &s_mesh, &s_mem, &build);
 
     for (row = 0; row < s_line_count; row++) {
         s = s_lines[row];
@@ -390,6 +398,26 @@ void dw3_nx_debug_overlay_note_sample(uint64_t dt_us,
     }
     s_dirty = 1;
 }
+
+#if DW3_NX_DEBUG_MEM
+void dw3_nx_debug_overlay_note_mem(const Dw3NxMemBudgetSample *mem) {
+    if (!mem) {
+        memset(&s_mem, 0, sizeof(s_mem));
+        s_dirty = 1;
+        return;
+    }
+    s_mem.valid = 1;
+    s_mem.heap_ok = mem->heap_ok;
+    s_mem.heap_used_kib = mem->heap_used_bytes / 1024ull;
+    s_mem.heap_arena_kib = mem->heap_arena_bytes / 1024ull;
+    s_mem.heap_used_hw_kib = mem->heap_used_hw / 1024ull;
+    s_mem.file_cache_kib = mem->file_cache_bytes / 1024ull;
+    s_mem.file_cache_hw_kib = mem->file_cache_hw / 1024ull;
+    s_mem.libc_used_kib = mem->libc_used_bytes / 1024ull;
+    s_mem.libc_used_hw_kib = mem->libc_used_hw / 1024ull;
+    s_dirty = 1;
+}
+#endif
 
 void dw3_nx_debug_overlay_note_present(int use_mesh) {
     if (s_use_mesh != (use_mesh ? 1 : 0)) {

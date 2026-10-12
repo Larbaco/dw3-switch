@@ -72,11 +72,15 @@ Cycle order: `soft` → `soft+bbox` → `gpu-solid` → `gpu-tex` → `soft` …
 | `tris enq/flush=…` | Last completed `Dw3NxMeshDebugWindow` (when `DW3_NX_DEBUG_MESH`) |
 | `frames m/b/soft=…` | Same window |
 | `flush/up/pres us=…` | Optional timing from the same window |
-| `build: nxlink mesh dump` | Which compile flags are defined |
+| `heap used/arenaK hw=…` | P5.1 sample (`DW3_NX_DEBUG_MEM`) — game heap KiB |
+| `fc=… hw=… libc=…` | File-cache tag + newlib used (KiB) |
+| `build: nxlink mesh dump mem` | Which compile flags are defined |
 
 Stage `stageFile` is **not** scraped from logs. MVP shows mode file id only;
 a future latch can expose the last restored sub-overlay without touching
-memcard / flat-save work.
+memcard / flat-save work. Memory fields are instrumentation toward P5.1;
+they do not prove a 2-hour flat heap by themselves
+(see [P5.1_MEMORY.md](P5.1_MEMORY.md)).
 
 ## Stdio discipline
 

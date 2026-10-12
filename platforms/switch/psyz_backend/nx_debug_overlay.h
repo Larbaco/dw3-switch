@@ -12,10 +12,18 @@
 #if DW3_NX_DEBUG_OVERLAY
 
 #include "../source/debug_overlay_text.h"
+#include "nx_mem_budget.h"
 
 /* Publish the latest 60-pump sample (same cadence as frame dt / mesh dbg). */
 void dw3_nx_debug_overlay_note_sample(uint64_t dt_us,
                                       const Dw3DebugOverlayMeshSnap *mesh);
+
+#if DW3_NX_DEBUG_MEM
+/* Publish the latest memory-budget sample for HUD lines. */
+void dw3_nx_debug_overlay_note_mem(const Dw3NxMemBudgetSample *mem);
+#else
+#define dw3_nx_debug_overlay_note_mem(mem) ((void)0)
+#endif
 
 /* Last present path: non-zero = mesh FBO + UI discard, else opaque blit. */
 void dw3_nx_debug_overlay_note_present(int use_mesh);
@@ -32,6 +40,7 @@ void dw3_nx_debug_overlay_invalidate_gl(void);
 #else /* !DW3_NX_DEBUG_OVERLAY */
 
 #define dw3_nx_debug_overlay_note_sample(dt_us, mesh) ((void)0)
+#define dw3_nx_debug_overlay_note_mem(mem) ((void)0)
 #define dw3_nx_debug_overlay_note_present(use_mesh) ((void)0)
 #define dw3_nx_debug_overlay_draw(fb_w, fb_h) ((void)0)
 #define dw3_nx_debug_overlay_invalidate_gl() ((void)0)
