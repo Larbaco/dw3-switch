@@ -474,21 +474,22 @@ speed.
   and a different id replaces the buffer. Movies stay at 150 sectors/s.
   See [STATIC_SD_LOAD.md](STATIC_SD_LOAD.md).
 - [ ] **P5.3 Save handling.** The port's own save on owner storage, plus
-  sleep/exit safety (flush on `appletMainLoop` exit). The running game
-  does not import or export emulator memory cards. That interchange is an
-  external tool, P9.6.
-  **Preview.4 OLED observation (2026-10-11):** the owner reports creating new
-  saves on both memory cards; nxlink logged memcard writes. Reopening/loading
-  those saves after restart was not tested, and save import/export and exit
-  safety remain open.
-  **Preview.5 OLED (2026-10-11):** a DuckStation card in slot 1 loads. A save
-  the game created in slot 2 closed the process back to the launcher.
-  `MemCardWriteFile` was storing a frame XOR in data byte `0x7F`, which is
-  the high byte of that slot's partner index. The slot list then indexed
-  past `STGMCARD_partnerIcons`. Data frames now keep that byte. On the
-  `32989c3` `.nro` the same day, the owner saved and loaded slot 2.
-  Exit flush stays open. Emulator card conversion is P9.6, not this task.
-  Done when: a save this port wrote loads after a clean exit and a relaunch.
+  sleep/exit safety. The running game does not import or export emulator
+  memory cards. That interchange is an external tool, P9.6.
+  **Flat save host (2026-10-11):** `port/memcard` now uses one resident
+  flat file per port (`save0.bin` / `save1.bin`, 32 KiB), `memcpy` I/O,
+  deferred flush on write-section end / `memcard_host_shutdown`, synthetic
+  `MemCardGetDirentry` (`size=0x8000`), and one-time migration from
+  `memcardN.mcr` → `saveN.bin` (`.mcr` renamed to `.mcr.bak`). PC/Switch
+  register `atexit` + shutdown after `dw3_game_main`. See
+  [P5.3_FLAT_SAVE.md](P5.3_FLAT_SAVE.md) and `port/memcard/README.md`.
+  **Still open:** HOME / `appletMainLoop` quit path (`Psyz_QuitRequested`
+  still 0); sleep/focus flush; OLED confirm that migrated saves reload
+  after a clean exit. Emulator conversion remains P9.6.
+  **Preview.4 / .5 notes (kept):** earlier `.mcr` writes and the data-frame
+  XOR fault (`0x7F` / partner index) are historical; XOR must stay off
+  data frames. Done when: a save this port wrote loads after a clean exit
+  and a relaunch on hardware (HOME path optional follow-up / P10.2).
 - [ ] **P5.4 Error reporting.** Crash handler that writes a log + last
   mode/stage id to SD; assert overlay.
   Done when: a forced fault produces a readable report.

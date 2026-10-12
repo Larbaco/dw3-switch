@@ -24,7 +24,7 @@ Checkboxes: [docs/ROADMAP.md](docs/ROADMAP.md). Phase 3 gate:
 | 0 to 2 | Done. Toolchains, disc to runtime, US title boot from decomp C ([P2.8](docs/P2.8_TITLE_BOOT.md)). |
 | 3 | Gate met for US. Field, battle, menus, card game, movies, SEP, and the stage sweep run on PC. Start to Genji is documented, with aids. [P3.9](docs/P3.9_REFERENCE.md) is done. Still open: EU playthrough, a pad-driven boss KO, [PC GPU and battle polish](docs/P3_GPU_GLITCHES.md), and the `WSTAG460` stub. |
 | 4 | Gate met on hardware for title, field, and battle. P4.2, P4.4, and P4.7 are ticked. Still open: P4.3 underrun count, the P4.5 CDFS suite, and the P4.6 overlay sweep. |
-| 5 to 10 | Phase 5 is open. P5.2 is the 16.7 ms bar. The owner says the game feels slow. P5.3 exit flush is open. P6.5 packaging is done and does not start Phase 6. Phases 6 through 10 otherwise have not started. P7.1, P8.1, P9.1, and P10.1 are early notes. See [SWITCH_FEATURES](docs/SWITCH_FEATURES.md). |
+| 5 to 10 | Phase 5 is open. P5.2 is the 16.7 ms bar. The owner says the game feels slow. P5.3 flat saves + deferred flush landed in host code; HOME/`appletMainLoop` quit and OLED confirm remain open ([P5.3_FLAT_SAVE](docs/P5.3_FLAT_SAVE.md)). P6.5 packaging is done and does not start Phase 6. Phases 6 through 10 otherwise have not started. P7.1, P8.1, P9.1, and P10.1 are early notes. See [SWITCH_FEATURES](docs/SWITCH_FEATURES.md). |
 
 Layering: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
@@ -61,8 +61,8 @@ from that session is [docs/STATIC_SD_LOAD.md](docs/STATIC_SD_LOAD.md):
 the map file is read once per area; movies keep their sector pace.
 
 Still open on hardware: a P4.3 underrun count, the formal P4.5 CDFS suite,
-the full P4.6 overlay sweep, P5.2, the kernel sync-object error, and the
-P5.3 flush on exit.
+the full P4.6 overlay sweep, P5.2, the kernel sync-object error, and P5.3
+HOME quit / migrated-save confirm on OLED.
 
 **PC today.** Yes, with your own US disc packed to `runtime/us`. Expect
 rough visuals in some scenes.

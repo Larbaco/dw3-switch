@@ -139,7 +139,8 @@ static void thread_trampoline(void *arg) {
  * is wired, report "no quit requested" so the game keeps running.
  *
  * Consequence, and it is a real one: the home button's exit request is ignored.
- * Tracked with the other exit/sleep work in docs/ROADMAP.md P5.3. */
+ * Tracked with the other exit/sleep work in docs/ROADMAP.md P5.3 /
+ * docs/P5.3_FLAT_SAVE.md (flat-save atexit flush landed; HOME quit has not). */
 int Psyz_QuitRequested(void) { return 0; }
 
 int Psyz_OsThreadStart(void (*fn)(void), const char *name) {

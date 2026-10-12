@@ -15,7 +15,7 @@ for **residual** Switch-only UX after those phases land. Hosts stay thin:
 | Docked / handheld present, 60 Hz vsync | P4.2 | `platforms/switch` (`nx_gpu`) |
 | Hid → PS1 pad; `PadSetAct` → HD rumble | P4.4 | `nx_input` |
 | `sdmc` / `romfs`, timing | P4.5 | `nx_file` / `nx_os` |
-| `.mcr` files, import/export, flush on exit / focus loss, rotating backups, sleep-safe delta clamp | P5.3 (expanded) | `port/memcard` + Switch host loop |
+| Flat `saveN.bin`, deferred flush / atexit; HOME quit + focus flush + sleep delta still open; emulator interchange = P9.6 | P5.3 (expanded) | `port/memcard` + Switch host loop |
 | Crash / assert log | P5.4 | host |
 | Integer scale, aspect, **widescreen** (wanted; PSY-Z PC present already fits by aspect) | P6.1 | present + port options |
 | PAL/NTSC + EU `CNTY_SEL` / language | P6.2 | game + host pacing |

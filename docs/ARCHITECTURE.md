@@ -53,8 +53,9 @@ See [SURVEY.md](SURVEY.md) for the evidence behind each point.
 - Disc I/O is by **numeric file id** over a sector table, not by path.
   The port serves files from an unpacked tree through an id → path map
   generated from the owner's disc.
-- The saved part of `GameState` has no pointers, so PS1 save format
-  compatibility (`.mcr`) is a goal, not a stretch.
+- The saved part of `GameState` has no pointers. The running port stores
+  that payload in a flat per-port file (`port/memcard`); 128 KiB `.mcr`
+  interchange is an external tool (P9.6), not in-game.
 - MIPS-only constructs (P2.3 done for engine host): scratchpad stack
   no-ops, `allocMemHigh` returns the pointer, GTE macros → PSY-Z software
   GTE, overlay address symbols + static restore in `port/overlays/`

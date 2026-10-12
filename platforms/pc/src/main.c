@@ -147,6 +147,9 @@ static int init_paths(int argc, char **argv) {
         fprintf(stderr, "dw3-pc: memcard ensure failed under %s\n", memdir);
         return -1;
     }
+    /* Dirty flat saves flush here on clean process exit (P5.3). HOME /
+     * abrupt kill still cannot run atexit — see docs/P5.3_FLAT_SAVE.md. */
+    atexit(memcard_host_shutdown);
     fprintf(stderr, "dw3-pc: memcard dir=%s\n", memdir);
 
     snprintf(boot_path, sizeof(boot_path), "%s/boot_tim.bin", root);
@@ -170,5 +173,9 @@ int main(int argc, char **argv) {
     }
     g_prev_vsync_cb = Psyz_SetVSyncCb(dw3_pc_vsync_pump);
     fprintf(stderr, "dw3-pc: entering dw3_game_main()\n");
-    return dw3_game_main();
+    {
+        int rc = dw3_game_main();
+        memcard_host_shutdown();
+        return rc;
+    }
 }
