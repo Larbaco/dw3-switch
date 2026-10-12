@@ -127,8 +127,22 @@ fi
 # No login shell: bash -l lets /etc/profile drop devkitA64/bin from PATH,
 # and aarch64-none-elf-nm lives there. Mount at the host absolute path so
 # worktree gitlinks and tools/apply_patches.sh still resolve.
-# Optional triage: DW3_NX_MESH_DIAG=ON|OFF (default OFF). See
-# docs/P5.2_SWITCH_GPU_OPTIONS.md — does not flip soft battle default.
+# Optional triage: DW3_NX_MESH_DIAG=ON|OFF (default OFF). Always pass the
+# -D so a reused CMakeCache cannot leave DIAG sticky on a "normal" NRO.
+# See docs/P5.2_SWITCH_GPU_OPTIONS.md — does not flip soft battle default.
+MESH_DIAG="${DW3_NX_MESH_DIAG:-OFF}"
+case "${MESH_DIAG}" in
+  ON|OFF|TRUE|FALSE|on|off|true|false|1|0) ;;
+  *)
+    echo "DW3_NX_MESH_DIAG must be ON or OFF (got '${MESH_DIAG}')" >&2
+    exit 1
+    ;;
+esac
+# Normalize to CMake BOOL spelling for cache checks.
+case "${MESH_DIAG}" in
+  1|true|TRUE|on) MESH_DIAG=ON ;;
+  0|false|FALSE|off) MESH_DIAG=OFF ;;
+esac
 
 docker run --rm \
   -e DEVKITPRO=/opt/devkitpro \
@@ -137,7 +151,7 @@ docker run --rm \
   -e DW3_VERSION="${DW3_VERSION}" \
   -e DW3_NRO_VERSION="${DW3_NRO_VERSION}" \
   -e DW3_NACP_VERSION="${DW3_NACP_VERSION}" \
-  -e DW3_NX_MESH_DIAG="${DW3_NX_MESH_DIAG:-}" \
+  -e DW3_NX_MESH_DIAG="${MESH_DIAG}" \
   -e GIT_CONFIG_COUNT=1 \
   -e GIT_CONFIG_KEY_0=safe.directory \
   -e GIT_CONFIG_VALUE_0='*' \
@@ -146,18 +160,14 @@ docker run --rm \
   "${GIT_MOUNT_ARGS[@]}" \
   -w "${ROOT}" \
   "${IMAGE}" \
-  bash -c 'extra=()
-    if [[ -n "${DW3_NX_MESH_DIAG}" ]]; then
-      extra+=(-DDW3_NX_MESH_DIAG="$DW3_NX_MESH_DIAG")
-    fi
-    cmake -S platforms/switch -B "$DW3_SWITCH_BUILD_DIR" -G Ninja \
+  bash -c 'cmake -S platforms/switch -B "$DW3_SWITCH_BUILD_DIR" -G Ninja \
     -DCMAKE_TOOLCHAIN_FILE=/opt/devkitpro/cmake/Switch.cmake \
     -DCMAKE_BUILD_TYPE=Release \
     -DDW3_VERSION="$DW3_VERSION" \
     -DDW3_NXLINK_STDIO="$DW3_NXLINK_STDIO" \
     -DDW3_NRO_VERSION="$DW3_NRO_VERSION" \
     -DDW3_NACP_VERSION="$DW3_NACP_VERSION" \
-    "${extra[@]}" && \
+    -DDW3_NX_MESH_DIAG="$DW3_NX_MESH_DIAG" && \
     cmake --build "$DW3_SWITCH_BUILD_DIR" -j"$(nproc)"'
 
 if ! grep -F -x -q "DW3_NXLINK_STDIO:BOOL=${NXLINK_STDIO}" "${BUILD_DIR}/CMakeCache.txt"; then
@@ -166,6 +176,10 @@ if ! grep -F -x -q "DW3_NXLINK_STDIO:BOOL=${NXLINK_STDIO}" "${BUILD_DIR}/CMakeCa
 fi
 if ! grep -F -q "DW3_VERSION:STRING=${DW3_VERSION}" "${BUILD_DIR}/CMakeCache.txt"; then
   echo "CMake cache does not match requested DW3_VERSION (${DW3_VERSION})" >&2
+  exit 1
+fi
+if ! grep -F -x -q "DW3_NX_MESH_DIAG:BOOL=${MESH_DIAG}" "${BUILD_DIR}/CMakeCache.txt"; then
+  echo "CMake cache does not match requested DW3_NX_MESH_DIAG (${MESH_DIAG})" >&2
   exit 1
 fi
 
