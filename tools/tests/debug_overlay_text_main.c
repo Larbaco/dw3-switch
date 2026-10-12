@@ -1,0 +1,40 @@
+/* Host driver for platforms/switch/source/debug_overlay_text.h */
+#include "debug_overlay_text.h"
+
+#include <stdio.h>
+#include <string.h>
+
+int main(void) {
+    char lines[DW3_DBG_OVERLAY_MAX_LINES][DW3_DBG_OVERLAY_LINE_CHARS];
+    Dw3DebugOverlayMeshSnap mesh;
+    Dw3DebugOverlayBuildFlags build;
+    int n;
+    int i;
+
+    printf("fps60=%.1f\n", dw3_debug_overlay_fps(1000000ull));
+    printf("fps30=%.1f\n", dw3_debug_overlay_fps(2000000ull));
+    printf("fps0=%.1f\n", dw3_debug_overlay_fps(0));
+
+    memset(&mesh, 0, sizeof(mesh));
+    mesh.valid = 1;
+    mesh.mesh_available = 1;
+    mesh.tris_enqueued = 10;
+    mesh.tris_flushed = 8;
+    mesh.flush_us = 100;
+    mesh.upload_us = 20;
+    mesh.present_us = 50;
+    mesh.frames_mesh = 58;
+    mesh.frames_blit = 2;
+    mesh.soft_fallback = 0;
+    build.nxlink = 1;
+    build.mesh_dbg = 1;
+    build.dump_vram = 1;
+
+    n = dw3_debug_overlay_format(lines, DW3_DBG_OVERLAY_MAX_LINES, 1000000ull,
+                                 0x15a, 1, &mesh, &build);
+    printf("line_count=%d\n", n);
+    for (i = 0; i < n; i++) {
+        printf("L%d=%s\n", i, lines[i]);
+    }
+    return 0;
+}

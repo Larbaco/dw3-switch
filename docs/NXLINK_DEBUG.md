@@ -5,10 +5,10 @@ nxlink TCP stream.
 
 ## Builds
 
-| Binary | Command | nxlink stdio | Mesh summary | Battle dump |
-|---|---|---|---|---|
-| Release / SD | `./tools/build_switch_game.sh` | off | off | off |
-| Dev (nxlink) | `./tools/build_switch_game.sh --nxlink` | on | **on** (default) | **on** (default) |
+| Binary | Command | nxlink stdio | Mesh summary | Battle dump | On-screen HUD |
+|---|---|---|---|---|---|
+| Release / SD | `./tools/build_switch_game.sh` | off | off | off | off |
+| Dev (nxlink) | `./tools/build_switch_game.sh --nxlink` | on | **on** (default) | **on** (default) | **on** (default) |
 
 The nxlink NRO lands at `build/switch-nxlink/dw3-switch-nxlink.nro`.
 
@@ -22,7 +22,21 @@ cmake -S platforms/switch -B build/switch-nxlink \
 ```
 
 Standard `dw3-switch.nro` never calls `nxlinkStdio()` and does not define
-`DW3_NX_DEBUG_MESH`.
+`DW3_NX_DEBUG_MESH`, `DW3_NX_DUMP_VRAM`, or `DW3_NX_DEBUG_OVERLAY`.
+
+## On-screen debug overlay (`DW3_NX_DEBUG_OVERLAY`)
+
+Default **on** for `--nxlink` builds. Draws a small top-left monospace HUD
+(FPS / mode file / mesh window / build tags) after the game present and before
+`eglSwapBuffers`. Toggle with **Minus + L + R**. Visual only — no extra
+per-frame nxlink lines. Full field list and constraints:
+[DEBUG_OVERLAY.md](DEBUG_OVERLAY.md).
+
+```bash
+cmake -S platforms/switch -B build/switch-nxlink \
+  -DCMAKE_TOOLCHAIN_FILE=$DEVKITPRO/cmake/Switch.cmake \
+  -DDW3_NXLINK_STDIO=ON -DDW3_NX_DEBUG_OVERLAY=OFF
+```
 
 ## Launch
 

@@ -124,9 +124,11 @@ nxlink NRO initializes libnx's default socket service before calling
 `nxlinkStdio()` and does so before input, SD mount and game logging. The socket
 result and stdio fd are recorded in `dw3.log`; connection failure is nonfatal.
 Logs continue going to `dw3.log` on SD and `svcOutputDebugString` as before.
-`--nxlink` also defaults `DW3_NX_DEBUG_MESH=ON`: one sampled `mesh dbg:` line
-alongside each `frame dt us=` (~1 Hz). Details and field meanings:
-[docs/NXLINK_DEBUG.md](../../docs/NXLINK_DEBUG.md).
+`--nxlink` also defaults `DW3_NX_DEBUG_MESH=ON` and `DW3_NX_DEBUG_OVERLAY=ON`:
+one sampled `mesh dbg:` line alongside each `frame dt us=` (~1 Hz), plus an
+on-screen HUD (FPS / mode / mesh; toggle **Minus + L + R**). Details:
+[docs/NXLINK_DEBUG.md](../../docs/NXLINK_DEBUG.md) and
+[docs/DEBUG_OVERLAY.md](../../docs/DEBUG_OVERLAY.md).
 
 libnx obtains the nxlink host address from a special final argv token supplied
 by the NetLoader. Start with hbmenu's NetLoader (press **Y**) if a third-party

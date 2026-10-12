@@ -2,6 +2,7 @@
  * Modelled on switchbrew/switch-examples graphics/opengl/es2gears.
  * PSY-Z InitPlatform / VRAM blit lands later; this owns the host surface. */
 #include "nx.h"
+#include "nx_debug_overlay.h"
 #include "nx_mesh.h"
 #include "nx_mesh_debug.h"
 #include "nx_vram_dump.h"
@@ -220,6 +221,7 @@ bool dw3_nx_gpu_init(void) {
 }
 
 void dw3_nx_gpu_shutdown(void) {
+    dw3_nx_debug_overlay_invalidate_gl();
     deinit_egl();
     s_win = NULL;
     s_width = 0;
@@ -237,6 +239,7 @@ void dw3_nx_gpu_update_mode(void) {
     }
 
     /* Must tear down EGL before nwindowSetDimensions (buffers registered). */
+    dw3_nx_debug_overlay_invalidate_gl();
     deinit_egl();
     if (!apply_window_geometry(docked)) {
         return;
@@ -698,4 +701,7 @@ void dw3_nx_gpu_present(const uint16_t *vram, int dx, int dy, int dw, int dh,
     dw3_nx_vram_dump_battle_once(vram, dx, dy, dw, dh, use_mesh);
 #endif
     dw3_nx_mesh_end_frame();
+    /* HUD after game blit; does not own the framebuffer (see DEBUG_OVERLAY.md). */
+    dw3_nx_debug_overlay_note_present(use_mesh);
+    dw3_nx_debug_overlay_draw(s_width, s_height);
 }

@@ -29,7 +29,11 @@
 #include "str_stream.h"
 
 #include "../psyz_backend/nx.h"
+#include "../psyz_backend/nx_debug_overlay.h"
 #include "../psyz_backend/nx_mesh_debug.h"
+#if DW3_NX_DEBUG_OVERLAY
+#include "debug_overlay_text.h"
+#endif
 #include "frame_dt.h"
 
 #include <stdio.h>
@@ -125,6 +129,30 @@ static void dw3_nx_vsync_pump(void) {
                       (unsigned long long)mesh.flush_us,
                       (unsigned long long)mesh.upload_us,
                       (unsigned long long)mesh.present_us);
+#if DW3_NX_DEBUG_OVERLAY
+                {
+                    Dw3DebugOverlayMeshSnap overlay_mesh;
+
+                    overlay_mesh.valid = 1;
+                    overlay_mesh.mesh_available = mesh.mesh_available;
+                    overlay_mesh.tris_enqueued = mesh.tris_enqueued;
+                    overlay_mesh.tris_flushed = mesh.tris_flushed;
+                    overlay_mesh.flush_us = mesh.flush_us;
+                    overlay_mesh.upload_us = mesh.upload_us;
+                    overlay_mesh.present_us = mesh.present_us;
+                    overlay_mesh.frames_mesh = mesh.frames_mesh;
+                    overlay_mesh.frames_blit = mesh.frames_blit;
+                    overlay_mesh.soft_fallback = mesh.soft_fallback;
+                    dw3_nx_debug_overlay_note_sample(dt_us, &overlay_mesh);
+                }
+#endif
+            }
+#elif DW3_NX_DEBUG_OVERLAY
+            {
+                Dw3DebugOverlayMeshSnap overlay_mesh;
+
+                memset(&overlay_mesh, 0, sizeof(overlay_mesh));
+                dw3_nx_debug_overlay_note_sample(dt_us, &overlay_mesh);
             }
 #endif
         }

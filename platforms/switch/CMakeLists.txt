@@ -41,6 +41,9 @@ option(DW3_NX_DEBUG_MESH "Sampled GLES mesh/present debug summary (nxlink)"
 # default as mesh debug: on for --nxlink, off for the release NRO.
 option(DW3_NX_DUMP_VRAM "Write battle VRAM/mesh FBO dumps under sdmc:/switch/dw3/"
        ${_dw3_mesh_dbg_default})
+# On-screen HUD (FPS / mode / mesh). Same nxlink default as mesh debug.
+option(DW3_NX_DEBUG_OVERLAY "On-screen debug overlay HUD (nxlink)"
+       ${_dw3_mesh_dbg_default})
 
 if(NOT CMAKE_SYSTEM_NAME STREQUAL "NintendoSwitch")
   message(FATAL_ERROR
@@ -119,6 +122,10 @@ endif()
 if(DW3_NX_DUMP_VRAM)
   target_compile_definitions(dw3-switch PRIVATE DW3_NX_DUMP_VRAM=1)
   message(STATUS "nx battle VRAM/mesh dump enabled (DW3_NX_DUMP_VRAM)")
+endif()
+if(DW3_NX_DEBUG_OVERLAY)
+  target_compile_definitions(dw3-switch PRIVATE DW3_NX_DEBUG_OVERLAY=1)
+  message(STATUS "nx on-screen debug overlay enabled (DW3_NX_DEBUG_OVERLAY)")
 endif()
 
 # EGL/GLES2 come from devkitPro's switch-* portlibs, not from libnx, and they
