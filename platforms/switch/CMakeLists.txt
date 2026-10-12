@@ -311,6 +311,9 @@ target_link_options(dw3-switch PRIVATE
   "-Wl,--wrap=CdSetDebug"
   "-Wl,--wrap=SetGraphDebug"
   "-Wl,--wrap=CdControl"
+  # DIAG (diag/stgetnext-movie-perf): the 150 sectors/s budget check, reached
+  # from inside __real_StGetNext on every poll and once per frame from VSync.
+  "-Wl,--wrap=Psyz_CdPumpStream"
   # Keep the named overlay .data/.bss orphan sections (overlay_sections.c).
   "-Wl,--undefined=__start_dw3data_fieldstg"
   "-Wl,--undefined=__start_dw3data_stplnmet"

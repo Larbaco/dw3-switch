@@ -21,6 +21,7 @@
 #include <string.h>
 
 #include "stgetnext_gate.h"
+#include "stgetnext_stats.h"
 
 int __real_LoadImage(RECT *rect, u_long *p);
 DISPENV *__real_PutDispEnv(DISPENV *env);
@@ -117,21 +118,39 @@ u_long __wrap_StFreeRing(u_long *base) {
  * against producer reset/early-wrap ABA. No timing or frame-delivery change. */
 u_long __wrap_StGetNext(u_long **addr, u_long **header) {
     Dw3StGetNextGate *empty_gate = &dw3_stgetnext_empty_gate;
+    Dw3StGetNextStats *st = &dw3_stgetnext_stats;
+    const uint64_t t_wrap0 = dw3_stgetnext_ticks();
     int guard = 0;
 
+    st->calls++;
+
     for (;;) {
-        u_long rc = __real_StGetNext(addr, header);
+        uint64_t t_real0 = dw3_stgetnext_ticks();
+        u_long rc;
+
+        st->in_real = 1;
+        rc = __real_StGetNext(addr, header);
+        st->in_real = 0;
         StHEADER *slot;
         StHEADER *head;
         s32 start;
         s32 n;
         s32 j;
 
+        st->real_calls++;
+        st->real_ticks += dw3_stgetnext_ticks() - t_real0;
+
         if (rc == 0 || StRingAddr == NULL || StRingSize <= 0 ||
             StRingIdx3 < 0 || StRingIdx3 >= StRingSize || guard++ > 4) {
             /* A frame was handed over, or the ring is unusable: a verdict from
              * the previous state must not survive into this one. */
+            if (rc == 0) {
+                st->handovers++;
+            } else {
+                st->ring_unusable++;
+            }
             dw3_stgetnext_gate_forget(empty_gate);
+            st->wrap_ticks += dw3_stgetnext_ticks() - t_wrap0;
             return rc;
         }
         /* Repeat empty poll at the same ring and cursors as a poll that already
@@ -140,12 +159,16 @@ u_long __wrap_StGetNext(u_long **addr, u_long **header) {
          * would when it finds nothing. */
         if (dw3_stgetnext_gate_hit(empty_gate, StRingAddr, StRingSize,
                                    StRingIdx1, StRingIdx3)) {
+            st->gate_hits++;
+            st->wrap_ticks += dw3_stgetnext_ticks() - t_wrap0;
             return rc;
         }
+        st->gate_misses++;
         slot = &StRingAddr[StRingIdx3];
         if (slot->id == 3 && slot->secCount > 0 && slot->secCount <= 31) {
             /* Recovery: the read cursor sits inside a frame body. Never trust a
              * remembered verdict while this path is in play. */
+            st->recoveries++;
             dw3_stgetnext_gate_forget(empty_gate);
             start = StRingIdx3 - (s32)slot->secCount;
             if (start >= 0 && start < StRingSize) {
@@ -159,6 +182,7 @@ u_long __wrap_StGetNext(u_long **addr, u_long **header) {
                     continue;
                 }
                 if (head->frameCount == slot->frameCount && head->id == 3) {
+                    st->wrap_ticks += dw3_stgetnext_ticks() - t_wrap0;
                     return rc;
                 }
             }
@@ -167,6 +191,7 @@ u_long __wrap_StGetNext(u_long **addr, u_long **header) {
                   (unsigned)slot->secCount);
             slot->id = 0;
         }
+        st->scans++;
         for (n = 1; n < StRingSize; n++) {
             j = StRingIdx3 + n;
             if (j >= StRingSize) {
@@ -180,12 +205,16 @@ u_long __wrap_StGetNext(u_long **addr, u_long **header) {
                 break;
             }
         }
+        /* The loop inspects StRingSize-1 slots when it runs to completion
+         * (n == StRingSize) and n slots when it breaks early. */
+        st->slots_compared += (uint64_t)(n >= StRingSize ? n - 1 : n);
         if (n >= StRingSize) {
             /* The read cursor was inspected by __real_StGetNext and every other
              * slot by this scan: the whole ring is clean. Remember it so repeat
              * polls at these cursors skip the scan. */
             dw3_stgetnext_gate_remember(empty_gate, StRingAddr, StRingSize,
                                         StRingIdx1, StRingIdx3);
+            st->wrap_ticks += dw3_stgetnext_ticks() - t_wrap0;
             return rc;
         }
     }
@@ -471,6 +500,14 @@ void __wrap_DecDCTReset(int mode) {
 }
 
 void __wrap_DecDCTout(u_long *buf, int size) {
+    /* MDEC path: the slice callbacks (and their LoadImage uploads) run inside
+     * this call, so one timer here covers the whole decode-and-upload cost.
+     * Only the outermost invocation is counted, to keep slices from being
+     * counted multiple times. */
+    Dw3StGetNextStats *st = &dw3_stgetnext_stats;
+    const int outermost = (g_dout_depth == 0);
+    uint64_t t_mdec0 = dw3_stgetnext_ticks();
+
     g_dout_depth++;
     __real_DecDCTout(buf, size);
     dw3_slice_stash_push(buf, size > 0 ? size * 4 : 0);
@@ -500,5 +537,9 @@ void __wrap_DecDCTout(u_long *buf, int size) {
                   "sig=%08x",
                   g_dout_top_done, g_slice_cb_count, g_rgb24_loads, sig);
         }
+    }
+    if (outermost) {
+        st->decdctout_calls++;
+        st->decdctout_ticks += dw3_stgetnext_ticks() - t_mdec0;
     }
 }
