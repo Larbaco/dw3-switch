@@ -109,19 +109,14 @@ u_long __wrap_StFreeRing(u_long *base) {
  * behind it, or on a leftover tail after that header was reused. Either way
  * the writer blocks on the slot and the picture replays the last VLC.
  *
- * The full-slot scan below is the movie busy-wait's empty-poll cost: it runs on
- * every poll that finds neither a ready frame nor the sentinel at the read
- * cursor, and on a 150 sectors/s stream it almost always finds nothing. A poll
- * that already scanned the whole ring clean is remembered -- keyed on the ring
- * identity and both cursors -- and a repeat poll at the same cursors returns
- * immediately. The producer publishes a ready frame (id 2) or the sentinel
- * (id 1) only alongside a StRingIdx1 move, and StFreeRing's reposition moves
- * StRingIdx3, so an unmoved pair cannot have gained one; see stgetnext_gate.h
- * for the ordering proof. The verdict is dropped whenever a frame is handed
- * over, the ring is unusable, or the recovery path runs, and is re-established
- * by the next full scan. */
+ * A clean full-ring scan is cached until a producer attempt or ring reset.
+ * stgetnext_invalidate.c invalidates BEFORE CdReady (all StCdInterrupt ring
+ * writes follow it), direct ready publication, and ring clear/set. Pumps with
+ * no sector budget never call CdReady, so busy-wait polls skip repeated scans.
+ * The cursor keys only reject other consumer states; they do not prove safety
+ * against producer reset/early-wrap ABA. No timing or frame-delivery change. */
 u_long __wrap_StGetNext(u_long **addr, u_long **header) {
-    static Dw3StGetNextGate empty_gate; /* zero-init: not valid until scanned */
+    Dw3StGetNextGate *empty_gate = &dw3_stgetnext_empty_gate;
     int guard = 0;
 
     for (;;) {
@@ -136,14 +131,14 @@ u_long __wrap_StGetNext(u_long **addr, u_long **header) {
             StRingIdx3 < 0 || StRingIdx3 >= StRingSize || guard++ > 4) {
             /* A frame was handed over, or the ring is unusable: a verdict from
              * the previous state must not survive into this one. */
-            dw3_stgetnext_gate_forget(&empty_gate);
+            dw3_stgetnext_gate_forget(empty_gate);
             return rc;
         }
         /* Repeat empty poll at the same ring and cursors as a poll that already
-         * scanned every slot clean: nothing can have become ready without
-         * moving a cursor, so skip the scan. Returns rc, exactly as the scan
+         * scanned every slot clean and no mutation hook ran: skip the scan.
+         * Returns rc, exactly as the scan
          * would when it finds nothing. */
-        if (dw3_stgetnext_gate_hit(&empty_gate, StRingAddr, StRingSize,
+        if (dw3_stgetnext_gate_hit(empty_gate, StRingAddr, StRingSize,
                                    StRingIdx1, StRingIdx3)) {
             return rc;
         }
@@ -151,7 +146,7 @@ u_long __wrap_StGetNext(u_long **addr, u_long **header) {
         if (slot->id == 3 && slot->secCount > 0 && slot->secCount <= 31) {
             /* Recovery: the read cursor sits inside a frame body. Never trust a
              * remembered verdict while this path is in play. */
-            dw3_stgetnext_gate_forget(&empty_gate);
+            dw3_stgetnext_gate_forget(empty_gate);
             start = StRingIdx3 - (s32)slot->secCount;
             if (start >= 0 && start < StRingSize) {
                 head = &StRingAddr[start];
@@ -189,7 +184,7 @@ u_long __wrap_StGetNext(u_long **addr, u_long **header) {
             /* The read cursor was inspected by __real_StGetNext and every other
              * slot by this scan: the whole ring is clean. Remember it so repeat
              * polls at these cursors skip the scan. */
-            dw3_stgetnext_gate_remember(&empty_gate, StRingAddr, StRingSize,
+            dw3_stgetnext_gate_remember(empty_gate, StRingAddr, StRingSize,
                                         StRingIdx1, StRingIdx3);
             return rc;
         }

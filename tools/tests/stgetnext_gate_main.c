@@ -10,7 +10,7 @@
  * Ring size and producer pacing are the production ones: StSetRing uses 32
  * slots (menus/title/movie.c) and one pump publishes at most CD_PACE_CATCHUP
  * (8) sectors (vendor/psyz .../libcd.c). The stress obeys that bound, because
- * the gate's safety rests on it.
+ * regression scenarios also include reset and early-wrap ABA.
  *
  * The model mirrors:
  *   vendor/psyz/decomp/src/libcd/c_009.c   StGetNext (id 1 reset, id 2 hand-off)
@@ -42,6 +42,11 @@ typedef struct RingState {
     int idx1, idx2, idx3;
     int endframe;
 } RingState;
+
+extern int CdReady(int mode, unsigned char *result);
+extern void StSetRing(unsigned long *ring, unsigned long size);
+extern void StClearRing(void);
+extern void data_ready_callback(void);
 
 static RingState g;
 static long g_slot_visits; /* scan-loop slot comparisons, the cost metric */
@@ -144,6 +149,7 @@ static int model_wrap(int gated, Dw3StGetNextGate *gate) {
 /* --- producer transitions --- */
 /* One video body sector at the write cursor, then the cursor advances. */
 static void model_stcd_body(int fc, int sec, int ns) {
+    CdReady(1, NULL); /* actual production invalidation hook via --wrap */
     Slot *r = &g.ring[g.idx1];
 
     r->frameCount = fc;
@@ -157,6 +163,7 @@ static void model_stcd_body(int fc, int sec, int ns) {
 static void model_stcd_wrap_sentinel(void) {
     int before = g.idx1;
 
+    CdReady(1, NULL);
     g.ring[g.idx1].id = 1;
     g.idx1 = 0;
     if (g.idx1 == before) {
@@ -184,6 +191,7 @@ static int model_publish_frame(int fc, int ns) {
     for (k = 0; k < ns; k++) {
         model_stcd_body(fc, k, ns);
     }
+    data_ready_callback();
     g.ring[start].id = 2; /* data_ready_callback: StRingAddr[StRingIdx2] */
     g.idx2 = g.idx1;
     if (g.idx1 == before) {
@@ -203,6 +211,8 @@ static void model_stfree_at(int start) {
 }
 
 static void model_clear_ring(Slot *ring) {
+    StSetRing((unsigned long *)ring, RING_SIZE);
+    StClearRing();
     memset(ring, 0, sizeof(Slot) * RING_SIZE);
     g.ring = ring;
     g.idx1 = 0;
@@ -235,7 +245,7 @@ static void compare_scenario(const char *name, Scenario fn,
                              const RingState *start, long *ungated_visits,
                              long *gated_visits) {
     RingState keep = *start;
-    Dw3StGetNextGate gate;
+    Dw3StGetNextGate *gate = &dw3_stgetnext_empty_gate;
     int rc_u[TRACE_MAX];
     int rc_g[TRACE_MAX];
     int idx_u[TRACE_MAX];
@@ -246,22 +256,22 @@ static void compare_scenario(const char *name, Scenario fn,
     int same = 1;
     int i;
 
-    memset(&gate, 0, sizeof(gate));
+    memset(gate, 0, sizeof(*gate));
     restore(&keep);
     g_trace_len = 0;
     g_slot_visits = 0;
-    fn(0, &gate);
+    fn(0, gate);
     len_u = g_trace_len;
     visits_u = g_slot_visits;
     memcpy(rc_u, g_trace_rc, sizeof(rc_u));
     memcpy(idx_u, g_trace_idx3, sizeof(idx_u));
     end_u = g;
 
-    memset(&gate, 0, sizeof(gate));
+    memset(gate, 0, sizeof(*gate));
     restore(&keep);
     g_trace_len = 0;
     g_slot_visits = 0;
-    fn(1, &gate);
+    fn(1, gate);
     len_g = g_trace_len;
     visits_g = g_slot_visits;
     memcpy(rc_g, g_trace_rc, sizeof(rc_g));
@@ -448,7 +458,39 @@ static void scn_random(int gated, Dw3StGetNextGate *gate) {
     }
 }
 
-#define MAX_SCENARIOS 12
+static void scn_reset_publish_aba(int gated, Dw3StGetNextGate *gate) {
+    for (int k=0;k<5;++k) model_stcd_body(60,k,9);
+    g.idx2=0; g.idx3=20;
+    rec(model_wrap(gated,gate));
+    CdReady(1, NULL);
+    /* StCdInterrupt secCount mismatch: init_ring_status then idx1=idx2. */
+    for (int k=g.idx2;k<g.idx1;++k) g.ring[k].id=0;
+    g.idx1=g.idx2;
+    model_publish_frame(61,5);
+    rec(model_wrap(gated,gate));
+}
+static void scn_early_wrap_aba(int gated, Dw3StGetNextGate *gate) {
+    g.idx1 = 6;
+    g.idx3 = 10;
+    rec(model_wrap(gated, gate));
+    /* Actual StCdInterrupt: 32 - 6 - 1 < 26; sentinel at 6,
+       reset to 0, six sectors of a still-incomplete 26-sector frame. */
+    model_stcd_wrap_sentinel();
+    g.idx2 = 0;
+    for (int k = 0; k < 6; ++k) model_stcd_body(50, k, 26);
+    rec(model_wrap(gated, gate));
+}
+static void scn_same_address_reuse(int gated, Dw3StGetNextGate *gate) {
+    rec(model_wrap(gated, gate));
+    model_clear_ring(g.ring);
+    /* Direct data-ready callback need not change either cursor. */
+    data_ready_callback();
+    g.ring[5].id = 2;
+    g.ring[5].nSectors = 1;
+    rec(model_wrap(gated, gate));
+}
+
+#define MAX_SCENARIOS 15
 
 int main(void) {
     RingState start;
@@ -486,6 +528,13 @@ int main(void) {
     names[count++] = "stfree_reposition";
     scns[count] = scn_ring_reset;
     names[count++] = "ring_reset";
+
+    scns[count] = scn_reset_publish_aba;
+    names[count++] = "reset_publish_aba";
+    scns[count] = scn_early_wrap_aba;
+    names[count++] = "early_wrap_aba";
+    scns[count] = scn_same_address_reuse;
+    names[count++] = "same_address_reuse";
 
     memset(&start, 0, sizeof(start));
     start.ring = g.a;
@@ -527,9 +576,9 @@ int main(void) {
            dw3_stgetnext_gate_hit(&probe, g.b, DW3_STGETNEXT_RING_MIN + 1, 0,
                                   0) == 0);
 
-    /* Every legal id 1/2 publication must move the write cursor -- the ordering
-     * the gate's proof rests on. */
-    expect("publish_moves_idx1", g_publish_moves_idx1);
-
+    /* A producer attempt invalidates even if every key remains identical. */
+    dw3_stgetnext_gate_remember(&dw3_stgetnext_empty_gate, g.a, 32, 5, 20);
+    CdReady(1, NULL);
+    expect("producer_attempt_invalidates", !dw3_stgetnext_empty_gate.valid);
     return g_fail;
 }

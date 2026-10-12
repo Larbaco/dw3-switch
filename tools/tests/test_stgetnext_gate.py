@@ -20,6 +20,8 @@ ROOT = Path(__file__).resolve().parents[2]
 @pytest.fixture(scope="module")
 def gate_output(tmp_path_factory) -> dict[str, str]:
     out = tmp_path_factory.mktemp("stgetnext_gate") / "stgetnext_gate"
+    (out.parent / "common.h").write_text("typedef unsigned char u_char; typedef unsigned long u_long;\n")
+    (out.parent / "libcd.h").write_text("/* host-only API type stub */\n")
     cmd = [
         "gcc",
         "-std=c11",
@@ -30,6 +32,11 @@ def gate_output(tmp_path_factory) -> dict[str, str]:
         "-o",
         str(out),
         str(ROOT / "tools" / "tests" / "stgetnext_gate_main.c"),
+        str(ROOT / "tools/tests/stgetnext_api_stubs.c"),
+        str(ROOT / "platforms/switch/psyz_backend/stgetnext_invalidate.c"),
+        f"-I{out.parent}",
+        "-Wl,--wrap=CdReady", "-Wl,--wrap=StSetRing",
+        "-Wl,--wrap=StClearRing", "-Wl,--wrap=data_ready_callback",
         f"-I{ROOT / 'platforms' / 'switch' / 'psyz_backend'}",
     ]
     build = subprocess.run(cmd, capture_output=True, text=True)
@@ -60,6 +67,9 @@ def test_gate_preserves_wrapper_behaviour(gate_output):
         "same_stfree_reposition",
         "same_ring_reset",
         "same_random",
+        "same_reset_publish_aba",
+        "same_early_wrap_aba",
+        "same_same_address_reuse",
     ):
         assert gate_output.get(name) == "1", name
 
@@ -84,7 +94,5 @@ def test_gate_guard_rejects_unproven_states(gate_output):
     assert gate_output["guard_rejects_other_ring"] == "1"
 
 
-def test_publish_moves_write_cursor(gate_output):
-    # The gate's safety proof rests on id 2 / id 1 only appearing with an
-    # StRingIdx1 move; the harness fails here if a scenario publishes otherwise.
-    assert gate_output["publish_moves_idx1"] == "1"
+def test_production_hook_invalidates_before_producer_attempt(gate_output):
+    assert gate_output["producer_attempt_invalidates"] == "1"
