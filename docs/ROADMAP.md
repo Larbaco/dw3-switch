@@ -466,6 +466,12 @@ speed.
   battle escape (`DW3_NX_MESH_SOFT_BATTLE`, default ON) restores software
   `RasterTriangle` + opaque blit under the FIGHTSTG gate until a dump
   shows `mesh_nonblack > 0`. See [P5.2_BATTLE_GPU.md](P5.2_BATTLE_GPU.md).
+  **Beyond approach A (ideas).** Soft battle restored the Fight picture but
+  battle still feels soft-fill limited. Do not blind-re-enable the full
+  textured mesh path. Alternatives (hybrid untextured GPU, atlas, batched
+  fill, soft edge-walk, present profiling, size-gated GPU, etc.) and a
+  1–2 day “colour before FPS” spike are in
+  [P5.2_BATTLE_GPU_IDEAS.md](P5.2_BATTLE_GPU_IDEAS.md). Field mesh stays off.
   **Nxlink mesh debug:** `--nxlink` builds default `DW3_NX_DEBUG_MESH` and
   emit a sampled `mesh dbg:` line next to `frame dt us=` (tris / path /
   flush+upload+present us). After the FIGHTSTG gate, field should stay
