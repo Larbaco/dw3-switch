@@ -20,8 +20,6 @@ ROOT = Path(__file__).resolve().parents[2]
 @pytest.fixture(scope="module")
 def gate_output(tmp_path_factory) -> dict[str, str]:
     out = tmp_path_factory.mktemp("stgetnext_gate") / "stgetnext_gate"
-    (out.parent / "common.h").write_text("typedef unsigned char u_char; typedef unsigned long u_long;\n")
-    (out.parent / "libcd.h").write_text("/* host-only API type stub */\n")
     cmd = [
         "gcc",
         "-std=c11",
@@ -34,7 +32,8 @@ def gate_output(tmp_path_factory) -> dict[str, str]:
         str(ROOT / "tools" / "tests" / "stgetnext_gate_main.c"),
         str(ROOT / "tools/tests/stgetnext_api_stubs.c"),
         str(ROOT / "platforms/switch/psyz_backend/stgetnext_invalidate.c"),
-        f"-I{out.parent}",
+        "-D__psyz",
+        f"-I{ROOT / 'vendor/psyz/psyz/include'}",
         "-Wl,--wrap=CdReady", "-Wl,--wrap=StSetRing",
         "-Wl,--wrap=StClearRing", "-Wl,--wrap=data_ready_callback",
         f"-I{ROOT / 'platforms' / 'switch' / 'psyz_backend'}",

@@ -6,7 +6,6 @@
  * Stream production and StGetNext run on the host/game thread; the audio mixer
  * does not call these stream APIs. This is not a cross-thread cache.
  */
-#include <common.h>
 #include <libcd.h>
 #include "stgetnext_gate.h"
 
