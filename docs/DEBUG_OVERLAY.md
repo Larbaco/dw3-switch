@@ -67,7 +67,17 @@ every frame. Existing ~1 Hz `frame dt us=` / `mesh dbg:` lines stay unchanged.
 ## Font / IP
 
 Tiny embedded 8×8 ASCII bitmap (no Digimon art or game fonts). Public-domain
-style glyphs only.
+style glyphs only (font8x8_basic layout).
+
+**Bit order:** each glyph row byte has **bit 0 (LSB) = leftmost pixel**,
+bit 7 = rightmost. `put_glyph` must use that convention; treating MSB as left
+mirrors every Latin glyph on the OLED (reads like `gbd 3wd` for `dw3 dbg`).
+See `platforms/switch/source/debug_overlay_glyph.h`.
+
+**UV / quad:** same TRIANGLE_STRIP corners as `nx_gpu` present — clip
+top-left samples atlas `(0,0)`, bottom-right samples `(u1,v1)` of the used
+atlas region. Atlas memory row 0 is the first HUD line; GL uploads that row
+at texture V=0, which the top of the viewport samples.
 
 ## Scale (OLED readability)
 

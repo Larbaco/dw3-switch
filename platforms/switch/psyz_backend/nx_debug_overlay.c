@@ -8,6 +8,7 @@
 #include "nx_mesh_debug.h"
 #include "nx_vram_dump.h"
 #include "overlay_host.h"
+#include "../source/debug_overlay_glyph.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -286,7 +287,8 @@ static void put_glyph(int col, int row, char ch) {
             px = HUD_PAD_X + col * FONT_W + gx;
             py = HUD_PAD_Y + row * (FONT_H + HUD_LINE_GAP) + gy;
             uint8_t *p = &s_pixels[(py * HUD_TEX_W + px) * 4];
-            if (bits & (0x80u >> gx)) {
+            /* font8x8: LSB is left. MSB-as-left mirrored Latin on OLED. */
+            if (dw3_dbg_glyph_pixel(bits, gx)) {
                 p[0] = 0xE8;
                 p[1] = 0xF0;
                 p[2] = 0xFF;
@@ -447,7 +449,11 @@ void dw3_nx_debug_overlay_draw(uint32_t fb_w, uint32_t fb_h) {
     vy = (int)fb_h - hud_h;
 
     /* Sample only the used atlas region (1:1 texels), then NN-upscale via
-     * viewport size * integer scale + GL_NEAREST. */
+     * viewport size * integer scale + GL_NEAREST.
+     *
+     * UV matches nx_gpu present / mesh blit: clip top-left samples (0,0),
+     * clip bottom-right samples (u1,v1). Atlas row 0 is uploaded at GL V=0
+     * (TexImage bottom), so v=0 at clip top shows the first HUD line. */
     u1 = (float)content_w / (float)HUD_TEX_W;
     v1 = (float)content_h / (float)HUD_TEX_H;
     quad[0] = -1.f;
