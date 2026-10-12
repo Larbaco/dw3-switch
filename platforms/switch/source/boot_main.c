@@ -29,7 +29,9 @@
 #include "str_stream.h"
 
 #include "../psyz_backend/nx.h"
+#include "../psyz_backend/nx_crash.h"
 #include "../psyz_backend/nx_debug_overlay.h"
+#include "../psyz_backend/nx_mem_budget.h"
 #include "../psyz_backend/nx_mesh_debug.h"
 #if DW3_NX_DEBUG_OVERLAY
 #include "debug_overlay_text.h"
@@ -58,9 +60,42 @@ void StCdInterrupt(void);
 #endif
 
 static PsyzVSyncCb g_prev_vsync_cb;
+static int g_applet_exit_locked;
+static int g_quit_saves_flushed;
 
 static uint64_t restore_now_us(void) {
     return armTicksToNs(armGetSystemTick()) / 1000ULL;
+}
+
+/* Current libnx: appletGetMessage does eventWait(..., 0), so appletMainLoop
+ * is non-blocking. Older notes that it hung the first frame applied to an
+ * older SDK where GetMessage waited forever. Drain a few messages per vsync
+ * so ExitRequested (HOME) sets Psyz_QuitRequested and dirty flat saves flush
+ * before the process is torn down (atexit is not reliable on HOME). */
+static void dw3_nx_service_applet_quit(void) {
+    int n;
+
+    if (Psyz_QuitRequested()) {
+        return;
+    }
+    for (n = 0; n < 4; n++) {
+        if (appletMainLoop()) {
+            continue;
+        }
+        dw3_nx_set_quit_requested();
+        if (!g_quit_saves_flushed) {
+            int flush_rc;
+
+            g_quit_saves_flushed = 1;
+            flush_rc = memcard_host_flush_all();
+            if (flush_rc != 0) {
+                ERRORF("applet exit: memcard flush_all failed");
+            } else {
+                INFOF("applet exit: flat saves flushed");
+            }
+        }
+        break;
+    }
 }
 
 #ifdef DW3_NXLINK_STDIO
@@ -84,14 +119,14 @@ static void dw3_nxlink_stdio_shutdown(void) {
  * (StCdIntrFlag + Psyz_CdPumpStream), exactly as the PC host does, so streaming
  * movies keep their sectors coming.
  *
- * Deliberately does NOT call appletMainLoop(): it wraps appletGetMessage, which
- * *blocks* until the applet sends something, and this runs inside the game's
- * frame — the first call hung the boot before its first frame. libnx's own docs
- * scope it to "within a main loop", which dw3_game_main() never returns to.
- * Quitting is the game's own business: its loop polls Psyz_QuitRequested.
+ * Also drains applet messages (HOME / ExitRequested) via non-blocking
+ * appletMainLoop — see dw3_nx_service_applet_quit. The game loop then sees
+ * Psyz_QuitRequested and returns from dw3_game_main.
  */
 static void dw3_nx_vsync_pump(void) {
     static unsigned pumps;
+
+    dw3_nx_service_applet_quit();
 
     /* The pump runs once per VSync(), from inside it, *after* the frame was
      * presented — so the count is a boot progress meter for free. The game's
@@ -114,6 +149,17 @@ static void dw3_nx_vsync_pump(void) {
 
         if (dw3_frame_dt_sample(&frame_dt, pumps, restore_now_us(), &dt_us)) {
             INFOF("frame dt us=%llu", (unsigned long long)dt_us);
+#if DW3_NX_DEBUG_MEM
+            {
+                Dw3NxMemBudgetSample mem;
+
+                dw3_nx_mem_budget_sample(&mem);
+                dw3_nx_mem_budget_log(&mem);
+#if DW3_NX_DEBUG_OVERLAY
+                dw3_nx_debug_overlay_note_mem(&mem);
+#endif
+            }
+#endif
 #if DW3_NX_DEBUG_MESH
             {
                 Dw3NxMeshDebugWindow mesh;
@@ -381,8 +427,8 @@ static int init_paths(void) {
         ERRORF("memcard ensure failed under %s", memdir);
         return -1;
     }
-    /* Dirty flat saves flush on clean exit (P5.3). Psyz_QuitRequested is
-     * still 0 and vsync does not call appletMainLoop — HOME remains a gap. */
+    /* Dirty flat saves also flush on HOME via vsync appletMainLoop (P5.3).
+     * atexit covers clean return from dw3_game_main / process exit. */
     atexit(memcard_host_shutdown);
     INFOF("memcard dir=%s", memdir);
 
@@ -449,9 +495,24 @@ int main(int argc, char **argv) {
     INFOF("nxlink socket init=0x%08x stdio fd=%d",
           (unsigned)g_nxlink_socket_result, g_nxlink_fd);
 #endif
+    /* P5.4: SD crash report sink. Does not touch memcard atexit / quit-flush. */
+    dw3_nx_crash_install();
+
+    /* HOME exit request: give the process ~15s to flush and leave main()
+     * instead of an immediate force-kill (see appletLockExit). */
+    if (R_SUCCEEDED(appletLockExit())) {
+        g_applet_exit_locked = 1;
+        INFOF("appletLockExit OK");
+    } else {
+        ERRORF("appletLockExit failed; HOME may force-kill before flush");
+    }
 
     if (!dw3_nx_gpu_init()) {
         ERRORF("dw3_nx_gpu_init failed");
+        if (g_applet_exit_locked) {
+            appletUnlockExit();
+            g_applet_exit_locked = 0;
+        }
 #ifdef DW3_NXLINK_STDIO
         dw3_nxlink_stdio_shutdown();
 #endif
@@ -460,6 +521,10 @@ int main(int argc, char **argv) {
     INFOF("EGL/GLES2 surface up");
 
     if (init_paths() != 0) {
+        if (g_applet_exit_locked) {
+            appletUnlockExit();
+            g_applet_exit_locked = 0;
+        }
 #ifdef DW3_NXLINK_STDIO
         dw3_nxlink_stdio_shutdown();
 #endif
@@ -478,12 +543,20 @@ int main(int argc, char **argv) {
               (void *)dw3_nx_vsync_pump);
     }
     INFOF("entering dw3_game_main()");
+#if DW3_NX_FORCE_CRASH
+    /* Debug builds only — see docs/P5.4_CRASH.md. */
+    dw3_nx_crash_force_fault();
+#endif
     {
         int game_result = dw3_game_main();
         memcard_host_shutdown();
 #ifdef DW3_NXLINK_STDIO
         dw3_nxlink_stdio_shutdown();
 #endif
+        if (g_applet_exit_locked) {
+            appletUnlockExit();
+            g_applet_exit_locked = 0;
+        }
         return game_result;
     }
 }

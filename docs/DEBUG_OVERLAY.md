@@ -30,7 +30,9 @@ or opaque VRAM blit), **before** `eglSwapBuffers`. The overlay never owns the
 game framebuffer permanently: it is a second GLES pass (textured corner quad)
 on the current EGL surface, then the existing swap proceeds.
 
-P5.4 crash / assert overlay is out of scope; leave a hook comment only.
+P5.4 **on-screen** crash / assert overlay is still out of scope here; leave
+a hook comment only. The SD text report is separate — see
+[P5.4_CRASH.md](P5.4_CRASH.md).
 
 ## Toggle
 
@@ -88,10 +90,15 @@ shipped seed).
 | `flush/up/pres us=…` | Optional timing from the same window |
 | `build: diag solid <tip>` | When `DW3_NX_MESH_DIAG` (tip = short git hash) |
 | `build: nxlink mesh dump` | Non-DIAG builds: which compile flags are defined |
+| `heap used/arenaK hw=…` | P5.1 sample (`DW3_NX_DEBUG_MEM`) — game heap KiB |
+| `fc=… hw=… libc=…` | File-cache tag + newlib used (KiB) |
+| `build: nxlink mesh dump mem` | Which compile flags are defined |
 
 Stage `stageFile` is **not** scraped from logs. MVP shows mode file id only;
 a future latch can expose the last restored sub-overlay without touching
-memcard / flat-save work.
+memcard / flat-save work. Memory fields are instrumentation toward P5.1;
+they do not prove a 2-hour flat heap by themselves
+(see [P5.1_MEMORY.md](P5.1_MEMORY.md)).
 
 ## Stdio discipline
 
@@ -144,4 +151,5 @@ mirror the same fields with SDL debug text; no PC HUD in the MVP.
 ## Related
 
 - P5.2 mesh / present: [P5.2_BATTLE_GPU.md](P5.2_BATTLE_GPU.md), [NXLINK_DEBUG.md](NXLINK_DEBUG.md)
-- P5.4 crash overlay: still open in [ROADMAP.md](ROADMAP.md) (separate from this HUD)
+- P5.4 SD crash report: [P5.4_CRASH.md](P5.4_CRASH.md) (landed); on-screen
+  assert overlay still open in [ROADMAP.md](ROADMAP.md)

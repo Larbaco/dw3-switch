@@ -134,4 +134,7 @@ void Psyz_PadsPoll(void);
 int Psyz_VideoVSync(int mode);
 int Psyz_QuitRequested(void);
 
+/* Set by the Switch boot host when appletMainLoop reports exit (HOME). */
+void dw3_nx_set_quit_requested(void);
+
 #endif /* DW3_SWITCH_PSYZ_NX_H */

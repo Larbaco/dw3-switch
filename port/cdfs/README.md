@@ -49,8 +49,24 @@ gcc -std=c11 -Wall -Wextra -O2 \
 `tools/tests/test_cdfs.py` builds this CLI and checks byte-identical reads
 against `tools/testdata/cdfs_mini/` (no real disc).
 
+## Formal suite (P2.5 / P4.5)
+
+```bash
+gcc -std=c11 -Wall -Wextra -O2 \
+  -o build/cdfs_suite tools/cdfs_suite.c port/cdfs/cdfs.c -Iport/cdfs
+./build/cdfs_suite --self-test /tmp/cdfs-self
+# Packed PC or SD tree (same relative layout):
+./build/cdfs_suite --root runtime/us
+./build/cdfs_suite --root /media/…/switch/dw3/us
+```
+
+`tools/tests/test_cdfs_suite.py` always runs `--self-test` (map load, path
+reject, read / `read_at` / LBA). It also runs `--root` when `runtime/us`,
+`runtime/eu`, `DW3_CDFS_ROOT`, or `DW3_SD_RUNTIME` points at a packed tree.
+Details: `docs/P4.5_STATUS.md`.
+
 ## Owner data (skipped in CI)
 
 When `runtime/us/` exists locally (own disc, never committed), spot-check a
-few ids by comparing `cdfs_cat` output to the packed files. CI must not
-require `disks/` or `runtime/`.
+few ids by comparing `cdfs_cat` output to the packed files, or run
+`cdfs_suite --root runtime/us`. CI must not require `disks/` or `runtime/`.

@@ -131,17 +131,16 @@ static void thread_trampoline(void *arg) {
 /* The game's loop polls this to notice that it should stop. The PSP backend
  * reads a flag its exit callback sets.
  *
- * Do NOT reach for appletMainLoop() here, which is the obvious-looking answer:
- * it wraps appletGetMessage, which blocks until the applet sends something, and
- * the game polls this from inside its frame loop — the first call hangs. The
- * libnx equivalent of the PSP exit callback is an applet hook
- * (appletSetHook with AppletHookType_OnExitRequest) setting a flag; until that
- * is wired, report "no quit requested" so the game keeps running.
- *
- * Consequence, and it is a real one: the home button's exit request is ignored.
- * Tracked with the other exit/sleep work in docs/ROADMAP.md P5.3 /
- * docs/P5.3_FLAT_SAVE.md (flat-save atexit flush landed; HOME quit has not). */
-int Psyz_QuitRequested(void) { return 0; }
+ * On Switch, boot_main's vsync pump drains applet messages with
+ * appletMainLoop() (non-blocking in current libnx: appletGetMessage uses
+ * eventWait timeout 0) and calls dw3_nx_set_quit_requested() on HOME /
+ * ExitRequested. Do not call appletMainLoop from here — the host owns the
+ * drain so it can flush flat saves in the same path (P5.3). */
+static volatile int g_quit_requested;
+
+void dw3_nx_set_quit_requested(void) { g_quit_requested = 1; }
+
+int Psyz_QuitRequested(void) { return g_quit_requested; }
 
 int Psyz_OsThreadStart(void (*fn)(void), const char *name) {
     /* PSY-Z hands over a bare function pointer, so the Thread object and the

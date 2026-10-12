@@ -44,6 +44,9 @@ option(DW3_NX_DUMP_VRAM "Write battle VRAM/mesh FBO dumps under sdmc:/switch/dw3
 # On-screen HUD (FPS / mode / mesh). Same nxlink default as mesh debug.
 option(DW3_NX_DEBUG_OVERLAY "On-screen debug overlay HUD (nxlink)"
        ${_dw3_mesh_dbg_default})
+# P5.1 sampled heap / file-cache / VRAM-emulation budget (nxlink ~1 Hz).
+option(DW3_NX_DEBUG_MEM "Sampled memory-budget summary (nxlink)"
+       ${_dw3_mesh_dbg_default})
 # Recovery: keep FIGHTSTG gate but force software RasterTriangle in battle.
 # preview.10 dumps showed mesh FBO all-black while tris_flush was huge; opaque
 # software present restores a readable fight until mesh sampling draws non-black.
@@ -57,6 +60,11 @@ option(DW3_NX_MESH_SOFT_BATTLE
 # Runtime: DW3_MESH_DIAG=1. Does not flip soft_battle default.
 option(DW3_NX_MESH_DIAG
        "Mesh diag: magenta clear/verts + cyan ssquad on gpu-solid, mesh-only present"
+       OFF)
+# P5.4: deliberate null write after boot so the exception handler can be
+# verified on hardware. Soft default OFF — never on in release/preview NROs.
+option(DW3_NX_FORCE_CRASH
+       "Force a CPU fault after boot (P5.4 crash-report smoke only)"
        OFF)
 
 if(NOT CMAKE_SYSTEM_NAME STREQUAL "NintendoSwitch")
@@ -106,6 +114,11 @@ message(STATUS "DW3_DEFAULT_RUNTIME=${_dw3_default_runtime}")
 # psyz_backend/*.c wholesale — P4.4-P4.6 fill in the placeholder units.
 file(GLOB DW3_NX_BACKEND_SOURCES CONFIGURE_DEPENDS
   "${CMAKE_CURRENT_SOURCE_DIR}/psyz_backend/*.c")
+# P5.4: keep the crash TU visible in the target recipe (also matched by the
+# glob above — list() REMOVE_DUPLICATES drops the second path).
+list(APPEND DW3_NX_BACKEND_SOURCES
+  "${CMAKE_CURRENT_SOURCE_DIR}/psyz_backend/nx_crash.c")
+list(REMOVE_DUPLICATES DW3_NX_BACKEND_SOURCES)
 
 add_executable(dw3-switch
   # boot_main.c is the game boot path and owns main(). source/main.c stays the
@@ -207,6 +220,10 @@ if(DW3_NX_DEBUG_OVERLAY)
   target_compile_definitions(dw3-switch PRIVATE DW3_NX_DEBUG_OVERLAY=1)
   message(STATUS "nx on-screen debug overlay enabled (DW3_NX_DEBUG_OVERLAY)")
 endif()
+if(DW3_NX_DEBUG_MEM)
+  target_compile_definitions(dw3-switch PRIVATE DW3_NX_DEBUG_MEM=1)
+  message(STATUS "nx memory-budget summary enabled (DW3_NX_DEBUG_MEM)")
+endif()
 if(DW3_NX_MESH_SOFT_BATTLE)
   target_compile_definitions(dw3-switch PRIVATE DW3_NX_MESH_SOFT_BATTLE=1)
   message(STATUS "nx battle mesh soft RasterTriangle (DW3_NX_MESH_SOFT_BATTLE)")
@@ -217,6 +234,12 @@ endif()
 if(DW3_NX_MESH_DIAG)
   target_compile_definitions(dw3-switch PRIVATE DW3_NX_MESH_DIAG=1)
   message(STATUS "nx mesh DIAG enabled (DW3_NX_MESH_DIAG)")
+endif()
+if(DW3_NX_FORCE_CRASH)
+  target_compile_definitions(dw3-switch PRIVATE DW3_NX_FORCE_CRASH=1)
+  message(STATUS "nx FORCE crash after boot enabled (DW3_NX_FORCE_CRASH) — P5.4 only")
+else()
+  target_compile_definitions(dw3-switch PRIVATE DW3_NX_FORCE_CRASH=0)
 endif()
 
 # EGL/GLES2 come from devkitPro's switch-* portlibs, not from libnx, and they
@@ -317,7 +340,9 @@ target_link_options(dw3-switch PRIVATE
 
 # .nacp + .nro from the devkitPro platform module. Passing NACP is what stops
 # elf2nro falling back to its stock "HOMEBREW" asset section — the trap the
-# Makefile build hit (see platforms/switch/README.md).
+# Makefile build hit (see platforms/switch/README.md). ICON is a 256×256 JPEG
+# (platforms/switch/icon.jpg); regenerate from docs/assets/icon-256.png if the
+# art changes. Without ICON, nx_create_nro embeds libnx's default_icon.jpg.
 nx_generate_nacp(
   OUTPUT "${CMAKE_BINARY_DIR}/${DW3_NRO_NAME}.nacp"
   NAME "${DW3_NACP_NAME}"
@@ -330,4 +355,5 @@ file(REMOVE "${CMAKE_BINARY_DIR}/${DW3_NRO_NAME}.nacp")
 nx_create_nro(dw3-switch
   OUTPUT "${CMAKE_BINARY_DIR}/${DW3_NRO_NAME}.nro"
   NACP "${CMAKE_BINARY_DIR}/${DW3_NRO_NAME}.nacp"
+  ICON "${CMAKE_CURRENT_SOURCE_DIR}/icon.jpg"
 )

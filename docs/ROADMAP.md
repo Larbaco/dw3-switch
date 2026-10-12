@@ -119,10 +119,13 @@ the host, replace MIPS-only pieces, and reach the title screen on PC.
   reserved for later `cdReadyCallback`-style async. PSY-Z `libcd` kept
   for STR streaming only. Sector/EOF notes:
   [CDFS_NOTES.md](CDFS_NOTES.md). Host CLI + tests:
-  `tools/cdfs_cat.c`, `tools/tests/test_cdfs.py` (mini fixture; owner
-  `runtime/us` spot-check skipped in CI).
+  `tools/cdfs_cat.c`, `tools/cdfs_suite.c`, `tools/tests/test_cdfs.py`,
+  `tools/tests/test_cdfs_suite.py` (mini fixture always; packed
+  `runtime/us` / `DW3_SD_RUNTIME` when present; skipped in CI without
+  owner data).
   Done when: fixture reads are byte-identical — verified. Full
   `FILE_CACHE.load` wiring is later (title boot / engine integrate).
+  P4.5 reuses this suite against the SD layout.
 - [x] **P2.6 Static overlay model.** `port/overlays/`: descriptor table
   `{file id → entry, data, data_init, bss}`, `loadModeOverlay` /
   `loadSubOverlay` host path (`0008`) restores initial `.data` **only
@@ -356,13 +359,25 @@ console.
   `handheld=1` on the preview.5 boot) and on a Pro Controller. Rumble
   stays the P10.4 stub and is optional for this item. See
   `docs/P4.4_INPUT_STATUS.md`.
-- [ ] **P4.5 Filesystem + log + time.** `romfs:`/`sdmc:` for the runtime
+- [x] **P4.5 Filesystem + log + time.** `romfs:`/`sdmc:` for the runtime
   layout from P1.6, nxlink/stdout logging, `VSync`/`RCnt` timing.
-  Done when: P2.5's cdfs tests pass on hardware against the SD layout.
+  Done when: formal P2.5 CDFS suite passes against the packed P1.6 tree
+  (PC `runtime/<ver>` or Switch SD `…/switch/dw3/<ver>`): map load, path
+  reject, file-id read, `cdfs_read_at`, `cdfs_lookup_lba`.
+  **Status:** `tools/cdfs_suite` + `tools/tests/test_cdfs_suite.py`;
+  host evidence against owner `runtime/us`. SD validation = same suite with
+  `--root` on a mounted/copied card tree (`docs/P4.5_STATUS.md`). OLED
+  `sdmc:` I/O already evidenced by preview.4 boot. `nx_file` / `nx_os`
+  mount and thread fixes covered by `test_switch_backend.py`.
 - [ ] **P4.6 Static modules on Switch.** Confirm P2.6 needs no `dlopen`;
   if PSY-Z's module API is required, provide a static `Psyz_ModuleOpen`
   that dispatches to the linked table.
   Done when: all overlays switch on hardware.
+  **Status (2026-10-12):** no-`dlopen` decision stands (`nx_module.c` empty
+  TU; modes/stages already linked). OLED owner checklist + nxlink restore
+  markers (`kind=mode|sub`) + `tools/parse_overlay_nxlink.py` are in
+  `docs/P4.6_MODULES_STATUS.md`. Gate stays open until that checklist is
+  filled from a hardware capture — preview field/battle smoke is not enough.
 - [x] **P4.7 Boot the game.** Link the Phase 3 image against the Switch
   backend and run from hbmenu.
   Done when: title screen on hardware.
@@ -407,14 +422,15 @@ console.
   extract, the copy progress bar, and the left stick. The opening-video
   picture is unchanged from preview.4. EU is unchanged. See
   `docs/RUNTIME_LAYOUT.md`.
-  **Still open:** P4.5's formal P2.5 CDFS suite on the SD, and P4.6's
-  complete overlay sweep on hardware. P4.4 is ticked: handheld Joy-Con and
-  a Pro Controller both walk with the left stick. The preview.4
-  log proves several runtime paths, not those full acceptance suites.
+  **Still open:** P4.6's OLED overlay-restore checklist on hardware
+  (`docs/P4.6_MODULES_STATUS.md` — harness ready; no evidence row yet).
+  P4.4 and P4.5 are ticked (stick on OLED; formal CDFS suite on packed
+  runtime / SD layout — `docs/P4.5_STATUS.md`). The preview.4 log alone
+  was not the CDFS suite; `tools/cdfs_suite` is.
 
   **Gate:** title + field + battle on a Switch. **Met (2026-10-11)** from the
   OLED preview.4 run: main menu/new game, multiple map transitions, and battle
-  were owner-confirmed. This does not close the individual P4.5–P4.6 criteria.
+  were owner-confirmed. This does not close the individual P4.6 criterion.
 
 ## Phase 5 — Playable on Switch
 
@@ -424,6 +440,11 @@ speed.
 - [ ] **P5.1 Memory budget.** Heap arena, file cache and VRAM emulation
   sized for the console; no allocations after init in the frame loop.
   Done when: a 2-hour session shows flat memory in a debug overlay.
+  **Instrumentation (in progress, not done).** `--nxlink` builds sample
+  game-heap used/free/high-water, `MEM_FILE_CACHE`, fixed VRAM-emulation
+  footprint, and newlib `mallinfo` at the ~1 Hz `frame dt` cadence
+  (`mem dbg:` line + HUD lines). See [P5.1_MEMORY.md](P5.1_MEMORY.md).
+  This is measurement only — not a proven 2h flat session.
 - [ ] **P5.2 Performance pass.** Profile GTE/GPU emulation and the
   drawing path on handheld clocks. Decide software vs. a GL renderer.
   The frame-time check that used to be the P4.2 done-when lives here.
@@ -533,21 +554,30 @@ speed.
   See [P5.3_FLAT_SAVE.md](P5.3_FLAT_SAVE.md).
   **Preview.17 OLED (2026-10-12):** owner confirmed option B bar feel is
   correct for **load and save** (tip `413efb8` / #84). Keep 100 frames.
-  **Still open:** HOME / `appletMainLoop` quit path (`Psyz_QuitRequested`
-  still 0); sleep/focus flush. Cross-port overwrite and Continue after
-  preview.14 PASS; a dedicated clean-exit + relaunch smoke is still nice
-  but no longer the P5.3 OLED save blocker. Emulator conversion remains
-  P9.6.
+  **HOME quit flush (2026-10-12):** Switch vsync drains non-blocking
+  `appletMainLoop` (current libnx `appletGetMessage` timeout 0), sets
+  `Psyz_QuitRequested`, calls `memcard_host_flush_all`, and uses
+  `appletLockExit` for a cleanup window. See
+  [P5.3_FLAT_SAVE.md](P5.3_FLAT_SAVE.md).
+  **Still open:** sleep/focus-loss flush + time-delta clamp (P10.2);
+  OLED smoke that HOME after SAVE / mid-write-section leaves flats
+  intact and Continue reloads. Emulator conversion remains P9.6.
   **Preview.4 / .5 notes (kept):** earlier `.mcr` writes and the data-frame
   XOR fault (`0x7F` / partner index) are historical; XOR must stay off
   data frames. Done when: a save this port wrote loads after a clean exit
-  and a relaunch on hardware (HOME path optional follow-up / P10.2).
+  (including HOME) and a relaunch on hardware.
 - [ ] **P5.4 Error reporting.** Crash handler that writes a log + last
   mode/stage id to SD; assert overlay.
   Done when: a forced fault produces a readable report.
-  Note: the P5.2 nxlink on-screen HUD (`DW3_NX_DEBUG_OVERLAY`,
-  [DEBUG_OVERLAY.md](DEBUG_OVERLAY.md)) is triage-only and leaves a hook
-  comment for a future crash overlay; it does not satisfy this task.
+  **SD crash report (2026-10-12):** `__libnx_exception_handler` writes
+  `sdmc:/switch/dw3/crash_report.txt` (version, reason, mode/stage file
+  ids, PC/LR/FAR/ESR). Install from `boot_main` after SD+log open; does
+  not touch P5.3 memcard atexit. Force-fault: `-DDW3_NX_FORCE_CRASH=ON`
+  (soft default OFF). See [P5.4_CRASH.md](P5.4_CRASH.md).
+  **Still open:** on-screen assert overlay (HUD hook in
+  [DEBUG_OVERLAY.md](DEBUG_OVERLAY.md) remains triage-only).
+  Note: the P5.2 nxlink on-screen HUD (`DW3_NX_DEBUG_OVERLAY`) is not a
+  substitute for this task.
 - [ ] **P5.5 Stage sweep on hardware.** P3.8 again on the console.
 
 Gate: start → first boss on hardware, both versions.
@@ -708,11 +738,11 @@ Gate: P8.2 works with an owner-supplied minimal pack. P8.4 is best-effort.
 ## Phase 9 — Port options menu
 
 Starts after the Phase 8 gate in the planned order (or earlier once at
-least one non-vanilla port feature exists to toggle). P9.1 is an early
-note. The phase has not started. Goal: a title / main
-menu entry that exposes toggles for **every port-added feature** that is
-not part of the original PS1 game, with vanilla-safe defaults and
-persistence on owner storage. Details: [PORT_OPTIONS.md](PORT_OPTIONS.md).
+least one non-vanilla port feature exists to toggle). P9.1 is done; P9.2
+entry path is investigated (see [PORT_OPTIONS.md](PORT_OPTIONS.md)
+“Entry investigation”). Goal: a title / main menu entry that exposes
+toggles for **every port-added feature** that is not part of the original
+PS1 game, with vanilla-safe defaults and persistence on owner storage.
 
 - [x] **P9.1 Goal note.** Document scope (port-only toggles), layering
   (`port/` registry + owner config file; hosts stay thin), and that
@@ -721,9 +751,14 @@ persistence on owner storage. Details: [PORT_OPTIONS.md](PORT_OPTIONS.md).
   points at Phase 9 / that note.
 - [ ] **P9.2 Menu entry and shell.** Add a port options entry on the
   title / main menu that opens and closes a dedicated screen without
-  breaking the vanilla title flow (PC and Switch).
+  breaking the vanilla title flow (PC and Switch). Hook: `PORT_HOST`
+  glue on `STDWTITL` `runOptions` + shell in `port/options/` (see
+  [PORT_OPTIONS.md](PORT_OPTIONS.md) Entry investigation).
+  **In progress (PC):** Select/Backspace MVP opens `port/options` shell
+  on title NG/Continue; Triangle closes; stub registry; unit tests.
+  Switch Minus mapping + third cursor row still open.
   Done when: the screen is reachable from the main menu and returns
-  cleanly to it.
+  cleanly to it (PC + Switch; TTB print on PC).
 - [ ] **P9.3 Toggle registry.** Maintain a registry of non-native features
   (Phase 6–8 items and later), each with a default equivalent to stock
   behaviour (or documented exception).

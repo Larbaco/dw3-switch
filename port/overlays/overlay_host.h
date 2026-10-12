@@ -40,6 +40,10 @@ int dw3_overlay_restore(int32_t file_id);
  * update this. Used by the Switch mesh gate (FIGHTSTG only). 0 = none. */
 int32_t dw3_overlay_current_mode_file(void);
 
+/* Last restored sub-overlay (desc->entry == NULL), e.g. field stageFile.
+ * 0 = none yet. Used by the Switch crash report (P5.4). */
+int32_t dw3_overlay_current_sub_file(void);
+
 /* Title-path overlay tables (STDWTITL + field/battle/menus/…). Call once. */
 void dw3_overlay_register_us_title(void);
 void dw3_overlay_register_eu_title(void);

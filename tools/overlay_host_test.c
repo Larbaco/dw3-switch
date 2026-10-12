@@ -149,6 +149,9 @@ int main(void) {
     if (dw3_overlay_current_mode_file() != FILE_OVL_A) {
         return fail("sub load clobbered mode file");
     }
+    if (dw3_overlay_current_sub_file() != FILE_OVL_SUB) {
+        return fail("sub load did not latch stage/sub file");
+    }
     if (memcmp(ovl_sub_data, ovl_sub_data_init, sizeof(ovl_sub_data)) != 0) {
         return fail("SUB data not restored");
     }

@@ -62,3 +62,57 @@ focus-loss pause + delta clamp, memcard write-through/flush, rotating
   toggle (pick one in P9.4 and stick to it).
 - Do not write port options into the memcard image unless the user opts
   into an explicit “embed in save” experiment later.
+
+## Entry investigation (P9.2)
+
+Vanilla US/EU title (`STDWTITL`) has no Options item: after PRESS START the
+menu only offers **New Game** / **Continue** (`menus/title/menu.c`
+`runOptions`). Confirm is `PAD_CROSS`; choices `1` / `2` / `3` drive
+`STDWTITL_leaveTitle` → `MODE_NEW_GAME` / `MODE_CONTINUE` / opening movie.
+There is no third TIM sprite for a Config label.
+
+| Piece | Location |
+|---|---|
+| Menu list + pad SM | `vendor/dw3_decomp/src/menus/title/menu.c` |
+| Mode leave / fade | `…/title/title.c` (`STDWTITL_stepTitle` / `leaveTitle`) |
+| Overlay root | `…/title/scene.c` (`STDWTITL_start`) |
+| Cursor XY | `…/title/data/stdwtitl.c` (`STDWTITL_menuCursorPositions`) |
+| Host link | `port/CMakeLists.txt` → `DW3_TITLE_SOURCES` |
+
+**Recommended hook:** keep the shell in new `port/options/`; add a thin
+`PORT_HOST` patch on `runOptions` / `STDWTITL_tickMenu` so opening Config
+never sets `choice` and never calls `leaveTitle`. Stay on `MODE_TITLE`
+until the shell closes (Triangle / Back), then resume the vanilla options
+substate. Prefer a third cursor row drawn with a shared `port/` text path
+(PC + Switch); Select-only (`PAD_SELECT`, Switch **Minus**) is an acceptable
+MVP if the third-row drawer is not ready. Do **not** put the product entry
+in `nx_debug_overlay` / battle-mode chords (`platforms/switch`).
+
+**Risks:** accidental `choice` 1/2 while the shell is open; input passthrough
+confirming Continue underneath; PRESS START timeout (`choice=3`) if entry is
+wired too early; clipping a third row near y=194 on 240p.
+
+Full write-up (session notes, not git): 
+`~/.cursor/projects/mnt-windows-Jogos-dw3-switch/notes/p92-main-menu-port-options-entry.txt`.
+
+## PC bring-up (P9.2 MVP)
+
+While **New Game / Continue** are shown on the title menu, press
+**Select** to open the port options shell. On the PSY-Z SDL keyboard map
+that is **Backspace**. Close with **Triangle** (**S** on the keyboard).
+The shell stays on `MODE_TITLE` and does not set the title menu `choice`
+(New Game / Continue / timeout still work after close).
+
+| Action | Pad | PC keyboard (PSY-Z) | Switch (later) |
+|---|---|---|---|
+| Open Config | `PAD_SELECT` | **Backspace** | Minus (alone; avoid debug chords) |
+| Close / Back | `PAD_TRIANGLE` | **S** | B / Y cancel layout TBD |
+| Confirm toggle | `PAD_CROSS` | **X** | A (stub no-ops for now) |
+
+Implementation: `port/options/`, `port/ui/port_text.c`, patch
+`0044-PORT_HOST-p92-title-port-options.patch`. Stub toggles (widescreen
+default **off**, fast-forward) are document-only until P9.3.
+
+Headless smoke: `DW3_AUTO_PAD=start,select` then
+`DW3_PORT_OPTIONS_FB_DUMP=/tmp/dw3-p92-options-ttb/shell.ppm`
+`DW3_PORT_OPTIONS_QUIT_AFTER_DUMP=1`.

@@ -28,7 +28,23 @@ section**: hbmenu shows no title/author/version (even though `APP_TITLE`,
 LibHac-based loaders reject the file — Ryujinx dies with
 `NullReferenceException` in `Nro.OpenNroAssetSection`. A correct build has a
 16 KiB asset section past the executable: `file size - NRO size field`
-(`0x18` in the header) should be 16440.
+(`0x18` in the header) should be 16440 with the stock libnx icon; a custom
+JPEG icon makes that section larger by the icon file size.
+
+### Homebrew icon (game image)
+
+The CMake game `.nro` passes `ICON` to `nx_create_nro` so `elf2nro` embeds
+[`icon.jpg`](icon.jpg) (256×256 JPEG). Canonical source art is
+[`docs/assets/icon-256.png`](../../docs/assets/icon-256.png); regenerate the
+JPEG after art changes:
+
+```bash
+convert docs/assets/icon-256.png -resize 256x256! -quality 90 \
+  platforms/switch/icon.jpg
+```
+
+hbmenu shows this icon for SD installs (and most homebrew launchers). The
+Makefile `host_hello` sample keeps the libnx default icon.
 
 ### hbmenu version (game image)
 
@@ -146,11 +162,13 @@ nxlink NRO initializes libnx's default socket service before calling
 `nxlinkStdio()` and does so before input, SD mount and game logging. The socket
 result and stdio fd are recorded in `dw3.log`; connection failure is nonfatal.
 Logs continue going to `dw3.log` on SD and `svcOutputDebugString` as before.
-`--nxlink` also defaults `DW3_NX_DEBUG_MESH=ON` and `DW3_NX_DEBUG_OVERLAY=ON`:
-one sampled `mesh dbg:` line alongside each `frame dt us=` (~1 Hz), plus an
-on-screen HUD (FPS / mode / mesh; toggle **Minus + L + R**). Details:
-[docs/NXLINK_DEBUG.md](../../docs/NXLINK_DEBUG.md) and
-[docs/DEBUG_OVERLAY.md](../../docs/DEBUG_OVERLAY.md). Battle defaults to
+`--nxlink` also defaults `DW3_NX_DEBUG_MESH=ON`, `DW3_NX_DEBUG_MEM=ON`, and
+`DW3_NX_DEBUG_OVERLAY=ON`: sampled `mesh dbg:` / `mem dbg:` lines alongside
+each `frame dt us=` (~1 Hz), plus an on-screen HUD (FPS / mode / mesh /
+heap; toggle **Minus + L + R**). Details:
+[docs/NXLINK_DEBUG.md](../../docs/NXLINK_DEBUG.md),
+[docs/DEBUG_OVERLAY.md](../../docs/DEBUG_OVERLAY.md), and
+[docs/P5.1_MEMORY.md](../../docs/P5.1_MEMORY.md). Battle defaults to
 `DW3_NX_MESH_SOFT_BATTLE=ON` (software `RasterTriangle` under the FIGHTSTG
 gate) until mesh FBO dumps are non-black; pass
 `-DDW3_NX_MESH_SOFT_BATTLE=OFF` to exercise GLES mesh.
