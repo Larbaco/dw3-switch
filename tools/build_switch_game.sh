@@ -127,6 +127,9 @@ fi
 # No login shell: bash -l lets /etc/profile drop devkitA64/bin from PATH,
 # and aarch64-none-elf-nm lives there. Mount at the host absolute path so
 # worktree gitlinks and tools/apply_patches.sh still resolve.
+# Optional triage: DW3_NX_MESH_DIAG=ON|OFF (default OFF). See
+# docs/P5.2_SWITCH_GPU_OPTIONS.md — does not flip soft battle default.
+
 docker run --rm \
   -e DEVKITPRO=/opt/devkitpro \
   -e DW3_SWITCH_BUILD_DIR="${BUILD_DIR}" \
@@ -134,6 +137,7 @@ docker run --rm \
   -e DW3_VERSION="${DW3_VERSION}" \
   -e DW3_NRO_VERSION="${DW3_NRO_VERSION}" \
   -e DW3_NACP_VERSION="${DW3_NACP_VERSION}" \
+  -e DW3_NX_MESH_DIAG="${DW3_NX_MESH_DIAG:-}" \
   -e GIT_CONFIG_COUNT=1 \
   -e GIT_CONFIG_KEY_0=safe.directory \
   -e GIT_CONFIG_VALUE_0='*' \
@@ -142,13 +146,18 @@ docker run --rm \
   "${GIT_MOUNT_ARGS[@]}" \
   -w "${ROOT}" \
   "${IMAGE}" \
-  bash -c 'cmake -S platforms/switch -B "$DW3_SWITCH_BUILD_DIR" -G Ninja \
+  bash -c 'extra=()
+    if [[ -n "${DW3_NX_MESH_DIAG}" ]]; then
+      extra+=(-DDW3_NX_MESH_DIAG="$DW3_NX_MESH_DIAG")
+    fi
+    cmake -S platforms/switch -B "$DW3_SWITCH_BUILD_DIR" -G Ninja \
     -DCMAKE_TOOLCHAIN_FILE=/opt/devkitpro/cmake/Switch.cmake \
     -DCMAKE_BUILD_TYPE=Release \
     -DDW3_VERSION="$DW3_VERSION" \
     -DDW3_NXLINK_STDIO="$DW3_NXLINK_STDIO" \
     -DDW3_NRO_VERSION="$DW3_NRO_VERSION" \
-    -DDW3_NACP_VERSION="$DW3_NACP_VERSION" && \
+    -DDW3_NACP_VERSION="$DW3_NACP_VERSION" \
+    "${extra[@]}" && \
     cmake --build "$DW3_SWITCH_BUILD_DIR" -j"$(nproc)"'
 
 if ! grep -F -x -q "DW3_NXLINK_STDIO:BOOL=${NXLINK_STDIO}" "${BUILD_DIR}/CMakeCache.txt"; then
