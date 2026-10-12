@@ -29,9 +29,14 @@ to PASV and listed the root.
 
 ## NXLink
 
-TCP port `28280` accepted a connection. The first attempt, using a local
-preview image while the owner was interacting with the Switch, exited with
-`recv: Connection reset by peer` / `Invalid response`.
+Do **not** probe TCP `28280` (nmap/nc/connect) before `nxlink -s`. An empty
+connect breaks hbmenu NetLoader with `err=11`. Prefer Sphaira **Y** NetLoader,
+then run `nxlink -a <ip> -s …` directly.
+
+Historical note from this check: TCP port `28280` accepted a connection. The
+first attempt, using a local preview image while the owner was interacting
+with the Switch, exited with `recv: Connection reset by peer` /
+`Invalid response`.
 
 A retry with the official [preview 7 NXLink NRO](https://github.com/Larbaco/dw3-switch/releases/download/v0.6.5-preview.7/dw3-switch-nxlink.nro)
 succeeded. The release SHA-256 was verified as
@@ -56,10 +61,14 @@ No FTP write operation was attempted.
 
 ## Recheck after DHCP changes
 
+Probe FTP only. Do **not** include `28280` in nmap while NetLoader may be
+waiting (see NXLink above).
+
 ```sh
-nmap -Pn -n -sT -p 21,5000,28280 <switch-ip>
+nmap -Pn -n -sT -p 21,5000 <switch-ip>
 curl --max-time 5 --ftp-pasv ftp://<switch-ip>:5000/
 ```
 
-Results from this check: host reachable; `21/tcp` closed, `5000/tcp` and
-`28280/tcp` open. UDP was not scanned.
+Results from this check: host reachable; `21/tcp` closed, `5000/tcp` open.
+UDP was not scanned. `28280` was observed open earlier during an active
+nxlink session only — do not scan it as a liveness check.
