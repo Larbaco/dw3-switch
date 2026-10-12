@@ -24,7 +24,7 @@ Checkboxes: [docs/ROADMAP.md](docs/ROADMAP.md). Phase 3 gate:
 | 0 to 2 | Done. Toolchains, disc to runtime, US title boot from decomp C ([P2.8](docs/P2.8_TITLE_BOOT.md)). |
 | 3 | Gate met for US. Field, battle, menus, card game, movies, SEP, and the stage sweep run on PC. Start to Genji is documented, with aids. [P3.9](docs/P3.9_REFERENCE.md) is done. Still open: EU playthrough, a pad-driven boss KO, [PC GPU and battle polish](docs/P3_GPU_GLITCHES.md), and the `WSTAG460` stub. |
 | 4 | Gate met on hardware for title, field, and battle. P4.2, P4.4, and P4.7 are ticked. Still open: P4.3 underrun count, the P4.5 CDFS suite, and the P4.6 overlay sweep. |
-| 5 to 10 | Phase 5 is open. P5.2 is the 16.7 ms bar. The owner says the game feels slow. P5.3 flat saves + deferred flush landed in host code; HOME/`appletMainLoop` quit and OLED confirm remain open ([P5.3_FLAT_SAVE](docs/P5.3_FLAT_SAVE.md)). P6.5 packaging is done and does not start Phase 6. Phases 6 through 10 otherwise have not started. P7.1, P8.1, P9.1, and P10.1 are early notes. See [SWITCH_FEATURES](docs/SWITCH_FEATURES.md). |
+| 5 to 10 | Phase 5 is open. P5.2 is the 16.7 ms bar (soft battle default ON after all-black mesh dumps; field mesh gated). P5.3 flat `saveN.bin` + deferred flush landed; OLED MC1→MC2 save PASS and STGMCARD 100-frame bar owner-confirmed on load ([P5.3_FLAT_SAVE](docs/P5.3_FLAT_SAVE.md)). HOME/`appletMainLoop` quit flush still open. P6.5 packaging is done and does not start Phase 6. Phases 6 through 10 otherwise have not started. P7.1, P8.1, P9.1, and P10.1 are early notes. See [SWITCH_FEATURES](docs/SWITCH_FEATURES.md). |
 
 Layering: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
@@ -39,11 +39,12 @@ of `us/`.
 The left stick walks on a handheld Joy-Con and on a Pro Controller. Rumble
 is not implemented. That item is P10.4.
 
-A DuckStation memory card loads. A save this game creates in slot 2 loads
-on a build that includes `994c42a`. Data-frame byte `0x7F` is game data,
-not a checksum. That commit is on `main`, after the `v0.6.5-preview.5`
-tag. The tagged preview.5 file does not contain it. On that file, a slot 2
-save the game had just created returned to the launcher.
+Runtime saves are flat `save0.bin` / `save1.bin` under `us/memcard/`
+(P5.3). Older `memcardN.mcr` migrate once and become `.mcr.bak`. OLED
+preview.14: load MC1 → spend → save MC2 slot2 PASS (money=26); a later
+overwrite to MC2 slot1 saved money=2. Emulator `.mcr` interchange stays
+P9.6 (external tool), not in-game. Data-frame byte `0x7F` is game data,
+not a checksum — never put XOR on it.
 
 If `sdmc:/switch/dw3/us/` is missing, US boot extracts the runtime from
 that BIN. `v0.6.5-preview.5` is the hardware test of the copy progress
@@ -60,9 +61,12 @@ synchronisation objects` once and continued. The load design that follows
 from that session is [docs/STATIC_SD_LOAD.md](docs/STATIC_SD_LOAD.md):
 the map file is read once per area; movies keep their sector pace.
 
+STGMCARD load/save panel on host uses 100 frames (option B, #84). Owner
+confirmed the load bar feels OK; save uses the same constants.
+
 Still open on hardware: a P4.3 underrun count, the formal P4.5 CDFS suite,
-the full P4.6 overlay sweep, P5.2, the kernel sync-object error, and P5.3
-HOME quit / migrated-save confirm on OLED.
+the full P4.6 overlay sweep, P5.2 battle 60 Hz (soft path for now), the
+kernel sync-object error, and P5.3 HOME/`appletMainLoop` quit flush.
 
 **PC today.** Yes, with your own US disc packed to `runtime/us`. Expect
 rough visuals in some scenes.
@@ -175,8 +179,9 @@ sdmc:/switch/dw3/Digimon World 3.bin
 sdmc:/switch/dw3/us/
 ```
 
-US boot creates an empty `memcard/` when that root exists, and formats
-`memcard0.mcr` and `memcard1.mcr` when those files are absent. A packed
+US boot creates an empty `memcard/` when that root exists. Saves are
+`save0.bin` / `save1.bin` (created on first in-game write). Legacy
+`memcardN.mcr` migrate once to flat and become `.mcr.bak`. A packed
 `.STR` that is still 2048 bytes per sector is rewritten from the parent
 BIN on boot. The screen stays dark blue and draws a progress bar during
 a long copy. EU does not extract. Pack `sdmc:/switch/dw3/eu/` yourself,
@@ -206,14 +211,15 @@ on `workflow_dispatch` or a `v*` tag. It is a prerelease. Assets are
 [`platforms/switch/release/README.txt`](platforms/switch/release/README.txt).
 No disc data.
 
-The latest preview release is
+The latest **tagged** preview release is
 [v0.6.5-preview.10](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.10).
 Battle mesh is gated to FIGHTSTG (PR #71); field stays on the software
 blit. PR #72 adds sampled `mesh dbg:` lines on the nxlink log. After
-preview.10 all-black mesh FBO dumps, battle defaults to software
+preview.10 all-black mesh FBO dumps, `main` defaults battle to software
 `RasterTriangle` under that gate (`DW3_NX_MESH_SOFT_BATTLE=ON`; see
-[P5.2_BATTLE_GPU.md](docs/P5.2_BATTLE_GPU.md)). It does not change the
-CPU or GPU clock.
+[P5.2_BATTLE_GPU.md](docs/P5.2_BATTLE_GPU.md)). Flat saves, debug HUD,
+and the STGMCARD 100-frame bar also landed on `main` after that tag.
+It does not change the CPU or GPU clock.
 [v0.6.5-preview.9](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.9)
 enabled mesh for every mode and broke the field picture on OLED. Do not
 install that file for field play.
@@ -285,6 +291,8 @@ dw3-switch/
 | [docs/P4.4_INPUT_STATUS.md](docs/P4.4_INPUT_STATUS.md) / [P4.5](docs/P4.5_STATUS.md) / [P4.6](docs/P4.6_MODULES_STATUS.md) | Left stick is ticked. The CDFS suite and the overlay sweep are still open. |
 | [docs/P2.8_TITLE_BOOT.md](docs/P2.8_TITLE_BOOT.md) | PC title screen evidence |
 | [docs/P3.2_FIELD.md](docs/P3.2_FIELD.md) … [P3.8](docs/P3.8_STAGES.md) | Phase 3 subsystem notes |
+| [docs/P5.2_BATTLE_GPU.md](docs/P5.2_BATTLE_GPU.md) / [P5.3_FLAT_SAVE](docs/P5.3_FLAT_SAVE.md) | Battle mesh / soft path; flat `saveN.bin` |
+| [docs/DEBUG_OVERLAY.md](docs/DEBUG_OVERLAY.md) / [NXLINK_DEBUG](docs/NXLINK_DEBUG.md) | On-screen HUD + nxlink mesh/`frame dt` lines |
 | [docs/COMMUNITY_QOL.md](docs/COMMUNITY_QOL.md) / [TEXTURE_PACKS](docs/TEXTURE_PACKS.md) / [PORT_OPTIONS](docs/PORT_OPTIONS.md) | Later optional features |
 
 Hosts: [platforms/pc/README.md](platforms/pc/README.md),

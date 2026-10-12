@@ -64,11 +64,11 @@ See [SURVEY.md](SURVEY.md) for the evidence behind each point.
   `CD_READER` via cdfs; US `STDWTITL` linked; title mode draws. Later
   picture work is in `docs/P3_GPU_GLITCHES.md`. See
   `docs/P2.8_TITLE_BOOT.md`.
-- P3.2 (in progress): field/stage bring-up uses **objcopy / `ld -r`** to
-  prefix stage globals and rename `.data`/`.bss` into per-overlay sections
-  (`dw3data_*` / `dw3bss_*`); `overlay_sections.c` snapshots them for
-  restore. Weak mode stubs omit linked overlays (`FIELDSTG`, `STPLNMET`,
-  battle P3.3, menus P3.4).
+- P3.2+ (landed with Phase 3): field/stage bring-up uses **objcopy /
+  `ld -r`** to prefix stage globals and rename `.data`/`.bss` into
+  per-overlay sections (`dw3data_*` / `dw3bss_*`); `overlay_sections.c`
+  snapshots them for restore. Weak stubs remain only for intentionally
+  unlinked overlays (e.g. `WSTAG460`).
 
 ## Non-goals (for now)
 

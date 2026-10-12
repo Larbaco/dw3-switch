@@ -519,10 +519,14 @@ speed.
   PS1 `MEMCARD_*_FRAMES` (~1239/1266) vs ~80 flat sector-frames, not SD
   I/O. Port-only patch `0043` sets both to **100** under `PORT_HOST`
   (phase-2 finish stays 20 frames). Flush / flat correctness unchanged.
-  See [P5.3_FLAT_SAVE.md](P5.3_FLAT_SAVE.md).
+  **OLED (2026-10-12):** owner confirmed the **load** bar feels OK after
+  #84; **save** uses the same 100-frame constants (not a separate OLED
+  retest blocker). See [P5.3_FLAT_SAVE.md](P5.3_FLAT_SAVE.md).
   **Still open:** HOME / `appletMainLoop` quit path (`Psyz_QuitRequested`
-  still 0); sleep/focus flush; clean-exit + relaunch reload smoke still
-  worth a dedicated pass. Emulator conversion remains P9.6.
+  still 0); sleep/focus flush. Cross-port overwrite and Continue after
+  preview.14 PASS; a dedicated clean-exit + relaunch smoke is still nice
+  but no longer the P5.3 OLED save blocker. Emulator conversion remains
+  P9.6.
   **Preview.4 / .5 notes (kept):** earlier `.mcr` writes and the data-frame
   XOR fault (`0x7F` / partner index) are historical; XOR must stay off
   data frames. Done when: a save this port wrote loads after a clean exit
