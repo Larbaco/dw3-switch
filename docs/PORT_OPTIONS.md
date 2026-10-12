@@ -119,8 +119,8 @@ three-row layout appears when the options state starts.
 Select/Backspace remains a shortcut; shoulder-button combinations do not
 open the shell, preserving the Switch diagnostic chords. The clipped
 standalone shortcut hint is no longer drawn because the visible row is
-the entry. PC visual/input validation and Switch hardware validation of
-this new row are pending. P9.3 effects and P9.4 persistence remain open.
+the entry. Independent PC visual/input validation passed as recorded below.
+Switch hardware validation, P9.3 effects and P9.4 persistence remain open.
 
 ## PC bring-up (P9.2 MVP shortcut)
 
@@ -175,3 +175,41 @@ at the right edge of its 240-pixel panel. The shell itself is legible.
 No feature code changed in this validation. The three-row follow-up above
 replaces that hint with the visible entry. Switch input/chord validation
 and the P9.2 cross-host completion remain open.
+
+## PC three-row validation checkpoint (2026-10-12)
+
+Independent validation tested code commit `632cb70` (PR #100). The later
+`5b59e4f` merge changed documentation only. On resumption, the retained
+captures, scripts and logs in `/tmp/dw3-menu-entry-evidence` were inspected;
+this checkpoint records that completed run, not a new hardware test.
+No feature code or assets changed for this record.
+
+The PC host used SDL_GPU/Vulkan lavapipe on private Xvfb display `:198`,
+with dummy audio and a separate temporary memcard directory. Keyboard
+input targeted that private display, never the owner's active desktop.
+Xvfb did not provide effective vsync: the uncapped run measured about
+396 FPS, making the existing frame-based repeat look too fast. The final
+smoke used the existing `Psyz_VideoSetVsyncMode(2)` 60 Hz limiter through
+GDB; no input or runtime implementation was changed.
+
+- At 60 Hz, Up/Down taps of 55 ms traverse all three rows. One-second
+  holds clamp at Start/Continue; releasing then tapping reaches the middle.
+- Confirm on Port options opens both stubs OFF without confirm passthrough.
+  Triangle/S returns to the middle row. Select/Backspace also opens the shell.
+- Stub toggles work within the session; a process restart restores OFF/OFF,
+  as expected while persistence is absent. The TTB framebuffer dump captures
+  the shell text.
+- Start retains choice 1 and reaches `FIELDSTG` stage 474 (Junior street);
+  Continue retains choice 2 and reaches `STGMCARD` with `loading=1`.
+- Captures show the opaque striped row and the original cursor only on the
+  selected item. The resident proportional font is legible, but is not an
+  identical title-label sprite.
+- Tools suite: **79 passed, 2 skipped** in the retained pytest log.
+
+Representative local evidence: `v4-middle.png`, `v4-shell-defaults.png`,
+`v4-continue-load.png`, `newgame-flow.png`, `restart-stubs-off.png`,
+`shell-ttb.png`, `sequence60hz.log`, `newgame60hz.log` and `pytest-latest.log`.
+These temporary files are not repository assets or durable CI artifacts.
+Gamepad input, Switch presentation/input and the P9.2 cross-host gate remain
+unvalidated by this PC keyboard smoke. P9.3 effects and P9.4 persistence
+remain open.

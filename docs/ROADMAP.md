@@ -760,8 +760,14 @@ PS1 game, with vanilla-safe defaults and persistence on owner storage.
   font and a matching opaque striped button background. Only the
   selected row has the original cursor frame. Confirm opens the shell,
   Triangle returns to the middle row; Select remains a shortcut without
-  shoulder chords. Independent PC visual/input validation of the new row
-  and Switch hardware confirmation remain open.
+  shoulder chords. **Independent PC validation (2026-10-12, code `632cb70`):**
+  private Xvfb/lavapipe at the existing 60 Hz frame limiter passed three-row
+  keyboard navigation, hold/release, opening without confirm passthrough,
+  return to middle, restart defaults OFF, Start to Junior stage 474 and
+  Continue to the load screen. Cursor/striped row and TTB shell captured;
+  tools suite 79 passed, 2 skipped. Retained evidence reviewed on resumption;
+  see PORT_OPTIONS.md for the uncapped-Xvfb repeat limitation. Gamepad and
+  Switch hardware confirmation remain open; this does not close P9.2.
   Done when: the screen is reachable from the main menu and returns
   cleanly to it (PC + Switch; TTB print on PC).
 - [ ] **P9.3 Toggle registry.** Maintain a registry of non-native features
