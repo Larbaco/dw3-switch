@@ -520,6 +520,8 @@ speed.
   I/O. Port-only patch `0043` sets both to **100** under `PORT_HOST`
   (phase-2 finish stays 20 frames). Flush / flat correctness unchanged.
   See [P5.3_FLAT_SAVE.md](P5.3_FLAT_SAVE.md).
+  **Preview.17 OLED (2026-10-12):** owner confirmed option B bar feel is
+  correct for **load and save** (tip `413efb8` / #84). Keep 100 frames.
   **Still open:** HOME / `appletMainLoop` quit path (`Psyz_QuitRequested`
   still 0); sleep/focus flush; clean-exit + relaunch reload smoke still
   worth a dedicated pass. Emulator conversion remains P9.6.
