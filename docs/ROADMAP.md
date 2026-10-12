@@ -477,8 +477,10 @@ speed.
   gpu-solid and gpu-tex ~57–59 Hz but **flat blue** (likely stage
   `setBgColor` ≈ 59,115,233 left in the mesh FBO while fragments miss the
   presented band / sample zero; black-discard UI amplifies). Framework
-  survey + DIAG spike (`DW3_NX_MESH_DIAG`): magenta clear/verts + mesh-only
-  present — [P5.2_SWITCH_GPU_OPTIONS.md](P5.2_SWITCH_GPU_OPTIONS.md).
+  survey + DIAG spike (`DW3_NX_MESH_DIAG`): magenta clear/verts + cyan
+  clip-space ssquad + mesh-only present —
+  [P5.2_SWITCH_GPU_OPTIONS.md](P5.2_SWITCH_GPU_OPTIONS.md). OLED: full
+  magenta clear confirmed; ssquad spike splits present vs transform.
   Another GPU API (deko3d) is **not** justified until GLES paints colour.
   **Nxlink mesh debug:** `--nxlink` builds default `DW3_NX_DEBUG_MESH` and
   emit a sampled `mesh dbg:` line next to `frame dt us=` (tris / path /
