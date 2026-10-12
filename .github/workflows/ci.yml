@@ -61,12 +61,17 @@ jobs:
       - uses: actions/checkout@v4
         with:
           submodules: false
+          # Tags help local-style git describe; PR builds still prefer short SHA
+          # via GITHUB_SHA in tools/dw3_nro_version.py --github.
+          fetch-depth: 0
       - name: Init game submodules
         run: |
           git submodule update --init vendor/dw3_decomp vendor/psyz
           # nugget without --recursive: codeberg xmake-psx returns HTTP 429.
           git -C vendor/psyz submodule update --init nugget external/SDL
       - name: Build CMake game .nro
+        # Untagged CI: NACP/hbmenu version is the short GITHUB_SHA (e.g. a0e4973).
+        # Tagged releases use switch-release.yml + RELEASE_TAG instead.
         run: bash tools/build_switch_game.sh
       - name: Upload game .nro artifact
         uses: actions/upload-artifact@v4

@@ -168,7 +168,9 @@ If `runtime/us` already exists and is not empty, add `--force`.
 
 On the Switch the same relative tree is `sdmc:/switch/dw3/us/`. Copy
 `dw3-switch.nro` to `sdmc:/switch/dw3-switch.nro` and launch it from
-hbmenu under Atmosphere.
+hbmenu under Atmosphere. hbmenu shows the NACP display version for that
+install (e.g. `0.6.5-p.18` for tag `v0.6.5-preview.18` — the field is only
+15 characters). See [platforms/switch/README.md](platforms/switch/README.md).
 
 Put the Mode2 BIN and CUE next to `us/`, not inside it. `boot_tim.bin` is
 not a disc image.
@@ -202,14 +204,15 @@ GitHub Actions builds both Switch binaries in `devkitpro/devkita64`.
 | Job | Output |
 |---|---|
 | `switch` | `make -C platforms/switch`. The `host_hello` sample at `platforms/switch/dw3-switch.nro`. No game loop. |
-| `switch-game` | `tools/build_switch_game.sh`. The game image. `source/boot_main.c` calls `dw3_game_main`. Artifact `dw3-switch-game-nro` at `build/switch/dw3-switch.nro`. This job does not open a Release. |
+| `switch-game` | `tools/build_switch_game.sh`. The game image. `source/boot_main.c` calls `dw3_game_main`. Artifact `dw3-switch-game-nro` at `build/switch/dw3-switch.nro`. NACP/hbmenu version is the short `GITHUB_SHA`. This job does not open a Release. |
 
 A Release is
 [`.github/workflows/switch-release.yml`](.github/workflows/switch-release.yml),
 on `workflow_dispatch` or a `v*` tag. It is a prerelease. Assets are
 `dw3-switch.nro`, `dw3-switch-nxlink.nro`, and
 [`platforms/switch/release/README.txt`](platforms/switch/release/README.txt).
-No disc data.
+The release tag becomes the NACP version (compressed for hbmenu) and the
+`dw3: version=` boot line. No disc data.
 
 The latest **tagged** preview release is
 [v0.6.5-preview.10](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.10).

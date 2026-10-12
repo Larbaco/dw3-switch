@@ -79,6 +79,7 @@ else
   RUNTIME_PATH="sdmc:/switch/dw3/us"
 fi
 NRO="${BUILD_DIR}/${NRO_NAME}.nro"
+NACP="${BUILD_DIR}/${NRO_NAME}.nacp"
 
 if ! command -v docker >/dev/null 2>&1; then
   echo "docker is required (devkitpro/devkita64). This VM has no daemon; CI does." >&2
@@ -92,6 +93,28 @@ if [[ ! -f "${ROOT}/vendor/psyz/nugget/bsdec/bsdec.c" ]]; then
   echo "do not recursive-init nugget (codeberg xmake-psx HTTP 429)" >&2
   exit 1
 fi
+
+# Resolve hbmenu NACP version (≤15 chars) + full label for the boot log.
+# CI: set DW3_NRO_VERSION or RELEASE_TAG / GITHUB_* (see --github).
+VERSION_ARGS=(--repo "${ROOT}")
+if [[ -n "${DW3_NRO_VERSION:-}" ]]; then
+  VERSION_ARGS+=(--version "${DW3_NRO_VERSION}")
+elif [[ -n "${RELEASE_TAG:-}${DW3_RELEASE_TAG:-}${GITHUB_SHA:-}" ]]; then
+  VERSION_ARGS+=(--github)
+fi
+DW3_NRO_VERSION=""
+DW3_NACP_VERSION=""
+while IFS= read -r _dw3_ver_line; do
+  case "${_dw3_ver_line}" in
+    DW3_NRO_VERSION=*) DW3_NRO_VERSION="${_dw3_ver_line#DW3_NRO_VERSION=}" ;;
+    DW3_NACP_VERSION=*) DW3_NACP_VERSION="${_dw3_ver_line#DW3_NACP_VERSION=}" ;;
+  esac
+done < <(python3 "${ROOT}/tools/dw3_nro_version.py" "${VERSION_ARGS[@]}" --format export)
+if [[ -z "${DW3_NRO_VERSION}" || -z "${DW3_NACP_VERSION}" ]]; then
+  echo "failed to resolve DW3_NRO_VERSION / DW3_NACP_VERSION" >&2
+  exit 1
+fi
+echo "NRO version full=${DW3_NRO_VERSION} nacp=${DW3_NACP_VERSION}"
 
 # Worktrees store their common gitdir outside the checkout. Mount it at the
 # same absolute path so submodule gitlinks and apply_patches.sh still resolve.
@@ -109,6 +132,8 @@ docker run --rm \
   -e DW3_SWITCH_BUILD_DIR="${BUILD_DIR}" \
   -e DW3_NXLINK_STDIO="${NXLINK_STDIO}" \
   -e DW3_VERSION="${DW3_VERSION}" \
+  -e DW3_NRO_VERSION="${DW3_NRO_VERSION}" \
+  -e DW3_NACP_VERSION="${DW3_NACP_VERSION}" \
   -e GIT_CONFIG_COUNT=1 \
   -e GIT_CONFIG_KEY_0=safe.directory \
   -e GIT_CONFIG_VALUE_0='*' \
@@ -121,7 +146,9 @@ docker run --rm \
     -DCMAKE_TOOLCHAIN_FILE=/opt/devkitpro/cmake/Switch.cmake \
     -DCMAKE_BUILD_TYPE=Release \
     -DDW3_VERSION="$DW3_VERSION" \
-    -DDW3_NXLINK_STDIO="$DW3_NXLINK_STDIO" && \
+    -DDW3_NXLINK_STDIO="$DW3_NXLINK_STDIO" \
+    -DDW3_NRO_VERSION="$DW3_NRO_VERSION" \
+    -DDW3_NACP_VERSION="$DW3_NACP_VERSION" && \
     cmake --build "$DW3_SWITCH_BUILD_DIR" -j"$(nproc)"'
 
 if ! grep -F -x -q "DW3_NXLINK_STDIO:BOOL=${NXLINK_STDIO}" "${BUILD_DIR}/CMakeCache.txt"; then
@@ -151,4 +178,21 @@ if [[ "${bytes}" -lt 6000000 ]]; then
   exit 1
 fi
 
-echo "game .nro ${NRO} (${bytes} bytes, DW3_VERSION=${DW3_VERSION})"
+if [[ ! -f "${NACP}" ]]; then
+  echo "missing ${NACP}" >&2
+  exit 1
+fi
+# libnx display_version lives at 0x3060 in the .nacp (15 chars + NUL).
+nacp_ver="$(python3 - "${NACP}" "${DW3_NACP_VERSION}" <<'PY'
+import sys
+from pathlib import Path
+path, expect = sys.argv[1], sys.argv[2]
+data = Path(path).read_bytes()
+got = data[0x3060:0x3060 + 0x10].split(b"\0", 1)[0].decode("ascii", "replace")
+if got != expect:
+    raise SystemExit(f"nacp display_version={got!r} expected={expect!r}")
+print(got)
+PY
+)"
+
+echo "game .nro ${NRO} (${bytes} bytes, DW3_VERSION=${DW3_VERSION}) nacp_version=${nacp_ver}"
