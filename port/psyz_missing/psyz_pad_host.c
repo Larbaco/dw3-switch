@@ -150,13 +150,28 @@ static void dw3_auto_pad_inject(void) {
         mask |= DW3_RAW_CROSS;
     }
     /* Hold Start for movie skip (PORT patch also accepts getHeld). Pulse log
-     * once so headless runs show inject without flooding. */
+     * once so headless runs show inject without flooding.
+     * When `select` is also set (P9.2 title Config smoke), only pulse Start
+     * early so PRESS START advances, then release so we stay on NG/Continue. */
     if (start && !status && frame >= 2u) {
-        mask |= DW3_RAW_START;
-        if (frame == 2u) {
-            fprintf(stderr, "dw3-pad: AUTO_PAD start hold from frame=%u\n",
-                    frame);
-            fflush(stderr);
+        if (select) {
+            if (frame < 80u && (frame % 16u) >= 1u && (frame % 16u) <= 6u) {
+                mask |= DW3_RAW_START;
+            }
+            if (frame == 2u) {
+                fprintf(stderr,
+                        "dw3-pad: AUTO_PAD start pulse (with select) "
+                        "from frame=%u\n",
+                        frame);
+                fflush(stderr);
+            }
+        } else {
+            mask |= DW3_RAW_START;
+            if (frame == 2u) {
+                fprintf(stderr,
+                        "dw3-pad: AUTO_PAD start hold from frame=%u\n", frame);
+                fflush(stderr);
+            }
         }
     }
     /* status: Start (open field menu) → Cross (MODE_STATUS) → Triangle.
@@ -187,12 +202,12 @@ static void dw3_auto_pad_inject(void) {
         (frame % 24u) <= 4u) {
         mask |= DW3_RAW_CROSS;
     }
-    /* select: after title options spread (~frame 400+ with start), pulse
-     * Select a few times so P9.2 can open the port-options shell. */
-    if (select && !status && frame >= 420u && frame < 520u &&
+    /* select: after title options spread, pulse Select so P9.2 can open
+     * the port-options shell. With start+select, Start stops by frame 80. */
+    if (select && !status && frame >= 160u && frame < 280u &&
         (frame % 20u) >= 1u && (frame % 20u) <= 4u) {
         mask |= DW3_RAW_SELECT;
-        if (frame == 421u) {
+        if (frame == 161u) {
             fprintf(stderr, "dw3-pad: AUTO_PAD select pulse from frame=%u\n",
                     frame);
             fflush(stderr);
