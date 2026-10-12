@@ -94,3 +94,25 @@ wired too early; clipping a third row near y=194 on 240p.
 
 Full write-up (session notes, not git): 
 `~/.cursor/projects/mnt-windows-Jogos-dw3-switch/notes/p92-main-menu-port-options-entry.txt`.
+
+## PC bring-up (P9.2 MVP)
+
+While **New Game / Continue** are shown on the title menu, press
+**Select** to open the port options shell. On the PSY-Z SDL keyboard map
+that is **Backspace**. Close with **Triangle** (**S** on the keyboard).
+The shell stays on `MODE_TITLE` and does not set the title menu `choice`
+(New Game / Continue / timeout still work after close).
+
+| Action | Pad | PC keyboard (PSY-Z) | Switch (later) |
+|---|---|---|---|
+| Open Config | `PAD_SELECT` | **Backspace** | Minus (alone; avoid debug chords) |
+| Close / Back | `PAD_TRIANGLE` | **S** | B / Y cancel layout TBD |
+| Confirm toggle | `PAD_CROSS` | **X** | A (stub no-ops for now) |
+
+Implementation: `port/options/`, `port/ui/port_text.c`, patch
+`0044-PORT_HOST-p92-title-port-options.patch`. Stub toggles (widescreen
+default **off**, fast-forward) are document-only until P9.3.
+
+Headless smoke: `DW3_AUTO_PAD=start,select` then
+`DW3_PORT_OPTIONS_FB_DUMP=/tmp/dw3-p92-options-ttb/shell.ppm`
+`DW3_PORT_OPTIONS_QUIT_AFTER_DUMP=1`.

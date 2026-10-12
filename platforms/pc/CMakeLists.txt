@@ -10,6 +10,10 @@ set_property(CACHE DW3_VERSION PROPERTY STRINGS us eu)
 add_subdirectory(${CMAKE_SOURCE_DIR}/../../vendor/psyz/psyz ${CMAKE_BINARY_DIR}/psyz)
 add_subdirectory(${CMAKE_SOURCE_DIR}/../../port ${CMAKE_BINARY_DIR}/port)
 
+# PC-only: enable Psyz_VideoAlloc* TTB dump path in port/options (Switch
+# game NRO does not link those PSY-Z capture symbols).
+target_compile_definitions(dw3_port_options PRIVATE DW3_PC_HOST=1)
+
 add_executable(dw3-pc
   src/main.c
   src/psyz_host_overrides.c

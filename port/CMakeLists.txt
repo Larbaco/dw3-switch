@@ -236,6 +236,20 @@ set_target_properties(dw3_psyz_missing PROPERTIES
 target_compile_options(dw3_engine PRIVATE ${_DW3_GAME_OPTS})
 target_compile_options(dw3_title PRIVATE ${_DW3_GAME_OPTS})
 
+# P9.2 port options shell + shared 8×8 VRAM text (title Config/Extra).
+add_library(dw3_port_options OBJECT
+  "${CMAKE_CURRENT_SOURCE_DIR}/options/port_options.c"
+  "${CMAKE_CURRENT_SOURCE_DIR}/ui/port_text.c"
+)
+target_include_directories(dw3_port_options PRIVATE ${_DW3_GAME_INCLUDES})
+target_compile_definitions(dw3_port_options PRIVATE ${_DW3_GAME_DEFS})
+target_compile_options(dw3_port_options PRIVATE ${_DW3_GAME_OPTS})
+set_target_properties(dw3_port_options PROPERTIES
+  C_STANDARD 90
+  C_STANDARD_REQUIRED ON
+  C_EXTENSIONS ON
+)
+
 # P3.1: compile-only audit of overlay/stage TUs under cast warning-as-error.
 # Not linked into dw3_engine_objs until P3.2+ brings overlays in for real.
 # Title sources stay on dw3_title (exclude to avoid duplicate OBJECT membership).
@@ -1183,6 +1197,7 @@ add_library(dw3_engine_objs STATIC
   $<TARGET_OBJECTS:dw3_memcard>
   $<TARGET_OBJECTS:dw3_psyz_missing>
   $<TARGET_OBJECTS:dw3_movies>
+  $<TARGET_OBJECTS:dw3_port_options>
 )
 set_target_properties(dw3_engine_objs PROPERTIES
   OUTPUT_NAME dw3_engine
@@ -1190,5 +1205,5 @@ set_target_properties(dw3_engine_objs PROPERTIES
 )
 add_dependencies(dw3_engine_objs
   dw3_engine dw3_title dw3_host_overlays dw3_cdfs dw3_memcard dw3_psyz_missing
-  dw3_movies)
+  dw3_movies dw3_port_options)
 
