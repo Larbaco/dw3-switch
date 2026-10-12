@@ -62,8 +62,14 @@ Sampled / one-shot by design — safe for long runs:
 | `mesh gpu: N tris flushed` | Every ~1000 lifetime tris while composite is on |
 | `nx_mesh: GLES3 mesh FBO ready` / ES2 fallback | Boot |
 | Game `dw3: mode=` / `stageFile=` | Mode / stage transitions (decomp) |
+| `dw3: overlay restore file=0x… kind=mode\|sub …` | Static overlay `.data` restore (P4.6; id change only) |
+| `dw3: registered US\|EU overlays … count=` | Overlay table install at boot (P4.6) |
 | `dw3: map_preload id=… bytes=… us=…` | First tile of a field map file id (one fread) |
 | `dw3: memcard ensure … us=` / `migrate … us=` | Flat load or one-time `.mcr` migration |
+
+P4.6 OLED sweep: capture these restore lines, then
+`python3 tools/parse_overlay_nxlink.py <capture>` — checklist in
+[P4.6_MODULES_STATUS.md](P4.6_MODULES_STATUS.md).
 
 ## Mesh debug summary (`DW3_NX_DEBUG_MESH`)
 

@@ -373,6 +373,11 @@ console.
   if PSY-Z's module API is required, provide a static `Psyz_ModuleOpen`
   that dispatches to the linked table.
   Done when: all overlays switch on hardware.
+  **Status (2026-10-12):** no-`dlopen` decision stands (`nx_module.c` empty
+  TU; modes/stages already linked). OLED owner checklist + nxlink restore
+  markers (`kind=mode|sub`) + `tools/parse_overlay_nxlink.py` are in
+  `docs/P4.6_MODULES_STATUS.md`. Gate stays open until that checklist is
+  filled from a hardware capture — preview field/battle smoke is not enough.
 - [x] **P4.7 Boot the game.** Link the Phase 3 image against the Switch
   backend and run from hbmenu.
   Done when: title screen on hardware.
@@ -417,10 +422,11 @@ console.
   extract, the copy progress bar, and the left stick. The opening-video
   picture is unchanged from preview.4. EU is unchanged. See
   `docs/RUNTIME_LAYOUT.md`.
-  **Still open:** P4.6's complete overlay sweep on hardware. P4.4 and P4.5
-  are ticked (stick on OLED; formal CDFS suite on packed runtime / SD
-  layout — `docs/P4.5_STATUS.md`). The preview.4 log alone was not that
-  suite; `tools/cdfs_suite` is.
+  **Still open:** P4.6's OLED overlay-restore checklist on hardware
+  (`docs/P4.6_MODULES_STATUS.md` — harness ready; no evidence row yet).
+  P4.4 and P4.5 are ticked (stick on OLED; formal CDFS suite on packed
+  runtime / SD layout — `docs/P4.5_STATUS.md`). The preview.4 log alone
+  was not the CDFS suite; `tools/cdfs_suite` is.
 
   **Gate:** title + field + battle on a Switch. **Met (2026-10-11)** from the
   OLED preview.4 run: main menu/new game, multiple map transitions, and battle

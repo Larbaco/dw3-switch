@@ -93,6 +93,17 @@ gcc -std=c11 -Wall -Wextra -Werror -O2 -DPORT_HOST=1 \
 Fixtures prove: two different overlays reset; the same overlay twice
 preserves mutated `.data` / `.bss`.
 
+### Switch / P4.6
+
+libnx has no `dlopen`; the Switch image uses this same static restore path
+(no `Psyz_ModuleOpen`). Hardware acceptance is an OLED nxlink restore
+sweep — checklist and log parser:
+
+- `docs/P4.6_MODULES_STATUS.md`
+- `python3 tools/parse_overlay_nxlink.py <nxlink-capture>`
+
+Restore lines include `kind=mode` (entry != NULL) or `kind=sub`.
+
 ## Boot TIM
 
 On PS1 the boot TIM is the packed exe tail at `OVERLAY_VRAM`, read via
