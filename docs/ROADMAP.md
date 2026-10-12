@@ -440,6 +440,11 @@ speed.
 - [ ] **P5.1 Memory budget.** Heap arena, file cache and VRAM emulation
   sized for the console; no allocations after init in the frame loop.
   Done when: a 2-hour session shows flat memory in a debug overlay.
+  **Instrumentation (in progress, not done).** `--nxlink` builds sample
+  game-heap used/free/high-water, `MEM_FILE_CACHE`, fixed VRAM-emulation
+  footprint, and newlib `mallinfo` at the ~1 Hz `frame dt` cadence
+  (`mem dbg:` line + HUD lines). See [P5.1_MEMORY.md](P5.1_MEMORY.md).
+  This is measurement only — not a proven 2h flat session.
 - [ ] **P5.2 Performance pass.** Profile GTE/GPU emulation and the
   drawing path on handheld clocks. Decide software vs. a GL renderer.
   The frame-time check that used to be the P4.2 done-when lives here.

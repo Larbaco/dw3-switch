@@ -162,11 +162,13 @@ nxlink NRO initializes libnx's default socket service before calling
 `nxlinkStdio()` and does so before input, SD mount and game logging. The socket
 result and stdio fd are recorded in `dw3.log`; connection failure is nonfatal.
 Logs continue going to `dw3.log` on SD and `svcOutputDebugString` as before.
-`--nxlink` also defaults `DW3_NX_DEBUG_MESH=ON` and `DW3_NX_DEBUG_OVERLAY=ON`:
-one sampled `mesh dbg:` line alongside each `frame dt us=` (~1 Hz), plus an
-on-screen HUD (FPS / mode / mesh; toggle **Minus + L + R**). Details:
-[docs/NXLINK_DEBUG.md](../../docs/NXLINK_DEBUG.md) and
-[docs/DEBUG_OVERLAY.md](../../docs/DEBUG_OVERLAY.md). Battle defaults to
+`--nxlink` also defaults `DW3_NX_DEBUG_MESH=ON`, `DW3_NX_DEBUG_MEM=ON`, and
+`DW3_NX_DEBUG_OVERLAY=ON`: sampled `mesh dbg:` / `mem dbg:` lines alongside
+each `frame dt us=` (~1 Hz), plus an on-screen HUD (FPS / mode / mesh /
+heap; toggle **Minus + L + R**). Details:
+[docs/NXLINK_DEBUG.md](../../docs/NXLINK_DEBUG.md),
+[docs/DEBUG_OVERLAY.md](../../docs/DEBUG_OVERLAY.md), and
+[docs/P5.1_MEMORY.md](../../docs/P5.1_MEMORY.md). Battle defaults to
 `DW3_NX_MESH_SOFT_BATTLE=ON` (software `RasterTriangle` under the FIGHTSTG
 gate) until mesh FBO dumps are non-black; pass
 `-DDW3_NX_MESH_SOFT_BATTLE=OFF` to exercise GLES mesh.

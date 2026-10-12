@@ -30,6 +30,7 @@
 
 #include "../psyz_backend/nx.h"
 #include "../psyz_backend/nx_debug_overlay.h"
+#include "../psyz_backend/nx_mem_budget.h"
 #include "../psyz_backend/nx_mesh_debug.h"
 #if DW3_NX_DEBUG_OVERLAY
 #include "debug_overlay_text.h"
@@ -147,6 +148,17 @@ static void dw3_nx_vsync_pump(void) {
 
         if (dw3_frame_dt_sample(&frame_dt, pumps, restore_now_us(), &dt_us)) {
             INFOF("frame dt us=%llu", (unsigned long long)dt_us);
+#if DW3_NX_DEBUG_MEM
+            {
+                Dw3NxMemBudgetSample mem;
+
+                dw3_nx_mem_budget_sample(&mem);
+                dw3_nx_mem_budget_log(&mem);
+#if DW3_NX_DEBUG_OVERLAY
+                dw3_nx_debug_overlay_note_mem(&mem);
+#endif
+            }
+#endif
 #if DW3_NX_DEBUG_MESH
             {
                 Dw3NxMeshDebugWindow mesh;

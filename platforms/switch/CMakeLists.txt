@@ -44,6 +44,9 @@ option(DW3_NX_DUMP_VRAM "Write battle VRAM/mesh FBO dumps under sdmc:/switch/dw3
 # On-screen HUD (FPS / mode / mesh). Same nxlink default as mesh debug.
 option(DW3_NX_DEBUG_OVERLAY "On-screen debug overlay HUD (nxlink)"
        ${_dw3_mesh_dbg_default})
+# P5.1 sampled heap / file-cache / VRAM-emulation budget (nxlink ~1 Hz).
+option(DW3_NX_DEBUG_MEM "Sampled memory-budget summary (nxlink)"
+       ${_dw3_mesh_dbg_default})
 # Recovery: keep FIGHTSTG gate but force software RasterTriangle in battle.
 # preview.10 dumps showed mesh FBO all-black while tris_flush was huge; opaque
 # software present restores a readable fight until mesh sampling draws non-black.
@@ -201,6 +204,10 @@ endif()
 if(DW3_NX_DEBUG_OVERLAY)
   target_compile_definitions(dw3-switch PRIVATE DW3_NX_DEBUG_OVERLAY=1)
   message(STATUS "nx on-screen debug overlay enabled (DW3_NX_DEBUG_OVERLAY)")
+endif()
+if(DW3_NX_DEBUG_MEM)
+  target_compile_definitions(dw3-switch PRIVATE DW3_NX_DEBUG_MEM=1)
+  message(STATUS "nx memory-budget summary enabled (DW3_NX_DEBUG_MEM)")
 endif()
 if(DW3_NX_MESH_SOFT_BATTLE)
   target_compile_definitions(dw3-switch PRIVATE DW3_NX_MESH_SOFT_BATTLE=1)
