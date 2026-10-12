@@ -294,7 +294,7 @@ dw3-switch/
 | [docs/P4.4_INPUT_STATUS.md](docs/P4.4_INPUT_STATUS.md) / [P4.5](docs/P4.5_STATUS.md) / [P4.6](docs/P4.6_MODULES_STATUS.md) | Left stick is ticked. The CDFS suite and the overlay sweep are still open. |
 | [docs/P2.8_TITLE_BOOT.md](docs/P2.8_TITLE_BOOT.md) | PC title screen evidence |
 | [docs/P3.2_FIELD.md](docs/P3.2_FIELD.md) … [P3.8](docs/P3.8_STAGES.md) | Phase 3 subsystem notes |
-| [docs/P5.2_BATTLE_GPU.md](docs/P5.2_BATTLE_GPU.md) / [P5.3_FLAT_SAVE](docs/P5.3_FLAT_SAVE.md) | Battle mesh / soft path; flat `saveN.bin` |
+| [docs/P5.2_BATTLE_GPU.md](docs/P5.2_BATTLE_GPU.md) / [P5.2_SWITCH_GPU_OPTIONS.md](docs/P5.2_SWITCH_GPU_OPTIONS.md) / [P5.3_FLAT_SAVE](docs/P5.3_FLAT_SAVE.md) | Battle mesh / soft path; GPU blue triage; flat `saveN.bin` |
 | [docs/DEBUG_OVERLAY.md](docs/DEBUG_OVERLAY.md) / [NXLINK_DEBUG](docs/NXLINK_DEBUG.md) | On-screen HUD + nxlink mesh/`frame dt` lines |
 | [docs/COMMUNITY_QOL.md](docs/COMMUNITY_QOL.md) / [TEXTURE_PACKS](docs/TEXTURE_PACKS.md) / [PORT_OPTIONS](docs/PORT_OPTIONS.md) | Later optional features |
 

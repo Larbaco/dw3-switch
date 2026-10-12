@@ -1,0 +1,8 @@
+preview.18 GPU blue — pointer
+=============================
+
+Full note (cursorignored): 
+~/.cursor/projects/mnt-windows-Jogos-dw3-switch/notes/preview18-gpu-blue.txt
+
+Doc of record: docs/P5.2_SWITCH_GPU_OPTIONS.md
+DIAG: -DDW3_NX_MESH_DIAG=ON / DW3_MESH_DIAG=1 (soft default unchanged)

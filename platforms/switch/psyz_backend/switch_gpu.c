@@ -258,6 +258,16 @@ static int try_push_mesh_poly(u_long *packets, int max_len) {
     /* gpu-solid (#79 ladder): ignore texture/CLUT; vertex colour only. */
     if (dw3_nx_battle_mode_use_solid()) {
         tpage = (uint16_t)(tpage | DW3_NX_MESH_TPAGE_NOTEXTURE);
+        /* DIAG: constant magenta verts — if screen stays setBgColor blue,
+         * fragments are not landing on the presented band. */
+        if (dw3_nx_mesh_diag_enabled()) {
+            for (i = 0; i < n_vertices; i++) {
+                v[i].r = 255;
+                v[i].g = 0;
+                v[i].b = 255;
+                v[i].a = 0xFF;
+            }
+        }
     }
     for (i = 0; i < n_vertices; i++) {
         v[i].clut = clut;
@@ -344,9 +354,17 @@ void Draw_ClearImage(PS1_RECT *rect, u_char r, u_char g, u_char b) {
     software_rasterizer.clear_image(rect, r, g, b);
     dw3_nx_mesh_mark_vram_dirty();
     if (mesh_battle_active() && rect && rect->w > 0 && rect->h > 0) {
-        dw3_nx_mesh_clear_rect(rect->x, rect->y, rect->w, rect->h,
-                               (float)r / 255.0f, (float)g / 255.0f,
-                               (float)b / 255.0f);
+        float cr = (float)r / 255.0f;
+        float cg = (float)g / 255.0f;
+        float cb = (float)b / 255.0f;
+
+        /* DIAG + gpu-solid: known magenta clear (falsify setBgColor blue). */
+        if (dw3_nx_mesh_diag_enabled() && dw3_nx_battle_mode_use_solid()) {
+            cr = 1.0f;
+            cg = 0.0f;
+            cb = 1.0f;
+        }
+        dw3_nx_mesh_clear_rect(rect->x, rect->y, rect->w, rect->h, cr, cg, cb);
     }
 }
 

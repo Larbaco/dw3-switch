@@ -634,7 +634,9 @@ void dw3_nx_gpu_present(const uint16_t *vram, int dx, int dy, int dw, int dh,
             prev_use_mesh = use_mesh;
             psyz_log(1, "nx_gpu.c", __LINE__, __func__,
                      "present path: %s",
-                     use_mesh ? "mesh+ui" : "opaque_blit");
+                     !use_mesh ? "opaque_blit"
+                     : (dw3_nx_mesh_diag_enabled() ? "mesh_only_diag"
+                                                   : "mesh+ui"));
         }
 #endif
         if (use_mesh) {
@@ -651,27 +653,33 @@ void dw3_nx_gpu_present(const uint16_t *vram, int dx, int dy, int dw, int dh,
     }
 
     /* Mesh first (3D), then CPU VRAM. With mesh: discard cleared black so UI
-     * sprites sit on top. Without mesh: opaque blit as before. */
+     * sprites sit on top. Without mesh: opaque blit as before.
+     * DIAG: mesh-only present (skip UI discard) so a live FBO cannot hide
+     * behind a black CPU band. */
     if (use_mesh) {
+        int mesh_only = dw3_nx_mesh_diag_enabled();
+
         dw3_nx_mesh_present(dx, dy, dw, dh, vx, vy, vw, vh);
-        glViewport(vx, vy, vw, vh);
-        glUseProgram(s_ui_prog);
-        glUniform2f(s_ui_uv0, (float)dx / (float)DW3_NX_VRAM_W,
-                    (float)dy / (float)DW3_NX_VRAM_H);
-        glUniform2f(s_ui_uv1, (float)(dx + dw) / (float)DW3_NX_VRAM_W,
-                    (float)(dy + dh) / (float)DW3_NX_VRAM_H);
-        glUniform1i(s_ui_tex, 0);
-        glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D, s_vram_tex);
-        glBindBuffer(GL_ARRAY_BUFFER, s_quad_vbo);
-        glEnableVertexAttribArray((GLuint)s_ui_attr_pos);
-        glVertexAttribPointer((GLuint)s_ui_attr_pos, 2, GL_FLOAT, GL_FALSE,
-                              sizeof(float) * 4, (const void *)0);
-        glEnableVertexAttribArray((GLuint)s_ui_attr_t);
-        glVertexAttribPointer((GLuint)s_ui_attr_t, 2, GL_FLOAT, GL_FALSE,
-                              sizeof(float) * 4,
-                              (const void *)(sizeof(float) * 2));
-        glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+        if (!mesh_only) {
+            glViewport(vx, vy, vw, vh);
+            glUseProgram(s_ui_prog);
+            glUniform2f(s_ui_uv0, (float)dx / (float)DW3_NX_VRAM_W,
+                        (float)dy / (float)DW3_NX_VRAM_H);
+            glUniform2f(s_ui_uv1, (float)(dx + dw) / (float)DW3_NX_VRAM_W,
+                        (float)(dy + dh) / (float)DW3_NX_VRAM_H);
+            glUniform1i(s_ui_tex, 0);
+            glActiveTexture(GL_TEXTURE0);
+            glBindTexture(GL_TEXTURE_2D, s_vram_tex);
+            glBindBuffer(GL_ARRAY_BUFFER, s_quad_vbo);
+            glEnableVertexAttribArray((GLuint)s_ui_attr_pos);
+            glVertexAttribPointer((GLuint)s_ui_attr_pos, 2, GL_FLOAT, GL_FALSE,
+                                  sizeof(float) * 4, (const void *)0);
+            glEnableVertexAttribArray((GLuint)s_ui_attr_t);
+            glVertexAttribPointer((GLuint)s_ui_attr_t, 2, GL_FLOAT, GL_FALSE,
+                                  sizeof(float) * 4,
+                                  (const void *)(sizeof(float) * 2));
+            glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+        }
     } else {
         glViewport(vx, vy, vw, vh);
         glUseProgram(s_quad_prog);

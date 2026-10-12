@@ -53,6 +53,11 @@ option(DW3_NX_DEBUG_OVERLAY "On-screen debug overlay HUD (nxlink)"
 option(DW3_NX_MESH_SOFT_BATTLE
        "Force software RasterTriangle in FIGHTSTG (mesh FBO recovery)"
        ON)
+# OLED blue triage (see docs/P5.2_SWITCH_GPU_OPTIONS.md). Default OFF.
+# Runtime: DW3_MESH_DIAG=1. Does not flip soft_battle default.
+option(DW3_NX_MESH_DIAG
+       "Mesh diag: magenta clear/verts on gpu-solid, mesh-only present"
+       OFF)
 
 if(NOT CMAKE_SYSTEM_NAME STREQUAL "NintendoSwitch")
   message(FATAL_ERROR
@@ -208,6 +213,10 @@ if(DW3_NX_MESH_SOFT_BATTLE)
 else()
   target_compile_definitions(dw3-switch PRIVATE DW3_NX_MESH_SOFT_BATTLE=0)
   message(STATUS "nx battle GLES mesh path enabled (DW3_NX_MESH_SOFT_BATTLE=OFF)")
+endif()
+if(DW3_NX_MESH_DIAG)
+  target_compile_definitions(dw3-switch PRIVATE DW3_NX_MESH_DIAG=1)
+  message(STATUS "nx mesh DIAG enabled (DW3_NX_MESH_DIAG)")
 endif()
 
 # EGL/GLES2 come from devkitPro's switch-* portlibs, not from libnx, and they

@@ -61,6 +61,19 @@ the initial mode (`0` → `gpu-tex`, `1` → `soft`). Field never enqueues mesh.
 
 Cycle order: `soft` → `soft+bbox` → `gpu-solid` → `gpu-tex` → `soft` …
 
+### Mesh DIAG (blue triage)
+
+Optional `-DDW3_NX_MESH_DIAG=ON` or `DW3_MESH_DIAG=1` (see
+[P5.2_SWITCH_GPU_OPTIONS.md](P5.2_SWITCH_GPU_OPTIONS.md)):
+
+- Logs rate-limited `nx_mesh: clear_rect … rgb=`
+- On **gpu-solid**: force magenta ClearImage into the mesh FBO and constant
+  magenta vertex colours
+- Present becomes `mesh_only_diag` (skip UI black-discard)
+
+Default **off**. Does not change `DW3_NX_MESH_SOFT_BATTLE` (soft stays the
+shipped seed).
+
 ## MVP fields (top-left, monospace, ≤12 lines)
 
 | Line | Source |

@@ -11,6 +11,10 @@
 
 #include <GLES3/gl3.h>
 
+#ifndef DW3_NX_MESH_DIAG
+#define DW3_NX_MESH_DIAG 0
+#endif
+
 #if DW3_NX_DEBUG_MESH
 #include <switch.h>
 
@@ -608,6 +612,29 @@ bool dw3_nx_mesh_reinit(void) { return dw3_nx_mesh_init(); }
 
 bool dw3_nx_mesh_available(void) { return s_ready; }
 
+int dw3_nx_mesh_diag_enabled(void) {
+    static int cached = -1;
+    const char *env;
+
+    if (cached >= 0) {
+        return cached;
+    }
+    env = getenv("DW3_MESH_DIAG");
+    if (env && env[0] == '1' && env[1] == '\0') {
+        cached = 1;
+    } else if (env && env[0] == '0' && env[1] == '\0') {
+        cached = 0;
+    } else {
+        cached = DW3_NX_MESH_DIAG ? 1 : 0;
+    }
+    if (cached) {
+        fprintf(stderr,
+                "nx_mesh: DIAG on (gpu-solid magenta clear+verts, "
+                "mesh-only present; soft default unchanged)\n");
+    }
+    return cached;
+}
+
 void dw3_nx_mesh_discard(void) {
     s_n_vtx = 0;
     s_n_idx = 0;
@@ -646,6 +673,7 @@ void dw3_nx_mesh_set_twin(uint32_t twin) { (void)twin; }
 void dw3_nx_mesh_clear_rect(int x, int y, int w, int h, float r, float g,
                             float b) {
     GLint prev_fbo = 0;
+    static unsigned clear_log_n;
 
     if (!s_ready || w <= 0 || h <= 0) {
         return;
@@ -666,6 +694,23 @@ void dw3_nx_mesh_clear_rect(int x, int y, int w, int h, float r, float g,
     }
     if (y + h > DW3_NX_VRAM_H) {
         h = DW3_NX_VRAM_H - y;
+    }
+    /* Rate-limited: first 8 + every 64th (diag: first 16 + every 16th). */
+    clear_log_n++;
+    {
+        int diag = dw3_nx_mesh_diag_enabled();
+        unsigned every = diag ? 16u : 64u;
+        unsigned first = diag ? 16u : 8u;
+
+        if (clear_log_n <= first || (clear_log_n % every) == 0u) {
+            fprintf(stderr,
+                    "nx_mesh: clear_rect #%u %d,%d %dx%d rgb=%.3f,%.3f,%.3f "
+                    "(~u8 %u,%u,%u)%s\n",
+                    clear_log_n, x, y, w, h, r, g, b,
+                    (unsigned)(r * 255.0f + 0.5f),
+                    (unsigned)(g * 255.0f + 0.5f),
+                    (unsigned)(b * 255.0f + 0.5f), diag ? " diag" : "");
+        }
     }
     glGetIntegerv(GL_FRAMEBUFFER_BINDING, &prev_fbo);
     glBindFramebuffer(GL_FRAMEBUFFER, s_mesh_fbo);

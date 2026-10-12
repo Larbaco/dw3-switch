@@ -32,6 +32,11 @@ bool dw3_nx_mesh_reinit(void);
 
 bool dw3_nx_mesh_available(void);
 
+/* Preview.18 blue triage: env DW3_MESH_DIAG=1 or -DDW3_NX_MESH_DIAG=ON.
+ * Magenta ClearImage + constant-magenta verts on gpu-solid; mesh-only present
+ * (no UI black-discard). Default off — does not change release soft battle. */
+int dw3_nx_mesh_diag_enabled(void);
+
 /* Drop pending verts / "had content" without drawing (leave battle → field). */
 void dw3_nx_mesh_discard(void);
 
