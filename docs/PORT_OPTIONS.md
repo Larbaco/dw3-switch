@@ -120,7 +120,7 @@ Select/Backspace remains a shortcut; shoulder-button combinations do not
 open the shell, preserving the Switch diagnostic chords. The clipped
 standalone shortcut hint is no longer drawn because the visible row is
 the entry. Independent PC visual/input validation passed as recorded below.
-Switch hardware validation, P9.3 effects and P9.4 persistence remain open.
+Switch hardware validation passed below; P9.3 effects and P9.4 persistence remain open.
 
 ## PC bring-up (P9.2 MVP shortcut)
 
@@ -130,11 +130,11 @@ that is **Backspace**. Close with **Triangle** (**S** on the keyboard).
 The shell stays on `MODE_TITLE` and does not set the title menu `choice`
 (New Game / Continue / timeout still work after close).
 
-| Action | Pad | PC keyboard (PSY-Z) | Switch (later) |
+| Action | Pad | PC keyboard (PSY-Z) | Switch |
 |---|---|---|---|
 | Open Config | `PAD_SELECT` | **Backspace** | Minus (alone; avoid debug chords) |
-| Close / Back | `PAD_TRIANGLE` | **S** | B / Y cancel layout TBD |
-| Confirm toggle | `PAD_CROSS` | **X** | A (stub no-ops for now) |
+| Close / Back | `PAD_TRIANGLE` | **S** | **X** (Triangle) |
+| Confirm toggle | `PAD_CROSS` | **X** | **B** (Cross; stub no-ops for now) |
 
 Implementation: `port/options/`, `port/ui/port_text.c`, patch
 `0044-PORT_HOST-p92-title-port-options.patch`. Stub toggles (widescreen
@@ -173,8 +173,8 @@ UI automation must use a private display, never the owner's active desktop.
 **Historical visual follow-up:** the title hint `Select/Backspace: Port options` clips
 at the right edge of its 240-pixel panel. The shell itself is legible.
 No feature code changed in this validation. The three-row follow-up above
-replaces that hint with the visible entry. Switch input/chord validation
-and the P9.2 cross-host completion remain open.
+replaces that hint with the visible entry. Switch row entry/return validation is recorded below; diagnostic chord
+coverage was not part of that test.
 
 ## PC three-row validation checkpoint (2026-10-12)
 
@@ -210,6 +210,24 @@ Representative local evidence: `v4-middle.png`, `v4-shell-defaults.png`,
 `v4-continue-load.png`, `newgame-flow.png`, `restart-stubs-off.png`,
 `shell-ttb.png`, `sequence60hz.log`, `newgame60hz.log` and `pytest-latest.log`.
 These temporary files are not repository assets or durable CI artifacts.
-Gamepad input, Switch presentation/input and the P9.2 cross-host gate remain
-unvalidated by this PC keyboard smoke. P9.3 effects and P9.4 persistence
+Gamepad input and Switch presentation/input were not covered by this PC
+keyboard smoke; the later OLED checkpoint below completes P9.2. P9.3 effects and P9.4 persistence
 remain open.
+
+## OLED preview.20 validation (2026-10-12)
+
+The owner tested the nxlink game binary from `v0.6.5-preview.20`, source
+`ecefe18e11d679a73ec0cf16a7592fffb5d0ed84`, in handheld mode. At the title,
+Plus shows Start / Port options / Continue; D-pad selects Port options,
+B opens the shell, both stubs show OFF, and X closes back to the middle row.
+Owner confirmation: “Sim, aparece OFF e volta corretamente”. Together with
+the PC TTB/input checkpoint above, this meets P9.2's entry/return done-when.
+
+The mapping in `platforms/switch/psyz_backend/nx_input.c` is positional:
+B = Cross (confirm), X = Triangle (close), A = Circle, Y = Square,
+Plus = Start and Minus = Select. PC keyboard X is Cross; PC S is Triangle.
+The tested physical controller model was not recorded; this does not
+validate every controller model or PC gamepad configuration.
+
+The switches remain safe no-op stubs. Hardware toggle effects and persistence
+were not tested; P9.3/P9.4 remain open and the overall Phase 9 gate is open.

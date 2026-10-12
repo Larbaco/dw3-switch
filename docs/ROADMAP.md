@@ -563,6 +563,9 @@ speed.
   `Psyz_QuitRequested`, calls `memcard_host_flush_all`, and uses
   `appletLockExit` for a cleanup window. See
   [P5.3_FLAT_SAVE.md](P5.3_FLAT_SAVE.md).
+  **Preview.20 OLED exit (2026-10-12):** nxlink log observed applet exit,
+  `flat saves flushed`, and a clean process exit. No fresh save or
+  relaunch/Continue reload was tested; P5.3 remains open.
   **Still open:** sleep/focus-loss flush + time-delta clamp (P10.2);
   OLED smoke that HOME after SAVE / mid-write-section leaves flats
   intact and Continue reloads. Emulator conversion remains P9.6.
@@ -755,8 +758,8 @@ Gate: P8.2 works with an owner-supplied minimal pack. P8.4 is best-effort.
 
 Starts after the Phase 8 gate in the planned order (or earlier once at
 least one non-vanilla port feature exists to toggle). P9.1 is done; P9.2
-entry path is investigated (see [PORT_OPTIONS.md](PORT_OPTIONS.md)
-“Entry investigation”). Goal: a title / main menu entry that exposes
+entry and return are validated on PC and OLED (see
+[PORT_OPTIONS.md](PORT_OPTIONS.md)). Goal: a title / main menu entry that exposes
 toggles for **every port-added feature** that is not part of the original
 PS1 game, with vanilla-safe defaults and persistence on owner storage.
 
@@ -765,7 +768,7 @@ PS1 game, with vanilla-safe defaults and persistence on owner storage.
   defaults preserve original PS1 behaviour.
   Done when: [PORT_OPTIONS.md](PORT_OPTIONS.md) exists and the README
   points at Phase 9 / that note.
-- [ ] **P9.2 Menu entry and shell.** Add a port options entry on the
+- [x] **P9.2 Menu entry and shell.** Add a port options entry on the
   title / main menu that opens and closes a dedicated screen without
   breaking the vanilla title flow (PC and Switch). Hook: `PORT_HOST`
   glue on `STDWTITL` `runOptions` + shell in `port/options/` (see
@@ -789,8 +792,14 @@ PS1 game, with vanilla-safe defaults and persistence on owner storage.
   return to middle, restart defaults OFF, Start to Junior stage 474 and
   Continue to the load screen. Cursor/striped row and TTB shell captured;
   tools suite 79 passed, 2 skipped. Retained evidence reviewed on resumption;
-  see PORT_OPTIONS.md for the uncapped-Xvfb repeat limitation. Gamepad and
-  Switch hardware confirmation remain open; this does not close P9.2.
+  see PORT_OPTIONS.md for the uncapped-Xvfb repeat limitation. That PC run
+  did not cover gamepad or Switch hardware.
+  **OLED preview.20 (2026-10-12, source `ecefe18`):** owner confirmed
+  Plus → D-pad Port options → B opens both stubs OFF; X returns cleanly
+  to the middle title row. B maps to Cross, X to Triangle. Together with
+  the PC TTB checkpoint, this completes P9.2. Other controller models,
+  feature effects and persistence remain unvalidated; P9.3/P9.4 and the
+  Phase 9 gate remain open.
   Done when: the screen is reachable from the main menu and returns
   cleanly to it (PC + Switch; TTB print on PC).
 - [ ] **P9.3 Toggle registry.** Maintain a registry of non-native features

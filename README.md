@@ -24,16 +24,17 @@ Checkboxes: [docs/ROADMAP.md](docs/ROADMAP.md). Phase 3 gate:
 | 0 to 2 | Done. Toolchains, disc to runtime, US title boot from decomp C ([P2.8](docs/P2.8_TITLE_BOOT.md)). |
 | 3 | Gate met for US. Field, battle, menus, card game, movies, SEP, and the stage sweep run on PC. Start to Genji is documented, with aids. [P3.9](docs/P3.9_REFERENCE.md) is done. Still open: EU playthrough, a pad-driven boss KO, [PC GPU and battle polish](docs/P3_GPU_GLITCHES.md), and the `WSTAG460` stub. |
 | 4 | Gate met on hardware for title, field, and battle. P4.2, P4.4, P4.5, and P4.7 are ticked. Still open: P4.3 underrun count and the P4.6 overlay sweep. |
-| 5 to 10 | Phase 5 is open. P5.2 is the 16.7 ms bar (soft battle default ON after all-black mesh dumps; field mesh gated). P5.3 flat `saveN.bin` + deferred flush landed; OLED MC1→MC2 save PASS and STGMCARD 100-frame bar owner-confirmed on load ([P5.3_FLAT_SAVE](docs/P5.3_FLAT_SAVE.md)). HOME/`appletMainLoop` quit flush landed; OLED exit/reload validation remains open. P6.5 packaging is done and does not start Phase 6. P9.2 has a PC-validated Start / Port options / Continue title entry and shell ([PORT_OPTIONS](docs/PORT_OPTIONS.md)); gamepad and Switch validation, gameplay effects, and persistence remain open. Phases 6 through 10 otherwise have not started. P7.1, P8.1, P9.1, and P10.1 are early notes. See [SWITCH_FEATURES](docs/SWITCH_FEATURES.md). |
+| 5 to 10 | Phase 5 is open. P5.2 is the 16.7 ms bar (soft battle default ON after all-black mesh dumps; field mesh gated). P5.3 flat `saveN.bin` + deferred flush landed; OLED MC1→MC2 save PASS and STGMCARD 100-frame bar owner-confirmed on load ([P5.3_FLAT_SAVE](docs/P5.3_FLAT_SAVE.md)). HOME/`appletMainLoop` quit flush landed; OLED applet exit/flush was observed on preview.20; fresh-save/relaunch reload validation remains open. P6.5 packaging is done and does not start Phase 6. P9.2 has a PC- and OLED-validated Start / Port options / Continue title entry and shell ([PORT_OPTIONS](docs/PORT_OPTIONS.md)); other controller configurations, gameplay effects, and persistence remain open. Phases 6 through 10 otherwise have not started. P7.1, P8.1, P9.1, and P10.1 are early notes. See [SWITCH_FEATURES](docs/SWITCH_FEATURES.md). |
 
 Layering: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). OLED network notes:
 [docs/SWITCH_OLED_NETWORK.md](docs/SWITCH_OLED_NETWORK.md) (FTP and preview 7
 NXLink transfer/launch/log stream verified).
 
-### On an OLED, 2026-10-11
+### On an OLED, updated 2026-10-12
 
 Title, field, and battle run. The main menu picture looks right. The opening
-video still has visual errors.
+video still has errors or slowdown (owner report on preview.20; image/audio
+quality and performance are not validated).
 
 Movie audio plays. STR files are restored from the Mode2 BIN in the parent
 of `us/`.
@@ -68,7 +69,14 @@ confirmed the load bar feels OK; save uses the same constants.
 
 Still open on hardware: a P4.3 underrun count,
 the full P4.6 overlay sweep, P5.2 battle 60 Hz (soft path for now), the
-kernel sync-object error, and P5.3 HOME quit-flush/reload validation.
+kernel sync-object error, and P5.3 fresh-save/HOME/relaunch reload validation.
+
+On preview.20, the owner confirmed the Port options title entry opens with
+both stubs OFF and closes back to the middle row: **Plus** opens the title
+choices, D-pad selects, **B** confirms (PS1 Cross), **X** closes (Triangle).
+This validates P9.2 on the tested OLED handheld controller configuration;
+other controller models and option persistence remain unvalidated. See
+[RELEASE_PREVIEW20](docs/RELEASE_PREVIEW20.md) for the post-release checkpoint.
 
 **PC today.** Yes, with your own US disc packed to `runtime/us`. Expect
 rough visuals in some scenes.
