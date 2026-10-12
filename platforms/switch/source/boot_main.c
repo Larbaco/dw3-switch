@@ -33,6 +33,7 @@
 #include "../psyz_backend/nx_debug_overlay.h"
 #include "../psyz_backend/nx_mem_budget.h"
 #include "../psyz_backend/nx_mesh_debug.h"
+#include "../psyz_backend/stgetnext_stats.h"
 #if DW3_NX_DEBUG_OVERLAY
 #include "debug_overlay_text.h"
 #endif
@@ -123,6 +124,46 @@ static void dw3_nxlink_stdio_shutdown(void) {
  * appletMainLoop — see dw3_nx_service_applet_quit. The game loop then sees
  * Psyz_QuitRequested and returns from dw3_game_main.
  */
+/* DIAG (diag/stgetnext-movie-perf): one breakdown line per 60-pump window.
+ *
+ * Ticks come from CNTPCT_EL0 (see stgetnext_stats.h) and are converted with
+ * the same armTicksToNs the rest of this file uses. The counters are exact;
+ * the two tick reads per wrapped call are the measurement's own cost, so read
+ * the StGetNext totals as an upper bound. */
+static uint64_t dw3_nx_ticks_to_us(uint64_t ticks) {
+    return armTicksToNs(ticks) / 1000ULL;
+}
+
+static void dw3_nx_stgetnext_window_log(uint64_t dt_us) {
+    Dw3StGetNextStats s;
+
+    dw3_stgetnext_stats_take(&s);
+
+    INFOF("stgetnext win: dt_us=%llu calls=%llu handover=%llu gate_hit=%llu "
+          "gate_miss=%llu scans=%llu slots=%llu recov=%llu unusable=%llu "
+          "wrap_us=%llu real_us=%llu wrap_own_us=%llu "
+          "pump_us=%llu pump_inreal_us=%llu pump_calls=%llu "
+          "mdec_us=%llu mdec_calls=%llu",
+          (unsigned long long)dt_us,
+          (unsigned long long)s.calls,
+          (unsigned long long)s.handovers,
+          (unsigned long long)s.gate_hits,
+          (unsigned long long)s.gate_misses,
+          (unsigned long long)s.scans,
+          (unsigned long long)s.slots_compared,
+          (unsigned long long)s.recoveries,
+          (unsigned long long)s.ring_unusable,
+          (unsigned long long)dw3_nx_ticks_to_us(s.wrap_ticks),
+          (unsigned long long)dw3_nx_ticks_to_us(s.real_ticks),
+          /* The part PR 106 owns: wrapper body, scans and gate checks only. */
+          (unsigned long long)dw3_nx_ticks_to_us(s.wrap_ticks - s.real_ticks),
+          (unsigned long long)dw3_nx_ticks_to_us(s.pump_ticks),
+          (unsigned long long)dw3_nx_ticks_to_us(s.pump_ticks_in_real),
+          (unsigned long long)s.pump_calls,
+          (unsigned long long)dw3_nx_ticks_to_us(s.decdctout_ticks),
+          (unsigned long long)s.decdctout_calls);
+}
+
 static void dw3_nx_vsync_pump(void) {
     static unsigned pumps;
 
@@ -149,6 +190,7 @@ static void dw3_nx_vsync_pump(void) {
 
         if (dw3_frame_dt_sample(&frame_dt, pumps, restore_now_us(), &dt_us)) {
             INFOF("frame dt us=%llu", (unsigned long long)dt_us);
+            dw3_nx_stgetnext_window_log(dt_us);
 #if DW3_NX_DEBUG_MEM
             {
                 Dw3NxMemBudgetSample mem;
