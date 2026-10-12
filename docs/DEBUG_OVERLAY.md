@@ -70,7 +70,7 @@ Optional `-DDW3_NX_MESH_DIAG=ON` or `DW3_MESH_DIAG=1` (see
 
 - Logs rate-limited `nx_mesh: clear_rect … rgb=`
 - On **gpu-solid**: force magenta ClearImage into the mesh FBO, constant
-  magenta vertex colours, yellow NDC overlay of the first packet tri, and a
+  bright-green vertex colours, yellow NDC overlay of the first packet tri, and a
   tiny cyan corner marker (fullscreen cyan retired after OLED ssquad2)
 - Present becomes `mesh_only_diag` (skip UI black-discard)
 

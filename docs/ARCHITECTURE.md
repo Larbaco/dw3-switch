@@ -84,3 +84,14 @@ See [SURVEY.md](SURVEY.md) for the evidence behind each point.
 - Duplicating Switch host work in Phase 10 that already belongs to P4–P6
   (present, pad/rumble, saves, scale/widescreen, turbo); see
   [SWITCH_FEATURES.md](SWITCH_FEATURES.md)
+
+## Switch mesh diagnostics
+
+`DW3_NX_MESH_DIAG` defaults OFF and does not change the software battle
+seed. With DIAG on, GPU battle present skips the software UI composite.
+GPU-solid adds green packet colours, a yellow packet-triangle overlay,
+and cyan/magenta markers inside the actual displayed VRAM rectangle
+immediately before the mesh FBO blit. The markers follow either display
+band; field remains on software present. See
+[P5.2_SWITCH_GPU_OPTIONS.md](P5.2_SWITCH_GPU_OPTIONS.md) for evidence and
+limitations.

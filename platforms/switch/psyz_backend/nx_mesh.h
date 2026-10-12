@@ -42,7 +42,7 @@ bool dw3_nx_mesh_available(void);
 int dw3_nx_mesh_diag_enabled(void);
 
 /* DIAG + gpu-solid: tiny cyan NDC corner marker (present proven by ssquad2).
- * x,y,w,h are log context only. Kept for call sites / re-falsify. */
+ * x,y,w,h are the presented VRAM crop. Also paints its right magenta rim. */
 void dw3_nx_mesh_diag_ssquad(int x, int y, int w, int h);
 
 /* Drop pending verts / "had content" without drawing (leave battle → field). */

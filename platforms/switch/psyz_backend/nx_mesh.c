@@ -2,6 +2,7 @@
  * Shaders adapted from vendor/psyz sdl3_gl.c (ES 3.00). UI stays on CPU VRAM. */
 #include "nx_mesh.h"
 #include "nx_mesh_debug.h"
+#include "nx_mesh_diag_geometry.h"
 #include "nx_battle_mode.h"
 #include "nx_vram_pack.h"
 #include "nx.h"
@@ -71,13 +72,6 @@ static int s_n_idx;
 
 static uint8_t s_pack_rgba[DW3_NX_VRAM_W * DW3_NX_VRAM_H * 4];
 
-/* Tiny cyan corner (NDC) — DIAG alive marker; does not cover game verts.
- * Fullscreen cyan was OLED-proven (ssquad2); that cover is retired. */
-static const float SSQUAD_CORNER_NDC[] = {
-    -1.0f, -1.0f, 0.0f, 1.0f, -0.85f, -1.0f, 1.0f, 1.0f,
-    -1.0f, -0.85f, 0.0f, 0.0f, -0.85f, -0.85f, 1.0f, 0.0f,
-};
-
 static int diag_solid_wanted(void) {
     return dw3_nx_mesh_diag_enabled() && dw3_nx_battle_mode_use_solid();
 }
@@ -87,14 +81,6 @@ static int diag_tex_wanted(void) {
     return dw3_nx_mesh_diag_enabled() &&
            dw3_nx_battle_mode_get() == DW3_NX_BATTLE_GPU_TEX;
 }
-
-/* Thin magenta NDC strip on the right — drawn AFTER green MESH_VS solids.
- * If OLED sees this rim with a green fill, the magenta ClearImage was
- * overpainted (expected). If neither clear nor rim show, present/band issue. */
-static const float SSQUAD_MAGENTA_RIM_NDC[] = {
-    0.90f, -1.0f, 0.0f, 1.0f, 1.0f, -1.0f, 1.0f, 1.0f,
-    0.90f, 1.0f,  0.0f, 0.0f, 1.0f, 1.0f,  1.0f, 0.0f,
-};
 
 /* Same clip-space map as MESH_VS (PS1 screen + u_drawOffset → NDC). */
 static void diag_ps1_to_ndc(int16_t x, int16_t y, float *ox, float *oy) {
@@ -710,32 +696,6 @@ static void flush_locked(const uint16_t *cpu_vram) {
         }
         diag_overlay_game_tri_ndc(t0v, t1v, t2v);
         overlay_drawn = 1;
-        /* Tiny cyan corner — DIAG alive without covering green verts. */
-        dw3_nx_mesh_diag_ssquad(0, 0, DW3_NX_VRAM_W, DW3_NX_VRAM_H);
-        /* Magenta rim AFTER solids: falsify clear-overpaint vs clear miss. */
-        if (s_ssquad_prog && s_ssquad_vbo && s_ssquad_pos >= 0) {
-            static unsigned rim_log_n;
-
-            glDisable(GL_SCISSOR_TEST);
-            glDisable(GL_BLEND);
-            glUseProgram(s_ssquad_prog);
-            glUniform4f(s_ssquad_color, 1.0f, 0.0f, 1.0f, 1.0f);
-            glBindBuffer(GL_ARRAY_BUFFER, s_ssquad_vbo);
-            glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(SSQUAD_MAGENTA_RIM_NDC),
-                            SSQUAD_MAGENTA_RIM_NDC);
-            glEnableVertexAttribArray((GLuint)s_ssquad_pos);
-            glVertexAttribPointer((GLuint)s_ssquad_pos, 2, GL_FLOAT, GL_FALSE,
-                                  sizeof(float) * 4, (const void *)0);
-            glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
-            rim_log_n++;
-            if (rim_log_n <= 8u || (rim_log_n % 64u) == 0u) {
-                fprintf(stderr,
-                        "DIAG solid magenta rim #%u (post-solid; if visible "
-                        "with green fill → clear was overpainted)\n",
-                        rim_log_n);
-                fflush(stderr);
-            }
-        }
         while ((e = glGetError()) != GL_NO_ERROR) {
             glerr = e;
         }
@@ -747,7 +707,7 @@ static void flush_locked(const uint16_t *cpu_vram) {
                     "DIAG solid flush #%u tris=%d vtx=%d "
                     "xy=[%d..%d],[%d..%d] post=[%d..%d],[%d..%d] "
                     "out=%d/%d (%d%%) off=%d,%d area=%d,%d..%d,%d "
-                    "overlay=%d rim=1 glerr=0x%x\n",
+                    "overlay=%d glerr=0x%x\n",
                     flush_log_n, tris, s_n_vtx, xmin, xmax, ymin, ymax, ox_min,
                     ox_max, oy_min, oy_max, outside, s_n_vtx, pct, s_off_x,
                     s_off_y, s_area_x0, s_area_y0, s_area_x1, s_area_y1,
@@ -913,13 +873,14 @@ void dw3_nx_mesh_diag_ssquad(int x, int y, int w, int h) {
     static unsigned ssquad_log_n;
     static unsigned ssquad_skip_n;
     GLenum err;
+    float corner[16];
+    float rim[16];
 
-    /* Tiny cyan corner only (present already falsified by OLED ssquad2 CYAN).
-     * x,y,w,h are call-site context for logs. */
-    (void)x;
-    (void)y;
-    (void)w;
-    (void)h;
+    /* Crop-relative markers, painted immediately before the final mesh blit.
+     * The mesh FBO is full VRAM, but present samples only this display rect. */
+    if (!dw3_nx_mesh_diag_geometry(x, y, w, h, corner, rim)) {
+        return;
+    }
 
     if (!s_ready) {
         ssquad_skip_n++;
@@ -953,7 +914,7 @@ void dw3_nx_mesh_diag_ssquad(int x, int y, int w, int h) {
         }
         return;
     }
-    vbo = s_ssquad_vbo ? s_ssquad_vbo : s_blit_vbo;
+    vbo = s_ssquad_vbo;
     if (!vbo) {
         ssquad_skip_n++;
         if (ssquad_skip_n <= 16u || (ssquad_skip_n % 64u) == 0u) {
@@ -987,13 +948,14 @@ void dw3_nx_mesh_diag_ssquad(int x, int y, int w, int h) {
     glUseProgram(s_ssquad_prog);
     glUniform4f(s_ssquad_color, 0.0f, 1.0f, 1.0f, 1.0f);
     glBindBuffer(GL_ARRAY_BUFFER, vbo);
-    if (vbo == s_ssquad_vbo) {
-        glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(SSQUAD_CORNER_NDC),
-                        SSQUAD_CORNER_NDC);
-    }
+    glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(corner), corner);
     glEnableVertexAttribArray((GLuint)pos_loc);
     glVertexAttribPointer((GLuint)pos_loc, 2, GL_FLOAT, GL_FALSE,
                           sizeof(float) * 4, (const void *)0);
+    glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+    /* Right-edge rim in the same displayed crop, after all game draws. */
+    glUniform4f(s_ssquad_color, 1.0f, 0.0f, 1.0f, 1.0f);
+    glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(rim), rim);
     glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
     err = glGetError();
 
@@ -1003,7 +965,7 @@ void dw3_nx_mesh_diag_ssquad(int x, int y, int w, int h) {
     ssquad_log_n++;
     if (ssquad_log_n <= 16u || (ssquad_log_n % 64u) == 0u) {
         fprintf(stderr,
-                "DIAG ssquad drawn (#%u corner NDC cyan glerr=0x%x "
+                "DIAG ssquad drawn (#%u crop cyan+magenta rim glerr=0x%x "
                 "vbo=%u ctx %d,%d %dx%d)\n",
                 ssquad_log_n, (unsigned)err, (unsigned)vbo, x, y, w, h);
         fflush(stderr);
@@ -1182,7 +1144,11 @@ void dw3_nx_mesh_present(int dx, int dy, int dw, int dh, int vx, int vy, int vw,
     if (!s_ready || !s_had_content || dw <= 0 || dh <= 0 || vw <= 0 || vh <= 0) {
         return;
     }
-    /* No fullscreen cyan before blit — present/FBO already OK (ssquad2). */
+    /* Both markers track the actual displayed band (including y=256).
+     * Draw here so later OT batches/ClearImage cannot erase them. */
+    if (diag_solid_wanted()) {
+        dw3_nx_mesh_diag_ssquad(dx, dy, dw, dh);
+    }
     glDisable(GL_SCISSOR_TEST);
     glDisable(GL_BLEND);
     glViewport(vx, vy, vw, vh);

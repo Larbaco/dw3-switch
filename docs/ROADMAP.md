@@ -498,12 +498,16 @@ speed.
   gpu-solid and gpu-tex ~57–59 Hz but **flat blue** (likely stage
   `setBgColor` ≈ 59,115,233 left in the mesh FBO while fragments miss the
   presented band / sample zero; black-discard UI amplifies). Framework
-  survey + DIAG spike (`DW3_NX_MESH_DIAG`): magenta clear/verts + mesh-only
+  survey + DIAG spike (`DW3_NX_MESH_DIAG`): magenta clear/green verts + mesh-only
   present —
   [P5.2_SWITCH_GPU_OPTIONS.md](P5.2_SWITCH_GPU_OPTIONS.md). OLED: magenta
   clear confirmed; ssquad2 fullscreen cyan ⇒ present/FBO OK; next is solid
   packet verts (yellow NDC overlay + XY/offset logs; no play-code port).
-  Another GPU API (deko3d) is **not** justified until GLES paints colour.
+  Later OLED `g3cb66dd`: green packet solids paint and soft remains OK;
+  gpu-tex has no UI under DIAG by design. Remaining texture/artifact cause
+  is unproven. PR #89 corrects cyan/rim markers to the presented crop in
+  both bands; no hardware result for that correction yet. Another GPU API
+  is **not** justified by this evidence.
   **Nxlink mesh debug:** `--nxlink` builds default `DW3_NX_DEBUG_MESH` and
   emit a sampled `mesh dbg:` line next to `frame dt us=` (tris / path /
   flush+upload+present us). After the FIGHTSTG gate, field should stay
