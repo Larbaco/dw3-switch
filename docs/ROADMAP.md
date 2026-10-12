@@ -746,7 +746,11 @@ PS1 game, with vanilla-safe defaults and persistence on owner storage.
   [PORT_OPTIONS.md](PORT_OPTIONS.md) Entry investigation).
   **In progress (PC):** Select/Backspace MVP opens `port/options` shell
   on title NG/Continue; Triangle closes; stub registry; unit tests.
-  Switch Minus mapping + third cursor row still open.
+  **Three-row follow-up:** title now has Start / Port options / Continue,
+  original cursor + vanilla choices; new label uses the resident game
+  font. Confirm opens the shell, Triangle returns to the middle row;
+  Select remains a shortcut without shoulder chords. Independent PC
+  visual/input validation and Switch hardware confirmation remain open.
   Done when: the screen is reachable from the main menu and returns
   cleanly to it (PC + Switch; TTB print on PC).
 - [ ] **P9.3 Toggle registry.** Maintain a registry of non-native features

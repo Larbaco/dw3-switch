@@ -95,7 +95,32 @@ wired too early; clipping a third row near y=194 on 240p.
 Full write-up (session notes, not git): 
 `~/.cursor/projects/mnt-windows-Jogos-dw3-switch/notes/p92-main-menu-port-options-entry.txt`.
 
-## PC bring-up (P9.2 MVP)
+## Title row (P9.2 follow-up)
+
+The title now offers **Start / Port options / Continue** (the first item
+keeps the owner's original New Game/Start sprite). Up/Down moves one row
+at a time without wrapping. Confirm on the middle row opens the existing
+shell; Triangle closes it and leaves the middle row selected. Confirm
+does not toggle a stub on the opening frame. New Game and Continue retain
+their original title `choice` values and blink/fade flow.
+
+Patch `0045-PORT_HOST-p92-title-options-row.patch` extends the game menu
+through `PORT_HOST`; `port/options/title_entry.c` draws the added label
+with the game's resident proportional font and blue/dark-blue palettes.
+The original title labels are pre-rendered sprites, so this new label
+uses the in-game font rather than an identical new title sprite. No
+owner artwork or generated asset is bundled. The original cursor frame
+is reused at all three rows, at y=148/164/180 above the copyright.
+PRESS START retains its separate two-sprite spread animation, then the
+three-row layout appears when the options state starts.
+
+Select/Backspace remains a shortcut; shoulder-button combinations do not
+open the shell, preserving the Switch diagnostic chords. The clipped
+standalone shortcut hint is no longer drawn because the visible row is
+the entry. PC visual/input validation and Switch hardware validation of
+this new row are pending. P9.3 effects and P9.4 persistence remain open.
+
+## PC bring-up (P9.2 MVP shortcut)
 
 While **New Game / Continue** are shown on the title menu, press
 **Select** to open the port options shell. On the PSY-Z SDL keyboard map
