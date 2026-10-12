@@ -421,6 +421,7 @@ static int atomic_write_file(const char *path, const uint8_t *data, size_t len) 
     FILE *fp;
     size_t nw;
     int n;
+    int err;
 
     n = snprintf(tmp, sizeof(tmp), "%s.tmp", path);
     if (n < 0 || (size_t)n >= sizeof(tmp)) {
@@ -432,16 +433,39 @@ static int atomic_write_file(const char *path, const uint8_t *data, size_t len) 
     }
     nw = fwrite(data, 1, len, fp);
     if (nw != len || fflush(fp) != 0) {
+        err = errno;
         fclose(fp);
         remove(tmp);
+        errno = err;
         return -1;
     }
     if (fclose(fp) != 0) {
+        err = errno;
         remove(tmp);
+        errno = err;
+        return -1;
+    }
+    /*
+     * POSIX rename replaces an existing dest; FAT/exFAT (Switch SD) and
+     * Windows return EEXIST ("File exists"). Unlink dest first so the
+     * second (and later) flush of saveN.bin succeeds on every host.
+     */
+    if (remove(path) != 0 && errno != ENOENT) {
+        err = errno;
+        fprintf(stderr, "dw3: memcard atomic_write: remove(%s) failed: %s\n",
+                path, strerror(err));
+        remove(tmp);
+        errno = err;
         return -1;
     }
     if (rename(tmp, path) != 0) {
-        remove(tmp);
+        err = errno;
+        fprintf(stderr,
+                "dw3: memcard atomic_write: rename(%s -> %s) failed: %s "
+                "(keeping .tmp; dest was unlinked)\n",
+                tmp, path, strerror(err));
+        /* Do not remove tmp — dest is gone; RAM is still dirty for retry. */
+        errno = err;
         return -1;
     }
     return 0;

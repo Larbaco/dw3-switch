@@ -143,6 +143,49 @@ def test_flat_write_read_roundtrip(memcard_rw: Path, tmp_path: Path):
     assert r.stdout == payload
 
 
+def test_flat_flush_overwrites_existing(memcard_rw: Path, tmp_path: Path):
+    """Second flush must replace save0.bin (Switch FAT returns EEXIST on rename)."""
+    card_dir = tmp_path / "cards"
+    card_dir.mkdir()
+    first = b"first-save-payload!!"
+    second = b"second-save-payload!"
+    assert len(first) == len(second)
+
+    r = _run(
+        memcard_rw,
+        "--dir",
+        str(card_dir),
+        "flat-write",
+        "--slot",
+        "0",
+        "--offset",
+        "32",
+        "--hex",
+        first.hex(),
+    )
+    assert r.returncode == 0, r.stderr
+    path = card_dir / "save0.bin"
+    assert path.is_file()
+    assert path.read_bytes()[32 : 32 + len(first)] == first
+
+    r = _run(
+        memcard_rw,
+        "--dir",
+        str(card_dir),
+        "flat-write",
+        "--slot",
+        "0",
+        "--offset",
+        "32",
+        "--hex",
+        second.hex(),
+    )
+    assert r.returncode == 0, r.stderr
+    assert path.stat().st_size == FLAT_SIZE
+    assert path.read_bytes()[32 : 32 + len(second)] == second
+    assert not (card_dir / "save0.bin.tmp").exists()
+
+
 def test_memcard_flat_api(memcard_flat_test: Path, tmp_path: Path):
     """format/create, MemCard* round-trip, one flush, .mcr migration."""
     card_dir = tmp_path / "flat"

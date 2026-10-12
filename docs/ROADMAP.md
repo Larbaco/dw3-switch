@@ -506,6 +506,10 @@ speed.
   (title `MOVIEOPN` 150/s, map fread hitch, one-tile draw fill-in, soft
   battle FPS). Timed `map_preload` / `memcard ensure|migrate` lines are
   on for the next capture.
+  **Preview.13 OLED (2026-10-11):** in-game SAVE hit `flush FAILED
+  (File exists)` on existing `saveN.bin` — FAT/exFAT rejects
+  rename-over-existing; `flush_failed` → STGMCARD status=3 (card
+  blocked). Fix: unlink before rename (see P5.3_FLAT_SAVE.md).
   **Still open:** HOME / `appletMainLoop` quit path (`Psyz_QuitRequested`
   still 0); sleep/focus flush; confirm migrated saves reload after a
   clean exit (migrate itself landed on this OLED boot). Emulator

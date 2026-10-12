@@ -3,8 +3,9 @@
  *
  *   memcard_flat_test <dir>
  *
- * Covers format/create, write+read round-trip, dirty flush-once, and
- * migration from a legacy memcard0.mcr fixture built in-process.
+ * Covers format/create, write+read round-trip, dirty flush-once,
+ * overwrite flush (existing saveN.bin), and migration from a legacy
+ * memcard0.mcr fixture built in-process.
  */
 #include "memcard_host.h"
 
@@ -142,6 +143,82 @@ static int test_create_write_read(const char *dir) {
     }
     if (got[0] != 0xA1 || got[127] != 0x5A) {
         fprintf(stderr, "round-trip bytes %02x/%02x\n", got[0], got[127]);
+        return 1;
+    }
+    return 0;
+}
+
+/* Second flush must overwrite an existing saveN.bin (FAT EEXIST path). */
+static int test_overwrite_flush(const char *dir) {
+    char name[] = SAVE_NAME;
+    unsigned char pat[128];
+    char path[768];
+    FILE *fp;
+    uint8_t buf[128];
+
+    if (memcard_host_set_dir(dir) != 0 || memcard_host_ensure(0) != 0) {
+        fprintf(stderr, "overwrite: ensure failed\n");
+        return 1;
+    }
+    MemCardInit(0);
+    MemCardStart();
+    if (MemCardFormat(CHAN0) != MC_ERR_NONE) {
+        fprintf(stderr, "overwrite: format failed\n");
+        return 1;
+    }
+    if (MemCardCreateFile(CHAN0, name, 4) != MC_ERR_NONE) {
+        fprintf(stderr, "overwrite: create failed\n");
+        return 1;
+    }
+
+    memcard_host_reset_flush_count(0);
+    memset(pat, 0x11, sizeof(pat));
+    if (MemCardWriteFile(CHAN0, name, (unsigned long *)pat, 0, 128) != 1 ||
+        !sync_ok()) {
+        fprintf(stderr, "overwrite: first write failed\n");
+        return 1;
+    }
+    if (MemCardExist(CHAN0) != 1 || !sync_ok()) {
+        fprintf(stderr, "overwrite: first exist/flush failed\n");
+        return 1;
+    }
+    if (memcard_host_flush_count(0) != 1 || memcard_host_flush_failed(0)) {
+        fprintf(stderr, "overwrite: first flush count=%u failed=%d\n",
+                memcard_host_flush_count(0), memcard_host_flush_failed(0));
+        return 1;
+    }
+
+    memset(pat, 0x22, sizeof(pat));
+    if (MemCardWriteFile(CHAN0, name, (unsigned long *)pat, 0, 128) != 1 ||
+        !sync_ok()) {
+        fprintf(stderr, "overwrite: second write failed\n");
+        return 1;
+    }
+    if (MemCardExist(CHAN0) != 1 || !sync_ok()) {
+        fprintf(stderr, "overwrite: second exist/flush failed\n");
+        return 1;
+    }
+    if (memcard_host_flush_count(0) != 2 || memcard_host_flush_failed(0)) {
+        fprintf(stderr, "overwrite: second flush count=%u failed=%d\n",
+                memcard_host_flush_count(0), memcard_host_flush_failed(0));
+        return 1;
+    }
+
+    if (join_path(path, sizeof(path), dir, "save0.bin") != 0) {
+        return 1;
+    }
+    fp = fopen(path, "rb");
+    if (fp == NULL) {
+        fprintf(stderr, "overwrite: save0.bin missing\n");
+        return 1;
+    }
+    if (fread(buf, 1, sizeof(buf), fp) != sizeof(buf)) {
+        fclose(fp);
+        return 1;
+    }
+    fclose(fp);
+    if (buf[0] != 0x22) {
+        fprintf(stderr, "overwrite: disk byte %02x (want 22)\n", buf[0]);
         return 1;
     }
     return 0;
@@ -475,6 +552,12 @@ int main(int argc, char **argv) {
 
     if (join_path(sub, sizeof(sub), dir, "rw") != 0 || make_dir(sub) != 0 ||
         test_create_write_read(sub) != 0) {
+        return 1;
+    }
+    memcard_host_shutdown();
+
+    if (join_path(sub, sizeof(sub), dir, "overwrite") != 0 ||
+        make_dir(sub) != 0 || test_overwrite_flush(sub) != 0) {
         return 1;
     }
     memcard_host_shutdown();
