@@ -1,17 +1,18 @@
-/* One-shot SD dumps of the present display rect (CPU VRAM + mesh FBO). */
+/* One-shot SD dumps of the present display rect (CPU VRAM + mesh FBO).
+ * host_hello Makefile excludes this TU; CMake game image compiles it when
+ * DW3_NX_DUMP_VRAM=1 (needs port/overlays for FIGHTSTG). */
 #include "nx_vram_dump.h"
+
+#if DW3_NX_DUMP_VRAM
 
 #include "nx_mesh.h"
 #include "nx_vram_pack.h"
 #include "overlay_host.h"
+#include "nx.h"
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
-#if DW3_NX_DUMP_VRAM
-
-#include "nx.h"
 
 /* US / EU FILE_FIGHTSTG — dump only during battle mode. */
 #define DW3_FILE_FIGHTSTG_US 0x159
