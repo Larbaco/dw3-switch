@@ -28,7 +28,23 @@ section**: hbmenu shows no title/author/version (even though `APP_TITLE`,
 LibHac-based loaders reject the file — Ryujinx dies with
 `NullReferenceException` in `Nro.OpenNroAssetSection`. A correct build has a
 16 KiB asset section past the executable: `file size - NRO size field`
-(`0x18` in the header) should be 16440.
+(`0x18` in the header) should be 16440 with the stock libnx icon; a custom
+JPEG icon makes that section larger by the icon file size.
+
+### Homebrew icon (game image)
+
+The CMake game `.nro` passes `ICON` to `nx_create_nro` so `elf2nro` embeds
+[`icon.jpg`](icon.jpg) (256×256 JPEG). Canonical source art is
+[`docs/assets/icon-256.png`](../../docs/assets/icon-256.png); regenerate the
+JPEG after art changes:
+
+```bash
+convert docs/assets/icon-256.png -resize 256x256! -quality 90 \
+  platforms/switch/icon.jpg
+```
+
+hbmenu shows this icon for SD installs (and most homebrew launchers). The
+Makefile `host_hello` sample keeps the libnx default icon.
 
 ### hbmenu version (game image)
 
