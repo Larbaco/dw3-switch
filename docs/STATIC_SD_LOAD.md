@@ -129,3 +129,27 @@ of the map-preload change.
 
 `VSync(n>1) is not fully implemented` was logged once. That warning is
 the known partial `VSync` path. The session did not stop on it.
+
+## Preview.11 OLED — “load still somewhat slow” (2026-10-11)
+
+Owner note after soft-battle preview (`c18e152`, nxlink log
+`/tmp/dw3-preview11/nxlink.log`): field gate OK, battle picture OK under
+`soft_battle=1`, flat-save #75 migrated `memcardN.mcr` → `saveN.bin`, but
+**load still feels somewhat slow**.
+
+What the log attributes that feel to:
+
+| Suspect | Evidence | Verdict |
+|---|---|---|
+| Flat-save migrate / first ensure | `memcard migrate slot=0/1` at boot `init_paths`, before title | **One-time.** Next boots load `saveN.bin` into RAM. Not Continue I/O. |
+| STGMCARD Continue | `STGMCARD_loadSave ok` within ~1 s samples; no FILE_CACHE spam | **Not the stall.** Slot already resident after boot ensure. |
+| Title → Continue | `mode=0xe01` opens `MOVIEOPN.STR`; first 60-pump window `frame dt us=4466961` (~4.5 s), Start-skipped | **Expected movie pace** (150 sectors/s). Do not raise that budget. |
+| Field area open | `FIELDSTG_pickStage` then first sample ~1.11–1.17 s / 60 frames, then ~1.00 s | Mild hitch from **one map `fread`** + overlay restore; preload is working. |
+| Map picture fill-in | `FIELDSTG_drawMapTiles` still one tile per frame after preload | **Expected.** Bytes are in RAM; decompress/draw is still paced. |
+| Entering FIGHTSTG | `soft_battle=1`, sustained `frame dt` ~1.3–2.1 s / 60 frames | **Battle FPS** (software raster), not a load path. Soft path is intentional until mesh dumps prove non-black. |
+
+Instrumentation (this branch): `dw3: map_preload id=… bytes=… us=…` on the
+one fread, and `dw3: memcard ensure … us=` / `memcard migrate … us=` so the
+next OLED session can put numbers on the map hitch and confirm migrate
+does not repeat. No clock raise, no movie pace change, no GLES mesh
+re-enable.

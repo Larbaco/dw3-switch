@@ -62,6 +62,8 @@ Sampled / one-shot by design — safe for long runs:
 | `mesh gpu: N tris flushed` | Every ~1000 lifetime tris while composite is on |
 | `nx_mesh: GLES3 mesh FBO ready` / ES2 fallback | Boot |
 | Game `dw3: mode=` / `stageFile=` | Mode / stage transitions (decomp) |
+| `dw3: map_preload id=… bytes=… us=…` | First tile of a field map file id (one fread) |
+| `dw3: memcard ensure … us=` / `migrate … us=` | Flat load or one-time `.mcr` migration |
 
 ## Mesh debug summary (`DW3_NX_DEBUG_MESH`)
 

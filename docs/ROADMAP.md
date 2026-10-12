@@ -499,9 +499,17 @@ speed.
   `memcardN.mcr` → `saveN.bin` (`.mcr` renamed to `.mcr.bak`). PC/Switch
   register `atexit` + shutdown after `dw3_game_main`. See
   [P5.3_FLAT_SAVE.md](P5.3_FLAT_SAVE.md) and `port/memcard/README.md`.
+  **Preview.11 OLED (2026-10-11):** first boot migrated both slots to
+  `save0.bin` / `save1.bin` and `STGMCARD_loadSave` returned
+  money=50 / progress=4. Owner “load still somewhat slow” is **not**
+  remigrate or Continue I/O — see [STATIC_SD_LOAD.md](STATIC_SD_LOAD.md)
+  (title `MOVIEOPN` 150/s, map fread hitch, one-tile draw fill-in, soft
+  battle FPS). Timed `map_preload` / `memcard ensure|migrate` lines are
+  on for the next capture.
   **Still open:** HOME / `appletMainLoop` quit path (`Psyz_QuitRequested`
-  still 0); sleep/focus flush; OLED confirm that migrated saves reload
-  after a clean exit. Emulator conversion remains P9.6.
+  still 0); sleep/focus flush; confirm migrated saves reload after a
+  clean exit (migrate itself landed on this OLED boot). Emulator
+  conversion remains P9.6.
   **Preview.4 / .5 notes (kept):** earlier `.mcr` writes and the data-frame
   XOR fault (`0x7F` / partner index) are historical; XOR must stay off
   data frames. Done when: a save this port wrote loads after a clean exit

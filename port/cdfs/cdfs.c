@@ -1,9 +1,12 @@
+#define _POSIX_C_SOURCE 200809L
+
 #include "cdfs.h"
 
 #include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 
 #define CDFS_ROOT_MAX 512
 #define CDFS_PATH_MAX 512
@@ -27,6 +30,15 @@ static int g_map_loaded;
 static uint32_t g_map_id;
 static unsigned char *g_map_buf;
 static size_t g_map_len;
+
+static uint64_t mono_us(void) {
+    struct timespec ts;
+
+    if (clock_gettime(CLOCK_MONOTONIC, &ts) != 0) {
+        return 0;
+    }
+    return (uint64_t)ts.tv_sec * 1000000ull + (uint64_t)ts.tv_nsec / 1000ull;
+}
 
 static void entries_clear(void) {
     free(g_entries);
@@ -697,6 +709,8 @@ static int map_load(uint32_t id) {
     long sz;
     unsigned char *buf;
     size_t n;
+    uint64_t t0;
+    uint64_t dt;
 
     e = find_entry(id);
     if (e == NULL) {
@@ -705,6 +719,7 @@ static int map_load(uint32_t id) {
     if (join_path(path, sizeof(path), e->path) != 0) {
         return -1;
     }
+    t0 = mono_us();
     fp = fopen(path, "rb");
     if (fp == NULL) {
         return -1;
@@ -741,6 +756,9 @@ static int map_load(uint32_t id) {
     g_map_len = (size_t)sz;
     g_map_id = id;
     g_map_loaded = 1;
+    dt = mono_us() - t0;
+    fprintf(stderr, "dw3: map_preload id=%u bytes=%zu us=%llu\n", (unsigned)id,
+            g_map_len, (unsigned long long)dt);
     return 0;
 }
 
