@@ -183,9 +183,11 @@ and it is a prerelease. `workflow_dispatch` is listed only once that file
 is on `main`. Tag `v0.6.5-preview.1` is the first preview
 (8927429-byte game `.nro` plus `README.txt`). It still crops the title
 and freezes the movie. Latest **tagged** GitHub Release preview is
-`v0.6.5-preview.10` (gated mesh + mesh dbg; see that release notes).
-`main` may be ahead of that tag (flat `saveN.bin`, soft battle default,
-debug HUD, STGMCARD 100-frame bar, etc.). The picture baseline remains
+`v0.6.5-preview.20`, published from `ecefe18` with both the standard and
+nxlink game binaries. It includes the PC-validated title Port options shell
+and empty `StGetNext` scan cache; Switch menu navigation and OLED movie
+performance remain pending. See `docs/RELEASE_PREVIEW20.md` for the source,
+assets, and validation limits. `main` may be ahead of that tag. The picture baseline remains
 `v0.6.5-preview.2` at `8273a91` (display-mode title width and full-height
 movie). Do not publish the sample `.nro` as the game.
 
