@@ -1,3 +1,5 @@
+#define _POSIX_C_SOURCE 200809L
+
 #include "memcard_host.h"
 
 #include <errno.h>
@@ -5,6 +7,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 
 #define MEMCARD_DIR_MAX 512
 #define MEMCARD_PATH_MAX 640
@@ -30,6 +33,15 @@ static const char *const k_dw3_save_names[] = {
 
 static char g_dir[MEMCARD_DIR_MAX];
 static MemSlot g_slots[MEMCARD_HOST_SLOTS];
+
+static uint64_t mono_us(void) {
+    struct timespec ts;
+
+    if (clock_gettime(CLOCK_MONOTONIC, &ts) != 0) {
+        return 0;
+    }
+    return (uint64_t)ts.tv_sec * 1000000ull + (uint64_t)ts.tv_nsec / 1000ull;
+}
 
 static uint8_t frame_checksum(const uint8_t *frame) {
     uint8_t x = 0;
@@ -477,10 +489,13 @@ static int migrate_legacy_mcr(int slot) {
     char name[21];
     size_t nr;
     int n;
+    uint64_t t0;
+    uint64_t dt;
 
     if (legacy_path(slot, mcr_path, sizeof(mcr_path)) != 0) {
         return -1;
     }
+    t0 = mono_us();
     fp = fopen(mcr_path, "rb");
     if (fp == NULL) {
         return 0; /* no legacy file — empty port */
@@ -533,9 +548,12 @@ static int migrate_legacy_mcr(int slot) {
                     "dw3: memcard migrate: kept %s (rename to .bak failed: %s)\n",
                     mcr_path, strerror(errno));
         } else {
+            dt = mono_us() - t0;
             fprintf(stderr,
-                    "dw3: memcard migrate slot=%d name=%s -> %s (from %s.bak)\n",
-                    slot, name, flat, memcard_host_legacy_slot_name(slot));
+                    "dw3: memcard migrate slot=%d name=%s -> %s (from %s.bak) "
+                    "us=%llu\n",
+                    slot, name, flat, memcard_host_legacy_slot_name(slot),
+                    (unsigned long long)dt);
         }
     }
     return 0;
@@ -693,6 +711,8 @@ int memcard_host_flush_failed(int slot) {
 int memcard_host_ensure(int slot) {
     char path[MEMCARD_PATH_MAX];
     FILE *fp;
+    uint64_t t0;
+    uint64_t dt;
 
     if (!slot_ok(slot) || g_dir[0] == '\0') {
         return -1;
@@ -703,12 +723,18 @@ int memcard_host_ensure(int slot) {
     if (flat_path(slot, path, sizeof(path)) != 0) {
         return -1;
     }
+    /* One open via load_flat_from_disk (no probe fopen). Missing file falls
+     * through to migrate; present-but-bad is quarantined then migrated. */
+    t0 = mono_us();
+    if (load_flat_from_disk(slot) == 0) {
+        dt = mono_us() - t0;
+        fprintf(stderr, "dw3: memcard ensure slot=%d flat us=%llu\n", slot,
+                (unsigned long long)dt);
+        return 0;
+    }
     fp = fopen(path, "rb");
     if (fp != NULL) {
         fclose(fp);
-        if (load_flat_from_disk(slot) == 0) {
-            return 0;
-        }
         /* Wrong size / unreadable: quarantine and fall through to .mcr. */
         fprintf(stderr,
                 "dw3: memcard: bad flat %s (wrong size or read error)\n", path);
