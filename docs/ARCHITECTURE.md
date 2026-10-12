@@ -90,3 +90,18 @@ neither the Switch diagnostic HUD nor a host-specific menu owns this UI.
 - Duplicating Switch host work in Phase 10 that already belongs to P4–P6
   (present, pad/rumble, saves, scale/widescreen, turbo); see
   [SWITCH_FEATURES.md](SWITCH_FEATURES.md)
+
+### Switch movie empty-scan invalidation
+
+`psyz_backend/stgetnext_invalidate.c` owns the `StGetNext` empty-ring verdict.
+The Switch linker wraps `CdReady`, `StSetRing`, `StClearRing`, and
+`data_ready_callback`. At pinned PSY-Z `eb0393b`, stream production in
+`psyz/src/psyz/libcd.c` calls `CdReady` in the separate `decomp/.../sys.c`
+translation unit before every ring write, including rewind and sentinel
+publication; therefore the hook invalidates even if cursors return to the same
+values. Set/clear and callback wrappers also cover direct API calls and stored
+callback pointers. None of these wrappers replaces the vendor implementation.
+An idle pump with no sector budget does not call `CdReady`, preserving the
+clean verdict and removing redundant scans. This cache assumes the current
+single host/game thread for stream APIs; audio mixing does not produce STR
+ring data. It is not synchronization for a future threaded stream producer.

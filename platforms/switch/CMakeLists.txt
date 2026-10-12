@@ -299,6 +299,11 @@ target_link_options(dw3-switch PRIVATE
   "-Wl,--wrap=LoadImage"
   "-Wl,--wrap=PutDispEnv"
   "-Wl,--wrap=StGetNext"
+  # Invalidate empty-ring verdict before producer/reset writes (separate TUs).
+  "-Wl,--wrap=CdReady"
+  "-Wl,--wrap=StSetRing"
+  "-Wl,--wrap=StClearRing"
+  "-Wl,--wrap=data_ready_callback"
   "-Wl,--wrap=StFreeRing"
   # TEMPORARY boot-stop trace (nx_present.c); see the comment there.
   "-Wl,--wrap=SetDispMask"

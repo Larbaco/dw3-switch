@@ -514,6 +514,12 @@ speed.
   `fread` on the first tile of that file id, later tiles copy from RAM,
   and a different id replaces the buffer. Movies stay at 150 sectors/s.
   See [STATIC_SD_LOAD.md](STATIC_SD_LOAD.md).
+  Movie busy-wait follow-up: Switch empty-ring scans are cached with explicit
+  producer/reset invalidation (not cursor/catch-up arithmetic). Host regression
+  coverage includes partial-frame reset, early wrap, and same-address reuse;
+  revised gate still needs Switch playback/performance validation. See
+  [P3.7_MOVIES.md](P3.7_MOVIES.md).
+
 - [ ] **P5.3 Save handling.** The port's own save on owner storage, plus
   sleep/exit safety. The running game does not import or export emulator
   memory cards. That interchange is an external tool, P9.6.

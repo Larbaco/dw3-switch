@@ -20,6 +20,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "stgetnext_gate.h"
+
 int __real_LoadImage(RECT *rect, u_long *p);
 DISPENV *__real_PutDispEnv(DISPENV *env);
 void *__real_DMACallback(int dma, void (*func)());
@@ -105,8 +107,16 @@ u_long __wrap_StFreeRing(u_long *base) {
 /* StGetNext only looks at StRingAddr[StRingIdx3]. The read cursor sometimes
  * sits on a body sector (id 3, secCount > 0) of a frame whose header is
  * behind it, or on a leftover tail after that header was reused. Either way
- * the writer blocks on the slot and the picture replays the last VLC. */
+ * the writer blocks on the slot and the picture replays the last VLC.
+ *
+ * A clean full-ring scan is cached until a producer attempt or ring reset.
+ * stgetnext_invalidate.c invalidates BEFORE CdReady (all StCdInterrupt ring
+ * writes follow it), direct ready publication, and ring clear/set. Pumps with
+ * no sector budget never call CdReady, so busy-wait polls skip repeated scans.
+ * The cursor keys only reject other consumer states; they do not prove safety
+ * against producer reset/early-wrap ABA. No timing or frame-delivery change. */
 u_long __wrap_StGetNext(u_long **addr, u_long **header) {
+    Dw3StGetNextGate *empty_gate = &dw3_stgetnext_empty_gate;
     int guard = 0;
 
     for (;;) {
@@ -119,10 +129,24 @@ u_long __wrap_StGetNext(u_long **addr, u_long **header) {
 
         if (rc == 0 || StRingAddr == NULL || StRingSize <= 0 ||
             StRingIdx3 < 0 || StRingIdx3 >= StRingSize || guard++ > 4) {
+            /* A frame was handed over, or the ring is unusable: a verdict from
+             * the previous state must not survive into this one. */
+            dw3_stgetnext_gate_forget(empty_gate);
+            return rc;
+        }
+        /* Repeat empty poll at the same ring and cursors as a poll that already
+         * scanned every slot clean and no mutation hook ran: skip the scan.
+         * Returns rc, exactly as the scan
+         * would when it finds nothing. */
+        if (dw3_stgetnext_gate_hit(empty_gate, StRingAddr, StRingSize,
+                                   StRingIdx1, StRingIdx3)) {
             return rc;
         }
         slot = &StRingAddr[StRingIdx3];
         if (slot->id == 3 && slot->secCount > 0 && slot->secCount <= 31) {
+            /* Recovery: the read cursor sits inside a frame body. Never trust a
+             * remembered verdict while this path is in play. */
+            dw3_stgetnext_gate_forget(empty_gate);
             start = StRingIdx3 - (s32)slot->secCount;
             if (start >= 0 && start < StRingSize) {
                 head = &StRingAddr[start];
@@ -157,6 +181,11 @@ u_long __wrap_StGetNext(u_long **addr, u_long **header) {
             }
         }
         if (n >= StRingSize) {
+            /* The read cursor was inspected by __real_StGetNext and every other
+             * slot by this scan: the whole ring is clean. Remember it so repeat
+             * polls at these cursors skip the scan. */
+            dw3_stgetnext_gate_remember(empty_gate, StRingAddr, StRingSize,
+                                        StRingIdx1, StRingIdx3);
             return rc;
         }
     }
