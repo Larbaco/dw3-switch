@@ -519,9 +519,9 @@ speed.
   PS1 `MEMCARD_*_FRAMES` (~1239/1266) vs ~80 flat sector-frames, not SD
   I/O. Port-only patch `0043` sets both to **100** under `PORT_HOST`
   (phase-2 finish stays 20 frames). Flush / flat correctness unchanged.
-  **OLED (2026-10-12):** owner confirmed the **load** bar feels OK after
-  #84; **save** uses the same 100-frame constants (not a separate OLED
-  retest blocker). See [P5.3_FLAT_SAVE.md](P5.3_FLAT_SAVE.md).
+  See [P5.3_FLAT_SAVE.md](P5.3_FLAT_SAVE.md).
+  **Preview.17 OLED (2026-10-12):** owner confirmed option B bar feel is
+  correct for **load and save** (tip `413efb8` / #84). Keep 100 frames.
   **Still open:** HOME / `appletMainLoop` quit path (`Psyz_QuitRequested`
   still 0); sleep/focus flush. Cross-port overwrite and Continue after
   preview.14 PASS; a dedicated clean-exit + relaunch smoke is still nice

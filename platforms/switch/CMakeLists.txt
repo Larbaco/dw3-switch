@@ -47,8 +47,9 @@ option(DW3_NX_DEBUG_OVERLAY "On-screen debug overlay HUD (nxlink)"
 # Recovery: keep FIGHTSTG gate but force software RasterTriangle in battle.
 # preview.10 dumps showed mesh FBO all-black while tris_flush was huge; opaque
 # software present restores a readable fight until mesh sampling draws non-black.
-# Override with -DDW3_NX_MESH_SOFT_BATTLE=OFF to exercise the GLES mesh path.
-# Runtime: DW3_MESH_SOFT=0 forces mesh; DW3_MESH_SOFT=1 forces software.
+# Override with -DDW3_NX_MESH_SOFT_BATTLE=OFF to seed gpu-tex at boot.
+# Runtime: DW3_MESH_SOFT=0|1 seeds initial mode; Minus+ZL+ZR cycles
+# soft → soft+bbox → gpu-solid → gpu-tex (see docs/DEBUG_OVERLAY.md).
 option(DW3_NX_MESH_SOFT_BATTLE
        "Force software RasterTriangle in FIGHTSTG (mesh FBO recovery)"
        ON)

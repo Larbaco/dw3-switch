@@ -37,11 +37,29 @@ P5.4 crash / assert overlay is out of scope; leave a hook comment only.
 | Chord | Action |
 |---|---|
 | **Minus + L + R** (edge) | Show / hide HUD |
+| **Minus + ZL + ZR** (edge) | Cycle FIGHTSTG battle render mode (see below) |
 
 - Default **visible ON** when `DW3_NX_DEBUG_OVERLAY` is compiled in (nxlink).
 - Default **invisible** is N/A for release (flag off → no HUD).
-- Chord uses raw hid bits after `Psyz_PadsPoll` / `padUpdate` so it does not
+- Chords use raw hid bits after `Psyz_PadsPoll` / `padUpdate` so they do not
   invent a second pad state. Avoids Plus alone (Start) and face buttons.
+- Battle-mode chord works even when the HUD is compiled out (release NRO);
+  mode still logs `nx_mesh: battle_mode=…` once per change.
+
+## Battle render modes (FIGHTSTG only)
+
+Runtime override (not getenv-only). Cold boot defaults to **soft** when
+`DW3_NX_MESH_SOFT_BATTLE` is ON (shipped default). `DW3_MESH_SOFT=0|1` seeds
+the initial mode (`0` → `gpu-tex`, `1` → `soft`). Field never enqueues mesh.
+
+| Token (HUD `battle=`) | Behaviour |
+|---|---|
+| `soft` | Software `RasterTriangle` + opaque blit (picture OK) |
+| `soft+bbox` | **Stub** today: same as `soft`; logs once that idea H is not yet wired |
+| `gpu-solid` | Mesh FBO with `DW3_NX_MESH_TPAGE_NOTEXTURE` (vertex colour, ignore CLUT) |
+| `gpu-tex` | Existing textured mesh path (may be black; OK for compare) |
+
+Cycle order: `soft` → `soft+bbox` → `gpu-solid` → `gpu-tex` → `soft` …
 
 ## MVP fields (top-left, monospace, ≤12 lines)
 
@@ -49,6 +67,7 @@ P5.4 crash / assert overlay is out of scope; leave a hook comment only.
 |---|---|
 | `fps ~NN` / `dt us=…` | Same 60-pump window as `frame dt us=` (`Hz = 60e6 / dt_us`) |
 | `mode file=0x…` | `dw3_overlay_current_mode_file()` (mesh gate id) |
+| `battle=soft\|soft+bbox\|gpu-solid\|gpu-tex` | Runtime battle mode token |
 | `mesh avail=… path=mesh+ui\|opaque` | `dw3_nx_mesh_available` + last present `use_mesh` |
 | `tris enq/flush=…` | Last completed `Dw3NxMeshDebugWindow` (when `DW3_NX_DEBUG_MESH`) |
 | `frames m/b/soft=…` | Same window |
@@ -84,21 +103,23 @@ at texture V=0, which the top of the viewport samples.
 The atlas is still 8×8 glyphs with a soft panel, then drawn with an **integer
 nearest-neighbor** upscale (`GL_NEAREST` mag/min). No linear filtering.
 
+Slightly smaller than the first OLED scale pass (#78 used 3×/4×):
+
 | Framebuffer height | Scale | Glyph size on screen |
 |---|---|---|
-| 720 (handheld) | **3×** | 24×24 px |
-| 1080 (docked) | **4×** | 32×32 px |
+| 720 (handheld) | **2×** | 16×16 px |
+| 1080 (docked) | **3×** | 24×24 px |
 
 Rule (in `hud_scale_for_fb`):
 
 ```text
-scale = clamp(floor(fb_h * 3 / 720), 2, 6)
+scale = clamp(floor(fb_h * 2 / 720), 2, 6)
 ```
 
 then shrink while `content * scale` would exceed `fb_w` / `fb_h`. Padding
 (`HUD_PAD_X/Y = 4`) and line gap (`HUD_LINE_GAP = 2`) are in atlas pixels and
 scale with the glyphs. Corner placement stays top-left; the panel must not
-cover the whole screen.
+cover the whole screen. LSB-left glyph bit order (#81) is unchanged.
 
 ## PC host
 

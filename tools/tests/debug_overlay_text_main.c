@@ -31,7 +31,7 @@ int main(void) {
     build.dump_vram = 1;
 
     n = dw3_debug_overlay_format(lines, DW3_DBG_OVERLAY_MAX_LINES, 1000000ull,
-                                 0x15a, 1, &mesh, &build);
+                                 0x15a, 1, "soft", &mesh, &build);
     printf("line_count=%d\n", n);
     for (i = 0; i < n; i++) {
         printf("L%d=%s\n", i, lines[i]);

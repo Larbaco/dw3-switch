@@ -47,8 +47,9 @@ def test_hud_lines_include_mesh_and_build(overlay_text_output):
     assert overlay_text_output["L0"] == "dw3 dbg"
     assert "fps ~60.0" in overlay_text_output["L1"]
     assert overlay_text_output["L2"] == "mode file=0x15a"
-    assert overlay_text_output["L3"] == "mesh path=mesh+ui"
-    assert "tris 10/8" in overlay_text_output["L4"]
+    assert overlay_text_output["L3"] == "battle=soft"
+    assert overlay_text_output["L4"] == "mesh path=mesh+ui"
+    assert "tris 10/8" in overlay_text_output["L5"]
     assert "nxlink" in overlay_text_output[f"L{int(overlay_text_output['line_count']) - 1}"]
     assert "mesh" in overlay_text_output[f"L{int(overlay_text_output['line_count']) - 1}"]
 

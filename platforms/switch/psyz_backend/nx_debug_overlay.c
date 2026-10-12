@@ -4,6 +4,7 @@
 #if DW3_NX_DEBUG_OVERLAY
 
 #include "nx.h"
+#include "nx_battle_mode.h"
 #include "nx_mesh.h"
 #include "nx_mesh_debug.h"
 #include "nx_vram_dump.h"
@@ -131,10 +132,10 @@ enum {
     TOGGLE_CHORD = HidNpadButton_Minus | HidNpadButton_L | HidNpadButton_R
 };
 
-/* Integer NN scale: ~3× at 720p (24px glyphs), grows with fb height. */
+/* Integer NN scale: ~2× at 720p (16px glyphs), ~3× at 1080p. */
 static int hud_scale_for_fb(uint32_t fb_w, uint32_t fb_h, int content_w,
                             int content_h) {
-    int scale = (int)((fb_h * 3u) / 720u);
+    int scale = (int)((fb_h * 2u) / 720u);
 
     if (scale < 2) {
         scale = 2;
@@ -334,7 +335,7 @@ static void rebuild_pixels(void) {
 
     s_line_count = dw3_debug_overlay_format(
         s_lines, HUD_ROWS, s_dt_us, dw3_overlay_current_mode_file(), s_use_mesh,
-        &s_mesh, &build);
+        dw3_nx_battle_mode_token(), &s_mesh, &build);
 
     for (row = 0; row < s_line_count; row++) {
         s = s_lines[row];

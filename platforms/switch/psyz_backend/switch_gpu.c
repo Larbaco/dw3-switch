@@ -19,6 +19,7 @@
 
 #include "rasterizer.h"
 #include "nx.h"
+#include "nx_battle_mode.h"
 #include "nx_mesh.h"
 #include "nx_mesh_debug.h"
 #include "overlay_host.h"
@@ -26,10 +27,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
-#ifndef DW3_NX_MESH_SOFT_BATTLE
-#define DW3_NX_MESH_SOFT_BATTLE 0
-#endif
 
 /* US / EU FILE_FIGHTSTG (engine/overlay.h). Mesh GPU is battle-only. */
 #define DW3_FILE_FIGHTSTG_US 0x159
@@ -60,20 +57,7 @@ static short s11(short v) { return (short)(((v & 0x7FF) ^ 1024) - 1024); }
  * composite and corrupted interiors while also costing ~1.4× field dt.
  * Only FIGHTSTG (mode overlay file) may enqueue. */
 static int s_was_fightstg;
-static int s_soft_logged;
-
-/* Compile default DW3_NX_MESH_SOFT_BATTLE; DW3_MESH_SOFT=0|1 overrides. */
-static int mesh_soft_battle(void) {
-    const char *env = getenv("DW3_MESH_SOFT");
-
-    if (env && env[0] == '0' && env[1] == '\0') {
-        return 0;
-    }
-    if (env && env[0] == '1' && env[1] == '\0') {
-        return 1;
-    }
-    return DW3_NX_MESH_SOFT_BATTLE;
-}
+static int s_fight_enter_logged;
 
 static int mesh_battle_active(void) {
     int32_t mode_file = dw3_overlay_current_mode_file();
@@ -84,12 +68,14 @@ static int mesh_battle_active(void) {
         /* Fresh sample upload after field LoadImages; drop any stale FBO flag. */
         dw3_nx_mesh_mark_vram_dirty();
         dw3_nx_mesh_discard();
-        if (!s_soft_logged) {
-            s_soft_logged = 1;
-            fprintf(stderr, "nx_mesh: FIGHTSTG soft_battle=%d (GLES mesh %s)\n",
-                    mesh_soft_battle(),
-                    mesh_soft_battle() ? "off — software RasterTriangle"
-                                       : "on");
+        if (!s_fight_enter_logged) {
+            s_fight_enter_logged = 1;
+            fprintf(stderr,
+                    "nx_mesh: FIGHTSTG battle_mode=%s (GLES mesh %s)\n",
+                    dw3_nx_battle_mode_token(),
+                    dw3_nx_battle_mode_use_soft()
+                        ? "off — software RasterTriangle"
+                        : "on");
         }
     } else if (!fight && s_was_fightstg) {
         dw3_nx_mesh_discard();
@@ -194,8 +180,8 @@ static int try_push_mesh_poly(u_long *packets, int max_len) {
         !packets) {
         return 0;
     }
-    /* Recovery escape: FIGHTSTG stays gated, but triangles fill CPU VRAM. */
-    if (mesh_soft_battle()) {
+    /* soft / soft+bbox: FIGHTSTG stays gated, triangles fill CPU VRAM. */
+    if (dw3_nx_battle_mode_use_soft()) {
         return 0;
     }
     code = (int)(*packets >> 24) & 0xFF;
@@ -268,6 +254,10 @@ static int try_push_mesh_poly(u_long *packets, int max_len) {
             v[i].b = v[0].b;
             v[i].a = v[0].a;
         }
+    }
+    /* gpu-solid (#79 ladder): ignore texture/CLUT; vertex colour only. */
+    if (dw3_nx_battle_mode_use_solid()) {
+        tpage = (uint16_t)(tpage | DW3_NX_MESH_TPAGE_NOTEXTURE);
     }
     for (i = 0; i < n_vertices; i++) {
         v[i].clut = clut;
@@ -414,7 +404,7 @@ int Draw_PushPrim(u_long *packets, int max_len) {
 
         if (!(code & 0x40) && (code & TRIANGLE) &&
             (!dw3_nx_mesh_available() ||
-             (mesh_battle_active() && mesh_soft_battle()))) {
+             (mesh_battle_active() && dw3_nx_battle_mode_use_soft()))) {
             dw3_nx_mesh_debug_note_soft_fallback();
         }
     }

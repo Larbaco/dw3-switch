@@ -1,40 +1,37 @@
 Digimon World 3 / 2003, Switch homebrew preview
 
-This release is v0.6.5-preview.10. It keeps battle mesh triangles on a
-GLES3 mesh FBO, but only while FIGHTSTG is active (PR #71). Field and
-other modes stay on the software RGB555 blit so the map does not show
-the cyan stripes and rug holes that broke preview.9. PR #72 adds a
-sampled mesh dbg: line about once per second on the nxlink stdio log
-(tris_enq, frames_mesh, frames_blit). This build does not call
-clkrstSetClockRate or appletSetCpuBoostMode. The CPU and GPU stay at the
-rate the console set.
+This release is v0.6.5-preview.18. It keeps battle mesh gated to FIGHTSTG
+only (field stays software RGB555). Cold-boot battle default is still
+software RasterTriangle (soft) so the fight picture stays readable.
 
-Do not install preview.9 for field play. That cut enabled mesh for every
-mode and broke the field picture on OLED.
+New in this preview
 
-Preview.8 already held one field map in RAM so later tiles copy from that
-buffer, and it kept movies at 150 sectors per second. An OLED log from
-that build is already recorded: field about 60 Hz (mean frame dt us about
-1000279 per 60 frames), battle Fight-menu idle about 46 Hz (mean about
-1293264). Preview.9 battle timing on OLED was much slower (about
-2931384 us per 60 frames). Use this preview.10 file for the gated mesh
-plus mesh dbg triage.
+  Battle render A/B (FIGHTSTG only). Edge chord Minus + ZL + ZR cycles:
 
-Preview.6 raised the CPU to 1785 MHz. That is removed. Reboot the Switch
-once before this test if preview.6 already ran: a HOME press on that
-build can leave 1785 MHz set, and this build will not change it back.
+    soft       software RasterTriangle (default; picture OK)
+    soft+bbox  stub today — same as soft; logs "not yet"
+    gpu-solid  mesh FBO with solid vertex colour (ignore texture/CLUT)
+    gpu-tex    existing textured mesh path (may be black; OK to compare)
 
-Preview.5 already had the progress bar, the left stick, and the US
-runtime extract. Those stay. The opening-video picture is unchanged.
-On the OLED, the menu picture looked right, the left stick walked on
-handheld Joy-Con and on a Pro Controller, a DuckStation card loaded,
-and a slot 2 save loaded after the memory-card fix that is in this
-build.
+  Each change logs once: nx_mesh: battle_mode=…
+  On the nxlink HUD, the line battle= shows the current token.
+  Field never uses the mesh path. Do not overclock.
+
+  Debug HUD is slightly smaller than preview.10+ (#78): 2× glyphs at
+  720p handheld, 3× at 1080p docked. LSB-left glyph bits (#81) stay.
+  Toggle HUD with Minus + L + R (nxlink build).
+
+  STGMCARD load/save bar (option B, 100 frames, #84) was confirmed OK
+  on OLED in preview.17 for both load and save. Unchanged here.
+
+This build does not call clkrstSetClockRate or appletSetCpuBoostMode.
+The CPU and GPU stay at the rate the console set.
 
 Every 60 frames the log prints one line, frame dt us=. About 1000000
 is 60 Hz. About 2000000 is 30 Hz. On field, mesh dbg: should show
-tris_enq near 0 and frames_blit dominant. On FIGHTSTG, frames_mesh and
-tris may rise. Look for nx_mesh / GLES3 mesh FBO ready on boot.
+tris_enq near 0 and frames_blit dominant. On FIGHTSTG with soft,
+expect frames_blit / soft=. With gpu-solid or gpu-tex, frames_mesh
+and tris may rise.
 
 boot_tim.bin is not a disc image. A CUE whose FILE name is missing still
 selects the only other .bin in that directory when the file is large
@@ -79,6 +76,9 @@ Install the test build
 
     nxlink -a <Switch-IP> -s dw3-switch-nxlink.nro
 
+  Do not probe TCP 28280 before nxlink (empty connect breaks hbmenu
+  NetLoader with err=11). Prefer hbmenu Y NetLoader over Sphaira grid.
+
   If us/ is missing, the first boot builds it from the BIN. The screen
   stays dark blue and draws a bar. The log says "extracting". That copy
   is the whole runtime, not only the movies. If us/ is already there,
@@ -94,6 +94,18 @@ Install the test build
   dw3-switch.nro is the same test without a socket. Copy it to
   sdmc:/switch/dw3-switch.nro and launch it from hbmenu when you do not
   want the host log.
+
+  Do not delete OLED saves (save0.bin / save1.bin) for this test.
+
+OLED A/B checklist (preview.18)
+
+  1. Boot with existing us/ and flat saves. Reach field, then a fight.
+  2. Confirm soft looks OK (default). HUD battle=soft if nxlink.
+  3. Minus+ZL+ZR once → soft+bbox (same picture; log "not yet").
+  4. Again → gpu-solid (solid colours / shapes; compare FPS).
+  5. Again → gpu-tex (may be black; compare only).
+  6. Again → soft. HUD scale should feel a bit smaller than before.
+  7. Optional: STGMCARD load/save — bar still ~tracks I/O (option B OK).
 
 Install your own disc data
 
