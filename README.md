@@ -275,7 +275,7 @@ bash tools/build_switch_game.sh --nxlink
 # build/switch-nxlink/dw3-switch-nxlink.nro
 ```
 
-`--nxlink` is a development binary. It is not the release. Launch steps
+`--nxlink` is the development variant included in each preview release. Launch steps
 are in [platforms/switch/README.md](platforms/switch/README.md).
 
 Backend: [platforms/switch/psyz_backend/](platforms/switch/psyz_backend/).
