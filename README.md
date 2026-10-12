@@ -209,8 +209,11 @@ No disc data.
 The latest preview release is
 [v0.6.5-preview.10](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.10).
 Battle mesh is gated to FIGHTSTG (PR #71); field stays on the software
-blit. PR #72 adds sampled `mesh dbg:` lines on the nxlink log. It does
-not change the CPU or GPU clock.
+blit. PR #72 adds sampled `mesh dbg:` lines on the nxlink log. After
+preview.10 all-black mesh FBO dumps, battle defaults to software
+`RasterTriangle` under that gate (`DW3_NX_MESH_SOFT_BATTLE=ON`; see
+[P5.2_BATTLE_GPU.md](docs/P5.2_BATTLE_GPU.md)). It does not change the
+CPU or GPU clock.
 [v0.6.5-preview.9](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.9)
 enabled mesh for every mode and broke the field picture on OLED. Do not
 install that file for field play.

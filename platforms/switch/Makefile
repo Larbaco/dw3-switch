@@ -57,7 +57,9 @@ export DEPSDIR	:=	$(CURDIR)/$(BUILD)
 #   nx_input.c    Psyz_Pads* (needs libpsyz)
 #   nx_present.c  __real_LoadImage and the other --wrap targets
 #   switch_gpu.c  Draw_* forwards; includes PSY-Z's private rasterizer.h
-CFILES		:=	$(filter-out boot_main.c nx_input.c nx_present.c switch_gpu.c,$(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.c))))
+#   nx_vram_dump.c  CMake/--nxlink only (needs port/overlays for FIGHTSTG)
+CFILES		:=	$(filter-out boot_main.c nx_input.c nx_present.c switch_gpu.c nx_vram_dump.c,$(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.c))))
+
 CPPFILES	:=	$(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.cpp)))
 SFILES		:=	$(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.s)))
 

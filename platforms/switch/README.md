@@ -128,7 +128,10 @@ Logs continue going to `dw3.log` on SD and `svcOutputDebugString` as before.
 one sampled `mesh dbg:` line alongside each `frame dt us=` (~1 Hz), plus an
 on-screen HUD (FPS / mode / mesh; toggle **Minus + L + R**). Details:
 [docs/NXLINK_DEBUG.md](../../docs/NXLINK_DEBUG.md) and
-[docs/DEBUG_OVERLAY.md](../../docs/DEBUG_OVERLAY.md).
+[docs/DEBUG_OVERLAY.md](../../docs/DEBUG_OVERLAY.md). Battle defaults to
+`DW3_NX_MESH_SOFT_BATTLE=ON` (software `RasterTriangle` under the FIGHTSTG
+gate) until mesh FBO dumps are non-black; pass
+`-DDW3_NX_MESH_SOFT_BATTLE=OFF` to exercise GLES mesh.
 
 libnx obtains the nxlink host address from a special final argv token supplied
 by the NetLoader. Start with hbmenu's NetLoader (press **Y**) if a third-party

@@ -1,24 +1,42 @@
-/* One-shot SD dumps of the present display rect (CPU VRAM + mesh FBO). */
+/* One-shot SD dumps of the present display rect (CPU VRAM + mesh FBO).
+ * host_hello Makefile excludes this TU; CMake game image compiles it when
+ * DW3_NX_DUMP_VRAM=1 (needs port/overlays for FIGHTSTG). */
 #include "nx_vram_dump.h"
+
+#if DW3_NX_DUMP_VRAM
 
 #include "nx_mesh.h"
 #include "nx_vram_pack.h"
+#include "overlay_host.h"
+#include "nx.h"
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-#if DW3_NX_DUMP_VRAM
+/* US / EU FILE_FIGHTSTG — dump only during battle mode. */
+#define DW3_FILE_FIGHTSTG_US 0x159
+#define DW3_FILE_FIGHTSTG_EU 0x167
 
-#include "nx.h"
+/* preview.10: first mesh+ui present had 21 tris and mesh_nonblack=0; real
+ * fight-menu frames flush thousands. Wait past the empty/clear prologue. */
+#define DW3_NX_DUMP_MIN_MESH_PRIMS 2000ull
 
 #define DW3_NX_DUMP_DIR "sdmc:/switch/dw3"
 #define DW3_NX_DUMP_VRAM_RGB555 DW3_NX_DUMP_DIR "/dump_vram_display.rgb555"
 #define DW3_NX_DUMP_VRAM_PPM DW3_NX_DUMP_DIR "/dump_vram_display.ppm"
 #define DW3_NX_DUMP_MESH_RGBA DW3_NX_DUMP_DIR "/dump_mesh_fbo.rgba"
 #define DW3_NX_DUMP_MESH_PPM DW3_NX_DUMP_DIR "/dump_mesh_fbo.ppm"
+#define DW3_NX_DUMP_MESH_ALT_PPM DW3_NX_DUMP_DIR "/dump_mesh_fbo_y0.ppm"
 
 static int s_dumped;
+
+static int fightstg_active(void) {
+    int32_t mode_file = dw3_overlay_current_mode_file();
+
+    return mode_file == DW3_FILE_FIGHTSTG_US ||
+           mode_file == DW3_FILE_FIGHTSTG_EU;
+}
 
 static int write_all(FILE *fp, const void *data, size_t n) {
     return fp && data && n > 0 && fwrite(data, 1, n, fp) == n;
@@ -179,7 +197,8 @@ static int dump_vram_ppm(const uint16_t *vram, int dx, int dy, int dw, int dh) {
     return ok;
 }
 
-static int dump_mesh_ppm(const uint8_t *rgba, int dw, int dh) {
+static int dump_mesh_ppm(const char *path, const uint8_t *rgba, int dw,
+                         int dh) {
     uint8_t *rgb;
     size_t n = (size_t)dw * (size_t)dh;
     size_t i;
@@ -194,20 +213,51 @@ static int dump_mesh_ppm(const uint8_t *rgba, int dw, int dh) {
         rgb[i * 3u + 1u] = rgba[i * 4u + 1u];
         rgb[i * 3u + 2u] = rgba[i * 4u + 2u];
     }
-    ok = write_ppm_rgb(DW3_NX_DUMP_MESH_PPM, dw, dh, rgb, n * 3u);
+    ok = write_ppm_rgb(path, dw, dh, rgb, n * 3u);
     free(rgb);
     return ok;
 }
 
+static int read_mesh_band(int dx, int dy, int dw, int dh, uint8_t **out_rgba,
+                          size_t *out_bytes, uint32_t *nonblack,
+                          uint32_t *sum_r, uint32_t *sum_g, uint32_t *sum_b) {
+    size_t need = (size_t)dw * (size_t)dh * 4u;
+    uint8_t *rgba;
+    size_t got;
+    uint32_t nz = 0;
+
+    *out_rgba = NULL;
+    *out_bytes = 0;
+    *nonblack = 0;
+    *sum_r = *sum_g = *sum_b = 0;
+    rgba = (uint8_t *)malloc(need);
+    if (!rgba) {
+        return 0;
+    }
+    got = dw3_nx_mesh_read_rect_rgba(dx, dy, dw, dh, rgba, need);
+    if (got != need) {
+        free(rgba);
+        return 0;
+    }
+    rgba_stats(rgba, dw * dh, &nz, nonblack, sum_r, sum_g, sum_b);
+    *out_rgba = rgba;
+    *out_bytes = need;
+    return 1;
+}
+
 void dw3_nx_vram_dump_battle_once(const uint16_t *vram, int dx, int dy, int dw,
-                                  int dh, int mesh_active) {
+                                  int dh, int mesh_active,
+                                  uint64_t prims_flushed) {
     uint8_t *mesh_rgba = NULL;
+    uint8_t *mesh_alt = NULL;
     size_t mesh_bytes = 0;
+    size_t mesh_alt_bytes = 0;
     size_t vram_bytes;
     int vram_ok = 0;
     int vram_ppm_ok = 0;
     int mesh_ok = 0;
     int mesh_ppm_ok = 0;
+    int mesh_alt_ok = 0;
     uint32_t v_nonzero = 0;
     uint32_t v_nonblack = 0;
     uint32_t v_sr = 0;
@@ -218,11 +268,24 @@ void dw3_nx_vram_dump_battle_once(const uint16_t *vram, int dx, int dy, int dw,
     uint32_t m_sr = 0;
     uint32_t m_sg = 0;
     uint32_t m_sb = 0;
+    uint32_t alt_nonblack = 0;
+    uint32_t alt_sr = 0;
+    uint32_t alt_sg = 0;
+    uint32_t alt_sb = 0;
     uint32_t pixels;
+    int alt_y = -1;
 
-    if (s_dumped || !mesh_active || !vram || dw <= 0 || dh <= 0) {
+    if (s_dumped || !vram || dw <= 0 || dh <= 0) {
         return;
     }
+    if (!fightstg_active()) {
+        return;
+    }
+    /* Mesh path: skip the prologue present (preview.10: 21 tris, all black). */
+    if (mesh_active && prims_flushed < DW3_NX_DUMP_MIN_MESH_PRIMS) {
+        return;
+    }
+
     s_dumped = 1;
     pixels = (uint32_t)dw * (uint32_t)dh;
     vram_bytes = (size_t)pixels * sizeof(uint16_t);
@@ -232,12 +295,9 @@ void dw3_nx_vram_dump_battle_once(const uint16_t *vram, int dx, int dy, int dw,
     rgb555_rect_stats(vram, dx, dy, dw, dh, &v_nonzero, &v_nonblack, &v_sr,
                       &v_sg, &v_sb);
 
-    mesh_bytes = (size_t)pixels * 4u;
-    mesh_rgba = (uint8_t *)malloc(mesh_bytes);
-    if (mesh_rgba) {
-        size_t got =
-            dw3_nx_mesh_read_rect_rgba(dx, dy, dw, dh, mesh_rgba, mesh_bytes);
-        if (got == mesh_bytes) {
+    if (mesh_active && dw3_nx_mesh_available()) {
+        if (read_mesh_band(dx, dy, dw, dh, &mesh_rgba, &mesh_bytes, &m_nonblack,
+                           &m_sr, &m_sg, &m_sb)) {
             FILE *fp = fopen(DW3_NX_DUMP_MESH_RGBA, "wb");
 
             if (fp && write_all(fp, mesh_rgba, mesh_bytes)) {
@@ -246,29 +306,47 @@ void dw3_nx_vram_dump_battle_once(const uint16_t *vram, int dx, int dy, int dw,
             if (fp) {
                 fclose(fp);
             }
-            mesh_ppm_ok = dump_mesh_ppm(mesh_rgba, dw, dh);
-            rgba_stats(mesh_rgba, (int)pixels, &m_nonzero, &m_nonblack, &m_sr,
-                       &m_sg, &m_sb);
+            mesh_ppm_ok =
+                dump_mesh_ppm(DW3_NX_DUMP_MESH_PPM, mesh_rgba, dw, dh);
+            free(mesh_rgba);
+            mesh_rgba = NULL;
         }
-        free(mesh_rgba);
+        /* Other double-buffer band: if display is y=256, also dump y=0. */
+        alt_y = (dy >= 240) ? 0 : 256;
+        if (alt_y + dh <= DW3_NX_VRAM_H &&
+            read_mesh_band(dx, alt_y, dw, dh, &mesh_alt, &mesh_alt_bytes,
+                           &alt_nonblack, &alt_sr, &alt_sg, &alt_sb)) {
+            mesh_alt_ok =
+                dump_mesh_ppm(DW3_NX_DUMP_MESH_ALT_PPM, mesh_alt, dw, dh);
+            free(mesh_alt);
+            mesh_alt = NULL;
+        }
     }
+    (void)alt_sr;
+    (void)alt_sg;
+    (void)alt_sb;
+    (void)m_nonzero;
+    (void)v_nonzero;
 
     psyz_log(1, "nx_vram_dump.c", __LINE__, __func__,
-             "vram dump: mesh_active=%d rect=%d,%d %dx%d "
+             "vram dump: mesh_active=%d prims=%llu rect=%d,%d %dx%d "
              "vram_rgb555=%s (%zu B) vram_ppm=%s mesh_rgba=%s (%zu B) "
-             "mesh_ppm=%s vram_nonblack=%u/%u meanRGB555=%.1f,%.1f,%.1f "
-             "mesh_nonblack=%u/%u meanRGBA8=%.1f,%.1f,%.1f "
+             "mesh_ppm=%s alt_ppm=%s vram_nonblack=%u/%u "
+             "meanRGB555=%.1f,%.1f,%.1f mesh_nonblack=%u/%u "
+             "meanRGBA8=%.1f,%.1f,%.1f alt_y=%d alt_nonblack=%u/%u "
              "paths=" DW3_NX_DUMP_DIR "/",
-             mesh_active, dx, dy, dw, dh, vram_ok ? "ok" : "fail", vram_bytes,
-             vram_ppm_ok ? "ok" : "fail", mesh_ok ? "ok" : "fail",
-             mesh_ok ? mesh_bytes : 0u, mesh_ppm_ok ? "ok" : "fail", v_nonblack,
-             pixels,
+             mesh_active, (unsigned long long)prims_flushed, dx, dy, dw, dh,
+             vram_ok ? "ok" : "fail", vram_bytes, vram_ppm_ok ? "ok" : "fail",
+             mesh_ok ? "ok" : "fail", mesh_ok ? mesh_bytes : 0u,
+             mesh_ppm_ok ? "ok" : "fail", mesh_alt_ok ? "ok" : "fail",
+             v_nonblack, pixels,
              pixels ? (double)v_sr / (double)pixels : 0.0,
              pixels ? (double)v_sg / (double)pixels : 0.0,
              pixels ? (double)v_sb / (double)pixels : 0.0, m_nonblack, pixels,
              pixels ? (double)m_sr / (double)pixels : 0.0,
              pixels ? (double)m_sg / (double)pixels : 0.0,
-             pixels ? (double)m_sb / (double)pixels : 0.0);
+             pixels ? (double)m_sb / (double)pixels : 0.0, alt_y, alt_nonblack,
+             pixels);
 }
 
 #endif /* DW3_NX_DUMP_VRAM */

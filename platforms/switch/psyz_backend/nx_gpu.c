@@ -697,8 +697,10 @@ void dw3_nx_gpu_present(const uint16_t *vram, int dx, int dy, int dw, int dh,
                                    (uint32_t)(gpu_now_us() - present_t0));
 #endif
 #if DW3_NX_DUMP_VRAM
-    /* After composite so the mesh FBO still holds this frame's triangles. */
-    dw3_nx_vram_dump_battle_once(vram, dx, dy, dw, dh, use_mesh);
+    /* After composite / before end_frame: mesh FBO still holds this frame.
+     * Soft battle dumps opaque CPU VRAM; mesh path defers until enough prims. */
+    dw3_nx_vram_dump_battle_once(vram, dx, dy, dw, dh, use_mesh,
+                                 dw3_nx_mesh_prims_flushed());
 #endif
     dw3_nx_mesh_end_frame();
     /* HUD after game blit; does not own the framebuffer (see DEBUG_OVERLAY.md). */

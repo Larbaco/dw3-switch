@@ -23,7 +23,13 @@
 #include "nx_mesh_debug.h"
 #include "overlay_host.h"
 
+#include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
+
+#ifndef DW3_NX_MESH_SOFT_BATTLE
+#define DW3_NX_MESH_SOFT_BATTLE 0
+#endif
 
 /* US / EU FILE_FIGHTSTG (engine/overlay.h). Mesh GPU is battle-only. */
 #define DW3_FILE_FIGHTSTG_US 0x159
@@ -53,11 +59,43 @@ static short s11(short v) { return (short)(((v & 0x7FF) ^ 1024) - 1024); }
 /* preview.9 routed field POLY_GT through the mesh FBO + black-discard UI
  * composite and corrupted interiors while also costing ~1.4× field dt.
  * Only FIGHTSTG (mode overlay file) may enqueue. */
+static int s_was_fightstg;
+static int s_soft_logged;
+
+/* Compile default DW3_NX_MESH_SOFT_BATTLE; DW3_MESH_SOFT=0|1 overrides. */
+static int mesh_soft_battle(void) {
+    const char *env = getenv("DW3_MESH_SOFT");
+
+    if (env && env[0] == '0' && env[1] == '\0') {
+        return 0;
+    }
+    if (env && env[0] == '1' && env[1] == '\0') {
+        return 1;
+    }
+    return DW3_NX_MESH_SOFT_BATTLE;
+}
+
 static int mesh_battle_active(void) {
     int32_t mode_file = dw3_overlay_current_mode_file();
+    int fight = mode_file == DW3_FILE_FIGHTSTG_US ||
+                mode_file == DW3_FILE_FIGHTSTG_EU;
 
-    return mode_file == DW3_FILE_FIGHTSTG_US ||
-           mode_file == DW3_FILE_FIGHTSTG_EU;
+    if (fight && !s_was_fightstg) {
+        /* Fresh sample upload after field LoadImages; drop any stale FBO flag. */
+        dw3_nx_mesh_mark_vram_dirty();
+        dw3_nx_mesh_discard();
+        if (!s_soft_logged) {
+            s_soft_logged = 1;
+            fprintf(stderr, "nx_mesh: FIGHTSTG soft_battle=%d (GLES mesh %s)\n",
+                    mesh_soft_battle(),
+                    mesh_soft_battle() ? "off — software RasterTriangle"
+                                       : "on");
+        }
+    } else if (!fight && s_was_fightstg) {
+        dw3_nx_mesh_discard();
+    }
+    s_was_fightstg = fight;
+    return fight;
 }
 
 static int write_packet(Dw3NxMeshVertex *v, int code, int n, u_long *packet,
@@ -154,6 +192,10 @@ static int try_push_mesh_poly(u_long *packets, int max_len) {
 
     if (!dw3_nx_mesh_available() || !mesh_battle_active() || max_len <= 0 ||
         !packets) {
+        return 0;
+    }
+    /* Recovery escape: FIGHTSTG stays gated, but triangles fill CPU VRAM. */
+    if (mesh_soft_battle()) {
         return 0;
     }
     code = (int)(*packets >> 24) & 0xFF;
@@ -370,7 +412,9 @@ int Draw_PushPrim(u_long *packets, int max_len) {
     if (packets && max_len > 0) {
         int code = (int)(*packets >> 24) & 0xFF;
 
-        if (!(code & 0x40) && (code & TRIANGLE) && !dw3_nx_mesh_available()) {
+        if (!(code & 0x40) && (code & TRIANGLE) &&
+            (!dw3_nx_mesh_available() ||
+             (mesh_battle_active() && mesh_soft_battle()))) {
             dw3_nx_mesh_debug_note_soft_fallback();
         }
     }
