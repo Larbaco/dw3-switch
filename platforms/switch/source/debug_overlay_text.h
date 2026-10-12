@@ -37,10 +37,13 @@ static inline double dw3_debug_overlay_fps(uint64_t dt_us) {
     return (60.0 * 1000000.0) / (double)dt_us;
 }
 
-/* Fill lines[] with NUL-terminated HUD rows. Returns line count (≤ max_lines). */
+/* Fill lines[] with NUL-terminated HUD rows. Returns line count (≤ max_lines).
+ * battle_mode is a short token (soft / soft+bbox / gpu-solid / gpu-tex), or
+ * NULL → "soft". */
 static inline int dw3_debug_overlay_format(
     char lines[][DW3_DBG_OVERLAY_LINE_CHARS], int max_lines, uint64_t dt_us,
-    int32_t mode_file, int use_mesh, const Dw3DebugOverlayMeshSnap *mesh,
+    int32_t mode_file, int use_mesh, const char *battle_mode,
+    const Dw3DebugOverlayMeshSnap *mesh,
     const Dw3DebugOverlayBuildFlags *build) {
     int n = 0;
     double fps;
@@ -67,6 +70,7 @@ static inline int dw3_debug_overlay_format(
         DW3_OL_LINE("fps ~%.1f  dt=%llu", fps, (unsigned long long)dt_us);
     }
     DW3_OL_LINE("mode file=0x%x", (unsigned)mode_file);
+    DW3_OL_LINE("battle=%s", battle_mode ? battle_mode : "soft");
     DW3_OL_LINE("mesh path=%s", use_mesh ? "mesh+ui" : "opaque");
 
     if (mesh && mesh->valid) {

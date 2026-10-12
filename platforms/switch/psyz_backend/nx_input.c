@@ -13,6 +13,7 @@
  *   Switch Y (west)  -> PS1 Square   (left)    PADRleft
  */
 #include "nx.h"
+#include "nx_battle_mode.h"
 #include "nx_stick.h"
 
 #include <string.h>
@@ -207,6 +208,9 @@ void Psyz_PadsPoll(void) {
     /* Only one controller is mapped for now (P4.4); port 1 is disconnected. */
     memset(frame, 0xFF, sizeof(frame));
     Psyz_PadsSet(1, frame, sizeof(frame));
+
+    /* FIGHTSTG A/B: Minus+ZL+ZR cycles soft → soft+bbox → gpu-solid → gpu-tex. */
+    dw3_nx_battle_mode_poll();
 }
 
 uint64_t dw3_nx_input_buttons_raw(void) { return (uint64_t)s_last_buttons; }
