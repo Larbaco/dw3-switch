@@ -81,13 +81,17 @@ A tree left at 2048 still boots; the movie picture is paced, and the
 sound stays slow until a disc image is visible at startup.
 
 EU `dw3-pc` link uses `-DDW3_VERSION=eu` (`docs/P3_EU_BUILD.md`); run still
-needs a local `runtime/eu` tree (gitignored).
+needs a local `runtime/eu` tree (gitignored). Switch EU NRO:
+`./tools/build_switch_game.sh --eu` sets
+`DW3_DEFAULT_RUNTIME=sdmc:/switch/dw3/eu` (same CMake `DW3_VERSION` flag as
+PC). Create empty `runtime/eu/memcard/` before copying to the card.
 
 ### US boot extracts the runtime when the tree is missing
 
 `dw3_runtime_ensure()` in `port/cdfs/runtime_extract.c` runs from the PC and
-Switch boot paths before `cdfs_load_map`. US only. EU still needs a packed
-`runtime/eu` or `sdmc:/switch/dw3/eu`.
+Switch boot paths before `cdfs_load_map`. US only (`files_us.json` /
+`SLUS_014.36`). EU still needs a packed `runtime/eu` or
+`sdmc:/switch/dw3/eu` — there is no EU BIN auto-extract yet.
 
 When `files_us.json`, `SLUS_014.36`, `boot_tim.bin`, and every mapped file
 are already in the runtime root, boot only stats them. A Form-2 `.STR` whose

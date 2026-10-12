@@ -87,12 +87,15 @@ add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../../port ${CMAKE_BINARY_DIR}/port
 string(TOLOWER "${DW3_VERSION}" _dw3_ver)
 if(_dw3_ver STREQUAL "us")
   set(_dw3_ver_macro VERSION_US=1)
+  set(_dw3_default_runtime "sdmc:/switch/dw3/us")
 elseif(_dw3_ver STREQUAL "eu")
   set(_dw3_ver_macro VERSION_EU=1)
+  set(_dw3_default_runtime "sdmc:/switch/dw3/eu")
 else()
   message(FATAL_ERROR "DW3_VERSION must be us or eu (got '${DW3_VERSION}')")
 endif()
 message(STATUS "DW3_VERSION=${_dw3_ver} (${_dw3_ver_macro})")
+message(STATUS "DW3_DEFAULT_RUNTIME=${_dw3_default_runtime}")
 
 # Host backend units. Globbed to match the devkitPro Makefile, which compiles
 # psyz_backend/*.c wholesale — P4.4-P4.6 fill in the placeholder units.
@@ -114,7 +117,10 @@ add_executable(dw3-switch
   ${CMAKE_CURRENT_SOURCE_DIR}/../../port/psyz_missing/psyz_pad_host.c
 )
 
-target_compile_definitions(dw3-switch PRIVATE ${_dw3_ver_macro} DW3_NX_GAME_IMAGE)
+target_compile_definitions(dw3-switch PRIVATE
+  ${_dw3_ver_macro}
+  DW3_NX_GAME_IMAGE
+  DW3_DEFAULT_RUNTIME="${_dw3_default_runtime}")
 
 set(DW3_NRO_NAME "dw3-switch")
 set(DW3_NACP_NAME "dw3-switch")

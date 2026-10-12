@@ -1,8 +1,16 @@
 # Phase 3 follow-up — EU `dw3-pc` build scaffold
 
-Status: **link scaffold landed** (configure + link with `-DDW3_VERSION=eu`).
-EU playthrough and owner `runtime/eu` remain open. Gate stance unchanged:
-US continuous path only (`docs/P3_GATE.md`).
+Status: **link + owner bring-up validated** (configure/link with
+`-DDW3_VERSION=eu`; owner EU disc packed to `runtime/eu`; PC smoke reached
+opening movie / PAL 50 Hz). Full EU playthrough and OLED hardware smoke
+remain open. Gate stance unchanged: US continuous path only
+(`docs/P3_GATE.md`).
+
+Owner validation note (2026-10-12, own disc only, not in git): Redump-style
+`Digimon World 2003 (Europe)` MODE2/2352 → `SLES_039.36` /
+`BESLES-03936`; `files_eu.json` `--check` clean; `boot_tim.bin` from EXE;
+`tools/build_switch_game.sh --eu` emits NRO defaulting to
+`sdmc:/switch/dw3/eu`.
 
 ## Root causes (pre-scaffold blockers)
 
@@ -75,13 +83,29 @@ python3 tools/build_file_map.py --check runtime/eu/files_eu.json \
 DW3_RUNTIME=runtime/eu ./build/pc-eu/dw3-pc --runtime runtime/eu
 ```
 
+## Switch EU NRO
+
+```bash
+# separate build tree from US (Docker / tools/dk.sh hosts)
+./tools/build_switch_game.sh --eu
+# → build/switch-eu/dw3-switch.nro (DW3_DEFAULT_RUNTIME=sdmc:/switch/dw3/eu)
+```
+
+Copy a packed `runtime/eu` (including empty `memcard/`) to
+`sdmc:/switch/dw3/eu/`. Boot extract-from-BIN remains **US-only**
+(`port/cdfs/runtime_extract.c` writes `files_us.json` / `SLUS_014.36`).
+For Form-2 movie audio on card, also place the owner EU BIN/CUE under
+`sdmc:/switch/dw3/` (same rewrite story as US; see `docs/RUNTIME_LAYOUT.md`).
+
 ## Remaining open items
 
-- Owner `disks/eu` + `runtime/eu` (not in git).
+- Owner `disks/eu` + `runtime/eu` stay gitignored (bring-up pack proven on
+  owner disc; not a committed tree).
 - `CNTY_SEL` still weak-stubbed (`port/overlays/mode_stubs.c`) — EU boots
   via country select; real overlay link is a later task.
 - EU-only stages WSTAG920–974 still weak-stubbed for link (not in P3.8 batches).
 - EU playthrough / “both versions play” not claimed (Phase 6 / P7.2 class).
+- OLED EU hardware smoke not yet run (needs packed `eu/` on SD + EU NRO).
 - Keep US as the default CI / day-to-day bring-up target.
 
 ## Regenerating `overlay_table_eu.c`
