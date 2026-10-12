@@ -42,7 +42,7 @@ for **residual** Switch-only UX after those phases land. Hosts stay thin:
 |---|---|
 | `platforms/switch/` | Applet focus/operation mode, hid rumble, present modes, swkbd/error applets |
 | `port/` | Option registry, save backup rotation policy, turbo/widescreen flags shared with PC |
-| Owner SD layout | `.mcr`, backups, `port_options` — never in git |
+| Owner SD layout | `saveN.bin`, `.mcr.bak` (migration), `port_options` — never in git |
 
 ## Homebrew caveats
 

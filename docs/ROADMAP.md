@@ -523,8 +523,10 @@ speed.
   **Preview.17 OLED (2026-10-12):** owner confirmed option B bar feel is
   correct for **load and save** (tip `413efb8` / #84). Keep 100 frames.
   **Still open:** HOME / `appletMainLoop` quit path (`Psyz_QuitRequested`
-  still 0); sleep/focus flush; clean-exit + relaunch reload smoke still
-  worth a dedicated pass. Emulator conversion remains P9.6.
+  still 0); sleep/focus flush. Cross-port overwrite and Continue after
+  preview.14 PASS; a dedicated clean-exit + relaunch smoke is still nice
+  but no longer the P5.3 OLED save blocker. Emulator conversion remains
+  P9.6.
   **Preview.4 / .5 notes (kept):** earlier `.mcr` writes and the data-frame
   XOR fault (`0x7F` / partner index) are historical; XOR must stay off
   data frames. Done when: a save this port wrote loads after a clean exit

@@ -94,8 +94,8 @@ decomp does not open paths.
   The hitch comes back.
 - Pour the STR into the 32-sector ring, or drop the 150/s budget.
 - Turn XA into a separate WAV. The blocks sit inside the video file.
-- Mix memory-card work into this. `memcard0.mcr` stays on
-  `memcard_host_ensure`.
+- Mix memory-card work into this. Flat `saveN.bin` (and one-time
+  `.mcr` → flat migration) stays on `memcard_host_ensure`.
 - Extract EU here. The extractor and the linked `FILE_SECTORS` are US.
 - Commit a BIN, a BIOS, or the extracted tree.
 - Raise the CPU or GPU clock.

@@ -1,0 +1,35 @@
+docs-audit-2026-10-12 — dw3-switch documentation vs origin/main @ 413efb8
+Auditor worktree: /tmp/dw3-docs-audit branch docs/audit-oled-p53
+Evidence date: 2026-10-12 (OLED + merged PRs #75–#84)
+
+Legend: severity high = wrong operational fact; med = misleading progress; low = polish / historical lag
+
+path | issue | severity | suggested fix
+-----|-------|----------|--------------
+AGENTS.md (Cursor Cloud) | "Current preview is v0.6.5-preview.2" while latest GitHub Release tag is preview.10; main tip is past preview.14 work | high | Point current tagged preview at .10; note main may be ahead; keep .2 as picture baseline only
+platforms/switch/README.md | Same stale "Current preview: preview.2" after nxlink section | high | Same as AGENTS / root README release pointer
+README.md (Status Phase 5) | Says P5.3 "OLED confirm remain open" after #83 MC1→MC2 PASS and #84 bar land | high | OLED save confirm closed; keep HOME/appletMainLoop open
+README.md (On an OLED + Quick start) | Still describes DuckStation/.mcr live cards and formats memcard0/1.mcr as current runtime | high | Document save0.bin/save1.bin + one-time .mcr migration; keep DuckStation as historical/P9.6
+port/README.md | Lists memcard as "128 KiB .mcr per slot" / DuckStation as the backend | high | Point at flat resident saves (P5.3); .mcr = migration/fixtures/P9.6
+docs/ROADMAP.md (P5.3 bar) | Option B (#84) documented; owner OLED load-bar OK confirmation missing | med | Record owner confirmed load bar; save shares 100-frame constants
+docs/P5.3_FLAT_SAVE.md | Still open implies second-boot reload unproven; no OLED bar confirmation; no later slot1 money=2 note | med | Narrow Still open to HOME/sleep; add bar OLED + optional slot overwrite note
+docs/STATIC_SD_LOAD.md | "Do not" still says memcard0.mcr stays on ensure | med | say saveN.bin / migration path
+docs/SWITCH_FEATURES.md | Owner SD layout row still ".mcr, backups…" | med | saveN.bin + .mcr.bak (+ port_options)
+docs/ARCHITECTURE.md | "P3.2 (in progress)" though Phase 3 gate met | med | Mark field/stage section model as landed / Phase 3 complete
+README.md (docs table) | No index rows for P5.3_FLAT_SAVE / DEBUG_OVERLAY / NXLINK_DEBUG / P5.2_BATTLE_GPU | low | Add rows when convenient
+docs/ROADMAP.md (P2.7 / P3.4) | Historical done-whens still say live .mcr (accurate for that phase) | low | Leave; P5.3 is the runtime source of truth
+platforms/switch/release/README.txt | Tied to tagged preview.10; does not mention flat save / soft battle / HUD from later main | low | Refresh on next preview cut, not this audit PR
+notes/stgcard-bar-pace.txt | Ends with "OLED retest" open after B landed | low | Append owner load-bar OK
+docs/SWITCH_BACKEND.md | Mentions preview.2 as picture cut; still useful history | low | Optional cross-link to latest tag
+Missing dedicated doc | Soft-battle default / mesh gate are only in ROADMAP + P5.2_BATTLE_GPU (OK) | low | No new doc required
+Missing dedicated doc | Orchestration / no-overclock / no TCP 28280 already in AGENTS | low | No change
+GitHub tags vs builds | preview.11–.14 used on OLED; only .1–.10 are Releases | low | Document "latest Release tag" vs "main tip / untagged hardware cuts" in README/AGENTS
+
+Top 5 high/med (pre-fix):
+1. AGENTS + platforms/switch README current preview = .2 (should be .10 tagged)
+2. Root README still treats OLED P5.3 confirm as open and .mcr as live runtime
+3. port/README still describes live 128 KiB .mcr backend
+4. ROADMAP/P5.3_FLAT_SAVE missing owner STGMCARD bar confirmation after #84
+5. STATIC_SD_LOAD / SWITCH_FEATURES / ARCHITECTURE P3.2 wording lag
+
+P5.3 bar confirmation missing before this PR? YES — option B was documented as landed, but owner OLED load-bar OK was not recorded in ROADMAP or P5.3_FLAT_SAVE.
