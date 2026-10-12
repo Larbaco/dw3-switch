@@ -728,11 +728,11 @@ Gate: P8.2 works with an owner-supplied minimal pack. P8.4 is best-effort.
 ## Phase 9 — Port options menu
 
 Starts after the Phase 8 gate in the planned order (or earlier once at
-least one non-vanilla port feature exists to toggle). P9.1 is an early
-note. The phase has not started. Goal: a title / main
-menu entry that exposes toggles for **every port-added feature** that is
-not part of the original PS1 game, with vanilla-safe defaults and
-persistence on owner storage. Details: [PORT_OPTIONS.md](PORT_OPTIONS.md).
+least one non-vanilla port feature exists to toggle). P9.1 is done; P9.2
+entry path is investigated (see [PORT_OPTIONS.md](PORT_OPTIONS.md)
+“Entry investigation”). Goal: a title / main menu entry that exposes
+toggles for **every port-added feature** that is not part of the original
+PS1 game, with vanilla-safe defaults and persistence on owner storage.
 
 - [x] **P9.1 Goal note.** Document scope (port-only toggles), layering
   (`port/` registry + owner config file; hosts stay thin), and that
@@ -741,7 +741,9 @@ persistence on owner storage. Details: [PORT_OPTIONS.md](PORT_OPTIONS.md).
   points at Phase 9 / that note.
 - [ ] **P9.2 Menu entry and shell.** Add a port options entry on the
   title / main menu that opens and closes a dedicated screen without
-  breaking the vanilla title flow (PC and Switch).
+  breaking the vanilla title flow (PC and Switch). Hook: `PORT_HOST`
+  glue on `STDWTITL` `runOptions` + shell in `port/options/` (see
+  [PORT_OPTIONS.md](PORT_OPTIONS.md) Entry investigation).
   Done when: the screen is reachable from the main menu and returns
   cleanly to it.
 - [ ] **P9.3 Toggle registry.** Maintain a registry of non-native features

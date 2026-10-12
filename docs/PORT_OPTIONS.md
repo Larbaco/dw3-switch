@@ -62,3 +62,35 @@ focus-loss pause + delta clamp, memcard write-through/flush, rotating
   toggle (pick one in P9.4 and stick to it).
 - Do not write port options into the memcard image unless the user opts
   into an explicit “embed in save” experiment later.
+
+## Entry investigation (P9.2)
+
+Vanilla US/EU title (`STDWTITL`) has no Options item: after PRESS START the
+menu only offers **New Game** / **Continue** (`menus/title/menu.c`
+`runOptions`). Confirm is `PAD_CROSS`; choices `1` / `2` / `3` drive
+`STDWTITL_leaveTitle` → `MODE_NEW_GAME` / `MODE_CONTINUE` / opening movie.
+There is no third TIM sprite for a Config label.
+
+| Piece | Location |
+|---|---|
+| Menu list + pad SM | `vendor/dw3_decomp/src/menus/title/menu.c` |
+| Mode leave / fade | `…/title/title.c` (`STDWTITL_stepTitle` / `leaveTitle`) |
+| Overlay root | `…/title/scene.c` (`STDWTITL_start`) |
+| Cursor XY | `…/title/data/stdwtitl.c` (`STDWTITL_menuCursorPositions`) |
+| Host link | `port/CMakeLists.txt` → `DW3_TITLE_SOURCES` |
+
+**Recommended hook:** keep the shell in new `port/options/`; add a thin
+`PORT_HOST` patch on `runOptions` / `STDWTITL_tickMenu` so opening Config
+never sets `choice` and never calls `leaveTitle`. Stay on `MODE_TITLE`
+until the shell closes (Triangle / Back), then resume the vanilla options
+substate. Prefer a third cursor row drawn with a shared `port/` text path
+(PC + Switch); Select-only (`PAD_SELECT`, Switch **Minus**) is an acceptable
+MVP if the third-row drawer is not ready. Do **not** put the product entry
+in `nx_debug_overlay` / battle-mode chords (`platforms/switch`).
+
+**Risks:** accidental `choice` 1/2 while the shell is open; input passthrough
+confirming Continue underneath; PRESS START timeout (`choice=3`) if entry is
+wired too early; clipping a third row near y=194 on 240p.
+
+Full write-up (session notes, not git): 
+`~/.cursor/projects/mnt-windows-Jogos-dw3-switch/notes/p92-main-menu-port-options-entry.txt`.
