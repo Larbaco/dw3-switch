@@ -14,17 +14,19 @@ Announced together in the Digimon World 2003 QoL Reddit thread
 
 | Project | Role | Notes |
 |---|---|---|
-| Combined **Quality of Life Patch** (beta) | Integrates community mods + new battle, exploration, progression, and menu systems | Owner downloads from that project's GitHub; needs original EU disc |
+| Combined **Quality of Life Patch** / **Harmony** ([rsigristc/dw2003-qol-patch](https://github.com/rsigristc/dw2003-qol-patch)) | Integrates community mods + new battle, exploration, progression, and menu systems | EU PAL `SLES-03936` only; bring-your-own-disc BPS. Pin surveyed: Harmony Beta v1.0 / cumulative r31 (`dw2003-harmony-betav1.bps`, 2026-10-09). Never commit or redistribute the BPS. |
 | **Flawe** Fast Travel / walkthrough / faster battle text | Upstream of several exploration and battle-text changes | Also on romhacking.net (Fast Travel / QoL suite) |
 | **guiomatos** Initial Pack Customizer (+ Pack D in the combined build) | Starter team selection UI | Expanded in the combined patch |
-| **markisha64** / Marko Grizelj (NTSC / definitive-style fixes) | NTSC 60 Hz timing, field-move / HP Proxy fixes in some builds | See e.g. `dmw2003NTSC`, `dmw_2003_definitive` |
+| **markisha64** / Marko Grizelj (NTSC / definitive-style fixes) | NTSC 60 Hz timing, field-move / HP Proxy fixes in some builds | Game patches: e.g. `dmw2003NTSC`, `dmw_2003_definitive`. Parallel decomp reference: [markisha64/ddw3](https://github.com/markisha64/ddw3) (profiles / TIM / map tools; not our submodule). |
 | **DW3-DS-Android** (companion) | Second-screen / DS-style companion intended to complement the QoL patch | Protocol for a native Switch/PC host is TBD (P7.5) |
 
 Walkthrough credit called out upstream: EmeraldPhoenix (underlying Flawe guide).
 
-Exact repository URLs for the combined patch and the Android companion may
-move; treat the Reddit post and each project's own README as authoritative
-for download and install steps.
+Related recreation (not a QoL patch source, not a dependency):
+[dorijantomic/dw2003-play-code](https://github.com/dorijantomic/dw2003-play-code)
+is a browser TypeScript/WebGL remake that learns from ddw3 and cross-checks
+ReGame C. Useful as an oracle for battle/GTE/audio/save research; its asset
+pipeline and engine do not feed our `.nro`.
 
 Related PC recomp catalog (not a dependency of this port): the public
 [Xive080/D-W-3-Recomp](https://github.com/Xive080/D-W-3-Recomp) repo hosts
