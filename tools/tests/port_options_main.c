@@ -58,10 +58,11 @@ int main(void) {
     }
 
     dw3_port_options_open();
+    /* Select must not close — it is the title open chord. */
     dw3_port_options_test_set_pressed(1u << BIT_SELECT);
     dw3_port_options_tick();
-    if (dw3_port_options_is_open()) {
-        return fail("select close");
+    if (!dw3_port_options_is_open()) {
+        return fail("select must not close");
     }
 
     dw3_port_options_close(); /* idempotent */

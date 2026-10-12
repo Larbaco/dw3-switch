@@ -99,9 +99,9 @@ Full write-up (session notes, not git):
 
 While **New Game / Continue** are shown on the title menu, press
 **Select** to open the port options shell. On the PSY-Z SDL keyboard map
-that is **Backspace**. Close with **Triangle** (**S** on the keyboard) or
-Backspace again. The shell stays on `MODE_TITLE` and does not set the
-title menu `choice` (New Game / Continue / timeout still work after close).
+that is **Backspace**. Close with **Triangle** (**S** on the keyboard).
+The shell stays on `MODE_TITLE` and does not set the title menu `choice`
+(New Game / Continue / timeout still work after close).
 
 | Action | Pad | PC keyboard (PSY-Z) | Switch (later) |
 |---|---|---|---|

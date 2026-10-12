@@ -114,7 +114,8 @@ void dw3_port_options_tick(void) {
     }
 
 #ifdef DW3_PORT_OPTIONS_TEST
-    if (po_pressed(PO_BIT_TRIANGLE) || po_pressed(PO_BIT_SELECT)) {
+    /* Close is Triangle only — Select is the open chord on the title menu. */
+    if (po_pressed(PO_BIT_TRIANGLE)) {
         dw3_port_options_close();
         return;
     }
@@ -136,7 +137,7 @@ void dw3_port_options_tick(void) {
         fflush(stderr);
     }
 #else
-    if (po_pressed(PAD_TRIANGLE) || po_pressed(PAD_SELECT)) {
+    if (po_pressed(PAD_TRIANGLE)) {
         dw3_port_options_close();
         return;
     }
