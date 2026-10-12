@@ -157,8 +157,12 @@ To launch and receive the log stream:
    The host firewall must allow the nxlink connection. The standard NRO does
    not call `nxlinkStdio()` and remains the no-network fallback.
 
-Current preview: [v0.6.5-preview.2](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.2)
-(`dw3-switch.nro`, 8935621 bytes, plus `README.txt`, commit `8273a91`).
+Latest tagged preview Release:
+[v0.6.5-preview.10](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.10)
+(gated FIGHTSTG mesh + nxlink `mesh dbg:`). `main` may be ahead (flat
+saves, soft battle default, debug HUD, STGMCARD bar). Picture baseline:
+[v0.6.5-preview.2](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.2)
+(`8273a91`, 8935621 bytes).
 [v0.6.5-preview.1](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.1)
 is the earlier 8927429-byte file. It still crops the title and freezes
 the movie.

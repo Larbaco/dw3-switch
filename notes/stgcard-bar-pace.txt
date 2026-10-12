@@ -108,7 +108,7 @@ hacks that mix B+C without measuring, or overclock.
 Fix PR
 ------
 Option B landed on `perf/stgcard-bar` (patch 0043, host frames=100).
-Open PR against main; OLED retest load/save bar feel after rebuild.
+Merged as #84.
 
 Next
 ----
@@ -133,3 +133,8 @@ Landed on branch `perf/stgcard-bar`:
 
 Expected OLED feel after rebuild: bar rises with load/save instead of
 crawling ~6% then snapping; short finish to 100% still present.
+
+OLED confirm (2026-10-12)
+-------------------------
+Owner confirmed the **load** bar feels OK after #84. Save uses the same
+`MEMCARD_SAVE_FRAMES=100` constant (no separate blocker).

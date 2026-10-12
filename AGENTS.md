@@ -182,9 +182,12 @@ an Actions artifact. A GitHub Release is only
 and it is a prerelease. `workflow_dispatch` is listed only once that file
 is on `main`. Tag `v0.6.5-preview.1` is the first preview
 (8927429-byte game `.nro` plus `README.txt`). It still crops the title
-and freezes the movie. Current preview is `v0.6.5-preview.2` at `8273a91`
-(8935621 bytes), with the display-mode title width and the full-height
-movie. Do not publish the sample `.nro` as the game.
+and freezes the movie. Latest **tagged** GitHub Release preview is
+`v0.6.5-preview.10` (gated mesh + mesh dbg; see that release notes).
+`main` may be ahead of that tag (flat `saveN.bin`, soft battle default,
+debug HUD, STGMCARD 100-frame bar, etc.). The picture baseline remains
+`v0.6.5-preview.2` at `8273a91` (display-mode title width and full-height
+movie). Do not publish the sample `.nro` as the game.
 
 The game image needs `vendor/psyz/nugget` as well as `external/SDL`, without
 `--recursive` on nugget. Missing `nugget/bsdec/bsdec.c` shows up as

@@ -5,12 +5,13 @@ Platform-independent pieces between the host (PC / Switch) and game C from
 
 - CD / file table → host filesystem (`port/cdfs/` — file-id reads, and US BIN extract at boot)
 - Overlay and stage loading (`port/overlays/` — static restore, P2.6)
-- Memory card virtualization (`port/memcard/` — 128 KiB `.mcr` per slot)
+- Memory card virtualization (`port/memcard/` — flat `saveN.bin` per port;
+  legacy `.mcr` is migration / fixtures / P9.6 only)
 - Build flags that drop matching-only PS1 constraints
 
 See `port/cdfs/README.md` for the file-id API and fixture tests.
 See `port/overlays/README.md` for the static overlay restore model.
-See `port/memcard/README.md` for the `.mcr` host backend and DuckStation note.
+See `port/memcard/README.md` for the flat-save host and P5.3 notes.
 
 ## Layout
 
@@ -21,7 +22,7 @@ See `port/memcard/README.md` for the `.mcr` host backend and DuckStation note.
 | `patches/` | Build-copy patches; see [`docs/PATCHES.md`](../docs/PATCHES.md) |
 | `overlays/` | Host VRAM symbols + static restore (`overlay_host`, P2.6) |
 | `cdfs/` | File-id → packed runtime reads (P2.5) |
-| `memcard/` | 128 KiB `.mcr` slot images (P2.7) |
+| `memcard/` | Flat `saveN.bin` host (P5.3); P2.7 was the earlier `.mcr` path |
 | `psyz_missing/` | PSY-Z gap stubs linked ahead of vendored libs (e.g. MDEC, movie path) |
 
 ## Build (engine + PC host)
