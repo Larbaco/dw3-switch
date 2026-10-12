@@ -99,7 +99,9 @@ This port stands on other people's work. In particular:
 | Project | Thanks for |
 |---|---|
 | [Xive080/D-W-3-Recomp](https://github.com/Xive080/D-W-3-Recomp) (OpenWorld2003) | A public PC recomp of the same game. Useful as a reference for CD and filesystem pitfalls, and for launcher and mod catalog shape. Not a dependency of this port. |
-| Digimon World 2003 community QoL authors (Flawe, guiomatos, markisha64 / Marko Grizelj, EmeraldPhoenix, and others) | Patch and UX ideas tracked for optional later compatibility. See [docs/COMMUNITY_QOL.md](docs/COMMUNITY_QOL.md). |
+| [markisha64/ddw3](https://github.com/markisha64/ddw3) | Parallel Digimon World 2003 decomp (Rust/asm). Reference for Digimon profiles, evolution labeling, TIM/map tooling, and language tables. Not a substitute for `vendor/dw3_decomp`. |
+| [dorijantomic/dw2003-play-code](https://github.com/dorijantomic/dw2003-play-code) | Browser recreation built from ddw3 with ReGame cross-checks. Useful as a research oracle (battle formulas, GTE, SPU exclusive track, save-block size, field tick). Not a runtime dependency. |
+| [rsigristc/dw2003-qol-patch](https://github.com/rsigristc/dw2003-qol-patch) (**Harmony**, with Flawe, guiomatos, markisha64, EmeraldPhoenix, and others) | EU-only (`SLES-03936`) BPS QoL suite that Phase 7 tracks for own-disc data (P7.2) and native reimplementation (P7.4). See [docs/COMMUNITY_QOL.md](docs/COMMUNITY_QOL.md). Binary patches do not load into the `.nro`. |
 
 ### Platform and tooling
 
