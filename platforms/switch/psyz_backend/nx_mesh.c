@@ -82,6 +82,20 @@ static int diag_solid_wanted(void) {
     return dw3_nx_mesh_diag_enabled() && dw3_nx_battle_mode_use_solid();
 }
 
+/* DIAG + gpu-tex: textured/CLUT path still active (soft off, not solid). */
+static int diag_tex_wanted(void) {
+    return dw3_nx_mesh_diag_enabled() &&
+           dw3_nx_battle_mode_get() == DW3_NX_BATTLE_GPU_TEX;
+}
+
+/* Thin magenta NDC strip on the right — drawn AFTER green MESH_VS solids.
+ * If OLED sees this rim with a green fill, the magenta ClearImage was
+ * overpainted (expected). If neither clear nor rim show, present/band issue. */
+static const float SSQUAD_MAGENTA_RIM_NDC[] = {
+    0.90f, -1.0f, 0.0f, 1.0f, 1.0f, -1.0f, 1.0f, 1.0f,
+    0.90f, 1.0f,  0.0f, 0.0f, 1.0f, 1.0f,  1.0f, 0.0f,
+};
+
 /* Same clip-space map as MESH_VS (PS1 screen + u_drawOffset → NDC). */
 static void diag_ps1_to_ndc(int16_t x, int16_t y, float *ox, float *oy) {
     *ox = (((float)x + (float)s_off_x) / 512.0f) - 1.0f;
@@ -535,6 +549,7 @@ static void flush_locked(const uint16_t *cpu_vram) {
     int start;
     GLint prev_fbo = 0;
     int tris;
+    int sample_was_dirty;
 #if DW3_NX_DEBUG_MESH
     uint64_t t0;
     uint64_t t1;
@@ -555,6 +570,7 @@ static void flush_locked(const uint16_t *cpu_vram) {
     glGetIntegerv(GL_FRAMEBUFFER_BINDING, &prev_fbo);
     /* Full 1024×512 RGBA pack+upload dominates OLED when done every flush.
      * Fight-menu idle rarely touches VRAM; reuse the GL sample until dirty. */
+    sample_was_dirty = s_sample_dirty ? 1 : 0;
     if (s_sample_dirty) {
         upload_sample_vram(cpu_vram);
 #if DW3_NX_DEBUG_MESH
@@ -696,6 +712,30 @@ static void flush_locked(const uint16_t *cpu_vram) {
         overlay_drawn = 1;
         /* Tiny cyan corner — DIAG alive without covering green verts. */
         dw3_nx_mesh_diag_ssquad(0, 0, DW3_NX_VRAM_W, DW3_NX_VRAM_H);
+        /* Magenta rim AFTER solids: falsify clear-overpaint vs clear miss. */
+        if (s_ssquad_prog && s_ssquad_vbo && s_ssquad_pos >= 0) {
+            static unsigned rim_log_n;
+
+            glDisable(GL_SCISSOR_TEST);
+            glDisable(GL_BLEND);
+            glUseProgram(s_ssquad_prog);
+            glUniform4f(s_ssquad_color, 1.0f, 0.0f, 1.0f, 1.0f);
+            glBindBuffer(GL_ARRAY_BUFFER, s_ssquad_vbo);
+            glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(SSQUAD_MAGENTA_RIM_NDC),
+                            SSQUAD_MAGENTA_RIM_NDC);
+            glEnableVertexAttribArray((GLuint)s_ssquad_pos);
+            glVertexAttribPointer((GLuint)s_ssquad_pos, 2, GL_FLOAT, GL_FALSE,
+                                  sizeof(float) * 4, (const void *)0);
+            glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+            rim_log_n++;
+            if (rim_log_n <= 8u || (rim_log_n % 64u) == 0u) {
+                fprintf(stderr,
+                        "DIAG solid magenta rim #%u (post-solid; if visible "
+                        "with green fill → clear was overpainted)\n",
+                        rim_log_n);
+                fflush(stderr);
+            }
+        }
         while ((e = glGetError()) != GL_NO_ERROR) {
             glerr = e;
         }
@@ -707,11 +747,38 @@ static void flush_locked(const uint16_t *cpu_vram) {
                     "DIAG solid flush #%u tris=%d vtx=%d "
                     "xy=[%d..%d],[%d..%d] post=[%d..%d],[%d..%d] "
                     "out=%d/%d (%d%%) off=%d,%d area=%d,%d..%d,%d "
-                    "overlay=%d glerr=0x%x\n",
+                    "overlay=%d rim=1 glerr=0x%x\n",
                     flush_log_n, tris, s_n_vtx, xmin, xmax, ymin, ymax, ox_min,
                     ox_max, oy_min, oy_max, outside, s_n_vtx, pct, s_off_x,
                     s_off_y, s_area_x0, s_area_y0, s_area_x1, s_area_y1,
                     overlay_drawn, (unsigned)glerr);
+            fflush(stderr);
+        }
+    } else if (diag_tex_wanted() && s_n_idx >= 3) {
+        static unsigned tex_flush_n;
+        int n_tex = 0;
+        int n_solid = 0;
+        int i;
+
+        for (i = 0; i < s_n_idx; i += 3) {
+            if (is_untextured(&s_vtx[s_idx[i]])) {
+                n_solid++;
+            } else {
+                n_tex++;
+            }
+        }
+        tex_flush_n++;
+        if (tex_flush_n <= 16u || (tex_flush_n % 64u) == 0u) {
+            const Dw3NxMeshVertex *v0 = &s_vtx[s_idx[0]];
+
+            fprintf(stderr,
+                    "DIAG tex flush #%u tris=%d tex=%d solid=%d "
+                    "off=%d,%d area=%d,%d..%d,%d tpage=0x%x clut=0x%x "
+                    "rgb=%u,%u,%u sample_dirty=%d\n",
+                    tex_flush_n, tris, n_tex, n_solid, s_off_x, s_off_y,
+                    s_area_x0, s_area_y0, s_area_x1, s_area_y1,
+                    (unsigned)v0->tpage, (unsigned)v0->clut, (unsigned)v0->r,
+                    (unsigned)v0->g, (unsigned)v0->b, sample_was_dirty);
             fflush(stderr);
         }
     }
@@ -831,9 +898,10 @@ int dw3_nx_mesh_diag_enabled(void) {
     if (cached) {
         fprintf(stderr,
                 "nx_mesh: DIAG on (gpu-solid magenta clear + green MESH_VS "
-                "verts; yellow NDC overlay of first packet tri + cyan corner; "
-                "mesh-only present; soft default unchanged; fullscreen cyan "
-                "retired after OLED ssquad2)\n");
+                "verts + post-solid magenta rim; yellow NDC + cyan corner; "
+                "gpu-tex textured enqueue/flush counts; mesh-only present; "
+                "soft default unchanged; fullscreen cyan retired after OLED "
+                "ssquad2)\n");
     }
     return cached;
 }
@@ -1063,6 +1131,34 @@ void dw3_nx_mesh_enqueue(const Dw3NxMeshVertex *v, int nverts,
                     enq_log_n, nverts, nidx, xmin, xmax, ymin, ymax, s_off_x,
                     s_off_y, (unsigned)v[0].r, (unsigned)v[0].g,
                     (unsigned)v[0].b, (unsigned)v[0].tpage);
+            fflush(stderr);
+        }
+    } else if (diag_tex_wanted()) {
+        static unsigned tex_enq_n;
+        static unsigned tex_enq_textured;
+        static unsigned tex_enq_solid;
+        int textured = is_untextured(&v[0]) ? 0 : 1;
+        int xmin = 32767;
+        int xmax = -32768;
+        int ymin = 32767;
+        int ymax = -32768;
+
+        diag_note_xy(v, nverts, &xmin, &xmax, &ymin, &ymax);
+        tex_enq_n++;
+        if (textured) {
+            tex_enq_textured++;
+        } else {
+            tex_enq_solid++;
+        }
+        if (tex_enq_n <= 8u || (tex_enq_n % 512u) == 0u) {
+            fprintf(stderr,
+                    "DIAG tex enqueue #%u nverts=%d nidx=%d textured=%d "
+                    "xy=[%d..%d],[%d..%d] off=%d,%d rgb=%u,%u,%u "
+                    "tpage=0x%x clut=0x%x (cum tex=%u solid=%u)\n",
+                    tex_enq_n, nverts, nidx, textured, xmin, xmax, ymin, ymax,
+                    s_off_x, s_off_y, (unsigned)v[0].r, (unsigned)v[0].g,
+                    (unsigned)v[0].b, (unsigned)v[0].tpage,
+                    (unsigned)v[0].clut, tex_enq_textured, tex_enq_solid);
             fflush(stderr);
         }
     }

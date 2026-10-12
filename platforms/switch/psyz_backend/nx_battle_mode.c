@@ -52,6 +52,12 @@ static void log_mode(Dw3NxBattleMode mode) {
                 "DIAG solid enter present=mesh_only_diag soft=0\n");
         fflush(stderr);
     }
+    if (mode == DW3_NX_BATTLE_GPU_TEX && dw3_nx_mesh_diag_enabled()) {
+        fprintf(stderr,
+                "DIAG tex enter present=mesh_only_diag (UI skipped) "
+                "soft=0 — expect textured enqueue; no 2D is expected\n");
+        fflush(stderr);
+    }
 }
 
 void dw3_nx_battle_mode_init(void) {

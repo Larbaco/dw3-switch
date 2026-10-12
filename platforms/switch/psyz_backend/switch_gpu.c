@@ -359,7 +359,8 @@ void Draw_ClearImage(PS1_RECT *rect, u_char r, u_char g, u_char b) {
         float cg = (float)g / 255.0f;
         float cb = (float)b / 255.0f;
 
-        /* DIAG + gpu-solid: known magenta clear (falsify setBgColor blue). */
+        /* DIAG + gpu-solid: known magenta clear (falsify setBgColor blue).
+         * OLED g3cb66dd: greens overpaint this; rim after flush checks band. */
         if (dw3_nx_mesh_diag_enabled() && dw3_nx_battle_mode_use_solid()) {
             cr = 1.0f;
             cg = 0.0f;
