@@ -308,7 +308,9 @@ target_link_options(dw3-switch PRIVATE
 
 # .nacp + .nro from the devkitPro platform module. Passing NACP is what stops
 # elf2nro falling back to its stock "HOMEBREW" asset section — the trap the
-# Makefile build hit (see platforms/switch/README.md).
+# Makefile build hit (see platforms/switch/README.md). ICON is a 256×256 JPEG
+# (platforms/switch/icon.jpg); regenerate from docs/assets/icon-256.png if the
+# art changes. Without ICON, nx_create_nro embeds libnx's default_icon.jpg.
 nx_generate_nacp(
   OUTPUT "${CMAKE_BINARY_DIR}/${DW3_NRO_NAME}.nacp"
   NAME "${DW3_NACP_NAME}"
@@ -321,4 +323,5 @@ file(REMOVE "${CMAKE_BINARY_DIR}/${DW3_NRO_NAME}.nacp")
 nx_create_nro(dw3-switch
   OUTPUT "${CMAKE_BINARY_DIR}/${DW3_NRO_NAME}.nro"
   NACP "${CMAKE_BINARY_DIR}/${DW3_NRO_NAME}.nacp"
+  ICON "${CMAKE_CURRENT_SOURCE_DIR}/icon.jpg"
 )
