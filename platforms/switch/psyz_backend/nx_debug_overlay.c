@@ -117,13 +117,36 @@ static const uint8_t s_font8x8[95][8] = {
 enum {
     FONT_W = 8,
     FONT_H = 8,
+    /* Logical padding / gaps (texture pixels); scaled with the glyphs. */
+    HUD_PAD_X = 4,
+    HUD_PAD_Y = 4,
+    HUD_LINE_GAP = 2,
     HUD_COLS = DW3_DBG_OVERLAY_LINE_CHARS,
     HUD_ROWS = DW3_DBG_OVERLAY_MAX_LINES,
-    HUD_TEX_W = HUD_COLS * FONT_W,
-    HUD_TEX_H = HUD_ROWS * FONT_H,
+    HUD_TEX_W = HUD_PAD_X * 2 + HUD_COLS * FONT_W,
+    HUD_TEX_H = HUD_PAD_Y * 2 + HUD_ROWS * FONT_H +
+                (HUD_ROWS > 1 ? (HUD_ROWS - 1) * HUD_LINE_GAP : 0),
     /* Minus + L + R — see docs/DEBUG_OVERLAY.md */
     TOGGLE_CHORD = HidNpadButton_Minus | HidNpadButton_L | HidNpadButton_R
 };
+
+/* Integer NN scale: ~3× at 720p (24px glyphs), grows with fb height. */
+static int hud_scale_for_fb(uint32_t fb_w, uint32_t fb_h, int content_w,
+                            int content_h) {
+    int scale = (int)((fb_h * 3u) / 720u);
+
+    if (scale < 2) {
+        scale = 2;
+    }
+    if (scale > 6) {
+        scale = 6;
+    }
+    while (scale > 1 &&
+           (content_w * scale > (int)fb_w || content_h * scale > (int)fb_h)) {
+        scale--;
+    }
+    return scale;
+}
 
 static int s_visible = 1; /* default ON for nxlink builds */
 static int s_chord_was_down;
@@ -174,7 +197,7 @@ static int ensure_gl(void) {
     GLuint vs;
     GLuint fs;
     GLint ok = 0;
-    static const float quad[] = {
+    static const float quad_init[] = {
         -1.f, -1.f, 0.f, 1.f, 1.f, -1.f, 1.f, 1.f,
         -1.f, 1.f,  0.f, 0.f, 1.f,  1.f, 1.f, 0.f,
     };
@@ -221,7 +244,7 @@ static int ensure_gl(void) {
 
     glGenBuffers(1, &s_vbo);
     glBindBuffer(GL_ARRAY_BUFFER, s_vbo);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(quad), quad, GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(quad_init), quad_init, GL_DYNAMIC_DRAW);
     return 1;
 }
 
@@ -260,8 +283,8 @@ static void put_glyph(int col, int row, char ch) {
     for (gy = 0; gy < FONT_H; gy++) {
         uint8_t bits = glyph[gy];
         for (gx = 0; gx < FONT_W; gx++) {
-            px = col * FONT_W + gx;
-            py = row * FONT_H + gy;
+            px = HUD_PAD_X + col * FONT_W + gx;
+            py = HUD_PAD_Y + row * (FONT_H + HUD_LINE_GAP) + gy;
             uint8_t *p = &s_pixels[(py * HUD_TEX_W + px) * 4];
             if (bits & (0x80u >> gx)) {
                 p[0] = 0xE8;
@@ -318,14 +341,26 @@ static void rebuild_pixels(void) {
         }
     }
     /* Soft panel behind glyphs so text stays readable on bright frames. */
-    for (row = 0; row < s_line_count * FONT_H; row++) {
-        for (col = 0; col < HUD_TEX_W; col++) {
-            uint8_t *p = &s_pixels[(row * HUD_TEX_W + col) * 4];
-            if (p[3] == 0) {
-                p[0] = 0x08;
-                p[1] = 0x10;
-                p[2] = 0x20;
-                p[3] = 0xC0;
+    {
+        int panel_h = HUD_PAD_Y * 2;
+        if (s_line_count > 0) {
+            panel_h += s_line_count * FONT_H +
+                       (s_line_count > 1 ? (s_line_count - 1) * HUD_LINE_GAP : 0);
+        } else {
+            panel_h += FONT_H;
+        }
+        if (panel_h > HUD_TEX_H) {
+            panel_h = HUD_TEX_H;
+        }
+        for (row = 0; row < panel_h; row++) {
+            for (col = 0; col < HUD_TEX_W; col++) {
+                uint8_t *p = &s_pixels[(row * HUD_TEX_W + col) * 4];
+                if (p[3] == 0) {
+                    p[0] = 0x08;
+                    p[1] = 0x10;
+                    p[2] = 0x20;
+                    p[3] = 0xC0;
+                }
             }
         }
     }
@@ -361,9 +396,15 @@ void dw3_nx_debug_overlay_note_present(int use_mesh) {
 }
 
 void dw3_nx_debug_overlay_draw(uint32_t fb_w, uint32_t fb_h) {
+    int content_w;
+    int content_h;
+    int scale;
     int hud_w;
     int hud_h;
     int vy;
+    float u1;
+    float v1;
+    float quad[16];
 
     if (fb_w < 64 || fb_h < 64) {
         return;
@@ -381,8 +422,21 @@ void dw3_nx_debug_overlay_draw(uint32_t fb_w, uint32_t fb_h) {
     s_dirty = 1;
     rebuild_pixels();
 
-    hud_w = HUD_TEX_W;
-    hud_h = s_line_count > 0 ? s_line_count * FONT_H : FONT_H;
+    content_w = HUD_TEX_W;
+    content_h = HUD_PAD_Y * 2;
+    if (s_line_count > 0) {
+        content_h += s_line_count * FONT_H +
+                     (s_line_count > 1 ? (s_line_count - 1) * HUD_LINE_GAP : 0);
+    } else {
+        content_h += FONT_H;
+    }
+    if (content_h > HUD_TEX_H) {
+        content_h = HUD_TEX_H;
+    }
+
+    scale = hud_scale_for_fb(fb_w, fb_h, content_w, content_h);
+    hud_w = content_w * scale;
+    hud_h = content_h * scale;
     if (hud_w > (int)fb_w) {
         hud_w = (int)fb_w;
     }
@@ -391,6 +445,27 @@ void dw3_nx_debug_overlay_draw(uint32_t fb_w, uint32_t fb_h) {
     }
     /* GL viewport origin is bottom-left; pin HUD to the top-left corner. */
     vy = (int)fb_h - hud_h;
+
+    /* Sample only the used atlas region (1:1 texels), then NN-upscale via
+     * viewport size * integer scale + GL_NEAREST. */
+    u1 = (float)content_w / (float)HUD_TEX_W;
+    v1 = (float)content_h / (float)HUD_TEX_H;
+    quad[0] = -1.f;
+    quad[1] = -1.f;
+    quad[2] = 0.f;
+    quad[3] = v1;
+    quad[4] = 1.f;
+    quad[5] = -1.f;
+    quad[6] = u1;
+    quad[7] = v1;
+    quad[8] = -1.f;
+    quad[9] = 1.f;
+    quad[10] = 0.f;
+    quad[11] = 0.f;
+    quad[12] = 1.f;
+    quad[13] = 1.f;
+    quad[14] = u1;
+    quad[15] = 0.f;
 
     glDisable(GL_DEPTH_TEST);
     glDisable(GL_CULL_FACE);
@@ -407,6 +482,7 @@ void dw3_nx_debug_overlay_draw(uint32_t fb_w, uint32_t fb_h) {
     glUniform1i(s_uni_tex, 0);
     glActiveTexture(GL_TEXTURE0);
     glBindBuffer(GL_ARRAY_BUFFER, s_vbo);
+    glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(quad), quad);
     glEnableVertexAttribArray((GLuint)s_attr_pos);
     glVertexAttribPointer((GLuint)s_attr_pos, 2, GL_FLOAT, GL_FALSE,
                           sizeof(float) * 4, (const void *)0);

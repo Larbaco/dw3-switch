@@ -69,6 +69,27 @@ every frame. Existing ~1 Hz `frame dt us=` / `mesh dbg:` lines stay unchanged.
 Tiny embedded 8×8 ASCII bitmap (no Digimon art or game fonts). Public-domain
 style glyphs only.
 
+## Scale (OLED readability)
+
+The atlas is still 8×8 glyphs with a soft panel, then drawn with an **integer
+nearest-neighbor** upscale (`GL_NEAREST` mag/min). No linear filtering.
+
+| Framebuffer height | Scale | Glyph size on screen |
+|---|---|---|
+| 720 (handheld) | **3×** | 24×24 px |
+| 1080 (docked) | **4×** | 32×32 px |
+
+Rule (in `hud_scale_for_fb`):
+
+```text
+scale = clamp(floor(fb_h * 3 / 720), 2, 6)
+```
+
+then shrink while `content * scale` would exceed `fb_w` / `fb_h`. Padding
+(`HUD_PAD_X/Y = 4`) and line gap (`HUD_LINE_GAP = 2`) are in atlas pixels and
+scale with the glyphs. Corner placement stays top-left; the panel must not
+cover the whole screen.
+
 ## PC host
 
 Optional / deferred. Switch OLED triage is the priority. A later PC pass may
