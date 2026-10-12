@@ -67,6 +67,14 @@ static uint16_t s_idx[MESH_MAX_IDX];
 static int s_n_vtx;
 static int s_n_idx;
 
+/* Last ClearImage rect (DIAG ssquad redraw after flush so magenta verts
+ * cannot hide the known cyan inset). */
+static int s_diag_clear_x;
+static int s_diag_clear_y;
+static int s_diag_clear_w;
+static int s_diag_clear_h;
+static int s_diag_clear_valid;
+
 static uint8_t s_pack_rgba[DW3_NX_VRAM_W * DW3_NX_VRAM_H * 4];
 
 static const char *MESH_VS =
@@ -548,6 +556,13 @@ static void flush_locked(const uint16_t *cpu_vram) {
 
     glBindFramebuffer(GL_FRAMEBUFFER, (GLuint)prev_fbo);
     glDisable(GL_SCISSOR_TEST);
+
+    /* DIAG: re-paint cyan ssquad after game verts so constant-magenta solid
+     * tris cannot hide the known clip-space inset. */
+    if (dw3_nx_mesh_diag_enabled() && s_diag_clear_valid) {
+        dw3_nx_mesh_diag_ssquad(s_diag_clear_x, s_diag_clear_y, s_diag_clear_w,
+                                s_diag_clear_h);
+    }
 #if DW3_NX_DEBUG_MESH
     t2 = mesh_now_us();
     dw3_nx_mesh_debug_note_flush((uint32_t)(t2 - t0), (uint32_t)(t1 - t0),
@@ -748,11 +763,17 @@ void dw3_nx_mesh_diag_ssquad(int x, int y, int w, int h) {
 
     glBindFramebuffer(GL_FRAMEBUFFER, (GLuint)prev_fbo);
     s_had_content = true;
+    s_diag_clear_x = x;
+    s_diag_clear_y = y;
+    s_diag_clear_w = w;
+    s_diag_clear_h = h;
+    s_diag_clear_valid = 1;
 
     ssquad_log_n++;
     if (ssquad_log_n <= 8u || (ssquad_log_n % 64u) == 0u) {
         fprintf(stderr, "DIAG ssquad drawn (#%u rect %d,%d %dx%d cyan)\n",
                 ssquad_log_n, x, y, w, h);
+        fflush(stderr);
     }
 }
 
