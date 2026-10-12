@@ -153,6 +153,17 @@ extracts the TIM from the version executable (STAGE_VRAM) when
 when it extracts `SLUS_014.36` from the BIN. The PC host loads the file into
 `STAGE_VRAM` before `dw3_game_main` (see `docs/P2.8_TITLE_BOOT.md`).
 
+## Formal CDFS checks
+
+PC and SD share this layout. After packing (or copying the card tree):
+
+```bash
+./build/cdfs_suite --root runtime/us
+./build/cdfs_suite --root /path/to/switch/dw3/us   # mounted/copied SD
+```
+
+See `docs/P4.5_STATUS.md` and `port/cdfs/README.md`.
+
 ## Git
 
 `/runtime/` is gitignored. Never commit game bytes from `disks/` or `runtime/`.
