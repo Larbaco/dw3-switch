@@ -69,6 +69,10 @@ PSY-Q **`MemCard*`**. This port keeps that API and no longer walks a live
 LP64 note: patch `0028` keeps `MemCard` + `MemCardFuncs` in one
 `g_dw3_memcard` object so `MEMCARD_SYSTEM.funcs` is not misaligned.
 
+STGMCARD panel: patch `0043` sets host `MEMCARD_LOAD_FRAMES` /
+`MEMCARD_SAVE_FRAMES` to **100** (PS1 US stays 1239/1266) so the bar
+tracks flat sector pacing; see [docs/P5.3_FLAT_SAVE.md](../../docs/P5.3_FLAT_SAVE.md).
+
 ## Build (host CLIs)
 
 ```bash
