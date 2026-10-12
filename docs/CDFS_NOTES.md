@@ -62,5 +62,7 @@ Decision and the preview.7 frame-time log: [STATIC_SD_LOAD.md](STATIC_SD_LOAD.md
 ## Related tasks
 
 - P1.5 / P1.6 — map + pack layout
-- P2.5 — CD → filesystem
+- P2.5 — CD → filesystem (`tools/cdfs_suite`, `tools/tests/test_cdfs*.py`)
+- P4.5 — same suite against PC `runtime/<ver>` or SD `…/switch/dw3/<ver>`
+  (`docs/P4.5_STATUS.md`)
 - P7.2 — patched EU tree through the same pipeline

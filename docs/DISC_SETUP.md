@@ -87,6 +87,23 @@ ISO file).
 - Output tree: `disks/us/` (exe, `AAA/`, overlays, etc.) plus `files_us.json`.
 - Runtime packing for SD/PC paths: `tools/pack_runtime.py` → see `docs/RUNTIME_LAYOUT.md`.
 
+## Formal CDFS suite (PC or SD tree)
+
+After `pack_runtime.py` (or after the card already has `switch/dw3/us/`),
+run the P2.5 / P4.5 host suite against that root — no game assets in git:
+
+```bash
+gcc -std=c11 -Wall -Wextra -O2 \
+  -o build/cdfs_suite tools/cdfs_suite.c port/cdfs/cdfs.c -Iport/cdfs
+./build/cdfs_suite --root runtime/us
+# Mounted or copied SD layout (same relative files):
+./build/cdfs_suite --root /path/to/switch/dw3/us
+DW3_SD_RUNTIME=/path/to/switch/dw3/us python3 -m pytest \
+  tools/tests/test_cdfs_suite.py -k packed -v
+```
+
+See `docs/P4.5_STATUS.md`.
+
 ## EU (Digimon World 2003) extract
 
 Same tools, different executable and map. Prefer an ext4 cache symlink for

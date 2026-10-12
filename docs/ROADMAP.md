@@ -119,10 +119,13 @@ the host, replace MIPS-only pieces, and reach the title screen on PC.
   reserved for later `cdReadyCallback`-style async. PSY-Z `libcd` kept
   for STR streaming only. Sector/EOF notes:
   [CDFS_NOTES.md](CDFS_NOTES.md). Host CLI + tests:
-  `tools/cdfs_cat.c`, `tools/tests/test_cdfs.py` (mini fixture; owner
-  `runtime/us` spot-check skipped in CI).
+  `tools/cdfs_cat.c`, `tools/cdfs_suite.c`, `tools/tests/test_cdfs.py`,
+  `tools/tests/test_cdfs_suite.py` (mini fixture always; packed
+  `runtime/us` / `DW3_SD_RUNTIME` when present; skipped in CI without
+  owner data).
   Done when: fixture reads are byte-identical — verified. Full
   `FILE_CACHE.load` wiring is later (title boot / engine integrate).
+  P4.5 reuses this suite against the SD layout.
 - [x] **P2.6 Static overlay model.** `port/overlays/`: descriptor table
   `{file id → entry, data, data_init, bss}`, `loadModeOverlay` /
   `loadSubOverlay` host path (`0008`) restores initial `.data` **only
@@ -356,9 +359,16 @@ console.
   `handheld=1` on the preview.5 boot) and on a Pro Controller. Rumble
   stays the P10.4 stub and is optional for this item. See
   `docs/P4.4_INPUT_STATUS.md`.
-- [ ] **P4.5 Filesystem + log + time.** `romfs:`/`sdmc:` for the runtime
+- [x] **P4.5 Filesystem + log + time.** `romfs:`/`sdmc:` for the runtime
   layout from P1.6, nxlink/stdout logging, `VSync`/`RCnt` timing.
-  Done when: P2.5's cdfs tests pass on hardware against the SD layout.
+  Done when: formal P2.5 CDFS suite passes against the packed P1.6 tree
+  (PC `runtime/<ver>` or Switch SD `…/switch/dw3/<ver>`): map load, path
+  reject, file-id read, `cdfs_read_at`, `cdfs_lookup_lba`.
+  **Status:** `tools/cdfs_suite` + `tools/tests/test_cdfs_suite.py`;
+  host evidence against owner `runtime/us`. SD validation = same suite with
+  `--root` on a mounted/copied card tree (`docs/P4.5_STATUS.md`). OLED
+  `sdmc:` I/O already evidenced by preview.4 boot. `nx_file` / `nx_os`
+  mount and thread fixes covered by `test_switch_backend.py`.
 - [ ] **P4.6 Static modules on Switch.** Confirm P2.6 needs no `dlopen`;
   if PSY-Z's module API is required, provide a static `Psyz_ModuleOpen`
   that dispatches to the linked table.
@@ -407,14 +417,14 @@ console.
   extract, the copy progress bar, and the left stick. The opening-video
   picture is unchanged from preview.4. EU is unchanged. See
   `docs/RUNTIME_LAYOUT.md`.
-  **Still open:** P4.5's formal P2.5 CDFS suite on the SD, and P4.6's
-  complete overlay sweep on hardware. P4.4 is ticked: handheld Joy-Con and
-  a Pro Controller both walk with the left stick. The preview.4
-  log proves several runtime paths, not those full acceptance suites.
+  **Still open:** P4.6's complete overlay sweep on hardware. P4.4 and P4.5
+  are ticked (stick on OLED; formal CDFS suite on packed runtime / SD
+  layout — `docs/P4.5_STATUS.md`). The preview.4 log alone was not that
+  suite; `tools/cdfs_suite` is.
 
   **Gate:** title + field + battle on a Switch. **Met (2026-10-11)** from the
   OLED preview.4 run: main menu/new game, multiple map transitions, and battle
-  were owner-confirmed. This does not close the individual P4.5–P4.6 criteria.
+  were owner-confirmed. This does not close the individual P4.6 criterion.
 
 ## Phase 5 — Playable on Switch
 

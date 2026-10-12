@@ -23,7 +23,7 @@ Checkboxes: [docs/ROADMAP.md](docs/ROADMAP.md). Phase 3 gate:
 |---|---|
 | 0 to 2 | Done. Toolchains, disc to runtime, US title boot from decomp C ([P2.8](docs/P2.8_TITLE_BOOT.md)). |
 | 3 | Gate met for US. Field, battle, menus, card game, movies, SEP, and the stage sweep run on PC. Start to Genji is documented, with aids. [P3.9](docs/P3.9_REFERENCE.md) is done. Still open: EU playthrough, a pad-driven boss KO, [PC GPU and battle polish](docs/P3_GPU_GLITCHES.md), and the `WSTAG460` stub. |
-| 4 | Gate met on hardware for title, field, and battle. P4.2, P4.4, and P4.7 are ticked. Still open: P4.3 underrun count, the P4.5 CDFS suite, and the P4.6 overlay sweep. |
+| 4 | Gate met on hardware for title, field, and battle. P4.2, P4.4, P4.5, and P4.7 are ticked. Still open: P4.3 underrun count and the P4.6 overlay sweep. |
 | 5 to 10 | Phase 5 is open. P5.2 is the 16.7 ms bar (soft battle default ON after all-black mesh dumps; field mesh gated). P5.3 flat `saveN.bin` + deferred flush landed; OLED MC1→MC2 save PASS and STGMCARD 100-frame bar owner-confirmed on load ([P5.3_FLAT_SAVE](docs/P5.3_FLAT_SAVE.md)). HOME/`appletMainLoop` quit flush still open. P6.5 packaging is done and does not start Phase 6. Phases 6 through 10 otherwise have not started. P7.1, P8.1, P9.1, and P10.1 are early notes. See [SWITCH_FEATURES](docs/SWITCH_FEATURES.md). |
 
 Layering: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). OLED network notes:
@@ -66,7 +66,7 @@ the map file is read once per area; movies keep their sector pace.
 STGMCARD load/save panel on host uses 100 frames (option B, #84). Owner
 confirmed the load bar feels OK; save uses the same constants.
 
-Still open on hardware: a P4.3 underrun count, the formal P4.5 CDFS suite,
+Still open on hardware: a P4.3 underrun count,
 the full P4.6 overlay sweep, P5.2 battle 60 Hz (soft path for now), the
 kernel sync-object error, and P5.3 HOME/`appletMainLoop` quit flush.
 
@@ -295,7 +295,7 @@ dw3-switch/
 | [docs/SWITCH_BACKEND.md](docs/SWITCH_BACKEND.md) | Switch backend, CMake game build, OLED title, field, and battle |
 | [docs/SWITCH_FEATURES.md](docs/SWITCH_FEATURES.md) | Residual Switch UX inventory (Phase 10) |
 | [docs/P4.2_VIDEO.md](docs/P4.2_VIDEO.md) / [P4.3_AUDIO.md](docs/P4.3_AUDIO.md) | Switch present is ticked. The audren underrun check is still open. |
-| [docs/P4.4_INPUT_STATUS.md](docs/P4.4_INPUT_STATUS.md) / [P4.5](docs/P4.5_STATUS.md) / [P4.6](docs/P4.6_MODULES_STATUS.md) | Left stick is ticked. The CDFS suite and the overlay sweep are still open. |
+| [docs/P4.4_INPUT_STATUS.md](docs/P4.4_INPUT_STATUS.md) / [P4.5](docs/P4.5_STATUS.md) / [P4.6](docs/P4.6_MODULES_STATUS.md) | Left stick and formal CDFS suite are ticked. The P4.6 overlay sweep is still open. |
 | [docs/P2.8_TITLE_BOOT.md](docs/P2.8_TITLE_BOOT.md) | PC title screen evidence |
 | [docs/P3.2_FIELD.md](docs/P3.2_FIELD.md) … [P3.8](docs/P3.8_STAGES.md) | Phase 3 subsystem notes |
 | [docs/P5.2_BATTLE_GPU.md](docs/P5.2_BATTLE_GPU.md) / [P5.3_FLAT_SAVE](docs/P5.3_FLAT_SAVE.md) | Battle mesh / soft path; flat `saveN.bin` |
