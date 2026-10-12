@@ -1,0 +1,47 @@
+preview.13 — in-game SAVE locked the card (flat-save EEXIST)
+============================================================
+Date: 2026-10-11
+NRO tip at send: 670178a (origin/main; flat-save #75; before HUD #81)
+Worktree/send: /tmp/dw3-preview13
+Log: /tmp/dw3-preview13/nxlink.log
+OLED: 192.168.31.235
+
+Symptom
+-------
+In-game SAVE failed; UI showed classic STGMCARD "cartão bloqueado"
+(MemCard / card blocked).
+
+Log evidence (nxlink.log)
+-------------------------
+1077:dw3: memcard flush FAILED slot=0 path=sdmc:/switch/dw3/us/memcard/save0.bin (File exists)
+1080:dw3: STGMCARD_writeSave port=0 slot=1 status=3
+... repeated for slot=0 ...
+1120:dw3: memcard flush FAILED slot=1 path=sdmc:/switch/dw3/us/memcard/save1.bin (File exists)
+1123:dw3: STGMCARD_writeSave port=1 slot=2 status=3
+
+Root cause
+----------
+port/memcard memcard_host.c atomic_write_file(): write saveN.bin.tmp then
+rename(tmp, saveN.bin). On Switch SD (FAT/exFAT), rename fails with
+EEXIST when the destination already exists (first create OK; second
+flush after a prior successful save fails).
+
+flush_failed sticks for the session → MemCard* flush_if_dirty returns
+McErrCardInvalid → STGMCARD treats the card as locked/blocked.
+
+Not caused by HUD #81 (223b25e); memcard-only.
+
+Fix (branch fix/flat-save-eexist-flush)
+--------------------------------------
+remove(path) [ignore ENOENT] then rename(tmp, path). Keep .tmp if rename
+fails after unlink. Host tests: overwrite flush in memcard_flat_test +
+pytest flat-write twice.
+
+OLED recovery (do NOT FTP-delete saves)
+---------------------------------------
+- Card "blocked" is runtime state from flush_failed; reboot/relaunch NRO
+  clears it.
+- On-disk save0.bin / save1.bin should still be the last *successful*
+  flush image (RAM dirty from the failed SAVE never landed).
+- Keep .mcr.bak; do not overwrite via FTP to "fix" the lock.
+- After fix NRO: SAVE again should flush over existing saveN.bin.

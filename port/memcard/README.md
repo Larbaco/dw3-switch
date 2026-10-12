@@ -42,7 +42,8 @@ data (e.g. partner index high byte). Flat saves never apply frame XOR.
 - `MemCardWriteFile` only dirties RAM.
 - The first non-write `MemCard*` call after a write burst (Exist / Accept /
   Read / GetDirentry / Create / Format), or `memcard_host_shutdown`,
-  performs **one** rename-atomic write of the whole `saveN.bin`.
+  performs **one** rename-atomic write of the whole `saveN.bin`
+  (`saveN.bin.tmp` → remove dest → rename; required on FAT/exFAT).
 - Hosts register `atexit(memcard_host_shutdown)` and also call shutdown if
   `dw3_game_main` returns. Abrupt HOME kill still skips that path; see
   [docs/P5.3_FLAT_SAVE.md](../../docs/P5.3_FLAT_SAVE.md).
