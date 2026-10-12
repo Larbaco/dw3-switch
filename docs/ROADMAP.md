@@ -510,10 +510,14 @@ speed.
   (File exists)` on existing `saveN.bin` — FAT/exFAT rejects
   rename-over-existing; `flush_failed` → STGMCARD status=3 (card
   blocked). Fix: unlink before rename (see P5.3_FLAT_SAVE.md).
+  **Preview.14 OLED (2026-10-11):** tip `1af94ef` (#82). Owner loaded
+  MC1 slot0 (money=50) → spent → saved MC2 slot2 with
+  `STGMCARD_writeSave … status=1` (no EEXIST). FTP flats: `save0.bin`
+  still money=50/progress=4; `save1.bin` slot2 money=26/progress=4
+  (checksum OK). Cross-port overwrite flush PASS.
   **Still open:** HOME / `appletMainLoop` quit path (`Psyz_QuitRequested`
-  still 0); sleep/focus flush; confirm migrated saves reload after a
-  clean exit (migrate itself landed on this OLED boot). Emulator
-  conversion remains P9.6.
+  still 0); sleep/focus flush; clean-exit + relaunch reload smoke still
+  worth a dedicated pass. Emulator conversion remains P9.6.
   **Preview.4 / .5 notes (kept):** earlier `.mcr` writes and the data-frame
   XOR fault (`0x7F` / partner index) are historical; XOR must stay off
   data frames. Done when: a save this port wrote loads after a clean exit
