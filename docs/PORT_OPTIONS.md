@@ -95,7 +95,34 @@ wired too early; clipping a third row near y=194 on 240p.
 Full write-up (session notes, not git): 
 `~/.cursor/projects/mnt-windows-Jogos-dw3-switch/notes/p92-main-menu-port-options-entry.txt`.
 
-## PC bring-up (P9.2 MVP)
+## Title row (P9.2 follow-up)
+
+The title now offers **Start / Port options / Continue** (the first item
+keeps the owner's original New Game/Start sprite). Up/Down moves one row
+at a time without wrapping. Confirm on the middle row opens the existing
+shell; Triangle closes it and leaves the middle row selected. Confirm
+does not toggle a stub on the opening frame. New Game and Continue retain
+their original title `choice` values and blink/fade flow.
+
+Patch `0045-PORT_HOST-p92-title-options-row.patch` extends the game menu
+through `PORT_HOST`; `port/options/title_entry.c` draws the added label
+with the game's resident proportional font and blue/dark-blue palettes.
+The original title labels are pre-rendered sprites, so this new label
+uses the in-game font rather than an identical new title sprite. No
+owner artwork or generated asset is bundled. The added row reproduces
+the buttons' one-pixel black/grey stripes with opaque tiles; the original
+cursor frame highlights only the selected row. Draw ordering keeps that
+frame above the added background. Rows are at y=148/164/180 above the copyright.
+PRESS START retains its separate two-sprite spread animation, then the
+three-row layout appears when the options state starts.
+
+Select/Backspace remains a shortcut; shoulder-button combinations do not
+open the shell, preserving the Switch diagnostic chords. The clipped
+standalone shortcut hint is no longer drawn because the visible row is
+the entry. Independent PC visual/input validation passed as recorded below.
+Switch hardware validation, P9.3 effects and P9.4 persistence remain open.
+
+## PC bring-up (P9.2 MVP shortcut)
 
 While **New Game / Continue** are shown on the title menu, press
 **Select** to open the port options shell. On the PSY-Z SDL keyboard map
@@ -117,7 +144,7 @@ Headless smoke: `DW3_AUTO_PAD=start,select` then
 `DW3_PORT_OPTIONS_FB_DUMP=/tmp/dw3-p92-options-ttb/shell.ppm`
 `DW3_PORT_OPTIONS_QUIT_AFTER_DUMP=1`.
 
-## PC validation (2026-10-12)
+## PC shortcut validation (2026-10-12, before the third row)
 
 Tested `main` commit `1d33f4d` with the owner's US runtime, separate
 temporary memory-card storage, and the `sdl3_gpu` PC build. The SDL build
@@ -143,7 +170,46 @@ Local evidence is under `/tmp/dw3-menu-evidence/`: `shell.ppm`,
 `isolated.log`. Screenshots include owner-disc artwork and are not committed.
 UI automation must use a private display, never the owner's active desktop.
 
-**Visual follow-up:** the title hint `Select/Backspace: Port options` clips
+**Historical visual follow-up:** the title hint `Select/Backspace: Port options` clips
 at the right edge of its 240-pixel panel. The shell itself is legible.
-No feature code changed in this validation. Switch input/chord validation,
-the third cursor row, and the P9.2 cross-host completion remain open.
+No feature code changed in this validation. The three-row follow-up above
+replaces that hint with the visible entry. Switch input/chord validation
+and the P9.2 cross-host completion remain open.
+
+## PC three-row validation checkpoint (2026-10-12)
+
+Independent validation tested code commit `632cb70` (PR #100). The later
+`5b59e4f` merge changed documentation only. On resumption, the retained
+captures, scripts and logs in `/tmp/dw3-menu-entry-evidence` were inspected;
+this checkpoint records that completed run, not a new hardware test.
+No feature code or assets changed for this record.
+
+The PC host used SDL_GPU/Vulkan lavapipe on private Xvfb display `:198`,
+with dummy audio and a separate temporary memcard directory. Keyboard
+input targeted that private display, never the owner's active desktop.
+Xvfb did not provide effective vsync: the uncapped run measured about
+396 FPS, making the existing frame-based repeat look too fast. The final
+smoke used the existing `Psyz_VideoSetVsyncMode(2)` 60 Hz limiter through
+GDB; no input or runtime implementation was changed.
+
+- At 60 Hz, Up/Down taps of 55 ms traverse all three rows. One-second
+  holds clamp at Start/Continue; releasing then tapping reaches the middle.
+- Confirm on Port options opens both stubs OFF without confirm passthrough.
+  Triangle/S returns to the middle row. Select/Backspace also opens the shell.
+- Stub toggles work within the session; a process restart restores OFF/OFF,
+  as expected while persistence is absent. The TTB framebuffer dump captures
+  the shell text.
+- Start retains choice 1 and reaches `FIELDSTG` stage 474 (Junior street);
+  Continue retains choice 2 and reaches `STGMCARD` with `loading=1`.
+- Captures show the opaque striped row and the original cursor only on the
+  selected item. The resident proportional font is legible, but is not an
+  identical title-label sprite.
+- Tools suite: **79 passed, 2 skipped** in the retained pytest log.
+
+Representative local evidence: `v4-middle.png`, `v4-shell-defaults.png`,
+`v4-continue-load.png`, `newgame-flow.png`, `restart-stubs-off.png`,
+`shell-ttb.png`, `sequence60hz.log`, `newgame60hz.log` and `pytest-latest.log`.
+These temporary files are not repository assets or durable CI artifacts.
+Gamepad input, Switch presentation/input and the P9.2 cross-host gate remain
+unvalidated by this PC keyboard smoke. P9.3 effects and P9.4 persistence
+remain open.

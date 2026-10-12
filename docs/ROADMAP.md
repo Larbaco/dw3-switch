@@ -761,13 +761,25 @@ PS1 game, with vanilla-safe defaults and persistence on owner storage.
   [PORT_OPTIONS.md](PORT_OPTIONS.md) Entry investigation).
   **In progress (PC):** Select/Backspace MVP opens `port/options` shell
   on title NG/Continue; Triangle closes; stub registry; unit tests.
-  **PC validation (2026-10-12):** title-to-shell framebuffer captured;
-  private-display keyboard test confirms Backspace open, X/Down stub
-  changes, S close, reopen, and vanilla Continue/load flow after close.
-  Both defaults OFF; changes remain safe no-ops and are not persisted.
-  Two shell/glyph tests passed. Title hint clips at its right edge;
-  follow-up tracked in [PORT_OPTIONS.md](PORT_OPTIONS.md).
-  Switch Minus mapping + third cursor row still open.
+  **PC shortcut validation (2026-10-12, before the third row):** title-to-shell
+  framebuffer captured; private-display keyboard test confirms Backspace
+  open, X/Down stub changes, S close, reopen, and vanilla Continue/load
+  flow after close. Both defaults OFF; changes remain safe no-ops and
+  are not persisted. Two shell/glyph tests passed. The clipped shortcut
+  hint is retired by the visible row below.
+  **Three-row follow-up:** title now has Start / Port options / Continue,
+  original cursor + vanilla choices; new label uses the resident game
+  font and a matching opaque striped button background. Only the
+  selected row has the original cursor frame. Confirm opens the shell,
+  Triangle returns to the middle row; Select remains a shortcut without
+  shoulder chords. **Independent PC validation (2026-10-12, code `632cb70`):**
+  private Xvfb/lavapipe at the existing 60 Hz frame limiter passed three-row
+  keyboard navigation, hold/release, opening without confirm passthrough,
+  return to middle, restart defaults OFF, Start to Junior stage 474 and
+  Continue to the load screen. Cursor/striped row and TTB shell captured;
+  tools suite 79 passed, 2 skipped. Retained evidence reviewed on resumption;
+  see PORT_OPTIONS.md for the uncapped-Xvfb repeat limitation. Gamepad and
+  Switch hardware confirmation remain open; this does not close P9.2.
   Done when: the screen is reachable from the main menu and returns
   cleanly to it (PC + Switch; TTB print on PC).
 - [ ] **P9.3 Toggle registry.** Maintain a registry of non-native features
