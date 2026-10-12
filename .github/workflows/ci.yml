@@ -11,7 +11,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          submodules: recursive
+          submodules: false
+      - name: Init PC submodules
+        run: |
+          git submodule update --init vendor/dw3_decomp vendor/psyz
+          # Both hosts use nugget/bsdec; skip its PS1 matching toolchain.
+          git -C vendor/psyz submodule update --init nugget external/SDL
       - name: Check decomp patches
         run: tools/apply_patches.sh --check
       - name: Install deps
