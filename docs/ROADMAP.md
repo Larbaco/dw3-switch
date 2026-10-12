@@ -645,6 +645,18 @@ tick does not start Phase 6.
   `port/cdfs` id remap without rebuilding the `.nro` for each locale.
   Done when: a second owner-supplied language switches at boot or
   country select and renders in-game text correctly.
+- [ ] **P6.9 Restart-game hotkey.** Host button combo that resets the
+  running game back to its boot/title flow **in-process**, without
+  quitting the `.nro` to Sphaira/hbmenu or relaunching the console.
+  Re-enter the existing boot path (`dw3_game_main`) rather than a second
+  init sequence, and flush the P5.3 saves first: a restart must not
+  silently delete or modify save data, and is not a card format. Route
+  the combo through the Phase 9 option registry like P6.4; keep the
+  policy in `port/`, not in `platforms/switch/` (deliberately not
+  implemented during bring-up).
+  Done when: the hotkey returns to the boot/title flow without
+  relaunching Sphaira (PC and hardware), and a save written before the
+  restart still loads afterwards.
 
 Gate: polish options from P6.1–P6.5 land as needed; localization P6.6–P6.8
 may still be in progress when Phase 7 starts only if the Phase 5 playable
