@@ -98,14 +98,14 @@ Install the test build
   want the host log.
 
   hbmenu shows the NACP display version for SD installs (this preview:
-  0.6.5-p.18 — libnx allows 15 characters, so "preview" becomes "p").
+  0.6.5-p.20 — libnx allows 15 characters, so "preview" becomes "p").
   nxlink loads may not refresh that metadata; look for
-  dw3: version=0.6.5-preview.18 on the host log or in
+  dw3: version=0.6.5-preview.20 on the host log or in
   sdmc:/switch/dw3/dw3.log.
 
   Do not delete OLED saves (save0.bin / save1.bin) for this test.
 
-OLED A/B checklist (preview.18)
+OLED A/B checklist (carried forward from preview.18)
 
   1. Boot with existing us/ and flat saves. Reach field, then a fight.
   2. Confirm soft looks OK (default). HUD battle=soft if nxlink.
