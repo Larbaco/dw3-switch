@@ -56,6 +56,10 @@ jobs:
           git -C vendor/psyz submodule update --init nugget external/SDL
 
       - name: Build the CMake game .nro
+        # RELEASE_TAG (set above) becomes the NACP/hbmenu version via
+        # tools/dw3_nro_version.py --github (e.g. v0.6.5-preview.18 → 0.6.5-p.18).
+        env:
+          RELEASE_TAG: ${{ env.RELEASE_TAG }}
         run: |
           bash tools/build_switch_game.sh
           bash tools/build_switch_game.sh --nxlink
@@ -80,6 +84,23 @@ jobs:
               :
             else
               echo "$nro is not the game image" >&2
+              exit 1
+            fi
+          done
+          # Full label is compiled into boot_main for the nxlink / sdmc log.
+          for nro in dist/dw3-switch.nro dist/dw3-switch-nxlink.nro; do
+            if grep -a -F -q "dw3: version=" "$nro"; then
+              :
+            else
+              echo "$nro missing dw3: version= boot string" >&2
+              exit 1
+            fi
+          done
+          nacp_expect="$(RELEASE_TAG="$RELEASE_TAG" python3 tools/dw3_nro_version.py --github --format nacp)"
+          for nacp in build/switch/dw3-switch.nacp build/switch-nxlink/dw3-switch-nxlink.nacp; do
+            got="$(python3 -c "from pathlib import Path; import sys; d=Path(sys.argv[1]).read_bytes(); print(d[0x3060:0x3070].split(b'\\0',1)[0].decode())" "$nacp")"
+            if [ "$got" != "$nacp_expect" ]; then
+              echo "$nacp display_version=$got expected=$nacp_expect" >&2
               exit 1
             fi
           done

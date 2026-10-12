@@ -30,6 +30,28 @@ LibHac-based loaders reject the file — Ryujinx dies with
 16 KiB asset section past the executable: `file size - NRO size field`
 (`0x18` in the header) should be 16440.
 
+### hbmenu version (game image)
+
+The CMake game `.nro` sets NACP `display_version` from git / the release tag
+via [`tools/dw3_nro_version.py`](../../tools/dw3_nro_version.py) and
+`-DDW3_NACP_VERSION` in [`CMakeLists.txt`](CMakeLists.txt). libnx stores that
+field in 16 bytes (15 printable chars + NUL); the helper compresses
+`0.6.5-preview.18` to `0.6.5-p.18` so nacptool does not truncate it to
+`0.6.5-preview.1`.
+
+| Build | Full label (`DW3_NRO_VERSION`) | hbmenu version |
+|---|---|---|
+| Tagged release (`RELEASE_TAG=v0.6.5-preview.18`) | `0.6.5-preview.18` | `0.6.5-p.18` |
+| Untagged CI / PR (`GITHUB_SHA`) | short SHA | same short SHA |
+| Local `build_switch_game.sh` | `git describe --tags --dirty --always` | compressed ≤15 |
+
+hbmenu shows the NACP version for copies installed on the SD card. An
+`nxlink` load may not refresh that metadata; the same full label is logged
+once at boot as `dw3: version=…` (stderr on nxlink, and `sdmc:/switch/dw3/dw3.log`).
+`tools/build_switch_game.sh` checks the generated `.nacp` after each build.
+Manual check: in hbmenu, highlight `dw3-switch` / `dw3-switch nxlink` and read
+the version under the title.
+
 ### CMake build — the game image (P4.7, in progress)
 
 `platforms/switch/CMakeLists.txt` is the entry point that links the Phase 3 game

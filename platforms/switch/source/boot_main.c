@@ -402,6 +402,10 @@ static int init_paths(void) {
     return 0;
 }
 
+#ifndef DW3_NRO_VERSION_STR
+#define DW3_NRO_VERSION_STR "unknown"
+#endif
+
 int main(int argc, char **argv) {
     (void)argc;
     (void)argv;
@@ -423,6 +427,9 @@ int main(int argc, char **argv) {
             fprintf(stderr, "nxlink stdio connected (fd=%d)\n", g_nxlink_fd);
         }
     }
+    /* hbmenu only shows NACP metadata for installed SD copies; nxlink loads
+     * still get the same label on the host log. */
+    fprintf(stderr, "dw3: version=%s\n", DW3_NRO_VERSION_STR);
 #endif
 
     /* Order matters: the pad and the SD mount have to be up before anything
@@ -437,6 +444,7 @@ int main(int argc, char **argv) {
         ERRORF("sdmc: mount failed; runtime paths will not resolve");
     }
     dw3_nx_log_open();
+    INFOF("dw3: version=%s", DW3_NRO_VERSION_STR);
 #ifdef DW3_NXLINK_STDIO
     INFOF("nxlink socket init=0x%08x stdio fd=%d",
           (unsigned)g_nxlink_socket_result, g_nxlink_fd);

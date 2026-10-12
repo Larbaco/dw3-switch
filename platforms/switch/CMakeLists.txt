@@ -122,12 +122,72 @@ target_compile_definitions(dw3-switch PRIVATE
   DW3_NX_GAME_IMAGE
   DW3_DEFAULT_RUNTIME="${_dw3_default_runtime}")
 
+# NRO / NACP version for hbmenu (display_version is 15 printable chars).
+# Prefer -DDW3_NRO_VERSION=... from tools/build_switch_game.sh; otherwise
+# derive from git describe. See tools/dw3_nro_version.py.
+set(DW3_NRO_VERSION "" CACHE STRING
+    "Full port version label (git tip / preview tag); also used in boot log")
+set(DW3_NACP_VERSION "" CACHE STRING
+    "NACP display_version (≤15 chars); empty = derive from DW3_NRO_VERSION")
+if(DW3_NRO_VERSION STREQUAL "")
+  find_package(Python3 COMPONENTS Interpreter QUIET)
+  set(_dw3_ver_script
+      "${CMAKE_CURRENT_SOURCE_DIR}/../../tools/dw3_nro_version.py")
+  if(Python3_Interpreter_FOUND AND EXISTS "${_dw3_ver_script}")
+    execute_process(
+      COMMAND "${Python3_EXECUTABLE}" "${_dw3_ver_script}"
+              --repo "${CMAKE_CURRENT_SOURCE_DIR}/../.."
+              --format export
+      OUTPUT_VARIABLE _dw3_ver_export
+      OUTPUT_STRIP_TRAILING_WHITESPACE
+      ERROR_QUIET
+      RESULT_VARIABLE _dw3_ver_rc
+    )
+    if(_dw3_ver_rc EQUAL 0)
+      string(REGEX REPLACE "\n" ";" _dw3_ver_lines "${_dw3_ver_export}")
+      foreach(_dw3_ver_line IN LISTS _dw3_ver_lines)
+        if(_dw3_ver_line MATCHES "^DW3_NRO_VERSION=(.*)$")
+          set(DW3_NRO_VERSION "${CMAKE_MATCH_1}")
+        elseif(_dw3_ver_line MATCHES "^DW3_NACP_VERSION=(.*)$")
+          set(DW3_NACP_VERSION "${CMAKE_MATCH_1}")
+        endif()
+      endforeach()
+    endif()
+  endif()
+endif()
+if(DW3_NRO_VERSION STREQUAL "")
+  set(DW3_NRO_VERSION "unknown")
+endif()
+if(DW3_NACP_VERSION STREQUAL "")
+  find_package(Python3 COMPONENTS Interpreter QUIET)
+  set(_dw3_ver_script
+      "${CMAKE_CURRENT_SOURCE_DIR}/../../tools/dw3_nro_version.py")
+  if(Python3_Interpreter_FOUND AND EXISTS "${_dw3_ver_script}")
+    execute_process(
+      COMMAND "${Python3_EXECUTABLE}" "${_dw3_ver_script}"
+              --version "${DW3_NRO_VERSION}" --format nacp
+      OUTPUT_VARIABLE DW3_NACP_VERSION
+      OUTPUT_STRIP_TRAILING_WHITESPACE
+      ERROR_QUIET
+    )
+  endif()
+endif()
+if(DW3_NACP_VERSION STREQUAL "")
+  string(SUBSTRING "${DW3_NRO_VERSION}" 0 15 DW3_NACP_VERSION)
+endif()
+# Escape for a C string literal in compile definitions.
+string(REPLACE "\\" "\\\\" _dw3_nro_ver_c "${DW3_NRO_VERSION}")
+string(REPLACE "\"" "\\\"" _dw3_nro_ver_c "${_dw3_nro_ver_c}")
+target_compile_definitions(dw3-switch PRIVATE
+  "DW3_NRO_VERSION_STR=\"${_dw3_nro_ver_c}\"")
+message(STATUS "NRO version full='${DW3_NRO_VERSION}' nacp='${DW3_NACP_VERSION}'")
+
 set(DW3_NRO_NAME "dw3-switch")
 set(DW3_NACP_NAME "dw3-switch")
 if(DW3_NXLINK_STDIO)
   target_compile_definitions(dw3-switch PRIVATE DW3_NXLINK_STDIO=1)
   set(DW3_NRO_NAME "dw3-switch-nxlink")
-  set(DW3_NACP_NAME "dw3-switch nxlink dev")
+  set(DW3_NACP_NAME "dw3-switch nxlink")
   message(STATUS "nxlink stdio enabled for development NRO")
 endif()
 if(DW3_NX_DEBUG_MESH)
@@ -253,8 +313,11 @@ nx_generate_nacp(
   OUTPUT "${CMAKE_BINARY_DIR}/${DW3_NRO_NAME}.nacp"
   NAME "${DW3_NACP_NAME}"
   AUTHOR "dw3-switch"
-  VERSION "0.5.0"
+  VERSION "${DW3_NACP_VERSION}"
 )
+# nx_generate_nacp does not DEPEND on NAME/VERSION; drop a stale .nacp so the
+# next build re-runs nacptool after a version bump.
+file(REMOVE "${CMAKE_BINARY_DIR}/${DW3_NRO_NAME}.nacp")
 nx_create_nro(dw3-switch
   OUTPUT "${CMAKE_BINARY_DIR}/${DW3_NRO_NAME}.nro"
   NACP "${CMAKE_BINARY_DIR}/${DW3_NRO_NAME}.nacp"

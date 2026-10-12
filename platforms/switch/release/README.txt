@@ -95,6 +95,12 @@ Install the test build
   sdmc:/switch/dw3-switch.nro and launch it from hbmenu when you do not
   want the host log.
 
+  hbmenu shows the NACP display version for SD installs (this preview:
+  0.6.5-p.18 — libnx allows 15 characters, so "preview" becomes "p").
+  nxlink loads may not refresh that metadata; look for
+  dw3: version=0.6.5-preview.18 on the host log or in
+  sdmc:/switch/dw3/dw3.log.
+
   Do not delete OLED saves (save0.bin / save1.bin) for this test.
 
 OLED A/B checklist (preview.18)
