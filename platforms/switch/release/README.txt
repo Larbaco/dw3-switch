@@ -1,6 +1,7 @@
 Digimon World 3 / 2003, Switch homebrew preview
 
-This release is v0.6.5-preview.20, built from main after PR #106.
+This release is v0.6.5-preview.21, built from main at b597c67 after
+PR #111 (STR bridge read-race fix) and PR #112 (docs).
 Battle defaults to software RasterTriangle; field stays software RGB555.
 GPU diagnostic instrumentation is disabled in this release. PR #89 is
 still separate and its OLED investigation is not part of this cut.
@@ -12,10 +13,13 @@ New in this preview
   no gameplay effects and are not persisted. Switch navigation remains
   to be confirmed on hardware.
 
-  Movie polling: cache empty StGetNext ring scans, with invalidation
-  when stream production, position, or playback changes (#106).
-  Build and automated validation passed. OLED playback and performance
-  still need measurement; this release makes no FPS or movie-fix claim.
+  Opening movie: the STR file bridge is now locked between the video and
+  XA readers (#111). Video sectors are no longer dropped. On the OLED
+  (nxlink build) the opening held 14.994-15.006 fps over 18 steady
+  windows; preview.20 measured 6.75 fps. The XA audio sounded correct.
+  The owner pressed Start at frame 1110 of about 1776, so the last part
+  of the movie was not checked on hardware. Image quality was not
+  separately assessed. Empty StGetNext scan cache (#106) is still in.
 
   Battle render A/B remains FIGHTSTG-only. Minus + ZL + ZR cycles:
     soft / soft+bbox (stub) / gpu-solid / gpu-tex.
@@ -98,9 +102,9 @@ Install the test build
   want the host log.
 
   hbmenu shows the NACP display version for SD installs (this preview:
-  0.6.5-p.20 — libnx allows 15 characters, so "preview" becomes "p").
+  0.6.5-p.21 — libnx allows 15 characters, so "preview" becomes "p").
   nxlink loads may not refresh that metadata; look for
-  dw3: version=0.6.5-preview.20 on the host log or in
+  dw3: version=0.6.5-preview.21 on the host log or in
   sdmc:/switch/dw3/dw3.log.
 
   Do not delete OLED saves (save0.bin / save1.bin) for this test.
