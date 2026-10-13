@@ -97,7 +97,7 @@ movie dbg: handed=… fc_skipped=… restarts=… reads=… read_overlap=…
 |---|---|
 | `handed` | STR frames the game took from the ring in the last 60 pumps |
 | `fc_skipped` | STR frames the producer never published between two hand-overs (`frameCount` jumped by more than one) |
-| `restarts` | `frameCount` went backwards (a new play, not a drop) |
+| `restarts` | `frameCount` went backwards (typically a new play; alone does not prove replay) |
 | `reads` | Window delta of STR-bridge read callbacks |
 | `read_overlap` | Of those, how many found another bridge read already in flight |
 

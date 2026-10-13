@@ -52,10 +52,10 @@ void dw3_str_stream_install_cd_bridge(void);
 
 /* Bridge contention counters, cumulative since boot. `reads` counts every
  * dw3_str_cd_read_cb entry; `overlaps` counts the entries that found another
- * bridge read already in flight. A non-zero overlap count during the movie
- * means the video (main) and XA (audio) readers are interleaving on the one
- * shared FILE*, which is how a frame loses a sector. Either pointer may be
- * NULL. Both counters are plain statistics, not control flow. */
+ * bridge read already in flight, counted before taking the audio lock. This
+ * measures contention between video (main) and XA (audio) readers; a non-zero
+ * count does not indicate corruption after serialization by the lock. Either
+ * pointer may be NULL. Both counters are plain statistics, not control flow. */
 void dw3_str_stream_get_debug(unsigned long *reads, unsigned long *overlaps);
 
 /* If a Mode2/2352 BIN is next to the runtime (or named by DW3_DISC_BIN /
