@@ -173,8 +173,8 @@ UI automation must use a private display, never the owner's active desktop.
 **Historical visual follow-up:** the title hint `Select/Backspace: Port options` clips
 at the right edge of its 240-pixel panel. The shell itself is legible.
 No feature code changed in this validation. The three-row follow-up above
-replaces that hint with the visible entry. Switch row entry/return validation is recorded below; diagnostic chord
-coverage was not part of that test.
+replaces that hint with the visible entry. Switch row entry/return validation
+is recorded below; diagnostic chord coverage was not part of that test.
 
 ## PC three-row validation checkpoint (2026-10-12)
 
@@ -211,8 +211,8 @@ Representative local evidence: `v4-middle.png`, `v4-shell-defaults.png`,
 `shell-ttb.png`, `sequence60hz.log`, `newgame60hz.log` and `pytest-latest.log`.
 These temporary files are not repository assets or durable CI artifacts.
 Gamepad input and Switch presentation/input were not covered by this PC
-keyboard smoke; the later OLED checkpoint below completes P9.2. P9.3 effects and P9.4 persistence
-remain open.
+keyboard smoke; the later OLED checkpoint below completes P9.2.
+P9.3 effects and P9.4 persistence remain open.
 
 ## OLED preview.20 validation (2026-10-12)
 

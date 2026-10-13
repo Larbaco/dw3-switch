@@ -32,7 +32,7 @@ closed by this build.
 
 ## Post-release OLED checkpoint (2026-10-12)
 
-The published nxlink binary was transferred and launched through hbmenu
+The published nxlink binary was transferred and launched through
 NetLoader. The session connected nxlink stdio (`fd=3`, socket init success),
 initialized EGL at 1280x720 handheld and audren at 44100 Hz stereo, and
 reported pad kind `0x73`. The physical controller model was not recorded.
@@ -55,3 +55,12 @@ No fresh-save/relaunch reload test was performed, so P5.3 remains open.
 Local evidence: `/tmp/dw3-preview20-test/nxlink.log` (532 lines); raw logs
 and owner game imagery are not repository assets. Publication metadata
 and binary hashes above remain unchanged.
+
+## Main after this release (2026-10-13)
+
+PR #111 merged the shared STR video/XA read-race fix after this tag.
+Independent Ryubing validation resolved frame loss and restored the authored
+15 fps rate, including complete playback, replay and Start skip. Preview.20
+does not contain that fix; no new release or OLED test of it is recorded here.
+Image quality, audible synchronization and console performance remain open.
+See [movie pacing diagnostics](P3.7_MOVIE_PACING_DIAGNOSTICS.md).

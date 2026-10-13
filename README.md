@@ -17,7 +17,10 @@ console.
 ## Status
 
 Checkboxes: [docs/ROADMAP.md](docs/ROADMAP.md). Phase 3 gate:
-[docs/P3_GATE.md](docs/P3_GATE.md). `main` includes `e85870c`, the P4.4 tick.
+[docs/P3_GATE.md](docs/P3_GATE.md). `main` is ahead of the latest tagged
+preview.20: PR #111 serializes shared STR video/XA file reads. Movie frame
+loss and rate are resolved in Ryubing; OLED validation of that fix remains
+pending. See [movie pacing diagnostics](docs/P3.7_MOVIE_PACING_DIAGNOSTICS.md).
 
 | Phase | Summary |
 |---|---|
@@ -30,7 +33,7 @@ Layering: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). OLED network notes:
 [docs/SWITCH_OLED_NETWORK.md](docs/SWITCH_OLED_NETWORK.md) (FTP and preview 7
 NXLink transfer/launch/log stream verified).
 
-### On an OLED, updated 2026-10-12
+### On an OLED, updated 2026-10-13 (preview.20 test: 2026-10-12)
 
 Title, field, and battle run. The main menu picture looks right. The opening
 video still has errors or slowdown (owner report on preview.20; image/audio
@@ -167,8 +170,9 @@ Port options and X (Cross) to open the shell; S (Triangle) closes it and
 returns to the middle row. Backspace (Select) also opens it. Inside the
 shell, Up/Down selects a stub and X toggles it. Private-display PC keyboard
 validation at 60 Hz covered navigation, open/close, Start, and Continue.
-Stub toggles have no gameplay effect and do not persist to disk. P9.2
-remains open for gamepad and Switch validation. Details:
+Stub toggles have no gameplay effect and do not persist to disk. P9.2 is
+complete with the later OLED entry/return checkpoint; P9.3/P9.4 and the
+Phase 9 gate remain open. Details:
 [docs/PORT_OPTIONS.md](docs/PORT_OPTIONS.md).
 
 EU is a separate build tree and needs `runtime/eu`:
@@ -190,6 +194,8 @@ On the Switch the same relative tree is `sdmc:/switch/dw3/us/`. Copy
 hbmenu under Atmosphere. hbmenu shows the NACP display version for that
 install (e.g. `0.6.5-p.18` for tag `v0.6.5-preview.18` — the field is only
 15 characters). See [platforms/switch/README.md](platforms/switch/README.md).
+At the title, Plus shows the choices, D-pad selects Port options, B opens
+it (Cross), and X closes it (Triangle), returning to the middle row.
 
 Put the Mode2 BIN and CUE next to `us/`, not inside it. `boot_tim.bin` is
 not a disc image.
@@ -235,10 +241,15 @@ The release tag becomes the NACP version (compressed for hbmenu) and the
 
 The current standard preview is
 [v0.6.5-preview.20](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.20),
-cut after #106 with the title Port options shell (#100) and empty
-`StGetNext` scan cache (#106). The menu is PC-validated; Switch navigation
-and the movie optimization's OLED gain remain unmeasured. Its switches
-are stubs with no gameplay effects or persistence. GPU diagnostics stay
+cut from `ecefe18` after #106 with the title Port options shell (#100) and
+empty `StGetNext` scan cache (#106). The menu entry/return is validated on
+PC and OLED. The owner still reported movie errors or slowdown in that
+preview; it does **not** include the STR read-race fix merged in #111.
+Independent Ryubing runs of that fix held about 15 fps with zero skipped
+frame numbers; OLED movie quality, audible synchronization and performance
+remain pending. See [movie diagnostics](docs/P3.7_MOVIE_PACING_DIAGNOSTICS.md)
+and [preview.20 checkpoint](docs/RELEASE_PREVIEW20.md). Its switches are
+stubs with no gameplay effects or persistence. GPU diagnostics stay
 disabled and software battle stays the default. Preview.19 was a separate
 PR #89 diagnostic cut, not the standard playable baseline.
 

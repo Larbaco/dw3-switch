@@ -773,7 +773,7 @@ PS1 game, with vanilla-safe defaults and persistence on owner storage.
   breaking the vanilla title flow (PC and Switch). Hook: `PORT_HOST`
   glue on `STDWTITL` `runOptions` + shell in `port/options/` (see
   [PORT_OPTIONS.md](PORT_OPTIONS.md) Entry investigation).
-  **In progress (PC):** Select/Backspace MVP opens `port/options` shell
+  **Initial PC MVP:** Select/Backspace opens `port/options` shell
   on title NG/Continue; Triangle closes; stub registry; unit tests.
   **PC shortcut validation (2026-10-12, before the third row):** title-to-shell
   framebuffer captured; private-display keyboard test confirms Backspace

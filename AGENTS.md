@@ -187,8 +187,11 @@ and freezes the movie. Latest **tagged** GitHub Release preview is
 nxlink game binaries. It includes the title Port options shell and empty
 `StGetNext` scan cache. Post-release OLED testing on 2026-10-12 confirmed
 menu entry/defaults/return (P9.2); movie errors or slowdown remain reported,
-and movie quality/performance and option persistence remain unvalidated. See `docs/RELEASE_PREVIEW20.md` for the source,
-assets, and validation limits. `main` may be ahead of that tag. The picture baseline remains
+and movie quality/performance and option persistence remain unvalidated.
+See `docs/RELEASE_PREVIEW20.md` for the source, assets, and validation limits.
+`main` includes the PR #111 STR read-race fix, which preview.20 does not:
+frame loss/rate are resolved in Ryubing; OLED validation remains pending
+(`docs/P3.7_MOVIE_PACING_DIAGNOSTICS.md`). The picture baseline remains
 `v0.6.5-preview.2` at `8273a91` (display-mode title width and full-height
 movie). Do not publish the sample `.nro` as the game.
 
