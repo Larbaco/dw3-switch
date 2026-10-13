@@ -641,7 +641,8 @@ void dw3_nx_gpu_present(const uint16_t *vram, int dx, int dy, int dw, int dh,
             uint64_t prims = dw3_nx_mesh_prims_flushed();
 
             if (prims != prev_mesh_prims &&
-                (prev_mesh_prims == 0 || (prims - prev_mesh_prims) >= 1000u)) {
+                (prev_mesh_prims == 0 ||
+                 (prims - prev_mesh_prims) >= 100000u)) {
                 prev_mesh_prims = prims;
                 psyz_log(1, "nx_gpu.c", __LINE__, __func__,
                          "mesh gpu: %llu tris flushed (composite on)",
