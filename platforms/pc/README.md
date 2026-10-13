@@ -65,6 +65,20 @@ python3 tools/pack_runtime.py --version us --disks disks/us --out runtime/us --f
 # env alternatives: DW3_RUNTIME, DW3_MEMCARD_DIR
 ```
 
+### Experimental internal 720p render
+
+The SDL3 GPU backend can render at a 3× internal scale. Opt in on PC only:
+
+```bash
+DW3_PC_INTERNAL_RES=3 ./build/pc/dw3-pc --runtime runtime/us
+```
+
+With a 320×240 game display mode, the game image occupies 960×720 pixels.
+In a 1280×720 window it is centered with 160-pixel side bars. The normal
+internal scale remains 1× when the variable is unset; this option is not
+compiled into the Switch host. This is an experimental render path, not a
+claim that every title/menu/movie layer has been visually polished at 3×.
+
 Expect `dw3: mode=0xe00 title_entry=...`, `dw3-pad: port 0 connected`, then
 the title window (logo may be glitched; see `docs/P2.8_TITLE_BOOT.md`).
 Keyboard: Enter=Start, arrows=D-pad (PSY-Z SDL map). Close the window to
