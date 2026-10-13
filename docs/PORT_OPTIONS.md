@@ -108,11 +108,11 @@ Patch `0045-PORT_HOST-p92-title-options-row.patch` extends the game menu
 through `PORT_HOST`; `port/options/title_entry.c` draws the added label
 with the game's resident proportional font. The original title labels are
 pre-rendered sprites, so this new label uses the in-game font rather than
-an identical new title sprite. No owner artwork or generated asset is
-bundled.
+an identical new title sprite. No owner artwork or generated art is bundled
+into the runtime.
 
-**Presentation (title-options UI pass).** The added button is made to read
-as the third original button rather than a debug overlay:
+**Presentation (title-options UI pass).** The Switch and baseline PC row is
+made to read as the third original button rather than a debug overlay:
 
 - The original sprite backgrounds are 164x16 with the selection frame one
   pixel outside. The added row now uses the same 164x16 one-pixel
@@ -140,6 +140,26 @@ open the shell, preserving the Switch diagnostic chords. The clipped
 standalone shortcut hint is no longer drawn because the visible row is
 the entry. Independent PC visual/input validation passed as recorded below.
 Switch hardware validation passed below; P9.3 effects and P9.4 persistence remain open.
+
+### PC Digivice title-menu follow-up
+
+The PC title now presents **New Game / Options / Load Game** in three
+blue-and-amber plaques, using the resident pixel font. The plaques are drawn
+from PS1 primitives at 320×240; the #117 concept atlas/mockup are docs-only
+references and are not packaged as runtime art. This is PC-gated. Switch keeps
+its existing Start / Port options / Continue row and initial Continue
+selection. The previous PC row design and captures remain documented above;
+this opt-in experimental visual variant has not yet passed live capture/input
+acceptance.
+
+The labels preserve the original flow: New Game uses vanilla choice 1;
+Options opens the P9.2 shell and its current no-op stubs; Load Game maps to
+vanilla Continue (choice 2) and the original `STGMCARD` flow. It does not
+implement another save loader. PC defaults focus to New Game so it matches the
+concept. The build and patch application check passed. A live 1280×720 Xvfb
+capture was attempted with `DW3_PC_INTERNAL_RES=3`, but resizing the available
+virtual display caused torn/clipped output before the menu could be accepted
+visually. A clean screenshot and live navigation pass remain outstanding.
 
 ## PC bring-up (P9.2 MVP shortcut)
 

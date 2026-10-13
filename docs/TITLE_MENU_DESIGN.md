@@ -1,7 +1,9 @@
 # Title menu: orange and blue Digivice direction
 
-This note records the selected visual direction for a future title-menu pass.
-It is a design reference; the generated art is not wired into the renderer yet.
+This note records the selected visual direction for the PC title-menu pass.
+The PC renderer now reconstructs the plaques from PS1 draw primitives and the
+resident game font. The concept PNGs below remain reference art and are not
+loaded by the game. Switch retains its existing title-row presentation.
 
 ## Menu labels and order
 
@@ -49,6 +51,18 @@ brand mark over the original logo.
 - [Title-screen mockup](assets/title-menu/title-screen-orange-blue-mockup.png):
   visual composition with the specified labels and the first row selected.
 
-The atlas and mockup are concept images. Crop/rebuild the plaques as needed for
-the game's renderer, then validate text fit, contrast, and selection feedback
-at native game resolution before treating the design as implemented.
+The atlas and mockup are concept images. The PC implementation uses a compact
+pixel-aligned approximation rather than cropping these images: navy plaques,
+steel-blue bevels, amber rails, corner fasteners, centered original-font text,
+and orange selected-row accents. The title patch keeps the vanilla New Game
+and Continue choice values: **Load Game** enters the original Continue flow
+and memory-card screen; **Options** opens the existing P9.2 shell, whose
+experimental toggles remain no-op stubs. The PC menu starts on New Game; the
+Switch initial selection and row styling are unchanged.
+
+Build and Xvfb validation for this pass confirmed compilation and the 3× GPU
+configuration, but the available 1280×720 virtual display produced a torn,
+vertically clipped live capture during resizing. Visual acceptance of the
+menu's final contrast, text fit, and selection feedback remains open pending a
+clean screenshot. See [PORT_OPTIONS.md](PORT_OPTIONS.md) and
+[ROADMAP.md](ROADMAP.md).

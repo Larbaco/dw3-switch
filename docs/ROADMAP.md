@@ -834,6 +834,15 @@ PS1 game, with vanilla-safe defaults and persistence on owner storage.
   modulated blue row for the unselected state. Ryubing-on-Xvfb captures
   of all three selections and shell open/close are kept locally; OLED
   handheld vs docked legibility is still to be confirmed by the owner.
+  **PC Digivice follow-up (2026-10-13):** builds the #117 design direction
+  as a PC-only alternative title menu from PS1 primitives: New Game / Options /
+  Load Game plaques with navy faces, blue bevels, amber rails, and the original
+  pixel font. New Game is initially selected. Options opens the existing P9.2
+  shell; Load Game maps to vanilla Continue/`STGMCARD`. Switch behavior is
+  unchanged. Build and patch application pass. A fresh live capture and input
+  validation are still pending; the earlier forced 1280×720 Xvfb resize was
+  torn/clipped and is not accepted as evidence. See
+  [TITLE_MENU_DESIGN.md](TITLE_MENU_DESIGN.md).
   Done when: the screen is reachable from the main menu and returns
   cleanly to it (PC + Switch; TTB print on PC).
 - [ ] **P9.3 Toggle registry.** Maintain a registry of non-native features
