@@ -290,10 +290,11 @@ audio, movies.
   see `docs/P3_GPU_GLITCHES.md`). **R1 closed (2026-10-10):** title
   shred was LP64 `TimBlock.pixels` alignment (patch `0038`); owner
   confirmed the window after #29. Field sprite polish still open.
-  **Pacing closed (2026-10-12):** the movie was dropping ~37% of its STR
+  **Resolved in Ryubing; OLED validation pending (2026-10-12):** the movie was dropping ~37% of its STR
   frames to a data race on the file bridge, not playing slowly; the bridge
   now takes `Psyz_AudioLock` and the opening holds its authored 15 fps in
-  Ryubing (`docs/P3.7_MOVIE_PACING_DIAGNOSTICS.md`). OLED re-check pending.
+  Ryubing (`docs/P3.7_MOVIE_PACING_DIAGNOSTICS.md`). Image quality, audible
+  synchronization and console performance have not been measured by this fix.
   Done when: the opening movies play with audio and can be skipped.
 - [x] **P3.8 Stage sweep.** `STAGSLCT` linked (`dw3_p38_stagslct`); patch
   `0030` + `tools/stage_sweep.py`. **Done-when evidence**
