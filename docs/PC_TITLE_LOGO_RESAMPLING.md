@@ -63,3 +63,22 @@ area, separate from the logo, and are replaced by the native legal footer.
 
 The complete original logo/shadow union is x=17..317, y=22..158 (300x136).
 The original asset is local runtime data, not a new logo drawing or shipped art.
+
+## Fine contrast refinement
+
+The owner asked for one more refinement after the Lanczos2 upscale. The optional
+`DW3_PC_LOGO_LANCZOS2_FINE` mode runs the existing Lanczos2 pass, then adds a mild
+one-pixel local contrast pass to fully opaque lettering only. It uses a 3x3
+Gaussian-weighted luminance average, amount 0.28, and a 1.5-level detail threshold.
+The change scales RGB by a shared luminance ratio and clamps to the existing local
+RGB/luminance ranges. Flat areas, translucent edges, alpha, silhouette, and
+placement remain identical. Allocation failure leaves the valid original
+Lanczos2 result as a fallback. The menu artwork is outside this component.
+
+Local comparison of the original 300x136 runtime composition at 720x326 changed
+63,578 RGB pixels, with maximum per-channel difference 17 and zero alpha changes.
+The pass added about 3ms to this local load-time measurement. Visual review
+accepted the moderate improvement in small text and inner contours without
+invented details or new edge halos. Actual PC runtime integration still requires
+a virtual-display capture. Original game pixels and comparison PNGs remain local
+and are not committed.
