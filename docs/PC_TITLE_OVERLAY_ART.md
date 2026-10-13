@@ -35,3 +35,26 @@ Microsoft DXC 1.9.2609 (shader model 6.0). Shader entrypoints are `main` for
 SPIR-V/DXIL and `main0` for MSL. Linux/Vulkan runtime capture is the validation
 gate; generated MSL/DXIL compile artifacts do not establish macOS/Windows runtime
 compatibility. Those host runtime checks remain open.
+
+## Full-screen title composition
+
+The owner approved the native-resolution buttons but asked to replace the full
+screen presentation because the original PS1 logo/font no longer matched them.
+The expanded canvas redraws the title, entry prompt, menu, and footer; the
+integration must retain only the original animated background from game draws.
+DIGIMON remains the dominant title in metallic blue, with WORLD 3 in amber and
+a discreet DW3NX badge. Clipped translucent backing, thin angular seams, and
+small amber accents share the hardware finish of the menu without concealing the
+background. The original three legal credits are preserved as text with new
+12px antialiased typography. No debug, version, or implementation labels appear.
+
+`selected=-1` renders PRESS START; `selected=0..2` renders the three choices.
+The menu geometry is unchanged. `tools/generate_pc_title_lettering.py` records
+reproducible font sizes/labels and regenerates the RLE coverage include with
+Pillow and the licensed DejaVu fonts. The runtime needs neither.
+
+Standalone alpha coverage: menu canvas affects 40.7% of pixels, with 16.5%
+fully opaque; prompt canvas affects 29.9%, with 7.5% fully opaque. These are
+component measurements, not runtime validation. Composition against the moving
+original background and suppression of original title/credits remain integration
+checks requiring a real US PC virtual-display capture.

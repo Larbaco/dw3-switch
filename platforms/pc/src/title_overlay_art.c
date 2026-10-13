@@ -3,6 +3,7 @@
 #include <math.h>
 #include <string.h>
 #include "title_overlay_labels.inc"
+#include "title_overlay_lettering.inc"
 static uint8_t *canvas;
 static int stride;
 static void pixel(int x,int y,int r,int g,int b,int alpha) {
@@ -41,8 +42,64 @@ static void text_mask(int center,int y,const unsigned char *runs,int w,int h,int
         pixel(x+1,yy+2,2,7,19,a);pixel(x,yy,focused?236:181,focused?247:219,255,a);
     }}
 }
+/* Coverage masks are rasterized at their native display size, not upscaled. */
+static void lettering(int cx,int y,const unsigned char *runs,int w,int h,int style,int ox,int oy) {
+    int k=0,n=0;
+    while(k<w*h) {
+        int count=runs[n++],a=runs[n++];
+        for(int j=0;j<count;j++,k++) {
+            int yy=k/w,r,g,b;
+            float t=(float)yy/(h?h:1);
+            if(style==0) { r=5;g=12;b=27; }
+            else if(style==1) { r=191-100*t;g=229-60*t;b=248-25*t; }
+            else if(style==2) { r=255;g=216-91*t;b=119-81*t; }
+            else { r=126;g=163;b=191; }
+            pixel(cx-w/2+k%w+ox,y+yy+oy,r,g,b,a);
+        }
+    }
+}
+static void title_screen(void) {
+    /* A translucent shield keeps the animated circuit backdrop visible. */
+    plaque(141,117,678,236,20,5,18,35,5,18,35,160);
+    plaque(143,119,674,232,18,8,25,44,8,25,44,75);
+    /* Quiet metal seams link the title to the same hardware as the menu. */
+    box(175,118,180,2,85,132,170,180);box(605,118,180,2,85,132,170,180);
+    for(int i=0;i<18;i++) {
+        pixel(143+i,136-i,99,150,188,200);pixel(816-i,136-i,99,150,188,200);
+        pixel(143+i,332+i,61,105,144,170);pixel(816-i,332+i,61,105,144,170);
+    }
+    box(162,118,10,2,229,156,54,220);box(788,118,10,2,229,156,54,220);
+    box(142,138,1,19,78,129,169,190);box(817,138,1,19,78,129,169,190);
+    box(175,350,250,1,61,102,135,190);box(535,350,250,1,61,102,135,190);
+    box(459,349,42,3,241,159,51,240);
+    plaque(438,94,84,27,5,38,69,101,14,30,54,245);
+    lettering(480,101,title_badge,title_badge_width,title_badge_height,3,0,0);
+    /* Lettering extrusion and a dark outline provide a logo silhouette. */
+    for(int d=6;d>=1;d--)lettering(480,161,title_digimon,title_digimon_width,title_digimon_height,0,d,d);
+    for(int oy=-2;oy<=2;oy++)for(int ox=-2;ox<=2;ox++)
+        if(ox||oy)lettering(480,161,title_digimon,title_digimon_width,title_digimon_height,0,ox,oy);
+    lettering(480,161,title_digimon,title_digimon_width,title_digimon_height,1,0,0);
+    for(int d=4;d>=1;d--)lettering(480,257,title_world,title_world_width,title_world_height,0,d,d);
+    for(int oy=-1;oy<=1;oy++)for(int ox=-1;ox<=1;ox++)
+        if(ox||oy)lettering(480,257,title_world,title_world_width,title_world_height,0,ox,oy);
+    lettering(480,257,title_world,title_world_width,title_world_height,2,0,0);
+    box(390,375,180,1,79,120,151,140);
+    plaque(252,610,456,59,8,5,16,30,5,16,30,145);
+    lettering(480,619,title_credit1,title_credit1_width,title_credit1_height,3,0,0);
+    lettering(480,635,title_credit2,title_credit2_width,title_credit2_height,3,0,0);
+    lettering(480,651,title_credit3,title_credit3_width,title_credit3_height,3,0,0);
+    box(360,600,240,1,53,91,121,140);
+}
 void dw3_pc_title_overlay_art(uint8_t *rgba,int pitch,int selected) {
     canvas=rgba;stride=pitch;for(int j=0;j<720;j++)memset(rgba+j*pitch,0,960*4);
+    title_screen();
+    if(selected<0) {
+        plaque(320,445,320,58,10,99,149,196,17,40,77,255);
+        plaque(322,447,316,54,9,12,29,57,5,16,39,235);
+        box(337,451,286,2,243,158,45,255);box(337,495,286,2,243,158,45,255);
+        lettering(480,462,title_start,title_start_width,title_start_height,1,0,0);
+        return;
+    }
     for(int row=0;row<3;row++) {
         int x=230,y=400+row*60,w=500,h=54,focus=row==selected;
         /* Soft optical orange halo only on the focused hardware silhouette. */
