@@ -5,10 +5,10 @@ nxlink TCP stream.
 
 ## Builds
 
-| Binary | Command | nxlink stdio | Mesh summary | Battle dump | Mem budget | On-screen HUD |
-|---|---|---|---|---|---|---|
-| Release / SD | `./tools/build_switch_game.sh` | off | off | off | off | off |
-| Dev (nxlink) | `./tools/build_switch_game.sh --nxlink` | on | **on** (default) | **on** (default) | **on** (default) | **on** (default) |
+| Binary | Command | nxlink stdio | Mesh summary | Battle dump | Mem budget | Movie summary | On-screen HUD |
+|---|---|---|---|---|---|---|---|
+| Release / SD | `./tools/build_switch_game.sh` | off | off | off | off | off | off |
+| Dev (nxlink) | `./tools/build_switch_game.sh --nxlink` | on | **on** (default) | **on** (default) | **on** (default) | **on** (default) | **on** (default) |
 
 The nxlink NRO lands at `build/switch-nxlink/dw3-switch-nxlink.nro`.
 
@@ -22,8 +22,8 @@ cmake -S platforms/switch -B build/switch-nxlink \
 ```
 
 Standard `dw3-switch.nro` never calls `nxlinkStdio()` and does not define
-`DW3_NX_DEBUG_MESH`, `DW3_NX_DUMP_VRAM`, `DW3_NX_DEBUG_MEM`, or
-`DW3_NX_DEBUG_OVERLAY`.
+`DW3_NX_DEBUG_MESH`, `DW3_NX_DUMP_VRAM`, `DW3_NX_DEBUG_MEM`,
+`DW3_NX_DEBUG_MOVIE`, or `DW3_NX_DEBUG_OVERLAY`.
 
 ## On-screen debug overlay (`DW3_NX_DEBUG_OVERLAY`)
 
@@ -82,6 +82,29 @@ emulation footprint + newlib `mallinfo`. Instrumentation toward P5.1 — not a
 ```
 mem dbg: heap=…K/8192K hw=…K free=…K fcache=…K/hw=…K vram=…K libc=…K/hw=…K
 ```
+
+## Movie pacing summary (`DW3_NX_DEBUG_MOVIE`)
+
+Default **on** for `--nxlink` builds. Adds **one sibling line** next to each
+`frame dt us=` sample, and only while the window had movie activity, so a
+field/battle window stays silent:
+
+```
+movie dbg: handed=… fc_skipped=… restarts=… reads=… read_overlap=…
+```
+
+| Field | Meaning |
+|---|---|
+| `handed` | STR frames the game took from the ring in the last 60 pumps |
+| `fc_skipped` | STR frames the producer never published between two hand-overs (`frameCount` jumped by more than one) |
+| `restarts` | `frameCount` went backwards (typically a new play; alone does not prove replay) |
+| `reads` | Window delta of STR-bridge read callbacks |
+| `read_overlap` | Of those, how many found another bridge read already in flight |
+
+A healthy movie is `fc_skipped=0` with `frame dt us=` ~4000000 (15 fps).
+`read_overlap > 0` is expected even when healthy: the counter is taken before
+the bridge lock, so it measures contention, not corruption.
+[P3.7_MOVIE_PACING_DIAGNOSTICS.md](P3.7_MOVIE_PACING_DIAGNOSTICS.md).
 
 ## Mesh debug summary (`DW3_NX_DEBUG_MESH`)
 

@@ -33,6 +33,7 @@
 #include "../psyz_backend/nx_debug_overlay.h"
 #include "../psyz_backend/nx_mem_budget.h"
 #include "../psyz_backend/nx_mesh_debug.h"
+#include "../psyz_backend/nx_movie_debug.h"
 #if DW3_NX_DEBUG_OVERLAY
 #include "debug_overlay_text.h"
 #endif
@@ -149,6 +150,35 @@ static void dw3_nx_vsync_pump(void) {
 
         if (dw3_frame_dt_sample(&frame_dt, pumps, restore_now_us(), &dt_us)) {
             INFOF("frame dt us=%llu", (unsigned long long)dt_us);
+#if DW3_NX_DEBUG_MOVIE
+            /* Movie producer/consumer health for this 60-pump window: how many
+             * STR frames the game actually took, how many the producer never
+             * published (fc_skipped), and how often the two bridge readers
+             * (video on the main thread, XA on the audio thread) overlapped on
+             * the one shared FILE*. `reads`/`read_overlap` are window deltas of
+             * the cumulative bridge counters. Logged only when the window had
+             * movie activity, so a non-movie window stays silent. */
+            {
+                static unsigned long prev_reads;
+                static unsigned long prev_overlaps;
+                Dw3NxMovieDebugWindow movie;
+                unsigned long reads = 0;
+                unsigned long overlaps = 0;
+
+                dw3_nx_movie_debug_take_window(&movie);
+                dw3_str_stream_get_debug(&reads, &overlaps);
+                if (movie.handed != 0 || reads != prev_reads) {
+                    INFOF("movie dbg: handed=%u fc_skipped=%llu restarts=%u "
+                          "reads=%lu read_overlap=%lu",
+                          (unsigned)movie.handed,
+                          (unsigned long long)movie.fc_skipped,
+                          (unsigned)movie.restarts,
+                          reads - prev_reads, overlaps - prev_overlaps);
+                }
+                prev_reads = reads;
+                prev_overlaps = overlaps;
+            }
+#endif
 #if DW3_NX_DEBUG_MEM
             {
                 Dw3NxMemBudgetSample mem;

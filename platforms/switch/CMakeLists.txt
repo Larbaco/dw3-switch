@@ -47,6 +47,10 @@ option(DW3_NX_DEBUG_OVERLAY "On-screen debug overlay HUD (nxlink)"
 # P5.1 sampled heap / file-cache / VRAM-emulation budget (nxlink ~1 Hz).
 option(DW3_NX_DEBUG_MEM "Sampled memory-budget summary (nxlink)"
        ${_dw3_mesh_dbg_default})
+# P3.7 movie pacing: per-60-pump StGetNext hand-over / skipped-frame and
+# STR-bridge contention counters. Same nxlink default as mesh debug.
+option(DW3_NX_DEBUG_MOVIE "Sampled movie pacing/bridge summary (nxlink)"
+       ${_dw3_mesh_dbg_default})
 # Recovery: keep FIGHTSTG gate but force software RasterTriangle in battle.
 # preview.10 dumps showed mesh FBO all-black while tris_flush was huge; opaque
 # software present restores a readable fight until mesh sampling draws non-black.
@@ -218,6 +222,10 @@ endif()
 if(DW3_NX_DEBUG_MEM)
   target_compile_definitions(dw3-switch PRIVATE DW3_NX_DEBUG_MEM=1)
   message(STATUS "nx memory-budget summary enabled (DW3_NX_DEBUG_MEM)")
+endif()
+if(DW3_NX_DEBUG_MOVIE)
+  target_compile_definitions(dw3-switch PRIVATE DW3_NX_DEBUG_MOVIE=1)
+  message(STATUS "nx movie pacing summary enabled (DW3_NX_DEBUG_MOVIE)")
 endif()
 if(DW3_NX_MESH_SOFT_BATTLE)
   target_compile_definitions(dw3-switch PRIVATE DW3_NX_MESH_SOFT_BATTLE=1)

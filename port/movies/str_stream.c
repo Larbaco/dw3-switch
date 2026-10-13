@@ -3,6 +3,8 @@
 #include "cdfs.h"
 
 #include <libcd.h>
+#include <psyz/audio.h>
+#include <stdatomic.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -29,6 +31,41 @@ static FILE *g_disc_bin;
 static int g_disc_bin_tried;
 static int g_xa_hdr_logged;
 static int g_disc_bin_logged;
+
+/* The bridge has two readers: the video ring, fed from StCdInterrupt on the
+ * game/main thread (CD_ready -> disk_read_cb, no PSY-Z lock held), and the XA
+ * decoder, fed from the audio thread (xa_pull_samples holds Psyz_AudioLock).
+ * They share one g_str.fp (and g_disc_bin) with a non-atomic
+ * open/seek/read, so without a lock one reader's fseek lands between the
+ * other's fseek and fread and a wrong sector comes back. StCdInterrupt then
+ * sees a secCount mismatch, resets the ring and throws the partial frame away.
+ *
+ * Serialize every g_str / g_disc_bin use on PSY-Z's audio lock. That is the
+ * lock the XA side already holds for its read, so this only adds the missing
+ * video side, and it is recursive on every host (libnx RMutex, SDL_CreateMutex
+ * via SDL_LockMutex, PSP's audio mutex), which makes the re-entry from the XA
+ * path safe. Before audio init it is a no-op, and then there is no audio
+ * thread to race with either. */
+static void bridge_lock(void) { Psyz_AudioLock(); }
+
+static void bridge_unlock(void) { Psyz_AudioUnlock(); }
+
+/* Bridge contention counters (see dw3_str_stream_get_debug). `inflight` is
+ * bumped before the read and dropped after it, so it also reports contention
+ * once the reads themselves are serialized by a lock. */
+static _Atomic unsigned long g_bridge_reads;
+static _Atomic unsigned long g_bridge_overlaps;
+static _Atomic int g_bridge_inflight;
+
+void dw3_str_stream_get_debug(unsigned long *reads, unsigned long *overlaps) {
+    if (reads) {
+        *reads = atomic_load_explicit(&g_bridge_reads, memory_order_relaxed);
+    }
+    if (overlaps) {
+        *overlaps =
+            atomic_load_explicit(&g_bridge_overlaps, memory_order_relaxed);
+    }
+}
 
 static void encode_bcd_byte(int v, u_char *out) {
     if (v < 0) {
@@ -185,18 +222,38 @@ static int open_for_lba(int lba) {
     return open_path(id, rel, base, sectors, form);
 }
 
-int dw3_str_stream_open_at_lba(int lba) { return open_for_lba(lba); }
+int dw3_str_stream_open_at_lba(int lba) {
+    int rc;
+
+    bridge_lock();
+    rc = open_for_lba(lba);
+    bridge_unlock();
+    return rc;
+}
 
 int dw3_str_stream_open_at_loc(const CdlLOC *loc) {
+    int rc;
+
     if (!loc) {
         return -1;
     }
-    return open_for_lba(CdPosToInt((CdlLOC *)loc));
+    bridge_lock();
+    rc = open_for_lba(CdPosToInt((CdlLOC *)loc));
+    bridge_unlock();
+    return rc;
 }
 
-int dw3_str_stream_active(void) { return g_str.open != 0; }
+int dw3_str_stream_active(void) {
+    int open;
+
+    bridge_lock();
+    open = g_str.open != 0;
+    bridge_unlock();
+    return open;
+}
 
 void dw3_str_stream_close(void) {
+    bridge_lock();
     if (g_str.fp) {
         fclose(g_str.fp);
         g_str.fp = NULL;
@@ -207,9 +264,13 @@ void dw3_str_stream_close(void) {
         g_disc_bin = NULL;
     }
     g_disc_bin_tried = 0;
+    bridge_unlock();
 }
 
-int dw3_str_stream_read_sector(int lba, uint8_t out[STR_RAW_BYTES]) {
+/* Caller holds the bridge lock: open_for_lba may close/reopen g_str.fp, and
+ * both the seek+read pairs below and read_raw_disc_sector's use g_disc_bin
+ * must not interleave with the other reader. */
+static int read_sector_locked(int lba, uint8_t out[STR_RAW_BYTES]) {
     long off;
     size_t n;
     uint8_t user[STR_USER_BYTES];
@@ -265,20 +326,44 @@ int dw3_str_stream_read_sector(int lba, uint8_t out[STR_RAW_BYTES]) {
     return 0;
 }
 
+int dw3_str_stream_read_sector(int lba, uint8_t out[STR_RAW_BYTES]) {
+    int rc;
+
+    bridge_lock();
+    rc = read_sector_locked(lba, out);
+    bridge_unlock();
+    return rc;
+}
+
 int dw3_str_cd_read_cb(struct PsyzCdRead *read) {
+    int rc;
+
+    /* Count the entry itself, so the counters keep reporting contention once
+     * the reads are serialized. */
+    atomic_fetch_add_explicit(&g_bridge_reads, 1, memory_order_relaxed);
+    if (atomic_fetch_add_explicit(&g_bridge_inflight, 1,
+                                  memory_order_relaxed) != 0) {
+        atomic_fetch_add_explicit(&g_bridge_overlaps, 1, memory_order_relaxed);
+    }
+
     if (!read || !read->buffer || read->size < STR_RAW_BYTES) {
-        return -1;
+        rc = -1;
+    } else if (dw3_str_stream_read_sector((int)read->sector,
+                                          (uint8_t *)read->buffer) != 0) {
+        rc = -1;
+    } else {
+        rc = (int)STR_RAW_BYTES;
     }
-    if (dw3_str_stream_read_sector((int)read->sector, (uint8_t *)read->buffer) !=
-        0) {
-        return -1;
-    }
-    return (int)STR_RAW_BYTES;
+
+    atomic_fetch_sub_explicit(&g_bridge_inflight, 1, memory_order_relaxed);
+    return rc;
 }
 
 void dw3_str_stream_install_cd_bridge(void) {
     Psyz_CdSetReadCB(dw3_str_cd_read_cb);
     fprintf(stderr, "dw3-str: installed Psyz_CdSetReadCB file bridge\n");
     /* Probe optional disc bin early so logs are near bridge install. */
+    bridge_lock();
     (void)disc_bin_fp();
+    bridge_unlock();
 }
