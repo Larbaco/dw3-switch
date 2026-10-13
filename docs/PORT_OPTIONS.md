@@ -231,3 +231,10 @@ validate every controller model or PC gamepad configuration.
 
 The switches remain safe no-op stubs. Hardware toggle effects and persistence
 were not tested; P9.3/P9.4 remain open and the overall Phase 9 gate is open.
+
+## Title-screen visual reference
+
+The proposed title-screen labels and orange/blue Digivice button styling are
+documented in [TITLE_MENU_DESIGN.md](TITLE_MENU_DESIGN.md). The linked mockup
+is a visual concept; it does not indicate that the generated artwork is wired
+into the game renderer.
