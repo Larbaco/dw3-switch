@@ -122,6 +122,24 @@ standalone shortcut hint is no longer drawn because the visible row is
 the entry. Independent PC visual/input validation passed as recorded below.
 Switch hardware validation passed below; P9.3 effects and P9.4 persistence remain open.
 
+### PC Digivice title-menu follow-up
+
+The PC title now presents **New Game / Options / Load Game** in three
+blue-and-amber plaques, using the resident pixel font. The plaques are drawn
+from PS1 primitives at 320×240; the #117 concept atlas/mockup are docs-only
+references and are not packaged as runtime art. This is PC-gated. Switch keeps
+its existing Start / Port options / Continue row and initial Continue
+selection.
+
+The labels preserve the original flow: New Game uses vanilla choice 1;
+Options opens the P9.2 shell and its current no-op stubs; Load Game maps to
+vanilla Continue (choice 2) and the original `STGMCARD` flow. It does not
+implement another save loader. PC defaults focus to New Game so it matches the
+concept. The build and patch application check passed. A live 1280×720 Xvfb
+capture was attempted with `DW3_PC_INTERNAL_RES=3`, but resizing the available
+virtual display caused torn/clipped output before the menu could be accepted
+visually. A clean screenshot and live navigation pass remain outstanding.
+
 ## PC bring-up (P9.2 MVP shortcut)
 
 While **New Game / Continue** are shown on the title menu, press

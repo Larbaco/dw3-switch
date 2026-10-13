@@ -828,6 +828,14 @@ PS1 game, with vanilla-safe defaults and persistence on owner storage.
   the PC TTB checkpoint, this completes P9.2. Other controller models,
   feature effects and persistence remain unvalidated; P9.3/P9.4 and the
   Phase 9 gate remain open.
+  **PC visual follow-up (2026-10-13, PR #118):** implements the #117
+  Digivice direction as PC-only PS1 primitives: New Game / Options / Load
+  Game plaques with navy faces, blue bevels, amber rails, original pixel font,
+  and New Game initial focus. Options still opens the P9.2 no-op shell;
+  Load Game is vanilla Continue/`STGMCARD`. Switch row behavior is unchanged.
+  Build and patch checks pass; 1280×720 Xvfb resizing produced torn/clipped
+  output, so visual acceptance and live navigation are still open. Design
+  details: [TITLE_MENU_DESIGN.md](TITLE_MENU_DESIGN.md).
   Done when: the screen is reachable from the main menu and returns
   cleanly to it (PC + Switch; TTB print on PC).
 - [ ] **P9.3 Toggle registry.** Maintain a registry of non-native features
