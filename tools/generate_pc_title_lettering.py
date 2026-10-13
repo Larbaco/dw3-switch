@@ -9,9 +9,6 @@ from PIL import Image, ImageDraw, ImageFont
 ROOT = Path(__file__).resolve().parents[1]
 FONT_ROOT = Path('/usr/share/fonts/truetype/dejavu')
 LETTERS = [
-    ('digimon', 'DIGIMON', 100, 'DejaVuSansCondensed-BoldOblique.ttf'),
-    ('world', 'WORLD 3', 53, 'DejaVuSansCondensed-BoldOblique.ttf'),
-    ('badge', 'DW3NX', 14, 'DejaVuSansCondensed-Bold.ttf'),
     ('start', 'PRESS START', 26, 'DejaVuSansCondensed-Bold.ttf'),
     ('credit1', '© Akiyoshi Hongo · Toei Animation', 12, 'DejaVuSansCondensed.ttf'),
     ('credit2', 'TM & © 1997–2002 Bandai.', 12, 'DejaVuSansCondensed.ttf'),
