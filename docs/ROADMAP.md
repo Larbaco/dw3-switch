@@ -836,14 +836,18 @@ PS1 game, with vanilla-safe defaults and persistence on owner storage.
   handheld vs docked legibility is still to be confirmed by the owner.
   **PC Digivice follow-up (2026-10-13):** builds the #117 design direction
   as a PC-only alternative title menu from PS1 primitives: New Game / Options /
-  Load Game plaques with navy faces, blue bevels, amber rails, and the original
-  pixel font. New Game is initially selected. Options opens the existing P9.2
-  shell; Load Game maps to vanilla Continue/`STGMCARD`. Switch behavior is
-  unchanged. Build and patch application pass. US-only runtime validation on
-  Xvfb/lavapipe captured New Game, Options, and Load Game selection states at
-  3× internal resolution (960×720) in a 1280×960 window; Up/Down moved focus
-  without confirming a choice. Captures are retained locally under
-  `evidence/pr121-state-*.png`. A resized 1280×720 output window remains
+  Load Game plaques with indigo faces, steel-blue bevels, stepped clipped
+  corner clamps, square amber fasteners, muted idle rails, and the original
+  pixel font. The selected row lights its rails and fasteners without moving
+  its label or changing plaque geometry. New Game is initially selected.
+  Options opens the existing P9.2 shell; Load Game maps to vanilla
+  Continue/`STGMCARD`. Switch behavior is unchanged. Build and patch
+  application pass. US-only runtime validation on Xvfb/lavapipe captured all
+  three selected states at 3× internal resolution (960×720) in a 1280×960
+  window; short Down pulses moved focus without confirming a choice. The
+  latest captures are local under `/tmp/dw3-pc-title-menu-redo/evidence-redesign/`
+  (`title-ot-v2-new-game.png`, `title-ot-v2-down1.png`,
+  `title-ot-v2-down2.png`). A resized 1280×720 output window remains
   unverified. See [TITLE_MENU_DESIGN.md](TITLE_MENU_DESIGN.md).
   Done when: the screen is reachable from the main menu and returns
   cleanly to it (PC + Switch; TTB print on PC).

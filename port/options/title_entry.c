@@ -6,7 +6,7 @@
 
 #include <libgpu.h>
 
-enum { TITLE_MENU_W = 164, TITLE_MENU_H = 14 };
+enum { TITLE_MENU_W = 140, TITLE_MENU_H = 20 };
 
 typedef struct TitleColor {
     int r;
@@ -39,7 +39,8 @@ static int title_label_width(TextStyle *style, const char *label) {
 }
 
 static void title_draw_glyph_pass(PrimPtr *prim, u_long *ot, TextStyle *style,
-                                  const char *label, int x, int y, int palette) {
+                                  const char *label, int x, int y, int palette,
+                                  TitleColor tint) {
     int width = title_label_width(style, label);
     x += (TITLE_MENU_W - width) / 2;
     while (*label) {
@@ -52,7 +53,7 @@ static void title_draw_glyph_pass(PrimPtr *prim, u_long *ot, TextStyle *style,
         glyph = &style->glyphs[code - 4];
         if (glyph->page != 0xFF) {
             setPolyFT4(prim->ft4);
-            setRGB0(prim->ft4, 128, 128, 128);
+            setRGB0(prim->ft4, tint.r, tint.g, tint.b);
             setXYWH(prim->ft4, x + glyph->dx, y + glyph->dy,
                     glyph->w, glyph->h);
             setUVWH(prim->ft4, glyph->u, glyph->v,
@@ -80,45 +81,105 @@ static TILE *title_add_rect(TILE *tile, u_long *ot, int x, int y, int w, int h,
 
 static TILE *title_draw_plaque(TILE *tile, u_long *ot, int x, int y,
                                int selected) {
-    const TitleColor shadow = {1, 3, 13};
-    const TitleColor edge = selected ? (TitleColor){72, 126, 203}
-                                     : (TitleColor){32, 65, 119};
-    const TitleColor face = {5, 14, 40};
-    const TitleColor top = selected ? (TitleColor){123, 172, 231}
-                                    : (TitleColor){74, 119, 177};
-    const TitleColor bottom = {13, 29, 57};
-    const TitleColor rail = selected ? (TitleColor){255, 151, 33}
-                                     : (TitleColor){164, 83, 28};
-    const TitleColor fastener = selected ? (TitleColor){255, 194, 70}
-                                         : (TitleColor){183, 113, 39};
+    const TitleColor shadow = {0, 1, 7};
+    const TitleColor steel_dark = {18, 39, 79};
+    const TitleColor steel = {31, 76, 143};
+    const TitleColor steel_mid = {52, 107, 180};
+    const TitleColor steel_light = {92, 148, 213};
+    const TitleColor steel_glint = {143, 190, 239};
+    const TitleColor face_edge = {8, 21, 52};
+    const TitleColor face = {5, 17, 43};
+    const TitleColor face_inset = {9, 25, 59};
+    const TitleColor rail = selected ? (TitleColor){255, 166, 35}
+                                     : (TitleColor){118, 64, 29};
+    const TitleColor fastener = selected ? (TitleColor){255, 184, 45}
+                                         : (TitleColor){104, 74, 43};
+    const TitleColor fastener_shadow = selected ? (TitleColor){141, 70, 18}
+                                                : (TitleColor){40, 37, 38};
+    const TitleColor glow = selected ? (TitleColor){255, 139, 28}
+                                     : (TitleColor){47, 95, 158};
     int w = TITLE_MENU_W;
     int h = TITLE_MENU_H;
 
-    if (selected) {
-        tile = title_add_rect(tile, ot, x - 1, y - 1, w + 2, 1,
-                              (TitleColor){232, 128, 28});
-        tile = title_add_rect(tile, ot, x - 1, y + h, w + 2, 1,
-                              (TitleColor){232, 128, 28});
-    }
-    tile = title_add_rect(tile, ot, x + 1, y + 1, w, h, shadow);
-    tile = title_add_rect(tile, ot, x, y + 1, w, h - 2, edge);
-    tile = title_add_rect(tile, ot, x + 2, y, w - 4, h, edge);
-    tile = title_add_rect(tile, ot, x + 4, y + 2, w - 8, h - 4, face);
+    /* The OT is traversed newest-first, so earlier submissions sit in front.
+     * Draw backplates first, then the inset face and finally small details. */
+    tile = title_add_rect(tile, ot, x - 1, y + 7, 1, 6, glow);
+    tile = title_add_rect(tile, ot, x + w, y + 7, 1, 6, glow);
 
-    /* Bevels, amber rails and square corner fasteners stay pixel aligned. */
-    tile = title_add_rect(tile, ot, x + 7, y + 1, w - 14, 1, top);
-    tile = title_add_rect(tile, ot, x + 7, y + h - 2, w - 14, 1, bottom);
+    /* Single-pixel rails sit clear of the resident font's ink box. */
     tile = title_add_rect(tile, ot, x + 14, y + 3, w - 28, 1, rail);
-    tile = title_add_rect(tile, ot, x + 14, y + h - 4, w - 28, 1, rail);
-    tile = title_add_rect(tile, ot, x + 3, y + 3, 2, 2, fastener);
-    tile = title_add_rect(tile, ot, x + w - 5, y + 3, 2, 2, fastener);
-    tile = title_add_rect(tile, ot, x + 3, y + h - 5, 2, 2, fastener);
-    tile = title_add_rect(tile, ot, x + w - 5, y + h - 5, 2, 2,
-                          fastener);
-    tile = title_add_rect(tile, ot, x + 8, y + 5, 2, 1, rail);
-    tile = title_add_rect(tile, ot, x + 8, y + 7, 2, 1, rail);
-    tile = title_add_rect(tile, ot, x + w - 10, y + 5, 2, 1, rail);
-    tile = title_add_rect(tile, ot, x + w - 10, y + 7, 2, 1, rail);
+    tile = title_add_rect(tile, ot, x + 14, y + h - 2, w - 28, 1, rail);
+
+    /* Submit each bolt before its rim and corner plate. Since older OT entries
+     * render in front, the amber core remains visible instead of being buried
+     * under the plate fill. */
+    tile = title_add_rect(tile, ot, x + 6, y + 4, 3, 3, fastener);
+    tile = title_add_rect(tile, ot, x + w - 9, y + 4, 3, 3, fastener);
+    tile = title_add_rect(tile, ot, x + 6, y + h - 7, 3, 3, fastener);
+    tile = title_add_rect(tile, ot, x + w - 9, y + h - 7, 3, 3, fastener);
+    tile = title_add_rect(tile, ot, x + 5, y + 3, 5, 5, fastener_shadow);
+    tile = title_add_rect(tile, ot, x + w - 10, y + 3, 5, 5,
+                          fastener_shadow);
+    tile = title_add_rect(tile, ot, x + 5, y + h - 8, 5, 5,
+                          fastener_shadow);
+    tile = title_add_rect(tile, ot, x + w - 10, y + h - 8, 5, 5,
+                          fastener_shadow);
+
+    /* Five stepped rows form clipped corner clamps around the square bolts. */
+    tile = title_add_rect(tile, ot, x + 4, y + 2, 5, 1, steel_mid);
+    tile = title_add_rect(tile, ot, x + 2, y + 3, 8, 1, steel);
+    tile = title_add_rect(tile, ot, x + 2, y + 4, 9, 1, steel_mid);
+    tile = title_add_rect(tile, ot, x + 3, y + 5, 8, 1, steel);
+    tile = title_add_rect(tile, ot, x + 4, y + 6, 6, 1, steel_dark);
+    tile = title_add_rect(tile, ot, x + w - 9, y + 2, 5, 1, steel_mid);
+    tile = title_add_rect(tile, ot, x + w - 10, y + 3, 8, 1, steel);
+    tile = title_add_rect(tile, ot, x + w - 11, y + 4, 9, 1, steel_mid);
+    tile = title_add_rect(tile, ot, x + w - 11, y + 5, 8, 1, steel);
+    tile = title_add_rect(tile, ot, x + w - 10, y + 6, 6, 1, steel_dark);
+    tile = title_add_rect(tile, ot, x + 4, y + h - 3, 5, 1, steel_mid);
+    tile = title_add_rect(tile, ot, x + 2, y + h - 4, 8, 1, steel);
+    tile = title_add_rect(tile, ot, x + 2, y + h - 5, 9, 1, steel_mid);
+    tile = title_add_rect(tile, ot, x + 3, y + h - 6, 8, 1, steel);
+    tile = title_add_rect(tile, ot, x + 4, y + h - 7, 6, 1, steel_dark);
+    tile = title_add_rect(tile, ot, x + w - 9, y + h - 3, 5, 1, steel_mid);
+    tile = title_add_rect(tile, ot, x + w - 10, y + h - 4, 8, 1, steel);
+    tile = title_add_rect(tile, ot, x + w - 11, y + h - 5, 9, 1, steel_mid);
+    tile = title_add_rect(tile, ot, x + w - 11, y + h - 6, 8, 1, steel);
+    tile = title_add_rect(tile, ot, x + w - 10, y + h - 7, 6, 1, steel_dark);
+
+    /* Short side ticks echo the Digivice data marks without crowding text. */
+    tile = title_add_rect(tile, ot, x + 12, y + 8, 2, 1, rail);
+    tile = title_add_rect(tile, ot, x + 12, y + 10, 2, 1, steel_light);
+    tile = title_add_rect(tile, ot, x + 12, y + 12, 2, 1, rail);
+    tile = title_add_rect(tile, ot, x + w - 14, y + 8, 2, 1, rail);
+    tile = title_add_rect(tile, ot, x + w - 14, y + 10, 2, 1, steel_light);
+    tile = title_add_rect(tile, ot, x + w - 14, y + 12, 2, 1, rail);
+
+    /* Deep indigo face, above the outer body and below the hardware details. */
+    tile = title_add_rect(tile, ot, x + 16, y + 7, w - 32, h - 14,
+                          face_inset);
+    tile = title_add_rect(tile, ot, x + 13, y + 5, w - 26, h - 10, face);
+    tile = title_add_rect(tile, ot, x + 11, y + 4, w - 22, h - 8,
+                          face_edge);
+
+    /* Three clipped steel-blue bevel bands and dark side returns. */
+    tile = title_add_rect(tile, ot, x + 11, y + 1, w - 22, 1, steel_glint);
+    tile = title_add_rect(tile, ot, x + 8, y + 2, w - 16, 1, steel_light);
+    tile = title_add_rect(tile, ot, x + 11, y + h - 2, w - 22, 1, steel);
+    tile = title_add_rect(tile, ot, x + 8, y + h - 3, w - 16, 1,
+                          steel_dark);
+    tile = title_add_rect(tile, ot, x + 2, y + 5, 1, h - 10, steel_light);
+    tile = title_add_rect(tile, ot, x + w - 3, y + 5, 1, h - 10, steel_dark);
+
+    /* Stepped outer silhouette and shadow are the backmost layers. */
+    tile = title_add_rect(tile, ot, x + 10, y, w - 20, 1, steel_dark);
+    tile = title_add_rect(tile, ot, x + 5, y + 1, w - 10, 2, steel);
+    tile = title_add_rect(tile, ot, x + 2, y + 5, 2, h - 10, steel_dark);
+    tile = title_add_rect(tile, ot, x + w - 4, y + 5, 2, h - 10, steel_dark);
+    tile = title_add_rect(tile, ot, x + 5, y + h - 3, w - 10, 2, steel);
+    tile = title_add_rect(tile, ot, x + 10, y + h - 1, w - 20, 1,
+                          steel_dark);
+    tile = title_add_rect(tile, ot, x + 9, y + 1, w - 18, h - 2, shadow);
     return tile;
 }
 
@@ -129,20 +190,18 @@ void dw3_port_title_options_draw(int layer_id, int x, int y, int selected) {
     u_long *ot = layer->getOtEntry(layer, 0);
     PrimPtr prim;
     TILE *tiles;
+    int panel_x = x + (164 - TITLE_MENU_W) / 2;
     int row;
 
-    (void)x;
     prim.any = GFX.funcs.getPrim();
     for (row = 0; row < 3; row++) {
         int row_y = y + (row - 1) * 16;
+        title_draw_glyph_pass(&prim, ot, style, labels[row], panel_x + 1,
+                              row_y + 6, PALETTE_WHITE,
+                              (TitleColor){22, 22, 28});
         title_draw_glyph_pass(&prim, ot, style, labels[row],
-                              x, row_y - 1, PALETTE_WHITE);
-    }
-    for (row = 0; row < 3; row++) {
-        int row_y = y + (row - 1) * 16;
-        title_draw_glyph_pass(&prim, ot, style, labels[row],
-                              x + 1, row_y,
-                              PALETTE_DARK_BLUE);
+                              panel_x, row_y + 5, PALETTE_WHITE,
+                              (TitleColor){128, 128, 110});
     }
 
     /* The OT draws newest entries first; adding plaques last keeps the
@@ -150,7 +209,7 @@ void dw3_port_title_options_draw(int layer_id, int x, int y, int selected) {
     tiles = (TILE *)prim.any;
     for (row = 0; row < 3; row++) {
         int row_y = y + (row - 1) * 16;
-        tiles = title_draw_plaque(tiles, ot, x, row_y, selected == row);
+        tiles = title_draw_plaque(tiles, ot, panel_x, row_y, selected == row);
     }
     GFX.funcs.setPrim(tiles);
 }

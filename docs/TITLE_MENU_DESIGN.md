@@ -52,18 +52,23 @@ brand mark over the original logo.
   visual composition with the specified labels and the first row selected.
 
 The atlas and mockup are concept images. The PC implementation uses a compact
-pixel-aligned approximation rather than cropping these images: navy plaques,
-steel-blue bevels, amber rails, corner fasteners, centered original-font text,
-and orange selected-row accents. The title patch keeps the vanilla New Game
-and Continue choice values: **Load Game** enters the original Continue flow
-and memory-card screen; **Options** opens the existing P9.2 shell, whose
-experimental toggles remain no-op stubs. The PC menu starts on New Game; the
-Switch initial selection and row styling are unchanged.
+pixel-aligned approximation rather than cropping these images: 140×20 navy
+plaques, steel-blue inner bevels, stepped clipped corner clamps with square
+amber fasteners, segmented side marks, centered original-font text, and orange
+selected-row accents. The idle plaques keep subdued rails; selection lights
+the rails and fasteners without shifting text or changing geometry. The title
+patch keeps the vanilla New Game and Continue choice values: **Load Game**
+enters the original Continue flow and memory-card screen; **Options** opens the
+existing P9.2 shell, whose experimental toggles remain no-op stubs. The PC
+menu starts on New Game; the Switch initial selection and row styling are
+unchanged.
 
 Build and Xvfb/lavapipe validation confirmed the three legible labels and
 selection feedback at 3× internal resolution (960×720), using a 1280×960
 window and the US runtime. Up/Down moved selection among all three rows without
-confirming. The captures are retained locally under
-`evidence/pr121-state-*.png`. A 1280×720 output-window capture remains open;
-an earlier forced resize was torn and clipped. See [PORT_OPTIONS.md](PORT_OPTIONS.md)
+confirming. Latest local captures are under
+`/tmp/dw3-pc-title-menu-redo/evidence-redesign/`:
+`title-ot-v2-new-game.png`, `title-ot-v2-down1.png`, and
+`title-ot-v2-down2.png`. A 1280×720 output-window capture remains open; an
+earlier forced resize was torn and clipped. See [PORT_OPTIONS.md](PORT_OPTIONS.md)
 and [ROADMAP.md](ROADMAP.md).

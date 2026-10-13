@@ -149,11 +149,17 @@ from PS1 primitives at 320×240; the #117 concept atlas/mockup are docs-only
 references and are not packaged as runtime art. This is PC-gated. Switch keeps
 its existing Start / Port options / Continue row and initial Continue
 selection. The previous PC row design and captures remain documented above;
-this PC-only variant passed live title capture and navigation on the US
-runtime under Xvfb/lavapipe at 3× internal resolution (960×720) in a
-1280×960 window. New Game, Options, and Load Game captures are retained
-locally under `evidence/pr121-state-*.png`; no choice was confirmed. Output in
-a 1280×720 window remains unverified.
+this PC-only variant uses 140×20 plaques at 16-pixel row spacing. Stepped
+corner clamps surround square amber fasteners, a steel-blue inner bevel frames
+the indigo face, and the selected row lights its rails and fasteners without
+moving its label or changing its geometry. The idle trim stays subdued. This
+passed live title capture and navigation on the US runtime under Xvfb/lavapipe
+at 3× internal resolution (960×720) in a 1280×960 window. Short Down pulses
+selected New Game, Options, and Load Game in turn without confirming a choice.
+The latest captures are local under
+`/tmp/dw3-pc-title-menu-redo/evidence-redesign/`: `title-ot-v2-new-game.png`,
+`title-ot-v2-down1.png`, and `title-ot-v2-down2.png`. Output in a 1280×720
+window remains unverified.
 
 The labels preserve the original flow: New Game uses vanilla choice 1;
 Options opens the P9.2 shell and its current no-op stubs; Load Game maps to
