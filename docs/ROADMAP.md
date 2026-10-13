@@ -300,7 +300,7 @@ audio, movies.
   it whole with zero drops). Image quality was not separately assessed.
   Done when: the opening movies play with audio and can be skipped. The
   OLED meets the audio and skip part; see
-  [pacing diagnostics](docs/P3.7_MOVIE_PACING_DIAGNOSTICS.md).
+  [pacing diagnostics](P3.7_MOVIE_PACING_DIAGNOSTICS.md).
 - [x] **P3.8 Stage sweep.** `STAGSLCT` linked (`dw3_p38_stagslct`); patch
   `0030` + `tools/stage_sweep.py`. **Done-when evidence**
   (`docs/P3.8_STAGES.md`, `READY_FOR_MAIN_ROADMAP_SYNC: P3.8`): batches
