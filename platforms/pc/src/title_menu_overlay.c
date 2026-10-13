@@ -50,9 +50,13 @@ static SDL_GPUDevice *g_device;
 static SDL_GPUGraphicsPipeline *g_pipeline;
 static SDL_GPUBuffer *g_vertices;
 static SDL_GPUTexture *g_texture;
+static SDL_GPUTexture *g_logo_texture;
 static SDL_GPUSampler *g_sampler;
+static SDL_GPUSampler *g_logo_sampler;
 static int g_selection;
 static int g_overlay_active;
+static int g_logo_active;
+static int g_logo_texture_ready;
 
 static SDL_GPUShader *create_shader(const unsigned char *code, unsigned len,
                                     SDL_GPUShaderStage stage,
@@ -77,14 +81,20 @@ static void release_gpu_resources(void) {
     if (g_pipeline) SDL_ReleaseGPUGraphicsPipeline(g_device, g_pipeline);
     if (g_vertices) SDL_ReleaseGPUBuffer(g_device, g_vertices);
     if (g_texture) SDL_ReleaseGPUTexture(g_device, g_texture);
+    if (g_logo_texture) SDL_ReleaseGPUTexture(g_device, g_logo_texture);
     if (g_sampler) SDL_ReleaseGPUSampler(g_device, g_sampler);
+    if (g_logo_sampler) SDL_ReleaseGPUSampler(g_device, g_logo_sampler);
     g_pipeline = NULL;
     g_vertices = NULL;
     g_texture = NULL;
+    g_logo_texture = NULL;
     g_sampler = NULL;
+    g_logo_sampler = NULL;
     g_window = NULL;
     g_device = NULL;
     g_overlay_active = 0;
+    g_logo_active = 0;
+    g_logo_texture_ready = 0;
 }
 
 static int upload_art_and_quad(void) {
@@ -118,12 +128,32 @@ static int upload_art_and_quad(void) {
         .address_mode_w = SDL_GPU_SAMPLERADDRESSMODE_CLAMP_TO_EDGE,
     };
     g_sampler = SDL_CreateGPUSampler(g_device, &sampler_info);
-    if (!g_texture || !g_sampler) {
+    const SDL_GPUTextureCreateInfo logo_texture_info = {
+        .type = SDL_GPU_TEXTURETYPE_2D,
+        .format = SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UNORM,
+        .usage = SDL_GPU_TEXTUREUSAGE_SAMPLER,
+        .width = 720,
+        .height = 326,
+        .layer_count_or_depth = 1,
+        .num_levels = 1,
+        .sample_count = SDL_GPU_SAMPLECOUNT_1,
+    };
+    g_logo_texture = SDL_CreateGPUTexture(g_device, &logo_texture_info);
+    const SDL_GPUSamplerCreateInfo logo_sampler_info = {
+        .min_filter = SDL_GPU_FILTER_LINEAR,
+        .mag_filter = SDL_GPU_FILTER_LINEAR,
+        .mipmap_mode = SDL_GPU_SAMPLERMIPMAPMODE_NEAREST,
+        .address_mode_u = SDL_GPU_SAMPLERADDRESSMODE_CLAMP_TO_EDGE,
+        .address_mode_v = SDL_GPU_SAMPLERADDRESSMODE_CLAMP_TO_EDGE,
+        .address_mode_w = SDL_GPU_SAMPLERADDRESSMODE_CLAMP_TO_EDGE,
+    };
+    g_logo_sampler = SDL_CreateGPUSampler(g_device, &logo_sampler_info);
+    if (!g_texture || !g_sampler || !g_logo_texture || !g_logo_sampler) {
         free(pixels);
         return -1;
     }
 
-    OverlayVertex quads[STATE_COUNT * 6];
+    OverlayVertex quads[STATE_COUNT * 6 + 6];
     for (int row = 0; row < STATE_COUNT; ++row) {
         const float u0 = 0.5f / (float)CANVAS_W;
         const float u1 = ((float)CANVAS_W - 0.5f) / (float)CANVAS_W;
@@ -136,6 +166,15 @@ static int upload_art_and_quad(void) {
         const OverlayVertex c = {{1.0f, 1.0f}, {u1, v1}};
         const OverlayVertex d = {{0.0f, 1.0f}, {u0, v1}};
         OverlayVertex *q = &quads[row * 6];
+        q[0] = a; q[1] = b; q[2] = c;
+        q[3] = a; q[4] = c; q[5] = d;
+    }
+    {
+        const OverlayVertex a = {{120.0f / CANVAS_W, 47.0f / CANVAS_H}, {0, 0}};
+        const OverlayVertex b = {{840.0f / CANVAS_W, 47.0f / CANVAS_H}, {1, 0}};
+        const OverlayVertex c = {{840.0f / CANVAS_W, 373.0f / CANVAS_H}, {1, 1}};
+        const OverlayVertex d = {{120.0f / CANVAS_W, 373.0f / CANVAS_H}, {0, 1}};
+        OverlayVertex *q = &quads[STATE_COUNT * 6];
         q[0] = a; q[1] = b; q[2] = c;
         q[3] = a; q[4] = c; q[5] = d;
     }
@@ -275,6 +314,59 @@ static void init_overlay(SDL_Window *window, SDL_GPUDevice *device) {
     }
 }
 
+int dw3_pc_title_menu_set_logo_rgba(const uint8_t *rgba, int width,
+                                    int height, int pitch) {
+    if (!rgba || !g_device || !g_logo_texture || width != 720 ||
+        height != 326 || pitch < width * 4) return -1;
+    const size_t bytes = (size_t)pitch * (size_t)height;
+    const SDL_GPUTransferBufferCreateInfo transfer_info = {
+        .usage = SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD,
+        .size = (Uint32)bytes,
+    };
+    SDL_GPUTransferBuffer *transfer =
+        SDL_CreateGPUTransferBuffer(g_device, &transfer_info);
+    if (!transfer) return -1;
+    uint8_t *mapped = (uint8_t *)SDL_MapGPUTransferBuffer(g_device, transfer,
+                                                           false);
+    if (!mapped) {
+        SDL_ReleaseGPUTransferBuffer(g_device, transfer);
+        return -1;
+    }
+    memcpy(mapped, rgba, bytes);
+    SDL_UnmapGPUTransferBuffer(g_device, transfer);
+    SDL_GPUCommandBuffer *cmd = SDL_AcquireGPUCommandBuffer(g_device);
+    if (!cmd) {
+        SDL_ReleaseGPUTransferBuffer(g_device, transfer);
+        return -1;
+    }
+    SDL_GPUCopyPass *copy = SDL_BeginGPUCopyPass(cmd);
+    const SDL_GPUTextureTransferInfo src = {
+        .transfer_buffer = transfer,
+        .pixels_per_row = (Uint32)(pitch / 4),
+        .rows_per_layer = (Uint32)height,
+    };
+    const SDL_GPUTextureRegion dst = {
+        .texture = g_logo_texture,
+        .w = (Uint32)width,
+        .h = (Uint32)height,
+        .d = 1,
+    };
+    SDL_UploadToGPUTexture(copy, &src, &dst, false);
+    SDL_EndGPUCopyPass(copy);
+    if (!SDL_SubmitGPUCommandBuffer(cmd)) {
+        SDL_ReleaseGPUTransferBuffer(g_device, transfer);
+        return -1;
+    }
+    SDL_WaitForGPUIdle(g_device);
+    SDL_ReleaseGPUTransferBuffer(g_device, transfer);
+    g_logo_texture_ready = 1;
+    return 0;
+}
+
+void dw3_pc_title_menu_logo_set_active(int active) {
+    g_logo_active = active && g_logo_texture_ready;
+}
+
 void dw3_pc_title_menu_set_state(int active, int selected) {
     if (dw3_port_options_is_open()) active = 0;
     if (!active || !g_pipeline || !g_texture || !g_vertices || !g_sampler) {
@@ -292,7 +384,7 @@ void dw3_pc_title_menu_set_state(int active, int selected) {
 }
 
 static void render_overlay(SDL_GPUCommandBuffer *cmd, SDL_GPURenderPass *pass) {
-    if (!g_overlay_active || !g_pipeline || !g_texture || !g_vertices ||
+    if ((!g_overlay_active && !g_logo_active) || !g_pipeline || !g_texture || !g_vertices ||
         !g_sampler || !g_window) return;
     int window_w = 0, window_h = 0;
     SDL_GetWindowSizeInPixels(g_window, &window_w, &window_h);
@@ -315,6 +407,16 @@ static void render_overlay(SDL_GPUCommandBuffer *cmd, SDL_GPURenderPass *pass) {
     SDL_BindGPUGraphicsPipeline(pass, g_pipeline);
     const SDL_GPUBufferBinding binding = {.buffer = g_vertices, .offset = 0};
     SDL_BindGPUVertexBuffers(pass, 0, &binding, 1);
+    if (g_logo_active && g_logo_texture_ready && g_logo_texture &&
+        g_logo_sampler) {
+        const SDL_GPUTextureSamplerBinding logo_binding = {
+            .texture = g_logo_texture,
+            .sampler = g_logo_sampler,
+        };
+        SDL_BindGPUFragmentSamplers(pass, 0, &logo_binding, 1);
+        SDL_DrawGPUPrimitives(pass, 6, 1, STATE_COUNT * 6, 0);
+    }
+    if (!g_overlay_active) return;
     const SDL_GPUTextureSamplerBinding sampler_binding = {
         .texture = g_texture,
         .sampler = g_sampler,

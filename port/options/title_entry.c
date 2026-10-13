@@ -12,6 +12,10 @@ void dw3_port_title_options_draw(int layer_id, int x, int y, int selected) {
     (void)layer_id;
     (void)x;
     (void)y;
+    if (GAME.funcs.getMode() != MODE_TITLE) {
+        dw3_pc_title_menu_set_state(0, -2);
+        return;
+    }
     dw3_pc_title_menu_set_state(selected != -2, selected);
 }
 

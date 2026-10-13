@@ -22,6 +22,10 @@ if(PSYZ_RENDERER STREQUAL "sdl3_gpu")
   set(_DW3_PC_TITLE_OVERLAY_SOURCES
     src/title_menu_overlay.c
     src/title_overlay_art.c
+    src/title_logo_resample.c
+  )
+  target_include_directories(dw3_port_options PRIVATE
+    ${CMAKE_CURRENT_LIST_DIR}/src
   )
 elseif(NOT PSYZ_RENDERER STREQUAL "sdl3_gl")
   message(FATAL_ERROR "Unsupported PSYZ_RENDERER: ${PSYZ_RENDERER}")

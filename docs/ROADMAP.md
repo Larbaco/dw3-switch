@@ -837,20 +837,34 @@ PS1 game, with vanilla-safe defaults and persistence on owner storage.
   **PC Digivice follow-up (2026-10-13):** the PC SDL3 GPU title UI uses a
   transparent 960×720 RGBA presentation overlay, composited as one texture
   draw. It contains the Press Start prompt, New Game / Options / Load Game
-  plaques, and three-line credits. The original pixel-art logo and glint stay
-  game sprites; the GPU path scales them uniformly through the existing 3×
-  internal renderer to free space below. Original background code is untouched.
+  plaques, and three-line credits. The US GPU path now reconstructs the
+  original logo from the owner's runtime sprite sheet and PSY-Z base VRAM,
+  resamples its 300×136 source to a cached 720×326 RGBA texture with Lanczos2,
+  and swaps it in after the original logo animation settles. It retains the
+  original mark and does not add game art to Git. The animated background code
+  and filter are untouched; SDL3 GL, Switch, and EU keep their existing logo
+  path. The 3× internal renderer remains opt-in and is independent of this
+  logo-only resampling.
   The overlay remains visible through the menu and clears when P9.2 opens or
-  the title flow fades to New Game / Continue / Opening. Load Game maps to
-  vanilla Continue / `STGMCARD`; Switch and SDL3 GL retain their existing
-  presentation paths. Linux/Vulkan and SDL3 GL builds, plus patch-check, pass.
-  US runtime on Xvfb captured the full composition in a 1280×720 window
-  with 960×720 internal content. Short paired captures showed no measurable
-  background-pixel motion, so visible animation is not claimed. Automated
-  shell return and Load Game selection are not yet confirmed. Windows/DXIL
-  and macOS/Metal runtime validation remain open. Evidence and logs are local
-  under `/tmp/dw3-pc-title-menu-redo/evidence-redesign/final/`. See
-  [TITLE_MENU_DESIGN.md](TITLE_MENU_DESIGN.md).
+  the title flow fades to New Game / Continue / Opening. Logo/menu activation is
+  guarded by actual `MODE_TITLE`; the menu also clears on `TASK_KILL`, and failed
+  VRAM readback falls back to original sprites. Load Game maps to vanilla
+  Continue / `STGMCARD`; Switch and SDL3 GL retain their existing presentation
+  paths. Linux/Vulkan and SDL3 GL builds, plus patch-check, pass. US runtime on
+  Xvfb captured the full composition in a 1280×960 window using the rebuilt 3×
+  GPU binary; the logo used Lanczos2 from 300×136 runtime pixels to a 720×326
+  texture. Resizing that window during the run corrupted the frame, so the
+  1280×720 window case is not claimed for this logo-resampling change. Short
+  paired captures showed no measurable background-pixel motion, so visible
+  animation is not claimed. A post-transition Xvfb frame contains no logo/menu
+  overlay, but its FMV is corrupted because the isolated runtime lacks the
+  Mode2 BIN/CUE. Automated shell return and Load Game selection are not yet
+  confirmed. Windows/DXIL and macOS/Metal runtime validation remain open. The
+  accepted title capture is kept outside Git at
+  `/tmp/dw3-pc-logo-upscale/evidence/logo-lanczos-final.png`; the post-transition
+  diagnostic is `after-title-transition.png` in the same folder. See
+  [TITLE_MENU_DESIGN.md](TITLE_MENU_DESIGN.md) and
+  [PC_TITLE_LOGO_RESAMPLING.md](PC_TITLE_LOGO_RESAMPLING.md).
   Done when: the screen is reachable from the main menu and returns
   cleanly to it (PC + Switch; TTB print on PC).
 - [ ] **P9.3 Toggle registry.** Maintain a registry of non-native features

@@ -1,13 +1,22 @@
 # PC original-logo resampling
 
-The PC title keeps the original logo's lettering, shapes, palette, and
-composition. `platforms/pc/src/title_logo_resample.c` reconstructs a larger RGBA
-image from the runtime pixels; it embeds no game artwork and never changes the
-animated background filter. The integration supplies the original RGBA and owns
-GPU texture upload, placement, and visibility.
+The PC SDL3 GPU title keeps the original logo's lettering, shapes, palette, and
+composition. At title-image load, `port/options/title_logo_capture.c` reads the
+US sprite sheet metadata and snapshots the PSY-Z base VRAM through
+`Draw_StoreImage`. It reconstructs the complete static logo from sprites 0, 1,
+and 2 plus the terminal shadow palette row of sprite 3. Those runtime pixels
+are converted to RGBA and passed to `platforms/pc/src/title_logo_resample.c`.
+No game artwork is embedded in the repository or executable. The filtered logo
+is uploaded to a private GPU texture when the title animation reaches its stable
+state; the animated background keeps its existing path and filter. SDL3 GL,
+Switch, and non-US builds retain the original logo rendering path.
 
 The selected presentation is Lanczos2, using a 4x4 source neighborhood at each
-destination pixel center. Mitchell-Netravali bicubic interpolation (B=C=1/3) is
+destination pixel center. PS1 ABR2 shadow subtraction depends on the animated
+background under each texel; the static logo texture approximates its transparent
+edge as black at alpha 112. The screenshot confirms that this approximation is
+visually acceptable in the captured title frame, but it is not an exact
+reproduction of the shadow against every background frame. Mitchell-Netravali bicubic interpolation (B=C=1/3) is
 available for a softer comparison. Both kernels interpolate premultiplied color and
 alpha together, then convert back to straight RGBA, avoiding the dark fringes
 produced by interpolating RGB against black transparent pixels. Final channels
@@ -16,20 +25,21 @@ range, preventing new overshoot colors around high-contrast edges. These compact
 have no external library dependency or copied third-party implementation.
 
 The component accepts arbitrary source crop dimensions and output dimensions;
-use `DW3_PC_LOGO_MITCHELL` or `DW3_PC_LOGO_LANCZOS2`. Do this once when the logo
-source changes, then cache the resulting texture. A local 300x136-to-700x317
-Mitchell pass took about 26ms with an optimized Linux host build; this is a
-load-time measurement, not a per-frame budget guarantee.
+use `DW3_PC_LOGO_MITCHELL` or `DW3_PC_LOGO_LANCZOS2`. The integration filters
+the 300×136 logo crop to 720×326 once and caches it as a GPU texture. The
+designer measured about 106ms for that Lanczos2 pass and 41ms for Mitchell on
+an optimized Linux host build; this is load-time work, not a per-frame cost.
 
 Local comparisons using only the owner's runtime artwork showed that nearest
 sampling leaves large stair steps. Exact-color Scale3x retained too many of
 those steps in shaded/antialiased source artwork. Mitchell smoothed the borders with a softer small-text appearance. The owner
-selected the sharper Lanczos2 preview; premultiplied alpha and local color clamps
-limit edge fringes, with runtime ringing inspection still required.
+selected the sharper Lanczos2 preview. A runtime US/Xvfb capture now confirms
+the filtered logo in the title composition. The process still preserves the
+original PS1 logo pixel art; only its sampling and display size change.
 Scale3x was therefore not included in the runtime component. The mathematical
 Scale3x comparison followed the [published algorithm](https://www.scale2x.it/algorithm)
 without linking its library. No runtime asset or generated logo preview belongs
-in Git. The final PC screenshot remains the integration validation gate.
+in Git. The final PC screenshot is kept outside the repository.
 
 ## US original composition facts
 
