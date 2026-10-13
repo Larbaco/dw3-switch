@@ -143,32 +143,37 @@ Switch hardware validation passed below; P9.3 effects and P9.4 persistence remai
 
 ### PC Digivice title-menu follow-up
 
-The PC title now presents **New Game / Options / Load Game** in three
-blue-and-amber plaques, using the resident pixel font. The plaques are drawn
-from PS1 primitives at 320×240; the #117 concept atlas/mockup are docs-only
-references and are not packaged as runtime art. This is PC-gated. Switch keeps
-its existing Start / Port options / Continue row and initial Continue
-selection. The previous PC row design and captures remain documented above;
-this PC-only variant uses 140×20 plaques at 16-pixel row spacing. Stepped
-corner clamps surround square amber fasteners, a steel-blue inner bevel frames
-the indigo face, and the selected row lights its rails and fasteners without
-moving its label or changing its geometry. The idle trim stays subdued. This
-passed live title capture and navigation on the US runtime under Xvfb/lavapipe
-at 3× internal resolution (960×720) in a 1280×960 window. Short Down pulses
-selected New Game, Options, and Load Game in turn without confirming a choice.
-The latest captures are local under
-`/tmp/dw3-pc-title-menu-redo/evidence-redesign/`: `title-ot-v2-new-game.png`,
-`title-ot-v2-down1.png`, and `title-ot-v2-down2.png`. Output in a 1280×720
-window remains unverified.
+The PC SDL3 GPU title presents **New Game / Options / Load Game** in a
+transparent 960×720 RGBA overlay, drawn over the original title image by one
+SDL3 GPU texture and one six-vertex quad. The texture contains three visual states;
+selection changes the lighting without moving the plaque or label. Plaques
+have navy faces, steel-blue bevels, clipped corner hardware, amber fasteners,
+internal rails, and legible centered text. This is PC-gated. Switch keeps its
+existing Start / Port options / Continue row and initial Continue selection.
+The #117 concept atlas/mockup remain design references and are not packaged as
+runtime art. Selecting `PSYZ_RENDERER=sdl3_gl` keeps the earlier PS1-primitive
+title drawing path and does not compile the SDL3 GPU overlay.
+
+US-runtime validation under Xvfb/Vulkan at `DW3_PC_INTERNAL_RES=3` captured
+New Game and Options selection plus P9.2 shell open in an exact 1280×720
+window. Automated shell return and Load Game selection were not confirmed.
+**Load Game** maps to the existing vanilla Continue /
+`STGMCARD` flow; **Options** opens the existing P9.2 shell and the overlay
+hides while it is open. Captures are local under
+`/tmp/dw3-pc-title-menu-redo/evidence-redesign/`: `hires-final-new-game.png`,
+`hires-verify-options.png`, and `hires-verify-options-shell.png`. The 960×720
+4:3 viewport is centered, so the 1280×720 output has pillarboxes. Windows/DXIL
+and macOS/Metal runtime checks
+remain open.
 
 The labels preserve the original flow: New Game uses vanilla choice 1;
 Options opens the P9.2 shell and its current no-op stubs; Load Game maps to
 vanilla Continue (choice 2) and the original `STGMCARD` flow. It does not
 implement another save loader. PC defaults focus to New Game so it matches the
-concept. The build and patch application check passed. A clean Xvfb capture
-and live navigation pass used the US runtime and `DW3_PC_INTERNAL_RES=3`; the
-960×720 internal image was presented in a 1280×960 window. The earlier
-1280×720 resize attempt produced torn/clipped output and remains unverified.
+concept. The build and patch application check pass. Earlier 320×240 primitive
+captures and 1280×960 window notes are superseded by the GPU validation above.
+The Linux/Vulkan run used the US runtime and `DW3_PC_INTERNAL_RES=3`; Windows
+and macOS runtime rendering remain untested.
 
 ## PC bring-up (P9.2 MVP shortcut)
 

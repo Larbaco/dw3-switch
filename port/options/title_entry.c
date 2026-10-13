@@ -1,8 +1,21 @@
-/* Title entry rendered through the original game's font and ordering table. */
+/* Title-menu presentation: GPU overlay when available, PS1 primitives on GL. */
 #include "port_title_options.h"
 #include "engine/game.h"
 
 #if defined(DW3_PC_HOST)
+
+#if defined(DW3_PC_SDL3_GPU)
+
+extern void dw3_pc_title_menu_set_state(int active, int selected);
+
+void dw3_port_title_options_draw(int layer_id, int x, int y, int selected) {
+    (void)layer_id;
+    (void)x;
+    (void)y;
+    dw3_pc_title_menu_set_state(selected >= 0, selected);
+}
+
+#else
 
 #include <libgpu.h>
 
@@ -185,6 +198,9 @@ static TILE *title_draw_plaque(TILE *tile, u_long *ot, int x, int y,
 
 void dw3_port_title_options_draw(int layer_id, int x, int y, int selected) {
     static const char *const labels[] = {"New Game", "Options", "Load Game"};
+    if (selected < 0) {
+        return;
+    }
     TextStyle *style = &FONT.styles[1];
     Layer *layer = GFX.funcs.getLayer(layer_id);
     u_long *ot = layer->getOtEntry(layer, 0);
@@ -213,6 +229,8 @@ void dw3_port_title_options_draw(int layer_id, int x, int y, int selected) {
     }
     GFX.funcs.setPrim(tiles);
 }
+
+#endif /* DW3_PC_SDL3_GPU */
 
 #else
 

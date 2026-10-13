@@ -21,6 +21,9 @@
 #include <string.h>
 
 int dw3_game_main(void);
+#if defined(DW3_PC_SDL3_GPU)
+void dw3_pc_title_menu_overlay_register(void);
+#endif
 
 extern volatile int StCdIntrFlag;
 void StCdInterrupt(void);
@@ -188,6 +191,9 @@ int main(int argc, char **argv) {
                 multiplier);
     }
     g_prev_vsync_cb = Psyz_SetVSyncCb(dw3_pc_vsync_pump);
+#if defined(DW3_PC_SDL3_GPU)
+    dw3_pc_title_menu_overlay_register();
+#endif
     fprintf(stderr, "dw3-pc: entering dw3_game_main()\n");
     {
         int rc = dw3_game_main();

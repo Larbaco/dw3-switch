@@ -13,11 +13,15 @@ at 29px from DejaVu Sans Condensed Bold with grayscale antialiasing. Compiled RL
 coverage avoids a runtime font dependency; the font license is included beside
 the component. Focus changes color and light intensity without moving geometry.
 
-The CPU component preview only validates the artwork. Integration must still be
-validated inside the real US PC title screen, using a virtual display and a
-1280x720 output surface, with the 960x720 4:3 game viewport centered. Runtime
-captures, menu navigation, lifecycle cleanup, and the precise placement against
-the original copyright area are integration gates.
+The SDL3 GPU PC integration packs the three generated states into one static texture
+and draws the selected 960×720 region using a single six-vertex quad. It uses
+the SDL3 GPU overlay callbacks and releases its pipeline, vertex buffer,
+texture, and sampler in the GPU destroy callback. Linux/Vulkan validation used
+the US runtime, temporary empty memcards, Xvfb, and an exact 1280×720 window.
+Captures verify menu navigation, shell hiding/return, and composition above the
+original copyright area. The 960×720 viewport is centered, so the 1280×720
+output has pillarboxes. Windows/DXIL and macOS/Metal runtime validation remains
+open; embedded shader blobs alone do not establish those paths.
 
 ## Presentation shaders
 
