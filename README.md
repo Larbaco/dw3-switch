@@ -41,6 +41,12 @@ video now runs at about 15 fps on preview.21 with correct XA audio up to frame
 1110, where the owner pressed Start. Image quality and the final part of the
 movie are not validated on hardware.
 
+After #114 merged, the owner also reported that GPU battle rendering and the
+STR video changes both work well in-game, though neither is fully there yet.
+Specific remaining issues were not reported. This confirms in-game progress;
+it does not close the P5.2 60 Hz/performance gate or the movie quality and
+audio/synchronization questions.
+
 Movie audio plays. STR files are restored from the Mode2 BIN in the parent
 of `us/`.
 

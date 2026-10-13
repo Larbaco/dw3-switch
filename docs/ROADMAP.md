@@ -506,8 +506,10 @@ speed.
   to the software rasterizer and the mesh+ui composite blitted that
   stage-blue CPU VRAM over the (correct) mesh FBO. Fix routes a full-area
   opaque TILE to the FBO and clears CPU VRAM to 0; sample uploads are now
-  dirty-rect only. Ryubing `gpu-tex` matches soft; OLED confirmation and
-  the battle 60 Hz proof are pending, soft stays default. See
+  dirty-rect only. Ryubing `gpu-tex` matches soft. After #114 merged, the
+  owner reported that GPU battle rendering works well in-game, though it is
+  not fully there yet; specific remaining issues were not reported. The
+  60 Hz proof remains open and soft stays default. See
   [P5.2_BATTLE_GPU.md](P5.2_BATTLE_GPU.md).
   **Beyond approach A (ideas).** Soft battle restored the Fight picture but
   battle still feels soft-fill limited. Do not blind-re-enable the full
@@ -537,6 +539,11 @@ speed.
   coverage includes partial-frame reset, early wrap, and same-address reuse;
   revised gate still needs Switch playback/performance validation. See
   [P3.7_MOVIES.md](P3.7_MOVIES.md).
+  **STR file-bridge fix (#111), owner feedback (2026-10-13).** The owner
+  reported that the video changes work well in-game, though they are not fully
+  there yet; specific remaining issues were not reported. Preview.21's OLED
+  rate/drop and XA listening observations remain as recorded in
+  [P3.7_MOVIE_PACING_DIAGNOSTICS.md](P3.7_MOVIE_PACING_DIAGNOSTICS.md).
 
 - [ ] **P5.3 Save handling.** The port's own save on owner storage, plus
   sleep/exit safety. The running game does not import or export emulator
