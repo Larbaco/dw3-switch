@@ -19,14 +19,14 @@ static int title_glyph_code(char c) {
 #define ROW_W 164
 #define ROW_H 16
 /* The original lettering is about 11 pixels tall, the resident font is
- * about 8. Scale the glyph quads by 4/3 so the label has the same weight. */
-#define SCALE_NUM 4
-#define SCALE_DEN 3
+ * about 8. Scale the glyph quads by 5/4 so the label has the same weight. */
+#define SCALE_NUM 5
+#define SCALE_DEN 4
 #define SPACE_ADV 6
 
 /* Modulation (128 is neutral) for the dim, unselected state. The original
  * sprites use a dark-blue CLUT row for the same purpose. */
-#define FILL_DIM 88
+#define FILL_DIM 128
 #define FILL_LIT 128
 
 static int scaled(int v) {
@@ -51,9 +51,8 @@ static PrimPtr title_glyph(PrimPtr prim, u_long *ot, Glyph *glyph, int x,
 
 void dw3_port_title_options_draw(int layer_id, int x, int y, int selected) {
     static const char label[] = "Port options";
-    static const signed char outline[8][2] = {
-        {-1, -1}, {0, -1}, {1, -1}, {-1, 0}, {1, 0}, {-1, 1}, {0, 1}, {1, 1}
-    };
+    /* Drop shadow only: a full outline fills the counters of o and p. */
+    static const signed char outline[2][2] = {{1, 1}, {2, 1}};
     TextStyle *style = &FONT.styles[1];
     Layer *layer = GFX.funcs.getLayer(layer_id);
     u_long *ot = layer->getOtEntry(layer, 0);
@@ -84,7 +83,7 @@ void dw3_port_title_options_draw(int layer_id, int x, int y, int selected) {
 
     prim.any = GFX.funcs.getPrim();
     /* Painted in reverse submission order: fill first on top, then the
-     * bold pass, then the dark outline, then the stripes underneath. */
+     * bold pass, then the dark shadow, then the stripes underneath. */
     x = text_x;
     for (i = 0; label[i] != 0; i++) {
         code = title_glyph_code(label[i]);
@@ -111,7 +110,7 @@ void dw3_port_title_options_draw(int layer_id, int x, int y, int selected) {
         }
         x += scaled(glyph->advance + glyph->dx);
     }
-    for (j = 0; j < 8; j++) {
+    for (j = 0; j < 2; j++) {
         x = text_x;
         for (i = 0; label[i] != 0; i++) {
             code = title_glyph_code(label[i]);
