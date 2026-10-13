@@ -53,6 +53,12 @@ static int s_area_y1 = 511;
 
 static short s11(short v) { return (short)(((v & 0x7FF) ^ 1024) - 1024); }
 
+/* Drawing offset and mask-check state as the software rasterizer sees them
+ * (Software_SetOffset sign-extends the 11-bit GP0 E5 fields). */
+static int s_off_x;
+static int s_off_y;
+static int s_mask_check;
+
 /* preview.9 routed field POLY_GT through the mesh FBO + black-discard UI
  * composite and corrupted interiors while also costing ~1.4× field dt.
  * Only FIGHTSTG (mode overlay file) may enqueue. */
@@ -155,6 +161,90 @@ static int can_poly_dither(int is_gouraud, int is_textured, int is_shade_tex) {
         return 0;
     }
     return is_gouraud || (is_textured && is_shade_tex);
+}
+
+/* DRAWENV background fill in GPU battle modes.
+ *
+ * FIGHTSTG sets SCREEN_LAYER's setBgColor (stage.c FIGHTSTG_fadeStage), so the
+ * layer's DR_ENV has isbg=1. PSY-Z's SetDrawEnv (decomp/src/libgpu/sys.c, the
+ * __psyz branch) encodes that clear as an opaque GP0 0x60 TILE over the clip
+ * rect, not as a 0x02 fill, so it reaches Draw_PushPrim and never
+ * Draw_ClearImage. Left on the software path it painted the stage colour
+ * (e.g. 59,115,233) into CPU VRAM; the mesh+ui present then blitted that
+ * opaque layer over the whole mesh FBO (only exact black is discarded), which
+ * is the flat-blue gpu-solid/gpu-tex screen. It also meant the mesh FBO was
+ * never cleared between frames.
+ *
+ * An opaque monochrome rect that covers the whole drawing area replaces every
+ * pixel drawn before it in both layers, so it is exact to clear the mesh FBO
+ * to its colour and the CPU VRAM to 0 (transparent for the UI composite).
+ * Smaller tiles (UI boxes) stay on the software path. Returns words consumed,
+ * or 0 to fall through. */
+static int try_mesh_bg_fill(u_long *packets, int max_len) {
+    static unsigned s_fill_logs;
+    int code;
+    int x0;
+    int y0;
+    int w;
+    int h;
+    int ax0;
+    int ay0;
+    int ax1;
+    int ay1;
+    unsigned r8;
+    unsigned g8;
+    unsigned b8;
+    PS1_RECT rect;
+
+    if (!packets || max_len < 3) {
+        return 0;
+    }
+    code = (int)(*packets >> 24) & 0xFF;
+    if (code != 0x60 || s_mask_check) {
+        return 0;
+    }
+    if (!dw3_nx_mesh_available() || !mesh_battle_active() ||
+        dw3_nx_battle_mode_use_soft()) {
+        return 0;
+    }
+    x0 = s11((short)(packets[1] & 0xFFFF)) + s_off_x;
+    y0 = s11((short)((packets[1] >> 16) & 0xFFFF)) + s_off_y;
+    w = (short)(packets[2] & 0xFFFF);
+    h = (short)((packets[2] >> 16) & 0xFFFF);
+    if (w <= 0 || h <= 0) {
+        return 0;
+    }
+    ax0 = s_area_x0 < 0 ? 0 : s_area_x0;
+    ay0 = s_area_y0 < 0 ? 0 : s_area_y0;
+    ax1 = s_area_x1 > 1023 ? 1023 : s_area_x1;
+    ay1 = s_area_y1 > 511 ? 511 : s_area_y1;
+    if (ax1 < ax0 || ay1 < ay0) {
+        return 0;
+    }
+    if (x0 > ax0 || y0 > ay0 || x0 + w - 1 < ax1 || y0 + h - 1 < ay1) {
+        return 0;
+    }
+
+    /* Keep OT order: triangles queued before the fill are drawn under it. */
+    dw3_nx_mesh_flush((const uint16_t *)SoftwareRasterizer_GetVram());
+    rect.x = (short)ax0;
+    rect.y = (short)ay0;
+    rect.w = (short)(ax1 - ax0 + 1);
+    rect.h = (short)(ay1 - ay0 + 1);
+    software_rasterizer.clear_image(&rect, 0, 0, 0);
+    /* The GPU fill writes 15-bit colour (r >> 3); match the soft present. */
+    r8 = (unsigned)(*packets & 0xFF) >> 3;
+    g8 = (unsigned)((*packets >> 8) & 0xFF) >> 3;
+    b8 = (unsigned)((*packets >> 16) & 0xFF) >> 3;
+    dw3_nx_mesh_fill_bg(rect.x, rect.y, rect.w, rect.h, (float)r8 / 31.0f,
+                        (float)g8 / 31.0f, (float)b8 / 31.0f);
+    if (s_fill_logs < 3 || (s_fill_logs % 600u) == 0u) {
+        INFOF("nx_mesh: bg fill -> FBO rect=%d,%d %dx%d rgb555=%u,%u,%u "
+              "(n=%u)",
+              rect.x, rect.y, rect.w, rect.h, r8, g8, b8, s_fill_logs);
+    }
+    s_fill_logs++;
+    return 3;
 }
 
 /* Returns words consumed when handled on GPU, or 0 to fall back to software. */
@@ -275,6 +365,9 @@ static int try_push_mesh_poly(u_long *packets, int max_len) {
 
 void Draw_Reset(void) {
     software_rasterizer.reset();
+    s_off_x = 0;
+    s_off_y = 0;
+    s_mask_check = 0;
     s_cur_tpage = 0;
     s_dither_env = 0;
     s_cur_twin = TWIN_PACK(0xFF, 0xFF, 0x00, 0x00);
@@ -329,10 +422,13 @@ void Draw_SetOffset(int x, int y) {
     }
     software_rasterizer.offset(x, y);
     dw3_nx_mesh_set_offset(x, y);
+    s_off_x = s11((short)x);
+    s_off_y = s11((short)y);
 }
 
 void Draw_SetMask(int bit0, int bit1) {
     software_rasterizer.mask(bit0, bit1);
+    s_mask_check = bit1 ? 1 : 0;
 }
 
 void Draw_ClearImage(PS1_RECT *rect, u_char r, u_char g, u_char b) {
@@ -393,7 +489,12 @@ void Draw_FlushBuffer(void) {
 }
 
 int Draw_PushPrim(u_long *packets, int max_len) {
-    int consumed = try_push_mesh_poly(packets, max_len);
+    int consumed = try_mesh_bg_fill(packets, max_len);
+
+    if (consumed > 0) {
+        return consumed;
+    }
+    consumed = try_push_mesh_poly(packets, max_len);
 
     if (consumed > 0) {
         return consumed;

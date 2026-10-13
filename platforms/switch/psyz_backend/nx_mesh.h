@@ -46,6 +46,12 @@ void dw3_nx_mesh_set_twin(uint32_t twin);
 void dw3_nx_mesh_clear_rect(int x, int y, int w, int h, float r, float g,
                             float b);
 
+/* Background fill in GPU battle modes (DRAWENV isbg TILE): clear the rect to
+ * the colour and mark the frame as mesh content so present composites the CPU
+ * VRAM over the FBO even before the first triangle of the frame. The caller
+ * flushes pending triangles first so OT order is kept. */
+void dw3_nx_mesh_fill_bg(int x, int y, int w, int h, float r, float g, float b);
+
 /* Enqueue a triangle list (indices into v[]). Flushes automatically if full. */
 void dw3_nx_mesh_enqueue(const Dw3NxMeshVertex *v, int nverts,
                          const uint16_t *idx, int nidx,

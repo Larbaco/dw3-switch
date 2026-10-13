@@ -677,6 +677,15 @@ void dw3_nx_mesh_clear_rect(int x, int y, int w, int h, float r, float g,
     glBindFramebuffer(GL_FRAMEBUFFER, (GLuint)prev_fbo);
 }
 
+void dw3_nx_mesh_fill_bg(int x, int y, int w, int h, float r, float g,
+                         float b) {
+    if (!s_ready) {
+        return;
+    }
+    dw3_nx_mesh_clear_rect(x, y, w, h, r, g, b);
+    s_had_content = true;
+}
+
 void dw3_nx_mesh_enqueue(const Dw3NxMeshVertex *v, int nverts,
                          const uint16_t *idx, int nidx,
                          const uint16_t *cpu_vram) {
