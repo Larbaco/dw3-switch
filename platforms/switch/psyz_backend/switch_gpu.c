@@ -431,6 +431,16 @@ void Draw_SetMask(int bit0, int bit1) {
     s_mask_check = bit1 ? 1 : 0;
 }
 
+/* Only the written VRAM rect needs re-sampling: a full 1024x512 pack+upload
+ * per LoadImage made every Fight-menu frame pay ~2 MB of texture traffic. */
+static void mark_dirty_rect(const PS1_RECT *rect, int x, int y) {
+    if (!rect) {
+        dw3_nx_mesh_mark_vram_dirty();
+        return;
+    }
+    dw3_nx_mesh_mark_vram_dirty_rect(x, y, rect->w, rect->h);
+}
+
 void Draw_ClearImage(PS1_RECT *rect, u_char r, u_char g, u_char b) {
     if (mesh_battle_active()) {
         dw3_nx_mesh_flush((const uint16_t *)SoftwareRasterizer_GetVram());
@@ -438,7 +448,7 @@ void Draw_ClearImage(PS1_RECT *rect, u_char r, u_char g, u_char b) {
         dw3_nx_mesh_discard();
     }
     software_rasterizer.clear_image(rect, r, g, b);
-    dw3_nx_mesh_mark_vram_dirty();
+    mark_dirty_rect(rect, rect ? rect->x : 0, rect ? rect->y : 0);
     if (mesh_battle_active() && rect && rect->w > 0 && rect->h > 0) {
         dw3_nx_mesh_clear_rect(rect->x, rect->y, rect->w, rect->h,
                                (float)r / 255.0f, (float)g / 255.0f,
@@ -453,7 +463,7 @@ void Draw_LoadImage(PS1_RECT *rect, u_long *p) {
         dw3_nx_mesh_discard();
     }
     software_rasterizer.load_image(rect, p);
-    dw3_nx_mesh_mark_vram_dirty();
+    mark_dirty_rect(rect, rect ? rect->x : 0, rect ? rect->y : 0);
 }
 
 void Draw_StoreImage(PS1_RECT *rect, u_long *p) {
@@ -472,7 +482,7 @@ void Draw_MoveImage(PS1_RECT *rect, unsigned int x, unsigned int y) {
         dw3_nx_mesh_discard();
     }
     software_rasterizer.move_image(rect, x, y);
-    dw3_nx_mesh_mark_vram_dirty();
+    mark_dirty_rect(rect, (int)x, (int)y);
 }
 
 void Draw_ResetBuffer(void) {

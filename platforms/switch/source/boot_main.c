@@ -197,13 +197,15 @@ static void dw3_nx_vsync_pump(void) {
                 dw3_nx_mesh_debug_take_window(&mesh);
                 INFOF("mesh dbg: avail=%d tris_enq=%llu tris_flush=%llu "
                       "frames_mesh=%u frames_blit=%u soft=%u "
-                      "flush_us=%llu upload_us=%llu present_us=%llu",
+                      "flush_us=%llu upload_us=%llu uploads=%u "
+                      "upload_px=%llu present_us=%llu",
                       mesh.mesh_available,
                       (unsigned long long)mesh.tris_enqueued,
                       (unsigned long long)mesh.tris_flushed, mesh.frames_mesh,
                       mesh.frames_blit, mesh.soft_fallback,
                       (unsigned long long)mesh.flush_us,
-                      (unsigned long long)mesh.upload_us,
+                      (unsigned long long)mesh.upload_us, mesh.uploads,
+                      (unsigned long long)mesh.upload_px,
                       (unsigned long long)mesh.present_us);
 #if DW3_NX_DEBUG_OVERLAY
                 {

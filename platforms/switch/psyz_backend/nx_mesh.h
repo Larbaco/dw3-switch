@@ -37,6 +37,8 @@ void dw3_nx_mesh_discard(void);
 
 /* CPU VRAM changed (LoadImage / Clear / Move); next flush re-uploads sample. */
 void dw3_nx_mesh_mark_vram_dirty(void);
+/* Same, limited to one VRAM rect (x,y,w,h); the upload covers the union. */
+void dw3_nx_mesh_mark_vram_dirty_rect(int x, int y, int w, int h);
 
 void dw3_nx_mesh_set_offset(int x, int y);
 void dw3_nx_mesh_set_area(int x0, int y0, int x1, int y1);

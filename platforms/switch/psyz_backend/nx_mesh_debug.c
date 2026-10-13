@@ -36,6 +36,11 @@ void dw3_nx_mesh_debug_note_present(int use_mesh, uint32_t present_us) {
     }
 }
 
+void dw3_nx_mesh_debug_note_upload(uint32_t pixels) {
+    s_win.uploads++;
+    s_win.upload_px += (uint64_t)pixels;
+}
+
 void dw3_nx_mesh_debug_note_soft_fallback(void) { s_win.soft_fallback++; }
 
 void dw3_nx_mesh_debug_note_poly_code(int code, int textured) {
@@ -65,6 +70,8 @@ void dw3_nx_mesh_debug_take_window(Dw3NxMeshDebugWindow *out) {
     s_win.tris_flushed = 0;
     s_win.flush_us = 0;
     s_win.upload_us = 0;
+    s_win.uploads = 0;
+    s_win.upload_px = 0;
     s_win.present_us = 0;
     s_win.frames_mesh = 0;
     s_win.frames_blit = 0;

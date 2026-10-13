@@ -29,7 +29,13 @@ typedef enum {
 
 static bool s_ready;
 static bool s_had_content;
-static bool s_sample_dirty = true;
+/* CPU VRAM rectangle the GL sample texture has not seen yet: [x0,x1)×[y0,y1).
+ * Empty when x1 <= x0. LoadImage / ClearImage / MoveImage grow it; the next
+ * flush packs and uploads only this box instead of the full 1024×512. */
+static int s_dirty_x0;
+static int s_dirty_y0;
+static int s_dirty_x1 = DW3_NX_VRAM_W;
+static int s_dirty_y1 = DW3_NX_VRAM_H;
 static uint64_t s_prims_flushed;
 
 static int s_off_x;
@@ -316,20 +322,35 @@ static uint8_t color_5to8(unsigned c5) {
     return (uint8_t)((c5 * 255u + 15u) / 31u);
 }
 
-/* Full VRAM upload with STP bit in alpha (needed by the CLUT shader). */
+static bool sample_dirty(void) {
+    return s_dirty_x1 > s_dirty_x0 && s_dirty_y1 > s_dirty_y0;
+}
+
+static void mark_dirty_full(void) {
+    s_dirty_x0 = 0;
+    s_dirty_y0 = 0;
+    s_dirty_x1 = DW3_NX_VRAM_W;
+    s_dirty_y1 = DW3_NX_VRAM_H;
+}
+
+/* Upload the dirty box with the STP bit in alpha (needed by the CLUT shader). */
 static void upload_sample_vram(const uint16_t *cpu_vram) {
+    int x0 = s_dirty_x0;
+    int y0 = s_dirty_y0;
+    int bw = s_dirty_x1 - s_dirty_x0;
+    int bh = s_dirty_y1 - s_dirty_y0;
     int y;
     uint8_t *dst = s_pack_rgba;
 
-    if (!cpu_vram) {
+    if (!cpu_vram || bw <= 0 || bh <= 0) {
         return;
     }
-    for (y = 0; y < DW3_NX_VRAM_H; y++) {
+    for (y = 0; y < bh; y++) {
         const uint16_t *row =
-            cpu_vram + (size_t)y * (size_t)DW3_NX_VRAM_W;
+            cpu_vram + (size_t)(y0 + y) * (size_t)DW3_NX_VRAM_W + (size_t)x0;
         int x;
 
-        for (x = 0; x < DW3_NX_VRAM_W; x++) {
+        for (x = 0; x < bw; x++) {
             uint16_t v = row[x];
 
             dst[0] = color_5to8(v & 0x1Fu);
@@ -342,9 +363,13 @@ static void upload_sample_vram(const uint16_t *cpu_vram) {
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, s_sample_tex);
     glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
-    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, DW3_NX_VRAM_W, DW3_NX_VRAM_H,
-                    GL_RGBA, GL_UNSIGNED_BYTE, s_pack_rgba);
-    s_sample_dirty = false;
+    glTexSubImage2D(GL_TEXTURE_2D, 0, x0, y0, bw, bh, GL_RGBA,
+                    GL_UNSIGNED_BYTE, s_pack_rgba);
+    dw3_nx_mesh_debug_note_upload((uint32_t)bw * (uint32_t)bh);
+    s_dirty_x0 = 0;
+    s_dirty_y0 = 0;
+    s_dirty_x1 = 0;
+    s_dirty_y1 = 0;
 }
 
 static void set_blend(MeshBlend mode) {
@@ -432,7 +457,7 @@ static void flush_locked(const uint16_t *cpu_vram) {
     glGetIntegerv(GL_FRAMEBUFFER_BINDING, &prev_fbo);
     /* Full 1024×512 RGBA pack+upload dominates OLED when done every flush.
      * Fight-menu idle rarely touches VRAM; reuse the GL sample until dirty. */
-    if (s_sample_dirty) {
+    if (sample_dirty()) {
         upload_sample_vram(cpu_vram);
 #if DW3_NX_DEBUG_MESH
         t1 = mesh_now_us();
@@ -596,7 +621,7 @@ bool dw3_nx_mesh_init(void) {
     s_n_vtx = 0;
     s_n_idx = 0;
     s_had_content = false;
-    s_sample_dirty = true;
+    mark_dirty_full();
     s_ready = true;
     fprintf(stderr, "nx_mesh: GLES3 mesh FBO ready\n");
     return true;
@@ -614,7 +639,37 @@ void dw3_nx_mesh_discard(void) {
     s_had_content = false;
 }
 
-void dw3_nx_mesh_mark_vram_dirty(void) { s_sample_dirty = true; }
+void dw3_nx_mesh_mark_vram_dirty(void) { mark_dirty_full(); }
+
+void dw3_nx_mesh_mark_vram_dirty_rect(int x, int y, int w, int h) {
+    if (w <= 0 || h <= 0) {
+        return;
+    }
+    /* PS1 transfers wrap at the VRAM edge; keep that case conservative. */
+    if (x < 0 || y < 0 || x + w > DW3_NX_VRAM_W || y + h > DW3_NX_VRAM_H) {
+        mark_dirty_full();
+        return;
+    }
+    if (!sample_dirty()) {
+        s_dirty_x0 = x;
+        s_dirty_y0 = y;
+        s_dirty_x1 = x + w;
+        s_dirty_y1 = y + h;
+        return;
+    }
+    if (x < s_dirty_x0) {
+        s_dirty_x0 = x;
+    }
+    if (y < s_dirty_y0) {
+        s_dirty_y0 = y;
+    }
+    if (x + w > s_dirty_x1) {
+        s_dirty_x1 = x + w;
+    }
+    if (y + h > s_dirty_y1) {
+        s_dirty_y1 = y + h;
+    }
+}
 
 void dw3_nx_mesh_set_offset(int x, int y) {
     x %= DW3_NX_VRAM_W;
