@@ -17,10 +17,11 @@ console.
 ## Status
 
 Checkboxes: [docs/ROADMAP.md](docs/ROADMAP.md). Phase 3 gate:
-[docs/P3_GATE.md](docs/P3_GATE.md). `main` is ahead of the latest tagged
-preview.20: PR #111 serializes shared STR video/XA file reads. Movie frame
-loss and rate are resolved in Ryubing; OLED validation of that fix remains
-pending. See [movie pacing diagnostics](docs/P3.7_MOVIE_PACING_DIAGNOSTICS.md).
+[docs/P3_GATE.md](docs/P3_GATE.md). The latest tagged preview is
+preview.21, which includes the STR file-bridge race fix (#111). The OLED
+confirmed about 15 fps and correct XA audio up to frame 1110; the rest of
+the opening and image quality remain unmeasured on hardware. See
+[movie pacing diagnostics](docs/P3.7_MOVIE_PACING_DIAGNOSTICS.md).
 
 | Phase | Summary |
 |---|---|
@@ -33,11 +34,12 @@ Layering: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). OLED network notes:
 [docs/SWITCH_OLED_NETWORK.md](docs/SWITCH_OLED_NETWORK.md) (FTP and preview 7
 NXLink transfer/launch/log stream verified).
 
-### On an OLED, updated 2026-10-13 (preview.20 test: 2026-10-12)
+### On an OLED, updated 2026-10-13 (preview.21 test: 2026-10-13)
 
 Title, field, and battle run. The main menu picture looks right. The opening
-video still has errors or slowdown (owner report on preview.20; image/audio
-quality and performance are not validated).
+video now runs at about 15 fps on preview.21 with correct XA audio up to frame
+1110, where the owner pressed Start. Image quality and the final part of the
+movie are not validated on hardware.
 
 Movie audio plays. STR files are restored from the Mode2 BIN in the parent
 of `us/`.
@@ -240,15 +242,13 @@ The release tag becomes the NACP version (compressed for hbmenu) and the
 `dw3: version=` boot line. No disc data.
 
 The current standard preview is
-[v0.6.5-preview.20](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.20),
-cut from `ecefe18` after #106 with the title Port options shell (#100) and
-empty `StGetNext` scan cache (#106). The menu entry/return is validated on
-PC and OLED. The owner still reported movie errors or slowdown in that
-preview; it does **not** include the STR read-race fix merged in #111.
-Independent Ryubing runs of that fix held about 15 fps with zero skipped
-frame numbers; OLED movie quality, audible synchronization and performance
-remain pending. See [movie diagnostics](docs/P3.7_MOVIE_PACING_DIAGNOSTICS.md)
-and [preview.20 checkpoint](docs/RELEASE_PREVIEW20.md). Its switches are
+[v0.6.5-preview.21](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.21),
+cut from `b597c67` after #111 (STR file-bridge race fix) and #112 (docs). It
+keeps the title Port options shell (#100) and the empty `StGetNext` scan
+cache (#106). On the OLED the opening movie held about 15 fps (preview.20:
+6.75 fps) with correct XA audio up to frame 1110. See
+[preview.21 checkpoint](docs/RELEASE_PREVIEW21.md) and
+[movie diagnostics](docs/P3.7_MOVIE_PACING_DIAGNOSTICS.md). Its switches are
 stubs with no gameplay effects or persistence. GPU diagnostics stay
 disabled and software battle stays the default. Preview.19 was a separate
 PR #89 diagnostic cut, not the standard playable baseline.
