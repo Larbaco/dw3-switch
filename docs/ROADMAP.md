@@ -300,8 +300,12 @@ audio, movies.
   it whole with zero drops). Image quality was not separately assessed.
   **Residual check (2026-10-13):** the later report that video changes work
   well but remain incomplete names no specific defect, so no code fix can be
-  tied to it yet. Full-playback and image-quality evidence remain open; the
-  precise OLED retest is in
+  tied to it yet. A private Ryubing 1.3.3 run of the CI NRO with #111/#114
+  advanced through `DecDCTout` #1800, showed recognizable movie content and
+  the title framebuffer transition, at about 15 fps. Dummy audio and an
+  emulator display do not establish A/V sync or OLED quality. Full-playback
+  start-to-finish and image-quality evidence on hardware remain open; the
+  exact OLED retest is in
   [pacing diagnostics](P3.7_MOVIE_PACING_DIAGNOSTICS.md). Do not treat the
   unrelated #114 GPU battle change as movie validation.
   Done when: the opening movies play with audio and can be skipped. The
