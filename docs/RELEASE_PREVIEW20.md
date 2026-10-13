@@ -29,3 +29,38 @@ instrumentation from the separate #89 branch is absent, and console
 clocks are untouched. Switch menu navigation and OLED movie/performance
 validation remain pending at publication; no roadmap hardware gate is
 closed by this build.
+
+## Post-release OLED checkpoint (2026-10-12)
+
+The published nxlink binary was transferred and launched through
+NetLoader. The session connected nxlink stdio (`fd=3`, socket init success),
+initialized EGL at 1280x720 handheld and audren at 44100 Hz stereo, and
+reported pad kind `0x73`. The physical controller model was not recorded.
+
+Owner-confirmed title test: Plus → D-pad Port options → B opens the shell
+with both options OFF; X closes back to the middle title row. Confirmation:
+“Sim, aparece OFF e volta corretamente”. P9.2 is complete with the earlier
+PC TTB checkpoint; the stub effects/persistence and Phase 9 gate remain open.
+
+STR/MDEC frame-ready counters progressed through 1–30 and later 60–120;
+XA sector decoding was active. Start skipped back to the title twice.
+These are execution observations, not movie quality or synchronization
+passes. Asked about the opening video, the owner reported:
+“Ainda tem erros ou lentidão”. The report does not identify whether image,
+audio, pacing or multiple areas remain affected. Movie quality remains open;
+a regression and a quantified performance gain from #106 are not established.
+
+Applet exit logged `flat saves flushed`; the nxlink process exited with code 0.
+No fresh-save/relaunch reload test was performed, so P5.3 remains open.
+Local evidence: `/tmp/dw3-preview20-test/nxlink.log` (532 lines); raw logs
+and owner game imagery are not repository assets. Publication metadata
+and binary hashes above remain unchanged.
+
+## Main after this release (2026-10-13)
+
+PR #111 merged the shared STR video/XA read-race fix after this tag.
+Independent Ryubing validation resolved frame loss and restored the authored
+15 fps rate, including complete playback, replay and Start skip. Preview.20
+does not contain that fix; no new release or OLED test of it is recorded here.
+Image quality, audible synchronization and console performance remain open.
+See [movie pacing diagnostics](P3.7_MOVIE_PACING_DIAGNOSTICS.md).
