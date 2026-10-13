@@ -290,12 +290,17 @@ audio, movies.
   see `docs/P3_GPU_GLITCHES.md`). **R1 closed (2026-10-10):** title
   shred was LP64 `TimBlock.pixels` alignment (patch `0038`); owner
   confirmed the window after #29. Field sprite polish still open.
-  **Resolved in Ryubing; OLED validation pending (2026-10-12):** the movie was dropping ~37% of its STR
-  frames to a data race on the file bridge, not playing slowly; the bridge
-  now takes `Psyz_AudioLock` and the opening holds its authored 15 fps in
-  Ryubing (`docs/P3.7_MOVIE_PACING_DIAGNOSTICS.md`). Image quality, audible
-  synchronization and console performance have not been measured by this fix.
-  Done when: the opening movies play with audio and can be skipped.
+  **Fixed; OLED-validated on preview.21 (2026-10-13):** the movie was dropping
+  ~37% of its STR frames to a data race on the file bridge, not playing
+  slowly. The bridge now takes `Psyz_AudioLock` (#111). On the OLED the
+  opening ran at 14.994-15.006 fps over 18 steady windows (preview.20:
+  6.75 fps), with `fc_skipped=0 restarts=0` on every debug line, and the
+  owner heard correct XA audio. The owner pressed Start at frame 1110 of
+  about 1776, so the last ~38% was not played on hardware (Ryubing played
+  it whole with zero drops). Image quality was not separately assessed.
+  Done when: the opening movies play with audio and can be skipped. The
+  OLED meets the audio and skip part; see
+  [pacing diagnostics](docs/P3.7_MOVIE_PACING_DIAGNOSTICS.md).
 - [x] **P3.8 Stage sweep.** `STAGSLCT` linked (`dw3_p38_stagslct`); patch
   `0030` + `tools/stage_sweep.py`. **Done-when evidence**
   (`docs/P3.8_STAGES.md`, `READY_FOR_MAIN_ROADMAP_SYNC: P3.8`): batches
