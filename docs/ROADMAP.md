@@ -501,6 +501,14 @@ speed.
   battle escape (`DW3_NX_MESH_SOFT_BATTLE`, default ON) restores software
   `RasterTriangle` + opaque blit under the FIGHTSTG gate until a dump
   shows `mesh_nonblack > 0`. See [P5.2_BATTLE_GPU.md](P5.2_BATTLE_GPU.md).
+  **Flat-blue GPU battle root cause (2026-10-13).** PSY-Z `SetDrawEnv`
+  encodes FIGHTSTG's `setBgColor` clear as an opaque `0x60` TILE; it went
+  to the software rasterizer and the mesh+ui composite blitted that
+  stage-blue CPU VRAM over the (correct) mesh FBO. Fix routes a full-area
+  opaque TILE to the FBO and clears CPU VRAM to 0; sample uploads are now
+  dirty-rect only. Ryubing `gpu-tex` matches soft; OLED confirmation and
+  the battle 60 Hz proof are pending, soft stays default. See
+  [P5.2_BATTLE_GPU.md](P5.2_BATTLE_GPU.md).
   **Beyond approach A (ideas).** Soft battle restored the Fight picture but
   battle still feels soft-fill limited. Do not blind-re-enable the full
   textured mesh path. Alternatives (hybrid untextured GPU, atlas, batched
