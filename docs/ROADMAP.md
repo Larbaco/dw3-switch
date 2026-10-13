@@ -839,10 +839,12 @@ PS1 game, with vanilla-safe defaults and persistence on owner storage.
   Load Game plaques with navy faces, blue bevels, amber rails, and the original
   pixel font. New Game is initially selected. Options opens the existing P9.2
   shell; Load Game maps to vanilla Continue/`STGMCARD`. Switch behavior is
-  unchanged. Build and patch application pass. A fresh live capture and input
-  validation are still pending; the earlier forced 1280×720 Xvfb resize was
-  torn/clipped and is not accepted as evidence. See
-  [TITLE_MENU_DESIGN.md](TITLE_MENU_DESIGN.md).
+  unchanged. Build and patch application pass. US-only runtime validation on
+  Xvfb/lavapipe captured New Game, Options, and Load Game selection states at
+  3× internal resolution (960×720) in a 1280×960 window; Up/Down moved focus
+  without confirming a choice. Captures are retained locally under
+  `evidence/pr121-state-*.png`. A resized 1280×720 output window remains
+  unverified. See [TITLE_MENU_DESIGN.md](TITLE_MENU_DESIGN.md).
   Done when: the screen is reachable from the main menu and returns
   cleanly to it (PC + Switch; TTB print on PC).
 - [ ] **P9.3 Toggle registry.** Maintain a registry of non-native features

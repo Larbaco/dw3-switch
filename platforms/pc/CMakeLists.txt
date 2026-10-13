@@ -14,6 +14,7 @@ add_subdirectory(${CMAKE_SOURCE_DIR}/../../port ${CMAKE_BINARY_DIR}/port)
 # game NRO does not link those PSY-Z capture symbols).
 target_compile_definitions(dw3_port_options PRIVATE DW3_PC_HOST=1)
 target_compile_definitions(dw3_engine PRIVATE DW3_PC_HOST=1)
+target_compile_definitions(dw3_title PRIVATE DW3_PC_HOST=1)
 
 add_executable(dw3-pc
   src/main.c

@@ -6,7 +6,7 @@
 
 #include <libgpu.h>
 
-enum { TITLE_MENU_X = 78, TITLE_MENU_W = 164, TITLE_MENU_H = 14 };
+enum { TITLE_MENU_W = 164, TITLE_MENU_H = 14 };
 
 typedef struct TitleColor {
     int r;
@@ -136,21 +136,21 @@ void dw3_port_title_options_draw(int layer_id, int x, int y, int selected) {
     for (row = 0; row < 3; row++) {
         int row_y = y + (row - 1) * 16;
         title_draw_glyph_pass(&prim, ot, style, labels[row],
-                              TITLE_MENU_X, row_y + 3, PALETTE_WHITE);
+                              x, row_y - 1, PALETTE_WHITE);
     }
     for (row = 0; row < 3; row++) {
         int row_y = y + (row - 1) * 16;
         title_draw_glyph_pass(&prim, ot, style, labels[row],
-                              TITLE_MENU_X + 1, row_y + 4,
+                              x + 1, row_y,
                               PALETTE_DARK_BLUE);
     }
 
-    /* Added last in OT order so each opaque plaque sits under text/sprites. */
+    /* The OT draws newest entries first; adding plaques last keeps the
+     * labels in front of their opaque faces. */
     tiles = (TILE *)prim.any;
     for (row = 0; row < 3; row++) {
         int row_y = y + (row - 1) * 16;
-        tiles = title_draw_plaque(tiles, ot, TITLE_MENU_X, row_y,
-                                  selected == row);
+        tiles = title_draw_plaque(tiles, ot, x, row_y, selected == row);
     }
     GFX.funcs.setPrim(tiles);
 }

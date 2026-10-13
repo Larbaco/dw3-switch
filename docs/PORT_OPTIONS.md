@@ -149,17 +149,20 @@ from PS1 primitives at 320×240; the #117 concept atlas/mockup are docs-only
 references and are not packaged as runtime art. This is PC-gated. Switch keeps
 its existing Start / Port options / Continue row and initial Continue
 selection. The previous PC row design and captures remain documented above;
-this opt-in experimental visual variant has not yet passed live capture/input
-acceptance.
+this PC-only variant passed live title capture and navigation on the US
+runtime under Xvfb/lavapipe at 3× internal resolution (960×720) in a
+1280×960 window. New Game, Options, and Load Game captures are retained
+locally under `evidence/pr121-state-*.png`; no choice was confirmed. Output in
+a 1280×720 window remains unverified.
 
 The labels preserve the original flow: New Game uses vanilla choice 1;
 Options opens the P9.2 shell and its current no-op stubs; Load Game maps to
 vanilla Continue (choice 2) and the original `STGMCARD` flow. It does not
 implement another save loader. PC defaults focus to New Game so it matches the
-concept. The build and patch application check passed. A live 1280×720 Xvfb
-capture was attempted with `DW3_PC_INTERNAL_RES=3`, but resizing the available
-virtual display caused torn/clipped output before the menu could be accepted
-visually. A clean screenshot and live navigation pass remain outstanding.
+concept. The build and patch application check passed. A clean Xvfb capture
+and live navigation pass used the US runtime and `DW3_PC_INTERNAL_RES=3`; the
+960×720 internal image was presented in a 1280×960 window. The earlier
+1280×720 resize attempt produced torn/clipped output and remains unverified.
 
 ## PC bring-up (P9.2 MVP shortcut)
 

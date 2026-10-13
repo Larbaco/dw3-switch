@@ -60,9 +60,10 @@ and memory-card screen; **Options** opens the existing P9.2 shell, whose
 experimental toggles remain no-op stubs. The PC menu starts on New Game; the
 Switch initial selection and row styling are unchanged.
 
-Build and Xvfb validation for this pass confirmed compilation and the 3× GPU
-configuration, but the available 1280×720 virtual display produced a torn,
-vertically clipped live capture during resizing. Visual acceptance of the
-menu's final contrast, text fit, and selection feedback remains open pending a
-clean screenshot. See [PORT_OPTIONS.md](PORT_OPTIONS.md) and
-[ROADMAP.md](ROADMAP.md).
+Build and Xvfb/lavapipe validation confirmed the three legible labels and
+selection feedback at 3× internal resolution (960×720), using a 1280×960
+window and the US runtime. Up/Down moved selection among all three rows without
+confirming. The captures are retained locally under
+`evidence/pr121-state-*.png`. A 1280×720 output-window capture remains open;
+an earlier forced resize was torn and clipped. See [PORT_OPTIONS.md](PORT_OPTIONS.md)
+and [ROADMAP.md](ROADMAP.md).
