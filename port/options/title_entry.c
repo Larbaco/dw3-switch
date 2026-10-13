@@ -24,9 +24,10 @@ static int title_glyph_code(char c) {
 #define SCALE_DEN 4
 #define SPACE_ADV 6
 
-/* Modulation (128 is neutral) for the dim, unselected state. The original
- * sprites use a dark-blue CLUT row for the same purpose. */
-#define FILL_DIM 128
+/* Modulation (128 is neutral) for the dim, unselected state. The font's
+ * dark-blue CLUT row loses the letter counters at this size, so the dim
+ * state is the same blue row at reduced brightness. */
+#define FILL_DIM 80
 #define FILL_LIT 128
 
 static int scaled(int v) {
@@ -66,7 +67,7 @@ void dw3_port_title_options_draw(int layer_id, int x, int y, int selected) {
     int panel_x = x;
     int text_x;
     int text_y;
-    int fill = selected ? PALETTE_BLUE : PALETTE_DARK_BLUE;
+    int fill = PALETTE_BLUE;
     int fill_rgb = selected ? FILL_LIT : FILL_DIM;
 
     /* Title has already loaded FONT. Reuse its proportional glyph advances
