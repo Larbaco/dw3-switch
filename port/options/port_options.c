@@ -15,20 +15,21 @@
 #endif
 #endif
 
-enum { DW3_PORT_OPT_STUBS = 2 };
+enum { DW3_PORT_OPT_COUNT = 3, DW3_PORT_OPT_RESTART = 2 };
 
 typedef struct Dw3PortOptStub {
     const char *label;
-    int value; /* 0/1; document-only / safe no-op until P9.3 */
+    int value; /* 0/1; defaults preserve stock behaviour */
 } Dw3PortOptStub;
 
 static int g_open;
 static int g_cursor;
 static int g_open_frames;
 static int g_logged_open;
-static Dw3PortOptStub g_stubs[DW3_PORT_OPT_STUBS] = {
+static Dw3PortOptStub g_stubs[DW3_PORT_OPT_COUNT] = {
     {"Widescreen (stub)", 0},
     {"Fast-forward (stub)", 0},
+    {"Restart hotkey", 0},
 };
 
 #ifdef DW3_PORT_OPTIONS_TEST
@@ -80,29 +81,33 @@ int dw3_port_options_is_open(void) {
     return g_open != 0;
 }
 
-int dw3_port_options_stub_count(void) {
-    return DW3_PORT_OPT_STUBS;
+int dw3_port_options_count(void) {
+    return DW3_PORT_OPT_COUNT;
 }
 
-const char *dw3_port_options_stub_label(int index) {
-    if (index < 0 || index >= DW3_PORT_OPT_STUBS) {
+const char *dw3_port_options_label(int index) {
+    if (index < 0 || index >= DW3_PORT_OPT_COUNT) {
         return NULL;
     }
     return g_stubs[index].label;
 }
 
-int dw3_port_options_stub_value(int index) {
-    if (index < 0 || index >= DW3_PORT_OPT_STUBS) {
+int dw3_port_options_value(int index) {
+    if (index < 0 || index >= DW3_PORT_OPT_COUNT) {
         return 0;
     }
     return g_stubs[index].value != 0;
 }
 
-void dw3_port_options_stub_set(int index, int value) {
-    if (index < 0 || index >= DW3_PORT_OPT_STUBS) {
+void dw3_port_options_set(int index, int value) {
+    if (index < 0 || index >= DW3_PORT_OPT_COUNT) {
         return;
     }
     g_stubs[index].value = value != 0;
+}
+
+int dw3_port_options_restart_enabled(void) {
+    return g_stubs[DW3_PORT_OPT_RESTART].value != 0;
 }
 
 void dw3_port_options_tick(void) {
@@ -128,15 +133,21 @@ void dw3_port_options_tick(void) {
         }
     }
     if (po_pressed(PO_BIT_DOWN)) {
-        if (g_cursor < DW3_PORT_OPT_STUBS - 1) {
+        if (g_cursor < DW3_PORT_OPT_COUNT - 1) {
             g_cursor++;
         }
     }
     if (po_pressed(PO_BIT_CROSS) || po_pressed(PO_BIT_CIRCLE)) {
         int v = g_stubs[g_cursor].value ? 0 : 1;
         g_stubs[g_cursor].value = v;
-        fprintf(stderr, "dw3-port-options: stub[%d] %s -> %d (no-op)\n",
-                g_cursor, g_stubs[g_cursor].label, v);
+        if (g_cursor == DW3_PORT_OPT_RESTART) {
+            fprintf(stderr, "dw3-port-options: restart hotkey %s\n",
+                    v ? "enabled" : "disabled");
+        } else {
+            fprintf(stderr,
+                    "dw3-port-options: stub[%d] %s -> %d (no-op)\n",
+                    g_cursor, g_stubs[g_cursor].label, v);
+        }
         fflush(stderr);
     }
 #else
@@ -150,15 +161,21 @@ void dw3_port_options_tick(void) {
         }
     }
     if (po_pressed(PAD_DOWN) || PAD_REPEATED(PAD_DOWN)) {
-        if (g_cursor < DW3_PORT_OPT_STUBS - 1) {
+        if (g_cursor < DW3_PORT_OPT_COUNT - 1) {
             g_cursor++;
         }
     }
     if (po_pressed(PAD_CROSS) || po_pressed(PAD_CIRCLE)) {
         int v = g_stubs[g_cursor].value ? 0 : 1;
         g_stubs[g_cursor].value = v;
-        fprintf(stderr, "dw3-port-options: stub[%d] %s -> %d (no-op)\n",
-                g_cursor, g_stubs[g_cursor].label, v);
+        if (g_cursor == DW3_PORT_OPT_RESTART) {
+            fprintf(stderr, "dw3-port-options: restart hotkey %s\n",
+                    v ? "enabled" : "disabled");
+        } else {
+            fprintf(stderr,
+                    "dw3-port-options: stub[%d] %s -> %d (no-op)\n",
+                    g_cursor, g_stubs[g_cursor].label, v);
+        }
         fflush(stderr);
     }
 #endif
@@ -219,10 +236,9 @@ void dw3_port_options_draw(void) {
     short ox = 0;
     short oy = 0;
     DISPENV env;
-    char line1[48];
-    char line2[48];
-    char line3[48];
-    const char *lines[6];
+    char lines_buf[DW3_PORT_OPT_COUNT][48];
+    char back_line[48];
+    const char *lines[7];
     int n = 0;
     int i;
 
@@ -235,16 +251,17 @@ void dw3_port_options_draw(void) {
 
     lines[n++] = "Port options";
     lines[n++] = "------------";
-    for (i = 0; i < DW3_PORT_OPT_STUBS && n < 5; i++) {
-        char *buf = (i == 0) ? line1 : line2;
-        snprintf(buf, 48, "%c %s: %s", (i == g_cursor) ? '>' : ' ',
+    for (i = 0; i < DW3_PORT_OPT_COUNT && n < 6; i++) {
+        char *buf = lines_buf[i];
+        snprintf(buf, sizeof(lines_buf[i]), "%c %s: %s",
+                 (i == g_cursor) ? '>' : ' ',
                  g_stubs[i].label, g_stubs[i].value ? "ON" : "OFF");
         lines[n++] = buf;
     }
-    snprintf(line3, sizeof(line3), "Triangle (S): Back");
-    lines[n++] = line3;
+    snprintf(back_line, sizeof(back_line), "Triangle (S): Back");
+    lines[n++] = back_line;
 
-    dw3_port_text_draw_panel((int)ox + 32, (int)oy + 40, 256, 72, lines, n);
+    dw3_port_text_draw_panel((int)ox + 32, (int)oy + 32, 256, 88, lines, n);
 #if defined(DW3_PC_HOST)
     dw3_port_options_maybe_fb_dump();
 #endif

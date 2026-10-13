@@ -76,6 +76,13 @@ title label in `port/options/`. It uses the original title cursor and
 retains New Game/Continue choices. Hosts supply input/present only;
 neither the Switch diagnostic HUD nor a host-specific menu owns this UI.
 
+P6.9 restart policy lives in `port/options/restart.c`; it checks the shared
+PS1 logical pad state, flushes P5.3 saves, and only then returns a restart
+request. The game loop patch `0046*` resets the game save-state RAM, clears
+the current mode task and overlay cache, and lets the existing `dw3_game_main`
+loop create the title mode again. It does not rerun the host or PSY-Z
+initialization path. The Switch host stays limited to input and presentation.
+
 ## Non-goals (for now)
 
 - Byte-identical matching builds on Switch

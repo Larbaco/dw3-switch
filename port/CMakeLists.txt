@@ -239,6 +239,7 @@ target_compile_options(dw3_title PRIVATE ${_DW3_GAME_OPTS})
 # P9.2 port options shell + shared 8×8 VRAM text (title Config/Extra).
 add_library(dw3_port_options OBJECT
   "${CMAKE_CURRENT_SOURCE_DIR}/options/port_options.c"
+  "${CMAKE_CURRENT_SOURCE_DIR}/options/restart.c"
   "${CMAKE_CURRENT_SOURCE_DIR}/options/title_entry.c"
   "${CMAKE_CURRENT_SOURCE_DIR}/ui/port_text.c"
 )

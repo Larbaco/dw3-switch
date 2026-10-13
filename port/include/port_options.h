@@ -19,11 +19,14 @@ void dw3_port_options_draw(void);
 /* One-line hint while NG/Continue are shown and shell is closed. */
 void dw3_port_options_draw_hint(void);
 
-/* Test / stub registry (document-only until P9.3 wires real flags). */
-int dw3_port_options_stub_count(void);
-const char *dw3_port_options_stub_label(int index);
-int dw3_port_options_stub_value(int index);
-void dw3_port_options_stub_set(int index, int value);
+/* Session-only registry; unavailable features remain safe no-op stubs. */
+int dw3_port_options_count(void);
+const char *dw3_port_options_label(int index);
+int dw3_port_options_value(int index);
+void dw3_port_options_set(int index, int value);
+
+/* Restart is opt-in and session-only until P9.4 adds owner-storage config. */
+int dw3_port_options_restart_enabled(void);
 
 #ifdef __cplusplus
 }
