@@ -298,6 +298,12 @@ audio, movies.
   owner heard correct XA audio. The owner pressed Start at frame 1110 of
   about 1776, so the last ~38% was not played on hardware (Ryubing played
   it whole with zero drops). Image quality was not separately assessed.
+  **Residual check (2026-10-13):** the later report that video changes work
+  well but remain incomplete names no specific defect, so no code fix can be
+  tied to it yet. Full-playback and image-quality evidence remain open; the
+  precise OLED retest is in
+  [pacing diagnostics](P3.7_MOVIE_PACING_DIAGNOSTICS.md). Do not treat the
+  unrelated #114 GPU battle change as movie validation.
   Done when: the opening movies play with audio and can be skipped. The
   OLED meets the audio and skip part; see
   [pacing diagnostics](P3.7_MOVIE_PACING_DIAGNOSTICS.md).
