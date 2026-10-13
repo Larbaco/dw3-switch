@@ -2,10 +2,13 @@
 
 This note records the selected visual direction for the PC title-menu pass.
 The PC SDL3 GPU renderer uses a transparent 960×720 RGBA presentation overlay
-over the original title image. It preserves the game's logo, background, and
-copyright. SDL3 GL retains the earlier 320×240 PS1-primitive fallback. The
-concept PNGs below remain reference art and are not loaded by the game. Switch
-retains its existing title-row presentation.
+over the original title image. The animated background and original pixel-art
+logo remain game sprites; on the GPU path, the logo sprites and glint are drawn
+at 3× internal resolution and uniformly transformed to make room for the menu.
+The overlay replaces the vanilla menu and footer sprites. SDL3 GL retains the
+existing PS1-primitive fallback, and Switch retains its existing title-row
+presentation. The concept PNGs below are references and are not loaded by the
+game.
 
 ## Menu labels and order
 
@@ -59,23 +62,31 @@ brand mark over the original logo.
 The atlas and mockup are concept images. The game uses a compact authored
 overlay atlas rather than cropping these images: 500×54 navy plaques, layered
 steel-blue bevels, clipped corner clamps with square amber fasteners, internal
-rails, and readable centered labels. The three plaque states are packed into
-one 960×2160 RGBA texture and selected by UV range. A six-vertex quad presents
-the active 960×720 state in one GPU draw. Idle rails stay subdued; selection
-lights rails and fasteners without shifting text or geometry. The title patch
-keeps vanilla New Game and Continue choice values: **Load Game** enters the
-original Continue flow and memory-card screen; **Options** opens the existing
-P9.2 shell, whose experimental toggles remain no-op stubs. The PC menu starts
-on New Game; Switch selection and row styling are unchanged.
+rails, and readable centered labels. The Press Start prompt and three menu
+states are packed into one 960×2880 RGBA texture and selected by UV range. A
+six-vertex quad presents one 960×720 state in one GPU draw. Idle rails stay
+subdued; selection lights rails and fasteners without shifting text or
+geometry. The menu overlay remains active until the options shell opens or the
+title flow fades out. The title patch keeps vanilla New Game and Continue
+choice values: **Load Game** enters the original Continue flow and
+memory-card screen; **Options** opens the existing P9.2 shell, whose
+experimental toggles remain no-op stubs. The PC menu starts on New Game;
+Switch selection and row styling are unchanged.
 
-Build and Xvfb/Vulkan validation with the US runtime confirmed New Game and
-Options selection and shell open in an exact 1280×720 window at 3× internal
-resolution (960×720). New Game and Options show the full title image; the shell
-capture confirms the plaques hide while P9.2 is open. Automated shell return
-and Load Game selection were not confirmed. Captures are
-under `/tmp/dw3-pc-title-menu-redo/evidence-redesign/`:
-`hires-final-new-game.png`, `hires-verify-options.png`, and
-`hires-verify-options-shell.png`. Load Game selection capture is still
-outstanding. Only Linux/Vulkan was run; Windows/DXIL and macOS/Metal runtime
-checks remain open. See [PORT_OPTIONS.md](PORT_OPTIONS.md) and
-[ROADMAP.md](ROADMAP.md).
+The original logo art is not redrawn or resampled into a new font. Its game
+sprites and glint receive a uniform 21/25 SpriteDrawer scale and matching
+pivot on the GPU path; they are rasterized through the existing 3× internal
+renderer. No new logo filter is applied. The original background code is not
+modified. The GPU overlay replaces the original menu and footer sprites with
+the native-resolution labels and three-line credits.
+
+Linux/Vulkan build and US-runtime validation used an Xvfb display with the
+window set to 1280×720 and internal content at 960×720. The final menu frame
+is saved at `/tmp/dw3-pc-title-menu-redo/evidence-redesign/final/postbuild-menu.png`;
+the matching run log is `postbuild-capture.log`. Earlier captures show the New Game
+state and P9.2 shell. The shell hides the menu overlay; automated shell return
+and Load Game selection were not confirmed. The paired frames did not show a
+measurable background-pixel change during the short capture interval, so this
+validates composition and source preservation, not visible motion. Only
+Linux/Vulkan was run; Windows/DXIL and macOS/Metal runtime checks remain open.
+See [PORT_OPTIONS.md](PORT_OPTIONS.md) and [ROADMAP.md](ROADMAP.md).

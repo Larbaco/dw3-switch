@@ -18,6 +18,7 @@ target_compile_definitions(dw3_title PRIVATE DW3_PC_HOST=1)
 
 if(PSYZ_RENDERER STREQUAL "sdl3_gpu")
   target_compile_definitions(dw3_title PRIVATE DW3_PC_SDL3_GPU=1)
+  target_compile_definitions(dw3_port_options PRIVATE DW3_PC_SDL3_GPU=1)
   set(_DW3_PC_TITLE_OVERLAY_SOURCES
     src/title_menu_overlay.c
     src/title_overlay_art.c

@@ -37,8 +37,8 @@
 #define OVERLAY_SHADER_FORMAT SDL_GPU_SHADERFORMAT_SPIRV
 #endif
 
-enum { CANVAS_W = 960, CANVAS_H = 720, ROW_COUNT = 3 };
-#define ART_TEXTURE_H (CANVAS_H * ROW_COUNT)
+enum { CANVAS_W = 960, CANVAS_H = 720, STATE_COUNT = 4 };
+#define ART_TEXTURE_H (CANVAS_H * STATE_COUNT)
 
 typedef struct OverlayVertex {
     float position[2];
@@ -52,7 +52,7 @@ static SDL_GPUBuffer *g_vertices;
 static SDL_GPUTexture *g_texture;
 static SDL_GPUSampler *g_sampler;
 static int g_selection;
-static unsigned g_active_frames;
+static int g_overlay_active;
 
 static SDL_GPUShader *create_shader(const unsigned char *code, unsigned len,
                                     SDL_GPUShaderStage stage,
@@ -84,17 +84,18 @@ static void release_gpu_resources(void) {
     g_sampler = NULL;
     g_window = NULL;
     g_device = NULL;
-    g_active_frames = 0;
+    g_overlay_active = 0;
 }
 
 static int upload_art_and_quad(void) {
     const size_t canvas_bytes = (size_t)CANVAS_W * CANVAS_H * 4;
-    const size_t texture_bytes = canvas_bytes * ROW_COUNT;
+    const size_t texture_bytes = canvas_bytes * STATE_COUNT;
     uint8_t *pixels = (uint8_t *)malloc(texture_bytes);
     if (!pixels) return -1;
-    for (int row = 0; row < ROW_COUNT; ++row) {
-        dw3_pc_title_overlay_art(pixels + (size_t)row * canvas_bytes,
-                                 CANVAS_W * 4, row);
+    for (int state = 0; state < STATE_COUNT; ++state) {
+        const int selected = state == 0 ? -1 : state - 1;
+        dw3_pc_title_overlay_art(pixels + (size_t)state * canvas_bytes,
+                                 CANVAS_W * 4, selected);
     }
 
     const SDL_GPUTextureCreateInfo texture_info = {
@@ -122,8 +123,8 @@ static int upload_art_and_quad(void) {
         return -1;
     }
 
-    OverlayVertex quads[ROW_COUNT * 6];
-    for (int row = 0; row < ROW_COUNT; ++row) {
+    OverlayVertex quads[STATE_COUNT * 6];
+    for (int row = 0; row < STATE_COUNT; ++row) {
         const float u0 = 0.5f / (float)CANVAS_W;
         const float u1 = ((float)CANVAS_W - 0.5f) / (float)CANVAS_W;
         const float v0 = ((float)(row * CANVAS_H) + 0.5f) /
@@ -259,7 +260,7 @@ static int upload_art_and_quad(void) {
     SDL_ReleaseGPUTransferBuffer(g_device, transfer);
     fprintf(stderr,
             "dw3-title-overlay: %dx%d RGBA texture (%zu bytes), "
-            "3 states, 6 vertices and 1 draw/frame\n",
+            "4 states, 24 vertices and 1 draw/frame\n",
             CANVAS_W, ART_TEXTURE_H, texture_bytes);
     return 0;
 }
@@ -277,17 +278,21 @@ static void init_overlay(SDL_Window *window, SDL_GPUDevice *device) {
 void dw3_pc_title_menu_set_state(int active, int selected) {
     if (dw3_port_options_is_open()) active = 0;
     if (!active || !g_pipeline || !g_texture || !g_vertices || !g_sampler) {
-        g_active_frames = 0;
+        g_overlay_active = 0;
         return;
     }
-    if (selected < 0) selected = 0;
-    if (selected >= ROW_COUNT) selected = ROW_COUNT - 1;
-    g_selection = selected;
-    g_active_frames = 2;
+    if (selected == -2) {
+        g_overlay_active = 0;
+        return;
+    }
+    if (selected < 0) g_selection = 0;
+    else if (selected >= 2) g_selection = 3;
+    else g_selection = selected + 1;
+    g_overlay_active = 1;
 }
 
 static void render_overlay(SDL_GPUCommandBuffer *cmd, SDL_GPURenderPass *pass) {
-    if (!g_active_frames || !g_pipeline || !g_texture || !g_vertices ||
+    if (!g_overlay_active || !g_pipeline || !g_texture || !g_vertices ||
         !g_sampler || !g_window) return;
     int window_w = 0, window_h = 0;
     SDL_GetWindowSizeInPixels(g_window, &window_w, &window_h);
@@ -316,7 +321,6 @@ static void render_overlay(SDL_GPUCommandBuffer *cmd, SDL_GPURenderPass *pass) {
     };
     SDL_BindGPUFragmentSamplers(pass, 0, &sampler_binding, 1);
     SDL_DrawGPUPrimitives(pass, 6, 1, (Uint32)(g_selection * 6), 0);
-    --g_active_frames;
     (void)cmd;
 }
 

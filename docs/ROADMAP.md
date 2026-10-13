@@ -834,22 +834,23 @@ PS1 game, with vanilla-safe defaults and persistence on owner storage.
   modulated blue row for the unselected state. Ryubing-on-Xvfb captures
   of all three selections and shell open/close are kept locally; OLED
   handheld vs docked legibility is still to be confirmed by the owner.
-  **PC Digivice follow-up (2026-10-13):** the PC title menu is a transparent
-  960×720 RGBA presentation overlay, composited by one SDL3 GPU texture draw
-  over the original game image. Its three states carry New Game / Options /
-  Load Game plaques with indigo faces, steel-blue bevels, clipped corner
-  hardware, amber fasteners and readable labels. Selection changes only the
-  colors and lights. New Game is initially selected. Options hides the overlay
-  while the existing P9.2 shell is open; Load Game maps to vanilla Continue /
-  `STGMCARD`. Switch behavior is unchanged. US runtime validation on Xvfb with
-  Vulkan captured New Game and Options selections from a 1280×720 window at
-  3× internal resolution (960×720), plus shell open. The overlay disappears
-  behind P9.2; automated shell return was not confirmed. Build and patch
-  application check pass. Evidence is local under
-  `/tmp/dw3-pc-title-menu-redo/evidence-redesign/` (`hires-final-new-game.png`,
-  `hires-verify-options.png`, `hires-verify-options-shell.png`). Load Game
-  input and automated shell-return captures are still outstanding. Windows/DXIL and macOS/Metal runtime
-  validation remain open. See [TITLE_MENU_DESIGN.md](TITLE_MENU_DESIGN.md).
+  **PC Digivice follow-up (2026-10-13):** the PC SDL3 GPU title UI uses a
+  transparent 960×720 RGBA presentation overlay, composited as one texture
+  draw. It contains the Press Start prompt, New Game / Options / Load Game
+  plaques, and three-line credits. The original pixel-art logo and glint stay
+  game sprites; the GPU path scales them uniformly through the existing 3×
+  internal renderer to free space below. Original background code is untouched.
+  The overlay remains visible through the menu and clears when P9.2 opens or
+  the title flow fades to New Game / Continue / Opening. Load Game maps to
+  vanilla Continue / `STGMCARD`; Switch and SDL3 GL retain their existing
+  presentation paths. Linux/Vulkan and SDL3 GL builds, plus patch-check, pass.
+  US runtime on Xvfb captured the full composition in a 1280×720 window
+  with 960×720 internal content. Short paired captures showed no measurable
+  background-pixel motion, so visible animation is not claimed. Automated
+  shell return and Load Game selection are not yet confirmed. Windows/DXIL
+  and macOS/Metal runtime validation remain open. Evidence and logs are local
+  under `/tmp/dw3-pc-title-menu-redo/evidence-redesign/final/`. See
+  [TITLE_MENU_DESIGN.md](TITLE_MENU_DESIGN.md).
   Done when: the screen is reachable from the main menu and returns
   cleanly to it (PC + Switch; TTB print on PC).
 - [ ] **P9.3 Toggle registry.** Maintain a registry of non-native features

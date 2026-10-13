@@ -1,0 +1,115 @@
+Upstream-bound: no
+Subject: [PORT_HOST] Preserve and uniformly scale original title art on PC GPU
+
+The PC GPU path keeps the original animated background and original title/logo
+sprites. It uniformly scales the original title composition to reserve space
+for the native-resolution prompt/menu; only the vanilla menu and footer sprites
+are replaced. Switch and SDL3 GL retain their original draw path.
+
+--- a/src/menus/title/logo.c
++++ b/src/menus/title/logo.c
+@@ -12,0 +13,5 @@
++#if defined(DW3_PC_SDL3_GPU)
++        sprite.setScale((ONE * 21) / 25, (ONE * 21) / 25, ONE);
++        sprite.setPivot(157, -23);
++#endif
++#if !defined(DW3_PC_SDL3_GPU)
+@@ -14,0 +20 @@
++#endif
+@@ -16,0 +23,4 @@
++#if defined(DW3_PC_SDL3_GPU)
++        sprite.setScale((ONE * 21) / 25, (ONE * 21) / 25, ONE);
++        sprite.setPivot(157, -23);
++#endif
+@@ -21,0 +32,4 @@
++#if defined(DW3_PC_SDL3_GPU)
++        sprite.setScale((ONE * 21) / 25, (ONE * 21) / 25, ONE);
++        sprite.setPivot(157, -23);
++#endif
+@@ -23,0 +38 @@
++#if !defined(DW3_PC_SDL3_GPU)
+@@ -24,0 +40 @@
++#endif
+
+--- a/src/menus/title/slides.c
++++ b/src/menus/title/slides.c
+@@ -10,0 +11,4 @@
++#if defined(DW3_PC_SDL3_GPU)
++        sprite.setScale((ONE * 21) / 25, (ONE * 21) / 25, ONE);
++        sprite.setPivot(157, -23);
++#endif
+@@ -83,0 +88,4 @@
++#if defined(DW3_PC_SDL3_GPU)
++        sprite.setScale((ONE * 21) / 25, (ONE * 21) / 25, ONE);
++        sprite.setPivot(157, -23);
++#endif
+@@ -145,0 +154,4 @@
++#if defined(DW3_PC_SDL3_GPU)
++        sprite.setScale((ONE * 21) / 25, (ONE * 21) / 25, ONE);
++        sprite.setPivot(157, -23);
++#endif
+@@ -218,0 +231,4 @@
++#if defined(DW3_PC_SDL3_GPU)
++        sprite.setScale((ONE * 21) / 25, (ONE * 21) / 25, ONE);
++        sprite.setPivot(157, -23);
++#endif
+
+--- a/src/menus/title/glint.c
++++ b/src/menus/title/glint.c
+@@ -11,0 +12,4 @@
++#if defined(DW3_PC_SDL3_GPU)
++        sprite.setScale((ONE * 21) / 25, (ONE * 21) / 25, ONE);
++        sprite.setPivot(157, -23);
++#endif
+@@ -17,0 +22,4 @@
++#if defined(DW3_PC_SDL3_GPU)
++        sprite.setScale((ONE * 21) / 25, (ONE * 21) / 25, ONE);
++        sprite.setPivot(157, -23);
++#endif
+@@ -91,0 +100,4 @@
++#if defined(DW3_PC_SDL3_GPU)
++        sprite.setScale((ONE * 21) / 25, (ONE * 21) / 25, ONE);
++        sprite.setPivot(157, -23);
++#endif
+@@ -98,0 +111,4 @@
++#if defined(DW3_PC_SDL3_GPU)
++        sprite.setScale((ONE * 21) / 25, (ONE * 21) / 25, ONE);
++        sprite.setPivot(157, -23);
++#endif
+
+--- a/src/menus/title/menu.c
++++ b/src/menus/title/menu.c
+@@ -18,0 +19,13 @@
++#if defined(DW3_PC_SDL3_GPU)
++    if (dw3_port_options_is_open()) {
++        dw3_port_title_options_draw(task->layerId, 78,
++            DW3_TITLE_ROW_Y(DW3_TITLE_PORT_OPTIONS), -2);
++    } else if (task->showOptions && task->state == TASK_DONE) {
++        dw3_port_title_options_draw(task->layerId, 78,
++            DW3_TITLE_ROW_Y(DW3_TITLE_PORT_OPTIONS), task->selection);
++    } else {
++        dw3_port_title_options_draw(task->layerId, 78,
++            DW3_TITLE_ROW_Y(DW3_TITLE_PORT_OPTIONS), -1);
++    }
++    return;
++#else
+@@ -83,0 +97 @@
++#endif
+@@ -270,0 +285,4 @@
++#if defined(DW3_PC_SDL3_GPU)
++        dw3_port_title_options_draw(task->layerId, 78,
++            DW3_TITLE_ROW_Y(DW3_TITLE_PORT_OPTIONS), -2);
++#endif
+
+--- a/src/menus/title/title.c
++++ b/src/menus/title/title.c
+@@ -4,0 +5,3 @@
++#if PORT_HOST
++#include "port_title_options.h"
++#endif
+@@ -10,0 +14,5 @@
++#if defined(DW3_PC_SDL3_GPU)
++        if (task->choice != 0) {
++            dw3_port_title_options_draw(0, 0, 0, -2);
++        }
++#endif
