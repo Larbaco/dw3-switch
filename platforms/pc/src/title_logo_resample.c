@@ -1,5 +1,7 @@
 #include "title_logo_resample.h"
 #include <math.h>
+#include <stdlib.h>
+#include <string.h>
 static const uint8_t *at(const uint8_t *p,int w,int h,int pitch,int x,int y) {
     if(x<0)x=0;
     if(x>=w)x=w-1;
@@ -21,9 +23,47 @@ static double weight(double x,int filter) {
     return 0;
 }
 static double clamp(double v,double lo,double hi) {return v<lo?lo:(v>hi?hi:v);}
+/* One-pixel local-contrast refinement, constrained to the existing neighbors.
+ * Alpha/edge RGB stay untouched; full-opacity lettering is sharpened in luma
+ * only. This keeps the original silhouette and avoids transparent-edge halos. */
+static void refine_luma(uint8_t *pixels,int w,int h,int pitch) {
+    uint8_t *original=malloc((size_t)pitch*h);
+    if(!original)return;
+    memcpy(original,pixels,(size_t)pitch*h);
+    for(int y=1;y<h-1;y++)for(int x=1;x<w-1;x++) {
+        const uint8_t *p=at(original,w,h,pitch,x,y);
+        if(p[3]!=255)continue;
+        double center=(p[0]*0.2126+p[1]*0.7152+p[2]*0.0722);
+        double blur=0,min_luma=center,max_luma=center;
+        int opaque=1;
+        double lows[3]={p[0],p[1],p[2]},highs[3]={p[0],p[1],p[2]};
+        for(int j=-1;j<=1;j++)for(int i=-1;i<=1;i++) {
+            const uint8_t *q=at(original,w,h,pitch,x+i,y+j);
+            if(q[3]!=255)opaque=0;
+            double luma=q[0]*0.2126+q[1]*0.7152+q[2]*0.0722;
+            blur+=luma*(i==0?2:1)*(j==0?2:1)/16.0;
+            if(luma<min_luma)min_luma=luma;
+            if(luma>max_luma)max_luma=luma;
+            for(int c=0;c<3;c++) {
+                if(q[c]<lows[c])lows[c]=q[c];
+                if(q[c]>highs[c])highs[c]=q[c];
+            }
+        }
+        if(!opaque||center<1.0)continue;
+        double detail=center-blur;
+        if(fabs(detail)<1.5)continue;
+        double desired=clamp(center+0.28*detail,min_luma,max_luma);
+        double ratio=desired/center;
+        uint8_t *out=pixels+y*pitch+x*4;
+        for(int c=0;c<3;c++)out[c]=(uint8_t)(clamp(p[c]*ratio,lows[c],highs[c])+0.5);
+    }
+    free(original);
+}
 int dw3_pc_title_logo_resample(const uint8_t *src,int sw,int sh,int spitch,
     uint8_t *dst,int dw,int dh,int dpitch,int filter) {
     if(!src||!dst||sw<=0||sh<=0||dw<=0||dh<=0||sw>4096||sh>4096||dw>4096||dh>4096||spitch<sw*4||dpitch<dw*4)return -1;
+    const int refine=filter==DW3_PC_LOGO_LANCZOS2_FINE;
+    if(refine)filter=DW3_PC_LOGO_LANCZOS2;
     for(int y=0;y<dh;y++)for(int x=0;x<dw;x++) {
         double sx=(x+0.5)*sw/dw-0.5,sy=(y+0.5)*sh/dh-0.5;
         int ix=(int)floor(sx),iy=(int)floor(sy);
@@ -49,5 +89,6 @@ int dw3_pc_title_logo_resample(const uint8_t *src,int sw,int sh,int spitch,
         p[3]=(uint8_t)(a+0.5);
         for(int c=0;c<3;c++)p[c]=a>0.5&&visible?(uint8_t)(clamp(sum[c]/total*255/a,lo[c],hi[c])+0.5):0;
     }
+    if(refine)refine_luma(dst,dw,dh,dpitch);
     return 0;
 }
