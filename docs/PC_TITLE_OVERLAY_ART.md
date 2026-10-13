@@ -36,25 +36,21 @@ SPIR-V/DXIL and `main0` for MSL. Linux/Vulkan runtime capture is the validation
 gate; generated MSL/DXIL compile artifacts do not establish macOS/Windows runtime
 compatibility. Those host runtime checks remain open.
 
-## Full-screen title composition
+## Original-logo title composition
 
-The owner approved the native-resolution buttons but asked to replace the full
-screen presentation because the original PS1 logo/font no longer matched them.
-The expanded canvas redraws the title, entry prompt, menu, and footer; the
-integration must retain only the original animated background from game draws.
-DIGIMON remains the dominant title in metallic blue, with WORLD 3 in amber and
-a discreet DW3NX badge. Clipped translucent backing, thin angular seams, and
-small amber accents share the hardware finish of the menu without concealing the
-background. The original three legal credits are preserved as text with new
-12px antialiased typography. No debug, version, or implementation labels appear.
+The owner selected the original DIGIMON WORLD 3 logo after reviewing a custom
+high-resolution lettering alternative. Preserve the original artwork and its
+identity: only upscale and adjust its framing in the PC presentation integration.
+The procedural overlay has no replacement logo, port badge, or header panel.
+Original game artwork comes from the owner's runtime assets and must not be
+added to Git. The original animated background remains active.
+
+The overlay keeps the approved native-resolution menu and a discreet footer with
+the original three legal credits in antialiased 12px lettering. Menu bounds are
+x=230..729, y=400..573; a quiet separator is at y=375. Suggested original-logo
+placement is inside x=130..830, y=100..345, leaving space above the menu. Actual
+framing must be reviewed in a US PC virtual-display runtime capture.
 
 `selected=-1` renders PRESS START; `selected=0..2` renders the three choices.
-The menu geometry is unchanged. `tools/generate_pc_title_lettering.py` records
-reproducible font sizes/labels and regenerates the RLE coverage include with
-Pillow and the licensed DejaVu fonts. The runtime needs neither.
-
-Standalone alpha coverage: menu canvas affects 40.7% of pixels, with 16.5%
-fully opaque; prompt canvas affects 29.9%, with 7.5% fully opaque. These are
-component measurements, not runtime validation. Composition against the moving
-original background and suppression of original title/credits remain integration
-checks requiring a real US PC virtual-display capture.
+`tools/generate_pc_title_lettering.py` regenerates the prompt/credits RLE masks
+with Pillow and licensed DejaVu fonts. The game runtime needs neither.
