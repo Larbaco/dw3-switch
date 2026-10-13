@@ -168,8 +168,24 @@ static int init_paths(int argc, char **argv) {
 }
 
 int main(int argc, char **argv) {
+    const char *internal_res = getenv("DW3_PC_INTERNAL_RES");
+
     if (init_paths(argc, argv) != 0) {
         return 1;
+    }
+    if (internal_res != NULL && internal_res[0] != '\0') {
+        char *end = NULL;
+        unsigned long multiplier = strtoul(internal_res, &end, 10);
+        if (end == internal_res || *end != '\0' || multiplier != 3 ||
+            Psyz_VideoSetInternalResolution((unsigned)multiplier) != 0) {
+            fprintf(stderr,
+                    "dw3-pc: DW3_PC_INTERNAL_RES must be 3 (experimental 720p)\n");
+            return 1;
+        }
+        fprintf(stderr,
+                "dw3-pc: experimental internal resolution %lux "
+                "(960x720 for 320x240 content)\n",
+                multiplier);
     }
     g_prev_vsync_cb = Psyz_SetVSyncCb(dw3_pc_vsync_pump);
     fprintf(stderr, "dw3-pc: entering dw3_game_main()\n");

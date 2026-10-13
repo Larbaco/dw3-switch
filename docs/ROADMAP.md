@@ -208,6 +208,14 @@ P3.9 harness (`tools/compare_harness/`, `docs/P3.9_REFERENCE.md`):
 Objective: the full game loop runs on PC: field, stages, battle, menus,
 audio, movies.
 
+**Experimental PC 3× internal render (2026-10-13):** the SDL3 GPU backend's
+existing internal-resolution API is exposed on the PC host through
+`DW3_PC_INTERNAL_RES=3`. Title and field runs rendered the 4:3 image in a
+1280×720 window (960×720 game image, 160-pixel side bars). The standard 1×
+default and Switch host are unchanged. This is an opt-in experiment; visual
+quality across all layers and performance remain unassessed. Instructions:
+[platforms/pc/README.md](../platforms/pc/README.md).
+
 - [x] **P3.1 64-bit audit, part 2 (overlays + stages).** Same rules as
   P2.4 across `src/field`, `src/battle`, `src/cardgame`, `src/menus`,
   `src/debug`. Match-neutral `0018` + PORT_HOST `0019` (`port/patches/`):
