@@ -242,6 +242,7 @@ add_library(dw3_port_options OBJECT
   "${CMAKE_CURRENT_SOURCE_DIR}/options/title_entry.c"
   "${CMAKE_CURRENT_SOURCE_DIR}/ui/port_text.c"
 )
+add_dependencies(dw3_port_options dw3_decomp_patched)
 target_include_directories(dw3_port_options PRIVATE ${_DW3_GAME_INCLUDES})
 target_compile_definitions(dw3_port_options PRIVATE ${_DW3_GAME_DEFS})
 target_compile_options(dw3_port_options PRIVATE ${_DW3_GAME_OPTS})
