@@ -482,9 +482,46 @@ static int init_paths(void) {
 #define DW3_NRO_VERSION_STR "unknown"
 #endif
 
+/* Development only: CMake -DDW3_NX_TEST_ENV="K=V,K=V" bakes evidence-aid
+ * variables (DW3_START_MODE, DW3_FORCE_ENCOUNTER, DW3_MESH_SOFT, ...) into the
+ * NRO. Ryubing cannot pass an environment to a homebrew NRO, so this is how a
+ * headless emulator run reaches FIGHTSTG. Empty (the default) is a no-op. */
+#ifndef DW3_NX_TEST_ENV_STR
+#define DW3_NX_TEST_ENV_STR ""
+#endif
+
+static int apply_test_env(void) {
+    static const char spec[] = DW3_NX_TEST_ENV_STR;
+    char buf[sizeof(spec)];
+    char *save = NULL;
+    char *item;
+    int n = 0;
+
+    if (spec[0] == '\0') {
+        return 0;
+    }
+    memcpy(buf, spec, sizeof(spec));
+    for (item = strtok_r(buf, ",", &save); item != NULL;
+         item = strtok_r(NULL, ",", &save)) {
+        char *eq = strchr(item, '=');
+
+        if (eq == NULL || eq == item) {
+            continue;
+        }
+        *eq = '\0';
+        if (setenv(item, eq + 1, 1) == 0) {
+            n++;
+        }
+    }
+    return n;
+}
+
 int main(int argc, char **argv) {
+    int test_env_count;
+
     (void)argc;
     (void)argv;
+    test_env_count = apply_test_env();
 
 #ifdef DW3_NXLINK_STDIO
     /* libnx nxlinkConnectToHost uses the default socket service. Initialize it
@@ -521,6 +558,10 @@ int main(int argc, char **argv) {
     }
     dw3_nx_log_open();
     INFOF("dw3: version=%s", DW3_NRO_VERSION_STR);
+    if (test_env_count > 0) {
+        INFOF("dw3: DW3_NX_TEST_ENV applied %d vars: %s", test_env_count,
+              DW3_NX_TEST_ENV_STR);
+    }
 #ifdef DW3_NXLINK_STDIO
     INFOF("nxlink socket init=0x%08x stdio fd=%d",
           (unsigned)g_nxlink_socket_result, g_nxlink_fd);

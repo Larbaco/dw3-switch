@@ -60,6 +60,13 @@ option(DW3_NX_DEBUG_MOVIE "Sampled movie pacing/bridge summary (nxlink)"
 option(DW3_NX_MESH_SOFT_BATTLE
        "Force software RasterTriangle in FIGHTSTG (mesh FBO recovery)"
        ON)
+# Development only: "K=V,K=V" evidence-aid environment baked into the NRO
+# (setenv at the top of main). Ryubing has no way to pass an environment to a
+# homebrew NRO. Comma-separated (a ';' would split the CMake list), e.g.
+# "DW3_START_MODE=0x600,DW3_FORCE_ENCOUNTER=1,DW3_MESH_SOFT=0" boots straight
+# into a GLES-mesh battle. Never set for release/preview NROs.
+set(DW3_NX_TEST_ENV "" CACHE STRING
+    "Development-only K=V,K=V environment applied at boot (empty = off)")
 # P5.4: deliberate null write after boot so the exception handler can be
 # verified on hardware. Soft default OFF — never on in release/preview NROs.
 option(DW3_NX_FORCE_CRASH
@@ -233,6 +240,13 @@ if(DW3_NX_MESH_SOFT_BATTLE)
 else()
   target_compile_definitions(dw3-switch PRIVATE DW3_NX_MESH_SOFT_BATTLE=0)
   message(STATUS "nx battle GLES mesh path enabled (DW3_NX_MESH_SOFT_BATTLE=OFF)")
+endif()
+if(NOT DW3_NX_TEST_ENV STREQUAL "")
+  string(REPLACE "\\" "\\\\" _dw3_test_env_c "${DW3_NX_TEST_ENV}")
+  string(REPLACE "\"" "\\\"" _dw3_test_env_c "${_dw3_test_env_c}")
+  target_compile_definitions(dw3-switch PRIVATE
+    "DW3_NX_TEST_ENV_STR=\"${_dw3_test_env_c}\"")
+  message(STATUS "nx DEVELOPMENT test env baked in: ${DW3_NX_TEST_ENV}")
 endif()
 if(DW3_NX_FORCE_CRASH)
   target_compile_definitions(dw3-switch PRIVATE DW3_NX_FORCE_CRASH=1)
