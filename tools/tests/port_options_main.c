@@ -32,23 +32,35 @@ int main(void) {
         return fail("re-open");
     }
 
-    if (dw3_port_options_stub_count() < 1) {
-        return fail("stub count");
+    if (dw3_port_options_count() != 3) {
+        return fail("option count");
     }
-    if (dw3_port_options_stub_label(0) == NULL ||
-        strstr(dw3_port_options_stub_label(0), "Widescreen") == NULL) {
+    if (dw3_port_options_label(0) == NULL ||
+        strstr(dw3_port_options_label(0), "Widescreen") == NULL) {
         return fail("widescreen stub label");
     }
-    if (dw3_port_options_stub_value(0) != 0) {
+    if (dw3_port_options_value(0) != 0) {
         return fail("widescreen default off");
+    }
+    if (dw3_port_options_restart_enabled() != 0 ||
+        dw3_port_options_value(2) != 0) {
+        return fail("restart hotkey default off");
     }
 
     dw3_port_options_test_set_pressed(1u << BIT_DOWN);
     dw3_port_options_tick();
     dw3_port_options_test_set_pressed(1u << BIT_CROSS);
     dw3_port_options_tick();
-    if (dw3_port_options_stub_value(1) != 1) {
+    if (dw3_port_options_value(1) != 1) {
         return fail("toggle stub[1]");
+    }
+
+    dw3_port_options_test_set_pressed(1u << BIT_DOWN);
+    dw3_port_options_tick();
+    dw3_port_options_test_set_pressed(1u << BIT_CROSS);
+    dw3_port_options_tick();
+    if (dw3_port_options_restart_enabled() != 1) {
+        return fail("toggle restart hotkey");
     }
 
     dw3_port_options_test_set_pressed(1u << BIT_TRIANGLE);
@@ -66,8 +78,9 @@ int main(void) {
     }
 
     dw3_port_options_close(); /* idempotent */
-    printf("open=0 stubs=%d widescreen_default=%d\n",
-           dw3_port_options_stub_count(), dw3_port_options_stub_value(0));
+    printf("open=0 options=%d widescreen_default=%d restart=%d\n",
+           dw3_port_options_count(), dw3_port_options_value(0),
+           dw3_port_options_restart_enabled());
     printf("OK: port_options state machine\n");
     return 0;
 }

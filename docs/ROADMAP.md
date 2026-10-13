@@ -709,6 +709,15 @@ tick does not start Phase 6.
   Done when: the hotkey returns to the boot/title flow without
   relaunching Sphaira (PC and hardware), and a save written before the
   restart still loads afterwards.
+  **PC implementation / evidence (2026-10-13):** title Port options has an
+  opt-in restart setting (OFF by default, session-only). The PS1 logical
+  chord L1+R1+Start+Select runs shared `port/` policy, flushes P5.3 dirty
+  saves, and cancels if flushing fails. It resets `GAME` state and the active
+  mode/overlay inside the existing `dw3_game_main()` loop; host, PSY-Z, audio,
+  heap, pad, and graphics initialization do not run again. Private Xvfb PC run
+  returned to title after the successful flush. See
+  [P6.9_RESTART.md](P6.9_RESTART.md). **Still open:** Switch build/hardware
+  chord and Continue reload of a save written before restart.
 
 Gate: polish options from P6.1–P6.5 land as needed; localization P6.6–P6.8
 may still be in progress when Phase 7 starts only if the Phase 5 playable
@@ -846,11 +855,16 @@ PS1 game, with vanilla-safe defaults and persistence on owner storage.
   handheld vs docked legibility is still to be confirmed by the owner.
   Done when: the screen is reachable from the main menu and returns
   cleanly to it (PC + Switch; TTB print on PC).
-- [ ] **P9.3 Toggle registry.** Maintain a registry of non-native features
+- [x] **P9.3 Toggle registry.** Maintain a registry of non-native features
   (Phase 6–8 items and later), each with a default equivalent to stock
   behaviour (or documented exception).
   Done when: flipping a stub or real flag from the menu has a documented
   effect (safe no-op allowed for not-yet-wired features).
+  **Status (2026-10-13):** shared registry has Widescreen and Fast-forward
+  safe no-op stubs plus the real session-only Restart hotkey, OFF by default.
+  Its chord and flush behavior are documented in
+  [PORT_OPTIONS.md](PORT_OPTIONS.md) and [P6.9_RESTART.md](P6.9_RESTART.md).
+  P9.4 persistence and P9.5 wiring of remaining real features remain open.
 - [ ] **P9.4 Persistence.** Load/save the option file under the owner
   runtime layout (PC directory / `sdmc:/switch/dw3/…`); values survive
   process exit.

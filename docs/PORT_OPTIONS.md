@@ -44,6 +44,7 @@ explicitly marked N/A in this note.
 | Community QoL parity | Share EXP, quest log HUD, NPC bubbles, Fast Start, … | Phase 7 |
 | Texture packs | Enable overlay / select pack name | Phase 8 |
 | Switch host | Rumble on/intensity, confirm A/B layout, `swkbd` name, CRT/sharp, BGM/SFX volumes, system-language hint | Phase 10 (+ P4.4 / P5.3 always-on lifecycle) |
+| Restart game | Optional L1 + R1 + Start + Select in the shared PS1 pad map; OFF by default | Phase 6.9 |
 
 Defaults: **off** or equivalent to stock PS1 behaviour unless a feature is
 purely host presentation with no gameplay impact (document exceptions).
@@ -62,6 +63,12 @@ focus-loss pause + delta clamp, memcard write-through/flush, rotating
   toggle (pick one in P9.4 and stick to it).
 - Do not write port options into the memcard image unless the user opts
   into an explicit “embed in save” experiment later.
+
+The restart hotkey is the first live setting in the registry. It is OFF by
+default and remains in RAM for the current process; P9.4 persistence is still
+open. When enabled, the chord flushes dirty P5.3 slots before returning the
+game to its title boot flow. A failed flush cancels the restart. This does not
+format, delete, or change clean save files. See [P6.9_RESTART.md](P6.9_RESTART.md).
 
 ## Entry investigation (P9.2)
 
