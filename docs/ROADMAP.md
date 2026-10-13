@@ -805,6 +805,12 @@ PS1 game, with vanilla-safe defaults and persistence on owner storage.
   the PC TTB checkpoint, this completes P9.2. Other controller models,
   feature effects and persistence remain unvalidated; P9.3/P9.4 and the
   Phase 9 gate remain open.
+  **Title UI pass (2026-10-13):** the added row now matches the original
+  buttons' 164x16 stripe background (rows y=149/165/181, 16 px pitch, no
+  gaps), with a 5/4-scaled, bolded, shadowed label and a brightness-
+  modulated blue row for the unselected state. Ryubing-on-Xvfb captures
+  of all three selections and shell open/close are kept locally; OLED
+  handheld vs docked legibility is still to be confirmed by the owner.
   Done when: the screen is reachable from the main menu and returns
   cleanly to it (PC + Switch; TTB print on PC).
 - [ ] **P9.3 Toggle registry.** Maintain a registry of non-native features

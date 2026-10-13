@@ -106,13 +106,32 @@ their original title `choice` values and blink/fade flow.
 
 Patch `0045-PORT_HOST-p92-title-options-row.patch` extends the game menu
 through `PORT_HOST`; `port/options/title_entry.c` draws the added label
-with the game's resident proportional font and blue/dark-blue palettes.
-The original title labels are pre-rendered sprites, so this new label
-uses the in-game font rather than an identical new title sprite. No
-owner artwork or generated asset is bundled. The added row reproduces
-the buttons' one-pixel black/grey stripes with opaque tiles; the original
-cursor frame highlights only the selected row. Draw ordering keeps that
-frame above the added background. Rows are at y=148/164/180 above the copyright.
+with the game's resident proportional font. The original title labels are
+pre-rendered sprites, so this new label uses the in-game font rather than
+an identical new title sprite. No owner artwork or generated asset is
+bundled.
+
+**Presentation (title-options UI pass).** The added button is made to read
+as the third original button rather than a debug overlay:
+
+- The original sprite backgrounds are 164x16 with the selection frame one
+  pixel outside. The added row now uses the same 164x16 one-pixel
+  black/grey stripe background (it was 14 high, which left a visible 2 px
+  gap between rows). Rows sit at y=149/165/181 on a 16-pixel pitch, so the
+  three backgrounds butt together and the selected row's frame is the only
+  separator. The last frame line stays above the copyright text.
+- The label glyph quads are scaled 5/4 with a one-pixel bold pass and a
+  drop shadow so the weight and height are closer to the heavier original
+  lettering (the resident font is about 8 px tall, the sprite lettering
+  about 11). The glyphs are vertically centred on the capital P.
+- Selected: font blue row at full brightness. Unselected: the same blue row
+  at about 60 percent brightness. The font's dark-blue row lost the letter
+  counters at this size and was unreadable on a 720p window.
+- Navigation is unchanged: Up/Down move one row without wrapping, Confirm
+  on the middle row opens the shell, Triangle returns to the middle row.
+
+The original cursor frame highlights only the selected row. Draw ordering keeps that
+frame above the added background.
 PRESS START retains its separate two-sprite spread animation, then the
 three-row layout appears when the options state starts.
 
