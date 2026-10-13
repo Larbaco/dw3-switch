@@ -3,6 +3,7 @@
 #include "cdfs.h"
 
 #include <libcd.h>
+#include <stdatomic.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -29,6 +30,23 @@ static FILE *g_disc_bin;
 static int g_disc_bin_tried;
 static int g_xa_hdr_logged;
 static int g_disc_bin_logged;
+
+/* Bridge contention counters (see dw3_str_stream_get_debug). `inflight` is
+ * bumped before the read and dropped after it, so it also reports contention
+ * once the reads themselves are serialized by a lock. */
+static _Atomic unsigned long g_bridge_reads;
+static _Atomic unsigned long g_bridge_overlaps;
+static _Atomic int g_bridge_inflight;
+
+void dw3_str_stream_get_debug(unsigned long *reads, unsigned long *overlaps) {
+    if (reads) {
+        *reads = atomic_load_explicit(&g_bridge_reads, memory_order_relaxed);
+    }
+    if (overlaps) {
+        *overlaps =
+            atomic_load_explicit(&g_bridge_overlaps, memory_order_relaxed);
+    }
+}
 
 static void encode_bcd_byte(int v, u_char *out) {
     if (v < 0) {
@@ -266,14 +284,27 @@ int dw3_str_stream_read_sector(int lba, uint8_t out[STR_RAW_BYTES]) {
 }
 
 int dw3_str_cd_read_cb(struct PsyzCdRead *read) {
+    int rc;
+
+    /* Count the entry itself, so the counters keep reporting contention once
+     * the reads are serialized. */
+    atomic_fetch_add_explicit(&g_bridge_reads, 1, memory_order_relaxed);
+    if (atomic_fetch_add_explicit(&g_bridge_inflight, 1,
+                                  memory_order_relaxed) != 0) {
+        atomic_fetch_add_explicit(&g_bridge_overlaps, 1, memory_order_relaxed);
+    }
+
     if (!read || !read->buffer || read->size < STR_RAW_BYTES) {
-        return -1;
+        rc = -1;
+    } else if (dw3_str_stream_read_sector((int)read->sector,
+                                          (uint8_t *)read->buffer) != 0) {
+        rc = -1;
+    } else {
+        rc = (int)STR_RAW_BYTES;
     }
-    if (dw3_str_stream_read_sector((int)read->sector, (uint8_t *)read->buffer) !=
-        0) {
-        return -1;
-    }
-    return (int)STR_RAW_BYTES;
+
+    atomic_fetch_sub_explicit(&g_bridge_inflight, 1, memory_order_relaxed);
+    return rc;
 }
 
 void dw3_str_stream_install_cd_bridge(void) {

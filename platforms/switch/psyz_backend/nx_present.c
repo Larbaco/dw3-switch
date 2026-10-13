@@ -20,6 +20,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "nx_movie_debug.h"
 #include "stgetnext_gate.h"
 
 int __real_LoadImage(RECT *rect, u_long *p);
@@ -127,10 +128,25 @@ u_long __wrap_StGetNext(u_long **addr, u_long **header) {
         s32 n;
         s32 j;
 
-        if (rc == 0 || StRingAddr == NULL || StRingSize <= 0 ||
-            StRingIdx3 < 0 || StRingIdx3 >= StRingSize || guard++ > 4) {
-            /* A frame was handed over, or the ring is unusable: a verdict from
-             * the previous state must not survive into this one. */
+        if (rc == 0) {
+            /* Hand-over: report the STR frameCount so the host can tell a
+             * frame the producer never published (frameCount jumped) from one
+             * that was merely slow. */
+#if DW3_NX_DEBUG_MOVIE
+            if (header != NULL && *header != NULL) {
+                dw3_nx_movie_debug_note_handover(
+                    (uint32_t)((StHEADER *)*header)->frameCount);
+            }
+#endif
+            /* A frame was handed over: a verdict from the previous state must
+             * not survive into this one. */
+            dw3_stgetnext_gate_forget(empty_gate);
+            return rc;
+        }
+        if (StRingAddr == NULL || StRingSize <= 0 || StRingIdx3 < 0 ||
+            StRingIdx3 >= StRingSize || guard++ > 4) {
+            /* The ring is unusable: a verdict from the previous state must not
+             * survive into this one. */
             dw3_stgetnext_gate_forget(empty_gate);
             return rc;
         }
