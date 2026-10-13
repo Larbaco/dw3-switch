@@ -18,6 +18,8 @@ typedef struct Dw3NxMeshDebugWindow {
     uint64_t tris_flushed;
     uint64_t flush_us;
     uint64_t upload_us;
+    uint32_t uploads;     /* sample re-uploads (dirty CPU VRAM) */
+    uint64_t upload_px;   /* texels packed + uploaded */
     uint64_t present_us;
     uint32_t frames_mesh; /* presents that composited the mesh FBO */
     uint32_t frames_blit; /* presents that used the opaque VRAM blit */
@@ -29,6 +31,7 @@ void dw3_nx_mesh_debug_note_enqueue(int nidx);
 void dw3_nx_mesh_debug_note_flush(uint32_t flush_us, uint32_t upload_us,
                                   int tris);
 void dw3_nx_mesh_debug_note_present(int use_mesh, uint32_t present_us);
+void dw3_nx_mesh_debug_note_upload(uint32_t pixels);
 void dw3_nx_mesh_debug_note_soft_fallback(void);
 /* Logs the first N distinct poly codes that hit the GLES path (once each). */
 void dw3_nx_mesh_debug_note_poly_code(int code, int textured);
@@ -40,6 +43,7 @@ void dw3_nx_mesh_debug_take_window(Dw3NxMeshDebugWindow *out);
 #define dw3_nx_mesh_debug_note_enqueue(nidx) ((void)0)
 #define dw3_nx_mesh_debug_note_flush(flush_us, upload_us, tris) ((void)0)
 #define dw3_nx_mesh_debug_note_present(use_mesh, present_us) ((void)0)
+#define dw3_nx_mesh_debug_note_upload(pixels) ((void)0)
 #define dw3_nx_mesh_debug_note_soft_fallback() ((void)0)
 #define dw3_nx_mesh_debug_note_poly_code(code, textured) ((void)0)
 

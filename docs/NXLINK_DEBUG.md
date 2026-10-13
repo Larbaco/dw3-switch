@@ -113,7 +113,7 @@ Default **on** for `--nxlink` builds. Adds **one sibling line** next to each
 
 ```
 mesh dbg: avail=1 tris_enq=… tris_flush=… frames_mesh=… frames_blit=…
-          soft=… flush_us=… upload_us=… present_us=…
+          soft=… flush_us=… upload_us=… uploads=… upload_px=… present_us=…
 ```
 
 | Field | Meaning |
@@ -125,6 +125,7 @@ mesh dbg: avail=1 tris_enq=… tris_flush=… frames_mesh=… frames_blit=…
 | `soft` | Triangle polys that fell to software because mesh was unavailable (ES2 / init fail) |
 | `flush_us` | Time in `dw3_nx_mesh_flush` (includes VRAM `glTexSubImage`) |
 | `upload_us` | Subset of flush spent packing + uploading sample VRAM (0 when the dirty flag skips the upload) |
+| `uploads` / `upload_px` | Sample uploads in the window and texels uploaded (only the dirty LoadImage/ClearImage/MoveImage box, not the full 1024×512) |
 | `present_us` | Composite/blit after flush (not including flush) |
 
 Also, only while the flag is on:

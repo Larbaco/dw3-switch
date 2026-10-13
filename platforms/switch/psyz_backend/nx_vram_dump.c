@@ -5,6 +5,7 @@
 
 #if DW3_NX_DUMP_VRAM
 
+#include "nx_battle_mode.h"
 #include "nx_mesh.h"
 #include "nx_vram_pack.h"
 #include "overlay_host.h"
@@ -281,9 +282,31 @@ void dw3_nx_vram_dump_battle_once(const uint16_t *vram, int dx, int dy, int dw,
     if (!fightstg_active()) {
         return;
     }
-    /* Mesh path: skip the prologue present (preview.10: 21 tris, all black). */
-    if (mesh_active && prims_flushed < DW3_NX_DUMP_MIN_MESH_PRIMS) {
+    /* GPU battle modes: the first FIGHTSTG presents are still opaque (no mesh
+     * yet). Wait for a mesh+ui frame so the dump pairs CPU VRAM with the FBO. */
+    if (!mesh_active && !dw3_nx_battle_mode_use_soft()) {
         return;
+    }
+    /* Mesh path: skip the prologue present (preview.10: 21 tris, all black).
+     * DW3_DUMP_MIN_PRIMS overrides the threshold (steady Fight-menu frame). */
+    if (mesh_active) {
+        static uint64_t min_prims;
+
+        if (min_prims == 0) {
+            const char *env = getenv("DW3_DUMP_MIN_PRIMS");
+
+            min_prims = DW3_NX_DUMP_MIN_MESH_PRIMS;
+            if (env != NULL && env[0] != '\0') {
+                unsigned long long v = strtoull(env, NULL, 0);
+
+                if (v > 0) {
+                    min_prims = (uint64_t)v;
+                }
+            }
+        }
+        if (prims_flushed < min_prims) {
+            return;
+        }
     }
 
     s_dumped = 1;
