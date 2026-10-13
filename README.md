@@ -28,7 +28,7 @@ the opening and image quality remain unmeasured on hardware. See
 | 0 to 2 | Done. Toolchains, disc to runtime, US title boot from decomp C ([P2.8](docs/P2.8_TITLE_BOOT.md)). |
 | 3 | Gate met for US. Field, battle, menus, card game, movies, SEP, and the stage sweep run on PC. Start to Genji is documented, with aids. [P3.9](docs/P3.9_REFERENCE.md) is done. Still open: EU playthrough, a pad-driven boss KO, [PC GPU and battle polish](docs/P3_GPU_GLITCHES.md), and the `WSTAG460` stub. |
 | 4 | Gate met on hardware for title, field, and battle. P4.2, P4.4, P4.5, and P4.7 are ticked. Still open: P4.3 underrun count and the P4.6 overlay sweep. |
-| 5 to 10 | Phase 5 is open. P5.2 is the 16.7 ms bar (soft battle default ON after all-black mesh dumps; field mesh gated). P5.3 flat `saveN.bin` + deferred flush landed; OLED MC1→MC2 save PASS and STGMCARD 100-frame bar owner-confirmed on load ([P5.3_FLAT_SAVE](docs/P5.3_FLAT_SAVE.md)). HOME/`appletMainLoop` quit flush landed; OLED applet exit/flush was observed on preview.20; fresh-save/relaunch reload validation remains open. P6.5 packaging is done and does not start Phase 6. P9.2 has a PC- and OLED-validated Start / Port options / Continue title entry and shell ([PORT_OPTIONS](docs/PORT_OPTIONS.md)); other controller configurations, gameplay effects, and persistence remain open. Phases 6 through 10 otherwise have not started. P7.1, P8.1, P9.1, and P10.1 are early notes. See [SWITCH_FEATURES](docs/SWITCH_FEATURES.md). |
+| 5 to 10 | Phase 5 is open. P5.2 is the 16.7 ms bar (soft battle default ON after all-black mesh dumps; field mesh gated). P5.3 flat `saveN.bin` + deferred flush landed; OLED MC1→MC2 save PASS and STGMCARD 100-frame bar owner-confirmed on load ([P5.3_FLAT_SAVE](docs/P5.3_FLAT_SAVE.md)). HOME/`appletMainLoop` quit flush landed; OLED applet exit/flush was observed on preview.20; fresh-save/relaunch reload validation remains open. P6.5 packaging is done and does not start Phase 6. P9.2 entry/shell behavior is validated on PC and OLED; the 2026-10-13 title-row visual pass has PC/Ryubing captures, while OLED handheld/docked label legibility still awaits owner confirmation ([PORT_OPTIONS](docs/PORT_OPTIONS.md)). Other controller configurations, gameplay effects, and persistence remain open. Phases 6 through 10 otherwise have not started. P7.1, P8.1, P9.1, and P10.1 are early notes. See [SWITCH_FEATURES](docs/SWITCH_FEATURES.md). |
 
 Layering: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). OLED network notes:
 [docs/SWITCH_OLED_NETWORK.md](docs/SWITCH_OLED_NETWORK.md) (FTP and preview 7
@@ -182,6 +182,10 @@ Stub toggles have no gameplay effect and do not persist to disk. P9.2 is
 complete with the later OLED entry/return checkpoint; P9.3/P9.4 and the
 Phase 9 gate remain open. Details:
 [docs/PORT_OPTIONS.md](docs/PORT_OPTIONS.md).
+
+The 2026-10-13 title-row visual pass has Ryubing-on-Xvfb captures of all
+three selections and shell open/close. The updated label's legibility on
+OLED handheld and docked displays still needs owner confirmation.
 
 EU is a separate build tree and needs `runtime/eu`:
 [docs/P3_EU_BUILD.md](docs/P3_EU_BUILD.md).
