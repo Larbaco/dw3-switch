@@ -18,10 +18,11 @@ console.
 
 Checkboxes: [docs/ROADMAP.md](docs/ROADMAP.md). Phase 3 gate:
 [docs/P3_GATE.md](docs/P3_GATE.md). The latest tagged preview is
-preview.21, which includes the STR file-bridge race fix (#111). The OLED
-confirmed about 15 fps and correct XA audio up to frame 1110; the rest of
-the opening and image quality remain unmeasured on hardware. See
-[movie pacing diagnostics](docs/P3.7_MOVIE_PACING_DIAGNOSTICS.md).
+[v0.6.5-preview.24](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.24),
+a US-only release from `39894e9`. Its checkpoints and remaining hardware
+gates are recorded in [RELEASE_PREVIEW24](docs/RELEASE_PREVIEW24.md);
+see [movie pacing diagnostics](docs/P3.7_MOVIE_PACING_DIAGNOSTICS.md)
+for the separate movie evidence.
 
 | Phase | Summary |
 |---|---|
