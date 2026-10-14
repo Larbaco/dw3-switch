@@ -8,8 +8,9 @@ and 2 plus the terminal shadow palette row of sprite 3. Those runtime pixels
 are converted to RGBA and passed to `platforms/pc/src/title_logo_resample.c`.
 No game artwork is embedded in the repository or executable. The filtered logo
 is uploaded to a private GPU texture when the title animation reaches its stable
-state; the animated background keeps its existing path and filter. SDL3 GL,
-Switch, and non-US builds retain the original logo rendering path.
+state; the animated background keeps its existing path and filter. The Switch
+(US) uploads the same filtered logo to a GLES texture. SDL3 GL and non-US
+builds retain the original logo rendering path.
 
 The selected presentation is Lanczos2 with the fine local-contrast pass,
 using a 4x4 source neighborhood at each destination pixel center. PS1 ABR2

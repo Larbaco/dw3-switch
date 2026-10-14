@@ -5,9 +5,10 @@ The PC SDL3 GPU renderer uses a transparent 960×720 RGBA presentation overlay
 over the original title image. The animated background and original pixel-art
 logo remain game sprites; on the GPU path, the logo sprites and glint are drawn
 at 3× internal resolution and uniformly transformed to make room for the menu.
-The overlay replaces the vanilla menu and footer sprites. SDL3 GL retains the
-existing PS1-primitive fallback, and Switch retains its existing title-row
-presentation. The concept PNGs below are references and are not loaded by the
+The overlay replaces the vanilla menu and footer sprites. The Switch draws the
+same overlay and logo texture over its GLES present
+(`platforms/switch/psyz_backend/nx_title_overlay.c`); SDL3 GL retains the
+existing PS1-primitive fallback. The concept PNGs below are references and are not loaded by the
 game.
 
 ## Menu labels and order
@@ -70,8 +71,8 @@ geometry. The menu overlay remains active until the options shell opens or the
 title flow fades out. The title patch keeps vanilla New Game and Continue
 choice values: **Load Game** enters the original Continue flow and
 memory-card screen; **Options** opens the existing P9.2 shell, whose
-experimental toggles remain no-op stubs. The PC menu starts on New Game;
-Switch selection and row styling are unchanged.
+experimental toggles remain no-op stubs. The PC and Switch menus start on
+New Game.
 
 The original logo art is not redrawn or resampled into a new font. Its game
 sprites and glint receive a uniform 21/25 SpriteDrawer scale and matching
