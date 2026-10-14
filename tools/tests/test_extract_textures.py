@@ -46,6 +46,15 @@ def archive(*entries):
     return struct.pack(f"<{len(entries) + 1}I", *offs, 0) + body
 
 
+def archive_sized(*entries):
+    table = 4 * len(entries)
+    offs, body = [], b""
+    for e in entries:
+        offs.append(table + len(body))
+        body += e + b"\x00" * (-len(e) % 4)
+    return struct.pack(f"<{len(entries)}I", *offs) + body
+
+
 def read_png(path):
     data = path.read_bytes()
     assert data[:8] == b"\x89PNG\r\n\x1a\n"
@@ -74,6 +83,13 @@ def test_runtime_tree(tmp_path):
     # TIMs inside other data, like the card images
     (rt / "AAA" / "DAT" / "CARDS.BIN").write_bytes(b"\xAA" * 12 + tim4() + b"\xBB" * 12 + tim4())
     (rt / "AAA" / "STR" / "MOVIE.STR").write_bytes(tim16())
+    # disc image next to the tree: skipped
+    (rt / "disc.bin").write_bytes(tim16())
+    (rt / "disc.cue").write_bytes(b"FILE disc.bin BINARY")
+    # title-logo style: table sized by its first offset, no 0 word, and a
+    # TIM archive entry with an RLEN TIM
+    (rt / "AAA" / "DAT" / "LOGO.BIN").write_bytes(
+        archive_sized(b"\x34\x00\x00\x00sprites", archive(rlen(tim16()))))
     (rt / "files_us.json").write_text(json.dumps(
         {"files": {"7": {"path": "AAA/DAT/MAP.BIN"}}}), encoding="utf-8")
 
@@ -88,6 +104,7 @@ def test_runtime_tree(tmp_path):
         "AAA/DAT/CARDS.BIN/@00000c.p1.png",
         "AAA/DAT/CARDS.BIN/@000080.png",
         "AAA/DAT/CARDS.BIN/@000080.p1.png",
+        "AAA/DAT/LOGO.BIN/e001_e000.png",
         "AAA/DAT/MAP.BIN/e000_e000.png",
         "AAA/DAT/MAP.BIN/e000_e000.p1.png",
         "AAA/DAT/PLAIN.TIM/root.png",
@@ -100,4 +117,4 @@ def test_runtime_tree(tmp_path):
     assert (w, h) == (3, 2)
     assert raw[1:13] == bytes((255, 255, 255, 255, 255, 0, 0, 255, 0, 0, 0, 0))
     summary = json.loads((out / "summary.json").read_text())
-    assert summary["tims"] == 4 and summary["unique_tims"] == 2
+    assert summary["tims"] == 5 and summary["unique_tims"] == 2

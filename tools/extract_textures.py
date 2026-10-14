@@ -50,6 +50,7 @@ MAX_ARCHIVE_ENTRIES = 4096
 MAX_DEPTH = 6
 SKIP_SUFFIXES = {".STR"}  # movies: MDEC frames, no TIMs
 SKIP_DIRS = {"memcard"}
+DISC_IMAGE_SUFFIXES = {".BIN", ".IMG", ".ISO"}
 
 BPP_NAMES = {0: "4bpp", 1: "8bpp", 2: "16bpp", 3: "24bpp"}
 
@@ -143,12 +144,38 @@ def rlen_unpack(buf: bytes) -> Optional[bytes]:
     return None
 
 
+def _entry_bounds(offsets: List[int], n: int) -> Optional[List[Tuple[int, int]]]:
+    prev = 0
+    for v in offsets:
+        if v & 3 or v < prev or v > n:
+            return None
+        prev = v
+    if len(offsets) == 1 and offsets[0] == n:
+        return None
+    bounds = offsets + [n]
+    return [(bounds[i], bounds[i + 1]) for i in range(len(offsets))]
+
+
 def archive_entries(buf: bytes) -> Optional[List[Tuple[int, int]]]:
-    """(start, end) of each entry when buf looks like an offset-table archive."""
+    """(start, end) of each entry when buf looks like an offset-table archive.
+
+    Two tables occur: one sized by its first offset (the title logo files),
+    and one ended by a 0 word (TIM archives, getArchiveEntry), possibly
+    padded before the first entry.
+    """
     n = len(buf)
     if n < 8:
         return None
-    offsets: List[int] = []
+    first = struct.unpack_from("<I", buf, 0)[0]
+    if first and not first & 3 and first // 4 <= MAX_ARCHIVE_ENTRIES and first < n:
+        offsets = list(struct.unpack_from(f"<{first // 4}I", buf, 0))
+        while offsets and offsets[-1] == 0:
+            offsets.pop()
+        if 0 not in offsets:
+            entries = _entry_bounds(offsets, n)
+            if entries is not None:
+                return entries
+    offsets = []
     for i in range(min(MAX_ARCHIVE_ENTRIES, n // 4)):
         v = struct.unpack_from("<I", buf, i * 4)[0]
         if v == 0:
@@ -159,19 +186,9 @@ def archive_entries(buf: bytes) -> Optional[List[Tuple[int, int]]]:
     if not offsets:
         return None
     table_end = (len(offsets) + 1) * 4
-    first = offsets[0]
-    # entries follow the table (allowing sector padding), in order, aligned
-    if first < table_end or first > table_end + 0x800:
+    if offsets[0] < table_end or offsets[0] > table_end + 0x800:
         return None
-    prev = 0
-    for v in offsets:
-        if v & 3 or v < prev or v > n:
-            return None
-        prev = v
-    if len(offsets) == 1 and first == n:
-        return None
-    bounds = offsets + [n]
-    return [(bounds[i], bounds[i + 1]) for i in range(len(offsets))]
+    return _entry_bounds(offsets, n)
 
 
 def scan_tims(buf: bytes) -> Iterator[Tim]:
@@ -341,6 +358,13 @@ def source_files(root: Path) -> List[Path]:
         if p.suffix.upper() in SKIP_SUFFIXES or p.suffix == ".json":
             continue
         if p.name.startswith(".") or p.name.endswith(".dw3-replace-backup"):
+            continue
+        # the owner's disc image (disc.bin/.cue, used to rebuild STR files)
+        # holds every file again in raw sectors
+        if p.suffix.upper() == ".CUE" or (
+            len(rel.parts) <= 2 and p.suffix.upper() in DISC_IMAGE_SUFFIXES
+            and p.name != "boot_tim.bin"
+        ):
             continue
         out.append(p)
     return out
