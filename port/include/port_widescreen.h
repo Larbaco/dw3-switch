@@ -1,4 +1,4 @@
-/* P6.1 widescreen: side gutters in field and battle, off by default. */
+/* P6.1 widescreen: side gutters in field and battle, on by default. */
 #ifndef DW3_PORT_WIDESCREEN_H
 #define DW3_PORT_WIDESCREEN_H
 
@@ -12,8 +12,8 @@ extern "C" {
 #define DW3_WIDESCREEN_FIELD_PX 32
 #define DW3_WIDESCREEN_BATTLE_PX 53
 
-/* The registry toggle (Port options "Widescreen"); DW3_WIDESCREEN=1 in the
- * environment turns it on at boot. */
+/* The registry toggle (Port options "Widescreen"), on by default;
+ * DW3_WIDESCREEN=0 in the environment turns it off at boot. */
 int dw3_port_widescreen_enabled(void);
 
 /* The gutter the current mode draws with: 0 when off or outside field and

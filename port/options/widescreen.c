@@ -27,8 +27,9 @@ int dw3_port_widescreen_enabled(void) {
         const char *env = getenv("DW3_WIDESCREEN");
 
         g_env_read = 1;
-        if (env != NULL && env[0] == '1') {
-            dw3_port_options_set(DW3_PORT_OPT_WIDESCREEN, 1);
+        /* On by default; DW3_WIDESCREEN=0 boots in 4:3. */
+        if (env != NULL && (env[0] == '0' || env[0] == '1')) {
+            dw3_port_options_set(DW3_PORT_OPT_WIDESCREEN, env[0] == '1');
         }
     }
     return dw3_port_options_value(DW3_PORT_OPT_WIDESCREEN);

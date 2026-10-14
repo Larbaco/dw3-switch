@@ -23,7 +23,7 @@ enum {
 
 typedef struct Dw3PortOptStub {
     const char *label;
-    int value; /* 0/1; defaults preserve stock behaviour */
+    int value; /* 0/1; defaults preserve stock behaviour, except Widescreen */
 } Dw3PortOptStub;
 
 static int g_open;
@@ -31,7 +31,7 @@ static int g_cursor;
 static int g_open_frames;
 static int g_logged_open;
 static Dw3PortOptStub g_stubs[DW3_PORT_OPT_COUNT] = {
-    {"Widescreen", 0},
+    {"Widescreen", 1}, /* owner request (preview.22 OLED): on by default */
     {"Fast-forward (stub)", 0},
     {"Restart hotkey", 0},
 };
