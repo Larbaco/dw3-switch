@@ -14,6 +14,8 @@ static int label_w[DW3_TITLE_LABEL_COUNT], label_h[DW3_TITLE_LABEL_COUNT];
 static int options_lang = DW3_TITLE_LANG_EN;
 static int footer_shown = 1;
 static unsigned art_generation;
+static int option_cursor;
+static int option_values[DW3_TITLE_OPTION_ROWS];
 static void pixel(int x,int y,int r,int g,int b,int alpha) {
     if(x<0||x>=960||y<0||y>=720||alpha<=0)return;
     uint8_t *p=canvas+y*stride+x*4;
@@ -103,7 +105,125 @@ void dw3_pc_title_overlay_set_footer(int show) {
     show=show?1:0;
     if(show!=footer_shown){footer_shown=show;art_generation++;}
 }
+void dw3_pc_title_overlay_set_options_view(int cursor,const int *values,int count) {
+    int changed=cursor!=option_cursor;
+    if(count>DW3_TITLE_OPTION_ROWS)count=DW3_TITLE_OPTION_ROWS;
+    for(int i=0;i<count;i++)if(values[i]!=option_values[i]){option_values[i]=values[i];changed=1;}
+    option_cursor=cursor;
+    if(changed)art_generation++;
+}
 unsigned dw3_pc_title_overlay_generation(void) { return art_generation; }
+
+/* --- Port options screen ---------------------------------------------------
+ * Modelled on the game's own windows (the memory card screen): a white bezel
+ * with a dark rim around a navy body, a stepped blue rule with the window
+ * title at its right, plain white text, a white pointer on the focused choice,
+ * a cyan rule above a message line that explains the focused choice. */
+typedef struct Word { const unsigned char *runs; int w, h, top; } Word;
+#define WORD(n) {title_##n, title_##n##_width, title_##n##_height, title_##n##_top}
+/* x is the left edge (align 0) or the right edge (align 1); y is the text
+ * origin, so words drawn at one y share a baseline. */
+static void word(const Word *t,int x,int y,int align,int r,int g,int b) {
+    int k=0,n=0,left=align?x-t->w:x;
+    while(k<t->w*t->h){int count=t->runs[n++],a=t->runs[n++];
+        for(int j=0;j<count;j++,k++)pixel(left+k%t->w,y+t->top+k/t->w,r,g,b,a);}
+}
+/* Antialiased thick segment (distance to the segment, half-width rad). */
+static void segment(float x0,float y0,float x1,float y1,float rad,int r,int g,int b) {
+    float dx=x1-x0,dy=y1-y0,len2=dx*dx+dy*dy;
+    int bx0=(int)fminf(x0,x1)-(int)rad-2,bx1=(int)fmaxf(x0,x1)+(int)rad+2;
+    int by0=(int)fminf(y0,y1)-(int)rad-2,by1=(int)fmaxf(y0,y1)+(int)rad+2;
+    for(int y=by0;y<=by1;y++)for(int x=bx0;x<=bx1;x++){
+        float px=x+0.5f-x0,py=y+0.5f-y0,t=len2>0?(px*dx+py*dy)/len2:0;
+        t=t<0?0:(t>1?1:t);
+        float ex=px-t*dx,ey=py-t*dy,d=sqrtf(ex*ex+ey*ey),c=rad+0.5f-d;
+        if(c>0)pixel(x,y,r,g,b,(int)(255*(c>1?1:c)));
+    }
+}
+static void disc(float cx,float cy,float rad,int r,int g,int b) {
+    for(int y=(int)(cy-rad)-1;y<=(int)(cy+rad)+1;y++)for(int x=(int)(cx-rad)-1;x<=(int)(cx+rad)+1;x++){
+        float dx=x+0.5f-cx,dy=y+0.5f-cy,c=rad+0.5f-sqrtf(dx*dx+dy*dy);
+        if(c>0)pixel(x,y,r,g,b,(int)(255*(c>1?1:c)));
+    }
+}
+/* The game's pointer: a white triangle, shaded grey on its back edge. */
+static void pointer(int x,int y) {
+    for(int j=0;j<26;j++){int span=(j<13?j:25-j)*20/13;
+        for(int i=0;i<=span;i++)pixel(x+i,y+j,i<4?190:255,i<4?190:255,i<4?198:255,255);}
+}
+/* A button cap: Switch letters, or the PlayStation Cross / Triangle marks. */
+static void button(int cx,int cy,int back) {
+    disc(cx,cy,14,214,222,240);
+#if defined(__SWITCH__)
+    const Word b_key=WORD(opt_key_b),x_key=WORD(opt_key_x);
+    const Word *k=back?&x_key:&b_key;
+    word(k,cx-k->w/2,cy-k->top-k->h/2,0,0,0,49);
+#else
+    if(back){segment(cx,cy-8,cx-8,cy+6,1.4f,0,0,49);segment(cx-8,cy+6,cx+8,cy+6,1.4f,0,0,49);
+             segment(cx+8,cy+6,cx,cy-8,1.4f,0,0,49);}
+    else{segment(cx-6,cy-6,cx+6,cy+6,1.5f,0,0,49);segment(cx-6,cy+6,cx+6,cy-6,1.5f,0,0,49);}
+#endif
+}
+static void options_screen(void) {
+    static const Word rows[DW3_TITLE_OPTION_ROWS]={WORD(opt_row0),WORD(opt_row1),WORD(opt_row2)};
+    static const Word values[]={WORD(opt_off),WORD(opt_on),WORD(opt_2x),WORD(opt_3x),WORD(opt_4x)};
+#if defined(__SWITCH__)
+    static const Word desc[DW3_TITLE_OPTION_ROWS]={WORD(opt_desc0),WORD(opt_desc1_nx),WORD(opt_desc2_nx)};
+#else
+    static const Word desc[DW3_TITLE_OPTION_ROWS]={WORD(opt_desc0),WORD(opt_desc1_pc),WORD(opt_desc2_pc)};
+#endif
+    static const Word titles[]={WORD(opt_title_en),WORD(opt_title_de),WORD(opt_title_es),WORD(opt_title_it)};
+    const Word change=WORD(opt_change),back=WORD(opt_back);
+    const Word *title=&titles[options_lang==DW3_TITLE_LANG_DE?1:options_lang==DW3_TITLE_LANG_ES?2:
+                              options_lang==DW3_TITLE_LANG_IT?3:0];
+    const int x0=84,y0=108,w=792,h=528,x1=x0+w,y1=y0+h;
+
+    /* The title backdrop stays, dimmed; the logo and the menu are gone. */
+    box(0,0,960,720,0,0,16,150);
+    /* Window: white bezel shaded on its lower right, dark rim, blue-violet
+     * inner line, navy body (the memory card window's colors). */
+    box(x0+6,y0+8,w,h,0,0,8,150);
+    box(x0,y0,w,h,255,255,255,255);
+    box(x0+w-3,y0+3,3,h-3,181,181,181,255);box(x0+3,y0+h-3,w-3,3,181,181,181,255);
+    box(x0+9,y0+9,w-18,h-18,49,49,49,255);
+    box(x0+15,y0+15,w-30,h-30,58,58,148,255);
+    box(x0+18,y0+18,w-36,h-36,0,0,49,255);
+    /* Stepped title rule, the window title right of the step. */
+    {
+        const int a=y0+36,xs=x0+500;
+        box(x0+30,a,xs-x0-30,3,0,66,156,255);box(x0+30,a+6,xs-x0-24,3,0,66,156,255);
+        segment(xs,a+1.5f,xs+30,a+31.5f,1.6f,0,66,156);
+        segment(xs+6,a+7.5f,xs+30,a+31.5f,1.6f,0,66,156);
+        box(xs+30,a+30,x1-30-xs-30,3,0,66,156,255);
+        word(title,xs+48,a+2-title->top,0,255,255,255);
+    }
+    /* Choices: label left, value right; the focused one sits in the game's
+     * choice box with the pointer. */
+    for(int i=0;i<DW3_TITLE_OPTION_ROWS;i++) {
+        const int ry=y0+112+i*68,focus=i==option_cursor;
+        int v=option_values[i];
+        if(focus){
+            box(x0+48,ry-8,w-96,52,16,74,156,255);
+            box(x0+51,ry-5,w-102,46,0,8,74,255);
+            pointer(x0+66,ry+5);
+        }
+        word(&rows[i],x0+106,ry,0,255,255,255);
+        if(v<0)v=0;
+        if(v>4)v=4;
+        if(i!=1&&v>1)v=1;
+        word(&values[v],x1-96,ry,1,v?255:150,v?255:158,v?255:196);
+    }
+    /* Message line for the focused choice, then the button hints. */
+    box(x0+30,y1-152,w-60,3,16,156,247,255);
+    if(option_cursor>=0&&option_cursor<DW3_TITLE_OPTION_ROWS)
+        word(&desc[option_cursor],x0+48,y1-128,0,255,255,255);
+    {
+        const int hy=y1-74,bx=x1-48-back.w,cx=bx-36-change.w-60;
+        button(cx,hy+12,0);word(&change,cx+22,hy,0,255,255,255);
+        button(bx-22,hy+12,1);word(&back,bx,hy,0,255,255,255);
+    }
+    box(x0+30,y1-36,w-60,3,0,66,156,255);
+}
 static void title_screen(void) {
     /* The original game logo is retained and framed by the PC integrator.
      * This layer owns only the native menu and discreet legal footer. */
@@ -117,6 +237,7 @@ static void title_screen(void) {
 }
 void dw3_pc_title_overlay_art(uint8_t *rgba,int pitch,int selected) {
     canvas=rgba;stride=pitch;for(int j=0;j<720;j++)memset(rgba+j*pitch,0,960*4);
+    if(selected==DW3_TITLE_ART_OPTIONS){options_screen();return;}
     title_screen();
     if(selected<0) {
         plaque(320,445,320,58,10,99,149,196,17,40,77,255);

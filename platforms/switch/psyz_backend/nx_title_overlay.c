@@ -1,8 +1,9 @@
 /* Native-resolution title menu and logo on the Switch GLES present.
  *
  * Same content as the PC SDL3 GPU overlay (platforms/pc/src/
- * title_menu_overlay.c): a 960x720 transparent canvas in four states
- * (PRESS START, then New Game / Options / Load Game focused), plus the
+ * title_menu_overlay.c): a 960x720 transparent canvas in five states
+ * (PRESS START, New Game / Options / Load Game focused, and the Port options
+ * screen, which fades in over the title and out again), plus the
  * original logo (US, or the EU bank of the current language) resampled from
  * runtime VRAM into a 720x326 texture. EU labels regenerate the canvas.
  * Both are drawn over the game picture's 4:3 viewport after the frame is
@@ -30,7 +31,10 @@ void psyz_log(unsigned int level, const char *file, unsigned int line,
 enum {
     CANVAS_W = 960,
     CANVAS_H = 720,
-    STATE_COUNT = 4,
+    STATE_COUNT = 5,
+    STATE_OPTIONS = 4,
+    /* Port options screen fade, in alpha steps per frame (about 13 frames). */
+    OPTIONS_FADE_STEP = 20,
     ART_TEX_H = CANVAS_H * STATE_COUNT,
     LOGO_W = 720,
     LOGO_H = 326,
@@ -49,6 +53,7 @@ static GLint s_attr_pos = -1;
 static GLint s_attr_t = -1;
 static GLint s_uni_tex = -1;
 static GLint s_uni_sub = -1;
+static GLint s_uni_alpha = -1;
 static int s_gl_failed;
 
 static int s_selection;
@@ -60,6 +65,8 @@ static int s_logo_dirty;
 static int s_fade;
 /* dw3_pc_title_overlay_generation() of the uploaded canvas (EU labels). */
 static unsigned s_art_generation;
+/* Port options screen opacity, 0..255. */
+static int s_options_alpha;
 
 static GLuint compile_shader(GLenum type, const char *src) {
     GLuint sh = glCreateShader(type);
@@ -93,7 +100,8 @@ static GLuint make_texture(int w, int h, const void *pixels) {
     return tex;
 }
 
-/* The four menu states, generated on the CPU (no art is shipped). */
+/* The menu states and the options screen, generated on the CPU (no art is
+ * shipped). */
 static uint8_t *build_art(void) {
     const size_t canvas_bytes = (size_t)CANVAS_W * CANVAS_H * 4;
     uint8_t *pixels = (uint8_t *)malloc(canvas_bytes * STATE_COUNT);
@@ -103,7 +111,9 @@ static uint8_t *build_art(void) {
     }
     s_art_generation = dw3_pc_title_overlay_generation();
     for (int state = 0; state < STATE_COUNT; ++state) {
-        const int selected = state == 0 ? -1 : state - 1;
+        const int selected = state == 0 ? -1 :
+                             state == STATE_OPTIONS ? DW3_TITLE_ART_OPTIONS :
+                             state - 1;
         memset(pixels + (size_t)state * canvas_bytes, 0, canvas_bytes);
         dw3_pc_title_overlay_art(pixels + (size_t)state * canvas_bytes,
                                  CANVAS_W * 4, selected);
@@ -111,7 +121,7 @@ static uint8_t *build_art(void) {
     return pixels;
 }
 
-/* Build the four menu states once per GL context. The canvas is generated on
+/* Build the canvas states once per GL context. The canvas is generated on
  * the CPU (no art is shipped) and freed after the upload. */
 static int ensure_gl(void) {
     static const char *VS =
@@ -124,15 +134,16 @@ static int ensure_gl(void) {
         "varying vec2 v_t;\n"
         "uniform sampler2D u_tex;\n"
         "uniform float u_sub;\n"
+        "uniform float u_alpha;\n"
         "void main(){vec4 c=texture2D(u_tex,v_t);\n"
-        "  gl_FragColor=vec4(max(c.rgb-vec3(u_sub),0.0),c.a);}\n";
+        "  gl_FragColor=vec4(max(c.rgb-vec3(u_sub),0.0),c.a*u_alpha);}\n";
     uint8_t *pixels;
     GLuint vs;
     GLuint fs;
     GLint ok = 0;
 
     if (s_prog && glIsTexture(s_art_tex)) {
-        /* The EU disc swaps in its own labels after the first upload. */
+        /* EU labels and the options screen's values change the canvas. */
         if (s_art_generation != dw3_pc_title_overlay_generation()) {
             pixels = build_art();
             if (pixels) {
@@ -142,7 +153,7 @@ static int ensure_gl(void) {
                                 GL_RGBA, GL_UNSIGNED_BYTE, pixels);
                 free(pixels);
                 TITLE_LOG("dw3-title-overlay: canvas regenerated "
-                          "(labels generation %u)", s_art_generation);
+                          "(generation %u)", s_art_generation);
             }
         }
         return 1;
@@ -181,6 +192,7 @@ static int ensure_gl(void) {
     s_attr_t = glGetAttribLocation(s_prog, "a_t");
     s_uni_tex = glGetUniformLocation(s_prog, "u_tex");
     s_uni_sub = glGetUniformLocation(s_prog, "u_sub");
+    s_uni_alpha = glGetUniformLocation(s_prog, "u_alpha");
 
     pixels = build_art();
     if (!pixels) {
@@ -230,10 +242,19 @@ static void draw_quad(GLuint tex, float x0, float y0, float x1, float y1,
 }
 
 void dw3_nx_title_overlay_draw(int vx, int vy, int vw, int vh) {
-    /* The P9.2 shell draws in the game picture; nothing may cover it. */
-    int logo = s_logo_active && s_logo_rgba && !dw3_port_options_is_open();
+    const int options_open = dw3_port_options_is_open();
+    /* The options screen has no logo; it comes back as the screen fades. */
+    int logo = s_logo_active && s_logo_rgba && !options_open;
 
-    if ((!s_overlay_active && !logo) || vw <= 0 || vh <= 0) {
+    if (options_open) {
+        s_options_alpha += OPTIONS_FADE_STEP;
+        if (s_options_alpha > 255) s_options_alpha = 255;
+    } else {
+        s_options_alpha -= OPTIONS_FADE_STEP;
+        if (s_options_alpha < 0) s_options_alpha = 0;
+    }
+    if ((!s_overlay_active && !logo && !s_options_alpha) || vw <= 0 ||
+        vh <= 0) {
         return;
     }
     if (!ensure_gl()) {
@@ -267,6 +288,7 @@ void dw3_nx_title_overlay_draw(int vx, int vy, int vw, int vh) {
     /* Follow the title's edge fade: it subtracts its level at the centre and
      * twice that at the edges; the overlay spans both, so use 1.5x. */
     glUniform1f(s_uni_sub, (float)s_fade * 1.5f / 255.0f);
+    glUniform1f(s_uni_alpha, 1.0f);
     glActiveTexture(GL_TEXTURE0);
 
     if (logo) {
@@ -280,10 +302,18 @@ void dw3_nx_title_overlay_draw(int vx, int vy, int vw, int vh) {
         draw_quad(s_logo_tex, LOGO_X0, LOGO_Y0, LOGO_X1, LOGO_Y1,
                   0.0f, 0.0f, 1.0f, 1.0f);
     }
-    if (s_overlay_active) {
+    if (s_overlay_active && !options_open) {
         const float v0 = (float)(s_selection * CANVAS_H) / (float)ART_TEX_H;
         const float v1 = (float)((s_selection + 1) * CANVAS_H) /
                          (float)ART_TEX_H;
+        draw_quad(s_art_tex, 0.0f, 0.0f, CANVAS_W, CANVAS_H,
+                  0.0f, v0, 1.0f, v1);
+    }
+    if (s_options_alpha) {
+        const float v0 = (float)(STATE_OPTIONS * CANVAS_H) / (float)ART_TEX_H;
+        const float v1 = (float)((STATE_OPTIONS + 1) * CANVAS_H) /
+                         (float)ART_TEX_H;
+        glUniform1f(s_uni_alpha, (float)s_options_alpha / 255.0f);
         draw_quad(s_art_tex, 0.0f, 0.0f, CANVAS_W, CANVAS_H,
                   0.0f, v0, 1.0f, v1);
     }
@@ -338,8 +368,10 @@ void dw3_pc_title_menu_set_fade(int level) {
 }
 
 void dw3_pc_title_menu_set_state(int active, int selected) {
+    /* While the options screen is up the title draws the menu with -2; keep
+     * its last focus so the menu returns as the screen fades out. */
     if (dw3_port_options_is_open()) {
-        active = 0;
+        return;
     }
     if (!active || selected == -2) {
         s_overlay_active = 0;

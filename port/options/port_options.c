@@ -5,6 +5,11 @@
 #include <stdio.h>
 #include <string.h>
 
+#if !defined(DW3_PORT_OPTIONS_TEST) && defined(DW3_TITLE_NATIVE_OVERLAY)
+/* The native overlay draws the options screen (platforms/pc/src). */
+#include "title_overlay_art.h"
+#endif
+
 #ifndef DW3_PORT_OPTIONS_TEST
 #include "port_text.h"
 #include <libgpu.h>
@@ -62,6 +67,21 @@ static int po_pressed(int bit) {
 }
 #endif
 
+/* Hand the cursor and values to the native overlay, which regenerates its
+ * options screen only when they change. */
+static void po_push_view(void) {
+#if !defined(DW3_PORT_OPTIONS_TEST) && defined(DW3_TITLE_NATIVE_OVERLAY)
+    int values[DW3_PORT_OPT_COUNT];
+    int i;
+
+    for (i = 0; i < DW3_PORT_OPT_COUNT; i++) {
+        values[i] = g_stubs[i].value;
+    }
+    dw3_pc_title_overlay_set_options_view(g_cursor, values,
+                                          DW3_PORT_OPT_COUNT);
+#endif
+}
+
 void dw3_port_options_open(void) {
     if (g_open) {
         return;
@@ -70,6 +90,7 @@ void dw3_port_options_open(void) {
     g_cursor = 0;
     g_open_frames = 0;
     g_logged_open = 0;
+    po_push_view();
     fprintf(stderr, "dw3-port-options: open (stay MODE_TITLE)\n");
     fflush(stderr);
 }
@@ -207,9 +228,11 @@ void dw3_port_options_tick(void) {
         po_toggle(g_cursor);
     }
 #endif
+    po_push_view();
 }
 
-#if !defined(DW3_PORT_OPTIONS_TEST) && defined(DW3_PC_HOST)
+#if !defined(DW3_PORT_OPTIONS_TEST) && defined(DW3_PC_HOST) && \
+    !defined(DW3_TITLE_NATIVE_OVERLAY)
 static void dw3_port_options_maybe_fb_dump(void) {
     const char *path;
     unsigned char *rgb;
@@ -260,6 +283,8 @@ static void dw3_port_options_maybe_fb_dump(void) {
 void dw3_port_options_draw(void) {
 #ifdef DW3_PORT_OPTIONS_TEST
     (void)g_cursor;
+#elif defined(DW3_TITLE_NATIVE_OVERLAY)
+    /* The native overlay draws the options screen (po_push_view). */
 #else
     short ox = 0;
     short oy = 0;

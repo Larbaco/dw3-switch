@@ -37,7 +37,8 @@
 #define OVERLAY_SHADER_FORMAT SDL_GPU_SHADERFORMAT_SPIRV
 #endif
 
-enum { CANVAS_W = 960, CANVAS_H = 720, STATE_COUNT = 4 };
+/* PRESS START, the three focused menu rows, and the Port options screen. */
+enum { CANVAS_W = 960, CANVAS_H = 720, STATE_COUNT = 5, STATE_OPTIONS = 4 };
 #define ART_TEXTURE_H (CANVAS_H * STATE_COUNT)
 
 typedef struct OverlayVertex {
@@ -142,7 +143,9 @@ static int upload_art_and_quad(void) {
     if (!pixels) return -1;
     g_art_generation = dw3_pc_title_overlay_generation();
     for (int state = 0; state < STATE_COUNT; ++state) {
-        const int selected = state == 0 ? -1 : state - 1;
+        const int selected = state == 0 ? -1 :
+                             state == STATE_OPTIONS ? DW3_TITLE_ART_OPTIONS :
+                             state - 1;
         dw3_pc_title_overlay_art(pixels + (size_t)state * canvas_bytes,
                                  CANVAS_W * 4, selected);
     }
@@ -210,7 +213,7 @@ static int upload_art_and_quad(void) {
         return -1;
     }
 
-    OverlayVertex quads[STATE_COUNT * 6 + 18];
+    OverlayVertex quads[STATE_COUNT * 6 + 24];
     for (int row = 0; row < STATE_COUNT; ++row) {
         const float u0 = 0.0f;
         const float u1 = 1.0f;
@@ -246,6 +249,20 @@ static int upload_art_and_quad(void) {
         const OverlayVertex c = {{1, 1}, {u1, 1}};
         const OverlayVertex d = {{0, 1}, {u0, 1}};
         OverlayVertex *q = &quads[(STATE_COUNT + 1 + side) * 6];
+        q[0] = a; q[1] = b; q[2] = c;
+        q[3] = a; q[4] = c; q[5] = d;
+    }
+
+    /* The options screen's dim, for the backdrop's side extensions: one texel
+     * of its uniformly dimmed corner stretched over the quad. */
+    {
+        const float u = 0.5f / CANVAS_W;
+        const float v = (STATE_OPTIONS * CANVAS_H + 0.5f) / ART_TEXTURE_H;
+        const OverlayVertex a = {{0, 0}, {u, v}};
+        const OverlayVertex b = {{1, 0}, {u, v}};
+        const OverlayVertex c = {{1, 1}, {u, v}};
+        const OverlayVertex d = {{0, 1}, {u, v}};
+        OverlayVertex *q = &quads[(STATE_COUNT + 3) * 6];
         q[0] = a; q[1] = b; q[2] = c;
         q[3] = a; q[4] = c; q[5] = d;
     }
@@ -441,7 +458,7 @@ int dw3_pc_title_menu_set_logo_rgba(const uint8_t *rgba, int width,
     return 0;
 }
 
-/* Regenerate the four states when the EU disc swaps in its own labels. */
+/* Regenerate the states when EU labels or the options screen's values change. */
 static void refresh_art(void) {
     const size_t canvas_bytes = (size_t)CANVAS_W * CANVAS_H * 4;
     const size_t texture_bytes = canvas_bytes * STATE_COUNT;
@@ -464,7 +481,9 @@ static void refresh_art(void) {
     }
     g_art_generation = dw3_pc_title_overlay_generation();
     for (int state = 0; state < STATE_COUNT; ++state) {
-        const int selected = state == 0 ? -1 : state - 1;
+        const int selected = state == 0 ? -1 :
+                             state == STATE_OPTIONS ? DW3_TITLE_ART_OPTIONS :
+                             state - 1;
         dw3_pc_title_overlay_art(mapped + (size_t)state * canvas_bytes,
                                  CANVAS_W * 4, selected);
     }
@@ -510,7 +529,14 @@ void dw3_pc_title_menu_logo_set_active(int active) {
 void dw3_pc_title_menu_set_fade(int level) { (void)level; }
 
 void dw3_pc_title_menu_set_state(int active, int selected) {
-    if (dw3_port_options_is_open()) active = 0;
+    /* The options screen replaces the menu and the logo while it is open. */
+    if (dw3_port_options_is_open() && g_pipeline && g_texture && g_vertices &&
+        g_sampler) {
+        refresh_art();
+        g_selection = STATE_OPTIONS;
+        g_overlay_active = 1;
+        return;
+    }
     if (!active || !g_pipeline || !g_texture || !g_vertices || !g_sampler) {
         g_overlay_active = 0;
         return;
@@ -562,6 +588,19 @@ static void render_overlay(SDL_GPUCommandBuffer *cmd, SDL_GPURenderPass *pass) {
             side_viewport.w = viewport.x;
             SDL_SetGPUViewport(pass, &side_viewport);
             SDL_DrawGPUPrimitives(pass, 6, 1, (STATE_COUNT + 1 + side) * 6, 0);
+        }
+        if (g_overlay_active && g_selection == STATE_OPTIONS) {
+            const SDL_GPUTextureSamplerBinding dim_binding = {
+                .texture = g_texture, .sampler = g_sampler,
+            };
+            SDL_BindGPUFragmentSamplers(pass, 0, &dim_binding, 1);
+            for (int side = 0; side < 2; ++side) {
+                SDL_GPUViewport side_viewport = viewport;
+                side_viewport.x = side ? viewport.x + viewport.w : 0.0f;
+                side_viewport.w = viewport.x;
+                SDL_SetGPUViewport(pass, &side_viewport);
+                SDL_DrawGPUPrimitives(pass, 6, 1, (STATE_COUNT + 3) * 6, 0);
+            }
         }
     }
     SDL_SetGPUViewport(pass, &viewport);
