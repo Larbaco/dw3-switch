@@ -1,0 +1,27 @@
+Upstream-bound: no
+Subject: [PORT_HOST] P6.1 hand the widescreen gutter to the renderer each frame
+
+Before drawFrame, shared port policy picks the side gutter of the
+current mode (field or battle when the Widescreen option is on) and passes
+it to PSY-Z. No game state changes.
+
+--- a/src/engine/system/main.c
++++ b/src/engine/system/main.c
+@@ -6,6 +6,7 @@
+ /* Avoid psyz.h here: it pulls POSIX open/read that clash with game.h. */
+ int Psyz_QuitRequested(void);
+ #include "port_restart.h"
++#include "port_widescreen.h"
+ #endif
+ 
+ /* -G8 unit: small variables defined here are reached through $gp, in the small data (.sdata) */
+@@ -102,6 +103,9 @@
+             ROOT_TASK = createModeTask();
+         }
+         ROOT_TASK = TASK_REGISTRY.funcs.run(ROOT_TASK);
++#if PORT_HOST
++        dw3_port_widescreen_frame();
++#endif
+         GFX.funcs.drawFrame(ROOT_TASK);
+         PAD.update();
+ #if PORT_HOST

@@ -39,3 +39,4 @@ def test_rgb555_rect_matches_full_expand(vram_pack_test: Path):
     r = subprocess.run([str(vram_pack_test)], capture_output=True, text=True)
     assert r.returncode == 0, r.stderr + r.stdout
     assert "OK: rgb555 rect pack matches full-buffer expand" in r.stdout
+    assert "OK: rgb555 wide pack puts the gutters beside the display" in r.stdout

@@ -56,11 +56,11 @@ brand mark over the original logo.
 
 - [Selected button atlas](assets/title-menu/digivice-orange-blue-atlas.png):
   three plaque variations; each row pairs idle (left) with selected (right).
-- [Title-screen mockup](assets/title-menu/title-screen-orange-blue-mockup.png):
-  visual composition with the specified labels and the first row selected.
+- The title-screen mockup is kept outside Git: it shows the original logo,
+  background, and legal text, which are game artwork.
 
-The atlas and mockup are concept images. The game uses a compact authored
-overlay atlas rather than cropping these images: 500×54 navy plaques, layered
+The atlas is a concept image. The game uses a compact authored
+overlay atlas rather than cropping that image: 500×54 navy plaques, layered
 steel-blue bevels, clipped corner clamps with square amber fasteners, internal
 rails, and readable centered labels. The Press Start prompt and three menu
 states are packed into one 960×2880 RGBA texture and selected by UV range. A

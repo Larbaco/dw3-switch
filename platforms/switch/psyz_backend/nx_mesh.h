@@ -54,6 +54,14 @@ void dw3_nx_mesh_clear_rect(int x, int y, int w, int h, float r, float g,
  * flushes pending triangles first so OT order is kept. */
 void dw3_nx_mesh_fill_bg(int x, int y, int w, int h, float r, float g, float b);
 
+/* P6.1 side gutters (Psyz_VideoSetGutter): triangles drawn into a drawing
+ * area spanning [x0, x0 + w) and h rows (any height when h <= 0) also land in
+ * a gutter FBO, px columns wider on each side; px = 0 turns them off. */
+void dw3_nx_mesh_set_gutter(int px, int x0, int w, int h);
+/* Black gutters for rows [y0, y1) (a buffer about to be drawn). */
+void dw3_nx_mesh_clear_gutter_rows(int y0, int y1);
+bool dw3_nx_mesh_has_gutters(void);
+
 /* Enqueue a triangle list (indices into v[]). Flushes automatically if full. */
 void dw3_nx_mesh_enqueue(const Dw3NxMeshVertex *v, int nverts,
                          const uint16_t *idx, int nidx,
@@ -65,7 +73,8 @@ bool dw3_nx_mesh_has_content(void);
 uint64_t dw3_nx_mesh_prims_flushed(void);
 
 /* Blit the mesh FBO display rect into the current draw framebuffer's viewport
- * rectangle (vx,vy,vw,vh) in window pixels. */
+ * rectangle (vx,vy,vw,vh) in window pixels. With gutters on and dw the gutter
+ * width, the blit is the display plus both gutters. */
 void dw3_nx_mesh_present(int dx, int dy, int dw, int dh, int vx, int vy, int vw,
                          int vh);
 

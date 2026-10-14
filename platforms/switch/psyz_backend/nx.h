@@ -102,6 +102,9 @@ typedef struct Dw3NxDisplay {
     int range_w;
     int range_h;
     int pal; /* DisplayMode.pal: 0 = NTSC vref 240, 1 = PAL vref 288 */
+    /* P6.1 side gutter per side in pixels (0 = off); present adds the planes
+     * of dw3_nx_switch_gpu_gutter_plane left and right of the display. */
+    int gutter;
 } Dw3NxDisplay;
 
 void dw3_nx_switch_gpu_display(Dw3NxDisplay *out);
@@ -110,11 +113,17 @@ void dw3_nx_switch_gpu_display(Dw3NxDisplay *out);
  * nx_gpu.c does not have to include PSY-Z's private rasterizer header. */
 const uint16_t *dw3_nx_switch_gpu_vram(void);
 
+/* RGB555 side gutters, side 0 = left: row y is the gutter of VRAM row y,
+ * DW3_NX_GUTTER_STRIDE pixels per row (PSYZ_GUTTER_MAX). */
+#define DW3_NX_GUTTER_STRIDE 64
+const uint16_t *dw3_nx_switch_gpu_gutter_plane(int side);
+
 /* Upload a VRAM region and draw it, letterboxed onto the EGL surface.
  * src_aspect is PSY-Z's display-range aspect (4:3 for this title). The
- * dw/dh arguments are only the sampled rectangle. */
+ * dw/dh arguments are only the sampled rectangle. A non-zero gutter draws
+ * the side gutter planes left and right of it, the aspect widened to match. */
 void dw3_nx_gpu_present(const uint16_t *vram, int dx, int dy, int dw, int dh,
-                        float src_aspect);
+                        float src_aspect, int gutter);
 
 /* PSY-Z platform symbols (see vendor/psyz src/psyz/os.h, include/psyz/input.h,
  * include/psyz/video.h and include/psyz/log.h for the contracts). */

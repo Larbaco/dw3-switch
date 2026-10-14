@@ -1,0 +1,29 @@
+Upstream-bound: no
+Subject: [PORT_HOST] P6.9 in-process restart hotkey
+
+After the normal pad update, let shared port policy flush P5.3 and request a
+restart. Reinitialize only the game save state and mode task; do not repeat
+PSY-Z, CD, audio, heap, pad, or graphics initialization.
+
+--- a/src/engine/system/main.c
++++ b/src/engine/system/main.c
+@@ -5,3 +5,4 @@
+ /* Avoid psyz.h here: it pulls POSIX open/read that clash with game.h. */
+ int Psyz_QuitRequested(void);
++#include "port_restart.h"
+ #endif
+@@ -115,5 +118,14 @@
+         GFX.funcs.drawFrame(ROOT_TASK);
+         PAD.update();
++#if PORT_HOST
++        if (dw3_port_restart_poll()) {
++            GAME.funcs.newGame();
++            OVERLAY_LOADER.mode = -1;
++            OVERLAY_LOADER.subOverlay = -1;
++            ROOT_TASK = NULL;
++            continue;
++        }
++#endif
+         RANDOM.next();
+         FILE_CACHE.update();
+         SOUND.updateLoading();

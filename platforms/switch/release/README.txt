@@ -1,34 +1,41 @@
 Digimon World 3 / 2003, Switch homebrew preview
 
-This release is v0.6.5-preview.21, built from main at b597c67 after
-PR #111 (STR bridge read-race fix) and PR #112 (docs).
-Battle defaults to software RasterTriangle; field stays software RGB555.
-GPU diagnostic instrumentation is disabled in this release. PR #89 is
-still separate and its OLED investigation is not part of this cut.
+This release is v0.6.5-preview.22, built from main after PR #123
+(widescreen). It also carries #114, #115 and #122, merged after
+preview.21. Battle defaults to software RasterTriangle; field stays
+software RGB555. GPU diagnostic instrumentation is disabled.
 
 New in this preview
 
-  Title menu: Start / Port options / Continue (#100). The port-options
-  shell was validated on PC. Its current switches are stubs: they have
-  no gameplay effects and are not persisted. Switch navigation remains
-  to be confirmed on hardware.
+  Widescreen (#123, P6.1). Port options on the title menu has a
+  Widescreen switch, OFF by default and not saved between boots. When
+  it is on, battles draw 53 extra pixels on each side (426x240, about
+  16:9) and the field draws 32 (384x240, 16:10). The HUD and menus stay
+  in the middle 320 columns. Title, menus, movies and the card game stay
+  4:3. The log (and sdmc:/switch/dw3/dw3.log) prints
+  "dw3-widescreen: gutter 53 px per side" in battle and 32 on the field.
+  Checked in the PC build and in Ryubing with the disc owner's data. Not
+  yet on hardware. Things can pop in at the side edges; please report
+  where. A 1x3 pixel black mark at the left edge of one field map is a
+  map tile seam, not this feature.
 
-  Opening movie: the STR file bridge is now locked between the video and
-  XA readers (#111). Video sectors are no longer dropped. On the OLED
-  (nxlink build) the opening held 14.994-15.006 fps over 18 steady
-  windows; preview.20 measured 6.75 fps. The XA audio sounded correct.
-  The owner pressed Start at frame 1110 of about 1776, so the last part
-  of the movie was not checked on hardware. Image quality was not
-  separately assessed. Empty StGetNext scan cache (#106) is still in.
+  Restart hotkey (#122, P6.9). Port options has Restart hotkey, OFF by
+  default. With it on, hold L + R + Plus + Minus (PS1 L1 + R1 + Start +
+  Select): saves are flushed first, then the game returns to the title
+  without leaving the .nro. On the nxlink build the same buttons also
+  toggle the debug HUD. Validated on PC; not yet on Switch.
 
-  Battle render A/B remains FIGHTSTG-only. Minus + ZL + ZR cycles:
-    soft / soft+bbox (stub) / gpu-solid / gpu-tex.
-  Soft is the cold-boot default. GPU modes remain experimental.
+  GPU battle modes (#114). gpu-solid and gpu-tex no longer show a flat
+  blue battle: the background clear now goes to the mesh FBO. Soft is
+  still the cold-boot default. Minus + ZL + ZR cycles
+  soft / soft+bbox (stub) / gpu-solid / gpu-tex.
   Toggle the nxlink debug HUD with Minus + L + R.
 
-  Existing own-disc extraction, left-stick input, flat saves, and the
-  STGMCARD load/save progress bar remain available. The opening-video
-  picture has known errors; the port is still a prerelease.
+  Port options row (#115): a uniform, easier-to-read row on the title.
+
+  Carried forward: the STR read-race fix (#111), the empty StGetNext
+  scan cache (#106), own-disc extraction, left-stick input, flat saves
+  and the STGMCARD load/save progress bar.
 
 This build does not call clkrstSetClockRate or appletSetCpuBoostMode.
 The CPU and GPU stay at the rate the console set.
@@ -102,22 +109,25 @@ Install the test build
   want the host log.
 
   hbmenu shows the NACP display version for SD installs (this preview:
-  0.6.5-p.21 — libnx allows 15 characters, so "preview" becomes "p").
+  0.6.5-p.22 — libnx allows 15 characters, so "preview" becomes "p").
   nxlink loads may not refresh that metadata; look for
-  dw3: version=0.6.5-preview.21 on the host log or in
+  dw3: version=0.6.5-preview.22 on the host log or in
   sdmc:/switch/dw3/dw3.log.
 
   Do not delete OLED saves (save0.bin / save1.bin) for this test.
 
-OLED A/B checklist (carried forward from preview.18)
+OLED checklist (preview.22)
 
-  1. Boot with existing us/ and flat saves. Reach field, then a fight.
-  2. Confirm soft looks OK (default). HUD battle=soft if nxlink.
-  3. Minus+ZL+ZR once → soft+bbox (same picture; log "not yet").
-  4. Again → gpu-solid (solid colours / shapes; compare FPS).
-  5. Again → gpu-tex (may be black; compare only).
-  6. Again → soft. HUD scale should feel a bit smaller than before.
-  7. Optional: STGMCARD load/save — bar still ~tracks I/O (option B OK).
+  1. Boot with existing us/ and flat saves. Title, Port options, turn
+     Widescreen on, back, Continue.
+  2. Field: the picture is wider than before (16:10), the map fills both
+     sides, the HUD is centred. Walk to a map edge.
+  3. A fight: wider still (about 16:9). Watch the side edges for models
+     that pop in. HUD battle=soft if nxlink.
+  4. Minus+ZL+ZR to gpu-solid and gpu-tex: the battle should no longer be
+     flat blue. Compare FPS; soft is still the default.
+  5. Optional: turn Restart hotkey on, hold L+R+Plus+Minus in the field,
+     then Continue the save you were on.
 
 Install your own disc data
 

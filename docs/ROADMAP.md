@@ -306,6 +306,16 @@ quality across all layers and performance remain unassessed. Instructions:
   owner heard correct XA audio. The owner pressed Start at frame 1110 of
   about 1776, so the last ~38% was not played on hardware (Ryubing played
   it whole with zero drops). Image quality was not separately assessed.
+  **Residual check (2026-10-13):** the later report that video changes work
+  well but remain incomplete names no specific defect, so no code fix can be
+  tied to it yet. A private Ryubing 1.3.3 run of the CI NRO with #111/#114
+  advanced through `DecDCTout` #1800, showed recognizable movie content and
+  the title framebuffer transition, at about 15 fps. Dummy audio and an
+  emulator display do not establish A/V sync or OLED quality. Full-playback
+  start-to-finish and image-quality evidence on hardware remain open; the
+  exact OLED retest is in
+  [pacing diagnostics](P3.7_MOVIE_PACING_DIAGNOSTICS.md). Do not treat the
+  unrelated #114 GPU battle change as movie validation.
   Done when: the opening movies play with audio and can be skipped. The
   OLED meets the audio and skip part; see
   [pacing diagnostics](P3.7_MOVIE_PACING_DIAGNOSTICS.md).
@@ -626,6 +636,19 @@ tick does not start Phase 6.
 
 - [ ] **P6.1** Integer scaling / aspect options; optional widescreen
   where the GTE projection allows.
+  **Widescreen first pass (2026-10-14, owner asked early; Phase 6 not
+  started):** the Port options Widescreen toggle (or `DW3_WIDESCREEN=1`)
+  draws side gutters outside VRAM, 16:9 in battle and 16:10 in the field,
+  on PC `sdl3_gpu` and the Switch renderer. Host tests and a synthetic PC
+  render pass; PC and Ryubing validated with the owner's disc (PR #123),
+  shipped in v0.6.5-preview.22. Full 16:9 in the field needs more tile
+  slots. Integer scaling is untouched. See
+  [P6.1_WIDESCREEN.md](P6.1_WIDESCREEN.md).
+  **OLED feedback (2026-10-14, to do, not fixed yet):** thin side strips
+  remain on the field (16:10); battle should default to `gpu-tex` (its
+  right-panel Digimon face is missing); title and other menus are still
+  4:3; Widescreen should be ON by default; the Gatomon inn scene leaves the
+  gutters uncovered while the middle 4:3 is covered.
 - [ ] **P6.2** PAL/NTSC and EU/US selection at boot; language from EU
   `CNTY_SEL`.
 - [ ] **P6.3** PGXP-style vertex precision from PSY-Z if it stays stable.
@@ -699,6 +722,15 @@ tick does not start Phase 6.
   Done when: the hotkey returns to the boot/title flow without
   relaunching Sphaira (PC and hardware), and a save written before the
   restart still loads afterwards.
+  **PC implementation / evidence (2026-10-13):** title Port options has an
+  opt-in restart setting (OFF by default, session-only). The PS1 logical
+  chord L1+R1+Start+Select runs shared `port/` policy, flushes P5.3 dirty
+  saves, and cancels if flushing fails. It resets `GAME` state and the active
+  mode/overlay inside the existing `dw3_game_main()` loop; host, PSY-Z, audio,
+  heap, pad, and graphics initialization do not run again. Private Xvfb PC run
+  returned to title after the successful flush. See
+  [P6.9_RESTART.md](P6.9_RESTART.md). **Still open:** Switch build/hardware
+  chord and Continue reload of a save written before restart.
 
 Gate: polish options from P6.1–P6.5 land as needed; localization P6.6–P6.8
 may still be in progress when Phase 7 starts only if the Phase 5 playable
@@ -873,11 +905,17 @@ PS1 game, with vanilla-safe defaults and persistence on owner storage.
   [PC_TITLE_LOGO_RESAMPLING.md](PC_TITLE_LOGO_RESAMPLING.md).
   Done when: the screen is reachable from the main menu and returns
   cleanly to it (PC + Switch; TTB print on PC).
-- [ ] **P9.3 Toggle registry.** Maintain a registry of non-native features
+- [x] **P9.3 Toggle registry.** Maintain a registry of non-native features
   (Phase 6–8 items and later), each with a default equivalent to stock
   behaviour (or documented exception).
   Done when: flipping a stub or real flag from the menu has a documented
   effect (safe no-op allowed for not-yet-wired features).
+  **Status (2026-10-13):** shared registry has Widescreen and Fast-forward
+  safe no-op stubs plus the real session-only Restart hotkey, OFF by default.
+  Widescreen became a real session-only toggle on 2026-10-14 (P6.1).
+  Its chord and flush behavior are documented in
+  [PORT_OPTIONS.md](PORT_OPTIONS.md) and [P6.9_RESTART.md](P6.9_RESTART.md).
+  P9.4 persistence and P9.5 wiring of remaining real features remain open.
 - [ ] **P9.4 Persistence.** Load/save the option file under the owner
   runtime layout (PC directory / `sdmc:/switch/dw3/…`); values survive
   process exit.

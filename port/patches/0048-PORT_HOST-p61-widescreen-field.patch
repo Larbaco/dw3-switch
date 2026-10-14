@@ -1,0 +1,65 @@
+Upstream-bound: no
+Subject: [PORT_HOST] P6.1 field camera and map objects cover the gutters
+
+With widescreen on, the camera keeps the side gutters on maps wide enough
+for them, and map objects inside a gutter are animated and drawn. Off, both
+are unchanged.
+
+--- a/src/field/field_mode/camera.c
++++ b/src/field/field_mode/camera.c
+@@ -1,6 +1,9 @@
+ /* The camera, which follows an actor or looks at a spot, and shakes */
+ 
+ #include "field/field_mode.h"
++#if PORT_HOST
++#include "port_widescreen.h"
++#endif
+ 
+ /* Scrolls the map layer to the camera's center, kept inside the map, and
+    shakes it while shaking with its sound */
+@@ -42,6 +45,21 @@
+     if (task->bounds.y - SCREEN_HEIGHT < y) {
+         y = task->bounds.y - SCREEN_HEIGHT;
+     }
++#if PORT_HOST
++    /* Widescreen: keep the side gutters on a map wide enough for them */
++    {
++        s32 gutter = dw3_port_widescreen_px();
++
++        if (gutter > 0 && task->bounds.x >= SCREEN_WIDTH + gutter * 2) {
++            if (x < gutter) {
++                x = gutter;
++            }
++            if (task->bounds.x - SCREEN_WIDTH - gutter < x) {
++                x = task->bounds.x - SCREEN_WIDTH - gutter;
++            }
++        }
++    }
++#endif
+     shake = 0;
+     if (task->shaking != 0) {
+         task->shake = (task->shake + 1) & 3;
+--- a/src/field/field_mode/map_objects.c
++++ b/src/field/field_mode/map_objects.c
+@@ -1,6 +1,9 @@
+ /* The map's objects: animated, drawn and found by their animation */
+ 
+ #include "field/field_mode.h"
++#if PORT_HOST
++#include "port_widescreen.h"
++#endif
+ 
+ /* The layer's sorted callback that draws a map object */
+ void FIELDSTG_drawMapObject(MapObjects *task, Layer *layer, s32 index) {
+@@ -58,6 +61,11 @@
+         object = task->objects;
+         layer = GFX.funcs.getLayer(FIELD_LAYER_MAP);
+         layer->getViewRect(layer, &view);
++#if PORT_HOST
++        /* Widescreen: objects in the side gutters are in view too */
++        view.x -= dw3_port_widescreen_px();
++        view.w += dw3_port_widescreen_px() * 2;
++#endif
+         initSpriteDrawer(&sprite);
+         sprite.setTexture(FIELD_OBJECTS_X, FIELD_OBJECTS_Y);
+         sprite.setAltClut(0, FIELD_OBJECTS_CLUT_Y);

@@ -1,0 +1,35 @@
+Upstream-bound: no
+Subject: [PORT_HOST] P6.1 battle mesh culling covers the gutters
+
+Widen the on-screen test of FIGHTSTG_isMeshOnScreen by the gutter on each
+side, so meshes reaching into the gutters are not culled.
+
+--- a/src/battle/battle_mode/model_mesh.c
++++ b/src/battle/battle_mode/model_mesh.c
+@@ -14,6 +14,9 @@
+    here. */
+ 
+ #include "battle/battle_mode.h"
++#if PORT_HOST
++#include "port_widescreen.h"
++#endif
+ #include "engine/gte.h"
+ 
+ /* Blends a bone's position, rotation and scale from the saved pose
+@@ -671,9 +674,16 @@
+         gte_ldv0_unaligned(corner);
+         gte_rtps();
+         if (i == 0) {
++#if PORT_HOST
++            /* Widescreen: the side gutters widen the clip */
++            x = layer->env.clip.x - 64 - dw3_port_widescreen_px();
++            left = x - layer->offsetX;
++            w = layer->env.clip.w + 128 + dw3_port_widescreen_px() * 2;
++#else
+             x = layer->env.clip.x - 64;
+             left = x - layer->offsetX;
+             w = layer->env.clip.w + 128;
++#endif
+             right = x + w - layer->offsetX;
+             y = layer->env.clip.y - 64;
+             top = y - layer->offsetY;
