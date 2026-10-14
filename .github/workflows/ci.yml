@@ -6,7 +6,36 @@ on:
   pull_request:
 
 jobs:
+  # Docs-only changes (docs/**, *.md) skip the build jobs below. Skipped jobs
+  # count as passing for required status checks, so docs PRs stay mergeable.
+  # This is done in-job rather than with paths-ignore, which would leave a
+  # required check stuck on "Expected - waiting".
+  changes:
+    runs-on: ubuntu-24.04
+    outputs:
+      code: ${{ steps.diff.outputs.code }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: diff
+        env:
+          BASE: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
+        run: |
+          # Unknown base (new branch, force push): build to be safe.
+          if [ -z "$BASE" ] || ! git cat-file -e "$BASE^{commit}" 2>/dev/null; then
+            echo "code=true" >> "$GITHUB_OUTPUT"; exit 0
+          fi
+          files=$(git diff --name-only --no-renames "$BASE...$GITHUB_SHA")
+          echo "$files"
+          code=$(echo "$files" | grep -vE '^docs/|\.md$' | grep -q . && echo true || echo false)
+          echo "code=$code" >> "$GITHUB_OUTPUT"
+
   pc:
+    needs: changes
+    # Build unless changes positively said docs-only; if changes itself
+    # fails, its output is empty and the builds still run (no false green).
+    if: ${{ !cancelled() && needs.changes.outputs.code != 'false' }}
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
@@ -47,6 +76,10 @@ jobs:
   # The game .nro is job switch-game below, and a Release only from
   # .github/workflows/switch-release.yml.
   switch:
+    needs: changes
+    # Build unless changes positively said docs-only; if changes itself
+    # fails, its output is empty and the builds still run (no false green).
+    if: ${{ !cancelled() && needs.changes.outputs.code != 'false' }}
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
@@ -60,6 +93,10 @@ jobs:
           test -f platforms/switch/dw3-switch.nro
 
   switch-game:
+    needs: changes
+    # Build unless changes positively said docs-only; if changes itself
+    # fails, its output is empty and the builds still run (no false green).
+    if: ${{ !cancelled() && needs.changes.outputs.code != 'false' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     steps:
