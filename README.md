@@ -265,7 +265,7 @@ and [SHA256SUMS](https://github.com/Larbaco/dw3-switch/releases/download/v0.6.5-
 Widescreen starts ON and Switch battle defaults to `gpu-tex`; known stage-specific
 sky gaps remain. Field/battle fast-forward is available through R3 and Port options.
 Restart remains opt-in. Full boot version is `0.6.5-preview.25`; the shorter
-hbmenu NACP version is `0.6.5-p.25`. This release's OLED acceptance remains open.
+hbmenu NACP version is `0.6.5-p.25`. OLED EU boot is confirmed; gameplay and feature acceptance remain open.
 See [RELEASE_PREVIEW25](docs/RELEASE_PREVIEW25.md) for build provenance and gates.
 
 The earlier movie-fix preview is

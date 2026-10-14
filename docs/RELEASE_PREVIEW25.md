@@ -32,8 +32,10 @@ PR #137 records its documentation; all controls are in [HOTKEYS](HOTKEYS.md).
 Port options remain session-only. Restart stays OFF until enabled.
 
 Publication and successful build are not OLED acceptance. At this checkpoint,
-preview.25 delivery/boot, movie image/audio, widescreen, battle-stage geometry,
-turbo speed/audio, and save → restart → Load Game remain hardware gates.
+EU nxlink delivery and OLED boot are confirmed: logs identify boot version
+`0.6.5-preview.25`, EU runtime root and `SLES_039.36`, and the EU title is active.
+Movie image/audio, widescreen, battle-stage geometry, turbo speed/audio, and
+save → restart → Load Game remain hardware gates.
 The owner reported completing a first EU save on the preceding test build;
 that is not evidence of preview.25 reload or restart correctness.
 Preserve both region trees and their memcard directories. Testing the NRO's
