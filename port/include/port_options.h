@@ -24,6 +24,9 @@ int dw3_port_options_count(void);
 const char *dw3_port_options_label(int index);
 int dw3_port_options_value(int index);
 void dw3_port_options_set(int index, int value);
+/* Raw row value: 0/1, or 0 (OFF) / 2..4 (speed) for Fast-forward. */
+int dw3_port_options_level(int index);
+void dw3_port_options_set_level(int index, int level);
 
 /* Restart is opt-in and session-only until P9.4 adds owner-storage config. */
 int dw3_port_options_restart_enabled(void);

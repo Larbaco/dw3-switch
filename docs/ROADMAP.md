@@ -663,6 +663,13 @@ tick does not start Phase 6.
   `CNTY_SEL`.
 - [ ] **P6.3** PGXP-style vertex precision from PSY-Z if it stays stable.
 - [ ] **P6.4** Fast-forward / frame-skip toggles for grinding (optional).
+  **Status (2026-10-14, first pass):** R3 toggles 2x/3x/4x fast-forward
+  in field and battle; speed (or OFF) in the Port options row. Switch skips
+  presents; PC paces at speed × base rate. Done early on the owner's
+  request without opening Phase 6. See
+  [P6.4_FAST_FORWARD.md](P6.4_FAST_FORWARD.md).
+  Done when: PC and Switch (Ryujinx, then hardware) show it on both the US
+  and EU discs, and it returns cleanly to normal speed.
 - [x] **P6.5** Release packaging: `.nro` + `README` for own-disc setup;
   never ship data.
   Done when: a deliberate GitHub Release (`workflow_dispatch` or a `v*`
@@ -922,6 +929,7 @@ PS1 game, with vanilla-safe defaults and persistence on owner storage.
   effect (safe no-op allowed for not-yet-wired features).
   **Status (2026-10-13):** shared registry has Widescreen and Fast-forward
   safe no-op stubs plus the real session-only Restart hotkey, OFF by default.
+  Fast-forward became a real session-only row on 2026-10-14 (P6.4).
   Widescreen became a real session-only toggle on 2026-10-14 (P6.1).
   Its chord and flush behavior are documented in
   [PORT_OPTIONS.md](PORT_OPTIONS.md) and [P6.9_RESTART.md](P6.9_RESTART.md).

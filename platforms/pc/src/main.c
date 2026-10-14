@@ -5,6 +5,8 @@
  * P3.7 Task 3–4: file-backed STR CD bridge, StCdIntrFlag pump, XA evidence
  * drain when the SDL audio device is missing/headless.
  */
+#include <SDL3/SDL.h>
+
 #include <psyz.h>
 #include <psyz/audio.h>
 #include <psyz/spu.h>
@@ -13,6 +15,7 @@
 #include "cdfs.h"
 #include "memcard_host.h"
 #include "overlay_host.h"
+#include "port_turbo.h"
 #include "runtime_extract.h"
 #include "str_stream.h"
 
@@ -68,6 +71,47 @@ static void dw3_pc_xa_evidence_drain(void) {
     }
 }
 
+/* P6.4 fast-forward. PSY-Z paces one frame per vsync with driver VSync or
+ * its own limiter; while fast-forward runs, switch that off and pace here at
+ * `speed` times the base rate (50 or 59.94 Hz, from the PSY-Z stats). */
+static void dw3_pc_turbo_pace(void) {
+    static int engaged;
+    static PsyzVsyncMode saved_mode;
+    static Uint64 next_ns;
+    PsyzVideoStats stats;
+    double base_us = 1000000.0 / 59.94;
+    Uint64 period_ns;
+    Uint64 now_ns;
+    int speed = dw3_port_turbo_speed();
+
+    if (speed <= 1) {
+        if (engaged) {
+            engaged = 0;
+            Psyz_VideoSetVsyncMode(saved_mode);
+        }
+        return;
+    }
+    now_ns = SDL_GetTicksNS();
+    if (!engaged) {
+        engaged = 1;
+        saved_mode = Psyz_VideoGetVsyncMode();
+        Psyz_VideoSetVsyncMode(PSYZ_VSYNC_LIMITLESS);
+        next_ns = now_ns;
+    }
+    if (Psyz_VideoStats(&stats) == 0 && stats.target_frame_time_us > 1000.0) {
+        base_us = stats.target_frame_time_us;
+    }
+    period_ns = (Uint64)(base_us * 1000.0 / (double)speed);
+    next_ns += period_ns;
+    if (next_ns > now_ns) {
+        SDL_DelayPrecise(next_ns - now_ns);
+    } else if (now_ns - next_ns > 4 * period_ns) {
+        /* Slower than the target (loading, a slow GPU): do not sprint to
+         * catch up afterwards. */
+        next_ns = now_ns;
+    }
+}
+
 static void dw3_pc_vsync_pump(void) {
     if (StCdIntrFlag) {
         StCdInterrupt();
@@ -75,6 +119,7 @@ static void dw3_pc_vsync_pump(void) {
     }
     Psyz_CdPumpStream();
     dw3_pc_xa_evidence_drain();
+    dw3_pc_turbo_pace();
     if (g_prev_vsync_cb) {
         g_prev_vsync_cb();
     }

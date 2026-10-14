@@ -47,12 +47,33 @@ int main(void) {
         return fail("restart hotkey default off");
     }
 
+    if (dw3_port_options_label(1) == NULL ||
+        strstr(dw3_port_options_label(1), "Fast-forward") == NULL) {
+        return fail("fast-forward label");
+    }
+    if (dw3_port_options_level(1) != 2) {
+        return fail("fast-forward default 2x");
+    }
+
+    /* Fast-forward cycles 2x -> 3x -> 4x -> OFF -> 2x. */
     dw3_port_options_test_set_pressed(1u << BIT_DOWN);
     dw3_port_options_tick();
     dw3_port_options_test_set_pressed(1u << BIT_CROSS);
     dw3_port_options_tick();
-    if (dw3_port_options_value(1) != 1) {
-        return fail("toggle stub[1]");
+    if (dw3_port_options_level(1) != 3) {
+        return fail("fast-forward 3x");
+    }
+    dw3_port_options_tick();
+    if (dw3_port_options_level(1) != 4) {
+        return fail("fast-forward 4x");
+    }
+    dw3_port_options_tick();
+    if (dw3_port_options_level(1) != 0 || dw3_port_options_value(1) != 0) {
+        return fail("fast-forward off");
+    }
+    dw3_port_options_tick();
+    if (dw3_port_options_level(1) != 2) {
+        return fail("fast-forward wraps to 2x");
     }
 
     dw3_port_options_test_set_pressed(1u << BIT_DOWN);

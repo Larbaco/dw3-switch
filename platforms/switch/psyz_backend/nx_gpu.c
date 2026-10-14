@@ -16,6 +16,10 @@
 #include <EGL/egl.h>
 #include <GLES3/gl3.h>
 
+#ifdef DW3_NX_GAME_IMAGE
+#include "port_turbo.h"
+#endif
+
 #if DW3_NX_DEBUG_MESH
 static uint64_t gpu_now_us(void) {
     return armTicksToNs(armGetSystemTick()) / 1000ULL;
@@ -328,6 +332,9 @@ bool dw3_nx_gpu_swap(void) {
  * pacing — no extra sleep.
  */
 static float dw3_nx_display_aspect(int range_w, int range_h, int pal);
+#ifdef DW3_NX_GAME_IMAGE
+static void dw3_nx_gpu_skip_present(const uint16_t *vram);
+#endif
 
 int Psyz_VideoVSync(int mode) {
     static uint32_t last_vsync_us;
@@ -354,6 +361,19 @@ int Psyz_VideoVSync(int mode) {
     if (mode == 0) {
 #ifdef DW3_NX_GAME_IMAGE
         Dw3NxDisplay disp;
+        /* P6.4 fast-forward: present one game frame in `speed`. The skipped
+         * ones neither upload nor swap, so nothing waits for the display and
+         * the game runs `speed` frames per vsync (or as many as the CPU
+         * rasterizer manages). */
+        static int turbo_skipped;
+        int speed = dw3_port_turbo_speed();
+
+        if (speed > 1 && ++turbo_skipped < speed) {
+            dw3_nx_gpu_skip_present(dw3_nx_switch_gpu_vram());
+            last_vsync_us = now_us;
+            return lines;
+        }
+        turbo_skipped = 0;
 
         dw3_nx_switch_gpu_display(&disp);
         if (disp.on) {
@@ -558,6 +578,19 @@ static float dw3_nx_display_aspect(int range_w, int range_h, int pal) {
 
     return (4.0f / 3.0f) * (horiz / 256.0f) / (vert / vref);
 }
+
+#ifdef DW3_NX_GAME_IMAGE
+/* A frame fast-forward does not show: run the battle mesh layer's per-frame
+ * flush and reset as dw3_nx_gpu_present would, without the composite, so the
+ * next shown frame starts from the same state. */
+static void dw3_nx_gpu_skip_present(const uint16_t *vram) {
+    if (!s_ready || !vram) {
+        return;
+    }
+    dw3_nx_mesh_flush(vram);
+    dw3_nx_mesh_end_frame();
+}
+#endif
 
 void dw3_nx_gpu_present(const uint16_t *vram, int dx, int dy, int dw, int dh,
                         float src_aspect, int gutter) {

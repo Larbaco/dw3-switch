@@ -1,0 +1,24 @@
+Upstream-bound: no
+Subject: [PORT_HOST] P6.4 poll the fast-forward hotkey each frame
+
+After the normal pad update, let shared port policy read R3 and pick the
+fast-forward speed. The hosts pace from that speed; no game state changes.
+
+--- a/src/engine/system/main.c
++++ b/src/engine/system/main.c
+@@ -6,6 +6,7 @@
+ /* Avoid psyz.h here: it pulls POSIX open/read that clash with game.h. */
+ int Psyz_QuitRequested(void);
+ #include "port_restart.h"
++#include "port_turbo.h"
+ #include "port_widescreen.h"
+ #endif
+ 
+@@ -109,6 +110,7 @@
+         GFX.funcs.drawFrame(ROOT_TASK);
+         PAD.update();
+ #if PORT_HOST
++        dw3_port_turbo_poll();
+         if (dw3_port_restart_poll()) {
+             GAME.funcs.newGame();
+             OVERLAY_LOADER.mode = -1;
