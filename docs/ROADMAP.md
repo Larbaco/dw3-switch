@@ -640,9 +640,15 @@ tick does not start Phase 6.
   started):** the Port options Widescreen toggle (or `DW3_WIDESCREEN=1`)
   draws side gutters outside VRAM, 16:9 in battle and 16:10 in the field,
   on PC `sdl3_gpu` and the Switch renderer. Host tests and a synthetic PC
-  render pass; the game itself is not yet validated on PC, Ryubing or
-  hardware. Full 16:9 in the field needs more tile slots. Integer scaling
-  is untouched. See [P6.1_WIDESCREEN.md](P6.1_WIDESCREEN.md).
+  render pass; PC and Ryubing validated with the owner's disc (PR #123),
+  shipped in v0.6.5-preview.22. Full 16:9 in the field needs more tile
+  slots. Integer scaling is untouched. See
+  [P6.1_WIDESCREEN.md](P6.1_WIDESCREEN.md).
+  **OLED feedback (2026-10-14, to do, not fixed yet):** thin side strips
+  remain on the field (16:10); battle should default to `gpu-tex` (its
+  right-panel Digimon face is missing); title and other menus are still
+  4:3; Widescreen should be ON by default; the Gatomon inn scene leaves the
+  gutters uncovered while the middle 4:3 is covered.
 - [ ] **P6.2** PAL/NTSC and EU/US selection at boot; language from EU
   `CNTY_SEL`.
 - [ ] **P6.3** PGXP-style vertex precision from PSY-Z if it stays stable.
