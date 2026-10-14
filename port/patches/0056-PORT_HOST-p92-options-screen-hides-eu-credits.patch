@@ -1,0 +1,28 @@
+Upstream-bound: no
+Subject: [PORT_HOST] Hide the EU credit sprites under the Port options screen
+
+The native options screen keeps only the title backdrop behind its window;
+the logo is already hidden, and this drops the EU credits too.
+
+--- a/src/menus/title/logo.c
++++ b/src/menus/title/logo.c
+@@ -4,6 +4,7 @@
+ #if defined(DW3_TITLE_NATIVE_OVERLAY)
+ extern int dw3_port_title_logo_ready(void);
+ extern void dw3_port_title_logo_set_active(int active);
++extern int dw3_port_options_is_open(void);
+ #endif
+ 
+ #if defined(DW3_TITLE_NATIVE_OVERLAY) && VERSION_EU
+@@ -32,7 +33,10 @@
+     if (task->visible) {
+ #if defined(DW3_TITLE_NATIVE_OVERLAY)
+ #if VERSION_EU
+-        drawLogoCredits(task);
++        /* The Port options screen shows only its window over the backdrop. */
++        if (!dw3_port_options_is_open()) {
++            drawLogoCredits(task);
++        }
+ #endif
+         if ((task->state == TASK_DONE ||
+              (task->state == TASK_RUN && task->anims[0].done &&
