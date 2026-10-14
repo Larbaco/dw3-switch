@@ -41,11 +41,14 @@ Before launch, the SD EU input contained only `eu/disc.bin` and `eu/disc.cue`,
 with their copy hashes verified; no pre-extracted EU runtime was supplied.
 The EU nxlink NRO was **9,062,945 bytes**, SHA-256
 `69fb04aa8f4d5f0631a8f73508894d75fa815da83152a27d5ae778b63a478cd9`.
-The live nxlink stdout (session 91889; no persistent log file) reports `runtime extract wrote=2383 skipped=0`,
+The live nxlink stdout (session 91889) reports `runtime extract wrote=2383 skipped=0`,
 then runtime `version=eu`, root `sdmc:/switch/dw3/eu`, executable
 `SLES_039.36`, and EU CDFS initialization. This establishes extraction by
 this NRO and EU runtime selection on the OLED, rather than a prepacked-tree
-boot or an inference from the movie's appearance.
+boot or an inference from the movie's appearance. A manually transcribed,
+labelled excerpt is preserved outside Git at
+`/mnt/cabal/tmp/dw3-eu-auto-extraction/build/eu-nxlink-session-excerpts.txt`;
+it is not a complete raw log.
 
 Movie diagnostics reached frame 1020 with `fc_skipped=0 restarts=0`.
 The owner then pressed Start; `ended=0` records the skip, not natural movie
