@@ -38,7 +38,7 @@ def test_port_options_open_close_tick(port_options_bin: Path):
     assert "OK: port_options state machine" in run.stdout
     assert "dw3-port-options: open" in run.stderr
     assert "dw3-port-options: close" in run.stderr
-    assert "widescreen_default=0" in run.stdout
+    assert "widescreen_default=1" in run.stdout
 
 
 def test_port_glyph_lsb_left(tmp_path: Path):

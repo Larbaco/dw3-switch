@@ -1,0 +1,154 @@
+Upstream-bound: no
+Subject: [PORT_HOST] P6.1 full-screen fades cover the gutters
+
+With widescreen on, the full-screen quads that fade, darken or flash the
+screen reach across both side gutters instead of the middle 320 columns:
+the screen fade (the inn night, script fades), the overlays' drawFader,
+the stage darkness, the battle white flash, the field battle transition
+shade and the field cover. Off, the gutter is 0 and they are unchanged.
+
+--- a/src/battle/battle_mode/white_flash.c
++++ b/src/battle/battle_mode/white_flash.c
+@@ -1,6 +1,9 @@
+ /* FIGHTSTG's white flash over the screen. */
+ 
+ #include "battle/battle_mode.h"
++#if PORT_HOST
++#include "port_widescreen.h"
++#endif
+ 
+ /* Draws the white flash: a full-screen quad of the task's level, added to the
+    screen on layer BATTLE_LAYER_FRONT */
+@@ -18,6 +21,11 @@ void FIGHTSTG_drawWhiteFlash(WhiteFlash *task) {
+     /* the match depends on these chained stores, x3 before x1 */
+     poly->x3 = poly->x1 = 320;
+     poly->x2 = poly->x0 = 0;
++#if PORT_HOST
++    /* Widescreen: the flash covers the side gutters too */
++    poly->x3 = poly->x1 = 320 + dw3_port_widescreen_px();
++    poly->x2 = poly->x0 = -dw3_port_widescreen_px();
++#endif
+     poly->y1 = poly->y0 = 0;
+     poly->y3 = poly->y2 = 240;
+     addPrim(ot, poly);
+--- a/src/engine/gfx/screen_fade.c
++++ b/src/engine/gfx/screen_fade.c
+@@ -1,4 +1,7 @@
+ #include "engine/game.h"
++#if PORT_HOST
++#include "port_widescreen.h"
++#endif
+ 
+ /* Starts fading the screen to black (fadeIn 0) or back, over `duration` frames */
+ void screenFadeStart(ScreenFade *task, s32 fadeIn, s32 duration) {
+@@ -33,6 +36,11 @@ void drawScreenFade(ScreenFade *task) {
+     poly->r0 = poly->g0 = poly->b0 = task->level >> 8;
+     poly->x0 = poly->x2 = 0;
+     poly->x1 = poly->x3 = SCREEN_WIDTH;
++#if PORT_HOST
++    /* Widescreen: the fade covers the side gutters too */
++    poly->x0 = poly->x2 = -dw3_port_widescreen_px();
++    poly->x1 = poly->x3 = SCREEN_WIDTH + dw3_port_widescreen_px();
++#endif
+     poly->y0 = poly->y1 = 0;
+     poly->y2 = poly->y3 = 256;
+     addPrim(ot, poly);
+--- a/src/field/field_mode/field.c
++++ b/src/field/field_mode/field.c
+@@ -6,6 +6,9 @@
+ 
+ #include "field/field_mode.h"
+ #if PORT_HOST
++#include "port_widescreen.h"
++#endif
++#if PORT_HOST
+ #include <stdio.h>
+ #include "overlay_host.h"
+ char *getenv(const char *name);
+@@ -156,6 +159,11 @@ void FIELDSTG_playBattleTransition(FieldTask *task, FieldChildren *fieldChildren
+             ((POLY_F4 *)poly)->x1 = SCREEN_WIDTH;
+             ((POLY_F4 *)poly)->x2 = 0;
+             ((POLY_F4 *)poly)->x3 = SCREEN_WIDTH;
++#if PORT_HOST
++            /* Widescreen: the shade covers the side gutters too */
++            ((POLY_F4 *)poly)->x0 = ((POLY_F4 *)poly)->x2 = -dw3_port_widescreen_px();
++            ((POLY_F4 *)poly)->x1 = ((POLY_F4 *)poly)->x3 = SCREEN_WIDTH + dw3_port_widescreen_px();
++#endif
+             ((POLY_F4 *)poly)->y0 = 0;
+             ((POLY_F4 *)poly)->y1 = 0;
+             ((POLY_F4 *)poly)->y2 = SCREEN_HEIGHT;
+--- a/src/field/field_mode/map_streamer.c
++++ b/src/field/field_mode/map_streamer.c
+@@ -2,6 +2,9 @@
+    draws them, and the cover that fades the screen */
+ 
+ #include "field/field_mode.h"
++#if PORT_HOST
++#include "port_widescreen.h"
++#endif
+ 
+ /* The stream task drawn or loaded the longest ago */
+ StreamTask *FIELDSTG_findOldestStream(StreamPool *pool) {
+@@ -377,10 +380,18 @@ void FIELDSTG_drawCover(s32 id, s32 level) {
+     Layer *layer = GFX.funcs.getLayer(id);
+     s32 x;
+     s32 y;
++#if PORT_HOST
++    /* Widescreen: the cover's blocks reach into the side gutters too */
++    s32 gutter = dw3_port_widescreen_px();
++#endif
+ 
+     if (layer != NULL) {
+         for (y = 0; y < SCREEN_HEIGHT; y += 0x80) {
++#if PORT_HOST
++            for (x = gutter > 0 ? -0x80 : 0; x < SCREEN_WIDTH + gutter; x += 0x80) {
++#else
+             for (x = 0; x < SCREEN_WIDTH; x += 0x80) {
++#endif
+                 FIELDSTG_drawCoverBlock(layer, x, y, level);
+             }
+         }
+--- a/src/field/stages/common/update_darkness.inc.c
++++ b/src/field/stages/common/update_darkness.inc.c
+@@ -1,3 +1,7 @@
++#if PORT_HOST
++#include "port_widescreen.h"
++#endif
++
+ /*
+  * The darkness: the screen drawn black (a white quad subtracted from it,
+  * blend mode 2) while in TASK_DONE (GAME.dark is set then)
+@@ -37,6 +41,11 @@ void updateDarkness(StageTask *task) {
+         poly->r0 = poly->g0 = poly->b0 = 0xFF;
+         poly->x1 = poly->x3 = 320;
+         poly->x0 = poly->x2 = 0;
++#if PORT_HOST
++        /* Widescreen: the darkness covers the side gutters too */
++        poly->x1 = poly->x3 = 320 + dw3_port_widescreen_px();
++        poly->x0 = poly->x2 = -dw3_port_widescreen_px();
++#endif
+         poly->y0 = poly->y1 = 0;
+         poly->y2 = poly->y3 = 256;
+         addPrim(ot, poly);
+--- a/src/shared/draw_fader.inc.c
++++ b/src/shared/draw_fader.inc.c
+@@ -1,3 +1,7 @@
++#if PORT_HOST
++#include "port_widescreen.h"
++#endif
++
+ /* Darkens the whole screen by the fade's level: a POLY_F4 with subtractive
+    blending (tpage 0xE1000245) */
+ void OVL_NAME(drawFader)(ScreenFade *task) {
+@@ -11,6 +15,11 @@ void OVL_NAME(drawFader)(ScreenFade *task) {
+     poly->r0 = poly->g0 = poly->b0 = task->level >> 8;
+     poly->x0 = poly->x2 = 0;
+     poly->x1 = poly->x3 = 320;
++#if PORT_HOST
++    /* Widescreen: the fade covers the side gutters too */
++    poly->x0 = poly->x2 = -dw3_port_widescreen_px();
++    poly->x1 = poly->x3 = 320 + dw3_port_widescreen_px();
++#endif
+     poly->y0 = poly->y1 = 0;
+     poly->y2 = poly->y3 = 256;
+     addPrim(ot, poly);

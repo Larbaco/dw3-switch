@@ -1,0 +1,105 @@
+# Controls and hotkeys
+
+Reference for the native game hosts, audited against `main` on 2026-10-14.
+These mappings come from source; they do not establish new hardware acceptance.
+The Switch Makefile `host_hello` sample has different controls and is not covered.
+
+## Normal pad controls
+
+Switch face buttons follow physical PS1 positions, not Nintendo's usual A-to-confirm
+convention. The PC columns describe the PSY-Z SDL3 keyboard map. PC gamepads use
+SDL's positional mapping; controller labels and SDL device mappings may vary.
+
+| PS1 logical button | PC keyboard | Switch physical button |
+|---|---|---|
+| D-pad | Arrow keys | D-pad (left stick also supplies movement) |
+| Cross | X | B |
+| Circle | D | A |
+| Triangle | S | X |
+| Square | Z | Y |
+| Start | Enter | Plus (+) |
+| Select | Backspace | Minus (−) |
+| L1 / R1 | Q / R | L / R |
+| L2 / R2 | W / E | ZL / ZR |
+| L3 / R3 | 1 / 2 | Left / right stick click |
+
+The game decides each button's action in its current scene. For the title and
+port options:
+
+- Press Start (Enter / Plus) to reveal the title choices. Up/Down selects a row;
+  Cross (X / B) confirms. The Switch labels are **Start / Port options / Continue**;
+  the PC SDL3 GPU presentation uses **New Game / Options / Load Game**.
+- In Port options, Up/Down changes the selected setting. Cross **or Circle**
+  (PC X or D; Switch B or A) toggles it. Triangle (PC S; Switch X) returns to
+  the selected title row. Opening the shell does not toggle the first setting.
+- During an opening movie, press or hold Start (Enter / Plus) to skip it.
+  A held button is accepted after decoding a frame; this is not a fast-forward
+  control.
+
+PC SDL3 also accepts **F4** to toggle fullscreen and **Escape** (or window close)
+to quit the host. These are host controls, not PS1 buttons. Save/exit lifecycle
+acceptance remains tracked separately in [P5.3_FLAT_SAVE.md](P5.3_FLAT_SAVE.md).
+
+## Port hotkeys
+
+| Action | PS1 logical input | PC keyboard | Switch | Requirement / limit |
+|---|---|---|---|---|
+| Open Port options directly | Select | Backspace | Minus | Only while the title choices are active; no L1/R1/L2/R2 held |
+| Restart game in-process | L1 + R1 + Start + Select | Q + R + Enter + Backspace | L + R + Plus + Minus | Enable **Restart hotkey** in Port options first; OFF by default |
+
+Hold all four restart buttons together; one activation is allowed per chord
+press. Release the chord before another attempt. There is no timed long-press
+requirement. Dirty save slots are flushed before restarting; a flush failure
+cancels the restart. Successful restart resets the running game to its title
+boot flow without restarting the host. Unsaved gameplay progress is lost.
+The opt-in stays in memory through an in-process restart, but a fresh host launch
+starts OFF. Settings are session-only until P9.4 persistence is implemented.
+See [P6.9_RESTART.md](P6.9_RESTART.md) for implementation and acceptance limits;
+Switch chord and save → restart → Continue validation remain open there.
+
+Widescreen is another live session toggle; Fast-forward is still a no-op stub.
+Neither currently has a dedicated button hotkey. See
+[PORT_OPTIONS.md](PORT_OPTIONS.md) and [P6.1_WIDESCREEN.md](P6.1_WIDESCREEN.md).
+
+## Diagnostic controls
+
+These controls serve rendering investigation, not normal gameplay features.
+
+| Action | Platform / input | Availability / effect |
+|---|---|---|
+| Show/hide debug HUD | Switch: Minus + L + R | Requires `DW3_NX_DEBUG_OVERLAY`; defaults compiled in and visible in `--nxlink` builds, off in ordinary builds |
+| Cycle battle renderer | Switch: Minus + ZL + ZR | Available even without the HUD; changes FIGHTSTG rendering only |
+| Show/hide VRAM view | PC SDL3: F6 | PSY-Z diagnostic view; no Switch equivalent |
+
+Switch diagnostic chords activate when all listed buttons become held; release
+before cycling again. Battle mode order is `soft` → `soft+bbox` → `gpu-solid` →
+`gpu-tex` → `soft`. `soft+bbox` currently behaves as `soft`; stock boot defaults
+to `soft`, unless the build or `DW3_MESH_SOFT=0` overrides it. Field rendering
+is not switched by this control. See [DEBUG_OVERLAY.md](DEBUG_OVERLAY.md).
+
+**Chord overlap:** the restart chord includes the HUD chord. In a build with
+the HUD enabled, L + R + Plus + Minus can also toggle the HUD, even when restart
+is disabled or a save flush cancels it. The HUD poll does not exclude Plus.
+The title's Select shortcut rejects held shoulders, so it does not open Port
+options when shoulders are already held. Pressing Minus first can still open
+options before the rest of a chord is held; press shoulders first when forming
+these combinations. Raw diagnostic buttons are also published to the game pad;
+they are not consumed by a separate input layer.
+
+Developer environment variables are startup/test configuration, not button
+hotkeys. For example `DW3_WIDESCREEN=1` seeds widescreen; `DW3_MESH_SOFT=0|1`
+seeds Switch battle mode. Test automation such as `DW3_AUTO_PAD` and forced-stage
+or forced-save hooks is documented in the corresponding subsystem evidence,
+and must not be treated as proof of normal input or hardware acceptance.
+
+## Source references
+
+- [Switch pad map](../platforms/switch/psyz_backend/nx_input.c)
+- PC keyboard/gamepad and host keys: pinned PSY-Z
+  `vendor/psyz/psyz/src/platform/sdl3_common.h`
+- [Title-entry patch](../port/patches/0045-PORT_HOST-p92-title-options-row.patch)
+  and [movie-skip patch](../port/patches/0034-PORT_HOST-p37-movie-start-skip-held.patch)
+- [Port options state machine](../port/options/port_options.c) and
+  [restart policy](../port/options/restart.c)
+- [HUD polling](../platforms/switch/psyz_backend/nx_debug_overlay.c) and
+  [battle-mode polling](../platforms/switch/psyz_backend/nx_battle_mode.c)

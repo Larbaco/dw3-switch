@@ -90,6 +90,33 @@ static int mesh_battle_active(void) {
     return fight;
 }
 
+/* The display mode's size, set by Draw_SetDisplayMode (below). */
+static int s_disp_mode_w;
+static int s_disp_mode_h;
+
+/* Whether the drawing area is the whole screen. A smaller area is a 3D view
+ * inside the HUD, such as the battle partner view (the Digimon beside the
+ * menus, FIGHTSTG_updatePartnerView: a 100x60 layer). Its triangles stay on
+ * the software path: the mesh FBO sits under all of CPU VRAM in the present,
+ * so on the GPU path the view's frame and box drew over the model, which is
+ * the missing face in the right-hand panel in gpu-tex. Soft draws it in OT
+ * order, and its few triangles cost little. */
+static int mesh_area_is_screen(void) {
+    int w = s_disp_mode_w > 0 ? s_disp_mode_w : 320;
+    int h = 240; /* not s_disp_mode_h: the 480-line bit is set before title */
+
+    return s_area_x1 - s_area_x0 + 1 >= w && s_area_y1 - s_area_y0 + 1 >= h;
+}
+
+/* Triangles queued under the old drawing area are scissored by it. */
+static void mesh_flush_for_state(void) {
+    if (mesh_battle_active()) {
+        dw3_nx_mesh_flush((const uint16_t *)SoftwareRasterizer_GetVram());
+    } else {
+        dw3_nx_mesh_discard();
+    }
+}
+
 static int write_packet(Dw3NxMeshVertex *v, int code, int n, u_long *packet,
                         uint16_t *p_out) {
     int w;
@@ -271,7 +298,7 @@ static int try_push_mesh_poly(u_long *packets, int max_len) {
         return 0;
     }
     /* soft / soft+bbox: FIGHTSTG stays gated, triangles fill CPU VRAM. */
-    if (dw3_nx_battle_mode_use_soft()) {
+    if (dw3_nx_battle_mode_use_soft() || !mesh_area_is_screen()) {
         return 0;
     }
     code = (int)(*packets >> 24) & 0xFF;
@@ -401,6 +428,9 @@ void Draw_SetTextureWindow(unsigned int mask_x, unsigned int mask_y,
 }
 
 void Draw_SetAreaStart(int x, int y) {
+    if (x != s_area_x0 || y != s_area_y0) {
+        mesh_flush_for_state();
+    }
     software_rasterizer.area_start(x, y);
     s_area_x0 = x;
     s_area_y0 = y;
@@ -408,6 +438,9 @@ void Draw_SetAreaStart(int x, int y) {
 }
 
 void Draw_SetAreaEnd(int x, int y) {
+    if (x != s_area_x1 || y != s_area_y1) {
+        mesh_flush_for_state();
+    }
     software_rasterizer.area_end(x, y);
     s_area_x1 = x;
     s_area_y1 = y;
@@ -415,11 +448,7 @@ void Draw_SetAreaEnd(int x, int y) {
 }
 
 void Draw_SetOffset(int x, int y) {
-    if (mesh_battle_active()) {
-        dw3_nx_mesh_flush((const uint16_t *)SoftwareRasterizer_GetVram());
-    } else {
-        dw3_nx_mesh_discard();
-    }
+    mesh_flush_for_state();
     software_rasterizer.offset(x, y);
     dw3_nx_mesh_set_offset(x, y);
     s_off_x = s11((short)x);
@@ -538,20 +567,19 @@ int Draw_ExequeSync(void) {
  * conversion in the range setters: the horizontal range arrives in tenths of a
  * pixel, the vertical one in scanlines.
  *
- * PAL is recorded only so the present aspect uses the 288-line vref.
+ * PAL is recorded but no longer changes the present aspect (DW3 EU keeps
+ * the 240-line picture; see dw3_nx_display_aspect).
  * Interlace is still ignored. 24bpp selects the movie blit height. */
 static int s_disp_on;
 static int s_disp_x;
 static int s_disp_y;
 static int s_disp_w;
 static int s_disp_h;
-static int s_disp_mode_w;
 static int s_disp_pal;
 /* 24-bit movie mode only. The 480-line bit is not enough: an early PutDispEnv
  * with disp.h=640 sets it before the title, and presenting that height crops
  * the menu. isrgb24 is the movie. */
 static int s_disp_rgb24;
-static int s_disp_mode_h;
 /* P6.1 side gutter per side (Psyz_VideoSetGutter); 0 = off. */
 static int s_gutter;
 

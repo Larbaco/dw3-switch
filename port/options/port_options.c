@@ -25,7 +25,7 @@ enum {
 
 typedef struct Dw3PortOptStub {
     const char *label;
-    int value; /* 0/1, or 0/2..4 for Fast-forward; 0 is stock behaviour */
+    int value; /* 0/1 or 0/2..4; Widescreen defaults ON, turbo starts inactive */
 } Dw3PortOptStub;
 
 static int g_open;
@@ -33,9 +33,8 @@ static int g_cursor;
 static int g_open_frames;
 static int g_logged_open;
 static Dw3PortOptStub g_stubs[DW3_PORT_OPT_COUNT] = {
-    {"Widescreen", 0},
-    /* P6.4: the speed R3 toggles to in field and battle. OFF disables R3;
-     * the game itself still starts at normal speed. */
+    {"Widescreen", 1}, /* owner request (preview.22 OLED): on by default */
+    /* R3 toggles to this speed in field/battle; normal boot remains 1x. */
     {"Fast-forward", DW3_TURBO_SPEED_DEFAULT},
     {"Restart hotkey", 0},
 };

@@ -1,5 +1,7 @@
 # Port options menu
 
+Controls, physical mappings, and diagnostic chord overlap: [HOTKEYS.md](HOTKEYS.md).
+
 Phase 9 goal note. See [ROADMAP.md](ROADMAP.md) P9.1–P9.5.
 
 Vanilla Digimon World 3 / 2003 menus stay as the decomp implements them.
@@ -48,9 +50,10 @@ explicitly marked N/A in this note.
 
 Defaults: **off** or equivalent to stock PS1 behaviour unless a feature is
 purely host presentation with no gameplay impact (document exceptions).
-Widescreen defaults **off** (4:3). It is a real, session-only toggle since
+Widescreen is the documented exception: it defaults **on** (owner request
+after the preview.22 OLED pass). It is a real, session-only toggle since
 the P6.1 first pass: field and battle draw side gutters, everything else
-stays 4:3; `DW3_WIDESCREEN=1` turns it on at boot. See
+stays 4:3; `DW3_WIDESCREEN=0` turns it off at boot. See
 [P6.1_WIDESCREEN.md](P6.1_WIDESCREEN.md).
 Fast-forward's row defaults to **2x**, which only arms R3: the game still
 starts and stays at normal speed until R3 is pressed, so stock behaviour is

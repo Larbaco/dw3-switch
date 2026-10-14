@@ -39,8 +39,8 @@ int main(void) {
         strstr(dw3_port_options_label(0), "Widescreen") == NULL) {
         return fail("widescreen stub label");
     }
-    if (dw3_port_options_value(0) != 0) {
-        return fail("widescreen default off");
+    if (dw3_port_options_value(0) != 1) {
+        return fail("widescreen default on");
     }
     if (dw3_port_options_restart_enabled() != 0 ||
         dw3_port_options_value(2) != 0) {
