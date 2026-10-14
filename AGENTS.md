@@ -111,6 +111,24 @@ shared timeline — local-only progress is not enough.
 - For this project, frequent commit + push is the default (no need to wait for
   an explicit “commit/push” prompt each time), unless the owner says to hold.
 
+## Owner's machine rules (every agent, every harness)
+
+These hold for any agent working on the owner's desktop, whatever the tool
+(Claude Code, Cursor, Codex, Gemini, Copilot, OpenCode, ...):
+
+1. **Git through the terminal.** The desktop's own `git` has push access to
+   the GitHub remotes. When a harness's GitHub integration cannot push or
+   open a PR, use the terminal `git` instead of stopping.
+2. **Builds and temporary files go in `/mnt/cabal/tmp`** (worktrees as
+   `/mnt/cabal/tmp/dw3-<topic>`), not `/tmp` or the NTFS checkout.
+3. **Evidence goes in `/mnt/windows/Jogos/dw3-switch/tmp/evidence`**:
+   screenshots, logs and captures from test runs (git-ignored; never commit
+   game frames that contain copyrighted art to the repo).
+4. **GUI runs use a virtual display** (Xvfb or similar, e.g.
+   `xvfb-run -s "-screen 0 1920x1080x24"`), never the owner's desktop
+   session, so tests do not get in the way of the owner's work. This
+   includes the PC build and Ryubing.
+
 ## Working style
 
 - Small, reviewable changes aligned to the current roadmap phase.
@@ -135,9 +153,10 @@ itself when a subagent can.
 builds/tests, commits, and opening PRs.
 
 Each coding or investigation workstream uses its **own git branch** and its
-**own git worktree**. Prefer `/tmp/dw3-<topic>` on ext4. Avoid writing build
-trees on the NTFS checkout at `/mnt/windows/Jogos/dw3-switch` when
-Docker/devkitPro builds need a local filesystem.
+**own git worktree** under `/mnt/cabal/tmp/dw3-<topic>` (see **Owner's
+machine rules**). Avoid writing build trees on the NTFS checkout at
+`/mnt/windows/Jogos/dw3-switch` when Docker/devkitPro builds need a local
+filesystem.
 
 Subagents **commit frequently** (small reviewable units) and **push** the
 topic branch. When the workstream is done they **open a PR** against `main`.
