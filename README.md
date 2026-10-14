@@ -193,6 +193,10 @@ OLED handheld and docked displays still needs owner confirmation.
 
 EU is a separate build tree and needs `runtime/eu`:
 [docs/P3_EU_BUILD.md](docs/P3_EU_BUILD.md).
+Current `main` starts the EU build at the game's original language selection
+before the opening and title: Up/Down selects and Start confirms (Plus on
+Switch, Enter on PC). US boot is unchanged. OLED validation of this new boot
+flow remains open; it is not included in the published preview.25.
 
 ### Disc to runtime
 
