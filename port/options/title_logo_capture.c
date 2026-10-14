@@ -1,5 +1,6 @@
 /* Capture only the original US title-logo sprites from PSY-Z VRAM, then
- * resample them into a private PC GPU texture. No game art is embedded. */
+ * resample them into a private GPU texture (PC SDL3 GPU, Switch GLES).
+ * No game art is embedded. */
 #include "engine/gfx.h"
 
 #include <stdint.h>
@@ -7,7 +8,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#if defined(DW3_PC_SDL3_GPU) && defined(VERSION_US) && VERSION_US
+#if defined(DW3_TITLE_NATIVE_OVERLAY) && defined(VERSION_US) && VERSION_US
 #include "engine/game_state.h"
 #include "title_logo_resample.h"
 enum {

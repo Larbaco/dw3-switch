@@ -82,7 +82,7 @@ with the resident game font. Select remains a shortcut without shoulders.
      default:
          task->showOptions = 1;
 +#if PORT_HOST
-+#if defined(DW3_PC_HOST)
++#if defined(DW3_PC_HOST) || defined(DW3_TITLE_NATIVE_OVERLAY)
 +        task->selection = DW3_TITLE_NEW_GAME;
 +#else
 +        task->selection = DW3_TITLE_CONTINUE;
