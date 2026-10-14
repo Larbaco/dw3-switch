@@ -18,7 +18,9 @@ console.
 
 Checkboxes: [docs/ROADMAP.md](docs/ROADMAP.md). Phase 3 gate:
 [docs/P3_GATE.md](docs/P3_GATE.md). The latest tagged preview is
-preview.21, which includes the STR file-bridge race fix (#111). The OLED
+[preview.22](docs/RELEASE_PREVIEW22.md), which adds optional widescreen, the
+battle GPU background fix, the title-row visual pass, and the opt-in restart
+hotkey on top of the STR file-bridge race fix (#111). The OLED
 confirmed about 15 fps and correct XA audio up to frame 1110; the rest of
 the opening and image quality remain unmeasured on hardware. See
 [movie pacing diagnostics](docs/P3.7_MOVIE_PACING_DIAGNOSTICS.md).
@@ -254,16 +256,19 @@ The release tag becomes the NACP version (compressed for hbmenu) and the
 `dw3: version=` boot line. No disc data.
 
 The current standard preview is
-[v0.6.5-preview.21](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.21),
-cut from `b597c67` after #111 (STR file-bridge race fix) and #112 (docs). It
-keeps the title Port options shell (#100) and the empty `StGetNext` scan
-cache (#106). On the OLED the opening movie held about 15 fps (preview.20:
-6.75 fps) with correct XA audio up to frame 1110. See
-[preview.21 checkpoint](docs/RELEASE_PREVIEW21.md) and
-[movie diagnostics](docs/P3.7_MOVIE_PACING_DIAGNOSTICS.md). Its switches are
-stubs with no gameplay effects or persistence. GPU diagnostics stay
-disabled and software battle stays the default. Preview.19 was a separate
-PR #89 diagnostic cut, not the standard playable baseline.
+[v0.6.5-preview.22](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.22),
+cut after #123. It includes optional session-only widescreen, the #114 GPU
+battle background fix, the #115 title-row visual pass, and the #122 opt-in
+restart hotkey. Software battle remains the default and console clocks are
+unchanged. See [preview.22 checkpoint](docs/RELEASE_PREVIEW22.md) for the
+contents and outstanding OLED checks. EU own-disc extraction landed later
+on `main` and is not included in this tagged preview.
+
+Preview.21 contains the #111 STR file-bridge race fix. On the OLED its
+opening movie held about 15 fps (preview.20: 6.75 fps) with correct XA audio
+up to frame 1110. See [preview.21 checkpoint](docs/RELEASE_PREVIEW21.md) and
+[movie diagnostics](docs/P3.7_MOVIE_PACING_DIAGNOSTICS.md). Preview.19 was a
+separate PR #89 diagnostic cut, not the standard playable baseline.
 
 An earlier tagged preview release is
 [v0.6.5-preview.10](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.10).
