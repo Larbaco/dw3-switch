@@ -636,6 +636,13 @@ tick does not start Phase 6.
 
 - [ ] **P6.1** Integer scaling / aspect options; optional widescreen
   where the GTE projection allows.
+  **Widescreen first pass (2026-10-14, owner asked early; Phase 6 not
+  started):** the Port options Widescreen toggle (or `DW3_WIDESCREEN=1`)
+  draws side gutters outside VRAM, 16:9 in battle and 16:10 in the field,
+  on PC `sdl3_gpu` and the Switch renderer. Host tests and a synthetic PC
+  render pass; the game itself is not yet validated on PC, Ryubing or
+  hardware. Full 16:9 in the field needs more tile slots. Integer scaling
+  is untouched. See [P6.1_WIDESCREEN.md](P6.1_WIDESCREEN.md).
 - [ ] **P6.2** PAL/NTSC and EU/US selection at boot; language from EU
   `CNTY_SEL`.
 - [ ] **P6.3** PGXP-style vertex precision from PSY-Z if it stays stable.
@@ -862,6 +869,7 @@ PS1 game, with vanilla-safe defaults and persistence on owner storage.
   effect (safe no-op allowed for not-yet-wired features).
   **Status (2026-10-13):** shared registry has Widescreen and Fast-forward
   safe no-op stubs plus the real session-only Restart hotkey, OFF by default.
+  Widescreen became a real session-only toggle on 2026-10-14 (P6.1).
   Its chord and flush behavior are documented in
   [PORT_OPTIONS.md](PORT_OPTIONS.md) and [P6.9_RESTART.md](P6.9_RESTART.md).
   P9.4 persistence and P9.5 wiring of remaining real features remain open.

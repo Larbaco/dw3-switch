@@ -375,7 +375,8 @@ int Psyz_VideoVSync(int mode) {
             dw3_nx_gpu_present(dw3_nx_switch_gpu_vram(), disp.x, disp.y,
                                disp.width, disp.height,
                                dw3_nx_display_aspect(disp.range_w, disp.range_h,
-                                                     disp.pal));
+                                                     disp.pal),
+                               disp.gutter);
         } else {
             /* SetDispMask said "no display"; on hardware that is a black
              * screen, so do not keep showing the last frame. */
@@ -396,6 +397,10 @@ int Psyz_VideoVSync(int mode) {
 /* --- VRAM present (P4.7 Stage 3) --------------------------------------- */
 
 static GLuint s_vram_tex;
+/* P6.1: the display with its side gutters, packed by dw3_nx_pack_rgb555_wide
+ * (at most 320 + 2 * 64 by 480 pixels). */
+static GLuint s_wide_tex;
+enum { DW3_NX_WIDE_TEX_W = 512, DW3_NX_WIDE_TEX_H = 512 };
 static GLuint s_quad_prog;
 static GLuint s_ui_prog;
 static GLuint s_quad_vbo;
@@ -527,6 +532,15 @@ static bool present_init(void) {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, DW3_NX_VRAM_W, DW3_NX_VRAM_H, 0,
                  GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+
+    glGenTextures(1, &s_wide_tex);
+    glBindTexture(GL_TEXTURE_2D, s_wide_tex);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, DW3_NX_WIDE_TEX_W,
+                 DW3_NX_WIDE_TEX_H, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
     return true;
 }
 
@@ -543,7 +557,7 @@ static float dw3_nx_display_aspect(int range_w, int range_h, int pal) {
 }
 
 void dw3_nx_gpu_present(const uint16_t *vram, int dx, int dy, int dw, int dh,
-                        float src_aspect) {
+                        float src_aspect, int gutter) {
     float dst_aspect;
     int vx;
     int vy;
@@ -554,6 +568,9 @@ void dw3_nx_gpu_present(const uint16_t *vram, int dx, int dy, int dw, int dh,
     int pw;
     int ph;
     int use_mesh;
+    GLuint ui_tex;
+    float uv0[2];
+    float uv1[2];
 #if DW3_NX_DEBUG_MESH
     uint64_t present_t0 = 0;
 #endif
@@ -581,9 +598,36 @@ void dw3_nx_gpu_present(const uint16_t *vram, int dx, int dy, int dw, int dh,
     /* Shader samples (dx, dy, dw, dh). Upload that rectangle into the
      * texture created in present_init. A rect that clamps to nothing skips
      * the frame the same way a zero size does. */
-    if (dw3_nx_pack_rgb555_rect(vram, dx, dy, dw, dh, s_vram_rgba, &px, &py,
-                                &pw, &ph) == 0) {
-        return;
+    if (gutter > 0 && dw + 2 * gutter <= DW3_NX_WIDE_TEX_W &&
+        dh <= DW3_NX_WIDE_TEX_H &&
+        dw3_nx_pack_rgb555_wide(vram, dw3_nx_switch_gpu_gutter_plane(0),
+                                dw3_nx_switch_gpu_gutter_plane(1),
+                                DW3_NX_GUTTER_STRIDE, gutter, dx, dy, dw, dh,
+                                s_vram_rgba) != 0) {
+        /* P6.1: the display between its gutters, in its own texture. */
+        pw = dw + 2 * gutter;
+        ph = dh;
+        ui_tex = s_wide_tex;
+        uv0[0] = 0.0f;
+        uv0[1] = 0.0f;
+        uv1[0] = (float)pw / (float)DW3_NX_WIDE_TEX_W;
+        uv1[1] = (float)ph / (float)DW3_NX_WIDE_TEX_H;
+        px = 0;
+        py = 0;
+        if (src_aspect <= 0.0f) {
+            src_aspect = 4.0f / 3.0f;
+        }
+        src_aspect *= (float)pw / (float)dw;
+    } else {
+        if (dw3_nx_pack_rgb555_rect(vram, dx, dy, dw, dh, s_vram_rgba, &px,
+                                    &py, &pw, &ph) == 0) {
+            return;
+        }
+        ui_tex = s_vram_tex;
+        uv0[0] = (float)dx / (float)DW3_NX_VRAM_W;
+        uv0[1] = (float)dy / (float)DW3_NX_VRAM_H;
+        uv1[0] = (float)(dx + dw) / (float)DW3_NX_VRAM_W;
+        uv1[1] = (float)(dy + dh) / (float)DW3_NX_VRAM_H;
     }
 
     glDisable(GL_SCISSOR_TEST);
@@ -592,7 +636,7 @@ void dw3_nx_gpu_present(const uint16_t *vram, int dx, int dy, int dw, int dh,
     glClear(GL_COLOR_BUFFER_BIT);
 
     glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, s_vram_tex);
+    glBindTexture(GL_TEXTURE_2D, ui_tex);
     glTexSubImage2D(GL_TEXTURE_2D, 0, px, py, pw, ph, GL_RGBA, GL_UNSIGNED_BYTE,
                     s_vram_rgba);
 
@@ -657,13 +701,11 @@ void dw3_nx_gpu_present(const uint16_t *vram, int dx, int dy, int dw, int dh,
         dw3_nx_mesh_present(dx, dy, dw, dh, vx, vy, vw, vh);
         glViewport(vx, vy, vw, vh);
         glUseProgram(s_ui_prog);
-        glUniform2f(s_ui_uv0, (float)dx / (float)DW3_NX_VRAM_W,
-                    (float)dy / (float)DW3_NX_VRAM_H);
-        glUniform2f(s_ui_uv1, (float)(dx + dw) / (float)DW3_NX_VRAM_W,
-                    (float)(dy + dh) / (float)DW3_NX_VRAM_H);
+        glUniform2f(s_ui_uv0, uv0[0], uv0[1]);
+        glUniform2f(s_ui_uv1, uv1[0], uv1[1]);
         glUniform1i(s_ui_tex, 0);
         glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D, s_vram_tex);
+        glBindTexture(GL_TEXTURE_2D, ui_tex);
         glBindBuffer(GL_ARRAY_BUFFER, s_quad_vbo);
         glEnableVertexAttribArray((GLuint)s_ui_attr_pos);
         glVertexAttribPointer((GLuint)s_ui_attr_pos, 2, GL_FLOAT, GL_FALSE,
@@ -676,13 +718,11 @@ void dw3_nx_gpu_present(const uint16_t *vram, int dx, int dy, int dw, int dh,
     } else {
         glViewport(vx, vy, vw, vh);
         glUseProgram(s_quad_prog);
-        glUniform2f(s_uni_uv0, (float)dx / (float)DW3_NX_VRAM_W,
-                    (float)dy / (float)DW3_NX_VRAM_H);
-        glUniform2f(s_uni_uv1, (float)(dx + dw) / (float)DW3_NX_VRAM_W,
-                    (float)(dy + dh) / (float)DW3_NX_VRAM_H);
+        glUniform2f(s_uni_uv0, uv0[0], uv0[1]);
+        glUniform2f(s_uni_uv1, uv1[0], uv1[1]);
         glUniform1i(s_uni_tex, 0);
         glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D, s_vram_tex);
+        glBindTexture(GL_TEXTURE_2D, ui_tex);
         glBindBuffer(GL_ARRAY_BUFFER, s_quad_vbo);
         glEnableVertexAttribArray((GLuint)s_attr_pos);
         glVertexAttribPointer((GLuint)s_attr_pos, 2, GL_FLOAT, GL_FALSE,

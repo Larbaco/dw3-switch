@@ -48,8 +48,10 @@ explicitly marked N/A in this note.
 
 Defaults: **off** or equivalent to stock PS1 behaviour unless a feature is
 purely host presentation with no gameplay impact (document exceptions).
-Widescreen defaults **off** (4:3) but remains a first-class toggle when P6.1
-lands — not a “skip” item.
+Widescreen defaults **off** (4:3). It is a real, session-only toggle since
+the P6.1 first pass: field and battle draw side gutters, everything else
+stays 4:3; `DW3_WIDESCREEN=1` turns it on at boot. See
+[P6.1_WIDESCREEN.md](P6.1_WIDESCREEN.md).
 
 Always-on (not toggles; see [SWITCH_FEATURES.md](SWITCH_FEATURES.md)):
 focus-loss pause + delta clamp, memcard write-through/flush, rotating

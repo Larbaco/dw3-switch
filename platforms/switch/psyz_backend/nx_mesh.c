@@ -46,6 +46,14 @@ static int s_area_x1 = DW3_NX_VRAM_W - 1;
 static int s_area_y1 = DW3_NX_VRAM_H - 1;
 static GLuint s_mesh_tex;
 static GLuint s_mesh_fbo;
+/* P6.1 side gutters: a second VRAM-sized FBO where a gutter draw lands
+ * shifted so the display's left edge is at x = s_gutter_px. */
+static GLuint s_gutter_tex;
+static GLuint s_gutter_fbo;
+static int s_gutter_px;
+static int s_gutter_x0;
+static int s_gutter_w;
+static int s_gutter_h;
 static GLuint s_sample_tex;
 static GLuint s_prog;
 static GLuint s_blit_prog;
@@ -311,6 +319,14 @@ static void destroy_gl(void) {
         glDeleteTextures(1, &s_mesh_tex);
         s_mesh_tex = 0;
     }
+    if (s_gutter_fbo) {
+        glDeleteFramebuffers(1, &s_gutter_fbo);
+        s_gutter_fbo = 0;
+    }
+    if (s_gutter_tex) {
+        glDeleteTextures(1, &s_gutter_tex);
+        s_gutter_tex = 0;
+    }
     if (s_sample_tex) {
         glDeleteTextures(1, &s_sample_tex);
         s_sample_tex = 0;
@@ -398,6 +414,45 @@ static bool is_untextured(const Dw3NxMeshVertex *v) {
     return (v->tpage & DW3_NX_MESH_TPAGE_NOTEXTURE) != 0;
 }
 
+/* Whether the drawing area is the display, which takes the gutters. */
+static bool gutter_active(void) {
+    return s_gutter_px > 0 && s_gutter_fbo && s_area_x0 == s_gutter_x0 &&
+           s_area_x1 == s_gutter_x0 + s_gutter_w - 1 &&
+           (s_gutter_h <= 0 || s_area_y1 - s_area_y0 + 1 == s_gutter_h);
+}
+
+/* Clears a rect of a VRAM-sized FBO, clipped to it. */
+static void clear_fbo_rect(GLuint fbo, int x, int y, int w, int h, float r,
+                           float g, float b) {
+    GLint prev_fbo = 0;
+
+    if (x < 0) {
+        w += x;
+        x = 0;
+    }
+    if (y < 0) {
+        h += y;
+        y = 0;
+    }
+    if (x + w > DW3_NX_VRAM_W) {
+        w = DW3_NX_VRAM_W - x;
+    }
+    if (y + h > DW3_NX_VRAM_H) {
+        h = DW3_NX_VRAM_H - y;
+    }
+    if (!fbo || w <= 0 || h <= 0) {
+        return;
+    }
+    glGetIntegerv(GL_FRAMEBUFFER_BINDING, &prev_fbo);
+    glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+    glEnable(GL_SCISSOR_TEST);
+    glScissor(x, y, w, h);
+    glClearColor(r, g, b, 0.0f);
+    glClear(GL_COLOR_BUFFER_BIT);
+    glDisable(GL_SCISSOR_TEST);
+    glBindFramebuffer(GL_FRAMEBUFFER, (GLuint)prev_fbo);
+}
+
 static void apply_scissor(void) {
     int x0 = s_area_x0;
     int y0 = s_area_y0;
@@ -433,8 +488,53 @@ static void draw_indices(int start, int end) {
                    (const void *)(sizeof(uint16_t) * (size_t)start));
 }
 
+/* Draws the queued triangles into the bound FBO, in OT order, with the
+ * blend each needs. */
+static void draw_batches(void) {
+    int start = 0;
+
+    while (start < s_n_idx) {
+        const Dw3NxMeshVertex *v = &s_vtx[s_idx[start]];
+        bool need_sub = is_subtract(v);
+        int end = start + 3;
+
+        while (end < s_n_idx) {
+            if (is_subtract(&s_vtx[s_idx[end]]) != need_sub) {
+                break;
+            }
+            end += 3;
+        }
+        if (need_sub) {
+            int cur = start;
+
+            while (cur < end) {
+                int group = cur + 3;
+                bool unt = is_untextured(&s_vtx[s_idx[cur]]);
+
+                while (group < end) {
+                    if (is_untextured(&s_vtx[s_idx[group]]) != unt) {
+                        break;
+                    }
+                    group += 3;
+                }
+                set_blend(BLEND_SUB);
+                draw_indices(cur, group);
+                if (!unt) {
+                    set_blend(BLEND_SUB_OPAQUE);
+                    draw_indices(cur, group);
+                }
+                cur = group;
+            }
+            start = end;
+        } else {
+            set_blend(BLEND_ADD);
+            draw_indices(start, end);
+            start = end;
+        }
+    }
+}
+
 static void flush_locked(const uint16_t *cpu_vram) {
-    int start;
     GLint prev_fbo = 0;
     int tris;
 #if DW3_NX_DEBUG_MESH
@@ -501,45 +601,17 @@ static void flush_locked(const uint16_t *cpu_vram) {
                           sizeof(Dw3NxMeshVertex),
                           (const void *)offsetof(Dw3NxMeshVertex, twin));
 
-    start = 0;
-    while (start < s_n_idx) {
-        const Dw3NxMeshVertex *v = &s_vtx[s_idx[start]];
-        bool need_sub = is_subtract(v);
-        int end = start + 3;
-
-        while (end < s_n_idx) {
-            if (is_subtract(&s_vtx[s_idx[end]]) != need_sub) {
-                break;
-            }
-            end += 3;
-        }
-        if (need_sub) {
-            int cur = start;
-
-            while (cur < end) {
-                int group = cur + 3;
-                bool unt = is_untextured(&s_vtx[s_idx[cur]]);
-
-                while (group < end) {
-                    if (is_untextured(&s_vtx[s_idx[group]]) != unt) {
-                        break;
-                    }
-                    group += 3;
-                }
-                set_blend(BLEND_SUB);
-                draw_indices(cur, group);
-                if (!unt) {
-                    set_blend(BLEND_SUB_OPAQUE);
-                    draw_indices(cur, group);
-                }
-                cur = group;
-            }
-            start = end;
-        } else {
-            set_blend(BLEND_ADD);
-            draw_indices(start, end);
-            start = end;
-        }
+    draw_batches();
+    if (gutter_active()) {
+        /* Again into the gutter FBO, shifted so the display starts at
+         * s_gutter_px and clipped to the display plus both gutters. */
+        glBindFramebuffer(GL_FRAMEBUFFER, s_gutter_fbo);
+        glScissor(0, s_area_y0, s_gutter_w + 2 * s_gutter_px,
+                  s_area_y1 - s_area_y0 + 1);
+        glUniform2f(s_u_draw_offset,
+                    (float)(s_off_x + s_gutter_px - s_area_x0),
+                    (float)s_off_y);
+        draw_batches();
     }
 
     s_prims_flushed += (uint64_t)tris;
@@ -604,6 +676,31 @@ bool dw3_nx_mesh_init(void) {
         fprintf(stderr, "nx_mesh: mesh FBO incomplete\n");
         destroy_gl();
         return false;
+    }
+
+    glGenTextures(1, &s_gutter_tex);
+    glBindTexture(GL_TEXTURE_2D, s_gutter_tex);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, DW3_NX_VRAM_W, DW3_NX_VRAM_H, 0,
+                 GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+    glGenFramebuffers(1, &s_gutter_fbo);
+    glBindFramebuffer(GL_FRAMEBUFFER, s_gutter_fbo);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D,
+                           s_gutter_tex, 0);
+    if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
+        /* Gutters are optional: the mesh layer works without them. */
+        fprintf(stderr, "nx_mesh: gutter FBO incomplete, widescreen off\n");
+        glDeleteFramebuffers(1, &s_gutter_fbo);
+        s_gutter_fbo = 0;
+        glDeleteTextures(1, &s_gutter_tex);
+        s_gutter_tex = 0;
+    } else {
+        glDisable(GL_SCISSOR_TEST);
+        glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+        glClear(GL_COLOR_BUFFER_BIT);
     }
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
@@ -700,36 +797,14 @@ void dw3_nx_mesh_set_twin(uint32_t twin) { (void)twin; }
 
 void dw3_nx_mesh_clear_rect(int x, int y, int w, int h, float r, float g,
                             float b) {
-    GLint prev_fbo = 0;
-
     if (!s_ready || w <= 0 || h <= 0) {
         return;
     }
-    if (x < 0) {
-        w += x;
-        x = 0;
+    clear_fbo_rect(s_mesh_fbo, x, y, w, h, r, g, b);
+    /* A clear of the whole display also clears its gutters. */
+    if (s_gutter_px > 0 && x == s_gutter_x0 && w == s_gutter_w) {
+        clear_fbo_rect(s_gutter_fbo, 0, y, w + 2 * s_gutter_px, h, r, g, b);
     }
-    if (y < 0) {
-        h += y;
-        y = 0;
-    }
-    if (x >= DW3_NX_VRAM_W || y >= DW3_NX_VRAM_H) {
-        return;
-    }
-    if (x + w > DW3_NX_VRAM_W) {
-        w = DW3_NX_VRAM_W - x;
-    }
-    if (y + h > DW3_NX_VRAM_H) {
-        h = DW3_NX_VRAM_H - y;
-    }
-    glGetIntegerv(GL_FRAMEBUFFER_BINDING, &prev_fbo);
-    glBindFramebuffer(GL_FRAMEBUFFER, s_mesh_fbo);
-    glEnable(GL_SCISSOR_TEST);
-    glScissor(x, y, w, h);
-    glClearColor(r, g, b, 0.0f);
-    glClear(GL_COLOR_BUFFER_BIT);
-    glDisable(GL_SCISSOR_TEST);
-    glBindFramebuffer(GL_FRAMEBUFFER, (GLuint)prev_fbo);
 }
 
 void dw3_nx_mesh_fill_bg(int x, int y, int w, int h, float r, float g,
@@ -738,7 +813,35 @@ void dw3_nx_mesh_fill_bg(int x, int y, int w, int h, float r, float g,
         return;
     }
     dw3_nx_mesh_clear_rect(x, y, w, h, r, g, b);
+    /* A background fill of the display's drawing area covers the gutters. */
+    if (gutter_active() && x == s_area_x0 && w == s_area_x1 - s_area_x0 + 1 &&
+        !(x == s_gutter_x0 && w == s_gutter_w)) {
+        clear_fbo_rect(s_gutter_fbo, 0, y, s_gutter_w + 2 * s_gutter_px, h, r,
+                       g, b);
+    }
     s_had_content = true;
+}
+
+void dw3_nx_mesh_set_gutter(int px, int x0, int w, int h) {
+    if (px != s_gutter_px && s_ready) {
+        clear_fbo_rect(s_gutter_fbo, 0, 0, DW3_NX_VRAM_W, DW3_NX_VRAM_H, 0.0f,
+                       0.0f, 0.0f);
+    }
+    s_gutter_px = px;
+    s_gutter_x0 = x0;
+    s_gutter_w = w;
+    s_gutter_h = h;
+}
+
+void dw3_nx_mesh_clear_gutter_rows(int y0, int y1) {
+    if (s_ready && s_gutter_px > 0) {
+        clear_fbo_rect(s_gutter_fbo, 0, y0, DW3_NX_VRAM_W, y1 - y0, 0.0f, 0.0f,
+                       0.0f);
+    }
+}
+
+bool dw3_nx_mesh_has_gutters(void) {
+    return s_ready && s_gutter_fbo != 0;
 }
 
 void dw3_nx_mesh_enqueue(const Dw3NxMeshVertex *v, int nverts,
@@ -772,8 +875,26 @@ uint64_t dw3_nx_mesh_prims_flushed(void) { return s_prims_flushed; }
 
 void dw3_nx_mesh_present(int dx, int dy, int dw, int dh, int vx, int vy, int vw,
                          int vh) {
+    GLuint tex = s_mesh_tex;
+
     if (!s_ready || !s_had_content || dw <= 0 || dh <= 0 || vw <= 0 || vh <= 0) {
         return;
+    }
+    if (s_gutter_px > 0 && s_gutter_fbo && dw == s_gutter_w) {
+        /* Put the display between its gutters, then show all of it. */
+        GLint prev_fbo = 0;
+
+        glGetIntegerv(GL_FRAMEBUFFER_BINDING, &prev_fbo);
+        glDisable(GL_SCISSOR_TEST);
+        glBindFramebuffer(GL_READ_FRAMEBUFFER, s_mesh_fbo);
+        glBindFramebuffer(GL_DRAW_FRAMEBUFFER, s_gutter_fbo);
+        glBlitFramebuffer(dx, dy, dx + dw, dy + dh, s_gutter_px, dy,
+                          s_gutter_px + dw, dy + dh, GL_COLOR_BUFFER_BIT,
+                          GL_NEAREST);
+        glBindFramebuffer(GL_FRAMEBUFFER, (GLuint)prev_fbo);
+        tex = s_gutter_tex;
+        dx = 0;
+        dw += 2 * s_gutter_px;
     }
     glDisable(GL_SCISSOR_TEST);
     glDisable(GL_BLEND);
@@ -785,7 +906,7 @@ void dw3_nx_mesh_present(int dx, int dy, int dw, int dh, int vx, int vy, int vw,
                 (float)(dy + dh) / (float)DW3_NX_VRAM_H);
     glUniform1i(s_blit_tex, 0);
     glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, s_mesh_tex);
+    glBindTexture(GL_TEXTURE_2D, tex);
     glBindBuffer(GL_ARRAY_BUFFER, s_blit_vbo);
     glEnableVertexAttribArray((GLuint)s_blit_pos);
     glVertexAttribPointer((GLuint)s_blit_pos, 2, GL_FLOAT, GL_FALSE,
