@@ -1,11 +1,10 @@
-/* Build the US runtime tree from a Mode2/2352 BIN.
+/* Build a version-matched runtime tree from a Mode2/2352 BIN.
  *
  * Form-1 files are the 2048-byte user payload at offset 24 of each sector.
  * Form-2 .STR files are raw sectors (FILE_SECTOR_COUNTS * 2352). The file
  * list is the linked FILE_SECTORS table (file_table.c); paths come from the
  * ISO9660 path table, the same join build_file_map.py uses. boot_tim.bin is
- * the PS-X EXE tail at US STAGE_VRAM, the parse pack_runtime.py already uses.
- * EU is not extracted here.
+ * the PS-X EXE tail at the selected version's STAGE_VRAM.
  */
 #define _POSIX_C_SOURCE 200809L
 #define _FILE_OFFSET_BITS 64
@@ -32,7 +31,19 @@
 #define PROGRESS_MARK (8ull * 1024ull * 1024ull)
 #define EXE_HEADER 0x800u
 #define EXE_LOAD 0x80010000u
-#define STAGE_VRAM_US 0x800A4CA4u
+#if defined(VERSION_EU) && VERSION_EU
+#define RUNTIME_VERSION "eu"
+#define RUNTIME_EXECUTABLE "SLES_039.36"
+#define RUNTIME_OTHER_EXECUTABLE "SLUS_014.36"
+#define RUNTIME_MAP "files_eu.json"
+#define STAGE_VRAM 0x800A5DE0u
+#else
+#define RUNTIME_VERSION "us"
+#define RUNTIME_EXECUTABLE "SLUS_014.36"
+#define RUNTIME_OTHER_EXECUTABLE "SLES_039.36"
+#define RUNTIME_MAP "files_us.json"
+#define STAGE_VRAM 0x800A4CA4u
+#endif
 #define MAX_FILES 8192
 #define MAX_DIRS 1024
 #define MAX_DIR_BYTES (4u * 1024u * 1024u)
@@ -281,7 +292,7 @@ static int exe_ok(const char *root) {
     unsigned char mag[8];
     unsigned long long sz = 0;
 
-    if (join_root(root, "SLUS_014.36", path, sizeof(path)) != 0) {
+    if (join_root(root, RUNTIME_EXECUTABLE, path, sizeof(path)) != 0) {
         return 0;
     }
     if (file_size(path, &sz) != 0 || sz < EXE_HEADER) {
@@ -291,6 +302,20 @@ static int exe_ok(const char *root) {
         return 0;
     }
     return memcmp(mag, "PS-X EXE", 8) == 0;
+}
+
+static int map_identity_ok(const char *path) {
+    char head[256];
+    FILE *fp = fopen(path, "rb");
+    size_t n;
+    if (fp == NULL) {
+        return 0;
+    }
+    n = fread(head, 1, sizeof(head) - 1, fp);
+    fclose(fp);
+    head[n] = '\0';
+    return strstr(head, "\"version\": \"" RUNTIME_VERSION "\"") != NULL &&
+           strstr(head, "\"executable\": \"" RUNTIME_EXECUTABLE "\"") != NULL;
 }
 
 static int boot_tim_ok(const char *root) {
@@ -356,7 +381,10 @@ static int tree_ready(const char *root) {
     if (cdfs_set_root(root) != 0) {
         return 0;
     }
-    if (join_root(root, "files_us.json", map, sizeof(map)) != 0) {
+    if (join_root(root, RUNTIME_MAP, map, sizeof(map)) != 0) {
+        return 0;
+    }
+    if (!map_identity_ok(map)) {
         return 0;
     }
     if (cdfs_load_map(map) != 0) {
@@ -416,7 +444,7 @@ static int write_boot_tim(const char *exe_path, const char *tim_path) {
     if (memcmp(data, "PS-X EXE", 8) != 0) {
         goto out;
     }
-    off = (size_t)EXE_HEADER + ((size_t)STAGE_VRAM_US - (size_t)EXE_LOAD);
+    off = (size_t)EXE_HEADER + ((size_t)STAGE_VRAM - (size_t)EXE_LOAD);
     if (off + 8 > (size_t)sz || data[off] != 0x10 || data[off + 1] != 0 ||
         data[off + 2] != 0 || data[off + 3] != 0) {
         goto out;
@@ -482,7 +510,7 @@ static int try_local_boot_tim(const char *root) {
     if (boot_tim_ok(root) || !exe_ok(root)) {
         return -1;
     }
-    if (join_root(root, "SLUS_014.36", exe, sizeof(exe)) != 0 ||
+    if (join_root(root, RUNTIME_EXECUTABLE, exe, sizeof(exe)) != 0 ||
         join_root(root, "boot_tim.bin", tim, sizeof(tim)) != 0) {
         return -1;
     }
@@ -765,7 +793,8 @@ static struct IsoFile *find_lba(struct IsoFile *files, size_t nfiles, uint32_t l
     return NULL;
 }
 
-static struct IsoFile *find_exe(struct IsoFile *files, size_t nfiles) {
+static struct IsoFile *find_named_file(struct IsoFile *files, size_t nfiles,
+                                       const char *name) {
     size_t i;
     for (i = 0; i < nfiles; i++) {
         const char *base = files[i].path;
@@ -775,7 +804,7 @@ static struct IsoFile *find_exe(struct IsoFile *files, size_t nfiles) {
                 base = s + 1;
             }
         }
-        if (strcasecmp(base, "SLUS_014.36") == 0) {
+        if (strcasecmp(base, name) == 0) {
             return &files[i];
         }
     }
@@ -902,7 +931,7 @@ static int write_json(const char *root, const struct Job *jobs, int njobs) {
     int i;
     int first = 1;
 
-    if (join_root(root, "files_us.json", dest, sizeof(dest)) != 0) {
+    if (join_root(root, RUNTIME_MAP, dest, sizeof(dest)) != 0) {
         return -1;
     }
     if (snprintf(tmp, sizeof(tmp), "%s.tmp", dest) >= (int)sizeof(tmp)) {
@@ -913,8 +942,9 @@ static int write_json(const char *root, const struct Job *jobs, int njobs) {
         return -1;
     }
     if (fprintf(fp,
-                "{\n  \"version\": \"us\",\n  \"executable\": \"SLUS_014.36\",\n"
-                "  \"files\": {\n") < 0) {
+                "{\n  \"version\": \"%s\",\n  \"executable\": \"%s\",\n"
+                "  \"files\": {\n", RUNTIME_VERSION,
+                RUNTIME_EXECUTABLE) < 0) {
         fclose(fp);
         remove(tmp);
         return -1;
@@ -980,9 +1010,18 @@ static int extract_from_bin(const char *root, const char *bin_path) {
         dw3_str_restore_emit("disc image is not Mode2/2352 ISO9660", 0, 0);
         goto out;
     }
-    exe = find_exe(files, nfiles);
+    exe = find_named_file(files, nfiles, RUNTIME_EXECUTABLE);
     if (exe == NULL || exe->bytes == 0) {
-        dw3_str_restore_emit("SLUS_014.36 is not on the disc", 0, 0);
+        if (find_named_file(files, nfiles, RUNTIME_OTHER_EXECUTABLE) != NULL) {
+            snprintf(msg, sizeof(msg),
+                     "disc region mismatch: expected %s, found %s",
+                     RUNTIME_EXECUTABLE, RUNTIME_OTHER_EXECUTABLE);
+            dw3_str_restore_emit(msg, 0, 0);
+        } else {
+            snprintf(msg, sizeof(msg), "%s is not on the disc",
+                     RUNTIME_EXECUTABLE);
+            dw3_str_restore_emit(msg, 0, 0);
+        }
         goto out;
     }
     jobs = (struct Job *)calloc((size_t)FILE_COUNT, sizeof(*jobs));
@@ -1044,7 +1083,7 @@ static int extract_from_bin(const char *root, const char *bin_path) {
         }
         g_total += expect;
     }
-    if (join_root(root, "SLUS_014.36", dest, sizeof(dest)) != 0) {
+    if (join_root(root, RUNTIME_EXECUTABLE, dest, sizeof(dest)) != 0) {
         goto out;
     }
     {
@@ -1092,7 +1131,7 @@ static int extract_from_bin(const char *root, const char *bin_path) {
         }
         wrote++;
     }
-    if (join_root(root, "SLUS_014.36", dest, sizeof(dest)) != 0) {
+    if (join_root(root, RUNTIME_EXECUTABLE, dest, sizeof(dest)) != 0) {
         goto out;
     }
     {
@@ -1109,9 +1148,11 @@ static int extract_from_bin(const char *root, const char *bin_path) {
     pump(1);
     if (join_root(root, "boot_tim.bin", dest, sizeof(dest)) == 0 && !boot_tim_ok(root)) {
         char exe_path[1024];
-        if (join_root(root, "SLUS_014.36", exe_path, sizeof(exe_path)) != 0 ||
+        if (join_root(root, RUNTIME_EXECUTABLE, exe_path, sizeof(exe_path)) != 0 ||
             write_boot_tim(exe_path, dest) != 0) {
-            dw3_str_restore_emit("boot TIM tail missing in SLUS_014.36", g_done, g_total);
+            snprintf(msg, sizeof(msg), "boot TIM tail missing in %s",
+                     RUNTIME_EXECUTABLE);
+            dw3_str_restore_emit(msg, g_done, g_total);
             goto out;
         }
     }
@@ -1140,6 +1181,30 @@ int dw3_runtime_ensure(const char *root) {
     if (tree_ready(root)) {
         return ensure_memcard(root);
     }
+#if defined(VERSION_EU) && VERSION_EU
+    /* The EU image is expected beside its runtime root (or in its parent).
+     * files_eu.json is written last and is the completion marker: until it
+     * validates against the SLES executable and every mapped file, boot must
+     * not hand the partial tree to CDFS. Keeping the disc beside the extracted
+     * files also avoids moving/copying a 600+ MiB tree on the SD card. */
+    if (dw3_str_find_disc(root, bin, sizeof(bin), disc_min_bytes()) != 0) {
+        if (dir_exists(root)) {
+            dw3_str_restore_emit(
+                "EU runtime incomplete; place the matching EU BIN/CUE beside it",
+                0, 0);
+            return -1;
+        }
+        return 0;
+    }
+    if (extract_from_bin(root, bin) != 0) {
+        return -1;
+    }
+    if (!tree_ready(root)) {
+        dw3_str_restore_emit("EU runtime validation failed; map not accepted", 0, 0);
+        return -1;
+    }
+    return ensure_memcard(root);
+#else
     if (FILE_COUNT < 1 || FILE_COUNT > MAX_FILES) {
         if (dir_exists(root)) {
             return ensure_memcard(root);
@@ -1156,4 +1221,5 @@ int dw3_runtime_ensure(const char *root) {
         return -1;
     }
     return ensure_memcard(root);
+#endif
 }

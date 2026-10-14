@@ -410,11 +410,11 @@ static int init_paths(void) {
     char memcard_buf[512];
     char boot_path[512];
 
-    /* US: a card with the BIN and no us/ tree is filled in here. A tree that
-     * is already complete only stats. The bar is the same callback the STR
-     * rewrite uses, so register it first. EU does not extract. */
+    /* A card with a matching BIN and no complete versioned tree is filled in
+     * here. The bar is the same callback the STR rewrite uses, so register it
+     * first. */
     dw3_str_restore_set_progress(str_restore_progress);
-#if defined(VERSION_US) && VERSION_US
+#if (defined(VERSION_US) && VERSION_US) || (defined(VERSION_EU) && VERSION_EU)
     if (dw3_runtime_ensure(root) != 0) {
         ERRORF("runtime extract failed");
         return -1;

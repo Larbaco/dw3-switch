@@ -1,7 +1,7 @@
-"""US runtime extract from a synthetic Mode2/2352 image.
+"""US and EU runtime extraction from synthetic Mode2/2352 images.
 
 The payload files are 2 and 3 sectors. The image is larger only because a
-PS-X EXE has to reach the US STAGE_VRAM tail. No game bytes.
+PS-X EXE has to reach the selected version's STAGE_VRAM tail. No game bytes.
 """
 
 import json
@@ -15,7 +15,8 @@ SECTOR = 2352
 USER = 24
 LOGICAL = 2048
 EXE_LOAD = 0x80010000
-STAGE_VRAM_US = 0x800A4CA4
+STAGE_VRAM = {"us": 0x800A4CA4, "eu": 0x800A5DE0}
+EXECUTABLE = {"us": "SLUS_014.36", "eu": "SLES_039.36"}
 EXE_HEADER = 0x800
 
 
@@ -68,9 +69,9 @@ def _path_entry(name: bytes, extent: int, parent: int) -> bytes:
     return bytes(entry)
 
 
-def _build_exe() -> tuple[bytes, bytes]:
-    """PS-X EXE with a CLUT TIM at the US stage address. Returns (exe, tim)."""
-    off = EXE_HEADER + (STAGE_VRAM_US - EXE_LOAD)
+def _build_exe(version: str) -> tuple[bytes, bytes]:
+    """PS-X EXE with a CLUT TIM at this version's stage address."""
+    off = EXE_HEADER + (STAGE_VRAM[version] - EXE_LOAD)
     flag = 8
     clut_size = 16
     img_size = 20
@@ -87,8 +88,8 @@ def _build_exe() -> tuple[bytes, bytes]:
     return bytes(exe), tim
 
 
-def _build_image(dest: Path) -> dict:
-    exe, tim = _build_exe()
+def _build_image(dest: Path, version: str = "us") -> dict:
+    exe, tim = _build_exe(version)
     demo = bytes((i * 17 + 3) & 0xFF for i in range(4200))
     assert len(demo) == 4200
     exe_lba = 40
@@ -133,7 +134,7 @@ def _build_image(dest: Path) -> dict:
     root = directory(
         [
             _dir_record(b"AAA", aaa_lba, len(aaa), is_dir=True),
-            _dir_record(b"SLUS_014.36;1", exe_lba, len(exe)),
+            _dir_record(f"{EXECUTABLE[version]};1".encode(), exe_lba, len(exe)),
         ],
         root_lba,
         root_lba,
@@ -198,11 +199,13 @@ def _build_image(dest: Path) -> dict:
         "demo_sectors": demo_sectors,
         "str_sectors": str_sectors,
         "str_iso_bytes": str_sectors * LOGICAL,
+        "version": version,
+        "executable": EXECUTABLE[version],
     }
 
 
-def _compile(tmp: Path) -> Path:
-    exe = tmp / "runtime_extract_test"
+def _compile(tmp: Path, version: str = "us") -> Path:
+    exe = tmp / f"runtime_extract_test_{version}"
     if exe.exists():
         return exe
     subprocess.check_call(
@@ -213,6 +216,7 @@ def _compile(tmp: Path) -> Path:
             "-Wextra",
             "-Werror",
             "-D_FILE_OFFSET_BITS=64",
+            f"-DVERSION_{version.upper()}=1",
             "-I",
             str(ROOT / "port" / "cdfs"),
             "-I",
@@ -228,12 +232,14 @@ def _compile(tmp: Path) -> Path:
     return exe
 
 
-def _run(tmp: Path, runtime: Path, table: Path) -> subprocess.CompletedProcess[str]:
+def _run(
+    tmp: Path, runtime: Path, table: Path, version: str = "us"
+) -> subprocess.CompletedProcess[str]:
     env = os.environ.copy()
     env.pop("DW3_DISC_BIN", None)
     env.pop("DW3_DISC_CUE", None)
     return subprocess.run(
-        [str(_compile(tmp)), str(runtime), str(table)],
+        [str(_compile(tmp, version)), str(runtime), str(table)],
         capture_output=True,
         text=True,
         env=env,
@@ -245,6 +251,13 @@ def _write_table(path: Path, rows: list[tuple[int, int, int]]) -> None:
     path.write_text("".join(f"{i} {lba} {n}\n" for i, lba, n in rows), encoding="utf-8")
 
 
+def _image_rows(info: dict) -> list[tuple[int, int, int]]:
+    return [
+        (1, info["demo_lba"], info["demo_sectors"]),
+        (2, info["str_lba"], info["str_sectors"]),
+    ]
+
+
 def test_extracts_form1_user_form2_raw_and_boot_tim(tmp_path: Path):
     card = tmp_path / "card"
     runtime = card / "us"
@@ -253,10 +266,7 @@ def test_extracts_form1_user_form2_raw_and_boot_tim(tmp_path: Path):
     table = tmp_path / "table.txt"
     _write_table(
         table,
-        [
-            (1, info["demo_lba"], info["demo_sectors"]),
-            (2, info["str_lba"], info["str_sectors"]),
-        ],
+        _image_rows(info),
     )
 
     first = _run(tmp_path, runtime, table)
@@ -366,6 +376,79 @@ def test_missing_tree_and_missing_disc_is_not_an_extract_error(tmp_path: Path):
     assert result.returncode == 0, result.stderr + result.stdout
     assert not (runtime / "files_us.json").exists()
     assert "extracting runtime" not in result.stdout
+
+
+def test_eu_extracts_matching_disc_and_reentry_only_validates(tmp_path: Path):
+    runtime = tmp_path / "sd" / "switch" / "dw3" / "eu"
+    runtime.mkdir(parents=True)
+    disc = runtime / "disc.bin"
+    info = _build_image(disc, version="eu")
+    (runtime / "disc.cue").write_text(
+        'FILE "disc.bin" BINARY\n  TRACK 01 MODE2/2352\n    INDEX 01 00:00:00\n',
+        encoding="ascii",
+    )
+    table = tmp_path / "eu-table.txt"
+    _write_table(table, _image_rows(info))
+
+    first = _run(tmp_path, runtime, table, version="eu")
+    assert first.returncode == 0, first.stderr + first.stdout
+    assert "extracting runtime from" in first.stdout
+    assert (runtime / "SLES_039.36").read_bytes() == info["exe"]
+    assert (runtime / "boot_tim.bin").read_bytes() == info["tim"]
+    assert (runtime / "AAA" / "PRO" / "DEMO.PRO").read_bytes() == info["demo"]
+    assert (runtime / "AAA" / "STR" / "CLIP.STR").read_bytes() == info["str_raw"]
+    mapped = json.loads((runtime / "files_eu.json").read_text(encoding="utf-8"))
+    assert mapped["version"] == "eu"
+    assert mapped["executable"] == "SLES_039.36"
+    assert mapped["files"]["1"]["path"] == "AAA/PRO/DEMO.PRO"
+    assert not (runtime / "files_us.json").exists()
+    assert (runtime / "memcard").is_dir()
+    assert list((runtime / "memcard").iterdir()) == []
+
+    manifest_mtime = (runtime / "files_eu.json").stat().st_mtime_ns
+    second = _run(tmp_path, runtime, table, version="eu")
+    assert second.returncode == 0, second.stderr + second.stdout
+    assert "extracting runtime" not in second.stdout
+    assert (runtime / "files_eu.json").stat().st_mtime_ns == manifest_mtime
+
+
+def test_eu_rejects_us_disc_without_creating_runtime(tmp_path: Path):
+    card = tmp_path / "sd" / "switch" / "dw3"
+    card.mkdir(parents=True)
+    info = _build_image(card / "disc.bin", version="us")
+    table = tmp_path / "eu-table.txt"
+    _write_table(table, _image_rows(info))
+
+    result = _run(tmp_path, card / "eu", table, version="eu")
+    assert result.returncode == 1
+    assert "disc region mismatch: expected SLES_039.36, found SLUS_014.36" in result.stdout
+    assert not (card / "eu").exists()
+
+
+def test_eu_partial_extract_has_no_manifest_and_can_resume(tmp_path: Path):
+    runtime = tmp_path / "sd" / "switch" / "dw3" / "eu"
+    runtime.mkdir(parents=True)
+    disc = runtime / "disc.bin"
+    info = _build_image(disc, version="eu")
+    complete_image = disc.read_bytes()
+    damaged = bytearray(complete_image)
+    damaged[info["str_lba"] * SECTOR] = 0x12
+    disc.write_bytes(damaged)
+    table = tmp_path / "eu-table.txt"
+    _write_table(table, _image_rows(info))
+
+    failed = _run(tmp_path, runtime, table, version="eu")
+    assert failed.returncode == 1
+    assert "extract write failed" in failed.stdout
+    assert (runtime / "AAA" / "PRO" / "DEMO.PRO").read_bytes() == info["demo"]
+    assert not (runtime / "files_eu.json").exists()
+    assert not (runtime / "memcard").exists()
+
+    disc.write_bytes(complete_image)
+    resumed = _run(tmp_path, runtime, table, version="eu")
+    assert resumed.returncode == 0, resumed.stderr + resumed.stdout
+    assert (runtime / "files_eu.json").is_file()
+    assert (runtime / "SLES_039.36").read_bytes() == info["exe"]
 
 
 def test_corrupt_bin_fails_when_the_tree_is_missing(tmp_path: Path):
