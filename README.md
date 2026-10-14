@@ -331,6 +331,7 @@ dw3-switch/
 |---|---|
 | [docs/ROADMAP.md](docs/ROADMAP.md) | Phases, gates, what is next |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Host, PSY-Z, and game layering |
+| [docs/HOTKEYS.md](docs/HOTKEYS.md) | PC/Switch controls, optional restart, and diagnostic chords |
 | [docs/P3_GATE.md](docs/P3_GATE.md) | Phase 3 gate, US start to first boss. Met. |
 | [docs/P3.9_REFERENCE.md](docs/P3.9_REFERENCE.md) | DuckStation vs PC screenshot harness. Done. |
 | [docs/P3_EU_BUILD.md](docs/P3_EU_BUILD.md) | EU `-DDW3_VERSION=eu` scaffold |

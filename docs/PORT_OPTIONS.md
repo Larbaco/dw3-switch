@@ -1,5 +1,7 @@
 # Port options menu
 
+Controls, physical mappings, and diagnostic chord overlap: [HOTKEYS.md](HOTKEYS.md).
+
 Phase 9 goal note. See [ROADMAP.md](ROADMAP.md) P9.1–P9.5.
 
 Vanilla Digimon World 3 / 2003 menus stay as the decomp implements them.
