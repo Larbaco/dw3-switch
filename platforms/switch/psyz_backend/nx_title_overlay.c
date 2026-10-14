@@ -257,6 +257,8 @@ void dw3_nx_title_overlay_draw(int vx, int vy, int vw, int vh) {
     glDisable(GL_CULL_FACE);
     glDisable(GL_SCISSOR_TEST);
     glEnable(GL_BLEND);
+    /* The equation too: other layers (battle mesh) change it. */
+    glBlendEquation(GL_FUNC_ADD);
     glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE,
                         GL_ONE_MINUS_SRC_ALPHA);
     glViewport(vx, vy, vw, vh);

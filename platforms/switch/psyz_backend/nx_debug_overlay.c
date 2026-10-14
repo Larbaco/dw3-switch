@@ -506,6 +506,8 @@ void dw3_nx_debug_overlay_draw(uint32_t fb_w, uint32_t fb_h) {
     glDisable(GL_CULL_FACE);
     glDisable(GL_SCISSOR_TEST);
     glEnable(GL_BLEND);
+    /* The equation too: other layers (battle mesh) change it. */
+    glBlendEquation(GL_FUNC_ADD);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
     glViewport(0, vy, hud_w, hud_h);

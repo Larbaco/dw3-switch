@@ -621,6 +621,16 @@ static void flush_locked(const uint16_t *cpu_vram) {
 
     glBindFramebuffer(GL_FRAMEBUFFER, (GLuint)prev_fbo);
     glDisable(GL_SCISSOR_TEST);
+    /* set_blend leaves the last batch's equation behind. A subtractive batch
+     * (BLEND_SUB, e.g. the battle's fade-out) left GL_FUNC_REVERSE_SUBTRACT
+     * current after the battle, and every later blended draw (debug HUD,
+     * native title menu and logo) subtracted itself from the frame: dark
+     * HUD text after a battle, a black title after a restart. */
+    glBlendEquation(GL_FUNC_ADD);
+    glBlendFunc(GL_ONE, GL_ZERO);
+    glDisable(GL_BLEND);
+    glDisableVertexAttribArray(2);
+    glDisableVertexAttribArray(3);
 #if DW3_NX_DEBUG_MESH
     t2 = mesh_now_us();
     dw3_nx_mesh_debug_note_flush((uint32_t)(t2 - t0), (uint32_t)(t1 - t0),
@@ -730,10 +740,85 @@ bool dw3_nx_mesh_reinit(void) { return dw3_nx_mesh_init(); }
 
 bool dw3_nx_mesh_available(void) { return s_ready; }
 
+/* Partner-view areas, one per display buffer it is drawn into. */
+enum { SOFT_VIEW_MAX = 4, SOFT_VIEW_MAX_AGE = 4 };
+typedef struct SoftView {
+    int x0;
+    int y0;
+    int x1;
+    int y1;
+    int age;
+} SoftView;
+static SoftView s_soft_views[SOFT_VIEW_MAX];
+static int s_n_soft_views;
+
 void dw3_nx_mesh_discard(void) {
     s_n_vtx = 0;
     s_n_idx = 0;
     s_had_content = false;
+    s_n_soft_views = 0;
+}
+
+void dw3_nx_mesh_note_soft_view(int x0, int y0, int x1, int y1) {
+    int i;
+
+    for (i = 0; i < s_n_soft_views; i++) {
+        SoftView *v = &s_soft_views[i];
+
+        if (v->x0 == x0 && v->y0 == y0 && v->x1 == x1 && v->y1 == y1) {
+            v->age = 0;
+            return;
+        }
+    }
+    if (s_n_soft_views == SOFT_VIEW_MAX) {
+        /* Replace the oldest. */
+        int oldest = 0;
+
+        for (i = 1; i < SOFT_VIEW_MAX; i++) {
+            if (s_soft_views[i].age > s_soft_views[oldest].age) {
+                oldest = i;
+            }
+        }
+        i = oldest;
+    } else {
+        i = s_n_soft_views++;
+    }
+    s_soft_views[i].x0 = x0;
+    s_soft_views[i].y0 = y0;
+    s_soft_views[i].x1 = x1;
+    s_soft_views[i].y1 = y1;
+    s_soft_views[i].age = 0;
+}
+
+bool dw3_nx_mesh_soft_view_in(int dx, int dy, int dw, int dh, int *x, int *y,
+                              int *w, int *h) {
+    int i;
+
+    for (i = 0; i < s_n_soft_views; i++) {
+        const SoftView *v = &s_soft_views[i];
+
+        if (v->x0 >= dx && v->y0 >= dy && v->x1 < dx + dw &&
+            v->y1 < dy + dh && v->x1 >= v->x0 && v->y1 >= v->y0) {
+            *x = v->x0 - dx;
+            *y = v->y0 - dy;
+            *w = v->x1 - v->x0 + 1;
+            *h = v->y1 - v->y0 + 1;
+            return true;
+        }
+    }
+    return false;
+}
+
+static void soft_views_age(void) {
+    int i = 0;
+
+    while (i < s_n_soft_views) {
+        if (++s_soft_views[i].age > SOFT_VIEW_MAX_AGE) {
+            s_soft_views[i] = s_soft_views[--s_n_soft_views];
+        } else {
+            i++;
+        }
+    }
 }
 
 void dw3_nx_mesh_mark_vram_dirty(void) { mark_dirty_full(); }
@@ -950,4 +1035,7 @@ size_t dw3_nx_mesh_read_rect_rgba(int dx, int dy, int dw, int dh, uint8_t *dst,
     return need;
 }
 
-void dw3_nx_mesh_end_frame(void) { s_had_content = false; }
+void dw3_nx_mesh_end_frame(void) {
+    s_had_content = false;
+    soft_views_age();
+}

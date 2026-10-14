@@ -334,6 +334,54 @@ bool dw3_nx_gpu_swap(void) {
 static float dw3_nx_display_aspect(int range_w, int range_h, int pal);
 #ifdef DW3_NX_GAME_IMAGE
 static void dw3_nx_gpu_skip_present(const uint16_t *vram);
+
+/* Fast-forward cadence: a VSync presents unless speed > 1 and fewer than
+ * `speed` VSyncs have passed since the last present. */
+static int turbo_step(int speed, int *phase) {
+    if (speed > 1 && ++*phase < speed) {
+        return 0;
+    }
+    *phase = 0;
+    return 1;
+}
+
+/* Whether the frame drawn after this VSync goes unseen. drawFrame shows a
+ * buffer one flip after drawing it, so the present inside the VSync after
+ * next is the one that would show it (see switch_gpu.c). */
+static int turbo_frame_unseen(int speed, int phase) {
+    turbo_step(speed, &phase);
+    return !turbo_step(speed, &phase);
+}
+
+/* After each VSync: drop the next frame's display-buffer draws when no
+ * present shows it. A present of a dropped buffer (stale) is expected once
+ * when the speed changes; three of them at a steady speed mean the cadence
+ * guess is wrong for this title's loop, so dropping stops for good. */
+static void turbo_after_vsync(int speed, int phase, int presented) {
+    static int prev_speed = 1;
+    static int steady;
+    static int stale_events;
+    int drop;
+
+    if (speed == prev_speed) {
+        if (steady < 1000) {
+            steady++;
+        }
+    } else {
+        prev_speed = speed;
+        steady = 0;
+    }
+    if (presented && stale_events < 3 && dw3_nx_switch_gpu_display_stale() &&
+        steady >= 3) {
+        stale_events++;
+        psyz_log(1, "nx_gpu.c", __LINE__, __func__,
+                 "dw3-turbo: presented a dropped frame (%d/3)%s",
+                 stale_events,
+                 stale_events == 3 ? "; frame dropping off" : "");
+    }
+    drop = stale_events < 3 && speed > 1 && turbo_frame_unseen(speed, phase);
+    dw3_nx_switch_gpu_set_drop_draws(drop);
+}
 #endif
 
 int Psyz_VideoVSync(int mode) {
@@ -365,15 +413,17 @@ int Psyz_VideoVSync(int mode) {
          * ones neither upload nor swap, so nothing waits for the display and
          * the game runs `speed` frames per vsync (or as many as the CPU
          * rasterizer manages). */
-        static int turbo_skipped;
+        static int turbo_phase;
         int speed = dw3_port_turbo_speed();
 
-        if (speed > 1 && ++turbo_skipped < speed) {
+        if (!turbo_step(speed, &turbo_phase)) {
             dw3_nx_gpu_skip_present(dw3_nx_switch_gpu_vram());
+            turbo_after_vsync(speed, turbo_phase, 0);
             last_vsync_us = now_us;
             return lines;
         }
-        turbo_skipped = 0;
+        /* Before the present, which may show a dropped buffer. */
+        turbo_after_vsync(speed, turbo_phase, 1);
 
         dw3_nx_switch_gpu_display(&disp);
         if (disp.on) {
@@ -437,6 +487,7 @@ static GLint s_ui_attr_t = -1;
 static GLint s_ui_uv0 = -1;
 static GLint s_ui_uv1 = -1;
 static GLint s_ui_tex = -1;
+static GLint s_ui_keep = -1;
 
 /* Scratch for one tight rectangle. A full 1024×512 frame still fits; present
  * only fills and uploads the sampled (dw × dh) region. */
@@ -454,19 +505,29 @@ static const char *QUAD_FS =
     "uniform vec2 u_uv0;\n"
     "uniform vec2 u_uv1;\n"
     "uniform sampler2D u_tex;\n"
-    "void main() { gl_FragColor = texture2D(u_tex, u_uv0 + v_t * (u_uv1 - u_uv0)); }\n";
+    "void main() {\n"
+    "  gl_FragColor = vec4(texture2D(u_tex, u_uv0 + v_t * (u_uv1 - u_uv0)).rgb, 1.0);\n"
+    "}\n";
 
-/* Overlay CPU VRAM (sprites/UI). Drop cleared black so the mesh FBO shows. */
+/* Overlay CPU VRAM (sprites/UI). Drop cleared black so the mesh FBO shows.
+ * Inside u_keep (x0, y0, x1, y1 in quad units; the partner view, drawn on the
+ * software path) black with bit 15 (alpha, see nx_vram_pack.c) is a drawn
+ * pixel, such as an opaque black texel, and stays. */
 static const char *UI_FS =
     "precision mediump float;\n"
     "varying vec2 v_t;\n"
     "uniform vec2 u_uv0;\n"
     "uniform vec2 u_uv1;\n"
+    "uniform vec4 u_keep;\n"
     "uniform sampler2D u_tex;\n"
     "void main() {\n"
     "  vec4 c = texture2D(u_tex, u_uv0 + v_t * (u_uv1 - u_uv0));\n"
-    "  if (c.r + c.g + c.b < 0.002) discard;\n"
-    "  gl_FragColor = c;\n"
+    "  if (c.r + c.g + c.b < 0.002) {\n"
+    "    bool keep = c.a > 0.5 && v_t.x >= u_keep.x && v_t.y >= u_keep.y &&\n"
+    "                v_t.x < u_keep.z && v_t.y < u_keep.w;\n"
+    "    if (!keep) discard;\n"
+    "  }\n"
+    "  gl_FragColor = vec4(c.rgb, 1.0);\n"
     "}\n";
 
 static GLuint compile_shader(GLenum type, const char *src) {
@@ -542,6 +603,7 @@ static bool present_init(void) {
     s_ui_uv0 = glGetUniformLocation(s_ui_prog, "u_uv0");
     s_ui_uv1 = glGetUniformLocation(s_ui_prog, "u_uv1");
     s_ui_tex = glGetUniformLocation(s_ui_prog, "u_tex");
+    s_ui_keep = glGetUniformLocation(s_ui_prog, "u_keep");
 
     glGenBuffers(1, &s_quad_vbo);
     glBindBuffer(GL_ARRAY_BUFFER, s_quad_vbo);
@@ -610,6 +672,12 @@ void dw3_nx_gpu_present(const uint16_t *vram, int dx, int dy, int dw, int dh,
     GLuint ui_tex;
     float uv0[2];
     float uv1[2];
+    /* Partner view in quad units (0..1 across the shown picture); empty. */
+    float keep[4] = {2.0f, 2.0f, -1.0f, -1.0f};
+    int keep_x;
+    int keep_y;
+    int keep_w;
+    int keep_h;
 #if DW3_NX_DEBUG_MESH
     uint64_t present_t0 = 0;
 #endif
@@ -736,12 +804,27 @@ void dw3_nx_gpu_present(const uint16_t *vram, int dx, int dy, int dw, int dh,
 
     /* Mesh first (3D), then CPU VRAM. With mesh: discard cleared black so UI
      * sprites sit on top. Without mesh: opaque blit as before. */
+    if (use_mesh &&
+        dw3_nx_mesh_soft_view_in(dx, dy, dw, dh, &keep_x, &keep_y, &keep_w,
+                                 &keep_h)) {
+        /* The wide texture puts the display after the left gutter. */
+        int wide = ui_tex == s_wide_tex;
+        float qw = (float)(wide ? pw : dw);
+        float qh = (float)dh;
+        int left = wide ? gutter : 0;
+
+        keep[0] = (float)(left + keep_x) / qw;
+        keep[1] = (float)keep_y / qh;
+        keep[2] = (float)(left + keep_x + keep_w) / qw;
+        keep[3] = (float)(keep_y + keep_h) / qh;
+    }
     if (use_mesh) {
         dw3_nx_mesh_present(dx, dy, dw, dh, vx, vy, vw, vh);
         glViewport(vx, vy, vw, vh);
         glUseProgram(s_ui_prog);
         glUniform2f(s_ui_uv0, uv0[0], uv0[1]);
         glUniform2f(s_ui_uv1, uv1[0], uv1[1]);
+        glUniform4f(s_ui_keep, keep[0], keep[1], keep[2], keep[3]);
         glUniform1i(s_ui_tex, 0);
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, ui_tex);
