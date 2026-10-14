@@ -654,11 +654,13 @@ tick does not start Phase 6.
   shipped in v0.6.5-preview.22. Full 16:9 in the field needs more tile
   slots. Integer scaling is untouched. See
   [P6.1_WIDESCREEN.md](P6.1_WIDESCREEN.md).
-  **OLED feedback (2026-10-14, to do, not fixed yet):** thin side strips
-  remain on the field (16:10); battle should default to `gpu-tex` (its
-  right-panel Digimon face is missing); title and other menus are still
-  4:3; Widescreen should be ON by default; the Gatomon inn scene leaves the
-  gutters uncovered while the middle 4:3 is covered.
+  **OLED feedback (2026-10-14) applied:** field 16:9 (fifth tile column
+  in 3 host tile slots), battle cold-boots in `gpu-tex` with the partner
+  view fixed, Widescreen ON by default, the field menu / shop / memory
+  card / partner name screens fill 16:9, full-screen fades (the Gatomon
+  inn night) cover the gutters, and EU no longer shows 16:10. Title is in
+  PRs #126 / #127. Validated on PC and Ryubing with US and EU; OLED pass
+  pending.
 - [ ] **P6.2** PAL/NTSC and EU/US selection at boot; language from EU
   `CNTY_SEL`.
 - [ ] **P6.3** PGXP-style vertex precision from PSY-Z if it stays stable.
