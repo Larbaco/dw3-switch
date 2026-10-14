@@ -1,106 +1,95 @@
 Upstream-bound: no
-Subject: [PORT_HOST] Resample original PC title logo from runtime sprites
+Subject: [PORT_HOST] Native title canvas: original logo from runtime sprites
 
 Keep the original title sprites and their animation while they enter. On the
 stable title state, upload the original US sprites into a private RGBA texture,
-resample the logo with the PC-only Lanczos2 path, and hide only the duplicate
-native logo/footer/menu draws. Switch and SDL3 GL retain their original path.
+resample the logo with Lanczos2, and hide only the duplicate native
+logo/footer/menu draws. Built with DW3_TITLE_NATIVE_OVERLAY (PC SDL3 GPU and the
+Switch game image); SDL3 GL keeps its original path. The edge fade reports its
+level so the overlay darkens with it; each title visit resets it.
 
---- a/src/menus/title/menu.c
-+++ b/src/menus/title/menu.c
-@@ -17,6 +17,20 @@
-    options, the one not picked dimmed */
- void STDWTITL_drawMenu(TitleMenuTask *task) {
-     SpriteDrawer sprite;
-+
-+#if defined(DW3_TITLE_NATIVE_OVERLAY)
-+    if (dw3_port_options_is_open()) {
-+        dw3_port_title_options_draw(task->layerId, 78,
-+            DW3_TITLE_ROW_Y(DW3_TITLE_PORT_OPTIONS), -2);
-+    } else if (task->showOptions && task->state == TASK_DONE) {
-+        dw3_port_title_options_draw(task->layerId, 78,
-+            DW3_TITLE_ROW_Y(DW3_TITLE_PORT_OPTIONS), task->selection);
-+    } else {
-+        dw3_port_title_options_draw(task->layerId, 78,
-+            DW3_TITLE_ROW_Y(DW3_TITLE_PORT_OPTIONS), -1);
-+    }
-+    return;
-+#else
-
- #if PORT_HOST && defined(DW3_PC_HOST)
-     if (task->showCursor && !(task->showOptions && task->state == TASK_DONE)) {
-@@ -81,6 +95,7 @@
- #if defined(DW3_PC_HOST)
-     }
- #endif
-+#endif
- }
-
- /* "PRESS START": waits a moment, then for Start (choice 3 after ten seconds),
-@@ -268,6 +283,9 @@
- #endif
-         break;
-     case TASK_KILL:
-+#if defined(DW3_TITLE_NATIVE_OVERLAY)
-+        dw3_port_title_options_draw(0, 0, 0, -2);
-+#endif
-         return;
-     }
-     STDWTITL_drawMenu(task);
---- a/src/menus/title/title.c
-+++ b/src/menus/title/title.c
-@@ -2,12 +2,25 @@
-    fades */
-
+--- a/src/menus/title/edge_fade.c
++++ b/src/menus/title/edge_fade.c
+@@ -1,6 +1,9 @@
+ /* The fade out from the screen's edges once an option is chosen */
+ 
  #include "menus/title.h"
-+#if PORT_HOST
-+#include "port_title_options.h"
-+#endif
 +#if defined(DW3_TITLE_NATIVE_OVERLAY)
-+extern int dw3_port_title_logo_capture(const s32 *sheet);
-+extern void dw3_port_title_logo_set_active(int active);
++extern void dw3_port_title_overlay_fade(s32 level);
 +#endif
-
- /* Once the fade out ends, starts the chosen mode; returns 1 then */
- s32 STDWTITL_leaveTitle(TitleTask *task, TitleChildren *children) {
-     s32 left = 0;
-
-     if (children->fade->isDone(children->fade)) {
-+#if defined(DW3_TITLE_NATIVE_OVERLAY)
-+        if (task->choice != 0) {
-+            dw3_port_title_logo_set_active(0);
-+            dw3_port_title_options_draw(0, 0, 0, -2);
-+        }
-+#endif
-         switch (task->choice) {
-         case 0:
+ 
+ /* The edge fade's darkness after time frames: 0 to 255 along a quarter sine over 30 frames */
+ s32 STDWTITL_getEdgeFadeLevel(s32 time) {
+@@ -81,6 +84,10 @@
+             }
              break;
-@@ -191,6 +204,9 @@
-     loader.setClutPos(0, 0x1F0);
-     loader.loadArchive(FILE_CACHE.getEntry(STDWTITL_titleImages[1].images));
-     STDWTITL_spriteBank = STDWTITL_titleImages[1].sprites;
+         }
 +#if defined(DW3_TITLE_NATIVE_OVERLAY)
-+    dw3_port_title_logo_capture(FILE_CACHE.getEntry(STDWTITL_spriteBank));
++        /* The native title overlay darkens along with the subtractive fade. */
++        dw3_port_title_overlay_fade(task->level);
 +#endif
- #elif VERSION_EU
-     loader.setImagePos(0x280, 0x100);
-     loader.setClutPos(0, 0x1F0);
+         STDWTITL_drawEdgeFade(task->level);
+         break;
+     case TASK_DONE:
+--- a/src/menus/title/glint.c
++++ b/src/menus/title/glint.c
+@@ -1,6 +1,9 @@
+ /* The title screen's glint */
+ 
+ #include "menus/title.h"
++#if defined(DW3_TITLE_NATIVE_OVERLAY)
++extern int dw3_port_title_logo_active(void);
++#endif
+ 
+ /* Draws the glint (sprite 4) for the European version's language 0, and sprite 2 once lit */
+ void STDWTITL_drawGlintAlt(GlintTask *task) {
+@@ -85,12 +88,19 @@
+ /* Draws the glint (sprite 4) while it plays, and sprite 2 once lit */
+ void STDWTITL_drawGlint(GlintTask *task) {
+     SpriteDrawer sprite;
++#if defined(DW3_TITLE_NATIVE_OVERLAY)
++    if (dw3_port_title_logo_active()) return;
++#endif
+ 
+     initSpriteDrawer(&sprite);
+     if (task->lit) {
+         sprite.setLayerId(task->layerId, 0);
+         sprite.setTexture(0x280, STDWTITL_TEXTURE_Y);
+         sprite.setAltClut(0, 0x1F0);
++        #if defined(DW3_TITLE_NATIVE_OVERLAY)
++        sprite.setScale((ONE * 21) / 25, (ONE * 21) / 25, ONE);
++        sprite.setPivot(157, -23);
++#endif
+         sprite.draw(FILE_CACHE.getEntry(STDWTITL_spriteBank), 2, 253, 100);
+         initSpriteDrawer(&sprite);
+     }
+@@ -98,6 +108,10 @@
+         sprite.setLayerId(task->layerId, 0);
+         sprite.setTexture(0x280, STDWTITL_TEXTURE_Y);
+         sprite.setClutRow(task->frame);
++        #if defined(DW3_TITLE_NATIVE_OVERLAY)
++        sprite.setScale((ONE * 21) / 25, (ONE * 21) / 25, ONE);
++        sprite.setPivot(157, -23);
++#endif
+         sprite.draw(FILE_CACHE.getEntry(STDWTITL_spriteBank), 4, 243, 90);
+     }
+ }
 --- a/src/menus/title/logo.c
 +++ b/src/menus/title/logo.c
 @@ -1,6 +1,10 @@
  /* The title screen's logo */
-
+ 
  #include "menus/title.h"
 +#if defined(DW3_TITLE_NATIVE_OVERLAY)
 +extern int dw3_port_title_logo_ready(void);
 +extern void dw3_port_title_logo_set_active(int active);
 +#endif
-
+ 
  /* Draws the logo once it is visible: sprite 6, and sprites 3 and 5 at their
     animations' current CLUT rows */
 @@ -8,20 +12,37 @@
      SpriteDrawer sprite;
-
+ 
      if (task->visible) {
 +#if defined(DW3_TITLE_NATIVE_OVERLAY)
 +        if ((task->state == TASK_DONE ||
@@ -135,7 +124,7 @@ native logo/footer/menu draws. Switch and SDL3 GL retain their original path.
 +#endif
      }
  }
-
+ 
 @@ -77,6 +98,9 @@
          STDWTITL_drawLogo(task);
          break;
@@ -146,129 +135,144 @@ native logo/footer/menu draws. Switch and SDL3 GL retain their original path.
          break;
      }
  }
+--- a/src/menus/title/menu.c
++++ b/src/menus/title/menu.c
+@@ -18,6 +18,20 @@
+ void STDWTITL_drawMenu(TitleMenuTask *task) {
+     SpriteDrawer sprite;
+ 
++#if defined(DW3_TITLE_NATIVE_OVERLAY)
++    if (dw3_port_options_is_open()) {
++        dw3_port_title_options_draw(task->layerId, 78,
++            DW3_TITLE_ROW_Y(DW3_TITLE_PORT_OPTIONS), -2);
++    } else if (task->showOptions && task->state == TASK_DONE) {
++        dw3_port_title_options_draw(task->layerId, 78,
++            DW3_TITLE_ROW_Y(DW3_TITLE_PORT_OPTIONS), task->selection);
++    } else {
++        dw3_port_title_options_draw(task->layerId, 78,
++            DW3_TITLE_ROW_Y(DW3_TITLE_PORT_OPTIONS), -1);
++    }
++    return;
++#else
++
+ #if PORT_HOST && defined(DW3_PC_HOST)
+     if (task->showCursor && !(task->showOptions && task->state == TASK_DONE)) {
+ #else
+@@ -85,6 +99,7 @@
+ #if defined(DW3_PC_HOST)
+     }
+ #endif
++#endif
+ }
+ 
+ /* "PRESS START": waits a moment, then for Start (choice 3 after ten seconds),
+@@ -272,6 +287,9 @@
+ #endif
+         break;
+     case TASK_KILL:
++#if defined(DW3_TITLE_NATIVE_OVERLAY)
++        dw3_port_title_options_draw(0, 0, 0, -2);
++#endif
+         return;
+     }
+     STDWTITL_drawMenu(task);
 --- a/src/menus/title/slides.c
 +++ b/src/menus/title/slides.c
 @@ -1,6 +1,9 @@
  /* The two parts of the title, which slide in from the sides of the screen */
-
+ 
  #include "menus/title.h"
 +#if defined(DW3_TITLE_NATIVE_OVERLAY)
 +extern int dw3_port_title_logo_active(void);
 +#endif
-
+ 
  /* Draws the second part of the title (sprite 1) for the European version's language 0 */
  void STDWTITL_drawTitle1Alt(SlideTask *task) {
 @@ -78,11 +81,18 @@
  /* Draws the second part of the title (sprite 1) */
  void STDWTITL_drawTitle1(SlideTask *task) {
      SpriteDrawer sprite;
--
--    initSpriteDrawer(&sprite);
--    sprite.setLayerId(task->layerId, 0);
--    sprite.setAltClut(0, 0x1F0);
--    sprite.setTexture(0x280, STDWTITL_TEXTURE_Y);
 +#if defined(DW3_TITLE_NATIVE_OVERLAY)
 +    if (dw3_port_title_logo_active()) return;
 +#endif
-+
-+    initSpriteDrawer(&sprite);
-+    sprite.setLayerId(task->layerId, 0);
-+    sprite.setAltClut(0, 0x1F0);
-+    sprite.setTexture(0x280, STDWTITL_TEXTURE_Y);
+ 
+     initSpriteDrawer(&sprite);
+     sprite.setLayerId(task->layerId, 0);
+     sprite.setAltClut(0, 0x1F0);
+     sprite.setTexture(0x280, STDWTITL_TEXTURE_Y);
 +#if defined(DW3_TITLE_NATIVE_OVERLAY)
 +    sprite.setScale((ONE * 21) / 25, (ONE * 21) / 25, ONE);
 +    sprite.setPivot(157, -23);
 +#endif
      sprite.draw(FILE_CACHE.getEntry(STDWTITL_spriteBank), 1, task->x, task->y);
  }
-
+ 
 @@ -213,11 +223,18 @@
  /* Draws the first part of the title (sprite 0) */
  void STDWTITL_drawTitle0(SlideTask *task) {
      SpriteDrawer sprite;
--
--    initSpriteDrawer(&sprite);
--    sprite.setLayerId(task->layerId, 0);
--    sprite.setAltClut(0, 0x1F0);
--    sprite.setTexture(0x280, STDWTITL_TEXTURE_Y);
 +#if defined(DW3_TITLE_NATIVE_OVERLAY)
 +    if (dw3_port_title_logo_active()) return;
 +#endif
-+
-+    initSpriteDrawer(&sprite);
-+    sprite.setLayerId(task->layerId, 0);
-+    sprite.setAltClut(0, 0x1F0);
-+    sprite.setTexture(0x280, STDWTITL_TEXTURE_Y);
+ 
+     initSpriteDrawer(&sprite);
+     sprite.setLayerId(task->layerId, 0);
+     sprite.setAltClut(0, 0x1F0);
+     sprite.setTexture(0x280, STDWTITL_TEXTURE_Y);
 +#if defined(DW3_TITLE_NATIVE_OVERLAY)
 +    sprite.setScale((ONE * 21) / 25, (ONE * 21) / 25, ONE);
 +    sprite.setPivot(157, -23);
 +#endif
      sprite.draw(FILE_CACHE.getEntry(STDWTITL_spriteBank), 0, task->x, task->y);
  }
-
---- a/src/menus/title/glint.c
-+++ b/src/menus/title/glint.c
-@@ -1,6 +1,9 @@
- /* The title screen's glint */
-
- #include "menus/title.h"
-+#if defined(DW3_TITLE_NATIVE_OVERLAY)
-+extern int dw3_port_title_logo_active(void);
-+#endif
-
- /* Draws the glint (sprite 4) for the European version's language 0, and sprite 2 once lit */
- void STDWTITL_drawGlintAlt(GlintTask *task) {
-@@ -85,12 +88,19 @@
- /* Draws the glint (sprite 4) while it plays, and sprite 2 once lit */
- void STDWTITL_drawGlint(GlintTask *task) {
-     SpriteDrawer sprite;
-+#if defined(DW3_TITLE_NATIVE_OVERLAY)
-+    if (dw3_port_title_logo_active()) return;
-+#endif
-
-     initSpriteDrawer(&sprite);
-     if (task->lit) {
-         sprite.setLayerId(task->layerId, 0);
-         sprite.setTexture(0x280, STDWTITL_TEXTURE_Y);
-         sprite.setAltClut(0, 0x1F0);
-+        #if defined(DW3_TITLE_NATIVE_OVERLAY)
-+        sprite.setScale((ONE * 21) / 25, (ONE * 21) / 25, ONE);
-+        sprite.setPivot(157, -23);
-+#endif
-         sprite.draw(FILE_CACHE.getEntry(STDWTITL_spriteBank), 2, 253, 100);
-         initSpriteDrawer(&sprite);
-     }
-@@ -98,6 +108,10 @@
-         sprite.setLayerId(task->layerId, 0);
-         sprite.setTexture(0x280, STDWTITL_TEXTURE_Y);
-         sprite.setClutRow(task->frame);
-+        #if defined(DW3_TITLE_NATIVE_OVERLAY)
-+        sprite.setScale((ONE * 21) / 25, (ONE * 21) / 25, ONE);
-+        sprite.setPivot(157, -23);
-+#endif
-         sprite.draw(FILE_CACHE.getEntry(STDWTITL_spriteBank), 4, 243, 90);
-     }
- }
---- a/src/menus/title/edge_fade.c
-+++ b/src/menus/title/edge_fade.c
-@@ -1,6 +1,9 @@
- /* The fade out from the screen's edges once an option is chosen */
+ 
+--- a/src/menus/title/title.c
++++ b/src/menus/title/title.c
+@@ -2,12 +2,26 @@
+    fades */
  
  #include "menus/title.h"
++#if PORT_HOST
++#include "port_title_options.h"
++#endif
 +#if defined(DW3_TITLE_NATIVE_OVERLAY)
++extern int dw3_port_title_logo_capture(const s32 *sheet);
++extern void dw3_port_title_logo_set_active(int active);
 +extern void dw3_port_title_overlay_fade(s32 level);
 +#endif
  
- /* The edge fade's darkness after time frames: 0 to 255 along a quarter sine over 30 frames */
- s32 STDWTITL_getEdgeFadeLevel(s32 time) {
-@@ -81,6 +84,10 @@
-             }
-             break;
-         }
+ /* Once the fade out ends, starts the chosen mode; returns 1 then */
+ s32 STDWTITL_leaveTitle(TitleTask *task, TitleChildren *children) {
+     s32 left = 0;
+ 
+     if (children->fade->isDone(children->fade)) {
 +#if defined(DW3_TITLE_NATIVE_OVERLAY)
-+        /* The native title overlay darkens along with the subtractive fade. */
-+        dw3_port_title_overlay_fade(task->level);
++        if (task->choice != 0) {
++            dw3_port_title_logo_set_active(0);
++            dw3_port_title_options_draw(0, 0, 0, -2);
++        }
 +#endif
-         STDWTITL_drawEdgeFade(task->level);
-         break;
-     case TASK_DONE:
+         switch (task->choice) {
+         case 0:
+             break;
+@@ -173,6 +187,10 @@
+ /* Creates the title screen (task), under its title loader parent */
+ TitleTask *STDWTITL_startTitleTask(TitleLoaderTask *parent) {
+     TitleTask *task = createTask(STDWTITL_tickTitle, sizeof(TitleTask), sizeof(TitleChildren));
++#if defined(DW3_TITLE_NATIVE_OVERLAY)
++    /* A new title visit starts undimmed; the last one ended at full fade. */
++    dw3_port_title_overlay_fade(0);
++#endif
+ 
+     task->layerId = STDWTITL_TITLE_LAYER;
+     task->depth = 2;
+@@ -191,6 +209,9 @@
+     loader.setClutPos(0, 0x1F0);
+     loader.loadArchive(FILE_CACHE.getEntry(STDWTITL_titleImages[1].images));
+     STDWTITL_spriteBank = STDWTITL_titleImages[1].sprites;
++#if defined(DW3_TITLE_NATIVE_OVERLAY)
++    dw3_port_title_logo_capture(FILE_CACHE.getEntry(STDWTITL_spriteBank));
++#endif
+ #elif VERSION_EU
+     loader.setImagePos(0x280, 0x100);
+     loader.setClutPos(0, 0x1F0);

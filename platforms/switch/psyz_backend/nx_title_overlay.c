@@ -47,7 +47,7 @@ static GLuint s_vbo;
 static GLint s_attr_pos = -1;
 static GLint s_attr_t = -1;
 static GLint s_uni_tex = -1;
-static GLint s_uni_mul = -1;
+static GLint s_uni_sub = -1;
 static int s_gl_failed;
 
 static int s_selection;
@@ -102,9 +102,9 @@ static int ensure_gl(void) {
         "precision mediump float;\n"
         "varying vec2 v_t;\n"
         "uniform sampler2D u_tex;\n"
-        "uniform float u_mul;\n"
+        "uniform float u_sub;\n"
         "void main(){vec4 c=texture2D(u_tex,v_t);\n"
-        "  gl_FragColor=vec4(c.rgb*u_mul,c.a);}\n";
+        "  gl_FragColor=vec4(max(c.rgb-vec3(u_sub),0.0),c.a);}\n";
     const size_t canvas_bytes = (size_t)CANVAS_W * CANVAS_H * 4;
     uint8_t *pixels;
     GLuint vs;
@@ -147,7 +147,7 @@ static int ensure_gl(void) {
     s_attr_pos = glGetAttribLocation(s_prog, "a_pos");
     s_attr_t = glGetAttribLocation(s_prog, "a_t");
     s_uni_tex = glGetUniformLocation(s_prog, "u_tex");
-    s_uni_mul = glGetUniformLocation(s_prog, "u_mul");
+    s_uni_sub = glGetUniformLocation(s_prog, "u_sub");
 
     pixels = (uint8_t *)malloc(canvas_bytes * STATE_COUNT);
     if (!pixels) {
@@ -235,8 +235,9 @@ void dw3_nx_title_overlay_draw(int vx, int vy, int vw, int vh) {
     glViewport(vx, vy, vw, vh);
     glUseProgram(s_prog);
     glUniform1i(s_uni_tex, 0);
-    /* Follow the title's subtractive edge fade towards black. */
-    glUniform1f(s_uni_mul, (float)(255 - s_fade) / 255.0f);
+    /* Follow the title's edge fade: it subtracts its level at the centre and
+     * twice that at the edges; the overlay spans both, so use 1.5x. */
+    glUniform1f(s_uni_sub, (float)s_fade * 1.5f / 255.0f);
     glActiveTexture(GL_TEXTURE0);
 
     if (logo) {
@@ -313,9 +314,6 @@ void dw3_pc_title_menu_set_state(int active, int selected) {
     }
     if (!active || selected == -2) {
         s_overlay_active = 0;
-        if (selected == -2) {
-            s_fade = 0;
-        }
         return;
     }
     if (selected < 0) {
@@ -325,8 +323,8 @@ void dw3_pc_title_menu_set_state(int active, int selected) {
     } else {
         s_selection = selected + 1;
     }
-    if (!s_overlay_active) {
-        s_fade = 0; /* a new title visit starts undimmed */
-    }
+    /* No fade reset here: the menu keeps drawing for a frame after the fade
+     * ends, and a reset would flash it at full brightness over black. The
+     * title task resets the fade when a new visit starts. */
     s_overlay_active = 1;
 }
