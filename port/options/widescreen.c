@@ -5,8 +5,8 @@
 #include "overlay_host.h"
 #include "port_options.h"
 
+#include <psyz/log.h>
 #include <psyz/video.h>
-#include <stdio.h>
 #include <stdlib.h>
 
 #if VERSION_EU
@@ -58,10 +58,10 @@ void dw3_port_widescreen_frame(void) {
     }
     g_applied = px;
     if (Psyz_VideoSetGutter((unsigned)px) != 0) {
-        fprintf(stderr, "dw3-widescreen: renderer has no gutters (%d px)\n",
-                px);
+        WARNF("dw3-widescreen: renderer has no gutters (%d px)", px);
     } else {
-        fprintf(stderr, "dw3-widescreen: gutter %d px per side\n", px);
+        /* psyz_log, not stderr: on Switch stderr only reaches nxlink, and
+         * this line is the check in sdmc:/switch/dw3/dw3.log. */
+        INFOF("dw3-widescreen: gutter %d px per side", px);
     }
-    fflush(stderr);
 }
