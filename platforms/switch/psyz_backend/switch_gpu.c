@@ -117,6 +117,104 @@ static void mesh_flush_for_state(void) {
     }
 }
 
+/* --- P6.4 fast-forward: frames no present will show ---------------------- *
+ *
+ * drawFrame (engine/gfx/display.c) draws a buffer right after the vsync that
+ * flips the display to the previous one, so the buffer drawn after VSync j
+ * is shown by the present inside VSync j + 2. With fast-forward presenting
+ * one VSync in `speed`, Psyz_VideoVSync works out which frames that makes
+ * unseen and sets s_drop_draws for them. Their primitives that land in a
+ * display buffer are then counted and skipped instead of rasterized: the
+ * CPU rasterizer is what limits field fast-forward on the Switch. LoadImage,
+ * MoveImage, ClearImage and drawing outside the display buffers (texture
+ * caches) still run, so VRAM the game reads back stays right. Every field
+ * frame redraws its whole buffer, so the next kept frame is complete. */
+static int s_drop_draws;
+/* The two display buffers' VRAM origins, from Draw_DisplayArea. */
+static int s_buf_x[2];
+static int s_buf_y[2];
+static int s_n_bufs;
+/* Whether each buffer's latest frame was dropped. */
+static int s_buf_dropped[2];
+/* Buffer the drawing area lies in (-1: none); -2: recompute. */
+static int s_area_buf = -2;
+
+/* The double buffers sit 256 rows apart (engine setDisplayMode); a drawing
+ * area inside one of those 320x256 slots draws that buffer. */
+static int area_buffer(void) {
+    int w = s_disp_mode_w > 0 ? s_disp_mode_w : 320;
+    int i;
+
+    if (s_area_buf != -2) {
+        return s_area_buf;
+    }
+    s_area_buf = -1;
+    for (i = 0; i < s_n_bufs; i++) {
+        if (s_area_x0 >= s_buf_x[i] && s_area_y0 >= s_buf_y[i] &&
+            s_area_x1 < s_buf_x[i] + w && s_area_y1 < s_buf_y[i] + 256 &&
+            s_area_x1 >= s_area_x0 && s_area_y1 >= s_area_y0) {
+            s_area_buf = i;
+            break;
+        }
+    }
+    return s_area_buf;
+}
+
+static void note_display_buffer(int x, int y) {
+    int i;
+
+    for (i = 0; i < s_n_bufs; i++) {
+        if (s_buf_x[i] == x && s_buf_y[i] == y) {
+            return;
+        }
+    }
+    if (s_n_bufs == 2) {
+        /* A new layout (mode change): start over from this buffer. */
+        s_n_bufs = 0;
+    }
+    s_buf_x[s_n_bufs] = x;
+    s_buf_y[s_n_bufs] = y;
+    s_buf_dropped[s_n_bufs] = 0;
+    s_n_bufs++;
+    s_area_buf = -2;
+}
+
+/* Words of one GP0 draw packet, as Software_PushPrim reads it; 0 when it is
+ * not a polygon, line or rectangle (left to the rasterizer). */
+static int prim_words(const u_long *words, int max_len) {
+    int code;
+    int textured;
+    int gouraud;
+    int required;
+
+    if (!words || max_len <= 0) {
+        return 0;
+    }
+    code = (int)(words[0] >> 24) & 0xFF;
+    textured = (code & TEXTURED) != 0;
+    gouraud = (code & GOURAUD) != 0;
+    if (!(code & 0x40) && (code & TRIANGLE)) {
+        int count = (code & EXTRA_VERTEX) ? 4 : 3;
+
+        required = 1 + count * (1 + textured) + (count - 1) * gouraud;
+    } else if ((code & 0x40) && !(code & 0x20)) {
+        int points = ((code >> 2) & 3) + 1;
+        int padding = points != 1;
+
+        if (points == 1) {
+            points = 2;
+        }
+        required = 1 + points + (points - 1) * gouraud + padding;
+    } else if ((code & 0x60) == 0x60) {
+        required = 2 + textured + ((code & 0x18) == 0);
+    } else {
+        return 0;
+    }
+    return required > max_len ? max_len : required;
+}
+
+void dw3_nx_switch_gpu_set_drop_draws(int drop) { s_drop_draws = drop; }
+
 static int write_packet(Dw3NxMeshVertex *v, int code, int n, u_long *packet,
                         uint16_t *p_out) {
     int w;
@@ -298,12 +396,20 @@ static int try_push_mesh_poly(u_long *packets, int max_len) {
         return 0;
     }
     /* soft / soft+bbox: FIGHTSTG stays gated, triangles fill CPU VRAM. */
-    if (dw3_nx_battle_mode_use_soft() || !mesh_area_is_screen()) {
+    if (dw3_nx_battle_mode_use_soft()) {
         return 0;
     }
     code = (int)(*packets >> 24) & 0xFF;
     is_poly = !(code & 0x40);
     if (!is_poly || !(code & TRIANGLE)) {
+        return 0;
+    }
+    if (!mesh_area_is_screen()) {
+        /* The partner view: its model goes to CPU VRAM, where the UI
+         * composite must keep its black pixels (the pupils), or the mesh
+         * FBO under it shows through them. */
+        dw3_nx_mesh_note_soft_view(s_area_x0, s_area_y0, s_area_x1,
+                                   s_area_y1);
         return 0;
     }
 
@@ -434,6 +540,7 @@ void Draw_SetAreaStart(int x, int y) {
     software_rasterizer.area_start(x, y);
     s_area_x0 = x;
     s_area_y0 = y;
+    s_area_buf = -2;
     dw3_nx_mesh_set_area(s_area_x0, s_area_y0, s_area_x1, s_area_y1);
 }
 
@@ -444,6 +551,7 @@ void Draw_SetAreaEnd(int x, int y) {
     software_rasterizer.area_end(x, y);
     s_area_x1 = x;
     s_area_y1 = y;
+    s_area_buf = -2;
     dw3_nx_mesh_set_area(s_area_x0, s_area_y0, s_area_x1, s_area_y1);
 }
 
@@ -528,8 +636,21 @@ void Draw_FlushBuffer(void) {
 }
 
 int Draw_PushPrim(u_long *packets, int max_len) {
-    int consumed = try_mesh_bg_fill(packets, max_len);
+    int consumed;
+    int buf = area_buffer();
 
+    if (buf >= 0) {
+        if (s_drop_draws && !mesh_battle_active()) {
+            consumed = prim_words(packets, max_len);
+            if (consumed > 0) {
+                s_buf_dropped[buf] = 1;
+                return consumed;
+            }
+        } else {
+            s_buf_dropped[buf] = 0;
+        }
+    }
+    consumed = try_mesh_bg_fill(packets, max_len);
     if (consumed > 0) {
         return consumed;
     }
@@ -618,6 +739,7 @@ void Draw_DisplayArea(unsigned int x, unsigned int y) {
 
     s_disp_x = (int)x;
     s_disp_y = (int)y;
+    note_display_buffer(s_disp_x, s_disp_y);
     if (moved && s_gutter > 0) {
         /* A flip: the buffer drawn next starts with black gutters. */
         if (mesh_battle_active()) {
@@ -664,6 +786,7 @@ void Draw_SetDisplayMode(DisplayMode *mode) {
     s_disp_rgb24 = mode->rgb24 ? 1 : 0;
     s_disp_pal = mode->pal ? 1 : 0;
     s_disp_mode_h = mode->vertical_resolution ? 480 : 240;
+    s_area_buf = -2;
     apply_gutter();
 }
 
@@ -696,6 +819,17 @@ void dw3_nx_switch_gpu_display(Dw3NxDisplay *out) {
     out->range_h = s_disp_h;
     out->pal = s_disp_pal;
     out->gutter = s_disp_rgb24 ? 0 : s_gutter;
+}
+
+int dw3_nx_switch_gpu_display_stale(void) {
+    int i;
+
+    for (i = 0; i < s_n_bufs; i++) {
+        if (s_buf_x[i] == s_disp_x && s_buf_y[i] == s_disp_y) {
+            return s_buf_dropped[i];
+        }
+    }
+    return 0;
 }
 
 const uint16_t *dw3_nx_switch_gpu_vram(void) {

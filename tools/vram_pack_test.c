@@ -23,7 +23,7 @@ static void expand_full(const uint16_t *src, uint8_t *dst) {
         dst[i * 4 + 0] = expand5(v & 0x1Fu);
         dst[i * 4 + 1] = expand5((v >> 5) & 0x1Fu);
         dst[i * 4 + 2] = expand5((v >> 10) & 0x1Fu);
-        dst[i * 4 + 3] = 0xFFu;
+        dst[i * 4 + 3] = (v & 0x8000u) ? 0xFFu : 0x00u;
     }
 }
 
@@ -151,9 +151,10 @@ int main(void) {
             unsigned int b =
                 ((unsigned int)(x >> 5) ^ (unsigned int)(y >> 5)) & 0x1Fu;
 
-            /* Bit 15 set on every pixel: the mask must not become alpha. */
+            /* Bit 15 on alternate columns: it becomes alpha 0xFF / 0x00. */
             vram[(size_t)y * (size_t)DW3_NX_VRAM_W + (size_t)x] =
-                (uint16_t)(r | (g << 5) | (b << 10) | 0x8000u);
+                (uint16_t)(r | (g << 5) | (b << 10) |
+                           ((x & 1) ? 0u : 0x8000u));
         }
     }
     /* Known mid-grey at a non-zero origin: c5=16 → 132, alpha 0xFF. */

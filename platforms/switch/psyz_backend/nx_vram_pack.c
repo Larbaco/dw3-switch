@@ -1,9 +1,12 @@
 /* PS1 VRAM is RGB555. GLES2's GL_UNSIGNED_SHORT_5_5_5_1 stores R in bits
  * 15–11, and this port has no GL_UNSIGNED_SHORT_1_5_5_5_REV. Uploading the
  * halfword raw scrambles every channel — that was the speckled title.
- * Expand on the CPU the way PSY-Z's ConvertRgb5551ToRgba8888 does. Alpha is
- * forced opaque: bit 15 is the PS1 mask, not coverage, and present does not
- * blend. Rows are packed tight because GLES2 has no core GL_UNPACK_ROW_LENGTH.
+ * Expand on the CPU the way PSY-Z's ConvertRgb5551ToRgba8888 does. Alpha
+ * carries bit 15 (0xFF set, 0x00 clear). It is not coverage: the present
+ * shaders write alpha 1 and do not blend. The battle UI composite reads it to
+ * tell a drawn black pixel (an opaque black texel is 0x8000) from cleared
+ * VRAM (0x0000) inside the partner view. Rows are packed tight because GLES2
+ * has no core GL_UNPACK_ROW_LENGTH.
  */
 #include "nx_vram_pack.h"
 
@@ -82,7 +85,7 @@ size_t dw3_nx_pack_rgb555_rect(const uint16_t *src, int dx, int dy, int dw,
             dst[0] = color_5to8(v & 0x1Fu);
             dst[1] = color_5to8((v >> 5) & 0x1Fu);
             dst[2] = color_5to8((v >> 10) & 0x1Fu);
-            dst[3] = 0xFFu;
+            dst[3] = (v & 0x8000u) ? 0xFFu : 0x00u;
             dst += 4;
         }
     }
@@ -98,7 +101,7 @@ static uint8_t *expand_row(const uint16_t *s, int n, uint8_t *dst) {
         dst[0] = color_5to8(v & 0x1Fu);
         dst[1] = color_5to8((v >> 5) & 0x1Fu);
         dst[2] = color_5to8((v >> 10) & 0x1Fu);
-        dst[3] = 0xFFu;
+        dst[3] = (v & 0x8000u) ? 0xFFu : 0x00u;
         dst += 4;
     }
     return dst;
