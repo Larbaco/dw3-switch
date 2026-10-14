@@ -71,9 +71,11 @@ subdued; selection lights rails and fasteners without shifting text or
 geometry. The menu overlay remains active until the options shell opens or the
 title flow fades out. The title patch keeps vanilla New Game and Continue
 choice values: **Load Game** enters the original Continue flow and
-memory-card screen; **Options** opens the existing P9.2 shell, whose
-experimental toggles remain no-op stubs. The PC and Switch menus start on
-New Game.
+memory-card screen; **Options** opens the P9.2 shell. On the native
+overlay that shell is a fifth canvas state, a full screen in the style of
+the game's own windows rather than of these plaques; see
+[PORT_OPTIONS.md](PORT_OPTIONS.md#options-screen-2026-10-14). The PC and
+Switch menus start on New Game.
 
 The original logo art is not redrawn or resampled into a new font. Its game
 sprites and glint receive a uniform 21/25 SpriteDrawer scale and matching

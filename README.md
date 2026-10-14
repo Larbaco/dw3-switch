@@ -186,7 +186,11 @@ one. Enter is Start. Arrow keys are the D-pad. Close the window to quit.
 The PC SDL3 GPU title offers New Game / Options / Load Game. Use Up/Down
 to select Options and X (Cross) to open the shell; S (Triangle) closes it and
 returns to the middle row. Backspace (Select) also opens it. Inside the
-shell, Up/Down selects a setting and X or D changes it. Current `main`
+shell, Up/Down selects a setting and X or D changes it. On the SDL3 GPU
+path and the Switch the shell is its own screen, styled after the game's
+windows: the title backdrop dimmed, no logo or menu, an OPTIONS window with
+one row per setting, a line explaining the focused one, and button hints
+([PORT_OPTIONS](docs/PORT_OPTIONS.md#options-screen-2026-10-14)). Current `main`
 provides live widescreen, configured fast-forward speed, and an opt-in restart
 hotkey; settings do not persist to disk. Fast-forward starts inactive at 1×
 and right-stick click (PC key 2) toggles the configured speed in field/battle.
