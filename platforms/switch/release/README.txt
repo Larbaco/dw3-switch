@@ -8,7 +8,8 @@ New in this preview
 
   EU cold boot uses the original language-selection screen (#143).
   Choose the language before the opening movie and title. US boot remains
-  unchanged. Continue must preserve the saved game's language.
+  unchanged. Continue loads the existing EU save using the selected boot
+  language.
 
   Camera/portrait/render-state fixes (#148): correct battle idle-camera
   transforms, preserve opaque black portrait pixels (including pupils),
@@ -17,8 +18,8 @@ New in this preview
   Builds and automated tests passed; OLED acceptance is still pending.
 
   Options has its own game-style screen (#149): dimmed title backdrop,
-  choice boxes, values and contextual help. The follow-up to #151 adjusts
-  the help layout. OLED navigation and presentation are test targets,
+  choice boxes, values and contextual help. The #152 follow-up to #151
+  corrects the restart-help wording. OLED navigation and presentation are test targets,
   not release acceptance already completed.
 
   The field-turbo raster skipping experiment from #146 is excluded.
