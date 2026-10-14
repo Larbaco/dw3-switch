@@ -41,7 +41,7 @@ explicitly marked N/A in this note.
 | Feature area | Examples | Roadmap |
 |---|---|---|
 | Display / timing | Integer scale, **widescreen** (wanted; default 4:3), PAL pacing 50 vs 60, NTSC host options | Phase 6 (+ P4 present) |
-| Convenience | Fast-forward / frame-skip (hold button + multiplier) | Phase 6 |
+| Convenience | **Fast-forward**: R3 toggles 2x/3x/4x in field and battle; row picks the speed or OFF ([P6.4](P6.4_FAST_FORWARD.md)) | Phase 6 |
 | Localization | Active language pack (if port-selected) | Phase 6 |
 | Community QoL parity | Share EXP, quest log HUD, NPC bubbles, Fast Start, … | Phase 7 |
 | Texture packs | Enable overlay / select pack name | Phase 8 |
@@ -55,6 +55,9 @@ after the preview.22 OLED pass). It is a real, session-only toggle since
 the P6.1 first pass: field and battle draw side gutters, everything else
 stays 4:3; `DW3_WIDESCREEN=0` turns it off at boot. See
 [P6.1_WIDESCREEN.md](P6.1_WIDESCREEN.md).
+Fast-forward's row defaults to **2x**, which only arms R3: the game still
+starts and stays at normal speed until R3 is pressed, so stock behaviour is
+kept. OFF disables R3. See [P6.4_FAST_FORWARD.md](P6.4_FAST_FORWARD.md).
 
 Always-on (not toggles; see [SWITCH_FEATURES.md](SWITCH_FEATURES.md)):
 focus-loss pause + delta clamp, memcard write-through/flush, rotating

@@ -46,6 +46,7 @@ acceptance remains tracked separately in [P5.3_FLAT_SAVE.md](P5.3_FLAT_SAVE.md).
 | Action | PS1 logical input | PC keyboard | Switch | Requirement / limit |
 |---|---|---|---|---|
 | Open Port options directly | Select | Backspace | Minus | Only while the title choices are active; no L1/R1/L2/R2 held |
+| Toggle fast-forward on/off | R3 | 2 | Right-stick click | Field/battle only; configured speed must be 2x, 3x or 4x |
 | Restart game in-process | L1 + R1 + Start + Select | Q + R + Enter + Backspace | L + R + Plus + Minus | Enable **Restart hotkey** in Port options first; OFF by default |
 
 Hold all four restart buttons together; one activation is allowed per chord
@@ -58,11 +59,20 @@ starts OFF. Settings are session-only until P9.4 persistence is implemented.
 See [P6.9_RESTART.md](P6.9_RESTART.md) for implementation and acceptance limits;
 Switch chord and save → restart → Continue validation remain open there.
 
-Widescreen is another live session toggle, ON by default on current `main`
-(#132). Supported scenes use 53-pixel gutters (about 16:9); title and movies
-remain 4:3. EU uses its 240-line picture for the same aspect rule.
-Fast-forward is still a no-op stub.
-Neither currently has a dedicated button hotkey. See
+Fast-forward starts inactive at 1x, with a configured R3 speed of 2x. In Port
+options, confirming its row cycles **2x → 3x → 4x → OFF → 2x**. OFF disables R3.
+A press toggles turbo; release R3 before toggling again. It affects field and
+battle modes only; title, movies, separately loaded menus, memory-card screens
+and card game remain 1x. Menus inside the field mode can still accelerate.
+Music and SFX also speed up because the sequencer ticks per game frame. Actual
+speed gain is performance-dependent; OLED throughput is not established by this
+document. See [P6.4_FAST_FORWARD.md](P6.4_FAST_FORWARD.md).
+
+Widescreen is a live session toggle without a dedicated button hotkey, ON by
+default on current `main` (#132). Supported scenes use 53-pixel gutters (about
+16:9); title and movies remain 4:3. EU uses its 240-line picture for the same
+aspect rule. See
+
 [PORT_OPTIONS.md](PORT_OPTIONS.md) and [P6.1_WIDESCREEN.md](P6.1_WIDESCREEN.md).
 
 ## Diagnostic controls
@@ -95,8 +105,10 @@ these combinations. Raw diagnostic buttons are also published to the game pad;
 they are not consumed by a separate input layer.
 
 Developer environment variables are startup/test configuration, not button
-hotkeys. For example `DW3_WIDESCREEN=0` disables the default widescreen; `DW3_MESH_SOFT=0|1`
-seeds Switch battle mode. Test automation such as `DW3_AUTO_PAD` and forced-stage
+hotkeys. For example `DW3_WIDESCREEN=0` disables the default widescreen;
+`DW3_MESH_SOFT=0|1` seeds Switch battle mode; `DW3_TURBO=2|3|4` starts turbo
+active in eligible modes (a developer override to normal 1x startup).
+Test automation such as `DW3_AUTO_PAD` and forced-stage
 or forced-save hooks is documented in the corresponding subsystem evidence,
 and must not be treated as proof of normal input or hardware acceptance.
 
