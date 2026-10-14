@@ -139,6 +139,18 @@ add_executable(dw3-switch
   ${CMAKE_CURRENT_SOURCE_DIR}/../../port/psyz_missing/psyz_pad_host.c
 )
 
+# Native title menu/logo (shared with the PC SDL3 GPU overlay): the canvas and
+# logo resampler are plain C under platforms/pc/src; nx_title_overlay.c draws
+# them over the GLES present. Same macro as PC selects the title patches.
+target_sources(dw3-switch PRIVATE
+  ${CMAKE_CURRENT_SOURCE_DIR}/../pc/src/title_overlay_art.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/../pc/src/title_logo_resample.c
+)
+target_compile_definitions(dw3_title PRIVATE DW3_TITLE_NATIVE_OVERLAY=1)
+target_compile_definitions(dw3_port_options PRIVATE DW3_TITLE_NATIVE_OVERLAY=1)
+target_include_directories(dw3_port_options PRIVATE
+  ${CMAKE_CURRENT_SOURCE_DIR}/../pc/src)
+
 target_compile_definitions(dw3-switch PRIVATE
   ${_dw3_ver_macro}
   DW3_NX_GAME_IMAGE

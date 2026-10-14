@@ -2,11 +2,16 @@
 #include "port_title_options.h"
 #include "engine/game.h"
 
-#if defined(DW3_PC_HOST)
-
-#if defined(DW3_PC_SDL3_GPU)
+/* PC SDL3 GPU and Switch GLES draw the native overlay; the PC SDL3 GL path
+ * draws PS1-primitive plaques; anything else keeps the original-style row. */
+#if defined(DW3_TITLE_NATIVE_OVERLAY)
 
 extern void dw3_pc_title_menu_set_state(int active, int selected);
+extern void dw3_pc_title_menu_set_fade(int level);
+
+void dw3_port_title_overlay_fade(int level) {
+    dw3_pc_title_menu_set_fade(level);
+}
 
 void dw3_port_title_options_draw(int layer_id, int x, int y, int selected) {
     (void)layer_id;
@@ -19,7 +24,7 @@ void dw3_port_title_options_draw(int layer_id, int x, int y, int selected) {
     dw3_pc_title_menu_set_state(selected != -2, selected);
 }
 
-#else
+#elif defined(DW3_PC_HOST)
 
 #include <libgpu.h>
 
@@ -233,8 +238,6 @@ void dw3_port_title_options_draw(int layer_id, int x, int y, int selected) {
     }
     GFX.funcs.setPrim(tiles);
 }
-
-#endif /* DW3_PC_SDL3_GPU */
 
 #else
 

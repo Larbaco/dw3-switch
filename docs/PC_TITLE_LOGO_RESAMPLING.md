@@ -8,8 +8,10 @@ and 2 plus the terminal shadow palette row of sprite 3. Those runtime pixels
 are converted to RGBA and passed to `platforms/pc/src/title_logo_resample.c`.
 No game artwork is embedded in the repository or executable. The filtered logo
 is uploaded to a private GPU texture when the title animation reaches its stable
-state; the animated background keeps its existing path and filter. SDL3 GL,
-Switch, and non-US builds retain the original logo rendering path.
+state; the animated background keeps its existing path and filter. The Switch
+uploads the same filtered logo to a GLES texture. EU builds capture the bank
+of the current `LANGUAGE` (see [EU capture](#eu-capture)). SDL3 GL retains
+the original logo rendering path.
 
 The selected presentation is Lanczos2 with the fine local-contrast pass,
 using a 4x4 source neighborhood at each destination pixel center. PS1 ABR2
@@ -63,7 +65,8 @@ Sprite 3 uses semi-transparency mode ABR2: only texels with the PS1 STP bit set
 use subtraction; non-STP nonzero texels stay opaque. Its part geometry never
 changes during palette animation. Sprite 4 is the animated glint over the
 numeral; its task eventually stops drawing it. Sprites 5/6 occupy the copyright
-area, separate from the logo, and are replaced by the native legal footer.
+area, separate from the logo, and are replaced by the native legal footer on
+US (EU keeps its own credit sprites).
 
 The complete original logo/shadow union is x=17..317, y=22..158 (300x136).
 The original asset is local runtime data, not a new logo drawing or shipped art.
@@ -87,3 +90,23 @@ invented details or new edge halos. A US runtime capture at 1280×720 confirms
 the original logo with the selected filter in the stable three-button title
 screen. The capture and original game pixels remain outside Git under
 `tmp/evidence/pr121-restored/`.
+
+## EU capture
+
+The EU title bank sits at VRAM (0x280, 0x100) (`STDWTITL_TEXTURE_Y`), so
+texel rows and 4-bit CLUT rows add 0x100; 8-bit parts keep the alternate
+CLUT at Y 240 when the draw sets it. Parts are composited in the order the
+PS1 draws them (part 0 first, later parts on top). Languages 1 to 6 use the
+US layout: sprite 3 at (8,28) row 11, sprites 0/1 at (19,24)/(19,111) and
+sprite 2 at (253,100). Language 0 uses the Alt layout: Title0Alt at (17,61),
+Title1Alt at (207,34) and GlintAlt's lit sprite 2 at (49,121); its last glint
+frame is an additive flash and is left out. Some colored parts take CLUT rows
+that the title fills in after loading its sprites, so the EU logo is composed
+on the first readiness check, once the title stands still, rather than at
+load. The composite is cropped to its opaque box and fitted into the same
+720x326 texture keeping its aspect, centered. The patch also hides the Alt
+title and glint draws while the native logo is active. Once that logo is
+active, the late, reddish fade of the original EU logo no longer shows: it
+darkens with the background. Validated in Ryubing with the EU disc in all
+seven `LANGUAGE` banks; OLED is pending.
+

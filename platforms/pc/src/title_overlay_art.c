@@ -1,11 +1,19 @@
 /* Native-resolution PC title plaques. Geometry is authored in 960x720 pixels. */
 #include "title_overlay_art.h"
 #include <math.h>
+#include <stdlib.h>
 #include <string.h>
 #include "title_overlay_labels.inc"
 #include "title_overlay_lettering.inc"
 static uint8_t *canvas;
 static int stride;
+enum { LABEL_MAX_W = 440, LABEL_MAX_H = 48 };
+/* Runtime label masks (raw coverage), the Options language and the footer. */
+static uint8_t *label_mask[DW3_TITLE_LABEL_COUNT];
+static int label_w[DW3_TITLE_LABEL_COUNT], label_h[DW3_TITLE_LABEL_COUNT];
+static int options_lang = DW3_TITLE_LANG_EN;
+static int footer_shown = 1;
+static unsigned art_generation;
 static void pixel(int x,int y,int r,int g,int b,int alpha) {
     if(x<0||x>=960||y<0||y>=720||alpha<=0)return;
     uint8_t *p=canvas+y*stride+x*4;
@@ -58,10 +66,49 @@ static void lettering(int cx,int y,const unsigned char *runs,int w,int h,int sty
         }
     }
 }
+/* Raw (not run-length) coverage, as captured from the EU title bank. */
+static void text_raw(int center,int y,const uint8_t *mask,int w,int h,int focused) {
+    for(int k=0;k<w*h;k++){
+        int a=mask[k],x=center-w/2+k%w,yy=y+k/w;
+        if(!a)continue;
+        pixel(x+1,yy+2,2,7,19,a);pixel(x,yy,focused?236:181,focused?247:219,255,a);
+    }
+}
+static void lettering_raw(int cx,int y,const uint8_t *mask,int w,int h) {
+    for(int k=0;k<w*h;k++){
+        int a=mask[k],yy=k/w;
+        float t=(float)yy/(h?h:1);
+        if(a)pixel(cx-w/2+k%w,y+yy,191-100*t,229-60*t,248-25*t,a);
+    }
+}
+int dw3_pc_title_overlay_set_label(int slot,const uint8_t *coverage,int w,int h) {
+    uint8_t *copy=NULL;
+    if(slot<0||slot>=DW3_TITLE_LABEL_COUNT)return -1;
+    if(coverage) {
+        if(w<=0||h<=0||w>LABEL_MAX_W||h>LABEL_MAX_H)return -1;
+        copy=(uint8_t*)malloc((size_t)w*h);
+        if(!copy)return -1;
+        memcpy(copy,coverage,(size_t)w*h);
+    }
+    free(label_mask[slot]);
+    label_mask[slot]=copy;label_w[slot]=copy?w:0;label_h[slot]=copy?h:0;
+    art_generation++;
+    return 0;
+}
+void dw3_pc_title_overlay_set_options_language(int lang) {
+    if(lang<DW3_TITLE_LANG_EN||lang>DW3_TITLE_LANG_IT)lang=DW3_TITLE_LANG_EN;
+    if(lang!=options_lang){options_lang=lang;art_generation++;}
+}
+void dw3_pc_title_overlay_set_footer(int show) {
+    show=show?1:0;
+    if(show!=footer_shown){footer_shown=show;art_generation++;}
+}
+unsigned dw3_pc_title_overlay_generation(void) { return art_generation; }
 static void title_screen(void) {
     /* The original game logo is retained and framed by the PC integrator.
      * This layer owns only the native menu and discreet legal footer. */
     box(390,375,180,1,79,120,151,140);
+    if(!footer_shown)return;
     plaque(252,610,456,59,8,5,16,30,5,16,30,145);
     lettering(480,619,title_credit1,title_credit1_width,title_credit1_height,3,0,0);
     lettering(480,635,title_credit2,title_credit2_width,title_credit2_height,3,0,0);
@@ -75,7 +122,11 @@ void dw3_pc_title_overlay_art(uint8_t *rgba,int pitch,int selected) {
         plaque(320,445,320,58,10,99,149,196,17,40,77,255);
         plaque(322,447,316,54,9,12,29,57,5,16,39,235);
         box(337,451,286,2,243,158,45,255);box(337,495,286,2,243,158,45,255);
-        lettering(480,462,title_start,title_start_width,title_start_height,1,0,0);
+        if(label_mask[DW3_TITLE_LABEL_START])
+            lettering_raw(480,471-label_h[DW3_TITLE_LABEL_START]/2,label_mask[DW3_TITLE_LABEL_START],
+                          label_w[DW3_TITLE_LABEL_START],label_h[DW3_TITLE_LABEL_START]);
+        else
+            lettering(480,462,title_start,title_start_width,title_start_height,1,0,0);
         return;
     }
     for(int row=0;row<3;row++) {
@@ -106,8 +157,16 @@ void dw3_pc_title_overlay_art(uint8_t *rgba,int pitch,int selected) {
             int railx=side?cx-5:cx+36;
             for(int l=0;l<3;l++)box(railx,y+18+l*6,2,3,rr,gg,bb,255);
         }
+        const int slot=row==0?DW3_TITLE_LABEL_NEW_GAME:row==1?DW3_TITLE_LABEL_OPTIONS:DW3_TITLE_LABEL_LOAD_GAME;
+        if(label_mask[slot]) {
+            text_raw(480,y+(h-label_h[slot])/2-1,label_mask[slot],label_w[slot],label_h[slot],focus);
+            continue;
+        }
         const unsigned char *labels[]={label_0,label_1,label_2};
         int widths[]={label_0_width,label_1_width,label_2_width},heights[]={label_0_height,label_1_height,label_2_height};
+        if(row==1&&options_lang==DW3_TITLE_LANG_DE){labels[1]=title_options_de;widths[1]=title_options_de_width;heights[1]=title_options_de_height;}
+        if(row==1&&options_lang==DW3_TITLE_LANG_ES){labels[1]=title_options_es;widths[1]=title_options_es_width;heights[1]=title_options_es_height;}
+        if(row==1&&options_lang==DW3_TITLE_LANG_IT){labels[1]=title_options_it;widths[1]=title_options_it_width;heights[1]=title_options_it_height;}
         text_mask(480,y+(h-heights[row])/2-1,labels[row],widths[row],heights[row],focus);
     }
 }
