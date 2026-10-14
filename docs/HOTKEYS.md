@@ -27,8 +27,9 @@ The game decides each button's action in its current scene. For the title and
 port options:
 
 - Press Start (Enter / Plus) to reveal the title choices. Up/Down selects a row;
-  Cross (X / B) confirms. The Switch labels are **Start / Port options / Continue**;
-  the PC SDL3 GPU presentation uses **New Game / Options / Load Game**.
+  Cross (X / B) confirms. The Switch GLES and PC SDL3 GPU presentations use
+  **New Game / Options / Load Game** (EU plaques use the game's current-language
+  words). Options opens the Port options shell.
 - In Port options, Up/Down changes the selected setting. Cross **or Circle**
   (PC X or D; Switch B or A) toggles it. Triangle (PC S; Switch X) returns to
   the selected title row. Opening the shell does not toggle the first setting.

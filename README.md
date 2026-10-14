@@ -253,7 +253,17 @@ on `workflow_dispatch` or a `v*` tag. It is a prerelease. Assets are
 The release tag becomes the NACP version (compressed for hbmenu) and the
 `dw3: version=` boot line. No disc data.
 
-The current standard preview is
+The latest preview is
+[v0.6.5-preview.24](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.24),
+cut from `39894e9` after the Switch title menu (#127), EU runtime extraction
+(#128), and its documentation (#129). It ships **US binaries only**:
+`dw3-switch.nro` (9,054,753 bytes), `dw3-switch-nxlink.nro` (9,079,329 bytes),
+and `README.txt`. EU hardware tests use a separately built `--eu` NRO;
+this release has no EU NRO asset. Software battle remains the release default.
+Widescreen and restart are optional session settings; fast-forward is still
+a stub in this tag. Current `main` may contain later changes.
+
+The earlier movie-fix preview is
 [v0.6.5-preview.21](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.21),
 cut from `b597c67` after #111 (STR file-bridge race fix) and #112 (docs). It
 keeps the title Port options shell (#100) and the empty `StGetNext` scan
