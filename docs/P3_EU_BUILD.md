@@ -148,8 +148,13 @@ full EU playthrough and save/relaunch validation remain open.
 
 - Owner `disks/eu` + `runtime/eu` stay gitignored (bring-up pack proven on
   owner disc; not a committed tree).
-- `CNTY_SEL` still weak-stubbed (`port/overlays/mode_stubs.c`) — EU boots
-  via country select; real overlay link is a later task.
+- ~~`CNTY_SEL` weak-stubbed~~ — linked (P6.2, `dw3_p62_cnty_sel`). The EU
+  host boot now starts at the country select (patch `0055`), as on the PS1:
+  Up/Down picks a language, Start confirms, `LANGUAGE =
+  CNTY_SEL_languages[choice]` (`{2,3,5,4,6,1,0}`; options 5/6 are
+  unreachable on the disc too), then `MODE_OPENING_2` (or `MODE_OPENING`
+  for `LANGUAGE` 0) and the title. `DW3_START_MODE=0xE00` skips it. Owner
+  Ryubing/OLED check of the screen and of each language is still open.
 - EU-only stages WSTAG920–974 still weak-stubbed for link (not in P3.8 batches).
 - EU playthrough / “both versions play” not claimed (Phase 6 / P7.2 class).
 - OLED EU extraction and early gameplay are evidenced above; natural movie
