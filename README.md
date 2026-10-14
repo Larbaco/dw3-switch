@@ -24,6 +24,15 @@ remaining hardware gates are recorded in [RELEASE_PREVIEW25](docs/RELEASE_PREVIE
 see [movie pacing diagnostics](docs/P3.7_MOVIE_PACING_DIAGNOSTICS.md)
 for the separate movie evidence.
 
+After preview.25, `main` includes fixes for battle idle-camera transforms,
+black texels in partner portraits, and blend state that could leave the HUD
+or restart title/logo dark (#148). These fixes are not in the published
+preview.25 and still need in-game visual acceptance on OLED. The proposed
+field-turbo raster-skipping optimization remains deferred: every game frame
+continues to draw into VRAM to preserve encounter-transition texture copies.
+See [battle GPU follow-ups](docs/P5.2_BATTLE_GPU.md) and
+[fast-forward notes](docs/P6.4_FAST_FORWARD.md).
+
 | Phase | Summary |
 |---|---|
 | 0 to 2 | Done. Toolchains, disc to runtime, US title boot from decomp C ([P2.8](docs/P2.8_TITLE_BOOT.md)). |
