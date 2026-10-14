@@ -552,10 +552,13 @@ static bool present_init(void) {
  * the CRT beam window, not the VRAM rectangle. A 320x480 24-bit movie keeps
  * vertical_range 240, so this is 4:3. Using dw/dh instead made a 2:3 strip. */
 static float dw3_nx_display_aspect(int range_w, int range_h, int pal) {
-    float vref = pal ? 288.0f : 240.0f;
+    /* PAL too uses 240: DW3 EU keeps the NTSC 240-line picture, which a
+     * 288-line reference stretched to 16:10 (PSY-Z dw3-pal-aspect). */
+    float vref = 240.0f;
     float horiz = range_w > 0 ? (float)range_w : 256.0f;
     float vert = range_h > 0 ? (float)range_h : 240.0f;
 
+    (void)pal;
     return (4.0f / 3.0f) * (horiz / 256.0f) / (vert / vref);
 }
 

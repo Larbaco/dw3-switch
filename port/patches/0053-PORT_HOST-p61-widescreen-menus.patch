@@ -1,0 +1,116 @@
+Upstream-bound: no
+Subject: [PORT_HOST] P6.1 menu backgrounds fill the gutters
+
+The field menu, item shop, memory card and partner name screens draw a
+scrolling pattern that repeats every 96 pixels. With a widescreen gutter
+it is drawn twice more, 96 pixels to each side, so it covers the gutters
+at every scroll. Off, nothing changes.
+
+--- a/src/menus/field_menu/menu.c
++++ b/src/menus/field_menu/menu.c
+@@ -2,6 +2,9 @@
+    the files it loads; and the panels' openings and moves */
+ 
+ #include "menus/field_menu.h"
++#if PORT_HOST
++#include "port_widescreen.h"
++#endif
+ 
+ #include "shared/set_scroll_bar_x.inc.c"
+ #include "shared/set_scroll_bar_range.inc.c"
+@@ -52,6 +55,14 @@ void STSTATUS_drawBackground(FieldMenuScreen *menu) {
+         menu->bgTick = 1;
+     }
+     sprite.draw(FILE_CACHE.getEntry(FILE_STATUS_SPRITES << 16), 0x1D, menu->bgScroll, menu->bgScroll);
++#if PORT_HOST
++    /* Widescreen: the pattern repeats every 96 pixels; two more copies
++       cover the side gutters at every scroll */
++    if (dw3_port_widescreen_px() > 0) {
++        sprite.draw(FILE_CACHE.getEntry(FILE_STATUS_SPRITES << 16), 0x1D, menu->bgScroll - 96, menu->bgScroll);
++        sprite.draw(FILE_CACHE.getEntry(FILE_STATUS_SPRITES << 16), 0x1D, menu->bgScroll + 96, menu->bgScroll);
++    }
++#endif
+ }
+ 
+ /* The mode's main task: loads the files and the background's textures, then runs
+--- a/src/menus/item_shop/shop.c
++++ b/src/menus/item_shop/shop.c
+@@ -3,6 +3,9 @@
+ 
+ #include "menus/item_shop.h"
+ #if PORT_HOST
++#include "port_widescreen.h"
++#endif
++#if PORT_HOST
+ #include <stdio.h>
+ #endif
+ 
+@@ -71,6 +74,14 @@ void STITSHOP_drawShop(ItemShop *shop, ItemShopWindows *win) {
+     }
+     sprite.setScale(ONE, ONE, ONE);
+     sprite.draw(FILE_CACHE.getEntry(FILE_SHOP_SPRITES << 16), 0x14, shop->bgScroll, shop->bgScroll);
++#if PORT_HOST
++    /* Widescreen: the pattern repeats every 96 pixels; two more copies
++       cover the side gutters at every scroll */
++    if (dw3_port_widescreen_px() > 0) {
++        sprite.draw(FILE_CACHE.getEntry(FILE_SHOP_SPRITES << 16), 0x14, shop->bgScroll - 96, shop->bgScroll);
++        sprite.draw(FILE_CACHE.getEntry(FILE_SHOP_SPRITES << 16), 0x14, shop->bgScroll + 96, shop->bgScroll);
++    }
++#endif
+ }
+ 
+ /* Opens the shop's panels, then up/down and cross pick buy or sell and run that
+--- a/src/menus/memory_card/screen.c
++++ b/src/menus/memory_card/screen.c
+@@ -3,6 +3,9 @@
+ 
+ #include "menus/memory_card.h"
+ #if PORT_HOST
++#include "port_widescreen.h"
++#endif
++#if PORT_HOST
+ #include <stdio.h>
+ char *getenv(const char *name);
+ #endif
+@@ -79,6 +82,14 @@ void STGMCARD_updateScreen(MemCardScreen *screen, MemCardScreenTasks *tasks) {
+             screen->bgTick = 1;
+         }
+         sprite.draw(FILE_CACHE.getEntry(FILE_GMCARD_SHEET << 16), 30, screen->bgScroll, screen->bgScroll);
++#if PORT_HOST
++        /* Widescreen: the pattern repeats every 96 pixels; two more copies
++           cover the side gutters at every scroll */
++        if (dw3_port_widescreen_px() > 0) {
++            sprite.draw(FILE_CACHE.getEntry(FILE_GMCARD_SHEET << 16), 30, screen->bgScroll - 96, screen->bgScroll);
++            sprite.draw(FILE_CACHE.getEntry(FILE_GMCARD_SHEET << 16), 30, screen->bgScroll + 96, screen->bgScroll);
++        }
++#endif
+         break;
+     case TASK_DONE:
+         break;
+--- a/src/menus/partner_name/screen.c
++++ b/src/menus/partner_name/screen.c
+@@ -3,6 +3,9 @@
+ 
+ #include "menus/partner_name.h"
+ #if PORT_HOST
++#include "port_widescreen.h"
++#endif
++#if PORT_HOST
+ #include <stdio.h>
+ #endif
+ 
+@@ -74,6 +77,14 @@ void STDGNAME_drawBackground(ScreenTask *task) {
+         task->bgTick = 1;
+     }
+     sprite.draw(FILE_CACHE.getEntry(STDGNAME_SPRITES), 0x24, task->bgScroll, task->bgScroll);
++#if PORT_HOST
++    /* Widescreen: the pattern repeats every 96 pixels; two more copies
++       cover the side gutters at every scroll */
++    if (dw3_port_widescreen_px() > 0) {
++        sprite.draw(FILE_CACHE.getEntry(STDGNAME_SPRITES), 0x24, task->bgScroll - 96, task->bgScroll);
++        sprite.draw(FILE_CACHE.getEntry(STDGNAME_SPRITES), 0x24, task->bgScroll + 96, task->bgScroll);
++    }
++#endif
+ }
+ 
+ /* The renaming screen's task: loads its files, then runs the screen and draws

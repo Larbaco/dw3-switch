@@ -81,14 +81,14 @@ at this output size and scales smoothly if the user resizes the window. The
 normal internal scale remains 1× when the variable is unset; this option is not
 compiled into the Switch host.
 
-Widescreen (P6.1, off by default) can also start on, for field and battle:
+Widescreen (P6.1) is on by default for field and battle; start in 4:3 with:
 
 ```bash
-DW3_WIDESCREEN=1 ./build/pc/dw3-pc --runtime runtime/us
+DW3_WIDESCREEN=0 ./build/pc/dw3-pc --runtime runtime/us
 ```
 
-The log shows `dw3-widescreen: gutter 32 px per side` in the field and
-`53` in battle. See [docs/P6.1_WIDESCREEN.md](../../docs/P6.1_WIDESCREEN.md).
+The log shows `dw3-widescreen: gutter 53 px per side` in the field, in
+battle and in the menus that take gutters. See [docs/P6.1_WIDESCREEN.md](../../docs/P6.1_WIDESCREEN.md).
 
 Expect `dw3: mode=0xe00 title_entry=...`, `dw3-pad: port 0 connected`, then
 the title window (logo may be glitched; see `docs/P2.8_TITLE_BOOT.md`).

@@ -50,8 +50,9 @@ a hook comment only. The SD text report is separate — see
 
 ## Battle render modes (FIGHTSTG only)
 
-Runtime override (not getenv-only). Cold boot defaults to **soft** when
-`DW3_NX_MESH_SOFT_BATTLE` is ON (shipped default). `DW3_MESH_SOFT=0|1` seeds
+Runtime override (not getenv-only). Cold boot defaults to **gpu-tex**
+(shipped default since the preview.22 OLED feedback); a build with
+`-DDW3_NX_MESH_SOFT_BATTLE=ON` boots in **soft**. `DW3_MESH_SOFT=0|1` seeds
 the initial mode (`0` → `gpu-tex`, `1` → `soft`). Field never enqueues mesh.
 
 | Token (HUD `battle=`) | Behaviour |

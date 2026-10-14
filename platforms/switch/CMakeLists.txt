@@ -51,15 +51,13 @@ option(DW3_NX_DEBUG_MEM "Sampled memory-budget summary (nxlink)"
 # STR-bridge contention counters. Same nxlink default as mesh debug.
 option(DW3_NX_DEBUG_MOVIE "Sampled movie pacing/bridge summary (nxlink)"
        ${_dw3_mesh_dbg_default})
-# Recovery: keep FIGHTSTG gate but force software RasterTriangle in battle.
-# preview.10 dumps showed mesh FBO all-black while tris_flush was huge; opaque
-# software present restores a readable fight until mesh sampling draws non-black.
-# Override with -DDW3_NX_MESH_SOFT_BATTLE=OFF to seed gpu-tex at boot.
+# Battle boots in gpu-tex (GLES mesh) since the preview.22 OLED feedback.
+# -DDW3_NX_MESH_SOFT_BATTLE=ON seeds soft (software RasterTriangle) instead.
 # Runtime: DW3_MESH_SOFT=0|1 seeds initial mode; Minus+ZL+ZR cycles
 # soft → soft+bbox → gpu-solid → gpu-tex (see docs/DEBUG_OVERLAY.md).
 option(DW3_NX_MESH_SOFT_BATTLE
-       "Force software RasterTriangle in FIGHTSTG (mesh FBO recovery)"
-       ON)
+       "Seed software RasterTriangle in FIGHTSTG instead of gpu-tex"
+       OFF)
 # Development only: "K=V,K=V" evidence-aid environment baked into the NRO
 # (setenv at the top of main). Ryubing has no way to pass an environment to a
 # homebrew NRO. Comma-separated (a ';' would split the CMake list), e.g.

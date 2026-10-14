@@ -9,7 +9,7 @@
 #include <switch.h>
 
 #ifndef DW3_NX_MESH_SOFT_BATTLE
-#define DW3_NX_MESH_SOFT_BATTLE 1
+#define DW3_NX_MESH_SOFT_BATTLE 0
 #endif
 
 enum {
@@ -17,7 +17,7 @@ enum {
     MODE_COUNT = 4
 };
 
-static Dw3NxBattleMode s_mode = DW3_NX_BATTLE_SOFT;
+static Dw3NxBattleMode s_mode = DW3_NX_BATTLE_GPU_TEX;
 static int s_inited;
 static int s_chord_was_down;
 static int s_bbox_stub_logged;
