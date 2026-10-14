@@ -1,35 +1,39 @@
 Digimon World 3 / 2003, Switch homebrew preview
 
-Release candidate notes for v0.6.5-preview.25. These notes describe the
-intended bundle; publication and OLED acceptance are separate steps.
-The release tag and boot version identify the actual source revision.
+Release candidate notes for v0.6.5-preview.26. OLED acceptance of the
+changes below remains pending. The release tag and boot version identify
+the actual source revision.
 
 New in this preview
 
-  Widescreen is ON by default (#132). Field and battle extend to about
-  16:9, including the EU 240-line display. Field-menu, shop and save
-  backgrounds extend into the sides; HUD content stays centered. Other
-  menus keep their original width. Port options can switch it OFF.
-  Some original map layers still end at the old edge; report the area.
+  EU cold boot uses the original language-selection screen (#143).
+  Choose the language before the opening movie and title. US boot remains
+  unchanged. Continue loads the existing EU save using the selected boot
+  language.
 
-  Switch battle defaults to gpu-tex (#132). The right-panel Digimon
-  portrait is restored. Known issue: the cliff/sky battle stage still
-  has black sky gaps in gpu-tex; soft draws that sky correctly.
-  Minus + ZL + ZR cycles soft / soft+bbox (stub) / gpu-solid / gpu-tex.
-  Field rendering remains software RGB555. Performance acceptance and
-  a full stage sweep remain open; no CPU/GPU clock change is made.
+  Camera/portrait/render-state fixes (#148): correct battle idle-camera
+  transforms, preserve opaque black portrait pixels (including pupils),
+  and restore additive blending for the debug HUD and title after battle
+  fades. Verify battle -> save -> restart: logo and menu must be visible.
+  Builds and automated tests passed; OLED acceptance is still pending.
 
-  Fast-forward (#133, P6.4). Gameplay starts at 1x. Right-stick click
-  (R3) toggles turbo in field and battle. Port options selects 2x, 3x,
-  4x or OFF; OFF disables R3. Title, movies, standalone menus, the
-  memory-card screen and card game stay at 1x. Audio speeds up with
-  gameplay. Port options are session-only, not saved between launches.
+  Options has its own game-style screen (#149): dimmed title backdrop,
+  choice boxes, values and contextual help. The #152 follow-up to #151
+  corrects the restart-help wording. OLED navigation and presentation are test targets,
+  not release acceptance already completed.
 
-  Both US and EU game builds are included, each with an ordinary NRO
-  and an nxlink logging NRO. Neither includes disc data. EU first boot
-  can extract its runtime from the owner's matching Mode2 BIN/CUE.
+  The field-turbo raster skipping experiment from #146 is excluded.
+  Existing R3 turbo remains; an indicated frame rate does not by itself
+  prove the requested gameplay-speed multiplier.
 
 Carried forward
+
+  Widescreen starts ON; Port options can turn it OFF. Battle defaults
+  to gpu-tex; Minus + ZL + ZR cycles rendering modes. Known black sky
+  gaps on some battle stages remain. Field rendering stays software.
+  Gameplay starts at 1x; R3 toggles the configured 2x/3x/4x turbo, or
+  OFF disables it. Port options are session-only. Movies, title and
+  standalone menus stay at 1x; gameplay audio accelerates with turbo.
 
   Native title choices New Game / Options / Load Game, with EU labels
   from the current game language; Options opens Port options.
@@ -103,17 +107,17 @@ Install / nxlink
 
 OLED checklist
 
-  - Let EU extraction and the full opening finish; check image, audio,
-    progress completion, and the EU root/version in logs.
-  - Check title choices and Options; Widescreen should start ON.
-  - Walk map edges and inspect menus in widescreen; compare OFF.
-  - Battle: check the right-panel portrait and side geometry. Report
-    stage-specific gaps; compare gpu-tex with soft on the known sky.
-  - Toggle R3 in field and battle; compare 2x/3x/4x and OFF. Check that
-    movies, standalone menus and the save screen remain at 1x.
-  - After an ordinary in-game save, enable Restart hotkey, use the
-    chord, then Load Game/Continue the same save. Check a fresh launch
-    and reload too. Do not interrupt an active save operation.
+  - EU language selection -> full opening -> title -> Load Game.
+    Check language, video/audio and the EU root/version in logs.
+  - Options: move through every row, change values, inspect the help
+    text, press X to return and confirm Load Game still opens.
+  - Battle: inspect Agumon's eyes and the idle camera. After leaving
+    battle, check that the debug HUD remains readable.
+  - Complete an ordinary save, enable Restart hotkey, then hold
+    L + R + Plus + Minus. Logo/menu must stay visible; load the same
+    save. Never interrupt an active save operation.
+  - Toggle R3 in field and battle and cross a battle transition.
+    Compare widescreen ON/OFF and check for regressions in Inn fades.
 
 This is a prerelease, not a finished port. Use the CMake game image,
 not the small Makefile host_hello sample built by CI job switch.
