@@ -38,7 +38,11 @@ This documentation audit did not independently download or execute the NROs.
 - #146 field-turbo raster skipping is excluded. Existing R3 turbo remains.
 
 Publication and successful builds do not establish hardware acceptance.
-At this checkpoint no preview.26 OLED delivery or gameplay is claimed here.
+OLED nxlink delivery and EU boot are confirmed by the delivery logger:
+`version=0.6.5-preview.26`, runtime `sdmc:/switch/dw3/eu`, executable
+`SLES_039.36`, and entry into `dw3_game_main` / `CNTY_SEL`.
+This establishes transport and the language-selection boot path, not owner
+gameplay or visual acceptance.
 Validate options navigation and values, EU language → movie → title → Continue,
 Agumon eyes and battle idle camera, HUD after battle, and battle → normal save
 → restart → Continue. Check turbo and encounter transitions for regressions;
