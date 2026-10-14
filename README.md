@@ -18,17 +18,18 @@ console.
 
 Checkboxes: [docs/ROADMAP.md](docs/ROADMAP.md). Phase 3 gate:
 [docs/P3_GATE.md](docs/P3_GATE.md). The latest tagged preview is
-preview.21, which includes the STR file-bridge race fix (#111). The OLED
-confirmed about 15 fps and correct XA audio up to frame 1110; the rest of
-the opening and image quality remain unmeasured on hardware. See
-[movie pacing diagnostics](docs/P3.7_MOVIE_PACING_DIAGNOSTICS.md).
+[v0.6.5-preview.24](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.24),
+a US-only release from `39894e9`. Its checkpoints and remaining hardware
+gates are recorded in [RELEASE_PREVIEW24](docs/RELEASE_PREVIEW24.md);
+see [movie pacing diagnostics](docs/P3.7_MOVIE_PACING_DIAGNOSTICS.md)
+for the separate movie evidence.
 
 | Phase | Summary |
 |---|---|
 | 0 to 2 | Done. Toolchains, disc to runtime, US title boot from decomp C ([P2.8](docs/P2.8_TITLE_BOOT.md)). |
 | 3 | Gate met for US. Field, battle, menus, card game, movies, SEP, and the stage sweep run on PC. Start to Genji is documented, with aids. [P3.9](docs/P3.9_REFERENCE.md) is done. The EU Switch build can extract a matching owner BIN/CUE into `sdmc:/switch/dw3/eu/`; OLED EU own-disc extraction and early gameplay are confirmed (2026-10-14); EU playthrough, full movie acceptance, and first-save/relaunch remain open ([EU evidence](docs/P3_EU_BUILD.md)). Also open: a pad-driven boss KO, [PC GPU and battle polish](docs/P3_GPU_GLITCHES.md), and the `WSTAG460` stub. |
 | 4 | Gate met on hardware for title, field, and battle. P4.2, P4.4, P4.5, and P4.7 are ticked. Still open: P4.3 underrun count and the P4.6 overlay sweep. |
-| 5 to 10 | Phase 5 is open. P5.2 is the 16.7 ms bar (soft battle default ON after all-black mesh dumps; field mesh gated). P5.3 flat `saveN.bin` + deferred flush landed; OLED MC1→MC2 save PASS and STGMCARD 100-frame bar owner-confirmed on load ([P5.3_FLAT_SAVE](docs/P5.3_FLAT_SAVE.md)). HOME/`appletMainLoop` quit flush landed; OLED applet exit/flush was observed on preview.20; fresh-save/relaunch reload validation remains open. P6.5 packaging is done and does not start Phase 6. P6.9 has PC/Xvfb proof of in-process title restart after save flush; Switch hardware and post-restart Continue validation remain open ([P6.9_RESTART](docs/P6.9_RESTART.md)). P9.2 entry/shell behavior is validated on PC and OLED; the 2026-10-13 title-row visual pass has PC/Ryubing captures, while OLED handheld/docked label legibility still awaits owner confirmation ([PORT_OPTIONS](docs/PORT_OPTIONS.md)). The PC-only Digivice menu uses a native 960×720 RGBA overlay; opt-in 3× starts the SDL3 GPU window at 1280×720, presenting the 4:3 image with 160-pixel side bars. The US SDL3 GPU path resamples the original runtime logo to a 720×326 texture with Lanczos2 and a restrained local-contrast pass after its intro animation. A stable three-row Xvfb capture and the P9.2 shell return are recorded outside Git under `tmp/evidence/pr121-restored/`. New Game / Options shell notes are in [PORT_OPTIONS](docs/PORT_OPTIONS.md), [TITLE_MENU_DESIGN](docs/TITLE_MENU_DESIGN.md), and [PC_TITLE_LOGO_RESAMPLING](docs/PC_TITLE_LOGO_RESAMPLING.md). Automated Load Game selection remains open. The Switch draws the same menu and logo over its GLES present. It is validated in Ryubing with the US disc and with the EU disc in all seven `LANGUAGE` banks; OLED is pending. On EU the logo is captured from the current language's bank (including the Japanese layout of language 0), the plaques show the game's own words for PRESS START / New Game / Continue, the port-only Options row has authored lettering per language, and the game keeps its own credit sprites. SDL3 GL retains its existing logo path. P9.3's current registry includes the opt-in restart hotkey, while persistence P9.4 remains open. Other controller configurations and gameplay effects remain open. Phases 6 through 10 otherwise have not started. P7.1, P8.1, P9.1, and P10.1 are early notes. See [SWITCH_FEATURES](docs/SWITCH_FEATURES.md). |
+| 5 to 10 | Phase 5 is open. P5.2 is the 16.7 ms bar (Switch battle now defaults to `gpu-tex` at the owner's request; known sky gaps and the performance gate remain open; field mesh gated). P6.1 widescreen defaults ON with 53-pixel gutters (about 16:9) in supported scenes; title/movie scenes remain 4:3, including the EU 240-line picture. P5.3 flat `saveN.bin` + deferred flush landed; OLED MC1→MC2 save PASS and STGMCARD 100-frame bar owner-confirmed on load ([P5.3_FLAT_SAVE](docs/P5.3_FLAT_SAVE.md)). HOME/`appletMainLoop` quit flush landed; OLED applet exit/flush was observed on preview.20; fresh-save/relaunch reload validation remains open. P6.5 packaging is done and does not start Phase 6. P6.9 has PC/Xvfb proof of in-process title restart after save flush; Switch hardware and post-restart Continue validation remain open ([P6.9_RESTART](docs/P6.9_RESTART.md)). P9.2 entry/shell behavior is validated on PC and OLED; the 2026-10-13 title-row visual pass has PC/Ryubing captures, while OLED handheld/docked label legibility still awaits owner confirmation ([PORT_OPTIONS](docs/PORT_OPTIONS.md)). The PC-only Digivice menu uses a native 960×720 RGBA overlay; opt-in 3× starts the SDL3 GPU window at 1280×720, presenting the 4:3 image with 160-pixel side bars. The US SDL3 GPU path resamples the original runtime logo to a 720×326 texture with Lanczos2 and a restrained local-contrast pass after its intro animation. A stable three-row Xvfb capture and the P9.2 shell return are recorded outside Git under `tmp/evidence/pr121-restored/`. New Game / Options shell notes are in [PORT_OPTIONS](docs/PORT_OPTIONS.md), [TITLE_MENU_DESIGN](docs/TITLE_MENU_DESIGN.md), and [PC_TITLE_LOGO_RESAMPLING](docs/PC_TITLE_LOGO_RESAMPLING.md). Automated Load Game selection remains open. The Switch draws the same menu and logo over its GLES present. It is validated in Ryubing with the US disc and with the EU disc in all seven `LANGUAGE` banks; OLED is pending. On EU the logo is captured from the current language's bank (including the Japanese layout of language 0), the plaques show the game's own words for PRESS START / New Game / Continue, the port-only Options row has authored lettering per language, and the game keeps its own credit sprites. SDL3 GL retains its existing logo path. P9.3's current registry includes the opt-in restart hotkey, while persistence P9.4 remains open. Other controller configurations and gameplay effects remain open. Phases 6 through 10 otherwise have not started. P7.1, P8.1, P9.1, and P10.1 are early notes. See [SWITCH_FEATURES](docs/SWITCH_FEATURES.md). |
 
 Layering: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). OLED network notes:
 [docs/SWITCH_OLED_NETWORK.md](docs/SWITCH_OLED_NETWORK.md) (FTP and preview 7
@@ -79,7 +80,7 @@ STGMCARD load/save panel on host uses 100 frames (option B, #84). Owner
 confirmed the load bar feels OK; save uses the same constants.
 
 Still open on hardware: a P4.3 underrun count,
-the full P4.6 overlay sweep, P5.2 battle 60 Hz (soft path for now), the
+the full P4.6 overlay sweep, P5.2 battle 60 Hz (the `gpu-tex` default has not closed this gate), the
 kernel sync-object error, and P5.3 fresh-save/HOME/relaunch reload validation.
 
 On preview.20, the owner confirmed the Port options title entry opens with
@@ -279,9 +280,13 @@ An earlier tagged preview release is
 [v0.6.5-preview.10](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.10).
 Battle mesh is gated to FIGHTSTG (PR #71); field stays on the software
 blit. PR #72 adds sampled `mesh dbg:` lines on the nxlink log. After
-preview.10 all-black mesh FBO dumps, `main` defaults battle to software
-`RasterTriangle` under that gate (`DW3_NX_MESH_SOFT_BATTLE=ON`; see
-[P5.2_BATTLE_GPU.md](docs/P5.2_BATTLE_GPU.md)). Flat saves, debug HUD,
+preview.10 all-black mesh FBO dumps, battle defaulted to software
+`RasterTriangle`. After #114 fixed the flat-blue GPU battle, #132 changed
+`main` to `gpu-tex` at the owner's request. Known sky gaps and the P5.2
+performance/hardware gate remain open; `-DDW3_NX_MESH_SOFT_BATTLE=ON`
+or `DW3_MESH_SOFT=1` restores the soft boot mode (see
+[P5.2_BATTLE_GPU.md](docs/P5.2_BATTLE_GPU.md)). These current `main` defaults
+do not change previously tagged preview builds. Flat saves, debug HUD,
 and the STGMCARD 100-frame bar also landed on `main` after that tag.
 It does not change the CPU or GPU clock.
 [v0.6.5-preview.9](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.9)
