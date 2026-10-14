@@ -15,7 +15,11 @@
 #endif
 #endif
 
-enum { DW3_PORT_OPT_COUNT = 3, DW3_PORT_OPT_RESTART = 2 };
+enum {
+    DW3_PORT_OPT_COUNT = 3,
+    DW3_PORT_OPT_WIDESCREEN = 0,
+    DW3_PORT_OPT_RESTART = 2
+};
 
 typedef struct Dw3PortOptStub {
     const char *label;
@@ -27,7 +31,7 @@ static int g_cursor;
 static int g_open_frames;
 static int g_logged_open;
 static Dw3PortOptStub g_stubs[DW3_PORT_OPT_COUNT] = {
-    {"Widescreen (stub)", 0},
+    {"Widescreen", 0},
     {"Fast-forward (stub)", 0},
     {"Restart hotkey", 0},
 };
@@ -143,6 +147,9 @@ void dw3_port_options_tick(void) {
         if (g_cursor == DW3_PORT_OPT_RESTART) {
             fprintf(stderr, "dw3-port-options: restart hotkey %s\n",
                     v ? "enabled" : "disabled");
+        } else if (g_cursor == DW3_PORT_OPT_WIDESCREEN) {
+            fprintf(stderr, "dw3-port-options: widescreen %s\n",
+                    v ? "enabled" : "disabled");
         } else {
             fprintf(stderr,
                     "dw3-port-options: stub[%d] %s -> %d (no-op)\n",
@@ -170,6 +177,9 @@ void dw3_port_options_tick(void) {
         g_stubs[g_cursor].value = v;
         if (g_cursor == DW3_PORT_OPT_RESTART) {
             fprintf(stderr, "dw3-port-options: restart hotkey %s\n",
+                    v ? "enabled" : "disabled");
+        } else if (g_cursor == DW3_PORT_OPT_WIDESCREEN) {
+            fprintf(stderr, "dw3-port-options: widescreen %s\n",
                     v ? "enabled" : "disabled");
         } else {
             fprintf(stderr,

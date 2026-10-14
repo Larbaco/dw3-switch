@@ -88,3 +88,38 @@ size_t dw3_nx_pack_rgb555_rect(const uint16_t *src, int dx, int dy, int dw,
     }
     return (size_t)w * (size_t)h;
 }
+
+static uint8_t *expand_row(const uint16_t *s, int n, uint8_t *dst) {
+    int col;
+
+    for (col = 0; col < n; col++) {
+        uint16_t v = s[col];
+
+        dst[0] = color_5to8(v & 0x1Fu);
+        dst[1] = color_5to8((v >> 5) & 0x1Fu);
+        dst[2] = color_5to8((v >> 10) & 0x1Fu);
+        dst[3] = 0xFFu;
+        dst += 4;
+    }
+    return dst;
+}
+
+size_t dw3_nx_pack_rgb555_wide(const uint16_t *src, const uint16_t *left,
+                               const uint16_t *right, int stride, int gutter,
+                               int dx, int dy, int dw, int dh, uint8_t *dst) {
+    int row;
+
+    if (!src || !left || !right || !dst || gutter < 0 || gutter > stride ||
+        dw <= 0 || dh <= 0 || dx < 0 || dy < 0 || dx + dw > DW3_NX_VRAM_W ||
+        dy + dh > DW3_NX_VRAM_H) {
+        return 0;
+    }
+    for (row = 0; row < dh; row++) {
+        size_t y = (size_t)(dy + row);
+
+        dst = expand_row(left + y * (size_t)stride, gutter, dst);
+        dst = expand_row(src + y * DW3_NX_VRAM_W + (size_t)dx, dw, dst);
+        dst = expand_row(right + y * (size_t)stride, gutter, dst);
+    }
+    return (size_t)(dw + 2 * gutter) * (size_t)dh;
+}

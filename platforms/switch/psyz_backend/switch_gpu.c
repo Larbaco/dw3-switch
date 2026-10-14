@@ -551,12 +551,56 @@ static int s_disp_pal;
  * with disp.h=640 sets it before the title, and presenting that height crops
  * the menu. isrgb24 is the movie. */
 static int s_disp_rgb24;
+static int s_disp_mode_h;
+/* P6.1 side gutter per side (Psyz_VideoSetGutter); 0 = off. */
+static int s_gutter;
+
+_Static_assert(DW3_NX_GUTTER_STRIDE == PSYZ_GUTTER_MAX,
+               "nx present reads gutter planes with PSYZ_GUTTER_MAX stride");
+
+/* Hands the gutter and the display it borders to the rasterizer and the mesh
+ * layer. The 24-bit movie never takes gutters. */
+static void apply_gutter(void) {
+    int px = s_disp_rgb24 ? 0 : s_gutter;
+    int w = s_disp_mode_w > 0 ? s_disp_mode_w : 320;
+
+    SoftwareRasterizer_SetGutter(px, s_disp_x, w, s_disp_mode_h);
+    dw3_nx_mesh_set_gutter(px, s_disp_x, w, s_disp_mode_h);
+}
+
+int Psyz_VideoSetGutter(unsigned px) {
+    if (px > PSYZ_GUTTER_MAX) {
+        return -1;
+    }
+    if ((int)px != s_gutter) {
+        Draw_FlushBuffer(); /* pending mesh prims belong to the old gutter */
+        s_gutter = (int)px;
+        apply_gutter();
+    }
+    return 0;
+}
+
+unsigned Psyz_VideoGetGutter(void) { return (unsigned)s_gutter; }
 
 void Draw_DisplayEnable(unsigned int on) { s_disp_on = (int)on; }
 
 void Draw_DisplayArea(unsigned int x, unsigned int y) {
+    int moved = s_disp_x != (int)x || s_disp_y != (int)y;
+    int h = s_disp_mode_h > 0 ? s_disp_mode_h : 240;
+
     s_disp_x = (int)x;
     s_disp_y = (int)y;
+    if (moved && s_gutter > 0) {
+        /* A flip: the buffer drawn next starts with black gutters. */
+        if (mesh_battle_active()) {
+            dw3_nx_mesh_flush((const uint16_t *)SoftwareRasterizer_GetVram());
+        }
+        SoftwareRasterizer_ClearGutterRows(0, s_disp_y);
+        SoftwareRasterizer_ClearGutterRows(s_disp_y + h, 512);
+        dw3_nx_mesh_clear_gutter_rows(0, s_disp_y);
+        dw3_nx_mesh_clear_gutter_rows(s_disp_y + h, 512);
+        apply_gutter();
+    }
 }
 
 void Draw_DisplayHorizontalRange(unsigned int start, unsigned int end) {
@@ -591,6 +635,8 @@ void Draw_SetDisplayMode(DisplayMode *mode) {
     }
     s_disp_rgb24 = mode->rgb24 ? 1 : 0;
     s_disp_pal = mode->pal ? 1 : 0;
+    s_disp_mode_h = mode->vertical_resolution ? 480 : 240;
+    apply_gutter();
 }
 
 void dw3_nx_switch_gpu_display(Dw3NxDisplay *out) {
@@ -621,10 +667,15 @@ void dw3_nx_switch_gpu_display(Dw3NxDisplay *out) {
     out->range_w = s_disp_w;
     out->range_h = s_disp_h;
     out->pal = s_disp_pal;
+    out->gutter = s_disp_rgb24 ? 0 : s_gutter;
 }
 
 const uint16_t *dw3_nx_switch_gpu_vram(void) {
     return (const uint16_t *)SoftwareRasterizer_GetVram();
+}
+
+const uint16_t *dw3_nx_switch_gpu_gutter_plane(int side) {
+    return (const uint16_t *)SoftwareRasterizer_GetGutterPlane(side);
 }
 
 /* --- video state the rasterizer reads back -------------------------------- */

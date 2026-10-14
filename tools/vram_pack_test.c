@@ -77,6 +77,53 @@ static int expect_rect(const uint16_t *vram, const uint8_t *full, uint8_t *packe
     return 0;
 }
 
+/* P6.1: gutter planes (stride 64) left and right of a 320-wide display. */
+static int check_wide(const uint16_t *vram, const uint8_t *full) {
+    enum { STRIDE = 64, GUT = 53, DW = 320, DH = 4, DY = 256 };
+    static uint16_t left[DW3_NX_VRAM_H * STRIDE];
+    static uint16_t right[DW3_NX_VRAM_H * STRIDE];
+    static uint8_t wide[(DW + 2 * GUT) * DH * 4 + 4];
+    size_t n;
+    int row;
+
+    /* Pure red left, pure blue right; the display comes from VRAM. */
+    for (row = 0; row < DW3_NX_VRAM_H * STRIDE; row++) {
+        left[row] = 0x001Fu;
+        right[row] = 0x7C00u;
+    }
+    memset(wide, 0xA5, sizeof(wide));
+    n = dw3_nx_pack_rgb555_wide(vram, left, right, STRIDE, GUT, 0, DY, DW, DH,
+                                wide);
+    if (n != (size_t)(DW + 2 * GUT) * DH || wide[n * 4] != 0xA5) {
+        fprintf(stderr, "wide pack returned %zu pixels\n", n);
+        return 1;
+    }
+    for (row = 0; row < DH; row++) {
+        const uint8_t *line = wide + (size_t)row * (DW + 2 * GUT) * 4;
+        const uint8_t *src =
+            full + ((size_t)(DY + row) * DW3_NX_VRAM_W) * 4;
+
+        if (line[0] != 0xFF || line[2] != 0 ||
+            line[(GUT - 1) * 4] != 0xFF ||
+            memcmp(line + GUT * 4, src, (size_t)DW * 4) != 0 ||
+            line[(GUT + DW) * 4 + 2] != 0xFF ||
+            line[(GUT + DW + GUT - 1) * 4 + 2] != 0xFF ||
+            line[(GUT + DW) * 4] != 0) {
+            fprintf(stderr, "wide pack row %d is not left|display|right\n",
+                    row);
+            return 1;
+        }
+    }
+    if (dw3_nx_pack_rgb555_wide(vram, left, right, STRIDE, STRIDE + 1, 0, 0, DW,
+                                DH, wide) != 0 ||
+        dw3_nx_pack_rgb555_wide(vram, left, right, STRIDE, GUT, 900, 0, DW, DH,
+                                wide) != 0) {
+        fprintf(stderr, "wide pack accepted an invalid size\n");
+        return 1;
+    }
+    return 0;
+}
+
 int main(void) {
     size_t pixels = (size_t)DW3_NX_VRAM_W * (size_t)DW3_NX_VRAM_H;
     uint16_t *vram = calloc(pixels, sizeof(uint16_t));
@@ -149,6 +196,8 @@ int main(void) {
         failed = 1;
     }
 
+    failed |= check_wide(vram, full);
+
     free(vram);
     free(full);
     free(packed);
@@ -156,5 +205,6 @@ int main(void) {
         return 1;
     }
     printf("OK: rgb555 rect pack matches full-buffer expand\n");
+    printf("OK: rgb555 wide pack puts the gutters beside the display\n");
     return 0;
 }

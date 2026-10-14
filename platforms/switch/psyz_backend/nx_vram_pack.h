@@ -24,4 +24,13 @@ size_t dw3_nx_pack_rgb555_rect(const uint16_t *src, int dx, int dy, int dw,
                                int dh, uint8_t *dst, int *out_x, int *out_y,
                                int *out_w, int *out_h);
 
+/* P6.1: the display rectangle with its side gutters, (dw + 2 * gutter) × dh
+ * pixels tightly packed: `gutter` columns of `left`, the VRAM rectangle,
+ * `gutter` columns of `right`. The planes hold one row per VRAM row with a
+ * stride of `stride` pixels. The rectangle must lie inside VRAM; returns the
+ * packed pixel count, or 0 when it does not or the sizes are invalid. */
+size_t dw3_nx_pack_rgb555_wide(const uint16_t *src, const uint16_t *left,
+                               const uint16_t *right, int stride, int gutter,
+                               int dx, int dy, int dw, int dh, uint8_t *dst);
+
 #endif

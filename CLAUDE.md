@@ -15,8 +15,12 @@ not a from-scratch remake.
   the owner. Does not investigate/test/code when a subagent can.
 - **Subagents** own investigation, measurement, implementation, local
   builds/tests, commits, and opening PRs.
-- Each workstream: own **branch** + own **worktree** (prefer
-  `/tmp/dw3-<topic>` on ext4).
+- Each workstream: own **branch** + own **worktree** under
+  `/mnt/cabal/tmp/dw3-<topic>`.
+- Owner's machine rules (AGENTS.md): terminal `git` for pushes, builds and
+  temp in `/mnt/cabal/tmp`, evidence in
+  `/mnt/windows/Jogos/dw3-switch/tmp/evidence`, GUI runs on a virtual
+  display (Xvfb).
 - Commit and push frequently; open a PR against `main` when done.
   Orchestrator reviews and merges.
 
