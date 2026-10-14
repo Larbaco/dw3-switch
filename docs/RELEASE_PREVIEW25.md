@@ -28,7 +28,8 @@ PR #132 makes widescreen ON and Switch battle `gpu-tex` by default, restores
 the battle portrait, and extends supported UI backgrounds. Known cliff/sky
 battle gaps remain; compare software rendering when reporting a stage.
 PR #133 implements field/battle fast-forward (R3, configurable 2x/3x/4x/OFF).
-PR #137 records its documentation; all controls are in [HOTKEYS](HOTKEYS.md).
+PR #137 extends the animated title background on the PC US 3x path.
+All controls are in [HOTKEYS](HOTKEYS.md).
 Port options remain session-only. Restart stays OFF until enabled.
 
 Publication and successful build are not OLED acceptance. At this checkpoint,
