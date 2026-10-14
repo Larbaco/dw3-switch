@@ -705,6 +705,12 @@ tick does not start Phase 6.
   later, is `sdmc:/switch/dw3/eu`. The owner packs the tree
   (`docs/DISC_SETUP.md`, `tools/pack_runtime.py`). Git and the release
   do not contain it.
+  **Packaging update (2026-10-14):** preview.25 publishes US and EU ordinary
+  and nxlink NROs from exact source `705afcf`, plus `README.txt`, `SOURCE.txt`
+  and `SHA256SUMS`. US is workflow-built; EU is separately built from that same
+  source with the Docker image recorded in `SOURCE.txt`. No game assets ship.
+  This packaging update does not close OLED playback, performance, or save/reload
+  acceptance. See [RELEASE_PREVIEW25](RELEASE_PREVIEW25.md).
   **Ticked** on `v0.6.5-preview.1`
   ([release](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.1),
   [run 38103023231](https://github.com/Larbaco/dw3-switch/actions/runs/38103023231)).
