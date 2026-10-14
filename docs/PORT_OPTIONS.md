@@ -346,3 +346,11 @@ The proposed title-screen labels and orange/blue Digivice button styling are
 documented in [TITLE_MENU_DESIGN.md](TITLE_MENU_DESIGN.md). The linked atlas
 is a visual concept; it does not indicate that the generated artwork is wired
 into the game renderer.
+
+### Restart help wording
+
+The native Options screen says the combo "restarts the game" on PC and
+Switch. It must not promise a direct return to the title: the EU build
+re-enters its language-selection boot flow, while US returns through its
+ordinary title flow. This is a wording correction, not a hotkey behavior
+change.
