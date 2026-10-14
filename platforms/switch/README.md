@@ -209,9 +209,13 @@ the movie.
 
 The default US image reads the owner's files from `sdmc:/switch/dw3/us`
 (`DW3_DEFAULT_RUNTIME` from CMake `DW3_VERSION`). If that directory is
-missing, US boot extracts it from the Mode2 BIN/CUE in the parent folder.
-EU: `./tools/build_switch_game.sh --eu` → `sdmc:/switch/dw3/eu` (pre-packed
-tree required; no EU BIN extract yet). Packing:
+missing or incomplete, US boot extracts it from the matching Mode2 BIN/CUE in
+the parent folder. EU: `./tools/build_switch_game.sh --eu` →
+`sdmc:/switch/dw3/eu`; the EU image can extract its own Mode2 BIN/CUE placed
+inside that directory (or its parent). It accepts `SLES_039.36`, uses the EU
+file-sector table and boot-TIM address, and writes `files_eu.json` last as the
+completion marker. A US disc is rejected by the EU build. Existing complete
+trees are checked without re-extracting. Packing:
 [docs/DISC_SETUP.md](../../docs/DISC_SETUP.md),
 [docs/RUNTIME_LAYOUT.md](../../docs/RUNTIME_LAYOUT.md),
 [docs/P3_EU_BUILD.md](../../docs/P3_EU_BUILD.md).

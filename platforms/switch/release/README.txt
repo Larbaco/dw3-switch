@@ -85,7 +85,9 @@ What you need
   A legally obtained US disc, Digimon World 3, product code SLUS-01436.
   This US binary looks for sdmc:/switch/dw3/us/. An EU Digimon World 2003
   (SLES-03936) NRO is built with tools/build_switch_game.sh --eu and reads
-  a pre-packed tree at sdmc:/switch/dw3/eu/ (no BIN auto-extract for EU).
+  sdmc:/switch/dw3/eu/. The matching EU Mode2 BIN and CUE can be placed in
+  that directory; the NRO rejects a US executable and extracts SLES_039.36,
+  mapped files, and boot_tim.bin before accepting files_eu.json.
 
 Install the test build
 
@@ -113,6 +115,12 @@ Install the test build
   boot only checks sizes, then rewrites any STR that is still 2048 bytes
   per sector. That rewrite logs "restore" and uses the same bar. The
   next boot only stats.
+
+  EU-only: put the owner's matching Mode2 BIN/CUE in sdmc:/switch/dw3/eu/
+  (for example disc.cue + disc.bin) and launch the --eu NRO. The progress
+  bar covers runtime extraction. A wrong-region disc is rejected before its
+  map is accepted. The map is validated with the SLES executable, boot TIM,
+  and every mapped file before game startup.
 
   The left stick should walk the player. The d-pad, face buttons, Start
   and Select still work with the stick centred. nxlink should show
