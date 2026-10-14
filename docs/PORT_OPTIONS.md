@@ -159,7 +159,8 @@ selection changes the lighting without moving the plaque or label. Plaques
 have navy faces, steel-blue bevels, clipped corner hardware, amber fasteners,
 internal rails, and legible centered text. This is PC-gated. Switch keeps its
 existing Start / Port options / Continue row and initial Continue selection.
-The #117 concept atlas/mockup remain design references and are not packaged as
+The #117 concept atlas remains a design reference (the mockup is kept
+out of Git because it shows game artwork) and are not packaged as
 runtime art. Selecting `PSYZ_RENDERER=sdl3_gl` keeps the earlier PS1-primitive
 title drawing path and does not compile the SDL3 GPU overlay.
 
@@ -297,6 +298,6 @@ were not tested; P9.3/P9.4 remain open and the overall Phase 9 gate is open.
 ## Title-screen visual reference
 
 The proposed title-screen labels and orange/blue Digivice button styling are
-documented in [TITLE_MENU_DESIGN.md](TITLE_MENU_DESIGN.md). The linked mockup
+documented in [TITLE_MENU_DESIGN.md](TITLE_MENU_DESIGN.md). The linked atlas
 is a visual concept; it does not indicate that the generated artwork is wired
 into the game renderer.
