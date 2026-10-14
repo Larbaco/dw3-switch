@@ -298,12 +298,20 @@ static int try_push_mesh_poly(u_long *packets, int max_len) {
         return 0;
     }
     /* soft / soft+bbox: FIGHTSTG stays gated, triangles fill CPU VRAM. */
-    if (dw3_nx_battle_mode_use_soft() || !mesh_area_is_screen()) {
+    if (dw3_nx_battle_mode_use_soft()) {
         return 0;
     }
     code = (int)(*packets >> 24) & 0xFF;
     is_poly = !(code & 0x40);
     if (!is_poly || !(code & TRIANGLE)) {
+        return 0;
+    }
+    if (!mesh_area_is_screen()) {
+        /* The partner view: its model goes to CPU VRAM, where the UI
+         * composite must keep its black pixels (the pupils), or the mesh
+         * FBO under it shows through them. */
+        dw3_nx_mesh_note_soft_view(s_area_x0, s_area_y0, s_area_x1,
+                                   s_area_y1);
         return 0;
     }
 

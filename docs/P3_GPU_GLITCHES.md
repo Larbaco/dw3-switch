@@ -109,9 +109,33 @@ Same boot, first `GsSetRefView2` (`vp=-2432,-1920,-11136`, `vr=1408,-2496,4864`)
 Checked and left as they are:
 
 - `rz >> 12` matches `battle_camera.c` (`view.rz = current.rz << 12`). This camera’s roll is 0, so the roll sign is not exercised.
-- Translation is `-R * eye` via `ApplyMatrix`. The eye maps to the origin. `ApplyMatrix` takes an `SVECTOR`; this viewpoint fits in 16 bits.
-- `super` is multiplied (`CompMatrix`). This idle view’s super is identity (rot 0, translation 0). `CompMatrix` narrows the child translation to `short` before rotating it; this frame’s `t` fits.
+- Translation is `-R * eye`. The eye maps to the origin.
 - `GsSetProjection` still forwards a positive `h` to `SetGeomScreen`. The framing change did not need a different `H`.
+
+### `GsSetRefView2` super (preview.25 feedback, 2026-10-14)
+
+Source-level correction; the idle-camera orbit still needs in-game visual
+validation. Identity-super reasoning is not a substitute for that evidence.
+
+The owner saw the Fight-menu idle camera "moving wrong" on the OLED. That
+camera is FIGHTSTG's shot camera (`shot_camera.c`): it turns around the
+fighters by stepping the battle camera's **super** coordinate (`rot.vy`,
+`turnAroundFighters`) and moves through super's `tz` (`viewPartnerSide`
+adds `0x1400` to `vpz`/`vrz` and takes it off `tz`, which only cancels if
+super moves the viewpoint). So the viewpoint and reference are in super's
+space: the camera sits at super(vp), and the world-screen matrix is
+`look · super⁻¹`. The port composed `super · look` (`CompMatrix`), which
+turned and shifted the picture in screen space: the camera panned on the
+spot instead of orbiting. The first check above passed because that idle
+view's super was identity.
+
+`port/psyz_missing/psyz_missing.c` now inverts super (its chain up to the
+world as one rigid transform), composes in 64-bit fixed point (no
+`SVECTOR` narrowing of translations such as `0x1400`), and applies the
+roll after yaw and pitch, about the line of sight (`RotMatrix` is
+Rx·Ry·Rz, which rolled about the world Z before the yaw). With super
+identity and roll 0 the matrix is unchanged, so the Attack! cameras
+above keep their aim.
 
 ## Prior fixed (P3.7, already on main)
 

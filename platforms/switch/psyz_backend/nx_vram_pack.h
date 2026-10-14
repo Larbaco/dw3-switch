@@ -12,8 +12,10 @@
 /* Expand the VRAM rectangle (dx, dy, dw, dh) into dst.
  *
  * src is RGB555 with a row stride of DW3_NX_VRAM_W pixels: R in bits 0–4,
- * G in 5–9, B in 10–14. Bit 15 is the PS1 mask and is ignored. Each channel
- * expands with (c5 * 255 + 15) / 31 and alpha is 0xFF.
+ * G in 5–9, B in 10–14. Each color channel expands with
+ * (c5 * 255 + 15) / 31. Alpha carries the PS1 mask (bit 15): 0xFF when
+ * set, 0x00 otherwise. This metadata is not coverage; present shaders write
+ * opaque alpha, while the battle UI composite uses it for drawn black pixels.
  *
  * The rectangle is clamped to 1024×512. dst receives out_w pixels per row
  * and out_h rows, tightly packed (GLES2 has no core GL_UNPACK_ROW_LENGTH).

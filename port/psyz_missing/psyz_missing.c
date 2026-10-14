@@ -53,45 +53,112 @@ int Dw3_GsSetFlatLight(int id, GsF_LIGHT *light) {
     return 0;
 }
 
-/* Viewpoint and reference are in super's space. super->coord maps that
- * space to its parent. Battle's idle camera passes an identity super
- * (rot 0, translation 0); CompMatrix is still required for cameras that
- * do not. ratan2(y, x) is atan2(y, x) (decomp ratan.c; Psy-Q header).
- * RotMatrix's view +Z row is (-sin yaw, sin pitch, cos yaw * cos pitch),
- * so the yaw that aims +Z at (dx, dz) is -ratan2(dx, dz), and the pitch
- * that includes dy is +ratan2(dy, xz). The opposite signs leave the
- * reference off the view axis (battle vp=-2432,-1920,-11136 lands at
- * view x≈7458 instead of ≈0). Battle stores rz << 12. */
+/* Fixed-point (4096 = 1.0) rigid transforms in 64-bit, so camera
+ * translations of 0x1400 and more neither wrap a short (ApplyMatrix and
+ * CompMatrix narrow their vector input to SVECTOR) nor overflow. */
+static void dw3_mat_mul(const MATRIX *a, const MATRIX *b, MATRIX *out) {
+    MATRIX r;
+    int i;
+    int j;
+
+    for (i = 0; i < 3; i++) {
+        long long t = 0;
+
+        for (j = 0; j < 3; j++) {
+            r.m[i][j] = (short)(((long long)a->m[i][0] * b->m[0][j] +
+                                 (long long)a->m[i][1] * b->m[1][j] +
+                                 (long long)a->m[i][2] * b->m[2][j]) >>
+                                12);
+        }
+        t = ((long long)a->m[i][0] * b->t[0] + (long long)a->m[i][1] * b->t[1] +
+             (long long)a->m[i][2] * b->t[2]) >>
+            12;
+        r.t[i] = (int)(t + a->t[i]);
+    }
+    *out = r;
+}
+
+/* Inverse of a rotation + translation: transpose, and -R^T t. */
+static void dw3_mat_invert_rigid(const MATRIX *m, MATRIX *out) {
+    MATRIX r;
+    int i;
+
+    for (i = 0; i < 3; i++) {
+        r.m[i][0] = m->m[0][i];
+        r.m[i][1] = m->m[1][i];
+        r.m[i][2] = m->m[2][i];
+    }
+    for (i = 0; i < 3; i++) {
+        r.t[i] = (int)(-(((long long)r.m[i][0] * m->t[0] +
+                          (long long)r.m[i][1] * m->t[1] +
+                          (long long)r.m[i][2] * m->t[2]) >>
+                         12));
+    }
+    *out = r;
+}
+
+/* The view of a camera at vp looking at vr, both in super's space.
+ * ratan2(y, x) is atan2(y, x) (decomp ratan.c; Psy-Q header). RotMatrix's
+ * view +Z row is (-sin yaw, sin pitch, cos yaw * cos pitch), so the yaw that
+ * aims +Z at (dx, dz) is -ratan2(dx, dz), and the pitch that includes dy is
+ * +ratan2(dy, xz). The opposite signs leave the reference off the view axis
+ * (battle vp=-2432,-1920,-11136 lands at view x≈7458 instead of ≈0).
+ * Battle stores rz << 12. The roll turns the picture around the line of
+ * sight, so it is applied after yaw and pitch: RotMatrix(pitch, yaw, roll)
+ * is Rx·Ry·Rz, which would roll about the world Z axis before the yaw. */
 static void dw3_look_at(const GsRVIEW2 *pv, MATRIX *out) {
     long dx = pv->vrx - pv->vpx;
     long dy = pv->vry - pv->vpy;
     long dz = pv->vrz - pv->vpz;
     long xz = SquareRoot0(dx * dx + dz * dz);
     SVECTOR ang;
-    SVECTOR eye;
-    VECTOR cam;
+    MATRIX look;
+    MATRIX roll;
+    int i;
 
     if (xz == 0) {
         xz = 1;
     }
     ang.vx = (short)ratan2(dy, xz);
     ang.vy = (short)(-ratan2(dx, dz));
-    ang.vz = (short)(pv->rz >> 12);
+    ang.vz = 0;
     ang.pad = 0;
-    RotMatrix(&ang, out);
+    RotMatrix(&ang, &look);
+    for (i = 0; i < 3; i++) {
+        look.t[i] = 0;
+    }
 
-    eye.vx = (short)pv->vpx;
-    eye.vy = (short)pv->vpy;
-    eye.vz = (short)pv->vpz;
-    eye.pad = 0;
-    ApplyMatrix(out, &eye, &cam);
-    out->t[0] = (int)(-cam.vx);
-    out->t[1] = (int)(-cam.vy);
-    out->t[2] = (int)(-cam.vz);
+    ang.vx = 0;
+    ang.vy = 0;
+    ang.vz = (short)(pv->rz >> 12);
+    RotMatrix(&ang, &roll);
+    for (i = 0; i < 3; i++) {
+        roll.t[i] = 0;
+    }
+    dw3_mat_mul(&roll, &look, out);
+
+    /* Translation: the eye maps to the origin. */
+    for (i = 0; i < 3; i++) {
+        out->t[i] = (int)(-(((long long)out->m[i][0] * pv->vpx +
+                             (long long)out->m[i][1] * pv->vpy +
+                             (long long)out->m[i][2] * pv->vpz) >>
+                            12));
+    }
 }
 
+/* GsSetRefView2 puts the camera in super's space: the viewpoint sits at
+ * super(vp) in the world, and turns and moves with super. The world-screen
+ * matrix is therefore look · super⁻¹ (super's chain up to the world taken
+ * as one transform). FIGHTSTG's shot camera turns around the fighters by
+ * stepping super's rot.vy (shot_camera.c turnAroundFighters) and moves
+ * along z through super's tz (viewPartnerSide). Composing super after the
+ * look instead (CompMatrix(super, look)) turned the picture in screen
+ * space, the battle idle camera panning on the spot instead of orbiting. */
 void GsSetRefView2(GsRVIEW2 *pv) {
     MATRIX local;
+    MATRIX super_lw;
+    MATRIX super_inv;
+    GsCOORDINATE2 *c;
     static int logged;
 
     if (pv == NULL) {
@@ -99,7 +166,12 @@ void GsSetRefView2(GsRVIEW2 *pv) {
     }
     dw3_look_at(pv, &local);
     if (pv->super != NULL) {
-        CompMatrix(&pv->super->coord, &local, &GsWSMATRIX);
+        super_lw = pv->super->coord;
+        for (c = pv->super->super; c != NULL; c = c->super) {
+            dw3_mat_mul(&c->coord, &super_lw, &super_lw);
+        }
+        dw3_mat_invert_rigid(&super_lw, &super_inv);
+        dw3_mat_mul(&local, &super_inv, &GsWSMATRIX);
     } else {
         GsWSMATRIX = local;
     }

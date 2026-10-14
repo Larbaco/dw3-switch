@@ -686,6 +686,9 @@ tick does not start Phase 6.
   presents; PC paces at speed × base rate. Done early on the owner's
   request without opening Phase 6. See
   [P6.4_FAST_FORWARD.md](P6.4_FAST_FORWARD.md).
+  **OLED feedback (preview.25):** R3 works; field ~70–80 fps and battle
+  ~180 fps reported at 2x. Display-buffer raster skipping is deferred:
+  encounter transitions read those buffers through MoveImage.
   Done when: PC and Switch (Ryujinx, then hardware) show it on both the US
   and EU discs, and it returns cleanly to normal speed.
 - [x] **P6.5** Release packaging: `.nro` + `README` for own-disc setup;

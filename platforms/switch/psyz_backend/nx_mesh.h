@@ -83,6 +83,16 @@ void dw3_nx_mesh_present(int dx, int dy, int dw, int dh, int vx, int vy, int vw,
 size_t dw3_nx_mesh_read_rect_rgba(int dx, int dy, int dw, int dh, uint8_t *dst,
                                   size_t dst_cap);
 
+/* A 3D view smaller than the screen (the battle partner view) drew its
+ * triangles on the software path into this drawing area (VRAM, inclusive).
+ * The UI composite keeps that area's drawn black pixels, which it otherwise
+ * discards as "no UI here". Kept for a few frames, one per display buffer. */
+void dw3_nx_mesh_note_soft_view(int x0, int y0, int x1, int y1);
+/* The noted soft view inside the display rect (dx,dy,dw,dh), relative to
+ * its top-left corner. Returns false when none lies in it. */
+bool dw3_nx_mesh_soft_view_in(int dx, int dy, int dw, int dh, int *x, int *y,
+                              int *w, int *h);
+
 /* Drop the per-frame "had mesh" flag after present (FBO contents stay). */
 void dw3_nx_mesh_end_frame(void);
 
