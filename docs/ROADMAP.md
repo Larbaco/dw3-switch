@@ -784,7 +784,7 @@ tick does not start Phase 6.
   walls, neon outlines) and lower FPS, which is why the mesh is gated to
   `FIGHTSTG`; `gpu-tex` still has the unexplained opaque black sky on the
   cliff/sky battle stage (CLUT index 0), which field and menu textures
-  would hit too; the widescreen field and menu patches (0047–0053, the
+  would hit too; the P6.1 widescreen patches (0047–0049, 0051–0053, the
   three extra host tile slots in VRAM, gutter fades) and layered panels
   drawn into small drawing areas (like the battle partner view) must keep
   working; and soft rendering must stay selectable for comparison.
