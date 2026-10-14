@@ -1197,6 +1197,36 @@ set_target_properties(dw3_p38_stagslct PROPERTIES
 )
 add_dependencies(dw3_p38_stagslct dw3_p38_stagslct_objs)
 
+# ---------------------------------------------------------------------------
+# P6.2: CNTY_SEL country / language select with named .data/.bss restore.
+# The EU build boots into it (patch 0055) and it sets LANGUAGE; the US build
+# links it too (the source builds for both) so STAGSLCT's entry still works.
+# ---------------------------------------------------------------------------
+file(GLOB DW3_CNTY_SEL_SOURCES CONFIGURE_DEPENDS
+  "${DECOMP_SRC}/src/menus/country_select/*.c")
+list(FILTER DW3_CNTY_SEL_SOURCES EXCLUDE REGEX "\\.inc\\.c$")
+list(LENGTH DW3_CNTY_SEL_SOURCES _dw3_cnty_sel_count)
+if(_dw3_cnty_sel_count EQUAL 0)
+  message(FATAL_ERROR "P6.2 CNTY_SEL sources missing under ${DECOMP_SRC}/src/menus/country_select")
+endif()
+
+dw3_host_menu_overlay(cnty_sel ${DW3_CNTY_SEL_SOURCES})
+
+set(DW3_P62_HOST_OBJECTS
+  "${DW3_HOST_OVL_DIR}/cnty_sel.host.o"
+)
+set_source_files_properties(${DW3_P62_HOST_OBJECTS} PROPERTIES
+  EXTERNAL_OBJECT TRUE
+  GENERATED TRUE
+)
+add_custom_target(dw3_p62_cnty_sel_objs DEPENDS ${DW3_P62_HOST_OBJECTS})
+
+add_library(dw3_p62_cnty_sel STATIC ${DW3_P62_HOST_OBJECTS})
+set_target_properties(dw3_p62_cnty_sel PROPERTIES
+  LINKER_LANGUAGE C
+)
+add_dependencies(dw3_p62_cnty_sel dw3_p62_cnty_sel_objs)
+
 # Archive for the PC host: engine + title + port glue (field/battle/menu objs separate).
 add_library(dw3_engine_objs STATIC
   $<TARGET_OBJECTS:dw3_engine>

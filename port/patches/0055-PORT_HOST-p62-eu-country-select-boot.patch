@@ -1,0 +1,28 @@
+Upstream-bound: no
+Subject: [PORT_HOST] P6.2 EU boots at the country select
+
+The European version starts at CNTY_SEL (MODE_COUNTRY_SELECT), where the
+player picks the language (LANGUAGE) before the opening movie and the
+title, as on the PS1. The US host boot still goes straight to MODE_TITLE.
+DW3_START_MODE still overrides both.
+
+diff -ruN a/src/engine/game/state.c b/src/engine/game/state.c
+--- a/src/engine/game/state.c
++++ b/src/engine/game/state.c
+@@ -10,9 +10,16 @@
+ void newGame(void) {
+     HEAP.zero(&GAME, GAME_SAVE_SIZE);
+ #if PORT_HOST
++#if VERSION_EU
++    /* P6.2: as on the PS1, the European version starts at the country
++       select (CNTY_SEL), which sets LANGUAGE and goes on to the opening. */
++    GAME.mode = MODE_COUNTRY_SELECT;
++    GAME.nextMode = MODE_COUNTRY_SELECT;
++#else
+     /* Phase 2: skip opening STR movies; go straight to the title screen. */
+     GAME.mode = MODE_TITLE;
+     GAME.nextMode = MODE_TITLE;
++#endif
+ #elif VERSION_US
+     GAME.mode = MODE_OPENING;
+     GAME.nextMode = MODE_OPENING;

@@ -305,7 +305,7 @@ set_target_properties(dw3-switch PROPERTIES LINKER_LANGUAGE CXX)
 target_link_libraries(dw3-switch PRIVATE
   "-Wl,--start-group"
   "-Wl,--whole-archive" dw3_p32_field dw3_p33_battle dw3_p34_menus dw3_p35_cardgame
-    dw3_p38_stagslct
+    dw3_p38_stagslct dw3_p62_cnty_sel
   "-Wl,--no-whole-archive"
   dw3_engine_objs
   "-Wl,--end-group"
@@ -364,6 +364,7 @@ target_link_options(dw3-switch PRIVATE
   "-Wl,--undefined=__start_dw3data_stcrdshp"
   "-Wl,--undefined=__start_dw3data_stcrdabm"
   "-Wl,--undefined=__start_dw3data_stagslct"
+  "-Wl,--undefined=__start_dw3data_cnty_sel"
 )
 
 # .nacp + .nro from the devkitPro platform module. Passing NACP is what stops

@@ -145,7 +145,7 @@ for the Phase 3 gate.
 |---|---|
 | Pad-driven Genji KO | `FORCE_WIN` skips attack/KO sequence |
 | Free-pad Lobby → event 9 | Aid substitutes for walking up to Digimon Center NPC |
-| EU `dw3-pc` runtime + playthrough | Link scaffold in `docs/P3_EU_BUILD.md`; owner `runtime/eu` + CNTY_SEL still open |
+| EU `dw3-pc` runtime + playthrough | Link scaffold in `docs/P3_EU_BUILD.md`; owner `runtime/eu`; CNTY_SEL linked in P6.2 |
 | P3.9 Harness | Owner DuckStation oracle + capture fill (side track) |
 | `WSTAG460` | Host `updateWanderer` SEGV; weak stub only |
 
