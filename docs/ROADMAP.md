@@ -919,6 +919,16 @@ PS1 game, with vanilla-safe defaults and persistence on owner storage.
   overlay, but its FMV is corrupted because the isolated runtime lacks the
   Mode2 BIN/CUE. Automated shell return and Load Game selection are not yet
   confirmed. Windows/DXIL and macOS/Metal runtime validation remain open. The
+  **PC title widescreen follow-up (2026-10-13):** the original animated
+  backdrop is reconstructed from runtime sheets and extended into the 16:9
+  margins using reflected outer strips. The original 4:3 center and approved
+  logo/menu geometry stay unchanged. The original task frame IDs drive the
+  margin animation, and the edge fade darkens the extension. US/Xvfb captures
+  show all three buttons at 1280×720 and animation spanning the native center
+  and left margin; both seams match on all 720 rows. Select shell open/close
+  and Load Game/cancel preserve the title background lifecycle. GPU and GL
+  builds plus patch-check pass. This title-only
+  presentation does not complete the P6.1 gameplay widescreen gate. The
   accepted three-row capture is kept outside Git at
   `tmp/evidence/pr121-restored/menu-3options-stable.png`; the post-transition
   diagnostic is `after-title-transition.png` in the same folder. See

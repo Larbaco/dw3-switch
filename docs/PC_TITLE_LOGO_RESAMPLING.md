@@ -110,3 +110,23 @@ active, the late, reddish fade of the original EU logo no longer shows: it
 darkens with the background. Validated in Ryubing with the EU disc in all
 seven `LANGUAGE` banks; OLED is pending.
 
+
+## Widescreen animated backdrop
+
+With `DW3_PC_INTERNAL_RES=3`, the PC GPU title presentation extends its original animated background into the
+16:9 margins independently of the centered 4:3 foreground. A private runtime
+texture reconstructs the three static background sheets and the eight existing
+animation frames from PSY-Z VRAM. Only the outer sixth on either side is reflected
+into the 160-pixel margins at 1280×720. Reflection meets the original edge without
+a gap; nearest sampling matches the original 3× background pixels. The original
+960×720 center, 720×326 logo, buttons and credits retain their geometry.
+
+This is a background extension rather than newly authored game art. Its animation
+comes directly from the original task frame indices and random positions; no
+independent animation timeline or game asset is embedded in the executable.
+The original edge fade also darkens the added margins. The extension clears on
+title-task destruction and remains active through the title background lifecycle, including the original
+logo entrance and fades.
+Switch and SDL3 GL keep their existing title path. Arbitrary wider window sizes
+fit the centered 4:3 title and scale the same reflected strips into the margins;
+16:9 is the reviewed target.
