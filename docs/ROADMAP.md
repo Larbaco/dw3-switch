@@ -201,6 +201,16 @@ class; pad KO follow-up); EU playthrough not required. **EU `dw3-pc` link
 scaffold** (`docs/P3_EU_BUILD.md`): `-DDW3_VERSION=eu` +
 `overlay_table_eu.c` configure/link; owner EU disc pack + PC smoke to
 opening movie validated (2026-10-12); playthrough / OLED EU still open.
+**Switch extraction follow-up (2026-10-13):** the EU NRO now selects the EU
+file-sector table, `SLES_039.36`, EU boot-TIM address and `files_eu.json` for
+own-disc BIN/CUE extraction under `sdmc:/switch/dw3/eu/`; a US executable is
+rejected. Synthetic extractor tests cover map identity, partial-copy retry,
+and second-boot validation. Independent Ryubing extracted 2383 files from BIN/CUE and reused them on a
+second boot; movie playback reached frame 2100 at about 15 fps with zero
+skipped frames, then Plus skipped to the title. Natural completion, audible
+A/V synchronization, and OLED EU validation remain open. This emulator build
+preceded FAT swap hardening, covered separately by synthetic host tests
+(see `docs/P3_EU_BUILD.md`).
 P3.9 harness (`tools/compare_harness/`, `docs/P3.9_REFERENCE.md`):
 **done** — title, field, and Kunemon vs Monmon Fight-menu battle pairs
 (`DW3_FORCE_ENCOUNTER=34` + `DW3_FORCE_PARTY=1` on PC).

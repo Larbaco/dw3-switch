@@ -186,6 +186,7 @@ target_include_directories(dw3_host_overlays PRIVATE
 target_include_directories(dw3_cdfs PUBLIC
   "${CMAKE_CURRENT_SOURCE_DIR}/cdfs"
 )
+target_compile_definitions(dw3_cdfs PRIVATE ${DW3_VERSION_MACRO})
 target_include_directories(dw3_memcard PUBLIC
   "${CMAKE_CURRENT_SOURCE_DIR}/memcard"
 )

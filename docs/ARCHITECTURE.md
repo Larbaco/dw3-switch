@@ -10,7 +10,7 @@
 | Host (PC) | `platforms/pc` | PSY-Z SDL3 host: links engine + `STDWTITL` + cdfs/memcard; debugging target |
 | Host (Switch) | `platforms/switch` | Native libnx PSY-Z backend (`psyz_backend/`); P4.2 EGL present (`nx_gpu.c`); P5.2 prefers GLES3 so **FIGHTSTG** OT triangle mesh can hit a mesh FBO (`nx_mesh.c`) while field/menus/sprites/UI stay on the software RGB555 blit (`switch_gpu.c`); letterbox uses the PC display-range aspect (4:3 at full framebuffer height, side bars on 16:9) |
 | Port glue | `port` | Overlays, cdfs, memcard, PSY-Z gap stubs, decomp patches (`build/decomp-src`) |
-| Disc → runtime | `tools/` + `docs/DISC_SETUP.md` / `docs/RUNTIME_LAYOUT.md` | `build_file_map.py` / `pack_runtime.py`: owner disc → `runtime/<ver>/` (PC) or SD layout |
+| Disc → runtime | `tools/` + `port/cdfs/runtime_extract.c` + `docs/DISC_SETUP.md` / `docs/RUNTIME_LAYOUT.md` | `build_file_map.py` / `pack_runtime.py` (PC) and version-matched Switch BIN/CUE extraction → `runtime/<ver>/` or SD layout |
 
 ## Runtime model (target)
 

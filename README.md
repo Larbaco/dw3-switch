@@ -26,7 +26,7 @@ the opening and image quality remain unmeasured on hardware. See
 | Phase | Summary |
 |---|---|
 | 0 to 2 | Done. Toolchains, disc to runtime, US title boot from decomp C ([P2.8](docs/P2.8_TITLE_BOOT.md)). |
-| 3 | Gate met for US. Field, battle, menus, card game, movies, SEP, and the stage sweep run on PC. Start to Genji is documented, with aids. [P3.9](docs/P3.9_REFERENCE.md) is done. Still open: EU playthrough, a pad-driven boss KO, [PC GPU and battle polish](docs/P3_GPU_GLITCHES.md), and the `WSTAG460` stub. |
+| 3 | Gate met for US. Field, battle, menus, card game, movies, SEP, and the stage sweep run on PC. Start to Genji is documented, with aids. [P3.9](docs/P3.9_REFERENCE.md) is done. The EU Switch build can extract a matching owner BIN/CUE into `sdmc:/switch/dw3/eu/`; EU playthrough/OLED validation remains open. Also open: a pad-driven boss KO, [PC GPU and battle polish](docs/P3_GPU_GLITCHES.md), and the `WSTAG460` stub. |
 | 4 | Gate met on hardware for title, field, and battle. P4.2, P4.4, P4.5, and P4.7 are ticked. Still open: P4.3 underrun count and the P4.6 overlay sweep. |
 | 5 to 10 | Phase 5 is open. P5.2 is the 16.7 ms bar (soft battle default ON after all-black mesh dumps; field mesh gated). P5.3 flat `saveN.bin` + deferred flush landed; OLED MC1→MC2 save PASS and STGMCARD 100-frame bar owner-confirmed on load ([P5.3_FLAT_SAVE](docs/P5.3_FLAT_SAVE.md)). HOME/`appletMainLoop` quit flush landed; OLED applet exit/flush was observed on preview.20; fresh-save/relaunch reload validation remains open. P6.5 packaging is done and does not start Phase 6. P6.9 has PC/Xvfb proof of in-process title restart after save flush; Switch hardware and post-restart Continue validation remain open ([P6.9_RESTART](docs/P6.9_RESTART.md)). P9.2 entry/shell behavior is validated on PC and OLED; the 2026-10-13 title-row visual pass has PC/Ryubing captures, while OLED handheld/docked label legibility still awaits owner confirmation ([PORT_OPTIONS](docs/PORT_OPTIONS.md)). The PC-only Digivice menu uses a native 960×720 RGBA overlay; opt-in 3× starts the SDL3 GPU window at 1280×720, presenting the 4:3 image with 160-pixel side bars. The US SDL3 GPU path resamples the original runtime logo to a 720×326 texture with Lanczos2 and a restrained local-contrast pass after its intro animation. A stable three-row Xvfb capture and the P9.2 shell return are recorded outside Git under `tmp/evidence/pr121-restored/`. New Game / Options shell notes are in [PORT_OPTIONS](docs/PORT_OPTIONS.md), [TITLE_MENU_DESIGN](docs/TITLE_MENU_DESIGN.md), and [PC_TITLE_LOGO_RESAMPLING](docs/PC_TITLE_LOGO_RESAMPLING.md). Automated Load Game selection remains open. The Switch draws the same menu and logo over its GLES present (validated in Ryubing with the US disc; OLED pending). SDL3 GL and EU retain their existing logo path. P9.3's current registry includes the opt-in restart hotkey, while persistence P9.4 remains open. Other controller configurations and gameplay effects remain open. Phases 6 through 10 otherwise have not started. P7.1, P8.1, P9.1, and P10.1 are early notes. See [SWITCH_FEATURES](docs/SWITCH_FEATURES.md). |
 
@@ -223,8 +223,10 @@ US boot creates an empty `memcard/` when that root exists. Saves are
 `memcardN.mcr` migrate once to flat and become `.mcr.bak`. A packed
 `.STR` that is still 2048 bytes per sector is rewritten from the parent
 BIN on boot. The screen stays dark blue and draws a progress bar during
-a long copy. EU does not extract. Pack `sdmc:/switch/dw3/eu/` yourself,
-and create `eu/memcard/` before the first EU launch.
+a long copy. For an EU build, place its matching Mode2 BIN/CUE in
+`sdmc:/switch/dw3/eu/` (or its parent); the NRO extracts the EU runtime and
+creates an empty `memcard/` after validating `SLES_039.36`. A US disc is
+rejected by the EU build. See [P3_EU_BUILD](docs/P3_EU_BUILD.md).
 
 ### Tooling self-check
 

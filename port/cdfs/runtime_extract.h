@@ -1,13 +1,14 @@
-/* US runtime tree from the owner's Mode2/2352 disc image.
+/* Version-matched runtime tree from the owner's Mode2/2352 disc image.
  *
- * Call this only on the US build. EU stays on a pre-packed runtime/eu tree.
+ * US and EU builds use their linked FILE_SECTORS tables, executable identity,
+ * map filename, and PS-X EXE boot-TIM address. EU only accepts SLES_039.36.
  *
- * When files_us.json, SLUS_014.36, boot_tim.bin, and every mapped file are
- * already present, this only stats those paths. When they are not, and
- * dw3_str_find_disc() can see a BIN, this creates the runtime root and
- * extracts it. A missing disc is not an error: the host's existing
- * cdfs_load_map failure remains the boot error if the tree is still absent.
- * Returns -1 when a disc image was found and the extract failed.
+ * A complete versioned map, executable, boot_tim.bin, and mapped files are
+ * only checked. Otherwise a matching BIN/CUE is extracted to the runtime
+ * root, with the map atomically written last as its completion marker. An EU
+ * image with the US executable is rejected before extraction. EU boot fails
+ * if its root exists but is incomplete and no matching image is available.
+ * Missing roots with no image retain the existing CDFS boot failure.
  *
  * Creates <root>/memcard/ once the root directory exists. Does not create
  * or replace memcard0.mcr / memcard1.mcr.

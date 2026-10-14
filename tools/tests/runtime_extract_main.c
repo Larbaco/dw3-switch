@@ -2,8 +2,26 @@
  * the game normally gets from file_table.c, and prints progress lines. */
 #include "runtime_extract.h"
 
+#include <errno.h>
 #include <stdio.h>
 #include <string.h>
+#include <sys/stat.h>
+
+#undef rename
+int rename(const char *old_path, const char *new_path);
+
+/* Model Switch FAT/exFAT: rename to an existing destination returns EEXIST. */
+int dw3_test_rename(const char *old_path, const char *new_path) {
+    struct stat st;
+    if (stat(new_path, &st) == 0) {
+        errno = EEXIST;
+        return -1;
+    }
+    if (errno != ENOENT) {
+        return -1;
+    }
+    return rename(old_path, new_path);
+}
 
 int FILE_SECTORS[32];
 unsigned short FILE_SECTOR_COUNTS[32];

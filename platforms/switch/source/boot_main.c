@@ -59,6 +59,13 @@ void StCdInterrupt(void);
 #ifndef DW3_DEFAULT_RUNTIME
 #define DW3_DEFAULT_RUNTIME "sdmc:/switch/dw3/us"
 #endif
+#if defined(VERSION_EU) && VERSION_EU
+#define DW3_RUNTIME_VERSION_TAG "eu"
+#define DW3_RUNTIME_EXECUTABLE_TAG "SLES_039.36"
+#else
+#define DW3_RUNTIME_VERSION_TAG "us"
+#define DW3_RUNTIME_EXECUTABLE_TAG "SLUS_014.36"
+#endif
 
 static PsyzVSyncCb g_prev_vsync_cb;
 static int g_applet_exit_locked;
@@ -410,15 +417,17 @@ static int init_paths(void) {
     char memcard_buf[512];
     char boot_path[512];
 
-    /* US: a card with the BIN and no us/ tree is filled in here. A tree that
-     * is already complete only stats. The bar is the same callback the STR
-     * rewrite uses, so register it first. EU does not extract. */
+    /* A card with a matching BIN and no complete versioned tree is filled in
+     * here. The bar is the same callback the STR rewrite uses, so register it
+     * first. */
     dw3_str_restore_set_progress(str_restore_progress);
-#if defined(VERSION_US) && VERSION_US
+#if (defined(VERSION_US) && VERSION_US) || (defined(VERSION_EU) && VERSION_EU)
     if (dw3_runtime_ensure(root) != 0) {
         ERRORF("runtime extract failed");
         return -1;
     }
+    INFOF("runtime version=%s root=%s executable=%s",
+          DW3_RUNTIME_VERSION_TAG, root, DW3_RUNTIME_EXECUTABLE_TAG);
 #endif
     if (cdfs_set_root(root) != 0) {
         ERRORF("cdfs_set_root(%s) failed", root);

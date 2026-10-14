@@ -27,7 +27,8 @@ sdmc:/switch/dw3/us/           # Switch (same relative layout)
   memcard/                     # required on Switch; can start empty
 ```
 
-EU uses `files_eu.json` and `SLES_039.36` instead of the US names.
+EU uses `files_eu.json` and `SLES_039.36` instead of the US names, plus its
+own linked file-sector table and `STAGE_VRAM` address for `boot_tim.bin`.
 
 ## Packing
 
@@ -63,6 +64,21 @@ sdmc:/switch/dw3/Digimon World 3.bin
 sdmc:/switch/dw3/us/AAA/STR/    # rewritten in place on first launch
 ```
 
+The EU NRO also extracts from an owner-supplied Mode2/2352 image. For EU,
+place the pair in `sdmc:/switch/dw3/eu/` (the runtime root), for example
+`disc.cue` + `disc.bin`; the parent folder remains a supported fallback. The
+EU executable must be `SLES_039.36`; a disc with only `SLUS_014.36` is rejected.
+The NRO writes `files_eu.json` to a temporary file only after all assets and
+the EU boot TIM have been extracted. Because FAT/exFAT does not replace an
+existing file with `rename`, runtime outputs move an existing destination to
+`.dw3-replace-backup` before installing the complete temporary file; an install
+failure restores the previous destination. After a reset, a retry recovers any
+leftover backup before replacing that output. The versioned map is the
+completion marker, and CDFS validates its identity and mapped file sizes
+before game startup. A failed or interrupted extraction is not accepted and
+can resume from complete files on a later launch. US uses `files_us.json` /
+`SLUS_014.36` and retains its existing root and disc lookup defaults.
+
 A US tree created by the startup extract below already stores `.STR` as
 raw sectors, so this rewrite only stats those files. A tree packed earlier
 at 2048 bytes per sector still takes the rewrite. That copy is about 260 MB.
@@ -89,29 +105,31 @@ PC). Create empty `runtime/eu/memcard/` before copying to the card.
 ### US boot extracts the runtime when the tree is missing
 
 `dw3_runtime_ensure()` in `port/cdfs/runtime_extract.c` runs from the PC and
-Switch boot paths before `cdfs_load_map`. US only (`files_us.json` /
-`SLUS_014.36`). EU still needs a packed `runtime/eu` or
-`sdmc:/switch/dw3/eu` — there is no EU BIN auto-extract yet.
+Switch boot paths before `cdfs_load_map`. It selects the matching version's
+map, executable, linked sector table, and boot-TIM address at build time.
+Switch EU builds accept a packed `runtime/eu` tree or extract EU from the
+matching Mode2 BIN/CUE found in `sdmc:/switch/dw3/eu` or its parent.
 
-When `files_us.json`, `SLUS_014.36`, `boot_tim.bin`, and every mapped file
-are already in the runtime root, boot only stats them. A Form-2 `.STR` whose
+When the matching `files_<ver>.json`, executable, `boot_tim.bin`, and every
+mapped file are already in the runtime root, boot only stats them. A Form-2 `.STR` whose
 size is `sectors * 2048` still counts, and the rewrite above upgrades it when
 a disc image is visible. The second boot does not read the BIN.
 
 When that tree is missing and the same BIN search as the STR rewrite finds a
-Mode2/2352 image, boot creates the runtime root (`DW3_RUNTIME`, or
-`sdmc:/switch/dw3/us` / `runtime/us`) and extracts:
+matching Mode2/2352 image, boot creates the runtime root (`DW3_RUNTIME`, or
+`sdmc:/switch/dw3/<ver>` / `runtime/<ver>`) and extracts:
 
 | Output | What is written |
 |---|---|
-| `files_us.json` | Linked `FILE_SECTORS` / `FILE_SECTOR_COUNTS` joined to ISO9660 paths, the same way `tools/build_file_map.py` builds the map. The JSON is not required to already exist. |
-| `SLUS_014.36` and other Form-1 files | 2048-byte user payload at offset 24 of each 2352-byte sector. |
+| `files_<ver>.json` | Version-linked `FILE_SECTORS` / `FILE_SECTOR_COUNTS` joined to ISO9660 paths, the same way `tools/build_file_map.py` builds the map. The JSON is written last and is the completion marker. |
+| `SLUS_014.36` (US) or `SLES_039.36` (EU), plus other Form-1 files | 2048-byte user payload at offset 24 of each 2352-byte sector. |
 | `AAA/STR/*.STR` | Raw Mode2 sectors, `FILE_SECTOR_COUNTS * 2352`. |
-| `boot_tim.bin` | PS-X EXE tail at US `STAGE_VRAM` `0x800A4CA4`, load `0x80010000`. Same parse as `pack_runtime.py`. |
+| `boot_tim.bin` | PS-X EXE tail at US `STAGE_VRAM` `0x800A4CA4` or EU `0x800A5DE0`, load `0x80010000`. Same parse as `pack_runtime.py`. |
 | `memcard/` | Empty directory. It is not on the disc. |
 
-A missing disc image is not a boot failure when the tree is already present.
-A missing tree and a missing disc image still fails at `cdfs_load_map`.
+A missing disc image is not a boot failure when the matching tree is already
+present. For EU, an existing incomplete root without a matching disc fails
+before CDFS; a wrong-region executable is rejected before extraction.
 Preview.4 only rewrote the 13 `.STR` files; removing `us/` on 2026-10-11
 stopped that build. This extract is the follow-up. It was checked with a
 synthetic Mode2 image (`tools/tests/test_runtime_extract.py`). It has not
@@ -123,23 +141,24 @@ the restore, because `eglSwapBuffers` waits for vsync.
 
 ### Memory-card directory
 
-The Switch host expects `<runtime-root>/memcard/` to exist. US boot creates
-that empty directory when the runtime root exists. Saves are `save0.bin` /
+The Switch host expects `<runtime-root>/memcard/` to exist. US and EU boot
+create that empty directory after accepting the matching runtime. Saves are `save0.bin` /
 `save1.bin` (plus optional `saveN.name`). An empty directory is enough;
 `memcard_host_ensure()` does not invent a save file. Older `memcardN.mcr`
 images from this port migrate once into the flat file and are renamed to
 `.mcr.bak` (see `port/memcard/README.md`).
 
-The runtime packer does not preserve empty directories. A packed tree copied
-by hand, and any EU tree, still needs the directory created first:
+The runtime packer does not preserve empty directories. Switch boot creates
+the directory for a valid packed tree; when testing the PC host, create it
+under the selected runtime root:
 
 ```bash
 mkdir -p runtime/us/memcard
 ```
 
-For the OLED layout this is `sdmc:/switch/dw3/us/memcard/`. An empty directory
-is enough. The 2026-10-10 hardware smoke initially stopped at
-`memcard_host_ensure()` until the empty directory was created.
+For Switch this is `sdmc:/switch/dw3/<ver>/memcard/`. An empty directory is
+enough. The 2026-10-10 hardware smoke initially stopped at `memcard_host_ensure()`
+until the empty directory was created.
 
 ## Boot image
 

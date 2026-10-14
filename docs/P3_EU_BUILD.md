@@ -1,4 +1,4 @@
-# Phase 3 follow-up — EU `dw3-pc` build scaffold
+# Phase 3 follow-up — EU build and Switch own-disc extraction
 
 Status: **link + owner bring-up validated** (configure/link with
 `-DDW3_VERSION=eu`; owner EU disc packed to `runtime/eu`; PC smoke reached
@@ -11,6 +11,27 @@ Owner validation note (2026-10-12, own disc only, not in git): Redump-style
 `BESLES-03936`; `files_eu.json` `--check` clean; `boot_tim.bin` from EXE;
 `tools/build_switch_game.sh --eu` emits NRO defaulting to
 `sdmc:/switch/dw3/eu`.
+
+**Switch auto-extraction (2026-10-13):** `VERSION_EU` selects the EU
+`FILE_SECTORS`/sector-count arrays, `SLES_039.36`, `files_eu.json`, and EU
+`STAGE_VRAM` (`0x800A5DE0`) for `boot_tim.bin`. Place the owner's matching
+Mode2/2352 BIN/CUE in `sdmc:/switch/dw3/eu/` (or its parent). The NRO rejects
+an image containing only the US `SLUS_014.36` executable. It writes the
+versioned JSON map after extraction and validates the map, executable, boot
+TIM, and every mapped file before CDFS starts. FAT/exFAT rename cannot replace
+an existing file, so runtime output swaps use a backup-and-restore sequence;
+the host test harness simulates `EEXIST`. A failed extraction leaves no
+accepted map, and completed files can be reused on retry. No disc image or
+extracted runtime is included in the repository. Synthetic host tests cover
+EU output, wrong-region rejection, retry after a partial copy, replacement of
+partial outputs, and second-boot no-reextract behavior. Independent Ryubing validation extracted 2383 files from only the matching
+BIN/CUE, then reused the runtime on a second boot. The movie reached frame
+2100 at about 15 fps with zero skipped frames; pressing Plus for one second
+returned to the title. This proves playback and skip, not natural completion
+or audible A/V synchronization. That emulator build preceded the FAT swap
+hardening; the final FAT path has synthetic host coverage. OLED extraction,
+movie acceptance, and the EU Switch playthrough remain open. Evidence stays
+outside Git under `/mnt/cabal/tmp/dw3-eu-extraction-test/`.
 
 ## Root causes (pre-scaffold blockers)
 
@@ -91,11 +112,11 @@ DW3_RUNTIME=runtime/eu ./build/pc-eu/dw3-pc --runtime runtime/eu
 # → build/switch-eu/dw3-switch.nro (DW3_DEFAULT_RUNTIME=sdmc:/switch/dw3/eu)
 ```
 
-Copy a packed `runtime/eu` (including empty `memcard/`) to
-`sdmc:/switch/dw3/eu/`. Boot extract-from-BIN remains **US-only**
-(`port/cdfs/runtime_extract.c` writes `files_us.json` / `SLUS_014.36`).
-For Form-2 movie audio on card, also place the owner EU BIN/CUE under
-`sdmc:/switch/dw3/` (same rewrite story as US; see `docs/RUNTIME_LAYOUT.md`).
+Either copy a packed `runtime/eu` (including an empty `memcard/`) to
+`sdmc:/switch/dw3/eu/`, or place the owner's matching EU Mode2 BIN/CUE in
+that directory and let the EU NRO extract it. The default EU NRO checks for
+`SLES_039.36`, writes `files_eu.json`, and rejects a US image. This path has
+synthetic host coverage; full EU playthrough and OLED validation remain open.
 
 ## Remaining open items
 
@@ -105,7 +126,8 @@ For Form-2 movie audio on card, also place the owner EU BIN/CUE under
   via country select; real overlay link is a later task.
 - EU-only stages WSTAG920–974 still weak-stubbed for link (not in P3.8 batches).
 - EU playthrough / “both versions play” not claimed (Phase 6 / P7.2 class).
-- OLED EU hardware smoke not yet run (needs packed `eu/` on SD + EU NRO).
+- OLED EU extraction and hardware smoke not yet run (needs the matching
+  owner BIN/CUE on SD + EU NRO; a prepacked runtime is optional).
 - Keep US as the default CI / day-to-day bring-up target.
 
 ## Regenerating `overlay_table_eu.c`
