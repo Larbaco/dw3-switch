@@ -12,9 +12,17 @@
 #if VERSION_EU
 #define DW3_WS_FIELDSTG 0x166
 #define DW3_WS_FIGHTSTG 0x167
+#define DW3_WS_STSTATUS 0x207
+#define DW3_WS_STITSHOP 0x205
+#define DW3_WS_STGMCARD 0x1EE
+#define DW3_WS_STDGNAME 0x162
 #else
 #define DW3_WS_FIELDSTG 0x158
 #define DW3_WS_FIGHTSTG 0x159
+#define DW3_WS_STSTATUS 0x1F9
+#define DW3_WS_STITSHOP 0x1F7
+#define DW3_WS_STGMCARD 0x1E3
+#define DW3_WS_STDGNAME 0x154
 #endif
 
 enum { DW3_PORT_OPT_WIDESCREEN = 0 };
@@ -47,6 +55,11 @@ int dw3_port_widescreen_px(void) {
     }
     if (mode_file == DW3_WS_FIGHTSTG) {
         return DW3_WIDESCREEN_BATTLE_PX;
+    }
+    /* Menus whose scrolling background reaches the gutters (patch 0053) */
+    if (mode_file == DW3_WS_STSTATUS || mode_file == DW3_WS_STITSHOP ||
+        mode_file == DW3_WS_STGMCARD || mode_file == DW3_WS_STDGNAME) {
+        return DW3_WIDESCREEN_MENU_PX;
     }
     return 0;
 }

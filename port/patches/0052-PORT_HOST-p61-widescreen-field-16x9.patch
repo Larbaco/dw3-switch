@@ -1,0 +1,242 @@
+Upstream-bound: no
+Subject: [PORT_HOST] P6.1 16:9 field: a fifth tile column in 15 slots
+
+With a widescreen gutter over 32 columns the map streamer draws 5 by 3
+tiles from the gutter's left edge, and the host has 15 tile slots instead
+of 12: (448,0) and (448,128), and (576,0), whose image is loaded in two
+64-unit halves one above the other because only a 64-wide strip is left
+there; its sprites are remapped (and split across the halves) when drawn.
+The camera centers a map too narrow for both gutters. With the gutter at
+32 or less the streamer uses only the 12 stock slots, as before.
+
+--- a/include/field/field_mode.h
++++ b/include/field/field_mode.h
+@@ -472,7 +472,20 @@ typedef struct MapTile {
+     /* 0x4 */ s32 sectors; /* what it reads (StreamTask.seek) */
+ } MapTile;
+ 
+-/* One of the 12 VRAM slots the map's tiles are loaded into (FIELDSTG_slotImages) */
++/* The VRAM slots the map's tiles are loaded into (FIELDSTG_slotImages): 12,
++   and on the host 15, so a 16:9 view's 5 by 3 tiles all have one */
++#if PORT_HOST
++#define MAP_IMAGE_COUNT 15
++/* The host's last slot: field mode leaves free only x 448..639 of the top
++   half of VRAM, room for two whole slots and a 64-unit strip, so the third
++   holds its image's halves one above the other (FIELDSTG_drawStream) */
++#define MAP_SPLIT_SLOT 14
++#define MAP_SPLIT_HALF 0x80 /* pixels: the left half's width, and the right half's v */
++#else
++#define MAP_IMAGE_COUNT 12
++#endif
++
++/* One of the MAP_IMAGE_COUNT VRAM slots the map's tiles are loaded into (FIELDSTG_slotImages) */
+ typedef struct MapImage {
+     /* 0x0 */ s32 frame; /* the tile it holds, or -1 */
+     /* 0x4 */ s32 time; /* when it was last drawn */
+@@ -493,7 +506,7 @@ typedef struct MapStreamer {
+     /* 0x068 */ s32 width; /* in 128-pixel tiles */
+     /* 0x06C */ s32 height;
+     /* 0x070 */ s32 frameSectors; /* a tile's sectors on the CD */
+-    /* 0x074 */ MapImage images[12];
++    /* 0x074 */ MapImage images[MAP_IMAGE_COUNT]; /* the host's 3 more move what follows */
+     /* 0x104 */ MapTile *tiles; /* width * height */
+     /* 0x108 */ u8 viewTiles[30]; /* by the slots around the view, their tiles */
+     /* 0x128 */ s32 viewX; /* the tile column of the slots' left edge */
+--- a/src/field/field_mode/camera.c
++++ b/src/field/field_mode/camera.c
+@@ -57,6 +57,10 @@ void FIELDSTG_scrollCamera(Camera *task) {
+             if (task->bounds.x - SCREEN_WIDTH - gutter < x) {
+                 x = task->bounds.x - SCREEN_WIDTH - gutter;
+             }
++        } else if (gutter > 0 && task->bounds.x > SCREEN_WIDTH) {
++            /* Too narrow for both gutters: center it, so the black beyond
++               the map's edges is split between the sides */
++            x = (task->bounds.x - SCREEN_WIDTH) / 2;
+         }
+     }
+ #endif
+--- a/src/field/field_mode/data/fieldstg.c
++++ b/src/field/field_mode/data/fieldstg.c
+@@ -1515,6 +1515,13 @@ Vec2 FIELDSTG_slotImages[] = {
+     {768, 384},
+     {896, 256},
+     {896, 384},
++#if PORT_HOST
++    /* Widescreen's 5 by 3 tiles: free in field mode (VRAM and CLUT rows
++       0xFC..0xFE checked on the owner's disc) */
++    {448, 0},
++    {448, 128},
++    {576, 0}, /* MAP_SPLIT_SLOT */
++#endif
+ };
+ AreaName FIELDSTG_areaNames[] = {
+     {11, 1, 512},
+--- a/src/field/field_mode/map_streamer.c
++++ b/src/field/field_mode/map_streamer.c
+@@ -128,7 +128,7 @@ typedef struct MapSlot {
+    entry the oldest of the 12 */
+ void FIELDSTG_drawMapTiles(MapStreamer *task, StreamPool *pool) {
+     Vec2 tile;
+-    MapSlot slots[12];
++    MapSlot slots[MAP_IMAGE_COUNT];
+     Layer *layer;
+     StreamTask *stream;
+     s32 count;
+@@ -141,15 +141,30 @@ void FIELDSTG_drawMapTiles(MapStreamer *task, StreamPool *pool) {
+     s32 oldest;
+     s32 best;
+ 
++#if PORT_HOST
++    /* Widescreen: a gutter wider than the 32 columns the 4 tiles cover past
++       each edge takes a fifth column, from the gutter's left edge */
++    s32 margin = dw3_port_widescreen_px() > 0x20 ? dw3_port_widescreen_px() : 0x20;
++    s32 columns = margin > 0x20 ? 5 : 4;
++#endif
++
+     layer = GFX.funcs.getLayer(FIELD_LAYER_MAP);
+     count = 0;
++#if PORT_HOST
++    tile.x = task->scroll.x >= margin ? (task->scroll.x - margin) / 128 : 0;
++#else
+     tile.x = task->scroll.x >= 0x20 ? (task->scroll.x - 0x20) / 128 : 0;
++#endif
+     tile.y = task->scroll.y >= 8 ? (task->scroll.y - 8) / 128 : 0;
+     for (r = 0; r < 3; r++) {
+         if (r + tile.y >= task->height) {
+             break;
+         }
++#if PORT_HOST
++        for (c = 0; c < columns; c++) {
++#else
+         for (c = 0; c < 4; c++) {
++#endif
+             if (c + tile.x >= task->width) {
+                 break;
+             }
+@@ -195,7 +210,12 @@ void FIELDSTG_drawMapTiles(MapStreamer *task, StreamPool *pool) {
+                 if (slots[i].loaded && slots[i].entry == -1 && slots[i].stream->isLoaded(slots[i].stream)) {
+                 best = 0;
+                 oldest = GFX.funcs.getTime();
++#if PORT_HOST
++                /* the 3 host slots only for the fifth column */
++                for (j = 0; j < (columns > 4 ? MAP_IMAGE_COUNT : 12); j++) {
++#else
+                 for (j = 0; j < 12; j++) {
++#endif
+                     if (task->images[j].time < oldest) {
+                         oldest = task->images[j].time;
+                         best = j;
+@@ -329,7 +349,7 @@ void FIELDSTG_runMapStreamer(MapStreamer *task, StreamPool *pool) {
+                 for (i = 0; i < 30; i++) {
+                     pool->tasks[i] = FIELDSTG_createStream(task->frameSectors << 11, task->file);
+                 }
+-                for (i = 0; i < 12; i++) {
++                for (i = 0; i < MAP_IMAGE_COUNT; i++) {
+                     task->images[i].frame = -1;
+                     task->images[i].time = 0;
+                 }
+--- a/src/field/field_mode/stream.c
++++ b/src/field/field_mode/stream.c
+@@ -26,6 +26,71 @@ s32 FIELDSTG_isStreamLoaded(StreamTask *task) {
+     return task->loaded;
+ }
+ 
++#if PORT_HOST
++/* Loads a tile's TIM into MAP_SPLIT_SLOT: its CLUT as usual, the left 64
++   units of its image at the slot and the rest 128 rows under it */
++static void loadSplitTile(StreamTask *task, void *tim) {
++    static u16 half[0x40 * 0x80];
++    TimCursor p;
++    RECT rect;
++    u16 *pixels;
++    s32 flag;
++    s32 side;
++    s32 row;
++    s32 col;
++    s32 w;
++
++    p.word = tim;
++    p.word++;
++    flag = *p.word++;
++    if (flag & 8) {
++        setRECT(&rect, task->clutX, task->clutY, p.block->w, p.block->h);
++        LoadImage(&rect, (u_long *)p.block->pixels);
++        p.byte += p.block->size;
++    }
++    pixels = (u16 *)p.block->pixels;
++    for (side = 0; side < 2; side++) {
++        w = p.block->w - side * 0x40;
++        w = w > 0x40 ? 0x40 : w;
++        if (w <= 0 || p.block->h > 0x80) {
++            break;
++        }
++        for (row = 0; row < p.block->h; row++) {
++            for (col = 0; col < w; col++) {
++                half[row * w + col] = pixels[row * p.block->w + side * 0x40 + col];
++            }
++        }
++        setRECT(&rect, task->imageX, task->imageY + side * 0x80, w, p.block->h);
++        LoadImage(&rect, (u_long *)half);
++        DrawSync(0);
++    }
++}
++
++/* Puts a sprite of the tile in MAP_SPLIT_SLOT on the right half's rows:
++   a sprite across the halves becomes two. Returns the next prim. */
++static SPRT *splitTileSprite(SPRT *sprt, s32 u, s32 v) {
++    s32 left;
++
++    if (u >= MAP_SPLIT_HALF) {
++        sprt->u0 = u - MAP_SPLIT_HALF;
++        sprt->v0 = v + MAP_SPLIT_HALF;
++        return sprt;
++    }
++    if (u + sprt->w <= MAP_SPLIT_HALF) {
++        return sprt;
++    }
++    left = MAP_SPLIT_HALF - u;
++    sprt[1] = sprt[0];
++    sprt->w = left;
++    sprt++;
++    sprt->x0 += left;
++    sprt->w -= left;
++    sprt->u0 = 0;
++    sprt->v0 = v + MAP_SPLIT_HALF;
++    return sprt;
++}
++#endif
++
+ /* Draws a stream task's tile at (x, y) on a layer: its sprites at the three
+    depths */
+ void FIELDSTG_drawStream(StreamTask *task, Layer *layer, s32 x, s32 y) {
+@@ -58,6 +123,16 @@ void FIELDSTG_drawStream(StreamTask *task, Layer *layer, s32 x, s32 y) {
+                 prim.sprt->clut = getClut(task->clutX, task->clutY);
+                 prim.sprt->u0 = task->sprites[i][j].u;
+                 prim.sprt->v0 = task->imageY + task->sprites[i][j].v;
++#if PORT_HOST
++                if (task->loadedSlot == MAP_SPLIT_SLOT) {
++                    SPRT *first = prim.sprt;
++
++                    prim.sprt = splitTileSprite(prim.sprt, task->sprites[i][j].u, prim.sprt->v0);
++                    if (prim.sprt != first) {
++                        addPrim(ot, first);
++                    }
++                }
++#endif
+                 addPrim(ot, prim.any);
+                 prim.sprt++;
+             }
+@@ -110,6 +185,13 @@ void FIELDSTG_loadStreamSprites(StreamTask *task) {
+     task->imageY = FIELDSTG_slotImages[slot].y;
+     task->clutX = 0;
+     task->clutY = slot + 0xF0;
++#if PORT_HOST
++    if (slot == MAP_SPLIT_SLOT) {
++        loadSplitTile(task, FILE_CACHE.getArchiveEntry(0, data));
++        FIELDSTG_touchStream(task);
++        return;
++    }
++#endif
+     initTimLoader(&loader);
+     loader.setImagePos(task->imageX, task->imageY);
+     loader.setClutPos(task->clutX, task->clutY);
