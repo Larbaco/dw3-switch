@@ -767,6 +767,30 @@ tick does not start Phase 6.
   returned to title after the successful flush. See
   [P6.9_RESTART.md](P6.9_RESTART.md). **Still open:** Switch build/hardware
   chord and Continue reload of a save written before restart.
+- [ ] **P6.10 Hardware render outside battle (goal).** Move the field
+  (`FIELDSTG` map tiles, actors) and the menus (field menu, Status, shops,
+  memory card) from the software rasterizer to the GPU path, the way
+  battle already draws in `gpu-tex` (P5.2,
+  [P5.2_BATTLE_GPU.md](P5.2_BATTLE_GPU.md)). Goal note only, recorded
+  early at the owner's request (2026-10-14); it does not start Phase 6
+  and is not part of the Phase 5 gate.
+  Why: the field already holds 60 Hz at 1x, but turbo (P6.4) has no
+  headroom there. On `v0.6.5-preview.25` the owner saw about 70–80 fps
+  with turbo outside battle against about 180 fps in battle. On Ryujinx
+  turbo is CPU-bound and the CPU rasterizer dominates
+  ([P6.4_FAST_FORWARD.md](P6.4_FAST_FORWARD.md)).
+  Known risks: preview.9 sent field OT triangles to the GLES mesh and
+  showed severe field artifacts (blue stripe column, rug blobs, missing
+  walls, neon outlines) and lower FPS, which is why the mesh is gated to
+  `FIGHTSTG`; `gpu-tex` still has the unexplained opaque black sky on the
+  cliff/sky battle stage (CLUT index 0), which field and menu textures
+  would hit too; the widescreen field and menu patches (0047–0053, the
+  three extra host tile slots in VRAM, gutter fades) and layered panels
+  drawn into small drawing areas (like the battle partner view) must keep
+  working; and soft rendering must stay selectable for comparison.
+  Done when: field and menus render on the GPU path on PC and Switch with
+  US and EU discs, match soft on the P3.8 stage sweep and the P6.1
+  widescreen checks, and field turbo gains measurably on the OLED.
 
 Gate: polish options from P6.1–P6.5 land as needed; localization P6.6–P6.8
 may still be in progress when Phase 7 starts only if the Phase 5 playable
