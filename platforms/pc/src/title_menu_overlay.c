@@ -395,6 +395,9 @@ void dw3_pc_title_menu_logo_set_active(int active) {
     g_logo_active = active && g_logo_texture_ready;
 }
 
+/* The SDL3 GPU shader has no tint input; the edge fade is not followed here. */
+void dw3_pc_title_menu_set_fade(int level) { (void)level; }
+
 void dw3_pc_title_menu_set_state(int active, int selected) {
     if (dw3_port_options_is_open()) active = 0;
     if (!active || !g_pipeline || !g_texture || !g_vertices || !g_sampler) {
@@ -437,7 +440,7 @@ static void render_overlay(SDL_GPUCommandBuffer *cmd, SDL_GPURenderPass *pass) {
     const SDL_GPUBufferBinding binding = {.buffer = g_vertices, .offset = 0};
     SDL_BindGPUVertexBuffers(pass, 0, &binding, 1);
     if (g_logo_active && g_logo_texture_ready && g_logo_texture &&
-        g_logo_sampler) {
+        g_logo_sampler && !dw3_port_options_is_open()) {
         const SDL_GPUTextureSamplerBinding logo_binding = {
             .texture = g_logo_texture,
             .sampler = g_logo_sampler,

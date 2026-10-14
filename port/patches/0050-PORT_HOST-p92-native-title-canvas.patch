@@ -249,3 +249,26 @@ native logo/footer/menu draws. Switch and SDL3 GL retain their original path.
          sprite.draw(FILE_CACHE.getEntry(STDWTITL_spriteBank), 4, 243, 90);
      }
  }
+--- a/src/menus/title/edge_fade.c
++++ b/src/menus/title/edge_fade.c
+@@ -1,6 +1,9 @@
+ /* The fade out from the screen's edges once an option is chosen */
+ 
+ #include "menus/title.h"
++#if defined(DW3_TITLE_NATIVE_OVERLAY)
++extern void dw3_port_title_overlay_fade(s32 level);
++#endif
+ 
+ /* The edge fade's darkness after time frames: 0 to 255 along a quarter sine over 30 frames */
+ s32 STDWTITL_getEdgeFadeLevel(s32 time) {
+@@ -81,6 +84,10 @@
+             }
+             break;
+         }
++#if defined(DW3_TITLE_NATIVE_OVERLAY)
++        /* The native title overlay darkens along with the subtractive fade. */
++        dw3_port_title_overlay_fade(task->level);
++#endif
+         STDWTITL_drawEdgeFade(task->level);
+         break;
+     case TASK_DONE:

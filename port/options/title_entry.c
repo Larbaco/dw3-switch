@@ -7,6 +7,11 @@
 #if defined(DW3_TITLE_NATIVE_OVERLAY)
 
 extern void dw3_pc_title_menu_set_state(int active, int selected);
+extern void dw3_pc_title_menu_set_fade(int level);
+
+void dw3_port_title_overlay_fade(int level) {
+    dw3_pc_title_menu_set_fade(level);
+}
 
 void dw3_port_title_options_draw(int layer_id, int x, int y, int selected) {
     (void)layer_id;

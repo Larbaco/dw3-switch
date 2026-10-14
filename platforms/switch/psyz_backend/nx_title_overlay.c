@@ -20,6 +20,12 @@
 
 #include <GLES3/gl3.h>
 
+/* nx_log.c: stderr/nxlink, sdmc:/switch/dw3/dw3.log and the debug string. */
+void psyz_log(unsigned int level, const char *file, unsigned int line,
+              const char *func, const char *fmt, ...);
+#define TITLE_LOG(...) psyz_log(1, "nx_title_overlay.c", __LINE__, __func__, \
+                                __VA_ARGS__)
+
 enum {
     CANVAS_W = 960,
     CANVAS_H = 720,
@@ -41,6 +47,7 @@ static GLuint s_vbo;
 static GLint s_attr_pos = -1;
 static GLint s_attr_t = -1;
 static GLint s_uni_tex = -1;
+static GLint s_uni_mul = -1;
 static int s_gl_failed;
 
 static int s_selection;
@@ -48,6 +55,8 @@ static int s_overlay_active;
 static int s_logo_active;
 static uint8_t *s_logo_rgba;
 static int s_logo_dirty;
+/* Title edge-fade darkness, 0..255 (STDWTITL_tickEdgeFade). */
+static int s_fade;
 
 static GLuint compile_shader(GLenum type, const char *src) {
     GLuint sh = glCreateShader(type);
@@ -59,7 +68,7 @@ static GLuint compile_shader(GLenum type, const char *src) {
     if (!ok) {
         char log[512];
         glGetShaderInfoLog(sh, sizeof(log), NULL, log);
-        fprintf(stderr, "dw3-title-overlay: shader failed: %s\n", log);
+        TITLE_LOG("dw3-title-overlay: shader failed: %s", log);
         glDeleteShader(sh);
         return 0;
     }
@@ -93,7 +102,9 @@ static int ensure_gl(void) {
         "precision mediump float;\n"
         "varying vec2 v_t;\n"
         "uniform sampler2D u_tex;\n"
-        "void main(){gl_FragColor=texture2D(u_tex,v_t);}\n";
+        "uniform float u_mul;\n"
+        "void main(){vec4 c=texture2D(u_tex,v_t);\n"
+        "  gl_FragColor=vec4(c.rgb*u_mul,c.a);}\n";
     const size_t canvas_bytes = (size_t)CANVAS_W * CANVAS_H * 4;
     uint8_t *pixels;
     GLuint vs;
@@ -136,6 +147,7 @@ static int ensure_gl(void) {
     s_attr_pos = glGetAttribLocation(s_prog, "a_pos");
     s_attr_t = glGetAttribLocation(s_prog, "a_t");
     s_uni_tex = glGetUniformLocation(s_prog, "u_tex");
+    s_uni_mul = glGetUniformLocation(s_prog, "u_mul");
 
     pixels = (uint8_t *)malloc(canvas_bytes * STATE_COUNT);
     if (!pixels) {
@@ -158,9 +170,8 @@ static int ensure_gl(void) {
     glGenBuffers(1, &s_vbo);
     glBindBuffer(GL_ARRAY_BUFFER, s_vbo);
     glBufferData(GL_ARRAY_BUFFER, sizeof(float) * 16, NULL, GL_DYNAMIC_DRAW);
-    fprintf(stderr,
-            "dw3-title-overlay: %dx%d RGBA texture, %d states (GLES)\n",
-            CANVAS_W, ART_TEX_H, STATE_COUNT);
+    TITLE_LOG("dw3-title-overlay: %dx%d RGBA texture, %d states (GLES)",
+              CANVAS_W, ART_TEX_H, STATE_COUNT);
     return 1;
 }
 
@@ -192,7 +203,8 @@ static void draw_quad(GLuint tex, float x0, float y0, float x1, float y1,
 }
 
 void dw3_nx_title_overlay_draw(int vx, int vy, int vw, int vh) {
-    int logo = s_logo_active && s_logo_rgba;
+    /* The P9.2 shell draws in the game picture; nothing may cover it. */
+    int logo = s_logo_active && s_logo_rgba && !dw3_port_options_is_open();
 
     if ((!s_overlay_active && !logo) || vw <= 0 || vh <= 0) {
         return;
@@ -223,6 +235,8 @@ void dw3_nx_title_overlay_draw(int vx, int vy, int vw, int vh) {
     glViewport(vx, vy, vw, vh);
     glUseProgram(s_prog);
     glUniform1i(s_uni_tex, 0);
+    /* Follow the title's subtractive edge fade towards black. */
+    glUniform1f(s_uni_mul, (float)(255 - s_fade) / 255.0f);
     glActiveTexture(GL_TEXTURE0);
 
     if (logo) {
@@ -276,11 +290,21 @@ int dw3_pc_title_menu_set_logo_rgba(const uint8_t *rgba, int width,
                rgba + (size_t)y * (size_t)pitch, (size_t)LOGO_W * 4);
     }
     s_logo_dirty = 1;
+    TITLE_LOG("dw3-title-logo: resampled logo %dx%d received", width, height);
     return 0;
 }
 
 void dw3_pc_title_menu_logo_set_active(int active) {
-    s_logo_active = active && s_logo_rgba != NULL;
+    const int next = active && s_logo_rgba != NULL;
+
+    if (next != s_logo_active) {
+        TITLE_LOG("dw3-title-logo: active=%d", next);
+    }
+    s_logo_active = next;
+}
+
+void dw3_pc_title_menu_set_fade(int level) {
+    s_fade = level < 0 ? 0 : (level > 255 ? 255 : level);
 }
 
 void dw3_pc_title_menu_set_state(int active, int selected) {
@@ -289,6 +313,9 @@ void dw3_pc_title_menu_set_state(int active, int selected) {
     }
     if (!active || selected == -2) {
         s_overlay_active = 0;
+        if (selected == -2) {
+            s_fade = 0;
+        }
         return;
     }
     if (selected < 0) {
@@ -297,6 +324,9 @@ void dw3_pc_title_menu_set_state(int active, int selected) {
         s_selection = 3;
     } else {
         s_selection = selected + 1;
+    }
+    if (!s_overlay_active) {
+        s_fade = 0; /* a new title visit starts undimmed */
     }
     s_overlay_active = 1;
 }
