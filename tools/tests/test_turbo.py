@@ -11,9 +11,9 @@ import pytest
 ROOT = Path(__file__).resolve().parents[2]
 
 
-@pytest.fixture(scope="module")
-def turbo_bin(tmp_path_factory) -> Path:
-    out = tmp_path_factory.mktemp("turbo") / "turbo_test"
+@pytest.fixture(scope="module", params=["us", "eu"])
+def turbo_bin(tmp_path_factory, request) -> Path:
+    out = tmp_path_factory.mktemp(f"turbo-{request.param}") / "turbo_test"
     cmd = [
         "gcc",
         "-std=c11",
@@ -23,6 +23,7 @@ def turbo_bin(tmp_path_factory) -> Path:
         "-O2",
         "-DDW3_PORT_OPTIONS_TEST",
         "-DDW3_PORT_TURBO_TEST",
+        f"-DVERSION_EU={int(request.param == 'eu')}",
         "-o",
         str(out),
         str(ROOT / "tools" / "tests" / "turbo_main.c"),

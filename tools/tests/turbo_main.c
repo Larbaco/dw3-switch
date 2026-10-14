@@ -4,7 +4,11 @@
 
 #include <stdio.h>
 
+#if VERSION_EU
+enum { FIELD = 0x166, BATTLE = 0x167, TITLE = 0x1DD, FF_ROW = 1 };
+#else
 enum { FIELD = 0x158, BATTLE = 0x159, TITLE = 0x1C1, FF_ROW = 1 };
+#endif
 
 static int fail(const char *msg) {
     fprintf(stderr, "FAIL: %s\n", msg);
