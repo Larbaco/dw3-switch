@@ -57,7 +57,10 @@ starts OFF. Settings are session-only until P9.4 persistence is implemented.
 See [P6.9_RESTART.md](P6.9_RESTART.md) for implementation and acceptance limits;
 Switch chord and save → restart → Continue validation remain open there.
 
-Widescreen is another live session toggle; Fast-forward is still a no-op stub.
+Widescreen is another live session toggle, ON by default on current `main`
+(#132). Supported scenes use 53-pixel gutters (about 16:9); title and movies
+remain 4:3. EU uses its 240-line picture for the same aspect rule.
+Fast-forward is still a no-op stub.
 Neither currently has a dedicated button hotkey. See
 [PORT_OPTIONS.md](PORT_OPTIONS.md) and [P6.1_WIDESCREEN.md](P6.1_WIDESCREEN.md).
 
@@ -73,9 +76,13 @@ These controls serve rendering investigation, not normal gameplay features.
 
 Switch diagnostic chords activate when all listed buttons become held; release
 before cycling again. Battle mode order is `soft` → `soft+bbox` → `gpu-solid` →
-`gpu-tex` → `soft`. `soft+bbox` currently behaves as `soft`; stock boot defaults
-to `soft`, unless the build or `DW3_MESH_SOFT=0` overrides it. Field rendering
-is not switched by this control. See [DEBUG_OVERLAY.md](DEBUG_OVERLAY.md).
+`gpu-tex` → `soft`. `soft+bbox` currently behaves as `soft`. Current `main`
+boots in `gpu-tex` (#132); `-DDW3_NX_MESH_SOFT_BATTLE=ON` or
+`DW3_MESH_SOFT=1` seeds soft instead. The GPU mode has known sky gaps, and
+the P5.2 performance/hardware gate remains open. Field rendering is not
+switched by this control. See [DEBUG_OVERLAY.md](DEBUG_OVERLAY.md) and
+[P5.2_BATTLE_GPU.md](P5.2_BATTLE_GPU.md). Previously tagged previews retain
+their own defaults; these changes do not apply retroactively to preview.24.
 
 **Chord overlap:** the restart chord includes the HUD chord. In a build with
 the HUD enabled, L + R + Plus + Minus can also toggle the HUD, even when restart
@@ -87,7 +94,7 @@ these combinations. Raw diagnostic buttons are also published to the game pad;
 they are not consumed by a separate input layer.
 
 Developer environment variables are startup/test configuration, not button
-hotkeys. For example `DW3_WIDESCREEN=1` seeds widescreen; `DW3_MESH_SOFT=0|1`
+hotkeys. For example `DW3_WIDESCREEN=0` disables the default widescreen; `DW3_MESH_SOFT=0|1`
 seeds Switch battle mode. Test automation such as `DW3_AUTO_PAD` and forced-stage
 or forced-save hooks is documented in the corresponding subsystem evidence,
 and must not be treated as proof of normal input or hardware acceptance.
