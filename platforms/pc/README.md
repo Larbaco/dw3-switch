@@ -74,10 +74,12 @@ DW3_PC_INTERNAL_RES=3 ./build/pc/dw3-pc --runtime runtime/us
 ```
 
 With a 320×240 game display mode, the game image occupies 960×720 pixels.
-In a 1280×720 window it is centered with 160-pixel side bars. The normal
-internal scale remains 1× when the variable is unset; this option is not
-compiled into the Switch host. This is an experimental render path, not a
-claim that every title/menu/movie layer has been visually polished at 3×.
+The SDL3 GPU host sets the initial 3× presentation window to 1280×720 pixels;
+the 4:3 image is centered with 160-pixel side bars. The menu atlas is sampled
+linearly from exact pixel-edge UVs, so the 960×720 content maps pixel-for-pixel
+at this output size and scales smoothly if the user resizes the window. The
+normal internal scale remains 1× when the variable is unset; this option is not
+compiled into the Switch host.
 
 Widescreen (P6.1, off by default) can also start on, for field and battle:
 

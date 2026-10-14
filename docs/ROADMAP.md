@@ -866,6 +866,43 @@ PS1 game, with vanilla-safe defaults and persistence on owner storage.
   modulated blue row for the unselected state. Ryubing-on-Xvfb captures
   of all three selections and shell open/close are kept locally; OLED
   handheld vs docked legibility is still to be confirmed by the owner.
+  **PC Digivice follow-up (2026-10-13):** the PC SDL3 GPU title UI uses a
+  transparent 960×720 RGBA presentation overlay, composited as one texture
+  draw. It contains the Press Start prompt, New Game / Options / Load Game
+  plaques, and three-line credits. The US GPU path now reconstructs the
+  original logo from the owner's runtime sprite sheet and PSY-Z base VRAM,
+  resamples its 300×136 source to a cached 720×326 RGBA texture with Lanczos2,
+  and swaps it in after the original logo animation settles. It retains the
+  original mark and does not add game art to Git. The animated background code
+  and filter are untouched; SDL3 GL, Switch, and EU keep their existing logo
+  path. The 3× internal renderer remains opt-in and is independent of this
+  logo-only resampling.
+  The overlay remains visible through the menu and clears when P9.2 opens or
+  the title flow fades to New Game / Continue / Opening. Logo/menu activation is
+  guarded by actual `MODE_TITLE`; the menu also clears on `TASK_KILL`, and failed
+  VRAM readback falls back to original sprites. Load Game maps to vanilla
+  Continue / `STGMCARD`; Switch and SDL3 GL retain their existing presentation
+  paths. Linux/Vulkan and SDL3 GL builds, plus patch-check, pass. US runtime on
+  The opt-in 3× GPU path now sizes its initial presentation window to
+  1280×720 after the first backend-presented frame; the 960×720 game image is
+  1:1 with 160-pixel side bars. The atlas uses linear sampling with exact edge
+  UVs, preserving source pixels at this size and filtering larger resizes. A
+  stable US/Xvfb capture shows the full original logo, all three buttons, and
+  footer in that 1280×720 window. The button artwork source is unchanged from
+  d7c3c02; the prior perceived regression compared the menu to a 1280×960
+  `PRESS START` capture, which enlarged/cropped the presentation and was not
+  the three-row menu. The logo uses Lanczos2 plus a mild local-luma refinement
+  from 300×136 runtime pixels to a 720×326 texture. Short paired captures
+  showed no measurable background-pixel motion, so visible animation is not
+  claimed. A post-transition Xvfb frame contains no logo/menu
+  overlay, but its FMV is corrupted because the isolated runtime lacks the
+  Mode2 BIN/CUE. Automated shell return and Load Game selection are not yet
+  confirmed. Windows/DXIL and macOS/Metal runtime validation remain open. The
+  accepted three-row capture is kept outside Git at
+  `tmp/evidence/pr121-restored/menu-3options-stable.png`; the post-transition
+  diagnostic is `after-title-transition.png` in the same folder. See
+  [TITLE_MENU_DESIGN.md](TITLE_MENU_DESIGN.md) and
+  [PC_TITLE_LOGO_RESAMPLING.md](PC_TITLE_LOGO_RESAMPLING.md).
   Done when: the screen is reachable from the main menu and returns
   cleanly to it (PC + Switch; TTB print on PC).
 - [x] **P9.3 Toggle registry.** Maintain a registry of non-native features

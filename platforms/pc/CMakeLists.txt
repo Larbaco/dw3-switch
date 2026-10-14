@@ -13,6 +13,23 @@ add_subdirectory(${CMAKE_SOURCE_DIR}/../../port ${CMAKE_BINARY_DIR}/port)
 # PC-only: enable Psyz_VideoAlloc* TTB dump path in port/options (Switch
 # game NRO does not link those PSY-Z capture symbols).
 target_compile_definitions(dw3_port_options PRIVATE DW3_PC_HOST=1)
+target_compile_definitions(dw3_engine PRIVATE DW3_PC_HOST=1)
+target_compile_definitions(dw3_title PRIVATE DW3_PC_HOST=1)
+
+if(PSYZ_RENDERER STREQUAL "sdl3_gpu")
+  target_compile_definitions(dw3_title PRIVATE DW3_PC_SDL3_GPU=1)
+  target_compile_definitions(dw3_port_options PRIVATE DW3_PC_SDL3_GPU=1)
+  set(_DW3_PC_TITLE_OVERLAY_SOURCES
+    src/title_menu_overlay.c
+    src/title_overlay_art.c
+    src/title_logo_resample.c
+  )
+  target_include_directories(dw3_port_options PRIVATE
+    ${CMAKE_CURRENT_LIST_DIR}/src
+  )
+elseif(NOT PSYZ_RENDERER STREQUAL "sdl3_gl")
+  message(FATAL_ERROR "Unsupported PSYZ_RENDERER: ${PSYZ_RENDERER}")
+endif()
 
 add_executable(dw3-pc
   src/main.c
@@ -21,6 +38,10 @@ add_executable(dw3-pc
   # Direct TU so PadGetState / PadInitDirect win over PSY-Z stubs in libpsyz.a
   ${CMAKE_SOURCE_DIR}/../../port/psyz_missing/psyz_pad_host.c
 )
+if(PSYZ_RENDERER STREQUAL "sdl3_gpu")
+  target_compile_definitions(dw3-pc PRIVATE DW3_PC_SDL3_GPU=1)
+  target_sources(dw3-pc PRIVATE ${_DW3_PC_TITLE_OVERLAY_SOURCES})
+endif()
 target_include_directories(dw3-pc PRIVATE
   ${CMAKE_SOURCE_DIR}/../../port/cdfs
   ${CMAKE_SOURCE_DIR}/../../port/memcard
@@ -29,6 +50,11 @@ target_include_directories(dw3-pc PRIVATE
   ${CMAKE_SOURCE_DIR}/../../port/include
   ${CMAKE_SOURCE_DIR}/../../vendor/psyz/psyz/include
 )
+if(PSYZ_RENDERER STREQUAL "sdl3_gpu")
+  target_include_directories(dw3-pc PRIVATE
+    ${CMAKE_SOURCE_DIR}/../../port/options
+  )
+endif()
 string(TOLOWER "${DW3_VERSION}" _dw3_pc_ver)
 if(_dw3_pc_ver STREQUAL "eu")
   target_compile_definitions(dw3-pc PRIVATE VERSION_EU=1 DW3_DEFAULT_RUNTIME="runtime/eu")

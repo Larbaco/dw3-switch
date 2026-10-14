@@ -87,12 +87,16 @@ git_apply_in() {
   local dest="$1"
   local check_flag="$2" # "" or "--check"
   local patch="$3"
+  local ceiling
+  ceiling="$(dirname "$dest")"
   if [[ -n "$check_flag" ]]; then
-    (cd "$dest" && git apply --check -- "$patch") \
+    (cd "$dest" && GIT_CEILING_DIRECTORIES="$ceiling" \
+      git apply --check -- "$patch") \
       || die "patch failed --check: $patch"
   else
     echo "Applying $(basename "$patch")"
-    (cd "$dest" && git apply -- "$patch") \
+    (cd "$dest" && GIT_CEILING_DIRECTORIES="$ceiling" \
+      git apply -- "$patch") \
       || die "patch failed to apply: $patch"
   fi
 }

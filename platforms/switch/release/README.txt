@@ -1,11 +1,26 @@
 Digimon World 3 / 2003, Switch homebrew preview
 
-This release is v0.6.5-preview.22, built from main after PR #123
-(widescreen). It also carries #114, #115 and #122, merged after
-preview.21. Battle defaults to software RasterTriangle; field stays
+This release is v0.6.5-preview.23, built from main after PR #125
+(PC title menu, from #121) and #124 (widescreen OLED notes). On the
+Switch this build plays the same as preview.22: #125 only changes the
+PC build and #124 is documentation. preview.22 carried #114, #115, #122
+and #123. Battle defaults to software RasterTriangle; field stays
 software RGB555. GPU diagnostic instrumentation is disabled.
 
 New in this preview
+
+  PC title menu (#125, from #121). The PC build (SDL3 GPU) draws a new
+  New Game / Options / Load Game menu at native 720p over the original
+  title. The Switch keeps its Start / Port options / Continue row,
+  unchanged.
+
+  Widescreen OLED notes (#124). The preview.22 hardware feedback is
+  recorded in the docs, not fixed yet: thin strips at the field edges,
+  battle default to gpu-tex (its right-panel Digimon face is missing),
+  title and menus still 4:3, Widescreen ON by default, and the Gatomon
+  inn scene leaving the edges uncovered.
+
+From preview.22
 
   Widescreen (#123, P6.1). Port options on the title menu has a
   Widescreen switch, OFF by default and not saved between boots. When
@@ -14,8 +29,8 @@ New in this preview
   in the middle 320 columns. Title, menus, movies and the card game stay
   4:3. The log (and sdmc:/switch/dw3/dw3.log) prints
   "dw3-widescreen: gutter 53 px per side" in battle and 32 on the field.
-  Checked in the PC build and in Ryubing with the disc owner's data. Not
-  yet on hardware. Things can pop in at the side edges; please report
+  Checked in the PC build, in Ryubing, and on the OLED (preview.22,
+  "almost perfect"; open items above). Things can pop in at the side edges; please report
   where. A 1x3 pixel black mark at the left edge of one field map is a
   map tile seam, not this feature.
 
@@ -109,14 +124,14 @@ Install the test build
   want the host log.
 
   hbmenu shows the NACP display version for SD installs (this preview:
-  0.6.5-p.22 — libnx allows 15 characters, so "preview" becomes "p").
+  0.6.5-p.23 — libnx allows 15 characters, so "preview" becomes "p").
   nxlink loads may not refresh that metadata; look for
-  dw3: version=0.6.5-preview.22 on the host log or in
+  dw3: version=0.6.5-preview.23 on the host log or in
   sdmc:/switch/dw3/dw3.log.
 
   Do not delete OLED saves (save0.bin / save1.bin) for this test.
 
-OLED checklist (preview.22)
+OLED checklist (preview.23)
 
   1. Boot with existing us/ and flat saves. Title, Port options, turn
      Widescreen on, back, Continue.

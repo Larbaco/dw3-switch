@@ -117,11 +117,11 @@ Patch `0045-PORT_HOST-p92-title-options-row.patch` extends the game menu
 through `PORT_HOST`; `port/options/title_entry.c` draws the added label
 with the game's resident proportional font. The original title labels are
 pre-rendered sprites, so this new label uses the in-game font rather than
-an identical new title sprite. No owner artwork or generated asset is
-bundled.
+an identical new title sprite. No owner artwork or generated art is bundled
+into the runtime.
 
-**Presentation (title-options UI pass).** The added button is made to read
-as the third original button rather than a debug overlay:
+**Presentation (title-options UI pass).** The Switch and baseline PC row is
+made to read as the third original button rather than a debug overlay:
 
 - The original sprite backgrounds are 164x16 with the selection frame one
   pixel outside. The added row now uses the same 164x16 one-pixel
@@ -149,6 +149,41 @@ open the shell, preserving the Switch diagnostic chords. The clipped
 standalone shortcut hint is no longer drawn because the visible row is
 the entry. Independent PC visual/input validation passed as recorded below.
 Switch hardware validation passed below; P9.3 effects and P9.4 persistence remain open.
+
+### PC Digivice title-menu follow-up
+
+The PC SDL3 GPU title presents **New Game / Options / Load Game** in a
+transparent 960×720 RGBA overlay, drawn over the original title image by one
+SDL3 GPU texture and one six-vertex quad. The texture contains three visual states;
+selection changes the lighting without moving the plaque or label. Plaques
+have navy faces, steel-blue bevels, clipped corner hardware, amber fasteners,
+internal rails, and legible centered text. This is PC-gated. Switch keeps its
+existing Start / Port options / Continue row and initial Continue selection.
+The #117 concept atlas remains a design reference (the mockup is kept
+out of Git because it shows game artwork) and are not packaged as
+runtime art. Selecting `PSYZ_RENDERER=sdl3_gl` keeps the earlier PS1-primitive
+title drawing path and does not compile the SDL3 GPU overlay.
+
+US-runtime validation under Xvfb/Vulkan at `DW3_PC_INTERNAL_RES=3` captured
+New Game and Options selection plus P9.2 shell open in an exact 1280×720
+window. Automated shell return and Load Game selection were not confirmed.
+**Load Game** maps to the existing vanilla Continue /
+`STGMCARD` flow; **Options** opens the existing P9.2 shell and the overlay
+hides while it is open. Captures are local under
+`/tmp/dw3-pc-title-menu-redo/evidence-redesign/`: `hires-final-new-game.png`,
+`hires-verify-options.png`, and `hires-verify-options-shell.png`. The 960×720
+4:3 viewport is centered, so the 1280×720 output has pillarboxes. Windows/DXIL
+and macOS/Metal runtime checks
+remain open.
+
+The labels preserve the original flow: New Game uses vanilla choice 1;
+Options opens the P9.2 shell and its current no-op stubs; Load Game maps to
+vanilla Continue (choice 2) and the original `STGMCARD` flow. It does not
+implement another save loader. PC defaults focus to New Game so it matches the
+concept. The build and patch application check pass. Earlier 320×240 primitive
+captures and 1280×960 window notes are superseded by the GPU validation above.
+The Linux/Vulkan run used the US runtime and `DW3_PC_INTERNAL_RES=3`; Windows
+and macOS runtime rendering remain untested.
 
 ## PC bring-up (P9.2 MVP shortcut)
 
@@ -259,3 +294,10 @@ validate every controller model or PC gamepad configuration.
 
 The switches remain safe no-op stubs. Hardware toggle effects and persistence
 were not tested; P9.3/P9.4 remain open and the overall Phase 9 gate is open.
+
+## Title-screen visual reference
+
+The proposed title-screen labels and orange/blue Digivice button styling are
+documented in [TITLE_MENU_DESIGN.md](TITLE_MENU_DESIGN.md). The linked atlas
+is a visual concept; it does not indicate that the generated artwork is wired
+into the game renderer.
