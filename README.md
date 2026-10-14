@@ -18,16 +18,16 @@ console.
 
 Checkboxes: [docs/ROADMAP.md](docs/ROADMAP.md). Phase 3 gate:
 [docs/P3_GATE.md](docs/P3_GATE.md). The latest tagged preview is
-[v0.6.5-preview.25](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.25),
-with US and EU ordinary/nxlink builds from `705afcf`. Its provenance and
-remaining hardware gates are recorded in [RELEASE_PREVIEW25](docs/RELEASE_PREVIEW25.md);
+[v0.6.5-preview.26](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.26),
+with US and EU ordinary/nxlink builds from `d3fc498`. Its provenance and
+remaining hardware gates are recorded in [RELEASE_PREVIEW26](docs/RELEASE_PREVIEW26.md);
 see [movie pacing diagnostics](docs/P3.7_MOVIE_PACING_DIAGNOSTICS.md)
 for the separate movie evidence.
 
 After preview.25, `main` includes fixes for battle idle-camera transforms,
 black texels in partner portraits, and blend state that could leave the HUD
-or restart title/logo dark (#148). These fixes are not in the published
-preview.25 and still need in-game visual acceptance on OLED. The proposed
+or restart title/logo dark (#148). These fixes are included in preview.26 and still need in-game visual
+acceptance on OLED. The proposed
 field-turbo raster-skipping optimization remains deferred: every game frame
 continues to draw into VRAM to preserve encounter-transition texture copies.
 See [battle GPU follow-ups](docs/P5.2_BATTLE_GPU.md) and
@@ -209,7 +209,7 @@ EU is a separate build tree and needs `runtime/eu`:
 Current `main` starts the EU build at the game's original language selection
 before the opening and title: Up/Down selects and Start confirms (Plus on
 Switch, Enter on PC). US boot is unchanged. OLED validation of this new boot
-flow remains open; it is not included in the published preview.25.
+flow remains open; this flow is included in preview.26.
 
 ### Disc to runtime
 
@@ -275,15 +275,18 @@ The release tag becomes the NACP version (compressed for hbmenu) and the
 `dw3: version=` boot line. No disc data.
 
 The latest preview is
-[v0.6.5-preview.25](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.25),
-cut from `705afcf`. It includes US and EU ordinary and nxlink NROs, `README.txt`,
-[SOURCE.txt](https://github.com/Larbaco/dw3-switch/releases/download/v0.6.5-preview.25/SOURCE.txt),
-and [SHA256SUMS](https://github.com/Larbaco/dw3-switch/releases/download/v0.6.5-preview.25/SHA256SUMS).
-Widescreen starts ON and Switch battle defaults to `gpu-tex`; known stage-specific
-sky gaps remain. Field/battle fast-forward is available through R3 and Port options.
-Restart remains opt-in. Full boot version is `0.6.5-preview.25`; the shorter
-hbmenu NACP version is `0.6.5-p.25`. OLED EU boot is confirmed; gameplay and feature acceptance remain open.
-See [RELEASE_PREVIEW25](docs/RELEASE_PREVIEW25.md) for build provenance and gates.
+[v0.6.5-preview.26](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.26),
+cut from `d3fc498`. It includes US and EU ordinary and nxlink NROs, `README.txt`,
+[SOURCE.txt](https://github.com/Larbaco/dw3-switch/releases/download/v0.6.5-preview.26/SOURCE.txt),
+and [SHA256SUMS](https://github.com/Larbaco/dw3-switch/releases/download/v0.6.5-preview.26/SHA256SUMS).
+It adds EU language selection, battle camera/portrait/blend fixes, the revised
+Port options screen, and corrected restart help. Widescreen starts ON and
+Switch battle defaults to `gpu-tex`; known stage-specific sky gaps remain.
+Field/battle fast-forward is available through R3 and Port options; the proposed
+field raster-skipping optimization is deferred. Restart remains opt-in.
+Full boot version is `0.6.5-preview.26`; the shorter hbmenu NACP version is
+`0.6.5-p.26`. Publication does not establish OLED navigation or visual acceptance.
+See [RELEASE_PREVIEW26](docs/RELEASE_PREVIEW26.md) for build provenance and gates.
 
 The earlier movie-fix preview is
 [v0.6.5-preview.21](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.21),
