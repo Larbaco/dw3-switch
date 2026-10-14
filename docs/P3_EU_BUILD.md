@@ -24,8 +24,14 @@ the host test harness simulates `EEXIST`. A failed extraction leaves no
 accepted map, and completed files can be reused on retry. No disc image or
 extracted runtime is included in the repository. Synthetic host tests cover
 EU output, wrong-region rejection, retry after a partial copy, replacement of
-partial outputs, and second-boot no-reextract behavior. Ryubing/OLED
-acceptance remains separate; the EU Switch playthrough is still open.
+partial outputs, and second-boot no-reextract behavior. Independent Ryubing validation extracted 2383 files from only the matching
+BIN/CUE, then reused the runtime on a second boot. The movie reached frame
+2100 at about 15 fps with zero skipped frames; pressing Plus for one second
+returned to the title. This proves playback and skip, not natural completion
+or audible A/V synchronization. That emulator build preceded the FAT swap
+hardening; the final FAT path has synthetic host coverage. OLED extraction,
+movie acceptance, and the EU Switch playthrough remain open. Evidence stays
+outside Git under `/mnt/cabal/tmp/dw3-eu-extraction-test/`.
 
 ## Root causes (pre-scaffold blockers)
 
@@ -120,7 +126,8 @@ synthetic host coverage; full EU playthrough and OLED validation remain open.
   via country select; real overlay link is a later task.
 - EU-only stages WSTAG920–974 still weak-stubbed for link (not in P3.8 batches).
 - EU playthrough / “both versions play” not claimed (Phase 6 / P7.2 class).
-- OLED EU hardware smoke not yet run (needs packed `eu/` on SD + EU NRO).
+- OLED EU extraction and hardware smoke not yet run (needs the matching
+  owner BIN/CUE on SD + EU NRO; a prepacked runtime is optional).
 - Keep US as the default CI / day-to-day bring-up target.
 
 ## Regenerating `overlay_table_eu.c`
