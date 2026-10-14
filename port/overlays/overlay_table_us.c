@@ -10,7 +10,8 @@
  * P3.8 batch5 Amaterasu twins Central→North (skip WSTAG460),
  * P3.8 batch6 undersea / spy-satellite / underground,
  * FIGHTSTG, WFIGHTMN, STFGTREP, STSTATUS, STITSHOP, STGTRAIN, STGDGLAB,
- * STGMCARD, STDGNAME, CARDGAME, STCRDDEK, STCRDSHP, STCRDABM, STAGSLCT.
+ * STGMCARD, STDGNAME, CARDGAME, STCRDDEK, STCRDSHP, STCRDABM, STAGSLCT,
+ * CNTY_SEL (P6.2).
  * .data/.bss snapshots are bound from named sections at register time.
  */
 #ifndef PORT_HOST
@@ -276,6 +277,7 @@
 #define DW3_FILE_STCRDDEK 0x1BC
 #define DW3_FILE_STCRDSHP 0x1C0
 #define DW3_FILE_STCRDABM 0x177
+#define DW3_FILE_CNTY_SEL 0x157
 #define DW3_FILE_STAGSLCT 0x176
 
 void *STDWTITL_start(void);
@@ -294,6 +296,7 @@ void *STCRDDEK_start(void);
 void *STCRDSHP_start(void);
 void *STCRDABM_start(void);
 void *STAGSLCT_start(void);
+void *CNTY_SEL_start(void);
 
 void dw3_overlay_bind_field_sections(Dw3OverlayDesc *fieldstg, Dw3OverlayDesc *stplnmet,
                                      Dw3OverlayDesc *wstag260, Dw3OverlayDesc *wstag780,
@@ -549,6 +552,7 @@ void dw3_overlay_bind_menu_sections(Dw3OverlayDesc *ststatus, Dw3OverlayDesc *st
 void dw3_overlay_bind_cardgame_sections(Dw3OverlayDesc *cardgame, Dw3OverlayDesc *stcrddek,
                                         Dw3OverlayDesc *stcrdshp, Dw3OverlayDesc *stcrdabm);
 void dw3_overlay_bind_stagslct_sections(Dw3OverlayDesc *stagslct);
+void dw3_overlay_bind_cnty_sel_sections(Dw3OverlayDesc *cnty_sel);
 
 enum {
     OVL_STDWTITL = 0,
@@ -572,6 +576,7 @@ enum {
     OVL_STCRDSHP,
     OVL_STCRDABM,
     OVL_STAGSLCT,
+    OVL_CNTY_SEL,
     OVL_WSTAG200,
     OVL_WSTAG201,
     OVL_WSTAG206,
@@ -831,6 +836,7 @@ static Dw3OverlayDesc g_us_overlays[OVL_COUNT] = {
     {DW3_FILE_STCRDSHP, NULL, NULL, NULL, 0, NULL, 0},
     {DW3_FILE_STCRDABM, NULL, NULL, NULL, 0, NULL, 0},
     {DW3_FILE_STAGSLCT, NULL, NULL, NULL, 0, NULL, 0},
+    {DW3_FILE_CNTY_SEL, NULL, NULL, NULL, 0, NULL, 0},
     {DW3_FILE_WSTAG200, NULL, NULL, NULL, 0, NULL, 0},
     {DW3_FILE_WSTAG201, NULL, NULL, NULL, 0, NULL, 0},
     {DW3_FILE_WSTAG206, NULL, NULL, NULL, 0, NULL, 0},
@@ -1090,6 +1096,7 @@ void dw3_overlay_register_us_title(void) {
     g_us_overlays[OVL_STCRDSHP].entry = (Dw3OverlayEntry)STCRDSHP_start;
     g_us_overlays[OVL_STCRDABM].entry = (Dw3OverlayEntry)STCRDABM_start;
     g_us_overlays[OVL_STAGSLCT].entry = (Dw3OverlayEntry)STAGSLCT_start;
+    g_us_overlays[OVL_CNTY_SEL].entry = (Dw3OverlayEntry)CNTY_SEL_start;
     g_us_overlays[OVL_WSTAG200].entry = NULL;
     g_us_overlays[OVL_WSTAG201].entry = NULL;
     g_us_overlays[OVL_WSTAG206].entry = NULL;
@@ -1559,6 +1566,7 @@ void dw3_overlay_register_us_title(void) {
     dw3_overlay_bind_cardgame_sections(&g_us_overlays[OVL_CARDGAME], &g_us_overlays[OVL_STCRDDEK],
                                        &g_us_overlays[OVL_STCRDSHP], &g_us_overlays[OVL_STCRDABM]);
     dw3_overlay_bind_stagslct_sections(&g_us_overlays[OVL_STAGSLCT]);
+    dw3_overlay_bind_cnty_sel_sections(&g_us_overlays[OVL_CNTY_SEL]);
 
     dw3_overlay_set_table(g_us_overlays, OVL_COUNT);
     fprintf(stderr,
@@ -1566,7 +1574,7 @@ void dw3_overlay_register_us_title(void) {
             "WSTAG260/780/785/790 + P3.8 batch1+2+3+4+5+6 stages/"
             "FIGHTSTG/WFIGHTMN/STFGTREP/"
             "STSTATUS/STITSHOP/STGTRAIN/STGDGLAB/STGMCARD/STDGNAME/"
-            "CARDGAME/STCRDDEK/STCRDSHP/STCRDABM/STAGSLCT "
+            "CARDGAME/STCRDDEK/STCRDSHP/STCRDABM/STAGSLCT/CNTY_SEL "
             "count=%d\n",
             OVL_COUNT);
 }

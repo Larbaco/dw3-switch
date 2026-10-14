@@ -64,15 +64,17 @@ Unlinked stages get weak stubs from `tools/gen_stage_stubs.py`.
 | `STCRDSHP` | `0x1C0` | Card pack shop (P3.5) |
 | `STCRDABM` | `0x177` | Card album (P3.5) |
 | `STAGSLCT` | `0x176` | Debug stage select (P3.8) |
+| `CNTY_SEL` | `0x157` (EU `0x165`) | Country / language select (P6.2) |
 
 `overlay_table_us.c` registers the rows above for US; `overlay_table_eu.c`
 is selected with `-DDW3_VERSION=eu` (see `docs/P3_EU_BUILD.md`). `CNTY_SEL`
-stays weak-stubbed (EU country-select overlay not linked yet).
+is linked in both (`dw3_p62_cnty_sel`); the EU build boots into it (patch
+`0055`) and it sets `LANGUAGE`. On US it is reachable only from STAGSLCT.
 Host objects use named `.data`/`.bss` sections (`tools/rename_ovl_sections.py`,
 `tools/merge_ovl_sections.ld`) and snapshots in `overlay_sections.c`. Stage TUs
 are symbol-prefixed (`tools/prefix_stage_obj.py`) and linked via `dw3_p32_field`;
 battle via `dw3_p33_battle`; menus via `dw3_p34_menus`; cardgame via
-`dw3_p35_cardgame`; stage select via `dw3_p38_stagslct`. Runtime notes:
+`dw3_p35_cardgame`; stage select via `dw3_p38_stagslct`; country select via `dw3_p62_cnty_sel`. Runtime notes:
 `docs/P3.2_FIELD.md`, `docs/P3.3_BATTLE.md`, `docs/P3.4_MENUS.md`,
 `docs/P3.5_CARDGAME.md`, `docs/P3.8_STAGES.md`.
 

@@ -674,6 +674,11 @@ tick does not start Phase 6.
   pending.
 - [ ] **P6.2** PAL/NTSC and EU/US selection at boot; language from EU
   `CNTY_SEL`.
+  **Status (2026-10-14, language part):** `CNTY_SEL` linked as
+  `dw3_p62_cnty_sel` (US and EU tables); EU host boot starts there (patch
+  `0055`) and the choice sets `LANGUAGE` before the opening and title.
+  PC US/EU link; not yet seen on Ryubing/OLED. PAL/NTSC and disc
+  selection still open.
 - [ ] **P6.3** PGXP-style vertex precision from PSY-Z if it stays stable.
 - [ ] **P6.4** Fast-forward / frame-skip toggles for grinding (optional).
   **Status (2026-10-14, first pass):** R3 toggles 2x/3x/4x fast-forward

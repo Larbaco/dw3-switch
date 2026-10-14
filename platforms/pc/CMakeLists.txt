@@ -71,7 +71,7 @@ endif()
 target_link_libraries(dw3-pc PRIVATE
   "-Wl,--start-group"
   "-Wl,--whole-archive" dw3_p32_field dw3_p33_battle dw3_p34_menus dw3_p35_cardgame
-    dw3_p38_stagslct
+    dw3_p38_stagslct dw3_p62_cnty_sel
   "-Wl,--no-whole-archive"
   dw3_engine_objs
   "-Wl,--end-group"
@@ -113,6 +113,7 @@ target_link_options(dw3-pc PRIVATE
   "-Wl,--undefined=__start_dw3data_stcrdshp"
   "-Wl,--undefined=__start_dw3data_stcrdabm"
   "-Wl,--undefined=__start_dw3data_stagslct"
+  "-Wl,--undefined=__start_dw3data_cnty_sel"
 )
 target_include_directories(psyz PRIVATE ${CMAKE_SOURCE_DIR}/../../vendor/psyz/psyz/include)
 target_compile_definitions(psyz PRIVATE __psyz)

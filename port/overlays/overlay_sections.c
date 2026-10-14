@@ -1060,6 +1060,11 @@ extern char __stop_dw3data_stagslct[];
 extern char __start_dw3bss_stagslct[];
 extern char __stop_dw3bss_stagslct[];
 
+extern char __start_dw3data_cnty_sel[];
+extern char __stop_dw3data_cnty_sel[];
+extern char __start_dw3bss_cnty_sel[];
+extern char __stop_dw3bss_cnty_sel[];
+
 static void bind_section(Dw3OverlayDesc *desc, char *data, char *data_end, char *bss,
                          char *bss_end) {
     size_t data_size;
@@ -1902,3 +1907,7 @@ void dw3_overlay_bind_stagslct_sections(Dw3OverlayDesc *stagslct) {
                  __start_dw3bss_stagslct, __stop_dw3bss_stagslct);
 }
 
+void dw3_overlay_bind_cnty_sel_sections(Dw3OverlayDesc *cnty_sel) {
+    bind_section(cnty_sel, __start_dw3data_cnty_sel, __stop_dw3data_cnty_sel,
+                 __start_dw3bss_cnty_sel, __stop_dw3bss_cnty_sel);
+}
