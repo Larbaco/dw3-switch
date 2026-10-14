@@ -1,200 +1,124 @@
 Digimon World 3 / 2003, Switch homebrew preview
 
-This release is v0.6.5-preview.24, built from main after PR #127
-(Switch title menu), #128 (EU runtime auto-extraction) and #129 (EU
-extraction notes). Battle defaults to software RasterTriangle; field
-stays software RGB555. GPU diagnostic instrumentation is disabled.
-This release ships the US build only.
+Release candidate notes for v0.6.5-preview.25. These notes describe the
+intended bundle; publication and OLED acceptance are separate steps.
+The release tag and boot version identify the actual source revision.
 
 New in this preview
 
-  Switch title menu (#127). The Switch now draws the same New Game /
-  Options / Load Game menu as the PC build, at native resolution over
-  the original title, with the original logo resampled to HD from the
-  game's own sprites. Options opens the port options (Widescreen,
-  Restart hotkey). The menu dims with the title fades. The log prints
-  "dw3-title-overlay: 960x2880 RGBA texture, 4 states (GLES)" and
-  "dw3-title-logo: resampled logo 720x326 received". Checked in Ryubing
-  with the US and EU discs (EU in all seven language banks, using the
-  game's own menu words); not yet checked on the OLED, please report.
+  Widescreen is ON by default (#132). Field and battle extend to about
+  16:9, including the EU 240-line display. Field-menu, shop and save
+  backgrounds extend into the sides; HUD content stays centered. Other
+  menus keep their original width. Port options can switch it OFF.
+  Some original map layers still end at the old edge; report the area.
 
-  EU disc support (#128, #129). The EU build can extract its runtime
-  data from the EU BIN/CUE on first boot. The EU .nro is not part of
-  this release yet.
+  Switch battle defaults to gpu-tex (#132). The right-panel Digimon
+  portrait is restored. Known issue: the cliff/sky battle stage still
+  has black sky gaps in gpu-tex; soft draws that sky correctly.
+  Minus + ZL + ZR cycles soft / soft+bbox (stub) / gpu-solid / gpu-tex.
+  Field rendering remains software RGB555. Performance acceptance and
+  a full stage sweep remain open; no CPU/GPU clock change is made.
 
-From preview.23
+  Fast-forward (#133, P6.4). Gameplay starts at 1x. Right-stick click
+  (R3) toggles turbo in field and battle. Port options selects 2x, 3x,
+  4x or OFF; OFF disables R3. Title, movies, standalone menus, the
+  memory-card screen and card game stay at 1x. Audio speeds up with
+  gameplay. Port options are session-only, not saved between launches.
 
-  PC title menu (#125, from #121). The PC build (SDL3 GPU) draws the
-  new menu at native 720p over the original title.
+  Both US and EU game builds are included, each with an ordinary NRO
+  and an nxlink logging NRO. Neither includes disc data. EU first boot
+  can extract its runtime from the owner's matching Mode2 BIN/CUE.
 
-  Widescreen OLED notes (#124). The preview.22 hardware feedback is
-  recorded in the docs: thin strips at the field edges, battle default
-  to gpu-tex (its right-panel Digimon face is missing), menus still
-  4:3, Widescreen ON by default, and the Gatomon inn scene leaving the
-  edges uncovered.
+Carried forward
 
-From preview.22
+  Native title choices New Game / Options / Load Game, with EU labels
+  from the current game language; Options opens Port options.
+  Opening-video read-race fix, left-stick input, flat saves and the
+  memory-card load/save progress bar.
 
-  Widescreen (#123, P6.1). Port options on the title menu has a
-  Widescreen switch, OFF by default and not saved between boots. When
-  it is on, battles draw 53 extra pixels on each side (426x240, about
-  16:9) and the field draws 32 (384x240, 16:10). The HUD and menus stay
-  in the middle 320 columns. Title, menus, movies and the card game stay
-  4:3. The log (and sdmc:/switch/dw3/dw3.log) prints
-  "dw3-widescreen: gutter 53 px per side" in battle and 32 on the field.
-  Checked in the PC build, in Ryubing, and on the OLED (preview.22,
-  "almost perfect"; open items above). Things can pop in at the side edges; please report
-  where. A 1x3 pixel black mark at the left edge of one field map is a
-  map tile seam, not this feature.
+  Restart hotkey remains OFF by default. Enable it in Port options,
+  then hold L + R + Plus + Minus. Dirty saves are flushed before the
+  game returns to its title without quitting the NRO. A flush failure
+  cancels restart. Unsaved progress is lost. Release before repeating.
+  This chord can also toggle the nxlink debug HUD, whose own chord is
+  Minus + L + R. OLED save -> restart -> Continue acceptance remains
+  to be recorded. See docs/HOTKEYS.md for all mapped controls.
 
-  Restart hotkey (#122, P6.9). Port options has Restart hotkey, OFF by
-  default. With it on, hold L + R + Plus + Minus (PS1 L1 + R1 + Start +
-  Select): saves are flushed first, then the game returns to the title
-  without leaving the .nro. On the nxlink build the same buttons also
-  toggle the debug HUD. Validated on PC; not yet on Switch.
+Bundle
 
-  GPU battle modes (#114). gpu-solid and gpu-tex no longer show a flat
-  blue battle: the background clear now goes to the mesh FBO. Soft is
-  still the cold-boot default. Minus + ZL + ZR cycles
-  soft / soft+bbox (stub) / gpu-solid / gpu-tex.
-  Toggle the nxlink debug HUD with Minus + L + R.
+  dw3-switch.nro              US ordinary build
+  dw3-switch-nxlink.nro       US nxlink logging build
+  dw3-switch-eu.nro           EU ordinary build
+  dw3-switch-eu-nxlink.nro    EU nxlink logging build
+  README.txt                 these notes
+  SHA256SUMS                 hashes of the published files
+  SOURCE.txt                 exact build source revision and versions
 
-  Port options row (#115): a uniform, easier-to-read row on the title.
+  The release workflow creates the US pair. The matching EU pair and
+  provenance files are added after verifying their source and hashes.
+  No original game files, BIN/CUE/ISO, BIOS or extracted tree ship here.
 
-  Carried forward: the STR read-race fix (#111), the empty StGetNext
-  scan cache (#106), own-disc extraction, left-stick input, flat saves
-  and the STGMCARD load/save progress bar.
+Own-disc setup and extraction
 
-This build does not call clkrstSetClockRate or appletSetCpuBoostMode.
-The CPU and GPU stay at the rate the console set.
+  Use Digimon World 3 US (SLUS-01436) with the US NRO, or Digimon World
+  2003 EU (SLES-03936) with the EU NRO. Region paths remain separate:
 
-Every 60 frames the log prints one line, frame dt us=. About 1000000
-is 60 Hz. About 2000000 is 30 Hz. On field, mesh dbg: should show
-tris_enq near 0 and frames_blit dominant. On FIGHTSTG with soft,
-expect frames_blit / soft=. With gpu-solid or gpu-tex, frames_mesh
-and tris may rise.
+    US runtime: sdmc:/switch/dw3/us/
+    EU runtime: sdmc:/switch/dw3/eu/
 
-boot_tim.bin is not a disc image. A CUE whose FILE name is missing still
-selects the only other .bin in that directory when the file is large
-enough.
+  US: place the matching Mode2 BIN/CUE beside us/, in switch/dw3/.
+  EU: place the matching Mode2 BIN/CUE inside switch/dw3/eu/ (for
+  example disc.bin + disc.cue). The EU NRO extracts SLES_039.36,
+  boot_tim.bin, files_eu.json and mapped runtime files there.
 
-This release has three files.
+  First boot draws an extraction progress bar. Leave it running.
+  A wrong-region disc is rejected before accepting its map. Existing
+  runtime files are validated before game startup; old 2048-byte-sector
+  STR files may be restored from the BIN. The following boot reuses
+  the validated runtime. Do not pre-extract files when testing the
+  NRO's own extraction path.
 
-  dw3-switch-nxlink.nro    the test build. Same game, log on the PC.
-  dw3-switch.nro           the same game, no network.
-  README.txt               this file.
+  Preserve us/, eu/ and their memcard directories. Never delete or
+  move save0.bin, save1.bin or .mcr.bak to force extraction. No save
+  migration between US and EU is implied by this release.
 
-There is no game data in these files. No disc image, no BIOS, no extracted
-tree. You supply that from a copy you own.
+Install / nxlink
 
-This is a prerelease. An OLED has reached the title, the field, and
-battle. It is not a finished port. It is also not the small EGL + audren
-sample that `make -C platforms/switch` produces. CI job `switch` builds
-that sample. Do not install the sample and expect the game.
+  Copy the desired NRO to SD and launch it from your homebrew launcher.
+  For PC logs, open the launcher's nxlink receiver (Sphaira waiting
+  for nxlink, or hbmenu Y NetLoader), on the same network, then:
 
-What you need
+    nxlink -a <Switch-IP> -s dw3-switch-eu-nxlink.nro
 
-  Atmosphere and the Homebrew Menu, the usual homebrew setup.
-  A legally obtained US disc, Digimon World 3, product code SLUS-01436.
-  This US binary looks for sdmc:/switch/dw3/us/. An EU Digimon World 2003
-  (SLES-03936) NRO is built with tools/build_switch_game.sh --eu and reads
-  sdmc:/switch/dw3/eu/. The matching EU Mode2 BIN and CUE can be placed in
-  that directory; the NRO rejects a US executable and extracts SLES_039.36,
-  mapped files, and boot_tim.bin before accepting files_eu.json.
-
-Install the test build
-
-  Copy dw3-switch-nxlink.nro to:
-
-    sdmc:/switch/dw3-switch-nxlink.nro
-
-  Put your own Mode2 BIN and CUE next to the US tree, not inside it:
-
-    sdmc:/switch/dw3/Digimon World 3.cue
-    sdmc:/switch/dw3/Digimon World 3.bin
-    sdmc:/switch/dw3/us/
-
-  Open hbmenu, press Y for NetLoader, and leave it waiting. On the PC,
-  same network:
-
-    nxlink -a <Switch-IP> -s dw3-switch-nxlink.nro
-
-  Do not probe TCP 28280 before nxlink (empty connect breaks hbmenu
-  NetLoader with err=11). Prefer hbmenu Y NetLoader over Sphaira grid.
-
-  If us/ is missing, the first boot builds it from the BIN. The screen
-  stays dark blue and draws a bar. The log says "extracting". That copy
-  is the whole runtime, not only the movies. If us/ is already there,
-  boot only checks sizes, then rewrites any STR that is still 2048 bytes
-  per sector. That rewrite logs "restore" and uses the same bar. The
-  next boot only stats.
-
-  EU-only: put the owner's matching Mode2 BIN/CUE in sdmc:/switch/dw3/eu/
-  (for example disc.cue + disc.bin) and launch the --eu NRO. The progress
-  bar covers runtime extraction. A wrong-region disc is rejected before its
-  map is accepted. The map is validated with the SLES executable, boot TIM,
-  and every mapped file before game startup.
-
-  The left stick should walk the player. The d-pad, face buttons, Start
-  and Select still work with the stick centred. nxlink should show
-  kind=0x73. A failed nxlink connection still boots, and the same lines
-  go to sdmc:/switch/dw3/dw3.log.
-
-  dw3-switch.nro is the same test without a socket. Copy it to
-  sdmc:/switch/dw3-switch.nro and launch it from hbmenu when you do not
-  want the host log.
-
-  hbmenu shows the NACP display version for SD installs (this preview:
-  0.6.5-p.23 — libnx allows 15 characters, so "preview" becomes "p").
-  nxlink loads may not refresh that metadata; look for
-  dw3: version=0.6.5-preview.23 on the host log or in
+  Use dw3-switch-nxlink.nro instead for US. Do not probe TCP 28280
+  first: an empty connection can break the receiver. A failed logging
+  connection does not prevent boot; logs also go to
   sdmc:/switch/dw3/dw3.log.
 
-  Do not delete OLED saves (save0.bin / save1.bin) for this test.
+  hbmenu's NACP version is limited to 15 characters. Build tooling
+  derives it and the full boot-log version from the release tag. Check
+  the dw3: version= line for the exact running release; an nxlink load
+  may not refresh launcher metadata. Check [init_paths] cdfs root=
+  for the expected us or eu region directory.
 
-OLED checklist (preview.23)
+OLED checklist
 
-  1. Boot with existing us/ and flat saves. Title, Port options, turn
-     Widescreen on, back, Continue.
-  2. Field: the picture is wider than before (16:10), the map fills both
-     sides, the HUD is centred. Walk to a map edge.
-  3. A fight: wider still (about 16:9). Watch the side edges for models
-     that pop in. HUD battle=soft if nxlink.
-  4. Minus+ZL+ZR to gpu-solid and gpu-tex: the battle should no longer be
-     flat blue. Compare FPS; soft is still the default.
-  5. Optional: turn Restart hotkey on, hold L+R+Plus+Minus in the field,
-     then Continue the save you were on.
+  - Let EU extraction and the full opening finish; check image, audio,
+    progress completion, and the EU root/version in logs.
+  - Check title choices and Options; Widescreen should start ON.
+  - Walk map edges and inspect menus in widescreen; compare OFF.
+  - Battle: check the right-panel portrait and side geometry. Report
+    stage-specific gaps; compare gpu-tex with soft on the known sky.
+  - Toggle R3 in field and battle; compare 2x/3x/4x and OFF. Check that
+    movies, standalone menus and the save screen remain at 1x.
+  - After an ordinary in-game save, enable Restart hotkey, use the
+    chord, then Load Game/Continue the same save. Check a fresh launch
+    and reload too. Do not interrupt an active save operation.
 
-Install your own disc data
-
-  Pack the disc with the tools in the dw3-switch repository. The steps
-  are docs/DISC_SETUP.md and then:
-
-    python3 tools/pack_runtime.py --version us --disks disks/us --out runtime/us
-
-  Copy that packed tree to the SD card. The boot path reads it here:
-
-    sdmc:/switch/dw3/us/
-      files_us.json
-      SLUS_014.36
-      boot_tim.bin
-      AAA/...
-
-  That directory is DW3_DEFAULT_RUNTIME in
-  platforms/switch/source/boot_main.c. The same relative layout is
-  documented in docs/RUNTIME_LAYOUT.md. The PC host uses runtime/us
-  instead of the sdmc path.
-
-  A log from a boot that found the card prints:
-
-    [init_paths] cdfs root=sdmc:/switch/dw3/us
-
-Picture
-
-  A release cut from current main shows the title at the display-mode
-  width and the opening movie at full height (4:3, side bars only).
-  v0.6.5-preview.1 was cut earlier, from main before that picture work.
-  That file still crops the title to 256 pixels and freezes the movie.
+This is a prerelease, not a finished port. Use the CMake game image,
+not the small Makefile host_hello sample built by CI job switch.
+No clkrstSetClockRate or appletSetCpuBoostMode is used; CPU/GPU clocks
+stay at the console's settings. No overclock is needed for testing.
 
 Digimon and Digimon World are trademarks of their owners. This is an
-unofficial fan project. It is not affiliated with Bandai Namco or Nintendo.
+unofficial fan project, not affiliated with Bandai Namco or Nintendo.
