@@ -118,14 +118,6 @@ const uint16_t *dw3_nx_switch_gpu_vram(void);
 #define DW3_NX_GUTTER_STRIDE 64
 const uint16_t *dw3_nx_switch_gpu_gutter_plane(int side);
 
-/* P6.4 fast-forward: drop (1) or draw (0) the next frame's primitives that
- * target a display buffer, because no present will show that frame. Field
- * only; battle frames always draw. Set by Psyz_VideoVSync after each VSync. */
-void dw3_nx_switch_gpu_set_drop_draws(int drop);
-/* Whether the display buffer about to be presented last had its frame
- * dropped (a present would show an older picture). */
-int dw3_nx_switch_gpu_display_stale(void);
-
 /* Upload a VRAM region and draw it, letterboxed onto the EGL surface.
  * src_aspect is PSY-Z's display-range aspect (4:3 for this title). The
  * dw/dh arguments are only the sampled rectangle. A non-zero gutter draws

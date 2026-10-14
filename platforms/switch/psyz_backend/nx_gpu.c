@@ -335,53 +335,6 @@ static float dw3_nx_display_aspect(int range_w, int range_h, int pal);
 #ifdef DW3_NX_GAME_IMAGE
 static void dw3_nx_gpu_skip_present(const uint16_t *vram);
 
-/* Fast-forward cadence: a VSync presents unless speed > 1 and fewer than
- * `speed` VSyncs have passed since the last present. */
-static int turbo_step(int speed, int *phase) {
-    if (speed > 1 && ++*phase < speed) {
-        return 0;
-    }
-    *phase = 0;
-    return 1;
-}
-
-/* Whether the frame drawn after this VSync goes unseen. drawFrame shows a
- * buffer one flip after drawing it, so the present inside the VSync after
- * next is the one that would show it (see switch_gpu.c). */
-static int turbo_frame_unseen(int speed, int phase) {
-    turbo_step(speed, &phase);
-    return !turbo_step(speed, &phase);
-}
-
-/* After each VSync: drop the next frame's display-buffer draws when no
- * present shows it. A present of a dropped buffer (stale) is expected once
- * when the speed changes; three of them at a steady speed mean the cadence
- * guess is wrong for this title's loop, so dropping stops for good. */
-static void turbo_after_vsync(int speed, int phase, int presented) {
-    static int prev_speed = 1;
-    static int steady;
-    static int stale_events;
-    int drop;
-
-    if (speed == prev_speed) {
-        if (steady < 1000) {
-            steady++;
-        }
-    } else {
-        prev_speed = speed;
-        steady = 0;
-    }
-    if (presented && stale_events < 3 && dw3_nx_switch_gpu_display_stale() &&
-        steady >= 3) {
-        stale_events++;
-        psyz_log(1, "nx_gpu.c", __LINE__, __func__,
-                 "dw3-turbo: presented a dropped frame (%d/3)%s",
-                 stale_events,
-                 stale_events == 3 ? "; frame dropping off" : "");
-    }
-    drop = stale_events < 3 && speed > 1 && turbo_frame_unseen(speed, phase);
-    dw3_nx_switch_gpu_set_drop_draws(drop);
-}
 #endif
 
 int Psyz_VideoVSync(int mode) {
@@ -413,17 +366,15 @@ int Psyz_VideoVSync(int mode) {
          * ones neither upload nor swap, so nothing waits for the display and
          * the game runs `speed` frames per vsync (or as many as the CPU
          * rasterizer manages). */
-        static int turbo_phase;
+        static int turbo_skipped;
         int speed = dw3_port_turbo_speed();
 
-        if (!turbo_step(speed, &turbo_phase)) {
+        if (speed > 1 && ++turbo_skipped < speed) {
             dw3_nx_gpu_skip_present(dw3_nx_switch_gpu_vram());
-            turbo_after_vsync(speed, turbo_phase, 0);
             last_vsync_us = now_us;
             return lines;
         }
-        /* Before the present, which may show a dropped buffer. */
-        turbo_after_vsync(speed, turbo_phase, 1);
+        turbo_skipped = 0;
 
         dw3_nx_switch_gpu_display(&disp);
         if (disp.on) {

@@ -114,6 +114,9 @@ Checked and left as they are:
 
 ### `GsSetRefView2` super (preview.25 feedback, 2026-10-14)
 
+Source-level correction; the idle-camera orbit still needs in-game visual
+validation. Identity-super reasoning is not a substitute for that evidence.
+
 The owner saw the Fight-menu idle camera "moving wrong" on the OLED. That
 camera is FIGHTSTG's shot camera (`shot_camera.c`): it turns around the
 fighters by stepping the battle camera's **super** coordinate (`rot.vy`,
