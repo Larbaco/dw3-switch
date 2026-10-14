@@ -1,24 +1,37 @@
 Digimon World 3 / 2003, Switch homebrew preview
 
-This release is v0.6.5-preview.23, built from main after PR #125
-(PC title menu, from #121) and #124 (widescreen OLED notes). On the
-Switch this build plays the same as preview.22: #125 only changes the
-PC build and #124 is documentation. preview.22 carried #114, #115, #122
-and #123. Battle defaults to software RasterTriangle; field stays
-software RGB555. GPU diagnostic instrumentation is disabled.
+This release is v0.6.5-preview.24, built from main after PR #127
+(Switch title menu), #128 (EU runtime auto-extraction) and #129 (EU
+extraction notes). Battle defaults to software RasterTriangle; field
+stays software RGB555. GPU diagnostic instrumentation is disabled.
+This release ships the US build only.
 
 New in this preview
 
-  PC title menu (#125, from #121). The PC build (SDL3 GPU) draws a new
-  New Game / Options / Load Game menu at native 720p over the original
-  title. The Switch keeps its Start / Port options / Continue row,
-  unchanged.
+  Switch title menu (#127). The Switch now draws the same New Game /
+  Options / Load Game menu as the PC build, at native resolution over
+  the original title, with the original logo resampled to HD from the
+  game's own sprites. Options opens the port options (Widescreen,
+  Restart hotkey). The menu dims with the title fades. The log prints
+  "dw3-title-overlay: 960x2880 RGBA texture, 4 states (GLES)" and
+  "dw3-title-logo: resampled logo 720x326 received". Checked in Ryubing
+  with the US and EU discs (EU in all seven language banks, using the
+  game's own menu words); not yet checked on the OLED, please report.
+
+  EU disc support (#128, #129). The EU build can extract its runtime
+  data from the EU BIN/CUE on first boot. The EU .nro is not part of
+  this release yet.
+
+From preview.23
+
+  PC title menu (#125, from #121). The PC build (SDL3 GPU) draws the
+  new menu at native 720p over the original title.
 
   Widescreen OLED notes (#124). The preview.22 hardware feedback is
-  recorded in the docs, not fixed yet: thin strips at the field edges,
-  battle default to gpu-tex (its right-panel Digimon face is missing),
-  title and menus still 4:3, Widescreen ON by default, and the Gatomon
-  inn scene leaving the edges uncovered.
+  recorded in the docs: thin strips at the field edges, battle default
+  to gpu-tex (its right-panel Digimon face is missing), menus still
+  4:3, Widescreen ON by default, and the Gatomon inn scene leaving the
+  edges uncovered.
 
 From preview.22
 
