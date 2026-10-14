@@ -18,9 +18,9 @@ console.
 
 Checkboxes: [docs/ROADMAP.md](docs/ROADMAP.md). Phase 3 gate:
 [docs/P3_GATE.md](docs/P3_GATE.md). The latest tagged preview is
-[v0.6.5-preview.24](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.24),
-a US-only release from `39894e9`. Its checkpoints and remaining hardware
-gates are recorded in [RELEASE_PREVIEW24](docs/RELEASE_PREVIEW24.md);
+[v0.6.5-preview.25](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.25),
+with US and EU ordinary/nxlink builds from `705afcf`. Its provenance and
+remaining hardware gates are recorded in [RELEASE_PREVIEW25](docs/RELEASE_PREVIEW25.md);
 see [movie pacing diagnostics](docs/P3.7_MOVIE_PACING_DIAGNOSTICS.md)
 for the separate movie evidence.
 
@@ -258,14 +258,15 @@ The release tag becomes the NACP version (compressed for hbmenu) and the
 `dw3: version=` boot line. No disc data.
 
 The latest preview is
-[v0.6.5-preview.24](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.24),
-cut from `39894e9` after the Switch title menu (#127), EU runtime extraction
-(#128), and its documentation (#129). It ships **US binaries only**:
-`dw3-switch.nro` (9,054,753 bytes), `dw3-switch-nxlink.nro` (9,079,329 bytes),
-and `README.txt`. EU hardware tests use a separately built `--eu` NRO;
-this release has no EU NRO asset. Software battle remains the release default.
-Widescreen and restart are optional session settings; fast-forward is still
-a stub in this tag. Current `main` may contain later changes.
+[v0.6.5-preview.25](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.25),
+cut from `705afcf`. It includes US and EU ordinary and nxlink NROs, `README.txt`,
+[SOURCE.txt](https://github.com/Larbaco/dw3-switch/releases/download/v0.6.5-preview.25/SOURCE.txt),
+and [SHA256SUMS](https://github.com/Larbaco/dw3-switch/releases/download/v0.6.5-preview.25/SHA256SUMS).
+Widescreen starts ON and Switch battle defaults to `gpu-tex`; known stage-specific
+sky gaps remain. Field/battle fast-forward is available through R3 and Port options.
+Restart remains opt-in. Full boot version is `0.6.5-preview.25`; the shorter
+hbmenu NACP version is `0.6.5-p.25`. OLED EU boot is confirmed; gameplay and feature acceptance remain open.
+See [RELEASE_PREVIEW25](docs/RELEASE_PREVIEW25.md) for build provenance and gates.
 
 The earlier movie-fix preview is
 [v0.6.5-preview.21](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.21),
