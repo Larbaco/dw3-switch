@@ -51,6 +51,9 @@ static SDL_GPUGraphicsPipeline *g_pipeline;
 static SDL_GPUBuffer *g_vertices;
 static SDL_GPUTexture *g_texture;
 static SDL_GPUTexture *g_logo_texture;
+static SDL_GPUTexture *g_background_texture;
+static SDL_GPUSampler *g_background_sampler;
+static int g_background_ready;
 static SDL_GPUSampler *g_sampler;
 static SDL_GPUSampler *g_logo_sampler;
 static int g_selection;
@@ -81,6 +84,7 @@ static void set_three_x_presentation_size(void) {
     SDL_SetWindowSize(g_window,
                       (int)(1280.0f / density + 0.5f),
                       (int)(720.0f / density + 0.5f));
+    SDL_SetWindowPosition(g_window, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED);
     fprintf(stderr,
             "dw3-title-overlay: 3x presentation window set to 1280x720 pixels\n");
 }
@@ -110,12 +114,17 @@ static void release_gpu_resources(void) {
     if (g_vertices) SDL_ReleaseGPUBuffer(g_device, g_vertices);
     if (g_texture) SDL_ReleaseGPUTexture(g_device, g_texture);
     if (g_logo_texture) SDL_ReleaseGPUTexture(g_device, g_logo_texture);
+    if (g_background_texture) SDL_ReleaseGPUTexture(g_device, g_background_texture);
+    if (g_background_sampler) SDL_ReleaseGPUSampler(g_device, g_background_sampler);
     if (g_sampler) SDL_ReleaseGPUSampler(g_device, g_sampler);
     if (g_logo_sampler) SDL_ReleaseGPUSampler(g_device, g_logo_sampler);
     g_pipeline = NULL;
     g_vertices = NULL;
     g_texture = NULL;
     g_logo_texture = NULL;
+    g_background_texture = NULL;
+    g_background_sampler = NULL;
+    g_background_ready = 0;
     g_sampler = NULL;
     g_logo_sampler = NULL;
     g_window = NULL;
@@ -181,7 +190,25 @@ static int upload_art_and_quad(void) {
         return -1;
     }
 
-    OverlayVertex quads[STATE_COUNT * 6 + 6];
+    const SDL_GPUTextureCreateInfo background_info = {
+        .type = SDL_GPU_TEXTURETYPE_2D,
+        .format = SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UNORM,
+        .usage = SDL_GPU_TEXTUREUSAGE_SAMPLER,
+        .width = 320, .height = 240,
+        .layer_count_or_depth = 1, .num_levels = 1,
+        .sample_count = SDL_GPU_SAMPLECOUNT_1,
+    };
+    g_background_texture = SDL_CreateGPUTexture(g_device, &background_info);
+    SDL_GPUSamplerCreateInfo background_sampler_info = sampler_info;
+    background_sampler_info.min_filter = SDL_GPU_FILTER_NEAREST;
+    background_sampler_info.mag_filter = SDL_GPU_FILTER_NEAREST;
+    g_background_sampler = SDL_CreateGPUSampler(g_device, &background_sampler_info);
+    if (!g_background_texture || !g_background_sampler) {
+        free(pixels);
+        return -1;
+    }
+
+    OverlayVertex quads[STATE_COUNT * 6 + 18];
     for (int row = 0; row < STATE_COUNT; ++row) {
         const float u0 = 0.0f;
         const float u1 = 1.0f;
@@ -202,6 +229,21 @@ static int upload_art_and_quad(void) {
         const OverlayVertex c = {{840.0f / CANVAS_W, 373.0f / CANVAS_H}, {1, 1}};
         const OverlayVertex d = {{120.0f / CANVAS_W, 373.0f / CANVAS_H}, {0, 1}};
         OverlayVertex *q = &quads[STATE_COUNT * 6];
+        q[0] = a; q[1] = b; q[2] = c;
+        q[3] = a; q[4] = c; q[5] = d;
+    }
+
+    /* Extend only the isolated animated backdrop. Each side samples the
+     * original outer sixth in reverse so its seam meets the native edge.
+     * The center (and every foreground sprite) keeps its original geometry. */
+    for (int side = 0; side < 2; ++side) {
+        const float u0 = side ? 1.0f : 1.0f / 6.0f;
+        const float u1 = side ? 5.0f / 6.0f : 0.0f;
+        const OverlayVertex a = {{0, 0}, {u0, 0}};
+        const OverlayVertex b = {{1, 0}, {u1, 0}};
+        const OverlayVertex c = {{1, 1}, {u1, 1}};
+        const OverlayVertex d = {{0, 1}, {u0, 1}};
+        OverlayVertex *q = &quads[(STATE_COUNT + 1 + side) * 6];
         q[0] = a; q[1] = b; q[2] = c;
         q[3] = a; q[4] = c; q[5] = d;
     }
@@ -342,10 +384,9 @@ static void init_overlay(SDL_Window *window, SDL_GPUDevice *device) {
     }
 }
 
-int dw3_pc_title_menu_set_logo_rgba(const uint8_t *rgba, int width,
-                                    int height, int pitch) {
-    if (!rgba || !g_device || !g_logo_texture || width != 720 ||
-        height != 326 || pitch < width * 4) return -1;
+static int upload_rgba(SDL_GPUTexture *texture, const uint8_t *rgba,
+                       int width, int height, int pitch) {
+    if (!rgba || !g_device || !texture || pitch < width * 4) return -1;
     const size_t bytes = (size_t)pitch * (size_t)height;
     const SDL_GPUTransferBufferCreateInfo transfer_info = {
         .usage = SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD,
@@ -374,7 +415,7 @@ int dw3_pc_title_menu_set_logo_rgba(const uint8_t *rgba, int width,
         .rows_per_layer = (Uint32)height,
     };
     const SDL_GPUTextureRegion dst = {
-        .texture = g_logo_texture,
+        .texture = texture,
         .w = (Uint32)width,
         .h = (Uint32)height,
         .d = 1,
@@ -387,7 +428,23 @@ int dw3_pc_title_menu_set_logo_rgba(const uint8_t *rgba, int width,
     }
     SDL_WaitForGPUIdle(g_device);
     SDL_ReleaseGPUTransferBuffer(g_device, transfer);
+    return 0;
+}
+
+int dw3_pc_title_menu_set_logo_rgba(const uint8_t *rgba, int width,
+                                  int height, int pitch) {
+    if (width != 720 || height != 326) return -1;
+    if (upload_rgba(g_logo_texture, rgba, width, height, pitch) != 0) return -1;
     g_logo_texture_ready = 1;
+    return 0;
+}
+
+int dw3_pc_title_background_rgba(const uint8_t *rgba, int width,
+                               int height, int pitch) {
+    if (!rgba) { g_background_ready = 0; return 0; }
+    if (width != 320 || height != 240) return -1;
+    if (upload_rgba(g_background_texture, rgba, width, height, pitch) != 0) return -1;
+    g_background_ready = 1;
     return 0;
 }
 
@@ -413,7 +470,7 @@ void dw3_pc_title_menu_set_state(int active, int selected) {
 
 static void render_overlay(SDL_GPUCommandBuffer *cmd, SDL_GPURenderPass *pass) {
     set_three_x_presentation_size();
-    if ((!g_overlay_active && !g_logo_active) || !g_pipeline || !g_texture || !g_vertices ||
+    if ((!g_overlay_active && !g_logo_active && !g_background_ready) || !g_pipeline || !g_texture || !g_vertices ||
         !g_sampler || !g_window) return;
     int window_w = 0, window_h = 0;
     SDL_GetWindowSizeInPixels(g_window, &window_w, &window_h);
@@ -432,10 +489,24 @@ static void render_overlay(SDL_GPUCommandBuffer *cmd, SDL_GPURenderPass *pass) {
         .min_depth = 0.0f,
         .max_depth = 1.0f,
     };
-    SDL_SetGPUViewport(pass, &viewport);
     SDL_BindGPUGraphicsPipeline(pass, g_pipeline);
     const SDL_GPUBufferBinding binding = {.buffer = g_vertices, .offset = 0};
     SDL_BindGPUVertexBuffers(pass, 0, &binding, 1);
+    if (g_background_ready && g_background_texture && g_background_sampler &&
+        viewport.x > 0.0f) {
+        const SDL_GPUTextureSamplerBinding background_binding = {
+            .texture = g_background_texture, .sampler = g_background_sampler,
+        };
+        SDL_BindGPUFragmentSamplers(pass, 0, &background_binding, 1);
+        for (int side = 0; side < 2; ++side) {
+            SDL_GPUViewport side_viewport = viewport;
+            side_viewport.x = side ? viewport.x + viewport.w : 0.0f;
+            side_viewport.w = viewport.x;
+            SDL_SetGPUViewport(pass, &side_viewport);
+            SDL_DrawGPUPrimitives(pass, 6, 1, (STATE_COUNT + 1 + side) * 6, 0);
+        }
+    }
+    SDL_SetGPUViewport(pass, &viewport);
     if (g_logo_active && g_logo_texture_ready && g_logo_texture &&
         g_logo_sampler) {
         const SDL_GPUTextureSamplerBinding logo_binding = {

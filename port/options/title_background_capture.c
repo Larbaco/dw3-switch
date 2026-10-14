@@ -3,11 +3,12 @@
 #include "engine/gfx.h"
 #include <stdint.h>
 #include <string.h>
+#include <stdlib.h>
 #if defined(DW3_PC_SDL3_GPU) && defined(VERSION_US) && VERSION_US
 #include "engine/game_state.h"
 enum { BG_W = 320, BG_H = 240, VRAM_W = 1024, VRAM_H = 512 };
 extern void Draw_StoreImage(RECT *rect, u_long *pixels);
-extern void dw3_pc_title_background_rgba(const uint8_t *rgba, int w, int h, int pitch);
+extern int dw3_pc_title_background_rgba(const uint8_t *rgba, int w, int h, int pitch);
 static uint16_t g_vram[VRAM_W * VRAM_H];
 static uint8_t g_base[BG_W * BG_H * 4];
 static uint8_t g_frame[BG_W * BG_H * 4];
@@ -105,7 +106,9 @@ void dw3_port_title_background_reset(void) {
 }
 
 void dw3_port_title_background_fade(int level) {
-    g_level = level < 0 ? 0 : (level > 255 ? 255 : level);
+    int next_level = level < 0 ? 0 : (level > 255 ? 255 : level);
+    if (next_level == g_level) return;
+    g_level = next_level;
     upload_frame();
 }
 
@@ -113,6 +116,8 @@ void dw3_port_title_background_frame(const s32 *s0, const s32 *s1,
     const s32 *s2, const s32 *s3, const s32 *s8, const int frames[8],
     int pos6x, int pos6y, int pos7x, int pos7y) {
     int i;
+    const char *scale = getenv("DW3_PC_INTERNAL_RES");
+    if (!scale || strcmp(scale, "3") != 0) return;
     if (GAME.funcs.getMode() != MODE_TITLE) {
         dw3_port_title_background_reset(); return;
     }
