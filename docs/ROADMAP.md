@@ -200,7 +200,8 @@ continuous start→movie→Lobby→Tamer→Genji→field @ `a5ae93a` (Lobby
 class; pad KO follow-up); EU playthrough not required. **EU `dw3-pc` link
 scaffold** (`docs/P3_EU_BUILD.md`): `-DDW3_VERSION=eu` +
 `overlay_table_eu.c` configure/link; owner EU disc pack + PC smoke to
-opening movie validated (2026-10-12); playthrough / OLED EU still open.
+opening movie validated (2026-10-12); OLED extraction and early gameplay
+validated (2026-10-14); EU playthrough remains open.
 **Switch extraction follow-up (2026-10-13):** the EU NRO now selects the EU
 file-sector table, `SLES_039.36`, EU boot-TIM address and `files_eu.json` for
 own-disc BIN/CUE extraction under `sdmc:/switch/dw3/eu/`; a US executable is
@@ -208,9 +209,16 @@ rejected. Synthetic extractor tests cover map identity, partial-copy retry,
 and second-boot validation. Independent Ryubing extracted 2383 files from BIN/CUE and reused them on a
 second boot; movie playback reached frame 2100 at about 15 fps with zero
 skipped frames, then Plus skipped to the title. Natural completion, audible
-A/V synchronization, and OLED EU validation remain open. This emulator build
+A/V synchronization remain open. This emulator build
 preceded FAT swap hardening, covered separately by synthetic host tests
 (see `docs/P3_EU_BUILD.md`).
+**OLED EU extraction (2026-10-14):** with only matching BIN/CUE supplied on SD,
+the EU nxlink NRO logged `wrote=2383 skipped=0`, runtime `version=eu`,
+`sdmc:/switch/dw3/eu`, `SLES_039.36`, and EU CDFS. Movie frame 1020 had zero
+skips/restarts before owner Start-skip (`ended=0`). The owner is playing toward
+the first save; successful save/relaunch and the EU playthrough are not yet
+confirmed. Full EU movie image/audio acceptance and natural completion remain
+open (see `docs/P3_EU_BUILD.md`).
 P3.9 harness (`tools/compare_harness/`, `docs/P3.9_REFERENCE.md`):
 **done** — title, field, and Kunemon vs Monmon Fight-menu battle pairs
 (`DW3_FORCE_ENCOUNTER=34` + `DW3_FORCE_PARTY=1` on PC).
@@ -614,6 +622,9 @@ speed.
   **Preview.20 OLED exit (2026-10-12):** nxlink log observed applet exit,
   `flat saves flushed`, and a clean process exit. No fresh save or
   relaunch/Continue reload was tested; P5.3 remains open.
+  **EU OLED session (2026-10-14):** owner reached early gameplay after native
+  own-disc extraction and is playing toward the first save. No successful EU
+  SAVE or relaunch/Continue reload has been confirmed; this does not close P5.3.
   **Still open:** sleep/focus-loss flush + time-delta clamp (P10.2);
   OLED smoke that HOME after SAVE / mid-write-section leaves flats
   intact and Continue reloads. Emulator conversion remains P9.6.
