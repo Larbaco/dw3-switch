@@ -925,7 +925,9 @@ PS1 game, with vanilla-safe defaults and persistence on owner storage.
   logo/menu geometry stay unchanged. The original task frame IDs drive the
   margin animation, and the edge fade darkens the extension. US/Xvfb captures
   show all three buttons at 1280×720 and animation spanning the native center
-  and left margin; both seams match on all 720 rows. Select shell open/close
+  and left margin. Fresh main-based validation passed GPU/GL builds and
+  patch-check; the left seam matches all 720 rows, while the right has a
+  three-pixel purple fragment at rows 582–584. Select shell open/close
   and Load Game/cancel preserve the title background lifecycle. GPU and GL
   builds plus patch-check pass. This title-only
   presentation does not complete the P6.1 gameplay widescreen gate. The

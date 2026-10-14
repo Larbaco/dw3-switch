@@ -43,6 +43,24 @@ from the non-title selector and reappeared on title return.
 This replacement isolates PR #126 on current main instead of its closed
 PR #121 base. It preserves the native title overlay from #127, including
 EU label refresh, logo fade, and EU logo capture. Patch 0054 runs after
-0050 so both edge-fade callbacks coexist. Fresh validation of this
-main-based follow-up is pending; the captures above belong to the earlier
-branch and do not establish acceptance of the replacement.
+0050 so both edge-fade callbacks coexist. The captures above belong to the
+earlier branch; fresh replacement evidence is recorded below.
+
+### Fresh main-based validation (2026-10-14)
+
+Feature source `a3665c03f4d664239b3d37c7ed1c8abfa92bc4c0` was validated
+with main `bc26e075c0bd98b6a1f54d7e4108c8176c90dad8` (#132) merged in
+the isolated validation worktree. Fresh SDL3 GPU and SDL3 GL builds and
+patch application, including 0054 after 0050–0053, passed. The US GPU
+runtime used private Xvfb and temporary empty cards: Port options open /
+return and Load Game / cancel retained the title background, with no
+background leakage into the memory-card selector. The title fade was
+observed.
+
+At 1280×720, the left seam matched on all 720 rows. The right seam differed
+at three pixels on rows 582–584, a small purple fragment rather than a
+continuous stripe. This is a remaining visual limitation; both seams are
+not claimed to be pixel-perfect. Local evidence is outside Git under
+`/mnt/cabal/tmp/dw3-validate-evidence/title-*4.png` and `pr137-*.log`.
+Windows/macOS runtime acceptance remains pending; the added backdrop is
+still PC US SDL3 GPU / 3× only.
