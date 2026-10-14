@@ -567,7 +567,8 @@ int Draw_ExequeSync(void) {
  * conversion in the range setters: the horizontal range arrives in tenths of a
  * pixel, the vertical one in scanlines.
  *
- * PAL is recorded only so the present aspect uses the 288-line vref.
+ * PAL is recorded but no longer changes the present aspect (DW3 EU keeps
+ * the 240-line picture; see dw3_nx_display_aspect).
  * Interlace is still ignored. 24bpp selects the movie blit height. */
 static int s_disp_on;
 static int s_disp_x;
