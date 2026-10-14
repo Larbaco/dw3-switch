@@ -157,8 +157,9 @@ transparent 960×720 RGBA overlay, drawn over the original title image by one
 SDL3 GPU texture and one six-vertex quad. The texture contains three visual states;
 selection changes the lighting without moving the plaque or label. Plaques
 have navy faces, steel-blue bevels, clipped corner hardware, amber fasteners,
-internal rails, and legible centered text. This is PC-gated. Switch keeps its
-existing Start / Port options / Continue row and initial Continue selection.
+internal rails, and legible centered text. The Switch draws the same
+canvas and logo over its GLES present (`DW3_TITLE_NATIVE_OVERLAY`, set by PC
+`sdl3_gpu` and by the Switch game image), with focus starting on New Game.
 The #117 concept atlas remains a design reference (the mockup is kept
 out of Git because it shows game artwork) and are not packaged as
 runtime art. Selecting `PSYZ_RENDERER=sdl3_gl` keeps the earlier PS1-primitive
