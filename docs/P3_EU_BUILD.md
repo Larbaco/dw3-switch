@@ -17,13 +17,15 @@ Owner validation note (2026-10-12, own disc only, not in git): Redump-style
 `STAGE_VRAM` (`0x800A5DE0`) for `boot_tim.bin`. Place the owner's matching
 Mode2/2352 BIN/CUE in `sdmc:/switch/dw3/eu/` (or its parent). The NRO rejects
 an image containing only the US `SLUS_014.36` executable. It writes the
-versioned JSON map atomically after extraction and validates the map,
-executable, boot TIM, and every mapped file before CDFS starts. If extraction
-fails, the map is not accepted; completed files can be reused on retry. No
-disc image or extracted runtime is included in the repository. Synthetic host
-tests cover EU output, wrong-region rejection, retry after a partial copy, and
-second-boot no-reextract behavior. Ryubing/OLED acceptance remains separate;
-the EU Switch playthrough is still open.
+versioned JSON map after extraction and validates the map, executable, boot
+TIM, and every mapped file before CDFS starts. FAT/exFAT rename cannot replace
+an existing file, so runtime output swaps use a backup-and-restore sequence;
+the host test harness simulates `EEXIST`. A failed extraction leaves no
+accepted map, and completed files can be reused on retry. No disc image or
+extracted runtime is included in the repository. Synthetic host tests cover
+EU output, wrong-region rejection, retry after a partial copy, replacement of
+partial outputs, and second-boot no-reextract behavior. Ryubing/OLED
+acceptance remains separate; the EU Switch playthrough is still open.
 
 ## Root causes (pre-scaffold blockers)
 

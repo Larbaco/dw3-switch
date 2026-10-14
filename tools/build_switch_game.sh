@@ -17,8 +17,7 @@
 # "No SOURCES given to target: dw3_movies".
 #
 # Disc version: default US. Pass --eu (or DW3_VERSION=eu) for Digimon World
-# 2003. EU still needs a pre-packed sdmc:/switch/dw3/eu/ tree — boot extract
-# from BIN is US-only (see docs/RUNTIME_LAYOUT.md).
+# 2003. EU extracts its matching owner BIN/CUE into sdmc:/switch/dw3/eu/.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"

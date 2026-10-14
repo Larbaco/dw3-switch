@@ -68,12 +68,16 @@ The EU NRO also extracts from an owner-supplied Mode2/2352 image. For EU,
 place the pair in `sdmc:/switch/dw3/eu/` (the runtime root), for example
 `disc.cue` + `disc.bin`; the parent folder remains a supported fallback. The
 EU executable must be `SLES_039.36`; a disc with only `SLUS_014.36` is rejected.
-The NRO writes `files_eu.json` to a temporary file and renames it only after
-all assets and the EU boot TIM have been extracted. That versioned map is the
-completion marker, and CDFS validates its identity and mapped file sizes before
-game startup. Failed extraction leaves no accepted manifest and can resume
-from complete files on a later launch. US uses `files_us.json` / `SLUS_014.36`
-and retains its existing root and disc lookup defaults.
+The NRO writes `files_eu.json` to a temporary file only after all assets and
+the EU boot TIM have been extracted. Because FAT/exFAT does not replace an
+existing file with `rename`, runtime outputs move an existing destination to
+`.dw3-replace-backup` before installing the complete temporary file; an install
+failure restores the previous destination. After a reset, a retry recovers any
+leftover backup before replacing that output. The versioned map is the
+completion marker, and CDFS validates its identity and mapped file sizes
+before game startup. A failed or interrupted extraction is not accepted and
+can resume from complete files on a later launch. US uses `files_us.json` /
+`SLUS_014.36` and retains its existing root and disc lookup defaults.
 
 A US tree created by the startup extract below already stores `.STR` as
 raw sectors, so this rewrite only stats those files. A tree packed earlier
