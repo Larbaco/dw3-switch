@@ -59,6 +59,13 @@ void StCdInterrupt(void);
 #ifndef DW3_DEFAULT_RUNTIME
 #define DW3_DEFAULT_RUNTIME "sdmc:/switch/dw3/us"
 #endif
+#if defined(VERSION_EU) && VERSION_EU
+#define DW3_RUNTIME_VERSION_TAG "eu"
+#define DW3_RUNTIME_EXECUTABLE_TAG "SLES_039.36"
+#else
+#define DW3_RUNTIME_VERSION_TAG "us"
+#define DW3_RUNTIME_EXECUTABLE_TAG "SLUS_014.36"
+#endif
 
 static PsyzVSyncCb g_prev_vsync_cb;
 static int g_applet_exit_locked;
@@ -419,6 +426,8 @@ static int init_paths(void) {
         ERRORF("runtime extract failed");
         return -1;
     }
+    INFOF("runtime version=%s root=%s executable=%s",
+          DW3_RUNTIME_VERSION_TAG, root, DW3_RUNTIME_EXECUTABLE_TAG);
 #endif
     if (cdfs_set_root(root) != 0) {
         ERRORF("cdfs_set_root(%s) failed", root);

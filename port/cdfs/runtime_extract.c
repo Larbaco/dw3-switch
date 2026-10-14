@@ -335,6 +335,61 @@ static int boot_tim_ok(const char *root) {
     return mag[0] == 0x10 && mag[1] == 0x00 && mag[2] == 0x00 && mag[3] == 0x00;
 }
 
+/* FAT/exFAT rename does not replace an existing file. Move the old runtime
+ * file aside only after its replacement is complete, then restore it if the
+ * install fails. These paths contain extracted runtime data, never saves. */
+static int replace_runtime_file(const char *tmp, const char *dest) {
+    char backup[1200];
+    struct stat st;
+    int dest_exists;
+    int backup_exists;
+    int moved_old = 0;
+    int err;
+    int n = snprintf(backup, sizeof(backup), "%s.dw3-replace-backup", dest);
+    if (n < 0 || (size_t)n >= sizeof(backup)) {
+        return -1;
+    }
+    dest_exists = stat(dest, &st) == 0;
+    if (!dest_exists && errno != ENOENT) {
+        return -1;
+    }
+    backup_exists = stat(backup, &st) == 0;
+    if (!backup_exists && errno != ENOENT) {
+        return -1;
+    }
+    if (dest_exists && backup_exists) {
+        /* A prior install committed the destination but missed cleanup. */
+        if (remove(backup) != 0) {
+            return -1;
+        }
+        backup_exists = 0;
+    } else if (!dest_exists && backup_exists) {
+        /* Recover the previous file before attempting this replacement. */
+        if (rename(backup, dest) != 0) {
+            return -1;
+        }
+        dest_exists = 1;
+    }
+    if (dest_exists) {
+        if (rename(dest, backup) != 0) {
+            return -1;
+        }
+        moved_old = 1;
+    }
+    if (rename(tmp, dest) != 0) {
+        err = errno;
+        if (moved_old) {
+            (void)rename(backup, dest);
+        }
+        errno = err;
+        return -1;
+    }
+    if (moved_old) {
+        (void)remove(backup);
+    }
+    return 0;
+}
+
 struct Ready {
     int count;
     int bad;
@@ -490,7 +545,7 @@ static int write_boot_tim(const char *exe_path, const char *tim_path) {
         goto out;
     }
     out = NULL;
-    if (rename(tmp, tim_path) != 0) {
+    if (replace_runtime_file(tmp, tim_path) != 0) {
         remove(tmp);
         goto out;
     }
@@ -890,7 +945,7 @@ static int install_span(FILE *bin, const char *dest, unsigned long long off,
         goto out;
     }
     out = NULL;
-    if (rename(tmp, dest) != 0) {
+    if (replace_runtime_file(tmp, dest) != 0) {
         goto out;
     }
     rc = 0;
@@ -975,7 +1030,7 @@ static int write_json(const char *root, const struct Job *jobs, int njobs) {
         remove(tmp);
         return -1;
     }
-    if (rename(tmp, dest) != 0) {
+    if (replace_runtime_file(tmp, dest) != 0) {
         remove(tmp);
         return -1;
     }
@@ -1146,7 +1201,7 @@ static int extract_from_bin(const char *root, const char *bin_path) {
         }
     }
     pump(1);
-    if (join_root(root, "boot_tim.bin", dest, sizeof(dest)) == 0 && !boot_tim_ok(root)) {
+    if (join_root(root, "boot_tim.bin", dest, sizeof(dest)) == 0) {
         char exe_path[1024];
         if (join_root(root, RUNTIME_EXECUTABLE, exe_path, sizeof(exe_path)) != 0 ||
             write_boot_tim(exe_path, dest) != 0) {

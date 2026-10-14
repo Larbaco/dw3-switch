@@ -216,6 +216,7 @@ def _compile(tmp: Path, version: str = "us") -> Path:
             "-Wextra",
             "-Werror",
             "-D_FILE_OFFSET_BITS=64",
+            "-Drename=dw3_test_rename",
             f"-DVERSION_{version.upper()}=1",
             "-I",
             str(ROOT / "port" / "cdfs"),
@@ -387,6 +388,8 @@ def test_eu_extracts_matching_disc_and_reentry_only_validates(tmp_path: Path):
         'FILE "disc.bin" BINARY\n  TRACK 01 MODE2/2352\n    INDEX 01 00:00:00\n',
         encoding="ascii",
     )
+    # A valid-looking TIM from a prior runtime must not survive this EU extract.
+    (runtime / "boot_tim.bin").write_bytes(b"\x10\x00\x00\x00stale-runtime")
     table = tmp_path / "eu-table.txt"
     _write_table(table, _image_rows(info))
 
@@ -449,6 +452,40 @@ def test_eu_partial_extract_has_no_manifest_and_can_resume(tmp_path: Path):
     assert resumed.returncode == 0, resumed.stderr + resumed.stdout
     assert (runtime / "files_eu.json").is_file()
     assert (runtime / "SLES_039.36").read_bytes() == info["exe"]
+
+
+def test_eu_replaces_existing_partial_outputs_on_no_replace_rename(tmp_path: Path):
+    runtime = tmp_path / "sd" / "switch" / "dw3" / "eu"
+    runtime.mkdir(parents=True)
+    disc = runtime / "disc.bin"
+    info = _build_image(disc, version="eu")
+    (runtime / "disc.cue").write_text(
+        'FILE "disc.bin" BINARY\n  TRACK 01 MODE2/2352\n    INDEX 01 00:00:00\n',
+        encoding="ascii",
+    )
+    table = tmp_path / "eu-table.txt"
+    _write_table(table, _image_rows(info))
+
+    # Simulate a previous interrupted extract: an old map, a short Form-1
+    # file, a missing STR, and a valid-looking but stale boot TIM.
+    (runtime / "files_eu.json").write_text(
+        '{"version":"eu","executable":"SLES_039.36","files":{}}',
+        encoding="ascii",
+    )
+    demo_path = runtime / "AAA" / "PRO" / "DEMO.PRO"
+    demo_path.parent.mkdir(parents=True)
+    demo_path.write_bytes(b"short")
+    (runtime / "boot_tim.bin").write_bytes(b"\x10\x00\x00\x00stale-runtime")
+
+    result = _run(tmp_path, runtime, table, version="eu")
+    assert result.returncode == 0, result.stderr + result.stdout
+    assert demo_path.read_bytes() == info["demo"]
+    assert (runtime / "AAA" / "STR" / "CLIP.STR").read_bytes() == info["str_raw"]
+    assert (runtime / "boot_tim.bin").read_bytes() == info["tim"]
+    mapped = json.loads((runtime / "files_eu.json").read_text(encoding="utf-8"))
+    assert mapped["version"] == "eu"
+    assert mapped["executable"] == "SLES_039.36"
+    assert not list(runtime.rglob("*.dw3-replace-backup"))
 
 
 def test_corrupt_bin_fails_when_the_tree_is_missing(tmp_path: Path):
