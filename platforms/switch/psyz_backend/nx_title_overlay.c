@@ -3,7 +3,8 @@
  * Same content as the PC SDL3 GPU overlay (platforms/pc/src/
  * title_menu_overlay.c): a 960x720 transparent canvas in four states
  * (PRESS START, then New Game / Options / Load Game focused), plus the
- * original US logo resampled from runtime VRAM into a 720x326 texture.
+ * original logo (US, or the EU bank of the current language) resampled from
+ * runtime VRAM into a 720x326 texture. EU labels regenerate the canvas.
  * Both are drawn over the game picture's 4:3 viewport after the frame is
  * composited and before the debug HUD. The game loop and the present run on
  * the same thread; the logo is kept on the CPU and uploaded on the next draw
@@ -57,6 +58,8 @@ static uint8_t *s_logo_rgba;
 static int s_logo_dirty;
 /* Title edge-fade darkness, 0..255 (STDWTITL_tickEdgeFade). */
 static int s_fade;
+/* dw3_pc_title_overlay_generation() of the uploaded canvas (EU labels). */
+static unsigned s_art_generation;
 
 static GLuint compile_shader(GLenum type, const char *src) {
     GLuint sh = glCreateShader(type);
@@ -90,6 +93,24 @@ static GLuint make_texture(int w, int h, const void *pixels) {
     return tex;
 }
 
+/* The four menu states, generated on the CPU (no art is shipped). */
+static uint8_t *build_art(void) {
+    const size_t canvas_bytes = (size_t)CANVAS_W * CANVAS_H * 4;
+    uint8_t *pixels = (uint8_t *)malloc(canvas_bytes * STATE_COUNT);
+
+    if (!pixels) {
+        return NULL;
+    }
+    s_art_generation = dw3_pc_title_overlay_generation();
+    for (int state = 0; state < STATE_COUNT; ++state) {
+        const int selected = state == 0 ? -1 : state - 1;
+        memset(pixels + (size_t)state * canvas_bytes, 0, canvas_bytes);
+        dw3_pc_title_overlay_art(pixels + (size_t)state * canvas_bytes,
+                                 CANVAS_W * 4, selected);
+    }
+    return pixels;
+}
+
 /* Build the four menu states once per GL context. The canvas is generated on
  * the CPU (no art is shipped) and freed after the upload. */
 static int ensure_gl(void) {
@@ -105,13 +126,25 @@ static int ensure_gl(void) {
         "uniform float u_sub;\n"
         "void main(){vec4 c=texture2D(u_tex,v_t);\n"
         "  gl_FragColor=vec4(max(c.rgb-vec3(u_sub),0.0),c.a);}\n";
-    const size_t canvas_bytes = (size_t)CANVAS_W * CANVAS_H * 4;
     uint8_t *pixels;
     GLuint vs;
     GLuint fs;
     GLint ok = 0;
 
     if (s_prog && glIsTexture(s_art_tex)) {
+        /* The EU disc swaps in its own labels after the first upload. */
+        if (s_art_generation != dw3_pc_title_overlay_generation()) {
+            pixels = build_art();
+            if (pixels) {
+                glBindTexture(GL_TEXTURE_2D, s_art_tex);
+                glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
+                glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, CANVAS_W, ART_TEX_H,
+                                GL_RGBA, GL_UNSIGNED_BYTE, pixels);
+                free(pixels);
+                TITLE_LOG("dw3-title-overlay: canvas regenerated "
+                          "(labels generation %u)", s_art_generation);
+            }
+        }
         return 1;
     }
     if (s_gl_failed) {
@@ -149,18 +182,12 @@ static int ensure_gl(void) {
     s_uni_tex = glGetUniformLocation(s_prog, "u_tex");
     s_uni_sub = glGetUniformLocation(s_prog, "u_sub");
 
-    pixels = (uint8_t *)malloc(canvas_bytes * STATE_COUNT);
+    pixels = build_art();
     if (!pixels) {
         glDeleteProgram(s_prog);
         s_prog = 0;
         s_gl_failed = 1;
         return 0;
-    }
-    for (int state = 0; state < STATE_COUNT; ++state) {
-        const int selected = state == 0 ? -1 : state - 1;
-        memset(pixels + (size_t)state * canvas_bytes, 0, canvas_bytes);
-        dw3_pc_title_overlay_art(pixels + (size_t)state * canvas_bytes,
-                                 CANVAS_W * 4, selected);
     }
     s_art_tex = make_texture(CANVAS_W, ART_TEX_H, pixels);
     free(pixels);

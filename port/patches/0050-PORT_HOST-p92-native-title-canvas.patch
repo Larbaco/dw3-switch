@@ -2,11 +2,13 @@ Upstream-bound: no
 Subject: [PORT_HOST] Native title canvas: original logo from runtime sprites
 
 Keep the original title sprites and their animation while they enter. On the
-stable title state, upload the original US sprites into a private RGBA texture,
-resample the logo with Lanczos2, and hide only the duplicate native
-logo/footer/menu draws. Built with DW3_TITLE_NATIVE_OVERLAY (PC SDL3 GPU and the
-Switch game image); SDL3 GL keeps its original path. The edge fade reports its
-level so the overlay darkens with it; each title visit resets it.
+stable title state, upload the original sprites (US, or the EU bank of the
+current LANGUAGE, including the Alt layout of language 0) into a private RGBA
+texture, resample the logo with Lanczos2, and hide only the duplicate native
+logo/menu draws; US also hides its footer, while EU keeps its own credit
+sprites. Built with DW3_TITLE_NATIVE_OVERLAY (PC SDL3 GPU and the Switch game
+image); SDL3 GL keeps its original path. The edge fade reports its level so
+the overlay darkens with it; each title visit resets it.
 
 --- a/src/menus/title/edge_fade.c
 +++ b/src/menus/title/edge_fade.c
@@ -33,7 +35,7 @@ level so the overlay darkens with it; each title visit resets it.
      case TASK_DONE:
 --- a/src/menus/title/glint.c
 +++ b/src/menus/title/glint.c
-@@ -1,6 +1,9 @@
+@@ -1,10 +1,16 @@
  /* The title screen's glint */
  
  #include "menus/title.h"
@@ -43,7 +45,14 @@ level so the overlay darkens with it; each title visit resets it.
  
  /* Draws the glint (sprite 4) for the European version's language 0, and sprite 2 once lit */
  void STDWTITL_drawGlintAlt(GlintTask *task) {
-@@ -85,12 +88,19 @@
+     SpriteDrawer sprite;
++#if defined(DW3_TITLE_NATIVE_OVERLAY)
++    if (dw3_port_title_logo_active()) return;
++#endif
+ 
+     initSpriteDrawer(&sprite);
+     if (task->lit) {
+@@ -85,12 +91,19 @@
  /* Draws the glint (sprite 4) while it plays, and sprite 2 once lit */
  void STDWTITL_drawGlint(GlintTask *task) {
      SpriteDrawer sprite;
@@ -63,7 +72,7 @@ level so the overlay darkens with it; each title visit resets it.
          sprite.draw(FILE_CACHE.getEntry(STDWTITL_spriteBank), 2, 253, 100);
          initSpriteDrawer(&sprite);
      }
-@@ -98,6 +108,10 @@
+@@ -98,6 +111,10 @@
          sprite.setLayerId(task->layerId, 0);
          sprite.setTexture(0x280, STDWTITL_TEXTURE_Y);
          sprite.setClutRow(task->frame);
@@ -76,7 +85,7 @@ level so the overlay darkens with it; each title visit resets it.
  }
 --- a/src/menus/title/logo.c
 +++ b/src/menus/title/logo.c
-@@ -1,6 +1,10 @@
+@@ -1,6 +1,28 @@
  /* The title screen's logo */
  
  #include "menus/title.h"
@@ -84,14 +93,35 @@ level so the overlay darkens with it; each title visit resets it.
 +extern int dw3_port_title_logo_ready(void);
 +extern void dw3_port_title_logo_set_active(int active);
 +#endif
++
++#if defined(DW3_TITLE_NATIVE_OVERLAY) && VERSION_EU
++/* The EU disc keeps its own credit sprites (6, and 5 at its animation's row)
++   under the native overlay; US draws native credit lettering instead. */
++static void drawLogoCredits(LogoTask *task) {
++    SpriteDrawer sprite;
++
++    initSpriteDrawer(&sprite);
++    sprite.setLayerId(task->layerId, 0);
++    sprite.setTexture(0x280, STDWTITL_TEXTURE_Y);
++    sprite.draw(FILE_CACHE.getEntry(STDWTITL_spriteBank), 6, 29, 209);
++    initSpriteDrawer(&sprite);
++    sprite.setLayerId(task->layerId, 0);
++    sprite.setTexture(0x280, STDWTITL_TEXTURE_Y);
++    sprite.setClutRow(task->anims[1].frame);
++    sprite.draw(FILE_CACHE.getEntry(STDWTITL_spriteBank), 5, 20, 202);
++}
++#endif
  
  /* Draws the logo once it is visible: sprite 6, and sprites 3 and 5 at their
     animations' current CLUT rows */
-@@ -8,20 +12,37 @@
+@@ -8,20 +30,40 @@
      SpriteDrawer sprite;
  
      if (task->visible) {
 +#if defined(DW3_TITLE_NATIVE_OVERLAY)
++#if VERSION_EU
++        drawLogoCredits(task);
++#endif
 +        if ((task->state == TASK_DONE ||
 +             (task->state == TASK_RUN && task->anims[0].done &&
 +              task->anims[1].done)) && dw3_port_title_logo_ready()) {
@@ -125,7 +155,7 @@ level so the overlay darkens with it; each title visit resets it.
      }
  }
  
-@@ -77,6 +98,9 @@
+@@ -77,6 +119,9 @@
          STDWTITL_drawLogo(task);
          break;
      case TASK_KILL:
@@ -178,7 +208,7 @@ level so the overlay darkens with it; each title visit resets it.
      STDWTITL_drawMenu(task);
 --- a/src/menus/title/slides.c
 +++ b/src/menus/title/slides.c
-@@ -1,6 +1,9 @@
+@@ -1,10 +1,16 @@
  /* The two parts of the title, which slide in from the sides of the screen */
  
  #include "menus/title.h"
@@ -188,7 +218,14 @@ level so the overlay darkens with it; each title visit resets it.
  
  /* Draws the second part of the title (sprite 1) for the European version's language 0 */
  void STDWTITL_drawTitle1Alt(SlideTask *task) {
-@@ -78,11 +81,18 @@
+     SpriteDrawer sprite;
++#if defined(DW3_TITLE_NATIVE_OVERLAY)
++    if (dw3_port_title_logo_active()) return;
++#endif
+ 
+     initSpriteDrawer(&sprite);
+     sprite.setLayerId(task->layerId, 0);
+@@ -78,11 +84,18 @@
  /* Draws the second part of the title (sprite 1) */
  void STDWTITL_drawTitle1(SlideTask *task) {
      SpriteDrawer sprite;
@@ -207,7 +244,17 @@ level so the overlay darkens with it; each title visit resets it.
      sprite.draw(FILE_CACHE.getEntry(STDWTITL_spriteBank), 1, task->x, task->y);
  }
  
-@@ -213,11 +223,18 @@
+@@ -140,6 +153,9 @@
+ /* Draws the first part of the title (sprite 0) for the European version's language 0 */
+ void STDWTITL_drawTitle0Alt(SlideTask *task) {
+     SpriteDrawer sprite;
++#if defined(DW3_TITLE_NATIVE_OVERLAY)
++    if (dw3_port_title_logo_active()) return;
++#endif
+ 
+     initSpriteDrawer(&sprite);
+     sprite.setLayerId(task->layerId, 0);
+@@ -213,11 +229,18 @@
  /* Draws the first part of the title (sprite 0) */
  void STDWTITL_drawTitle0(SlideTask *task) {
      SpriteDrawer sprite;
@@ -266,7 +313,7 @@ level so the overlay darkens with it; each title visit resets it.
  
      task->layerId = STDWTITL_TITLE_LAYER;
      task->depth = 2;
-@@ -191,6 +209,9 @@
+@@ -191,11 +209,17 @@
      loader.setClutPos(0, 0x1F0);
      loader.loadArchive(FILE_CACHE.getEntry(STDWTITL_titleImages[1].images));
      STDWTITL_spriteBank = STDWTITL_titleImages[1].sprites;
@@ -276,3 +323,11 @@ level so the overlay darkens with it; each title visit resets it.
  #elif VERSION_EU
      loader.setImagePos(0x280, 0x100);
      loader.setClutPos(0, 0x1F0);
+     loader.loadArchive(FILE_CACHE.getEntry(STDWTITL_titleImages[LANGUAGE].images));
+     STDWTITL_spriteBank = STDWTITL_titleImages[LANGUAGE].sprites;
++#if defined(DW3_TITLE_NATIVE_OVERLAY)
++    dw3_port_title_logo_capture(FILE_CACHE.getEntry(STDWTITL_spriteBank));
++#endif
+ #endif
+     loader.setClutPos(0, 0x1F3);
+     loader.setImagePos(0x300, 0);

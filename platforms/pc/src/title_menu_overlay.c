@@ -58,6 +58,7 @@ static int g_overlay_active;
 static int g_logo_active;
 static int g_logo_texture_ready;
 static int g_presentation_size_checked;
+static unsigned g_art_generation;
 
 /* The 3x mode renders a 960x720 image. Start that opt-in mode in a 16:9
  * window so the image and native-resolution UI remain 1:1 with 160px bars. */
@@ -130,6 +131,7 @@ static int upload_art_and_quad(void) {
     const size_t texture_bytes = canvas_bytes * STATE_COUNT;
     uint8_t *pixels = (uint8_t *)malloc(texture_bytes);
     if (!pixels) return -1;
+    g_art_generation = dw3_pc_title_overlay_generation();
     for (int state = 0; state < STATE_COUNT; ++state) {
         const int selected = state == 0 ? -1 : state - 1;
         dw3_pc_title_overlay_art(pixels + (size_t)state * canvas_bytes,
@@ -391,6 +393,58 @@ int dw3_pc_title_menu_set_logo_rgba(const uint8_t *rgba, int width,
     return 0;
 }
 
+/* Regenerate the four states when the EU disc swaps in its own labels. */
+static void refresh_art(void) {
+    const size_t canvas_bytes = (size_t)CANVAS_W * CANVAS_H * 4;
+    const size_t texture_bytes = canvas_bytes * STATE_COUNT;
+    SDL_GPUTransferBuffer *transfer;
+    SDL_GPUCommandBuffer *cmd;
+    uint8_t *mapped;
+
+    if (!g_device || !g_texture ||
+        g_art_generation == dw3_pc_title_overlay_generation()) return;
+    const SDL_GPUTransferBufferCreateInfo transfer_info = {
+        .usage = SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD,
+        .size = (Uint32)texture_bytes,
+    };
+    transfer = SDL_CreateGPUTransferBuffer(g_device, &transfer_info);
+    if (!transfer) return;
+    mapped = (uint8_t *)SDL_MapGPUTransferBuffer(g_device, transfer, false);
+    if (!mapped) {
+        SDL_ReleaseGPUTransferBuffer(g_device, transfer);
+        return;
+    }
+    g_art_generation = dw3_pc_title_overlay_generation();
+    for (int state = 0; state < STATE_COUNT; ++state) {
+        const int selected = state == 0 ? -1 : state - 1;
+        dw3_pc_title_overlay_art(mapped + (size_t)state * canvas_bytes,
+                                 CANVAS_W * 4, selected);
+    }
+    SDL_UnmapGPUTransferBuffer(g_device, transfer);
+    cmd = SDL_AcquireGPUCommandBuffer(g_device);
+    if (!cmd) {
+        SDL_ReleaseGPUTransferBuffer(g_device, transfer);
+        return;
+    }
+    SDL_GPUCopyPass *copy = SDL_BeginGPUCopyPass(cmd);
+    const SDL_GPUTextureTransferInfo src = {
+        .transfer_buffer = transfer,
+        .pixels_per_row = CANVAS_W,
+        .rows_per_layer = ART_TEXTURE_H,
+    };
+    const SDL_GPUTextureRegion dst = {
+        .texture = g_texture,
+        .w = CANVAS_W,
+        .h = ART_TEXTURE_H,
+        .d = 1,
+    };
+    SDL_UploadToGPUTexture(copy, &src, &dst, false);
+    SDL_EndGPUCopyPass(copy);
+    SDL_SubmitGPUCommandBuffer(cmd);
+    SDL_WaitForGPUIdle(g_device);
+    SDL_ReleaseGPUTransferBuffer(g_device, transfer);
+}
+
 void dw3_pc_title_menu_logo_set_active(int active) {
     g_logo_active = active && g_logo_texture_ready;
 }
@@ -411,6 +465,7 @@ void dw3_pc_title_menu_set_state(int active, int selected) {
     if (selected < 0) g_selection = 0;
     else if (selected >= 2) g_selection = 3;
     else g_selection = selected + 1;
+    refresh_art();
     g_overlay_active = 1;
 }
 
