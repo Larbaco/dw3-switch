@@ -26,14 +26,16 @@ jobs:
           if [ -z "$BASE" ] || ! git cat-file -e "$BASE^{commit}" 2>/dev/null; then
             echo "code=true" >> "$GITHUB_OUTPUT"; exit 0
           fi
-          files=$(git diff --name-only "$BASE...$GITHUB_SHA")
+          files=$(git diff --name-only --no-renames "$BASE...$GITHUB_SHA")
           echo "$files"
           code=$(echo "$files" | grep -vE '^docs/|\.md$' | grep -q . && echo true || echo false)
           echo "code=$code" >> "$GITHUB_OUTPUT"
 
   pc:
     needs: changes
-    if: needs.changes.outputs.code == 'true'
+    # Build unless changes positively said docs-only; if changes itself
+    # fails, its output is empty and the builds still run (no false green).
+    if: ${{ !cancelled() && needs.changes.outputs.code != 'false' }}
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
@@ -75,7 +77,9 @@ jobs:
   # .github/workflows/switch-release.yml.
   switch:
     needs: changes
-    if: needs.changes.outputs.code == 'true'
+    # Build unless changes positively said docs-only; if changes itself
+    # fails, its output is empty and the builds still run (no false green).
+    if: ${{ !cancelled() && needs.changes.outputs.code != 'false' }}
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
@@ -90,7 +94,9 @@ jobs:
 
   switch-game:
     needs: changes
-    if: needs.changes.outputs.code == 'true'
+    # Build unless changes positively said docs-only; if changes itself
+    # fails, its output is empty and the builds still run (no false green).
+    if: ${{ !cancelled() && needs.changes.outputs.code != 'false' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     steps:
