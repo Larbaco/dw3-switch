@@ -499,6 +499,15 @@ speed.
   The frame-time check that used to be the P4.2 done-when lives here.
   Done when: no frame over 16.7 ms in field and battle benchmarks,
   docked and handheld.
+  **Owner OLED feedback (2026-10-14, EU preview.26):** the Agumon eye
+  and HUD now look correct; the idle camera rotates around the correct
+  location. Visual acceptance is partial: MonMon's eye still has an artifact,
+  and the owner sees what looks like geometry passing in front of the camera
+  during the idle orbit. The cause is not established. Changing the selected
+  item in Port options also causes a substantial FPS drop. These are reported
+  follow-ups, not investigated fixes; P5.2 and the full battle/stage visual
+  acceptance remain open. The observations are qualitative owner reports,
+  not a frame-time benchmark.
   **Stock clocks (2026-10-11).** `v0.6.5-preview.6` raised the CPU to
   1785 MHz. That change is reverted. Do not call `clkrstSetClockRate` or
   `appletSetCpuBoostMode`. The CPU and GPU stay at the rate the console
@@ -677,8 +686,11 @@ tick does not start Phase 6.
   **Status (2026-10-14, language part):** `CNTY_SEL` linked as
   `dw3_p62_cnty_sel` (US and EU tables); EU host boot starts there (patch
   `0055`) and the choice sets `LANGUAGE` before the opening and title.
-  PC US/EU link; not yet seen on Ryubing/OLED. PAL/NTSC and disc
-  selection still open.
+  **Owner OLED feedback (2026-10-14, EU preview.26):** language selection
+  works. Restart from the main menu after choosing a language leaves the
+  title menu drawn above the language-selection screen (see P6.9). This
+  validates the tested language path only; PAL/NTSC and disc selection remain
+  open, so P6.2 is not complete.
 - [ ] **P6.3** PGXP-style vertex precision from PSY-Z if it stays stable.
 - [ ] **P6.4** Fast-forward / frame-skip toggles for grinding (optional).
   **Status (2026-10-14, first pass):** R3 toggles 2x/3x/4x fast-forward
@@ -689,6 +701,11 @@ tick does not start Phase 6.
   **OLED feedback (preview.25):** R3 works; field ~70–80 fps and battle
   ~180 fps reported at 2x. Display-buffer raster skipping is deferred:
   encounter transitions read those buffers through MoveImage.
+  **Owner OLED feedback (2026-10-14, EU preview.26):** turbo works; reported
+  HUD readings are approximately 90 FPS in the Inn, 70 FPS in the city and
+  field, and 130 FPS in battle. These are observed counters, not measured
+  logical-speed multipliers, display/present rates, or P5.2 benchmark proof.
+  P6.4 remains open; no additional measurement or optimization was performed.
   Done when: PC and Switch (Ryujinx, then hardware) show it on both the US
   and EU discs, and it returns cleanly to normal speed.
 - [x] **P6.5** Release packaging: `.nro` + `README` for own-disc setup;
@@ -773,8 +790,12 @@ tick does not start Phase 6.
   mode/overlay inside the existing `dw3_game_main()` loop; host, PSY-Z, audio,
   heap, pad, and graphics initialization do not run again. Private Xvfb PC run
   returned to title after the successful flush. See
-  [P6.9_RESTART.md](P6.9_RESTART.md). **Still open:** Switch build/hardware
-  chord and Continue reload of a save written before restart.
+  [P6.9_RESTART.md](P6.9_RESTART.md).
+  **Owner OLED feedback (2026-10-14, EU preview.26):** the restart hotkey
+  works. However, choosing a language, reaching the main menu, then restarting
+  leaves the title menu above the language-selection screen. The clean boot
+  presentation therefore remains blocked. Continue reload of a save written
+  before restart is not newly confirmed by this report; P6.9 stays open.
 - [ ] **P6.10 Hardware render outside battle (goal).** Move the field
   (`FIELDSTG` map tiles, actors) and the menus (field menu, Status, shops,
   memory card) from the software rasterizer to the GPU path, the way
@@ -983,6 +1004,13 @@ PS1 game, with vanilla-safe defaults and persistence on owner storage.
   diagnostic is `after-title-transition.png` in the same folder. See
   [TITLE_MENU_DESIGN.md](TITLE_MENU_DESIGN.md) and
   [PC_TITLE_LOGO_RESAMPLING.md](PC_TITLE_LOGO_RESAMPLING.md).
+  **Owner OLED feedback (2026-10-14, EU preview.26):** navigation between
+  menus works, and the Options button design is approved. Styled-button
+  acceptance is partial: Start and Continue text has an unwanted bloom/glow;
+  the owner wants both standardized to the Options style. Changing the selected
+  item in Port options substantially drops FPS (tracked under P5.2). P9.2's
+  reachability/return checkpoint remains met; this does not close the styling,
+  performance, restart-overlay, or P9.4 persistence follow-ups.
   Done when: the screen is reachable from the main menu and returns
   cleanly to it (PC + Switch; TTB print on PC).
 - [x] **P9.3 Toggle registry.** Maintain a registry of non-native features
