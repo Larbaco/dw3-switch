@@ -11,9 +11,10 @@ is uploaded to a private GPU texture when the title animation reaches its stable
 state; the animated background keeps its existing path and filter. SDL3 GL,
 Switch, and non-US builds retain the original logo rendering path.
 
-The selected presentation is Lanczos2, using a 4x4 source neighborhood at each
-destination pixel center. PS1 ABR2 shadow subtraction depends on the animated
-background under each texel; the static logo texture approximates its transparent
+The selected presentation is Lanczos2 with the fine local-contrast pass,
+using a 4x4 source neighborhood at each destination pixel center. PS1 ABR2
+shadow subtraction depends on the animated background under each texel; the
+static logo texture approximates its transparent
 edge as black at alpha 112. The screenshot confirms that this approximation is
 visually acceptable in the captured title frame, but it is not an exact
 reproduction of the shadow against every background frame. Mitchell-Netravali bicubic interpolation (B=C=1/3) is
@@ -21,19 +22,22 @@ available for a softer comparison. Both kernels interpolate premultiplied color 
 alpha together, then convert back to straight RGBA, avoiding the dark fringes
 produced by interpolating RGB against black transparent pixels. Final channels
 are clamped to their valid ranges and each visible source neighborhood color
-range, preventing new overshoot colors around high-contrast edges. These compact mathematical implementations
-have no external library dependency or copied third-party implementation.
+range, preventing new overshoot colors around high-contrast edges. These compact
+mathematical implementations have no external library dependency or copied
+third-party implementation.
 
 The component accepts arbitrary source crop dimensions and output dimensions;
-use `DW3_PC_LOGO_MITCHELL` or `DW3_PC_LOGO_LANCZOS2`. The integration filters
+available modes are `DW3_PC_LOGO_MITCHELL`, `DW3_PC_LOGO_LANCZOS2`, and
+`DW3_PC_LOGO_LANCZOS2_FINE`. The integration filters
 the 300×136 logo crop to 720×326 once and caches it as a GPU texture. The
 designer measured about 106ms for that Lanczos2 pass and 41ms for Mitchell on
 an optimized Linux host build; this is load-time work, not a per-frame cost.
 
 Local comparisons using only the owner's runtime artwork showed that nearest
 sampling leaves large stair steps. Exact-color Scale3x retained too many of
-those steps in shaded/antialiased source artwork. Mitchell smoothed the borders with a softer small-text appearance. The owner
-selected the sharper Lanczos2 preview. A runtime US/Xvfb capture now confirms
+those steps in shaded/antialiased source artwork. Mitchell smoothed the borders
+with a softer small-text appearance. The owner selected the sharper Lanczos2
+preview. A runtime US/Xvfb capture now confirms
 the filtered logo in the title composition. The process still preserves the
 original PS1 logo pixel art; only its sampling and display size change.
 Scale3x was therefore not included in the runtime component. The mathematical
@@ -79,6 +83,7 @@ Local comparison of the original 300x136 runtime composition at 720x326 changed
 63,578 RGB pixels, with maximum per-channel difference 17 and zero alpha changes.
 The pass added about 3ms to this local load-time measurement. Visual review
 accepted the moderate improvement in small text and inner contours without
-invented details or new edge halos. Actual PC runtime integration still requires
-a virtual-display capture. Original game pixels and comparison PNGs remain local
-and are not committed.
+invented details or new edge halos. A US runtime capture at 1280×720 confirms
+the original logo with the selected filter in the stable three-button title
+screen. The capture and original game pixels remain outside Git under
+`tmp/evidence/pr121-restored/`.

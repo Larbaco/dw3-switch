@@ -206,14 +206,14 @@ int dw3_port_title_logo_capture(const s32 *sheet) {
     rc = dw3_pc_title_logo_resample(
         cropped, LOGO_SOURCE_W, LOGO_SOURCE_H, LOGO_SOURCE_W * 4,
         output, LOGO_OUTPUT_W, LOGO_OUTPUT_H, LOGO_OUTPUT_W * 4,
-        DW3_PC_LOGO_LANCZOS2);
+        DW3_PC_LOGO_LANCZOS2_FINE);
     if (rc != 0 || dw3_pc_title_menu_set_logo_rgba(
                        output, LOGO_OUTPUT_W, LOGO_OUTPUT_H,
                        LOGO_OUTPUT_W * 4) != 0) goto fail;
     g_logo_ready = 1;
     fprintf(stderr,
             "dw3-title-logo: runtime US sprites 0-3 (%d opaque, %d colored) "
-            "resampled Lanczos2 "
+            "resampled Lanczos2+fine "
             "%dx%d -> %dx%d; original files remain external\n",
             opaque_pixels, colored_pixels,
             LOGO_SOURCE_W, LOGO_SOURCE_H, LOGO_OUTPUT_W, LOGO_OUTPUT_H);

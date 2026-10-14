@@ -57,6 +57,33 @@ static int g_selection;
 static int g_overlay_active;
 static int g_logo_active;
 static int g_logo_texture_ready;
+static int g_presentation_size_checked;
+
+/* The 3x mode renders a 960x720 image. Start that opt-in mode in a 16:9
+ * window so the image and native-resolution UI remain 1:1 with 160px bars. */
+static void set_three_x_presentation_size(void) {
+    const char *internal_res;
+    float density;
+    int width, height;
+
+    if (g_presentation_size_checked || !g_window ||
+        (SDL_GetWindowFlags(g_window) & SDL_WINDOW_HIDDEN)) return;
+    internal_res = getenv("DW3_PC_INTERNAL_RES");
+    if (!internal_res || strcmp(internal_res, "3") != 0) {
+        g_presentation_size_checked = 1;
+        return;
+    }
+    g_presentation_size_checked = 1;
+    SDL_GetWindowSizeInPixels(g_window, &width, &height);
+    if (width == 1280 && height == 720) return;
+    density = SDL_GetWindowPixelDensity(g_window);
+    if (density <= 0.0f) density = 1.0f;
+    SDL_SetWindowSize(g_window,
+                      (int)(1280.0f / density + 0.5f),
+                      (int)(720.0f / density + 0.5f));
+    fprintf(stderr,
+            "dw3-title-overlay: 3x presentation window set to 1280x720 pixels\n");
+}
 
 static SDL_GPUShader *create_shader(const unsigned char *code, unsigned len,
                                     SDL_GPUShaderStage stage,
@@ -77,6 +104,7 @@ static SDL_GPUShader *create_shader(const unsigned char *code, unsigned len,
 }
 
 static void release_gpu_resources(void) {
+    g_presentation_size_checked = 0;
     if (!g_device) return;
     if (g_pipeline) SDL_ReleaseGPUGraphicsPipeline(g_device, g_pipeline);
     if (g_vertices) SDL_ReleaseGPUBuffer(g_device, g_vertices);
@@ -120,8 +148,8 @@ static int upload_art_and_quad(void) {
     };
     g_texture = SDL_CreateGPUTexture(g_device, &texture_info);
     const SDL_GPUSamplerCreateInfo sampler_info = {
-        .min_filter = SDL_GPU_FILTER_NEAREST,
-        .mag_filter = SDL_GPU_FILTER_NEAREST,
+        .min_filter = SDL_GPU_FILTER_LINEAR,
+        .mag_filter = SDL_GPU_FILTER_LINEAR,
         .mipmap_mode = SDL_GPU_SAMPLERMIPMAPMODE_NEAREST,
         .address_mode_u = SDL_GPU_SAMPLERADDRESSMODE_CLAMP_TO_EDGE,
         .address_mode_v = SDL_GPU_SAMPLERADDRESSMODE_CLAMP_TO_EDGE,
@@ -155,11 +183,10 @@ static int upload_art_and_quad(void) {
 
     OverlayVertex quads[STATE_COUNT * 6 + 6];
     for (int row = 0; row < STATE_COUNT; ++row) {
-        const float u0 = 0.5f / (float)CANVAS_W;
-        const float u1 = ((float)CANVAS_W - 0.5f) / (float)CANVAS_W;
-        const float v0 = ((float)(row * CANVAS_H) + 0.5f) /
-                         (float)ART_TEXTURE_H;
-        const float v1 = ((float)((row + 1) * CANVAS_H) - 0.5f) /
+        const float u0 = 0.0f;
+        const float u1 = 1.0f;
+        const float v0 = (float)(row * CANVAS_H) / (float)ART_TEXTURE_H;
+        const float v1 = (float)((row + 1) * CANVAS_H) /
                          (float)ART_TEXTURE_H;
         const OverlayVertex a = {{0.0f, 0.0f}, {u0, v0}};
         const OverlayVertex b = {{1.0f, 0.0f}, {u1, v0}};
@@ -305,6 +332,7 @@ static int upload_art_and_quad(void) {
 }
 
 static void init_overlay(SDL_Window *window, SDL_GPUDevice *device) {
+    g_presentation_size_checked = 0;
     g_window = window;
     g_device = device;
     if (upload_art_and_quad() != 0) {
@@ -384,6 +412,7 @@ void dw3_pc_title_menu_set_state(int active, int selected) {
 }
 
 static void render_overlay(SDL_GPUCommandBuffer *cmd, SDL_GPURenderPass *pass) {
+    set_three_x_presentation_size();
     if ((!g_overlay_active && !g_logo_active) || !g_pipeline || !g_texture || !g_vertices ||
         !g_sampler || !g_window) return;
     int window_w = 0, window_h = 0;
@@ -432,6 +461,7 @@ static void destroy_overlay(void) {
 
 void dw3_pc_title_menu_overlay_register(void) {
     Psyz_OverlayInit_SDL3GPU(init_overlay);
+    Psyz_OverlayFrameCB(set_three_x_presentation_size);
     Psyz_OverlayRender_SDL3GPU(render_overlay);
     Psyz_OverlayDestroyCB(destroy_overlay);
 }

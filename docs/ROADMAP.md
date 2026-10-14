@@ -851,17 +851,23 @@ PS1 game, with vanilla-safe defaults and persistence on owner storage.
   VRAM readback falls back to original sprites. Load Game maps to vanilla
   Continue / `STGMCARD`; Switch and SDL3 GL retain their existing presentation
   paths. Linux/Vulkan and SDL3 GL builds, plus patch-check, pass. US runtime on
-  Xvfb captured the full composition in a 1280×960 window using the rebuilt 3×
-  GPU binary; the logo used Lanczos2 from 300×136 runtime pixels to a 720×326
-  texture. Resizing that window during the run corrupted the frame, so the
-  1280×720 window case is not claimed for this logo-resampling change. Short
-  paired captures showed no measurable background-pixel motion, so visible
-  animation is not claimed. A post-transition Xvfb frame contains no logo/menu
+  The opt-in 3× GPU path now sizes its initial presentation window to
+  1280×720 after the first backend-presented frame; the 960×720 game image is
+  1:1 with 160-pixel side bars. The atlas uses linear sampling with exact edge
+  UVs, preserving source pixels at this size and filtering larger resizes. A
+  stable US/Xvfb capture shows the full original logo, all three buttons, and
+  footer in that 1280×720 window. The button artwork source is unchanged from
+  d7c3c02; the prior perceived regression compared the menu to a 1280×960
+  `PRESS START` capture, which enlarged/cropped the presentation and was not
+  the three-row menu. The logo uses Lanczos2 plus a mild local-luma refinement
+  from 300×136 runtime pixels to a 720×326 texture. Short paired captures
+  showed no measurable background-pixel motion, so visible animation is not
+  claimed. A post-transition Xvfb frame contains no logo/menu
   overlay, but its FMV is corrupted because the isolated runtime lacks the
   Mode2 BIN/CUE. Automated shell return and Load Game selection are not yet
   confirmed. Windows/DXIL and macOS/Metal runtime validation remain open. The
-  accepted title capture is kept outside Git at
-  `/tmp/dw3-pc-logo-upscale/evidence/logo-lanczos-final.png`; the post-transition
+  accepted three-row capture is kept outside Git at
+  `tmp/evidence/pr121-restored/menu-3options-stable.png`; the post-transition
   diagnostic is `after-title-transition.png` in the same folder. See
   [TITLE_MENU_DESIGN.md](TITLE_MENU_DESIGN.md) and
   [PC_TITLE_LOGO_RESAMPLING.md](PC_TITLE_LOGO_RESAMPLING.md).
