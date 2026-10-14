@@ -2,8 +2,9 @@
 
 Status: **link + owner bring-up validated** (configure/link with
 `-DDW3_VERSION=eu`; owner EU disc packed to `runtime/eu`; PC smoke reached
-opening movie / PAL 50 Hz). Full EU playthrough and OLED hardware smoke
-remain open. Gate stance unchanged: US continuous path only
+opening movie / PAL 50 Hz; OLED EU extraction and early gameplay on
+2026-10-14). Full EU playthrough and save/relaunch validation remain open.
+Gate stance unchanged: US continuous path only
 (`docs/P3_GATE.md`).
 
 Owner validation note (2026-10-12, own disc only, not in git): Redump-style
@@ -29,9 +30,30 @@ BIN/CUE, then reused the runtime on a second boot. The movie reached frame
 2100 at about 15 fps with zero skipped frames; pressing Plus for one second
 returned to the title. This proves playback and skip, not natural completion
 or audible A/V synchronization. That emulator build preceded the FAT swap
-hardening; the final FAT path has synthetic host coverage. OLED extraction,
-movie acceptance, and the EU Switch playthrough remain open. Evidence stays
-outside Git under `/mnt/cabal/tmp/dw3-eu-extraction-test/`.
+hardening; the final FAT path has synthetic host coverage. OLED extraction
+and early gameplay were subsequently observed as recorded below; full EU
+movie acceptance and the EU Switch playthrough remain open. Evidence stays
+outside Git under `/mnt/cabal/tmp/dw3-eu-extraction-test/` for that emulator run.
+
+## OLED EU own-disc extraction (2026-10-14)
+
+Before launch, the SD EU input contained only `eu/disc.bin` and `eu/disc.cue`,
+with their copy hashes verified; no pre-extracted EU runtime was supplied.
+The EU nxlink NRO was **9,062,945 bytes**, SHA-256
+`69fb04aa8f4d5f0631a8f73508894d75fa815da83152a27d5ae778b63a478cd9`.
+The live nxlink stdout (session 91889; no persistent log file) reports `runtime extract wrote=2383 skipped=0`,
+then runtime `version=eu`, root `sdmc:/switch/dw3/eu`, executable
+`SLES_039.36`, and EU CDFS initialization. This establishes extraction by
+this NRO and EU runtime selection on the OLED, rather than a prepacked-tree
+boot or an inference from the movie's appearance.
+
+Movie diagnostics reached frame 1020 with `fc_skipped=0 restarts=0`.
+The owner then pressed Start; `ended=0` records the skip, not natural movie
+completion. The owner reported playing toward the first save. This confirms
+early EU gameplay only: first-save success, relaunch/Continue reload, the
+complete movie's image/audio quality, and the EU first-boss/playthrough gate
+remain unverified. The existing US runtime and saves were preserved; this
+evidence update does not require reading or modifying save files.
 
 ## Root causes (pre-scaffold blockers)
 
@@ -116,7 +138,8 @@ Either copy a packed `runtime/eu` (including an empty `memcard/`) to
 `sdmc:/switch/dw3/eu/`, or place the owner's matching EU Mode2 BIN/CUE in
 that directory and let the EU NRO extract it. The default EU NRO checks for
 `SLES_039.36`, writes `files_eu.json`, and rejects a US image. This path has
-synthetic host coverage; full EU playthrough and OLED validation remain open.
+synthetic host coverage and the OLED extraction/early-gameplay evidence above;
+full EU playthrough and save/relaunch validation remain open.
 
 ## Remaining open items
 
@@ -126,8 +149,8 @@ synthetic host coverage; full EU playthrough and OLED validation remain open.
   via country select; real overlay link is a later task.
 - EU-only stages WSTAG920–974 still weak-stubbed for link (not in P3.8 batches).
 - EU playthrough / “both versions play” not claimed (Phase 6 / P7.2 class).
-- OLED EU extraction and hardware smoke not yet run (needs the matching
-  owner BIN/CUE on SD + EU NRO; a prepacked runtime is optional).
+- OLED EU extraction and early gameplay are evidenced above; natural movie
+  completion, EU audio/image acceptance, and first-save/relaunch remain open.
 - Keep US as the default CI / day-to-day bring-up target.
 
 ## Regenerating `overlay_table_eu.c`
