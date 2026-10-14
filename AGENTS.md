@@ -202,15 +202,11 @@ and it is a prerelease. `workflow_dispatch` is listed only once that file
 is on `main`. Tag `v0.6.5-preview.1` is the first preview
 (8927429-byte game `.nro` plus `README.txt`). It still crops the title
 and freezes the movie. Latest **tagged** GitHub Release preview is
-`v0.6.5-preview.20`, published from `ecefe18` with both the standard and
-nxlink game binaries. It includes the title Port options shell and empty
-`StGetNext` scan cache. Post-release OLED testing on 2026-10-12 confirmed
-menu entry/defaults/return (P9.2); movie errors or slowdown remain reported,
-and movie quality/performance and option persistence remain unvalidated.
-See `docs/RELEASE_PREVIEW20.md` for the source, assets, and validation limits.
-`main` includes the PR #111 STR read-race fix, which preview.20 does not:
-frame loss/rate are resolved in Ryubing; OLED validation remains pending
-(`docs/P3.7_MOVIE_PACING_DIAGNOSTICS.md`). The picture baseline remains
+`v0.6.5-preview.22`, cut from `main` after PR #123 (P6.1 widescreen, plus
+#114 GPU battle bg fix, #115 Port options row, #122 restart hotkey). See
+`docs/RELEASE_PREVIEW22.md`. Earlier checkpoints:
+`docs/RELEASE_PREVIEW21.md` (STR read-race fix, OLED movie validation) and
+`docs/RELEASE_PREVIEW20.md`. The picture baseline remains
 `v0.6.5-preview.2` at `8273a91` (display-mode title width and full-height
 movie). Do not publish the sample `.nro` as the game.
 
