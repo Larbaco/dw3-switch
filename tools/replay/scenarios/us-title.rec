@@ -1,0 +1,8 @@
+# US: boot, skip splash/opening movie, title, menu
+pad 20 0x0008
+pad 25 0x0000
+shot 200 title
+pad 210 0x0008
+pad 215 0x0000
+shot 310 menu
+end 320

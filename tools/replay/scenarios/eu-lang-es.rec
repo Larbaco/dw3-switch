@@ -1,0 +1,24 @@
+# EU: language select -> es, title, menu
+shot 80 select-default
+pad 90 0x0040
+pad 95 0x0000
+pad 105 0x0040
+pad 110 0x0000
+pad 120 0x0040
+pad 125 0x0000
+pad 135 0x0040
+pad 140 0x0000
+shot 160 select-cursor
+pad 170 0x0008
+pad 175 0x0000
+pad 220 0x0008
+pad 225 0x0000
+pad 250 0x0008
+pad 255 0x0000
+pad 280 0x0008
+pad 285 0x0000
+shot 330 title
+pad 340 0x0008
+pad 345 0x0000
+shot 440 menu
+end 450

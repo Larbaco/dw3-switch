@@ -55,7 +55,8 @@ lives in its doc, not in the entry below.
 | P6.9 | Restart-game hotkey | in progress | [P6.9](P6.9_RESTART.md) |
 | P6.10 | Hardware render outside battle | future | [P5.2](P5.2_BATTLE_GPU.md) |
 | P6.11 | Internal resolution scaling | future | [PC README](../platforms/pc/README.md) |
-| P6.12–P6.21 | Backlog goal notes | future | [backlog](#backlog--future-goals) |
+| P6.12–P6.14, P6.16–P6.21 | Backlog goal notes | future | [backlog](#backlog--future-goals) |
+| P6.15 | Regression replay tests | in progress | [P6.15](P6.15_REPLAY_TESTS.md) |
 | P7.1 | Inventory and boundaries | done | [COMMUNITY_QOL](COMMUNITY_QOL.md) |
 | P7.2 | Patched EU disc as data source | open | [COMMUNITY_QOL](COMMUNITY_QOL.md) |
 | P7.3 | Binary-patch limits | in progress | [COMMUNITY_QOL](COMMUNITY_QOL.md) |
@@ -893,9 +894,10 @@ Statuses are in the [table](#status-at-a-glance).
 - **P9.4 (option persistence) blocks** P6.12 (remap survives a restart),
   P6.17, P6.18, P7.6–P7.10, and a persisted P6.9 restart setting (today
   session-only).
-- **P6.15** needs P6.9 (return to a known state without relaunching),
-  P5.3 (a fixed save per case) and a fixed RNG seed. Without them replays
-  are not reproducible.
+- **Future P6.15 gameplay scenarios** may need P6.9 (restart to a known
+  state) and P5.3 (a fixed save per case). The current title/language replay
+  uses a fresh process per scenario; the game RNG is a fixed table seeded to
+  0, so no injectable RNG seed is needed.
 - **P6.21** comes after P6.10 (field on the GPU) and P6.11 (internal
   resolution).
 - P6.20's map warp would help P5.5 (stage sweep on hardware).
@@ -932,10 +934,19 @@ Statuses are in the [table](#status-at-a-glance).
   and keep the save rules of P5.3 intact. Goal note only (2026-10-15); not
   part of the Phase 5 gate. Done when a load or new save from inside the
   game works without a restart, on the US and EU discs.
-- [ ] **P6.15 Regression replay tests (future goal).** Record pad input,
-  replay it and compare screenshots at fixed checkpoints, on the US disc
-  and the EU disc in all 5 languages. Goal note only (2026-10-15). Done
-  when one command runs the replay set on both discs and reports diffs.
+- [~] **P6.15 Regression replay tests.** Record pad input, replay it and
+  compare screenshots at fixed checkpoints, on the US disc and the EU disc
+  in all 5 languages. First version landed (2026-10-15):
+  `tools/replay_tests.sh` replays frame-keyed pad recordings on the PC host
+  under Xvfb (US boot to title menu; EU language select to localized title
+  menu in en/fr/de/it/es) and diffs window and PS1-frame captures against
+  references kept outside git. `DW3_REPLAY` / `DW3_REPLAY_RECORD` in
+  `psyz_pad_host.c` (off by default). Runs are byte-identical on one
+  machine; the game RNG is a fixed table seeded to 0, so no injectable seed
+  is needed. See `docs/P6.15_REPLAY_TESTS.md`. Still open: Switch/Ryubing
+  replay, scenarios past the title (New Game, field, battle, save, restart),
+  movies, cross-machine tolerance, CI. The full goal remains open until the
+  replay set covers gameplay and Switch.
 - [ ] **P6.16 Suspend / resume (future goal).** Save the whole port state
   (RAM, VRAM, SPU, overlay state) on exit or sleep and resume at the same
   point. Separate from P5.3 game saves. Goal note only (2026-10-15). Done
