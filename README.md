@@ -77,14 +77,58 @@ and the occasional crash. Report problems on the
 | Movies | Plays | The opening runs at about 15 fps with XA audio. Image quality and the full movie are not validated. |
 | Audio | Works | Underrun behavior has not been measured. |
 | Saves | Works | Flat `save0.bin` and `save1.bin`. Fresh-save and relaunch reload still needs a full pass. |
-| Widescreen | On by default | About 16:9 in supported scenes. Title and movies stay 4:3. |
-| Fast-forward | Field and battle | R3 toggles 2x, 3x or 4x. Music speeds up too. |
-| Port options | Session only | Title screen entry. Settings are not saved between launches. |
 | Rumble | Not implemented | Left stick and D-pad work. |
 | EU version | Early | Language select and own-disc extraction work. A full playthrough and first-save reload are not yet confirmed. |
 | PC host | Works | Needs your own US disc packed to `runtime/us`. |
 
 Phases, gates and open items are in [docs/ROADMAP.md](docs/ROADMAP.md).
+
+## Features
+
+Things this port adds to the original game.
+
+### Available now
+
+- **Widescreen.** About 16:9 in field and battle, on by default, switchable
+  in Port options. Title and movies stay 4:3:
+  [P6.1_WIDESCREEN](docs/P6.1_WIDESCREEN.md).
+- **Fast-forward.** R3 toggles 2x, 3x or 4x in field and battle:
+  [P6.4_FAST_FORWARD](docs/P6.4_FAST_FORWARD.md).
+- **Port options screen.** Opens from the title and holds the toggles below.
+  Settings last for the session only: [PORT_OPTIONS](docs/PORT_OPTIONS.md).
+- **Native title menu.** New Game / Options / Load Game at native
+  resolution, with EU labels in the current game language.
+- **Restart hotkey.** Optional, off by default. Returns to the title after
+  flushing saves, without leaving the `.nro`:
+  [P6.9_RESTART](docs/P6.9_RESTART.md).
+- **EU version.** The original language-select screen at boot, and its own
+  runtime: [P3_EU_BUILD](docs/P3_EU_BUILD.md).
+- **Own-disc extraction on the console.** First boot builds the runtime from
+  your BIN/CUE with a progress bar: [STATIC_SD_LOAD](docs/STATIC_SD_LOAD.md).
+- **Flat saves.** One file per card slot, flushed at safe points. Old `.mcr`
+  files convert once: [P5.3_FLAT_SAVE](docs/P5.3_FLAT_SAVE.md).
+- **Battle render modes (Switch).** Minus + ZL + ZR cycles software and GPU
+  rendering: [HOTKEYS](docs/HOTKEYS.md).
+- **Diagnostics (Switch).** The `-nxlink` build streams logs and shows a
+  debug HUD, and crashes write a report to the SD card:
+  [NXLINK_DEBUG](docs/NXLINK_DEBUG.md), [P5.4_CRASH](docs/P5.4_CRASH.md).
+- **Title background in widescreen (PC).** The US title fills the side
+  margins: [PC_TITLE_WIDESCREEN](docs/PC_TITLE_WIDESCREEN.md).
+
+### Planned
+
+These are goals, not promises. The full list is in
+[docs/ROADMAP.md](docs/ROADMAP.md).
+
+- Save Port options between launches.
+- Battle at a steady 60 fps, and GPU rendering for the field and menus.
+- Rumble, other controller layouts, and Switch lifecycle checks (HOME,
+  sleep, docking): [SWITCH_FEATURES](docs/SWITCH_FEATURES.md).
+- Community quality-of-life features from the EU patch suite, reimplemented
+  natively: [COMMUNITY_QOL](docs/COMMUNITY_QOL.md).
+- Language packs, with Brazilian Portuguese first.
+- Texture pack support: [TEXTURE_PACKS](docs/TEXTURE_PACKS.md).
+- A separate tool to convert saves to and from PS1 memory-card images.
 
 ## Play it on Switch
 
