@@ -1,10 +1,14 @@
 Digimon World 3 / 2003, Switch homebrew preview
 
-Release candidate notes for v0.6.5-preview.26. OLED acceptance of the
+Release candidate notes for v0.6.5-preview.28. OLED acceptance of the
 changes below remains pending. The release tag and boot version identify
 the actual source revision.
 
 New in this preview
+
+  EU restart returns to a clean language selection (#162). The title
+  overlay is hidden on restart. This change applies to the EU build only;
+  the US build has no language selection and is unchanged by it.
 
   EU cold boot uses the original language-selection screen (#143).
   Choose the language before the opening movie and title. US boot remains
@@ -52,14 +56,12 @@ Bundle
 
   dw3-switch.nro              US ordinary build
   dw3-switch-nxlink.nro       US nxlink logging build
-  dw3-switch-eu.nro           EU ordinary build
-  dw3-switch-eu-nxlink.nro    EU nxlink logging build
-  README.txt                 these notes
-  SHA256SUMS                 hashes of the published files
-  SOURCE.txt                 exact build source revision and versions
+  README.txt                  these notes
 
-  The release workflow creates the US pair. The matching EU pair and
-  provenance files are added after verifying their source and hashes.
+  This preview publishes the US pair only, through the release workflow.
+  The EU pair is NOT in this release. It is built from the same source
+  with --eu, and may be attached later after its source and hashes are
+  verified. Do not expect dw3-switch-eu.nro in this preview.
   No original game files, BIN/CUE/ISO, BIOS or extracted tree ship here.
 
 Own-disc setup and extraction
