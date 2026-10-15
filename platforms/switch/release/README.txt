@@ -56,12 +56,12 @@ Bundle
 
   dw3-switch.nro              US ordinary build
   dw3-switch-nxlink.nro       US nxlink logging build
+  dw3-switch-eu.nro           EU ordinary build
   README.txt                  these notes
 
-  This preview publishes the US pair only, through the release workflow.
-  The EU pair is NOT in this release. It is built from the same source
-  with --eu, and may be attached later after its source and hashes are
-  verified. Do not expect dw3-switch-eu.nro in this preview.
+  This preview publishes the US pair from the release workflow, plus the
+  EU ordinary build attached to the release by hand. The EU nxlink build
+  is not published in this preview.
   No original game files, BIN/CUE/ISO, BIOS or extracted tree ship here.
 
 Own-disc setup and extraction
@@ -94,9 +94,9 @@ Install / nxlink
   For PC logs, open the launcher's nxlink receiver (Sphaira waiting
   for nxlink, or hbmenu Y NetLoader), on the same network, then:
 
-    nxlink -a <Switch-IP> -s dw3-switch-eu-nxlink.nro
+    nxlink -a <Switch-IP> -s dw3-switch-nxlink.nro
 
-  Use dw3-switch-nxlink.nro instead for US. Do not probe TCP 28280
+  This preview publishes only the US nxlink build. Do not probe TCP 28280
   first: an empty connection can break the receiver. A failed logging
   connection does not prevent boot; logs also go to
   sdmc:/switch/dw3/dw3.log.
