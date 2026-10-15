@@ -31,6 +31,53 @@ void dw3_pc_title_menu_overlay_register(void);
 extern volatile int StCdIntrFlag;
 void StCdInterrupt(void);
 
+/* P6.15: checkpoint capture for DW3_REPLAY runs (hook lives in
+ * port/psyz_missing/psyz_pad_host.c). Writes the presented display frame as
+ * a binary PPM to $DW3_REPLAY_OUT/<name>.ppm. */
+extern void (*dw3_pad_host_shot_cb)(const char *name, unsigned frame);
+
+static void dw3_pc_replay_shot(const char *name, unsigned frame) {
+    const char *dir = getenv("DW3_REPLAY_OUT");
+    char path[512];
+    unsigned char *rgb;
+    int w = 0, h = 0;
+    FILE *fp;
+
+    if (dir == NULL || dir[0] == '\0') {
+        dir = ".";
+    }
+    snprintf(path, sizeof(path), "%s/%s.ppm", dir, name);
+    rgb = Psyz_VideoAllocCapturedFrame(&w, &h);
+    if (rgb == NULL || w <= 0 || h <= 0) {
+        fprintf(stderr, "dw3-replay: shot %s failed (no frame)\n", name);
+        return;
+    }
+    fp = fopen(path, "wb");
+    if (fp != NULL) {
+        fprintf(fp, "P6\n%d %d\n255\n", w, h);
+        fwrite(rgb, 1, (size_t)w * (size_t)h * 3u, fp);
+        fclose(fp);
+    }
+    fprintf(stderr, "dw3-replay: shot %s frame=%u %dx%d -> %s\n", name, frame,
+            w, h, path);
+    free(rgb);
+    /* The PSY-Z frame above is the PS1 display only. The title logo and menu
+     * are host overlays drawn at present time, so DW3_REPLAY_XSHOT=1 also
+     * grabs the composited window from the (Xvfb) X server. The game thread
+     * is blocked here, so the last presented frame stays on screen. */
+    if (getenv("DW3_REPLAY_XSHOT") != NULL && getenv("DISPLAY") != NULL) {
+        char cmd[1024];
+
+        SDL_Delay(250);
+        snprintf(cmd, sizeof(cmd),
+                 "import -display '%s' -window root '%s/%s.png'",
+                 getenv("DISPLAY"), dir, name);
+        if (system(cmd) != 0) {
+            fprintf(stderr, "dw3-replay: window grab failed (%s)\n", cmd);
+        }
+    }
+}
+
 static PsyzVSyncCb g_prev_vsync_cb;
 static int g_audio_ok;
 static int g_xa_mix_logged;
@@ -235,6 +282,7 @@ int main(int argc, char **argv) {
                 "(960x720 for 320x240 content)\n",
                 multiplier);
     }
+    dw3_pad_host_shot_cb = dw3_pc_replay_shot;
     g_prev_vsync_cb = Psyz_SetVSyncCb(dw3_pc_vsync_pump);
 #if defined(DW3_PC_SDL3_GPU)
     dw3_pc_title_menu_overlay_register();

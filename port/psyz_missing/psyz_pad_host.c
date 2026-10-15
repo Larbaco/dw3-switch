@@ -49,6 +49,10 @@ static int port_index(int port) { return (port >> 4) & 1; }
 
 static void dw3_pad_host_debug_buttons(void);
 static void dw3_auto_pad_inject(void);
+static void dw3_pad_publish_mask(unsigned mask);
+static void dw3_replay_vsync(void);
+static void dw3_replay_record_sample(void);
+static int buf_connected(const unsigned char *buf);
 
 /* Raw PS1 digital bits in PadData.buttons (active-low in the wire buffer).
  * US readPadButtons remaps face buttons from RAW_* (12/13/14). */
@@ -92,11 +96,141 @@ static int mode_table_offset(unsigned char kind) {
     return 0;
 }
 
+/*
+ * P6.15 regression replay (off by default).
+ *
+ * Pad input is recorded and replayed at this layer, keyed by the game frame
+ * (the PadChkVsync count), never by wall-clock time. That makes a run
+ * independent of host speed, Xvfb timing and turbo.
+ *
+ *   DW3_REPLAY=<file>         replay: <file> supplies the pad mask each frame
+ *   DW3_REPLAY_RECORD=<file>  record: log every change of the real pad mask
+ *
+ * File format (text, one directive per line, '#' comments):
+ *   pad  <frame> <hexmask>   from this frame on, hold this raw mask
+ *   shot <frame> <name>      checkpoint: call dw3_pad_host_shot_cb(name)
+ *   end  <frame>             exit(0) at this frame
+ * Masks use the DW3_RAW_* bits (1 = pressed). The shot callback is set by the
+ * host (platforms/pc/src/main.c writes a PPM); the pad layer holds no video
+ * code. See docs/P6.15_REPLAY_TESTS.md.
+ */
+void (*dw3_pad_host_shot_cb)(const char *name, unsigned frame);
+
+enum { DW3_REPLAY_MAX = 4096 };
+typedef struct {
+    unsigned frame;
+    unsigned mask;
+    char name[48];
+} Dw3ReplayEv;
+
+static Dw3ReplayEv g_rp_pad[DW3_REPLAY_MAX];
+static Dw3ReplayEv g_rp_shot[DW3_REPLAY_MAX];
+static int g_rp_npad, g_rp_nshot, g_rp_pad_i, g_rp_shot_i;
+static unsigned g_rp_end;
+static int g_rp_state; /* 0 untried, 1 replay, 2 record, 3 off */
+static unsigned g_rp_frame;
+static unsigned g_rp_mask;
+static unsigned g_rec_last = 0xFFFFFFFFu;
+static FILE *g_rec_fp;
+
+static int replay_load(const char *path) {
+    FILE *fp = fopen(path, "r");
+    char line[160];
+
+    if (fp == NULL) {
+        fprintf(stderr, "dw3-replay: cannot open %s\n", path);
+        return -1;
+    }
+    while (fgets(line, sizeof(line), fp) != NULL) {
+        unsigned f, m;
+        char name[48];
+
+        if (sscanf(line, " pad %u %x", &f, &m) == 2 && g_rp_npad < DW3_REPLAY_MAX) {
+            g_rp_pad[g_rp_npad].frame = f;
+            g_rp_pad[g_rp_npad++].mask = m;
+        } else if (sscanf(line, " shot %u %47s", &f, name) == 2 &&
+                   g_rp_nshot < DW3_REPLAY_MAX) {
+            g_rp_shot[g_rp_nshot].frame = f;
+            strcpy(g_rp_shot[g_rp_nshot++].name, name);
+        } else if (sscanf(line, " end %u", &f) == 1) {
+            g_rp_end = f;
+        }
+    }
+    fclose(fp);
+    fprintf(stderr, "dw3-replay: loaded %s pad=%d shot=%d end=%u\n", path,
+            g_rp_npad, g_rp_nshot, g_rp_end);
+    return 0;
+}
+
+static void dw3_replay_vsync(void) {
+    const char *play;
+    const char *rec;
+
+    if (g_rp_state == 3) {
+        return;
+    }
+    if (g_rp_state == 0) {
+        play = getenv("DW3_REPLAY");
+        rec = getenv("DW3_REPLAY_RECORD");
+        g_rp_state = 3;
+        if (play != NULL && play[0] != '\0') {
+            if (replay_load(play) == 0) {
+                g_rp_state = 1;
+            }
+        } else if (rec != NULL && rec[0] != '\0') {
+            g_rec_fp = fopen(rec, "w");
+            if (g_rec_fp != NULL) {
+                fprintf(g_rec_fp,
+                        "# dw3 pad recording (frame = PadChkVsync count)\n");
+                g_rp_state = 2;
+            }
+        }
+        if (g_rp_state == 3) {
+            return;
+        }
+    }
+    g_rp_frame++;
+    if (g_rp_state == 1) {
+        while (g_rp_shot_i < g_rp_nshot &&
+               g_rp_shot[g_rp_shot_i].frame <= g_rp_frame) {
+            if (dw3_pad_host_shot_cb != NULL) {
+                dw3_pad_host_shot_cb(g_rp_shot[g_rp_shot_i].name, g_rp_frame);
+            }
+            g_rp_shot_i++;
+        }
+        if (g_rp_end != 0 && g_rp_frame >= g_rp_end) {
+            fprintf(stderr, "dw3-replay: end at frame %u\n", g_rp_frame);
+            fflush(stderr);
+            exit(0);
+        }
+        while (g_rp_pad_i < g_rp_npad &&
+               g_rp_pad[g_rp_pad_i].frame <= g_rp_frame) {
+            g_rp_mask = g_rp_pad[g_rp_pad_i++].mask;
+        }
+        dw3_pad_publish_mask(g_rp_mask);
+    }
+}
+
+/* Record mode: log the real pad (read from the RX buffer after refresh). */
+static void dw3_replay_record_sample(void) {
+    unsigned char *buf = g_pad_rx[0];
+    unsigned mask;
+
+    if (g_rp_state != 2 || buf == NULL || !buf_connected(buf)) {
+        return;
+    }
+    mask = (~(((unsigned)buf[3] << 8) | buf[2])) & 0xFFFFu;
+    if (mask != g_rec_last) {
+        g_rec_last = mask;
+        fprintf(g_rec_fp, "pad %u 0x%04x\n", g_rp_frame, mask);
+        fflush(g_rec_fp);
+    }
+}
+
 static void dw3_auto_pad_inject(void) {
     const char *env;
     unsigned mask = 0;
     static unsigned frame;
-    char buf[DW3_PAD_BUF_LEN];
     int confirm = 0;
     int walk = 0;
     int start = 0;
@@ -213,6 +347,12 @@ static void dw3_auto_pad_inject(void) {
             fflush(stderr);
         }
     }
+    dw3_pad_publish_mask(mask);
+}
+
+static void dw3_pad_publish_mask(unsigned mask) {
+    char buf[DW3_PAD_BUF_LEN];
+
     memset(buf, 0, sizeof(buf));
     buf[0] = 0x00;
     buf[1] = (char)PSYZ_CTRL_DIGITAL_PAD;
@@ -286,9 +426,13 @@ int PadChkVsync(void) {
     if (!g_pad_started) {
         return 0;
     }
-    dw3_auto_pad_inject();
+    dw3_replay_vsync();
+    if (g_rp_state != 1) {
+        dw3_auto_pad_inject();
+    }
     refresh_port(0);
     refresh_port(1);
+    dw3_replay_record_sample();
     dw3_pad_host_debug_buttons();
     return 1;
 }
