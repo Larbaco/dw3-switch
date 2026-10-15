@@ -157,3 +157,73 @@ Lobby `START_EVENT` aid + scoped `FORCE_WIN` are allowed and called out.
 Mode-warping straight to Genji (`DW3_START_MODE=0x200`) does not substitute
 for path C. EU playthrough is not required for this gate; claiming “both
 versions build” for a full EU `dw3-pc` image requires the scaffold above.
+
+## History moved from ROADMAP.md
+
+Moved verbatim from `docs/ROADMAP.md` on 2026-10-15 (roadmap hygiene PR).
+Dates are the dates of each note; later notes and the roadmap entry
+supersede earlier "open" statements.
+
+### Phase 3 header: tracking and EU notes
+
+Tracking: Phase 3 on `main` / `phase3-pc-bringup` (P3.5 merged from
+`phase3-cardgame` @ `fcff119`). P3.1 done. **P3.2 Done-when met** (+
+WSTAG790 follow-up). **P3.3 Done-when met:** forced encounter →
+`STFGTREP` (XP/levels) → return to `FIELDSTG` (`docs/P3.3_BATTLE.md`).
+**P3.4 Done-when met** (`READY_FOR_MAIN_ROADMAP_SYNC: P3.4`,
+`docs/P3.4_MENUS.md`): menus open/return from field; **STSTATUS Triangle
+UI cancel** (no `AUTO_MENU_RETURN`); **STGMCARD save + load** via P2.7
+`.mcr`; pad START→status; FORCE_NPC shop/lab/naming/gym; **WSTAG245
+`talkToActorAt` → shop** (warped proximity). Follow-up: free pad walk-up.
+**P3.5 Done-when met**
+(`READY_FOR_MAIN_ROADMAP_SYNC: P3.5`, `docs/P3.5_CARDGAME.md`): force-win
+→ prize item → `FIELDSTG`; album `cardsSeen` 29→33 via vanilla
+`STCRDSHP_openPack` `addCards` (host win `addCards` gated off). **P3.7 Done-when met** (`READY_FOR_MAIN_ROADMAP_SYNC: P3.7`,
+`docs/P3.7_MOVIES.md`): sustained STR play + Start-skip → `MODE_TITLE` +
+XA decode/mix + **owner audible DAC listen** (Pulse rebuild). Follow-up:
+video presentation quality (frames/decode/skip already evidenced). Default
+skip remains `MODE_TITLE` (`0010`).
+**P3.8 Done-when met** (`READY_FOR_MAIN_ROADMAP_SYNC: P3.8`,
+`docs/P3.8_STAGES.md`): `STAGSLCT` + batches 1–6 link 238/239 US stage
+objs; live PASS 237/237; only `WSTAG460` left stubbed (host
+`updateWanderer` SEGV). **Phase 3 gate met** (`docs/P3_GATE.md`): US
+continuous start→movie→Lobby→Tamer→Genji→field @ `a5ae93a` (Lobby
+`0x9004@0x203` / patch `0036`); `DW3_FORCE_WIN` accepted for gate (P3.3
+class; pad KO follow-up); EU playthrough not required. **EU `dw3-pc` link
+scaffold** (`docs/P3_EU_BUILD.md`): `-DDW3_VERSION=eu` +
+`overlay_table_eu.c` configure/link; owner EU disc pack + PC smoke to
+opening movie validated (2026-10-12); OLED extraction and early gameplay
+validated (2026-10-14); EU playthrough remains open.
+**Switch extraction follow-up (2026-10-13):** the EU NRO now selects the EU
+file-sector table, `SLES_039.36`, EU boot-TIM address and `files_eu.json` for
+own-disc BIN/CUE extraction under `sdmc:/switch/dw3/eu/`; a US executable is
+rejected. Synthetic extractor tests cover map identity, partial-copy retry,
+and second-boot validation. Independent Ryubing extracted 2383 files from BIN/CUE and reused them on a
+second boot; movie playback reached frame 2100 at about 15 fps with zero
+skipped frames, then Plus skipped to the title. Natural completion, audible
+A/V synchronization remain open. This emulator build
+preceded FAT swap hardening, covered separately by synthetic host tests
+(see `docs/P3_EU_BUILD.md`).
+**OLED EU extraction (2026-10-14):** with only matching BIN/CUE supplied on SD,
+the EU nxlink NRO logged `wrote=2383 skipped=0`, runtime `version=eu`,
+`sdmc:/switch/dw3/eu`, `SLES_039.36`, and EU CDFS. Movie frame 1020 had zero
+skips/restarts before owner Start-skip (`ended=0`). The owner is playing toward
+the first save; successful save/relaunch and the EU playthrough are not yet
+confirmed. Full EU movie image/audio acceptance and natural completion remain
+open (see `docs/P3_EU_BUILD.md`).
+**Update (2026-10-15):** the EU save and HOME-exit/Continue reload are now
+owner-confirmed on the OLED (P5.3, #171). The full EU playthrough and the EU
+movie acceptance above remain open.
+P3.9 harness (`tools/compare_harness/`, `docs/P3.9_REFERENCE.md`):
+**done** — title, field, and Kunemon vs Monmon Fight-menu battle pairs
+(`DW3_FORCE_ENCOUNTER=34` + `DW3_FORCE_PARTY=1` on PC).
+
+### Phase 3 header: experimental PC 3× internal render
+
+**Experimental PC 3× internal render (2026-10-13):** the SDL3 GPU backend's
+existing internal-resolution API is exposed on the PC host through
+`DW3_PC_INTERNAL_RES=3`. Title and field runs rendered the 4:3 image in a
+1280×720 window (960×720 game image, 160-pixel side bars). The standard 1×
+default and Switch host are unchanged. This is an opt-in experiment; visual
+quality across all layers and performance remain unassessed. Instructions:
+[platforms/pc/README.md](../platforms/pc/README.md).
