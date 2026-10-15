@@ -601,9 +601,7 @@ speed.
   memory cards. That interchange is an external tool, P9.6.
   **Done (owner OLED, 2026-10-15):** the owner saved, closed the app from
   the Switch HOME menu with X, reopened it from hbmenu, and loaded the save
-  with Continue; the owner confirmed it works. The owner did not say whether
-  this was tested on both the US and EU discs, so that split is not
-  recorded here.
+  with Continue; the owner confirmed it works on both the US and EU discs.
   **Flat save host (2026-10-11):** `port/memcard` now uses one resident
   flat file per port (`save0.bin` / `save1.bin`, 32 KiB), `memcpy` I/O,
   deferred flush on write-section end / `memcard_host_shutdown`, synthetic
