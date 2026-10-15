@@ -76,9 +76,9 @@ and the occasional crash. Report problems on the
 | Battle | Works, not at full speed | GPU textured rendering by default. Some stages show black gaps in the sky. Frame rate does not yet hold 60 Hz. |
 | Movies | Plays | The opening runs at about 15 fps with XA audio. Image quality and the full movie are not validated. |
 | Audio | Works | Underrun behavior has not been measured. |
-| Saves | Works | Flat `save0.bin` and `save1.bin`. Fresh-save and relaunch reload still needs a full pass. |
+| Saves | Works | Flat `save0.bin` and `save1.bin`. Save → HOME/X → relaunch → Continue was confirmed on US and EU discs (#171). Sleep/focus-loss flush and time-delta clamp remain open under P10.2. |
 | Rumble | Not implemented | Left stick and D-pad work. |
-| EU version | Early | Language select and own-disc extraction work. A full playthrough and first-save reload are not yet confirmed. |
+| EU version | Early | Language select and own-disc extraction work. Save reload after HOME and relaunch is confirmed; a full playthrough is not yet confirmed. |
 | PC host | Works | Needs your own US disc packed to `runtime/us`. |
 
 Phases, gates and open items are in [docs/ROADMAP.md](docs/ROADMAP.md).
