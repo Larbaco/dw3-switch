@@ -2,7 +2,9 @@
 
 Status: proposal, no production renderer changed. Inspected on 2026-10-15 at
 `main` `4b2068fc451e86952e1495c62b96a96427f651f1` and PR [#170](https://github.com/Larbaco/dw3-switch/pull/170)
-head `b43be1be87d8a6612abaceb5d31c0112784df3c6`.
+head `b43be1be87d8a6612abaceb5d31c0112784df3c6`. #170 subsequently landed
+as `09eeda6bd2fb0bf87735612336f92f2959325f5f`, a partial optimization;
+measurements below retain the pre-merge baseline for comparison.
 
 ## Owner result and scope
 
@@ -194,13 +196,11 @@ procedural geometry only where it makes a measured difference.
 
 ## Incremental delivery plan
 
-1. Treat #170 as a partial optimization. Update its description's unqualified
-   "cursor moves without a hitch" statement with the actual owner result.
-   With its existing correctness review and CI green, it is reasonable to
-   integrate as a baseline improvement after coordinator review; the OLED
-   result supports a gain, not completion. Keep the remaining performance task
-   explicitly open. Leaving it draft is a workflow decision, not a new finding
-   that its changes are incorrect.
+1. #170 was integrated as a partial optimization at `09eeda6`. The existing
+   correctness review, green CI and owner-confirmed improvement support this
+   baseline; the remaining performance task stays explicitly open. Its original
+   unqualified "cursor moves without a hitch" description must not be read as
+   OLED performance acceptance; the actual owner result is recorded above.
 2. Add bounded per-event timings/counters in a separate implementation PR:
    raster, allocation/staging, copy-call/submit CPU time, present/frame time,
    bytes uploaded, and generation/cache rebuilds. Record cursor, value-change,
