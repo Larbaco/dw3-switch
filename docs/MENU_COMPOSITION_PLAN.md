@@ -16,7 +16,11 @@ atlas with GPU composition into a retained target only when semantic state
 changes). Instrument raster, staging/allocation, upload-call, submit, and
 present CPU durations; bytes, calls, cache rebuilds, and generation counts.
 Keep instrumentation bounded and low overhead. Do not add GPU finish/wait
-calls to obtain timings. Report host call time separately from GPU execution.
+calls to obtain timings. Preserve any wait already present in the reference
+path consistently across comparisons and record its CPU duration; do not add
+or selectively remove waits. Report host call time separately from GPU
+execution. PC evidence selects a candidate for OLED validation; it does not
+prove Switch performance.
 
 ## Steps
 
@@ -37,27 +41,40 @@ calls to obtain timings. Report host call time separately from GPU execution.
    then open a PR against `main`. Leave OLED acceptance explicitly pending for
    the owner; do not publish a release or merge.
 
+The final candidate checkpoint must build standard and nxlink/HUD variants
+for both US and EU, with correct candidate metadata/version. The release
+workflow is outside this change; root owns preview packaging and will verify
+the then-current release sequence before publishing.
+
 ## Required PC coverage
 
 Use the existing capture/replay tooling under a dedicated Xvfb display, never
 the owner's active desktop. Cover title-to-Options entry, all three cursor
 positions, every value word (Widescreen OFF/ON, Turbo OFF/2x/3x/4x, Restart
 OFF/ON), Triangle return, restart flow, and US plus EU English, French,
-German, Italian, and Spanish. Compare reference and candidate at settled and
-intermediate fade frames. Record renderer, resolution, HUD state, limiter,
-input sequence, and run duration. Also exercise fallback, resize, and graphics
-context invalidation.
+German, Italian, and Spanish. Compare reference and candidate at settled
+frames. Preserve the PC host's existing no-op fade behavior; do not add PC
+fade parity here. Validate intermediate group-fade frames on the Switch GLES
+path, where that behavior exists. Record renderer, resolution, HUD state,
+limiter, input sequence, and run duration. Also exercise fallback, resize, and
+graphics context invalidation.
 
 ## Evidence gates
 
-- Counters show no raster or pixel upload on an A/B semantic cursor/value
-  change after warm-up; idle produces no cache rebuild. Report upload bytes,
-  calls, allocations, and peak staging/atlas/target memory.
+- Both paths have zero raster/upload and zero cache rebuild while idle after
+  warm-up. A may raster and upload dirty regions on cursor/value changes, but
+  must avoid full-canvas redraw/reallocation and report changed pixels, bytes,
+  copies, and allocations. B must do zero CPU raster and pixel upload for a
+  cursor/value change unless an asset/language/context invalidation occurred.
+  Report bytes, calls, allocations, cache rebuilds, and peak
+  staging/atlas/target memory for both.
 - Repeated same-condition runs report median, p95, and maximum frame times,
   plus input-to-visible-update latency for idle, cursor movement, and toggles.
   No concurrent emulator and no synchronization wait inserted for timing.
 - Visual comparisons preserve geometry, colors, text, readability, and each
-  host's existing fade behavior; document alpha tolerance if needed.
+  host's existing behavior. PC fade stays a no-op; validate intermediate
+  group-fade frames on the Switch GLES path, where that fade exists. Document
+  alpha tolerance if needed.
 - US and EU Switch game images build successfully with nxlink stdio and debug
   overlay enabled. Any device behavior remains unverified until the owner
   chooses to test the candidate on OLED. Release and merge belong to the root
