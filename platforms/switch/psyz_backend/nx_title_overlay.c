@@ -65,6 +65,8 @@ static int s_logo_dirty;
 static int s_fade;
 /* dw3_pc_title_overlay_generation() of the uploaded canvas (EU labels). */
 static unsigned s_art_generation;
+/* dw3_pc_title_overlay_options_generation() of the uploaded options state. */
+static unsigned s_options_generation;
 /* Port options screen opacity, 0..255. */
 static int s_options_alpha;
 
@@ -110,6 +112,7 @@ static uint8_t *build_art(void) {
         return NULL;
     }
     s_art_generation = dw3_pc_title_overlay_generation();
+    s_options_generation = dw3_pc_title_overlay_options_generation();
     for (int state = 0; state < STATE_COUNT; ++state) {
         const int selected = state == 0 ? -1 :
                              state == STATE_OPTIONS ? DW3_TITLE_ART_OPTIONS :
@@ -154,6 +157,20 @@ static int ensure_gl(void) {
                 free(pixels);
                 TITLE_LOG("dw3-title-overlay: canvas regenerated "
                           "(generation %u)", s_art_generation);
+            }
+        } else if (s_options_generation != dw3_pc_title_overlay_options_generation()) {
+            /* Only the options state changed: re-upload that one canvas. */
+            uint8_t *options = (uint8_t *)malloc((size_t)CANVAS_W * CANVAS_H * 4);
+            if (options) {
+                memset(options, 0, (size_t)CANVAS_W * CANVAS_H * 4);
+                dw3_pc_title_overlay_art(options, CANVAS_W * 4, DW3_TITLE_ART_OPTIONS);
+                glBindTexture(GL_TEXTURE_2D, s_art_tex);
+                glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
+                glTexSubImage2D(GL_TEXTURE_2D, 0, 0, STATE_OPTIONS * CANVAS_H,
+                                CANVAS_W, CANVAS_H, GL_RGBA, GL_UNSIGNED_BYTE,
+                                options);
+                free(options);
+                s_options_generation = dw3_pc_title_overlay_options_generation();
             }
         }
         return 1;

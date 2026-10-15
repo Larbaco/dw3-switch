@@ -63,6 +63,7 @@ static int g_logo_active;
 static int g_logo_texture_ready;
 static int g_presentation_size_checked;
 static unsigned g_art_generation;
+static unsigned g_options_generation;
 
 /* The 3x mode renders a 960x720 image. Start that opt-in mode in a 16:9
  * window so the image and native-resolution UI remain 1:1 with 160px bars. */
@@ -142,6 +143,7 @@ static int upload_art_and_quad(void) {
     uint8_t *pixels = (uint8_t *)malloc(texture_bytes);
     if (!pixels) return -1;
     g_art_generation = dw3_pc_title_overlay_generation();
+    g_options_generation = dw3_pc_title_overlay_options_generation();
     for (int state = 0; state < STATE_COUNT; ++state) {
         const int selected = state == 0 ? -1 :
                              state == STATE_OPTIONS ? DW3_TITLE_ART_OPTIONS :
@@ -467,7 +469,50 @@ static void refresh_art(void) {
     uint8_t *mapped;
 
     if (!g_device || !g_texture ||
-        g_art_generation == dw3_pc_title_overlay_generation()) return;
+        (g_art_generation == dw3_pc_title_overlay_generation() &&
+         g_options_generation == dw3_pc_title_overlay_options_generation())) return;
+    if (g_art_generation == dw3_pc_title_overlay_generation()) {
+        /* Only the options state changed: upload that one canvas. */
+        const SDL_GPUTransferBufferCreateInfo one_info = {
+            .usage = SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD,
+            .size = (Uint32)canvas_bytes,
+        };
+        SDL_GPUTransferBuffer *one = SDL_CreateGPUTransferBuffer(g_device, &one_info);
+        if (!one) return;
+        uint8_t *one_mapped = (uint8_t *)SDL_MapGPUTransferBuffer(g_device, one, false);
+        if (!one_mapped) {
+            SDL_ReleaseGPUTransferBuffer(g_device, one);
+            return;
+        }
+        g_options_generation = dw3_pc_title_overlay_options_generation();
+        dw3_pc_title_overlay_art(one_mapped, CANVAS_W * 4, DW3_TITLE_ART_OPTIONS);
+        SDL_UnmapGPUTransferBuffer(g_device, one);
+        SDL_GPUCommandBuffer *one_cmd = SDL_AcquireGPUCommandBuffer(g_device);
+        if (!one_cmd) {
+            SDL_ReleaseGPUTransferBuffer(g_device, one);
+            return;
+        }
+        SDL_GPUCopyPass *one_copy = SDL_BeginGPUCopyPass(one_cmd);
+        const SDL_GPUTextureTransferInfo one_src = {
+            .transfer_buffer = one,
+            .pixels_per_row = CANVAS_W,
+            .rows_per_layer = CANVAS_H,
+        };
+        const SDL_GPUTextureRegion one_dst = {
+            .texture = g_texture,
+            .x = 0,
+            .y = STATE_OPTIONS * CANVAS_H,
+            .w = CANVAS_W,
+            .h = CANVAS_H,
+            .d = 1,
+        };
+        SDL_UploadToGPUTexture(one_copy, &one_src, &one_dst, false);
+        SDL_EndGPUCopyPass(one_copy);
+        SDL_SubmitGPUCommandBuffer(one_cmd);
+        SDL_WaitForGPUIdle(g_device);
+        SDL_ReleaseGPUTransferBuffer(g_device, one);
+        return;
+    }
     const SDL_GPUTransferBufferCreateInfo transfer_info = {
         .usage = SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD,
         .size = (Uint32)texture_bytes,
@@ -480,6 +525,7 @@ static void refresh_art(void) {
         return;
     }
     g_art_generation = dw3_pc_title_overlay_generation();
+    g_options_generation = dw3_pc_title_overlay_options_generation();
     for (int state = 0; state < STATE_COUNT; ++state) {
         const int selected = state == 0 ? -1 :
                              state == STATE_OPTIONS ? DW3_TITLE_ART_OPTIONS :

@@ -14,6 +14,7 @@ static int label_w[DW3_TITLE_LABEL_COUNT], label_h[DW3_TITLE_LABEL_COUNT];
 static int options_lang = DW3_TITLE_LANG_EN;
 static int footer_shown = 1;
 static unsigned art_generation;
+static unsigned options_generation;
 static int option_cursor;
 static int option_values[DW3_TITLE_OPTION_ROWS];
 static void pixel(int x,int y,int r,int g,int b,int alpha) {
@@ -99,7 +100,7 @@ int dw3_pc_title_overlay_set_label(int slot,const uint8_t *coverage,int w,int h)
 }
 void dw3_pc_title_overlay_set_options_language(int lang) {
     if(lang<DW3_TITLE_LANG_EN||lang>DW3_TITLE_LANG_IT)lang=DW3_TITLE_LANG_EN;
-    if(lang!=options_lang){options_lang=lang;art_generation++;}
+    if(lang!=options_lang){options_lang=lang;art_generation++;options_generation++;}
 }
 void dw3_pc_title_overlay_set_footer(int show) {
     show=show?1:0;
@@ -110,9 +111,10 @@ void dw3_pc_title_overlay_set_options_view(int cursor,const int *values,int coun
     if(count>DW3_TITLE_OPTION_ROWS)count=DW3_TITLE_OPTION_ROWS;
     for(int i=0;i<count;i++)if(values[i]!=option_values[i]){option_values[i]=values[i];changed=1;}
     option_cursor=cursor;
-    if(changed)art_generation++;
+    if(changed)options_generation++;
 }
 unsigned dw3_pc_title_overlay_generation(void) { return art_generation; }
+unsigned dw3_pc_title_overlay_options_generation(void) { return options_generation; }
 
 /* --- Port options screen ---------------------------------------------------
  * Modelled on the game's own windows (the memory card screen): a white bezel
