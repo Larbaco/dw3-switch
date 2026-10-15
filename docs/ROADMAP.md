@@ -459,14 +459,15 @@ speed.
 - [x] **P5.2 Performance pass.** Profile GTE/GPU emulation and the
   drawing path on handheld clocks. Decide software vs. a GL renderer.
   The frame-time check that used to be the P4.2 done-when lives here.
-  **Done (owner OLED, 2026-10-15):** with `gpu-tex`, the battle sky is
-  fixed and the battle runs above 60 fps easily; validated on both the US
-  and EU discs. Field was already at about 60 Hz. The done-when asks for
-  docked and handheld; the owner's report does not split those, so the
-  per-mode numbers are not recorded here. See
+  **Owner-accepted milestone (2026-10-15, #160/#168):** with `gpu-tex`,
+  the owner reports the battle sky fixed and battle running above 60 fps on
+  both US and EU discs; the field was already about 60 Hz. This owner check
+  is the basis for the P5.2 tick. See
   [P5.2_BATTLE_GPU.md](P5.2_BATTLE_GPU.md).
-  Done when: no frame over 16.7 ms in field and battle benchmarks,
-  docked and handheld.
+  **Original numeric benchmark subcriterion — follow-up, not measured:**
+  no frame over 16.7 ms in field and battle benchmarks, docked and handheld.
+  The owner report does not split the per-mode numbers, and this entry does
+  not claim that the exact benchmark was met.
   Open follow-ups (not blocking the tick): MonMon's eye artifact, geometry
   in front of the camera during the idle orbit, FPS drop on Port options
   selection change, and the PSY-Z `KernelInit` sync-object warning. Stock
