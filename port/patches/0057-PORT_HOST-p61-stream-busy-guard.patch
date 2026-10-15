@@ -1,0 +1,77 @@
+Upstream-bound: no
+Subject: [PORT_HOST] p61 stream busy guard: no buffer reuse while decompressing
+
+The 16:9 map (0052) draws 5 by 3 tiles, but FIELDSTG_pickViewTiles still
+prefetches the stock 6 by 5 window, so a visible tile outside it can wait
+for the decompressor (a stream task in substate 1, handed to the source by
+FIELDSTG_setStreamSource). FIELDSTG_findOldestStream then picked that task,
+and FIELDSTG_requestTiles seek()ed it: a CD read into a buffer the
+decompressor was still reading, so the tile decompressed to garbage and
+FIELDSTG_loadStreamSprites read a huge sprite count past the end of memory
+(preview.26 EU). On the host the oldest search now skips tasks in substate 1,
+falls back to tasks[0] only when it is free, and returns NULL when all are
+busy, which ends the request loop; any free task qualifies, even one
+touched this frame. The sprite count is also clamped to the
+5 sprites a depth holds. Non-PORT_HOST code is unchanged.
+
+diff -ruN base/src/field/field_mode/map_streamer.c work/src/field/field_mode/map_streamer.c
+--- a/src/field/field_mode/map_streamer.c
++++ b/src/field/field_mode/map_streamer.c
+@@ -12,12 +12,27 @@
+     s32 oldest = GFX.funcs.getTime();
+     StreamTask *found = pool->tasks[0];
+ 
++#if PORT_HOST
++    found = NULL;
++    oldest = 0x7FFFFFFF; /* any free task, even one touched this frame */
++#endif
+     for (i = 0; i < 30; i++) {
++#if PORT_HOST
++        /* substate 1: still handed to the decompressor, which reads its buffer */
++        if (pool->tasks[i]->substate == 1) {
++            continue;
++        }
++#endif
+         if (pool->tasks[i]->time <= oldest) {
+             oldest = pool->tasks[i]->time;
+             found = pool->tasks[i];
+         }
+     }
++#if PORT_HOST
++    if (found == NULL && pool->tasks[0]->substate != 1) {
++        found = pool->tasks[0];
++    }
++#endif
+     return found;
+ }
+ 
+@@ -52,6 +67,11 @@
+                 tile = map->viewTiles[k];
+                 if (map->tiles[tile].size != 0) {
+                     task = FIELDSTG_findOldestStream(pool);
++#if PORT_HOST
++                    if (task == NULL) {
++                        break; /* every task is still decompressing: nothing free now */
++                    }
++#endif
+                     if (task->isLoaded(task)) {
+                         task->seek(task, tile, map->tiles[tile].sectors);
+                     }
+diff -ruN base/src/field/field_mode/stream.c work/src/field/field_mode/stream.c
+--- a/src/field/field_mode/stream.c
++++ b/src/field/field_mode/stream.c
+@@ -167,6 +167,14 @@
+     for (i = 0; i < 3; i++) {
+         count = *(s32 *)p; /* a word: how many, then six halfwords each */
+         p += 2;
++#if PORT_HOST
++        /* a bad tile can count more sprites than the 5 its slot holds: keep the writes in bounds */
++        if (count < 0) {
++            count = 0;
++        } else if (count > 5) {
++            count = 5;
++        }
++#endif
+         for (j = 0; j < count; j++) {
+             task->sprites[i][j].visible = 1;
+             task->sprites[i][j].x = *p++;
