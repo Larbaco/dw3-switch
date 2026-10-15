@@ -26,5 +26,6 @@ Each folder should have `01.png`–`03.png` (three prompt variants).
 - The former `icon-256/03.png` selection is retained here only as historical
   provenance. It was replaced by the owner-approved 4C DW3NX pixel-art emblem;
   current assets and derivations are listed in [BRANDING](../../BRANDING.md).
-- Display brand (not applied to wordmark yet): **DW3NX** — Digimon World 3 · Native on NX.
-- Switch `.nro` embed: JPEG copy at [`platforms/switch/icon.jpg`](../../../platforms/switch/icon.jpg) (see `platforms/switch/README.md`).
+- The earlier display-brand direction was **DW3NX** — Digimon World 3 · Native on NX;
+  the current 4C artwork now includes that wordmark.
+- Switch `.nro` embed: JPEG copy at [`platforms/switch/icon.jpg`](../../../../platforms/switch/icon.jpg) (see `platforms/switch/README.md`).
