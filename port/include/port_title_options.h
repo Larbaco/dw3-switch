@@ -10,7 +10,6 @@
 #else
 #define DW3_TITLE_ROW_Y(row) (149 + 16 * (row))
 #endif
-#endif
 
 /* Uses the game's resident font sheet; no bundled title artwork. */
 void dw3_port_title_options_draw(int layer_id, int x, int y, int selected);
