@@ -155,14 +155,23 @@ def shot_names(name):
     if not rec.is_file():
         raise ValueError(f"missing recording: {rec}")
     shots = []
+    seen_names = set()
+    previous_frame = -1
     for number, line in enumerate(rec.read_text().splitlines(), start=1):
         fields = line.split("#", 1)[0].split()
         if not fields or fields[0] != "shot":
             continue
         if len(fields) != 3 or not fields[1].isdigit():
             raise ValueError(f"{rec}:{number}: malformed shot directive")
+        frame = int(fields[1])
+        if frame <= previous_frame:
+            raise ValueError(f"{rec}:{number}: checkpoint frames must increase strictly")
+        previous_frame = frame
         if not re.fullmatch(r"[A-Za-z0-9_-]+", fields[2]):
             raise ValueError(f"{rec}:{number}: unsafe checkpoint name {fields[2]!r}")
+        if fields[2] in seen_names:
+            raise ValueError(f"{rec}:{number}: duplicate checkpoint name {fields[2]!r}")
+        seen_names.add(fields[2])
         shots.append(fields[2])
     if not shots:
         raise ValueError(f"recording has no checkpoints: {rec}")
