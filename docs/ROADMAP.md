@@ -494,9 +494,15 @@ speed.
   footprint, and newlib `mallinfo` at the ~1 Hz `frame dt` cadence
   (`mem dbg:` line + HUD lines). See [P5.1_MEMORY.md](P5.1_MEMORY.md).
   This is measurement only — not a proven 2h flat session.
-- [ ] **P5.2 Performance pass.** Profile GTE/GPU emulation and the
+- [x] **P5.2 Performance pass.** Profile GTE/GPU emulation and the
   drawing path on handheld clocks. Decide software vs. a GL renderer.
   The frame-time check that used to be the P4.2 done-when lives here.
+  **Done (owner OLED, 2026-10-15):** with `gpu-tex`, the battle sky is
+  fixed and the battle runs above 60 fps easily; validated on both the US
+  and EU discs. Field was already at about 60 Hz. The done-when asks for
+  docked and handheld; the owner's report does not split those, so the
+  per-mode numbers are not recorded here. See
+  [P5.2_BATTLE_GPU.md](P5.2_BATTLE_GPU.md).
   Done when: no frame over 16.7 ms in field and battle benchmarks,
   docked and handheld.
   **Owner OLED feedback (2026-10-14, EU preview.26):** the Agumon eye
@@ -593,6 +599,8 @@ speed.
 - [ ] **P5.3 Save handling.** The port's own save on owner storage, plus
   sleep/exit safety. The running game does not import or export emulator
   memory cards. That interchange is an external tool, P9.6.
+  **Status (2026-10-15):** in the owner's list, awaiting owner OLED
+  validation (save, HOME, reopen, Continue) on both the US and EU discs.
   **Flat save host (2026-10-11):** `port/memcard` now uses one resident
   flat file per port (`save0.bin` / `save1.bin`, 32 KiB), `memcpy` I/O,
   deferred flush on write-section end / `memcard_host_shutdown`, synthetic
@@ -644,6 +652,8 @@ speed.
 - [ ] **P5.4 Error reporting.** Crash handler that writes a log + last
   mode/stage id to SD; assert overlay.
   Done when: a forced fault produces a readable report.
+  **Status (2026-10-15):** in progress; the owner is investigating the
+  crash-report path on hardware. Not ticked.
   **SD crash report (2026-10-12):** `__libnx_exception_handler` writes
   `sdmc:/switch/dw3/crash_report.txt` (version, reason, mode/stage file
   ids, PC/LR/FAR/ESR). Install from `boot_main` after SD+log open; does
@@ -825,6 +835,15 @@ tick does not start Phase 6.
   Done when: field and menus render on the GPU path on PC and Switch with
   US and EU discs, match soft on the P3.8 stage sweep and the P6.1
   widescreen checks, and field turbo gains measurably on the OLED.
+
+- [ ] **P6.11 Internal resolution scaling (future goal).** Render the 3D
+  geometry above the native resolution, the way the PC `DW3_PC_INTERNAL_RES`
+  experiment does on PC ([platforms/pc/README.md](../platforms/pc/README.md)),
+  with the Switch and EU/US discs both covered. Goal note only, recorded at
+  the owner's request (2026-10-15); it does not start Phase 6 and is not part
+  of the Phase 5 gate. Done when a scale setting is in the Port options, the
+  GTE/3D path renders above native on PC and Switch with US and EU discs, and
+  the 2D/UI layers and widescreen patches still match soft rendering.
 
 Gate: polish options from P6.1–P6.5 land as needed; localization P6.6–P6.8
 may still be in progress when Phase 7 starts only if the Phase 5 playable
