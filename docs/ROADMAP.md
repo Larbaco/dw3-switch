@@ -925,6 +925,9 @@ list: [COMMUNITY_QOL.md](COMMUNITY_QOL.md).
   patches do not load into the `.nro`. Seed inventory from the
   OpenWorld2003 launcher catalog (`source/*.json`) is already in that
   doc; still need a pass against a **pinned combined QoL patch beta**.
+  **2026-10-15:** pass done against Harmony Beta v1.0 (r31); table in
+  COMMUNITY_QOL.md, new goals P7.6–P7.14 below. Left open until the owner
+  agrees the P7.4 subset.
   Done when: the checklist covers the combined patch feature list at a
   chosen beta version.
 - [ ] **P7.4 Feature parity (native).** Reimplement agreed QoL systems
@@ -940,6 +943,48 @@ list: [COMMUNITY_QOL.md](COMMUNITY_QOL.md).
   [COMMUNITY_QOL.md](COMMUNITY_QOL.md).
   Done when: a smoke test with the companion works, or the note records an
   explicit blocker. Does **not** block the Phase 7 gate.
+
+- [ ] **P7.6 Progression options (future goal).** Port options for EXP
+  and DV EXP rate (1x default, Harmony uses 1.3x / 1.2x), uncapped DV EXP
+  and HP/MP restore on level up. Credit markisha64 / rsigrist. Done when
+  each option works on US and EU and is off by default.
+- [ ] **P7.7 Bug and text fixes (future goal).** Picking / Snapping Claw on
+  a KO'd enemy, active Digivolution name in battle, battle reward
+  "1IT"/"1EXP" text, save label showing Asuka Inn, Square map glitch.
+  Check each on the US disc too. Done when each fix is a `port/patches`
+  entry tested on US and EU.
+- [ ] **P7.8 Battle info HUD (future goal).** Optional enemy HP, always-on
+  partner MP, technique attribute / power / MP cost colours, DV stats and
+  EXP to next level after battle. Done when the toggle works on US and EU
+  in all 5 EU languages.
+- [ ] **P7.9 Battle menu memory (future goal).** Remember the last battle
+  command (Techniques stays on Techniques) and allow reordering techniques
+  per Digimon. Done when both persist in the P5.3 save on US and EU.
+- [ ] **P7.10 Training without RNG (future goal).** Guaranteed base gains,
+  optional timing bonus, Fast Training skip, as an option off by default.
+  Done when it works on US and EU.
+- [ ] **P7.11 Guidance and exploration (future goal).** Quest log HUD,
+  next-step walkthrough (Flawe, EU 5 languages + US English), NPC
+  quest/battle bubbles, auction / DRI notices, Digivolution requirements in
+  the DigiLab, shop stat bonuses, L1/R1 leader swap in the field. The
+  community most often asks for "where do I go next" and Digivolution
+  requirements. Done when each part toggles on US and EU.
+- [ ] **P7.12 New items and name length (far future).** Harmony's encounter
+  disks/rings, DV Adapter, Analysis Disk, MP recovery items; 10-character
+  player name. Both change item tables or save layout, so only after the
+  P5.3 save format is frozen with a migration. Done when old saves still
+  load on US and EU.
+- [ ] **P7.13 Transitions and visuals (future goal).** Shorter fades and
+  location cards, skip redundant location screens after battle / save
+  menu, transparent shadows (psyz). Measure save and menu time first; the
+  port already has no disc seek. Done when the option works on US and EU.
+- [ ] **P7.14 Community wishlist (note).** Requests from r/digimon /
+  r/DigimonWorld threads (2026-10-15, search results were thin; mostly the
+  Harmony announcement thread): lower encounter rate and less grinding
+  (P6.18, P7.6), faster battles and text (P6.18), knowing where to go
+  (P7.11), clearer Digivolution paths (P7.11), save anywhere / quick
+  resume (P6.14, P6.16), widescreen and HD (P6.1, P6.11, Phase 8),
+  60 fps (P6.21). Out of scope: new Digimon lines and new story content.
 
 Gate: owner-patched EU data path works (P7.2) and the agreed native QoL
 subset from P7.4 is playable. Companion (P7.5) is best-effort.
