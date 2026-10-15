@@ -14,6 +14,7 @@ import argparse
 import datetime as dt
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -85,6 +86,7 @@ def find_runtime(version: str, arg: str | None) -> Path | None:
     cands += [ROOT / "runtime" / version,
               Path.home() / ".cache/dw3-switch/runtime" / version]
     for c in cands:
+        c = c.expanduser().resolve()
         if (c / "boot_tim.bin").is_file():
             return c
     return None
@@ -149,8 +151,22 @@ def run_scenario(name, version, binary, runtime, display, outdir: Path, stamp, t
 
 
 def shot_names(name):
-    return [l.split()[2] for l in (SCEN_DIR / f"{name}.rec").read_text().splitlines()
-            if l.startswith("shot ")]
+    rec = SCEN_DIR / f"{name}.rec"
+    if not rec.is_file():
+        raise ValueError(f"missing recording: {rec}")
+    shots = []
+    for number, line in enumerate(rec.read_text().splitlines(), start=1):
+        fields = line.split("#", 1)[0].split()
+        if not fields or fields[0] != "shot":
+            continue
+        if len(fields) != 3 or not fields[1].isdigit():
+            raise ValueError(f"{rec}:{number}: malformed shot directive")
+        if not re.fullmatch(r"[A-Za-z0-9_-]+", fields[2]):
+            raise ValueError(f"{rec}:{number}: unsafe checkpoint name {fields[2]!r}")
+        shots.append(fields[2])
+    if not shots:
+        raise ValueError(f"recording has no checkpoints: {rec}")
+    return shots
 
 
 def main():
@@ -173,10 +189,30 @@ def main():
 
     global SCEN_DIR
     if a.scen_dir:
-        SCEN_DIR = Path(a.scen_dir)
+        SCEN_DIR = Path(a.scen_dir).expanduser().resolve()
+    selected = {name for name, _ in SCENARIOS}
+    if a.only:
+        unknown = sorted(set(a.only) - selected)
+        if unknown:
+            ap.error(f"unknown scenario(s): {', '.join(unknown)}")
+        selected.intersection_update(a.only)
+    if not selected:
+        ap.error("no scenarios selected")
+    try:
+        checkpoints = {name: shot_names(name) for name in selected}
+    except (OSError, ValueError) as exc:
+        ap.error(str(exc))
+
     stamp = dt.datetime.now().strftime("%Y%m%d-%H%M%S")
-    out = Path(a.out) / stamp
-    refs = Path(a.refs)
+    out = Path(a.out).expanduser().resolve() / stamp
+    refs = Path(a.refs).expanduser().resolve()
+    if a.update:
+        try:
+            refs.relative_to(ROOT)
+        except ValueError:
+            pass
+        else:
+            ap.error(f"--update references must be outside the repository: {refs}")
     out.mkdir(parents=True, exist_ok=True)
     refs.mkdir(parents=True, exist_ok=True)
 
@@ -189,21 +225,25 @@ def main():
             for c in (ROOT / f"build/pc{'' if v == 'us' else '-eu'}/dw3-pc",):
                 if c.is_file():
                     arg = str(c)
-        bins[v] = Path(arg) if arg else None
+        bins[v] = Path(arg).expanduser().resolve() if arg else None
         runtimes[v] = find_runtime(v, getattr(a, f"runtime_{v}"))
+
+    if a.build:
+        # `out` is absolute, so build_host returns paths safe after child cwd changes.
+        bins = {v: p.resolve() if p else None for v, p in bins.items()}
 
     xvfb, display = start_xvfb(out)
     rows = []
     try:
         for name, ver in SCENARIOS:
-            if a.only and name not in a.only:
+            if name not in selected:
                 continue
             if not bins[ver] or not bins[ver].is_file() or runtimes[ver] is None:
                 rows.append((name, "-", "SKIP", f"missing {'binary' if not bins[ver] else 'runtime'} for {ver}"))
                 continue
             sdir = out / name
             rc, secs = run_scenario(name, ver, bins[ver], runtimes[ver], display, sdir, stamp, a.timeout)
-            for shot in shot_names(name):
+            for shot in checkpoints[name]:
                 for ext in ARTIFACTS:
                     got = sdir / f"{shot}.{ext}"
                     ref = refs / name / f"{shot}.{ext}"
