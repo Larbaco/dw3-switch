@@ -130,6 +130,26 @@ These hold for any agent working on the owner's desktop, whatever the tool
    `xvfb-run -s "-screen 0 1920x1080x24"`), never the owner's desktop
    session, so tests do not get in the way of the owner's work. This
    includes the PC build and Ryubing.
+5. **Every change is tested on both ISOs, US and EU.** The EU build (five
+   languages) comes from `tools/build_switch_game.sh --eu`. A change that only
+   works on US is not done.
+6. **Merge with squash by default, then delete the branch.** If the cloud
+   harness cannot delete it, do it from the owner's terminal. Keep `release/*`
+   branches as history; never delete them.
+7. **Releases say whether the EU build ships.** Attach the EU `.nro` too, or
+   say why it is not attached. The release README lists only files that were
+   actually published.
+8. **Test reports state the method**: emulator or OLED, display used, how the
+   game was driven, and how long it was played; the paths of screenshots and
+   logs; and what was not covered (for example, untested EU languages).
+9. **Crashes**: before running again, copy `crash_report.txt` and the logs into
+   the evidence folder with date and time, so one crash does not overwrite the
+   next. Note what was being done at the time.
+10. **Repositories**: the project uses `Larbaco/dw3-switch` and the renderer
+    fork `Larbaco/psyz` (PSY-Z).
+11. **Codex PRs**: when a PR is opened or merged, record in `docs/ROADMAP.md`
+    or in the PR what changed and what is still open, so any agent can see
+    where the work stopped.
 
 ## Working style
 
