@@ -8,7 +8,7 @@
 A native Nintendo Switch port of Digimon World 3 (Digimon World 2003 in
 Europe), built from the matching PlayStation decompilation.
 
-Latest preview: [v0.6.5-preview.27](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.27).
+Latest preview: [v0.6.5-preview.28](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.28).
 To try it, see [Play it on Switch](#play-it-on-switch).
 
 <p align="center">
