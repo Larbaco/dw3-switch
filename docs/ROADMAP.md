@@ -867,6 +867,30 @@ tick does not start Phase 6.
   and keep the save rules of P5.3 intact. Goal note only (2026-10-15); not
   part of the Phase 5 gate. Done when a load or new save from inside the
   game works without a restart, on the US and EU discs.
+- [ ] **P6.15 Regression replay tests (future goal).** Record pad input,
+  replay it and compare screenshots at fixed checkpoints, on the US disc
+  and the EU disc in all 5 languages. Goal note only (2026-10-15). Done
+  when one command runs the replay set on both discs and reports diffs.
+- [ ] **P6.16 Suspend / resume (future goal).** Save the whole port state
+  (RAM, VRAM, SPU, overlay state) on exit or sleep and resume at the same
+  point. Separate from P5.3 game saves. Goal note only (2026-10-15). Done
+  when exit and relaunch resume mid-play on US and EU.
+- [ ] **P6.17 Music / SFX volume (future goal).** Separate music and
+  sound-effect volume rows in Port options, persisted with P9.4. Goal note
+  only (2026-10-15). Done when both sliders work on US and EU.
+- [ ] **P6.18 Pacing options (future goal).** Text speed, encounter rate
+  (0.5x, 1x, off) and faster battle animations as Port options toggles; may
+  land as concrete P7.4 items. Goal note only (2026-10-15). Done when each
+  toggle works on US and EU and is off by default.
+- [ ] **P6.19 Japanese disc support (future goal).** File map, executable
+  differences and boot for the JP disc, next to US and EU. Goal note only
+  (2026-10-15). Done when the JP disc boots to the field on PC and Switch.
+- [ ] **P6.20 Port debug / cheat menu (future goal).** Port-side menu for
+  money, items and map warp, to speed up testing. Off by default. Goal
+  note only (2026-10-15). Done when it works on US and EU.
+- [ ] **P6.21 60 fps interpolation (far future).** Interpolate camera and
+  field movement in 30 fps sections. After P6.10. Goal note only
+  (2026-10-15).
 
 Gate: polish options from P6.1–P6.5 land as needed; localization P6.6–P6.8
 may still be in progress when Phase 7 starts only if the Phase 5 playable
