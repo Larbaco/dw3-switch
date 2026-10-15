@@ -19,6 +19,76 @@ for starting the next phase's real work. A goal note written early
 behind the tasks are in [SURVEY.md](SURVEY.md); layering is in
 [ARCHITECTURE.md](ARCHITECTURE.md).
 
+## Status at a glance
+
+Statuses: **done** = ticked; **in progress** = not ticked, with merged work
+or hardware evidence; **open** = not ticked, no work yet; **future** = goal
+note only (see [Backlog / future goals](#backlog--future-goals)). Update
+this table in the same PR that changes an item. The history of an item
+lives in its doc, not in the entry below.
+
+| ID | Item | Status | Doc |
+|---|---|---|---|
+| P1.1–P1.7 | Toolchains, data pipeline, host skeletons | done | [DISC_SETUP](DISC_SETUP.md), [RUNTIME_LAYOUT](RUNTIME_LAYOUT.md), [CI_SUBMODULES](CI_SUBMODULES.md) |
+| P2.1–P2.8 | Port glue and engine bring-up on PC | done | [PATCHES](PATCHES.md), [CDFS_NOTES](CDFS_NOTES.md), [P2.8](P2.8_TITLE_BOOT.md) |
+| P3.1–P3.9 | Game bring-up on PC | done | [P3_GATE](P3_GATE.md), [P3_EU_BUILD](P3_EU_BUILD.md), P3.x docs |
+| P4.1 | Backend spike | done | [SWITCH_BACKEND](SWITCH_BACKEND.md) |
+| P4.2 | Video | done | [P4.2](P4.2_VIDEO.md) |
+| P4.3 | Audio | in progress | [P4.3](P4.3_AUDIO.md) |
+| P4.4 | Input | done | [P4.4](P4.4_INPUT_STATUS.md) |
+| P4.5 | Filesystem + log + time | done | [P4.5](P4.5_STATUS.md) |
+| P4.6 | Static modules on Switch | in progress | [P4.6](P4.6_MODULES_STATUS.md) |
+| P4.7 | Boot the game | done | [SWITCH_BACKEND](SWITCH_BACKEND.md) |
+| P5.1 | Memory budget | in progress | [P5.1](P5.1_MEMORY.md) |
+| P5.2 | Performance pass | done | [P5.2](P5.2_BATTLE_GPU.md) |
+| P5.3 | Save handling | done | [P5.3](P5.3_FLAT_SAVE.md) |
+| P5.4 | Error reporting | in progress | [P5.4](P5.4_CRASH.md) |
+| P5.5 | Stage sweep on hardware | open | — |
+| P6.1 | Scaling / widescreen | in progress | [P6.1](P6.1_WIDESCREEN.md) |
+| P6.2 | PAL/NTSC, EU/US, language at boot | in progress | [P3_EU_BUILD](P3_EU_BUILD.md) |
+| P6.3 | PGXP-style vertex precision | open | — |
+| P6.4 | Fast-forward | in progress | [P6.4](P6.4_FAST_FORWARD.md) |
+| P6.5 | Release packaging | done | [RELEASES](RELEASES.md) |
+| P6.6 | Localization goal | open | — |
+| P6.7 | Language packs (PT-BR first) | open | — |
+| P6.8 | Extra locales | open | — |
+| P6.9 | Restart-game hotkey | in progress | [P6.9](P6.9_RESTART.md) |
+| P6.10 | Hardware render outside battle | future | [P5.2](P5.2_BATTLE_GPU.md) |
+| P6.11 | Internal resolution scaling | future | [PC README](../platforms/pc/README.md) |
+| P6.12–P6.21 | Backlog goal notes | future | [backlog](#backlog--future-goals) |
+| P7.1 | Inventory and boundaries | done | [COMMUNITY_QOL](COMMUNITY_QOL.md) |
+| P7.2 | Patched EU disc as data source | open | [COMMUNITY_QOL](COMMUNITY_QOL.md) |
+| P7.3 | Binary-patch limits | in progress | [COMMUNITY_QOL](COMMUNITY_QOL.md) |
+| P7.4 | Feature parity (native) | open | [COMMUNITY_QOL](COMMUNITY_QOL.md) |
+| P7.5 | Companion (optional) | open | [COMMUNITY_QOL](COMMUNITY_QOL.md) |
+| P7.6–P7.14 | Backlog goal notes | future | [backlog](#backlog--future-goals) |
+| P8.1 | Texture pack goal note | done | [TEXTURE_PACKS](TEXTURE_PACKS.md) |
+| P8.2 | Pack layout | open | [TEXTURE_PACKS](TEXTURE_PACKS.md) |
+| P8.3 | Formats and scaling | open | [TEXTURE_PACKS](TEXTURE_PACKS.md) |
+| P8.4 | Tooling (optional) | open | — |
+| P9.1 | Port options goal note | done | [PORT_OPTIONS](PORT_OPTIONS.md) |
+| P9.2 | Menu entry and shell | done | [PORT_OPTIONS](PORT_OPTIONS.md) |
+| P9.3 | Toggle registry | done | [PORT_OPTIONS](PORT_OPTIONS.md) |
+| P9.4 | Persistence (blocks many goals) | open | [PORT_OPTIONS](PORT_OPTIONS.md) |
+| P9.5 | Wire real features | in progress | [PORT_OPTIONS](PORT_OPTIONS.md) |
+| P9.6 | External save converter | open | — |
+| P10.1 | Switch features goal note | done | [SWITCH_FEATURES](SWITCH_FEATURES.md) |
+| P10.2 | Lifecycle hardening (has P5.3's leftover) | open | [SWITCH_FEATURES](SWITCH_FEATURES.md) |
+| P10.3 | Presentation modes | open | — |
+| P10.4 | Rumble polish (optional) | open | — |
+| P10.5 | Extra applets (optional) | open | — |
+
+**Language matrix.** The EU disc has 7 `LANGUAGE` slots: 0 JPN, 1 USA,
+2 ENG, 3 FRA, 4 ITA, 5 GER, 6 SPN (`STAGSLCT_regionNames`). The EU country
+select maps its options through `CNTY_SEL_languages = {2,3,5,4,6,1,0}`, and
+the pad only reaches options 0–4. So **5 EU languages are playable**
+(English, French, German, Italian, Spanish); slots 1 and 0 are unreachable
+on the disc. The US disc is English only and has no `LANGUAGE`. "All
+languages" in a done-when means those 5 EU languages plus US English.
+Source: `vendor/dw3_decomp` @ `b9caa6c`,
+`src/menus/country_select/country_select.c` and
+`src/debug/stage_select/stage_select.c`.
+
 ## Phase 0 — Repository (done)
 
 - [x] Dedicated project folder, git repo, `vendor/dw3_decomp` submodule
