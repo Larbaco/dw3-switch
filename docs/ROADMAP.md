@@ -850,6 +850,24 @@ tick does not start Phase 6.
   GTE/3D path renders above native on PC and Switch with US and EU discs, and
   the 2D/UI layers and widescreen patches still match soft rendering.
 
+- [ ] **P6.12 Button mapping (future goal).** Let the owner remap the
+  PS1 pad buttons on the Switch and PC, in `port/` policy with the host
+  input mapping kept in `platforms/`. Goal note only, recorded at the
+  owner's request (2026-10-15); it does not start Phase 6 and is not part
+  of the Phase 5 gate. Done when a remap survives a restart and works on
+  the US and EU discs.
+- [ ] **P6.13 Mapping submenu (future goal).** A submenu in Port options
+  that holds the button mapping (P6.12), with its own screen in the game's
+  window style. Goal note only (2026-10-15); not part of the Phase 5 gate.
+  Done when the submenu opens from Port options, lists each mapped button,
+  and returns with the mapping saved.
+- [ ] **P6.14 In-game load / new save menu (future goal).** A load or
+  new-save menu reachable during play, so the owner can switch save slots
+  without returning to the title. It must flush P5.3 saves before a load
+  and keep the save rules of P5.3 intact. Goal note only (2026-10-15); not
+  part of the Phase 5 gate. Done when a load or new save from inside the
+  game works without a restart, on the US and EU discs.
+
 Gate: polish options from P6.1–P6.5 land as needed; localization P6.6–P6.8
 may still be in progress when Phase 7 starts only if the Phase 5 playable
 gate and the Phase 6 packaging baseline (P6.5) are already met. Prefer
