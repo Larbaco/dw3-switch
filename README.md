@@ -19,6 +19,10 @@ APIs go through [PSY-Z](https://github.com/Xeeynamo/psyz), a Psy-Q compatible
 shim. A thin host supplies video, audio, input and files: SDL3 on PC, libnx
 on the Switch.
 
+This is a source port, not a static recompilation: the game is compiled
+from the matching decomp's C, with PSY-Z standing in for the Psy-Q
+libraries.
+
 ```text
 decomp C  ->  PSY-Z  ->  SDL3 backend (PC)
                      ->  libnx backend (Switch)
@@ -29,6 +33,22 @@ This is not:
 - An emulator wrapper. The `.nro` contains no PS1 core.
 - A remake with a new engine.
 - A place to get ROMs, disc images or BIOS files. You supply your own disc.
+
+## How it works
+
+- The decomp C is built natively for x86-64 and AArch64, after an audit of
+  pointer and size assumptions: [P3.1_64BIT_AUDIT](docs/P3.1_64BIT_AUDIT.md).
+- PSY-Z provides the Psy-Q API. On Switch it has a libnx backend that
+  presents through GLES: [SWITCH_BACKEND](docs/SWITCH_BACKEND.md),
+  [PSYZ](docs/PSYZ.md).
+- Changes to the decomp are a patch series applied to a build copy; the
+  submodule stays clean: [PATCHES](docs/PATCHES.md).
+- On first boot the console extracts its runtime files from your own BIN,
+  then reads plain files from the SD card:
+  [STATIC_SD_LOAD](docs/STATIC_SD_LOAD.md),
+  [RUNTIME_LAYOUT](docs/RUNTIME_LAYOUT.md).
+- PC came first. A harness compares PC captures against DuckStation:
+  [P3.9_REFERENCE](docs/P3.9_REFERENCE.md).
 
 ## Status
 
@@ -213,6 +233,19 @@ submodule, unless the fix belongs upstream.
 | [PATCHES](docs/PATCHES.md) | Policy for patching the decomp. |
 | [RELEASES](docs/RELEASES.md) | Preview index, builds to avoid, hardware observations. |
 | [AGENTS.md](AGENTS.md) | Rules for contributors and AI agents. |
+
+## Contributing
+
+Useful help, roughly in order:
+
+- Test on a Switch and report what you see. Use the `-nxlink` build for
+  logs ([NXLINK_DEBUG](docs/NXLINK_DEBUG.md)). Crashes also write
+  `sdmc:/switch/dw3/crash_report.txt` ([P5.4_CRASH](docs/P5.4_CRASH.md)).
+- Open pull requests. [AGENTS.md](AGENTS.md) has the repo rules.
+
+Report bugs and ideas on the
+[issue tracker](https://github.com/Larbaco/dw3-switch/issues). Never attach
+disc images or game files to an issue.
 
 ## Credits
 
