@@ -836,6 +836,15 @@ tick does not start Phase 6.
   US and EU discs, match soft on the P3.8 stage sweep and the P6.1
   widescreen checks, and field turbo gains measurably on the OLED.
 
+- [ ] **P6.11 Internal resolution scaling (future goal).** Render the 3D
+  geometry above the native resolution, the way the PC `DW3_PC_INTERNAL_RES`
+  experiment does on PC ([platforms/pc/README.md](../platforms/pc/README.md)),
+  with the Switch and EU/US discs both covered. Goal note only, recorded at
+  the owner's request (2026-10-15); it does not start Phase 6 and is not part
+  of the Phase 5 gate. Done when a scale setting is in the Port options, the
+  GTE/3D path renders above native on PC and Switch with US and EU discs, and
+  the 2D/UI layers and widescreen patches still match soft rendering.
+
 Gate: polish options from P6.1–P6.5 land as needed; localization P6.6–P6.8
 may still be in progress when Phase 7 starts only if the Phase 5 playable
 gate and the Phase 6 packaging baseline (P6.5) are already met. Prefer
