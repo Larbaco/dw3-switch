@@ -596,11 +596,14 @@ speed.
   rate/drop and XA listening observations remain as recorded in
   [P3.7_MOVIE_PACING_DIAGNOSTICS.md](P3.7_MOVIE_PACING_DIAGNOSTICS.md).
 
-- [ ] **P5.3 Save handling.** The port's own save on owner storage, plus
+- [x] **P5.3 Save handling.** The port's own save on owner storage, plus
   sleep/exit safety. The running game does not import or export emulator
   memory cards. That interchange is an external tool, P9.6.
-  **Status (2026-10-15):** in the owner's list, awaiting owner OLED
-  validation (save, HOME, reopen, Continue) on both the US and EU discs.
+  **Done (owner OLED, 2026-10-15):** the owner saved, closed the app from
+  the Switch HOME menu with X, reopened it from hbmenu, and loaded the save
+  with Continue; the owner confirmed it works. The owner did not say whether
+  this was tested on both the US and EU discs, so that split is not
+  recorded here.
   **Flat save host (2026-10-11):** `port/memcard` now uses one resident
   flat file per port (`save0.bin` / `save1.bin`, 32 KiB), `memcpy` I/O,
   deferred flush on write-section end / `memcard_host_shutdown`, synthetic
