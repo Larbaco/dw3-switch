@@ -13,6 +13,16 @@ void dw3_port_title_overlay_fade(int level) {
     dw3_pc_title_menu_set_fade(level);
 }
 
+extern void dw3_pc_title_menu_logo_set_active(int active);
+
+/* The overlay is only cleared by title-task draws. A restart discards that
+ * task without a final draw, so drop the overlay explicitly. */
+void dw3_port_title_overlay_reset(void) {
+    dw3_pc_title_menu_set_state(0, -2);
+    dw3_pc_title_menu_logo_set_active(0);
+    dw3_pc_title_menu_set_fade(0);
+}
+
 void dw3_port_title_options_draw(int layer_id, int x, int y, int selected) {
     (void)layer_id;
     (void)x;
@@ -27,6 +37,8 @@ void dw3_port_title_options_draw(int layer_id, int x, int y, int selected) {
 #elif defined(DW3_PC_HOST)
 
 #include <libgpu.h>
+
+void dw3_port_title_overlay_reset(void) {}
 
 enum { TITLE_MENU_W = 140, TITLE_MENU_H = 20 };
 
@@ -240,6 +252,8 @@ void dw3_port_title_options_draw(int layer_id, int x, int y, int selected) {
 }
 
 #else
+
+void dw3_port_title_overlay_reset(void) {}
 
 static int title_glyph_code(char c) {
     if (c >= 'A' && c <= 'Z') {

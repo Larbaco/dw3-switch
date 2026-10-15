@@ -698,7 +698,8 @@ tick does not start Phase 6.
   `0055`) and the choice sets `LANGUAGE` before the opening and title.
   **Owner OLED feedback (2026-10-14, EU preview.26):** language selection
   works. Restart from the main menu after choosing a language leaves the
-  title menu drawn above the language-selection screen (see P6.9). This
+  title menu drawn above the language-selection screen (see P6.9; fixed in
+  the P6.9 note below, restart now returns to a clean `CNTY_SEL`). This
   validates the tested language path only; PAL/NTSC and disc selection remain
   open, so P6.2 is not complete.
 - [ ] **P6.3** PGXP-style vertex precision from PSY-Z if it stays stable.
@@ -808,9 +809,13 @@ tick does not start Phase 6.
   [P6.9_RESTART.md](P6.9_RESTART.md).
   **Owner OLED feedback (2026-10-14, EU preview.26):** the restart hotkey
   works. However, choosing a language, reaching the main menu, then restarting
-  leaves the title menu above the language-selection screen. The clean boot
-  presentation therefore remains blocked. Continue reload of a save written
-  before restart is not newly confirmed by this report; P6.9 stays open.
+  leaves the title menu above the language-selection screen. Cause: the
+  native title overlay state was only cleared by title-task draws, which a
+  restart discards; EU re-enters `CNTY_SEL`, so the overlay (menu plaques,
+  logo, fade) stayed up. Fix: restart now resets that overlay and, as on a
+  real PS1 reset, EU returns to a clean language selection. Ryubing US and EU
+  validation in [P6.9_RESTART.md](P6.9_RESTART.md). Continue reload of a save
+  written before restart is not newly confirmed; P6.9 stays open.
 - [ ] **P6.10 Hardware render outside battle (goal).** Move the field
   (`FIELDSTG` map tiles, actors) and the menus (field menu, Status, shops,
   memory card) from the software rasterizer to the GPU path, the way

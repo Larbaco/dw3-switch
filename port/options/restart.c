@@ -3,6 +3,7 @@
 
 #include "memcard_host.h"
 #include "port_options.h"
+#include "port_title_options.h"
 
 #include <stdio.h>
 
@@ -34,7 +35,10 @@ int dw3_port_restart_poll(void) {
         return 0;
     }
     dw3_port_options_close();
-    fprintf(stderr, "dw3-port-restart: saves flushed; returning to title in-process\n");
+    /* The discarded title task cannot hide its overlay; EU restarts into
+       CNTY_SEL, not the title, so it would otherwise draw over it. */
+    dw3_port_title_overlay_reset();
+    fprintf(stderr, "dw3-port-restart: saves flushed; returning to the boot screen in-process (title on US, language select on EU)\n");
     fflush(stderr);
     return 1;
 }
