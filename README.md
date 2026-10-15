@@ -57,7 +57,7 @@ Phases, gates and open items are in [docs/ROADMAP.md](docs/ROADMAP.md).
 
 You need:
 
-- A Switch running Atmosphere with hbmenu.
+- A Switch running Atmosphère with hbmenu.
 - Your own disc, dumped as a Mode2 BIN/CUE pair.
 - The matching build: the US disc (SLUS-01436) with the US `.nro`, the EU
   disc (SLES-03936) with the EU `.nro`. A wrong-region disc is rejected.
@@ -84,8 +84,8 @@ sdmc:/switch/dw3/us/            created on first boot
 
 Saves are `save0.bin` and `save1.bin` in the `memcard/` folder of the
 region directory (for example `sdmc:/switch/dw3/us/memcard/`). Old
-`memcardN.mcr` saves are converted once and kept as `.mcr.bak`. Do not
-delete the region folder to force a re-extract if you want to keep saves.
+`memcardN.mcr` saves are converted once and kept as `.mcr.bak`. Back up
+`memcard/` before deleting the region folder to force a re-extract.
 
 Each release also has a `-nxlink` build that streams logs to a PC. It is for
 development and not needed to play. The clocks are left as the console sets
