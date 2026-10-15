@@ -11,6 +11,7 @@ Only PIL is needed (python3-pil). Xvfb and ImageMagick `import` must be on PATH.
 from __future__ import annotations
 
 import argparse
+import ctypes
 import datetime as dt
 import json
 import os
@@ -36,6 +37,7 @@ SCEN_DIR = Path(__file__).resolve().parent / "scenarios"
 # above resampling noise.
 CHANNEL_TOL = 8
 MAX_DIFF_RATIO = 0.001
+MAX_REPLAY_FRAME = (1 << (8 * ctypes.sizeof(ctypes.c_uint))) - 1
 
 SCENARIOS = [  # (name, version)
     ("us-title", "us"),
@@ -164,6 +166,9 @@ def shot_names(name):
         if len(fields) != 3 or not fields[1].isdigit():
             raise ValueError(f"{rec}:{number}: malformed shot directive")
         frame = int(fields[1])
+        if frame < 1 or frame > MAX_REPLAY_FRAME:
+            raise ValueError(
+                f"{rec}:{number}: checkpoint frame must be in 1..{MAX_REPLAY_FRAME}")
         if frame <= previous_frame:
             raise ValueError(f"{rec}:{number}: checkpoint frames must increase strictly")
         previous_frame = frame
