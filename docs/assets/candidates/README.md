@@ -21,8 +21,11 @@ Each folder should have `01.png`–`03.png` (three prompt variants).
 - Wider assets — blocked: Antigravity individual quota exhausted (`RESOURCE_EXHAUSTED` 429). Reset reported ~166h from the batch run.
 - Character / Digimon-creature prompts via `agy` image backend returned HTTP 500; abstract battle-wireframe prompts worked.
 
-## Chosen
+## Historical selection (superseded 2026-10-14)
 
-- Icon: `icon-256/03.png` → promoted to [`../icon-256.png`](../icon-256.png) (2026-10-12).
-- Display brand (not applied to wordmark yet): **DW3NX** — Digimon World 3 · Native on NX.
+- The former `icon-256/03.png` selection is retained here only as historical
+  provenance. It was replaced by the owner-approved 4C DW3NX pixel-art emblem;
+  current assets and derivations are listed in [BRANDING](../../BRANDING.md).
+- The earlier display-brand direction was **DW3NX** — Digimon World 3 · Native on NX;
+  the current 4C artwork now includes that wordmark.
 - Switch `.nro` embed: JPEG copy at [`platforms/switch/icon.jpg`](../../../platforms/switch/icon.jpg) (see `platforms/switch/README.md`).

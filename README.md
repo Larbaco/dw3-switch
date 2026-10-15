@@ -1,5 +1,10 @@
 # Digimon World 3: Nintendo Switch port
 
+![DW3NX pixel-art crystal and orbital emblem](docs/assets/banner-1280x640.png)
+
+Project identity: **DW3NX**. The owner-approved 4C icon and matching public
+artwork are documented in [BRANDING](docs/BRANDING.md).
+
 A native Nintendo Switch homebrew port of Digimon World 3 / Digimon World 2003.
 The game logic is the C from the matching PlayStation decompilation. Console
 APIs go through [PSY-Z](https://github.com/Xeeynamo/psyz), a Psy-Q compatible
