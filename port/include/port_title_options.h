@@ -10,8 +10,12 @@
 #else
 #define DW3_TITLE_ROW_Y(row) (149 + 16 * (row))
 #endif
+#endif
 
 /* Uses the game's resident font sheet; no bundled title artwork. */
 void dw3_port_title_options_draw(int layer_id, int x, int y, int selected);
+
+/* Hide the native title overlay (menu plaques, logo, fade); used by restart. */
+void dw3_port_title_overlay_reset(void);
 
 #endif
