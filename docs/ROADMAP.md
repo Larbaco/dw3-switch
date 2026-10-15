@@ -219,6 +219,9 @@ skips/restarts before owner Start-skip (`ended=0`). The owner is playing toward
 the first save; successful save/relaunch and the EU playthrough are not yet
 confirmed. Full EU movie image/audio acceptance and natural completion remain
 open (see `docs/P3_EU_BUILD.md`).
+**Update (2026-10-15):** the EU save and HOME-exit/Continue reload are now
+owner-confirmed on the OLED (P5.3, #171). The full EU playthrough and the EU
+movie acceptance above remain open.
 P3.9 harness (`tools/compare_harness/`, `docs/P3.9_REFERENCE.md`):
 **done** — title, field, and Kunemon vs Monmon Fight-menu battle pairs
 (`DW3_FORCE_ENCOUNTER=34` + `DW3_FORCE_PARTY=1` on PC).
@@ -396,6 +399,11 @@ console.
   still uses the weak 440 Hz stub in `nx_audio.c`. **Not ticked:** no
   hardware listen, and no underrun count on device. See
   `docs/P4.3_AUDIO.md`.
+  **Ready to close? Needs:** an underrun count from a hardware log. Owner
+  listens already exist: game audio "sounding perfect" on preview.4 (P4.7)
+  and correct XA audio on preview.21 (P3.7). Owner to decide whether a
+  listen is enough, or to set a number (for example 0 underruns over 10 min
+  of field and battle in the nxlink log).
 - [x] **P4.4 Input.** `hid` → PS1 pad bits, including the digital/analog
   modes `PadInfoMode`/`PadSetMainMode` expect; rumble via `PadSetAct` →
   HD rumble (optional).
@@ -471,8 +479,9 @@ console.
   extract, the copy progress bar, and the left stick. The opening-video
   picture is unchanged from preview.4. EU is unchanged. See
   `docs/RUNTIME_LAYOUT.md`.
-  **Still open:** P4.6's OLED overlay-restore checklist on hardware
-  (`docs/P4.6_MODULES_STATUS.md` — harness ready; no evidence row yet).
+  **Not part of P4.7 (tracked under P4.6):** P4.6's OLED overlay-restore
+  checklist on hardware (`docs/P4.6_MODULES_STATUS.md` — harness ready; no
+  evidence row yet). P4.7 itself is done on its own done-when.
   P4.4 and P4.5 are ticked (stick on OLED; formal CDFS suite on packed
   runtime / SD layout — `docs/P4.5_STATUS.md`). The preview.4 log alone
   was not the CDFS suite; `tools/cdfs_suite` is.
@@ -511,9 +520,10 @@ speed.
   and the owner sees what looks like geometry passing in front of the camera
   during the idle orbit. The cause is not established. Changing the selected
   item in Port options also causes a substantial FPS drop. These are reported
-  follow-ups, not investigated fixes; P5.2 and the full battle/stage visual
-  acceptance remain open. The observations are qualitative owner reports,
-  not a frame-time benchmark.
+  follow-ups, not investigated fixes. P5.2 was ticked later (2026-10-15,
+  #160); the full battle/stage visual acceptance (MonMon's eye, idle-orbit
+  geometry, Port options FPS drop) remains open. The observations are
+  qualitative owner reports, not a frame-time benchmark.
   **Stock clocks (2026-10-11).** `v0.6.5-preview.6` raised the CPU to
   1785 MHz. That change is reverted. Do not call `clkrstSetClockRate` or
   `appletSetCpuBoostMode`. The CPU and GPU stay at the rate the console
@@ -599,9 +609,17 @@ speed.
 - [x] **P5.3 Save handling.** The port's own save on owner storage, plus
   sleep/exit safety. The running game does not import or export emulator
   memory cards. That interchange is an external tool, P9.6.
-  **Done (owner OLED, 2026-10-15):** the owner saved, closed the app from
-  the Switch HOME menu with X, reopened it from hbmenu, and loaded the save
-  with Continue; the owner confirmed it works on both the US and EU discs.
+  Done when: a save this port wrote loads after a clean exit (including
+  HOME) and a relaunch on hardware.
+  **Done (owner OLED, 2026-10-15, #171):** the owner saved, closed the app
+  from the Switch HOME menu with X, reopened it from hbmenu, and loaded the
+  save with Continue; the owner confirmed it works on both the US and EU
+  discs.
+  **Remaining work moved to P10.2:** sleep/focus-loss flush and the
+  time-delta clamp. HOME pressed in the middle of a write section was not
+  tested on its own; P10.2's smoke covers it.
+  The dated notes below are history up to the tick; where they say "open"
+  they are superseded by the 2026-10-15 check.
   **Flat save host (2026-10-11):** `port/memcard` now uses one resident
   flat file per port (`save0.bin` / `save1.bin`, 32 KiB), `memcpy` I/O,
   deferred flush on write-section end / `memcard_host_shutdown`, synthetic
@@ -639,17 +657,18 @@ speed.
   [P5.3_FLAT_SAVE.md](P5.3_FLAT_SAVE.md).
   **Preview.20 OLED exit (2026-10-12):** nxlink log observed applet exit,
   `flat saves flushed`, and a clean process exit. No fresh save or
-  relaunch/Continue reload was tested; P5.3 remains open.
+  relaunch/Continue reload was tested; P5.3 remained open at that point.
   **EU OLED session (2026-10-14):** owner reached early gameplay after native
   own-disc extraction and is playing toward the first save. No successful EU
-  SAVE or relaunch/Continue reload has been confirmed; this does not close P5.3.
-  **Still open:** sleep/focus-loss flush + time-delta clamp (P10.2);
-  OLED smoke that HOME after SAVE / mid-write-section leaves flats
-  intact and Continue reloads. Emulator conversion remains P9.6.
+  SAVE or relaunch/Continue reload had been confirmed yet; that session did
+  not close P5.3.
+  **Open before the tick (2026-10-14):** sleep/focus-loss flush + time-delta
+  clamp (P10.2); OLED smoke that HOME after SAVE / mid-write-section leaves
+  flats intact and Continue reloads (HOME after SAVE + Continue: done
+  2026-10-15). Emulator conversion remains P9.6.
   **Preview.4 / .5 notes (kept):** earlier `.mcr` writes and the data-frame
   XOR fault (`0x7F` / partner index) are historical; XOR must stay off
-  data frames. Done when: a save this port wrote loads after a clean exit
-  (including HOME) and a relaunch on hardware.
+  data frames.
 - [ ] **P5.4 Error reporting.** Crash handler that writes a log + last
   mode/stage id to SD; assert overlay.
   Done when: a forced fault produces a readable report.
@@ -660,6 +679,8 @@ speed.
   ids, PC/LR/FAR/ESR). Install from `boot_main` after SD+log open; does
   not touch P5.3 memcard atexit. Force-fault: `-DDW3_NX_FORCE_CRASH=ON`
   (soft default OFF). See [P5.4_CRASH.md](P5.4_CRASH.md).
+  Owner crash reports from preview.26 are in
+  [PREVIEW26_CRASH_RECORDS.md](PREVIEW26_CRASH_RECORDS.md) (#156).
   **Still open:** on-screen assert overlay (HUD hook in
   [DEBUG_OVERLAY.md](DEBUG_OVERLAY.md) remains triage-only).
   Note: the P5.2 nxlink on-screen HUD (`DW3_NX_DEBUG_OVERLAY`) is not a
@@ -692,6 +713,11 @@ tick does not start Phase 6.
   inn night) cover the gutters, and EU no longer shows 16:10. Title is in
   PRs #126 / #127. Validated on PC and Ryubing with US and EU; OLED pass
   pending.
+  **16:9 field crash (2026-10-15):** preview.26 EU crash record 2 (field
+  map) is fixed by patch `0057` in #158 (cause inferred from code, not
+  reproduced); shipped in preview.27, hardware acceptance pending. Crash
+  record 1 (battle) is separate and open. Menu and transition coverage:
+  [P6.1_WIDESCREEN_MENU_AUDIT.md](P6.1_WIDESCREEN_MENU_AUDIT.md) (#161).
 - [ ] **P6.2** PAL/NTSC and EU/US selection at boot; language from EU
   `CNTY_SEL`.
   **Status (2026-10-14, language part):** `CNTY_SEL` linked as
@@ -700,7 +726,7 @@ tick does not start Phase 6.
   **Owner OLED feedback (2026-10-14, EU preview.26):** language selection
   works. Restart from the main menu after choosing a language leaves the
   title menu drawn above the language-selection screen (see P6.9; fixed in
-  the P6.9 note below, restart now returns to a clean `CNTY_SEL`). This
+  #162, restart now returns to a clean `CNTY_SEL`). This
   validates the tested language path only; PAL/NTSC and disc selection remain
   open, so P6.2 is not complete.
 - [ ] **P6.3** PGXP-style vertex precision from PSY-Z if it stays stable.
@@ -718,6 +744,10 @@ tick does not start Phase 6.
   field, and 130 FPS in battle. These are observed counters, not measured
   logical-speed multipliers, display/present rates, or P5.2 benchmark proof.
   P6.4 remains open; no additional measurement or optimization was performed.
+  **Ready to close? Needs:** an OLED turbo check on the US disc, including
+  the return to normal speed. PC and Ryujinx already cover US and EU,
+  including R3 off back to 1x (P6.4_FAST_FORWARD.md, commit `0b94858`);
+  the OLED reports (preview.25, preview.26) are EU only.
   Done when: PC and Switch (Ryujinx, then hardware) show it on both the US
   and EU discs, and it returns cleanly to normal speed.
 - [x] **P6.5** Release packaging: `.nro` + `README` for own-disc setup;
@@ -727,8 +757,9 @@ tick does not start Phase 6.
   `source/boot_main.c` calling `dw3_game_main`) and
   `platforms/switch/release/README.txt`, and those assets contain no
   disc, BIOS, or extracted game files.
-  **Status (2026-10-11):** this task only. Phase 6 has not started.
-  P6.1–P6.4 and P6.6+ are untouched. P4.7 is ticked on its own
+  **Status (2026-10-11):** this task only. At that date Phase 6 had not
+  started and P6.1–P6.4 and P6.6+ were untouched (since 2026-10-14, P6.1,
+  P6.2, P6.4 and P6.9 have early work, see their entries). P4.7 is ticked on its own
   done-when (title on hardware). A release is not that done-when.
   `.github/workflows/switch-release.yml` builds that game `.nro` in
   `devkitpro/devkita64` and publishes a prerelease. CI job `switch` in
@@ -817,6 +848,9 @@ tick does not start Phase 6.
   real PS1 reset, EU returns to a clean language selection. Ryubing US and EU
   validation in [P6.9_RESTART.md](P6.9_RESTART.md). Continue reload of a save
   written before restart is not newly confirmed; P6.9 stays open.
+  **Status (2026-10-15):** the EU restart overlay bug is fixed in #162
+  (Ryubing US and EU). Still open: restart before/after a battle and after
+  an in-game save on both discs, and an OLED retest.
 - [ ] **P6.10 Hardware render outside battle (goal).** Move the field
   (`FIELDSTG` map tiles, actors) and the menus (field menu, Status, shops,
   memory card) from the software rasterizer to the GPU path, the way
@@ -832,9 +866,11 @@ tick does not start Phase 6.
   Known risks: preview.9 sent field OT triangles to the GLES mesh and
   showed severe field artifacts (blue stripe column, rug blobs, missing
   walls, neon outlines) and lower FPS, which is why the mesh is gated to
-  `FIGHTSTG`; `gpu-tex` still has the unexplained opaque black sky on the
-  cliff/sky battle stage (CLUT index 0), which field and menu textures
-  would hit too; the P6.1 widescreen patches (0047–0049, 0051–0053, the
+  `FIGHTSTG`; the opaque black sky on the cliff/sky battle stage (CLUT
+  index 0) is reported fixed under `gpu-tex` by the owner on the OLED, US
+  and EU (2026-10-15, #160, #168), but no root cause or fix commit is
+  recorded, so field and menu textures may still hit it; the P6.1
+  widescreen patches (0047–0049, 0051–0053, the
   three extra host tile slots in VRAM, gutter fades) and layered panels
   drawn into small drawing areas (like the battle partner view) must keep
   working; and soft rendering must stay selectable for comparison.
@@ -1127,7 +1163,8 @@ PS1 game, with vanilla-safe defaults and persistence on owner storage.
   the owner wants both standardized to the Options style. Changing the selected
   item in Port options substantially drops FPS (tracked under P5.2). P9.2's
   reachability/return checkpoint remains met; this does not close the styling,
-  performance, restart-overlay, or P9.4 persistence follow-ups.
+  performance, restart-overlay, or P9.4 persistence follow-ups. (The
+  restart-overlay follow-up was fixed in #162 on 2026-10-15.)
   Done when: the screen is reachable from the main menu and returns
   cleanly to it (PC + Switch; TTB print on PC).
 - [x] **P9.3 Toggle registry.** Maintain a registry of non-native features
@@ -1181,6 +1218,8 @@ rumble, saves, turbo, or widescreen here; those stay in their phases.
   README points at Phase 10 / that note.
 - [ ] **P10.2 Lifecycle hardening.** Confirm P5.3 focus/sleep clamp and
   flush behaviour on hardware; fill any gaps in `nx_os` / applet hooks.
+  This holds the only open part of P5.3 (ticked 2026-10-15): sleep/focus-loss
+  flush, the time-delta clamp, and HOME during a save write section.
   Done when: HOME sleep/resume and clean exit smoke tests pass with
   saves intact.
 - [ ] **P10.3 Presentation modes.** Docked vs handheld already in P4.2;
