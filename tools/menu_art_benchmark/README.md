@@ -5,7 +5,7 @@ Python 3, Git, a Linux C compiler and libm; no game assets, submodule checkout,
 display, Switch connection or clock changes. It measures host x86 code,
 **not Switch frame time or FPS**.
 
-Run from any directory, using a new output directory outside this checkout:
+From the repository root, use a new output directory outside this checkout:
 
 ```sh
 python3 tools/menu_art_benchmark/run.py --out /tmp/dw3-menu-art-results

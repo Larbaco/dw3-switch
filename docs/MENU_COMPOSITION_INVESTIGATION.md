@@ -48,7 +48,10 @@ and changing the approved Options appearance are unnecessary for this fix.
 - `platforms/pc/src/title_menu_overlay.c:refresh_art` creates/maps a fresh SDL
   transfer buffer and submits a copy on refresh, then calls
   `SDL_WaitForGPUIdle`. This explicit whole-device wait affects PC evidence;
-  it is not a Switch API or proof of the Switch bottleneck.
+  it is not a Switch API or proof of the Switch bottleneck. The PC overlay
+  currently has no edge-fade tint input (`set_fade` is a no-op), whereas the
+  Switch shader applies tint and Options opacity; preserve each current host
+  behavior and treat any PC fade-parity change as explicit additional scope.
 - The Switch debug HUD independently rebuilds and uploads its own texture on
   every visible frame (`nx_debug_overlay.c:dw3_nx_debug_overlay_draw`). Keep
   HUD visibility identical in A/B runs and measure it separately before
@@ -105,16 +108,20 @@ translucent writes and 26,234 rejected calls, on only 691,200 output pixels.
 This confirms repeated large fills and generic opaque blending are actual
 CPU work. It does not prove which portion dominates on the OLED.
 
-Local evidence is at `/tmp/dw3-menu-art-cpu-evidence/REPORT.md`, with
-`bench.c`, `run.py`, `results.json`, six `*-raw.json` sample sets, `counts.txt`,
-source snapshots and `sha256.txt`. Re-run with
-`python3 /tmp/dw3-menu-art-cpu-evidence/run.py` while those temporary artifacts
-exist. To reconstruct independently, obtain `title_overlay_art.c`, its header
-and two lettering/label includes at the SHAs above; allocate reused 960×720×4
-or five-canvas buffers, clear before each art call as the Switch path does,
-and time states `-1,0,1,2,3` versus only `DW3_TITLE_ART_OPTIONS`. Percentile
-index is `floor(.95*(n-1))` on sorted samples. No optimized raster or GPU
-composition prototype was measured in this investigation.
+The [persistent evidence](evidence/menu-art-cpu-2026-10-15/README.md) contains
+results, all raw timing samples, pixel counts and exact source/environment
+metadata. The asset-free
+[harness and reproduction instructions](../tools/menu_art_benchmark/README.md)
+extract only the required authored artwork sources from Git into a temporary
+directory; they do not require game assets, a display, submodules or the SDK.
+From the repository root:
+
+```sh
+python3 tools/menu_art_benchmark/run.py --out /tmp/dw3-menu-art-rerun
+```
+
+The saved percentile uses `floor(.95*(n-1))` on sorted samples. No optimized
+raster or GPU composition prototype was measured in this investigation.
 
 ## Alternatives
 
