@@ -28,4 +28,4 @@ Each folder should have `01.png`–`03.png` (three prompt variants).
   current assets and derivations are listed in [BRANDING](../../BRANDING.md).
 - The earlier display-brand direction was **DW3NX** — Digimon World 3 · Native on NX;
   the current 4C artwork now includes that wordmark.
-- Switch `.nro` embed: JPEG copy at [`platforms/switch/icon.jpg`](../../../../platforms/switch/icon.jpg) (see `platforms/switch/README.md`).
+- Switch `.nro` embed: JPEG copy at [`platforms/switch/icon.jpg`](../../../platforms/switch/icon.jpg) (see `platforms/switch/README.md`).
