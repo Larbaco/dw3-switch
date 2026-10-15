@@ -38,7 +38,7 @@ int dw3_port_restart_poll(void) {
     /* The discarded title task cannot hide its overlay; EU restarts into
        CNTY_SEL, not the title, so it would otherwise draw over it. */
     dw3_port_title_overlay_reset();
-    fprintf(stderr, "dw3-port-restart: saves flushed; returning to title in-process\n");
+    fprintf(stderr, "dw3-port-restart: saves flushed; returning to the boot screen in-process (title on US, language select on EU)\n");
     fflush(stderr);
     return 1;
 }
