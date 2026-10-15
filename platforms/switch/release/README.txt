@@ -1,10 +1,19 @@
 Digimon World 3 / 2003, Switch homebrew preview
 
-Release candidate notes for v0.6.5-preview.26. OLED acceptance of the
+Release candidate notes for v0.6.5-preview.27. OLED acceptance of the
 changes below remains pending. The release tag and boot version identify
 the actual source revision.
 
 New in this preview
+
+  Field 16:9 streaming crash fix (#158, patch 0057, PORT_HOST only): the
+  map streamer no longer starts a disc read into a tile buffer that the
+  decompressor is still using. Cause inferred from the preview.26 EU crash
+  record, not reproduced on hardware yet. Ryujinx and OLED runs pending.
+
+  Branding (#157): 4C DW3NX emblem in the title art and release cover.
+  This build also includes #157, which is already on main; #158 is not
+  on main yet.
 
   EU cold boot uses the original language-selection screen (#143).
   Choose the language before the opening movie and title. US boot remains
