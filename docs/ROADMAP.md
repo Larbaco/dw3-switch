@@ -504,6 +504,8 @@ speed.
   Note: the P5.2 nxlink on-screen HUD (`DW3_NX_DEBUG_OVERLAY`) is not a
   substitute for this task.
 - [ ] **P5.5 Stage sweep on hardware.** P3.8 again on the console.
+  Done when (proposed, from P3.8): the P3.8 loadable stage set loads and
+  returns on hardware, US and EU. P6.20's warp menu would help.
 
 Gate: start → first boss on hardware, both versions.
 
@@ -513,6 +515,10 @@ Starts only after the Phase 5 gate (playable port on hardware). Localization
 is an explicit project goal in this phase, not during bring-up. P6.5 is
 the exception: packaging was done early because the owner asked. That
 tick does not start Phase 6.
+In practice P6.1, P6.2, P6.4 and P6.9 also have early work at the owner's
+request (marked "in progress" in the
+[status table](#status-at-a-glance)). That does not change the Phase 5
+gate, which stays open.
 
 - [ ] **P6.1** Integer scaling / aspect options; optional widescreen
   where the GTE projection allows.
@@ -548,6 +554,7 @@ tick does not start Phase 6.
   validates the tested language path only; PAL/NTSC and disc selection remain
   open, so P6.2 is not complete.
 - [ ] **P6.3** PGXP-style vertex precision from PSY-Z if it stays stable.
+  Done when: TBD (owner).
 - [ ] **P6.4** Fast-forward / frame-skip toggles for grinding (optional).
   **Status (2026-10-14, first pass):** R3 toggles 2x/3x/4x fast-forward
   in field and battle; speed (or OFF) in the Port options row. Switch skips
@@ -597,6 +604,7 @@ tick does not start Phase 6.
   `port/cdfs` id remap without rebuilding the `.nro` for each locale.
   Done when: a second owner-supplied language switches at boot or
   country select and renders in-game text correctly.
+  Overlap: P6.7 is the first case of this mechanism (see Backlog notes).
 - [ ] **P6.9 Restart-game hotkey.** Host button combo that resets the
   running game back to its boot/title flow **in-process**, without
   quitting the `.nro` to Sphaira/hbmenu or relaunching the console.
@@ -665,53 +673,30 @@ tick does not start Phase 6.
   GTE/3D path renders above native on PC and Switch with US and EU discs, and
   the 2D/UI layers and widescreen patches still match soft rendering.
 
-- [ ] **P6.12 Button mapping (future goal).** Let the owner remap the
-  PS1 pad buttons on the Switch and PC, in `port/` policy with the host
-  input mapping kept in `platforms/`. Goal note only, recorded at the
-  owner's request (2026-10-15); it does not start Phase 6 and is not part
-  of the Phase 5 gate. Done when a remap survives a restart and works on
-  the US and EU discs.
-- [ ] **P6.13 Mapping submenu (future goal).** A submenu in Port options
-  that holds the button mapping (P6.12), with its own screen in the game's
-  window style. Goal note only (2026-10-15); not part of the Phase 5 gate.
-  Done when the submenu opens from Port options, lists each mapped button,
-  and returns with the mapping saved.
-- [ ] **P6.14 In-game load / new save menu (future goal).** A load or
-  new-save menu reachable during play, so the owner can switch save slots
-  without returning to the title. It must flush P5.3 saves before a load
-  and keep the save rules of P5.3 intact. Goal note only (2026-10-15); not
-  part of the Phase 5 gate. Done when a load or new save from inside the
-  game works without a restart, on the US and EU discs.
-- [ ] **P6.15 Regression replay tests (future goal).** Record pad input,
-  replay it and compare screenshots at fixed checkpoints, on the US disc
-  and the EU disc in all 5 languages. Goal note only (2026-10-15). Done
-  when one command runs the replay set on both discs and reports diffs.
-- [ ] **P6.16 Suspend / resume (future goal).** Save the whole port state
-  (RAM, VRAM, SPU, overlay state) on exit or sleep and resume at the same
-  point. Separate from P5.3 game saves. Goal note only (2026-10-15). Done
-  when exit and relaunch resume mid-play on US and EU.
-- [ ] **P6.17 Music / SFX volume (future goal).** Separate music and
-  sound-effect volume rows in Port options, persisted with P9.4. Goal note
-  only (2026-10-15). Done when both sliders work on US and EU.
-- [ ] **P6.18 Pacing options (future goal).** Text speed, encounter rate
-  (0.5x, 1x, off) and faster battle animations as Port options toggles; may
-  land as concrete P7.4 items. Goal note only (2026-10-15). Done when each
-  toggle works on US and EU and is off by default.
-- [ ] **P6.19 Japanese disc support (future goal).** File map, executable
-  differences and boot for the JP disc, next to US and EU. Goal note only
-  (2026-10-15). Done when the JP disc boots to the field on PC and Switch.
-- [ ] **P6.20 Port debug / cheat menu (future goal).** Port-side menu for
-  money, items and map warp, to speed up testing. Off by default. Goal
-  note only (2026-10-15). Done when it works on US and EU.
-- [ ] **P6.21 60 fps interpolation (far future).** Interpolate camera and
-  field movement in 30 fps sections. After P6.10. Goal note only
-  (2026-10-15).
+- **P6.12–P6.21** are goal notes, kept with their ids in
+  [Backlog / future goals](#backlog--future-goals).
 
 Gate: polish options from P6.1–P6.5 land as needed; localization P6.6–P6.8
 may still be in progress when Phase 7 starts only if the Phase 5 playable
 gate and the Phase 6 packaging baseline (P6.5) are already met. Prefer
 finishing P6.2 (EU language / NTSC) before QoL parity work that assumes PAL
 language slots.
+
+**Proposed Phase 6 gate (proposal for the owner, not adopted):** the
+current gate says "land as needed", which is not a criterion. Proposal:
+
+1. Phase 5 gate met (start → first boss on hardware, US and EU).
+2. P6.1 widescreen passes on the OLED with US and EU (field, battle, and the
+   menus in [P6.1_WIDESCREEN_MENU_AUDIT.md](P6.1_WIDESCREEN_MENU_AUDIT.md)),
+   with soft rendering still selectable.
+3. P6.2 language selection checked on the OLED for each of the 5 playable
+   EU languages; PAL/NTSC either done or split into its own item.
+4. P6.9 restart passes on the OLED with US and EU, including after a battle
+   and after an in-game save, and a save written before the restart loads.
+5. P6.4 turbo checked on the OLED with US, returning cleanly to 1x.
+6. P6.5 packaging baseline (done) and the P6.6 localization note exist.
+
+Not in the proposed gate: P6.3, P6.7, P6.8, P6.10, P6.11 and the backlog.
 
 ## Phase 7 — Community QoL and companion compatibility
 
@@ -759,47 +744,8 @@ list: [COMMUNITY_QOL.md](COMMUNITY_QOL.md).
   Done when: a smoke test with the companion works, or the note records an
   explicit blocker. Does **not** block the Phase 7 gate.
 
-- [ ] **P7.6 Progression options (future goal).** Port options for EXP
-  and DV EXP rate (1x default, Harmony uses 1.3x / 1.2x), uncapped DV EXP
-  and HP/MP restore on level up. Credit markisha64 / rsigrist. Done when
-  each option works on US and EU and is off by default.
-- [ ] **P7.7 Bug and text fixes (future goal).** Picking / Snapping Claw on
-  a KO'd enemy, active Digivolution name in battle, battle reward
-  "1IT"/"1EXP" text, save label showing Asuka Inn, Square map glitch.
-  Check each on the US disc too. Done when each fix is a `port/patches`
-  entry tested on US and EU.
-- [ ] **P7.8 Battle info HUD (future goal).** Optional enemy HP, always-on
-  partner MP, technique attribute / power / MP cost colours, DV stats and
-  EXP to next level after battle. Done when the toggle works on US and EU
-  in all 5 EU languages.
-- [ ] **P7.9 Battle menu memory (future goal).** Remember the last battle
-  command (Techniques stays on Techniques) and allow reordering techniques
-  per Digimon. Done when both persist in the P5.3 save on US and EU.
-- [ ] **P7.10 Training without RNG (future goal).** Guaranteed base gains,
-  optional timing bonus, Fast Training skip, as an option off by default.
-  Done when it works on US and EU.
-- [ ] **P7.11 Guidance and exploration (future goal).** Quest log HUD,
-  next-step walkthrough (Flawe, EU 5 languages + US English), NPC
-  quest/battle bubbles, auction / DRI notices, Digivolution requirements in
-  the DigiLab, shop stat bonuses, L1/R1 leader swap in the field. The
-  community most often asks for "where do I go next" and Digivolution
-  requirements. Done when each part toggles on US and EU.
-- [ ] **P7.12 New items and name length (far future).** Harmony's encounter
-  disks/rings, DV Adapter, Analysis Disk, MP recovery items; 10-character
-  player name. Both change item tables or save layout, so only after the
-  P5.3 save format is frozen with a migration. Done when old saves still
-  load on US and EU.
-- [ ] **P7.13 Transitions and visuals (future goal).** Shorter fades and
-  location cards, skip redundant location screens after battle / save
-  menu, transparent shadows (psyz). Measure save and menu time first; the
-  port already has no disc seek. Done when the option works on US and EU.
-- [ ] **P7.14 Community wishlist (note).** Requests from r/digimon /
-  r/DigimonWorld threads (2026-10-15, search results were thin; mostly the
-  Harmony announcement thread): lower encounter rate and less grinding
-  (P6.18, P7.6), faster battles and text (P6.18), knowing where to go
-  (P7.11), clearer Digivolution paths (P7.11), save anywhere / quick
-  resume (P6.14, P6.16), widescreen and HD (P6.1, P6.11, Phase 8),
-  60 fps (P6.21). Out of scope: new Digimon lines and new story content.
+- **P7.6–P7.14** are goal notes, kept with their ids in
+  [Backlog / future goals](#backlog--future-goals).
 
 Gate: owner-patched EU data path works (P7.2) and the agreed native QoL
 subset from P7.4 is playable. Companion (P7.5) is best-effort.
@@ -877,6 +823,8 @@ PS1 game, with vanilla-safe defaults and persistence on owner storage.
   process exit.
   Done when: a toggled value remains after restarting the host or
   returning from hbmenu.
+  Blocks: P6.12, P6.17, P6.18, P7.6–P7.10 and a persisted P6.9 restart
+  setting (see [Backlog](#backlog--future-goals)).
 - [ ] **P9.5 Wire real features.** Connect registry entries to real port
   flags as Phases 6–8 land; mark unavailable items N/A in
   [PORT_OPTIONS.md](PORT_OPTIONS.md) rather than hiding the menu.
@@ -931,6 +879,130 @@ rumble, saves, turbo, or widescreen here; those stay in their phases.
   10 gate.
 
 Gate: P10.2 (+ P10.3 once present is live). P10.4–P10.5 are best-effort.
+
+## Backlog / future goals
+
+Goal notes recorded early at the owner's request. They are not part of any
+phase gate and nobody owns them yet. Their ids stay stable (other docs and
+PRs cite them); an item moves back into its phase when someone takes it.
+Statuses are in the [table](#status-at-a-glance).
+
+**Dependencies not stated in the entries:**
+
+- **P9.4 (option persistence) blocks** P6.12 (remap survives a restart),
+  P6.17, P6.18, P7.6–P7.10, and a persisted P6.9 restart setting (today
+  session-only).
+- **P6.15** needs P6.9 (return to a known state without relaunching),
+  P5.3 (a fixed save per case) and a fixed RNG seed. Without them replays
+  are not reproducible.
+- **P6.21** comes after P6.10 (field on the GPU) and P6.11 (internal
+  resolution).
+- P6.20's map warp would help P5.5 (stage sweep on hardware).
+- Until P6.19 (JP disc) lands, "both discs" in these done-whens means US
+  and EU.
+- P7.12 waits for a frozen save format; P6.14 and P6.16 touch saves too.
+
+**Overlaps to decide (owner; nothing merged or deleted here):**
+
+- P6.12 / P6.13: P6.13 is the UI of P6.12. Possible merge.
+- P6.18 vs P7.6 / P7.10: P6.18's pacing options overlap the progression
+  and training options; P6.18 already says it may land as P7.4 items.
+- P6.14 vs P6.16: two "resume" models (in-game save slot vs full state).
+  P6.16 also touches P10.2 (sleep/resume).
+- P6.7 / P6.8 (Phase 6, not backlog): same pack mechanism; PT-BR is the
+  first case of P6.8.
+
+### Phase 6 goal notes
+
+- [ ] **P6.12 Button mapping (future goal).** Let the owner remap the
+  PS1 pad buttons on the Switch and PC, in `port/` policy with the host
+  input mapping kept in `platforms/`. Goal note only, recorded at the
+  owner's request (2026-10-15); it does not start Phase 6 and is not part
+  of the Phase 5 gate. Done when a remap survives a restart and works on
+  the US and EU discs.
+- [ ] **P6.13 Mapping submenu (future goal).** A submenu in Port options
+  that holds the button mapping (P6.12), with its own screen in the game's
+  window style. Goal note only (2026-10-15); not part of the Phase 5 gate.
+  Done when the submenu opens from Port options, lists each mapped button,
+  and returns with the mapping saved.
+- [ ] **P6.14 In-game load / new save menu (future goal).** A load or
+  new-save menu reachable during play, so the owner can switch save slots
+  without returning to the title. It must flush P5.3 saves before a load
+  and keep the save rules of P5.3 intact. Goal note only (2026-10-15); not
+  part of the Phase 5 gate. Done when a load or new save from inside the
+  game works without a restart, on the US and EU discs.
+- [ ] **P6.15 Regression replay tests (future goal).** Record pad input,
+  replay it and compare screenshots at fixed checkpoints, on the US disc
+  and the EU disc in all 5 languages. Goal note only (2026-10-15). Done
+  when one command runs the replay set on both discs and reports diffs.
+- [ ] **P6.16 Suspend / resume (future goal).** Save the whole port state
+  (RAM, VRAM, SPU, overlay state) on exit or sleep and resume at the same
+  point. Separate from P5.3 game saves. Goal note only (2026-10-15). Done
+  when exit and relaunch resume mid-play on US and EU.
+- [ ] **P6.17 Music / SFX volume (future goal).** Separate music and
+  sound-effect volume rows in Port options, persisted with P9.4. Goal note
+  only (2026-10-15). Done when both sliders work on US and EU.
+- [ ] **P6.18 Pacing options (future goal).** Text speed, encounter rate
+  (0.5x, 1x, off) and faster battle animations as Port options toggles; may
+  land as concrete P7.4 items. Goal note only (2026-10-15). Done when each
+  toggle works on US and EU and is off by default.
+- [ ] **P6.19 Japanese disc support (future goal).** File map, executable
+  differences and boot for the JP disc, next to US and EU. Goal note only
+  (2026-10-15). Done when the JP disc boots to the field on PC and Switch.
+- [ ] **P6.20 Port debug / cheat menu (future goal).** Port-side menu for
+  money, items and map warp, to speed up testing. Off by default. Goal
+  note only (2026-10-15). Done when it works on US and EU.
+- [ ] **P6.21 60 fps interpolation (far future).** Interpolate camera and
+  field movement in 30 fps sections. After P6.10. Goal note only
+  (2026-10-15).
+  Done when (proposed): camera and field movement in 30 fps sections
+  present at 60 fps on PC and Switch with the US and EU discs, and the
+  original 30 fps stays selectable.
+
+### Phase 7 goal notes
+
+- [ ] **P7.6 Progression options (future goal).** Port options for EXP
+  and DV EXP rate (1x default, Harmony uses 1.3x / 1.2x), uncapped DV EXP
+  and HP/MP restore on level up. Credit markisha64 / rsigrist. Done when
+  each option works on US and EU and is off by default.
+- [ ] **P7.7 Bug and text fixes (future goal).** Picking / Snapping Claw on
+  a KO'd enemy, active Digivolution name in battle, battle reward
+  "1IT"/"1EXP" text, save label showing Asuka Inn, Square map glitch.
+  Check each on the US disc too. Done when each fix is a `port/patches`
+  entry tested on US and EU.
+- [ ] **P7.8 Battle info HUD (future goal).** Optional enemy HP, always-on
+  partner MP, technique attribute / power / MP cost colours, DV stats and
+  EXP to next level after battle. Done when the toggle works on US and EU
+  in all 5 EU languages.
+- [ ] **P7.9 Battle menu memory (future goal).** Remember the last battle
+  command (Techniques stays on Techniques) and allow reordering techniques
+  per Digimon. Done when both persist in the P5.3 save on US and EU.
+- [ ] **P7.10 Training without RNG (future goal).** Guaranteed base gains,
+  optional timing bonus, Fast Training skip, as an option off by default.
+  Done when it works on US and EU.
+- [ ] **P7.11 Guidance and exploration (future goal).** Quest log HUD,
+  next-step walkthrough (Flawe, EU 5 languages + US English), NPC
+  quest/battle bubbles, auction / DRI notices, Digivolution requirements in
+  the DigiLab, shop stat bonuses, L1/R1 leader swap in the field. The
+  community most often asks for "where do I go next" and Digivolution
+  requirements. Done when each part toggles on US and EU.
+- [ ] **P7.12 New items and name length (far future).** Harmony's encounter
+  disks/rings, DV Adapter, Analysis Disk, MP recovery items; 10-character
+  player name. Both change item tables or save layout, so only after the
+  P5.3 save format is frozen with a migration. Done when old saves still
+  load on US and EU.
+- [ ] **P7.13 Transitions and visuals (future goal).** Shorter fades and
+  location cards, skip redundant location screens after battle / save
+  menu, transparent shadows (psyz). Measure save and menu time first; the
+  port already has no disc seek. Done when the option works on US and EU.
+- [ ] **P7.14 Community wishlist (note).** Requests from r/digimon /
+  r/DigimonWorld threads (2026-10-15, search results were thin; mostly the
+  Harmony announcement thread): lower encounter rate and less grinding
+  (P6.18, P7.6), faster battles and text (P6.18), knowing where to go
+  (P7.11), clearer Digivolution paths (P7.11), save anywhere / quick
+  resume (P6.14, P6.16), widescreen and HD (P6.1, P6.11, Phase 8),
+  60 fps (P6.21). Out of scope: new Digimon lines and new story content.
+  Done when: TBD (owner). This is a note, not a task.
 
 ## Cross-cutting rules
 
