@@ -18,11 +18,11 @@ To try it, see [Play it on Switch](#play-it-on-switch).
        alt="Field: the player and partner Digimon walking through Asuka City">
   <br>
   <img src="docs/assets/screenshots/battle-widescreen.png" width="400"
-       alt="Widescreen battle against Pharaohmon">
+       alt="Widescreen battle on a grassy plain: Monmon and Kunemon with the Fight command menu and HP bars">
   <img src="docs/assets/screenshots/eu-language.png" width="400"
        alt="Digimon World 2003 (EU) language selection at boot">
 </p>
-<p align="center"><sub>Switch build, captured in the Ryubing emulator.</sub></p>
+<p align="center"><sub>Captured from the Switch build in Ryubing and from the PC build.</sub></p>
 
 ## What this is
 
