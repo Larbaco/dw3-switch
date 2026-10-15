@@ -736,6 +736,11 @@ tick does not start Phase 6.
   source with the Docker image recorded in `SOURCE.txt`. No game assets ship.
   This packaging update does not close OLED playback, performance, or save/reload
   acceptance. See [RELEASE_PREVIEW26](RELEASE_PREVIEW26.md).
+  **Branding update (2026-10-14):** the owner-approved 4C pixel-art DW3NX
+  crystal/orbit emblem is the game NRO icon and the source for the README
+  banner, release-cover artwork and reusable transparent logo. This changes
+  project packaging artwork, not in-game title/menu assets or already
+  published preview.26 binaries. See [BRANDING](BRANDING.md).
   **Ticked** on `v0.6.5-preview.1`
   ([release](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.1),
   [run 38103023231](https://github.com/Larbaco/dw3-switch/actions/runs/38103023231)).

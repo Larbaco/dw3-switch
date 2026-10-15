@@ -34,12 +34,16 @@ JPEG icon makes that section larger by the icon file size.
 ### Homebrew icon (game image)
 
 The CMake game `.nro` passes `ICON` to `nx_create_nro` so `elf2nro` embeds
-[`icon.jpg`](icon.jpg) (256×256 JPEG). Canonical source art is
-[`docs/assets/icon-256.png`](../../docs/assets/icon-256.png); regenerate the
-JPEG after art changes:
+[`icon.jpg`](icon.jpg) (256×256 JPEG). The owner-approved 4C master is
+[`docs/assets/dw3nx-4c-master.png`](../../docs/assets/dw3nx-4c-master.png).
+The launcher-sized export is
+[`docs/assets/icon-256.png`](../../docs/assets/icon-256.png); regenerate it
+with nearest-neighbor sampling to preserve pixel edges, then export the JPEG:
 
 ```bash
-convert docs/assets/icon-256.png -resize 256x256! -quality 90 \
+convert docs/assets/dw3nx-4c-master.png -filter point -resize 256x256! \
+  docs/assets/icon-256.png
+convert docs/assets/icon-256.png -colorspace sRGB -type TrueColor -quality 90 \
   platforms/switch/icon.jpg
 ```
 
