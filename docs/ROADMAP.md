@@ -471,7 +471,12 @@ speed.
   not claim that the exact benchmark was met.
   Open follow-ups (not blocking the tick): MonMon's eye artifact, geometry
   in front of the camera during the idle orbit, FPS drop on Port options
-  selection change, and the PSY-Z `KernelInit` sync-object warning. Stock
+  selection change, and the PSY-Z `KernelInit` sync-object warning.
+  **Options follow-up (2026-10-15):** owner tested the EU #170 candidate
+  with the HUD: navigation improved but remains somewhat slow. This is a
+  partial gain, not completion. Cached component/GPU composition is proposed
+  in [MENU_COMPOSITION_INVESTIGATION](MENU_COMPOSITION_INVESTIGATION.md);
+  implementation and a new PC/OLED comparison remain open. Stock
   clocks only (no overclock). History (preview.7–.26, mesh approach A,
   flat-blue root cause): [P5.2_BATTLE_GPU.md](P5.2_BATTLE_GPU.md#history-moved-from-roadmapmd).
 
@@ -804,7 +809,9 @@ PS1 game, with vanilla-safe defaults and persistence on owner storage.
   Validated on PC (2026-10-12) and on the OLED (preview.20, 2026-10-12):
   the title row opens Port options and returns cleanly. Open follow-ups:
   Start/Continue text glow (owner wants the Options style), FPS drop when
-  the Port options selection changes (P5.2), persistence (P9.4). History:
+  the Port options selection changes (P5.2; EU #170 owner test improved but
+  still slow, see [composition proposal](MENU_COMPOSITION_INVESTIGATION.md)),
+  persistence (P9.4). History:
   [P9.2_MENU.md](P9.2_MENU.md).
   Done when: the screen is reachable from the main menu and returns
   cleanly to it (PC + Switch; TTB print on PC).
