@@ -38,7 +38,7 @@ lives in its doc, not in the entry below.
 | P4.4 | Input | done | [P4.4](P4.4_INPUT_STATUS.md) |
 | P4.5 | Filesystem + log + time | done | [P4.5](P4.5_STATUS.md) |
 | P4.6 | Static modules on Switch | in progress | [P4.6](P4.6_MODULES_STATUS.md) |
-| P4.7 | Boot the game | done | [SWITCH_BACKEND](SWITCH_BACKEND.md) |
+| P4.7 | Boot the game | done | [P4.7](P4.7_BOOT.md) |
 | P5.1 | Memory budget | in progress | [P5.1](P5.1_MEMORY.md) |
 | P5.2 | Performance pass | done | [P5.2](P5.2_BATTLE_GPU.md) |
 | P5.3 | Save handling | done | [P5.3](P5.3_FLAT_SAVE.md) |
@@ -48,7 +48,7 @@ lives in its doc, not in the entry below.
 | P6.2 | PAL/NTSC, EU/US, language at boot | in progress | [P3_EU_BUILD](P3_EU_BUILD.md) |
 | P6.3 | PGXP-style vertex precision | open | — |
 | P6.4 | Fast-forward | in progress | [P6.4](P6.4_FAST_FORWARD.md) |
-| P6.5 | Release packaging | done | [RELEASES](RELEASES.md) |
+| P6.5 | Release packaging | done | [P6.5](P6.5_PACKAGING.md), [RELEASES](RELEASES.md) |
 | P6.6 | Localization goal | open | — |
 | P6.7 | Language packs (PT-BR first) | open | — |
 | P6.8 | Extra locales | open | — |
@@ -67,7 +67,7 @@ lives in its doc, not in the entry below.
 | P8.3 | Formats and scaling | open | [TEXTURE_PACKS](TEXTURE_PACKS.md) |
 | P8.4 | Tooling (optional) | open | — |
 | P9.1 | Port options goal note | done | [PORT_OPTIONS](PORT_OPTIONS.md) |
-| P9.2 | Menu entry and shell | done | [PORT_OPTIONS](PORT_OPTIONS.md) |
+| P9.2 | Menu entry and shell | done | [P9.2](P9.2_MENU.md) |
 | P9.3 | Toggle registry | done | [PORT_OPTIONS](PORT_OPTIONS.md) |
 | P9.4 | Persistence (blocks many goals) | open | [PORT_OPTIONS](PORT_OPTIONS.md) |
 | P9.5 | Wire real features | in progress | [PORT_OPTIONS](PORT_OPTIONS.md) |
@@ -244,68 +244,14 @@ Status: **complete** (gate met on `phase3-pc-bringup` @ `a5ae93a`;
 plan:
 [`docs/superpowers/plans/2026-10-10-phase3-pc-game-loop.md`](superpowers/plans/2026-10-10-phase3-pc-game-loop.md)).
 
-Tracking: Phase 3 on `main` / `phase3-pc-bringup` (P3.5 merged from
-`phase3-cardgame` @ `fcff119`). P3.1 done. **P3.2 Done-when met** (+
-WSTAG790 follow-up). **P3.3 Done-when met:** forced encounter →
-`STFGTREP` (XP/levels) → return to `FIELDSTG` (`docs/P3.3_BATTLE.md`).
-**P3.4 Done-when met** (`READY_FOR_MAIN_ROADMAP_SYNC: P3.4`,
-`docs/P3.4_MENUS.md`): menus open/return from field; **STSTATUS Triangle
-UI cancel** (no `AUTO_MENU_RETURN`); **STGMCARD save + load** via P2.7
-`.mcr`; pad START→status; FORCE_NPC shop/lab/naming/gym; **WSTAG245
-`talkToActorAt` → shop** (warped proximity). Follow-up: free pad walk-up.
-**P3.5 Done-when met**
-(`READY_FOR_MAIN_ROADMAP_SYNC: P3.5`, `docs/P3.5_CARDGAME.md`): force-win
-→ prize item → `FIELDSTG`; album `cardsSeen` 29→33 via vanilla
-`STCRDSHP_openPack` `addCards` (host win `addCards` gated off). **P3.7 Done-when met** (`READY_FOR_MAIN_ROADMAP_SYNC: P3.7`,
-`docs/P3.7_MOVIES.md`): sustained STR play + Start-skip → `MODE_TITLE` +
-XA decode/mix + **owner audible DAC listen** (Pulse rebuild). Follow-up:
-video presentation quality (frames/decode/skip already evidenced). Default
-skip remains `MODE_TITLE` (`0010`).
-**P3.8 Done-when met** (`READY_FOR_MAIN_ROADMAP_SYNC: P3.8`,
-`docs/P3.8_STAGES.md`): `STAGSLCT` + batches 1–6 link 238/239 US stage
-objs; live PASS 237/237; only `WSTAG460` left stubbed (host
-`updateWanderer` SEGV). **Phase 3 gate met** (`docs/P3_GATE.md`): US
-continuous start→movie→Lobby→Tamer→Genji→field @ `a5ae93a` (Lobby
-`0x9004@0x203` / patch `0036`); `DW3_FORCE_WIN` accepted for gate (P3.3
-class; pad KO follow-up); EU playthrough not required. **EU `dw3-pc` link
-scaffold** (`docs/P3_EU_BUILD.md`): `-DDW3_VERSION=eu` +
-`overlay_table_eu.c` configure/link; owner EU disc pack + PC smoke to
-opening movie validated (2026-10-12); OLED extraction and early gameplay
-validated (2026-10-14); EU playthrough remains open.
-**Switch extraction follow-up (2026-10-13):** the EU NRO now selects the EU
-file-sector table, `SLES_039.36`, EU boot-TIM address and `files_eu.json` for
-own-disc BIN/CUE extraction under `sdmc:/switch/dw3/eu/`; a US executable is
-rejected. Synthetic extractor tests cover map identity, partial-copy retry,
-and second-boot validation. Independent Ryubing extracted 2383 files from BIN/CUE and reused them on a
-second boot; movie playback reached frame 2100 at about 15 fps with zero
-skipped frames, then Plus skipped to the title. Natural completion, audible
-A/V synchronization remain open. This emulator build
-preceded FAT swap hardening, covered separately by synthetic host tests
-(see `docs/P3_EU_BUILD.md`).
-**OLED EU extraction (2026-10-14):** with only matching BIN/CUE supplied on SD,
-the EU nxlink NRO logged `wrote=2383 skipped=0`, runtime `version=eu`,
-`sdmc:/switch/dw3/eu`, `SLES_039.36`, and EU CDFS. Movie frame 1020 had zero
-skips/restarts before owner Start-skip (`ended=0`). The owner is playing toward
-the first save; successful save/relaunch and the EU playthrough are not yet
-confirmed. Full EU movie image/audio acceptance and natural completion remain
-open (see `docs/P3_EU_BUILD.md`).
-**Update (2026-10-15):** the EU save and HOME-exit/Continue reload are now
-owner-confirmed on the OLED (P5.3, #171). The full EU playthrough and the EU
-movie acceptance above remain open.
-P3.9 harness (`tools/compare_harness/`, `docs/P3.9_REFERENCE.md`):
-**done** — title, field, and Kunemon vs Monmon Fight-menu battle pairs
-(`DW3_FORCE_ENCOUNTER=34` + `DW3_FORCE_PARTY=1` on PC).
+Tracking: P3.1–P3.9 all met their done-when (evidence in the P3.x docs).
+Still open after the gate: the full EU playthrough and EU movie acceptance.
+The tracking log, the EU/Switch extraction notes and the PC 3× render
+experiment (now P6.11) are in
+[P3_GATE.md](P3_GATE.md#history-moved-from-roadmapmd).
 
 Objective: the full game loop runs on PC: field, stages, battle, menus,
 audio, movies.
-
-**Experimental PC 3× internal render (2026-10-13):** the SDL3 GPU backend's
-existing internal-resolution API is exposed on the PC host through
-`DW3_PC_INTERNAL_RES=3`. Title and field runs rendered the 4:3 image in a
-1280×720 window (960×720 game image, 160-pixel side bars). The standard 1×
-default and Switch host are unchanged. This is an opt-in experiment; visual
-quality across all layers and performance remain unassessed. Instructions:
-[platforms/pc/README.md](../platforms/pc/README.md).
 
 - [x] **P3.1 64-bit audit, part 2 (overlays + stages).** Same rules as
   P2.4 across `src/field`, `src/battle`, `src/cardgame`, `src/menus`,
@@ -383,30 +329,10 @@ quality across all layers and performance remain unassessed. Instructions:
   file-bridge mix; `DW3_AUTO_PAD=start` + `0034` → Start-skip →
   `mode=0xE00`; **owner audible XA** on real Pulse/PipeWire DAC after
   SDL rebuild (`SDL_PULSEAUDIO=ON` + `-DSDL_X11_XSCRNSAVER=OFF`).
-  Follow-up: video presentation — half-width + mid-grey on
-  `phase3-pc-bringup`; **recognizable MOVIEOPN frames** on
-  `phase3-gpu-glitch` (LP64-safe MDEC quant upload + sync slice order;
-  see `docs/P3_GPU_GLITCHES.md`). **R1 closed (2026-10-10):** title
-  shred was LP64 `TimBlock.pixels` alignment (patch `0038`); owner
-  confirmed the window after #29. Field sprite polish still open.
-  **Fixed; OLED-validated on preview.21 (2026-10-13):** the movie was dropping
-  ~37% of its STR frames to a data race on the file bridge, not playing
-  slowly. The bridge now takes `Psyz_AudioLock` (#111). On the OLED the
-  opening ran at 14.994-15.006 fps over 18 steady windows (preview.20:
-  6.75 fps), with `fc_skipped=0 restarts=0` on every debug line, and the
-  owner heard correct XA audio. The owner pressed Start at frame 1110 of
-  about 1776, so the last ~38% was not played on hardware (Ryubing played
-  it whole with zero drops). Image quality was not separately assessed.
-  **Residual check (2026-10-13):** the later report that video changes work
-  well but remain incomplete names no specific defect, so no code fix can be
-  tied to it yet. A private Ryubing 1.3.3 run of the CI NRO with #111/#114
-  advanced through `DecDCTout` #1800, showed recognizable movie content and
-  the title framebuffer transition, at about 15 fps. Dummy audio and an
-  emulator display do not establish A/V sync or OLED quality. Full-playback
-  start-to-finish and image-quality evidence on hardware remain open; the
-  exact OLED retest is in
-  [pacing diagnostics](P3.7_MOVIE_PACING_DIAGNOSTICS.md). Do not treat the
-  unrelated #114 GPU battle change as movie validation.
+  OLED preview.21 (2026-10-13): ~15 fps, no skipped frames, correct XA
+  audio after the #111 bridge fix. Still open: start-to-finish playback
+  and image quality on hardware. History:
+  [P3.7_MOVIES.md](P3.7_MOVIES.md#history-moved-from-roadmapmd).
   Done when: the opening movies play with audio and can be skipped. The
   OLED meets the audio and skip part; see
   [pacing diagnostics](P3.7_MOVIE_PACING_DIAGNOSTICS.md).
@@ -508,53 +434,10 @@ console.
 - [x] **P4.7 Boot the game.** Link the Phase 3 image against the Switch
   backend and run from hbmenu.
   Done when: title screen on hardware.
-  **Status (2026-10-11):** the CMake image links (1144 objects, about
-  8.9 MB `.nro`) and `boot_main.c` calls `dw3_game_main`. The link story,
-  the `CdInit` audio-lock stop, and the RGB555 upload are in
-  `docs/SWITCH_BACKEND.md`. CI job `switch` still builds the Makefile
-  `host_hello` sample. Job `switch-game` builds this image and does not
-  publish it. A GitHub Release is P6.5.
-  Picture, current rule: the title blit width follows
-  `Draw_SetDisplayMode` (320). The movie sample is the 416-line picture
-  at VRAM y=36. The viewport uses the PC display-range aspect,
-  `(4/3) * (horiz/256) / (vert/240)`. On a docked 1920×1080 surface that
-  is 4:3 at full height, with side bars. A 21:9 emulator window adds its
-  own bars on top of that framebuffer.
-  **OLED (2026-10-10/11):** hbmenu reached the main menu and loaded a new
-  game after an empty `sdmc:/switch/dw3/us/memcard/` was created. That
-  earlier `.nro` was built before the current picture fixes. The movie pacing
-  branch restores packed 2048-byte `AAA/STR/` from the owner's BIN/CUE on first
-  launch; the runtime itself remains an extracted US tree and is not in Git.
-  `v0.6.5-preview.3` selected `us/boot_tim.bin` by mistake and short-read all
-  13 STR files. `v0.6.5-preview.4` ignores that file and finds the parent BIN
-  despite the CUE track-name mismatch.
-  **Preview.4 OLED evidence:** nxlink connected; the log selected
-  `sdmc:/switch/dw3/Digimon World 3.bin`, restored **13 STRs with 0 failures**,
-  decoded XA, and reported movie frames ready through at least #150 before
-  Start-skip. It returned to title and entered field stages. The owner reports
-  several map transitions, a working battle, and game audio sounding perfect.
-  The main menu picture looks right. The visual errors are in the opening
-  video, and they remain after the STR rewrite. The analog stick has no
-  function in that build (`kind=0x41`). The host now publishes the left
-  stick, and on preview.5 the owner confirmed it walks with handheld
-  Joy-Con and with a Pro Controller (P4.4). New saves on both cards load: slot 1 was a DuckStation card,
-  and slot 2 loads after the data-frame fix in `994c42a`.
-  Deleting `us/` stopped that
-  preview.4 image, which only rewrote STR files. US boot now extracts
-  `files_us.json`, `SLUS_014.36`, `boot_tim.bin`, `AAA/…`, and an empty
-  `memcard/` from the Mode2 BIN when that tree is missing
-  (`port/cdfs/runtime_extract.c`). A tree that is already complete only
-  stats. Checked with a synthetic image in `tools/tests/test_runtime_extract.py`.
-  Not run on the OLED. `v0.6.5-preview.5` is the hardware test of that
-  extract, the copy progress bar, and the left stick. The opening-video
-  picture is unchanged from preview.4. EU is unchanged. See
-  `docs/RUNTIME_LAYOUT.md`.
-  **Not part of P4.7 (tracked under P4.6):** P4.6's OLED overlay-restore
-  checklist on hardware (`docs/P4.6_MODULES_STATUS.md` — harness ready; no
-  evidence row yet). P4.7 itself is done on its own done-when.
-  P4.4 and P4.5 are ticked (stick on OLED; formal CDFS suite on packed
-  runtime / SD layout — `docs/P4.5_STATUS.md`). The preview.4 log alone
-  was not the CDFS suite; `tools/cdfs_suite` is.
+  Title on hardware since the 2026-10-10/11 OLED runs; preview.4 also
+  reached field and battle (the Phase 4 gate below). Link story:
+  [SWITCH_BACKEND.md](SWITCH_BACKEND.md). P4.6's overlay checklist is a
+  separate open item. History (preview.1–.5): [P4.7_BOOT.md](P4.7_BOOT.md).
 
   **Gate:** title + field + battle on a Switch. **Met (2026-10-11)** from the
   OLED preview.4 run: main menu/new game, multiple map transitions, and battle
@@ -584,97 +467,11 @@ speed.
   [P5.2_BATTLE_GPU.md](P5.2_BATTLE_GPU.md).
   Done when: no frame over 16.7 ms in field and battle benchmarks,
   docked and handheld.
-  **Owner OLED feedback (2026-10-14, EU preview.26):** the Agumon eye
-  and HUD now look correct; the idle camera rotates around the correct
-  location. Visual acceptance is partial: MonMon's eye still has an artifact,
-  and the owner sees what looks like geometry passing in front of the camera
-  during the idle orbit. The cause is not established. Changing the selected
-  item in Port options also causes a substantial FPS drop. These are reported
-  follow-ups, not investigated fixes. P5.2 was ticked later (2026-10-15,
-  #160); the full battle/stage visual acceptance (MonMon's eye, idle-orbit
-  geometry, Port options FPS drop) remains open. The observations are
-  qualitative owner reports, not a frame-time benchmark.
-  **Stock clocks (2026-10-11).** `v0.6.5-preview.6` raised the CPU to
-  1785 MHz. That change is reverted. Do not call `clkrstSetClockRate` or
-  `appletSetCpuBoostMode`. The CPU and GPU stay at the rate the console
-  set. Performance work is the sampled-rectangle upload, one fread of
-  the field map per area, and the raster, on those stock clocks. `eglSwapInterval`
-  stays at 1, so present still waits for vsync. The vsync pump writes one
-  `frame dt us=` line for the microseconds between samples 60 pumps
-  apart. The first sample only stores the time. About 1000000 is 60 Hz.
-  About 2000000 is 30 Hz.
-  **Preview.7 OLED log (2026-10-11).** Nxlink boot, EGL 1280×720, 255
-  overlays, slot 1 loaded, field walking, then `FIGHTSTG`. The log client
-  closed while the battle was still running. 156 samples of 60 VSyncs:
-  mean 1.017 s (about 16.96 ms/frame, about 59 FPS). Some windows reached
-  1.51 s (about 25.2 ms/frame across those 60 frames).
-  **Preview.8 OLED (2026-10-11).** Map preload shipped
-  (`v0.6.5-preview.8`). Field ~60 Hz (mean `frame dt us` ~1000279 per 60
-  frames). Battle Fight-menu idle ~46 Hz (mean ~1293264 across three
-  fights). Battle remains the limiter. PC `sdl3_gpu` does not call
-  `RasterTriangle` for that scene; Switch still did via
-  `software_rasterizer.push_prim`.
-  **Approach A (in progress).** Draw OT triangle polys (POLY_GT / POLY_FT
-  and equivalents) on a GLES3 mesh FBO; keep sprites/UI on the RGB555
-  software blit. See [P5.2_BATTLE_GPU.md](P5.2_BATTLE_GPU.md). Landed on
-  `main` as #69 (`973daf3`). `v0.6.5-preview.9` is the hardware cut.
-  **preview.9 OLED regression (2026-10-11).** Mesh activated, but field
-  steady mean `frame dt us` ~1436113 (~41.8 Hz) vs preview.8 ~60 Hz, and
-  Fight-menu idle ~2931384 (~20.5 Hz) vs ~46 Hz. Field interiors also
-  showed severe GLES artifacts (blue stripe column, rug blobs, missing
-  walls, neon outlines) because field OT triangles hit the mesh path and
-  the black-discard composite. Follow-up: gate mesh to FIGHTSTG only +
-  dirty sample-VRAM upload (#71). Battle 60 Hz proof is still open. P5.2
-  stays open.
-  **preview.10 dump (2026-10-11).** With GLES mesh on FIGHTSTG, SD dumps of
-  the display rect + mesh FBO were all-black (`nonblack=0`) while
-  `tris_flush` was huge; first dump was a 21-tri prologue present. Soft
-  battle escape (`DW3_NX_MESH_SOFT_BATTLE`, default ON) restores software
-  `RasterTriangle` + opaque blit under the FIGHTSTG gate until a dump
-  shows `mesh_nonblack > 0`. See [P5.2_BATTLE_GPU.md](P5.2_BATTLE_GPU.md).
-  **Flat-blue GPU battle root cause (2026-10-13).** PSY-Z `SetDrawEnv`
-  encodes FIGHTSTG's `setBgColor` clear as an opaque `0x60` TILE; it went
-  to the software rasterizer and the mesh+ui composite blitted that
-  stage-blue CPU VRAM over the (correct) mesh FBO. Fix routes a full-area
-  opaque TILE to the FBO and clears CPU VRAM to 0; sample uploads are now
-  dirty-rect only. Ryubing `gpu-tex` matches soft. After #114 merged, the
-  owner reported that GPU battle rendering works well in-game, though it is
-  not fully there yet; specific remaining issues were not reported. The
-  60 Hz proof remains open and soft stays default. See
-  [P5.2_BATTLE_GPU.md](P5.2_BATTLE_GPU.md).
-  **Beyond approach A (ideas).** Soft battle restored the Fight picture but
-  battle still feels soft-fill limited. Do not blind-re-enable the full
-  textured mesh path. Alternatives (hybrid untextured GPU, atlas, batched
-  fill, soft edge-walk, present profiling, size-gated GPU, etc.) and a
-  1–2 day “colour before FPS” spike are in
-  [P5.2_BATTLE_GPU_IDEAS.md](P5.2_BATTLE_GPU_IDEAS.md). Field mesh stays off.
-  **Nxlink mesh debug:** `--nxlink` builds default `DW3_NX_DEBUG_MESH` and
-  emit a sampled `mesh dbg:` line next to `frame dt us=` (tris / path /
-  flush+upload+present us). After the FIGHTSTG gate, field should stay
-  near `tris_enq≈0` / `frames_blit`; with soft battle, battle stays on
-  `frames_blit` / `soft=`; with soft OFF, battle may show `frames_mesh`.
-  See [NXLINK_DEBUG.md](NXLINK_DEBUG.md).
-  **On-screen debug overlay:** `--nxlink` also defaults `DW3_NX_DEBUG_OVERLAY`
-  (HUD after present: FPS, mode file, mesh window). Toggle Minus+L+R. Not a
-  substitute for P5.4 crash reporting. See [DEBUG_OVERLAY.md](DEBUG_OVERLAY.md).
-  During PSY-Z init the log recorded `KernelInit: cannot create the kernel
-  synchronisation objects`. The game continued. The failed object (mutex
-  or event) is not identified. That defect is open and is not the
-  map-preload work. `VSync(n>1) is not fully implemented` was logged once
-  and is the known partial path. The port now preloads the map: one
-  `fread` on the first tile of that file id, later tiles copy from RAM,
-  and a different id replaces the buffer. Movies stay at 150 sectors/s.
-  See [STATIC_SD_LOAD.md](STATIC_SD_LOAD.md).
-  Movie busy-wait follow-up: Switch empty-ring scans are cached with explicit
-  producer/reset invalidation (not cursor/catch-up arithmetic). Host regression
-  coverage includes partial-frame reset, early wrap, and same-address reuse;
-  revised gate still needs Switch playback/performance validation. See
-  [P3.7_MOVIES.md](P3.7_MOVIES.md).
-  **STR file-bridge fix (#111), owner feedback (2026-10-13).** The owner
-  reported that the video changes work well in-game, though they are not fully
-  there yet; specific remaining issues were not reported. Preview.21's OLED
-  rate/drop and XA listening observations remain as recorded in
-  [P3.7_MOVIE_PACING_DIAGNOSTICS.md](P3.7_MOVIE_PACING_DIAGNOSTICS.md).
+  Open follow-ups (not blocking the tick): MonMon's eye artifact, geometry
+  in front of the camera during the idle orbit, FPS drop on Port options
+  selection change, and the PSY-Z `KernelInit` sync-object warning. Stock
+  clocks only (no overclock). History (preview.7–.26, mesh approach A,
+  flat-blue root cause): [P5.2_BATTLE_GPU.md](P5.2_BATTLE_GPU.md#history-moved-from-roadmapmd).
 
 - [x] **P5.3 Save handling.** The port's own save on owner storage, plus
   sleep/exit safety. The running game does not import or export emulator
@@ -688,57 +485,8 @@ speed.
   **Remaining work moved to P10.2:** sleep/focus-loss flush and the
   time-delta clamp. HOME pressed in the middle of a write section was not
   tested on its own; P10.2's smoke covers it.
-  The dated notes below are history up to the tick; where they say "open"
-  they are superseded by the 2026-10-15 check.
-  **Flat save host (2026-10-11):** `port/memcard` now uses one resident
-  flat file per port (`save0.bin` / `save1.bin`, 32 KiB), `memcpy` I/O,
-  deferred flush on write-section end / `memcard_host_shutdown`, synthetic
-  `MemCardGetDirentry` (`size=0x8000`), and one-time migration from
-  `memcardN.mcr` → `saveN.bin` (`.mcr` renamed to `.mcr.bak`). PC/Switch
-  register `atexit` + shutdown after `dw3_game_main`. See
-  [P5.3_FLAT_SAVE.md](P5.3_FLAT_SAVE.md) and `port/memcard/README.md`.
-  **Preview.11 OLED (2026-10-11):** first boot migrated both slots to
-  `save0.bin` / `save1.bin` and `STGMCARD_loadSave` returned
-  money=50 / progress=4. Owner “load still somewhat slow” is **not**
-  remigrate or Continue I/O — see [STATIC_SD_LOAD.md](STATIC_SD_LOAD.md)
-  (title `MOVIEOPN` 150/s, map fread hitch, one-tile draw fill-in, soft
-  battle FPS). Timed `map_preload` / `memcard ensure|migrate` lines are
-  on for the next capture.
-  **Preview.13 OLED (2026-10-11):** in-game SAVE hit `flush FAILED
-  (File exists)` on existing `saveN.bin` — FAT/exFAT rejects
-  rename-over-existing; `flush_failed` → STGMCARD status=3 (card
-  blocked). Fix: unlink before rename (see P5.3_FLAT_SAVE.md).
-  **Preview.14 OLED (2026-10-11):** tip `1af94ef` (#82). Owner loaded
-  MC1 slot0 (money=50) → spent → saved MC2 slot2 with
-  `STGMCARD_writeSave … status=1` (no EEXIST). FTP flats: `save0.bin`
-  still money=50/progress=4; `save1.bin` slot2 money=26/progress=4
-  (checksum OK). Cross-port overwrite flush PASS.
-  **STGMCARD bar pace (option B, 2026-10-11):** panel crawl→snap was the
-  PS1 `MEMCARD_*_FRAMES` (~1239/1266) vs ~80 flat sector-frames, not SD
-  I/O. Port-only patch `0043` sets both to **100** under `PORT_HOST`
-  (phase-2 finish stays 20 frames). Flush / flat correctness unchanged.
-  See [P5.3_FLAT_SAVE.md](P5.3_FLAT_SAVE.md).
-  **Preview.17 OLED (2026-10-12):** owner confirmed option B bar feel is
-  correct for **load and save** (tip `413efb8` / #84). Keep 100 frames.
-  **HOME quit flush (2026-10-12):** Switch vsync drains non-blocking
-  `appletMainLoop` (current libnx `appletGetMessage` timeout 0), sets
-  `Psyz_QuitRequested`, calls `memcard_host_flush_all`, and uses
-  `appletLockExit` for a cleanup window. See
-  [P5.3_FLAT_SAVE.md](P5.3_FLAT_SAVE.md).
-  **Preview.20 OLED exit (2026-10-12):** nxlink log observed applet exit,
-  `flat saves flushed`, and a clean process exit. No fresh save or
-  relaunch/Continue reload was tested; P5.3 remained open at that point.
-  **EU OLED session (2026-10-14):** owner reached early gameplay after native
-  own-disc extraction and is playing toward the first save. No successful EU
-  SAVE or relaunch/Continue reload had been confirmed yet; that session did
-  not close P5.3.
-  **Open before the tick (2026-10-14):** sleep/focus-loss flush + time-delta
-  clamp (P10.2); OLED smoke that HOME after SAVE / mid-write-section leaves
-  flats intact and Continue reloads (HOME after SAVE + Continue: done
-  2026-10-15). Emulator conversion remains P9.6.
-  **Preview.4 / .5 notes (kept):** earlier `.mcr` writes and the data-frame
-  XOR fault (`0x7F` / partner index) are historical; XOR must stay off
-  data frames.
+  History (flat save host, preview.11–.20 OLED passes, HOME quit flush,
+  bar pace): [P5.3_FLAT_SAVE.md](P5.3_FLAT_SAVE.md#history-moved-from-roadmapmd).
 - [ ] **P5.4 Error reporting.** Crash handler that writes a log + last
   mode/stage id to SD; assert overlay.
   Done when: a forced fault produces a readable report.
@@ -827,50 +575,10 @@ tick does not start Phase 6.
   `source/boot_main.c` calling `dw3_game_main`) and
   `platforms/switch/release/README.txt`, and those assets contain no
   disc, BIOS, or extracted game files.
-  **Status (2026-10-11):** this task only. At that date Phase 6 had not
-  started and P6.1–P6.4 and P6.6+ were untouched (since 2026-10-14, P6.1,
-  P6.2, P6.4 and P6.9 have early work, see their entries). P4.7 is ticked on its own
-  done-when (title on hardware). A release is not that done-when.
-  `.github/workflows/switch-release.yml` builds that game `.nro` in
-  `devkitpro/devkita64` and publishes a prerelease. CI job `switch` in
-  `ci.yml` still builds the Makefile `host_hello` sample and is not the
-  game. CI job `switch-game` builds the same CMake `.nro` on pull
-  requests, uploads it as an Actions artifact, and does not create a
-  Release. `workflow_dispatch` resolves only after this file is on
-  `main`. A `v*` tag runs the workflow from that commit.
-  The binary reads the owner's US tree from `sdmc:/switch/dw3/us`
-  (`DW3_DEFAULT_RUNTIME` in `platforms/switch/source/boot_main.c`). EU,
-  later, is `sdmc:/switch/dw3/eu`. The owner packs the tree
-  (`docs/DISC_SETUP.md`, `tools/pack_runtime.py`). Git and the release
-  do not contain it.
-  **Packaging update (2026-10-14):** preview.26 publishes US and EU ordinary
-  and nxlink NROs from exact source `d3fc498`, plus `README.txt`, `SOURCE.txt`
-  and `SHA256SUMS`. US is workflow-built; EU is separately built from that same
-  source with the Docker image recorded in `SOURCE.txt`. No game assets ship.
-  This packaging update does not close OLED playback, performance, or save/reload
-  acceptance. See [RELEASE_PREVIEW26](RELEASE_PREVIEW26.md).
-  **Branding update (2026-10-14):** the owner-approved 4C pixel-art DW3NX
-  crystal/orbit emblem is the game NRO icon and the source for the README
-  banner, release-cover artwork and reusable transparent logo. This changes
-  project packaging artwork, not in-game title/menu assets or already
-  published preview.26 binaries. See [BRANDING](BRANDING.md).
-  **Ticked** on `v0.6.5-preview.1`
-  ([release](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.1),
-  [run 38103023231](https://github.com/Larbaco/dw3-switch/actions/runs/38103023231)).
-  That `.nro` is 8927429 bytes. It still crops the title and freezes the
-  movie.
-  `v0.6.5-preview.5` is the later hardware test (progress bar, left stick,
-  US extract from the BIN). `v0.6.5-preview.6` raised the CPU to 1785 MHz
-  and is not the build to install. `v0.6.5-preview.7` is the performance
-  test after that revert: sampled-rectangle upload and one field tile per
-  frame, on the console's own clocks. The picture prerelease remains
-  `v0.6.5-preview.2`
-  ([release](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.2),
-  [run 38113420519](https://github.com/Larbaco/dw3-switch/actions/runs/38113420519)),
-  cut from `8273a91`. Assets are `dw3-switch.nro` (8935621 bytes) and
-  `README.txt`. It has the display-mode title width and the full-height
-  movie. Still a prerelease. No other files. Hardware result of that
-  file is not recorded here yet.
+  Ticked on `v0.6.5-preview.1` (2026-10-11). No release ships game data;
+  EU builds are attached from preview.25 on, per tag. Current list and
+  do-not-install tags: [RELEASES.md](RELEASES.md). History, workflow notes
+  and branding: [P6.5_PACKAGING.md](P6.5_PACKAGING.md).
 - [ ] **P6.6 Localization goal.** Record that translation / localization
   comes after the playable port (Phase 5): language packs live in the
   owner runtime data layout; remap / charset glue in `port/`; host
@@ -1145,96 +853,11 @@ PS1 game, with vanilla-safe defaults and persistence on owner storage.
   breaking the vanilla title flow (PC and Switch). Hook: `PORT_HOST`
   glue on `STDWTITL` `runOptions` + shell in `port/options/` (see
   [PORT_OPTIONS.md](PORT_OPTIONS.md) Entry investigation).
-  **Initial PC MVP:** Select/Backspace opens `port/options` shell
-  on title NG/Continue; Triangle closes; stub registry; unit tests.
-  **PC shortcut validation (2026-10-12, before the third row):** title-to-shell
-  framebuffer captured; private-display keyboard test confirms Backspace
-  open, X/Down stub changes, S close, reopen, and vanilla Continue/load
-  flow after close. Both defaults OFF; changes remain safe no-ops and
-  are not persisted. Two shell/glyph tests passed. The clipped shortcut
-  hint is retired by the visible row below.
-  **Three-row follow-up:** title now has Start / Port options / Continue,
-  original cursor + vanilla choices; new label uses the resident game
-  font and a matching opaque striped button background. Only the
-  selected row has the original cursor frame. Confirm opens the shell,
-  Triangle returns to the middle row; Select remains a shortcut without
-  shoulder chords. **Independent PC validation (2026-10-12, code `632cb70`):**
-  private Xvfb/lavapipe at the existing 60 Hz frame limiter passed three-row
-  keyboard navigation, hold/release, opening without confirm passthrough,
-  return to middle, restart defaults OFF, Start to Junior stage 474 and
-  Continue to the load screen. Cursor/striped row and TTB shell captured;
-  tools suite 79 passed, 2 skipped. Retained evidence reviewed on resumption;
-  see PORT_OPTIONS.md for the uncapped-Xvfb repeat limitation. That PC run
-  did not cover gamepad or Switch hardware.
-  **OLED preview.20 (2026-10-12, source `ecefe18`):** owner confirmed
-  Plus → D-pad Port options → B opens both stubs OFF; X returns cleanly
-  to the middle title row. B maps to Cross, X to Triangle. Together with
-  the PC TTB checkpoint, this completes P9.2. Other controller models,
-  feature effects and persistence remain unvalidated; P9.3/P9.4 and the
-  Phase 9 gate remain open.
-  **Title UI pass (2026-10-13):** the added row now matches the original
-  buttons' 164x16 stripe background (rows y=149/165/181, 16 px pitch, no
-  gaps), with a 5/4-scaled, bolded, shadowed label and a brightness-
-  modulated blue row for the unselected state. Ryubing-on-Xvfb captures
-  of all three selections and shell open/close are kept locally; OLED
-  handheld vs docked legibility is still to be confirmed by the owner.
-  **PC Digivice follow-up (2026-10-13):** the PC SDL3 GPU title UI uses a
-  transparent 960×720 RGBA presentation overlay, composited as one texture
-  draw. It contains the Press Start prompt, New Game / Options / Load Game
-  plaques, and three-line credits. The US GPU path now reconstructs the
-  original logo from the owner's runtime sprite sheet and PSY-Z base VRAM,
-  resamples its 300×136 source to a cached 720×326 RGBA texture with Lanczos2,
-  and swaps it in after the original logo animation settles. It retains the
-  original mark and does not add game art to Git. The animated background code
-  and filter are untouched; SDL3 GL, Switch, and EU keep their existing logo
-  path. The 3× internal renderer remains opt-in and is independent of this
-  logo-only resampling.
-  The overlay remains visible through the menu and clears when P9.2 opens or
-  the title flow fades to New Game / Continue / Opening. Logo/menu activation is
-  guarded by actual `MODE_TITLE`; the menu also clears on `TASK_KILL`, and failed
-  VRAM readback falls back to original sprites. Load Game maps to vanilla
-  Continue / `STGMCARD`; Switch and SDL3 GL retain their existing presentation
-  paths. Linux/Vulkan and SDL3 GL builds, plus patch-check, pass. US runtime on
-  The opt-in 3× GPU path now sizes its initial presentation window to
-  1280×720 after the first backend-presented frame; the 960×720 game image is
-  1:1 with 160-pixel side bars. The atlas uses linear sampling with exact edge
-  UVs, preserving source pixels at this size and filtering larger resizes. A
-  stable US/Xvfb capture shows the full original logo, all three buttons, and
-  footer in that 1280×720 window. The button artwork source is unchanged from
-  d7c3c02; the prior perceived regression compared the menu to a 1280×960
-  `PRESS START` capture, which enlarged/cropped the presentation and was not
-  the three-row menu. The logo uses Lanczos2 plus a mild local-luma refinement
-  from 300×136 runtime pixels to a 720×326 texture. Short paired captures
-  showed no measurable background-pixel motion, so visible animation is not
-  claimed. A post-transition Xvfb frame contains no logo/menu
-  overlay, but its FMV is corrupted because the isolated runtime lacks the
-  Mode2 BIN/CUE. Automated shell return and Load Game selection are not yet
-  confirmed. Windows/DXIL and macOS/Metal runtime validation remain open. The
-  **PC title widescreen follow-up (2026-10-13):** the original animated
-  backdrop is reconstructed from runtime sheets and extended into the 16:9
-  margins using reflected outer strips. The original 4:3 center and approved
-  logo/menu geometry stay unchanged. The original task frame IDs drive the
-  margin animation, and the edge fade darkens the extension. US/Xvfb captures
-  show all three buttons at 1280×720 and animation spanning the native center
-  and left margin. Fresh main-based validation passed GPU/GL builds and
-  patch-check; the left seam matches all 720 rows, while the right has a
-  three-pixel purple fragment at rows 582–584. Select shell open/close
-  and Load Game/cancel preserve the title background lifecycle. GPU and GL
-  builds plus patch-check pass. This title-only
-  presentation does not complete the P6.1 gameplay widescreen gate. The
-  accepted three-row capture is kept outside Git at
-  `tmp/evidence/pr121-restored/menu-3options-stable.png`; the post-transition
-  diagnostic is `after-title-transition.png` in the same folder. See
-  [TITLE_MENU_DESIGN.md](TITLE_MENU_DESIGN.md) and
-  [PC_TITLE_LOGO_RESAMPLING.md](PC_TITLE_LOGO_RESAMPLING.md).
-  **Owner OLED feedback (2026-10-14, EU preview.26):** navigation between
-  menus works, and the Options button design is approved. Styled-button
-  acceptance is partial: Start and Continue text has an unwanted bloom/glow;
-  the owner wants both standardized to the Options style. Changing the selected
-  item in Port options substantially drops FPS (tracked under P5.2). P9.2's
-  reachability/return checkpoint remains met; this does not close the styling,
-  performance, restart-overlay, or P9.4 persistence follow-ups. (The
-  restart-overlay follow-up was fixed in #162 on 2026-10-15.)
+  Validated on PC (2026-10-12) and on the OLED (preview.20, 2026-10-12):
+  the title row opens Port options and returns cleanly. Open follow-ups:
+  Start/Continue text glow (owner wants the Options style), FPS drop when
+  the Port options selection changes (P5.2), persistence (P9.4). History:
+  [P9.2_MENU.md](P9.2_MENU.md).
   Done when: the screen is reachable from the main menu and returns
   cleanly to it (PC + Switch; TTB print on PC).
 - [x] **P9.3 Toggle registry.** Maintain a registry of non-native features
