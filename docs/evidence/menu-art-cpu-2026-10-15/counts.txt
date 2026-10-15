@@ -1,0 +1,5 @@
+state=-1 calls=72866 rejected=5125 opaque=20665 translucent=47076
+state=0 calls=714228 rejected=15144 opaque=329069 translucent=370015
+state=1 calls=714228 rejected=15144 opaque=329069 translucent=370015
+state=2 calls=714228 rejected=15144 opaque=329069 translucent=370015
+state=3 calls=2795830 rejected=26234 opaque=1652136 translucent=1117460
