@@ -484,7 +484,7 @@ static void refresh_art(void) {
             SDL_ReleaseGPUTransferBuffer(g_device, one);
             return;
         }
-        g_options_generation = dw3_pc_title_overlay_options_generation();
+        const unsigned options_generation = dw3_pc_title_overlay_options_generation();
         dw3_pc_title_overlay_art(one_mapped, CANVAS_W * 4, DW3_TITLE_ART_OPTIONS);
         SDL_UnmapGPUTransferBuffer(g_device, one);
         SDL_GPUCommandBuffer *one_cmd = SDL_AcquireGPUCommandBuffer(g_device);
@@ -508,8 +508,12 @@ static void refresh_art(void) {
         };
         SDL_UploadToGPUTexture(one_copy, &one_src, &one_dst, false);
         SDL_EndGPUCopyPass(one_copy);
-        SDL_SubmitGPUCommandBuffer(one_cmd);
-        SDL_WaitForGPUIdle(g_device);
+        /* Mark the canvas current only once it reached the GPU, so a failed
+         * submit retries on the next frame. */
+        if (SDL_SubmitGPUCommandBuffer(one_cmd)) {
+            SDL_WaitForGPUIdle(g_device);
+            g_options_generation = options_generation;
+        }
         SDL_ReleaseGPUTransferBuffer(g_device, one);
         return;
     }
