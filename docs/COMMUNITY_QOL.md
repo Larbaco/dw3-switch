@@ -147,6 +147,42 @@ Everything else in the tables stays checklist backlog until that subset
 ships. DigiLab-as-owner-data and Walkthrough-as-data can ride P7.2 without
 blocking P7.4.
 
+## Harmony Beta v1.0 (r31) pass — P7.3
+
+Pinned: `dw2003-harmony-betav1.bps` (cumulative r31, 2026-10-09), README of
+[rsigristc/dw2003-qol-patch](https://github.com/rsigristc/dw2003-qol-patch)
+read on 2026-10-15. The BPS patches the PAL BIN (EXE + overlays + text), so
+almost everything is **native**; a patched EU disc (P7.2) would not carry the
+logic into the `.nro`. "Option" means a Port options toggle (Phase 9), off by
+default unless noted, and it must work on US and EU (EU strings for 5
+languages; new US strings English only).
+
+| Harmony feature | Verdict | Our path |
+|---|---|---|
+| NTSC 60 Hz patch | Covered | P6.2 / EU host timing already |
+| Faster map transitions / menu loads / save-menu animations, 15-20 s saves to <5 s | Mostly covered | Port has no disc seek; measure save/menu time, trim fades as P7.13 |
+| Faster battle text, auto-close boxes, skip speech scroll (Flawe) | Viable | P6.18 / P7.4 option |
+| Fast Start, Pack D starter customizer (guiomatos), skip Folder Bag | Viable | P7.4 (already in subset) |
+| Share EXP after Seiryu, EXP x1.3 / DV EXP x1.2, uncapped DV EXP | Viable | P7.4 (Exp Share) + P7.6 rate option |
+| Fixed Field Moves, Improved HP Proxy, Picking/Snapping Claw KO fix | Viable | P7.4 bugfix class; P7.7 for the Claw fix |
+| HP/MP restore on level up | Viable | P7.6 option |
+| Enemy HP, partner MP, technique attribute/power/cost colours, DV stats panel, EXP-to-next | Viable | P7.8 battle info HUD option |
+| Battle menu remembers last command; custom technique order | Viable | P7.9 |
+| Active Digivolution name in battle; reward text "1IT/1EXP" fix | Viable | P7.7 (EU-only text bug: check US) |
+| Training without RNG + timing minigame + Fast Training | Viable, game design change | P7.10 option, off by default |
+| Fast Travel from map (Square opens map), quest log HUD, NPC quest/battle bubbles, walkthrough in 5 languages | Viable | P7.4 FastTravel + P7.11 guidance |
+| L1/R1 change leader in field | Viable | P7.11 (check clash with P6.12 mapping) |
+| Save from the Start menu; correct location name on save | Viable | P6.14 covers the menu; P7.7 for the label |
+| Remove redundant location screens; Square map glitch fix | Viable | P7.13 / P7.7 |
+| Auction / DRI notifications, DigiLab DV requirement routes, shop stat bonuses in descriptions | Viable | P7.11 |
+| Postgame without epic weapons, Baronmon/TNT and Admin Center shortcuts | Viable | P7.4 (markisha64 items) |
+| Name limit 8 to 10 chars | Viable but risky | P7.12; save layout and text boxes must hold 10 chars on US and EU |
+| Transparent shadows | Viable | P7.13 renderer option (psyz blend) |
+| 15 new test items (encounter disks/rings, DV Adapter, Analysis Disk, MP recovery…) at 1 BIT | Later | P7.12; item table + save format change; the 1 BIT price is a test value |
+| Custom Agumon Digivolution line with new battle scenes / 3D portraits | Out | Experimental new assets owned by the patch author; we do not ship assets |
+| KIT2/KIT3 save migration | Out | Harmony save format, not ours |
+| BPS / CUE patching steps | Out | Owner path is P7.2 |
+
 ## Binary patch vs native code (summary)
 
 | Kind | Examples | Likely path |
