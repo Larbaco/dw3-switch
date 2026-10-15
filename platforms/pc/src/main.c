@@ -22,6 +22,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <errno.h>
+#include <spawn.h>
+#include <sys/wait.h>
+#include <unistd.h>
 
 int dw3_game_main(void);
 #if defined(DW3_PC_SDL3_GPU)
@@ -30,6 +34,44 @@ void dw3_pc_title_menu_overlay_register(void);
 
 extern volatile int StCdIntrFlag;
 void StCdInterrupt(void);
+extern char **environ;
+
+static int dw3_pc_capture_window(const char *display, const char *path) {
+    pid_t child;
+    int rc;
+    int status;
+    char *argv[] = {"import", "-display", (char *)display, "-window", "root",
+                    (char *)path, NULL};
+
+    rc = posix_spawnp(&child, "import", NULL, NULL, argv, environ);
+    if (rc != 0) {
+        fprintf(stderr, "dw3-replay: could not start import: %s\n", strerror(rc));
+        return -1;
+    }
+    do {
+        rc = waitpid(child, &status, 0);
+    } while (rc < 0 && errno == EINTR);
+    if (rc < 0 || !WIFEXITED(status) || WEXITSTATUS(status) != 0) {
+        fprintf(stderr, "dw3-replay: import failed for %s\n", path);
+        return -1;
+    }
+    return 0;
+}
+
+static int dw3_pc_safe_replay_name(const char *name) {
+    const unsigned char *p = (const unsigned char *)name;
+
+    if (p == NULL || *p == '\0') {
+        return 0;
+    }
+    for (; *p != '\0'; ++p) {
+        if (!((*p >= 'a' && *p <= 'z') || (*p >= 'A' && *p <= 'Z') ||
+              (*p >= '0' && *p <= '9') || *p == '_' || *p == '-')) {
+            return 0;
+        }
+    }
+    return 1;
+}
 
 /* P6.15: checkpoint capture for DW3_REPLAY runs (hook lives in
  * port/psyz_missing/psyz_pad_host.c). Writes the presented display frame as
@@ -43,6 +85,10 @@ static void dw3_pc_replay_shot(const char *name, unsigned frame) {
     int w = 0, h = 0;
     FILE *fp;
 
+    if (!dw3_pc_safe_replay_name(name)) {
+        fprintf(stderr, "dw3-replay: rejected unsafe checkpoint name\n");
+        return;
+    }
     if (dir == NULL || dir[0] == '\0') {
         dir = ".";
     }
@@ -66,14 +112,12 @@ static void dw3_pc_replay_shot(const char *name, unsigned frame) {
      * grabs the composited window from the (Xvfb) X server. The game thread
      * is blocked here, so the last presented frame stays on screen. */
     if (getenv("DW3_REPLAY_XSHOT") != NULL && getenv("DISPLAY") != NULL) {
-        char cmd[1024];
+        char window_path[512];
 
         SDL_Delay(250);
-        snprintf(cmd, sizeof(cmd),
-                 "import -display '%s' -window root '%s/%s.png'",
-                 getenv("DISPLAY"), dir, name);
-        if (system(cmd) != 0) {
-            fprintf(stderr, "dw3-replay: window grab failed (%s)\n", cmd);
+        snprintf(window_path, sizeof(window_path), "%s/%s.png", dir, name);
+        if (dw3_pc_capture_window(getenv("DISPLAY"), window_path) != 0) {
+            fprintf(stderr, "dw3-replay: window grab failed (%s)\n", window_path);
         }
     }
 }

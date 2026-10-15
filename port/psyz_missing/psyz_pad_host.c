@@ -183,6 +183,10 @@ static void dw3_replay_vsync(void) {
                 fprintf(g_rec_fp,
                         "# dw3 pad recording (frame = PadChkVsync count)\n");
                 g_rp_state = 2;
+                if (getenv("DW3_AUTO_PAD") != NULL) {
+                    fprintf(stderr,
+                            "dw3-replay: ignoring DW3_AUTO_PAD while recording real input\n");
+                }
             }
         }
         if (g_rp_state == 3) {
@@ -427,7 +431,7 @@ int PadChkVsync(void) {
         return 0;
     }
     dw3_replay_vsync();
-    if (g_rp_state != 1) {
+    if (g_rp_state != 1 && g_rp_state != 2) {
         dw3_auto_pad_inject();
     }
     refresh_port(0);
