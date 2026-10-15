@@ -11,6 +11,19 @@ Europe), built from the matching PlayStation decompilation.
 Latest preview: [v0.6.5-preview.27](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.27).
 To try it, see [Play it on Switch](#play-it-on-switch).
 
+<p align="center">
+  <img src="docs/assets/screenshots/title-menu.png" width="400"
+       alt="Title screen with the native New Game, Options and Load Game menu">
+  <img src="docs/assets/screenshots/field-city.png" width="400"
+       alt="Field: the player and partner Digimon walking through Asuka City">
+  <br>
+  <img src="docs/assets/screenshots/battle-widescreen.png" width="400"
+       alt="Widescreen battle against Pharaohmon">
+  <img src="docs/assets/screenshots/eu-language.png" width="400"
+       alt="Digimon World 2003 (EU) language selection at boot">
+</p>
+<p align="center"><sub>Switch build, captured in the Ryubing emulator.</sub></p>
+
 ## What this is
 
 The game logic is the C code from the matching PS1 decompilation,

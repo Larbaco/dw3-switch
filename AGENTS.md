@@ -123,7 +123,9 @@ These hold for any agent working on the owner's desktop, whatever the tool
    `/mnt/cabal/tmp/dw3-<topic>`), not `/tmp` or the NTFS checkout.
 3. **Evidence goes in `/mnt/windows/Jogos/dw3-switch/tmp/evidence`**:
    screenshots, logs and captures from test runs (git-ignored; never commit
-   game frames that contain copyrighted art to the repo).
+   game frames that contain copyrighted art to the repo). The only exception
+   is the small, owner-approved set of README screenshots in
+   `docs/assets/screenshots/`; do not add to it without the owner's OK.
 4. **GUI runs use a virtual display** (Xvfb or similar, e.g.
    `xvfb-run -s "-screen 0 1920x1080x24"`), never the owner's desktop
    session, so tests do not get in the way of the owner's work. This
