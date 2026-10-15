@@ -867,10 +867,20 @@ tick does not start Phase 6.
   and keep the save rules of P5.3 intact. Goal note only (2026-10-15); not
   part of the Phase 5 gate. Done when a load or new save from inside the
   game works without a restart, on the US and EU discs.
-- [ ] **P6.15 Regression replay tests (future goal).** Record pad input,
-  replay it and compare screenshots at fixed checkpoints, on the US disc
-  and the EU disc in all 5 languages. Goal note only (2026-10-15). Done
-  when one command runs the replay set on both discs and reports diffs.
+- [~] **P6.15 Regression replay tests.** Record pad input, replay it and
+  compare screenshots at fixed checkpoints, on the US disc and the EU disc
+  in all 5 languages. First version landed (2026-10-15):
+  `tools/replay_tests.sh` replays frame-keyed pad recordings on the PC host
+  under Xvfb (US boot to title menu; EU language select to localized title
+  menu in en/fr/de/it/es) and diffs window and PS1-frame captures against
+  references kept outside git. `DW3_REPLAY` / `DW3_REPLAY_RECORD` in
+  `psyz_pad_host.c` (off by default). Runs are byte-identical on one
+  machine; the game RNG is a fixed table seeded to 0, so there is no seed
+  to inject. See `docs/P6.15_REPLAY_TESTS.md`. Still open: Switch/Ryubing
+  replay, scenarios past the title (New Game, field, battle, save, restart),
+  movies, cross-machine tolerance, CI. The original "one command, both discs,
+  reports diffs" bar is met for the title flow; leave open until the set
+  covers gameplay and the Switch build.
 - [ ] **P6.16 Suspend / resume (future goal).** Save the whole port state
   (RAM, VRAM, SPU, overlay state) on exit or sleep and resume at the same
   point. Separate from P5.3 game saves. Goal note only (2026-10-15). Done

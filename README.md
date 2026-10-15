@@ -258,6 +258,9 @@ No disc needed.
 
 ```bash
 python3 -m pytest tools/tests -q
+
+# P6.15 pad-replay regression run (US + EU x5 languages, Xvfb):
+# tools/replay_tests.sh  (docs/P6.15_REPLAY_TESTS.md)
 ```
 
 ## Repository layout

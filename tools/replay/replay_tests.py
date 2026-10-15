@@ -167,9 +167,13 @@ def main():
     ap.add_argument("--runtime-us")
     ap.add_argument("--runtime-eu")
     ap.add_argument("--build", action="store_true", help="configure+build dw3-pc (us, eu) under --out")
+    ap.add_argument("--scen-dir", help="recordings dir (default tools/replay/scenarios)")
     ap.add_argument("--timeout", type=int, default=180)
     a = ap.parse_args()
 
+    global SCEN_DIR
+    if a.scen_dir:
+        SCEN_DIR = Path(a.scen_dir)
     stamp = dt.datetime.now().strftime("%Y%m%d-%H%M%S")
     out = Path(a.out) / stamp
     refs = Path(a.refs)
