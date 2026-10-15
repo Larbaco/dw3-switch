@@ -1,0 +1,76 @@
+{
+  "experiment_date": "2026-10-15",
+  "results_file_mtime_utc": "2026-10-15T19:37:38.691085+00:00",
+  "timestamp_note": "mtime of original results artifact; experiment start timestamp was not recorded",
+  "source_commits": {
+    "main": "4b2068fc451e86952e1495c62b96a96427f651f1",
+    "pr170": "b43be1be87d8a6612abaceb5d31c0112784df3c6"
+  },
+  "compiler": "cc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+  "compiler_argv_template": [
+    "cc",
+    "-{O2|O3}",
+    "-D__SWITCH__",
+    "-I<temporary-source-dir>",
+    "bench.c",
+    "<temporary-source-dir>/title_overlay_art.c",
+    "-lm",
+    "-o",
+    "<temporary-executable>"
+  ],
+  "cold_samples": 25,
+  "warm_samples": 200,
+  "warm_discarded_first_draws": 1,
+  "clock": "CLOCK_MONOTONIC_RAW",
+  "sample_precision_ms": 1e-06,
+  "percentile": "sorted[floor(.95 * (n - 1))]",
+  "case_order": [
+    "main-O2-five",
+    "main-O2-options",
+    "pr170-O2-options",
+    "main-O3-five",
+    "main-O3-options",
+    "pr170-O3-options"
+  ],
+  "host_affinity": "unchanged",
+  "host_clock_policy": "unchanged, dynamic frequency",
+  "render_size": [
+    960,
+    720
+  ],
+  "rgba_bytes_per_pixel": 4,
+  "selected_five": [
+    -1,
+    0,
+    1,
+    2,
+    3
+  ],
+  "settings": "cursor i%3; values {i%2, 2+i%3, i%2}; setters outside timer",
+  "canvas_state": "built-in English lettering, default footer on; no EU captured label masks",
+  "timed": "host pre-clear plus art function (including own clear); first-touch faults included on first draw",
+  "excluded": [
+    "allocation",
+    "process startup",
+    "stdout",
+    "checksum",
+    "GPU upload",
+    "GPU drawing",
+    "driver synchronization",
+    "present",
+    "gameplay"
+  ],
+  "source_sha256": {
+    "main/title_overlay_art.c": "e37c13e3ef0e51e140d1b77aa8b9386b6f0a7e1eb00d87393695cbec001b2673",
+    "main/title_overlay_art.h": "1a8e9e13e1bcfa35dd6667320dfd5ab0656fe9bde7fe862844749f3517c4936b",
+    "main/title_overlay_labels.inc": "437286ac8b0380fc173176e497bdb5c7d2f59eeaae3ced336e929640d446ab21",
+    "main/title_overlay_lettering.inc": "0fd3a5eb170178231fca17f05dcceed5c0bca40af7db74da29087f6eb5b3ca98",
+    "pr170/title_overlay_art.c": "cc58d7887303b808eb46d56d8cc2c547bc86000d61bb1a41e26af9be04c15d5c",
+    "pr170/title_overlay_art.h": "496a3f51a4b0f926444b18831a894c5a81a3a3c2707d580fad21cec51a4ce543",
+    "pr170/title_overlay_labels.inc": "437286ac8b0380fc173176e497bdb5c7d2f59eeaae3ced336e929640d446ab21",
+    "pr170/title_overlay_lettering.inc": "0fd3a5eb170178231fca17f05dcceed5c0bca40af7db74da29087f6eb5b3ca98"
+  },
+  "original_harness_sha256": "528dea6a48afb1b97fac31ace74181a689c4ea4d1bca0812d40761223f2e5685",
+  "original_runner_sha256": "d44adddfdb4935654478b64d0c2d04a5762c774907f6c4f19dbd9a66ae2aef08",
+  "harness_note": "Original temporary harness/runner were simplified predecessors. Versioned tool preserves timing workload and adds argument validation, automatic git-show extraction and metadata; baseline numbers have not been replaced by a rerun."
+}
