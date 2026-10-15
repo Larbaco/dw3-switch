@@ -35,6 +35,8 @@ void dw3_pc_title_overlay_set_footer(int show);
 enum { DW3_TITLE_OPTION_ROWS = 3 };
 void dw3_pc_title_overlay_set_options_view(int cursor, const int *values,
                                            int count);
-/* Bumped by every setter that changes the canvas; hosts re-upload on change. */
+/* Bumped by setters that change the menu states; hosts re-upload on change. */
 unsigned dw3_pc_title_overlay_generation(void);
+/* Bumped only when the Port options screen (state 4) changes. */
+unsigned dw3_pc_title_overlay_options_generation(void);
 #endif
