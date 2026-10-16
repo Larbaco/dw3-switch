@@ -1040,6 +1040,14 @@ static int gpu_options_combo(int cursor, const int *values) {
     const int d = values[2] < 0 ? 0 : values[2] > 4 ? 4 : values[2];
     return c * 125 + a * 25 + b * 5 + d;
 }
+static void release_gpu_options_objects(void) {
+    if (g_gpu_options_atlas) SDL_ReleaseGPUTexture(g_device, g_gpu_options_atlas);
+    if (g_gpu_options_target) SDL_ReleaseGPUTexture(g_device, g_gpu_options_target);
+    if (g_gpu_options_vertices) SDL_ReleaseGPUBuffer(g_device, g_gpu_options_vertices);
+    g_gpu_options_atlas=NULL; g_gpu_options_target=NULL;
+    g_gpu_options_vertices=NULL;
+    g_gpu_options_ready=0; g_gpu_options_valid=0;
+}
 static int build_gpu_options(void) {
     Uint64 profile_start = profile_counter();
     if (!g_gpu_options_composite_pipeline) return -1;
@@ -1131,21 +1139,19 @@ static int build_gpu_options(void) {
     if (!g_gpu_options_atlas || !g_gpu_options_target ||
         !g_gpu_options_vertices || !transfer) {
         if (transfer) SDL_ReleaseGPUTransferBuffer(g_device,transfer);
-        if (g_gpu_options_atlas) SDL_ReleaseGPUTexture(g_device,g_gpu_options_atlas);
-        if (g_gpu_options_target) SDL_ReleaseGPUTexture(g_device,g_gpu_options_target);
-        if (g_gpu_options_vertices) SDL_ReleaseGPUBuffer(g_device,g_gpu_options_vertices);
-        g_gpu_options_atlas=NULL; g_gpu_options_target=NULL;
-        g_gpu_options_vertices=NULL;
+        release_gpu_options_objects();
+        free(atlas); free(vertices); return -1;
+    }
+    const char *test_fail = getenv("DW3_MENU_GPU_TEST_FAIL");
+    if (test_fail && strcmp(test_fail,"allocation")==0) {
+        SDL_ReleaseGPUTransferBuffer(g_device,transfer);
+        release_gpu_options_objects();
         free(atlas); free(vertices); return -1;
     }
     uint8_t *mapped = (uint8_t *)SDL_MapGPUTransferBuffer(g_device,transfer,false);
     if (!mapped) {
         SDL_ReleaseGPUTransferBuffer(g_device,transfer);
-        SDL_ReleaseGPUTexture(g_device,g_gpu_options_atlas);
-        SDL_ReleaseGPUTexture(g_device,g_gpu_options_target);
-        SDL_ReleaseGPUBuffer(g_device,g_gpu_options_vertices);
-        g_gpu_options_atlas=NULL; g_gpu_options_target=NULL;
-        g_gpu_options_vertices=NULL;
+        release_gpu_options_objects();
         free(atlas); free(vertices); return -1;
     }
     memcpy(mapped,atlas,atlas_bytes);
@@ -1153,15 +1159,16 @@ static int build_gpu_options(void) {
     g_profile_allocations += 7;
     free(atlas); free(vertices);
     SDL_UnmapGPUTransferBuffer(g_device,transfer);
+    if (test_fail && strcmp(test_fail,"submit")==0) {
+        SDL_ReleaseGPUTransferBuffer(g_device,transfer);
+        release_gpu_options_objects();
+        return -1;
+    }
     profile_add(&g_profile_staging_ns, profile_start);
     SDL_GPUCommandBuffer *cmd = SDL_AcquireGPUCommandBuffer(g_device);
     if (!cmd) {
         SDL_ReleaseGPUTransferBuffer(g_device,transfer);
-        SDL_ReleaseGPUTexture(g_device,g_gpu_options_atlas);
-        SDL_ReleaseGPUTexture(g_device,g_gpu_options_target);
-        SDL_ReleaseGPUBuffer(g_device,g_gpu_options_vertices);
-        g_gpu_options_atlas=NULL; g_gpu_options_target=NULL;
-        g_gpu_options_vertices=NULL;
+        release_gpu_options_objects();
         return -1;
     }
     SDL_GPUCopyPass *copy = SDL_BeginGPUCopyPass(cmd);
@@ -1186,11 +1193,7 @@ static int build_gpu_options(void) {
     profile_add(&g_profile_submit_ns, profile_start);
     SDL_ReleaseGPUTransferBuffer(g_device,transfer);
     if (!submitted) {
-        SDL_ReleaseGPUTexture(g_device,g_gpu_options_atlas);
-        SDL_ReleaseGPUTexture(g_device,g_gpu_options_target);
-        SDL_ReleaseGPUBuffer(g_device,g_gpu_options_vertices);
-        g_gpu_options_atlas=NULL; g_gpu_options_target=NULL;
-        g_gpu_options_vertices=NULL;
+        release_gpu_options_objects();
         return -1;
     }
     profile_start = profile_counter();
@@ -1338,7 +1341,7 @@ static void render_overlay(SDL_GPUCommandBuffer *cmd, SDL_GPURenderPass *pass) {
         .min_depth = 0.0f,
         .max_depth = 1.0f,
     };
-    SDL_BindGPUGraphicsPipeline(pass, g_gpu_options_composite_pipeline);
+    SDL_BindGPUGraphicsPipeline(pass, g_pipeline);
     const SDL_GPUBufferBinding binding = {.buffer = g_vertices, .offset = 0};
     SDL_BindGPUVertexBuffers(pass, 0, &binding, 1);
     if (g_background_ready && g_background_texture && g_background_sampler &&
@@ -1382,6 +1385,8 @@ static void render_overlay(SDL_GPUCommandBuffer *cmd, SDL_GPURenderPass *pass) {
     const int gpu_options = g_selection == STATE_OPTIONS &&
         menu_composition_mode() == MENU_COMPOSITION_GPU &&
         g_gpu_options_valid && g_gpu_options_target;
+    SDL_BindGPUGraphicsPipeline(pass,
+        gpu_options ? g_gpu_options_composite_pipeline : g_pipeline);
     const SDL_GPUTextureSamplerBinding sampler_binding = {
         .texture = gpu_options ? g_gpu_options_target : g_texture,
         .sampler = g_sampler,

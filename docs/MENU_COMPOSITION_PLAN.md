@@ -54,6 +54,8 @@ prove Switch performance.
   to the reference renderer.
 - The PC target compiles with both prototypes present. No visual or timing
   result is claimed here; the independent replay workstream owns those checks.
+- `DW3_MENU_GPU_TEST_FAIL=allocation` and `=submit` inject setup failures for
+  fallback/lifecycle replay only; they are unset in normal runs.
 - B remains experimental until Terra review and balanced six-language replay
   results decide whether it wins on correctness, performance, and complexity.
 
