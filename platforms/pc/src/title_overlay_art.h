@@ -39,4 +39,5 @@ void dw3_pc_title_overlay_set_options_view(int cursor, const int *values,
 unsigned dw3_pc_title_overlay_generation(void);
 /* Bumped only when the Port options screen (state 4) changes. */
 unsigned dw3_pc_title_overlay_options_generation(void);
+int dw3_pc_title_overlay_options_cursor(void);
 #endif
