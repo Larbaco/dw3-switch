@@ -627,6 +627,12 @@ int main(int argc, char **argv) {
      * a boot that dies does so with its reasons on disk — Ryubing has no nxlink
      * and guest stderr goes nowhere there. */
     dw3_nx_input_init();
+#ifdef DW3_NX_RUMBLE_SELFTEST
+    /* Build-time diagnostic: one short HD rumble pulse at boot, before the
+     * game runs (no SHOCKTST / in-game vibration needed). See
+     * docs/P10.4_RUMBLE.md for the nxlink smoke plan. */
+    dw3_nx_rumble_boot_selftest();
+#endif
 
     if (!dw3_nx_fs_mount_sd()) {
         /* Not fatal: the log falls back to stderr and cdfs will report what it

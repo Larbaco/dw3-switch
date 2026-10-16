@@ -80,6 +80,21 @@ void dw3_nx_input_init(void);
 /* Raw hid buttons from the last Psyz_PadsPoll / padUpdate (0 before first). */
 uint64_t dw3_nx_input_buttons_raw(void);
 
+/* hid style set of the last padUpdate (padGetStyleSet; 0 before the first
+ * poll). nx_rumble.c keys its vibration route off it: handheld rails /
+ * Lite (NpadHandheld), docked Pro (NpadFullKey), docked pair (NpadJoyDual). */
+uint32_t dw3_nx_input_style_set(void);
+
+/* --- P10.4 rumble (nx_rumble.c) ----------------------------------------- */
+
+/* Platform hook behind __wrap_PadSetAct (weak idle default lives in
+ * psyz_pad_host.c): forwards the 2-byte DualShock actuator amplitudes —
+ * PAD.act[0] small motor, [1] big motor — to hidSendVibrationValue. */
+void Psyz_PadsSetAct(int port, const unsigned char *act, int len);
+
+/* Boot-only HD-rumble pulse; disabled unless CMake -DDW3_NX_RUMBLE_SELFTEST. */
+void dw3_nx_rumble_boot_selftest(void);
+
 /* --- P4.5 filesystem (nx_file.c) --------------------------------------- */
 
 /* fsdevMountSdmc() + create sdmc:/switch/dw3. Call before anything opens a

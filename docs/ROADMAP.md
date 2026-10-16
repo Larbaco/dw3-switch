@@ -395,7 +395,9 @@ console.
   Opening-movie XA played in Ryubing. The Makefile `host_hello` sample
   still uses the weak 440 Hz stub in `nx_audio.c`. **Not ticked:** no
   hardware listen, and no underrun count on device. See
-  `docs/P4.3_AUDIO.md`.
+  `docs/P4.3_AUDIO.md`; the listen + underrun recipe (dry-pass count,
+  `Dw3NxAudioStats` exports, ≥10 min nxlink session) is planned out in
+  `docs/P4.3_AUDIO_HW.md` (2026-10-16, not run yet).
   **Ready to close? Needs:** an underrun count from a hardware log. Owner
   listens already exist: game audio "sounding perfect" on preview.4 (P4.7)
   and correct XA audio on preview.21 (P3.7). Owner to decide whether a
@@ -411,8 +413,12 @@ console.
   D-pad, buttons, Start and Select stay in the button word. **OLED:** the
   owner confirmed the left stick on handheld Joy-Con (`style=0x3`,
   `handheld=1` on the preview.5 boot) and on a Pro Controller. Rumble
-  stays the P10.4 stub and is optional for this item. See
-  `docs/P4.4_INPUT_STATUS.md`.
+  (2026-10-16): the adapter reports the DualShock actuator table, hands
+  `PadGetState` to `PadStateStable` after 4 connected polls, and forwards
+  `PadSetAct` to the new `Psyz_PadsSetAct` hook; the Switch backend
+  (`nx_rumble.c`) maps it to hid HD rumble — **unverified on hardware**,
+  still P10.4. See `docs/P4.4_INPUT_STATUS.md` and
+  `docs/P10.4_RUMBLE.md`.
 - [x] **P4.5 Filesystem + log + time.** `romfs:`/`sdmc:` for the runtime
   layout from P1.6, nxlink/stdout logging, `VSync`/`RCnt` timing.
   Done when: formal P2.5 CDFS suite passes against the packed P1.6 tree
@@ -895,6 +901,14 @@ rumble, saves, turbo, or widescreen here; those stay in their phases.
   tuning on top of P4.4 `PadSetAct` → HD rumble; Lite-safe no-op.
   Done when: toggleable from Phase 9 or marked N/A if hardware lacks
   actuators.
+  **Status (2026-10-16):** the `PadSetAct` → `hidSendVibrationValue`
+  chain now exists (adapter actuator table + Stable handoff in
+  `psyz_pad_host.c`, backend `platforms/switch/psyz_backend/nx_rumble.c`
+  with the handheld/player-1 routes, `DW3_NX_RUMBLE=0` kill-switch and a
+  `-DDW3_NX_RUMBLE_SELFTEST` boot pulse; host `pad_host_test` covers the
+  handshake). **Not ticked:** nothing has run on a console, the
+  small-motor→high-band mapping is unverified, and the Phase 9 slider is
+  not wired. Design + smoke plan: `docs/P10.4_RUMBLE.md`.
 - [ ] **P10.5 Extra applets — optional.** `swkbd` name entry, system
   language hint, CRT/sharp filters, multi-card / user-folder saves;
   Capture/album best-effort. Skip amiibo/gyro/touch-in-game.
