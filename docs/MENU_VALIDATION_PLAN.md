@@ -102,3 +102,9 @@ cursor updates of 434,304 bytes in three rectangles, and value updates of
 buffer each. First close includes one full 2,764,800-byte update; its source
 must be distinguished from Options-cache invalidation. These are workload
 counts, not accepted timing measurements.
+
+The completed CPU EU run was recovered on 2026-10-16: all five languages
+passed 240 PNG/PPM checks, and a fresh byte comparison confirms all 240 files
+are identical to baseline. [Recovered EU evidence](evidence/menu-validation-2026-10-15/cpu-a-eu-recovered.json)
+records its binary hash and attribution limit. Together with US this covers
+284 captures; final prototype builds, fallback/resize and balanced timings remain open.
