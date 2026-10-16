@@ -869,7 +869,7 @@ static int upload_cpu_dirty_rects(const MenuDirtyRect *rects, int count) {
             .rows_per_layer = (Uint32)rect.h,
         };
         const SDL_GPUTextureRegion dst = {
-            .texture = g_texture, .x = 0,
+            .texture = g_texture, .x = (Uint32)rect.x,
             .y = STATE_OPTIONS * CANVAS_H + (Uint32)rect.y,
             .w = (Uint32)rect.w, .h = (Uint32)rect.h, .d = 1,
         };
