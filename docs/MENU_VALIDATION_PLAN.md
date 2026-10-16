@@ -108,3 +108,10 @@ passed 240 PNG/PPM checks, and a fresh byte comparison confirms all 240 files
 are identical to baseline. [Recovered EU evidence](evidence/menu-validation-2026-10-15/cpu-a-eu-recovered.json)
 records its binary hash and attribution limit. Together with US this covers
 284 captures; final prototype builds, fallback/resize and balanced timings remain open.
+
+GPU prototype `998090a` was rejected by the independent Release US replay:
+title had 65,951 pixels over tolerance, and Options had 3,564 border pixels.
+The full matrix was stopped after reproduction; no timing acceptance followed.
+[Failure evidence](evidence/menu-validation-2026-10-15/gpu-b-first-failure.json)
+records hashes and per-checkpoint counts. The shared premultiplied blend
+pipeline was identified by review as affecting straight-alpha layers.

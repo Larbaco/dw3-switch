@@ -1,0 +1,126 @@
+{
+  "candidate": "998090a",
+  "mode": "gpu",
+  "build": "independent Release US/EU",
+  "driver": "/usr/share/vulkan/icd.d/lvp_icd.json",
+  "method": "PC Vulkan/private Xvfb/recorded inputs/temp saves",
+  "status": "rejected; stopped matrix after reproduced US failure",
+  "capture_directory": "/mnt/windows/Jogos/dw3-switch/tmp/evidence/menu-validation-998090a/gpu/20261016-132119/us-title",
+  "binaries": {
+    "us": "b1735fc9d14707eff34a0d4446b386ef81c62f0336b39d1067425a04f3723b35",
+    "eu": "2158b342cd3ebc2f1b89ef9859e273a151e06c0a9b96b1fdd12d091f71c30fbb"
+  },
+  "us_png": [
+    {
+      "checkpoint": "after-restart.png",
+      "pixels_above_8": 65951,
+      "total_pixels": 1228800
+    },
+    {
+      "checkpoint": "cursor-restart.png",
+      "pixels_above_8": 3564,
+      "total_pixels": 1228800
+    },
+    {
+      "checkpoint": "cursor-turbo.png",
+      "pixels_above_8": 3564,
+      "total_pixels": 1228800
+    },
+    {
+      "checkpoint": "cursor-up-turbo.png",
+      "pixels_above_8": 3564,
+      "total_pixels": 1228800
+    },
+    {
+      "checkpoint": "cursor-up-widescreen.png",
+      "pixels_above_8": 3564,
+      "total_pixels": 1228800
+    },
+    {
+      "checkpoint": "menu.png",
+      "pixels_above_8": 78618,
+      "total_pixels": 1228800
+    },
+    {
+      "checkpoint": "options-open.png",
+      "pixels_above_8": 3564,
+      "total_pixels": 1228800
+    },
+    {
+      "checkpoint": "reopen-options.png",
+      "pixels_above_8": 3564,
+      "total_pixels": 1228800
+    },
+    {
+      "checkpoint": "restart-chord.png",
+      "pixels_above_8": 0,
+      "total_pixels": 1228800
+    },
+    {
+      "checkpoint": "restart-off.png",
+      "pixels_above_8": 3564,
+      "total_pixels": 1228800
+    },
+    {
+      "checkpoint": "restart-on-again.png",
+      "pixels_above_8": 3564,
+      "total_pixels": 1228800
+    },
+    {
+      "checkpoint": "restart-on.png",
+      "pixels_above_8": 3564,
+      "total_pixels": 1228800
+    },
+    {
+      "checkpoint": "return-again.png",
+      "pixels_above_8": 73472,
+      "total_pixels": 1228800
+    },
+    {
+      "checkpoint": "return-title.png",
+      "pixels_above_8": 73472,
+      "total_pixels": 1228800
+    },
+    {
+      "checkpoint": "title-options-focus.png",
+      "pixels_above_8": 73472,
+      "total_pixels": 1228800
+    },
+    {
+      "checkpoint": "title.png",
+      "pixels_above_8": 65951,
+      "total_pixels": 1228800
+    },
+    {
+      "checkpoint": "turbo-2x.png",
+      "pixels_above_8": 3564,
+      "total_pixels": 1228800
+    },
+    {
+      "checkpoint": "turbo-3x.png",
+      "pixels_above_8": 3564,
+      "total_pixels": 1228800
+    },
+    {
+      "checkpoint": "turbo-4x.png",
+      "pixels_above_8": 3564,
+      "total_pixels": 1228800
+    },
+    {
+      "checkpoint": "turbo-off.png",
+      "pixels_above_8": 3564,
+      "total_pixels": 1228800
+    },
+    {
+      "checkpoint": "widescreen-off.png",
+      "pixels_above_8": 3564,
+      "total_pixels": 1228800
+    },
+    {
+      "checkpoint": "widescreen-on.png",
+      "pixels_above_8": 3564,
+      "total_pixels": 1228800
+    }
+  ],
+  "diagnosis": "Shared premultiplied blend pipeline affected straight-alpha title/reference layers; implementation owner correcting. No performance acceptance."
+}
