@@ -106,6 +106,52 @@ static void dw3_nx_service_applet_quit(void) {
     }
 }
 
+/* P10.2 focus/sleep wiring — hardware-unverified on the OLED (the
+ * "applet focus:" lines below have never been observed on a real console).
+ * libnx: appletGetFocusState() returns a cached value that appletProcessMessage
+ * refreshes via ICommonStateGetter::GetCurrentFocusState (cmd 9) inside our
+ * appletMainLoop drain, when FocusStateChanged (15) is delivered. Out of
+ * focus is AppletFocusState_Background (3, HOME menu open / console asleep)
+ * or AppletFocusState_OutOfFocus (2, LibraryApplet overlay). Our NRO is
+ * AppletType_LibraryApplet (hbloader), so appletSetFocusHandlingMode is
+ * unavailable and AM suspends us on its default policy — the flush here is
+ * therefore best effort before suspension. Exit (msg 4) stays the only
+ * source of Psyz_QuitRequested; focus must not quit the game.
+ * POLICY: pause the audren pull and flush dirty flats once per out-of-focus
+ * episode; on return to InFocus unpause and suppress the one 60-pump
+ * frame-dt window that contains the suspended gap (see the dt clamp in the
+ * vsync pump). Docs: docs/P5.3_HOME_QUIT.md. */
+static volatile int g_applet_focus_out;
+static int g_applet_focus_gap_in_window;
+
+static void dw3_nx_service_applet_focus(void) {
+    AppletFocusState focus;
+
+    if (Psyz_QuitRequested()) {
+        return;
+    }
+    focus = appletGetFocusState();
+    if (focus != AppletFocusState_InFocus) {
+        g_applet_focus_gap_in_window = 1;
+        if (!g_applet_focus_out) {
+            g_applet_focus_out = 1;
+            INFOF("applet focus: lost (state=%d, flushing)", (int)focus);
+            Psyz_AudioPause();
+            if (memcard_host_flush_all() != 0) {
+                ERRORF("applet focus: memcard flush_all failed");
+            } else {
+                INFOF("applet focus: flat saves flushed");
+            }
+        }
+        return;
+    }
+    if (g_applet_focus_out) {
+        g_applet_focus_out = 0;
+        Psyz_AudioUnpause();
+        INFOF("applet focus: restored (state=%d)", (int)focus);
+    }
+}
+
 #ifdef DW3_NXLINK_STDIO
 static int g_nxlink_socket_initialized;
 static Result g_nxlink_socket_result;
@@ -135,6 +181,7 @@ static void dw3_nx_vsync_pump(void) {
     static unsigned pumps;
 
     dw3_nx_service_applet_quit();
+    dw3_nx_service_applet_focus();
 
     /* The pump runs once per VSync(), from inside it, *after* the frame was
      * presented — so the count is a boot progress meter for free. The game's
@@ -156,6 +203,17 @@ static void dw3_nx_vsync_pump(void) {
         uint64_t dt_us;
 
         if (dw3_frame_dt_sample(&frame_dt, pumps, restore_now_us(), &dt_us)) {
+            if (g_applet_focus_gap_in_window) {
+                /* P10.2 (hardware-unverified): the window spanned a focus
+                 * loss/sleep and its wall time includes the suspended gap —
+                 * only the logging/overlay stats read this, never game
+                 * pacing, so clamp to the clean 1 s 60-pump baseline. */
+                g_applet_focus_gap_in_window = 0;
+                INFOF("frame dt us=%llu includes an applet suspend gap; "
+                      "clamped to 1000000",
+                      (unsigned long long)dt_us);
+                dt_us = 1000000;
+            }
             INFOF("frame dt us=%llu", (unsigned long long)dt_us);
 #if DW3_NX_DEBUG_MOVIE
             /* Movie producer/consumer health for this 60-pump window: how many

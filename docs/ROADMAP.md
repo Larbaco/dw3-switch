@@ -870,6 +870,9 @@ rumble, saves, turbo, or widescreen here; those stay in their phases.
   flush behaviour on hardware; fill any gaps in `nx_os` / applet hooks.
   This holds the only open part of P5.3 (ticked 2026-10-15): sleep/focus-loss
   flush, the time-delta clamp, and HOME during a save write section.
+  **Wiring (2026-10-16):** the event map and the guarded focus-loss/flush
+  plumbing are in [P5.3_HOME_QUIT.md](P5.3_HOME_QUIT.md); hardware-unverified
+  until the OLED smoke there passes.
   Done when: HOME sleep/resume and clean exit smoke tests pass with
   saves intact.
 - [ ] **P10.3 Presentation modes.** Docked vs handheld already in P4.2;
