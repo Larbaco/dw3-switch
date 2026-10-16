@@ -4,6 +4,11 @@
  * root prefix differs. Point --root at PC runtime/<ver> or a mounted /
  * copied SD tree (…/switch/dw3/us).
  *
+ * Build with -DDW3_CDFS_SUITE_LIB to expose cdfs_suite_main() instead of
+ * main(): the in-.nro runner for an on-device suite record calls it directly
+ * (self-test, then a packed root) — see docs/P4.5_SD_SUITE.md. The standalone
+ * CLI is unchanged without it.
+ *
  * Usage:
  *   cdfs_suite --self-test WORKDIR
  *   cdfs_suite --root DIR [--map PATH] [--samples N] [--max-full BYTES]
@@ -18,6 +23,9 @@
 #include <string.h>
 #include <sys/stat.h>
 
+/* Counters are per cdfs_suite_main call, not per process: the .nro runner
+ * (DW3_CDFS_SUITE_LIB) runs self-test and a packed root back to back and
+ * must not inherit them. */
 static int g_fails;
 static int g_oks;
 
@@ -556,13 +564,21 @@ static void usage(const char *argv0) {
             argv0, argv0);
 }
 
-int main(int argc, char **argv) {
+#ifdef DW3_CDFS_SUITE_LIB
+int cdfs_suite_main(int argc, char **argv)
+#else
+int main(int argc, char **argv)
+#endif
+{
     const char *root = NULL;
     const char *map = NULL;
     const char *self_dir = NULL;
     size_t samples = 8;
     size_t max_full = 1024u * 1024u;
     int i;
+
+    g_fails = 0;
+    g_oks = 0;
 
     for (i = 1; i < argc; i++) {
         if (strcmp(argv[i], "--root") == 0 && i + 1 < argc) {
