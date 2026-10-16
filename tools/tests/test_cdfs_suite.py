@@ -122,3 +122,65 @@ def test_packed_runtime_suite(cdfs_suite: Path, label: str, root: Path):
     assert "OK  cdfs_lookup_lba" in r.stdout
     assert "OK  unknown id rejected" in r.stdout
     assert "FAIL" not in r.stdout
+
+
+@pytest.fixture(scope="module")
+def cdfs_suite_lib(tmp_path_factory) -> Path:
+    """tools/cdfs_suite.c in library mode (DW3_CDFS_SUITE_LIB) linked with
+    tools/testdata/cdfs_suite_lib_main.c — the same compile the Switch .nro
+    runner would link against (docs/P4.5_SD_SUITE.md)."""
+    build_dir = tmp_path_factory.mktemp("cdfs_suite_lib_build")
+    out = build_dir / "cdfs_suite_lib"
+    cmd = [
+        "gcc",
+        "-std=c11",
+        "-Wall",
+        "-Wextra",
+        "-Werror",
+        "-O2",
+        "-o",
+        str(out),
+        str(SUITE_C),
+        str(CDFS_C),
+        str(ROOT / "tools" / "testdata" / "cdfs_suite_lib_main.c"),
+        f"-I{ROOT / 'port' / 'cdfs'}",
+        "-DDW3_CDFS_SUITE_LIB=1",
+    ]
+    r = subprocess.run(cmd, capture_output=True, text=True)
+    assert r.returncode == 0, r.stderr + r.stdout
+    assert out.is_file()
+    return out
+
+
+def test_lib_mode_matches_cli(
+    cdfs_suite: Path, cdfs_suite_lib: Path, tmp_path: Path
+):
+    """The library entry must produce exactly the standalone CLI's result."""
+    r_cli = subprocess.run(
+        [str(cdfs_suite), "--self-test", str(tmp_path / "cli")],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    r_lib = subprocess.run(
+        [str(cdfs_suite_lib), "--self-test", str(tmp_path / "lib")],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert r_cli.returncode == 0, r_cli.stdout + r_cli.stderr
+    assert r_lib.returncode == r_cli.returncode
+    assert r_lib.stdout == r_cli.stdout
+
+
+def test_lib_mode_reusable_in_one_process(cdfs_suite_lib: Path, tmp_path: Path):
+    """The in-.nro runner calls the suite twice in one process (self-test,
+    then a packed root). Per-call counters must not accumulate across calls."""
+    r = subprocess.run(
+        [str(cdfs_suite_lib), "--lib-twice", "--self-test", str(tmp_path / "twice")],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert r.returncode == 0, r.stdout + r.stderr
+    assert "lib-twice rc=0,0" in r.stdout
