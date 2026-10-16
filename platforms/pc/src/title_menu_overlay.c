@@ -541,7 +541,7 @@ static int upload_art_and_quad(void) {
         &premultiplied_info);
     SDL_ReleaseGPUShader(g_device, vs);
     SDL_ReleaseGPUShader(g_device, fs);
-    if (!g_pipeline || !g_gpu_options_composite_pipeline) {
+    if (!g_pipeline) {
         free(pixels);
         return -1;
     }
@@ -1042,6 +1042,7 @@ static int gpu_options_combo(int cursor, const int *values) {
 }
 static int build_gpu_options(void) {
     Uint64 profile_start = profile_counter();
+    if (!g_gpu_options_composite_pipeline) return -1;
     const size_t atlas_bytes = (size_t)CANVAS_W * GPU_OPTIONS_ATLAS_H * 4;
     uint8_t *atlas = (uint8_t *)calloc(1, atlas_bytes);
     uint8_t *scratch = (uint8_t *)malloc((size_t)CANVAS_W * CANVAS_H * 4);
