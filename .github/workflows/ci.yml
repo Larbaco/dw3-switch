@@ -69,7 +69,9 @@ jobs:
           test -x build/pc/dw3-pc
       - name: Unit tests (tools)
         run: |
-          python3 -m pip install pytest
+          # Pillow: replay/menu replay tests import PIL directly (importorskip
+          # on main, hard import on menu-replay branches); install so they run.
+          python3 -m pip install pytest pillow
           python3 -m pytest tools/tests -v
 
   # Makefile host_hello sample (EGL + audren). Not the game image.
