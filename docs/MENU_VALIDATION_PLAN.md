@@ -69,3 +69,16 @@ records exact file-byte equality separately. Binary hashes, compiler and pinned
 submodules are recorded with the baseline metadata. Telemetry may additionally
 provide `state_update_to_draw_us`; this measures CPU state update to overlay
 draw callback and is not input-to-photon or completed GPU presentation.
+
+The profiling runner rotates mode order by repetition (Latin square for three
+modes), rotates scenario order, records the exact run order, and runs one full
+warm-up round by default. Warm-up telemetry is preserved under `warmup_profile`
+and excluded from measured `profile` summaries. Ambiguous `options-change`
+events are rejected; cursor and value timings must be separate.
+
+Vulkan inspection exposes RADV RX 6700 and llvmpipe. Pinning RADV under this
+Xvfb fails SDL GPU initialization (`No supported SDL_GPU backend found`), so
+measurements will pin `/usr/share/vulkan/icd.d/lvp_icd.json` (Mesa 25.2.8,
+LLVM 20.1.2). US reference replay with this pin passes all 44 image comparisons.
+The original visual baseline is therefore reusable; every timing baseline and
+candidate must run with the same explicit pin. No RADV timings are usable.

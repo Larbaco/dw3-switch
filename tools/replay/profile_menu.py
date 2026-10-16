@@ -28,6 +28,8 @@ def stats(values):
 
 def summarize(path):
     rows = list(csv.DictReader(path.open()))
+    if any(r['event'] == 'options-change' for r in rows):
+        raise ValueError('ambiguous options-change telemetry; separate cursor and value events required')
     result = {'gpu_execution_time': 'unavailable', 'events': {}}
     for event in sorted({r['event'] for r in rows}):
         group = [r for r in rows if r['event'] == event]
@@ -45,9 +47,15 @@ def main():
     p.add_argument('--runtime-us', type=Path, required=True)
     p.add_argument('--runtime-eu', type=Path, required=True)
     p.add_argument('--repeat', type=int, default=3)
+    p.add_argument('--warmup-rounds', type=int, default=1, help='full mode/scenario rounds excluded from measured summaries')
     p.add_argument('--mode', action='append', choices=['reference','cpu','gpu'])
     p.add_argument('--only', action='append')
+    p.add_argument('--vulkan-icd', type=Path, help='pin a Vulkan driver JSON consistently across runs')
     args = p.parse_args()
+    if args.repeat < 1 or args.warmup_rounds < 0:
+        p.error('repeat must be positive and warmup rounds nonnegative')
+    if args.vulkan_icd:
+        os.environ['VK_DRIVER_FILES'] = str(args.vulkan_icd.resolve(strict=True))
     args.out = args.out.resolve()
     args.out.mkdir(parents=True, exist_ok=True)
     replay.SCEN_DIR = args.scen_dir.resolve()
@@ -57,9 +65,15 @@ def main():
     xvfb, display = replay.start_xvfb(args.out)
     results = []
     try:
-        for repeat in range(args.repeat):
-            for mode in args.mode or ['reference', 'cpu', 'gpu']:
-                for name, version in replay.SCENARIOS:
+        modes = args.mode or ['reference', 'cpu', 'gpu']
+        for repeat in range(-args.warmup_rounds, args.repeat):
+            rotation = repeat % len(modes)
+            order = modes[rotation:] + modes[:rotation]
+            scenarios = replay.SCENARIOS
+            shift = repeat % len(scenarios)
+            scenarios = scenarios[shift:] + scenarios[:shift]
+            for mode in order:
+                for name, version in scenarios:
                     if args.only and name not in args.only:
                         continue
                     out = args.out / f'{repeat}-{mode}-{name}'
@@ -72,9 +86,12 @@ def main():
                         getattr(args, f'runtime_{version}').resolve(), display,
                         out, time.strftime('%Y%m%d-%H%M%S'), 180)
                     row = {'repeat':repeat,'mode':mode,'scenario':name,'rc':rc,
-                           'wall_seconds':elapsed,'csv':str(profile)}
+                           'wall_seconds':elapsed,'csv':str(profile),
+                           'warmup':repeat < 0, 'run_order':len(results),
+                           'mode_order':order, 'vulkan_icd':os.environ.get('VK_DRIVER_FILES'),
+                           'cold_events':'initialization/rebuild/open reported separately; never pooled with cursor/value'}
                     if profile.exists():
-                        row['profile'] = summarize(profile)
+                        row['warmup_profile' if repeat < 0 else 'profile'] = summarize(profile)
                     results.append(row)
                     (args.out / 'summary.json').write_text(json.dumps(results, indent=2)+'\n')
                     print(f'{repeat} {mode} {name}: rc={rc}, profile={profile.exists()}', flush=True)
