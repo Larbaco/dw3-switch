@@ -8,6 +8,10 @@
  *      PAD_ID_ANALOG (7), InfoModeCurExOffs returns the active mode's offset in
  *      the controller mode ID table, and PadSetMainMode takes that offset to
  *      switch the mode -- rejecting an offset or port it cannot use.
+ *   3. The P10.4 rumble handshake: PadInfoAct reports 2 actuators only for an
+ *      analog pad, PadGetState moves FindCTP1 -> PadStateStable after the
+ *      connected polls (what sets PAD_FLAG_VIBRATION in pollPadState), and
+ *      PadSetAct forwards the 2 actuator bytes to the Psyz_PadsSetAct hook.
  *
  * Does not open a window; links psyz_pad_host.c against a tiny Psyz_Pads stub
  * when built by tools/tests/test_pad_host.py, OR against real PSY-Z via
@@ -30,6 +34,10 @@ static char g_frames[2][BUF_LEN];
 static PsyzControllerKind g_stub_kinds[2];
 static PsyzControllerKind g_stub_last_set_kind;
 static int g_stub_last_set_port = -1;
+
+/* Captured Psyz_PadsSetAct hook (last PadSetAct forwarded by the adapter). */
+static int g_stub_act_port = -1;
+static unsigned char g_stub_act[2] = {0, 0};
 
 /* Provide InitPAD/StartPAD/Psyz_* when not linking full PSY-Z (unit harness). */
 #ifdef DW3_PAD_TEST_STUB_PSYZ
@@ -75,6 +83,15 @@ void Psyz_PadsGet(int port, char *dst, int len) {
     }
     memcpy(dst, g_frames[port], (size_t)len);
 }
+/* The rumble hook the adapter forwards PadSetAct to (nx_rumble.c on Switch). */
+void Psyz_PadsSetAct(int port, const unsigned char *act, int len) {
+    if (act == NULL || len < 2) {
+        return;
+    }
+    g_stub_act_port = port;
+    g_stub_act[0] = act[0];
+    g_stub_act[1] = act[1];
+}
 #endif
 
 /* Same packing as nx_input.c / PSY-Z BuildPadFrame / UnpackPadBits. */
@@ -106,9 +123,11 @@ static void make_frame(char *frame, PsyzControllerKind kind,
 int main(void) {
     unsigned char buf0[BUF_LEN];
     unsigned char buf1[BUF_LEN];
+    unsigned char act[2];
     char frame[BUF_LEN];
     int state;
     int mode;
+    int i;
     unsigned short raw;
     unsigned short pressed;
 
@@ -158,6 +177,10 @@ int main(void) {
 
     CHECK(PadChkVsync() == 1, "PadChkVsync expected 1 after StartCom");
 
+    /* A digital pad exposes no actuators (DualShock table gated on analog). */
+    CHECK(PadInfoAct(0, -1, 0) == 0, "digital PadInfoAct count=%d want 0",
+          PadInfoAct(0, -1, 0));
+
     /* ---- analog pad: what PadSetMainMode switches the port to ------------- */
     make_frame(frame, PSYZ_CTRL_ANALOG_PAD, 0);
     Psyz_PadsSet(0, frame, BUF_LEN);
@@ -165,6 +188,58 @@ int main(void) {
     CHECK(mode == 7, "analog CurExID=%d want 7 (PAD_ID_ANALOG)", mode);
     CHECK(PadInfoMode(0, InfoModeCurExOffs, 0) == 1,
           "analog CurExOffs=%d want 1", PadInfoMode(0, InfoModeCurExOffs, 0));
+
+    /* ---- P10.4 rumble handshake: actuator table + the Stable handoff ------ */
+    /* pad.c/port.c call chain on a stable analog pad: pollPadState ->
+     * alignActuators -> PadInfoAct(-1,0)[count] -> PadInfoAct(i, InfoActSub)
+     * -> PadSetActAlign. The adapter mirrors the DualShock 2-actuator table;
+     * Sub 0 keeps PAD.act idle so nothing rumbles until setVibration runs. */
+    CHECK(PadInfoAct(0, -1, 0) == 2, "analog PadInfoAct count=%d want 2",
+          PadInfoAct(0, -1, 0));
+    CHECK(PadInfoAct(0, 0, InfoActFunc) == 0x01,
+          "act0 InfoActFunc=0x%02x want 0x01", PadInfoAct(0, 0, InfoActFunc));
+    CHECK(PadInfoAct(0, 1, InfoActFunc) == 0x02,
+          "act1 InfoActFunc=0x%02x want 0x02", PadInfoAct(0, 1, InfoActFunc));
+    CHECK(PadInfoAct(0, 0, InfoActSub) == 0 && PadInfoAct(0, 1, InfoActSub) == 0,
+          "actuators not idle after the alignment probe (sub=%d/%d)",
+          PadInfoAct(0, 0, InfoActSub), PadInfoAct(0, 1, InfoActSub));
+    CHECK(PadInfoAct(0, 0, InfoActSize) == 2,
+          "InfoActSize=%d want 2 (PAD.act is 2 bytes)",
+          PadInfoAct(0, 0, InfoActSize));
+    CHECK(PadInfoAct(0, 0, InfoActCurr) == PadMaxCurr,
+          "InfoActCurr=%d want %d", PadInfoAct(0, 0, InfoActCurr), PadMaxCurr);
+    CHECK(PadInfoAct(0, 2, InfoActFunc) == 0, "actno 2 accepted");
+    CHECK(PadInfoAct(0x10, -1, 0) == 0,
+          "disconnected pad 0x10 reported actuators");
+
+    /* pollPadState keys PAD_FLAG_VIBRATION on PadStateStable: FindCTP1 until
+     * the pad settles (DW3_PAD_STABLE_POLLS connected polls; one was already
+     * counted in the digital section above), then Stable and stays Stable. */
+    for (i = 0; i < 3; i++) {
+        state = PadGetState(0);
+        CHECK(state == PadStateFindCTP1, "settle poll %d state=%d want FindCTP1",
+              i, state);
+    }
+    state = PadGetState(0);
+    CHECK(state == PadStateStable, "after settle polls state=%d want Stable",
+          state);
+    state = PadGetState(0);
+    CHECK(state == PadStateStable, "Stable did not stick (state=%d)", state);
+
+    /* PadSetAct hands the 2-byte actuator array to the Psyz_PadsSetAct
+     * platform hook (nx_rumble.c on Switch, stub capture here). */
+    act[0] = 0x40;
+    act[1] = 0x01;
+    g_stub_act_port = -1;
+    PadSetAct(0, act, 2);
+    CHECK(g_stub_act_port == 0 && g_stub_act[0] == 0x40 &&
+              g_stub_act[1] == 0x01,
+          "PadSetAct bytes not forwarded (port=%d act=%02x,%02x)",
+          g_stub_act_port, g_stub_act[0], g_stub_act[1]);
+    /* Still forwarded verbatim for the unmapped port; nx_rumble filters it. */
+    PadSetAct(1, act, 2);
+    CHECK(g_stub_act_port == 1, "port not forwarded verbatim (got %d)",
+          g_stub_act_port);
 
     /* lockPadMode does: PadSetMainMode(id, PadInfoMode(id, InfoModeCurExOffs, 0),
      * PAD_MODE_LOCKED) -- offset 1 must select the analog pad and be accepted. */
@@ -229,5 +304,7 @@ int main(void) {
            "PadSetMainMode switches the published kind and rejects bad args\n");
     printf("OK: left stick deadzone=%d kind 0x41/0x53 -> 0x73\n",
            DW3_NX_STICK_DEADZONE);
+    printf("OK: PadInfoAct 2 actuators on analog; PadGetState "
+           "FindCTP1->Stable; PadSetAct->Psyz_PadsSetAct\n");
     return 0;
 }

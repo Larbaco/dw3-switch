@@ -32,18 +32,51 @@
 #ifndef InfoModeIdTable
 #define InfoModeIdTable 4
 #endif
+/* DualShock actuator probes (libpad.h values; PSY-Z ships no libpad.h). */
+#ifndef InfoActFunc
+#define InfoActFunc 1
+#endif
+#ifndef InfoActSub
+#define InfoActSub 2
+#endif
+#ifndef InfoActSize
+#define InfoActSize 3
+#endif
+#ifndef InfoActCurr
+#define InfoActCurr 4
+#endif
+#ifndef PadMaxCurr
+#define PadMaxCurr 60
+#endif
+#ifndef PadStateStable
+#define PadStateStable 6
+#endif
 
 /* PSY-Z libapi (avoid libapi.h type clashes with decomp headers). */
 int InitPAD(char *bufA, int lenA, char *bufB, int lenB);
 long StartPAD(void);
 
+/* P10.4 rumble hook behind __wrap_PadSetAct: PAD.act bytes -> platform
+ * motors. Weak idle default below; the Switch build links a strong
+ * Psyz_PadsSetAct from platforms/switch/psyz_backend/nx_rumble.c. */
+void Psyz_PadsSetAct(int port, const unsigned char *act, int len);
+
 enum { DW3_PAD_BUF_LEN = 34 };
+
+/* pollPadState treats PadStateStable as "the pad can be read AND its
+ * actuators can be aligned" (src/engine/pad/port.c). Stall that handoff for
+ * the first connected polls so the boot looks like a real pad's negotiate
+ * cycle, then flip to Stable: alignActuators -> PAD_FLAG_ALIGNING ->
+ * PAD_FLAG_VIBRATION, which is what lets setVibration reach PadSetAct. */
+#define DW3_PAD_STABLE_POLLS 4
 
 static unsigned char *g_pad_rx[2];
 static int g_pad_started;
 static int g_logged_connected;
 static int g_logged_buttons;
 static int g_logged_main_mode;
+static int g_logged_stable;
+static int g_stable_polls[2];
 
 static int port_index(int port) { return (port >> 4) & 1; }
 
@@ -461,7 +494,19 @@ int __wrap_PadGetState(int port) {
         fprintf(stderr, "dw3-pad: port %d connected kind=0x%02x (PadStateFindCTP1)\n",
                 idx, (unsigned)buf[1]);
     }
-    return PadStateFindCTP1;
+    /* Negotiate like a real pad: FindCTP1 until the pad settled, then jump
+     * straight to Stable. pollPadState keys the vibration alignment on the
+     * Stable state; FindCTP1 would keep PAD_FLAG_VIBRATION off forever. */
+    if (g_stable_polls[idx] < DW3_PAD_STABLE_POLLS) {
+        g_stable_polls[idx]++;
+        return PadStateFindCTP1;
+    }
+    if (!g_logged_stable) {
+        g_logged_stable = 1;
+        fprintf(stderr, "dw3-pad: port %d stable after %d connected polls "
+                        "(actuators aligned)\n", idx, DW3_PAD_STABLE_POLLS);
+    }
+    return PadStateStable;
 }
 
 int PadInfoMode(int port, int term, int offs) {
@@ -540,22 +585,83 @@ int PadSetMainMode(int port, int offs, int lock) {
     return 1;
 }
 
+/*
+ * DualShock actuator table, consumed by alignActuators (src/engine/pad/port.c):
+ * PadInfoAct(id, -1, 0) asks "how many actuators?", then each actuator's
+ * InfoActSub drives `PAD.act[i] = sub & 1`. Sub 0 (a Switch port publishes no
+ * alignment data) leaves PAD.act idle; setVibration writes the amplitudes the
+ * game actually wants. Only analog pads report motors, matching DualShock
+ * wire behavior (docs/P10.4_RUMBLE.md).
+ */
 int PadInfoAct(int port, int actno, int term) {
-    (void)port;
-    (void)actno;
-    (void)term;
-    return 0;
+    static const int func[2] = {0x01, 0x02}; /* InfoActFunc of each motor */
+    int idx = port_index(port);
+    unsigned char *buf;
+
+    if (idx < 0 || idx > 1 || g_pad_rx[idx] == NULL) {
+        return 0;
+    }
+    buf = g_pad_rx[idx];
+    refresh_port(idx);
+    if (!buf_connected(buf) || buf[1] != PSYZ_CTRL_ANALOG_PAD) {
+        return 0;
+    }
+    if (actno < 0) {
+        /* Term 0 = actuator count probe (-1 == "give me the count"). */
+        return 2;
+    }
+    if (actno > 1) {
+        return 0;
+    }
+    switch (term) {
+    case InfoActFunc:
+        return func[actno];
+    case InfoActSub:
+        return 0;
+    case InfoActSize:
+        return 2; /* PAD.act is 2 bytes per pad */
+    case InfoActCurr:
+        return PadMaxCurr;
+    default:
+        return 0;
+    }
 }
 
-void __wrap_PadSetAct(int port, unsigned char *data, int len) {
+/* Default is an idle weak symbol: hosts without motors (PC sdl3, or unit tests
+ * with no Psyz_PadsSetAct stub) stay silent. On the Switch the linker picks
+ * the strong Psyz_PadsSetAct in platforms/switch/psyz_backend/nx_rumble.c. */
+__attribute__((weak)) void Psyz_PadsSetAct(int port, const unsigned char *act,
+                                           int len) {
     (void)port;
-    (void)data;
+    (void)act;
     (void)len;
 }
 
+void __wrap_PadSetAct(int port, unsigned char *data, int len) {
+    static int logged;
+    unsigned char tray[2] = {0x00, 0x00};
+
+    if (data != NULL && len >= 2) {
+        memcpy(tray, data, sizeof(tray));
+    }
+    if (!logged) {
+        logged = 1;
+        fprintf(stderr, "dw3-pad: PadSetAct port=0x%x act=0x%02x,0x%02x len=%d"
+                        " -> Psyz_PadsSetAct\n",
+                (unsigned)port, tray[0], tray[1], len);
+    }
+    Psyz_PadsSetAct(port, tray, (int)sizeof(tray));
+}
+
 int __wrap_PadSetActAlign(int port, char *data) {
-    (void)port;
-    (void)data;
+    static int logged;
+
+    if (!logged && data != NULL) {
+        logged = 1;
+        fprintf(stderr, "dw3-pad: PadSetActAlign port=0x%x act=0x%02x,0x%02x\n",
+                (unsigned)port, (unsigned char)data[0],
+                (unsigned char)data[1]);
+    }
     return 1;
 }
 

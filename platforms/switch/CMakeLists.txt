@@ -70,6 +70,12 @@ set(DW3_NX_TEST_ENV "" CACHE STRING
 option(DW3_NX_FORCE_CRASH
        "Force a CPU fault after boot (P5.4 crash-report smoke only)"
        OFF)
+# P10.4: one short HD rumble pulse at boot (nx_rumble.c) to prove the
+# actuator path without the in-game SHOCKTST stage. nxlink smoke only —
+# never on in release/preview NROs.
+option(DW3_NX_RUMBLE_SELFTEST
+       "Send one HD rumble pulse at boot (P10.4 rumble smoke only)"
+       OFF)
 
 if(NOT CMAKE_SYSTEM_NAME STREQUAL "NintendoSwitch")
   message(FATAL_ERROR
@@ -263,6 +269,10 @@ if(DW3_NX_FORCE_CRASH)
   message(STATUS "nx FORCE crash after boot enabled (DW3_NX_FORCE_CRASH) — P5.4 only")
 else()
   target_compile_definitions(dw3-switch PRIVATE DW3_NX_FORCE_CRASH=0)
+endif()
+if(DW3_NX_RUMBLE_SELFTEST)
+  target_compile_definitions(dw3-switch PRIVATE DW3_NX_RUMBLE_SELFTEST=1)
+  message(STATUS "nx rumble boot selftest enabled (DW3_NX_RUMBLE_SELFTEST) — P10.4 only")
 endif()
 
 # EGL/GLES2 come from devkitPro's switch-* portlibs, not from libnx, and they
