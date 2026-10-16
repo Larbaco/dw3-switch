@@ -34,3 +34,21 @@ invalidation; resource resize/recreation and explicit fallback; restart into
 US title or EU language selection. PC fade is currently a no-op, so Switch
 intermediate group fade/halos and owner perceived-hitch acceptance remain open.
 This plan and replay generator are preparation, not evidence that gates passed.
+
+## Baseline execution, 2026-10-15
+
+The baseline built successfully for both discs. All six extended recordings
+exited normally: US has 22 checkpoints and each EU language has 24, totaling
+142 PNG + 142 PPM captures outside Git. This generates references; it is not
+a candidate comparison. Every language logged both Options entries, widescreen
+OFF/ON, fast-forward 3x/4x/OFF/2x, restart ON/OFF/ON, two closes and the restart
+request. US Options entry and US/EU-English post-restart captures were visually
+inspected: title on US and language selection on EU. Baseline event excerpts,
+paths and PNG hashes are in [baseline.json](evidence/menu-validation-2026-10-15/baseline.json).
+The five existing replay-tool tests passed in an isolated `uv` environment
+(system Python has no pytest). No candidate performance result is claimed yet.
+
+For repeated measurement, `--cycles 10 --performance` adds 80 cursor/value
+transitions before return/restart, without screenshots. Even cycle counts restore
+the toggled values so restart remains enabled. Use identical cycle counts across
+modes and repeated processes. Capturing runs keep the default zero extra cycles.
