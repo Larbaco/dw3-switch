@@ -1,0 +1,37 @@
+{
+  "candidate_reported": "dd5cdea",
+  "verification": "Recovered completed run; checked all captured files against baseline byte-for-byte on 2026-10-16. Existing binary attribution follows saved build log and timestamps; final candidate will be rebuilt independently.",
+  "source_log": "/mnt/cabal/tmp/menu-cpu-eu-fixed-visual.log",
+  "capture_directory": "/mnt/cabal/tmp/menu-validation-cpu-eu-fixed/20261015-220822",
+  "binary": "/mnt/cabal/tmp/menu-candidate-build-eu/dw3-pc",
+  "binary_sha256": "687b7500ae1d35d297fed22abd26358670c16c3b937ca4140a6929b32e8f9c39",
+  "method": "PC SDL GPU Vulkan, private Xvfb, recorded input, temporary saves; 30.0-31.3 seconds per EU language",
+  "scenarios": [
+    {
+      "scenario": "eu-lang-de",
+      "files": 48,
+      "byte_identical": 48
+    },
+    {
+      "scenario": "eu-lang-en",
+      "files": 48,
+      "byte_identical": 48
+    },
+    {
+      "scenario": "eu-lang-es",
+      "files": 48,
+      "byte_identical": 48
+    },
+    {
+      "scenario": "eu-lang-fr",
+      "files": 48,
+      "byte_identical": 48
+    },
+    {
+      "scenario": "eu-lang-it",
+      "files": 48,
+      "byte_identical": 48
+    }
+  ],
+  "coverage_limits": "Correctness only; no GPU execution timing, no OLED, no fallback/resize stress."
+}

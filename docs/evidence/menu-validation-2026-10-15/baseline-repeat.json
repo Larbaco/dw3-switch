@@ -1,0 +1,466 @@
+{
+  "artifact_directory": "/mnt/cabal/tmp/menu-validation-repeat/20261015-220302",
+  "comparison": "92 checks passed; zero pixels over 8/255 threshold",
+  "files": [
+    {
+      "scenario": "us-title",
+      "file": "title-options-focus.ppm",
+      "byte_identical": true
+    },
+    {
+      "scenario": "us-title",
+      "file": "turbo-3x.ppm",
+      "byte_identical": true
+    },
+    {
+      "scenario": "us-title",
+      "file": "options-open.png",
+      "byte_identical": true
+    },
+    {
+      "scenario": "us-title",
+      "file": "cursor-up-widescreen.png",
+      "byte_identical": true
+    },
+    {
+      "scenario": "us-title",
+      "file": "restart-on.ppm",
+      "byte_identical": true
+    },
+    {
+      "scenario": "us-title",
+      "file": "restart-on-again.png",
+      "byte_identical": true
+    },
+    {
+      "scenario": "us-title",
+      "file": "reopen-options.png",
+      "byte_identical": true
+    },
+    {
+      "scenario": "us-title",
+      "file": "restart-on.png",
+      "byte_identical": true
+    },
+    {
+      "scenario": "us-title",
+      "file": "cursor-turbo.ppm",
+      "byte_identical": true
+    },
+    {
+      "scenario": "us-title",
+      "file": "widescreen-on.png",
+      "byte_identical": true
+    },
+    {
+      "scenario": "us-title",
+      "file": "reopen-options.ppm",
+      "byte_identical": true
+    },
+    {
+      "scenario": "us-title",
+      "file": "cursor-restart.ppm",
+      "byte_identical": true
+    },
+    {
+      "scenario": "us-title",
+      "file": "widescreen-on.ppm",
+      "byte_identical": true
+    },
+    {
+      "scenario": "us-title",
+      "file": "cursor-up-turbo.png",
+      "byte_identical": true
+    },
+    {
+      "scenario": "us-title",
+      "file": "turbo-off.ppm",
+      "byte_identical": true
+    },
+    {
+      "scenario": "us-title",
+      "file": "turbo-4x.ppm",
+      "byte_identical": true
+    },
+    {
+      "scenario": "us-title",
+      "file": "restart-chord.png",
+      "byte_identical": true
+    },
+    {
+      "scenario": "us-title",
+      "file": "turbo-off.png",
+      "byte_identical": true
+    },
+    {
+      "scenario": "us-title",
+      "file": "return-again.ppm",
+      "byte_identical": true
+    },
+    {
+      "scenario": "us-title",
+      "file": "cursor-up-turbo.ppm",
+      "byte_identical": true
+    },
+    {
+      "scenario": "us-title",
+      "file": "return-title.ppm",
+      "byte_identical": true
+    },
+    {
+      "scenario": "us-title",
+      "file": "options-open.ppm",
+      "byte_identical": true
+    },
+    {
+      "scenario": "us-title",
+      "file": "after-restart.ppm",
+      "byte_identical": true
+    },
+    {
+      "scenario": "us-title",
+      "file": "return-again.png",
+      "byte_identical": true
+    },
+    {
+      "scenario": "us-title",
+      "file": "cursor-turbo.png",
+      "byte_identical": true
+    },
+    {
+      "scenario": "us-title",
+      "file": "menu.ppm",
+      "byte_identical": true
+    },
+    {
+      "scenario": "us-title",
+      "file": "after-restart.png",
+      "byte_identical": true
+    },
+    {
+      "scenario": "us-title",
+      "file": "widescreen-off.ppm",
+      "byte_identical": true
+    },
+    {
+      "scenario": "us-title",
+      "file": "restart-on-again.ppm",
+      "byte_identical": true
+    },
+    {
+      "scenario": "us-title",
+      "file": "cursor-up-widescreen.ppm",
+      "byte_identical": true
+    },
+    {
+      "scenario": "us-title",
+      "file": "menu.png",
+      "byte_identical": true
+    },
+    {
+      "scenario": "us-title",
+      "file": "cursor-restart.png",
+      "byte_identical": true
+    },
+    {
+      "scenario": "us-title",
+      "file": "widescreen-off.png",
+      "byte_identical": true
+    },
+    {
+      "scenario": "us-title",
+      "file": "restart-chord.ppm",
+      "byte_identical": true
+    },
+    {
+      "scenario": "us-title",
+      "file": "restart-off.ppm",
+      "byte_identical": true
+    },
+    {
+      "scenario": "us-title",
+      "file": "title.ppm",
+      "byte_identical": true
+    },
+    {
+      "scenario": "us-title",
+      "file": "turbo-4x.png",
+      "byte_identical": true
+    },
+    {
+      "scenario": "us-title",
+      "file": "turbo-2x.png",
+      "byte_identical": true
+    },
+    {
+      "scenario": "us-title",
+      "file": "title-options-focus.png",
+      "byte_identical": true
+    },
+    {
+      "scenario": "us-title",
+      "file": "turbo-2x.ppm",
+      "byte_identical": true
+    },
+    {
+      "scenario": "us-title",
+      "file": "turbo-3x.png",
+      "byte_identical": true
+    },
+    {
+      "scenario": "us-title",
+      "file": "restart-off.png",
+      "byte_identical": true
+    },
+    {
+      "scenario": "us-title",
+      "file": "title.png",
+      "byte_identical": true
+    },
+    {
+      "scenario": "us-title",
+      "file": "return-title.png",
+      "byte_identical": true
+    },
+    {
+      "scenario": "eu-lang-en",
+      "file": "title-options-focus.ppm",
+      "byte_identical": true
+    },
+    {
+      "scenario": "eu-lang-en",
+      "file": "turbo-3x.ppm",
+      "byte_identical": true
+    },
+    {
+      "scenario": "eu-lang-en",
+      "file": "options-open.png",
+      "byte_identical": true
+    },
+    {
+      "scenario": "eu-lang-en",
+      "file": "cursor-up-widescreen.png",
+      "byte_identical": true
+    },
+    {
+      "scenario": "eu-lang-en",
+      "file": "restart-on.ppm",
+      "byte_identical": true
+    },
+    {
+      "scenario": "eu-lang-en",
+      "file": "restart-on-again.png",
+      "byte_identical": true
+    },
+    {
+      "scenario": "eu-lang-en",
+      "file": "reopen-options.png",
+      "byte_identical": true
+    },
+    {
+      "scenario": "eu-lang-en",
+      "file": "restart-on.png",
+      "byte_identical": true
+    },
+    {
+      "scenario": "eu-lang-en",
+      "file": "cursor-turbo.ppm",
+      "byte_identical": true
+    },
+    {
+      "scenario": "eu-lang-en",
+      "file": "widescreen-on.png",
+      "byte_identical": true
+    },
+    {
+      "scenario": "eu-lang-en",
+      "file": "reopen-options.ppm",
+      "byte_identical": true
+    },
+    {
+      "scenario": "eu-lang-en",
+      "file": "cursor-restart.ppm",
+      "byte_identical": true
+    },
+    {
+      "scenario": "eu-lang-en",
+      "file": "widescreen-on.ppm",
+      "byte_identical": true
+    },
+    {
+      "scenario": "eu-lang-en",
+      "file": "cursor-up-turbo.png",
+      "byte_identical": true
+    },
+    {
+      "scenario": "eu-lang-en",
+      "file": "turbo-off.ppm",
+      "byte_identical": true
+    },
+    {
+      "scenario": "eu-lang-en",
+      "file": "turbo-4x.ppm",
+      "byte_identical": true
+    },
+    {
+      "scenario": "eu-lang-en",
+      "file": "restart-chord.png",
+      "byte_identical": true
+    },
+    {
+      "scenario": "eu-lang-en",
+      "file": "turbo-off.png",
+      "byte_identical": true
+    },
+    {
+      "scenario": "eu-lang-en",
+      "file": "return-again.ppm",
+      "byte_identical": true
+    },
+    {
+      "scenario": "eu-lang-en",
+      "file": "cursor-up-turbo.ppm",
+      "byte_identical": true
+    },
+    {
+      "scenario": "eu-lang-en",
+      "file": "return-title.ppm",
+      "byte_identical": true
+    },
+    {
+      "scenario": "eu-lang-en",
+      "file": "options-open.ppm",
+      "byte_identical": true
+    },
+    {
+      "scenario": "eu-lang-en",
+      "file": "after-restart.ppm",
+      "byte_identical": true
+    },
+    {
+      "scenario": "eu-lang-en",
+      "file": "return-again.png",
+      "byte_identical": true
+    },
+    {
+      "scenario": "eu-lang-en",
+      "file": "cursor-turbo.png",
+      "byte_identical": true
+    },
+    {
+      "scenario": "eu-lang-en",
+      "file": "menu.ppm",
+      "byte_identical": true
+    },
+    {
+      "scenario": "eu-lang-en",
+      "file": "after-restart.png",
+      "byte_identical": true
+    },
+    {
+      "scenario": "eu-lang-en",
+      "file": "widescreen-off.ppm",
+      "byte_identical": true
+    },
+    {
+      "scenario": "eu-lang-en",
+      "file": "restart-on-again.ppm",
+      "byte_identical": true
+    },
+    {
+      "scenario": "eu-lang-en",
+      "file": "cursor-up-widescreen.ppm",
+      "byte_identical": true
+    },
+    {
+      "scenario": "eu-lang-en",
+      "file": "menu.png",
+      "byte_identical": true
+    },
+    {
+      "scenario": "eu-lang-en",
+      "file": "cursor-restart.png",
+      "byte_identical": true
+    },
+    {
+      "scenario": "eu-lang-en",
+      "file": "widescreen-off.png",
+      "byte_identical": true
+    },
+    {
+      "scenario": "eu-lang-en",
+      "file": "restart-chord.ppm",
+      "byte_identical": true
+    },
+    {
+      "scenario": "eu-lang-en",
+      "file": "select-default.ppm",
+      "byte_identical": true
+    },
+    {
+      "scenario": "eu-lang-en",
+      "file": "restart-off.ppm",
+      "byte_identical": true
+    },
+    {
+      "scenario": "eu-lang-en",
+      "file": "select-cursor.png",
+      "byte_identical": true
+    },
+    {
+      "scenario": "eu-lang-en",
+      "file": "title.ppm",
+      "byte_identical": true
+    },
+    {
+      "scenario": "eu-lang-en",
+      "file": "turbo-4x.png",
+      "byte_identical": true
+    },
+    {
+      "scenario": "eu-lang-en",
+      "file": "turbo-2x.png",
+      "byte_identical": true
+    },
+    {
+      "scenario": "eu-lang-en",
+      "file": "title-options-focus.png",
+      "byte_identical": true
+    },
+    {
+      "scenario": "eu-lang-en",
+      "file": "turbo-2x.ppm",
+      "byte_identical": true
+    },
+    {
+      "scenario": "eu-lang-en",
+      "file": "select-cursor.ppm",
+      "byte_identical": true
+    },
+    {
+      "scenario": "eu-lang-en",
+      "file": "turbo-3x.png",
+      "byte_identical": true
+    },
+    {
+      "scenario": "eu-lang-en",
+      "file": "select-default.png",
+      "byte_identical": true
+    },
+    {
+      "scenario": "eu-lang-en",
+      "file": "restart-off.png",
+      "byte_identical": true
+    },
+    {
+      "scenario": "eu-lang-en",
+      "file": "title.png",
+      "byte_identical": true
+    },
+    {
+      "scenario": "eu-lang-en",
+      "file": "return-title.png",
+      "byte_identical": true
+    }
+  ]
+}
