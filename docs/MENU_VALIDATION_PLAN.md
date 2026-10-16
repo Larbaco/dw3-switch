@@ -82,3 +82,23 @@ measurements will pin `/usr/share/vulkan/icd.d/lvp_icd.json` (Mesa 25.2.8,
 LLVM 20.1.2). US reference replay with this pin passes all 44 image comparisons.
 The original visual baseline is therefore reusable; every timing baseline and
 candidate must run with the same explicit pin. No RADV timings are usable.
+
+The profiler rejects empty CSVs and recordings without both cursor and value
+events. Eight tooling tests now pass, including these false-success guards.
+
+## CPU prototype first verification
+
+`4dda8ee` failed 13 US PNG checkpoints after the first change (up to 101,387
+pixels over tolerance). Review identified a wrong destination X in partial
+uploads. The corrected `dd5cdea` passes all 44 US PNG/PPM checks byte-for-byte.
+This run used the developer's default-build US binary only for correctness and
+counters; performance will use independently built Release binaries for both
+discs with identical flags.
+
+[CPU counters](evidence/menu-validation-2026-10-15/cpu-a-us-counters.json), taken
+from this screenshot run, show idle without raster/upload/rebuild/allocation,
+cursor updates of 434,304 bytes in three rectangles, and value updates of
+29,952 bytes in one rectangle. Cursor/value events still allocate one transfer
+buffer each. First close includes one full 2,764,800-byte update; its source
+must be distinguished from Options-cache invalidation. These are workload
+counts, not accepted timing measurements.

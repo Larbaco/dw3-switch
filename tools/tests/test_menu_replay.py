@@ -32,3 +32,20 @@ def test_odd_cycles_cannot_silently_disable_restart(tmp_path):
                             capture_output=True, text=True)
     assert result.returncode != 0
     assert 'even' in result.stderr
+
+
+def test_profile_rejects_empty_or_incomplete_events(tmp_path, monkeypatch):
+    monkeypatch.syspath_prepend(str(ROOT / 'tools/replay'))
+    import profile_menu
+    import pytest
+    empty = tmp_path / 'empty.csv'
+    empty.write_text('event,raster_us\n')
+    with pytest.raises(ValueError, match='empty'):
+        profile_menu.summarize(empty)
+    empty.write_text('event,raster_us\noptions-idle,0\n')
+    with pytest.raises(ValueError, match='missing required'):
+        profile_menu.summarize(empty)
+    empty.write_text('event,raster_us\noptions-cursor,2\noptions-value,1\n')
+    result = profile_menu.summarize(empty)
+    assert result['events']['options-cursor']['raster_us']['median'] == 2
+    assert result['gpu_execution_time'] == 'unavailable'

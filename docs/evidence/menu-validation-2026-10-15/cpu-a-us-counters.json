@@ -1,0 +1,123 @@
+{
+  "candidate": "dd5cdea",
+  "source_csv": "/mnt/cabal/tmp/menu-cpu-us-fixed-visual.csv",
+  "counters_only": "screenshot run excludes timing acceptance",
+  "events": {
+    "options-close": {
+      "n": 2,
+      "upload_bytes": [
+        0,
+        2764800
+      ],
+      "rebuilds": [
+        0,
+        1
+      ],
+      "allocations": [
+        0,
+        1
+      ],
+      "dirty_pixels": [
+        0
+      ],
+      "dirty_copies": [
+        0
+      ]
+    },
+    "options-cursor": {
+      "n": 4,
+      "upload_bytes": [
+        434304
+      ],
+      "rebuilds": [
+        0
+      ],
+      "allocations": [
+        1
+      ],
+      "dirty_pixels": [
+        108576
+      ],
+      "dirty_copies": [
+        3
+      ]
+    },
+    "options-idle": {
+      "n": 485,
+      "upload_bytes": [
+        0
+      ],
+      "rebuilds": [
+        0
+      ],
+      "allocations": [
+        0
+      ],
+      "dirty_pixels": [
+        0
+      ],
+      "dirty_copies": [
+        0
+      ]
+    },
+    "options-open": {
+      "n": 2,
+      "upload_bytes": [
+        0,
+        2764800
+      ],
+      "rebuilds": [
+        0,
+        1
+      ],
+      "allocations": [
+        0,
+        3
+      ],
+      "dirty_pixels": [
+        0,
+        691200
+      ],
+      "dirty_copies": [
+        0,
+        1
+      ]
+    },
+    "options-value": {
+      "n": 9,
+      "upload_bytes": [
+        29952
+      ],
+      "rebuilds": [
+        0
+      ],
+      "allocations": [
+        1
+      ],
+      "dirty_pixels": [
+        7488
+      ],
+      "dirty_copies": [
+        1
+      ]
+    },
+    "title-idle": {
+      "n": 415,
+      "upload_bytes": [
+        0
+      ],
+      "rebuilds": [
+        0
+      ],
+      "allocations": [
+        0
+      ],
+      "dirty_pixels": [
+        0
+      ],
+      "dirty_copies": [
+        0
+      ]
+    }
+  }
+}

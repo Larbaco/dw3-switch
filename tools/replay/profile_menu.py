@@ -28,6 +28,11 @@ def stats(values):
 
 def summarize(path):
     rows = list(csv.DictReader(path.open()))
+    if not rows:
+        raise ValueError('empty profiling CSV')
+    missing = {'options-cursor', 'options-value'} - {r['event'] for r in rows}
+    if missing:
+        raise ValueError(f'missing required semantic events: {sorted(missing)}')
     if any(r['event'] == 'options-change' for r in rows):
         raise ValueError('ambiguous options-change telemetry; separate cursor and value events required')
     result = {'gpu_execution_time': 'unavailable', 'events': {}}
