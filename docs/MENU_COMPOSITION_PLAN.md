@@ -47,7 +47,9 @@ prove Switch performance.
 - A retains its static artwork and canvas, redraws only affected rectangles,
   and now reuses one full-canvas-sized SDL transfer buffer. The options
   generation advances only after all dirty uploads succeed, so closing and
-  reopening cannot incorrectly skip a required refresh.
+  reopening cannot incorrectly skip a required refresh. The two CPU canvases
+  are released by the overlay destroy callback; GPU-device recreation marks a
+  full upload pending so retained content is restored to a new texture.
 - B now has a PC SDL GPU atlas/retained-target prototype. It caches component
   artwork and the 375 cursor/value draw lists, then recomposes only when the
   semantic state or art generation changes. Failed resource setup falls back

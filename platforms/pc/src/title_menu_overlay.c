@@ -1400,6 +1400,13 @@ static void render_overlay(SDL_GPUCommandBuffer *cmd, SDL_GPURenderPass *pass) {
 
 static void destroy_overlay(void) {
     release_gpu_resources();
+    free(g_cpu_options_static);
+    free(g_cpu_options_canvas);
+    g_cpu_options_static = NULL;
+    g_cpu_options_canvas = NULL;
+    g_cpu_options_ready = 0;
+    g_cpu_options_valid = 0;
+    g_cpu_options_cursor = -1;
 }
 
 void dw3_pc_title_menu_overlay_register(void) {
