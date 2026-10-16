@@ -1,7 +1,8 @@
 # Native menu composition implementation plan
 
-Status: plan recorded on 2026-10-15 from `origin/main` at `6a02919`.
-Production behavior is unchanged until comparative evidence selects a path.
+Status: comparison prototypes are under evaluation on 2026-10-16 from
+`codex/menu-composition-luna`. Production behavior remains on the reference
+path unless the PC selector explicitly enables a prototype.
 
 ## Scope
 
@@ -40,6 +41,21 @@ prove Switch performance.
 5. Obtain Terra's review and the independent test report, address blockers,
    then open a PR against `main`. Leave OLED acceptance explicitly pending for
    the owner; do not publish a release or merge.
+
+## Implementation checkpoint
+
+- A retains its static artwork and canvas, redraws only affected rectangles,
+  and now reuses one full-canvas-sized SDL transfer buffer. The options
+  generation advances only after all dirty uploads succeed, so closing and
+  reopening cannot incorrectly skip a required refresh.
+- B now has a PC SDL GPU atlas/retained-target prototype. It caches component
+  artwork and the 375 cursor/value draw lists, then recomposes only when the
+  semantic state or art generation changes. Failed resource setup falls back
+  to the reference renderer.
+- The PC target compiles with both prototypes present. No visual or timing
+  result is claimed here; the independent replay workstream owns those checks.
+- B remains experimental until Terra review and balanced six-language replay
+  results decide whether it wins on correctness, performance, and complexity.
 
 The final candidate checkpoint must build standard and nxlink/HUD variants
 for both US and EU, with correct candidate metadata/version. The release
