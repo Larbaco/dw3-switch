@@ -7,6 +7,7 @@
 #include "title_overlay_lettering.inc"
 static uint8_t *canvas;
 static int stride;
+static int clip_x0,clip_y0,clip_x1=960,clip_y1=720;
 enum { LABEL_MAX_W = 440, LABEL_MAX_H = 48 };
 /* Runtime label masks (raw coverage), the Options language and the footer. */
 static uint8_t *label_mask[DW3_TITLE_LABEL_COUNT];
@@ -17,8 +18,13 @@ static unsigned art_generation;
 static unsigned options_generation;
 static int option_cursor;
 static int option_values[DW3_TITLE_OPTION_ROWS];
+enum { OPTIONS_LAYER_FULL, OPTIONS_LAYER_STATIC, OPTIONS_LAYER_FOCUS,
+       OPTIONS_LAYER_VALUE, OPTIONS_LAYER_DESCRIPTION };
+static int options_layer = OPTIONS_LAYER_FULL;
+static int options_layer_row;
 static void pixel(int x,int y,int r,int g,int b,int alpha) {
-    if(x<0||x>=960||y<0||y>=720||alpha<=0)return;
+    if(x<clip_x0||x>=clip_x1||y<clip_y0||y>=clip_y1||
+       x<0||x>=960||y<0||y>=720||alpha<=0)return;
     uint8_t *p=canvas+y*stride+x*4;
     int a=alpha+p[3]*(255-alpha)/255;
     if(!a)return;
@@ -180,8 +186,11 @@ static void options_screen(void) {
     const Word *title=&titles[options_lang==DW3_TITLE_LANG_DE?1:options_lang==DW3_TITLE_LANG_ES?2:
                               options_lang==DW3_TITLE_LANG_IT?3:0];
     const int x0=84,y0=108,w=792,h=528,x1=x0+w,y1=y0+h;
+    const int full=options_layer==OPTIONS_LAYER_FULL;
+    const int draw_static=full||options_layer==OPTIONS_LAYER_STATIC;
 
     /* The title backdrop stays, dimmed; the logo and the menu are gone. */
+    if(draw_static) {
     box(0,0,960,720,0,0,16,150);
     /* Window: white bezel shaded on its lower right, dark rim, blue-violet
      * inner line, navy body (the memory card window's colors). */
@@ -200,32 +209,37 @@ static void options_screen(void) {
         box(xs+30,a+30,x1-30-xs-30,3,0,66,156,255);
         word(title,xs+48,a+2-title->top,0,255,255,255);
     }
+    }
     /* Choices: label left, value right; the focused one sits in the game's
      * choice box with the pointer. */
     for(int i=0;i<DW3_TITLE_OPTION_ROWS;i++) {
         const int ry=y0+112+i*68,focus=i==option_cursor;
         int v=option_values[i];
-        if(focus){
+        if(focus&&(full||options_layer==OPTIONS_LAYER_FOCUS)){
             box(x0+48,ry-8,w-96,52,16,74,156,255);
             box(x0+51,ry-5,w-102,46,0,8,74,255);
             pointer(x0+66,ry+5);
         }
-        word(&rows[i],x0+106,ry,0,255,255,255);
+        if(draw_static||(options_layer==OPTIONS_LAYER_FOCUS&&
+                       i==options_layer_row))
+            word(&rows[i],x0+106,ry,0,255,255,255);
         if(v<0)v=0;
         if(v>4)v=4;
         if(i!=1&&v>1)v=1;
-        word(&values[v],x1-96,ry,1,v?255:150,v?255:158,v?255:196);
+        if(full||(options_layer==OPTIONS_LAYER_VALUE&&i==options_layer_row))
+            word(&values[v],x1-96,ry,1,v?255:150,v?255:158,v?255:196);
     }
     /* Message line for the focused choice, then the button hints. */
-    box(x0+30,y1-152,w-60,3,16,156,247,255);
-    if(option_cursor>=0&&option_cursor<DW3_TITLE_OPTION_ROWS)
+    if(draw_static)box(x0+30,y1-152,w-60,3,16,156,247,255);
+    if((full||options_layer==OPTIONS_LAYER_DESCRIPTION)&&
+       option_cursor>=0&&option_cursor<DW3_TITLE_OPTION_ROWS)
         word(&desc[option_cursor],x0+48,y1-128,0,255,255,255);
-    {
+    if(draw_static) {
         const int hy=y1-74,bx=x1-48-back.w,cx=bx-36-change.w-60;
         button(cx,hy+12,0);word(&change,cx+22,hy,0,255,255,255);
         button(bx-22,hy+12,1);word(&back,bx,hy,0,255,255,255);
+        box(x0+30,y1-36,w-60,3,0,66,156,255);
     }
-    box(x0+30,y1-36,w-60,3,0,66,156,255);
 }
 static void title_screen(void) {
     /* The original game logo is retained and framed by the PC integrator.
@@ -239,7 +253,8 @@ static void title_screen(void) {
     box(360,600,240,1,53,91,121,140);
 }
 void dw3_pc_title_overlay_art(uint8_t *rgba,int pitch,int selected) {
-    canvas=rgba;stride=pitch;for(int j=0;j<720;j++)memset(rgba+j*pitch,0,960*4);
+    canvas=rgba;stride=pitch;clip_x0=clip_y0=0;clip_x1=960;clip_y1=720;
+    for(int j=0;j<720;j++)memset(rgba+j*pitch,0,960*4);
     if(selected==DW3_TITLE_ART_OPTIONS){options_screen();return;}
     title_screen();
     if(selected<0) {
@@ -293,4 +308,29 @@ void dw3_pc_title_overlay_art(uint8_t *rgba,int pitch,int selected) {
         if(row==1&&options_lang==DW3_TITLE_LANG_IT){labels[1]=title_options_it;widths[1]=title_options_it_width;heights[1]=title_options_it_height;}
         text_mask(480,y+(h-heights[row])/2-1,labels[row],widths[row],heights[row],focus);
     }
+}
+
+void dw3_pc_title_overlay_options_component(uint8_t *rgba,int pitch,
+        int layer,int row,int value,int x,int y,int w,int h,int clear_region) {
+    const int old_cursor=option_cursor;
+    const int old_value=(row>=0&&row<DW3_TITLE_OPTION_ROWS)?option_values[row]:0;
+    if(!rgba||pitch<960*4||layer<OPTIONS_LAYER_STATIC||
+       layer>OPTIONS_LAYER_DESCRIPTION||x<0||y<0||w<=0||h<=0||
+       x+w>960||y+h>720)return;
+    canvas=rgba;stride=pitch;
+    clip_x0=x;clip_y0=y;clip_x1=x+w;clip_y1=y+h;
+    if(clear_region)
+        for(int j=y;j<y+h;j++)memset(rgba+j*pitch+x*4,0,(size_t)w*4);
+    options_layer=layer;
+    options_layer_row=row;
+    if(row>=0&&row<DW3_TITLE_OPTION_ROWS)option_cursor=row;
+    else option_cursor=-1;
+    if(layer==OPTIONS_LAYER_VALUE&&row>=0&&row<DW3_TITLE_OPTION_ROWS)
+        option_values[row]=value;
+    options_screen();
+    option_cursor=old_cursor;
+    if(row>=0&&row<DW3_TITLE_OPTION_ROWS)option_values[row]=old_value;
+    options_layer=OPTIONS_LAYER_FULL;
+    options_layer_row=0;
+    clip_x0=clip_y0=0;clip_x1=960;clip_y1=720;
 }
