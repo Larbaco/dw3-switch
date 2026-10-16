@@ -133,6 +133,13 @@ static void dw3_nxlink_stdio_shutdown(void) {
  */
 static void dw3_nx_vsync_pump(void) {
     static unsigned pumps;
+    static uint64_t last_dt_us;
+
+    /* P5.4: note frame-loop progress so a crash report can tell a boot fault
+     * from a mid-game fault. Two-word store, before anything that could
+     * fault in this pump. */
+    pumps++;
+    dw3_nx_crash_note_vsync(pumps, last_dt_us);
 
     dw3_nx_service_applet_quit();
 
@@ -157,6 +164,7 @@ static void dw3_nx_vsync_pump(void) {
 
         if (dw3_frame_dt_sample(&frame_dt, pumps, restore_now_us(), &dt_us)) {
             INFOF("frame dt us=%llu", (unsigned long long)dt_us);
+            last_dt_us = dt_us; /* report field: see dw3_nx_crash_note_vsync */
 #if DW3_NX_DEBUG_MOVIE
             /* Movie producer/consumer health for this 60-pump window: how many
              * STR frames the game actually took, how many the producer never

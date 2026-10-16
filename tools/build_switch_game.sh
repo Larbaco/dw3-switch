@@ -23,13 +23,16 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 IMAGE="${DW3_DK_IMAGE:-devkitpro/devkita64:latest}"
 NXLINK_STDIO=OFF
+DW3_NX_FORCE_CRASH=OFF
 DW3_VERSION="$(echo "${DW3_VERSION:-us}" | tr '[:upper:]' '[:lower:]')"
 
 usage() {
-  echo "usage: $0 [--eu] [--nxlink]"
-  echo "  default   US game NRO at build/switch/dw3-switch.nro"
-  echo "  --eu      EU game NRO at build/switch-eu/dw3-switch.nro"
-  echo "  --nxlink  nxlink development NRO (build/switch[-eu]-nxlink/)"
+  echo "usage: $0 [--eu] [--nxlink] [--force-crash]"
+  echo "  default       US game NRO at build/switch/dw3-switch.nro"
+  echo "  --eu          EU game NRO at build/switch-eu/dw3-switch.nro"
+  echo "  --nxlink      nxlink development NRO (build/switch[-eu]-nxlink/)"
+  echo "  --force-crash P5.4 smoke only: deliberate null write after boot"
+  echo "                (pair with --nxlink; never in release/preview NROs)"
 }
 
 while (( $# > 0 )); do
@@ -39,6 +42,9 @@ while (( $# > 0 )); do
       ;;
     --nxlink)
       NXLINK_STDIO=ON
+      ;;
+    --force-crash)
+      DW3_NX_FORCE_CRASH=ON
       ;;
     -h|--help)
       usage
@@ -56,6 +62,11 @@ done
 if [[ "${DW3_VERSION}" != "us" && "${DW3_VERSION}" != "eu" ]]; then
   echo "DW3_VERSION must be us or eu (got '${DW3_VERSION}')" >&2
   exit 2
+fi
+
+if [[ "${DW3_NX_FORCE_CRASH}" == "ON" && "${NXLINK_STDIO}" != "ON" ]]; then
+  echo "--force-crash without --nxlink: the NRO will fatal right after boot" \
+      "and there will be no live log; recommended: --nxlink --force-crash" >&2
 fi
 
 if [[ "${DW3_VERSION}" == "eu" ]]; then
@@ -131,6 +142,7 @@ docker run --rm \
   -e DW3_SWITCH_BUILD_DIR="${BUILD_DIR}" \
   -e DW3_NXLINK_STDIO="${NXLINK_STDIO}" \
   -e DW3_VERSION="${DW3_VERSION}" \
+  -e DW3_NX_FORCE_CRASH="${DW3_NX_FORCE_CRASH}" \
   -e DW3_NRO_VERSION="${DW3_NRO_VERSION}" \
   -e DW3_NACP_VERSION="${DW3_NACP_VERSION}" \
   -e GIT_CONFIG_COUNT=1 \
@@ -146,12 +158,17 @@ docker run --rm \
     -DCMAKE_BUILD_TYPE=Release \
     -DDW3_VERSION="$DW3_VERSION" \
     -DDW3_NXLINK_STDIO="$DW3_NXLINK_STDIO" \
+    -DDW3_NX_FORCE_CRASH="$DW3_NX_FORCE_CRASH" \
     -DDW3_NRO_VERSION="$DW3_NRO_VERSION" \
     -DDW3_NACP_VERSION="$DW3_NACP_VERSION" && \
     cmake --build "$DW3_SWITCH_BUILD_DIR" -j"$(nproc)"'
 
 if ! grep -F -x -q "DW3_NXLINK_STDIO:BOOL=${NXLINK_STDIO}" "${BUILD_DIR}/CMakeCache.txt"; then
   echo "CMake cache does not match requested nxlink mode (${NXLINK_STDIO})" >&2
+  exit 1
+fi
+if ! grep -F -x -q "DW3_NX_FORCE_CRASH:BOOL=${DW3_NX_FORCE_CRASH}" "${BUILD_DIR}/CMakeCache.txt"; then
+  echo "CMake cache does not match requested force-crash mode (${DW3_NX_FORCE_CRASH})" >&2
   exit 1
 fi
 if ! grep -F -q "DW3_VERSION:STRING=${DW3_VERSION}" "${BUILD_DIR}/CMakeCache.txt"; then
