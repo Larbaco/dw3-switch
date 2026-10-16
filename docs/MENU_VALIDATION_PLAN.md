@@ -52,3 +52,13 @@ For repeated measurement, `--cycles 10 --performance` adds 80 cursor/value
 transitions before return/restart, without screenshots. Even cycle counts restore
 the toggled values so restart remains enabled. Use identical cycle counts across
 modes and repeated processes. Capturing runs keep the default zero extra cycles.
+
+`tools/replay/profile_menu.py` launches the screenshot-free recordings in a
+private Xvfb, sequentially by repetition/mode/language. Supply both binaries,
+runtimes, `--scen-dir`, and `--out`; default modes are reference/cpu/gpu and
+three repetitions. It preserves raw CSV/logs outside Git and writes a JSON
+summary per event using `floor(.95*(n-1))` p95. Present-callback intervals are
+explicitly a proxy, not full-frame GPU time or input-to-photon latency. Seven
+replay-tool tests pass, including identical stress input with/without capture,
+unique/increasing checkpoint bounds and rejecting odd stress-cycle counts
+that would disable restart before the final chord.

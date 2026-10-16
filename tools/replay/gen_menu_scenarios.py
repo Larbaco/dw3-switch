@@ -30,7 +30,7 @@ def extend(rec, performance=False, cycles=0):
                             (0x40, 'down-restart'), (0x4000, 'toggle-restart'),
                             (0x10, 'up-turbo'), (0x4000, 'toggle-turbo'),
                             (0x10, 'up-wide'), (0x4000, 'toggle-wide')]:
-            repeated.append((490 + step, mask, f'cycle-{cycle:03d}-{label}'))
+            repeated.append((490 + step, mask, f'cycle-{cycle:03d}-{step // 12:03d}-{label}'))
             step += 12
     events = [(o + (step if o >= 490 else 0), m, n) for o, m, n in events]
     events = sorted(events + repeated)
