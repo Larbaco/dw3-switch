@@ -2,6 +2,8 @@
 #ifndef DW3_NX_CRASH_H
 #define DW3_NX_CRASH_H
 
+#include <stdint.h>
+
 #ifndef DW3_NX_FORCE_CRASH
 #define DW3_NX_FORCE_CRASH 0
 #endif
