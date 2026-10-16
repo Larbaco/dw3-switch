@@ -499,6 +499,16 @@ speed.
   Done when: a forced fault produces a readable report.
   **Status (2026-10-15):** in progress; the owner is investigating the
   crash-report path on hardware. Not ticked.
+  **Status (2026-10-16):** in progress; report path researched and small
+  code landed. `crash_report.txt` now rotates the previous run to
+  `crash_report_prev.txt`, and startup logs a "previous run crashed?"
+  latch. The report gains frame counters (`vsync_pumps`, `last_dt_us`
+  via `dw3_nx_crash_note_vsync`). `tools/build_switch_game.sh` gained a
+  `--force-crash` flag that passes `-DDW3_NX_FORCE_CRASH=ON` through the
+  cache (warns when used without `--nxlink`). Kernel-path analysis
+  (libnx user handler vs Atmosphere creport vs `fatal`) and the captured
+  field checklist are in
+  [P5.4_ERROR_REPORT.md](P5.4_ERROR_REPORT.md). Not ticked.
   **SD crash report (2026-10-12):** `__libnx_exception_handler` writes
   `sdmc:/switch/dw3/crash_report.txt` (version, reason, mode/stage file
   ids, PC/LR/FAR/ESR). Install from `boot_main` after SD+log open; does
@@ -506,7 +516,9 @@ speed.
   (soft default OFF). See [P5.4_CRASH.md](P5.4_CRASH.md).
   Owner crash reports from preview.26 are in
   [PREVIEW26_CRASH_RECORDS.md](PREVIEW26_CRASH_RECORDS.md) (#156).
-  **Still open:** on-screen assert overlay (HUD hook in
+  **Still open:** the forced-fault hardware run
+  (`build_switch_game.sh --nxlink --force-crash` producing a readable
+  `crash_report.txt`) and the on-screen assert overlay (HUD hook in
   [DEBUG_OVERLAY.md](DEBUG_OVERLAY.md) remains triage-only).
   Note: the P5.2 nxlink on-screen HUD (`DW3_NX_DEBUG_OVERLAY`) is not a
   substitute for this task.
