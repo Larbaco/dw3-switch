@@ -306,5 +306,20 @@
         "widescreen-on.png": "25d31c3bebb5ded184b75943e029a7974be4c66ad6724e866b894fc5422d98c0"
       }
     }
-  }
+  },
+  "binaries": {
+    "us": {
+      "path": "/mnt/cabal/tmp/dw3-menu-validation/build-us/dw3-pc",
+      "sha256": "afc185b7d5791e362da469e5352752baed27f628fc7ce316c4daace05dd8b911"
+    },
+    "eu": {
+      "path": "/mnt/cabal/tmp/dw3-menu-validation/build-eu/dw3-pc",
+      "sha256": "ac0f8d24061327a13a3a689dd7aba3af1d3884b51c5399602e56672bca53d635"
+    }
+  },
+  "compiler": "cc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+  "submodule_pins": [
+    " b9caa6cf9648ec331762cacfc7256f5d97d81e0a vendor/dw3_decomp (b9caa6c)",
+    " fabc2bf87ad9ad43807ea599cd81a92a19bcc20a vendor/psyz (remotes/origin/dw3-pal-aspect)"
+  ]
 }

@@ -16,7 +16,7 @@ import time
 import replay_tests as replay
 
 FIELDS = ('raster_us', 'staging_us', 'submit_us', 'wait_us', 'overlay_cpu_us',
-          'present_interval_us', 'upload_bytes', 'allocations', 'rebuilds',
+          'present_interval_us', 'state_update_to_draw_us', 'upload_bytes', 'allocations', 'rebuilds',
           'dirty_pixels', 'dirty_copies')
 
 

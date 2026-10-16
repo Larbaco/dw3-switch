@@ -62,3 +62,10 @@ explicitly a proxy, not full-frame GPU time or input-to-photon latency. Seven
 replay-tool tests pass, including identical stress input with/without capture,
 unique/increasing checkpoint bounds and rejecting odd stress-cycle counts
 that would disable restart before the final chord.
+
+A second US + EU-English run passed all 92 PNG/PPM comparisons with zero pixels
+above the configured tolerance; [baseline-repeat.json](evidence/menu-validation-2026-10-15/baseline-repeat.json)
+records exact file-byte equality separately. Binary hashes, compiler and pinned
+submodules are recorded with the baseline metadata. Telemetry may additionally
+provide `state_update_to_draw_us`; this measures CPU state update to overlay
+draw callback and is not input-to-photon or completed GPU presentation.
