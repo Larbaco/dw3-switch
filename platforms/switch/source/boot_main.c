@@ -196,8 +196,10 @@ static void dw3_nx_vsync_pump(void) {
      * VSync(3) in src/engine/system/main.c), then one per frame; a count that
      * stops at 3 says the game never reached the loop's first frame, and which
      * call it stopped on says what it was doing. Logged one by one up to 16 and
-     * then at powers of two, so a healthy boot stays logarithmic. */
-    pumps++;
+     * then at powers of two, so a healthy boot stays logarithmic. The count
+     * was already advanced once at the top of this function (before the P5.4
+     * crash note); advancing it again here made every "60-pump" window 30
+     * frames long and doubled the HUD fps (preview.29). */
     if (pumps <= 16 || (pumps & (pumps - 1)) == 0) {
         INFOF("vsync pump #%u", pumps);
     }
