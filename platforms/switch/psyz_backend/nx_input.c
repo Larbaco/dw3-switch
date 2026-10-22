@@ -214,3 +214,7 @@ void Psyz_PadsPoll(void) {
 }
 
 uint64_t dw3_nx_input_buttons_raw(void) { return (uint64_t)s_last_buttons; }
+
+uint32_t dw3_nx_input_style_set(void) {
+    return (uint32_t)padGetStyleSet(&s_pad);
+}

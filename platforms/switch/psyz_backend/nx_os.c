@@ -57,6 +57,10 @@ uintptr_t Psyz_OsThreadSelf(void) {
 void *Psyz_OsLockCreate(void) {
     Mutex *m = malloc(sizeof(*m));
     if (!m) {
+        /* The KernelInit aggregate warning does not say which object failed;
+         * name it here so the next hardware log distinguishes OOM from the
+         * event path. See docs/NX_KERNEL_SYNC_OBJECTS.md. */
+        DW3_NX_ERROR("OsLockCreate: malloc failed (post_lock/kernel_lock)");
         return NULL;
     }
     mutexInit(m);
@@ -77,12 +81,22 @@ void Psyz_OsUnlock(void *lock) {
 
 void *Psyz_OsBellCreate(void) {
     Event *ev = malloc(sizeof(*ev));
+    Result rc;
+
     if (!ev) {
+        DW3_NX_ERROR("OsBellCreate: malloc failed (bell_events/bell_irq)");
         return NULL;
     }
     /* autoclear gives exactly the documented "auto-reset signal: a ring wakes
      * one waiter, or the next one to wait". */
-    if (R_FAILED(eventCreate(ev, true))) {
+    rc = eventCreate(ev, true);
+    if (R_FAILED(rc)) {
+        /* KernelInit's aggregate warning hides the failing object and the rc;
+         * svcCreateEvent reserves from the process event resource limit, so a
+         * limit/OUT-OF-RESOURCE code here is the probable cause of
+         * "cannot create the kernel synchronisation objects". See
+         * docs/NX_KERNEL_SYNC_OBJECTS.md. */
+        DW3_NX_ERROR("OsBellCreate: eventCreate failed rc=0x%x", rc);
         free(ev);
         return NULL;
     }

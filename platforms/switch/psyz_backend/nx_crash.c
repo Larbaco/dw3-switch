@@ -2,9 +2,12 @@
  *
  * Provides __libnx_exception_handler + a larger __nx_exception_stack so a CPU
  * fault writes a readable report under sdmc:/switch/dw3/crash_report.txt
- * (mode/stage file ids + PC/LR/FAR/ESR). The sink is opened on the main
- * thread at install time via libnx fsFileWrite — no stdio lock in the
- * handler. Soft default: handler always linked; forced fault is opt-in.
+ * (mode/stage file ids, vsync frame counters, PC/LR/FAR/ESR). The sink is
+ * opened on the main thread at install time via libnx fsFileWrite — no stdio
+ * lock in the handler. Install also rotates a report left over from the
+ * previous run to crash_report_prev.txt and latches its summary into the log,
+ * so one crash does not overwrite the next. Soft default: handler always
+ * linked; forced fault is opt-in.
  */
 #include "nx_crash.h"
 
@@ -31,8 +34,10 @@
 
 /* Device-relative path for FsFileSystem ("sdmc:" is the mount name). */
 #define DW3_NX_CRASH_FS_PATH "/switch/dw3/crash_report.txt"
+#define DW3_NX_CRASH_FS_PATH_PREV "/switch/dw3/crash_report_prev.txt"
 #define DW3_NX_CRASH_LOG_HINT "sdmc:/switch/dw3/dw3.log"
 #define DW3_NX_CRASH_REPORT_HINT "sdmc:/switch/dw3/crash_report.txt"
+#define DW3_NX_CRASH_PREV_HINT "sdmc:/switch/dw3/crash_report_prev.txt"
 
 /* Larger than libnx's weak 0x400 default — handler formatting needs room. */
 alignas(16) u8 __nx_exception_stack[0x4000];
@@ -44,6 +49,11 @@ static FsFile s_crash_file;
 static int s_crash_file_ok;
 static s64 s_crash_off;
 static volatile int s_in_handler;
+/* Frame-loop progress noted from the vsync pump (report-only; no locking:
+ * the handler runs on whichever thread faulted, and a torn value is an
+ * acceptable cost for two counters). */
+static volatile uint32_t s_note_pumps;
+static volatile uint64_t s_note_dt_us;
 
 static void crash_emit(const char *buf, int len) {
     if (len <= 0) {
@@ -115,6 +125,11 @@ static void crash_write_body(const char *reason, const ThreadExceptionDump *ctx)
     crash_printf("reason: %s\n", reason ? reason : "(none)");
     crash_printf("mode_file: 0x%x\n", (unsigned)mode_file);
     crash_printf("stage_file: 0x%x\n", (unsigned)stage_file);
+    /* Frame-loop liveness at the fault: pumps completed and the last sampled
+     * 60-pump frame dt (0 = the fault hit before the first sample). */
+    crash_printf("vsync_pumps: %u\n", (unsigned)s_note_pumps);
+    crash_printf("last_dt_us: %llu\n",
+                 (unsigned long long)s_note_dt_us);
     crash_printf("log: %s\n", DW3_NX_CRASH_LOG_HINT);
     crash_printf("report: %s\n", DW3_NX_CRASH_REPORT_HINT);
 
@@ -165,7 +180,108 @@ static int crash_open_sink(void) {
     return 1;
 }
 
+/* Copy the value of "key" (a whole line in the report) into out (NUL-ended).
+ * The head buffer is writable, so value scanning + newline stripping is safe. */
+static void crash_scan_field(char *head, const char *key, char *out,
+                             size_t out_sz) {
+    const char *line;
+    const char *val;
+    size_t klen = strlen(key);
+    size_t i;
+
+    line = head;
+    while ((val = strstr(line, key)) != NULL) {
+        /* Require the key at the start of a line: a value occurrence of a
+         * shorter key (mode_file inside stage_file) must not match. */
+        if (val == head || val[-1] == '\n') {
+            break;
+        }
+        line = val + 1;
+    }
+    if (val == NULL) {
+        snprintf(out, out_sz, "(none)");
+        return;
+    }
+    val += klen;
+    for (i = 0; i + 1 < out_sz && val[i] != '\0' && val[i] != '\n'; i++) {
+        out[i] = val[i];
+    }
+    out[i] = '\0';
+    if (i == 0) {
+        snprintf(out, out_sz, "(none)");
+    }
+}
+
+/* Startup "previous run crashed?" latch: before the sink is truncated, move
+ * the previous report to crash_report_prev.txt and log its first fields.
+ * Keeps one previous report (overwrite on a crash pair run); archival copies
+ * stay the owner's evidence flow (AGENTS machine rule 9). */
+static void crash_latch_previous(void) {
+    FsFileSystem *fs = fsdevGetDeviceFileSystem("sdmc");
+    FsFile prev;
+    char head[0x200];
+    u64 n = 0;
+    Result rc;
+
+    if (!fs) {
+        return; /* No SD mount: nothing could have been written there. */
+    }
+    rc = fsFsOpenFile(fs, DW3_NX_CRASH_FS_PATH, FsOpenMode_Read, &prev);
+    if (R_FAILED(rc)) {
+        return; /* Nothing left from a previous run (normal boot path). */
+    }
+    if (R_FAILED(fsFileRead(&prev, 0, head, sizeof(head) - 1,
+                            FsReadOption_None, &n))) {
+        fsFileClose(&prev);
+        return;
+    }
+    fsFileClose(&prev);
+    if (n == 0 || n > sizeof(head) - 1) {
+        return;
+    }
+    head[n] = '\0';
+    if (memcmp(head, "dw3-switch crash report", 23) != 0) {
+        return; /* Not our file; leave the bytes alone. */
+    }
+
+    /* Overwrite-protect the copy, then rotate. Delete-before-rename because
+     * FAT rename semantics on an existing target are middleware-dependent. */
+    fsFsDeleteFile(fs, DW3_NX_CRASH_FS_PATH_PREV);
+    if (R_FAILED(fsFsRenameFile(fs, DW3_NX_CRASH_FS_PATH,
+                                DW3_NX_CRASH_FS_PATH_PREV))) {
+        psyz_log(2, __FILE__, __LINE__, __func__,
+                 "crash report rotation failed; keep both %s files before "
+                 "the next run", DW3_NX_CRASH_REPORT_HINT);
+        return;
+    }
+    {
+        /* Report fields are one per line (see crash_write_body). Extract the
+         * first four and say them in one log line. */
+        char version[40];
+        char reason[64];
+        char mode[32];
+        char stage[32];
+
+        crash_scan_field(head, "version: ", version, sizeof(version));
+        crash_scan_field(head, "reason: ", reason, sizeof(reason));
+        crash_scan_field(head, "mode_file: ", mode, sizeof(mode));
+        crash_scan_field(head, "stage_file: ", stage, sizeof(stage));
+        psyz_log(1, __FILE__, __LINE__, __func__,
+                 "previous run crashed: version=%s reason=%s mode_file=%s "
+                 "stage_file=%s (kept: %s)",
+                 version, reason, mode, stage, DW3_NX_CRASH_PREV_HINT);
+    }
+}
+
+void dw3_nx_crash_note_vsync(uint32_t pumps, uint64_t last_dt_us) {
+    s_note_pumps = pumps;
+    s_note_dt_us = last_dt_us;
+}
+
 void dw3_nx_crash_install(void) {
+    /* Rotate + latch any report left over from a previous run before
+     * crash_open_sink() truncates the live path. */
+    crash_latch_previous();
     /* Avoid PSY-Z INFOF here: this TU must stay free of <psyz.h> libc wraps. */
     if (crash_open_sink()) {
         psyz_log(1, __FILE__, __LINE__, __func__,

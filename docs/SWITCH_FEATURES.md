@@ -26,7 +26,7 @@ for **residual** Switch-only UX after those phases land. Hosts stay thin:
 
 | Item | Default | Notes |
 |---|---|---|
-| Focus loss: pause audio/logic; clamp time delta on resume | always on | Complements P5.3 flush; prevents battle/CD jumps after sleep |
+| Focus loss: pause audio/logic; clamp time delta on resume | always on | Complements P5.3 flush; prevents battle/CD jumps after sleep. Event map + wiring: [P5.3_HOME_QUIT.md](P5.3_HOME_QUIT.md) |
 | Confirm/Cancel layout (PS positional vs Nintendo A/B) | PS positional | Toggle in Phase 9 |
 | System language → EU `LANGUAGE` hint | off / follow stock boot | Override still via `CNTY_SEL` / packs |
 | `swkbd` for tamer name | off | Filter to game charset/font |
