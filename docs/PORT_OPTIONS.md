@@ -46,6 +46,7 @@ explicitly marked N/A in this note.
 | Community QoL parity | Share EXP, quest log HUD, NPC bubbles, Fast Start, … | Phase 7 |
 | Texture packs | Enable overlay / select pack name | Phase 8 |
 | Audio | **Music volume** and **SFX volume**, 0..10 steps, default 10 = the original mix ([P6.17](P6.17_VOLUME.md)) | Phase 6 |
+| Pacing | **Encounter rate** (1x / 0.5x / OFF) and **Text speed** (Normal / Fast / Instant), both default to the original game ([P6.18](P6.18_PACING.md)) | Phase 6 |
 | Switch host | Rumble on/intensity, confirm A/B layout, `swkbd` name, CRT/sharp, system-language hint | Phase 10 (+ P4.4 / P5.3 always-on lifecycle) |
 | Restart game | Optional L1 + R1 + Start + Select in the shared PS1 pad map; OFF by default | Phase 6.9 |
 
@@ -62,6 +63,9 @@ kept. OFF disables R3. See [P6.4_FAST_FORWARD.md](P6.4_FAST_FORWARD.md).
 The two volume rows default to **10**, which leaves the audio output
 bit-identical to a build without them (unity gain, the mixer skips the
 multiply). See [P6.17_VOLUME.md](P6.17_VOLUME.md).
+The two pacing rows default to **1x** and **Normal**: the hooks (patches 0062
+and 0063) only report to the port, so a run with the defaults is
+pixel-identical to a build without them. See [P6.18_PACING.md](P6.18_PACING.md).
 
 Always-on (not toggles; see [SWITCH_FEATURES.md](SWITCH_FEATURES.md)):
 focus-loss pause + delta clamp, memcard write-through/flush, rotating
@@ -94,6 +98,8 @@ fast_forward=2
 restart_hotkey=0
 music_volume=10
 sfx_volume=10
+encounter_rate=0
+text_speed=0
 end=1
 ```
 
@@ -104,9 +110,9 @@ Rules, implemented in `port/options/options_cfg.c` and `port/options/port_option
 
 | Case | Behaviour |
 |---|---|
-| No file | Defaults (Widescreen ON, Fast-forward 2x armed, Restart hotkey OFF, Music volume 10, SFX volume 10). The file is first written on the first change, not at boot. |
+| No file | Defaults (Widescreen ON, Fast-forward 2x armed, Restart hotkey OFF, Music volume 10, SFX volume 10, Encounter rate 1x, Text speed Normal). The file is first written on the first change, not at boot. |
 | Missing key | That option keeps its default. |
-| Invalid value (not an integer, or out of range: Fast-forward must be 0 or 2..4, the volumes 0..10, the others 0 or 1) | That option falls back to its default and a `dw3-options: <key>=<v> is not valid` line is logged. The bad line is replaced on the next save. |
+| Invalid value (not an integer, or out of range: Fast-forward must be 0 or 2..4, the volumes 0..10, `encounter_rate` and `text_speed` 0..2, the others 0 or 1) | That option falls back to its default and a `dw3-options: <key>=<v> is not valid` line is logged. The bad line is replaced on the next save. |
 | Malformed line, over-long key or value, junk | Skipped and counted (`ignored N malformed line(s)` in the log). |
 | File over 4 KiB, or unreadable | Defaults, logged; the next change replaces it. |
 | Unknown key | Ignored by the game, kept in memory and written back in its original position, so a build with fewer rows does not delete a newer build's settings (up to 48 keys). |
@@ -114,7 +120,14 @@ Rules, implemented in `port/options/options_cfg.c` and `port/options/port_option
 | Duplicate key | The last one wins. |
 
 A file written before P6.17 has no `music_volume` / `sfx_volume` keys; both
-read as 10, and the first change adds them without touching the rest.
+read as 10, and the first change adds them without touching the rest. A file
+written before P6.18 has no `encounter_rate` / `text_speed` keys; they read as
+0 (1x, Normal) the same way.
+
+`encounter_rate`: 0 = 1x (the game), 1 = 0.5x, 2 = OFF (no random battles).
+`text_speed`: 0 = Normal (the game), 1 = Fast, 2 = Instant. Both are integers
+so the file never holds a word that a later build would have to keep
+understanding.
 
 Adding a row means one entry in the registry table (`key`, default, valid
 range); nothing else in the store changes.
@@ -127,7 +140,8 @@ range); nothing else in the store changes.
   values from the first frame (widescreen applies at boot, not after the
   first visit to Options). The log line is
   `dw3-options: <path> (widescreen=W fast_forward=F restart_hotkey=R
-  music_volume=M sfx_volume=S)` (PC stderr; Switch `dw3.log`). The volumes
+  music_volume=M sfx_volume=S encounter_rate=E text_speed=T)` (PC stderr;
+  Switch `dw3.log`). The volumes
   are handed to the SPU mixer at the same point (`dw3-audio:` line when they
   are not 10).
 - **Save: on every change**, i.e. each Confirm on a row, not on leaving the
@@ -143,14 +157,16 @@ range); nothing else in the store changes.
   registry already equals it. A host relaunch (PC restart, return from
   hbmenu) reads it again.
 - Left / Right on a volume row save at once like any other change, so
-  holding a direction writes the file once per step (a few bytes each).
+  holding a direction writes the file once per step (a few bytes each). The
+  Encounter rate and Text speed rows do the same.
 - Fast-forward's *row* (OFF / 2x / 3x / 4x) is saved. Whether R3 currently
   has it running is not: the game always starts at normal speed.
 
 ### Per-run overrides are not saved
 
-`DW3_WIDESCREEN=0|1`, `DW3_TURBO=0|2|3|4` and `DW3_MUSIC_VOLUME=0..10` /
-`DW3_SFX_VOLUME=0..10` (an invalid value is ignored) still force a value for
+`DW3_WIDESCREEN=0|1`, `DW3_TURBO=0|2|3|4`, `DW3_MUSIC_VOLUME=0..10` /
+`DW3_SFX_VOLUME=0..10` and `DW3_ENCOUNTER_RATE=0..2` / `DW3_TEXT_SPEED=0..2`
+(an invalid value is ignored) still force a value for
 that run (tests, replay recordings, audio measurements). They win over the file, but another toggle on
 the Options screen writes the value the file had for the forced row, not the
 forced one. Toggling the forced row itself is a user choice and is saved.
@@ -195,6 +211,14 @@ clean save files. See [P6.9_RESTART.md](P6.9_RESTART.md).
   (P6.17): Music volume 10 -> 7 and SFX volume 10 -> 3 with Left in one
   process, read back by the next; the manifest requires the `saved ...
   music_volume=7 sfx_volume=3` and the read-back lines in each phase's log.
+- `tools/replay_tests.sh --only us-pacing-persist --only eu-pacing-persist`
+  (P6.18, log-only: no reference captures): Encounter rate 1x -> 0.5x and Text
+  speed Normal -> Instant in one process, read back by the next; the manifest
+  requires the `saved ... encounter_rate=1 text_speed=2` and the read-back
+  line. The unit tests add the two rows (defaults, Left / Right / Confirm
+  steps with clamping and wrap, round trip, bad values, a file from before
+  P6.18, `DW3_ENCOUNTER_RATE` / `DW3_TEXT_SPEED` not saved by an unrelated
+  change, key order).
 - OLED: pending. Toggle, HOME, close the game, relaunch from hbmenu.
 
 ## Entry investigation (P9.2)
@@ -480,6 +504,30 @@ volume rows from every cursor row against the full reference render, so the
 dirty rectangles still cover everything. The generated lettering for the new
 words is in `title_overlay_lettering.inc` (`tools/generate_pc_title_lettering.py`;
 the earlier entries are byte-identical).
+
+**Seven rows (P6.18).** Encounter rate (1x / 0.5x / OFF) and Text speed
+(Normal / Fast / Instant) are rows 6 and 7, appended so the registry indexes of
+the first five stay. Seven rows no longer fit at the P6.17 pitch, so the screen
+uses a compact list instead of scrolling or pages: the window is 600 px high
+(y 60..660 of the 720 px canvas, 60 px free above and below, which keeps it
+on screen at 4:3 on PC and on the Switch), a row is 42 px high on a 48 px pitch
+(it was 52 on 60), and the row, value and button text is 26 px lettering
+(it was 30). Seven rows, the message line and the hints all stay on one
+screen, so Up / Down and the cache work as before; a scrolling list would have
+redrawn every visible row on each scroll and a tab would have added a second
+canvas and a new input. Values: Encounter rate `1x` / `0.5x` / greyed `OFF`;
+Text speed `Normal` / `Fast` / `Instant`. On both rows Left / Right step (no
+wrap) and Cross / Circle step up and wrap. The message lines are 618 and 626 px
+wide ("Random battles only; story and boss battles stay." and "How fast
+dialogue is typed out. Normal = original."), inside the 696 px message box.
+The cache keeps its three rectangles for a cursor move (the two 696x42 rows
+and the 696x52 message line, 0.37 MB against 2.76 MB for the whole canvas) and
+one 168x42 cell for a value change; at most 3 + 7 rectangles per update, so
+`DW3_OPTIONS_MAX_DIRTY` stays 10. `tools/tests/test_options_cache.py` renders
+every mode of the two rows from every cursor row against the full reference
+render. The row, value and button lettering was regenerated at 26 px by
+`tools/generate_pc_title_lettering.py` (the title and the message lines are
+byte-identical to before).
 
 ## Title-screen visual reference
 

@@ -427,6 +427,96 @@ def volume_persist(version, phase):
     return r
 
 
+# --- P6.18 pacing options (log-only: no checkpoints, nothing to reference) ---
+
+def _to_title_menu(r, version):
+    """Boot to the title menu; returns the frame it is up."""
+    if version == "us":
+        r.press(20, START)           # skip the opening FMV
+        r.press(210, START)          # PRESS START
+        return 320
+    for f in (110, 160, 190, 220, 280):   # confirm English, skip splash/FMV, PRESS START
+        r.press(f, START)
+    return 390
+
+
+def pacing_persist(version, phase):
+    """P6.18: Options -> Encounter rate 1x -> 0.5x (Right) and Text speed
+    Normal -> Instant (Right x2), then leave. Phase 2 is a fresh process on the
+    same config dir; the logs carry the values saved and read back."""
+    r = Rec(f"{version.upper()}: Encounter rate / Text speed persistence, phase {phase}")
+    m = _to_title_menu(r, version)
+    r.press(m, DOWN)                 # New Game -> Options
+    r.press(m + 20, CROSS)           # open the Options screen
+    if phase == 1:
+        f = m + 70
+        for _ in range(5):           # Widescreen -> ... -> Encounter rate
+            r.press(f, DOWN)
+            f += 20
+        r.press(f, RIGHT)            # 1x -> 0.5x
+        f += 20
+        r.press(f, DOWN)             # Text speed
+        f += 20
+        r.press(f, RIGHT)            # Normal -> Fast
+        f += 20
+        r.press(f, RIGHT)            # Fast -> Instant
+        f += 20
+        r.press(f + 20, TRIANGLE)    # leave
+        r.end(f + 60)
+    else:
+        r.press(m + 70, TRIANGLE)
+        r.end(m + 110)
+    return r
+
+
+TEXT_END = {"us": 2400, "eu": 2600}   # frames; the first pages are done long before
+
+
+def text_opening(version, end):
+    """P6.18: New Game and then no input at all: the first scripted boxes of
+    the opening type out and wait for a button, so the log carries the frames
+    a page took (port patch 0063). Run once per Text speed."""
+    r = Rec(f"{version.upper()}: New Game, then wait: the first dialogue pages type out")
+    if version == "us":
+        r.press(20, START)           # skip the opening FMV
+        r.press(210, START)          # PRESS START
+        r.press(320, CROSS)          # New Game
+    else:
+        for f in (110, 160, 190, 220, 280):
+            r.press(f, START)
+        r.press(390, CROSS)          # Start (New Game)
+    r.end(end)
+    return r
+
+
+# Encounter rate: DW3_START_MODE puts the player on a South Sector field
+# (mode 0x233) with the story at step 6, where the whole map is a random
+# battle area, and the recording only walks Up. The frames below were measured
+# on the PC build: the walk starts once the stage is up and control is given.
+ENCOUNTER = {
+    #      walk from, until   (1x battle comes ~100 footsteps in, 0.5x ~200)
+    "us": (300, 3300),
+    "eu": (300, 3300),
+}
+
+
+def encounter_walk(version):
+    start, end = ENCOUNTER[version]
+    r = Rec(f"{version.upper()}: walk up a random-battle field for {end - start} frames (env in manifest)")
+    _pad(r, start, UP)
+    r.end(end)
+    return r
+
+
+def encounter_event(version):
+    """Scripted battle with encounters Off: DW3_FORCE_NPC_ACTION=0x7400 runs
+    the field action EVENT_BATTLE(0) (FIELDSTG_startEventBattle), the path the
+    stages' events, bosses and hidden-spot battles use. No walking."""
+    r = Rec(f"{version.upper()}: scripted EVENT_BATTLE with Encounter rate Off (env in manifest)")
+    r.end(900)
+    return r
+
+
 def main(out):
     out.mkdir(parents=True, exist_ok=True)
     (out / "us-title.rec").write_text(us_title().text())
@@ -446,6 +536,15 @@ def main(out):
         for phase in (1, 2):
             (out / f"{v}-volume-persist-p{phase}.rec").write_text(
                 volume_persist(v, phase).text(True))
+    for v in ("us", "eu"):
+        for phase in (1, 2):
+            (out / f"{v}-pacing-persist-p{phase}.rec").write_text(
+                pacing_persist(v, phase).text(True))
+        # One recording per kind; the scenarios differ in the option file and
+        # the environment the manifest gives them.
+        (out / f"{v}-text-opening.rec").write_text(text_opening(v, TEXT_END[v]).text(True))
+        (out / f"{v}-encounter-walk.rec").write_text(encounter_walk(v).text(True))
+        (out / f"{v}-encounter-event.rec").write_text(encounter_event(v).text(True))
         (out / f"{v}-two-battles.rec").write_text(two_battles(v).text(True))
     (out / "us-repro-balloon.rec").write_text(repro_balloon("us").text(True))
     for version in ("us", "eu"):

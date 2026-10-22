@@ -1,0 +1,56 @@
+Upstream-bound: no
+Subject: [PORT_HOST] P6.18 Encounter rate option in FIELDSTG_countBattleSteps
+
+FIELDSTG_countBattleSteps runs on every footstep that can start a battle
+(FIELDSTG_playStepSounds with canBattle). In an area with a map and a
+BattleList it subtracts the area's rate (FIELDSTG_battleRates[count]) from
+GAME.battleSteps and, at zero or less, starts a random battle of the area
+(FIELDSTG_startAreaBattle) and rolls the next countdown. Only this countdown
+is touched: scripted and forced battles (FIELDSTG_startEventBattle, the
+stages' events 9000, the gauge and hidden-spot battles, boss fights) never
+come through here.
+
+The port decides what one footstep costs (dw3_port_pacing_encounter_step):
+
+* 1x (default): the rate unchanged. The countdown, the RNG calls and the
+  battle are bit-identical to a build without the patch.
+* 0.5x: half the rate, the odd half step carried to the next footstep.
+* Off: the footstep is ignored (no countdown, no roll), so no random battle
+  can start. An area with the rate 2000 (BattleList.count 0, the table's
+  "first step" entry) is a map-forced trigger and is left alone in every mode.
+
+The port also logs each random battle with the number of footsteps that led
+to it (dw3_port_pacing_encounter_started), which the replay tests check.
+
+--- a/src/field/field_mode/battle.c
++++ b/src/field/field_mode/battle.c
+@@ -2,6 +2,9 @@
+    battles of the map's areas */
+ 
+ #include "field/field_mode.h"
++#if PORT_HOST
++#include "port_pacing.h"
++#endif
+ 
+ /* Rolls the steps to the next battle (GAME.battleSteps): under 0x100, or 0x100 to 0x4FF */
+ void FIELDSTG_rollBattleSteps(void) {
+@@ -46,9 +49,19 @@
+         if (area != 0) {
+             area--;
+             rate = FIELDSTG_battleRates[FIELDSTG_state.battles->battles[area]->count];
++#if PORT_HOST
++            /* P6.18: the Encounter rate option scales the countdown of the
++             * random areas (0.5x) or skips the footstep (Off) */
++            if (!dw3_port_pacing_encounter_step(&rate)) {
++                return;
++            }
++#endif
+             GAME.battleSteps -= rate;
+             if (GAME.battleSteps <= 0) {
+                 if (BATTLE_SETUP.randomBattles != 0) {
++#if PORT_HOST
++                    dw3_port_pacing_encounter_started();
++#endif
+                     FIELDSTG_startAreaBattle();
+                 }
+                 FIELDSTG_rollBattleSteps();

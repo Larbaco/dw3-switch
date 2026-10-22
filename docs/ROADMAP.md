@@ -55,9 +55,10 @@ lives in its doc, not in the entry below.
 | P6.9 | Restart-game hotkey | in progress | [P6.9](P6.9_RESTART.md) |
 | P6.10 | Hardware render outside battle | future | [P5.2](P5.2_BATTLE_GPU.md) |
 | P6.11 | Internal resolution scaling | future | [PC README](../platforms/pc/README.md) |
-| P6.12–P6.14, P6.16, P6.18–P6.21 | Backlog goal notes | future | [backlog](#backlog--future-goals) |
+| P6.12–P6.14, P6.16, P6.19–P6.21 | Backlog goal notes | future | [backlog](#backlog--future-goals) |
 | P6.15 | Regression replay tests | in progress | [P6.15](P6.15_REPLAY_TESTS.md) |
 | P6.17 | Music / SFX volume | in progress (needs OLED check) | [P6.17](P6.17_VOLUME.md) |
+| P6.18 | Pacing options | in progress (needs OLED check) | [P6.18](P6.18_PACING.md) |
 | P7.1 | Inventory and boundaries | done | [COMMUNITY_QOL](COMMUNITY_QOL.md) |
 | P7.2 | Patched EU disc as data source | open | [COMMUNITY_QOL](COMMUNITY_QOL.md) |
 | P7.3 | Binary-patch limits | in progress | [COMMUNITY_QOL](COMMUNITY_QOL.md) |
@@ -909,14 +910,15 @@ PS1 game, with vanilla-safe defaults and persistence on owner storage.
   Restart hotkey ON written by one process, read back by the next; the file
   on the emulated SD has the same content).
   Ready to close? needs OLED: toggle, HOME->close, relaunch from hbmenu.
-  Blocks: P6.12, P6.18, P7.6–P7.10 and a persisted P6.9 restart
-  setting (see [Backlog](#backlog--future-goals)); P6.17 (volume) is the
-  first row added on top of it (`music_volume`, `sfx_volume`).
+  Blocks: P6.12, P7.6–P7.10 and a persisted P6.9 restart
+  setting (see [Backlog](#backlog--future-goals)); P6.17 (volume) and P6.18
+  (pacing) are rows added on top of it (`music_volume`, `sfx_volume`,
+  `encounter_rate`, `text_speed`).
 - [ ] **P9.5 Wire real features.** Connect registry entries to real port
   flags as Phases 6–8 land; mark unavailable items N/A in
   [PORT_OPTIONS.md](PORT_OPTIONS.md) rather than hiding the menu.
   Real so far: Widescreen, Fast-forward, Restart hotkey and (2026-10-22,
-  P6.17) Music volume and SFX volume.
+  P6.17) Music volume and SFX volume, (P6.18) Encounter rate and Text speed.
   Done when: every shipped non-native feature is either togglable here or
   explicitly documented as N/A. Evolves with the roadmap; does **not**
   require all of P6–P8 complete for the Phase 9 gate.
@@ -990,8 +992,8 @@ Statuses are in the [table](#status-at-a-glance).
 **Dependencies not stated in the entries:**
 
 - **P9.4 (option persistence) blocks** P6.12 (remap survives a restart),
-  P6.18, P7.6–P7.10 (P6.17 added its two keys, `music_volume` and
-  `sfx_volume`, in the same file). The persisted P6.9 restart setting is done
+  P7.6–P7.10 (P6.17 added its two keys, `music_volume` and
+  `sfx_volume`, and P6.18 `encounter_rate` and `text_speed`, in the same file). The persisted P6.9 restart setting is done
   with P9.4; the option file is `port_options.cfg` (add a key per new row).
 - **Future P6.15 gameplay scenarios** may need P6.9 (restart to a known
   state) and P5.3 (a fixed save per case). The current scenarios use a fresh
@@ -1087,10 +1089,26 @@ Statuses are in the [table](#status-at-a-glance).
   options screen got taller (five rows). Measured per-bus attenuation and the
   default-unchanged proof are in the doc; not covered: Switch audio output
   (no hardware or capture), a hearing test, and every sound id of every bank.
-- [ ] **P6.18 Pacing options (future goal).** Text speed, encounter rate
-  (0.5x, 1x, off) and faster battle animations as Port options toggles; may
-  land as concrete P7.4 items. Goal note only (2026-10-15). Done when each
-  toggle works on US and EU and is off by default.
+- [ ] **P6.18 Pacing options.** Encounter rate (1x, 0.5x, off), text speed
+  and faster battle animations as Port options rows, off by default, saved
+  with P9.4. Done when each toggle works on US and EU and is off by default.
+  **Status (2026-10-22): encounter rate and text speed implemented, PC
+  checked on both discs; faster battle animations deferred; needs OLED check**
+  (left unticked until the owner confirms, steps in
+  [P6.18_PACING.md](P6.18_PACING.md#oled-check-for-the-owner)). Rows
+  "Encounter rate" (1x / 0.5x / OFF) and "Text speed" (Normal / Fast /
+  Instant), default 1x and Normal, keys `encounter_rate` and `text_speed`.
+  Encounter rate scales or skips the per-footstep countdown of the random
+  battles (`FIELDSTG_countBattleSteps`, patch 0062); scripted, story and boss
+  battles never go through it, and neither do map-forced areas. Text speed
+  maps the dialogue type delay (patch 0063); Instant shows each page whole,
+  as Cross does. The Options screen got a compact seven-row layout. Measured:
+  a random battle after 102 footsteps at 1x and 203 at 0.5x, none in 3300
+  frames when Off, a scripted battle still starts when Off; the first
+  dialogue page types in 308 frames Normal, 131 Fast, 1 Instant; default
+  captures are pixel-identical. **Faster battle animations are not done:** the
+  battle has no single time knob (reasons in the doc), and R3 fast-forward
+  (P6.4) already speeds a battle up. May still land as concrete P7.4 items.
 - [ ] **P6.19 Japanese disc support (future goal).** File map, executable
   differences and boot for the JP disc, next to US and EU. Goal note only
   (2026-10-15). Done when the JP disc boots to the field on PC and Switch.

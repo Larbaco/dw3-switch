@@ -38,8 +38,18 @@ int main(void) {
         return fail("re-open");
     }
 
-    if (dw3_port_options_count() != 5) {
+    if (dw3_port_options_count() != 7) {
         return fail("option count");
+    }
+    if (dw3_port_options_level(DW3_PORT_OPT_ENCOUNTER_RATE) != 0 ||
+        dw3_port_options_level(DW3_PORT_OPT_TEXT_SPEED) != 0) {
+        return fail("pacing rows default to 1x / Normal");
+    }
+    if (dw3_port_options_label(5) == NULL ||
+        strstr(dw3_port_options_label(5), "Encounter") == NULL ||
+        dw3_port_options_label(6) == NULL ||
+        strstr(dw3_port_options_label(6), "Text speed") == NULL) {
+        return fail("pacing labels");
     }
     if (dw3_port_options_label(0) == NULL ||
         strstr(dw3_port_options_label(0), "Widescreen") == NULL) {

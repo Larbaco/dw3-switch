@@ -1,0 +1,12 @@
+# US: Encounter rate / Text speed persistence, phase 2
+pad 20 0x0008
+pad 25 0x0000
+pad 210 0x0008
+pad 215 0x0000
+pad 320 0x0040
+pad 325 0x0000
+pad 340 0x4000
+pad 345 0x0000
+pad 390 0x1000
+pad 395 0x0000
+end 430

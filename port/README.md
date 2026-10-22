@@ -26,6 +26,7 @@ See `port/memcard/README.md` for the flat-save host and P5.3 notes.
 | `psyz_missing/` | PSY-Z gap stubs linked ahead of vendored libs (e.g. MDEC, movie path) |
 | `options/` | P9.2 port options shell (`dw3_port_options_*`; title Select entry) |
 | `audio/` | P6.17 music / SFX volume: step -> gain curve, SPU mixer bus glue, optional bus statistics (`port_audio.h`) |
+| `pacing/` | P6.18 encounter rate and text speed: pure policy (`pacing_policy.c`) and the hooks of patches 0062 / 0063 (`pacing.c`, `port_pacing.h`) |
 | `ui/` | Shared 8×8 VRAM text blit for port UI (not Switch debug overlay) |
 
 ## Build (engine + PC host)

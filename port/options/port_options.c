@@ -2,6 +2,7 @@
 #include "port_options.h"
 #include "port_audio.h"
 #include "port_options_cfg.h"
+#include "port_pacing.h"
 #include "port_turbo.h"
 
 #include <stdio.h>
@@ -35,8 +36,10 @@
 #endif
 #endif
 
+/* DW3_PORT_OPT_ENCOUNTER_RATE (5) and DW3_PORT_OPT_TEXT_SPEED (6) are in
+ * port_options.h: port/pacing/pacing.c reads them. */
 enum {
-    DW3_PORT_OPT_COUNT = 5,
+    DW3_PORT_OPT_COUNT = 7,
     DW3_PORT_OPT_WIDESCREEN = 0,
     DW3_PORT_OPT_FAST_FORWARD = 1,
     DW3_PORT_OPT_RESTART = 2,
@@ -47,9 +50,11 @@ enum {
 typedef struct Dw3PortOptStub {
     const char *label;
     const char *key; /* P9.4 option file key */
-    int value; /* 0/1, 0/2..4 (Fast-forward) or 0..10 (volumes); Widescreen
-                * defaults ON, turbo starts inactive, volumes default to 10 */
+    int value; /* 0/1, 0/2..4 (Fast-forward), 0..10 (volumes) or 0..2 (the
+                * pacing rows); Widescreen defaults ON, turbo starts
+                * inactive, volumes default to 10, pacing to 0 (1x, Normal) */
     int def;   /* value with no option file (the row's initial value) */
+    const char *env; /* optional DW3_* variable that pins it for one run */
 } Dw3PortOptStub;
 
 static int g_open;
@@ -57,15 +62,22 @@ static int g_cursor;
 static int g_open_frames;
 static int g_logged_open;
 static Dw3PortOptStub g_stubs[DW3_PORT_OPT_COUNT] = {
-    {"Widescreen", "widescreen", 1, 1}, /* owner request (preview.22): on */
+    {"Widescreen", "widescreen", 1, 1, NULL}, /* owner request: on */
     /* R3 toggles to this speed in field/battle; normal boot remains 1x. */
     {"Fast-forward", "fast_forward", DW3_TURBO_SPEED_DEFAULT,
-     DW3_TURBO_SPEED_DEFAULT},
-    {"Restart hotkey", "restart_hotkey", 0, 0},
+     DW3_TURBO_SPEED_DEFAULT, NULL},
+    {"Restart hotkey", "restart_hotkey", 0, 0, NULL},
     /* P6.17: 0..10, 10 = the original mix (docs/P6.17_VOLUME.md) */
     {"Music volume", "music_volume", DW3_AUDIO_VOLUME_MAX,
-     DW3_AUDIO_VOLUME_MAX},
-    {"SFX volume", "sfx_volume", DW3_AUDIO_VOLUME_MAX, DW3_AUDIO_VOLUME_MAX},
+     DW3_AUDIO_VOLUME_MAX, "DW3_MUSIC_VOLUME"},
+    {"SFX volume", "sfx_volume", DW3_AUDIO_VOLUME_MAX, DW3_AUDIO_VOLUME_MAX,
+     "DW3_SFX_VOLUME"},
+    /* P6.18: 0 = 1x, 1 = 0.5x, 2 = Off (docs/P6.18_PACING.md) */
+    {"Encounter rate", "encounter_rate", DW3_ENCOUNTER_1X, DW3_ENCOUNTER_1X,
+     "DW3_ENCOUNTER_RATE"},
+    /* P6.18: 0 = Normal, 1 = Fast, 2 = Instant */
+    {"Text speed", "text_speed", DW3_TEXT_NORMAL, DW3_TEXT_NORMAL,
+     "DW3_TEXT_SPEED"},
 };
 
 /* P9.4 persistence. The registry values above are what the game reads; this
@@ -199,14 +211,30 @@ static int po_is_volume(int index) {
            index == DW3_PORT_OPT_SFX_VOLUME;
 }
 
-/* A value the row can hold: ON/OFF, OFF / 2x..4x for Fast-forward, or a
- * volume step 0..10. */
+/* The P6.18 rows hold a mode, 0 = the original behaviour. */
+static int po_is_mode(int index) {
+    return index == DW3_PORT_OPT_ENCOUNTER_RATE ||
+           index == DW3_PORT_OPT_TEXT_SPEED;
+}
+
+/* Rows that Left / Right step and Confirm cycles: the volumes and the modes. */
+static int po_is_stepped(int index) {
+    return po_is_volume(index) || po_is_mode(index);
+}
+
+/* Highest value of a stepped row. */
+static int po_step_max(int index) {
+    return po_is_volume(index) ? DW3_AUDIO_VOLUME_MAX : DW3_PACING_MODE_MAX;
+}
+
+/* A value the row can hold: ON/OFF, OFF / 2x..4x for Fast-forward, a volume
+ * step 0..10, or a pacing mode 0..2. */
 static int po_valid(int index, int v) {
     if (index == DW3_PORT_OPT_FAST_FORWARD) {
         return v == 0 || (v >= DW3_TURBO_SPEED_MIN && v <= DW3_TURBO_SPEED_MAX);
     }
-    if (po_is_volume(index)) {
-        return v >= 0 && v <= DW3_AUDIO_VOLUME_MAX;
+    if (po_is_stepped(index)) {
+        return v >= 0 && v <= po_step_max(index);
     }
     return v == 0 || v == 1;
 }
@@ -225,18 +253,21 @@ static void po_audio_apply(void) {
                          g_stubs[DW3_PORT_OPT_SFX_VOLUME].value);
 }
 
-/* DW3_MUSIC_VOLUME / DW3_SFX_VOLUME (0..10) pin a volume for this run: it is
- * used like any other value but never written by an unrelated change (the
- * same rule as DW3_WIDESCREEN and DW3_TURBO). */
-static void po_audio_env(void) {
-    static const char *const names[2] = {"DW3_MUSIC_VOLUME", "DW3_SFX_VOLUME"};
-    int i;
+/* DW3_MUSIC_VOLUME / DW3_SFX_VOLUME (0..10), DW3_ENCOUNTER_RATE and
+ * DW3_TEXT_SPEED (0..2) pin a value for this run: it is used like any other
+ * value but never written by an unrelated change (the same rule as
+ * DW3_WIDESCREEN and DW3_TURBO). An invalid value is ignored. */
+static void po_stepped_env(void) {
+    int row;
 
-    for (i = 0; i < 2; i++) {
-        const char *env = getenv(names[i]);
-        int row = i == 0 ? DW3_PORT_OPT_MUSIC_VOLUME : DW3_PORT_OPT_SFX_VOLUME;
+    for (row = 0; row < DW3_PORT_OPT_COUNT; row++) {
+        const char *env;
         int n;
 
+        if (g_stubs[row].env == NULL) {
+            continue;
+        }
+        env = getenv(g_stubs[row].env);
         if (env == NULL || dw3_optcfg_parse_int(env, &n) != 0 ||
             !po_valid(row, n)) {
             continue;
@@ -286,11 +317,14 @@ static int po_save(void) {
         g_saved[i] = out[i];
     }
     PO_INFO("dw3-options: saved %s/%s (widescreen=%d fast_forward=%d "
-            "restart_hotkey=%d music_volume=%d sfx_volume=%d)",
+            "restart_hotkey=%d music_volume=%d sfx_volume=%d "
+            "encounter_rate=%d text_speed=%d)",
             g_cfg_dir, DW3_OPTCFG_FILE, g_saved[DW3_PORT_OPT_WIDESCREEN],
             g_saved[DW3_PORT_OPT_FAST_FORWARD], g_saved[DW3_PORT_OPT_RESTART],
             g_saved[DW3_PORT_OPT_MUSIC_VOLUME],
-            g_saved[DW3_PORT_OPT_SFX_VOLUME]);
+            g_saved[DW3_PORT_OPT_SFX_VOLUME],
+            g_saved[DW3_PORT_OPT_ENCOUNTER_RATE],
+            g_saved[DW3_PORT_OPT_TEXT_SPEED]);
     return 0;
 }
 
@@ -313,7 +347,7 @@ int dw3_port_options_persist_init(const char *dir) {
         strlen(dir) >= sizeof(g_cfg_dir) ||
         dw3_optcfg_path(dir, "", path, sizeof(path)) != 0) {
         PO_WARN("dw3-options: no usable config dir; options are session-only");
-        po_audio_env();
+        po_stepped_env();
         po_audio_apply();
         return -1;
     }
@@ -363,43 +397,67 @@ int dw3_port_options_persist_init(const char *dir) {
         g_saved[i] = g_stubs[i].value;
     }
     PO_INFO("dw3-options: %s (widescreen=%d fast_forward=%d "
-            "restart_hotkey=%d music_volume=%d sfx_volume=%d)%s", path,
+            "restart_hotkey=%d music_volume=%d sfx_volume=%d "
+            "encounter_rate=%d text_speed=%d)%s", path,
             g_saved[DW3_PORT_OPT_WIDESCREEN],
             g_saved[DW3_PORT_OPT_FAST_FORWARD], g_saved[DW3_PORT_OPT_RESTART],
             g_saved[DW3_PORT_OPT_MUSIC_VOLUME],
             g_saved[DW3_PORT_OPT_SFX_VOLUME],
+            g_saved[DW3_PORT_OPT_ENCOUNTER_RATE],
+            g_saved[DW3_PORT_OPT_TEXT_SPEED],
             bad ? " [some values reset]" : "");
     /* DW3_MUSIC_VOLUME / DW3_SFX_VOLUME force a value for this run only. */
-    po_audio_env();
+    po_stepped_env();
     po_audio_apply();
     return rc == DW3_OPTCFG_LOAD_ERROR ? -1 : 0;
 }
 
-/* Move a volume row by `delta` steps, clamped to 0..10, and save. */
-static void po_volume_step(int index, int delta) {
+/* The words of a pacing mode, for the log (the overlay has its own lettering). */
+static const char *po_mode_name(int index, int v) {
+    static const char *const encounter[3] = {"1x", "0.5x", "off"};
+    static const char *const text[3] = {"normal", "fast", "instant"};
+
+    if (v < 0 || v > DW3_PACING_MODE_MAX) {
+        return "?";
+    }
+    return index == DW3_PORT_OPT_ENCOUNTER_RATE ? encounter[v] : text[v];
+}
+
+/* Move a stepped row (a volume 0..10, or a pacing mode 0..2) by `delta`
+ * steps, clamped, and save. */
+static void po_step(int index, int delta) {
     int v = g_stubs[index].value + delta;
 
     if (v < 0) {
         v = 0;
     }
-    if (v > DW3_AUDIO_VOLUME_MAX) {
-        v = DW3_AUDIO_VOLUME_MAX;
+    if (v > po_step_max(index)) {
+        v = po_step_max(index);
     }
     if (v == g_stubs[index].value && !((g_env_pinned >> index) & 1u)) {
         return;
     }
     g_stubs[index].value = v;
     g_env_pinned &= ~(1u << index);
-    fprintf(stderr, "dw3-port-options: %s %d\n",
-            index == DW3_PORT_OPT_MUSIC_VOLUME ? "music volume" : "sfx volume",
-            v);
+    if (po_is_volume(index)) {
+        fprintf(stderr, "dw3-port-options: %s %d\n",
+                index == DW3_PORT_OPT_MUSIC_VOLUME ? "music volume"
+                                                    : "sfx volume", v);
+    } else {
+        fprintf(stderr, "dw3-port-options: %s %s\n",
+                index == DW3_PORT_OPT_ENCOUNTER_RATE ? "encounter rate"
+                                                      : "text speed",
+                po_mode_name(index, v));
+    }
     fflush(stderr);
-    po_audio_apply();
+    if (po_is_volume(index)) {
+        po_audio_apply();
+    }
     (void)po_save();
 }
 
 /* Confirm on a row: ON/OFF, OFF -> 2x -> 3x -> 4x -> OFF for Fast-forward, or
- * the next volume step. */
+ * the next step of a volume / pacing row (wraps to 0 after the last). */
 static void po_toggle(int index) {
     int v;
 
@@ -420,10 +478,10 @@ static void po_toggle(int index) {
         (void)po_save();
         return;
     }
-    if (po_is_volume(index)) {
-        /* Confirm steps up and wraps 10 -> 0; Left/Right step either way. */
-        po_volume_step(index, g_stubs[index].value >= DW3_AUDIO_VOLUME_MAX
-                                  ? -DW3_AUDIO_VOLUME_MAX : 1);
+    if (po_is_stepped(index)) {
+        /* Confirm steps up and wraps; Left/Right step either way. */
+        po_step(index, g_stubs[index].value >= po_step_max(index)
+                           ? -po_step_max(index) : 1);
         return;
     }
     v = g_stubs[index].value ? 0 : 1;
@@ -467,12 +525,12 @@ void dw3_port_options_tick(void) {
             g_cursor++;
         }
     }
-    if (po_is_volume(g_cursor)) {
+    if (po_is_stepped(g_cursor)) {
         if (po_pressed(PO_BIT_LEFT)) {
-            po_volume_step(g_cursor, -1);
+            po_step(g_cursor, -1);
         }
         if (po_pressed(PO_BIT_RIGHT)) {
-            po_volume_step(g_cursor, 1);
+            po_step(g_cursor, 1);
         }
     }
     if (po_pressed(PO_BIT_CROSS) || po_pressed(PO_BIT_CIRCLE)) {
@@ -493,12 +551,12 @@ void dw3_port_options_tick(void) {
             g_cursor++;
         }
     }
-    if (po_is_volume(g_cursor)) {
+    if (po_is_stepped(g_cursor)) {
         if (po_pressed(PAD_LEFT) || PAD_REPEATED(PAD_LEFT)) {
-            po_volume_step(g_cursor, -1);
+            po_step(g_cursor, -1);
         }
         if (po_pressed(PAD_RIGHT) || PAD_REPEATED(PAD_RIGHT)) {
-            po_volume_step(g_cursor, 1);
+            po_step(g_cursor, 1);
         }
     }
     if (po_pressed(PAD_CROSS) || po_pressed(PAD_CIRCLE)) {
@@ -568,7 +626,7 @@ void dw3_port_options_draw(void) {
     DISPENV env;
     char lines_buf[DW3_PORT_OPT_COUNT][48];
     char back_line[48];
-    const char *lines[9];
+    const char *lines[DW3_PORT_OPT_COUNT + 4];
     int n = 0;
     int i;
 
@@ -581,9 +639,13 @@ void dw3_port_options_draw(void) {
 
     lines[n++] = "Port options";
     lines[n++] = "------------";
-    for (i = 0; i < DW3_PORT_OPT_COUNT && n < 7; i++) {
+    for (i = 0; i < DW3_PORT_OPT_COUNT && n < DW3_PORT_OPT_COUNT + 2; i++) {
         char *buf = lines_buf[i];
-        if (po_is_volume(i)) {
+        if (po_is_mode(i)) {
+            snprintf(buf, sizeof(lines_buf[i]), "%c %s: %s",
+                     (i == g_cursor) ? '>' : ' ', g_stubs[i].label,
+                     po_mode_name(i, g_stubs[i].value));
+        } else if (po_is_volume(i)) {
             snprintf(buf, sizeof(lines_buf[i]), "%c %s: %d",
                      (i == g_cursor) ? '>' : ' ', g_stubs[i].label,
                      g_stubs[i].value);
@@ -601,7 +663,7 @@ void dw3_port_options_draw(void) {
     snprintf(back_line, sizeof(back_line), "Triangle (S): Back");
     lines[n++] = back_line;
 
-    dw3_port_text_draw_panel((int)ox + 32, (int)oy + 32, 256, 96, lines, n);
+    dw3_port_text_draw_panel((int)ox + 32, (int)oy + 32, 256, 128, lines, n);
 #if defined(DW3_PC_HOST)
     dw3_port_options_maybe_fb_dump();
 #endif

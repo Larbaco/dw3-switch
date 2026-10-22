@@ -43,7 +43,11 @@ def test_every_runner_scenario_has_a_recording_with_shots():
         assert sc.tier in ("quick", "full", "soak", "repro")
         for phase in sc.phases:
             assert (REPLAY / "scenarios" / f"{phase}.rec").is_file(), phase
-        assert rt.shot_names(sc.name), sc.name
+        # P6.18: a log-only scenario has no checkpoints (and then needs a check
+        # in the log); every other one needs at least one.
+        assert bool(rt.shot_names(sc.name)) != sc.log_only, sc.name
+        if sc.log_only:
+            assert sc.expect_log or sc.forbid_log, sc.name
     # every committed recording belongs to a scenario phase
     phases = {p for sc in rt.SCENARIOS for p in sc.phases}
     assert {p.stem for p in (REPLAY / "scenarios").glob("*.rec")} == phases
@@ -211,3 +215,33 @@ def test_compare_size_mismatch(tmp_path):
     _, _, err = rt.compare_images(tmp_path / "a.png", tmp_path / "b.png", None)
     assert err and "size" in err
 
+
+
+def test_log_expectations_and_seeded_option_file(tmp_path):
+    rt = _load("replay_tests")
+    text = "a dw3-pacing: random battle after 102 footstep(s) b\nFIGHTSTG_start\n"
+    assert rt.check_log_expect(((0, r"random battle after 1\d\d"),), 0, text) == []
+    assert rt.check_log_expect(((0, r"after 2\d\d"),), 0, text) != []
+    # forbid_log: a match is a problem, a miss is fine; other phases are ignored
+    assert rt.check_log_expect((), 0, text, ((0, r"FIGHTSTG_start"),)) != []
+    assert rt.check_log_expect((), 0, text, ((0, r"encounters off"),)) == []
+    assert rt.check_log_expect((), 0, text, ((1, r"FIGHTSTG_start"),)) == []
+    # the seeded port_options.cfg is the P9.4 format and ends with end=1
+    rt.write_seed_cfg(tmp_path, (("encounter_rate", "2"), ("text_speed", "1")))
+    lines = (tmp_path / "port_options.cfg").read_text().splitlines()
+    assert lines[1:] == ["version=1", "encounter_rate=2", "text_speed=1", "end=1"]
+
+
+def test_pacing_scenarios_are_defined_for_both_discs():
+    rt = _load("replay_tests")
+    names = {sc.name: sc for sc in rt.SCENARIOS}
+    for v in ("us", "eu"):
+        for n in ("encounter-1x", "encounter-half", "encounter-off", "encounter-off-event",
+                  "text-normal", "text-fast", "text-instant", "pacing-persist"):
+            assert f"{v}-{n}" in names, (v, n)
+        # the encounter ones need host env (PC only); the text ones do not
+        assert names[f"{v}-encounter-off"].env and not names[f"{v}-text-fast"].env
+        assert dict(names[f"{v}-encounter-off"].cfg) == {"encounter_rate": "2"}
+        assert dict(names[f"{v}-text-instant"].cfg) == {"text_speed": "2"}
+        # Off must forbid any battle
+        assert any("FIGHTSTG_start" in rx for _, rx in names[f"{v}-encounter-off"].forbid_log)

@@ -97,6 +97,10 @@ Things this port adds to the original game.
 - **Music and SFX volume.** Two rows in Port options, 0 to 10, 10 is the
   original mix; saved with the other options. Not yet checked on the OLED:
   [P6.17_VOLUME](docs/P6.17_VOLUME.md).
+- **Pacing options.** Encounter rate (1x, 0.5x or off for random battles; story
+  battles are never touched) and Text speed (Normal, Fast, Instant), both
+  default to the original game and are saved with the other options. Not yet
+  checked on the OLED: [P6.18_PACING](docs/P6.18_PACING.md).
 - **Port options screen.** Opens from the title and holds the toggles below.
   Settings are saved in `port_options.cfg` next to the runtime data and are
   kept across launches: [PORT_OPTIONS](docs/PORT_OPTIONS.md#persistence).

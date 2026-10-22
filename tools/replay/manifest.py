@@ -34,9 +34,18 @@ class Scenario:
     # phase's log (PC stderr / Ryubing guest output). Used by the P9.4
     # persistence scenario, where the proof is a value read back from disk.
     expect_log: tuple[tuple[int, str], ...] = ()
+    # The same, but the regex must NOT match anywhere in that phase's log
+    # (P6.18: "no FIGHTSTG_start while Encounter rate is Off").
+    forbid_log: tuple[tuple[int, str], ...] = ()
+    # port_options.cfg keys written before the first phase (P6.18 seeds the
+    # pacing rows this way, so the option file reader is part of the test).
+    cfg: tuple[tuple[str, str], ...] = ()
     # Extra environment for the PC run (debug aids such as DW3_START_MODE).
     # The Switch build has no environment, so the Ryubing runner skips these.
     env: tuple[tuple[str, str], ...] = ()
+    # The recording has no `shot` lines: the verdicts are the process, the
+    # overlay markers and the log lines only (no reference captures needed).
+    log_only: bool = False
     # Memory sanity (soak): analyse RSS from this game frame on.
     rss_from_frame: int = 0
     note: str = ""
@@ -110,9 +119,10 @@ _add(
 # start of the scenario). Phase 1 switches Widescreen OFF, Fast-forward
 # 2x -> 3x and the Restart hotkey ON; phase 2 only opens the screen again.
 _OPT_P1 = (r"dw3-options: no \S*port_options\.cfg; defaults",
-           r"dw3-options: saved \S*port_options\.cfg \(widescreen=0 fast_forward=3 restart_hotkey=1 music_volume=10 sfx_volume=10\)")
+           r"dw3-options: saved \S*port_options\.cfg \(widescreen=0 fast_forward=3 restart_hotkey=1 music_volume=10 sfx_volume=10 "
+           r"encounter_rate=0 text_speed=0\)")
 _OPT_P2 = (r"dw3-options: \S*port_options\.cfg \(widescreen=0 fast_forward=3 restart_hotkey=1 "
-           r"music_volume=10 sfx_volume=10\)",)
+           r"music_volume=10 sfx_volume=10 encounter_rate=0 text_speed=0\)",)
 for _v in ("us", "eu"):
     _add(Scenario(f"{_v}-options-persist", _v, "full", timeout=300,
                   phases=(f"{_v}-options-persist-p1", f"{_v}-options-persist-p2"),
@@ -123,15 +133,71 @@ for _v in ("us", "eu"):
 # volume rows), read back by phase 2 from the same config dir.
 _VOL_P1 = (r"dw3-options: no \S*port_options\.cfg; defaults",
            r"dw3-options: saved \S*port_options\.cfg \(widescreen=1 fast_forward=2 restart_hotkey=0 "
-           r"music_volume=7 sfx_volume=3\)")
+           r"music_volume=7 sfx_volume=3 encounter_rate=0 text_speed=0\)")
 _VOL_P2 = (r"dw3-options: \S*port_options\.cfg \(widescreen=1 fast_forward=2 restart_hotkey=0 "
-           r"music_volume=7 sfx_volume=3\)",)
+           r"music_volume=7 sfx_volume=3 encounter_rate=0 text_speed=0\)",)
 for _v in ("us", "eu"):
     _add(Scenario(f"{_v}-volume-persist", _v, "full", timeout=300,
                   phases=(f"{_v}-volume-persist-p1", f"{_v}-volume-persist-p2"),
                   expect_log=tuple((0, r) for r in _VOL_P1) + tuple((1, r) for r in _VOL_P2),
                   note="Music / SFX volume set in one process is read back by the next (P6.17)"))
 
+
+# P6.18 pacing options. Log-only: the proof is in the game log (port patches
+# 0062 / 0063 print `dw3-pacing:` lines), so there are no reference captures.
+# The option file is seeded by the runner (Scenario.cfg), which tests the
+# reader as well.
+_PACING_PERSIST_P1 = (r"dw3-options: saved \S*port_options\.cfg \(widescreen=1 fast_forward=2 restart_hotkey=0 "
+                      r"music_volume=10 sfx_volume=10 encounter_rate=1 text_speed=2\)",)
+_PACING_PERSIST_P2 = (r"dw3-options: \S*port_options\.cfg \(widescreen=1 fast_forward=2 restart_hotkey=0 "
+                      r"music_volume=10 sfx_volume=10 encounter_rate=1 text_speed=2\)",)
+for _v in ("us", "eu"):
+    _add(Scenario(f"{_v}-pacing-persist", _v, "full", timeout=300, log_only=True,
+                  phases=(f"{_v}-pacing-persist-p1", f"{_v}-pacing-persist-p2"),
+                  expect_log=tuple((0, r) for r in _PACING_PERSIST_P1) +
+                             tuple((1, r) for r in _PACING_PERSIST_P2),
+                  note="Encounter rate 0.5x and Text speed Instant set in one process are read back by the next (P6.18)"))
+
+# Text speed: New Game, then no input; the first scripted pages type out and
+# wait. `text page typed in N frame(s)` is the typing time of a page.
+for _v in ("us", "eu"):
+    for _name, _speed, _rx in (
+            ("normal", 0, r"text page typed in [0-9]{3,} frame\(s\) \(text speed normal\)"),
+            ("fast", 1, r"text page typed in 1[0-9]{2} frame\(s\) \(text speed fast\)"),
+            ("instant", 2, r"text page typed in [0-9] frame\(s\) \(text speed instant\)")):
+        _add(Scenario(f"{_v}-text-{_name}", _v, "full", timeout=300, log_only=True,
+                      phases=(f"{_v}-text-opening",),
+                      cfg=(("text_speed", str(_speed)),),
+                      expect_log=((0, _rx),),
+                      note=f"first dialogue pages at Text speed {_name} (P6.18)"))
+
+# Encounter rate: START_MODE 0x233 / PROGRESS 6 is a South Sector field that
+# is a random-battle area everywhere; the recording holds Up.
+_ENC_ENV = (("DW3_START_MODE", "0x233"), ("DW3_PROGRESS", "6"))
+for _v, _fight in (("us", 0x159), ("eu", 0x167)):
+    _walk = f"{_v}-encounter-walk"
+    _add(Scenario(f"{_v}-encounter-1x", _v, "full", timeout=300, log_only=True, phases=(_walk,),
+                  env=_ENC_ENV,
+                  expect_log=((0, r"dw3-pacing: random battle after 1[0-9]{2} footstep\(s\) \(encounter rate 1x\)"),
+                              (0, r"FIGHTSTG_start")),
+                  note="default: a random battle comes after ~100 footsteps (P6.18)"),
+         Scenario(f"{_v}-encounter-half", _v, "full", timeout=300, log_only=True, phases=(_walk,),
+                  env=_ENC_ENV, cfg=(("encounter_rate", "1"),),
+                  expect_log=((0, r"dw3-pacing: random battle after 2[0-9]{2} footstep\(s\) \(encounter rate 0\.5x\)"),
+                              (0, r"FIGHTSTG_start")),
+                  note="0.5x: the same walk needs about twice the footsteps (P6.18)"),
+         Scenario(f"{_v}-encounter-off", _v, "full", timeout=300, log_only=True, phases=(_walk,),
+                  env=_ENC_ENV, cfg=(("encounter_rate", "2"),),
+                  expect_log=((0, r"dw3-pacing: encounters off: 129 footstep\(s\) in battle areas ignored"),),
+                  forbid_log=((0, r"FIGHTSTG_start"), (0, r"random battle after")),
+                  note="Off: the walk that fought at ~100 footsteps never fights (P6.18)"),
+         Scenario(f"{_v}-encounter-off-event", _v, "full", timeout=300, log_only=True,
+                  phases=(f"{_v}-encounter-event",),
+                  env=_ENC_ENV + (("DW3_FORCE_NPC_ACTION", "0x7400"),),
+                  cfg=(("encounter_rate", "2"),),
+                  expect_log=((0, r"FIGHTSTG_start"),),
+                  forbid_log=((0, r"random battle after"),),
+                  note="Off does not touch a scripted EVENT_BATTLE (P6.18)"))
 
 # Two consecutive battles, a technique used in each (patch 0061): every battle
 # is a mode change (FIGHTSTG <- report/field), so WFIGHTMN is restored per
