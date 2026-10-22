@@ -25,6 +25,9 @@ void dw3_nx_debug_overlay_note_mem(const Dw3NxMemBudgetSample *mem);
 #define dw3_nx_debug_overlay_note_mem(mem) ((void)0)
 #endif
 
+/* Publish the latest Port options overlay update cost (title overlay). */
+void dw3_nx_debug_overlay_note_menu(const Dw3DebugOverlayMenuSnap *menu);
+
 /* Last present path: non-zero = mesh FBO + UI discard, else opaque blit. */
 void dw3_nx_debug_overlay_note_present(int use_mesh);
 
@@ -41,6 +44,7 @@ void dw3_nx_debug_overlay_invalidate_gl(void);
 
 #define dw3_nx_debug_overlay_note_sample(dt_us, mesh) ((void)0)
 #define dw3_nx_debug_overlay_note_mem(mem) ((void)0)
+#define dw3_nx_debug_overlay_note_menu(menu) ((void)0)
 #define dw3_nx_debug_overlay_note_present(use_mesh) ((void)0)
 #define dw3_nx_debug_overlay_draw(fb_w, fb_h) ((void)0)
 #define dw3_nx_debug_overlay_invalidate_gl() ((void)0)

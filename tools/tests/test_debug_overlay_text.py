@@ -56,6 +56,7 @@ def test_hud_lines_include_mesh_and_build(overlay_text_output):
     )
     assert "heap 1200/8192K hw=1400K" in joined
     assert "fc=200K hw=250K libc=400K" in joined
+    assert "menu us c=310 u=120 max=900" in joined
     last = overlay_text_output[f"L{int(overlay_text_output['line_count']) - 1}"]
     assert "nxlink" in last
     assert "mesh" in last

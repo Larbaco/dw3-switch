@@ -36,6 +36,15 @@ typedef struct Dw3DebugOverlayMemSnap {
     uint64_t libc_used_hw_kib;
 } Dw3DebugOverlayMemSnap;
 
+/* Port options overlay update cost (title overlay, nxlink/HUD builds). */
+typedef struct Dw3DebugOverlayMenuSnap {
+    int valid;
+    uint32_t updates;      /* options updates since the screen opened */
+    uint32_t compose_us;   /* last update: CPU compose (dirty-region raster) */
+    uint32_t upload_us;    /* last update: GL upload call time, not GPU time */
+    uint32_t total_max_us; /* worst compose+upload since the screen opened */
+} Dw3DebugOverlayMenuSnap;
+
 typedef struct Dw3DebugOverlayBuildFlags {
     int nxlink;
     int mesh_dbg;
@@ -58,7 +67,7 @@ static inline int dw3_debug_overlay_format(
     char lines[][DW3_DBG_OVERLAY_LINE_CHARS], int max_lines, uint64_t dt_us,
     int32_t mode_file, int use_mesh, const char *battle_mode,
     const Dw3DebugOverlayMeshSnap *mesh, const Dw3DebugOverlayMemSnap *mem,
-    const Dw3DebugOverlayBuildFlags *build) {
+    const Dw3DebugOverlayMenuSnap *menu, const Dw3DebugOverlayBuildFlags *build) {
     int n = 0;
     double fps;
     char build_buf[DW3_DBG_OVERLAY_LINE_CHARS];
@@ -113,6 +122,11 @@ static inline int dw3_debug_overlay_format(
     } else if (mem && mem->valid) {
         DW3_OL_LINE("heap n/a libc=%lluK",
                     (unsigned long long)mem->libc_used_kib);
+    }
+
+    if (menu && menu->valid) {
+        DW3_OL_LINE("menu us c=%u u=%u max=%u", (unsigned)menu->compose_us,
+                    (unsigned)menu->upload_us, (unsigned)menu->total_max_us);
     }
 
     build_buf[0] = '\0';
