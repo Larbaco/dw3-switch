@@ -110,7 +110,7 @@ _OPT_P1 = (r"dw3-options: no \S*port_options\.cfg; defaults",
            r"dw3-options: saved \S*port_options\.cfg \(widescreen=0 fast_forward=3 restart_hotkey=1\)")
 _OPT_P2 = (r"dw3-options: \S*port_options\.cfg \(widescreen=0 fast_forward=3 restart_hotkey=1\)",)
 for _v in ("us", "eu"):
-    _add(Scenario(f"{_v}-options-persist", _v, "quick", timeout=300,
+    _add(Scenario(f"{_v}-options-persist", _v, "full", timeout=300,
                   phases=(f"{_v}-options-persist-p1", f"{_v}-options-persist-p2"),
                   expect_log=tuple((0, r) for r in _OPT_P1) + tuple((1, r) for r in _OPT_P2),
                   note="Options toggled in one process are read back by the next (P9.4)"))

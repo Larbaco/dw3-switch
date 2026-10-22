@@ -30,7 +30,7 @@ select unless we add a port-only override.
 |---|---|
 | Title / main menu hook | Entry point into port options (minimal glue; prefer `port/` over editing decomp in place) |
 | `port/` | Option registry, defaults, apply-on-boot / apply-on-change |
-| Owner config file | JSON or similar under the runtime layout — gitignored |
+| Owner config file | `port_options.cfg` (key=value) in the runtime root, see Persistence |
 | `platforms/*` | Input/present only; no feature policy in the Switch tree |
 
 ## Toggle registry (seed)
@@ -51,8 +51,8 @@ explicitly marked N/A in this note.
 Defaults: **off** or equivalent to stock PS1 behaviour unless a feature is
 purely host presentation with no gameplay impact (document exceptions).
 Widescreen is the documented exception: it defaults **on** (owner request
-after the preview.22 OLED pass). It is a real, session-only toggle since
-the P6.1 first pass: field and battle draw side gutters, everything else
+after the preview.22 OLED pass). It is a real toggle since the P6.1 first
+pass, saved by P9.4: field and battle draw side gutters, everything else
 stays 4:3; `DW3_WIDESCREEN=0` turns it off at boot. See
 [P6.1_WIDESCREEN.md](P6.1_WIDESCREEN.md).
 Fast-forward's row defaults to **2x**, which only arms R3: the game still
@@ -65,18 +65,116 @@ focus-loss pause + delta clamp, memcard write-through/flush, rotating
 
 ## Persistence
 
-- Path TBD with P1.6 layout (e.g. `config/port_options.json` next to
-  runtime data).
-- Load before game systems that read the flags; save on confirm or on
-  toggle (pick one in P9.4 and stick to it).
-- Do not write port options into the memcard image unless the user opts
-  into an explicit “embed in save” experiment later.
+Implemented by P9.4 (PC and Switch). The registry keeps its values in
+`port_options.cfg`, one small text file per region runtime root:
 
-The restart hotkey is the first live setting in the registry. It is OFF by
-default and remains in RAM for the current process; P9.4 persistence is still
-open. When enabled, the chord flushes dirty P5.3 slots before returning the
-game to its title boot flow. A failed flush cancels the restart. This does not
-format, delete, or change clean save files. See [P6.9_RESTART.md](P6.9_RESTART.md).
+| Host | File |
+|---|---|
+| PC | `<runtime root>/port_options.cfg`, i.e. `runtime/us/` or `runtime/eu/` (`DW3_RUNTIME` / `--runtime`) |
+| Switch | `sdmc:/switch/dw3/us/port_options.cfg`, `sdmc:/switch/dw3/eu/port_options.cfg` |
+
+US and EU have their own file because each region has its own runtime root.
+`DW3_CONFIG_DIR` (both hosts; PC also `--config-dir`) moves the file to
+another directory; the replay runner uses it so test runs never touch the
+owner's file. The file is never written into the memory card or the `.mcr`.
+It sits next to the runtime data, so it is not part of any save and is
+gitignored with the rest of `runtime/`.
+
+### Format
+
+```
+# dw3-switch port options (docs/PORT_OPTIONS.md)
+version=1
+widescreen=1
+fast_forward=2
+restart_hotkey=0
+end=1
+```
+
+Plain `key=value` lines, no JSON. `#` and `;` start a comment line, blank
+lines are ignored, keys are `[A-Za-z0-9_.-]`, values are single-line text
+(the options use integers). `end=1` is always the last line the port writes.
+Rules, implemented in `port/options/options_cfg.c` and `port/options/port_options.c`:
+
+| Case | Behaviour |
+|---|---|
+| No file | Defaults (Widescreen ON, Fast-forward 2x armed, Restart hotkey OFF). The file is first written on the first change, not at boot. |
+| Missing key | That option keeps its default. |
+| Invalid value (not an integer, or out of range: Fast-forward must be 0 or 2..4, the others 0 or 1) | That option falls back to its default and a `dw3-options: <key>=<v> is not valid` line is logged. The bad line is replaced on the next save. |
+| Malformed line, over-long key or value, junk | Skipped and counted (`ignored N malformed line(s)` in the log). |
+| File over 4 KiB, or unreadable | Defaults, logged; the next change replaces it. |
+| Unknown key | Ignored by the game, kept in memory and written back in its original position, so a build with fewer rows does not delete a newer build's settings (up to 48 keys). |
+| `version=N` newer than 1 | Known keys are still read, the rest is kept, and the version is written back as it was. A missing or bad version counts as 1. |
+| Duplicate key | The last one wins. |
+
+Adding a row means one entry in the registry table (`key`, default, valid
+range); nothing else in the store changes.
+
+### When it is loaded and saved
+
+- **Load:** once, in each host's `init_paths`, right after the runtime and
+  memcard directories are set up and before `dw3_game_main()`. Widescreen,
+  the fast-forward row and the restart hotkey therefore have their saved
+  values from the first frame (widescreen applies at boot, not after the
+  first visit to Options). The log line is
+  `dw3-options: <path> (widescreen=W fast_forward=F restart_hotkey=R)`
+  (PC stderr; Switch `dw3.log`).
+- **Save: on every change**, i.e. each Confirm on a row, not on leaving the
+  screen and never per frame. Reason: a change is a button press on a tiny
+  file, so a write costs a few milliseconds on the SD card in a menu, and a
+  HOME exit, a console sleep, a kill or a crash while the Options screen is
+  still open cannot lose it. Saving when the screen closes would need hooks
+  in the P10.2 applet focus/exit paths and the P6.9 restart; saving on
+  change needs none, and there is nothing to flush on HOME. A failed write
+  (SD full or busy) is logged, keeps the live value, and is retried when the
+  screen closes and at process exit (`dw3_port_options_flush`).
+- **Restart (P6.9):** the in-process restart does not re-read the file; the
+  registry already equals it. A host relaunch (PC restart, return from
+  hbmenu) reads it again.
+- Fast-forward's *row* (OFF / 2x / 3x / 4x) is saved. Whether R3 currently
+  has it running is not: the game always starts at normal speed.
+
+### Per-run overrides are not saved
+
+`DW3_WIDESCREEN=0|1` and `DW3_TURBO=0|2|3|4` still force a value for that
+run (tests, replay recordings). They win over the file, but another toggle on
+the Options screen writes the value the file had for the forced row, not the
+forced one. Toggling the forced row itself is a user choice and is saved.
+
+### Atomic write (FAT-safe)
+
+`port_options.cfg.tmp` is written and closed, the old file is removed, and
+the temp file is renamed into place. The unlink is needed because FAT/exFAT
+(the Switch SD) and Windows refuse to rename over an existing file; it is the
+same rule the flat saves use (`port/memcard/memcard_host.c`). If the process
+dies between the remove and the rename, the next launch finds no
+`port_options.cfg` but a complete `.tmp` (it ends with `end=1`) and uses it
+(`recovered ... .tmp` in the log); a torn `.tmp` is ignored. If the write
+fails before the remove, the old file is untouched.
+
+### Restart hotkey
+
+The restart hotkey was the first live setting in the registry. It is OFF by
+default and, since P9.4, stays on once enabled. When enabled, the chord
+flushes dirty P5.3 slots before returning the game to its title boot flow. A
+failed flush cancels the restart. This does not format, delete, or change
+clean save files. See [P6.9_RESTART.md](P6.9_RESTART.md).
+
+### Tests and validation (P9.4)
+
+- `python3 -m pytest tools/tests/test_options_persist.py`: store (parse,
+  serialize round trip, bad numbers, junk, over-long lines, full table,
+  newer version, atomic write, repeated overwrite, `.tmp` recovery, torn
+  `.tmp`, oversized file, missing directory) and registry (defaults, toggles
+  surviving a "restart" as a second process, save on each change, bad
+  values, unknown keys kept, env overrides not saved, unwritable directory
+  keeps the old file).
+- `tools/replay_tests.sh --only us-options-persist --only eu-options-persist`
+  (PC) and `tools/replay_ryubing.sh --only us-options-persist ...`
+  (Ryubing) run two phases on one config dir: phase 1 turns Widescreen OFF,
+  Fast-forward 2x -> 3x and Restart hotkey ON; phase 2 is a new process whose
+  Options screen and log must show the same values.
+- OLED: pending. Toggle, HOME, close the game, relaunch from hbmenu.
 
 ## Entry investigation (P9.2)
 

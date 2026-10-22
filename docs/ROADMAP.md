@@ -672,7 +672,7 @@ gate, which stays open.
   relaunching Sphaira (PC and hardware), and a save written before the
   restart still loads afterwards.
   **PC implementation / evidence (2026-10-13):** title Port options has an
-  opt-in restart setting (OFF by default, session-only). The PS1 logical
+  opt-in restart setting (OFF by default; saved since P9.4). The PS1 logical
   chord L1+R1+Start+Select runs shared `port/` policy, flushes P5.3 dirty
   saves, and cancels if flushing fails. It resets `GAME` state and the active
   mode/overlay inside the existing `dw3_game_main()` loop; host, PSY-Z, audio,
@@ -859,7 +859,7 @@ PS1 game, with vanilla-safe defaults and persistence on owner storage.
   the Port options selection changes (P5.2; EU #170 owner test improved but
   still slow; dirty-region cache now on PC and Switch, OLED A/B open, see
   [composition plan](MENU_COMPOSITION_PLAN.md)),
-  persistence (P9.4). History:
+  persistence (done in P9.4, OLED pending). History:
   [P9.2_MENU.md](P9.2_MENU.md).
   Done when: the screen is reachable from the main menu and returns
   cleanly to it (PC + Switch; TTB print on PC).
@@ -869,17 +869,29 @@ PS1 game, with vanilla-safe defaults and persistence on owner storage.
   Done when: flipping a stub or real flag from the menu has a documented
   effect (safe no-op allowed for not-yet-wired features).
   **Status (2026-10-13):** shared registry has Widescreen and Fast-forward
-  safe no-op stubs plus the real session-only Restart hotkey, OFF by default.
-  Fast-forward became a real session-only row on 2026-10-14 (P6.4).
-  Widescreen became a real session-only toggle on 2026-10-14 (P6.1).
+  safe no-op stubs plus the real Restart hotkey, OFF by default.
+  Fast-forward became a real row on 2026-10-14 (P6.4), Widescreen a real
+  toggle the same day (P6.1); both were session-only until P9.4.
   Its chord and flush behavior are documented in
   [PORT_OPTIONS.md](PORT_OPTIONS.md) and [P6.9_RESTART.md](P6.9_RESTART.md).
-  P9.4 persistence and P9.5 wiring of remaining real features remain open.
+  P9.5 wiring of remaining real features remains open.
 - [ ] **P9.4 Persistence.** Load/save the option file under the owner
   runtime layout (PC directory / `sdmc:/switch/dw3/…`); values survive
   process exit.
   Done when: a toggled value remains after restarting the host or
   returning from hbmenu.
+  **Status (2026-10-22): implemented, PC and Ryubing validated on both
+  discs; waiting for the OLED check.** `port_options.cfg` (key=value,
+  `version=1`) in each region runtime root (`runtime/<ver>/`,
+  `sdmc:/switch/dw3/<ver>/`), loaded in `init_paths` before any flag is
+  read, saved on every change on the Options screen, FAT-safe atomic write.
+  Format, rules and rationale: [PORT_OPTIONS.md](PORT_OPTIONS.md#persistence).
+  Evidence: unit tests `tools/tests/test_options_persist.py`; two-phase
+  replay scenarios `us/eu-options-persist` on the PC build (identical
+  captures on two runs) and in Ryubing (Widescreen OFF, Fast-forward 3x,
+  Restart hotkey ON written by one process, read back by the next; the file
+  on the emulated SD has the same content).
+  Ready to close? needs OLED: toggle, HOME->close, relaunch from hbmenu.
   Blocks: P6.12, P6.17, P6.18, P7.6–P7.10 and a persisted P6.9 restart
   setting (see [Backlog](#backlog--future-goals)).
 - [ ] **P9.5 Wire real features.** Connect registry entries to real port
@@ -958,8 +970,8 @@ Statuses are in the [table](#status-at-a-glance).
 **Dependencies not stated in the entries:**
 
 - **P9.4 (option persistence) blocks** P6.12 (remap survives a restart),
-  P6.17, P6.18, P7.6–P7.10, and a persisted P6.9 restart setting (today
-  session-only).
+  P6.17, P6.18, P7.6–P7.10. The persisted P6.9 restart setting is done with
+  P9.4; the option file is `port_options.cfg` (add a key per new row).
 - **Future P6.15 gameplay scenarios** may need P6.9 (restart to a known
   state) and P5.3 (a fixed save per case). The current scenarios use a fresh
   process per scenario and replay the scripted opening from boot (~16400
