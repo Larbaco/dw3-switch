@@ -90,6 +90,11 @@ P6.18 pacing (encounter rate, text speed) is the same shape: two one-call
 game's own value while the Port options rows are at their defaults. The policy
 (`pacing_policy.c`) is pure and unit tested; the Switch tree has no part in it.
 
+P7.7 fixes of the original game are plain decomp patches, not port hooks: `0065` in
+`FIGHTSTG_showFighterNames` (the HUD names the Digimon a partner fights as) and `0066` in
+`FIGHTSTG_updateTechAction` (a Claw's steal on the killing blow). Patch `0064` adds PC-only
+environment hooks for the replay scenarios. See [P7.7_BUG_FIXES.md](P7.7_BUG_FIXES.md).
+
 ## Non-goals (for now)
 
 - Byte-identical matching builds on Switch

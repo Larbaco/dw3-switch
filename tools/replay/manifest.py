@@ -216,5 +216,66 @@ for _v, _ids in (("us", (0x159, 0x1FA, 0x1C2, 0x158)), ("eu", (0x167, 0x208, 0x1
                   note="two forced battles, Tech in each; WFIGHTMN restored per battle"))
 
 
+# P7.7 bug fixes (patches 0064 hooks, 0065 HUD name, 0066 claw steal). Log-only
+# battles: the patches print `dw3-p77:` lines and the PC hooks of 0064 set the
+# situation up, so the proof does not depend on a lucky roll. PC only.
+_P77_ENV = (("DW3_START_MODE", "0x600"), ("DW3_FORCE_ENCOUNTER", "34"),
+            ("DW3_FORCE_PARTY", "0"))
+_P77_CLAW = _P77_ENV + (("DW3_FORCE_TECH", "127"), ("DW3_FORCE_HIT", "1"),
+                        ("DW3_FORCE_STEAL", "1"), ("DW3_FORCE_ENEMY_ITEM", "1"))
+_P77_WON = r"WFIGHTMN_endBattle result=1"
+for _v in ("us", "eu"):
+    _bat = (f"{_v}-p77-battle",)
+    _add(
+        Scenario(f"{_v}-p77-claw-ko", _v, "full", timeout=300, log_only=True, phases=_bat,
+                 env=_P77_CLAW + (("DW3_FORCE_ENEMY_HP", "1"),),
+                 expect_log=((0, r"DW3_FORCE_TECH partner uses tech 127(?s:.*)"
+                                 r"claw steal on a knocked-out enemy \(tech 127\)(?s:.*)"
+                                 r"steal item 1 from enemy slot 0 \(hp 0\)(?s:.*)" + _P77_WON),),
+                 note="Picking Claw on a 1 HP enemy: the steal happens on the killing blow (patch 0066)"),
+        Scenario(f"{_v}-p77-claw-alive", _v, "full", timeout=300, log_only=True, phases=_bat,
+                 env=_P77_CLAW + (("DW3_FORCE_ENEMY_HP", "2000"),),
+                 expect_log=((0, r"steal item 1 from enemy slot 0 \(hp 19[0-9]{2}\)"),),
+                 forbid_log=((0, r"knocked-out enemy"),),
+                 note="the same claw on a 2000 HP enemy takes the old path (patch 0066)"),
+        Scenario(f"{_v}-p77-ko-no-claw", _v, "full", timeout=300, log_only=True, phases=_bat,
+                 env=_P77_ENV + (("DW3_FORCE_ENEMY_ITEM", "1"), ("DW3_FORCE_ENEMY_HP", "1"),
+                                 ("DW3_FORCE_HIT", "1")),
+                 expect_log=((0, _P77_WON),),
+                 forbid_log=((0, r"knocked-out enemy"), (0, r"steal item")),
+                 note="a technique without the steal effect that knocks the enemy out is untouched (patch 0066)"),
+        Scenario(f"{_v}-p77-hud-rookie", _v, "full", timeout=300, log_only=True, phases=_bat,
+                 env=_P77_ENV,
+                 expect_log=((0, r"battle HUD partner name of the Digimon \(Digimon id 383, 43 px\)"),),
+                 note="an unevolved Kotemon: the Digimon's own name is the Rookie string (patch 0065)"),
+        Scenario(f"{_v}-p77-hud-form", _v, "full", timeout=300, log_only=True, phases=_bat,
+                 env=_P77_ENV + (("DW3_FORCE_FORM", "386"),),
+                 expect_log=((0, r"battle HUD partner name of the Digimon \(Digimon id 386, 54 px\)"),),
+                 note="Kotemon fighting as Dinohumon: the HUD names Dinohumon (patch 0065)"),
+        Scenario(f"{_v}-p77-hud-long", _v, "full", timeout=300, log_only=True, phases=_bat,
+                 env=_P77_ENV + (("DW3_FORCE_FORM", "196"),),
+                 expect_log=((0, r"battle HUD partner name of the Digimon \(Digimon id 196, 84 px\)"),),
+                 note="MetalGarurumon (84 px) is squeezed to fit before the HP number (patch 0065)"),
+        Scenario(f"{_v}-p77-hud-nickname", _v, "full", timeout=300, log_only=True, phases=_bat,
+                 env=_P77_ENV + (("DW3_FORCE_FORM", "386"), ("DW3_FORCE_NICKNAME", "Spike")),
+                 expect_log=((0, r"battle HUD partner name kept \(nickname or no form\) \(Digimon id 386, 28 px\)"),),
+                 note="a nickname from the Nickname Shop is kept on a digivolved partner (patch 0065)"),
+        Scenario(f"{_v}-p77-square-field", _v, "full", timeout=300, log_only=True,
+                 phases=(f"{_v}-p77-square",), env=(("DW3_START_MODE", "0x233"), ("DW3_PROGRESS", "6")),
+                 expect_log=((0, r"dw3-pad: buttons pressed mask=0x0080"),),
+                 forbid_log=((0, r"kind=mode(?s:.*?)kind=mode"),),
+                 note="Square (alone, held, with Circle) in a field changes nothing: the game reads no Square there"),
+    )
+# The text language of the HUD name (the form's name is read from the current
+# language's file; DW3_LANGUAGE is set before the new game copies the names).
+for _lang, _id in (("fr", 3), ("it", 4), ("de", 5), ("es", 6)):
+    _add(Scenario(f"eu-p77-hud-form-{_lang}", "eu", "full", timeout=300, log_only=True,
+                  phases=("eu-p77-battle",),
+                  env=_P77_ENV + (("DW3_FORCE_FORM", "386"), ("DW3_LANGUAGE", str(_id))),
+                  expect_log=((0, rf"LANGUAGE={_id} \(DW3_LANGUAGE\)(?s:.*)"
+                                  r"battle HUD partner name of the Digimon \(Digimon id 386, [0-9]+ px\)"),),
+                  note=f"the Digimon's name is read from the {_lang} text file (patch 0065)"))
+
+
 def by_name() -> dict[str, Scenario]:
     return {s.name: s for s in SCENARIOS}
