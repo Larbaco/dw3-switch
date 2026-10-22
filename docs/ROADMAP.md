@@ -494,9 +494,16 @@ speed.
   `glTexSubImage2D` and logs per-update times in nxlink/HUD builds; Ryubing
   smoke on US and EU is recorded in
   [MENU_COMPOSITION_INVESTIGATION](MENU_COMPOSITION_INVESTIGATION.md#decision-and-switch-port-2026-10-22).
-  **Open: owner OLED A/B against preview.28 (checklist in
-  [MENU_COMPOSITION_PLAN](MENU_COMPOSITION_PLAN.md)); the P5.2 menu follow-up
-  is not closed until then.** Stock
+  **Owner OLED (2026-10-22, handheld, preview.29 candidate = main `aa470d3`
+  + this cache):** the owner reports the menu "much more responsive". The EU
+  `--nxlink` log (about 22 min, turbo used) shows per update: cursor move
+  compose ~4.5 ms + upload ~1.4 ms (434 KB), value change ~1.3 ms + ~0.3 ms
+  (30 KB), and one ~151 ms rebuild each time the title menu appears (3 in
+  the session). This closes the P5.2 Options follow-up on owner feel. Not
+  covered by that run: a numeric A/B against preview.28, sleep/wake and
+  dock/undock with Options open, the restart-hotkey step, a rim/fade pixel
+  check, and the US disc on the OLED (checklist in
+  [MENU_COMPOSITION_PLAN](MENU_COMPOSITION_PLAN.md)). Stock
   clocks only (no overclock). History (preview.7–.26, mesh approach A,
   flat-blue root cause): [P5.2_BATTLE_GPU.md](P5.2_BATTLE_GPU.md#history-moved-from-roadmapmd).
 

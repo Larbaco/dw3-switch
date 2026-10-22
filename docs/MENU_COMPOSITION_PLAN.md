@@ -106,6 +106,18 @@ settings:
 7. Pixel check of the window rim and the text, including mid-fade frames
    (open and close the screen and compare with preview.28).
 
+## OLED result (2026-10-22)
+
+Owner, OLED handheld, EU `--nxlink` preview.29 candidate (main `aa470d3` +
+this branch), about 22 minutes: the menu is "much more responsive". Log
+numbers per update: cursor move compose ~4.5 ms + upload ~1.4 ms; value
+change ~1.3 ms + ~0.3 ms; title-menu rebuild ~151 ms (once per title
+appearance, 3 in the session). Items 1-3 above are covered by the owner's
+check; 4 behaves as designed (one rebuild per title appearance); 5-7, a
+numeric A/B against preview.28 and the US disc on the OLED were not covered.
+Log: `tmp/evidence/2026-10-22-preview29-rc2-oled-handheld/dw3-eu-nxlink.log`
+(owner machine, not in git).
+
 ## Roadmap status
 
 This work is the open P5.2 Port options performance follow-up. P9.2
