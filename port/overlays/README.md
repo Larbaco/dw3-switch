@@ -25,6 +25,50 @@ bss_size}`.
 Host zeros `.bss` on id change even though the PS1 CD image does not clear
 it after a `memcpy`; that keeps the static model deterministic.
 
+### Failed restore (patch 0061)
+
+The loaders call `dw3_overlay_load_mode` / `dw3_overlay_load_sub`, which
+hold the rule above and handle a file id that is not in the host table (an
+overlay that is not linked, such as `WFIGHTTS`, `SOUNDTST`, `SHOCKTST`, or
+the skipped `WSTAG460`):
+
+| What | Behaviour |
+|---|---|
+| Log | the stable `dw3: overlay restore file=0x… kind=unknown UNKNOWN` marker, then `dw3: ERROR overlay restore failed: file=0x… (<dec>): <reason>` |
+| Latch | `OVERLAY_LOADER.mode` / `.subOverlay` set to `-1`, not to the id, so the next load (same id or the previous one) restores again |
+| Strict mode | `abort()` after a `dw3: FATAL …` line. On when `DW3_REPLAY` is set (every P6.15 replay run) or `DW3_OVERLAY_STRICT=1`; `DW3_OVERLAY_STRICT=0` turns it off; the Switch replay build (`DW3_NX_REPLAY`) calls `dw3_overlay_set_strict(1)` |
+| Return | `-1` (`0` restored, `1` same id / no-op) |
+
+On the host every overlay's code and data are linked into the image, so a
+failed restore does not run stale bytes: `STAGE_VRAM` /
+`SUB_OVERLAY_ADDRESS` is only read once, for the boot TIM
+(`src/engine/system/main.c`), never as overlay code or data. What a failed
+restore does mean is that the overlay's globals were not reset (if it is
+linked but not registered) or that its entry is a weak stub returning NULL
+(`mode_stubs.c`, if it is not linked). Before 0061 that was a single log
+line and the id was recorded as loaded.
+
+### Same sub-overlay twice (battles)
+
+`FIGHTSTG_updateRoot` loads `WFIGHTMN` (or `WFIGHTTS`) with
+`loadSubOverlay` at the start of every battle; the same-id skip keeps its
+globals only while the mode does not change. On the PS1 that is the same
+rule: `loadSubOverlay` skips the `memcpy` for the same id, and
+`loadModeOverlay` sets `subOverlay = -1` on every mode change. Every way out
+of a battle is a mode change (`WFIGHTMN_endBattle`: field mode on flee,
+`MODE_BATTLE_REPORT` (`STFGTREP`) or `MODE_ENDING` on a win, `MODE_TITLE` on
+a loss), and nothing requests `MODE_BATTLE` from inside a battle, so the
+next battle always reloads `WFIGHTMN` on the PS1 and restores its `.data` /
+`.bss` on the host. The P6.15 scenarios `us-two-battles` /
+`eu-two-battles` check this (two battles with a technique each; the log
+shows `FIGHTSTG` + `WFIGHTMN` restored for each).
+
+`WFIGHTMN_bringLastEnemy`'s `while (1)` over `WFIGHTMN_elementVisuals`
+(`menu.c`, final battle only) has no bound check, but the table covers every
+element (2..8, plus a `-1` row the loop does not test) and is never
+written, so the host's restored copy is the same as the linked one; it can
+only run off the table for an element the PS1 would also run off for.
+
 ### Symbol-prefix strategy (P3.2)
 
 Phase 2 kept only `STDWTITL` linked. P3.2 uniquifies **stage** globals with
@@ -93,7 +137,9 @@ gcc -std=c11 -Wall -Wextra -Werror -O2 -DPORT_HOST=1 \
 ```
 
 Fixtures prove: two different overlays reset; the same overlay twice
-preserves mutated `.data` / `.bss`.
+preserves mutated `.data` / `.bss`; an unknown id fails, is not recorded as
+loaded (the next load restores again), and aborts in strict mode. The test
+drives the real `dw3_overlay_load_mode` / `dw3_overlay_load_sub`.
 
 ### Switch / P4.6
 
@@ -104,7 +150,9 @@ sweep — checklist and log parser:
 - `docs/P4.6_MODULES_STATUS.md`
 - `python3 tools/parse_overlay_nxlink.py <nxlink-capture>`
 
-Restore lines include `kind=mode` (entry != NULL) or `kind=sub`.
+Restore lines include `kind=mode` (entry != NULL) or `kind=sub`; a failed
+restore prints `kind=unknown UNKNOWN` plus a `dw3: ERROR overlay restore
+failed` line (and aborts in a replay build).
 
 ## Boot TIM
 

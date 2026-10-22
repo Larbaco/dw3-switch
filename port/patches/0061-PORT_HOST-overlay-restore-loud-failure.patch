@@ -1,0 +1,52 @@
+Upstream-bound: no
+Subject: [PORT_HOST] overlay restore: loud failure, failed id not recorded
+
+Follow-up to 0008. The host loaders called dw3_overlay_restore and ignored
+its result, then stored the id in OVERLAY_LOADER.mode / .subOverlay anyway.
+A file id that is not in the host overlay table therefore only printed the
+`kind=unknown UNKNOWN` marker, and the latch claimed it was loaded.
+
+Both loaders now go through dw3_overlay_load_mode / dw3_overlay_load_sub
+(port/overlays/overlay_host.c), which keep the PS1 rule (same id: no-op,
+globals preserved; new mode: sub latch reset to -1) and, on a failed
+restore, log a `dw3: ERROR overlay restore failed` line, abort in strict
+mode (DW3_OVERLAY_STRICT=1, any DW3_REPLAY run, the Switch replay build),
+and set the latch to -1 so the id is not recorded as loaded.
+
+Non-PORT_HOST code is unchanged.
+
+--- a/src/engine/system/overlay.c
++++ b/src/engine/system/overlay.c
+@@ -246,14 +246,12 @@
+      * Static overlay model (P2.6): restore initial .data and zero .bss for
+      * MODE_OVERLAY_FILES[id] only when the mode index changes. Same mode
+      * re-entry preserves overlay globals (PS1 memcpy-skip semantics).
++     * A failed restore (file id not in the host table) is logged as an
++     * error, aborts in strict/replay runs, and leaves the latch at -1
++     * instead of recording the id as loaded (port/overlays, patch 0061).
+      */
+-    if (OVERLAY_LOADER.mode != id) {
+-        OVERLAY_LOADER.mode = id;
+-        OVERLAY_LOADER.subOverlay = -1;
+-        if (MODE_OVERLAY_FILES[id] != 0) {
+-            (void)dw3_overlay_restore(MODE_OVERLAY_FILES[id]);
+-        }
+-    }
++    (void)dw3_overlay_load_mode(&OVERLAY_LOADER.mode, &OVERLAY_LOADER.subOverlay, id,
++                                MODE_OVERLAY_FILES[id]);
+ #else
+     u8 *src;
+     void *dst;
+@@ -271,10 +269,8 @@
+ /* Copies a file to the second overlay area (SUB_OVERLAY_ADDRESS) */
+ void loadSubOverlay(s32 id) {
+ #if PORT_HOST
+-    if (OVERLAY_LOADER.subOverlay != id) {
+-        OVERLAY_LOADER.subOverlay = id;
+-        (void)dw3_overlay_restore(id);
+-    }
++    /* Same id: no-op. Failed restore: not recorded (see loadModeOverlay). */
++    (void)dw3_overlay_load_sub(&OVERLAY_LOADER.subOverlay, id);
+ #else
+     u8 *src;
+     void *dst;

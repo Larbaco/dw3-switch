@@ -55,14 +55,14 @@ int dw3_pacing_scale_delay(int mode, int delay);
  * updateTextWindow). */
 int dw3_pacing_reveal_page(int mode, int type_delay, int finished, int shown);
 
-/* Patch 0061 (field/field_mode/battle.c): FIELDSTG_countBattleSteps. *rate
+/* Patch 0062 (field/field_mode/battle.c): FIELDSTG_countBattleSteps. *rate
  * is the area's countdown step; returns 1 to run the countdown with the
  * (possibly changed) *rate, 0 to skip the footstep entirely. */
 int dw3_port_pacing_encounter_step(int *rate);
-/* Patch 0061: a random battle is starting. Logs how many footsteps led to it. */
+/* Patch 0062: a random battle is starting. Logs how many footsteps led to it. */
 void dw3_port_pacing_encounter_started(void);
 
-/* Patch 0062 (engine/text/text_window.c). `win` is only an identity.
+/* Patch 0063 (engine/text/text_window.c). `win` is only an identity.
  * text_delay: the delay to use for setTypeDelay(win, delay). text_reveal:
  * Instant mode, show the page now. text_poll runs after every window update:
  * `typing` = shown and typing (not finished), `done` = finished or waiting for

@@ -33,8 +33,28 @@ void dw3_overlay_set_table(const Dw3OverlayDesc *table, size_t count);
 const Dw3OverlayDesc *dw3_overlay_find(int32_t file_id);
 
 /* Restore .data from data_init and zero .bss.
- * Returns 0 on success, -1 if file_id is unknown or file_id == 0. */
+ * Returns 0 on success, -1 if file_id is unknown or file_id == 0. A failure
+ * logs the stable `kind=unknown UNKNOWN` marker plus a `dw3: ERROR` line, and
+ * aborts the process in strict mode (see dw3_overlay_strict). */
 int dw3_overlay_restore(int32_t file_id);
+
+/* Strict mode: a failed restore is a hard failure (abort) instead of a log
+ * line. On by default when DW3_REPLAY is set (P6.15 replay runs);
+ * DW3_OVERLAY_STRICT=1/0 forces it; dw3_overlay_set_strict overrides both
+ * (the Switch replay build, tests). */
+int dw3_overlay_strict(void);
+void dw3_overlay_set_strict(int on);
+
+/* The host halves of loadModeOverlay / loadSubOverlay (patch 0008, 0061).
+ * loaded_mode / loaded_sub are OVERLAY_LOADER.mode / .subOverlay.
+ * Same id as loaded: no-op, returns 1 (globals preserved, as the PS1 skips
+ * the memcpy). Otherwise restores and records the id, returns 0. A mode
+ * slot without a file (file_id 0) is recorded and returns 1. On a failed
+ * restore the id is NOT recorded: the latch is set to -1 so the next load
+ * of any id restores again, and -1 is returned. */
+int dw3_overlay_load_mode(int32_t *loaded_mode, int32_t *loaded_sub, int32_t mode_index,
+                          int32_t file_id);
+int dw3_overlay_load_sub(int32_t *loaded_sub, int32_t file_id);
 
 /* Last restored mode overlay (desc->entry != NULL). Sub-overlays do not
  * update this. Used by the Switch mesh gate (FIGHTSTG only). 0 = none. */

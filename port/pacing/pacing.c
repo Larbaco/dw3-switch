@@ -1,5 +1,5 @@
 /* P6.18 pacing glue: reads the two Port options rows and answers the hooks of
- * patches 0061 (encounter rate) and 0062 (text speed). The policy itself is
+ * patches 0062 (encounter rate) and 0063 (text speed). The policy itself is
  * in pacing_policy.c. docs/P6.18_PACING.md. */
 #include "port_pacing.h"
 

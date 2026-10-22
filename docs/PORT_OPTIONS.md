@@ -63,8 +63,8 @@ kept. OFF disables R3. See [P6.4_FAST_FORWARD.md](P6.4_FAST_FORWARD.md).
 The two volume rows default to **10**, which leaves the audio output
 bit-identical to a build without them (unity gain, the mixer skips the
 multiply). See [P6.17_VOLUME.md](P6.17_VOLUME.md).
-The two pacing rows default to **1x** and **Normal**: the hooks (patches 0061
-and 0062) only report to the port, so a run with the defaults is
+The two pacing rows default to **1x** and **Normal**: the hooks (patches 0062
+and 0063) only report to the port, so a run with the defaults is
 pixel-identical to a build without them. See [P6.18_PACING.md](P6.18_PACING.md).
 
 Always-on (not toggles; see [SWITCH_FEATURES.md](SWITCH_FEATURES.md)):

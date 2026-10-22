@@ -84,8 +84,8 @@ loop create the title mode again. It does not rerun the host or PSY-Z
 initialization path. The Switch host stays limited to input and presentation.
 
 P6.18 pacing (encounter rate, text speed) is the same shape: two one-call
-`PORT_HOST` hooks in the decomp (patches `0061*` in
-`FIELDSTG_countBattleSteps`, `0062*` in `textWindowSetTypeDelay` /
+`PORT_HOST` hooks in the decomp (patches `0062*` in
+`FIELDSTG_countBattleSteps`, `0063*` in `textWindowSetTypeDelay` /
 `updateTextWindow`) that ask `port/pacing/` what to do, and the answer is the
 game's own value while the Port options rows are at their defaults. The policy
 (`pacing_policy.c`) is pure and unit tested; the Switch tree has no part in it.

@@ -144,7 +144,7 @@ for _v in ("us", "eu"):
 
 
 # P6.18 pacing options. Log-only: the proof is in the game log (port patches
-# 0061 / 0062 print `dw3-pacing:` lines), so there are no reference captures.
+# 0062 / 0063 print `dw3-pacing:` lines), so there are no reference captures.
 # The option file is seeded by the runner (Scenario.cfg), which tests the
 # reader as well.
 _PACING_PERSIST_P1 = (r"dw3-options: saved \S*port_options\.cfg \(widescreen=1 fast_forward=2 restart_hotkey=0 "
@@ -198,6 +198,22 @@ for _v, _fight in (("us", 0x159), ("eu", 0x167)):
                   expect_log=((0, r"FIGHTSTG_start"),),
                   forbid_log=((0, r"random battle after"),),
                   note="Off does not touch a scripted EVENT_BATTLE (P6.18)"))
+
+# Two consecutive battles, a technique used in each (patch 0061): every battle
+# is a mode change (FIGHTSTG <- report/field), so WFIGHTMN is restored per
+# battle, as the PS1 reloads it. PC only (needs the env debug aids).
+_BATTLE_ENV = (("DW3_START_MODE", "0x600"), ("DW3_FORCE_ENCOUNTER", "34"),
+               ("DW3_FORCE_PARTY", "0"), ("DW3_AUTO_DOOR_MODE", "0x600"),
+               ("DW3_AUTO_DOOR_FRAMES", "120"))
+for _v, _ids in (("us", (0x159, 0x1FA, 0x1C2, 0x158)), ("eu", (0x167, 0x208, 0x1D1, 0x166))):
+    _fight, _menu, _report, _field = _ids
+    _battle = ((_fight, M), (_menu, S), (_report, M), (_field, M))
+    _add(Scenario(f"{_v}-two-battles", _v, "full", turbo=4, timeout=600,
+                  env=_BATTLE_ENV, expect_restore=_battle * 2,
+                  expect_log=((0, r"WFIGHTMN_endBattle result=1(?s:.*)"
+                                  r"AUTO_DOOR requestMode=0x600(?s:.*)"
+                                  r"WFIGHTMN_endBattle result=1"),),
+                  note="two forced battles, Tech in each; WFIGHTMN restored per battle"))
 
 
 def by_name() -> dict[str, Scenario]:
