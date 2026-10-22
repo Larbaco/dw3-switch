@@ -24,13 +24,17 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 IMAGE="${DW3_DK_IMAGE:-devkitpro/devkita64:latest}"
 NXLINK_STDIO=OFF
 DW3_NX_FORCE_CRASH=OFF
+DW3_NX_REPLAY=OFF
 DW3_VERSION="$(echo "${DW3_VERSION:-us}" | tr '[:upper:]' '[:lower:]')"
 
 usage() {
-  echo "usage: $0 [--eu] [--nxlink] [--force-crash]"
+  echo "usage: $0 [--eu] [--nxlink] [--replay] [--force-crash]"
   echo "  default       US game NRO at build/switch/dw3-switch.nro"
   echo "  --eu          EU game NRO at build/switch-eu/dw3-switch.nro"
   echo "  --nxlink      nxlink development NRO (build/switch[-eu]-nxlink/)"
+  echo "  --replay      P6.15 test NRO: reads sdmc:/switch/dw3/replay.rec"
+  echo "                (build/switch[-eu][-nxlink]-replay/dw3-switch[-nxlink]-replay.nro;"
+  echo "                never release/preview, see docs/P6.15_REPLAY_TESTS.md)"
   echo "  --force-crash P5.4 smoke only: deliberate null write after boot"
   echo "                (pair with --nxlink; never in release/preview NROs)"
 }
@@ -45,6 +49,9 @@ while (( $# > 0 )); do
       ;;
     --force-crash)
       DW3_NX_FORCE_CRASH=ON
+      ;;
+    --replay)
+      DW3_NX_REPLAY=ON
       ;;
     -h|--help)
       usage
@@ -87,6 +94,10 @@ else
     NRO_NAME="dw3-switch"
   fi
   RUNTIME_PATH="sdmc:/switch/dw3/us"
+fi
+if [[ "${DW3_NX_REPLAY}" == "ON" ]]; then
+  BUILD_DIR="${BUILD_DIR}-replay"
+  NRO_NAME="${NRO_NAME}-replay"
 fi
 NRO="${BUILD_DIR}/${NRO_NAME}.nro"
 NACP="${BUILD_DIR}/${NRO_NAME}.nacp"
@@ -143,6 +154,7 @@ docker run --rm \
   -e DW3_NXLINK_STDIO="${NXLINK_STDIO}" \
   -e DW3_VERSION="${DW3_VERSION}" \
   -e DW3_NX_FORCE_CRASH="${DW3_NX_FORCE_CRASH}" \
+  -e DW3_NX_REPLAY="${DW3_NX_REPLAY}" \
   -e DW3_NRO_VERSION="${DW3_NRO_VERSION}" \
   -e DW3_NACP_VERSION="${DW3_NACP_VERSION}" \
   -e GIT_CONFIG_COUNT=1 \
@@ -159,12 +171,17 @@ docker run --rm \
     -DDW3_VERSION="$DW3_VERSION" \
     -DDW3_NXLINK_STDIO="$DW3_NXLINK_STDIO" \
     -DDW3_NX_FORCE_CRASH="$DW3_NX_FORCE_CRASH" \
+    -DDW3_NX_REPLAY="$DW3_NX_REPLAY" \
     -DDW3_NRO_VERSION="$DW3_NRO_VERSION" \
     -DDW3_NACP_VERSION="$DW3_NACP_VERSION" && \
     cmake --build "$DW3_SWITCH_BUILD_DIR" -j"$(nproc)"'
 
 if ! grep -F -x -q "DW3_NXLINK_STDIO:BOOL=${NXLINK_STDIO}" "${BUILD_DIR}/CMakeCache.txt"; then
   echo "CMake cache does not match requested nxlink mode (${NXLINK_STDIO})" >&2
+  exit 1
+fi
+if ! grep -F -x -q "DW3_NX_REPLAY:BOOL=${DW3_NX_REPLAY}" "${BUILD_DIR}/CMakeCache.txt"; then
+  echo "CMake cache does not match requested replay mode (${DW3_NX_REPLAY})" >&2
   exit 1
 fi
 if ! grep -F -x -q "DW3_NX_FORCE_CRASH:BOOL=${DW3_NX_FORCE_CRASH}" "${BUILD_DIR}/CMakeCache.txt"; then

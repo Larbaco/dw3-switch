@@ -9,6 +9,7 @@
  * provided as __wrap_* and selected via -Wl,--wrap=… on dw3-pc.
  */
 #include <libetc.h>
+#include "dw3_replay.h"
 #include <psyz/input.h>
 #include <stdio.h>
 #include <string.h>
@@ -139,78 +140,85 @@ static int mode_table_offset(unsigned char kind) {
  *   DW3_REPLAY=<file>         replay: <file> supplies the pad mask each frame
  *   DW3_REPLAY_RECORD=<file>  record: log every change of the real pad mask
  *
- * File format (text, one directive per line, '#' comments):
- *   pad  <frame> <hexmask>   from this frame on, hold this raw mask
- *   shot <frame> <name>      checkpoint: call dw3_pad_host_shot_cb(name)
- *   end  <frame>             exit(0) at this frame
- * Masks use the DW3_RAW_* bits (1 = pressed). The shot callback is set by the
- * host (platforms/pc/src/main.c writes a PPM); the pad layer holds no video
- * code. See docs/P6.15_REPLAY_TESTS.md.
+ * The recording format and parser are platform independent and live in
+ * port/replay/dw3_replay.c (see port/include/dw3_replay.h). The shot
+ * callback is set by the host (platforms/pc/src/main.c writes a PPM); the pad
+ * layer holds no video code. See docs/P6.15_REPLAY_TESTS.md.
+ *
+ * Switch: a release NRO never replays. Only a build configured with
+ * -DDW3_NX_REPLAY=ON (compile-time define DW3_NX_REPLAY) reads
+ * DW3_NX_REPLAY_PATH (sdmc:/switch/dw3/replay.rec) instead of the
+ * environment, and reports checkpoints as `replay shot <frame> <name>` lines
+ * through the log sinks (svcOutputDebugString under Ryubing) plus a final
+ * `replay end`. Without that define none of the Switch path exists.
  */
 void (*dw3_pad_host_shot_cb)(const char *name, unsigned frame);
 
-enum { DW3_REPLAY_MAX = 4096 };
-typedef struct {
-    unsigned frame;
-    unsigned mask;
-    char name[48];
-} Dw3ReplayEv;
+#ifdef DW3_NX_REPLAY
+#ifndef DW3_NX_REPLAY_PATH
+#define DW3_NX_REPLAY_PATH "sdmc:/switch/dw3/replay.rec"
+#endif
+#endif
 
-static Dw3ReplayEv g_rp_pad[DW3_REPLAY_MAX];
-static Dw3ReplayEv g_rp_shot[DW3_REPLAY_MAX];
-static int g_rp_npad, g_rp_nshot, g_rp_pad_i, g_rp_shot_i;
-static unsigned g_rp_end;
+static Dw3Replay g_rp;
 static int g_rp_state; /* 0 untried, 1 replay, 2 record, 3 off */
 static unsigned g_rp_frame;
-static unsigned g_rp_mask;
 static unsigned g_rec_last = 0xFFFFFFFFu;
 static FILE *g_rec_fp;
 
-static int replay_load(const char *path) {
-    FILE *fp = fopen(path, "r");
-    char line[160];
+static void replay_shot_fire(const char *name, unsigned frame, void *ctx) {
+    (void)ctx;
+#ifdef DW3_NX_REPLAY
+    /* The only guest log that is live under Ryubing is stderr routed to
+     * svcOutputDebugString (see boot_main.c). One line per checkpoint. */
+    fprintf(stderr, "replay shot %u %s\n", frame, name);
+    fflush(stderr);
+#endif
+    if (dw3_pad_host_shot_cb != NULL) {
+        dw3_pad_host_shot_cb(name, frame);
+    }
+}
 
-    if (fp == NULL) {
-        fprintf(stderr, "dw3-replay: cannot open %s\n", path);
+static int replay_open_play(void) {
+    const char *play;
+    int bad = 0;
+
+#ifdef DW3_NX_REPLAY
+    play = DW3_NX_REPLAY_PATH;
+#else
+    play = getenv("DW3_REPLAY");
+    if (play == NULL || play[0] == '\0') {
         return -1;
     }
-    while (fgets(line, sizeof(line), fp) != NULL) {
-        unsigned f, m;
-        char name[48];
-
-        if (sscanf(line, " pad %u %x", &f, &m) == 2 && g_rp_npad < DW3_REPLAY_MAX) {
-            g_rp_pad[g_rp_npad].frame = f;
-            g_rp_pad[g_rp_npad++].mask = m;
-        } else if (sscanf(line, " shot %u %47s", &f, name) == 2 &&
-                   g_rp_nshot < DW3_REPLAY_MAX) {
-            g_rp_shot[g_rp_nshot].frame = f;
-            strcpy(g_rp_shot[g_rp_nshot++].name, name);
-        } else if (sscanf(line, " end %u", &f) == 1) {
-            g_rp_end = f;
-        }
+#endif
+    if (dw3_replay_load(&g_rp, play, &bad) != 0) {
+        fprintf(stderr, "dw3-replay: cannot open %s\n", play);
+        return -1;
     }
-    fclose(fp);
-    fprintf(stderr, "dw3-replay: loaded %s pad=%d shot=%d end=%u\n", path,
-            g_rp_npad, g_rp_nshot, g_rp_end);
+    fprintf(stderr, "dw3-replay: loaded %s pad=%u shot=%u end=%u skipped=%d\n",
+            play, (unsigned)g_rp.npad, (unsigned)g_rp.nshot, g_rp.end, bad);
+#ifdef DW3_NX_REPLAY
+    fprintf(stderr, "replay begin pad=%u shot=%u end=%u\n", (unsigned)g_rp.npad,
+            (unsigned)g_rp.nshot, g_rp.end);
+    fflush(stderr);
+#endif
     return 0;
 }
 
 static void dw3_replay_vsync(void) {
-    const char *play;
     const char *rec;
+    unsigned mask = 0;
 
     if (g_rp_state == 3) {
         return;
     }
     if (g_rp_state == 0) {
-        play = getenv("DW3_REPLAY");
-        rec = getenv("DW3_REPLAY_RECORD");
         g_rp_state = 3;
-        if (play != NULL && play[0] != '\0') {
-            if (replay_load(play) == 0) {
-                g_rp_state = 1;
-            }
-        } else if (rec != NULL && rec[0] != '\0') {
+        if (replay_open_play() == 0) {
+            g_rp_state = 1;
+        }
+#ifndef DW3_NX_REPLAY
+        else if ((rec = getenv("DW3_REPLAY_RECORD")) != NULL && rec[0] != '\0') {
             g_rec_fp = fopen(rec, "w");
             if (g_rec_fp != NULL) {
                 fprintf(g_rec_fp,
@@ -222,29 +230,31 @@ static void dw3_replay_vsync(void) {
                 }
             }
         }
+#else
+        (void)rec;
+#endif
         if (g_rp_state == 3) {
             return;
         }
     }
     g_rp_frame++;
     if (g_rp_state == 1) {
-        while (g_rp_shot_i < g_rp_nshot &&
-               g_rp_shot[g_rp_shot_i].frame <= g_rp_frame) {
-            if (dw3_pad_host_shot_cb != NULL) {
-                dw3_pad_host_shot_cb(g_rp_shot[g_rp_shot_i].name, g_rp_frame);
-            }
-            g_rp_shot_i++;
+        /* Heartbeat for the runner's hang watchdog and a soak timeline:
+         * one line every 600 game frames (~10 s of game time). */
+        if (g_rp_frame % 600u == 0u) {
+            fprintf(stderr, "dw3-replay: frame %u\n", g_rp_frame);
+            fflush(stderr);
         }
-        if (g_rp_end != 0 && g_rp_frame >= g_rp_end) {
+        if (dw3_replay_advance(&g_rp, g_rp_frame, replay_shot_fire, NULL,
+                               &mask)) {
             fprintf(stderr, "dw3-replay: end at frame %u\n", g_rp_frame);
+#ifdef DW3_NX_REPLAY
+            fprintf(stderr, "replay end %u\n", g_rp_frame);
+#endif
             fflush(stderr);
             exit(0);
         }
-        while (g_rp_pad_i < g_rp_npad &&
-               g_rp_pad[g_rp_pad_i].frame <= g_rp_frame) {
-            g_rp_mask = g_rp_pad[g_rp_pad_i++].mask;
-        }
-        dw3_pad_publish_mask(g_rp_mask);
+        dw3_pad_publish_mask(mask);
     }
 }
 
