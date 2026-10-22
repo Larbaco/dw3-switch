@@ -1,7 +1,7 @@
 # Balloon NULL actor crash (patch 0058)
 
-Status: fixed on the PC host and on the Switch build (Ryubing); OLED pass
-pending. Found in the preview.28 / preview.29 Ryubing sweep (2026-10-22).
+Status: fixed on the PC host and in the Switch build (checked on Ryubing, US
+and EU); OLED pass pending. Found in the preview.28 / preview.29 Ryubing sweep (2026-10-22).
 
 ## Symptom
 
@@ -9,8 +9,9 @@ New Game on either disc, walking down the Digital World bridge to the gate
 where the hero is stopped ("Oh yeah! I need my partner Digimon data!"): the
 game dies in `FIELDSTG_drawBalloon` (`src/field/field_mode/balloon.c`),
 called from `FIELDSTG_updateBalloon` through `executeTask` / `runChildTasks`.
-Deterministic. PC (`dw3-pc`) dies with SIGSEGV at the same spot; Switch dies
-with a data abort on a read at a tiny address (`NULL + offset`).
+Deterministic. PC (`dw3-pc`) dies with SIGSEGV at the same spot; on the
+Switch build Ryubing stops with "Invalid memory access at virtual address
+0x0".
 
 ## Root cause
 
@@ -80,6 +81,17 @@ before use. An `actor` that is destroyed while a balloon still points at it
 * PC: `tools/replay_tests.sh --only us-bridge-partner-gate --only
   eu-bridge-partner-gate` ([P6.15_REPLAY_TESTS.md](P6.15_REPLAY_TESTS.md)).
   Without patch `0058` both scenarios die with SIGSEGV between the `gate` and
-  `dialogue` checkpoints (US and EU); with it they run to the end.
-* Switch: Ryubing, B-spam through the opening, then the same walk with held
-  keys; see the PR for the runs.
+  `dialogue` checkpoints (US and EU); with it they run to the end, and a
+  second run against the first run's references is byte-identical (0 px).
+  The draft PR #186 scenario `us-repro-balloon` (a different US walk) also
+  crashes without the patch and runs clean with it.
+* Switch (Ryubing 1.3.3, private Xvfb and data root, keys held with xdotool,
+  2026-10-22): B-spam through the opening, then the walk. With the patch: US
+  2 of 2 and EU 2 of 2 reach the gate, show the "!" balloon and the dialogue,
+  close it with B and keep playing; no crash report. Without it (preview.29
+  EU NRO): Ryubing aborts at the gate with "Invalid memory access at virtual
+  address 0x0". The walk is wall-clock timed, so it is a smoke test, not a
+  regression gate; the PC replays are the gate.
+* Not covered: OLED, the other four EU languages (the walk and the patch are
+  language independent, but only English was driven), `--replay` Switch
+  build of #186.

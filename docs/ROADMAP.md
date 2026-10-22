@@ -533,8 +533,8 @@ speed.
   returns on hardware, US and EU. P6.20's warp menu would help.
   **Known crash fixed (2026-10-22):** the new-game walk to the Digital
   World bridge gate ("Oh yeah! I need my partner", WSTAG210 event 0x1E)
-  faulted in `FIELDSTG_drawBalloon` on every build (preview.28 and .29, US
-  and EU, PC and Switch); patch `0058`, regression scenarios
+  faulted in `FIELDSTG_drawBalloon` (preview.28 and .29; reproduced on the
+  PC host US and EU and on Ryubing US and EU); patch `0058`, regression scenarios
   `us/eu-bridge-partner-gate`. See
   [BALLOON_NULL_ACTOR.md](BALLOON_NULL_ACTOR.md), which also lists the
   other places where a NULL actor from the PS1's readable low RAM could
