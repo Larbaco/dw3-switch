@@ -367,6 +367,74 @@ def p77_battle(version):
     return r
 
 
+R1 = 0x0800
+# Evidence runs only (measured): the frames later that the PAL battle reaches turn
+# 2's message, and the Crosses it needs to get there (the enemy acts twice before turn 2)
+P79_EVIDENCE_SHIFT = {"us": 0, "eu": 960}
+P79_EVIDENCE_CROSSES = {"us": (), "eu": tuple(range(1600, 2400, 100))}
+
+
+def _p79_turn1(r, page2):
+    """Turn 1 of a P7.9 battle: Fight -> Tech, open the list, pick a technique
+    that is not the first line: line 2 (Down), or with `page2` the first line
+    of the second page (R1; the manifest's DW3_EXTRA_TECHS gives 8 techniques)."""
+    _pad(r, 350, DOWN)               # Fight -> Tech
+    _pad(r, 360, 0)
+    r.press(410, CROSS)              # open the tech list
+    r.press(440, R1 if page2 else DOWN)
+    r.press(470, CROSS)              # use it
+
+
+def p79_menu(version, page2=False, evidence=False):
+    """P7.9: one forced battle (Kotemon vs Kunemon, an enemy with 2000 HP and
+    extra techniques through the manifest's env). Turn 1 picks a technique
+    below the first line (_p79_turn1). Then Cross every 30 frames: with
+    battle_menu_memory the second turn's menu already stands on Techniques
+    (the first Cross opens the list, the second uses the technique under the
+    cursor); without it the Crosses attack. The committed recording is log
+    only. `evidence` stops the Cross just before turn 2's menu and takes the
+    captures of docs/P7.9_BATTLE_MENU_MEMORY.md (run by hand with --scen-dir,
+    never committed)."""
+    name = "menu-page2" if page2 else "menu"
+    r = Rec(f"{version.upper()}: P7.9 battle menu memory, {name} (env and cfg in manifest)")
+    _p79_turn1(r, page2)
+    if evidence:
+        d = P79_EVIDENCE_SHIFT[version]
+        for f in range(520, 1300, 30):
+            r.press(f, CROSS)
+        for f in P79_EVIDENCE_CROSSES[version]:
+            r.press(f, CROSS)
+        r.shot(1400 + d, "turn2-message")
+        r.press(1420 + d, CROSS)     # closes "damage!"; turn 2's menu opens
+        r.shot(1500 + d, "turn2-menu")
+        r.shot(1510 + d, "turn2-menu-b")  # the cursor's square blinks: second phase
+        r.press(1530 + d, CROSS)     # Tech: opens the list
+        r.shot(1620 + d, "turn2-list")
+        r.end(1630 + d)
+        return r
+    for f in range(520, 1470, 30):
+        r.press(f, CROSS)
+    r.end(1500)
+    return r
+
+
+def p79_two_battles(version):
+    """P7.9: the two forced battles of two_battles, but battle 2 starts with
+    Cross, Cross (no Down): with the memory on its first menu already stands
+    on Techniques, so Cross opens the list and Cross uses the first technique."""
+    door, tech2, end = TWO_BATTLES[version]
+    r = Rec(f"{version.upper()}: P7.9 menu memory across two forced battles (env and cfg in manifest)")
+    _tech(r, 350)
+    for f in range(520, door - 20, 30):
+        r.press(f, CROSS)
+    r.press(tech2 + 60, CROSS)       # the list (the menu stands on Tech)
+    r.press(tech2 + 110, CROSS)      # the first technique
+    for f in range(tech2 + 150, end - 100, 30):
+        r.press(f, CROSS)
+    r.end(end)
+    return r
+
+
 SQUARE = 0x8000
 
 
@@ -607,6 +675,9 @@ def main(out):
         (out / f"{v}-two-battles.rec").write_text(two_battles(v).text(True))
         (out / f"{v}-p77-battle.rec").write_text(p77_battle(v).text(True))
         (out / f"{v}-p77-square.rec").write_text(p77_square(v).text(True))
+        (out / f"{v}-p79-menu.rec").write_text(p79_menu(v).text(True))
+        (out / f"{v}-p79-menu-page2.rec").write_text(p79_menu(v, page2=True).text(True))
+        (out / f"{v}-p79-two-battles.rec").write_text(p79_two_battles(v).text(True))
     (out / "us-repro-balloon.rec").write_text(repro_balloon("us").text(True))
     for version in ("us", "eu"):
         # Written unsorted, byte for byte as first committed with patch 0058.

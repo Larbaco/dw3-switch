@@ -286,6 +286,56 @@ for _lang, _id in (("fr", 3), ("it", 4), ("de", 5), ("es", 6)):
                                   r"battle HUD partner name of the Digimon \(Digimon id 386, [0-9]+ px\)"),),
                   note=f"the Digimon's name is read from the {_lang} text file (patch 0065)"))
 
+# P7.9 battle menu memory (patch 0067, port/battle_menu): the file-only key
+# `battle_menu_memory` in port_options.cfg (Scenario.cfg) turns it on. The same
+# forced battle (`<v>-p79-menu`, an enemy with 2000 HP so there is a second turn,
+# and techniques added to the list by DW3_EXTRA_TECHS) for every mode: the log
+# shows what the menus opened on. PC only (env), log only.
+_P79_ENV = _P77_ENV + (("DW3_FORCE_ENEMY_HP", "2000"), ("DW3_EXTRA_TECHS", "54,55,57"))
+_P79_LOG = r"dw3-battle-menu: "
+_P79_OPENS = r"command menu opens on Techniques \(remembered\)"
+for _v in ("us", "eu"):
+    _m = (f"{_v}-p79-menu",)
+    _add(
+        Scenario(f"{_v}-p79-memory-off", _v, "full", timeout=300, log_only=True, phases=_m,
+                 env=_P79_ENV,
+                 expect_log=((0, r"DW3_FORCE_ENEMY_HP"),),
+                 forbid_log=((0, _P79_LOG),),
+                 note="default (key absent): no menu memory and no battle-menu line, as before (patch 0067)"),
+        Scenario(f"{_v}-p79-memory-command", _v, "full", timeout=300, log_only=True, phases=_m,
+                 env=_P79_ENV, cfg=(("battle_menu_memory", "1"),),
+                 expect_log=((0, r"command menu opens on Attack(?s:.*)"
+                                 r"remembered command Techniques(?s:.*)" + _P79_OPENS),),
+                 forbid_log=((0, r"technique list of partner"), (0, r"remembered technique")),
+                 note="battle_menu_memory=1: turn 2 opens on Techniques, the list on its first line (patch 0067)"),
+        Scenario(f"{_v}-p79-memory-tech", _v, "full", timeout=300, log_only=True, phases=_m,
+                 env=_P79_ENV, cfg=(("battle_menu_memory", "2"),),
+                 expect_log=((0, r"remembered technique 54 for partner 0(?s:.*)" + _P79_OPENS + r"(?s:.*)"
+                                 r"technique list of partner 0 opens on technique 54 \(page 0, line 1, remembered\)"),),
+                 note="battle_menu_memory=2: turn 2 opens on Techniques and the list on Swing Swing, line 2 (patch 0067)"),
+        Scenario(f"{_v}-p79-memory-page2", _v, "full", timeout=300, log_only=True,
+                 phases=(f"{_v}-p79-menu-page2",),
+                 env=_P79_ENV[:-1] + (("DW3_EXTRA_TECHS", "54,55,56,57,58,59,60"),),
+                 cfg=(("battle_menu_memory", "2"),),
+                 expect_log=((0, r"remembered technique 59 for partner 0(?s:.*)" + _P79_OPENS + r"(?s:.*)"
+                                 r"technique list of partner 0 opens on technique 59 \(page 1, line 0, remembered\)"),),
+                 note="the remembered technique is on the second page: the list opens turned to it (patch 0067)"),
+        Scenario(f"{_v}-p79-memory-invalid", _v, "full", timeout=300, log_only=True, phases=_m,
+                 env=_P79_ENV, cfg=(("battle_menu_memory", "7"),),
+                 expect_log=((0, r"DW3_FORCE_ENEMY_HP"),),
+                 forbid_log=((0, _P79_LOG),),
+                 note="a value other than 0, 1, 2 is Off (patch 0067)"),
+    )
+for _v in ("us", "eu"):
+    _add(Scenario(f"{_v}-p79-memory-two-battles", _v, "full", turbo=4, timeout=600, log_only=True,
+                  phases=(f"{_v}-p79-two-battles",), env=_BATTLE_ENV,
+                  cfg=(("battle_menu_memory", "2"),),
+                  expect_log=((0, r"remembered command Techniques(?s:.*)"
+                                  r"WFIGHTMN_endBattle result=1(?s:.*)"
+                                  r"AUTO_DOOR requestMode=0x600(?s:.*)" + _P79_OPENS + r"(?s:.*)"
+                                  r"WFIGHTMN_endBattle result=1"),),
+                  note="the memory lasts across battles of one session: battle 2's first menu opens on Techniques (patch 0067)"))
+
 
 def by_name() -> dict[str, Scenario]:
     return {s.name: s for s in SCENARIOS}

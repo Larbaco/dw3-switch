@@ -95,6 +95,11 @@ P7.7 fixes of the original game are plain decomp patches, not port hooks: `0065`
 `FIGHTSTG_updateTechAction` (a Claw's steal on the killing blow). Patch `0064` adds PC-only
 environment hooks for the replay scenarios. See [P7.7_BUG_FIXES.md](P7.7_BUG_FIXES.md).
 
+P7.9 battle menu memory has the P6.18 shape: patch `0067` has a few `PORT_HOST` calls in
+`player_turn.c` / `tech_menu.c` that ask `port/battle_menu/` where the cursor starts; the
+answer is the original start unless the file-only key `battle_menu_memory` is set. See
+[P7.9_BATTLE_MENU_MEMORY.md](P7.9_BATTLE_MENU_MEMORY.md).
+
 ## Non-goals (for now)
 
 - Byte-identical matching builds on Switch

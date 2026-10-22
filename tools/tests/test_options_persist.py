@@ -560,3 +560,23 @@ def test_sound_comes_after_the_new_volume_is_applied(persist_bin: Path, tmp_path
     (tmp_path / CFG).write_text("version=1\nsfx_volume=4\nend=1\n")
     _, err = session(persist_bin, tmp_path, "open", "row", "3", "left")
     assert_apply_then_sound(err, "music=9 sfx=4", "sfx volume 4")
+
+
+
+def test_file_only_int_key(persist_bin: Path, tmp_path: Path):
+    """P7.9: a key with no Options row is read from the file, falls back to the
+    default when absent or not a number, and survives a rewrite of the file."""
+    out, _ = session(persist_bin, tmp_path, "fileint", "battle_menu_memory", "0")
+    assert out == ["battle_menu_memory=0"]  # no file
+    (tmp_path / CFG).write_text(
+        "version=1\nbattle_menu_memory=2\nodd=abc\nend=1\n")
+    out, _ = session(persist_bin, tmp_path, "fileint", "battle_menu_memory", "0",
+                     "fileint", "odd", "5", "fileint", "missing", "7")
+    assert out == ["battle_menu_memory=2", "odd=5", "missing=7"]
+    toggle(persist_bin, tmp_path, 2)  # the Options screen rewrites the file
+    text = (tmp_path / CFG).read_text()
+    assert "battle_menu_memory=2\n" in text
+    out, _ = session(persist_bin, tmp_path, "fileint", "battle_menu_memory", "0")
+    assert out == ["battle_menu_memory=2"]
+    out, _ = session(persist_bin, tmp_path, "noinit", "fileint", "battle_menu_memory", "0")
+    assert out == ["battle_menu_memory=0"]  # no config dir: the default

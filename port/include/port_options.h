@@ -55,6 +55,12 @@ int dw3_port_options_persist_init(const char *dir);
  * an unrelated change; toggling that row on the Options screen releases it. */
 void dw3_port_options_apply_env(int index, int level);
 
+/* A file-only integer key of port_options.cfg (a setting with no row on the
+ * Options screen, such as P7.9's battle_menu_memory): its value as loaded at
+ * boot, or `def` when the key is absent, not a number, or no file was loaded.
+ * The key is kept when the Options screen rewrites the file. */
+int dw3_port_options_file_int(const char *key, int def);
+
 /* Retry a write that failed earlier (the SD was busy); a no-op otherwise.
  * Hosts register it with atexit. Changes are written when they are made. */
 void dw3_port_options_flush(void);

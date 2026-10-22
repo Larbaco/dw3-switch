@@ -66,6 +66,7 @@ lives in its doc, not in the entry below.
 | P7.5 | Companion (optional) | open | [COMMUNITY_QOL](COMMUNITY_QOL.md) |
 | P7.6, P7.8–P7.14 | Backlog goal notes | future | [backlog](#backlog--future-goals) |
 | P7.7 | Bug and text fixes | in progress (2 of 5 fixed, needs OLED check) | [P7.7](P7.7_BUG_FIXES.md) |
+| P7.9 | Battle menu memory | in progress (part A built, needs OLED check; part B deferred) | [P7.9](P7.9_BATTLE_MENU_MEMORY.md) |
 | P8.1 | Texture pack goal note | done | [TEXTURE_PACKS](TEXTURE_PACKS.md) |
 | P8.2 | Pack layout | open | [TEXTURE_PACKS](TEXTURE_PACKS.md) |
 | P8.3 | Formats and scaling | open | [TEXTURE_PACKS](TEXTURE_PACKS.md) |
@@ -1153,9 +1154,20 @@ Statuses are in the [table](#status-at-a-glance).
   partner MP, technique attribute / power / MP cost colours, DV stats and
   EXP to next level after battle. Done when the toggle works on US and EU
   in all 5 EU languages.
-- [ ] **P7.9 Battle menu memory (future goal).** Remember the last battle
-  command (Techniques stays on Techniques) and allow reordering techniques
-  per Digimon. Done when both persist in the P5.3 save on US and EU.
+- [ ] **P7.9 Battle menu memory.** Remember the last battle command
+  (Techniques stays on Techniques) and allow reordering techniques per
+  Digimon. Done when both persist in the P5.3 save on US and EU.
+  Status (2026-10-22), part A built, needs OLED check: file-only key
+  `battle_menu_memory` in `port_options.cfg` (1 = the command menu opens on
+  the last command, 2 = also the technique list opens on that partner's last
+  technique), off by default and bit-identical when off (patch `0067`, no
+  Options row because the screen is full). Session memory, not saved. Covered
+  by 12 log-only PC replay scenarios (`*-p79-*`) and unit tests; the full
+  replay suite is unchanged. Open: the OLED check (checklist in the doc),
+  and part B: reordering techniques is investigated and deferred (the PS1 save
+  image has no room and its size is checked; the design is a `saveN.order`
+  sidecar), so "persist in the P5.3 save" is not met yet. Doc:
+  [P7.9_BATTLE_MENU_MEMORY.md](P7.9_BATTLE_MENU_MEMORY.md).
 - [ ] **P7.10 Training without RNG (future goal).** Guaranteed base gains,
   optional timing bonus, Fast Training skip, as an option off by default.
   Done when it works on US and EU.

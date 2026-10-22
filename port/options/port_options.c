@@ -365,6 +365,16 @@ static int po_save(void) {
     return 0;
 }
 
+int dw3_port_options_file_int(const char *key, int def) {
+    const char *v = g_persist_on ? dw3_optcfg_get(&g_cfg, key) : NULL;
+    int n;
+
+    if (v == NULL || dw3_optcfg_parse_int(v, &n) != 0) {
+        return def;
+    }
+    return n;
+}
+
 void dw3_port_options_flush(void) {
     if (g_persist_on && g_dirty) {
         (void)po_save();
