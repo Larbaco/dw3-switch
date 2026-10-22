@@ -79,6 +79,7 @@ tools/apply_patches.sh           # refresh build/decomp-src + apply
 | `0044-PORT_HOST-p92-title-port-options.patch` | no | P9.2: title `runOptions` Select → `dw3_port_options_*` shell (no `choice` / `leaveTitle`) |
 | `0055-PORT_HOST-p62-eu-country-select-boot.patch` | no | P6.2: EU host `newGame` → `MODE_COUNTRY_SELECT` (CNTY_SEL sets `LANGUAGE`); US still `MODE_TITLE` |
 | `0058-PORT_HOST-balloon-null-actor-draw.patch` | no | `FIELDSTG_drawBalloon` draws nothing when `Balloon.actor` is NULL (a close command for a balloon that never opened; WSTAG210 script30 on the new-game bridge). The PS1 reads NULL+0x58/0x5C/0x64 (kernel RAM); a 64-bit host faults. See [BALLOON_NULL_ACTOR.md](BALLOON_NULL_ACTOR.md) |
+| `0059-PORT_HOST-null-guards-mark-camera-diag.patch` | no | Preventive follow-up to 0058 (NULL reads the PS1 tolerated): `wstag785.c` `drawActorMark` draws nothing for a NULL `actor`; `FIELDSTG_updateCamera` holds the camera when `FIELDSTG_followWithCamera` stored a NULL target; the 0058 balloon guard and both new ones report through `DW3_NULL_GUARD_HIT` (`port/include/port_null_guard.h`, logs `dw3: null-guard hit: <site>` once per site, only with `DW3_NULL_GUARD_LOG`: PC Debug, `--nxlink`, or `-DDW3_NULL_GUARD_LOG=ON`). Audit and the sites left alone: [BALLOON_NULL_ACTOR.md](BALLOON_NULL_ACTOR.md) |
 
 `tools/apply_patches.sh --check` applies the series in order (stacked
 patches on the same file are valid).
