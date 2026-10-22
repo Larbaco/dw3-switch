@@ -51,4 +51,6 @@ unsigned dw3_pc_title_overlay_generation(void);
 /* Bumped only when the Port options screen (state 4) changes. */
 unsigned dw3_pc_title_overlay_options_generation(void);
 int dw3_pc_title_overlay_options_cursor(void);
+/* Value last handed to set_options_view for a row (0 for a bad row). */
+int dw3_pc_title_overlay_options_value(int row);
 #endif

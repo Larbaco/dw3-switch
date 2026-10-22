@@ -122,6 +122,9 @@ void dw3_pc_title_overlay_set_options_view(int cursor,const int *values,int coun
 unsigned dw3_pc_title_overlay_generation(void) { return art_generation; }
 unsigned dw3_pc_title_overlay_options_generation(void) { return options_generation; }
 int dw3_pc_title_overlay_options_cursor(void) { return option_cursor; }
+int dw3_pc_title_overlay_options_value(int row) {
+    return row>=0&&row<DW3_TITLE_OPTION_ROWS?option_values[row]:0;
+}
 
 /* --- Port options screen ---------------------------------------------------
  * Modelled on the game's own windows (the memory card screen): a white bezel

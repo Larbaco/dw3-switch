@@ -4,6 +4,7 @@
 #include <psyz/overlay.h>
 #include <psyz/overlay_sdl3_gpu.h>
 #include "port_options.h"
+#include "title_options_cache.h"
 
 #include <stddef.h>
 #include <stdint.h>
@@ -49,19 +50,9 @@ typedef struct OverlayVertex {
 static SDL_Window *g_window;
 static SDL_GPUDevice *g_device;
 static SDL_GPUGraphicsPipeline *g_pipeline;
-static SDL_GPUGraphicsPipeline *g_gpu_options_composite_pipeline;
 static SDL_GPUBuffer *g_vertices;
 static SDL_GPUTexture *g_texture;
-static SDL_GPUTexture *g_gpu_options_atlas;
-static SDL_GPUTexture *g_gpu_options_target;
-static SDL_GPUBuffer *g_gpu_options_vertices;
-static SDL_GPUTransferBuffer *g_cpu_options_transfer;
-static unsigned g_gpu_options_art_generation;
-static int g_gpu_options_cursor = -1;
-static int g_gpu_options_values[DW3_TITLE_OPTION_ROWS];
-static int g_gpu_options_ready;
-static int g_gpu_options_valid;
-static int g_gpu_options_failed;
+static SDL_GPUTransferBuffer *g_options_transfer;
 static SDL_GPUTexture *g_logo_texture;
 static SDL_GPUTexture *g_background_texture;
 static SDL_GPUSampler *g_background_sampler;
@@ -75,17 +66,12 @@ static int g_logo_texture_ready;
 static int g_presentation_size_checked;
 static unsigned g_art_generation;
 static unsigned g_options_generation;
-enum { MENU_COMPOSITION_REFERENCE, MENU_COMPOSITION_CPU, MENU_COMPOSITION_GPU };
+/* reference = regenerate the whole options canvas on every change (kept for
+ * comparison and as the fallback); cached = retained canvas, dirty-region
+ * raster and upload (default). */
+enum { MENU_COMPOSITION_CACHED, MENU_COMPOSITION_REFERENCE };
 static int g_menu_composition = -1;
-static uint8_t *g_cpu_options_static;
-static uint8_t *g_cpu_options_canvas;
-static unsigned g_cpu_options_art_generation;
-static int g_cpu_options_cursor = -1;
-static int g_cpu_options_values[DW3_TITLE_OPTION_ROWS];
-static int g_cpu_options_ready;
-static int g_cpu_options_valid;
-static int g_cpu_options_upload_pending = 1;
-static int g_cpu_fallback_logged;
+static int g_cache_fallback_logged;
 static FILE *g_profile_csv;
 static unsigned long long g_profile_frame;
 static unsigned long long g_profile_present_frame;
@@ -121,11 +107,12 @@ static int menu_composition_mode(void) {
     if (g_menu_composition < 0) {
         const char *mode = getenv("DW3_MENU_COMPOSITION");
         const char *force_fallback = getenv("DW3_MENU_FORCE_FALLBACK");
-        g_menu_composition = MENU_COMPOSITION_REFERENCE;
-        if (mode && strcmp(mode, "cpu") == 0) g_menu_composition = MENU_COMPOSITION_CPU;
-        else if (mode && strcmp(mode, "gpu") == 0) g_menu_composition = MENU_COMPOSITION_GPU;
-        else if (mode && strcmp(mode, "reference") != 0)
-            fprintf(stderr, "dw3-title-overlay: unknown DW3_MENU_COMPOSITION '%s'; using reference\n", mode);
+        g_menu_composition = MENU_COMPOSITION_CACHED;
+        if (mode && strcmp(mode, "reference") == 0)
+            g_menu_composition = MENU_COMPOSITION_REFERENCE;
+        else if (mode && *mode && strcmp(mode, "cpu") != 0)
+            fprintf(stderr, "dw3-title-overlay: unsupported DW3_MENU_COMPOSITION '%s' "
+                    "(use reference or cpu); using cpu\n", mode);
         if (force_fallback && *force_fallback) {
             g_menu_composition = MENU_COMPOSITION_REFERENCE;
             fprintf(stderr, "dw3-title-overlay: forced reference fallback enabled\n");
@@ -134,11 +121,7 @@ static int menu_composition_mode(void) {
     return g_menu_composition;
 }
 static const char *menu_composition_name(void) {
-    switch (menu_composition_mode()) {
-    case MENU_COMPOSITION_CPU: return "cpu";
-    case MENU_COMPOSITION_GPU: return "gpu";
-    default: return "reference";
-    }
+    return menu_composition_mode() == MENU_COMPOSITION_REFERENCE ? "reference" : "cpu";
 }
 static void profile_close(void) {
     if (g_profile_csv) fclose(g_profile_csv);
@@ -301,30 +284,18 @@ static void release_gpu_resources(void) {
     g_presentation_size_checked = 0;
     if (!g_device) return;
     if (g_pipeline) SDL_ReleaseGPUGraphicsPipeline(g_device, g_pipeline);
-    if (g_gpu_options_composite_pipeline)
-        SDL_ReleaseGPUGraphicsPipeline(g_device, g_gpu_options_composite_pipeline);
     if (g_vertices) SDL_ReleaseGPUBuffer(g_device, g_vertices);
-    if (g_gpu_options_vertices) SDL_ReleaseGPUBuffer(g_device, g_gpu_options_vertices);
-    if (g_cpu_options_transfer) SDL_ReleaseGPUTransferBuffer(g_device, g_cpu_options_transfer);
+    if (g_options_transfer) SDL_ReleaseGPUTransferBuffer(g_device, g_options_transfer);
     if (g_texture) SDL_ReleaseGPUTexture(g_device, g_texture);
-    if (g_gpu_options_atlas) SDL_ReleaseGPUTexture(g_device, g_gpu_options_atlas);
-    if (g_gpu_options_target) SDL_ReleaseGPUTexture(g_device, g_gpu_options_target);
     if (g_logo_texture) SDL_ReleaseGPUTexture(g_device, g_logo_texture);
     if (g_background_texture) SDL_ReleaseGPUTexture(g_device, g_background_texture);
     if (g_background_sampler) SDL_ReleaseGPUSampler(g_device, g_background_sampler);
     if (g_sampler) SDL_ReleaseGPUSampler(g_device, g_sampler);
     if (g_logo_sampler) SDL_ReleaseGPUSampler(g_device, g_logo_sampler);
     g_pipeline = NULL;
-    g_gpu_options_composite_pipeline = NULL;
     g_vertices = NULL;
-    g_gpu_options_vertices = NULL;
-    g_cpu_options_transfer = NULL;
+    g_options_transfer = NULL;
     g_texture = NULL;
-    g_gpu_options_atlas = NULL;
-    g_gpu_options_target = NULL;
-    g_gpu_options_ready = 0;
-    g_gpu_options_valid = 0;
-    g_gpu_options_failed = 0;
     g_logo_texture = NULL;
     g_background_texture = NULL;
     g_background_sampler = NULL;
@@ -336,7 +307,8 @@ static void release_gpu_resources(void) {
     g_overlay_active = 0;
     g_logo_active = 0;
     g_logo_texture_ready = 0;
-    g_cpu_options_upload_pending = 1;
+    /* The texture is gone; the retained canvas must be sent again. */
+    dw3_options_cache_invalidate();
 }
 
 static int upload_art_and_quad(void) {
@@ -531,14 +503,6 @@ static int upload_art_and_quad(void) {
         },
     };
     g_pipeline = SDL_CreateGPUGraphicsPipeline(g_device, &pipeline_info);
-    SDL_GPUColorTargetBlendState premultiplied_blend = blend;
-    premultiplied_blend.src_color_blendfactor = SDL_GPU_BLENDFACTOR_ONE;
-    SDL_GPUColorTargetDescription premultiplied_target = target;
-    premultiplied_target.blend_state = premultiplied_blend;
-    SDL_GPUGraphicsPipelineCreateInfo premultiplied_info = pipeline_info;
-    premultiplied_info.target_info.color_target_descriptions = &premultiplied_target;
-    g_gpu_options_composite_pipeline = SDL_CreateGPUGraphicsPipeline(g_device,
-        &premultiplied_info);
     SDL_ReleaseGPUShader(g_device, vs);
     SDL_ReleaseGPUShader(g_device, fs);
     if (!g_pipeline) {
@@ -690,6 +654,9 @@ static void refresh_art(void) {
     if (!g_device || !g_texture ||
         (g_art_generation == dw3_pc_title_overlay_generation() &&
          g_options_generation == dw3_pc_title_overlay_options_generation())) return;
+    /* This path rewrites the options region of the texture from scratch; the
+     * retained canvas no longer mirrors it, so rebuild it on the next open. */
+    dw3_options_cache_release();
     if (g_art_generation == dw3_pc_title_overlay_generation()) {
         /* Only the options state changed: upload that one canvas. */
         const SDL_GPUTransferBufferCreateInfo one_info = {
@@ -811,65 +778,15 @@ static void refresh_art(void) {
     profile_add(&g_profile_staging_ns, profile_start);
 }
 
-typedef struct MenuDirtyRect { int x, y, w, h; } MenuDirtyRect;
-enum { OPTIONS_ROW_X = 132, OPTIONS_ROW_Y = 212, OPTIONS_ROW_W = 696,
-       OPTIONS_ROW_H = 52, OPTIONS_ROW_STEP = 68, OPTIONS_VALUE_X = 684,
-       OPTIONS_VALUE_W = 144, OPTIONS_DESC_Y = 500 };
-
-static MenuDirtyRect options_row_rect(int row) {
-    return (MenuDirtyRect){OPTIONS_ROW_X,
-        OPTIONS_ROW_Y + OPTIONS_ROW_STEP * row, OPTIONS_ROW_W, OPTIONS_ROW_H};
-}
-static MenuDirtyRect options_value_rect(int row) {
-    return (MenuDirtyRect){OPTIONS_VALUE_X,
-        OPTIONS_ROW_Y + OPTIONS_ROW_STEP * row, OPTIONS_VALUE_W, OPTIONS_ROW_H};
-}
-static MenuDirtyRect options_description_rect(void) {
-    return (MenuDirtyRect){OPTIONS_ROW_X, OPTIONS_DESC_Y, OPTIONS_ROW_W, OPTIONS_ROW_H};
-}
-static int rect_intersection(MenuDirtyRect a, MenuDirtyRect b, MenuDirtyRect *out) {
-    const int x0 = a.x > b.x ? a.x : b.x;
-    const int y0 = a.y > b.y ? a.y : b.y;
-    const int x1 = a.x + a.w < b.x + b.w ? a.x + a.w : b.x + b.w;
-    const int y1 = a.y + a.h < b.y + b.h ? a.y + a.h : b.y + b.h;
-    if (x0 >= x1 || y0 >= y1) return 0;
-    if (out) *out = (MenuDirtyRect){x0, y0, x1 - x0, y1 - y0};
-    return 1;
-}
-static void copy_dirty_rect(const uint8_t *src, uint8_t *dst, MenuDirtyRect rect) {
-    const size_t row_bytes = (size_t)rect.w * 4;
-    for (int y = 0; y < rect.h; ++y)
-        memcpy(dst + (size_t)(rect.y + y) * CANVAS_W * 4 + rect.x * 4,
-               src + (size_t)(rect.y + y) * CANVAS_W * 4 + rect.x * 4,
-               row_bytes);
-}
-static void draw_cpu_component(MenuDirtyRect rect, int layer, int row, int value) {
-    dw3_pc_title_overlay_options_component(g_cpu_options_canvas, CANVAS_W * 4,
-        layer, row, value, rect.x, rect.y, rect.w, rect.h, 0);
-}
-static void draw_cpu_state_in_rect(MenuDirtyRect rect, int cursor,
-                                   const int *values) {
-    for (int row = 0; row < DW3_TITLE_OPTION_ROWS; ++row) {
-        MenuDirtyRect intersection;
-        if (cursor == row && rect_intersection(rect, options_row_rect(row), &intersection))
-            draw_cpu_component(intersection, DW3_TITLE_OPTIONS_FOCUS, row, 0);
-        if (rect_intersection(rect, options_value_rect(row), &intersection))
-            draw_cpu_component(intersection, DW3_TITLE_OPTIONS_VALUE, row, values[row]);
-    }
-    MenuDirtyRect intersection;
-    if (cursor >= 0 && cursor < DW3_TITLE_OPTION_ROWS &&
-        rect_intersection(rect, options_description_rect(), &intersection))
-        draw_cpu_component(intersection, DW3_TITLE_OPTIONS_DESCRIPTION, cursor, 0);
-}
-static int upload_cpu_dirty_rects(const MenuDirtyRect *rects, int count) {
-    size_t total_bytes = 0, offset = 0;
-    SDL_GPUTransferBuffer *transfer = g_cpu_options_transfer;
+/* Copy the dirty rects of the shared options cache into the retained texture.
+ * One tightly packed staging buffer, reused between updates. */
+static int upload_options_dirty(const Dw3OptionsDirty *dirty) {
+    size_t offset = 0;
+    SDL_GPUTransferBuffer *transfer = g_options_transfer;
     SDL_GPUCommandBuffer *cmd;
     uint8_t *mapped;
     Uint64 start;
-    for (int i = 0; i < count; ++i)
-        total_bytes += (size_t)rects[i].w * rects[i].h * 4;
-    if (!total_bytes) return 0;
+    if (!dirty->bytes) return 0;
     start = profile_counter();
     if (!transfer) {
         const SDL_GPUTransferBufferCreateInfo transfer_info = {
@@ -878,19 +795,14 @@ static int upload_cpu_dirty_rects(const MenuDirtyRect *rects, int count) {
         };
         transfer = SDL_CreateGPUTransferBuffer(g_device, &transfer_info);
         if (!transfer) return -1;
-        g_cpu_options_transfer = transfer;
+        g_options_transfer = transfer;
         g_profile_allocations++;
     }
     mapped = (uint8_t *)SDL_MapGPUTransferBuffer(g_device, transfer, false);
     if (!mapped) return -1;
-    for (int i = 0; i < count; ++i) {
-        const MenuDirtyRect rect = rects[i];
-        const size_t row_bytes = (size_t)rect.w * 4;
-        for (int y = 0; y < rect.h; ++y)
-            memcpy(mapped + offset + (size_t)y * row_bytes,
-                   g_cpu_options_canvas + (size_t)(rect.y + y) * CANVAS_W * 4 + rect.x * 4,
-                   row_bytes);
-        offset += row_bytes * rect.h;
+    for (int i = 0; i < dirty->count; ++i) {
+        dw3_options_cache_pack_rect(dirty->rects[i], mapped + offset);
+        offset += (size_t)dirty->rects[i].w * dirty->rects[i].h * 4;
     }
     SDL_UnmapGPUTransferBuffer(g_device, transfer);
     profile_add(&g_profile_staging_ns, start);
@@ -898,8 +810,8 @@ static int upload_cpu_dirty_rects(const MenuDirtyRect *rects, int count) {
     if (!cmd) return -1;
     SDL_GPUCopyPass *copy = SDL_BeginGPUCopyPass(cmd);
     offset = 0;
-    for (int i = 0; i < count; ++i) {
-        const MenuDirtyRect rect = rects[i];
+    for (int i = 0; i < dirty->count; ++i) {
+        const Dw3OptionsRect rect = dirty->rects[i];
         const SDL_GPUTextureTransferInfo src = {
             .transfer_buffer = transfer,
             .offset = (Uint32)offset,
@@ -915,10 +827,10 @@ static int upload_cpu_dirty_rects(const MenuDirtyRect *rects, int count) {
         offset += (size_t)rect.w * rect.h * 4;
     }
     SDL_EndGPUCopyPass(copy);
-    g_profile_upload_bytes += total_bytes;
-    for (int i = 0; i < count; ++i)
-        g_profile_dirty_pixels += (size_t)rects[i].w * rects[i].h;
-    g_profile_dirty_copies += (unsigned)count;
+    g_profile_upload_bytes += dirty->bytes;
+    for (int i = 0; i < dirty->count; ++i)
+        g_profile_dirty_pixels += (size_t)dirty->rects[i].w * dirty->rects[i].h;
+    g_profile_dirty_copies += (unsigned)dirty->count;
     start = profile_counter();
     const bool submitted = SDL_SubmitGPUCommandBuffer(cmd);
     profile_add(&g_profile_submit_ns, start);
@@ -930,327 +842,16 @@ static int upload_cpu_dirty_rects(const MenuDirtyRect *rects, int count) {
     return submitted ? 0 : -1;
 }
 
-static int refresh_art_cpu(void) {
-    const size_t canvas_bytes = (size_t)CANVAS_W * CANVAS_H * 4;
-    const unsigned art_generation = dw3_pc_title_overlay_generation();
-    const unsigned options_generation = dw3_pc_title_overlay_options_generation();
-    const int cursor = dw3_pc_title_overlay_options_cursor();
-    int values[DW3_TITLE_OPTION_ROWS];
-    MenuDirtyRect dirty[DW3_TITLE_OPTION_ROWS + 3];
-    int dirty_count = 0;
-    Uint64 start;
-    for (int i = 0; i < DW3_TITLE_OPTION_ROWS; ++i)
-        values[i] = dw3_port_options_level(i);
-    if (!g_cpu_options_ready) {
-        if (!g_cpu_options_static) {
-            g_cpu_options_static = (uint8_t *)malloc(canvas_bytes);
-            if (g_cpu_options_static) g_profile_allocations++;
-        }
-        if (!g_cpu_options_canvas) {
-            g_cpu_options_canvas = (uint8_t *)malloc(canvas_bytes);
-            if (g_cpu_options_canvas) g_profile_allocations++;
-        }
-        if (!g_cpu_options_static || !g_cpu_options_canvas) return -1;
-        g_cpu_options_ready = 1;
-    }
-    const int full_rebuild = !g_cpu_options_valid ||
-        g_cpu_options_art_generation != art_generation;
-    if (full_rebuild) {
-        start = profile_counter();
-        dw3_pc_title_overlay_options_component(g_cpu_options_static, CANVAS_W * 4,
-            DW3_TITLE_OPTIONS_STATIC, -1, 0, 0, 0, CANVAS_W, CANVAS_H, 1);
-        memcpy(g_cpu_options_canvas, g_cpu_options_static, canvas_bytes);
-        g_cpu_options_art_generation = art_generation;
-        g_cpu_options_valid = 1;
-        profile_add(&g_profile_raster_ns, start);
-        dirty[dirty_count++] = (MenuDirtyRect){0, 0, CANVAS_W, CANVAS_H};
-    } else if (g_cpu_options_upload_pending) {
-        dirty[dirty_count++] = (MenuDirtyRect){0, 0, CANVAS_W, CANVAS_H};
-    } else {
-        if (cursor != g_cpu_options_cursor) {
-            if (g_cpu_options_cursor >= 0 && g_cpu_options_cursor < DW3_TITLE_OPTION_ROWS)
-                dirty[dirty_count++] = options_row_rect(g_cpu_options_cursor);
-            if (cursor >= 0 && cursor < DW3_TITLE_OPTION_ROWS)
-                dirty[dirty_count++] = options_row_rect(cursor);
-            dirty[dirty_count++] = options_description_rect();
-        }
-        for (int i = 0; i < DW3_TITLE_OPTION_ROWS; ++i) {
-            if (values[i] == g_cpu_options_values[i]) continue;
-            const MenuDirtyRect value_rect = options_value_rect(i);
-            int contained = 0;
-            for (int j = 0; j < dirty_count; ++j)
-                if (rect_intersection(dirty[j], value_rect, NULL)) contained = 1;
-            if (!contained) dirty[dirty_count++] = value_rect;
-        }
-    }
-    if (!dirty_count) return 0;
-    start = profile_counter();
-    for (int i = 0; i < dirty_count; ++i) {
-        copy_dirty_rect(g_cpu_options_static, g_cpu_options_canvas, dirty[i]);
-        draw_cpu_state_in_rect(dirty[i], cursor, values);
-    }
+static int refresh_art_cached(void) {
+    Dw3OptionsDirty dirty;
+    Uint64 start = profile_counter();
+    if (dw3_options_cache_update(&dirty) != 0) return -1;
     profile_add(&g_profile_raster_ns, start);
-    g_cpu_options_cursor = cursor;
-    memcpy(g_cpu_options_values, values, sizeof(values));
-    if (full_rebuild || (dirty_count == 1 && dirty[0].w == CANVAS_W &&
-        dirty[0].h == CANVAS_H)) g_profile_rebuilds++;
-    const int result = upload_cpu_dirty_rects(dirty, dirty_count);
-    if (!result) {
-        g_cpu_options_upload_pending = 0;
-        g_options_generation = options_generation;
-    }
-    return result;
-}
-
-enum { GPU_OPTIONS_ATLAS_H = 1812, GPU_OPTIONS_VALUES_Y = 876,
-       GPU_OPTIONS_DESCRIPTION_Y = 1656, GPU_OPTIONS_VARIANTS = 375 };
-static void atlas_copy_tile(uint8_t *atlas, const uint8_t *scratch,
-                            int atlas_y, MenuDirtyRect source) {
-    for (int y = 0; y < source.h; ++y)
-        memcpy(atlas + (size_t)(atlas_y + y) * CANVAS_W * 4,
-               scratch + (size_t)(source.y + y) * CANVAS_W * 4 + source.x * 4,
-               (size_t)source.w * 4);
-}
-static void atlas_make_component(uint8_t *scratch, uint8_t *atlas, int atlas_y,
-                                 int layer, int row, int value,
-                                 MenuDirtyRect rect) {
-    dw3_pc_title_overlay_options_component(scratch, CANVAS_W * 4,
-        layer, row, value, rect.x, rect.y, rect.w, rect.h, 1);
-    atlas_copy_tile(atlas, scratch, atlas_y, rect);
-}
-static void gpu_options_vertex(OverlayVertex *vertices, int *count,
-                               MenuDirtyRect dst, MenuDirtyRect src) {
-    const float x0 = (float)dst.x / CANVAS_W;
-    const float y0 = (float)dst.y / CANVAS_H;
-    const float x1 = (float)(dst.x + dst.w) / CANVAS_W;
-    const float y1 = (float)(dst.y + dst.h) / CANVAS_H;
-    const float u0 = (float)src.x / CANVAS_W;
-    const float v0 = (float)src.y / GPU_OPTIONS_ATLAS_H;
-    const float u1 = (float)(src.x + src.w) / CANVAS_W;
-    const float v1 = (float)(src.y + src.h) / GPU_OPTIONS_ATLAS_H;
-    const OverlayVertex a = {{x0,y0},{u0,v0}}, b = {{x1,y0},{u1,v0}};
-    const OverlayVertex c = {{x1,y1},{u1,v1}}, d = {{x0,y1},{u0,v1}};
-    vertices[(*count)++] = a; vertices[(*count)++] = b; vertices[(*count)++] = c;
-    vertices[(*count)++] = a; vertices[(*count)++] = c; vertices[(*count)++] = d;
-}
-static int gpu_options_combo(int cursor, const int *values) {
-    const int c = cursor < 0 ? 0 : cursor > 2 ? 2 : cursor;
-    const int a = values[0] < 0 ? 0 : values[0] > 4 ? 4 : values[0];
-    const int b = values[1] < 0 ? 0 : values[1] > 4 ? 4 : values[1];
-    const int d = values[2] < 0 ? 0 : values[2] > 4 ? 4 : values[2];
-    return c * 125 + a * 25 + b * 5 + d;
-}
-static void release_gpu_options_objects(void) {
-    if (g_gpu_options_atlas) SDL_ReleaseGPUTexture(g_device, g_gpu_options_atlas);
-    if (g_gpu_options_target) SDL_ReleaseGPUTexture(g_device, g_gpu_options_target);
-    if (g_gpu_options_vertices) SDL_ReleaseGPUBuffer(g_device, g_gpu_options_vertices);
-    g_gpu_options_atlas=NULL; g_gpu_options_target=NULL;
-    g_gpu_options_vertices=NULL;
-    g_gpu_options_ready=0; g_gpu_options_valid=0;
-}
-static int build_gpu_options(void) {
-    Uint64 profile_start = profile_counter();
-    if (!g_gpu_options_composite_pipeline) return -1;
-    const size_t atlas_bytes = (size_t)CANVAS_W * GPU_OPTIONS_ATLAS_H * 4;
-    uint8_t *atlas = (uint8_t *)calloc(1, atlas_bytes);
-    uint8_t *scratch = (uint8_t *)malloc((size_t)CANVAS_W * CANVAS_H * 4);
-    OverlayVertex *vertices = (OverlayVertex *)malloc(
-        (size_t)GPU_OPTIONS_VARIANTS * 36 * sizeof(*vertices));
-    if (!atlas || !scratch || !vertices) {
-        free(atlas); free(scratch); free(vertices); return -1;
-    }
-    dw3_pc_title_overlay_options_component(scratch, CANVAS_W * 4,
-        DW3_TITLE_OPTIONS_STATIC, -1, 0, 0, 0, CANVAS_W, CANVAS_H, 1);
-    memcpy(atlas, scratch, (size_t)CANVAS_W * CANVAS_H * 4);
-    for (int row = 0; row < DW3_TITLE_OPTION_ROWS; ++row) {
-        const MenuDirtyRect focus = options_row_rect(row);
-        atlas_make_component(scratch, atlas, CANVAS_H + row * OPTIONS_ROW_H,
-            DW3_TITLE_OPTIONS_FOCUS, row, 0, focus);
-        for (int value = 0; value < 5; ++value) {
-            const MenuDirtyRect value_rect = options_value_rect(row);
-            const int index = row * 5 + value;
-            atlas_make_component(scratch, atlas,
-                GPU_OPTIONS_VALUES_Y + index * OPTIONS_ROW_H,
-                DW3_TITLE_OPTIONS_VALUE, row, value, value_rect);
-        }
-        const MenuDirtyRect desc = options_description_rect();
-        atlas_make_component(scratch, atlas,
-            GPU_OPTIONS_DESCRIPTION_Y + row * OPTIONS_ROW_H,
-            DW3_TITLE_OPTIONS_DESCRIPTION, row, 0, desc);
-    }
-    free(scratch);
-    profile_add(&g_profile_raster_ns, profile_start);
-    for (int cursor = 0; cursor < 3; ++cursor)
-        for (int v0 = 0; v0 < 5; ++v0)
-            for (int v1 = 0; v1 < 5; ++v1)
-                for (int v2 = 0; v2 < 5; ++v2) {
-                    int count = 0;
-                    const int values[] = {v0,v1,v2};
-                    const int combo = gpu_options_combo(cursor, values);
-                    OverlayVertex *q = vertices + (size_t)combo * 36;
-                    gpu_options_vertex(q, &count,
-                        (MenuDirtyRect){0,0,CANVAS_W,CANVAS_H},
-                        (MenuDirtyRect){0,0,CANVAS_W,CANVAS_H});
-                    for (int row = 0; row < 3; ++row) {
-                        const MenuDirtyRect rect = options_row_rect(row);
-                        if (row == cursor)
-                            gpu_options_vertex(q,&count,rect,
-                                (MenuDirtyRect){0,CANVAS_H+row*OPTIONS_ROW_H,
-                                                rect.w,rect.h});
-                        const MenuDirtyRect val = options_value_rect(row);
-                        gpu_options_vertex(q,&count,val,
-                            (MenuDirtyRect){0,GPU_OPTIONS_VALUES_Y+
-                                (row*5+values[row])*OPTIONS_ROW_H,val.w,val.h});
-                    }
-                    const MenuDirtyRect desc = options_description_rect();
-                    gpu_options_vertex(q,&count,desc,
-                        (MenuDirtyRect){0,GPU_OPTIONS_DESCRIPTION_Y+
-                            cursor*OPTIONS_ROW_H,desc.w,desc.h});
-                }
-    const SDL_GPUTextureCreateInfo atlas_info = {
-        .type = SDL_GPU_TEXTURETYPE_2D,
-        .format = SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UNORM,
-        .usage = SDL_GPU_TEXTUREUSAGE_SAMPLER,
-        .width = CANVAS_W, .height = GPU_OPTIONS_ATLAS_H,
-        .layer_count_or_depth = 1, .num_levels = 1,
-        .sample_count = SDL_GPU_SAMPLECOUNT_1,
-    };
-    const SDL_GPUTextureCreateInfo target_info = {
-        .type = SDL_GPU_TEXTURETYPE_2D,
-        .format = SDL_GetGPUSwapchainTextureFormat(g_device, g_window),
-        .usage = SDL_GPU_TEXTUREUSAGE_SAMPLER | SDL_GPU_TEXTUREUSAGE_COLOR_TARGET,
-        .width = CANVAS_W, .height = CANVAS_H,
-        .layer_count_or_depth = 1, .num_levels = 1,
-        .sample_count = SDL_GPU_SAMPLECOUNT_1,
-    };
-    const SDL_GPUBufferCreateInfo buffer_info = {
-        .usage = SDL_GPU_BUFFERUSAGE_VERTEX,
-        .size = (Uint32)((size_t)GPU_OPTIONS_VARIANTS * 36 * sizeof(*vertices)),
-    };
-    g_gpu_options_atlas = SDL_CreateGPUTexture(g_device, &atlas_info);
-    g_gpu_options_target = SDL_CreateGPUTexture(g_device, &target_info);
-    g_gpu_options_vertices = SDL_CreateGPUBuffer(g_device, &buffer_info);
-    const size_t vertex_bytes = (size_t)GPU_OPTIONS_VARIANTS * 36 * sizeof(*vertices);
-    const SDL_GPUTransferBufferCreateInfo transfer_info = {
-        .usage = SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD,
-        .size = (Uint32)(atlas_bytes + vertex_bytes),
-    };
-    SDL_GPUTransferBuffer *transfer = SDL_CreateGPUTransferBuffer(g_device,&transfer_info);
-    if (!g_gpu_options_atlas || !g_gpu_options_target ||
-        !g_gpu_options_vertices || !transfer) {
-        if (transfer) SDL_ReleaseGPUTransferBuffer(g_device,transfer);
-        release_gpu_options_objects();
-        free(atlas); free(vertices); return -1;
-    }
-    const char *test_fail = getenv("DW3_MENU_GPU_TEST_FAIL");
-    if (test_fail && strcmp(test_fail,"allocation")==0) {
-        SDL_ReleaseGPUTransferBuffer(g_device,transfer);
-        release_gpu_options_objects();
-        free(atlas); free(vertices); return -1;
-    }
-    uint8_t *mapped = (uint8_t *)SDL_MapGPUTransferBuffer(g_device,transfer,false);
-    if (!mapped) {
-        SDL_ReleaseGPUTransferBuffer(g_device,transfer);
-        release_gpu_options_objects();
-        free(atlas); free(vertices); return -1;
-    }
-    memcpy(mapped,atlas,atlas_bytes);
-    memcpy(mapped+atlas_bytes,vertices,vertex_bytes);
-    g_profile_allocations += 7;
-    free(atlas); free(vertices);
-    SDL_UnmapGPUTransferBuffer(g_device,transfer);
-    if (test_fail && strcmp(test_fail,"submit")==0) {
-        SDL_ReleaseGPUTransferBuffer(g_device,transfer);
-        release_gpu_options_objects();
-        return -1;
-    }
-    profile_add(&g_profile_staging_ns, profile_start);
-    SDL_GPUCommandBuffer *cmd = SDL_AcquireGPUCommandBuffer(g_device);
-    if (!cmd) {
-        SDL_ReleaseGPUTransferBuffer(g_device,transfer);
-        release_gpu_options_objects();
-        return -1;
-    }
-    SDL_GPUCopyPass *copy = SDL_BeginGPUCopyPass(cmd);
-    const SDL_GPUTextureTransferInfo texture_src = {
-        .transfer_buffer=transfer,.pixels_per_row=CANVAS_W,
-        .rows_per_layer=GPU_OPTIONS_ATLAS_H,
-    };
-    const SDL_GPUTextureRegion texture_dst = {
-        .texture=g_gpu_options_atlas,.w=CANVAS_W,.h=GPU_OPTIONS_ATLAS_H,.d=1,
-    };
-    SDL_UploadToGPUTexture(copy,&texture_src,&texture_dst,false);
-    const SDL_GPUTransferBufferLocation buffer_src = {
-        .transfer_buffer=transfer,.offset=(Uint32)atlas_bytes,
-    };
-    const SDL_GPUBufferRegion buffer_dst = {
-        .buffer=g_gpu_options_vertices,.size=(Uint32)vertex_bytes,
-    };
-    SDL_UploadToGPUBuffer(copy,&buffer_src,&buffer_dst,true);
-    SDL_EndGPUCopyPass(copy);
-    profile_start = profile_counter();
-    const bool submitted = SDL_SubmitGPUCommandBuffer(cmd);
-    profile_add(&g_profile_submit_ns, profile_start);
-    SDL_ReleaseGPUTransferBuffer(g_device,transfer);
-    if (!submitted) {
-        release_gpu_options_objects();
-        return -1;
-    }
-    profile_start = profile_counter();
-    SDL_WaitForGPUIdle(g_device);
-    profile_add(&g_profile_wait_ns, profile_start);
-    g_gpu_options_ready = 1;
-    g_profile_upload_bytes += atlas_bytes + vertex_bytes;
-    g_profile_rebuilds++;
-    return 0;
-}
-static int refresh_art_gpu(void) {
-    const unsigned generation = dw3_pc_title_overlay_generation();
-    const int cursor = dw3_pc_title_overlay_options_cursor();
-    int values[DW3_TITLE_OPTION_ROWS];
-    for (int i=0;i<DW3_TITLE_OPTION_ROWS;++i) values[i]=dw3_port_options_level(i);
-    if (g_gpu_options_failed) return -1;
-    if (!g_gpu_options_ready && build_gpu_options()!=0) {
-        g_gpu_options_failed = 1;
-        return -1;
-    }
-    if (g_gpu_options_valid && generation==g_gpu_options_art_generation &&
-        cursor==g_gpu_options_cursor &&
-        memcmp(values,g_gpu_options_values,sizeof(values))==0) return 0;
-    const int combo = gpu_options_combo(cursor,values);
-    SDL_GPUCommandBuffer *cmd=SDL_AcquireGPUCommandBuffer(g_device);
-    if (!cmd) return -1;
-    const SDL_GPUColorTargetInfo target = {
-        .texture=g_gpu_options_target,.clear_color={0,0,0,0},
-        .load_op=SDL_GPU_LOADOP_CLEAR,.store_op=SDL_GPU_STOREOP_STORE,
-        .cycle=true,
-    };
-    SDL_GPURenderPass *pass=SDL_BeginGPURenderPass(cmd,&target,1,NULL);
-    if (!pass) { SDL_CancelGPUCommandBuffer(cmd); return -1; }
-    SDL_BindGPUGraphicsPipeline(pass,g_pipeline);
-    const SDL_GPUBufferBinding binding={
-        .buffer=g_gpu_options_vertices,
-        .offset=(Uint32)((size_t)combo*36*sizeof(OverlayVertex)),
-    };
-    SDL_BindGPUVertexBuffers(pass,0,&binding,1);
-    const SDL_GPUTextureSamplerBinding sampler={
-        .texture=g_gpu_options_atlas,.sampler=g_sampler,
-    };
-    SDL_BindGPUFragmentSamplers(pass,0,&sampler,1);
-    SDL_DrawGPUPrimitives(pass,36,1,0,0);
-    SDL_EndGPURenderPass(pass);
-    Uint64 profile_start=profile_counter();
-    const bool submitted=SDL_SubmitGPUCommandBuffer(cmd);
-    profile_add(&g_profile_submit_ns,profile_start);
-    if (!submitted) return -1;
-    profile_start=profile_counter();
-    SDL_WaitForGPUIdle(g_device);
-    profile_add(&g_profile_wait_ns,profile_start);
-    g_gpu_options_art_generation=generation;
-    g_gpu_options_cursor=cursor;
-    memcpy(g_gpu_options_values,values,sizeof(values));
-    g_gpu_options_valid=1;
-    g_profile_rebuilds++;
+    if (!dirty.count) return 0;
+    if (dirty.rebuilt || dirty.full) g_profile_rebuilds++;
+    if (upload_options_dirty(&dirty) != 0) return -1;
+    dw3_options_cache_commit();
+    g_options_generation = dw3_pc_title_overlay_options_generation();
     return 0;
 }
 
@@ -1276,23 +877,14 @@ void dw3_pc_title_menu_set_state(int active, int selected) {
     /* The options screen replaces the menu and the logo while it is open. */
     if (dw3_port_options_is_open() && g_pipeline && g_texture && g_vertices &&
         g_sampler) {
-        if (composition == MENU_COMPOSITION_CPU) {
-            if (refresh_art_cpu() != 0) {
-                if (!g_cpu_fallback_logged) {
-                    fprintf(stderr, "dw3-title-overlay: CPU dirty-region path unavailable; restoring reference artwork\n");
-                    g_cpu_fallback_logged = 1;
+        if (composition == MENU_COMPOSITION_CACHED) {
+            if (refresh_art_cached() != 0) {
+                if (!g_cache_fallback_logged) {
+                    fprintf(stderr, "dw3-title-overlay: dirty-region cache unavailable; restoring reference artwork\n");
+                    g_cache_fallback_logged = 1;
                 }
-                g_options_generation = ~dw3_pc_title_overlay_options_generation();
-                refresh_art();
-            }
-        } else if (composition == MENU_COMPOSITION_GPU) {
-            if (refresh_art_gpu() != 0) {
-                if (!g_cpu_fallback_logged) {
-                    fprintf(stderr, "dw3-title-overlay: GPU atlas path unavailable; restoring reference artwork\n");
-                    g_cpu_fallback_logged = 1;
-                }
-                /* Draw the reference texture, not a stale composed target. */
-                g_gpu_options_valid = 0;
+                /* Draw the reference texture; retry the cache on the next change. */
+                dw3_options_cache_invalidate();
                 g_options_generation = ~dw3_pc_title_overlay_options_generation();
                 refresh_art();
             }
@@ -1384,31 +976,20 @@ static void render_overlay(SDL_GPUCommandBuffer *cmd, SDL_GPURenderPass *pass) {
         SDL_DrawGPUPrimitives(pass, 6, 1, STATE_COUNT * 6, 0);
     }
     if (!g_overlay_active) return;
-    const int gpu_options = g_selection == STATE_OPTIONS &&
-        menu_composition_mode() == MENU_COMPOSITION_GPU &&
-        g_gpu_options_valid && g_gpu_options_target;
-    SDL_BindGPUGraphicsPipeline(pass,
-        gpu_options ? g_gpu_options_composite_pipeline : g_pipeline);
+    SDL_BindGPUGraphicsPipeline(pass, g_pipeline);
     const SDL_GPUTextureSamplerBinding sampler_binding = {
-        .texture = gpu_options ? g_gpu_options_target : g_texture,
+        .texture = g_texture,
         .sampler = g_sampler,
     };
     SDL_BindGPUFragmentSamplers(pass, 0, &sampler_binding, 1);
-    SDL_DrawGPUPrimitives(pass, 6, 1,
-        gpu_options ? (STATE_COUNT + 4) * 6 : (Uint32)(g_selection * 6), 0);
+    SDL_DrawGPUPrimitives(pass, 6, 1, (Uint32)(g_selection * 6), 0);
     profile_overlay_draw_complete();
     (void)cmd;
 }
 
 static void destroy_overlay(void) {
     release_gpu_resources();
-    free(g_cpu_options_static);
-    free(g_cpu_options_canvas);
-    g_cpu_options_static = NULL;
-    g_cpu_options_canvas = NULL;
-    g_cpu_options_ready = 0;
-    g_cpu_options_valid = 0;
-    g_cpu_options_cursor = -1;
+    dw3_options_cache_release();
 }
 
 void dw3_pc_title_menu_overlay_register(void) {
