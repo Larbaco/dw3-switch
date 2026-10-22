@@ -11,8 +11,11 @@
  * state is kept in a shared CPU cache (platforms/pc/src/title_options_cache.c)
  * and only the rectangles that changed are sent to the texture with
  * glTexSubImage2D, packed contiguously because GL_UNPACK_ROW_LENGTH is not in
- * GLES2. The cache is released when the overlay stops drawing (restart, leaving
- * the title) and rebuilt, with a full upload, on the next open.
+ * GLES2. The cache is built when the title menu first shows (so opening the
+ * screen is a normal update), released when the overlay stops drawing
+ * (restart, leaving the title) and rebuilt, with a full upload, on the next
+ * title visit.
+ *
  * Both are drawn over the game picture's 4:3 viewport after the frame is
  * composited and before the debug HUD. The game loop and the present run on
  * the same thread; the logo is kept on the CPU and uploaded on the next draw
@@ -91,6 +94,8 @@ static unsigned s_options_generation;
 static uint8_t *s_options_pack;
 static size_t s_options_pack_bytes;
 static int s_options_cache_failed_logged;
+/* The cache was built (and the options region filled) for this title visit. */
+static int s_options_cache_warm;
 /* Port options screen opacity, 0..255. */
 static int s_options_alpha;
 
@@ -293,6 +298,7 @@ static void release_options_cache(void) {
     free(s_options_pack);
     s_options_pack = NULL;
     s_options_pack_bytes = 0;
+    s_options_cache_warm = 0;
 #if DW3_NX_MENU_TIMING
     timing_flush();
     memset(&s_timing, 0, sizeof(s_timing));
@@ -442,7 +448,10 @@ void dw3_nx_title_overlay_draw(int vx, int vy, int vw, int vh) {
     if (!ensure_gl()) {
         return;
     }
-    if (s_options_alpha) {
+    if (s_options_alpha || (s_overlay_active && !s_options_cache_warm)) {
+        /* Build the cache as soon as the title menu is up, so the first open
+         * of the screen is a normal dirty-region update, not a raster. */
+        s_options_cache_warm = 1;
         update_options_texture();
     }
 #if DW3_NX_MENU_TIMING
