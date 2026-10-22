@@ -29,6 +29,7 @@
 #include "port_text.h"
 #include <libgpu.h>
 #include "engine/pad.h"
+#include "engine/sound.h"
 /* Psyz_VideoAlloc* capture is PC/PSY-Z only — compile out on Switch. */
 #if defined(DW3_PC_HOST)
 #include <psyz/video.h>
@@ -50,9 +51,10 @@ enum {
 typedef struct Dw3PortOptStub {
     const char *label;
     const char *key; /* P9.4 option file key */
-    int value; /* 0/1, 0/2..4 (Fast-forward), 0..10 (volumes) or 0..2 (the
-                * pacing rows); Widescreen defaults ON, turbo starts
-                * inactive, volumes default to 10, pacing to 0 (1x, Normal) */
+    int value; /* 0/1, 0/2..4 (Fast-forward), 0..10 (volumes), 0..4 (Encounter
+                * rate) or 0..2 (Text speed); Widescreen defaults ON, turbo
+                * starts inactive, volumes default to 10, pacing to 0 (1x,
+                * Normal) */
     int def;   /* value with no option file (the row's initial value) */
     const char *env; /* optional DW3_* variable that pins it for one run */
 } Dw3PortOptStub;
@@ -72,7 +74,8 @@ static Dw3PortOptStub g_stubs[DW3_PORT_OPT_COUNT] = {
      DW3_AUDIO_VOLUME_MAX, "DW3_MUSIC_VOLUME"},
     {"SFX volume", "sfx_volume", DW3_AUDIO_VOLUME_MAX, DW3_AUDIO_VOLUME_MAX,
      "DW3_SFX_VOLUME"},
-    /* P6.18: 0 = 1x, 1 = 0.5x, 2 = Off (docs/P6.18_PACING.md) */
+    /* P6.18: 0 = 1x, 1 = 0.5x, 2 = Off, 3 = 1.5x, 4 = 2x (stored values;
+     * the screen steps OFF, 0.5x, 1x, 1.5x, 2x, docs/P6.18_PACING.md) */
     {"Encounter rate", "encounter_rate", DW3_ENCOUNTER_1X, DW3_ENCOUNTER_1X,
      "DW3_ENCOUNTER_RATE"},
     /* P6.18: 0 = Normal, 1 = Fast, 2 = Instant */
@@ -222,19 +225,53 @@ static int po_is_stepped(int index) {
     return po_is_volume(index) || po_is_mode(index);
 }
 
-/* Highest value of a stepped row. */
+/* Highest stored value of a stepped row. */
+static int po_value_max(int index) {
+    return po_is_volume(index) ? DW3_AUDIO_VOLUME_MAX
+           : index == DW3_PORT_OPT_ENCOUNTER_RATE ? DW3_ENCOUNTER_MODE_MAX
+                                                   : DW3_PACING_MODE_MAX;
+}
+
+/* The order Left / Right and Confirm walk a stepped row in, by position. The
+ * stored values never change (a file written by an older build keeps its
+ * meaning), so Encounter rate, stored 0 1x / 1 0.5x / 2 Off / 3 1.5x / 2x 4,
+ * is stepped OFF, 0.5x, 1x, 1.5x, 2x. Every other row steps in value order. */
+static const int po_encounter_order[DW3_ENCOUNTER_MODE_MAX + 1] = {
+    DW3_ENCOUNTER_OFF, DW3_ENCOUNTER_HALF, DW3_ENCOUNTER_1X,
+    DW3_ENCOUNTER_1_5X, DW3_ENCOUNTER_2X
+};
+
+static int po_value_at(int index, int pos) {
+    return index == DW3_PORT_OPT_ENCOUNTER_RATE ? po_encounter_order[pos] : pos;
+}
+
+static int po_pos_of(int index, int value) {
+    int pos;
+
+    if (index != DW3_PORT_OPT_ENCOUNTER_RATE) {
+        return value;
+    }
+    for (pos = 0; pos <= DW3_ENCOUNTER_MODE_MAX; pos++) {
+        if (po_encounter_order[pos] == value) {
+            return pos;
+        }
+    }
+    return 0;
+}
+
+/* Last position of a stepped row. */
 static int po_step_max(int index) {
-    return po_is_volume(index) ? DW3_AUDIO_VOLUME_MAX : DW3_PACING_MODE_MAX;
+    return po_value_max(index);
 }
 
 /* A value the row can hold: ON/OFF, OFF / 2x..4x for Fast-forward, a volume
- * step 0..10, or a pacing mode 0..2. */
+ * step 0..10, an Encounter rate 0..4 or a Text speed 0..2. */
 static int po_valid(int index, int v) {
     if (index == DW3_PORT_OPT_FAST_FORWARD) {
         return v == 0 || (v >= DW3_TURBO_SPEED_MIN && v <= DW3_TURBO_SPEED_MAX);
     }
     if (po_is_stepped(index)) {
-        return v >= 0 && v <= po_step_max(index);
+        return v >= 0 && v <= po_value_max(index);
     }
     return v == 0 || v == 1;
 }
@@ -253,8 +290,8 @@ static void po_audio_apply(void) {
                          g_stubs[DW3_PORT_OPT_SFX_VOLUME].value);
 }
 
-/* DW3_MUSIC_VOLUME / DW3_SFX_VOLUME (0..10), DW3_ENCOUNTER_RATE and
- * DW3_TEXT_SPEED (0..2) pin a value for this run: it is used like any other
+/* DW3_MUSIC_VOLUME / DW3_SFX_VOLUME (0..10), DW3_ENCOUNTER_RATE (0..4, the
+ * stored values) and DW3_TEXT_SPEED (0..2) pin a value for this run: it is used like any other
  * value but never written by an unrelated change (the same rule as
  * DW3_WIDESCREEN and DW3_TURBO). An invalid value is ignored. */
 static void po_stepped_env(void) {
@@ -414,26 +451,65 @@ int dw3_port_options_persist_init(const char *dir) {
 
 /* The words of a pacing mode, for the log (the overlay has its own lettering). */
 static const char *po_mode_name(int index, int v) {
-    static const char *const encounter[3] = {"1x", "0.5x", "off"};
+    static const char *const encounter[DW3_ENCOUNTER_MODE_MAX + 1] = {
+        "1x", "0.5x", "off", "1.5x", "2x"};
     static const char *const text[3] = {"normal", "fast", "instant"};
 
-    if (v < 0 || v > DW3_PACING_MODE_MAX) {
+    if (v < 0 || v > po_value_max(index)) {
         return "?";
     }
     return index == DW3_PORT_OPT_ENCOUNTER_RATE ? encounter[v] : text[v];
 }
 
-/* Move a stepped row (a volume 0..10, or a pacing mode 0..2) by `delta`
- * steps, clamped, and save. */
-static void po_step(int index, int delta) {
-    int v = g_stubs[index].value + delta;
+/* Options screen menu sound feedback (owner request after the preview.30-rc4 OLED test): the game's own title-menu sounds (cursor tick,
+ * choice, and the menu cancel of its other menus). All three are key-ons of
+ * the system bank (bank 1, SYSTEM00..02), so they go through the SFX bus
+ * (P6.17) and follow the SFX volume row. A host test counts them instead. */
+enum { PO_SND_CURSOR, PO_SND_SELECT, PO_SND_CANCEL };
 
-    if (v < 0) {
-        v = 0;
+#ifdef DW3_PORT_OPTIONS_TEST
+static int g_test_sounds[3];
+int dw3_port_options_test_sound_count(int kind) {
+    return kind >= 0 && kind < 3 ? g_test_sounds[kind] : 0;
+}
+#endif
+
+static void po_sound(int kind) {
+    static const char *const name[3] = {"cursor", "select", "cancel"};
+#ifdef DW3_PORT_OPTIONS_TEST
+    g_test_sounds[kind]++;
+    fprintf(stderr, "dw3-port-options: sound %s (sfx volume %d)\n", name[kind],
+            g_stubs[DW3_PORT_OPT_SFX_VOLUME].value);
+    fflush(stderr);
+#else
+    static const s32 id[3] = {SOUND_CURSOR, SOUND_SELECT, SOUND_MENU_CANCEL};
+    short voice;
+
+    if (SOUND.playSound == NULL || findSoundBank(SOUND_BANK(id[kind])) < 0) {
+        PO_WARN("dw3-port-options: sound %s not played: bank %d is not "
+                "loaded", name[kind], (int)SOUND_BANK(id[kind]));
+        return;
     }
-    if (v > po_step_max(index)) {
-        v = po_step_max(index);
+    voice = SOUND.playSound(id[kind]);
+    PO_INFO("dw3-port-options: sound %s (sfx volume %d, voice %d)",
+            name[kind], g_stubs[DW3_PORT_OPT_SFX_VOLUME].value, (int)voice);
+#endif
+}
+
+/* Move a stepped row (a volume 0..10, a pacing mode) by `delta` steps in
+ * the row's order (po_value_at), clamped, and save. Plays the choice sound
+ * once the new value (and, for a volume, its gain) is in effect. */
+static void po_step(int index, int delta) {
+    int pos = po_pos_of(index, g_stubs[index].value) + delta;
+    int v;
+
+    if (pos < 0) {
+        pos = 0;
     }
+    if (pos > po_step_max(index)) {
+        pos = po_step_max(index);
+    }
+    v = po_value_at(index, pos);
     if (v == g_stubs[index].value && !((g_env_pinned >> index) & 1u)) {
         return;
     }
@@ -454,10 +530,12 @@ static void po_step(int index, int delta) {
         po_audio_apply();
     }
     (void)po_save();
+    po_sound(PO_SND_SELECT);
 }
 
 /* Confirm on a row: ON/OFF, OFF -> 2x -> 3x -> 4x -> OFF for Fast-forward, or
- * the next step of a volume / pacing row (wraps to 0 after the last). */
+ * the next step of a volume / pacing row (wraps to the first after the last:
+ * Encounter rate 2x -> OFF). */
 static void po_toggle(int index) {
     int v;
 
@@ -476,11 +554,13 @@ static void po_toggle(int index) {
         }
         fflush(stderr);
         (void)po_save();
+        po_sound(PO_SND_SELECT);
         return;
     }
     if (po_is_stepped(index)) {
         /* Confirm steps up and wraps; Left/Right step either way. */
-        po_step(index, g_stubs[index].value >= po_step_max(index)
+        po_step(index, po_pos_of(index, g_stubs[index].value) >=
+                               po_step_max(index)
                            ? -po_step_max(index) : 1);
         return;
     }
@@ -492,6 +572,7 @@ static void po_toggle(int index) {
             v ? "enabled" : "disabled");
     fflush(stderr);
     (void)po_save();
+    po_sound(PO_SND_SELECT);
 }
 
 int dw3_port_options_restart_enabled(void) {
@@ -512,17 +593,20 @@ void dw3_port_options_tick(void) {
 #ifdef DW3_PORT_OPTIONS_TEST
     /* Close is Triangle only — Select is the open chord on the title menu. */
     if (po_pressed(PO_BIT_TRIANGLE)) {
+        po_sound(PO_SND_CANCEL);
         dw3_port_options_close();
         return;
     }
     if (po_pressed(PO_BIT_UP)) {
         if (g_cursor > 0) {
             g_cursor--;
+            po_sound(PO_SND_CURSOR);
         }
     }
     if (po_pressed(PO_BIT_DOWN)) {
         if (g_cursor < DW3_PORT_OPT_COUNT - 1) {
             g_cursor++;
+            po_sound(PO_SND_CURSOR);
         }
     }
     if (po_is_stepped(g_cursor)) {
@@ -538,17 +622,20 @@ void dw3_port_options_tick(void) {
     }
 #else
     if (po_pressed(PAD_TRIANGLE)) {
+        po_sound(PO_SND_CANCEL);
         dw3_port_options_close();
         return;
     }
     if (po_pressed(PAD_UP) || PAD_REPEATED(PAD_UP)) {
         if (g_cursor > 0) {
             g_cursor--;
+            po_sound(PO_SND_CURSOR);
         }
     }
     if (po_pressed(PAD_DOWN) || PAD_REPEATED(PAD_DOWN)) {
         if (g_cursor < DW3_PORT_OPT_COUNT - 1) {
             g_cursor++;
+            po_sound(PO_SND_CURSOR);
         }
     }
     if (po_is_stepped(g_cursor)) {

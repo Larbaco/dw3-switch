@@ -501,6 +501,32 @@ def pacing_persist(version, phase):
     return r
 
 
+def options_sound(version):
+    """Options screen sound feedback: title -> Options, four cursor moves down
+    to SFX volume, Left twice (10 -> 8, each change plays the choice sound at
+    the new level), one more row down to Encounter rate and Right (1x -> 1.5x),
+    then Triangle (the cancel sound). The log carries every sound with the SFX
+    volume it was played at."""
+    r = Rec(f"{version.upper()}: Options screen sound feedback")
+    m = _to_title_menu(r, version)
+    r.press(m, DOWN)                 # New Game -> Options
+    r.press(m + 20, CROSS)           # open the Options screen
+    f = m + 70
+    for _ in range(4):               # Widescreen -> ... -> SFX volume
+        r.press(f, DOWN)
+        f += 20
+    for _ in range(2):               # SFX volume 10 -> 9 -> 8
+        r.press(f, LEFT)
+        f += 20
+    r.press(f, DOWN)                 # Encounter rate
+    f += 20
+    r.press(f, RIGHT)                # 1x -> 1.5x
+    f += 20
+    r.press(f + 10, TRIANGLE)        # leave
+    r.end(f + 60)
+    return r
+
+
 TEXT_END = {"us": 2400, "eu": 2600}   # frames; the first pages are done long before
 
 
@@ -572,6 +598,7 @@ def main(out):
         for phase in (1, 2):
             (out / f"{v}-pacing-persist-p{phase}.rec").write_text(
                 pacing_persist(v, phase).text(True))
+        (out / f"{v}-options-sound.rec").write_text(options_sound(v).text(True))
         # One recording per kind; the scenarios differ in the option file and
         # the environment the manifest gives them.
         (out / f"{v}-text-opening.rec").write_text(text_opening(v, TEXT_END[v]).text(True))

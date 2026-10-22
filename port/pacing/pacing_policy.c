@@ -17,6 +17,15 @@ int dw3_pacing_scale_rate(int mode, int rate, int *carry) {
             *carry = sum & 1;
         }
         return sum >> 1;
+    case DW3_ENCOUNTER_1_5X:
+        /* 3/2 of the rate; the odd half step is carried like 0.5x does. */
+        sum = (carry != 0 ? *carry : 0) + rate * 3;
+        if (carry != 0) {
+            *carry = sum & 1;
+        }
+        return sum >> 1;
+    case DW3_ENCOUNTER_2X:
+        return rate * 2;
     default:
         return rate;
     }

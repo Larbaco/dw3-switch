@@ -47,6 +47,28 @@ static void policy_rate(void) {
             sum += out;
         }
         CHECK(sum * 2 == rate * 1000);
+        /* 1.5x: exactly one and a half times the 1x countdown fall per
+         * footstep, with the odd half step carried (never lost). */
+        carry = 0;
+        sum = 0;
+        for (n = 0; n < 1000; n++) {
+            int out = dw3_pacing_scale_rate(DW3_ENCOUNTER_1_5X, rate, &carry);
+
+            CHECK(out >= rate * 3 / 2 && out <= rate * 3 / 2 + 1);
+            CHECK(carry == 0 || carry == 1);
+            sum += out;
+        }
+        CHECK(sum * 2 == rate * 3 * 1000);
+        /* ... and from an odd carry too: nothing is lost or gained. */
+        carry = 1;
+        sum = dw3_pacing_scale_rate(DW3_ENCOUNTER_1_5X, rate, &carry);
+        CHECK(sum * 2 + carry == rate * 3 + 1);
+        /* 2x: exactly double, no remainder. */
+        carry = 0;
+        for (n = 0; n < 1000; n++) {
+            CHECK(dw3_pacing_scale_rate(DW3_ENCOUNTER_2X, rate, &carry) == rate * 2);
+        }
+        CHECK(carry == 0);
     }
     /* A map-forced area (rate 2000, BattleList.count 0) is never touched. */
     {
@@ -55,6 +77,12 @@ static void policy_rate(void) {
         CHECK(dw3_pacing_scale_rate(DW3_ENCOUNTER_OFF, 2000, &carry) == 2000);
         CHECK(dw3_pacing_scale_rate(DW3_ENCOUNTER_HALF, 2000, &carry) == 2000);
         CHECK(dw3_pacing_scale_rate(DW3_ENCOUNTER_1X, 2000, &carry) == 2000);
+        CHECK(dw3_pacing_scale_rate(DW3_ENCOUNTER_1_5X, 2000, &carry) == 2000);
+        CHECK(dw3_pacing_scale_rate(DW3_ENCOUNTER_2X, 2000, &carry) == 2000);
+        CHECK(dw3_pacing_scale_rate(DW3_ENCOUNTER_2X, DW3_PACING_FORCED_RATE, 0) ==
+              DW3_PACING_FORCED_RATE);
+        CHECK(dw3_pacing_scale_rate(DW3_ENCOUNTER_2X, DW3_PACING_FORCED_RATE - 1, 0) ==
+              (DW3_PACING_FORCED_RATE - 1) * 2);
         CHECK(carry == 1);
         CHECK(dw3_pacing_scale_rate(DW3_ENCOUNTER_OFF, DW3_PACING_FORCED_RATE, 0) ==
               DW3_PACING_FORCED_RATE);
@@ -63,6 +91,14 @@ static void policy_rate(void) {
     /* A bad rate is returned as it is, never turned into a countdown. */
     CHECK(dw3_pacing_scale_rate(DW3_ENCOUNTER_HALF, 0, 0) == 0);
     CHECK(dw3_pacing_scale_rate(DW3_ENCOUNTER_HALF, -5, 0) == -5);
+    CHECK(dw3_pacing_scale_rate(DW3_ENCOUNTER_1_5X, 0, 0) == 0);
+    CHECK(dw3_pacing_scale_rate(DW3_ENCOUNTER_2X, 0, 0) == 0);
+    CHECK(dw3_pacing_scale_rate(DW3_ENCOUNTER_2X, -5, 0) == -5);
+    /* Without a carry slot 1.5x still returns a whole step. */
+    CHECK(dw3_pacing_scale_rate(DW3_ENCOUNTER_1_5X, 3, 0) == 4);
+    /* An unknown mode is 1x. */
+    CHECK(dw3_pacing_scale_rate(5, 9, 0) == 9);
+    CHECK(dw3_pacing_scale_rate(-1, 9, 0) == 9);
 }
 
 static void policy_text(void) {
@@ -101,7 +137,7 @@ static void glue_encounter(void) {
     rate = 6;
     CHECK(dw3_port_pacing_encounter_step(&rate) == 1 && rate == 6);
     /* A forced area is not counted and not changed in any mode. */
-    for (g_encounter = 0; g_encounter <= 2; g_encounter++) {
+    for (g_encounter = 0; g_encounter <= DW3_ENCOUNTER_MODE_MAX; g_encounter++) {
         rate = 2000;
         CHECK(dw3_port_pacing_encounter_step(&rate) == 1 && rate == 2000);
     }
@@ -125,6 +161,46 @@ static void glue_encounter(void) {
         }
         CHECK(n == 80); /* twice the 1x footsteps */
     }
+    dw3_port_pacing_encounter_started();
+    /* 1.5x and 2x: the countdown falls faster, so 2/3 and 1/2 the footsteps. */
+    g_encounter = DW3_ENCOUNTER_1_5X;
+    {
+        int battle_steps = 18 * 40;
+        int n = 0;
+
+        while (battle_steps > 0) {
+            rate = 18;
+            CHECK(dw3_port_pacing_encounter_step(&rate) == 1 && rate == 27);
+            battle_steps -= rate;
+            n++;
+        }
+        CHECK(n == 27); /* 720 / 27 = 26.7 */
+    }
+    dw3_port_pacing_encounter_started();
+    g_encounter = DW3_ENCOUNTER_2X;
+    {
+        int battle_steps = 18 * 40;
+        int n = 0;
+
+        while (battle_steps > 0) {
+            rate = 18;
+            CHECK(dw3_port_pacing_encounter_step(&rate) == 1 && rate == 36);
+            battle_steps -= rate;
+            n++;
+        }
+        CHECK(n == 20); /* half the 1x footsteps */
+    }
+    dw3_port_pacing_encounter_started();
+    /* Odd rate under 1.5x: the half step carries; a mode change drops it. */
+    g_encounter = DW3_ENCOUNTER_1_5X;
+    rate = 3;
+    CHECK(dw3_port_pacing_encounter_step(&rate) == 1 && rate == 4);
+    g_encounter = DW3_ENCOUNTER_2X;
+    rate = 3;
+    CHECK(dw3_port_pacing_encounter_step(&rate) == 1 && rate == 6);
+    g_encounter = DW3_ENCOUNTER_1_5X;
+    rate = 3;
+    CHECK(dw3_port_pacing_encounter_step(&rate) == 1 && rate == 4);
     dw3_port_pacing_encounter_started();
     /* A forced area starts its battle with no counted footstep. */
     g_encounter = DW3_ENCOUNTER_OFF;

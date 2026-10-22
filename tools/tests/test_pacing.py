@@ -41,6 +41,9 @@ def test_pacing_log_lines(pacing_bin: Path):
     assert "encounters off: 2 footstep" not in err
     # 0.5x: 80 footsteps counted for a countdown that takes 40 at 1x.
     assert re.search(r"random battle after 81 footstep\(s\) \(encounter rate 0\.5x\)", err)
+    # 1.5x and 2x: 27 and 20 footsteps for the same countdown.
+    assert re.search(r"random battle after 27 footstep\(s\) \(encounter rate 1\.5x\)", err)
+    assert re.search(r"random battle after 20 footstep\(s\) \(encounter rate 2x\)", err)
     assert "dw3-pacing: map-forced area battle on the first footstep" in err
     # Text: two pages, three and two frames, once each.
     pages = re.findall(r"text page typed in (\d+) frame\(s\) \(text speed (\w+)\)", err)

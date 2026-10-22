@@ -7,14 +7,21 @@
 extern "C" {
 #endif
 
-/* Both Port options rows hold a mode; 0 is the original behaviour. */
+/* Both Port options rows hold a mode; 0 is the original behaviour. Text speed
+ * has the modes 0..DW3_PACING_MODE_MAX; Encounter rate 0..DW3_ENCOUNTER_MODE_MAX. */
 #define DW3_PACING_MODE_MAX 2
+#define DW3_ENCOUNTER_MODE_MAX 4
 
-/* Encounter rate. */
+/* Encounter rate. The stored values (port_options.cfg `encounter_rate`) are
+ * the ones P6.18 shipped (0 / 1 / 2) plus the two added later; they are never
+ * renumbered. The order the Options screen steps through them is
+ * OFF, 0.5x, 1x, 1.5x, 2x (port/options/port_options.c, docs/PORT_OPTIONS.md). */
 enum {
     DW3_ENCOUNTER_1X = 0,
     DW3_ENCOUNTER_HALF = 1,
-    DW3_ENCOUNTER_OFF = 2
+    DW3_ENCOUNTER_OFF = 2,
+    DW3_ENCOUNTER_1_5X = 3,
+    DW3_ENCOUNTER_2X = 4
 };
 
 /* Text speed. */
@@ -39,8 +46,10 @@ enum {
 /* Pure policy, in port/pacing/pacing_policy.c (no dependencies, unit tested). */
 
 /* Countdown step of one footstep in a random-encounter area under `mode`.
- * `carry` is the caller's remainder (0.5x spends the odd half step on the
- * next footstep, so the average is exactly half). Returns the step to
+ * `carry` is the caller's remainder (0.5x and 1.5x spend the odd half step on
+ * the next footstep, so over any number of footsteps the countdown falls by
+ * exactly half / one and a half times what 1x takes off; 2x is exact with no
+ * remainder). Returns the step to
  * subtract from GAME.battleSteps, or -1 when the footstep must not count at
  * all (Off). A forced area (rate >= DW3_PACING_FORCED_RATE) is returned
  * unchanged in every mode. */

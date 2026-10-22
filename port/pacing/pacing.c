@@ -21,20 +21,24 @@
 #define PACING_LOG(...) INFOF(__VA_ARGS__)
 #endif
 
-static const char *const ENCOUNTER_NAME[3] = {"1x", "0.5x", "off"};
+/* Indexed by the stored value (0 1x, 1 0.5x, 2 off, 3 1.5x, 4 2x). */
+static const char *const ENCOUNTER_NAME[5] = {"1x", "0.5x", "off", "1.5x", "2x"};
 static const char *const TEXT_NAME[3] = {"normal", "fast", "instant"};
 
 static int mode_of(int row) {
     int v = dw3_port_options_level(row);
+    int max = row == DW3_PORT_OPT_ENCOUNTER_RATE ? DW3_ENCOUNTER_MODE_MAX
+                                                 : DW3_PACING_MODE_MAX;
 
-    return v < 0 || v > DW3_PACING_MODE_MAX ? 0 : v;
+    return v < 0 || v > max ? 0 : v;
 }
 
 /* --- encounter rate ------------------------------------------------------ */
 
 static int g_steps;     /* footsteps counted in random-encounter areas since the last battle */
 static int g_ignored;   /* footsteps ignored while Off */
-static int g_carry;     /* 0.5x remainder */
+static int g_carry;     /* 0.5x / 1.5x remainder */
+static int g_carry_mode;/* the mode g_carry belongs to */
 
 int dw3_port_pacing_encounter_step(int *rate) {
     int mode = mode_of(DW3_PORT_OPT_ENCOUNTER_RATE);
@@ -42,6 +46,10 @@ int dw3_port_pacing_encounter_step(int *rate) {
 
     if (*rate >= DW3_PACING_FORCED_RATE) {
         return 1; /* map-forced battle area, not a random encounter */
+    }
+    if (mode != g_carry_mode) {
+        g_carry = 0; /* a half step left by another mode is not this one's */
+        g_carry_mode = mode;
     }
     out = dw3_pacing_scale_rate(mode, *rate, &g_carry);
     if (out < 0) {
