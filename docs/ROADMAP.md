@@ -557,9 +557,13 @@ speed.
   faulted in `FIELDSTG_drawBalloon` (preview.28 and .29; reproduced on the
   PC host US and EU and on Ryubing US and EU); patch `0058`, regression scenarios
   `us/eu-bridge-partner-gate`. See
-  [BALLOON_NULL_ACTOR.md](BALLOON_NULL_ACTOR.md), which also lists the
-  other places where a NULL actor from the PS1's readable low RAM could
-  fault a 64-bit host.
+  [BALLOON_NULL_ACTOR.md](BALLOON_NULL_ACTOR.md), which also holds the audit
+  of the other places where a NULL from the PS1's readable low RAM could
+  fault a 64-bit host. Patch `0059` guards the two that script data can in
+  principle reach (actor mark draw, camera follow target) and adds a
+  once-per-site `null-guard hit` log in dev builds; none of them fires in
+  the shipped-data scan, the rest were left (dead code, player/singleton
+  lookups, or a call through NULL that would crash the PS1 too).
 
 Gate: start → first boss on hardware, both versions.
 

@@ -1,9 +1,29 @@
-# Balloon NULL actor crash (patch 0058)
+# NULL reads the PS1 tolerated (patches 0058 and 0059)
+
+(The file keeps its old name, `BALLOON_NULL_ACTOR.md`, so links stay valid.)
+
+On the PS1, reading through a NULL pointer does not fault: low RAM is
+readable kernel memory, so the original game silently survived a few
+script-driven lookups that return NULL. On a 64-bit host (PC and Switch) the
+same read is a SIGSEGV or a data abort. This note covers the one that
+crashed in the field (the balloon, patch `0058`), the audit of the rest of
+the shape, and the preventive guards of patch `0059`. Rules used for every
+site:
+
+* Only **reads** are guarded. A NULL that the PS1 would then **call through**
+  (`ptr->setState(...)`, a function pointer read from kernel RAM) or write
+  through would have crashed or hung the PS1 as well, so shipped data cannot
+  contain it and the port has nothing to preserve.
+* The guard does what the PS1 effectively did when that is knowable (draw
+  nothing), otherwise the most conservative no-op, and says so.
+* Only `PORT_HOST` code changes; the non-NULL path is untouched.
+
+## Patch 0058: balloon NULL actor crash
 
 Status: fixed on the PC host and in the Switch build (checked on Ryubing, US
 and EU); OLED pass pending. Found in the preview.28 / preview.29 Ryubing sweep (2026-10-22).
 
-## Symptom
+### Symptom
 
 New Game on either disc, walking down the Digital World bridge to the gate
 where the hero is stopped ("Oh yeah! I need my partner Digimon data!"): the
@@ -13,7 +33,7 @@ Deterministic. PC (`dw3-pc`) dies with SIGSEGV at the same spot; on the
 Switch build Ryubing stops with "Invalid memory access at virtual address
 0x0".
 
-## Root cause
+### Root cause
 
 * The stage is WSTAG210 (mode `0x203`, stage file 453 US / 468 EU). The
   gate is event `0x1E`, `script30` in
@@ -40,7 +60,7 @@ Switch build Ryubing stops with "Invalid memory access at virtual address
   found no other close without a preceding open (WSTAG331 `script970` looks
   like one but is balanced per `VERSION_US` / `VERSION_EU`).
 
-## Behaviour chosen
+### Behaviour chosen
 
 Under `PORT_HOST`, `FIELDSTG_drawBalloon` returns when `task->actor` is
 NULL. The update around it is untouched, so the stray balloon is still
@@ -56,25 +76,60 @@ drew. Skipping is also the smallest change. What the PS1 words at
 `0x58/0x5C/0x64` hold was not measured (no PS1 RAM dump here); the choice
 rests on the code path, not on that value.
 
-## Other hazards of the same shape (not changed)
+## Audit of the same shape (patch 0059)
 
-A pointer set by a script command and read without a NULL check, where the
-PS1's readable low RAM hides a NULL:
+Method: (1) every lookup that returns a task or actor pointer
+(`TASK_REGISTRY.funcs.find`, `FIELDSTG_findActor`, `findNext` loops) in
+`src/field`, `src/battle`, `src/engine` was listed (~100 sites) and an
+automated pass flagged those whose result is dereferenced within 25 lines
+without an `== NULL` / `!= NULL` / `if (p)` test (24 candidates, all read by
+hand); (2) a data scan of every stage script (`SCRIPT_*` arrays, 131 files,
+365 scripts per disc, 1487 `SCRIPT_COMMAND` words, 328 `SCRIPT_FOLLOW`s, US
+and EU, `#if VERSION_*` resolved with `cpp`); (3) the actor-presence
+conditions of the stand-in table, where the answerer can depend on game
+state. Ranking is by "can shipped data or state produce NULL here":
 
-| Where | Hazard |
-|---|---|
-| `src/field/stages/kusanagi_city/wstag785.c` `drawActorMark` / `handleCommand807` | same pattern: `actor` is set by `0x328/0x329` and read by every draw; a `0x32A` close before an open would fault. The shipped scripts are balanced (`wstag785.c:495-516`), so it does not trigger |
-| `src/field/field_mode/camera.c` `FIELDSTG_followWithCamera` | `target = find(FIELD_TASK_ACTOR, id, -1)` is NULL for an absent character; `FIELDSTG_updateCamera` then reads `target->tile` every frame. `SCRIPT_FOLLOW` ids all come from the stage scripts; none known to be absent |
-| `src/field/field_mode/script.c` `FIELDSTG_waitAnimDone` / `waitWalkDone` | `FIELDSTG_findActor(id)` result used without a check (`event.c` has its own NULL checks) |
-| `FIELDSTG_clearScriptFlag` (`script.c`) | tries character 1, then 2, and derefs the result if both are absent |
-| `update_event9015.inc.c:22`, `wstag926.c:54`, `wstag680.c:98/120`, `battle.c:19/43`, `field.c:234`, `map_streamer.c:244` | `find(FIELD_TASK_ACTOR, -1, 0)` (the player) used unchecked; the player exists whenever these run |
+| Site | NULL source | Shipped data / state | Decision |
+|---|---|---|---|
+| `balloon.c` `FIELDSTG_drawBalloon` (0x323..0x326) | close (0x326) with no open | **yes**: WSTAG210 `script30`, the only close-without-open in the 0x323..0x326 scripts (US and EU) | patched in 0058 |
+| `wstag785.c` `drawActorMark` (0x327; 0x328/0x329 open, 0x32A close) | close with no open, or open for an absent character | no: the one script that uses it (event 1, progress 0) opens before it closes and names actor 0xC, which the stage lists for progress 0 | patched in 0059 (read-only, same shape and same protocol as the balloon; cheap) |
+| `camera.c` `FIELDSTG_updateCamera` via `FIELDSTG_followWithCamera` (`SCRIPT_FOLLOW`) | `find(ACTOR, id)` is NULL when the character is not on the map | not found: all 328 follow ids exist in their stage's actor list (or are the player, 2); WSTAG260's story scripts follow 0x1E, 0x35..0x37, 0x39 from `FIELDSTG_actors`. Whether an entry's flag/item/progress conditions hold at the moment the event runs was not modelled | patched in 0059: the camera holds its position |
+| `script.c` `FIELDSTG_waitAnimDone`, `waitWalkDone`, `clearScriptFlag` | `FIELDSTG_findActor` unchecked | **dead code**: they sit at indices 2 to 4 of `FIELDSTG_scriptHelpers`, and nothing in the decomp ever calls index 1 to 4 (only `[0]`, `FIELDSTG_toScreenPos`, from `speech.c`); `ScriptTimer.findActor` is never read; the scripts' own waits (`SCRIPT_WAIT_WALK`/`WAIT_ANIM`) go through `FIELDSTG_findEventActor`, which is checked | left |
+| `actor_control.c` `FIELDSTG_talkToActorAt` (stand-ins) | answerer actor absent | state dependent (e.g. WSTAG270's 0xDC always exists, its answerer 0xCE only for some item/progress states) but the next lines call `target->setSubstate`, a function pointer: the PS1 would jump to a garbage address | left: not a tolerated read, cannot be in shipped play |
+| `battle.c` `FIELDSTG_startAreaBattle`, `FIELDSTG_countBattleSteps` | player lookup | the player exists whenever the field steps; `FIELDSTG_checkBattle` is called from the player actor's own step control (`actor_control.c`) | left |
+| `field.c` `FIELDSTG_closeField` | player lookup | already guarded (`player != NULL` decides `centerOnPlayer`, the later read is conditional on it); the warp path kills the player first and relies on that | left |
+| `lift.c:50`, `update_tile_lift.inc.c:44`, `wstag926.c:54`, `wstag680.c:98/120`, `update_event9015.inc.c:22`, `map_streamer.c:244`, `commands.c:184` (icon task) | player / singleton task lookups | the player or the singleton exists for as long as these tasks run (the field task creates the party before its children draw; the warp path kills the player and the map streamer in the same step); the map streamer draws on every frame of every field replay | left |
+| battle: `FIGHTSTG` models / camera / stage lookups (`entrance.c`, `camera_task.c`, `shot_camera.c`, `digimon_change.c`, `partner_view.c`, `menu.c`, `battle_script.c`, `camera_turn.h`) | singleton task | created by the battle setup before any of these run; no script data picks them | left |
+| `hidden_spots.c`, `trigger.c`, `balloon.c` `TASK_INIT`, `actor_control.c` `followLeader`/`drainTrail`/`haltPartners`, `event.c`, `actor.c` | actor lookups | not flagged by the pass: each is tested for NULL before use | nothing to do |
 
-Other `->actor` readers in the balloon path are safe: `FIELDSTG_updateBalloon`
-`TASK_INIT` falls back to the player and stays in `TASK_INIT` if there is
-none; `FIELDSTG_balloonCommand` only writes. The `ActorChildren.balloon`
-users in `trigger.c` and `actor_control.c` check or create the pointer
-before use. An `actor` that is destroyed while a balloon still points at it
-(stage change with a live balloon) was not examined.
+What the guards do, and what is not known:
+
+* `drawActorMark` returns when `actor` is NULL; the update's state machine
+  still runs, so the mark pops shut and ends exactly as before. The PS1 draws
+  one off-map frame of the mark (kernel RAM position), the host draws nothing.
+* `FIELDSTG_updateCamera` (follow substate) keeps `center` when `target` is
+  NULL. The PS1 would centre on whatever words kernel RAM holds at the
+  `Actor.tile` / `z` offsets and then clamp to the map; that value was not
+  measured (no PS1 RAM dump here), and holding is the smallest change. A
+  target that is destroyed while the camera still follows it is a dangling
+  pointer (stale, not NULL) and is not handled.
+* `FIELDSTG_createBalloon`'s balloon `actor` that is destroyed under a live
+  balloon, and `FILE_CACHE.getEntry` returning NULL for an uncached file in a
+  draw call (a much larger class: every `sprite.draw(getEntry(...))`), were
+  not audited.
+
+### Diagnostic
+
+`port/include/port_null_guard.h` defines `DW3_NULL_GUARD_HIT("site")`: with
+`DW3_NULL_GUARD_LOG` defined it prints `dw3: null-guard hit: <site>` on
+stderr once per site and process, otherwise it expands to nothing. The CMake
+option `DW3_NULL_GUARD_LOG` (`port/CMakeLists.txt`) defaults to ON for PC
+Debug builds and for the Switch `--nxlink` build (`DW3_NXLINK_STDIO`), OFF
+for release builds; `-DDW3_NULL_GUARD_LOG=ON|OFF` overrides. Sites:
+`balloon.draw-null-actor` (the 0058 guard; fires on the new-game bridge, so it
+doubles as a positive control), `wstag785.mark-null-actor`,
+`camera.follow-null-target`. Grep an OLED nxlink log or a PC stderr log for
+`null-guard hit` to see whether the preventive guards ever fire in play.
 
 ## Regression tests
 
@@ -95,3 +150,19 @@ before use. An `actor` that is destroyed while a balloon still points at it
 * Not covered: OLED, the other four EU languages (the walk and the patch are
   language independent, but only English was driven), `--replay` Switch
   build of #186.
+
+## Regression tests for patch 0059 (2026-10-22)
+
+* PC US and EU release builds, `tools/replay_tests.sh` (quick + full tiers:
+  title, EU languages, new-game field, field walk, load menu, both
+  bridge-gate scenarios, `us-repro-balloon`) against the references made
+  before the patch: 207 checks, 0 failed, every capture 0 px different, all
+  process and overlay-marker verdicts PASS. Soak scenarios were not run.
+* PC US build with `-DDW3_NULL_GUARD_LOG=ON` on `us-bridge-partner-gate`:
+  still 0 px different, and the log has exactly one line,
+  `dw3: null-guard hit: balloon.draw-null-actor`. The mark and camera guards
+  did not fire in any replay (as the data scan predicts).
+* Switch: `tools/build_switch_game.sh` US, `--eu` and `--nxlink` build; the
+  release NROs contain no `null-guard hit` string, the nxlink NRO has the
+  three. Not run on Ryubing or OLED: the guards are on paths the shipped
+  scripts do not take, so there is nothing to observe beyond the build.

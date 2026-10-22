@@ -161,6 +161,20 @@ set(_DW3_GAME_DEFS
   SKIP_ASM=1
   __psyz
 )
+# Log (once per site) when a PORT_HOST NULL guard is taken, see
+# port/include/port_null_guard.h and docs/BALLOON_NULL_ACTOR.md. On for PC
+# Debug builds and the Switch --nxlink build (DW3_NXLINK_STDIO), off for
+# release; -DDW3_NULL_GUARD_LOG=ON|OFF overrides.
+if(DW3_NXLINK_STDIO OR CMAKE_BUILD_TYPE STREQUAL "Debug")
+  set(_dw3_null_guard_default ON)
+else()
+  set(_dw3_null_guard_default OFF)
+endif()
+option(DW3_NULL_GUARD_LOG "Log PORT_HOST NULL-guard hits (dev builds)" ${_dw3_null_guard_default})
+if(DW3_NULL_GUARD_LOG)
+  list(APPEND _DW3_GAME_DEFS DW3_NULL_GUARD_LOG=1)
+  message(STATUS "PORT_HOST NULL-guard hit log enabled (DW3_NULL_GUARD_LOG)")
+endif()
 set(_DW3_GAME_OPTS
   -std=gnu89
   -fsigned-char
