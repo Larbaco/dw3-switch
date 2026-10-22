@@ -94,6 +94,9 @@ Things this port adds to the original game.
   [P6.1_WIDESCREEN](docs/P6.1_WIDESCREEN.md).
 - **Fast-forward.** R3 toggles 2x, 3x or 4x in field and battle:
   [P6.4_FAST_FORWARD](docs/P6.4_FAST_FORWARD.md).
+- **Music and SFX volume.** Two rows in Port options, 0 to 10, 10 is the
+  original mix; saved with the other options. Not yet checked on the OLED:
+  [P6.17_VOLUME](docs/P6.17_VOLUME.md).
 - **Port options screen.** Opens from the title and holds the toggles below.
   Settings are saved in `port_options.cfg` next to the runtime data and are
   kept across launches: [PORT_OPTIONS](docs/PORT_OPTIONS.md#persistence).

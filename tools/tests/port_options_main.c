@@ -1,10 +1,16 @@
 /* Headless P9.2 port-options state machine (no disc / GPU). */
+#include "port_audio.h"
 #include "port_options.h"
 
 #include <stdio.h>
 #include <string.h>
 
 void dw3_port_options_test_set_pressed(unsigned mask);
+
+void dw3_port_audio_apply(int music_step, int sfx_step) {
+    (void)music_step;
+    (void)sfx_step;
+}
 
 enum {
     BIT_SELECT = 0,
@@ -32,7 +38,7 @@ int main(void) {
         return fail("re-open");
     }
 
-    if (dw3_port_options_count() != 3) {
+    if (dw3_port_options_count() != 5) {
         return fail("option count");
     }
     if (dw3_port_options_label(0) == NULL ||

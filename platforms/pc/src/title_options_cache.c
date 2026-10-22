@@ -8,9 +8,9 @@
  * options_screen() draws for its FOCUS / VALUE / DESCRIPTION layers; the
  * unit test proves it against the full reference render. */
 enum {
-    ROW_X = 132, ROW_Y = 212, ROW_W = 696, ROW_H = 52, ROW_STEP = 68,
+    ROW_X = 132, ROW_Y = 176, ROW_W = 696, ROW_H = 52, ROW_STEP = 60,
     VALUE_X = 684, VALUE_W = 144,
-    DESC_Y = 500,
+    DESC_Y = 512,
 };
 
 static uint8_t *g_static;

@@ -33,6 +33,10 @@ port options:
 - In Port options, Up/Down changes the selected setting. Cross **or Circle**
   (PC X or D; Switch B or A) toggles it. Triangle (PC S; Switch X) returns to
   the selected title row. Opening the shell does not toggle the first setting.
+  On the two volume rows (Music volume, SFX volume) Left / Right step the
+  volume down / up from 10 to 0 (a held direction repeats; it stops at the
+  ends), and Cross / Circle step up and wrap 10 to 0. See
+  [P6.17_VOLUME.md](P6.17_VOLUME.md).
 - During an opening movie, press or hold Start (Enter / Plus) to skip it.
   A held button is accepted after decoding a frame; this is not a fast-forward
   control.

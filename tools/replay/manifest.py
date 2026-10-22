@@ -107,13 +107,27 @@ _add(
 # start of the scenario). Phase 1 switches Widescreen OFF, Fast-forward
 # 2x -> 3x and the Restart hotkey ON; phase 2 only opens the screen again.
 _OPT_P1 = (r"dw3-options: no \S*port_options\.cfg; defaults",
-           r"dw3-options: saved \S*port_options\.cfg \(widescreen=0 fast_forward=3 restart_hotkey=1\)")
-_OPT_P2 = (r"dw3-options: \S*port_options\.cfg \(widescreen=0 fast_forward=3 restart_hotkey=1\)",)
+           r"dw3-options: saved \S*port_options\.cfg \(widescreen=0 fast_forward=3 restart_hotkey=1 music_volume=10 sfx_volume=10\)")
+_OPT_P2 = (r"dw3-options: \S*port_options\.cfg \(widescreen=0 fast_forward=3 restart_hotkey=1 "
+           r"music_volume=10 sfx_volume=10\)",)
 for _v in ("us", "eu"):
     _add(Scenario(f"{_v}-options-persist", _v, "full", timeout=300,
                   phases=(f"{_v}-options-persist-p1", f"{_v}-options-persist-p2"),
                   expect_log=tuple((0, r) for r in _OPT_P1) + tuple((1, r) for r in _OPT_P2),
                   note="Options toggled in one process are read back by the next (P9.4)"))
+
+# P6.17: Music volume 10 -> 7 and SFX volume 10 -> 3 in phase 1 (Left on the
+# volume rows), read back by phase 2 from the same config dir.
+_VOL_P1 = (r"dw3-options: no \S*port_options\.cfg; defaults",
+           r"dw3-options: saved \S*port_options\.cfg \(widescreen=1 fast_forward=2 restart_hotkey=0 "
+           r"music_volume=7 sfx_volume=3\)")
+_VOL_P2 = (r"dw3-options: \S*port_options\.cfg \(widescreen=1 fast_forward=2 restart_hotkey=0 "
+           r"music_volume=7 sfx_volume=3\)",)
+for _v in ("us", "eu"):
+    _add(Scenario(f"{_v}-volume-persist", _v, "full", timeout=300,
+                  phases=(f"{_v}-volume-persist-p1", f"{_v}-volume-persist-p2"),
+                  expect_log=tuple((0, r) for r in _VOL_P1) + tuple((1, r) for r in _VOL_P2),
+                  note="Music / SFX volume set in one process is read back by the next (P6.17)"))
 
 
 def by_name() -> dict[str, Scenario]:
