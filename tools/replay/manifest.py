@@ -34,6 +34,9 @@ class Scenario:
     # phase's log (PC stderr / Ryubing guest output). Used by the P9.4
     # persistence scenario, where the proof is a value read back from disk.
     expect_log: tuple[tuple[int, str], ...] = ()
+    # Extra environment for the PC run (debug aids such as DW3_START_MODE).
+    # The Switch build has no environment, so the Ryubing runner skips these.
+    env: tuple[tuple[str, str], ...] = ()
     # Memory sanity (soak): analyse RSS from this game frame on.
     rss_from_frame: int = 0
     note: str = ""
@@ -128,6 +131,23 @@ for _v in ("us", "eu"):
                   phases=(f"{_v}-volume-persist-p1", f"{_v}-volume-persist-p2"),
                   expect_log=tuple((0, r) for r in _VOL_P1) + tuple((1, r) for r in _VOL_P2),
                   note="Music / SFX volume set in one process is read back by the next (P6.17)"))
+
+
+# Two consecutive battles, a technique used in each (patch 0061): every battle
+# is a mode change (FIGHTSTG <- report/field), so WFIGHTMN is restored per
+# battle, as the PS1 reloads it. PC only (needs the env debug aids).
+_BATTLE_ENV = (("DW3_START_MODE", "0x600"), ("DW3_FORCE_ENCOUNTER", "34"),
+               ("DW3_FORCE_PARTY", "0"), ("DW3_AUTO_DOOR_MODE", "0x600"),
+               ("DW3_AUTO_DOOR_FRAMES", "120"))
+for _v, _ids in (("us", (0x159, 0x1FA, 0x1C2, 0x158)), ("eu", (0x167, 0x208, 0x1D1, 0x166))):
+    _fight, _menu, _report, _field = _ids
+    _battle = ((_fight, M), (_menu, S), (_report, M), (_field, M))
+    _add(Scenario(f"{_v}-two-battles", _v, "full", turbo=4, timeout=600,
+                  env=_BATTLE_ENV, expect_restore=_battle * 2,
+                  expect_log=((0, r"WFIGHTMN_endBattle result=1(?s:.*)"
+                                  r"AUTO_DOOR requestMode=0x600(?s:.*)"
+                                  r"WFIGHTMN_endBattle result=1"),),
+                  note="two forced battles, Tech in each; WFIGHTMN restored per battle"))
 
 
 def by_name() -> dict[str, Scenario]:

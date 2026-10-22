@@ -211,7 +211,8 @@ def check_log_expect(expect, phase_idx: int, text: str):
 
 
 def run_phase(rec: Path, version, binary, runtime, display, outdir: Path, memdir: Path,
-              stamp, label, timeout, stall, turbo, sample_rss=True, cfgdir: Path | None = None):
+              stamp, label, timeout, stall, turbo, sample_rss=True, cfgdir: Path | None = None,
+              extra_env=()):
     """One process run. Returns a dict with rc/verdict/seconds/frames/rss/log."""
     outdir.mkdir(parents=True, exist_ok=True)
     xdg = Path(tempfile.mkdtemp(prefix="dw3-replay-xdg-"))
@@ -222,12 +223,16 @@ def run_phase(rec: Path, version, binary, runtime, display, outdir: Path, memdir
                DW3_REPLAY=str(rec),
                DW3_REPLAY_OUT=str(outdir), DW3_REPLAY_XSHOT="1")
     for k in ("DW3_AUTO_PAD", "DW3_REPLAY_RECORD", "DW3_PC_INTERNAL_RES", "DW3_TURBO",
-              "DW3_CONFIG_DIR", "DW3_WIDESCREEN", "DW3_MUSIC_VOLUME", "DW3_SFX_VOLUME"):
+              "DW3_CONFIG_DIR", "DW3_WIDESCREEN", "DW3_MUSIC_VOLUME", "DW3_SFX_VOLUME",
+              "DW3_OVERLAY_STRICT", "DW3_START_MODE",
+              "DW3_FORCE_ENCOUNTER", "DW3_FORCE_PARTY", "DW3_FORCE_WIN",
+              "DW3_AUTO_DOOR_MODE", "DW3_AUTO_DOOR_FRAMES"):
         env.pop(k, None)
     if cfgdir is not None:  # P9.4: never read or write the owner's port_options.cfg
         env["DW3_CONFIG_DIR"] = str(cfgdir)
     if turbo:
         env["DW3_TURBO"] = str(turbo)
+    env.update(dict(extra_env))  # manifest Scenario.env (debug aids)
     log = outdir / f"{stamp}-{label}.log"  # rule 9: timestamped logs kept
     t0 = time.time()
     last_frame, last_progress = 0, t0
@@ -337,7 +342,7 @@ def run_scenario(sc, binary, runtime, out: Path, stamp, label, stall, timeout_sc
             r = run_phase(SCEN_DIR / f"{phase}.rec", sc.version, binary, runtime, display,
                           sdir, memdir, stamp, f"{sc.name}-p{i + 1}" if len(sc.phases) > 1 else sc.name,
                           int(sc.timeout * timeout_scale), stall, 0 if no_turbo else sc.turbo,
-                          sample_rss=True, cfgdir=cfgdir)
+                          sample_rss=True, cfgdir=cfgdir, extra_env=sc.env)
             r["phase"] = phase
             results.append(r)
             if r["verdict"] != "OK":

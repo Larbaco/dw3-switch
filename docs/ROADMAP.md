@@ -212,6 +212,15 @@ the host, replace MIPS-only pieces, and reach the title screen on PC.
   Done when: two different overlays and the same overlay twice behave as
   on PS1 (globals reset vs. preserved) — verified by the host fixture
   test. Full title link/boot is P2.8 / E6.
+  Follow-up (2026-10-22, patch `0061`): a failed restore (file id not in
+  the host table) used to print only the `kind=unknown UNKNOWN` marker
+  while the loader still recorded the id as loaded. It now adds a
+  `dw3: ERROR` line, leaves the latch at `-1` (the next load restores
+  again), and aborts in strict mode (every replay run, the Switch replay
+  build, `DW3_OVERLAY_STRICT=1`). Checked: the same-sub skip across
+  battles matches the PS1 (every battle exit is a mode change, which
+  resets the sub latch), so `WFIGHTMN` is restored per battle; regression
+  scenarios `us/eu-two-battles` (PC). See `port/overlays/README.md`.
 - [x] **P2.7 Memory card → file.** `port/memcard/`: 128 KiB PS1-format
   `.mcr` per slot (`memcard_host_*` sector API matching libcard).
   Engine path: `memcard_libmcrd.c` (`MemCard*`) + `--wrap=_card_read/
@@ -1049,9 +1058,12 @@ Statuses are in the [table](#status-at-a-glance).
   found a deterministic null dereference in `FIELDSTG_drawBalloon` (US PC
   and Ryubing); it is the bridge-gate balloon bug fixed by patch `0058`, and
   `us-repro-balloon` plus `us/eu-bridge-partner-gate` are now regression
-  scenarios that pass. See `docs/P6.15_REPLAY_TESTS.md`. Still open: a
-  battle (not reached yet; needs the partner Digimon data from the lobby
-  counter past the bridge gate), a save/load round trip (Start menu locked
+  scenarios that pass. Patch `0061` (2026-10-22) makes replay runs abort on
+  a failed overlay restore and adds `us/eu-two-battles` (PC only: two
+  battles with a technique each, started with the P3.3 dev hooks through
+  the manifest's new `env` field). See `docs/P6.15_REPLAY_TESTS.md`. Still
+  open: a battle reached by pad input from a new game (needs the partner
+  Digimon data from the lobby counter past the bridge gate), a save/load round trip (Start menu locked
   in the hub), the other
   four EU languages past the title, movies, cross-machine tolerance, CI (needs
   the owner's discs; a nightly recipe is in the doc). The full goal remains
