@@ -43,7 +43,7 @@ void dw3_pc_title_overlay_set_options_language(int lang);
 void dw3_pc_title_overlay_set_footer(int show);
 /* The Port options screen: focused row and the rows' values in registry order
  * (Widescreen 0/1, Fast-forward 0 or its 2..4 speed, Restart hotkey 0/1). */
-enum { DW3_TITLE_OPTION_ROWS = 3 };
+enum { DW3_TITLE_OPTION_ROWS = 5 };
 void dw3_pc_title_overlay_set_options_view(int cursor, const int *values,
                                            int count);
 /* Bumped by setters that change the menu states; hosts re-upload on change. */

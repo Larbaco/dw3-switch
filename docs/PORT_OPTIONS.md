@@ -45,7 +45,8 @@ explicitly marked N/A in this note.
 | Localization | Active language pack (if port-selected) | Phase 6 |
 | Community QoL parity | Share EXP, quest log HUD, NPC bubbles, Fast Start, … | Phase 7 |
 | Texture packs | Enable overlay / select pack name | Phase 8 |
-| Switch host | Rumble on/intensity, confirm A/B layout, `swkbd` name, CRT/sharp, BGM/SFX volumes, system-language hint | Phase 10 (+ P4.4 / P5.3 always-on lifecycle) |
+| Audio | **Music volume** and **SFX volume**, 0..10 steps, default 10 = the original mix ([P6.17](P6.17_VOLUME.md)) | Phase 6 |
+| Switch host | Rumble on/intensity, confirm A/B layout, `swkbd` name, CRT/sharp, system-language hint | Phase 10 (+ P4.4 / P5.3 always-on lifecycle) |
 | Restart game | Optional L1 + R1 + Start + Select in the shared PS1 pad map; OFF by default | Phase 6.9 |
 
 Defaults: **off** or equivalent to stock PS1 behaviour unless a feature is
@@ -58,6 +59,9 @@ stays 4:3; `DW3_WIDESCREEN=0` turns it off at boot. See
 Fast-forward's row defaults to **2x**, which only arms R3: the game still
 starts and stays at normal speed until R3 is pressed, so stock behaviour is
 kept. OFF disables R3. See [P6.4_FAST_FORWARD.md](P6.4_FAST_FORWARD.md).
+The two volume rows default to **10**, which leaves the audio output
+bit-identical to a build without them (unity gain, the mixer skips the
+multiply). See [P6.17_VOLUME.md](P6.17_VOLUME.md).
 
 Always-on (not toggles; see [SWITCH_FEATURES.md](SWITCH_FEATURES.md)):
 focus-loss pause + delta clamp, memcard write-through/flush, rotating
@@ -88,6 +92,8 @@ version=1
 widescreen=1
 fast_forward=2
 restart_hotkey=0
+music_volume=10
+sfx_volume=10
 end=1
 ```
 
@@ -98,14 +104,17 @@ Rules, implemented in `port/options/options_cfg.c` and `port/options/port_option
 
 | Case | Behaviour |
 |---|---|
-| No file | Defaults (Widescreen ON, Fast-forward 2x armed, Restart hotkey OFF). The file is first written on the first change, not at boot. |
+| No file | Defaults (Widescreen ON, Fast-forward 2x armed, Restart hotkey OFF, Music volume 10, SFX volume 10). The file is first written on the first change, not at boot. |
 | Missing key | That option keeps its default. |
-| Invalid value (not an integer, or out of range: Fast-forward must be 0 or 2..4, the others 0 or 1) | That option falls back to its default and a `dw3-options: <key>=<v> is not valid` line is logged. The bad line is replaced on the next save. |
+| Invalid value (not an integer, or out of range: Fast-forward must be 0 or 2..4, the volumes 0..10, the others 0 or 1) | That option falls back to its default and a `dw3-options: <key>=<v> is not valid` line is logged. The bad line is replaced on the next save. |
 | Malformed line, over-long key or value, junk | Skipped and counted (`ignored N malformed line(s)` in the log). |
 | File over 4 KiB, or unreadable | Defaults, logged; the next change replaces it. |
 | Unknown key | Ignored by the game, kept in memory and written back in its original position, so a build with fewer rows does not delete a newer build's settings (up to 48 keys). |
 | `version=N` newer than 1 | Known keys are still read, the rest is kept, and the version is written back as it was. A missing or bad version counts as 1. |
 | Duplicate key | The last one wins. |
+
+A file written before P6.17 has no `music_volume` / `sfx_volume` keys; both
+read as 10, and the first change adds them without touching the rest.
 
 Adding a row means one entry in the registry table (`key`, default, valid
 range); nothing else in the store changes.
@@ -117,8 +126,10 @@ range); nothing else in the store changes.
   the fast-forward row and the restart hotkey therefore have their saved
   values from the first frame (widescreen applies at boot, not after the
   first visit to Options). The log line is
-  `dw3-options: <path> (widescreen=W fast_forward=F restart_hotkey=R)`
-  (PC stderr; Switch `dw3.log`).
+  `dw3-options: <path> (widescreen=W fast_forward=F restart_hotkey=R
+  music_volume=M sfx_volume=S)` (PC stderr; Switch `dw3.log`). The volumes
+  are handed to the SPU mixer at the same point (`dw3-audio:` line when they
+  are not 10).
 - **Save: on every change**, i.e. each Confirm on a row, not on leaving the
   screen and never per frame. Reason: a change is a button press on a tiny
   file, so a write costs a few milliseconds on the SD card in a menu, and a
@@ -131,13 +142,16 @@ range); nothing else in the store changes.
 - **Restart (P6.9):** the in-process restart does not re-read the file; the
   registry already equals it. A host relaunch (PC restart, return from
   hbmenu) reads it again.
+- Left / Right on a volume row save at once like any other change, so
+  holding a direction writes the file once per step (a few bytes each).
 - Fast-forward's *row* (OFF / 2x / 3x / 4x) is saved. Whether R3 currently
   has it running is not: the game always starts at normal speed.
 
 ### Per-run overrides are not saved
 
-`DW3_WIDESCREEN=0|1` and `DW3_TURBO=0|2|3|4` still force a value for that
-run (tests, replay recordings). They win over the file, but another toggle on
+`DW3_WIDESCREEN=0|1`, `DW3_TURBO=0|2|3|4` and `DW3_MUSIC_VOLUME=0..10` /
+`DW3_SFX_VOLUME=0..10` (an invalid value is ignored) still force a value for
+that run (tests, replay recordings, audio measurements). They win over the file, but another toggle on
 the Options screen writes the value the file had for the forced row, not the
 forced one. Toggling the forced row itself is a user choice and is saved.
 
@@ -168,12 +182,19 @@ clean save files. See [P6.9_RESTART.md](P6.9_RESTART.md).
   `.tmp`, oversized file, missing directory) and registry (defaults, toggles
   surviving a "restart" as a second process, save on each change, bad
   values, unknown keys kept, env overrides not saved, unwritable directory
-  keeps the old file).
+  keeps the old file), plus the P6.17 volume rows (defaults, Left / Right
+  and Confirm steps with clamping and wrap, round trip, bad values, a file
+  from before P6.17, `DW3_MUSIC_VOLUME` / `DW3_SFX_VOLUME` not saved by an
+  unrelated change, key order).
 - `tools/replay_tests.sh --only us-options-persist --only eu-options-persist`
   (PC) and `tools/replay_ryubing.sh --only us-options-persist ...`
   (Ryubing) run two phases on one config dir: phase 1 turns Widescreen OFF,
   Fast-forward 2x -> 3x and Restart hotkey ON; phase 2 is a new process whose
   Options screen and log must show the same values.
+- `tools/replay_tests.sh --only us-volume-persist --only eu-volume-persist`
+  (P6.17): Music volume 10 -> 7 and SFX volume 10 -> 3 with Left in one
+  process, read back by the next; the manifest requires the `saved ...
+  music_volume=7 sfx_volume=3` and the read-back lines in each phase's log.
 - OLED: pending. Toggle, HOME, close the game, relaunch from hbmenu.
 
 ## Entry investigation (P9.2)
@@ -418,7 +439,8 @@ lettering for German, Spanish and Italian); plain white text; the white
 pointer, shaded grey on its back, on the focused choice, which sits in the
 game's choice box (0,8,74 with a blue border); and a cyan (16,156,247) rule
 above a message line that explains the focused choice. Values sit on the
-right (ON/OFF, Fast-forward OFF/2x/3x/4x); OFF is greyed. Button hints use
+right (ON/OFF, Fast-forward OFF/2x/3x/4x, the volumes OFF and 1..10); OFF is
+greyed. Button hints use
 the host's buttons: B Change / X Back on the Switch, Cross / Triangle on PC.
 Row and message text is English on every disc for now. The text is DejaVu
 Sans lettering generated by `tools/generate_pc_title_lettering.py`; no game
@@ -442,6 +464,22 @@ Load Game reaches the memory-card screen. The PC SDL3 GPU build was checked
 on Xvfb (US): Backspace opens it, X cycles Fast-forward, S closes it.
 OLED validation is pending. Captures are kept outside Git under
 `tmp/evidence/port-options-screen/`.
+
+**Five rows (P6.17).** Music volume and SFX volume are rows 4 and 5, in
+the same canvas and the same dirty-rectangle cache. To fit them the window is
+taller (576 px instead of 528, centred at y 72..648 in the 960x720 canvas)
+and the row pitch is 60 px instead of 68, so the first row, the pointer, the
+rule and message line, the button hints and the bottom rule all moved; the
+x geometry is unchanged. The message line is 666 and 677 px wide for the two
+new rows, inside the 696 px message box (the same screen is used on the US and
+EU discs; only the window title differs). On a volume row Left / Right step the
+volume (a held direction repeats), Cross / Circle step up and wrap 10 -> 0;
+step 0 shows as a greyed OFF, steps 1..10 as numbers. Up/Down still do not
+wrap. `tools/tests/test_options_cache.py` renders every volume step on both
+volume rows from every cursor row against the full reference render, so the
+dirty rectangles still cover everything. The generated lettering for the new
+words is in `title_overlay_lettering.inc` (`tools/generate_pc_title_lettering.py`;
+the earlier entries are byte-identical).
 
 ## Title-screen visual reference
 

@@ -177,18 +177,24 @@ static void button(int cx,int cy,int back) {
 #endif
 }
 static void options_screen(void) {
-    static const Word rows[DW3_TITLE_OPTION_ROWS]={WORD(opt_row0),WORD(opt_row1),WORD(opt_row2)};
+    static const Word rows[DW3_TITLE_OPTION_ROWS]={WORD(opt_row0),WORD(opt_row1),WORD(opt_row2),
+                                                   WORD(opt_row3),WORD(opt_row4)};
     static const Word values[]={WORD(opt_off),WORD(opt_on),WORD(opt_2x),WORD(opt_3x),WORD(opt_4x)};
+    /* Volume steps 1..10 (step 0 reads OFF). */
+    static const Word steps[]={WORD(opt_n1),WORD(opt_n2),WORD(opt_n3),WORD(opt_n4),WORD(opt_n5),
+                               WORD(opt_n6),WORD(opt_n7),WORD(opt_n8),WORD(opt_n9),WORD(opt_n10)};
 #if defined(__SWITCH__)
-    static const Word desc[DW3_TITLE_OPTION_ROWS]={WORD(opt_desc0),WORD(opt_desc1_nx),WORD(opt_desc2_nx)};
+    static const Word desc[DW3_TITLE_OPTION_ROWS]={WORD(opt_desc0),WORD(opt_desc1_nx),WORD(opt_desc2_nx),
+                                                   WORD(opt_desc3),WORD(opt_desc4)};
 #else
-    static const Word desc[DW3_TITLE_OPTION_ROWS]={WORD(opt_desc0),WORD(opt_desc1_pc),WORD(opt_desc2_pc)};
+    static const Word desc[DW3_TITLE_OPTION_ROWS]={WORD(opt_desc0),WORD(opt_desc1_pc),WORD(opt_desc2_pc),
+                                                   WORD(opt_desc3),WORD(opt_desc4)};
 #endif
     static const Word titles[]={WORD(opt_title_en),WORD(opt_title_de),WORD(opt_title_es),WORD(opt_title_it)};
     const Word change=WORD(opt_change),back=WORD(opt_back);
     const Word *title=&titles[options_lang==DW3_TITLE_LANG_DE?1:options_lang==DW3_TITLE_LANG_ES?2:
                               options_lang==DW3_TITLE_LANG_IT?3:0];
-    const int x0=84,y0=108,w=792,h=528,x1=x0+w,y1=y0+h;
+    const int x0=84,y0=72,w=792,h=576,x1=x0+w,y1=y0+h;
     const int full=options_layer==OPTIONS_LAYER_FULL;
     const int draw_static=full||options_layer==OPTIONS_LAYER_STATIC;
 
@@ -216,7 +222,8 @@ static void options_screen(void) {
     /* Choices: label left, value right; the focused one sits in the game's
      * choice box with the pointer. */
     for(int i=0;i<DW3_TITLE_OPTION_ROWS;i++) {
-        const int ry=y0+112+i*68,focus=i==option_cursor;
+        const int ry=y0+112+i*60,focus=i==option_cursor;
+        const int volume=i>=3;
         int v=option_values[i];
         if(focus&&(full||options_layer==OPTIONS_LAYER_FOCUS)){
             box(x0+48,ry-8,w-96,52,16,74,156,255);
@@ -227,10 +234,10 @@ static void options_screen(void) {
                        i==options_layer_row))
             word(&rows[i],x0+106,ry,0,255,255,255);
         if(v<0)v=0;
-        if(v>4)v=4;
-        if(i!=1&&v>1)v=1;
+        if(v>(volume?10:4))v=volume?10:4;
+        if(!volume&&i!=1&&v>1)v=1;
         if(full||(options_layer==OPTIONS_LAYER_VALUE&&i==options_layer_row))
-            word(&values[v],x1-96,ry,1,v?255:150,v?255:158,v?255:196);
+            word(volume&&v?&steps[v-1]:&values[v],x1-96,ry,1,v?255:150,v?255:158,v?255:196);
     }
     /* Message line for the focused choice, then the button hints. */
     if(draw_static)box(x0+30,y1-152,w-60,3,16,156,247,255);

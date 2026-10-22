@@ -222,7 +222,7 @@ def run_phase(rec: Path, version, binary, runtime, display, outdir: Path, memdir
                DW3_REPLAY=str(rec),
                DW3_REPLAY_OUT=str(outdir), DW3_REPLAY_XSHOT="1")
     for k in ("DW3_AUTO_PAD", "DW3_REPLAY_RECORD", "DW3_PC_INTERNAL_RES", "DW3_TURBO",
-              "DW3_CONFIG_DIR", "DW3_WIDESCREEN"):
+              "DW3_CONFIG_DIR", "DW3_WIDESCREEN", "DW3_MUSIC_VOLUME", "DW3_SFX_VOLUME"):
         env.pop(k, None)
     if cfgdir is not None:  # P9.4: never read or write the owner's port_options.cfg
         env["DW3_CONFIG_DIR"] = str(cfgdir)

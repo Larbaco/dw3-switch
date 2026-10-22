@@ -1,0 +1,49 @@
+Upstream-bound: no
+Subject: [PORT_HOST] P6.17 route music and sound-effect tracks to separate mixer buses
+
+playSound is the one place that knows a SEP track is music: the exclusive
+flag (bit 30) of its packed id. Tell the port which (SEQ, track) it starts
+and whether it is music, so the SPU mixer can scale music and sound effects
+separately. Key-on sounds (SsUtKeyOn) and non-exclusive tracks are sound
+effects. Also poll the port once per frame (stats logging only; no game state
+changes). With both volumes at the default the mix is unchanged.
+
+--- a/src/engine/sound/sound.c
++++ b/src/engine/sound/sound.c
+@@ -3,6 +3,7 @@
+ 
+ #if PORT_HOST
+ #include <stdio.h>
++#include "port_audio.h"
+ #endif
+ 
+ /* Each bank's files (SOUND_BANK_FILES[id]) */
+@@ -262,6 +263,10 @@
+                 }
+             }
+ #endif
++#if PORT_HOST
++            /* P6.17: tell the mixer whether this track is music (exclusive) */
++            dw3_port_audio_note_sequence(SOUND.banks[slot].seqs[seq], sep, exclusive);
++#endif
+             id = sep;
+             SsSepStop(SOUND.banks[slot].seqs[seq], id);
+             SsSepSetVol(SOUND.banks[slot].seqs[seq], id, SOUND_VOLUME_MAX, SOUND_VOLUME_MAX);
+--- a/src/engine/system/main.c
++++ b/src/engine/system/main.c
+@@ -5,6 +5,7 @@
+ #if PORT_HOST
+ /* Avoid psyz.h here: it pulls POSIX open/read that clash with game.h. */
+ int Psyz_QuitRequested(void);
++#include "port_audio.h"
+ #include "port_restart.h"
+ #include "port_turbo.h"
+ #include "port_widescreen.h"
+@@ -111,6 +112,7 @@
+         PAD.update();
+ #if PORT_HOST
+         dw3_port_turbo_poll();
++        dw3_port_audio_poll();
+         if (dw3_port_restart_poll()) {
+             GAME.funcs.newGame();
+             OVERLAY_LOADER.mode = -1;
