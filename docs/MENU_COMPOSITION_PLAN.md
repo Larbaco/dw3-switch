@@ -17,6 +17,9 @@ than the cache and failed the pixel gate (details in
 Emulator and PC numbers are regression shields only. **OLED acceptance is
 still pending** and belongs to the owner (checklist below).
 
+The art itself (plaques, label coverage, shaders) is described in
+[PC_TITLE_OVERLAY_ART](PC_TITLE_OVERLAY_ART.md).
+
 Since P6.18 the screen has seven rows in a compact layout (42 px rows on a
 48 px pitch, a 600 px window; [PORT_OPTIONS](PORT_OPTIONS.md#options-screen-2026-10-14)),
 so the rectangle sizes in the table below are the current ones (they were
