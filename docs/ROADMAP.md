@@ -939,9 +939,11 @@ Statuses are in the [table](#status-at-a-glance).
   P6.17, P6.18, P7.6–P7.10, and a persisted P6.9 restart setting (today
   session-only).
 - **Future P6.15 gameplay scenarios** may need P6.9 (restart to a known
-  state) and P5.3 (a fixed save per case). The current title/language replay
-  uses a fresh process per scenario; the game RNG is a fixed table seeded to
-  0, so no injectable RNG seed is needed.
+  state) and P5.3 (a fixed save per case). The current scenarios use a fresh
+  process per scenario and replay the scripted opening from boot (~16400
+  frames) instead of loading a save, because no save is reachable by pad input
+  yet; the game RNG is a fixed table seeded to 0, so no injectable RNG seed is
+  needed.
 - **P6.21** comes after P6.10 (field on the GPU) and P6.11 (internal
   resolution).
 - P6.20's map warp would help P5.5 (stage sweep on hardware).
@@ -987,12 +989,27 @@ Statuses are in the [table](#status-at-a-glance).
   references kept outside git. `DW3_REPLAY` / `DW3_REPLAY_RECORD` in
   `psyz_pad_host.c` (off by default). Runs are byte-identical on one
   machine; the game RNG is a fixed table seeded to 0, so no injectable seed
-  is needed. See `docs/P6.15_REPLAY_TESTS.md`. The `us/eu-bridge-partner-gate`
-  scenarios (2026-10-22) walk the new-game opening to the first dialogue
-  gate. Still open: Switch/Ryubing
-  replay, scenarios past the title (New Game, field, battle, save, restart),
-  movies, cross-machine tolerance, CI. The full goal remains open until the
-  replay set covers gameplay and Switch.
+  is needed. Second version (2026-10-22): gameplay scenarios on US and EU
+  (English): New Game through the scripted opening to control in the first
+  field, a field walk with 4 map transitions, Load Game on an empty card,
+  and a 17-20 min soak; separate crash / hang / memory verdicts (RSS
+  growth) and overlay-marker checks; `--quick` keeps the old title-only run;
+  two-phase scenarios share a memory-card dir (runner support, unit-tested);
+  `--twice` proves determinism. The recording parser moved to
+  `port/replay/` and the Switch build has a compile-time replay hook
+  (`tools/build_switch_game.sh --replay`, `sdmc:/switch/dw3/replay.rec`,
+  `replay shot`/`replay end` log lines) driven by `tools/replay_ryubing.sh`
+  in Ryubing (own data roots, log-only verdict). The walk tooling
+  found a deterministic null dereference in `FIELDSTG_drawBalloon` (US PC
+  and Ryubing); it is the bridge-gate balloon bug fixed by patch `0058`, and
+  `us-repro-balloon` plus `us/eu-bridge-partner-gate` are now regression
+  scenarios that pass. See `docs/P6.15_REPLAY_TESTS.md`. Still open: a
+  battle (not reached yet; needs the partner Digimon data from the lobby
+  counter past the bridge gate), a save/load round trip (Start menu locked
+  in the hub), the other
+  four EU languages past the title, movies, cross-machine tolerance, CI (needs
+  the owner's discs; a nightly recipe is in the doc). The full goal remains
+  open until the replay set covers battle and save/load.
 - [ ] **P6.16 Suspend / resume (future goal).** Save the whole port state
   (RAM, VRAM, SPU, overlay state) on exit or sleep and resume at the same
   point. Separate from P5.3 game saves. Goal note only (2026-10-15). Done

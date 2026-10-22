@@ -412,6 +412,12 @@ Caveats — do not over-read a green smoke:
 | **The `.nro` needs an embedded NACP** | Without it LibHac-based loaders reject the file outright. Fix and rationale: [platforms/switch/README.md](../platforms/switch/README.md). |
 | **Updating Ryubing is blocked on this LAN** | `git.ryujinx.app` and `update.ryujinx.app` resolve to `91.239.78.255`, unreachable here (80/443/22 blocked); the old GitHub mirrors 404. The installed canary is what we have. |
 
+Scripted replay: a `--replay` build (`tools/build_switch_game.sh --replay`)
+plus `tools/replay_ryubing.sh` run recorded pad input in Ryubing under Xvfb
+with its own data root and judge the guest log; see
+[P6.15_REPLAY_TESTS.md](P6.15_REPLAY_TESTS.md). It does not need keystroke
+injection.
+
 Screenshot shape: launch the GUI, `xdotool windowsize <wid> 640 360` (the owner
 config opens fullscreen on an ultrawide), then `import -window <wid> out.png`.
 

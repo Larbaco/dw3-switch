@@ -77,6 +77,16 @@ option(DW3_NX_RUMBLE_SELFTEST
        "Send one HD rumble pulse at boot (P10.4 rumble smoke only)"
        OFF)
 
+# P6.15 Switch replay: feeds sdmc:/switch/dw3/replay.rec (the PC .rec format,
+# keyed by the same game-frame counter) to the pad path and logs
+# `replay shot <frame> <name>` / `replay end` lines, with guest stderr routed
+# to svcOutputDebugString so an emulator log carries them. Compile-time only:
+# a default or release build contains none of this code, and the artifact is
+# named dw3-switch[-nxlink]-replay so it cannot be mistaken for a release NRO.
+option(DW3_NX_REPLAY
+       "Replay-driven test NRO (P6.15, Ryubing regression only; never release)"
+       OFF)
+
 if(NOT CMAKE_SYSTEM_NAME STREQUAL "NintendoSwitch")
   message(FATAL_ERROR
     "configure platforms/switch with devkitA64's toolchain file "
@@ -143,6 +153,7 @@ add_executable(dw3-switch
   # Direct TU so PadGetState / PadInitDirect win over PSY-Z's libetc stubs in
   # libpsyz.a, exactly as the PC host does it.
   ${CMAKE_CURRENT_SOURCE_DIR}/../../port/psyz_missing/psyz_pad_host.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/../../port/replay/dw3_replay.c
 )
 
 # Native title menu/logo (shared with the PC SDL3 GPU overlay): the canvas and
@@ -229,6 +240,12 @@ if(DW3_NXLINK_STDIO)
   set(DW3_NRO_NAME "dw3-switch-nxlink")
   set(DW3_NACP_NAME "dw3-switch nxlink")
   message(STATUS "nxlink stdio enabled for development NRO")
+endif()
+if(DW3_NX_REPLAY)
+  target_compile_definitions(dw3-switch PRIVATE DW3_NX_REPLAY=1)
+  set(DW3_NRO_NAME "${DW3_NRO_NAME}-replay")
+  set(DW3_NACP_NAME "${DW3_NACP_NAME} replay")
+  message(STATUS "nx REPLAY test build (DW3_NX_REPLAY): reads sdmc:/switch/dw3/replay.rec; not for release")
 endif()
 if(DW3_NX_DEBUG_MESH)
   target_compile_definitions(dw3-switch PRIVATE DW3_NX_DEBUG_MESH=1)

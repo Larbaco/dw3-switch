@@ -31,6 +31,7 @@ def pad_host_test(tmp_path_factory) -> Path:
         str(out),
         str(TEST_C),
         str(PAD_HOST_C),
+        str(ROOT / "port" / "replay" / "dw3_replay.c"),
         f"-I{PSYZ_INC}",
         f"-I{PORT_INC}",
         f"-I{ROOT / 'platforms' / 'switch' / 'psyz_backend'}",

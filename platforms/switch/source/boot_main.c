@@ -640,6 +640,19 @@ int main(int argc, char **argv) {
         ERRORF("sdmc: mount failed; runtime paths will not resolve");
     }
     dw3_nx_log_open();
+#ifdef DW3_NX_REPLAY
+    /* P6.15 replay build: game code writes markers (overlay restores, replay
+     * shot/end, ...) with fprintf(stderr), which is invisible under an
+     * emulator. Route it to svcOutputDebugString unless nxlink already owns
+     * stderr, so Ryubing's log carries them. */
+#ifdef DW3_NXLINK_STDIO
+    if (g_nxlink_fd < 0)
+#endif
+    {
+        consoleDebugInit(debugDevice_SVC);
+    }
+    INFOF("dw3: REPLAY BUILD (DW3_NX_REPLAY): input from sdmc:/switch/dw3/replay.rec");
+#endif
     INFOF("dw3: version=%s", DW3_NRO_VERSION_STR);
     if (test_env_count > 0) {
         INFOF("dw3: DW3_NX_TEST_ENV applied %d vars: %s", test_env_count,
