@@ -9,7 +9,7 @@ libnx backend exists.
 |---|---|
 | Upstream | https://github.com/Xeeynamo/psyz.git |
 | Working fork (submodule URL) | https://github.com/Larbaco/psyz.git |
-| Commit | `166e46a` (`dw3-widescreen-gutters`: P6.1 side gutters, `Psyz_VideoSetGutter`; parent `eb0393b` `dw3-str-pace` STR pump at 150 sectors/s) |
+| Commit | `2caa505` (`dw3-spu-envx-release`: backport of upstream `a7862ba` / #205, a voice that ends without repeat reads ENVX 0, fixes #188 voice starvation; parent `fabc2bf` `dw3-pal-aspect` PAL 240-line aspect) |
 | Base upstream | `6d01339aadf16c5c9d6e44f44c0d66514752e472` |
 | License | MIT — see [`vendor/psyz/LICENSE`](../vendor/psyz/LICENSE) |
 

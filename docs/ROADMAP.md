@@ -321,6 +321,9 @@ audio, movies.
   `0x6004000a` + `SsUtKeyOn` (`SOUND_COUNT` / PLAYER00) + non-silent
   raw. Patch `0035` evidence logs (PR #13). Follow-up: pitch bend /
   matching midiread / owner Pulse listen.
+  #188 (tech SFX silenced all audio until map change): psyz `2caa505`
+  frees voices that end without repeat (ENVX 0); unit test + battle smoke
+  on PC, in-game tech and HW still to confirm.
   Done when: title music, field music change on stage switch, battle SFX.
 - [x] **P3.7 Movies.** Title STR playback through PSY-Z `libpress` +
   streaming (`CdRead2`, `StSetRing`) from raw-sector `.STR` files packed
