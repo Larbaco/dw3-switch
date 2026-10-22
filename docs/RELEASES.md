@@ -85,7 +85,6 @@ one console and are not acceptance gates; gates live in
 - **preview.26.** Two `User Break` crashes were reported on EU. Raw records:
   [PREVIEW26_CRASH_RECORDS](PREVIEW26_CRASH_RECORDS.md). Preview.27 carries a
   fix for the suspected cause.
-
 - **preview.29 candidate, 2026-10-22 (OLED handheld, EU nxlink, about 22
   minutes, turbo used).** Passed the new-game bridge "need my partner" event
   that crashed preview.28; the Port options menu felt much more responsive
