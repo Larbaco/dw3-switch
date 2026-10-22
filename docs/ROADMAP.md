@@ -481,8 +481,15 @@ speed.
   **Options follow-up (2026-10-15):** owner tested the EU #170 candidate
   with the HUD: navigation improved but remains somewhat slow. This is a
   partial gain, not completion. Cached component/GPU composition is proposed
-  in [MENU_COMPOSITION_INVESTIGATION](MENU_COMPOSITION_INVESTIGATION.md);
-  implementation and a new PC/OLED comparison remain open. Stock
+  in [MENU_COMPOSITION_INVESTIGATION](MENU_COMPOSITION_INVESTIGATION.md).
+  **PC prototypes (2026-10-22, PC host only, opt-in `DW3_MENU_COMPOSITION`,
+  default = reference):** the CPU dirty-region cache (`cpu`) is pixel-identical
+  to reference on 284/284 US+EU replay checkpoints and cuts the host cost of a
+  cursor move from ~29.5 ms to ~1.0 ms (value change ~29.6 ms to ~0.34 ms).
+  The GPU atlas (`gpu`) fails the visual gate (3,564 edge pixels, 90/284
+  checkpoints) and is not the candidate. **The Switch host
+  (`nx_title_overlay.c`, GLES) is not changed yet, so the OLED behaves exactly
+  as on preview.28; OLED acceptance needs the Switch adapter port (open).** Stock
   clocks only (no overclock). History (preview.7–.26, mesh approach A,
   flat-blue root cause): [P5.2_BATTLE_GPU.md](P5.2_BATTLE_GPU.md#history-moved-from-roadmapmd).
 
@@ -828,7 +835,8 @@ PS1 game, with vanilla-safe defaults and persistence on owner storage.
   the title row opens Port options and returns cleanly. Open follow-ups:
   Start/Continue text glow (owner wants the Options style), FPS drop when
   the Port options selection changes (P5.2; EU #170 owner test improved but
-  still slow, see [composition proposal](MENU_COMPOSITION_INVESTIGATION.md)),
+  still slow; PC `cpu` prototype validated, Switch port open, see
+  [composition proposal](MENU_COMPOSITION_INVESTIGATION.md)),
   persistence (P9.4). History:
   [P9.2_MENU.md](P9.2_MENU.md).
   Done when: the screen is reachable from the main menu and returns

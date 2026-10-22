@@ -1,8 +1,11 @@
 # Native menu composition implementation plan
 
-Status: comparison prototypes are under evaluation on 2026-10-16 from
-`codex/menu-composition-luna`. Production behavior remains on the reference
-path unless the PC selector explicitly enables a prototype.
+Status: comparison prototypes were evaluated on 2026-10-22 (results in
+[MENU_COMPOSITION_INVESTIGATION](MENU_COMPOSITION_INVESTIGATION.md#pc-prototype-validation-2026-10-22)):
+A (`cpu`) is the candidate, B (`gpu`) fails the visual gate. Production behavior
+remains on the reference path unless the PC selector explicitly enables a
+prototype. Plan step 4 (Switch adapter port of A, US and EU build, OLED
+acceptance) is still open.
 
 ## Scope
 
