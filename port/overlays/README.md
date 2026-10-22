@@ -25,7 +25,7 @@ bss_size}`.
 Host zeros `.bss` on id change even though the PS1 CD image does not clear
 it after a `memcpy`; that keeps the static model deterministic.
 
-### Failed restore (patch 0060)
+### Failed restore (patch 0061)
 
 The loaders call `dw3_overlay_load_mode` / `dw3_overlay_load_sub`, which
 hold the rule above and handle a file id that is not in the host table (an
@@ -45,7 +45,7 @@ failed restore does not run stale bytes: `STAGE_VRAM` /
 (`src/engine/system/main.c`), never as overlay code or data. What a failed
 restore does mean is that the overlay's globals were not reset (if it is
 linked but not registered) or that its entry is a weak stub returning NULL
-(`mode_stubs.c`, if it is not linked). Before 0060 that was a single log
+(`mode_stubs.c`, if it is not linked). Before 0061 that was a single log
 line and the id was recorded as loaded.
 
 ### Same sub-overlay twice (battles)

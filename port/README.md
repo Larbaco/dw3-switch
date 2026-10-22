@@ -25,6 +25,7 @@ See `port/memcard/README.md` for the flat-save host and P5.3 notes.
 | `memcard/` | Flat `saveN.bin` host (P5.3); P2.7 was the earlier `.mcr` path |
 | `psyz_missing/` | PSY-Z gap stubs linked ahead of vendored libs (e.g. MDEC, movie path) |
 | `options/` | P9.2 port options shell (`dw3_port_options_*`; title Select entry) |
+| `audio/` | P6.17 music / SFX volume: step -> gain curve, SPU mixer bus glue, optional bus statistics (`port_audio.h`) |
 | `ui/` | Shared 8×8 VRAM text blit for port UI (not Switch debug overlay) |
 
 ## Build (engine + PC host)

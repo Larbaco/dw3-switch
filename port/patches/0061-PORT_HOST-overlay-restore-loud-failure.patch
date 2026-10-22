@@ -23,7 +23,7 @@ Non-PORT_HOST code is unchanged.
       * re-entry preserves overlay globals (PS1 memcpy-skip semantics).
 +     * A failed restore (file id not in the host table) is logged as an
 +     * error, aborts in strict/replay runs, and leaves the latch at -1
-+     * instead of recording the id as loaded (port/overlays, patch 0060).
++     * instead of recording the id as loaded (port/overlays, patch 0061).
       */
 -    if (OVERLAY_LOADER.mode != id) {
 -        OVERLAY_LOADER.mode = id;

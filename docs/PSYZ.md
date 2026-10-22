@@ -9,13 +9,29 @@ libnx backend exists.
 |---|---|
 | Upstream | https://github.com/Xeeynamo/psyz.git |
 | Working fork (submodule URL) | https://github.com/Larbaco/psyz.git |
-| Commit | `2caa505` (`dw3-spu-envx-release`: backport of upstream `a7862ba` / #205, a voice that ends without repeat reads ENVX 0, fixes #188 voice starvation; parent `fabc2bf` `dw3-pal-aspect` PAL 240-line aspect) |
+| Commit | `fa0aee5` (`dw3-spu-bus-volume`: P6.17 host mixer buses with per-bus gain, libsnd track routing and bus stats, two commits on top of `2caa505`; see below. `2caa505` is `dw3-spu-envx-release`: backport of upstream `a7862ba` / #205, a voice that ends without repeat reads ENVX 0, fixes #188 voice starvation; its parent `fabc2bf` is `dw3-pal-aspect` PAL 240-line aspect) |
 | Base upstream | `6d01339aadf16c5c9d6e44f44c0d66514752e472` |
 | License | MIT — see [`vendor/psyz/LICENSE`](../vendor/psyz/LICENSE) |
 
 Update the pin intentionally; call out submodule SHA changes in the
 commit message. Submodule URL is the Larbaco fork until the MDEC wire
 lands on Xeeynamo/psyz (READ-only upstream).
+
+## Mixer buses (P6.17)
+
+`psyz/spu.h` has a host extension that is not PS1 behaviour: voices belong to
+one of four buses, each bus has a Q15 gain (`Psyz_SpuSetBusGain`), and the
+CD/XA input has its own (`Psyz_SpuSetCdGain`). A voice takes its bus when it
+is keyed on (`psyz_snd_voice_bus` reads `_svm_voice[v].seq_sep_no`, which
+`SsUtKeyOn` sets to `0x21` and the SEP player sets to `(sep << 8) |
+seq_access_num`), and `Psyz_SndSetSeqBus(seq, sep, bus)` is how the host
+routes a track. Unity gains skip the multiply: the default mix is
+bit-identical to the mixer without buses, which `spu_bus::
+BusDefaultMixMatchesTheMixerWithoutBuses` pins with a hash rendered by
+`2caa505`. `Psyz_SpuEnableBusStats` / `Psyz_SpuGetBusStats` count energy and
+peak per bus before and after the gain (diagnostics only, off by default).
+The PSP backend (`psp_sas.c`) does not implement these calls. Use in this
+port: [P6.17_VOLUME.md](P6.17_VOLUME.md).
 
 ## Recursive submodules
 

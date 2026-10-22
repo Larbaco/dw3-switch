@@ -45,7 +45,7 @@ int dw3_overlay_restore(int32_t file_id);
 int dw3_overlay_strict(void);
 void dw3_overlay_set_strict(int on);
 
-/* The host halves of loadModeOverlay / loadSubOverlay (patch 0008, 0060).
+/* The host halves of loadModeOverlay / loadSubOverlay (patch 0008, 0061).
  * loaded_mode / loaded_sub are OVERLAY_LOADER.mode / .subOverlay.
  * Same id as loaded: no-op, returns 1 (globals preserved, as the PS1 skips
  * the memcpy). Otherwise restores and records the id, returns 0. A mode

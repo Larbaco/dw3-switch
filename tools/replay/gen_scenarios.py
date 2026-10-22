@@ -314,7 +314,7 @@ def bridge_partner_gate(version):
 
 
 # Two consecutive battles (overlay restore of the WFIGHTMN sub-overlay per
-# battle, patch 0060). The scenario's env boots straight into a forced
+# battle, patch 0061). The scenario's env boots straight into a forced
 # encounter (DW3_START_MODE=0x600, DW3_FORCE_ENCOUNTER=34 Kunemon,
 # DW3_FORCE_PARTY=0 Kotemon lead) and DW3_AUTO_DOOR_MODE=0x600 starts the
 # second battle 120 field frames after the report returns to the field.
@@ -387,6 +387,46 @@ def options_persist(version, phase):
     return r
 
 
+def volume_persist(version, phase):
+    """P6.17: title -> Options -> Music volume 10 -> 7 (Left x3) and SFX volume
+    10 -> 3 (Left x7), then leave. Phase 2 is a fresh process on the same
+    config dir that only opens the screen: its checkpoint and its log show the
+    two steps read back from port_options.cfg."""
+    r = Rec(f"{version.upper()}: Music / SFX volume persistence, phase {phase}")
+    if version == "us":
+        r.press(20, START)           # skip the opening FMV
+        r.press(210, START)          # PRESS START
+        m = 320                      # title menu is up
+    else:
+        for f in (110, 160, 190, 220, 280):   # confirm English, skip splash/FMV, PRESS START
+            r.press(f, START)
+        m = 390
+    r.press(m, DOWN)                 # New Game -> Options
+    r.press(m + 20, CROSS)           # open the Options screen
+    if phase == 1:
+        r.shot(m + 60, "volume-defaults")
+        f = m + 70
+        for _ in range(3):           # Widescreen -> Fast-forward -> Restart -> Music
+            r.press(f, DOWN)
+            f += 20
+        for _ in range(3):           # Music volume 10 -> 7
+            r.press(f, LEFT)
+            f += 20
+        r.press(f, DOWN)             # SFX volume
+        f += 20
+        for _ in range(7):           # SFX volume 10 -> 3
+            r.press(f, LEFT)
+            f += 20
+        r.shot(f + 40, "volume-changed")
+        r.press(f + 50, TRIANGLE)    # leave
+        r.end(f + 90)
+    else:
+        r.shot(m + 60, "volume-restored")
+        r.press(m + 70, TRIANGLE)
+        r.end(m + 110)
+    return r
+
+
 def main(out):
     out.mkdir(parents=True, exist_ok=True)
     (out / "us-title.rec").write_text(us_title().text())
@@ -403,6 +443,9 @@ def main(out):
             (out / f"{v}-options-persist-p{phase}.rec").write_text(
                 options_persist(v, phase).text(True))
     for v in ("us", "eu"):
+        for phase in (1, 2):
+            (out / f"{v}-volume-persist-p{phase}.rec").write_text(
+                volume_persist(v, phase).text(True))
         (out / f"{v}-two-battles.rec").write_text(two_battles(v).text(True))
     (out / "us-repro-balloon.rec").write_text(repro_balloon("us").text(True))
     for version in ("us", "eu"):

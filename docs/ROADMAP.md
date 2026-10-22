@@ -55,8 +55,9 @@ lives in its doc, not in the entry below.
 | P6.9 | Restart-game hotkey | in progress | [P6.9](P6.9_RESTART.md) |
 | P6.10 | Hardware render outside battle | future | [P5.2](P5.2_BATTLE_GPU.md) |
 | P6.11 | Internal resolution scaling | future | [PC README](../platforms/pc/README.md) |
-| P6.12–P6.14, P6.16–P6.21 | Backlog goal notes | future | [backlog](#backlog--future-goals) |
+| P6.12–P6.14, P6.16, P6.18–P6.21 | Backlog goal notes | future | [backlog](#backlog--future-goals) |
 | P6.15 | Regression replay tests | in progress | [P6.15](P6.15_REPLAY_TESTS.md) |
+| P6.17 | Music / SFX volume | in progress (needs OLED check) | [P6.17](P6.17_VOLUME.md) |
 | P7.1 | Inventory and boundaries | done | [COMMUNITY_QOL](COMMUNITY_QOL.md) |
 | P7.2 | Patched EU disc as data source | open | [COMMUNITY_QOL](COMMUNITY_QOL.md) |
 | P7.3 | Binary-patch limits | in progress | [COMMUNITY_QOL](COMMUNITY_QOL.md) |
@@ -211,7 +212,7 @@ the host, replace MIPS-only pieces, and reach the title screen on PC.
   Done when: two different overlays and the same overlay twice behave as
   on PS1 (globals reset vs. preserved) — verified by the host fixture
   test. Full title link/boot is P2.8 / E6.
-  Follow-up (2026-10-22, patch `0060`): a failed restore (file id not in
+  Follow-up (2026-10-22, patch `0061`): a failed restore (file id not in
   the host table) used to print only the `kind=unknown UNKNOWN` marker
   while the loader still recorded the id as loaded. It now adds a
   `dw3: ERROR` line, leaves the latch at `-1` (the next load restores
@@ -908,11 +909,14 @@ PS1 game, with vanilla-safe defaults and persistence on owner storage.
   Restart hotkey ON written by one process, read back by the next; the file
   on the emulated SD has the same content).
   Ready to close? needs OLED: toggle, HOME->close, relaunch from hbmenu.
-  Blocks: P6.12, P6.17, P6.18, P7.6–P7.10 and a persisted P6.9 restart
-  setting (see [Backlog](#backlog--future-goals)).
+  Blocks: P6.12, P6.18, P7.6–P7.10 and a persisted P6.9 restart
+  setting (see [Backlog](#backlog--future-goals)); P6.17 (volume) is the
+  first row added on top of it (`music_volume`, `sfx_volume`).
 - [ ] **P9.5 Wire real features.** Connect registry entries to real port
   flags as Phases 6–8 land; mark unavailable items N/A in
   [PORT_OPTIONS.md](PORT_OPTIONS.md) rather than hiding the menu.
+  Real so far: Widescreen, Fast-forward, Restart hotkey and (2026-10-22,
+  P6.17) Music volume and SFX volume.
   Done when: every shipped non-native feature is either togglable here or
   explicitly documented as N/A. Evolves with the roadmap; does **not**
   require all of P6–P8 complete for the Phase 9 gate.
@@ -986,8 +990,9 @@ Statuses are in the [table](#status-at-a-glance).
 **Dependencies not stated in the entries:**
 
 - **P9.4 (option persistence) blocks** P6.12 (remap survives a restart),
-  P6.17, P6.18, P7.6–P7.10. The persisted P6.9 restart setting is done with
-  P9.4; the option file is `port_options.cfg` (add a key per new row).
+  P6.18, P7.6–P7.10 (P6.17 added its two keys, `music_volume` and
+  `sfx_volume`, in the same file). The persisted P6.9 restart setting is done
+  with P9.4; the option file is `port_options.cfg` (add a key per new row).
 - **Future P6.15 gameplay scenarios** may need P6.9 (restart to a known
   state) and P5.3 (a fixed save per case). The current scenarios use a fresh
   process per scenario and replay the scripted opening from boot (~16400
@@ -1053,7 +1058,7 @@ Statuses are in the [table](#status-at-a-glance).
   found a deterministic null dereference in `FIELDSTG_drawBalloon` (US PC
   and Ryubing); it is the bridge-gate balloon bug fixed by patch `0058`, and
   `us-repro-balloon` plus `us/eu-bridge-partner-gate` are now regression
-  scenarios that pass. Patch `0060` (2026-10-22) makes replay runs abort on
+  scenarios that pass. Patch `0061` (2026-10-22) makes replay runs abort on
   a failed overlay restore and adds `us/eu-two-battles` (PC only: two
   battles with a technique each, started with the P3.3 dev hooks through
   the manifest's new `env` field). See `docs/P6.15_REPLAY_TESTS.md`. Still
@@ -1067,9 +1072,21 @@ Statuses are in the [table](#status-at-a-glance).
   (RAM, VRAM, SPU, overlay state) on exit or sleep and resume at the same
   point. Separate from P5.3 game saves. Goal note only (2026-10-15). Done
   when exit and relaunch resume mid-play on US and EU.
-- [ ] **P6.17 Music / SFX volume (future goal).** Separate music and
-  sound-effect volume rows in Port options, persisted with P9.4. Goal note
-  only (2026-10-15). Done when both sliders work on US and EU.
+- [ ] **P6.17 Music / SFX volume.** Separate music and sound-effect volume
+  rows in Port options, persisted with P9.4. Done when both sliders work on
+  US and EU.
+  **Status (2026-10-22): implemented, PC and Ryubing checked on both discs;
+  needs OLED check** (left unticked until the owner confirms by ear, steps in
+  [P6.17_VOLUME.md](P6.17_VOLUME.md#oled-check-for-the-owner)). Rows
+  "Music volume" and "SFX volume", 0..10, default 10 = the original mix,
+  bit-identical. Music and effects are separated inside PSY-Z's SPU mixer
+  (voice buses, gain per bus, `Larbaco/psyz` `dw3-spu-bus-volume`), because
+  both hosts get one mixed stream; patch 0060 tells it which SEP tracks are
+  music (the exclusive bit of the sound id). Movie (XA) audio follows Music
+  volume. Left/Right step the volume, Confirm steps up and wraps. The
+  options screen got taller (five rows). Measured per-bus attenuation and the
+  default-unchanged proof are in the doc; not covered: Switch audio output
+  (no hardware or capture), a hearing test, and every sound id of every bank.
 - [ ] **P6.18 Pacing options (future goal).** Text speed, encounter rate
   (0.5x, 1x, off) and faster battle animations as Port options toggles; may
   land as concrete P7.4 items. Goal note only (2026-10-15). Done when each

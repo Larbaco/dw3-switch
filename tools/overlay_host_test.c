@@ -54,7 +54,7 @@ static const Dw3OverlayDesc g_fixtures[] = {
 };
 
 /* OVERLAY_LOADER.mode / .subOverlay; the loaders are the real host halves
- * of loadModeOverlay / loadSubOverlay (patches 0008 + 0060). */
+ * of loadModeOverlay / loadSubOverlay (patches 0008 + 0061). */
 static int32_t g_mode = -1;
 static int32_t g_sub = -1;
 
@@ -69,7 +69,7 @@ static int fail(const char *msg) {
     return 1;
 }
 
-/* A failed restore must not be recorded as loaded (patch 0060). */
+/* A failed restore must not be recorded as loaded (patch 0061). */
 static int check_unknown(void) {
     /* Sub: A-sub loaded, then an unknown id fails and clears the latch, so
      * the same unknown id is tried (and fails) again, and the previous sub
