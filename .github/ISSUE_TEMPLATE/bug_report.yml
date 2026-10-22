@@ -1,0 +1,113 @@
+name: Bug report
+description: Something wrong on the Switch (or PC) build.
+title: "[REGION] Area: what goes wrong (build, console)"
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        See [REPORTING_ISSUES](https://github.com/Larbaco/dw3-switch/blob/main/docs/REPORTING_ISSUES.md) for a filled example.
+        Never attach disc images, BIOS files or extracted game data.
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: What went wrong, in one or two sentences.
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      placeholder: v0.6.5-preview.29
+    validations:
+      required: true
+  - type: dropdown
+    id: region
+    attributes:
+      label: Region
+      options:
+        - US (SLUS-01436)
+        - EU (SLES-03936)
+    validations:
+      required: true
+  - type: dropdown
+    id: build
+    attributes:
+      label: Build type
+      options:
+        - release (.nro)
+        - -nxlink
+        - PC
+    validations:
+      required: true
+  - type: input
+    id: atmosphere
+    attributes:
+      label: Atmosphère version
+      placeholder: "1.12"
+  - type: dropdown
+    id: console
+    attributes:
+      label: Console
+      options:
+        - Switch (original)
+        - Switch OLED
+        - Switch Lite
+        - Switch 2
+        - PC
+    validations:
+      required: true
+  - type: dropdown
+    id: mode
+    attributes:
+      label: Mode
+      options:
+        - Handheld
+        - Docked
+        - Both
+        - Not sure
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: One action per line. Name the map, Digimon, tech or menu.
+      placeholder: |
+        1. Load a save in ...
+        2. Enter a battle
+        3. Use <tech>
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual
+    validations:
+      required: true
+  - type: dropdown
+    id: frequency
+    attributes:
+      label: Frequency
+      options:
+        - Every time
+        - Sometimes
+        - Happened once
+    validations:
+      required: true
+  - type: textarea
+    id: recovery
+    attributes:
+      label: What recovers it
+      description: For example, changing maps, leaving the menu, or only a restart.
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs and files
+      description: |
+        nxlink log (whole file), `sdmc:/switch/dw3/crash_report.txt`, photo of the debug overlay (Minus + L + R), screenshots or video. Drag files here.

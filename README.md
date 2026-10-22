@@ -295,6 +295,7 @@ submodule, unless the fix belongs upstream.
 | [PSYZ](docs/PSYZ.md) | PSY-Z pin and renderer notes. |
 | [PATCHES](docs/PATCHES.md) | Policy for patching the decomp. |
 | [RELEASES](docs/RELEASES.md) | Preview index, builds to avoid, hardware observations. |
+| [REPORTING_ISSUES](docs/REPORTING_ISSUES.md) | How testers report bugs, with an example issue. |
 | [AGENTS.md](AGENTS.md) | Rules for contributors and AI agents. |
 
 ## Contributing
@@ -307,7 +308,9 @@ Useful help, roughly in order:
 - Open pull requests. [AGENTS.md](AGENTS.md) has the repo rules.
 
 Report bugs and ideas on the
-[issue tracker](https://github.com/Larbaco/dw3-switch/issues). Never attach
+[issue tracker](https://github.com/Larbaco/dw3-switch/issues).
+[REPORTING_ISSUES](docs/REPORTING_ISSUES.md) lists what to include and shows
+an example. Never attach
 disc images or game files to an issue.
 
 ## Credits
