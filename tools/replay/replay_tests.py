@@ -46,7 +46,12 @@ SCENARIOS = [  # (name, version)
     ("eu-lang-de", "eu"),
     ("eu-lang-it", "eu"),
     ("eu-lang-es", "eu"),
+    ("us-bridge-partner-gate", "us"),
+    ("eu-bridge-partner-gate", "eu"),
 ]
+# Long scenarios (the New Game opening is ~16700 frames, real time at 60/50 Hz)
+# get more than the default --timeout.
+SCENARIO_TIMEOUT = {"us-bridge-partner-gate": 1200, "eu-bridge-partner-gate": 1200}
 ARTIFACTS = ("png", "ppm")  # window grab (with host overlays), PS1 display frame
 
 
@@ -256,7 +261,8 @@ def main():
                 rows.append((name, "-", "SKIP", f"missing {'binary' if not bins[ver] else 'runtime'} for {ver}"))
                 continue
             sdir = out / name
-            rc, secs = run_scenario(name, ver, bins[ver], runtimes[ver], display, sdir, stamp, a.timeout)
+            rc, secs = run_scenario(name, ver, bins[ver], runtimes[ver], display, sdir, stamp,
+                                   max(a.timeout, SCENARIO_TIMEOUT.get(name, 0)))
             for shot in checkpoints[name]:
                 for ext in ARTIFACTS:
                     got = sdir / f"{shot}.{ext}"
