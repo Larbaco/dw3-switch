@@ -662,6 +662,8 @@ int main(int argc, char **argv) {
         consoleDebugInit(debugDevice_SVC);
     }
     INFOF("dw3: REPLAY BUILD (DW3_NX_REPLAY): input from sdmc:/switch/dw3/replay.rec");
+    /* A failed overlay restore aborts the replay run instead of logging on. */
+    dw3_overlay_set_strict(1);
 #endif
     INFOF("dw3: version=%s", DW3_NRO_VERSION_STR);
     if (test_env_count > 0) {
