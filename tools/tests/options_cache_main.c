@@ -25,8 +25,8 @@ static unsigned rnd(unsigned n) {
 }
 
 static void fail(const char *what, int lang, int c, const int *v) {
-    printf("FAIL: %s (lang %d cursor %d values %d/%d/%d/%d/%d)\n", what, lang, c,
-           v[0], v[1], v[2], v[3], v[4]);
+    printf("FAIL: %s (lang %d cursor %d values %d/%d/%d/%d/%d/%d/%d)\n", what,
+           lang, c, v[0], v[1], v[2], v[3], v[4], v[5], v[6]);
     g_failures++;
 }
 
@@ -74,7 +74,7 @@ static void step(int lang, int c, const int *v, int commit, Dw3OptionsDirty *out
 int main(void) {
     static const int turbo[4] = {0, 2, 3, 4};
     Dw3OptionsDirty d;
-    int v[DW3_TITLE_OPTION_ROWS] = {0, 0, 0, 0, 0};
+    int v[DW3_TITLE_OPTION_ROWS] = {0};
     int steps = 0;
 
     g_ref = (uint8_t *)malloc(CANVAS_BYTES);
@@ -99,7 +99,7 @@ int main(void) {
             for (int w = 0; w < 2; ++w)
                 for (int t = 0; t < 4; ++t)
                     for (int r = 0; r < 2; ++r) {
-                        const int target[DW3_TITLE_OPTION_ROWS] = {w, turbo[t], r, 10, 10};
+                        const int target[DW3_TITLE_OPTION_ROWS] = {w, turbo[t], r, 10, 10, 0, 0};
                         for (int row = 0; row < DW3_TITLE_OPTION_ROWS; ++row) {
                             v[row] = target[row];
                             step(lang, c, v, 1, &d);
@@ -117,8 +117,18 @@ int main(void) {
                     if (d.full) fail("unexpected full upload", lang, c, v);
                 }
 
+        /* Every mode of the two P6.18 rows, from every cursor row. */
+        for (int c = 0; c < DW3_TITLE_OPTION_ROWS && (lang == DW3_TITLE_LANG_EN || lang == DW3_TITLE_LANG_DE); ++c)
+            for (int row = 5; row < DW3_TITLE_OPTION_ROWS; ++row)
+                for (int n = 0; n <= 2; ++n) {
+                    v[row] = n;
+                    step(lang, c, v, 1, &d);
+                    steps++;
+                    if (d.full) fail("unexpected full upload", lang, c, v);
+                }
+
         /* Cursor-only and value-only costs. */
-        v[0] = 1; v[1] = 3; v[2] = 0; v[3] = 6; v[4] = 10;
+        v[0] = 1; v[1] = 3; v[2] = 0; v[3] = 6; v[4] = 10; v[5] = 1; v[6] = 2;
         step(lang, 0, v, 1, NULL);
         step(lang, 1, v, 1, &d);
         if (d.bytes > g_max_cursor_bytes) g_max_cursor_bytes = d.bytes;
@@ -138,6 +148,8 @@ int main(void) {
             v[2] = (int)rnd(2);
             v[3] = (int)rnd(11);
             v[4] = (int)rnd(11);
+            v[5] = (int)rnd(3);
+            v[6] = (int)rnd(3);
             step(lang, c, v, 1, &d);
             steps++;
         }
