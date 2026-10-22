@@ -11,6 +11,7 @@
  *   left | right       D-pad Left / Right (volume rows)
  *   gains              print the Q15 gains last handed to the mixer
  *   env I L            apply_env(I, L) (DW3_WIDESCREEN / DW3_TURBO stand-in)
+ *   fileint KEY DEF    print dw3_port_options_file_int(KEY, DEF) (file-only keys)
  *   noinit             skip persist_init (session-only)
  */
 #include "port_audio.h"
@@ -104,6 +105,10 @@ int main(int argc, char **argv) {
             press(BIT_RIGHT);
         } else if (strcmp(argv[i], "gains") == 0) {
             gains();
+        } else if (strcmp(argv[i], "fileint") == 0 && i + 2 < argc) {
+            printf("%s=%d\n", argv[i + 1],
+                   dw3_port_options_file_int(argv[i + 1], atoi(argv[i + 2])));
+            i += 2;
         } else if (strcmp(argv[i], "env") == 0 && i + 2 < argc) {
             dw3_port_options_apply_env(atoi(argv[i + 1]), atoi(argv[i + 2]));
             i += 2;

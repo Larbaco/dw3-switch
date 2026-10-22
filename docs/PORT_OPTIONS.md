@@ -48,6 +48,7 @@ explicitly marked N/A in this note.
 | Audio | **Music volume** and **SFX volume**, 0..10 steps, default 10 = the original mix ([P6.17](P6.17_VOLUME.md)) | Phase 6 |
 | Original-game fixes | **None are toggles.** P7.7's HUD Digivolution name (patch `0065`) and Claw steal on the killing blow (`0066`) are always on; reasoning in [P7.7_BUG_FIXES.md](P7.7_BUG_FIXES.md) | Phase 7 |
 | Pacing | **Encounter rate** (1x / 0.5x / OFF) and **Text speed** (Normal / Fast / Instant), both default to the original game ([P6.18](P6.18_PACING.md)) | Phase 6 |
+| Battle menu memory | **File-only key** `battle_menu_memory` (0 off, 1 command, 2 command + technique), no Options row (the screen is full), off by default ([P7.9](P7.9_BATTLE_MENU_MEMORY.md)) | Phase 7 |
 | Switch host | Rumble on/intensity, confirm A/B layout, `swkbd` name, CRT/sharp, system-language hint | Phase 10 (+ P4.4 / P5.3 always-on lifecycle) |
 | Restart game | Optional L1 + R1 + Start + Select in the shared PS1 pad map; OFF by default | Phase 6.9 |
 
@@ -103,6 +104,13 @@ encounter_rate=0
 text_speed=0
 end=1
 ```
+
+File-only keys (a setting with no row on the Options screen) are written by
+hand into the same file, before `end=1`; the game reads them through
+`dw3_port_options_file_int` and the Options screen keeps them when it
+rewrites the file. Today there is one: `battle_menu_memory=0|1|2` (P7.9, the
+battle command menu and technique list open on the last pick; absent or any
+other value is off). It is not part of the `dw3-options: saved ...` log line.
 
 Plain `key=value` lines, no JSON. `#` and `;` start a comment line, blank
 lines are ignored, keys are `[A-Za-z0-9_.-]`, values are single-line text
@@ -220,6 +228,9 @@ clean save files. See [P6.9_RESTART.md](P6.9_RESTART.md).
   steps with clamping and wrap, round trip, bad values, a file from before
   P6.18, `DW3_ENCOUNTER_RATE` / `DW3_TEXT_SPEED` not saved by an unrelated
   change, key order).
+- `test_options_persist.py::test_file_only_int_key` (P7.9): a key with no row
+  is read from the file, falls back to its default when absent or not a number,
+  and is still in the file after the Options screen rewrites it.
 - OLED: pending. Toggle, HOME, close the game, relaunch from hbmenu.
 
 ## Entry investigation (P9.2)
