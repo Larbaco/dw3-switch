@@ -1226,7 +1226,7 @@ static int refresh_art_gpu(void) {
         .cycle=true,
     };
     SDL_GPURenderPass *pass=SDL_BeginGPURenderPass(cmd,&target,1,NULL);
-    if (!pass) return -1;
+    if (!pass) { SDL_CancelGPUCommandBuffer(cmd); return -1; }
     SDL_BindGPUGraphicsPipeline(pass,g_pipeline);
     const SDL_GPUBufferBinding binding={
         .buffer=g_gpu_options_vertices,
@@ -1291,6 +1291,8 @@ void dw3_pc_title_menu_set_state(int active, int selected) {
                     fprintf(stderr, "dw3-title-overlay: GPU atlas path unavailable; restoring reference artwork\n");
                     g_cpu_fallback_logged = 1;
                 }
+                /* Draw the reference texture, not a stale composed target. */
+                g_gpu_options_valid = 0;
                 g_options_generation = ~dw3_pc_title_overlay_options_generation();
                 refresh_art();
             }
