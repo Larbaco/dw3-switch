@@ -238,7 +238,9 @@ def run_phase(rec: Path, version, binary, runtime, display, outdir: Path, memdir
               "DW3_ENCOUNTER_RATE", "DW3_TEXT_SPEED", "DW3_START_MODE", "DW3_PROGRESS",
               "DW3_FORCE_NPC_ACTION", "DW3_OVERLAY_STRICT", "DW3_FORCE_ENCOUNTER",
               "DW3_FORCE_PARTY", "DW3_FORCE_WIN", "DW3_AUTO_DOOR_MODE",
-              "DW3_AUTO_DOOR_FRAMES"):
+              "DW3_AUTO_DOOR_FRAMES", "DW3_LANGUAGE", "DW3_FORCE_FORM", "DW3_FORCE_NICKNAME",
+              "DW3_FORCE_TECH", "DW3_FORCE_HIT", "DW3_FORCE_STEAL", "DW3_FORCE_ENEMY_ITEM",
+              "DW3_FORCE_ENEMY_HP"):
         env.pop(k, None)
     if cfgdir is not None:  # P9.4: never read or write the owner's port_options.cfg
         env["DW3_CONFIG_DIR"] = str(cfgdir)

@@ -354,6 +354,38 @@ def two_battles(version):
     return r
 
 
+def p77_battle(version):
+    """P7.7: one forced battle (Kotemon vs Kunemon, the env of the manifest
+    sets the technique, the enemy's HP and item, the partner's Digimon), the
+    first technique of the Tech menu, then Cross to the report and the field.
+    Log only: the proof is in the `dw3-p77:` lines the patches print."""
+    r = Rec(f"{version.upper()}: P7.7 forced battle, Tech once, Cross to the end (env in manifest)")
+    _tech(r, 350)
+    for f in range(520, 1470, 30):
+        r.press(f, CROSS)
+    r.end(1500)
+    return r
+
+
+SQUARE = 0x8000
+
+
+def p77_square(version):
+    """P7.7: Square pressed in a field (a tap, a second tap, a 60 frame hold,
+    and Square with Circle), as the "Square map glitch" of the community
+    notes would need. The original game reads no Square in the field, so the
+    field must not change mode (the manifest forbids a second mode restore)."""
+    r = Rec(f"{version.upper()}: P7.7 Square in the field (env in manifest)")
+    r.press(300, SQUARE)
+    r.press(400, SQUARE)
+    _pad(r, 500, SQUARE)
+    _pad(r, 560, 0)
+    _pad(r, 600, SQUARE | 0x2000)    # Square + Circle
+    _pad(r, 620, 0)
+    r.end(700)
+    return r
+
+
 def options_persist(version, phase):
     """P9.4: title -> Options. Phase 1 turns Widescreen OFF, Fast-forward
     2x -> 3x and the Restart hotkey ON, then leaves with Triangle; phase 2 is a
@@ -546,6 +578,8 @@ def main(out):
         (out / f"{v}-encounter-walk.rec").write_text(encounter_walk(v).text(True))
         (out / f"{v}-encounter-event.rec").write_text(encounter_event(v).text(True))
         (out / f"{v}-two-battles.rec").write_text(two_battles(v).text(True))
+        (out / f"{v}-p77-battle.rec").write_text(p77_battle(v).text(True))
+        (out / f"{v}-p77-square.rec").write_text(p77_square(v).text(True))
     (out / "us-repro-balloon.rec").write_text(repro_balloon("us").text(True))
     for version in ("us", "eu"):
         # Written unsorted, byte for byte as first committed with patch 0058.

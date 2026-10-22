@@ -245,3 +245,42 @@ def test_pacing_scenarios_are_defined_for_both_discs():
         assert dict(names[f"{v}-text-instant"].cfg) == {"text_speed": "2"}
         # Off must forbid any battle
         assert any("FIGHTSTG_start" in rx for _, rx in names[f"{v}-encounter-off"].forbid_log)
+
+
+def test_p77_scenarios_are_defined_for_both_discs():
+    rt = _load("replay_tests")
+    names = {sc.name: sc for sc in rt.SCENARIOS}
+    for v in ("us", "eu"):
+        for n in ("claw-ko", "claw-alive", "ko-no-claw", "hud-rookie", "hud-form", "hud-long",
+                  "hud-nickname", "square-field"):
+            sc = names[f"{v}-p77-{n}"]
+            assert sc.log_only and sc.env and sc.expect_log, sc.name   # PC-only, log verdicts
+    for lang in ("fr", "it", "de", "es"):
+        assert names[f"eu-p77-hud-form-{lang}"].env
+    # the control scenarios must forbid what the fixed ones expect
+    assert any("knocked-out" in rx for _, rx in names["us-p77-claw-alive"].forbid_log)
+    assert any("steal item" in rx for _, rx in names["eu-p77-ko-no-claw"].forbid_log)
+
+
+def test_every_manifest_env_variable_is_scrubbed_by_the_runner():
+    # a DW3_* variable of the user's shell must not leak into a scenario that
+    # does not set it: the runner pops each key it knows before it applies the
+    # scenario's own env
+    rt = _load("replay_tests")
+    src = (REPLAY / "replay_tests.py").read_text()
+    for sc in rt.SCENARIOS:
+        for key, _ in sc.env:
+            assert f'"{key}"' in src, (sc.name, key)
+
+
+def test_p77_claw_expectation_needs_the_steal_before_the_end_of_the_battle(tmp_path):
+    rt = _load("replay_tests")
+    sc = {s.name: s for s in rt.SCENARIOS}["us-p77-claw-ko"]
+    ok = ("dw3: DW3_FORCE_TECH partner uses tech 127 (menu picked 53)\n"
+          "dw3-p77: claw steal on a knocked-out enemy (tech 127)\n"
+          "dw3-p77: steal item 1 from enemy slot 0 (hp 0)\n"
+          "dw3: WFIGHTMN_endBattle result=1 requestMode=0x1400 fieldMode=0x2d7\n")
+    assert rt.check_log_expect(sc.expect_log, 0, ok, sc.forbid_log) == []
+    lines = ok.splitlines(True)
+    swapped = "".join([lines[0], lines[3], lines[1], lines[2]])   # the battle ends first
+    assert rt.check_log_expect(sc.expect_log, 0, swapped, sc.forbid_log) != []

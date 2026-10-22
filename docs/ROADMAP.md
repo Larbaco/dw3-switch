@@ -64,7 +64,8 @@ lives in its doc, not in the entry below.
 | P7.3 | Binary-patch limits | in progress | [COMMUNITY_QOL](COMMUNITY_QOL.md) |
 | P7.4 | Feature parity (native) | open | [COMMUNITY_QOL](COMMUNITY_QOL.md) |
 | P7.5 | Companion (optional) | open | [COMMUNITY_QOL](COMMUNITY_QOL.md) |
-| P7.6–P7.14 | Backlog goal notes | future | [backlog](#backlog--future-goals) |
+| P7.6, P7.8–P7.14 | Backlog goal notes | future | [backlog](#backlog--future-goals) |
+| P7.7 | Bug and text fixes | in progress (2 of 5 fixed, needs OLED check) | [P7.7](P7.7_BUG_FIXES.md) |
 | P8.1 | Texture pack goal note | done | [TEXTURE_PACKS](TEXTURE_PACKS.md) |
 | P8.2 | Pack layout | open | [TEXTURE_PACKS](TEXTURE_PACKS.md) |
 | P8.3 | Formats and scaling | open | [TEXTURE_PACKS](TEXTURE_PACKS.md) |
@@ -1128,11 +1129,26 @@ Statuses are in the [table](#status-at-a-glance).
   and DV EXP rate (1x default, Harmony uses 1.3x / 1.2x), uncapped DV EXP
   and HP/MP restore on level up. Credit markisha64 / rsigrist. Done when
   each option works on US and EU and is off by default.
-- [ ] **P7.7 Bug and text fixes (future goal).** Picking / Snapping Claw on
-  a KO'd enemy, active Digivolution name in battle, battle reward
-  "1IT"/"1EXP" text, save label showing Asuka Inn, Square map glitch.
-  Check each on the US disc too. Done when each fix is a `port/patches`
-  entry tested on US and EU.
+- [~] **P7.7 Bug and text fixes.** Picking / Snapping Claw on a KO'd enemy,
+  active Digivolution name in battle, battle reward "1IT"/"1EXP" text, save
+  label showing Asuka Inn, Square map glitch. Checked on the US and the EU
+  disc (2026-10-22, PR for `fix/p77-original-bugs`; details and evidence in
+  [P7.7_BUG_FIXES.md](P7.7_BUG_FIXES.md)):
+  the Claw steal on the killing blow (patch `0066`) and the Digivolution name
+  in the battle HUD (`0065`, a nickname is kept, long names are squeezed) are
+  original-game bugs on both discs, fixed always-on (no Port option, decision
+  in the doc) and covered by 20 log-only PC replay scenarios
+  (`*-p77-*`, hooks in `0064`). The other three could not be reproduced on
+  the stock discs and were left alone: the reward text renders "BIT" / "EXP"
+  in the US disc and in all five EU languages; the stock game can only save at
+  the 25 save points, whose labels are right (the "Asuka Inn" label is place 43,
+  shared by the unused mode 0xC00, so it belongs to Harmony's Start-menu save,
+  P6.14); the field reads no Square (the glitch is in Harmony's FastTravel,
+  P7.4). Open: the OLED check of the two fixes (checklist in the doc), a
+  digivolution played during a battle, and the three bugs above if a
+  screenshot from an unmodified disc turns up. Done when each listed bug is
+  fixed or shown not to exist on the stock discs, and the fixes are verified
+  on the OLED.
 - [ ] **P7.8 Battle info HUD (future goal).** Optional enemy HP, always-on
   partner MP, technique attribute / power / MP cost colours, DV stats and
   EXP to next level after battle. Done when the toggle works on US and EU

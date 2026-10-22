@@ -1,0 +1,10 @@
+# EU: P7.7 Square in the field (env in manifest)
+pad 300 0x8000
+pad 305 0x0000
+pad 400 0x8000
+pad 405 0x0000
+pad 500 0x8000
+pad 560 0x0000
+pad 600 0xa000
+pad 620 0x0000
+end 700

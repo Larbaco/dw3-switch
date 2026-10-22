@@ -46,6 +46,7 @@ explicitly marked N/A in this note.
 | Community QoL parity | Share EXP, quest log HUD, NPC bubbles, Fast Start, … | Phase 7 |
 | Texture packs | Enable overlay / select pack name | Phase 8 |
 | Audio | **Music volume** and **SFX volume**, 0..10 steps, default 10 = the original mix ([P6.17](P6.17_VOLUME.md)) | Phase 6 |
+| Original-game fixes | **None are toggles.** P7.7's HUD Digivolution name (patch `0065`) and Claw steal on the killing blow (`0066`) are always on; reasoning in [P7.7_BUG_FIXES.md](P7.7_BUG_FIXES.md) | Phase 7 |
 | Pacing | **Encounter rate** (1x / 0.5x / OFF) and **Text speed** (Normal / Fast / Instant), both default to the original game ([P6.18](P6.18_PACING.md)) | Phase 6 |
 | Switch host | Rumble on/intensity, confirm A/B layout, `swkbd` name, CRT/sharp, system-language hint | Phase 10 (+ P4.4 / P5.3 always-on lifecycle) |
 | Restart game | Optional L1 + R1 + Start + Select in the shared PS1 pad map; OFF by default | Phase 6.9 |
