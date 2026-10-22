@@ -332,4 +332,102 @@ def test_volume_keys_are_in_the_written_file_order(persist_bin: Path, tmp_path: 
     keys = [l.split("=")[0] for l in (tmp_path / CFG).read_text().splitlines()
             if "=" in l and not l.startswith("#")]
     assert keys == ["version", "widescreen", "fast_forward", "restart_hotkey",
-                    "music_volume", "sfx_volume", "end"]
+                    "music_volume", "sfx_volume", "encounter_rate", "text_speed",
+                    "end"]
+
+
+# --- P6.18 Encounter rate / Text speed rows ---------------------------------
+
+def pacing(binary, cfgdir) -> str:
+    out, _ = session(binary, cfgdir, "pacing")
+    return out[-1]
+
+
+def test_pacing_defaults_are_the_original_game(persist_bin: Path, tmp_path: Path):
+    assert pacing(persist_bin, tmp_path) == "encounter_rate=0 text_speed=0"
+    assert not (tmp_path / CFG).exists()
+
+
+def test_pacing_steps_left_right_and_confirm(persist_bin: Path, tmp_path: Path):
+    # Right steps up and stops at the last mode (Off / Instant).
+    out, _ = session(persist_bin, tmp_path, "open", "row", "5", "right", "pacing")
+    assert out[0] == "encounter_rate=1 text_speed=0"
+    out, _ = session(persist_bin, tmp_path, "open", "row", "5", *["right"] * 4, "pacing")
+    assert out[0] == "encounter_rate=2 text_speed=0"
+    # Left steps down and stops at 0.
+    out, _ = session(persist_bin, tmp_path, "open", "row", "5", *["left"] * 4, "pacing")
+    assert out[0] == "encounter_rate=0 text_speed=0"
+    # Confirm steps up and wraps after the last mode.
+    out, _ = session(persist_bin, tmp_path, "open", "row", "6", "press", "pacing")
+    assert out[0] == "encounter_rate=0 text_speed=1"
+    out, _ = session(persist_bin, tmp_path, "open", "row", "6", "press", "press", "pacing")
+    assert out[0] == "encounter_rate=0 text_speed=0"      # 1 -> 2 -> 0 (wrapped)
+    out, _ = session(persist_bin, tmp_path, "open", "row", "6", "press", "press",
+                     "press", "pacing")
+    assert out[0] == "encounter_rate=0 text_speed=0"      # 0 -> 1 -> 2 -> 0
+
+
+def test_pacing_round_trip_saved_on_each_change(persist_bin: Path, tmp_path: Path):
+    session(persist_bin, tmp_path, "open", "row", "5", "right", "right",
+            "row", "6", "right")
+    text = (tmp_path / CFG).read_text()   # saved without leaving the screen
+    assert "encounter_rate=2\n" in text and "text_speed=1\n" in text
+    assert text.endswith("end=1\n")
+    assert pacing(persist_bin, tmp_path) == "encounter_rate=2 text_speed=1"
+    # The other rows are untouched and keep their defaults.
+    assert values(persist_bin, tmp_path) == "widescreen=1 fast_forward=2 restart_hotkey=0"
+    assert volumes(persist_bin, tmp_path) == "music_volume=10 sfx_volume=10"
+
+
+def test_bad_pacing_values_fall_back_to_the_default(persist_bin: Path, tmp_path: Path):
+    for bad in ("3", "-1", "fast", "", "1.5", "0x1"):
+        (tmp_path / CFG).write_text(f"version=1\nencounter_rate={bad}\ntext_speed=2\nend=1\n")
+        out, err = session(persist_bin, tmp_path, "pacing")
+        assert out == ["encounter_rate=0 text_speed=2"], bad
+        assert "encounter_rate=" in err and "is not valid" in err, bad
+        (tmp_path / CFG).write_text(f"version=1\nencounter_rate=2\ntext_speed={bad}\nend=1\n")
+        out, err = session(persist_bin, tmp_path, "pacing")
+        assert out == ["encounter_rate=2 text_speed=0"], bad
+        assert "text_speed=" in err and "is not valid" in err, bad
+
+
+def test_older_file_without_pacing_keys_keeps_the_default(persist_bin: Path, tmp_path: Path):
+    # A file written by P6.17 (no pacing keys): everything else is read as before.
+    (tmp_path / CFG).write_text(
+        "version=1\nwidescreen=0\nfast_forward=3\nrestart_hotkey=1\n"
+        "music_volume=7\nsfx_volume=3\nend=1\n")
+    out, err = session(persist_bin, tmp_path, "show", "volumes", "pacing")
+    assert out == ["widescreen=0 fast_forward=3 restart_hotkey=1",
+                   "music_volume=7 sfx_volume=3",
+                   "encounter_rate=0 text_speed=0"]
+    assert "is not valid" not in err
+    # And one from P9.4 (no volume keys either).
+    (tmp_path / CFG).write_text("version=1\nwidescreen=0\nend=1\n")
+    out, _ = session(persist_bin, tmp_path, "volumes", "pacing")
+    assert out == ["music_volume=10 sfx_volume=10", "encounter_rate=0 text_speed=0"]
+    # The first change adds the new keys and keeps the rest.
+    session(persist_bin, tmp_path, "open", "row", "6", "right")
+    text = (tmp_path / CFG).read_text()
+    assert "widescreen=0\n" in text
+    assert "encounter_rate=0\n" in text and "text_speed=1\n" in text
+
+
+def test_environment_pacing_override_is_not_saved(persist_bin: Path, tmp_path: Path):
+    env = {**os.environ, "DW3_ENCOUNTER_RATE": "2", "DW3_TEXT_SPEED": "bogus"}
+    r = subprocess.run([str(persist_bin), str(tmp_path), "pacing",
+                        "open", "row", "2", "press"],
+                       capture_output=True, text=True, env=env)
+    assert r.returncode == 0, r.stderr
+    assert r.stdout.strip().splitlines()[0] == "encounter_rate=2 text_speed=0"  # forced; bad one ignored
+    # An unrelated change must not write the forced value as the user's choice.
+    text = (tmp_path / CFG).read_text()
+    assert "encounter_rate=0\n" in text and "restart_hotkey=1\n" in text
+    # Changing the forced row itself is the user's choice and is saved.
+    r = subprocess.run([str(persist_bin), str(tmp_path), "open", "row", "5", "left"],
+                       capture_output=True, text=True, env=env)
+    assert r.returncode == 0, r.stderr
+    assert "encounter_rate=1\n" in (tmp_path / CFG).read_text()
+    # Forced even without a usable config dir.
+    r = subprocess.run([str(persist_bin), str(tmp_path / "nope"), "pacing"],
+                       capture_output=True, text=True, env=env)
+    assert r.stdout.strip().splitlines()[0] == "encounter_rate=2 text_speed=0"

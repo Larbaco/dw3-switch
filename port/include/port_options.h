@@ -19,13 +19,21 @@ void dw3_port_options_draw(void);
 /* One-line hint while NG/Continue are shown and shell is closed. */
 void dw3_port_options_draw_hint(void);
 
+/* Registry rows read outside this file (the others are internal): P6.18
+ * pacing, see port_pacing.h and docs/P6.18_PACING.md. */
+enum {
+    DW3_PORT_OPT_ENCOUNTER_RATE = 5,
+    DW3_PORT_OPT_TEXT_SPEED = 6
+};
+
 /* Registry; unavailable features remain safe no-op stubs. Values persist in
  * <config dir>/port_options.cfg (P9.4, docs/PORT_OPTIONS.md). */
 int dw3_port_options_count(void);
 const char *dw3_port_options_label(int index);
 int dw3_port_options_value(int index);
 void dw3_port_options_set(int index, int value);
-/* Raw row value: 0/1, or 0 (OFF) / 2..4 (speed) for Fast-forward. */
+/* Raw row value: 0/1, 0 (OFF) / 2..4 (speed) for Fast-forward, 0..10 for the
+ * volumes, 0..2 for Encounter rate and Text speed. */
 int dw3_port_options_level(int index);
 void dw3_port_options_set_level(int index, int level);
 

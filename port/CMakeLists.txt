@@ -262,7 +262,8 @@ add_library(dw3_port_options OBJECT
   "${CMAKE_CURRENT_SOURCE_DIR}/options/title_logo_capture.c"
   "${CMAKE_CURRENT_SOURCE_DIR}/options/turbo.c"
   "${CMAKE_CURRENT_SOURCE_DIR}/options/widescreen.c"
-
+  "${CMAKE_CURRENT_SOURCE_DIR}/pacing/pacing.c"
+  "${CMAKE_CURRENT_SOURCE_DIR}/pacing/pacing_policy.c"
   "${CMAKE_CURRENT_SOURCE_DIR}/options/title_background_capture.c"
   "${CMAKE_CURRENT_SOURCE_DIR}/ui/port_text.c"
 )
