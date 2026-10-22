@@ -91,6 +91,12 @@ one console and are not acceptance gates; gates live in
   (log: cursor move ~4.5 ms compose + ~1.4 ms upload, title-menu rebuild
   ~151 ms). Memory high-water stayed flat after the opening (heap 1949K,
   file cache 1471K). Not covered: US on the OLED, HOME/sleep, rumble, docked.
+  Known issue in preview.29: the pump counter advanced twice per VSync
+  (since #182), so the nxlink HUD `fps` and every 60-pump log window
+  (`frame dt`, `mem dbg`, `movie dbg` cadence) cover 30 frames, and the HUD
+  shows double the real rate (about 120 at a real 60 fps; the log above was
+  60 fps real at 1x). `vsync_pumps` in `crash_report.txt` is doubled too.
+  Gameplay pacing is not affected. Fixed on main after the release.
 
 Still open on hardware: audio underrun count, the full overlay sweep, battle
 at 60 Hz, the sync-object error above, a fresh-save relaunch reload, and EU
