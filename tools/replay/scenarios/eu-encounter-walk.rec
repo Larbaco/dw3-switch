@@ -1,0 +1,3 @@
+# EU: walk up a random-battle field for 3000 frames (env in manifest)
+pad 300 0x0010
+end 3300

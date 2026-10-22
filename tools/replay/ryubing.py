@@ -245,9 +245,9 @@ def run_phase(sc, idx, root, nro, display, outdir, ryujinx, stall, timeout, labe
         missing = [n for _, n in want if n not in got_names]
         rows.append((sc.name, f"(shots p{idx + 1})", "FAIL",
                      f"expected {len(want)} in order, saw {len(got)}; missing {missing[:4]}"))
-    for p in rt.check_log_expect(sc.expect_log, idx, "\n".join(lines)):
+    for p in rt.check_log_expect(sc.expect_log, idx, "\n".join(lines), sc.forbid_log):
         rows.append((sc.name, f"(log p{idx + 1})", "FAIL", p))
-    if any(i == idx for i, _ in sc.expect_log) and not any(
+    if any(i == idx for i, _ in list(sc.expect_log) + list(sc.forbid_log)) and not any(
             r[1] == f"(log p{idx + 1})" for r in rows):
         rows.append((sc.name, f"(log p{idx + 1})", "PASS", "expected log line(s) found"))
     probs = rt.check_restores("\n".join(lines), sc.expect_restore if idx == len(sc.phases) - 1 and len(sc.phases) == 1 else ())
@@ -303,6 +303,10 @@ def main():
         sel = {sc.name for sc in manifest.SCENARIOS if sc.tier in tiers}
     versions = ("us", "eu") if a.version == "both" else (a.version,)
     todo = [sc for sc in manifest.SCENARIOS if sc.name in sel and sc.version in versions]
+    for sc in [sc for sc in todo if sc.env]:
+        # The NRO has no environment for the scenario's debug aids: PC only.
+        print(f"skip {sc.name}: needs host env ({', '.join(k for k, _ in sc.env)}), PC only")
+    todo = [sc for sc in todo if not sc.env]
     if not todo:
         ap.error("no scenarios selected")
 
@@ -328,6 +332,8 @@ def main():
         # P9.4: and fresh options (the phases of one scenario share the file)
         for stale in ("port_options.cfg", "port_options.cfg.tmp"):
             (memdir.parent / stale).unlink(missing_ok=True)
+        if sc.cfg:  # P6.18: seed the pacing rows through the option file
+            rt.write_seed_cfg(memdir.parent, sc.cfg)
         xvfb, display = rt.start_xvfb(out)
         try:
             for i in range(len(sc.phases)):
