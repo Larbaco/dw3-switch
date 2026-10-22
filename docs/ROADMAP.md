@@ -916,6 +916,11 @@ PS1 game, with vanilla-safe defaults and persistence on owner storage.
   setting (see [Backlog](#backlog--future-goals)); P6.17 (volume) and P6.18
   (pacing) are rows added on top of it (`music_volume`, `sfx_volume`,
   `encounter_rate`, `text_speed`).
+  **Partial OLED evidence (2026-10-22, EU, preview.30-rc4, owner):** with no
+  `port_options.cfg` on the SD card the first change created it and every
+  later change saved it (56 `dw3-options: saved` lines, no failure logged).
+  Not covered: relaunch from hbmenu and reading the values back, and US.
+  Evidence: `tmp/evidence/2026-10-22-preview30-rc4-oled/dw3.log`. Stays open.
 - [ ] **P9.5 Wire real features.** Connect registry entries to real port
   flags as Phases 6–8 land; mark unavailable items N/A in
   [PORT_OPTIONS.md](PORT_OPTIONS.md) rather than hiding the menu.
@@ -1091,6 +1096,12 @@ Statuses are in the [table](#status-at-a-glance).
   options screen got taller (five rows). Measured per-bus attenuation and the
   default-unchanged proof are in the doc; not covered: Switch audio output
   (no hardware or capture), a hearing test, and every sound id of every bank.
+  **Partial OLED evidence (2026-10-22, EU, preview.30-rc4, owner):** Music
+  volume stepped 0 to 10 and SFX volume down to 2 on the Options screen, with
+  the expected Q15 gains logged (music 0, 1, 2, 3, 4, 5, 7 = 0x0000, 0x0148,
+  0x051f, 0x0b85, 0x147b, 0x2000, 0x3eb8; SFX 3 and 2 = 0x0b85, 0x051f) and
+  each step saved. Not covered: a hearing test, US, relaunch persistence.
+  Stays unticked.
 - [ ] **P6.18 Pacing options.** Encounter rate (1x, 0.5x, off), text speed
   and faster battle animations as Port options rows, off by default, saved
   with P9.4. Done when each toggle works on US and EU and is off by default.
@@ -1111,6 +1122,13 @@ Statuses are in the [table](#status-at-a-glance).
   captures are pixel-identical. **Faster battle animations are not done:** the
   battle has no single time knob (reasons in the doc), and R3 fast-forward
   (P6.4) already speeds a battle up. May still land as concrete P7.4 items.
+  **Partial OLED evidence (2026-10-22, EU, preview.30-rc4, owner):** Encounter
+  rate was cycled (1x, 0.5x, Off) and returned to 1x; the log shows 5 random
+  battles, all at 1x, after 104, 175, 103, 128 and 93 footsteps (the owner
+  counted the first four). Text speed Instant: 19 of 27 logged pages typed in
+  1 to 2 frames. **Open:** 8 pages took 103 (5 times), 67 (2) and 127 (1)
+  frames; under investigation in another PR. Not covered: 0.5x and Off in
+  play, Fast, US, relaunch persistence. Stays unticked.
 - [ ] **P6.19 Japanese disc support (future goal).** File map, executable
   differences and boot for the JP disc, next to US and EU. Goal note only
   (2026-10-15). Done when the JP disc boots to the field on PC and Switch.

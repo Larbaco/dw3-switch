@@ -97,6 +97,17 @@ one console and are not acceptance gates; gates live in
   shows double the real rate (about 120 at a real 60 fps; the log above was
   60 fps real at 1x). `vsync_pumps` in `crash_report.txt` is doubled too.
   Gameplay pacing is not affected. Fixed on main after the release.
+- **preview.30-rc4 candidate, 2026-10-22 (OLED handheld, EU nxlink).** Only
+  the Port options and pacing rows were exercised. `port_options.cfg` was
+  created on the first change and saved on every change (no failure logged).
+  Music volume stepped 0 to 10 and SFX volume down to 2 with the expected
+  gains logged. Encounter rate was toggled and returned to 1x (random battles
+  at 1x after 104, 175, 103, 128 and 93 footsteps). Text speed Instant typed
+  19 of 27 pages in 1 to 2 frames; 8 pages took 67 to 127 frames, which is
+  open and under investigation. The session ended with a normal HOME exit and
+  `applet exit: flat saves flushed`. Not covered: US, relaunch persistence,
+  the P7.7 HUD and claw (logged only to the nxlink stderr), widescreen.
+  Log: `tmp/evidence/2026-10-22-preview30-rc4-oled/dw3.log`.
 
 Still open on hardware: audio underrun count, the full overlay sweep, battle
 at 60 Hz, the sync-object error above, a fresh-save relaunch reload, and EU
