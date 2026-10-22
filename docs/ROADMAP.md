@@ -531,6 +531,14 @@ speed.
 - [ ] **P5.5 Stage sweep on hardware.** P3.8 again on the console.
   Done when (proposed, from P3.8): the P3.8 loadable stage set loads and
   returns on hardware, US and EU. P6.20's warp menu would help.
+  **Known crash fixed (2026-10-22):** the new-game walk to the Digital
+  World bridge gate ("Oh yeah! I need my partner", WSTAG210 event 0x1E)
+  faulted in `FIELDSTG_drawBalloon` on every build (preview.28 and .29, US
+  and EU, PC and Switch); patch `0058`, regression scenarios
+  `us/eu-bridge-partner-gate`. See
+  [BALLOON_NULL_ACTOR.md](BALLOON_NULL_ACTOR.md), which also lists the
+  other places where a NULL actor from the PS1's readable low RAM could
+  fault a 64-bit host.
 
 Gate: start → first boss on hardware, both versions.
 
@@ -979,7 +987,9 @@ Statuses are in the [table](#status-at-a-glance).
   references kept outside git. `DW3_REPLAY` / `DW3_REPLAY_RECORD` in
   `psyz_pad_host.c` (off by default). Runs are byte-identical on one
   machine; the game RNG is a fixed table seeded to 0, so no injectable seed
-  is needed. See `docs/P6.15_REPLAY_TESTS.md`. Still open: Switch/Ryubing
+  is needed. See `docs/P6.15_REPLAY_TESTS.md`. The `us/eu-bridge-partner-gate`
+  scenarios (2026-10-22) walk the new-game opening to the first dialogue
+  gate. Still open: Switch/Ryubing
   replay, scenarios past the title (New Game, field, battle, save, restart),
   movies, cross-machine tolerance, CI. The full goal remains open until the
   replay set covers gameplay and Switch.
