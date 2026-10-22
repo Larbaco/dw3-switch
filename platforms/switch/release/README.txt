@@ -1,34 +1,37 @@
 Digimon World 3 / 2003, Switch homebrew preview
 
-Release candidate notes for v0.6.5-preview.28. OLED acceptance of the
-changes below remains pending. The release tag and boot version identify
-the actual source revision.
+Release notes for v0.6.5-preview.29. The release tag and boot version
+identify the actual source revision.
 
 New in this preview
 
-  EU restart returns to a clean language selection (#162). The title
-  overlay is hidden on restart. This change applies to the EU build only;
-  the US build has no language selection and is unchanged by it.
+  Crash fix at the first story gate (#187). On the new-game walk to the
+  Digital World bridge, the "Oh yeah! I need my partner" event crashed
+  the game on US and EU (preview.28 too). Port patch 0058 skips drawing
+  a speech balloon that was closed before it ever opened. OLED handheld:
+  the owner passed the gate without a crash on the candidate build.
 
-  EU cold boot uses the original language-selection screen (#143).
-  Choose the language before the opening movie and title. US boot remains
-  unchanged. Continue loads the existing EU save using the selected boot
-  language.
+  Faster Port options (#185). The Options screen keeps its picture and
+  redraws only what changed: a cursor move uploads about 434 KB instead
+  of 2.7 MB, a value change about 30 KB. OLED handheld (EU): the owner
+  reports the menu is much more responsive; the log shows ~6 ms per
+  cursor move. Opening the title menu builds the cache once (~150 ms).
 
-  Camera/portrait/render-state fixes (#148): correct battle idle-camera
-  transforms, preserve opaque black portrait pixels (including pupils),
-  and restore additive blending for the debug HUD and title after battle
-  fades. Verify battle -> save -> restart: logo and menu must be visible.
-  Builds and automated tests passed; OLED acceptance is still pending.
+  Crash reports (#182). crash_report.txt now keeps the previous run as
+  crash_report_prev.txt, dw3.log says whether the previous run crashed,
+  and the report includes frame counters. Hardware-unverified.
 
-  Options has its own game-style screen (#149): dimmed title backdrop,
-  choice boxes, values and contextual help. The #152 follow-up to #151
-  corrects the restart-help wording. OLED navigation and presentation are test targets,
-  not release acceptance already completed.
+  Rumble (#183). PS1 vibration requests go to HD rumble on handheld
+  Joy-Con and player 1. Hardware-unverified; the motor mapping may feel
+  wrong. Report what you feel (or do not feel), and on which controller.
 
-  The field-turbo raster skipping experiment from #146 is excluded.
-  Existing R3 turbo remains; an indicated frame rate does not by itself
-  prove the requested gameplay-speed multiplier.
+  HOME / sleep (#181). Losing focus (HOME, sleep) flushes pending saves
+  and the frame timer ignores the suspended gap. Hardware-unverified:
+  test with a save you can afford to lose.
+
+  Automated replay tests now cover the new-game opening, map walks, the
+  bridge gate and a long field soak on PC, and the Switch build can be
+  replayed in the Ryubing emulator (#186). These do not change the game.
 
 Carried forward
 
@@ -49,8 +52,10 @@ Carried forward
   game returns to its title without quitting the NRO. A flush failure
   cancels restart. Unsaved progress is lost. Release before repeating.
   This chord can also toggle the nxlink debug HUD, whose own chord is
-  Minus + L + R. OLED save -> restart -> Continue acceptance remains
-  to be recorded. See docs/HOTKEYS.md for all mapped controls.
+  Minus + L + R. See docs/HOTKEYS.md for all mapped controls.
+
+  From preview.28: EU language selection at cold boot and after restart,
+  battle camera/portrait fixes, Options on its own game-style screen.
 
 Bundle
 
@@ -109,17 +114,16 @@ Install / nxlink
 
 OLED checklist
 
-  - EU language selection -> full opening -> title -> Load Game.
-    Check language, video/audio and the EU root/version in logs.
-  - Options: move through every row, change values, inspect the help
-    text, press X to return and confirm Load Game still opens.
-  - Battle: inspect Agumon's eyes and the idle camera. After leaving
-    battle, check that the debug HUD remains readable.
-  - Complete an ordinary save, enable Restart hotkey, then hold
-    L + R + Plus + Minus. Logo/menu must stay visible; load the same
-    save. Never interrupt an active save operation.
-  - Toggle R3 in field and battle and cross a battle transition.
-    Compare widescreen ON/OFF and check for regressions in Inn fades.
+  - US: New Game, walk to the bridge "need my partner" event, close the
+    box and keep walking (the OLED check so far was EU only).
+  - Options: hold and tap Up/Down, change every row, close and reopen;
+    on EU also in French or German. Compare with preview.28.
+  - Save, press HOME, come back; save, sleep, wake. The save must
+    survive closing and relaunching the NRO. dw3.log should show
+    "applet focus: lost ... flushed" and "applet focus: restored".
+  - Rumble in field and battle (Joy-Con handheld, Pro Controller).
+  - After any crash, keep crash_report.txt and dw3.log before
+    relaunching; the next boot keeps one previous report.
 
 This is a prerelease, not a finished port. Use the CMake game image,
 not the small Makefile host_hello sample built by CI job switch.

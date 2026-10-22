@@ -24,6 +24,8 @@ Newest first.
 
 | Tag | What it was for |
 |---|---|
+| [preview.29](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.29) | Fixes the crash at the new-game bridge "need my partner" event (patch 0058), faster Port options (dirty-region cache), crash-report rotation, rumble, HOME/sleep save flush. EU attached by hand. Notes: [`platforms/switch/release/README.txt`](../platforms/switch/release/README.txt). |
+| [preview.28](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.28) | EU restart returns to the language selection (#162); carries the preview.26/27 changes. EU attached by hand. |
 | [preview.27](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.27) | Field streaming fix for the 16:9 crash (inferred from the preview.26 crash records, not yet reproduced). Adds the 4C DW3NX artwork. Hardware acceptance pending. |
 | [preview.26](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.26) | EU language selection at boot, battle camera and portrait fixes, Port options on its own screen. Notes: [RELEASE_PREVIEW26](RELEASE_PREVIEW26.md). Crashes: [PREVIEW26_CRASH_RECORDS](PREVIEW26_CRASH_RECORDS.md). |
 | [preview.25](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.25) | Widescreen on by default, battle defaults to `gpu-tex`, field and battle fast-forward, EU builds added. Notes: [RELEASE_PREVIEW25](RELEASE_PREVIEW25.md). |
@@ -83,6 +85,13 @@ one console and are not acceptance gates; gates live in
 - **preview.26.** Two `User Break` crashes were reported on EU. Raw records:
   [PREVIEW26_CRASH_RECORDS](PREVIEW26_CRASH_RECORDS.md). Preview.27 carries a
   fix for the suspected cause.
+
+- **preview.29 candidate, 2026-10-22 (OLED handheld, EU nxlink, about 22
+  minutes, turbo used).** Passed the new-game bridge "need my partner" event
+  that crashed preview.28; the Port options menu felt much more responsive
+  (log: cursor move ~4.5 ms compose + ~1.4 ms upload, title-menu rebuild
+  ~151 ms). Memory high-water stayed flat after the opening (heap 1949K,
+  file cache 1471K). Not covered: US on the OLED, HOME/sleep, rumble, docked.
 
 Still open on hardware: audio underrun count, the full overlay sweep, battle
 at 60 Hz, the sync-object error above, a fresh-save relaunch reload, and EU
