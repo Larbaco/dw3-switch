@@ -481,8 +481,29 @@ speed.
   **Options follow-up (2026-10-15):** owner tested the EU #170 candidate
   with the HUD: navigation improved but remains somewhat slow. This is a
   partial gain, not completion. Cached component/GPU composition is proposed
-  in [MENU_COMPOSITION_INVESTIGATION](MENU_COMPOSITION_INVESTIGATION.md);
-  implementation and a new PC/OLED comparison remain open. Stock
+  in [MENU_COMPOSITION_INVESTIGATION](MENU_COMPOSITION_INVESTIGATION.md).
+  **CPU dirty-region cache (2026-10-22, PC and Switch, PR #185 draft):** the
+  GPU atlas experiment was dropped (it failed the pixel gate and was no
+  faster); the retained-canvas cache is shared code
+  (`platforms/pc/src/title_options_cache.c`) and the default on PC
+  (`DW3_MENU_COMPOSITION=reference` keeps the old path). It is pixel-identical
+  to the reference on 284/284 US+EU replay checkpoints and an exhaustive unit
+  test, and cuts a cursor move on PC from ~30-37 ms to ~1.0-1.4 ms and a value
+  change to ~0.4-0.5 ms, uploading 434 KB / 30 KB instead of 2.76 MB. The
+  Switch host (`nx_title_overlay.c`) now uploads only dirty rectangles with
+  `glTexSubImage2D` and logs per-update times in nxlink/HUD builds; Ryubing
+  smoke on US and EU is recorded in
+  [MENU_COMPOSITION_INVESTIGATION](MENU_COMPOSITION_INVESTIGATION.md#decision-and-switch-port-2026-10-22).
+  **Owner OLED (2026-10-22, handheld, preview.29 candidate = main `aa470d3`
+  + this cache):** the owner reports the menu "much more responsive". The EU
+  `--nxlink` log (about 22 min, turbo used) shows per update: cursor move
+  compose ~4.5 ms + upload ~1.4 ms (434 KB), value change ~1.3 ms + ~0.3 ms
+  (30 KB), and one ~151 ms rebuild each time the title menu appears (3 in
+  the session). This closes the P5.2 Options follow-up on owner feel. Not
+  covered by that run: a numeric A/B against preview.28, sleep/wake and
+  dock/undock with Options open, the restart-hotkey step, a rim/fade pixel
+  check, and the US disc on the OLED (checklist in
+  [MENU_COMPOSITION_PLAN](MENU_COMPOSITION_PLAN.md)). Stock
   clocks only (no overclock). History (preview.7–.26, mesh approach A,
   flat-blue root cause): [P5.2_BATTLE_GPU.md](P5.2_BATTLE_GPU.md#history-moved-from-roadmapmd).
 
@@ -836,7 +857,8 @@ PS1 game, with vanilla-safe defaults and persistence on owner storage.
   the title row opens Port options and returns cleanly. Open follow-ups:
   Start/Continue text glow (owner wants the Options style), FPS drop when
   the Port options selection changes (P5.2; EU #170 owner test improved but
-  still slow, see [composition proposal](MENU_COMPOSITION_INVESTIGATION.md)),
+  still slow; dirty-region cache now on PC and Switch, OLED A/B open, see
+  [composition plan](MENU_COMPOSITION_PLAN.md)),
   persistence (P9.4). History:
   [P9.2_MENU.md](P9.2_MENU.md).
   Done when: the screen is reachable from the main menu and returns

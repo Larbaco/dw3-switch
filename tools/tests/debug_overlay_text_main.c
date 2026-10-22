@@ -33,7 +33,14 @@ int main(void) {
 
     {
         Dw3DebugOverlayMemSnap mem;
+        Dw3DebugOverlayMenuSnap menu;
 
+        memset(&menu, 0, sizeof(menu));
+        menu.valid = 1;
+        menu.updates = 4;
+        menu.compose_us = 310;
+        menu.upload_us = 120;
+        menu.total_max_us = 900;
         memset(&mem, 0, sizeof(mem));
         mem.valid = 1;
         mem.heap_ok = 1;
@@ -47,7 +54,7 @@ int main(void) {
 
         n = dw3_debug_overlay_format(lines, DW3_DBG_OVERLAY_MAX_LINES,
                                      1000000ull, 0x15a, 1, "soft", &mesh, &mem,
-                                     &build);
+                                     &menu, &build);
     }
     printf("line_count=%d\n", n);
     for (i = 0; i < n; i++) {

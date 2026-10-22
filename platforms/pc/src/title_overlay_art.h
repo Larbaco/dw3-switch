@@ -5,6 +5,17 @@
  * menu, -1 for PRESS START, DW3_TITLE_ART_OPTIONS for the Port options screen. */
 enum { DW3_TITLE_ART_OPTIONS = 3 };
 void dw3_pc_title_overlay_art(uint8_t *rgba, int pitch, int selected);
+enum {
+    DW3_TITLE_OPTIONS_STATIC = 1,
+    DW3_TITLE_OPTIONS_FOCUS = 2,
+    DW3_TITLE_OPTIONS_VALUE = 3,
+    DW3_TITLE_OPTIONS_DESCRIPTION = 4,
+};
+/* Draw a single Options component into its clipped bounds on the retained
+ * 960x720 canvas. The selected row/value are used only by their layer. */
+void dw3_pc_title_overlay_options_component(uint8_t *rgba, int pitch,
+        int layer, int row, int value, int x, int y, int w, int h,
+        int clear_region);
 
 /* Plaque labels. The defaults are the built-in English lettering; the EU disc
  * replaces them with its own words, captured from the title bank at runtime. */
@@ -39,4 +50,7 @@ void dw3_pc_title_overlay_set_options_view(int cursor, const int *values,
 unsigned dw3_pc_title_overlay_generation(void);
 /* Bumped only when the Port options screen (state 4) changes. */
 unsigned dw3_pc_title_overlay_options_generation(void);
+int dw3_pc_title_overlay_options_cursor(void);
+/* Value last handed to set_options_view for a row (0 for a bad row). */
+int dw3_pc_title_overlay_options_value(int row);
 #endif

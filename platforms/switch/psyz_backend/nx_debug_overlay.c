@@ -156,6 +156,7 @@ static uint64_t s_dt_us;
 static int s_use_mesh;
 static Dw3DebugOverlayMeshSnap s_mesh;
 static Dw3DebugOverlayMemSnap s_mem;
+static Dw3DebugOverlayMenuSnap s_menu;
 static char s_lines[HUD_ROWS][DW3_DBG_OVERLAY_LINE_CHARS];
 static int s_line_count;
 static int s_dirty = 1;
@@ -343,7 +344,7 @@ static void rebuild_pixels(void) {
 
     s_line_count = dw3_debug_overlay_format(
         s_lines, HUD_ROWS, s_dt_us, dw3_overlay_current_mode_file(), s_use_mesh,
-        dw3_nx_battle_mode_token(), &s_mesh, &s_mem, &build);
+        dw3_nx_battle_mode_token(), &s_mesh, &s_mem, &s_menu, &build);
 
     for (row = 0; row < s_line_count; row++) {
         s = s_lines[row];
@@ -418,6 +419,15 @@ void dw3_nx_debug_overlay_note_mem(const Dw3NxMemBudgetSample *mem) {
     s_dirty = 1;
 }
 #endif
+
+void dw3_nx_debug_overlay_note_menu(const Dw3DebugOverlayMenuSnap *menu) {
+    if (menu) {
+        s_menu = *menu;
+    } else {
+        memset(&s_menu, 0, sizeof(s_menu));
+    }
+    s_dirty = 1;
+}
 
 void dw3_nx_debug_overlay_note_present(int use_mesh) {
     if (s_use_mesh != (use_mesh ? 1 : 0)) {

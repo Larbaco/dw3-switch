@@ -6,13 +6,25 @@
  * screen, which fades in over the title and out again), plus the
  * original logo (US, or the EU bank of the current language) resampled from
  * runtime VRAM into a 720x326 texture. EU labels regenerate the canvas.
+ *
+ * The four title states are rasterized once per GL context. The Port options
+ * state is kept in a shared CPU cache (platforms/pc/src/title_options_cache.c)
+ * and only the rectangles that changed are sent to the texture with
+ * glTexSubImage2D, packed contiguously because GL_UNPACK_ROW_LENGTH is not in
+ * GLES2. The cache is built when the title menu first shows (so opening the
+ * screen is a normal update), released when the overlay stops drawing
+ * (restart, leaving the title) and rebuilt, with a full upload, on the next
+ * title visit.
+ *
  * Both are drawn over the game picture's 4:3 viewport after the frame is
  * composited and before the debug HUD. The game loop and the present run on
  * the same thread; the logo is kept on the CPU and uploaded on the next draw
  * so a dock/handheld context loss can rebuild every GL object. */
 #include "nx_title_overlay.h"
 
+#include "../../pc/src/title_options_cache.h"
 #include "../../pc/src/title_overlay_art.h"
+#include "nx_debug_overlay.h"
 #include "port_options.h"
 
 #include <stdint.h>
@@ -21,6 +33,16 @@
 #include <string.h>
 
 #include <GLES3/gl3.h>
+
+/* Per-update timing for nxlink and HUD builds only; the release image does
+ * not read the clock and does not log from this path. */
+#if defined(DW3_NXLINK_STDIO) || DW3_NX_DEBUG_OVERLAY
+#define DW3_NX_MENU_TIMING 1
+#include <switch/arm/counter.h>
+#include "../source/debug_overlay_text.h"
+#else
+#define DW3_NX_MENU_TIMING 0
+#endif
 
 /* nx_log.c: stderr/nxlink, sdmc:/switch/dw3/dw3.log and the debug string. */
 void psyz_log(unsigned int level, const char *file, unsigned int line,
@@ -65,8 +87,15 @@ static int s_logo_dirty;
 static int s_fade;
 /* dw3_pc_title_overlay_generation() of the uploaded canvas (EU labels). */
 static unsigned s_art_generation;
-/* dw3_pc_title_overlay_options_generation() of the uploaded options state. */
+/* dw3_pc_title_overlay_options_generation() of the uploaded options state;
+ * only the fallback below (cache canvases could not be allocated) uses it. */
 static unsigned s_options_generation;
+/* Contiguous staging for one dirty rectangle (GLES2 has no row length). */
+static uint8_t *s_options_pack;
+static size_t s_options_pack_bytes;
+static int s_options_cache_failed_logged;
+/* The cache was built (and the options region filled) for this title visit. */
+static int s_options_cache_warm;
 /* Port options screen opacity, 0..255. */
 static int s_options_alpha;
 
@@ -102,8 +131,8 @@ static GLuint make_texture(int w, int h, const void *pixels) {
     return tex;
 }
 
-/* The menu states and the options screen, generated on the CPU (no art is
- * shipped). */
+/* The four title states, generated on the CPU (no art is shipped). The options
+ * state is left transparent: the shared cache fills it on the next open. */
 static uint8_t *build_art(void) {
     const size_t canvas_bytes = (size_t)CANVAS_W * CANVAS_H * 4;
     uint8_t *pixels = (uint8_t *)malloc(canvas_bytes * STATE_COUNT);
@@ -112,16 +141,168 @@ static uint8_t *build_art(void) {
         return NULL;
     }
     s_art_generation = dw3_pc_title_overlay_generation();
-    s_options_generation = dw3_pc_title_overlay_options_generation();
-    for (int state = 0; state < STATE_COUNT; ++state) {
-        const int selected = state == 0 ? -1 :
-                             state == STATE_OPTIONS ? DW3_TITLE_ART_OPTIONS :
-                             state - 1;
-        memset(pixels + (size_t)state * canvas_bytes, 0, canvas_bytes);
+    memset(pixels, 0, canvas_bytes * STATE_COUNT);
+    for (int state = 0; state < STATE_OPTIONS; ++state) {
         dw3_pc_title_overlay_art(pixels + (size_t)state * canvas_bytes,
-                                 CANVAS_W * 4, selected);
+                                 CANVAS_W * 4, state == 0 ? -1 : state - 1);
     }
+    /* The atlas was just (re)written: the options region must be sent again. */
+    dw3_options_cache_invalidate();
     return pixels;
+}
+
+#if DW3_NX_MENU_TIMING
+static uint64_t timing_now_us(void) {
+    return armTicksToNs(armGetSystemTick()) / 1000ULL;
+}
+#endif
+
+/* Fallback when the cache canvases cannot be allocated: render the whole
+ * options canvas and upload it, as before the cache. */
+static void update_options_reference(void) {
+    uint8_t *options;
+
+    if (s_options_generation == dw3_pc_title_overlay_options_generation()) {
+        return;
+    }
+    options = (uint8_t *)malloc((size_t)CANVAS_W * CANVAS_H * 4);
+    if (!options) {
+        return;
+    }
+    memset(options, 0, (size_t)CANVAS_W * CANVAS_H * 4);
+    dw3_pc_title_overlay_art(options, CANVAS_W * 4, DW3_TITLE_ART_OPTIONS);
+    glBindTexture(GL_TEXTURE_2D, s_art_tex);
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
+    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, STATE_OPTIONS * CANVAS_H, CANVAS_W,
+                    CANVAS_H, GL_RGBA, GL_UNSIGNED_BYTE, options);
+    free(options);
+    s_options_generation = dw3_pc_title_overlay_options_generation();
+}
+
+#if DW3_NX_MENU_TIMING
+typedef struct MenuTiming {
+    unsigned session_updates;
+    unsigned batch;
+    uint64_t compose_sum, upload_sum, bytes_sum;
+    uint32_t compose_max, upload_max, total_max;
+} MenuTiming;
+static MenuTiming s_timing;
+
+static void timing_flush(void) {
+    if (s_timing.batch) {
+        const unsigned n = s_timing.batch;
+        TITLE_LOG("dw3-title-overlay: options %u updates compose avg=%u max=%u us "
+                  "upload avg=%u max=%u us bytes avg=%u",
+                  n, (unsigned)(s_timing.compose_sum / n), s_timing.compose_max,
+                  (unsigned)(s_timing.upload_sum / n), s_timing.upload_max,
+                  (unsigned)(s_timing.bytes_sum / n));
+    }
+    s_timing.batch = 0;
+    s_timing.compose_sum = s_timing.upload_sum = s_timing.bytes_sum = 0;
+    s_timing.compose_max = s_timing.upload_max = 0;
+}
+
+static void timing_note(const Dw3OptionsDirty *d, uint32_t compose_us,
+                        uint32_t upload_us) {
+    const uint32_t total = compose_us + upload_us;
+    Dw3DebugOverlayMenuSnap snap;
+
+    s_timing.session_updates++;
+    if (total > s_timing.total_max) s_timing.total_max = total;
+    if (d->full || d->rebuilt || s_timing.session_updates <= 8) {
+        TITLE_LOG("dw3-title-overlay: options update #%u %s rects=%d bytes=%u "
+                  "compose=%u us upload=%u us",
+                  s_timing.session_updates,
+                  d->rebuilt ? "rebuild" : d->full ? "full" : "dirty", d->count,
+                  (unsigned)d->bytes, compose_us, upload_us);
+    } else {
+        s_timing.batch++;
+        s_timing.compose_sum += compose_us;
+        s_timing.upload_sum += upload_us;
+        s_timing.bytes_sum += d->bytes;
+        if (compose_us > s_timing.compose_max) s_timing.compose_max = compose_us;
+        if (upload_us > s_timing.upload_max) s_timing.upload_max = upload_us;
+        if (s_timing.batch >= 30) timing_flush();
+    }
+    snap.valid = 1;
+    snap.updates = s_timing.session_updates;
+    snap.compose_us = compose_us;
+    snap.upload_us = upload_us;
+    snap.total_max_us = s_timing.total_max;
+    dw3_nx_debug_overlay_note_menu(&snap);
+}
+#endif
+
+/* Bring the options region of the atlas up to date: compose with the shared
+ * component, upload only the dirty rectangles. */
+static void update_options_texture(void) {
+    Dw3OptionsDirty d;
+#if DW3_NX_MENU_TIMING
+    const uint64_t t0 = timing_now_us();
+    uint64_t t1;
+#endif
+
+    if (dw3_options_cache_update(&d) != 0) {
+        if (!s_options_cache_failed_logged) {
+            TITLE_LOG("dw3-title-overlay: options cache unavailable; "
+                      "using the full-canvas path");
+            s_options_cache_failed_logged = 1;
+        }
+        update_options_reference();
+        return;
+    }
+    s_options_generation = dw3_pc_title_overlay_options_generation();
+    if (d.count == 0) {
+        return;
+    }
+#if DW3_NX_MENU_TIMING
+    t1 = timing_now_us();
+#endif
+    glBindTexture(GL_TEXTURE_2D, s_art_tex);
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
+    for (int i = 0; i < d.count; ++i) {
+        const Dw3OptionsRect r = d.rects[i];
+        const uint8_t *src;
+
+        if (r.w == DW3_OPTIONS_CANVAS_W) {
+            /* Full-width rows are already contiguous in the canvas. */
+            src = dw3_options_cache_pixels() +
+                  (size_t)r.y * DW3_OPTIONS_CANVAS_PITCH;
+        } else {
+            const size_t need = (size_t)r.w * r.h * 4;
+            if (need > s_options_pack_bytes) {
+                uint8_t *grown = (uint8_t *)realloc(s_options_pack, need);
+                if (!grown) {
+                    /* Leave the update uncommitted: the next frame resends
+                     * the whole canvas. */
+                    return;
+                }
+                s_options_pack = grown;
+                s_options_pack_bytes = need;
+            }
+            dw3_options_cache_pack_rect(r, s_options_pack);
+            src = s_options_pack;
+        }
+        glTexSubImage2D(GL_TEXTURE_2D, 0, r.x, STATE_OPTIONS * CANVAS_H + r.y,
+                        r.w, r.h, GL_RGBA, GL_UNSIGNED_BYTE, src);
+    }
+    dw3_options_cache_commit();
+#if DW3_NX_MENU_TIMING
+    timing_note(&d, (uint32_t)(t1 - t0), (uint32_t)(timing_now_us() - t1));
+#endif
+}
+
+/* Free the retained canvases once nothing of the overlay is on screen. */
+static void release_options_cache(void) {
+    dw3_options_cache_release();
+    free(s_options_pack);
+    s_options_pack = NULL;
+    s_options_pack_bytes = 0;
+    s_options_cache_warm = 0;
+#if DW3_NX_MENU_TIMING
+    timing_flush();
+    memset(&s_timing, 0, sizeof(s_timing));
+#endif
 }
 
 /* Build the canvas states once per GL context. The canvas is generated on
@@ -146,7 +327,7 @@ static int ensure_gl(void) {
     GLint ok = 0;
 
     if (s_prog && glIsTexture(s_art_tex)) {
-        /* EU labels and the options screen's values change the canvas. */
+        /* EU labels change the title canvases (and the options text). */
         if (s_art_generation != dw3_pc_title_overlay_generation()) {
             pixels = build_art();
             if (pixels) {
@@ -157,20 +338,6 @@ static int ensure_gl(void) {
                 free(pixels);
                 TITLE_LOG("dw3-title-overlay: canvas regenerated "
                           "(generation %u)", s_art_generation);
-            }
-        } else if (s_options_generation != dw3_pc_title_overlay_options_generation()) {
-            /* Only the options state changed: re-upload that one canvas. */
-            uint8_t *options = (uint8_t *)malloc((size_t)CANVAS_W * CANVAS_H * 4);
-            if (options) {
-                memset(options, 0, (size_t)CANVAS_W * CANVAS_H * 4);
-                dw3_pc_title_overlay_art(options, CANVAS_W * 4, DW3_TITLE_ART_OPTIONS);
-                glBindTexture(GL_TEXTURE_2D, s_art_tex);
-                glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
-                glTexSubImage2D(GL_TEXTURE_2D, 0, 0, STATE_OPTIONS * CANVAS_H,
-                                CANVAS_W, CANVAS_H, GL_RGBA, GL_UNSIGNED_BYTE,
-                                options);
-                free(options);
-                s_options_generation = dw3_pc_title_overlay_options_generation();
             }
         }
         return 1;
@@ -270,13 +437,31 @@ void dw3_nx_title_overlay_draw(int vx, int vy, int vw, int vh) {
         s_options_alpha -= OPTIONS_FADE_STEP;
         if (s_options_alpha < 0) s_options_alpha = 0;
     }
-    if ((!s_overlay_active && !logo && !s_options_alpha) || vw <= 0 ||
-        vh <= 0) {
+    if (!s_overlay_active && !logo && !s_options_alpha) {
+        /* Nothing is shown (restart, mode change): drop the retained canvases. */
+        release_options_cache();
+        return;
+    }
+    if (vw <= 0 || vh <= 0) {
         return;
     }
     if (!ensure_gl()) {
         return;
     }
+    if (s_options_alpha || (s_overlay_active && !s_options_cache_warm)) {
+        /* Build the cache as soon as the title menu is up, so the first open
+         * of the screen is a normal dirty-region update, not a raster. */
+        s_options_cache_warm = 1;
+        update_options_texture();
+    }
+#if DW3_NX_MENU_TIMING
+    else if (s_timing.session_updates) {
+        /* The screen has faded out: report the session and start a new one. */
+        timing_flush();
+        s_timing.session_updates = 0;
+        s_timing.total_max = 0;
+    }
+#endif
     /* The title is 4:3 (gutter 0); fit the canvas to it. */
     {
         int w = vw;
@@ -347,6 +532,8 @@ void dw3_nx_title_overlay_invalidate_gl(void) {
     s_art_tex = 0;
     s_logo_tex = 0;
     s_vbo = 0;
+    /* Dock/handheld context change: the new texture needs the whole canvas. */
+    dw3_options_cache_invalidate();
 }
 
 /* --- Hooks called by port/options (same names as the PC overlay) --- */

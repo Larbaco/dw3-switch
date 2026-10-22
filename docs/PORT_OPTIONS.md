@@ -329,8 +329,13 @@ art or font is shipped.
 `port/options/port_options.c` stays the registry and the input logic (rows,
 toggles, Triangle back). It hands the cursor and values to
 `dw3_pc_title_overlay_set_options_view`, which bumps the canvas generation
-only on a change, and the PC and Switch hosts re-upload their five states
-(`title_overlay_art.c`, state `DW3_TITLE_ART_OPTIONS`).
+only on a change. The PC and Switch hosts keep the options canvas in the shared
+cache `title_options_cache.c` and upload only the rectangles that changed
+(old and new row plus description on a cursor move, one cell on a value
+change, the whole canvas on open or a language change); the reference render
+is `title_overlay_art.c`, state `DW3_TITLE_ART_OPTIONS`, selectable on PC with
+`DW3_MENU_COMPOSITION=reference`. See
+[MENU_COMPOSITION_PLAN](MENU_COMPOSITION_PLAN.md).
 
 Validated in Ryubing on Xvfb with the US disc and the EU disc (language 2):
 open from the Options row, move over the rows, cycle Fast-forward through

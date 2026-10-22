@@ -4,6 +4,7 @@
 #include <psyz/overlay.h>
 #include <psyz/overlay_sdl3_gpu.h>
 #include "port_options.h"
+#include "title_options_cache.h"
 
 #include <stddef.h>
 #include <stdint.h>
@@ -51,6 +52,7 @@ static SDL_GPUDevice *g_device;
 static SDL_GPUGraphicsPipeline *g_pipeline;
 static SDL_GPUBuffer *g_vertices;
 static SDL_GPUTexture *g_texture;
+static SDL_GPUTransferBuffer *g_options_transfer;
 static SDL_GPUTexture *g_logo_texture;
 static SDL_GPUTexture *g_background_texture;
 static SDL_GPUSampler *g_background_sampler;
@@ -64,6 +66,174 @@ static int g_logo_texture_ready;
 static int g_presentation_size_checked;
 static unsigned g_art_generation;
 static unsigned g_options_generation;
+/* reference = regenerate the whole options canvas on every change (kept for
+ * comparison and as the fallback); cached = retained canvas, dirty-region
+ * raster and upload (default). */
+enum { MENU_COMPOSITION_CACHED, MENU_COMPOSITION_REFERENCE };
+static int g_menu_composition = -1;
+static int g_cache_fallback_logged;
+static FILE *g_profile_csv;
+static unsigned long long g_profile_frame;
+static unsigned long long g_profile_present_frame;
+static Uint64 g_profile_present_counter;
+static Uint64 g_profile_present_interval_ns;
+static Uint64 g_profile_frame_start;
+static Uint64 g_profile_raster_ns, g_profile_staging_ns;
+static Uint64 g_profile_submit_ns, g_profile_wait_ns;
+static size_t g_profile_upload_bytes;
+static unsigned g_profile_allocations, g_profile_rebuilds;
+static size_t g_profile_dirty_pixels;
+static unsigned g_profile_dirty_copies;
+static const char *g_profile_event = "idle";
+static int g_profile_enabled = -1;
+static int g_profile_was_options;
+static int g_profile_previous_cursor = -1;
+static int g_profile_previous_values[DW3_TITLE_OPTION_ROWS];
+static unsigned g_profile_previous_art_generation;
+static unsigned g_profile_previous_options_generation;
+static int g_profile_pending;
+static unsigned long long g_profile_pending_frame;
+static Uint64 g_profile_pending_change_counter;
+static Uint64 g_profile_pending_overlay_cpu_ns;
+static Uint64 g_profile_pending_raster_ns, g_profile_pending_staging_ns;
+static Uint64 g_profile_pending_submit_ns, g_profile_pending_wait_ns;
+static size_t g_profile_pending_upload_bytes;
+static unsigned g_profile_pending_allocations, g_profile_pending_rebuilds;
+static size_t g_profile_pending_dirty_pixels;
+static unsigned g_profile_pending_dirty_copies;
+static int g_profile_pending_cursor;
+
+static int menu_composition_mode(void) {
+    if (g_menu_composition < 0) {
+        const char *mode = getenv("DW3_MENU_COMPOSITION");
+        const char *force_fallback = getenv("DW3_MENU_FORCE_FALLBACK");
+        g_menu_composition = MENU_COMPOSITION_CACHED;
+        if (mode && strcmp(mode, "reference") == 0)
+            g_menu_composition = MENU_COMPOSITION_REFERENCE;
+        else if (mode && *mode && strcmp(mode, "cpu") != 0)
+            fprintf(stderr, "dw3-title-overlay: unsupported DW3_MENU_COMPOSITION '%s' "
+                    "(use reference or cpu); using cpu\n", mode);
+        if (force_fallback && *force_fallback) {
+            g_menu_composition = MENU_COMPOSITION_REFERENCE;
+            fprintf(stderr, "dw3-title-overlay: forced reference fallback enabled\n");
+        }
+    }
+    return g_menu_composition;
+}
+static const char *menu_composition_name(void) {
+    return menu_composition_mode() == MENU_COMPOSITION_REFERENCE ? "reference" : "cpu";
+}
+static void profile_close(void) {
+    if (g_profile_csv) fclose(g_profile_csv);
+    g_profile_csv = NULL;
+}
+
+static int profile_is_enabled(void) {
+    if (g_profile_enabled < 0) {
+        const char *path = getenv("DW3_MENU_PROFILE_CSV");
+        g_profile_enabled = path && *path;
+    }
+    return g_profile_enabled;
+}
+static Uint64 profile_counter(void) {
+    return profile_is_enabled() ? SDL_GetPerformanceCounter() : 0;
+}
+static Uint64 profile_elapsed_ns(Uint64 start) {
+    if (!profile_is_enabled()) return 0;
+    const Uint64 elapsed = profile_counter() - start;
+    const Uint64 frequency = SDL_GetPerformanceFrequency();
+    return frequency ? elapsed * 1000000000ULL / frequency : 0;
+}
+static void profile_add(Uint64 *total, Uint64 start) {
+    *total += profile_elapsed_ns(start);
+}
+static void profile_begin(void) {
+    if (!profile_is_enabled()) return;
+    const int options_open = dw3_port_options_is_open();
+    const int cursor = dw3_pc_title_overlay_options_cursor();
+    const unsigned art_generation = dw3_pc_title_overlay_generation();
+    const unsigned options_generation = dw3_pc_title_overlay_options_generation();
+    int value_changed = 0;
+    g_profile_frame++;
+    g_profile_frame_start = profile_counter();
+    g_profile_raster_ns = g_profile_staging_ns = 0;
+    g_profile_submit_ns = g_profile_wait_ns = 0;
+    g_profile_upload_bytes = 0;
+    g_profile_allocations = g_profile_rebuilds = 0;
+    g_profile_dirty_pixels = 0;
+    g_profile_dirty_copies = 0;
+    for (int i = 0; i < DW3_TITLE_OPTION_ROWS; ++i) {
+        const int value = dw3_port_options_level(i);
+        if (value != g_profile_previous_values[i]) value_changed = 1;
+    }
+    if (options_open && !g_profile_was_options) g_profile_event = "options-open";
+    else if (!options_open && g_profile_was_options) g_profile_event = "options-close";
+    else if (options_open && cursor != g_profile_previous_cursor)
+        g_profile_event = "options-cursor";
+    else if (options_open && value_changed) g_profile_event = "options-value";
+    else if (art_generation != g_profile_previous_art_generation)
+        g_profile_event = "language-rebuild";
+    else if (options_generation != g_profile_previous_options_generation)
+        g_profile_event = "options-change";
+    else g_profile_event = options_open ? "options-idle" : "title-idle";
+    g_profile_pending_change_counter = g_profile_frame_start;
+    g_profile_was_options = options_open;
+    g_profile_previous_cursor = cursor;
+    g_profile_previous_art_generation = art_generation;
+    g_profile_previous_options_generation = options_generation;
+    for (int i = 0; i < DW3_TITLE_OPTION_ROWS; ++i)
+        g_profile_previous_values[i] = dw3_port_options_level(i);
+}
+static void profile_end(void) {
+    if (!profile_is_enabled()) return;
+    g_profile_pending = 1;
+    g_profile_pending_frame = g_profile_frame;
+    g_profile_pending_overlay_cpu_ns = profile_elapsed_ns(g_profile_frame_start);
+    g_profile_pending_raster_ns = g_profile_raster_ns;
+    g_profile_pending_staging_ns = g_profile_staging_ns;
+    g_profile_pending_submit_ns = g_profile_submit_ns;
+    g_profile_pending_wait_ns = g_profile_wait_ns;
+    g_profile_pending_upload_bytes = g_profile_upload_bytes;
+    g_profile_pending_allocations = g_profile_allocations;
+    g_profile_pending_rebuilds = g_profile_rebuilds;
+    g_profile_pending_dirty_pixels = g_profile_dirty_pixels;
+    g_profile_pending_dirty_copies = g_profile_dirty_copies;
+    g_profile_pending_cursor = dw3_pc_title_overlay_options_cursor();
+}
+static void profile_overlay_draw_complete(void) {
+    const char *path = getenv("DW3_MENU_PROFILE_CSV");
+    if (!profile_is_enabled()) return;
+    g_profile_present_frame++;
+    g_profile_present_counter = profile_counter();
+    if (!g_profile_pending || !path || !*path) return;
+    if (!g_profile_csv) {
+        g_profile_csv = fopen(path, "w");
+        if (!g_profile_csv) return;
+        setvbuf(g_profile_csv, NULL, _IOFBF, 65536);
+        fprintf(g_profile_csv,
+                "mode,state_call,overlay_draw_frame,overlay_draw_counter,counter_frequency_hz,state_update_to_draw_us,event,cursor,raster_us,staging_us,submit_us,wait_us,overlay_cpu_us,upload_bytes,allocations,rebuilds,dirty_pixels,dirty_copies,gpu_elapsed_us\n");
+        atexit(profile_close);
+    }
+    const Uint64 frequency = SDL_GetPerformanceFrequency();
+    const Uint64 draw_counter = g_profile_present_counter;
+    const Uint64 latency = draw_counter >= g_profile_pending_change_counter
+        ? draw_counter - g_profile_pending_change_counter : 0;
+    fprintf(g_profile_csv,
+            "%s,%llu,%llu,%llu,%llu,%llu,%s,%d,%llu,%llu,%llu,%llu,%llu,%zu,%u,%u,%zu,%u,-1\n",
+            menu_composition_name(), g_profile_pending_frame, g_profile_present_frame,
+            (unsigned long long)draw_counter, (unsigned long long)frequency,
+            (unsigned long long)(frequency ? latency * 1000000ULL / frequency : 0),
+            g_profile_event, g_profile_pending_cursor,
+            (unsigned long long)(g_profile_pending_raster_ns / 1000ULL),
+            (unsigned long long)(g_profile_pending_staging_ns / 1000ULL),
+            (unsigned long long)(g_profile_pending_submit_ns / 1000ULL),
+            (unsigned long long)(g_profile_pending_wait_ns / 1000ULL),
+            (unsigned long long)(g_profile_pending_overlay_cpu_ns / 1000ULL),
+            g_profile_pending_upload_bytes, g_profile_pending_allocations,
+            g_profile_pending_rebuilds, g_profile_pending_dirty_pixels,
+            g_profile_pending_dirty_copies);
+    g_profile_pending = 0;
+}
 
 /* The 3x mode renders a 960x720 image. Start that opt-in mode in a 16:9
  * window so the image and native-resolution UI remain 1:1 with 160px bars. */
@@ -115,6 +285,7 @@ static void release_gpu_resources(void) {
     if (!g_device) return;
     if (g_pipeline) SDL_ReleaseGPUGraphicsPipeline(g_device, g_pipeline);
     if (g_vertices) SDL_ReleaseGPUBuffer(g_device, g_vertices);
+    if (g_options_transfer) SDL_ReleaseGPUTransferBuffer(g_device, g_options_transfer);
     if (g_texture) SDL_ReleaseGPUTexture(g_device, g_texture);
     if (g_logo_texture) SDL_ReleaseGPUTexture(g_device, g_logo_texture);
     if (g_background_texture) SDL_ReleaseGPUTexture(g_device, g_background_texture);
@@ -123,6 +294,7 @@ static void release_gpu_resources(void) {
     if (g_logo_sampler) SDL_ReleaseGPUSampler(g_device, g_logo_sampler);
     g_pipeline = NULL;
     g_vertices = NULL;
+    g_options_transfer = NULL;
     g_texture = NULL;
     g_logo_texture = NULL;
     g_background_texture = NULL;
@@ -135,6 +307,8 @@ static void release_gpu_resources(void) {
     g_overlay_active = 0;
     g_logo_active = 0;
     g_logo_texture_ready = 0;
+    /* The texture is gone; the retained canvas must be sent again. */
+    dw3_options_cache_invalidate();
 }
 
 static int upload_art_and_quad(void) {
@@ -215,7 +389,7 @@ static int upload_art_and_quad(void) {
         return -1;
     }
 
-    OverlayVertex quads[STATE_COUNT * 6 + 24];
+    OverlayVertex quads[STATE_COUNT * 6 + 30];
     for (int row = 0; row < STATE_COUNT; ++row) {
         const float u0 = 0.0f;
         const float u1 = 1.0f;
@@ -238,6 +412,14 @@ static int upload_art_and_quad(void) {
         OverlayVertex *q = &quads[STATE_COUNT * 6];
         q[0] = a; q[1] = b; q[2] = c;
         q[3] = a; q[4] = c; q[5] = d;
+    }
+    {
+        const OverlayVertex a = {{0,0},{0,0}};
+        const OverlayVertex b = {{1,0},{1,0}};
+        const OverlayVertex c = {{1,1},{1,1}};
+        const OverlayVertex d = {{0,1},{0,1}};
+        OverlayVertex *q = &quads[(STATE_COUNT + 4) * 6];
+        q[0]=a; q[1]=b; q[2]=c; q[3]=a; q[4]=c; q[5]=d;
     }
 
     /* Extend only the isolated animated backdrop. Each side samples the
@@ -467,26 +649,37 @@ static void refresh_art(void) {
     SDL_GPUTransferBuffer *transfer;
     SDL_GPUCommandBuffer *cmd;
     uint8_t *mapped;
+    Uint64 profile_start;
 
     if (!g_device || !g_texture ||
         (g_art_generation == dw3_pc_title_overlay_generation() &&
          g_options_generation == dw3_pc_title_overlay_options_generation())) return;
+    /* This path rewrites the options region of the texture from scratch; the
+     * retained canvas no longer mirrors it, so rebuild it on the next open. */
+    dw3_options_cache_release();
     if (g_art_generation == dw3_pc_title_overlay_generation()) {
         /* Only the options state changed: upload that one canvas. */
         const SDL_GPUTransferBufferCreateInfo one_info = {
             .usage = SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD,
             .size = (Uint32)canvas_bytes,
         };
+        profile_start = profile_counter();
         SDL_GPUTransferBuffer *one = SDL_CreateGPUTransferBuffer(g_device, &one_info);
         if (!one) return;
+        g_profile_allocations++;
         uint8_t *one_mapped = (uint8_t *)SDL_MapGPUTransferBuffer(g_device, one, false);
         if (!one_mapped) {
             SDL_ReleaseGPUTransferBuffer(g_device, one);
             return;
         }
+        profile_add(&g_profile_staging_ns, profile_start);
         const unsigned options_generation = dw3_pc_title_overlay_options_generation();
+        profile_start = profile_counter();
         dw3_pc_title_overlay_art(one_mapped, CANVAS_W * 4, DW3_TITLE_ART_OPTIONS);
+        profile_add(&g_profile_raster_ns, profile_start);
+        profile_start = profile_counter();
         SDL_UnmapGPUTransferBuffer(g_device, one);
+        profile_add(&g_profile_staging_ns, profile_start);
         SDL_GPUCommandBuffer *one_cmd = SDL_AcquireGPUCommandBuffer(g_device);
         if (!one_cmd) {
             SDL_ReleaseGPUTransferBuffer(g_device, one);
@@ -508,28 +701,40 @@ static void refresh_art(void) {
         };
         SDL_UploadToGPUTexture(one_copy, &one_src, &one_dst, false);
         SDL_EndGPUCopyPass(one_copy);
+        g_profile_upload_bytes += canvas_bytes;
+        g_profile_rebuilds++;
         /* Mark the canvas current only once it reached the GPU, so a failed
          * submit retries on the next frame. */
+        profile_start = profile_counter();
         if (SDL_SubmitGPUCommandBuffer(one_cmd)) {
+            profile_add(&g_profile_submit_ns, profile_start);
+            profile_start = profile_counter();
             SDL_WaitForGPUIdle(g_device);
+            profile_add(&g_profile_wait_ns, profile_start);
             g_options_generation = options_generation;
         }
+        profile_start = profile_counter();
         SDL_ReleaseGPUTransferBuffer(g_device, one);
+        profile_add(&g_profile_staging_ns, profile_start);
         return;
     }
     const SDL_GPUTransferBufferCreateInfo transfer_info = {
         .usage = SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD,
         .size = (Uint32)texture_bytes,
     };
+    profile_start = profile_counter();
     transfer = SDL_CreateGPUTransferBuffer(g_device, &transfer_info);
     if (!transfer) return;
+    g_profile_allocations++;
     mapped = (uint8_t *)SDL_MapGPUTransferBuffer(g_device, transfer, false);
     if (!mapped) {
         SDL_ReleaseGPUTransferBuffer(g_device, transfer);
         return;
     }
+    profile_add(&g_profile_staging_ns, profile_start);
     g_art_generation = dw3_pc_title_overlay_generation();
     g_options_generation = dw3_pc_title_overlay_options_generation();
+    profile_start = profile_counter();
     for (int state = 0; state < STATE_COUNT; ++state) {
         const int selected = state == 0 ? -1 :
                              state == STATE_OPTIONS ? DW3_TITLE_ART_OPTIONS :
@@ -537,7 +742,10 @@ static void refresh_art(void) {
         dw3_pc_title_overlay_art(mapped + (size_t)state * canvas_bytes,
                                  CANVAS_W * 4, selected);
     }
+    profile_add(&g_profile_raster_ns, profile_start);
+    profile_start = profile_counter();
     SDL_UnmapGPUTransferBuffer(g_device, transfer);
+    profile_add(&g_profile_staging_ns, profile_start);
     cmd = SDL_AcquireGPUCommandBuffer(g_device);
     if (!cmd) {
         SDL_ReleaseGPUTransferBuffer(g_device, transfer);
@@ -557,9 +765,94 @@ static void refresh_art(void) {
     };
     SDL_UploadToGPUTexture(copy, &src, &dst, false);
     SDL_EndGPUCopyPass(copy);
+    g_profile_upload_bytes += texture_bytes;
+    g_profile_rebuilds++;
+    profile_start = profile_counter();
     SDL_SubmitGPUCommandBuffer(cmd);
+    profile_add(&g_profile_submit_ns, profile_start);
+    profile_start = profile_counter();
     SDL_WaitForGPUIdle(g_device);
+    profile_add(&g_profile_wait_ns, profile_start);
+    profile_start = profile_counter();
     SDL_ReleaseGPUTransferBuffer(g_device, transfer);
+    profile_add(&g_profile_staging_ns, profile_start);
+}
+
+/* Copy the dirty rects of the shared options cache into the retained texture.
+ * One tightly packed staging buffer, reused between updates. */
+static int upload_options_dirty(const Dw3OptionsDirty *dirty) {
+    size_t offset = 0;
+    SDL_GPUTransferBuffer *transfer = g_options_transfer;
+    SDL_GPUCommandBuffer *cmd;
+    uint8_t *mapped;
+    Uint64 start;
+    if (!dirty->bytes) return 0;
+    start = profile_counter();
+    if (!transfer) {
+        const SDL_GPUTransferBufferCreateInfo transfer_info = {
+            .usage = SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD,
+            .size = (Uint32)((size_t)CANVAS_W * CANVAS_H * 4),
+        };
+        transfer = SDL_CreateGPUTransferBuffer(g_device, &transfer_info);
+        if (!transfer) return -1;
+        g_options_transfer = transfer;
+        g_profile_allocations++;
+    }
+    mapped = (uint8_t *)SDL_MapGPUTransferBuffer(g_device, transfer, false);
+    if (!mapped) return -1;
+    for (int i = 0; i < dirty->count; ++i) {
+        dw3_options_cache_pack_rect(dirty->rects[i], mapped + offset);
+        offset += (size_t)dirty->rects[i].w * dirty->rects[i].h * 4;
+    }
+    SDL_UnmapGPUTransferBuffer(g_device, transfer);
+    profile_add(&g_profile_staging_ns, start);
+    cmd = SDL_AcquireGPUCommandBuffer(g_device);
+    if (!cmd) return -1;
+    SDL_GPUCopyPass *copy = SDL_BeginGPUCopyPass(cmd);
+    offset = 0;
+    for (int i = 0; i < dirty->count; ++i) {
+        const Dw3OptionsRect rect = dirty->rects[i];
+        const SDL_GPUTextureTransferInfo src = {
+            .transfer_buffer = transfer,
+            .offset = (Uint32)offset,
+            .pixels_per_row = (Uint32)rect.w,
+            .rows_per_layer = (Uint32)rect.h,
+        };
+        const SDL_GPUTextureRegion dst = {
+            .texture = g_texture, .x = (Uint32)rect.x,
+            .y = STATE_OPTIONS * CANVAS_H + (Uint32)rect.y,
+            .w = (Uint32)rect.w, .h = (Uint32)rect.h, .d = 1,
+        };
+        SDL_UploadToGPUTexture(copy, &src, &dst, false);
+        offset += (size_t)rect.w * rect.h * 4;
+    }
+    SDL_EndGPUCopyPass(copy);
+    g_profile_upload_bytes += dirty->bytes;
+    for (int i = 0; i < dirty->count; ++i)
+        g_profile_dirty_pixels += (size_t)dirty->rects[i].w * dirty->rects[i].h;
+    g_profile_dirty_copies += (unsigned)dirty->count;
+    start = profile_counter();
+    const bool submitted = SDL_SubmitGPUCommandBuffer(cmd);
+    profile_add(&g_profile_submit_ns, start);
+    if (submitted) {
+        start = profile_counter();
+        SDL_WaitForGPUIdle(g_device);
+        profile_add(&g_profile_wait_ns, start);
+    }
+    return submitted ? 0 : -1;
+}
+
+static int refresh_art_cached(void) {
+    Dw3OptionsDirty dirty;
+    Uint64 start = profile_counter();
+    if (dw3_options_cache_update(&dirty) != 0) return -1;
+    profile_add(&g_profile_raster_ns, start);
+    if (!dirty.count) return 0;
+    if (dirty.rebuilt || dirty.full) g_profile_rebuilds++;
+    if (upload_options_dirty(&dirty) != 0) return -1;
+    dw3_options_cache_commit();
+    g_options_generation = dw3_pc_title_overlay_options_generation();
+    return 0;
 }
 
 int dw3_pc_title_background_rgba(const uint8_t *rgba, int width,
@@ -579,20 +872,38 @@ void dw3_pc_title_menu_logo_set_active(int active) {
 void dw3_pc_title_menu_set_fade(int level) { (void)level; }
 
 void dw3_pc_title_menu_set_state(int active, int selected) {
+    const int composition = menu_composition_mode();
+    profile_begin();
     /* The options screen replaces the menu and the logo while it is open. */
     if (dw3_port_options_is_open() && g_pipeline && g_texture && g_vertices &&
         g_sampler) {
-        refresh_art();
+        if (composition == MENU_COMPOSITION_CACHED) {
+            if (refresh_art_cached() != 0) {
+                if (!g_cache_fallback_logged) {
+                    fprintf(stderr, "dw3-title-overlay: dirty-region cache unavailable; restoring reference artwork\n");
+                    g_cache_fallback_logged = 1;
+                }
+                /* Draw the reference texture; retry the cache on the next change. */
+                dw3_options_cache_invalidate();
+                g_options_generation = ~dw3_pc_title_overlay_options_generation();
+                refresh_art();
+            }
+        } else {
+            refresh_art();
+        }
         g_selection = STATE_OPTIONS;
         g_overlay_active = 1;
+        profile_end();
         return;
     }
     if (!active || !g_pipeline || !g_texture || !g_vertices || !g_sampler) {
         g_overlay_active = 0;
+        profile_end();
         return;
     }
     if (selected == -2) {
         g_overlay_active = 0;
+        profile_end();
         return;
     }
     if (selected < 0) g_selection = 0;
@@ -600,6 +911,7 @@ void dw3_pc_title_menu_set_state(int active, int selected) {
     else g_selection = selected + 1;
     refresh_art();
     g_overlay_active = 1;
+    profile_end();
 }
 
 static void render_overlay(SDL_GPUCommandBuffer *cmd, SDL_GPURenderPass *pass) {
@@ -664,17 +976,20 @@ static void render_overlay(SDL_GPUCommandBuffer *cmd, SDL_GPURenderPass *pass) {
         SDL_DrawGPUPrimitives(pass, 6, 1, STATE_COUNT * 6, 0);
     }
     if (!g_overlay_active) return;
+    SDL_BindGPUGraphicsPipeline(pass, g_pipeline);
     const SDL_GPUTextureSamplerBinding sampler_binding = {
         .texture = g_texture,
         .sampler = g_sampler,
     };
     SDL_BindGPUFragmentSamplers(pass, 0, &sampler_binding, 1);
     SDL_DrawGPUPrimitives(pass, 6, 1, (Uint32)(g_selection * 6), 0);
+    profile_overlay_draw_complete();
     (void)cmd;
 }
 
 static void destroy_overlay(void) {
     release_gpu_resources();
+    dw3_options_cache_release();
 }
 
 void dw3_pc_title_menu_overlay_register(void) {

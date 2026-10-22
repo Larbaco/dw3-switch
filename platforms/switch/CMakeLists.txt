@@ -161,6 +161,7 @@ add_executable(dw3-switch
 # them over the GLES present. Same macro as PC selects the title patches.
 target_sources(dw3-switch PRIVATE
   ${CMAKE_CURRENT_SOURCE_DIR}/../pc/src/title_overlay_art.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/../pc/src/title_options_cache.c
   ${CMAKE_CURRENT_SOURCE_DIR}/../pc/src/title_logo_resample.c
 )
 target_compile_definitions(dw3_title PRIVATE DW3_TITLE_NATIVE_OVERLAY=1)
