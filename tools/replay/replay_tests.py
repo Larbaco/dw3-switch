@@ -2,9 +2,16 @@
 """P6.15 regression replay runner (driven by tools/replay_tests.sh).
 
 Replays the pad recordings in tools/replay/scenarios/ against the PC host build
-under Xvfb, one scenario per process with a fresh memory-card dir, collects the
-checkpoint screenshots the port writes (DW3_REPLAY_OUT) and compares them to
-reference captures kept OUTSIDE git. Exit status 0 = every checkpoint matched.
+under Xvfb, collects the checkpoint screenshots the port writes
+(DW3_REPLAY_OUT) and compares them to reference captures kept OUTSIDE git.
+Scenarios (tools/replay/manifest.py) are one or more phases; the phases of a
+scenario share one memory-card dir, every scenario starts from a fresh one.
+
+Per phase the runner issues a process verdict that is separate from the image
+diff: CRASH (killed by a signal), EXIT (non-zero exit status), HANG (no game
+frame progress for --stall seconds), TIMEOUT, NOEND (exited 0 before the
+recording's end frame). Soak scenarios also get a memory verdict from the
+process RSS. Exit status 0 = every check passed.
 
 Only PIL is needed (python3-pil). Xvfb and ImageMagick `import` must be on PATH.
 """
@@ -19,11 +26,18 @@ import re
 import shutil
 import subprocess
 import sys
+import signal
+import statistics
 import tempfile
+import threading
 import time
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 from PIL import Image, ImageChops
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import manifest  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[2]
 SCEN_DIR = Path(__file__).resolve().parent / "scenarios"
@@ -39,14 +53,7 @@ CHANNEL_TOL = 8
 MAX_DIFF_RATIO = 0.001
 MAX_REPLAY_FRAME = (1 << (8 * ctypes.sizeof(ctypes.c_uint))) - 1
 
-SCENARIOS = [  # (name, version)
-    ("us-title", "us"),
-    ("eu-lang-en", "eu"),
-    ("eu-lang-fr", "eu"),
-    ("eu-lang-de", "eu"),
-    ("eu-lang-it", "eu"),
-    ("eu-lang-es", "eu"),
-]
+SCENARIOS = manifest.SCENARIOS
 ARTIFACTS = ("png", "ppm")  # window grab (with host overlays), PS1 display frame
 
 
@@ -127,66 +134,311 @@ def start_xvfb(work: Path):
     return p, ":" + disp
 
 
-def run_scenario(name, version, binary, runtime, display, outdir: Path, stamp, timeout):
+# --- process verdicts -------------------------------------------------------
+
+FRAME_RE = re.compile(rb"dw3-replay: (?:frame|end at frame|shot \S+ frame=)\s*=?(\d+)")
+RESTORE_RE = re.compile(r"dw3: overlay restore file=0x([0-9a-f]+) kind=(mode|sub|unknown)")
+# Memory sanity for soak runs (see docs/P6.15_REPLAY_TESTS.md): RSS may not
+# grow monotonically by more than this over the analysed window.
+RSS_GROWTH_MIB = 48
+RSS_SAMPLE_SECS = 5.0
+DEFAULT_STALL = 120  # seconds without game-frame progress => HANG
+
+
+def rss_kib(pid: int) -> int | None:
+    try:
+        with open(f"/proc/{pid}/status") as f:
+            for line in f:
+                if line.startswith("VmRSS:"):
+                    return int(line.split()[1])
+    except OSError:
+        return None
+    return None
+
+
+def rss_verdict(samples, from_frame: int):
+    """samples: [(frame, rss_kib)]. Returns (ok, detail).
+
+    Window = samples at game frame >= from_frame, split into four equal
+    chunks; the chunk medians are compared. FAIL when they rise strictly
+    chunk over chunk (monotonic growth) AND the last median is more than
+    RSS_GROWTH_MIB above the first. Needs 8+ samples, else the check is
+    skipped (reported, not failed).
+    """
+    win = [(f, r) for f, r in samples if f >= from_frame and r]
+    if not samples:
+        return True, "no RSS samples"
+    peak = max(r for _, r in samples) / 1024
+    if len(win) < 8:
+        return True, f"peak {peak:.0f} MiB (window too short for a growth check)"
+    q = len(win) // 4
+    med = [statistics.median(r for _, r in win[i * q:(i + 1) * q if i < 3 else len(win)])
+           for i in range(4)]
+    growth = (med[3] - med[0]) / 1024
+    mono = med[0] < med[1] < med[2] < med[3]
+    detail = (f"RSS peak {peak:.0f} MiB, window medians "
+              + "/".join(f"{m / 1024:.0f}" for m in med)
+              + f" MiB, growth {growth:+.1f} MiB (limit {RSS_GROWTH_MIB}, monotonic={mono})")
+    return not (mono and growth > RSS_GROWTH_MIB), detail
+
+
+def parse_restores(text: str):
+    return [(int(m.group(1), 16), m.group(2)) for m in RESTORE_RE.finditer(text)]
+
+
+def check_restores(log_text: str, expect):
+    """Returns a list of problems: unknown overlay restores, missing/out of
+    order expected restores (subsequence match)."""
+    got = parse_restores(log_text)
+    problems = []
+    unknown = [f for f, k in got if k == "unknown"]
+    if unknown:
+        problems.append("unknown overlay restore(s): " +
+                        ", ".join(f"0x{f:x}" for f in unknown[:5]))
+    it = iter(got)
+    for want in expect:
+        if not any(g == want for g in it):
+            problems.append(f"overlay restore 0x{want[0]:x} kind={want[1]} missing or out of order")
+            break
+    return problems
+
+
+def run_phase(rec: Path, version, binary, runtime, display, outdir: Path, memdir: Path,
+              stamp, label, timeout, stall, turbo, sample_rss=True):
+    """One process run. Returns a dict with rc/verdict/seconds/frames/rss/log."""
     outdir.mkdir(parents=True, exist_ok=True)
-    memdir = Path(tempfile.mkdtemp(prefix="dw3-replay-mc-"))
     xdg = Path(tempfile.mkdtemp(prefix="dw3-replay-xdg-"))
     os.chmod(xdg, 0o700)
     env = dict(os.environ, DISPLAY=display, XDG_RUNTIME_DIR=str(xdg),
                SDL_AUDIODRIVER="dummy", DW3_RUNTIME=str(runtime),
                DW3_MEMCARD_DIR=str(memdir),
-               DW3_REPLAY=str(SCEN_DIR / f"{name}.rec"),
+               DW3_REPLAY=str(rec),
                DW3_REPLAY_OUT=str(outdir), DW3_REPLAY_XSHOT="1")
-    for k in ("DW3_AUTO_PAD", "DW3_REPLAY_RECORD", "DW3_PC_INTERNAL_RES"):
+    for k in ("DW3_AUTO_PAD", "DW3_REPLAY_RECORD", "DW3_PC_INTERNAL_RES", "DW3_TURBO"):
         env.pop(k, None)
-    log = outdir / f"{stamp}-{name}.log"  # rule 9: timestamped logs kept
+    if turbo:
+        env["DW3_TURBO"] = str(turbo)
+    log = outdir / f"{stamp}-{label}.log"  # rule 9: timestamped logs kept
     t0 = time.time()
-    try:
-        with open(log, "w") as lf:
-            rc = subprocess.run([str(binary)], env=env, stdout=lf, stderr=subprocess.STDOUT,
-                                timeout=timeout, cwd=outdir).returncode
-    except subprocess.TimeoutExpired:
-        rc = "timeout"
-    shutil.rmtree(memdir, ignore_errors=True)
+    last_frame, last_progress = 0, t0
+    rss, verdict, detail = [], "OK", ""
+    with open(log, "wb") as lf:
+        proc = subprocess.Popen([str(binary)], env=env, stdout=lf, stderr=subprocess.STDOUT,
+                                cwd=outdir, start_new_session=True)
+        pos, next_rss = 0, t0
+        while True:
+            try:
+                proc.wait(1.0)
+            except subprocess.TimeoutExpired:
+                pass
+            now = time.time()
+            with open(log, "rb") as rf:  # new log bytes -> game-frame progress
+                rf.seek(pos)
+                chunk = rf.read()
+                pos += len(chunk)
+            for m in FRAME_RE.finditer(chunk):
+                f = int(m.group(1))
+                if f > last_frame:
+                    last_frame, last_progress = f, now
+            if sample_rss and now >= next_rss and proc.poll() is None:
+                r = rss_kib(proc.pid)
+                if r:
+                    rss.append((last_frame, r))
+                next_rss = now + RSS_SAMPLE_SECS
+            if proc.poll() is not None:
+                break
+            if now - t0 > timeout:
+                verdict, detail = "TIMEOUT", f"over {timeout}s (last frame {last_frame})"
+            elif now - last_progress > stall:
+                verdict, detail = "HANG", f"no game-frame progress for {stall}s (last frame {last_frame})"
+            if verdict != "OK":
+                try:
+                    os.killpg(proc.pid, signal.SIGKILL)
+                except ProcessLookupError:
+                    pass
+                proc.wait()
+                break
+    rc = proc.returncode
+    text = log.read_bytes()
+    if verdict == "OK":
+        for m in FRAME_RE.finditer(text[pos:]):
+            last_frame = max(last_frame, int(m.group(1)))
+        if rc is not None and rc < 0:
+            try:
+                sig = signal.Signals(-rc).name
+            except ValueError:
+                sig = str(-rc)
+            verdict, detail = "CRASH", f"killed by {sig} (last frame {last_frame})"
+        elif rc != 0:
+            verdict, detail = "EXIT", f"exit status {rc} (last frame {last_frame})"
+        elif b"dw3-replay: end at frame" not in text:
+            verdict, detail = "NOEND", f"exited 0 before the recording's end (last frame {last_frame})"
     shutil.rmtree(xdg, ignore_errors=True)
-    return rc, time.time() - t0
+    return dict(rc=rc, verdict=verdict, detail=detail, secs=time.time() - t0,
+                frame=last_frame, rss=rss, log=log)
 
 
 def shot_names(name):
-    rec = SCEN_DIR / f"{name}.rec"
-    if not rec.is_file():
-        raise ValueError(f"missing recording: {rec}")
-    shots = []
-    seen_names = set()
-    previous_frame = -1
-    for number, line in enumerate(rec.read_text().splitlines(), start=1):
-        fields = line.split("#", 1)[0].split()
-        if not fields or fields[0] != "shot":
-            continue
-        if len(fields) != 3 or not fields[1].isdigit():
-            raise ValueError(f"{rec}:{number}: malformed shot directive")
-        frame = int(fields[1])
-        if frame < 1 or frame > MAX_REPLAY_FRAME:
-            raise ValueError(
-                f"{rec}:{number}: checkpoint frame must be in 1..{MAX_REPLAY_FRAME}")
-        if frame <= previous_frame:
-            raise ValueError(f"{rec}:{number}: checkpoint frames must increase strictly")
-        previous_frame = frame
-        if not re.fullmatch(r"[A-Za-z0-9_-]+", fields[2]):
-            raise ValueError(f"{rec}:{number}: unsafe checkpoint name {fields[2]!r}")
-        if fields[2] in seen_names:
-            raise ValueError(f"{rec}:{number}: duplicate checkpoint name {fields[2]!r}")
-        seen_names.add(fields[2])
-        shots.append(fields[2])
+    """Checkpoint names of a scenario (all phases, in order), validated."""
+    sc = manifest.by_name().get(name)
+    phases = sc.phases if sc else (name,)
+    shots, seen_names = [], set()
+    for phase in phases:
+        rec = SCEN_DIR / f"{phase}.rec"
+        if not rec.is_file():
+            raise ValueError(f"missing recording: {rec}")
+        previous_frame = -1
+        for number, line in enumerate(rec.read_text().splitlines(), start=1):
+            fields = line.split("#", 1)[0].split()
+            if not fields or fields[0] != "shot":
+                continue
+            if len(fields) != 3 or not fields[1].isdigit():
+                raise ValueError(f"{rec}:{number}: malformed shot directive")
+            frame = int(fields[1])
+            if frame < 1 or frame > MAX_REPLAY_FRAME:
+                raise ValueError(
+                    f"{rec}:{number}: checkpoint frame must be in 1..{MAX_REPLAY_FRAME}")
+            if frame <= previous_frame:
+                raise ValueError(f"{rec}:{number}: checkpoint frames must increase strictly")
+            previous_frame = frame
+            if not re.fullmatch(r"[A-Za-z0-9_-]+", fields[2]):
+                raise ValueError(f"{rec}:{number}: unsafe checkpoint name {fields[2]!r}")
+            if fields[2] in seen_names:
+                raise ValueError(f"{rec}:{number}: duplicate checkpoint name {fields[2]!r}")
+            seen_names.add(fields[2])
+            shots.append(fields[2])
     if not shots:
-        raise ValueError(f"recording has no checkpoints: {rec}")
+        raise ValueError(f"scenario has no checkpoints: {name}")
     return shots
+
+
+def run_scenario(sc, binary, runtime, out: Path, stamp, label, stall, timeout_scale=1.0,
+                 no_turbo=False):
+    """Run all phases of one scenario under its own Xvfb. Returns
+    (phase_results, sdir). Phases share one memcard dir."""
+    sdir = out / label
+    sdir.mkdir(parents=True, exist_ok=True)
+    memdir = Path(tempfile.mkdtemp(prefix="dw3-replay-mc-"))
+    xvfb, display = start_xvfb(sdir)
+    results = []
+    try:
+        for i, phase in enumerate(sc.phases):
+            r = run_phase(SCEN_DIR / f"{phase}.rec", sc.version, binary, runtime, display,
+                          sdir, memdir, stamp, f"{sc.name}-p{i + 1}" if len(sc.phases) > 1 else sc.name,
+                          int(sc.timeout * timeout_scale), stall, 0 if no_turbo else sc.turbo,
+                          sample_rss=True)
+            r["phase"] = phase
+            results.append(r)
+            if r["verdict"] != "OK":
+                break  # later phases depend on this one
+    finally:
+        xvfb.terminate()
+        try:
+            xvfb.wait(5)
+        except subprocess.TimeoutExpired:
+            xvfb.kill()
+        shutil.rmtree(memdir, ignore_errors=True)
+    return results, sdir
+
+
+def judge_scenario(sc, results, sdir, refs: Path, checkpoints, update, labelname=None):
+    """Rows (scenario, checkpoint, result, detail) for one finished scenario."""
+    name = sc.name
+    rows = []
+    bad_proc = False
+    for r in results:
+        ph = f" {r['phase']}" if len(results) > 1 else ""
+        if r["verdict"] != "OK":
+            bad_proc = True
+            rows.append((name, f"(process{ph})", r["verdict"], r["detail"]))
+        else:
+            rows.append((name, f"(process{ph})", "PASS",
+                         f"{r['secs']:.0f}s, {r['frame']} game frames"))
+    log_text = "\n".join(r["log"].read_text(errors="replace") for r in results)
+    probs = check_restores(log_text, sc.expect_restore)
+    for p in probs:
+        rows.append((name, "(markers)", "FAIL", p))
+    if not probs and (sc.expect_restore or results):
+        rows.append((name, "(markers)", "PASS",
+                     f"{len(parse_restores(log_text))} overlay restores, none unknown"))
+    if sc.tier == "soak" or sc.rss_from_frame:
+        samples = [s for r in results for s in r["rss"]]
+        ok, detail = rss_verdict(samples, sc.rss_from_frame)
+        rows.append((name, "(memory)", "PASS" if ok else "FAIL", detail))
+    else:
+        peaks = [max((x for _, x in r["rss"]), default=0) for r in results]
+        if peaks and max(peaks):
+            rows.append((name, "(memory)", "INFO", f"RSS peak {max(peaks) / 1024:.0f} MiB"))
+    for shot in checkpoints:
+        for ext in ARTIFACTS:
+            got = sdir / f"{shot}.{ext}"
+            ref = refs / name / f"{shot}.{ext}"
+            label = f"{shot}.{ext}"
+            if not got.is_file():
+                rows.append((name, label, "FAIL",
+                             "no capture (process did not get that far)" if bad_proc else "no capture"))
+                continue
+            if update:
+                if bad_proc:
+                    rows.append((name, label, "FAIL", "not writing a reference from a failed run"))
+                    continue
+                ref.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copyfile(got, ref)
+                rows.append((name, label, "REF", "reference written"))
+                continue
+            if not ref.is_file():
+                rows.append((name, label, "FAIL", "no reference (run with --update)"))
+                continue
+            diff = sdir / f"{shot}.{ext}.diff.png"
+            n, total, err = compare_images(ref, got, diff)
+            if err:
+                rows.append((name, label, "FAIL", err))
+            elif n / total > MAX_DIFF_RATIO:
+                rows.append((name, label, "FAIL", f"{n} px differ ({100 * n / total:.3f}%) -> {diff}"))
+            else:
+                rows.append((name, label, "PASS", f"{n} px differ"))
+    return rows
+
+
+def determinism_rows(sc, dir_a: Path, dir_b: Path, checkpoints):
+    """Two runs of the same scenario must produce identical captures."""
+    rows = []
+    for shot in checkpoints:
+        for ext in ARTIFACTS:
+            a, b = dir_a / f"{shot}.{ext}", dir_b / f"{shot}.{ext}"
+            label = f"{shot}.{ext}"
+            if not a.is_file() or not b.is_file():
+                rows.append((sc.name, label, "FAIL", "missing capture in one of the runs"))
+                continue
+            if ext == "ppm":
+                same = a.read_bytes() == b.read_bytes()
+                rows.append((sc.name, label, "PASS" if same else "FAIL",
+                             "byte-identical" if same else "PPM differs between runs"))
+            else:
+                n, total, err = compare_images(a, b, None)
+                ok = err is None and n == 0
+                rows.append((sc.name, label, "PASS" if ok else "FAIL",
+                             "0 px differ" if ok else (err or f"{n} px differ between runs")))
+    return rows
 
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--update", action="store_true", help="(re)generate references from this run")
     ap.add_argument("--only", action="append", help="scenario name (repeatable)")
+    ap.add_argument("--quick", action="store_true",
+                    help="title-menu scenarios only (the original fast set, ~1 minute)")
+    ap.add_argument("--soak", action="store_true",
+                    help="also run the soak scenarios (15-20 min of game time each)")
+    ap.add_argument("--list", action="store_true", help="list scenarios and exit")
+    ap.add_argument("--twice", action="store_true",
+                    help="run every selected scenario twice and require identical captures "
+                         "(determinism check; needs no references)")
+    ap.add_argument("--no-turbo", action="store_true", help="ignore the per-scenario DW3_TURBO speed")
+    ap.add_argument("--jobs", type=int, default=3, help="scenarios run in parallel (default 3)")
+    ap.add_argument("--stall", type=int, default=DEFAULT_STALL,
+                    help=f"seconds without game-frame progress before HANG (default {DEFAULT_STALL})")
+    ap.add_argument("--timeout-scale", type=float, default=1.0)
     ap.add_argument("--refs", default=os.environ.get(
         "DW3_REPLAY_REFS", str(Path.home() / ".cache/dw3-switch/replay-refs")),
         help="reference dir, OUTSIDE git (default ~/.cache/dw3-switch/replay-refs)")
@@ -198,24 +450,37 @@ def main():
     ap.add_argument("--runtime-eu")
     ap.add_argument("--build", action="store_true", help="configure+build dw3-pc (us, eu) under --out")
     ap.add_argument("--scen-dir", help="recordings dir (default tools/replay/scenarios)")
-    ap.add_argument("--timeout", type=int, default=180)
+    ap.add_argument("--timeout", type=int, default=None,
+                    help="override every scenario's per-phase timeout (seconds)")
     a = ap.parse_args()
 
     global SCEN_DIR
     if a.scen_dir:
         SCEN_DIR = Path(a.scen_dir).expanduser().resolve()
-    selected = {name for name, _ in SCENARIOS}
+    if a.list:
+        for sc in SCENARIOS:
+            print(f"{sc.name:<22} {sc.version} {sc.tier:<5} phases={len(sc.phases)} {sc.note}")
+        return 0
+    names = {sc.name for sc in SCENARIOS}
     if a.only:
-        unknown = sorted(set(a.only) - selected)
+        unknown = sorted(set(a.only) - names)
         if unknown:
             ap.error(f"unknown scenario(s): {', '.join(unknown)}")
-        selected.intersection_update(a.only)
+        selected = set(a.only)
+    elif a.quick:
+        selected = {sc.name for sc in SCENARIOS if sc.tier == "quick"}
+    else:
+        tiers = {"quick", "full"} | ({"soak"} if a.soak else set())
+        selected = {sc.name for sc in SCENARIOS if sc.tier in tiers}
     if not selected:
         ap.error("no scenarios selected")
     try:
-        checkpoints = {name: shot_names(name) for name in selected}
+        checkpoints = {n: shot_names(n) for n in selected}
     except (OSError, ValueError) as exc:
         ap.error(str(exc))
+    if a.timeout:
+        for sc in SCENARIOS:
+            object.__setattr__(sc, "timeout", a.timeout)
 
     stamp = dt.datetime.now().strftime("%Y%m%d-%H%M%S")
     out = Path(a.out).expanduser().resolve() / stamp
@@ -242,60 +507,45 @@ def main():
         bins[v] = Path(arg).expanduser().resolve() if arg else None
         runtimes[v] = find_runtime(v, getattr(a, f"runtime_{v}"))
 
-    if a.build:
-        # `out` is absolute, so build_host returns paths safe after child cwd changes.
-        bins = {v: p.resolve() if p else None for v, p in bins.items()}
+    todo = [sc for sc in SCENARIOS if sc.name in selected]
+    # Long scenarios first so the parallel pool finishes earlier.
+    order = sorted(todo, key=lambda sc: -sc.timeout * len(sc.phases))
+    lock = threading.Lock()
+    rows_by = {}
 
-    xvfb, display = start_xvfb(out)
-    rows = []
-    try:
-        for name, ver in SCENARIOS:
-            if name not in selected:
-                continue
-            if not bins[ver] or not bins[ver].is_file() or runtimes[ver] is None:
-                rows.append((name, "-", "SKIP", f"missing {'binary' if not bins[ver] else 'runtime'} for {ver}"))
-                continue
-            sdir = out / name
-            rc, secs = run_scenario(name, ver, bins[ver], runtimes[ver], display, sdir, stamp, a.timeout)
-            for shot in checkpoints[name]:
-                for ext in ARTIFACTS:
-                    got = sdir / f"{shot}.{ext}"
-                    ref = refs / name / f"{shot}.{ext}"
-                    label = f"{shot}.{ext}"
-                    if not got.is_file():
-                        rows.append((name, label, "FAIL", f"no capture (rc={rc})"))
-                        continue
-                    if a.update:
-                        ref.parent.mkdir(parents=True, exist_ok=True)
-                        shutil.copyfile(got, ref)
-                        rows.append((name, label, "REF", "reference written"))
-                        continue
-                    if not ref.is_file():
-                        rows.append((name, label, "FAIL", "no reference (run with --update)"))
-                        continue
-                    diff = sdir / f"{shot}.{ext}.diff.png"
-                    n, total, err = compare_images(ref, got, diff)
-                    if err:
-                        rows.append((name, label, "FAIL", err))
-                    elif n / total > MAX_DIFF_RATIO:
-                        rows.append((name, label, "FAIL", f"{n} px differ ({100*n/total:.3f}%) -> {diff}"))
-                    else:
-                        rows.append((name, label, "PASS", f"{n} px differ"))
-            if rc != 0:
-                rows.append((name, "(process)", "FAIL", f"exit {rc}"))
-            print(f"[{name}] done in {secs:.1f}s rc={rc}", flush=True)
-    finally:
-        xvfb.terminate()
-        try:
-            xvfb.wait(5)
-        except subprocess.TimeoutExpired:
-            xvfb.kill()
+    def job(sc):
+        if not bins[sc.version] or not bins[sc.version].is_file() or runtimes[sc.version] is None:
+            return sc.name, [(sc.name, "-", "SKIP", f"missing {'binary' if not bins[sc.version] else 'runtime'} for {sc.version}")]
+        rows = []
+        runs = []
+        for run in (("a", "b") if a.twice else ("",)):
+            label = f"{sc.name}-{run}" if run else sc.name
+            results, sdir = run_scenario(sc, bins[sc.version], runtimes[sc.version], out, stamp,
+                                         label, a.stall, a.timeout_scale, a.no_turbo)
+            runs.append((results, sdir))
+            ok = all(r["verdict"] == "OK" for r in results)
+            with lock:
+                print(f"[{label}] done in {sum(r['secs'] for r in results):.0f}s "
+                      f"{'ok' if ok else results[-1]['verdict'] + ' ' + results[-1]['detail']}", flush=True)
+        # Run `a` is the run judged against the references (or written by --update).
+        rows += judge_scenario(sc, runs[0][0], runs[0][1], refs, checkpoints[sc.name], a.update)
+        if a.twice:
+            if all(r["verdict"] == "OK" for res, _ in runs for r in res):
+                rows += determinism_rows(sc, runs[0][1], runs[1][1], checkpoints[sc.name])
+            else:
+                rows.append((sc.name, "(determinism)", "FAIL", "the second run failed; no comparison"))
+        return sc.name, rows
+
+    with ThreadPoolExecutor(max_workers=max(1, a.jobs)) as pool:
+        for name, rows in pool.map(job, order):
+            rows_by[name] = rows
+    rows = [r for sc in todo for r in rows_by.get(sc.name, [])]
 
     w = max(len(r[0]) for r in rows) if rows else 8
-    lines = [f"{'scenario':<{w}}  {'checkpoint':<20} result  detail"]
+    lines = [f"{'scenario':<{w}}  {'checkpoint':<20} result   detail"]
     for r in rows:
-        lines.append(f"{r[0]:<{w}}  {r[1]:<20} {r[2]:<6}  {r[3]}")
-    bad = [r for r in rows if r[2] in ("FAIL", "SKIP")]
+        lines.append(f"{r[0]:<{w}}  {r[1]:<20} {r[2]:<8} {r[3]}")
+    bad = [r for r in rows if r[2] not in ("PASS", "REF", "INFO")]
     lines.append(f"\n{len(rows)} checks, {len(bad)} failed/skipped; results in {out}")
     text = "\n".join(lines)
     print(text)

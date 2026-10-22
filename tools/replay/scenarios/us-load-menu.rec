@@ -1,0 +1,17 @@
+# US: title, Load Game on an empty card
+pad 20 0x0008
+pad 25 0x0000
+pad 210 0x0008
+pad 215 0x0000
+pad 320 0x0040
+pad 325 0x0000
+pad 340 0x0040
+pad 345 0x0000
+shot 370 load-selected
+pad 380 0x4000
+pad 385 0x0000
+shot 710 slot-choice
+pad 730 0x4000
+pad 735 0x0000
+shot 910 not-found
+end 930
