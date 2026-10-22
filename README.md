@@ -259,8 +259,11 @@ No disc needed.
 ```bash
 python3 -m pytest tools/tests -q
 
-# P6.15 pad-replay regression run (US + EU x5 languages, Xvfb):
-# tools/replay_tests.sh  (docs/P6.15_REPLAY_TESTS.md)
+# P6.15 pad-replay regression run (needs the owner's discs; Xvfb):
+# tools/replay_tests.sh --quick   title menus, US + EU x5 languages
+# tools/replay_tests.sh           + new game, field walk, load menu (US + EU)
+# tools/replay_ryubing.sh         the Switch build in Ryubing
+# (docs/P6.15_REPLAY_TESTS.md)
 ```
 
 ## Repository layout

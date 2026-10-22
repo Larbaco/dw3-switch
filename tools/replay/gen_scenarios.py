@@ -240,7 +240,7 @@ def load_menu(version):
 
 def repro_balloon(version):
     """Known PC crash: walking DOWN/LEFT in the lobby reaches a null
-    dereference in FIELDSTG_drawBalloon (reproduced on US at frame ~17410; the same walk on EU does not crash)."""
+    dereference in FIELDSTG_drawBalloon (reproduced on US at frame ~17400-17440; the same walk on EU does not crash)."""
     r = Rec(f"{version.upper()}: lobby walk that crashes FIELDSTG_drawBalloon (known bug)")
     new_game_opening(r, version)
     s = Script(r, LOBBY - 80)
