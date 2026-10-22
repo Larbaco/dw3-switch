@@ -313,6 +313,47 @@ def bridge_partner_gate(version):
     return r
 
 
+# Two consecutive battles (overlay restore of the WFIGHTMN sub-overlay per
+# battle, patch 0060). The scenario's env boots straight into a forced
+# encounter (DW3_START_MODE=0x600, DW3_FORCE_ENCOUNTER=34 Kunemon,
+# DW3_FORCE_PARTY=0 Kotemon lead) and DW3_AUTO_DOOR_MODE=0x600 starts the
+# second battle 120 field frames after the report returns to the field.
+# Each battle opens with a technique (Tech -> first tech -> use: "Hot
+# Head!"), then Cross is mashed through the fight, the report and the field.
+# The second battle's menu waits for input, so the mash stops just before
+# the AUTO_DOOR frame and the second Tech input lands on the idle menu.
+# Measured on the PC build (DW3_TURBO=4; the replay is frame-keyed).
+TWO_BATTLES = {
+    #     door   (mash stops just before it)  tech2  end
+    "us": (1360, 1820, 5000),
+    "eu": (1290, 1750, 5000),
+}
+
+
+def _tech(r, f):
+    _pad(r, f, DOWN)                 # Fight -> Tech
+    _pad(r, f + 10, 0)
+    r.press(f + 60, CROSS)           # open the tech list
+    r.press(f + 110, CROSS)          # use the first tech
+
+
+def two_battles(version):
+    door, tech2, end = TWO_BATTLES[version]
+    r = Rec(f"{version.upper()}: two forced battles, a technique in each (env in manifest)")
+    _tech(r, 350)
+    r.shot(500, "battle1-tech")
+    for f in range(520, door - 20, 30):
+        r.press(f, CROSS)
+    r.shot(tech2 - 20, "battle2-menu")
+    _tech(r, tech2)
+    r.shot(tech2 + 130, "battle2-tech")
+    for f in range(tech2 + 150, end - 100, 30):
+        r.press(f, CROSS)
+    r.shot(end - 10, "field-after")
+    r.end(end)
+    return r
+
+
 def options_persist(version, phase):
     """P9.4: title -> Options. Phase 1 turns Widescreen OFF, Fast-forward
     2x -> 3x and the Restart hotkey ON, then leaves with Triangle; phase 2 is a
@@ -361,6 +402,8 @@ def main(out):
         for phase in (1, 2):
             (out / f"{v}-options-persist-p{phase}.rec").write_text(
                 options_persist(v, phase).text(True))
+    for v in ("us", "eu"):
+        (out / f"{v}-two-battles.rec").write_text(two_battles(v).text(True))
     (out / "us-repro-balloon.rec").write_text(repro_balloon("us").text(True))
     for version in ("us", "eu"):
         # Written unsorted, byte for byte as first committed with patch 0058.

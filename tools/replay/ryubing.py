@@ -303,6 +303,10 @@ def main():
         sel = {sc.name for sc in manifest.SCENARIOS if sc.tier in tiers}
     versions = ("us", "eu") if a.version == "both" else (a.version,)
     todo = [sc for sc in manifest.SCENARIOS if sc.name in sel and sc.version in versions]
+    for sc in [sc for sc in todo if sc.env]:
+        # The NRO has no environment for the scenario's debug aids: PC only.
+        print(f"skip {sc.name}: needs host env ({', '.join(k for k, _ in sc.env)}), PC only")
+    todo = [sc for sc in todo if not sc.env]
     if not todo:
         ap.error("no scenarios selected")
 
