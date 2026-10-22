@@ -255,6 +255,7 @@ target_compile_options(dw3_title PRIVATE ${_DW3_GAME_OPTS})
 add_library(dw3_port_options OBJECT
   "${CMAKE_CURRENT_SOURCE_DIR}/audio/audio_bus.c"
   "${CMAKE_CURRENT_SOURCE_DIR}/audio/volume.c"
+  "${CMAKE_CURRENT_SOURCE_DIR}/battle_menu/battle_menu_memory.c"
   "${CMAKE_CURRENT_SOURCE_DIR}/options/options_cfg.c"
   "${CMAKE_CURRENT_SOURCE_DIR}/options/port_options.c"
   "${CMAKE_CURRENT_SOURCE_DIR}/options/restart.c"

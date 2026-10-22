@@ -431,3 +431,22 @@ def test_environment_pacing_override_is_not_saved(persist_bin: Path, tmp_path: P
     r = subprocess.run([str(persist_bin), str(tmp_path / "nope"), "pacing"],
                        capture_output=True, text=True, env=env)
     assert r.stdout.strip().splitlines()[0] == "encounter_rate=2 text_speed=0"
+
+
+def test_file_only_int_key(persist_bin: Path, tmp_path: Path):
+    """P7.9: a key with no Options row is read from the file, falls back to the
+    default when absent or not a number, and survives a rewrite of the file."""
+    out, _ = session(persist_bin, tmp_path, "fileint", "battle_menu_memory", "0")
+    assert out == ["battle_menu_memory=0"]  # no file
+    (tmp_path / CFG).write_text(
+        "version=1\nbattle_menu_memory=2\nodd=abc\nend=1\n")
+    out, _ = session(persist_bin, tmp_path, "fileint", "battle_menu_memory", "0",
+                     "fileint", "odd", "5", "fileint", "missing", "7")
+    assert out == ["battle_menu_memory=2", "odd=5", "missing=7"]
+    toggle(persist_bin, tmp_path, 2)  # the Options screen rewrites the file
+    text = (tmp_path / CFG).read_text()
+    assert "battle_menu_memory=2\n" in text
+    out, _ = session(persist_bin, tmp_path, "fileint", "battle_menu_memory", "0")
+    assert out == ["battle_menu_memory=2"]
+    out, _ = session(persist_bin, tmp_path, "noinit", "fileint", "battle_menu_memory", "0")
+    assert out == ["battle_menu_memory=0"]  # no config dir: the default
