@@ -21,6 +21,7 @@ import sys
 from pathlib import Path
 
 START, DOWN, CROSS = 0x0008, 0x0040, 0x4000
+TRIANGLE = 0x1000
 UP, RIGHT, LEFT = 0x0010, 0x0020, 0x0080
 EU_LANGS = ["en", "fr", "de", "it", "es"]
 HOLD = 5  # frames a button is held; PadChkVsync can miss a 1-frame edge
@@ -312,6 +313,39 @@ def bridge_partner_gate(version):
     return r
 
 
+def options_persist(version, phase):
+    """P9.4: title -> Options. Phase 1 turns Widescreen OFF, Fast-forward
+    2x -> 3x and the Restart hotkey ON, then leaves with Triangle; phase 2 is a
+    fresh process on the same config dir that only opens the screen, so its
+    checkpoint shows the values read back from port_options.cfg."""
+    r = Rec(f"{version.upper()}: Options persistence, phase {phase}")
+    if version == "us":
+        r.press(20, START)           # skip the opening FMV
+        r.press(210, START)          # PRESS START
+        m = 320                      # title menu is up
+    else:
+        for f in (110, 160, 190, 220, 280):   # confirm English, skip splash/FMV, PRESS START
+            r.press(f, START)
+        m = 390
+    r.press(m, DOWN)                 # New Game -> Options
+    r.press(m + 20, CROSS)           # open the Options screen
+    if phase == 1:
+        r.shot(m + 60, "options-defaults")
+        r.press(m + 70, CROSS)       # Widescreen ON -> OFF
+        r.press(m + 90, DOWN)
+        r.press(m + 110, CROSS)      # Fast-forward 2x -> 3x
+        r.press(m + 130, DOWN)
+        r.press(m + 150, CROSS)      # Restart hotkey OFF -> ON
+        r.shot(m + 190, "options-changed")
+        r.press(m + 200, TRIANGLE)   # leave
+        r.end(m + 240)
+    else:
+        r.shot(m + 60, "options-restored")
+        r.press(m + 70, TRIANGLE)
+        r.end(m + 110)
+    return r
+
+
 def main(out):
     out.mkdir(parents=True, exist_ok=True)
     (out / "us-title.rec").write_text(us_title().text())
@@ -323,6 +357,10 @@ def main(out):
         (out / f"{v}-soak.rec").write_text(soak(v).text(True))
     for v in ("us", "eu"):
         (out / f"{v}-load-menu.rec").write_text(load_menu(v).text(True))
+    for v in ("us", "eu"):
+        for phase in (1, 2):
+            (out / f"{v}-options-persist-p{phase}.rec").write_text(
+                options_persist(v, phase).text(True))
     (out / "us-repro-balloon.rec").write_text(repro_balloon("us").text(True))
     for version in ("us", "eu"):
         # Written unsorted, byte for byte as first committed with patch 0058.

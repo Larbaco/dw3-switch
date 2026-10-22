@@ -15,6 +15,7 @@
 #include "cdfs.h"
 #include "memcard_host.h"
 #include "overlay_host.h"
+#include "port_options.h"
 #include "port_turbo.h"
 #include "runtime_extract.h"
 #include "str_stream.h"
@@ -228,6 +229,7 @@ static const char *env_or(const char *key, const char *fallback) {
 static int init_paths(int argc, char **argv) {
     const char *root = env_or("DW3_RUNTIME", DW3_DEFAULT_RUNTIME);
     const char *memdir = env_or("DW3_MEMCARD_DIR", NULL);
+    const char *cfgdir = env_or("DW3_CONFIG_DIR", NULL);
     char memcard_buf[512];
     char boot_path[512];
     int i;
@@ -237,6 +239,8 @@ static int init_paths(int argc, char **argv) {
             root = argv[++i];
         } else if (strcmp(argv[i], "--memcard-dir") == 0 && i + 1 < argc) {
             memdir = argv[++i];
+        } else if (strcmp(argv[i], "--config-dir") == 0 && i + 1 < argc) {
+            cfgdir = argv[++i];
         }
     }
 
@@ -290,6 +294,11 @@ static int init_paths(int argc, char **argv) {
      * abrupt kill still cannot run atexit — see docs/P5.3_FLAT_SAVE.md. */
     atexit(memcard_host_shutdown);
     fprintf(stderr, "dw3-pc: memcard dir=%s\n", memdir);
+
+    /* P9.4: port_options.cfg lives in the runtime root unless redirected, and
+     * is loaded before anything reads widescreen / fast-forward / restart. */
+    (void)dw3_port_options_persist_init(cfgdir != NULL ? cfgdir : root);
+    atexit(dw3_port_options_flush);
 
     snprintf(boot_path, sizeof(boot_path), "%s/boot_tim.bin", root);
     if (dw3_host_load_boot_tim(boot_path) != 0) {

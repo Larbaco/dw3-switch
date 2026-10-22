@@ -245,6 +245,11 @@ def run_phase(sc, idx, root, nro, display, outdir, ryujinx, stall, timeout, labe
         missing = [n for _, n in want if n not in got_names]
         rows.append((sc.name, f"(shots p{idx + 1})", "FAIL",
                      f"expected {len(want)} in order, saw {len(got)}; missing {missing[:4]}"))
+    for p in rt.check_log_expect(sc.expect_log, idx, "\n".join(lines)):
+        rows.append((sc.name, f"(log p{idx + 1})", "FAIL", p))
+    if any(i == idx for i, _ in sc.expect_log) and not any(
+            r[1] == f"(log p{idx + 1})" for r in rows):
+        rows.append((sc.name, f"(log p{idx + 1})", "PASS", "expected log line(s) found"))
     probs = rt.check_restores("\n".join(lines), sc.expect_restore if idx == len(sc.phases) - 1 and len(sc.phases) == 1 else ())
     for p in probs:
         rows.append((sc.name, f"(markers p{idx + 1})", "FAIL", p))
@@ -320,6 +325,9 @@ def main():
         memdir = root / "sdcard/switch/dw3" / sc.version / "memcard"
         shutil.rmtree(memdir, ignore_errors=True)   # fresh card per scenario
         memdir.mkdir(parents=True)
+        # P9.4: and fresh options (the phases of one scenario share the file)
+        for stale in ("port_options.cfg", "port_options.cfg.tmp"):
+            (memdir.parent / stale).unlink(missing_ok=True)
         xvfb, display = rt.start_xvfb(out)
         try:
             for i in range(len(sc.phases)):
