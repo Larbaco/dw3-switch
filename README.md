@@ -95,7 +95,8 @@ Things this port adds to the original game.
 - **Fast-forward.** R3 toggles 2x, 3x or 4x in field and battle:
   [P6.4_FAST_FORWARD](docs/P6.4_FAST_FORWARD.md).
 - **Port options screen.** Opens from the title and holds the toggles below.
-  Settings last for the session only: [PORT_OPTIONS](docs/PORT_OPTIONS.md).
+  Settings are saved in `port_options.cfg` next to the runtime data and are
+  kept across launches: [PORT_OPTIONS](docs/PORT_OPTIONS.md#persistence).
 - **Native title menu.** New Game / Options / Load Game at native
   resolution, with EU labels in the current game language.
 - **Restart hotkey.** Optional, off by default. Returns to the title after

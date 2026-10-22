@@ -25,6 +25,7 @@ def port_options_bin(tmp_path_factory) -> Path:
         str(out),
         str(ROOT / "tools" / "tests" / "port_options_main.c"),
         str(ROOT / "port" / "options" / "port_options.c"),
+        str(ROOT / "port" / "options" / "options_cfg.c"),
         f"-I{ROOT / 'port' / 'include'}",
     ]
     build = subprocess.run(cmd, capture_output=True, text=True)

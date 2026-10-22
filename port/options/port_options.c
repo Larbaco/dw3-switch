@@ -1,9 +1,21 @@
 /* P9.2 port options shell — stays on MODE_TITLE; never sets menu choice. */
 #include "port_options.h"
+#include "port_options_cfg.h"
 #include "port_turbo.h"
 
 #include <stdio.h>
 #include <string.h>
+
+#ifdef DW3_PORT_OPTIONS_TEST
+#define PO_INFO(...) fprintf(stderr, __VA_ARGS__)
+#define PO_WARN(...) fprintf(stderr, __VA_ARGS__)
+#else
+#include <psyz/log.h>
+/* psyz_log, not stderr: on Switch stderr only reaches nxlink, and the load
+ * and save lines are the check in sdmc:/switch/dw3/dw3.log. */
+#define PO_INFO(...) INFOF(__VA_ARGS__)
+#define PO_WARN(...) WARNF(__VA_ARGS__)
+#endif
 
 #if !defined(DW3_PORT_OPTIONS_TEST) && defined(DW3_TITLE_NATIVE_OVERLAY)
 /* The native overlay draws the options screen (platforms/pc/src). */
@@ -30,7 +42,9 @@ enum {
 
 typedef struct Dw3PortOptStub {
     const char *label;
+    const char *key; /* P9.4 option file key */
     int value; /* 0/1 or 0/2..4; Widescreen defaults ON, turbo starts inactive */
+    int def;   /* value with no option file (the row's initial value) */
 } Dw3PortOptStub;
 
 static int g_open;
@@ -38,11 +52,24 @@ static int g_cursor;
 static int g_open_frames;
 static int g_logged_open;
 static Dw3PortOptStub g_stubs[DW3_PORT_OPT_COUNT] = {
-    {"Widescreen", 1}, /* owner request (preview.22 OLED): on by default */
+    {"Widescreen", "widescreen", 1, 1}, /* owner request (preview.22): on */
     /* R3 toggles to this speed in field/battle; normal boot remains 1x. */
-    {"Fast-forward", DW3_TURBO_SPEED_DEFAULT},
-    {"Restart hotkey", 0},
+    {"Fast-forward", "fast_forward", DW3_TURBO_SPEED_DEFAULT,
+     DW3_TURBO_SPEED_DEFAULT},
+    {"Restart hotkey", "restart_hotkey", 0, 0},
 };
+
+/* P9.4 persistence. The registry values above are what the game reads; this
+ * is the option file behind them. dw3_port_options_persist_init() fills the
+ * values from the file once at boot (before any host reads a flag), and every
+ * change made on the Options screen is written back at once, so a HOME exit,
+ * a kill or a crash cannot lose it and no applet hook is needed. */
+static int g_persist_on;
+static char g_cfg_dir[DW3_OPTCFG_PATH_MAX];
+static Dw3OptCfg g_cfg;          /* the loaded file; keeps unknown keys */
+static int g_saved[DW3_PORT_OPT_COUNT]; /* what the file holds */
+static unsigned g_env_pinned;    /* values forced by DW3_WIDESCREEN/DW3_TURBO */
+static int g_dirty;              /* a write failed; retried by _flush */
 
 #ifdef DW3_PORT_OPTIONS_TEST
 /* Button bits match engine/pad.h. */
@@ -103,6 +130,7 @@ void dw3_port_options_close(void) {
     g_open_frames = 0;
     fprintf(stderr, "dw3-port-options: close (resume runOptions)\n");
     fflush(stderr);
+    dw3_port_options_flush();
 }
 
 int dw3_port_options_is_open(void) {
@@ -148,6 +176,131 @@ void dw3_port_options_set_level(int index, int level) {
     g_stubs[index].value = level;
 }
 
+
+/* A value the row can hold: ON/OFF, or OFF / 2x..4x for Fast-forward. */
+static int po_valid(int index, int v) {
+    if (index == DW3_PORT_OPT_FAST_FORWARD) {
+        return v == 0 || (v >= DW3_TURBO_SPEED_MIN && v <= DW3_TURBO_SPEED_MAX);
+    }
+    return v == 0 || v == 1;
+}
+
+void dw3_port_options_apply_env(int index, int level) {
+    if (index < 0 || index >= DW3_PORT_OPT_COUNT) {
+        return;
+    }
+    g_stubs[index].value = level;
+    g_env_pinned |= 1u << index;
+}
+
+/* Write every option to the file. An option still forced by the environment
+ * keeps the value the file had, so `DW3_WIDESCREEN=0 dw3-pc` for one run is
+ * not saved as the user's choice by an unrelated toggle. */
+static int po_save(void) {
+    int out[DW3_PORT_OPT_COUNT];
+    char num[16];
+    int i;
+
+    if (!g_persist_on) {
+        return 0;
+    }
+    for (i = 0; i < DW3_PORT_OPT_COUNT; i++) {
+        out[i] = (g_env_pinned >> i) & 1u ? g_saved[i] : g_stubs[i].value;
+        snprintf(num, sizeof(num), "%d", out[i]);
+        if (dw3_optcfg_set(&g_cfg, g_stubs[i].key, num) != 0) {
+            PO_WARN("dw3-options: cannot stage %s", g_stubs[i].key);
+        }
+    }
+    if (dw3_optcfg_save(&g_cfg, g_cfg_dir) != 0) {
+        g_dirty = 1;
+        PO_WARN("dw3-options: save to %s failed (will retry on close/exit)",
+                g_cfg_dir);
+        return -1;
+    }
+    g_dirty = 0;
+    for (i = 0; i < DW3_PORT_OPT_COUNT; i++) {
+        g_saved[i] = out[i];
+    }
+    PO_INFO("dw3-options: saved %s/%s (widescreen=%d fast_forward=%d "
+            "restart_hotkey=%d)",
+            g_cfg_dir, DW3_OPTCFG_FILE, g_saved[DW3_PORT_OPT_WIDESCREEN],
+            g_saved[DW3_PORT_OPT_FAST_FORWARD], g_saved[DW3_PORT_OPT_RESTART]);
+    return 0;
+}
+
+void dw3_port_options_flush(void) {
+    if (g_persist_on && g_dirty) {
+        (void)po_save();
+    }
+}
+
+int dw3_port_options_persist_init(const char *dir) {
+    char path[DW3_OPTCFG_PATH_MAX];
+    int rc;
+    int i;
+    int bad = 0;
+
+    g_persist_on = 0;
+    g_dirty = 0;
+    g_env_pinned = 0;
+    if (dir == NULL || dir[0] == '\0' ||
+        strlen(dir) >= sizeof(g_cfg_dir) ||
+        dw3_optcfg_path(dir, "", path, sizeof(path)) != 0) {
+        PO_WARN("dw3-options: no usable config dir; options are session-only");
+        return -1;
+    }
+    strcpy(g_cfg_dir, dir);
+    rc = dw3_optcfg_load(&g_cfg, dir);
+    g_persist_on = 1;
+    for (i = 0; i < DW3_PORT_OPT_COUNT; i++) {
+        g_stubs[i].value = g_stubs[i].def;
+    }
+    if (rc == DW3_OPTCFG_LOAD_ERROR) {
+        PO_WARN("dw3-options: cannot read %s; using defaults, the next "
+                "change will replace it", path);
+    } else if (rc == DW3_OPTCFG_LOAD_MISSING) {
+        PO_INFO("dw3-options: no %s; defaults", path);
+    } else {
+        const char *v;
+        int n;
+
+        if (rc == DW3_OPTCFG_LOAD_RECOVERED) {
+            PO_WARN("dw3-options: %s was missing; recovered %s.tmp", path,
+                    path);
+        }
+        if (g_cfg.version > DW3_OPTCFG_VERSION) {
+            PO_WARN("dw3-options: %s is version %d (newer than %d); reading "
+                    "known keys, keeping the rest", path, g_cfg.version,
+                    DW3_OPTCFG_VERSION);
+        }
+        if (g_cfg.skipped > 0) {
+            PO_WARN("dw3-options: %s: ignored %d malformed line(s)", path,
+                    g_cfg.skipped);
+        }
+        for (i = 0; i < DW3_PORT_OPT_COUNT; i++) {
+            v = dw3_optcfg_get(&g_cfg, g_stubs[i].key);
+            if (v == NULL) {
+                continue;
+            }
+            if (dw3_optcfg_parse_int(v, &n) != 0 || !po_valid(i, n)) {
+                PO_WARN("dw3-options: %s=%s is not valid; using default %d",
+                        g_stubs[i].key, v, g_stubs[i].def);
+                bad++;
+                continue;
+            }
+            g_stubs[i].value = n;
+        }
+    }
+    for (i = 0; i < DW3_PORT_OPT_COUNT; i++) {
+        g_saved[i] = g_stubs[i].value;
+    }
+    PO_INFO("dw3-options: %s (widescreen=%d fast_forward=%d "
+            "restart_hotkey=%d)%s", path, g_saved[DW3_PORT_OPT_WIDESCREEN],
+            g_saved[DW3_PORT_OPT_FAST_FORWARD], g_saved[DW3_PORT_OPT_RESTART],
+            bad ? " [some values reset]" : "");
+    return rc == DW3_OPTCFG_LOAD_ERROR ? -1 : 0;
+}
+
 /* Confirm on a row: ON/OFF, or OFF -> 2x -> 3x -> 4x -> OFF for Fast-forward. */
 static void po_toggle(int index) {
     int v;
@@ -159,20 +312,24 @@ static void po_toggle(int index) {
             v = 0;
         }
         g_stubs[index].value = v;
+        g_env_pinned &= ~(1u << index);
         if (v) {
             fprintf(stderr, "dw3-port-options: fast-forward %dx (R3)\n", v);
         } else {
             fprintf(stderr, "dw3-port-options: fast-forward off\n");
         }
         fflush(stderr);
+        (void)po_save();
         return;
     }
     v = g_stubs[index].value ? 0 : 1;
     g_stubs[index].value = v;
+    g_env_pinned &= ~(1u << index);
     fprintf(stderr, "dw3-port-options: %s %s\n",
             index == DW3_PORT_OPT_RESTART ? "restart hotkey" : "widescreen",
             v ? "enabled" : "disabled");
     fflush(stderr);
+    (void)po_save();
 }
 
 int dw3_port_options_restart_enabled(void) {

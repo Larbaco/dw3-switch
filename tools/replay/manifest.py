@@ -30,6 +30,10 @@ class Scenario:
     # Overlay restore markers expected, in order (a subsequence of the log):
     # (file id, "mode"|"sub"). Extra restores in between are fine.
     expect_restore: tuple[tuple[int, str], ...] = ()
+    # Log lines expected per phase: (phase index, regex), each searched in that
+    # phase's log (PC stderr / Ryubing guest output). Used by the P9.4
+    # persistence scenario, where the proof is a value read back from disk.
+    expect_log: tuple[tuple[int, str], ...] = ()
     # Memory sanity (soak): analyse RSS from this game frame on.
     rss_from_frame: int = 0
     note: str = ""
@@ -96,6 +100,20 @@ _add(
              expect_restore=US_OPENING,
              note="lobby walk that used to crash FIELDSTG_drawBalloon (patch 0058)"),
 )
+
+# P9.4: the options written by phase 1 are read back by phase 2, a fresh
+# process on the same config dir (PC: DW3_CONFIG_DIR temp dir shared by the
+# phases; Ryubing: sdmc:/switch/dw3/<ver>/port_options.cfg, removed at the
+# start of the scenario). Phase 1 switches Widescreen OFF, Fast-forward
+# 2x -> 3x and the Restart hotkey ON; phase 2 only opens the screen again.
+_OPT_P1 = (r"dw3-options: no \S*port_options\.cfg; defaults",
+           r"dw3-options: saved \S*port_options\.cfg \(widescreen=0 fast_forward=3 restart_hotkey=1\)")
+_OPT_P2 = (r"dw3-options: \S*port_options\.cfg \(widescreen=0 fast_forward=3 restart_hotkey=1\)",)
+for _v in ("us", "eu"):
+    _add(Scenario(f"{_v}-options-persist", _v, "full", timeout=300,
+                  phases=(f"{_v}-options-persist-p1", f"{_v}-options-persist-p2"),
+                  expect_log=tuple((0, r) for r in _OPT_P1) + tuple((1, r) for r in _OPT_P2),
+                  note="Options toggled in one process are read back by the next (P9.4)"))
 
 
 def by_name() -> dict[str, Scenario]:

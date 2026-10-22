@@ -54,8 +54,9 @@ press. Release the chord before another attempt. There is no timed long-press
 requirement. Dirty save slots are flushed before restarting; a flush failure
 cancels the restart. Successful restart resets the running game to its title
 boot flow without restarting the host. Unsaved gameplay progress is lost.
-The opt-in stays in memory through an in-process restart, but a fresh host launch
-starts OFF. Settings are session-only until P9.4 persistence is implemented.
+The opt-in stays in memory through an in-process restart. Since P9.4 it is also
+saved in `port_options.cfg` when it is toggled, so a fresh host launch keeps
+the choice (OFF until the user enables it once).
 See [P6.9_RESTART.md](P6.9_RESTART.md) for implementation and acceptance limits;
 Switch chord and save → restart → Continue validation remain open there.
 
