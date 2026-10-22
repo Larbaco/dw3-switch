@@ -1,0 +1,46 @@
+Upstream-bound: no
+Subject: [PORT_HOST] balloon: no draw for a balloon that was closed before it opened
+
+FIELDSTG_drawBalloon reads task->actor->tile and ->z. Balloon.actor is
+set in two places only: FIELDSTG_updateBalloon's TASK_INIT (NULL falls back to
+the player) and FIELDSTG_balloonCommand 0x325/0x327 (the actor of a
+character id). The close command 0x326 only sets TASK_DONE. When a script
+sends 0x326 to a balloon that no longer exists, FIELDSTG_setEventPose
+creates a new Balloon (script command 0x323, task id 803) and hands it the
+close at once, so the task goes INIT -> DONE without TASK_INIT ever running:
+actor stays NULL, popEnd stays 0, and FIELDSTG_updateBalloon draws it once
+while it pops shut (and then kills it). WSTAG210's script30 (the "Oh yeah! I
+need my partner" bridge event of the new game, event 0x1E) does exactly
+that: 0x325, 0x326, walk back, 0x326 again.
+
+On the PS1 the NULL read hits kernel RAM (tile at 0x58/0x5C, z at 0x64), so
+the stray frame of sprite 0 goes wherever those words point and is not the
+player's balloon. On a 64-bit host the read faults (SIGSEGV on the PC
+build, a data abort on the Switch). Under PORT_HOST the draw is skipped when
+actor is NULL; the state machine around it is untouched, so the balloon is
+still killed. Falling back to the player here, as TASK_INIT does, would
+show a one-frame sprite 0 over the player that the original never showed,
+so it was not chosen. Non-PORT_HOST code is unchanged.
+
+diff -ruN base/src/field/field_mode/balloon.c work/src/field/field_mode/balloon.c
+--- a/src/field/field_mode/balloon.c
++++ b/src/field/field_mode/balloon.c
+@@ -21,6 +21,18 @@
+     Vec2 pos;
+     s32 frame;
+ 
++#if PORT_HOST
++    /* A close command (0x326) for a balloon that was never opened creates a
++       fresh task and pops it shut at once: its update never ran TASK_INIT, so
++       actor is still NULL (WSTAG210 script30 closes its balloon twice). The PS1
++       reads the actor's tile and z through NULL there, i.e. kernel RAM, and
++       draws one frame of sprite 0 at a position that is off the map. A 64-bit
++       host faults on the read, so draw nothing; the update has already run
++       the pop-shut to TASK_KILL. */
++    if (task->actor == NULL) {
++        return;
++    }
++#endif
+     pos.x = task->actor->tile.x;
+     pos.y = task->actor->tile.y - (task->actor->z >> 8);
+     initSpriteDrawer(&sprite);

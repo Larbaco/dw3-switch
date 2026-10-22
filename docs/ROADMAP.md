@@ -531,6 +531,14 @@ speed.
 - [ ] **P5.5 Stage sweep on hardware.** P3.8 again on the console.
   Done when (proposed, from P3.8): the P3.8 loadable stage set loads and
   returns on hardware, US and EU. P6.20's warp menu would help.
+  **Known crash fixed (2026-10-22):** the new-game walk to the Digital
+  World bridge gate ("Oh yeah! I need my partner", WSTAG210 event 0x1E)
+  faulted in `FIELDSTG_drawBalloon` (preview.28 and .29; reproduced on the
+  PC host US and EU and on Ryubing US and EU); patch `0058`, regression scenarios
+  `us/eu-bridge-partner-gate`. See
+  [BALLOON_NULL_ACTOR.md](BALLOON_NULL_ACTOR.md), which also lists the
+  other places where a NULL actor from the PS1's readable low RAM could
+  fault a 64-bit host.
 
 Gate: start → first boss on hardware, both versions.
 
@@ -991,11 +999,14 @@ Statuses are in the [table](#status-at-a-glance).
   `port/replay/` and the Switch build has a compile-time replay hook
   (`tools/build_switch_game.sh --replay`, `sdmc:/switch/dw3/replay.rec`,
   `replay shot`/`replay end` log lines) driven by `tools/replay_ryubing.sh`
-  in Ryubing (own data roots, log-only verdict). The PC soak/walk tooling
-  found a deterministic null dereference in `FIELDSTG_drawBalloon` on the US
-  disc (`us-repro-balloon`). See `docs/P6.15_REPLAY_TESTS.md`. Still open: a
-  battle (not reachable by pad input early; the route is the crashing lobby
-  corridor), a save/load round trip (Start menu locked in the hub), the other
+  in Ryubing (own data roots, log-only verdict). The walk tooling
+  found a deterministic null dereference in `FIELDSTG_drawBalloon` (US PC
+  and Ryubing); it is the bridge-gate balloon bug fixed by patch `0058`, and
+  `us-repro-balloon` plus `us/eu-bridge-partner-gate` are now regression
+  scenarios that pass. See `docs/P6.15_REPLAY_TESTS.md`. Still open: a
+  battle (not reached yet; needs the partner Digimon data from the lobby
+  counter past the bridge gate), a save/load round trip (Start menu locked
+  in the hub), the other
   four EU languages past the title, movies, cross-machine tolerance, CI (needs
   the owner's discs; a nightly recipe is in the doc). The full goal remains
   open until the replay set covers battle and save/load.

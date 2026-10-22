@@ -1,4 +1,4 @@
-# US: lobby walk that crashes FIELDSTG_drawBalloon (known bug)
+# US: lobby walk that used to crash FIELDSTG_drawBalloon (fixed by patch 0058)
 pad 20 0x0008
 pad 25 0x0000
 pad 210 0x0008

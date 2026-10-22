@@ -10,7 +10,7 @@ Tiers:
   quick  the original title-menu scenarios (a few seconds each)
   full   gameplay scenarios (a few minutes each; run by default)
   soak   long walk, 15-20 min of game time (run with --soak or --only)
-  repro  recordings of known bugs; only with --only (expected to fail)
+  repro  recordings of known, unfixed bugs; only with --only (expected to fail)
 """
 from __future__ import annotations
 
@@ -86,8 +86,15 @@ _add(
     Scenario("eu-soak", "eu", "soak", turbo=4, timeout=5400, rss_from_frame=20000,
              expect_restore=EU_OPENING + EU_DOOR,
              note="~20 min of game time walking doors/pods"),
-    Scenario("us-repro-balloon", "us", "repro", turbo=4, timeout=900,
-             note="KNOWN BUG: expected CRASH in FIELDSTG_drawBalloon"),
+    Scenario("us-bridge-partner-gate", "us", "full", turbo=4, timeout=1200,
+             expect_restore=US_OPENING,
+             note="bridge gate dialogue; regression for the balloon NULL actor (patch 0058)"),
+    Scenario("eu-bridge-partner-gate", "eu", "full", turbo=4, timeout=1200,
+             expect_restore=EU_OPENING,
+             note="same on the PAL build"),
+    Scenario("us-repro-balloon", "us", "full", turbo=4, timeout=900,
+             expect_restore=US_OPENING,
+             note="lobby walk that used to crash FIELDSTG_drawBalloon (patch 0058)"),
 )
 
 
