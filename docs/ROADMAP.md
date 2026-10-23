@@ -341,6 +341,16 @@ audio, movies.
   #188 (tech SFX silenced all audio until map change): psyz `2caa505`
   frees voices that end without repeat (ENVX 0); unit test + battle smoke
   on PC, in-game tech and HW still to confirm.
+  Music loop fix (2026-10-23, preview.30-rc7 OLED: music played one pass,
+  then silence): the host SEQ/SEP reader dropped the CC#6 Data Entry loop
+  count, so the NRPN loop (CC#99 20 / 30) never jumped back and the song hit
+  end-of-track. psyz `a79bc8c` (`dw3-seq-nrpn-loop`) follows the retail
+  handlers; unit group `snd_loop` and replay scenarios `us/eu-music-loop`
+  and `us/eu-battle-music-loop` (field music loops 3-4 times in 3000 frames,
+  the battle theme loops, no end-of-track; the old build logs one). Open:
+  OLED check of the fix, NRPN VAB attributes (reverb type / depth) still
+  not applied. See
+  [P3.6_AUDIO.md](P3.6_AUDIO.md#fix--music-plays-once-and-goes-silent-2026-10-23-preview30-rc7).
   Done when: title music, field music change on stage switch, battle SFX.
 - [x] **P3.7 Movies.** Title STR playback through PSY-Z `libpress` +
   streaming (`CdRead2`, `StSetRing`) from raw-sector `.STR` files packed
