@@ -48,7 +48,7 @@ def test_pacing_log_lines(pacing_bin: Path):
     # Text: two pages, three and two frames, once each.
     pages = re.findall(r"text page typed in (\d+) frame\(s\) \(text speed (\w+)\)", err)
     assert pages[:2] == [("3", "fast"), ("2", "fast")]
-    assert pages[2:] == [("31", "instant"), ("23", "instant")]
+    assert pages[2:] == [("31", "instant"), ("23", "instant"), ("1", "instant"), ("2", "instant")]
 
 
 def test_scroll_hold_log_lines(pacing_bin: Path):
@@ -64,3 +64,12 @@ def test_slow_instant_page_diagnostic(pacing_bin: Path):
     # 31 typed frames and no scroll: flagged once; the page held for a scroll is not.
     assert err.count("slow Instant page with no scroll hold (31 frames)") == 1
     assert err.count("slow Instant page") == 1
+
+
+def test_banner_on_a_dialogue_address_is_not_a_page(pacing_bin: Path):
+    """The rc6 OLED log: 'typed in 103 frame(s)' / 'slow Instant page' after every
+    battle were the area name banner (delay 5, 17 characters at 6 frames, +1)
+    on the address of a freed dialogue window, not a report page."""
+    err = subprocess.run([str(pacing_bin)], capture_output=True, text=True).stderr
+    assert "typed in 103 frame" not in err
+    assert err.count("dw3-pacing: text typed at delay 5 is not a dialogue page") == 2  # the early probe and the banner

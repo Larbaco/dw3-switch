@@ -6,6 +6,7 @@
 #include "port_options.h"
 
 #include <stddef.h>
+#include <stdlib.h>
 
 #ifdef DW3_PORT_PACING_TEST
 #include <stdio.h>
@@ -80,7 +81,13 @@ void dw3_port_pacing_encounter_started(void) {
 
 /* --- text speed ---------------------------------------------------------- */
 
-enum { TRACKED = 4 };
+/* The dialogue windows being timed. The game frees a text window with its page
+ * and allocates the next one (the area name banner too) at the same address, so
+ * a slot must be dropped when its address is given to a window that is not a
+ * dialogue window (dw3_port_pacing_text_delay). TRACKED_MAX is the capacity;
+ * DW3_PACING_TRACKED=<n> (PC debug aid, replay scenarios) keeps that many windows
+ * instead of the usual few, which makes a stale slot far more likely to be hit. */
+enum { TRACKED_MAX = 256, TRACKED_DEFAULT = 4 };
 typedef struct Tracked {
     const void *win;
     int armed;  /* a page is being typed */
@@ -89,13 +96,31 @@ typedef struct Tracked {
     int scrolls;/* scrolls of the text so far */
     int page_scrolls; /* scrolls since the current page started typing */
 } Tracked;
-static Tracked g_tracked[TRACKED];
+static Tracked g_tracked[TRACKED_MAX];
 static int g_next_slot;
+static int g_tracked_limit;
+
+static int tracked_limit(void) {
+    const char *env;
+    int n;
+
+    if (g_tracked_limit == 0) {
+        g_tracked_limit = TRACKED_DEFAULT;
+        env = getenv("DW3_PACING_TRACKED");
+        if (env != NULL && env[0] != '\0') {
+            n = atoi(env);
+            if (n >= 1 && n <= TRACKED_MAX) {
+                g_tracked_limit = n;
+            }
+        }
+    }
+    return g_tracked_limit;
+}
 
 static Tracked *find_tracked(const void *win) {
     int i;
 
-    for (i = 0; i < TRACKED; i++) {
+    for (i = 0; i < TRACKED_MAX; i++) {
         if (g_tracked[i].win == win) {
             return &g_tracked[i];
         }
@@ -108,13 +133,28 @@ int dw3_port_pacing_text_delay(const void *win, int delay) {
     Tracked *t;
 
     if (delay != DW3_PACING_DIALOGUE_DELAY) {
+        /* Not a dialogue window. Its address may still be in the table: the
+         * window that had it was freed and the game gave the address to this
+         * one (the area name banner types at delay 5, a typed animation
+         * timed to its boxes). Forget the old window, or this one is timed as
+         * a dialogue page and logs a "slow Instant page". */
+        t = find_tracked(win);
+        if (t != NULL) {
+            t->win = NULL;
+            t->armed = 0;
+        }
+        if (delay > 0) {
+            PACING_LOG("dw3-pacing: text typed at delay %d is not a dialogue "
+                       "page (area name banner): text speed leaves it alone",
+                       delay);
+        }
         return delay;
     }
     /* Remember the dialogue windows so the log can say how long a page took. */
     t = find_tracked(win);
     if (t == NULL) {
         t = &g_tracked[g_next_slot];
-        g_next_slot = (g_next_slot + 1) % TRACKED;
+        g_next_slot = (g_next_slot + 1) % tracked_limit();
     }
     t->win = win;
     t->armed = 1;
