@@ -112,6 +112,7 @@ void dw3_pc_title_overlay_set_footer(int show) {
     show=show?1:0;
     if(show!=footer_shown){footer_shown=show;art_generation++;}
 }
+int dw3_pc_title_overlay_footer_shown(void) { return footer_shown; }
 void dw3_pc_title_overlay_set_options_view(int cursor,const int *values,int count) {
     int changed=cursor!=option_cursor;
     if(count>DW3_TITLE_OPTION_ROWS)count=DW3_TITLE_OPTION_ROWS;

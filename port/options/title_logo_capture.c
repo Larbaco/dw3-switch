@@ -405,8 +405,11 @@ static void capture_menu_labels(const u16 *vram, const s32 *sheet,
         fprintf(stderr, "dw3-title-logo: EU menu labels unavailable\n");
     }
     dw3_pc_title_overlay_set_options_language(options_language(language));
-    /* The game keeps drawing its own EU credit sprites (logo sprites 5/6). */
-    dw3_pc_title_overlay_set_footer(0);
+    /* The EU banks carry the same three credit lines as the US disc (checked
+     * sprite by sprite, docs/TITLE_MENU_DESIGN.md), so the overlay draws its
+     * native-resolution lines on every bank and the game's own credit
+     * sprites (logo sprites 5/6) are hidden by patch 0073. */
+    dw3_pc_title_overlay_set_footer(1);
 }
 #endif
 

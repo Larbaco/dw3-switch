@@ -1,0 +1,54 @@
+Upstream-bound: no
+Subject: [PORT_HOST] EU credits: the native footer replaces the game's credit sprites on every bank
+
+The EU disc carries the same three credit lines as the US disc in all seven
+LANGUAGE banks (logo sprites 5/6 compared pixel by pixel, see
+docs/TITLE_MENU_DESIGN.md). The native title overlay now draws its
+native-resolution footer on EU too, so the game's own credit sprites are the
+fallback: they draw only while the overlay is not drawing the footer
+(dw3_port_title_footer_native() is 0: footer off, or no GPU resources) and
+stay hidden under the Port options screen as before (patch 0056). US takes the
+same path, so it also falls back to its sprites when the overlay is
+unavailable; builds without DW3_TITLE_NATIVE_OVERLAY (SDL3 GL) are untouched.
+
+--- a/src/menus/title/logo.c
++++ b/src/menus/title/logo.c
+@@ -5,14 +5,21 @@
+ extern int dw3_port_title_logo_ready(void);
+ extern void dw3_port_title_logo_set_active(int active);
+ extern int dw3_port_options_is_open(void);
++extern int dw3_port_title_footer_native(void);
+ #endif
+ 
+-#if defined(DW3_TITLE_NATIVE_OVERLAY) && VERSION_EU
+-/* The EU disc keeps its own credit sprites (6, and 5 at its animation's row)
+-   under the native overlay; US draws native credit lettering instead. */
++#if defined(DW3_TITLE_NATIVE_OVERLAY)
++/* The disc's own credit sprites (6, and 5 at its animation's row). Every bank
++   of both discs carries the same three credit lines, and the native overlay
++   draws them in its footer, so these are the fallback: they draw only while
++   the overlay is not drawing the footer (no GPU resources, footer off). */
+ static void drawLogoCredits(LogoTask *task) {
+     SpriteDrawer sprite;
+ 
++    if (dw3_port_options_is_open() || dw3_port_title_footer_native()) {
++        /* The Port options screen shows only its window over the backdrop. */
++        return;
++    }
+     initSpriteDrawer(&sprite);
+     sprite.setLayerId(task->layerId, 0);
+     sprite.setTexture(0x280, STDWTITL_TEXTURE_Y);
+@@ -32,12 +39,7 @@
+ 
+     if (task->visible) {
+ #if defined(DW3_TITLE_NATIVE_OVERLAY)
+-#if VERSION_EU
+-        /* The Port options screen shows only its window over the backdrop. */
+-        if (!dw3_port_options_is_open()) {
+-            drawLogoCredits(task);
+-        }
+-#endif
++        drawLogoCredits(task);
+         if ((task->state == TASK_DONE ||
+              (task->state == TASK_RUN && task->anims[0].done &&
+               task->anims[1].done)) && dw3_port_title_logo_ready()) {

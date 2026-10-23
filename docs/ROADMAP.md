@@ -967,6 +967,15 @@ PS1 game, with vanilla-safe defaults and persistence on owner storage.
   [composition plan](MENU_COMPOSITION_PLAN.md)),
   persistence (done in P9.4, OLED pending). History:
   [P9.2_MENU.md](P9.2_MENU.md).
+  **Title credits (2026-10-23):** the EU title now shows the same native
+  three-line credits as the US one, in all seven `LANGUAGE` banks (patch
+  `0073`; the disc's own sprites stay as the fallback when the overlay
+  cannot draw the footer). The credit sprites of the US disc and of every EU
+  bank were composed from VRAM and are byte-identical, so no credit text is
+  lost and EU needs no lines of its own; the third native line now keeps the
+  original `Co.,Ltd` spelling. Transcription table:
+  [TITLE_MENU_DESIGN.md](TITLE_MENU_DESIGN.md#title-credits). Validated on
+  PC and in Ryubing (US and EU); OLED pending.
   Done when: the screen is reachable from the main menu and returns
   cleanly to it (PC + Switch; TTB print on PC).
 - [x] **P9.3 Toggle registry.** Maintain a registry of non-native features
