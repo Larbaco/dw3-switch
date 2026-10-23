@@ -1,51 +1,107 @@
 Digimon World 3 / 2003, Switch homebrew preview
 
-Release notes for v0.6.5-preview.29. The release tag and boot version
+Release notes for v0.6.5-preview.30. The release tag and boot version
 identify the actual source revision.
 
 New in this preview
 
-  Crash fix at the first story gate (#187). On the new-game walk to the
-  Digital World bridge, the "Oh yeah! I need my partner" event crashed
-  the game on US and EU (preview.28 too). Port patch 0058 skips drawing
-  a speech balloon that was closed before it ever opened. OLED handheld:
-  the owner passed the gate without a crash on the candidate build.
+  Where a note says "OLED", the owner played a candidate build of this
+  preview (rc4 to rc8) on a Switch OLED. Everything else is checked on
+  PC and in the Ryubing emulator only, and is marked unverified.
 
-  Faster Port options (#185). The Options screen keeps its picture and
-  redraws only what changed: a cursor move uploads about 434 KB instead
-  of 2.7 MB, a value change about 30 KB. OLED handheld (EU): the owner
-  reports the menu is much more responsive; the log shows ~6 ms per
-  cursor move. Opening the title menu builds the cache once (~150 ms).
+  Music loops again (#209). On the rc7 candidate the background
+  music played once and then stopped, in the field, the inn and battle
+  (not checked on preview.29). The sequence loop count is read again.
+  OLED (US, rc8): the music loops. Music still goes silent after a won
+  battle, see Known issues.
 
-  Crash reports (#182). crash_report.txt now keeps the previous run as
-  crash_report_prev.txt, dw3.log says whether the previous run crashed,
-  and the report includes frame counters. Hardware-unverified.
+  Widescreen reaches more screens. The area name banner (#205) and the
+  technique backdrops (#202) now fill the 16:9 picture. OLED (US, rc8):
+  both extend correctly. The post-battle results screen (#213) was 4:3
+  with black side bars and now draws with the widescreen gutter. That
+  one is unverified on hardware.
 
-  Rumble (#183). PS1 vibration requests go to HD rumble on handheld
-  Joy-Con and player 1. Hardware-unverified; the motor mapping may feel
-  wrong. Report what you feel (or do not feel), and on which controller.
+  EU title credits (#210). The EU title shows the game's own native
+  three-line credits in every language bank. OLED (rc8): the three lines
+  appear as expected.
 
-  HOME / sleep (#181). Losing focus (HOME, sleep) flushes pending saves
-  and the frame timer ignores the suspended gap. Hardware-unverified:
-  test with a save you can afford to lose.
+  Battle cursor (#206). A new row on the Options screen (now eight rows):
+  OFF, Command, or Command+Tech. With Command+Tech the battle menu opens
+  on the last command and the technique list on the technique that
+  partner used last. Off by default. OLED (US, rc7): works, and the
+  eight rows fit.
 
-  Automated replay tests now cover the new-game opening, map walks, the
-  bridge gate and a long field soak on PC, and the Switch build can be
-  replayed in the Ryubing emulator (#186). These do not change the game.
+  Items screen crash fix (#201). Opening Items in the field menu crashed
+  the game on US and EU (preview.29 too) the first time a bag held an
+  item. OLED (rc7): Items opens and works.
+
+  Instant text and the area banner (#203, #196, #200). Port options gain
+  Text speed (Normal, Fast, Instant) and Encounter rate (OFF, 0.5x, 1x,
+  1.5x, 2x); both default to the original game. The 103-frame "slow
+  pages" seen with Instant were the area name banner, not text, and are
+  no longer logged as text. OLED: Instant text works (US, rc7); Encounter
+  rate changes were exercised in rc4 and rc6 (EU). Fast is not checked on
+  hardware.
+
+  Music volume and SFX volume (#194). Two Port options rows, 0 to 10,
+  10 is the original mix. Movie audio follows Music volume. The Options
+  screen plays the game's own cursor and choice sounds (#200; this part
+  is unverified on hardware). OLED (EU rc6, US rc7): the volume rows work.
+
+  Port options are saved (#191). Widescreen, Fast-forward, Restart hotkey
+  and the new rows are written to port_options.cfg in the region folder
+  (sdmc:/switch/dw3/us or eu) on every change. OLED (EU, rc4): the file
+  is created and rewritten on every change. Restoring the values after
+  a relaunch from hbmenu is not yet confirmed on hardware.
+
+  Crash reports (#204). crash_report.txt now has the module base,
+  a backtrace, the build id, and the last log lines, and dw3.log ends
+  with a CRASH line. tools/symbolize_crash.py in the source turns a
+  report into file:line when you have the matching .elf. OLED (US and
+  EU, test build with a deliberate fault): a full report was written and
+  resolved. The .elf files are not part of this release.
+
+  Battle fixes (#197, #198). Picking or Snapping Claw works on an enemy
+  the same hit knocks out ("Stole X!" comes before "Defeated!"), and the
+  battle HUD shows the Digimon the partner is fighting as after a
+  Digivolution. Both unverified on hardware.
+
+  Audio fix (#188). A technique sound effect no longer silences all audio
+  until the next map change (voices that end without a loop are freed).
+  Unverified in the game on hardware.
+
+  Under the hood: NULL-read guards for actor marks and the camera (#192),
+  loud failure when an overlay cannot be restored (#195), and the
+  nxlink HUD fps and the 60-pump log windows count one frame per VSync
+  again (#190; preview.29 showed double the real rate). Gameplay was
+  not affected by the counter.
+
+Known issues
+
+  Music goes silent after a won battle: the results screen and the map
+  that follows have no music, while the exp and level-up sound effects
+  still play. OLED (US, rc8). Not fixed in this preview.
+
+  The Items menu is still 4:3: the transition into it and the menu
+  itself, while the background is 16:9. The area-change transition
+  (iris) is also 4:3 and was not checked on hardware.
+
+  Sleep and resume work and play time counts only play time, but the
+  "applet focus" lines do not appear in dw3.log (OLED, rc7). Rumble is
+  still unverified on hardware.
 
 Carried forward
 
   Widescreen starts ON; Port options can turn it OFF. Battle defaults
-  to gpu-tex; Minus + ZL + ZR cycles rendering modes. Known black sky
-  gaps on some battle stages remain. Field rendering stays software.
-  Gameplay starts at 1x; R3 toggles the configured 2x/3x/4x turbo, or
-  OFF disables it. Port options are session-only. Movies, title and
-  standalone menus stay at 1x; gameplay audio accelerates with turbo.
+  to gpu-tex; Minus + ZL + ZR cycles rendering modes. Field rendering
+  stays software. Gameplay starts at 1x; R3 toggles the configured 2x/3x/4x
+  turbo, or OFF disables it. Movies, title and standalone menus stay
+  at 1x; gameplay audio accelerates with turbo.
 
   Native title choices New Game / Options / Load Game, with EU labels
   from the current game language; Options opens Port options.
-  Opening-video read-race fix, left-stick input, flat saves and the
-  memory-card load/save progress bar.
+  The bridge "I need my partner" event (patch 0058) passes without a
+  crash on US and EU hardware.
 
   Restart hotkey remains OFF by default. Enable it in Port options,
   then hold L + R + Plus + Minus. Dirty saves are flushed before the
@@ -54,8 +110,10 @@ Carried forward
   This chord can also toggle the nxlink debug HUD, whose own chord is
   Minus + L + R. See docs/HOTKEYS.md for all mapped controls.
 
-  From preview.28: EU language selection at cold boot and after restart,
-  battle camera/portrait fixes, Options on its own game-style screen.
+  From preview.29: faster Port options, crash-report rotation, rumble
+  (unverified), HOME/sleep save flush. From preview.28: EU language
+  selection at cold boot and after restart, battle camera/portrait
+  fixes, Options on its own game-style screen.
 
 Bundle
 
@@ -114,11 +172,16 @@ Install / nxlink
 
 OLED checklist
 
-  - Options: hold and tap Up/Down, change every row, close and reopen;
-    on EU also in French or German. Compare with preview.28.
+  - Music: it loops in the field, the inn and battle; then win a battle
+    and note whether music returns on the results screen and the map
+    (known issue). The results screen should have no black side bars.
+  - Options (eight rows): change every row, close, quit the NRO, start it
+    again from hbmenu: the values must come back (port_options.cfg).
+  - Techniques in battle: the backdrop fills 16:9 and, after a tech,
+    sound effects and music keep playing. Steal with Claw on a last hit.
   - Save, press HOME, come back; save, sleep, wake. The save must
-    survive closing and relaunching the NRO. dw3.log should show
-    "applet focus: lost ... flushed" and "applet focus: restored".
+    survive closing and relaunching the NRO.
+  - EU: the title credits in each language.
   - Rumble in field and battle (Joy-Con handheld, Pro Controller).
   - After any crash, keep crash_report.txt and dw3.log before
     relaunching; the next boot keeps one previous report.

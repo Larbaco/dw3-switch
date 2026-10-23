@@ -8,7 +8,7 @@
 A native Nintendo Switch port of Digimon World 3 (Digimon World 2003 in
 Europe), built from the matching PlayStation decompilation.
 
-Latest preview: [v0.6.5-preview.29](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.29).
+Latest preview: [v0.6.5-preview.30](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.30).
 To try it, see [Play it on Switch](#play-it-on-switch).
 
 <p align="center">
@@ -75,7 +75,7 @@ and the occasional crash. Report problems on the
 | Field | Works | Software rendering. A crash on 16:9 field maps was reported on EU; the fix (patch 0057) has shipped since preview.27 and is not yet confirmed on hardware. |
 | Battle | Works | GPU textured rendering by default. The owner reports the sky stage fixed and battle above 60 fps on US and EU; the per-mode frame-time benchmark was not run. A battle crash from the preview.26 reports is still open in the roadmap. |
 | Movies | Plays | The opening runs at about 15 fps with XA audio. Image quality and the full movie are not validated. |
-| Audio | Works | Underrun behavior has not been measured. |
+| Audio | Works, one known bug | Music loops (#209, confirmed on the OLED). It goes silent after a won battle (P4.3, open). Underrun behavior has not been measured. |
 | Saves | Works | Flat `save0.bin` and `save1.bin`. Save → HOME/X → relaunch → Continue was confirmed on US and EU discs (#171). Sleep/focus-loss flush and the time-delta clamp are wired (preview.29) but not yet confirmed on hardware (P10.2). |
 | Rumble | Implemented, not verified on hardware | PS1 vibration requests go to HD rumble on handheld Joy-Con and player 1 (#183); on by default, `DW3_NX_RUMBLE=0` turns it off. The retail game never requests vibration, so normal play has nothing to feel yet. Left stick and D-pad work. |
 | EU version | Early | Language select and own-disc extraction work. Save reload after HOME and relaunch is confirmed; a full playthrough is not yet confirmed. |
