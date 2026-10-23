@@ -12,8 +12,18 @@ New in this preview
   Music loops again (#209). On the rc7 candidate the background
   music played once and then stopped, in the field, the inn and battle
   (not checked on preview.29). The sequence loop count is read again.
-  OLED (US, rc8): the music loops. Music still goes silent after a won
-  battle, see Known issues.
+  OLED (US, rc8): the music loops.
+
+  Win jingle and missing sounds (#215). The victory jingle on the
+  post-battle results screen never played on any build: the sequence
+  table rows were spaced wrong for 64-bit entries, so tracks 16 to 31 of
+  the system bank hit a misaligned entry. They now play. That also
+  brings the menu sounds (tracks 25, 26, 28) and the battle text blips
+  (22, 23), which were silent too, and the jingle follows Music volume.
+  Unverified on hardware: whether the jingle, blips and menu sounds are
+  audible and at a good level. If the battle blips sound too loud,
+  please report it. This is most likely the "silent after a won battle"
+  seen on rc8.
 
   Widescreen reaches more screens. The area name banner (#205) and the
   technique backdrops (#202) now fill the 16:9 picture. OLED (US, rc8):
@@ -78,9 +88,9 @@ New in this preview
 
 Known issues
 
-  Music goes silent after a won battle: the results screen and the map
-  that follows have no music, while the exp and level-up sound effects
-  still play. OLED (US, rc8). Not fixed in this preview.
+  If the map stays silent after a battle (no field music once you are
+  back), please send a --nxlink log. This was reported on rc8 (US) but
+  could not be reproduced on PC or in Ryubing, so its cause is unknown.
 
   The Items menu is still 4:3: the transition into it and the menu
   itself, while the background is 16:9. The area-change transition
@@ -172,9 +182,11 @@ Install / nxlink
 
 OLED checklist
 
-  - Music: it loops in the field, the inn and battle; then win a battle
-    and note whether music returns on the results screen and the map
-    (known issue). The results screen should have no black side bars.
+  - Music: it loops in the field, the inn and battle; win a battle: the
+    win jingle should play on the results screen and the field music
+    should be back on the map (if not, send an nxlink log). The results
+    screen should have no black side bars. Menu sounds and the battle
+    text blips are new: check their level.
   - Options (eight rows): change every row, close, quit the NRO, start it
     again from hbmenu: the values must come back (port_options.cfg).
   - Techniques in battle: the backdrop fills 16:9 and, after a tech,
