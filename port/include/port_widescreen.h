@@ -12,7 +12,7 @@ extern "C" {
  * over 32 (patch 0052), into 3 more VRAM tile slots. */
 #define DW3_WIDESCREEN_FIELD_PX 53
 #define DW3_WIDESCREEN_BATTLE_PX 53
-/* Field menu, item shop, memory card and partner name screens. */
+/* Field menu, item shop, memory card, partner name and battle report screens. */
 #define DW3_WIDESCREEN_MENU_PX 53
 
 /* The registry toggle (Port options "Widescreen"), on by default;
