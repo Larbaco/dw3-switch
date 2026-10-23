@@ -302,6 +302,8 @@ for _v in ("us", "eu"):
 _BATTLE_ENV = (("DW3_START_MODE", "0x600"), ("DW3_FORCE_ENCOUNTER", "34"),
                ("DW3_FORCE_PARTY", "0"), ("DW3_AUTO_DOOR_MODE", "0x600"),
                ("DW3_AUTO_DOOR_FRAMES", "120"))
+_P77_ENV_REPORT = (("DW3_START_MODE", "0x600"), ("DW3_FORCE_ENCOUNTER", "34"),
+                   ("DW3_FORCE_PARTY", "0"))
 for _v, _ids in (("us", (0x159, 0x1FA, 0x1C2, 0x158)), ("eu", (0x167, 0x208, 0x1D1, 0x166))):
     _fight, _menu, _report, _field = _ids
     _battle = ((_fight, M), (_menu, S), (_report, M), (_field, M))
@@ -311,6 +313,17 @@ for _v, _ids in (("us", (0x159, 0x1FA, 0x1C2, 0x158)), ("eu", (0x167, 0x208, 0x1
                                   r"AUTO_DOOR requestMode=0x600(?s:.*)"
                                   r"WFIGHTMN_endBattle result=1"),),
                   note="two forced battles, Tech in each; WFIGHTMN restored per battle"))
+    # P6.1 (patch 0074): the battle report keeps the widescreen gutter. The
+    # gutter line (`dw3-widescreen: gutter N px per side`, logged on change)
+    # must not say 0 between the report's overlay restore and the next one
+    # (the field's); before the patch the report ran 4:3 (gutter 0). The two
+    # checkpoints are the report's exp page and the next one.
+    _add(Scenario(f"{_v}-battle-report", _v, "full", turbo=4, timeout=300,
+                  env=_P77_ENV_REPORT, expect_restore=_battle,
+                  expect_log=((0, r"WFIGHTMN_endBattle result=1"),),
+                  forbid_log=((0, r"overlay restore file=0x%x kind=mode(?:(?!overlay restore)(?s:.))*?"
+                                  r"gutter 0 px per side" % _report),),
+                  note="the battle report draws with the widescreen gutter (patch 0074)"))
 
 
 # P7.7 bug fixes (patches 0064 hooks, 0065 HUD name, 0066 claw steal). Log-only

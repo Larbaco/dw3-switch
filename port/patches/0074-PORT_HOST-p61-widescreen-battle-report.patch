@@ -1,0 +1,37 @@
+Upstream-bound: no
+Subject: [PORT_HOST] P6.1 battle report background fills the gutters
+
+The post-battle report (exp, level-up, items won) draws a scrolling pattern
+that repeats every 96 pixels, like the field menu. It was the one screen shown
+after every 16:9 battle that stayed 4:3, so the picture narrowed to a
+pillarbox between the battle and the field. With widescreen on, the
+background is drawn twice more, 96 pixels to each side, so it covers the
+gutters at every scroll; the port's gutter policy (port/options/widescreen.c)
+gives the report overlay the menu gutter. The panels, header and footer keep
+their 4:3 positions in the middle. Off, nothing changes.
+
+--- a/src/battle/report/report.c	2026-10-23 15:00:00.000000000 -0300
++++ b/src/battle/report/report.c	2026-10-23 15:00:00.000000000 -0300
+@@ -4,6 +4,7 @@
+ #include "battle/report.h"
+ #if PORT_HOST
+ #include <stdio.h>
++#include "port_widescreen.h"
+ #endif
+ 
+ /* Creates the report's text windows: the exp, its label and the two-line
+@@ -46,6 +47,14 @@
+         report->bgSkip = 1;
+     }
+     sprite.draw(FILE_CACHE.getEntry((FILE_FGTREP_SPRITES - 1) << 16), 0x1E, report->bgScroll, report->bgScroll);
++#if PORT_HOST
++    /* Widescreen: the pattern repeats every 96 pixels; two more copies
++       cover the side gutters at every scroll */
++    if (dw3_port_widescreen_px() > 0) {
++        sprite.draw(FILE_CACHE.getEntry((FILE_FGTREP_SPRITES - 1) << 16), 0x1E, report->bgScroll - 96, report->bgScroll);
++        sprite.draw(FILE_CACHE.getEntry((FILE_FGTREP_SPRITES - 1) << 16), 0x1E, report->bgScroll + 96, report->bgScroll);
++    }
++#endif
+     sprite.setLayerId(report->layer, report->depth - 1);
+     if (report->header.level != 0) {
+         if (report->header.level != 0x1000) {

@@ -44,7 +44,7 @@ lives in its doc, not in the entry below.
 | P5.3 | Save handling | done | [P5.3](P5.3_FLAT_SAVE.md) |
 | P5.4 | Error reporting | in progress (done-when met on the OLED, US + EU; PR 2: boot notice + assert open) | [P5.4](P5.4_CRASH.md) |
 | P5.5 | Stage sweep on hardware | open | — |
-| P6.1 | Scaling / widescreen | in progress (rc8 OLED: banner, technique backdrops and encounter spiral reach 16:9; open: black bars on the results screen, Items menu 4:3) | [P6.1](P6.1_WIDESCREEN.md) |
+| P6.1 | Scaling / widescreen | in progress (rc8 OLED: banner, technique backdrops and encounter spiral reach 16:9; results screen 16:9 with patch 0074 in PR #213, pending OLED; open: Items menu 4:3) | [P6.1](P6.1_WIDESCREEN.md) |
 | P6.2 | PAL/NTSC, EU/US, language at boot | in progress | [P3_EU_BUILD](P3_EU_BUILD.md) |
 | P6.3 | PGXP-style vertex precision | open | — |
 | P6.4 | Fast-forward | in progress (OLED turbo works in battle on the US disc, rc7; tick is the owner's call) | [P6.4](P6.4_FAST_FORWARD.md) |
@@ -713,8 +713,9 @@ gate, which stays open.
   correctly, which the list below had as 4:3 and needing a decision; that is
   the owner's observation (no capture), so the spiral item is rewritten as a
   confirm item. The area-change iris was not mentioned, so it stays open.
-  **New regression (open, fix in progress in a separate PR):** the
-  post-battle results screen now shows black side bars. **Future:** the
+  **Post-battle results screen with black side bars (not a code
+  regression, see below; fixed by patch `0074` in PR #213, pending OLED).**
+  **Future:** the
   Items menu, see the last item below. **Open, in this order**
   (details and evidence in [P6.1_WIDESCREEN.md](P6.1_WIDESCREEN.md#open-transitions-2026-10-23)):
   - [ ] **Area-change iris and grid cover** (`FIELDSTG_closeField`): start the
@@ -727,9 +728,13 @@ gate, which stays open.
     tiles to 426 px). Confirm with a capture (PC or OLED) which of the two
     it is, and whether the swirl itself or only the cover reaches the edges;
     if it is right, tick this and drop the decision.
-  - [ ] **Regression: black side bars on the post-battle results screen**
-    (found on the OLED, rc8; it filled the width before). Fix in progress in
-    a separate PR; tick when verified on the OLED.
+  - [ ] **Post-battle results screen: black side bars** (rc8 OLED report,
+    called a regression). It is a long-standing 4:3 results screen, not a
+    code regression: PC captures rc7 `b0aed93` vs `a7860bf` are identical
+    through battle, report and field fade, and it stood out once the battle,
+    banner and technique backdrops went 16:9. Fixed by patch `0074` in
+    PR #213 (16:9, replay scenarios `us/eu-battle-report`); tick when verified
+    on the OLED (US and EU).
   - [ ] **PC `sdl3_gpu` only:** an empty drawing area (the 0x0 clip
     `closeField` leaves on the map layer) must draw nothing; today
     `UpdateScissor` keeps the previous scissor, so the map shows again after

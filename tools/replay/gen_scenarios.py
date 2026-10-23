@@ -396,6 +396,22 @@ def p77_battle(version):
     return r
 
 
+def battle_report(version):
+    """P6.1 (patch 0074): one forced battle (the env of the manifest), a
+    technique, Cross to the win and the battle report; checkpoints on the
+    report. Measured on the PC build (DW3_TURBO=4): the report is up from about
+    frame 1060 to 1140 (EU) and 1220 (US). The manifest forbids the 4:3 gutter
+    (`gutter 0 px`) between the report's overlay restore and the field's."""
+    r = Rec(f"{version.upper()}: P6.1 battle report in widescreen (env in manifest)")
+    _tech(r, 350)
+    for f in range(520, 1470, 30):
+        r.press(f, CROSS)
+    r.shot(1080, "report-a")
+    r.shot(1120, "report-b")
+    r.end(1500)
+    return r
+
+
 R1 = 0x0800
 # Evidence runs only (measured): the frames later that the PAL battle reaches turn
 # 2's message, and the Crosses it needs to get there (the enemy acts twice before turn 2)
@@ -800,6 +816,7 @@ def main(out):
         (out / f"{v}-music-loop.rec").write_text(music_loop(v).text(True))
         (out / f"{v}-battle-music.rec").write_text(battle_music(v).text(True))
         (out / f"{v}-two-battles.rec").write_text(two_battles(v).text(True))
+        (out / f"{v}-battle-report.rec").write_text(battle_report(v).text(True))
         (out / f"{v}-p77-battle.rec").write_text(p77_battle(v).text(True))
         (out / f"{v}-p77-square.rec").write_text(p77_square(v).text(True))
         (out / f"{v}-p79-menu.rec").write_text(p79_menu(v).text(True))
