@@ -42,7 +42,7 @@ lives in its doc, not in the entry below.
 | P5.1 | Memory budget | in progress | [P5.1](P5.1_MEMORY.md) |
 | P5.2 | Performance pass | done | [P5.2](P5.2_BATTLE_GPU.md) |
 | P5.3 | Save handling | done | [P5.3](P5.3_FLAT_SAVE.md) |
-| P5.4 | Error reporting | in progress (done-when met on the OLED, US + EU; PR 2: boot notice + assert open) | [P5.4](P5.4_CRASH.md) |
+| P5.4 | Error reporting | in progress (done-when met on the OLED, US + EU; PR 2 boot notice + assert/abort landed, emulator-tested; owner OLED check open) | [P5.4](P5.4_CRASH.md) |
 | P5.5 | Stage sweep on hardware | open | — |
 | P6.1 | Scaling / widescreen | in progress | [P6.1](P6.1_WIDESCREEN.md) |
 | P6.2 | PAL/NTSC, EU/US, language at boot | in progress | [P3_EU_BUILD](P3_EU_BUILD.md) |
@@ -541,6 +541,33 @@ speed.
 - [ ] **P5.4 Error reporting.** Crash handler that writes a log + last
   mode/stage id to SD; assert overlay.
   Done when: a forced fault produces a readable report.
+  **Status (2026-10-23, report PR 2 = plan steps 6–7):** in progress,
+  waiting for the owner's OLED check. **6)** When the boot latch rotates a
+  report from the previous run, every build (release, nxlink) shows a
+  short English panel after the EGL surface is up: "The last run
+  crashed.", version, reason, mode / stage, where the report is
+  (`crash_report_prev.txt`), for 8 s or until A / B / + (after 1 s), then
+  boots normally. Once per crash (the rotation consumes the report); no
+  previous report = nothing drawn, boot unchanged. Drawn with the
+  STR-restore bar's scissor clears and the HUD 8×8 font
+  (`nx_crash_notice.c`), integer scale 2 handheld / 3 docked. **7)** The
+  game image wraps `abort`, `__assert_func`, `exit`, `diagAbortWithResult`
+  and `fatalThrow` (`-Wl,--wrap`): an assembly stub saves the caller's
+  registers and the PR 1 writer produces the same report (`reason: assert
+  file:line func: expr` / `abort` / `fatal 0x… (2xxx-yyyy, …)` / `exit N`,
+  pc = the call, backtrace from the caller), the `CRASH` line and
+  `svcBreak`; the notice fires for these too. Covers newlib asserts,
+  libstdc++ `std::terminate`, mesa's fatal paths and libnx's
+  `diagAbortWithResult` callers; not aborts before `main` (no SD yet).
+  The survey and the force modes (`DW3_FORCE_CRASH=assert|abort|fatal|exit`
+  in `--force-crash` builds) are in [P5.4_CRASH.md](P5.4_CRASH.md#report-pr-2-2026-10-23-steps-67).
+  Tested in Ryubing (Xvfb), US + EU; evidence
+  `tmp/evidence/2026-10-23-p54-crash-notice/`.
+  **Remaining (owner, OLED, US and EU):** the PR 2 hardware check in
+  [P5.4_CRASH.md](P5.4_CRASH.md#pr-2-owner-oled-check): a forced assert
+  build, then the normal build twice (notice once, then none). P5.4 is
+  ticked after that. Still deferred: previews keep or publish each `.elf`
+  (release packaging, after rc7).
   **Status (2026-10-23, report PR 1 = plan steps 1–5):** in progress.
   `crash_report.txt` now carries `module_base` and `base+0x…` offsets, a
   validated frame-pointer backtrace, `git` + GNU `build_id`, overlay
@@ -562,12 +589,8 @@ speed.
   `symbolize_crash.py` resolves pc `crash_force_null_write`, lr
   `crash_force_now` and frames `dw3_nx_crash_force_fault` ← `main`.
   Evidence: `tmp/evidence/2026-10-23-p54-oled-forcecrash-{us,eu}/`.
-  Not ticked only because the objective also names the assert overlay.
-  **Still open:** (a) PR 2: step 6, an on-screen "last run crashed,
-  report at …" notice on the next boot, and step 7, `assert` / `abort`
-  routed into the same report; (b) previews keep or publish the `.elf` of
-  each `.nro` (release packaging follow-up after rc7). See
-  [P5.4_CRASH.md](P5.4_CRASH.md).
+  Not ticked only because the objective also names the assert overlay
+  (PR 2 above).
   **Status (2026-10-15):** in progress; the owner is investigating the
   crash-report path on hardware. Not ticked.
   **Status (2026-10-16):** in progress; report path researched and small
