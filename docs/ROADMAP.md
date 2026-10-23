@@ -652,6 +652,11 @@ gate, which stays open.
   reproduced); shipped in preview.27, hardware acceptance pending. Crash
   record 1 (battle) is separate and open. Menu and transition coverage:
   [P6.1_WIDESCREEN_MENU_AUDIT.md](P6.1_WIDESCREEN_MENU_AUDIT.md) (#161).
+  **Area name banner (2026-10-23):** the banner after an area change spans
+  16:9 (patch `0071`, PSY-Z `dw3-gutter-width`: a display-wide band of
+  rows takes the gutters). PC US and EU captured, widescreen off unchanged,
+  Switch US/EU builds compile; OLED pending. Still 4:3: the area-change
+  iris and the encounter spiral.
 - [ ] **P6.2** PAL/NTSC and EU/US selection at boot; language from EU
   `CNTY_SEL`.
   **Status (2026-10-14, language part):** `CNTY_SEL` linked as
