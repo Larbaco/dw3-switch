@@ -59,6 +59,7 @@ lives in its doc, not in the entry below.
 | P6.15 | Regression replay tests | in progress | [P6.15](P6.15_REPLAY_TESTS.md) |
 | P6.17 | Music / SFX volume | in progress (owner: volume options work, rc6 EU / rc7 US; relaunch check open) | [P6.17](P6.17_VOLUME.md) |
 | P6.18 | Pacing options | in progress (Instant text confirmed on the US OLED, rc7; rest of the OLED check open) | [P6.18](P6.18_PACING.md) |
+| P6.22 | Turbo speed in scripted scenes (future goal) | future | [roadmap](#phase-6-goal-notes), [P6.4](P6.4_FAST_FORWARD.md) |
 | P7.1 | Inventory and boundaries | done | [COMMUNITY_QOL](COMMUNITY_QOL.md) |
 | P7.2 | Patched EU disc as data source | open | [COMMUNITY_QOL](COMMUNITY_QOL.md) |
 | P7.3 | Binary-patch limits | in progress | [COMMUNITY_QOL](COMMUNITY_QOL.md) |
@@ -719,6 +720,9 @@ gate, which stays open.
   check the "Ready to close?" note above asked for, with the return to normal
   speed; the field and the exact FPS were not measured in this round. Left
   unticked: the owner decides whether this closes P6.4.
+  **Future goal (2026-10-23):** the owner also finds the New Game opening
+  scenes very slow with turbo at 4x (about 70 FPS); recorded as P6.22, nothing
+  started.
   Done when: PC and Switch (Ryujinx, then hardware) show it on both the US
   and EU discs, and it returns cleanly to normal speed.
 - [x] **P6.5** Release packaging: `.nro` + `README` for own-disc setup;
@@ -1350,6 +1354,77 @@ Statuses are in the [table](#status-at-a-glance).
   Done when (proposed): camera and field movement in 30 fps sections
   present at 60 fps on PC and Switch with the US and EU discs, and the
   original 30 fps stays selectable.
+- [ ] **P6.22 Turbo speed in scripted scenes (future goal).** Dated
+  2026-10-23, owner request after the preview.30-rc7 OLED test (US disc,
+  Switch OLED). Goal note only, **nothing started, nothing measured yet**.
+  The owner reports that on New Game the opening scenes are very slow even
+  with turbo on: the scripted scenes (meeting the friends, talking to the
+  attendants and receptionists, and so on). Turbo at 4x only raises the
+  frame rate to about 70 FPS there, while it works well in battle. Goal:
+  find what bounds turbo in these scenes and raise it so turbo reaches its
+  target (4x is 240 game frames per second on the US disc, 200 on EU) in
+  scripted event scenes and in similar situations: other event scripts,
+  long walks and text-heavy scenes.
+  **Already known (cited, not repeated as new findings):**
+  [P6.4_FAST_FORWARD.md](P6.4_FAST_FORWARD.md) says the Switch host skips
+  only presents, "the CPU rasterizer still draws every frame", so the real
+  speed is "up to" the setting. The same doc records the field/event
+  readings of earlier OLED rounds (about 70-80 fps in the field against
+  about 180 fps in battle at 2x on preview.25; about 90 FPS in the Inn and
+  70 FPS in the city and field against 130 in battle on EU preview.26,
+  HUD counters, not benchmarks) and defers display-buffer raster skipping
+  because the field encounter transition copies VRAM with `MoveImage`
+  (`FIELDSTG_playBattleTransition`). P6.10 above (field and menus on the
+  GPU path) already carries the "field turbo has no headroom" reasoning, and
+  [P5.2_BATTLE_GPU.md](P5.2_BATTLE_GPU.md) shows why battle is faster
+  (the mesh path takes the triangles off the CPU). So this item does not
+  restart those: it adds the **scripted-scene** case and a measure-first
+  step that decides between them. [P6.18_PACING.md](P6.18_PACING.md) and
+  [P6.15_REPLAY_TESTS.md](P6.15_REPLAY_TESTS.md) already show that
+  dialogue typing is counted in game frames (`text page typed in N frame(s)`),
+  so text waits should scale with turbo; that is a reading of the docs, not
+  a test of the opening.
+  **Candidates, none confirmed:** (1) CPU cost per emulated frame (game
+  logic plus the software rasterizer; scripted scenes draw many sprites,
+  text and a full map on the soft path, and the map still fills in one
+  tile per frame per [STATIC_SD_LOAD.md](STATIC_SD_LOAD.md)); (2) the
+  turbo gate: the port speeds up only the field and battle mode files
+  (`port/options/turbo.c`, US 0x158/0x159, EU 0x166/0x167), so a scene that
+  runs in another mode or overlay would stay near 1x; the opening goes
+  through several overlays (P6.15: Kusanagi, name entry, Login Room, lobby);
+  (3) present/vsync pacing in `Psyz_VideoVSync` (`nx_gpu.c`) and the
+  per-frame fixed costs that turbo repeats (audio pump, input poll,
+  mesh/batch reset); (4) CD or stream reads, which look unlikely (no disc
+  seek on the port, map preload is one `fread`) but are unmeasured in
+  these scenes; (5) a wait that runs in real time instead of in game
+  frames (not audited); (6) audio sync (the sequencer ticks once per game
+  frame, so this should follow turbo, but the Switch audio buffer is not
+  checked at 4x); (7) the movie inside the opening (about frames
+  14400-14900) is always 1x by design and is not part of this item.
+  **First step, measure before optimizing:** (a) on the OLED, play the
+  opening with turbo at 4x on a `--nxlink` build and read the existing
+  ~1 Hz lines per scene: `frame dt us=` (60 pumps, so the real rate),
+  `mesh dbg:` (`flush_us`, `upload_us`, `present_us`, `frames_blit`,
+  `soft`), the `mem dbg:` line and the `dw3: mode=` / `overlay restore`
+  lines to tell which mode each scene is in (the HUD of
+  [DEBUG_OVERLAY.md](DEBUG_OVERLAY.md) shows `fps` and `mode file=`);
+  (b) on PC replay the scripted opening with turbo forced
+  (`DW3_TURBO=4`, `tools/replay_tests.sh`, the `*-newgame-field`
+  recordings of P6.15; the replay is keyed by game frame, so captures do
+  not change) and time the game frames per scene against the same stretch
+  at 1x, with a per-frame split (game logic, raster, present) added if the
+  existing counters are not enough; (c) compare with the battle numbers to
+  see whether the limit is CPU raster, a pacing wait or the mode gate.
+  Only then pick the optimization (for example the deferred raster
+  skipping in the P6.4 doc, P6.10, or a fix to the gate or a wait). The
+  rule that the port does not overclock (AGENTS.md, directive 7) stays:
+  the work is on the present path, the field-tile pace and the raster.
+  Done when (proposed): a short doc records the measured bottleneck per
+  scene, and with turbo at 4x the New Game opening scenes, a long field
+  walk and a text-heavy scene reach the target rate (or the doc shows why
+  not) on the Switch OLED with the US and EU discs, with no change in game
+  state (the P6.15 replays still match) and a clean return to 1x.
+  Related: P6.4, P6.10, P6.15, P6.18, P5.2.
 
 ### Phase 7 goal notes
 
