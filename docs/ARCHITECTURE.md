@@ -101,7 +101,7 @@ environment hooks for the replay scenarios. See [P7.7_BUG_FIXES.md](P7.7_BUG_FIX
 
 P7.9 battle menu memory has the P6.18 shape: patch `0067` has a few `PORT_HOST` calls in
 `player_turn.c` / `tech_menu.c` that ask `port/battle_menu/` where the cursor starts; the
-answer is the original start unless the file-only key `battle_menu_memory` is set. See
+answer is the original start unless the Battle cursor row of the Options screen (key `battle_menu_memory`) is set. See
 [P7.9_BATTLE_MENU_MEMORY.md](P7.9_BATTLE_MENU_MEMORY.md).
 
 ## Non-goals (for now)

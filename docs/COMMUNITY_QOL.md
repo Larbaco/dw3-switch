@@ -167,7 +167,7 @@ languages; new US strings English only).
 | Fixed Field Moves, Improved HP Proxy, Picking/Snapping Claw KO fix | Viable | P7.4 bugfix class; the Claw fix is done in P7.7 (patch `0066`, [P7.7_BUG_FIXES.md](P7.7_BUG_FIXES.md)) |
 | HP/MP restore on level up | Viable | P7.6 option |
 | Enemy HP, partner MP, technique attribute/power/cost colours, DV stats panel, EXP-to-next | Viable | P7.8 battle info HUD option |
-| Battle menu remembers last command; custom technique order | Viable | P7.9: the memory is built (patch `0067`, file-only `battle_menu_memory`, [P7.9_BATTLE_MENU_MEMORY.md](P7.9_BATTLE_MENU_MEMORY.md)); the technique order is deferred |
+| Battle menu remembers last command; custom technique order | Viable | P7.9: the memory is built (patch `0067`, the **Battle cursor** row of the Options screen, key `battle_menu_memory`, [P7.9_BATTLE_MENU_MEMORY.md](P7.9_BATTLE_MENU_MEMORY.md)); the technique order is deferred |
 | Active Digivolution name in battle; reward text "1IT/1EXP" fix | Name: done (P7.7, patch `0065`). Reward text: not reproduced on the stock US or EU discs | [P7.7_BUG_FIXES.md](P7.7_BUG_FIXES.md) |
 | Training without RNG + timing minigame + Fast Training | Viable, game design change | P7.10 option, off by default |
 | Fast Travel from map (Square opens map), quest log HUD, NPC quest/battle bubbles, walkthrough in 5 languages | Viable | P7.4 FastTravel + P7.11 guidance |
