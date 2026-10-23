@@ -1,0 +1,80 @@
+Upstream-bound: no
+Subject: [PORT_HOST] P6.1 technique backdrops cover the gutters
+
+With widescreen on, a 2D effect frame drawn at a screen position that
+spans the whole 320-wide screen (the blue band and magic-circle backdrop
+at the start of a technique) is stretched horizontally across both side
+gutters, about the middle of the screen. Smaller sprites and projected
+ones are unchanged. Off, the gutter is 0 and nothing changes.
+
+--- a/src/battle/battle_mode/sprite_anim.c	2026-10-23 01:50:57.212423667 -0300
++++ b/src/battle/battle_mode/sprite_anim.c	2026-10-23 01:50:57.213980440 -0300
+@@ -1,6 +1,46 @@
+ /* FIGHTSTG's sprite animations, the frames of a 2D effect. */
+ 
+ #include "battle/battle_mode.h"
++#if PORT_HOST
++#include "port_widescreen.h"
++
++/* Widescreen: whether frame `frame` of `sheet`, drawn at x with horizontal
++   scale `scale` about x, spans the whole 320-wide screen of a layer whose
++   origin is offsetX; such a frame is a backdrop (the techniques' blue band) */
++static s32 spansScreen(s32 *sheet, s32 frame, s32 x, s32 scale, s32 offsetX) {
++    u8 *ids = (u8 *)sheet + sheet[1];
++    SpritePart *parts = (SpritePart *)((u8 *)sheet + sheet[0]);
++    s16 *p;
++    s32 count;
++    s32 left = 0x7FFF;
++    s32 right = -0x7FFF;
++    s32 a;
++    s32 b;
++    s32 i;
++
++    for (i = 0; ids[i] != frame; i++) {
++    }
++    p = (s16 *)((u8 *)sheet + sheet[i + 2]);
++    count = *p;
++    p += 3;
++    for (i = 0; i < count; i++, p += 3) {
++        a = p[1] * scale / ONE;
++        b = (p[1] + parts[p[0]].w) * scale / ONE;
++        if (a > b) {
++            s32 t = a;
++            a = b;
++            b = t;
++        }
++        if (a < left) {
++            left = a;
++        }
++        if (b > right) {
++            right = b;
++        }
++    }
++    return count > 0 && x + left <= 4 - offsetX && x + right >= 316 - offsetX;
++}
++#endif
+ 
+ /* Empty, and nothing calls it */
+ void FIGHTSTG_nop(void) {
+@@ -40,7 +80,21 @@
+     if (task->rot.both != 0 || task->rotZ != 0) {
+         drawer.setRotation(task->rot.v[0], task->rot.v[1], task->rotZ);
+     }
++#if PORT_HOST
++    /* Widescreen: a full-screen backdrop is stretched across the side
++       gutters, about the middle of the screen */
++    if (dw3_port_widescreen_px() > 0 && (task->pos.vz == 0x7FFF || task->pos.vz == -1) &&
++        spansScreen(FILE_CACHE.getEntry(task->sheet), task->frame, screen.x, task->scale.v[0], layer->offsetX)) {
++        s32 px = dw3_port_widescreen_px();
++
++        drawer.setScale(task->scale.v[0] * (320 + 2 * px) / 320, task->scale.v[1], 0);
++        drawer.setPivot(160 - layer->offsetX, screen.y);
++    } else {
++        drawer.setPivot(screen.x, screen.y);
++    }
++#else
+     drawer.setPivot(screen.x, screen.y);
++#endif
+     drawer.draw(FILE_CACHE.getEntry(task->sheet), task->frame, screen.x, screen.y);
+ }
+ 

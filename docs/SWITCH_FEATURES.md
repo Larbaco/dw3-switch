@@ -1,6 +1,6 @@
 # Native Switch features
 
-Phase 10 goal note. See [ROADMAP.md](ROADMAP.md) P10.1–P10.5.
+Phase 10 goal note. See [ROADMAP.md](ROADMAP.md) P10.1–P10.6.
 
 Many “Switch-native” behaviours are already owned by earlier phases (present,
 pad/rumble, saves, scaling, turbo). This note is the inventory and the home
@@ -27,7 +27,8 @@ for **residual** Switch-only UX after those phases land. Hosts stay thin:
 | Item | Default | Notes |
 |---|---|---|
 | Focus loss: pause audio/logic; clamp time delta on resume | always on | Complements P5.3 flush; prevents battle/CD jumps after sleep. Event map + wiring: [P5.3_HOME_QUIT.md](P5.3_HOME_QUIT.md) |
-| Confirm/Cancel layout (PS positional vs Nintendo A/B) | PS positional | Toggle in Phase 9 |
+| Confirm/Cancel layout (PS positional vs Nintendo A/B) | PS positional | Toggle in Phase 9, ROADMAP P9.8 (future goal, 2026-10-23) |
+| Switch-style button glyphs (A/B/X/Y, L/R/ZL/ZR/+/-) instead of the PS icons, US and EU | original icons | ROADMAP P10.6 (future goal, 2026-10-23); texture pack (P8) or overlay; follows the P9.8 layout |
 | System language → EU `LANGUAGE` hint | off / follow stock boot | Override still via `CNTY_SEL` / packs |
 | `swkbd` for tamer name | off | Filter to game charset/font |
 | CRT / sharp present filters | off | Present-stage only |

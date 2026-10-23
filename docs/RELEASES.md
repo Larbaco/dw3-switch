@@ -143,6 +143,30 @@ one console and are not acceptance gates; gates live in
   eight rows fit in handheld and docked, the row steps and keeps its value after
   a relaunch, and with Command+Tech the battle menu opens on the last pick
   ([P7.9 checklist](P7.9_BATTLE_MENU_MEMORY.md#oled-check-the-owner)).
+- **preview.30-rc7 candidate, 2026-10-23 (OLED handheld, US, nxlink log; main
+  `b0aed93`).** Owner feedback plus the log (`/mnt/cabal/tmp/dw3-preview30-rc7-out/dw3.log`,
+  5702 lines, 1707 one-second windows, one run). Confirmed: the Items screen
+  works (the rc6 crash, #201, patch `0069`); the eight-row Options screen looks
+  good (#206); Battle cursor Command+Tech works and a new battle opens on the
+  technique used in the last one (log: `technique list of partner 3 opens on
+  technique 56 ... remembered`); Text speed Instant works as desired (no `slow
+  Instant page`, no `text scroll`; 26 area name banners logged as non-dialogue,
+  #203); the battle renderer is the default `gpu-tex` with good performance
+  (`soft=0` in every window, mesh frames in 211, present path `mesh+ui`); turbo
+  works in battle (`dw3-turbo: speed 4x` and `1x`, three times); the volume
+  options work; sleep and resume worked with saves before and after, and the
+  in-game time counted only play time. In the log that sleep is one unclamped
+  `frame dt` window of 543746177 us and there is no `applet focus:` line (see
+  ROADMAP P10.2). **New bug:** the background music plays only once and then
+  stops, in the field, the inn and battle (SEQ/SEP NRPN loop count; fix in a
+  separate PR, ROADMAP P4.3). Not covered: the Claw steal and the HUD
+  Digivolution name (P7.7; the owner has no Claw yet), the bridge-gate scene on
+  US hardware (patch `0058`, needs a New Game), rumble, docked mode, an underrun
+  count (P4.3), P5.1 (the 2 h memory session) and the P5.4 notice and assert
+  (PR 2). The widescreen PRs #202 and #205 are not in rc7. The `dw3.log` heap
+  high-water stayed at 1685K. The top of the log latches a crash of the
+  previous run (`preview.29-19-ga2683c3`, the P5.4 `--force-crash` build), not
+  an rc7 crash.
 
 Still open on hardware: audio underrun count, the full overlay sweep, battle
 at 60 Hz, the sync-object error above, a fresh-save relaunch reload, and EU

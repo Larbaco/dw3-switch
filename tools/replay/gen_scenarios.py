@@ -700,6 +700,28 @@ def encounter_event(version):
     return r
 
 
+def battle_music(version):
+    """Random battle, then no input: the battle theme (a long song with an NRPN
+    loop) runs to its loop end. Same walk as encounter_walk, then released."""
+    start, end = ENCOUNTER[version]
+    r = Rec(f"{version.upper()}: walk into a random battle, then idle in it (env in manifest)")
+    _pad(r, start, UP)
+    _pad(r, end, 0)
+    r.end(BATTLE_MUSIC_END)
+    return r
+
+
+BATTLE_MUSIC_END = 7500
+
+
+def music_loop(version):
+    """The field music alone: no input for 3000 frames (env in manifest). The
+    log shows the song's NRPN loop jumping back, never an end-of-track."""
+    r = Rec(f"{version.upper()}: field music idle, the NRPN loop must repeat (env in manifest)")
+    r.end(3000)
+    return r
+
+
 def items_screen(version, evidence=False):
     """Field menu -> Items after a battle (patch 0069, root cause of the
     preview.30-rc6 crash; patch 0070's DW3_FORCE_ITEMS fills the bag, the
@@ -775,6 +797,8 @@ def main(out):
         (out / f"{v}-encounter-walk.rec").write_text(encounter_walk(v).text(True))
         (out / f"{v}-encounter-event.rec").write_text(encounter_event(v).text(True))
         (out / f"{v}-items-screen.rec").write_text(items_screen(v).text(True))
+        (out / f"{v}-music-loop.rec").write_text(music_loop(v).text(True))
+        (out / f"{v}-battle-music.rec").write_text(battle_music(v).text(True))
         (out / f"{v}-two-battles.rec").write_text(two_battles(v).text(True))
         (out / f"{v}-p77-battle.rec").write_text(p77_battle(v).text(True))
         (out / f"{v}-p77-square.rec").write_text(p77_square(v).text(True))

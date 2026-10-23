@@ -247,6 +247,23 @@ def test_pacing_scenarios_are_defined_for_both_discs():
         assert any("FIGHTSTG_start" in rx for _, rx in names[f"{v}-encounter-off"].forbid_log)
 
 
+def test_music_loop_scenarios_cover_both_discs():
+    """psyz libsnd NRPN loop count: the field music must jump back at its loop
+    end and never reach end-of-track (the rc7 OLED bug: one pass, then silence)."""
+    rt = _load("replay_tests")
+    names = {sc.name: sc for sc in rt.SCENARIOS}
+    for v in ("us", "eu"):
+        sc = names[f"{v}-music-loop"]
+        assert sc.log_only and sc.env and sc.expect_log, sc.name   # PC only, log verdicts
+        assert any("end-of-track" in rx for _, rx in sc.forbid_log), sc.name
+        assert sc.expect_log[0][1].count("loop end") >= 2, sc.name
+        # the battle theme: the loop must be seen after the battle starts
+        sc = names[f"{v}-battle-music-loop"]
+        assert sc.log_only and sc.env and sc.phases == (f"{v}-battle-music",), sc.name
+        assert sc.expect_log[0][1].startswith("FIGHTSTG_start"), sc.name
+        assert any("end-of-track" in rx for _, rx in sc.forbid_log), sc.name
+
+
 def test_items_screen_scenarios_cover_both_discs_and_both_text_speeds():
     """Patch 0069: the Items list after a battle, Instant (the owner's setting)
     and Normal, on both discs, one recording per disc."""
