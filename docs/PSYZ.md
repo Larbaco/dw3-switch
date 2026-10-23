@@ -46,6 +46,19 @@ restart at `read_pos`); details and evidence in
 (group `snd_loop`). The VAB attribute NRPNs (`SsFCALL.ccentry`) are still
 stubs, so the reverb type / depth the songs send are not applied.
 
+## SEQ table geometry (host override, no psyz change)
+
+libsnd indexes the SEQ table as `_ss_score[seq][track]` with rows of
+`t_max` entries of `sizeof(struct SeqStruct)` bytes (192 on a 64-bit host,
+`SS_SEQ_TABSIZ`). The game's own table is sized for the PS1 struct, so the
+port replaces `SsSetTableSize` (`platforms/pc/src/psyz_host_overrides.c`) with
+a private table. It must keep the rows contiguous: the game plays the system
+bank's second SEP file as tracks 16..31 of seq 0, which is entry `(1, track -
+16)`. With a row stride that differs from the entry size those tracks (the win
+jingle, menu and battle sounds) never played. Pinned by
+`tools/tests/test_seq_table.py`. The psyz pin is unchanged by this fix
+([P3.6_AUDIO.md](P3.6_AUDIO.md)).
+
 ## Recursive submodules
 
 PSY-Z vendors SDL3 under `vendor/psyz/external/SDL`. After cloning or
