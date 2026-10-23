@@ -45,7 +45,13 @@ void dw3_port_audio_apply(int music_step, int sfx_step) {
 }
 
 void dw3_port_audio_note_sequence(int seq_access_num, int sep, int music) {
-    Psyz_SndSetSeqBus((short)seq_access_num, (short)sep,
+    int slot_seq;
+    int slot_sep;
+
+    /* A track number past 15 (the win jingle is 30) is an entry of the next
+     * SEQ row; its voices carry that pair, so route that pair. */
+    dw3_port_audio_track_slot(seq_access_num, sep, &slot_seq, &slot_sep);
+    Psyz_SndSetSeqBus((short)slot_seq, (short)slot_sep,
                       music ? BUS_MUSIC : BUS_SFX);
 }
 
