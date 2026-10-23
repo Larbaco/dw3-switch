@@ -197,9 +197,12 @@ one console and are not acceptance gates; gates live in
     PR):** after winning a battle the music is silent on the results screen
     and back on the map. The SFX for exp and level up still play. Not
     reported in rc7 (possibly hidden by the loop bug; not checked).
-  - **Regression, post-battle results screen shows black side bars** in
-    16:9 (the screen was filling the width before; fix in progress in a
-    separate PR, ROADMAP P6.1).
+  - **Post-battle results screen shows black side bars** in 16:9. Not a code
+    regression: the results screen was always 4:3 (PC captures of rc7
+    `b0aed93` and `a7860bf` are identical through the whole battle, report
+    and field fade), and it stood out once the battle, banner and technique
+    backdrops went 16:9. Fixed by patch `0074` in PR #213, pending an OLED
+    check (ROADMAP P6.1).
   - **Items menu is still 4:3:** the transition effect when opening it is 4:3
     and the menu itself stays 4:3 while the background is 16:9. Recorded as a
     future item (ROADMAP P6.1, "Items menu redesign for 16:9"), not a
