@@ -379,5 +379,31 @@ for _v in ("us", "eu"):
                   note="the memory lasts across battles of one session: battle 2's first menu opens on Techniques (patch 0067)"))
 
 
+# Field menu -> Items after a battle (patches 0069 fix, 0070 hook): the Items
+# list used to crash the host (NULL ItemInfo in getItemCategory) as soon as the
+# bag held one item, which is the owner's preview.30-rc6 OLED crash. A forced
+# EVENT_BATTLE in the Bulk Swamp ends at once (DW3_FORCE_WIN), DW3_FORCE_ITEMS
+# fills the bag. The same recording runs at Text speed Instant (the owner's
+# setting) and Normal. PC only (env), log only: the verdicts are that the
+# process reaches the end of the recording (a crash is CRASH), the STSTATUS
+# overlay restore after the battle's, and the marker the guard of patch 0069
+# prints for the frames that used to fault.
+_ITEMS_ENV = (("DW3_START_MODE", "0x233"), ("DW3_PROGRESS", "6"),
+              ("DW3_FORCE_NPC_ACTION", "0x7400"), ("DW3_FORCE_ENCOUNTER", "34"),
+              ("DW3_FORCE_PARTY", "0"), ("DW3_FORCE_WIN", "1"),
+              ("DW3_FORCE_ITEMS", "1-402"))
+for _v, _ids in (("us", (0x159, 0x1FA, 0x1C2, 0x158, 0x1F9)),
+                 ("eu", (0x167, 0x208, 0x1D1, 0x166, 0x207))):
+    _fight, _menu, _report, _field, _status = _ids
+    for _suffix, _cfg, _speed in (("", (("text_speed", "2"),), "Instant"),
+                                  ("-normal", (("text_speed", "0"),), "Normal")):
+        _add(Scenario(f"{_v}-items-screen{_suffix}", _v, "full", timeout=300, log_only=True,
+                      phases=(f"{_v}-items-screen",), env=_ITEMS_ENV, cfg=_cfg,
+                      expect_restore=((_fight, M), (_menu, S), (_report, M), (_field, M), (_status, M)),
+                      expect_log=((0, r"DW3_FORCE_ITEMS items 1\.\.402 x3(?s:.*)"
+                                      r"dw3: items screen: panel icon skipped, no item chosen yet \(patch 0069\)"),),
+                      note=f"the Items list opens with items in the bag after a battle, Text speed {_speed} (patch 0069)"))
+
+
 def by_name() -> dict[str, Scenario]:
     return {s.name: s for s in SCENARIOS}

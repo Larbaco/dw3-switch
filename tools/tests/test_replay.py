@@ -247,6 +247,23 @@ def test_pacing_scenarios_are_defined_for_both_discs():
         assert any("FIGHTSTG_start" in rx for _, rx in names[f"{v}-encounter-off"].forbid_log)
 
 
+def test_items_screen_scenarios_cover_both_discs_and_both_text_speeds():
+    """Patch 0069: the Items list after a battle, Instant (the owner's setting)
+    and Normal, on both discs, one recording per disc."""
+    rt = _load("replay_tests")
+    names = {sc.name: sc for sc in rt.SCENARIOS}
+    status = {"us": 0x1F9, "eu": 0x207}
+    for v in ("us", "eu"):
+        a, b = names[f"{v}-items-screen"], names[f"{v}-items-screen-normal"]
+        assert a.phases == b.phases == (f"{v}-items-screen",)
+        assert dict(a.cfg) == {"text_speed": "2"} and dict(b.cfg) == {"text_speed": "0"}
+        for sc in (a, b):
+            assert sc.log_only and dict(sc.env)["DW3_FORCE_ITEMS"] and sc.expect_log, sc.name
+            # the field menu's screens overlay is restored after the battle's
+            assert sc.expect_restore[-1] == (status[v], "mode"), sc.name
+            assert "patch 0069" in sc.expect_log[0][1], sc.name
+
+
 def test_p77_scenarios_are_defined_for_both_discs():
     rt = _load("replay_tests")
     names = {sc.name: sc for sc in rt.SCENARIOS}

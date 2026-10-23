@@ -672,6 +672,46 @@ def encounter_event(version):
     return r
 
 
+def items_screen(version, evidence=False):
+    """Field menu -> Items after a battle (patch 0069, root cause of the
+    preview.30-rc6 crash; patch 0070's DW3_FORCE_ITEMS fills the bag, the
+    manifest's env sets the rest). The forced event battle ends at once
+    (DW3_FORCE_WIN); Cross walks the report back to the field, Start opens the
+    field menu, Cross opens Items, Cross opens the Items list (the frame that
+    used to crash: the panel's icon of an item not chosen yet), the cursor
+    moves, an item is picked and used on the first partner, the list is
+    reopened, closed, Weapons is opened (second page), and the menus are left
+    with Triangle. Log only; `evidence` adds the captures of
+    docs/BALLOON_NULL_ACTOR.md (run by hand with --scen-dir, never
+    committed). Menus run at the normal speed, a step is ~100-300 frames."""
+    r = Rec(f"{version.upper()}: field menu Items after a battle (env and cfg in manifest)")
+    for f in range(300, 1200, 30):
+        r.press(f, CROSS)            # battle report -> field
+    r.press(1250, START)             # field menu
+    r.press(1420, CROSS)             # Items (loads the STSTATUS overlay)
+    r.press(1650, CROSS)             # open the Items list: used to crash
+    r.press(1850, DOWN)
+    r.press(1900, DOWN)
+    r.press(2050, CROSS)             # pick the item: choose a Digimon
+    r.press(2250, CROSS)             # use it
+    r.press(2500, CROSS)             # back to the list
+    r.press(2850, TRIANGLE)          # close the list
+    r.press(3000, DOWN)              # Weapons
+    r.press(3050, CROSS)             # its list opens with another item panel
+    r.press(3250, R1)                # second page
+    r.press(3450, TRIANGLE)
+    r.press(3600, TRIANGLE)          # back to the field menu
+    r.press(3750, TRIANGLE)          # and to the field
+    if evidence:
+        for f, n in ((1200, "field"), (1400, "field-menu"), (1600, "item-options"),
+                     (1800, "item-list"), (2000, "item-list-moved"), (2200, "choose-digimon"),
+                     (2450, "item-used"), (2800, "item-list-again"), (3200, "weapons"),
+                     (3400, "weapons-page2"), (3700, "field-menu-back"), (3900, "field-after")):
+            r.shot(f, n)
+    r.end(3950)
+    return r
+
+
 def main(out):
     out.mkdir(parents=True, exist_ok=True)
     (out / "us-title.rec").write_text(us_title().text())
@@ -703,6 +743,7 @@ def main(out):
         (out / f"{v}-text-opening.rec").write_text(text_opening(v, TEXT_END[v]).text(True))
         (out / f"{v}-encounter-walk.rec").write_text(encounter_walk(v).text(True))
         (out / f"{v}-encounter-event.rec").write_text(encounter_event(v).text(True))
+        (out / f"{v}-items-screen.rec").write_text(items_screen(v).text(True))
         (out / f"{v}-two-battles.rec").write_text(two_battles(v).text(True))
         (out / f"{v}-p77-battle.rec").write_text(p77_battle(v).text(True))
         (out / f"{v}-p77-square.rec").write_text(p77_square(v).text(True))
