@@ -121,6 +121,15 @@ def test_addr2line_output_parser():
         "f at platforms/switch/x.c:1"
 
 
+def test_return_into_a_function_entry_is_flagged():
+    syms = [(0x5b38, 0x64, "__wrap___assert_func"), (0x5b9c, 0x64, "__wrap_exit")]
+    rows = sc.format_rows([sc.Addr("#03", None, 0x5b9c, True),
+                           sc.Addr("#02", None, 0x5b40, True)],
+                          {0x5b98: ["??"], 0x5b3c: ["??"]}, False, syms)
+    assert "entry of __wrap_exit" in rows[0]
+    assert "entry of" not in rows[1]
+
+
 @pytest.fixture(scope="module")
 def host_elf(tmp_path_factory) -> Path:
     d = tmp_path_factory.mktemp("elf")
