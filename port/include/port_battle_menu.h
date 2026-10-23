@@ -9,7 +9,9 @@
 extern "C" {
 #endif
 
-/* The file-only key of port_options.cfg (no row on the Options screen). */
+/* The key of port_options.cfg behind the Options screen's Battle cursor row
+ * (DW3_PORT_OPT_BATTLE_MENU in port_options.h). It was file-only until the row
+ * was added; the key and its values 0, 1, 2 did not change. */
 #define DW3_BATTLE_MENU_MEMORY_KEY "battle_menu_memory"
 
 enum {
@@ -18,7 +20,8 @@ enum {
     DW3_BATTLE_MENU_MEMORY_TECH = 2     /* + the technique list remembers */
 };
 
-/* Mode from the option file; anything but 0, 1 or 2 is 0. */
+/* Mode from the Battle cursor row (loaded from the option file at boot);
+ * anything but 0, 1 or 2 is 0. */
 int dw3_port_battle_menu_mode(void);
 
 /* The BATTLE_COMMAND_* the player's turn starts from (FIGHTSTG_updatePlayerTurn

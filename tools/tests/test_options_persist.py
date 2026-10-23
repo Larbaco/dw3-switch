@@ -333,7 +333,7 @@ def test_volume_keys_are_in_the_written_file_order(persist_bin: Path, tmp_path: 
             if "=" in l and not l.startswith("#")]
     assert keys == ["version", "widescreen", "fast_forward", "restart_hotkey",
                     "music_volume", "sfx_volume", "encounter_rate", "text_speed",
-                    "end"]
+                    "battle_menu_memory", "end"]
 
 
 # --- P6.18 Encounter rate / Text speed rows ---------------------------------
@@ -525,8 +525,10 @@ def test_no_sound_when_nothing_changes(persist_bin: Path, tmp_path: Path):
     assert sounds(err) == ["cursor 10"] * 3          # Music volume is already at 10
     _, err = session(persist_bin, tmp_path, "open", "row", "6", "left")
     assert sounds(err) == ["cursor 10"] * 6          # Text speed is already at Normal
-    _, err = session(persist_bin, tmp_path, "open", "row", "6", "down")
-    assert sounds(err) == ["cursor 10"] * 6          # the last row
+    _, err = session(persist_bin, tmp_path, "open", "row", "7", "left")
+    assert sounds(err) == ["cursor 10"] * 7          # Battle cursor is already Off
+    _, err = session(persist_bin, tmp_path, "open", "row", "7", "down")
+    assert sounds(err) == ["cursor 10"] * 7          # the last row
     # The plain open and close calls make no sound; the screen plays Select
     # for the opening from the title menu (decomp patch 0044), not here.
     _, err = session(persist_bin, tmp_path, "open", "close")
@@ -564,8 +566,11 @@ def test_sound_comes_after_the_new_volume_is_applied(persist_bin: Path, tmp_path
 
 
 def test_file_only_int_key(persist_bin: Path, tmp_path: Path):
-    """P7.9: a key with no Options row is read from the file, falls back to the
-    default when absent or not a number, and survives a rewrite of the file."""
+    """A key with no Options row is read from the file, falls back to the
+    default when absent or not a number, and survives a rewrite of the file.
+    (battle_menu_memory was the example until it became the Battle cursor row;
+    it is still readable this way, and `odd` / `missing` are the file-only
+    keys now.)"""
     out, _ = session(persist_bin, tmp_path, "fileint", "battle_menu_memory", "0")
     assert out == ["battle_menu_memory=0"]  # no file
     (tmp_path / CFG).write_text(
@@ -580,3 +585,87 @@ def test_file_only_int_key(persist_bin: Path, tmp_path: Path):
     assert out == ["battle_menu_memory=2"]
     out, _ = session(persist_bin, tmp_path, "noinit", "fileint", "battle_menu_memory", "0")
     assert out == ["battle_menu_memory=0"]  # no config dir: the default
+
+
+# --- P7.9 Battle cursor row (was the file-only key battle_menu_memory) -------------
+
+def battle(binary, cfgdir) -> str:
+    out, _ = session(binary, cfgdir, "battle")
+    return out[-1]
+
+
+def test_battle_cursor_defaults_to_off(persist_bin: Path, tmp_path: Path):
+    assert battle(persist_bin, tmp_path) == "battle_menu_memory=0"
+    assert not (tmp_path / CFG).exists()
+
+
+def test_battle_cursor_steps_and_confirm_wrap(persist_bin: Path, tmp_path: Path):
+    def fresh(*steps):
+        for f in tmp_path.glob("port_options.cfg*"):
+            f.unlink()
+        return session(persist_bin, tmp_path, *steps)
+
+    out, _ = fresh("open", "row", "7", "right", "battle")
+    assert out[0] == "battle_menu_memory=1"
+    out, _ = fresh("open", "row", "7", "right", "right", "battle")
+    assert out[0] == "battle_menu_memory=2"
+    out, _ = fresh("open", "row", "7", *["right"] * 5, "battle")
+    assert out[0] == "battle_menu_memory=2"          # stops at Command+Tech
+    out, _ = fresh("open", "row", "7", "left", "battle")
+    assert out[0] == "battle_menu_memory=0"          # stops at Off
+    for n, want in ((1, 1), (2, 2), (3, 0), (4, 1)):
+        out, _ = fresh("open", "row", "7", *["press"] * n, "battle")
+        assert out[0] == f"battle_menu_memory={want}", n   # Confirm wraps 2 -> 0
+    # The row is the last one: Down from it stays on it.
+    out, _ = fresh("open", "row", "7", "down", "press", "battle")
+    assert out[0] == "battle_menu_memory=1"
+
+
+def test_battle_cursor_is_the_old_file_key(persist_bin: Path, tmp_path: Path):
+    """The key and its values are those of the file-only option: a file written
+    by hand for P7.9 is read by the row, and the row writes it back."""
+    for stored in (0, 1, 2):
+        (tmp_path / CFG).write_text(f"version=1\nbattle_menu_memory={stored}\nend=1\n")
+        out, err = session(persist_bin, tmp_path, "battle")
+        assert out == [f"battle_menu_memory={stored}"]
+        assert "is not valid" not in err
+        assert f"battle_menu_memory={stored})" in err        # the load line
+    session(persist_bin, tmp_path, "open", "row", "7", "left", "left", "close")
+    assert "battle_menu_memory=0\n" in (tmp_path / CFG).read_text()
+    # Saved on each change, in the file as the key P7.9 documented.
+    session(persist_bin, tmp_path, "open", "row", "7", "right", "right")
+    text = (tmp_path / CFG).read_text()
+    assert "battle_menu_memory=2\n" in text and text.endswith("end=1\n")
+    assert battle(persist_bin, tmp_path) == "battle_menu_memory=2"
+    _, err = session(persist_bin, tmp_path, "open", "row", "7", "left")
+    assert "dw3-port-options: battle cursor command" in err
+    assert "saved " in err and "battle_menu_memory=1)" in err
+
+
+def test_bad_battle_cursor_value_is_off(persist_bin: Path, tmp_path: Path):
+    for bad in ("3", "7", "-1", "on", "", "1.5"):
+        (tmp_path / CFG).write_text(f"version=1\nbattle_menu_memory={bad}\nend=1\n")
+        out, err = session(persist_bin, tmp_path, "battle")
+        assert out == ["battle_menu_memory=0"], bad
+        assert "battle_menu_memory=" in err and "is not valid" in err, bad
+
+
+def test_older_file_without_the_battle_key_keeps_off(persist_bin: Path, tmp_path: Path):
+    (tmp_path / CFG).write_text(
+        "version=1\nwidescreen=0\nencounter_rate=3\ntext_speed=2\nend=1\n")
+    out, err = session(persist_bin, tmp_path, "battle", "pacing")
+    assert out == ["battle_menu_memory=0", "encounter_rate=3 text_speed=2"]
+    assert "is not valid" not in err
+    session(persist_bin, tmp_path, "open", "row", "7", "right")
+    text = (tmp_path / CFG).read_text()
+    assert "widescreen=0\n" in text and "encounter_rate=3\n" in text
+    assert "battle_menu_memory=1\n" in text
+
+
+def test_battle_cursor_plays_the_choice_sound(persist_bin: Path, tmp_path: Path):
+    _, err = session(persist_bin, tmp_path, "open", "row", "7", "right")
+    assert sounds(err)[-1].startswith("select ")
+    # At the end of the row nothing changes and nothing plays.
+    (tmp_path / CFG).write_text("version=1\nbattle_menu_memory=2\nend=1\n")
+    _, err = session(persist_bin, tmp_path, "open", "row", "7", "right")
+    assert sounds(err)[-1].startswith("cursor ")      # only the move to the row
