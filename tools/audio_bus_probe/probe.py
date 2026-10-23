@@ -24,6 +24,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 START, DOWN, UP = 0x0008, 0x0040, 0x0010
+LEFT, CROSS, TRIANGLE = 0x0080, 0x4000, 0x1000
 
 
 def recording(version):
@@ -41,8 +42,32 @@ def recording(version):
     return "\n".join(lines) + "\n", end - 10
 
 
-def run(version, music, sfx, out, binary, runtime):
-    rec, window = recording(version)
+def options_recording(version, lefts=6):
+    """Options screen feedback sound: title -> Options, down to SFX volume,
+    then Left `lefts` times 40 frames apart (each change plays the choice sound
+    at the new level), Triangle. Stats windows of 10 frames."""
+    lines = [f"# options screen sound probe ({version})"]
+    if version == "us":
+        presses, m = [20, 210], 320
+    else:
+        presses, m = [110, 160, 190, 220, 280], 390
+    seq = [(f, START) for f in presses] + [(m, DOWN), (m + 20, CROSS)]
+    f = m + 70
+    for _ in range(4):      # Widescreen -> Fast-forward -> Restart -> Music -> SFX
+        seq.append((f, DOWN))
+        f += 40
+    for _ in range(lefts):
+        seq.append((f, LEFT))
+        f += 40
+    seq.append((f, TRIANGLE))
+    for fr, mask in seq:
+        lines += [f"pad {fr} 0x{mask:04x}", f"pad {fr + 5} 0x0000"]
+    lines.append(f"end {f + 60}")
+    return "\n".join(lines) + "\n", 10
+
+
+def run(version, music, sfx, out, binary, runtime, mode="title"):
+    rec, window = options_recording(version) if mode == "options" else recording(version)
     out.mkdir(parents=True, exist_ok=True)
     (out / "probe.rec").write_text(rec)
     with tempfile.TemporaryDirectory(prefix="dw3-probe-") as tmp:
@@ -53,8 +78,9 @@ def run(version, music, sfx, out, binary, runtime):
                    DW3_CONFIG_DIR=str(tmp / "cfg"), DW3_REPLAY=str(out / "probe.rec"),
                    DW3_REPLAY_OUT=str(out), XDG_RUNTIME_DIR=str(tmp / "xdg"),
                    SDL_AUDIODRIVER="disk", SDL_AUDIO_DISK_OUTPUT_FILE=str(out / "audio.raw"),
-                   DW3_AUDIO_STATS=str(window), DW3_MUSIC_VOLUME=str(music),
-                   DW3_SFX_VOLUME=str(sfx))
+                   DW3_AUDIO_STATS=str(window))
+        if mode != "options":      # the options probe changes the volume itself
+            env.update(DW3_MUSIC_VOLUME=str(music), DW3_SFX_VOLUME=str(sfx))
         with open(out / "run.log", "wb") as log:
             subprocess.run(["xvfb-run", "-a", "-s", "-screen 0 1280x960x24 -nolisten tcp",
                             str(binary)], env=env, stdout=log, stderr=subprocess.STDOUT,
@@ -76,16 +102,54 @@ def summarize(log, raw):
     return cell("music"), cell("sfx"), rms
 
 
+def options_table(log):
+    """Per stats window with SFX voices: the SFX volume step, the bus RMS
+    before and after the gain, and the ratio. Also the feedback sounds the
+    Options screen logged (kind and SFX volume)."""
+    rows = []
+    sfx_step = None
+    frame = None
+    for line in log.splitlines():
+        m = re.search(r"window ending at frame (\d+): .* sfx_volume=(\d+)", line)
+        if m:
+            frame, sfx_step = int(m.group(1)), int(m.group(2))
+            continue
+        m = re.search(r"bus sfx\s+in_rms=(\d+) out_rms=(\d+)", line)
+        if m and frame is not None and int(m.group(1)) > 0:
+            i, o = int(m.group(1)), int(m.group(2))
+            rows.append((frame, sfx_step, i, o))
+    sounds = re.findall(r"dw3-port-options: sound (\w+) \(sfx volume (\d+)", log)
+    return rows, sounds
+
+
+def main_options(a):
+    binary = (a.bin or ROOT / f"build/pc{'' if a.version == 'us' else '-eu'}/dw3-pc").resolve()
+    runtime = a.runtime or Path.home() / f".cache/dw3-switch/runtime/{a.version}"
+    out = a.out / f"{a.version}-options"
+    log = run(a.version, 10, 10, out, binary, runtime, mode="options")
+    rows, sounds = options_table(log)
+    print(f"sounds logged: {', '.join(f'{k}@{v}' for k, v in sounds)}")
+    print("| window ends (frame) | SFX volume | SFX bus in_rms | out_rms | out/in | expected step^2/100 |")
+    print("|---|---|---|---|---|---|")
+    for frame, step, i, o in rows:
+        print(f"| {frame} | {step} | {i} | {o} | {o / i:.3f} | {step * step / 100:.3f} |")
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("--version", choices=("us", "eu"), default="us")
     ap.add_argument("--out", required=True, type=Path)
     ap.add_argument("--pair", action="append", default=[],
                     help="MUSIC,SFX (repeatable); default 10,10 5,10 10,5 0,0")
+    ap.add_argument("--mode", choices=("title", "options"), default="title",
+                    help="title: Music/SFX pairs on the title menu; options: the "
+                         "feedback sound of the Options screen at each SFX volume")
     ap.add_argument("--bin", type=Path)
     ap.add_argument("--runtime", type=Path)
     a = ap.parse_args()
-    binary = a.bin or ROOT / f"build/pc-{a.version}/dw3-pc"
+    if a.mode == "options":
+        return main_options(a)
+    binary = (a.bin or ROOT / f"build/pc{'' if a.version == 'us' else '-eu'}/dw3-pc").resolve()
     runtime = a.runtime or Path.home() / f".cache/dw3-switch/runtime/{a.version}"
     print("| run | Music bus in -> out (ratio) | SFX bus in -> out (ratio) | PCM RMS |")
     print("|---|---|---|---|")

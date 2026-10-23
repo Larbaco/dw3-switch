@@ -158,6 +158,17 @@ for _v in ("us", "eu"):
                              tuple((1, r) for r in _PACING_PERSIST_P2),
                   note="Encounter rate 0.5x and Text speed Instant set in one process are read back by the next (P6.18)"))
 
+# Options screen sound feedback: the log carries every sound the screen plays
+# with the SFX volume it was played at (voice is the SPU voice of the key-on).
+for _v in ("us", "eu"):
+    _snd = lambda kind, vol: rf"dw3-port-options: sound {kind} \(sfx volume {vol}, voice -?[0-9]+\)"
+    _add(Scenario(f"{_v}-options-sound", _v, "full", timeout=300, log_only=True,
+                  expect_log=((0, _snd("cursor", 10) + r"(?s:.*)" + _snd("select", 9) + r"(?s:.*)" +
+                                  _snd("select", 8) + r"(?s:.*)" + r"encounter rate 1\.5x(?s:.*)" +
+                                  _snd("select", 8) + r"(?s:.*)" + _snd("cancel", 8)),),
+                  forbid_log=((0, r"sound \w+ not played"),),
+                  note="cursor ticks, each SFX volume change plays the choice sound at the new level, Triangle cancels"))
+
 # Text speed: New Game, then no input; the first scripted pages type out and
 # wait. `text page typed in N frame(s)` is the typing time of a page.
 for _v in ("us", "eu"):
@@ -170,6 +181,20 @@ for _v in ("us", "eu"):
                       cfg=(("text_speed", str(_speed)),),
                       expect_log=((0, _rx),),
                       note=f"first dialogue pages at Text speed {_name} (P6.18)"))
+
+# Instant and a page that scrolls (patch 0068): the full page is held, then the
+# new line appears whole; Fast never logs a scroll.
+for _v in ("us", "eu"):
+    _add(Scenario(f"{_v}-text-scroll-instant", _v, "full", turbo=4, timeout=600, log_only=True,
+                  phases=(f"{_v}-text-scroll",), cfg=(("text_speed", "2"),),
+                  expect_log=((0, r"dw3-pacing: text scroll 1 after a hold of 12 frame\(s\) \(text speed instant\)(?s:.*)"
+                                  r"dw3-pacing: text scroll 4 after a hold of 12 frame\(s\) \(text speed instant\)"),),
+                  note="Instant: a full page is held 12 frames, then the new line shows at once (P6.18)"),
+         Scenario(f"{_v}-text-scroll-fast", _v, "full", turbo=4, timeout=600, log_only=True,
+                  phases=(f"{_v}-text-scroll",), cfg=(("text_speed", "1"),),
+                  expect_log=((0, r"text page typed in [0-9]+ frame\(s\) \(text speed fast\)"),),
+                  forbid_log=((0, r"dw3-pacing: text scroll"),),
+                  note="Fast types the scrolled lines as before and never holds a page (P6.18)"))
 
 # Encounter rate: START_MODE 0x233 / PROGRESS 6 is a South Sector field that
 # is a random-battle area everywhere; the recording holds Up.
@@ -186,6 +211,16 @@ for _v, _fight in (("us", 0x159), ("eu", 0x167)):
                   expect_log=((0, r"dw3-pacing: random battle after 2[0-9]{2} footstep\(s\) \(encounter rate 0\.5x\)"),
                               (0, r"FIGHTSTG_start")),
                   note="0.5x: the same walk needs about twice the footsteps (P6.18)"),
+         Scenario(f"{_v}-encounter-1_5x", _v, "full", timeout=300, log_only=True, phases=(_walk,),
+                  env=_ENC_ENV, cfg=(("encounter_rate", "3"),),
+                  expect_log=((0, r"dw3-pacing: random battle after 68 footstep\(s\) \(encounter rate 1\.5x\)"),
+                              (0, r"FIGHTSTG_start")),
+                  note="1.5x: the same walk needs about two thirds of the footsteps (stored value 3)"),
+         Scenario(f"{_v}-encounter-2x", _v, "full", timeout=300, log_only=True, phases=(_walk,),
+                  env=_ENC_ENV, cfg=(("encounter_rate", "4"),),
+                  expect_log=((0, r"dw3-pacing: random battle after 51 footstep\(s\) \(encounter rate 2x\)"),
+                              (0, r"FIGHTSTG_start")),
+                  note="2x: the same walk needs about half the footsteps (stored value 4)"),
          Scenario(f"{_v}-encounter-off", _v, "full", timeout=300, log_only=True, phases=(_walk,),
                   env=_ENC_ENV, cfg=(("encounter_rate", "2"),),
                   expect_log=((0, r"dw3-pacing: encounters off: 129 footstep\(s\) in battle areas ignored"),),

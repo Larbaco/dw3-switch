@@ -95,13 +95,15 @@ Things this port adds to the original game.
 - **Fast-forward.** R3 toggles 2x, 3x or 4x in field and battle:
   [P6.4_FAST_FORWARD](docs/P6.4_FAST_FORWARD.md).
 - **Music and SFX volume.** Two rows in Port options, 0 to 10, 10 is the
-  original mix; saved with the other options. Stepping and saving were seen
-  in an EU OLED log; not yet confirmed by ear or on US:
+  original mix; saved with the other options. The Options screen plays the
+  game's own menu sounds, so a volume change is heard. Stepping and saving were
+  seen in an EU OLED log; not yet confirmed by ear or on US:
   [P6.17_VOLUME](docs/P6.17_VOLUME.md).
-- **Pacing options.** Encounter rate (1x, 0.5x or off for random battles; story
-  battles are never touched) and Text speed (Normal, Fast, Instant), both
-  default to the original game and are saved with the other options. Partly
-  seen in an EU OLED log (US and a slow-page issue with Instant are open):
+- **Pacing options.** Encounter rate (off, 0.5x, 1x, 1.5x or 2x for random
+  battles; story battles are never touched) and Text speed (Normal, Fast,
+  Instant), both default to the original game and are saved with the other
+  options. Partly seen in an EU OLED log (US is open; Instant's slow scrolled
+  lines were fixed after it, not yet rechecked on the OLED):
   [P6.18_PACING](docs/P6.18_PACING.md).
 - **Port options screen.** Opens from the title and holds the toggles below.
   Settings are saved in `port_options.cfg` next to the runtime data and are

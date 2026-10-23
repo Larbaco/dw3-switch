@@ -117,10 +117,12 @@ int main(void) {
                     if (d.full) fail("unexpected full upload", lang, c, v);
                 }
 
-        /* Every mode of the two P6.18 rows, from every cursor row. */
+        /* Every mode of the two P6.18 rows (Encounter rate 0..4, stored
+         * values: 1x 0.5x OFF 1.5x 2x; Text speed 0..2), from every cursor
+         * row. */
         for (int c = 0; c < DW3_TITLE_OPTION_ROWS && (lang == DW3_TITLE_LANG_EN || lang == DW3_TITLE_LANG_DE); ++c)
             for (int row = 5; row < DW3_TITLE_OPTION_ROWS; ++row)
-                for (int n = 0; n <= 2; ++n) {
+                for (int n = 0; n <= (row == 5 ? 4 : 2); ++n) {
                     v[row] = n;
                     step(lang, c, v, 1, &d);
                     steps++;
@@ -148,7 +150,7 @@ int main(void) {
             v[2] = (int)rnd(2);
             v[3] = (int)rnd(11);
             v[4] = (int)rnd(11);
-            v[5] = (int)rnd(3);
+            v[5] = (int)rnd(5);
             v[6] = (int)rnd(3);
             step(lang, c, v, 1, &d);
             steps++;

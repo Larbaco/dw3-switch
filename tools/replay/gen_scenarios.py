@@ -180,6 +180,22 @@ def newgame_field(version):
     return r
 
 
+SCROLL_END = 9400   # frames; the opening's scrolling dialogue is on screen by ~8800
+
+
+def text_scroll(version):
+    """P6.18 Instant: the opening's dialogue has pages whose last line scrolls
+    in. The same mash of Cross as the opening, cut after those pages, no
+    checkpoints: the log tells how the scrolls went (patch 0068)."""
+    r = Rec(f"{version.upper()}: New Game, the opening up to the scrolling dialogue pages")
+    new_game_opening(r, version)
+    r.lines = [l for l in r.lines
+               if not l.startswith(("shot", "end"))
+               and (l.startswith("#") or int(l.split()[1]) <= SCROLL_END)]
+    r.end(SCROLL_END)
+    return r
+
+
 def field_walk(version):
     r = Rec(f"{version.upper()}: opening, then lobby <-> Login Room door tour")
     new_game_opening(r, version)
@@ -541,7 +557,7 @@ def _to_title_menu(r, version):
 
 
 def pacing_persist(version, phase):
-    """P6.18: Options -> Encounter rate 1x -> 0.5x (Right) and Text speed
+    """P6.18: Options -> Encounter rate 1x -> 0.5x (Left) and Text speed
     Normal -> Instant (Right x2), then leave. Phase 2 is a fresh process on the
     same config dir; the logs carry the values saved and read back."""
     r = Rec(f"{version.upper()}: Encounter rate / Text speed persistence, phase {phase}")
@@ -553,7 +569,7 @@ def pacing_persist(version, phase):
         for _ in range(5):           # Widescreen -> ... -> Encounter rate
             r.press(f, DOWN)
             f += 20
-        r.press(f, RIGHT)            # 1x -> 0.5x
+        r.press(f, LEFT)             # 1x -> 0.5x (the screen steps OFF, 0.5x, 1x, 1.5x, 2x)
         f += 20
         r.press(f, DOWN)             # Text speed
         f += 20
@@ -566,6 +582,32 @@ def pacing_persist(version, phase):
     else:
         r.press(m + 70, TRIANGLE)
         r.end(m + 110)
+    return r
+
+
+def options_sound(version):
+    """Options screen sound feedback: title -> Options, four cursor moves down
+    to SFX volume, Left twice (10 -> 8, each change plays the choice sound at
+    the new level), one more row down to Encounter rate and Right (1x -> 1.5x),
+    then Triangle (the cancel sound). The log carries every sound with the SFX
+    volume it was played at."""
+    r = Rec(f"{version.upper()}: Options screen sound feedback")
+    m = _to_title_menu(r, version)
+    r.press(m, DOWN)                 # New Game -> Options
+    r.press(m + 20, CROSS)           # open the Options screen
+    f = m + 70
+    for _ in range(4):               # Widescreen -> ... -> SFX volume
+        r.press(f, DOWN)
+        f += 20
+    for _ in range(2):               # SFX volume 10 -> 9 -> 8
+        r.press(f, LEFT)
+        f += 20
+    r.press(f, DOWN)                 # Encounter rate
+    f += 20
+    r.press(f, RIGHT)                # 1x -> 1.5x
+    f += 20
+    r.press(f + 10, TRIANGLE)        # leave
+    r.end(f + 60)
     return r
 
 
@@ -640,6 +682,8 @@ def main(out):
         for phase in (1, 2):
             (out / f"{v}-pacing-persist-p{phase}.rec").write_text(
                 pacing_persist(v, phase).text(True))
+        (out / f"{v}-text-scroll.rec").write_text(text_scroll(v).text(True))
+        (out / f"{v}-options-sound.rec").write_text(options_sound(v).text(True))
         # One recording per kind; the scenarios differ in the option file and
         # the environment the manifest gives them.
         (out / f"{v}-text-opening.rec").write_text(text_opening(v, TEXT_END[v]).text(True))

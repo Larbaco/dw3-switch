@@ -9,6 +9,8 @@
  *   row N              move the cursor to row N
  *   press              Cross on the current row
  *   left | right       D-pad Left / Right (volume rows)
+ *   back               Triangle (close with the cancel sound)
+ *   up | down          D-pad Up / Down (one row, cursor sound)
  *   gains              print the Q15 gains last handed to the mixer
  *   env I L            apply_env(I, L) (DW3_WIDESCREEN / DW3_TURBO stand-in)
  *   fileint KEY DEF    print dw3_port_options_file_int(KEY, DEF) (file-only keys)
@@ -23,7 +25,8 @@
 
 void dw3_port_options_test_set_pressed(unsigned mask);
 
-enum { BIT_UP = 4, BIT_RIGHT = 5, BIT_DOWN = 6, BIT_LEFT = 7, BIT_CROSS = 13 };
+enum { BIT_UP = 4, BIT_RIGHT = 5, BIT_DOWN = 6, BIT_LEFT = 7, BIT_CROSS = 13,
+       BIT_TRIANGLE = 14 };
 
 /* Stand-in for port/audio/audio_bus.c: remember what the registry applied. */
 static int g_music_step = -1;
@@ -34,6 +37,9 @@ void dw3_port_audio_apply(int music_step, int sfx_step) {
     g_music_step = music_step;
     g_sfx_step = sfx_step;
     g_apply_calls++;
+    /* stderr, in order with the registry's own lines: the harness checks that
+     * the new gain is applied before the feedback sound is played. */
+    fprintf(stderr, "test: audio apply music=%d sfx=%d\n", music_step, sfx_step);
 }
 
 static void show(void) {
@@ -103,6 +109,18 @@ int main(int argc, char **argv) {
             press(BIT_LEFT);
         } else if (strcmp(argv[i], "right") == 0) {
             press(BIT_RIGHT);
+        } else if (strcmp(argv[i], "back") == 0) {
+            press(BIT_TRIANGLE);
+        } else if (strcmp(argv[i], "up") == 0) {
+            press(BIT_UP);
+            if (cursor > 0) {
+                cursor--;
+            }
+        } else if (strcmp(argv[i], "down") == 0) {
+            press(BIT_DOWN);
+            if (cursor < 6) {
+                cursor++;
+            }
         } else if (strcmp(argv[i], "gains") == 0) {
             gains();
         } else if (strcmp(argv[i], "fileint") == 0 && i + 2 < argc) {

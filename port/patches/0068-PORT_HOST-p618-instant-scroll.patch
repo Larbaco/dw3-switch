@@ -1,0 +1,63 @@
+Upstream-bound: no
+Subject: [PORT_HOST] P6.18 Instant: lines that scroll in a text appear whole, after a short hold
+
+Patch 0063 shows a dialogue page whole at its start in Instant mode, but the
+game's window shows two lines of a three line text and then scrolls: when the
+page is full (textCodeNewLine, lineCount >= lines) the window moves up one
+line and the new line is typed at the fast delay, one character every three
+frames. A long line takes 3 frames per character: the owner's OLED log
+(preview.30-rc4, Instant, EU) has pages that took 103 and 127 frames to type
+(34 and 42 characters), after every battle, so Instant was not instant there.
+
+With the Text speed option at Instant, textCodeNewLine now asks the port
+(dw3_port_pacing_text_scroll) what to do at the scroll point:
+
+* hold (1): draw nothing further this frame and leave the window as it is.
+  The newline code is met again next frame, so the full page stays on screen
+  for DW3_PACING_SCROLL_HOLD frames before it scrolls. Without the hold, the
+  lines shown would be replaced a few frames after they appear and could not
+  be read.
+* scroll and reveal (2): the scroll as the game does it, then
+  textWindowShowPage so the new line is on screen at once.
+
+The cost of a scrolled line is therefore the hold (12 frames), whatever its
+length, instead of 3 frames per character. Normal and Fast, and every window
+that does not type at the fast dialogue delay (the area banner, windows that
+type at 0), get 0 and run the game's own code, bit-identical to before. Waits
+for a button and page breaks are not touched: they stop the window before this
+code is reached.
+
+--- a/src/engine/text/text_window.c
++++ b/src/engine/text/text_window.c
+@@ -655,15 +655,31 @@
+ 
+ /* Control code 1: a new line, or a new page when the page is full */
+ s32 textCodeNewLine(TextWindow *obj, TextBuffer *buf, TextDraw *draw) {
++#if PORT_HOST
++    s32 scrollMode;
++#endif
+     if (++draw->lineCount == 1) {
+         draw->pageStart = buf->pos + 2;
+     } else if (draw->lineCount >= obj->lines) {
++#if PORT_HOST
++        /* P6.18 Instant: hold the full page a moment before it scrolls (1), then
++         * show the new line at once after the scroll (2) */
++        scrollMode = dw3_port_pacing_text_scroll(obj, obj->typeDelay);
++        if (scrollMode == 1) {
++            return 0x8000;
++        }
++#endif
+         obj->start = draw->pageStart;
+         if (obj->lines >= 2) {
+             obj->lines--;
+             textWindowShowPage(obj);
+             obj->lines++;
+         }
++#if PORT_HOST
++        if (scrollMode == 2) {
++            textWindowShowPage(obj);
++        }
++#endif
+         return 0x8000;
+     }
+     obj->cursorX = 0;

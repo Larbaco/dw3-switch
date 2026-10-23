@@ -30,11 +30,12 @@ LETTERS = [
     # P6.17 volume rows: label, then the step numbers 1..10 (0 is "OFF").
     ('opt_row3', 'Music volume', 26, 'DejaVuSans.ttf'),
     ('opt_row4', 'SFX volume', 26, 'DejaVuSans.ttf'),
-    # P6.18 rows: Encounter rate (1x / 0.5x / OFF) and Text speed.
+    # P6.18 rows: Encounter rate (OFF / 0.5x / 1x / 1.5x / 2x) and Text speed.
     ('opt_row5', 'Encounter rate', 26, 'DejaVuSans.ttf'),
     ('opt_row6', 'Text speed', 26, 'DejaVuSans.ttf'),
     ('opt_1x', '1x', 26, 'DejaVuSans.ttf'),
     ('opt_05x', '0.5x', 26, 'DejaVuSans.ttf'),
+    ('opt_15x', '1.5x', 26, 'DejaVuSans.ttf'),
     ('opt_normal', 'Normal', 26, 'DejaVuSans.ttf'),
     ('opt_fast', 'Fast', 26, 'DejaVuSans.ttf'),
     ('opt_instant', 'Instant', 26, 'DejaVuSans.ttf'),
@@ -60,7 +61,7 @@ LETTERS = [
     ('opt_desc2_nx', 'L + R + Plus + Minus restarts the game.', 25, 'DejaVuSans.ttf'),
     ('opt_desc3', 'Left / Right change the music volume (10 = original).', 25, 'DejaVuSans.ttf'),
     ('opt_desc4', 'Left / Right change the effects volume (10 = original).', 25, 'DejaVuSans.ttf'),
-    ('opt_desc5', 'Random battles only; story and boss battles stay.', 25, 'DejaVuSans.ttf'),
+    ('opt_desc5', 'Random battles only: OFF to 2x. Story battles stay.', 25, 'DejaVuSans.ttf'),
     ('opt_desc6', 'How fast dialogue is typed out. Normal = original.', 25, 'DejaVuSans.ttf'),
     ('opt_change', 'Change', 24, 'DejaVuSans.ttf'),
     ('opt_back', 'Back', 24, 'DejaVuSans.ttf'),

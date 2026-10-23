@@ -77,6 +77,7 @@ lives in its doc, not in the entry below.
 | P9.4 | Persistence (blocks many goals) | open | [PORT_OPTIONS](PORT_OPTIONS.md) |
 | P9.5 | Wire real features | in progress | [PORT_OPTIONS](PORT_OPTIONS.md) |
 | P9.6 | External save converter | open | — |
+| P9.7 | Port options reachable in game (future goal) | future | [roadmap](#phase-9--port-options-menu) |
 | P10.1 | Switch features goal note | done | [SWITCH_FEATURES](SWITCH_FEATURES.md) |
 | P10.2 | Lifecycle hardening (has P5.3's leftover) | open | [SWITCH_FEATURES](SWITCH_FEATURES.md) |
 | P10.3 | Presentation modes | open | — |
@@ -938,6 +939,38 @@ PS1 game, with vanilla-safe defaults and persistence on owner storage.
   Done when: the tool reads a port save and writes a 128 KiB card image,
   and the reverse, without the game calling it.
 
+- [ ] **P9.7 Port options reachable in game from the pause / field menu
+  (future goal).** Dated 2026-10-22, owner request after the rc4 OLED test:
+  today the Options screen opens only from the title, so a setting cannot
+  be changed while playing (a volume in the field, the Encounter rate before a
+  walk, Widescreen on a battle). Goal note only, nothing started. It needs:
+  1. **Pausing game logic while the screen is open**, in the field and in
+     battle (the title screen can run its own task; a field or a battle must
+     stop its task list, timers, the random countdown and the sound script
+     but keep the music, and resume with the same state and without a frame of
+     input leaking into the game).
+  2. **Drawing over the field and over a battle**: the options canvas is drawn
+     by the native title overlay today; it must also draw in the field and
+     fight overlays (and over the widescreen gutters), on PC and Switch, and
+     deal with the draw-order and VRAM use of those modes.
+  3. **The entry point**, one of: (a) a **hotkey** (a chord, like the P6.9
+     restart chord), which is port-only, needs no text and no decomp change
+     beyond a poll, but is invisible to the player; or (b) a **new entry in the
+     game's own pause / field menu**, which is discoverable but needs a decomp
+     patch (`PORT_HOST`, numbered patch) for the menu list, its cursor and
+     layout, and **its name in the five EU languages** (EN, FR, DE, IT, ES; on
+     US one string) with the game's own font and width limits. Pick (a) first
+     if only one fits, (b) as the finished form.
+  4. **Live application of every option**: Widescreen (the gutter and the
+     present size change at runtime, and a battle in progress), Fast-forward,
+     the volumes and the pacing rows already read their value when used, but
+     Widescreen, Restart hotkey and the audio bus gains have to be re-applied
+     safely in the middle of a frame; each row needs a documented answer.
+  Done when: Port options opens and closes in the field and in battle on PC and
+  Switch (US and EU), the game resumes exactly where it stopped, every row
+  changes the game at once, and the choice of entry point is written down.
+  Related: P6.17 / P6.18 rows, P9.2 (the title entry), P6.9 (the chord).
+
 Gate: P9.2 + P9.4 with at least one persistent toggle (stub or real).
 P9.5 stays best-effort as features ship. P9.6 does not block the gate.
 
@@ -1093,7 +1126,10 @@ Statuses are in the [table](#status-at-a-glance).
   both hosts get one mixed stream; patch 0060 tells it which SEP tracks are
   music (the exclusive bit of the sound id). Movie (XA) audio follows Music
   volume. Left/Right step the volume, Confirm steps up and wraps. The
-  options screen got taller (five rows). Measured per-bus attenuation and the
+  options screen got taller (five rows). **Sound feedback (2026-10-22, owner
+  request after rc4):** the Options screen plays the game's own cursor, choice
+  and cancel sounds on the SFX bus, after the new gain is applied, so a change
+  of SFX volume is heard at the new level ([P6.17_VOLUME.md](P6.17_VOLUME.md#sound-feedback-on-the-options-screen)). Measured per-bus attenuation and the
   default-unchanged proof are in the doc; not covered: Switch audio output
   (no hardware or capture), a hearing test, and every sound id of every bank.
   **Partial OLED evidence (2026-10-22, EU, preview.30-rc4, owner):** Music
@@ -1109,8 +1145,10 @@ Statuses are in the [table](#status-at-a-glance).
   checked on both discs; faster battle animations deferred; needs OLED check**
   (left unticked until the owner confirms, steps in
   [P6.18_PACING.md](P6.18_PACING.md#oled-check-for-the-owner)). Rows
-  "Encounter rate" (1x / 0.5x / OFF) and "Text speed" (Normal / Fast /
-  Instant), default 1x and Normal, keys `encounter_rate` and `text_speed`.
+  "Encounter rate" (OFF / 0.5x / 1x / 1.5x / 2x; stored 2 / 1 / 0 / 3 / 4,
+  1.5x and 2x added 2026-10-22 after the rc4 OLED test, nothing renumbered) and
+  "Text speed" (Normal / Fast / Instant), default 1x and Normal, keys
+  `encounter_rate` and `text_speed`.
   Encounter rate scales or skips the per-footstep countdown of the random
   battles (`FIELDSTG_countBattleSteps`, patch 0062); scripted, story and boss
   battles never go through it, and neither do map-forced areas. Text speed
@@ -1122,12 +1160,18 @@ Statuses are in the [table](#status-at-a-glance).
   captures are pixel-identical. **Faster battle animations are not done:** the
   battle has no single time knob (reasons in the doc), and R3 fast-forward
   (P6.4) already speeds a battle up. May still land as concrete P7.4 items.
+  **Instant and scrolled lines (2026-10-22, patch 0068):** the rc4 log had 8
+  Instant pages that took 67 to 127 frames; they are lines that scroll in a
+  long text, typed at the fast delay. Instant now holds the full page 12
+  frames and shows the new line whole (103 -> 12 frames for a 34 character
+  line); a log line flags any slow page that is not a scroll. Details and what
+  was not proven: [P6.18_PACING.md](P6.18_PACING.md#instant-and-scrolled-lines-patch-0068-after-the-rc4-oled-log).
   **Partial OLED evidence (2026-10-22, EU, preview.30-rc4, owner):** Encounter
   rate was cycled (1x, 0.5x, Off) and returned to 1x; the log shows 5 random
   battles, all at 1x, after 104, 175, 103, 128 and 93 footsteps (the owner
   counted the first four). Text speed Instant: 19 of 27 logged pages typed in
   1 to 2 frames. **Open:** 8 pages took 103 (5 times), 67 (2) and 127 (1)
-  frames; under investigation in another PR. Not covered: 0.5x and Off in
+  frames; the scrolled-line cause is fixed by patch 0068 (above), not yet rechecked on the OLED. Not covered: 0.5x and Off in
   play, Fast, US, relaunch persistence. Stays unticked.
 - [ ] **P6.19 Japanese disc support (future goal).** File map, executable
   differences and boot for the JP disc, next to US and EU. Goal note only

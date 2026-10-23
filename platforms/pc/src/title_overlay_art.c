@@ -196,8 +196,10 @@ static void options_screen(void) {
     /* Volume steps 1..10 (step 0 reads OFF). */
     static const Word steps[]={WORD(opt_n1),WORD(opt_n2),WORD(opt_n3),WORD(opt_n4),WORD(opt_n5),
                                WORD(opt_n6),WORD(opt_n7),WORD(opt_n8),WORD(opt_n9),WORD(opt_n10)};
-    /* P6.18: Encounter rate 1x / 0.5x / OFF, Text speed Normal / Fast / Instant. */
-    static const Word encounter[]={WORD(opt_1x),WORD(opt_05x),WORD(opt_off)};
+    /* P6.18: Encounter rate, indexed by the stored value (0 1x, 1 0.5x, 2 OFF,
+     * 3 1.5x, 4 2x; the screen steps them OFF, 0.5x, 1x, 1.5x, 2x), and Text
+     * speed Normal / Fast / Instant. */
+    static const Word encounter[]={WORD(opt_1x),WORD(opt_05x),WORD(opt_off),WORD(opt_15x),WORD(opt_2x)};
     static const Word text_speed[]={WORD(opt_normal),WORD(opt_fast),WORD(opt_instant)};
 #if defined(__SWITCH__)
     static const Word desc[DW3_TITLE_OPTION_ROWS]={WORD(opt_desc0),WORD(opt_desc1_nx),WORD(opt_desc2_nx),
@@ -262,7 +264,7 @@ static void options_screen(void) {
             if(v>4)v=4;
             value=&values[v];dim=v==0;break;
         case ROW_ENCOUNTER:
-            if(v>2)v=2;
+            if(v>4)v=4;
             value=&encounter[v];dim=v==2;break;
         case ROW_TEXT:
             if(v>2)v=2;

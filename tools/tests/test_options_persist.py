@@ -349,26 +349,44 @@ def test_pacing_defaults_are_the_original_game(persist_bin: Path, tmp_path: Path
 
 
 def test_pacing_steps_left_right_and_confirm(persist_bin: Path, tmp_path: Path):
-    # Right steps up and stops at the last mode (Off / Instant).
-    out, _ = session(persist_bin, tmp_path, "open", "row", "5", "right", "pacing")
-    assert out[0] == "encounter_rate=1 text_speed=0"
-    out, _ = session(persist_bin, tmp_path, "open", "row", "5", *["right"] * 4, "pacing")
-    assert out[0] == "encounter_rate=2 text_speed=0"
-    # Left steps down and stops at 0.
-    out, _ = session(persist_bin, tmp_path, "open", "row", "5", *["left"] * 4, "pacing")
-    assert out[0] == "encounter_rate=0 text_speed=0"
-    # Confirm steps up and wraps after the last mode.
-    out, _ = session(persist_bin, tmp_path, "open", "row", "6", "press", "pacing")
+    def fresh(*steps):
+        (tmp_path / CFG).unlink(missing_ok=True)      # every session starts at the defaults
+        return session(persist_bin, tmp_path, *steps)
+
+    # Encounter rate is stored 0 = 1x, 1 = 0.5x, 2 = OFF, 3 = 1.5x, 4 = 2x and
+    # stepped in the order OFF, 0.5x, 1x, 1.5x, 2x: from the default 1x, Right
+    # goes up to 1.5x and 2x and stops there; Left goes down to 0.5x and OFF.
+    out, _ = fresh("open", "row", "5", "right", "pacing")
+    assert out[0] == "encounter_rate=3 text_speed=0"      # 1.5x
+    out, _ = fresh("open", "row", "5", "right", "right", "pacing")
+    assert out[0] == "encounter_rate=4 text_speed=0"      # 2x
+    out, _ = fresh("open", "row", "5", *["right"] * 6, "pacing")
+    assert out[0] == "encounter_rate=4 text_speed=0"      # stops at 2x
+    out, _ = fresh("open", "row", "5", "left", "pacing")
+    assert out[0] == "encounter_rate=1 text_speed=0"      # 0.5x
+    out, _ = fresh("open", "row", "5", "left", "left", "pacing")
+    assert out[0] == "encounter_rate=2 text_speed=0"      # OFF
+    out, _ = fresh("open", "row", "5", *["left"] * 6, "pacing")
+    assert out[0] == "encounter_rate=2 text_speed=0"      # stops at OFF
+    # Confirm steps up and wraps after the last mode: 1x, 1.5x, 2x, OFF, 0.5x, 1x.
+    seq = [3, 4, 2, 1, 0, 3]
+    for n, want in enumerate(seq, start=1):
+        out, _ = fresh("open", "row", "5", *["press"] * n, "pacing")
+        assert out[0] == f"encounter_rate={want} text_speed=0", n
+    # Text speed keeps its own order (Normal, Fast, Instant) and wraps.
+    out, _ = fresh("open", "row", "6", "press", "pacing")
     assert out[0] == "encounter_rate=0 text_speed=1"
-    out, _ = session(persist_bin, tmp_path, "open", "row", "6", "press", "press", "pacing")
-    assert out[0] == "encounter_rate=0 text_speed=0"      # 1 -> 2 -> 0 (wrapped)
-    out, _ = session(persist_bin, tmp_path, "open", "row", "6", "press", "press",
+    out, _ = fresh("open", "row", "6", "press", "press", "pacing")
+    assert out[0] == "encounter_rate=0 text_speed=2"
+    out, _ = fresh("open", "row", "6", "press", "press",
                      "press", "pacing")
     assert out[0] == "encounter_rate=0 text_speed=0"      # 0 -> 1 -> 2 -> 0
+    out, _ = fresh("open", "row", "6", *["right"] * 4, "pacing")
+    assert out[0] == "encounter_rate=0 text_speed=2"      # Text speed stops at Instant
 
 
 def test_pacing_round_trip_saved_on_each_change(persist_bin: Path, tmp_path: Path):
-    session(persist_bin, tmp_path, "open", "row", "5", "right", "right",
+    session(persist_bin, tmp_path, "open", "row", "5", "left", "left",
             "row", "6", "right")
     text = (tmp_path / CFG).read_text()   # saved without leaving the screen
     assert "encounter_rate=2\n" in text and "text_speed=1\n" in text
@@ -379,12 +397,47 @@ def test_pacing_round_trip_saved_on_each_change(persist_bin: Path, tmp_path: Pat
     assert volumes(persist_bin, tmp_path) == "music_volume=10 sfx_volume=10"
 
 
+def test_encounter_1_5x_and_2x_persist_and_old_values_keep_their_meaning(
+        persist_bin: Path, tmp_path: Path):
+    # 3 = 1.5x and 4 = 2x are saved as such, written back unchanged on an
+    # unrelated change, and read by the next process (the stored values of
+    # P6.18, 0 / 1 / 2, are not renumbered).
+    for stored in (0, 1, 2, 3, 4):
+        (tmp_path / CFG).write_text(
+            f"version=1\nencounter_rate={stored}\ntext_speed=1\nend=1\n")
+        out, err = session(persist_bin, tmp_path, "pacing")
+        assert out == [f"encounter_rate={stored} text_speed=1"], stored
+        assert "is not valid" not in err, stored
+        toggle(persist_bin, tmp_path, 2)       # an unrelated row
+        assert f"encounter_rate={stored}\n" in (tmp_path / CFG).read_text(), stored
+        assert pacing(persist_bin, tmp_path) == f"encounter_rate={stored} text_speed=1"
+    # Reaching them on the screen saves them at once.
+    (tmp_path / CFG).unlink()
+    session(persist_bin, tmp_path, "open", "row", "5", "right", "right")
+    assert "encounter_rate=4\n" in (tmp_path / CFG).read_text()
+    assert pacing(persist_bin, tmp_path) == "encounter_rate=4 text_speed=0"
+    session(persist_bin, tmp_path, "open", "row", "5", "left")
+    assert "encounter_rate=3\n" in (tmp_path / CFG).read_text()
+    # A file from P6.18 (0.5x, Off) steps from where it is, in the new order.
+    (tmp_path / CFG).write_text("version=1\nencounter_rate=1\ntext_speed=0\nend=1\n")
+    out, _ = session(persist_bin, tmp_path, "open", "row", "5", "right", "pacing")
+    assert out[0] == "encounter_rate=0 text_speed=0"      # 0.5x -> 1x
+    (tmp_path / CFG).write_text("version=1\nencounter_rate=2\ntext_speed=0\nend=1\n")
+    out, _ = session(persist_bin, tmp_path, "open", "row", "5", "right", "pacing")
+    assert out[0] == "encounter_rate=1 text_speed=0"      # OFF -> 0.5x
+    (tmp_path / CFG).write_text("version=1\nencounter_rate=2\ntext_speed=0\nend=1\n")
+    out, _ = session(persist_bin, tmp_path, "open", "row", "5", "press", "press",
+                     "press", "press", "press", "pacing")
+    assert out[0] == "encounter_rate=2 text_speed=0"      # a full lap ends on OFF again
+
+
 def test_bad_pacing_values_fall_back_to_the_default(persist_bin: Path, tmp_path: Path):
-    for bad in ("3", "-1", "fast", "", "1.5", "0x1"):
+    for bad in ("5", "-1", "fast", "", "1.5", "0x1", "9"):
         (tmp_path / CFG).write_text(f"version=1\nencounter_rate={bad}\ntext_speed=2\nend=1\n")
         out, err = session(persist_bin, tmp_path, "pacing")
         assert out == ["encounter_rate=0 text_speed=2"], bad
         assert "encounter_rate=" in err and "is not valid" in err, bad
+    for bad in ("3", "4", "-1", "fast", "", "1.5", "0x1"):
         (tmp_path / CFG).write_text(f"version=1\nencounter_rate=2\ntext_speed={bad}\nend=1\n")
         out, err = session(persist_bin, tmp_path, "pacing")
         assert out == ["encounter_rate=2 text_speed=0"], bad
@@ -423,14 +476,91 @@ def test_environment_pacing_override_is_not_saved(persist_bin: Path, tmp_path: P
     text = (tmp_path / CFG).read_text()
     assert "encounter_rate=0\n" in text and "restart_hotkey=1\n" in text
     # Changing the forced row itself is the user's choice and is saved.
-    r = subprocess.run([str(persist_bin), str(tmp_path), "open", "row", "5", "left"],
+    r = subprocess.run([str(persist_bin), str(tmp_path), "open", "row", "5", "right"],
                        capture_output=True, text=True, env=env)
     assert r.returncode == 0, r.stderr
-    assert "encounter_rate=1\n" in (tmp_path / CFG).read_text()
+    assert "encounter_rate=1\n" in (tmp_path / CFG).read_text()      # OFF -> 0.5x
     # Forced even without a usable config dir.
     r = subprocess.run([str(persist_bin), str(tmp_path / "nope"), "pacing"],
                        capture_output=True, text=True, env=env)
     assert r.stdout.strip().splitlines()[0] == "encounter_rate=2 text_speed=0"
+    # 3 (1.5x) and 4 (2x) can be forced too; 5 is ignored.
+    for forced, want in (("3", 3), ("4", 4), ("5", 0)):
+        r = subprocess.run([str(persist_bin), str(tmp_path / "nope"), "pacing"],
+                           capture_output=True, text=True,
+                           env={**os.environ, "DW3_ENCOUNTER_RATE": forced})
+        assert r.stdout.strip().splitlines()[0] == f"encounter_rate={want} text_speed=0", forced
+
+
+# --- Options screen menu sound feedback ----------------------------------------------
+
+def sounds(err: str) -> list[str]:
+    """The `sound <kind> (sfx volume N)` log lines, in order, as 'kind N'."""
+    import re
+    return [f"{m[0]} {m[1]}" for m in
+            re.findall(r"dw3-port-options: sound (\w+) \(sfx volume (\d+)\)", err)]
+
+
+def test_sound_on_value_change_confirm_and_left_right(persist_bin: Path, tmp_path: Path):
+    # Confirm on a switch row, a stepped row and the Fast-forward row: the
+    # game's choice sound (select); the cursor moves between rows tick.
+    _, err = session(persist_bin, tmp_path, "open", "press")
+    assert sounds(err) == ["select 10"]
+    _, err = session(persist_bin, tmp_path, "open", "down", "press")
+    assert sounds(err) == ["cursor 10", "select 10"]
+    _, err = session(persist_bin, tmp_path, "open", "row", "5", "press")
+    assert sounds(err)[-1] == "select 10" and sounds(err).count("cursor 10") == 5
+    # Left / Right on a stepped row change the value, so they play it too.
+    _, err = session(persist_bin, tmp_path, "open", "row", "6", "right", "left")
+    assert sounds(err)[-2:] == ["select 10", "select 10"]
+
+
+def test_no_sound_when_nothing_changes(persist_bin: Path, tmp_path: Path):
+    # Up on the first row, Down on the last, and Left / Right on a row that
+    # does not take them or that is already at its end: silent, as the game's
+    # own menus are at the end of a list.
+    _, err = session(persist_bin, tmp_path, "open", "up", "left", "right")
+    assert sounds(err) == []
+    _, err = session(persist_bin, tmp_path, "open", "row", "3", "right")
+    assert sounds(err) == ["cursor 10"] * 3          # Music volume is already at 10
+    _, err = session(persist_bin, tmp_path, "open", "row", "6", "left")
+    assert sounds(err) == ["cursor 10"] * 6          # Text speed is already at Normal
+    _, err = session(persist_bin, tmp_path, "open", "row", "6", "down")
+    assert sounds(err) == ["cursor 10"] * 6          # the last row
+    # The plain open and close calls make no sound; the screen plays Select
+    # for the opening from the title menu (decomp patch 0044), not here.
+    _, err = session(persist_bin, tmp_path, "open", "close")
+    assert sounds(err) == []
+
+
+def test_cancel_sound_on_back(persist_bin: Path, tmp_path: Path):
+    out, err = session(persist_bin, tmp_path, "open", "back")
+    assert sounds(err) == ["cancel 10"]
+    assert "dw3-port-options: close" in err
+
+
+def assert_apply_then_sound(err: str, applied: str, sound: str) -> None:
+    """The last mixer apply is the given one and the last select sound follows it."""
+    apply_at = err.rindex("test: audio apply " + applied)
+    sound_at = err.rindex("dw3-port-options: sound select (" + sound + ")")
+    assert apply_at < sound_at
+    assert "test: audio apply" not in err[apply_at + 10:]      # nothing newer
+
+
+def test_sound_comes_after_the_new_volume_is_applied(persist_bin: Path, tmp_path: Path):
+    # SFX volume 10 -> 9: the mixer gets sfx 9 first, then the sound plays, and
+    # the line says it plays at the new step (the owner hears the new level).
+    _, err = session(persist_bin, tmp_path, "open", "row", "4", "left")
+    assert_apply_then_sound(err, "music=10 sfx=9", "sfx volume 9")
+    # Confirm wraps 10 -> 0: the sound is then at level 0 (silent by design).
+    (tmp_path / CFG).write_text("version=1\nsfx_volume=10\nend=1\n")
+    _, err = session(persist_bin, tmp_path, "open", "row", "4", "press")
+    assert sounds(err)[-1] == "select 0"
+    # A Music volume change plays the sound at the SFX level.
+    (tmp_path / CFG).write_text("version=1\nsfx_volume=4\nend=1\n")
+    _, err = session(persist_bin, tmp_path, "open", "row", "3", "left")
+    assert_apply_then_sound(err, "music=9 sfx=4", "sfx volume 4")
+
 
 
 def test_file_only_int_key(persist_bin: Path, tmp_path: Path):

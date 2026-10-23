@@ -7,14 +7,21 @@
 extern "C" {
 #endif
 
-/* Both Port options rows hold a mode; 0 is the original behaviour. */
+/* Both Port options rows hold a mode; 0 is the original behaviour. Text speed
+ * has the modes 0..DW3_PACING_MODE_MAX; Encounter rate 0..DW3_ENCOUNTER_MODE_MAX. */
 #define DW3_PACING_MODE_MAX 2
+#define DW3_ENCOUNTER_MODE_MAX 4
 
-/* Encounter rate. */
+/* Encounter rate. The stored values (port_options.cfg `encounter_rate`) are
+ * the ones P6.18 shipped (0 / 1 / 2) plus the two added later; they are never
+ * renumbered. The order the Options screen steps through them is
+ * OFF, 0.5x, 1x, 1.5x, 2x (port/options/port_options.c, docs/PORT_OPTIONS.md). */
 enum {
     DW3_ENCOUNTER_1X = 0,
     DW3_ENCOUNTER_HALF = 1,
-    DW3_ENCOUNTER_OFF = 2
+    DW3_ENCOUNTER_OFF = 2,
+    DW3_ENCOUNTER_1_5X = 3,
+    DW3_ENCOUNTER_2X = 4
 };
 
 /* Text speed. */
@@ -30,6 +37,13 @@ enum {
 #define DW3_PACING_DIALOGUE_DELAY 6
 #define DW3_PACING_FAST_DELAY 2
 
+/* Instant mode and a text that scrolls (the window shows two lines of a three
+ * line text and scrolls for the third): the page is held this many frames
+ * before it scrolls, so what is on screen can be read, and the new line then
+ * appears at once instead of being typed at 3 frames per character. About
+ * 0.2 s at 60 Hz. Patch 0068. */
+#define DW3_PACING_SCROLL_HOLD 12
+
 /* A battle area whose countdown step is this or more (FIELDSTG_battleRates
  * index 0 is 2000, more than the countdown can ever hold) starts its battle on
  * the first step: the map forces it, it is not a random encounter, so the
@@ -39,8 +53,10 @@ enum {
 /* Pure policy, in port/pacing/pacing_policy.c (no dependencies, unit tested). */
 
 /* Countdown step of one footstep in a random-encounter area under `mode`.
- * `carry` is the caller's remainder (0.5x spends the odd half step on the
- * next footstep, so the average is exactly half). Returns the step to
+ * `carry` is the caller's remainder (0.5x and 1.5x spend the odd half step on
+ * the next footstep, so over any number of footsteps the countdown falls by
+ * exactly half / one and a half times what 1x takes off; 2x is exact with no
+ * remainder). Returns the step to
  * subtract from GAME.battleSteps, or -1 when the footstep must not count at
  * all (Off). A forced area (rate >= DW3_PACING_FORCED_RATE) is returned
  * unchanged in every mode. */
@@ -54,6 +70,14 @@ int dw3_pacing_scale_delay(int mode, int delay);
  * at `type_delay` has `shown` characters of its page on screen (see
  * updateTextWindow). */
 int dw3_pacing_reveal_page(int mode, int type_delay, int finished, int shown);
+
+/* What a dialogue window typing at `type_delay` does when its page is full and
+ * would scroll, under text speed `mode`. `waited` is the window's count of
+ * held frames. 0: scroll as the game does (every mode but Instant, and every
+ * window that is not a dialogue window). 1: hold, leave the window as it is
+ * (counts `waited` up). 2: the hold is over, scroll and show the new line
+ * whole (`waited` is cleared). */
+int dw3_pacing_scroll_action(int mode, int type_delay, int *waited);
 
 /* Patch 0062 (field/field_mode/battle.c): FIELDSTG_countBattleSteps. *rate
  * is the area's countdown step; returns 1 to run the countdown with the
@@ -70,6 +94,9 @@ void dw3_port_pacing_encounter_started(void);
 int dw3_port_pacing_text_delay(const void *win, int delay);
 int dw3_port_pacing_text_reveal(int type_delay, int finished, int shown);
 void dw3_port_pacing_text_poll(const void *win, int typing, int done);
+/* Patch 0068 (textCodeNewLine): a full page is about to scroll. Returns the
+ * dw3_pacing_scroll_action result for this window. */
+int dw3_port_pacing_text_scroll(const void *win, int type_delay);
 
 #ifdef __cplusplus
 }
