@@ -160,13 +160,24 @@ one console and are not acceptance gates; gates live in
   ROADMAP P10.2). **New bug:** the background music plays only once and then
   stops, in the field, the inn and battle (SEQ/SEP NRPN loop count; fix in a
   separate PR, ROADMAP P4.3). Not covered: the Claw steal and the HUD
-  Digivolution name (P7.7; the owner has no Claw yet), the bridge-gate scene on
-  US hardware (patch `0058`, needs a New Game), rumble, docked mode, an underrun
+  Digivolution name (P7.7; the owner has no Claw yet), rumble, docked mode, an underrun
   count (P4.3), P5.1 (the 2 h memory session) and the P5.4 notice and assert
   (PR 2). The widescreen PRs #202 and #205 are not in rc7. The `dw3.log` heap
   high-water stayed at 1685K. The top of the log latches a crash of the
   previous run (`preview.29-19-ga2683c3`, the P5.4 `--force-crash` build), not
   an rc7 crash.
+
+- **preview.30-rc7, 2026-10-23, second run (OLED handheld, US, New Game;
+  log `dw3_ponte.log`, 15734 lines, about 5100 windows).** Owner report: the
+  New Game bridge scene ("Oh yeah! I need my partner Digimon data!", patch
+  `0058`) **no longer crashes on US hardware**; it was the last open
+  hardware check of that patch (EU passed on preview.29). The log shows the
+  build string `0.6.5-preview.30-rc7`, `runtime version=us`, no crash,
+  abort or assert line, and ends with `applet exit: flat saves flushed`.
+  Turbo (R3) went to 4x 7 times and back to 1x 6 times; the 4x windows are the P6.22
+  numbers in [P6.4](P6.4_FAST_FORWARD.md#new-game-opening-measured-from-the-rc7-log-2026-10-23).
+  One `frame dt` window is 9391087230 us (about 2.6 h): the console slept,
+  again unclamped and with no `applet focus:` line (see P10.2).
 
 Still open on hardware: audio underrun count, the full overlay sweep, battle
 at 60 Hz, the sync-object error above, a fresh-save relaunch reload, and EU
