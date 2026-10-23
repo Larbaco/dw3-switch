@@ -13,9 +13,18 @@
  * static buffer and written with libnx fsFileWrite on a sink opened at boot.
  *
  * Install also rotates a report left over from the previous run to
- * crash_report_prev.txt and latches its summary into the log, so one crash
- * does not overwrite the next. Soft default: handler always linked; forced
- * fault is opt-in (DW3_NX_FORCE_CRASH builds only).
+ * crash_report_prev.txt and latches its summary into the log (and, through
+ * dw3_nx_crash_previous, into the next-boot notice in nx_crash_notice.c), so
+ * one crash does not overwrite the next. Soft default: handler always linked;
+ * forced fault is opt-in (DW3_NX_FORCE_CRASH builds only).
+ *
+ * Software aborts (P5.4 PR 2, game image only): the link wraps abort,
+ * __assert_func, exit, diagAbortWithResult and fatalThrow
+ * (-Wl,--wrap=..., platforms/switch/CMakeLists.txt). Each wrapper is a small
+ * assembly stub that saves the caller's registers, then the same report
+ * writer runs with a reason such as `assert file:line func: expr`, the
+ * CRASH line goes to dw3.log, and the process ends in svcBreak like the
+ * exception path, so Atmosphere creport still captures it.
  */
 #include "nx_crash.h"
 
@@ -70,6 +79,11 @@ static FsFile s_crash_file;
 static int s_crash_file_ok;
 static s64 s_crash_off;
 static volatile int s_in_handler;
+/* Latched at install from the previous run's report (next-boot notice). */
+static Dw3NxCrashPrev s_prev;
+static int s_prev_valid;
+/* Set by the boot host before it returns a non-zero code on purpose. */
+static volatile int s_exit_allowed;
 /* Frame-loop progress noted from the vsync pump (report-only; no locking:
  * the handler runs on whichever thread faulted, and a torn value is an
  * acceptable cost for two counters). */
@@ -228,6 +242,8 @@ static const char *error_desc_name(u32 desc) {
         return "Trap";
     case ThreadExceptionDesc_Other:
         return "Other";
+    case 0:
+        return "none: software abort, registers from the call site";
     default:
         return "Unknown";
     }
@@ -564,22 +580,37 @@ static void crash_latch_previous(void) {
     }
     {
         /* Report fields are one per line (see crash_write_head). Extract the
-         * first four and say them in one log line. */
-        char version[40];
-        char reason[64];
-        char mode[32];
-        char stage[32];
+         * first four, say them in one log line and keep them for the
+         * next-boot notice. */
+        Dw3NxCrashPrev *p = &s_prev;
 
-        crash_scan_field(head, "version: ", version, sizeof(version));
-        crash_scan_field(head, "reason: ", reason, sizeof(reason));
-        crash_scan_field(head, "mode_file: ", mode, sizeof(mode));
-        crash_scan_field(head, "stage_file: ", stage, sizeof(stage));
+        crash_scan_field(head, "version: ", p->version, sizeof(p->version));
+        crash_scan_field(head, "reason: ", p->reason, sizeof(p->reason));
+        crash_scan_field(head, "mode_file: ", p->mode_file,
+                         sizeof(p->mode_file));
+        crash_scan_field(head, "stage_file: ", p->stage_file,
+                         sizeof(p->stage_file));
+        snprintf(p->kept, sizeof(p->kept), "%s", DW3_NX_CRASH_PREV_HINT);
+        s_prev_valid = 1;
         psyz_log(1, __FILE__, __LINE__, __func__,
                  "previous run crashed: version=%s reason=%s mode_file=%s "
                  "stage_file=%s (kept: %s)",
-                 version, reason, mode, stage, DW3_NX_CRASH_PREV_HINT);
+                 p->version, p->reason, p->mode_file, p->stage_file,
+                 DW3_NX_CRASH_PREV_HINT);
     }
 }
+
+int dw3_nx_crash_previous(Dw3NxCrashPrev *out) {
+    if (!s_prev_valid) {
+        return 0;
+    }
+    if (out) {
+        *out = s_prev;
+    }
+    return 1;
+}
+
+void dw3_nx_crash_allow_exit(void) { s_exit_allowed = 1; }
 
 #if DW3_NX_FORCE_CRASH
 static uint32_t s_force_at_pump;
@@ -642,7 +673,11 @@ void dw3_nx_crash_write_report(const char *reason) {
     }
 }
 
-static void crash_handle(const char *reason, const ThreadExceptionDump *ctx) {
+/* break_arg / break_size: the svcBreak payload creport shows (a Result for
+ * the libnx fatal paths; none for faults and asserts). */
+static void crash_handle(const char *reason, const ThreadExceptionDump *ctx,
+                         u32 break_reason, uintptr_t break_arg,
+                         size_t break_size) {
     if (s_in_handler) {
         svcBreak(BreakReason_Panic, 0, 0);
         for (;;) {
@@ -665,15 +700,161 @@ static void crash_handle(const char *reason, const ThreadExceptionDump *ctx) {
     crash_log_marker(reason, ctx);
 
     /* Re-raise so Atmosphere creport also captures the fault. */
-    svcBreak(BreakReason_Panic, 0, 0);
+    svcBreak(break_reason, break_arg, break_size);
     for (;;) {
         svcSleepThread(1000000000ULL);
     }
 }
 
 void __libnx_exception_handler(ThreadExceptionDump *ctx) {
-    crash_handle("user exception", ctx);
+    crash_handle("user exception", ctx, BreakReason_Panic, 0, 0);
 }
+
+#ifdef DW3_NX_GAME_IMAGE
+/* --- software aborts: assert / abort / libnx fatal / exit -------------------
+ *
+ * The link wraps the libc / libnx entry points (-Wl,--wrap=abort, ...; see
+ * platforms/switch/CMakeLists.txt), so every call to them, from our code,
+ * PSY-Z, newlib, libstdc++ (std::terminate ends in abort) and mesa, lands
+ * in the stubs below. A stub saves x0..x30 and sp exactly as they were at the
+ * call (x16/x17 through the stack, since it needs one register to address
+ * the save area), then branches (no new frame) to its C handler with the
+ * arguments still in x0..x3. The handler builds a ThreadExceptionDump from
+ * the saved registers: pc = the call instruction (lr - 4), lr, sp and fp are
+ * the caller's, so the backtrace walk starts at the caller's frame exactly
+ * as it does for a fault. It runs on the caller's stack: below the saved sp,
+ * so the frame records it walks are untouched. */
+static u64 s_sw_regs[32] __attribute__((used)); /* x0..x30, sp */
+
+#define DW3_SW_STUB(name, target)                                              \
+    __asm__(".pushsection .text." #name ",\"ax\",%progbits\n"                 \
+            ".global " #name "\n"                                              \
+            ".type " #name ", %function\n"                                     \
+            ".p2align 2\n" #name ":\n"                                         \
+            "  stp x16, x17, [sp, #-16]!\n"                                    \
+            "  adrp x16, s_sw_regs\n"                                          \
+            "  add x16, x16, :lo12:s_sw_regs\n"                                \
+            "  stp x0, x1, [x16, #0]\n"                                        \
+            "  stp x2, x3, [x16, #16]\n"                                       \
+            "  stp x4, x5, [x16, #32]\n"                                       \
+            "  stp x6, x7, [x16, #48]\n"                                       \
+            "  stp x8, x9, [x16, #64]\n"                                       \
+            "  stp x10, x11, [x16, #80]\n"                                     \
+            "  stp x12, x13, [x16, #96]\n"                                     \
+            "  stp x14, x15, [x16, #112]\n"                                    \
+            "  ldr x17, [sp]\n"                                                \
+            "  str x17, [x16, #128]\n"                                         \
+            "  ldr x17, [sp, #8]\n"                                            \
+            "  str x17, [x16, #136]\n"                                         \
+            "  stp x18, x19, [x16, #144]\n"                                    \
+            "  stp x20, x21, [x16, #160]\n"                                    \
+            "  stp x22, x23, [x16, #176]\n"                                    \
+            "  stp x24, x25, [x16, #192]\n"                                    \
+            "  stp x26, x27, [x16, #208]\n"                                    \
+            "  stp x28, x29, [x16, #224]\n"                                    \
+            "  add x17, sp, #16\n"                                             \
+            "  stp x30, x17, [x16, #240]\n"                                    \
+            "  ldp x16, x17, [sp], #16\n"                                      \
+            "  b " #target "\n"                                                \
+            ".size " #name ", . - " #name "\n"                                 \
+            ".popsection\n")
+
+DW3_SW_STUB(__wrap_abort, dw3_nx_crash_sw_abort);
+DW3_SW_STUB(__wrap___assert_func, dw3_nx_crash_sw_assert);
+DW3_SW_STUB(__wrap_exit, dw3_nx_crash_sw_exit);
+DW3_SW_STUB(__wrap_diagAbortWithResult, dw3_nx_crash_sw_diag);
+DW3_SW_STUB(__wrap_fatalThrow, dw3_nx_crash_sw_fatal);
+
+void __real_exit(int code) __attribute__((noreturn));
+/* Stub targets (global: the stubs branch to them by name). */
+void dw3_nx_crash_sw_abort(void) __attribute__((noreturn));
+void dw3_nx_crash_sw_assert(const char *file, int line, const char *func,
+                            const char *expr) __attribute__((noreturn));
+void dw3_nx_crash_sw_exit(int code) __attribute__((noreturn));
+void dw3_nx_crash_sw_diag(Result rc) __attribute__((noreturn));
+void dw3_nx_crash_sw_fatal(Result rc) __attribute__((noreturn));
+
+/* Reason text, built without stdio (the heap or a stdio lock may be what
+ * broke). */
+static Dw3CrashLine s_sw_reason;
+
+static const char *crash_sw_reason_str(void) {
+    Dw3CrashLine *l = &s_sw_reason;
+
+    if (l->n >= DW3_CRASH_LINE_MAX) {
+        l->n = DW3_CRASH_LINE_MAX - 1;
+    }
+    l->b[l->n] = '\0';
+    return l->b;
+}
+
+__attribute__((noreturn)) static void crash_sw_handle(u32 break_reason,
+                                                      uintptr_t break_arg,
+                                                      size_t break_size) {
+    static ThreadExceptionDump d;
+    unsigned i;
+
+    memset(&d, 0, sizeof(d));
+    for (i = 0; i < 29; i++) {
+        d.cpu_gprs[i].x = s_sw_regs[i];
+    }
+    d.fp.x = s_sw_regs[29];
+    d.lr.x = s_sw_regs[30];
+    d.sp.x = s_sw_regs[31];
+    d.pc.x = s_sw_regs[30] >= 4 ? s_sw_regs[30] - 4 : 0; /* the call */
+    d.error_desc = 0; /* no CPU exception: error_desc_name says so */
+    crash_handle(crash_sw_reason_str(), &d, break_reason, break_arg,
+                 break_size);
+    for (;;) {
+        svcSleepThread(1000000000ULL);
+    }
+}
+
+__attribute__((noreturn, used)) void dw3_nx_crash_sw_abort(void) {
+    dw3_cl_reset(&s_sw_reason);
+    dw3_cl_str(&s_sw_reason, "abort");
+    crash_sw_handle(BreakReason_Panic, 0, 0);
+}
+
+__attribute__((noreturn, used)) void
+dw3_nx_crash_sw_assert(const char *file, int line, const char *func,
+                       const char *expr) {
+    dw3_cl_reset(&s_sw_reason);
+    dw3_cl_reason_assert(&s_sw_reason, file, line, func, expr);
+    crash_sw_handle(BreakReason_Assert, 0, 0);
+}
+
+__attribute__((noreturn, used)) void dw3_nx_crash_sw_exit(int code) {
+    if (code == 0 || s_exit_allowed || s_in_handler) {
+        __real_exit(code);
+    }
+    dw3_cl_reset(&s_sw_reason);
+    dw3_cl_reason_exit(&s_sw_reason, code);
+    crash_sw_handle(BreakReason_Panic, 0, 0);
+}
+
+/* The Result is kept as the svcBreak payload, as libnx's own
+ * diagAbortWithResult does, so creport still names it. */
+static u32 s_sw_result;
+
+__attribute__((noreturn, used)) void dw3_nx_crash_sw_diag(Result rc) {
+    s_sw_result = rc;
+    dw3_cl_reset(&s_sw_reason);
+    dw3_cl_reason_fatal(&s_sw_reason, "diagAbortWithResult", rc);
+    crash_sw_handle(BreakReason_Panic, (uintptr_t)&s_sw_result,
+                    sizeof(s_sw_result));
+}
+
+/* fatalThrow would draw the fatal error screen and write no report; this
+ * writes ours and lets creport capture the break instead. */
+__attribute__((noreturn, used)) void dw3_nx_crash_sw_fatal(Result rc) {
+    s_sw_result = rc;
+    dw3_cl_reset(&s_sw_reason);
+    dw3_cl_reason_fatal(&s_sw_reason, "fatalThrow", rc);
+    crash_sw_handle(BreakReason_Panic, (uintptr_t)&s_sw_result,
+                    sizeof(s_sw_result));
+}
+#endif /* DW3_NX_GAME_IMAGE */
 
 #if DW3_NX_FORCE_CRASH
 /* The fault sites are separate noinline functions so the report shows a
@@ -683,7 +864,33 @@ void __libnx_exception_handler(ThreadExceptionDump *ctx) {
  * the chain turns into a tail jump and drops out of the backtrace. */
 #define DW3_FORCE_FN __attribute__((noinline, optimize("no-optimize-sibling-calls")))
 static volatile uintptr_t s_force_ptr;
-static int s_force_sim;
+
+enum {
+    DW3_FORCE_NULL = 0, /* default: deliberate null write */
+    DW3_FORCE_SIM,
+    DW3_FORCE_ASSERT,
+    DW3_FORCE_ABORT,
+    DW3_FORCE_FATAL,
+    DW3_FORCE_EXIT,
+};
+static int s_force_mode;
+
+static const char *crash_force_mode_name(int mode) {
+    switch (mode) {
+    case DW3_FORCE_SIM:
+        return "simulated fault";
+    case DW3_FORCE_ASSERT:
+        return "failing assert";
+    case DW3_FORCE_ABORT:
+        return "abort()";
+    case DW3_FORCE_FATAL:
+        return "diagAbortWithResult";
+    case DW3_FORCE_EXIT:
+        return "exit(3)";
+    default:
+        return "deliberate null write";
+    }
+}
 
 DW3_FORCE_FN static void crash_force_null_write(void) {
     volatile int *p = (volatile int *)s_force_ptr;
@@ -710,37 +917,96 @@ DW3_FORCE_FN static void crash_force_sim(void) {
     d.pc.x = pc;
     d.lr.x = (u64)(uintptr_t)__builtin_return_address(0);
     d.far.x = 0;
-    crash_handle("simulated fault (DW3_FORCE_CRASH=sim)", &d);
+    crash_handle("simulated fault (DW3_FORCE_CRASH=sim)", &d,
+                 BreakReason_Panic, 0, 0);
+}
+
+/* assert() is compiled out of the NDEBUG (Release) build, so the forced
+ * one re-includes <assert.h> with NDEBUG off: the same macro expansion a
+ * debug build's assert has, calling newlib __assert_func (wrapped). */
+#undef NDEBUG
+#include <assert.h>
+
+DW3_FORCE_FN static void crash_force_assert(void) {
+    assert(s_force_ptr != 0 && "DW3_FORCE_CRASH=assert");
+}
+
+DW3_FORCE_FN static void crash_force_abort(void) {
+    if (s_force_ptr == 0) {
+        abort();
+    }
+}
+
+DW3_FORCE_FN static void crash_force_fatal(void) {
+    if (s_force_ptr == 0) {
+        diagAbortWithResult(
+            MAKERESULT(Module_Libnx, LibnxError_ShouldNotHappen));
+    }
+}
+
+DW3_FORCE_FN static void crash_force_exit(void) {
+    if (s_force_ptr == 0) {
+        exit(3);
+    }
 }
 
 DW3_FORCE_FN static void crash_force_now(void) {
     psyz_log(1, __FILE__, __LINE__, __func__,
              "DW3_NX_FORCE_CRASH: %s at vsync pump %u",
-             s_force_sim ? "simulated fault" : "deliberate null write",
-             (unsigned)s_note_pumps);
-    if (s_force_sim) {
+             crash_force_mode_name(s_force_mode), (unsigned)s_note_pumps);
+    switch (s_force_mode) {
+    case DW3_FORCE_SIM:
         crash_force_sim();
-    } else {
+        break;
+    case DW3_FORCE_ASSERT:
+        crash_force_assert();
+        break;
+    case DW3_FORCE_ABORT:
+        crash_force_abort();
+        break;
+    case DW3_FORCE_FATAL:
+        crash_force_fatal();
+        break;
+    case DW3_FORCE_EXIT:
+        crash_force_exit();
+        break;
+    default:
         crash_force_null_write();
+        break;
     }
 }
 
 /* Boot hook. DW3_FORCE_CRASH=sim selects the emulator path above;
- * DW3_FORCE_CRASH_PUMPS=N defers the fault to vsync pump N (from the
- * vsync pump, inside the running game) instead of now. Both can be baked
- * with DW3_NX_TEST_ENV. */
+ * assert / abort / fatal / exit take the software-abort paths (the same in
+ * an emulator and on hardware). DW3_FORCE_CRASH_PUMPS=N defers it to vsync
+ * pump N (from the vsync pump, inside the running game) instead of now.
+ * Both can be baked with DW3_NX_TEST_ENV. */
 DW3_FORCE_FN void dw3_nx_crash_force_fault(void) {
+    static const struct {
+        const char *name;
+        int mode;
+    } modes[] = {
+        {"sim", DW3_FORCE_SIM},     {"assert", DW3_FORCE_ASSERT},
+        {"abort", DW3_FORCE_ABORT}, {"fatal", DW3_FORCE_FATAL},
+        {"exit", DW3_FORCE_EXIT},
+    };
     const char *mode = getenv("DW3_FORCE_CRASH");
     const char *pumps = getenv("DW3_FORCE_CRASH_PUMPS");
+    unsigned i;
 
-    s_force_sim = mode != NULL && strcmp(mode, "sim") == 0;
+    s_force_mode = DW3_FORCE_NULL;
+    for (i = 0; mode != NULL && i < sizeof(modes) / sizeof(modes[0]); i++) {
+        if (strcmp(mode, modes[i].name) == 0) {
+            s_force_mode = modes[i].mode;
+        }
+    }
     if (pumps != NULL && pumps[0] != '\0') {
         unsigned long n = strtoul(pumps, NULL, 0);
         if (n > 0) {
             s_force_at_pump = (uint32_t)n;
             psyz_log(1, __FILE__, __LINE__, __func__,
                      "DW3_NX_FORCE_CRASH: armed for vsync pump %lu (%s)", n,
-                     s_force_sim ? "sim" : "null write");
+                     crash_force_mode_name(s_force_mode));
             return;
         }
     }
