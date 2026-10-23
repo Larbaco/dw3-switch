@@ -108,6 +108,23 @@ one console and are not acceptance gates; gates live in
   `applet exit: flat saves flushed`. Not covered: US, relaunch persistence,
   the P7.7 HUD and claw (logged only to the nxlink stderr), widescreen.
   Log: `tmp/evidence/2026-10-22-preview30-rc4-oled/dw3.log`.
+- **preview.30-rc6 candidate, 2026-10-22 (OLED handheld, EU, non-nxlink).**
+  About 11 random battles at Encounter rate 2x with Text speed Instant and
+  Fast-forward 4x / off, then the game **crashed on opening Items** in the
+  field menu (`crash_report.txt`: `mode_file 0x207`, data abort `far=0xd`,
+  `x0=0`). Root cause: a NULL `ItemInfo` read in `getItemCategory`, which
+  the PS1 tolerates and a 64-bit host does not, on the first open of any
+  non-empty item list; the same crash is in preview.29. Fixed by patch
+  `0069` (not in rc6), covered by the `*-items-screen` replay scenarios; see
+  [BALLOON_NULL_ACTOR.md](BALLOON_NULL_ACTOR.md#patch-0069-items-screen-null-item-preview30-rc6-oled-crash).
+  Text speed is not related: Instant typed the report's pages in 1 to 2
+  frames. Still open and separate from the crash: after each battle, back in
+  the field at 4x, one page took 103 frames and the log printed `slow Instant
+  page with no scroll hold (103 frames): reveal missed it`, so patch 0068 did
+  not cover that page. Not covered: US,
+  the Items screen after the fix on the OLED. Evidence:
+  `tmp/evidence/2026-10-22-preview30-rc6-oled/` (log, crash report,
+  Atmosphere report).
 
 Still open on hardware: audio underrun count, the full overlay sweep, battle
 at 60 Hz, the sync-object error above, a fresh-save relaunch reload, and EU
