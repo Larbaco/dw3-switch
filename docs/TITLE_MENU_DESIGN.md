@@ -192,6 +192,11 @@ either aspect.
   French / German / Italian / Spanish, the footer is drawn inside the 4:3
   title area with the same placement. Handheld mode and the OLED were not
   run; the overlay has no handheld-specific code, only the 4:3 viewport fit.
+- **OLED (2026-10-23, preview.30-rc8, owner):** the EU credits appear as
+  expected; verified on the OLED. The owner did not say handheld or docked
+  (so neither is claimed), and no log or capture came with the report, so the
+  EU languages shown are not recorded. The handheld/docked gap above stays
+  open for the layout.
 - The fallback (footer off) was run on the PC for US and EU: the game's sprites
   draw as before, over the same band, without touching the menu.
 - Banks 0 and 1 are not reachable from the country select (it offers 2-6), so

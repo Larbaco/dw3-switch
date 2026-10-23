@@ -34,7 +34,7 @@ lives in its doc, not in the entry below.
 | P3.1–P3.9 | Game bring-up on PC | done | [P3_GATE](P3_GATE.md), [P3_EU_BUILD](P3_EU_BUILD.md), P3.x docs |
 | P4.1 | Backend spike | done | [SWITCH_BACKEND](SWITCH_BACKEND.md) |
 | P4.2 | Video | done | [P4.2](P4.2_VIDEO.md) |
-| P4.3 | Audio | in progress (BGM plays only once: bug found on the OLED, fix in a separate PR; no underrun count yet) | [P4.3](P4.3_AUDIO.md) |
+| P4.3 | Audio | in progress (BGM loop fixed, #209, confirmed on the OLED in rc8; new bug: music stops after a won battle, fix in a separate PR; no underrun count yet) | [P4.3](P4.3_AUDIO.md) |
 | P4.4 | Input | done | [P4.4](P4.4_INPUT_STATUS.md) |
 | P4.5 | Filesystem + log + time | done | [P4.5](P4.5_STATUS.md) |
 | P4.6 | Static modules on Switch | in progress | [P4.6](P4.6_MODULES_STATUS.md) |
@@ -44,7 +44,7 @@ lives in its doc, not in the entry below.
 | P5.3 | Save handling | done | [P5.3](P5.3_FLAT_SAVE.md) |
 | P5.4 | Error reporting | in progress (done-when met on the OLED, US + EU; PR 2: boot notice + assert open) | [P5.4](P5.4_CRASH.md) |
 | P5.5 | Stage sweep on hardware | open | — |
-| P6.1 | Scaling / widescreen | in progress | [P6.1](P6.1_WIDESCREEN.md) |
+| P6.1 | Scaling / widescreen | in progress (rc8 OLED: banner, technique backdrops and encounter spiral reach 16:9; open: black bars on the results screen, Items menu 4:3) | [P6.1](P6.1_WIDESCREEN.md) |
 | P6.2 | PAL/NTSC, EU/US, language at boot | in progress | [P3_EU_BUILD](P3_EU_BUILD.md) |
 | P6.3 | PGXP-style vertex precision | open | — |
 | P6.4 | Fast-forward | in progress (OLED turbo works in battle on the US disc, rc7; tick is the owner's call) | [P6.4](P6.4_FAST_FORWARD.md) |
@@ -59,7 +59,7 @@ lives in its doc, not in the entry below.
 | P6.15 | Regression replay tests | in progress | [P6.15](P6.15_REPLAY_TESTS.md) |
 | P6.17 | Music / SFX volume | in progress (owner: volume options work, rc6 EU / rc7 US; relaunch check open) | [P6.17](P6.17_VOLUME.md) |
 | P6.18 | Pacing options | in progress (Instant text confirmed on the US OLED, rc7; rest of the OLED check open) | [P6.18](P6.18_PACING.md) |
-| P6.22 | Turbo speed in scripted scenes (future goal) | future | [roadmap](#phase-6-goal-notes), [P6.4](P6.4_FAST_FORWARD.md) |
+| P6.22 | Turbo speed in scripted scenes (future goal) | future (rc8 OLED: field FPS depends on what is on screen; A/B step added) | [roadmap](#phase-6-goal-notes), [P6.4](P6.4_FAST_FORWARD.md) |
 | P7.1 | Inventory and boundaries | done | [COMMUNITY_QOL](COMMUNITY_QOL.md) |
 | P7.2 | Patched EU disc as data source | open | [COMMUNITY_QOL](COMMUNITY_QOL.md) |
 | P7.3 | Binary-patch limits | in progress | [COMMUNITY_QOL](COMMUNITY_QOL.md) |
@@ -433,6 +433,14 @@ console.
   and correct XA audio on preview.21 (P3.7). Owner to decide whether a
   listen is enough, or to set a number (for example 0 underruns over 10 min
   of field and battle in the nxlink log).
+  **Owner OLED (2026-10-23, preview.30-rc8, US, no log):** the BGM loop
+  fix (#209, SEQ/SEP NRPN loop count from Data Entry) works: the music loops
+  in the field, the inn and battle. **New bug, open, fix in progress in a
+  separate PR:** after winning a battle the music stops; it is silent on the
+  results screen and back on the map, while the SFX for exp and level up
+  still play. Not reproduced or diagnosed here (no log was provided); the
+  rc7 loop bug may have hidden it. The underrun listen still has to be done
+  on a build with both fixes.
   **New bug, in progress (2026-10-23, owner OLED, US, preview.30-rc7):**
   the **background music plays only once and then stops**, in the field, in
   the inn and in battle. The suspected cause is the loop count of the SEQ/SEP
@@ -690,18 +698,36 @@ gate, which stays open.
   record 1 (battle) is separate and open. Menu and transition coverage:
   [P6.1_WIDESCREEN_MENU_AUDIT.md](P6.1_WIDESCREEN_MENU_AUDIT.md) (#161).
   **Transitions and backdrops (2026-10-23, #202 and #205, merged; not in
-  preview.30-rc7, so the rc7 OLED feedback says nothing about them):** the
+  preview.30-rc7, so the rc7 OLED feedback says nothing about them; in
+  rc8, see the OLED paragraph below):** the
   technique backdrops (blue band, magic circle) and the area name banner
   now span 16:9 (patches `0072` and `0071`; PSY-Z `dw3-gutter-width`: a
   display-wide band of rows takes the gutters). PC and Ryubing, US and EU,
-  captured; widescreen off unchanged. OLED pending. **Open, in this order**
+  captured; widescreen off unchanged.
+  **OLED (2026-10-23, preview.30-rc8, owner, US, no log; handheld or docked
+  not stated):** the area name banner (#205, patch `0071`) and the technique
+  backdrops (#202, patch `0072`) extend to 16:9 correctly: verified. The
+  owner also saw the **battle-start circle/spiral effect** extend to 16:9
+  correctly, which the list below had as 4:3 and needing a decision; that is
+  the owner's observation (no capture), so the spiral item is rewritten as a
+  confirm item. The area-change iris was not mentioned, so it stays open.
+  **New regression (open, fix in progress in a separate PR):** the
+  post-battle results screen now shows black side bars. **Future:** the
+  Items menu, see the last item below. **Open, in this order**
   (details and evidence in [P6.1_WIDESCREEN.md](P6.1_WIDESCREEN.md#open-transitions-2026-10-23)):
   - [ ] **Area-change iris and grid cover** (`FIELDSTG_closeField`): start the
     clip at 320+2*gutter centred on the player and widen the blue grid; a
     small patch with the next free number.
-  - [ ] **Encounter spiral** (`FIELDSTG_playBattleTransition`): decide between
-    a black 16:9 with the 4:3 swirl (no work) and gutter-aware tiles
-    (PSY-Z: copy the gutters into the transition image, tiles to 426 px).
+  - [ ] **Encounter spiral** (`FIELDSTG_playBattleTransition`): the owner
+    saw the battle-start circle/spiral extend to 16:9 correctly on the OLED
+    (rc8). Before, the choice was a black 16:9 with the 4:3 swirl (no work)
+    or gutter-aware tiles (PSY-Z: copy the gutters into the transition image,
+    tiles to 426 px). Confirm with a capture (PC or OLED) which of the two
+    it is, and whether the swirl itself or only the cover reaches the edges;
+    if it is right, tick this and drop the decision.
+  - [ ] **Regression: black side bars on the post-battle results screen**
+    (found on the OLED, rc8; it filled the width before). Fix in progress in
+    a separate PR; tick when verified on the OLED.
   - [ ] **PC `sdl3_gpu` only:** an empty drawing area (the 0x0 clip
     `closeField` leaves on the map layer) must draw nothing; today
     `UpdateScissor` keeps the previous scissor, so the map shows again after
@@ -711,12 +737,20 @@ gate, which stays open.
     Switch is slower needs an OLED nxlink log (`frame dt us=`, field tile
     reads) across a door and into a battle; a shorter banner hold is the
     P6.18 owner's-call item.
-  - [ ] **OLED pass** for the banner and the technique backdrop (US and EU),
-    plus a look for other display-wide band layers that now draw into the
-    gutters.
+  - [ ] **OLED pass** for the banner and the technique backdrop: **US done
+    (rc8, owner)**; EU still to do. Plus a look for other display-wide band
+    layers that now draw into the gutters.
   - [ ] Ryubing and the PC show a black hole in the middle of the technique
     magic circle (rotated sprite); it is the same on main, so it is not from
-    these patches. Look at it on the OLED first.
+    these patches. Look at it on the OLED first (the rc8 owner report says
+    the backdrops look right on the OLED; nothing was said about that hole).
+  - [ ] **FUTURE: redesign the Items menu (and its open transition) for
+    16:9.** Owner, rc8 OLED: the transition effect when opening the Items
+    menu is still 4:3, and the menu itself stays 4:3 while the background
+    behind it is 16:9. Goal: draw the Items menu layout and its open
+    transition across the 16:9 width, like the other field menus, shop and
+    memory-card screens that already fill 16:9. Not started; start from
+    [P6.1_WIDESCREEN_MENU_AUDIT.md](P6.1_WIDESCREEN_MENU_AUDIT.md).
 - [ ] **P6.2** PAL/NTSC and EU/US selection at boot; language from EU
   `CNTY_SEL`.
   **Status (2026-10-14, language part):** `CNTY_SEL` linked as
@@ -999,7 +1033,10 @@ PS1 game, with vanilla-safe defaults and persistence on owner storage.
   lost and EU needs no lines of its own; the third native line now keeps the
   original `Co.,Ltd` spelling. Transcription table:
   [TITLE_MENU_DESIGN.md](TITLE_MENU_DESIGN.md#title-credits). Validated on
-  PC and in Ryubing (US and EU); OLED pending.
+  PC and in Ryubing (US and EU). **OLED (2026-10-23, preview.30-rc8,
+  owner):** the credits appear as expected, verified on the OLED; the owner
+  did not say handheld or docked, and which EU languages were looked at is
+  not recorded.
   Done when: the screen is reachable from the main menu and returns
   cleanly to it (PC + Switch; TTB print on PC).
 - [x] **P9.3 Toggle registry.** Maintain a registry of non-native features
@@ -1335,7 +1372,7 @@ Statuses are in the [table](#status-at-a-glance).
   SFX 7), each step saved. That is the hearing test and the US check; **still open:** relaunch
   persistence (the rc7 log is a single run) and the in-game and movie steps of
   the checklist. Keep it unticked until the owner closes it. Note the new BGM
-  bug in P4.3 (music stops after one loop) when listening in game.
+  bug in P4.3 (music stopped after one loop, fixed in rc8; music now stops after a won battle, open) when listening in game.
 - [ ] **P6.18 Pacing options.** Encounter rate (1x, 0.5x, off), text speed
   and faster battle animations as Port options rows, off by default, saved
   with P9.4. Done when each toggle works on US and EU and is off by default.
@@ -1467,6 +1504,24 @@ Statuses are in the [table](#status-at-a-glance).
   walk and a text-heavy scene reach the target rate (or the doc shows why
   not) on the Switch OLED with the US and EU discs, with no change in game
   state (the P6.15 replays still match) and a clean return to 1x.
+  **New evidence (2026-10-23, preview.30-rc8, owner, Forest inn, OLED, US,
+  no log; HUD reading, not a benchmark):** in the Forest inn the FPS reads
+  120+ when walking to the bottom corner of the room and drops to about 80 at
+  the top; the owner expects the same in other places. Same room, same game
+  logic, different camera position: so the field cost depends on what is on
+  screen (camera and visible geometry, so raster and draw cost), not only on
+  a fixed per-frame cost. That fits the rc7-log reading (the field is bound
+  by game logic plus the CPU raster per frame) and points at candidate (1)
+  and the P6.10 reasoning rather than the gate or a pacing wait. It is a
+  hypothesis; nothing was measured with counters.
+  **Suggested A/B for the measurement step:** use the same room at both
+  positions (Forest inn, bottom corner against top), same turbo setting and
+  disc, standing still for about 10 s at each so the `frame dt us=`, `mesh
+  dbg:` (`flush_us`, `upload_us`, `present_us`, `frames_blit`, `soft`) and
+  `mem dbg:` lines cover each position; only the camera changes, so any
+  difference is the on-screen cost. Repeat in one more room (city or field
+  map) to check the owner's expectation. See
+  [P6.4](P6.4_FAST_FORWARD.md#field-fps-depends-on-what-is-on-screen-rc8-oled).
   Related: P6.4, P6.10, P6.15, P6.18, P5.2.
 
 ### Phase 7 goal notes
