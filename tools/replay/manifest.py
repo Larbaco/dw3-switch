@@ -296,6 +296,32 @@ for _v in ("us", "eu"):
                   forbid_log=((0, r"FIGHTSTG_start(?s:.*)SEP end-of-track seq=\d+ tr=0"),),
                   note="the battle theme jumps back at its loop end and never reaches end-of-track"))
 
+# Music around a won battle. Two things were wrong on the host: the win jingle
+# is SEP track 30 of the system bank, which the game plays as SsSepPlay(0, 30)
+# and libsnd's table reaches as entry (1, 14), but the host's table rows were
+# 0x100 bytes apart for 0xC0 byte entries, so every track past 15 (the jingle,
+# the menu and battle blips) never played: the report was silent. The log must
+# show the jingle's own loop (`seq=1 tr=14`, it is entry (1, 14)) while the
+# report is up, and the field music (`seq=2 tr=0`) starting again after the
+# report and looping. A random battle (Encounter rate 1x walk of the
+# battle-music scenario), forced enemy and party (Kunemon, Kotemon), won with
+# Cross. PC only (env). Build from before the fix: no `seq=1 tr=14` line.
+_VICTORY_ENV = _ENC_ENV + (("DW3_FORCE_ENCOUNTER", "34"), ("DW3_FORCE_PARTY", "0"))
+for _v, _ids in (("us", (0x158, 0x159, 0x1FA, 0x1C2)), ("eu", (0x166, 0x167, 0x208, 0x1D1))):
+    _field, _fight, _menu, _report = _ids
+    _add(Scenario(f"{_v}-victory-music", _v, "full", turbo=4, timeout=600, log_only=True,
+                  env=_VICTORY_ENV,
+                  expect_restore=((_field, M), (_fight, M), (_menu, S), (_report, M), (_field, M)),
+                  expect_log=((0, r"WFIGHTMN_endBattle result=1(?s:.*)"
+                                  r"STFGTREP_start(?s:.*)"
+                                  r"SEP loop count 127 seq=1 tr=14(?s:.*)"
+                                  r"STFGTREP return(?s:.*)"
+                                  r"SEP loop count 127 seq=2 tr=0(?s:.*)"
+                                  r"SEP loop end -> loop start \(count infinite\) seq=2 tr=0(?s:.*)"
+                                  r"SEP loop end -> loop start \(count infinite\) seq=2 tr=0"),),
+                  forbid_log=((0, r"STFGTREP return(?s:.*)SEP end-of-track seq=2 tr=0"),),
+                  note="won battle: the win jingle (track 30 = entry (1, 14)) plays in the report and the field music loops again after it"))
+
 # Two consecutive battles, a technique used in each (patch 0061): every battle
 # is a mode change (FIGHTSTG <- report/field), so WFIGHTMN is restored per
 # battle, as the PS1 reloads it. PC only (needs the env debug aids).

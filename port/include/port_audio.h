@@ -16,6 +16,16 @@ extern "C" {
  * clamped. Pure, in port/audio/volume.c. */
 int dw3_port_audio_gain_q15(int step);
 
+/* The game's SEP track numbers run past the 16 tracks of one SEQ: SoundState
+ * opens the system bank's two SEP files as access numbers 0 and 1 and plays the
+ * second file's tracks as (0, 16..31) (the win jingle is 30). libsnd stores
+ * the table in rows of 16, so (seq, sep) with sep >= 16 is the entry
+ * (seq + sep / 16, sep % 16), and that is the pair the ticker plays and the
+ * pair a voice carries in seq_sep_no. Pure, in port/audio/volume.c. */
+#define DW3_AUDIO_TRACKS_PER_SEQ 16
+void dw3_port_audio_track_slot(int seq_access_num, int sep, int *slot_seq,
+                               int *slot_sep);
+
 /* Apply the two steps to the SPU mixer (port/audio/audio_bus.c): sound
  * effects on bus 0, music on bus 1, and the CD/XA input (movie audio)
  * follows the music step. */

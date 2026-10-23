@@ -738,6 +738,25 @@ def music_loop(version):
     return r
 
 
+VICTORY_END = 12000
+
+
+def victory_music(version):
+    """A real random battle, won: the Encounter rate 1x walk of
+    `battle_music` (Up from the first control frame), then Cross mashed through
+    the battle menus, the knock-out, the win jingle, the report and the way
+    back to the field, then idle there so the field music has time to play.
+    The manifest's env forces the enemy and the party (no DW3_FORCE_WIN)."""
+    start, end = ENCOUNTER[version]
+    r = Rec(f"{version.upper()}: walk into a random battle, win it, back to the field (env in manifest)")
+    _pad(r, start, UP)
+    _pad(r, end, 0)
+    for f in range(end + 100, VICTORY_END - 2500, 30):
+        r.press(f, CROSS)
+    r.end(VICTORY_END)
+    return r
+
+
 def items_screen(version, evidence=False):
     """Field menu -> Items after a battle (patch 0069, root cause of the
     preview.30-rc6 crash; patch 0070's DW3_FORCE_ITEMS fills the bag, the
@@ -813,6 +832,7 @@ def main(out):
         (out / f"{v}-encounter-walk.rec").write_text(encounter_walk(v).text(True))
         (out / f"{v}-encounter-event.rec").write_text(encounter_event(v).text(True))
         (out / f"{v}-items-screen.rec").write_text(items_screen(v).text(True))
+        (out / f"{v}-victory-music.rec").write_text(victory_music(v).text(True))
         (out / f"{v}-music-loop.rec").write_text(music_loop(v).text(True))
         (out / f"{v}-battle-music.rec").write_text(battle_music(v).text(True))
         (out / f"{v}-two-battles.rec").write_text(two_battles(v).text(True))
