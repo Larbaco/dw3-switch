@@ -10,6 +10,7 @@
 
 static const Dw3OverlayDesc *g_table;
 static size_t g_count;
+static const char *const *g_names; /* parallel to g_table, or NULL */
 static int32_t g_mode_file_id;
 static int32_t g_sub_file_id;
 static int g_strict = -1; /* -1: not decided yet, read the environment */
@@ -17,8 +18,24 @@ static int g_strict = -1; /* -1: not decided yet, read the environment */
 void dw3_overlay_set_table(const Dw3OverlayDesc *table, size_t count) {
     g_table = table;
     g_count = count;
+    g_names = NULL;
     g_mode_file_id = 0;
     g_sub_file_id = 0;
+}
+
+void dw3_overlay_set_names(const char *const *names) { g_names = names; }
+
+const char *dw3_overlay_file_name(int32_t file_id) {
+    const Dw3OverlayDesc *desc;
+
+    if (g_names == NULL) {
+        return NULL;
+    }
+    desc = dw3_overlay_find(file_id);
+    if (desc == NULL) {
+        return NULL;
+    }
+    return g_names[desc - g_table];
 }
 
 const Dw3OverlayDesc *dw3_overlay_find(int32_t file_id) {

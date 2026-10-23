@@ -18,25 +18,81 @@
  *
  * The file is opened by dw3_nx_log_open() once the SD card is mounted; before
  * that (and if the mount failed) the other two still get everything.
+ *
+ * P5.4 (crash report): the file is a raw libnx FsFile, not a stdio FILE, so
+ * the exception handler can append its `CRASH` marker after the last line
+ * without touching a stdio lock (dw3_nx_log_crash_append). Each line is one
+ * fsFileWrite at the tracked end offset, which is what fwrite + fflush did
+ * through fsdev before: the data is in the FS service when psyz_log returns,
+ * so a crash cannot take it with it. Every formatted line also goes into a
+ * small ring (nx_log_ring.h) that the handler copies into crash_report.txt.
  */
 #include "nx.h"
+#include "nx_log_ring.h"
 
 #include <stdarg.h>
 #include <stdio.h>
 
 #include <switch.h>
 
-#define DW3_NX_LOG_PATH "sdmc:/switch/dw3/dw3.log"
+/* Device-relative path inside the "sdmc" FsFileSystem. */
+#define DW3_NX_LOG_FS_PATH "/switch/dw3/dw3.log"
 #define DW3_NX_LOG_MAX 1024
 
-static FILE *s_log;
+static FsFile s_log_file;
+static volatile int s_log_ok;
+static volatile s64 s_log_off; /* end of the last complete write */
+static Mutex s_log_mutex;
+static Dw3LogRing s_log_ring;
 
 void dw3_nx_log_open(void) {
-    if (s_log) {
+    FsFileSystem *fs;
+
+    if (s_log_ok) {
         return;
     }
-    /* Truncate: one run per file, so the tail is always the latest boot. */
-    s_log = fopen(DW3_NX_LOG_PATH, "w");
+    fs = fsdevGetDeviceFileSystem("sdmc");
+    if (!fs) {
+        return;
+    }
+    /* Create if missing (AlreadyExists is fine), then truncate: one run per
+     * file, so the tail is always the latest boot. Append mode lets each
+     * write at the end offset grow the file. */
+    fsFsCreateFile(fs, DW3_NX_LOG_FS_PATH, 0, 0);
+    if (R_FAILED(fsFsOpenFile(fs, DW3_NX_LOG_FS_PATH,
+                              FsOpenMode_Write | FsOpenMode_Append,
+                              &s_log_file))) {
+        return;
+    }
+    if (R_FAILED(fsFileSetSize(&s_log_file, 0))) {
+        fsFileClose(&s_log_file);
+        return;
+    }
+    mutexInit(&s_log_mutex);
+    s_log_off = 0;
+    s_log_ok = 1;
+}
+
+/* Lock-free: the exception handler may have interrupted a psyz_log holding
+ * the mutex. Writing at the last complete end offset can at worst overwrite
+ * that one in-flight line (the ring still holds it). */
+void dw3_nx_log_crash_append(const char *buf, int len) {
+    s64 off;
+
+    if (!s_log_ok || len <= 0) {
+        return;
+    }
+    off = s_log_off;
+    if (R_SUCCEEDED(fsFileWrite(&s_log_file, off, buf, (u64)len,
+                                FsWriteOption_Flush))) {
+        s_log_off = off + len;
+    }
+}
+
+unsigned dw3_nx_log_ring_walk(void (*emit)(void *ctx, const char *line,
+                                           unsigned len),
+                              void *ctx, unsigned *skipped) {
+    return dw3_log_ring_walk(&s_log_ring, emit, ctx, skipped);
 }
 
 void psyz_log(unsigned int level, const char *file, unsigned int line,
@@ -66,11 +122,16 @@ void psyz_log(unsigned int level, const char *file, unsigned int line,
         len = (int)sizeof(buf) - 1; /* truncated; report what was written */
     }
 
-    if (s_log) {
-        fwrite(buf, 1, (size_t)len, s_log);
+    dw3_log_ring_push(&s_log_ring, buf, len);
+    if (s_log_ok) {
         /* Unbuffered: a crash must not take the reason with it. This does not
          * defeat the emulator's own caching of sdmc: — see the header. */
-        fflush(s_log);
+        mutexLock(&s_log_mutex);
+        if (R_SUCCEEDED(fsFileWrite(&s_log_file, s_log_off, buf, (u64)len,
+                                    FsWriteOption_None))) {
+            s_log_off += len;
+        }
+        mutexUnlock(&s_log_mutex);
     }
     fwrite(buf, 1, (size_t)len, stderr);
     fflush(stderr);

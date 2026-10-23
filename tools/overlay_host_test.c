@@ -69,6 +69,36 @@ static int fail(const char *msg) {
     return 1;
 }
 
+static const char *const g_fixture_names[] = {"OVL_A", "OVL_B", "OVL_SUB"};
+
+/* P5.4: names parallel to the table, cleared by the next set_table. */
+static int check_names(void) {
+    const char *n;
+
+    if (dw3_overlay_file_name(FILE_OVL_A) != NULL) {
+        return fail("name before set_names");
+    }
+    dw3_overlay_set_names(g_fixture_names);
+    n = dw3_overlay_file_name(FILE_OVL_SUB);
+    if (n == NULL || strcmp(n, "OVL_SUB") != 0) {
+        return fail("name of SUB");
+    }
+    n = dw3_overlay_file_name(FILE_OVL_A);
+    if (n == NULL || strcmp(n, "OVL_A") != 0) {
+        return fail("name of A");
+    }
+    if (dw3_overlay_file_name(FILE_OVL_UNKNOWN) != NULL ||
+        dw3_overlay_file_name(0) != NULL) {
+        return fail("name of unknown / 0");
+    }
+    dw3_overlay_set_table(g_fixtures, sizeof(g_fixtures) / sizeof(g_fixtures[0]));
+    if (dw3_overlay_file_name(FILE_OVL_A) != NULL) {
+        return fail("names not cleared by set_table");
+    }
+    puts("OK: overlay names");
+    return 0;
+}
+
 /* A failed restore must not be recorded as loaded (patch 0061). */
 static int check_unknown(void) {
     /* Sub: A-sub loaded, then an unknown id fails and clears the latch, so
@@ -249,6 +279,9 @@ int main(int argc, char **argv) {
     }
 
     if (check_unknown() != 0) {
+        return 1;
+    }
+    if (check_names() != 0) {
         return 1;
     }
 

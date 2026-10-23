@@ -25,6 +25,9 @@ IMAGE="${DW3_DK_IMAGE:-devkitpro/devkita64:latest}"
 NXLINK_STDIO=OFF
 DW3_NX_FORCE_CRASH=OFF
 DW3_NX_REPLAY=OFF
+# Development-only K=V,K=V environment baked into the NRO (CMake
+# DW3_NX_TEST_ENV). Always passed, so a build dir never keeps an old value.
+DW3_NX_TEST_ENV="${DW3_NX_TEST_ENV:-}"
 DW3_VERSION="$(echo "${DW3_VERSION:-us}" | tr '[:upper:]' '[:lower:]')"
 
 usage() {
@@ -37,6 +40,8 @@ usage() {
   echo "                never release/preview, see docs/P6.15_REPLAY_TESTS.md)"
   echo "  --force-crash P5.4 smoke only: deliberate null write after boot"
   echo "                (pair with --nxlink; never in release/preview NROs)"
+  echo "env DW3_NX_TEST_ENV=K=V,K=V bakes a dev-only environment into the NRO"
+  echo "  (e.g. DW3_FORCE_CRASH=sim for Ryubing; see docs/P5.4_CRASH.md)"
 }
 
 while (( $# > 0 )); do
@@ -155,6 +160,7 @@ docker run --rm \
   -e DW3_VERSION="${DW3_VERSION}" \
   -e DW3_NX_FORCE_CRASH="${DW3_NX_FORCE_CRASH}" \
   -e DW3_NX_REPLAY="${DW3_NX_REPLAY}" \
+  -e DW3_NX_TEST_ENV="${DW3_NX_TEST_ENV}" \
   -e DW3_NRO_VERSION="${DW3_NRO_VERSION}" \
   -e DW3_NACP_VERSION="${DW3_NACP_VERSION}" \
   -e GIT_CONFIG_COUNT=1 \
@@ -172,6 +178,7 @@ docker run --rm \
     -DDW3_NXLINK_STDIO="$DW3_NXLINK_STDIO" \
     -DDW3_NX_FORCE_CRASH="$DW3_NX_FORCE_CRASH" \
     -DDW3_NX_REPLAY="$DW3_NX_REPLAY" \
+    -DDW3_NX_TEST_ENV="$DW3_NX_TEST_ENV" \
     -DDW3_NRO_VERSION="$DW3_NRO_VERSION" \
     -DDW3_NACP_VERSION="$DW3_NACP_VERSION" && \
     cmake --build "$DW3_SWITCH_BUILD_DIR" -j"$(nproc)"'
@@ -229,3 +236,11 @@ PY
 )"
 
 echo "game .nro ${NRO} (${bytes} bytes, DW3_VERSION=${DW3_VERSION}) nacp_version=${nacp_ver}"
+# P5.4: the unstripped .elf next to the .nro is what tools/symbolize_crash.py
+# needs for this build's crash_report.txt (match by build_id).
+ELF="${BUILD_DIR}/dw3-switch.elf"
+if [[ -f "${ELF}" ]]; then
+  echo "game .elf ${ELF} (keep it with the .nro to symbolize crash reports)"
+else
+  echo "warning: missing ${ELF}; crash reports from this .nro cannot be symbolized" >&2
+fi

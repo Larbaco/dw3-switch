@@ -113,6 +113,13 @@ foreach(_dw3_tool IN ITEMS DW3_LD DW3_OBJCOPY DW3_NM)
 endforeach()
 message(STATUS "target binutils: ld=${DW3_LD} objcopy=${DW3_OBJCOPY} nm=${DW3_NM}")
 
+# P5.4 crash report: the exception handler walks the AArch64 frame-record
+# chain (x29). devkitA64 GCC at -O2 already keeps frame records in non-leaf
+# functions (leaf functions omit them; the report's lr covers that frame), so
+# this flag produces the same code today. It is spelled out so the backtrace
+# does not silently break if a toolchain default or a later flag changes.
+add_compile_options(-fno-omit-frame-pointer)
+
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../../vendor/psyz/psyz
                  ${CMAKE_BINARY_DIR}/psyz)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../../port ${CMAKE_BINARY_DIR}/port)
@@ -232,6 +239,21 @@ string(REPLACE "\\" "\\\\" _dw3_nro_ver_c "${DW3_NRO_VERSION}")
 string(REPLACE "\"" "\\\"" _dw3_nro_ver_c "${_dw3_nro_ver_c}")
 target_compile_definitions(dw3-switch PRIVATE
   "DW3_NRO_VERSION_STR=\"${_dw3_nro_ver_c}\"")
+# P5.4: git commit in the crash report, to match a report to its .elf. The
+# report also prints the GNU build-id the linker stamps into the image
+# (.note.gnu.build-id), which tools/symbolize_crash.py checks against the
+# .elf. Configure-time value; tools/build_switch_game.sh configures each run.
+execute_process(
+  COMMAND git -C "${CMAKE_CURRENT_SOURCE_DIR}/../.." describe --always --dirty
+          --abbrev=12 --match=NoTagWanted
+  OUTPUT_VARIABLE DW3_GIT_HASH
+  OUTPUT_STRIP_TRAILING_WHITESPACE
+  ERROR_QUIET)
+if(DW3_GIT_HASH STREQUAL "")
+  set(DW3_GIT_HASH "unknown")
+endif()
+target_compile_definitions(dw3-switch PRIVATE "DW3_GIT_HASH_STR=\"${DW3_GIT_HASH}\"")
+message(STATUS "git commit for the crash report: ${DW3_GIT_HASH}")
 message(STATUS "NRO version full='${DW3_NRO_VERSION}' nacp='${DW3_NACP_VERSION}'")
 
 set(DW3_NRO_NAME "dw3-switch")
