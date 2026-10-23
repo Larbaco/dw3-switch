@@ -42,7 +42,7 @@ lives in its doc, not in the entry below.
 | P5.1 | Memory budget | in progress | [P5.1](P5.1_MEMORY.md) |
 | P5.2 | Performance pass | done | [P5.2](P5.2_BATTLE_GPU.md) |
 | P5.3 | Save handling | done | [P5.3](P5.3_FLAT_SAVE.md) |
-| P5.4 | Error reporting | in progress (report PR 1 landed; OLED forced fault US+EU, PR 2 open) | [P5.4](P5.4_CRASH.md) |
+| P5.4 | Error reporting | in progress (done-when met on the OLED, US + EU; PR 2: boot notice + assert open) | [P5.4](P5.4_CRASH.md) |
 | P5.5 | Stage sweep on hardware | open | — |
 | P6.1 | Scaling / widescreen | in progress | [P6.1](P6.1_WIDESCREEN.md) |
 | P6.2 | PAL/NTSC, EU/US, language at boot | in progress | [P3_EU_BUILD](P3_EU_BUILD.md) |
@@ -553,14 +553,21 @@ speed.
   `STSTATUS_drawItemScreen`, the bug patch 0069 fixed; the earlier
   `spriteDrawerDraw` reading used the wrong `.elf`. Tested in Ryubing
   (US + EU) through `DW3_FORCE_CRASH=sim`, because Ryubing does not deliver
-  a real guest fault to the handler. Not ticked.
-  **Still open:** (a) the owner's real forced-fault run on the OLED, US
-  and EU (`build_switch_game.sh [--eu] --nxlink --force-crash`, then send
-  `crash_report.txt`, `dw3.log` and the Atmosphere crash report) — the
-  done-when; (b) PR 2: step 6, an on-screen "last run crashed, report at
-  …" notice on the next boot, and step 7, `assert` / `abort` routed into
-  the same report; (c) previews keep or publish the `.elf` of each `.nro`
-  (release packaging follow-up after rc7). See [P5.4_CRASH.md](P5.4_CRASH.md).
+  a real guest fault to the handler.
+  **Owner OLED (2026-10-23, handheld, `a2683c3` `--nxlink --force-crash`,
+  US and EU):** the done-when is met. On both discs the real null write
+  produced a full report (`esr` data abort write, `far 0x0`, matching
+  `build_id`, `module_base` equal to the Atmosphere creport base, the last
+  log lines) and the `CRASH` line at the end of `dw3.log`;
+  `symbolize_crash.py` resolves pc `crash_force_null_write`, lr
+  `crash_force_now` and frames `dw3_nx_crash_force_fault` ← `main`.
+  Evidence: `tmp/evidence/2026-10-23-p54-oled-forcecrash-{us,eu}/`.
+  Not ticked only because the objective also names the assert overlay.
+  **Still open:** (a) PR 2: step 6, an on-screen "last run crashed,
+  report at …" notice on the next boot, and step 7, `assert` / `abort`
+  routed into the same report; (b) previews keep or publish the `.elf` of
+  each `.nro` (release packaging follow-up after rc7). See
+  [P5.4_CRASH.md](P5.4_CRASH.md).
   **Status (2026-10-15):** in progress; the owner is investigating the
   crash-report path on hardware. Not ticked.
   **Status (2026-10-16):** in progress; report path researched and small
