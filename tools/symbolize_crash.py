@@ -336,10 +336,10 @@ def format_rows(addrs: Sequence[Addr], sym: Dict[int, List[str]], full: bool,
         note = "  [call site]" if a.is_return else ""
         st = symbol_at(syms, lo) if syms else None
         entry = symbol_at(syms, a.offset) if (syms and a.is_return) else None
-        if entry and entry.endswith("+0x0"):
-            # A "return address" that is a function's first instruction was
-            # never pushed by a call: crt0 enters main with lr = exit (the
-            # __wrap_exit stub in the game image), so main's frame names it.
+        if entry in ("exit+0x0", "__wrap_exit+0x0"):
+            # crt0 enters main with lr = exit (the __wrap_exit stub in the
+            # game image): main's frame holds that address without a call,
+            # so the addr-4 lookup names whatever is laid out before it.
             note += (f"  [return address is the entry of {entry[:-4]}: not a "
                      f"call; crt0 sets main's lr to exit]")
         if st:

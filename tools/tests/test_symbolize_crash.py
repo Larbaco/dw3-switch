@@ -122,12 +122,18 @@ def test_addr2line_output_parser():
 
 
 def test_return_into_a_function_entry_is_flagged():
-    syms = [(0x5b38, 0x64, "__wrap___assert_func"), (0x5b9c, 0x64, "__wrap_exit")]
+    syms = [(0x5b38, 0x64, "__wrap___assert_func"), (0x5b9c, 0x64, "__wrap_exit"),
+            (0x6030, 0x20, "crash_force_fatal"), (0x6050, 0x20, "crash_force_exit")]
     rows = sc.format_rows([sc.Addr("#03", None, 0x5b9c, True),
-                           sc.Addr("#02", None, 0x5b40, True)],
-                          {0x5b98: ["??"], 0x5b3c: ["??"]}, False, syms)
+                           sc.Addr("#02", None, 0x5b40, True),
+                           # a noreturn call as the last instruction: the
+                           # return address is the next function's entry and
+                           # addr-4 already names the right one
+                           sc.Addr("lr", None, 0x6050, True)],
+                          {0x5b98: ["??"], 0x5b3c: ["??"], 0x604c: ["??"]}, False, syms)
     assert "entry of __wrap_exit" in rows[0]
     assert "entry of" not in rows[1]
+    assert "entry of" not in rows[2] and "crash_force_fatal+0x1c" in rows[2]
 
 
 @pytest.fixture(scope="module")
