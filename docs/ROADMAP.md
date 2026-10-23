@@ -689,10 +689,34 @@ gate, which stays open.
   reproduced); shipped in preview.27, hardware acceptance pending. Crash
   record 1 (battle) is separate and open. Menu and transition coverage:
   [P6.1_WIDESCREEN_MENU_AUDIT.md](P6.1_WIDESCREEN_MENU_AUDIT.md) (#161).
-  **Open widescreen PRs (2026-10-23):** #202 (technique backdrops cover the
-  gutters) and #205 (the area name banner spans the gutters, patch `0071`)
-  are still open and **are not in preview.30-rc7**, so the rc7 OLED feedback
-  says nothing about them.
+  **Transitions and backdrops (2026-10-23, #202 and #205, merged; not in
+  preview.30-rc7, so the rc7 OLED feedback says nothing about them):** the
+  technique backdrops (blue band, magic circle) and the area name banner
+  now span 16:9 (patches `0072` and `0071`; PSY-Z `dw3-gutter-width`: a
+  display-wide band of rows takes the gutters). PC and Ryubing, US and EU,
+  captured; widescreen off unchanged. OLED pending. **Open, in this order**
+  (details and evidence in [P6.1_WIDESCREEN.md](P6.1_WIDESCREEN.md#open-transitions-2026-10-23)):
+  - [ ] **Area-change iris and grid cover** (`FIELDSTG_closeField`): start the
+    clip at 320+2*gutter centred on the player and widen the blue grid; a
+    small patch with the next free number.
+  - [ ] **Encounter spiral** (`FIELDSTG_playBattleTransition`): decide between
+    a black 16:9 with the 4:3 swirl (no work) and gutter-aware tiles
+    (PSY-Z: copy the gutters into the transition image, tiles to 426 px).
+  - [ ] **PC `sdl3_gpu` only:** an empty drawing area (the 0x0 clip
+    `closeField` leaves on the map layer) must draw nothing; today
+    `UpdateScissor` keeps the previous scissor, so the map shows again after
+    the iris closes (also in 4:3). PSY-Z fix; the Switch raster is right.
+  - [ ] **"Slow" transitions:** the PC runs the game's own frame counts
+    (banner about 126 frames, spiral about 98 plus 30 black). Whether the
+    Switch is slower needs an OLED nxlink log (`frame dt us=`, field tile
+    reads) across a door and into a battle; a shorter banner hold is the
+    P6.18 owner's-call item.
+  - [ ] **OLED pass** for the banner and the technique backdrop (US and EU),
+    plus a look for other display-wide band layers that now draw into the
+    gutters.
+  - [ ] Ryubing and the PC show a black hole in the middle of the technique
+    magic circle (rotated sprite); it is the same on main, so it is not from
+    these patches. Look at it on the OLED first.
 - [ ] **P6.2** PAL/NTSC and EU/US selection at boot; language from EU
   `CNTY_SEL`.
   **Status (2026-10-14, language part):** `CNTY_SEL` linked as

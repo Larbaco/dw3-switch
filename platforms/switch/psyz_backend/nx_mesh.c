@@ -53,7 +53,6 @@ static GLuint s_gutter_fbo;
 static int s_gutter_px;
 static int s_gutter_x0;
 static int s_gutter_w;
-static int s_gutter_h;
 static GLuint s_sample_tex;
 static GLuint s_prog;
 static GLuint s_blit_prog;
@@ -414,11 +413,12 @@ static bool is_untextured(const Dw3NxMeshVertex *v) {
     return (v->tpage & DW3_NX_MESH_TPAGE_NOTEXTURE) != 0;
 }
 
-/* Whether the drawing area is the display, which takes the gutters. */
+/* Whether the drawing area spans the display's columns, which takes the
+ * gutters. Any non-empty band of rows does, as in PSY-Z's rasterizer: a layer
+ * clipped to a band (the area banner closing) reaches the gutters there. */
 static bool gutter_active(void) {
     return s_gutter_px > 0 && s_gutter_fbo && s_area_x0 == s_gutter_x0 &&
-           s_area_x1 == s_gutter_x0 + s_gutter_w - 1 &&
-           (s_gutter_h <= 0 || s_area_y1 - s_area_y0 + 1 == s_gutter_h);
+           s_area_x1 == s_gutter_x0 + s_gutter_w - 1 && s_area_y1 >= s_area_y0;
 }
 
 /* Clears a rect of a VRAM-sized FBO, clipped to it. */
@@ -915,7 +915,7 @@ void dw3_nx_mesh_set_gutter(int px, int x0, int w, int h) {
     s_gutter_px = px;
     s_gutter_x0 = x0;
     s_gutter_w = w;
-    s_gutter_h = h;
+    (void)h; /* the display height; any band of rows takes the gutters */
 }
 
 void dw3_nx_mesh_clear_gutter_rows(int y0, int y1) {

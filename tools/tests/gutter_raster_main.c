@@ -21,6 +21,7 @@ void psyz_log(unsigned int level, const char *file, unsigned int line,
 
 #define RED 0x001F
 #define GREEN 0x03E0
+#define BLUE 0x7C00
 #define G 53
 
 static int failures;
@@ -105,6 +106,25 @@ int main(void) {
           "narrow area leaves the gutters alone");
     check(vram(159, 35) == GREEN && vram(160, 35) == RED,
           "narrow area clips as before");
+
+    /* A display-wide band of rows (the area banner closing from the top and
+       the bottom) takes the gutters in those rows only. */
+    area(0, 100, 319, 139);
+    tile(0, 100, 320, 40, 0xF800);
+    check(plane(0, 0, 100) == GREEN && plane(1, G - 1, 139) == GREEN,
+          "band clear fills its gutter rows");
+    check(plane(0, 0, 99) == RED && plane(1, G - 1, 140) == RED,
+          "band clear stays inside its rows");
+    quad(-40, 90, 360, 150, 0xF80000);
+    check(plane(0, G - 1, 99) == RED && plane(0, G - 1, 120) == BLUE,
+          "band geometry is clipped to its rows in the gutters");
+
+    /* An empty area (end before start, a 0x0 layer clip) draws nothing. */
+    area(160, 120, 159, 119);
+    tile(0, 0, 320, 240, 0xF800);
+    check(vram(0, 0) == RED && vram(160, 120) == BLUE &&
+              plane(0, 0, 0) == RED,
+          "empty area draws nothing");
 
     /* The second buffer: offset and area 256 rows down. */
     software_rasterizer.offset(0, 256);
