@@ -9,7 +9,9 @@ The overlay replaces the vanilla menu and footer sprites. The Switch draws the
 same overlay and logo texture over its GLES present
 (`platforms/switch/psyz_backend/nx_title_overlay.c`); SDL3 GL retains the
 existing PS1-primitive fallback. The EU disc is supported in every `LANGUAGE`
-bank; see [EU disc](#eu-disc) below. The concept PNGs below are references and are not loaded by the
+bank; see [EU disc](#eu-disc) below. How the overlay art is drawn (plaque
+geometry, label rasterization, presentation shaders) is in
+[PC_TITLE_OVERLAY_ART](PC_TITLE_OVERLAY_ART.md). The concept PNGs below are references and are not loaded by the
 game.
 
 ## Menu labels and order
