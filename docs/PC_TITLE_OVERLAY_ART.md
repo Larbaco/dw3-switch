@@ -50,7 +50,9 @@ Original game artwork comes from the owner's runtime assets and must not be
 added to Git. The original animated background remains active.
 
 The overlay keeps the approved native-resolution menu and a discreet footer with
-the original three legal credits in antialiased 12px lettering. Menu bounds are
+the original three legal credits in antialiased 12px lettering (US and EU, same
+text in every bank, transcription in
+[TITLE_MENU_DESIGN](TITLE_MENU_DESIGN.md#title-credits)). Menu bounds are
 x=230..729, y=400..573; a quiet separator is at y=375. Suggested original-logo
 placement is inside x=130..830, y=100..345, leaving space above the menu. Actual
 framing must be reviewed in a US PC virtual-display runtime capture.

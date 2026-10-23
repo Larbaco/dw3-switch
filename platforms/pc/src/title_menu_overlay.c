@@ -864,6 +864,12 @@ int dw3_pc_title_background_rgba(const uint8_t *rgba, int width,
     return 0;
 }
 
+/* 1 when the GPU resources the overlay draws with exist; the port hides the
+ * game's own credit sprites only while this holds. */
+int dw3_pc_title_menu_overlay_usable(void) {
+    return g_pipeline && g_texture && g_vertices && g_sampler && g_window;
+}
+
 void dw3_pc_title_menu_logo_set_active(int active) {
     g_logo_active = active && g_logo_texture_ready;
 }
