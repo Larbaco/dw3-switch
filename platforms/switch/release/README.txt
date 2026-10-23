@@ -114,8 +114,6 @@ Install / nxlink
 
 OLED checklist
 
-  - US: New Game, walk to the bridge "need my partner" event, close the
-    box and keep walking (the OLED check so far was EU only).
   - Options: hold and tap Up/Down, change every row, close and reopen;
     on EU also in French or German. Compare with preview.28.
   - Save, press HOME, come back; save, sleep, wake. The save must

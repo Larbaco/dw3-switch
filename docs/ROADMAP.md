@@ -650,9 +650,11 @@ speed.
   preview.30-rc7, owner, US):** the Items screen no longer crashes and items
   work (#201, patch `0069`). The 103-frame Instant page after each battle is
   the area name banner and is explained in P6.18 ([RELEASES](RELEASES.md)).
-  **Bridge gate on US hardware still open (patch `0058`):** EU passed it on
-  the preview.29 OLED run; the US disc needs a New Game walked to the bridge
-  gate on the console ([BALLOON_NULL_ACTOR.md](BALLOON_NULL_ACTOR.md)).
+  **Bridge gate confirmed on US hardware (2026-10-23, preview.30-rc7, OLED
+  handheld, owner; patch `0058`):** the New Game walk to the bridge gate no
+  longer crashes. EU had passed it on the preview.29 OLED run, so both discs
+  are now checked on the console
+  ([BALLOON_NULL_ACTOR.md](BALLOON_NULL_ACTOR.md)).
 
 Gate: start → first boss on hardware, both versions.
 
@@ -756,7 +758,7 @@ gate, which stays open.
   unticked: the owner decides whether this closes P6.4.
   **Future goal (2026-10-23):** the owner also finds the New Game opening
   scenes very slow with turbo at 4x (about 70 FPS); recorded as P6.22, nothing
-  started.
+  started (first numbers in P6.22 below: field 68 fps at 4x, battle 190).
   Done when: PC and Switch (Ryujinx, then hardware) show it on both the US
   and EU discs, and it returns cleanly to normal speed.
 - [x] **P6.5** Release packaging: `.nro` + `README` for own-disc setup;
@@ -1399,7 +1401,9 @@ Statuses are in the [table](#status-at-a-glance).
   original 30 fps stays selectable.
 - [ ] **P6.22 Turbo speed in scripted scenes (future goal).** Dated
   2026-10-23, owner request after the preview.30-rc7 OLED test (US disc,
-  Switch OLED). Goal note only, **nothing started, nothing measured yet**.
+  Switch OLED). Goal note only, **nothing started**; first numbers from the
+  rc7 log below (the full table is in
+  [P6.4](P6.4_FAST_FORWARD.md#new-game-opening-measured-from-the-rc7-log-2026-10-23)).
   The owner reports that on New Game the opening scenes are very slow even
   with turbo on: the scripted scenes (meeting the friends, talking to the
   attendants and receptionists, and so on). Turbo at 4x only raises the
@@ -1427,6 +1431,17 @@ Statuses are in the [table](#status-at-a-glance).
   dialogue typing is counted in game frames (`text page typed in N frame(s)`),
   so text waits should scale with turbo; that is a reading of the docs, not
   a test of the opening.
+  **First measurement (2026-10-23, rc7 log of the owner's New Game run, US
+  OLED handheld, 4998 windows of 60 game frames at turbo 4x, 73 minutes):**
+  the field and scripted scenes run at **68 game frames per second** (p10 to
+  p90 63 to 74, best window 85) against 240 asked for, while the one battle in
+  the same run reached **190** at the same setting. `present_us` is about
+  42 ms per window (15 presents, 2.8 ms each, under 5 % of the window), so
+  the present is not the bound: the field spends about **13.7 ms of CPU per
+  game frame** (battle about 4.2 ms) and that caps it near 70 fps. This
+  favours candidate (1) below and weakens (3). The log cannot split the
+  opening from the rest of the session, nor logic from raster; (a) and (b)
+  below still apply.
   **Candidates, none confirmed:** (1) CPU cost per emulated frame (game
   logic plus the software rasterizer; scripted scenes draw many sprites,
   text and a full map on the soft path, and the map still fills in one
