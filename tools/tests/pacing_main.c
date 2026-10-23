@@ -329,6 +329,37 @@ static void glue_text(void) {
         }
         dw3_port_pacing_text_poll(&w1, 0, 1);   /* 23 frames with a scroll */
     }
+    /* The game frees a window and gives its address to the next one. The area
+     * name banner types at delay 5 (not a dialogue window): on the address of a
+     * report page it must not be timed as a dialogue page. Before the fix its
+     * 103 typing frames (17 characters at 6 frames) were logged as a slow
+     * Instant page, the "103 frames" of the rc6 OLED log. */
+    CHECK(dw3_port_pacing_text_delay(&w1, 6) == DW3_PACING_FAST_DELAY);
+    dw3_port_pacing_text_poll(&w1, 0, 1);       /* "typed in 1 frame(s)" */
+    CHECK(dw3_port_pacing_text_delay(&w1, 5) == 5);    /* the banner, same address */
+    {
+        int n;
+
+        for (n = 0; n < 102; n++) {
+            dw3_port_pacing_text_poll(&w1, 1, 0);
+        }
+        dw3_port_pacing_text_poll(&w1, 0, 1);   /* 103 frames: silent */
+    }
+    /* A window that types nothing (delay 0) on a dialogue window's address. */
+    CHECK(dw3_port_pacing_text_delay(&w2, 6) == DW3_PACING_FAST_DELAY);
+    CHECK(dw3_port_pacing_text_delay(&w2, 0) == 0);
+    {
+        int n;
+
+        for (n = 0; n < 40; n++) {
+            dw3_port_pacing_text_poll(&w2, 1, 0);
+        }
+        dw3_port_pacing_text_poll(&w2, 0, 1);   /* silent */
+    }
+    /* The same window address as a dialogue window again: timed again. */
+    CHECK(dw3_port_pacing_text_delay(&w1, 6) == DW3_PACING_FAST_DELAY);
+    dw3_port_pacing_text_poll(&w1, 1, 0);
+    dw3_port_pacing_text_poll(&w1, 0, 1);       /* "typed in 2 frame(s)" */
 }
 
 int main(void) {

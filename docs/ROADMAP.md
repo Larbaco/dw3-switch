@@ -1160,18 +1160,25 @@ Statuses are in the [table](#status-at-a-glance).
   captures are pixel-identical. **Faster battle animations are not done:** the
   battle has no single time knob (reasons in the doc), and R3 fast-forward
   (P6.4) already speeds a battle up. May still land as concrete P7.4 items.
-  **Instant and scrolled lines (2026-10-22, patch 0068):** the rc4 log had 8
-  Instant pages that took 67 to 127 frames; they are lines that scroll in a
-  long text, typed at the fast delay. Instant now holds the full page 12
-  frames and shows the new line whole (103 -> 12 frames for a 34 character
-  line); a log line flags any slow page that is not a scroll. Details and what
-  was not proven: [P6.18_PACING.md](P6.18_PACING.md#instant-and-scrolled-lines-patch-0068-after-the-rc4-oled-log).
+  **Instant and scrolled lines (2026-10-22, patch 0068):** a text that
+  scrolls (a third line) typed the new line at the fast delay; Instant now holds the
+  full page 12 frames and shows the new line whole (reproduced in the opening's
+  dialogue, 53/50/32 frames before). **The 103/73/67/127-frame lines of the rc4 and
+  rc6 OLED logs were not scrolls and not the battle report** (2026-10-23): they are the
+  area name banner that opens in the field after each battle (delay 5, `6n + 1`
+  frames), timed as a dialogue page because the game reused a freed report
+  window's address; port fix in `pacing.c` and scenarios `*-banner-instant`,
+  details in [P6.18_PACING.md](P6.18_PACING.md#the-103-frame-pages-the-area-name-banner-rc4-and-rc6-oled-logs).
+  **Open (owner's call):** the banner still types its two names at the game's own
+  speed, about 2.3 s with the hero frozen after every battle; Text speed could end it
+  0.3 to 0.7 s earlier, a shorter hold would need its own option.
   **Partial OLED evidence (2026-10-22, EU, preview.30-rc4, owner):** Encounter
   rate was cycled (1x, 0.5x, Off) and returned to 1x; the log shows 5 random
   battles, all at 1x, after 104, 175, 103, 128 and 93 footsteps (the owner
   counted the first four). Text speed Instant: 19 of 27 logged pages typed in
   1 to 2 frames. **Open:** 8 pages took 103 (5 times), 67 (2) and 127 (1)
-  frames; the scrolled-line cause is fixed by patch 0068 (above), not yet rechecked on the OLED. Not covered: 0.5x and Off in
+  frames: **the area name banner, not text** (above, fixed in the port 2026-10-23); real
+  scrolls are patch 0068, not yet rechecked on the OLED. Not covered: 0.5x and Off in
   play, Fast, US, relaunch persistence. Stays unticked.
 - [ ] **P6.19 Japanese disc support (future goal).** File map, executable
   differences and boot for the JP disc, next to US and EU. Goal note only

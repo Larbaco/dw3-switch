@@ -103,11 +103,22 @@ one console and are not acceptance gates; gates live in
   Music volume stepped 0 to 10 and SFX volume down to 2 with the expected
   gains logged. Encounter rate was toggled and returned to 1x (random battles
   at 1x after 104, 175, 103, 128 and 93 footsteps). Text speed Instant typed
-  19 of 27 pages in 1 to 2 frames; 8 pages took 67 to 127 frames, which is
-  open and under investigation. The session ended with a normal HOME exit and
+  19 of 27 pages in 1 to 2 frames; 8 pages took 67 to 127 frames: those turned
+  out (rc6 follow-up below) to be the area name banner, not text. The session ended with a normal HOME exit and
   `applet exit: flat saves flushed`. Not covered: US, relaunch persistence,
   the P7.7 HUD and claw (logged only to the nxlink stderr), widescreen.
   Log: `tmp/evidence/2026-10-22-preview30-rc4-oled/dw3.log`.
+- **preview.30-rc6 candidate, 2026-10-22 (OLED handheld, EU nxlink, built from
+  main `1fc5bfc`).** Text speed Instant, Encounter rate 2x, turbo used: 20 random
+  battles. The report pages typed in 1 to 2 frames (49 lines); **19 lines of 103
+  (15) or 73 (4) frames with `slow Instant page ... reveal missed it`** and no
+  `text scroll`. Cause found 2026-10-23: they are the area name banner of the
+  field after the battle (delay 5, 6 frames per character: 17 and 12
+  characters), wrongly timed as a dialogue page by the port's log on the address
+  of a freed report window. Nothing was typed slowly that Text speed should have
+  sped up. Fixed in the port (`pacing.c`, no patch); the banner itself is unchanged.
+  Not covered by this log: Fast, a dialogue that scrolls, US. Log:
+  `/mnt/cabal/tmp/dw3-preview30-rc6-out/dw3.log`.
 
 Still open on hardware: audio underrun count, the full overlay sweep, battle
 at 60 Hz, the sync-object error above, a fresh-save relaunch reload, and EU
