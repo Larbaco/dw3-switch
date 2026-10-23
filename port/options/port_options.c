@@ -1,6 +1,7 @@
 /* P9.2 port options shell — stays on MODE_TITLE; never sets menu choice. */
 #include "port_options.h"
 #include "port_audio.h"
+#include "port_battle_menu.h"
 #include "port_options_cfg.h"
 #include "port_pacing.h"
 #include "port_turbo.h"
@@ -37,10 +38,11 @@
 #endif
 #endif
 
-/* DW3_PORT_OPT_ENCOUNTER_RATE (5) and DW3_PORT_OPT_TEXT_SPEED (6) are in
- * port_options.h: port/pacing/pacing.c reads them. */
+/* DW3_PORT_OPT_ENCOUNTER_RATE (5), DW3_PORT_OPT_TEXT_SPEED (6) and
+ * DW3_PORT_OPT_BATTLE_MENU (7) are in port_options.h: port/pacing/pacing.c and
+ * port/battle_menu/battle_menu_memory.c read them. */
 enum {
-    DW3_PORT_OPT_COUNT = 7,
+    DW3_PORT_OPT_COUNT = 8,
     DW3_PORT_OPT_WIDESCREEN = 0,
     DW3_PORT_OPT_FAST_FORWARD = 1,
     DW3_PORT_OPT_RESTART = 2,
@@ -52,9 +54,9 @@ typedef struct Dw3PortOptStub {
     const char *label;
     const char *key; /* P9.4 option file key */
     int value; /* 0/1, 0/2..4 (Fast-forward), 0..10 (volumes), 0..4 (Encounter
-                * rate) or 0..2 (Text speed); Widescreen defaults ON, turbo
-                * starts inactive, volumes default to 10, pacing to 0 (1x,
-                * Normal) */
+                * rate) or 0..2 (Text speed, Battle cursor); Widescreen
+                * defaults ON, turbo starts inactive, volumes default to 10,
+                * pacing and Battle cursor to 0 (1x, Normal, Off) */
     int def;   /* value with no option file (the row's initial value) */
     const char *env; /* optional DW3_* variable that pins it for one run */
 } Dw3PortOptStub;
@@ -81,6 +83,10 @@ static Dw3PortOptStub g_stubs[DW3_PORT_OPT_COUNT] = {
     /* P6.18: 0 = Normal, 1 = Fast, 2 = Instant */
     {"Text speed", "text_speed", DW3_TEXT_NORMAL, DW3_TEXT_NORMAL,
      "DW3_TEXT_SPEED"},
+    /* P7.9: 0 = Off (the original menu), 1 = Command, 2 = Command+Tech. The
+     * key is the one that was file-only before the row existed. */
+    {"Battle cursor", DW3_BATTLE_MENU_MEMORY_KEY, DW3_BATTLE_MENU_MEMORY_OFF,
+     DW3_BATTLE_MENU_MEMORY_OFF, NULL},
 };
 
 /* P9.4 persistence. The registry values above are what the game reads; this
@@ -214,10 +220,12 @@ static int po_is_volume(int index) {
            index == DW3_PORT_OPT_SFX_VOLUME;
 }
 
-/* The P6.18 rows hold a mode, 0 = the original behaviour. */
+/* The P6.18 rows and the Battle cursor hold a mode, 0 = the original
+ * behaviour. */
 static int po_is_mode(int index) {
     return index == DW3_PORT_OPT_ENCOUNTER_RATE ||
-           index == DW3_PORT_OPT_TEXT_SPEED;
+           index == DW3_PORT_OPT_TEXT_SPEED ||
+           index == DW3_PORT_OPT_BATTLE_MENU;
 }
 
 /* Rows that Left / Right step and Confirm cycles: the volumes and the modes. */
@@ -229,6 +237,7 @@ static int po_is_stepped(int index) {
 static int po_value_max(int index) {
     return po_is_volume(index) ? DW3_AUDIO_VOLUME_MAX
            : index == DW3_PORT_OPT_ENCOUNTER_RATE ? DW3_ENCOUNTER_MODE_MAX
+           : index == DW3_PORT_OPT_BATTLE_MENU ? DW3_BATTLE_MENU_MEMORY_TECH
                                                    : DW3_PACING_MODE_MAX;
 }
 
@@ -265,7 +274,8 @@ static int po_step_max(int index) {
 }
 
 /* A value the row can hold: ON/OFF, OFF / 2x..4x for Fast-forward, a volume
- * step 0..10, an Encounter rate 0..4 or a Text speed 0..2. */
+ * step 0..10, an Encounter rate 0..4, a Text speed 0..2 or a Battle cursor
+ * 0..2. */
 static int po_valid(int index, int v) {
     if (index == DW3_PORT_OPT_FAST_FORWARD) {
         return v == 0 || (v >= DW3_TURBO_SPEED_MIN && v <= DW3_TURBO_SPEED_MAX);
@@ -355,13 +365,14 @@ static int po_save(void) {
     }
     PO_INFO("dw3-options: saved %s/%s (widescreen=%d fast_forward=%d "
             "restart_hotkey=%d music_volume=%d sfx_volume=%d "
-            "encounter_rate=%d text_speed=%d)",
+            "encounter_rate=%d text_speed=%d battle_menu_memory=%d)",
             g_cfg_dir, DW3_OPTCFG_FILE, g_saved[DW3_PORT_OPT_WIDESCREEN],
             g_saved[DW3_PORT_OPT_FAST_FORWARD], g_saved[DW3_PORT_OPT_RESTART],
             g_saved[DW3_PORT_OPT_MUSIC_VOLUME],
             g_saved[DW3_PORT_OPT_SFX_VOLUME],
             g_saved[DW3_PORT_OPT_ENCOUNTER_RATE],
-            g_saved[DW3_PORT_OPT_TEXT_SPEED]);
+            g_saved[DW3_PORT_OPT_TEXT_SPEED],
+            g_saved[DW3_PORT_OPT_BATTLE_MENU]);
     return 0;
 }
 
@@ -445,13 +456,14 @@ int dw3_port_options_persist_init(const char *dir) {
     }
     PO_INFO("dw3-options: %s (widescreen=%d fast_forward=%d "
             "restart_hotkey=%d music_volume=%d sfx_volume=%d "
-            "encounter_rate=%d text_speed=%d)%s", path,
+            "encounter_rate=%d text_speed=%d battle_menu_memory=%d)%s", path,
             g_saved[DW3_PORT_OPT_WIDESCREEN],
             g_saved[DW3_PORT_OPT_FAST_FORWARD], g_saved[DW3_PORT_OPT_RESTART],
             g_saved[DW3_PORT_OPT_MUSIC_VOLUME],
             g_saved[DW3_PORT_OPT_SFX_VOLUME],
             g_saved[DW3_PORT_OPT_ENCOUNTER_RATE],
             g_saved[DW3_PORT_OPT_TEXT_SPEED],
+            g_saved[DW3_PORT_OPT_BATTLE_MENU],
             bad ? " [some values reset]" : "");
     /* DW3_MUSIC_VOLUME / DW3_SFX_VOLUME force a value for this run only. */
     po_stepped_env();
@@ -459,16 +471,19 @@ int dw3_port_options_persist_init(const char *dir) {
     return rc == DW3_OPTCFG_LOAD_ERROR ? -1 : 0;
 }
 
-/* The words of a pacing mode, for the log (the overlay has its own lettering). */
+/* The words of a mode row, for the log (the overlay has its own lettering). */
 static const char *po_mode_name(int index, int v) {
     static const char *const encounter[DW3_ENCOUNTER_MODE_MAX + 1] = {
         "1x", "0.5x", "off", "1.5x", "2x"};
     static const char *const text[3] = {"normal", "fast", "instant"};
+    static const char *const battle[3] = {"off", "command",
+                                          "command+technique"};
 
     if (v < 0 || v > po_value_max(index)) {
         return "?";
     }
-    return index == DW3_PORT_OPT_ENCOUNTER_RATE ? encounter[v] : text[v];
+    return index == DW3_PORT_OPT_ENCOUNTER_RATE ? encounter[v]
+           : index == DW3_PORT_OPT_BATTLE_MENU ? battle[v] : text[v];
 }
 
 /* Options screen menu sound feedback (owner request after the preview.30-rc4 OLED test): the game's own title-menu sounds (cursor tick,
@@ -532,7 +547,8 @@ static void po_step(int index, int delta) {
     } else {
         fprintf(stderr, "dw3-port-options: %s %s\n",
                 index == DW3_PORT_OPT_ENCOUNTER_RATE ? "encounter rate"
-                                                      : "text speed",
+                : index == DW3_PORT_OPT_BATTLE_MENU ? "battle cursor"
+                                                    : "text speed",
                 po_mode_name(index, v));
     }
     fflush(stderr);

@@ -598,6 +598,34 @@ def pacing_persist(version, phase):
     return r
 
 
+def battle_cursor_persist(version, phase):
+    """P7.9: Options -> down to the last row (Battle cursor), Right twice
+    (Off -> Command -> Command+Tech) with a capture of each word, then leave.
+    Phase 2 is a fresh process on the same config dir: it opens the screen and
+    goes to the row again, the log carries the value read back."""
+    r = Rec(f"{version.upper()}: Battle cursor persistence, phase {phase}")
+    m = _to_title_menu(r, version)
+    r.press(m, DOWN)                 # New Game -> Options
+    r.press(m + 20, CROSS)           # open the Options screen
+    f = m + 70
+    for _ in range(7):               # Widescreen -> ... -> Battle cursor
+        r.press(f, DOWN)
+        f += 20
+    if phase == 1:
+        r.shot(f + 20, "battle-cursor-off")
+        r.press(f + 40, RIGHT)       # Off -> Command
+        r.shot(f + 80, "battle-cursor-command")
+        r.press(f + 100, RIGHT)      # Command -> Command+Tech
+        r.shot(f + 140, "battle-cursor-command-tech")
+        r.press(f + 160, TRIANGLE)   # leave
+        r.end(f + 200)
+    else:
+        r.shot(f + 20, "battle-cursor-restored")
+        r.press(f + 40, TRIANGLE)
+        r.end(f + 80)
+    return r
+
+
 def options_sound(version):
     """Options screen sound feedback: title -> Options, four cursor moves down
     to SFX volume, Left twice (10 -> 8, each change plays the choice sound at
@@ -672,6 +700,28 @@ def encounter_event(version):
     return r
 
 
+def battle_music(version):
+    """Random battle, then no input: the battle theme (a long song with an NRPN
+    loop) runs to its loop end. Same walk as encounter_walk, then released."""
+    start, end = ENCOUNTER[version]
+    r = Rec(f"{version.upper()}: walk into a random battle, then idle in it (env in manifest)")
+    _pad(r, start, UP)
+    _pad(r, end, 0)
+    r.end(BATTLE_MUSIC_END)
+    return r
+
+
+BATTLE_MUSIC_END = 7500
+
+
+def music_loop(version):
+    """The field music alone: no input for 3000 frames (env in manifest). The
+    log shows the song's NRPN loop jumping back, never an end-of-track."""
+    r = Rec(f"{version.upper()}: field music idle, the NRPN loop must repeat (env in manifest)")
+    r.end(3000)
+    return r
+
+
 def items_screen(version, evidence=False):
     """Field menu -> Items after a battle (patch 0069, root cause of the
     preview.30-rc6 crash; patch 0070's DW3_FORCE_ITEMS fills the bag, the
@@ -738,12 +788,17 @@ def main(out):
                 pacing_persist(v, phase).text(True))
         (out / f"{v}-text-scroll.rec").write_text(text_scroll(v).text(True))
         (out / f"{v}-options-sound.rec").write_text(options_sound(v).text(True))
+        for phase in (1, 2):
+            (out / f"{v}-battle-cursor-persist-p{phase}.rec").write_text(
+                battle_cursor_persist(v, phase).text(True))
         # One recording per kind; the scenarios differ in the option file and
         # the environment the manifest gives them.
         (out / f"{v}-text-opening.rec").write_text(text_opening(v, TEXT_END[v]).text(True))
         (out / f"{v}-encounter-walk.rec").write_text(encounter_walk(v).text(True))
         (out / f"{v}-encounter-event.rec").write_text(encounter_event(v).text(True))
         (out / f"{v}-items-screen.rec").write_text(items_screen(v).text(True))
+        (out / f"{v}-music-loop.rec").write_text(music_loop(v).text(True))
+        (out / f"{v}-battle-music.rec").write_text(battle_music(v).text(True))
         (out / f"{v}-two-battles.rec").write_text(two_battles(v).text(True))
         (out / f"{v}-p77-battle.rec").write_text(p77_battle(v).text(True))
         (out / f"{v}-p77-square.rec").write_text(p77_square(v).text(True))

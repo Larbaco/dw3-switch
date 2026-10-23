@@ -1,0 +1,4 @@
+# EU: walk into a random battle, then idle in it (env in manifest)
+pad 300 0x0010
+pad 3300 0x0000
+end 7500
