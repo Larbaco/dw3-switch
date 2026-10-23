@@ -47,7 +47,7 @@ explicitly marked N/A in this note.
 | Texture packs | Enable overlay / select pack name | Phase 8 |
 | Audio | **Music volume** and **SFX volume**, 0..10 steps, default 10 = the original mix ([P6.17](P6.17_VOLUME.md)) | Phase 6 |
 | Original-game fixes | **None are toggles.** P7.7's HUD Digivolution name (patch `0065`) and Claw steal on the killing blow (`0066`) are always on; reasoning in [P7.7_BUG_FIXES.md](P7.7_BUG_FIXES.md) | Phase 7 |
-| Pacing | **Encounter rate** (1x / 0.5x / OFF) and **Text speed** (Normal / Fast / Instant), both default to the original game ([P6.18](P6.18_PACING.md)) | Phase 6 |
+| Pacing | **Encounter rate** (OFF / 0.5x / 1x / 1.5x / 2x) and **Text speed** (Normal / Fast / Instant), both default to the original game ([P6.18](P6.18_PACING.md)) | Phase 6 |
 | Battle menu memory | **File-only key** `battle_menu_memory` (0 off, 1 command, 2 command + technique), no Options row (the screen is full), off by default ([P7.9](P7.9_BATTLE_MENU_MEMORY.md)) | Phase 7 |
 | Switch host | Rumble on/intensity, confirm A/B layout, `swkbd` name, CRT/sharp, system-language hint | Phase 10 (+ P4.4 / P5.3 always-on lifecycle) |
 | Restart game | Optional L1 + R1 + Start + Select in the shared PS1 pad map; OFF by default | Phase 6.9 |
@@ -121,7 +121,7 @@ Rules, implemented in `port/options/options_cfg.c` and `port/options/port_option
 |---|---|
 | No file | Defaults (Widescreen ON, Fast-forward 2x armed, Restart hotkey OFF, Music volume 10, SFX volume 10, Encounter rate 1x, Text speed Normal). The file is first written on the first change, not at boot. |
 | Missing key | That option keeps its default. |
-| Invalid value (not an integer, or out of range: Fast-forward must be 0 or 2..4, the volumes 0..10, `encounter_rate` and `text_speed` 0..2, the others 0 or 1) | That option falls back to its default and a `dw3-options: <key>=<v> is not valid` line is logged. The bad line is replaced on the next save. |
+| Invalid value (not an integer, or out of range: Fast-forward must be 0 or 2..4, the volumes 0..10, `encounter_rate` 0..4, `text_speed` 0..2, the others 0 or 1) | That option falls back to its default and a `dw3-options: <key>=<v> is not valid` line is logged. The bad line is replaced on the next save. |
 | Malformed line, over-long key or value, junk | Skipped and counted (`ignored N malformed line(s)` in the log). |
 | File over 4 KiB, or unreadable | Defaults, logged; the next change replaces it. |
 | Unknown key | Ignored by the game, kept in memory and written back in its original position, so a build with fewer rows does not delete a newer build's settings (up to 48 keys). |
@@ -133,7 +133,12 @@ read as 10, and the first change adds them without touching the rest. A file
 written before P6.18 has no `encounter_rate` / `text_speed` keys; they read as
 0 (1x, Normal) the same way.
 
-`encounter_rate`: 0 = 1x (the game), 1 = 0.5x, 2 = OFF (no random battles).
+`encounter_rate`: 0 = 1x (the game), 1 = 0.5x, 2 = OFF (no random battles),
+3 = 1.5x, 4 = 2x. The values 0..2 are the ones P6.18 shipped and are never
+renumbered; 3 and 4 were added later, so a file written by an older build reads
+exactly as before and an older build reading a 3 or 4 falls back to 1x. The
+screen steps them in the order OFF, 0.5x, 1x, 1.5x, 2x (stored 2, 1, 0, 3, 4):
+the order is in the screen only, never in the file.
 `text_speed`: 0 = Normal (the game), 1 = Fast, 2 = Instant. Both are integers
 so the file never holds a word that a later build would have to keep
 understanding.
@@ -174,7 +179,7 @@ range); nothing else in the store changes.
 ### Per-run overrides are not saved
 
 `DW3_WIDESCREEN=0|1`, `DW3_TURBO=0|2|3|4`, `DW3_MUSIC_VOLUME=0..10` /
-`DW3_SFX_VOLUME=0..10` and `DW3_ENCOUNTER_RATE=0..2` / `DW3_TEXT_SPEED=0..2`
+`DW3_SFX_VOLUME=0..10` and `DW3_ENCOUNTER_RATE=0..4` (the stored values) / `DW3_TEXT_SPEED=0..2`
 (an invalid value is ignored) still force a value for
 that run (tests, replay recordings, audio measurements). They win over the file, but another toggle on
 the Options screen writes the value the file had for the forced row, not the
@@ -221,7 +226,7 @@ clean save files. See [P6.9_RESTART.md](P6.9_RESTART.md).
   process, read back by the next; the manifest requires the `saved ...
   music_volume=7 sfx_volume=3` and the read-back lines in each phase's log.
 - `tools/replay_tests.sh --only us-pacing-persist --only eu-pacing-persist`
-  (P6.18, log-only: no reference captures): Encounter rate 1x -> 0.5x and Text
+  (P6.18, log-only: no reference captures): Encounter rate 1x -> 0.5x (Left) and Text
   speed Normal -> Instant in one process, read back by the next; the manifest
   requires the `saved ... encounter_rate=1 text_speed=2` and the read-back
   line. The unit tests add the two rows (defaults, Left / Right / Confirm
@@ -527,11 +532,13 @@ on screen at 4:3 on PC and on the Switch), a row is 42 px high on a 48 px pitch
 (it was 30). Seven rows, the message line and the hints all stay on one
 screen, so Up / Down and the cache work as before; a scrolling list would have
 redrawn every visible row on each scroll and a tab would have added a second
-canvas and a new input. Values: Encounter rate `1x` / `0.5x` / greyed `OFF`;
+canvas and a new input. Values: Encounter rate `OFF` (greyed) / `0.5x` / `1x` / `1.5x` / `2x`;
 Text speed `Normal` / `Fast` / `Instant`. On both rows Left / Right step (no
 wrap) and Cross / Circle step up and wrap. The message lines are 618 and 626 px
 wide ("Random battles only; story and boss battles stay." and "How fast
-dialogue is typed out. Normal = original."), inside the 696 px message box.
+dialogue is typed out. Normal = original."), inside the 696 px message box
+(the Encounter rate line later became "Random battles only: OFF to 2x. Story
+battles stay.", 634 px).
 The cache keeps its three rectangles for a cursor move (the two 696x42 rows
 and the 696x52 message line, 0.37 MB against 2.76 MB for the whole canvas) and
 one 168x42 cell for a value change; at most 3 + 7 rectangles per update, so
@@ -540,6 +547,39 @@ every mode of the two rows from every cursor row against the full reference
 render. The row, value and button lettering was regenerated at 26 px by
 `tools/generate_pc_title_lettering.py` (the title and the message lines are
 byte-identical to before).
+
+**Encounter rate steps (after the rc4 OLED test).** The row has five values
+and is stepped OFF, 0.5x, 1x, 1.5x, 2x: Left / Right move along that order and
+stop at the ends; Cross / Circle step up and **wrap 2x -> OFF**. The stored values
+(0 = 1x, 1 = 0.5x, 2 = OFF, 3 = 1.5x, 4 = 2x) are not in screen order; the
+overlay still draws by stored value, so the cache and its dirty rectangles are
+unchanged (one 168x42 value cell, `1.5x` is 57 px wide). The message line of
+the row is "Random battles only: OFF to 2x. Story battles stay.".
+
+### Sound feedback on the Options screen
+
+The screen answers the pad with the game's own menu sounds, so the player can
+hear the SFX volume take effect (owner request after the rc4 OLED test). The
+sounds are the ones the title menu itself plays, all key-ons of the system
+bank (bank 1, `SYSTEM00..02`), which the title already uses, so no bank has to
+be loaded for the screen:
+
+| Pad | Sound (`engine/sound.h`) | Where the game uses it |
+|---|---|---|
+| Up / Down moves the cursor to another row (not at the first / last row) | `SOUND_CURSOR` | the title menu's New Game / Continue cursor |
+| Cross / Circle on a row, or Left / Right that changes a value (not at the end of a row) | `SOUND_SELECT` | the title menu's choice, and the Port options entry itself (patch 0044) |
+| Triangle (close the screen) | `SOUND_MENU_CANCEL` | the cancel of the game's field, item and status menus (the title has no back) |
+
+No sound plays when nothing changes, as in the game's own menus. The calls
+are in the shared `port/options/port_options.c` (`po_sound`, through
+`SOUND.playSound`): no decomp patch and no host code, so PC and Switch behave
+alike. The sounds are key-ons, so P6.17 puts them on the **SFX bus**: they
+follow the SFX volume row. On a change of that row the new gain is applied
+(`dw3_port_audio_apply`) and only then is the sound played, so the player hears
+the new level; a Music volume change plays it at the current SFX level. Every
+sound logs `dw3-port-options: sound <cursor|select|cancel> (sfx volume N, voice V)`
+(`voice` is the SPU voice of the key-on) and a missing bank would log
+`sound ... not played: bank N is not loaded`. Evidence: [P6.17](P6.17_VOLUME.md#sound-feedback-on-the-options-screen).
 
 ## Title-screen visual reference
 

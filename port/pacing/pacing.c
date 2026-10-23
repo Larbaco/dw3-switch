@@ -85,6 +85,9 @@ typedef struct Tracked {
     const void *win;
     int armed;  /* a page is being typed */
     int frames; /* updates it has taken so far */
+    int held;   /* frames its full page has been held before a scroll */
+    int scrolls;/* scrolls of the text so far */
+    int page_scrolls; /* scrolls since the current page started typing */
 } Tracked;
 static Tracked g_tracked[TRACKED];
 static int g_next_slot;
@@ -116,6 +119,9 @@ int dw3_port_pacing_text_delay(const void *win, int delay) {
     t->win = win;
     t->armed = 1;
     t->frames = 0;
+    t->held = 0;
+    t->scrolls = 0;
+    t->page_scrolls = 0;
     return dw3_pacing_scale_delay(mode, delay);
 }
 
@@ -136,6 +142,7 @@ void dw3_port_pacing_text_poll(const void *win, int typing, int done) {
         }
         t->armed = 1; /* the next page */
         t->frames = 0;
+        t->page_scrolls = 0;
     }
     if (typing || done) {
         t->frames++;
@@ -143,6 +150,32 @@ void dw3_port_pacing_text_poll(const void *win, int typing, int done) {
     if (done) {
         PACING_LOG("dw3-pacing: text page typed in %d frame(s) (text speed %s)",
                    t->frames, TEXT_NAME[mode_of(DW3_PORT_OPT_TEXT_SPEED)]);
+        if (mode_of(DW3_PORT_OPT_TEXT_SPEED) == DW3_TEXT_INSTANT &&
+            t->frames > 2 * DW3_PACING_SCROLL_HOLD && t->page_scrolls == 0) {
+            /* Not a scroll (those log their holds): a page that was typed
+             * instead of shown. A diagnostic for the next OLED log. */
+            PACING_LOG("dw3-pacing: slow Instant page with no scroll hold "
+                       "(%d frames): reveal missed it", t->frames);
+        }
         t->armed = 0;
     }
+}
+
+int dw3_port_pacing_text_scroll(const void *win, int type_delay) {
+    Tracked *t = find_tracked(win);
+    int mode = mode_of(DW3_PORT_OPT_TEXT_SPEED);
+    int action;
+
+    if (t == NULL) {
+        return 0;
+    }
+    action = dw3_pacing_scroll_action(mode, type_delay, &t->held);
+    if (action == 2) {
+        t->scrolls++;
+        t->page_scrolls++;
+        PACING_LOG("dw3-pacing: text scroll %d after a hold of %d frame(s) "
+                   "(text speed %s)", t->scrolls, DW3_PACING_SCROLL_HOLD,
+                   TEXT_NAME[mode]);
+    }
+    return action;
 }

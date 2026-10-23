@@ -43,3 +43,16 @@ int dw3_pacing_reveal_page(int mode, int type_delay, int finished, int shown) {
     return mode == DW3_TEXT_INSTANT && type_delay == DW3_PACING_FAST_DELAY &&
            finished == 0 && shown <= 2;
 }
+
+int dw3_pacing_scroll_action(int mode, int type_delay, int *waited) {
+    if (mode != DW3_TEXT_INSTANT || type_delay != DW3_PACING_FAST_DELAY ||
+        waited == 0) {
+        return 0;
+    }
+    if (*waited < DW3_PACING_SCROLL_HOLD) {
+        (*waited)++;
+        return 1;
+    }
+    *waited = 0;
+    return 2;
+}

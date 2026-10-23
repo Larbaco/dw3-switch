@@ -128,6 +128,69 @@ static void policy_text(void) {
     CHECK(!dw3_pacing_reveal_page(DW3_TEXT_NORMAL, DW3_PACING_FAST_DELAY, 0, 0));
 }
 
+static void policy_scroll(void) {
+    int waited = 0;
+    int n;
+    int mode;
+
+    /* Normal and Fast scroll as the game does, whatever the delay. */
+    for (mode = DW3_TEXT_NORMAL; mode <= DW3_TEXT_FAST; mode++) {
+        CHECK(dw3_pacing_scroll_action(mode, DW3_PACING_FAST_DELAY, &waited) == 0);
+        CHECK(waited == 0);
+    }
+    /* Instant holds the full page DW3_PACING_SCROLL_HOLD frames, then scrolls
+     * and reveals, then holds again for the next scroll. */
+    for (n = 0; n < 3; n++) {
+        int i;
+
+        for (i = 0; i < DW3_PACING_SCROLL_HOLD; i++) {
+            CHECK(dw3_pacing_scroll_action(DW3_TEXT_INSTANT, DW3_PACING_FAST_DELAY, &waited) == 1);
+        }
+        CHECK(dw3_pacing_scroll_action(DW3_TEXT_INSTANT, DW3_PACING_FAST_DELAY, &waited) == 2);
+        CHECK(waited == 0);
+    }
+    /* A window that is not a scaled dialogue window is never held. */
+    CHECK(dw3_pacing_scroll_action(DW3_TEXT_INSTANT, 5, &waited) == 0);
+    CHECK(dw3_pacing_scroll_action(DW3_TEXT_INSTANT, 0, &waited) == 0);
+    CHECK(dw3_pacing_scroll_action(DW3_TEXT_INSTANT, DW3_PACING_DIALOGUE_DELAY, &waited) == 0);
+    CHECK(dw3_pacing_scroll_action(DW3_TEXT_INSTANT, DW3_PACING_FAST_DELAY, 0) == 0);
+    CHECK(waited == 0);
+}
+
+static void glue_scroll(void) {
+    int w1, w2;
+    int n;
+    int holds = 0;
+
+    g_text = DW3_TEXT_INSTANT;
+    CHECK(dw3_port_pacing_text_delay(&w1, 6) == DW3_PACING_FAST_DELAY);
+    /* Two scrolls: DW3_PACING_SCROLL_HOLD held frames, then the scroll. */
+    for (n = 0; n < 2; n++) {
+        int a;
+
+        holds = 0;
+        while ((a = dw3_port_pacing_text_scroll(&w1, DW3_PACING_FAST_DELAY)) == 1) {
+            holds++;
+        }
+        CHECK(a == 2 && holds == DW3_PACING_SCROLL_HOLD);
+    }
+    /* A window the port never gave a dialogue delay is left alone. */
+    CHECK(dw3_port_pacing_text_scroll(&w2, DW3_PACING_FAST_DELAY) == 0);
+    /* A new text in the same window starts the hold over. */
+    CHECK(dw3_port_pacing_text_scroll(&w1, DW3_PACING_FAST_DELAY) == 1);
+    CHECK(dw3_port_pacing_text_delay(&w1, 6) == DW3_PACING_FAST_DELAY);
+    holds = 0;
+    while (dw3_port_pacing_text_scroll(&w1, DW3_PACING_FAST_DELAY) == 1) {
+        holds++;
+    }
+    CHECK(holds == DW3_PACING_SCROLL_HOLD);
+    g_text = DW3_TEXT_FAST;
+    CHECK(dw3_port_pacing_text_delay(&w1, 6) == DW3_PACING_FAST_DELAY);
+    CHECK(dw3_port_pacing_text_scroll(&w1, DW3_PACING_FAST_DELAY) == 0);
+    g_text = DW3_TEXT_NORMAL;
+    CHECK(dw3_port_pacing_text_scroll(&w1, 6) == 0);
+}
+
 static void glue_encounter(void) {
     int rate;
     int steps;
@@ -240,11 +303,39 @@ static void glue_text(void) {
     dw3_port_pacing_text_poll(&w1, 1, 0);   /* the next page */
     dw3_port_pacing_text_poll(&w1, 0, 1);   /* "typed in 2 frame(s)" */
     dw3_port_pacing_text_poll(&w2, 1, 1);   /* never registered: silent */
+    /* Instant: a long page with no scroll hold is a reveal that missed it. */
+    g_text = DW3_TEXT_INSTANT;
+    CHECK(dw3_port_pacing_text_delay(&w1, 6) == DW3_PACING_FAST_DELAY);
+    {
+        int n;
+
+        for (n = 0; n < 30; n++) {
+            dw3_port_pacing_text_poll(&w1, 1, 0);
+        }
+        dw3_port_pacing_text_poll(&w1, 0, 1);   /* 31 frames, no scroll */
+    }
+    /* ... but not when it was held for scrolls. */
+    CHECK(dw3_port_pacing_text_delay(&w1, 6) == DW3_PACING_FAST_DELAY);
+    {
+        int n;
+        int a;
+
+        while ((a = dw3_port_pacing_text_scroll(&w1, DW3_PACING_FAST_DELAY)) == 1) {
+            dw3_port_pacing_text_poll(&w1, 1, 0);
+        }
+        CHECK(a == 2);
+        for (n = 0; n < 10; n++) {
+            dw3_port_pacing_text_poll(&w1, 1, 0);
+        }
+        dw3_port_pacing_text_poll(&w1, 0, 1);   /* 23 frames with a scroll */
+    }
 }
 
 int main(void) {
     policy_rate();
     policy_text();
+    policy_scroll();
+    glue_scroll();
     glue_encounter();
     glue_text();
     if (g_failed) {

@@ -47,4 +47,20 @@ def test_pacing_log_lines(pacing_bin: Path):
     assert "dw3-pacing: map-forced area battle on the first footstep" in err
     # Text: two pages, three and two frames, once each.
     pages = re.findall(r"text page typed in (\d+) frame\(s\) \(text speed (\w+)\)", err)
-    assert pages == [("3", "fast"), ("2", "fast")]
+    assert pages[:2] == [("3", "fast"), ("2", "fast")]
+    assert pages[2:] == [("31", "instant"), ("23", "instant")]
+
+
+def test_scroll_hold_log_lines(pacing_bin: Path):
+    err = subprocess.run([str(pacing_bin)], capture_output=True, text=True).stderr
+    # Instant, a text that scrolls: one line per scroll, after the 12 frame hold.
+    assert "dw3-pacing: text scroll 1 after a hold of 12 frame(s) (text speed instant)" in err
+    assert "dw3-pacing: text scroll 2 after a hold of 12 frame(s) (text speed instant)" in err
+    assert "text scroll 3" not in err
+
+
+def test_slow_instant_page_diagnostic(pacing_bin: Path):
+    err = subprocess.run([str(pacing_bin)], capture_output=True, text=True).stderr
+    # 31 typed frames and no scroll: flagged once; the page held for a scroll is not.
+    assert err.count("slow Instant page with no scroll hold (31 frames)") == 1
+    assert err.count("slow Instant page") == 1

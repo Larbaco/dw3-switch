@@ -180,6 +180,22 @@ def newgame_field(version):
     return r
 
 
+SCROLL_END = 9400   # frames; the opening's scrolling dialogue is on screen by ~8800
+
+
+def text_scroll(version):
+    """P6.18 Instant: the opening's dialogue has pages whose last line scrolls
+    in. The same mash of Cross as the opening, cut after those pages, no
+    checkpoints: the log tells how the scrolls went (patch 0068)."""
+    r = Rec(f"{version.upper()}: New Game, the opening up to the scrolling dialogue pages")
+    new_game_opening(r, version)
+    r.lines = [l for l in r.lines
+               if not l.startswith(("shot", "end"))
+               and (l.startswith("#") or int(l.split()[1]) <= SCROLL_END)]
+    r.end(SCROLL_END)
+    return r
+
+
 def field_walk(version):
     r = Rec(f"{version.upper()}: opening, then lobby <-> Login Room door tour")
     new_game_opening(r, version)
@@ -541,7 +557,7 @@ def _to_title_menu(r, version):
 
 
 def pacing_persist(version, phase):
-    """P6.18: Options -> Encounter rate 1x -> 0.5x (Right) and Text speed
+    """P6.18: Options -> Encounter rate 1x -> 0.5x (Left) and Text speed
     Normal -> Instant (Right x2), then leave. Phase 2 is a fresh process on the
     same config dir; the logs carry the values saved and read back."""
     r = Rec(f"{version.upper()}: Encounter rate / Text speed persistence, phase {phase}")
@@ -553,7 +569,7 @@ def pacing_persist(version, phase):
         for _ in range(5):           # Widescreen -> ... -> Encounter rate
             r.press(f, DOWN)
             f += 20
-        r.press(f, RIGHT)            # 1x -> 0.5x
+        r.press(f, LEFT)             # 1x -> 0.5x (the screen steps OFF, 0.5x, 1x, 1.5x, 2x)
         f += 20
         r.press(f, DOWN)             # Text speed
         f += 20
@@ -666,6 +682,7 @@ def main(out):
         for phase in (1, 2):
             (out / f"{v}-pacing-persist-p{phase}.rec").write_text(
                 pacing_persist(v, phase).text(True))
+        (out / f"{v}-text-scroll.rec").write_text(text_scroll(v).text(True))
         (out / f"{v}-options-sound.rec").write_text(options_sound(v).text(True))
         # One recording per kind; the scenarios differ in the option file and
         # the environment the manifest gives them.
