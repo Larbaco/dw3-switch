@@ -44,6 +44,9 @@ CONTEXT = ["esr_rc6", "esr_write", "esr_iabort", "esr_none", "lang_fr", "lang_de
 WALK = ["walk_three", "walk_end", "walk_fp0", "walk_below_sp", "walk_straddle",
         "walk_wild", "walk_wild_high", "walk_misaligned", "walk_loop", "walk_self",
         "walk_null_lr", "walk_cap"]
+REASON = ["reason_assert", "reason_assert_nofunc", "reason_assert_nulls",
+          "reason_assert_cap", "reason_fatal", "reason_fatal_code", "reason_exit",
+          "reason_exit_min", "basename_plain", "basename_trailing"]
 RING = ["ring_empty", "ring_two", "ring_wrap_count", "ring_oldest", "ring_newest",
         "ring_torn_skipped", "ring_truncate"]
 
@@ -65,4 +68,9 @@ def test_frame_walk_never_leaves_the_stack(crash_fmt_output, case):
 
 @pytest.mark.parametrize("case", RING)
 def test_log_ring(crash_fmt_output, case):
+    assert crash_fmt_output.get(case) == "1"
+
+
+@pytest.mark.parametrize("case", REASON)
+def test_software_abort_reasons(crash_fmt_output, case):
     assert crash_fmt_output.get(case) == "1"

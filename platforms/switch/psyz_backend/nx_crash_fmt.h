@@ -270,4 +270,96 @@ static inline const char *dw3_crash_eu_language_name(int32_t language) {
     }
 }
 
+/* --- software abort reasons (P5.4 PR 2) ------------------------------------ */
+
+/* The reason line stays short enough that version / reason / mode_file /
+ * stage_file fit in the first 512 bytes the next boot's latch reads. */
+#define DW3_CRASH_REASON_MAX 192u
+
+/* Last path component (both separators), for __FILE__ strings. */
+static inline const char *dw3_crash_basename(const char *path) {
+    const char *base = path;
+
+    if (!path) {
+        return "(null)";
+    }
+    for (; *path; path++) {
+        if (*path == '/' || *path == '\\') {
+            base = path + 1;
+        }
+    }
+    return base;
+}
+
+/* Signed decimal (exit codes). */
+static inline void dw3_cl_sdec(Dw3CrashLine *l, int64_t v) {
+    if (v < 0) {
+        dw3_cl_char(l, '-');
+        dw3_cl_dec(l, (uint64_t)0 - (uint64_t)v);
+    } else {
+        dw3_cl_dec(l, (uint64_t)v);
+    }
+}
+
+/* Keep at most max bytes; a cut line ends in "...". */
+static inline void dw3_cl_cap(Dw3CrashLine *l, unsigned max) {
+    if (max < 4 || l->n <= max) {
+        return;
+    }
+    l->n = max - 3;
+    dw3_cl_str(l, "...");
+}
+
+/* "assert <file>:<line> <func>: <expr>" (newlib __assert_func arguments;
+ * func may be NULL). */
+static inline void dw3_cl_reason_assert(Dw3CrashLine *l, const char *file,
+                                        int line, const char *func,
+                                        const char *expr) {
+    dw3_cl_str(l, "assert ");
+    dw3_cl_str(l, dw3_crash_basename(file));
+    dw3_cl_char(l, ':');
+    dw3_cl_sdec(l, line);
+    if (func && func[0]) {
+        dw3_cl_char(l, ' ');
+        dw3_cl_str(l, func);
+    }
+    dw3_cl_str(l, ": ");
+    dw3_cl_str(l, expr ? expr : "(no expression)");
+    dw3_cl_cap(l, DW3_CRASH_REASON_MAX);
+}
+
+/* Horizon result as the console shows it: 2000 + module, then the
+ * description (0xc815 -> "2021-0100"). */
+static inline void dw3_cl_result_code(Dw3CrashLine *l, uint32_t rc) {
+    uint32_t module = rc & 0x1ffu;
+    uint32_t desc = (rc >> 9) & 0x1fffu;
+    unsigned w;
+    uint32_t div;
+
+    dw3_cl_dec(l, 2000u + module);
+    dw3_cl_char(l, '-');
+    for (w = 0, div = 1000; w < 4; w++, div /= 10) {
+        dw3_cl_char(l, (char)('0' + (desc / div) % 10u));
+    }
+}
+
+/* "fatal 0x0000c815 (2021-0100, diagAbortWithResult)". */
+static inline void dw3_cl_reason_fatal(Dw3CrashLine *l, const char *what,
+                                       uint32_t rc) {
+    dw3_cl_str(l, "fatal ");
+    dw3_cl_hex(l, rc, 8);
+    dw3_cl_str(l, " (");
+    dw3_cl_result_code(l, rc);
+    dw3_cl_str(l, ", ");
+    dw3_cl_str(l, what);
+    dw3_cl_char(l, ')');
+    dw3_cl_cap(l, DW3_CRASH_REASON_MAX);
+}
+
+/* "exit <code>" for a non-zero exit nobody announced. */
+static inline void dw3_cl_reason_exit(Dw3CrashLine *l, int code) {
+    dw3_cl_str(l, "exit ");
+    dw3_cl_sdec(l, code);
+}
+
 #endif /* DW3_NX_CRASH_FMT_H */
