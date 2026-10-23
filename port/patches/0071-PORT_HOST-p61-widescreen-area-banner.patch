@@ -1,0 +1,64 @@
+Upstream-bound: no
+Subject: [PORT_HOST] P6.1 area name banner spans the widescreen gutters
+
+With widescreen on, the area name banner (the "Asuka City / Login Room"
+card after an area change) drew its bars and sweep lines only across the
+middle 320 columns. The full-width bars now reach both gutter edges and
+the two lines that sweep in from the right start at the right gutter's
+edge, with their speed raised so the sweep takes about as many frames. The
+banner's background clear and its close (the layer clip shrinking from the
+top and the bottom) reach the gutters through PSY-Z `dw3-gutter-width`
+(a display-wide band of rows takes the gutters). Off, the gutter is 0 and
+the banner is unchanged.
+
+--- a/src/field/field_mode/banner.c	2026-10-23 03:22:18.491266754 -0300
++++ b/src/field/field_mode/banner.c	2026-10-23 03:22:18.492267435 -0300
+@@ -3,6 +3,36 @@
+    data/fieldstg.c). */
+ 
+ #include "field/field_mode.h"
++#if PORT_HOST
++#include "port_widescreen.h"
++
++/*
++ * Widescreen: the banner's boxes that reach a screen edge reach the gutter's
++ * edge instead. The full-width bars (stretch 2, 0..320) widen by the gutter
++ * on both sides; the two lines that sweep in from the right edge (stretch 1,
++ * to 320) start and end at the right gutter's edge, with their speed raised
++ * so the sweep takes about as many frames. Boxes away from the edges are kept.
++ */
++static void widenBannerBoxes(AreaBanner *task, s32 gutter) {
++    s32 i;
++
++    for (i = 0; i < 10; i++) {
++        BannerBox *box = &task->boxes[i];
++
++        if (box->stretch == 2 && box->pos.vx == 0 && box->size.vx == SCREEN_WIDTH) {
++            box->pos.vx = -gutter;
++            box->size.vx = SCREEN_WIDTH + gutter * 2;
++        } else if (box->stretch == 1 && box->pos.vx == SCREEN_WIDTH && box->to == SCREEN_WIDTH &&
++                   box->from < SCREEN_WIDTH) {
++            s32 span = SCREEN_WIDTH - box->from;
++
++            box->pos.vx = SCREEN_WIDTH + gutter;
++            box->to = SCREEN_WIDTH + gutter;
++            box->speed = (box->speed * (span + gutter) + span - 1) / span;
++        }
++    }
++}
++#endif
+ 
+ /* Opens the banner's windows with the names of the mode's area and place
+    (FIELDSTG_areaNames) */
+@@ -142,6 +172,11 @@
+             for (j = 0; j < 10; j++) {
+                 task->boxes[j] = FIELDSTG_bannerBoxes[j];
+             }
++#if PORT_HOST
++            if (dw3_port_widescreen_px() > 0) {
++                widenBannerBoxes(task, dw3_port_widescreen_px());
++            }
++#endif
+             FIELDSTG_showAreaName(task, windows);
+             task->nextState(task);
+         } else {
