@@ -109,7 +109,7 @@ one console and are not acceptance gates; gates live in
   the P7.7 HUD and claw (logged only to the nxlink stderr), widescreen.
   Log: `tmp/evidence/2026-10-22-preview30-rc4-oled/dw3.log`.
 - **preview.30-rc6 candidate, 2026-10-22 (OLED handheld, EU, non-nxlink).**
-  About 11 random battles at Encounter rate 2x with Text speed Instant and
+  20 random battles logged at Encounter rate 2x with Text speed Instant and
   Fast-forward 4x / off, then the game **crashed on opening Items** in the
   field menu (`crash_report.txt`: `mode_file 0x207`, data abort `far=0xd`,
   `x0=0`). Root cause: a NULL `ItemInfo` read in `getItemCategory`, which
