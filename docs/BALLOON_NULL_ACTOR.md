@@ -21,7 +21,9 @@ site:
 ## Patch 0058: balloon NULL actor crash
 
 Status: fixed on the PC host and in the Switch build (checked on Ryubing, US
-and EU); OLED pass pending. Found in the preview.28 / preview.29 Ryubing sweep (2026-10-22).
+and EU). OLED: the EU disc passed the new-game bridge event on the preview.29
+run (2026-10-22); the **US disc is still pending** on hardware (preview.30-rc7,
+2026-10-23, did not cover it; it needs a New Game walked to the gate). Found in the preview.28 / preview.29 Ryubing sweep (2026-10-22).
 
 ### Symptom
 
@@ -169,8 +171,9 @@ doubles as a positive control), `wstag785.mark-null-actor`,
 
 ## Patch 0069: Items screen, NULL item (preview.30-rc6 OLED crash)
 
-Status: fixed on the PC host (US and EU, Text speed Instant and Normal);
-OLED pass pending. Owner report (2026-10-22, EU, release candidate
+Status: fixed on the PC host (US and EU, Text speed Instant and Normal).
+**Confirmed on the OLED (2026-10-23, handheld, US, preview.30-rc7, owner): the
+Items screen opens and items work.** EU on a fixed build was not retested. Owner report (2026-10-22, EU, release candidate
 preview.30-rc6, non-nxlink, after about 11 random battles at Encounter rate
 2x with Text speed Instant): the game crashed on opening Items in the field
 menu. Patches 0059 to 0068 are not involved: the same crash is in

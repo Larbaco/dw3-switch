@@ -7,7 +7,10 @@ The Switch Makefile `host_hello` sample has different controls and is not covere
 ## Normal pad controls
 
 Switch face buttons follow physical PS1 positions, not Nintendo's usual A-to-confirm
-convention. The PC columns describe the PSY-Z SDL3 keyboard map. PC gamepads use
+convention. A **Button layout** option (PlayStation or Nintendo A/B) is a
+planned Options row, ROADMAP P9.8; until it exists the table below is the only
+layout, and when it lands this table has to be re-audited for both layouts and
+no new chord may use A or B. The PC columns describe the PSY-Z SDL3 keyboard map. PC gamepads use
 SDL's positional mapping; controller labels and SDL device mappings may vary.
 
 | PS1 logical button | PC keyboard | Switch physical button |
