@@ -72,6 +72,16 @@ void Psyz_AudioUnpause(void);
  * to receive guest stderr (see docs/SWITCH_BACKEND.md). */
 void dw3_nx_log_open(void);
 
+/* P5.4 crash report hooks, both lock-free and allocation-free (the
+ * exception handler calls them). dw3_nx_log_crash_append writes one line at
+ * the end of dw3.log with fsFileWrite (no stdio). dw3_nx_log_ring_walk
+ * passes the last ~64 formatted log lines, oldest first, to emit; a line
+ * being written at the time is skipped (counted in *skipped). */
+void dw3_nx_log_crash_append(const char *buf, int len);
+unsigned dw3_nx_log_ring_walk(void (*emit)(void *ctx, const char *line,
+                                           unsigned len),
+                              void *ctx, unsigned *skipped);
+
 /* --- P4.4 input (nx_input.c) ------------------------------------------- */
 
 /* padConfigureInput + padInitializeDefault. Call once at boot. */
