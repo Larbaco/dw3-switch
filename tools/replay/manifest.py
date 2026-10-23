@@ -212,6 +212,23 @@ for _v in ("us", "eu"):
                   forbid_log=((0, r"dw3-pacing: text scroll"),),
                   note="Fast types the scrolled lines as before and never holds a page (P6.18)"))
 
+# The area name banner types at delay 5 (not a dialogue delay) and is left alone
+# by Text speed. The rc6 OLED log's "text page typed in 103 frame(s)" / "slow
+# Instant page" lines were these windows, timed as dialogue pages because the
+# game gave them the address of a freed dialogue window. DW3_PACING_TRACKED=256
+# makes the port remember every dialogue window it saw, which is how that
+# collision is forced on the PC build (the Switch heap makes it happen by itself
+# after a battle report); the run of the opening and the door tour opens the
+# banner after many dialogue windows.
+for _v in ("us", "eu"):
+    _add(Scenario(f"{_v}-banner-instant", _v, "full", turbo=4, timeout=1200, log_only=True,
+                  phases=(f"{_v}-banner-walk",), cfg=(("text_speed", "2"),),
+                  env=(("DW3_PACING_TRACKED", "256"),),
+                  expect_log=((0, r"dw3-pacing: text typed at delay 5 is not a dialogue page(?s:.*)"
+                                  r"dw3-pacing: text typed at delay 5 is not a dialogue page"),),
+                  forbid_log=((0, r"slow Instant page"),),
+                  note="Instant: the area name banner is not timed as a dialogue page (P6.18, rc6 log)"))
+
 # Encounter rate: START_MODE 0x233 / PROGRESS 6 is a South Sector field that
 # is a random-battle area everywhere; the recording holds Up.
 _ENC_ENV = (("DW3_START_MODE", "0x233"), ("DW3_PROGRESS", "6"))

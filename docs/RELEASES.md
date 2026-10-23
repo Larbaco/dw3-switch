@@ -103,13 +103,13 @@ one console and are not acceptance gates; gates live in
   Music volume stepped 0 to 10 and SFX volume down to 2 with the expected
   gains logged. Encounter rate was toggled and returned to 1x (random battles
   at 1x after 104, 175, 103, 128 and 93 footsteps). Text speed Instant typed
-  19 of 27 pages in 1 to 2 frames; 8 pages took 67 to 127 frames, which is
-  open and under investigation. The session ended with a normal HOME exit and
+  19 of 27 pages in 1 to 2 frames; 8 pages took 67 to 127 frames: those turned
+  out (rc6 follow-up below) to be the area name banner, not text. The session ended with a normal HOME exit and
   `applet exit: flat saves flushed`. Not covered: US, relaunch persistence,
   the P7.7 HUD and claw (logged only to the nxlink stderr), widescreen.
   Log: `tmp/evidence/2026-10-22-preview30-rc4-oled/dw3.log`.
 - **preview.30-rc6 candidate, 2026-10-22 (OLED handheld, EU, non-nxlink).**
-  About 11 random battles at Encounter rate 2x with Text speed Instant and
+  20 random battles logged at Encounter rate 2x with Text speed Instant and
   Fast-forward 4x / off, then the game **crashed on opening Items** in the
   field menu (`crash_report.txt`: `mode_file 0x207`, data abort `far=0xd`,
   `x0=0`). Root cause: a NULL `ItemInfo` read in `getItemCategory`, which
@@ -118,10 +118,18 @@ one console and are not acceptance gates; gates live in
   `0069` (not in rc6), covered by the `*-items-screen` replay scenarios; see
   [BALLOON_NULL_ACTOR.md](BALLOON_NULL_ACTOR.md#patch-0069-items-screen-null-item-preview30-rc6-oled-crash).
   Text speed is not related: Instant typed the report's pages in 1 to 2
-  frames. Still open and separate from the crash: after each battle, back in
-  the field at 4x, one page took 103 frames and the log printed `slow Instant
-  page with no scroll hold (103 frames): reveal missed it`, so patch 0068 did
-  not cover that page. Not covered: US,
+  frames (49 lines). The other thing in that log, separate from the crash: after
+  each battle (19 of 20), back in the field at 4x, one "page" of 103 (15 times)
+  or 73 (4) frames and `slow Instant page with no scroll hold (103 frames): reveal
+  missed it`, never a `text scroll`. Cause found 2026-10-23: **the area name
+  banner**, not text and not the report (it types its two names at delay 5, 6
+  frames per character: 17 and 12 characters, `6n + 1`), wrongly timed as a
+  dialogue page by the port's own log on the address of a freed report window.
+  Nothing was typed slowly that Text speed should have sped up. Fixed in the
+  port (`pacing.c`, no patch); the banner itself is unchanged (it still takes
+  about 2.3 s with the hero frozen), see
+  [P6.18_PACING.md](P6.18_PACING.md#the-103-frame-pages-the-area-name-banner-rc4-and-rc6-oled-logs).
+  Not covered: US, Fast, a dialogue that scrolls,
   the Items screen after the fix on the OLED. Evidence:
   `tmp/evidence/2026-10-22-preview30-rc6-oled/` (log, crash report,
   Atmosphere report).

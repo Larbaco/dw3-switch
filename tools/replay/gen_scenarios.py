@@ -205,6 +205,19 @@ def field_walk(version):
     return r
 
 
+def banner_walk(version):
+    """The field-walk recording without checkpoints: the lobby <-> Login Room doors
+    open the area name banner after dialogue windows were freed (the rc6 OLED
+    log's 103-frame 'page'). The manifest runs it at Text speed Instant."""
+    r = Rec(f"{version.upper()}: opening, then lobby <-> Login Room door tour, no checkpoints")
+    new_game_opening(r, version)
+    s = Script(r, LOBBY)
+    door_tour(s)
+    r.lines = [l for l in r.lines if not l.startswith(("shot", "end"))]
+    r.end(s.f + 30)
+    return r
+
+
 SOAK_FRAMES = 61000   # ~17 min at 60 Hz (US), ~20 min at 50 Hz (EU)
 
 
@@ -736,6 +749,7 @@ def main(out):
         (out / f"{v}-newgame-field.rec").write_text(newgame_field(v).text(True))
         (out / f"{v}-field-walk.rec").write_text(field_walk(v).text(True))
         (out / f"{v}-soak.rec").write_text(soak(v).text(True))
+        (out / f"{v}-banner-walk.rec").write_text(banner_walk(v).text(True))
     for v in ("us", "eu"):
         (out / f"{v}-load-menu.rec").write_text(load_menu(v).text(True))
     for v in ("us", "eu"):
