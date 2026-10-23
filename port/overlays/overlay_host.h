@@ -32,6 +32,13 @@ void dw3_overlay_set_table(const Dw3OverlayDesc *table, size_t count);
 
 const Dw3OverlayDesc *dw3_overlay_find(int32_t file_id);
 
+/* Optional overlay names, parallel to the table last given to
+ * dw3_overlay_set_table (which clears them). dw3_overlay_file_name returns
+ * the name of a known file id ("STSTATUS", "WSTAG355"), or NULL. Lock-free
+ * and allocation-free: the Switch crash handler calls it (P5.4). */
+void dw3_overlay_set_names(const char *const *names);
+const char *dw3_overlay_file_name(int32_t file_id);
+
 /* Restore .data from data_init and zero .bss.
  * Returns 0 on success, -1 if file_id is unknown or file_id == 0. A failure
  * logs the stable `kind=unknown UNKNOWN` marker plus a `dw3: ERROR` line, and

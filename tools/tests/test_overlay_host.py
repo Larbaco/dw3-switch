@@ -57,6 +57,7 @@ def test_reset_vs_preserve(overlay_host_test: Path):
     )
     assert r.returncode == 0, r.stderr + r.stdout
     assert "OK: overlay reset vs preserve" in r.stdout
+    assert "OK: overlay names" in r.stdout
     # The unknown-id cases keep the stable sweep marker and add an error line.
     assert "dw3: overlay restore file=0x1fb kind=unknown UNKNOWN" in r.stderr
     assert "dw3: ERROR overlay restore failed: file=0x1fb (507)" in r.stderr
