@@ -175,6 +175,8 @@ void dw3_nx_crash_notice_show(void) {
     dw3_nx_gpu_clear(0.0f, 0.0f, 0.0f, 1.0f);
     dw3_nx_gpu_swap();
     psyz_log(1, __FILE__, __LINE__, __func__,
-             "crash notice: %s after %llu ms (%u frames drawn); continuing boot",
-             how, (unsigned long long)elapsed, frames);
+             "crash notice: %s after %llu ms (%u frames drawn at %ux%u, "
+             "scale %d); continuing boot",
+             how, (unsigned long long)elapsed, frames, shown_w, shown_h,
+             dw3_notice_scale(shown_w, shown_h, lay.count));
 }

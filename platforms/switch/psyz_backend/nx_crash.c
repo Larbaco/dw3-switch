@@ -24,7 +24,9 @@
  * assembly stub that saves the caller's registers, then the same report
  * writer runs with a reason such as `assert file:line func: expr`, the
  * CRASH line goes to dw3.log, and the process ends in svcBreak like the
- * exception path, so Atmosphere creport still captures it.
+ * exception path, so Atmosphere creport still captures it. An unannounced
+ * non-zero exit() is the exception: after the report it still exits, so its
+ * atexit handlers flush the saves.
  */
 #include "nx_crash.h"
 
@@ -673,11 +675,9 @@ void dw3_nx_crash_write_report(const char *reason) {
     }
 }
 
-/* break_arg / break_size: the svcBreak payload creport shows (a Result for
- * the libnx fatal paths; none for faults and asserts). */
-static void crash_handle(const char *reason, const ThreadExceptionDump *ctx,
-                         u32 break_reason, uintptr_t break_arg,
-                         size_t break_size) {
+/* Report + dw3.log marker, once per process (a second entry breaks). */
+static void crash_report_once(const char *reason,
+                              const ThreadExceptionDump *ctx) {
     if (s_in_handler) {
         svcBreak(BreakReason_Panic, 0, 0);
         for (;;) {
@@ -698,6 +698,14 @@ static void crash_handle(const char *reason, const ThreadExceptionDump *ctx,
     }
     /* After the report, so a fault in here cannot cost the report. */
     crash_log_marker(reason, ctx);
+}
+
+/* break_arg / break_size: the svcBreak payload creport shows (a Result for
+ * the libnx fatal paths; none for faults and asserts). */
+static void crash_handle(const char *reason, const ThreadExceptionDump *ctx,
+                         u32 break_reason, uintptr_t break_arg,
+                         size_t break_size) {
+    crash_report_once(reason, ctx);
 
     /* Re-raise so Atmosphere creport also captures the fault. */
     svcBreak(break_reason, break_arg, break_size);
@@ -788,23 +796,30 @@ static const char *crash_sw_reason_str(void) {
     return l->b;
 }
 
+static ThreadExceptionDump s_sw_dump;
+
+/* The saved call-site registers as an exception dump for the writer. */
+static const ThreadExceptionDump *crash_sw_dump(void) {
+    ThreadExceptionDump *d = &s_sw_dump;
+    unsigned i;
+
+    memset(d, 0, sizeof(*d));
+    for (i = 0; i < 29; i++) {
+        d->cpu_gprs[i].x = s_sw_regs[i];
+    }
+    d->fp.x = s_sw_regs[29];
+    d->lr.x = s_sw_regs[30];
+    d->sp.x = s_sw_regs[31];
+    d->pc.x = s_sw_regs[30] >= 4 ? s_sw_regs[30] - 4 : 0; /* the call */
+    d->error_desc = 0; /* no CPU exception: error_desc_name says so */
+    return d;
+}
+
 __attribute__((noreturn)) static void crash_sw_handle(u32 break_reason,
                                                       uintptr_t break_arg,
                                                       size_t break_size) {
-    static ThreadExceptionDump d;
-    unsigned i;
-
-    memset(&d, 0, sizeof(d));
-    for (i = 0; i < 29; i++) {
-        d.cpu_gprs[i].x = s_sw_regs[i];
-    }
-    d.fp.x = s_sw_regs[29];
-    d.lr.x = s_sw_regs[30];
-    d.sp.x = s_sw_regs[31];
-    d.pc.x = s_sw_regs[30] >= 4 ? s_sw_regs[30] - 4 : 0; /* the call */
-    d.error_desc = 0; /* no CPU exception: error_desc_name says so */
-    crash_handle(crash_sw_reason_str(), &d, break_reason, break_arg,
-                 break_size);
+    crash_handle(crash_sw_reason_str(), crash_sw_dump(), break_reason,
+                 break_arg, break_size);
     for (;;) {
         svcSleepThread(1000000000ULL);
     }
@@ -824,13 +839,17 @@ dw3_nx_crash_sw_assert(const char *file, int line, const char *func,
     crash_sw_handle(BreakReason_Assert, 0, 0);
 }
 
+/* An unannounced non-zero exit writes the report and the CRASH line, then
+ * still exits: unlike abort / assert / fatal it is an orderly exit, and its
+ * atexit handlers flush dirty flat saves and the option file. creport sees
+ * no break; the report and the next-boot notice are the record. */
 __attribute__((noreturn, used)) void dw3_nx_crash_sw_exit(int code) {
-    if (code == 0 || s_exit_allowed || s_in_handler) {
-        __real_exit(code);
+    if (code != 0 && !s_exit_allowed && !s_in_handler) {
+        dw3_cl_reset(&s_sw_reason);
+        dw3_cl_reason_exit(&s_sw_reason, code);
+        crash_report_once(crash_sw_reason_str(), crash_sw_dump());
     }
-    dw3_cl_reset(&s_sw_reason);
-    dw3_cl_reason_exit(&s_sw_reason, code);
-    crash_sw_handle(BreakReason_Panic, 0, 0);
+    __real_exit(code);
 }
 
 /* The Result is kept as the svcBreak payload, as libnx's own
