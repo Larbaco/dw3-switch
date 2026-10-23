@@ -178,20 +178,24 @@ static void button(int cx,int cy,int back) {
 }
 /* Geometry of the Port options window and its rows, in canvas pixels. The
  * retained cache (title_options_cache.c) repeats the row numbers; the unit
- * test proves they agree. Seven rows share the window, so a row is 42 px high
- * on a 48 px pitch (it was 52 on 60 with five rows, P6.17). */
+ * test proves they agree. Eight rows share the window, so a row is 38 px high
+ * on a 42 px pitch (it was 42 on 48 with seven rows, 52 on 60 with five, P6.17):
+ * the first row starts at y 150 and the last ends at y 482, 26 px above the
+ * message rule. */
 enum { OPT_X0 = 84, OPT_Y0 = 60, OPT_W = 792, OPT_H = 600,
-       OPT_ROW_Y = OPT_Y0 + 100, OPT_ROW_STEP = 48, OPT_ROW_H = 42 };
+       OPT_ROW_Y = OPT_Y0 + 96, OPT_ROW_STEP = 42, OPT_ROW_H = 38 };
 /* The rows' kinds: how a registry value is written. */
-enum { ROW_SWITCH, ROW_FAST_FORWARD, ROW_VOLUME, ROW_ENCOUNTER, ROW_TEXT };
+enum { ROW_SWITCH, ROW_FAST_FORWARD, ROW_VOLUME, ROW_ENCOUNTER, ROW_TEXT,
+       ROW_BATTLE };
 static int row_kind(int row) {
     return row == 1 ? ROW_FAST_FORWARD : row == 3 || row == 4 ? ROW_VOLUME :
-           row == 5 ? ROW_ENCOUNTER : row == 6 ? ROW_TEXT : ROW_SWITCH;
+           row == 5 ? ROW_ENCOUNTER : row == 6 ? ROW_TEXT :
+           row == 7 ? ROW_BATTLE : ROW_SWITCH;
 }
 static void options_screen(void) {
     static const Word rows[DW3_TITLE_OPTION_ROWS]={WORD(opt_row0),WORD(opt_row1),WORD(opt_row2),
                                                    WORD(opt_row3),WORD(opt_row4),WORD(opt_row5),
-                                                   WORD(opt_row6)};
+                                                   WORD(opt_row6),WORD(opt_row7)};
     static const Word values[]={WORD(opt_off),WORD(opt_on),WORD(opt_2x),WORD(opt_3x),WORD(opt_4x)};
     /* Volume steps 1..10 (step 0 reads OFF). */
     static const Word steps[]={WORD(opt_n1),WORD(opt_n2),WORD(opt_n3),WORD(opt_n4),WORD(opt_n5),
@@ -201,14 +205,16 @@ static void options_screen(void) {
      * speed Normal / Fast / Instant. */
     static const Word encounter[]={WORD(opt_1x),WORD(opt_05x),WORD(opt_off),WORD(opt_15x),WORD(opt_2x)};
     static const Word text_speed[]={WORD(opt_normal),WORD(opt_fast),WORD(opt_instant)};
+    /* P7.9: Battle cursor OFF / Command / Command+Tech. */
+    static const Word battle_cursor[]={WORD(opt_off),WORD(opt_command),WORD(opt_command_tech)};
 #if defined(__SWITCH__)
     static const Word desc[DW3_TITLE_OPTION_ROWS]={WORD(opt_desc0),WORD(opt_desc1_nx),WORD(opt_desc2_nx),
                                                    WORD(opt_desc3),WORD(opt_desc4),WORD(opt_desc5),
-                                                   WORD(opt_desc6)};
+                                                   WORD(opt_desc6),WORD(opt_desc7)};
 #else
     static const Word desc[DW3_TITLE_OPTION_ROWS]={WORD(opt_desc0),WORD(opt_desc1_pc),WORD(opt_desc2_pc),
                                                    WORD(opt_desc3),WORD(opt_desc4),WORD(opt_desc5),
-                                                   WORD(opt_desc6)};
+                                                   WORD(opt_desc6),WORD(opt_desc7)};
 #endif
     static const Word titles[]={WORD(opt_title_en),WORD(opt_title_de),WORD(opt_title_es),WORD(opt_title_it)};
     const Word change=WORD(opt_change),back=WORD(opt_back);
@@ -269,6 +275,9 @@ static void options_screen(void) {
         case ROW_TEXT:
             if(v>2)v=2;
             value=&text_speed[v];dim=0;break;
+        case ROW_BATTLE:
+            if(v>2)v=2;
+            value=&battle_cursor[v];dim=v==0;break;
         default:
             if(v>1)v=1;
             value=&values[v];dim=v==0;break;

@@ -1,5 +1,6 @@
 /* P7.9 battle menu memory policy (port/battle_menu), no game, no disc. The
- * option file is replaced by a stand-in that returns g_mode. */
+ * Battle cursor row of the options registry is replaced by a stand-in that
+ * returns g_mode. */
 #include "port_battle_menu.h"
 #include "port_options.h"
 
@@ -8,8 +9,8 @@
 
 static int g_mode;
 
-int dw3_port_options_file_int(const char *key, int def) {
-    return strcmp(key, DW3_BATTLE_MENU_MEMORY_KEY) == 0 ? g_mode : def;
+int dw3_port_options_level(int index) {
+    return index == DW3_PORT_OPT_BATTLE_MENU ? g_mode : 0;
 }
 
 static int g_failed;

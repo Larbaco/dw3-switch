@@ -598,6 +598,34 @@ def pacing_persist(version, phase):
     return r
 
 
+def battle_cursor_persist(version, phase):
+    """P7.9: Options -> down to the last row (Battle cursor), Right twice
+    (Off -> Command -> Command+Tech) with a capture of each word, then leave.
+    Phase 2 is a fresh process on the same config dir: it opens the screen and
+    goes to the row again, the log carries the value read back."""
+    r = Rec(f"{version.upper()}: Battle cursor persistence, phase {phase}")
+    m = _to_title_menu(r, version)
+    r.press(m, DOWN)                 # New Game -> Options
+    r.press(m + 20, CROSS)           # open the Options screen
+    f = m + 70
+    for _ in range(7):               # Widescreen -> ... -> Battle cursor
+        r.press(f, DOWN)
+        f += 20
+    if phase == 1:
+        r.shot(f + 20, "battle-cursor-off")
+        r.press(f + 40, RIGHT)       # Off -> Command
+        r.shot(f + 80, "battle-cursor-command")
+        r.press(f + 100, RIGHT)      # Command -> Command+Tech
+        r.shot(f + 140, "battle-cursor-command-tech")
+        r.press(f + 160, TRIANGLE)   # leave
+        r.end(f + 200)
+    else:
+        r.shot(f + 20, "battle-cursor-restored")
+        r.press(f + 40, TRIANGLE)
+        r.end(f + 80)
+    return r
+
+
 def options_sound(version):
     """Options screen sound feedback: title -> Options, four cursor moves down
     to SFX volume, Left twice (10 -> 8, each change plays the choice sound at
@@ -738,6 +766,9 @@ def main(out):
                 pacing_persist(v, phase).text(True))
         (out / f"{v}-text-scroll.rec").write_text(text_scroll(v).text(True))
         (out / f"{v}-options-sound.rec").write_text(options_sound(v).text(True))
+        for phase in (1, 2):
+            (out / f"{v}-battle-cursor-persist-p{phase}.rec").write_text(
+                battle_cursor_persist(v, phase).text(True))
         # One recording per kind; the scenarios differ in the option file and
         # the environment the manifest gives them.
         (out / f"{v}-text-opening.rec").write_text(text_opening(v, TEXT_END[v]).text(True))

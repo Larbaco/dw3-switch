@@ -133,6 +133,16 @@ one console and are not acceptance gates; gates live in
   the Items screen after the fix on the OLED. Evidence:
   `tmp/evidence/2026-10-22-preview30-rc6-oled/` (log, crash report,
   Atmosphere report).
+- **preview.30 next candidate, 2026-10-23 (PC and Ryubing only, not on the
+  OLED yet).** Owner request after rc6: the battle menu memory is the **Battle
+  cursor** row of the Options screen (OFF / Command / Command+Tech, key
+  `battle_menu_memory`), so the screen has eight rows (38 px rows on a 42 px
+  pitch, same window). Off by default; no decomp patch changed. Included in this
+  candidate with the rc6 follow-ups: the area name banner is no longer logged as
+  a slow Instant page (#203) and the Items screen fix (#201). Check on the OLED:
+  eight rows fit in handheld and docked, the row steps and keeps its value after
+  a relaunch, and with Command+Tech the battle menu opens on the last pick
+  ([P7.9 checklist](P7.9_BATTLE_MENU_MEMORY.md#oled-check-the-owner)).
 
 Still open on hardware: audio underrun count, the full overlay sweep, battle
 at 60 Hz, the sync-object error above, a fresh-save relaunch reload, and EU

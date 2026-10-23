@@ -102,9 +102,10 @@ Things this port adds to the original game.
 - **Pacing options.** Encounter rate (off, 0.5x, 1x, 1.5x or 2x for random
   battles; story battles are never touched) and Text speed (Normal, Fast,
   Instant), both default to the original game and are saved with the other
-  options. Partly seen in an EU OLED log (US is open; Instant's slow scrolled
-  lines were fixed after it, not yet rechecked on the OLED):
-  [P6.18_PACING](docs/P6.18_PACING.md).
+  options. Partly seen in an EU OLED log (US is open; the "103 frame" lines of
+  that log were the area name banner, not text, and are not logged as pages
+  any more; real scrolled lines got a hold in patch 0068, not yet rechecked on
+  the OLED): [P6.18_PACING](docs/P6.18_PACING.md).
 - **Port options screen.** Opens from the title and holds the toggles below.
   Settings are saved in `port_options.cfg` next to the runtime data and are
   kept across launches (checked on PC and in an emulator; the relaunch step
@@ -118,11 +119,12 @@ Things this port adds to the original game.
 - **Battle fixes.** The battle HUD shows the name of the form the partner
   fights as, and Picking / Snapping Claw steal on the killing blow. Always on;
   not yet seen on the OLED: [P7.7_BUG_FIXES](docs/P7.7_BUG_FIXES.md).
-- **Battle menu memory.** The command menu opens on the last command picked,
-  and the technique list on the technique used last. Off by default, set with
-  the file-only key `battle_menu_memory=1` in `port_options.cfg`; not yet
-  checked on the OLED:
-  [P7.9_BATTLE_MENU_MEMORY](docs/P7.9_BATTLE_MENU_MEMORY.md).
+- **Battle menu memory (Battle cursor).** A row in Port options: OFF, Command
+  (the command menu opens on the last command picked) or Command+Tech (and the
+  technique list opens on the technique used last). Off by default, saved as
+  `battle_menu_memory` in `port_options.cfg` like the other rows; the Options
+  screen now has eight rows. Checked on the PC build and in Ryubing, not yet on
+  the OLED: [P7.9_BATTLE_MENU_MEMORY](docs/P7.9_BATTLE_MENU_MEMORY.md).
 - **EU version.** The original language-select screen at boot, and its own
   runtime: [P3_EU_BUILD](docs/P3_EU_BUILD.md).
 - **Own-disc extraction on the console.** First boot builds the runtime from

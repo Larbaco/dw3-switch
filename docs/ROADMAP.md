@@ -1261,13 +1261,16 @@ Statuses are in the [table](#status-at-a-glance).
 - [ ] **P7.9 Battle menu memory.** Remember the last battle command
   (Techniques stays on Techniques) and allow reordering techniques per
   Digimon. Done when both persist in the P5.3 save on US and EU.
-  Status (2026-10-22), part A built, needs OLED check: file-only key
-  `battle_menu_memory` in `port_options.cfg` (1 = the command menu opens on
-  the last command, 2 = also the technique list opens on that partner's last
-  technique), off by default and bit-identical when off (patch `0067`, no
-  Options row because the screen is full). Session memory, not saved. Covered
-  by 12 log-only PC replay scenarios (`*-p79-*`) and unit tests; the full
-  replay suite is unchanged. Open: the OLED check (checklist in the doc),
+  Status (2026-10-23), part A built, needs OLED check: the **Battle cursor** row
+  of the Options screen (OFF / Command / Command+Tech, key `battle_menu_memory`
+  in `port_options.cfg`: 1 = the command menu opens on the last command, 2 =
+  also the technique list opens on that partner's last technique), off by
+  default and bit-identical when off (patch `0067`, unchanged). It was a
+  file-only key until the owner asked for a row after the rc6 OLED test; the
+  Options screen now has **eight rows** (38 px rows on a 42 px pitch, same
+  window; [PORT_OPTIONS.md](PORT_OPTIONS.md#options-screen-2026-10-14), "Eight
+  rows"). Session memory, not saved. Covered by 12 log-only PC replay scenarios
+  (`*-p79-*`), the new `*-battle-cursor-persist`, unit tests and the cache test. Open: the OLED check (checklist in the doc),
   and part B: reordering techniques is investigated and deferred (the PS1 save
   image has no room and its size is checked; the design is a `saveN.order`
   sidecar), so "persist in the P5.3 save" is not met yet. Doc:
