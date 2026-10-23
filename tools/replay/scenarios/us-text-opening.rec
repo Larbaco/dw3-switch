@@ -1,0 +1,8 @@
+# US: New Game, then wait: the first dialogue pages type out
+pad 20 0x0008
+pad 25 0x0000
+pad 210 0x0008
+pad 215 0x0000
+pad 320 0x4000
+pad 325 0x0000
+end 2400

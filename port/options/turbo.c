@@ -63,13 +63,13 @@ static void turbo_read_env(void) {
     }
     speed = env[0] - '0';
     if (speed == 0) {
-        dw3_port_options_set_level(DW3_PORT_OPT_FAST_FORWARD, 0);
+        dw3_port_options_apply_env(DW3_PORT_OPT_FAST_FORWARD, 0);
         return;
     }
     if (speed < DW3_TURBO_SPEED_MIN || speed > DW3_TURBO_SPEED_MAX) {
         return;
     }
-    dw3_port_options_set_level(DW3_PORT_OPT_FAST_FORWARD, speed);
+    dw3_port_options_apply_env(DW3_PORT_OPT_FAST_FORWARD, speed);
     g_active = 1;
 }
 

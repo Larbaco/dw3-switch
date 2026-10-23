@@ -21,6 +21,7 @@ import sys
 from pathlib import Path
 
 START, DOWN, CROSS = 0x0008, 0x0040, 0x4000
+TRIANGLE = 0x1000
 UP, RIGHT, LEFT = 0x0010, 0x0020, 0x0080
 EU_LANGS = ["en", "fr", "de", "it", "es"]
 HOLD = 5  # frames a button is held; PadChkVsync can miss a 1-frame edge
@@ -179,11 +180,40 @@ def newgame_field(version):
     return r
 
 
+SCROLL_END = 9400   # frames; the opening's scrolling dialogue is on screen by ~8800
+
+
+def text_scroll(version):
+    """P6.18 Instant: the opening's dialogue has pages whose last line scrolls
+    in. The same mash of Cross as the opening, cut after those pages, no
+    checkpoints: the log tells how the scrolls went (patch 0068)."""
+    r = Rec(f"{version.upper()}: New Game, the opening up to the scrolling dialogue pages")
+    new_game_opening(r, version)
+    r.lines = [l for l in r.lines
+               if not l.startswith(("shot", "end"))
+               and (l.startswith("#") or int(l.split()[1]) <= SCROLL_END)]
+    r.end(SCROLL_END)
+    return r
+
+
 def field_walk(version):
     r = Rec(f"{version.upper()}: opening, then lobby <-> Login Room door tour")
     new_game_opening(r, version)
     s = Script(r, LOBBY)
     door_tour(s)
+    r.end(s.f + 30)
+    return r
+
+
+def banner_walk(version):
+    """The field-walk recording without checkpoints: the lobby <-> Login Room doors
+    open the area name banner after dialogue windows were freed (the rc6 OLED
+    log's 103-frame 'page'). The manifest runs it at Text speed Instant."""
+    r = Rec(f"{version.upper()}: opening, then lobby <-> Login Room door tour, no checkpoints")
+    new_game_opening(r, version)
+    s = Script(r, LOBBY)
+    door_tour(s)
+    r.lines = [l for l in r.lines if not l.startswith(("shot", "end"))]
     r.end(s.f + 30)
     return r
 
@@ -312,6 +342,404 @@ def bridge_partner_gate(version):
     return r
 
 
+# Two consecutive battles (overlay restore of the WFIGHTMN sub-overlay per
+# battle, patch 0061). The scenario's env boots straight into a forced
+# encounter (DW3_START_MODE=0x600, DW3_FORCE_ENCOUNTER=34 Kunemon,
+# DW3_FORCE_PARTY=0 Kotemon lead) and DW3_AUTO_DOOR_MODE=0x600 starts the
+# second battle 120 field frames after the report returns to the field.
+# Each battle opens with a technique (Tech -> first tech -> use: "Hot
+# Head!"), then Cross is mashed through the fight, the report and the field.
+# The second battle's menu waits for input, so the mash stops just before
+# the AUTO_DOOR frame and the second Tech input lands on the idle menu.
+# Measured on the PC build (DW3_TURBO=4; the replay is frame-keyed).
+TWO_BATTLES = {
+    #     door   (mash stops just before it)  tech2  end
+    "us": (1360, 1820, 5000),
+    "eu": (1290, 1750, 5000),
+}
+
+
+def _tech(r, f):
+    _pad(r, f, DOWN)                 # Fight -> Tech
+    _pad(r, f + 10, 0)
+    r.press(f + 60, CROSS)           # open the tech list
+    r.press(f + 110, CROSS)          # use the first tech
+
+
+def two_battles(version):
+    door, tech2, end = TWO_BATTLES[version]
+    r = Rec(f"{version.upper()}: two forced battles, a technique in each (env in manifest)")
+    _tech(r, 350)
+    r.shot(500, "battle1-tech")
+    for f in range(520, door - 20, 30):
+        r.press(f, CROSS)
+    r.shot(tech2 - 20, "battle2-menu")
+    _tech(r, tech2)
+    r.shot(tech2 + 130, "battle2-tech")
+    for f in range(tech2 + 150, end - 100, 30):
+        r.press(f, CROSS)
+    r.shot(end - 10, "field-after")
+    r.end(end)
+    return r
+
+
+def p77_battle(version):
+    """P7.7: one forced battle (Kotemon vs Kunemon, the env of the manifest
+    sets the technique, the enemy's HP and item, the partner's Digimon), the
+    first technique of the Tech menu, then Cross to the report and the field.
+    Log only: the proof is in the `dw3-p77:` lines the patches print."""
+    r = Rec(f"{version.upper()}: P7.7 forced battle, Tech once, Cross to the end (env in manifest)")
+    _tech(r, 350)
+    for f in range(520, 1470, 30):
+        r.press(f, CROSS)
+    r.end(1500)
+    return r
+
+
+R1 = 0x0800
+# Evidence runs only (measured): the frames later that the PAL battle reaches turn
+# 2's message, and the Crosses it needs to get there (the enemy acts twice before turn 2)
+P79_EVIDENCE_SHIFT = {"us": 0, "eu": 960}
+P79_EVIDENCE_CROSSES = {"us": (), "eu": tuple(range(1600, 2400, 100))}
+
+
+def _p79_turn1(r, page2):
+    """Turn 1 of a P7.9 battle: Fight -> Tech, open the list, pick a technique
+    that is not the first line: line 2 (Down), or with `page2` the first line
+    of the second page (R1; the manifest's DW3_EXTRA_TECHS gives 8 techniques)."""
+    _pad(r, 350, DOWN)               # Fight -> Tech
+    _pad(r, 360, 0)
+    r.press(410, CROSS)              # open the tech list
+    r.press(440, R1 if page2 else DOWN)
+    r.press(470, CROSS)              # use it
+
+
+def p79_menu(version, page2=False, evidence=False):
+    """P7.9: one forced battle (Kotemon vs Kunemon, an enemy with 2000 HP and
+    extra techniques through the manifest's env). Turn 1 picks a technique
+    below the first line (_p79_turn1). Then Cross every 30 frames: with
+    battle_menu_memory the second turn's menu already stands on Techniques
+    (the first Cross opens the list, the second uses the technique under the
+    cursor); without it the Crosses attack. The committed recording is log
+    only. `evidence` stops the Cross just before turn 2's menu and takes the
+    captures of docs/P7.9_BATTLE_MENU_MEMORY.md (run by hand with --scen-dir,
+    never committed)."""
+    name = "menu-page2" if page2 else "menu"
+    r = Rec(f"{version.upper()}: P7.9 battle menu memory, {name} (env and cfg in manifest)")
+    _p79_turn1(r, page2)
+    if evidence:
+        d = P79_EVIDENCE_SHIFT[version]
+        for f in range(520, 1300, 30):
+            r.press(f, CROSS)
+        for f in P79_EVIDENCE_CROSSES[version]:
+            r.press(f, CROSS)
+        r.shot(1400 + d, "turn2-message")
+        r.press(1420 + d, CROSS)     # closes "damage!"; turn 2's menu opens
+        r.shot(1500 + d, "turn2-menu")
+        r.shot(1510 + d, "turn2-menu-b")  # the cursor's square blinks: second phase
+        r.press(1530 + d, CROSS)     # Tech: opens the list
+        r.shot(1620 + d, "turn2-list")
+        r.end(1630 + d)
+        return r
+    for f in range(520, 1470, 30):
+        r.press(f, CROSS)
+    r.end(1500)
+    return r
+
+
+def p79_two_battles(version):
+    """P7.9: the two forced battles of two_battles, but battle 2 starts with
+    Cross, Cross (no Down): with the memory on its first menu already stands
+    on Techniques, so Cross opens the list and Cross uses the first technique."""
+    door, tech2, end = TWO_BATTLES[version]
+    r = Rec(f"{version.upper()}: P7.9 menu memory across two forced battles (env and cfg in manifest)")
+    _tech(r, 350)
+    for f in range(520, door - 20, 30):
+        r.press(f, CROSS)
+    r.press(tech2 + 60, CROSS)       # the list (the menu stands on Tech)
+    r.press(tech2 + 110, CROSS)      # the first technique
+    for f in range(tech2 + 150, end - 100, 30):
+        r.press(f, CROSS)
+    r.end(end)
+    return r
+
+
+SQUARE = 0x8000
+
+
+def p77_square(version):
+    """P7.7: Square pressed in a field (a tap, a second tap, a 60 frame hold,
+    and Square with Circle), as the "Square map glitch" of the community
+    notes would need. The original game reads no Square in the field, so the
+    field must not change mode (the manifest forbids a second mode restore)."""
+    r = Rec(f"{version.upper()}: P7.7 Square in the field (env in manifest)")
+    r.press(300, SQUARE)
+    r.press(400, SQUARE)
+    _pad(r, 500, SQUARE)
+    _pad(r, 560, 0)
+    _pad(r, 600, SQUARE | 0x2000)    # Square + Circle
+    _pad(r, 620, 0)
+    r.end(700)
+    return r
+
+
+def options_persist(version, phase):
+    """P9.4: title -> Options. Phase 1 turns Widescreen OFF, Fast-forward
+    2x -> 3x and the Restart hotkey ON, then leaves with Triangle; phase 2 is a
+    fresh process on the same config dir that only opens the screen, so its
+    checkpoint shows the values read back from port_options.cfg."""
+    r = Rec(f"{version.upper()}: Options persistence, phase {phase}")
+    if version == "us":
+        r.press(20, START)           # skip the opening FMV
+        r.press(210, START)          # PRESS START
+        m = 320                      # title menu is up
+    else:
+        for f in (110, 160, 190, 220, 280):   # confirm English, skip splash/FMV, PRESS START
+            r.press(f, START)
+        m = 390
+    r.press(m, DOWN)                 # New Game -> Options
+    r.press(m + 20, CROSS)           # open the Options screen
+    if phase == 1:
+        r.shot(m + 60, "options-defaults")
+        r.press(m + 70, CROSS)       # Widescreen ON -> OFF
+        r.press(m + 90, DOWN)
+        r.press(m + 110, CROSS)      # Fast-forward 2x -> 3x
+        r.press(m + 130, DOWN)
+        r.press(m + 150, CROSS)      # Restart hotkey OFF -> ON
+        r.shot(m + 190, "options-changed")
+        r.press(m + 200, TRIANGLE)   # leave
+        r.end(m + 240)
+    else:
+        r.shot(m + 60, "options-restored")
+        r.press(m + 70, TRIANGLE)
+        r.end(m + 110)
+    return r
+
+
+def volume_persist(version, phase):
+    """P6.17: title -> Options -> Music volume 10 -> 7 (Left x3) and SFX volume
+    10 -> 3 (Left x7), then leave. Phase 2 is a fresh process on the same
+    config dir that only opens the screen: its checkpoint and its log show the
+    two steps read back from port_options.cfg."""
+    r = Rec(f"{version.upper()}: Music / SFX volume persistence, phase {phase}")
+    if version == "us":
+        r.press(20, START)           # skip the opening FMV
+        r.press(210, START)          # PRESS START
+        m = 320                      # title menu is up
+    else:
+        for f in (110, 160, 190, 220, 280):   # confirm English, skip splash/FMV, PRESS START
+            r.press(f, START)
+        m = 390
+    r.press(m, DOWN)                 # New Game -> Options
+    r.press(m + 20, CROSS)           # open the Options screen
+    if phase == 1:
+        r.shot(m + 60, "volume-defaults")
+        f = m + 70
+        for _ in range(3):           # Widescreen -> Fast-forward -> Restart -> Music
+            r.press(f, DOWN)
+            f += 20
+        for _ in range(3):           # Music volume 10 -> 7
+            r.press(f, LEFT)
+            f += 20
+        r.press(f, DOWN)             # SFX volume
+        f += 20
+        for _ in range(7):           # SFX volume 10 -> 3
+            r.press(f, LEFT)
+            f += 20
+        r.shot(f + 40, "volume-changed")
+        r.press(f + 50, TRIANGLE)    # leave
+        r.end(f + 90)
+    else:
+        r.shot(m + 60, "volume-restored")
+        r.press(m + 70, TRIANGLE)
+        r.end(m + 110)
+    return r
+
+
+# --- P6.18 pacing options (log-only: no checkpoints, nothing to reference) ---
+
+def _to_title_menu(r, version):
+    """Boot to the title menu; returns the frame it is up."""
+    if version == "us":
+        r.press(20, START)           # skip the opening FMV
+        r.press(210, START)          # PRESS START
+        return 320
+    for f in (110, 160, 190, 220, 280):   # confirm English, skip splash/FMV, PRESS START
+        r.press(f, START)
+    return 390
+
+
+def pacing_persist(version, phase):
+    """P6.18: Options -> Encounter rate 1x -> 0.5x (Left) and Text speed
+    Normal -> Instant (Right x2), then leave. Phase 2 is a fresh process on the
+    same config dir; the logs carry the values saved and read back."""
+    r = Rec(f"{version.upper()}: Encounter rate / Text speed persistence, phase {phase}")
+    m = _to_title_menu(r, version)
+    r.press(m, DOWN)                 # New Game -> Options
+    r.press(m + 20, CROSS)           # open the Options screen
+    if phase == 1:
+        f = m + 70
+        for _ in range(5):           # Widescreen -> ... -> Encounter rate
+            r.press(f, DOWN)
+            f += 20
+        r.press(f, LEFT)             # 1x -> 0.5x (the screen steps OFF, 0.5x, 1x, 1.5x, 2x)
+        f += 20
+        r.press(f, DOWN)             # Text speed
+        f += 20
+        r.press(f, RIGHT)            # Normal -> Fast
+        f += 20
+        r.press(f, RIGHT)            # Fast -> Instant
+        f += 20
+        r.press(f + 20, TRIANGLE)    # leave
+        r.end(f + 60)
+    else:
+        r.press(m + 70, TRIANGLE)
+        r.end(m + 110)
+    return r
+
+
+def battle_cursor_persist(version, phase):
+    """P7.9: Options -> down to the last row (Battle cursor), Right twice
+    (Off -> Command -> Command+Tech) with a capture of each word, then leave.
+    Phase 2 is a fresh process on the same config dir: it opens the screen and
+    goes to the row again, the log carries the value read back."""
+    r = Rec(f"{version.upper()}: Battle cursor persistence, phase {phase}")
+    m = _to_title_menu(r, version)
+    r.press(m, DOWN)                 # New Game -> Options
+    r.press(m + 20, CROSS)           # open the Options screen
+    f = m + 70
+    for _ in range(7):               # Widescreen -> ... -> Battle cursor
+        r.press(f, DOWN)
+        f += 20
+    if phase == 1:
+        r.shot(f + 20, "battle-cursor-off")
+        r.press(f + 40, RIGHT)       # Off -> Command
+        r.shot(f + 80, "battle-cursor-command")
+        r.press(f + 100, RIGHT)      # Command -> Command+Tech
+        r.shot(f + 140, "battle-cursor-command-tech")
+        r.press(f + 160, TRIANGLE)   # leave
+        r.end(f + 200)
+    else:
+        r.shot(f + 20, "battle-cursor-restored")
+        r.press(f + 40, TRIANGLE)
+        r.end(f + 80)
+    return r
+
+
+def options_sound(version):
+    """Options screen sound feedback: title -> Options, four cursor moves down
+    to SFX volume, Left twice (10 -> 8, each change plays the choice sound at
+    the new level), one more row down to Encounter rate and Right (1x -> 1.5x),
+    then Triangle (the cancel sound). The log carries every sound with the SFX
+    volume it was played at."""
+    r = Rec(f"{version.upper()}: Options screen sound feedback")
+    m = _to_title_menu(r, version)
+    r.press(m, DOWN)                 # New Game -> Options
+    r.press(m + 20, CROSS)           # open the Options screen
+    f = m + 70
+    for _ in range(4):               # Widescreen -> ... -> SFX volume
+        r.press(f, DOWN)
+        f += 20
+    for _ in range(2):               # SFX volume 10 -> 9 -> 8
+        r.press(f, LEFT)
+        f += 20
+    r.press(f, DOWN)                 # Encounter rate
+    f += 20
+    r.press(f, RIGHT)                # 1x -> 1.5x
+    f += 20
+    r.press(f + 10, TRIANGLE)        # leave
+    r.end(f + 60)
+    return r
+
+
+TEXT_END = {"us": 2400, "eu": 2600}   # frames; the first pages are done long before
+
+
+def text_opening(version, end):
+    """P6.18: New Game and then no input at all: the first scripted boxes of
+    the opening type out and wait for a button, so the log carries the frames
+    a page took (port patch 0063). Run once per Text speed."""
+    r = Rec(f"{version.upper()}: New Game, then wait: the first dialogue pages type out")
+    if version == "us":
+        r.press(20, START)           # skip the opening FMV
+        r.press(210, START)          # PRESS START
+        r.press(320, CROSS)          # New Game
+    else:
+        for f in (110, 160, 190, 220, 280):
+            r.press(f, START)
+        r.press(390, CROSS)          # Start (New Game)
+    r.end(end)
+    return r
+
+
+# Encounter rate: DW3_START_MODE puts the player on a South Sector field
+# (mode 0x233) with the story at step 6, where the whole map is a random
+# battle area, and the recording only walks Up. The frames below were measured
+# on the PC build: the walk starts once the stage is up and control is given.
+ENCOUNTER = {
+    #      walk from, until   (1x battle comes ~100 footsteps in, 0.5x ~200)
+    "us": (300, 3300),
+    "eu": (300, 3300),
+}
+
+
+def encounter_walk(version):
+    start, end = ENCOUNTER[version]
+    r = Rec(f"{version.upper()}: walk up a random-battle field for {end - start} frames (env in manifest)")
+    _pad(r, start, UP)
+    r.end(end)
+    return r
+
+
+def encounter_event(version):
+    """Scripted battle with encounters Off: DW3_FORCE_NPC_ACTION=0x7400 runs
+    the field action EVENT_BATTLE(0) (FIELDSTG_startEventBattle), the path the
+    stages' events, bosses and hidden-spot battles use. No walking."""
+    r = Rec(f"{version.upper()}: scripted EVENT_BATTLE with Encounter rate Off (env in manifest)")
+    r.end(900)
+    return r
+
+
+def items_screen(version, evidence=False):
+    """Field menu -> Items after a battle (patch 0069, root cause of the
+    preview.30-rc6 crash; patch 0070's DW3_FORCE_ITEMS fills the bag, the
+    manifest's env sets the rest). The forced event battle ends at once
+    (DW3_FORCE_WIN); Cross walks the report back to the field, Start opens the
+    field menu, Cross opens Items, Cross opens the Items list (the frame that
+    used to crash: the panel's icon of an item not chosen yet), the cursor
+    moves, an item is picked and used on the first partner, the list is
+    reopened, closed, Weapons is opened (second page), and the menus are left
+    with Triangle. Log only; `evidence` adds the captures of
+    docs/BALLOON_NULL_ACTOR.md (run by hand with --scen-dir, never
+    committed). Menus run at the normal speed, a step is ~100-300 frames."""
+    r = Rec(f"{version.upper()}: field menu Items after a battle (env and cfg in manifest)")
+    for f in range(300, 1200, 30):
+        r.press(f, CROSS)            # battle report -> field
+    r.press(1250, START)             # field menu
+    r.press(1420, CROSS)             # Items (loads the STSTATUS overlay)
+    r.press(1650, CROSS)             # open the Items list: used to crash
+    r.press(1850, DOWN)
+    r.press(1900, DOWN)
+    r.press(2050, CROSS)             # pick the item: choose a Digimon
+    r.press(2250, CROSS)             # use it
+    r.press(2500, CROSS)             # back to the list
+    r.press(2850, TRIANGLE)          # close the list
+    r.press(3000, DOWN)              # Weapons
+    r.press(3050, CROSS)             # its list opens with another item panel
+    r.press(3250, R1)                # second page
+    r.press(3450, TRIANGLE)
+    r.press(3600, TRIANGLE)          # back to the field menu
+    r.press(3750, TRIANGLE)          # and to the field
+    if evidence:
+        for f, n in ((1200, "field"), (1400, "field-menu"), (1600, "item-options"),
+                     (1800, "item-list"), (2000, "item-list-moved"), (2200, "choose-digimon"),
+                     (2450, "item-used"), (2800, "item-list-again"), (3200, "weapons"),
+                     (3400, "weapons-page2"), (3700, "field-menu-back"), (3900, "field-after")):
+            r.shot(f, n)
+    r.end(3950)
+    return r
+
+
 def main(out):
     out.mkdir(parents=True, exist_ok=True)
     (out / "us-title.rec").write_text(us_title().text())
@@ -321,8 +749,38 @@ def main(out):
         (out / f"{v}-newgame-field.rec").write_text(newgame_field(v).text(True))
         (out / f"{v}-field-walk.rec").write_text(field_walk(v).text(True))
         (out / f"{v}-soak.rec").write_text(soak(v).text(True))
+        (out / f"{v}-banner-walk.rec").write_text(banner_walk(v).text(True))
     for v in ("us", "eu"):
         (out / f"{v}-load-menu.rec").write_text(load_menu(v).text(True))
+    for v in ("us", "eu"):
+        for phase in (1, 2):
+            (out / f"{v}-options-persist-p{phase}.rec").write_text(
+                options_persist(v, phase).text(True))
+    for v in ("us", "eu"):
+        for phase in (1, 2):
+            (out / f"{v}-volume-persist-p{phase}.rec").write_text(
+                volume_persist(v, phase).text(True))
+    for v in ("us", "eu"):
+        for phase in (1, 2):
+            (out / f"{v}-pacing-persist-p{phase}.rec").write_text(
+                pacing_persist(v, phase).text(True))
+        (out / f"{v}-text-scroll.rec").write_text(text_scroll(v).text(True))
+        (out / f"{v}-options-sound.rec").write_text(options_sound(v).text(True))
+        for phase in (1, 2):
+            (out / f"{v}-battle-cursor-persist-p{phase}.rec").write_text(
+                battle_cursor_persist(v, phase).text(True))
+        # One recording per kind; the scenarios differ in the option file and
+        # the environment the manifest gives them.
+        (out / f"{v}-text-opening.rec").write_text(text_opening(v, TEXT_END[v]).text(True))
+        (out / f"{v}-encounter-walk.rec").write_text(encounter_walk(v).text(True))
+        (out / f"{v}-encounter-event.rec").write_text(encounter_event(v).text(True))
+        (out / f"{v}-items-screen.rec").write_text(items_screen(v).text(True))
+        (out / f"{v}-two-battles.rec").write_text(two_battles(v).text(True))
+        (out / f"{v}-p77-battle.rec").write_text(p77_battle(v).text(True))
+        (out / f"{v}-p77-square.rec").write_text(p77_square(v).text(True))
+        (out / f"{v}-p79-menu.rec").write_text(p79_menu(v).text(True))
+        (out / f"{v}-p79-menu-page2.rec").write_text(p79_menu(v, page2=True).text(True))
+        (out / f"{v}-p79-two-battles.rec").write_text(p79_two_battles(v).text(True))
     (out / "us-repro-balloon.rec").write_text(repro_balloon("us").text(True))
     for version in ("us", "eu"):
         # Written unsorted, byte for byte as first committed with patch 0058.

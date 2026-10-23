@@ -1,0 +1,119 @@
+Upstream-bound: no
+Subject: [PORT_HOST] P7.7 battle HUD shows the active Digimon's name, not the Rookie's
+
+FIGHTSTG_showFighterNames (battle_mode/hud.c) writes the partner's name
+window from GAME.partners[party member].info.name. That string is the
+partner's own name: initNewGameData (engine/game/party.c) copies it once from
+the name of the Rookie (DIGIMON_DATA[i].nameId, i < PARTNER_COUNT) and the
+Nickname Shop (STDGNAME) can replace it; nothing ever follows a digivolution.
+So a partner that fights as a Champion or higher (Partner.battleDigivolve,
+set in the field menu's digivolve panel and applied by WFIGHTMN addFighters,
+or the Digivolve command of the battle, WFIGHTMN_digivolve, which sets the
+fighter's id) is announced in the HUD under its Rookie name while its model,
+its messages ("Dinohumon digivolved!") and the menus use the form's nameId.
+The window was also only refreshed when the active slot changed, so a
+digivolution in battle (same slot, new id) could not update it.
+
+The port keeps a nickname the player chose, and while the name is still the
+Rookie's default string (compared with DIGIMON_DATA[partner].nameId of the
+TEXT_DIGIMON_NAMES file the battle already loads for the enemy's name) it
+shows the name of the Digimon the fighter is now (GET_DIGIMON of
+BattleFighter.id). An unevolved partner has the same string both ways, so a
+battle that does not digivolve draws the same text as before. shown[0] keys
+the slot and the Digimon id (shown[] is only compared in this function), so
+the name follows a digivolution in battle.
+
+The longer names of the high forms ("MetalGarurumon", "Imperialdramon MP",
+up to 17 letters) would run into the current HP number, which sits in the same
+row: a name wider than 60 px (measureText) is squeezed horizontally with the
+text window's own scale (setScale / setPivot at the window's origin; the
+window draws its glyphs as scaled quads, the path TextWindow already has).
+Names that fit, which includes every Rookie, take the unscaled path.
+
+Present on the US and EU discs (the same function in both). A text / display
+bug only, so it is always fixed, with no Port option.
+
+--- a/src/battle/battle_mode/hud.c
++++ b/src/battle/battle_mode/hud.c
+@@ -1,6 +1,13 @@
+ /* FIGHTSTG's HUD: the fighters' names, HP and MP bars and the technique gauge. */
+ 
+ #include "battle/battle_mode.h"
++#if PORT_HOST
++#include <stdio.h>
++int strcmp(const char *a, const char *b);
++/* the partner's name has this many pixels before the current HP number,
++   which starts 8 px sooner with four digits */
++#define FIGHTSTG_PARTNER_NAME_MAX_WIDTH 60
++#endif
+ 
+ /* Every frame: the hp tween of a side whose active fighter changed jumps to
+  * that fighter's hp; every interval, a side's tween starts easing (30 frames)
+@@ -65,13 +72,57 @@
+ void FIGHTSTG_showFighterNames(HpDisplay *task, TextWindow **windows) {
+     BattleTableEntry *enemy;
+     s32 i;
++#if PORT_HOST
++    /* P7.7: GAME.partners[].info.name is the partner's name from the new game
++     * (the Rookie's, as initNewGameData copies it) or the nickname the player
++     * gave it at the Nickname Shop, and it never follows a digivolution. Keep
++     * a nickname, but while the name is still the Rookie's default show the
++     * name of the Digimon the partner fights as. shown[0] keys the active slot
++     * and its Digimon id, so a digivolution in battle (WFIGHTMN_digivolve
++     * sets the fighter's id) refreshes the name too. */
++    BattleFighter *shownFighter = &FIGHTSTG_battle.state.fighters[0][FIGHTSTG_battle.state.active[0]];
++    s32 shownKey = FIGHTSTG_battle.state.active[0] | (shownFighter->id << 4);
++
++    if (shownKey != task->shown[0]) {
++        s32 member = GAME.funcs.getPartyMember(FIGHTSTG_battle.state.active[0]);
++        PartnerStats *own = &GAME.partners[member].info;
++        DigimonData *form = shownFighter->id > 0 ? GET_DIGIMON(shownFighter->id) : NULL;
++        TextTools cls;
++        char *rookie;
++        s32 useForm;
++        s32 width;
+ 
++        if (windows[0] == NULL) {
++            windows[0] = createTextWindow(BATTLE_LAYER_MENUS, 1, 0xAE, 0x15);
++        }
++        initTextTools(&cls);
++        rookie = cls.getString(FILE_CACHE.load(TEXT_FILE(TEXT_DIGIMON_NAMES)), DIGIMON_DATA[member].nameId);
++        useForm = form != NULL && rookie != NULL && strcmp(own->name, rookie) == 0;
++        if (useForm) {
++            windows[0]->setString(windows[0], FILE_CACHE.load(TEXT_FILE(TEXT_DIGIMON_NAMES)), form->nameId);
++        } else {
++            windows[0]->setString(windows[0], own->name, -1);
++        }
++        windows[0]->scaled = 0;
++        /* names up to 17 letters long ("Imperialdramon MP") do not fit the
++         * Rookie-sized space before the HP number: squeeze them horizontally
++         * (the text window's own scale, pivot at its origin) */
++        width = measureText(&windows[0]->text[0], windows[0]->style, 0);
++        if (width > FIGHTSTG_PARTNER_NAME_MAX_WIDTH) {
++            windows[0]->setPivot(windows[0], 0xAE, 0x15);
++            windows[0]->setScale(windows[0], FIGHTSTG_PARTNER_NAME_MAX_WIDTH * ONE / width, ONE);
++        }
++        fprintf(stderr, "dw3-p77: battle HUD partner name %s (Digimon id %d, %d px)\n",
++                useForm ? "of the Digimon" : "kept (nickname or no form)", (int)shownFighter->id, (int)width);
++    }
++#else
+     if (FIGHTSTG_battle.state.active[0] != task->shown[0]) {
+         if (windows[0] == NULL) {
+             windows[0] = createTextWindow(BATTLE_LAYER_MENUS, 1, 0xAE, 0x15);
+         }
+         windows[0]->setString(windows[0], GAME.partners[GAME.funcs.getPartyMember(FIGHTSTG_battle.state.active[0])].info.name, -1);
+     }
++#endif
+     if (FIGHTSTG_battle.state.active[1] != task->shown[1]) {
+         enemy = FIGHTSTG_battleTableFunc(BATTLE_SETUP.enemies[FIGHTSTG_battle.state.active[1]].fighter);
+         if (windows[1] == NULL) {
+@@ -84,6 +135,9 @@
+     for (i = 0; i < 2; i++) {
+         task->shown[i] = FIGHTSTG_battle.state.active[i];
+     }
++#if PORT_HOST
++    task->shown[0] = shownKey;
++#endif
+ }
+ 
+ /* FIGHTSTG_drawHud's HP bars, one row per side; the European version swaps

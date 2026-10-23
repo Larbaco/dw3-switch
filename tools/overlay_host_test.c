@@ -2,7 +2,8 @@
  * Host test for P2.6 static overlay restore semantics.
  *
  * Two fixture overlays: switching file ids restores .data and zeros .bss.
- * Loading the same id twice preserves mutations.
+ * Loading the same id twice preserves mutations. An unknown file id fails,
+ * is not recorded as loaded, and aborts in strict mode.
  *
  * Build (from repo root):
  *   gcc -std=c11 -Wall -Wextra -Werror -O2 -DPORT_HOST=1 \
@@ -18,8 +19,11 @@
 #define FILE_OVL_B 0x102
 #define FILE_OVL_SUB 0x103
 
+#define FILE_OVL_UNKNOWN 0x1FB /* e.g. WFIGHTTS: not in any host table */
+
 #define MODE_A 2
 #define MODE_B 3
+#define MODE_UNKNOWN 8
 
 static unsigned char ovl_a_data[8];
 static const unsigned char ovl_a_data_init[8] = {
@@ -49,35 +53,120 @@ static const Dw3OverlayDesc g_fixtures[] = {
      ovl_sub_bss, sizeof(ovl_sub_bss)},
 };
 
-/* Mirrors OVERLAY_LOADER + loadModeOverlay / loadSubOverlay host paths. */
+/* OVERLAY_LOADER.mode / .subOverlay; the loaders are the real host halves
+ * of loadModeOverlay / loadSubOverlay (patches 0008 + 0061). */
 static int32_t g_mode = -1;
 static int32_t g_sub = -1;
 
 static int load_mode(int32_t mode_index, int32_t file_id) {
-    if (g_mode != mode_index) {
-        g_mode = mode_index;
-        g_sub = -1;
-        if (file_id != 0) {
-            return dw3_overlay_restore(file_id);
-        }
-    }
-    return 1; /* preserved / skipped */
+    return dw3_overlay_load_mode(&g_mode, &g_sub, mode_index, file_id);
 }
 
-static int load_sub(int32_t file_id) {
-    if (g_sub != file_id) {
-        g_sub = file_id;
-        return dw3_overlay_restore(file_id);
-    }
-    return 1; /* preserved */
-}
+static int load_sub(int32_t file_id) { return dw3_overlay_load_sub(&g_sub, file_id); }
 
 static int fail(const char *msg) {
     fprintf(stderr, "FAIL: %s\n", msg);
     return 1;
 }
 
-int main(void) {
+static const char *const g_fixture_names[] = {"OVL_A", "OVL_B", "OVL_SUB"};
+
+/* P5.4: names parallel to the table, cleared by the next set_table. */
+static int check_names(void) {
+    const char *n;
+
+    if (dw3_overlay_file_name(FILE_OVL_A) != NULL) {
+        return fail("name before set_names");
+    }
+    dw3_overlay_set_names(g_fixture_names);
+    n = dw3_overlay_file_name(FILE_OVL_SUB);
+    if (n == NULL || strcmp(n, "OVL_SUB") != 0) {
+        return fail("name of SUB");
+    }
+    n = dw3_overlay_file_name(FILE_OVL_A);
+    if (n == NULL || strcmp(n, "OVL_A") != 0) {
+        return fail("name of A");
+    }
+    if (dw3_overlay_file_name(FILE_OVL_UNKNOWN) != NULL ||
+        dw3_overlay_file_name(0) != NULL) {
+        return fail("name of unknown / 0");
+    }
+    dw3_overlay_set_table(g_fixtures, sizeof(g_fixtures) / sizeof(g_fixtures[0]));
+    if (dw3_overlay_file_name(FILE_OVL_A) != NULL) {
+        return fail("names not cleared by set_table");
+    }
+    puts("OK: overlay names");
+    return 0;
+}
+
+/* A failed restore must not be recorded as loaded (patch 0061). */
+static int check_unknown(void) {
+    /* Sub: A-sub loaded, then an unknown id fails and clears the latch, so
+     * the same unknown id is tried (and fails) again, and the previous sub
+     * is restored again (the PS1 memcpy of the unknown file overwrote it). */
+    g_mode = -1;
+    g_sub = -1;
+    if (load_mode(MODE_A, FILE_OVL_A) != 0 || load_sub(FILE_OVL_SUB) != 0) {
+        return fail("unknown: setup");
+    }
+    if (load_sub(FILE_OVL_UNKNOWN) != -1) {
+        return fail("unknown sub should fail");
+    }
+    if (g_sub != -1) {
+        return fail("unknown sub id recorded as loaded");
+    }
+    if (load_sub(FILE_OVL_UNKNOWN) != -1) {
+        return fail("unknown sub not retried");
+    }
+    ovl_sub_data[2] = 0x99;
+    if (load_sub(FILE_OVL_SUB) != 0) {
+        return fail("sub after unknown should restore");
+    }
+    if (ovl_sub_data[2] != ovl_sub_data_init[2] || g_sub != FILE_OVL_SUB) {
+        return fail("sub not restored after unknown");
+    }
+    if (load_sub(0) != -1 || g_sub != -1) {
+        return fail("sub file id 0 should fail and not be recorded");
+    }
+
+    /* Mode: an unknown mode overlay fails and clears both latches; going back
+     * to the previous mode restores it again. */
+    ovl_a_data[3] = 0x44;
+    if (load_mode(MODE_UNKNOWN, FILE_OVL_UNKNOWN) != -1) {
+        return fail("unknown mode should fail");
+    }
+    if (g_mode != -1 || g_sub != -1) {
+        return fail("unknown mode recorded as loaded");
+    }
+    if (load_mode(MODE_A, FILE_OVL_A) != 0) {
+        return fail("mode A after unknown should restore");
+    }
+    if (ovl_a_data[3] != ovl_a_data_init[3] || g_mode != MODE_A) {
+        return fail("mode A not restored after unknown");
+    }
+    /* Mode slot without a file: recorded, no restore. */
+    if (load_mode(0, 0) != 1 || g_mode != 0) {
+        return fail("file-less mode slot");
+    }
+    return 0;
+}
+
+/* Strict mode: an unknown restore aborts (run as `overlay_host_test strict`). */
+static int run_strict(void) {
+    dw3_overlay_set_table(g_fixtures, sizeof(g_fixtures) / sizeof(g_fixtures[0]));
+    if (!dw3_overlay_strict()) {
+        return fail("strict mode not enabled by the environment");
+    }
+    (void)dw3_overlay_restore(FILE_OVL_UNKNOWN);
+    return fail("strict unknown restore returned");
+}
+
+int main(int argc, char **argv) {
+    if (argc > 1 && strcmp(argv[1], "strict") == 0) {
+        return run_strict();
+    }
+    /* Non-strict unless the caller says otherwise (DW3_REPLAY may be set). */
+    dw3_overlay_set_strict(0);
     dw3_overlay_set_table(g_fixtures,
                           sizeof(g_fixtures) / sizeof(g_fixtures[0]));
     g_mode = -1;
@@ -187,6 +276,13 @@ int main(void) {
     }
     if (dw3_overlay_current_mode_file() != FILE_OVL_A) {
         return fail("mode file not A after sub reset");
+    }
+
+    if (check_unknown() != 0) {
+        return 1;
+    }
+    if (check_names() != 0) {
+        return 1;
     }
 
     puts("OK: overlay reset vs preserve");

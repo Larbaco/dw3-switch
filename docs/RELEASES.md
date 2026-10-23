@@ -97,6 +97,76 @@ one console and are not acceptance gates; gates live in
   shows double the real rate (about 120 at a real 60 fps; the log above was
   60 fps real at 1x). `vsync_pumps` in `crash_report.txt` is doubled too.
   Gameplay pacing is not affected. Fixed on main after the release.
+- **preview.30-rc4 candidate, 2026-10-22 (OLED handheld, EU nxlink).** Only
+  the Port options and pacing rows were exercised. `port_options.cfg` was
+  created on the first change and saved on every change (no failure logged).
+  Music volume stepped 0 to 10 and SFX volume down to 2 with the expected
+  gains logged. Encounter rate was toggled and returned to 1x (random battles
+  at 1x after 104, 175, 103, 128 and 93 footsteps). Text speed Instant typed
+  19 of 27 pages in 1 to 2 frames; 8 pages took 67 to 127 frames: those turned
+  out (rc6 follow-up below) to be the area name banner, not text. The session ended with a normal HOME exit and
+  `applet exit: flat saves flushed`. Not covered: US, relaunch persistence,
+  the P7.7 HUD and claw (logged only to the nxlink stderr), widescreen.
+  Log: `tmp/evidence/2026-10-22-preview30-rc4-oled/dw3.log`.
+- **preview.30-rc6 candidate, 2026-10-22 (OLED handheld, EU, non-nxlink).**
+  20 random battles logged at Encounter rate 2x with Text speed Instant and
+  Fast-forward 4x / off, then the game **crashed on opening Items** in the
+  field menu (`crash_report.txt`: `mode_file 0x207`, data abort `far=0xd`,
+  `x0=0`). Root cause: a NULL `ItemInfo` read in `getItemCategory`, which
+  the PS1 tolerates and a 64-bit host does not, on the first open of any
+  non-empty item list; the same crash is in preview.29. Fixed by patch
+  `0069` (not in rc6), covered by the `*-items-screen` replay scenarios; see
+  [BALLOON_NULL_ACTOR.md](BALLOON_NULL_ACTOR.md#patch-0069-items-screen-null-item-preview30-rc6-oled-crash).
+  Text speed is not related: Instant typed the report's pages in 1 to 2
+  frames (49 lines). The other thing in that log, separate from the crash: after
+  each battle (19 of 20), back in the field at 4x, one "page" of 103 (15 times)
+  or 73 (4) frames and `slow Instant page with no scroll hold (103 frames): reveal
+  missed it`, never a `text scroll`. Cause found 2026-10-23: **the area name
+  banner**, not text and not the report (it types its two names at delay 5, 6
+  frames per character: 17 and 12 characters, `6n + 1`), wrongly timed as a
+  dialogue page by the port's own log on the address of a freed report window.
+  Nothing was typed slowly that Text speed should have sped up. Fixed in the
+  port (`pacing.c`, no patch); the banner itself is unchanged (it still takes
+  about 2.3 s with the hero frozen), see
+  [P6.18_PACING.md](P6.18_PACING.md#the-103-frame-pages-the-area-name-banner-rc4-and-rc6-oled-logs).
+  Not covered: US, Fast, a dialogue that scrolls,
+  the Items screen after the fix on the OLED. Evidence:
+  `tmp/evidence/2026-10-22-preview30-rc6-oled/` (log, crash report,
+  Atmosphere report).
+- **preview.30 next candidate, 2026-10-23 (PC and Ryubing only, not on the
+  OLED yet).** Owner request after rc6: the battle menu memory is the **Battle
+  cursor** row of the Options screen (OFF / Command / Command+Tech, key
+  `battle_menu_memory`), so the screen has eight rows (38 px rows on a 42 px
+  pitch, same window). Off by default; no decomp patch changed. Included in this
+  candidate with the rc6 follow-ups: the area name banner is no longer logged as
+  a slow Instant page (#203) and the Items screen fix (#201). Check on the OLED:
+  eight rows fit in handheld and docked, the row steps and keeps its value after
+  a relaunch, and with Command+Tech the battle menu opens on the last pick
+  ([P7.9 checklist](P7.9_BATTLE_MENU_MEMORY.md#oled-check-the-owner)).
+- **preview.30-rc7 candidate, 2026-10-23 (OLED handheld, US, nxlink log; main
+  `b0aed93`).** Owner feedback plus the log (`/mnt/cabal/tmp/dw3-preview30-rc7-out/dw3.log`,
+  5702 lines, 1707 one-second windows, one run). Confirmed: the Items screen
+  works (the rc6 crash, #201, patch `0069`); the eight-row Options screen looks
+  good (#206); Battle cursor Command+Tech works and a new battle opens on the
+  technique used in the last one (log: `technique list of partner 3 opens on
+  technique 56 ... remembered`); Text speed Instant works as desired (no `slow
+  Instant page`, no `text scroll`; 26 area name banners logged as non-dialogue,
+  #203); the battle renderer is the default `gpu-tex` with good performance
+  (`soft=0` in every window, mesh frames in 211, present path `mesh+ui`); turbo
+  works in battle (`dw3-turbo: speed 4x` and `1x`, three times); the volume
+  options work; sleep and resume worked with saves before and after, and the
+  in-game time counted only play time. In the log that sleep is one unclamped
+  `frame dt` window of 543746177 us and there is no `applet focus:` line (see
+  ROADMAP P10.2). **New bug:** the background music plays only once and then
+  stops, in the field, the inn and battle (SEQ/SEP NRPN loop count; fix in a
+  separate PR, ROADMAP P4.3). Not covered: the Claw steal and the HUD
+  Digivolution name (P7.7; the owner has no Claw yet), the bridge-gate scene on
+  US hardware (patch `0058`, needs a New Game), rumble, docked mode, an underrun
+  count (P4.3), P5.1 (the 2 h memory session) and the P5.4 notice and assert
+  (PR 2). The widescreen PRs #202 and #205 are not in rc7. The `dw3.log` heap
+  high-water stayed at 1685K. The top of the log latches a crash of the
+  previous run (`preview.29-19-ga2683c3`, the P5.4 `--force-crash` build), not
+  an rc7 crash.
 
 Still open on hardware: audio underrun count, the full overlay sweep, battle
 at 60 Hz, the sync-object error above, a fresh-save relaunch reload, and EU

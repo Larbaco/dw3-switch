@@ -29,6 +29,7 @@ def turbo_bin(tmp_path_factory, request) -> Path:
         str(ROOT / "tools" / "tests" / "turbo_main.c"),
         str(ROOT / "port" / "options" / "turbo.c"),
         str(ROOT / "port" / "options" / "port_options.c"),
+        str(ROOT / "port" / "options" / "options_cfg.c"),
         f"-I{ROOT / 'port' / 'include'}",
     ]
     build = subprocess.run(cmd, capture_output=True, text=True)

@@ -1,0 +1,61 @@
+Upstream-bound: no
+Subject: [PORT_HOST] Test hook: DW3_FORCE_ITEMS fills the bag when the field menu starts
+
+Debug aid for the replay tests (like the P7.7 hooks of patch 0064): a new
+game's bag is empty, and an empty list never opens the item panel, so the
+Items screen crash of patch 0069 could not be reached without playing for
+drops. DW3_FORCE_ITEMS=<first>-<last>[:<count>] (PC only, ids 1..402,
+default count 3, a count outside 1..99 is 3) sets GAME.items of every id in
+the range when STSTATUS_createMenu runs, i.e. each time the field menu's
+screens mode starts. Logs "dw3: DW3_FORCE_ITEMS items A..B xN" on stderr.
+Unset (every release, and the Switch, which has no environment) it does
+nothing.
+
+diff -ruN a/src/menus/field_menu/menu.c b/src/menus/field_menu/menu.c
+--- a/src/menus/field_menu/menu.c
++++ b/src/menus/field_menu/menu.c
+@@ -3,7 +3,9 @@
+ 
+ #include "menus/field_menu.h"
+ #if PORT_HOST
++#include <stdio.h>
+ #include "port_widescreen.h"
++char *getenv(const char *name);
+ #endif
+ 
+ #include "shared/set_scroll_bar_x.inc.c"
+@@ -115,6 +117,34 @@
+    half of the game's in the late game */
+ FieldMenuScreen *STSTATUS_createMenu(void) {
+     FieldMenuScreen *menu = createTask(STSTATUS_updateMenu, sizeof(FieldMenuScreen), sizeof(FieldMenuScreenChildren));
++#if PORT_HOST
++    {
++        /* Test hook: DW3_FORCE_ITEMS=<first>-<last>[:<count>] puts that many (default 3) of
++           each item id of the range into the bag when the field menu's mode starts, so a
++           replay can open the item lists without playing for drops. */
++        const char *forced = getenv("DW3_FORCE_ITEMS");
++        int first = 0;
++        int last = 0;
++        int count = 3;
++        int i;
++
++        if (forced != NULL && sscanf(forced, "%d-%d:%d", &first, &last, &count) >= 2) {
++            if (first < 1) {
++                first = 1;
++            }
++            if (last > 0x192) {
++                last = 0x192;
++            }
++            if (count < 1 || count > 99) {
++                count = 3;
++            }
++            for (i = first; i <= last; i++) {
++                GAME.items[i] = count;
++            }
++            fprintf(stderr, "dw3: DW3_FORCE_ITEMS items %d..%d x%d\n", first, last, count);
++        }
++    }
++#endif
+ 
+     menu->layer = SCREEN_LAYER;
+     menu->gameHalf = STSTATUS_areaFuncs.getGameHalf();

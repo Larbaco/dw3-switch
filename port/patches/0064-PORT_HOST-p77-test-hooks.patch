@@ -1,0 +1,211 @@
+Upstream-bound: no
+Subject: [PORT_HOST] P7.7 test hooks: DW3_LANGUAGE, DW3_FORCE_FORM, DW3_FORCE_TECH, DW3_FORCE_STEAL, DW3_FORCE_HIT, DW3_FORCE_ENEMY_ITEM / _HP
+
+Debug aids for the P7.7 replay scenarios, in the style of the P3.3 hooks
+(DW3_FORCE_ENCOUNTER, DW3_FORCE_PARTY). All are read from the environment
+under PORT_HOST and do nothing when unset, so a normal run and every
+existing replay scenario are bit-identical. The Switch build has no
+environment.
+
+* DW3_LANGUAGE=<0-6> (EU only, newGame, before initNewGameData): sets LANGUAGE for a run
+  that boots past the country select (2 English, 3 French, 5 German,
+  4 Italian, 6 Spanish, the values of CNTY_SEL_languages), to look at the
+  battle texts of each language.
+* DW3_FORCE_FORM=<Digimon id> (WFIGHTMN addFighters): the first partner
+  starts the battle as that Digimon, what the field menu's battle
+  digivolution (Partner.battleDigivolve) does, e.g. 386 Dinohumon for
+  Kotemon.
+* DW3_FORCE_NICKNAME=<letters> (same place): the first partner is called that
+  (GAME.partners[].info.name, what the Nickname Shop sets).
+* DW3_FORCE_ENEMY_ITEM=<item> / DW3_FORCE_ENEMY_HP=<hp> (WFIGHTMN_initFighters):
+  the first enemy holds that item and has that (max) HP.
+* DW3_FORCE_TECH=<tech id> (FIGHTSTG_startTechAction): the partner's technique
+  action uses that technique (127 Picking Claw, 128 Snapping Claw).
+* DW3_FORCE_HIT=1 (FIGHTSTG_rollHit): the partner's techniques always hit.
+* DW3_FORCE_STEAL=1 (FIGHTSTG_rollSteal): the steal roll of a partner
+  technique succeeds, so a replay does not depend on the enemy's item chance.
+
+--- a/src/engine/game/state.c
++++ b/src/engine/game/state.c
+@@ -42,6 +42,25 @@
+             }
+         }
+     }
++#if VERSION_EU
++    {
++        /* P7.7: DW3_LANGUAGE=<0-6> (CNTY_SEL_languages: 2 English, 3 French,
++         * 5 German, 4 Italian, 6 Spanish) picks the text language of a run
++         * that boots past the country select, before initNewGameData copies
++         * the partners' names, so a replay can look at each language's text. */
++        const char *lang = getenv("DW3_LANGUAGE");
++
++        if (lang != NULL && lang[0] != '\0') {
++            char *end = NULL;
++            long n = strtol(lang, &end, 0);
++
++            if (end != lang && n >= 0 && n <= 6) {
++                LANGUAGE = (s32)n;
++                fprintf(stderr, "dw3: LANGUAGE=%ld (DW3_LANGUAGE)\n", n);
++            }
++        }
++    }
++#endif
+ #endif
+     GAME.digivolveDemo = 1;
+     GAME.countdown[0] = 1;
+--- a/src/battle/normal_battle/menu.c
++++ b/src/battle/normal_battle/menu.c
+@@ -8,6 +8,7 @@
+ #if PORT_HOST
+ #include <stdio.h>
+ char *getenv(const char *name);
++long strtol(const char *nptr, char **endptr, int base);
+ #endif
+ 
+ /* Sets the battle's kind from the mode it came from and the battle: the
+@@ -49,6 +50,33 @@
+     } else {
+         digimon = DIGIMON_DATA[partner].id;
+     }
++#if PORT_HOST
++    {
++        /* P7.7 test hook: DW3_FORCE_FORM=<Digimon id> starts the first partner
++         * as that Digimon (what the field menu's battle digivolution does),
++         * to look at the HUD name without playing up to a digivolution. */
++        const char *form = getenv("DW3_FORCE_FORM");
++
++        if (form != NULL && form[0] != '\0') {
++            digimon = (s32)strtol(form, NULL, 0);
++            fprintf(stderr, "dw3: DW3_FORCE_FORM partner starts as Digimon id %d\n", (int)digimon);
++        }
++        /* DW3_FORCE_NICKNAME=<letters> gives the first partner that nickname
++         * (what the Nickname Shop stores in GAME.partners[].info.name), in the
++         * game's text codes (A = 0x0E, a = 0x28) */
++        form = getenv("DW3_FORCE_NICKNAME");
++        if (form != NULL && form[0] != '\0') {
++            char *name = GAME.partners[partner].info.name;
++            s32 n = 0;
++
++            for (; form[n] != '\0' && n < 16; n++) {
++                name[n] = form[n] >= 'a' ? form[n] - 'a' + 0x28 : form[n] - 'A' + 0x0E;
++            }
++            name[n] = 0;
++            fprintf(stderr, "dw3: DW3_FORCE_NICKNAME partner %d is called %s\n", (int)partner, form);
++        }
++    }
++#endif
+     children->models->add(children->models, 0, digimon, 1);
+     children->models->face(children->models, 0);
+     children->models->add(children->models, 0x10, BATTLE_SETUP.enemies[0].fighter, 1);
+--- a/src/battle/normal_battle/setup.c
++++ b/src/battle/normal_battle/setup.c
+@@ -2,6 +2,11 @@
+    ambush roll, the WFIGHTMN_RECOVERY_ITEM checks and the record of who fought. */
+ 
+ #include "battle/normal_battle.h"
++#if PORT_HOST
++#include <stdio.h>
++char *getenv(const char *name);
++long strtol(const char *nptr, char **endptr, int base);
++#endif
+ 
+ /* Sets up the display and the battle's layers */
+ void WFIGHTMN_createLayers(void) {
+@@ -53,6 +58,24 @@
+             }
+         }
+     }
++#if PORT_HOST
++    {
++        /* P7.7 test hooks: DW3_FORCE_ENEMY_ITEM=<item> gives the first enemy
++         * that item to hold, DW3_FORCE_ENEMY_HP=<hp> sets its (max) HP, so a
++         * replay can knock it out with one technique. */
++        const char *item = getenv("DW3_FORCE_ENEMY_ITEM");
++        const char *hp = getenv("DW3_FORCE_ENEMY_HP");
++
++        if (item != NULL && item[0] != '\0') {
++            units[0].item = (s32)strtol(item, NULL, 0);
++            fprintf(stderr, "dw3: DW3_FORCE_ENEMY_ITEM enemy 0 holds item %d\n", (int)units[0].item);
++        }
++        if (hp != NULL && hp[0] != '\0') {
++            units[0].hp = units[0].maxHp = (s16)strtol(hp, NULL, 0);
++            fprintf(stderr, "dw3: DW3_FORCE_ENEMY_HP enemy 0 hp %d\n", (int)units[0].hp);
++        }
++    }
++#endif
+ }
+ 
+ /* Checks the chance in BATTLE_SETUP.ambushChance, scaled by how far the first
+--- a/src/battle/battle_mode/rolls.c
++++ b/src/battle/battle_mode/rolls.c
+@@ -2,6 +2,10 @@
+    running away and the statuses' own tests. */
+ 
+ #include "battle/battle_mode.h"
++#if PORT_HOST
++#include <stdio.h>
++char *getenv(const char *name);
++#endif
+ 
+ /* Whether a physical hit is critical: a chance of 4 in 128 with the
+    technique's critical boost or the accessory's, more against the target's
+@@ -139,6 +143,12 @@
+     def = &FIGHTSTG_battleFuncs.stats[1];
+     entry = &TECHS[id - 1];
+     if (side == 0) {
++#if PORT_HOST
++        /* P7.7 test hook: DW3_FORCE_HIT=1 makes the partner's technique hit */
++        if (getenv("DW3_FORCE_HIT") != NULL) {
++            return 1;
++        }
++#endif
+         if (FIGHTSTG_battle.state.kind == BATTLE_KIND_FINAL_LAST) {
+             return (RANDOM.next() & 0x7F) >= 0x2B;
+         }
+@@ -338,6 +348,14 @@
+         if (FIGHTSTG_battle.state.fighters[1][FIGHTSTG_battle.state.active[1]].item <= 0) {
+             return 0;
+         }
++#if PORT_HOST
++        /* P7.7 test hook: DW3_FORCE_STEAL=1 makes the steal roll succeed, so a
++         * replay does not depend on the item chance of the enemy */
++        if (getenv("DW3_FORCE_STEAL") != NULL) {
++            fprintf(stderr, "dw3: DW3_FORCE_STEAL roll succeeds for tech %d\n", (int)id);
++            return 1;
++        }
++#endif
+         FIGHTSTG_computeStats(SIDE_PLAYER, 1, FIGHTSTG_battle.state.active[0]);
+         FIGHTSTG_computeStats(SIDE_ENEMY, 0, FIGHTSTG_battle.state.active[1]);
+     } else {
+--- a/src/battle/battle_mode/tech_action.c
++++ b/src/battle/battle_mode/tech_action.c
+@@ -2,6 +2,11 @@
+    and the boosts and statuses it gives. */
+ 
+ #include "battle/battle_mode.h"
++#if PORT_HOST
++#include <stdio.h>
++char *getenv(const char *name);
++long strtol(const char *nptr, char **endptr, int base);
++#endif
+ 
+ /* the techniques that boost a stat of a fighter (FIGHTSTG_updateTechAction): the user's,
+    or the enemy's for an amount below 0 */
+@@ -785,5 +790,17 @@
+ 
+     task->side = side;
+     task->tech = tech;
++#if PORT_HOST
++    if (side == 0) {
++        /* P7.7 test hook: DW3_FORCE_TECH=<tech id> makes the partner's next
++         * technique action use that technique, whatever the menu picked */
++        const char *forced = getenv("DW3_FORCE_TECH");
++
++        if (forced != NULL && forced[0] != '\0') {
++            task->tech = (s32)strtol(forced, NULL, 0);
++            fprintf(stderr, "dw3: DW3_FORCE_TECH partner uses tech %d (menu picked %d)\n", (int)task->tech, (int)tech);
++        }
++    }
++#endif
+     return task;
+ }

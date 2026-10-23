@@ -6,11 +6,14 @@
 
 /* Layout of the Port options screen in canvas pixels. Must cover everything
  * options_screen() draws for its FOCUS / VALUE / DESCRIPTION layers; the
- * unit test proves it against the full reference render. */
+ * unit test proves it against the full reference render. Eight rows of 38 px
+ * on a 42 px pitch (title_overlay_art.c OPT_ROW_*): the window is 600 px
+ * high, y 60..660, inside the 720 px canvas. The value cell starts at 560: the
+ * widest word, "Command+Tech", is 214 px wide and ends at 780. */
 enum {
-    ROW_X = 132, ROW_Y = 212, ROW_W = 696, ROW_H = 52, ROW_STEP = 68,
-    VALUE_X = 684, VALUE_W = 144,
-    DESC_Y = 500,
+    ROW_X = 132, ROW_Y = 150, ROW_W = 696, ROW_H = 38, ROW_STEP = 42,
+    VALUE_X = 560, VALUE_W = 268,
+    DESC_Y = 524, DESC_H = 52,
 };
 
 static uint8_t *g_static;
@@ -31,7 +34,7 @@ static Dw3OptionsRect value_rect(int row) {
     return (Dw3OptionsRect){VALUE_X, ROW_Y + ROW_STEP * row, VALUE_W, ROW_H};
 }
 static Dw3OptionsRect description_rect(void) {
-    return (Dw3OptionsRect){ROW_X, DESC_Y, ROW_W, ROW_H};
+    return (Dw3OptionsRect){ROW_X, DESC_Y, ROW_W, DESC_H};
 }
 
 static int intersect(Dw3OptionsRect a, Dw3OptionsRect b, Dw3OptionsRect *out) {

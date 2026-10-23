@@ -203,8 +203,27 @@ def check_restores(log_text: str, expect):
     return problems
 
 
+def check_log_expect(expect, phase_idx: int, text: str, forbid=()):
+    """Problems for the manifest's expect_log entries of one phase: each
+    (phase index, regex) must match somewhere in that phase's log, and no
+    forbid_log regex may."""
+    return ([f"log line /{rx}/ not found" for idx, rx in expect
+             if idx == phase_idx and not re.search(rx, text)] +
+            [f"log line /{rx}/ must not appear" for idx, rx in forbid
+             if idx == phase_idx and re.search(rx, text)])
+
+
+def write_seed_cfg(cfgdir: Path, cfg):
+    """Seed port_options.cfg (P9.4 format) with the manifest's keys."""
+    lines = ["# seeded by the replay runner", "version=1"]
+    lines += [f"{k}={v}" for k, v in cfg]
+    lines.append("end=1")
+    (cfgdir / "port_options.cfg").write_text("\n".join(lines) + "\n")
+
+
 def run_phase(rec: Path, version, binary, runtime, display, outdir: Path, memdir: Path,
-              stamp, label, timeout, stall, turbo, sample_rss=True):
+              stamp, label, timeout, stall, turbo, sample_rss=True, cfgdir: Path | None = None,
+              extra_env=()):
     """One process run. Returns a dict with rc/verdict/seconds/frames/rss/log."""
     outdir.mkdir(parents=True, exist_ok=True)
     xdg = Path(tempfile.mkdtemp(prefix="dw3-replay-xdg-"))
@@ -214,10 +233,20 @@ def run_phase(rec: Path, version, binary, runtime, display, outdir: Path, memdir
                DW3_MEMCARD_DIR=str(memdir),
                DW3_REPLAY=str(rec),
                DW3_REPLAY_OUT=str(outdir), DW3_REPLAY_XSHOT="1")
-    for k in ("DW3_AUTO_PAD", "DW3_REPLAY_RECORD", "DW3_PC_INTERNAL_RES", "DW3_TURBO"):
+    for k in ("DW3_AUTO_PAD", "DW3_REPLAY_RECORD", "DW3_PC_INTERNAL_RES", "DW3_TURBO",
+              "DW3_CONFIG_DIR", "DW3_WIDESCREEN", "DW3_MUSIC_VOLUME", "DW3_SFX_VOLUME",
+              "DW3_ENCOUNTER_RATE", "DW3_TEXT_SPEED", "DW3_START_MODE", "DW3_PROGRESS",
+              "DW3_FORCE_NPC_ACTION", "DW3_OVERLAY_STRICT", "DW3_FORCE_ENCOUNTER",
+              "DW3_FORCE_PARTY", "DW3_FORCE_WIN", "DW3_AUTO_DOOR_MODE",
+              "DW3_AUTO_DOOR_FRAMES", "DW3_LANGUAGE", "DW3_FORCE_FORM", "DW3_FORCE_NICKNAME",
+              "DW3_FORCE_TECH", "DW3_FORCE_HIT", "DW3_FORCE_STEAL", "DW3_FORCE_ENEMY_ITEM",
+              "DW3_FORCE_ENEMY_HP", "DW3_EXTRA_TECHS", "DW3_FORCE_ITEMS", "DW3_PACING_TRACKED"):
         env.pop(k, None)
+    if cfgdir is not None:  # P9.4: never read or write the owner's port_options.cfg
+        env["DW3_CONFIG_DIR"] = str(cfgdir)
     if turbo:
         env["DW3_TURBO"] = str(turbo)
+    env.update(dict(extra_env))  # manifest Scenario.env (debug aids)
     log = outdir / f"{stamp}-{label}.log"  # rule 9: timestamped logs kept
     t0 = time.time()
     last_frame, last_progress = 0, t0
@@ -307,8 +336,10 @@ def shot_names(name):
                 raise ValueError(f"{rec}:{number}: duplicate checkpoint name {fields[2]!r}")
             seen_names.add(fields[2])
             shots.append(fields[2])
-    if not shots:
+    if not shots and not (sc and sc.log_only):
         raise ValueError(f"scenario has no checkpoints: {name}")
+    if shots and sc and sc.log_only:
+        raise ValueError(f"log-only scenario has checkpoints: {name}")
     return shots
 
 
@@ -319,6 +350,9 @@ def run_scenario(sc, binary, runtime, out: Path, stamp, label, stall, timeout_sc
     sdir = out / label
     sdir.mkdir(parents=True, exist_ok=True)
     memdir = Path(tempfile.mkdtemp(prefix="dw3-replay-mc-"))
+    cfgdir = Path(tempfile.mkdtemp(prefix="dw3-replay-cfg-"))   # shared by the phases
+    if sc.cfg:
+        write_seed_cfg(cfgdir, sc.cfg)
     xvfb, display = start_xvfb(sdir)
     results = []
     try:
@@ -326,7 +360,7 @@ def run_scenario(sc, binary, runtime, out: Path, stamp, label, stall, timeout_sc
             r = run_phase(SCEN_DIR / f"{phase}.rec", sc.version, binary, runtime, display,
                           sdir, memdir, stamp, f"{sc.name}-p{i + 1}" if len(sc.phases) > 1 else sc.name,
                           int(sc.timeout * timeout_scale), stall, 0 if no_turbo else sc.turbo,
-                          sample_rss=True)
+                          sample_rss=True, cfgdir=cfgdir, extra_env=sc.env)
             r["phase"] = phase
             results.append(r)
             if r["verdict"] != "OK":
@@ -338,6 +372,7 @@ def run_scenario(sc, binary, runtime, out: Path, stamp, label, stall, timeout_sc
         except subprocess.TimeoutExpired:
             xvfb.kill()
         shutil.rmtree(memdir, ignore_errors=True)
+        shutil.rmtree(cfgdir, ignore_errors=True)
     return results, sdir
 
 
@@ -358,6 +393,16 @@ def judge_scenario(sc, results, sdir, refs: Path, checkpoints, update, labelname
     probs = check_restores(log_text, sc.expect_restore)
     for p in probs:
         rows.append((name, "(markers)", "FAIL", p))
+    log_probs = 0
+    for i, r in enumerate(results):
+        for p in check_log_expect(sc.expect_log, i, r["log"].read_text(errors="replace"),
+                                  sc.forbid_log):
+            log_probs += 1
+            rows.append((name, f"(log p{i + 1})", "FAIL", p))
+    if (sc.expect_log or sc.forbid_log) and not log_probs and len(results) == len(sc.phases):
+        rows.append((name, "(log)", "PASS",
+                     f"{len(sc.expect_log)} expected log line(s) found, "
+                     f"{len(sc.forbid_log)} forbidden line(s) absent"))
     if not probs and (sc.expect_restore or results):
         rows.append((name, "(markers)", "PASS",
                      f"{len(parse_restores(log_text))} overlay restores, none unknown"))

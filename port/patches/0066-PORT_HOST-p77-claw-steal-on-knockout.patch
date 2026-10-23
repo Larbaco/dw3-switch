@@ -1,0 +1,91 @@
+Upstream-bound: no
+Subject: [PORT_HOST] P7.7 Picking Claw / Snapping Claw steal on the killing blow
+
+Techniques 127 (Picking Claw) and 128 (Snapping Claw) have the effect
+TECH_EFFECT_STEAL. FIGHTSTG_startAction rolls it up front (FIGHTSTG_trySteal /
+FIGHTSTG_rollSteal, which spends the random numbers and marks
+FIGHTSTG_action.effects[TECH_EFFECT_STEAL]); the item moves to the bag, with
+the "Stole <item>!" message, only when FIGHTSTG_updateActionEvents runs
+(stealEnemyItem). FIGHTSTG_updateTechAction starts those events only when
+task->step is 0, and dealTechDamage sets step to 1 when the hit leaves the
+enemy at 0 HP (queueing its knock-out). So when the claw is the killing blow
+the events are skipped: a steal the game already rolled as a success is
+dropped without a message and the item stays on the enemy.
+
+With a knocked-out target the port now starts the events anyway, after
+clearing every effect except the steal (a status such as poison must not be
+applied to a fighter that is down), and ends the action the way the
+knock-out path does: no wake-up test and no counter motion (new substate 10
+of FIGHTSTG_updateTechAction). The knock-out event is still queued first and
+is handled by the battle menu once the action task is gone, so "Stole <item>!"
+comes before "Defeated!" and stealEnemyItem still sees the fighter that was
+hit. No random number is spent that was not spent before, and a steal that
+did not succeed, or a claw that does not kill, runs exactly the old path.
+The same TechData and code are on the US and EU discs. The player's first
+technique (FIGHTSTG_updateFirstTech) has the same skip, but no partner has a
+claw as skills[0] (only Growlmon, WarGrowlmon and the Digimon 369 learn them),
+so it is left alone.
+
+dw3-p77: log lines (stderr, PC) say when a steal happens and when it is the
+knocked-out path.
+
+
+--- a/src/battle/battle_mode/tech_action.c
++++ b/src/battle/battle_mode/tech_action.c
+@@ -730,6 +730,34 @@
+                         break;
+                     }
+                 }
++#if PORT_HOST
++                else if ((tech->icon == TECH_PHYSICAL || tech->icon == TECH_MAGIC) && task->step != 0 &&
++                         FIGHTSTG_action.effects[TECH_EFFECT_STEAL] != 0) {
++                    /* P7.7: the hit knocked the enemy out (step 1), which skips
++                     * the action's events, so a Picking / Snapping Claw whose
++                     * steal roll succeeded lost its item with no message.
++                     * Run the events with only the steal left, then end the
++                     * action as the knock-out path does (no wake-up, no
++                     * counter motion). */
++                    s32 e;
++
++                    for (e = 0; e < 0x25; e++) {
++                        if (e != TECH_EFFECT_STEAL) {
++                            FIGHTSTG_action.effects[e] = 0;
++                        }
++                    }
++                    fprintf(stderr, "dw3-p77: claw steal on a knocked-out enemy (tech %d)\n", (int)task->tech);
++                    children[0].events = FIGHTSTG_startActionEvents(task->side);
++                    task->setSubstate(task, 10);
++                    break;
++                }
++#endif
++                task->state = 3;
++            }
++            break;
++        case 10:
++            /* P7.7: the steal on a knocked-out enemy is shown; end the action */
++            if (children[0].task == NULL) {
+                 task->state = 3;
+             }
+             break;
+--- a/src/battle/battle_mode/action_events.c
++++ b/src/battle/battle_mode/action_events.c
+@@ -1,12 +1,19 @@
+ /* FIGHTSTG's action events: the task that runs the events an action queued. */
+ 
+ #include "battle/battle_mode.h"
++#if PORT_HOST
++#include <stdio.h>
++#endif
+ 
+ /* Takes the enemy's item into the bag (up to 99) and says so. */
+ static inline void stealEnemyItem(ActionEvents *task, BattleChild *children) {
+     BattleFighter *enemy = &FIGHTSTG_battle.state.fighters[1][FIGHTSTG_battle.state.active[1]];
+ 
+     task->args[0] = enemy->item;
++#if PORT_HOST
++    fprintf(stderr, "dw3-p77: steal item %d from enemy slot %d (hp %d)\n", (int)enemy->item,
++            (int)FIGHTSTG_battle.state.active[1], (int)enemy->hp);
++#endif
+     children[0].message->show(children[0].message, 0x11, task->args);
+     GAME.items[enemy->item]++;
+     if (GAME.items[enemy->item] >= 100) {

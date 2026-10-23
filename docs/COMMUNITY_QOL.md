@@ -164,16 +164,16 @@ languages; new US strings English only).
 | Faster battle text, auto-close boxes, skip speech scroll (Flawe) | Viable | P6.18 / P7.4 option |
 | Fast Start, Pack D starter customizer (guiomatos), skip Folder Bag | Viable | P7.4 (already in subset) |
 | Share EXP after Seiryu, EXP x1.3 / DV EXP x1.2, uncapped DV EXP | Viable | P7.4 (Exp Share) + P7.6 rate option |
-| Fixed Field Moves, Improved HP Proxy, Picking/Snapping Claw KO fix | Viable | P7.4 bugfix class; P7.7 for the Claw fix |
+| Fixed Field Moves, Improved HP Proxy, Picking/Snapping Claw KO fix | Viable | P7.4 bugfix class; the Claw fix is done in P7.7 (patch `0066`, [P7.7_BUG_FIXES.md](P7.7_BUG_FIXES.md)) |
 | HP/MP restore on level up | Viable | P7.6 option |
 | Enemy HP, partner MP, technique attribute/power/cost colours, DV stats panel, EXP-to-next | Viable | P7.8 battle info HUD option |
-| Battle menu remembers last command; custom technique order | Viable | P7.9 |
-| Active Digivolution name in battle; reward text "1IT/1EXP" fix | Viable | P7.7 (EU-only text bug: check US) |
+| Battle menu remembers last command; custom technique order | Viable | P7.9: the memory is built (patch `0067`, the **Battle cursor** row of the Options screen, key `battle_menu_memory`, [P7.9_BATTLE_MENU_MEMORY.md](P7.9_BATTLE_MENU_MEMORY.md)); the technique order is deferred |
+| Active Digivolution name in battle; reward text "1IT/1EXP" fix | Name: done (P7.7, patch `0065`). Reward text: not reproduced on the stock US or EU discs | [P7.7_BUG_FIXES.md](P7.7_BUG_FIXES.md) |
 | Training without RNG + timing minigame + Fast Training | Viable, game design change | P7.10 option, off by default |
 | Fast Travel from map (Square opens map), quest log HUD, NPC quest/battle bubbles, walkthrough in 5 languages | Viable | P7.4 FastTravel + P7.11 guidance |
 | L1/R1 change leader in field | Viable | P7.11 (check clash with P6.12 mapping) |
-| Save from the Start menu; correct location name on save | Viable | P6.14 covers the menu; P7.7 for the label |
-| Remove redundant location screens; Square map glitch fix | Viable | P7.13 / P7.7 |
+| Save from the Start menu; correct location name on save | Viable | P6.14 covers the menu; the wrong label only exists for a save outside the 25 save points (mode 0xC00), see [P7.7_BUG_FIXES.md](P7.7_BUG_FIXES.md) |
+| Remove redundant location screens; Square map glitch fix | Viable | P7.13; the stock field reads no Square, so the glitch belongs to FastTravel (P7.4), see [P7.7_BUG_FIXES.md](P7.7_BUG_FIXES.md) |
 | Auction / DRI notifications, DigiLab DV requirement routes, shop stat bonuses in descriptions | Viable | P7.11 |
 | Postgame without epic weapons, Baronmon/TNT and Admin Center shortcuts | Viable | P7.4 (markisha64 items) |
 | Name limit 8 to 10 chars | Viable but risky | P7.12; save layout and text boxes must hold 10 chars on US and EU |

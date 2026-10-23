@@ -34,7 +34,7 @@ lives in its doc, not in the entry below.
 | P3.1–P3.9 | Game bring-up on PC | done | [P3_GATE](P3_GATE.md), [P3_EU_BUILD](P3_EU_BUILD.md), P3.x docs |
 | P4.1 | Backend spike | done | [SWITCH_BACKEND](SWITCH_BACKEND.md) |
 | P4.2 | Video | done | [P4.2](P4.2_VIDEO.md) |
-| P4.3 | Audio | in progress | [P4.3](P4.3_AUDIO.md) |
+| P4.3 | Audio | in progress (BGM plays only once: bug found on the OLED, fix in a separate PR; no underrun count yet) | [P4.3](P4.3_AUDIO.md) |
 | P4.4 | Input | done | [P4.4](P4.4_INPUT_STATUS.md) |
 | P4.5 | Filesystem + log + time | done | [P4.5](P4.5_STATUS.md) |
 | P4.6 | Static modules on Switch | in progress | [P4.6](P4.6_MODULES_STATUS.md) |
@@ -42,12 +42,12 @@ lives in its doc, not in the entry below.
 | P5.1 | Memory budget | in progress | [P5.1](P5.1_MEMORY.md) |
 | P5.2 | Performance pass | done | [P5.2](P5.2_BATTLE_GPU.md) |
 | P5.3 | Save handling | done | [P5.3](P5.3_FLAT_SAVE.md) |
-| P5.4 | Error reporting | in progress | [P5.4](P5.4_CRASH.md) |
+| P5.4 | Error reporting | in progress (done-when met on the OLED, US + EU; PR 2: boot notice + assert open) | [P5.4](P5.4_CRASH.md) |
 | P5.5 | Stage sweep on hardware | open | — |
 | P6.1 | Scaling / widescreen | in progress | [P6.1](P6.1_WIDESCREEN.md) |
 | P6.2 | PAL/NTSC, EU/US, language at boot | in progress | [P3_EU_BUILD](P3_EU_BUILD.md) |
 | P6.3 | PGXP-style vertex precision | open | — |
-| P6.4 | Fast-forward | in progress | [P6.4](P6.4_FAST_FORWARD.md) |
+| P6.4 | Fast-forward | in progress (OLED turbo works in battle on the US disc, rc7; tick is the owner's call) | [P6.4](P6.4_FAST_FORWARD.md) |
 | P6.5 | Release packaging | done | [P6.5](P6.5_PACKAGING.md), [RELEASES](RELEASES.md) |
 | P6.6 | Localization goal | open | — |
 | P6.7 | Language packs (PT-BR first) | open | — |
@@ -55,14 +55,18 @@ lives in its doc, not in the entry below.
 | P6.9 | Restart-game hotkey | in progress | [P6.9](P6.9_RESTART.md) |
 | P6.10 | Hardware render outside battle | future | [P5.2](P5.2_BATTLE_GPU.md) |
 | P6.11 | Internal resolution scaling | future | [PC README](../platforms/pc/README.md) |
-| P6.12–P6.14, P6.16–P6.21 | Backlog goal notes | future | [backlog](#backlog--future-goals) |
+| P6.12–P6.14, P6.16, P6.19–P6.21 | Backlog goal notes | future | [backlog](#backlog--future-goals) |
 | P6.15 | Regression replay tests | in progress | [P6.15](P6.15_REPLAY_TESTS.md) |
+| P6.17 | Music / SFX volume | in progress (owner: volume options work, rc6 EU / rc7 US; relaunch check open) | [P6.17](P6.17_VOLUME.md) |
+| P6.18 | Pacing options | in progress (Instant text confirmed on the US OLED, rc7; rest of the OLED check open) | [P6.18](P6.18_PACING.md) |
 | P7.1 | Inventory and boundaries | done | [COMMUNITY_QOL](COMMUNITY_QOL.md) |
 | P7.2 | Patched EU disc as data source | open | [COMMUNITY_QOL](COMMUNITY_QOL.md) |
 | P7.3 | Binary-patch limits | in progress | [COMMUNITY_QOL](COMMUNITY_QOL.md) |
 | P7.4 | Feature parity (native) | open | [COMMUNITY_QOL](COMMUNITY_QOL.md) |
 | P7.5 | Companion (optional) | open | [COMMUNITY_QOL](COMMUNITY_QOL.md) |
-| P7.6–P7.14 | Backlog goal notes | future | [backlog](#backlog--future-goals) |
+| P7.6, P7.8–P7.14 | Backlog goal notes | future | [backlog](#backlog--future-goals) |
+| P7.7 | Bug and text fixes | in progress (2 of 5 fixed; Claw steal and HUD name not yet checked on the OLED) | [P7.7](P7.7_BUG_FIXES.md) |
+| P7.9 | Battle menu memory | in progress (part A confirmed on the US OLED, rc7; part B deferred) | [P7.9](P7.9_BATTLE_MENU_MEMORY.md) |
 | P8.1 | Texture pack goal note | done | [TEXTURE_PACKS](TEXTURE_PACKS.md) |
 | P8.2 | Pack layout | open | [TEXTURE_PACKS](TEXTURE_PACKS.md) |
 | P8.3 | Formats and scaling | open | [TEXTURE_PACKS](TEXTURE_PACKS.md) |
@@ -73,11 +77,14 @@ lives in its doc, not in the entry below.
 | P9.4 | Persistence (blocks many goals) | open | [PORT_OPTIONS](PORT_OPTIONS.md) |
 | P9.5 | Wire real features | in progress | [PORT_OPTIONS](PORT_OPTIONS.md) |
 | P9.6 | External save converter | open | — |
+| P9.7 | Port options reachable in game (future goal) | future | [roadmap](#phase-9--port-options-menu) |
+| P9.8 | Confirm / cancel layout option (PS positional or Nintendo A/B) (future goal) | future | [roadmap](#phase-9--port-options-menu), [HOTKEYS](HOTKEYS.md) |
 | P10.1 | Switch features goal note | done | [SWITCH_FEATURES](SWITCH_FEATURES.md) |
-| P10.2 | Lifecycle hardening (has P5.3's leftover) | open | [SWITCH_FEATURES](SWITCH_FEATURES.md) |
+| P10.2 | Lifecycle hardening (has P5.3's leftover) | in progress (sleep and resume confirmed on the OLED, rc7; HOME during a save write and the focus log open) | [SWITCH_FEATURES](SWITCH_FEATURES.md) |
 | P10.3 | Presentation modes | open | — |
 | P10.4 | Rumble polish (optional) | open | — |
 | P10.5 | Extra applets (optional) | open | — |
+| P10.6 | Switch-style button glyphs (future goal) | future | [roadmap](#phase-10--native-switch-features-residual), [TEXTURE_PACKS](TEXTURE_PACKS.md) |
 
 **Language matrix.** The EU disc has 7 `LANGUAGE` slots: 0 JPN, 1 USA,
 2 ENG, 3 FRA, 4 ITA, 5 GER, 6 SPN (`STAGSLCT_regionNames`). The EU country
@@ -211,6 +218,15 @@ the host, replace MIPS-only pieces, and reach the title screen on PC.
   Done when: two different overlays and the same overlay twice behave as
   on PS1 (globals reset vs. preserved) — verified by the host fixture
   test. Full title link/boot is P2.8 / E6.
+  Follow-up (2026-10-22, patch `0061`): a failed restore (file id not in
+  the host table) used to print only the `kind=unknown UNKNOWN` marker
+  while the loader still recorded the id as loaded. It now adds a
+  `dw3: ERROR` line, leaves the latch at `-1` (the next load restores
+  again), and aborts in strict mode (every replay run, the Switch replay
+  build, `DW3_OVERLAY_STRICT=1`). Checked: the same-sub skip across
+  battles matches the PS1 (every battle exit is a mode change, which
+  resets the sub latch), so `WFIGHTMN` is restored per battle; regression
+  scenarios `us/eu-two-battles` (PC). See `port/overlays/README.md`.
 - [x] **P2.7 Memory card → file.** `port/memcard/`: 128 KiB PS1-format
   `.mcr` per slot (`memcard_host_*` sector API matching libcard).
   Engine path: `memcard_libmcrd.c` (`MemCard*`) + `--wrap=_card_read/
@@ -406,6 +422,13 @@ console.
   and correct XA audio on preview.21 (P3.7). Owner to decide whether a
   listen is enough, or to set a number (for example 0 underruns over 10 min
   of field and battle in the nxlink log).
+  **New bug, in progress (2026-10-23, owner OLED, US, preview.30-rc7):**
+  the **background music plays only once and then stops**, in the field, in
+  the inn and in battle. The suspected cause is the loop count of the SEQ/SEP
+  sequences (the NRPN loop controller, still listed as thin in
+  [P3.6_AUDIO.md](P3.6_AUDIO.md)). Being fixed in a separate PR; this entry
+  only records it, nothing was changed or verified here. It also matters for
+  P6.17 (a long listen on the OLED). Still no underrun count.
 - [x] **P4.4 Input.** `hid` → PS1 pad bits, including the digital/analog
   modes `PadInfoMode`/`PadSetMainMode` expect; rumble via `PadSetAct` →
   HD rumble (optional).
@@ -466,6 +489,11 @@ speed.
   footprint, and newlib `mallinfo` at the ~1 Hz `frame dt` cadence
   (`mem dbg:` line + HUD lines). See [P5.1_MEMORY.md](P5.1_MEMORY.md).
   This is measurement only — not a proven 2h flat session.
+  **rc7 OLED log (2026-10-23, US, handheld):** 1707 `mem dbg` samples (about
+  30 minutes of play plus one sleep). The game heap high-water stays at 1685K
+  of 8192K, the file cache at 1259K and newlib at 144435K; after the opening
+  the heap sits at 1334K to 1398K. Flat, but far short of 2 hours, so the
+  done-when is not met.
 - [x] **P5.2 Performance pass.** Profile GTE/GPU emulation and the
   drawing path on handheld clocks. Decide software vs. a GL renderer.
   The frame-time check that used to be the P4.2 done-when lives here.
@@ -485,6 +513,13 @@ speed.
   with the HUD: navigation improved but remains somewhat slow. This is a
   partial gain, not completion. Cached component/GPU composition is proposed
   in [MENU_COMPOSITION_INVESTIGATION](MENU_COMPOSITION_INVESTIGATION.md).
+  **Owner OLED (2026-10-23, handheld, US, preview.30-rc7):** the default
+  battle renderer is `gpu-tex` and the performance is good. The rc7 `dw3.log`
+  is consistent with that: `soft=0` in all 1707 `frame dt` windows, 211
+  `mesh dbg` windows with mesh frames, and the present path `mesh+ui` for the
+  battle (the literal text `gpu-tex` is not printed in that log). This
+  supports the tick above; it adds no per-mode frame-time numbers, so the
+  numeric benchmark subcriterion stays a follow-up.
   **CPU dirty-region cache (2026-10-22, PC and Switch, PR #185 draft):** the
   GPU atlas experiment was dropped (it failed the pixel gate and was no
   faster); the retained-canvas cache is shared code
@@ -527,6 +562,33 @@ speed.
 - [ ] **P5.4 Error reporting.** Crash handler that writes a log + last
   mode/stage id to SD; assert overlay.
   Done when: a forced fault produces a readable report.
+  **Status (2026-10-23, report PR 1 = plan steps 1–5):** in progress.
+  `crash_report.txt` now carries `module_base` and `base+0x…` offsets, a
+  validated frame-pointer backtrace, `git` + GNU `build_id`, overlay
+  names for `mode_file` / `stage_file`, disc and EU language, decoded
+  `esr`, x0–x28 and the last 64 log lines; the handler appends a `CRASH`
+  line to `dw3.log` (now a raw `FsFile`). `tools/symbolize_crash.py`
+  resolves a report with the matching `.elf` and warns on a build-id
+  mismatch. It re-read the preview.30-rc6 OLED crash with the right
+  (EU `-nxlink`) `.elf`: `getItemCategory` under
+  `STSTATUS_drawItemScreen`, the bug patch 0069 fixed; the earlier
+  `spriteDrawerDraw` reading used the wrong `.elf`. Tested in Ryubing
+  (US + EU) through `DW3_FORCE_CRASH=sim`, because Ryubing does not deliver
+  a real guest fault to the handler.
+  **Owner OLED (2026-10-23, handheld, `a2683c3` `--nxlink --force-crash`,
+  US and EU):** the done-when is met. On both discs the real null write
+  produced a full report (`esr` data abort write, `far 0x0`, matching
+  `build_id`, `module_base` equal to the Atmosphere creport base, the last
+  log lines) and the `CRASH` line at the end of `dw3.log`;
+  `symbolize_crash.py` resolves pc `crash_force_null_write`, lr
+  `crash_force_now` and frames `dw3_nx_crash_force_fault` ← `main`.
+  Evidence: `tmp/evidence/2026-10-23-p54-oled-forcecrash-{us,eu}/`.
+  Not ticked only because the objective also names the assert overlay.
+  **Still open:** (a) PR 2: step 6, an on-screen "last run crashed,
+  report at …" notice on the next boot, and step 7, `assert` / `abort`
+  routed into the same report; (b) previews keep or publish the `.elf` of
+  each `.nro` (release packaging follow-up after rc7). See
+  [P5.4_CRASH.md](P5.4_CRASH.md).
   **Status (2026-10-15):** in progress; the owner is investigating the
   crash-report path on hardware. Not ticked.
   **Status (2026-10-16):** in progress; report path researched and small
@@ -560,9 +622,26 @@ speed.
   faulted in `FIELDSTG_drawBalloon` (preview.28 and .29; reproduced on the
   PC host US and EU and on Ryubing US and EU); patch `0058`, regression scenarios
   `us/eu-bridge-partner-gate`. See
-  [BALLOON_NULL_ACTOR.md](BALLOON_NULL_ACTOR.md), which also lists the
-  other places where a NULL actor from the PS1's readable low RAM could
-  fault a 64-bit host.
+  [BALLOON_NULL_ACTOR.md](BALLOON_NULL_ACTOR.md), which also holds the audit
+  of the other places where a NULL from the PS1's readable low RAM could
+  fault a 64-bit host. Patch `0059` guards the two that script data can in
+  principle reach (actor mark draw, camera follow target) and adds a
+  once-per-site `null-guard hit` log in dev builds; none of them fires in
+  the shipped-data scan, the rest were left (dead code, player/singleton
+  lookups, or a call through NULL that would crash the PS1 too).
+  **Second NULL read fixed (2026-10-23, owner's preview.30-rc6 OLED crash
+  on opening Items):** the field menu's item list drew the item panel's icon
+  for `getItem(0)` (NULL) for two frames on every first open of a non-empty
+  list; patch `0069`, hook `0070`, scenarios `us/eu-items-screen[-normal]`,
+  details in [BALLOON_NULL_ACTOR.md](BALLOON_NULL_ACTOR.md#patch-0069-items-screen-null-item-preview30-rc6-oled-crash).
+  Present since at least preview.29. Needs an OLED check of the Items screen
+  in the next release candidate. **Confirmed on the OLED (2026-10-23,
+  preview.30-rc7, owner, US):** the Items screen no longer crashes and items
+  work (#201, patch `0069`). The 103-frame Instant page after each battle is
+  the area name banner and is explained in P6.18 ([RELEASES](RELEASES.md)).
+  **Bridge gate on US hardware still open (patch `0058`):** EU passed it on
+  the preview.29 OLED run; the US disc needs a New Game walked to the bridge
+  gate on the console ([BALLOON_NULL_ACTOR.md](BALLOON_NULL_ACTOR.md)).
 
 Gate: start → first boss on hardware, both versions.
 
@@ -599,6 +678,10 @@ gate, which stays open.
   reproduced); shipped in preview.27, hardware acceptance pending. Crash
   record 1 (battle) is separate and open. Menu and transition coverage:
   [P6.1_WIDESCREEN_MENU_AUDIT.md](P6.1_WIDESCREEN_MENU_AUDIT.md) (#161).
+  **Open widescreen PRs (2026-10-23):** #202 (technique backdrops cover the
+  gutters) and #205 (the area name banner spans the gutters, patch `0071`)
+  are still open and **are not in preview.30-rc7**, so the rc7 OLED feedback
+  says nothing about them.
 - [ ] **P6.2** PAL/NTSC and EU/US selection at boot; language from EU
   `CNTY_SEL`.
   **Status (2026-10-14, language part):** `CNTY_SEL` linked as
@@ -630,6 +713,12 @@ gate, which stays open.
   the return to normal speed. PC and Ryujinx already cover US and EU,
   including R3 off back to 1x (P6.4_FAST_FORWARD.md, commit `0b94858`);
   the OLED reports (preview.25, preview.26) are EU only.
+  **Owner OLED (2026-10-23, handheld, US, preview.30-rc7):** turbo
+  (fast-forward) works in battle. The `dw3.log` shows R3 on at 4x and off back
+  to 1x three times (`dw3-turbo: speed 4x` / `speed 1x`). This is the US OLED
+  check the "Ready to close?" note above asked for, with the return to normal
+  speed; the field and the exact FPS were not measured in this round. Left
+  unticked: the owner decides whether this closes P6.4.
   Done when: PC and Switch (Ryujinx, then hardware) show it on both the US
   and EU discs, and it returns cleanly to normal speed.
 - [x] **P6.5** Release packaging: `.nro` + `README` for own-disc setup;
@@ -675,7 +764,7 @@ gate, which stays open.
   relaunching Sphaira (PC and hardware), and a save written before the
   restart still loads afterwards.
   **PC implementation / evidence (2026-10-13):** title Port options has an
-  opt-in restart setting (OFF by default, session-only). The PS1 logical
+  opt-in restart setting (OFF by default; saved since P9.4). The PS1 logical
   chord L1+R1+Start+Select runs shared `port/` policy, flushes P5.3 dirty
   saves, and cancels if flushing fails. It resets `GAME` state and the active
   mode/overlay inside the existing `dw3_game_main()` loop; host, PSY-Z, audio,
@@ -862,7 +951,7 @@ PS1 game, with vanilla-safe defaults and persistence on owner storage.
   the Port options selection changes (P5.2; EU #170 owner test improved but
   still slow; dirty-region cache now on PC and Switch, OLED A/B open, see
   [composition plan](MENU_COMPOSITION_PLAN.md)),
-  persistence (P9.4). History:
+  persistence (done in P9.4, OLED pending). History:
   [P9.2_MENU.md](P9.2_MENU.md).
   Done when: the screen is reachable from the main menu and returns
   cleanly to it (PC + Switch; TTB print on PC).
@@ -872,22 +961,43 @@ PS1 game, with vanilla-safe defaults and persistence on owner storage.
   Done when: flipping a stub or real flag from the menu has a documented
   effect (safe no-op allowed for not-yet-wired features).
   **Status (2026-10-13):** shared registry has Widescreen and Fast-forward
-  safe no-op stubs plus the real session-only Restart hotkey, OFF by default.
-  Fast-forward became a real session-only row on 2026-10-14 (P6.4).
-  Widescreen became a real session-only toggle on 2026-10-14 (P6.1).
+  safe no-op stubs plus the real Restart hotkey, OFF by default.
+  Fast-forward became a real row on 2026-10-14 (P6.4), Widescreen a real
+  toggle the same day (P6.1); both were session-only until P9.4.
   Its chord and flush behavior are documented in
   [PORT_OPTIONS.md](PORT_OPTIONS.md) and [P6.9_RESTART.md](P6.9_RESTART.md).
-  P9.4 persistence and P9.5 wiring of remaining real features remain open.
+  P9.5 wiring of remaining real features remains open.
 - [ ] **P9.4 Persistence.** Load/save the option file under the owner
   runtime layout (PC directory / `sdmc:/switch/dw3/…`); values survive
   process exit.
   Done when: a toggled value remains after restarting the host or
   returning from hbmenu.
-  Blocks: P6.12, P6.17, P6.18, P7.6–P7.10 and a persisted P6.9 restart
-  setting (see [Backlog](#backlog--future-goals)).
+  **Status (2026-10-22): implemented, PC and Ryubing validated on both
+  discs; waiting for the OLED check.** `port_options.cfg` (key=value,
+  `version=1`) in each region runtime root (`runtime/<ver>/`,
+  `sdmc:/switch/dw3/<ver>/`), loaded in `init_paths` before any flag is
+  read, saved on every change on the Options screen, FAT-safe atomic write.
+  Format, rules and rationale: [PORT_OPTIONS.md](PORT_OPTIONS.md#persistence).
+  Evidence: unit tests `tools/tests/test_options_persist.py`; two-phase
+  replay scenarios `us/eu-options-persist` on the PC build (identical
+  captures on two runs) and in Ryubing (Widescreen OFF, Fast-forward 3x,
+  Restart hotkey ON written by one process, read back by the next; the file
+  on the emulated SD has the same content).
+  Ready to close? needs OLED: toggle, HOME->close, relaunch from hbmenu.
+  Blocks: P6.12, P7.6–P7.10 and a persisted P6.9 restart
+  setting (see [Backlog](#backlog--future-goals)); P6.17 (volume) and P6.18
+  (pacing) are rows added on top of it (`music_volume`, `sfx_volume`,
+  `encounter_rate`, `text_speed`).
+  **Partial OLED evidence (2026-10-22, EU, preview.30-rc4, owner):** with no
+  `port_options.cfg` on the SD card the first change created it and every
+  later change saved it (56 `dw3-options: saved` lines, no failure logged).
+  Not covered: relaunch from hbmenu and reading the values back, and US.
+  Evidence: `tmp/evidence/2026-10-22-preview30-rc4-oled/dw3.log`. Stays open.
 - [ ] **P9.5 Wire real features.** Connect registry entries to real port
   flags as Phases 6–8 land; mark unavailable items N/A in
   [PORT_OPTIONS.md](PORT_OPTIONS.md) rather than hiding the menu.
+  Real so far: Widescreen, Fast-forward, Restart hotkey and (2026-10-22,
+  P6.17) Music volume and SFX volume, (P6.18) Encounter rate and Text speed.
   Done when: every shipped non-native feature is either togglable here or
   explicitly documented as N/A. Evolves with the roadmap; does **not**
   require all of P6–P8 complete for the Phase 9 gate.
@@ -899,6 +1009,70 @@ PS1 game, with vanilla-safe defaults and persistence on owner storage.
   after Phase 9.
   Done when: the tool reads a port save and writes a 128 KiB card image,
   and the reverse, without the game calling it.
+
+- [ ] **P9.7 Port options reachable in game from the pause / field menu
+  (future goal).** Dated 2026-10-22, owner request after the rc4 OLED test:
+  today the Options screen opens only from the title, so a setting cannot
+  be changed while playing (a volume in the field, the Encounter rate before a
+  walk, Widescreen on a battle). Goal note only, nothing started. It needs:
+  1. **Pausing game logic while the screen is open**, in the field and in
+     battle (the title screen can run its own task; a field or a battle must
+     stop its task list, timers, the random countdown and the sound script
+     but keep the music, and resume with the same state and without a frame of
+     input leaking into the game).
+  2. **Drawing over the field and over a battle**: the options canvas is drawn
+     by the native title overlay today; it must also draw in the field and
+     fight overlays (and over the widescreen gutters), on PC and Switch, and
+     deal with the draw-order and VRAM use of those modes.
+  3. **The entry point**, one of: (a) a **hotkey** (a chord, like the P6.9
+     restart chord), which is port-only, needs no text and no decomp change
+     beyond a poll, but is invisible to the player; or (b) a **new entry in the
+     game's own pause / field menu**, which is discoverable but needs a decomp
+     patch (`PORT_HOST`, numbered patch) for the menu list, its cursor and
+     layout, and **its name in the five EU languages** (EN, FR, DE, IT, ES; on
+     US one string) with the game's own font and width limits. Pick (a) first
+     if only one fits, (b) as the finished form.
+  4. **Live application of every option**: Widescreen (the gutter and the
+     present size change at runtime, and a battle in progress), Fast-forward,
+     the volumes and the pacing rows already read their value when used, but
+     Widescreen, Restart hotkey and the audio bus gains have to be re-applied
+     safely in the middle of a frame; each row needs a documented answer.
+  Done when: Port options opens and closes in the field and in battle on PC and
+  Switch (US and EU), the game resumes exactly where it stopped, every row
+  changes the game at once, and the choice of entry point is written down.
+  Related: P6.17 / P6.18 rows, P9.2 (the title entry), P6.9 (the chord).
+
+- [ ] **P9.8 Confirm / cancel layout option (future goal).** Dated
+  2026-10-23, owner request after the preview.30-rc7 OLED test. Goal note
+  only, nothing started. On a Switch the physical **A** sits where the PS1
+  **Circle** is and **B** where **Cross** is, and the port follows the
+  PlayStation positions today (Cross = B confirms, Circle = A cancels; see
+  [HOTKEYS.md](HOTKEYS.md)). Add an Options row, **Button layout**, with two
+  values: **PlayStation** (positional, the current behaviour and the
+  default, so nothing changes by itself) and **Nintendo** (A confirms, B
+  cancels, which swaps what the game sees as Cross and Circle). Needs:
+  1. **The swap in one place**: policy in `port/` (the option registry and
+     the key, saved with P9.4 in `port_options.cfg`), the physical A/B read in
+     `platforms/switch/psyz_backend/nx_input.c`
+     ([P4.4_INPUT_STATUS.md](P4.4_INPUT_STATUS.md)); PC keyboard and gamepad
+     get the same row. It overlaps P6.12 / P6.13 (general remap and its
+     submenu), which may subsume it; decide before building (see the
+     overlaps list in the Backlog).
+  2. **Hotkeys must not conflict**: [HOTKEYS.md](HOTKEYS.md) is the table to
+     re-audit. The port chords use other buttons (R3, Select/Minus, the
+     L1+R1+Start+Select restart chord, the Minus+L+R and Minus+ZL+ZR
+     diagnostics), but the Options screen itself confirms with Cross **or**
+     Circle, and the help lines and docs name buttons; each must read right in
+     both layouts, and a new chord may not use A or B.
+  3. **The glyphs follow the mapping**: if the screens show Switch button
+     glyphs (P10.6), the confirm icon is the physical button that confirms in
+     the chosen layout (B in PlayStation, A in Nintendo), and the same for
+     cancel. X and Y keep their positions in both layouts.
+  Done when: the row works on the Switch (and PC) with US and EU, the choice
+  survives a relaunch, the default is bit-identical to today, and HOTKEYS.md
+  and P4.4_INPUT_STATUS.md describe both layouts.
+  Related: P6.12 / P6.13, P10.6, [SWITCH_FEATURES.md](SWITCH_FEATURES.md)
+  (the "Confirm/Cancel layout" row).
 
 Gate: P9.2 + P9.4 with at least one persistent toggle (stub or real).
 P9.5 stays best-effort as features ship. P9.6 does not block the gate.
@@ -926,10 +1100,25 @@ rumble, saves, turbo, or widescreen here; those stay in their phases.
   until the OLED smoke there passes.
   Done when: HOME sleep/resume and clean exit smoke tests pass with
   saves intact.
+  **Sleep part confirmed by the owner (2026-10-23, OLED handheld, US,
+  preview.30-rc7):** the console went to sleep and resumed without problems,
+  with saves made before and after the sleep, and the in-game time counted
+  only play time. The clean exit already worked (`applet exit: flat saves
+  flushed` ends the rc7 log). **Observation in that `dw3.log`, not a failure:**
+  it has no `applet focus:` line and one `frame dt` window of 543746177 us
+  (about 9 minutes, unclamped) where the sleep happened. So the sleep did not
+  go through the logged focus-loss path or the dt clamp; the game was fine
+  because it counts frames, not wall time. Whether the focus signal arrives
+  at all for an hbmenu applet, and so whether that code is needed, is for the
+  follow-up ([P5.3_HOME_QUIT.md](P5.3_HOME_QUIT.md)). **Still open:** HOME
+  pressed during a save write, a HOME (not power button) pause, and the
+  focus lines on an nxlink run. Stays unticked.
 - [ ] **P10.3 Presentation modes.** Docked vs handheld already in P4.2;
   verify operation-mode switches do not break the frame loop once the
   game is linked, and that P6.1 scale/widescreen options apply on both.
   Done when: dock/undock during title or field keeps a stable present path.
+  Not covered by the rc7 OLED run (2026-10-23): it was handheld only
+  (`handheld=1` in the log); docked mode is untested.
 - [ ] **P10.4 Rumble polish — optional.** Intensity slider and event
   tuning on top of P4.4 `PadSetAct` → HD rumble; Lite-safe no-op.
   Done when: toggleable from Phase 9 or marked N/A if hardware lacks
@@ -942,6 +1131,8 @@ rumble, saves, turbo, or widescreen here; those stay in their phases.
   handshake). **Not ticked:** nothing has run on a console, the
   small-motor→high-band mapping is unverified, and the Phase 9 slider is
   not wired. Design + smoke plan: `docs/P10.4_RUMBLE.md`.
+  **rc7 OLED (2026-10-23):** rumble was not tested; still unverified on
+  hardware.
 - [ ] **P10.5 Extra applets — optional.** `swkbd` name entry, system
   language hint, CRT/sharp filters, multi-card / user-folder saves;
   Capture/album best-effort. Skip amiibo/gyro/touch-in-game.
@@ -949,7 +1140,31 @@ rumble, saves, turbo, or widescreen here; those stay in their phases.
   [SWITCH_FEATURES.md](SWITCH_FEATURES.md). Does **not** block the Phase
   10 gate.
 
-Gate: P10.2 (+ P10.3 once present is live). P10.4–P10.5 are best-effort.
+- [ ] **P10.6 Switch-style button glyphs (future goal).** Dated 2026-10-23,
+  owner request after the preview.30-rc7 OLED test. Goal note only, nothing
+  started. The game draws PlayStation button icons (Cross, Circle, Square,
+  Triangle and the shoulder buttons) in its text and menus. The owner finds
+  the EU disc's icons nicer than the US ones, but neither matches the Switch.
+  Replace them with Switch glyphs, **A / B / X / Y** and, where the game
+  shows them, **L / R / ZL / ZR / + / -**, in **both regions**. Approach to
+  pick (not decided): a **texture replacement** through the P8 pack mechanism
+  ([TEXTURE_PACKS.md](TEXTURE_PACKS.md), P8.2/P8.3, a pack that is optional and
+  falls back to the disc) or a host **overlay** drawn over the icon; the first
+  keeps one path for US and EU, the second can follow the layout at runtime.
+  Not yet investigated: which sprites or font glyphs hold the icons in each
+  disc, whether they sit inside text strings (so a width change touches the
+  five EU languages), and where the game shows each one. The glyph for an
+  action must follow the confirm/cancel layout of P9.8 (B confirms in
+  the PlayStation layout, A in the Nintendo layout), so P10.6 should land with or
+  after P9.8; it needs a Port option to turn it off (the default is the
+  original icons). Original art is never added to the repo; Switch glyphs must be
+  drawn for the project or be under a licence that allows it.
+  Done when: with the option on, the icons shown in the field, battle, menus
+  and shops are Switch glyphs on the US and EU discs, they match the layout
+  chosen in P9.8, and the option off restores the original icons.
+  Related: P8.2/P8.3, P9.8, P6.12, [HOTKEYS.md](HOTKEYS.md).
+
+Gate: P10.2 (+ P10.3 once present is live). P10.4–P10.6 are best-effort.
 
 ## Backlog / future goals
 
@@ -961,8 +1176,9 @@ Statuses are in the [table](#status-at-a-glance).
 **Dependencies not stated in the entries:**
 
 - **P9.4 (option persistence) blocks** P6.12 (remap survives a restart),
-  P6.17, P6.18, P7.6–P7.10, and a persisted P6.9 restart setting (today
-  session-only).
+  P7.6–P7.10 (P6.17 added its two keys, `music_volume` and
+  `sfx_volume`, and P6.18 `encounter_rate` and `text_speed`, in the same file). The persisted P6.9 restart setting is done
+  with P9.4; the option file is `port_options.cfg` (add a key per new row).
 - **Future P6.15 gameplay scenarios** may need P6.9 (restart to a known
   state) and P5.3 (a fixed save per case). The current scenarios use a fresh
   process per scenario and replay the scripted opening from boot (~16400
@@ -1028,9 +1244,12 @@ Statuses are in the [table](#status-at-a-glance).
   found a deterministic null dereference in `FIELDSTG_drawBalloon` (US PC
   and Ryubing); it is the bridge-gate balloon bug fixed by patch `0058`, and
   `us-repro-balloon` plus `us/eu-bridge-partner-gate` are now regression
-  scenarios that pass. See `docs/P6.15_REPLAY_TESTS.md`. Still open: a
-  battle (not reached yet; needs the partner Digimon data from the lobby
-  counter past the bridge gate), a save/load round trip (Start menu locked
+  scenarios that pass. Patch `0061` (2026-10-22) makes replay runs abort on
+  a failed overlay restore and adds `us/eu-two-battles` (PC only: two
+  battles with a technique each, started with the P3.3 dev hooks through
+  the manifest's new `env` field). See `docs/P6.15_REPLAY_TESTS.md`. Still
+  open: a battle reached by pad input from a new game (needs the partner
+  Digimon data from the lobby counter past the bridge gate), a save/load round trip (Start menu locked
   in the hub), the other
   four EU languages past the title, movies, cross-machine tolerance, CI (needs
   the owner's discs; a nightly recipe is in the doc). The full goal remains
@@ -1039,13 +1258,86 @@ Statuses are in the [table](#status-at-a-glance).
   (RAM, VRAM, SPU, overlay state) on exit or sleep and resume at the same
   point. Separate from P5.3 game saves. Goal note only (2026-10-15). Done
   when exit and relaunch resume mid-play on US and EU.
-- [ ] **P6.17 Music / SFX volume (future goal).** Separate music and
-  sound-effect volume rows in Port options, persisted with P9.4. Goal note
-  only (2026-10-15). Done when both sliders work on US and EU.
-- [ ] **P6.18 Pacing options (future goal).** Text speed, encounter rate
-  (0.5x, 1x, off) and faster battle animations as Port options toggles; may
-  land as concrete P7.4 items. Goal note only (2026-10-15). Done when each
-  toggle works on US and EU and is off by default.
+- [ ] **P6.17 Music / SFX volume.** Separate music and sound-effect volume
+  rows in Port options, persisted with P9.4. Done when both sliders work on
+  US and EU.
+  **Status (2026-10-22): implemented, PC and Ryubing checked on both discs;
+  needs OLED check** (left unticked until the owner confirms by ear, steps in
+  [P6.17_VOLUME.md](P6.17_VOLUME.md#oled-check-for-the-owner)). Rows
+  "Music volume" and "SFX volume", 0..10, default 10 = the original mix,
+  bit-identical. Music and effects are separated inside PSY-Z's SPU mixer
+  (voice buses, gain per bus, `Larbaco/psyz` `dw3-spu-bus-volume`), because
+  both hosts get one mixed stream; patch 0060 tells it which SEP tracks are
+  music (the exclusive bit of the sound id). Movie (XA) audio follows Music
+  volume. Left/Right step the volume, Confirm steps up and wraps. The
+  options screen got taller (five rows). **Sound feedback (2026-10-22, owner
+  request after rc4):** the Options screen plays the game's own cursor, choice
+  and cancel sounds on the SFX bus, after the new gain is applied, so a change
+  of SFX volume is heard at the new level ([P6.17_VOLUME.md](P6.17_VOLUME.md#sound-feedback-on-the-options-screen)). Measured per-bus attenuation and the
+  default-unchanged proof are in the doc; not covered: Switch audio output
+  (no hardware or capture), a hearing test, and every sound id of every bank.
+  **Partial OLED evidence (2026-10-22, EU, preview.30-rc4, owner):** Music
+  volume stepped 0 to 10 and SFX volume down to 2 on the Options screen, with
+  the expected Q15 gains logged (music 0, 1, 2, 3, 4, 5, 7 = 0x0000, 0x0148,
+  0x051f, 0x0b85, 0x147b, 0x2000, 0x3eb8; SFX 3 and 2 = 0x0b85, 0x051f) and
+  each step saved. Not covered: a hearing test, US, relaunch persistence.
+  Stays unticked.
+  **Owner OLED (2026-10-23, preview.30-rc6 EU and rc7 US):** the owner reports
+  that the sound volume options work. The rc7 US log shows Music volume
+  stepped between 10 and 2 and SFX volume between 10 and 6 (final cfg: music 10,
+  SFX 7), each step saved. That is the hearing test and the US check; **still open:** relaunch
+  persistence (the rc7 log is a single run) and the in-game and movie steps of
+  the checklist. Keep it unticked until the owner closes it. Note the new BGM
+  bug in P4.3 (music stops after one loop) when listening in game.
+- [ ] **P6.18 Pacing options.** Encounter rate (1x, 0.5x, off), text speed
+  and faster battle animations as Port options rows, off by default, saved
+  with P9.4. Done when each toggle works on US and EU and is off by default.
+  **Status (2026-10-22): encounter rate and text speed implemented, PC
+  checked on both discs; faster battle animations deferred; needs OLED check**
+  (left unticked until the owner confirms, steps in
+  [P6.18_PACING.md](P6.18_PACING.md#oled-check-for-the-owner)). Rows
+  "Encounter rate" (OFF / 0.5x / 1x / 1.5x / 2x; stored 2 / 1 / 0 / 3 / 4,
+  1.5x and 2x added 2026-10-22 after the rc4 OLED test, nothing renumbered) and
+  "Text speed" (Normal / Fast / Instant), default 1x and Normal, keys
+  `encounter_rate` and `text_speed`.
+  Encounter rate scales or skips the per-footstep countdown of the random
+  battles (`FIELDSTG_countBattleSteps`, patch 0062); scripted, story and boss
+  battles never go through it, and neither do map-forced areas. Text speed
+  maps the dialogue type delay (patch 0063); Instant shows each page whole,
+  as Cross does. The Options screen got a compact seven-row layout. Measured:
+  a random battle after 102 footsteps at 1x and 203 at 0.5x, none in 3300
+  frames when Off, a scripted battle still starts when Off; the first
+  dialogue page types in 308 frames Normal, 131 Fast, 1 Instant; default
+  captures are pixel-identical. **Faster battle animations are not done:** the
+  battle has no single time knob (reasons in the doc), and R3 fast-forward
+  (P6.4) already speeds a battle up. May still land as concrete P7.4 items.
+  **Instant and scrolled lines (2026-10-22, patch 0068):** a text that
+  scrolls (a third line) typed the new line at the fast delay; Instant now holds the
+  full page 12 frames and shows the new line whole (reproduced in the opening's
+  dialogue, 53/50/32 frames before). **The 103/73/67/127-frame lines of the rc4 and
+  rc6 OLED logs were not scrolls and not the battle report** (2026-10-23): they are the
+  area name banner that opens in the field after each battle (delay 5, `6n + 1`
+  frames), timed as a dialogue page because the game reused a freed report
+  window's address; port fix in `pacing.c` and scenarios `*-banner-instant`,
+  details in [P6.18_PACING.md](P6.18_PACING.md#the-103-frame-pages-the-area-name-banner-rc4-and-rc6-oled-logs).
+  **Open (owner's call):** the banner still types its two names at the game's own
+  speed, about 2.3 s with the hero frozen after every battle; Text speed could end it
+  0.3 to 0.7 s earlier, a shorter hold would need its own option.
+  **Partial OLED evidence (2026-10-22, EU, preview.30-rc4, owner):** Encounter
+  rate was cycled (1x, 0.5x, Off) and returned to 1x; the log shows 5 random
+  battles, all at 1x, after 104, 175, 103, 128 and 93 footsteps (the owner
+  counted the first four). Text speed Instant: 19 of 27 logged pages typed in
+  1 to 2 frames. **Open:** 8 pages took 103 (5 times), 67 (2) and 127 (1)
+  frames: **the area name banner, not text** (above, fixed in the port 2026-10-23); real
+  scrolls are patch 0068, not yet rechecked on the OLED. Not covered: 0.5x and Off in
+  play, Fast, US, relaunch persistence. Stays unticked.
+  **Owner OLED (2026-10-23, US, preview.30-rc7):** Text speed Instant works as
+  desired. The rc7 log has no `slow Instant page` and no `text scroll` line;
+  its 26 area name banners are logged as `not a dialogue page (area name
+  banner)`, which is the #203 fix working on hardware. The banner itself still
+  types at the game's own speed (the open owner call above). **Still open:**
+  Fast, 0.5x and Off in play, EU on rc7, a dialogue that scrolls, relaunch
+  persistence. Stays unticked.
 - [ ] **P6.19 Japanese disc support (future goal).** File map, executable
   differences and boot for the JP disc, next to US and EU. Goal note only
   (2026-10-15). Done when the JP disc boots to the field on PC and Switch.
@@ -1065,18 +1357,61 @@ Statuses are in the [table](#status-at-a-glance).
   and DV EXP rate (1x default, Harmony uses 1.3x / 1.2x), uncapped DV EXP
   and HP/MP restore on level up. Credit markisha64 / rsigrist. Done when
   each option works on US and EU and is off by default.
-- [ ] **P7.7 Bug and text fixes (future goal).** Picking / Snapping Claw on
-  a KO'd enemy, active Digivolution name in battle, battle reward
-  "1IT"/"1EXP" text, save label showing Asuka Inn, Square map glitch.
-  Check each on the US disc too. Done when each fix is a `port/patches`
-  entry tested on US and EU.
+- [~] **P7.7 Bug and text fixes.** Picking / Snapping Claw on a KO'd enemy,
+  active Digivolution name in battle, battle reward "1IT"/"1EXP" text, save
+  label showing Asuka Inn, Square map glitch. Checked on the US and the EU
+  disc (2026-10-22, PR for `fix/p77-original-bugs`; details and evidence in
+  [P7.7_BUG_FIXES.md](P7.7_BUG_FIXES.md)):
+  the Claw steal on the killing blow (patch `0066`) and the Digivolution name
+  in the battle HUD (`0065`, a nickname is kept, long names are squeezed) are
+  original-game bugs on both discs, fixed always-on (no Port option, decision
+  in the doc) and covered by 20 log-only PC replay scenarios
+  (`*-p77-*`, hooks in `0064`). The other three could not be reproduced on
+  the stock discs and were left alone: the reward text renders "BIT" / "EXP"
+  in the US disc and in all five EU languages; the stock game can only save at
+  the 25 save points, whose labels are right (the "Asuka Inn" label is place 43,
+  shared by the unused mode 0xC00, so it belongs to Harmony's Start-menu save,
+  P6.14); the field reads no Square (the glitch is in Harmony's FastTravel,
+  P7.4). **OLED status (2026-10-23, preview.30-rc7, owner, US):** neither fix
+  is confirmed yet. The **Claw steal** is untested because the owner has no
+  Claw (Picking / Snapping Claw, Growlmon line) yet. The **HUD Digivolution
+  name** is not recorded as confirmed separately in the roadmap or in
+  [P7.7_BUG_FIXES.md](P7.7_BUG_FIXES.md) (its OLED checklist is still all
+  open), and the rc7 owner report does not mention it, so it stays open too.
+  Both lines go only to the nxlink stderr, so the `dw3.log` cannot confirm them.
+  Open: the OLED check of the two fixes (checklist in the doc), a
+  digivolution played during a battle, and the three bugs above if a
+  screenshot from an unmodified disc turns up. Done when each listed bug is
+  fixed or shown not to exist on the stock discs, and the fixes are verified
+  on the OLED.
 - [ ] **P7.8 Battle info HUD (future goal).** Optional enemy HP, always-on
   partner MP, technique attribute / power / MP cost colours, DV stats and
   EXP to next level after battle. Done when the toggle works on US and EU
   in all 5 EU languages.
-- [ ] **P7.9 Battle menu memory (future goal).** Remember the last battle
-  command (Techniques stays on Techniques) and allow reordering techniques
-  per Digimon. Done when both persist in the P5.3 save on US and EU.
+- [ ] **P7.9 Battle menu memory.** Remember the last battle command
+  (Techniques stays on Techniques) and allow reordering techniques per
+  Digimon. Done when both persist in the P5.3 save on US and EU.
+  **OLED (2026-10-23, handheld, US, preview.30-rc7, owner): part A is
+  confirmed.** The eight-row Options screen looks good (#206), Command+Tech
+  works in battle, and a new battle opens on the technique used in the previous
+  battle. The `dw3.log` agrees (`command menu opens on Techniques (remembered)`,
+  `technique list of partner 3 opens on technique 56 (page 0, line 0,
+  remembered)`, `battle_menu_memory=2` saved). Part B (reordering) is still
+  deferred; "persist in the P5.3 save" is still not met, so the item stays open.
+  Status (2026-10-23), part A built (OLED check above): the **Battle cursor** row
+  of the Options screen (OFF / Command / Command+Tech, key `battle_menu_memory`
+  in `port_options.cfg`: 1 = the command menu opens on the last command, 2 =
+  also the technique list opens on that partner's last technique), off by
+  default and bit-identical when off (patch `0067`, unchanged). It was a
+  file-only key until the owner asked for a row after the rc6 OLED test; the
+  Options screen now has **eight rows** (38 px rows on a 42 px pitch, same
+  window; [PORT_OPTIONS.md](PORT_OPTIONS.md#options-screen-2026-10-14), "Eight
+  rows"). Session memory, not saved. Covered by 12 log-only PC replay scenarios
+  (`*-p79-*`), the new `*-battle-cursor-persist`, unit tests and the cache test. Open: the rest of the OLED checklist (docked,
+  the value kept after a relaunch, Item/Run and OFF steps, EU), and part B: reordering techniques is investigated and deferred (the PS1 save
+  image has no room and its size is checked; the design is a `saveN.order`
+  sidecar), so "persist in the P5.3 save" is not met yet. Doc:
+  [P7.9_BATTLE_MENU_MEMORY.md](P7.9_BATTLE_MENU_MEMORY.md).
 - [ ] **P7.10 Training without RNG (future goal).** Guaranteed base gains,
   optional timing bonus, Fast Training skip, as an option off by default.
   Done when it works on US and EU.

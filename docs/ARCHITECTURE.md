@@ -83,6 +83,27 @@ the current mode task and overlay cache, and lets the existing `dw3_game_main`
 loop create the title mode again. It does not rerun the host or PSY-Z
 initialization path. The Switch host stays limited to input and presentation.
 
+P6.18 pacing (encounter rate, text speed) is the same shape: two one-call
+`PORT_HOST` hooks in the decomp (patches `0062*` in
+`FIELDSTG_countBattleSteps`, `0063*` in `textWindowSetTypeDelay` /
+`updateTextWindow`) that ask `port/pacing/` what to do, and the answer is the
+game's own value while the Port options rows are at their defaults. The policy
+(`pacing_policy.c`) is pure and unit tested; the Switch tree has no part in it.
+
+The Options screen's menu sounds (cursor, choice, cancel) are played from the
+shared `port/options/port_options.c` through the game's own `SOUND.playSound`
+(no patch, no host code); they are key-ons, so they land on P6.17's SFX bus.
+
+P7.7 fixes of the original game are plain decomp patches, not port hooks: `0065` in
+`FIGHTSTG_showFighterNames` (the HUD names the Digimon a partner fights as) and `0066` in
+`FIGHTSTG_updateTechAction` (a Claw's steal on the killing blow). Patch `0064` adds PC-only
+environment hooks for the replay scenarios. See [P7.7_BUG_FIXES.md](P7.7_BUG_FIXES.md).
+
+P7.9 battle menu memory has the P6.18 shape: patch `0067` has a few `PORT_HOST` calls in
+`player_turn.c` / `tech_menu.c` that ask `port/battle_menu/` where the cursor starts; the
+answer is the original start unless the Battle cursor row of the Options screen (key `battle_menu_memory`) is set. See
+[P7.9_BATTLE_MENU_MEMORY.md](P7.9_BATTLE_MENU_MEMORY.md).
+
 ## Non-goals (for now)
 
 - Byte-identical matching builds on Switch

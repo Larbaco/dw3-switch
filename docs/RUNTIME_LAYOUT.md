@@ -25,7 +25,12 @@ sdmc:/switch/dw3/us/           # Switch (same relative layout)
     STR/
     ...
   memcard/                     # required on Switch; can start empty
+  port_options.cfg             # Port options (P9.4), created on the first change
 ```
+
+`port_options.cfg` is the only file the running game writes next to the
+runtime data besides `memcard/` (and `dw3.log` / crash reports one level up
+on the Switch). Format and rules: [PORT_OPTIONS.md](PORT_OPTIONS.md#persistence).
 
 EU uses `files_eu.json` and `SLES_039.36` instead of the US names, plus its
 own linked file-sector table and `STAGE_VRAM` address for `boot_tim.bin`.

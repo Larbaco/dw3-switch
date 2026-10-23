@@ -25,6 +25,7 @@
 #include "cdfs.h"
 #include "memcard_host.h"
 #include "overlay_host.h"
+#include "port_options.h"
 #include "runtime_extract.h"
 #include "str_stream.h"
 
@@ -482,6 +483,7 @@ static const char *env_or(const char *key, const char *fallback) {
 static int init_paths(void) {
     const char *root = env_or("DW3_RUNTIME", DW3_DEFAULT_RUNTIME);
     const char *memdir = env_or("DW3_MEMCARD_DIR", NULL);
+    const char *cfgdir = env_or("DW3_CONFIG_DIR", NULL);
     char memcard_buf[512];
     char boot_path[512];
 
@@ -540,6 +542,12 @@ static int init_paths(void) {
      * atexit covers clean return from dw3_game_main / process exit. */
     atexit(memcard_host_shutdown);
     INFOF("memcard dir=%s", memdir);
+
+    /* P9.4: sdmc:/switch/dw3/<ver>/port_options.cfg, loaded before anything
+     * reads widescreen / fast-forward / restart. Each change is written when
+     * it is made (nothing to flush on HOME); atexit only retries a failure. */
+    (void)dw3_port_options_persist_init(cfgdir != NULL ? cfgdir : root);
+    atexit(dw3_port_options_flush);
 
     snprintf(boot_path, sizeof(boot_path), "%s/boot_tim.bin", root);
     if (dw3_host_load_boot_tim(boot_path) != 0) {
@@ -654,6 +662,8 @@ int main(int argc, char **argv) {
         consoleDebugInit(debugDevice_SVC);
     }
     INFOF("dw3: REPLAY BUILD (DW3_NX_REPLAY): input from sdmc:/switch/dw3/replay.rec");
+    /* A failed overlay restore aborts the replay run instead of logging on. */
+    dw3_overlay_set_strict(1);
 #endif
     INFOF("dw3: version=%s", DW3_NRO_VERSION_STR);
     if (test_env_count > 0) {

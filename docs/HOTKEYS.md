@@ -7,7 +7,10 @@ The Switch Makefile `host_hello` sample has different controls and is not covere
 ## Normal pad controls
 
 Switch face buttons follow physical PS1 positions, not Nintendo's usual A-to-confirm
-convention. The PC columns describe the PSY-Z SDL3 keyboard map. PC gamepads use
+convention. A **Button layout** option (PlayStation or Nintendo A/B) is a
+planned Options row, ROADMAP P9.8; until it exists the table below is the only
+layout, and when it lands this table has to be re-audited for both layouts and
+no new chord may use A or B. The PC columns describe the PSY-Z SDL3 keyboard map. PC gamepads use
 SDL's positional mapping; controller labels and SDL device mappings may vary.
 
 | PS1 logical button | PC keyboard | Switch physical button |
@@ -33,6 +36,10 @@ port options:
 - In Port options, Up/Down changes the selected setting. Cross **or Circle**
   (PC X or D; Switch B or A) toggles it. Triangle (PC S; Switch X) returns to
   the selected title row. Opening the shell does not toggle the first setting.
+  On the two volume rows (Music volume, SFX volume) Left / Right step the
+  volume down / up from 10 to 0 (a held direction repeats; it stops at the
+  ends), and Cross / Circle step up and wrap 10 to 0. See
+  [P6.17_VOLUME.md](P6.17_VOLUME.md).
 - During an opening movie, press or hold Start (Enter / Plus) to skip it.
   A held button is accepted after decoding a frame; this is not a fast-forward
   control.
@@ -54,8 +61,9 @@ press. Release the chord before another attempt. There is no timed long-press
 requirement. Dirty save slots are flushed before restarting; a flush failure
 cancels the restart. Successful restart resets the running game to its title
 boot flow without restarting the host. Unsaved gameplay progress is lost.
-The opt-in stays in memory through an in-process restart, but a fresh host launch
-starts OFF. Settings are session-only until P9.4 persistence is implemented.
+The opt-in stays in memory through an in-process restart. Since P9.4 it is also
+saved in `port_options.cfg` when it is toggled, so a fresh host launch keeps
+the choice (OFF until the user enables it once).
 See [P6.9_RESTART.md](P6.9_RESTART.md) for implementation and acceptance limits;
 Switch chord and save → restart → Continue validation remain open there.
 

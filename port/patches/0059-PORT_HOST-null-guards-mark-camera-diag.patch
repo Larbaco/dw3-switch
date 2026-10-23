@@ -1,0 +1,111 @@
+Upstream-bound: no
+Subject: [PORT_HOST] null guards: balloon diagnostic, actor mark draw, camera follow target
+
+Follow-up to 0058. FIELDSTG's script commands look an actor up by character
+id (find(FIELD_TASK_ACTOR, id, -1)) and keep the result; the PS1 reads
+through a NULL result without a fault (low RAM is readable kernel memory),
+a 64-bit host faults. Three places read such a pointer every frame without a
+check. Each is guarded under PORT_HOST to the behaviour that needs no data
+the PS1 would have read from kernel RAM:
+
+* wstag785.c drawActorMark (script command 0x327, opens 0x328/0x329, close
+  0x32A): StageActorMark.actor is NULL after a close that had no open, or an
+  open for a character that is not on the map. Draw nothing; the state
+  machine is untouched so the mark still pops shut and ends. Same shape and
+  same choice as 0058.
+* camera.c FIELDSTG_updateCamera, follow substate: FIELDSTG_followWithCamera
+  (SCRIPT_FOLLOW) stores NULL for a character that is not on the map. Hold
+  the camera where it is instead of reading the target's tile and z. The
+  PS1 would centre on whatever kernel RAM holds, clamped to the map, which
+  is not knowable here; holding is the smallest change.
+* balloon.c: the 0058 guard also reports through DW3_NULL_GUARD_HIT.
+
+DW3_NULL_GUARD_HIT (port/include/port_null_guard.h) logs "dw3: null-guard
+hit: <site>" once per site on stderr when DW3_NULL_GUARD_LOG is defined (PC
+Debug, -DDW3_NULL_GUARD_LOG=ON, Switch --nxlink) and compiles to nothing
+otherwise. The non-NULL path is unchanged; non-PORT_HOST code is unchanged.
+
+diff -ruN a/src/field/field_mode/balloon.c b/src/field/field_mode/balloon.c
+--- a/src/field/field_mode/balloon.c
++++ b/src/field/field_mode/balloon.c
+@@ -1,6 +1,9 @@
+ /* The balloons over an actor's head */
+ 
+ #include "field/field_mode.h"
++#if PORT_HOST
++#include "port_null_guard.h"
++#endif
+ 
+ /* Steps a balloon's animation (FIELDSTG_triggerAnims) and returns its frame */
+ s32 FIELDSTG_stepBalloonAnim(Balloon *task) {
+@@ -30,6 +33,7 @@
+        host faults on the read, so draw nothing; the update has already run
+        the pop-shut to TASK_KILL. */
+     if (task->actor == NULL) {
++        DW3_NULL_GUARD_HIT("balloon.draw-null-actor");
+         return;
+     }
+ #endif
+diff -ruN a/src/field/field_mode/camera.c b/src/field/field_mode/camera.c
+--- a/src/field/field_mode/camera.c
++++ b/src/field/field_mode/camera.c
+@@ -2,6 +2,7 @@
+ 
+ #include "field/field_mode.h"
+ #if PORT_HOST
++#include "port_null_guard.h"
+ #include "port_widescreen.h"
+ #endif
+ 
+@@ -96,8 +97,20 @@
+         case TASK_RUN:
+             switch (task->substate) {
+                 case 0:
++#if PORT_HOST
++                    /* FIELDSTG_followWithCamera stores NULL for a character that is not on
++                       the map (the lookup is by Actor.key1). The PS1 reads the target's tile
++                       and z through NULL, i.e. kernel RAM, and the camera lands wherever
++                       those words point; a 64-bit host faults. Hold the camera where it is. */
++                    if (task->target == NULL) {
++                        DW3_NULL_GUARD_HIT("camera.follow-null-target");
++                    } else {
++#endif
+                     task->center.x = task->target->tile.x;
+                     task->center.y = task->target->tile.y - (task->target->z >> 8);
++#if PORT_HOST
++                    }
++#endif
+                     if ((task->step == 0) & (task->snap == 0)) {
+                         task->nextStep(task);
+                     }
+diff -ruN a/src/field/stages/kusanagi_city/wstag785.c b/src/field/stages/kusanagi_city/wstag785.c
+--- a/src/field/stages/kusanagi_city/wstag785.c
++++ b/src/field/stages/kusanagi_city/wstag785.c
+@@ -5,6 +5,9 @@
+ 
+ #include "common.h"
+ #include "field/stage.h"
++#if PORT_HOST
++#include "port_null_guard.h"
++#endif
+ /* Defined below, after the code that uses them */
+ extern AnimFrame updateTileSetFrames1[];
+ extern AnimFrame updateTileSetFrames2[];
+@@ -124,6 +127,17 @@
+     SpriteDrawer drawer;
+     s32 pos[2];
+ 
++#if PORT_HOST
++    /* StageActorMark.actor is set by the open commands 0x328/0x329 only (the actor of a
++       character id, NULL when that character is not on the map). A close (0x32A) before
++       any open, or an open for an absent character, leaves it NULL; the PS1 reads the
++       position through NULL (kernel RAM) and draws the mark off the map, a 64-bit host
++       faults. Draw nothing; the update's state machine is untouched. */
++    if (task->actor == NULL) {
++        DW3_NULL_GUARD_HIT("wstag785.mark-null-actor");
++        return;
++    }
++#endif
+     pos[0] = task->actor->pos.x >> 8;
+     pos[1] = (task->actor->pos.y >> 8) - 0x18;
+     initSpriteDrawer(&drawer);

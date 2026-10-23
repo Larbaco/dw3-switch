@@ -17,6 +17,14 @@ than the cache and failed the pixel gate (details in
 Emulator and PC numbers are regression shields only. **OLED acceptance is
 still pending** and belongs to the owner (checklist below).
 
+The art itself (plaques, label coverage, shaders) is described in
+[PC_TITLE_OVERLAY_ART](PC_TITLE_OVERLAY_ART.md).
+
+Since the P7.9 follow-up the screen has eight rows in a compact layout (38 px rows
+on a 42 px pitch, a 600 px window; [PORT_OPTIONS](PORT_OPTIONS.md#options-screen-2026-10-14)),
+so the rectangle sizes in the table below are the current ones (they were
+696x52 and 144x52 with five rows, 696x42 and 168x42 with seven).
+
 ## Scope
 
 Optimize only the native title and Port options screens. Keep the current
@@ -29,15 +37,15 @@ menus, change saves or assets, or overclock.
 `title_options_cache.c` keeps two 960x720 RGBA canvases (2.76 MB each): the
 static window (dim layer, bezel, title bar, rules, button hints) and the
 working canvas. `dw3_options_cache_update()` compares the shared options view
-(`dw3_pc_title_overlay_set_options_view`: cursor and three values) with what
+(`dw3_pc_title_overlay_set_options_view`: cursor and the eight rows' values) with what
 the canvas holds and redraws only the affected rectangles through
 `dw3_pc_title_overlay_options_component()`, restoring the static pixels under
 each rectangle first:
 
 | Change | Rectangles | Bytes |
 |---|---|---|
-| Cursor move | old row, new row (696x52), description (696x52) | 434,304 |
-| Value change | one value cell (144x52) | 29,952 |
+| Cursor move | old row, new row (696x38), description (696x52) | 356,352 |
+| Value change | one value cell (268x38) | 40,736 |
 | Open, language/label change, context loss, resize, retry | whole canvas | 2,764,800 |
 | Idle | none | 0 |
 

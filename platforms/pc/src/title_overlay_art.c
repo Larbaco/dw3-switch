@@ -176,19 +176,51 @@ static void button(int cx,int cy,int back) {
     else{segment(cx-6,cy-6,cx+6,cy+6,1.5f,0,0,49);segment(cx-6,cy+6,cx+6,cy-6,1.5f,0,0,49);}
 #endif
 }
+/* Geometry of the Port options window and its rows, in canvas pixels. The
+ * retained cache (title_options_cache.c) repeats the row numbers; the unit
+ * test proves they agree. Eight rows share the window, so a row is 38 px high
+ * on a 42 px pitch (it was 42 on 48 with seven rows, 52 on 60 with five, P6.17):
+ * the first row starts at y 150 and the last ends at y 482, 26 px above the
+ * message rule. */
+enum { OPT_X0 = 84, OPT_Y0 = 60, OPT_W = 792, OPT_H = 600,
+       OPT_ROW_Y = OPT_Y0 + 96, OPT_ROW_STEP = 42, OPT_ROW_H = 38 };
+/* The rows' kinds: how a registry value is written. */
+enum { ROW_SWITCH, ROW_FAST_FORWARD, ROW_VOLUME, ROW_ENCOUNTER, ROW_TEXT,
+       ROW_BATTLE };
+static int row_kind(int row) {
+    return row == 1 ? ROW_FAST_FORWARD : row == 3 || row == 4 ? ROW_VOLUME :
+           row == 5 ? ROW_ENCOUNTER : row == 6 ? ROW_TEXT :
+           row == 7 ? ROW_BATTLE : ROW_SWITCH;
+}
 static void options_screen(void) {
-    static const Word rows[DW3_TITLE_OPTION_ROWS]={WORD(opt_row0),WORD(opt_row1),WORD(opt_row2)};
+    static const Word rows[DW3_TITLE_OPTION_ROWS]={WORD(opt_row0),WORD(opt_row1),WORD(opt_row2),
+                                                   WORD(opt_row3),WORD(opt_row4),WORD(opt_row5),
+                                                   WORD(opt_row6),WORD(opt_row7)};
     static const Word values[]={WORD(opt_off),WORD(opt_on),WORD(opt_2x),WORD(opt_3x),WORD(opt_4x)};
+    /* Volume steps 1..10 (step 0 reads OFF). */
+    static const Word steps[]={WORD(opt_n1),WORD(opt_n2),WORD(opt_n3),WORD(opt_n4),WORD(opt_n5),
+                               WORD(opt_n6),WORD(opt_n7),WORD(opt_n8),WORD(opt_n9),WORD(opt_n10)};
+    /* P6.18: Encounter rate, indexed by the stored value (0 1x, 1 0.5x, 2 OFF,
+     * 3 1.5x, 4 2x; the screen steps them OFF, 0.5x, 1x, 1.5x, 2x), and Text
+     * speed Normal / Fast / Instant. */
+    static const Word encounter[]={WORD(opt_1x),WORD(opt_05x),WORD(opt_off),WORD(opt_15x),WORD(opt_2x)};
+    static const Word text_speed[]={WORD(opt_normal),WORD(opt_fast),WORD(opt_instant)};
+    /* P7.9: Battle cursor OFF / Command / Command+Tech. */
+    static const Word battle_cursor[]={WORD(opt_off),WORD(opt_command),WORD(opt_command_tech)};
 #if defined(__SWITCH__)
-    static const Word desc[DW3_TITLE_OPTION_ROWS]={WORD(opt_desc0),WORD(opt_desc1_nx),WORD(opt_desc2_nx)};
+    static const Word desc[DW3_TITLE_OPTION_ROWS]={WORD(opt_desc0),WORD(opt_desc1_nx),WORD(opt_desc2_nx),
+                                                   WORD(opt_desc3),WORD(opt_desc4),WORD(opt_desc5),
+                                                   WORD(opt_desc6),WORD(opt_desc7)};
 #else
-    static const Word desc[DW3_TITLE_OPTION_ROWS]={WORD(opt_desc0),WORD(opt_desc1_pc),WORD(opt_desc2_pc)};
+    static const Word desc[DW3_TITLE_OPTION_ROWS]={WORD(opt_desc0),WORD(opt_desc1_pc),WORD(opt_desc2_pc),
+                                                   WORD(opt_desc3),WORD(opt_desc4),WORD(opt_desc5),
+                                                   WORD(opt_desc6),WORD(opt_desc7)};
 #endif
     static const Word titles[]={WORD(opt_title_en),WORD(opt_title_de),WORD(opt_title_es),WORD(opt_title_it)};
     const Word change=WORD(opt_change),back=WORD(opt_back);
     const Word *title=&titles[options_lang==DW3_TITLE_LANG_DE?1:options_lang==DW3_TITLE_LANG_ES?2:
                               options_lang==DW3_TITLE_LANG_IT?3:0];
-    const int x0=84,y0=108,w=792,h=528,x1=x0+w,y1=y0+h;
+    const int x0=OPT_X0,y0=OPT_Y0,w=OPT_W,h=OPT_H,x1=x0+w,y1=y0+h;
     const int full=options_layer==OPTIONS_LAYER_FULL;
     const int draw_static=full||options_layer==OPTIONS_LAYER_STATIC;
 
@@ -216,21 +248,42 @@ static void options_screen(void) {
     /* Choices: label left, value right; the focused one sits in the game's
      * choice box with the pointer. */
     for(int i=0;i<DW3_TITLE_OPTION_ROWS;i++) {
-        const int ry=y0+112+i*68,focus=i==option_cursor;
+        const int ry=OPT_ROW_Y+i*OPT_ROW_STEP,focus=i==option_cursor;
+        const int kind=row_kind(i);
         int v=option_values[i];
+        const Word *value;
+        int dim;
         if(focus&&(full||options_layer==OPTIONS_LAYER_FOCUS)){
-            box(x0+48,ry-8,w-96,52,16,74,156,255);
-            box(x0+51,ry-5,w-102,46,0,8,74,255);
-            pointer(x0+66,ry+5);
+            box(x0+48,ry-6,w-96,OPT_ROW_H,16,74,156,255);
+            box(x0+51,ry-3,w-102,OPT_ROW_H-6,0,8,74,255);
+            pointer(x0+66,ry+3);
         }
         if(draw_static||(options_layer==OPTIONS_LAYER_FOCUS&&
                        i==options_layer_row))
             word(&rows[i],x0+106,ry,0,255,255,255);
         if(v<0)v=0;
-        if(v>4)v=4;
-        if(i!=1&&v>1)v=1;
+        switch(kind) {
+        case ROW_VOLUME:
+            if(v>10)v=10;
+            value=v?&steps[v-1]:&values[0];dim=v==0;break;
+        case ROW_FAST_FORWARD:
+            if(v>4)v=4;
+            value=&values[v];dim=v==0;break;
+        case ROW_ENCOUNTER:
+            if(v>4)v=4;
+            value=&encounter[v];dim=v==2;break;
+        case ROW_TEXT:
+            if(v>2)v=2;
+            value=&text_speed[v];dim=0;break;
+        case ROW_BATTLE:
+            if(v>2)v=2;
+            value=&battle_cursor[v];dim=v==0;break;
+        default:
+            if(v>1)v=1;
+            value=&values[v];dim=v==0;break;
+        }
         if(full||(options_layer==OPTIONS_LAYER_VALUE&&i==options_layer_row))
-            word(&values[v],x1-96,ry,1,v?255:150,v?255:158,v?255:196);
+            word(value,x1-96,ry,1,dim?150:255,dim?158:255,dim?196:255);
     }
     /* Message line for the focused choice, then the button hints. */
     if(draw_static)box(x0+30,y1-152,w-60,3,16,156,247,255);
