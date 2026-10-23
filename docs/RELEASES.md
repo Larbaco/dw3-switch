@@ -166,7 +166,6 @@ one console and are not acceptance gates; gates live in
   high-water stayed at 1685K. The top of the log latches a crash of the
   previous run (`preview.29-19-ga2683c3`, the P5.4 `--force-crash` build), not
   an rc7 crash.
-
 - **preview.30-rc7, 2026-10-23, second run (OLED handheld, US, New Game;
   log `dw3_ponte.log`, 15734 lines, about 5100 windows).** Owner report: the
   New Game bridge scene ("Oh yeah! I need my partner Digimon data!", patch
@@ -178,6 +177,41 @@ one console and are not acceptance gates; gates live in
   numbers in [P6.4](P6.4_FAST_FORWARD.md#new-game-opening-measured-from-the-rc7-log-2026-10-23).
   One `frame dt` window is 9391087230 us (about 2.6 h): the console slept,
   again unclamped and with no `applet focus:` line (see P10.2).
+- **preview.30-rc8 candidate, 2026-10-23 (OLED, US; main `a7860bf`, PSY-Z
+  `ef67c4a`; folder `/mnt/cabal/tmp/dw3-preview30-rc8-out/`).** Owner feedback
+  only: **no log was provided for this run**, and the owner did not say
+  whether it was handheld or docked, so none of the items below is claimed for
+  one mode. Fixed or verified:
+  - **Music loop (#209):** the BGM now loops in the field, the inn and
+    battle (the rc7 "plays once and stops" bug is fixed).
+  - **EU title credits (#210, patch `0073`):** the three native credit lines
+    appear as expected. Verified on the OLED (previously PC and Ryubing only).
+  - **Widescreen (#205 patch `0071`, #202 patch `0072`):** the area name
+    banner and the technique backdrops extend to 16:9 correctly. The
+    battle-start circle/spiral effect also extends to 16:9 correctly, as the
+    owner saw it. ROADMAP P6.1 listed it as still 4:3 and needing a decision;
+    this is the owner's observation only, not yet explained or captured, so
+    the roadmap item is adjusted, not closed.
+  **Open (new in rc8):**
+  - **Music stops after a won battle (P4.3, fix in progress in a separate
+    PR):** after winning a battle the music is silent on the results screen
+    and back on the map. The SFX for exp and level up still play. Not
+    reported in rc7 (possibly hidden by the loop bug; not checked).
+  - **Regression, post-battle results screen shows black side bars** in
+    16:9 (the screen was filling the width before; fix in progress in a
+    separate PR, ROADMAP P6.1).
+  - **Items menu is still 4:3:** the transition effect when opening it is 4:3
+    and the menu itself stays 4:3 while the background is 16:9. Recorded as a
+    future item (ROADMAP P6.1, "Items menu redesign for 16:9"), not a
+    regression of this round.
+  **Performance evidence for P6.22 (no log, owner HUD reading):** in the
+  Forest inn the FPS reads 120+ walking to the bottom corner of the room and
+  about 80 at the top. The owner expects the same elsewhere. The cost of a
+  field frame depends on what is on screen
+  ([P6.4](P6.4_FAST_FORWARD.md#field-fps-depends-on-what-is-on-screen-rc8-oled),
+  ROADMAP P6.22). Not covered: the area-change iris (not looked at), US vs EU
+  (US only), docked vs handheld (not stated), the EU credits on any language
+  but the one shown, rumble, the underrun count (P4.3), P5.1.
 
 Still open on hardware: audio underrun count, the full overlay sweep, battle
 at 60 Hz, the sync-object error above, a fresh-save relaunch reload, and EU
