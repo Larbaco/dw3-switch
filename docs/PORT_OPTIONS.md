@@ -483,8 +483,9 @@ were not tested; P9.3/P9.4 remain open and the overall Phase 9 gate is open.
 
 On the PC SDL3 GPU path and the Switch, Options opens its own screen instead
 of the old text panel. The title backdrop stays, dimmed (also over the PC
-widescreen side extensions); the logo, the menu and, on EU, the game's
-credit sprites are hidden (patch 0056). On the Switch the screen fades in
+widescreen side extensions); the logo, the menu and the credits (the native
+footer, and the game's credit sprites if they were the fallback) are hidden
+(patches 0056 and 0073). On the Switch the screen fades in
 over about 13 frames and fades out over the menu and logo as they return;
 the PC SDL3 GPU shader has no alpha input, so it switches at once. The SDL3
 GL path keeps the text panel.

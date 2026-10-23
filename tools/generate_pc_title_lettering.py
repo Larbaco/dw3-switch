@@ -10,9 +10,12 @@ ROOT = Path(__file__).resolve().parents[1]
 FONT_ROOT = Path('/usr/share/fonts/truetype/dejavu')
 LETTERS = [
     ('start', 'PRESS START', 26, 'DejaVuSansCondensed-Bold.ttf'),
+    # The title credits, transcribed from the original sprites (logo sprites
+    # 5/6, identical on the US disc and in all seven EU banks): three lines,
+    # nothing else. Keep the characters; only the spacing is typographic.
     ('credit1', '© Akiyoshi Hongo · Toei Animation', 12, 'DejaVuSansCondensed.ttf'),
     ('credit2', 'TM & © 1997–2002 Bandai.', 12, 'DejaVuSansCondensed.ttf'),
-    ('credit3', '© 2002 Bandai Co., Ltd.', 12, 'DejaVuSansCondensed.ttf'),
+    ('credit3', '© 2002 Bandai Co.,Ltd', 12, 'DejaVuSansCondensed.ttf'),
     # The port-only Options row on the EU disc, which has no original sprite
     # for it. English and French both read "Options" (label_1).
     ('options_de', 'Optionen', 29, 'DejaVuSansCondensed-Bold.ttf'),
