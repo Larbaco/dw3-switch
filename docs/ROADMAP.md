@@ -581,6 +581,14 @@ speed.
   once-per-site `null-guard hit` log in dev builds; none of them fires in
   the shipped-data scan, the rest were left (dead code, player/singleton
   lookups, or a call through NULL that would crash the PS1 too).
+  **Second NULL read fixed (2026-10-23, owner's preview.30-rc6 OLED crash
+  on opening Items):** the field menu's item list drew the item panel's icon
+  for `getItem(0)` (NULL) for two frames on every first open of a non-empty
+  list; patch `0069`, hook `0070`, scenarios `us/eu-items-screen[-normal]`,
+  details in [BALLOON_NULL_ACTOR.md](BALLOON_NULL_ACTOR.md#patch-0069-items-screen-null-item-preview30-rc6-oled-crash).
+  Present since at least preview.29. Needs an OLED check of the Items screen
+  in the next release candidate. Open: the 103-frame Instant page after each
+  battle (not a scroll; [RELEASES](RELEASES.md)).
 
 Gate: start → first boss on hardware, both versions.
 

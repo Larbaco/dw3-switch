@@ -1,4 +1,4 @@
-# NULL reads the PS1 tolerated (patches 0058 and 0059)
+# NULL reads the PS1 tolerated (patches 0058, 0059 and 0069)
 
 (The file keeps its old name, `BALLOON_NULL_ACTOR.md`, so links stay valid.)
 
@@ -166,3 +166,86 @@ doubles as a positive control), `wstag785.mark-null-actor`,
   release NROs contain no `null-guard hit` string, the nxlink NRO has the
   three. Not run on Ryubing or OLED: the guards are on paths the shipped
   scripts do not take, so there is nothing to observe beyond the build.
+
+## Patch 0069: Items screen, NULL item (preview.30-rc6 OLED crash)
+
+Status: fixed on the PC host (US and EU, Text speed Instant and Normal);
+OLED pass pending. Owner report (2026-10-22, EU, release candidate
+preview.30-rc6, non-nxlink, after about 11 random battles at Encounter rate
+2x with Text speed Instant): the game crashed on opening Items in the field
+menu. Patches 0059 to 0068 are not involved: the same crash is in
+v0.6.5-preview.29, and the path has no typed text (the field menu's windows
+type at delay 0, so the Text speed hooks ignore them).
+
+### Symptom and evidence
+
+`crash_report.txt` (kept in
+`tmp/evidence/2026-10-22-preview30-rc6-oled/`): `mode_file: 0x207` (the EU
+STSTATUS overlay, the field menu's screens), `far: 0xd`, `esr: 0x92000006`
+(data abort, translation fault), `x0: 0`, `pc == lr`, `x1 == pc - 0xc`. A
+read at offset 0xd of NULL is `ItemInfo.type` (8 byte data pointer, price,
+sell price, kind at 0xc, type at 0xd on a 64-bit host), and `pc == lr` with
+`x1 == pc - 0xc` is the shape of `getItemCategory`: `bl getItem` (a leaf that
+returns NULL for id 0), then `ldrb w1, [x0, #13]`. The Atmosphere log shows
+`STSTATUS_runItemScreen`. The pc does not symbolize cleanly against the ELF
+kept for that build (it names `spriteDrawerDraw`, at an `add` that cannot
+fault), so the diagnosis rests on the registers and on the host
+reproduction below. The `dw3.log` only shows the frame time growing from 1.0
+to 1.5 s per 60 frames in the last seconds (the menu's blit path) and the
+file cache growing by the menu's text files; there is no error line.
+
+### Reproduction
+
+PC host, any build from preview.29 on. The bag of a new game is empty and the
+screen then says "No Items." without opening the item panel, so the crash
+needs an item in the chosen list. `DW3_FORCE_ITEMS=1-402` (patch 0070) fills
+the bag; field menu, Items, Items list: SIGSEGV in `getItemCategory`, called
+by `STSTATUS_drawItemScreen` (gdb: `rdi = 0`). Evidence:
+`tmp/evidence/2026-10-22-items-crash/us-prefix-crash-gdb.log`.
+
+### Root cause
+
+`STSTATUS_runItemScreen` substate 12 (`STSTATUS_openItemList`) creates the
+list's task and, in the same frame, starts the item panel's fade
+(`STSTATUS_fadeItemInfo(screen, 1)`, 10 frames). `STSTATUS_drawItemScreen`
+draws the panel's icon, `ITEM_FUNCS.getCategory(screen->item)`, once that fade
+is full (11 updates later). `screen->item` is set by the list task
+(`STSTATUS_refreshItemList`) only when the list's own fades are done: one
+frame to fill the list, one to start the fades, 11 updates, i.e. two frames
+after the panel is full. For those two frames `screen->item` is 0 (tasks are
+allocated zeroed), `getItem(0)` is NULL and `getItemCategory` reads the type
+through it. The PS1 reads kernel RAM and draws an icon of some category for
+two frames, nobody ever saw it; a 64-bit host faults, every time the list is
+opened for the first time with an item in it (a reopen keeps the old item).
+It is the same shape as 0058/0059 (a NULL read the PS1 tolerated) that the
+earlier audit missed, because it looked for task and actor lookups, not item
+lookups.
+
+### Behaviour chosen
+
+`PORT_HOST` only: the icon is not drawn while `screen->item <= 0`; the panel
+frame is drawn as before and the icon shows the frame the list picks its
+first item. A line `dw3: items screen: panel icon skipped, no item chosen yet
+(patch 0069)` goes to stderr (PC; the replay checks it) and the
+`item_screen.icon-no-item` null-guard hit is recorded in dev builds.
+
+Audit of the other `ITEM_FUNCS.get` / `.getCategory` / `.isKind` callers (about
+90 sites in `menus/field_menu`, `item_shop`, `battle`, `engine/game`): the
+equipment sites test `item > 0`, `!= 0` or `!= -1` first, the lists
+(`item_list.c`) test `items[...] != 0`, and the shop and battle sites pass ids
+that the lists produced. This was the only site that can see item 0.
+
+### Regression tests
+
+* `us/eu-items-screen` (Text speed Instant) and `us/eu-items-screen-normal`:
+  forced EVENT_BATTLE won at once, back to the field, Start, Items, Items
+  list, cursor, use an item, the list again, Weapons (page 2), back to the
+  field; `DW3_FORCE_ITEMS=1-402`. The process verdict, the STSTATUS overlay
+  restore after the battle's, and the guard's log line are required. Without
+  patch 0069 the US scenario dies with SIGSEGV at the Items list (`CRASH`, log
+  line missing).
+* Captures of the fixed flow, US and EU:
+  `tmp/evidence/2026-10-22-items-crash/montage-{us,eu}.png`.
+* Not covered: the OLED, the other four EU languages, an item list reached
+  after several real battles (the PC replays use a forced battle and a forced
+  bag; the code path does not depend on how the items got there).

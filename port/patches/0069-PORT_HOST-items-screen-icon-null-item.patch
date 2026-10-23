@@ -1,0 +1,72 @@
+Upstream-bound: no
+Subject: [PORT_HOST] Items screen: no icon for the item panel before an item is chosen
+
+Owner report (OLED, EU, preview.30-rc6): the game crashed on opening the
+Items screen after several battles. Root cause, reproduced on the PC host
+(US and EU, any Text speed, and on v0.6.5-preview.29 too): any non-empty item
+list crashes the field menu's first screen with a SIGSEGV in getItemCategory.
+The Switch crash_report.txt agrees: mode_file 0x207 (EU STSTATUS), data abort
+at far=0xd (ItemInfo.type of a NULL ItemInfo), x0=0, pc == lr and
+x1 == pc - 0xc, which is the shape of getItemCategory (`bl getItem` returns
+NULL, the next instruction is `ldrb w1, [x0, #13]`). The pc does not
+symbolize cleanly against the ELF we kept (addr2line names a neighbouring
+function), so the rest of this note rests on the host reproduction.
+
+STSTATUS_runItemScreen substate 12 (STSTATUS_openItemList) creates the item
+list task and, in the same frame, starts the item panel's fade
+(STSTATUS_fadeItemInfo(screen, 1), 10 frames). STSTATUS_drawItemScreen draws
+the panel's icon, sprite ITEM_FUNCS.getCategory(screen->item), as soon as
+that fade is full, which is 11 updates later. The list task sets
+screen->item (STSTATUS_refreshItemList) only when its own two fades are
+done: one frame to fill the list, one to start them, 11 updates, so two
+frames after the panel is full. For those two frames screen->item is 0
+(createTask zeroes the screen), getItem(0) is NULL and getItemCategory reads
+the item's type through it. The PS1 reads kernel RAM there and draws some
+icon for two frames; a 64-bit host faults. An empty list never gets here
+(the screen shows "No Items." and does not open the panel), which is why
+the new-game bag and the replay scenarios never hit it.
+
+Under PORT_HOST the icon is skipped while screen->item is not a valid item
+(<= 0). The panel frame is drawn as before and the icon appears the frame
+the list chooses its first item, as on the PS1 minus two frames of an
+arbitrary icon. Nothing else changes: with an item chosen (every frame
+after, and every reopen of the list, where screen->item is kept) the same
+sprite is drawn. The null-guard diagnostic (port_null_guard.h) reports the
+site as "item_screen.icon-no-item" in PC Debug and nxlink builds.
+
+diff -ruN a/src/menus/field_menu/item_screen.c b/src/menus/field_menu/item_screen.c
+--- a/src/menus/field_menu/item_screen.c
++++ b/src/menus/field_menu/item_screen.c
+@@ -2,6 +2,10 @@
+    (STSTATUS_createItemScreen): its rodata starts at 0x800829D0 (USA). */
+ 
+ #include "menus/field_menu.h"
++#if PORT_HOST
++#include <stdio.h>
++#include "port_null_guard.h"
++#endif
+ 
+ /* Creates the first screen's windows */
+ void STSTATUS_createItemWindows(ItemScreen *screen, ItemScreenWindows *windows) {
+@@ -377,7 +381,21 @@
+         } else {
+             sprite.setScale(ONE, ONE, ONE);
+             sprite.setTexture(0x140, 0);
++#if PORT_HOST
++            /* The panel's fade (10 frames) is started together with the list's task,
++               which only sets `screen->item` when its own fades are done, two or three
++               frames later. In between the item is 0 and getItem(0) is NULL: the PS1
++               reads the item's type through NULL (kernel RAM) and draws some icon for
++               two frames, a 64-bit host faults. Draw no icon until an item is chosen. */
++            if (screen->item <= 0) {
++                DW3_NULL_GUARD_HIT("item_screen.icon-no-item");
++                fprintf(stderr, "dw3: items screen: panel icon skipped, no item chosen yet (patch 0069)\n");
++            } else {
++#endif
+             sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), ITEM_FUNCS.getCategory(screen->item), 0x16, 0xAE);
++#if PORT_HOST
++            }
++#endif
+         }
+         sprite.setTexture(0x280, 0x100);
+         sprite.draw(FILE_CACHE.getEntry(FILE_STATUS_SPRITES << 16), 0x2F, 0xF, 0xA5);
