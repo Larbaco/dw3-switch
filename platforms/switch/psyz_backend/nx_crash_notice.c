@@ -14,8 +14,9 @@
  * apply. The frame is redrawn only when the countdown changes; between
  * redraws the last presented frame stays on screen and the loop sleeps.
  *
- * Bounded: it returns after DW3_NOTICE_SHOW_MS whatever the pad does, and a
- * loop cap ends it even if the clock does not advance.
+ * Bounded: it returns after DW3_NOTICE_SHOW_MS (60 s) whatever the pad does,
+ * a loop cap ends it even if the clock does not advance, and an applet exit
+ * request (HOME, close) ends it at once.
  */
 #include "nx.h"
 #include "nx_crash.h"
@@ -145,6 +146,13 @@ void dw3_nx_crash_notice_show(void) {
 
         elapsed = notice_now_ms() - t0;
         if (elapsed >= DW3_NOTICE_SHOW_MS || ++polls > max_polls) {
+            break;
+        }
+        /* The notice can last a minute now: HOME / close (ExitRequested)
+         * must not wait for it (appletLockExit gives ~15 s). The pump of the
+         * game drains the same messages again after the notice. */
+        if (!appletMainLoop()) {
+            how = "ended: exit requested";
             break;
         }
         padUpdate(&pad);
