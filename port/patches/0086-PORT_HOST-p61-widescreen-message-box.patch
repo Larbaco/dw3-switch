@@ -1,0 +1,66 @@
+Upstream-bound: no
+Subject: [PORT_HOST] P6.1 field message box (the opening's news captions) spans 16:9
+
+The field's message box (createMessageBox: the black caption bar of the
+opening's TV news and the other field messages) is a full-width bar of two
+320-wide halves, so in 16:9 it ended one gutter inside the picture. With
+widescreen on each half is drawn widened by DW3_MENU_BAND (patch 0076): its
+left end cap and first tiles move left by the gutter, the rest right, and the
+60-pixel body tiles fill the middle; the halves grow from the picture's edges
+(pivots -gutter and 320 + gutter), the text starts one gutter further left
+and the "next" arrow sits one gutter further right, as the field menu's help
+line does. Off (gutter 0) every position is the PS1 one.
+
+--- a/src/engine/text/message_box.c
++++ b/src/engine/text/message_box.c
+@@ -1,4 +1,11 @@
+ #include "engine/game.h"
++#if PORT_HOST
++#include "port_widescreen.h"
++#else
++#define DW3_MENU_LEFT(x) (x)
++#define DW3_MENU_RIGHT(x) (x)
++#define DW3_MENU_BAND(sheet, frame, split) (sheet)
++#endif
+ 
+ /* Draws the two halves of a message box's panel, growing, still or fading */
+ void drawMessageBoxFrame(MessageBoxFrame *task) {
+@@ -16,11 +23,19 @@
+         obj.setTexture(0x140, 0);
+         if (task->substate == 0) {
+             obj.setScale(task->scale, ONE, ONE);
++#if PORT_HOST
++            /* widescreen: the halves grow from the picture's edges */
++            obj.setPivot(x == 0 ? DW3_MENU_RIGHT(0x140) : DW3_MENU_LEFT(0), 0xC4);
++#else
+             obj.setPivot(0x140 - x, 0xC4);
++#endif
+         } else if (task->substate == 2) {
+             obj.setClutRow(task->fadeRow);
+         }
+-        obj.draw(cache->getEntry(FILE_MENU_SPRITES << 16), i + 8, 0, 0xA6);
++        /* widescreen (patch 0086): the full-width bar (the news captions of
++           the opening, the field's messages) reaches the picture's edges,
++           its 60-pixel body tiles repeated over the middle */
++        obj.draw(DW3_MENU_BAND(cache->getEntry(FILE_MENU_SPRITES << 16), i + 8, 0xA0), i + 8, 0, 0xA6);
+         x += 0x140;
+     }
+ }
+@@ -39,7 +54,7 @@
+         }
+     }
+     obj.setClutRow(task->arrowFrame);
+-    obj.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 10, 0x124, 0xCD);
++    obj.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 10, DW3_MENU_RIGHT(0x124), 0xCD);
+ }
+ 
+ /* The message box frame task: grows, waits with the arrow when asked, then fades out and ends */
+@@ -143,7 +158,7 @@
+     Task *task = createTask(updateMessageBox, sizeof(Task), sizeof(MessageBox));
+     MessageBox *data = task->children;
+ 
+-    data->window = createTextWindow(layerId, 1, 0x12, 0xB0);
++    data->window = createTextWindow(layerId, 1, DW3_MENU_LEFT(0x12), 0xB0);
+     data->window->setLines(data->window, 3);
+     data->window->setString(data->window, strings, index);
+     data->window->setVisible(data->window, 0);

@@ -546,5 +546,25 @@ for _v, _ids in (("us", (0x159, 0x1FA, 0x1C2, 0x158, 0x1F9)),
                   note="the field menu's screens in widescreen: panels at the 16:9 edges (patch 0076)"))
 
 
+# P6.1 (patches 0085-0087, owner's preview.31-rc1 OLED notes): the title menu,
+# the opening's news caption bar and the player name (Digimon Online
+# registration) screen fill 16:9. The New Game path of `newgame-field` up to
+# the end of the registration, widescreen seeded on. The title overlay must
+# take the gutter (53) after its restore, and the player name overlay must
+# never be at gutter 0 (it was 4:3 before 0087).
+for _v, _title, _field, _subs, _plnmet in (
+        ("us", 0x1C1, 0x158, (0x1DA, 0x1DB), 0x1F8),
+        ("eu", 0x1D0, 0x166, (0x1E9, 0x1EA), 0x206)):
+    _add(Scenario(f"{_v}-ws-title-intro", _v, "full", turbo=4, timeout=900,
+                  cfg=(("widescreen", "1"),),
+                  expect_restore=((_title, M), (_field, M), (_subs[0], S), (_subs[1], S),
+                                  (_plnmet, M)),
+                  expect_log=((0, r"overlay restore file=0x%x kind=mode(?:(?!overlay restore)(?s:.))*?"
+                                  r"gutter 53 px per side" % _title),),
+                  forbid_log=((0, r"overlay restore file=0x%x kind=mode(?:(?!overlay restore)(?s:.))*?"
+                                  r"gutter 0 px per side" % _plnmet),),
+                  note="title menu, news caption and registration screen in 16:9 (patches 0085-0087)"))
+
+
 def by_name() -> dict[str, Scenario]:
     return {s.name: s for s in SCENARIOS}
