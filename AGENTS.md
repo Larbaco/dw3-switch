@@ -207,7 +207,8 @@ Do not overclock (see technical directive 7).
 - Shipping or hosting game assets
 - Matching decompilation work inside `vendor/dw3_decomp` as the main task
 - Official Nintendo SDK / eShop packaging
-- Cheats, piracy tooling, or bypassing console security beyond normal
+- Cheats (except the off-by-default test menu the owner asked for,
+  ROADMAP P6.20), piracy tooling, or bypassing console security beyond normal
   homebrew (Atmosphere + homebrew `.nro`) assumptions
 
 ## Cursor Cloud specific instructions

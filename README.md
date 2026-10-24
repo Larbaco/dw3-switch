@@ -151,7 +151,10 @@ These are goals, not promises. The full list is in
 - Community quality-of-life features from the EU patch suite, reimplemented
   natively: [COMMUNITY_QOL](docs/COMMUNITY_QOL.md).
 - Language packs, with Brazilian Portuguese first.
-- Texture pack support: [TEXTURE_PACKS](docs/TEXTURE_PACKS.md).
+- Texture pack support: [TEXTURE_PACKS](docs/TEXTURE_PACKS.md), and later a
+  modding API (mod folder, asset and data-table overrides, P8.5).
+- A cheats sub-screen in Port options, to speed up testing (P6.20).
+- A player guide, a docs index and contributor docs (P6.23).
 - A separate tool to convert saves to and from PS1 memory-card images.
 
 ## Play it on Switch
