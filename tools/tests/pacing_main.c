@@ -105,12 +105,21 @@ static void policy_text(void) {
     int mode;
 
     for (mode = DW3_TEXT_NORMAL; mode <= DW3_TEXT_INSTANT; mode++) {
-        /* Only the dialogue delay is scaled; 0 stays 0, the banner's 5 stays. */
+        /* Only the dialogue and banner delays are scaled; 0 stays 0. */
         CHECK(dw3_pacing_scale_delay(mode, 0) == 0);
-        CHECK(dw3_pacing_scale_delay(mode, 5) == 5);
         CHECK(dw3_pacing_scale_delay(mode, 1) == 1);
+        CHECK(dw3_pacing_scale_delay(mode, 4) == 4);
+        CHECK(dw3_pacing_scale_delay(mode, 7) == 7);
         CHECK(dw3_pacing_scale_delay(mode, -3) == -3);
     }
+    /* The area name banner (delay 5): Instant only, so the reveal shows the
+     * names whole; Normal and Fast type it as the game does. */
+    CHECK(DW3_PACING_BANNER_DELAY == 5);
+    CHECK(dw3_pacing_scale_delay(DW3_TEXT_NORMAL, 5) == 5);
+    CHECK(dw3_pacing_scale_delay(DW3_TEXT_FAST, 5) == 5);
+    CHECK(dw3_pacing_scale_delay(DW3_TEXT_INSTANT, 5) == DW3_PACING_FAST_DELAY);
+    CHECK(dw3_pacing_reveal_page(DW3_TEXT_INSTANT, dw3_pacing_scale_delay(DW3_TEXT_INSTANT, 5), 0, 0));
+    CHECK(!dw3_pacing_reveal_page(DW3_TEXT_FAST, dw3_pacing_scale_delay(DW3_TEXT_FAST, 5), 0, 0));
     CHECK(dw3_pacing_scale_delay(DW3_TEXT_NORMAL, 6) == 6);
     CHECK(dw3_pacing_scale_delay(DW3_TEXT_FAST, 6) == DW3_PACING_FAST_DELAY);
     CHECK(dw3_pacing_scale_delay(DW3_TEXT_INSTANT, 6) == DW3_PACING_FAST_DELAY);
@@ -336,7 +345,8 @@ static void glue_text(void) {
      * Instant page, the "103 frames" of the rc6 OLED log. */
     CHECK(dw3_port_pacing_text_delay(&w1, 6) == DW3_PACING_FAST_DELAY);
     dw3_port_pacing_text_poll(&w1, 0, 1);       /* "typed in 1 frame(s)" */
-    CHECK(dw3_port_pacing_text_delay(&w1, 5) == 5);    /* the banner, same address */
+    /* the banner, same address; Instant shows its names whole (fast delay) */
+    CHECK(dw3_port_pacing_text_delay(&w1, 5) == DW3_PACING_FAST_DELAY);
     {
         int n;
 
@@ -345,6 +355,8 @@ static void glue_text(void) {
         }
         dw3_port_pacing_text_poll(&w1, 0, 1);   /* 103 frames: silent */
     }
+    /* The banner's address is never timed, and scrolls as the game does. */
+    CHECK(dw3_port_pacing_text_scroll(&w1, DW3_PACING_FAST_DELAY) == 0);
     /* A window that types nothing (delay 0) on a dialogue window's address. */
     CHECK(dw3_port_pacing_text_delay(&w2, 6) == DW3_PACING_FAST_DELAY);
     CHECK(dw3_port_pacing_text_delay(&w2, 0) == 0);

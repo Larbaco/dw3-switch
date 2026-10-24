@@ -296,6 +296,46 @@ def test_p77_scenarios_are_defined_for_both_discs():
     assert any("steal item" in rx for _, rx in names["eu-p77-ko-no-claw"].forbid_log)
 
 
+def test_postbattle_scenarios_need_turbo_in_the_report_and_the_banner_shown_whole():
+    """preview.31-rc1 OLED: post-battle text slow with turbo on and Instant.
+    The verdicts must fail on a build that drops turbo to 1x for the battle
+    report or types the area banner's names, and pass on the fixed log."""
+    rt = _load("replay_tests")
+    names = {sc.name: sc for sc in rt.SCENARIOS}
+    for v in ("us", "eu"):
+        a, b = names[f"{v}-postbattle-instant"], names[f"{v}-postbattle-normal"]
+        assert a.phases == b.phases == (f"{v}-p77-battle",)
+        assert a.turbo == 4 and dict(a.cfg) == {"text_speed": "2"}
+        assert b.turbo == 0 and not b.cfg
+        for sc in (a, b):
+            assert sc.log_only and sc.env and sc.expect_restore, sc.name
+    sc = names["us-postbattle-instant"]
+    head = ("dw3-turbo: speed 4x\n"
+            "dw3: WFIGHTMN_endBattle result=1 requestMode=0x1400 fieldMode=0x2d7\n"
+            "dw3: STFGTREP_start\n")
+    report = ("dw3-pacing: text page typed in 1 frame(s) (text speed instant)\n"
+              "dw3-pacing: text page typed in 2 frame(s) (text speed instant)\n"
+              "dw3: STFGTREP return fieldMode=0x2d7\n")
+    shown = ("dw3-pacing: text typed at delay 5 is not a dialogue page (area name banner): "
+             "shown whole (text speed instant)\n") * 2
+    alone = ("dw3-pacing: text typed at delay 5 is not a dialogue page (area name banner): "
+             "text speed leaves it alone\n") * 2
+    fixed = head + report + shown + "dw3-turbo: speed 4x\n"
+    assert rt.check_log_expect(sc.expect_log, 0, fixed, sc.forbid_log) == []
+    # before the fix: the report dropped to 1x, and the banner typed its names
+    report_1x = head + "dw3-turbo: speed 1x\n" + report + shown
+    assert rt.check_log_expect(sc.expect_log, 0, report_1x, sc.forbid_log) != []
+    banner_typed = head + report + alone
+    assert rt.check_log_expect(sc.expect_log, 0, banner_typed, sc.forbid_log) != []
+    # turbo dropping to 1x after the report (a field menu, say) is not this check
+    later_1x = fixed + "dw3-turbo: speed 1x\n"
+    assert rt.check_log_expect(sc.expect_log, 0, later_1x, sc.forbid_log) == []
+    sc = names["us-postbattle-normal"]
+    normal = head.replace("dw3-turbo: speed 4x\n", "") + report + alone
+    assert rt.check_log_expect(sc.expect_log, 0, normal, sc.forbid_log) == []
+    assert rt.check_log_expect(sc.expect_log, 0, head + report + alone, sc.forbid_log) != []
+
+
 def test_every_manifest_env_variable_is_scrubbed_by_the_runner():
     # a DW3_* variable of the user's shell must not leak into a scenario that
     # does not set it: the runner pops each key it knows before it applies the

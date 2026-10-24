@@ -47,7 +47,7 @@ lives in its doc, not in the entry below.
 | P6.1 | Scaling / widescreen | in progress (rc8 OLED: banner, technique backdrops and encounter spiral reach 16:9; results screen 16:9 with patch 0074 in PR #213, pending OLED; Items menu dissolve 16:9 with patch 0075 and the field menu screens re-anchored to the 16:9 edges with patch 0076, pending OLED; open: the field menu map screen, shop / memory card / partner name panels) | [P6.1](P6.1_WIDESCREEN.md) |
 | P6.2 | PAL/NTSC, EU/US, language at boot | in progress | [P3_EU_BUILD](P3_EU_BUILD.md) |
 | P6.3 | PGXP-style vertex precision | open | — |
-| P6.4 | Fast-forward | in progress (OLED turbo works in battle on the US disc, rc7; tick is the owner's call) | [P6.4](P6.4_FAST_FORWARD.md) |
+| P6.4 | Fast-forward | in progress (OLED turbo works in battle on the US disc, rc7; the battle report now runs at turbo speed too, 2026-10-24, pending OLED; tick is the owner's call) | [P6.4](P6.4_FAST_FORWARD.md) |
 | P6.5 | Release packaging | done | [P6.5](P6.5_PACKAGING.md), [RELEASES](RELEASES.md) |
 | P6.6 | Localization goal | open | — |
 | P6.7 | Language packs (PT-BR first) | open | — |
@@ -58,7 +58,7 @@ lives in its doc, not in the entry below.
 | P6.12–P6.14, P6.16, P6.19, P6.21 | Backlog goal notes | future | [backlog](#backlog--future-goals) |
 | P6.15 | Regression replay tests | in progress | [P6.15](P6.15_REPLAY_TESTS.md) |
 | P6.17 | Music / SFX volume | in progress (owner: volume options work, rc6 EU / rc7 US; relaunch check open) | [P6.17](P6.17_VOLUME.md) |
-| P6.18 | Pacing options | in progress (Instant text confirmed on the US OLED, rc7; rest of the OLED check open) | [P6.18](P6.18_PACING.md) |
+| P6.18 | Pacing options | in progress (Instant text confirmed on the US OLED, rc7; Instant shows the area banner's names whole since 2026-10-24, pending OLED; rest of the OLED check open) | [P6.18](P6.18_PACING.md) |
 | P6.20 | Port debug / cheat menu in the Options screen (future goal) | future | [roadmap](#phase-6-goal-notes), [PORT_OPTIONS](PORT_OPTIONS.md) |
 | P6.22 | Turbo speed in scripted scenes (future goal) | in progress (PC profile: the CPU rasterizer is ~97 % of a field frame; pixel-identical PSY-Z rasterizer 4-5x faster, OLED check open) | [P6.22](P6.22_FIELD_CPU.md), [roadmap](#phase-6-goal-notes), [P6.4](P6.4_FAST_FORWARD.md) |
 | P6.23 | Documentation: player guide, docs index, contributor and modder docs (future goal) | future | [roadmap](#phase-6-goal-notes) |
@@ -832,6 +832,14 @@ gate, which stays open.
   **Future goal (2026-10-23):** the owner also finds the New Game opening
   scenes very slow with turbo at 4x (about 70 FPS); recorded as P6.22, nothing
   started (first numbers in P6.22 below: field 68 fps at 4x, battle 190).
+  **Battle report (2026-10-24, owner, preview.31-rc1 OLED: "even with turbo
+  on and Instant, the post-battle text still runs slowly"):** the results
+  screen is its own mode (`STFGTREP`, US 0x1C2, EU 0x1D1) and the turbo gate
+  dropped to 1x for it. Fixed: the report is the gate's third mode file
+  (port only; same game frames, replays unchanged; `us/eu-postbattle-*`
+  replay scenarios). The field menu screens still run at 1x. Needs an OLED
+  check: a won battle with R3 on, the results screen at the battle's speed.
+  See [P6.4_FAST_FORWARD.md](P6.4_FAST_FORWARD.md#battle-report-preview31-rc1-oled).
   Done when: PC and Switch (Ryujinx, then hardware) show it on both the US
   and EU discs, and it returns cleanly to normal speed.
 - [x] **P6.5** Release packaging: `.nro` + `README` for own-disc setup;
@@ -1533,6 +1541,17 @@ Statuses are in the [table](#status-at-a-glance).
   types at the game's own speed (the open owner call above). **Still open:**
   Fast, 0.5x and Off in play, EU on rc7, a dialogue that scrolls, relaunch
   persistence. Stays unticked.
+  **Post-battle (2026-10-24, owner, preview.31-rc1 OLED):** "even with turbo on
+  and Instant, the post-battle text still runs slowly". The report's pages were
+  already shown in 1-2 frames; turbo dropped to 1x for the report (fixed in
+  P6.4) and the area name banner typed its names. **Instant now shows the
+  banner's names whole** (port only, delay 5 -> 2 at Instant; boxes, hold and
+  wipe unchanged; Normal and Fast unchanged): the banner after the test battle
+  closes in 126 instead of 160 game ticks (US), 140 instead of 180 (EU). This
+  answers the banner part of the owner's call above for Instant; a shorter
+  hold is still not done. Needs an OLED check (Instant, a won battle and a
+  door). Details in
+  [P6.18_PACING.md](P6.18_PACING.md#instant-and-the-area-name-banner-preview31-rc1).
 - [ ] **P6.19 Japanese disc support (future goal).** File map, executable
   differences and boot for the JP disc, next to US and EU. Goal note only
   (2026-10-15). Done when the JP disc boots to the field on PC and Switch.
@@ -1671,7 +1690,8 @@ Statuses are in the [table](#status-at-a-glance).
   text and a full map on the soft path, and the map still fills in one
   tile per frame per [STATIC_SD_LOAD.md](STATIC_SD_LOAD.md)); (2) the
   turbo gate: the port speeds up only the field and battle mode files
-  (`port/options/turbo.c`, US 0x158/0x159, EU 0x166/0x167), so a scene that
+  (`port/options/turbo.c`, US 0x158/0x159, EU 0x166/0x167; the battle report
+  0x1C2 / 0x1D1 was added 2026-10-24), so a scene that
   runs in another mode or overlay would stay near 1x; the opening goes
   through several overlays (P6.15: Kusanagi, name entry, Login Room, lobby);
   (3) present/vsync pacing in `Psyz_VideoVSync` (`nx_gpu.c`) and the

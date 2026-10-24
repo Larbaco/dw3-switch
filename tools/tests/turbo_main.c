@@ -5,9 +5,9 @@
 #include <stdio.h>
 
 #if VERSION_EU
-enum { FIELD = 0x166, BATTLE = 0x167, TITLE = 0x1DD, FF_ROW = 1 };
+enum { FIELD = 0x166, BATTLE = 0x167, REPORT = 0x1D1, STATUS = 0x207, TITLE = 0x1DD, FF_ROW = 1 };
 #else
-enum { FIELD = 0x158, BATTLE = 0x159, TITLE = 0x1C1, FF_ROW = 1 };
+enum { FIELD = 0x158, BATTLE = 0x159, REPORT = 0x1C2, STATUS = 0x1F9, TITLE = 0x1C1, FF_ROW = 1 };
 #endif
 
 static int fail(const char *msg) {
@@ -42,9 +42,19 @@ int main(void) {
     if (dw3_port_turbo_speed() != 2) {
         return fail("stays on in battle");
     }
+    /* The battle report (results screen) after a won battle runs at the
+     * same speed as the battle before it. */
+    frame(0, REPORT);
+    if (dw3_port_turbo_speed() != 2) {
+        return fail("stays on in the battle report");
+    }
+    frame(0, STATUS);
+    if (dw3_port_turbo_speed() != 1) {
+        return fail("normal speed in the field menu screens");
+    }
     frame(0, TITLE);
     if (dw3_port_turbo_speed() != 1) {
-        return fail("normal speed outside field and battle");
+        return fail("normal speed outside field, battle and report");
     }
     frame(0, FIELD);
     if (dw3_port_turbo_speed() != 2) {

@@ -130,6 +130,7 @@ static Tracked *find_tracked(const void *win) {
 
 int dw3_port_pacing_text_delay(const void *win, int delay) {
     int mode = mode_of(DW3_PORT_OPT_TEXT_SPEED);
+    int delay_out;
     Tracked *t;
 
     if (delay != DW3_PACING_DIALOGUE_DELAY) {
@@ -137,18 +138,26 @@ int dw3_port_pacing_text_delay(const void *win, int delay) {
          * window that had it was freed and the game gave the address to this
          * one (the area name banner types at delay 5, a typed animation
          * timed to its boxes). Forget the old window, or this one is timed as
-         * a dialogue page and logs a "slow Instant page". */
+         * a dialogue page and logs a "slow Instant page". The banner is never
+         * timed, at any text speed. */
         t = find_tracked(win);
         if (t != NULL) {
             t->win = NULL;
             t->armed = 0;
         }
-        if (delay > 0) {
+        delay_out = dw3_pacing_scale_delay(mode, delay);
+        if (delay > 0 && delay_out != delay) {
+            /* Instant: the banner's names are shown whole as they start;
+             * the banner's boxes and its hold keep their own timing. */
+            PACING_LOG("dw3-pacing: text typed at delay %d is not a dialogue "
+                       "page (area name banner): shown whole (text speed %s)",
+                       delay, TEXT_NAME[mode]);
+        } else if (delay > 0) {
             PACING_LOG("dw3-pacing: text typed at delay %d is not a dialogue "
                        "page (area name banner): text speed leaves it alone",
                        delay);
         }
-        return delay;
+        return delay_out;
     }
     /* Remember the dialogue windows so the log can say how long a page took. */
     t = find_tracked(win);
