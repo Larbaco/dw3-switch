@@ -1,0 +1,105 @@
+Upstream-bound: no
+Subject: [PORT_HOST] Test hook: DW3_FORCE_CARDS fills the card album
+
+Debug aid for the replay tests (like DW3_FORCE_ITEMS of patch 0070): a new
+game has seen 29 cards, none on the album's first page, so the album's card
+details (the panels on the right and below) could not be reached without
+playing for packs. DW3_FORCE_CARDS=<first>-<last>[:<count>] (PC only, ids
+1..314, count 1..3, default 1) marks those cards as seen and puts that many
+of each in the collection when STCRDABM_createAlbum runs. Logs "dw3:
+DW3_FORCE_CARDS cards A..B xN" on stderr. Unset (every release, and the
+Switch, which has no environment) it does nothing.
+
+--- a/src/cardgame/album/album.c
++++ b/src/cardgame/album/album.c
+@@ -1,6 +1,7 @@
+ #include "cardgame/album.h"
+ #if PORT_HOST
+ #include <stdio.h>
++char *getenv(const char *name);
+ #endif
+ 
+ /* The cursor's CLUT row on each frame of its blink */
+@@ -728,6 +729,33 @@
+     CardAlbum *album = createTask(STCRDABM_updateAlbum, sizeof(CardAlbum), sizeof(CardAlbumWindows));
+ #if PORT_HOST
+     {
++        /* Test hook: DW3_FORCE_CARDS=<first>-<last>[:<count>] marks those card ids (1..314)
++           as seen and puts that many (1..3, default 1) of each in the collection, so a
++           replay can open the album's card details without playing for packs. */
++        const char *forced = getenv("DW3_FORCE_CARDS");
++        s32 first = 0;
++        s32 last = 0;
++        s32 count = 1;
++        s32 j;
++
++        if (forced != NULL && sscanf(forced, "%d-%d:%d", &first, &last, &count) >= 2) {
++            if (first < 1) {
++                first = 1;
++            }
++            if (last > CARD_COUNT - 1) {
++                last = CARD_COUNT - 1;
++            }
++            if (count < 1 || count > 3) {
++                count = 1;
++            }
++            for (j = first; j <= last; j++) {
++                GAME.cardsSeen[j] = 1;
++                GAME.cards[j] = count;
++            }
++            fprintf(stderr, "dw3: DW3_FORCE_CARDS cards %d..%d x%d\n", (int)first, (int)last, (int)count);
++        }
++    }
++    {
+         s32 seen = 0;
+         s32 i;
+         for (i = 0; i < CARD_COUNT; i++) {
+--- a/src/cardgame/deck_editor/screen.c
++++ b/src/cardgame/deck_editor/screen.c
+@@ -2,6 +2,10 @@
+    files it loads; and the panels' openings and moves */
+ 
+ #include "cardgame/deck_editor.h"
++#if PORT_HOST
++#include <stdio.h>
++char *getenv(const char *name);
++#endif
+ 
+ /* The title, each deck's name and six counts, the two options and the
+    cursor, then every window from the title on takes the cursor's depth */
+@@ -427,6 +431,35 @@
+ /* Creates the deck screen (task) */
+ DeckScreen *STCRDDEK_createScreen(void) {
+     DeckScreen *task = createTask(STCRDDEK_updateScreen, sizeof(DeckScreen), sizeof(DeckScreenChildren));
++#if PORT_HOST
++    {
++        /* Test hook, as in the album (patch 0100): DW3_FORCE_CARDS=<first>-<last>[:<count>]
++           puts that many (1..3, default 1) of each card id of the range (1..314) in the
++           collection and marks them seen, so the deck editor's list of cards owned has cards. */
++        const char *forced = getenv("DW3_FORCE_CARDS");
++        s32 first = 0;
++        s32 last = 0;
++        s32 count = 1;
++        s32 j;
++
++        if (forced != NULL && sscanf(forced, "%d-%d:%d", &first, &last, &count) >= 2) {
++            if (first < 1) {
++                first = 1;
++            }
++            if (last > 314) {
++                last = 314;
++            }
++            if (count < 1 || count > 3) {
++                count = 1;
++            }
++            for (j = first; j <= last; j++) {
++                GAME.cardsSeen[j] = 1;
++                GAME.cards[j] = count;
++            }
++            fprintf(stderr, "dw3: DW3_FORCE_CARDS cards %d..%d x%d\n", (int)first, (int)last, (int)count);
++        }
++    }
++#endif
+ 
+     task->countKinds = STCRDDEK_countCardKinds;
+     task->layer = SCREEN_LAYER;

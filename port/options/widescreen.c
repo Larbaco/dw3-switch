@@ -21,6 +21,8 @@
 #define DW3_WS_STFGTREP 0x1D1
 #define DW3_WS_STDWTITL 0x1D0
 #define DW3_WS_STPLNMET 0x206
+#define DW3_WS_STCRDABM 0x185
+#define DW3_WS_STCRDDEK 0x1CA
 #else
 #define DW3_WS_FIELDSTG 0x158
 #define DW3_WS_FIGHTSTG 0x159
@@ -31,6 +33,8 @@
 #define DW3_WS_STFGTREP 0x1C2
 #define DW3_WS_STDWTITL 0x1C1
 #define DW3_WS_STPLNMET 0x1F8
+#define DW3_WS_STCRDABM 0x177
+#define DW3_WS_STCRDDEK 0x1BC
 #endif
 
 enum { DW3_PORT_OPT_WIDESCREEN = 0 };
@@ -72,6 +76,11 @@ int dw3_port_widescreen_px(void) {
     if (mode_file == DW3_WS_STSTATUS || mode_file == DW3_WS_STITSHOP ||
         mode_file == DW3_WS_STGMCARD || mode_file == DW3_WS_STDGNAME ||
         mode_file == DW3_WS_STFGTREP) {
+        return DW3_WIDESCREEN_MENU_PX;
+    }
+    /* The card album and the deck editor (patch 0100): their scrolling
+     * backdrop reaches the gutters */
+    if (mode_file == DW3_WS_STCRDABM || mode_file == DW3_WS_STCRDDEK) {
         return DW3_WIDESCREEN_MENU_PX;
     }
     /* The player name screen (Digimon Online registration): its scrolling
