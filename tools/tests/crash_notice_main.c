@@ -66,7 +66,7 @@ int main(void) {
     /* A user-exception report, as the latch fills it. */
     fill(&p, "0.6.5-preview.30", "user exception", "0x207 (STSTATUS)",
          "0x0 (none)");
-    dw3_notice_layout(&lay, &p, 8);
+    dw3_notice_layout(&lay, &p, 60);
     for (i = 0; i < lay.count; i++) {
         printf("line%02d=%d|%s\n", i, lay.line[i].style, lay.line[i].text);
     }
@@ -80,7 +80,7 @@ int main(void) {
     expect("path", find(&lay, "sdmc:/switch/dw3/crash_report_prev.txt") > 0);
     expect("hint", lay.count > 0 &&
                        strcmp(lay.line[lay.count - 1].text,
-                              "Press A to continue (8)") == 0 &&
+                              "Press A to continue (60)") == 0 &&
                        lay.line[lay.count - 1].style == DW3_NOTICE_HINT);
     expect("fits", all_fit(&lay));
     dw3_notice_layout(&lay, &p, 12);
@@ -141,11 +141,15 @@ int main(void) {
     expect("fit_1080", panel_fits(1920, 1080, DW3_NOTICE_MAX_LINES));
 
     /* Countdown. */
-    expect("secs_0", dw3_notice_seconds_left(0) == 8);
-    expect("secs_999", dw3_notice_seconds_left(999) == 8);
-    expect("secs_1000", dw3_notice_seconds_left(1000) == 7);
-    expect("secs_7999", dw3_notice_seconds_left(7999) == 1);
-    expect("secs_end", dw3_notice_seconds_left(8000) == 0 &&
-                           dw3_notice_seconds_left(60000) == 0);
+    expect("secs_0", dw3_notice_seconds_left(0) == 60);
+    expect("secs_999", dw3_notice_seconds_left(999) == 60);
+    expect("secs_1000", dw3_notice_seconds_left(1000) == 59);
+    expect("secs_59999", dw3_notice_seconds_left(59999) == 1);
+    expect("secs_end", dw3_notice_seconds_left(60000) == 0 &&
+                           dw3_notice_seconds_left(600000) == 0);
+    /* The 60 s hint is two digits and fits the panel. */
+    dw3_notice_layout(&lay, &p, 60);
+    expect("hint_60", strcmp(lay.line[lay.count - 1].text,
+                             "Press A to continue (60)") == 0);
     return g_fail;
 }
