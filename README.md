@@ -155,6 +155,11 @@ These are goals, not promises. The full list is in
   modding API (mod folder, asset and data-table overrides, P8.5).
 - A cheats sub-screen in Port options, to speed up testing (P6.20).
 - A player guide, a docs index and contributor docs (P6.23).
+- In-game pause menu: return to title and help / FAQ / tips (P6.27, P6.30);
+  Quit game on the title menu, back to hbmenu (P6.28).
+- A save editor for the owner's own saves, as a tool outside the game (P6.29).
+- Auto-save, off by default (P6.31).
+- An Options screen in the title menu's style, with room for more rows (P9.9).
 - One build for both discs: a single `.nro` (and PC binary) that finds the US
   or EU disc at boot, instead of two builds (P6.24,
   [SINGLE_BUILD](docs/SINGLE_BUILD.md)).

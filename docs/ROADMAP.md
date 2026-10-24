@@ -66,6 +66,11 @@ lives in its doc, not in the entry below.
 | P6.24 | One build for US and EU: one `.nro` and one PC binary, region found at boot, a boot picker with both discs (future goal; depends on P6.25 and P6.26) | future | [SINGLE_BUILD](SINGLE_BUILD.md), [roadmap](#phase-6-goal-notes) |
 | P6.25 | Cross-region saves: a US save loads in EU and the reverse, one canonical save container (future goal) | future (survey and design done, no code) | [CROSS_REGION_SAVES](CROSS_REGION_SAVES.md), [roadmap](#phase-6-goal-notes) |
 | P6.26 | Per-user saves: saves bound to the Switch user profile chosen in the Switch profile selector, global options (future goal) | future (design done, no code) | [PER_USER_SAVES](PER_USER_SAVES.md), [roadmap](#phase-6-goal-notes) |
+| P6.27 | Return to title from the pause menu (future goal) | future | [roadmap](#phase-6-goal-notes) |
+| P6.28 | Quit game on the title menu, back to hbmenu (future goal) | future | [roadmap](#phase-6-goal-notes) |
+| P6.29 | Save editor: external tool on the owner's own saves, builds on P6.25 (future goal) | future | [roadmap](#phase-6-goal-notes), [CROSS_REGION_SAVES](CROSS_REGION_SAVES.md) |
+| P6.30 | Help, FAQ and tips from the pause menu (future goal) | future | [roadmap](#phase-6-goal-notes) |
+| P6.31 | Auto-save, off by default (future goal) | future | [roadmap](#phase-6-goal-notes), [P5.3](P5.3_FLAT_SAVE.md) |
 | P7.1 | Inventory and boundaries | done | [COMMUNITY_QOL](COMMUNITY_QOL.md) |
 | P7.2 | Patched EU disc as data source | open | [COMMUNITY_QOL](COMMUNITY_QOL.md) |
 | P7.3 | Binary-patch limits | in progress | [COMMUNITY_QOL](COMMUNITY_QOL.md) |
@@ -87,6 +92,7 @@ lives in its doc, not in the entry below.
 | P9.6 | External save converter | open | — |
 | P9.7 | Port options reachable in game (future goal) | future | [roadmap](#phase-9--port-options-menu) |
 | P9.8 | Confirm / cancel layout option (PS positional or Nintendo A/B) (future goal) | future | [roadmap](#phase-9--port-options-menu), [HOTKEYS](HOTKEYS.md) |
+| P9.9 | Options screen redesign in the title menu's style, room for more rows (future goal) | future | [roadmap](#phase-9--port-options-menu), [PORT_OPTIONS](PORT_OPTIONS.md) |
 | P10.1 | Switch features goal note | done | [SWITCH_FEATURES](SWITCH_FEATURES.md) |
 | P10.2 | Lifecycle hardening (has P5.3's leftover) | in progress (sleep and resume confirmed on the OLED, rc7; HOME during a save write and the focus log open) | [SWITCH_FEATURES](SWITCH_FEATURES.md) |
 | P10.3 | Presentation modes | open | — |
@@ -1281,6 +1287,38 @@ PS1 game, with vanilla-safe defaults and persistence on owner storage.
   and P4.4_INPUT_STATUS.md describe both layouts.
   Related: P6.12 / P6.13, P10.6, [SWITCH_FEATURES.md](SWITCH_FEATURES.md)
   (the "Confirm/Cancel layout" row).
+- [ ] **P9.9 Options screen redesign (future goal).** Dated 2026-10-24, owner
+  request (Portuguese, a new Options layout in the visual style of the title
+  menu). Goal note only, nothing started. **What exists (cited):** the Options
+  window is drawn in the game's window style by `port/options/port_options.c`
+  and the PC overlay ([PORT_OPTIONS.md](PORT_OPTIONS.md), "Eight rows", where
+  the window is already full at eight rows); the P6.20 Cheats row needs a ninth
+  row, and P6.31 (auto-save) and P6.12 (button mapping) want rows too. The
+  title menu's look is set in [TITLE_MENU_DESIGN.md](TITLE_MENU_DESIGN.md), the
+  P6.1 16:9 title layout (patches 0085-0087) and `platforms/pc/src/title_menu_overlay.c`.
+  **Scope:** the Options screen gets the title menu's identity (its backdrop,
+  its label style, its focus cue and its spacing) and a layout that has room
+  for more rows: groups or pages, or a list that scrolls, with P6.13 (mapping
+  submenu) as the first sub-screen. One redesign solves both the full window
+  and the P6.20 Cheats row.
+  **First slice:** a layout mock of the title-style Options screen on PC, with
+  the existing eight rows moved into it and no behaviour change; the rows keep
+  their registry indexes (`DW3_PORT_OPT_*` and the `port_options.cfg` keys stay
+  the same, so old files still load).
+  **Constraints:** the registry and the keys do not change; the screen is drawn
+  in both regions and every new label is in the five EU languages (EN, FR, DE,
+  IT, ES) and US English; the dirty-rectangle cache of the Options canvas keeps
+  working; the widescreen gutters are filled (P6.1); docs in the same change
+  ([PORT_OPTIONS.md](PORT_OPTIONS.md)); tested on the OLED for US and EU.
+  **Open questions (owner):** groups (Audio, Display, Gameplay, Tools) or one
+  scrolling list; should the Cheats group be hidden unless a switch is on;
+  should the title-menu backdrop be used as is or in a darker tone for
+  readability; keep the old window as a fallback option until the owner
+  approves the new one.
+  Done when (proposed): the Options screen matches the title menu's look on US
+  and EU, every existing row works unchanged, a ninth row fits (P6.20), and the
+  file written by the old build still loads.
+  Related: P6.20, P6.13, P6.17, P6.18, P9.7, P6.1, P6.27, P6.31.
 
 Gate: P9.2 + P9.4 with at least one persistent toggle (stub or real).
 P9.5 stays best-effort as features ship. P9.6 does not block the gate.
@@ -1987,6 +2025,146 @@ Statuses are in the [table](#status-at-a-glance).
   global versus per-user options; the legacy-import rules (see
   [SINGLE_BUILD.md](SINGLE_BUILD.md#open-questions-for-the-owner)).
   Related: P6.24, P6.25, P5.3, P9.4 ([PORT_OPTIONS.md](PORT_OPTIONS.md)), P6.15.
+- [ ] **P6.27 Return to title from the pause menu (future goal).** Dated
+  2026-10-24, owner request (Portuguese, "voltar ao título" in the pause
+  menu). Goal note only, nothing started. **What exists (cited):** the port
+  has no pause menu of its own; the closest screen is the game's field menu,
+  opened with START (`MODE_STATUS` 0x1000, [P3.4_MENUS.md](P3.4_MENUS.md)).
+  A reset to the title already exists: the restart chord (P6.9,
+  `port/options/restart.c`, [HOTKEYS.md](HOTKEYS.md)) flushes dirty save slots
+  and resets the running game to its title. **Scope:** one entry in that
+  pause menu that runs the same reset, so the player does not have to close
+  the game or use the chord.
+  **First slice:** a port-side entry (no decomp change if the entry can be
+  drawn in the existing field menu list; otherwise a numbered `PORT_HOST`
+  patch) that calls the P6.9 reset path, with the same save flush and the same
+  failure rule (a failed flush cancels the reset).
+  **Constraints:** no reset without a flush; the entry text in the five EU
+  languages (EN, FR, DE, IT, ES; one string on US) within the menu's width;
+  replays unchanged; US and EU tested.
+  **Open questions (owner):** should it ask for confirmation ("Yes / No") before
+  resetting; is it allowed in battle or only in the field menu; should unsaved
+  progress since the last save be warned about.
+  Done when (proposed): from the field menu the player returns to the title on
+  US and EU with saves flushed, and a failed flush keeps the game where it was.
+  Related: P6.9, P6.14, P9.7, P5.3.
+- [ ] **P6.28 Quit game on the title menu (future goal).** Dated 2026-10-24,
+  owner request (Portuguese, "sair do jogo" on the title menu). Goal note
+  only, nothing started. **What exists (cited):** the title menu has Start /
+  Port options / Continue (P9.2, `port/options/title_entry.c`; the Switch title
+  overlay is `platforms/switch/psyz_backend/nx_title_overlay.c`); the title
+  sprites come from the disc (`STDWTITL_menuSprites`, five languages). There is
+  no Quit entry. The only exit today is the system one: HOME sets
+  `Psyz_QuitRequested` (`platforms/switch/psyz_backend/nx_os.c`,
+  `platforms/switch/source/boot_main.c`, `dw3_nx_service_applet_quit`), and dirty
+  saves flush before the process ends.
+  **Scope:** a Quit game entry on the title menu that flushes saves and returns
+  to hbmenu (the NRO exits to the launcher), without a crash notice and without
+  leaving a half-written card. On PC it closes the window.
+  **First slice:** the entry plus the existing quit path on Switch, one language
+  check; no Options row is needed, so it does not touch the full Options window
+  (see P9.9).
+  **Constraints:** the entry text in the five EU languages (EN, FR, DE, IT, ES)
+  and one US string; the title layout stays the 16:9 layout of P6.1 (patches
+  0085-0087); saves flushed before exit, as on HOME; US and EU tested on the
+  OLED.
+  **Open questions (owner):** should it ask for confirmation; should it be on
+  the title menu only or also in the pause menu (P6.27); should it sit at the
+  bottom of the list, away from "Continue"; should the release README say that
+  Quit returns to hbmenu.
+  Done when (proposed): Quit on the title menu on US and EU returns to hbmenu
+  with the card files intact and a flush log line, and the HOME path is
+  unchanged.
+  Related: P9.2, P10.2, P5.4, P6.9.
+- [ ] **P6.29 Save editor, external tool (future goal).** Dated 2026-10-24,
+  owner request (Portuguese, an editor for saves). Goal note only, nothing
+  started. A separate tool **outside the game**, for example `tools/save_editor`,
+  that reads and writes the owner's own card files. It builds on the P6.25
+  cross-region container (`.dw3s`, magic, format version, crc, origin region
+  and language per slot, EU layout as the canonical data; see
+  [CROSS_REGION_SAVES.md](CROSS_REGION_SAVES.md)). Today the saves are the raw
+  PS1 card images in `sdmc:/switch/dw3/<us|eu>/memcard/`
+  (`port/memcard/memcard_host.c`, [P5.3](P5.3_FLAT_SAVE.md)), and P9.6 (external
+  save converter) is the open tool for PS1 card images. This goal is the editor
+  itself: view and change what the game stores (money, items, cards, partners,
+  progress) in a form a player can use.
+  **Hard rule:** the tool **never ships game data**. It works only on the
+  owner's own saves, which the user supplies; no sample save, no table copied
+  from the disc, and no output that embeds disc content goes into git or into a
+  release (AGENTS.md, "Own-disc only").
+  **First slice:** a read-only viewer on PC that opens a `.dw3s` or a raw card
+  file and prints the header, the origin region and the summary of each slot
+  (name, money, play time), with the checksums verified. No write yet.
+  **Constraints:** Python 3 standard library, in `tools/` next to the other
+  helpers; tests use synthetic fixtures only; flags are edited only when their
+  meaning is confirmed (a wrong flag can break a script); the EU extra-chapter
+  rule of P6.25 is kept (refuse, do not guess).
+  **Open questions (owner):** is it a CLI, a small GUI, or both; should it edit
+  flags and progress or only items and money; should it also run on the Switch
+  (no, unless the owner asks); should it live in `tools/` or in its own repo; is
+  a read-only first release enough.
+  Done when (proposed): the viewer reads the owner's own US and EU saves
+  (checked on the owner's machine, not in CI), a write round trip keeps every
+  byte it did not change, and the tests use no game data.
+  Related: P6.25, P6.26, P9.6, P5.3.
+- [ ] **P6.30 Help, FAQ and tips from the pause menu (future goal).** Dated
+  2026-10-24, owner request (Portuguese, "ajuda / FAQ / dicas"). Goal note
+  only, nothing started. **What exists (cited):** no in-game help text; the
+  player guide is planned as `docs/GUIDE.md` in P6.23, and the release
+  `README.txt` (`platforms/switch/release/`) holds the install steps and the
+  OLED checklist. **Scope:** an entry in the pause menu (P6.27) that opens a
+  help screen: short pages for install and own-disc setup, controls and
+  hotkeys ([HOTKEYS.md](HOTKEYS.md)), turbo, saves and backups, crash reports,
+  and a short FAQ. The text comes from one source, the same one as the guide
+  of P6.23, so the screen and the docs cannot drift.
+  **First slice:** a single help page (controls and hotkeys) in the menu, with
+  the strings in `port/ui/port_text.c`; the other pages follow.
+  **Constraints:** port text, not game text, so no disc data is copied; every
+  page in the five EU languages (EN, FR, DE, IT, ES) and US English, or the page
+  says which languages it has; text stays within the window; only what is
+  confirmed on hardware (unverified items link to the ROADMAP); screenshots only
+  from the owner-approved set (AGENTS.md).
+  **Open questions (owner):** should the help screen also open from the title
+  menu; should it be translated to Brazilian Portuguese first (tied to P6.7);
+  should FAQ answers link to the docs on GitHub, or stay offline only (the
+  Switch may be offline); how long a page may be.
+  Done when (proposed): a tester opens Help from the pause menu on US and EU,
+  reads the controls page, and finds the answers for install and crash reports
+  without leaving the console.
+  Related: P6.23, P6.27, P6.7, P9.2.
+- [ ] **P6.31 Auto-save (future goal, off by default).** Dated 2026-10-24,
+  owner request (Portuguese, "salvamento automático"). Goal note only, nothing
+  started. **What exists (cited):** the game saves only when the player saves
+  at a save point; the port holds the card in RAM and flushes dirty slots
+  ([P5.3_FLAT_SAVE.md](P5.3_FLAT_SAVE.md), `port/memcard/memcard_host.c`), and the
+  restart and HOME paths already flush. **Open design questions (owner):**
+  1. **Which slot.** A dedicated auto slot that the game's own load screen does
+     not show, or the slot the player saved to last (overwrites the player's
+     save). The auto slot needs a place in the card files and a rule for the
+     cross-region container of P6.25.
+  2. **When it triggers.** On an area change (a field map transition), after a
+     battle, or both. Not in the middle of a script or a battle.
+  3. **P6.20 cheat marks.** A save made after a cheat (P6.20, test menu) must not
+     look like a normal save; decide whether an auto-save is refused, or flagged
+     as cheated, while cheats are on.
+  4. **P6.26 per-user saves.** The auto slot is per user
+     (`sdmc:/switch/dw3/saves/<uid>/`, [PER_USER_SAVES.md](PER_USER_SAVES.md)),
+     never shared between profiles.
+  5. **Off by default, or behind an option.** Default OFF; the switch is a
+     `port_options.cfg` key (add one key per row; persistence is P9.4) with a
+     row in the Options screen (see P9.9 for the room the screen needs).
+  **Scope:** the trigger and the slot choice above, a flush that never blocks a
+  frame for long, and a failure notice that does not stop the game.
+  **First slice:** a design note in `docs/` that settles the slot and trigger
+  questions, then a log-only build that counts the triggers on the OLED without
+  writing.
+  **Constraints:** saves keep the P5.3 rules; a failed write never overwrites the
+  last good save; replays unchanged; US and EU tested; any new text in the five
+  EU languages.
+  Done when (proposed): with the option on, an area change and a battle each
+  leave one recoverable save, the old save survives a forced write failure, and
+  with the option off nothing changes.
+  Related: P6.14, P6.16, P6.20, P6.25, P6.26, P9.4, P5.3.
 
 ### Phase 7 goal notes
 
