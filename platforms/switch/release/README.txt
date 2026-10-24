@@ -25,10 +25,11 @@ New in this preview
   registration screen fills 16:9 (#224). This answers the rc1 note that
   the main menu did not fill the screen. Unverified on hardware.
 
-  TODO(orchestrator): confirm before tagging. Pending in this release, from
-  branches being merged now: the map screen, the battle results header and
-  the save screen in 16:9. The map is still 4:3 in this build unless its
-  PR lands. Remove this line if they are not in the tag.
+  The field map, the battle results header and the save and load memory
+  card screens are 16:9 (#240). The map is centred with black strips at
+  the sides. The stray disc or card no longer shows in the right corner
+  before the save or load animation, and the slots slide in from the 16:9
+  edge. Unverified on hardware.
 
   Post-battle text and turbo (#223). The battle results screen runs at
   turbo speed with R3 on, as the battle does. Before, it dropped to 1x
@@ -47,7 +48,8 @@ New in this preview
   ran out of its 64 slots (about 2 hours and several battles on the
   owner's log). The cache now evicts the least recently used file, as the
   PS1 heap does. Found in the rc1 OLED log, EU nxlink build, in the battle
-  report. Unverified on hardware.
+  report. The crash came in the second battle, and both US and EU builds
+  were affected. Unverified on hardware.
 
   Crash reports (P5.4, #217, #231). Software aborts, asserts, fatal errors
   and exit codes now reach crash_report.txt and dw3.log. When the previous
@@ -61,21 +63,22 @@ New in this preview
   BUILD_IDS.txt. Use it with tools/symbolize_crash.py on a crash report
   from the matching NRO. The build ids must match.
 
-  TODO(orchestrator): confirm before tagging. Pending in this release: a
-  Cheats screen in Options (P6.20, PR #236, still open when these notes
-  were written). Cheats are off by default. A save made with cheats gets a
-  save<N>.cheats marker. Builds without cheats are possible. Remove this
-  paragraph if the cheats slice is not in the tag.
+  Cheats screen in Options (P6.20, #236). Square (Y on Switch) opens it
+  from the Options screen once the master switch is on. Entries: fill
+  bag, instant win and battle now. Cheats are off by default. A save made
+  with cheats gets a save<N>.cheats marker file. The build option
+  DW3_CHEATS is on by default; tools/build_switch_game.sh --no-cheats
+  builds without the screen. Unverified on hardware.
 
 Known issues
 
   If the map stays silent after a battle (no field music once you are
   back), please send a --nxlink log. This was reported on rc8 (US) but
   could not be reproduced on PC or in Ryubing, so its cause is unknown.
-  TODO(orchestrator): the post-battle music fix (P4.3) is not in the
-  merged list. Confirm whether it is in this tag and update this entry.
+  The win jingle and SEP fix (#215) are in this release. The underrun
+  count is still open.
 
-  The Map screen is still 4:3 (see the TODO above). The area-change
+  The Map screen is 16:9 with black side strips (#240). The area-change
   transition (iris) is also 4:3 and was not checked on hardware.
 
   Sleep and resume work and play time counts only play time, but the
@@ -116,16 +119,13 @@ Bundle
 
   dw3-switch.nro              US ordinary build
   dw3-switch-nxlink.nro       US nxlink logging build
-  dw3-switch-eu.nro           EU ordinary build (see the TODO below)
+  dw3-switch-eu.nro           EU ordinary build (attached by hand)
   dw3-switch-elf.zip          US unstripped ELFs and BUILD_IDS.txt
   README.txt                  these notes
 
-  This preview publishes the US pair and dw3-switch-elf.zip from the
-  release workflow.
-  TODO(orchestrator): confirm before tagging whether the EU ordinary build
-  is attached by hand. If it is, state that here and attach its .elf zip
-  too (docs/RELEASES.md, "EU is a manual step"). If it is not, say why.
-  The EU nxlink build is not published in this preview.
+  The US pair and dw3-switch-elf.zip come from the release workflow. The
+  EU ordinary build is attached by hand to the release, as in earlier
+  previews. The EU nxlink build is not published in this preview.
   No original game files, BIN/CUE/ISO, BIOS or extracted tree ship here.
 
 Own-disc setup and extraction
