@@ -224,10 +224,9 @@ an Actions artifact. A GitHub Release is only
 and it is a prerelease. `workflow_dispatch` is listed only once that file
 is on `main`. Tag `v0.6.5-preview.1` is the first preview
 (8927429-byte game `.nro` plus `README.txt`). It still crops the title
-and freezes the movie. Latest **tagged** GitHub Release preview is
-`v0.6.5-preview.22`, cut from `main` after PR #123 (P6.1 widescreen, plus
-#114 GPU battle bg fix, #115 Port options row, #122 restart hotkey). See
-`docs/RELEASE_PREVIEW22.md`. Earlier checkpoints:
+and freezes the movie. The upcoming tag is `v0.6.5-preview.31`; the tags
+already published, with their notes, are listed in `docs/RELEASES.md`.
+Earlier checkpoints:
 `docs/RELEASE_PREVIEW21.md` (STR read-race fix, OLED movie validation) and
 `docs/RELEASE_PREVIEW20.md`. The picture baseline remains
 `v0.6.5-preview.2` at `8273a91` (display-mode title width and full-height
