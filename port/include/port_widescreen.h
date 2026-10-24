@@ -47,6 +47,12 @@ int dw3_port_widescreen_menu_shift(void);
 void *dw3_port_widescreen_menu_band(void *sheet, int frame, int split);
 #define DW3_MENU_BAND(sheet, frame, split) dw3_port_widescreen_menu_band((sheet), (frame), (split))
 
+/* The box frame `frame` of a menu sprite sheet covers, relative to where it
+ * is drawn: x0 <= x < x1, y0 <= y < y1. 0 when found, -1 when the frame is
+ * not in the sheet or does not fit (the map screen of patch 0080 centres
+ * its map with it). */
+int dw3_port_sprite_frame_bounds(const void *sheet, int frame, int *x0, int *y0, int *x1, int *y1);
+
 #ifdef __cplusplus
 }
 #endif

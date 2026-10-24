@@ -1,0 +1,156 @@
+Upstream-bound: no
+Subject: [PORT_HOST] P6.1 map screen drawn whole and centred in widescreen
+
+The field menu's map screen shows a 320-wide window of a 392-wide map and
+scrolls it with the cursor (scrollX 0 to -0x48). In 16:9 the picture is 426
+wide, so the left gutter showed more map and the right one the menu
+background, depending on the scroll. With widescreen on, the map is drawn
+whole and centred, the cursor, the current area's mark, the visited areas
+and the towns at their map position plus that offset, and the map's rows
+beside it are black. The scroll and the cursor still move, and the area
+under the cursor is still found, exactly as on the PS1: only drawing
+positions change. Off (or a map wider than the picture) nothing changes.
+
+--- a/src/menus/field_menu/map_screen.c
++++ b/src/menus/field_menu/map_screen.c
+@@ -172,6 +172,72 @@
+     }
+ }
+ 
++#if PORT_HOST
++/* Widescreen: the map is drawn whole, centred, with black beside it (patch 0080) */
++#define MAP_X(screen) mapX
++#define MAP_CURSOR_X(screen) ((screen)->cursorX - (screen)->scrollX + mapX)
++
++/* Widescreen: where the map is drawn. The PS1 shows a 320-wide window of the
++   map (392 wide) that scrolls with the cursor (scrollX 0 to -0x48); the 16:9
++   picture is wider than the map, so it is drawn whole, centred, and the
++   cursor, the marks and the towns are drawn at their map position plus that
++   offset. The scroll and the cursor are still moved (and tested) as on the
++   PS1; only the drawing changes. Off, or a map wider than the picture: the
++   PS1 scroll. Fills the map's rows beside it with black. */
++static s32 mapDrawScrollX(StatusMapScreen *screen, s32 *top, s32 *bottom, s32 *left, s32 *right) {
++    s32 gutter = dw3_port_widescreen_menu_shift();
++    s32 x0;
++    s32 y0;
++    s32 x1;
++    s32 y1;
++    s32 offset;
++
++    if (gutter <= 0 ||
++        dw3_port_sprite_frame_bounds(FILE_CACHE.getEntry(screen->archive), 0, &x0, &y0, &x1, &y1) != 0 ||
++        x1 - x0 > SCREEN_WIDTH + 2 * gutter) {
++        return screen->scrollX;
++    }
++    offset = (SCREEN_WIDTH - (x1 - x0)) / 2 - x0;
++    *left = offset + x0;
++    *right = offset + x1;
++    *top = screen->scrollY + screen->top + y0;
++    *bottom = screen->scrollY + screen->top + y1;
++    return offset;
++}
++
++/* Black beside the map, on the map's rows, under the map (the same OT entry,
++   added after it, is drawn before it) */
++static void drawMapSides(StatusMapScreen *screen, s32 top, s32 bottom, s32 left, s32 right) {
++    Layer *layer = GFX.funcs.getLayer(screen->layer);
++    u_long *ot = (u_long *)layer->getOtEntry(layer, screen->depth + 1);
++    s32 gutter = dw3_port_widescreen_menu_shift();
++    POLY_F4 *poly;
++    s32 i;
++
++    for (i = 0; i < 2; i++) {
++        s32 x0 = i == 0 ? -gutter : right;
++        s32 x1 = i == 0 ? left : SCREEN_WIDTH + gutter;
++
++        if (x1 <= x0 || bottom <= top) {
++            continue;
++        }
++        poly = GFX.funcs.getPrim();
++        setlen(poly, 5);
++        poly->code = 0x28; /* opaque POLY_F4 */
++        poly->r0 = poly->g0 = poly->b0 = 0;
++        poly->x0 = poly->x2 = x0;
++        poly->x1 = poly->x3 = x1;
++        poly->y0 = poly->y1 = top;
++        poly->y2 = poly->y3 = bottom;
++        addPrim(ot, poly);
++        GFX.funcs.setPrim(poly + 1);
++    }
++}
++#else
++#define MAP_X(screen) (screen)->scrollX
++#define MAP_CURSOR_X(screen) (screen)->cursorX
++#endif
++
+ /* Draws the map, the visited areas, the towns and the cursor */
+ void STSTATUS_drawMapScreen(StatusMapScreen *screen) {
+     SpriteDrawer sprite;
+@@ -181,6 +247,14 @@
+ #endif
+     s32 frame;
+     s32 i;
++#if PORT_HOST
++    s32 sideTop = 0;
++    s32 sideBottom = 0;
++    s32 sideLeft = 0;
++    s32 sideRight = 0;
++
++    s32 mapX = mapDrawScrollX(screen, &sideTop, &sideBottom, &sideLeft, &sideRight);
++#endif
+ 
+     if (screen->hovering) {
+         initSpriteDrawer(&sprite);
+@@ -209,12 +283,12 @@
+         if (screen->hovering) {
+             sprite.setLayerId(screen->layer, screen->depth);
+             sprite.draw(FILE_CACHE.getEntry(screen->archive2), STSTATUS_cursorFrames[screen->cursorFrame] + 0x38,
+-                        STSTATUS_data.spots[screen->spot].x + 0xC + screen->scrollX,
++                        STSTATUS_data.spots[screen->spot].x + 0xC + MAP_X(screen),
+                         STSTATUS_data.spots[screen->spot].y + 0xC + screen->scrollY + screen->top);
+         } else {
+             sprite.setLayerId(screen->layer, screen->depth - 1);
+             sprite.draw(FILE_CACHE.getEntry(screen->archive2), STSTATUS_cursorFrames[screen->cursorFrame] + 0x32,
+-                        screen->cursorX, screen->cursorY + screen->top);
++                        MAP_CURSOR_X(screen), screen->cursorY + screen->top);
+         }
+         sprite.setLayerId(screen->layer, screen->depth - 2);
+ #if VERSION_EU
+@@ -231,7 +305,7 @@
+ #else
+         frame = 0x35;
+ #endif
+-        sprite.draw(FILE_CACHE.getEntry(screen->archive2), frame + screen->homeFrame, screen->homeX + screen->scrollX,
++        sprite.draw(FILE_CACHE.getEntry(screen->archive2), frame + screen->homeFrame, screen->homeX + MAP_X(screen),
+                     screen->homeY + screen->scrollY + screen->top);
+     }
+     sprite.setLayerId(screen->layer, screen->depth - 1);
+@@ -240,7 +314,7 @@
+         for (i = 1; i < 47; i++) {
+             if (screen->visited[i - 1]) {
+                 sprite.draw(FILE_CACHE.getEntry(screen->archive2), STSTATUS_data.spots[i].sprite,
+-                            STSTATUS_data.spots[i].x + screen->scrollX,
++                            STSTATUS_data.spots[i].x + MAP_X(screen),
+                             STSTATUS_data.spots[i].y + screen->scrollY + screen->top);
+             }
+         }
+@@ -261,12 +335,17 @@
+     sprite.setTexture(0x380, 0x100);
+     /* the match depends on indexing the list rather than walking a pointer */
+     for (i = 0; towns[i] != 0; i++) {
+-        sprite.draw(FILE_CACHE.getEntry(screen->archive1), towns[i] - 1, STSTATUS_data.towns[towns[i]].x + screen->scrollX,
++        sprite.draw(FILE_CACHE.getEntry(screen->archive1), towns[i] - 1, STSTATUS_data.towns[towns[i]].x + MAP_X(screen),
+                     STSTATUS_data.towns[towns[i]].y + screen->scrollY + screen->top);
+     }
+     sprite.setTexture(0x280, 0);
+     sprite.setAltClut(0x140, 0x100);
+-    sprite.draw(FILE_CACHE.getEntry(screen->archive), 0, screen->scrollX, screen->scrollY + screen->top);
++    sprite.draw(FILE_CACHE.getEntry(screen->archive), 0, MAP_X(screen), screen->scrollY + screen->top);
++#if PORT_HOST
++    if (sideRight > sideLeft) {
++        drawMapSides(screen, sideTop, sideBottom, sideLeft, sideRight);
++    }
++#endif
+ }
+ 
+ /* The map screen's update */
