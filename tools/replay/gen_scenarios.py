@@ -933,6 +933,154 @@ def menu_screens(version):
     return r
 
 
+def map_screen(version):
+    """P6.1 (patch 0080): the field menu's Map screen in widescreen. The same
+    path as `menu_screens` (the manifest's env and cfg) up to the Map entry;
+    then the cursor goes to every edge of the map. In 16:9 the map is drawn
+    whole and centred (392 px of 426) with black beside it, the cursor, the
+    spots and the home mark follow it, and the PS1's scroll (0 to -0x48) is
+    not used: the cursor covers the picture's edges and the screen's top.
+    Checkpoints: the open map (with the area name box), the cursor at the
+    far left, two moves right, at the far right, at the top, at the bottom
+    and at the left top. Frames measured on the PC build, the same on both
+    discs."""
+    r = Rec(f"{version.upper()}: P6.1 field menu Map in widescreen (env and cfg in manifest)")
+    for f in range(300, 1200, 30):
+        r.press(f, CROSS)            # battle report -> field
+    r.press(1250, START)             # field menu, over the field
+    r.press(1420, CROSS)             # Items: the dissolve, then STSTATUS
+    f = 1640
+    for name, button, wait in MENU_SCREENS_STEPS:
+        if name == "map":
+            break
+        if button:
+            r.press(f, button)
+        f += wait
+    assert f == 4000, f              # the Triangle that closes Map, the step's own
+    r.shot(3997, "map-open")
+    _pad(r, 4000, LEFT)              # to the far left
+    _pad(r, 4200, 0)
+    r.shot(4210, "map-left")
+    _pad(r, 4220, RIGHT)             # all the way right, scrolling the cursor
+    r.shot(4295, "map-right-a")
+    r.shot(4395, "map-right-b")
+    _pad(r, 4440, 0)
+    r.shot(4450, "map-right")
+    _pad(r, 4460, UP)
+    _pad(r, 4620, 0)
+    r.shot(4630, "map-up")
+    _pad(r, 4640, DOWN)
+    _pad(r, 4840, 0)
+    r.shot(4850, "map-down")
+    _pad(r, 4860, LEFT | UP)
+    _pad(r, 5000, 0)
+    r.shot(5010, "map-left-up")
+    r.press(5030, TRIANGLE)          # back to the field menu
+    r.end(5200)
+    return r
+
+
+# The battle report's checkpoints (patch 0081): the header bar opens from the
+# left edge, then holds the partner's exp, then the fade. The EU report comes
+# ~120 frames before the US one (measured, DW3_TURBO=4).
+RESULTS_SHOTS = {
+    "us": ((1164, "header-closed"), (1176, "header-opening"), (1200, "header-exp"),
+           (1266, "page-two"), (1374, "fade")),
+    "eu": ((1032, "header-closed"), (1056, "header-opening"), (1092, "header-exp"),
+           (1128, "header-exp-late"), (1266, "fade")),
+}
+
+
+def battle_results(version):
+    """P6.1 (patch 0081): the battle results (report) in widescreen. One
+    forced battle (the env of `battle_report`), a technique and Cross to the
+    win; Cross every 30 frames until 1000, then every 60 so each page stays
+    up. Checkpoints on the header bar at the picture's left edge, closed,
+    opening, holding the exp, and the fade."""
+    r = Rec(f"{version.upper()}: P6.1 battle results in widescreen (env in manifest)")
+    _pad(r, 350, DOWN)               # Fight -> Tech
+    _pad(r, 360, 0)
+    r.press(410, CROSS)              # open the tech list
+    r.press(460, CROSS)              # use the first tech
+    for f in range(520, 1001, 30):
+        r.press(f, CROSS)
+    for f in range(1060, 1781, 60):
+        r.press(f, CROSS)
+    for f, name in RESULTS_SHOTS[version]:
+        r.shot(f, name)
+    r.end(1800)
+    return r
+
+
+def save_screen(version):
+    """P6.1 (patch 0082): the memory card's slot picker, in save mode, in
+    widescreen (the env forces the save menu over the field; the manifest's
+    env). Checkpoints: before and at the open animation (144, 148: the slot
+    strip used to be parked in the right gutter, one card showing), the
+    slot question (196), the slot strip sliding in from the right (854, 862,
+    870), the slot's block list (886) and the saved game (1294). Cross picks
+    slot 1 (700), YES (800) and saves (1000). Measured on the PC build, the
+    same on both discs."""
+    r = Rec(f"{version.upper()}: P6.1 save screen in widescreen (env in manifest)")
+    for f, name in ((144, "before-open"), (148, "opening"), (196, "slot-question")):
+        r.shot(f, name)
+    r.press(700, CROSS)              # Slot 1
+    for f, name in ((854, "slots-in-a"), (862, "slots-in-b"), (870, "slots-in-c"),
+                    (886, "slots")):
+        r.shot(f, name)
+    r.press(800, CROSS)              # YES, create the block
+    r.press(1000, CROSS)             # save
+    r.shot(1294, "saved")
+    r.end(1310)
+    return r
+
+
+# P6.20 Cheats screen (docs/PORT_OPTIONS.md "Cheats"). Square is 0x8000.
+SQUARE = 0x8000
+
+
+def cheats_screen(version, phase):
+    """Two phases on one config dir. Phase 1: title -> Options -> Square (the
+    Cheats screen) -> master switch ON, Fill bag ready, Instant win ON, Battle
+    now ready, Triangle back to Options, Triangle. Phase 2 is a new process:
+    Options -> Square -> Triangle -> Triangle. The logs carry the toggles saved
+    and read back, and the one-shots not kept. No checkpoints."""
+    r = Rec(f"{version.upper()}: Cheats screen, phase {phase}")
+    m = _to_title_menu(r, version)
+    r.press(m, DOWN)                 # New Game -> Options
+    r.press(m + 20, CROSS)           # open the Options screen
+    f = m + 70
+    r.press(f, SQUARE)               # the Cheats screen
+    f += 40
+    if phase == 1:
+        r.press(f, CROSS)            # master switch ON
+        f += 20
+        for _ in range(3):           # Fill bag, Instant win, Battle now
+            r.press(f, DOWN)
+            f += 20
+            r.press(f, CROSS)
+            f += 20
+    r.press(f, TRIANGLE)             # back to Options
+    f += 40
+    r.press(f, TRIANGLE)             # leave
+    r.end(f + 50)
+    return r
+
+
+def cheat_fill_bag(version):
+    """Fill bag: on the Encounter rate field (env in the manifest, the
+    one-shot armed by DW3_CHEATS_ARM), Start opens the field menu and Cross
+    opens Items, which starts STSTATUS: patch 0070's hook fills the bag from
+    the cheat. Then the Items list opens on a full bag."""
+    start, _ = ENCOUNTER[version]
+    r = Rec(f"{version.upper()}: field menu -> Items (Fill bag; env and cfg in manifest)")
+    r.press(start + 100, START)      # field menu
+    r.press(start + 270, CROSS)      # Items: STSTATUS_createMenu
+    r.press(start + 500, CROSS)      # the Items list
+    r.end(start + 900)
+    return r
+
+
 def main(out):
     out.mkdir(parents=True, exist_ok=True)
     (out / "us-title.rec").write_text(us_title().text())
@@ -970,6 +1118,9 @@ def main(out):
         (out / f"{v}-items-screen.rec").write_text(items_screen(v).text(True))
         (out / f"{v}-items-menu.rec").write_text(items_menu(v).text(True))
         (out / f"{v}-menu-screens.rec").write_text(menu_screens(v).text(True))
+        (out / f"{v}-map-screen.rec").write_text(map_screen(v).text(True))
+        (out / f"{v}-battle-results.rec").write_text(battle_results(v).text(True))
+        (out / f"{v}-save-screen.rec").write_text(save_screen(v).text(True))
         (out / f"{v}-victory-music.rec").write_text(victory_music(v).text(True))
         (out / f"{v}-music-loop.rec").write_text(music_loop(v).text(True))
         (out / f"{v}-battle-music.rec").write_text(battle_music(v).text(True))
@@ -982,6 +1133,10 @@ def main(out):
         (out / f"{v}-p79-menu.rec").write_text(p79_menu(v).text(True))
         (out / f"{v}-p79-menu-page2.rec").write_text(p79_menu(v, page2=True).text(True))
         (out / f"{v}-p79-two-battles.rec").write_text(p79_two_battles(v).text(True))
+        for phase in (1, 2):
+            (out / f"{v}-cheats-screen-p{phase}.rec").write_text(
+                cheats_screen(v, phase).text(True))
+        (out / f"{v}-cheat-fill-bag.rec").write_text(cheat_fill_bag(v).text(True))
     (out / "us-repro-balloon.rec").write_text(repro_balloon("us").text(True))
     for version in ("us", "eu"):
         # Written unsorted, byte for byte as first committed with patch 0058.

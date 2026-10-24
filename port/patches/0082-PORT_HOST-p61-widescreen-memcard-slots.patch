@@ -1,0 +1,81 @@
+Upstream-bound: no
+Subject: [PORT_HOST] P6.1 memory card slot picker at the 16:9 edges
+
+The save and load screen's slot picker parks its three memory card slots
+just past the right edge (x 320) and slides them in from there; its header
+(a tab at the left edge and a rail to the right edge) slides down from the
+top. In 16:9 the parked slots showed in the right gutter from the moment the
+screen opens (a green card in the corner), and once in, the slots and the
+rail ended one gutter inside the picture, the tab one gutter inside on the
+left. With widescreen on, the slots, their partner icons and their cursor
+are drawn one gutter further right (parked, they are now past the 16:9
+edge), the header's tab and its text one gutter further left and its rail
+widened to the right edge. Off, nothing changes.
+
+--- a/src/menus/memory_card/menu.c
++++ b/src/menus/memory_card/menu.c
+@@ -2,6 +2,33 @@
+    out */
+ 
+ #include "menus/memory_card.h"
++#if PORT_HOST
++#include "port_widescreen.h"
++/* Widescreen (patch 0082): the slot picker's header (its tab and the rail it
++   hangs from) runs from the picture's left edge to its right edge, and the
++   three slots hang from the right edge: parked one gutter further right,
++   they stay out of the 16:9 picture until they slide in */
++#define MCARD_RIGHT(x) ((x) + dw3_port_widescreen_px())
++#define MCARD_LEFT(x) ((x) - dw3_port_widescreen_px())
++#define MCARD_BAND(sheet, frame, split) dw3_port_widescreen_menu_band((sheet), (frame), (split))
++/* the header's tab (x 0 to 104) and its first rail tile move left, the
++   other rail tiles right, and copies of that tile fill the rail between */
++#define MCARD_HEADER_SPLIT 105
++/* The slot cursor starts docked at the end of the header's tab and slides
++   0x2F to the first slot: it now starts one gutter further left and ends
++   one gutter further right, over the same frames */
++static s32 mcardCursorX(s32 slide, s32 move) {
++    s32 gutter = dw3_port_widescreen_px();
++
++    return 0x30 - gutter + slide * (0x2F + 2 * gutter) / 0x2F + move;
++}
++#define MCARD_CURSOR_X(slide, move) mcardCursorX((slide), (move))
++#else
++#define MCARD_CURSOR_X(slide, move) ((slide) + 0x30 + (move))
++#define MCARD_RIGHT(x) (x)
++#define MCARD_LEFT(x) (x)
++#define MCARD_BAND(sheet, frame, split) (sheet)
++#endif
+ 
+ /* Slides the slot picker's header down into view */
+ void STGMCARD_slideInHeader(MemCardMenu *menu) {
+@@ -74,7 +101,7 @@
+         menu->nextState(menu);
+         STGMCARD_resetMenu(menu);
+         if (*windows == NULL) {
+-            *windows = createTextWindow(menu->layer, 1, 0x15, menu->lerps[1].value + 0x18);
++            *windows = createTextWindow(menu->layer, 1, MCARD_LEFT(0x15), menu->lerps[1].value + 0x18);
+         }
+         (*windows)->setString(*windows, FILE_CACHE.load(TEXT_FILE(TEXT_MEMORY_CARD)), 3);
+         (*windows)->setNumber(*windows, 1, menu->saves->port + 1);
+@@ -169,16 +196,16 @@
+             }
+         }
+         sprite.setClutRow(menu->blinkFrame);
+-        sprite.draw(FILE_CACHE.getEntry(FILE_GMCARD_SHEET << 16), 0x23, menu->lerps[2].value + 0x30 + menu->lerps[3].value, menu->lerps[1].value + 0x12);
++        sprite.draw(FILE_CACHE.getEntry(FILE_GMCARD_SHEET << 16), 0x23, MCARD_CURSOR_X(menu->lerps[2].value, menu->lerps[3].value), menu->lerps[1].value + 0x12);
+         sprite.setClutRow(0);
+-        sprite.draw(FILE_CACHE.getEntry(FILE_GMCARD_SHEET << 16), 0x20, 0, menu->lerps[1].value + 0x10);
+-        (*windows)->setPos(*windows, 0x15, menu->lerps[1].value + 0x18);
++        sprite.draw(MCARD_BAND(FILE_CACHE.getEntry(FILE_GMCARD_SHEET << 16), 0x20, MCARD_HEADER_SPLIT), 0x20, 0, menu->lerps[1].value + 0x10);
++        (*windows)->setPos(*windows, MCARD_LEFT(0x15), menu->lerps[1].value + 0x18);
+         for (i = 0; i < 3; i++) {
+             if (menu->saves->file.saves[i].name[0] != 0) {
+-                sprite.draw(FILE_CACHE.getEntry(FILE_GMCARD_SHEET << 16), STGMCARD_partnerIcons[menu->saves->file.saves[i].partners[0] - 3], STGMCARD_slotIconX[i] + menu->lerps[0].value, 0x23);
++                sprite.draw(FILE_CACHE.getEntry(FILE_GMCARD_SHEET << 16), STGMCARD_partnerIcons[menu->saves->file.saves[i].partners[0] - 3], MCARD_RIGHT(STGMCARD_slotIconX[i] + menu->lerps[0].value), 0x23);
+             }
+         }
+-        sprite.draw(FILE_CACHE.getEntry(FILE_GMCARD_SHEET << 16), 0x22, menu->lerps[0].value + 0x62, 0x20);
++        sprite.draw(FILE_CACHE.getEntry(FILE_GMCARD_SHEET << 16), 0x22, MCARD_RIGHT(menu->lerps[0].value + 0x62), 0x20);
+         break;
+     }
+ }

@@ -80,6 +80,11 @@ int memcard_host_write(int slot, uint32_t offset, const void *buf, size_t len);
 int memcard_host_read_sector(int slot, int sector, void *buf);
 int memcard_host_write_sector(int slot, int sector, const void *buf);
 
+#ifdef DW3_CHEATS
+/* The directory given to memcard_host_set_dir, or NULL (P6.20 save marks). */
+const char *memcard_host_dir(void);
+#endif
+
 #ifdef __cplusplus
 }
 #endif

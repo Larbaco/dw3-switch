@@ -1,0 +1,203 @@
+Upstream-bound: no
+Subject: [PORT_HOST] P6.20 Cheats screen hooks (DW3_CHEATS builds only)
+
+The Cheats sub-screen of the Options screen (port/options/cheats.c,
+docs/PORT_OPTIONS.md "Cheats") drives the PC test hooks that already exist,
+so the cheats reuse their code instead of adding new game logic. Every line
+is inside #ifdef DW3_CHEATS (CMake option DW3_CHEATS, default ON): a build
+with -DDW3_CHEATS=OFF compiles these files exactly as without this patch.
+With it, nothing changes while the Cheats screen's master switch is off.
+
+* Fill bag (field_menu/menu.c): patch 0070's DW3_FORCE_ITEMS hook reads
+  dw3_cheats_getenv. The variable still wins when it is set (replays); else
+  the armed one-shot answers "43-359:99" once (usable items and equipment, no
+  key item) and is used up.
+* Instant win (normal_battle/menu.c): the end of patch 0025's DW3_FORCE_WIN
+  hook (FIGHTSTG_endBattle(BATTLE_WON) on the battle menu's turn state), once
+  in every battle while the toggle is on. FIGHTSTG's start counts battles
+  (battle_mode/start.c). With DW3_FORCE_WIN set the variable's hook acts and
+  the cheat does not.
+* Battle now (field_mode/battle.c): in front of patch 0062's countdown hook,
+  while the one-shot is ready the footstep's step is DW3_CHEAT_BATTLE_NOW_STEP
+  (more than any countdown), whatever the Encounter rate row says; when the
+  random battle starts the one-shot is used up and logged instead of the
+  P6.18 footstep line. It stays ready in an area whose random battles are off.
+* The save mark (memory_card/saves.c): after a slot is written,
+  dw3_cheats_save_written gets the port, the slot, the slot's offset in the
+  card file (MEMCARD.offset of the section) and the bytes written; the port
+  keeps the mark in save<N>.cheats beside save<N>.bin, never in the save.
+  After a slot is loaded, dw3_cheats_save_loaded keeps a marked game marked.
+* The title menu's task start (title/menu.c) clears the mark of the game in
+  progress: a new game or a load follows.
+
+--- a/src/menus/field_menu/menu.c
++++ b/src/menus/field_menu/menu.c
+@@ -6,6 +6,9 @@
+ #include <stdio.h>
+ #include "port_widescreen.h"
+ char *getenv(const char *name);
++#ifdef DW3_CHEATS
++#include "port_cheats.h"
++#endif
+ #endif
+ 
+ #include "shared/set_scroll_bar_x.inc.c"
+@@ -122,7 +125,13 @@
+         /* Test hook: DW3_FORCE_ITEMS=<first>-<last>[:<count>] puts that many (default 3) of
+            each item id of the range into the bag when the field menu's mode starts, so a
+            replay can open the item lists without playing for drops. */
++#ifdef DW3_CHEATS
++        /* P6.20 Fill bag: when the variable is unset, the Cheats screen's
++           one-shot answers with the range of usable items and equipment */
++        const char *forced = dw3_cheats_getenv("DW3_FORCE_ITEMS");
++#else
+         const char *forced = getenv("DW3_FORCE_ITEMS");
++#endif
+         int first = 0;
+         int last = 0;
+         int count = 3;
+--- a/src/battle/normal_battle/menu.c
++++ b/src/battle/normal_battle/menu.c
+@@ -9,6 +9,9 @@
+ #include <stdio.h>
+ char *getenv(const char *name);
+ long strtol(const char *nptr, char **endptr, int base);
++#ifdef DW3_CHEATS
++#include "port_cheats.h"
++#endif
+ #endif
+ 
+ /* Sets the battle's kind from the mode it came from and the battle: the
+@@ -231,6 +234,13 @@
+         break;
+     case 1:
+ #if PORT_HOST
++#ifdef DW3_CHEATS
++        /* P6.20 Instant win: DW3_FORCE_WIN's end of the battle, once in
++           every battle while the cheat is on */
++        if (dw3_cheats_take_instant_win()) {
++            FIGHTSTG_endBattle(BATTLE_WON);
++        }
++#endif
+         {
+             static int force_win_done;
+             const char *fw = getenv("DW3_FORCE_WIN");
+--- a/src/battle/battle_mode/start.c
++++ b/src/battle/battle_mode/start.c
+@@ -6,6 +6,9 @@
+ #include <stdio.h>
+ char *getenv(const char *name);
+ long strtol(const char *nptr, char **endptr, int base);
++#ifdef DW3_CHEATS
++#include "port_cheats.h"
++#endif
+ #endif
+ 
+ /* The mode's root task: loads WFIGHTTS (the battle test, with the mode's
+@@ -22,6 +25,9 @@
+             long n;
+             s32 i;
+ 
++#ifdef DW3_CHEATS
++            dw3_cheats_battle_begin(); /* P6.20: Instant win counts battles */
++#endif
+             /* Name entry / Tamer Service normally call setParty; seed a
+              * starter when story aids boot past that (event battles too).
+              * DW3_FORCE_PARTY selects STARTER_PARTIES[n] (0 Kotemon lead,
+--- a/src/field/field_mode/battle.c
++++ b/src/field/field_mode/battle.c
+@@ -4,6 +4,9 @@
+ #include "field/field_mode.h"
+ #if PORT_HOST
+ #include "port_pacing.h"
++#ifdef DW3_CHEATS
++#include "port_cheats.h"
++#endif
+ #endif
+ 
+ /* Rolls the steps to the next battle (GAME.battleSteps): under 0x100, or 0x100 to 0x4FF */
+@@ -50,6 +53,13 @@
+             area--;
+             rate = FIELDSTG_battleRates[FIELDSTG_state.battles->battles[area]->count];
+ #if PORT_HOST
++#ifdef DW3_CHEATS
++            /* P6.20 Battle now: this footstep ends the countdown, whatever
++             * the Encounter rate row says (OFF too) */
++            if (dw3_cheats_battle_now_armed()) {
++                rate = DW3_CHEAT_BATTLE_NOW_STEP;
++            } else
++#endif
+             /* P6.18: the Encounter rate option scales the countdown of the
+              * random areas (0.5x) or skips the footstep (Off) */
+             if (!dw3_port_pacing_encounter_step(&rate)) {
+@@ -60,6 +70,11 @@
+             if (GAME.battleSteps <= 0) {
+                 if (BATTLE_SETUP.randomBattles != 0) {
+ #if PORT_HOST
++#ifdef DW3_CHEATS
++                    if (dw3_cheats_battle_now_armed()) {
++                        dw3_cheats_battle_now_started(); /* used up, logged */
++                    } else
++#endif
+                     dw3_port_pacing_encounter_started();
+ #endif
+                     FIELDSTG_startAreaBattle();
+--- a/src/menus/memory_card/saves.c
++++ b/src/menus/memory_card/saves.c
+@@ -5,6 +5,9 @@
+ #if PORT_HOST
+ #include <stdio.h>
+ char *getenv(const char *name);
++#ifdef DW3_CHEATS
++#include "port_cheats.h"
++#endif
+ #endif
+ 
+ /* Shows the line with the memory card's port number, or hides it */
+@@ -467,6 +470,11 @@
+                 fprintf(stderr,
+                         "dw3: STGMCARD_loadSave ok port=%d slot=%d money=%d progress=%d\n",
+                         saves->port, STGMCARD_funcs.slot, GAME.money, GAME.progress);
++#ifdef DW3_CHEATS
++                /* P6.20: a save written with cheats keeps the game marked */
++                dw3_cheats_save_loaded(saves->port, STGMCARD_funcs.slot, STGMCARD_funcs.dataBuf->bytes,
++                                       sizeof(GameSave));
++#endif
+                 if (getenv("DW3_FORCE_MCARD_LOAD") != NULL) {
+                     fprintf(stderr, "dw3: STGMCARD force-load done, leaving\n");
+                     saves->hide(saves);
+@@ -621,6 +629,12 @@
+     if (status != 0) {
+         if (status == 1) {
+ #if PORT_HOST
++#ifdef DW3_CHEATS
++            /* P6.20: mark the slot when a cheat changed this game (a
++               sidecar beside the save, never the save) */
++            dw3_cheats_save_written(saves->port, STGMCARD_funcs.slot, MEMCARD_SYSTEM.card.offset,
++                                    STGMCARD_funcs.dataBuf->bytes, sizeof(GameSave));
++#endif
+             if (getenv("DW3_FORCE_MCARD_SAVE") != NULL) {
+                 fprintf(stderr, "dw3: STGMCARD force-save done, leaving\n");
+                 saves->hide(saves);
+--- a/src/menus/title/menu.c
++++ b/src/menus/title/menu.c
+@@ -4,6 +4,9 @@
+ #if PORT_HOST
+ #include "port_options.h"
+ #include "port_title_options.h"
++#ifdef DW3_CHEATS
++#include "port_cheats.h"
++#endif
+ #endif
+ 
+ /* The menu's sprites: the European version has them for each language */
+@@ -265,6 +268,9 @@
+     switch (task->state) {
+     case TASK_INIT:
+     default:
++#ifdef DW3_CHEATS
++        dw3_cheats_title_started();
++#endif
+         if (task->skip == 0) {
+             task->nextState(task);
+         } else {

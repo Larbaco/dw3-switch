@@ -170,6 +170,35 @@ int main(void) {
         step(lang, 2, v, 1, &d);
         if (!d.full || d.rebuilt) fail("invalidate must resend without re-raster", lang, 2, v);
 
+#ifdef DW3_CHEATS
+        /* P6.20: the Options page with the Cheats hint, then the Cheats
+         * page with the master switch off and on: a page or master change
+         * rebuilds the static layer; cursor moves and values are dirty rects
+         * like on the Options page. */
+        dw3_pc_title_overlay_set_options_page(DW3_TITLE_OPTIONS_PAGE_OPTIONS, 1);
+        step(lang, 0, v, 1, &d);
+        if (!d.full || !d.rebuilt) fail("hint did not rebuild", lang, 0, v);
+        for (int master = 0; master < 2; ++master) {
+            int cv[DW3_TITLE_OPTION_ROWS] = {master, 0, 0, 0, 0, 0, 0, 0};
+            dw3_pc_title_overlay_set_options_page(DW3_TITLE_OPTIONS_PAGE_CHEATS, master);
+            step(lang, 0, cv, 1, &d);
+            if (!d.full || !d.rebuilt) fail("cheats page did not rebuild", lang, 0, cv);
+            /* Every cursor row for two languages, the first for the rest. */
+            for (int c = 0; c < (lang == DW3_TITLE_LANG_EN || lang == DW3_TITLE_LANG_DE
+                                 ? DW3_TITLE_CHEAT_ROWS : 1); ++c)
+                for (int row = 1; row < DW3_TITLE_CHEAT_ROWS; ++row)
+                    for (int n = 0; n <= (row == 4 ? 7 : 1); ++n) {
+                        cv[row] = n;
+                        step(lang, c, cv, 1, &d);
+                        steps++;
+                        if (d.full) fail("unexpected full upload (cheats)", lang, c, cv);
+                    }
+        }
+        dw3_pc_title_overlay_set_options_page(DW3_TITLE_OPTIONS_PAGE_OPTIONS, 0);
+        step(lang, 0, v, 1, &d);
+        if (!d.rebuilt) fail("back to Options did not rebuild", lang, 0, v);
+#endif
+
         /* Restart / teardown: pixels disappear, the next open rebuilds. */
         dw3_options_cache_release();
         if (dw3_options_cache_pixels() != NULL) fail("pixels survive release", lang, 2, v);

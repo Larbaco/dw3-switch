@@ -50,7 +50,7 @@ explicitly marked N/A in this note.
 | Pacing | **Encounter rate** (OFF / 0.5x / 1x / 1.5x / 2x) and **Text speed** (Normal / Fast / Instant), both default to the original game ([P6.18](P6.18_PACING.md)). Instant shows every dialogue page, report line and (since 2026-10-24) the area name banner's names whole; Normal and Fast leave the banner as the game types it | Phase 6 |
 | Battle menu memory | **Battle cursor** (OFF / Command / Command+Tech): the battle command menu and technique list open on your last pick; key `battle_menu_memory` 0 / 1 / 2, off by default (a row since P7.9's follow-up, it was file-only) ([P7.9](P7.9_BATTLE_MENU_MEMORY.md)) | Phase 7 |
 | Button layout / glyphs | **Button layout** (PlayStation positional, default / Nintendo A confirms, B cancels), ROADMAP P9.8; **Switch button glyphs** on/off, ROADMAP P10.6. Both future goals (2026-10-23); the glyphs follow the layout | Phase 9 / Phase 10 |
-| Cheats (test aid) | A **Cheats** sub-screen for hardware testing (give items, instant win, start a battle, later money, HP / MP, warp); future goal of 2026-10-24, nothing built. Off by default, keys `cheat_*` in `port_options.cfg` (the options file, never the save); the eight rows fill the screen, so the entry needs a layout decision. See ROADMAP P6.20 | Phase 6 (P6.20) |
+| Cheats (test aid) | A **Cheats** sub-screen for hardware testing, reached with Square / Y on the Options screen: master switch, Fill bag, Instant win, Battle now and a count of saves flagged "cheat used" (a sidecar file, never the save). Off by default, keys `cheat_enabled` and `cheat_instant_win` in `port_options.cfg`; built in by default, removed by `DW3_CHEATS=OFF` / `--no-cheats`. Later money, HP / MP, warp. See [Cheats](#cheats-p620) and ROADMAP P6.20 | Phase 6 (P6.20) |
 | Switch host | Rumble on/intensity, confirm A/B layout, `swkbd` name, CRT/sharp, system-language hint | Phase 10 (+ P4.4 / P5.3 always-on lifecycle) |
 | Restart game | Optional L1 + R1 + Start + Select in the shared PS1 pad map; OFF by default | Phase 6.9 |
 
@@ -107,6 +107,13 @@ text_speed=0
 battle_menu_memory=0
 end=1
 ```
+
+`cheat_enabled` and `cheat_instant_win` (P6.20, 0 or 1, default off) belong to the
+[Cheats screen](#cheats-p620). They are absent until the Cheats screen changes
+one. They are read by `port/options/cheats.c` as
+file-only keys, are kept when the Options screen rewrites the file, and are
+written only when the Cheats screen changes one. A build without cheats ignores
+them and keeps them (unknown keys).
 
 File-only keys (a setting with no row on the Options screen) are written by
 hand into the same file, before `end=1`; the game reads them through
@@ -254,6 +261,9 @@ clean save files. See [P6.9_RESTART.md](P6.9_RESTART.md).
 - `test_options_persist.py::test_file_only_int_key`: a key with no row is read
   from the file, falls back to its default when absent or not a number, and is
   still in the file after the Options screen rewrites it.
+- Cheats (P6.20): `tools/tests/test_cheats.py`, `tools/tests/test_options_cache.py`
+  (with and without cheats) and the `cheats-screen` and `cheat-*` replays; see
+  [Cheats, Tests](#tests) below.
 - OLED: pending. Toggle, HOME, close the game, relaunch from hbmenu.
 
 ## Entry investigation (P9.2)
@@ -629,6 +639,207 @@ the new level; a Music volume change plays it at the current SFX level. Every
 sound logs `dw3-port-options: sound <cursor|select|cancel> (sfx volume N, voice V)`
 (`voice` is the SPU voice of the key-on) and a missing bank would log
 `sound ... not played: bank N is not loaded`. Evidence: [P6.17](P6.17_VOLUME.md#sound-feedback-on-the-options-screen).
+
+## Cheats (P6.20)
+
+A test aid for hardware testing: reach a battle, or a full bag, without
+replaying hours of the game. Not a player feature. Decisions of the owner
+(2026-10-24): it ships in **every** build (release and nxlink, US and EU) behind
+a master switch that is off by default; labels in the five EU languages
+(English on the US disc); a save written after a cheat is flagged; and a
+build-time option removes the whole feature. ROADMAP P6.20 has the history.
+
+### Reaching the screen
+
+On the Options screen press **Square** (PC **Z**, Switch **Y**). The Cheats
+screen replaces the Options rows in the same window (same background, pointer,
+sounds and message line); **Triangle** (PC S, Switch X) goes back to Options.
+The Options screen keeps its eight rows. The hint "Square/Y Cheats" is drawn
+left of Change **only while the master switch is on**.
+
+Why a hint that appears late and not a ninth row, a second page or an
+always-visible hint: the eight rows fill the window (38 px rows on a 42 px
+pitch, the last ends at y 482), and every pixel added to the Options screen
+changes the P6.15 references (`*-options-persist`, `*-volume-persist`,
+`*-battle-cursor-persist` capture it) that must not be refreshed. With the
+master off the Options screen is pixel-identical to the one before P6.20, so a
+player who never opens the Cheats screen sees no change at all, and the dirty
+rectangle cache is untouched. Square is the free pad button on that screen (Cross
+and Circle step a row, Triangle closes, Left / Right step the volumes). The cost
+is that the entry is not discoverable until someone knows the key; it is in
+[HOTKEYS.md](HOTKEYS.md) and the release notes.
+
+### Rows
+
+| Row | Kind | Values | Does |
+|---|---|---|---|
+| Cheats | master switch, `cheat_enabled` | OFF / ON | OFF: every cheat below is inert and greyed. Turning it off disarms the one-shots |
+| Fill bag | one-shot | OFF / Ready | At the next field menu screen the bag gets 99 of every usable item, weapon, armour and accessory (ids 43..359; the key items 1..42, 360, 395..402 and the card packs 361..394 are left out). Uses patch `0070`'s `DW3_FORCE_ITEMS` hook; used up when applied |
+| Instant win | toggle, `cheat_instant_win` | OFF / ON | Each battle ends as won on its first turn (once per battle; the report and the rewards follow as after a real win) |
+| Battle now | one-shot | OFF / Ready | The next footstep in a random-battle area starts a random battle, even with Encounter rate OFF (the countdown is forced to its end); used up when the battle starts |
+| Cheat saves | read-only | None, or 1..6 | How many saves are marked "cheat used" (see below) |
+
+Everything is off by default. The toggles persist as `cheat_enabled` and
+`cheat_instant_win` in `port_options.cfg` (0 or 1; anything else is logged as
+not valid and read as 0), like the other keys. The one-shots are **not**
+persisted: they are armed for this run only. **No cheat writes a save by
+itself.** A one-shot changes the live game, and the game's own save writes it
+like anything else, which is why the save mark exists. The Fill bag message line
+says that saving keeps the items. Each use is logged as a `dw3-cheats:` line in
+`dw3.log`.
+
+The `DW3_FORCE_*` variables of the PC replay hooks keep working and win over
+the screen (`DW3_FORCE_ITEMS`, `DW3_FORCE_WIN`, `DW3_FORCE_ENCOUNTER`), and
+those hooks never mark a save: they are development aids of the replays, not
+cheats of a player. The PC-only variable `DW3_CHEATS_ARM=fill_bag,battle_now`
+arms the one-shots at boot for the replay tests (they still need the master on).
+
+### The "cheat used" flag on saves
+
+A **sidecar file** `save<N>.cheats` in the memory card directory
+(`sdmc:/switch/dw3/<us|eu>/memcard/` on the Switch), next to `save<N>.bin`, in the
+same `key=value` format as this file, written atomically (temp file and rename):
+
+```
+# dw3-switch: slots of save0.bin written with cheats (docs/PORT_OPTIONS.md)
+slot1=<offset>:<size>:<fnv1a32 hex>
+end=1
+```
+
+- *Marking.* The game in progress is marked when a cheat changes it: Fill bag
+  applied, Instant win applied, or a Battle now battle started. When the memory
+  card screen then writes a slot, the slot's entry records the offset and size of
+  the bytes written and their FNV-1a hash (patch `0077` calls
+  `dw3_cheats_save_written` at the single place that writes a save). Writing a
+  game that is not marked removes the entry, and the file is deleted when no
+  entry is left. Loading a marked save keeps the game marked, so a cheated game
+  stays flagged through save, load, save. Starting from the title (a new game
+  or a load) clears the mark first.
+- *Reading.* At boot, and on the Cheats screen, an entry counts only while the
+  slot still holds the bytes it was made for (read back through the memory card
+  host). A slot later overwritten by a build without cheats, or a copied
+  `saveN.bin`, is not reported. The count is the last row of the Cheats screen,
+  and the boot log has one `dw3-cheats: save0.bin slot 2 was written with cheats`
+  line per marked slot.
+- *Where it is not shown yet.* The game's own memory card screen (`STGMCARD`)
+  does not display it: that needs decomp work (a new indicator in a layout the
+  port does not own) and is a follow-up. PR 1 stores the flag, shows it on the
+  Cheats screen and in the log.
+
+**Why not a byte in the save.** `GameState` has two bytes, `pad1` and `pad3`
+(bytes 1 and 3, outside the checksum that starts at byte 4), which the decomp
+comments as "nothing reads or writes it". They were rejected:
+
+- the ROADMAP rule (also P7.9) is that a cheat must not edit the save; the save
+  image stays exactly what the game writes;
+- the PS1 / emulator memory card (P9.6) shares that image, and a flagged byte
+  would travel with it into a card that other tools read;
+- "unused" is a claim about the code that was decompiled, not about every
+  tool, patch or later format (P7.12 freezes the save format);
+- a sidecar works with no decomp change beyond the one call, is trivially
+  removed, and cannot corrupt a save.
+
+The cost: the mark lives beside the file, so copying only `saveN.bin` loses it
+(the hash check makes the opposite, a stale mark, harmless). It is a
+transparency aid, not tamper protection.
+
+### Build option
+
+CMake `DW3_CHEATS`, default **ON**, in `platforms/pc/CMakeLists.txt` and
+`platforms/switch/CMakeLists.txt`. OFF compiles the feature out: no Cheats
+screen, no hint, no hook, no save mark, and the game is the one before P6.20.
+
+| Build | How |
+|---|---|
+| Switch, cheats included (default, releases) | `bash tools/build_switch_game.sh` (add `--eu`, `--nxlink`) |
+| Switch, no cheats | `bash tools/build_switch_game.sh --no-cheats` (build dir suffix `-nocheats`, e.g. `build/switch-eu-nocheats/`) |
+| PC, no cheats | `cmake -S platforms/pc -B <dir> ... -DDW3_CHEATS=OFF` |
+
+The `-DDW3_CHEATS=...` value is always passed to CMake and checked in the cache
+by the Switch script, so a build directory never keeps a stale value. The option
+defines `DW3_CHEATS=1` for the host and, through `port/CMakeLists.txt`, also for
+the decomp objects (`_DW3_GAME_DEFS`): the overlays and stages are compiled by
+custom commands that see only that list, and without it patch `0077`'s field and
+battle hooks would be silently compiled out. Every line patch `0077` adds is
+inside `#ifdef DW3_CHEATS` (see [PATCHES.md](PATCHES.md)).
+
+**Bit-identical when OFF (checked).** The OFF build and a build of `main`
+before the feature have byte-identical `.text`, `.rodata`, `.data` and `.bss`,
+the same section sizes, no extra symbol and no `dw3-cheats` string (PC, US and
+EU; `size`, `objcopy -O binary --only-section` and `nm`). To keep that true: the
+psyz log macros pass `__LINE__`, so a line inserted *above* a log call in a
+compiled file changes the code. Every insertion in `port_options.c` therefore sits
+after its last log call (tick, draw, end of file), the cheats declarations come
+in through `port_options.h`, and `memcard_host_dir()` is at the end of
+`memcard_host.c`. Do not add lines above log calls in `port_options.c`,
+`pacing.c` or the host files without re-running the comparison. With the master
+**switch** off (the default of an ON build) the behaviour is the same game too:
+the full P6.15 replay suite passes on the ON build against the unchanged
+references.
+
+### Languages and lettering
+
+The Cheats labels are pre-rendered lettering like the Options ones, in the
+language the Options screen uses (`options_lang`, from the EU language capture in
+`port/options/title_logo_capture.c`; US is English). ON, OFF and the numbers
+reuse the Options words. To change a word or add a language:
+
+1. Edit the `CHEAT_TEXT` table in `tools/generate_pc_title_lettering.py`
+   (`en`, `fr`, `de`, `es`, `it`: title, hint, Change, Back, Ready, None, the five
+   row labels and the five message lines).
+2. `python3 tools/generate_pc_title_lettering.py` (needs Pillow and the DejaVu
+   fonts in `/usr/share/fonts/truetype/dejavu`). It rewrites
+   `platforms/pc/src/title_overlay_lettering.inc`; the entries before P6.20 stay
+   byte-identical, and the cheat ones sit in one `#ifdef DW3_CHEATS` block at the
+   end (the file grew from 403 KB to 1.27 MB; OFF builds do not compile them).
+3. Check the widths: a message line must fit 696 px and a row label 360 px (the
+   generator writes `title_opt_cht_*_width`). The German and Spanish Fill bag
+   messages were shortened to fit.
+4. Run `tools/tests/test_options_cache.py` and take the screenshots of each
+   language (`xvfb-run`, `DW3_REPLAY_XSHOT=1`; the replay `cheats-screen` scenario
+   is the route).
+
+### Code
+
+`port/options/cheats.c` (store, screen logic, hooks), `port/options/cheat_saves.c`
+(sidecar), `port/options/cheats_internal.h`, API `port/include/port_cheats.h`;
+the page is drawn by `cheats_screen()` in `platforms/pc/src/title_overlay_art.c`.
+The store starts lazily on the first call (`dw3_cheats_init(memcard_host_dir())`),
+so the hosts needed no change.
+
+### Tests
+
+- `python3 -m pytest tools/tests/test_cheats.py`: the store (defaults,
+  persistence, master gating and disarming, bad values), the hooks (Fill bag
+  answers the items hook once, the variable wins, Instant win once per battle,
+  Battle now until a battle starts, the arm variable needs the master) and the
+  save marks (mark, clear, replaced slot not counted, unwritable directory).
+- `tools/tests/test_options_cache.py`, now run with and without cheats: the Cheats
+  page and the late hint, and that the Options pages are unchanged.
+- Replays (log-only unless noted, see [P6.15_REPLAY_TESTS.md](P6.15_REPLAY_TESTS.md)):
+  `cheats-screen`, `cheat-fill-bag[-off]`, `cheat-battle-now[-off]`,
+  `cheat-instant-win[-off]`, US and EU; every `-off` twin proves nothing happens
+  with the master off.
+- Switch: compiled for US and EU, normal, `--nxlink` and `--no-cheats`.
+
+### OLED checklist (owner)
+
+1. Options screen: Y does nothing visible with the master off (no hint); the
+   screen looks as before.
+2. Open the Cheats screen with **Y**: the title and rows in the game language
+   (EU: all five), Triangle (X on the Switch) returns.
+3. Cheats ON: rows 2-4 become active, the "Square/Y Cheats" hint shows on Options.
+   Close the game, relaunch: Cheats and Instant win keep their state, Fill bag
+   and Battle now are back to OFF.
+4. Fill bag Ready, leave to the game, open the field menu: Items shows 99 of
+   each (no key items).
+5. Instant win ON, enter a random battle: it ends as won on the first turn.
+6. Battle now Ready: the next steps in a battle area start a battle even with
+   Encounter rate OFF.
+7. Save in the memory card screen after one of these, relaunch: Cheat saves
+   shows 1, `dw3.log` has `dw3-cheats: save... was written with cheats`; save a
+   clean game over that slot, relaunch: None.
+8. `--no-cheats` build: Y does nothing, no `dw3-cheats` lines in `dw3.log`.
 
 ## Title-screen visual reference
 

@@ -90,6 +90,25 @@ lists only the files actually published.
 Since preview.18, [`platforms/switch/release/README.txt`](../platforms/switch/release/README.txt)
 holds the notes shipped with each release.
 
+## Building without cheats
+
+Since P6.20 every build, including the release and nxlink NROs, has a **Cheats**
+screen in the Options screen (Y on the Switch; master switch off by default;
+[PORT_OPTIONS.md](PORT_OPTIONS.md#cheats-p620)). The release workflow keeps this
+default: the published `.nro` files include it. A build without it, which is the
+game exactly as before the feature (byte-identical code), is one flag:
+
+```bash
+bash tools/build_switch_game.sh --no-cheats            # build/switch-nocheats/
+bash tools/build_switch_game.sh --eu --no-cheats       # build/switch-eu-nocheats/
+# PC: cmake -S platforms/pc -B <dir> ... -DDW3_CHEATS=OFF
+```
+
+The script passes `-DDW3_CHEATS=ON|OFF` every time and checks `CMakeCache.txt`.
+Check a no-cheats `.nro` with `strings <nro> | grep -c dw3-cheats` (must be 0).
+Say in the release notes which kind was published; a `--no-cheats` `.nro` is
+published only if the owner asks for it.
+
 ## Hardware observations
 
 Dated notes from the maintainer's Switch OLED. They record what was seen on

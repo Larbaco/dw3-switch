@@ -175,6 +175,12 @@ if(DW3_NULL_GUARD_LOG)
   list(APPEND _DW3_GAME_DEFS DW3_NULL_GUARD_LOG=1)
   message(STATUS "PORT_HOST NULL-guard hit log enabled (DW3_NULL_GUARD_LOG)")
 endif()
+# P6.20: the overlays and stages compile through custom commands that take
+# only these definitions (not the directory's), so patch 0077's hooks need it
+# here too. Set by the platform CMakeLists (option DW3_CHEATS, default ON).
+if(DW3_CHEATS)
+  list(APPEND _DW3_GAME_DEFS DW3_CHEATS=1)
+endif()
 set(_DW3_GAME_OPTS
   -std=gnu89
   -fsigned-char
@@ -269,6 +275,14 @@ add_library(dw3_port_options OBJECT
   "${CMAKE_CURRENT_SOURCE_DIR}/options/title_background_capture.c"
   "${CMAKE_CURRENT_SOURCE_DIR}/ui/port_text.c"
 )
+# P6.20 Cheats screen and save mark; DW3_CHEATS is set by the platform
+# CMakeLists (option DW3_CHEATS, default ON).
+if(DW3_CHEATS)
+  target_sources(dw3_port_options PRIVATE
+    "${CMAKE_CURRENT_SOURCE_DIR}/options/cheats.c"
+    "${CMAKE_CURRENT_SOURCE_DIR}/options/cheat_saves.c"
+  )
+endif()
 add_dependencies(dw3_port_options dw3_decomp_patched)
 target_include_directories(dw3_port_options PRIVATE ${_DW3_GAME_INCLUDES})
 target_compile_definitions(dw3_port_options PRIVATE ${_DW3_GAME_DEFS})
