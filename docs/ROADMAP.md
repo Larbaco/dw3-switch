@@ -45,7 +45,7 @@ lives in its doc, not in the entry below.
 | P5.3 | Save handling | done | [P5.3](P5.3_FLAT_SAVE.md) |
 | P5.4 | Error reporting | in progress (done-when met on the OLED, US + EU; PR 2 boot notice + assert/abort landed, emulator-tested; owner OLED check open) | [P5.4](P5.4_CRASH.md) |
 | P5.5 | Stage sweep on hardware | open | — |
-| P6.1 | Scaling / widescreen | in progress (rc8 OLED: banner, technique backdrops and encounter spiral reach 16:9; results screen 16:9 with patch 0074 in PR #213, pending OLED; Items menu dissolve 16:9 with patch 0075 and the field menu screens re-anchored to the 16:9 edges with patch 0076, pending OLED; open: the field menu map screen, shop / memory card / partner name panels) | [P6.1](P6.1_WIDESCREEN.md) |
+| P6.1 | Scaling / widescreen | in progress (rc8 OLED: banner, technique backdrops and encounter spiral reach 16:9; results screen 16:9 with patch 0074 in PR #213, pending OLED; Items menu dissolve 16:9 with patch 0075 and the field menu screens re-anchored to the 16:9 edges with patch 0076, pending OLED; preview.31-rc1 OLED notes: title menu, news caption bar and Digimon Online registration screen 16:9 with patches 0085-0087, pending OLED; open: the field menu map screen, shop / memory card / partner name panels) | [P6.1](P6.1_WIDESCREEN.md) |
 | P6.2 | PAL/NTSC, EU/US, language at boot | in progress | [P3_EU_BUILD](P3_EU_BUILD.md) |
 | P6.3 | PGXP-style vertex precision | open | — |
 | P6.4 | Fast-forward | in progress (OLED turbo works in battle on the US disc, rc7; tick is the owner's call) | [P6.4](P6.4_FAST_FORWARD.md) |
@@ -789,6 +789,15 @@ gate, which stays open.
     magic circle (rotated sprite); it is the same on main, so it is not from
     these patches. Look at it on the OLED first (the rc8 owner report says
     the backdrops look right on the OLED; nothing was said about that hole).
+  - [ ] **preview.31-rc1 OLED notes (owner, 16:9 on), fixed, pending
+    OLED (US and EU):** the title menu did not fill the screen (patch `0085`:
+    the title gets the gutter while its backdrop is drawn, the backdrop is
+    mirrored into it); the TV news caption bar of the intro stopped at the
+    4:3 edges (patch `0086`: the field message box spans 16:9; PC also needs
+    PSY-Z `dw3-gutter-flush`); the Digimon Online registration screen was
+    4:3 (patch `0087`: the hexagon backdrop continued by whole periods, the
+    side lines carried out). Replay scenarios `us/eu-ws-title-intro`. Details:
+    [P6.1_WIDESCREEN.md](P6.1_WIDESCREEN.md#title-news-caption-and-registration-screen-2026-10-24).
   - [ ] **FUTURE: redesign the Items menu (and its open transition) for
     16:9.** Owner, rc8 OLED: the transition effect when opening the Items
     menu is still 4:3, and the menu itself stays 4:3 while the background

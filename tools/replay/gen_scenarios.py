@@ -429,6 +429,39 @@ def battle_report(version):
     return r
 
 
+# P6.1 (patches 0085-0087): checkpoints of the title menu, the opening's news
+# caption and the player name (Digimon Online registration) screen, per disc
+# (frame, name). Measured on the PC build with DW3_TURBO=4; PAL reaches the
+# registration screen about 180 frames earlier.
+WS_TITLE_INTRO_SHOTS = {
+    "us": ((300, "title-menu"), (340, "title-fade"), (2160, "news-caption"),
+           (10080, "register-welcome"), (10500, "register-name"),
+           (10740, "register-confirm"), (10920, "register-done")),
+    "eu": ((360, "title-menu"), (410, "title-fade"), (2160, "news-caption"),
+           (9900, "register-welcome"), (10320, "register-name"),
+           (10620, "register-confirm"), (10680, "register-done")),
+}
+
+
+def ws_title_intro(version):
+    """P6.1 (patches 0085-0087): the New Game path of `newgame-field` up to the
+    end of the player name screen, with checkpoints on the title menu and its
+    edge fade (0085, the title backdrop in the gutters), the news caption bar
+    of the opening (0086, the field message box across 16:9) and the
+    registration screen's pages (0087, the hexagon backdrop and the side
+    lines in the gutters). The manifest seeds widescreen on."""
+    r = Rec(f"{version.upper()}: P6.1 title menu, news caption, registration screen in widescreen")
+    new_game_opening(r, version)
+    shots = WS_TITLE_INTRO_SHOTS[version]
+    last = shots[-1][0]
+    r.lines = [l for l in r.lines
+               if l.startswith("#") or (l.startswith("pad") and int(l.split()[1]) <= last)]
+    for frame, name in shots:
+        r.shot(frame, name)
+    r.end(last + 10)
+    return r
+
+
 R1 = 0x0800
 L1 = 0x0400
 # Evidence runs only (measured): the frames later that the PAL battle reaches turn
@@ -988,6 +1021,7 @@ def main(out):
         (out / f"{v}-battle-music.rec").write_text(battle_music(v).text(True))
         (out / f"{v}-two-battles.rec").write_text(two_battles(v).text(True))
         (out / f"{v}-battle-report.rec").write_text(battle_report(v).text(True))
+        (out / f"{v}-ws-title-intro.rec").write_text(ws_title_intro(v).text(True))
         (out / f"{v}-p77-battle.rec").write_text(p77_battle(v).text(True))
         (out / f"{v}-p77-square.rec").write_text(p77_square(v).text(True))
         (out / f"{v}-file-cache-full.rec").write_text(file_cache_full(v).text(True))
