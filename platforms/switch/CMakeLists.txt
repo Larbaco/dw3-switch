@@ -77,6 +77,14 @@ option(DW3_NX_RUMBLE_SELFTEST
        "Send one HD rumble pulse at boot (P10.4 rumble smoke only)"
        OFF)
 
+# P6.26 account probe: boot.log lines `account probe:` are always written (log
+# only). This option also opens the system profile selector once at boot
+# (pselShowUserSelector), logs the result and ignores the choice. Owner OLED
+# test builds only; never release/preview. See docs/PER_USER_SAVES.md.
+option(DW3_ACCOUNT_PROBE_PSEL
+       "Open the profile selector once at boot as a probe (P6.26, test builds only)"
+       OFF)
+
 # P6.15 Switch replay: feeds sdmc:/switch/dw3/replay.rec (the PC .rec format,
 # keyed by the same game-frame counter) to the pad path and logs
 # `replay shot <frame> <name>` / `replay end` lines, with guest stderr routed
@@ -152,6 +160,7 @@ add_executable(dw3-switch
   # bring-up sample for the devkitPro Makefile build, so it is deliberately not
   # listed here — two main()s would collide.
   source/boot_main.c
+  source/account_probe.c
   ${DW3_NX_BACKEND_SOURCES}
   # Shared 64-bit host glue: PSY-Z's SeqStruct grows with 64-bit pointers and
   # would overflow the game's PS1-sized table. Not PC-specific (aarch64 is LP64
@@ -269,6 +278,11 @@ if(DW3_NX_REPLAY)
   set(DW3_NRO_NAME "${DW3_NRO_NAME}-replay")
   set(DW3_NACP_NAME "${DW3_NACP_NAME} replay")
   message(STATUS "nx REPLAY test build (DW3_NX_REPLAY): reads sdmc:/switch/dw3/replay.rec; not for release")
+endif()
+if(DW3_ACCOUNT_PROBE_PSEL)
+  target_compile_definitions(dw3-switch PRIVATE DW3_ACCOUNT_PROBE_PSEL=1)
+  set(DW3_NACP_NAME "${DW3_NACP_NAME} pselprobe")
+  message(STATUS "nx account probe opens the profile selector at boot (DW3_ACCOUNT_PROBE_PSEL); not for release")
 endif()
 if(DW3_NX_DEBUG_MESH)
   target_compile_definitions(dw3-switch PRIVATE DW3_NX_DEBUG_MESH=1)

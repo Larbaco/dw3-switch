@@ -25,13 +25,14 @@ IMAGE="${DW3_DK_IMAGE:-devkitpro/devkita64:latest}"
 NXLINK_STDIO=OFF
 DW3_NX_FORCE_CRASH=OFF
 DW3_NX_REPLAY=OFF
+DW3_ACCOUNT_PROBE_PSEL=OFF
 # Development-only K=V,K=V environment baked into the NRO (CMake
 # DW3_NX_TEST_ENV). Always passed, so a build dir never keeps an old value.
 DW3_NX_TEST_ENV="${DW3_NX_TEST_ENV:-}"
 DW3_VERSION="$(echo "${DW3_VERSION:-us}" | tr '[:upper:]' '[:lower:]')"
 
 usage() {
-  echo "usage: $0 [--eu] [--nxlink] [--replay] [--force-crash]"
+  echo "usage: $0 [--eu] [--nxlink] [--replay] [--force-crash] [--account-probe-psel]"
   echo "  default       US game NRO at build/switch/dw3-switch.nro"
   echo "  --eu          EU game NRO at build/switch-eu/dw3-switch.nro"
   echo "  --nxlink      nxlink development NRO (build/switch[-eu]-nxlink/)"
@@ -40,6 +41,9 @@ usage() {
   echo "                never release/preview, see docs/P6.15_REPLAY_TESTS.md)"
   echo "  --force-crash P5.4 smoke only: deliberate null write after boot"
   echo "                (pair with --nxlink; never in release/preview NROs)"
+  echo "  --account-probe-psel P6.26 owner test: opens the Switch profile selector once"
+  echo "                at boot and logs the result (build/switch[-eu][-nxlink]-pselprobe/;"
+  echo "                never release/preview, see docs/PER_USER_SAVES.md)"
   echo "env DW3_NX_TEST_ENV=K=V,K=V bakes a dev-only environment into the NRO"
   echo "  (e.g. DW3_FORCE_CRASH=sim for Ryubing; see docs/P5.4_CRASH.md)"
 }
@@ -57,6 +61,9 @@ while (( $# > 0 )); do
       ;;
     --replay)
       DW3_NX_REPLAY=ON
+      ;;
+    --account-probe-psel)
+      DW3_ACCOUNT_PROBE_PSEL=ON
       ;;
     -h|--help)
       usage
@@ -103,6 +110,9 @@ fi
 if [[ "${DW3_NX_REPLAY}" == "ON" ]]; then
   BUILD_DIR="${BUILD_DIR}-replay"
   NRO_NAME="${NRO_NAME}-replay"
+fi
+if [[ "${DW3_ACCOUNT_PROBE_PSEL}" == "ON" ]]; then
+  BUILD_DIR="${BUILD_DIR}-pselprobe"
 fi
 NRO="${BUILD_DIR}/${NRO_NAME}.nro"
 NACP="${BUILD_DIR}/${NRO_NAME}.nacp"
@@ -160,6 +170,7 @@ docker run --rm \
   -e DW3_VERSION="${DW3_VERSION}" \
   -e DW3_NX_FORCE_CRASH="${DW3_NX_FORCE_CRASH}" \
   -e DW3_NX_REPLAY="${DW3_NX_REPLAY}" \
+  -e DW3_ACCOUNT_PROBE_PSEL="${DW3_ACCOUNT_PROBE_PSEL}" \
   -e DW3_NX_TEST_ENV="${DW3_NX_TEST_ENV}" \
   -e DW3_NRO_VERSION="${DW3_NRO_VERSION}" \
   -e DW3_NACP_VERSION="${DW3_NACP_VERSION}" \
@@ -178,6 +189,7 @@ docker run --rm \
     -DDW3_NXLINK_STDIO="$DW3_NXLINK_STDIO" \
     -DDW3_NX_FORCE_CRASH="$DW3_NX_FORCE_CRASH" \
     -DDW3_NX_REPLAY="$DW3_NX_REPLAY" \
+    -DDW3_ACCOUNT_PROBE_PSEL="$DW3_ACCOUNT_PROBE_PSEL" \
     -DDW3_NX_TEST_ENV="$DW3_NX_TEST_ENV" \
     -DDW3_NRO_VERSION="$DW3_NRO_VERSION" \
     -DDW3_NACP_VERSION="$DW3_NACP_VERSION" && \
@@ -189,6 +201,10 @@ if ! grep -F -x -q "DW3_NXLINK_STDIO:BOOL=${NXLINK_STDIO}" "${BUILD_DIR}/CMakeCa
 fi
 if ! grep -F -x -q "DW3_NX_REPLAY:BOOL=${DW3_NX_REPLAY}" "${BUILD_DIR}/CMakeCache.txt"; then
   echo "CMake cache does not match requested replay mode (${DW3_NX_REPLAY})" >&2
+  exit 1
+fi
+if ! grep -F -x -q "DW3_ACCOUNT_PROBE_PSEL:BOOL=${DW3_ACCOUNT_PROBE_PSEL}" "${BUILD_DIR}/CMakeCache.txt"; then
+  echo "CMake cache does not match requested psel probe mode (${DW3_ACCOUNT_PROBE_PSEL})" >&2
   exit 1
 fi
 if ! grep -F -x -q "DW3_NX_FORCE_CRASH:BOOL=${DW3_NX_FORCE_CRASH}" "${BUILD_DIR}/CMakeCache.txt"; then
