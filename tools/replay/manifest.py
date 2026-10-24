@@ -521,6 +521,42 @@ for _v, _ids in (("us", (0x159, 0x1FA, 0x1C2, 0x158, 0x1F9)),
                                   r"gutter 0 px per side" % _status),),
                   note="the field menu's screens in widescreen: panels at the 16:9 edges (patch 0076)"))
 
+# P6.1 (patches 0080, 0081, 0082): the three screens the owner's preview.31-rc1
+# feedback named. PC only (env), references from the patched build.
+#  map-screen: the env and cfg of menu-screens; Map opens at frame 4000 and the
+#    cursor goes to every edge (the map is drawn whole and centred, patch 0080).
+#  battle-results: the forced battle of battle-report, slower Crosses after
+#    frame 1000, so the report's header bar (patch 0081) stays up.
+#  save-screen: the memory card's save mode forced over the field
+#    (DW3_FORCE_MENU), before and during the open animation (the slot strip
+#    parked in the right gutter), the strip sliding in, the saved slot
+#    (patch 0082).
+for _v, _ids in (("us", (0x159, 0x1FA, 0x1C2, 0x158, 0x1F9)),
+                 ("eu", (0x167, 0x208, 0x1D1, 0x166, 0x207))):
+    _fight, _menu, _report, _field, _status = _ids
+    _add(Scenario(f"{_v}-map-screen", _v, "full", turbo=4, timeout=500,
+                  phases=(f"{_v}-map-screen",), env=_ITEMS_ENV, cfg=(("encounter_rate", "2"),),
+                  expect_restore=((_fight, M), (_menu, S), (_report, M), (_field, M),
+                                  (_status, M)),
+                  forbid_log=((0, r"overlay restore file=0x%x kind=mode(?:(?!overlay restore)(?s:.))*?"
+                                  r"gutter 0 px per side" % _status),),
+                  note="the Map screen in widescreen: whole map centred, cursor to every edge (patch 0080)"))
+    _add(Scenario(f"{_v}-battle-results", _v, "full", turbo=4, timeout=300,
+                  env=_P77_ENV_REPORT,
+                  expect_restore=((_fight, M), (_menu, S), (_report, M), (_field, M)),
+                  expect_log=((0, r"WFIGHTMN_endBattle result=1"),),
+                  note="the battle results' header bar hangs from the 16:9 left edge (patch 0081)"))
+_SAVE_ENV = (("DW3_START_MODE", "0x233"), ("DW3_PROGRESS", "6"),
+             ("DW3_FORCE_MENU", "0xC00:0x80000000"))
+for _v, _ids in (("us", (0x158, 0x1E3)), ("eu", (0x166, 0x1EE))):
+    _field, _mcard = _ids
+    _add(Scenario(f"{_v}-save-screen", _v, "full", timeout=400,
+                  phases=(f"{_v}-save-screen",), env=_SAVE_ENV,
+                  expect_restore=((_field, M), (_mcard, M)),
+                  forbid_log=((0, r"overlay restore file=0x%x kind=mode(?:(?!overlay restore)(?s:.))*?"
+                                  r"gutter 0 px per side" % _mcard),),
+                  note="the save screen in widescreen: no card in the right gutter, header and slots at the 16:9 edges (patch 0082)"))
+
 
 def by_name() -> dict[str, Scenario]:
     return {s.name: s for s in SCENARIOS}
