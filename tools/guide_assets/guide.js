@@ -2,11 +2,17 @@
 'use strict';
 const $=(s,r=document)=>r.querySelector(s),$$=(s,r=document)=>[...r.querySelectorAll(s)],$i=id=>document.getElementById(id);
 const root=document.documentElement,body=document.body,main=$i('main');
+const SITE=window.DW3_GUIDE||null;
+const ownFile=SITE&&SITE.routes[body.dataset.pageId];
 root.dataset.enhanced='true';
 const store=(k,v)=>{try{if(v===undefined)return localStorage.getItem(k);localStorage.setItem(k,v)}catch(e){return null}};
 const esc=s=>s.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const fold=s=>s.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLocaleLowerCase('pt-BR');
 const fragment=hash=>{try{return decodeURIComponent(hash.replace(/^#/,''))}catch{return ''}};
+function hrefFor(id,q=''){
+ const file=SITE&&SITE.routes[id];
+ return (file&&file!==ownFile?file:'')+(q?'?q='+encodeURIComponent(q):'')+'#'+encodeURIComponent(id);
+}
 function focusTarget(el){if(!el)return;el.tabIndex=-1;el.focus({preventScroll:true})}
 const mobile=()=>matchMedia('(max-width:900px)').matches;
 // theme: saved choice > dark (default)
@@ -32,9 +38,9 @@ const groups=$$('#tree details.grp');
 groups.forEach(d=>{const k=d.dataset.sec;if(k in gstate)d.open=!!gstate[k];
  d.addEventListener('toggle',()=>{gstate[k]=d.open;store('dw3-groups',JSON.stringify(gstate))})});
 // scroll-spy, breadcrumb, progress, dock
-const links=new Map();$$('#tree a[href^="#"]').forEach(a=>links.set(a.getAttribute('href').slice(1),a));
+const links=new Map();$$('#tree a[href]').forEach(a=>links.set(fragment(a.hash),a));
 const heads=$$('section.lvl1,article.lvl2');
-const navs=$$('article.lvl2,section.lvl1[data-leaf]');
+const navs=SITE?SITE.order:$$('article.lvl2,section.lvl1[data-leaf]');
 const crumb=$i('crumb'),pbar=$i('prog'),topb=$i('top'),dprev=$i('dprev'),dnext=$i('dnext');
 let cur=undefined,saveTimer;
 function setActive(id){
@@ -57,8 +63,8 @@ function setActive(id){
  groups.forEach(d=>{const ls=$$('li a',d);const i=ls.findIndex(x=>x.classList.contains('active'));d.style.setProperty('--p',i<0?0:(i+1)/ls.length)});
  const ix=navs.findIndex(e=>e.id===id);
  const pv=navs[ix-1],nx=ix<0?navs[0]:navs[ix+1];
- dprev.href=pv?'#'+pv.id:'#inicio';dprev.setAttribute('aria-disabled',String(!pv));
- dnext.href=nx?'#'+nx.id:'#inicio';dnext.setAttribute('aria-disabled',String(!nx));
+ dprev.href=pv?hrefFor(pv.id):hrefFor('inicio');dprev.setAttribute('aria-disabled',String(!pv));
+ dnext.href=nx?hrefFor(nx.id):hrefFor('inicio');dnext.setAttribute('aria-disabled',String(!nx));
  const chapter=id&&$i(id),show=chapter&&chapter.matches('article.lvl2');
  $i('context').hidden=!show;
  $i('area-nav').replaceChildren();
@@ -74,9 +80,10 @@ function setActive(id){
 }
 function frame(){
  tick=false;
- let id=null;
+ let id=SITE&&body.dataset.pageId!=='inicio'&&$i(body.dataset.pageId)?body.dataset.pageId:null;
  const edge=parseFloat(getComputedStyle(root).getPropertyValue('--bh'))+30;
- if(scrollY>200)for(const h of heads){if(h.getBoundingClientRect().top<=edge)id=h.id;else break}
+ if(SITE||scrollY>200)for(const h of heads){if(h.getBoundingClientRect().top<=edge)id=h.id;else break}
+ if(SITE&&$i(body.dataset.pageId)?.matches('article.lvl2')&&!$i(id)?.matches('article.lvl2'))id=body.dataset.pageId;
  setActive(id);
  const max=document.documentElement.scrollHeight-innerHeight;
  pbar.style.width=(max>0?Math.min(100,scrollY/max*100):0)+'%';
@@ -90,7 +97,7 @@ function frame(){
 }
 let tick=false;
 addEventListener('scroll',()=>{if(!tick){tick=true;setTimeout(frame,60)}},{passive:true});
-topb.onclick=()=>{scrollTo({top:0});focusTarget($i('inicio'))};
+topb.onclick=()=>{scrollTo({top:0});focusTarget($i('inicio')||main)};
 // keyboard: j/k move between chapters
 function go(dir){
  const i=navs.findIndex(e=>e.id===cur);
@@ -100,7 +107,7 @@ function go(dir){
 // search
 const SKIP='.chb,.pn,ul.idx,h3.ch,h2,.tiles,details.orig,.nosearch,.entity-tools';
 const txt=n=>n.nodeType===3?n.data:(n.nodeType!==1||n.matches(SKIP)?'':[...n.childNodes].map(txt).join(''));
-const secs=$$('article.lvl2,section.lvl1').map(el=>{
+const secs=SITE?SITE.search:$$('article.lvl2,section.lvl1').map(el=>{
  const lvl1=el.classList.contains('lvl1');
  const own=[...el.children].filter(n=>!n.matches(SKIP+(lvl1?',article':'')));
  return {el,id:el.id,title:el.dataset.title,parent:lvl1?null:el.dataset.parent,text:own.map(txt).join('\n')};
@@ -128,14 +135,14 @@ function run(){
   if(!n)continue;total+=n;
   const a=Math.max(0,first-50),b=Math.min(text.length,first+lq.length+70);
   const snip=(a?'…':'')+text.slice(a,b).replace(/\s+/g,' ')+(b<text.length?'…':'');
-  html+=`<a class="r" href="#${s.id}" data-q="${esc(q)}"><b>${esc(s.title)} <span class="n">(${n})</span></b><small>${esc(snip)}</small></a>`;
+  html+=`<a class="r" href="${esc(hrefFor(s.id,SITE?q:''))}" data-q="${esc(q)}"><b>${esc(s.title)} <span class="n">(${n})</span></b><small>${esc(snip)}</small></a>`;
  }
  $i('search-status').textContent=total+' ocorrência(s) para '+q;
  res.innerHTML=`<div class="cnt">${total} ocorrência(s) para “${esc(q)}”</div>`+html+(total?'':'<p class="cnt">Tente outro nome ou busque em todo o guia. O original em inglês recolhido não entra na busca.</p>');
  res.hidden=false;tree.hidden=true;
 }
 res.addEventListener('click',e=>{const a=e.target.closest('a.r');if(!a)return;
- setTimeout(()=>highlight(a.getAttribute('href').slice(1),a.dataset.q),0)});
+ const id=fragment(a.hash);if($i(id)&&(!SITE||SITE.routes[id]===ownFile))setTimeout(()=>highlight(id,a.dataset.q),0)});
 function clearMarks(){$$('mark').forEach(m=>{const p=m.parentNode;p.replaceChild(document.createTextNode(m.textContent),m);p.normalize()})}
 function highlight(id,q){
  clearMarks();const el=$i(id);if(!el)return;
@@ -154,7 +161,7 @@ function highlight(id,q){
  if(first){reveal(first);first.scrollIntoView({block:'center'});focusTarget(first)}
 }
 // command palette
-const PAL=JSON.parse($i('pal-data').textContent);
+const PAL=SITE?SITE.palette:JSON.parse($i('pal-data').textContent);
 const pal=$i('pal'),pq=$i('pq'),pl=$i('pl');
 const KLAB={sec:'Seção',cap:'Capítulo',loc:'Local',ent:'Entidade'};
 let psel=0,plist=[];
@@ -250,8 +257,10 @@ function filterEntities(){
  const n=entries.filter(el=>!el.hidden).length;
  $i('entity-count').textContent=n+' de '+entries.length+' entidades'+(n?'':' · Nenhum resultado. Limpe os filtros ou tente outro nome.');
 }
-entityQuery.addEventListener('input',filterEntities);entityKind.addEventListener('change',filterEntities);
-$i('entity-clear').onclick=()=>{entityQuery.value='';entityKind.value='';filterEntities();entityQuery.focus()};
+if(entityQuery){
+ entityQuery.addEventListener('input',filterEntities);entityKind.addEventListener('change',filterEntities);
+ $i('entity-clear').onclick=()=>{entityQuery.value='';entityKind.value='';filterEntities();entityQuery.focus()};
+}
 function reveal(el){
  if(el.closest('.entity-entry[hidden]')){entityQuery.value='';entityKind.value='';filterEntities()}
  for(let parent=el;parent&&parent!==main;parent=parent.parentElement){
@@ -261,6 +270,7 @@ function reveal(el){
  const box=el.closest('.fbox');if(box){const input=$('.tfilt',box);if(input&&input.value){input.value='';input.dispatchEvent(new Event('input',{bubbles:true}))}}
 }
 function navigate(id,push=true){
+ if(SITE&&SITE.routes[id]&&SITE.routes[id]!==ownFile){location.href=hrefFor(id);return}
  const el=$i(id);if(!el)return;
  reveal(el);setOpen(false);if(push&&fragment(location.hash)!==id)history.pushState(null,'','#'+encodeURIComponent(id));
  el.scrollIntoView({block:'start',behavior:'instant'});focusTarget(el);frame();
@@ -270,10 +280,14 @@ document.addEventListener('click',e=>{
  const id=fragment(a.hash);if(!$i(id))return;e.preventDefault();navigate(id);
 });
 addEventListener('hashchange',()=>navigate(fragment(location.hash),false));
-try{const saved=JSON.parse(store('dw3-reading')||'null');if(saved&&$i(saved.id)){
- const resume=$i('resume');resume.href='#'+saved.id;resume.textContent='Continuar: '+saved.title;resume.hidden=false;
+try{const saved=JSON.parse(store('dw3-reading')||'null');if(saved&&($i(saved.id)||SITE?.routes[saved.id])){
+ const resume=$i('resume');if(resume){resume.href=hrefFor(saved.id);resume.textContent='Continuar: '+saved.title;resume.hidden=false;}
 }}catch{}
 // deep link
-if(location.hash)setTimeout(()=>navigate(fragment(location.hash),false),0);
+if(location.hash)setTimeout(()=>{
+ navigate(fragment(location.hash),false);
+ const q=new URLSearchParams(location.search).get('q');
+ if(q&&q.length>=2){input.value=q;highlight(fragment(location.hash),q)}
+},0);
 frame();
 })();

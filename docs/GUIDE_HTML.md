@@ -207,3 +207,55 @@ The primary checkout's generated HTML was not replaced. This is editorial QA;
 no ISO, emulator, OLED or game build was run. Full screen-reader and cross-browser
 certification remain outside this checkpoint. No new prose translation or
 inferred NPC/quest/reward facts were introduced.
+
+## Modular offline package (PR #234 follow-up)
+
+**Recommended for reading:** generate a physical chapter package and open its
+`index.html`. The single-file command remains compatible, with its historical
+CLI default, for exporting one document or printing the whole guide:
+
+```sh
+python3 -I tools/guide_to_html.py /path/to/saved-page.txt /mnt/cabal/tmp/dw3-guide --format site
+# Open /mnt/cabal/tmp/dw3-guide/index.html in a browser; no server is required.
+python3 -I tools/guide_to_html.py /path/to/saved-page.txt /mnt/cabal/tmp/dw3-guide.html --format single
+TMPDIR=/mnt/cabal/tmp python3 -B -m unittest discover -s tools/tests -p 'test_guide*.py' -v
+```
+
+The user's feedback was structural: an improved table of contents inside a long
+page still leaves a monolith. The package therefore puts **each of the 19
+walkthrough chapters in its own HTML file**. The overview contains chapter cards
+rather than the chapter bodies; orientation notes remain available in a native
+disclosure below the index. Reference chapters also have separate pages, while
+entities have their own catalogue. The current source produces 58 HTML pages.
+
+A chapter is the reading unit; each area/return visit remains an independently
+addressable section on that chapter's page. This preserves story context across
+the many short visits, without creating hundreds of tiny pages. The first
+chapter has 36 visits. Previous/next links work between physical files, at both
+the chapter header and page end; breadcrumbs link back to the chapter overview
+and package home. Mobile dock and j/k shortcuts use the same global order.
+
+`tools/guide_site.py` assembles pages from the same rendered fragments used by
+the single-file output. It does not retranslate or reparse the English source.
+Every existing content ID has a canonical file in a shared route map. Entity
+links and source backlinks become relative `file.html#anchor` links, so named
+areas, source blocks and techniques remain direct destinations across pages.
+A chapter's lightweight section wrapper may repeat its parent's ID locally;
+the canonical route still points to that section's overview.
+
+CSS, behavior, global reading-text search index, palette and route map live once
+under `assets/`. Pages do not embed the full guide or inline those shared assets.
+Classic scripts are intentional: they load from `file://` without fetch,
+JavaScript modules, CORS workarounds, a service worker, internet or a web server.
+Global search results carry their query to the destination page for highlighting.
+Collapsed English-original disclosures are excluded from the shared reading-text
+index, as in the compatible single-file search. Native links and all text remain
+available without JavaScript; global search/filter/palette require it.
+
+Copy the **whole generated folder**, including `assets/`; open `index.html`.
+If a ZIP is supplied, extract it first. Moving just one chapter HTML breaks its
+shared assets and cross-page links. `LEIA-ME.txt` travels with the package.
+Generation validates all physical files, fragment targets, local assets and
+shared metadata routes before writing. Its manifest permits regeneration of
+its own files, preserves unrelated files, and rejects conflicting unowned
+files and symlinks. The original source and all generated output stay local.

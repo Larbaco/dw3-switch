@@ -451,3 +451,20 @@ article.lvl2:focus-visible{outline:0}article.lvl2:focus-visible>.chb{outline:2px
 body.searching #context{display:none}
 @media(max-width:900px){.route-links{grid-template-columns:minmax(0,1fr)}ul.credits>li{grid-template-columns:minmax(0,1fr);gap:4px}ul.credits>li>*{min-width:0;overflow-wrap:anywhere}}
 .dtree .dn{min-width:0;max-width:100%;overflow-wrap:anywhere}
+
+/* Physical chapter pages: one chapter in the DOM, routes shared by the package. */
+body[data-page-id] .page-breadcrumb{display:flex;align-items:center;flex-wrap:wrap;gap:8px;font-size:13px;color:var(--mut);margin-bottom:20px}
+body[data-page-id] .page-group{font:600 12px var(--mono);text-transform:uppercase;letter-spacing:.1em;color:var(--ac2)}
+body[data-page-id] section.lvl1{margin-top:20px}
+body[data-page-id] .chb :is(h1,h3).ch{font-size:clamp(22px,2.5vw,30px);line-height:1.25;margin:0;letter-spacing:-.025em;text-transform:none;color:var(--fg)}
+body[data-page-id] .section-title{font-size:30px;line-height:1.25;letter-spacing:-.025em;border-bottom:1px solid var(--bd);padding-bottom:14px;margin:0 0 22px}
+body[data-page-id] ul.idx{columns:auto;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:20px 0 26px}
+body[data-page-id] ul.idx li{padding:0;min-width:0}
+body[data-page-id] ul.idx a{display:flex;align-items:center;min-height:64px;height:100%;padding:16px 18px;border:1px solid var(--bd);border-radius:8px;background:var(--pn);color:var(--fg);font-weight:600;line-height:1.4}
+body[data-page-id] ul.idx a:hover{border-color:var(--ac);background:var(--hov);color:var(--ac);text-decoration:none}
+.overview-notes{margin:20px 0;padding:16px 18px;border:1px solid var(--bd);border-radius:8px;background:var(--pn)}.overview-notes>summary{cursor:pointer;color:var(--ac);font-weight:600}
+.page-pager{margin:18px 0 24px;padding:12px 0;gap:12px;align-items:center}.page-pager small{display:block;font:11px var(--mono);color:var(--mut);margin-bottom:4px}.page-pager a{font-size:13px}.package-note{padding:18px 0;color:var(--mut);font-size:13px}
+body[data-page-id] .guide-area h2.loc{font-size:15px;letter-spacing:.03em}
+body[data-page-id] .entity-entry h3{font-size:17px}
+@media(max-width:700px){body[data-page-id] ul.idx{grid-template-columns:minmax(0,1fr)}body[data-page-id] ul.idx a{min-height:56px;padding:12px 14px}.page-pager a{font-size:12px}}
+@media print{.page-breadcrumb,.page-pager,.overview-notes>summary{display:none!important}}

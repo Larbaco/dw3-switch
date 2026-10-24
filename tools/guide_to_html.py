@@ -16,6 +16,16 @@ from html.parser import HTMLParser
 import json
 import re
 import sys
+import argparse
+import importlib.util
+
+
+def site_module():
+    # An explicit sibling path also works with Python's isolated (-I) mode.
+    spec = importlib.util.spec_from_file_location('dw3_guide_site', Path(__file__).with_name('guide_site.py'))
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
 
 STAR = re.compile(r"^\* \* \* \*[ *]*$")
 DASH = re.compile(r"^-{15,}\s*$")
@@ -1374,7 +1384,7 @@ class WalkthroughTranslation:
                 "missing": len(self.missing), "occurrences": self.occurrences,
                 "unused_catalog_keys": len(self.entries.keys() - self.seen)}
 
-def render(header, sections, translation=None):
+def render(header, sections, translation=None, *, site=False):
     entities = EntityIndex(sections)
     translation = translation or WalkthroughTranslation()
     original_sections = sections
@@ -1447,7 +1457,7 @@ def render(header, sections, translation=None):
             out.append('</section>')
         return "\n".join(out)
 
-    main = []
+    main, pages = [], []
     for s in sections:
         leaf = "" if s["chapters"] else ' data-leaf="1"'
         parts = [f'<section class="lvl1" id="{s["id"]}" data-title="{esc(s["title"])}"{leaf}>',
@@ -1463,21 +1473,39 @@ def render(header, sections, translation=None):
         if s["chapters"]:
             idx = "".join(f'<li><a href="#{c["id"]}">{esc(c["title"])}</a></li>' for c in s["chapters"])
             parts.append(f'<ul class="idx">{idx}</ul>')
+        overview = list(parts)
+        if s['chapters']:
+            overview = parts[:2] + [parts[-1]] + parts[2:-1]
+            overview = [('<details class="overview-notes"><summary>Notas de leitura e orientação</summary>'
+                         + part + '</details>') if part.startswith('<div class="intro') else part
+                        for part in overview]
+        pages.append(dict(id=s['id'], title=s['title'], kind='section', parent=None,
+                          content='\n'.join(overview) + '</section>'))
         for c in s["chapters"]:
             kind = "walk" if s["id"] == "walkthrough" else "data" if s["id"] in DATA_SECS else "plain"
-            parts.append(
+            article = (
                 f'<article class="lvl2 {kind}" id="{c["id"]}" data-title="{esc(c["title"])}" data-parent="{s["id"]}">'
                 f'{banner_html(c, s)}\n'
                 + (f'<details class="orig" lang="en"><summary>Título original em inglês</summary><p>{esc(c["original_title"])}</p></details>' if "original_title" in c else "") +
                 f"{items_html(c['items'], c['id'], s['id'])}\n{pn(c['id'])}</article>"
             )
+            parts.append(article)
+            wrapper = (f'<section class="lvl1" id="{s["id"]}" data-title="{esc(s["title"])}">'
+                       f'<p class="page-group">{esc(s["title"])}</p>')
+            pages.append(dict(id=c['id'], title=c['title'], kind='chapter', parent=s['id'],
+                              content=wrapper + article + '</section>'))
         parts.append("</section>")
         main.append("\n".join(parts))
 
-    main.append(entities.index_html())
+    entity_html = entities.index_html()
+    main.append(entity_html)
+    pages.append(dict(id=entities.index_id, title='Índice de entidades', kind='entities',
+                      parent=None, content=entity_html))
+    pages.insert(0, dict(id='inicio', title='Digimon World 3', kind='home', parent=None,
+                         content=cover_html(header, sections)))
     scopes = ''.join(f'<option value="{s["id"]}">{esc(s["title"])}</option>' for s in sections)
     tpl = re.sub(r"%%ICON:(\w+)%%", lambda m: svg(m.group(1)), TEMPLATE)
-    return (tpl.replace("%%COVER%%", cover_html(header, sections))
+    document = (tpl.replace("%%COVER%%", pages[0]['content'])
                .replace("%%NAV%%", "\n".join(nav))
                .replace("%%MAIN%%", "\n".join(main))
                .replace("%%SCOPES%%", scopes)
@@ -1485,6 +1513,14 @@ def render(header, sections, translation=None):
                .replace("%%CSS%%", Path(__file__).with_name("guide_assets").joinpath("guide.css").read_text(encoding="utf-8"))
                .replace("%%JS%%", Path(__file__).with_name("guide_assets").joinpath("guide.js").read_text(encoding="utf-8"))
                .replace("%%WALK_COVERAGE%%", f"{len(translation.seen - translation.missing)}/{len(translation.seen)}"))
+    if site:
+        order = [c['id'] for s in browse_sections(sections)
+                 for c in (s['chapters'] or [s])] + [entities.index_id]
+        coverage = f'{len(translation.seen - translation.missing)}/{len(translation.seen)}'
+        for page in pages:
+            page['content'] = page['content'].replace('%%WALK_COVERAGE%%', coverage)
+        return site_module().build_site(document, pages, order)
+    return document
 
 
 TEMPLATE = r"""<!DOCTYPE html>
@@ -1573,15 +1609,22 @@ TEMPLATE = r"""<!DOCTYPE html>
 
 
 def main():
-    if len(sys.argv) != 3:
-        sys.exit(__doc__)
-    with open(sys.argv[1], encoding="utf-8") as f:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('source', help='Locally saved GameFAQs HTML')
+    parser.add_argument('output', help='HTML file, or package directory for --format site')
+    parser.add_argument('--format', choices=['single', 'site'], default='single',
+                        help='site: recommended chapter package; single: compatible offline file (default)')
+    args = parser.parse_args()
+    with open(args.source, encoding="utf-8") as f:
         lines = extract_text(f.read())
     header, sections = parse(lines)
     translation = WalkthroughTranslation()
-    document = render(header, sections, translation)
+    rendered = render(header, sections, translation, site=args.format == 'site')
+    document = rendered if isinstance(rendered, str) else ''.join(
+        value for name, value in rendered.items() if name.endswith('.html'))
     print("walkthrough translation: " + json.dumps(translation.report(), sort_keys=True))
-    validate_links(document)
+    if args.format == 'single':
+        validate_links(document)
     # The entire parsed English source run must survive, including tables/ASCII.
     walk = next(s for s in sections if s["id"] == "walkthrough")
     original_runs = [it[1] for owner in [walk] + walk["chapters"]
@@ -1592,8 +1635,11 @@ def main():
     if Counter(original_runs) - Counter(preserved):
         raise ValueError("Walkthrough English originals were not preserved")
     print(f"walkthrough original runs preserved: {len(original_runs)}/{len(original_runs)}")
-    with open(sys.argv[2], "w", encoding="utf-8") as f:
-        f.write(document)
+    if args.format == 'site':
+        site_module().write_site(Path(args.output), rendered)
+    else:
+        with open(args.output, "w", encoding="utf-8") as f:
+            f.write(document)
     for s in sections:
         print(f"{s['title']}: {len(s['chapters'])} chapters")
     print(f"fallback blocks: {STATS['fallback']}", file=sys.stderr)
