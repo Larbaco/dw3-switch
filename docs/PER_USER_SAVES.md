@@ -52,6 +52,32 @@ not tested** and each point marked "check" is an OLED task of the first slice.
 `AccountUid` is 128 bits (`u64 uid[2]`); the profile can be deleted and created
 again with a new uid, and uids are local to a console.
 
+## Account probe (diagnostic, in the tree)
+
+`platforms/switch/source/account_probe.c`, called once from `boot_main.c` after
+the log is open. It only logs; it changes no save path and no game behaviour,
+and every failed call is logged as an `rc` and skipped. Grep `account probe:` in
+`sdmc:/switch/dw3/dw3.log` (or the nxlink output). Result codes are hex.
+
+| Line | Answers |
+|---|---|
+| `appletGetAppletType=<name> (<n>)` | Which applet type the NRO runs as in this launch path (`Application` 0, `LibraryApplet` 2, ...) |
+| `accountInitialize(Application) rc` | Whether acc:u0 opens |
+| `accountGetPreselectedUser rc uid nickname` | Whether the system handed a preselected user (rc 0 and a valid uid), and who |
+| `accountGetUserCount`, `accountListAllUsers` + `user[i]` | How many profiles, their uids and nicknames |
+| `accountGetLastOpenedUser rc uid nickname` | The last profile opened on the console |
+| `accountTrySelectUserWithoutInteraction(false) rc uid` | Whether libnx picks a user with no UI (single profile) |
+
+The optional psel probe is the CMake option `DW3_ACCOUNT_PROBE_PSEL` (default
+OFF), `tools/build_switch_game.sh --account-probe-psel` (build dir
+`build/switch[-eu][-nxlink]-pselprobe`). When ON it calls `pselShowUserSelector`
+once, after the block above and before the GPU starts, logs `psel chosen ...` or
+`psel rc=...` (a cancel or an error), and then boots normally; the choice is
+ignored. The selector appearing at boot is the test. Test builds only, never
+release/preview. The owner runs it in three launch paths (Sphaira forwarder NSP
+on HOME, hbmenu/Sphaira from the Album, hold R over a game) to settle the
+unknowns marked "check" above.
+
 ## Design
 
 ### Resolving the user (boot order: region first, then user)

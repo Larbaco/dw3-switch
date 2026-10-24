@@ -21,6 +21,7 @@
 #include <psyz.h>
 #include <psyz/log.h>
 
+#include "account_probe.h"
 #include "boot_tim_host.h"
 #include "cdfs.h"
 #include "memcard_host.h"
@@ -686,6 +687,9 @@ int main(int argc, char **argv) {
     } else {
         ERRORF("appletLockExit failed; HOME may force-kill before flush");
     }
+
+    /* P6.26: diagnostic only, logs `account probe:` lines (docs/PER_USER_SAVES.md). */
+    dw3_nx_account_probe();
 
     if (!dw3_nx_gpu_init()) {
         ERRORF("dw3_nx_gpu_init failed");

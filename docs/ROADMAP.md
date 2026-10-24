@@ -65,7 +65,7 @@ lives in its doc, not in the entry below.
 | P6.23 | Documentation: player guide, docs index, contributor and modder docs (future goal) | future | [roadmap](#phase-6-goal-notes) |
 | P6.24 | One build for US and EU: one `.nro` and one PC binary, region found at boot, a boot picker with both discs (future goal; depends on P6.25 and P6.26) | future | [SINGLE_BUILD](SINGLE_BUILD.md), [roadmap](#phase-6-goal-notes) |
 | P6.25 | Cross-region saves: a US save loads in EU and the reverse, one canonical save container (future goal) | future (survey and design done, no code) | [CROSS_REGION_SAVES](CROSS_REGION_SAVES.md), [roadmap](#phase-6-goal-notes) |
-| P6.26 | Per-user saves: saves bound to the Switch user profile chosen in the Switch profile selector, global options (future goal) | future (design done, no code) | [PER_USER_SAVES](PER_USER_SAVES.md), [roadmap](#phase-6-goal-notes) |
+| P6.26 | Per-user saves: saves bound to the Switch user profile chosen in the Switch profile selector, global options (future goal) | future (design done; account probe in tree, OLED results pending) | [PER_USER_SAVES](PER_USER_SAVES.md), [roadmap](#phase-6-goal-notes) |
 | P7.1 | Inventory and boundaries | done | [COMMUNITY_QOL](COMMUNITY_QOL.md) |
 | P7.2 | Patched EU disc as data source | open | [COMMUNITY_QOL](COMMUNITY_QOL.md) |
 | P7.3 | Binary-patch limits | in progress | [COMMUNITY_QOL](COMMUNITY_QOL.md) |
@@ -1945,7 +1945,7 @@ Statuses are in the [table](#status-at-a-glance).
 - [ ] **P6.26 Per-user saves (future goal).** Dated 2026-10-24, owner decision:
   saves are bound to the Switch user profile that is playing, chosen with the
   Switch profile selector ("Quero usar o seletor de perfil do Switch."). **Design
-  done, no code.** Full note: [PER_USER_SAVES.md](PER_USER_SAVES.md).
+  done; no save code.** Full note: [PER_USER_SAVES.md](PER_USER_SAVES.md).
   **Today:** one save folder per region (`sdmc:/switch/dw3/<ver>/memcard/`,
   `boot_main.c` ~531; PC `runtime/<ver>/memcard/`) and `port_options.cfg` per
   region; the Switch host has no account or applet-type code.
@@ -1962,6 +1962,11 @@ Statuses are in the [table](#status-at-a-glance).
   `port_options.cfg` next to the region folders, with the new keys
   `region_default`, `last_region`, `last_user`, `user_default`; migrated by copying.
   Replays and `DW3_MEMCARD_DIR` skip the profile logic.
+  **Status (2026-10-24):** an account probe logs `account probe:` lines at boot
+  (applet type, preselected user, user list, last opened, no-interaction user), plus
+  an optional `DW3_ACCOUNT_PROBE_PSEL` build that opens the profile selector once;
+  owner OLED results from the forwarder, Album and hold-R launch paths are pending
+  ([note](PER_USER_SAVES.md#account-probe-diagnostic-in-the-tree)). Saves unchanged.
   Order: seam and tests with a fake account provider -> Switch resolution and
   OLED facts (applet type, preselect, user count) -> profile selector and import prompt ->
   global options.
