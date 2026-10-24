@@ -43,7 +43,7 @@ CASES = ["title", "version", "reason", "mode", "stage", "path", "hint", "fits",
          "wrap_next_field", "wrap_fits", "hard_break", "hard_break_fits",
          "empty_version", "nonprint", "hint_zero", "scale_720", "scale_1080",
          "scale_tiny", "fit_720", "fit_1080", "secs_0", "secs_999", "secs_1000",
-         "secs_7999", "secs_end"]
+         "secs_59999", "secs_end", "hint_60"]
 
 
 @pytest.mark.parametrize("case", CASES)

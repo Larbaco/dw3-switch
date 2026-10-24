@@ -383,6 +383,23 @@ def two_battles(version):
     return r
 
 
+def file_cache_full(version):
+    """Patches 0095, 0096: the two forced battles of two_battles without
+    checkpoints. The manifest's env gives the file cache 16 slots
+    (DW3_FILE_CACHE_SLOTS), which the two battles fill; the proof is the
+    eviction line and both battles ending (before the fix: SIGSEGV)."""
+    door, tech2, end = TWO_BATTLES[version]
+    r = Rec(f"{version.upper()}: two forced battles with a small file cache (env in manifest)")
+    _tech(r, 350)
+    for f in range(520, door - 20, 30):
+        r.press(f, CROSS)
+    _tech(r, tech2)
+    for f in range(tech2 + 150, end - 100, 30):
+        r.press(f, CROSS)
+    r.end(end)
+    return r
+
+
 def p77_battle(version):
     """P7.7: one forced battle (Kotemon vs Kunemon, the env of the manifest
     sets the technique, the enemy's HP and item, the partner's Digimon), the
@@ -961,6 +978,7 @@ def main(out):
         (out / f"{v}-ws-title-intro.rec").write_text(ws_title_intro(v).text(True))
         (out / f"{v}-p77-battle.rec").write_text(p77_battle(v).text(True))
         (out / f"{v}-p77-square.rec").write_text(p77_square(v).text(True))
+        (out / f"{v}-file-cache-full.rec").write_text(file_cache_full(v).text(True))
         (out / f"{v}-p79-menu.rec").write_text(p79_menu(v).text(True))
         (out / f"{v}-p79-menu-page2.rec").write_text(p79_menu(v, page2=True).text(True))
         (out / f"{v}-p79-two-battles.rec").write_text(p79_two_battles(v).text(True))
