@@ -296,3 +296,33 @@ All fetched 2026-10-24.
 Not linked on purpose: the sysmodule project that patches system services at
 boot (the sigpatch role), and the key-dumping tooling. The NTON README names
 one of them.
+
+## History moved from ROADMAP.md (2026-10-24)
+
+Moved from the ROADMAP.md entries on 2026-10-24, word for word (two leading
+spaces removed). "Above" and "below" refer to the old entry. The roadmap
+keeps the current state and links here.
+
+**Findings:** three routes. (a) a user-built forwarder NSP needs the user's
+own keys and signature patches, and carries ban risk (a community caution
+that applies to all forwarder generators); (b) a full NSP with our NSO needs
+keys the project cannot hold, so CI cannot build it, and it sits on the
+out-of-scope "official packaging" line; (c) staying NRO with hbmenu title
+takeover needs no keys and no patches.
+**Recommended approach (not decided):** stay NRO and document title takeover
+as the supported path (application mode, full RAM, no own HOME icon). At
+most, a user-side forwarder compatibility note; the project ships no NSP,
+keys or patches. Route (b) is not recommended.
+**Impact to check:** application mode changes the focus and suspend
+behaviour that P10.2 tests; saves stay on SD unless the owner wants native
+account save data (which needs an installed NSP); crash symbolization for
+an NSO is unverified. Title ID for a forwarder and the bit-12 question are
+open in the doc.
+**First slice:** docs only (this note). Then an OLED check of the game under
+title takeover on US and EU (P10.2 focus and sleep lines, mem dbg log,
+saves). A boot log of the applet type is a later code PR.
+**Open questions (owner):** is a user-built forwarder "the user's business"
+in the docs, or should forwarders go unmentioned; should the release README
+recommend title takeover (hold R) for full RAM; should P6.24's per-user saves
+depend on application mode; should a fixed `0x05` title ID ever be
+suggested; is route (b) ever wanted (it needs an AGENTS.md scope change).
