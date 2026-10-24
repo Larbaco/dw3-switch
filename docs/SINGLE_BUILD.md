@@ -24,7 +24,8 @@ Final; they replace the matching open questions at the end of this note.
    ask again" option that is stored and can be changed later. Design in
    [Boot picker](#boot-picker) below.
 3. **Saves are bound to the Switch user profile that is playing.** Its own item,
-   **P6.26**, in [PER_USER_SAVES.md](PER_USER_SAVES.md).
+   **P6.26**, in [PER_USER_SAVES.md](PER_USER_SAVES.md). The user choice is the
+   Switch profile selector (`pselShowUserSelector`), decided 2026-10-24.
 
 **Roadmap shape.** P6.25 (cross-region saves) and P6.26 (per-user saves) are
 separate items and **P6.24 depends on both**: each can be built, tested and
@@ -361,8 +362,11 @@ per user, decision 3) and the picker behaviour (decision 2). Still open:
    conflict ask the player slot by slot?
 5. **Downgrade**: no dual write to the old `memcard/` folders (an old build then
    sees stale saves). Acceptable, with a release note?
-6. **User picker**: no auto-timeout when several profiles exist and none is
-   preselected (a wrong pick would use someone else's folder). OK?
+6. **Profile selector** (decided 2026-10-24: "Quero usar o seletor de perfil do
+   Switch."): used when several profiles exist and none is preselected. The
+   selector has no timeout we control, and a wrong pick uses someone else's
+   folder. If it cannot launch from applet mode, the fallback is open: see
+   [PER_USER_SAVES.md](PER_USER_SAVES.md#open-questions-for-the-owner).
 7. **Options**: one global `port_options.cfg` (recommended) or per user?
 8. **Separate builds**: keep `--eu` / `DW3_VERSION=us|eu` for development only
    and ship only the combined `.nro` once it passes, or ship both for a while?

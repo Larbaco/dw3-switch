@@ -6,6 +6,16 @@ design behind the [ROADMAP P6.26 entry](ROADMAP.md#phase-6-goal-notes).
 **Nothing is implemented.** It builds on [P6.25](CROSS_REGION_SAVES.md) (the
 canonical save container) and P6.24 (one build) depends on it.
 
+## Owner decision: the Switch profile selector (2026-10-24)
+
+> "Quero usar o seletor de perfil do Switch."
+> (I want to use the Switch's profile selector.)
+
+So the user choice is the system profile selector, `pselShowUserSelector`
+(libnx `applets/psel.h`), not an in-game picker. The game stays an NRO (P10.7
+NSP packaging was dropped, see PR #227), so per-user saves are SD-card folders
+per account uid, not native account save data.
+
 ## Where saves and options live today
 
 - Saves: one flat file per memory-card port, `save0.bin` / `save1.bin` (32 KiB),
@@ -31,12 +41,12 @@ not tested** and each point marked "check" is an OLED task of the first slice.
 | Need | API | Note |
 |---|---|---|
 | Open the account service | `accountInitialize(AccountServiceType_Application)` (acc:u0) | Needs `accountExit()` at shutdown |
-| The user the system preselected | `accountGetPreselectedUser(AccountUid*)` | "The cached PreselectedUser loaded during `accountInitialize`, when available": a launch parameter (`AppletLaunchParameterKind_PreselectedUser`, `applet.h:86`) that the system sends when it starts an **Application**. Expected to be present in **title-override mode** (hbmenu started over a game, after the profile picker) and absent in **applet mode** (started from the Album) -- check |
+| The user the system preselected | `accountGetPreselectedUser(AccountUid*)` | "The cached PreselectedUser loaded during `accountInitialize`, when available": a launch parameter (`AppletLaunchParameterKind_PreselectedUser`, `applet.h:86`) that the system sends when it starts an **Application**. Expected to be present in **title-override mode** (hbmenu started over a game, after the profile selector) and absent in **applet mode** (started from the Album) -- check |
 | Applet type | `appletGetAppletType()` (`AppletType_Application` vs `AppletType_LibraryApplet`) | `boot_main.c:118` already notes the NRO runs as a library applet under hbloader in applet mode |
 | Only one user exists | `accountTrySelectUserWithoutInteraction(&uid, false)` | Succeeds without UI when the choice is unambiguous -- check what it returns with several users |
 | List users | `accountGetUserCount`, `accountListAllUsers(uids, max, &n)` | Works through acc:u0 in both modes |
-| Name and icon | `accountGetProfile`, `accountProfileGet` (nickname, UTF-8, 0x20 bytes), `accountProfileLoadImage` (JPEG) | Nickname for the picker and for a `profile.txt` |
-| System user picker | `pselShowUserSelector(&uid, &settings)` (`psel.h`, `PselUiMode_UserSelector`) | Launches the profile-selection library applet; whether an NRO in applet mode may launch it is **unknown -- check** |
+| Name and icon | `accountGetProfile`, `accountProfileGet` (nickname, UTF-8, 0x20 bytes), `accountProfileLoadImage` (JPEG) | Nickname for a `profile.txt` (and for the fallback picker, if one is needed; the system selector shows its own names) |
+| Profile selector (the user choice) | `pselShowUserSelector(&uid, &settings)` (`psel.h`, `PselUiMode_UserSelector`) | Chosen by the owner (2026-10-24). Launches the system profile-selection applet; whether an NRO in applet mode may launch it is **unknown -- check** |
 | Valid uid | `accountUidIsValid` | All-zero means not set |
 
 `AccountUid` is 128 bits (`u64 uid[2]`); the profile can be deleted and created
@@ -51,21 +61,22 @@ again with a new uid, and uids are local to a console.
 2. `accountGetPreselectedUser`: valid, use it. No picker.
 3. Else if `accountListAllUsers` returns exactly one user, use it (or
    `accountTrySelectUserWithoutInteraction`). No picker.
-4. Else (applet mode with several profiles) show the **in-game user picker**:
-   the same host-side screen style as the region picker
-   ([SINGLE_BUILD.md](SINGLE_BUILD.md#boot-picker)), a list of nicknames
-   (optionally the profile icons), the last used user preselected, A to
-   confirm. **No auto-timeout** here (a wrong pick puts progress in someone
-   else's folder; the region picker is harmless to get wrong). An option
-   "Use the last user without asking" is a global key (`user_default`, below).
-   Prefer this own picker over `pselShowUserSelector`: it works in both modes,
-   shares code with the region picker, and is testable on the PC; `psel` can be
-   added as an alternative if the OLED check shows it works from applet mode.
-5. The choice is remembered as `last_user=<uid>` in the global options so the
-   picker preselects it next time.
+4. Else (several profiles, no preselect) call **`pselShowUserSelector`**, the
+   Switch profile selector. It returns the uid the player picks. The screen,
+   the names and the icons are the system's, so the game draws nothing here.
+   A cancel or an error is "no user"; the first slice decides what the game does
+   then (proposed: start nothing, log it, the player relaunches). Whether this
+   works from applet mode (started from the Album) is **unverified: check on the
+   OLED**. If the check shows that `psel` cannot launch in applet mode, the
+   fallback is an **open question for the owner** (see
+   [Open questions](#open-questions-for-the-owner)): an in-game picker over
+   `accountListAllUsers` in the style of the region picker, or require title
+   takeover so the preselect is present. Nothing is decided for that case.
+5. The choice is remembered as `last_user=<uid>` in the global options.
+   `user_default=last` skips the selector and uses it (below).
 
-Both pickers (region, user) run before `dw3_game_main`; a forced region and
-`DW3_MEMCARD_DIR` / `DW3_SAVE_PROFILE` (replays, tests) skip them.
+The region picker and the profile selector run before `dw3_game_main`; a forced
+region and `DW3_MEMCARD_DIR` / `DW3_SAVE_PROFILE` (replays, tests) skip them.
 
 ### Directory layout
 
@@ -83,7 +94,7 @@ sdmc:/switch/dw3/
 ```
 
 The user folder is opened by a **soft binding**: nothing stops another user from
-choosing someone else's profile in the picker, and the saves are plain files on
+choosing someone else's profile in the selector, and the saves are plain files on
 the SD card. The goal is separation, not security. Real Nintendo save data
 (`fsdevMountSaveData`) is not used: an NRO has no title of its own to bind it
 to, and the SD file model keeps saves editable and backed up by hand.
@@ -107,7 +118,7 @@ guessing the owner is wrong half the time. Proposal:
 
 1. The P6.25 import ([CROSS_REGION_SAVES.md](CROSS_REGION_SAVES.md#migrating-existing-saves))
    runs **per user**, on first launch of a profile with no `imported.txt`, as a
-   prompt on the user picker's screen: "Found old saves (US: 2 slots, EU: 1).
+   prompt right after the profile is chosen: "Found old saves (US: 2 slots, EU: 1).
    Import them for <nickname>?  [Import]  [Not now]".
 2. Import is a **copy** (the originals are never touched), so a second user can
    import the same legacy saves later. Option row (a P6.20-style Options entry,
@@ -123,7 +134,7 @@ guessing the owner is wrong half the time. Proposal:
 region. Reasons: most rows are console or display settings (Widescreen,
 Fast-forward, volume), the file is tiny, the options screen is reached before
 the player's saves are, and a per-user file makes "my widescreen setting
-changed" depend on the picker. The region key and the user key must be global
+changed" depend on which profile was chosen. The region key and the user key must be global
 by definition (they decide what loads).
 
 - Location: `sdmc:/switch/dw3/port_options.cfg` (PC `runtime/port_options.cfg`);
@@ -142,12 +153,13 @@ by definition (they decide what loads).
 
 - **P6.25**: the container is the same; this item only decides the folder. Land
   P6.25 first with `shared/` as its only profile.
-- **P6.24**: the region picker runs first; the user picker second; the save
+- **P6.24**: the region picker runs first; the profile selector second; the save
   folder is `saves/<uid>/` for whichever region boots.
-- **P6.15 replays**: `DW3_MEMCARD_DIR` / `DW3_REPLAY` (the Switch replay build: `DW3_NX_REPLAY`) skip both pickers and the
-  import; the recordings do not change. `tools/replay_ryubing.sh` runs in
-  title-override or applet mode depending on the emulator; the single-user
-  default makes it pick the user without UI -- check.
+- **P6.15 replays**: `DW3_MEMCARD_DIR` / `DW3_REPLAY` (the Switch replay build:
+  `DW3_NX_REPLAY`) skip the region picker, the profile selector and the import;
+  the recordings do not change. `tools/replay_ryubing.sh` runs in title-override
+  or applet mode depending on the emulator; the single-user default makes it pick
+  the user without UI -- check.
 - **Crash / log (P5.4)**: add `profile: <hash>` next to the `disc:` line; no
   nickname.
 - **Docs**: [RUNTIME_LAYOUT.md](RUNTIME_LAYOUT.md) and
@@ -156,7 +168,8 @@ by definition (they decide what loads).
 ## Risks
 
 - Applet mode with several users and no preselect is the common homebrew case;
-  the in-game picker covers it, but a user who skips with the wrong profile
+  the profile selector covers it (if the OLED check passes, else see the open
+  question), but a player who picks the wrong profile
   creates a second, empty save set (no data loss; they can re-import).
 - A deleted and recreated profile has a new uid: its saves are orphaned in the
   old folder. `profile.txt` (nickname) makes the folder recognizable; a manual
@@ -184,6 +197,15 @@ by definition (they decide what loads).
 
 1. Seam + unit tests + PC `default` profile (no console).
 2. Switch: account init, resolve order, `shared` fallback, log the OLED facts.
-3. User picker screen (shared with the region picker's code) and the import
-   prompt.
+3. Profile selector call (or the fallback picker, if the OLED check fails) and
+   the import prompt.
 4. Global options file and its migration.
+
+## Open questions for the owner
+
+1. **Applet-mode fallback.** If the OLED check shows that `pselShowUserSelector`
+   cannot launch from applet mode (Album): an in-game picker over
+   `accountListAllUsers`, or require title takeover (the NRO started as a title
+   override from hbmenu, where the preselect is expected)? Not decided.
+2. **Selector cancelled.** Start nothing, or fall back to `shared/`? Proposed:
+   start nothing; a silent write to `shared/` would split saves without notice.

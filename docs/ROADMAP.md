@@ -64,7 +64,7 @@ lives in its doc, not in the entry below.
 | P6.23 | Documentation: player guide, docs index, contributor and modder docs (future goal) | future | [roadmap](#phase-6-goal-notes) |
 | P6.24 | One build for US and EU: one `.nro` and one PC binary, region found at boot, a boot picker with both discs (future goal; depends on P6.25 and P6.26) | future | [SINGLE_BUILD](SINGLE_BUILD.md), [roadmap](#phase-6-goal-notes) |
 | P6.25 | Cross-region saves: a US save loads in EU and the reverse, one canonical save container (future goal) | future (survey and design done, no code) | [CROSS_REGION_SAVES](CROSS_REGION_SAVES.md), [roadmap](#phase-6-goal-notes) |
-| P6.26 | Per-user saves: saves bound to the Switch user profile, global options (future goal) | future (design done, no code) | [PER_USER_SAVES](PER_USER_SAVES.md), [roadmap](#phase-6-goal-notes) |
+| P6.26 | Per-user saves: saves bound to the Switch user profile chosen in the Switch profile selector, global options (future goal) | future (design done, no code) | [PER_USER_SAVES](PER_USER_SAVES.md), [roadmap](#phase-6-goal-notes) |
 | P7.1 | Inventory and boundaries | done | [COMMUNITY_QOL](COMMUNITY_QOL.md) |
 | P7.2 | Patched EU disc as data source | open | [COMMUNITY_QOL](COMMUNITY_QOL.md) |
 | P7.3 | Binary-patch limits | in progress | [COMMUNITY_QOL](COMMUNITY_QOL.md) |
@@ -1831,7 +1831,7 @@ Statuses are in the [table](#status-at-a-glance).
   game images on the console the game asks at boot, with a short timeout
   (default = the last choice) and a stored "don't ask again" that can be changed
   later (the picker, below); (3) saves are bound to the Switch user profile that
-  is playing (**P6.26**). P6.25 and P6.26 are separate items and **P6.24 depends
+  is playing, chosen in the Switch profile selector (**P6.26**). P6.25 and P6.26 are separate items and **P6.24 depends
   on both** (see their entries).
   **Boot picker (design, [SINGLE_BUILD.md](SINGLE_BUILD.md#boot-picker)):** only
   when both regions are found and none is forced; no image or one image: no
@@ -1902,16 +1902,17 @@ Statuses are in the [table](#status-at-a-glance).
   keeps the originals; replays unchanged.
   Related: P6.24, P6.26, P5.3 ([P5.3_FLAT_SAVE.md](P5.3_FLAT_SAVE.md)), P9.6, P6.2.
 - [ ] **P6.26 Per-user saves (future goal).** Dated 2026-10-24, owner decision:
-  saves are bound to the Switch user profile that is playing. **Design done, no
-  code.** Full note: [PER_USER_SAVES.md](PER_USER_SAVES.md).
+  saves are bound to the Switch user profile that is playing, chosen with the
+  Switch profile selector ("Quero usar o seletor de perfil do Switch."). **Design
+  done, no code.** Full note: [PER_USER_SAVES.md](PER_USER_SAVES.md).
   **Today:** one save folder per region (`sdmc:/switch/dw3/<ver>/memcard/`,
   `boot_main.c` ~531; PC `runtime/<ver>/memcard/`) and `port_options.cfg` per
   region; the Switch host has no account or applet-type code.
   **Design.** libnx `accountInitialize(AccountServiceType_Application)`; the user
   is `accountGetPreselectedUser` (title-override mode, expected), else the only
-  user, else an **in-game user picker** over `accountListAllUsers` (applet mode
-  has no preselected user; `pselShowUserSelector` as an option if the OLED check
-  shows it works there), else the `shared` profile. Saves go to
+  user, else the **Switch profile selector** (`pselShowUserSelector`; applet mode
+  has no preselected user, and whether the selector launches there is checked on
+  the OLED), else the `shared` profile. Saves go to
   `sdmc:/switch/dw3/saves/<uid>/card0.dw3s, card1.dw3s` (uid = 32 hex digits;
   soft binding, not security). PC: profile `default`
   (`runtime/saves/default/`, `DW3_SAVE_PROFILE` to change). Legacy saves are
@@ -1921,14 +1922,15 @@ Statuses are in the [table](#status-at-a-glance).
   `region_default`, `last_region`, `last_user`, `user_default`; migrated by copying.
   Replays and `DW3_MEMCARD_DIR` skip the profile logic.
   Order: seam and tests with a fake account provider -> Switch resolution and
-  OLED facts (applet type, preselect, user count) -> picker and import prompt ->
+  OLED facts (applet type, preselect, user count) -> profile selector and import prompt ->
   global options.
   Done when (proposed): two profiles on the OLED keep separate saves in applet
   and in title-override mode; a one-user console boots with no extra screen; the
   import works and leaves the originals; options are one global file; replays
   unchanged.
-  Open (owner): no auto-timeout on the user picker; global versus per-user
-  options; the legacy-import rules (see
+  Open (owner): if the selector cannot launch in applet mode, an in-game picker
+  or title takeover (see [PER_USER_SAVES.md](PER_USER_SAVES.md#open-questions-for-the-owner));
+  global versus per-user options; the legacy-import rules (see
   [SINGLE_BUILD.md](SINGLE_BUILD.md#open-questions-for-the-owner)).
   Related: P6.24, P6.25, P5.3, P9.4 ([PORT_OPTIONS.md](PORT_OPTIONS.md)), P6.15.
 

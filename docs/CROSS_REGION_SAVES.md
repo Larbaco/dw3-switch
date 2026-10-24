@@ -302,9 +302,9 @@ early is only the downgrade note above.
   regions is the guard.
 - **Replay tests (P6.15).** They set `DW3_MEMCARD_DIR` and must keep doing so:
   an explicit directory means "this folder is the store, no import, no
-  profile, no picker". Round trip native -> canonical -> native must be
-  identical over `[0, GAME_SAVE_SIZE)` and the sections, so the references stay
-  valid.
+  profile, no profile selector, no region picker". Round trip native -> canonical
+  -> native must be identical over `[0, GAME_SAVE_SIZE)` and the sections, so the
+  references stay valid.
 - **Interchange tool P9.6** (`.mcr` import/export) should target the canonical
   container, not the flat file, once this lands.
 
