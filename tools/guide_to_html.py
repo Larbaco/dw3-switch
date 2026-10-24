@@ -482,7 +482,7 @@ SEC_DESC = {
     "introduction": "Por que o guia existe e como foi feito.",
     "version-history": "Histórico de versões e mudanças.",
     "partner-digimon": "Kotemon, Patamon e Renamon: stats, ataques e digievolução.",
-    "walkthrough": "Passo a passo do início ao fim, por capítulo e local.",
+    "walkthrough": "Do início ao fim, organizado por capítulos e locais.",
     "side-quests": "Missões paralelas e DRI Agents.",
     "digimon-evolutions": "Evoluções: como obter, atributos, níveis e técnicas.",
     "enemy-digimon": "Inimigos com EXP, BIT, localização e drops.",
