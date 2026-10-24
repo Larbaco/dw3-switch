@@ -139,6 +139,129 @@ def esc(s):
     return html.escape(s, quote=False)
 
 
+# --- entity index -------------------------------------------------------
+# Enemies, items, cards, boosters and locations are resolved from the guide's
+# structured cells (Enemies/Items lists, battle boxes, bestiary, boosters), never
+# from free prose. Every link points at an `ent-<kind>-<slug>` row of the
+# generated Index section, and that row links back to the walkthrough areas
+# where the name was seen; so a link can only exist if its target does.
+ENT_LABEL = {"enemy": "Inimigos", "item": "Itens", "card": "Cartas", "booster": "Boosters",
+             "loc": "Locais", "dig": "Digimon ambíguos"}
+ENT_ONE = {"enemy": "Inimigo", "item": "Item", "card": "Carta", "booster": "Booster", "loc": "Local", "dig": "Digimon"}
+COLORS = {"red", "blue", "green", "white", "pink", "brown", "black", "yellow", "purple", "gold", "gray", "orange"}
+ALIAS = {"Nuememon": "Numemon", "Drimogenmon": "Drimogemon"}  # typos in the guide's enemy lists
+MON = re.compile(r"^(\*\s*)?([A-Z][A-Za-z0-9-]*mon)(\s*\(([^)]*)\))?(.*)$")
+BOOSTER = re.compile(r"\b(R-)?Booster\s+0*(\d+)([a-z]?)\b", re.I)
+WALK_SECS = {"walkthrough", "side-quests"}
+
+
+def booster_key(m):
+    return ("r" if m.group(1) else "") + m.group(2) + m.group(3).lower()
+
+
+def booster_name(m):
+    return f"R-Booster {int(m.group(2)):02d}" if m.group(1) else f"Booster {m.group(2)}{m.group(3).lower()}"
+
+
+def loc_key(t):
+    """'A.o.A. HEADQUARTERS' == 'A.O.A HEADQUARTERS', 'SOUTH BADLANDS' == 'SOUTH BADLAND'."""
+    t = re.sub(r"[.]", "", t.casefold())
+    return " ".join(re.sub(r"(?<=\w{4})s\b", "", t).split())
+
+
+class Registry:
+    def __init__(self):
+        self.ents = {}  # (kind, key) -> entry
+        self.ids = set()
+        self.where = None  # (anchor id, label, loc entry) while rendering a walkthrough area
+        self.warn = []
+
+    def get(self, kind, name, key=None):
+        k = (kind, key or " ".join(name.casefold().split()))
+        e = self.ents.get(k)
+        if e is None:
+            sl = slug(name)
+            base = cid = f"ent-{kind}-{sl[len(kind) + 1:] if sl.startswith(kind + '-') else sl}"
+            n = 2
+            while cid in self.ids:
+                cid = f"{base}-{n}"
+                n += 1
+            if cid != base:
+                self.warn.append(f"slug clash: {kind} {name!r} -> #{cid}")
+            self.ids.add(cid)
+            e = self.ents[k] = {"kind": kind, "name": name, "id": cid, "areas": {}, "rel": {}, "see": {}}
+        return e
+
+    def relate(self, a, b, both=True):
+        a["rel"].setdefault(b["kind"], {})[b["id"]] = b["name"]
+        if both:
+            b["rel"].setdefault(a["kind"], {})[a["id"]] = a["name"]
+
+    def ref(self, e, text_html):
+        """Link to an entry, noting the current walkthrough area on it (and it on the area)."""
+        if self.where:
+            aid, label, loc = self.where
+            e["areas"].setdefault(aid, label)
+            if loc is not e:
+                self.relate(loc, e, both=False)
+        return f'<a class="x" href="#{e["id"]}">{text_html}</a>'
+
+    def enemies(self, raw):
+        """'Betamon, Kiwimon (Red)' / 'Bulbmon (boss)' -> (html, [entries]); colour variants are
+        separate enemies, other parentheses stay plain text. Only *mon names are linked."""
+        out, found = [], []
+        for part in raw.split(", "):
+            m = MON.match(part)
+            if not m:
+                out.append(esc(part))
+                continue
+            star, base, paren, inner, rest = m.group(1) or "", m.group(2), m.group(3) or "", m.group(4), m.group(5)
+            color = inner is not None and inner.rstrip("?").lower() in COLORS
+            name = ALIAS.get(base, base) + (f" ({inner.rstrip('?').capitalize()})" if color else "")
+            e = self.get("enemy", name)
+            e["base"] = ALIAS.get(base, base)
+            found.append(e)
+            shown = base + paren if color else base
+            tail = rest if color else paren + rest
+            tail = esc(tail).replace("(BOSS)", '<span class="tag">BOSS</span>')
+            out.append(esc(star) + self.ref(e, esc(shown)) + tail)
+        return ", ".join(out), found
+
+    def items(self, raw):
+        """Items/drop cells: boosters, 'X Card', plain items; '300 BIT' and empty stay text."""
+        out, found = [], []
+        for part in raw.split(", "):
+            p = part.strip()
+            m = re.match(r"^(.*?)(\s*\(BOSS\))?(\s+x\d+)?$", p)
+            name, boss, qty = m.group(1), m.group(2), m.group(3) or ""
+            bm = BOOSTER.fullmatch(name)
+            if not name or re.fullmatch(r"[\d,]+ BIT", name):
+                h = esc(name)
+            elif bm:
+                e = self.get("booster", booster_name(bm), "b" + booster_key(bm))
+                found.append(e)
+                h = self.ref(e, esc(name))
+            else:
+                cm = re.fullmatch(r"(.+) Card", name)
+                e = self.get("card", cm.group(1)) if cm else self.get("item", name)
+                found.append(e)
+                h = self.ref(e, esc(name))
+            out.append(h + esc(qty) + (' <span class="tag">BOSS</span>' if boss else ""))
+        return ", ".join(out), found
+
+    def boosters_in(self, escaped):
+        """Booster tokens inside free text (distinctive enough to link anywhere)."""
+        def sub(m):
+            return self.ref(self.get("booster", booster_name(m), "b" + booster_key(m)), m.group(0))
+        return BOOSTER.sub(sub, escaped)
+
+
+def outside_tags(escaped, fn):
+    """Apply fn only to text that is not inside a tag or an existing <a>...</a>."""
+    parts = re.split(r"(<a\b.*?</a>|<[^>]+>)", escaped, flags=re.S)
+    return "".join(p if i % 2 else fn(p) for i, p in enumerate(parts))
+
+
 def is_prose(ls):
     if any(re.search(r"\S {3,}\S", l) or "\t" in l or re.match(r"^\s*[|+]", l) for l in ls):
         return False
@@ -190,15 +313,25 @@ def table(head, rows, cls, num_cols=()):
 
 
 def fmt_item(s, link):
-    s = esc(s)
-    s = re.sub(r"\(BOSS\)", '<span class="tag">BOSS</span>', s)
-    return link(s)
+    return link.reg.items(s)[0]
+
+
+def enemy_drop(name, drop, link):
+    """Enemy + drop cells, relating each enemy to each dropped item/card/booster."""
+    reg = link.reg
+    eh, ens = reg.enemies(name)
+    dh, drops = reg.items(drop)
+    for e in ens:
+        for d in drops:
+            reg.relate(e, d)
+    return eh, dh
 
 
 def labeled_html(ls, link):
     m = LABELED.match(ls[0])
     kind = "Digimon Battles" if m.group(1).startswith("Digimon Battle") else m.group(1)
-    rows = ([" " + m.group(2)] if m.group(2) else []) + [l for l in ls[1:] if l.strip()]
+    # an inline first row keeps its real column, so the rows aligned under it are rows, not notes
+    rows = ([" " * m.start(2) + m.group(2)] if m.group(2) else []) + [l for l in ls[1:] if l.strip()]
     if not rows or not all(l.startswith(" ") for l in rows):
         return None
     if kind == "Items":
@@ -208,7 +341,8 @@ def labeled_html(ls, link):
     out, notes = [], {}
     for l in rows:
         if len(l) - len(l.lstrip()) >= base + 2 and out and kind != "Items":
-            notes[len(out) - 1] = l.strip()
+            k = len(out) - 1
+            notes[k] = (notes[k] + " " if k in notes else "") + l.strip()
             continue
         cols = re.split(r"\s{2,}", l.strip())
         k = next((i for i, c in enumerate(cols) if re.fullmatch(r"[\d,]+ [ER]XP", c)), -1)
@@ -228,11 +362,11 @@ def labeled_html(ls, link):
     mxe = max(int(e) for _, e, _, _ in out if e.isdigit()) if any(e.isdigit() for _, e, _, _ in out) else 0
     k = len(out[0][0])
     for i, (lead, e, b, extra) in enumerate(out):
-        cells = [link(esc(c)) for c in lead]
-        cells = [c.replace("(BOSS)", '<span class="tag">BOSS</span>') for c in cells]
+        who, drop = enemy_drop(lead[-1], " ".join(extra), link)
+        cells = [link(esc(c)) for c in lead[:-1]] + [who]
         cells += [numcell(e, mxe), f'<span class="n">{b}</span>']
         if drops:
-            cells.append(fmt_item(" ".join(extra), link) + (f' <small>{esc(notes[i])}</small>' if i in notes else ""))
+            cells.append(drop + (f' <small>{esc(notes[i])}</small>' if i in notes else ""))
         elif i in notes:
             cells[-1] += f' <small>{esc(notes[i])}</small>'
         rows_html.append(cells)
@@ -295,12 +429,12 @@ def box_html(ls, link):
     flush()
     metahtml = "".join(
         f'<span class="pill lv">{esc(mt.group(1))}</span><span class="pill">{esc(mt.group(2))}</span>'
-        f'<span class="pill ghost">{esc(mt.group(3))}</span>'
+        f'<span class="pill ghost">{link.reg.boosters_in(esc(mt.group(3)))}</span>'
         for mt in meta
     )
     rows_html = ""
     for name, e, b in rows:
-        who = f'<span class="who">{link(esc(name))}</span>' if name else '<span class="who"></span>'
+        who = f'<span class="who">{link.reg.enemies(name)[0]}</span>' if name else '<span class="who"></span>'
         rows_html += (f'<div class="row">{who}<span class="pill ex"><b>{e}</b> EXP</span>'
                       f'<span class="pill bit"><b>{b}</b> BIT</span></div>')
     notes = ""
@@ -402,11 +536,11 @@ def blocks_html(text, link):
     def flush_enemies():
         if enemies:
             mxe = max([int(d["Exp"]) for _, d in enemies if d.get("Exp", "").isdigit()] or [0])
-            rows = [
-                [link(esc(n)), numcell(d.get("Exp", ""), mxe) if d.get("Exp", "").isdigit() else esc(d.get("Exp", "")),
-                 f'<span class="n">{esc(d.get("Bit", ""))}</span>', esc(d.get("Loc", "")), fmt_item(d.get("Item", ""), link)]
-                for n, d in enemies
-            ]
+            rows = []
+            for n, d in enemies:
+                who, drop = enemy_drop(n, d.get("Item", ""), link)
+                rows.append([who, numcell(d.get("Exp", ""), mxe) if d.get("Exp", "").isdigit() else esc(d.get("Exp", "")),
+                             f'<span class="n">{esc(d.get("Bit", ""))}</span>', esc(d.get("Loc", "")), drop])
             out.append(table(["Digimon", "EXP", "BIT", "Location", "Drop"], rows, "grid", (1, 2)))
             enemies.clear()
 
@@ -470,7 +604,7 @@ SEC_ICON = {
     "disclaimer": "scroll", "introduction": "book", "version-history": "list",
     "partner-digimon": "sparkle", "walkthrough": "map", "side-quests": "swords",
     "digimon-evolutions": "evo", "enemy-digimon": "skull", "card-battle": "cards",
-    "things-left-undone": "list", "credits": "scroll",
+    "things-left-undone": "list", "credits": "scroll", "indice": "search",
 }
 SEC_DESC = {
     "disclaimer": "Direitos de uso e distribuição do texto.",
@@ -484,6 +618,7 @@ SEC_DESC = {
     "card-battle": "Boosters, cartas e probabilidades do jogo de cartas.",
     "things-left-undone": "O que o autor ainda planejava para o guia.",
     "credits": "Quem tornou o guia possível.",
+    "indice": "Inimigos, itens, cartas, boosters e locais, com links para onde aparecem.",
 }
 
 
@@ -497,6 +632,8 @@ def count_label(s):
     if s["chapters"]:
         n = len(s["chapters"])
         return f'{n} capítulo' + ("s" if n != 1 else "")
+    if s["id"] == "indice":
+        return ""
     if s["id"] == "card-battle":
         return f'{sum(1 for i in s["intro"] if i[0] == "h")} boosters'
     n = sum(1 for i in s["intro"] if i[0] == "h")
@@ -555,7 +692,7 @@ def nav_html(sections):
     return nav
 
 
-def palette_json(sections, names):
+def palette_json(sections, names, reg):
     """Items for the Ctrl+K palette: sections, chapters, L3 headings and Digimon names."""
     items = []
     for s in sections:
@@ -565,6 +702,8 @@ def palette_json(sections, names):
             items += [{"t": it[2], "g": c["title"], "id": it[1], "k": "loc"} for it in c["items"] if it[0] == "h"]
         items += [{"t": it[2], "g": s["title"], "id": it[1], "k": "loc"} for it in s["intro"] if it[0] == "h"]
     items += [{"t": n, "g": "Digimon", "id": cid, "k": "dig"} for n, cid in names.items()]
+    items += [{"t": e["name"], "g": ENT_ONE[e["kind"]], "id": e["id"], "k": "ent"}
+              for e in reg.ents.values() if e["kind"] in ("enemy", "item", "card", "booster")]
     return json.dumps(items, ensure_ascii=False).replace("</", "<\\/")
 
 
@@ -587,7 +726,7 @@ def banner_html(c, s):
     strip = stat_strip(c) if s["id"] == "digimon-evolutions" else ""
     return (f'<header class="chb"><span class="num" aria-hidden="true">{esc(big)}</span>'
             f'<p class="kick">{esc(s["title"])}</p>'
-            f'<h3 class="ch"><a href="#{c["id"]}">{esc(c["title"])}</a></h3>{cnt}{chips}{strip}</header>')
+            f'<h3 class="ch"><a href="#{c["id"]}">{esc(c["title"])}</a></h3>{cnt}{chips}{strip}<!--xref:{c["id"]}--></header>')
 
 
 ATTR_NAMES = ("Strength", "Defense", "Spirit", "Wisdom", "Speed", "Charisma")
@@ -673,12 +812,14 @@ def stat_strip(c):
 
 
 def chapter_techs(c):
-    """Technique names of a chapter (TECHNIQUES block), so level-chart names can link to their cards."""
-    items = c["items"]
+    """Technique cards a chapter will render (same parser as techniques_html), so level charts
+    and other Digimon's cards can link to them."""
+    items, out = c["items"], set()
     for i, it in enumerate(items):
-        if it[0] == "h" and it[2].upper() == "TECHNIQUES" and i + 1 < len(items) and items[i + 1][0] == "pre":
-            return set(n.strip() for n in re.findall(r"^   ([^\s:][^:]*?):?\s*$", items[i + 1][1], re.M))
-    return set()
+        if (it[0] == "h" and it[2].upper() in ("TECHNIQUES", "SIGNATURE ATTACK")
+                and i + 1 < len(items) and items[i + 1][0] == "pre"):
+            out |= {t["name"] for t in parse_techs(items[i + 1][1]) or [] if t["name"]}
+    return out
 
 
 def acquired_html(text, cx):
@@ -796,6 +937,9 @@ def tcard(t, cx):
     if "mag" in low:
         badges += '<span class="tg">Mag</span>'
     cost = t.get("cost", "").strip()
+    others = [(c, n) for c, n in cx["tech_owners"].get(t["name"].casefold(), []) if c != cx["cid"]]
+    also = ", ".join(f'<a class="x" href="#{c}--tech-{slug(t["name"])}">{esc(n)}</a>' for c, n in others)
+    also = f'<p class="also"><span class="cap">Também em</span> {also}</p>' if also else ""
     return (
         f'<article class="tcard" id="{cx["cid"]}--tech-{slug(t["name"])}">'
         f'<header><h4>{esc(t["name"])}</h4><div class="tbadges">{badges}</div></header>'
@@ -804,11 +948,12 @@ def tcard(t, cx):
         f'<div class="ldd"><dt>Carrega Lv</dt>{lvcell(t.get("loaded", ""))}</div></dl>'
         + (f'<p class="gt"><span class="cap">Texto do jogo</span> {esc(t["game"])}</p>' if t.get("game") else "")
         + (f'<p class="ds"><span class="cap">Descrição</span> {esc(t["desc"])}</p>' if t.get("desc") else "")
-        + '</article>'
+        + also + '</article>'
     )
 
 
-def techniques_html(text, cx):
+def parse_techs(text):
+    """TECHNIQUES / SIGNATURE ATTACK block -> [{name, type, ...}], None if any line is odd."""
     blocks, cur = [], None
     for l in text.split("\n"):
         if not l.strip():
@@ -840,6 +985,13 @@ def techniques_html(text, cx):
         if m and cur["last"]:
             cur[cur["last"]] = (cur[cur["last"]] + " " + m.group(1)).strip()
             continue
+        return None
+    return blocks
+
+
+def techniques_html(text, cx):
+    blocks = parse_techs(text)
+    if blocks is None:
         return None
     cards = "".join(tcard(t, cx) for t in blocks if t["name"])
     if not cards:
@@ -937,14 +1089,28 @@ def booster_html(text, cx):
     groups = [g for g in re.split(r"\n\s*\n", text.strip("\n")) if g.strip()]
     if not groups or len(groups) > 2:
         return None
+    reg = cx["link"].reg
+    bm = BOOSTER.fullmatch(cx["head"].title())
+    booster = reg.get("booster", booster_name(bm), "b" + booster_key(bm)) if bm else None
+
+    def card(name):
+        e = reg.get("card", name)
+        if booster:
+            reg.relate(e, booster, both=False)
+        return f'<a class="x" href="#{e["id"]}">{esc(name)}</a>'
+
     body = ""
+    if booster:
+        booster["see"].setdefault(cx["head_id"], "Lista de cartas")
+        if booster["areas"] or booster["rel"]:
+            body += f'<p class="xref">Onde obter: <a class="x" href="#{booster["id"]}">índice</a></p>'
     for i, g in enumerate(groups):
         ls = [l.strip() for l in g.split("\n") if l.strip()]
         label = "Digimon" if i == 0 else "Programa"
         pcts = [PCT_ROW.match(l) for l in ls]
         if all(pcts):
             top = max(float(m.group(3)) for m in pcts) or 1
-            rows = [[cx["link"](esc(m.group(4))),
+            rows = [[card(m.group(4)),
                      f'{m.group(1)}/{m.group(2)}',
                      f'<span data-v="{m.group(3)}">{m.group(3)}%</span>'
                      f'<i class="bar" style="--w:{100 * float(m.group(3)) / top:.1f}%" aria-hidden="true"></i>']
@@ -953,7 +1119,7 @@ def booster_html(text, cx):
         elif any(pcts):
             return None
         else:
-            content = '<ul class="cgrid">' + "".join(f"<li>{cx['link'](esc(l))}</li>" for l in ls) + "</ul>"
+            content = '<ul class="cgrid">' + "".join(f"<li>{card(l)}</li>" for l in ls) + "</ul>"
         body += f'<div class="bgrp{" prog" if i else ""}"><h4>{label}</h4>{content}</div>'
     return filter_box(body, "Filtrar cartas deste booster…", " booster")
 
@@ -970,14 +1136,27 @@ def enemy_html(text, cx):
         return None
     mxe = max([int(d["Exp"]) for _, d in ents if d.get("Exp", "").isdigit()] or [0])
     rows = []
+    reg = cx["link"].reg
     for n, d in ents:
         e = d.get("Exp", "")
+        who, drop = enemy_drop(n, d.get("Item", ""), cx["link"])
+        anchor = ""
+        for ent in reg.enemies(n)[1]:
+            ent["see"].setdefault(f"bestiary-{slug(n)}", "Bestiário")
+            anchor = f'<span id="bestiary-{slug(n)}"></span>'
+        locs = []
+        for part in d.get("Loc", "").split(", "):
+            le = cx["locs"].get(loc_key(part.rstrip(". ")))
+            if le:
+                for ent in reg.enemies(n)[1]:
+                    reg.relate(ent, le)
+            locs.append(f'<a class="x" href="#{le["id"]}">{esc(part)}</a>' if le else esc(part))
         rows.append([
-            dig_link(n, cx),
+            anchor + who,
             numcell(e, mxe) if e.isdigit() else esc(e),
             f'<span class="n">{esc(d.get("Bit", ""))}</span>',
-            esc(d.get("Loc", "")),
-            fmt_item(d.get("Item", ""), cx["link"]),
+            ", ".join(locs),
+            drop,
         ])
     tbl = table(["Digimon", "EXP", "BIT", "Location", "Drop"], rows, "grid sortable", (1, 2))
     return filter_box(f'<div class="tall">{tbl}</div>', "Filtrar inimigos…", " enemies")
@@ -1016,14 +1195,110 @@ def special_html(sec_id, head, text, cx):
     return None
 
 
+INDEX_ID = "indice"
+
+
+def ent_see(e, names):
+    """Outside links of an index row: own anchors plus the Digimon chapter of an enemy/card."""
+    see = dict(e["see"])
+    base = e.get("base") if e["kind"] == "enemy" else e["name"] if e["kind"] == "card" else None
+    if base in names:
+        see.setdefault(names[base], "Digimon")
+    return see
+
+
+def index_html(reg, names, dig_of):
+    """Index section: one filterable table per kind; every row links back to where it was seen."""
+    def chips(d, short=False):
+        """Repeated visits to one area get 'visita N' so equal labels stay distinguishable."""
+        out, n = [], {}
+        for k, v in d.items():
+            if short and " · " in v:
+                v = "Cap. " + v.split(" · ")[0]
+            n[v] = n.get(v, 0) + 1
+            out.append(f'<li><a href="#{k}">{esc(v)}{f" (visita {n[v]})" if n[v] > 1 else ""}</a></li>')
+        return "".join(out)
+
+    out = []
+    for kind, label in ENT_LABEL.items():
+        rows = sorted((e for (k, _), e in reg.ents.items() if k == kind), key=lambda e: e["name"].casefold())
+        out.append(f'<h3 id="{INDEX_ID}--{kind}"><a href="#{INDEX_ID}--{kind}">{label}</a></h3>')
+        if not rows:
+            out.append('<p class="muted">Nada deste tipo nas listas estruturadas do guia.</p>')
+            continue
+        body = []
+        for e in rows:
+            rel = "".join(f'<div class="er"><span class="cap">{ENT_LABEL[k]}</span><ul class="chips">{chips(v)}</ul></div>'
+                          for k, v in sorted(e["rel"].items(), key=lambda kv: list(ENT_LABEL).index(kv[0])))
+            see = ent_see(e, names)
+            see = f'<ul class="chips see">{chips(see)}</ul>' if see else ""
+            areas = f'<ul class="chips">{chips(e["areas"], kind == "loc")}</ul>' if e["areas"] else '<span class="muted">—</span>'
+            body.append([f'<span id="{e["id"]}" class="en">{esc(e["name"])}</span>{see}', areas, rel])
+        tbl = table(["Nome", "No walkthrough", "Relacionado"], body, "grid ents")
+        out.append(filter_box(tbl, f"Filtrar {label.lower()}…", " ents"))
+    return "\n".join(out)
+
+
+def chapter_xref(reg, dig):
+    """Back-links on a Digimon chapter banner: its enemy and card rows in the index."""
+    if not dig:
+        return ""
+    hits = [e for e in reg.ents.values()
+            if (e["kind"] == "enemy" and e.get("base") == dig) or (e["kind"] == "card" and e["name"] == dig)]
+    if not hits:
+        return ""
+    lis = "".join(f'<li><a href="#{e["id"]}">{ENT_ONE[e["kind"]]}: {esc(e["name"])}</a></li>' for e in hits)
+    return f'<ul class="chips xr" aria-label="No índice">{lis}</ul>'
+
+
 def render(header, sections):
-    # Digimon names -> chapter ids (partners + evolutions), for cross links
-    names = {}
+    reg = Registry()
+    # Digimon names -> chapter ids (partners + evolutions), for cross links. A name with more
+    # than one chapter is not resolved to either: it links to a disambiguation row instead.
+    chapters = {}
     for s in sections:
-        if s["title"] in ("Partner Digimon", "Digimon Evolutions"):
+        if s["id"] in DATA_SECS:
             for c in s["chapters"]:
-                names[re.sub(r"^\d+\.\s*", "", c["title"])] = c["id"]
+                chapters.setdefault(re.sub(r"^\d+\.\s*", "", c["title"]), []).append((c["id"], s["title"]))
+    names = {}
+    for n, ids in chapters.items():
+        if len(ids) == 1:
+            names[n] = ids[0][0]
+        else:
+            e = reg.get("dig", n)
+            e["see"] = {cid: st for cid, st in ids}
+            names[n] = e["id"]
+            reg.warn.append(f"ambiguous Digimon {n!r}: {', '.join(c for c, _ in ids)} -> #{e['id']}")
+    dig_of = {cid: n for n, cid in names.items()}
     name_re = re.compile(r"(?<![A-Za-z])(" + "|".join(sorted(map(re.escape, names), key=len, reverse=True)) + r")(?![A-Za-z])")
+
+    # technique name -> [(chapter id, Digimon)] for the 'Também em' links between cards
+    tech_owners, chapter_tech = {}, {}
+    for s in sections:
+        if s["id"] in DATA_SECS:
+            for c in s["chapters"]:
+                chapter_tech[c["id"]] = chapter_techs(c)
+                for t in chapter_tech[c["id"]]:
+                    tech_owners.setdefault(t.casefold(), []).append((c["id"], re.sub(r"^\d+\.\s*", "", c["title"])))
+
+    # walkthrough areas -> location rows (repeated visits share one row)
+    locs = {}
+    for s in sections:
+        if s["id"] in WALK_SECS:
+            for c in s["chapters"]:
+                for it in c["items"]:
+                    if it[0] == "h":
+                        locs.setdefault(loc_key(it[2]), reg.get("loc", it[2], loc_key(it[2])))
+    # locations are also matched by their last ' - ' part when that part is unique
+    tails = {}
+    for k, e in list(locs.items()):
+        tails.setdefault(loc_key(e["name"].split(" - ")[-1]), set()).add(e["id"])
+    for k, ids in tails.items():
+        if len(ids) == 1 and k not in locs:
+            locs[k] = next(e for e in locs.values() if e["id"] in ids)
+
+    sections = sections + [{"id": INDEX_ID, "title": "Índice", "chapters": [],
+                            "intro": [("h", f"{INDEX_ID}--{k}", ENT_LABEL[k]) for k in ENT_LABEL]}]
 
     def make_link(self_id):
         def link(escaped):
@@ -1036,8 +1311,9 @@ def render(header, sections):
                 seen.add(n)
                 return f'<a class="x" href="#{names[n]}">{n}</a>'
 
-            return name_re.sub(sub, escaped)
+            return outside_tags(escaped, lambda t: reg.boosters_in(name_re.sub(sub, t)))
 
+        link.reg = reg
         return link
 
     nav = nav_html(sections)
@@ -1056,17 +1332,25 @@ def render(header, sections):
         n = f'<a class="next" href="#{flat[i+1][0]}">{esc(flat[i+1][1])} {svg("next", "ic sm")}</a>' if i + 1 < len(flat) else "<span></span>"
         return f'<nav class="pn" aria-label="Capítulos">{p}{n}</nav>'
 
-    def items_html(items, self_id, sec_id, techs=frozenset()):
+    def items_html(items, self_id, sec_id, techs=frozenset(), num=""):
         out = []
         link = make_link(self_id)
-        cx = {"names": names, "cid": self_id, "techs": techs, "link": link}
+        cx = {"names": names, "cid": self_id, "techs": techs, "link": link, "tech_owners": tech_owners,
+              "locs": locs, "head": "", "head_id": ""}
         head = ""
         walk = sec_id == "walkthrough"
+        reg.where = None
         for it in items:
             if it[0] == "pre":
                 out.append(special_html(sec_id, head, it[1], cx) or blocks_html(it[1], link))
             else:
-                head = it[2]
+                head = cx["head"] = it[2]
+                cx["head_id"] = it[1]
+                if sec_id in WALK_SECS:
+                    loc = locs[loc_key(it[2])]
+                    label = f"{num} · {it[2]}" if num else it[2]
+                    loc["areas"].setdefault(it[1], label)
+                    reg.where = (it[1], label, loc)
                 pin = svg("pin", "ic sm") if walk else ""
                 cls = ' class="loc"' if walk else ""
                 out.append(f'<h3 id="{it[1]}"{cls}><a href="#{it[1]}">{pin}{esc(it[2])}</a></h3>')
@@ -1078,7 +1362,8 @@ def render(header, sections):
         parts = [f'<section class="lvl1" id="{s["id"]}" data-title="{esc(s["title"])}"{leaf}>',
                  f'<h2>{esc(s["title"])}</h2>']
         card = " card" if s["id"] in CARD_SECS else ""
-        parts.append(f'<div class="intro{card}">{items_html(s["intro"], s["id"], s["id"])}</div>')
+        intro = "%%INDEX%%" if s["id"] == INDEX_ID else items_html(s["intro"], s["id"], s["id"])
+        parts.append(f'<div class="intro{card}">{intro}</div>')
         if not s["chapters"]:
             parts.append(pn(s["id"]))
         if s["chapters"]:
@@ -1089,16 +1374,24 @@ def render(header, sections):
             parts.append(
                 f'<article class="lvl2 {kind}" id="{c["id"]}" data-title="{esc(c["title"])}" data-parent="{s["id"]}">'
                 f'{banner_html(c, s)}\n'
-                f"{items_html(c['items'], c['id'], s['id'], chapter_techs(c))}\n{pn(c['id'])}</article>"
+                f"{items_html(c['items'], c['id'], s['id'], chapter_tech.get(c['id'], set()), c['title'].split('.')[0])}"
+                f"\n{pn(c['id'])}</article>"
             )
         parts.append("</section>")
         main.append("\n".join(parts))
 
+    reg.where = None
+    body = "\n".join(main).replace("%%INDEX%%", index_html(reg, names, dig_of))
+    body = re.sub(r"<!--xref:([\w-]+)-->", lambda m: chapter_xref(reg, dig_of.get(m.group(1))), body)
+    for w in reg.warn:
+        print("entity:", w, file=sys.stderr)
     tpl = re.sub(r"%%ICON:(\w+)%%", lambda m: svg(m.group(1)), TEMPLATE)
-    return (tpl.replace("%%COVER%%", cover_html(header, sections))
-               .replace("%%NAV%%", "\n".join(nav))
-               .replace("%%MAIN%%", "\n".join(main))
-               .replace("%%PAL%%", palette_json(sections, names)))
+    pal = palette_json(sections, names, reg)
+    out = (tpl.replace("%%COVER%%", cover_html(header, sections))
+              .replace("%%NAV%%", "\n".join(nav))
+              .replace("%%MAIN%%", body)
+              .replace("%%PAL%%", pal))
+    return out, [x["id"] for x in json.loads(pal.replace("<\\/", "</"))]
 
 
 TEMPLATE = r"""<!DOCTYPE html>
@@ -1232,6 +1525,10 @@ h3 a{color:inherit}
 main p{max-width:72ch;line-height:1.72;margin:.7em 0}
 main p strong{color:var(--ac2)}
 a.x{color:inherit;border-bottom:1px dotted var(--ac)}a.x:hover{color:var(--ac);text-decoration:none}
+.also,.xref{margin:8px 0 0;font-size:13px;color:var(--mut)}
+table.ents td{vertical-align:top}table.ents .en{font-weight:700;scroll-margin-top:80px}table.ents .chips li{padding:1px 9px;font-size:13px}
+table.ents .see{margin-top:4px}.er{display:flex;gap:6px;align-items:baseline;margin:0 0 4px}.er .cap{font-size:11px;text-transform:uppercase;color:var(--mut);min-width:64px}
+.chb .xr{margin-top:8px}
 ul.idx{columns:2;list-style:none;padding:0;margin:10px 0}ul.idx li{padding:3px 0;break-inside:avoid}
 pre{margin:8px 0;padding:12px 14px;background:var(--bg2);border:1px solid var(--bd);border-radius:10px;overflow-x:auto;font:13.5px/1.45 var(--mono);tab-size:4;color:var(--fg)}
 .pn{display:flex;justify-content:space-between;gap:12px;margin:18px 0 0;font-size:14px;padding-top:12px;border-top:1px solid var(--bd)}
@@ -1690,7 +1987,7 @@ function highlight(id,q){
 // command palette
 const PAL=JSON.parse($i('pal-data').textContent);
 const pal=$i('pal'),pq=$i('pq'),pl=$i('pl');
-const KLAB={sec:'Seção',cap:'Capítulo',loc:'Local',dig:'Digimon'};
+const KLAB={sec:'Seção',cap:'Capítulo',loc:'Local',dig:'Digimon',ent:'Índice'};
 let psel=0,plist=[];
 function fuzzy(t,q){const i=t.indexOf(q);if(i>=0)return i;let p=0,last=-1,gap=0;
  for(const ch of q){const j=t.indexOf(ch,p);if(j<0)return -1;if(last>=0)gap+=j-last-1;last=j;p=j+1}
@@ -1782,8 +2079,10 @@ def main():
     with open(sys.argv[1], encoding="utf-8") as f:
         lines = extract_text(f.read())
     header, sections = parse(lines)
+    out, pal_ids = render(header, sections)
+    problems = check_links(out, pal_ids)
     with open(sys.argv[2], "w", encoding="utf-8") as f:
-        f.write(render(header, sections))
+        f.write(out)
     for s in sections:
         print(f"{s['title']}: {len(s['chapters'])} chapters")
     print(f"fallback blocks: {STATS['fallback']}", file=sys.stderr)
@@ -1791,6 +2090,23 @@ def main():
     print(f"evolution/partner blocks structured: {tot - bad}/{tot}", file=sys.stderr)
     print(f"card-battle boosters structured: {STATS.get('booster', 0) - STATS.get('booster_fail', 0)}/{STATS.get('booster', 0)}", file=sys.stderr)
     print(f"enemy list structured: {'no' if STATS.get('enemy_fail') else 'yes'}", file=sys.stderr)
+    if problems:
+        sys.exit("link check FAILED:\n  " + "\n  ".join(problems))
+
+
+def check_links(out, pal_ids):
+    """Integrity: ids unique, every internal href and palette entry points at an existing id."""
+    ids = re.findall(r'\sid="([^"]+)"', out)
+    seen, dup = set(), set()
+    for i in ids:
+        (dup if i in seen else seen).add(i)
+    hrefs = set(re.findall(r'href="#([^"$]*)"', out))
+    missing = sorted(h for h in hrefs if h not in seen)
+    pal_missing = sorted(set(pal_ids) - seen)
+    print(f"link check: {len(seen)} ids, {len(dup)} duplicate; {len(hrefs)} internal hrefs, "
+          f"{len(missing)} broken; palette {len(pal_ids)} entries, {len(pal_missing)} broken", file=sys.stderr)
+    return ([f"duplicate id: {i}" for i in sorted(dup)] + [f"broken href: #{h}" for h in missing]
+            + [f"broken palette id: {h}" for h in pal_missing])
 
 
 if __name__ == "__main__":
