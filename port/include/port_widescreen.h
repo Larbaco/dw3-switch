@@ -27,6 +27,26 @@ int dw3_port_widescreen_px(void);
 /* Once per frame, before drawFrame: hands the mode's gutter to the renderer. */
 void dw3_port_widescreen_frame(void);
 
+/* The field menu's 16:9 layout (patch 0076): the field menu and its STSTATUS
+ * screens draw the panels that hang from the old left edge (x 0) further
+ * left by this, and those that hang from the old right edge (x 320) further
+ * right, so they end at the picture's edges. It is the mode's gutter, so 0
+ * when widescreen is off (the PS1 layout). Drawing positions only: cursors,
+ * hit tests and input keep the PS1 values. */
+int dw3_port_widescreen_menu_shift(void);
+#define DW3_MENU_LEFT(x) ((x) - dw3_port_widescreen_menu_shift())
+#define DW3_MENU_RIGHT(x) ((x) + dw3_port_widescreen_menu_shift())
+
+/* A full-width band of a menu sprite sheet (the help bar, the item list's
+ * frame) widened by the menu shift on each side: a copy of frame `frame` of
+ * `sheet` whose parts left of `split` (in the frame's own x) move left by the
+ * shift and the others right, with the parts that end the left group repeated
+ * across the 2 * shift gap (under the others). Draw the copy with the same
+ * frame id at the same place. Returns `sheet` itself when the shift is 0 or
+ * the frame does not fit; the copy is valid until the next call. */
+void *dw3_port_widescreen_menu_band(void *sheet, int frame, int split);
+#define DW3_MENU_BAND(sheet, frame, split) dw3_port_widescreen_menu_band((sheet), (frame), (split))
+
 #ifdef __cplusplus
 }
 #endif

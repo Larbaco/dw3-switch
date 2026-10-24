@@ -1,0 +1,1571 @@
+Upstream-bound: no
+Subject: [PORT_HOST] P6.1 field menu panels re-anchored to the 16:9 edges
+
+The field menu and its STSTATUS screens (items, item list, sort, techniques,
+status with its digivolve and equipment panels, card folders) keep the PS1
+4:3 layout: panels hang from the old left edge (x 0) or right edge (x 320)
+and open by scaling from those lines, so in 16:9 their cut ends sit one
+gutter inside the picture. With widescreen on, the left column (party pages
+and portraits, member cursors, money, EXP, stats, TP, the sort arrows, the
+item list's tab) is drawn DW3_MENU_LEFT, one gutter further left, and the
+right column (title bars, option panels and their cursors, the status,
+digivolve, equipment and technique panels, the help arrow) DW3_MENU_RIGHT,
+one gutter further right, with their text windows and scale pivots. The
+full-width bands (help bar, item list frame, the chosen item's bar) are drawn
+widened by DW3_MENU_BAND: their left parts move left, their right parts
+right, and the body tiles fill the middle. The item list's contents stay in
+the middle. Only drawing positions change: the shift is applied where the
+windows, cursors and sprites are placed, never to the values the menus test.
+Off (gutter 0) every position is the PS1 one. The map screen and the
+unreachable demo screen are unchanged.
+
+--- a/include/menus/field_menu.h
++++ b/include/menus/field_menu.h
+@@ -8,6 +8,13 @@
+    0x9C. */
+ 
+ #include "engine/game.h"
++#if PORT_HOST
++#include "port_widescreen.h"
++#else
++#define DW3_MENU_LEFT(x) (x)
++#define DW3_MENU_RIGHT(x) (x)
++#define DW3_MENU_BAND(sheet, frame, split) (sheet)
++#endif
+ 
+ /* The name of this overlay's copy of a function of src/shared/ */
+ #define OVL_NAME(name) STSTATUS_##name
+--- a/src/engine/menu/field_menu.c
++++ b/src/engine/menu/field_menu.c
+@@ -1,7 +1,13 @@
+ #include "engine/game.h"
+ #if PORT_HOST
+ #include <stdio.h>
++#endif
++#if PORT_HOST
+ #include "port_widescreen.h"
++#else
++#define DW3_MENU_LEFT(x) (x)
++#define DW3_MENU_RIGHT(x) (x)
++#define DW3_MENU_BAND(sheet, frame, split) (sheet)
+ #endif
+ #include <libgs.h>
+ #include <libetc.h>
+@@ -65,24 +71,24 @@
+     s32 j;
+     WindowPos *pos;
+ 
+-    win->title = createTextWindow(task->layerId, 1, 0x98, 0x13);
++    win->title = createTextWindow(task->layerId, 1, DW3_MENU_RIGHT(0x98), 0x13);
+     for (i = 0; i < task->count; i++) {
+-        win->options[i] = createTextWindow(task->layerId, 1, 0xBD, 0x31 + i * 14);
++        win->options[i] = createTextWindow(task->layerId, 1, DW3_MENU_RIGHT(0xBD), 0x31 + i * 14);
+     }
+-    win->cursor = createCursor(task->layerId, 0, 0xB0, task->cursor * 14 + 0x31);
++    win->cursor = createCursor(task->layerId, 0, DW3_MENU_RIGHT(0xB0), task->cursor * 14 + 0x31);
+     win->cursor->setVisible(win->cursor, 0);
+-    win->moneyLabel = createTextWindow(task->layerId, 3, 0x46, 0xA6);
+-    win->money = createTextWindow(task->layerId, 3, 0x42, 0xA6);
++    win->moneyLabel = createTextWindow(task->layerId, 3, DW3_MENU_LEFT(0x46), 0xA6);
++    win->money = createTextWindow(task->layerId, 3, DW3_MENU_LEFT(0x42), 0xA6);
+     for (j = 0; j < 3; j++) {
+         pos = &FIELD_MENU_LAYOUT[0];
+-        win->pages[j].name = createTextWindow(task->layerId, 1, pos->x, pos->y + j * 46);
++        win->pages[j].name = createTextWindow(task->layerId, 1, DW3_MENU_LEFT(pos->x), pos->y + j * 46);
+         for (i = 0; i < 5; i++) {
+             pos = &FIELD_MENU_LAYOUT[1 + i];
+-            win->pages[j].labels[i] = createTextWindow(task->layerId, 3, pos->x, pos->y + j * 46);
++            win->pages[j].labels[i] = createTextWindow(task->layerId, 3, DW3_MENU_LEFT(pos->x), pos->y + j * 46);
+         }
+         for (i = 0; i < 5; i++) {
+             pos = &FIELD_MENU_LAYOUT[6 + i];
+-            win->pages[j].values[i] = createTextWindow(task->layerId, 3, pos->x, pos->y + j * 46);
++            win->pages[j].values[i] = createTextWindow(task->layerId, 3, DW3_MENU_LEFT(pos->x), pos->y + j * 46);
+         }
+     }
+ }
+@@ -211,7 +217,7 @@
+     }
+     if (prev != task->cursor) {
+         SOUND.playSound(SOUND_CURSOR);
+-        win->cursor->setPos(win->cursor, 0xB0, task->cursor * 14 + 0x31);
++        win->cursor->setPos(win->cursor, DW3_MENU_RIGHT(0xB0), task->cursor * 14 + 0x31);
+         return;
+     }
+     done = 0;
+@@ -422,12 +428,12 @@
+             if (task->panels[i].level != 0) {
+                 if (task->panels[i].level != ONE) {
+                     obj.setScale(task->panels[i].level, ONE, ONE);
+-                    obj.setPivot(0, y2);
++                    obj.setPivot(DW3_MENU_LEFT(0), y2);
+                 } else {
+                     obj.setScale(ONE, ONE, ONE);
+                 }
+-                obj.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x15, 0, y);
+-                obj.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x17, 0, y);
++                obj.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x15, DW3_MENU_LEFT(0), y);
++                obj.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x17, DW3_MENU_LEFT(0), y);
+             }
+             y += 0x2E;
+             y2 += 0x2E;
+@@ -435,29 +441,29 @@
+         if (task->panels[0].level != 0) {
+             if (task->panels[0].level != ONE) {
+                 obj.setScale(task->panels[0].level, ONE, ONE);
+-                obj.setPivot(0x140, 0x19);
++                obj.setPivot(DW3_MENU_RIGHT(0x140), 0x19);
+             } else {
+                 obj.setScale(ONE, ONE, ONE);
+             }
+-            obj.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x18, 0x22, 0xD);
++            obj.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x18, DW3_MENU_RIGHT(0x22), 0xD);
+         }
+         if (task->panels[1].level != 0) {
+             if (task->panels[1].level != ONE) {
+                 obj.setScale(task->panels[1].level, ONE, ONE);
+-                obj.setPivot(0x140, 0x52);
++                obj.setPivot(DW3_MENU_RIGHT(0x140), 0x52);
+             } else {
+                 obj.setScale(ONE, ONE, ONE);
+             }
+-            obj.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x1C - task->extraOption, 0xA8, 0x28);
++            obj.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x1C - task->extraOption, DW3_MENU_RIGHT(0xA8), 0x28);
+         }
+         if (task->panels[2].level != 0) {
+             if (task->panels[2].level != ONE) {
+                 obj.setScale(task->panels[2].level, ONE, ONE);
+-                obj.setPivot(0, 0xA8);
++                obj.setPivot(DW3_MENU_LEFT(0), 0xA8);
+             } else {
+                 obj.setScale(ONE, ONE, ONE);
+             }
+-            obj.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x1A, 0, 0x9E);
++            obj.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x1A, DW3_MENU_LEFT(0), 0x9E);
+         }
+         break;
+     case 2:
+--- a/src/menus/field_menu/card_screen.c
++++ b/src/menus/field_menu/card_screen.c
+@@ -26,25 +26,25 @@
+ 
+     for (j = 0; j < 3; j++) {
+         pos = &STSTATUS_data.layout[0];
+-        windows->pages[j].name = createTextWindow(screen->layer, 1, pos->x, pos->y + j * 46);
++        windows->pages[j].name = createTextWindow(screen->layer, 1, DW3_MENU_LEFT(pos->x), pos->y + j * 46);
+         pos = &STSTATUS_data.layout[1];
+         for (i = 0; i < 5; i++, pos++) {
+-            windows->pages[j].labels[i] = createTextWindow(screen->layer, 3, pos->x, pos->y + j * 46);
++            windows->pages[j].labels[i] = createTextWindow(screen->layer, 3, DW3_MENU_LEFT(pos->x), pos->y + j * 46);
+         }
+         pos = &STSTATUS_data.layout[6];
+         for (i = 0; i < 5; i++, pos++) {
+-            windows->pages[j].values[i] = createTextWindow(screen->layer, 3, pos->x, pos->y + j * 46);
++            windows->pages[j].values[i] = createTextWindow(screen->layer, 3, DW3_MENU_LEFT(pos->x), pos->y + j * 46);
+         }
+     }
+     pos = &STSTATUS_data.layout[12];
+-    windows->help = createTextWindow(screen->layer, 1, pos->x, pos->y);
++    windows->help = createTextWindow(screen->layer, 1, DW3_MENU_LEFT(pos->x), pos->y);
+     windows->help->setLines(windows->help, 2);
+-    windows->hint = createTextWindow(screen->layer, 1, pos->x, pos->y + 14);
+-    windows->choiceTitle = createTextWindow(screen->layer, 1, 0xB2, 0x2A);
++    windows->hint = createTextWindow(screen->layer, 1, DW3_MENU_LEFT(pos->x), pos->y + 14);
++    windows->choiceTitle = createTextWindow(screen->layer, 1, DW3_MENU_RIGHT(0xB2), 0x2A);
+     for (i = 0; i < 2; i++) {
+-        windows->options[i] = createTextWindow(screen->layer, 1, 0xC5, 0x3A + i * 14);
++        windows->options[i] = createTextWindow(screen->layer, 1, DW3_MENU_RIGHT(0xC5), 0x3A + i * 14);
+     }
+-    windows->cursor = createCursor(screen->layer, screen->depth - 1, 0xB8, 0x3A);
++    windows->cursor = createCursor(screen->layer, screen->depth - 1, DW3_MENU_RIGHT(0xB8), 0x3A);
+     windows->cursor->setVisible(windows->cursor, 0);
+     children = screen->children;
+     for (i = 0; i < screen->childCount - 2; i++, children++) {
+@@ -126,14 +126,14 @@
+         if (level != 0) {
+             if (level != ONE) {
+                 sprite.setScale(level, level, ONE);
+-                sprite.setPivot(0x7C, i * 46 + 0x27);
++                sprite.setPivot(DW3_MENU_LEFT(0x7C), i * 46 + 0x27);
+             } else {
+                 sprite.setScale(ONE, ONE, ONE);
+             }
+             member = GAME.funcs.getPartyMember(i);
+             sprite.setTexture(0x280, 0x100);
+             sprite.draw(FILE_CACHE.getEntry(FILE_STATUS_SPRITES << 16),
+-                        STSTATUS_data.partnerAnims[member].frames[screen->frames[i]], 0x6B, i * 46 + 0x13);
++                        STSTATUS_data.partnerAnims[member].frames[screen->frames[i]], DW3_MENU_LEFT(0x6B), i * 46 + 0x13);
+         }
+     }
+     sprite.setTexture(0x140, 0);
+@@ -143,19 +143,19 @@
+             /* both branches draw the frame's last part: the match depends on it */
+             if (level != ONE) {
+                 sprite.setScale(level, ONE, ONE);
+-                sprite.setPivot(0, i * 46 + 0x25);
+-                sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x15, 0, i * 46 + 0x11);
++                sprite.setPivot(DW3_MENU_LEFT(0), i * 46 + 0x25);
++                sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x15, DW3_MENU_LEFT(0), i * 46 + 0x11);
+                 sprite.setScale(screen->pageFades[i].level, screen->pageFades[i].level, ONE);
+-                sprite.setPivot(0x7C, i * 46 + 0x27);
+-                sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x16, 0x67, i * 46 + 0x13);
++                sprite.setPivot(DW3_MENU_LEFT(0x7C), i * 46 + 0x27);
++                sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x16, DW3_MENU_LEFT(0x67), i * 46 + 0x13);
+                 sprite.setScale(screen->pageFades[i].level, ONE, ONE);
+-                sprite.setPivot(0, i * 46 + 0x25);
+-                sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x17, 0, i * 46 + 0x11);
++                sprite.setPivot(DW3_MENU_LEFT(0), i * 46 + 0x25);
++                sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x17, DW3_MENU_LEFT(0), i * 46 + 0x11);
+             } else {
+                 sprite.setScale(ONE, ONE, ONE);
+-                sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x15, 0, i * 46 + 0x11);
+-                sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x16, 0x67, i * 46 + 0x13);
+-                sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x17, 0, i * 46 + 0x11);
++                sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x15, DW3_MENU_LEFT(0), i * 46 + 0x11);
++                sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x16, DW3_MENU_LEFT(0x67), i * 46 + 0x13);
++                sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x17, DW3_MENU_LEFT(0), i * 46 + 0x11);
+             }
+         }
+     }
+@@ -163,12 +163,12 @@
+     if (level != 0) {
+         if (level != ONE) {
+             sprite.setScale(level, ONE, ONE);
+-            sprite.setPivot(0, 0xD3);
++            sprite.setPivot(DW3_MENU_LEFT(0), 0xD3);
+         } else {
+             sprite.setScale(ONE, ONE, ONE);
+         }
+         sprite.setTexture(0x280, 0x100);
+-        sprite.draw(FILE_CACHE.getEntry(FILE_STATUS_SPRITES << 16), 0x20, 0, 0xC2);
++        sprite.draw(DW3_MENU_BAND(FILE_CACHE.getEntry(FILE_STATUS_SPRITES << 16), 0x20, 160), 0x20, 0, 0xC2);
+     }
+     if (screen->fade.level != 0) {
+         initSpriteDrawer(&sprite);
+@@ -177,9 +177,9 @@
+         level = screen->fade.level;
+         if (level != ONE) {
+             sprite.setScale(level, ONE, ONE);
+-            sprite.setPivot(0x140, 0x40);
++            sprite.setPivot(DW3_MENU_RIGHT(0x140), 0x40);
+         }
+-        sprite.draw(FILE_CACHE.getEntry(FILE_STATUS_SPRITES << 16), 0x3A, 0xA8, 0x28);
++        sprite.draw(FILE_CACHE.getEntry(FILE_STATUS_SPRITES << 16), 0x3A, DW3_MENU_RIGHT(0xA8), 0x28);
+     }
+ }
+ 
+@@ -280,7 +280,7 @@
+     }
+     if (choice != screen->choice) {
+         SOUND.playSound(SOUND_CURSOR);
+-        windows->cursor->setPos(windows->cursor, 0xB8, screen->choice * 14 + 0x3A);
++        windows->cursor->setPos(windows->cursor, DW3_MENU_RIGHT(0xB8), screen->choice * 14 + 0x3A);
+     }
+     if (PAD_PRESSED(PAD_CROSS)) {
+         SOUND.playSound(SOUND_SELECT);
+--- a/src/menus/field_menu/digivolve_panel.c
++++ b/src/menus/field_menu/digivolve_panel.c
+@@ -11,39 +11,39 @@
+     s32 i;
+ 
+     for (i = 0; i < 3; i++) {
+-        windows->slots[i] = createTextWindow(panel->layer, 1, 0xBD, i * 14 + 0x31);
++        windows->slots[i] = createTextWindow(panel->layer, 1, DW3_MENU_RIGHT(0xBD), i * 14 + 0x31);
+     }
+-    windows->slotCursor = createCursor(panel->layer, panel->depth - 1, 0xB0, panel->slot * 14 + 0x31);
++    windows->slotCursor = createCursor(panel->layer, panel->depth - 1, DW3_MENU_RIGHT(0xB0), panel->slot * 14 + 0x31);
+     windows->slotCursor->setVisible(windows->slotCursor, 0);
+-    windows->partnerName = createTextWindow(panel->layer, 1, 0x5E, 0x4D);
+-    windows->choiceTitle = createTextWindow(panel->layer, 1, 0xB2, 0x2A);
++    windows->partnerName = createTextWindow(panel->layer, 1, DW3_MENU_RIGHT(0x5E), 0x4D);
++    windows->choiceTitle = createTextWindow(panel->layer, 1, DW3_MENU_RIGHT(0xB2), 0x2A);
+     for (i = 0; i < 2; i++) {
+-        windows->options[i] = createTextWindow(panel->layer, 1, 0xBD, i * 14 + 0x3A);
++        windows->options[i] = createTextWindow(panel->layer, 1, DW3_MENU_RIGHT(0xBD), i * 14 + 0x3A);
+     }
+-    windows->optionCursor = createCursor(panel->layer, panel->depth - 1, 0xB4, panel->option * 14 + 0x3A);
++    windows->optionCursor = createCursor(panel->layer, panel->depth - 1, DW3_MENU_RIGHT(0xB4), panel->option * 14 + 0x3A);
+     windows->optionCursor->setVisible(windows->optionCursor, 0);
+-    windows->entryName = createTextWindow(panel->layer, 1, 0x4F, 0x68);
+-    windows->skillLabel = createTextWindow(panel->layer, 1, 0xEB, 0x68);
+-    windows->skillLevel = createTextWindow(panel->layer, 1, 0x12F, 0x68);
++    windows->entryName = createTextWindow(panel->layer, 1, DW3_MENU_RIGHT(0x4F), 0x68);
++    windows->skillLabel = createTextWindow(panel->layer, 1, DW3_MENU_RIGHT(0xEB), 0x68);
++    windows->skillLevel = createTextWindow(panel->layer, 1, DW3_MENU_RIGHT(0x12F), 0x68);
+     for (i = 0; i < 6; i++) {
+-        windows->list[i] = createTextWindow(panel->layer, 1, 0x71, i * 14 + 0x7C);
++        windows->list[i] = createTextWindow(panel->layer, 1, DW3_MENU_RIGHT(0x71), i * 14 + 0x7C);
+     }
+     for (i = 0; i < 7; i++) {
+-        windows->list[i + 6] = createTextWindow(panel->layer, 1, 0x9B, i * 14 + 0x7C);
++        windows->list[i + 6] = createTextWindow(panel->layer, 1, DW3_MENU_RIGHT(0x9B), i * 14 + 0x7C);
+     }
+     for (i = 0; i < 6; i++) {
+-        windows->values[i] = createTextWindow(panel->layer, 1, 0xC4, i * 14 + 0x88);
++        windows->values[i] = createTextWindow(panel->layer, 1, DW3_MENU_RIGHT(0xC4), i * 14 + 0x88);
+     }
+-    windows->listCursor = createCursor(panel->layer, panel->depth - 1, 0xA9, 0x88);
++    windows->listCursor = createCursor(panel->layer, panel->depth - 1, DW3_MENU_RIGHT(0xA9), 0x88);
+     windows->listCursor->setVisible(windows->listCursor, 0);
+-    windows->title = createTextWindow(panel->layer, 1, 0x98, 0x13);
++    windows->title = createTextWindow(panel->layer, 1, DW3_MENU_RIGHT(0x98), 0x13);
+     layout = STSTATUS_data.layout;
+     pos = &layout[12];
+-    windows->help = createTextWindow(panel->layer, 1, pos->x, pos->y);
++    windows->help = createTextWindow(panel->layer, 1, DW3_MENU_LEFT(pos->x), pos->y);
+     pos = &layout[13];
+-    windows->mpLabel = createTextWindow(panel->layer, 1, pos->x, pos->y);
++    windows->mpLabel = createTextWindow(panel->layer, 1, DW3_MENU_RIGHT(pos->x), pos->y);
+     pos = &layout[14];
+-    windows->mp = createTextWindow(panel->layer, 1, pos->x, pos->y);
++    windows->mp = createTextWindow(panel->layer, 1, DW3_MENU_RIGHT(pos->x), pos->y);
+ }
+ 
+ /* The Digimon in the partner's three slots, the one it is highlighted, and
+@@ -235,17 +235,17 @@
+     s32 i;
+ 
+     /* the match depends on the (s16) casts in the loops */
+-    windows->entryName->setPos(windows->entryName, 0x4F, panel->scroll.value + 0x68);
+-    windows->skillLabel->setPos(windows->skillLabel, 0xEB, panel->scroll.value + 0x68);
+-    windows->skillLevel->setPos(windows->skillLevel, 0x12F, panel->scroll.value + 0x68);
++    windows->entryName->setPos(windows->entryName, DW3_MENU_RIGHT(0x4F), panel->scroll.value + 0x68);
++    windows->skillLabel->setPos(windows->skillLabel, DW3_MENU_RIGHT(0xEB), panel->scroll.value + 0x68);
++    windows->skillLevel->setPos(windows->skillLevel, DW3_MENU_RIGHT(0x12F), panel->scroll.value + 0x68);
+     for (i = 0; i < 6; i++) {
+-        windows->list[i]->setPos(windows->list[i], 0x71, i * 14 + (s16)(panel->scroll.value + 0x7C));
++        windows->list[i]->setPos(windows->list[i], DW3_MENU_RIGHT(0x71), i * 14 + (s16)(panel->scroll.value + 0x7C));
+     }
+     for (i = 0; i < 7; i++) {
+-        windows->list[i + 6]->setPos(windows->list[i + 6], 0x9B, i * 14 + (s16)(panel->scroll.value + 0x7C));
++        windows->list[i + 6]->setPos(windows->list[i + 6], DW3_MENU_RIGHT(0x9B), i * 14 + (s16)(panel->scroll.value + 0x7C));
+     }
+     for (i = 0; i < 6; i++) {
+-        windows->values[i]->setPos(windows->values[i], 0xC4, i * 14 + (s16)(panel->scroll.value + 0x88));
++        windows->values[i]->setPos(windows->values[i], DW3_MENU_RIGHT(0xC4), i * 14 + (s16)(panel->scroll.value + 0x88));
+     }
+ }
+ 
+@@ -300,28 +300,28 @@
+     if (panel->fades[1].level != 0) {
+         if (panel->fades[1].level != ONE) {
+             sprite.setScale(panel->fades[1].level, ONE, ONE);
+-            sprite.setPivot(0x140, 0x44);
++            sprite.setPivot(DW3_MENU_RIGHT(0x140), 0x44);
+         }
+-        sprite.draw(FILE_CACHE.getEntry(FILE_STATUS_SPRITES << 16), 0x24, 0xA8, 0x28);
++        sprite.draw(FILE_CACHE.getEntry(FILE_STATUS_SPRITES << 16), 0x24, DW3_MENU_RIGHT(0xA8), 0x28);
+     }
+     if (panel->fades[2].level != 0) {
+         if (panel->fades[2].level != ONE) {
+             sprite.setScale(panel->fades[2].level, ONE, ONE);
+-            sprite.setPivot(0x140, 0x41);
++            sprite.setPivot(DW3_MENU_RIGHT(0x140), 0x41);
+         } else {
+             sprite.setScale(ONE, ONE, ONE);
+         }
+-        sprite.draw(FILE_CACHE.getEntry(FILE_STATUS_SPRITES << 16), 0x26, 0xA8, 0x28);
++        sprite.draw(FILE_CACHE.getEntry(FILE_STATUS_SPRITES << 16), 0x26, DW3_MENU_RIGHT(0xA8), 0x28);
+     }
+     if (panel->fades[3].level != 0) {
+         if (panel->fades[3].level != ONE) {
+             sprite.setScale(panel->fades[3].level, ONE, ONE);
+-            sprite.setPivot(0x140, 0xA2);
++            sprite.setPivot(DW3_MENU_RIGHT(0x140), 0xA2);
+         } else {
+             sprite.setScale(ONE, ONE, ONE);
+         }
+         sprite.setTexture(0x140, 0);
+-        sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x14, 0x4F, panel->scroll.value + 0x7C);
++        sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x14, DW3_MENU_RIGHT(0x4F), panel->scroll.value + 0x7C);
+         if (panel->listShown) {
+             id = GAME.funcs.getPartyMember(panel->member);
+             if (panel->fromEntry) {
+@@ -329,7 +329,7 @@
+                 for (i = 0; i < 6; i++) {
+                     tech = entry.skills[i] & SKILL_ID;
+                     if (tech != 0) {
+-                        sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), TECHS[tech - 1].icon + 0x37, 0xB6,
++                        sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), TECHS[tech - 1].icon + 0x37, DW3_MENU_RIGHT(0xB6),
+                                     panel->scroll.value + 0x88 + i * 14);
+                     }
+                 }
+@@ -338,14 +338,14 @@
+                 for (i = 0; i < 6; i++) {
+                     tech = data->skills[i + 1];
+                     if (tech > 0) {
+-                        sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), TECHS[tech - 1].icon + 0x37, 0xB6,
++                        sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), TECHS[tech - 1].icon + 0x37, DW3_MENU_RIGHT(0xB6),
+                                     panel->scroll.value + 0x88 + i * 14);
+                     }
+                 }
+             }
+         }
+         sprite.setTexture(0x280, 0x100);
+-        sprite.draw(FILE_CACHE.getEntry(FILE_STATUS_SPRITES << 16), 0x27, 0x48, panel->scroll.value + 0x61);
++        sprite.draw(FILE_CACHE.getEntry(FILE_STATUS_SPRITES << 16), 0x27, DW3_MENU_RIGHT(0x48), panel->scroll.value + 0x61);
+     }
+     if (panel->fades[4].level != 0) {
+         if (panel->blink) {
+@@ -358,27 +358,27 @@
+             }
+             sprite.setTexture(0x140, 0);
+             sprite.setClutRow(panel->blinkFrame);
+-            sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0xA, 0x123, 0xD6);
++            sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0xA, DW3_MENU_RIGHT(0x123), 0xD6);
+             sprite.setClutRow(0);
+         }
+         if (panel->fades[4].level != ONE) {
+             sprite.setScale(panel->fades[4].level, ONE, ONE);
+-            sprite.setPivot(0, 0xD3);
++            sprite.setPivot(DW3_MENU_LEFT(0), 0xD3);
+         } else {
+             sprite.setScale(ONE, ONE, ONE);
+         }
+         sprite.setTexture(0x280, 0x100);
+-        sprite.draw(FILE_CACHE.getEntry(FILE_STATUS_SPRITES << 16), 0x20, 0, 0xC2);
++        sprite.draw(DW3_MENU_BAND(FILE_CACHE.getEntry(FILE_STATUS_SPRITES << 16), 0x20, 160), 0x20, 0, 0xC2);
+     }
+     if (panel->fades[0].level != 0) {
+         if (panel->fades[0].level != ONE) {
+             sprite.setScale(panel->fades[0].level, ONE, ONE);
+-            sprite.setPivot(0x140, 0xD);
++            sprite.setPivot(DW3_MENU_RIGHT(0x140), 0xD);
+         } else {
+             sprite.setScale(ONE, ONE, ONE);
+         }
+         sprite.setTexture(0x140, 0);
+-        sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x18, 0x22, 0xD);
++        sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x18, DW3_MENU_RIGHT(0x22), 0xD);
+     }
+ }
+ 
+@@ -404,7 +404,7 @@
+ static inline void STSTATUS_openDigivolveStats(DigivolvePanel *panel, DigivolvePanelWindows *windows) {
+     if (STSTATUS_data.funcs.updateFade(&panel->fades[3])) {
+         STSTATUS_showDigivolveStats(panel, windows, 1);
+-        windows->slotCursor->setPos(windows->slotCursor, 0x50, 0x4D);
++        windows->slotCursor->setPos(windows->slotCursor, DW3_MENU_RIGHT(0x50), 0x4D);
+         windows->slotCursor->setVisible(windows->slotCursor, 1);
+         panel->substate++;
+     }
+@@ -421,7 +421,7 @@
+         if (PAD_PRESSED(PAD_LEFT)) {
+             panel->fromEntry = 0;
+             STSTATUS_showDigivolveStats(panel, windows, 1);
+-            windows->slotCursor->setPos(windows->slotCursor, 0x50, 0x4D);
++            windows->slotCursor->setPos(windows->slotCursor, DW3_MENU_RIGHT(0x50), 0x4D);
+             SOUND.playSound(SOUND_CURSOR);
+             return;
+         }
+@@ -438,7 +438,7 @@
+         }
+         if (slot != panel->slot) {
+             STSTATUS_showDigivolveStats(panel, windows, 1);
+-            windows->slotCursor->setPos(windows->slotCursor, 0xB0, panel->slot * 0xE + 0x31);
++            windows->slotCursor->setPos(windows->slotCursor, DW3_MENU_RIGHT(0xB0), panel->slot * 0xE + 0x31);
+             SOUND.playSound(SOUND_CURSOR);
+         } else if (PAD_PRESSED(PAD_CROSS)) {
+             SOUND.playSound(SOUND_SELECT);
+@@ -450,7 +450,7 @@
+     } else if (panel->slotCount > 0 && PAD_PRESSED(PAD_RIGHT)) {
+         panel->fromEntry = 1;
+         STSTATUS_showDigivolveStats(panel, windows, 1);
+-        windows->slotCursor->setPos(windows->slotCursor, 0xB0, panel->slot * 0xE + 0x31);
++        windows->slotCursor->setPos(windows->slotCursor, DW3_MENU_RIGHT(0xB0), panel->slot * 0xE + 0x31);
+         SOUND.playSound(SOUND_CURSOR);
+     } else if (PAD_PRESSED(PAD_CROSS)) {
+         SOUND.playSound(SOUND_SELECT);
+@@ -502,7 +502,7 @@
+     }
+     if (option != panel->option) {
+         SOUND.playSound(SOUND_CURSOR);
+-        windows->optionCursor->setPos(windows->optionCursor, 0xB4, panel->option * 0xE + 0x3A);
++        windows->optionCursor->setPos(windows->optionCursor, DW3_MENU_RIGHT(0xB4), panel->option * 0xE + 0x3A);
+     }
+     if (PAD_PRESSED(PAD_CROSS)) {
+         SOUND.playSound(SOUND_SELECT);
+@@ -729,7 +729,7 @@
+         data = &DIGIMON_DATA[GAME.funcs.getPartyMember(panel->member)];
+         tech = data->skills[6];
+         panel->tech = 5;
+-        windows->listCursor->setPos(windows->listCursor, 0xA9, panel->scroll.value + 0xCE);
++        windows->listCursor->setPos(windows->listCursor, DW3_MENU_RIGHT(0xA9), panel->scroll.value + 0xCE);
+         windows->listCursor->setVisible(windows->listCursor, 1);
+         windows->help->setString(windows->help, FILE_CACHE.load(TEXT_FILE(TEXT_SKILL_INFO)), tech);
+         windows->mpLabel->setString(windows->mpLabel, FILE_CACHE.load(TEXT_FILE(TEXT_STATUS)), 3);
+@@ -869,7 +869,7 @@
+             }
+             if (panel->techCount != 0) {
+                 /* the match depends on this order of the terms */
+-                windows->listCursor->setPos(windows->listCursor, 0xA9, panel->tech * 0xE + 0x88 + panel->scroll.value);
++                windows->listCursor->setPos(windows->listCursor, DW3_MENU_RIGHT(0xA9), panel->tech * 0xE + 0x88 + panel->scroll.value);
+                 windows->listCursor->setVisible(windows->listCursor, 1);
+                 STSTATUS_showTechCost(panel, windows, 1);
+                 panel->substate++; /* in both branches: the match depends on it */
+@@ -902,7 +902,7 @@
+             }
+             if (old != panel->tech) {
+                 SOUND.playSound(SOUND_CURSOR);
+-                windows->listCursor->setPos(windows->listCursor, 0xA9, panel->tech * 0xE + 0x88 + panel->scroll.value);
++                windows->listCursor->setPos(windows->listCursor, DW3_MENU_RIGHT(0xA9), panel->tech * 0xE + 0x88 + panel->scroll.value);
+                 STSTATUS_showTechCost(panel, windows, 1);
+             }
+         }
+--- a/src/menus/field_menu/equip_panel.c
++++ b/src/menus/field_menu/equip_panel.c
+@@ -8,24 +8,24 @@
+ void STSTATUS_createEquipWindows(EquipPanel *panel, EquipPanelWindows *windows) {
+     s32 i;
+ 
+-    windows->title = createTextWindow(panel->layer, 1, 0x98, 0x13);
+-    windows->cursor = createCursor(panel->layer, panel->depth - 1, 0xA5, 0x31);
++    windows->title = createTextWindow(panel->layer, 1, DW3_MENU_RIGHT(0x98), 0x13);
++    windows->cursor = createCursor(panel->layer, panel->depth - 1, DW3_MENU_RIGHT(0xA5), 0x31);
+     windows->cursor->setVisible(windows->cursor, 0);
+     for (i = 0; i < 6; i++) {
+-        windows->slots[i] = createTextWindow(panel->layer, 1, 0xC0, i * 14 + 0x31);
++        windows->slots[i] = createTextWindow(panel->layer, 1, DW3_MENU_RIGHT(0xC0), i * 14 + 0x31);
+     }
+-    windows->listTitle = createTextWindow(panel->layer, 1, 0x7F, 0x3B);
+-    windows->listCursor = createCursor(panel->layer, panel->depth - 1, 0x86, 0x4B);
++    windows->listTitle = createTextWindow(panel->layer, 1, DW3_MENU_RIGHT(0x7F), 0x3B);
++    windows->listCursor = createCursor(panel->layer, panel->depth - 1, DW3_MENU_RIGHT(0x86), 0x4B);
+     windows->listCursor->setVisible(windows->listCursor, 0);
+     for (i = 0; i < 8; i++) {
+-        windows->rows[i].name = createTextWindow(panel->layer, 1, 0xA0, i * 14 + 0x4B);
+-        windows->rows[i].times = createTextWindow(panel->layer, 1, 0x10D, i * 14 + 0x4B);
+-        windows->rows[i].count = createTextWindow(panel->layer, 1, 0x120, i * 14 + 0x4B);
+-    }
+-    windows->help = createTextWindow(panel->layer, 1, 0x14, 0xC6);
+-    windows->kind = createTextWindow(panel->layer, 1, 0x14, 0xD5);
+-    windows->slotTitle = createTextWindow(panel->layer, 1, 0xA7, 0x13);
+-    windows->slotItem = createTextWindow(panel->layer, 1, 0xC0, 0x23);
++        windows->rows[i].name = createTextWindow(panel->layer, 1, DW3_MENU_RIGHT(0xA0), i * 14 + 0x4B);
++        windows->rows[i].times = createTextWindow(panel->layer, 1, DW3_MENU_RIGHT(0x10D), i * 14 + 0x4B);
++        windows->rows[i].count = createTextWindow(panel->layer, 1, DW3_MENU_RIGHT(0x120), i * 14 + 0x4B);
++    }
++    windows->help = createTextWindow(panel->layer, 1, DW3_MENU_LEFT(0x14), 0xC6);
++    windows->kind = createTextWindow(panel->layer, 1, DW3_MENU_LEFT(0x14), 0xD5);
++    windows->slotTitle = createTextWindow(panel->layer, 1, DW3_MENU_RIGHT(0xA7), 0x13);
++    windows->slotItem = createTextWindow(panel->layer, 1, DW3_MENU_RIGHT(0xC0), 0x23);
+ }
+ 
+ /* The partner's equipment, or the slots' names where it has none */
+@@ -157,34 +157,34 @@
+         level = panel->panels[0].level;
+         if (level != ONE) {
+             sprite.setScale(level, ONE, ONE);
+-            sprite.setPivot(0x140, 0x19);
++            sprite.setPivot(DW3_MENU_RIGHT(0x140), 0x19);
+         }
+-        sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x18, 0x22, 0xD);
++        sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x18, DW3_MENU_RIGHT(0x22), 0xD);
+     }
+     sprite.setLayerId(panel->layer, panel->depth);
+     level = panel->panels[1].level;
+     if (level != 0) {
+         if (level != ONE) {
+             sprite.setScale(level, ONE, ONE);
+-            sprite.setPivot(0x140, 0x58);
++            sprite.setPivot(DW3_MENU_RIGHT(0x140), 0x58);
+         } else {
+             sprite.setScale(ONE, ONE, ONE);
+             sprite.setTexture(0x140, 0);
+             for (i = 0; i < 6; i++) {
+                 item = stats->equip[i];
+                 if (item > 0) {
+-                    sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), ITEM_FUNCS.getCategory(item), 0xB2, i * 14 + 0x31);
++                    sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), ITEM_FUNCS.getCategory(item), DW3_MENU_RIGHT(0xB2), i * 14 + 0x31);
+                 }
+             }
+         }
+         sprite.setTexture(0x280, 0x100);
+-        sprite.draw(FILE_CACHE.getEntry(FILE_STATUS_SPRITES << 16), 0x2A, 0x9D, 0x28);
++        sprite.draw(FILE_CACHE.getEntry(FILE_STATUS_SPRITES << 16), 0x2A, DW3_MENU_RIGHT(0x9D), 0x28);
+     }
+     level = panel->panels[2].level;
+     if (level != 0) {
+         if (level != ONE) {
+             sprite.setScale(level, ONE, ONE);
+-            sprite.setPivot(0x140, 0x89);
++            sprite.setPivot(DW3_MENU_RIGHT(0x140), 0x89);
+         } else {
+             sprite.setScale(ONE, ONE, ONE);
+             for (i = 0; i < 8; i++) {
+@@ -193,10 +193,10 @@
+                     item = panel->items[index];
+                     if (item == -1 || item > 0) {
+                         sprite.setTexture(0x280, 0x100);
+-                        sprite.draw(FILE_CACHE.getEntry(FILE_STATUS_SPRITES << 16), 0x31, 0x91, i * 14 + 0x4B);
++                        sprite.draw(FILE_CACHE.getEntry(FILE_STATUS_SPRITES << 16), 0x31, DW3_MENU_RIGHT(0x91), i * 14 + 0x4B);
+                         if (item > 0) {
+                             sprite.setTexture(0x140, 0);
+-                            sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), ITEM_FUNCS.getCategory(item), 0x91, i * 14 + 0x4B);
++                            sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), ITEM_FUNCS.getCategory(item), DW3_MENU_RIGHT(0x91), i * 14 + 0x4B);
+                         }
+                     }
+                 }
+@@ -209,38 +209,38 @@
+                 sprite.setTexture(0x280, 0x100);
+                 if (panel->arrowShown) {
+                     if (panel->scroll > 0) {
+-                        sprite.draw(FILE_CACHE.getEntry(FILE_STATUS_SPRITES << 16), 0x32, 0x126, 0x45);
++                        sprite.draw(FILE_CACHE.getEntry(FILE_STATUS_SPRITES << 16), 0x32, DW3_MENU_RIGHT(0x126), 0x45);
+                     }
+                     if (panel->scroll < panel->count - 8) {
+-                        sprite.draw(FILE_CACHE.getEntry(FILE_STATUS_SPRITES << 16), 0x33, 0x126, 0xB3);
++                        sprite.draw(FILE_CACHE.getEntry(FILE_STATUS_SPRITES << 16), 0x33, DW3_MENU_RIGHT(0x126), 0xB3);
+                     }
+                 }
+             }
+         }
+         sprite.setTexture(0x280, 0x100);
+-        sprite.draw(FILE_CACHE.getEntry(FILE_STATUS_SPRITES << 16), 0x2B, 0x77, 0x39);
++        sprite.draw(FILE_CACHE.getEntry(FILE_STATUS_SPRITES << 16), 0x2B, DW3_MENU_RIGHT(0x77), 0x39);
+         if (panel->panels[2].level != ONE) {
+-            sprite.setPivot(0, 0xD3);
++            sprite.setPivot(DW3_MENU_LEFT(0), 0xD3);
+         }
+-        sprite.draw(FILE_CACHE.getEntry(FILE_STATUS_SPRITES << 16), 0x20, 0, 0xC2);
++        sprite.draw(DW3_MENU_BAND(FILE_CACHE.getEntry(FILE_STATUS_SPRITES << 16), 0x20, 160), 0x20, 0, 0xC2);
+     }
+     level = panel->panels[3].level;
+     if (level != 0) {
+         if (level != ONE) {
+             sprite.setScale(level, ONE, ONE);
+-            sprite.setPivot(0x140, 0x20);
++            sprite.setPivot(DW3_MENU_RIGHT(0x140), 0x20);
+         } else {
+             sprite.setScale(ONE, ONE, ONE);
+             if (panel->showSlot) {
+                 item = *(stats->equip + panel->slot); /* the match depends on this form */
+                 if (item > 0) {
+                     sprite.setTexture(0x140, 0);
+-                    sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), ITEM_FUNCS.getCategory(item), 0xB2, 0x23);
++                    sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), ITEM_FUNCS.getCategory(item), DW3_MENU_RIGHT(0xB2), 0x23);
+                 }
+             }
+         }
+         sprite.setTexture(0x280, 0x100);
+-        sprite.draw(FILE_CACHE.getEntry(FILE_STATUS_SPRITES << 16), 0x2C, 0xA0, 0x11);
++        sprite.draw(FILE_CACHE.getEntry(FILE_STATUS_SPRITES << 16), 0x2C, DW3_MENU_RIGHT(0xA0), 0x11);
+     }
+ }
+ 
+@@ -285,7 +285,7 @@
+     }
+     if (oldSlot != panel->slot) {
+         SOUND.playSound(SOUND_CURSOR);
+-        windows->cursor->setPos(windows->cursor, 0xA5, panel->slot * 14 + 0x31);
++        windows->cursor->setPos(windows->cursor, DW3_MENU_RIGHT(0xA5), panel->slot * 14 + 0x31);
+     } else if (PAD_PRESSED(PAD_CROSS)) {
+         SOUND.playSound(SOUND_SELECT);
+         n = 1;
+@@ -344,12 +344,12 @@
+ static inline void STSTATUS_enterEquipList(EquipPanel *panel, EquipPanelWindows *windows) {
+     if (STSTATUS_data.funcs.updateFade(&panel->panels[2])) {
+         STSTATUS_showEquipList(panel, windows, 1);
+-        windows->listCursor->setPos(windows->listCursor, 0x89, 0x4B);
++        windows->listCursor->setPos(windows->listCursor, DW3_MENU_RIGHT(0x89), 0x4B);
+         windows->listCursor->setVisible(windows->listCursor, 1);
+         panel->screen->previewStats(panel->screen, panel->slot, 0);
+         if (panel->count >= 9) {
+             windows->scrollBar = STSTATUS_createScrollBar();
+-            windows->scrollBar->setX(windows->scrollBar, 0x125, 0xC);
++            windows->scrollBar->setX(windows->scrollBar, DW3_MENU_RIGHT(0x125), 0xC);
+             windows->scrollBar->setRange(windows->scrollBar, 0x4E, 0xB3);
+             windows->scrollBar->setCount(windows->scrollBar, 8, panel->count);
+             windows->scrollBar->setPos(windows->scrollBar, 0);
+@@ -408,7 +408,7 @@
+     }
+     if (oldCursor != panel->cursor) {
+         SOUND.playSound(SOUND_CURSOR);
+-        windows->listCursor->setPos(windows->listCursor, 0x86, panel->cursor * 14 + 0x4B);
++        windows->listCursor->setPos(windows->listCursor, DW3_MENU_RIGHT(0x86), panel->cursor * 14 + 0x4B);
+ #if VERSION_US
+         if (windows->scrollBar != NULL) {
+             windows->scrollBar->setPos(windows->scrollBar, panel->cursor + panel->scroll);
+--- a/src/menus/field_menu/item_list.c
++++ b/src/menus/field_menu/item_list.c
+@@ -10,7 +10,7 @@
+     s32 i;
+     s32 j;
+ 
+-    windows->title = createTextWindow(panel->layer, 1, 0x13, 0x14);
++    windows->title = createTextWindow(panel->layer, 1, DW3_MENU_LEFT(0x13), 0x14);
+     for (i = 0; i < 8; i++) {
+         for (j = 0; j < 2; j++) {
+             window = createTextWindow(panel->layer, 1, j * 0x83 + 0x38, i * 14 + 0x25);
+@@ -290,25 +290,25 @@
+     }
+     if (panel->fades[1].level != ONE) {
+         sprite.setScale(panel->fades[1].level, ONE, ONE);
+-        sprite.setPivot(0xC, 0x17);
++        sprite.setPivot(DW3_MENU_LEFT(0xC), 0x17);
+     }
+-    sprite.draw(FILE_CACHE.getEntry(FILE_STATUS_SPRITES << 16), 0x30, 0xC, 0x12);
++    sprite.draw(FILE_CACHE.getEntry(FILE_STATUS_SPRITES << 16), 0x30, DW3_MENU_LEFT(0xC), 0x12);
+     if (panel->fades[0].level != ONE) {
+         sprite.setScale(ONE, panel->fades[0].level, ONE);
+         sprite.setPivot(0xA0, 0x60);
+     } else {
+         sprite.setScale(ONE, ONE, ONE);
+     }
+-    sprite.draw(FILE_CACHE.getEntry(FILE_STATUS_SPRITES << 16), 0x2E, 0, 0x1E);
++    sprite.draw(DW3_MENU_BAND(FILE_CACHE.getEntry(FILE_STATUS_SPRITES << 16), 0x2E, 160), 0x2E, 0, 0x1E);
+     if (panel->fades[2].level) {
+         sprite.setLayerId(panel->layer, panel->depth - 2);
+         if (panel->fades[2].level != ONE) {
+             sprite.setScale(panel->fades[2].level, ONE, ONE);
+-            sprite.setPivot(0x140, 0x26);
++            sprite.setPivot(DW3_MENU_RIGHT(0x140), 0x26);
+         } else {
+             sprite.setScale(ONE, ONE, ONE);
+         }
+-        sprite.draw(FILE_CACHE.getEntry(FILE_STATUS_SPRITES << 16), 0x26, 0xA0, 0x12);
++        sprite.draw(FILE_CACHE.getEntry(FILE_STATUS_SPRITES << 16), 0x26, DW3_MENU_RIGHT(0xA0), 0x12);
+     }
+ }
+ 
+--- a/src/menus/field_menu/item_screen.c
++++ b/src/menus/field_menu/item_screen.c
+@@ -14,39 +14,39 @@
+     s32 j;
+ 
+     pos = &STSTATUS_data.layout[11];
+-    windows->title = createTextWindow(screen->layer, 1, pos->x, pos->y);
++    windows->title = createTextWindow(screen->layer, 1, DW3_MENU_RIGHT(pos->x), pos->y);
+     pos = &STSTATUS_data.layout[12];
+-    windows->help = createTextWindow(screen->layer, 1, pos->x, pos->y);
+-    windows->kind = createTextWindow(screen->layer, 1, pos->x, pos->y + 14);
+-    windows->answers[0] = createTextWindow(screen->layer, 1, pos->x + 0x10, pos->y + 14);
+-    windows->answers[1] = createTextWindow(screen->layer, 1, pos->x + 0x42, pos->y + 14);
+-    windows->answerCursor = createCursor(screen->layer, screen->depth - 1, pos->x, pos->y + 14);
++    windows->help = createTextWindow(screen->layer, 1, DW3_MENU_LEFT(pos->x), pos->y);
++    windows->kind = createTextWindow(screen->layer, 1, DW3_MENU_LEFT(pos->x), pos->y + 14);
++    windows->answers[0] = createTextWindow(screen->layer, 1, DW3_MENU_LEFT(pos->x + 0x10), pos->y + 14);
++    windows->answers[1] = createTextWindow(screen->layer, 1, DW3_MENU_LEFT(pos->x + 0x42), pos->y + 14);
++    windows->answerCursor = createCursor(screen->layer, screen->depth - 1, DW3_MENU_LEFT(pos->x), pos->y + 14);
+     windows->answerCursor->setVisible(windows->answerCursor, 0);
+     for (j = 0; j < 3; j++) {
+         pos = &STSTATUS_data.layout[0];
+-        windows->pages[j].name = createTextWindow(screen->layer, 1, pos->x, pos->y + j * 46);
++        windows->pages[j].name = createTextWindow(screen->layer, 1, DW3_MENU_LEFT(pos->x), pos->y + j * 46);
+         pos = &STSTATUS_data.layout[1];
+         for (i = 0; i < 5; i++, pos++) {
+-            windows->pages[j].labels[i] = createTextWindow(screen->layer, 3, pos->x, pos->y + j * 46);
++            windows->pages[j].labels[i] = createTextWindow(screen->layer, 3, DW3_MENU_LEFT(pos->x), pos->y + j * 46);
+         }
+         pos = &STSTATUS_data.layout[6];
+         for (i = 0; i < 5; i++, pos++) {
+-            windows->pages[j].values[i] = createTextWindow(screen->layer, 3, pos->x, pos->y + j * 46);
++            windows->pages[j].values[i] = createTextWindow(screen->layer, 3, DW3_MENU_LEFT(pos->x), pos->y + j * 46);
+         }
+     }
+-    windows->money = createTextWindow(screen->layer, 3, 0x42, 0xA6);
+-    windows->moneyLabel = createTextWindow(screen->layer, 3, 0x46, 0xA6);
++    windows->money = createTextWindow(screen->layer, 3, DW3_MENU_LEFT(0x42), 0xA6);
++    windows->moneyLabel = createTextWindow(screen->layer, 3, DW3_MENU_LEFT(0x46), 0xA6);
+     pos = &STSTATUS_data.layout[15];
+     for (i = 0; i < 5; i++) {
+-        windows->options[i] = createTextWindow(screen->layer, 1, pos->x, pos->y + i * 14);
++        windows->options[i] = createTextWindow(screen->layer, 1, DW3_MENU_RIGHT(pos->x), pos->y + i * 14);
+     }
+-    windows->optionCursor = createCursor(screen->layer, screen->depth - 1, 0xB0, screen->option * 14 + 0x31);
++    windows->optionCursor = createCursor(screen->layer, screen->depth - 1, DW3_MENU_RIGHT(0xB0), screen->option * 14 + 0x31);
+     windows->optionCursor->setVisible(windows->optionCursor, 0);
+-    windows->itemName = createTextWindow(screen->layer, 1, 0x25, 0xAE);
+-    windows->equippedLabel = createTextWindow(screen->layer, 1, 0xA1, 0xAF);
+-    windows->equipped = createTextWindow(screen->layer, 1, 0xE0, 0xAF);
+-    windows->ownedLabel = createTextWindow(screen->layer, 1, 0xEA, 0xAF);
+-    windows->owned = createTextWindow(screen->layer, 1, 0x128, 0xAF);
++    windows->itemName = createTextWindow(screen->layer, 1, DW3_MENU_LEFT(0x25), 0xAE);
++    windows->equippedLabel = createTextWindow(screen->layer, 1, DW3_MENU_RIGHT(0xA1), 0xAF);
++    windows->equipped = createTextWindow(screen->layer, 1, DW3_MENU_RIGHT(0xE0), 0xAF);
++    windows->ownedLabel = createTextWindow(screen->layer, 1, DW3_MENU_RIGHT(0xEA), 0xAF);
++    windows->owned = createTextWindow(screen->layer, 1, DW3_MENU_RIGHT(0x128), 0xAF);
+ }
+ 
+ /* As STSTATUS_showCardPage */
+@@ -291,14 +291,14 @@
+         if (screen->pageFades[i].level != 0) {
+             if (screen->pageFades[i].level != ONE) {
+                 sprite.setScale(screen->pageFades[i].level, screen->pageFades[i].level, ONE);
+-                sprite.setPivot(0x7C, i * 0x2E + 0x27);
++                sprite.setPivot(DW3_MENU_LEFT(0x7C), i * 0x2E + 0x27);
+             } else {
+                 sprite.setScale(ONE, ONE, ONE);
+             }
+             id = GAME.funcs.getPartyMember(i);
+             sprite.setTexture(0x280, 0x100);
+             sprite.draw(FILE_CACHE.getEntry(FILE_STATUS_SPRITES << 16),
+-                        STSTATUS_data.partnerAnims[id].frames[screen->frames[i]], 0x6B,
++                        STSTATUS_data.partnerAnims[id].frames[screen->frames[i]], DW3_MENU_LEFT(0x6B),
+                         i * 0x2E + 0x13);
+         }
+     }
+@@ -308,48 +308,48 @@
+             /* both branches draw the frame's last part: the match depends on it */
+             if (screen->pageFades[i].level != ONE) {
+                 sprite.setScale(screen->pageFades[i].level, ONE, ONE);
+-                sprite.setPivot(0, i * 0x2E + 0x25);
+-                sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x15, 0, i * 0x2E + 0x11);
++                sprite.setPivot(DW3_MENU_LEFT(0), i * 0x2E + 0x25);
++                sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x15, DW3_MENU_LEFT(0), i * 0x2E + 0x11);
+                 sprite.setScale(screen->pageFades[i].level, screen->pageFades[i].level, ONE);
+-                sprite.setPivot(0x7C, i * 0x2E + 0x27);
+-                sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x16, 0x67, i * 0x2E + 0x13);
++                sprite.setPivot(DW3_MENU_LEFT(0x7C), i * 0x2E + 0x27);
++                sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x16, DW3_MENU_LEFT(0x67), i * 0x2E + 0x13);
+                 sprite.setScale(screen->pageFades[i].level, ONE, ONE);
+-                sprite.setPivot(0, i * 0x2E + 0x25);
+-                sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x17, 0, i * 0x2E + 0x11);
++                sprite.setPivot(DW3_MENU_LEFT(0), i * 0x2E + 0x25);
++                sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x17, DW3_MENU_LEFT(0), i * 0x2E + 0x11);
+             } else {
+                 sprite.setScale(ONE, ONE, ONE);
+-                sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x15, 0, i * 0x2E + 0x11);
+-                sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x16, 0x67, i * 0x2E + 0x13);
+-                sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x17, 0, i * 0x2E + 0x11);
++                sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x15, DW3_MENU_LEFT(0), i * 0x2E + 0x11);
++                sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x16, DW3_MENU_LEFT(0x67), i * 0x2E + 0x13);
++                sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x17, DW3_MENU_LEFT(0), i * 0x2E + 0x11);
+             }
+         }
+     }
+     if (screen->fades[0].level != 0) {
+         if (screen->fades[0].level != ONE) {
+             sprite.setScale(screen->fades[0].level, ONE, ONE);
+-            sprite.setPivot(0x140, 0x19);
++            sprite.setPivot(DW3_MENU_RIGHT(0x140), 0x19);
+         } else {
+             sprite.setScale(ONE, ONE, ONE);
+         }
+-        sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x18, 0x22, 0xD);
++        sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x18, DW3_MENU_RIGHT(0x22), 0xD);
+     }
+     if (screen->fades2[0].level != 0) {
+         if (screen->fades2[0].level != ONE) {
+             sprite.setScale(screen->fades2[0].level, ONE, ONE);
+-            sprite.setPivot(0x140, 0x52);
++            sprite.setPivot(DW3_MENU_RIGHT(0x140), 0x52);
+         } else {
+             sprite.setScale(ONE, ONE, ONE);
+         }
+-        sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x1C, 0xA8, 0x28);
++        sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x1C, DW3_MENU_RIGHT(0xA8), 0x28);
+     }
+     if (screen->fades2[1].level != 0) {
+         if (screen->fades2[1].level != ONE) {
+             sprite.setScale(screen->fades2[1].level, ONE, ONE);
+-            sprite.setPivot(0, 0xA8);
++            sprite.setPivot(DW3_MENU_LEFT(0), 0xA8);
+         } else {
+             sprite.setScale(ONE, ONE, ONE);
+         }
+-        sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x1A, 0, 0x9E);
++        sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x1A, DW3_MENU_LEFT(0), 0x9E);
+     }
+     if (screen->fades[1].level != 0) {
+         if (screen->blink) {
+@@ -362,22 +362,22 @@
+             }
+             sprite.setTexture(0x140, 0);
+             sprite.setClutRow(screen->blinkFrame);
+-            sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0xA, 0x123, 0xD6);
++            sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0xA, DW3_MENU_RIGHT(0x123), 0xD6);
+             sprite.setClutRow(0);
+         }
+         if (screen->fades[1].level != ONE) {
+             sprite.setScale(screen->fades[1].level, ONE, ONE);
+-            sprite.setPivot(0, 0xD3);
++            sprite.setPivot(DW3_MENU_LEFT(0), 0xD3);
+         } else {
+             sprite.setScale(ONE, ONE, ONE);
+         }
+         sprite.setTexture(0x280, 0x100);
+-        sprite.draw(FILE_CACHE.getEntry(FILE_STATUS_SPRITES << 16), 0x20, 0, 0xC2);
++        sprite.draw(DW3_MENU_BAND(FILE_CACHE.getEntry(FILE_STATUS_SPRITES << 16), 0x20, 160), 0x20, 0, 0xC2);
+     }
+     if (screen->fade.level != 0) {
+         if (screen->fade.level != ONE) {
+             sprite.setScale(screen->fade.level, ONE, ONE);
+-            sprite.setPivot(0x140, 0xB2);
++            sprite.setPivot(DW3_MENU_RIGHT(0x140), 0xB2);
+         } else {
+             sprite.setScale(ONE, ONE, ONE);
+             sprite.setTexture(0x140, 0);
+@@ -392,20 +392,20 @@
+                 fprintf(stderr, "dw3: items screen: panel icon skipped, no item chosen yet (patch 0069)\n");
+             } else {
+ #endif
+-            sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), ITEM_FUNCS.getCategory(screen->item), 0x16, 0xAE);
++            sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), ITEM_FUNCS.getCategory(screen->item), DW3_MENU_LEFT(0x16), 0xAE);
+ #if PORT_HOST
+             }
+ #endif
+         }
+         sprite.setTexture(0x280, 0x100);
+-        sprite.draw(FILE_CACHE.getEntry(FILE_STATUS_SPRITES << 16), 0x2F, 0xF, 0xA5);
++        sprite.draw(DW3_MENU_BAND(FILE_CACHE.getEntry(FILE_STATUS_SPRITES << 16), 0x2F, 139), 0x2F, 0xF, 0xA5);
+     }
+     if (screen->cursorShown) {
+         STSTATUS_stepItemCursor(screen);
+         sprite.setScale(ONE, ONE, ONE);
+         sprite.setLayerId(screen->layer, screen->depth - 1);
+         sprite.setClutRow(screen->cursorFrame);
+-        sprite.draw(FILE_CACHE.getEntry(FILE_STATUS_SPRITES << 16), 0x1E, 0, screen->member * 0x2E + 0x11);
++        sprite.draw(FILE_CACHE.getEntry(FILE_STATUS_SPRITES << 16), 0x1E, DW3_MENU_LEFT(0), screen->member * 0x2E + 0x11);
+     }
+ }
+ 
+@@ -556,7 +556,7 @@
+     if (old != screen->option) {
+         SOUND.playSound(SOUND_CURSOR);
+         windows->help->setString(windows->help, FILE_CACHE.load(TEXT_FILE(TEXT_STATUS)), screen->option + 0x1B);
+-        windows->optionCursor->setPos(windows->optionCursor, 0xB0, screen->option * 0xE + 0x31);
++        windows->optionCursor->setPos(windows->optionCursor, DW3_MENU_RIGHT(0xB0), screen->option * 0xE + 0x31);
+     } else if (PAD_PRESSED(PAD_CROSS)) {
+         SOUND.playSound(SOUND_SELECT);
+         screen->itemCount = ITEM_FUNCS.list(STSTATUS_itemLists[screen->option], screen->items);
+--- a/src/menus/field_menu/sort_screen.c
++++ b/src/menus/field_menu/sort_screen.c
+@@ -11,19 +11,19 @@
+     WindowPos *pos;
+ 
+     pos = &STSTATUS_data.layout[11];
+-    windows->title = createTextWindow(screen->layer, 1, pos->x, pos->y);
++    windows->title = createTextWindow(screen->layer, 1, DW3_MENU_RIGHT(pos->x), pos->y);
+     pos = &STSTATUS_data.layout[12];
+-    windows->help = createTextWindow(screen->layer, 1, pos->x, pos->y);
++    windows->help = createTextWindow(screen->layer, 1, DW3_MENU_LEFT(pos->x), pos->y);
+     for (j = 0; j < 3; j++) {
+         pos = &STSTATUS_data.layout[0];
+-        windows->pages[j].name = createTextWindow(screen->layer, 1, pos->x, pos->y + j * 46);
++        windows->pages[j].name = createTextWindow(screen->layer, 1, DW3_MENU_LEFT(pos->x), pos->y + j * 46);
+         pos = &STSTATUS_data.layout[1];
+         for (i = 0; i < 5; i++, pos++) {
+-            windows->pages[j].labels[i] = createTextWindow(screen->layer, 3, pos->x, pos->y + j * 46);
++            windows->pages[j].labels[i] = createTextWindow(screen->layer, 3, DW3_MENU_LEFT(pos->x), pos->y + j * 46);
+         }
+         pos = &STSTATUS_data.layout[6];
+         for (i = 0; i < 5; i++, pos++) {
+-            windows->pages[j].values[i] = createTextWindow(screen->layer, 3, pos->x, pos->y + j * 46);
++            windows->pages[j].values[i] = createTextWindow(screen->layer, 3, DW3_MENU_LEFT(pos->x), pos->y + j * 46);
+         }
+     }
+ }
+@@ -112,19 +112,19 @@
+     if (screen->cursorShown) {
+         if (screen->substate == 6) {
+             sprite.setClutRow(screen->cursorFrame);
+-            sprite.draw(FILE_CACHE.getEntry(FILE_STATUS_SPRITES << 16), 0x1E, 0, screen->cursor * 0x2E + 0x11);
++            sprite.draw(FILE_CACHE.getEntry(FILE_STATUS_SPRITES << 16), 0x1E, DW3_MENU_LEFT(0), screen->cursor * 0x2E + 0x11);
+         } else if (screen->substate == 7) {
+             sprite.setClutRow(screen->cursorFrame);
+-            sprite.draw(FILE_CACHE.getEntry(FILE_STATUS_SPRITES << 16), 0x1E, 0, screen->second * 0x2E + 0x11);
++            sprite.draw(FILE_CACHE.getEntry(FILE_STATUS_SPRITES << 16), 0x1E, DW3_MENU_LEFT(0), screen->second * 0x2E + 0x11);
+             sprite.setClutRow(8);
+-            sprite.draw(FILE_CACHE.getEntry(FILE_STATUS_SPRITES << 16), 0x1E, 0, screen->first * 0x2E + 0x11);
++            sprite.draw(FILE_CACHE.getEntry(FILE_STATUS_SPRITES << 16), 0x1E, DW3_MENU_LEFT(0), screen->first * 0x2E + 0x11);
+         } else if (screen->substate == 8) {
+             sprite.setScale(ONE, screen->fade.level, ONE);
+-            sprite.setPivot(0, screen->first * 0x2E + 0x25);
++            sprite.setPivot(DW3_MENU_LEFT(0), screen->first * 0x2E + 0x25);
+             sprite.setClutRow(8);
+-            sprite.draw(FILE_CACHE.getEntry(FILE_STATUS_SPRITES << 16), 0x1E, 0, screen->first * 0x2E + 0x11);
+-            sprite.setPivot(0, screen->second * 0x2E + 0x25);
+-            sprite.draw(FILE_CACHE.getEntry(FILE_STATUS_SPRITES << 16), 0x1E, 0, screen->second * 0x2E + 0x11);
++            sprite.draw(FILE_CACHE.getEntry(FILE_STATUS_SPRITES << 16), 0x1E, DW3_MENU_LEFT(0), screen->first * 0x2E + 0x11);
++            sprite.setPivot(DW3_MENU_LEFT(0), screen->second * 0x2E + 0x25);
++            sprite.draw(FILE_CACHE.getEntry(FILE_STATUS_SPRITES << 16), 0x1E, DW3_MENU_LEFT(0), screen->second * 0x2E + 0x11);
+         }
+         sprite.setClutRow(0);
+     }
+@@ -133,10 +133,10 @@
+         if (screen->pageFades[i].level != 0) {
+             if (screen->pageFades[i].level != ONE) {
+                 sprite.setScale(screen->pageFades[i].level, screen->pageFades[i].level, ONE);
+-                sprite.setPivot(0x7C, i * 0x2E + 0x27);
++                sprite.setPivot(DW3_MENU_LEFT(0x7C), i * 0x2E + 0x27);
+             } else if ((screen->substate == 8 || screen->substate == 9) && (i == screen->first || i == screen->second)) {
+                 sprite.setScale(ONE, screen->fade.level, ONE);
+-                sprite.setPivot(0x7C, i * 0x2E + 0x27);
++                sprite.setPivot(DW3_MENU_LEFT(0x7C), i * 0x2E + 0x27);
+             } else {
+                 sprite.setScale(ONE, ONE, ONE);
+             }
+@@ -144,7 +144,7 @@
+             /* the match depends on (*&...): FILE_CACHE.getEntry would keep the
+                cache's address in a register through the loop */
+             sprite.draw((*&FILE_CACHE.getEntry)(FILE_STATUS_SPRITES << 16),
+-                        STSTATUS_data.partnerAnims[id].frames[screen->frames[i]], 0x6B, i * 0x2E + 0x13);
++                        STSTATUS_data.partnerAnims[id].frames[screen->frames[i]], DW3_MENU_LEFT(0x6B), i * 0x2E + 0x13);
+         }
+     }
+     sprite.setTexture(0x140, 0);
+@@ -154,55 +154,55 @@
+         if (screen->pageFades[i].level != 0) {
+             if (screen->pageFades[i].level != ONE) {
+                 sprite.setScale(screen->pageFades[i].level, ONE, ONE);
+-                sprite.setPivot(0, i * 0x2E + 0x25);
+-                sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x15, 0, i * 0x2E + 0x11);
++                sprite.setPivot(DW3_MENU_LEFT(0), i * 0x2E + 0x25);
++                sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x15, DW3_MENU_LEFT(0), i * 0x2E + 0x11);
+                 sprite.setScale(screen->pageFades[i].level, screen->pageFades[i].level, ONE);
+-                sprite.setPivot(0x7C, i * 0x2E + 0x27);
+-                sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x16, 0x67, i * 0x2E + 0x13);
++                sprite.setPivot(DW3_MENU_LEFT(0x7C), i * 0x2E + 0x27);
++                sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x16, DW3_MENU_LEFT(0x67), i * 0x2E + 0x13);
+                 sprite.setScale(screen->pageFades[i].level, ONE, ONE);
+-                sprite.setPivot(0, i * 0x2E + 0x25);
+-                sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x17, 0, i * 0x2E + 0x11);
++                sprite.setPivot(DW3_MENU_LEFT(0), i * 0x2E + 0x25);
++                sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x17, DW3_MENU_LEFT(0), i * 0x2E + 0x11);
+             } else if (screen->substate == 8 || screen->substate == 9) {
+                 if (i == screen->first || i == screen->second) {
+                     sprite.setScale(ONE, screen->fade.level, ONE);
+-                    sprite.setPivot(0, i * 0x2E + 0x25);
+-                    sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x15, 0, i * 0x2E + 0x11);
+-                    sprite.setPivot(0x7C, i * 0x2E + 0x27);
+-                    sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x16, 0x67, i * 0x2E + 0x13);
+-                    sprite.setPivot(0, i * 0x2E + 0x25);
+-                    sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x17, 0, i * 0x2E + 0x11);
++                    sprite.setPivot(DW3_MENU_LEFT(0), i * 0x2E + 0x25);
++                    sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x15, DW3_MENU_LEFT(0), i * 0x2E + 0x11);
++                    sprite.setPivot(DW3_MENU_LEFT(0x7C), i * 0x2E + 0x27);
++                    sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x16, DW3_MENU_LEFT(0x67), i * 0x2E + 0x13);
++                    sprite.setPivot(DW3_MENU_LEFT(0), i * 0x2E + 0x25);
++                    sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x17, DW3_MENU_LEFT(0), i * 0x2E + 0x11);
+                 } else {
+                     sprite.setScale(ONE, ONE, ONE);
+-                    sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x15, 0, i * 0x2E + 0x11);
+-                    sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x16, 0x67, i * 0x2E + 0x13);
+-                    sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x17, 0, i * 0x2E + 0x11);
++                    sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x15, DW3_MENU_LEFT(0), i * 0x2E + 0x11);
++                    sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x16, DW3_MENU_LEFT(0x67), i * 0x2E + 0x13);
++                    sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x17, DW3_MENU_LEFT(0), i * 0x2E + 0x11);
+                 }
+             } else {
+                 sprite.setScale(ONE, ONE, ONE);
+-                sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x15, 0, i * 0x2E + 0x11);
+-                sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x16, 0x67, i * 0x2E + 0x13);
+-                sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x17, 0, i * 0x2E + 0x11);
++                sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x15, DW3_MENU_LEFT(0), i * 0x2E + 0x11);
++                sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x16, DW3_MENU_LEFT(0x67), i * 0x2E + 0x13);
++                sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x17, DW3_MENU_LEFT(0), i * 0x2E + 0x11);
+             }
+         }
+     }
+     if (screen->fades[0].level != 0) {
+         if (screen->fades[0].level != ONE) {
+             sprite.setScale(screen->fades[0].level, ONE, ONE);
+-            sprite.setPivot(0x140, 0x19);
++            sprite.setPivot(DW3_MENU_RIGHT(0x140), 0x19);
+         } else {
+             sprite.setScale(ONE, ONE, ONE);
+         }
+-        sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x18, 0x22, 0xD);
++        sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x18, DW3_MENU_RIGHT(0x22), 0xD);
+     }
+     if (screen->fades[1].level != 0) {
+         if (screen->fades[1].level != ONE) {
+             sprite.setScale(screen->fades[1].level, ONE, ONE);
+-            sprite.setPivot(0, 0xD3);
++            sprite.setPivot(DW3_MENU_LEFT(0), 0xD3);
+         } else {
+             sprite.setScale(ONE, ONE, ONE);
+         }
+         sprite.setTexture(0x280, 0x100);
+-        sprite.draw(FILE_CACHE.getEntry(FILE_STATUS_SPRITES << 16), 0x20, 0, 0xC2);
++        sprite.draw(DW3_MENU_BAND(FILE_CACHE.getEntry(FILE_STATUS_SPRITES << 16), 0x20, 160), 0x20, 0, 0xC2);
+     }
+     if (screen->arrowShown) {
+         STSTATUS_stepSortArrow(screen);
+@@ -212,23 +212,23 @@
+         case 0:
+         default:
+             if (screen->second == 1) {
+-                sprite.draw(FILE_CACHE.getEntry(FILE_STATUS_SPRITES << 16), 0x29, 0x93, 0x22);
++                sprite.draw(FILE_CACHE.getEntry(FILE_STATUS_SPRITES << 16), 0x29, DW3_MENU_LEFT(0x93), 0x22);
+             } else {
+-                sprite.draw(FILE_CACHE.getEntry(FILE_STATUS_SPRITES << 16), 0x28, 0x93, 0x22);
++                sprite.draw(FILE_CACHE.getEntry(FILE_STATUS_SPRITES << 16), 0x28, DW3_MENU_LEFT(0x93), 0x22);
+             }
+             break;
+         case 1:
+             if (screen->second == 0) {
+-                sprite.draw(FILE_CACHE.getEntry(FILE_STATUS_SPRITES << 16), 0x29, 0x93, 0x22);
++                sprite.draw(FILE_CACHE.getEntry(FILE_STATUS_SPRITES << 16), 0x29, DW3_MENU_LEFT(0x93), 0x22);
+             } else {
+-                sprite.draw(FILE_CACHE.getEntry(FILE_STATUS_SPRITES << 16), 0x29, 0x93, 0x4F);
++                sprite.draw(FILE_CACHE.getEntry(FILE_STATUS_SPRITES << 16), 0x29, DW3_MENU_LEFT(0x93), 0x4F);
+             }
+             break;
+         case 2:
+             if (screen->second == 0) {
+-                sprite.draw(FILE_CACHE.getEntry(FILE_STATUS_SPRITES << 16), 0x28, 0x93, 0x22);
++                sprite.draw(FILE_CACHE.getEntry(FILE_STATUS_SPRITES << 16), 0x28, DW3_MENU_LEFT(0x93), 0x22);
+             } else {
+-                sprite.draw(FILE_CACHE.getEntry(FILE_STATUS_SPRITES << 16), 0x29, 0x93, 0x4F);
++                sprite.draw(FILE_CACHE.getEntry(FILE_STATUS_SPRITES << 16), 0x29, DW3_MENU_LEFT(0x93), 0x4F);
+             }
+             break;
+         }
+--- a/src/menus/field_menu/status_screen.c
++++ b/src/menus/field_menu/status_screen.c
+@@ -10,47 +10,47 @@
+     s32 j;
+ 
+     pos = &STSTATUS_data.layout[11];
+-    windows->title = createTextWindow(screen->layer, 1, pos->x, pos->y);
++    windows->title = createTextWindow(screen->layer, 1, DW3_MENU_RIGHT(pos->x), pos->y);
+     for (j = 0; j < 3; j++) {
+         pos = &STSTATUS_data.layout[0];
+-        windows->pages[j].name = createTextWindow(screen->layer, 1, pos->x, pos->y + j * 46);
++        windows->pages[j].name = createTextWindow(screen->layer, 1, DW3_MENU_LEFT(pos->x), pos->y + j * 46);
+         pos = &STSTATUS_data.layout[1];
+         for (i = 0; i < 5; i++, pos++) {
+-            windows->pages[j].labels[i] = createTextWindow(screen->layer, 3, pos->x, pos->y + j * 46);
++            windows->pages[j].labels[i] = createTextWindow(screen->layer, 3, DW3_MENU_LEFT(pos->x), pos->y + j * 46);
+         }
+         pos = &STSTATUS_data.layout[6];
+         for (i = 0; i < 5; i++, pos++) {
+-            windows->pages[j].values[i] = createTextWindow(screen->layer, 3, pos->x, pos->y + j * 46);
++            windows->pages[j].values[i] = createTextWindow(screen->layer, 3, DW3_MENU_LEFT(pos->x), pos->y + j * 46);
+         }
+     }
+     pos = &STSTATUS_data.layout[12];
+-    windows->help = createTextWindow(screen->layer, 1, pos->x, pos->y);
++    windows->help = createTextWindow(screen->layer, 1, DW3_MENU_LEFT(pos->x), pos->y);
+     windows->help->setLines(windows->help, 2);
+-    windows->help2 = createTextWindow(screen->layer, 1, pos->x, pos->y + 14);
++    windows->help2 = createTextWindow(screen->layer, 1, DW3_MENU_LEFT(pos->x), pos->y + 14);
+     for (i = 0; i < 2; i++) {
+-        windows->options[i] = createTextWindow(screen->layer, 1, 0xAC, 0x13 + i * 14);
++        windows->options[i] = createTextWindow(screen->layer, 1, DW3_MENU_RIGHT(0xAC), 0x13 + i * 14);
+     }
+-    windows->cursor = createCursor(screen->layer, screen->depth - 1, 0x98, screen->option * 14 + 0x13);
++    windows->cursor = createCursor(screen->layer, screen->depth - 1, DW3_MENU_RIGHT(0x98), screen->option * 14 + 0x13);
+     windows->cursor->setVisible(windows->cursor, 0);
+-    windows->exp = createTextWindow(screen->layer, 3, 0x42, 0x45);
+-    windows->expLabel = createTextWindow(screen->layer, 3, 0x46, 0x45);
+-    windows->slotTitle = createTextWindow(screen->layer, 1, 0xA7, 0x37);
++    windows->exp = createTextWindow(screen->layer, 3, DW3_MENU_LEFT(0x42), 0x45);
++    windows->expLabel = createTextWindow(screen->layer, 3, DW3_MENU_LEFT(0x46), 0x45);
++    windows->slotTitle = createTextWindow(screen->layer, 1, DW3_MENU_RIGHT(0xA7), 0x37);
+     for (i = 0; i < 3; i++) {
+-        windows->slots[i] = createTextWindow(screen->layer, 1, 0xB2, 0x47 + i * 14);
++        windows->slots[i] = createTextWindow(screen->layer, 1, DW3_MENU_RIGHT(0xB2), 0x47 + i * 14);
+     }
+-    windows->equipTitle = createTextWindow(screen->layer, 1, 0xA7, 0x79);
++    windows->equipTitle = createTextWindow(screen->layer, 1, DW3_MENU_RIGHT(0xA7), 0x79);
+     for (i = 0; i < 6; i++) {
+-        windows->equip[i] = createTextWindow(screen->layer, 1, 0xC0, 0x89 + i * 14);
++        windows->equip[i] = createTextWindow(screen->layer, 1, DW3_MENU_RIGHT(0xC0), 0x89 + i * 14);
+     }
+     for (i = 0; i < 6; i++) {
+-        windows->values[i] = createTextWindow(screen->layer, 1, 0x32, 0x5B + i * 14);
++        windows->values[i] = createTextWindow(screen->layer, 1, DW3_MENU_LEFT(0x32), 0x5B + i * 14);
+     }
+     for (i = 0; i < 7; i++) {
+-        windows->values[6 + i] = createTextWindow(screen->layer, 1, 0x5B, 0x5B + i * 14);
++        windows->values[6 + i] = createTextWindow(screen->layer, 1, DW3_MENU_LEFT(0x5B), 0x5B + i * 14);
+     }
+-    windows->tpLabel = createTextWindow(screen->layer, 1, 0x10, 0xCB);
++    windows->tpLabel = createTextWindow(screen->layer, 1, DW3_MENU_LEFT(0x10), 0xCB);
+     windows->tpLabel->setDepth(windows->tpLabel, screen->depth - 1);
+-    windows->tp = createTextWindow(screen->layer, 1, 0x2D, 0xCB);
++    windows->tp = createTextWindow(screen->layer, 1, DW3_MENU_LEFT(0x2D), 0xCB);
+     windows->tp->setDepth(windows->tp, screen->depth - 1);
+ }
+ 
+@@ -401,13 +401,13 @@
+         if (screen->pageFades[i].level != 0) {
+             if (screen->pageFades[i].level != ONE) {
+                 sprite.setScale(screen->pageFades[i].level, screen->pageFades[i].level, ONE);
+-                sprite.setPivot(0x7C, i * 0x2E + 0x27);
++                sprite.setPivot(DW3_MENU_LEFT(0x7C), i * 0x2E + 0x27);
+             } else {
+                 sprite.setScale(ONE, ONE, ONE);
+             }
+             id = GAME.funcs.getPartyMember(i);
+             sprite.draw(FILE_CACHE.getEntry(FILE_STATUS_SPRITES << 16),
+-                        STSTATUS_data.partnerAnims[id].frames[screen->frames[i]], 0x6B,
++                        STSTATUS_data.partnerAnims[id].frames[screen->frames[i]], DW3_MENU_LEFT(0x6B),
+                         i * 0x2E + 0x13);
+         }
+     }
+@@ -417,19 +417,19 @@
+             /* both branches draw the frame's last part: the match depends on it */
+             if (screen->pageFades[i].level != ONE) {
+                 sprite.setScale(screen->pageFades[i].level, ONE, ONE);
+-                sprite.setPivot(0, i * 0x2E + 0x25);
+-                sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x15, 0, i * 0x2E + 0x11);
++                sprite.setPivot(DW3_MENU_LEFT(0), i * 0x2E + 0x25);
++                sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x15, DW3_MENU_LEFT(0), i * 0x2E + 0x11);
+                 sprite.setScale(screen->pageFades[i].level, screen->pageFades[i].level, ONE);
+-                sprite.setPivot(0x7C, i * 0x2E + 0x27);
+-                sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x16, 0x67, i * 0x2E + 0x13);
++                sprite.setPivot(DW3_MENU_LEFT(0x7C), i * 0x2E + 0x27);
++                sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x16, DW3_MENU_LEFT(0x67), i * 0x2E + 0x13);
+                 sprite.setScale(screen->pageFades[i].level, ONE, ONE);
+-                sprite.setPivot(0, i * 0x2E + 0x25);
+-                sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x17, 0, i * 0x2E + 0x11);
++                sprite.setPivot(DW3_MENU_LEFT(0), i * 0x2E + 0x25);
++                sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x17, DW3_MENU_LEFT(0), i * 0x2E + 0x11);
+             } else {
+                 sprite.setScale(ONE, ONE, ONE);
+-                sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x15, 0, i * 0x2E + 0x11);
+-                sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x16, 0x67, i * 0x2E + 0x13);
+-                sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x17, 0, i * 0x2E + 0x11);
++                sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x15, DW3_MENU_LEFT(0), i * 0x2E + 0x11);
++                sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x16, DW3_MENU_LEFT(0x67), i * 0x2E + 0x13);
++                sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x17, DW3_MENU_LEFT(0), i * 0x2E + 0x11);
+             }
+         }
+     }
+@@ -437,87 +437,87 @@
+         sprite.setTexture(0x280, 0x100);
+         if (screen->panelFades[0].level != ONE) {
+             sprite.setScale(screen->panelFades[0].level, screen->panelFades[0].level, ONE);
+-            sprite.setPivot(0x7C, 0x27);
++            sprite.setPivot(DW3_MENU_LEFT(0x7C), 0x27);
+         } else {
+             sprite.setScale(ONE, ONE, ONE);
+         }
+         id = GAME.funcs.getPartyMember(screen->member);
+         sprite.draw(FILE_CACHE.getEntry(FILE_STATUS_SPRITES << 16),
+-                    STSTATUS_data.partnerAnims[id].frames[screen->frames[screen->member]], 0x6B, 0x13);
++                    STSTATUS_data.partnerAnims[id].frames[screen->frames[screen->member]], DW3_MENU_LEFT(0x6B), 0x13);
+         sprite.setTexture(0x140, 0);
+         if (screen->panelFades[0].level != ONE) {
+             sprite.setScale(screen->panelFades[0].level, ONE, ONE);
+-            sprite.setPivot(0, 0x25);
+-            sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x15, 0, 0x11);
++            sprite.setPivot(DW3_MENU_LEFT(0), 0x25);
++            sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x15, DW3_MENU_LEFT(0), 0x11);
+             sprite.setScale(screen->panelFades[0].level, screen->panelFades[0].level, ONE);
+-            sprite.setPivot(0x7C, 0x27);
+-            sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x16, 0x67, 0x13);
++            sprite.setPivot(DW3_MENU_LEFT(0x7C), 0x27);
++            sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x16, DW3_MENU_LEFT(0x67), 0x13);
+             sprite.setScale(screen->panelFades[0].level, ONE, ONE);
+-            sprite.setPivot(0, 0x25);
+-            sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x17, 0, 0x11);
++            sprite.setPivot(DW3_MENU_LEFT(0), 0x25);
++            sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x17, DW3_MENU_LEFT(0), 0x11);
+         } else {
+-            sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x15, 0, 0x11);
+-            sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x16, 0x67, 0x13);
+-            sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x17, 0, 0x11);
++            sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x15, DW3_MENU_LEFT(0), 0x11);
++            sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x16, DW3_MENU_LEFT(0x67), 0x13);
++            sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x17, DW3_MENU_LEFT(0), 0x11);
+         }
+     }
+     if (screen->fades[0].level != 0) {
+         if (screen->fades[0].level != ONE) {
+             sprite.setScale(screen->fades[0].level, ONE, ONE);
+-            sprite.setPivot(0x140, 0x19);
++            sprite.setPivot(DW3_MENU_RIGHT(0x140), 0x19);
+         } else {
+             sprite.setScale(ONE, ONE, ONE);
+         }
+-        sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x18, 0x22, 0xD);
++        sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x18, DW3_MENU_RIGHT(0x22), 0xD);
+     }
+     if (screen->panelFades[5].level != 0) {
+         if (screen->panelFades[5].level != ONE) {
+             sprite.setScale(screen->panelFades[5].level, ONE, ONE);
+-            sprite.setPivot(0, 0x47);
++            sprite.setPivot(DW3_MENU_LEFT(0), 0x47);
+         } else {
+             sprite.setScale(ONE, ONE, ONE);
+         }
+-        sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x1A, 0, 0x3D);
++        sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x1A, DW3_MENU_LEFT(0), 0x3D);
+     }
+     sprite.setTexture(0x280, 0x100);
+     if (screen->fades[1].level != 0) {
+         if (screen->fades[1].level != ONE) {
+             sprite.setScale(screen->fades[1].level, ONE, ONE);
+-            sprite.setPivot(0, 0xD3);
++            sprite.setPivot(DW3_MENU_LEFT(0), 0xD3);
+         } else {
+             sprite.setScale(ONE, ONE, ONE);
+         }
+-        sprite.draw(FILE_CACHE.getEntry(FILE_STATUS_SPRITES << 16), 0x20, 0, 0xC2);
++        sprite.draw(DW3_MENU_BAND(FILE_CACHE.getEntry(FILE_STATUS_SPRITES << 16), 0x20, 160), 0x20, 0, 0xC2);
+     }
+     if (screen->panelFades[2].level != 0) {
+         if (screen->panelFades[2].level != ONE) {
+             sprite.setScale(screen->panelFades[2].level, ONE, ONE);
+-            sprite.setPivot(0, 0x88);
++            sprite.setPivot(DW3_MENU_LEFT(0), 0x88);
+         } else {
+             sprite.setScale(ONE, ONE, ONE);
+         }
+         sprite.setTexture(0x140, 0);
+-        sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0xF, 0, 0x57);
++        sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0xF, DW3_MENU_LEFT(0), 0x57);
+         sprite.setTexture(0x280, 0x100);
+-        sprite.draw(FILE_CACHE.getEntry(FILE_STATUS_SPRITES << 16), 0x21, 0, 0x54);
++        sprite.draw(FILE_CACHE.getEntry(FILE_STATUS_SPRITES << 16), 0x21, DW3_MENU_LEFT(0), 0x54);
+         if (screen->panelFades[2].level != ONE) {
+-            sprite.setPivot(0, 0xD0);
++            sprite.setPivot(DW3_MENU_LEFT(0), 0xD0);
+         }
+-        sprite.draw(FILE_CACHE.getEntry(FILE_STATUS_SPRITES << 16), 0x3C, 0, 0xC4);
++        sprite.draw(FILE_CACHE.getEntry(FILE_STATUS_SPRITES << 16), 0x3C, DW3_MENU_LEFT(0), 0xC4);
+     }
+     if (screen->panelFades[3].level != 0) {
+         if (screen->panelFades[3].level != ONE) {
+             sprite.setScale(screen->panelFades[3].level, ONE, ONE);
+-            sprite.setPivot(0x140, 0x55);
++            sprite.setPivot(DW3_MENU_RIGHT(0x140), 0x55);
+         } else {
+             sprite.setScale(ONE, ONE, ONE);
+         }
+-        sprite.draw(FILE_CACHE.getEntry(FILE_STATUS_SPRITES << 16), 0x22, 0xA0, 0x35);
++        sprite.draw(FILE_CACHE.getEntry(FILE_STATUS_SPRITES << 16), 0x22, DW3_MENU_RIGHT(0xA0), 0x35);
+     }
+     if (screen->panelFades[4].level != 0) {
+         if (screen->panelFades[4].level != ONE) {
+             sprite.setScale(screen->panelFades[4].level, ONE, ONE);
+-            sprite.setPivot(0x140, 0xAC);
++            sprite.setPivot(DW3_MENU_RIGHT(0x140), 0xAC);
+         } else {
+             sprite.setScale(ONE, ONE, ONE);
+             stats = GAME.funcs.getPartnerStats(GAME.funcs.getPartyMember(screen->member));
+@@ -525,22 +525,22 @@
+                 item = stats->equip[i];
+                 if (item > 0) {
+                     sprite.setTexture(0x140, 0);
+-                    sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), ITEM_FUNCS.getCategory(item), 0xB2,
++                    sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), ITEM_FUNCS.getCategory(item), DW3_MENU_RIGHT(0xB2),
+                                 i * 14 + 0x89);
+                 }
+             }
+         }
+         sprite.setTexture(0x280, 0x100);
+-        sprite.draw(FILE_CACHE.getEntry(FILE_STATUS_SPRITES << 16), 0x23, 0xA0, 0x77);
++        sprite.draw(FILE_CACHE.getEntry(FILE_STATUS_SPRITES << 16), 0x23, DW3_MENU_RIGHT(0xA0), 0x77);
+     }
+     if (screen->panelFades[1].level != 0) {
+         if (screen->panelFades[1].level != ONE) {
+             sprite.setScale(screen->panelFades[1].level, ONE, ONE);
+-            sprite.setPivot(0x140, 0x20);
++            sprite.setPivot(DW3_MENU_RIGHT(0x140), 0x20);
+         } else {
+             sprite.setScale(ONE, ONE, ONE);
+         }
+-        sprite.draw(FILE_CACHE.getEntry(FILE_STATUS_SPRITES << 16), 0x1F, 0x14, 0xD);
++        sprite.draw(FILE_CACHE.getEntry(FILE_STATUS_SPRITES << 16), 0x1F, DW3_MENU_RIGHT(0x14), 0xD);
+     }
+     if (screen->cursorShown) {
+         STSTATUS_stepStatusCursor(screen);
+@@ -548,7 +548,7 @@
+         sprite.setLayerId(screen->layer, screen->depth - 1);
+         sprite.setTexture(0x280, 0x100);
+         sprite.setClutRow(screen->cursorFrame);
+-        sprite.draw(FILE_CACHE.getEntry(FILE_STATUS_SPRITES << 16), 0x1E, 0, screen->member * 0x2E + 0x11);
++        sprite.draw(FILE_CACHE.getEntry(FILE_STATUS_SPRITES << 16), 0x1E, DW3_MENU_LEFT(0), screen->member * 0x2E + 0x11);
+     }
+ }
+ 
+@@ -593,7 +593,7 @@
+                                       GAME.funcs.getPartnerStats(GAME.funcs.getPartyMember(screen->member))->exp);
+             windows->exp->setRightAlign(windows->exp, 1);
+             windows->expLabel->setString(windows->expLabel, FILE_CACHE.load(TEXT_FILE(TEXT_STATUS)), 0x35);
+-            windows->cursor->setPos(windows->cursor, 0x98, screen->option * 14 + 0x13);
++            windows->cursor->setPos(windows->cursor, DW3_MENU_RIGHT(0x98), screen->option * 14 + 0x13);
+             windows->cursor->setVisible(windows->cursor, 1);
+             screen->step++;
+         }
+@@ -615,7 +615,7 @@
+         }
+         if (option != screen->option) {
+             SOUND.playSound(SOUND_CURSOR);
+-            windows->cursor->setPos(windows->cursor, 0x98, screen->option * 14 + 0x13);
++            windows->cursor->setPos(windows->cursor, DW3_MENU_RIGHT(0x98), screen->option * 14 + 0x13);
+         } else if (PAD_PRESSED(PAD_CROSS)) {
+             SOUND.playSound(SOUND_SELECT);
+             screen->step = 10;
+--- a/src/menus/field_menu/tech_screen.c
++++ b/src/menus/field_menu/tech_screen.c
+@@ -176,33 +176,33 @@
+     WindowPos *layout;
+ 
+     pos = &STSTATUS_data.layout[11];
+-    windows->title = createTextWindow(screen->layer, 1, pos->x, pos->y);
++    windows->title = createTextWindow(screen->layer, 1, DW3_MENU_RIGHT(pos->x), pos->y);
+     for (j = 0; j < 3; j++) {
+         pos = &STSTATUS_data.layout[0];
+-        windows->pages[j].name = createTextWindow(screen->layer, 1, pos->x, pos->y + j * 46);
++        windows->pages[j].name = createTextWindow(screen->layer, 1, DW3_MENU_LEFT(pos->x), pos->y + j * 46);
+         pos = &STSTATUS_data.layout[1];
+         for (i = 0; i < 5; i++, pos++) {
+-            windows->pages[j].labels[i] = createTextWindow(screen->layer, 3, pos->x, pos->y + j * 46);
++            windows->pages[j].labels[i] = createTextWindow(screen->layer, 3, DW3_MENU_LEFT(pos->x), pos->y + j * 46);
+         }
+         pos = &STSTATUS_data.layout[6];
+         for (i = 0; i < 5; i++, pos++) {
+-            windows->pages[j].values[i] = createTextWindow(screen->layer, 3, pos->x, pos->y + j * 46);
++            windows->pages[j].values[i] = createTextWindow(screen->layer, 3, DW3_MENU_LEFT(pos->x), pos->y + j * 46);
+         }
+     }
+     layout = STSTATUS_data.layout;
+     pos = &layout[12];
+-    windows->help = createTextWindow(screen->layer, 1, pos->x, pos->y);
++    windows->help = createTextWindow(screen->layer, 1, DW3_MENU_LEFT(pos->x), pos->y);
+     windows->help->setLines(windows->help, 2);
+-    windows->help2 = createTextWindow(screen->layer, 1, pos->x, pos->y + 14);
++    windows->help2 = createTextWindow(screen->layer, 1, DW3_MENU_LEFT(pos->x), pos->y + 14);
+     pos = &layout[13];
+-    windows->mpLabel = createTextWindow(screen->layer, 1, pos->x, pos->y);
++    windows->mpLabel = createTextWindow(screen->layer, 1, DW3_MENU_RIGHT(pos->x), pos->y);
+     pos = &layout[14];
+-    windows->mp = createTextWindow(screen->layer, 1, pos->x, pos->y);
+-    windows->listTitle = createTextWindow(screen->layer, 1, 0x9C, 0x31);
++    windows->mp = createTextWindow(screen->layer, 1, DW3_MENU_RIGHT(pos->x), pos->y);
++    windows->listTitle = createTextWindow(screen->layer, 1, DW3_MENU_RIGHT(0x9C), 0x31);
+     for (i = 0; i < 5; i++) {
+-        windows->techs[i] = createTextWindow(screen->layer, 1, 0xB1, 0x41 + i * 14);
++        windows->techs[i] = createTextWindow(screen->layer, 1, DW3_MENU_RIGHT(0xB1), 0x41 + i * 14);
+     }
+-    windows->cursor = createCursor(screen->layer, screen->depth - 1, 0xA6, screen->cursor * 14 + 0x41);
++    windows->cursor = createCursor(screen->layer, screen->depth - 1, DW3_MENU_RIGHT(0xA6), screen->cursor * 14 + 0x41);
+     windows->cursor->setVisible(windows->cursor, 0);
+ }
+ 
+@@ -314,14 +314,14 @@
+         if (screen->pageFades[i].level != 0) {
+             if (screen->pageFades[i].level != ONE) {
+                 sprite.setScale(screen->pageFades[i].level, screen->pageFades[i].level, ONE);
+-                sprite.setPivot(0x7C, i * 0x2E + 0x27);
++                sprite.setPivot(DW3_MENU_LEFT(0x7C), i * 0x2E + 0x27);
+             } else {
+                 sprite.setScale(ONE, ONE, ONE);
+             }
+             id = GAME.funcs.getPartyMember(i);
+             sprite.setTexture(0x280, 0x100);
+             sprite.draw(FILE_CACHE.getEntry(FILE_STATUS_SPRITES << 16),
+-                        STSTATUS_data.partnerAnims[id].frames[screen->frames[i]], 0x6B,
++                        STSTATUS_data.partnerAnims[id].frames[screen->frames[i]], DW3_MENU_LEFT(0x6B),
+                         i * 0x2E + 0x13);
+         }
+     }
+@@ -331,30 +331,30 @@
+             /* both branches draw the frame's last part: the match depends on it */
+             if (screen->pageFades[i].level != ONE) {
+                 sprite.setScale(screen->pageFades[i].level, ONE, ONE);
+-                sprite.setPivot(0, i * 0x2E + 0x25);
+-                sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x15, 0, i * 0x2E + 0x11);
++                sprite.setPivot(DW3_MENU_LEFT(0), i * 0x2E + 0x25);
++                sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x15, DW3_MENU_LEFT(0), i * 0x2E + 0x11);
+                 sprite.setScale(screen->pageFades[i].level, screen->pageFades[i].level, ONE);
+-                sprite.setPivot(0x7C, i * 0x2E + 0x27);
+-                sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x16, 0x67, i * 0x2E + 0x13);
++                sprite.setPivot(DW3_MENU_LEFT(0x7C), i * 0x2E + 0x27);
++                sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x16, DW3_MENU_LEFT(0x67), i * 0x2E + 0x13);
+                 sprite.setScale(screen->pageFades[i].level, ONE, ONE);
+-                sprite.setPivot(0, i * 0x2E + 0x25);
+-                sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x17, 0, i * 0x2E + 0x11);
++                sprite.setPivot(DW3_MENU_LEFT(0), i * 0x2E + 0x25);
++                sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x17, DW3_MENU_LEFT(0), i * 0x2E + 0x11);
+             } else {
+                 sprite.setScale(ONE, ONE, ONE);
+-                sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x15, 0, i * 0x2E + 0x11);
+-                sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x16, 0x67, i * 0x2E + 0x13);
+-                sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x17, 0, i * 0x2E + 0x11);
++                sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x15, DW3_MENU_LEFT(0), i * 0x2E + 0x11);
++                sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x16, DW3_MENU_LEFT(0x67), i * 0x2E + 0x13);
++                sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x17, DW3_MENU_LEFT(0), i * 0x2E + 0x11);
+             }
+         }
+     }
+     if (screen->fades[0].level != 0) {
+         if (screen->fades[0].level != ONE) {
+             sprite.setScale(screen->fades[0].level, ONE, ONE);
+-            sprite.setPivot(0x140, 0x19);
++            sprite.setPivot(DW3_MENU_RIGHT(0x140), 0x19);
+         } else {
+             sprite.setScale(ONE, ONE, ONE);
+         }
+-        sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x18, 0x22, 0xD);
++        sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x18, DW3_MENU_RIGHT(0x22), 0xD);
+     }
+     if (screen->fades[1].level != 0) {
+         if (screen->blink) {
+@@ -367,17 +367,17 @@
+             }
+             sprite.setTexture(0x140, 0);
+             sprite.setClutRow(screen->blinkFrame);
+-            sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0xA, 0x123, 0xD6);
++            sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0xA, DW3_MENU_RIGHT(0x123), 0xD6);
+             sprite.setClutRow(0);
+         }
+         if (screen->fades[1].level != ONE) {
+             sprite.setScale(screen->fades[1].level, ONE, ONE);
+-            sprite.setPivot(0, 0xD3);
++            sprite.setPivot(DW3_MENU_LEFT(0), 0xD3);
+         } else {
+             sprite.setScale(ONE, ONE, ONE);
+         }
+         sprite.setTexture(0x280, 0x100);
+-        sprite.draw(FILE_CACHE.getEntry(FILE_STATUS_SPRITES << 16), 0x20, 0, 0xC2);
++        sprite.draw(DW3_MENU_BAND(FILE_CACHE.getEntry(FILE_STATUS_SPRITES << 16), 0x20, 160), 0x20, 0, 0xC2);
+     }
+     STSTATUS_stepTechCursor(screen);
+     if (screen->targetShown) {
+@@ -385,7 +385,7 @@
+         sprite.setLayerId(screen->layer, screen->depth - 1);
+         sprite.setTexture(0x280, 0x100);
+         sprite.setClutRow(screen->cursorFrame);
+-        sprite.draw(FILE_CACHE.getEntry(FILE_STATUS_SPRITES << 16), 0x1E, 0, screen->target * 0x2E + 0x11);
++        sprite.draw(FILE_CACHE.getEntry(FILE_STATUS_SPRITES << 16), 0x1E, DW3_MENU_LEFT(0), screen->target * 0x2E + 0x11);
+     }
+     if (screen->memberShown) {
+         initSpriteDrawer(&sprite);
+@@ -397,7 +397,7 @@
+         } else {
+             sprite.setClutRow(screen->cursorFrame);
+         }
+-        sprite.draw(FILE_CACHE.getEntry(FILE_STATUS_SPRITES << 16), 0x1E, 0, screen->member * 0x2E + 0x11);
++        sprite.draw(FILE_CACHE.getEntry(FILE_STATUS_SPRITES << 16), 0x1E, DW3_MENU_LEFT(0), screen->member * 0x2E + 0x11);
+     }
+     if (screen->fade.level != 0) {
+         initSpriteDrawer(&sprite);
+@@ -405,10 +405,10 @@
+         sprite.setTexture(0x280, 0x100);
+         if (screen->fade.level != ONE) {
+             sprite.setScale(screen->fade.level, ONE, ONE);
+-            sprite.setPivot(0x140, 0x63);
++            sprite.setPivot(DW3_MENU_RIGHT(0x140), 0x63);
+         }
+         sprite.draw(FILE_CACHE.getEntry(FILE_STATUS_SPRITES << 16), STSTATUS_techSprites[screen->rows[screen->member].techCount - 1],
+-                    0x94, 0x2F);
++                    DW3_MENU_RIGHT(0x94), 0x2F);
+     }
+ }
+ 
+@@ -569,7 +569,7 @@
+         screen->cursor = 0;
+         STSTATUS_showTechList(screen, windows, 1);
+         STSTATUS_showChosenTech(screen, windows, 1);
+-        windows->cursor->setPos(windows->cursor, 0xA6, screen->cursor * 0xE + 0x41);
++        windows->cursor->setPos(windows->cursor, DW3_MENU_RIGHT(0xA6), screen->cursor * 0xE + 0x41);
+         windows->cursor->setVisible(windows->cursor, 1);
+         screen->substate++;
+     }
+@@ -595,7 +595,7 @@
+         }
+     }
+     if (old != screen->cursor) {
+-        windows->cursor->setPos(windows->cursor, 0xA6, screen->cursor * 0xE + 0x41);
++        windows->cursor->setPos(windows->cursor, DW3_MENU_RIGHT(0xA6), screen->cursor * 0xE + 0x41);
+         STSTATUS_showChosenTech(screen, windows, 1);
+         SOUND.playSound(SOUND_CURSOR);
+     } else if (PAD_PRESSED(PAD_CROSS)) {

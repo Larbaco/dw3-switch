@@ -505,6 +505,22 @@ for _v, _ids in (("us", (0x159, 0x1FA, 0x1C2, 0x158, 0x1F9)),
                                   r"gutter 0 px per side" % _status),),
                   note="field menu -> Items and back: the dissolve spans 16:9 (patch 0075)"))
 
+# P6.1 (patch 0076): the field menu's screens re-anchored to the 16:9 edges.
+# The env and cfg of items-menu; one recording through the item screen and
+# list, the field menu over the field and in STSTATUS, Sort, Map, Techniques,
+# Status (Digivolve, equipment) and Card folders, a checkpoint on each.
+# References come from the patched build. PC only (env).
+for _v, _ids in (("us", (0x159, 0x1FA, 0x1C2, 0x158, 0x1F9)),
+                 ("eu", (0x167, 0x208, 0x1D1, 0x166, 0x207))):
+    _fight, _menu, _report, _field, _status = _ids
+    _add(Scenario(f"{_v}-menu-screens", _v, "full", turbo=4, timeout=400,
+                  phases=(f"{_v}-menu-screens",), env=_ITEMS_ENV, cfg=(("encounter_rate", "2"),),
+                  expect_restore=((_fight, M), (_menu, S), (_report, M), (_field, M),
+                                  (_status, M), (_field, M)),
+                  forbid_log=((0, r"overlay restore file=0x%x kind=mode(?:(?!overlay restore)(?s:.))*?"
+                                  r"gutter 0 px per side" % _status),),
+                  note="the field menu's screens in widescreen: panels at the 16:9 edges (patch 0076)"))
+
 
 def by_name() -> dict[str, Scenario]:
     return {s.name: s for s in SCENARIOS}
