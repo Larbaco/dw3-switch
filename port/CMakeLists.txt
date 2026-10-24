@@ -268,6 +268,14 @@ add_library(dw3_port_options OBJECT
   "${CMAKE_CURRENT_SOURCE_DIR}/options/title_background_capture.c"
   "${CMAKE_CURRENT_SOURCE_DIR}/ui/port_text.c"
 )
+# P6.20 Cheats screen and save mark; DW3_CHEATS is set by the platform
+# CMakeLists (option DW3_CHEATS, default ON).
+if(DW3_CHEATS)
+  target_sources(dw3_port_options PRIVATE
+    "${CMAKE_CURRENT_SOURCE_DIR}/options/cheats.c"
+    "${CMAKE_CURRENT_SOURCE_DIR}/options/cheat_saves.c"
+  )
+endif()
 add_dependencies(dw3_port_options dw3_decomp_patched)
 target_include_directories(dw3_port_options PRIVATE ${_DW3_GAME_INCLUDES})
 target_compile_definitions(dw3_port_options PRIVATE ${_DW3_GAME_DEFS})

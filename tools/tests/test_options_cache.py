@@ -13,11 +13,14 @@ SRC = ROOT / "platforms" / "pc" / "src"
 TEST_C = ROOT / "tools" / "tests" / "options_cache_main.c"
 
 
-@pytest.fixture(scope="module")
-def options_cache_test(tmp_path_factory) -> Path:
+@pytest.fixture(scope="module", params=["no-cheats", "cheats"])
+def options_cache_test(request, tmp_path_factory) -> Path:
+    """Built without and with DW3_CHEATS (P6.20: the Cheats page and the
+    Square/Y hint go through the same cache)."""
     out = tmp_path_factory.mktemp("options_cache") / "options_cache_test"
+    defs = ["-DDW3_CHEATS"] if request.param == "cheats" else []
     cmd = [
-        "gcc", "-std=gnu11", "-Wall", "-Wextra", "-Werror", "-O2",
+        "gcc", "-std=gnu11", "-Wall", "-Wextra", "-Werror", "-O2", *defs,
         "-o", str(out),
         str(TEST_C), str(SRC / "title_options_cache.c"),
         str(SRC / "title_overlay_art.c"),

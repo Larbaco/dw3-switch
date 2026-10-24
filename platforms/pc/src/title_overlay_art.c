@@ -22,6 +22,12 @@ enum { OPTIONS_LAYER_FULL, OPTIONS_LAYER_STATIC, OPTIONS_LAYER_FOCUS,
        OPTIONS_LAYER_VALUE, OPTIONS_LAYER_DESCRIPTION };
 static int options_layer = OPTIONS_LAYER_FULL;
 static int options_layer_row;
+#ifdef DW3_CHEATS
+/* P6.20: which page the Options window shows, and the cheats master switch. */
+static int options_page = DW3_TITLE_OPTIONS_PAGE_OPTIONS;
+static int options_cheats_on;
+static unsigned options_layout;
+#endif
 static void pixel(int x,int y,int r,int g,int b,int alpha) {
     if(x<clip_x0||x>=clip_x1||y<clip_y0||y>=clip_y1||
        x<0||x>=960||y<0||y>=720||alpha<=0)return;
@@ -126,6 +132,17 @@ int dw3_pc_title_overlay_options_cursor(void) { return option_cursor; }
 int dw3_pc_title_overlay_options_value(int row) {
     return row>=0&&row<DW3_TITLE_OPTION_ROWS?option_values[row]:0;
 }
+#ifdef DW3_CHEATS
+void dw3_pc_title_overlay_set_options_page(int page,int cheats_on) {
+    page=page==DW3_TITLE_OPTIONS_PAGE_CHEATS?page:DW3_TITLE_OPTIONS_PAGE_OPTIONS;
+    cheats_on=cheats_on?1:0;
+    if(page!=options_page||cheats_on!=options_cheats_on){
+        options_page=page;options_cheats_on=cheats_on;
+        options_layout++;options_generation++;
+    }
+}
+unsigned dw3_pc_title_overlay_options_layout(void) { return options_layout; }
+#endif
 
 /* --- Port options screen ---------------------------------------------------
  * Modelled on the game's own windows (the memory card screen): a white bezel
@@ -193,6 +210,103 @@ static int row_kind(int row) {
            row == 5 ? ROW_ENCOUNTER : row == 6 ? ROW_TEXT :
            row == 7 ? ROW_BATTLE : ROW_SWITCH;
 }
+#ifdef DW3_CHEATS
+/* P6.20: the Square (Y on the Switch) button cap of the "Cheats" hint. */
+static void button_square(int cx,int cy) {
+    disc(cx,cy,14,214,222,240);
+#if defined(__SWITCH__)
+    const Word y_key=WORD(opt_key_y);
+    word(&y_key,cx-y_key.w/2,cy-y_key.top-y_key.h/2,0,0,0,49);
+#else
+    segment(cx-7,cy-7,cx+7,cy-7,1.4f,0,0,49);segment(cx+7,cy-7,cx+7,cy+7,1.4f,0,0,49);
+    segment(cx+7,cy+7,cx-7,cy+7,1.4f,0,0,49);segment(cx-7,cy+7,cx-7,cy-7,1.4f,0,0,49);
+#endif
+}
+/* The cheat lettering of one language (en, fr, de, es, it: the
+ * DW3_TITLE_LANG_* order). */
+#define CHEAT_WORDS(l) {WORD(opt_cht_title_##l),WORD(opt_cht_hint_##l),WORD(opt_cht_change_##l), \
+    WORD(opt_cht_back_##l),WORD(opt_cht_ready_##l),WORD(opt_cht_none_##l), \
+    {WORD(opt_cht_row0_##l),WORD(opt_cht_row1_##l),WORD(opt_cht_row2_##l),WORD(opt_cht_row3_##l), \
+     WORD(opt_cht_row4_##l)}, \
+    {WORD(opt_cht_desc0_##l),WORD(opt_cht_desc1_##l),WORD(opt_cht_desc2_##l),WORD(opt_cht_desc3_##l), \
+     WORD(opt_cht_desc4_##l)}}
+typedef struct CheatWords {
+    Word title,hint,change,back,ready,none;
+    Word rows[DW3_TITLE_CHEAT_ROWS],desc[DW3_TITLE_CHEAT_ROWS];
+} CheatWords;
+static const CheatWords cheat_words[5]={CHEAT_WORDS(en),CHEAT_WORDS(fr),CHEAT_WORDS(de),
+                                        CHEAT_WORDS(es),CHEAT_WORDS(it)};
+static const CheatWords *cheat_lang(void) {
+    return &cheat_words[options_lang>=DW3_TITLE_LANG_EN&&options_lang<=DW3_TITLE_LANG_IT?options_lang:0];
+}
+/* The Cheats page: the Options window, its own title, five rows (master,
+ * Fill bag, Instant win, Battle now, marked saves), the same focus box,
+ * message line and hints, in the language of the disc. While the master
+ * switch is off rows 1..4 are greyed. Same layers as options_screen. */
+static void cheats_screen(void) {
+    static const Word values[]={WORD(opt_off),WORD(opt_on)};
+    static const Word steps[]={WORD(opt_n1),WORD(opt_n2),WORD(opt_n3),WORD(opt_n4),WORD(opt_n5),
+                               WORD(opt_n6),WORD(opt_n7),WORD(opt_n8),WORD(opt_n9),WORD(opt_n10)};
+    const CheatWords *t=cheat_lang();
+    const int x0=OPT_X0,y0=OPT_Y0,w=OPT_W,h=OPT_H,x1=x0+w,y1=y0+h;
+    const int full=options_layer==OPTIONS_LAYER_FULL;
+    const int draw_static=full||options_layer==OPTIONS_LAYER_STATIC;
+
+    if(draw_static) {
+    box(0,0,960,720,0,0,16,150);
+    box(x0+6,y0+8,w,h,0,0,8,150);
+    box(x0,y0,w,h,255,255,255,255);
+    box(x0+w-3,y0+3,3,h-3,181,181,181,255);box(x0+3,y0+h-3,w-3,3,181,181,181,255);
+    box(x0+9,y0+9,w-18,h-18,49,49,49,255);
+    box(x0+15,y0+15,w-30,h-30,58,58,148,255);
+    box(x0+18,y0+18,w-36,h-36,0,0,49,255);
+    {
+        const int a=y0+36,xs=x0+500;
+        box(x0+30,a,xs-x0-30,3,0,66,156,255);box(x0+30,a+6,xs-x0-24,3,0,66,156,255);
+        segment(xs,a+1.5f,xs+30,a+31.5f,1.6f,0,66,156);
+        segment(xs+6,a+7.5f,xs+30,a+31.5f,1.6f,0,66,156);
+        box(xs+30,a+30,x1-30-xs-30,3,0,66,156,255);
+        word(&t->title,xs+48,a+2-t->title.top,0,255,255,255);
+    }
+    }
+    for(int i=0;i<DW3_TITLE_CHEAT_ROWS;i++) {
+        const int ry=OPT_ROW_Y+i*OPT_ROW_STEP,focus=i==option_cursor;
+        const int grey=i>0&&!options_cheats_on;
+        int v=option_values[i];
+        const Word *value;
+        int dim;
+        if(focus&&(full||options_layer==OPTIONS_LAYER_FOCUS)){
+            box(x0+48,ry-6,w-96,OPT_ROW_H,16,74,156,255);
+            box(x0+51,ry-3,w-102,OPT_ROW_H-6,0,8,74,255);
+            pointer(x0+66,ry+3);
+        }
+        if(draw_static||(options_layer==OPTIONS_LAYER_FOCUS&&i==options_layer_row))
+            word(&t->rows[i],x0+106,ry,0,grey?150:255,grey?158:255,grey?196:255);
+        if(v<0)v=0;
+        if(i==4){
+            if(v>10)v=10;
+            value=v?&steps[v-1]:&t->none;dim=v==0;
+        }else if(i==1||i==3){
+            value=v?&t->ready:&values[0];dim=v==0;
+        }else{
+            value=&values[v?1:0];dim=v==0;
+        }
+        if(grey)dim=1;
+        if(full||(options_layer==OPTIONS_LAYER_VALUE&&i==options_layer_row))
+            word(value,x1-96,ry,1,dim?150:255,dim?158:255,dim?196:255);
+    }
+    if(draw_static)box(x0+30,y1-152,w-60,3,16,156,247,255);
+    if((full||options_layer==OPTIONS_LAYER_DESCRIPTION)&&
+       option_cursor>=0&&option_cursor<DW3_TITLE_CHEAT_ROWS)
+        word(&t->desc[option_cursor],x0+48,y1-128,0,255,255,255);
+    if(draw_static) {
+        const int hy=y1-74,bx=x1-48-t->back.w,cx=bx-36-t->change.w-60;
+        button(cx,hy+12,0);word(&t->change,cx+22,hy,0,255,255,255);
+        button(bx-22,hy+12,1);word(&t->back,bx,hy,0,255,255,255);
+        box(x0+30,y1-36,w-60,3,0,66,156,255);
+    }
+}
+#endif
 static void options_screen(void) {
     static const Word rows[DW3_TITLE_OPTION_ROWS]={WORD(opt_row0),WORD(opt_row1),WORD(opt_row2),
                                                    WORD(opt_row3),WORD(opt_row4),WORD(opt_row5),
@@ -225,6 +339,9 @@ static void options_screen(void) {
     const int full=options_layer==OPTIONS_LAYER_FULL;
     const int draw_static=full||options_layer==OPTIONS_LAYER_STATIC;
 
+#ifdef DW3_CHEATS
+    if(options_page==DW3_TITLE_OPTIONS_PAGE_CHEATS){cheats_screen();return;}
+#endif
     /* The title backdrop stays, dimmed; the logo and the menu are gone. */
     if(draw_static) {
     box(0,0,960,720,0,0,16,150);
@@ -295,6 +412,15 @@ static void options_screen(void) {
         const int hy=y1-74,bx=x1-48-back.w,cx=bx-36-change.w-60;
         button(cx,hy+12,0);word(&change,cx+22,hy,0,255,255,255);
         button(bx-22,hy+12,1);word(&back,bx,hy,0,255,255,255);
+#ifdef DW3_CHEATS
+        /* P6.20: once the master switch is on, Square/Y Cheats left of
+         * Change (the screen is unchanged while it is off). */
+        if(options_cheats_on){
+            const Word *hint=&cheat_lang()->hint;
+            const int sx=cx+22-96-hint->w;
+            button_square(sx,hy+12);word(hint,sx+22,hy,0,255,255,255);
+        }
+#endif
         box(x0+30,y1-36,w-60,3,0,66,156,255);
     }
 }
