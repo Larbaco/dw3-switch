@@ -605,8 +605,8 @@ speed.
   Not ticked only because the objective also names the assert overlay.
   **Still open:** (a) PR 2: step 6, an on-screen "last run crashed,
   report at …" notice on the next boot, and step 7, `assert` / `abort`
-  routed into the same report; (b) previews keep or publish the `.elf` of
-  each `.nro` (release packaging follow-up after rc7). See
+  routed into the same report; (b) done after preview.30: releases publish
+  `dw3-switch-elf.zip` (see [RELEASES](RELEASES.md#publishing-a-release)). See
   [P5.4_CRASH.md](P5.4_CRASH.md).
   **Status (2026-10-15):** in progress; the owner is investigating the
   crash-report path on hardware. Not ticked.

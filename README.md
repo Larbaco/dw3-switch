@@ -273,7 +273,8 @@ bash tools/build_switch_game.sh --eu      # EU build
 A `crash_report.txt` from the console is symbolized with the `.elf` the
 build leaves next to the `.nro`:
 `python3 tools/symbolize_crash.py crash_report.txt build/switch/dw3-switch.elf`
-([P5.4_CRASH](docs/P5.4_CRASH.md)).
+([P5.4_CRASH](docs/P5.4_CRASH.md)). For a released `.nro`, use the `.elf`
+from the release's `dw3-switch-elf.zip` (a local rebuild has another build id).
 
 Releases are produced by the `switch-release.yml` workflow. Build notes,
 nxlink usage and Docker details are in
