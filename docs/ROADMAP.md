@@ -62,6 +62,7 @@ lives in its doc, not in the entry below.
 | P6.20 | Port debug / cheat menu in the Options screen (future goal) | future | [roadmap](#phase-6-goal-notes), [PORT_OPTIONS](PORT_OPTIONS.md) |
 | P6.22 | Turbo speed in scripted scenes (future goal) | in progress (PC profile: the CPU rasterizer is ~97 % of a field frame; pixel-identical PSY-Z rasterizer 4-5x faster, OLED check open) | [P6.22](P6.22_FIELD_CPU.md), [roadmap](#phase-6-goal-notes), [P6.4](P6.4_FAST_FORWARD.md) |
 | P6.23 | Documentation: player guide, docs index, contributor and modder docs (future goal) | future | [roadmap](#phase-6-goal-notes) |
+| P6.24 | One build for US and EU: one `.nro` and one PC binary, region found at boot (future goal) | future | [SINGLE_BUILD](SINGLE_BUILD.md), [roadmap](#phase-6-goal-notes) |
 | P7.1 | Inventory and boundaries | done | [COMMUNITY_QOL](COMMUNITY_QOL.md) |
 | P7.2 | Patched EU disc as data source | open | [COMMUNITY_QOL](COMMUNITY_QOL.md) |
 | P7.3 | Binary-patch limits | in progress | [COMMUNITY_QOL](COMMUNITY_QOL.md) |
@@ -1778,6 +1779,64 @@ Statuses are in the [table](#status-at-a-glance).
   them, the release `README.txt` points to the guide, and a new tester can
   install the US or EU build and report a crash using only those pages.
   Related: P6.5, P8.5, [REPORTING_ISSUES.md](REPORTING_ISSUES.md).
+- [ ] **P6.24 One build for US and EU (future goal).** Dated 2026-10-24, owner
+  request: "Build única pra US e EU". One `.nro`, and one PC binary, that runs
+  either disc, instead of the separate US and EU builds (`--eu`, two `.nro`
+  files, EU attached to releases by hand). Goal note only, **nothing started,
+  no code**. Survey, sizes and the options in detail:
+  [SINGLE_BUILD.md](SINGLE_BUILD.md).
+  **What the survey found (cited there):** the region is a compile-time
+  choice everywhere: `DW3_VERSION` in the three CMakeLists sets
+  `VERSION_US=1` / `VERSION_EU=1`, the overlay table and the default runtime,
+  and the decomp's `include/version.h` allows exactly one. The decomp has
+  **731 region blocks** (1,310 `#if` / `#elif` lines in 352 files; 390 blocks in
+  the stages), of which 291 only `#define` file ids and 436 hold code or data
+  (the file and stage tables, text tables). **Struct layouts differ**:
+  `GameState` from offset 0x2644 (`GAME_SAVE_SIZE` 0x26BC US, 0x26C4 EU) and
+  `BattleFuncs` (EU `rollCounter` at 0xD0), so a run-time region variable in
+  the decomp is not practical. The port side is small: 14 region `#if` sites in
+  `port/` and `platforms/`, 13 in 6 of the 76 patches, and the host uses only
+  **25 game symbols** (mode entry points, `GAME`, `PAD`, `SOUND`, the file
+  sector table, `dw3_game_main`). PAL / NTSC timing already follows the mode
+  the game sets, not a build flag. The region can be found on the SD card
+  without asking (`us/` or `eu/` tree, or the executable inside a disc image,
+  which `runtime_extract.c` already checks); saves and options stay per region
+  (the save formats differ), so no player data moves.
+  **Recommended approach:** compile the game side twice into one image (one
+  copy per region, exports renamed `us_` / `eu_`, the rest local, the
+  `dw3data_*` restore sections renamed per region, the existing
+  `tools/prefix_stage_obj.py` technique), link the host once, and pick the
+  region at boot. The decomp and the patches stay untouched. Cost: medium,
+  all in the build; about **+2.7 MB**, one `.nro` of about 12 MB (US 9.29 MB
+  and EU 9.31 MB today, 18.6 MB for both). Rejected: run-time region variables
+  in the decomp (352 files, struct layouts); a launcher `.nro` that chains to
+  the region's `.nro` (cheap, but still two builds; a stop-gap at most).
+  **First slice (PC, no visible change):** `DW3_VERSION=both` builds one
+  `dw3-pc` holding both regions (`us` and `eu` stay as they are), a
+  `--region` / `DW3_REGION` override else the runtime present, the 14 host
+  sites made run-time; it passes when the P6.15 scenarios of both regions match
+  the existing references on that one binary.
+  **Effects:** P6.15 runs one binary per platform (a forced region must skip
+  any picker, or the 71 recordings need re-recording); one `.elf` and build
+  id per `.nro`, with the region in each symbol name (P5.4); two release items
+  instead of four in `tools/pack_release_elfs.py` and CI builds EU on every PR
+  ([RELEASES.md](RELEASES.md)). Overlaps P6.2, whose "EU/US selection at
+  boot" this item would carry (P6.2 keeps PAL / NTSC and the language). A third
+  region (P6.19, JP) is one more copy.
+  Open questions (owner): auto-detect with one region present and a picker
+  only with both, or always ask; remember the last choice; the picker's look
+  and languages; keep the separate `--eu` builds for development only or
+  also in releases for a while; is a 12 MB `.nro` fine; the PC too; switching
+  region without quitting (proposed: out of scope).
+  Done when (proposed): one `.nro` and one `dw3-pc` from one configure, built
+  in CI; with only US or only EU data it boots that disc, with both it does
+  what the owner chose; the US and EU P6.15 scenarios pass on it with the
+  existing references; the crash report names the region and
+  `tools/symbolize_crash.py` resolves both from the one `.elf`; the release
+  ships one `.nro` (plus nxlink); checked on the OLED with each disc and with
+  both on the card.
+  Related: P6.2, P6.15, P6.19, P5.4, P6.5, P3 EU build
+  ([P3_EU_BUILD.md](P3_EU_BUILD.md)).
 
 ### Phase 7 goal notes
 
