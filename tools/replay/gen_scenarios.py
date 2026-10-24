@@ -797,6 +797,37 @@ def items_screen(version, evidence=False):
     return r
 
 
+def items_menu(version):
+    """P6.1 (patch 0075): field menu -> Items in widescreen and back, with
+    checkpoints on the pictures. The same forced event battle as
+    `items_screen` gives the party (the manifest's env), Cross walks the
+    report back to the field, Start opens the field menu and Cross picks
+    Items: the block dissolve to the menu (checkpoint `dissolve-in`, half
+    way), the item screen (`item-options`), the Items list (`item-list`),
+    Triangle back to the field menu inside the menu mode (`status-menu`) and
+    Triangle again: the dissolve back to the field (`dissolve-out`). With
+    0075 the dissolve covers the side gutters; before, it was 320 wide with
+    the field (or the menu background) lit beside it. Frames measured on the
+    PC build, the same on both discs."""
+    r = Rec(f"{version.upper()}: P6.1 field menu Items in widescreen (env and cfg in manifest)")
+    for f in range(300, 1200, 30):
+        r.press(f, CROSS)            # battle report -> field
+    r.press(1250, START)             # field menu
+    r.press(1420, CROSS)             # Items: the dissolve, then STSTATUS
+    r.shot(1466, "dissolve-in")
+    r.shot(1640, "item-options")
+    r.press(1650, CROSS)             # the Items list
+    r.shot(1800, "item-list")
+    r.press(1850, DOWN)
+    r.press(2050, TRIANGLE)          # close the list
+    r.press(2250, TRIANGLE)          # back to the field menu
+    r.shot(2400, "status-menu")
+    r.press(2450, TRIANGLE)          # leave: the dissolve back to the field
+    r.shot(2488, "dissolve-out")
+    r.end(2660)                      # the field is restored by ~2600 (US)
+    return r
+
+
 def main(out):
     out.mkdir(parents=True, exist_ok=True)
     (out / "us-title.rec").write_text(us_title().text())
@@ -832,6 +863,7 @@ def main(out):
         (out / f"{v}-encounter-walk.rec").write_text(encounter_walk(v).text(True))
         (out / f"{v}-encounter-event.rec").write_text(encounter_event(v).text(True))
         (out / f"{v}-items-screen.rec").write_text(items_screen(v).text(True))
+        (out / f"{v}-items-menu.rec").write_text(items_menu(v).text(True))
         (out / f"{v}-victory-music.rec").write_text(victory_music(v).text(True))
         (out / f"{v}-music-loop.rec").write_text(music_loop(v).text(True))
         (out / f"{v}-battle-music.rec").write_text(battle_music(v).text(True))

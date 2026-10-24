@@ -44,7 +44,7 @@ lives in its doc, not in the entry below.
 | P5.3 | Save handling | done | [P5.3](P5.3_FLAT_SAVE.md) |
 | P5.4 | Error reporting | in progress (done-when met on the OLED, US + EU; PR 2 boot notice + assert/abort landed, emulator-tested; owner OLED check open) | [P5.4](P5.4_CRASH.md) |
 | P5.5 | Stage sweep on hardware | open | — |
-| P6.1 | Scaling / widescreen | in progress (rc8 OLED: banner, technique backdrops and encounter spiral reach 16:9; results screen 16:9 with patch 0074 in PR #213, pending OLED; open: Items menu 4:3) | [P6.1](P6.1_WIDESCREEN.md) |
+| P6.1 | Scaling / widescreen | in progress (rc8 OLED: banner, technique backdrops and encounter spiral reach 16:9; results screen 16:9 with patch 0074 in PR #213, pending OLED; Items menu dissolve 16:9 with patch 0075, pending OLED; open: menu panels keep their 4:3 layout, redesign proposed in P6.1) | [P6.1](P6.1_WIDESCREEN.md) |
 | P6.2 | PAL/NTSC, EU/US, language at boot | in progress | [P3_EU_BUILD](P3_EU_BUILD.md) |
 | P6.3 | PGXP-style vertex precision | open | — |
 | P6.4 | Fast-forward | in progress (OLED turbo works in battle on the US disc, rc7; tick is the owner's call) | [P6.4](P6.4_FAST_FORWARD.md) |
