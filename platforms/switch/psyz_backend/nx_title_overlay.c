@@ -462,7 +462,11 @@ void dw3_nx_title_overlay_draw(int vx, int vy, int vw, int vh) {
         s_timing.total_max = 0;
     }
 #endif
-    /* The title is 4:3 (gutter 0); fit the canvas to it. */
+    /* The title's display is 4:3; fit the canvas to it. With the gutters of
+     * patch 0085 the picture is wider and the display is its full-height
+     * middle, which is the same fit. */
+    const int wide_x = vx;
+    const int wide_w = vw;
     {
         int w = vw;
         int h = vw * 3 / 4;
@@ -518,6 +522,19 @@ void dw3_nx_title_overlay_draw(int vx, int vy, int vw, int vh) {
         glUniform1f(s_uni_alpha, (float)s_options_alpha / 255.0f);
         draw_quad(s_art_tex, 0.0f, 0.0f, CANVAS_W, CANVAS_H,
                   0.0f, v0, 1.0f, v1);
+        if (vx > wide_x) {
+            /* The gutters (patch 0085): one texel of the screen's uniformly
+             * dimmed corner over each, as the PC overlay does. */
+            const float u = 0.5f / (float)CANVAS_W;
+            const float v = ((float)(STATE_OPTIONS * CANVAS_H) + 0.5f) /
+                            (float)ART_TEX_H;
+
+            glViewport(wide_x, vy, vx - wide_x, vh);
+            draw_quad(s_art_tex, 0.0f, 0.0f, CANVAS_W, CANVAS_H, u, v, u, v);
+            glViewport(vx + vw, vy, wide_x + wide_w - (vx + vw), vh);
+            draw_quad(s_art_tex, 0.0f, 0.0f, CANVAS_W, CANVAS_H, u, v, u, v);
+            glViewport(vx, vy, vw, vh);
+        }
     }
 
     glDisable(GL_BLEND);
