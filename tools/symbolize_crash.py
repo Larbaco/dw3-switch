@@ -7,6 +7,10 @@ aarch64-none-elf-addr2line (-f -i -C). Checks that the .elf is the build that
 wrote the report (GNU build-id, then version / git strings) and warns loudly
 when it is not: a wrong .elf gives plausible but wrong functions.
 
+For a released .nro, get the .elf from the release's dw3-switch-elf.zip
+(BUILD_IDS.txt maps the report's build_id to the file); a local rebuild has a
+different build id. See docs/RELEASES.md.
+
   tools/symbolize_crash.py crash_report.txt build/switch-nxlink/dw3-switch.elf
   tools/symbolize_crash.py crash_report.txt dw3-switch.elf \\
       --creport 01792722609_05446530aca7e000.log   # older report / creport

@@ -634,6 +634,10 @@ speed.
   Evidence: `tmp/evidence/2026-10-23-p54-oled-forcecrash-{us,eu}/`.
   Not ticked only because the objective also names the assert overlay
   (PR 2 above).
+  **Still open:** the PR 2 OLED check (see above). Done after preview.30:
+  releases publish `dw3-switch-elf.zip` (see
+  [RELEASES](RELEASES.md#publishing-a-release)). See
+  [P5.4_CRASH.md](P5.4_CRASH.md).
   **Status (2026-10-15):** in progress; the owner is investigating the
   crash-report path on hardware. Not ticked.
   **Status (2026-10-16):** in progress; report path researched and small

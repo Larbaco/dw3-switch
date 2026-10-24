@@ -1,7 +1,8 @@
 # Preview releases
 
-All releases are GitHub prereleases. Each ships `.nro` files only, never game
-data. Tags are named `v0.6.5-preview.N`; hbmenu shows the short form
+All releases are GitHub prereleases. Each ships `.nro` files (and, from the
+release after preview.30, `dw3-switch-elf.zip` with the matching `.elf`
+files for crash reports), never game data. Tags are named `v0.6.5-preview.N`; hbmenu shows the short form
 `0.6.5-p.N`. Pick the newest unless a note below says otherwise.
 
 All releases are on the
@@ -47,6 +48,43 @@ Newest first.
 | [preview.1](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.1) | See the table above. |
 
 Previews 3 and 4 have no separate notes in this repository.
+
+## Publishing a release
+
+A `v*` tag (or `workflow_dispatch` with a tag) runs
+`.github/workflows/switch-release.yml`, which builds the US and US nxlink
+NROs and publishes `dw3-switch.nro`, `dw3-switch-nxlink.nro`,
+`dw3-switch-elf.zip` and `README.txt`. The zip holds the unstripped
+`dw3-switch-us.elf` and `dw3-switch-us-nxlink.elf` plus `BUILD_IDS.txt`
+(GNU build id, `.elf` and `.nro` per line).
+`tools/pack_release_elfs.py` makes it and fails the job when an `.elf`'s
+build id is not the one in its `.nro` header. A local rebuild does not
+reproduce a CI binary (the build ids differ), so the CI `.elf` is the only
+one that symbolizes a CI `.nro`.
+
+To test the packing without a release, run the script on local builds
+(`tools/tests/test_pack_release_elfs.py` covers it in `pytest`). The
+workflow itself has no dry-run path: `workflow_dispatch` always publishes
+the tag it is given.
+
+**EU is a manual step.** Build EU once, then upload the `.nro` and its
+`.elf` zip from that same build (the `.elf` must come from the build that
+made the `.nro`):
+
+```bash
+bash tools/build_switch_game.sh --eu
+bash tools/build_switch_game.sh --eu --nxlink     # only if it ships
+B=build/switch-eu
+python3 tools/pack_release_elfs.py --out /mnt/cabal/tmp/dw3-switch-eu-elf.zip --tag v0.6.5-preview.N \
+  --item $B/dw3-switch.nro $B/dw3-switch.elf dw3-switch-eu.elf
+cp $B/dw3-switch.nro /mnt/cabal/tmp/dw3-switch-eu.nro
+gh release upload v0.6.5-preview.N /mnt/cabal/tmp/dw3-switch-eu.nro /mnt/cabal/tmp/dw3-switch-eu-elf.zip
+```
+
+For an EU nxlink build add a second `--item
+build/switch-eu-nxlink/dw3-switch-nxlink.nro build/switch-eu-nxlink/dw3-switch.elf
+dw3-switch-eu-nxlink.elf` and upload that `.nro` too. The release README
+lists only the files actually published.
 
 Since preview.18, [`platforms/switch/release/README.txt`](../platforms/switch/release/README.txt)
 holds the notes shipped with each release.
