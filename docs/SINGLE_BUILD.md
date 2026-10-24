@@ -3,10 +3,48 @@
 Owner request (2026-10-24): "Build única pra US e EU". One `.nro`, and one PC
 binary, that runs the US and the EU disc, instead of the separate builds of
 today. This note is the survey behind the
-[ROADMAP P6.24 entry](ROADMAP.md#phase-6-goal-notes). **Nothing is
+[ROADMAP P6.24 entry](ROADMAP.md#phase-6-goal-notes). The owner has since
+decided how saves and the boot choice work (next section). **Nothing is
 implemented.** Numbers come from `origin/main` at `3e2a9b7`, the decomp at
 `b9caa6c` (`vendor/dw3_decomp`), the PC objects of a US build, and the
 preview.31-rc1 Switch builds (US and EU, `.nro` and `.elf`).
+
+## Owner decisions (2026-10-24)
+
+Final; they replace the matching open questions at the end of this note.
+
+1. **Saves are unified between US and EU.** A save made in one region loads in
+   the other. The save images are not the same format, so this needs a
+   converter; it is its own item, **P6.25**, with the field-by-field survey and
+   the design in [CROSS_REGION_SAVES.md](CROSS_REGION_SAVES.md). This
+   supersedes the earlier assumption here that "saves and options stay per
+   region".
+2. **With both game images on the console, ask at boot**, with a short timeout
+   (default selection = the last choice, else a sensible default) and a "don't
+   ask again" option that is stored and can be changed later. Design in
+   [Boot picker](#boot-picker) below.
+3. **Saves are bound to the Switch user profile that is playing.** Its own item,
+   **P6.26**, in [PER_USER_SAVES.md](PER_USER_SAVES.md). The user choice is the
+   Switch profile selector (`pselShowUserSelector`), decided 2026-10-24.
+
+**Roadmap shape.** P6.25 (cross-region saves) and P6.26 (per-user saves) are
+separate items and **P6.24 depends on both**: each can be built, tested and
+shipped alone, P6.25 is useful before the single build (separate US and EU
+builds can already share one save store), and they touch the save host
+(`port/memcard`) and the boot code, not the game-side link that is P6.24's
+hard part. The picker and the build change stay in P6.24.
+
+**Implementation order.**
+
+1. P6.25 slice 1: the converter and its tests on synthetic fixtures (PC only).
+2. P6.25 slice 2: the store behind a switch, legacy import, preview for the
+   separate builds sharing `saves/shared/`.
+3. P6.26: user resolution (PC `default` profile first, then the Switch), the user
+   folder, the import prompt, the global options file.
+4. P6.24 slice 1 (`DW3_VERSION=both` on the PC, no visible change) can start in
+   parallel with 1 to 3; it only needs the save work to be done before the
+   **Switch** one-`.nro` release.
+5. P6.24 on the Switch: auto-detect, the boot picker, CI on `both`, an OLED check.
 
 ## How the region is chosen today
 
@@ -144,9 +182,12 @@ arena does not double.
 - `port/cdfs/runtime_extract.c` already **identifies a disc image by its
   executable**: it extracts only when `RUNTIME_EXECUTABLE` is in the image and
   rejects an image that holds `RUNTIME_OTHER_EXECUTABLE` (the other region).
-- Saves and options are already per region (the save formats differ, see
-  `GAME_SAVE_SIZE`); a single build keeps them where they are, so **no data
-  moves** for a player who has one or both folders today.
+- Saves and options are per region today (the save formats differ, see
+  `GAME_SAVE_SIZE`). **Decided 2026-10-24: they stop being per region.** The
+  saves go to a shared, per-user store with a canonical format
+  ([P6.25](CROSS_REGION_SAVES.md), [P6.26](PER_USER_SAVES.md)) and
+  `port_options.cfg` becomes one global file; the old per-region folders are
+  only read once, copied, and never changed or deleted.
 
 So the region **can be detected from the SD card without asking**: a complete
 `us/` tree (`files_us.json` + `SLUS_014.36`), a complete `eu/` tree, or a disc
@@ -240,6 +281,54 @@ ship, and nothing for the PC. Useful only as a stop-gap for the boot UX.
   `DW3_VERSION=us|eu` can stay as developer options (smaller, faster builds)
   next to a new default `both`.
 
+## Boot picker
+
+Decision 2 above. Proposed behaviour, for the Switch (the PC uses the same logic
+with `--region` / `DW3_REGION`).
+
+**When it appears.** Only when the region detection above finds **both** a
+complete `us/` and a complete `eu/` tree (or disc images for both), and nothing
+forces the region.
+
+| Case | Behaviour |
+|---|---|
+| No image | The existing "no game data" failure, now naming both folders it looked in. No picker. |
+| One image | Boot it, no picker, no question. |
+| Both, `region_default=us` or `eu` | Boot it, no picker (the "don't ask again" state). |
+| Both, `region_default=ask` (default) | The picker. |
+| Forced: `--region`, `DW3_REGION`, the replay builds (`DW3_NX_REPLAY`, `DW3_REPLAY`), `DW3_MEMCARD_DIR` set by a runner | Boot the forced region; **no picker and no extra frame**, so the 71 P6.15 recordings stay valid. |
+
+**The screen.** Host-drawn, before `dw3_game_main`, with the host debug-overlay
+font that the Switch host already has (`platforms/switch/source/debug_overlay_font.h`),
+English only in the first version. Two entries ("US", "EU") with the disc's
+language or title if the executable gives it, a line "Starting <default> in 3...",
+and a hint line.
+
+- **Default selection**: `last_region` (written every time a region boots), else
+  the region whose save was modified last, else US.
+- **Timeout**: **3 seconds**, counting down on screen. Any D-pad press cancels the
+  countdown (the player is choosing), so it never boots under the finger.
+- **Input**: D-pad left/right (or the stick) to choose, **A** to boot now, **Y**
+  to toggle "Always start this one" before confirming, **+** to quit to hbmenu.
+  The picker reads the pad itself; it waits until all buttons are released
+  before the game starts, so the confirming press does not reach the title
+  screen.
+- **Don't ask again**: stored in the **global** `port_options.cfg` as
+  `region_default=ask|us|eu` (a file-only key as in
+  [PORT_OPTIONS.md](PORT_OPTIONS.md#persistence); not part of any save).
+  `last_region=us|eu` sits next to it.
+- **Getting the picker back**: (a) **hold - (Minus) while the `.nro` starts**:
+  shows the picker once even if a region is remembered (not R: hbmenu uses a
+  held R to pick applet mode); (b) an **Options row** "Region at boot: Ask / US /
+  EU" (global, applies on the next launch; the same patch seam as the other port
+  rows); (c) edit `region_default=ask` by hand.
+
+**Interaction with the rest.** The region is chosen first, then the Switch user
+([PER_USER_SAVES.md](PER_USER_SAVES.md)) if one cannot be resolved without UI.
+Switching region needs a restart, as stated below. The PC picks `last_region`
+when both runtimes exist and no flag is given, and prints the choice; a window
+picker is not part of the first slice.
+
 ## Recommendation and first slice
 
 Approach **(a)**. First slice, **PC only and no visible change**:
@@ -259,16 +348,29 @@ card.
 
 ## Open questions for the owner
 
-1. **Auto-detect or picker:** with one region on the SD, boot it without a
-   question? With both, ask on every boot, or remember the last choice (and
-   hold a button at boot to ask again)?
-2. **The picker's look:** a plain screen before the game starts, or one in the
-   title-menu style; English only, or the 5 EU languages?
-3. **Both regions on the SD:** keep options and saves per region (as today),
-   or share `port_options.cfg`? (Saves cannot be shared: the formats differ.)
-4. **Separate builds:** keep `--eu` / `DW3_VERSION=us|eu` for development only,
+Answered on 2026-10-24: saves ("Both regions on the SD": unified, decision 1;
+per user, decision 3) and the picker behaviour (decision 2). Still open:
+
+1. **The picker's look and languages**: the plain host screen above in English
+   only, or the title-menu style, or the 5 EU languages?
+2. **Hold-to-ask button**: is **- (Minus)** at launch right? (R is taken by hbmenu.)
+3. **EU extra-chapter save in the US build** (hard case 1 in
+   [CROSS_REGION_SAVES.md](CROSS_REGION_SAVES.md#hard-cases)): the US build cannot
+   play it. Proposed: the slot shows the game's error 8 and stays untouched. OK?
+4. **Legacy saves**: copy (never move) into the first user's folder with a prompt,
+   first-fit into the 6 slots when both regions have saves. OK, or should a
+   conflict ask the player slot by slot?
+5. **Downgrade**: no dual write to the old `memcard/` folders (an old build then
+   sees stale saves). Acceptable, with a release note?
+6. **Profile selector** (decided 2026-10-24: "Quero usar o seletor de perfil do
+   Switch."): used when several profiles exist and none is preselected. The
+   selector has no timeout we control, and a wrong pick uses someone else's
+   folder. If it cannot launch from applet mode, the fallback is open: see
+   [PER_USER_SAVES.md](PER_USER_SAVES.md#open-questions-for-the-owner).
+7. **Options**: one global `port_options.cfg` (recommended) or per user?
+8. **Separate builds**: keep `--eu` / `DW3_VERSION=us|eu` for development only
    and ship only the combined `.nro` once it passes, or ship both for a while?
-5. **Size:** is an `.nro` of about 12 MB acceptable (about 9.3 MB today)?
-6. **PC:** one `dw3-pc` for both regions too (the same mechanism), or
-   Switch only?
-7. **Switching region in game** (without quitting): out of scope?
+9. **Size**: is an `.nro` of about 12 MB acceptable (about 9.3 MB today)?
+10. **PC**: one `dw3-pc` for both regions too (the same mechanism), or Switch
+    only?
+11. **Switching region in game** (without quitting): out of scope?

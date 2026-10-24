@@ -352,6 +352,30 @@ for _v, _ids in (("us", (0x159, 0x1FA, 0x1C2, 0x158)), ("eu", (0x167, 0x208, 0x1
                   note="the battle report draws with the widescreen gutter (patch 0074)"))
 
 
+# The file cache runs out of slots (patches 0095 hook, 0096 fix). The preview.31-rc1
+# OLED crash: after about two hours of play all 64 slots of the file cache were
+# taken (the host heap is 8 MiB, so nothing evicted, unlike the PS1's 1.33 MB)
+# and the battle report's next requestFile wrote through a NULL slot. The
+# DW3_FILE_CACHE_SLOTS hook makes the two-battles path fill a small cache in one
+# run. Before 0096 the second battle ended in SIGSEGV in requestFile (CRASH);
+# now the log must show the eviction and both battles end. PC only (env), log
+# only, the two-battles path without checkpoints.
+_FC_SLOTS = "16"
+for _v, _ids in (("us", (0x159, 0x1FA, 0x1C2, 0x158)), ("eu", (0x167, 0x208, 0x1D1, 0x166))):
+    _fight, _menu, _report, _field = _ids
+    _battle = ((_fight, M), (_menu, S), (_report, M), (_field, M))
+    _add(Scenario(f"{_v}-file-cache-full", _v, "full", turbo=4, timeout=600, log_only=True,
+                  env=_BATTLE_ENV + (("DW3_FILE_CACHE_SLOTS", _FC_SLOTS),),
+                  expect_restore=_battle * 2,
+                  expect_log=((0, r"DW3_FILE_CACHE_SLOTS=%s of 64(?s:.*)"
+                                  r"dw3-file-cache: all %s slots taken, evicted the least recently used file(?s:.*)"
+                                  r"WFIGHTMN_endBattle result=1(?s:.*)"
+                                  r"AUTO_DOOR requestMode=0x600(?s:.*)"
+                                  r"WFIGHTMN_endBattle result=1" % (_FC_SLOTS, _FC_SLOTS)),),
+                  forbid_log=((0, r"FATAL all \d+ slots taken"),),
+                  note="two forced battles with a 16-slot file cache: it fills, evicts, and both end (patches 0095, 0096)"))
+
+
 # P7.7 bug fixes (patches 0064 hooks, 0065 HUD name, 0066 claw steal). Log-only
 # battles: the patches print `dw3-p77:` lines and the PC hooks of 0064 set the
 # situation up, so the proof does not depend on a lucky roll. PC only.
