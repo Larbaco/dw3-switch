@@ -153,7 +153,7 @@ def build_site(document, pages, order):
                                title=html.unescape(entity[1]) if entity else page['title'],
                                parent=page['parent'] or page['id'], text=info.reading_text()))
     data = dict(routes=routes, palette=palette, search=search,
-                order=[dict(id=key, title=by_id[key]['title']) for key in order])
+                order=[dict(id=key, title=by_id[key]['title'], parent=by_id[key]['parent']) for key in order])
     assets_dir = Path(__file__).with_name('guide_assets')
     files = {f'assets/guide.{ext}': (assets_dir / f'guide.{ext}').read_text(encoding='utf-8')
              for ext in ['css', 'js']}

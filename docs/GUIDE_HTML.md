@@ -315,3 +315,8 @@ with a local `guide-offline.zip` alongside it for copying. Extract it and open
 `guide-offline/index.html`. No generated guide/ZIP/source was added to git and
 the primary checkout's generated HTML remains untouched. ISO/gameplay and
 full screen-reader/browser-engine certification remain outside this change.
+
+Section-overview keyboard/dock navigation selects that section's first chapter
+(for example, Digimon Evolutions → Angemon), rather than restarting the
+walkthrough. Stored preferences/resume are best effort when browser storage is
+unavailable; chapter URLs, search and English originals do not depend on it.

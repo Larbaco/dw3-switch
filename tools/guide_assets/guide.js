@@ -62,7 +62,7 @@ function setActive(id){
  }
  groups.forEach(d=>{const ls=$$('li a',d);const i=ls.findIndex(x=>x.classList.contains('active'));d.style.setProperty('--p',i<0?0:(i+1)/ls.length)});
  const ix=navs.findIndex(e=>e.id===id);
- const pv=navs[ix-1],nx=ix<0?navs[0]:navs[ix+1];
+ const pv=navs[ix-1],nx=ix<0?(SITE&&navs.find(n=>n.parent===body.dataset.pageId)||navs[0]):navs[ix+1];
  dprev.href=pv?hrefFor(pv.id):hrefFor('inicio');dprev.setAttribute('aria-disabled',String(!pv));
  dnext.href=nx?hrefFor(nx.id):hrefFor('inicio');dnext.setAttribute('aria-disabled',String(!nx));
  const chapter=id&&$i(id),show=chapter&&chapter.matches('article.lvl2');
@@ -101,6 +101,7 @@ topb.onclick=()=>{scrollTo({top:0});focusTarget($i('inicio')||main)};
 // keyboard: j/k move between chapters
 function go(dir){
  const i=navs.findIndex(e=>e.id===cur);
+ if(SITE&&i<0){navigate(dir>0?(navs.find(n=>n.parent===body.dataset.pageId)||navs[0]).id:'inicio');return}
  const el=i<0?navs[dir>0?0:navs.length-1]:navs[i+dir];
  if(el)navigate(el.id);
 }

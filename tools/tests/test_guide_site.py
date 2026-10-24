@@ -32,6 +32,7 @@ class GuideSiteTest(unittest.TestCase):
         data = shared(files)
         assert data['routes']['walk'] == 'chapter-walk.html'
         assert data['routes']['city-return'] == 'chapter-walk-return.html'
+        assert next(x for x in data['order'] if x['parent'] == 'digimon-evolutions')['id'] == 'evolution'
         assert '<article class="lvl2 walk"' not in files['walkthrough.html']
         assert 'A unique second chapter sentence.' not in files['chapter-walk.html']
         assert 'chapter-walk-return.html#walk-return' in files['chapter-walk.html']
