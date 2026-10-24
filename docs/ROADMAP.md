@@ -1953,7 +1953,11 @@ Statuses are in the [table](#status-at-a-glance).
   is `accountGetPreselectedUser` (title-override mode, expected), else the only
   user, else the **Switch profile selector** (`pselShowUserSelector`; applet mode
   has no preselected user, and whether the selector launches there is checked on
-  the OLED), else the `shared` profile. Saves go to
+  the OLED), else the `shared` profile. **Cancel:** if the player cancels the
+  selector the game does not start; it exits cleanly back to the launching menu,
+  with nothing created or written (owner decision 2026-10-24, "Se o jogador
+  cancelar a escolha, O jogo não deve ser iniciado";
+  [PER_USER_SAVES.md](PER_USER_SAVES.md#owner-decision-cancelling-the-profile-selector-2026-10-24)). Saves go to
   `sdmc:/switch/dw3/saves/<uid>/card0.dw3s, card1.dw3s` (uid = 32 hex digits;
   soft binding, not security). PC: profile `default`
   (`runtime/saves/default/`, `DW3_SAVE_PROFILE` to change). Legacy saves are
