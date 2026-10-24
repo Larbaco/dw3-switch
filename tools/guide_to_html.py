@@ -569,7 +569,7 @@ def palette_json(sections, entities):
         items += [{"t": it[2], "g": s["title"], "id": it[1], "k": "loc"} for it in s["intro"] if it[0] == "h"]
     items.append({"t": "Índice de entidades", "g": "Guia", "id": entities.index_id, "k": "sec"})
     items += [{"t": entry["name"], "g": " / ".join(sorted(entry["kinds"])),
-               "id": entry["id"], "k": "dig"} for entry in entities.entries.values()]
+               "id": entry["id"], "k": "ent"} for entry in entities.entries.values()]
     return json.dumps(items, ensure_ascii=False).replace("</", "<\\/")
 
 
@@ -1694,7 +1694,7 @@ section.lvl1.enter{animation:fadeIn .45s ease both}
 #pl li.on{background:color-mix(in srgb,var(--ac) 14%,transparent);box-shadow:inset 3px 0 0 var(--ac)}
 #pl .pk{font:600 11px var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--ac);min-width:70px}
 #pl .pt{font-weight:600;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-#pl .pg{grid-column:2;font-size:12px;color:var(--mut);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#pl .pg{grid-column:2;min-width:0;font-size:12px;color:var(--mut);white-space:normal;overflow-wrap:anywhere}
 #pl .none{display:block;color:var(--mut);cursor:default}
 .mfoot{margin:0;padding:8px 14px;border-top:1px solid var(--bd);font-size:12px;color:var(--mut)}
 #top{position:fixed;right:18px;bottom:18px;width:42px;height:42px;border-radius:12px;border:1px solid var(--bd);background:var(--pn);color:var(--ac);cursor:pointer;z-index:25;display:grid;place-items:center;opacity:0;pointer-events:none;transition:opacity .15s,border-color .15s}
@@ -1913,7 +1913,7 @@ function highlight(id,q){
 // command palette
 const PAL=JSON.parse($i('pal-data').textContent);
 const pal=$i('pal'),pq=$i('pq'),pl=$i('pl');
-const KLAB={sec:'Seção',cap:'Capítulo',loc:'Local',dig:'Digimon'};
+const KLAB={sec:'Seção',cap:'Capítulo',loc:'Local',ent:'Entidade'};
 let psel=0,plist=[];
 function fuzzy(t,q){const i=t.indexOf(q);if(i>=0)return i;let p=0,last=-1,gap=0;
  for(const ch of q){const j=t.indexOf(ch,p);if(j<0)return -1;if(last>=0)gap+=j-last-1;last=j;p=j+1}

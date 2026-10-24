@@ -23,7 +23,9 @@ normalized name. For example, a Digimon that is also an enemy or card has one
 entry listing those roles; repeated partner/evolution definitions are retained.
 Definition links and backlinks to rendered source blocks let readers move
 between walkthrough, reference data and card lists. All entities are available
-through Ctrl+K and the sidebar's entity index.
+through Ctrl+K and the sidebar's entity index. Palette results use the neutral
+category “Entidade” and show every indexed role (for example,
+“Carta / Digimon / Inimigo”); role labels wrap instead of being truncated.
 
 Entity IDs combine a readable slug with a digest of the normalized name;
 source-block IDs use their owner and a content digest. They are deterministic
@@ -49,8 +51,9 @@ or nested anchors. All 159 original/ASCII `<pre>` blocks had identical decoded
 text compared with the supplied converter. Structured coverage stayed at
 96/96 partner/evolution blocks, 4/4 boosters and the enemy list; four existing
 ASCII fallback blocks remain (two empty item lists and two unusual enemy lists).
-Five synthetic regression tests cover ambiguity, collisions, markup/escaping,
-boundaries, ASCII preservation, backlinks and integrity failures.
+Six synthetic regression tests cover ambiguity, collisions, markup/escaping,
+boundaries, ASCII preservation, backlinks, integrity failures and palette
+categories with all seven entity roles and multi-role destinations.
 
 A hidden T3 browser tab at 1280x800 also checked the live DOM and followed
 walkthrough → Renamon's Digimon/card entry → walkthrough. No OLED, emulator,

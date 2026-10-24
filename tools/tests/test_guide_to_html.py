@@ -1,4 +1,5 @@
 """Regression cases for the guide's entity resolver (no copyrighted fixture)."""
+import json
 import sys
 from html.parser import HTMLParser
 from pathlib import Path
@@ -37,6 +38,26 @@ def fixture():
 
 
 class GuideLinksTest(unittest.TestCase):
+    def test_palette_entities_keep_all_roles_and_destinations(self):
+        sections = fixture()
+        entities = guide.EntityIndex(sections)
+        items = json.loads(guide.palette_json(sections, entities))
+        results = {item['id']: item for item in items if item['k'] == 'ent'}
+        assert set(results) == {entry['id'] for entry in entities.entries.values()}
+        assert not any(item['k'] == 'dig' for item in items)
+        roles = set()
+        for entry in entities.entries.values():
+            result = results[entry['id']]
+            assert result['t'] == entry['name']
+            assert result['g'].split(' / ') == sorted(entry['kinds'])
+            roles.update(entry['kinds'])
+        assert roles == {'Digimon', 'Inimigo', 'Item', 'Local', 'Técnica', 'Booster', 'Carta'}
+        assert results[entities.entries['testmon']['id']]['g'] == 'Carta / Digimon / Inimigo'
+        assert results[entities.entries['power charge']['id']]['g'] == 'Carta / Item'
+        checked = guide.validate_links(guide.render('', sections))
+        assert all(item['id'] in checked.ids for item in items)
+
+
     def test_homonyms_keep_every_definition_and_role(self):
         entities = guide.EntityIndex(fixture())
         entry = entities.entries['testmon']
