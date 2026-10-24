@@ -1,0 +1,141 @@
+Upstream-bound: no
+Subject: [PORT_HOST] P6.1 title screen fills 16:9 (backdrop mirrored into the gutters)
+
+The title screen (PRESS START, New Game / Options / Load Game) ran with
+gutter 0, a 4:3 picture pillarboxed on a 16:9 screen. Its backdrop is three
+320x240 sheets plus eight animated sprites, with no art past the 4:3 edges.
+With widescreen on, every backdrop sheet and animation frame is drawn twice
+more, mirrored (scale -1) about x 0 and about x 320, so each gutter shows the
+outer 53 columns reversed, meeting the picture at its edge; the edge fade's
+triangles (an option is chosen) reach the picture's edges. The backdrop
+calls dw3_port_widescreen_title_backdrop() every frame it is drawn: the
+title overlay (STDWTITL also plays the movies and the still screen) gets the
+menu gutter only while it is. Logo, menu and options stay in the middle 4:3
+(native overlays, re-centred by the hosts). Off, nothing changes.
+
+--- a/src/menus/title/background.c
++++ b/src/menus/title/background.c
+@@ -1,6 +1,29 @@
+ /* The title screen's background, and its eight looping sprite animations */
+ 
+ #include "menus/title.h"
++#if PORT_HOST
++#include "port_widescreen.h"
++
++/* Widescreen (patch 0085): the backdrop has no art past the 4:3 edges, so
++   with a gutter each sheet is drawn twice more, mirrored about x 0 and about
++   x 320; the gutters show the outer columns reversed, meeting the picture at
++   its edges */
++static void STDWTITL_drawWide(SpriteDrawer *sprite, s32 *sheet, s32 frame, s32 x, s32 y) {
++    sprite->draw(sheet, frame, x, y);
++    if (dw3_port_widescreen_px() > 0) {
++        sprite->setScale(-ONE, ONE, ONE);
++        sprite->setPivot(0, 0);
++        sprite->draw(sheet, frame, x, y);
++        sprite->setPivot(SCREEN_WIDTH, 0);
++        sprite->draw(sheet, frame, x, y);
++        sprite->setScale(ONE, ONE, ONE);
++        sprite->setPivot(0, 0);
++    }
++}
++#define STDWTITL_DRAW(sprite, sheet, frame, x, y) STDWTITL_drawWide(&(sprite), (sheet), (frame), (x), (y))
++#else
++#define STDWTITL_DRAW(sprite, sheet, frame, x, y) (sprite).draw((sheet), (frame), (x), (y))
++#endif
+ #if defined(DW3_PC_SDL3_GPU) && VERSION_US
+ extern void dw3_port_title_background_frame(const s32 *, const s32 *, const s32 *,
+     const s32 *, const s32 *, const int *, int, int, int, int);
+@@ -42,15 +65,19 @@
+ void STDWTITL_drawBackground(TitleBackgroundTask *task) {
+     SpriteDrawer sprite;
+ 
++#if PORT_HOST
++    /* the title overlay keeps its gutter while the backdrop is drawn */
++    dw3_port_widescreen_title_backdrop();
++#endif
+     initSpriteDrawer(&sprite);
+     sprite.setLayerId(task->layerId, 0);
+     sprite.setAltClut(0, 0x1F3);
+     sprite.setTexture(0x300, 0);
+-    sprite.draw(FILE_CACHE.getEntry(STDWTITL_BACKGROUND(0)), 0, 0, 0);
++    STDWTITL_DRAW(sprite, FILE_CACHE.getEntry(STDWTITL_BACKGROUND(0)), 0, 0, 0);
+     sprite.setTexture(0x340, 0);
+-    sprite.draw(FILE_CACHE.getEntry(STDWTITL_BACKGROUND(1)), 0, 0, 0);
++    STDWTITL_DRAW(sprite, FILE_CACHE.getEntry(STDWTITL_BACKGROUND(1)), 0, 0, 0);
+     sprite.setTexture(0x380, 0);
+-    sprite.draw(FILE_CACHE.getEntry(STDWTITL_BACKGROUND(2)), 0, 0, 0);
++    STDWTITL_DRAW(sprite, FILE_CACHE.getEntry(STDWTITL_BACKGROUND(2)), 0, 0, 0);
+ #if defined(DW3_PC_SDL3_GPU) && VERSION_US
+     if (task->state != TASK_DONE) {
+         const int frames[8] = {300,300,300,300,300,300,300,300};
+@@ -80,28 +107,28 @@
+     sprite.setLayerId(task->layerId, 0);
+     sprite.setTexture(0x3C0, 0);
+     if (frame0 != 300) {
+-        sprite.draw(FILE_CACHE.getEntry(STDWTITL_BACKGROUND(3)), frame0, 0, 0);
++        STDWTITL_DRAW(sprite, FILE_CACHE.getEntry(STDWTITL_BACKGROUND(3)), frame0, 0, 0);
+     }
+     if (frame1 != 300) {
+-        sprite.draw(FILE_CACHE.getEntry(STDWTITL_BACKGROUND(3)), frame1, 0, 0);
++        STDWTITL_DRAW(sprite, FILE_CACHE.getEntry(STDWTITL_BACKGROUND(3)), frame1, 0, 0);
+     }
+     if (frame2 != 300) {
+-        sprite.draw(FILE_CACHE.getEntry(STDWTITL_BACKGROUND(3)), frame2, 0, 0);
++        STDWTITL_DRAW(sprite, FILE_CACHE.getEntry(STDWTITL_BACKGROUND(3)), frame2, 0, 0);
+     }
+     if (frame3 != 300) {
+-        sprite.draw(FILE_CACHE.getEntry(STDWTITL_BACKGROUND(3)), frame3, 0, 0);
++        STDWTITL_DRAW(sprite, FILE_CACHE.getEntry(STDWTITL_BACKGROUND(3)), frame3, 0, 0);
+     }
+     if (frame4 != 300) {
+-        sprite.draw(FILE_CACHE.getEntry(STDWTITL_BACKGROUND(8)), frame4, 0, 0);
++        STDWTITL_DRAW(sprite, FILE_CACHE.getEntry(STDWTITL_BACKGROUND(8)), frame4, 0, 0);
+     }
+     if (frame5 != 300) {
+-        sprite.draw(FILE_CACHE.getEntry(STDWTITL_BACKGROUND(8)), frame5, 0, 0);
++        STDWTITL_DRAW(sprite, FILE_CACHE.getEntry(STDWTITL_BACKGROUND(8)), frame5, 0, 0);
+     }
+     if (frame6 != 300) {
+-        sprite.draw(FILE_CACHE.getEntry(STDWTITL_BACKGROUND(8)), frame6, task->pos6.x, task->pos6.y);
++        STDWTITL_DRAW(sprite, FILE_CACHE.getEntry(STDWTITL_BACKGROUND(8)), frame6, task->pos6.x, task->pos6.y);
+     }
+     if (frame7 != 300) {
+-        sprite.draw(FILE_CACHE.getEntry(STDWTITL_BACKGROUND(8)), frame7, task->pos7.x, task->pos7.y);
++        STDWTITL_DRAW(sprite, FILE_CACHE.getEntry(STDWTITL_BACKGROUND(8)), frame7, task->pos7.x, task->pos7.y);
+     }
+ }
+ 
+--- a/src/menus/title/edge_fade.c
++++ b/src/menus/title/edge_fade.c
+@@ -1,6 +1,19 @@
+ /* The fade out from the screen's edges once an option is chosen */
+ 
+ #include "menus/title.h"
++#if PORT_HOST
++#include "port_widescreen.h"
++
++/* Widescreen (patch 0085): the triangles reach the picture's edges, so the
++   gutters darken with the rest */
++static s32 STDWTITL_edgeX(s32 x) {
++    s32 gutter = dw3_port_widescreen_px();
++
++    return x <= 0 ? x - gutter : x >= SCREEN_WIDTH ? x + gutter : x;
++}
++#else
++#define STDWTITL_edgeX(x) (x)
++#endif
+ #if defined(DW3_TITLE_NATIVE_OVERLAY)
+ extern void dw3_port_title_overlay_fade(s32 level);
+ #endif
+@@ -41,9 +54,9 @@
+         /* From the centre of the screen to one of its edges */
+         poly->x0 = 160;
+         poly->y0 = 120;
+-        poly->x1 = STDWTITL_edgeFadeLines[i].x1;
++        poly->x1 = STDWTITL_edgeX(STDWTITL_edgeFadeLines[i].x1);
+         poly->y1 = STDWTITL_edgeFadeLines[i].y1;
+-        poly->x2 = STDWTITL_edgeFadeLines[i].x2;
++        poly->x2 = STDWTITL_edgeX(STDWTITL_edgeFadeLines[i].x2);
+         poly->y2 = STDWTITL_edgeFadeLines[i].y2;
+         addPrim(ot, poly);
+         poly++;
