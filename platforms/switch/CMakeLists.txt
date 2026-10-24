@@ -122,6 +122,17 @@ add_compile_options(-fno-omit-frame-pointer)
 
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../../vendor/psyz/psyz
                  ${CMAKE_BINARY_DIR}/psyz)
+# P6.20 Cheats sub-screen of the Options screen (docs/PORT_OPTIONS.md
+# "Cheats"). ON (the default, release builds too): the Cheats screen, its
+# hooks (patch 0077) and the save mark are compiled in, every cheat off until
+# its master switch is turned on. OFF (tools/build_switch_game.sh --no-cheats,
+# or -DDW3_CHEATS=OFF): none of it is compiled and the game is the build
+# without P6.20. Defined for every target after psyz (the game, port, host).
+option(DW3_CHEATS "P6.20 Cheats screen in the Options screen (test aid)" ON)
+if(DW3_CHEATS)
+  add_compile_definitions(DW3_CHEATS=1)
+  message(STATUS "P6.20 Cheats screen compiled in (DW3_CHEATS)")
+endif()
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../../port ${CMAKE_BINARY_DIR}/port)
 
 string(TOLOWER "${DW3_VERSION}" _dw3_ver)

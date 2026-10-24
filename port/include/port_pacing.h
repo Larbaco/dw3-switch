@@ -32,9 +32,13 @@ enum {
 };
 
 /* The type delay (frames between characters, minus one) the game gives every
- * dialogue and message box (setTypeDelay(.., 6)); the area banner uses 5 and
- * is left alone. Fast and Instant type at DW3_PACING_FAST_DELAY. */
+ * dialogue and message box (setTypeDelay(.., 6)). Fast and Instant type at
+ * DW3_PACING_FAST_DELAY. The area name banner (the area and place names that
+ * open with the field, after every battle too) types at
+ * DW3_PACING_BANNER_DELAY: Normal and Fast leave it alone, Instant gives it
+ * the fast delay too so the page reveal shows each name whole. */
 #define DW3_PACING_DIALOGUE_DELAY 6
+#define DW3_PACING_BANNER_DELAY 5
 #define DW3_PACING_FAST_DELAY 2
 
 /* Instant mode and a text that scrolls (the window shows two lines of a three
@@ -63,7 +67,8 @@ enum {
 int dw3_pacing_scale_rate(int mode, int rate, int *carry);
 
 /* Type delay under `mode` for a window that the game asked to type at
- * `delay`: unchanged for every window but the dialogue ones, 0 stays 0. */
+ * `delay`: the dialogue delay is shortened at Fast and Instant, the banner's
+ * at Instant only; every other delay is unchanged, 0 stays 0. */
 int dw3_pacing_scale_delay(int mode, int delay);
 
 /* Instant mode shows a whole page when it starts: true when a window typing

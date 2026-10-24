@@ -68,6 +68,30 @@ int dw3_port_options_file_int(const char *key, int def);
  * Hosts register it with atexit. Changes are written when they are made. */
 void dw3_port_options_flush(void);
 
+#ifdef DW3_CHEATS
+#include "port_cheats.h"
+/* P6.20 (port/options/cheats.c, docs/PORT_OPTIONS.md "Cheats"). Square (Y on
+ * the Switch) on the Options screen opens the Cheats screen. */
+
+/* Set a file-only integer key (a cheat_* toggle) and write the file now,
+ * like a change on the Options screen. Returns 0, or -1 when the file could
+ * not be written (retried by dw3_port_options_flush). */
+int dw3_port_options_store_int(const char *key, int value);
+
+/* The Options screen's sounds, for the Cheats screen. */
+enum {
+    DW3_PORT_OPTIONS_SOUND_CURSOR = 0,
+    DW3_PORT_OPTIONS_SOUND_SELECT = 1,
+    DW3_PORT_OPTIONS_SOUND_CANCEL = 2
+};
+void dw3_port_options_play_sound(int kind);
+
+#ifdef DW3_PORT_OPTIONS_TEST
+/* The pad bit given by dw3_port_options_test_set_pressed (host tests). */
+int dw3_port_options_test_bit(int bit);
+#endif
+#endif
+
 #ifdef __cplusplus
 }
 #endif

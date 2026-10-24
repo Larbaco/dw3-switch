@@ -40,6 +40,12 @@ port options:
   volume down / up from 10 to 0 (a held direction repeats; it stops at the
   ends), and Cross / Circle step up and wrap 10 to 0. See
   [P6.17_VOLUME.md](P6.17_VOLUME.md).
+- On the Options screen, **Square** (PC **Z**, Switch **Y**) opens the Cheats
+  screen (P6.20) and Triangle returns to Options. The hint "Square/Y Cheats" is
+  drawn only once the Cheats master switch is on, so the key is not discoverable
+  from the screen; builds made with `--no-cheats` have no such screen. Inside
+  it Up/Down selects a row, Cross / Circle change it. See
+  [PORT_OPTIONS.md](PORT_OPTIONS.md#cheats-p620).
 - During an opening movie, press or hold Start (Enter / Plus) to skip it.
   A held button is accepted after decoding a frame; this is not a fast-forward
   control.
@@ -53,7 +59,7 @@ acceptance remains tracked separately in [P5.3_FLAT_SAVE.md](P5.3_FLAT_SAVE.md).
 | Action | PS1 logical input | PC keyboard | Switch | Requirement / limit |
 |---|---|---|---|---|
 | Open Port options directly | Select | Backspace | Minus | Only while the title choices are active; no L1/R1/L2/R2 held |
-| Toggle fast-forward on/off | R3 | 2 | Right-stick click | Field/battle only; configured speed must be 2x, 3x or 4x |
+| Toggle fast-forward on/off | R3 | 2 | Right-stick click | Field, battle and the battle report (results screen) only; configured speed must be 2x, 3x or 4x |
 | Restart game in-process | L1 + R1 + Start + Select | Q + R + Enter + Backspace | L + R + Plus + Minus | Enable **Restart hotkey** in Port options first; OFF by default |
 
 Hold all four restart buttons together; one activation is allowed per chord

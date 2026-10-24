@@ -15,12 +15,17 @@
 #include <psyz/log.h>
 #endif
 
+/* The mode files fast-forward runs in: the field, the battle and the battle
+ * report (STFGTREP, the results screen between a won battle and the field;
+ * docs/P6.4_FAST_FORWARD.md). Everything else runs at normal speed. */
 #if VERSION_EU
 #define DW3_TURBO_FIELDSTG 0x166
 #define DW3_TURBO_FIGHTSTG 0x167
+#define DW3_TURBO_STFGTREP 0x1D1
 #else
 #define DW3_TURBO_FIELDSTG 0x158
 #define DW3_TURBO_FIGHTSTG 0x159
+#define DW3_TURBO_STFGTREP 0x1C2
 #endif
 
 enum { DW3_PORT_OPT_FAST_FORWARD = 1 };
@@ -83,7 +88,8 @@ int dw3_port_turbo_speed(void) {
         return 1;
     }
     mode_file = turbo_mode_file();
-    if (mode_file != DW3_TURBO_FIELDSTG && mode_file != DW3_TURBO_FIGHTSTG) {
+    if (mode_file != DW3_TURBO_FIELDSTG && mode_file != DW3_TURBO_FIGHTSTG &&
+        mode_file != DW3_TURBO_STFGTREP) {
         return 1;
     }
     return speed > DW3_TURBO_SPEED_MAX ? DW3_TURBO_SPEED_MAX : speed;

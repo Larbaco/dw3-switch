@@ -48,7 +48,7 @@ lives in its doc, not in the entry below.
 | P6.1 | Scaling / widescreen | in progress (rc8 OLED: banner, technique backdrops and encounter spiral reach 16:9; results screen 16:9 with patch 0074 in PR #213, pending OLED; Items menu dissolve 16:9 with patch 0075 and the field menu screens re-anchored to the 16:9 edges with patch 0076, pending OLED; preview.31-rc1 OLED notes: title menu, news caption bar and Digimon Online registration screen 16:9 with patches 0085-0087, pending OLED; Map screen (0080), results header (0081) and memory card slot picker (0082) fill 16:9, pending OLED; open: shop / partner name panels) | [P6.1](P6.1_WIDESCREEN.md) |
 | P6.2 | PAL/NTSC, EU/US, language at boot | in progress | [P3_EU_BUILD](P3_EU_BUILD.md) |
 | P6.3 | PGXP-style vertex precision | open | — |
-| P6.4 | Fast-forward | in progress (OLED turbo works in battle on the US disc, rc7; tick is the owner's call) | [P6.4](P6.4_FAST_FORWARD.md) |
+| P6.4 | Fast-forward | in progress (OLED turbo works in battle on the US disc, rc7; the battle report now runs at turbo speed too, 2026-10-24, pending OLED; tick is the owner's call) | [P6.4](P6.4_FAST_FORWARD.md) |
 | P6.5 | Release packaging | done | [P6.5](P6.5_PACKAGING.md), [RELEASES](RELEASES.md) |
 | P6.6 | Localization goal | open | — |
 | P6.7 | Language packs (PT-BR first) | open | — |
@@ -59,8 +59,8 @@ lives in its doc, not in the entry below.
 | P6.12–P6.14, P6.16, P6.19, P6.21 | Backlog goal notes | future | [backlog](#backlog--future-goals) |
 | P6.15 | Regression replay tests | in progress | [P6.15](P6.15_REPLAY_TESTS.md) |
 | P6.17 | Music / SFX volume | in progress (owner: volume options work, rc6 EU / rc7 US; relaunch check open) | [P6.17](P6.17_VOLUME.md) |
-| P6.18 | Pacing options | in progress (Instant text confirmed on the US OLED, rc7; rest of the OLED check open) | [P6.18](P6.18_PACING.md) |
-| P6.20 | Port debug / cheat menu in the Options screen (future goal) | future | [roadmap](#phase-6-goal-notes), [PORT_OPTIONS](PORT_OPTIONS.md) |
+| P6.18 | Pacing options | in progress (Instant text confirmed on the US OLED, rc7; Instant shows the area banner's names whole since 2026-10-24, pending OLED; rest of the OLED check open) | [P6.18](P6.18_PACING.md) |
+| P6.20 | Port debug / cheat menu in the Options screen | in progress (PR 1: Cheats screen, fill bag, instant win, battle now, save mark; OLED check open) | [roadmap](#phase-6-goal-notes), [PORT_OPTIONS](PORT_OPTIONS.md) |
 | P6.22 | Turbo speed in scripted scenes (future goal) | in progress (PC profile: the CPU rasterizer is ~97 % of a field frame; pixel-identical PSY-Z rasterizer 4-5x faster, OLED check open) | [P6.22](P6.22_FIELD_CPU.md), [roadmap](#phase-6-goal-notes), [P6.4](P6.4_FAST_FORWARD.md) |
 | P6.23 | Documentation: player guide, docs index, contributor and modder docs (future goal) | future | [roadmap](#phase-6-goal-notes) |
 | P6.24 | One build for US and EU: one `.nro` and one PC binary, region found at boot, a boot picker with both discs (future goal; depends on P6.25 and P6.26) | future | [SINGLE_BUILD](SINGLE_BUILD.md), [roadmap](#phase-6-goal-notes) |
@@ -857,6 +857,14 @@ gate, which stays open.
   **Future goal (2026-10-23):** the owner also finds the New Game opening
   scenes very slow with turbo at 4x (about 70 FPS); recorded as P6.22, nothing
   started (first numbers in P6.22 below: field 68 fps at 4x, battle 190).
+  **Battle report (2026-10-24, owner, preview.31-rc1 OLED: "even with turbo
+  on and Instant, the post-battle text still runs slowly"):** the results
+  screen is its own mode (`STFGTREP`, US 0x1C2, EU 0x1D1) and the turbo gate
+  dropped to 1x for it. Fixed: the report is the gate's third mode file
+  (port only; same game frames, replays unchanged; `us/eu-postbattle-*`
+  replay scenarios). The field menu screens still run at 1x. Needs an OLED
+  check: a won battle with R3 on, the results screen at the battle's speed.
+  See [P6.4_FAST_FORWARD.md](P6.4_FAST_FORWARD.md#battle-report-preview31-rc1-oled).
   Done when: PC and Switch (Ryujinx, then hardware) show it on both the US
   and EU discs, and it returns cleanly to normal speed.
 - [x] **P6.5** Release packaging: `.nro` + `README` for own-disc setup;
@@ -1629,14 +1637,25 @@ Statuses are in the [table](#status-at-a-glance).
   types at the game's own speed (the open owner call above). **Still open:**
   Fast, 0.5x and Off in play, EU on rc7, a dialogue that scrolls, relaunch
   persistence. Stays unticked.
+  **Post-battle (2026-10-24, owner, preview.31-rc1 OLED):** "even with turbo on
+  and Instant, the post-battle text still runs slowly". The report's pages were
+  already shown in 1-2 frames; turbo dropped to 1x for the report (fixed in
+  P6.4) and the area name banner typed its names. **Instant now shows the
+  banner's names whole** (port only, delay 5 -> 2 at Instant; boxes, hold and
+  wipe unchanged; Normal and Fast unchanged): the banner after the test battle
+  closes in 126 instead of 160 game ticks (US), 140 instead of 180 (EU). This
+  answers the banner part of the owner's call above for Instant; a shorter
+  hold is still not done. Needs an OLED check (Instant, a won battle and a
+  door). Details in
+  [P6.18_PACING.md](P6.18_PACING.md#instant-and-the-area-name-banner-preview31-rc1).
 - [ ] **P6.19 Japanese disc support (future goal).** File map, executable
   differences and boot for the JP disc, next to US and EU. Goal note only
   (2026-10-15). Done when the JP disc boots to the field on PC and Switch.
-- [ ] **P6.20 Port debug / cheat menu in the Options screen (future goal).**
+- [ ] **P6.20 Port debug / cheat menu in the Options screen.**
   First noted 2026-10-15 (money, items, map warp, off by default); widened
   2026-10-24 on an owner request: "a cheats submenu inside the options, to
-  make testing easier". Goal note only, **nothing started: no code, no
-  patch**. The purpose is faster hardware testing (reach a battle, a map or a
+  make testing easier". **PR 1 (first slice) is built** (2026-10-24, patch
+  `0077`, section "PR 1 as built" below); the rest is still a goal note. The purpose is faster hardware testing (reach a battle, a map or a
   full bag without replaying hours of the game), not a player feature.
   AGENTS.md lists cheats as out of scope unless requested; this is the owner's
   explicit request, so the item is in scope under the constraints below.
@@ -1699,19 +1718,67 @@ Statuses are in the [table](#status-at-a-glance).
   do not and run from the menu. A one-shot still changes the live game and the
   game's own save would then store it: say so on the screen and log it. No
   cheat may write a save file by itself.
-  **Open questions (owner):** (a) *visibility*: nxlink / dev builds only (the
-  code compiles out of the release `.nro`, like `DW3_NX_DEBUG_OVERLAY`) or in
-  every build behind a master switch? Every preview ships an nxlink `.nro`
-  anyway, so dev-only still serves hardware testing; (b) the Options screen
-  opens only from the title today, so give-item or instant-win inside a battle
-  needs P9.7 (Options reachable in game); the first slice works from the title
-  only; (c) English-only labels for a test menu, or the five EU languages;
-  (d) whether to flag a save as touched by a cheat (a log line only, never a
-  change to the save).
+  **Owner decisions (2026-10-24, final; they replace the open questions):**
+  (1) the Cheats menu ships in **every** build, release and nxlink, US and EU,
+  behind a master switch that is off by default; (2) the labels are in all five
+  EU languages (English on the US disc), made the way the Options screen makes
+  its labels (pre-rendered lettering, procedure in
+  [PORT_OPTIONS.md](PORT_OPTIONS.md#cheats-p620)); (3) a save written while a
+  cheat was used is flagged "cheat used", and a **build-time option** makes a
+  build without any cheat: CMake `DW3_CHEATS` (default ON),
+  `tools/build_switch_game.sh --no-cheats` on the Switch, `-DDW3_CHEATS=OFF` on
+  the PC. OFF compiles the feature out (no entry, no hook, no flag code) and
+  the game is bit-identical to a build before P6.20. Releases keep the default
+  (cheats included) unless the owner says otherwise
+  ([RELEASES.md](RELEASES.md#building-without-cheats)). The earlier question
+  (b), the Options screen opening only from the title, is unchanged: the first
+  slice works from the title and its effects show once the game is running
+  (P9.7 would open Options in game).
+  **PR 1 as built (2026-10-24):**
+  - *Entry:* on the Options screen, **Square** (PC **Z**, Switch **Y**) opens the
+    Cheats screen and Triangle goes back. The hint "Square/Y Cheats" is drawn
+    **only while the master switch is on**: any always-visible entry (a ninth
+    row, paging, a hint) would change the Options screen's pixels and the
+    existing `*-options-persist`, `*-volume-persist` and
+    `*-battle-cursor-persist` references would fail; they are not refreshed.
+    With the master off the Options screen is pixel-identical and the eight
+    rows and the dirty-rectangle cache are untouched.
+  - *Cheats screen:* five rows in the Options window: Cheats (master, persisted
+    as `cheat_enabled`), Fill bag (one-shot), Instant win (persisted as
+    `cheat_instant_win`), Battle now (one-shot) and Cheat saves (read-only
+    count). Rows 2-4 are greyed and inert while the master is off; turning the
+    master off disarms the one-shots.
+  - *Cheats:* **Fill bag** puts 99 of every usable item, weapon, armour and
+    accessory (ids 43..359) in the bag through patch `0070`'s hook; **Instant
+    win** ends each battle as won on its first turn; **Battle now** makes the
+    next footstep in a random-battle area start a battle, even at Encounter
+    rate OFF. The `DW3_FORCE_*` variables keep working and win over the screen.
+  - *Save flag:* a sidecar `save<N>.cheats` next to the memory card file, never
+    a byte in the save
+    ([PORT_OPTIONS.md](PORT_OPTIONS.md#the-cheat-used-flag-on-saves)). Shown as
+    the count on the Cheats screen and in the boot log; the in-game memory card
+    screen does not show it yet (follow-up).
+  - *Code:* `port/options/cheats.c`, `cheat_saves.c`, `port/include/port_cheats.h`,
+    patch `0077-PORT_HOST-p620-cheats-hooks.patch` (every line in
+    `#ifdef DW3_CHEATS`), the Square/Z/Y hook in `port_options.c`, the lettering
+    (`CHEAT_TEXT` in `tools/generate_pc_title_lettering.py`).
+  - *Tests:* `tools/tests/test_cheats.py`, the cache test now covers the Cheats
+    page and the hint, seven log-only replay pairs (`<v>-cheats-screen`,
+    `cheat-fill-bag[-off]`, `cheat-battle-now[-off]`, `cheat-instant-win[-off]`),
+    the full replay suite on the cheats-ON build against unchanged references,
+    and a section and symbol comparison of the cheats-OFF build with `main`.
+  **Follow-ups (out of PR 1):** money / bits, infinite HP / MP, max stats,
+  digivolution unlocks, map warp, walk speed (all need the decomp fields to be
+  located first); a chosen encounter id (`DW3_FORCE_ENCOUNTER`) instead of the
+  random one; the "cheat used" mark on the in-game memory card screen
+  (STGMCARD); P9.7 (Options reachable in game).
+  **Still open (hardware):** the OLED checklist in
+  [PORT_OPTIONS.md](PORT_OPTIONS.md#cheats-p620), so the item stays unticked.
   Done when: the sub-screen works on the PC and the Switch build with US and
-  EU, every cheat in the slice works and is logged, the default is
-  bit-identical to a build without it, the visibility choice is recorded, and
-  PORT_OPTIONS.md and PATCHES.md describe it.
+  EU (PC done, Switch compiles; OLED open), every cheat in the slice works and
+  is logged (done, replays), the default is bit-identical to a build without it
+  (done), the visibility choice is recorded (done), and PORT_OPTIONS.md and
+  PATCHES.md describe it (done).
   Related: P9.7, P9.4, P6.15, P6.18, P7.9, P5.5, P3.8.
 - [ ] **P6.21 60 fps interpolation (far future).** Interpolate camera and
   field movement in 30 fps sections. After P6.10. Goal note only
@@ -1767,7 +1834,8 @@ Statuses are in the [table](#status-at-a-glance).
   text and a full map on the soft path, and the map still fills in one
   tile per frame per [STATIC_SD_LOAD.md](STATIC_SD_LOAD.md)); (2) the
   turbo gate: the port speeds up only the field and battle mode files
-  (`port/options/turbo.c`, US 0x158/0x159, EU 0x166/0x167), so a scene that
+  (`port/options/turbo.c`, US 0x158/0x159, EU 0x166/0x167; the battle report
+  0x1C2 / 0x1D1 was added 2026-10-24), so a scene that
   runs in another mode or overlay would stay near 1x; the opening goes
   through several overlays (P6.15: Kusanagi, name entry, Login Room, lobby);
   (3) present/vsync pacing in `Psyz_VideoVSync` (`nx_gpu.c`) and the

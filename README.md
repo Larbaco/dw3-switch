@@ -92,7 +92,8 @@ Things this port adds to the original game.
 - **Widescreen.** About 16:9 in field and battle, on by default, switchable
   in Port options. Title and movies stay 4:3:
   [P6.1_WIDESCREEN](docs/P6.1_WIDESCREEN.md).
-- **Fast-forward.** R3 toggles 2x, 3x or 4x in field and battle:
+- **Fast-forward.** R3 toggles 2x, 3x or 4x in field, battle and the
+  results screen after a battle:
   [P6.4_FAST_FORWARD](docs/P6.4_FAST_FORWARD.md).
 - **Music and SFX volume.** Two rows in Port options, 0 to 10, 10 is the
   original mix; saved with the other options. The Options screen plays the
@@ -153,7 +154,7 @@ These are goals, not promises. The full list is in
 - Language packs, with Brazilian Portuguese first.
 - Texture pack support: [TEXTURE_PACKS](docs/TEXTURE_PACKS.md), and later a
   modding API (mod folder, asset and data-table overrides, P8.5).
-- A cheats sub-screen in Port options, to speed up testing (P6.20).
+- A cheats sub-screen in Port options, to speed up testing (P6.20; first slice built, off by default, removable with `--no-cheats`).
 - A player guide, a docs index and contributor docs (P6.23).
 - In-game pause menu: return to title and help / FAQ / tips (P6.27, P6.30);
   Quit game on the title menu, back to hbmenu (P6.28).
@@ -226,7 +227,8 @@ Port hotkeys:
 
 - Press Start at the title, then pick **Options** to open Port options.
   Triangle (X on Switch) goes back.
-- R3 (right-stick click) toggles fast-forward in field and battle. Choose
+- R3 (right-stick click) toggles fast-forward in field, battle and the
+  results screen after a battle. Choose
   2x, 3x, 4x or off in Port options.
 - An opt-in restart chord (L + R + Plus + Minus on Switch) returns to the
   title after flushing saves. Enable it in Port options first.
@@ -279,6 +281,7 @@ Needs devkitPro. CI builds in the `devkitpro/devkita64` image.
 bash tools/build_switch_game.sh           # build/switch/dw3-switch.nro
 bash tools/build_switch_game.sh --nxlink  # logging variant
 bash tools/build_switch_game.sh --eu      # EU build
+bash tools/build_switch_game.sh --no-cheats  # without the Cheats screen (P6.20)
 ```
 
 A `crash_report.txt` from the console is symbolized with the `.elf` the

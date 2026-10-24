@@ -32,6 +32,12 @@ int dw3_pacing_scale_rate(int mode, int rate, int *carry) {
 }
 
 int dw3_pacing_scale_delay(int mode, int delay) {
+    if (delay == DW3_PACING_BANNER_DELAY) {
+        /* The area name banner: Instant shows its names whole (the reveal
+         * only fires at the fast delay); the boxes and the hold keep the
+         * game's timing. Normal and Fast leave it as the game types it. */
+        return mode == DW3_TEXT_INSTANT ? DW3_PACING_FAST_DELAY : delay;
+    }
     if (delay != DW3_PACING_DIALOGUE_DELAY) {
         return delay;
     }

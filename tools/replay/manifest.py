@@ -351,6 +351,42 @@ for _v, _ids in (("us", (0x159, 0x1FA, 0x1C2, 0x158)), ("eu", (0x167, 0x208, 0x1
                                   r"gutter 0 px per side" % _report),),
                   note="the battle report draws with the widescreen gutter (patch 0074)"))
 
+# Post-battle pacing (preview.31-rc1 OLED: "even with turbo on and Text speed
+# Instant, the post-battle text still runs slowly"). Fast-forward used to drop
+# to 1x for the battle report (its own mode file, STFGTREP), and the area name
+# banner that opens the field after the battle typed its names at the game's
+# speed in every Text speed. Now the report keeps the battle's speed and
+# Instant shows the banner's names whole (port/options/turbo.c,
+# port/pacing). The forced battle of p77 (Tech once, Cross to the end, the
+# report and the banner). `instant`: turbo 4x and Instant; the turbo line
+# `speed 1x` between the report's start and its return is forbidden (a build
+# without the fix logs it at STFGTREP_start), the report's pages show in 1-2
+# frames and both banner names are shown whole. `normal`: no turbo, Normal: the
+# game's own pacing, no turbo line at all and the banner left alone. PC only.
+_REPORT_AT_1X = r"STFGTREP_start(?:(?!STFGTREP return)(?s:.))*?dw3-turbo: speed 1x"
+for _v, _ids in (("us", (0x159, 0x1FA, 0x1C2, 0x158)), ("eu", (0x167, 0x208, 0x1D1, 0x166))):
+    _fight, _menu, _report, _field = _ids
+    _battle = ((_fight, M), (_menu, S), (_report, M), (_field, M))
+    _add(Scenario(f"{_v}-postbattle-instant", _v, "full", turbo=4, timeout=300, log_only=True,
+                  phases=(f"{_v}-p77-battle",), env=_P77_ENV_REPORT, cfg=(("text_speed", "2"),),
+                  expect_restore=_battle,
+                  expect_log=((0, r"dw3-turbo: speed 4x(?s:.*)STFGTREP_start(?s:.*)"
+                                  r"text page typed in [12] frame\(s\) \(text speed instant\)(?s:.*)"
+                                  r"STFGTREP return(?s:.*)"
+                                  r"\(area name banner\): shown whole \(text speed instant\)(?s:.*)"
+                                  r"\(area name banner\): shown whole \(text speed instant\)"),),
+                  forbid_log=((0, _REPORT_AT_1X), (0, r"slow Instant page"),
+                              (0, r"area name banner\): text speed leaves it alone")),
+                  note="turbo keeps running in the battle report; Instant shows the area banner's names whole"),
+         Scenario(f"{_v}-postbattle-normal", _v, "full", timeout=300, log_only=True,
+                  phases=(f"{_v}-p77-battle",), env=_P77_ENV_REPORT,
+                  expect_restore=_battle,
+                  expect_log=((0, r"STFGTREP_start(?s:.*)STFGTREP return(?s:.*)"
+                                  r"\(area name banner\): text speed leaves it alone(?s:.*)"
+                                  r"\(area name banner\): text speed leaves it alone"),),
+                  forbid_log=((0, r"dw3-turbo: speed"), (0, r"shown whole")),
+                  note="no turbo, Normal: the report and the banner at the game's own pacing"))
+
 
 # The file cache runs out of slots (patches 0095 hook, 0096 fix). The preview.31-rc1
 # OLED crash: after about two hours of play all 64 slots of the file cache were
@@ -581,6 +617,72 @@ for _v, _ids in (("us", (0x158, 0x1E3)), ("eu", (0x166, 0x1EE))):
                                   r"gutter 0 px per side" % _mcard),),
                   note="the save screen in widescreen: no card in the right gutter, header and slots at the 16:9 edges (patch 0082)"))
 
+
+# P6.20 Cheats screen (docs/PORT_OPTIONS.md "Cheats"), log only. The screen
+# itself: two phases on one config dir (no env, so Ryubing runs it too): the
+# master switch and Instant win are saved and read back, Fill bag and Battle
+# now are not. The cheats: the Encounter rate field (env), the one-shots armed
+# by the PC hook DW3_CHEATS_ARM, the toggles from the option file. Each has a
+# master-off twin where nothing may happen.
+_CHEAT_ON = (("cheat_enabled", "1"),)
+for _v in ("us", "eu"):
+    _add(Scenario(f"{_v}-cheats-screen", _v, "full", timeout=300, log_only=True,
+                  phases=(f"{_v}-cheats-screen-p1", f"{_v}-cheats-screen-p2"),
+                  expect_log=((0, r"dw3-cheats: cheats off \(instant win off\)"),
+                              (0, r"dw3-cheats: open \(master off, fill bag off, instant win off, "
+                                  r"battle now off, 0 marked save\(s\)\)"),
+                              (0, r"dw3-options: saved cheat_enabled=1(?s:.*)"
+                                  r"dw3-cheats: fill bag ready(?s:.*)"
+                                  r"dw3-options: saved cheat_instant_win=1(?s:.*)"
+                                  r"dw3-cheats: battle now ready(?s:.*)"
+                                  r"dw3-cheats: close \(back to Options\)"),
+                              (1, r"dw3-cheats: cheats ON \(instant win on\)"),
+                              (1, r"dw3-cheats: open \(master on, fill bag off, instant win on, "
+                                  r"battle now off, 0 marked save\(s\)\)")),
+                  forbid_log=((0, r"is not valid"), (1, r"is not valid")),
+                  note="Cheats screen: toggles saved and read back, one-shots not kept (P6.20)"))
+    _add(Scenario(f"{_v}-cheat-fill-bag", _v, "full", timeout=300, log_only=True,
+                  phases=(f"{_v}-cheat-fill-bag",),
+                  env=_ENC_ENV + (("DW3_CHEATS_ARM", "fill_bag"),),
+                  cfg=_CHEAT_ON + (("encounter_rate", "2"),),
+                  expect_log=((0, r"dw3-cheats: fill bag: items 43\.\.359 x99 \(used up\)(?s:.*)"
+                                  r"DW3_FORCE_ITEMS items 43\.\.359 x99"),),
+                  note="Fill bag: the next field menu screen fills the bag through patch 0070's hook"),
+         Scenario(f"{_v}-cheat-fill-bag-off", _v, "full", timeout=300, log_only=True,
+                  phases=(f"{_v}-cheat-fill-bag",),
+                  env=_ENC_ENV + (("DW3_CHEATS_ARM", "fill_bag"),),
+                  cfg=(("encounter_rate", "2"),),
+                  expect_log=((0, r"dw3-cheats: cheats off"),),
+                  forbid_log=((0, r"DW3_FORCE_ITEMS items"), (0, r"fill bag: items")),
+                  note="Fill bag with the master switch off: the bag is not touched"),
+         Scenario(f"{_v}-cheat-battle-now", _v, "full", timeout=300, log_only=True,
+                  phases=(f"{_v}-encounter-walk",),
+                  env=_ENC_ENV + (("DW3_CHEATS_ARM", "battle_now"),),
+                  cfg=_CHEAT_ON + (("encounter_rate", "2"),),
+                  expect_log=((0, r"dw3-cheats: battle now: a random battle starts on this footstep "
+                                  r"\(used up\)(?s:.*)FIGHTSTG_start"),),
+                  forbid_log=((0, r"random battle after"),),
+                  note="Battle now: a random battle on the first footstep, even at Encounter rate OFF"),
+         Scenario(f"{_v}-cheat-battle-now-off", _v, "full", timeout=300, log_only=True,
+                  phases=(f"{_v}-encounter-walk",),
+                  env=_ENC_ENV + (("DW3_CHEATS_ARM", "battle_now"),),
+                  cfg=(("encounter_rate", "2"),),
+                  expect_log=((0, r"dw3-pacing: encounters off: 129 footstep\(s\) in battle areas ignored"),),
+                  forbid_log=((0, r"FIGHTSTG_start"), (0, r"battle now:")),
+                  note="Battle now with the master switch off: Encounter rate OFF still holds"),
+         Scenario(f"{_v}-cheat-instant-win", _v, "full", turbo=4, timeout=600, log_only=True,
+                  phases=(f"{_v}-battle-music",), env=_ENC_ENV,
+                  cfg=_CHEAT_ON + (("cheat_instant_win", "1"),),
+                  expect_log=((0, r"FIGHTSTG_start(?s:.*)"
+                                  r"dw3-cheats: instant win \(battle 1 of this run\)(?s:.*)"
+                                  r"WFIGHTMN_endBattle result=1"),),
+                  note="Instant win: the random battle ends as won on its first turn, no input"),
+         Scenario(f"{_v}-cheat-instant-win-off", _v, "full", turbo=4, timeout=600, log_only=True,
+                  phases=(f"{_v}-battle-music",), env=_ENC_ENV,
+                  cfg=(("cheat_instant_win", "1"),),
+                  expect_log=((0, r"FIGHTSTG_start"),),
+                  forbid_log=((0, r"instant win \(battle"), (0, r"WFIGHTMN_endBattle")),
+                  note="Instant win saved but the master switch off: the battle goes on"))
 
 # P6.1 (patches 0085-0087, owner's preview.31-rc1 OLED notes): the title menu,
 # the opening's news caption bar and the player name (Digimon Online

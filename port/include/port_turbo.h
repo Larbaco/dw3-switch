@@ -17,8 +17,9 @@ extern "C" {
 void dw3_port_turbo_poll(void);
 
 /* Game frames per presented frame right now: 1 when fast-forward is off,
- * the option is OFF, or the mode is not field or battle (title, movies,
- * menus and saves always run at normal speed). Hosts read it every vsync. */
+ * the option is OFF, or the mode is not field, battle or the battle report
+ * (the results screen after a won battle); title, movies, menus and saves
+ * always run at normal speed. Hosts read it every vsync. */
 int dw3_port_turbo_speed(void);
 
 #ifdef DW3_PORT_TURBO_TEST

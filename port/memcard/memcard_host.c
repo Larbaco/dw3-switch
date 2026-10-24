@@ -919,3 +919,10 @@ int memcard_host_write_sector(int slot, int sector, const void *buf) {
     }
     return 0;
 }
+
+#ifdef DW3_CHEATS
+/* P6.20: the save marks (port/options/cheat_saves.c) sit beside the saves. */
+const char *memcard_host_dir(void) {
+    return g_dir[0] != '\0' ? g_dir : NULL;
+}
+#endif
