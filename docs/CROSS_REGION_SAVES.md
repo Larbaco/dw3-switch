@@ -361,3 +361,34 @@ Synthetic only; no save or game data enters git.
    `saves/shared/`), OLED check of a cross-region load.
 4. Then [P6.26](PER_USER_SAVES.md) moves `shared/` under a Switch user, and
    [P6.24](SINGLE_BUILD.md) picks it up unchanged.
+
+## History moved from ROADMAP.md (2026-10-24)
+
+Moved from the ROADMAP.md entries on 2026-10-24, word for word (two leading
+spaces removed). "Above" and "below" refer to the old entry. The roadmap
+keeps the current state and links here.
+
+**Findings.** The card image (header, icons, info at 0x200, three slots of
+0x2700 at 0x300) and the first **9,796 bytes** of `GameState` (0x0000-0x2643:
+name, money, items, cards, decks, partners, `progress`, ...) are identical.
+The differences: the **flag area from 0x2644** (13 bitset groups: 4 grow, +10
+bytes; 1 shrinks, -2; 8 keep their size and move; `GAME_SAVE_SIZE` 0x26BC US,
+0x26C4 EU), the **version byte (3 US, 4 EU)** and the XOR **checksum** of each
+slot, and the language-dependent header title and PS1 product name. The game
+rejects a foreign slot with error 8. Flag ids: **544 distinct in US, 596 in
+EU; every US flag is in EU and the 52 extra are the EU extra chapter**; 571 of
+572 shared source files use identical flag references. Item, tech, Digimon and
+card ids, stage modes and play time carry over. `LANGUAGE` is not saved.
+**Hard cases:** an EU save in its extra chapter (`progress` 0x2D, set at the
+end of event 1500, `wstag780.c`) has no meaning in US (proposed: error 8, bytes
+kept); US flags40 bytes 0x1A-0x1B are dropped by EU (unused by any script;
+kept in metadata); 26 of 230 name glyph images differ (accented EU letters,
+cosmetic); the port's `name_matches` ties a save to the language's PS1
+product name (an existing EU limitation, to confirm).
+**Design.** A port-side container (`.dw3s`: magic, format version, crc, origin
+region and language per slot) holding a card image with the **EU layout as the
+canonical data**; pure converters at the `memcard_host` boundary (open: canonical
+-> the running region's native image; flush: back, only the slots the game
+wrote), so the game keeps seeing its own format. Existing `us/memcard` and
+`eu/memcard` saves are **copied** in (first-fit of the non-empty slots into the
+6 slots), originals never touched, backups before overwriting a foreign slot.

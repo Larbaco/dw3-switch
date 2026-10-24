@@ -374,3 +374,49 @@ per user, decision 3) and the picker behaviour (decision 2). Still open:
 10. **PC**: one `dw3-pc` for both regions too (the same mechanism), or Switch
     only?
 11. **Switching region in game** (without quitting): out of scope?
+
+## History moved from ROADMAP.md (2026-10-24)
+
+Moved from the ROADMAP.md entries on 2026-10-24, word for word (two leading
+spaces removed). "Above" and "below" refer to the old entry. The roadmap
+keeps the current state and links here.
+
+**What the survey found (cited there):** the region is a compile-time
+choice everywhere: `DW3_VERSION` in the three CMakeLists sets
+`VERSION_US=1` / `VERSION_EU=1`, the overlay table and the default runtime,
+and the decomp's `include/version.h` allows exactly one. The decomp has
+**731 region blocks** (1,310 `#if` / `#elif` lines in 352 files; 390 blocks in
+the stages), of which 291 only `#define` file ids and 436 hold code or data
+(the file and stage tables, text tables). **Struct layouts differ**:
+`GameState` from offset 0x2644 (`GAME_SAVE_SIZE` 0x26BC US, 0x26C4 EU) and
+`BattleFuncs` (EU `rollCounter` at 0xD0), so a run-time region variable in
+the decomp is not practical. The port side is small: 14 region `#if` sites in
+`port/` and `platforms/`, 13 in 6 of the 76 patches, and the host uses only
+**25 game symbols** (mode entry points, `GAME`, `PAD`, `SOUND`, the file
+sector table, `dw3_game_main`). PAL / NTSC timing already follows the mode
+the game sets, not a build flag. The region can be found on the SD card
+without asking (`us/` or `eu/` tree, or the executable inside a disc image,
+which `runtime_extract.c` already checks). The saves are **not** the same
+format in the two regions; the owner decided they get unified (P6.25) and
+bound to the Switch user (P6.26), see the decisions below.
+**Recommended approach:** compile the game side twice into one image (one
+copy per region, exports renamed `us_` / `eu_`, the rest local, the
+`dw3data_*` restore sections renamed per region, the existing
+`tools/prefix_stage_obj.py` technique), link the host once, and pick the
+region at boot. The decomp and the patches stay untouched. Cost: medium,
+all in the build; about **+2.7 MB**, one `.nro` of about 12 MB (US 9.29 MB
+and EU 9.31 MB today, 18.6 MB for both). Rejected: run-time region variables
+in the decomp (352 files, struct layouts); a launcher `.nro` that chains to
+the region's `.nro` (cheap, but still two builds; a stop-gap at most).
+**First slice (PC, no visible change):** `DW3_VERSION=both` builds one
+`dw3-pc` holding both regions (`us` and `eu` stay as they are), a
+`--region` / `DW3_REGION` override else the runtime present, the 14 host
+sites made run-time; it passes when the P6.15 scenarios of both regions match
+the existing references on that one binary.
+**Effects:** P6.15 runs one binary per platform (a forced region must skip
+any picker, or the 71 recordings need re-recording); one `.elf` and build
+id per `.nro`, with the region in each symbol name (P5.4); two release items
+instead of four in `tools/pack_release_elfs.py` and CI builds EU on every PR
+([RELEASES.md](RELEASES.md)). Overlaps P6.2, whose "EU/US selection at
+boot" this item would carry (P6.2 keeps PAL / NTSC and the language). A third
+region (P6.19, JP) is one more copy.
