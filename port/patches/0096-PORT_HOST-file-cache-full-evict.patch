@@ -1,0 +1,64 @@
+Upstream-bound: no
+Subject: [PORT_HOST] File cache: evict the least recently used file when the 64 slots run out
+
+Fixes the preview.31-rc1 OLED crash (EU, GPU renderer, second battle, in the
+battle report): requestFile (engine/file/file_cache.c) took the slot from
+findFreeFileSlot, which returns NULL when all 64 slots are used, and wrote
+slot->file through NULL+4 (SIGSEGV, far=0x4, in STFGTREP_drawReport ->
+getFileEntry -> loadFile -> waitForFile -> requestFile). US has the same code
+and the same bug.
+
+Cause: on the PS1 the heap is 1.33 MB (0x800AA800..0x801FF000), and allocMem /
+allocMemHigh call FILE_CACHE.evictOldest() until an allocation fits, so memory
+pressure kept the cache small and 64 slots never filled (had they, the NULL
+write would have hit kernel RAM). The host heap is 8 MiB (host_heap.c), so
+nothing evicts and a session of a couple of hours fills every slot.
+
+Policy: when no slot is free, requestFile does what allocMem does when the
+heap is full: evictOldestFile() frees the loaded file used least recently
+(findOldestFile: biggest on a tie), then the request takes that slot. This is
+the game's own eviction path, so every file it can evict is one the PS1 would
+also evict under heap pressure, and the game already tolerates it:
+- only FILE_LOADED slots are candidates, so a queued or reading file (its
+  buffer is the CD reader's target) is never freed;
+- the game protects what it needs by touching it: isFileLoading, requestFile,
+  loadFile and updateFileCache refresh lastUsed, getFileEntry reaches loadFile
+  every frame it draws, and markCachedFiles / touchMarkedFiles refresh the
+  files cached before a field load. The oldest candidate is therefore a file
+  nothing touched for the longest time, never one used this frame while an
+  older one exists.
+If no loaded file exists (every slot queued or reading, which the loaders'
+synchronous waits make impossible), dw3_port_file_cache_fatal logs it through
+psyz (dw3.log) and aborts, so the crash report names the cause instead of a
+NULL write. Each eviction is logged (the first 16, then every 256th) as
+`dw3-file-cache: all 64 slots taken, evicted the least recently used file ...`.
+PS1 builds (PORT_HOST off) are untouched.
+
+Tested with the DW3_FILE_CACHE_SLOTS hook of 0095 on US and EU
+(replay scenarios us/eu-file-cache-full).
+
+--- a/src/engine/file/file_cache.c
++++ b/src/engine/file/file_cache.c
+@@ -112,6 +112,22 @@
+         return;
+     }
+     slot = findFreeFileSlot();
++#if PORT_HOST
++    if (slot == NULL) {
++        /* Every slot is taken. The original never got here: the heap was small enough that
++           allocMem evicted files long before 64 were cached. Do what allocMem does when the heap
++           is full: free the loaded file used least recently (the queued and the reading ones are
++           never candidates, so nothing in use by the cache is lost), then take its slot. */
++        FileSlot *old = findOldestFile();
++
++        if (old == NULL) {
++            dw3_port_file_cache_fatal(file, FILE_CACHE_SLOTS);
++        }
++        dw3_port_file_cache_evicted(file, old->file, FILE_CACHE_SLOTS);
++        evictOldestFile();
++        slot = findFreeFileSlot();
++    }
++#endif
+     slot->file = file;
+     slot->data = HEAP.alloc(FILE_TABLE.getSectorCount(file) * CD_SECTOR_SIZE, MEM_FILE_CACHE);
+     slot->state = FILE_QUEUED;
