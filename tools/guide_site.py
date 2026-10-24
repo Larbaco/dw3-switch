@@ -104,6 +104,8 @@ def _promote_headings(content, kind):
     elif kind != 'home':
         content = content.replace('<h2>', '<h1 class="section-title">', 1)
         content = content.replace('</h2>', '</h1>', 1)
+        content = content.replace('<h3', '<h2').replace('</h3>', '</h2>')
+        content = content.replace('<h4', '<h3').replace('</h4>', '</h3>')
     return content
 
 
@@ -134,7 +136,7 @@ def build_site(document, pages, order):
     shell = re.sub(r'<style>.*?</style>', '<link rel="stylesheet" href="assets/guide.css">', shell,
                    count=1, flags=re.S)
     shell = re.sub(r'<script>.*?</script>',
-                   '<script src="assets/guide-data.js"></script><script src="assets/guide.js"></script>',
+                   '<script src="assets/guide-data.js" id="pal-data"></script><script src="assets/guide.js"></script>',
                    shell, flags=re.S)
     search = []
     for page in by_id.values():
@@ -175,7 +177,9 @@ def build_site(document, pages, order):
                 content = breadcrumb + content + pager
             else:
                 content = breadcrumb + pager + content + pager
-        output = shell.replace('%%PAGE_BODY%%', content)
+        notice = ('<noscript><p>JavaScript está desativado. Texto, capítulos e links continuam '
+                  'disponíveis; busca global e filtros precisam de JavaScript.</p></noscript>')
+        output = shell.replace('%%PAGE_BODY%%', notice + content)
         output = output.replace('<body>', f'<body data-page-id="{page["id"]}">')
         output = output.replace('<title>Digimon World 3 — Guide and Walkthrough (EmeraldPhoenix)</title>',
                                 '<title>' + html.escape(page['title']) + ' · Guia DW3</title>')
@@ -194,10 +198,11 @@ def build_site(document, pages, order):
                                            files=sorted(files)), indent=2) + '\n'
     files['LEIA-ME.txt'] = ('GUIA OFFLINE — DIGIMON WORLD 3\n\n'
         'Abra index.html no navegador. Copie esta pasta inteira, incluindo assets/.\n'
-        'Nao e necessario instalar nada, usar internet ou iniciar um servidor.\n'
-        'Cada capitulo abre em um arquivo proprio; as areas mantem links diretos.\n'
+        'Se recebeu um ZIP, extraia primeiro.\n'
+        'Não é necessário instalar nada, usar internet ou iniciar um servidor.\n'
+        'Cada capítulo abre em um arquivo próprio; as áreas mantêm links diretos.\n'
         'A busca global e Ctrl+K precisam de JavaScript. Texto e links funcionam sem ele.\n'
-        'O texto em ingles acompanha os blocos PT-BR em "ver texto original".\n'
+        'O texto em inglês acompanha os blocos PT-BR em "ver texto original".\n'
         'Texto original: Emerald Phoenix / GameFAQs. Apenas para consulta local.\n')
     return files
 

@@ -1,7 +1,6 @@
 """Chapter package routing/ownership tests using synthetic, non-game text."""
 import copy
 import json
-import os
 from pathlib import Path
 import subprocess
 import sys
@@ -53,9 +52,9 @@ class GuideSiteTest(unittest.TestCase):
         assert site.Fragment('<p>Texto visível.</p><details class="orig"><pre>HIDDEN ENGLISH</pre></details>').reading_text() == 'Texto visível.'
         for name, text in files.items():
             if name.endswith('.html'):
-                assert '<script src="assets/guide-data.js"></script>' in text
+                assert '<script src="assets/guide-data.js" id="pal-data"></script>' in text
                 assert 'window.DW3_GUIDE=' not in text
-                assert 'id="pal-data"' not in text
+                assert '<script type="application/json" id="pal-data"' not in text
                 assert 'fetch(' not in text and 'type="module"' not in text
                 assert text.count('<h1') == 1, name
         assert package() == files

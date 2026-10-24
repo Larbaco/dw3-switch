@@ -252,7 +252,7 @@ const entityQuery=$i('entity-query'),entityKind=$i('entity-kind'),entries=$$('.e
 function filterEntities(){
  const q=fold(entityQuery.value.trim()),kind=entityKind.value;
  entries.forEach(el=>{el.hidden=!!(q&&!fold(el.textContent).includes(q)||kind&&!el.dataset.roles.split('|').includes(kind))});
- const rank=el=>{const name=fold($('h3',el).textContent);return !q?0:name===q?0:name.startsWith(q)?1:name.includes(q)?2:3};
+ const rank=el=>{const name=fold($('h2,h3',el).textContent);return !q?0:name===q?0:name.startsWith(q)?1:name.includes(q)?2:3};
  entries.slice().sort((a,b)=>rank(a)-rank(b)).forEach(el=>el.parentElement.append(el));
  const n=entries.filter(el=>!el.hidden).length;
  $i('entity-count').textContent=n+' de '+entries.length+' entidades'+(n?'':' · Nenhum resultado. Limpe os filtros ou tente outro nome.');

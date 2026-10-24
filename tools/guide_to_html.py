@@ -1,8 +1,11 @@
 #!/usr/bin/env python3
 """Convert the saved GameFAQs page of the Digimon World 3 guide (EmeraldPhoenix)
-into a single navigable HTML file (sidebar, scroll-spy, full-text search).
+into an offline chapter package or one compatible navigable HTML file.
 
-Usage: python3 -I tools/guide_to_html.py <saved-gamefaqs-page.txt> <out.html>
+Usage: python3 -I tools/guide_to_html.py <saved-gamefaqs-page.txt> <output> [--format site|single]
+
+Use --format site for the recommended physical chapter package. The default
+single-file output preserves the existing two-argument invocation.
 
 The guide body is plain text inside <pre id="faqspan-N"> blocks; headings are
 ASCII banners (`* * *` boxes), dash boxes and dash underlines.

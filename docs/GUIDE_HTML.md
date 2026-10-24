@@ -1,12 +1,14 @@
 # Local GameFAQs guide HTML
 
 `tools/guide_to_html.py` converts the locally saved GameFAQs HTML page (even
-when saved with a `.txt` extension) into a standalone, offline HTML guide.
-Python 3 and its standard library are sufficient:
+when saved with a `.txt` extension) into an offline chapter package (recommended)
+or a compatible single HTML file. Python 3 and its standard library suffice:
 
 ```sh
-python3 -I tools/guide_to_html.py /path/to/saved-page.txt /mnt/cabal/tmp/guide.html
-python3 -B tools/tests/test_guide_to_html.py -v
+python3 -I tools/guide_to_html.py /path/to/saved-page.txt /mnt/cabal/tmp/dw3-guide --format site
+# Copy the whole folder and open index.html. No server or internet is needed.
+python3 -I tools/guide_to_html.py /path/to/saved-page.txt /mnt/cabal/tmp/guide.html --format single
+TMPDIR=/mnt/cabal/tmp python3 -B -m unittest discover -s tools/tests -p 'test_guide*.py' -v
 ```
 
 Keep the source and generated HTML local; neither is included in this change.
@@ -259,3 +261,57 @@ Generation validates all physical files, fragment targets, local assets and
 shared metadata routes before writing. Its manifest permits regeneration of
 its own files, preserves unrelated files, and rejects conflicting unowned
 files and symlinks. The original source and all generated output stay local.
+
+### Package validation checkpoint
+
+The follow-up retains the previous two commits and base on PR #234. With the
+owner's unchanged local source, the package has **58 HTML pages / 63 files** and
+**1,356 canonical content routes**. All **9,246 local links/resources** resolve.
+All **1,389 IDs** in the previous single-file artifact survive in the package
+(including shell IDs local to every page). The shared palette script retains
+the old `pal-data` ID while loading its data externally.
+
+Comparison by decoded content confirms **417/417 pre blocks**, **91/91 table
+texts**, and all **372 source-block texts** identical between the earlier PR
+artifact, the compatible single-file output and the package. This includes
+both PT-BR and the accompanying English original. Translation coverage stays
+**623/623**, 748 lookups, zero missing/unused entries. Both output modes preserve
+all 258 complete English walkthrough source runs. Four historical ASCII
+fallbacks remain unchanged.
+
+Fourteen synthetic cases cover routing, chapter isolation, backwards-compatible
+CLI, cross-page entity/source links, shared search ownership, deterministic
+assembly, missing files/fragments/assets, duplicate IDs/nested anchors, safe
+regeneration and file conflicts/symlinks. No copyrighted fixture is committed.
+The maintained JavaScript passes `node --check`.
+
+The largest walkthrough chapter is approximately **184 KiB**, compared with
+approximately **1.58 MiB** for the complete single-file output. The single shared
+search/palette/route asset is approximately **520 KiB**. The whole folder is
+approximately **3 MiB**: it is larger overall because physical pages repeat
+small navigation shells and add the shared search index. This trades modest
+local disk space for loading/rendering one chapter at a time; it does not copy
+the full guide into every page. The entity catalogue is approximately 403 KiB.
+
+T3's hidden HTTP preview checked the real page changes, chapter overview with
+19 cards and no chapter bodies, previous/next across files, entity ↔ source
+round trips, global search from chapter 1 into chapter 19 with accent-insensitive
+highlighting, palette jumps across files, entity filters and desktop/mobile
+layouts. Native T3 preview rejects file URLs, so Playwright CLI with Chrome
+headless and a separate temporary profile additionally opened the package by
+`file://`, with **browser networking disabled**. Home → overview → chapter 1 →
+global search → chapter 19/highlight succeeded without a server; that session
+reported no console errors. A JavaScript-disabled offline session also reached
+chapter 1 through its native link; DOM inspection confirmed one chapter, no
+shared scripts executed, 42 English-original disclosures and a physical next
+link. Its post-navigation CLI snapshot failed with `TypeError: Cannot read
+properties of undefined (reading 'url')`; this is recorded as a harness
+limitation, not a full no-JavaScript browser certification.
+
+Evidence lives under
+`/mnt/windows/Jogos/dw3-switch/tmp/evidence/2026-10-24-guide-multipage/`.
+The review package is `/mnt/cabal/tmp/dw3-guide-reading/tmp/guide-offline/`,
+with a local `guide-offline.zip` alongside it for copying. Extract it and open
+`guide-offline/index.html`. No generated guide/ZIP/source was added to git and
+the primary checkout's generated HTML remains untouched. ISO/gameplay and
+full screen-reader/browser-engine certification remain outside this change.
