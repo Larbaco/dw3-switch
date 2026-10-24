@@ -172,3 +172,38 @@ modal navigation traps focus, restores the trigger on close, and exposes the
 active combobox option. The mobile sidebar is inert when closed. Reduced-motion
 preferences and no-JavaScript reading are supported. US/EU runtime gates do not
 apply to this editorial artifact.
+
+### Reading-experience QA
+
+Local source: the same owner's EmeraldPhoenix page used for #232/#233. Compared
+with `c4093b1`: all **1,357 prior IDs retained**; **417/417 decoded pre blocks**,
+**91/91 table texts**, and **473/473 translated paragraphs** identical and in the
+same order. Coverage stays **623/623**, 748 lookups, zero missing/unused keys.
+The output has **469 entities**, **1,389 unique IDs** and **5,317 internal links**;
+no missing destinations, duplicate IDs or nested anchors. Existing four ASCII
+fallback blocks remain. Two CLI generations were byte-identical.
+
+Nine synthetic regression cases pass with `python3 -B
+tools/tests/test_guide_to_html.py -v`; no copyrighted source fixture is committed.
+`node --check tools/guide_assets/guide.js` checks the maintained script.
+
+The hidden T3 browser preview was driven with typing, clicks, keyboard navigation
+and DOM inspection. Checked dark/light appearances, 1280×800 desktop, 768×1024
+tablet, 375×667 mobile and 320×720 narrow layout; the narrow layout also fits at
+24px reading text. Verified unaccented Portuguese search/highlighting, section
+scope, combined entity filters/empty state, revealing a filtered destination,
+context routes, closed-sidebar inertness, combobox active option, modal Tab
+containment/Escape/focus restoration. Lookup links jump directly rather than
+animating across the entire long document; there is only one sticky-header scroll
+offset. Narrow credits and long evolution-tree names wrap instead of widening
+the page. Entity name matches rank before matches in source descriptions.
+
+Evidence (local, ignored):
+`/mnt/windows/Jogos/dw3-switch/tmp/evidence/2026-10-24-guide-reading/`
+contains `generation.log`, `unit-tests.log`, `preservation.json`, desktop
+home/chapter/entity screenshots, mobile light screenshot and `browser-qa.md`.
+Generated artifact: `/mnt/cabal/tmp/dw3-guide-reading/tmp/guide.html`.
+The primary checkout's generated HTML was not replaced. This is editorial QA;
+no ISO, emulator, OLED or game build was run. Full screen-reader and cross-browser
+certification remain outside this checkpoint. No new prose translation or
+inferred NPC/quest/reward facts were introduced.

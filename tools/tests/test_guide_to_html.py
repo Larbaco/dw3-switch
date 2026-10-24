@@ -38,6 +38,51 @@ def fixture():
 
 
 class GuideLinksTest(unittest.TestCase):
+    def test_routes_keep_repeated_visits_and_semantic_area_headings(self):
+        sections = fixture()
+        walk = sections[2]['chapters'][0]
+        walk['items'] += [('h', 'city-return', 'TEST CITY - INN'), ('pre', 'Return to Test City.')]
+        document = guide.render('', sections)
+        return_visit = document.split('href="#city-return">', 1)[1].split('</a>', 1)[0]
+        assert return_visit.endswith(' · visita 2')
+        assert '<section class="guide-area" aria-labelledby="city-return"><h4' in document
+        assert '<h4 id="city-return" class="subheading loc"' in document
+        guide.validate_links(document)
+
+    def test_npc_and_quest_roles_require_explicit_source_records(self):
+        sections = fixture()
+        sections.append(section('side-quests', [chapter('test-quest', '3. Test Quest')]))
+        sections[2]['chapters'][0]['items'].append(('pre',
+            ' ------------------------------\n'
+            '|CARD BATTLE: Card Master       |\n'
+            ' ------------------------------\n'
+            '|Testmon   6 EXP 10 BIT         |\n'
+            ' ------------------------------\n\n'
+            'An Unnamed Person talks about an Imaginary Quest.'))
+        entities = guide.EntityIndex(sections)
+        assert set(entities.entries['card master']['kinds']) == {'NPC'}
+        assert set(entities.entries['test quest']['kinds']) == {'Quest'}
+        assert 'unnamed person' not in entities.entries
+        assert 'imaginary quest' not in entities.entries
+        assert '<a ' in entities.link('Meet Card Master for Test Quest.', 'walk')
+        guide.validate_links(guide.render('', sections))
+
+    def test_standalone_assets_and_accessible_controls(self):
+        document = guide.render('', fixture())
+        assert '%%' not in document
+        assert '<script src=' not in document and '<link rel="stylesheet"' not in document
+        assert 'role="combobox"' in document
+        assert 'id="search-scope"' in document and 'id="entity-kind"' in document
+        assert '<th scope="col"' in document
+        assert '<noscript>' in document
+        # Supplementary definitions remain in the file when collapsed.
+        many = fixture()
+        many[0]['chapters'] += [chapter('extra-a', 'Testmon'), chapter('extra-b', 'Testmon')]
+        generated = guide.render('', many)
+        assert 'Mais 2 fontes de Digimon' in generated
+        assert 'href="#extra-b"' in generated
+        guide.validate_links(generated)
+
     def test_palette_entities_keep_all_roles_and_destinations(self):
         sections = fixture()
         entities = guide.EntityIndex(sections)

@@ -515,6 +515,14 @@ def count_label(s):
     return f"{v} versões" if v else ""
 
 
+def browse_sections(sections):
+    """Prioritize play/reference navigation without reordering the source text."""
+    order = ['walkthrough', 'side-quests', 'partner-digimon', 'digimon-evolutions',
+             'enemy-digimon', 'card-battle', 'introduction', 'disclaimer',
+             'version-history', 'things-left-undone', 'credits']
+    return sorted(sections, key=lambda s: order.index(s['id']) if s['id'] in order else len(order))
+
+
 def cover_html(header, sections):
     ver = re.search(r"Version (\S+)", header)
     date = re.search(r"\d\d/\d\d/\d\d", header)
@@ -523,7 +531,7 @@ def cover_html(header, sections):
         f'<a class="tile" href="#{s["id"]}"><span class="ti">{svg(SEC_ICON.get(s["id"], "list"))}</span>'
         + (f'<span class="tc">{esc(count_label(s))}</span>' if count_label(s) else "")
         + f'<span class="tt">{esc(s["title"])}</span><span class="td">{esc(SEC_DESC.get(s["id"], ""))}</span></a>'
-        for s in sections
+        for s in browse_sections(sections)
     )
     return (
         '<header class="hero" id="inicio">'
@@ -550,7 +558,7 @@ def cover_html(header, sections):
 
 def nav_html(sections):
     nav = []
-    for s in sections:
+    for s in browse_sections(sections):
         ic = svg(SEC_ICON.get(s["id"], "list"))
         if s["chapters"]:
             kids = "".join(
@@ -1219,7 +1227,9 @@ class EntityIndex:
             roles = []
             for kind, definitions in sorted(entry["kinds"].items()):
                 links = [f'<a href="#{target}">{esc(label)}</a>' for target, label in sorted(definitions)]
-                extra = (f'<details class="backlinks"><summary>Mais {len(links)-2} fontes de {esc(kind)}</summary>'
+                count = len(links) - 2
+                noun = 'fonte' if count == 1 else 'fontes'
+                extra = (f'<details class="backlinks"><summary>Mais {count} {noun} de {esc(kind)}</summary>'
                          '<p>' + ' · '.join(links[2:]) + '</p></details>') if len(links) > 2 else ''
                 roles.append(f'<p><b>{esc(kind)}</b>: {" · ".join(links[:2])}</p>' + extra)
             refs = sorted(self.references[key], key=lambda r: (self.labels[r], r))
@@ -1496,7 +1506,7 @@ TEMPLATE = r"""<!DOCTYPE html>
 <a class="skip" href="#main">Pular para o conteúdo</a>
 <header id="bar">
  <button id="menu" class="ib icon" aria-label="Abrir índice" aria-controls="side" aria-expanded="false" title="Índice">%%ICON:menu%%</button>
- <a class="brand" href="#inicio">%%ICON:book%%<span>Digimon World 3</span></a>
+ <a class="brand" href="#inicio" aria-label="Digimon World 3 — início">%%ICON:book%%<span>Digimon World 3</span></a>
  <nav class="crumb" id="crumb" aria-label="Você está em"><span>Início</span></nav>
  <form class="sf" role="search" id="sform"><input id="q" type="search" placeholder="Buscar no guia" aria-label="Buscar no guia" autocomplete="off"><kbd title="Atalho: /">/</kbd></form>
  <span id="fs"><button id="fsm" class="ib icon" aria-label="Diminuir fonte" title="Diminuir fonte">A−</button><button id="fsp" class="ib icon" aria-label="Aumentar fonte" title="Aumentar fonte">A+</button></span>
@@ -1511,16 +1521,16 @@ TEMPLATE = r"""<!DOCTYPE html>
   <select id="search-scope"><option value="">Todo o guia</option>%%SCOPES%%</select>
   <button id="search-clear" type="button">Limpar busca</button>
  </div>
- <div id="tree">
-%%NAV%%
- </div>
- <p id="search-status" class="sr" role="status"></p>
- <div id="results" hidden></div>
  <section id="context" class="nosearch" hidden aria-label="Neste capítulo">
   <p class="side-label">NESTE CAPÍTULO</p>
   <p id="reading-status"></p><progress id="chapter-progress" max="100" value="0" aria-label="Progresso de leitura do capítulo"></progress>
   <nav id="area-nav" aria-label="Áreas deste capítulo"></nav>
  </section>
+ <div id="tree">
+%%NAV%%
+ </div>
+ <p id="search-status" class="sr" role="status"></p>
+ <div id="results" hidden></div>
 </nav>
 <main id="main" tabindex="-1">
 <noscript><p>JavaScript está desativado. O texto e os links continuam disponíveis; busca, filtros e progresso precisam de JavaScript.</p></noscript>
