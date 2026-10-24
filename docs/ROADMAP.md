@@ -602,7 +602,10 @@ speed.
   The survey and the force modes (`DW3_FORCE_CRASH=assert|abort|fatal|exit`
   in `--force-crash` builds) are in [P5.4_CRASH.md](P5.4_CRASH.md#report-pr-2-2026-10-23-steps-67).
   Tested in Ryubing (Xvfb), US + EU; evidence
-  `tmp/evidence/2026-10-23-p54-crash-notice/`.
+  `tmp/evidence/2026-10-23-p54-crash-notice/`; re-run on the tree merged
+  with `main` at `ea46b6b` (assert US, exit US, abort EU, notice once):
+  [PR 2 test results](P5.4_CRASH.md#pr-2-test-results-ryubing),
+  `tmp/evidence/2026-10-24-p54-pr2-merge-check/`.
   **Remaining (owner, OLED, US and EU):** the PR 2 hardware check in
   [P5.4_CRASH.md](P5.4_CRASH.md#pr-2-owner-oled-check): a forced assert
   build, then the normal build twice (notice once, then none). P5.4 is
