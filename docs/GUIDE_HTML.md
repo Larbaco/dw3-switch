@@ -141,3 +141,34 @@ The artifact was generated only at
 batches and review reports are under `/mnt/cabal/tmp/dw3-guide-translation/`.
 No test suites, game builds, US/EU ISO, emulator or OLED checks were run for
 this offline editorial change. Runtime language-pack gates remain open.
+
+## Reading and reference experience (2026-10-24)
+
+The generator now reads its maintained CSS and JavaScript from
+`tools/guide_assets/` and embeds both into the output. The result remains one
+self-contained offline HTML file, with no external fonts, libraries or images.
+Source chapters/areas have a semantic heading hierarchy and labelled sections.
+Chapter routes retain **every visit**, including repeated area headings, instead
+of deduplicating a return visit. Existing source, chapter and entity IDs are kept.
+
+The field-journal design uses teal navigation and amber landmarks, with quieter
+reading surfaces in dark and light themes. The sidebar adds the current
+chapter's complete route and reading progress (not game completion). A local
+resume link remembers the last chapter on the same browser origin. The route
+at the chapter header is a native disclosure; the full text remains readable
+without JavaScript. Browser storage failure does not prevent reading.
+
+Search accepts accented or unaccented Portuguese, includes chapter titles, and
+can be limited to one guide section. It announces result counts and gives a
+clear empty state. The entity catalogue has combined name/source and role
+filters, role badges, and collapsed lists of additional definitions/backlinks.
+NPC names are indexed only from explicitly named CARD/DIGIMON BATTLE boxes;
+quests only from Side Quests chapter titles. This is not an inferred quest log,
+and rewards still point to the original recorded encounter/drop data.
+
+Internal navigation reveals hidden/filter-masked targets and their disclosure
+ancestors before focusing and scrolling. Context links use `aria-current`;
+modal navigation traps focus, restores the trigger on close, and exposes the
+active combobox option. The mobile sidebar is inert when closed. Reduced-motion
+preferences and no-JavaScript reading are supported. US/EU runtime gates do not
+apply to this editorial artifact.
