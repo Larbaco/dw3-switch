@@ -94,7 +94,10 @@ every frame. Existing ~1 Hz `frame dt us=` / `mesh dbg:` lines stay unchanged.
 ## Font / IP
 
 Tiny embedded 8×8 ASCII bitmap (no Digimon art or game fonts). Public-domain
-style glyphs only (font8x8_basic layout).
+style glyphs only (font8x8_basic layout). The table lives in
+`platforms/switch/source/debug_overlay_font.h`, shared with the P5.4
+next-boot crash notice ([P5.4_CRASH.md](P5.4_CRASH.md)), which draws in every
+build.
 
 **Bit order:** each glyph row byte has **bit 0 (LSB) = leftmost pixel**,
 bit 7 = rightmost. `put_glyph` must use that convention; treating MSB as left

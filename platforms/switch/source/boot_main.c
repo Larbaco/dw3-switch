@@ -31,6 +31,7 @@
 
 #include "../psyz_backend/nx.h"
 #include "../psyz_backend/nx_crash.h"
+#include "../psyz_backend/nx_crash_notice.h"
 #include "../psyz_backend/nx_debug_overlay.h"
 #include "../psyz_backend/nx_mem_budget.h"
 #include "../psyz_backend/nx_mesh_debug.h"
@@ -688,6 +689,8 @@ int main(int argc, char **argv) {
 
     if (!dw3_nx_gpu_init()) {
         ERRORF("dw3_nx_gpu_init failed");
+        /* Logged setup failure, not a crash: exit(1) stays a plain exit. */
+        dw3_nx_crash_allow_exit();
         if (g_applet_exit_locked) {
             appletUnlockExit();
             g_applet_exit_locked = 0;
@@ -699,7 +702,15 @@ int main(int argc, char **argv) {
     }
     INFOF("EGL/GLES2 surface up");
 
+    /* P5.4: "the last run crashed" panel for a few seconds (or until A),
+     * only when the install latch above rotated a report; otherwise this
+     * returns at once and draws nothing. */
+    dw3_nx_crash_notice_show();
+
     if (init_paths() != 0) {
+        /* Logged setup failure (runtime, audio, memcard, boot TIM), not a
+         * crash: exit(1) stays a plain exit. */
+        dw3_nx_crash_allow_exit();
         if (g_applet_exit_locked) {
             appletUnlockExit();
             g_applet_exit_locked = 0;

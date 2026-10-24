@@ -365,6 +365,16 @@ target_link_libraries(dw3-switch PRIVATE
 )
 
 target_link_options(dw3-switch PRIVATE
+  # P5.4 PR 2: software aborts write the crash report too
+  # (psyz_backend/nx_crash.c). abort covers std::terminate and newlib's own
+  # internal asserts; exit only reports a non-zero code the boot host did not
+  # announce; diagAbortWithResult / fatalThrow are libnx's (and mesa's)
+  # fatal paths. Every reference in every input archive is redirected.
+  "-Wl,--wrap=abort"
+  "-Wl,--wrap=__assert_func"
+  "-Wl,--wrap=exit"
+  "-Wl,--wrap=diagAbortWithResult"
+  "-Wl,--wrap=fatalThrow"
   # Memcard routing (port/memcard/psyz_card_wrap.c).
   "-Wl,--wrap=_card_read"
   "-Wl,--wrap=_card_write"

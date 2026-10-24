@@ -106,6 +106,47 @@ int main(void) {
     expect("lang_de", strcmp(dw3_crash_eu_language_name(5), "de") == 0);
     expect("lang_bad", strcmp(dw3_crash_eu_language_name(9), "unknown") == 0);
 
+    /* software abort reasons (P5.4 PR 2) */
+    dw3_cl_reset(&l);
+    dw3_cl_reason_assert(&l, "/mnt/x/platforms/switch/psyz_backend/nx_crash.c",
+                         812, "crash_force_assert",
+                         "s_force_ptr != 0 && \"DW3_FORCE_CRASH=assert\"");
+    expect("reason_assert",
+           line_is(&l, "assert nx_crash.c:812 crash_force_assert: s_force_ptr "
+                       "!= 0 && \"DW3_FORCE_CRASH=assert\""));
+    dw3_cl_reset(&l);
+    dw3_cl_reason_assert(&l, "C:\\src\\mprec.c", 99, NULL, "Balloc succeeded");
+    expect("reason_assert_nofunc",
+           line_is(&l, "assert mprec.c:99: Balloc succeeded"));
+    dw3_cl_reset(&l);
+    dw3_cl_reason_assert(&l, NULL, -1, "", NULL);
+    expect("reason_assert_nulls", line_is(&l, "assert (null):-1: (no expression)"));
+    {
+        char longexpr[400];
+        memset(longexpr, 'x', sizeof(longexpr) - 1);
+        longexpr[sizeof(longexpr) - 1] = '\0';
+        dw3_cl_reset(&l);
+        dw3_cl_reason_assert(&l, "a.c", 1, "f", longexpr);
+        expect("reason_assert_cap",
+               l.n == DW3_CRASH_REASON_MAX && memcmp(l.b + l.n - 3, "...", 3) == 0);
+    }
+    dw3_cl_reset(&l);
+    /* MAKERESULT(Module_Libnx = 345, LibnxError_ShouldNotHappen = 4) */
+    dw3_cl_reason_fatal(&l, "diagAbortWithResult", 345u | (4u << 9));
+    expect("reason_fatal",
+           line_is(&l, "fatal 0x00000959 (2345-0004, diagAbortWithResult)"));
+    dw3_cl_reset(&l);
+    dw3_cl_reason_fatal(&l, "fatalThrow", 0xc815u);
+    expect("reason_fatal_code", line_is(&l, "fatal 0x0000c815 (2021-0100, fatalThrow)"));
+    dw3_cl_reset(&l);
+    dw3_cl_reason_exit(&l, 3);
+    expect("reason_exit", line_is(&l, "exit 3"));
+    dw3_cl_reset(&l);
+    dw3_cl_reason_exit(&l, -2147483647 - 1);
+    expect("reason_exit_min", line_is(&l, "exit -2147483648"));
+    expect("basename_plain", strcmp(dw3_crash_basename("main.c"), "main.c") == 0);
+    expect("basename_trailing", strcmp(dw3_crash_basename("dir/"), "") == 0);
+
     /* frame walk: records at stack[8], [16], [24]; the last links to 0. */
     memset(stack, 0, sizeof(stack));
     lo = (uint64_t)(uintptr_t)&stack[4];

@@ -16,6 +16,8 @@ P4.2 links `nx_gpu.c` (EGL + GLES2 present); P4.3 links `nx_audio.c`
 | `nx_file.c` | `romfs` / `sdmc` file I/O | empty TU until P4.5 |
 | `nx_log.c` | Logging to stdout / nxlink | empty TU until P4.5 |
 | `nx_module.c` | Static `Psyz_ModuleOpen` table | empty TU until P4.6 |
+| `nx_crash.c` | P5.4 crash report to SD: exception handler, assert / abort / fatal / exit wrappers, boot latch | **yes (P5.4)** |
+| `nx_crash_notice.c` | P5.4 next-boot "the last run crashed" notice | **yes (P5.4)** |
 
 Build: `./tools/dk.sh make -C platforms/switch` (see `../README.md` for the
 NTFS `DW3_DK_TMPBUILD` workaround). Details:
