@@ -413,6 +413,7 @@ def battle_report(version):
 
 
 R1 = 0x0800
+L1 = 0x0400
 # Evidence runs only (measured): the frames later that the PAL battle reaches turn
 # 2's message, and the Crosses it needs to get there (the enemy acts twice before turn 2)
 P79_EVIDENCE_SHIFT = {"us": 0, "eu": 960}
@@ -828,6 +829,60 @@ def items_menu(version):
     return r
 
 
+# P6.1 patch 0076: the field menu's screens, in order. Each step is the
+# checkpoint taken just before its press (None: no checkpoint), the press and
+# the frames to the next step; the screens open in ~100-200 frames.
+MENU_SCREENS_STEPS = (
+    # the item screen (the dissolve ends ~1640)
+    ("item-options", CROSS, 160), ("item-list", DOWN, 60), (None, R1, 80),
+    ("item-list-page2", L1, 80), (None, CROSS, 140), ("item-use", DOWN, 60), (None, CROSS, 160),
+    ("item-used", CROSS, 160), (None, TRIANGLE, 160), (None, TRIANGLE, 200),
+    # the field menu inside STSTATUS (now with Card folders), Sort: pick two and swap
+    ("status-menu", DOWN, 40), (None, CROSS, 200), ("sort", CROSS, 120), (None, DOWN, 80),
+    ("sort-swap", CROSS, 160), (None, TRIANGLE, 200),
+    # Map (left as it was), Techniques (none learned: the message)
+    (None, DOWN, 40), (None, CROSS, 260), ("map", TRIANGLE, 220),
+    (None, DOWN, 40), (None, CROSS, 200), (None, CROSS, 140), ("tech-message", CROSS, 140),
+    (None, TRIANGLE, 220),
+    # Status: the second member, the question, Digivolve, the equipment and a list
+    (None, DOWN, 40), (None, CROSS, 200), ("status", DOWN, 60), (None, CROSS, 200),
+    ("status-options", CROSS, 200), ("status-digivolve", TRIANGLE, 200), (None, DOWN, 60),
+    (None, CROSS, 200), ("status-equip", CROSS, 200), ("status-equip-list", TRIANGLE, 200),
+    (None, TRIANGLE, 200), (None, TRIANGLE, 200), (None, TRIANGLE, 220),
+    # Card folders: its question, then back to the field
+    (None, DOWN, 40), (None, CROSS, 220), ("card", TRIANGLE, 220), (None, TRIANGLE, 250),
+    ("field-after", None, 0),
+)
+
+
+def menu_screens(version):
+    """P6.1 (patch 0076): every screen of the field menu in widescreen, for
+    the 16:9 layout (the left column one gutter further left, the right column
+    one gutter further right, the help bar and the item list frame widened).
+    The start of `items_menu` (the env of `items_screen`: the party from a
+    forced event battle, 3 of every item), the field menu over the field, then
+    the item screen, its list (both pages), using an item, the field menu in
+    STSTATUS, Sort, Map, Techniques, Status (Digivolve, equipment and its
+    list) and Card folders (listed once the menu reopens in STSTATUS: the
+    forced item 0x192). Frames measured on the PC build, the same on both
+    discs."""
+    r = Rec(f"{version.upper()}: P6.1 field menu screens in widescreen (env and cfg in manifest)")
+    for f in range(300, 1200, 30):
+        r.press(f, CROSS)            # battle report -> field
+    r.press(1250, START)             # field menu, over the field
+    r.shot(1400, "field-menu")
+    r.press(1420, CROSS)             # Items: the dissolve, then STSTATUS
+    f = 1640
+    for name, button, wait in MENU_SCREENS_STEPS:
+        if name:
+            r.shot(f - 3, name)
+        if button:
+            r.press(f, button)
+        f += wait
+    r.end(f + 50)
+    return r
+
+
 def main(out):
     out.mkdir(parents=True, exist_ok=True)
     (out / "us-title.rec").write_text(us_title().text())
@@ -864,6 +919,7 @@ def main(out):
         (out / f"{v}-encounter-event.rec").write_text(encounter_event(v).text(True))
         (out / f"{v}-items-screen.rec").write_text(items_screen(v).text(True))
         (out / f"{v}-items-menu.rec").write_text(items_menu(v).text(True))
+        (out / f"{v}-menu-screens.rec").write_text(menu_screens(v).text(True))
         (out / f"{v}-victory-music.rec").write_text(victory_music(v).text(True))
         (out / f"{v}-music-loop.rec").write_text(music_loop(v).text(True))
         (out / f"{v}-battle-music.rec").write_text(battle_music(v).text(True))
