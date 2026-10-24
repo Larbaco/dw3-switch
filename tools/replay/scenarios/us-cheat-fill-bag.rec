@@ -1,0 +1,8 @@
+# US: field menu -> Items (Fill bag; env and cfg in manifest)
+pad 400 0x0008
+pad 405 0x0000
+pad 570 0x4000
+pad 575 0x0000
+pad 800 0x4000
+pad 805 0x0000
+end 1200

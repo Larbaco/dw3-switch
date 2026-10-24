@@ -175,6 +175,12 @@ if(DW3_NULL_GUARD_LOG)
   list(APPEND _DW3_GAME_DEFS DW3_NULL_GUARD_LOG=1)
   message(STATUS "PORT_HOST NULL-guard hit log enabled (DW3_NULL_GUARD_LOG)")
 endif()
+# P6.20: the overlays and stages compile through custom commands that take
+# only these definitions (not the directory's), so patch 0077's hooks need it
+# here too. Set by the platform CMakeLists (option DW3_CHEATS, default ON).
+if(DW3_CHEATS)
+  list(APPEND _DW3_GAME_DEFS DW3_CHEATS=1)
+endif()
 set(_DW3_GAME_OPTS
   -std=gnu89
   -fsigned-char
