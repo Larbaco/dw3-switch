@@ -1,0 +1,37 @@
+Upstream-bound: no
+Subject: [PORT_HOST] P6.1 field menu dissolve covers the gutters
+
+Picking a field menu option (Items, Status, Map...) or leaving the menu
+fades to the next mode with a dissolve of 64-pixel blocks: six screen-size
+sprites stepped through darker CLUT rows. They cover the 320 middle columns
+only, so in 16:9 the field (or the menu background) stayed lit in the side
+gutters while the middle went black, a 4:3 frame around the transition.
+The blocks tile the 320 columns exactly (five per row), so with widescreen
+on each sprite is drawn twice more, 320 pixels to each side, and the
+dissolve runs across the whole 16:9 picture. Off, nothing changes.
+
+--- a/src/engine/menu/field_menu.c
++++ b/src/engine/menu/field_menu.c
+@@ -1,6 +1,7 @@
+ #include "engine/game.h"
+ #if PORT_HOST
+ #include <stdio.h>
++#include "port_widescreen.h"
+ #endif
+ #include <libgs.h>
+ #include <libetc.h>
+@@ -335,6 +336,14 @@
+             obj2.setClutRow(0xF);
+         }
+         obj2.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), FIELD_MENU_SPRITES[j], 0, 0);
++#if PORT_HOST
++        /* Widescreen: the 64-pixel blocks tile the 320 columns exactly, so
++           a copy on each side carries the dissolve across the gutters */
++        if (dw3_port_widescreen_px() > 0) {
++            obj2.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), FIELD_MENU_SPRITES[j], -SCREEN_WIDTH, 0);
++            obj2.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), FIELD_MENU_SPRITES[j], SCREEN_WIDTH, 0);
++        }
++#endif
+     }
+ }
+ 

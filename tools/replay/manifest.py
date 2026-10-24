@@ -488,6 +488,23 @@ for _v, _ids in (("us", (0x159, 0x1FA, 0x1C2, 0x158, 0x1F9)),
                                       r"dw3: items screen: panel icon skipped, no item chosen yet \(patch 0069\)"),),
                       note=f"the Items list opens with items in the bag after a battle, Text speed {_speed} (patch 0069)"))
 
+# P6.1 (patch 0075): the field menu's block dissolve into and out of the Items
+# screen covers the side gutters. The env of the items-screen scenarios gives
+# the party (a forced event battle), encounters are Off so nothing interrupts
+# the field. Checkpoints half way through both dissolves and on three menu
+# screens; references come from the patched build (the gutters of the
+# dissolve frames differ without it). PC only (env).
+for _v, _ids in (("us", (0x159, 0x1FA, 0x1C2, 0x158, 0x1F9)),
+                 ("eu", (0x167, 0x208, 0x1D1, 0x166, 0x207))):
+    _fight, _menu, _report, _field, _status = _ids
+    _add(Scenario(f"{_v}-items-menu", _v, "full", turbo=4, timeout=300,
+                  phases=(f"{_v}-items-menu",), env=_ITEMS_ENV, cfg=(("encounter_rate", "2"),),
+                  expect_restore=((_fight, M), (_menu, S), (_report, M), (_field, M),
+                                  (_status, M), (_field, M)),
+                  forbid_log=((0, r"overlay restore file=0x%x kind=mode(?:(?!overlay restore)(?s:.))*?"
+                                  r"gutter 0 px per side" % _status),),
+                  note="field menu -> Items and back: the dissolve spans 16:9 (patch 0075)"))
+
 
 def by_name() -> dict[str, Scenario]:
     return {s.name: s for s in SCENARIOS}
