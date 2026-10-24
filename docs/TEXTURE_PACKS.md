@@ -35,6 +35,16 @@ not a parallel asset pipeline inside `platforms/switch/`.
 Exact size/CLUT constraints are filled in when the first pack is validated
 against a real title/field asset.
 
+## Beyond textures: modding API (P8.5)
+
+A future goal (2026-10-24) widens this overlay idea to every owner-supplied
+replacement (text, audio, data tables) with a `mods/` folder, a manifest, load
+order and versioning. Textures stay the first case and P8.2's layout should be
+chosen with it in mind. Limits found there: overlays and the executable are
+linked into the NRO, so only data loaded by file id can be replaced as a file;
+tables compiled into the overlays need a port hook. Mods never carry original
+game data. See ROADMAP P8.5.
+
 ## Out of scope
 
 - Shipping or hosting texture packs or original art in this repository

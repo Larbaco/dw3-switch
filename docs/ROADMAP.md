@@ -55,11 +55,13 @@ lives in its doc, not in the entry below.
 | P6.9 | Restart-game hotkey | in progress | [P6.9](P6.9_RESTART.md) |
 | P6.10 | Hardware render outside battle | future | [P5.2](P5.2_BATTLE_GPU.md) |
 | P6.11 | Internal resolution scaling | future | [PC README](../platforms/pc/README.md) |
-| P6.12–P6.14, P6.16, P6.19–P6.21 | Backlog goal notes | future | [backlog](#backlog--future-goals) |
+| P6.12–P6.14, P6.16, P6.19, P6.21 | Backlog goal notes | future | [backlog](#backlog--future-goals) |
 | P6.15 | Regression replay tests | in progress | [P6.15](P6.15_REPLAY_TESTS.md) |
 | P6.17 | Music / SFX volume | in progress (owner: volume options work, rc6 EU / rc7 US; relaunch check open) | [P6.17](P6.17_VOLUME.md) |
 | P6.18 | Pacing options | in progress (Instant text confirmed on the US OLED, rc7; rest of the OLED check open) | [P6.18](P6.18_PACING.md) |
+| P6.20 | Port debug / cheat menu in the Options screen (future goal) | future | [roadmap](#phase-6-goal-notes), [PORT_OPTIONS](PORT_OPTIONS.md) |
 | P6.22 | Turbo speed in scripted scenes (future goal) | in progress (PC profile: the CPU rasterizer is ~97 % of a field frame; pixel-identical PSY-Z rasterizer 4-5x faster, OLED check open) | [P6.22](P6.22_FIELD_CPU.md), [roadmap](#phase-6-goal-notes), [P6.4](P6.4_FAST_FORWARD.md) |
+| P6.23 | Documentation: player guide, docs index, contributor and modder docs (future goal) | future | [roadmap](#phase-6-goal-notes) |
 | P7.1 | Inventory and boundaries | done | [COMMUNITY_QOL](COMMUNITY_QOL.md) |
 | P7.2 | Patched EU disc as data source | open | [COMMUNITY_QOL](COMMUNITY_QOL.md) |
 | P7.3 | Binary-patch limits | in progress | [COMMUNITY_QOL](COMMUNITY_QOL.md) |
@@ -72,6 +74,7 @@ lives in its doc, not in the entry below.
 | P8.2 | Pack layout | open | [TEXTURE_PACKS](TEXTURE_PACKS.md) |
 | P8.3 | Formats and scaling | open | [TEXTURE_PACKS](TEXTURE_PACKS.md) |
 | P8.4 | Tooling (optional) | open | — |
+| P8.5 | Modding API: mod folder, asset and data-table overrides (future goal) | future | [roadmap](#phase-8--texture-pack-compatibility), [TEXTURE_PACKS](TEXTURE_PACKS.md) |
 | P9.1 | Port options goal note | done | [PORT_OPTIONS](PORT_OPTIONS.md) |
 | P9.2 | Menu entry and shell | done | [P9.2](P9.2_MENU.md) |
 | P9.3 | Toggle registry | done | [PORT_OPTIONS](PORT_OPTIONS.md) |
@@ -1032,8 +1035,78 @@ the port or committing assets. Details: [TEXTURE_PACKS.md](TEXTURE_PACKS.md).
 - [ ] **P8.4 Tooling — optional.** `tools/` helper to validate or pack a
   texture pack against `files_*.json` (report missing/extra ids).
   Done when: a `--check` mode exists. Does **not** block the Phase 8 gate.
+- [ ] **P8.5 Modding API (future goal).** Dated 2026-10-24, owner request:
+  "modding API". Goal note only, **nothing started, no code**. Generalizes the
+  texture pack idea of P8.2 to every kind of owner-supplied replacement, so
+  that P8.2 (pack layout), P6.7 / P6.8 (language packs) and P7.2 (patched EU
+  disc as data) share one layout and one loader instead of three.
+  **What exists today (cited):** the game reads disc data by **numeric file
+  id**; `port/cdfs/cdfs.c` maps an id to a path under the runtime root
+  (`cdfs_set_root`, `cdfs_load_map` reads `files_us.json` / `files_eu.json`,
+  `cdfs_file_size`, `cdfs_read`, `cdfs_read_at`, `cdfs_read_field_tile`;
+  relative paths only, `.` and `..` rejected at map load, the on-disk size
+  wins over the JSON `bytes`; see `port/cdfs/README.md`). The runtime is
+  `sdmc:/switch/dw3/<us|eu>/` ([RUNTIME_LAYOUT.md](RUNTIME_LAYOUT.md)), next
+  to `port_options.cfg`. So a **file replacement is one lookup away**: swap the
+  path for an id, which is the plan in [TEXTURE_PACKS.md](TEXTURE_PACKS.md)
+  (native TIM first, fall back to the vanilla file when the pack has no entry).
+  **Hard limit found by the survey:** the overlays and the executable are
+  **linked into the NRO** (one image, `.data` restored on a mode change;
+  [ARCHITECTURE.md](ARCHITECTURE.md)), so code and tables compiled into them
+  (Digimon stats, items, techniques, if they live in C data) do not come from
+  the SD card, and replacing an overlay file changes nothing. File-id
+  replacement covers what the game really loads by id (textures, maps, message
+  files, sound banks, `.STR` movies); **data-table overrides need a port
+  hook** (a `port/` step that patches the table after the overlay restore,
+  keyed by table and index), and each table has to be located in
+  `vendor/dw3_decomp` first. [COMMUNITY_QOL.md](COMMUNITY_QOL.md) says the
+  same about MIPS patches: they do not run in the NRO.
+  **Scope ideas, in the order of cost:**
+  1. *Mod folder:* `sdmc:/switch/dw3/<us|eu>/mods/<mod-name>/` with a small
+     manifest (`mod.json`: name, version, region `us` / `eu` / both, API
+     version, priority, author, licence) and a tree that mirrors the runtime
+     paths or lists file ids.
+  2. *Asset overrides* by file id with fallback: textures / sprites (TIM first,
+     P8.3), text and strings (the EU `LANGUAGE` slots, P6.7), audio (XA and
+     SEP / VAB banks; P6.17 already has Music and SFX buses).
+  3. *Data-table overrides* (Digimon stats, items, techniques) through
+     declarative files (JSON or CSV) validated against the table shape.
+  4. *Load order and versioning:* an order or priority in a `mods.cfg` beside
+     `port_options.cfg`, a conflict line in the log (two mods replacing one
+     id), an API version a mod must match, and a safe mode that boots with
+     mods off.
+  5. *US against EU:* ids and files differ (`files_us.json` against
+     `files_eu.json`, five EU languages); a mod declares its region and the
+     loader refuses a mismatch, as the extract does for a wrong disc.
+  6. *Later, script hooks* (events, battle or field scripts): only after 1 to
+     4 are stable, with an allow-list; not scoped here.
+  **Constraints:** **never redistribute game data.** A mod ships as a diff or
+  patch (for example xdelta against the owner's own file) or as wholly new
+  content, never as copies of original files; a `tools/` helper applies the
+  diff at install time, and the repo, the releases and this port never host
+  mods. Off by default: with no mod folder the game is bit-identical to today
+  (the P6.15 replays still match). The loader reads the SD card only, a mod
+  cannot reach the save files, and every replaced id is logged.
+  **Dependencies and risks:** needs a **stable id-to-path lookup in
+  `port/cdfs`**: today the game goes through several entry points
+  (`cdfs_read`, `cdfs_read_at` for map headers and `FILE_CACHE`,
+  `cdfs_read_field_tile`, and the STR sector path), so the override must be in
+  one resolve step they all use, or be added to each; P9.4 persistence for a
+  mods on / off row; the field-tile reader and the file cache expect the size
+  of the vanilla file, so a larger replacement needs a size check; large packs
+  on the SD (FAT) cost read time. P8.4 `--check` extends to validate a mod
+  against `files_*.json`.
+  Open questions (owner): keep P8.2 as its own item or fold it in as "asset
+  overrides"; how far to go with data tables before script hooks; plain
+  folders or an archive (zip) on the SD.
+  Done when (proposed): a documented `mods/` layout and manifest, one example
+  mod per kind (a texture, a string, a table row) loads on the PC and the
+  Switch build with US and EU, the loader reports conflicts, the default is
+  bit-identical, and the modder docs (P6.23) describe it.
+  Related: P8.2 to P8.4, P6.7, P6.8, P7.2, P6.23, P9.4.
 
 Gate: P8.2 works with an owner-supplied minimal pack. P8.4 is best-effort.
+P8.5 is a future goal outside the gate.
 
 ## Phase 9 — Port options menu
 
@@ -1462,9 +1535,87 @@ Statuses are in the [table](#status-at-a-glance).
 - [ ] **P6.19 Japanese disc support (future goal).** File map, executable
   differences and boot for the JP disc, next to US and EU. Goal note only
   (2026-10-15). Done when the JP disc boots to the field on PC and Switch.
-- [ ] **P6.20 Port debug / cheat menu (future goal).** Port-side menu for
-  money, items and map warp, to speed up testing. Off by default. Goal
-  note only (2026-10-15). Done when it works on US and EU.
+- [ ] **P6.20 Port debug / cheat menu in the Options screen (future goal).**
+  First noted 2026-10-15 (money, items, map warp, off by default); widened
+  2026-10-24 on an owner request: "a cheats submenu inside the options, to
+  make testing easier". Goal note only, **nothing started: no code, no
+  patch**. The purpose is faster hardware testing (reach a battle, a map or a
+  full bag without replaying hours of the game), not a player feature.
+  AGENTS.md lists cheats as out of scope unless requested; this is the owner's
+  explicit request, so the item is in scope under the constraints below.
+  **What exists (cited, to be reused, not rebuilt):**
+  - *The Options screen* ([PORT_OPTIONS.md](PORT_OPTIONS.md)): registry in
+    `port/options/port_options.c` (`DW3_PORT_OPT_COUNT` = 8, the Battle cursor
+    row of P7.9 is the latest), keys in `port_options.cfg`, saved on every
+    change, atomic write, unknown keys kept (so an older build does not erase a
+    newer build's cheat keys). The eight rows fill the window: 38 px rows on a
+    42 px pitch, the last ends at y 482, 26 px above the message rule at y 508
+    ([PORT_OPTIONS.md](PORT_OPTIONS.md#options-screen-2026-10-14), "Eight
+    rows"), so a ninth row does not fit without changing the layout. Labels are
+    pre-rendered lettering (`tools/generate_pc_title_lettering.py`).
+  - *Dev hooks, today environment variables read by `PORT_HOST` patches*,
+    PC only and silent when unset: `DW3_START_MODE` / `DW3_PROGRESS` (boot into
+    a field or menu mode, patches `0020`, `0023`), `DW3_FORCE_ENCOUNTER` /
+    `DW3_FORCE_PARTY` (a forced battle, `0024`, `0040`), `DW3_FORCE_WIN` (jump
+    to the report, `0025`), `DW3_FORCE_ITEMS` (fills the bag with an item id
+    range, `0070`), `DW3_FORCE_MENU` / `DW3_FORCE_STAGE` (`0026`, `0030`), and
+    the P7.7 / P7.9 set (`DW3_FORCE_ENEMY_HP`, `FORM`, `TECH`, `HIT`, `STEAL`,
+    `EXTRA_TECHS`; `0064`, `0067`). The Switch NRO has no environment; only a
+    build-time `DW3_NX_TEST_ENV` bakes some in
+    (`platforms/switch/source/boot_main.c`). A cheat menu is therefore the first
+    way to set them at runtime on an ordinary NRO: the hooks would read the
+    port's flag store instead of `getenv`.
+  - *Options and aids that already do a cheat's job*, no new work needed:
+    **Encounter rate OFF** is "no random encounters" (P6.18); **Text speed
+    Instant** and **Fast-forward** (P6.4) are the time savers;
+    `DW3_FORCE_CRASH` exercises the crash path
+    ([P5.4_CRASH.md](P5.4_CRASH.md)); the nxlink HUD
+    ([DEBUG_OVERLAY.md](DEBUG_OVERLAY.md)) shows the mode and the fps; the P6.15
+    replay scenarios ([P6.15_REPLAY_TESTS.md](P6.15_REPLAY_TESTS.md)) drive the
+    hooks on PC.
+  **Candidate cheats** (cheap = a port flag or an existing hook; decomp =
+  needs the field layout of `GameState` / party / battle structs from
+  `vendor/dw3_decomp`, to be located first): give items (cheap, hook `0070`
+  becomes a runtime action); instant battle win (cheap, hook `0025`); start a
+  chosen battle (cheap, `0024` / `0040`); max money / bits (decomp, one field
+  once found); infinite HP / MP and max stats (decomp, party and battle
+  structs, re-applied every frame); unlock digivolutions (decomp, the
+  requirement flags per form); walk speed (decomp, a field movement constant;
+  it changes the walk length of the replays, so only when on); warp to map
+  (decomp and the hardest: the hooks above act only at boot, an in-game warp
+  must change mode safely, see P3.8 `DW3_FORCE_STAGE`; it would also help P5.5).
+  **First slice:** (1) a Cheats sub-screen entered from the Options screen
+  (layout decision first: a scrolling list, a second page or a ninth row), with
+  the master switch off; (2) a runtime flag store in `port/options/` with its
+  `cheat_*` keys; (3) three cheap entries wired to the existing hooks (give
+  items, instant win, start a battle); (4) a log line per use. The decomp
+  cheats follow one at a time after the field is located.
+  **Constraints:** off by default, and a build or a config with every cheat
+  off is bit-identical to today (the P6.15 replays must still match, plus one
+  log-only replay per cheat). Decomp changes only as numbered `PORT_HOST`
+  patches with a row in [PATCHES.md](PATCHES.md) (the next free number); the
+  `getenv` hooks keep working for the replays. Persistence: **the options file,
+  not the save.** The flat PS1 save image has no spare room (found in P7.9) and
+  a cheat toggle must not edit P5.3 saves; `cheat_*` keys in
+  `port_options.cfg` fit the current design, per region like every key. Toggles
+  (infinite HP, walk speed) persist; one-shot actions (give items, max money)
+  do not and run from the menu. A one-shot still changes the live game and the
+  game's own save would then store it: say so on the screen and log it. No
+  cheat may write a save file by itself.
+  **Open questions (owner):** (a) *visibility*: nxlink / dev builds only (the
+  code compiles out of the release `.nro`, like `DW3_NX_DEBUG_OVERLAY`) or in
+  every build behind a master switch? Every preview ships an nxlink `.nro`
+  anyway, so dev-only still serves hardware testing; (b) the Options screen
+  opens only from the title today, so give-item or instant-win inside a battle
+  needs P9.7 (Options reachable in game); the first slice works from the title
+  only; (c) English-only labels for a test menu, or the five EU languages;
+  (d) whether to flag a save as touched by a cheat (a log line only, never a
+  change to the save).
+  Done when: the sub-screen works on the PC and the Switch build with US and
+  EU, every cheat in the slice works and is logged, the default is
+  bit-identical to a build without it, the visibility choice is recorded, and
+  PORT_OPTIONS.md and PATCHES.md describe it.
+  Related: P9.7, P9.4, P6.15, P6.18, P7.9, P5.5, P3.8.
 - [ ] **P6.21 60 fps interpolation (far future).** Interpolate camera and
   field movement in 30 fps sections. After P6.10. Goal note only
   (2026-10-15).
@@ -1576,6 +1727,57 @@ Statuses are in the [table](#status-at-a-glance).
   map) to check the owner's expectation. See
   [P6.4](P6.4_FAST_FORWARD.md#field-fps-depends-on-what-is-on-screen-rc8-oled).
   Related: P6.4, P6.10, P6.15, P6.18, P5.2.
+- [ ] **P6.23 Documentation (future goal).** Dated 2026-10-24, owner request:
+  "documentation". Goal note only, nothing written yet. **Gaps found by a
+  survey of `docs/` (about 80 files), `README.md`, `AGENTS.md` and
+  `platforms/switch/release/README.txt`:**
+  - *No player guide.* The player-facing text is spread over the README
+    ("Play it on Switch", "Controls"), the release `README.txt` (install, the
+    own-disc setup, the OLED checklist of the preview),
+    [HOTKEYS.md](HOTKEYS.md), [DISC_SETUP.md](DISC_SETUP.md),
+    [RUNTIME_LAYOUT.md](RUNTIME_LAYOUT.md) and
+    [REPORTING_ISSUES.md](REPORTING_ISSUES.md). No single page covers install,
+    US against EU, every Options row, controls, turbo, saves, crash reports and
+    an FAQ. The release README is rewritten per preview and mixes a tester
+    checklist with the install steps.
+  - *No docs index.* `docs/` has about 80 files named by phase id
+    (`P6.4_FAST_FORWARD.md`, `RELEASE_PREVIEW20.md`, ...) and the README table
+    lists about ten of them. The ROADMAP status table is the only complete map,
+    and it is organized by item, not by what a reader needs.
+  - *Contributors:* the rules are in AGENTS.md (written for AI agents, with
+    Cursor Cloud specifics in the middle), the README "Contributing" section
+    is two bullets, and there is no `CONTRIBUTING.md`. How to add an Options
+    row, a `PORT_HOST` patch or a replay scenario is described only inside
+    [PORT_OPTIONS.md](PORT_OPTIONS.md), [PATCHES.md](PATCHES.md) and
+    [P6.15_REPLAY_TESTS.md](P6.15_REPLAY_TESTS.md).
+  - *Modders:* nothing yet; see P8.5.
+  - *Stale-prone text:* the README "Available now" list and the release notes
+    repeat statuses that live in the ROADMAP table, and AGENTS.md still names
+    preview.22 as the latest tagged preview.
+  **Proposed set (to decide with the owner):** (1) a **player guide**
+  (`docs/GUIDE.md`, linked first from the README): install, own-disc setup for
+  US and EU, the Options screen row by row, controls and hotkeys, turbo, saves
+  and backups, crash reports and how to send them, an FAQ; the release
+  `README.txt` then keeps "what is new" and the checklist and links to the
+  guide; (2) a **docs index** (`docs/README.md`) grouped by reader (player,
+  tester, contributor, modder) and by phase, replacing the short README table;
+  (3) a **contributor guide** (`CONTRIBUTING.md`, a short entry that points to
+  AGENTS.md for the hard rules): build on PC and Switch, tests, the squash
+  merge flow, how to add an Options row, a patch, a replay scenario;
+  (4) the **modder docs** of P8.5 once that API exists.
+  **Constraints:** the guide states only what is confirmed (it links the
+  ROADMAP or the release notes for "unverified on hardware"); one fact has one
+  home and the rest link to it; no game data, logs or captures are added, and
+  screenshots stay limited to the owner-approved set in
+  `docs/assets/screenshots/` (AGENTS.md). Repo docs stay in English; a
+  Portuguese guide is a separate decision, tied to P6.7.
+  Open questions (owner): where the guide ships (repo only, or also in the
+  release bundle as text), and whether the index is generated from the ROADMAP
+  table so it cannot drift.
+  Done when: the guide, the index and `CONTRIBUTING.md` exist, the README links
+  them, the release `README.txt` points to the guide, and a new tester can
+  install the US or EU build and report a crash using only those pages.
+  Related: P6.5, P8.5, [REPORTING_ISSUES.md](REPORTING_ISSUES.md).
 
 ### Phase 7 goal notes
 

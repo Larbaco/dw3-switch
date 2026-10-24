@@ -50,6 +50,7 @@ explicitly marked N/A in this note.
 | Pacing | **Encounter rate** (OFF / 0.5x / 1x / 1.5x / 2x) and **Text speed** (Normal / Fast / Instant), both default to the original game ([P6.18](P6.18_PACING.md)) | Phase 6 |
 | Battle menu memory | **Battle cursor** (OFF / Command / Command+Tech): the battle command menu and technique list open on your last pick; key `battle_menu_memory` 0 / 1 / 2, off by default (a row since P7.9's follow-up, it was file-only) ([P7.9](P7.9_BATTLE_MENU_MEMORY.md)) | Phase 7 |
 | Button layout / glyphs | **Button layout** (PlayStation positional, default / Nintendo A confirms, B cancels), ROADMAP P9.8; **Switch button glyphs** on/off, ROADMAP P10.6. Both future goals (2026-10-23); the glyphs follow the layout | Phase 9 / Phase 10 |
+| Cheats (test aid) | A **Cheats** sub-screen for hardware testing (give items, instant win, start a battle, later money, HP / MP, warp); future goal of 2026-10-24, nothing built. Off by default, keys `cheat_*` in `port_options.cfg` (the options file, never the save); the eight rows fill the screen, so the entry needs a layout decision. See ROADMAP P6.20 | Phase 6 (P6.20) |
 | Switch host | Rumble on/intensity, confirm A/B layout, `swkbd` name, CRT/sharp, system-language hint | Phase 10 (+ P4.4 / P5.3 always-on lifecycle) |
 | Restart game | Optional L1 + R1 + Start + Select in the shared PS1 pad map; OFF by default | Phase 6.9 |
 
