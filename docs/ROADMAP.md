@@ -810,6 +810,14 @@ gate, which stays open.
     4:3 (patch `0087`: the hexagon backdrop continued by whole periods, the
     side lines carried out). Replay scenarios `us/eu-ws-title-intro`. Details:
     [P6.1_WIDESCREEN.md](P6.1_WIDESCREEN.md#title-news-caption-and-registration-screen-2026-10-24).
+  - [ ] **preview.31-rc1 OLED report (owner, EU): "leaving the Underground
+    Path the water texture is wrong until the screen scrolls down",
+    fixed, pending OLED (US and EU).** Not a renderer or a VRAM / CLUT
+    problem: the streets by the Cargo Tower (WSTAG202) have a map tile with 6
+    sprites in a depth, and patch `0057`'s clamp made the next two depths
+    read garbage, which drew huge sprites over the canal while that tile was
+    in view (patch `0111`; test hook `0110`). Replay scenarios
+    `us/eu-underground-exit`. Details: [FIELD_TILE_SPRITES.md](FIELD_TILE_SPRITES.md).
   - [ ] **FUTURE: redesign the Items menu (and its open transition) for
     16:9.** Owner, rc8 OLED: the transition effect when opening the Items
     menu is still 4:3, and the menu itself stays 4:3 while the background
