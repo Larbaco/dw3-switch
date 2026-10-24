@@ -2,7 +2,7 @@
  *
  * When dw3_nx_crash_install found (and rotated) a report from the previous
  * run, dw3_nx_crash_notice_show draws a short English text panel for a few
- * seconds, or until A / B / + is pressed, then returns to the normal boot.
+ * up to a minute, or until A / B / + is pressed, then returns to the normal boot.
  * With no previous report it returns at once and draws nothing. The text is
  * laid out here, without libnx or GL, so the host test
  * (tools/tests/crash_notice_main.c) can check it; nx_crash_notice.c draws it
@@ -22,9 +22,11 @@
 /* Reason lines kept before the rest is cut with "...". */
 #define DW3_NOTICE_REASON_LINES 3
 
-/* Timing (ms): shown at most this long, and a button only counts after
+/* Timing (ms): shown at most this long (the owner could not read the 8 s
+ * version in time; the panel now waits for A and gives up after a minute so
+ * a forgotten console still boots), and a button only counts after
  * DW3_NOTICE_MIN_MS so the press that launched the NRO cannot skip it. */
-#define DW3_NOTICE_SHOW_MS 8000u
+#define DW3_NOTICE_SHOW_MS 60000u
 #define DW3_NOTICE_MIN_MS 1000u
 
 /* Logical layout in font pixels (scaled by an integer at draw time). */
@@ -152,7 +154,7 @@ static inline void dw3_notice_layout(Dw3NoticeLayout *lay,
     dw3_notice_push(lay, "Please attach it and dw3.log to a bug report.",
                     45, DW3_NOTICE_BODY);
     dw3_notice_push(lay, "", 0, DW3_NOTICE_BODY);
-    /* No stdio: "Press A to continue (8)". */
+    /* No stdio: "Press A to continue (60)". */
     memcpy(hint, "Press A to continue (", 21);
     n = 21;
     if (seconds_left >= 10) {
