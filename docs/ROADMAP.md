@@ -65,7 +65,7 @@ lives in its doc, not in the entry below.
 | P6.23 | Documentation: player guide, docs index, contributor and modder docs (future goal) | future | [roadmap](#phase-6-goal-notes) |
 | P6.24 | One build for US and EU: one `.nro` and one PC binary, region found at boot, a boot picker with both discs (future goal; depends on P6.25 and P6.26) | future | [SINGLE_BUILD](SINGLE_BUILD.md), [roadmap](#phase-6-goal-notes) |
 | P6.25 | Cross-region saves: a US save loads in EU and the reverse, one canonical save container (future goal) | future (survey and design done, no code) | [CROSS_REGION_SAVES](CROSS_REGION_SAVES.md), [roadmap](#phase-6-goal-notes) |
-| P6.26 | Per-user saves: saves bound to the Switch user profile chosen in the Switch profile selector, global options (future goal) | future (design done; account probe in tree, OLED results pending) | [PER_USER_SAVES](PER_USER_SAVES.md), [roadmap](#phase-6-goal-notes) |
+| P6.26 | Per-user saves: saves bound to the Switch user profile chosen in the Switch profile selector, global options (future goal) | future (design done; OLED: forwarder and hold R settled, Album v2 probe pending) | [PER_USER_SAVES](PER_USER_SAVES.md), [roadmap](#phase-6-goal-notes) |
 | P7.1 | Inventory and boundaries | done | [COMMUNITY_QOL](COMMUNITY_QOL.md) |
 | P7.2 | Patched EU disc as data source | open | [COMMUNITY_QOL](COMMUNITY_QOL.md) |
 | P7.3 | Binary-patch limits | in progress | [COMMUNITY_QOL](COMMUNITY_QOL.md) |
@@ -1965,8 +1965,11 @@ Statuses are in the [table](#status-at-a-glance).
   **Status (2026-10-24):** an account probe logs `account probe:` lines at boot
   (applet type, preselected user, user list, last opened, no-interaction user), plus
   an optional `DW3_ACCOUNT_PROBE_PSEL` build that opens the profile selector once;
-  owner OLED results from the forwarder, Album and hold-R launch paths are pending
-  ([note](PER_USER_SAVES.md#account-probe-diagnostic-in-the-tree)). Saves unchanged.
+  OLED results (2026-10-24): forwarder = Application, no preselected user, psel works;
+  hold R = preselected user exists (no second prompt); cancel = rc `0x27c`; Album =
+  LibraryApplet, `accountInitialize(Application)` refused (`0x2c7c`), psel untested.
+  Probe v2 (System retry, psel regardless) is built; Album v2 results pending
+  ([results](PER_USER_SAVES.md#oled-results-2026-10-24)). Saves unchanged.
   Order: seam and tests with a fake account provider -> Switch resolution and
   OLED facts (applet type, preselect, user count) -> profile selector and import prompt ->
   global options.

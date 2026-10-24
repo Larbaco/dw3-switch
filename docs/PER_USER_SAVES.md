@@ -78,6 +78,37 @@ release/preview. The owner runs it in three launch paths (Sphaira forwarder NSP
 on HOME, hbmenu/Sphaira from the Album, hold R over a game) to settle the
 unknowns marked "check" above.
 
+### OLED results, 2026-10-24
+
+Probe v1, EU nxlink build with the psel option ON, OLED, three profiles
+(Larbaco, Glaupe, Isa), last opened = Isa. Logs stay out of git.
+
+| Launch path | Applet type | Account service | Preselected user | `pselShowUserSelector` |
+|---|---|---|---|---|
+| Sphaira forwarder NSP (HOME) | Application (0) | ok | none (`0x1159`) | opened; chose Larbaco, rc=0 |
+| Hold R over a game | Application (0) | ok | Larbaco (the system asked at launch) | opened (forced by the probe); chose Larbaco |
+| Forwarder, B in the selector | Application (0) | ok | none | rc=`0x27c` (module 124, desc 1) = cancel, no user |
+| Album (hbmenu/Sphaira) | LibraryApplet (2) | `accountInitialize(Application)` = `0x2c7c` | not asked | **untested** (probe stopped before it) |
+
+`accountTrySelectUserWithoutInteraction` returned an invalid uid with three
+profiles.
+
+Conclusions:
+
+- Forwarder = Application mode without a preselected user: the selector is
+  needed, and it works.
+- Hold R = a preselected user exists: no second prompt is needed. In the final
+  code, hold-R must **not** show a second selector, because the preselected user
+  exists (step 2 of the resolution order already does this; the probe opens psel
+  only to test it).
+- Cancel is detectable (`0x27c`, module 124 desc 1): the game exits, per the
+  owner decision.
+- Album: the Application account service is refused (`0x2c7c`) and psel is
+  untested there. Probe v2 retries with `AccountServiceType_System`, runs the
+  same queries if that works, and calls psel regardless of the account result;
+  it also names `0x27c` as "cancelled". v2 results are pending (Album, once
+  choosing a profile, once pressing B).
+
 ## Design
 
 ### Resolving the user (boot order: region first, then user)

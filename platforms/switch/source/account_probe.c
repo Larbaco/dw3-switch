@@ -90,33 +90,24 @@ static void probe_psel(void) {
     if (R_SUCCEEDED(rc)) {
         probe_log_uid_result("psel chosen", rc, uid);
     } else {
-        /* A cancel from the selector shows up as an error code (the applet
-         * returns no user); log it as is and let the owner read the context. */
-        INFOF("account probe: psel rc=0x%08x (module=%u desc=%u; cancel or "
-              "error, no user chosen)",
-              (unsigned)rc, (unsigned)R_MODULE(rc), (unsigned)R_DESCRIPTION(rc));
+        /* OLED 2026-10-24: B in the selector returns 0x27c (module 124, desc
+         * 1). Name it; any other code is logged as an error. */
+        const char *what = (rc == MAKERESULT(124, 1))
+                               ? "cancelled by the player (B)"
+                               : "error";
+        INFOF("account probe: psel rc=0x%08x (module=%u desc=%u): %s, no "
+              "user chosen",
+              (unsigned)rc, (unsigned)R_MODULE(rc), (unsigned)R_DESCRIPTION(rc),
+              what);
     }
 }
 #endif
 
-void dw3_nx_account_probe(void) {
-    AppletType at = appletGetAppletType();
+static void probe_queries(void) {
     AccountUid uid;
     AccountUid uids[PROBE_MAX_USERS];
     s32 count = 0, listed = 0, i;
     Result rc;
-
-    INFOF("account probe: begin");
-    INFOF("account probe: appletGetAppletType=%s (%d)",
-          probe_applet_type_name(at), (int)at);
-
-    rc = accountInitialize(AccountServiceType_Application);
-    INFOF("account probe: accountInitialize(Application) rc=0x%08x",
-          (unsigned)rc);
-    if (R_FAILED(rc)) {
-        INFOF("account probe: end (account service unavailable)");
-        return;
-    }
 
     memset(&uid, 0, sizeof(uid));
     rc = accountGetPreselectedUser(&uid);
@@ -148,11 +139,43 @@ void dw3_nx_account_probe(void) {
     rc = accountTrySelectUserWithoutInteraction(&uid, false);
     probe_log_uid_result("accountTrySelectUserWithoutInteraction(false)", rc,
                          uid);
+}
+
+void dw3_nx_account_probe(void) {
+    AppletType at = appletGetAppletType();
+    Result rc;
+    bool open = false;
+
+    INFOF("account probe: begin");
+    INFOF("account probe: appletGetAppletType=%s (%d)",
+          probe_applet_type_name(at), (int)at);
+
+    rc = accountInitialize(AccountServiceType_Application);
+    INFOF("account probe: accountInitialize(Application) rc=0x%08x",
+          (unsigned)rc);
+    if (R_SUCCEEDED(rc)) {
+        open = true;
+    } else {
+        /* OLED 2026-10-24: from the Album (LibraryApplet) this is 0x2c7c.
+         * Retry with the System service type and log it. */
+        rc = accountInitialize(AccountServiceType_System);
+        INFOF("account probe: accountInitialize(System) rc=0x%08x (retry)",
+              (unsigned)rc);
+        open = R_SUCCEEDED(rc);
+    }
+
+    if (open) {
+        probe_queries();
+    } else {
+        INFOF("account probe: account service unavailable, skipping queries");
+    }
 
 #ifdef DW3_ACCOUNT_PROBE_PSEL
+    /* Independent of the account service result. */
     probe_psel();
 #endif
-
-    accountExit();
+    if (open) {
+        accountExit();
+    }
     INFOF("account probe: end");
 }
