@@ -72,8 +72,15 @@ jobs:
           cp build/switch/dw3-switch.nro dist/dw3-switch.nro
           cp build/switch-nxlink/dw3-switch-nxlink.nro dist/dw3-switch-nxlink.nro
           cp platforms/switch/release/README.txt dist/README.txt
+          # The unstripped .elf of each .nro, so tools/symbolize_crash.py works
+          # on this release (a local rebuild has a different build id). The
+          # script fails if an .elf's build id is not the one in its .nro.
+          python3 tools/pack_release_elfs.py --out dist/dw3-switch-elf.zip \
+            --tag "$RELEASE_TAG" \
+            --item dist/dw3-switch.nro build/switch/dw3-switch.elf dw3-switch-us.elf \
+            --item dist/dw3-switch-nxlink.nro build/switch-nxlink/dw3-switch.elf dw3-switch-us-nxlink.elf
           find dist -type f -printf '%f\n' | sort > /tmp/dist-got
-          printf 'README.txt\ndw3-switch-nxlink.nro\ndw3-switch.nro\n' > /tmp/dist-want
+          printf 'README.txt\ndw3-switch-elf.zip\ndw3-switch-nxlink.nro\ndw3-switch.nro\n' > /tmp/dist-want
           diff -u /tmp/dist-want /tmp/dist-got
           if find dist -type f \( -name '*.bin' -o -name '*.cue' -o -name '*.iso' -o -name '*.img' \) | grep -q .; then
             echo "refusing to publish disc images" >&2
@@ -129,4 +136,5 @@ jobs:
           files: |
             dist/dw3-switch.nro
             dist/dw3-switch-nxlink.nro
+            dist/dw3-switch-elf.zip
             dist/README.txt
