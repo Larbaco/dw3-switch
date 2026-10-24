@@ -62,7 +62,9 @@ lives in its doc, not in the entry below.
 | P6.20 | Port debug / cheat menu in the Options screen (future goal) | future | [roadmap](#phase-6-goal-notes), [PORT_OPTIONS](PORT_OPTIONS.md) |
 | P6.22 | Turbo speed in scripted scenes (future goal) | in progress (PC profile: the CPU rasterizer is ~97 % of a field frame; pixel-identical PSY-Z rasterizer 4-5x faster, OLED check open) | [P6.22](P6.22_FIELD_CPU.md), [roadmap](#phase-6-goal-notes), [P6.4](P6.4_FAST_FORWARD.md) |
 | P6.23 | Documentation: player guide, docs index, contributor and modder docs (future goal) | future | [roadmap](#phase-6-goal-notes) |
-| P6.24 | One build for US and EU: one `.nro` and one PC binary, region found at boot (future goal) | future | [SINGLE_BUILD](SINGLE_BUILD.md), [roadmap](#phase-6-goal-notes) |
+| P6.24 | One build for US and EU: one `.nro` and one PC binary, region found at boot, a boot picker with both discs (future goal; depends on P6.25 and P6.26) | future | [SINGLE_BUILD](SINGLE_BUILD.md), [roadmap](#phase-6-goal-notes) |
+| P6.25 | Cross-region saves: a US save loads in EU and the reverse, one canonical save container (future goal) | future (survey and design done, no code) | [CROSS_REGION_SAVES](CROSS_REGION_SAVES.md), [roadmap](#phase-6-goal-notes) |
+| P6.26 | Per-user saves: saves bound to the Switch user profile, global options (future goal) | future (design done, no code) | [PER_USER_SAVES](PER_USER_SAVES.md), [roadmap](#phase-6-goal-notes) |
 | P7.1 | Inventory and boundaries | done | [COMMUNITY_QOL](COMMUNITY_QOL.md) |
 | P7.2 | Patched EU disc as data source | open | [COMMUNITY_QOL](COMMUNITY_QOL.md) |
 | P7.3 | Binary-patch limits | in progress | [COMMUNITY_QOL](COMMUNITY_QOL.md) |
@@ -1800,8 +1802,9 @@ Statuses are in the [table](#status-at-a-glance).
   sector table, `dw3_game_main`). PAL / NTSC timing already follows the mode
   the game sets, not a build flag. The region can be found on the SD card
   without asking (`us/` or `eu/` tree, or the executable inside a disc image,
-  which `runtime_extract.c` already checks); saves and options stay per region
-  (the save formats differ), so no player data moves.
+  which `runtime_extract.c` already checks). The saves are **not** the same
+  format in the two regions; the owner decided they get unified (P6.25) and
+  bound to the Switch user (P6.26), see the decisions below.
   **Recommended approach:** compile the game side twice into one image (one
   copy per region, exports renamed `us_` / `eu_`, the rest local, the
   `dw3data_*` restore sections renamed per region, the existing
@@ -1823,20 +1826,111 @@ Statuses are in the [table](#status-at-a-glance).
   ([RELEASES.md](RELEASES.md)). Overlaps P6.2, whose "EU/US selection at
   boot" this item would carry (P6.2 keeps PAL / NTSC and the language). A third
   region (P6.19, JP) is one more copy.
-  Open questions (owner): auto-detect with one region present and a picker
-  only with both, or always ask; remember the last choice; the picker's look
-  and languages; keep the separate `--eu` builds for development only or
+  **Owner decisions (2026-10-24, final):** (1) saves are unified between US and
+  EU: a save made in one region loads in the other (**P6.25**); (2) with both
+  game images on the console the game asks at boot, with a short timeout
+  (default = the last choice) and a stored "don't ask again" that can be changed
+  later (the picker, below); (3) saves are bound to the Switch user profile that
+  is playing (**P6.26**). P6.25 and P6.26 are separate items and **P6.24 depends
+  on both** (see their entries).
+  **Boot picker (design, [SINGLE_BUILD.md](SINGLE_BUILD.md#boot-picker)):** only
+  when both regions are found and none is forced; no image or one image: no
+  picker. Host-drawn screen, **3 s** countdown that any D-pad press cancels,
+  default = `last_region`, then A to boot, Y to toggle "always this one". "Don't
+  ask again" is `region_default=ask|us|eu` in the global `port_options.cfg`; get
+  the picker back by holding **-** (Minus) at launch, from an Options row, or by
+  editing the file. `--region` / `DW3_REGION`, the replay builds and
+  `DW3_MEMCARD_DIR` skip it with no extra frame, so the P6.15 recordings stay
+  valid.
+  **Order:** P6.25 slice 1 (converter and tests, PC) -> P6.25 store with the
+  separate builds sharing it -> P6.26 -> P6.24 on the Switch. The PC slice of
+  P6.24 above can start in parallel.
+  Open questions (owner), the rest of the original list is answered: the
+  picker's look and languages (plain host screen, English only, proposed); the
+  hold-to-ask button; keep the separate `--eu` builds for development only or
   also in releases for a while; is a 12 MB `.nro` fine; the PC too; switching
-  region without quitting (proposed: out of scope).
+  region without quitting (proposed: out of scope). More in
+  [SINGLE_BUILD.md](SINGLE_BUILD.md#open-questions-for-the-owner).
   Done when (proposed): one `.nro` and one `dw3-pc` from one configure, built
-  in CI; with only US or only EU data it boots that disc, with both it does
-  what the owner chose; the US and EU P6.15 scenarios pass on it with the
+  in CI; with only US or only EU data it boots that disc, with both it shows the
+  picker as decided above; saves are shared between the regions and per user
+  (P6.25 and P6.26 done); the US and EU P6.15 scenarios pass on it with the
   existing references; the crash report names the region and
   `tools/symbolize_crash.py` resolves both from the one `.elf`; the release
   ships one `.nro` (plus nxlink); checked on the OLED with each disc and with
   both on the card.
-  Related: P6.2, P6.15, P6.19, P5.4, P6.5, P3 EU build
+  Related: P6.2, P6.15, P6.19, P5.4, P6.5, P6.25, P6.26, P3 EU build
   ([P3_EU_BUILD.md](P3_EU_BUILD.md)).
+- [ ] **P6.25 Cross-region saves (future goal).** Dated 2026-10-24, owner
+  decision: a save made in the US game loads in the EU game and the reverse.
+  **Survey and design done, no code.** Full note with every difference and the
+  test plan: [CROSS_REGION_SAVES.md](CROSS_REGION_SAVES.md). Checked against the
+  decomp (`b9caa6c`) and one real US save.
+  **Findings.** The card image (header, icons, info at 0x200, three slots of
+  0x2700 at 0x300) and the first **9,796 bytes** of `GameState` (0x0000-0x2643:
+  name, money, items, cards, decks, partners, `progress`, ...) are identical.
+  The differences: the **flag area from 0x2644** (13 bitset groups: 4 grow, +10
+  bytes; 1 shrinks, -2; 8 keep their size and move; `GAME_SAVE_SIZE` 0x26BC US,
+  0x26C4 EU), the **version byte (3 US, 4 EU)** and the XOR **checksum** of each
+  slot, and the language-dependent header title and PS1 product name. The game
+  rejects a foreign slot with error 8. Flag ids: **544 distinct in US, 596 in
+  EU; every US flag is in EU and the 52 extra are the EU extra chapter**; 571 of
+  572 shared source files use identical flag references. Item, tech, Digimon and
+  card ids, stage modes and play time carry over. `LANGUAGE` is not saved.
+  **Hard cases:** an EU save in its extra chapter (`progress` 0x2D, set at the
+  end of event 1500, `wstag780.c`) has no meaning in US (proposed: error 8, bytes
+  kept); US flags40 bytes 0x1A-0x1B are dropped by EU (unused by any script;
+  kept in metadata); 26 of 230 name glyph images differ (accented EU letters,
+  cosmetic); the port's `name_matches` ties a save to the language's PS1
+  product name (an existing EU limitation, to confirm).
+  **Design.** A port-side container (`.dw3s`: magic, format version, crc, origin
+  region and language per slot) holding a card image with the **EU layout as the
+  canonical data**; pure converters at the `memcard_host` boundary (open: canonical
+  -> the running region's native image; flush: back, only the slots the game
+  wrote), so the game keeps seeing its own format. Existing `us/memcard` and
+  `eu/memcard` saves are **copied** in (first-fit of the non-empty slots into the
+  6 slots), originals never touched, backups before overwriting a foreign slot.
+  **Useful before P6.24:** yes, the separate US and EU builds can share one
+  store.
+  Order: converter + unit tests with synthetic fixtures (PC) -> store behind a
+  switch + import + host tests -> a preview of the separate builds sharing it ->
+  P6.26 and P6.24 build on it.
+  Done when (proposed): US -> EU and EU -> US round trips are identity over the
+  saved bytes on synthetic fixtures for all flag bits and fields; a real US save
+  and a real EU save each load on the other region's build on the OLED; the EU
+  extra-chapter save is refused on US and survives untouched; the legacy import
+  keeps the originals; replays unchanged.
+  Related: P6.24, P6.26, P5.3 ([P5.3_FLAT_SAVE.md](P5.3_FLAT_SAVE.md)), P9.6, P6.2.
+- [ ] **P6.26 Per-user saves (future goal).** Dated 2026-10-24, owner decision:
+  saves are bound to the Switch user profile that is playing. **Design done, no
+  code.** Full note: [PER_USER_SAVES.md](PER_USER_SAVES.md).
+  **Today:** one save folder per region (`sdmc:/switch/dw3/<ver>/memcard/`,
+  `boot_main.c` ~531; PC `runtime/<ver>/memcard/`) and `port_options.cfg` per
+  region; the Switch host has no account or applet-type code.
+  **Design.** libnx `accountInitialize(AccountServiceType_Application)`; the user
+  is `accountGetPreselectedUser` (title-override mode, expected), else the only
+  user, else an **in-game user picker** over `accountListAllUsers` (applet mode
+  has no preselected user; `pselShowUserSelector` as an option if the OLED check
+  shows it works there), else the `shared` profile. Saves go to
+  `sdmc:/switch/dw3/saves/<uid>/card0.dw3s, card1.dw3s` (uid = 32 hex digits;
+  soft binding, not security). PC: profile `default`
+  (`runtime/saves/default/`, `DW3_SAVE_PROFILE` to change). Legacy saves are
+  **copied** to the user who accepts a prompt at first launch (second users can
+  import later; originals untouched). **Options stay global** (recommended): one
+  `port_options.cfg` next to the region folders, with the new keys
+  `region_default`, `last_region`, `last_user`, `user_default`; migrated by copying.
+  Replays and `DW3_MEMCARD_DIR` skip the profile logic.
+  Order: seam and tests with a fake account provider -> Switch resolution and
+  OLED facts (applet type, preselect, user count) -> picker and import prompt ->
+  global options.
+  Done when (proposed): two profiles on the OLED keep separate saves in applet
+  and in title-override mode; a one-user console boots with no extra screen; the
+  import works and leaves the originals; options are one global file; replays
+  unchanged.
+  Open (owner): no auto-timeout on the user picker; global versus per-user
+  options; the legacy-import rules (see
+  [SINGLE_BUILD.md](SINGLE_BUILD.md#open-questions-for-the-owner)).
+  Related: P6.24, P6.25, P5.3, P9.4 ([PORT_OPTIONS.md](PORT_OPTIONS.md)), P6.15.
 
 ### Phase 7 goal notes
 
