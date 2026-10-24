@@ -154,7 +154,7 @@ These are goals, not promises. The full list is in
 - Language packs, with Brazilian Portuguese first.
 - Texture pack support: [TEXTURE_PACKS](docs/TEXTURE_PACKS.md), and later a
   modding API (mod folder, asset and data-table overrides, P8.5).
-- A cheats sub-screen in Port options, to speed up testing (P6.20).
+- A cheats sub-screen in Port options, to speed up testing (P6.20; first slice built, off by default, removable with `--no-cheats`).
 - A player guide, a docs index and contributor docs (P6.23).
 - In-game pause menu: return to title and help / FAQ / tips (P6.27, P6.30);
   Quit game on the title menu, back to hbmenu (P6.28).
@@ -281,6 +281,7 @@ Needs devkitPro. CI builds in the `devkitpro/devkita64` image.
 bash tools/build_switch_game.sh           # build/switch/dw3-switch.nro
 bash tools/build_switch_game.sh --nxlink  # logging variant
 bash tools/build_switch_game.sh --eu      # EU build
+bash tools/build_switch_game.sh --no-cheats  # without the Cheats screen (P6.20)
 ```
 
 A `crash_report.txt` from the console is symbolized with the `.elf` the

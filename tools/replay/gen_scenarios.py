@@ -933,6 +933,52 @@ def menu_screens(version):
     return r
 
 
+# P6.20 Cheats screen (docs/PORT_OPTIONS.md "Cheats"). Square is 0x8000.
+SQUARE = 0x8000
+
+
+def cheats_screen(version, phase):
+    """Two phases on one config dir. Phase 1: title -> Options -> Square (the
+    Cheats screen) -> master switch ON, Fill bag ready, Instant win ON, Battle
+    now ready, Triangle back to Options, Triangle. Phase 2 is a new process:
+    Options -> Square -> Triangle -> Triangle. The logs carry the toggles saved
+    and read back, and the one-shots not kept. No checkpoints."""
+    r = Rec(f"{version.upper()}: Cheats screen, phase {phase}")
+    m = _to_title_menu(r, version)
+    r.press(m, DOWN)                 # New Game -> Options
+    r.press(m + 20, CROSS)           # open the Options screen
+    f = m + 70
+    r.press(f, SQUARE)               # the Cheats screen
+    f += 40
+    if phase == 1:
+        r.press(f, CROSS)            # master switch ON
+        f += 20
+        for _ in range(3):           # Fill bag, Instant win, Battle now
+            r.press(f, DOWN)
+            f += 20
+            r.press(f, CROSS)
+            f += 20
+    r.press(f, TRIANGLE)             # back to Options
+    f += 40
+    r.press(f, TRIANGLE)             # leave
+    r.end(f + 50)
+    return r
+
+
+def cheat_fill_bag(version):
+    """Fill bag: on the Encounter rate field (env in the manifest, the
+    one-shot armed by DW3_CHEATS_ARM), Start opens the field menu and Cross
+    opens Items, which starts STSTATUS: patch 0070's hook fills the bag from
+    the cheat. Then the Items list opens on a full bag."""
+    start, _ = ENCOUNTER[version]
+    r = Rec(f"{version.upper()}: field menu -> Items (Fill bag; env and cfg in manifest)")
+    r.press(start + 100, START)      # field menu
+    r.press(start + 270, CROSS)      # Items: STSTATUS_createMenu
+    r.press(start + 500, CROSS)      # the Items list
+    r.end(start + 900)
+    return r
+
+
 def main(out):
     out.mkdir(parents=True, exist_ok=True)
     (out / "us-title.rec").write_text(us_title().text())
@@ -982,6 +1028,10 @@ def main(out):
         (out / f"{v}-p79-menu.rec").write_text(p79_menu(v).text(True))
         (out / f"{v}-p79-menu-page2.rec").write_text(p79_menu(v, page2=True).text(True))
         (out / f"{v}-p79-two-battles.rec").write_text(p79_two_battles(v).text(True))
+        for phase in (1, 2):
+            (out / f"{v}-cheats-screen-p{phase}.rec").write_text(
+                cheats_screen(v, phase).text(True))
+        (out / f"{v}-cheat-fill-bag.rec").write_text(cheat_fill_bag(v).text(True))
     (out / "us-repro-balloon.rec").write_text(repro_balloon("us").text(True))
     for version in ("us", "eu"):
         # Written unsorted, byte for byte as first committed with patch 0058.

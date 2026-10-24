@@ -615,6 +615,26 @@ void dw3_port_options_tick(void) {
         fprintf(stderr, "dw3-port-options: shell tick (Select opened)\n");
         fflush(stderr);
     }
+#ifdef DW3_CHEATS
+    /* P6.20: the Cheats screen has the pad while it is open; Square (Y on
+     * the Switch) opens it. */
+    if (dw3_cheats_is_open()) {
+        dw3_cheats_tick();
+        if (!dw3_cheats_is_open()) {
+            po_push_view(); /* back on the Options page */
+        }
+        return;
+    }
+#ifdef DW3_PORT_OPTIONS_TEST
+    if (po_pressed(15)) { /* PAD_SQUARE */
+#else
+    if (po_pressed(PAD_SQUARE)) {
+#endif
+        po_sound(PO_SND_SELECT);
+        dw3_cheats_open();
+        return;
+    }
+#endif
 
 #ifdef DW3_PORT_OPTIONS_TEST
     /* Close is Triangle only — Select is the open chord on the title menu. */
@@ -746,6 +766,12 @@ void dw3_port_options_draw(void) {
     if (!g_open) {
         return;
     }
+#ifdef DW3_CHEATS
+    if (dw3_cheats_is_open()) {
+        dw3_cheats_draw_panel();
+        return;
+    }
+#endif
     GetDispEnv(&env);
     ox = env.disp.x;
     oy = env.disp.y;
@@ -802,3 +828,40 @@ void dw3_port_options_draw_hint(void) {
     dw3_port_text_draw_panel((int)ox + 40, (int)oy + 210, 240, 20, lines, 1);
 #endif
 }
+
+/* P6.20 (port/options/cheats.c). At the end of the file, so that a build
+ * without DW3_CHEATS keeps every log line above at its line number (psyz_log
+ * passes __LINE__) and compiles to the same code. */
+#ifdef DW3_CHEATS
+int dw3_port_options_store_int(const char *key, int value) {
+    char num[16];
+
+    if (!g_persist_on) {
+        return -1; /* session-only options: the value stays live */
+    }
+    snprintf(num, sizeof(num), "%d", value);
+    if (dw3_optcfg_set(&g_cfg, key, num) != 0) {
+        PO_WARN("dw3-options: cannot stage %s", key);
+        return -1;
+    }
+    if (po_save() != 0) {
+        return -1;
+    }
+    PO_INFO("dw3-options: saved %s=%d", key, value);
+    return 0;
+}
+#endif
+
+#ifdef DW3_CHEATS
+void dw3_port_options_play_sound(int kind) {
+    if (kind >= PO_SND_CURSOR && kind <= PO_SND_CANCEL) {
+        po_sound(kind);
+    }
+}
+#endif
+
+#if defined(DW3_CHEATS) && defined(DW3_PORT_OPTIONS_TEST)
+int dw3_port_options_test_bit(int bit) {
+    return po_pressed(bit);
+}
+#endif

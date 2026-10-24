@@ -60,7 +60,7 @@ lives in its doc, not in the entry below.
 | P6.15 | Regression replay tests | in progress | [P6.15](P6.15_REPLAY_TESTS.md) |
 | P6.17 | Music / SFX volume | in progress (owner: volume options work, rc6 EU / rc7 US; relaunch check open) | [P6.17](P6.17_VOLUME.md) |
 | P6.18 | Pacing options | in progress (Instant text confirmed on the US OLED, rc7; Instant shows the area banner's names whole since 2026-10-24, pending OLED; rest of the OLED check open) | [P6.18](P6.18_PACING.md) |
-| P6.20 | Port debug / cheat menu in the Options screen (future goal) | future | [roadmap](#phase-6-goal-notes), [PORT_OPTIONS](PORT_OPTIONS.md) |
+| P6.20 | Port debug / cheat menu in the Options screen | in progress (PR 1: Cheats screen, fill bag, instant win, battle now, save mark; OLED check open) | [roadmap](#phase-6-goal-notes), [PORT_OPTIONS](PORT_OPTIONS.md) |
 | P6.22 | Turbo speed in scripted scenes (future goal) | in progress (PC profile: the CPU rasterizer is ~97 % of a field frame; pixel-identical PSY-Z rasterizer 4-5x faster, OLED check open) | [P6.22](P6.22_FIELD_CPU.md), [roadmap](#phase-6-goal-notes), [P6.4](P6.4_FAST_FORWARD.md) |
 | P6.23 | Documentation: player guide, docs index, contributor and modder docs (future goal) | future | [roadmap](#phase-6-goal-notes) |
 | P6.24 | One build for US and EU: one `.nro` and one PC binary, region found at boot, a boot picker with both discs (future goal; depends on P6.25 and P6.26) | future | [SINGLE_BUILD](SINGLE_BUILD.md), [roadmap](#phase-6-goal-notes) |
@@ -1651,11 +1651,11 @@ Statuses are in the [table](#status-at-a-glance).
 - [ ] **P6.19 Japanese disc support (future goal).** File map, executable
   differences and boot for the JP disc, next to US and EU. Goal note only
   (2026-10-15). Done when the JP disc boots to the field on PC and Switch.
-- [ ] **P6.20 Port debug / cheat menu in the Options screen (future goal).**
+- [ ] **P6.20 Port debug / cheat menu in the Options screen.**
   First noted 2026-10-15 (money, items, map warp, off by default); widened
   2026-10-24 on an owner request: "a cheats submenu inside the options, to
-  make testing easier". Goal note only, **nothing started: no code, no
-  patch**. The purpose is faster hardware testing (reach a battle, a map or a
+  make testing easier". **PR 1 (first slice) is built** (2026-10-24, patch
+  `0077`, section "PR 1 as built" below); the rest is still a goal note. The purpose is faster hardware testing (reach a battle, a map or a
   full bag without replaying hours of the game), not a player feature.
   AGENTS.md lists cheats as out of scope unless requested; this is the owner's
   explicit request, so the item is in scope under the constraints below.
@@ -1718,19 +1718,67 @@ Statuses are in the [table](#status-at-a-glance).
   do not and run from the menu. A one-shot still changes the live game and the
   game's own save would then store it: say so on the screen and log it. No
   cheat may write a save file by itself.
-  **Open questions (owner):** (a) *visibility*: nxlink / dev builds only (the
-  code compiles out of the release `.nro`, like `DW3_NX_DEBUG_OVERLAY`) or in
-  every build behind a master switch? Every preview ships an nxlink `.nro`
-  anyway, so dev-only still serves hardware testing; (b) the Options screen
-  opens only from the title today, so give-item or instant-win inside a battle
-  needs P9.7 (Options reachable in game); the first slice works from the title
-  only; (c) English-only labels for a test menu, or the five EU languages;
-  (d) whether to flag a save as touched by a cheat (a log line only, never a
-  change to the save).
+  **Owner decisions (2026-10-24, final; they replace the open questions):**
+  (1) the Cheats menu ships in **every** build, release and nxlink, US and EU,
+  behind a master switch that is off by default; (2) the labels are in all five
+  EU languages (English on the US disc), made the way the Options screen makes
+  its labels (pre-rendered lettering, procedure in
+  [PORT_OPTIONS.md](PORT_OPTIONS.md#cheats-p620)); (3) a save written while a
+  cheat was used is flagged "cheat used", and a **build-time option** makes a
+  build without any cheat: CMake `DW3_CHEATS` (default ON),
+  `tools/build_switch_game.sh --no-cheats` on the Switch, `-DDW3_CHEATS=OFF` on
+  the PC. OFF compiles the feature out (no entry, no hook, no flag code) and
+  the game is bit-identical to a build before P6.20. Releases keep the default
+  (cheats included) unless the owner says otherwise
+  ([RELEASES.md](RELEASES.md#building-without-cheats)). The earlier question
+  (b), the Options screen opening only from the title, is unchanged: the first
+  slice works from the title and its effects show once the game is running
+  (P9.7 would open Options in game).
+  **PR 1 as built (2026-10-24):**
+  - *Entry:* on the Options screen, **Square** (PC **Z**, Switch **Y**) opens the
+    Cheats screen and Triangle goes back. The hint "Square/Y Cheats" is drawn
+    **only while the master switch is on**: any always-visible entry (a ninth
+    row, paging, a hint) would change the Options screen's pixels and the
+    existing `*-options-persist`, `*-volume-persist` and
+    `*-battle-cursor-persist` references would fail; they are not refreshed.
+    With the master off the Options screen is pixel-identical and the eight
+    rows and the dirty-rectangle cache are untouched.
+  - *Cheats screen:* five rows in the Options window: Cheats (master, persisted
+    as `cheat_enabled`), Fill bag (one-shot), Instant win (persisted as
+    `cheat_instant_win`), Battle now (one-shot) and Cheat saves (read-only
+    count). Rows 2-4 are greyed and inert while the master is off; turning the
+    master off disarms the one-shots.
+  - *Cheats:* **Fill bag** puts 99 of every usable item, weapon, armour and
+    accessory (ids 43..359) in the bag through patch `0070`'s hook; **Instant
+    win** ends each battle as won on its first turn; **Battle now** makes the
+    next footstep in a random-battle area start a battle, even at Encounter
+    rate OFF. The `DW3_FORCE_*` variables keep working and win over the screen.
+  - *Save flag:* a sidecar `save<N>.cheats` next to the memory card file, never
+    a byte in the save
+    ([PORT_OPTIONS.md](PORT_OPTIONS.md#the-cheat-used-flag-on-saves)). Shown as
+    the count on the Cheats screen and in the boot log; the in-game memory card
+    screen does not show it yet (follow-up).
+  - *Code:* `port/options/cheats.c`, `cheat_saves.c`, `port/include/port_cheats.h`,
+    patch `0077-PORT_HOST-p620-cheats-hooks.patch` (every line in
+    `#ifdef DW3_CHEATS`), the Square/Z/Y hook in `port_options.c`, the lettering
+    (`CHEAT_TEXT` in `tools/generate_pc_title_lettering.py`).
+  - *Tests:* `tools/tests/test_cheats.py`, the cache test now covers the Cheats
+    page and the hint, seven log-only replay pairs (`<v>-cheats-screen`,
+    `cheat-fill-bag[-off]`, `cheat-battle-now[-off]`, `cheat-instant-win[-off]`),
+    the full replay suite on the cheats-ON build against unchanged references,
+    and a section and symbol comparison of the cheats-OFF build with `main`.
+  **Follow-ups (out of PR 1):** money / bits, infinite HP / MP, max stats,
+  digivolution unlocks, map warp, walk speed (all need the decomp fields to be
+  located first); a chosen encounter id (`DW3_FORCE_ENCOUNTER`) instead of the
+  random one; the "cheat used" mark on the in-game memory card screen
+  (STGMCARD); P9.7 (Options reachable in game).
+  **Still open (hardware):** the OLED checklist in
+  [PORT_OPTIONS.md](PORT_OPTIONS.md#cheats-p620), so the item stays unticked.
   Done when: the sub-screen works on the PC and the Switch build with US and
-  EU, every cheat in the slice works and is logged, the default is
-  bit-identical to a build without it, the visibility choice is recorded, and
-  PORT_OPTIONS.md and PATCHES.md describe it.
+  EU (PC done, Switch compiles; OLED open), every cheat in the slice works and
+  is logged (done, replays), the default is bit-identical to a build without it
+  (done), the visibility choice is recorded (done), and PORT_OPTIONS.md and
+  PATCHES.md describe it (done).
   Related: P9.7, P9.4, P6.15, P6.18, P7.9, P5.5, P3.8.
 - [ ] **P6.21 60 fps interpolation (far future).** Interpolate camera and
   field movement in 30 fps sections. After P6.10. Goal note only

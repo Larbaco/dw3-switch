@@ -59,4 +59,17 @@ unsigned dw3_pc_title_overlay_options_generation(void);
 int dw3_pc_title_overlay_options_cursor(void);
 /* Value last handed to set_options_view for a row (0 for a bad row). */
 int dw3_pc_title_overlay_options_value(int row);
+#ifdef DW3_CHEATS
+/* P6.20: the Options window shows the Options page or the Cheats page
+ * (port/options/cheats.c). On the Cheats page the view's values are the
+ * cheat rows (port_cheats.h: master, Fill bag, Instant win, Battle now 0/1,
+ * marked saves 0..6) and cheats_on dims rows 1..4 while the master switch is
+ * off; on the Options page cheats_on adds the Square/Y "Cheats" hint. */
+enum { DW3_TITLE_OPTIONS_PAGE_OPTIONS = 0, DW3_TITLE_OPTIONS_PAGE_CHEATS = 1 };
+enum { DW3_TITLE_CHEAT_ROWS = 5 };
+void dw3_pc_title_overlay_set_options_page(int page, int cheats_on);
+/* Bumped when the page or cheats_on changes: the static layer (labels,
+ * title, hints) must be drawn again (title_options_cache.c). */
+unsigned dw3_pc_title_overlay_options_layout(void);
+#endif
 #endif

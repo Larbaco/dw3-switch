@@ -8,6 +8,17 @@ set(DW3_VERSION "us" CACHE STRING "Game disc version: us or eu")
 set_property(CACHE DW3_VERSION PROPERTY STRINGS us eu)
 
 add_subdirectory(${CMAKE_SOURCE_DIR}/../../vendor/psyz/psyz ${CMAKE_BINARY_DIR}/psyz)
+# P6.20 Cheats sub-screen of the Options screen (docs/PORT_OPTIONS.md
+# "Cheats"). ON (the default, release builds too): the Cheats screen, its
+# hooks (patch 0077) and the save mark are compiled in, every cheat off until
+# its master switch is turned on. OFF (tools/build_switch_game.sh --no-cheats,
+# or -DDW3_CHEATS=OFF): none of it is compiled and the game is the build
+# without P6.20. Defined for every target after psyz (the game, port, host).
+option(DW3_CHEATS "P6.20 Cheats screen in the Options screen (test aid)" ON)
+if(DW3_CHEATS)
+  add_compile_definitions(DW3_CHEATS=1)
+  message(STATUS "P6.20 Cheats screen compiled in (DW3_CHEATS)")
+endif()
 add_subdirectory(${CMAKE_SOURCE_DIR}/../../port ${CMAKE_BINARY_DIR}/port)
 
 # PC-only: enable Psyz_VideoAlloc* TTB dump path in port/options (Switch

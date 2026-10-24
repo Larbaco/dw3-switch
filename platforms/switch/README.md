@@ -177,6 +177,16 @@ heap; toggle **Minus + L + R**). Details:
 gate) until mesh FBO dumps are non-black; pass
 `-DDW3_NX_MESH_SOFT_BATTLE=OFF` to exercise GLES mesh.
 
+### Build without the Cheats screen (P6.20)
+
+Every build has the Cheats screen of the Options screen, off until its master
+switch is turned on. `./tools/build_switch_game.sh --no-cheats` (with `--eu`,
+`--nxlink` as usual) builds without it (`-DDW3_CHEATS=OFF`, build directory
+suffix `-nocheats`, for example `build/switch-eu-nocheats/dw3-switch.nro`). The
+code is the game as before the feature. When `build/` is a symlink to another
+directory (an ext4 build tree under an NTFS checkout), the script also mounts
+that directory into the container. See [docs/RELEASES.md](../../docs/RELEASES.md#building-without-cheats).
+
 libnx obtains the nxlink host address from a special final argv token supplied
 by the NetLoader. Start with hbmenu's NetLoader (press **Y**) if a third-party
 launcher does not establish the callback stream; successful NRO transfer alone
