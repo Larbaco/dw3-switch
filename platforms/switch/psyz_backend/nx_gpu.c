@@ -462,8 +462,9 @@ static const char *QUAD_FS =
 
 /* Overlay CPU VRAM (sprites/UI). Drop cleared black so the mesh FBO shows.
  * Inside u_keep (x0, y0, x1, y1 in quad units; the partner view, drawn on the
- * software path) black with bit 15 (alpha, see nx_vram_pack.c) is a drawn
- * pixel, such as an opaque black texel, and stays. */
+ * software path, with the mask bit on so every pixel it writes has bit 15)
+ * black with bit 15 (alpha, see nx_vram_pack.c) is a drawn pixel, such as a
+ * dark mask texel or a pupil, and stays. */
 static const char *UI_FS =
     "precision mediump float;\n"
     "varying vec2 v_t;\n"

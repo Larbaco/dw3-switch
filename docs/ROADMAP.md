@@ -572,6 +572,12 @@ speed.
   clocks only (no overclock). History (preview.7–.26, mesh approach A,
   flat-blue root cause): [P5.2_BATTLE_GPU.md](P5.2_BATTLE_GPU.md#history-moved-from-roadmapmd).
 
+- P5.2 follow-up, partner-view portrait transparency in `gpu-tex`: fixed in
+  the Switch backend (mask bit on while the partner model draws), root cause
+  in [P5.2_BATTLE_GPU.md](P5.2_BATTLE_GPU.md#partner-view-portrait-transparent-in-gpu-tex--root-cause-and-fix-2026-10-24).
+  Ryubing US and EU before/after done; OLED check pending (Kotemon, first
+  Kuwagamon fight, later battles).
+
 - [x] **P5.3 Save handling.** The port's own save on owner storage, plus
   sleep/exit safety. The running game does not import or export emulator
   memory cards. That interchange is an external tool, P9.6.

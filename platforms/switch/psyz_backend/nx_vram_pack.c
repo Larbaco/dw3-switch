@@ -4,8 +4,10 @@
  * Expand on the CPU the way PSY-Z's ConvertRgb5551ToRgba8888 does. Alpha
  * carries bit 15 (0xFF set, 0x00 clear). It is not coverage: the present
  * shaders write alpha 1 and do not blend. The battle UI composite reads it to
- * tell a drawn black pixel (an opaque black texel is 0x8000) from cleared
- * VRAM (0x0000) inside the partner view. Rows are packed tight because GLES2
+ * tell a drawn black pixel from cleared VRAM (0x0000) inside the partner
+ * view. switch_gpu.c sets the GPU mask bit while the partner model draws, so
+ * every pixel it writes has bit 15, even a dark one that would round to
+ * 0x0000. Rows are packed tight because GLES2
  * has no core GL_UNPACK_ROW_LENGTH.
  */
 #include "nx_vram_pack.h"
