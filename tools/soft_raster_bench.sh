@@ -6,6 +6,10 @@
 #   tools/soft_raster_bench.sh [--ref REV] [--out DIR] -- <bench args>
 #   tools/soft_raster_bench.sh --ref ef67c4a -- trace.bin 400 2000
 #   tools/soft_raster_bench.sh --ref ef67c4a -- --fuzz 2000000 7
+#   tools/soft_raster_bench.sh --san --ref ef67c4a -- --fuzz 200000 7
+#
+# --san builds everything with AddressSanitizer (LeakSanitizer included) and
+# UBSan, stopping at the first error.
 #
 # REV is a commit of vendor/psyz (default: the parent of its HEAD). Without
 # --ref the bench only times the current rasterizer. Build output goes to
@@ -18,17 +22,19 @@ use_ref=1
 out="${DW3_SOFT_BENCH_OUT:-/mnt/cabal/tmp/dw3-soft-bench}"
 [ -d "$(dirname "$out")" ] || out="${TMPDIR:-/tmp}/dw3-soft-bench"
 cc="${CC:-gcc}"
+san=()
 while [ $# -gt 0 ]; do
   case "$1" in
     --ref) ref="$2"; shift 2 ;;
     --no-ref) use_ref=0; shift ;;
+    --san) san=(-O1 -g -fno-omit-frame-pointer -fsanitize=address,undefined -fno-sanitize-recover=all); shift ;;
     --out) out="$2"; shift 2 ;;
     --) shift; break ;;
     *) break ;;
   esac
 done
 mkdir -p "$out"
-flags=(-std=gnu11 -O3 -Wall -Wextra -D__psyz "-I$psyz/include" "-I$psyz/src" "-I$psyz/src/platform")
+flags=(-std=gnu11 -O3 -Wall -Wextra -D__psyz "-I$psyz/include" "-I$psyz/src" "-I$psyz/src/platform" "${san[@]}")
 objs=()
 "$cc" "${flags[@]}" -c "$psyz/src/platform/sdl3_software.c" -o "$out/new.o"
 objs+=("$out/new.o")
@@ -49,5 +55,5 @@ if [ "$use_ref" = 1 ]; then
   defs+=(-DWITH_REF)
 fi
 "$cc" "${flags[@]}" "${defs[@]}" -c "$root/tools/soft_raster_bench.c" -o "$out/bench.o"
-"$cc" -o "$out/soft_raster_bench" "$out/bench.o" "${objs[@]}"
+"$cc" "${san[@]}" -o "$out/soft_raster_bench" "$out/bench.o" "${objs[@]}"
 exec "$out/soft_raster_bench" "$@"

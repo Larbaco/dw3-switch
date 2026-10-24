@@ -23,6 +23,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#ifndef AREA_Y_MAX
+#define AREA_Y_MAX 1023
+#endif
 
 PsyzDitherMode Psyz_VideoGetDitheringMode(void) { return PSYZ_DITHER_AUTO; }
 void psyz_log(unsigned int level, const char *file, unsigned int line,
@@ -76,7 +79,7 @@ static uint64_t now_ns(void) {
 enum {
     T_RESET = 1, T_TEXPAGE, T_TWIN, T_AREA0, T_AREA1, T_OFFSET, T_MASK,
     T_CLEAR, T_LOAD, T_STORE, T_MOVE, T_PRIM, T_GUTTER, T_GUTTER_CLEAR,
-    T_FRAME
+    T_FRAME, T_GRID
 };
 
 /* one decoded op, applied to a rasterizer */
@@ -150,6 +153,9 @@ static void apply(Raster *r, const Op *o) {
         break;
     case T_GUTTER_CLEAR:
         r->clear_rows(o->a[0], o->a[1]);
+        break;
+    case T_GRID:
+        b->horizontal_grid((unsigned)o->a[0], (unsigned)o->a[1]);
         break;
     }
     {
@@ -233,6 +239,9 @@ static int run_trace(const char *path, unsigned from, unsigned to) {
 
     if (!fp) {
         perror(path);
+        if (hash_fp) {
+            fclose(hash_fp);
+        }
         return 2;
     }
     fseek(fp, 0, SEEK_END);
@@ -242,6 +251,11 @@ static int run_trace(const char *path, unsigned from, unsigned to) {
     if (!buf || fread(buf, 1, (size_t)size, fp) != (size_t)size ||
         memcmp(buf, "DW3T", 4)) {
         fprintf(stderr, "bad trace %s\n", path);
+        free(buf);
+        fclose(fp);
+        if (hash_fp) {
+            fclose(hash_fp);
+        }
         return 2;
     }
     fclose(fp);
@@ -271,6 +285,10 @@ static int run_trace(const char *path, unsigned from, unsigned to) {
         case T_PRIM: nargs = 0; break;
         default:
             fprintf(stderr, "bad op %u at %ld\n", op, (long)(p - buf));
+            free(buf);
+            if (hash_fp) {
+                fclose(hash_fp);
+            }
             return 2;
         }
         memcpy(o.a, p, (size_t)nargs * 4);
@@ -333,6 +351,7 @@ static int run_trace(const char *path, unsigned from, unsigned to) {
         apply(&g_ref, &o);
 #endif
     }
+    free(buf);
     if (hash_fp) {
         fclose(hash_fp);
     }
@@ -385,11 +404,26 @@ static uint32_t rnd(void) {
 }
 static int rr(int lo, int hi) { return lo + (int)(rnd() % (uint32_t)(hi - lo + 1)); }
 
+static const int k_edge[] = {-1024, -1023, -1, 0, 1, 319, 320, 511, 512, 639, 1022, 1023};
+static int redge(void) { return k_edge[rnd() % (sizeof(k_edge) / sizeof(k_edge[0]))] + rr(-2, 2); }
 static uint32_t rxy(void) {
-    /* mostly on screen, sometimes far off (11-bit wrap, clipping) */
-    int x = rnd() % 8 ? rr(-80, 460) : rr(-1024, 1023);
-    int y = rnd() % 8 ? rr(-40, 280) : rr(-1024, 1023);
+    int m = rnd() % 6;
+    if (m == 0) return rnd(); /* garbage high bits, any 11-bit value */
+    int x = m == 1 ? redge() : m == 2 ? rr(-1024, 1023) : rr(-80, 1100);
+    int y = m == 1 ? redge() : m == 2 ? rr(-1024, 1023) : rr(-40, 560);
     return ((uint32_t)(y & 0xFFFF) << 16) | (uint32_t)(x & 0xFFFF);
+}
+static uint32_t g_last_xy;
+static uint32_t rxy2(void) {
+    /* sometimes reuse / nudge the previous vertex: degenerate and sliver */
+    uint32_t w;
+    int m = rnd() % 5;
+    if (m == 0) w = g_last_xy;
+    else if (m == 1) w = ((g_last_xy + (rnd() % 3) - 1) & 0xFFFF) | (g_last_xy & 0xFFFF0000u);
+    else if (m == 2) w = (g_last_xy & 0xFFFF) | ((g_last_xy + ((rnd() % 3) << 16)) & 0xFFFF0000u);
+    else w = rxy();
+    g_last_xy = w;
+    return w;
 }
 
 static void both(const Op *o) {
@@ -402,7 +436,7 @@ static int run_fuzz(long iters, uint64_t seed) {
     Op o;
     u_long words[16];
     long bad = 0;
-    int gutter_x0 = 0;
+    int gutter_x0 = 0, gutter_w = 320;
 
     g_rng = seed ? seed : 88172645463325252ull;
     g_new.rs_reset();
@@ -423,11 +457,11 @@ static int run_fuzz(long iters, uint64_t seed) {
         int pick = rr(0, 99);
         if (pick < 4) {
             o.op = T_TEXPAGE;
-            o.a[0] = (int32_t)(rnd() & 0x7FF);
+            o.a[0] = (int32_t)(rnd() & 0xFFFF);
         } else if (pick < 6) {
             o.op = T_TWIN;
             for (int i = 0; i < 4; i++) {
-                o.a[i] = rnd() % 3 ? 0 : (int32_t)(rnd() & 31);
+                o.a[i] = rnd() % 3 ? 0 : (int32_t)(rnd() & 63);
             }
         } else if (pick < 9) {
             /* a display-wide area at the gutter's display (takes the
@@ -435,26 +469,33 @@ static int run_fuzz(long iters, uint64_t seed) {
             int disp = rnd() % 3 != 0;
             int y0 = rnd() % 2 ? 0 : rr(0, 300);
             o.op = T_AREA0;
-            o.a[0] = disp ? gutter_x0 : rr(0, 400);
+            if (rnd() % 3 == 0) y0 = rr(0, AREA_Y_MAX);
+            o.a[0] = disp ? gutter_x0 : rr(0, 1023);
             o.a[1] = y0;
             both(&o);
             o.op = T_AREA1;
-            o.a[0] = disp ? gutter_x0 + 319 : rr(0, 1023);
-            o.a[1] = disp && rnd() % 2 ? y0 + 239 : rr(0, 511);
+            o.a[0] = disp ? gutter_x0 + gutter_w - 1 : rr(0, 1023);
+            o.a[1] = disp && rnd() % 2 ? y0 + 239 : rr(0, AREA_Y_MAX);
+            if (o.a[0] > 1023) o.a[0] = 1023;
+            if (o.a[1] > AREA_Y_MAX) o.a[1] = AREA_Y_MAX;
         } else if (pick < 11) {
             o.op = T_OFFSET;
-            o.a[0] = rnd() % 2 ? 0 : rr(0, 0x7FF);
-            o.a[1] = rnd() % 2 ? 0 : rr(0, 0x7FF);
+            o.a[0] = rnd() % 3 == 0 ? 0 : rr(0, 0x7FF);
+            o.a[1] = rnd() % 3 == 0 ? 0 : rr(0, 0x7FF);
         } else if (pick < 13) {
             o.op = T_MASK;
             o.a[0] = rnd() % 4 == 0;
             o.a[1] = rnd() % 4 == 0;
         } else if (pick < 15) {
             o.op = T_GUTTER;
-            o.a[0] = rnd() % 3 ? 53 : rr(0, 64);
-            o.a[1] = gutter_x0 = rnd() % 2 ? 0 : rr(0, 700);
-            o.a[2] = 320;
+            o.a[0] = rnd() % 3 ? 53 : rr(0, 100);
+            o.a[1] = gutter_x0 = rnd() % 2 ? 0 : rr(0, 1023);
+            o.a[2] = gutter_w = rnd() % 2 ? 320 : rr(1, 1100);
             o.a[3] = 240;
+        } else if (pick < 16 && rnd() % 4 == 0) {
+            o.op = T_GRID;
+            o.a[0] = rnd() % 2 ? 1 : rr(1, 4);
+            o.a[1] = rnd() % 2 ? o.a[0] : rr(1, 4);
         } else if (pick < 16) {
             o.op = T_GUTTER_CLEAR;
             o.a[0] = rr(0, 511);
@@ -487,10 +528,10 @@ static int run_fuzz(long iters, uint64_t seed) {
                     if (v && gour) {
                         words[n++] = rnd() & 0xFFFFFF;
                     }
-                    words[n++] = rxy();
+                    words[n++] = rxy2();
                     if (tex) {
-                        uint32_t hi = v == 0 ? (rnd() & 0x7FFF)
-                                      : v == 1 ? (rnd() & 0x1FF) : 0;
+                        uint32_t hi = v == 0 ? (rnd() & 0xFFFF)
+                                      : v == 1 ? (rnd() & 0xFFFF) : rnd() & 0xFFFF;
                         words[n++] = (hi << 16) | (rnd() & 0xFFFF);
                     }
                 }
@@ -521,11 +562,11 @@ static int run_fuzz(long iters, uint64_t seed) {
                 words[n++] = ((u_long)code << 24) | color;
                 words[n++] = rxy();
                 if (tex) {
-                    words[n++] = ((rnd() & 0x7FFF) << 16) | (rnd() & 0xFFFF);
+                    words[n++] = rnd();
                 }
                 if ((code & 0x18) == 0) {
-                    int w = rnd() % 8 ? rr(0, 320) : rr(-50, 1100);
-                    int h = rnd() % 8 ? rr(0, 240) : rr(-50, 600);
+                    int w = rnd() % 8 ? rr(0, 320) : rnd() % 2 ? rr(-50, 1300) : (int)(rnd() & 0xFFFF);
+                    int h = rnd() % 8 ? rr(0, 240) : rnd() % 2 ? rr(-50, 1100) : (int)(rnd() & 0x7FF);
                     words[n++] = ((uint32_t)(h & 0xFFFF) << 16) | (uint32_t)(w & 0xFFFF);
                 }
             }

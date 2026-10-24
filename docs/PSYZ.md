@@ -9,7 +9,7 @@ libnx backend exists.
 |---|---|
 | Upstream | https://github.com/Xeeynamo/psyz.git |
 | Working fork (submodule URL) | https://github.com/Larbaco/psyz.git |
-| Commit | `80fa492` (`dw3-soft-raster-fast`: P6.22 faster CPU rasterizer, same pixels, one commit on top of `ef67c4a`, the merge of `dw3-seq-nrpn-loop` into `dw3-gutter-width`; see [CPU rasterizer speed](#cpu-rasterizer-speed-p622). `a79bc8c` is `dw3-seq-nrpn-loop`: libsnd SEQ/SEP NRPN loop count from Data Entry, music loops again, one commit on top of `fa0aee5`; see below. `fa0aee5` is `dw3-spu-bus-volume`: P6.17 host mixer buses with per-bus gain, libsnd track routing and bus stats, two commits on top of `2caa505`. `2caa505` is `dw3-spu-envx-release`: backport of upstream `a7862ba` / #205, a voice that ends without repeat reads ENVX 0, fixes #188 voice starvation; its parent `fabc2bf` is `dw3-pal-aspect` PAL 240-line aspect) |
+| Commit | `2f931d8` (`dw3-soft-raster-fast`: P6.22 faster CPU rasterizer, same pixels, two commits on top of `ef67c4a`: `80fa492` the rasterizer, `2f931d8` triangles skip rows outside the drawing area again (review fix: an area starting at y >= 512 drew row 511); the merge of `dw3-seq-nrpn-loop` into `dw3-gutter-width`; see [CPU rasterizer speed](#cpu-rasterizer-speed-p622). `a79bc8c` is `dw3-seq-nrpn-loop`: libsnd SEQ/SEP NRPN loop count from Data Entry, music loops again, one commit on top of `fa0aee5`; see below. `fa0aee5` is `dw3-spu-bus-volume`: P6.17 host mixer buses with per-bus gain, libsnd track routing and bus stats, two commits on top of `2caa505`. `2caa505` is `dw3-spu-envx-release`: backport of upstream `a7862ba` / #205, a voice that ends without repeat reads ENVX 0, fixes #188 voice starvation; its parent `fabc2bf` is `dw3-pal-aspect` PAL 240-line aspect) |
 | Base upstream | `6d01339aadf16c5c9d6e44f44c0d66514752e472` |
 | License | MIT — see [`vendor/psyz/LICENSE`](../vendor/psyz/LICENSE) |
 
@@ -25,9 +25,12 @@ with outside battle. `dw3-soft-raster-fast` makes rectangles and triangles
 clipped once into runs, texture and CLUT rows are looked up once per
 primitive, opaque rectangles fill or copy, triangle edges and attributes step
 with exact integer adds instead of per-pixel 64-bit divisions. Any change to
-this file should keep `tools/soft_raster_bench.sh --ref <previous> --
---fuzz 1000000` and the replay traces at 0 differences; method and numbers in
-[P6.22_FIELD_CPU.md](P6.22_FIELD_CPU.md).
+this file is gated on 0 differences against the previous revision:
+`tools/soft_raster_bench.sh --ref <previous> -- --fuzz 1000000 <seed>` for a
+few seeds (the fuzz covers full 10-bit and inverted drawing areas, gutter x0
+0-1023 and width 1-1100, any gutter size, a 16-bit tpage, the horizontal
+grid), the same with `--san` (ASan, LeakSanitizer, UBSan) and the replay
+traces; method and numbers in [P6.22_FIELD_CPU.md](P6.22_FIELD_CPU.md).
 
 ## Mixer buses (P6.17)
 
