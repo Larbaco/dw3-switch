@@ -23,7 +23,8 @@ behind the tasks are in [SURVEY.md](SURVEY.md); layering is in
 
 Statuses: **done** = ticked; **in progress** = not ticked, with merged work
 or hardware evidence; **open** = not ticked, no work yet; **future** = goal
-note only (see [Backlog / future goals](#backlog--future-goals)). Update
+note only (see [Backlog / future goals](#backlog--future-goals)); **dropped**
+= the owner decided not to do it (the entry stays for its id and research). Update
 this table in the same PR that changes an item. The history of an item
 lives in its doc, not in the entry below.
 
@@ -92,7 +93,7 @@ lives in its doc, not in the entry below.
 | P10.4 | Rumble polish (optional) | open | — |
 | P10.5 | Extra applets (optional) | open | — |
 | P10.6 | Switch-style button glyphs (future goal) | future | [roadmap](#phase-10--native-switch-features-residual), [TEXTURE_PACKS](TEXTURE_PACKS.md) |
-| P10.7 | NSP packaging: forwarder, full NSP or stay NRO (future goal) | future | [NSP_PACKAGING](NSP_PACKAGING.md), [roadmap](#phase-10--native-switch-features-residual) |
+| P10.7 | NSP packaging: forwarder, full NSP or stay NRO | dropped | [NSP_PACKAGING](NSP_PACKAGING.md), [roadmap](#phase-10--native-switch-features-residual) |
 
 **Language matrix.** The EU disc has 7 `LANGUAGE` slots: 0 JPN, 1 USA,
 2 ENG, 3 FRA, 4 ITA, 5 GER, 6 SPN (`STAGSLCT_regionNames`). The EU country
@@ -1362,7 +1363,12 @@ rumble, saves, turbo, or widescreen here; those stay in their phases.
   chosen in P9.8, and the option off restores the original icons.
   Related: P8.2/P8.3, P9.8, P6.12, [HOTKEYS.md](HOTKEYS.md).
 
-- [ ] **P10.7 NSP packaging (future goal).** Dated 2026-10-24, owner request:
+- [ ] **P10.7 NSP packaging (dropped).** **Dropped 2026-10-24, owner
+  decision: "vamos ignorar o NSP então".** The game stays an NRO. No forwarder
+  note, no takeover OLED check, no AGENTS.md change; the open questions below
+  are closed unasked. The research stays in
+  [NSP_PACKAGING.md](NSP_PACKAGING.md) in case the owner reopens it.
+  Original note, dated 2026-10-24, owner request:
   "Vamos investigar a possibilidade de empacotar o jogo como NSP para
   instalar no Switch" (show the game as its own title on HOME). Goal note
   only, nothing started, no code. Routes, requirements and sources:
@@ -1393,7 +1399,7 @@ rumble, saves, turbo, or widescreen here; those stay in their phases.
   **Done when (proposed):** the owner picks a route and the AGENTS.md wording;
   if route (c), the release README documents takeover and the US and EU OLED
   check has a report with the method stated. P10.7 is a future goal outside
-  the gate.
+  the gate (now dropped).
   Related: P6.5, P10.2, P5.1, P5.4, P6.24.
 
 Gate: P10.2 (+ P10.3 once present is live). P10.4–P10.6 are best-effort.
