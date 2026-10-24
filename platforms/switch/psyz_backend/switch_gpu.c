@@ -58,6 +58,9 @@ static short s11(short v) { return (short)(((v & 0x7FF) ^ 1024) - 1024); }
 static int s_off_x;
 static int s_off_y;
 static int s_mask_check;
+/* The game's "set mask bit" (E6 bit 0). The partner view overrides it while
+ * it draws (Draw_PushPrim), so the game's value is kept here to restore. */
+static int s_mask_set;
 
 /* preview.9 routed field POLY_GT through the mesh FBO + black-discard UI
  * composite and corrupted interiors while also costing ~1.4× field dt.
@@ -307,12 +310,26 @@ static int try_push_mesh_poly(u_long *packets, int max_len) {
         return 0;
     }
     if (!mesh_area_is_screen()) {
+        int consumed;
+
         /* The partner view: its model goes to CPU VRAM, where the UI
-         * composite must keep its black pixels (the pupils), or the mesh
-         * FBO under it shows through them. */
+         * composite must keep its black pixels (the pupils, the dark
+         * mask on Kotemon's face), or the mesh FBO under it shows through
+         * them. The composite tells a drawn pixel from a cleared one by
+         * bit 15, but a drawn dark pixel is often 0x0000: texel STP is
+         * clear, and a dark texel times a vertex colour below 0x80, or
+         * dither, rounds to rgb 0. So turn on the GPU's "set mask bit"
+         * for this triangle: every pixel it writes gets bit 15, which is
+         * what the keep rect in UI_FS looks for. Pixels the model does not
+         * touch stay 0x0000 and still show the stage. Soft never gets
+         * here (no composite), and the game itself never sets the mask
+         * bit, so the old state is restored right after. */
         dw3_nx_mesh_note_soft_view(s_area_x0, s_area_y0, s_area_x1,
                                    s_area_y1);
-        return 0;
+        software_rasterizer.mask(1, s_mask_check);
+        consumed = software_rasterizer.push_prim(packets, max_len);
+        software_rasterizer.mask(s_mask_set, s_mask_check);
+        return consumed;
     }
 
     is_textured = (code & TEXTURED) != 0;
@@ -403,6 +420,7 @@ void Draw_Reset(void) {
     s_off_x = 0;
     s_off_y = 0;
     s_mask_check = 0;
+    s_mask_set = 0;
     s_cur_tpage = 0;
     s_dither_env = 0;
     s_cur_twin = TWIN_PACK(0xFF, 0xFF, 0x00, 0x00);
@@ -465,6 +483,7 @@ void Draw_SetOffset(int x, int y) {
 
 void Draw_SetMask(int bit0, int bit1) {
     software_rasterizer.mask(bit0, bit1);
+    s_mask_set = bit0 ? 1 : 0;
     s_mask_check = bit1 ? 1 : 0;
 }
 

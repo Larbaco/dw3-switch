@@ -19,6 +19,8 @@
 #define DW3_WS_STGMCARD 0x1EE
 #define DW3_WS_STDGNAME 0x162
 #define DW3_WS_STFGTREP 0x1D1
+#define DW3_WS_STDWTITL 0x1D0
+#define DW3_WS_STPLNMET 0x206
 #else
 #define DW3_WS_FIELDSTG 0x158
 #define DW3_WS_FIGHTSTG 0x159
@@ -27,12 +29,17 @@
 #define DW3_WS_STGMCARD 0x1E3
 #define DW3_WS_STDGNAME 0x154
 #define DW3_WS_STFGTREP 0x1C2
+#define DW3_WS_STDWTITL 0x1C1
+#define DW3_WS_STPLNMET 0x1F8
 #endif
 
 enum { DW3_PORT_OPT_WIDESCREEN = 0 };
 
 static int g_env_read;
 static int g_applied = -1;
+/* dw3_port_widescreen_frame calls; the title backdrop's last draw (0085) */
+static unsigned g_frame_no;
+static unsigned g_title_frame = 0x80000000u;
 
 int dw3_port_widescreen_enabled(void) {
     if (!g_env_read) {
@@ -67,7 +74,22 @@ int dw3_port_widescreen_px(void) {
         mode_file == DW3_WS_STFGTREP) {
         return DW3_WIDESCREEN_MENU_PX;
     }
+    /* The player name screen (Digimon Online registration): its scrolling
+     * backdrop and side wings reach the gutters (patch 0087) */
+    if (mode_file == DW3_WS_STPLNMET) {
+        return DW3_WIDESCREEN_MENU_PX;
+    }
+    /* The title overlay also plays the movies and the still screen: only the
+     * title screen, whose backdrop is drawn mirrored into the gutters (patch
+     * 0085), gets them. The backdrop marks every frame it is drawn. */
+    if (mode_file == DW3_WS_STDWTITL && g_frame_no - g_title_frame <= 1u) {
+        return DW3_WIDESCREEN_MENU_PX;
+    }
     return 0;
+}
+
+void dw3_port_widescreen_title_backdrop(void) {
+    g_title_frame = g_frame_no;
 }
 
 int dw3_port_widescreen_menu_shift(void) {
@@ -175,6 +197,238 @@ void *dw3_port_widescreen_menu_band(void *sheet, int frame, int split) {
     return storage;
 }
 
+/* One-frame sheets for patches 0085-0087, in the format above: a frame's part
+ * list (with added parts) and a copy of the parts table (with added parts). */
+enum { WIDE_MAX_PARTS = 400, WIDE_MAX_INDEX = 160, WIDE_STRIP = 8 };
+
+typedef struct WideSheet {
+    int16_t row;
+    int16_t blend;
+    int n;
+    int16_t list[WIDE_MAX_PARTS][3];
+    int nparts;
+    int16_t parts[WIDE_MAX_INDEX][7];
+} WideSheet;
+
+static WideSheet g_wide;
+static int32_t g_wide_storage[(16 + 6 * WIDE_MAX_PARTS + 14 * WIDE_MAX_INDEX) / 4 + 4];
+
+/* Frame `frame` of `sheet` into g_wide; 0 when it does not fit */
+static int wide_load(const void *sheet, int frame) {
+    const int32_t *head = sheet;
+    const uint8_t *base = sheet;
+    const uint8_t *ids;
+    const int16_t *src;
+    const int16_t *parts;
+    int count;
+    int maxIndex = 0;
+    int i;
+    int k;
+
+    if (sheet == NULL) {
+        return 0;
+    }
+    ids = base + head[1];
+    for (i = 0; ids[i] != frame; i++) {
+        if (ids[i] == 0xFF || i >= 255) {
+            return 0;
+        }
+    }
+    src = (const int16_t *)(base + head[i + 2]);
+    parts = (const int16_t *)(base + head[0]);
+    count = src[0];
+    if (count <= 0 || count > WIDE_MAX_PARTS) {
+        return 0;
+    }
+    g_wide.row = src[1];
+    g_wide.blend = src[2];
+    for (k = 0; k < count; k++) {
+        int index = src[3 + 3 * k];
+
+        if (index < 0 || index >= WIDE_MAX_INDEX) {
+            return 0;
+        }
+        maxIndex = index > maxIndex ? index : maxIndex;
+        g_wide.list[k][0] = (int16_t)index;
+        g_wide.list[k][1] = src[3 + 3 * k + 1];
+        g_wide.list[k][2] = src[3 + 3 * k + 2];
+    }
+    g_wide.n = count;
+    g_wide.nparts = maxIndex + 1;
+    memcpy(g_wide.parts, parts, (size_t)g_wide.nparts * BAND_PART_SIZE);
+    return 1;
+}
+
+/* g_wide as a sheet with the one frame `frame` */
+static void *wide_emit(int frame) {
+    int16_t *out = (int16_t *)g_wide_storage;
+    int16_t *list = out + 8 + 3;
+
+    g_wide_storage[1] = 12;
+    g_wide_storage[2] = 16;
+    ((uint8_t *)out)[12] = (uint8_t)frame;
+    ((uint8_t *)out)[13] = 0xFF;
+    out[8] = (int16_t)g_wide.n;
+    out[9] = g_wide.row;
+    out[10] = g_wide.blend;
+    memcpy(list, g_wide.list, (size_t)g_wide.n * 6);
+    g_wide_storage[0] = (int32_t)((const uint8_t *)(list + 3 * g_wide.n) - (const uint8_t *)out);
+    memcpy(list + 3 * g_wide.n, g_wide.parts, (size_t)g_wide.nparts * BAND_PART_SIZE);
+    return g_wide_storage;
+}
+
+void *dw3_port_widescreen_periodic(void *sheet, int frame, int x, int y, int dx, int dy) {
+    int gutter = dw3_port_widescreen_px();
+    int n0;
+    int sorted = 1;
+    int i;
+    int j;
+    int k;
+
+    if (gutter <= 0 || (dx == 0 && dy == 0) || !wide_load(sheet, frame)) {
+        return sheet;
+    }
+    n0 = g_wide.n;
+    for (i = 1; i < n0; i++) {
+        if (g_wide.list[i][1] < g_wide.list[i - 1][1] ||
+            (g_wide.list[i][1] == g_wide.list[i - 1][1] && g_wide.list[i][2] < g_wide.list[i - 1][2])) {
+            sorted = 0;
+        }
+    }
+    for (k = -3; k <= 3; k++) {
+        if (k == 0) {
+            continue;
+        }
+        for (i = 0; i < n0; i++) {
+            const int16_t *p = g_wide.parts[g_wide.list[i][0]];
+            int px = g_wide.list[i][1] + k * dx;
+            int py = g_wide.list[i][2] + k * dy;
+            int sx = x + px;
+            int sy = y + py;
+            int dup = 0;
+
+            /* only copies that show in a gutter */
+            if (!(sx < 0 || sx + p[2] > 320) || sx + p[2] <= -gutter || sx >= 320 + gutter ||
+                sy + p[3] <= 0 || sy >= 240) {
+                continue;
+            }
+            for (j = 0; j < g_wide.n && !dup; j++) {
+                dup = g_wide.list[j][0] == g_wide.list[i][0] && g_wide.list[j][1] == px &&
+                      g_wide.list[j][2] == py;
+            }
+            if (dup) {
+                continue;
+            }
+            if (g_wide.n >= WIDE_MAX_PARTS) {
+                return sheet;
+            }
+            g_wide.list[g_wide.n][0] = g_wide.list[i][0];
+            g_wide.list[g_wide.n][1] = (int16_t)px;
+            g_wide.list[g_wide.n][2] = (int16_t)py;
+            g_wide.n++;
+        }
+    }
+    if (sorted) {
+        /* the pattern's own order (columns, then rows) with the copies in it */
+        for (i = n0; i < g_wide.n; i++) {
+            int16_t e[3];
+
+            memcpy(e, g_wide.list[i], sizeof(e));
+            for (j = i; j > 0 && (g_wide.list[j - 1][1] > e[1] ||
+                                  (g_wide.list[j - 1][1] == e[1] && g_wide.list[j - 1][2] > e[2]));
+                 j--) {
+                memcpy(g_wide.list[j], g_wide.list[j - 1], sizeof(e));
+            }
+            memcpy(g_wide.list[j], e, sizeof(e));
+        }
+    } else {
+        /* the copies under the original parts */
+        int16_t tmp[WIDE_MAX_PARTS][3];
+        int added = g_wide.n - n0;
+
+        memcpy(tmp, g_wide.list[n0], (size_t)added * 6);
+        memmove(g_wide.list[added], g_wide.list[0], (size_t)n0 * 6);
+        memcpy(g_wide.list[0], tmp, (size_t)added * 6);
+    }
+    return wide_emit(frame);
+}
+
+void *dw3_port_widescreen_wings(void *sheet, int frame, int x) {
+    int gutter = dw3_port_widescreen_px();
+    int16_t out[WIDE_MAX_PARTS][3];
+    int n = 0;
+    int i;
+
+    if (gutter <= 0 || !wide_load(sheet, frame)) {
+        return sheet;
+    }
+    for (i = 0; i < g_wide.n; i++) {
+        int index = g_wide.list[i][0];
+        int sx = x + g_wide.list[i][1];
+        int w = g_wide.parts[index][2];
+        int side;
+
+        for (side = 0; side < 2; side++) {
+            int from;
+            int to;
+            int strip;
+            int fx;
+
+            if (side == 0 ? sx != 0 : sx + w != 320) {
+                continue;
+            }
+            if (w < WIDE_STRIP || g_wide.nparts >= WIDE_MAX_INDEX) {
+                return sheet;
+            }
+            /* a part of the outer WIDE_STRIP columns of this one */
+            strip = g_wide.nparts++;
+            memcpy(g_wide.parts[strip], g_wide.parts[index], BAND_PART_SIZE);
+            if (side == 1) {
+                g_wide.parts[strip][0] = (int16_t)(g_wide.parts[index][0] + w - WIDE_STRIP);
+            }
+            g_wide.parts[strip][2] = WIDE_STRIP;
+            from = side == 0 ? -gutter : 320;
+            to = side == 0 ? 0 : 320 + gutter;
+            for (fx = from; fx < to; fx += WIDE_STRIP) {
+                int at = fx + WIDE_STRIP > to ? to - WIDE_STRIP : fx;
+
+                if (n >= WIDE_MAX_PARTS - 1) {
+                    return sheet;
+                }
+                out[n][0] = (int16_t)strip;
+                out[n][1] = (int16_t)(at - x);
+                out[n][2] = g_wide.list[i][2];
+                n++;
+            }
+        }
+        if (n >= WIDE_MAX_PARTS) {
+            return sheet;
+        }
+        memcpy(out[n], g_wide.list[i], 6);
+        n++;
+    }
+    memcpy(g_wide.list, out, (size_t)n * 6);
+    g_wide.n = n;
+    return wide_emit(frame);
+}
+
+void dw3_port_widescreen_frame(void) {
+    int px = dw3_port_widescreen_px();
+
+    g_frame_no++;
+    if (px == g_applied) {
+        return;
+    }
+    g_applied = px;
+    if (Psyz_VideoSetGutter((unsigned)px) != 0) {
+        WARNF("dw3-widescreen: renderer has no gutters (%d px)", px);
+    } else {
+        /* psyz_log, not stderr: on Switch stderr only reaches nxlink, and
+         * this line is the check in sdmc:/switch/dw3/dw3.log. */
+        INFOF("dw3-widescreen: gutter %d px per side", px);
+    }
+}
+
 int dw3_port_sprite_frame_bounds(const void *sheet, int frame, int *x0, int *y0, int *x1, int *y1) {
     const int32_t *head = sheet;
     const uint8_t *base = sheet;
@@ -216,20 +470,4 @@ int dw3_port_sprite_frame_bounds(const void *sheet, int frame, int *x0, int *y0,
         *y1 = y + parts[index * 7 + 3] > *y1 ? y + parts[index * 7 + 3] : *y1;
     }
     return 0;
-}
-
-void dw3_port_widescreen_frame(void) {
-    int px = dw3_port_widescreen_px();
-
-    if (px == g_applied) {
-        return;
-    }
-    g_applied = px;
-    if (Psyz_VideoSetGutter((unsigned)px) != 0) {
-        WARNF("dw3-widescreen: renderer has no gutters (%d px)", px);
-    } else {
-        /* psyz_log, not stderr: on Switch stderr only reaches nxlink, and
-         * this line is the check in sdmc:/switch/dw3/dw3.log. */
-        INFOF("dw3-widescreen: gutter %d px per side", px);
-    }
 }

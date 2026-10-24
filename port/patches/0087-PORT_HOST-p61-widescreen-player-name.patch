@@ -1,0 +1,81 @@
+Upstream-bound: no
+Subject: [PORT_HOST] P6.1 player name screen (Digimon Online registration) fills 16:9
+
+The player name screen of the opening (STPLNMET: the welcome, the account
+name, the starter pack and the confirmation) ran with gutter 0, 4:3. It now
+takes the menu gutter (port/options/widescreen.c) and fills it:
+
+- The backdrop's three hexagon layers are periodic (the two scrolling ones
+  start over every -STPLNMET_scrollEnds[i] pixels right and half that up, the
+  still one every 168 right and 84 up). DW3_WIDE_PERIODIC adds, at draw time,
+  the copies of their hexagons moved by whole periods that show in a gutter.
+- The welcome panel's and the confirmation bar's side lines, which run to the
+  4:3 edges, run to the picture's edges: DW3_WIDE_WINGS repeats their outer
+  8 columns (straight lines) across the gutters.
+
+Panels, keyboard and text keep their positions. Off, nothing changes.
+
+--- a/include/menus/player_name.h
++++ b/include/menus/player_name.h
+@@ -37,6 +37,18 @@
+ #define PLNMET_BANK (FILE_PLNMET_BANK << 16) /* the keyboard's and partners' sprites */
+ #define PLNMET_SCROLL (FILE_PLNMET_SCROLL << 16)
+ 
++#if PORT_HOST
++#include "port_widescreen.h"
++#else
++#define DW3_WIDE_PERIODIC(sheet, frame, x, y, dx, dy) (sheet)
++#define DW3_WIDE_WINGS(sheet, frame, x) (sheet)
++#endif
++/* The still scroll layer's period (STPLNMET_updateScroll): its hexagons repeat
++   every 168 pixels right and 84 up, as the moving layers' do every
++   -STPLNMET_scrollEnds[i] right and half that up */
++#define STPLNMET_STILL_PERIOD_X 168
++#define STPLNMET_STILL_PERIOD_Y (-84)
++
+ /* Two scrolling sprites (STPLNMET_createScroll), once their image is loaded */
+ typedef struct NameScroll {
+     TASK_HEADER(NameScroll);
+--- a/src/menus/player_name/backdrop.c
++++ b/src/menus/player_name/backdrop.c
+@@ -32,9 +32,14 @@
+                 }
+                 task->times[i] = now;
+             }
+-            sprite.draw(FILE_CACHE.getEntry(PLNMET_SCROLL), i, task->pos[i][0], task->pos[i][1]);
++            /* widescreen (patch 0087): the pattern carried into the gutters */
++            sprite.draw(DW3_WIDE_PERIODIC(FILE_CACHE.getEntry(PLNMET_SCROLL), i, task->pos[i][0], task->pos[i][1],
++                                          -STPLNMET_scrollEnds[i], STPLNMET_scrollEnds[i] / 2),
++                        i, task->pos[i][0], task->pos[i][1]);
+         }
+-        sprite.draw(FILE_CACHE.getEntry(PLNMET_SCROLL), 2, 0, 0);
++        sprite.draw(DW3_WIDE_PERIODIC(FILE_CACHE.getEntry(PLNMET_SCROLL), 2, 0, 0, STPLNMET_STILL_PERIOD_X,
++                                      STPLNMET_STILL_PERIOD_Y),
++                    2, 0, 0);
+         break;
+     case TASK_DONE:
+     case TASK_KILL:
+--- a/src/menus/player_name/welcome.c
++++ b/src/menus/player_name/welcome.c
+@@ -83,7 +83,8 @@
+         sprite.setTexture(0x280, 0x100);
+         sprite.draw(FILE_CACHE.getEntry(PLNMET_MENU), 0x38, 0x4B, 0xB8);
+         sprite.setClutRow(task->clutRow);
+-        sprite.draw(FILE_CACHE.getEntry(PLNMET_MENU), 0xF, 0x38, 0x2F);
++        /* widescreen (patch 0087): the panel's side lines run to the picture's edges */
++        sprite.draw(DW3_WIDE_WINGS(FILE_CACHE.getEntry(PLNMET_MENU), 0xF, 0x38), 0xF, 0x38, 0x2F);
+         break;
+     case TASK_DONE:
+     case TASK_KILL:
+--- a/src/menus/player_name/confirm.c
++++ b/src/menus/player_name/confirm.c
+@@ -122,7 +122,8 @@
+         if (task->tweenB.level != ONE) {
+             sprite.setPivot(0xA0, 0xBE);
+         }
+-        sprite.draw(FILE_CACHE.getEntry(PLNMET_MENU), 1, 0, 0xA2);
++        /* widescreen (patch 0087): the bar's side lines run to the picture's edges */
++        sprite.draw(DW3_WIDE_WINGS(FILE_CACHE.getEntry(PLNMET_MENU), 1, 0), 1, 0, 0xA2);
+     }
+     if (task->substate == 1 || task->substate == 2) {
+         sprite.setLayerId(task->layer, task->depth - 1);

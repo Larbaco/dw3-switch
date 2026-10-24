@@ -3,6 +3,7 @@
 #include <SDL3/SDL.h>
 #include <psyz/overlay.h>
 #include <psyz/overlay_sdl3_gpu.h>
+#include <psyz/video.h>
 #include "port_options.h"
 #include "title_options_cache.h"
 
@@ -927,12 +928,30 @@ static void render_overlay(SDL_GPUCommandBuffer *cmd, SDL_GPURenderPass *pass) {
     int window_w = 0, window_h = 0;
     SDL_GetWindowSizeInPixels(g_window, &window_w, &window_h);
     if (window_w <= 0 || window_h <= 0) return;
-    int viewport_w = window_w;
-    int viewport_h = viewport_w * 3 / 4;
-    if (viewport_h > window_h) {
-        viewport_h = window_h;
-        viewport_w = viewport_h * 4 / 3;
+    /* P6.1 (patch 0085): with gutters the presented picture is
+     * (320 + 2 * gutter) / 320 times as wide as 4:3; the overlay belongs to
+     * its 4:3 middle, which is as tall as the picture. */
+    const unsigned gutter = Psyz_VideoGetGutter();
+    int picture_w = window_w;
+    int picture_h = picture_w * 3 / 4;
+    if (picture_h > window_h) {
+        picture_h = window_h;
+        picture_w = picture_h * 4 / 3;
     }
+    if (gutter > 0) {
+        const float aspect = 4.0f / 3.0f * (320.0f + 2.0f * (float)gutter) / 320.0f;
+
+        picture_w = window_w;
+        picture_h = (int)((float)window_w / aspect + 0.5f);
+        if (picture_h > window_h) {
+            picture_h = window_h;
+            picture_w = (int)((float)window_h * aspect + 0.5f);
+        }
+    }
+    const int viewport_h = picture_h;
+    const int viewport_w = gutter > 0 ? (int)((float)picture_h * 4.0f / 3.0f + 0.5f) : picture_w;
+    /* left edge of the picture (its gutter) in the window */
+    const float picture_x = (float)(window_w - picture_w) / 2.0f;
     const SDL_GPUViewport viewport = {
         .x = (float)(window_w - viewport_w) / 2.0f,
         .y = (float)(window_h - viewport_h) / 2.0f,
@@ -944,7 +963,23 @@ static void render_overlay(SDL_GPUCommandBuffer *cmd, SDL_GPURenderPass *pass) {
     SDL_BindGPUGraphicsPipeline(pass, g_pipeline);
     const SDL_GPUBufferBinding binding = {.buffer = g_vertices, .offset = 0};
     SDL_BindGPUVertexBuffers(pass, 0, &binding, 1);
-    if (g_background_ready && g_background_texture && g_background_sampler &&
+    if (gutter > 0 && g_overlay_active && g_selection == STATE_OPTIONS &&
+        viewport.x > picture_x) {
+        /* The game draws the title's sides itself (gutters, patch 0085);
+         * the options screen dims them as it dims the middle. */
+        const SDL_GPUTextureSamplerBinding dim_binding = {
+            .texture = g_texture, .sampler = g_sampler,
+        };
+        SDL_BindGPUFragmentSamplers(pass, 0, &dim_binding, 1);
+        for (int side = 0; side < 2; ++side) {
+            SDL_GPUViewport side_viewport = viewport;
+            side_viewport.x = side ? viewport.x + viewport.w : picture_x;
+            side_viewport.w = viewport.x - picture_x;
+            SDL_SetGPUViewport(pass, &side_viewport);
+            SDL_DrawGPUPrimitives(pass, 6, 1, (STATE_COUNT + 3) * 6, 0);
+        }
+    }
+    if (gutter == 0 && g_background_ready && g_background_texture && g_background_sampler &&
         viewport.x > 0.0f) {
         const SDL_GPUTextureSamplerBinding background_binding = {
             .texture = g_background_texture, .sampler = g_background_sampler,
