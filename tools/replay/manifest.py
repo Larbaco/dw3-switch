@@ -351,6 +351,42 @@ for _v, _ids in (("us", (0x159, 0x1FA, 0x1C2, 0x158)), ("eu", (0x167, 0x208, 0x1
                                   r"gutter 0 px per side" % _report),),
                   note="the battle report draws with the widescreen gutter (patch 0074)"))
 
+# Post-battle pacing (preview.31-rc1 OLED: "even with turbo on and Text speed
+# Instant, the post-battle text still runs slowly"). Fast-forward used to drop
+# to 1x for the battle report (its own mode file, STFGTREP), and the area name
+# banner that opens the field after the battle typed its names at the game's
+# speed in every Text speed. Now the report keeps the battle's speed and
+# Instant shows the banner's names whole (port/options/turbo.c,
+# port/pacing). The forced battle of p77 (Tech once, Cross to the end, the
+# report and the banner). `instant`: turbo 4x and Instant; the turbo line
+# `speed 1x` between the report's start and its return is forbidden (a build
+# without the fix logs it at STFGTREP_start), the report's pages show in 1-2
+# frames and both banner names are shown whole. `normal`: no turbo, Normal: the
+# game's own pacing, no turbo line at all and the banner left alone. PC only.
+_REPORT_AT_1X = r"STFGTREP_start(?:(?!STFGTREP return)(?s:.))*?dw3-turbo: speed 1x"
+for _v, _ids in (("us", (0x159, 0x1FA, 0x1C2, 0x158)), ("eu", (0x167, 0x208, 0x1D1, 0x166))):
+    _fight, _menu, _report, _field = _ids
+    _battle = ((_fight, M), (_menu, S), (_report, M), (_field, M))
+    _add(Scenario(f"{_v}-postbattle-instant", _v, "full", turbo=4, timeout=300, log_only=True,
+                  phases=(f"{_v}-p77-battle",), env=_P77_ENV_REPORT, cfg=(("text_speed", "2"),),
+                  expect_restore=_battle,
+                  expect_log=((0, r"dw3-turbo: speed 4x(?s:.*)STFGTREP_start(?s:.*)"
+                                  r"text page typed in [12] frame\(s\) \(text speed instant\)(?s:.*)"
+                                  r"STFGTREP return(?s:.*)"
+                                  r"\(area name banner\): shown whole \(text speed instant\)(?s:.*)"
+                                  r"\(area name banner\): shown whole \(text speed instant\)"),),
+                  forbid_log=((0, _REPORT_AT_1X), (0, r"slow Instant page"),
+                              (0, r"area name banner\): text speed leaves it alone")),
+                  note="turbo keeps running in the battle report; Instant shows the area banner's names whole"),
+         Scenario(f"{_v}-postbattle-normal", _v, "full", timeout=300, log_only=True,
+                  phases=(f"{_v}-p77-battle",), env=_P77_ENV_REPORT,
+                  expect_restore=_battle,
+                  expect_log=((0, r"STFGTREP_start(?s:.*)STFGTREP return(?s:.*)"
+                                  r"\(area name banner\): text speed leaves it alone(?s:.*)"
+                                  r"\(area name banner\): text speed leaves it alone"),),
+                  forbid_log=((0, r"dw3-turbo: speed"), (0, r"shown whole")),
+                  note="no turbo, Normal: the report and the banner at the game's own pacing"))
+
 
 # The file cache runs out of slots (patches 0095 hook, 0096 fix). The preview.31-rc1
 # OLED crash: after about two hours of play all 64 slots of the file cache were

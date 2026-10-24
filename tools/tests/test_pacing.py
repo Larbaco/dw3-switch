@@ -73,3 +73,6 @@ def test_banner_on_a_dialogue_address_is_not_a_page(pacing_bin: Path):
     err = subprocess.run([str(pacing_bin)], capture_output=True, text=True).stderr
     assert "typed in 103 frame" not in err
     assert err.count("dw3-pacing: text typed at delay 5 is not a dialogue page") == 2  # the early probe and the banner
+    # Normal leaves the banner alone; Instant shows its names whole.
+    assert err.count("(area name banner): text speed leaves it alone") == 1
+    assert err.count("(area name banner): shown whole (text speed instant)") == 1

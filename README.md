@@ -92,7 +92,8 @@ Things this port adds to the original game.
 - **Widescreen.** About 16:9 in field and battle, on by default, switchable
   in Port options. Title and movies stay 4:3:
   [P6.1_WIDESCREEN](docs/P6.1_WIDESCREEN.md).
-- **Fast-forward.** R3 toggles 2x, 3x or 4x in field and battle:
+- **Fast-forward.** R3 toggles 2x, 3x or 4x in field, battle and the
+  results screen after a battle:
   [P6.4_FAST_FORWARD](docs/P6.4_FAST_FORWARD.md).
 - **Music and SFX volume.** Two rows in Port options, 0 to 10, 10 is the
   original mix; saved with the other options. The Options screen plays the
@@ -226,7 +227,8 @@ Port hotkeys:
 
 - Press Start at the title, then pick **Options** to open Port options.
   Triangle (X on Switch) goes back.
-- R3 (right-stick click) toggles fast-forward in field and battle. Choose
+- R3 (right-stick click) toggles fast-forward in field, battle and the
+  results screen after a battle. Choose
   2x, 3x, 4x or off in Port options.
 - An opt-in restart chord (L + R + Plus + Minus on Switch) returns to the
   title after flushing saves. Enable it in Port options first.
