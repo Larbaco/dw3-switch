@@ -1,6 +1,8 @@
 # NSP packaging research (P10.7)
 
-Status: **research only. Nothing is implemented and there is no code.**
+Status: **dropped 2026-10-24 by the owner ("vamos ignorar o NSP então").
+The game stays an NRO.** Research only; nothing is implemented and there is
+no code. Kept for reference in case the item is reopened.
 Dated 2026-10-24. Roadmap entry: [ROADMAP.md](ROADMAP.md), P10.7.
 
 Owner request (Portuguese): "Vamos investigar a possibilidade de empacotar o

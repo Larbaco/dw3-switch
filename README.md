@@ -333,6 +333,7 @@ submodule, unless the fix belongs upstream.
 | [PATCHES](docs/PATCHES.md) | Policy for patching the decomp. |
 | [RELEASES](docs/RELEASES.md) | Preview index, builds to avoid, hardware observations. |
 | [REPORTING_ISSUES](docs/REPORTING_ISSUES.md) | How testers report bugs, with an example issue. |
+| [GUIDE_HTML](docs/GUIDE_HTML.md) | Convert a locally saved guide into an offline chapter package or a single HTML file. Source text and output are not distributed here. |
 | [AGENTS.md](AGENTS.md) | Rules for contributors and AI agents. |
 
 ## Contributing
