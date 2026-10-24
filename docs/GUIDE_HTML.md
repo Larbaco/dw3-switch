@@ -106,3 +106,38 @@ The CLI reports translated/total unique units, missing keys, occurrences and
 unused catalog keys. The offline editorial QA checkpoint below is independent
 of runtime localization goals P6.6/P6.7; it does not validate gameplay or either
 ISO. Do not run a game test suite for this editorial conversion.
+
+### PT-BR editorial QA checkpoint (2026-10-24)
+
+Three independent translator batches covered chapters 1–3, 4–10 and 11–19,
+with full chapter-by-chapter self-review, followed by separate bilingual
+coverage/name/number checks and a risk-based editorial sample in every chapter.
+That independent sample included all 43 ASCII narrative/tutorial units and both
+intro paragraphs; four grammatical-agreement corrections were reconciled.
+The directions preface and 43 narrative/tutorial paragraphs embedded in ASCII
+fallbacks are included. The catalog covers **623/623 unique units**, with
+**748 rendered lookups**, **zero missing** and **zero unused keys**. Retained
+proper-name headings count as covered units; tables/ASCII data do not enter
+this denominator.
+
+Independent artifact QA against the converter merged in PR #232 found:
+
+- All **1,357 IDs** identical to the baseline; **5,056 internal hrefs** with no
+  duplicate IDs, missing destinations or nested anchors.
+- **258/258 complete English source runs** and **159/159 prior `<pre>` blocks**
+  preserved (417 `<pre>` blocks in the translated output).
+- **91/91 tables** unchanged after accounting for translated column labels;
+  all ten sections outside Walkthrough unchanged apart from boundary
+  previous/next link titles pointing into the translated walkthrough.
+- Two independent CLI generations byte-identical. Empty-catalog generation
+  left all 623 units in English with explicit fallback notices.
+- Hidden T3 browser DOM checks at 1280×800 confirmed 19 chapters, 623/623
+  coverage, no missing markers or nested anchors, Portuguese full-text search
+  with highlighting, English-title Ctrl+K lookup and readable original text.
+
+The artifact was generated only at
+`/mnt/cabal/tmp/dw3-guide-output/guide.html`; the primary checkout's
+`docs/dw3-guide.html` remains a post-review/merge owner step. Temporary translator
+batches and review reports are under `/mnt/cabal/tmp/dw3-guide-translation/`.
+No test suites, game builds, US/EU ISO, emulator or OLED checks were run for
+this offline editorial change. Runtime language-pack gates remain open.
