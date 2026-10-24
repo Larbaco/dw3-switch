@@ -40,6 +40,12 @@ port options:
   volume down / up from 10 to 0 (a held direction repeats; it stops at the
   ends), and Cross / Circle step up and wrap 10 to 0. See
   [P6.17_VOLUME.md](P6.17_VOLUME.md).
+- On the Options screen, **Square** (PC **Z**, Switch **Y**) opens the Cheats
+  screen (P6.20) and Triangle returns to Options. The hint "Square/Y Cheats" is
+  drawn only once the Cheats master switch is on, so the key is not discoverable
+  from the screen; builds made with `--no-cheats` have no such screen. Inside
+  it Up/Down selects a row, Cross / Circle change it. See
+  [PORT_OPTIONS.md](PORT_OPTIONS.md#cheats-p620).
 - During an opening movie, press or hold Start (Enter / Plus) to skip it.
   A held button is accepted after decoding a frame; this is not a fast-forward
   control.

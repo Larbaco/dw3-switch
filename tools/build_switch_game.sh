@@ -25,13 +25,16 @@ IMAGE="${DW3_DK_IMAGE:-devkitpro/devkita64:latest}"
 NXLINK_STDIO=OFF
 DW3_NX_FORCE_CRASH=OFF
 DW3_NX_REPLAY=OFF
+# P6.20: the Cheats screen is built in by default. --no-cheats compiles the
+# whole feature out (CMake DW3_CHEATS=OFF; docs/PORT_OPTIONS.md).
+DW3_CHEATS=ON
 # Development-only K=V,K=V environment baked into the NRO (CMake
 # DW3_NX_TEST_ENV). Always passed, so a build dir never keeps an old value.
 DW3_NX_TEST_ENV="${DW3_NX_TEST_ENV:-}"
 DW3_VERSION="$(echo "${DW3_VERSION:-us}" | tr '[:upper:]' '[:lower:]')"
 
 usage() {
-  echo "usage: $0 [--eu] [--nxlink] [--replay] [--force-crash]"
+  echo "usage: $0 [--eu] [--nxlink] [--replay] [--force-crash] [--no-cheats]"
   echo "  default       US game NRO at build/switch/dw3-switch.nro"
   echo "  --eu          EU game NRO at build/switch-eu/dw3-switch.nro"
   echo "  --nxlink      nxlink development NRO (build/switch[-eu]-nxlink/)"
@@ -40,6 +43,9 @@ usage() {
   echo "                never release/preview, see docs/P6.15_REPLAY_TESTS.md)"
   echo "  --force-crash P5.4 smoke only: deliberate null write after boot"
   echo "                (pair with --nxlink; never in release/preview NROs)"
+  echo "  --no-cheats   P6.20: build without the Cheats screen (CMake DW3_CHEATS=OFF,"
+  echo "                the game is identical to a build before the feature;"
+  echo "                build/switch[-eu][-nxlink]-nocheats/)"
   echo "env DW3_NX_TEST_ENV=K=V,K=V bakes a dev-only environment into the NRO"
   echo "  (e.g. DW3_FORCE_CRASH=sim for Ryubing; see docs/P5.4_CRASH.md)"
 }
@@ -57,6 +63,9 @@ while (( $# > 0 )); do
       ;;
     --replay)
       DW3_NX_REPLAY=ON
+      ;;
+    --no-cheats)
+      DW3_CHEATS=OFF
       ;;
     -h|--help)
       usage
@@ -104,6 +113,9 @@ if [[ "${DW3_NX_REPLAY}" == "ON" ]]; then
   BUILD_DIR="${BUILD_DIR}-replay"
   NRO_NAME="${NRO_NAME}-replay"
 fi
+if [[ "${DW3_CHEATS}" == "OFF" ]]; then
+  BUILD_DIR="${BUILD_DIR}-nocheats"
+fi
 NRO="${BUILD_DIR}/${NRO_NAME}.nro"
 NACP="${BUILD_DIR}/${NRO_NAME}.nacp"
 
@@ -150,6 +162,15 @@ if [[ -f "${ROOT}/.git" ]]; then
   GIT_MOUNT_ARGS=(-v "${GIT_COMMON_DIR}:${GIT_COMMON_DIR}:ro")
 fi
 
+# build/ may be a symlink to a local ext4 directory (an NTFS checkout cannot
+# hold the decomp tree). Mount its target at the same absolute path, or the
+# container sees a dangling link.
+BUILD_LINK_ARGS=()
+if [[ -L "${ROOT}/build" ]]; then
+  BUILD_LINK_TARGET="$(readlink -f "${ROOT}/build")"
+  BUILD_LINK_ARGS=(-v "${BUILD_LINK_TARGET}:${BUILD_LINK_TARGET}")
+fi
+
 # No login shell: bash -l lets /etc/profile drop devkitA64/bin from PATH,
 # and aarch64-none-elf-nm lives there. Mount at the host absolute path so
 # worktree gitlinks and tools/apply_patches.sh still resolve.
@@ -160,6 +181,7 @@ docker run --rm \
   -e DW3_VERSION="${DW3_VERSION}" \
   -e DW3_NX_FORCE_CRASH="${DW3_NX_FORCE_CRASH}" \
   -e DW3_NX_REPLAY="${DW3_NX_REPLAY}" \
+  -e DW3_CHEATS="${DW3_CHEATS}" \
   -e DW3_NX_TEST_ENV="${DW3_NX_TEST_ENV}" \
   -e DW3_NRO_VERSION="${DW3_NRO_VERSION}" \
   -e DW3_NACP_VERSION="${DW3_NACP_VERSION}" \
@@ -169,6 +191,7 @@ docker run --rm \
   -e PATH="/opt/devkitpro/tools/bin:/opt/devkitpro/devkitA64/bin:/usr/bin:/bin" \
   -v "${ROOT}:${ROOT}" \
   "${GIT_MOUNT_ARGS[@]}" \
+  "${BUILD_LINK_ARGS[@]}" \
   -w "${ROOT}" \
   "${IMAGE}" \
   bash -c 'cmake -S platforms/switch -B "$DW3_SWITCH_BUILD_DIR" -G Ninja \
@@ -178,6 +201,7 @@ docker run --rm \
     -DDW3_NXLINK_STDIO="$DW3_NXLINK_STDIO" \
     -DDW3_NX_FORCE_CRASH="$DW3_NX_FORCE_CRASH" \
     -DDW3_NX_REPLAY="$DW3_NX_REPLAY" \
+    -DDW3_CHEATS="$DW3_CHEATS" \
     -DDW3_NX_TEST_ENV="$DW3_NX_TEST_ENV" \
     -DDW3_NRO_VERSION="$DW3_NRO_VERSION" \
     -DDW3_NACP_VERSION="$DW3_NACP_VERSION" && \
@@ -189,6 +213,10 @@ if ! grep -F -x -q "DW3_NXLINK_STDIO:BOOL=${NXLINK_STDIO}" "${BUILD_DIR}/CMakeCa
 fi
 if ! grep -F -x -q "DW3_NX_REPLAY:BOOL=${DW3_NX_REPLAY}" "${BUILD_DIR}/CMakeCache.txt"; then
   echo "CMake cache does not match requested replay mode (${DW3_NX_REPLAY})" >&2
+  exit 1
+fi
+if ! grep -F -x -q "DW3_CHEATS:BOOL=${DW3_CHEATS}" "${BUILD_DIR}/CMakeCache.txt"; then
+  echo "CMake cache does not match requested cheats mode (${DW3_CHEATS})" >&2
   exit 1
 fi
 if ! grep -F -x -q "DW3_NX_FORCE_CRASH:BOOL=${DW3_NX_FORCE_CRASH}" "${BUILD_DIR}/CMakeCache.txt"; then
