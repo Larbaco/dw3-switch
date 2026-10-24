@@ -1,0 +1,46 @@
+Upstream-bound: no
+Subject: [PORT_HOST] DW3_FILE_CACHE_SLOTS test hook: a smaller file cache
+
+findFreeFileSlot (engine/file/file_cache.c) hands out only the first n of the
+64 file cache slots when the PC environment has DW3_FILE_CACHE_SLOTS=<n>
+(1..63; unset, 0, invalid or 64 mean all of them). The slot count is read once
+by dw3_port_file_cache_slots() (port/file_cache/file_cache_host.c), which logs
+`dw3-file-cache: DW3_FILE_CACHE_SLOTS=n of 64 (test hook)`. Nothing else uses
+the variable: a run without it is identical to main.
+
+Why: on the PS1 the 1.33 MB heap kept the file cache small, and on the host
+(8 MiB heap) a long session fills all 64 slots, where requestFile used to write
+through a NULL slot (the preview.31-rc1 battle report crash, patch 0096).
+Natural play needs about 2 hours to fill the cache (two battles use 46 slots);
+the hook makes the same state reachable in one replay. With this patch alone
+and a small n the second battle ends in SIGSEGV in requestFile, the owner's
+crash; patch 0096 fixes that.
+
+--- a/src/engine/file/file_cache.c
++++ b/src/engine/file/file_cache.c
+@@ -2,6 +2,9 @@
+ #include <libgs.h>
+ #include <libetc.h>
+ #include <libsnd.h>
++#if PORT_HOST
++#include "port_file_cache.h"
++#endif
+ 
+ /* The file cache */
+ FileCache FILE_CACHE = {
+@@ -38,8 +41,14 @@
+ FileSlot *findFreeFileSlot(void) {
+     FileSlot *slot;
+     s32 i;
++#if PORT_HOST
++    /* DW3_FILE_CACHE_SLOTS test hook: hand out only the first n slots */
++    s32 limit = dw3_port_file_cache_slots(FILE_CACHE_SLOTS);
++#else
++    s32 limit = FILE_CACHE_SLOTS;
++#endif
+ 
+-    for (slot = FILE_CACHE.slots, i = 0; i < FILE_CACHE_SLOTS; i++, slot++) {
++    for (slot = FILE_CACHE.slots, i = 0; i < limit; i++, slot++) {
+         if (slot->file == 0) {
+             return slot;
+         }
