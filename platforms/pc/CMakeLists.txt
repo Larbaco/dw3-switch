@@ -117,6 +117,27 @@ target_link_options(dw3-pc PRIVATE
   "-Wl,--undefined=__start_dw3data_stagslct"
   "-Wl,--undefined=__start_dw3data_cnty_sel"
 )
+# P6.22: field CPU profiler (docs/P6.22_FIELD_CPU.md). Off by default. Runs a
+# shadow copy of the CPU rasterizer the Switch draws with, next to the PC
+# renderer, and times it per game frame; never in release or replay builds.
+option(DW3_PC_FIELD_PROF "P6.22 field CPU profiler (shadow CPU rasterizer)" OFF)
+if(DW3_PC_FIELD_PROF)
+  target_sources(dw3-pc PRIVATE src/field_prof.c)
+  target_include_directories(dw3-pc PRIVATE
+    ${CMAKE_SOURCE_DIR}/../../vendor/psyz/psyz/src
+    ${CMAKE_SOURCE_DIR}/../../vendor/psyz/psyz/src/platform
+  )
+  foreach(_dw3_prof_sym
+      Draw_Reset Draw_SetTexpageMode Draw_SetTextureWindow Draw_SetAreaStart
+      Draw_SetAreaEnd Draw_SetOffset Draw_SetMask Draw_ClearImage
+      Draw_LoadImage Draw_StoreImage Draw_MoveImage Draw_PushPrim
+      Draw_DisplayArea Draw_SetDisplayMode Psyz_VideoSetGutter
+      Psyz_VideoVSync Psyz_SpuPullSamples)
+    target_link_options(dw3-pc PRIVATE "-Wl,--wrap=${_dw3_prof_sym}")
+  endforeach()
+  target_link_libraries(dw3-pc PRIVATE rt)
+endif()
+
 target_include_directories(psyz PRIVATE ${CMAKE_SOURCE_DIR}/../../vendor/psyz/psyz/include)
 target_compile_definitions(psyz PRIVATE __psyz)
 if(_dw3_pc_ver STREQUAL "eu")
