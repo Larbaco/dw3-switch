@@ -59,7 +59,7 @@ acceptance remains tracked separately in [P5.3_FLAT_SAVE.md](P5.3_FLAT_SAVE.md).
 | Action | PS1 logical input | PC keyboard | Switch | Requirement / limit |
 |---|---|---|---|---|
 | Open Port options directly | Select | Backspace | Minus | Only while the title choices are active; no L1/R1/L2/R2 held |
-| Toggle fast-forward on/off | R3 | 2 | Right-stick click | Field/battle only; configured speed must be 2x, 3x or 4x |
+| Toggle fast-forward on/off | R3 | 2 | Right-stick click | Field, battle and the battle report (results screen) only; configured speed must be 2x, 3x or 4x |
 | Restart game in-process | L1 + R1 + Start + Select | Q + R + Enter + Backspace | L + R + Plus + Minus | Enable **Restart hotkey** in Port options first; OFF by default |
 
 Hold all four restart buttons together; one activation is allowed per chord

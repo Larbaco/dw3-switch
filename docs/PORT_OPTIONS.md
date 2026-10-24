@@ -41,13 +41,13 @@ explicitly marked N/A in this note.
 | Feature area | Examples | Roadmap |
 |---|---|---|
 | Display / timing | Integer scale, **widescreen** (wanted; default 4:3), PAL pacing 50 vs 60, NTSC host options | Phase 6 (+ P4 present) |
-| Convenience | **Fast-forward**: R3 toggles 2x/3x/4x in field and battle; row picks the speed or OFF ([P6.4](P6.4_FAST_FORWARD.md)) | Phase 6 |
+| Convenience | **Fast-forward**: R3 toggles 2x/3x/4x in field, battle and the battle report (results screen); row picks the speed or OFF ([P6.4](P6.4_FAST_FORWARD.md)) | Phase 6 |
 | Localization | Active language pack (if port-selected) | Phase 6 |
 | Community QoL parity | Share EXP, quest log HUD, NPC bubbles, Fast Start, … | Phase 7 |
 | Texture packs | Enable overlay / select pack name | Phase 8 |
 | Audio | **Music volume** and **SFX volume**, 0..10 steps, default 10 = the original mix ([P6.17](P6.17_VOLUME.md)) | Phase 6 |
 | Original-game fixes | **None are toggles.** P7.7's HUD Digivolution name (patch `0065`) and Claw steal on the killing blow (`0066`) are always on; reasoning in [P7.7_BUG_FIXES.md](P7.7_BUG_FIXES.md) | Phase 7 |
-| Pacing | **Encounter rate** (OFF / 0.5x / 1x / 1.5x / 2x) and **Text speed** (Normal / Fast / Instant), both default to the original game ([P6.18](P6.18_PACING.md)) | Phase 6 |
+| Pacing | **Encounter rate** (OFF / 0.5x / 1x / 1.5x / 2x) and **Text speed** (Normal / Fast / Instant), both default to the original game ([P6.18](P6.18_PACING.md)). Instant shows every dialogue page, report line and (since 2026-10-24) the area name banner's names whole; Normal and Fast leave the banner as the game types it | Phase 6 |
 | Battle menu memory | **Battle cursor** (OFF / Command / Command+Tech): the battle command menu and technique list open on your last pick; key `battle_menu_memory` 0 / 1 / 2, off by default (a row since P7.9's follow-up, it was file-only) ([P7.9](P7.9_BATTLE_MENU_MEMORY.md)) | Phase 7 |
 | Button layout / glyphs | **Button layout** (PlayStation positional, default / Nintendo A confirms, B cancels), ROADMAP P9.8; **Switch button glyphs** on/off, ROADMAP P10.6. Both future goals (2026-10-23); the glyphs follow the layout | Phase 9 / Phase 10 |
 | Cheats (test aid) | A **Cheats** sub-screen for hardware testing, reached with Square / Y on the Options screen: master switch, Fill bag, Instant win, Battle now and a count of saves flagged "cheat used" (a sidecar file, never the save). Off by default, keys `cheat_enabled` and `cheat_instant_win` in `port_options.cfg`; built in by default, removed by `DW3_CHEATS=OFF` / `--no-cheats`. Later money, HP / MP, warp. See [Cheats](#cheats-p620) and ROADMAP P6.20 | Phase 6 (P6.20) |
