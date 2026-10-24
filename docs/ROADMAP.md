@@ -90,6 +90,7 @@ lives in its doc, not in the entry below.
 | P10.4 | Rumble polish (optional) | open | — |
 | P10.5 | Extra applets (optional) | open | — |
 | P10.6 | Switch-style button glyphs (future goal) | future | [roadmap](#phase-10--native-switch-features-residual), [TEXTURE_PACKS](TEXTURE_PACKS.md) |
+| P10.7 | NSP packaging: forwarder, full NSP or stay NRO (future goal) | future | [NSP_PACKAGING](NSP_PACKAGING.md), [roadmap](#phase-10--native-switch-features-residual) |
 
 **Language matrix.** The EU disc has 7 `LANGUAGE` slots: 0 JPN, 1 USA,
 2 ENG, 3 FRA, 4 ITA, 5 GER, 6 SPN (`STAGSLCT_regionNames`). The EU country
@@ -1358,6 +1359,40 @@ rumble, saves, turbo, or widescreen here; those stay in their phases.
   and shops are Switch glyphs on the US and EU discs, they match the layout
   chosen in P9.8, and the option off restores the original icons.
   Related: P8.2/P8.3, P9.8, P6.12, [HOTKEYS.md](HOTKEYS.md).
+
+- [ ] **P10.7 NSP packaging (future goal).** Dated 2026-10-24, owner request:
+  "Vamos investigar a possibilidade de empacotar o jogo como NSP para
+  instalar no Switch" (show the game as its own title on HOME). Goal note
+  only, nothing started, no code. Routes, requirements and sources:
+  [NSP_PACKAGING.md](NSP_PACKAGING.md).
+  **Findings:** three routes. (a) a user-built forwarder NSP needs the user's
+  own keys and signature patches, and carries ban risk (a community caution
+  that applies to all forwarder generators); (b) a full NSP with our NSO needs
+  keys the project cannot hold, so CI cannot build it, and it sits on the
+  out-of-scope "official packaging" line; (c) staying NRO with hbmenu title
+  takeover needs no keys and no patches.
+  **Recommended approach (not decided):** stay NRO and document title takeover
+  as the supported path (application mode, full RAM, no own HOME icon). At
+  most, a user-side forwarder compatibility note; the project ships no NSP,
+  keys or patches. Route (b) is not recommended.
+  **Impact to check:** application mode changes the focus and suspend
+  behaviour that P10.2 tests; saves stay on SD unless the owner wants native
+  account save data (which needs an installed NSP); crash symbolization for
+  an NSO is unverified. Title ID for a forwarder and the bit-12 question are
+  open in the doc.
+  **First slice:** docs only (this note). Then an OLED check of the game under
+  title takeover on US and EU (P10.2 focus and sleep lines, mem dbg log,
+  saves). A boot log of the applet type is a later code PR.
+  **Open questions (owner):** is a user-built forwarder "the user's business"
+  in the docs, or should forwarders go unmentioned; should the release README
+  recommend title takeover (hold R) for full RAM; should P6.24's per-user saves
+  depend on application mode; should a fixed `0x05` title ID ever be
+  suggested; is route (b) ever wanted (it needs an AGENTS.md scope change).
+  **Done when (proposed):** the owner picks a route and the AGENTS.md wording;
+  if route (c), the release README documents takeover and the US and EU OLED
+  check has a report with the method stated. P10.7 is a future goal outside
+  the gate.
+  Related: P6.5, P10.2, P5.1, P5.4, P6.24.
 
 Gate: P10.2 (+ P10.3 once present is live). P10.4–P10.6 are best-effort.
 
