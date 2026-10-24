@@ -8,6 +8,8 @@ The guide body is plain text inside <pre id="faqspan-N"> blocks; headings are
 ASCII banners (`* * *` boxes), dash boxes and dash underlines.
 """
 import html
+import copy
+from pathlib import Path
 import hashlib
 from collections import defaultdict
 from html.parser import HTMLParser
@@ -564,7 +566,7 @@ def palette_json(sections, entities):
     for s in sections:
         items.append({"t": s["title"], "g": "Seção", "id": s["id"], "k": "sec"})
         for c in s["chapters"]:
-            items.append({"t": c["title"], "g": s["title"], "id": c["id"], "k": "cap"})
+            items.append({"t": c["title"], "g": s["title"], "id": c["id"], "k": "cap", "en": c.get("original_title", "")})
             items += [{"t": it[2], "g": c["title"], "id": it[1], "k": "loc"} for it in c["items"] if it[0] == "h"]
         items += [{"t": it[2], "g": s["title"], "id": it[1], "k": "loc"} for it in s["intro"] if it[0] == "h"]
     items.append({"t": "Índice de entidades", "g": "Guia", "id": entities.index_id, "k": "sec"})
@@ -1249,8 +1251,102 @@ def validate_links(document):
     return check
 
 
-def render(header, sections):
+
+# Translation units are exact UTF-8 text after rendering/reflow, never fuzzy matches.
+def translation_key(text):
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+
+def ascii_prose_units(text):
+    """Editorial prose embedded in an ASCII fallback; leave data/layout untouched."""
+    for paragraph in text.split("\n\n"):
+        first = paragraph.splitlines()[0] if paragraph else ""
+        prose = (not first.startswith(" ")
+                 and not re.match(r"^(Card Battles|Digibattles|Digimobattles|Digimon Battles|Enemies|Items|Inn|\?\?\?|EAST SECTOR)", first)
+                 and len(paragraph.split()) >= 5)
+        if prose or re.match(r'^   "', first) or ' Pack - "' in first:
+            yield " ".join(paragraph.split())
+
+
+class WalkthroughTranslation:
+    LABELS = {"Items": "Itens", "Enemies": "Inimigos",
+              "Digimon Battles": "Batalhas de Digimon", "Digimon Battle": "Batalha de Digimon",
+              "Boss Battle": "Batalha de chefe", "Card Battle": "Batalha de cartas",
+              "Location": "Local", "Drop": "Item deixado"}
+
+    def __init__(self, path=None):
+        path = path or Path(__file__).with_name("guide_walkthrough_ptbr.json")
+        with open(path, encoding="utf-8") as f:
+            data = json.load(f)
+        if data.get("format_version") != 1 or data.get("language") != "pt-BR":
+            raise ValueError("Unsupported walkthrough translation catalog")
+        self.entries = data["translations"]
+        if not all(re.fullmatch(r"[0-9a-f]{64}", k) and isinstance(v, str) and v.strip()
+                   for k, v in self.entries.items()):
+            raise ValueError("Invalid walkthrough translation entry")
+        self.seen, self.missing = set(), set()
+        self.occurrences = 0
+
+    def text(self, original):
+        key = translation_key(original)
+        self.seen.add(key)
+        self.occurrences += 1
+        if key not in self.entries:
+            self.missing.add(key)
+            return original
+        return self.entries[key]
+
+    def heading(self, original):
+        text = self.text(original)
+        return text + " [sem tradução · inglês]" if translation_key(original) in self.missing else text
+
+    def paragraph(self, original, link):
+        translated = self.text(original)
+        missing = translation_key(original) in self.missing
+        label = '<small class="translation-missing">Sem tradução · original em inglês</small>' if missing else ""
+        return label + f'<p lang="{"en" if missing else "pt-BR"}">{link(esc(translated))}</p>'
+
+    def fragment(self, body, original, link):
+        # Rebuild only prose paragraphs. Tables, values, names and ASCII are never parsed as Portuguese.
+        def paragraph(m):
+            text = html.unescape(re.sub(r"<[^>]*>", "", m.group(1)))
+            return self.paragraph(text, link)
+        body = re.sub(r"<p>(.*?)</p>", paragraph, body, flags=re.S)
+
+        def ascii_block(m):
+            text = html.unescape(re.sub(r"<[^>]*>", "", m.group(1)))
+            units = list(ascii_prose_units(text))
+            if not units:
+                return m.group(0)
+            translated = "".join(self.paragraph(t, link) for t in units)
+            return translated + '<details class="orig" lang="en"><summary>ver ASCII original</summary>' + m.group(0) + '</details>'
+        body = re.sub(r"<pre>(.*?)</pre>", ascii_block, body, flags=re.S)
+        for tag in ("h4", "th"):
+            body = re.sub(rf"(<{tag}(?: [^>]*)?>)([^<]*)(</{tag}>)",
+                          lambda m: m[1] + esc(self.LABELS.get(html.unescape(m[2]), html.unescape(m[2]))) + m[3], body)
+        body = re.sub(r'(<span class="bk">.*?</svg>)([^<]*)(</span>)',
+                      lambda m: m[1] + esc(self.LABELS.get(m[2], m[2])) + m[3], body)
+        return '<div class="walk-translation" lang="pt-BR">' + body + '</div>' + orig_html(original).replace('<details ', '<details lang="en" ', 1)
+
+    def report(self):
+        return {"units": len(self.seen), "translated": len(self.seen - self.missing),
+                "missing": len(self.missing), "occurrences": self.occurrences,
+                "unused_catalog_keys": len(self.entries.keys() - self.seen)}
+
+def render(header, sections, translation=None):
     entities = EntityIndex(sections)
+    translation = translation or WalkthroughTranslation()
+    original_sections = sections
+    sections = copy.deepcopy(sections)
+    for section in sections:
+        if section["id"] != "walkthrough":
+            continue
+        section["title"] = "Passo a passo"
+        for chapter in section["chapters"]:
+            chapter["original_title"] = chapter["title"]
+            chapter["title"] = translation.heading(chapter["title"])
+            chapter["items"] = [(it[0], it[1], translation.heading(it[2])) if it[0] == "h" else it
+                                for it in chapter["items"]]
 
     def make_link(source):
         return lambda escaped: entities.link(escaped, source)
@@ -1273,6 +1369,10 @@ def render(header, sections):
         return f'<nav class="pn" aria-label="Capítulos">{p}{n}</nav>'
 
     def items_html(items, self_id, sec_id):
+        if sec_id == "walkthrough":
+            original_section = next(s for s in original_sections if s["id"] == sec_id)
+            owner = next((c for c in original_section["chapters"] if c["id"] == self_id), original_section)
+            items = owner.get("items", owner.get("intro", []))
         out = []
         link = make_link(self_id)
         cx = {"cid": self_id, "link": link, "entities": entities}
@@ -1285,12 +1385,15 @@ def render(header, sections):
                 cx["link"] = link
                 cx["source"] = source
                 body = special_html(sec_id, head, it[1], cx) or blocks_html(it[1], link)
+                if walk:
+                    body = translation.fragment(body, it[1], link)
                 out.append(f'<div class="source-block" id="{source}">{body}</div>')
             else:
                 head = it[2]
                 pin = svg("pin", "ic sm") if walk else ""
                 cls = ' class="loc"' if walk else ""
-                out.append(f'<h3 id="{it[1]}"{cls}><a href="#{it[1]}">{pin}{esc(it[2])}</a></h3>')
+                original_title = f' title="Original: {esc(it[2])}"' if walk else ""
+                out.append(f'<h3 id="{it[1]}"{cls}{original_title}><a href="#{it[1]}">{pin}{esc(translation.entries.get(translation_key(it[2]), it[2] + " [sem tradução · inglês]") if walk else it[2])}</a></h3>')
         return "\n".join(out)
 
     main = []
@@ -1299,6 +1402,10 @@ def render(header, sections):
         parts = [f'<section class="lvl1" id="{s["id"]}" data-title="{esc(s["title"])}"{leaf}>',
                  f'<h2>{esc(s["title"])}</h2>']
         card = " card" if s["id"] in CARD_SECS else ""
+        if s["id"] == "walkthrough":
+            parts.append('<p class="translation-status" lang="pt-BR">Português brasileiro · '
+                         '%%WALK_COVERAGE%% unidades editoriais disponíveis · nomes oficiais e dados preservados. O original em inglês acompanha cada bloco; '
+                         'lacunas são indicadas em inglês.</p>')
         parts.append(f'<div class="intro{card}">{items_html(s["intro"], s["id"], s["id"])}</div>')
         if not s["chapters"]:
             parts.append(pn(s["id"]))
@@ -1310,6 +1417,7 @@ def render(header, sections):
             parts.append(
                 f'<article class="lvl2 {kind}" id="{c["id"]}" data-title="{esc(c["title"])}" data-parent="{s["id"]}">'
                 f'{banner_html(c, s)}\n'
+                + (f'<details class="orig" lang="en"><summary>Título original em inglês</summary><p>{esc(c["original_title"])}</p></details>' if "original_title" in c else "") +
                 f"{items_html(c['items'], c['id'], s['id'])}\n{pn(c['id'])}</article>"
             )
         parts.append("</section>")
@@ -1320,7 +1428,8 @@ def render(header, sections):
     return (tpl.replace("%%COVER%%", cover_html(header, sections))
                .replace("%%NAV%%", "\n".join(nav))
                .replace("%%MAIN%%", "\n".join(main))
-               .replace("%%PAL%%", palette_json(sections, entities)))
+               .replace("%%PAL%%", palette_json(sections, entities))
+               .replace("%%WALK_COVERAGE%%", f"{len(translation.seen - translation.missing)}/{len(translation.seen)}"))
 
 
 TEMPLATE = r"""<!DOCTYPE html>
@@ -1921,7 +2030,7 @@ function fuzzy(t,q){const i=t.indexOf(q);if(i>=0)return i;let p=0,last=-1,gap=0;
 function palRender(){
  const q=pq.value.trim().toLowerCase();
  plist=!q?PAL.filter(x=>x.k==='sec'||x.k==='cap').slice(0,40)
-  :PAL.map(x=>[fuzzy((x.t+' · '+x.g).toLowerCase(),q),x]).filter(a=>a[0]>=0).sort((a,b)=>a[0]-b[0]).slice(0,60).map(a=>a[1]);
+  :PAL.map(x=>[fuzzy((x.t+' · '+x.g+' '+(x.en||'')).toLowerCase(),q),x]).filter(a=>a[0]>=0).sort((a,b)=>a[0]-b[0]).slice(0,60).map(a=>a[1]);
  psel=Math.max(0,Math.min(psel,plist.length-1));
  pl.innerHTML=plist.map((x,i)=>`<li role="option" id="po${i}" aria-selected="${i===psel}" class="${i===psel?'on':''}" data-i="${i}"><span class="pk">${KLAB[x.k]}</span><span class="pt">${esc(x.t)}</span><span class="pg">${esc(x.g)}</span></li>`).join('')
   ||'<li class="none">Nada encontrado</li>';
@@ -2005,8 +2114,20 @@ def main():
     with open(sys.argv[1], encoding="utf-8") as f:
         lines = extract_text(f.read())
     header, sections = parse(lines)
-    document = render(header, sections)
+    translation = WalkthroughTranslation()
+    document = render(header, sections, translation)
+    print("walkthrough translation: " + json.dumps(translation.report(), sort_keys=True))
     validate_links(document)
+    # The entire parsed English source run must survive, including tables/ASCII.
+    walk = next(s for s in sections if s["id"] == "walkthrough")
+    original_runs = [it[1] for owner in [walk] + walk["chapters"]
+                     for it in owner.get("items", owner.get("intro", [])) if it[0] == "pre"]
+    preserved = [html.unescape(re.sub(r"<[^>]*>", "", t))
+                 for t in re.findall(r"<pre>(.*?)</pre>", document, re.S)]
+    from collections import Counter
+    if Counter(original_runs) - Counter(preserved):
+        raise ValueError("Walkthrough English originals were not preserved")
+    print(f"walkthrough original runs preserved: {len(original_runs)}/{len(original_runs)}")
     with open(sys.argv[2], "w", encoding="utf-8") as f:
         f.write(document)
     for s in sections:

@@ -59,3 +59,50 @@ A hidden T3 browser tab at 1280x800 also checked the live DOM and followed
 walkthrough → Renamon's Digimon/card entry → walkthrough. No OLED, emulator,
 ISO or gameplay validation was performed: this utility does not load either
 US or EU game data and does not change the port runtime.
+
+## Brazilian Portuguese walkthrough
+
+The Walkthrough opens in Brazilian Portuguese. Only its 19 chapters, editorial
+prose, strategy paragraphs and chapter headings are localized. Official names
+(Digimon, characters, places, items, techniques, organizations and recognizable
+menu/game terms) retain their source spelling, including apparent source errors.
+Reference sections are not translated. Tables, numeric rewards, battle rosters,
+card folders, ASCII diagrams and their data retain the English source layout;
+structured walkthrough labels such as “Enemies” and “Items” are localized.
+Narrative/tutorial text embedded in ASCII fallbacks has a Portuguese paragraph
+alongside a collapsed, unmodified ASCII copy. Table-cell annotations stay as-is.
+
+`tools/guide_walkthrough_ptbr.json` is a separate UTF-8 editorial catalog. Each
+key is the full lowercase SHA-256 of an exact English translation unit encoded
+as UTF-8. Units are parsed chapter/location titles, the decoded/reflowed text of
+rendered prose/strategy paragraphs, or whitespace-reflowed narrative paragraphs
+inside ASCII fallbacks (selected by `ascii_prose_units`). HTML markup and entity
+links are excluded from the key. Keys do not depend on line numbers, chapter
+order, Python hashing, or approximate matching. Duplicate English units share
+one entry. Values are plain text, escaped before entity links are rebuilt.
+
+The entity index is built from the original source before translated display
+headings are applied; existing source IDs and destinations therefore remain
+stable. The sidebar, chapter chips, previous/next navigation and Ctrl+K show
+Portuguese chapter titles; Ctrl+K also searches their English titles. Full-text
+search indexes the Portuguese reading text; collapsed original-text disclosures
+remain excluded, as in the existing search behavior. Every walkthrough source run
+has a “ver texto original” disclosure and chapter titles have their own English
+disclosure; location headings expose their original text in a title attribute.
+The local source file is never edited or committed, and the generated HTML is
+not committed.
+
+A missing exact key leaves the unit in English with an explicit untranslated
+notice. Names intentionally retained in English have catalog entries and do
+not count as missing. No fuzzy lookup, automatic translation service, or
+source-text rewriting runs during generation. An invalid catalog fails loudly;
+missing and unused keys are counted in the generator's coverage report.
+Coverage counts editorial units (including preserved proper-name headings),
+not a percentage of all source characters or structured data.
+
+Generation checks internal links and confirms every parsed walkthrough English
+source run survives verbatim as decoded `<pre>` text before writing the output.
+The CLI reports translated/total unique units, missing keys, occurrences and
+unused catalog keys. The offline editorial QA checkpoint below is independent
+of runtime localization goals P6.6/P6.7; it does not validate gameplay or either
+ISO. Do not run a game test suite for this editorial conversion.
