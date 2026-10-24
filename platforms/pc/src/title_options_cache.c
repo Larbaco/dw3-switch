@@ -6,12 +6,13 @@
 
 /* Layout of the Port options screen in canvas pixels. Must cover everything
  * options_screen() draws for its FOCUS / VALUE / DESCRIPTION layers; the
- * unit test proves it against the full reference render. Seven rows of 42 px
- * on a 48 px pitch (title_overlay_art.c OPT_ROW_*): the window is 600 px
- * high, y 60..660, inside the 720 px canvas. */
+ * unit test proves it against the full reference render. Eight rows of 38 px
+ * on a 42 px pitch (title_overlay_art.c OPT_ROW_*): the window is 600 px
+ * high, y 60..660, inside the 720 px canvas. The value cell starts at 560: the
+ * widest word, "Command+Tech", is 214 px wide and ends at 780. */
 enum {
-    ROW_X = 132, ROW_Y = 154, ROW_W = 696, ROW_H = 42, ROW_STEP = 48,
-    VALUE_X = 660, VALUE_W = 168,
+    ROW_X = 132, ROW_Y = 150, ROW_W = 696, ROW_H = 38, ROW_STEP = 42,
+    VALUE_X = 560, VALUE_W = 268,
     DESC_Y = 524, DESC_H = 52,
 };
 

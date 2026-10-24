@@ -558,6 +558,12 @@ int dw3_pc_title_menu_set_logo_rgba(const uint8_t *rgba, int width,
     return 0;
 }
 
+/* 0 once the GLES program or canvas failed to build; the port then keeps the
+ * game's own credit sprites. */
+int dw3_pc_title_menu_overlay_usable(void) {
+    return !s_gl_failed;
+}
+
 void dw3_pc_title_menu_logo_set_active(int active) {
     const int next = active && s_logo_rgba != NULL;
 

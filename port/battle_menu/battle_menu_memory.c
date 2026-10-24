@@ -1,9 +1,9 @@
 /* P7.9 battle menu memory. Remembers the last command of the player's turn
  * and, per partner, the last technique, for the session (the process): the
  * state is not saved (docs/P7.9_BATTLE_MENU_MEMORY.md says why). Off by
- * default: with `battle_menu_memory` absent or 0 in port_options.cfg every
- * function returns what the original code would use, so a run is
- * bit-identical to a build without patch 0067. */
+ * default: with the Battle cursor row at Off (`battle_menu_memory` absent or 0
+ * in port_options.cfg) every function returns what the original code would
+ * use, so a run is bit-identical to a build without patch 0067. */
 #include "port_battle_menu.h"
 
 #include "port_options.h"
@@ -44,7 +44,7 @@ static int g_command = CMD_ATTACK;
 static int g_tech[BM_MEMBERS];
 
 int dw3_port_battle_menu_mode(void) {
-    int v = dw3_port_options_file_int(DW3_BATTLE_MENU_MEMORY_KEY, 0);
+    int v = dw3_port_options_level(DW3_PORT_OPT_BATTLE_MENU);
 
     return v == DW3_BATTLE_MENU_MEMORY_COMMAND ||
                    v == DW3_BATTLE_MENU_MEMORY_TECH

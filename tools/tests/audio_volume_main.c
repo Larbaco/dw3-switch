@@ -2,6 +2,7 @@
 #include "port_audio.h"
 
 #include <math.h>
+#include <stddef.h>
 #include <stdio.h>
 
 static int fail(const char *what, int step) {
@@ -45,6 +46,30 @@ int main(void) {
     for (x = -32768; x <= 32767; x++) {
         if (((x * dw3_port_audio_gain_q15(0)) >> 15) != 0) {
             return fail("step 0 is not silent", (int)x);
+        }
+    }
+    /* Track numbers past one SEQ row fall into the next row, like libsnd's
+     * table: (0, 30), the win jingle, is the entry (1, 14). */
+    {
+        static const int cases[][4] = {
+            /* seq sep -> seq sep */
+            {0, 0, 0, 0},   {0, 15, 0, 15}, {2, 0, 2, 0},  {3, 5, 3, 5},
+            {0, 16, 1, 0},  {0, 25, 1, 9},  {0, 30, 1, 14}, {0, 31, 1, 15},
+            {1, 3, 1, 3},   {1, 16, 2, 0},
+        };
+        size_t i;
+
+        for (i = 0; i < sizeof(cases) / sizeof(cases[0]); i++) {
+            int seq = -1;
+            int sep = -1;
+
+            dw3_port_audio_track_slot(cases[i][0], cases[i][1], &seq, &sep);
+            if (seq != cases[i][2] || sep != cases[i][3]) {
+                printf("FAIL: track (%d, %d) -> (%d, %d), want (%d, %d)\n",
+                       cases[i][0], cases[i][1], seq, sep, cases[i][2],
+                       cases[i][3]);
+                return 1;
+            }
         }
     }
     puts("OK: audio volume curve");

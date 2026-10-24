@@ -39,13 +39,17 @@ int dw3_pc_title_overlay_set_label(int slot, const uint8_t *coverage, int w,
                                    int h);
 /* Authored lettering for the port-only Options row. */
 void dw3_pc_title_overlay_set_options_language(int lang);
-/* 0 drops the built-in US credit lines (the game draws its own). */
+/* 0 drops the three-line credits drawn at the foot of the title canvas (the
+ * game then draws its own sprites); on by default, US and EU alike. */
 void dw3_pc_title_overlay_set_footer(int show);
+/* 1 while the credits are part of the canvas (the setting above). */
+int dw3_pc_title_overlay_footer_shown(void);
 /* The Port options screen: focused row and the rows' values in registry order
  * (Widescreen 0/1, Fast-forward 0 or its 2..4 speed, Restart hotkey 0/1, the
- * two volumes 0..10, Encounter rate 0..2 = 1x / 0.5x / OFF, Text speed 0..2 =
- * Normal / Fast / Instant). */
-enum { DW3_TITLE_OPTION_ROWS = 7 };
+ * two volumes 0..10, Encounter rate 0..4 = 1x / 0.5x / OFF / 1.5x / 2x, Text
+ * speed 0..2 = Normal / Fast / Instant, Battle cursor 0..2 = OFF / Command /
+ * Command+Tech). */
+enum { DW3_TITLE_OPTION_ROWS = 8 };
 void dw3_pc_title_overlay_set_options_view(int cursor, const int *values,
                                            int count);
 /* Bumped by setters that change the menu states; hosts re-upload on change. */

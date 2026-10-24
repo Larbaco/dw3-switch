@@ -21,7 +21,7 @@ contain them.
 
 | Field | Why it matters | Example |
 |---|---|---|
-| Version | Each preview changes code paths. | `v0.6.5-preview.29` |
+| Version | Each preview changes code paths. | `v0.6.5-preview.30` |
 | Region | The US and EU builds are different `.nro` files. | EU (SLES-03936) |
 | Build type | Only `-nxlink` builds print logs. | `-nxlink` |
 | Atmosphère | Some crashes depend on the firmware stack. | 1.12 |

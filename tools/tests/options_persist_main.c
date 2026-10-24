@@ -5,6 +5,7 @@
  *   show               print the three switch values
  *   volumes            print the Music / SFX volume steps
  *   pacing             print the Encounter rate / Text speed modes
+ *   battle             print the Battle cursor mode (battle_menu_memory)
  *   open | close       open / close the Options screen
  *   row N              move the cursor to row N
  *   press              Cross on the current row
@@ -58,6 +59,10 @@ static void pacing(void) {
            dw3_port_options_level(6));
 }
 
+static void battle(void) {
+    printf("battle_menu_memory=%d\n", dw3_port_options_level(7));
+}
+
 static void gains(void) {
     printf("music_step=%d sfx_step=%d music_gain=%d sfx_gain=%d calls=%d\n",
            g_music_step, g_sfx_step, dw3_port_audio_gain_q15(g_music_step),
@@ -87,6 +92,8 @@ int main(int argc, char **argv) {
             volumes();
         } else if (strcmp(argv[i], "pacing") == 0) {
             pacing();
+        } else if (strcmp(argv[i], "battle") == 0) {
+            battle();
         } else if (strcmp(argv[i], "open") == 0) {
             dw3_port_options_open();
             cursor = 0;
@@ -118,7 +125,7 @@ int main(int argc, char **argv) {
             }
         } else if (strcmp(argv[i], "down") == 0) {
             press(BIT_DOWN);
-            if (cursor < 6) {
+            if (cursor < 7) {
                 cursor++;
             }
         } else if (strcmp(argv[i], "gains") == 0) {

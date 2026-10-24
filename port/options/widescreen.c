@@ -16,6 +16,7 @@
 #define DW3_WS_STITSHOP 0x205
 #define DW3_WS_STGMCARD 0x1EE
 #define DW3_WS_STDGNAME 0x162
+#define DW3_WS_STFGTREP 0x1D1
 #else
 #define DW3_WS_FIELDSTG 0x158
 #define DW3_WS_FIGHTSTG 0x159
@@ -23,6 +24,7 @@
 #define DW3_WS_STITSHOP 0x1F7
 #define DW3_WS_STGMCARD 0x1E3
 #define DW3_WS_STDGNAME 0x154
+#define DW3_WS_STFGTREP 0x1C2
 #endif
 
 enum { DW3_PORT_OPT_WIDESCREEN = 0 };
@@ -56,9 +58,11 @@ int dw3_port_widescreen_px(void) {
     if (mode_file == DW3_WS_FIGHTSTG) {
         return DW3_WIDESCREEN_BATTLE_PX;
     }
-    /* Menus whose scrolling background reaches the gutters (patch 0053) */
+    /* Menus whose scrolling background reaches the gutters (patch 0053), and
+     * the battle report (patch 0074) */
     if (mode_file == DW3_WS_STSTATUS || mode_file == DW3_WS_STITSHOP ||
-        mode_file == DW3_WS_STGMCARD || mode_file == DW3_WS_STDGNAME) {
+        mode_file == DW3_WS_STGMCARD || mode_file == DW3_WS_STDGNAME ||
+        mode_file == DW3_WS_STFGTREP) {
         return DW3_WIDESCREEN_MENU_PX;
     }
     return 0;

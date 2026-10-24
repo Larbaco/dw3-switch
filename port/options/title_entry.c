@@ -14,6 +14,17 @@ void dw3_port_title_overlay_fade(int level) {
 }
 
 extern void dw3_pc_title_menu_logo_set_active(int active);
+extern int dw3_pc_title_menu_overlay_usable(void);
+extern int dw3_pc_title_overlay_footer_shown(void);
+
+/* 1 when the overlay draws the title's three credit lines, so the game's own
+ * credit sprites (logo sprites 5/6) must stay hidden. 0 whenever the overlay
+ * cannot draw them: the footer is switched off, or the GPU resources are
+ * missing (patch 0073 then draws the sprites). */
+int dw3_port_title_footer_native(void) {
+    return dw3_pc_title_overlay_footer_shown() &&
+           dw3_pc_title_menu_overlay_usable();
+}
 
 /* The overlay is only cleared by title-task draws. A restart discards that
  * task without a final draw, so drop the overlay explicitly. */

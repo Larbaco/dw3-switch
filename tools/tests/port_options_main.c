@@ -38,8 +38,14 @@ int main(void) {
         return fail("re-open");
     }
 
-    if (dw3_port_options_count() != 7) {
+    if (dw3_port_options_count() != 8) {
         return fail("option count");
+    }
+    if (dw3_port_options_level(DW3_PORT_OPT_BATTLE_MENU) != 0 ||
+        dw3_port_options_label(DW3_PORT_OPT_BATTLE_MENU) == NULL ||
+        strstr(dw3_port_options_label(DW3_PORT_OPT_BATTLE_MENU),
+               "Battle cursor") == NULL) {
+        return fail("Battle cursor row, default Off");
     }
     if (dw3_port_options_level(DW3_PORT_OPT_ENCOUNTER_RATE) != 0 ||
         dw3_port_options_level(DW3_PORT_OPT_TEXT_SPEED) != 0) {

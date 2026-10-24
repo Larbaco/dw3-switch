@@ -396,6 +396,22 @@ def p77_battle(version):
     return r
 
 
+def battle_report(version):
+    """P6.1 (patch 0074): one forced battle (the env of the manifest), a
+    technique, Cross to the win and the battle report; checkpoints on the
+    report. Measured on the PC build (DW3_TURBO=4): the report is up from about
+    frame 1060 to 1140 (EU) and 1220 (US). The manifest forbids the 4:3 gutter
+    (`gutter 0 px`) between the report's overlay restore and the field's."""
+    r = Rec(f"{version.upper()}: P6.1 battle report in widescreen (env in manifest)")
+    _tech(r, 350)
+    for f in range(520, 1470, 30):
+        r.press(f, CROSS)
+    r.shot(1080, "report-a")
+    r.shot(1120, "report-b")
+    r.end(1500)
+    return r
+
+
 R1 = 0x0800
 # Evidence runs only (measured): the frames later that the PAL battle reaches turn
 # 2's message, and the Crosses it needs to get there (the enemy acts twice before turn 2)
@@ -598,6 +614,34 @@ def pacing_persist(version, phase):
     return r
 
 
+def battle_cursor_persist(version, phase):
+    """P7.9: Options -> down to the last row (Battle cursor), Right twice
+    (Off -> Command -> Command+Tech) with a capture of each word, then leave.
+    Phase 2 is a fresh process on the same config dir: it opens the screen and
+    goes to the row again, the log carries the value read back."""
+    r = Rec(f"{version.upper()}: Battle cursor persistence, phase {phase}")
+    m = _to_title_menu(r, version)
+    r.press(m, DOWN)                 # New Game -> Options
+    r.press(m + 20, CROSS)           # open the Options screen
+    f = m + 70
+    for _ in range(7):               # Widescreen -> ... -> Battle cursor
+        r.press(f, DOWN)
+        f += 20
+    if phase == 1:
+        r.shot(f + 20, "battle-cursor-off")
+        r.press(f + 40, RIGHT)       # Off -> Command
+        r.shot(f + 80, "battle-cursor-command")
+        r.press(f + 100, RIGHT)      # Command -> Command+Tech
+        r.shot(f + 140, "battle-cursor-command-tech")
+        r.press(f + 160, TRIANGLE)   # leave
+        r.end(f + 200)
+    else:
+        r.shot(f + 20, "battle-cursor-restored")
+        r.press(f + 40, TRIANGLE)
+        r.end(f + 80)
+    return r
+
+
 def options_sound(version):
     """Options screen sound feedback: title -> Options, four cursor moves down
     to SFX volume, Left twice (10 -> 8, each change plays the choice sound at
@@ -672,6 +716,47 @@ def encounter_event(version):
     return r
 
 
+def battle_music(version):
+    """Random battle, then no input: the battle theme (a long song with an NRPN
+    loop) runs to its loop end. Same walk as encounter_walk, then released."""
+    start, end = ENCOUNTER[version]
+    r = Rec(f"{version.upper()}: walk into a random battle, then idle in it (env in manifest)")
+    _pad(r, start, UP)
+    _pad(r, end, 0)
+    r.end(BATTLE_MUSIC_END)
+    return r
+
+
+BATTLE_MUSIC_END = 7500
+
+
+def music_loop(version):
+    """The field music alone: no input for 3000 frames (env in manifest). The
+    log shows the song's NRPN loop jumping back, never an end-of-track."""
+    r = Rec(f"{version.upper()}: field music idle, the NRPN loop must repeat (env in manifest)")
+    r.end(3000)
+    return r
+
+
+VICTORY_END = 12000
+
+
+def victory_music(version):
+    """A real random battle, won: the Encounter rate 1x walk of
+    `battle_music` (Up from the first control frame), then Cross mashed through
+    the battle menus, the knock-out, the win jingle, the report and the way
+    back to the field, then idle there so the field music has time to play.
+    The manifest's env forces the enemy and the party (no DW3_FORCE_WIN)."""
+    start, end = ENCOUNTER[version]
+    r = Rec(f"{version.upper()}: walk into a random battle, win it, back to the field (env in manifest)")
+    _pad(r, start, UP)
+    _pad(r, end, 0)
+    for f in range(end + 100, VICTORY_END - 2500, 30):
+        r.press(f, CROSS)
+    r.end(VICTORY_END)
+    return r
+
+
 def items_screen(version, evidence=False):
     """Field menu -> Items after a battle (patch 0069, root cause of the
     preview.30-rc6 crash; patch 0070's DW3_FORCE_ITEMS fills the bag, the
@@ -738,13 +823,20 @@ def main(out):
                 pacing_persist(v, phase).text(True))
         (out / f"{v}-text-scroll.rec").write_text(text_scroll(v).text(True))
         (out / f"{v}-options-sound.rec").write_text(options_sound(v).text(True))
+        for phase in (1, 2):
+            (out / f"{v}-battle-cursor-persist-p{phase}.rec").write_text(
+                battle_cursor_persist(v, phase).text(True))
         # One recording per kind; the scenarios differ in the option file and
         # the environment the manifest gives them.
         (out / f"{v}-text-opening.rec").write_text(text_opening(v, TEXT_END[v]).text(True))
         (out / f"{v}-encounter-walk.rec").write_text(encounter_walk(v).text(True))
         (out / f"{v}-encounter-event.rec").write_text(encounter_event(v).text(True))
         (out / f"{v}-items-screen.rec").write_text(items_screen(v).text(True))
+        (out / f"{v}-victory-music.rec").write_text(victory_music(v).text(True))
+        (out / f"{v}-music-loop.rec").write_text(music_loop(v).text(True))
+        (out / f"{v}-battle-music.rec").write_text(battle_music(v).text(True))
         (out / f"{v}-two-battles.rec").write_text(two_battles(v).text(True))
+        (out / f"{v}-battle-report.rec").write_text(battle_report(v).text(True))
         (out / f"{v}-p77-battle.rec").write_text(p77_battle(v).text(True))
         (out / f"{v}-p77-square.rec").write_text(p77_square(v).text(True))
         (out / f"{v}-p79-menu.rec").write_text(p79_menu(v).text(True))

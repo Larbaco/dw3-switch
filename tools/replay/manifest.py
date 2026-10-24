@@ -120,9 +120,9 @@ _add(
 # 2x -> 3x and the Restart hotkey ON; phase 2 only opens the screen again.
 _OPT_P1 = (r"dw3-options: no \S*port_options\.cfg; defaults",
            r"dw3-options: saved \S*port_options\.cfg \(widescreen=0 fast_forward=3 restart_hotkey=1 music_volume=10 sfx_volume=10 "
-           r"encounter_rate=0 text_speed=0\)")
+           r"encounter_rate=0 text_speed=0 battle_menu_memory=0\)")
 _OPT_P2 = (r"dw3-options: \S*port_options\.cfg \(widescreen=0 fast_forward=3 restart_hotkey=1 "
-           r"music_volume=10 sfx_volume=10 encounter_rate=0 text_speed=0\)",)
+           r"music_volume=10 sfx_volume=10 encounter_rate=0 text_speed=0 battle_menu_memory=0\)",)
 for _v in ("us", "eu"):
     _add(Scenario(f"{_v}-options-persist", _v, "full", timeout=300,
                   phases=(f"{_v}-options-persist-p1", f"{_v}-options-persist-p2"),
@@ -133,9 +133,9 @@ for _v in ("us", "eu"):
 # volume rows), read back by phase 2 from the same config dir.
 _VOL_P1 = (r"dw3-options: no \S*port_options\.cfg; defaults",
            r"dw3-options: saved \S*port_options\.cfg \(widescreen=1 fast_forward=2 restart_hotkey=0 "
-           r"music_volume=7 sfx_volume=3 encounter_rate=0 text_speed=0\)")
+           r"music_volume=7 sfx_volume=3 encounter_rate=0 text_speed=0 battle_menu_memory=0\)")
 _VOL_P2 = (r"dw3-options: \S*port_options\.cfg \(widescreen=1 fast_forward=2 restart_hotkey=0 "
-           r"music_volume=7 sfx_volume=3 encounter_rate=0 text_speed=0\)",)
+           r"music_volume=7 sfx_volume=3 encounter_rate=0 text_speed=0 battle_menu_memory=0\)",)
 for _v in ("us", "eu"):
     _add(Scenario(f"{_v}-volume-persist", _v, "full", timeout=300,
                   phases=(f"{_v}-volume-persist-p1", f"{_v}-volume-persist-p2"),
@@ -148,9 +148,25 @@ for _v in ("us", "eu"):
 # The option file is seeded by the runner (Scenario.cfg), which tests the
 # reader as well.
 _PACING_PERSIST_P1 = (r"dw3-options: saved \S*port_options\.cfg \(widescreen=1 fast_forward=2 restart_hotkey=0 "
-                      r"music_volume=10 sfx_volume=10 encounter_rate=1 text_speed=2\)",)
+                      r"music_volume=10 sfx_volume=10 encounter_rate=1 text_speed=2 battle_menu_memory=0\)",)
 _PACING_PERSIST_P2 = (r"dw3-options: \S*port_options\.cfg \(widescreen=1 fast_forward=2 restart_hotkey=0 "
-                      r"music_volume=10 sfx_volume=10 encounter_rate=1 text_speed=2\)",)
+                      r"music_volume=10 sfx_volume=10 encounter_rate=1 text_speed=2 battle_menu_memory=0\)",)
+
+# P7.9 Battle cursor row (the old file-only key battle_menu_memory): phase 1
+# opens Options, goes down to the last row and steps Off -> Command ->
+# Command+Tech (captures of both words, the widest value of the screen);
+# phase 2 is a new process that opens Options and goes to the row again.
+_BC_P1 = (r"dw3-port-options: battle cursor command(?!\+)(?s:.*)dw3-port-options: battle cursor command\+technique(?s:.*)"
+          r"dw3-options: saved \S*port_options\.cfg \(widescreen=1 fast_forward=2 restart_hotkey=0 "
+          r"music_volume=10 sfx_volume=10 encounter_rate=0 text_speed=0 battle_menu_memory=2\)",)
+_BC_P2 = (r"dw3-options: \S*port_options\.cfg \(widescreen=1 fast_forward=2 restart_hotkey=0 "
+          r"music_volume=10 sfx_volume=10 encounter_rate=0 text_speed=0 battle_menu_memory=2\)",)
+for _v in ("us", "eu"):
+    _add(Scenario(f"{_v}-battle-cursor-persist", _v, "full", timeout=300,
+                  phases=(f"{_v}-battle-cursor-persist-p1", f"{_v}-battle-cursor-persist-p2"),
+                  expect_log=tuple((0, r) for r in _BC_P1) + tuple((1, r) for r in _BC_P2),
+                  forbid_log=((0, r"is not valid"), (1, r"is not valid")),
+                  note="Battle cursor Off -> Command -> Command+Tech set on the Options screen is read back by the next process (P7.9)"))
 for _v in ("us", "eu"):
     _add(Scenario(f"{_v}-pacing-persist", _v, "full", timeout=300, log_only=True,
                   phases=(f"{_v}-pacing-persist-p1", f"{_v}-pacing-persist-p2"),
@@ -251,12 +267,69 @@ for _v, _fight in (("us", 0x159), ("eu", 0x167)):
                   forbid_log=((0, r"random battle after"),),
                   note="Off does not touch a scripted EVENT_BATTLE (P6.18)"))
 
+# Music loops (psyz libsnd NRPN loop count, docs/P3.6_AUDIO.md). The game plays
+# every song with SsSepPlay(l_count 1), so the field music only keeps going if
+# the reader honours the song's own NRPN loop (CC#99 = 20 / CC#6 count 127 /
+# CC#99 = 30). The recording gives no input: the field music runs for 3000
+# game frames, three to four passes at DW3_TURBO=4 (US 3, EU 4). Before the
+# fix the log shows one `SEP end-of-track` shortly after frame 600 and the
+# music is silent after it.
+for _v in ("us", "eu"):
+    _add(Scenario(f"{_v}-music-loop", _v, "full", turbo=4, timeout=300, log_only=True,
+                  env=_ENC_ENV, cfg=(("encounter_rate", "2"),),
+                  expect_log=((0, r"SEP loop count 127 seq=\d+ tr=\d+(?s:.*)"
+                                  r"SEP loop end -> loop start \(count infinite\) seq=\d+ tr=\d+(?s:.*)"
+                                  r"SEP loop end -> loop start \(count infinite\) seq=\d+ tr=\d+"),),
+                  forbid_log=((0, r"SEP end-of-track"),),
+                  note="field music jumps back at its loop end at least twice (US 3, EU 4 times in 3000 frames) and never reaches end-of-track"))
+
+# The battle theme is the same bug: a long song (bank 2 on the US disc) whose
+# NRPN loop never repeated, so a battle was silent after one pass. The walk is
+# the Encounter rate 1x one (a random battle after ~100 footsteps), then no
+# input: the log shows `SEP loop count` after FIGHTSTG_start and a jump back.
+for _v in ("us", "eu"):
+    _add(Scenario(f"{_v}-battle-music-loop", _v, "full", turbo=4, timeout=600, log_only=True,
+                  phases=(f"{_v}-battle-music",), env=_ENC_ENV,
+                  expect_log=((0, r"FIGHTSTG_start(?s:.*)"
+                                  r"SEP loop count 127 seq=\d+ tr=0(?s:.*)"
+                                  r"SEP loop end -> loop start \(count infinite\) seq=\d+ tr=0"),),
+                  forbid_log=((0, r"FIGHTSTG_start(?s:.*)SEP end-of-track seq=\d+ tr=0"),),
+                  note="the battle theme jumps back at its loop end and never reaches end-of-track"))
+
+# Music around a won battle. Two things were wrong on the host: the win jingle
+# is SEP track 30 of the system bank, which the game plays as SsSepPlay(0, 30)
+# and libsnd's table reaches as entry (1, 14), but the host's table rows were
+# 0x100 bytes apart for 0xC0 byte entries, so every track past 15 (the jingle,
+# the menu and battle blips) never played: the report was silent. The log must
+# show the jingle's own loop (`seq=1 tr=14`, it is entry (1, 14)) while the
+# report is up, and the field music (`seq=2 tr=0`) starting again after the
+# report and looping. A random battle (Encounter rate 1x walk of the
+# battle-music scenario), forced enemy and party (Kunemon, Kotemon), won with
+# Cross. PC only (env). Build from before the fix: no `seq=1 tr=14` line.
+_VICTORY_ENV = _ENC_ENV + (("DW3_FORCE_ENCOUNTER", "34"), ("DW3_FORCE_PARTY", "0"))
+for _v, _ids in (("us", (0x158, 0x159, 0x1FA, 0x1C2)), ("eu", (0x166, 0x167, 0x208, 0x1D1))):
+    _field, _fight, _menu, _report = _ids
+    _add(Scenario(f"{_v}-victory-music", _v, "full", turbo=4, timeout=600, log_only=True,
+                  env=_VICTORY_ENV,
+                  expect_restore=((_field, M), (_fight, M), (_menu, S), (_report, M), (_field, M)),
+                  expect_log=((0, r"WFIGHTMN_endBattle result=1(?s:.*)"
+                                  r"STFGTREP_start(?s:.*)"
+                                  r"SEP loop count 127 seq=1 tr=14(?s:.*)"
+                                  r"STFGTREP return(?s:.*)"
+                                  r"SEP loop count 127 seq=2 tr=0(?s:.*)"
+                                  r"SEP loop end -> loop start \(count infinite\) seq=2 tr=0(?s:.*)"
+                                  r"SEP loop end -> loop start \(count infinite\) seq=2 tr=0"),),
+                  forbid_log=((0, r"STFGTREP return(?s:.*)SEP end-of-track seq=2 tr=0"),),
+                  note="won battle: the win jingle (track 30 = entry (1, 14)) plays in the report and the field music loops again after it"))
+
 # Two consecutive battles, a technique used in each (patch 0061): every battle
 # is a mode change (FIGHTSTG <- report/field), so WFIGHTMN is restored per
 # battle, as the PS1 reloads it. PC only (needs the env debug aids).
 _BATTLE_ENV = (("DW3_START_MODE", "0x600"), ("DW3_FORCE_ENCOUNTER", "34"),
                ("DW3_FORCE_PARTY", "0"), ("DW3_AUTO_DOOR_MODE", "0x600"),
                ("DW3_AUTO_DOOR_FRAMES", "120"))
+_P77_ENV_REPORT = (("DW3_START_MODE", "0x600"), ("DW3_FORCE_ENCOUNTER", "34"),
+                   ("DW3_FORCE_PARTY", "0"))
 for _v, _ids in (("us", (0x159, 0x1FA, 0x1C2, 0x158)), ("eu", (0x167, 0x208, 0x1D1, 0x166))):
     _fight, _menu, _report, _field = _ids
     _battle = ((_fight, M), (_menu, S), (_report, M), (_field, M))
@@ -266,6 +339,17 @@ for _v, _ids in (("us", (0x159, 0x1FA, 0x1C2, 0x158)), ("eu", (0x167, 0x208, 0x1
                                   r"AUTO_DOOR requestMode=0x600(?s:.*)"
                                   r"WFIGHTMN_endBattle result=1"),),
                   note="two forced battles, Tech in each; WFIGHTMN restored per battle"))
+    # P6.1 (patch 0074): the battle report keeps the widescreen gutter. The
+    # gutter line (`dw3-widescreen: gutter N px per side`, logged on change)
+    # must not say 0 between the report's overlay restore and the next one
+    # (the field's); before the patch the report ran 4:3 (gutter 0). The two
+    # checkpoints are the report's exp page and the next one.
+    _add(Scenario(f"{_v}-battle-report", _v, "full", turbo=4, timeout=300,
+                  env=_P77_ENV_REPORT, expect_restore=_battle,
+                  expect_log=((0, r"WFIGHTMN_endBattle result=1"),),
+                  forbid_log=((0, r"overlay restore file=0x%x kind=mode(?:(?!overlay restore)(?s:.))*?"
+                                  r"gutter 0 px per side" % _report),),
+                  note="the battle report draws with the widescreen gutter (patch 0074)"))
 
 
 # P7.7 bug fixes (patches 0064 hooks, 0065 HUD name, 0066 claw steal). Log-only

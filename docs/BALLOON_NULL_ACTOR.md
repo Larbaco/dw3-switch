@@ -21,7 +21,11 @@ site:
 ## Patch 0058: balloon NULL actor crash
 
 Status: fixed on the PC host and in the Switch build (checked on Ryubing, US
-and EU); OLED pass pending. Found in the preview.28 / preview.29 Ryubing sweep (2026-10-22).
+and EU). **Verified on the OLED on both discs:** the EU disc passed the
+new-game bridge event on the preview.29 run (2026-10-22), and the **US disc
+passed it on preview.30-rc7 (2026-10-23, owner, OLED handheld)**: the New Game
+bridge walk no longer crashes (see "OLED, US, preview.30-rc7" below). Found in
+the preview.28 / preview.29 Ryubing sweep (2026-10-22).
 
 ### Symptom
 
@@ -147,9 +151,26 @@ doubles as a positive control), `wstag785.mark-null-actor`,
   EU NRO): Ryubing aborts at the gate with "Invalid memory access at virtual
   address 0x0". The walk is wall-clock timed, so it is a smoke test, not a
   regression gate; the PC replays are the gate.
-* Not covered: OLED, the other four EU languages (the walk and the patch are
-  language independent, but only English was driven), `--replay` Switch
-  build of #186.
+* **OLED, US, preview.30-rc7 (2026-10-23, owner, handheld).** The owner
+  played a New Game on the US disc through the opening and walked the Digital
+  World bridge to the gate ("Oh yeah! I need my partner Digimon data!"): no
+  crash. Before this the US disc had only been checked on PC and Ryubing; the
+  preview.29 OLED pass was EU. Evidence is the owner's report plus the session
+  log `dw3_ponte.log` (not committed; `tmp/evidence` is the place for it):
+  `dw3: version=0.6.5-preview.30-rc7`, `runtime version=us`, 15734 lines and
+  about 5100 one-per-60-pump windows from boot to the end, and the log ends
+  with the normal HOME exit (`applet exit: flat saves flushed`). It has no
+  abort, assert, fault or crash line and no crash-report line other than the
+  two startup ones. The log cannot show the bridge by itself: it has no
+  `null-guard hit` line (the 0058 guard logs one only when
+  `DW3_NULL_GUARD_LOG` is on and on stderr, see below) and the port does not
+  log the stage, so the pass rests on the owner's report. The only error lines are the known startup
+  `OsBellCreate: eventCreate failed rc=0x10801` and `KernelInit: cannot
+  create the kernel synchronisation objects`
+  ([NX_KERNEL_SYNC_OBJECTS.md](NX_KERNEL_SYNC_OBJECTS.md)), logged on every
+  boot so far. Not covered: the other four EU languages (the walk and the
+  patch are language independent, but only English was driven on Ryubing),
+  `--replay` Switch build of #186, and the EU disc on rc7.
 
 ## Regression tests for patch 0059 (2026-10-22)
 
@@ -169,8 +190,9 @@ doubles as a positive control), `wstag785.mark-null-actor`,
 
 ## Patch 0069: Items screen, NULL item (preview.30-rc6 OLED crash)
 
-Status: fixed on the PC host (US and EU, Text speed Instant and Normal);
-OLED pass pending. Owner report (2026-10-22, EU, release candidate
+Status: fixed on the PC host (US and EU, Text speed Instant and Normal).
+**Confirmed on the OLED (2026-10-23, handheld, US, preview.30-rc7, owner): the
+Items screen opens and items work.** EU on a fixed build was not retested. Owner report (2026-10-22, EU, release candidate
 preview.30-rc6, non-nxlink, after about 11 random battles at Encounter rate
 2x with Text speed Instant): the game crashed on opening Items in the field
 menu. Patches 0059 to 0068 are not involved: the same crash is in

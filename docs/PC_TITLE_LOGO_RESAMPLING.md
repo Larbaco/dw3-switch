@@ -66,7 +66,8 @@ use subtraction; non-STP nonzero texels stay opaque. Its part geometry never
 changes during palette animation. Sprite 4 is the animated glint over the
 numeral; its task eventually stops drawing it. Sprites 5/6 occupy the copyright
 area, separate from the logo, and are replaced by the native legal footer on
-US (EU keeps its own credit sprites).
+US and EU (patch 0073; the sprites are the fallback when the overlay cannot
+draw the footer, see [TITLE_MENU_DESIGN](TITLE_MENU_DESIGN.md#title-credits)).
 
 The complete original logo/shadow union is x=17..317, y=22..158 (300x136).
 The original asset is local runtime data, not a new logo drawing or shipped art.

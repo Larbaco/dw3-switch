@@ -24,6 +24,7 @@ Newest first.
 
 | Tag | What it was for |
 |---|---|
+| [preview.30](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.30) | Music loops again (#209), widescreen area banner, technique backdrops and results screen, EU native title credits, Items screen crash fix, Port options saved to `port_options.cfg`, Music/SFX volume, Encounter rate, Text speed and Battle cursor rows, crash-report backtrace. Win jingle and menu/battle sounds that never played now do (#215). EU attached by hand. Notes: [`platforms/switch/release/README.txt`](../platforms/switch/release/README.txt). |
 | [preview.29](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.29) | Fixes the crash at the new-game bridge "need my partner" event (patch 0058), faster Port options (dirty-region cache), crash-report rotation, rumble, HOME/sleep save flush. EU attached by hand. Notes: [`platforms/switch/release/README.txt`](../platforms/switch/release/README.txt). |
 | [preview.28](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.28) | EU restart returns to the language selection (#162); carries the preview.26/27 changes. EU attached by hand. |
 | [preview.27](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.27) | Field streaming fix for the 16:9 crash (inferred from the preview.26 crash records, not yet reproduced). Adds the 4C DW3NX artwork. Hardware acceptance pending. |
@@ -133,6 +134,88 @@ one console and are not acceptance gates; gates live in
   the Items screen after the fix on the OLED. Evidence:
   `tmp/evidence/2026-10-22-preview30-rc6-oled/` (log, crash report,
   Atmosphere report).
+- **preview.30 next candidate, 2026-10-23 (PC and Ryubing only, not on the
+  OLED yet).** Owner request after rc6: the battle menu memory is the **Battle
+  cursor** row of the Options screen (OFF / Command / Command+Tech, key
+  `battle_menu_memory`), so the screen has eight rows (38 px rows on a 42 px
+  pitch, same window). Off by default; no decomp patch changed. Included in this
+  candidate with the rc6 follow-ups: the area name banner is no longer logged as
+  a slow Instant page (#203) and the Items screen fix (#201). Check on the OLED:
+  eight rows fit in handheld and docked, the row steps and keeps its value after
+  a relaunch, and with Command+Tech the battle menu opens on the last pick
+  ([P7.9 checklist](P7.9_BATTLE_MENU_MEMORY.md#oled-check-the-owner)).
+- **preview.30-rc7 candidate, 2026-10-23 (OLED handheld, US, nxlink log; main
+  `b0aed93`).** Owner feedback plus the log (`/mnt/cabal/tmp/dw3-preview30-rc7-out/dw3.log`,
+  5702 lines, 1707 one-second windows, one run). Confirmed: the Items screen
+  works (the rc6 crash, #201, patch `0069`); the eight-row Options screen looks
+  good (#206); Battle cursor Command+Tech works and a new battle opens on the
+  technique used in the last one (log: `technique list of partner 3 opens on
+  technique 56 ... remembered`); Text speed Instant works as desired (no `slow
+  Instant page`, no `text scroll`; 26 area name banners logged as non-dialogue,
+  #203); the battle renderer is the default `gpu-tex` with good performance
+  (`soft=0` in every window, mesh frames in 211, present path `mesh+ui`); turbo
+  works in battle (`dw3-turbo: speed 4x` and `1x`, three times); the volume
+  options work; sleep and resume worked with saves before and after, and the
+  in-game time counted only play time. In the log that sleep is one unclamped
+  `frame dt` window of 543746177 us and there is no `applet focus:` line (see
+  ROADMAP P10.2). **New bug:** the background music plays only once and then
+  stops, in the field, the inn and battle (SEQ/SEP NRPN loop count; fix in a
+  separate PR, ROADMAP P4.3). Not covered: the Claw steal and the HUD
+  Digivolution name (P7.7; the owner has no Claw yet), rumble, docked mode, an underrun
+  count (P4.3), P5.1 (the 2 h memory session) and the P5.4 notice and assert
+  (PR 2). The widescreen PRs #202 and #205 are not in rc7. The `dw3.log` heap
+  high-water stayed at 1685K. The top of the log latches a crash of the
+  previous run (`preview.29-19-ga2683c3`, the P5.4 `--force-crash` build), not
+  an rc7 crash.
+- **preview.30-rc7, 2026-10-23, second run (OLED handheld, US, New Game;
+  log `dw3_ponte.log`, 15734 lines, about 5100 windows).** Owner report: the
+  New Game bridge scene ("Oh yeah! I need my partner Digimon data!", patch
+  `0058`) **no longer crashes on US hardware**; it was the last open
+  hardware check of that patch (EU passed on preview.29). The log shows the
+  build string `0.6.5-preview.30-rc7`, `runtime version=us`, no crash,
+  abort or assert line, and ends with `applet exit: flat saves flushed`.
+  Turbo (R3) went to 4x 7 times and back to 1x 6 times; the 4x windows are the P6.22
+  numbers in [P6.4](P6.4_FAST_FORWARD.md#new-game-opening-measured-from-the-rc7-log-2026-10-23).
+  One `frame dt` window is 9391087230 us (about 2.6 h): the console slept,
+  again unclamped and with no `applet focus:` line (see P10.2).
+- **preview.30-rc8 candidate, 2026-10-23 (OLED, US; main `a7860bf`, PSY-Z
+  `ef67c4a`; folder `/mnt/cabal/tmp/dw3-preview30-rc8-out/`).** Owner feedback
+  only: **no log was provided for this run**, and the owner did not say
+  whether it was handheld or docked, so none of the items below is claimed for
+  one mode. Fixed or verified:
+  - **Music loop (#209):** the BGM now loops in the field, the inn and
+    battle (the rc7 "plays once and stops" bug is fixed).
+  - **EU title credits (#210, patch `0073`):** the three native credit lines
+    appear as expected. Verified on the OLED (previously PC and Ryubing only).
+  - **Widescreen (#205 patch `0071`, #202 patch `0072`):** the area name
+    banner and the technique backdrops extend to 16:9 correctly. The
+    battle-start circle/spiral effect also extends to 16:9 correctly, as the
+    owner saw it. ROADMAP P6.1 listed it as still 4:3 and needing a decision;
+    this is the owner's observation only, not yet explained or captured, so
+    the roadmap item is adjusted, not closed.
+  **Open (new in rc8):**
+  - **Music stops after a won battle (P4.3, fix in progress in a separate
+    PR):** after winning a battle the music is silent on the results screen
+    and back on the map. The SFX for exp and level up still play. Not
+    reported in rc7 (possibly hidden by the loop bug; not checked).
+  - **Post-battle results screen shows black side bars** in 16:9. Not a code
+    regression: the results screen was always 4:3 (PC captures of rc7
+    `b0aed93` and `a7860bf` are identical through the whole battle, report
+    and field fade), and it stood out once the battle, banner and technique
+    backdrops went 16:9. Fixed by patch `0074` in PR #213, pending an OLED
+    check (ROADMAP P6.1).
+  - **Items menu is still 4:3:** the transition effect when opening it is 4:3
+    and the menu itself stays 4:3 while the background is 16:9. Recorded as a
+    future item (ROADMAP P6.1, "Items menu redesign for 16:9"), not a
+    regression of this round.
+  **Performance evidence for P6.22 (no log, owner HUD reading):** in the
+  Forest inn the FPS reads 120+ walking to the bottom corner of the room and
+  about 80 at the top. The owner expects the same elsewhere. The cost of a
+  field frame depends on what is on screen
+  ([P6.4](P6.4_FAST_FORWARD.md#field-fps-depends-on-what-is-on-screen-rc8-oled),
+  ROADMAP P6.22). Not covered: the area-change iris (not looked at), US vs EU
+  (US only), docked vs handheld (not stated), the EU credits on any language
+  but the one shown, rumble, the underrun count (P4.3), P5.1.
 
 Still open on hardware: audio underrun count, the full overlay sweep, battle
 at 60 Hz, the sync-object error above, a fresh-save relaunch reload, and EU
