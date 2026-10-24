@@ -51,6 +51,15 @@ cmake -S platforms/pc -B build/pc -G Ninja \
   -DSDL_PULSEAUDIO=OFF -DSDL_SNDIO=OFF
 ```
 
+### Field CPU profiler (P6.22)
+
+`-DDW3_PC_FIELD_PROF=ON` (separate tree, off by default) runs a shadow copy of
+the Switch's CPU rasterizer next to the PC renderer and prints a `dw3-prof:`
+line every 60 game frames (rasterizer, game logic, PC-only renderer, SPU
+mixer). `DW3_PROF_SAMPLE`, `DW3_SOFT_TRACE` and `DW3_SOFT_HASH` add a sampler,
+a `Draw_*` trace for `tools/soft_raster_bench.sh` and per-frame VRAM hashes.
+See [docs/P6.22_FIELD_CPU.md](../../docs/P6.22_FIELD_CPU.md).
+
 ## Runtime data (own disc)
 
 ```bash
