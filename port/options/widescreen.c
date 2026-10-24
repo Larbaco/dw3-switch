@@ -428,3 +428,46 @@ void dw3_port_widescreen_frame(void) {
         INFOF("dw3-widescreen: gutter %d px per side", px);
     }
 }
+
+int dw3_port_sprite_frame_bounds(const void *sheet, int frame, int *x0, int *y0, int *x1, int *y1) {
+    const int32_t *head = sheet;
+    const uint8_t *base = sheet;
+    const uint8_t *ids;
+    const int16_t *list;
+    const int16_t *parts;
+    int count;
+    int i;
+    int k;
+
+    if (sheet == NULL) {
+        return -1;
+    }
+    ids = base + head[1];
+    for (i = 0; ids[i] != frame; i++) {
+        if (ids[i] == 0xFF || i >= 255) {
+            return -1;
+        }
+    }
+    list = (const int16_t *)(base + head[i + 2]);
+    parts = (const int16_t *)(base + head[0]);
+    count = list[0];
+    if (count <= 0 || count > BAND_MAX_PARTS) {
+        return -1;
+    }
+    *x0 = *y0 = INT32_MAX;
+    *x1 = *y1 = INT32_MIN;
+    for (k = 0; k < count; k++) {
+        int index = list[3 + 3 * k];
+        int x = list[3 + 3 * k + 1];
+        int y = list[3 + 3 * k + 2];
+
+        if (index < 0 || index >= BAND_MAX_PART_INDEX) {
+            return -1;
+        }
+        *x0 = x < *x0 ? x : *x0;
+        *y0 = y < *y0 ? y : *y0;
+        *x1 = x + parts[index * 7 + 2] > *x1 ? x + parts[index * 7 + 2] : *x1;
+        *y1 = y + parts[index * 7 + 3] > *y1 ? y + parts[index * 7 + 3] : *y1;
+    }
+    return 0;
+}
