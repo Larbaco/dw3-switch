@@ -16,6 +16,17 @@ So the user choice is the system profile selector, `pselShowUserSelector`
 NSP packaging was dropped, see PR #227), so per-user saves are SD-card folders
 per account uid, not native account save data.
 
+## Owner decision: cancelling the profile selector (2026-10-24)
+
+> "Se o jogador cancelar a escolha, O jogo não deve ser iniciado."
+> (If the player cancels the choice, the game must not be started.)
+
+So when `pselShowUserSelector` returns no user, the game does not start. It exits
+cleanly back to the menu it was launched from. Nothing is written: no
+`saves/<uid>/` or `shared/` folder is created and no `last_user` is stored. The
+`shared/` fallback applies only when the account service fails (step 1 below),
+not on a cancel.
+
 ## Where saves and options live today
 
 - Saves: one flat file per memory-card port, `save0.bin` / `save1.bin` (32 KiB),
@@ -64,8 +75,10 @@ again with a new uid, and uids are local to a console.
 4. Else (several profiles, no preselect) call **`pselShowUserSelector`**, the
    Switch profile selector. It returns the uid the player picks. The screen,
    the names and the icons are the system's, so the game draws nothing here.
-   A cancel or an error is "no user"; the first slice decides what the game does
-   then (proposed: start nothing, log it, the player relaunches). Whether this
+   A cancel is "no user" and the game does not start (see the
+   [owner decision](#owner-decision-cancelling-the-profile-selector-2026-10-24)).
+   An error is also "no user" (proposed: start nothing, log it, the player
+   relaunches). Whether this
    works from applet mode (started from the Album) is **unverified: check on the
    OLED**. If the check shows that `psel` cannot launch in applet mode, the
    fallback is an **open question for the owner** (see
@@ -207,5 +220,3 @@ by definition (they decide what loads).
    cannot launch from applet mode (Album): an in-game picker over
    `accountListAllUsers`, or require title takeover (the NRO started as a title
    override from hbmenu, where the preselect is expected)? Not decided.
-2. **Selector cancelled.** Start nothing, or fall back to `shared/`? Proposed:
-   start nothing; a silent write to `shared/` would split saves without notice.
