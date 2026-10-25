@@ -16,7 +16,9 @@ Contents: [Setup](#setup), [Controls and hotkeys](#controls-and-hotkeys),
 ## Setup
 
 <!-- Sources: README.md (Play it on Switch), DISC_SETUP.md, RUNTIME_LAYOUT.md,
-platforms/switch/release/README.txt (Own-disc setup and extraction) -->
+platforms/switch/release/README.txt (Own-disc setup and extraction),
+SINGLE_BUILD.md#as-built-slice-1 (PC launcher),
+SINGLE_BUILD.md#as-built-slice-2-the-switch-launcher (Switch launcher) -->
 
 You need:
 
@@ -35,6 +37,13 @@ Disc dump: the docs describe a Mode2/2352 BIN with its CUE. They do not
 describe a plain ISO as supported, so use a BIN and CUE. If the CUE names a
 different BIN than the one you have, the port picks the only other `.bin` in
 that folder, if it is large enough ([RUNTIME_LAYOUT](RUNTIME_LAYOUT.md)).
+
+**Region launcher (P6.24).** The game is still two builds, one per region. A
+launcher can start the right one:
+
+- PC: the `dw3-pc` launcher starts the US or EU binary for the runtime folder it finds.
+- Switch: a launcher `.nro` (`dw3.nro`, in `sdmc:/switch/dw3/`) is built by CI but
+  **not shipped in releases yet**. Use the region `.nro` above until it is.
 
 Steps:
 
@@ -132,8 +141,8 @@ window is in the five EU languages (the US disc is English).
 
 <!-- Sources: PORT_OPTIONS.md (Options screen, Persistence), HOTKEYS.md,
 P6.1_WIDESCREEN.md, P6.4_FAST_FORWARD.md, P6.9_RESTART.md, P6.17_VOLUME.md,
-P6.18_PACING.md, P7.9_BATTLE_MENU_MEMORY.md; row names and defaults from
-port/options/port_options.c -->
+P6.18_PACING.md, P6.31_AUTOSAVE.md, P7.9_BATTLE_MENU_MEMORY.md; row names and
+defaults from port/options/port_options.c -->
 
 Options holds the features the port adds. Up and Down choose a row. B or A
 changes it. X goes back to the title. A line under the rows explains the
@@ -151,8 +160,10 @@ game, except Widescreen.
 | Encounter rate | OFF / 0.5x / 1x / 1.5x / 2x | 1x | Random battles only. Story battles stay. [P6.18](P6.18_PACING.md) |
 | Text speed | Normal / Fast / Instant | Normal | How fast dialogue is typed out. Normal is the original. |
 | Battle cursor | OFF / Command / Command+Tech | OFF | The battle command menu (and with Command+Tech the technique list) opens on your last pick. [P7.9](P7.9_BATTLE_MENU_MEMORY.md) |
+| Auto-save | OFF / Each area | OFF | With Each area: at each new field area the game saves to the slot you last saved to or loaded from, and overwrites it. Nothing is saved until you have saved or loaded a slot in this run. See [Saves](#saves). [P6.31](P6.31_AUTOSAVE.md) |
 
-The row lines on the screen are English on every disc.
+The row lines on the screen are English on every disc, except the Auto-save
+row, which is in the five EU languages on the EU disc.
 
 ## Cheats screen
 
@@ -197,13 +208,39 @@ field menu only, not in battle.
 ## Saves
 
 <!-- Sources: README.md, RUNTIME_LAYOUT.md, P5.3_FLAT_SAVE.md,
-CROSS_REGION_SAVES.md#as-built-slice-1, PORT_OPTIONS.md#cheats-p620 -->
+CROSS_REGION_SAVES.md#as-built-slice-1, PORT_OPTIONS.md#cheats-p620,
+P6.31_AUTOSAVE.md (Auto-save, the ninth row) -->
 
 - **Where:** `sdmc:/switch/dw3/us/memcard/` or `sdmc:/switch/dw3/eu/memcard/`.
   Slots are `save0.bin` and `save1.bin`. Old `memcardN.mcr` files convert once
   and are kept as `.mcr.bak`. Details: [P5.3_FLAT_SAVE](P5.3_FLAT_SAVE.md).
 - **In-game saving is manual,** as in the original game. The port flushes
-  changed slots at safe points and on HOME or sleep. It never saves for you.
+  changed slots at safe points and on HOME or sleep. It never saves for you,
+  unless Auto-save is on (see below).
+- **Auto-save (Options, OFF by default).** With **Each area**, the first idle
+  frame of each new field area writes the game to the slot you last saved to or
+  loaded from in this run. The write **overwrites that slot**. Loading a save
+  is not an area change: the first idle frame after a load only sets the
+  starting point, and the save happens at the next area change.
+  - Before the first auto-save of a run, your version of the whole card is
+    copied to `save<N>.bin.pre-auto` in the same folder (N is the card, 0 or 1).
+    It is made again only after you save or load a slot again, never between
+    two auto-saves. To undo an overwrite, close the game and put that file back
+    as `save<N>.bin`.
+  - It does **not** run when: no slot was saved to or loaded from in this run
+    (a new game, or nothing used yet); you are in an event, a menu, a talk,
+    a climb, an area banner or fade, or a battle is starting; the story is
+    not far enough for the field menu to open (progress 4 or more); the map
+    is not one the save list knows; or the slot is not the same character
+    name, has a longer play time than the game now, is empty, or is on a card
+    that is not a DW3 card. A refused auto-save changes nothing. A battle that
+    returns you to the same area does not count as an area change.
+  - A new game or Return to title clears the slot the auto-save would use.
+  - If a cheat changed the game, the auto-save is still made and marked, the
+    same as a manual save (see Cheat marker below).
+  - A failed write is logged and the game carries on. There is no on-screen
+    notice yet. Log lines starting `dw3-autosave` are in `dw3.log`.
+  - Not yet checked on a Switch OLED. Details: [P6.31_AUTOSAVE](P6.31_AUTOSAVE.md).
 - **US and EU saves are separate,** with one exception: the import below.
 - **Cross-region import (slice 1).** If a region has no save of its own, the
   build copies the other region's save once, converted, into its own
