@@ -10,6 +10,7 @@ PC and in an emulator but not yet on a Switch OLED; the release notes say which.
 Contents: [Setup](#setup), [Controls and hotkeys](#controls-and-hotkeys),
 [Title menu](#title-menu), [Options screen](#options-screen),
 [Cheats screen](#cheats-screen), [Options in the field](#options-in-the-field),
+[Options in battle](#options-in-battle),
 [Return to title](#return-to-title),
 [Saves](#saves), [Crashes and reports](#crashes-and-reports),
 [Known issues](#known-issues).
@@ -110,6 +111,7 @@ Port hotkeys (full table and PC keys: [HOTKEYS](HOTKEYS.md)):
 | Fast-forward on or off | R3 (right stick click) | Field, battle and the battle report only. The speed is set in Options. Release R3 before pressing again. |
 | Restart the game | L + R + Plus + Minus | Off by default; turn on **Restart hotkey** in Options first. Saves are flushed first; unsaved progress is lost. Release before repeating. |
 | Open Options from the title | Minus | Only while the title choices show and no shoulder button is held. |
+| Open Options in a battle | Minus | Only while the battle's command menu waits for you and no shoulder button is held. The battle stops until you close it. |
 | Skip an opening movie | Plus | Press or hold. |
 
 Diagnostic chords (not for normal play):
@@ -209,8 +211,21 @@ Encounter rate, Text speed, Battle cursor and Auto-save, and the change is saved
 in `port_options.cfg` as at the title. Two things are **greyed** and cannot
 change in the field: **Widescreen** (the map is laid out when an area loads, so
 change it at the title) and the **Y Cheats** hint (cheats are armed at the
-title). The line under the rows says "Locked in game". There is no entry in
-battle yet.
+title). The line under the rows says "Locked in game".
+
+## Options in battle
+
+<!-- Sources: PORT_OPTIONS.md#options-in-battle-p97-slice-2, HOTKEYS.md -->
+
+In a battle, when the command menu (Fight, Tech, DV, Tag, Item, Run) is waiting
+for you, press **Minus**. The Options screen opens over the battle, which stops
+completely: no enemy attack, no gauge, no animation, for as long as you want. The
+music keeps playing. Change what you like (the same rows and the same greyed
+Widescreen and Cheats as in the field), then press X: the command menu is back
+exactly as it was and the battle goes on. Minus does nothing while an attack
+plays or in the technique and item lists, and it does not open the screen while L,
+R, ZL or ZR is held (those buttons are part of other shortcuts). On the PC use
+Backspace. Battle cursor changes take effect from the next turn's menu.
 
 ## Return to title
 

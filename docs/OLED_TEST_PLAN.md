@@ -1,9 +1,9 @@
-# OLED test plan for v0.6.5-preview.35
+# OLED test plan for v0.6.5-preview.36
 
 One ordered checklist for the owner's next Switch OLED session, built from the
 [ROADMAP "Pending OLED checks"](ROADMAP.md#pending-oled-checks), the per-item
 docs and the [release README](../platforms/switch/release/README.txt). Nothing
-in preview.31 to preview.35 has been checked on the OLED unless a source says
+in preview.31 to preview.36 has been checked on the OLED unless a source says
 so. Each row links to the section that holds the full steps. If a doc and this
 page disagree, the linked section wins.
 
@@ -22,7 +22,7 @@ so.
 | `dw3-switch.nro` | US ordinary build |
 | `dw3-switch-eu.nro` | EU ordinary build (attached by hand) |
 | `dw3-switch-nxlink.nro` | US nxlink logging build |
-| EU nxlink build | **Not published in preview.35.** Build it: `./tools/build_switch_game.sh --nxlink --eu` ([P5.1](P5.1_MEMORY.md#owner-checklist-2-hour-oled--nxlink-session-p51-stays-unticked-until-done)) |
+| EU nxlink build | **Not published in preview.35 or preview.36** (check the release assets). Build it: `./tools/build_switch_game.sh --nxlink --eu` ([P5.1](P5.1_MEMORY.md#owner-checklist-2-hour-oled--nxlink-session-p51-stays-unticked-until-done)) |
 | `dw3-switch-elf.zip` | US unstripped ELFs, to symbolize a crash report |
 | Launcher `dw3.nro` | **Not in a release.** CI artifact `dw3-switch-launcher-nro`, or `tools/build_switch_launcher.sh` ([SINGLE_BUILD](SINGLE_BUILD.md#oled-checklist-launcher-owner)) |
 
@@ -63,10 +63,10 @@ The US disc BIN/CUE sits beside `us/`, the EU one inside `eu/`. **Back up the
 | Session | Build | Ticks or decides |
 |---|---|---|
 | A. Boot and title | US + EU ordinary | P6.28, P6.31 row, language fit |
-| B. Field and 16:9 tour | US + EU ordinary | P6.1, P7.7 water |
+| B. Field and 16:9 tour | US + EU ordinary | P6.1, P7.7 water, P9.7 field Options |
 | C. Turbo speed | US + EU nxlink | P6.22 pass 2 |
-| D. Battles | US + EU ordinary | P5.2, P6.18, P6.20 battle rows, P7.7 |
-| E. Saves | US + EU ordinary | P6.27, P6.9, P6.25, P6.31, P6.20 save mark |
+| D. Battles | US + EU ordinary | P5.2, P6.18, P6.20 battle rows, P7.7, P9.7 battle Options |
+| E. Saves | US + EU ordinary | P6.27, P6.9, P6.25, P6.31, P6.20 save mark, title textures after Return to title |
 | F. 2 h memory run | US then EU nxlink | **[P5.1]**, **[GATE]**, P5.4 notice |
 | G. Everything else | mixed | P5.4 forced crash, P10.2, P4.3, **[LAUNCHER]** |
 
@@ -84,7 +84,7 @@ Fresh start from hbmenu, US then EU. Main source:
 
 | # | Action | Expect | If it fails, send | Ticks |
 |---|---|---|---|---|
-| A1 | Launch the NRO (first run: wait out the extraction bar) | Title shows. `dw3.log` has `dw3: version=` for preview.35 and `[init_paths] cdfs root=` with the right region | `dw3.log`, photo | boot ([README](../platforms/switch/release/README.txt)) |
+| A1 | Launch the NRO (first run: wait out the extraction bar) | Title shows. `dw3.log` has `dw3: version=` for preview.36 and `[init_paths] cdfs root=` with the right region | `dw3.log`, photo | boot ([README](../platforms/switch/release/README.txt)) |
 | A2 | EU: pick a language at the select; repeat later for a second language | Title labels in that language | photo, `dw3.log` | language fit |
 | A3 | Title: Down through the choices | New Game, Options, Load Game, then **Quit game** last, a little lower; Down again does nothing | photo | P6.28 |
 | A4 | Cross on Quit game | Window opens on **No**; Cross or Triangle closes it; hints show Switch letters (B, X) | photo | P6.28 |
@@ -118,6 +118,7 @@ left panels at the 4:3 edge; Open Booster was not captured.
 | B12 | Set Encounter rate back to 1x, enter a random battle | Encounter spiral is 4:3 with black bars (confirm that is what you saw) | photo | P6.1 |
 | B13 | In a battle, a technique's magic circle | Say whether a black hole shows in its middle (also on PC and Ryubing) | photo | P6.1 (ROADMAP open item) |
 | B14 | nxlink build: a door and then a battle | Say if the transitions feel slow; send the log | nxlink log across both | P6.1 "Slow transitions" (a shorter banner hold is the owner's call, P6.18) |
+| B15 | **Options from the field (#270, P9.7).** In the field press Plus; the list ends with OPTIONS (EU: OPTIONS, OPZIONI, OPTIONEN, OPCIONES) and then TITLE SCREEN. Cross on OPTIONS. Left x3 on Music volume. Triangle, then Triangle again, and walk | The Options window opens over the dimmed field; **Widescreen is grey** with the "Locked in game" line and Cross on it does nothing; the field music gets quieter at once and keeps playing; Triangle returns to the menu with the cursor still on OPTIONS, the second Triangle to the field and the character walks (nothing was pressed twice). The 16:9 dim covers the side strips and no part of the window stays after closing | photo, `dw3.log` (`dw3-port-options: open in game` and `close in game`) | P9.7 slice 1 ([checklist](PORT_OPTIONS.md#oled-checklist-options-in-game-owner)) |
 
 ## Session C: turbo speed
 
@@ -155,6 +156,7 @@ Ordinary builds. Sources: [P5.2](P5.2_BATTLE_GPU.md),
 | D9 | Digivolve command in battle; a Nickname Shop name; a default-name Rookie | Name changes with the form; nickname kept; Rookie as before | photo | P7.7 items 2-4 |
 | D10 | Growlmon or WarGrowlmon with a Picking or Snapping Claw (needs the item) | "Stole <item>!" before "Defeated!" at least sometimes (low chance); item in the bag | photo, `dw3.log` | P7.7 item 5 |
 | D11 | After a won battle: is there field music? | Music plays. Known: silent map after a battle was reported on rc8 US, cause unknown | nxlink log | known issue ([README](../platforms/switch/release/README.txt)) |
+| D12 | **Options in battle (P9.7 slice 2).** In a battle, when the command menu (Fight, Tech, ...) is waiting, press **Minus** (no L, R, ZL or ZR held). Move to Music volume, Left x3, Triangle. Do it again on a later turn. Also press Minus while an attack plays: nothing should happen | The Options window opens over the battle, which stays on screen frozen (3D models, HUD, partner portrait, no flicker or black frame); nothing moves for as long as you wait (try 30 s: no enemy attack, no gauge change); the battle music keeps playing and gets quieter; Widescreen is grey. Triangle: the command menu is back as it was, the cursor where it was, and the battle goes on and ends normally; no button press reached the menu | photo of the frozen picture, `dw3.log` (`dw3-battle-options: held` and `resume` lines show equal `events=`, `event_time=`, `hp=`), say docked or handheld | P9.7 slice 2 ([checklist](PORT_OPTIONS.md#oled-checklist-options-in-battle-owner)) |
 
 ## Session E: saves
 
@@ -173,6 +175,7 @@ Ordinary builds, memcard folders backed up. Sources:
 | E1.3 | Open again, Yes | Back to the title (US) or the language select (EU). `dw3.log` has `dw3-port-restart: requested from the field menu` then `saves flushed`. A save written before still Continues | `dw3.log` | P6.27 |
 | E1.4 | Options: Restart hotkey ON. Hold **L + R + Plus + Minus** in the field, inside a battle, after a won battle, and right after saving at a save point (release between tries) | Each reaches the title (EU: the language select) with no overlay left over. Continue loads the save written before the restart | `dw3.log`, photo of any leftover overlay | **P6.9** (tick only after this; PC replays already pass) |
 | E1.5 | Note: the chord contains Minus + L + R, so it can also toggle the nxlink HUD | Expected | | [README](../platforms/switch/release/README.txt) |
+| E1.6 | After the Yes in E1.3, at the title (US) or the language select and title (EU): look at the logo, the menu rows and the backdrop for a few seconds, open Options and Quit game's window, then start Continue | Textures rebuild with no glitch (#268 releases the title overlay's textures outside the title): no blank, garbled or half-drawn logo, menu or Options window; the rows are where they were on the first boot | photo, `dw3.log` (`dw3-title-overlay:` lines) | #268 / P9.7 |
 
 ### E2. Auto-save
 

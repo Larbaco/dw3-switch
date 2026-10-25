@@ -58,6 +58,13 @@ port options:
   screen over the field, with the title's keys (Up / Down choose, Left / Right and
   Cross change, Triangle goes back to the menu). Widescreen and the Cheats entry
   are greyed there. See [PORT_OPTIONS.md](PORT_OPTIONS.md#options-in-game-p97).
+- In a battle, while the command menu (Fight, Tech, ...) waits for you, **Select**
+  (PC Backspace, Switch Minus) opens the Options screen over the battle (P9.7
+  slice 2). The battle stands still (no timers, gauges or enemy turn), the music
+  keeps playing, and Triangle returns to the same command menu. It is ignored
+  while L, R, ZL or ZR is held (so the restart chord and the Switch debug chords
+  are unchanged) and at any other moment of a battle. Select does nothing else
+  in a battle. See [PORT_OPTIONS.md](PORT_OPTIONS.md#options-in-battle-p97-slice-2).
 - The field menu (Start in the field) has a last row,
   **Return to title** (P6.27: TITLE SCREEN, RETOUR TITRE, TORNA AL TITOLO,
   TITELBILD, VOLVER AL INICIO). Cross on it opens the same Yes / No window, with the
@@ -80,6 +87,7 @@ acceptance remains tracked separately in [P5.3_FLAT_SAVE.md](P5.3_FLAT_SAVE.md).
 | Toggle fast-forward on/off | R3 | 2 | Right-stick click | Field, battle and the battle report (results screen) only; configured speed must be 2x, 3x or 4x |
 | Restart game in-process | L1 + R1 + Start + Select | Q + R + Enter + Backspace | L + R + Plus + Minus | Enable **Restart hotkey** in Port options first; OFF by default |
 | Options from the field menu | Start, then the row above the last, Cross | Enter, ..., X | Plus, ..., B | Port options over the field; Widescreen and Cheats greyed (P9.7) |
+| Options in battle | Select, while the command menu waits | Backspace | Minus | Port options over the held battle; no L1/R1/L2/R2 held; not during attacks or in the sub-menus; Widescreen and Cheats greyed; Triangle returns (P9.7 slice 2) |
 | Return to title from the field menu | Start, then the last row, Cross, Yes | Enter, ..., X | Plus, ..., B | Always there; the same reset as the chord, after a Yes / No question (P6.27) |
 | Quit game from the title menu | Last title row, Cross, Yes | ..., X | ..., B | Always on the native title; flushes the saves, then hbmenu (Switch) or closes the window (PC) (P6.28) |
 

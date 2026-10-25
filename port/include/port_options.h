@@ -13,6 +13,9 @@ void dw3_port_options_open(void);
  * the menu that opened it. */
 void dw3_port_options_open_in_game(void);
 int dw3_port_options_in_game(void);
+/* P9.7 slice 2: the words of the in-game open / close log lines ("field menu" /
+ * "the field menu" by default; the battle sets its own). NULL restores them. */
+void dw3_port_options_set_origin(const char *where, const char *back);
 /* 1 when `index` is a row that cannot change in game; always 0 from the title. */
 int dw3_port_options_row_locked(int index);
 /* Bit i: row i locked; DW3_PORT_OPTIONS_LOCK_CHEATS: the Cheats entry. */
