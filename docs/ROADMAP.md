@@ -67,7 +67,7 @@ listed once, in [Pending OLED checks](#pending-oled-checks).
 | P6.22 | Turbo speed in scripted scenes | in progress (CPU rasterizer is ~97 % of a field frame; pixel-identical rasterizer 4-5x faster, #220) | [P6.22](P6.22_FIELD_CPU.md), [roadmap](#phase-6-goal-notes), [P6.4](P6.4_FAST_FORWARD.md) |
 | P6.23 | Documentation: player guide, docs index, contributor and modder docs (future goal) | future | [roadmap](#phase-6-goal-notes) |
 | P6.24 | One build for US and EU: one `.nro` and one PC binary, region found at boot, a boot picker with both discs (future goal; depends on P6.25 and P6.26) | future | [SINGLE_BUILD](SINGLE_BUILD.md), [roadmap](#phase-6-goal-notes) |
-| P6.25 | Cross-region saves: a US save loads in EU and the reverse, one canonical save container (future goal) | future (survey and design done, no code) | [CROSS_REGION_SAVES](CROSS_REGION_SAVES.md), [roadmap](#phase-6-goal-notes) |
+| P6.25 | Cross-region saves: a US save loads in EU and the reverse, one canonical save container (future goal) | in progress (slice 1 built: converter and one-way import on load, PC replays US to EU and EU to US; container and store open; OLED check open) | [CROSS_REGION_SAVES](CROSS_REGION_SAVES.md), [roadmap](#phase-6-goal-notes) |
 | P6.26 | Per-user saves: saves bound to the Switch user profile chosen in the Switch profile selector, global options (future goal) | future (design done, no code) | [PER_USER_SAVES](PER_USER_SAVES.md), [roadmap](#phase-6-goal-notes) |
 | P6.27 | Return to title from the pause (field) menu | in progress (built, PC US and EU replays; owner OLED check open) | [PORT_OPTIONS](PORT_OPTIONS.md#quit-and-return-to-title-p627-p628), [roadmap](#phase-6-goal-notes) |
 | P6.28 | Quit game on the title menu, back to hbmenu | in progress (built, PC US and EU replays; owner OLED check open) | [PORT_OPTIONS](PORT_OPTIONS.md#quit-and-return-to-title-p627-p628), [roadmap](#phase-6-goal-notes) |
@@ -130,6 +130,10 @@ Tick the item in the table once the owner confirms.
   [PORT_OPTIONS.md](PORT_OPTIONS.md#cheats-p620) (#236), and the page 2
   checklist (Money, Warp, Give item) in
   [PORT_OPTIONS.md](PORT_OPTIONS.md#oled-checklist-page-2-owner) (PR 2).
+- **P6.25 (slice 1):** a US save in the US folder and none in the EU folder:
+  the EU build lists it under Continue and loads it; and the reverse; with a
+  save in both folders nothing is imported. Checklist:
+  [CROSS_REGION_SAVES.md](CROSS_REGION_SAVES.md#as-built-slice-1).
 - **P5.1:** a long session that fills the file cache; look for the
   `dw3-file-cache: ... evicted` lines in `dw3.log` (#235).
 - **P5.4:** the notice stays up to 60 s and A dismisses it (#231); the PR 2
@@ -1642,7 +1646,16 @@ Statuses are in the [table](#status-at-a-glance).
   ([P3_EU_BUILD.md](P3_EU_BUILD.md)).
 - [ ] **P6.25 Cross-region saves (future goal).** Dated 2026-10-24, owner
   decision: a save made in the US game loads in the EU game and the reverse.
-  **Survey and design done, no code.** Full note with every difference and the
+  **Slice 1 built 2026-10-25** (PR open, not merged): the converter
+  (`port/memcard/save_convert.c`) and a one-way import on load: a port with no
+  save of its own takes the other region's `saveN.bin` as a converted copy
+  (original read-only, `saveN.import` marker with the converter version);
+  saving stays native; refusals and corrupt sources write nothing. Tests: 35
+  unit/host tests and four PC replay scenarios (`xr-us-to-eu`, `xr-eu-to-us`,
+  `xr-eu-extra-us`, `xr-us-badsum-eu`). Open: the `.dw3s` container and
+  store, merge into an existing card, two-way flow, OLED check. Defaults and
+  risks: [CROSS_REGION_SAVES](CROSS_REGION_SAVES.md#as-built-slice-1). No decomp patch.
+  **Survey and design done.** Full note with every difference and the
   test plan: [CROSS_REGION_SAVES.md](CROSS_REGION_SAVES.md). Checked against the
   decomp (`b9caa6c`) and one real US save.
   **Findings and design (summary):** the card image and the first 9,796 bytes

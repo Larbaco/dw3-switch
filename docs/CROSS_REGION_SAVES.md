@@ -1,17 +1,130 @@
-# P6.25 Cross-region saves (design and survey)
+# P6.25 Cross-region saves (design, survey and slice 1 as built)
 
 Owner decision (2026-10-24, recorded in [SINGLE_BUILD.md](SINGLE_BUILD.md)):
 **saves must be compatible between the US and the EU game**: a save made in one
 region loads in the other. This note is the survey of how the two save images
 differ, taken field by field from the decomp, and the design that follows. It
 is the base of the [ROADMAP P6.25 entry](ROADMAP.md#phase-6-goal-notes).
-**Nothing is implemented.** P6.24 (one build) and
-[P6.26](PER_USER_SAVES.md) (per-user saves) depend on it.
+**Slice 1 is built (2026-10-25, see [As built](#as-built-slice-1)):** the
+converter and a one-way import on load. The `.dw3s` container, the shared
+store and the write-back are **not** built yet. P6.24 (one build) and
+[P6.26](PER_USER_SAVES.md) (per-user saves) depend on the rest.
 
 Sources: `vendor/dw3_decomp` at `b9caa6c`, `origin/main` at `545ede2`, and one
 real US save of the owner read on the PC (offsets and checksum below were
 checked against it; no save content is copied anywhere). The EU side comes from
 the decomp only: **no EU save was opened**, see "Not verified".
+
+## As built (slice 1)
+
+Date 2026-10-25, branch `feat/p6.25-cross-region-saves`. The design below
+recommends, as its order step 1, the converter and its tests; step 2 is the
+store. Slice 1 is step 1 **plus the smallest loader that uses it**, so a US
+save loads in the EU build and the reverse, without the container. No decomp
+patch was needed (numbers 0130-0134 stay free).
+
+**What it does.**
+
+- `port/memcard/save_convert.{c,h}`: pure functions on byte buffers.
+  `save_convert_image` takes a 32 KiB card image (`saveN.bin`) and produces the
+  image in the layout of a target region: header and icon sectors verbatim;
+  info section with the target version byte and a new checksum; each data slot
+  that has a name in the info section is detected by its version byte and its
+  **exact** XOR checksum (3 = US, 4 = EU) and converted by the flag-group table
+  (the table in "Different (counts)" above, in code as `g_save_flag_groups`),
+  version byte and checksum redone for the target; the runtime tail after
+  `GAME_SAVE_SIZE` is cleared. A slot already in the target layout is copied as is.
+- Not converted, kept byte for byte so the game shows its own error 8: a slot
+  with an unknown version or a wrong checksum, and an EU slot with `progress`
+  of 0x2D or more (the extra chapter) going to US. A source that is not a DW3
+  card (no `DMW3` magic, wrong info checksum, wrong size) is refused whole.
+- `memcard_host_ensure(port)`: when the port has **no `saveN.bin` of its own**
+  (after the `.mcr` migration found nothing) and an import folder is set, it
+  reads that folder's `saveN.bin`, converts it in memory to this build's
+  region, and writes it as this port's `saveN.bin` (rename-atomic, the normal
+  flush). Then it writes `saveN.import` (text: format 1, `converter=1`, from,
+  to, source, per-slot results). The source file is opened read-only and never
+  written, renamed or deleted. If nothing usable results (no usable slot) or
+  anything fails, nothing is written and the card stays empty.
+- Hosts: `memcard_host_setup_cross_import` (called by `platforms/pc/src/main.c`
+  and `platforms/switch/source/boot_main.c`). With the default folders the
+  source is the sibling of the runtime root: the EU build reads
+  `.../us/memcard/saveN.bin` and the US build reads `.../eu/memcard/saveN.bin`
+  (`sdmc:/switch/dw3/<us|eu>/memcard/`, PC `runtime/<us|eu>/memcard/`).
+- Test hooks (PC): `DW3_MEMCARD_IMPORT_DIR=<dir>` names the source folder,
+  `DW3_CROSS_IMPORT=0` turns the import off.
+
+**Defaults chosen, owner can change.**
+
+| # | Default | Why / how to change |
+|---|---|---|
+| 1 | No `.dw3s` container, no shared store yet: the converted copy is this region's own `saveN.bin` | Smallest safe slice; the container is design step 2 and is still open |
+| 2 | Import only for a port that has **no** save file of its own. An existing `save0.bin` is never changed, merged or replaced, so a player who already has saves in both regions keeps both sets apart | Never risks an existing save. Merging slots into an existing card needs the store (slice 2) and the backups it plans |
+| 3 | At most once per port: `saveN.import` is the version marker and the "already imported" flag, so a save the player deletes or formats does not come back. Delete `saveN.import` (and the card) to import again | A deleted save must stay deleted |
+| 4 | On by default in the default layout (sibling folders); off for any run that sets `DW3_MEMCARD_DIR`/`--memcard-dir` (replays) unless `DW3_MEMCARD_IMPORT_DIR` is also set; `DW3_CROSS_IMPORT=0` disables it. There is no in-game switch yet | The Switch has no environment, so there it is always on. An Options row is a later item if wanted |
+| 5 | **Saving writes this region's native format only, into this region's folder.** A save made after the import does not flow back to the other region (one-way copy; the original stays as it was) | The design's single store needs the container; two-way sync is slice 2. Say it in the release notes |
+| 6 | EU slot with `progress >= 0x2D` into US: not converted, bytes kept, the US game shows error 8; a card with only such slots imports nothing | As the design (hard case 1) |
+| 7 | Flag bytes with no place in the target (EU extra-chapter flags into US, US flags40 bytes 0x1A-0x1B into EU) are dropped from the copy with a log warning, not refused | Design hard cases 2 and 3: they are unused/extra-chapter flags; the original keeps them |
+| 8 | The imported card has no `saveN.name` sidecar, so any DW3 product name matches (it is a "naked" save, as before the sidecar existed) | EU asks for a name by language (`BESLES`/`BASLUS`/`BISLPS`); this also avoids the language-switch limit for imported cards |
+| 9 | Checksums of a foreign-format slot and of the info section must be **exact**; the game itself only checks `computed & ~stored` | Fail closed: nothing is "repaired" |
+| 10 | The info section checksum covers bytes 4 to 0xD4 (`sizeof(MemCardFile)`), not 0x100 as the survey said above (`saves.c:231-235`, `:507`); checked on a save the game wrote | Corrected here |
+
+**Risks to existing saves, and how they are handled.**
+
+- The import only runs when the port's own `saveN.bin` does not exist, so no
+  existing own-region save can be touched. The source is read-only. The write
+  is the same rename-atomic flush as any save; a crash leaves no `saveN.bin`
+  or a complete one (a leftover `.tmp` is ignored), and the marker is written
+  after the save, so an interrupted import runs again.
+- A corrupt, truncated, random or wrong-size source is refused before anything
+  is written (unit tests: noise, zeros, short, a directory, bad info checksum
+  or magic, only-unusable slots).
+- The sidecar-less card accepts any product name: if two builds of different
+  regions share one folder by hand, they see the same card, as they would for
+  a naked `save0.bin` today.
+- The converted copy of an EU save in the US build loses the 10 bytes of EU-only
+  flags (see 7); the EU original still has them.
+- Downgrade: an older build ignores `saveN.import` and keeps the copy it finds.
+
+**Tests.** `tools/tests/test_save_convert.py` (35 tests, synthetic saves
+generated in pytest temp directories, no game bytes): every flag bit of every
+group moves by `(group, id)` in both directions; common block, version,
+checksum and tail; round-trip identity when nothing is dropped; extra chapter
+refused with bytes kept; invalid and corrupt inputs; file-level conversion
+through `tools/save_convert_tool.c` (never overwrites, never in place); the
+layout table against `vendor/dw3_decomp/include/engine/game_state.h` and
+`memory_card.h` (skipped when the submodule is absent); the host import
+(`tools/tests/cross_import_main.c`: copy made, original hash unchanged,
+marker, existing save kept, not back after delete, corrupt sources, both
+ports, sibling folders, environment switches). Replay scenarios
+([P6.15](P6.15_REPLAY_TESTS.md)): `xr-us-to-eu`, `xr-eu-to-us` (the game saves
+on one disc through the forced save screen; the other disc imports it,
+Continue loads it and the field of the saved mode is reached, log verdicts),
+`xr-eu-extra-us` and `xr-us-badsum-eu` (refusals: empty card, no crash). On a
+real US save of the owner, read only: layout, version and checksum confirmed,
+US to EU to US converts with no dropped bytes.
+
+**Not done in slice 1** (open): the `.dw3s` container and its per-slot origin
+metadata; merging foreign slots into an existing card with backups; the
+first-fit import of up to six slots; two-way flow; an Options switch; the
+Ryubing runner for the cross scenarios (they need one card folder per region;
+PC only today); a real EU save was still not available, so the EU layout stays
+from the decomp, with the EU build's own game-written save as the check.
+
+**OLED checklist (owner, US and EU builds from this PR).** Both builds on the
+same SD card, with a US save in `sdmc:/switch/dw3/us/memcard/` and no EU save
+in `sdmc:/switch/dw3/eu/memcard/`:
+
+1. Start the EU build: `dw3.log` has `memcard cross-import slot=0 from=us to=eu`
+   and a `save0.import` file appears in the EU folder; the US `save0.bin` is
+   unchanged (compare its size and time stamp).
+2. Title, Continue, memory card slot 1: the US save is listed (name, area,
+   money, play time); load it: the game continues in the field at the saved
+   place. Save over it, quit with HOME, start again, Continue: it loads.
+3. Reverse: with an EU save and no US save, start the US build: the same.
+4. With a save in both folders: nothing is imported (each build keeps its own).
+5. An EU save from the extra chapter (if available): the US build shows no
+   save (or error 8 if the card also has an importable one) and does not crash.
 
 ## What a save is today
 
@@ -37,7 +150,7 @@ Game side (`vendor/dw3_decomp`, identical in both regions unless noted):
   (three slots, ending at 0x7800). **Offsets and strides are the same in US and
   EU.**
 - Info section (`MemCardFile`, `include/menus/memory_card.h`): checksum u8 (XOR
-  of bytes 4..0x100), last-slot u8, version u8, magic `DMW3` (0x33574D44), then
+  of bytes 4..0xD4, see "As built" item 10), last-slot u8, version u8, magic `DMW3` (0x33574D44), then
   three `MemCardSave` summaries (name[0x18], area, place, money, play time,
   partners, levels). Same layout in both regions. Loading checks the magic and
   the checksum only (`saves.c:225-235`).
@@ -225,7 +338,7 @@ format**:
   extra chapter in US) is presented with version byte 0xFF, so the game shows its
   own error 8, and it is never rewritten unless the player saves over it.
 - The info section is rebuilt from the slots it describes only when a slot
-  changed (checksum = XOR of bytes 4..0x100).
+  changed (checksum = XOR of bytes 4..0xD4).
 
 `canonical_to_native(US)`: copy bytes [0, 0x2644) except byte 2 (=3); copy each
 flag group `min(size)` bytes from its EU offset to its US offset, zero-extend;

@@ -55,6 +55,19 @@ data (e.g. partner index high byte). Flat saves never apply frame XOR.
 save exists so `STGMCARD_askError` space checks stay valid.
 `MemCardExist` / `MemCardAccept` do not scan directory frames.
 
+### Cross-region import (P6.25 slice 1)
+
+`save_convert.c` converts a 32 KiB card image between the US and EU slot
+layouts (pure functions, no I/O). When a port has no `saveN.bin`,
+`memcard_host_ensure` imports the other region's `saveN.bin` from the folder
+set with `memcard_host_set_cross_import` / `..._sibling` /
+`memcard_host_setup_cross_import`: converted in memory, written as this
+port's `saveN.bin` (no `.name` sidecar), `saveN.import` marks it done. The
+source is only read. Saving stays native. See
+[docs/CROSS_REGION_SAVES.md](../../docs/CROSS_REGION_SAVES.md#as-built-slice-1).
+`tools/save_convert_tool.c` is the CLI used by the tests (`convert` never
+overwrites its output or its input).
+
 ## API surface
 
 | Layer | Role |

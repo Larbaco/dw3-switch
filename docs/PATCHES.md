@@ -144,6 +144,11 @@ tools/apply_patches.sh           # refresh build/decomp-src + apply
 `tools/apply_patches.sh --check` applies the series in order (stacked
 patches on the same file are valid).
 
+**P6.25 (cross-region saves, slice 1) adds no patch.** The conversion lives in
+`port/memcard/` and the hosts; the game keeps reading its own region's format.
+The numbers 0130-0134 reserved for it are unused; the next free number is
+0125.
+
 ### Upstream `make compare` (P2.4 / P3.1)
 
 Match-neutral patches 0006/0007/0018/0022 are intended to stay byte-identical
