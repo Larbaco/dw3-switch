@@ -23,10 +23,12 @@ out="${DW3_SOFT_BENCH_OUT:-/mnt/cabal/tmp/dw3-soft-bench}"
 [ -d "$(dirname "$out")" ] || out="${TMPDIR:-/tmp}/dw3-soft-bench"
 cc="${CC:-gcc}"
 san=()
+check=()
 while [ $# -gt 0 ]; do
   case "$1" in
     --ref) ref="$2"; shift 2 ;;
     --no-ref) use_ref=0; shift ;;
+    --check) check=(-DDEFER_CHECK); shift ;;
     --san) san=(-O1 -g -fno-omit-frame-pointer -fsanitize=address,undefined -fno-sanitize-recover=all); shift ;;
     --out) out="$2"; shift 2 ;;
     --) shift; break ;;
@@ -36,7 +38,7 @@ done
 mkdir -p "$out"
 flags=(-std=gnu11 -O3 -Wall -Wextra -D__psyz "-I$psyz/include" "-I$psyz/src" "-I$psyz/src/platform" "${san[@]}")
 objs=()
-"$cc" "${flags[@]}" -c "$psyz/src/platform/sdl3_software.c" -o "$out/new.o"
+"$cc" "${flags[@]}" "${check[@]}" -c "$psyz/src/platform/sdl3_software.c" -o "$out/new.o"
 objs+=("$out/new.o")
 defs=()
 if [ "$use_ref" = 1 ]; then

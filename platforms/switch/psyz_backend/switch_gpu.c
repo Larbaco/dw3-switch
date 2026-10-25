@@ -729,8 +729,59 @@ const uint16_t *dw3_nx_switch_gpu_vram(void) {
     return (const uint16_t *)SoftwareRasterizer_GetVram();
 }
 
+const uint16_t *dw3_nx_switch_gpu_vram_nosync(void) {
+    return (const uint16_t *)SoftwareRasterizer_GetVramRaw();
+}
+
+/* No sync: the present calls dw3_nx_switch_gpu_sync_display() first, and the
+ * planes are only read there. */
 const uint16_t *dw3_nx_switch_gpu_gutter_plane(int side) {
-    return (const uint16_t *)SoftwareRasterizer_GetGutterPlane(side);
+    return (const uint16_t *)SoftwareRasterizer_GetGutterPlaneRaw(side);
+}
+
+/* --- P6.22 pass 2: deferred drawing ---------------------------------------
+ *
+ * Turbo presents one game frame in `speed`. The CPU rasterizer used to draw
+ * all of them; with deferral the others are queued and dropped when a later
+ * frame covers them (PSY-Z sdl3_software_defer.inc). Anything that could see
+ * the difference draws what it needs first, so the presented frames are the
+ * same pixels. Battle keeps the immediate path (the mesh layer reads VRAM). */
+static int in_fight_mode(void) {
+    int32_t mode_file = dw3_overlay_current_mode_file();
+
+    return mode_file == DW3_FILE_FIGHTSTG_US ||
+           mode_file == DW3_FILE_FIGHTSTG_EU;
+}
+
+void dw3_nx_switch_gpu_set_defer(int want) {
+    int on = want && !in_fight_mode();
+
+    if (SoftwareRasterizer_GetDefer() != on) {
+        SoftwareRasterizer_SetDefer(on);
+    }
+}
+
+void dw3_nx_switch_gpu_sync_display(const Dw3NxDisplay *d) {
+    if (d && d->on) {
+        SoftwareRasterizer_SyncRect(d->x, d->y, d->width, d->height,
+                                    d->gutter > 0);
+    }
+}
+
+void dw3_nx_switch_gpu_defer_log(void) {
+    unsigned long queued;
+    unsigned long dropped;
+    unsigned long run;
+    unsigned long sync_layers;
+    unsigned long other_layers;
+
+    SoftwareRasterizer_GetDeferStats(&queued, &dropped, &run, &sync_layers,
+                                     &other_layers, 1);
+    if (queued) {
+        INFOF("defer dbg: queued=%lu dropped=%lu drawn=%lu layers_at_present=%lu "
+              "layers_other=%lu",
+              queued, dropped, run, sync_layers, other_layers);
+    }
 }
 
 /* --- video state the rasterizer reads back -------------------------------- */

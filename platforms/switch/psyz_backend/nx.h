@@ -138,6 +138,18 @@ void dw3_nx_switch_gpu_display(Dw3NxDisplay *out);
  * nx_gpu.c does not have to include PSY-Z's private rasterizer header. */
 const uint16_t *dw3_nx_switch_gpu_vram(void);
 
+/* P6.22 pass 2: with turbo the CPU rasterizer queues the frames that are not
+ * presented and never draws the ones a later frame covers (docs/
+ * P6.22_FIELD_CPU.md). dw3_nx_switch_gpu_vram() draws everything queued first;
+ * the present instead syncs the rectangle it shows and reads the no-sync
+ * pointers, so the frames it skips stay undrawn. */
+void dw3_nx_switch_gpu_set_defer(int want);
+void dw3_nx_switch_gpu_sync_display(const Dw3NxDisplay *d);
+const uint16_t *dw3_nx_switch_gpu_vram_nosync(void);
+/* One `defer dbg:` line for the window since the last call, if anything was
+ * queued in it. Called with the 60-pump `frame dt` sample. */
+void dw3_nx_switch_gpu_defer_log(void);
+
 /* RGB555 side gutters, side 0 = left: row y is the gutter of VRAM row y,
  * DW3_NX_GUTTER_STRIDE pixels per row (PSYZ_GUTTER_MAX). */
 #define DW3_NX_GUTTER_STRIDE 64
