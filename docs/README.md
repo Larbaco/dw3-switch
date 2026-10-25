@@ -23,6 +23,7 @@ Files are named by roadmap item id (`P6.4_...`) or by topic.
 
 ## Contributor and porting
 
+- [CONTRIBUTING](../CONTRIBUTING.md): short guide for contributors and AI agents (build, patches, replay tests, PRs).
 - [ARCHITECTURE](ARCHITECTURE.md): how the decomp, PSY-Z and the hosts fit together.
 - [ROADMAP](ROADMAP.md): phases, gates and what is next.
 - [PATCHES](PATCHES.md): the decomp patch series.

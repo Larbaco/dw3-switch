@@ -11,7 +11,8 @@ Europe), built from the matching PlayStation decompilation.
 Latest preview: [v0.6.5-preview.30](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.30).
 To try it, see [Play it on Switch](#play-it-on-switch). New to the port? Read
 the [player guide](docs/PLAYER_GUIDE.md). All docs are listed in the
-[docs index](docs/README.md).
+[docs index](docs/README.md). To contribute, see
+[CONTRIBUTING.md](CONTRIBUTING.md).
 
 <p align="center">
   <img src="docs/assets/screenshots/title-menu.png" width="400"
