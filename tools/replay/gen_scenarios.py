@@ -1768,6 +1768,34 @@ def field_options_lang(idx):
     return r
 
 
+def field_options_release(version):
+    """P9.7 on the Switch build (#268 releases the title overlay's textures
+    90 draws after they leave the screen): the screen opens (first use), closes,
+    stays away for 200 frames (the atlas is released), opens again
+    (`reopen-early` 3 frames after the press, then `reopen`: it must not show a
+    blank or garbage frame), closes, 200 more frames, then Down to Return to title
+    and its Yes / No window (`confirm-early`, `confirm`: the dialog texture is
+    rebuilt), Triangle cancels. Env is baked into the replay NRO (manifest)."""
+    r = Rec(f"{version.upper()}: P9.7 Options and the confirm window after the texture release (Switch)")
+    f = _field_options_open(r, shots=False, last="first-open")
+    r.shot(f + 120, "first-open-late")   # Ryubing compiles the overlay shader on first use: the early shot can miss it
+    r.press(f + 140, TRIANGLE)       # close
+    f += 360                         # > 90 draws: atlas and dialog texture released
+    r.press(f, CROSS)                # open again, on the Options row
+    r.shot(f + 3, "reopen-early")
+    r.shot(f + 100, "reopen")
+    r.press(f + 120, TRIANGLE)
+    f += 360
+    r.press(f, DOWN)                 # Return to title
+    r.press(f + 30, CROSS)           # the Yes / No window (its texture is rebuilt)
+    r.shot(f + 33, "confirm-early")
+    r.shot(f + 100, "confirm")
+    r.press(f + 120, TRIANGLE)       # cancel
+    r.shot(f + 180, "confirm-closed")
+    r.end(f + 220)
+    return r
+
+
 def field_options_cheats(version):
     """P9.7: the Cheats entry is title-only. With the cheats master on (cfg
     cheat_enabled=1) the Options screen shows its Square / Y "Cheats" hint
@@ -1861,6 +1889,8 @@ def main(out):
                 field_options(v, phase).text(True))
         (out / f"{v}-field-options-cheats.rec").write_text(
             field_options_cheats(v).text(True))
+        (out / f"{v}-field-options-release.rec").write_text(
+            field_options_release(v).text(True))
     for i, lang in enumerate(EU_LANGS):
         if lang != "en":
             (out / f"eu-title-quit-{lang}.rec").write_text(title_quit_lang(i).text(True))

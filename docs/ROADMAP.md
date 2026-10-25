@@ -1162,6 +1162,9 @@ PS1 game, with vanilla-safe defaults and persistence on owner storage.
   `port/options/field_options.c`, the in-game mode of `port/options/port_options.c`
   and the locked rows of the overlay art; replay scenarios `us/eu-field-options`,
   `-cheats` and `eu-field-options-fr/de/it/es`; host tests `test_field_options.py`.
+  Ryubing (Switch build, US and EU, after #268's texture release): the Options screen and the
+  Return to title window draw with no blank or garbage frame on a reopen after the release
+  (`us/eu-field-options-nx`, `-release-nx`).
   Done when: Port options opens and closes in the field **and in battle** on PC and
   Switch (US and EU), the game resumes exactly where it stopped, every row
   changes the game at once (or says why not), and the choice of entry point is

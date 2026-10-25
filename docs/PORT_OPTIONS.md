@@ -1204,6 +1204,12 @@ Triangle (B) goes back to the menu. Changes are saved at once in
   cursor and the values move.
   `test_cheats.py::test_cheats_entry_is_locked_in_game`: Square in game does not
   open Cheats, at the title it does.
+- Switch build in Ryubing (US and EU, 12 checks each, all pass): `us/eu-field-options-nx`
+  and `us/eu-field-options-release-nx` (tier `nx`). After #268 releases the title
+  overlay's textures, the Options screen opens in the field with no blank or
+  garbage frame (captured 3 frames after the press), and so does the Return to
+  title window. A first-use draw can be invisible for a second in Ryubing while
+  it compiles the shader; see the replay doc.
 - Replay (PC, US and EU; [P6.15_REPLAY_TESTS.md](P6.15_REPLAY_TESTS.md)):
   `us/eu-field-options` (two phases: the menu, Options, Widescreen refuses a
   change, Music volume 10 to 7, Encounter rate 1x to OFF, close, the menu takes

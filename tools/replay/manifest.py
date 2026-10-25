@@ -11,6 +11,8 @@ Tiers:
   full   gameplay scenarios (a few minutes each; run by default)
   soak   long walk, 15-20 min of game time (run with --soak or --only)
   repro  recordings of known, unfixed bugs; only with --only (expected to fail)
+  nx     P9.7 Switch-build-only scenarios (Ryubing, replay NRO with the env baked
+         in); only with --only
   single P6.24 launcher scenarios; only with --single or --only (need the
          launcher binary, --launcher / DW3_REPLAY_LAUNCHER)
 """
@@ -1129,6 +1131,33 @@ for _v in ("us", "eu"):
                                   r"dw3-port-options: close in game"),),
                   forbid_log=((0, r"dw3-cheats: open"),),
                   note="the Cheats entry is greyed in game: Square (Y) does nothing (P9.7)"))
+# The same on the Switch build in Ryubing (tier "nx": only with --only; the NRO
+# has no environment, so the replay NRO is built with DW3_NX_TEST_ENV holding
+# _RT_ENV, see docs/P6.15_REPLAY_TESTS.md). P9.7 after #268's release of the
+# title overlay textures: the first Options open in the field builds them, a
+# reopen after 200 idle frames rebuilds them, and the Yes / No window of Return
+# to title (its own texture) is rebuilt too. The PC runner skips tier nx.
+_NX_FO_FORBID = ((0, r"widescreen (enabled|disabled)"), (0, r"save flush failed"),
+                 (0, r"dw3-port-restart"))
+for _v in ("us", "eu"):
+    _add(Scenario(f"{_v}-field-options-nx", _v, "nx", timeout=600,
+                  phases=(f"{_v}-field-options-p1", f"{_v}-field-options-p2"),
+                  expect_log=tuple((0, r) for r in _FO_P1) + tuple((1, r) for r in _FO_P2),
+                  forbid_log=_NX_FO_FORBID,
+                  note="Switch build: field menu Options (env baked into the NRO) (P9.7)"),
+         Scenario(f"{_v}-field-options-release-nx", _v, "nx", timeout=600,
+                  phases=(f"{_v}-field-options-release",),
+                  expect_log=((0, r"dw3-port-options: open in game(?s:.*)"
+                                  r"dw3-port-options: close in game(?s:.*)"
+                                  r"dw3-title-overlay: title textures released(?s:.*)"
+                                  r"dw3-port-options: open in game(?s:.*)"
+                                  r"dw3-port-options: close in game(?s:.*)"
+                                  r"dw3-title-overlay: title textures released(?s:.*)"
+                                  r"dw3-port-confirm: open return to title \(cursor on No\)(?s:.*)"
+                                  r"dw3-port-confirm: cancelled \(return to title\); nothing changed"),),
+                  forbid_log=_NX_FO_FORBID,
+                  note="Switch build: Options and the Yes / No window drawn after the title textures were released (P9.7, #268)"))
+
 # The Options row text and the screen's lock note in the other four EU languages.
 for _id, _lang in ((3, "fr"), (5, "de"), (4, "it"), (6, "es")):
     _add(Scenario(f"eu-field-options-{_lang}", "eu", "full", turbo=4, timeout=600,

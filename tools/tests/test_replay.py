@@ -40,7 +40,7 @@ def test_every_runner_scenario_has_a_recording_with_shots():
         assert sc.name not in seen, sc.name
         seen.add(sc.name)
         assert sc.version in ("us", "eu")
-        assert sc.tier in ("quick", "full", "soak", "repro", "single")
+        assert sc.tier in ("quick", "full", "soak", "repro", "single", "nx")
         for phase in sc.phases:
             assert (REPLAY / "scenarios" / f"{phase}.rec").is_file(), phase
         # P6.18: a log-only scenario has no checkpoints (and then needs a check
