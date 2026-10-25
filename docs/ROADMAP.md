@@ -73,7 +73,7 @@ listed once, in [Pending OLED checks](#pending-oled-checks).
 | P6.30 | Help, FAQ and tips from the pause menu (future goal) | future | [roadmap](#phase-6-goal-notes) |
 | P6.31 | Auto-save, off by default (future goal) | future | [roadmap](#phase-6-goal-notes), [P5.3](P5.3_FLAT_SAVE.md) |
 | P6.32 | Map zoom and full-screen map (future goal) | future | [roadmap](#phase-6-goal-notes), [P6.1](P6.1_WIDESCREEN.md) |
-| P6.33 | Items menu usability redesign (future goal) | future | [roadmap](#phase-6-goal-notes), [P6.1](P6.1_WIDESCREEN.md) |
+| P6.33 | Items menu usability redesign (future goal) | future (design proposal, no code) | [roadmap](#phase-6-goal-notes), [P6.33](P6.33_ITEMS_MENU.md), [P6.1](P6.1_WIDESCREEN.md) |
 | P7.1 | Inventory and boundaries | done | [COMMUNITY_QOL](COMMUNITY_QOL.md) |
 | P7.2 | Patched EU disc as data source | open | [COMMUNITY_QOL](COMMUNITY_QOL.md) |
 | P7.3 | Binary-patch limits | in progress | [COMMUNITY_QOL](COMMUNITY_QOL.md) |
@@ -689,7 +689,8 @@ gate, which stays open.
     dialogue windows).
   **Other open sub-items:**
   - [ ] **Items menu (16:9):** layout and open transition are `0075`/`0076`,
-    pending OLED. A usability redesign is a separate item: **P6.33**.
+    pending OLED. A usability redesign is a separate item: **P6.33**
+    ([design proposal](P6.33_ITEMS_MENU.md)).
   - [ ] **PC `sdl3_gpu` only:** an empty drawing area (the 0x0 clip
     `closeField` leaves on the map layer) must draw nothing (PSY-Z fix).
   - [ ] **"Slow" transitions:** needs an OLED nxlink log across a door and
@@ -1786,6 +1787,13 @@ Statuses are in the [table](#status-at-a-glance).
   (16:9)", which is only the layout and the open transition (patches `0075`,
   `0076`); that work is done and pending OLED. P6.33 changes how the menu
   works, not how wide it is.
+  **Design proposal (2026-10-24, no code):** [P6.33_ITEMS_MENU.md](P6.33_ITEMS_MENU.md)
+  surveys the code, lists the pain points and compares three options.
+  Equipping is in the Status screen (`equip_panel.c`), not in Items. The
+  recommendation is option A, in phases: a partner cycle on the equip slot
+  list (L2 / R2), a bag summary and items worn by other Digimon, all in the
+  game's own widgets, behind a Port option that is off by default, with no
+  save change.
   **Open questions (owner):** the exact flow (a partner switch row in the
   equip panel, or L1/R1 to change partner); which bag view is shown next to
   the equip panel; whether the change is a Port option or always on.
