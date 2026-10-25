@@ -1,0 +1,7 @@
+# US: Underground Path exit to Central Sector, then walk Down (env in manifest)
+shot 450 after-exit
+pad 470 0x0040
+shot 560 scroll-mid
+shot 660 scroll-end
+pad 665 0x0000
+end 700

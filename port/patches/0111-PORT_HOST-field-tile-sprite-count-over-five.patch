@@ -1,0 +1,83 @@
+Upstream-bound: no
+Subject: [PORT_HOST] Field tile with more than 5 sprites in a depth: read the next depth where it is
+
+FIELDSTG_loadStreamSprites reads the three depths of a map tile (a word count,
+then six halfwords per sprite). A depth holds 5 sprites; WSTAG202's tile 12
+(Asuka City, Central Sector, the streets by the Cargo Tower, tile column 4 row
+1) counts 6 in depth 0. The PS1 writes the sixth one over the next depth's
+first slot, which the next depth rewrites, so it is never drawn and the parse
+goes on in the right place. Patch 0057 clamped the count to 5 to keep the
+writes in bounds but then read depth 1 and 2 six halfwords too early: their
+counts were garbage (7340119, 207750211) and the "sprites" were huge random
+rectangles drawn over the map, which is the black water the owner reported on
+leaving the Underground Path (the 16:9 field loads the tile as soon as the
+camera is in the top rows; it was only in view past the 4:3 right edge before).
+Now the extra sprites are skipped (their halfwords are read past, not stored),
+and a count nobody can hold (< 0 or > 800, the decompressor reading a buffer
+in use as in preview.26) ends the parse with the remaining depths empty.
+
+--- a/src/field/field_mode/stream.c
++++ b/src/field/field_mode/stream.c
+@@ -1,6 +1,9 @@
+ /* The tasks that read a tile of the map from the CD and draw it */
+ 
+ #include "field/field_mode.h"
++#if PORT_HOST
++#include <stdio.h>
++#endif
+ 
+ /* Marks a stream task used now (FIELDSTG_findOldestStream) */
+ void FIELDSTG_touchStream(StreamTask *task) {
+@@ -163,19 +166,46 @@
+     s32 *data = task->data;
+     s32 slot = task->slot;
+     s16 *p = (s16 *)(data + 1); /* the sprites of the three depths, after the first word */
++#if PORT_HOST
++    static s32 sprite_logs;
++    s32 corrupt = 0;
++#endif
+ 
+     for (i = 0; i < 3; i++) {
+-        count = *(s32 *)p; /* a word: how many, then six halfwords each */
+-        p += 2;
+ #if PORT_HOST
+-        /* a bad tile can count more sprites than the 5 its slot holds: keep the writes in bounds */
+-        if (count < 0) {
++        if (corrupt) {
++            count = 0; /* the words after a corrupt count are not counts */
++        } else {
++            count = *(s32 *)p;
++            p += 2;
++        }
++        /* A tile can count more than the 5 sprites a depth holds (WSTAG202's tile 12 has 6
++           in depth 0). On the PS1 the extra ones land in the next depth's slots, which that
++           depth rewrites, so they are never drawn: skip their halfwords below and keep
++           reading the next depth where it is. A count no tile can hold (the decompressor
++           read a buffer in use, preview.26) ends the parse with the rest of the depths empty. */
++        if (count < 0 || count > 800) {
++            if (sprite_logs++ < 16) {
++                fprintf(stderr, "dw3-tile: tile %d depth %d has a corrupt sprite count %d, rest of the tile skipped\n",
++                        (int)task->frame, (int)i, (int)count);
++            }
+             count = 0;
+-        } else if (count > 5) {
+-            count = 5;
++            corrupt = 1;
++        } else if (count > 5 && sprite_logs++ < 16) {
++            fprintf(stderr, "dw3-tile: tile %d depth %d counts %d sprites, the first 5 are kept (as on the PS1)\n",
++                    (int)task->frame, (int)i, (int)count);
+         }
++#else
++        count = *(s32 *)p; /* a word: how many, then six halfwords each */
++        p += 2;
+ #endif
+         for (j = 0; j < count; j++) {
++#if PORT_HOST
++            if (j >= 5) {
++                p += 6;
++                continue;
++            }
++#endif
+             task->sprites[i][j].visible = 1;
+             task->sprites[i][j].x = *p++;
+             task->sprites[i][j].y = *p++;

@@ -864,6 +864,9 @@ keeps the current state and links here.
 
 ### P9.4 history
 
+**Status (2026-10-24): done.** Owner confirmed on the OLED, 2026-10-24.
+The 2026-10-22 status below is kept as it was moved.
+
 **Status (2026-10-22): implemented, PC and Ryubing validated on both
 discs; waiting for the OLED check.** `port_options.cfg` (key=value,
 `version=1`) in each region runtime root (`runtime/<ver>/`,

@@ -24,7 +24,8 @@ behind the tasks are in [SURVEY.md](SURVEY.md); layering is in
 Statuses: **done** = ticked; **in progress** = not ticked, with merged work
 or hardware evidence; **open** = not ticked, no work yet; **future** = goal
 note only (see [Backlog / future goals](#backlog--future-goals)); **dropped**
-= the owner decided not to do it (the entry stays for its id and research). Update
+= the owner decided not to do it (the entry stays for its id and research); **merged**
+= folded into another id (the entry stays and names it). Update
 this table in the same PR that changes an item. The history of an item
 lives in its doc, not in the entry below. OLED checks waiting on the owner are
 listed once, in [Pending OLED checks](#pending-oled-checks).
@@ -49,7 +50,7 @@ listed once, in [Pending OLED checks](#pending-oled-checks).
 | P6.1 | Scaling / widescreen | in progress (map, results, save, title, caption, registration, Items menu at 16:9 in preview.31; card album, deck editor, card shop, gym and Lab at 16:9 in the next preview (0100-0104, OLED pending); iris, spiral, card battle still 4:3) | [P6.1](P6.1_WIDESCREEN.md) |
 | P6.2 | PAL/NTSC, EU/US, language at boot | in progress | [P3_EU_BUILD](P3_EU_BUILD.md) |
 | P6.3 | PGXP-style vertex precision | open | — |
-| P6.4 | Fast-forward | in progress (turbo works on the OLED; report at turbo speed, #223; tick is the owner's call) | [P6.4](P6.4_FAST_FORWARD.md) |
+| P6.4 | Fast-forward | done (owner confirmed on the OLED, 2026-10-24) | [P6.4](P6.4_FAST_FORWARD.md) |
 | P6.5 | Release packaging | done | [P6.5](P6.5_PACKAGING.md), [RELEASES](RELEASES.md) |
 | P6.6 | Localization goal | open | — |
 | P6.7 | Language packs (PT-BR first) | open | — |
@@ -57,9 +58,10 @@ listed once, in [Pending OLED checks](#pending-oled-checks).
 | P6.9 | Restart-game hotkey | in progress (hotkey works on the OLED; more restart checks open) | [P6.9](P6.9_RESTART.md) |
 | P6.10 | Hardware render outside battle | future | [P5.2](P5.2_BATTLE_GPU.md) |
 | P6.11 | Internal resolution scaling | future | [PC README](../platforms/pc/README.md) |
-| P6.12–P6.14, P6.16, P6.19, P6.21 | Backlog goal notes | future | [backlog](#backlog--future-goals) |
+| P6.12, P6.14, P6.16, P6.19, P6.21 | Backlog goal notes | future | [backlog](#backlog--future-goals) |
+| P6.13 | Mapping submenu, merged into P6.12 (owner, 2026-10-24) | merged | [backlog](#backlog--future-goals) |
 | P6.15 | Regression replay tests | in progress | [P6.15](P6.15_REPLAY_TESTS.md) |
-| P6.17 | Music / SFX volume | in progress (volume options work on the OLED; relaunch check open) | [P6.17](P6.17_VOLUME.md) |
+| P6.17 | Music / SFX volume | done (owner confirmed on the OLED, 2026-10-24) | [P6.17](P6.17_VOLUME.md) |
 | P6.18 | Pacing options | in progress (Instant text works; Instant banner and report speed #223; rest of the check open) | [P6.18](P6.18_PACING.md) |
 | P6.20 | Port debug / cheat menu in the Options screen | in progress (PR 1 merged, #236: Cheats screen; OLED check open) | [roadmap](#phase-6-goal-notes), [PORT_OPTIONS](PORT_OPTIONS.md) |
 | P6.22 | Turbo speed in scripted scenes | in progress (CPU rasterizer is ~97 % of a field frame; pixel-identical rasterizer 4-5x faster, #220) | [P6.22](P6.22_FIELD_CPU.md), [roadmap](#phase-6-goal-notes), [P6.4](P6.4_FAST_FORWARD.md) |
@@ -73,7 +75,7 @@ listed once, in [Pending OLED checks](#pending-oled-checks).
 | P6.30 | Help, FAQ and tips from the pause menu (future goal) | future | [roadmap](#phase-6-goal-notes) |
 | P6.31 | Auto-save, off by default (future goal) | future | [roadmap](#phase-6-goal-notes), [P5.3](P5.3_FLAT_SAVE.md) |
 | P6.32 | Map zoom and full-screen map (future goal) | future | [roadmap](#phase-6-goal-notes), [P6.1](P6.1_WIDESCREEN.md) |
-| P6.33 | Items menu usability redesign (future goal) | future | [roadmap](#phase-6-goal-notes), [P6.1](P6.1_WIDESCREEN.md) |
+| P6.33 | Items menu usability redesign (future goal) | future (design proposal, no code) | [roadmap](#phase-6-goal-notes), [P6.33](P6.33_ITEMS_MENU.md), [P6.1](P6.1_WIDESCREEN.md) |
 | P7.1 | Inventory and boundaries | done | [COMMUNITY_QOL](COMMUNITY_QOL.md) |
 | P7.2 | Patched EU disc as data source | open | [COMMUNITY_QOL](COMMUNITY_QOL.md) |
 | P7.3 | Binary-patch limits | in progress | [COMMUNITY_QOL](COMMUNITY_QOL.md) |
@@ -90,14 +92,14 @@ listed once, in [Pending OLED checks](#pending-oled-checks).
 | P9.1 | Port options goal note | done | [PORT_OPTIONS](PORT_OPTIONS.md) |
 | P9.2 | Menu entry and shell | done | [P9.2](P9.2_MENU.md) |
 | P9.3 | Toggle registry | done | [PORT_OPTIONS](PORT_OPTIONS.md) |
-| P9.4 | Persistence (blocks many goals) | in progress (implemented, PC and Ryubing validated; OLED check open) | [PORT_OPTIONS](PORT_OPTIONS.md) |
+| P9.4 | Persistence (blocks many goals) | done (owner confirmed on the OLED, 2026-10-24) | [PORT_OPTIONS](PORT_OPTIONS.md) |
 | P9.5 | Wire real features | in progress | [PORT_OPTIONS](PORT_OPTIONS.md) |
 | P9.6 | External save converter | open | — |
 | P9.7 | Port options reachable in game (future goal) | future | [roadmap](#phase-9--port-options-menu) |
 | P9.8 | Confirm / cancel layout option (PS positional or Nintendo A/B) (future goal) | future | [roadmap](#phase-9--port-options-menu), [HOTKEYS](HOTKEYS.md) |
 | P9.9 | Options screen redesign in the title menu's style, room for more rows (future goal) | future | [roadmap](#phase-9--port-options-menu), [PORT_OPTIONS](PORT_OPTIONS.md) |
 | P10.1 | Switch features goal note | done | [SWITCH_FEATURES](SWITCH_FEATURES.md) |
-| P10.2 | Lifecycle hardening (has P5.3's leftover) | in progress (sleep and resume confirmed on the OLED; HOME during a save write open) | [SWITCH_FEATURES](SWITCH_FEATURES.md) |
+| P10.2 | Lifecycle hardening (has P5.3's leftover) | in progress (sleep and resume: owner confirmed on the OLED, 2026-10-24; HOME during a save write open) | [SWITCH_FEATURES](SWITCH_FEATURES.md) |
 | P10.3 | Presentation modes | open | — |
 | P10.4 | Rumble polish (optional) | open | — |
 | P10.5 | Extra applets (optional) | open | — |
@@ -110,6 +112,8 @@ Test on **v0.6.5-preview.31** (US and EU builds attached; tag published
 2026-10-24). One line per item; the entry holds the steps and the history.
 Tick the item in the table once the owner confirms.
 
+- **P5 gate:** start → first boss on hardware, US and EU. The Phase 5 gate is
+  not met yet (owner, 2026-10-24); see [Phase 5](#phase-5--playable-on-switch).
 - **P6.1:** 16:9 for the map screen, results header, save slot picker, title
   menu, news caption bar, registration screen (patches 0080-0082, 0085-0087),
   and the Items menu and field menu screens (0075, 0076, 0074). US and EU. The
@@ -119,7 +123,7 @@ Tick the item in the table once the owner confirms.
   was not captured), the gym and the Digimon Lab (menu, party, digivolve). US
   and EU; in the Lab the chart, entry and skill screens still keep their left
   panels at the 4:3 edge.
-- **P6.4 / P6.18:** a won battle with R3 on, the results screen at the
+- **P6.18:** a won battle with R3 on, the results screen at the
   battle's speed (#223); Instant text, the area banner's names whole, after a
   battle and at a door.
 - **P6.20:** the Cheats screen checklist in
@@ -131,10 +135,9 @@ Tick the item in the table once the owner confirms.
 - **P5.2:** partner view portrait in `gpu-tex` (#229): Kotemon, the first
   Kuwagamon fight, later battles.
 - **P6.22:** field turbo with the faster pixel-identical rasterizer (#220).
-- **Older, still open:** P9.4 (toggle, HOME, relaunch), P6.17 (relaunch), P6.9
-  (restart after a battle and after a save), P4.3 (underrun count), P7.7 (Claw
-  steal, HUD Digivolution name), P7.9 (rest of the checklist), P10.2 (HOME
-  during a save write).
+- **Older, still open:** P6.9 (restart after a battle and after a save), P4.3
+  (underrun count), P7.7 (Claw steal, HUD Digivolution name), P7.9 (rest of the
+  checklist), P10.2 (HOME during a save write).
 
 **Language matrix.** The EU disc has 7 `LANGUAGE` slots: 0 JPN, 1 USA,
 2 ENG, 3 FRA, 4 ITA, 5 GER, 6 SPN (`STAGSLCT_regionNames`). The EU country
@@ -644,13 +647,17 @@ speed.
 
 Gate: start → first boss on hardware, both versions.
 
+**Gate status (owner, 2026-10-24): not met.** The owner has not yet tested
+start → first boss on hardware, so the gate stays open. The check is in
+[Pending OLED checks](#pending-oled-checks).
+
 ## Phase 6 — Polish and options
 
 Starts only after the Phase 5 gate (playable port on hardware). Localization
 is an explicit project goal in this phase, not during bring-up. P6.5 is
 the exception: packaging was done early because the owner asked. That
 tick does not start Phase 6.
-In practice P6.1, P6.2, P6.4 and P6.9 also have early work at the owner's
+In practice P6.1, P6.2 and P6.9 also have early work at the owner's
 request (marked "in progress" in the
 [status table](#status-at-a-glance)). That does not change the Phase 5
 gate, which stays open.
@@ -697,7 +704,8 @@ gate, which stays open.
     dialogue windows).
   **Other open sub-items:**
   - [ ] **Items menu (16:9):** layout and open transition are `0075`/`0076`,
-    pending OLED. A usability redesign is a separate item: **P6.33**.
+    pending OLED. A usability redesign is a separate item: **P6.33**
+    ([design proposal](P6.33_ITEMS_MENU.md)).
   - [ ] **PC `sdl3_gpu` only:** an empty drawing area (the 0x0 clip
     `closeField` leaves on the map layer) must draw nothing (PSY-Z fix).
   - [ ] **"Slow" transitions:** needs an OLED nxlink log across a door and
@@ -706,6 +714,14 @@ gate, which stays open.
     display-wide band layers that now draw into the gutters.
   - [ ] The black hole in the middle of the technique magic circle (Ryubing
     and PC, same on main): look at it on the OLED first.
+  - [ ] **preview.31-rc1 OLED report (owner, EU): "leaving the Underground
+    Path the water texture is wrong until the screen scrolls down",
+    fixed, pending OLED (US and EU).** Not a renderer or VRAM / CLUT
+    problem: a map tile of the streets by the Cargo Tower (WSTAG202) counts 6
+    sprites in a depth and patch `0057`'s clamp made the next two depths read
+    garbage, which drew huge sprites over the canal while that tile was in
+    view (patch `0111`; test hook `0110`). Replay scenarios
+    `us/eu-underground-exit`. Details: [FIELD_TILE_SPRITES.md](FIELD_TILE_SPRITES.md).
   Details and evidence for each item:
   [P6.1_WIDESCREEN.md](P6.1_WIDESCREEN.md#open-transitions-2026-10-23) and
   [P6.1_WIDESCREEN_MENU_AUDIT.md](P6.1_WIDESCREEN_MENU_AUDIT.md) (partly
@@ -723,16 +739,14 @@ gate, which stays open.
   open, so P6.2 is not complete.
 - [ ] **P6.3** PGXP-style vertex precision from PSY-Z if it stays stable.
   Done when: TBD (owner).
-- [ ] **P6.4** Fast-forward / frame-skip toggles for grinding (optional).
-  **State (2026-10-24):** R3 toggles 2x/3x/4x fast-forward in field and
-  battle; the speed (or OFF) is a Port options row. The Switch skips presents;
-  PC paces at speed x base rate. Done early on the owner's request. Turbo works
-  on the OLED in battle on EU (preview.26) and US (rc7: R3 on at 4x and off
-  back to 1x, three times); owner on preview.31-rc1: "boost working well".
-  The battle report (`STFGTREP`) is the turbo gate's third mode file since #223
-  (merged, in preview.31; pending OLED). The field menu screens still run at
-  1x. Scripted scenes are P6.22. Left unticked: the owner decides whether this
-  closes P6.4. Dated history and numbers:
+- [x] **P6.4** Fast-forward / frame-skip toggles for grinding (optional).
+  **State (2026-10-24):** done. Owner confirmed on the OLED, 2026-10-24.
+  R3 toggles 2x/3x/4x fast-forward in field and battle; the speed (or OFF) is a
+  Port options row. The Switch skips presents; PC paces at speed x base rate.
+  The field menu screens still run at 1x. Scripted scenes are P6.22. The battle
+  report (`STFGTREP`) is the turbo gate's third mode file since #223; its check
+  is under P6.18 in [Pending OLED checks](#pending-oled-checks). Dated history
+  and numbers:
   [P6.4_FAST_FORWARD.md](P6.4_FAST_FORWARD.md#history-moved-from-roadmapmd-2026-10-24).
   Done when: PC and Switch (Ryujinx, then hardware) show it on both the US
   and EU discs, and it returns cleanly to normal speed.
@@ -833,7 +847,7 @@ gate and the Phase 6 packaging baseline (P6.5) are already met. Prefer
 finishing P6.2 (EU language / NTSC) before QoL parity work that assumes PAL
 language slots.
 
-**Proposed Phase 6 gate (proposal for the owner, not adopted):** the
+**Proposed Phase 6 gate (owner, 2026-10-24: not adopted):** the
 current gate says "land as needed", which is not a criterion. Proposal:
 
 1. Phase 5 gate met (start → first boss on hardware, US and EU).
@@ -1018,18 +1032,17 @@ PS1 game, with vanilla-safe defaults and persistence on owner storage.
   Its chord and flush behavior are documented in
   [PORT_OPTIONS.md](PORT_OPTIONS.md) and [P6.9_RESTART.md](P6.9_RESTART.md).
   P9.5 wiring of remaining real features remains open.
-- [ ] **P9.4 Persistence.** Load/save the option file under the owner
+- [x] **P9.4 Persistence.** Load/save the option file under the owner
   runtime layout (PC directory / `sdmc:/switch/dw3/…`); values survive
   process exit.
   Done when: a toggled value remains after restarting the host or
   returning from hbmenu.
-  **State (2026-10-24):** in progress. Implemented: `port_options.cfg`
-  (key=value, `version=1`) in each region runtime root (`runtime/<ver>/`,
-  `sdmc:/switch/dw3/<ver>/`), loaded before any flag is read and saved on
-  every change; PC and Ryubing validated on both discs; partial OLED evidence
-  (EU, preview.30-rc4: created on the first change, saved on every later one).
-  Format and rules: [PORT_OPTIONS.md](PORT_OPTIONS.md#persistence). Ready to
-  close? Needs the OLED: toggle, HOME -> close, relaunch from hbmenu (US too).
+  **State (2026-10-24):** done. Owner confirmed on the OLED, 2026-10-24.
+  Implemented: `port_options.cfg` (key=value, `version=1`) in each region runtime
+  root, loaded before any flag is read and saved on every change. PC and
+  Ryubing validated on both discs. Format and rules:
+  [PORT_OPTIONS.md](PORT_OPTIONS.md#persistence). Dated history and evidence:
+  [PORT_OPTIONS.md](PORT_OPTIONS.md#p94-history).
   Blocks: P6.12, P7.6-P7.10 and a persisted P6.9 setting (see
   [Backlog](#backlog--future-goals)); P6.17 and P6.18 add rows on top of it.
   Dated history and evidence: [PORT_OPTIONS.md](PORT_OPTIONS.md#p94-history).
@@ -1172,6 +1185,10 @@ rumble, saves, turbo, or widescreen here; those stay in their phases.
   until the OLED smoke there passes.
   Done when: HOME sleep/resume and clean exit smoke tests pass with
   saves intact.
+  - [x] Sleep and resume: owner confirmed on the OLED, 2026-10-24.
+  - [ ] HOME pressed during a save write section (open).
+  - [ ] A HOME (not power button) pause, and the focus lines on an nxlink run
+  (open). P10.2 stays in progress until these are closed.
   **Sleep part confirmed by the owner (2026-10-23, OLED handheld, US,
   preview.30-rc7):** the console went to sleep and resumed without problems,
   with saves made before and after the sleep, and the in-game time counted
@@ -1266,7 +1283,8 @@ Statuses are in the [table](#status-at-a-glance).
 
 **Dependencies not stated in the entries:**
 
-- **P9.4 (option persistence) blocks** P6.12 (remap survives a restart),
+- **P9.4 (option persistence, done 2026-10-24) is the base for** P6.12 (remap
+  survives a restart),
   P7.6–P7.10 (P6.17 added its two keys, `music_volume` and
   `sfx_volume`, and P6.18 `encounter_rate` and `text_speed`, in the same file). The persisted P6.9 restart setting is done
   with P9.4; the option file is `port_options.cfg` (add a key per new row).
@@ -1285,33 +1303,40 @@ Statuses are in the [table](#status-at-a-glance).
 
 **Overlaps to decide (owner; nothing merged or deleted here):**
 
-- P6.12 / P6.13: P6.13 is the UI of P6.12. Possible merge.
-- P6.18 vs P7.6 / P7.10: P6.18's pacing options overlap the progression
-  and training options; P6.18 already says it may land as P7.4 items.
-- P6.14 vs P6.16: two "resume" models (in-game save slot vs full state).
-  P6.16 also touches P10.2 (sleep/resume).
+- P6.18 vs P7.6 / P7.10: owner undecided (2026-10-24). Recorded recommendation:
+  no merge. P6.18 is presentation pacing (text speed, banners, encounter rate);
+  P7.6 and P7.10 are progression and training balance. The owner can revisit.
 - P6.7 / P6.8 (Phase 6, not backlog): same pack mechanism; PT-BR is the
   first case of P6.8.
+
+**Decided (owner, 2026-10-24):**
+
+- P6.12 / P6.13: merged into P6.12; the mapping submenu is part of P6.12.
+- P6.14 vs P6.16: P6.16 (full state) is the resume model now. P6.14 (in-game
+  save slot resume) stays as a future option, not dropped.
 
 ### Phase 6 goal notes
 
 - [ ] **P6.12 Button mapping (future goal).** Let the owner remap the
-  PS1 pad buttons on the Switch and PC, in `port/` policy with the host
-  input mapping kept in `platforms/`. Goal note only, recorded at the
-  owner's request (2026-10-15); it does not start Phase 6 and is not part
-  of the Phase 5 gate. Done when a remap survives a restart and works on
+  PS1 pad buttons on the Switch and PC, in `port/` policy with the host input
+  mapping kept in `platforms/`. The mapping lives in a submenu in Port options,
+  with its own screen in the game's window style (the former P6.13, merged by
+  the owner's decision, 2026-10-24). Goal note only, recorded at the owner's
+  request (2026-10-15); it does not start Phase 6 and is not part of the Phase 5
+  gate. Done when the submenu opens from Port options, lists each mapped button,
+  returns with the mapping saved, and a remap survives a restart and works on
   the US and EU discs.
-- [ ] **P6.13 Mapping submenu (future goal).** A submenu in Port options
-  that holds the button mapping (P6.12), with its own screen in the game's
-  window style. Goal note only (2026-10-15); not part of the Phase 5 gate.
-  Done when the submenu opens from Port options, lists each mapped button,
-  and returns with the mapping saved.
+- **P6.13 Mapping submenu.** Merged into P6.12 (owner, 2026-10-24). Its goal
+  and done-when are in P6.12; the id stays for references.
 - [ ] **P6.14 In-game load / new save menu (future goal).** A load or
   new-save menu reachable during play, so the owner can switch save slots
   without returning to the title. It must flush P5.3 saves before a load
   and keep the save rules of P5.3 intact. Goal note only (2026-10-15); not
   part of the Phase 5 gate. Done when a load or new save from inside the
   game works without a restart, on the US and EU discs.
+  **Owner, 2026-10-24:** P6.16 is the resume model now. This item stays as a
+  future option, not dropped; the owner wants in-game load and new save
+  possible later.
 - [~] **P6.15 Regression replay tests.** Record pad input, replay it and
   compare screenshots at fixed checkpoints, on the US disc and the EU disc
   in all 5 languages. First version landed (2026-10-15):
@@ -1349,17 +1374,16 @@ Statuses are in the [table](#status-at-a-glance).
   (RAM, VRAM, SPU, overlay state) on exit or sleep and resume at the same
   point. Separate from P5.3 game saves. Goal note only (2026-10-15). Done
   when exit and relaunch resume mid-play on US and EU.
-- [ ] **P6.17 Music / SFX volume.** Separate music and sound-effect volume
+  **Owner, 2026-10-24:** this is the resume model now (see P6.14).
+- [x] **P6.17 Music / SFX volume.** Separate music and sound-effect volume
   rows in Port options, persisted with P9.4. Done when both sliders work on
   US and EU.
-  **State (2026-10-24):** in progress. Rows "Music volume" and "SFX volume"
-  (0..10, default 10 = the original mix, bit-identical), separated inside
-  PSY-Z's SPU mixer; XA movie audio follows Music volume. Owner OLED: the
-  volume options work (rc6 EU, rc7 US). Still open: relaunch persistence (the
-  rc7 log is one run) and the in-game and movie steps of the checklist in
-  [P6.17_VOLUME.md](P6.17_VOLUME.md#oled-check-for-the-owner). Keep it unticked
-  until the owner closes it. The BGM bugs seen while listening (loop after one
-  play, music silent after a won battle) are fixed; see P4.3. Dated history:
+  **State (2026-10-24):** done. Owner confirmed on the OLED, 2026-10-24.
+  Rows "Music volume" and "SFX volume" (0..10, default 10 = the original mix,
+  bit-identical), separated inside PSY-Z's SPU mixer; XA movie audio follows
+  Music volume. The BGM bugs seen while listening (loop after one play, music
+  silent after a won battle) are fixed; see P4.3. The OLED steps are kept in
+  [P6.17_VOLUME.md](P6.17_VOLUME.md#oled-check-for-the-owner). Dated history:
   [P6.17_VOLUME.md](P6.17_VOLUME.md#history-moved-from-roadmapmd-2026-10-24).
 - [ ] **P6.18 Pacing options.** Encounter rate (1x, 0.5x, off), text speed
   and faster battle animations as Port options rows, off by default, saved
@@ -1380,6 +1404,9 @@ Statuses are in the [table](#status-at-a-glance).
   persistence. Steps:
   [P6.18_PACING.md](P6.18_PACING.md#oled-check-for-the-owner). Dated history:
   [P6.18_PACING.md](P6.18_PACING.md#history-moved-from-roadmapmd-2026-10-24).
+  **Boundary with P7.6 / P7.10 (owner undecided, 2026-10-24):** no merge is
+  recorded. P6.18 is presentation pacing (text speed, banners, encounter rate);
+  P7.6 and P7.10 are progression and training balance. The owner can revisit.
 - [ ] **P6.19 Japanese disc support (future goal).** File map, executable
   differences and boot for the JP disc, next to US and EU. Goal note only
   (2026-10-15). Done when the JP disc boots to the field on PC and Switch.
@@ -1786,6 +1813,13 @@ Statuses are in the [table](#status-at-a-glance).
   (16:9)", which is only the layout and the open transition (patches `0075`,
   `0076`); that work is done and pending OLED. P6.33 changes how the menu
   works, not how wide it is.
+  **Design proposal (2026-10-24, no code):** [P6.33_ITEMS_MENU.md](P6.33_ITEMS_MENU.md)
+  surveys the code, lists the pain points and compares three options.
+  Equipping is in the Status screen (`equip_panel.c`), not in Items. The
+  recommendation is option A, in phases: a partner cycle on the equip slot
+  list (L2 / R2), a bag summary and items worn by other Digimon, all in the
+  game's own widgets, behind a Port option that is off by default, with no
+  save change.
   **Open questions (owner):** the exact flow (a partner switch row in the
   equip panel, or L1/R1 to change partner); which bag view is shown next to
   the equip panel; whether the change is a Port option or always on.
@@ -1800,6 +1834,9 @@ Statuses are in the [table](#status-at-a-glance).
   and DV EXP rate (1x default, Harmony uses 1.3x / 1.2x), uncapped DV EXP
   and HP/MP restore on level up. Credit markisha64 / rsigrist. Done when
   each option works on US and EU and is off by default.
+  **Boundary with P6.18 (owner undecided, 2026-10-24):** no merge is recorded.
+  This is progression and training balance; P6.18 is presentation pacing (text
+  speed, banners, encounter rate). The owner can revisit.
 - [~] **P7.7 Bug and text fixes.** Picking / Snapping Claw on a KO'd enemy,
   active Digivolution name in battle, battle reward "1IT"/"1EXP" text, save
   label showing Asuka Inn, Square map glitch. Checked on the US and the EU
@@ -1863,6 +1900,8 @@ Statuses are in the [table](#status-at-a-glance).
 - [ ] **P7.10 Training without RNG (future goal).** Guaranteed base gains,
   optional timing bonus, Fast Training skip, as an option off by default.
   Done when it works on US and EU.
+  **Boundary with P6.18 (owner undecided, 2026-10-24):** no merge is recorded.
+  This is training balance; P6.18 is presentation pacing. The owner can revisit.
 - [ ] **P7.11 Guidance and exploration (future goal).** Quest log HUD,
   next-step walkthrough (Flawe, EU 5 languages + US English), NPC
   quest/battle bubbles, auction / DRI notices, Digivolution requirements in
