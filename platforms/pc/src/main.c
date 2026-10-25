@@ -364,6 +364,11 @@ int main(int argc, char **argv) {
     }
     dw3_pad_host_shot_cb = dw3_pc_replay_shot;
     g_prev_vsync_cb = Psyz_SetVSyncCb(dw3_pc_vsync_pump);
+    if (getenv("DW3_PC_FRAME_LIMIT") != NULL) {
+        /* P5.1 soak: under Xvfb the driver VSync does not block, so a run
+         * would go at 2x or more; the PSY-Z frame limiter paces it at 1x. */
+        (void)Psyz_VideoSetVsyncMode(PSYZ_VSYNC_OFF);
+    }
 #if defined(DW3_PC_SDL3_GPU)
     dw3_pc_title_menu_overlay_register();
 #endif

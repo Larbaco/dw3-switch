@@ -55,7 +55,8 @@ ARM_LIST = ("warp=0x233;battle_now;battle_now;money_10k;warp=0x206;"
 
 SAVE_ENV = (("DW3_START_MODE", "0x20B"), ("DW3_PROGRESS", "6"),
             ("DW3_FORCE_MENU", "0xC00:0x80000000"))
-SOAK_ENV = (("DW3_FORCE_ENCOUNTER", "34"), ("DW3_FORCE_PARTY", "0"))
+SOAK_ENV = (("DW3_FORCE_ENCOUNTER", "34"), ("DW3_FORCE_PARTY", "0"),
+            ("DW3_FORCE_ENEMY_HP", "60"))
 
 SCRUB = ("DW3_AUTO_PAD", "DW3_REPLAY_RECORD", "DW3_PC_INTERNAL_RES", "DW3_TURBO",
          "DW3_CONFIG_DIR", "DW3_WIDESCREEN", "DW3_START_MODE", "DW3_PROGRESS",
@@ -90,30 +91,34 @@ def loop_cycle(f):
         L.append(f"pad {f + HOLD} 0x0000")
         f += HOLD + wait
 
-    hold(UP, 180)
-    hold(RIGHT, 150)
-    hold(DOWN, 180)
-    hold(LEFT, 150)
+    hold(UP, 150)
+    hold(RIGHT, 120)
+    hold(DOWN, 150)
+    hold(LEFT, 120)
     for _ in range(4):
         tap(CROSS, 60)
-    tap(START, 90)          # field menu
-    tap(CROSS, 150)         # first entry
-    tap(TRIANGLE, 60)
-    tap(TRIANGLE, 90)
-    hold(DOWN | LEFT, 120)
-    hold(UP | RIGHT, 120)
-    for _ in range(10):     # battle menus, reports, dialogue
-        tap(CROSS, 25)
+    tap(START, 80)          # field menu
+    tap(CROSS, 120)         # first entry (Items)
+    for _ in range(4):      # back out of whatever list is open
+        tap(TRIANGLE, 70)
+    hold(DOWN | LEFT, 90)
+    hold(UP | RIGHT, 90)
+    for _ in range(40):     # battle menus, reports, dialogue
+        tap(CROSS, 20)
     return L, f
 
 
-def make_rec(version, frames, path):
+def make_rec(version, frames, path, shot_every=0):
     lines = [f"# {version.upper()}: P5.1 memory soak, {frames} frames (tools/memaudit/soak.py)"]
     lines += prefix_lines(version, CONTINUE_END[version])
     f = LOOP_START[version]
     while f < frames:
         cyc, f = loop_cycle(f)
         lines += cyc
+    lines = [ln for ln in lines if ln.startswith("#") or int(ln.split()[1]) < frames]
+    lines.append(f"pad {frames - 1} 0x0000")
+    if shot_every:  # debugging aid: window grabs into DW3_REPLAY_OUT
+        lines += [f"shot {n} s{n}" for n in range(LOOP_START[version], frames, shot_every)]
     lines.append(f"end {frames}")
     path.write_text("\n".join(lines) + "\n")
 
@@ -157,11 +162,14 @@ def main():
     ap.add_argument("--hours", type=float, default=2.0,
                     help="game time of the soak loop, at the disc's frame rate")
     ap.add_argument("--turbo", type=int, default=0, help="DW3_TURBO speed (0 = 1x)")
+    ap.add_argument("--uncapped", action="store_true",
+                    help="no frame limiter and no turbo (Xvfb then runs ~2x real time)")
     ap.add_argument("--arm-every", type=int, default=2400)
     ap.add_argument("--log-every", type=int, default=600)
     ap.add_argument("--preload", help="libdw3_malloc_audit.so for the allocation audit")
     ap.add_argument("--audit-from", type=int, default=3000)
     ap.add_argument("--nice", type=int, default=10)
+    ap.add_argument("--shot-every", type=int, default=0, help="debug: a screenshot every N frames")
     ap.add_argument("--no-autosave", action="store_true")
     ap.add_argument("--skip-save-phase", action="store_true")
     a = ap.parse_args()
@@ -172,6 +180,7 @@ def main():
     shutil.rmtree(memdir, ignore_errors=True)
     shutil.rmtree(cfgdir, ignore_errors=True)
     memdir.mkdir()
+    (out / "shots").mkdir(exist_ok=True)
     frames = int(a.hours * 3600 * FRAME_HZ[a.version])
     xdg = Path(tempfile.mkdtemp(prefix="dw3-soak-xdg-"))
     os.chmod(xdg, 0o700)
@@ -194,12 +203,16 @@ def main():
                 print("phase 0 failed: no save", file=sys.stderr)
                 return 1
         rec1 = out / "soak.rec"
-        make_rec(a.version, frames, rec1)
+        make_rec(a.version, frames, rec1, a.shot_every)
         write_cfg(cfgdir, (("cheat_enabled", 1),) + (() if a.no_autosave else (("autosave", 1),)))
         env = dict(base, DW3_REPLAY=str(rec1), DW3_REPLAY_OUT=str(out / "shots"),
                    DW3_MEM_LOG=str(out / "mem.csv"), DW3_MEM_LOG_EVERY=str(a.log_every),
                    DW3_SOAK_ARM_EVERY=str(a.arm_every), DW3_SOAK_ARM_LIST=ARM_LIST,
                    **dict(SOAK_ENV))
+        if a.shot_every:
+            env["DW3_REPLAY_XSHOT"] = "1"
+        if not a.turbo and not a.uncapped:
+            env["DW3_PC_FRAME_LIMIT"] = "1"  # true 1x; Xvfb has no blocking vsync
         if a.turbo:
             env["DW3_TURBO"] = str(a.turbo)
         if a.preload:
