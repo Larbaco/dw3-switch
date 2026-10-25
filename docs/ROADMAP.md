@@ -149,8 +149,11 @@ Tick the item in the table once the owner confirms.
   overlay left over, and Continue must load the save written before the
   restart. PC replays pass ([P6.9_RESTART.md](P6.9_RESTART.md)); tick P6.9
   only after this.
-- **P5.1:** a long session that fills the file cache; look for the
-  `dw3-file-cache: ... evicted` lines in `dw3.log` (#235).
+- **P5.1:** the 2 hour session of the checklist in
+  [P5.1_MEMORY.md](P5.1_MEMORY.md#owner-checklist-2-hour-oled--nxlink-session-p51-stays-unticked-until-done)
+  (US and EU): `heap hw` and `libc hw` flat after the first 30 minutes. The PC
+  soak never filled the file cache, so also look for the
+  `dw3-file-cache: ... evicted` lines in `dw3.log` (#235); tick P5.1 after.
 - **P5.4:** the notice stays up to 60 s and A dismisses it (#231); the PR 2
   forced-assert check in [P5.4_CRASH.md](P5.4_CRASH.md#pr-2-owner-oled-check).
 - **P5.2:** partner view portrait in `gpu-tex` (#229): Kotemon, the first
@@ -575,6 +578,14 @@ speed.
   footprint, and newlib `mallinfo` at the ~1 Hz `frame dt` cadence
   (`mem dbg:` line + HUD lines). See [P5.1_MEMORY.md](P5.1_MEMORY.md).
   This is measurement only — not a proven 2h flat session.
+  **PC audit and soak (2026-10-25, test/p5.1-memory-soak):** no port or engine
+  allocation per frame after init on PC (all steady-state host mallocs are the
+  PC-only SDL GPU renderer; per-file `fopen` churn and the title movie's
+  per-slice buffer are listed, the latter fixed); US 2 h at 1x (431568 frames)
+  and EU 1 h at 1x on one process each: no crash, game heap hw 1929K / 1854K of
+  8192K, file cache max 1.4M, glibc arena flat at 94008K for the last 45 min of
+  the US run. Details, tools and the 2 h OLED checklist in
+  [P5.1_MEMORY.md](P5.1_MEMORY.md). Stays unticked until the owner's OLED run.
   **rc7 OLED log (2026-10-23, US, handheld):** 1707 `mem dbg` samples (about
   30 minutes of play plus one sleep). The game heap high-water stays at 1685K
   of 8192K, the file cache at 1259K and newlib at 144435K; after the opening

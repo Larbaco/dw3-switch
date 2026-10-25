@@ -96,8 +96,7 @@ static int ch_file_bool(const char *key) {
  * the master switch. PR 2 adds money_10k | money_100k | money_max,
  * warp=<game mode, e.g. 0x206> and item=<id>:<count>. Unset (the Switch has
  * no environment) it does nothing. */
-static void ch_arm_from_env(void) {
-    const char *arm = getenv("DW3_CHEATS_ARM");
+static void ch_arm_spec(const char *arm) {
     const char *at;
 
     if (arm == NULL || arm[0] == '\0') {
@@ -148,6 +147,10 @@ static void ch_arm_from_env(void) {
                g_give_armed ? "ready" : "off", g_item_id, g_item_count);
 }
 
+static void ch_arm_from_env(void) {
+    ch_arm_spec(getenv("DW3_CHEATS_ARM"));
+}
+
 /* The Options page of the native overlay: Square/Y Cheats in its hints
  * once the master switch is on. */
 static void ch_options_page(void) {
@@ -186,6 +189,13 @@ static void ch_ready(void) {
     if (!g_ready) {
         dw3_cheats_init(memcard_host_dir());
     }
+}
+
+/* P5.1 soak driver (platforms/pc/src/mem_sampler.c): arms one-shots again in
+ * the middle of a run, with the same spec as DW3_CHEATS_ARM. */
+void dw3_cheats_soak_arm(const char *spec) {
+    ch_ready();
+    ch_arm_spec(spec);
 }
 
 int dw3_cheats_enabled(void) {
