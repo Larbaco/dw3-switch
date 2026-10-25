@@ -218,3 +218,15 @@ def test_unwritable_memdir_keeps_playing(cheats_bin, dirs, tmp_path):
     gone = tmp_path / "missing"
     out, _ = run(cheats_bin, (dirs[0], gone), "battle", "win", "count")
     assert out == ["win=1", "count=0"]
+
+
+def test_cheats_entry_is_locked_in_game(cheats_bin, dirs):
+    """P9.7: the Options screen opened from the field menu greys the Cheats
+    entry: Square does nothing there (cheats are armed at the title)."""
+    out, err = run(cheats_bin, dirs, "ingame", "square", "show")
+    assert out == ["master=0 fill=0 win=0 battle=0 saves=0 open=0 cursor=0 options=1"]
+    assert "dw3-port-options: cheats are locked in game" in err
+    assert "dw3-cheats: open" not in err
+    # The same Square from the title opens the Cheats screen.
+    out, err = run(cheats_bin, dirs, "options", "square", "show")
+    assert out[0].startswith("master=0") and " open=1 " in out[0]

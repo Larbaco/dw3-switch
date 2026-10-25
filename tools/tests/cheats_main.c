@@ -4,6 +4,7 @@
  * Steps run in order after dw3_port_options_persist_init(<cfgdir>) and
  * dw3_cheats_init(<memdir>), with an empty card file on port 0 and port 1:
  *   options | close    open / close the Options screen
+ *   ingame             open it from the field menu (P9.7: Cheats is locked)
  *   square             Square on the Options screen (opens Cheats)
  *   row N              move the Cheats cursor to row N (Up / Down)
  *   press | back       Cross / Triangle
@@ -86,6 +87,8 @@ int main(int argc, char **argv) {
 
         if (strcmp(s, "options") == 0) {
             dw3_port_options_open();
+        } else if (strcmp(s, "ingame") == 0) {
+            dw3_port_options_open_in_game();
         } else if (strcmp(s, "close") == 0) {
             dw3_port_options_close();
         } else if (strcmp(s, "square") == 0) {

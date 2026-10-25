@@ -139,7 +139,7 @@ int dw3_pc_title_overlay_options_value(int row) {
     return row>=0&&row<DW3_TITLE_OPTION_ROWS?option_values[row]:0;
 }
 void dw3_pc_title_overlay_set_options_locked(unsigned mask) {
-    mask&=(1u<<DW3_TITLE_OPTION_ROWS)-1u|DW3_TITLE_LOCK_CHEATS;
+    mask&=((1u<<DW3_TITLE_OPTION_ROWS)-1u)|DW3_TITLE_LOCK_CHEATS;
     if(mask!=options_locked){options_locked=mask;options_layout++;options_generation++;}
 }
 unsigned dw3_pc_title_overlay_options_locked(void) { return options_locked; }
