@@ -28,6 +28,7 @@ DW3_NX_REPLAY=OFF
 # P6.20: the Cheats screen is built in by default. --no-cheats compiles the
 # whole feature out (CMake DW3_CHEATS=OFF; docs/PORT_OPTIONS.md).
 DW3_CHEATS=ON
+# DW3_BUILD_JOBS=N limits the ninja jobs in the container (default: nproc).
 # Development-only K=V,K=V environment baked into the NRO (CMake
 # DW3_NX_TEST_ENV). Always passed, so a build dir never keeps an old value.
 DW3_NX_TEST_ENV="${DW3_NX_TEST_ENV:-}"
@@ -182,6 +183,7 @@ docker run --rm \
   -e DW3_NX_FORCE_CRASH="${DW3_NX_FORCE_CRASH}" \
   -e DW3_NX_REPLAY="${DW3_NX_REPLAY}" \
   -e DW3_CHEATS="${DW3_CHEATS}" \
+  -e DW3_BUILD_JOBS="${DW3_BUILD_JOBS:-}" \
   -e DW3_NX_TEST_ENV="${DW3_NX_TEST_ENV}" \
   -e DW3_NRO_VERSION="${DW3_NRO_VERSION}" \
   -e DW3_NACP_VERSION="${DW3_NACP_VERSION}" \
@@ -205,7 +207,7 @@ docker run --rm \
     -DDW3_NX_TEST_ENV="$DW3_NX_TEST_ENV" \
     -DDW3_NRO_VERSION="$DW3_NRO_VERSION" \
     -DDW3_NACP_VERSION="$DW3_NACP_VERSION" && \
-    cmake --build "$DW3_SWITCH_BUILD_DIR" -j"$(nproc)"'
+    cmake --build "$DW3_SWITCH_BUILD_DIR" -j"${DW3_BUILD_JOBS:-$(nproc)}"'
 
 if ! grep -F -x -q "DW3_NXLINK_STDIO:BOOL=${NXLINK_STDIO}" "${BUILD_DIR}/CMakeCache.txt"; then
   echo "CMake cache does not match requested nxlink mode (${NXLINK_STDIO})" >&2
