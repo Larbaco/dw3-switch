@@ -85,9 +85,10 @@ draw nothing there. Only `sdl3_gpu.c` changed; `sdl3_gl.c` has the same
 Gate for this pin: `sdl3_software.c` is byte-identical to `2f931d8`, so the
 rasterizer gate (`tools/soft_raster_bench.sh --ref 2f931d8 -- --fuzz 1000000
 <seed>`, seeds 1, 7, 42, and `--san` with 200000 for seeds 1, 7) gives
-GATE_RESULT. The gpu change is gated by the replay suite: the only changed
-checkpoints are the four of the new 4:3 iris scenario where the map showed
-(P6.1 doc, *Open transitions*).
+0 differences (all five runs). The gpu change is gated by the replay suite (1387
+checks on both discs, 0 failed: no existing reference changed; the only new
+references are the two `door-iris43` scenarios, whose frames 240-258 differ from
+the buggy build where the map showed; P6.1 doc, *Open transitions*).
 
 ## Mixer buses (P6.17)
 
