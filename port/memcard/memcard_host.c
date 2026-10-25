@@ -1,6 +1,7 @@
 #define _POSIX_C_SOURCE 200809L
 
 #include "memcard_host.h"
+#include "save_convert.h"
 
 #include <errno.h>
 #include <stdint.h>
@@ -32,6 +33,10 @@ static const char *const k_dw3_save_names[] = {
 };
 
 static char g_dir[MEMCARD_DIR_MAX];
+/* P6.25: folder of the other region's saves to import from, and this build's
+ * region (SAVE_REGION_*). Empty = no cross-region import. */
+static char g_import_dir[MEMCARD_DIR_MAX];
+static int g_own_region;
 static MemSlot g_slots[MEMCARD_HOST_SLOTS];
 
 static uint64_t mono_us(void) {
@@ -583,6 +588,199 @@ static int migrate_legacy_mcr(int slot) {
     return 0;
 }
 
+static const char *region_name(int region) {
+    return region == SAVE_REGION_US ? "us" : "eu";
+}
+
+int memcard_host_set_cross_import(const char *foreign_dir, int own_region) {
+    size_t n;
+
+    g_import_dir[0] = '\0';
+    g_own_region = 0;
+    if (foreign_dir == NULL || foreign_dir[0] == '\0' ||
+        (own_region != SAVE_REGION_US && own_region != SAVE_REGION_EU)) {
+        return -1;
+    }
+    n = strlen(foreign_dir);
+    if (n >= MEMCARD_DIR_MAX) {
+        return -1;
+    }
+    memcpy(g_import_dir, foreign_dir, n + 1);
+    while (n > 1 && (g_import_dir[n - 1] == '/' || g_import_dir[n - 1] == '\\')) {
+        g_import_dir[--n] = '\0';
+    }
+    g_own_region = own_region;
+    return 0;
+}
+
+int memcard_host_set_cross_import_sibling(const char *runtime_root,
+                                          int own_region) {
+    char buf[MEMCARD_DIR_MAX];
+    size_t n;
+    int other;
+
+    if (runtime_root == NULL ||
+        (own_region != SAVE_REGION_US && own_region != SAVE_REGION_EU)) {
+        return -1;
+    }
+    n = strlen(runtime_root);
+    if (n < 2 || n + 16 >= sizeof(buf)) {
+        return -1;
+    }
+    memcpy(buf, runtime_root, n + 1);
+    while (n > 2 && (buf[n - 1] == '/' || buf[n - 1] == '\\')) {
+        buf[--n] = '\0';
+    }
+    /* The last path component must be this build's own region folder. */
+    if (n < 2 || strcmp(buf + n - 2, region_name(own_region)) != 0 ||
+        (n > 2 && buf[n - 3] != '/' && buf[n - 3] != '\\' && buf[n - 3] != ':')) {
+        return -1;
+    }
+    other = own_region == SAVE_REGION_US ? SAVE_REGION_EU : SAVE_REGION_US;
+    memcpy(buf + n - 2, region_name(other), 2);
+    memcpy(buf + n, "/memcard", 9);
+    return memcard_host_set_cross_import(buf, own_region);
+}
+
+int memcard_host_setup_cross_import(const char *runtime_root, int own_region,
+                                    int memdir_is_explicit) {
+    const char *off = getenv("DW3_CROSS_IMPORT");
+    const char *dir = getenv("DW3_MEMCARD_IMPORT_DIR");
+    int rc = -1;
+
+    if (off != NULL && strcmp(off, "0") == 0) {
+        fprintf(stderr, "dw3: memcard cross-import disabled (DW3_CROSS_IMPORT=0)\n");
+        return -1;
+    }
+    if (dir != NULL && dir[0] != '\0') {
+        rc = memcard_host_set_cross_import(dir, own_region);
+    } else if (!memdir_is_explicit) {
+        rc = memcard_host_set_cross_import_sibling(runtime_root, own_region);
+    }
+    if (rc == 0) {
+        fprintf(stderr, "dw3: memcard cross-import source=%s own=%s\n",
+                g_import_dir, region_name(own_region));
+    }
+    return rc;
+}
+
+static int import_marker_path(int slot, char *out, size_t outlen) {
+    char leaf[32];
+    int n = snprintf(leaf, sizeof(leaf), "save%d.import", slot);
+
+    if (n < 0 || (size_t)n >= sizeof(leaf)) {
+        return -1;
+    }
+    return join_path(out, outlen, leaf);
+}
+
+static int file_exists(const char *path) {
+    FILE *fp = fopen(path, "rb");
+
+    if (fp == NULL) {
+        return 0;
+    }
+    fclose(fp);
+    return 1;
+}
+
+/* P6.25 slice 1: the port has no save of its own and the other region's
+ * folder has one. Convert it in memory and write it as this port's save. The
+ * source file is only read. Fail closed: anything unexpected leaves the port
+ * empty with nothing written. Runs for a port that has no save yet; the
+ * `saveN.import` marker keeps a deleted or formatted save from coming back. */
+static void cross_import(int slot) {
+    char marker[MEMCARD_PATH_MAX];
+    char src_path[MEMCARD_PATH_MAX];
+    SaveConvertReport rep;
+    uint8_t *src;
+    FILE *fp;
+    FILE *mk;
+    size_t nr;
+    int s;
+    int from_region;
+
+    if (g_import_dir[0] == '\0' || g_own_region == SAVE_REGION_NONE) {
+        return;
+    }
+    from_region = g_own_region == SAVE_REGION_US ? SAVE_REGION_EU : SAVE_REGION_US;
+    if (import_marker_path(slot, marker, sizeof(marker)) != 0 ||
+        file_exists(marker)) {
+        return;
+    }
+    if (snprintf(src_path, sizeof(src_path), "%s/%s", g_import_dir,
+                 memcard_host_slot_name(slot)) >= (int)sizeof(src_path)) {
+        return;
+    }
+    fp = fopen(src_path, "rb");
+    if (fp == NULL) {
+        return; /* nothing to import */
+    }
+    if (!file_size_is(fp, (long)SAVE_IMAGE_SIZE)) {
+        fclose(fp);
+        fprintf(stderr,
+                "dw3: memcard cross-import slot=%d skipped: %s is not a "
+                "32 KiB save\n", slot, src_path);
+        return;
+    }
+    src = (uint8_t *)malloc(SAVE_IMAGE_SIZE);
+    if (src == NULL) {
+        fclose(fp);
+        return;
+    }
+    nr = fread(src, 1, SAVE_IMAGE_SIZE, fp);
+    fclose(fp);
+    if (nr != SAVE_IMAGE_SIZE || slot_alloc(slot) != 0) {
+        free(src);
+        slot_clear_ram(slot);
+        return;
+    }
+    if (save_convert_image(src, g_slots[slot].data, g_own_region, &rep) != 0 ||
+        rep.usable == 0) {
+        fprintf(stderr,
+                "dw3: memcard cross-import slot=%d skipped: nothing usable in "
+                "%s (not a DW3 card, or only saves this region cannot load)\n",
+                slot, src_path);
+        free(src);
+        slot_clear_ram(slot);
+        return;
+    }
+    free(src);
+    g_slots[slot].name[0] = '\0'; /* naked save: any DW3 product name matches */
+    g_slots[slot].dirty = 1;
+    if (memcard_host_flush(slot) != 0) {
+        fprintf(stderr, "dw3: memcard cross-import slot=%d FAILED to write %s\n",
+                slot, memcard_host_slot_name(slot));
+        slot_clear_ram(slot);
+        return;
+    }
+    for (s = 0; s < SAVE_SLOT_COUNT; s++) {
+        if (rep.warn[s] != 0) {
+            fprintf(stderr,
+                    "dw3: memcard cross-import slot=%d save=%d warning: set "
+                    "flag bytes with no place in the %s layout were dropped "
+                    "from the copy (the original is untouched)\n",
+                    slot, s, region_name(g_own_region));
+        }
+    }
+    fprintf(stderr,
+            "dw3: memcard cross-import slot=%d from=%s to=%s converter=%d "
+            "usable=%d converted=%d results=%d,%d,%d src=%s\n",
+            slot, region_name(from_region), region_name(g_own_region),
+            SAVE_CONVERT_VERSION, rep.usable, rep.converted, rep.result[0],
+            rep.result[1], rep.result[2], src_path);
+    mk = fopen(marker, "wb");
+    if (mk != NULL) {
+        fprintf(mk,
+                "dw3-cross-region-import 1\nconverter=%d\nfrom=%s\nto=%s\n"
+                "source=%s\nresults=%d,%d,%d\n",
+                SAVE_CONVERT_VERSION, region_name(from_region),
+                region_name(g_own_region), src_path, rep.result[0],
+                rep.result[1], rep.result[2]);
+        fclose(mk);
+    }
+}
+
 int memcard_host_set_dir(const char *dir) {
     size_t n;
 
@@ -769,6 +967,10 @@ int memcard_host_ensure(int slot) {
     if (migrate_legacy_mcr(slot) != 0) {
         return -1;
     }
+    /* P6.25: no save of its own yet; take the other region's, converted. */
+    if (!memcard_host_has_file(slot)) {
+        cross_import(slot);
+    }
     return 0;
 }
 
@@ -782,6 +984,8 @@ void memcard_host_shutdown(void) {
         g_slots[slot].flush_failed = 0;
     }
     g_dir[0] = '\0';
+    g_import_dir[0] = '\0';
+    g_own_region = 0;
 }
 
 /* ---- Legacy 128 KiB helpers (fixtures / wrap) ---- */
