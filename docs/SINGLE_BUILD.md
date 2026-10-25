@@ -4,8 +4,10 @@ Owner request (2026-10-24): "Build única pra US e EU". One `.nro`, and one PC
 binary, that runs the US and the EU disc, instead of the separate builds of
 today. This note is the survey behind the
 [ROADMAP P6.24 entry](ROADMAP.md#phase-6-goal-notes). The owner has since
-decided how saves and the boot choice work (next section). **Nothing is
-implemented.** Numbers come from `origin/main` at `3e2a9b7`, the decomp at
+decided how saves and the boot choice work (next section). **Slice 1 is built
+(2026-10-25): the run-time region choice, the picker logic and a PC launcher,
+see [As built](#as-built-slice-1) below; the dual-image link is not.** Numbers
+come from `origin/main` at `3e2a9b7`, the decomp at
 `b9caa6c` (`vendor/dw3_decomp`), the PC objects of a US build, and the
 preview.31-rc1 Switch builds (US and EU, `.nro` and `.elf`).
 
@@ -374,6 +376,83 @@ per user, decision 3) and the picker behaviour (decision 2). Still open:
 10. **PC**: one `dw3-pc` for both regions too (the same mechanism), or Switch
     only?
 11. **Switching region in game** (without quitting): out of scope?
+
+## As built (slice 1)
+
+**Choice of slice.** The recommended first slice (the game side built twice and
+linked into one binary, with `us_` / `eu_` exports and per-region `dw3data_*`
+section names) is the one piece with real risk: 255 sections, the
+`__start_dw3data_*` lists, PSY-Z overrides that must still win by link order,
+and the proof that both regions stay bit-identical. It did not fit one
+reviewable PR next to the picker. The smallest step that delivers value and
+keeps the separate builds untouched is **everything around the dual image**:
+region detection, the decision table, the picker logic with the owner's
+decisions (3 s, D-pad cancels, Y = always, Minus to get it back, stored
+`region_default` / `last_region`), and a PC front end that applies them and
+starts the region's own binary. The dual-image link replaces "start the
+region's binary" with "call the region's entry" later and reuses all of it.
+(Default chosen, owner can change: this order, instead of the dual image first.)
+
+**What exists.**
+
+- `port/region/dw3_region.{c,h}`: platform independent (stdio / stat only).
+  `dw3_region_probe` (a region is present when `<base>/<us|eu>/` holds
+  `files_<r>.json` and its executable `SLUS_014.36` / `SLES_039.36`),
+  `dw3_region_decide` (the table in [Boot picker](#boot-picker): forced, one
+  tree, none, both + Minus, both + `region_default`, both + ask),
+  `Dw3Picker` (pure state machine: 3 s countdown that any D-pad or Y press
+  cancels, A boots, Y toggles always, + quits; the host feeds button edges and
+  a millisecond delta), and `dw3_region_cfg_read/write` for `region_default`
+  (`ask|us|eu`) and `last_region` in `port_options.cfg` (other keys are kept;
+  an unreadable file is never overwritten).
+- `platforms/pc/src/launcher_main.c`, built by the standalone project
+  `platforms/pc/launcher/` (it links no game code and no PSY-Z; the existing
+  CMake and CI do not know it). `tools/build_pc_single.sh [OUT]` assembles
+  `OUT/dw3-pc` (the launcher) next to `dw3-pc-us` and `dw3-pc-eu` (the unchanged
+  per-region binaries). The launcher runs
+  `dw3-pc [--region us|eu] [--pick] [--runtime-base DIR] [game args]`, looks in
+  `DW3_RUNTIME_BASE` (default `runtime`) for `us/` and `eu/`, and starts
+  `dw3-pc-<region>` with `DW3_RUNTIME=<base>/<region>` (not overriding a
+  `DW3_RUNTIME` or `--runtime` that is given).
+- Fail-safe: one tree present boots it with no picker; none prints the setup
+  message (both folders it looked in) and exits 2; `--region` / `DW3_REGION`
+  boots that region, no picker, **no file written** (the replay runs).
+- Picker on the PC: in a terminal (`l`/`1` US, `r`/`2` EU, Enter/`a` start, `y`
+  always, `q` quit), or `DW3_REGION_PICK_KEYS` for tests (one character per
+  100 ms step, `.` idles). With no terminal and no keys it starts the default
+  entry at once instead of waiting (default chosen, owner can change). `--pick`
+  / `DW3_REGION_PICK=1` is the PC stand-in for holding Minus.
+- Stored choice: `<DW3_CONFIG_DIR or base>/port_options.cfg`. Until P6.26 makes
+  the options file global this is the launcher's own file in the base folder;
+  the per-region `runtime/<r>/port_options.cfg` files are not touched (default
+  chosen, owner can change). The picker's default entry is `last_region`, else
+  US (the "save modified last" tie-break of the design is not done).
+
+**Tests.** `tools/tests/test_region.py` (C test of the table, the picker and the
+stored choice, plus the launcher with stand-in binaries: one tree, none, both,
+countdown, scripted keys, always, `--pick`, forced). Replay tier `single`
+(`tools/replay_tests.sh --single --launcher PATH`): seven scenarios start the
+`us-title` and `eu-lang-en` recordings through the launcher with only US, only
+EU, and both trees (region forced, picker keys, countdown). They compare with
+the references of the plain scenarios (`Scenario.ref_from`), so a pass means
+the captures are bit-identical to the separate builds: 0 px differ on all 7,
+US and EU. The existing `us` / `eu` scenarios and builds are unchanged and pass
+the full suite.
+
+**What remains for P6.24.**
+
+1. The dual-image link: `DW3_VERSION=both` in the three CMakeLists, the game
+   side built twice, `us_` / `eu_` exports, per-region `dw3data_*` names and
+   `__start_` lists, the 14 host `#if` sites made run-time, then
+   `dw3-pc-us` / `dw3-pc-eu` and the launcher become one binary.
+2. The Switch: auto-detection on the SD card, a host-drawn picker in
+   `boot_main.c` (debug-overlay font, Minus read at start), reading the
+   same `dw3_region.c`; CI and the release workflow on one `.nro`; an OLED check
+   with each disc and with both. A stop-gap launcher `.nro` (option (c)) was not
+   built: it would be a third file to ship.
+3. Disc images as a detection source (today only extracted trees count); the
+   Options row "Region at boot"; the per-region language/title line in the
+   picker; the open questions below.
 
 ## History moved from ROADMAP.md (2026-10-24)
 

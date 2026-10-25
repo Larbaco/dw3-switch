@@ -66,7 +66,7 @@ listed once, in [Pending OLED checks](#pending-oled-checks).
 | P6.20 | Port debug / cheat menu in the Options screen | in progress (PR 1 merged, #236: Cheats screen; PR 2, #248: money, give item and warp on page 2, in review; OLED checks open) | [roadmap](#phase-6-goal-notes), [PORT_OPTIONS](PORT_OPTIONS.md) |
 | P6.22 | Turbo speed in scripted scenes | in progress (CPU rasterizer is ~97 % of a field frame; pixel-identical rasterizer 4-5x faster, #220) | [P6.22](P6.22_FIELD_CPU.md), [roadmap](#phase-6-goal-notes), [P6.4](P6.4_FAST_FORWARD.md) |
 | P6.23 | Documentation: player guide, docs index, contributor and modder docs (future goal) | future | [roadmap](#phase-6-goal-notes) |
-| P6.24 | One build for US and EU: one `.nro` and one PC binary, region found at boot, a boot picker with both discs (future goal; depends on P6.25 and P6.26) | future | [SINGLE_BUILD](SINGLE_BUILD.md), [roadmap](#phase-6-goal-notes) |
+| P6.24 | One build for US and EU: one `.nro` and one PC binary, region found at boot, a boot picker with both discs (future goal; depends on P6.25 and P6.26) | in progress (slice 1 built: run-time region choice, picker logic and a PC launcher in front of the separate US / EU binaries; dual-image link, Switch picker and CI open) | [SINGLE_BUILD](SINGLE_BUILD.md#as-built-slice-1), [roadmap](#phase-6-goal-notes) |
 | P6.25 | Cross-region saves: a US save loads in EU and the reverse, one canonical save container (future goal) | in progress (slice 1 built: converter and one-way import on load, PC replays US to EU and EU to US; container and store open; OLED check open) | [CROSS_REGION_SAVES](CROSS_REGION_SAVES.md), [roadmap](#phase-6-goal-notes) |
 | P6.26 | Per-user saves: saves bound to the Switch user profile chosen in the Switch profile selector, global options (future goal) | future (design done, no code) | [PER_USER_SAVES](PER_USER_SAVES.md), [roadmap](#phase-6-goal-notes) |
 | P6.27 | Return to title from the pause (field) menu | in progress (built, PC US and EU replays; owner OLED check open) | [PORT_OPTIONS](PORT_OPTIONS.md#quit-and-return-to-title-p627-p628), [roadmap](#phase-6-goal-notes) |
@@ -1609,12 +1609,27 @@ Statuses are in the [table](#status-at-a-glance).
   them, the release `README.txt` points to the guide, and a new tester can
   install the US or EU build and report a crash using only those pages.
   Related: P6.5, P8.5, [REPORTING_ISSUES.md](REPORTING_ISSUES.md).
-- [ ] **P6.24 One build for US and EU (future goal).** Dated 2026-10-24, owner
+- [ ] **P6.24 One build for US and EU (in progress: slice 1 built 2026-10-25).** Dated 2026-10-24, owner
   request: "Build única pra US e EU". One `.nro`, and one PC binary, that runs
   either disc, instead of the separate US and EU builds (`--eu`, two `.nro`
   files, EU attached to releases by hand). Goal note only, **nothing started,
   no code**. Survey, sizes and the options in detail:
   [SINGLE_BUILD.md](SINGLE_BUILD.md).
+  **Slice 1 (built, [As built](SINGLE_BUILD.md#as-built-slice-1)):** the pieces
+  around the dual image, chosen because the dual-image link is the risky part
+  and the picker is useful on its own. `port/region/` (probe, the decision
+  table, the picker as a state machine with the 3 s countdown / D-pad cancel /
+  Y always / Minus-to-ask rules, `region_default` and `last_region` in
+  `port_options.cfg`), and a PC launcher (`platforms/pc/launcher/`,
+  `tools/build_pc_single.sh`) that picks the region and starts the unchanged
+  `dw3-pc-us` / `dw3-pc-eu`. One tree: boots it, no picker; none: the setup
+  message; `--region` / `DW3_REGION`: forced, nothing written. Tests:
+  `tools/tests/test_region.py` and the replay tier `single` (7 scenarios, only
+  US, only EU, both with env, picker keys and countdown; captures equal the
+  plain runs, 0 px differ). No decomp patch (0135-0139 unused), the separate
+  builds and CI are unchanged. **Open:** the dual-image link (one binary), the
+  Switch picker and auto-detection, CI/release on one `.nro`, disc images as a
+  detection source, the Options row, an OLED check.
   **Survey and approach (summary):** the region is a compile-time choice
   (`DW3_VERSION`); the decomp has 731 region blocks and the `GameState` and
   `BattleFuncs` layouts differ, so a run-time region variable is not
