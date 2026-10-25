@@ -1,0 +1,8 @@
+# EU: P6.25 save a game from the forced save screen (log only)
+pad 700 0x4000
+pad 705 0x0000
+pad 800 0x4000
+pad 805 0x0000
+pad 1000 0x4000
+pad 1005 0x0000
+end 1310

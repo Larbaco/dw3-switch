@@ -462,6 +462,39 @@ def ws_title_intro(version):
     return r
 
 
+def xr_save(version):
+    """P6.25: the save half of the cross-region scenarios. The save screen is
+    forced over the field (the manifest's phase env, as save_screen), slot 1,
+    YES, save: the game itself writes the card. No checkpoints; the verdict is
+    the log (`STGMCARD_writeSave ... status=1`)."""
+    r = Rec(f"{version.upper()}: P6.25 save a game from the forced save screen (log only)")
+    r.press(700, CROSS)              # Slot 1
+    r.press(800, CROSS)              # YES, create the block
+    r.press(1000, CROSS)             # save
+    r.end(1310)
+    return r
+
+
+def xr_load(version):
+    """P6.25: the load half. Title -> Load Game / Continue -> slot 1 on a card
+    that holds the OTHER disc's save (imported and converted at boot) -> the
+    load -> the field. No checkpoints; the verdict is the log and the overlay
+    restores."""
+    r = Rec(f"{version.upper()}: P6.25 title, Continue a save made on the other disc (log only)")
+    m = _to_title_menu(r, version)
+    r.press(m + 10, DOWN)
+    r.press(m + 30, DOWN)            # third entry: Load Game / Continue
+    r.press(m + 70, CROSS)
+    r.press(m + 420, CROSS)          # memory card slot 1 (port A)
+    r.press(m + 720, CROSS)          # the cursor is on the saved game: Load
+    r.press(m + 900, CROSS)          # close the "loaded" message; the field follows
+    r.end(m + XR_LOAD_FRAMES)
+    return r
+
+
+XR_LOAD_FRAMES = 1400
+
+
 R1 = 0x0800
 L1 = 0x0400
 # Evidence runs only (measured): the frames later that the PAL battle reaches turn
@@ -1438,6 +1471,8 @@ def main(out):
         (out / f"{v}-map-screen.rec").write_text(map_screen(v).text(True))
         (out / f"{v}-battle-results.rec").write_text(battle_results(v).text(True))
         (out / f"{v}-save-screen.rec").write_text(save_screen(v).text(True))
+        (out / f"{v}-xr-save.rec").write_text(xr_save(v).text(True))
+        (out / f"{v}-xr-load.rec").write_text(xr_load(v).text(True))
         (out / f"{v}-card-album.rec").write_text(card_album(v).text(True))
         (out / f"{v}-deck-editor.rec").write_text(deck_editor(v).text(True))
         (out / f"{v}-card-shop.rec").write_text(card_shop(v).text(True))
