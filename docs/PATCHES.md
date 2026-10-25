@@ -140,14 +140,15 @@ tools/apply_patches.sh           # refresh build/decomp-src + apply
 | `0120-PORT_HOST-p620-cheats-warp.patch` | no | P6.20 PR 2, every line inside `#ifdef DW3_CHEATS`: the Warp row (13 areas of the stage select). The same idle frame calls `FIELDSTG_leaveField(mode, 0, 0, 0, 0)`, the start `requestMode(mode, 0)` of the debug stage select (`src/debug/stage_select`) gives, so the field closes as for an exit and the game can be saved and played; logged `dw3: P6.20 cheat warp from mode=0x.. to mode=0x..`. Replay scenarios `us/eu-cheat-warp[-off]` |
 | `0123-PORT_HOST-p627-p628-title-quit-return.patch` | no | P6.27 / P6.28 ([PORT_OPTIONS.md](PORT_OPTIONS.md#quit-and-return-to-title-p627-p628)). **Title menu** (`menus/title/menu.c`): with the native overlay (PC SDL3 GPU, Switch) the Down limit moves from Continue to a fourth row, Quit game (`DW3_TITLE_QUIT`); Cross on it opens the Yes / No window (`port/options/confirm.c`) with the cursor on No, the menu takes no input while it is open and `dw3_port_confirm_tick()` answers it (the Port options screen's pattern). **Field menu** (`engine/menu/field_menu.c`, `include/engine/menu.h`): the options list has one more, last, row, Return to title, text from `dw3_port_field_return_label()` in the game's font codes; Cross on it opens the window and the menu waits; a Yes asks the P6.9 reset (`dw3_port_restart_request()`). The options panel is the six-row sprite `0x1B` for five rows plus this one; for seven rows (card folders) the bottom edge of the six-row panel is covered and redrawn one row lower with five `TILE`s in the panel's colours (`drawFieldMenuPanelRow`). `FieldMenuWindows.options` grows from six to seven windows. The row is not tied to the Restart hotkey setting; the field-menu references were regenerated. Replay scenarios `us/eu-title-quit`, `eu-title-quit-fr/de/it/es`, `us/eu-return-title[-rows7]` |
 | `0124-PORT_HOST-start-mode-boot-only-test-hook.patch` | no | Test hook (PC env, nothing changes when `DW3_START_MODE` is unset): the forced start mode of `0020` now applies to the boot's `newGame()` only. It applied to every `newGame()`, so a restart (P6.9) or P6.27's Return to title from a run started with the variable went straight back into the forced field. Used by `us/eu-return-title` |
+| `0127-PORT_HOST-p69-start-mode-every-hook.patch` | no | P6.9 test hook, PC only: with `DW3_START_MODE_EVERY=1` every `newGame()` honours `DW3_START_MODE` again (patch 0124 made it boot-only), so a restart re-enters the forced battle or field. Nothing changes when the variable is unset. Replay scenarios `us/eu-restart-battle-again`, `-in-battle-redo`, `-before-battle` ([P6.9_RESTART.md](P6.9_RESTART.md)) |
 
 `tools/apply_patches.sh --check` applies the series in order (stacked
 patches on the same file are valid).
 
 **P6.25 (cross-region saves, slice 1) adds no patch.** The conversion lives in
 `port/memcard/` and the hosts; the game keeps reading its own region's format.
-The numbers 0130-0134 reserved for it are unused; the next free number is
-0125.
+The numbers 0130-0134 reserved for it are unused; the series now ends at 0127; the next free number is
+0128 (or 0130 within the P6.25 range).
 
 ### Upstream `make compare` (P2.4 / P3.1)
 

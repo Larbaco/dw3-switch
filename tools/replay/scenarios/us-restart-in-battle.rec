@@ -1,0 +1,19 @@
+# US: restart during a battle (env in manifest)
+shot 340 battle-menu
+pad 350 0x0040
+pad 360 0x0000
+pad 410 0x4000
+pad 415 0x0000
+pad 460 0x4000
+pad 465 0x0000
+shot 560 battle-tech
+pad 600 0x0c09
+pad 605 0x0000
+pad 620 0x0008
+pad 625 0x0000
+shot 660 boot-a
+pad 810 0x0008
+shot 810 title
+pad 815 0x0000
+shot 950 menu
+end 970
