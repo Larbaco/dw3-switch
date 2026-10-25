@@ -223,7 +223,7 @@ def write_seed_cfg(cfgdir: Path, cfg):
 
 def run_phase(rec: Path, version, binary, runtime, display, outdir: Path, memdir: Path,
               stamp, label, timeout, stall, turbo, sample_rss=True, cfgdir: Path | None = None,
-              extra_env=(), allow_early_exit=False):
+              extra_env=(), allow_early_exit=False, launch=None):
     """One process run. Returns a dict with rc/verdict/seconds/frames/rss/log."""
     outdir.mkdir(parents=True, exist_ok=True)
     xdg = Path(tempfile.mkdtemp(prefix="dw3-replay-xdg-"))
@@ -242,8 +242,13 @@ def run_phase(rec: Path, version, binary, runtime, display, outdir: Path, memdir
               "DW3_FORCE_TECH", "DW3_FORCE_HIT", "DW3_FORCE_STEAL", "DW3_FORCE_ENEMY_ITEM",
               "DW3_FORCE_ENEMY_HP", "DW3_EXTRA_TECHS", "DW3_FORCE_ITEMS", "DW3_FORCE_CARDS", "DW3_PACING_TRACKED",
               "DW3_FILE_CACHE_SLOTS", "DW3_FORCE_MENU", "DW3_CHEATS_ARM", "DW3_FORCE_EXIT", "DW3_START_MODE_EVERY",
-              "DW3_MEMCARD_IMPORT_DIR", "DW3_CROSS_IMPORT"):
+              "DW3_MEMCARD_IMPORT_DIR", "DW3_CROSS_IMPORT", "DW3_REGION", "DW3_REGION_PICK",
+              "DW3_REGION_PICK_KEYS", "DW3_RUNTIME_BASE", "DW3_PC_BIN_US", "DW3_PC_BIN_EU"):
         env.pop(k, None)
+    if launch is not None:  # P6.24: the launcher picks the runtime and the binary
+        env.pop("DW3_RUNTIME", None)
+        env.update(DW3_RUNTIME_BASE=str(launch["base"]),
+                   DW3_PC_BIN_US=str(launch["us"]), DW3_PC_BIN_EU=str(launch["eu"]))
     if cfgdir is not None:  # P9.4: never read or write the owner's port_options.cfg
         env["DW3_CONFIG_DIR"] = str(cfgdir)
     if turbo:
@@ -367,8 +372,17 @@ def mutate_save(path: Path, version: str, spec: str):
     path.write_bytes(bytes(data))
 
 
+def make_launch_base(sc, by_version, launcher) -> tuple[Path, dict]:
+    """P6.24: a runtime base folder holding symlinks to the runtimes in
+    `sc.launch` ("us", "eu", "us+eu"), and the launcher's view of the binaries."""
+    base = Path(tempfile.mkdtemp(prefix="dw3-replay-base-"))
+    for v in sc.launch.split("+"):
+        (base / v).symlink_to(by_version[v][1])
+    return base, dict(base=base, us=by_version["us"][0], eu=by_version["eu"][0])
+
+
 def run_scenario(sc, binary, runtime, out: Path, stamp, label, stall, timeout_scale=1.0,
-                 no_turbo=False, by_version=None):
+                 no_turbo=False, by_version=None, launcher=None):
     """Run all phases of one scenario under its own Xvfb. Returns
     (phase_results, sdir). Phases share one memcard dir. P6.25: a scenario with
     `phase_versions` runs each phase on its own disc (binary and runtime from
@@ -382,6 +396,10 @@ def run_scenario(sc, binary, runtime, out: Path, stamp, label, stall, timeout_sc
         write_seed_cfg(cfgdir, sc.cfg)
     xvfb, display = start_xvfb(sdir)
     results = []
+    launch, base = None, None
+    if sc.launch:
+        base, launch = make_launch_base(sc, by_version, launcher)
+        binary = launcher
     try:
         for i, phase in enumerate(sc.phases):
             pv, pbin, prt, pmem = sc.version, binary, runtime, memdir
@@ -400,7 +418,7 @@ def run_scenario(sc, binary, runtime, out: Path, stamp, label, stall, timeout_sc
                           sdir, pmem, stamp, f"{sc.name}-p{i + 1}" if len(sc.phases) > 1 else sc.name,
                           int(sc.timeout * timeout_scale), stall, 0 if no_turbo else sc.turbo,
                           sample_rss=True, cfgdir=cfgdir, extra_env=penv,
-                          allow_early_exit=sc.quits)
+                          allow_early_exit=sc.quits, launch=launch)
             r["phase"] = phase
             results.append(r)
             if sc.phase_mutate and sc.phase_mutate[i] and r["verdict"] == "OK":
@@ -415,6 +433,8 @@ def run_scenario(sc, binary, runtime, out: Path, stamp, label, stall, timeout_sc
             xvfb.kill()
         shutil.rmtree(memdir, ignore_errors=True)
         shutil.rmtree(cfgdir, ignore_errors=True)
+        if base is not None:
+            shutil.rmtree(base, ignore_errors=True)
     return results, sdir
 
 
@@ -459,7 +479,7 @@ def judge_scenario(sc, results, sdir, refs: Path, checkpoints, update, labelname
     for shot in checkpoints:
         for ext in ARTIFACTS:
             got = sdir / f"{shot}.{ext}"
-            ref = refs / name / f"{shot}.{ext}"
+            ref = refs / (name if update else (sc.ref_from or name)) / f"{shot}.{ext}"
             label = f"{shot}.{ext}"
             if not got.is_file():
                 rows.append((name, label, "FAIL",
@@ -533,6 +553,10 @@ def main():
                     help="results dir (captures, diffs, logs)")
     ap.add_argument("--bin-us", default=os.environ.get("DW3_REPLAY_BIN_US"))
     ap.add_argument("--bin-eu", default=os.environ.get("DW3_REPLAY_BIN_EU"))
+    ap.add_argument("--launcher", default=os.environ.get("DW3_REPLAY_LAUNCHER"),
+                    help="P6.24 region launcher binary (the 'single' scenarios)")
+    ap.add_argument("--single", action="store_true",
+                    help="run the P6.24 'single' scenarios (through the launcher) only")
     ap.add_argument("--runtime-us")
     ap.add_argument("--runtime-eu")
     ap.add_argument("--build", action="store_true", help="configure+build dw3-pc (us, eu) under --out")
@@ -554,6 +578,8 @@ def main():
         if unknown:
             ap.error(f"unknown scenario(s): {', '.join(unknown)}")
         selected = set(a.only)
+    elif a.single:
+        selected = {sc.name for sc in SCENARIOS if sc.tier == "single"}
     elif a.quick:
         selected = {sc.name for sc in SCENARIOS if sc.tier == "quick"}
     else:
@@ -594,6 +620,7 @@ def main():
         bins[v] = Path(arg).expanduser().resolve() if arg else None
         runtimes[v] = find_runtime(v, getattr(a, f"runtime_{v}"))
 
+    launcher = Path(a.launcher).expanduser().resolve() if a.launcher else None
     todo = [sc for sc in SCENARIOS if sc.name in selected]
     # Long scenarios first so the parallel pool finishes earlier.
     order = sorted(todo, key=lambda sc: -sc.timeout * len(sc.phases))
@@ -601,7 +628,9 @@ def main():
     rows_by = {}
 
     def job(sc):
-        for v in sorted(set(sc.phase_versions) | {sc.version}):
+        if sc.launch and not (launcher and launcher.is_file()):
+            return sc.name, [(sc.name, "-", "SKIP", "missing launcher binary (--launcher)")]
+        for v in sorted(set(sc.phase_versions) | {sc.version} | set(sc.launch.split("+") if sc.launch else ())):
             if not bins[v] or not bins[v].is_file() or runtimes[v] is None:
                 return sc.name, [(sc.name, "-", "SKIP", f"missing {'binary' if not bins[v] else 'runtime'} for {v}")]
         rows = []
@@ -610,7 +639,7 @@ def main():
             label = f"{sc.name}-{run}" if run else sc.name
             results, sdir = run_scenario(sc, bins[sc.version], runtimes[sc.version], out, stamp,
                                          label, a.stall, a.timeout_scale, a.no_turbo,
-                                         {v: (bins[v], runtimes[v]) for v in ("us", "eu")})
+                                         {v: (bins[v], runtimes[v]) for v in ("us", "eu")}, launcher)
             runs.append((results, sdir))
             ok = all(r["verdict"] == "OK" for r in results)
             with lock:
