@@ -1,0 +1,9 @@
+# EU: P6.1 Digimon Lab in widescreen (env in manifest)
+shot 250 menu
+pad 300 0x4000
+pad 305 0x0000
+shot 500 party
+pad 550 0x4000
+pad 555 0x0000
+shot 700 details
+end 900

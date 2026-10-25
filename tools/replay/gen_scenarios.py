@@ -1054,6 +1054,106 @@ def save_screen(version):
     return r
 
 
+R1 = 0x0800
+
+# P6.1 (patches 0100-0104): the card, gym and Lab screens in widescreen. Each
+# is forced over the field (the manifest's env: DW3_FORCE_MENU=<mode>, and
+# DW3_FORCE_CARDS for the album and the deck editor), so the recordings only
+# press what the screen itself takes. Frames measured on the PC build; the
+# same on both discs.
+
+
+def card_album(version):
+    """STCRDABM: the panels open from the picture's edges (160), the album
+    with card details (300), the next page (R1, 640), the cursor moved (800)."""
+    r = Rec(f"{version.upper()}: P6.1 card album in widescreen (env in manifest)")
+    r.shot(160, "opening")
+    r.shot(300, "album")
+    r.press(500, R1)                 # next page
+    r.shot(640, "page-two")
+    r.press(700, RIGHT)
+    r.press(740, DOWN)
+    r.shot(800, "cursor")
+    r.end(820)
+    return r
+
+
+def deck_editor(version):
+    """STCRDDEK: the folders (250), the folder's options (350), the editor
+    (550), a card's info (R1, 750), the list of the cards owned (Cross, 1000)
+    and two lines down it (1150)."""
+    r = Rec(f"{version.upper()}: P6.1 deck editor in widescreen (env in manifest)")
+    r.shot(250, "folders")
+    r.press(300, CROSS)              # folder 1
+    r.shot(350, "options")
+    r.press(450, CROSS)              # Edit Folder
+    r.shot(550, "editor")
+    r.press(650, R1)                 # explain the card
+    r.shot(750, "info")
+    r.press(760, R1)
+    r.press(850, CROSS)              # the list of the cards owned
+    r.shot(1000, "list")
+    r.press(1050, DOWN)
+    r.press(1070, DOWN)
+    r.shot(1150, "list-down")
+    r.end(1200)
+    return r
+
+
+def card_shop(version):
+    """STCRDSHP: the shop (250), Buy One Card (500) and its card details
+    (Cross, 700: not enough BIT)."""
+    r = Rec(f"{version.upper()}: P6.1 card packs shop in widescreen (env in manifest)")
+    r.shot(250, "shop")
+    r.press(300, CROSS)              # Buy One Card
+    r.shot(500, "buy")
+    r.press(550, CROSS)              # the first card
+    r.shot(700, "not-enough")
+    r.end(900)
+    return r
+
+
+def gym(version):
+    """STGTRAIN: the party to train (300, 600: the panels open from the
+    edges), a partner chosen (Cross, 900) and a training (Cross, 1200)."""
+    r = Rec(f"{version.upper()}: P6.1 gym in widescreen (env in manifest)")
+    r.shot(300, "party")
+    r.press(400, CROSS)              # first partner
+    r.shot(700, "trainings")
+    r.press(750, CROSS)              # first training
+    r.shot(1000, "session")
+    r.end(1100)
+    return r
+
+
+def digimon_lab(version):
+    """STGDGLAB: the Select Action menu (250), the party (Switch Digimon,
+    500) and the party's details (Cross, 700)."""
+    r = Rec(f"{version.upper()}: P6.1 Digimon Lab in widescreen (env in manifest)")
+    r.shot(250, "menu")
+    r.press(300, CROSS)              # Switch Digimon
+    r.shot(500, "party")
+    r.press(550, CROSS)              # details
+    r.shot(700, "details")
+    r.end(900)
+    return r
+
+
+def lab_digivolve(version):
+    """STGDGLAB: Digivolve (Down, Cross: the party to choose from, 600, then
+    the digivolve type screen, 850 and 1100)."""
+    r = Rec(f"{version.upper()}: P6.1 Digimon Lab digivolve in widescreen (env in manifest)")
+    r.press(300, DOWN)
+    r.press(400, CROSS)              # Digivolve
+    r.shot(600, "who")
+    r.press(650, CROSS)              # the first partner
+    r.shot(850, "type")
+    r.press(900, CROSS)              # Change digivolve type
+    r.shot(1100, "type-choice")
+    r.end(1150)
+    return r
+
+
 # P6.20 Cheats screen (docs/PORT_OPTIONS.md "Cheats"). Square is 0x8000.
 SQUARE = 0x8000
 
@@ -1140,6 +1240,12 @@ def main(out):
         (out / f"{v}-map-screen.rec").write_text(map_screen(v).text(True))
         (out / f"{v}-battle-results.rec").write_text(battle_results(v).text(True))
         (out / f"{v}-save-screen.rec").write_text(save_screen(v).text(True))
+        (out / f"{v}-card-album.rec").write_text(card_album(v).text(True))
+        (out / f"{v}-deck-editor.rec").write_text(deck_editor(v).text(True))
+        (out / f"{v}-card-shop.rec").write_text(card_shop(v).text(True))
+        (out / f"{v}-gym.rec").write_text(gym(v).text(True))
+        (out / f"{v}-digimon-lab.rec").write_text(digimon_lab(v).text(True))
+        (out / f"{v}-lab-digivolve.rec").write_text(lab_digivolve(v).text(True))
         (out / f"{v}-victory-music.rec").write_text(victory_music(v).text(True))
         (out / f"{v}-music-loop.rec").write_text(music_loop(v).text(True))
         (out / f"{v}-underground-exit.rec").write_text(underground_exit(v).text(True))

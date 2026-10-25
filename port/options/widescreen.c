@@ -21,6 +21,11 @@
 #define DW3_WS_STFGTREP 0x1D1
 #define DW3_WS_STDWTITL 0x1D0
 #define DW3_WS_STPLNMET 0x206
+#define DW3_WS_STCRDABM 0x185
+#define DW3_WS_STCRDDEK 0x1CA
+#define DW3_WS_STCRDSHP 0x1CE
+#define DW3_WS_STGTRAIN 0x1F2
+#define DW3_WS_STGDGLAB 0x1EC
 #else
 #define DW3_WS_FIELDSTG 0x158
 #define DW3_WS_FIGHTSTG 0x159
@@ -31,6 +36,11 @@
 #define DW3_WS_STFGTREP 0x1C2
 #define DW3_WS_STDWTITL 0x1C1
 #define DW3_WS_STPLNMET 0x1F8
+#define DW3_WS_STCRDABM 0x177
+#define DW3_WS_STCRDDEK 0x1BC
+#define DW3_WS_STCRDSHP 0x1C0
+#define DW3_WS_STGTRAIN 0x1F6
+#define DW3_WS_STGDGLAB 0x1DF
 #endif
 
 enum { DW3_PORT_OPT_WIDESCREEN = 0 };
@@ -74,6 +84,16 @@ int dw3_port_widescreen_px(void) {
         mode_file == DW3_WS_STFGTREP) {
         return DW3_WIDESCREEN_MENU_PX;
     }
+    /* The card album and the deck editor (patch 0100): their scrolling
+     * backdrop reaches the gutters */
+    if (mode_file == DW3_WS_STCRDABM || mode_file == DW3_WS_STCRDDEK) {
+        return DW3_WIDESCREEN_MENU_PX;
+    }
+    /* The card packs shop (patch 0102), the gym (0103) and the Digimon Lab
+     * (0104): the same backdrop */
+    if (mode_file == DW3_WS_STCRDSHP || mode_file == DW3_WS_STGTRAIN || mode_file == DW3_WS_STGDGLAB) {
+        return DW3_WIDESCREEN_MENU_PX;
+    }
     /* The player name screen (Digimon Online registration): its scrolling
      * backdrop and side wings reach the gutters (patch 0087) */
     if (mode_file == DW3_WS_STPLNMET) {
@@ -103,7 +123,7 @@ int dw3_port_widescreen_menu_shift(void) {
  * drawn on top). The band is written as a one-frame sheet of the same form. */
 enum { BAND_PART_SIZE = 14, BAND_MAX_PARTS = 64, BAND_MAX_PART_INDEX = 256 };
 
-void *dw3_port_widescreen_menu_band(void *sheet, int frame, int split) {
+static void *menu_band(void *sheet, int frame, int split, int extend) {
     /* s32 storage: the drawer reads the header as s32 */
     static int32_t storage[(16 + 3 * BAND_MAX_PARTS + BAND_MAX_PART_INDEX * BAND_PART_SIZE / 2) / 2 + 2];
     int16_t *out = (int16_t *)storage;
@@ -116,6 +136,8 @@ void *dw3_port_widescreen_menu_band(void *sheet, int frame, int split) {
     int shift = dw3_port_widescreen_menu_shift();
     int count;
     int seamEnd = INT32_MIN;
+    int fillIndex = -1;
+    int fillFrom = INT32_MIN;
     int maxIndex = 0;
     int n;
     int i;
@@ -148,6 +170,34 @@ void *dw3_port_widescreen_menu_band(void *sheet, int frame, int split) {
             seamEnd = x + parts[index * 7 + 2];
         }
     }
+    /* extend: the plate's body tile (the part most often repeated in the
+       frame, not the one that ends it) is the fill, from where the last one
+       ends */
+    if (extend) {
+        int best = 0;
+
+        for (k = 0; k < count; k++) {
+            int index = src[3 + 3 * k];
+            int same = 0;
+            int j;
+
+            for (j = 0; j < count; j++) {
+                same += src[3 + 3 * j] == index;
+            }
+            if (same > best && parts[index * 7 + 2] > 0) {
+                best = same;
+                fillIndex = index;
+            }
+        }
+        if (fillIndex < 0 || best < 2) {
+            return sheet;
+        }
+        for (k = 0; k < count; k++) {
+            if (src[3 + 3 * k] == fillIndex && src[3 + 3 * k + 1] + parts[fillIndex * 7 + 2] > fillFrom) {
+                fillFrom = src[3 + 3 * k + 1] + parts[fillIndex * 7 + 2];
+            }
+        }
+    }
     /* header (3 s32 = 6 s16), ids at byte 12, the frame at byte 16 */
     storage[1] = 12;
     storage[2] = 16;
@@ -164,10 +214,10 @@ void *dw3_port_widescreen_menu_band(void *sheet, int frame, int split) {
             int w = parts[index * 7 + 2];
             int fx;
 
-            if (x >= split || x + w != seamEnd || w <= 0) {
+            if (extend ? (index != fillIndex || x + w != fillFrom) : (x >= split || x + w != seamEnd || w <= 0)) {
                 continue;
             }
-            for (fx = seamEnd; fx < seamEnd + 2 * shift; fx += w) {
+            for (fx = extend ? fillFrom : seamEnd; fx < seamEnd + 2 * shift; fx += w) {
                 int at = fx + w > seamEnd + 2 * shift ? seamEnd + 2 * shift - w : fx;
 
                 if (n + count >= BAND_MAX_PARTS) {
@@ -195,6 +245,14 @@ void *dw3_port_widescreen_menu_band(void *sheet, int frame, int split) {
     storage[0] = (int32_t)((const uint8_t *)(list + 3 * n) - (const uint8_t *)out);
     memcpy(list + 3 * n, parts, (size_t)(maxIndex + 1) * BAND_PART_SIZE);
     return storage;
+}
+
+void *dw3_port_widescreen_menu_band(void *sheet, int frame, int split) {
+    return menu_band(sheet, frame, split, 0);
+}
+
+void *dw3_port_widescreen_menu_extend(void *sheet, int frame) {
+    return menu_band(sheet, frame, 0x7FFF, 1);
 }
 
 /* One-frame sheets for patches 0085-0087, in the format above: a frame's part

@@ -1,0 +1,22 @@
+# US: P6.1 deck editor in widescreen (env in manifest)
+shot 250 folders
+pad 300 0x4000
+pad 305 0x0000
+shot 350 options
+pad 450 0x4000
+pad 455 0x0000
+shot 550 editor
+pad 650 0x0800
+pad 655 0x0000
+shot 750 info
+pad 760 0x0800
+pad 765 0x0000
+pad 850 0x4000
+pad 855 0x0000
+shot 1000 list
+pad 1050 0x0040
+pad 1055 0x0000
+pad 1070 0x0040
+pad 1075 0x0000
+shot 1150 list-down
+end 1200

@@ -1,0 +1,9 @@
+# EU: P6.1 card packs shop in widescreen (env in manifest)
+shot 250 shop
+pad 300 0x4000
+pad 305 0x0000
+shot 500 buy
+pad 550 0x4000
+pad 555 0x0000
+shot 700 not-enough
+end 900

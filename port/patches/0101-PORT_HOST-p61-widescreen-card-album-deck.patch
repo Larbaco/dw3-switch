@@ -1,0 +1,396 @@
+Upstream-bound: no
+Subject: [PORT_HOST] P6.1 card album and deck editor fill 16:9
+
+The card album (STCRDABM) and the deck editor (STCRDDEK), both opened from
+the field menu's Card folders, ran with gutter 0: a 4:3 picture pillarboxed
+on a 16:9 screen. port/options/widescreen.c gives both overlays the menu
+gutter and:
+
+- their scrolling background (96 px period) is drawn twice more, 96 pixels to
+  each side, as patch 0053;
+- the album's title plate hangs from the 16:9 left edge and its "Back" plate
+  from the right edge (DW3_MENU_LEFT / DW3_MENU_RIGHT, with their text
+  windows and open-animation pivots); the card details at the bottom (kind
+  icon, count and points windows, the "x N" plate) are drawn one gutter
+  further right and the name and text plates that run off the right edge are
+  extended to the picture's edge (DW3_MENU_EXTEND, new in port_widescreen.h);
+- the deck editor's title plate is extended the same way, the folder options
+  panel (Edit Folder / Change name, its windows and cursor) hangs from the
+  right edge, and the editor's right column (the card info panel, the list of
+  the cards owned with its lines, cursor and scroll bar, the list card's
+  details) follows the album's layout; the folder rows and the 9x5 grid stay
+  in the middle 4:3.
+
+Only drawing positions change: the cursors and the pad logic keep their
+values. Off (gutter 0) every position is the PS1 one.
+
+--- a/src/cardgame/album/album.c
++++ b/src/cardgame/album/album.c
+@@ -1,5 +1,8 @@
+ #include "cardgame/album.h"
+ #if PORT_HOST
++#include "port_widescreen.h"
++#endif
++#if PORT_HOST
+ #include <stdio.h>
+ char *getenv(const char *name);
+ #endif
+@@ -259,18 +262,18 @@
+     TextWindow **items;
+     s32 i;
+ 
+-    win->title = createTextWindow(album->layer, 1, 0x10, 0x19);
+-    win->help = createTextWindow(album->layer, 1, 0xD0, 0x19);
++    win->title = createTextWindow(album->layer, 1, DW3_MENU_LEFT(0x10), 0x19);
++    win->help = createTextWindow(album->layer, 1, DW3_MENU_RIGHT(0xD0), 0x19);
+     win->page = createTextWindow(album->layer, 1, 0x34, 0x9E);
+     win->pageSlash = createTextWindow(album->layer, 1, 0x35, 0x9E);
+     win->pageCount = createTextWindow(album->layer, 1, 0x4A, 0x9E);
+     win->prev = createTextWindow(album->layer, 1, 0x12, 0x6C);
+     win->next = createTextWindow(album->layer, 1, 0x121, 0x6C);
+     win->name = createTextWindow(album->layer, 1, 0x88, 0xA1);
+-    win->levelLabel = createTextWindow(album->layer, 1, 0x115, 0xA1);
+-    win->level = createTextWindow(album->layer, 1, 0x126, 0xA1);
+-    win->countLabel = createTextWindow(album->layer, 1, 0x115, 0xC7);
+-    win->count = createTextWindow(album->layer, 1, 0x12C, 0xC7);
++    win->levelLabel = createTextWindow(album->layer, 1, DW3_MENU_RIGHT(0x115), 0xA1);
++    win->level = createTextWindow(album->layer, 1, DW3_MENU_RIGHT(0x126), 0xA1);
++    win->countLabel = createTextWindow(album->layer, 1, DW3_MENU_RIGHT(0x115), 0xC7);
++    win->count = createTextWindow(album->layer, 1, DW3_MENU_RIGHT(0x12C), 0xC7);
+     win->text = createTextWindow(album->layer, 1, 0x50, 0xB8);
+     win->stat1Label = createTextWindow(album->layer, 1, 0xCE, 0xB8);
+     win->stat1 = createTextWindow(album->layer, 1, 0xF0, 0xB8);
+@@ -394,17 +397,25 @@
+         album->frameToggle = 1;
+     }
+     sprite.draw(FILE_CACHE.getEntry(STCRDABM_SPRITES), 8, album->frame, album->frame);
++#if PORT_HOST
++    /* Widescreen: the pattern repeats every 96 pixels; two more copies
++       cover the side gutters at every scroll */
++    if (dw3_port_widescreen_px() > 0) {
++        sprite.draw(FILE_CACHE.getEntry(STCRDABM_SPRITES), 8, album->frame - 96, album->frame);
++        sprite.draw(FILE_CACHE.getEntry(STCRDABM_SPRITES), 8, album->frame + 96, album->frame);
++    }
++#endif
+     sprite.setLayerId(album->layer, album->depth - 2);
+     if (album->fade.level != 0) {
+         if (album->fade.level != ONE) {
+             sprite.setScale(album->fade.level, ONE, ONE);
+-            sprite.setPivot(0, 0x20);
++            sprite.setPivot(DW3_MENU_LEFT(0), 0x20);
+         }
+-        sprite.draw(FILE_CACHE.getEntry(STCRDABM_SPRITES), 9, 0, 0x15);
++        sprite.draw(FILE_CACHE.getEntry(STCRDABM_SPRITES), 9, DW3_MENU_LEFT(0), 0x15);
+         if (album->fade.level != ONE) {
+-            sprite.setPivot(0x140, 0x20);
++            sprite.setPivot(DW3_MENU_RIGHT(0x140), 0x20);
+         }
+-        sprite.draw(FILE_CACHE.getEntry(STCRDABM_SPRITES), 0xF, 0xC8, 0x15);
++        sprite.draw(FILE_CACHE.getEntry(STCRDABM_SPRITES), 0xF, DW3_MENU_RIGHT(0xC8), 0x15);
+         if (album->fade.level != ONE) {
+             sprite.setScale(album->fade.level, album->fade.level, ONE);
+             sprite.setPivot(0x3A, 0xA5);
+@@ -453,27 +464,27 @@
+         } else {
+             frame = icon.card->color + 0x13;
+         }
+-        sprite.draw(FILE_CACHE.getEntry(STCRDABM_SPRITES), frame, 0x103, 0x9F);
+-        sprite.draw(FILE_CACHE.getEntry(STCRDABM_SPRITES), 0xD, 0xFC, 0x9D);
++        sprite.draw(FILE_CACHE.getEntry(STCRDABM_SPRITES), frame, DW3_MENU_RIGHT(0x103), 0x9F);
++        sprite.draw(FILE_CACHE.getEntry(STCRDABM_SPRITES), 0xD, DW3_MENU_RIGHT(0xFC), 0x9D);
+         if (album->infoFade.level != ONE) {
+-            sprite.setPivot(0x140, 0xA8);
++            sprite.setPivot(DW3_MENU_RIGHT(0x140), 0xA8);
+         }
+-        sprite.draw(FILE_CACHE.getEntry(STCRDABM_SPRITES), 0xA, 0x82, 0x9D);
++        sprite.draw(DW3_MENU_EXTEND(FILE_CACHE.getEntry(STCRDABM_SPRITES), 0xA), 0xA, DW3_MENU_RIGHT(0x82), 0x9D);
+         if (album->infoFade.level != ONE) {
+-            sprite.setPivot(0x140, 0xD0);
++            sprite.setPivot(DW3_MENU_RIGHT(0x140), 0xD0);
+         }
+-        sprite.draw(FILE_CACHE.getEntry(STCRDABM_SPRITES), 0x10, 0x103, 0xC5);
+-        sprite.draw(FILE_CACHE.getEntry(STCRDABM_SPRITES), 0xD, 0xFC, 0xC3);
++        sprite.draw(FILE_CACHE.getEntry(STCRDABM_SPRITES), 0x10, DW3_MENU_RIGHT(0x103), 0xC5);
++        sprite.draw(FILE_CACHE.getEntry(STCRDABM_SPRITES), 0xD, DW3_MENU_RIGHT(0xFC), 0xC3);
+         if (album->infoFade.level != ONE) {
+-            sprite.setPivot(0x140, 0xC6);
++            sprite.setPivot(DW3_MENU_RIGHT(0x140), 0xC6);
+         }
+         if (kind != 0) {
+-            sprite.draw(FILE_CACHE.getEntry(STCRDABM_SPRITES), 0xB, 0x4A, 0xB3);
++            sprite.draw(DW3_MENU_EXTEND(FILE_CACHE.getEntry(STCRDABM_SPRITES), 0xB), 0xB, DW3_MENU_RIGHT(0x4A), 0xB3);
+         } else if (album->card == 0x45 || album->card == 0x70 || album->card == 0x9B || album->card == 0xC6 ||
+                    album->card == 0xF1) {
+-            sprite.draw(FILE_CACHE.getEntry(STCRDABM_SPRITES), 0xB, 0x4A, 0xB3);
++            sprite.draw(DW3_MENU_EXTEND(FILE_CACHE.getEntry(STCRDABM_SPRITES), 0xB), 0xB, DW3_MENU_RIGHT(0x4A), 0xB3);
+         } else {
+-            sprite.draw(FILE_CACHE.getEntry(STCRDABM_SPRITES), 0xC, 0xC7, 0xB3);
++            sprite.draw(DW3_MENU_EXTEND(FILE_CACHE.getEntry(STCRDABM_SPRITES), 0xC), 0xC, DW3_MENU_RIGHT(0xC7), 0xB3);
+         }
+     }
+ }
+--- a/src/cardgame/deck_editor/editor.c
++++ b/src/cardgame/deck_editor/editor.c
+@@ -2,6 +2,9 @@
+    an idle task nothing creates */
+ 
+ #include "cardgame/deck_editor.h"
++#if PORT_HOST
++#include "port_widescreen.h"
++#endif
+ 
+ /* Creates the editor's windows: the title, the deck's name and counts of each
+    kind, the hint, the card under the cursor's name, numbers and text, the
+@@ -19,26 +22,26 @@
+     }
+     children->hint = createTextWindow(task->layer, 1, 0x96, 0xCC);
+     children->cardName = createTextWindow(task->layer, 1, 0x96, 0xBD);
+-    children->pointsLabel = createTextWindow(task->layer, 1, 0x115, 0x26);
+-    children->points = createTextWindow(task->layer, 1, 0x126, 0x26);
++    children->pointsLabel = createTextWindow(task->layer, 1, DW3_MENU_RIGHT(0x115), 0x26);
++    children->points = createTextWindow(task->layer, 1, DW3_MENU_RIGHT(0x126), 0x26);
+     children->effect = createTextWindow(task->layer, 1, 0x50, 0x17);
+     children->apLabel = createTextWindow(task->layer, 1, 0xCE, 0x17);
+     children->ap = createTextWindow(task->layer, 1, 0xF0, 0x17);
+     children->hpLabel = createTextWindow(task->layer, 1, 0xCE, 0x24);
+     children->hp = createTextWindow(task->layer, 1, 0xF0, 0x24);
+     for (i = 0; i < 8; i++) {
+-        children->lines[i].name = createTextWindow(task->layer, 1, 0xA3, 0x27 + i * 0xE);
++        children->lines[i].name = createTextWindow(task->layer, 1, DW3_MENU_RIGHT(0xA3), 0x27 + i * 0xE);
+         children->lines[i].name->setDepth(children->lines[i].name, task->depth - 1);
+-        children->lines[i].label = createTextWindow(task->layer, 1, 0x111, 0x27 + i * 0xE);
++        children->lines[i].label = createTextWindow(task->layer, 1, DW3_MENU_RIGHT(0x111), 0x27 + i * 0xE);
+         children->lines[i].label->setDepth(children->lines[i].label, task->depth - 1);
+-        children->lines[i].count = createTextWindow(task->layer, 1, 0x120, 0x27 + i * 0xE);
++        children->lines[i].count = createTextWindow(task->layer, 1, DW3_MENU_RIGHT(0x120), 0x27 + i * 0xE);
+         children->lines[i].count->setDepth(children->lines[i].count, task->depth - 1);
+     }
+-    children->cursor = createCursor(task->layer, task->depth - 1, 0x89, 0x27);
++    children->cursor = createCursor(task->layer, task->depth - 1, DW3_MENU_RIGHT(0x89), 0x27);
+     children->cursor->setVisible(children->cursor, 0);
+     children->listCardName = createTextWindow(task->layer, 1, 0x88, 0xA1);
+-    children->listPointsLabel = createTextWindow(task->layer, 1, 0x115, 0xA1);
+-    children->listPoints = createTextWindow(task->layer, 1, 0x126, 0xA1);
++    children->listPointsLabel = createTextWindow(task->layer, 1, DW3_MENU_RIGHT(0x115), 0xA1);
++    children->listPoints = createTextWindow(task->layer, 1, DW3_MENU_RIGHT(0x126), 0xA1);
+     children->listEffect = createTextWindow(task->layer, 1, 0x50, 0xB8);
+     children->listApLabel = createTextWindow(task->layer, 1, 0xCE, 0xB8);
+     children->listAp = createTextWindow(task->layer, 1, 0xF0, 0xB8);
+@@ -255,24 +258,24 @@
+     if (task->panels[1].level != 0) {
+         if (task->panels[1].level != ONE) {
+             sprite.setScale(task->panels[1].level, ONE, ONE);
+-            sprite.setPivot(0x140, 0x25);
++            sprite.setPivot(DW3_MENU_RIGHT(0x140), 0x25);
+         }
+         initCardDrawer(&card);
+         id = GAME.decks[task->deck].cards[task->column + task->row * 9];
+         card.setCard(id);
+         kind = card.getKind();
+         if (kind) {
+-            sprite.draw(FILE_CACHE.getEntry(STCRDDEK_SPRITES), kind + 0x11, 0x103, 0x24);
+-            sprite.draw(FILE_CACHE.getEntry(STCRDDEK_SPRITES), 0xD, 0xFC, 0x22);
+-            sprite.draw(FILE_CACHE.getEntry(STCRDDEK_SPRITES), 0xB, 0x4A, 0x12);
++            sprite.draw(FILE_CACHE.getEntry(STCRDDEK_SPRITES), kind + 0x11, DW3_MENU_RIGHT(0x103), 0x24);
++            sprite.draw(FILE_CACHE.getEntry(STCRDDEK_SPRITES), 0xD, DW3_MENU_RIGHT(0xFC), 0x22);
++            sprite.draw(DW3_MENU_EXTEND(FILE_CACHE.getEntry(STCRDDEK_SPRITES), 0xB), 0xB, DW3_MENU_RIGHT(0x4A), 0x12);
+         } else {
+             kind = card.card->color;
+-            sprite.draw(FILE_CACHE.getEntry(STCRDDEK_SPRITES), kind + 0x13, 0x103, 0x24);
+-            sprite.draw(FILE_CACHE.getEntry(STCRDDEK_SPRITES), 0xD, 0xFC, 0x22);
++            sprite.draw(FILE_CACHE.getEntry(STCRDDEK_SPRITES), kind + 0x13, DW3_MENU_RIGHT(0x103), 0x24);
++            sprite.draw(FILE_CACHE.getEntry(STCRDDEK_SPRITES), 0xD, DW3_MENU_RIGHT(0xFC), 0x22);
+             if (id == 0x45 || id == 0x70 || id == 0x9B || id == 0xC6 || id == 0xF1) {
+-                sprite.draw(FILE_CACHE.getEntry(STCRDDEK_SPRITES), 0xB, 0x4A, 0x12);
++                sprite.draw(DW3_MENU_EXTEND(FILE_CACHE.getEntry(STCRDDEK_SPRITES), 0xB), 0xB, DW3_MENU_RIGHT(0x4A), 0x12);
+             } else {
+-                sprite.draw(FILE_CACHE.getEntry(STCRDDEK_SPRITES), 0xC, 0xC7, 0x12);
++                sprite.draw(DW3_MENU_EXTEND(FILE_CACHE.getEntry(STCRDDEK_SPRITES), 0xC), 0xC, DW3_MENU_RIGHT(0xC7), 0x12);
+             }
+         }
+     }
+@@ -290,7 +293,7 @@
+     if (task->panels[2].level != 0) {
+         if (task->panels[2].level != ONE) {
+             sprite.setScale(task->panels[2].level, ONE, ONE);
+-            sprite.setPivot(0x140, 0x5C);
++            sprite.setPivot(DW3_MENU_RIGHT(0x140), 0x5C);
+         } else {
+             /* the match depends on i being set before initCardDrawer */
+             i = 0;
+@@ -301,13 +304,13 @@
+                     card.setCard(id);
+                     if (card.getKind()) {
+                         sprite.setClutRow(card.card->color - 1);
+-                        sprite.draw(FILE_CACHE.getEntry(STCRDDEK_SPRITES), 0x4B, 0x94, 0x27 + i * 14);
++                        sprite.draw(FILE_CACHE.getEntry(STCRDDEK_SPRITES), 0x4B, DW3_MENU_RIGHT(0x94), 0x27 + i * 14);
+                     } else {
+                         sprite.setClutRow(0);
+-                        sprite.draw(FILE_CACHE.getEntry(STCRDDEK_SPRITES), card.card->color + 0x4B, 0x94, 0x27 + i * 14);
++                        sprite.draw(FILE_CACHE.getEntry(STCRDDEK_SPRITES), card.card->color + 0x4B, DW3_MENU_RIGHT(0x94), 0x27 + i * 14);
+                     }
+                     sprite.setClutRow(0);
+-                    sprite.draw(FILE_CACHE.getEntry(STCRDDEK_SPRITES), 0x31, 0x94, 0x27 + i * 14);
++                    sprite.draw(FILE_CACHE.getEntry(STCRDDEK_SPRITES), 0x31, DW3_MENU_RIGHT(0x94), 0x27 + i * 14);
+                 }
+             }
+             if (task->listCount >= 9) {
+@@ -317,43 +320,43 @@
+                 }
+                 if (task->arrowsShown) {
+                     if (task->listTop > 0) {
+-                        sprite.draw(FILE_CACHE.getEntry(STCRDDEK_SPRITES), 0x45, 0x126, 0x22);
++                        sprite.draw(FILE_CACHE.getEntry(STCRDDEK_SPRITES), 0x45, DW3_MENU_RIGHT(0x126), 0x22);
+                     }
+                     if (task->listTop < task->listCount - 8) {
+-                        sprite.draw(FILE_CACHE.getEntry(STCRDDEK_SPRITES), 0x46, 0x126, 0x8F);
++                        sprite.draw(FILE_CACHE.getEntry(STCRDDEK_SPRITES), 0x46, DW3_MENU_RIGHT(0x126), 0x8F);
+                     }
+                 }
+             }
+         }
+-        sprite.draw(FILE_CACHE.getEntry(STCRDDEK_SPRITES), 0x3F, 0x81, 0x1E);
++        sprite.draw(FILE_CACHE.getEntry(STCRDDEK_SPRITES), 0x3F, DW3_MENU_RIGHT(0x81), 0x1E);
+     }
+     if (task->panels[3].level != 0) {
+         if (task->panels[3].level != ONE) {
+             sprite.setScale(task->panels[3].level, ONE, ONE);
+-            sprite.setPivot(0x140, 0x25);
++            sprite.setPivot(DW3_MENU_RIGHT(0x140), 0x25);
+         }
+         initCardDrawer(&card);
+         id = task->list[task->listTop + task->listCursor];
+         card.setCard(id);
+         kind = card.getKind();
+         if (kind) {
+-            sprite.draw(FILE_CACHE.getEntry(STCRDDEK_SPRITES), kind + 0x11, 0x103, 0x9F);
+-            sprite.draw(FILE_CACHE.getEntry(STCRDDEK_SPRITES), 0xD, 0xFC, 0x9D);
+-            sprite.draw(FILE_CACHE.getEntry(STCRDDEK_SPRITES), 0xB, 0x4A, 0xB3);
++            sprite.draw(FILE_CACHE.getEntry(STCRDDEK_SPRITES), kind + 0x11, DW3_MENU_RIGHT(0x103), 0x9F);
++            sprite.draw(FILE_CACHE.getEntry(STCRDDEK_SPRITES), 0xD, DW3_MENU_RIGHT(0xFC), 0x9D);
++            sprite.draw(DW3_MENU_EXTEND(FILE_CACHE.getEntry(STCRDDEK_SPRITES), 0xB), 0xB, DW3_MENU_RIGHT(0x4A), 0xB3);
+         } else {
+             kind = card.card->color;
+-            sprite.draw(FILE_CACHE.getEntry(STCRDDEK_SPRITES), kind + 0x13, 0x103, 0x9F);
+-            sprite.draw(FILE_CACHE.getEntry(STCRDDEK_SPRITES), 0xD, 0xFC, 0x9D);
++            sprite.draw(FILE_CACHE.getEntry(STCRDDEK_SPRITES), kind + 0x13, DW3_MENU_RIGHT(0x103), 0x9F);
++            sprite.draw(FILE_CACHE.getEntry(STCRDDEK_SPRITES), 0xD, DW3_MENU_RIGHT(0xFC), 0x9D);
+             if (id == 0x45 || id == 0x70 || id == 0x9B || id == 0xC6 || id == 0xF1) {
+-                sprite.draw(FILE_CACHE.getEntry(STCRDDEK_SPRITES), 0xB, 0x4A, 0xB3);
++                sprite.draw(DW3_MENU_EXTEND(FILE_CACHE.getEntry(STCRDDEK_SPRITES), 0xB), 0xB, DW3_MENU_RIGHT(0x4A), 0xB3);
+             } else {
+-                sprite.draw(FILE_CACHE.getEntry(STCRDDEK_SPRITES), 0xC, 0xC7, 0xB3);
++                sprite.draw(DW3_MENU_EXTEND(FILE_CACHE.getEntry(STCRDDEK_SPRITES), 0xC), 0xC, DW3_MENU_RIGHT(0xC7), 0xB3);
+             }
+         }
+         if (task->panels[3].level != ONE) {
+-            sprite.setPivot(0x140, 0xA8);
++            sprite.setPivot(DW3_MENU_RIGHT(0x140), 0xA8);
+         }
+-        sprite.draw(FILE_CACHE.getEntry(STCRDDEK_SPRITES), 0xA, 0x82, 0x9D);
++        sprite.draw(DW3_MENU_EXTEND(FILE_CACHE.getEntry(STCRDDEK_SPRITES), 0xA), 0xA, DW3_MENU_RIGHT(0x82), 0x9D);
+     }
+     if (task->panels[4].level != 0) {
+         if (task->panels[4].level != ONE) {
+@@ -469,12 +472,12 @@
+     if (STCRDDEK_funcs.updateFade(&task->panels[3])) {
+         if (task->listCount >= 9 && children->scrollBar == NULL) {
+             children->scrollBar = STCRDDEK_createScrollBar();
+-            children->scrollBar->setX(children->scrollBar, 0x125, 0xC);
++            children->scrollBar->setX(children->scrollBar, DW3_MENU_RIGHT(0x125), 0xC);
+             children->scrollBar->setRange(children->scrollBar, 0x2A, 0x8F);
+             children->scrollBar->setCount(children->scrollBar, 8, task->listCount);
+             children->scrollBar->setPos(children->scrollBar, task->listCursor);
+         }
+-        children->cursor->setPos(children->cursor, 0x89, task->listCursor * 14 + 0x27);
++        children->cursor->setPos(children->cursor, DW3_MENU_RIGHT(0x89), task->listCursor * 14 + 0x27);
+         children->cursor->setVisible(children->cursor, 1);
+         STCRDDEK_showListCard(task, children, 1);
+         task->substate++;
+@@ -543,7 +546,7 @@
+ #endif
+     if (prev != task->listTop + task->listCursor) {
+         SOUND.playSound(SOUND_CURSOR);
+-        children->cursor->setPos(children->cursor, 0x89, task->listCursor * 14 + 0x27);
++        children->cursor->setPos(children->cursor, DW3_MENU_RIGHT(0x89), task->listCursor * 14 + 0x27);
+         STCRDDEK_showCardList(task, children, 1);
+         STCRDDEK_showListCard(task, children, 1);
+ #if VERSION_US
+--- a/src/cardgame/deck_editor/screen.c
++++ b/src/cardgame/deck_editor/screen.c
+@@ -6,6 +6,9 @@
+ #include <stdio.h>
+ char *getenv(const char *name);
+ #endif
++#if PORT_HOST
++#include "port_widescreen.h"
++#endif
+ 
+ /* The title, each deck's name and six counts, the two options and the
+    cursor, then every window from the title on takes the cursor's depth */
+@@ -26,9 +29,9 @@
+         }
+     }
+     for (i = 0; i < 2; i++) {
+-        children->options[i] = createTextWindow(task->layer, 1, 0xA7, 0x23 + i * 0xE);
++        children->options[i] = createTextWindow(task->layer, 1, DW3_MENU_RIGHT(0xA7), 0x23 + i * 0xE);
+     }
+-    children->cursor = createCursor(task->layer, task->depth - 2, 0x9A, 0x23);
++    children->cursor = createCursor(task->layer, task->depth - 2, DW3_MENU_RIGHT(0x9A), 0x23);
+     children->cursor->setVisible(children->cursor, 0);
+     windows = &children->title;
+     for (i = 0; i < task->childCount - 3; i++, windows++) {
+@@ -71,13 +74,21 @@
+         task->tick = 1;
+     }
+     sprite.draw(FILE_CACHE.getEntry(STCRDDEK_SPRITES), 8, task->scroll, task->scroll);
++#if PORT_HOST
++    /* Widescreen: the pattern repeats every 96 pixels; two more copies
++       cover the side gutters at every scroll */
++    if (dw3_port_widescreen_px() > 0) {
++        sprite.draw(FILE_CACHE.getEntry(STCRDDEK_SPRITES), 8, task->scroll - 96, task->scroll);
++        sprite.draw(FILE_CACHE.getEntry(STCRDDEK_SPRITES), 8, task->scroll + 96, task->scroll);
++    }
++#endif
+     sprite.setLayerId(task->layer, task->depth - 1);
+     if (task->panels[0].level != 0) {
+         if (task->panels[0].level != ONE) {
+             sprite.setScale(task->panels[0].level, ONE, ONE);
+-            sprite.setPivot(0x140, 0x22);
++            sprite.setPivot(DW3_MENU_RIGHT(0x140), 0x22);
+         }
+-        sprite.draw(FILE_CACHE.getEntry(STCRDDEK_SPRITES), 0x30, 0x7B, 0x1C);
++        sprite.draw(DW3_MENU_EXTEND(FILE_CACHE.getEntry(STCRDDEK_SPRITES), 0x30), 0x30, DW3_MENU_RIGHT(0x7B), 0x1C);
+     }
+     for (i = 0; i < 3; i++) {
+         if (task->rowPanels[i].level != 0) {
+@@ -91,9 +102,9 @@
+     if (task->panels[1].level != 0) {
+         sprite.setScale(task->panels[1].level, ONE, ONE);
+         if (task->panels[1].level != ONE) {
+-            sprite.setPivot(0x140, 0x37);
++            sprite.setPivot(DW3_MENU_RIGHT(0x140), 0x37);
+         }
+-        sprite.draw(FILE_CACHE.getEntry(STCRDDEK_SPRITES), 0x2D, 0x92, 0x1C);
++        sprite.draw(FILE_CACHE.getEntry(STCRDDEK_SPRITES), 0x2D, DW3_MENU_RIGHT(0x92), 0x1C);
+     }
+     if (task->panels[2].level != 0) {
+         sprite.setLayerId(task->layer, task->depth - 2);
+@@ -165,7 +176,7 @@
+ static inline void STCRDDEK_openDeckOptions(DeckScreen *task, DeckScreenChildren *children) {
+     if (STCRDDEK_funcs.updateFade(&task->panels[1])) {
+         task->renaming = 0;
+-        children->cursor->setPos(children->cursor, 0x9A, 0x23);
++        children->cursor->setPos(children->cursor, DW3_MENU_RIGHT(0x9A), 0x23);
+         children->cursor->setVisible(children->cursor, 1);
+         children->options[0]->setString(children->options[0], FILE_CACHE.load(TEXT_FILE(TEXT_CARD_SHOP)), 0x1A);
+         children->options[1]->setString(children->options[1], FILE_CACHE.load(TEXT_FILE(TEXT_CARD_SHOP)), 0x1B);
+@@ -186,7 +197,7 @@
+     }
+     if (prevChoice != task->renaming) {
+         SOUND.playSound(SOUND_CURSOR);
+-        children->cursor->setPos(children->cursor, 0x9A, task->renaming * 14 + 0x23);
++        children->cursor->setPos(children->cursor, DW3_MENU_RIGHT(0x9A), task->renaming * 14 + 0x23);
+     } else if (PAD_PRESSED(PAD_CROSS)) {
+         SOUND.playSound(SOUND_SELECT);
+         task->setSubstate(task, 50);
