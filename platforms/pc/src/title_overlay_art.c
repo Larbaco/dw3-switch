@@ -483,10 +483,10 @@ void dw3_pc_dialog_art(uint8_t *rgba,int pitch,int kind,int focus) {
     /* Title, then the stepped rule of the Options window under it. */
     word(&t->title[k],40,34-t->title[k].top,0,255,255,255);
     box(30,74,w-60,3,0,66,156,255);box(30,80,w-60,3,0,66,156,255);
-    word(&t->question[k],48,100,0,255,255,255);
-    word(&t->warn,48,140,0,255,224,140);
+    word(&t->question[k],48,94,0,255,255,255);
+    word(&t->warn,48,130,0,255,224,140);
     for(int i=0;i<2;i++) {
-        const int ry=168+i*42,choice_focus=i==(focus?0:1);
+        const int ry=176+i*42,choice_focus=i==(focus?0:1);
         const Word *label=i==0?&t->yes:&t->no;
         if(choice_focus){
             box(48,ry-6,w-96,OPT_ROW_H,16,74,156,255);

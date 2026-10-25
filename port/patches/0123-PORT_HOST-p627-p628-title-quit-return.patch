@@ -14,9 +14,12 @@ overlay nothing changes (dw3_port_title_quit_enabled() is 0).
 Field menu (src/engine/menu/field_menu.c, include/engine/menu.h): while the
 Restart hotkey setting is ON (P6.9's opt-in, off by default), the options
 list has one more row, the last, with the text of dw3_port_field_return_label()
-in the game's own font encoding; the options panel is the next one up (the
-six-row sprite 0x1B for five rows plus this one), stretched by one row when
-the card folders row makes it seven. Cross on the row opens the window; the
+in the game's own font encoding. The options panel is the next one up (the
+six-row sprite 0x1B for the five rows plus this one); with the card folders
+row there are seven rows and the game has no panel for that, so the six-row
+panel's bottom edge is covered and redrawn one row lower with five TILEs in
+the panel's colours (drawFieldMenuPanelRow, submitted before the sprite so the
+ordering table draws it in front). Cross on the row opens the window; the
 menu waits while it is up. A Yes asks the P6.9 reset (dw3_port_restart_request,
 same flush, a failed flush cancels). With the setting OFF nothing is added and
 the drawing calls are the ones of the game (no replay reference changes).
@@ -38,7 +41,7 @@ FieldMenuWindows.options grows from six to seven windows (PORT_HOST only).
  } FieldMenuWindows;
 --- a/src/engine/menu/field_menu.c
 +++ b/src/engine/menu/field_menu.c
-@@ -4,6 +4,16 @@
+@@ -4,6 +4,15 @@
  #endif
  #if PORT_HOST
  #include "port_widescreen.h"
@@ -50,12 +53,11 @@ FieldMenuWindows.options grows from six to seven windows (PORT_HOST only).
 +#else
 +#define DW3_FIELD_RETURN_LANGUAGE 2
 +#endif
-+/* Vertical scale of the six-row options panel (sprite 0x1B) for seven rows. */
-+#define DW3_FIELD_PANEL_STRETCH ONE
++
  #else
  #define DW3_MENU_LEFT(x) (x)
  #define DW3_MENU_RIGHT(x) (x)
-@@ -166,6 +176,12 @@
+@@ -166,6 +175,12 @@
          FIELD_MENU_CHOICE.extra = 0;
      }
      task->count = task->extraOption + 5;
@@ -68,7 +70,7 @@ FieldMenuWindows.options grows from six to seven windows (PORT_HOST only).
      if (getFieldZone() >= 0) {
          task->option2Enabled = 1;
      } else {
-@@ -178,6 +194,13 @@
+@@ -178,6 +193,13 @@
  static inline void showFieldMenuOptions(FieldMenu *task, FieldMenuWindows *win) {
      showPartnerPage(task, win, 1, 1);
      for (task->counter = 0; task->counter < task->count; task->counter++) {
@@ -82,7 +84,7 @@ FieldMenuWindows.options grows from six to seven windows (PORT_HOST only).
          win->options[task->counter]->setString(win->options[task->counter], FILE_CACHE.load(TEXT_FILE(TEXT_STATUS)),
                                    FIELD_MENU_OPTIONS[task->extraOption][task->counter]);
      }
-@@ -226,6 +249,14 @@
+@@ -226,6 +248,14 @@
          if (task->option2Enabled == 0 && task->cursor == 2) {
              return;
          }
@@ -97,7 +99,71 @@ FieldMenuWindows.options grows from six to seven windows (PORT_HOST only).
          done = 1;
          if (GAME.funcs.getMode() == MODE_STATUS) {
              task->step = 1;
-@@ -389,6 +420,13 @@
+@@ -353,6 +383,63 @@
+     }
+ }
+ 
++#if PORT_HOST
++/* P6.27: the options panel for seven rows. The game's panels are five rows
++   (0x1C) and six rows (0x1B, with the card folders). Return to title makes
++   them six and seven; for seven this covers the six-row panel's bottom edge
++   (the divider under row 6, the bottom border, its shadow and the bevel) with
++   the panel's own colours and redraws them 14 pixels lower. It is submitted
++   before the panel sprite, so the ordering table draws it after the sprite,
++   in front of it. Colours and lines are those of the sprite (the divider
++   under a row is 41,41,115, the border 82,82,165 and its shadow 0,0,8). */
++static void drawFieldMenuPanelRow(s32 layerId, s32 depth) {
++    Layer *layer = GFX.funcs.getLayer(layerId);
++    u_long *ot = layer->getOtEntry(layer, depth);
++    PrimPtr prim;
++    TILE *tile;
++    s32 x0 = DW3_MENU_RIGHT(0xA8);
++    s32 x1 = DW3_MENU_RIGHT(0x140);
++
++    prim.any = GFX.funcs.getPrim();
++    tile = (TILE *)prim.any;
++    /* body, rows 6 and 7 of the panel (the divider of row 6 stays) */
++    setTile(tile);
++    setRGB0(tile, 0, 0, 33);
++    setXY0(tile, x0 + 1, 132);
++    setWH(tile, x1 - x0 - 1, 17);
++    addPrim(ot, tile);
++    tile++;
++    /* the left border, straight down to the new bottom edge */
++    setTile(tile);
++    setRGB0(tile, 107, 107, 214);
++    setXY0(tile, x0, 132);
++    setWH(tile, 1, 18);
++    addPrim(ot, tile);
++    tile++;
++    /* the divider under the seventh row's predecessor (row 6) */
++    setTile(tile);
++    setRGB0(tile, 41, 41, 115);
++    setXY0(tile, x0 + 3, 145);
++    setWH(tile, x1 - x0 - 3, 1);
++    addPrim(ot, tile);
++    tile++;
++    /* the bottom border and its shadow */
++    setTile(tile);
++    setRGB0(tile, 82, 82, 165);
++    setXY0(tile, x0 + 2, 149);
++    setWH(tile, x1 - x0 - 2, 1);
++    addPrim(ot, tile);
++    tile++;
++    setTile(tile);
++    setRGB0(tile, 0, 0, 8);
++    setXY0(tile, x0 + 3, 150);
++    setWH(tile, x1 - x0 - 3, 2);
++    addPrim(ot, tile);
++    tile++;
++    GFX.funcs.setPrim(tile);
++}
++#endif
++
+ /* Runs the field menu: opens its panels, moves the cursor and switches mode on a choice */
+ void updateFieldMenu(FieldMenu *task, FieldMenuWindows *win) {
+     SpriteDrawer obj;
+@@ -389,6 +476,13 @@
              }
              break;
          case 3:
@@ -111,32 +177,31 @@ FieldMenuWindows.options grows from six to seven windows (PORT_HOST only).
              chooseFieldMenuOption(task, win);
              break;
          case 4:
-@@ -448,6 +486,24 @@
+@@ -448,6 +542,23 @@
              obj.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x18, DW3_MENU_RIGHT(0x22), 0xD);
          }
          if (task->panels[1].level != 0) {
 +#if PORT_HOST
 +            /* P6.27: the panel has a row for Return to title. With the card
-+               folders row there are seven; the game has no panel for that
-+               (0x1B is the six-row one), so it is stretched by the seventh
-+               row's 14 pixels. */
++               folders row there are seven rows; the game has no panel for that
++               (0x1B is the six-row one), so the sixth row's bottom edge is
++               covered and redrawn one row lower (drawFieldMenuPanelRow). */
 +            s32 portRows = task->count - 5;
-+            s32 portStretch = portRows > 1 ? DW3_FIELD_PANEL_STRETCH : ONE;
 +            if (task->panels[1].level != ONE) {
-+                obj.setScale(task->panels[1].level, portStretch, ONE);
-+                obj.setPivot(DW3_MENU_RIGHT(0x140), portStretch != ONE ? 0x28 : 0x52);
-+            } else if (portStretch != ONE) {
-+                obj.setScale(ONE, portStretch, ONE);
-+                obj.setPivot(DW3_MENU_RIGHT(0x140), 0x28);
++                obj.setScale(task->panels[1].level, ONE, ONE);
++                obj.setPivot(DW3_MENU_RIGHT(0x140), 0x52);
 +            } else {
 +                obj.setScale(ONE, ONE, ONE);
++                if (portRows > 1) {
++                    drawFieldMenuPanelRow(task->layerId, task->depth);
++                }
 +            }
 +            obj.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x1C - (portRows > 0 ? 1 : 0), DW3_MENU_RIGHT(0xA8), 0x28);
 +#else
              if (task->panels[1].level != ONE) {
                  obj.setScale(task->panels[1].level, ONE, ONE);
                  obj.setPivot(DW3_MENU_RIGHT(0x140), 0x52);
-@@ -455,6 +511,7 @@
+@@ -455,6 +566,7 @@
                  obj.setScale(ONE, ONE, ONE);
              }
              obj.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x1C - task->extraOption, DW3_MENU_RIGHT(0xA8), 0x28);
