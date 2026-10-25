@@ -123,3 +123,24 @@ jobs:
           name: dw3-switch-game-nro
           path: build/switch/dw3-switch.nro
           if-no-files-found: error
+
+  # P6.24 slice 2: the Switch region launcher NRO (platforms/switch/launcher).
+  # A CI artifact only; it is not a release asset yet, and the release
+  # workflow does not know it. No submodules: it holds no game code.
+  switch-launcher:
+    needs: changes
+    if: ${{ !cancelled() && needs.changes.outputs.code != 'false' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: false
+      - name: Build launcher .nro
+        run: bash tools/build_switch_launcher.sh
+      - name: Upload launcher .nro artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: dw3-switch-launcher-nro
+          path: build/switch-launcher/out/dw3.nro
+          if-no-files-found: error

@@ -9,7 +9,10 @@ A native Nintendo Switch port of Digimon World 3 (Digimon World 2003 in
 Europe), built from the matching PlayStation decompilation.
 
 Latest preview: [v0.6.5-preview.30](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.30).
-To try it, see [Play it on Switch](#play-it-on-switch).
+To try it, see [Play it on Switch](#play-it-on-switch). New to the port? Read
+the [player guide](docs/PLAYER_GUIDE.md). All docs are listed in the
+[docs index](docs/README.md). To contribute, see
+[CONTRIBUTING.md](CONTRIBUTING.md).
 
 <p align="center">
   <img src="docs/assets/screenshots/title-menu.png" width="400"
@@ -155,7 +158,8 @@ These are goals, not promises. The full list is in
 - Texture pack support: [TEXTURE_PACKS](docs/TEXTURE_PACKS.md), and later a
   modding API (mod folder, asset and data-table overrides, P8.5).
 - A cheats sub-screen in Port options, to speed up testing (P6.20; first slice built, off by default, removable with `--no-cheats`).
-- A player guide, a docs index and contributor docs (P6.23).
+- Contributor and modder docs (P6.23). The player guide and the docs index
+  are done: [PLAYER_GUIDE](docs/PLAYER_GUIDE.md), [docs/README.md](docs/README.md).
 - In-game pause menu: return to title and help / FAQ / tips (P6.27, P6.30);
   Quit game on the title menu, back to hbmenu (P6.28).
 - A save editor for the owner's own saves, as a tool outside the game (P6.29).
@@ -330,6 +334,8 @@ submodule, unless the fix belongs upstream.
 
 | Doc | Contents |
 |---|---|
+| [PLAYER_GUIDE](docs/PLAYER_GUIDE.md) | Setup, controls, menus, saves and crash reports for players. |
+| [Docs index](docs/README.md) | One line per doc in `docs/`. |
 | [ROADMAP](docs/ROADMAP.md) | Phases, gates and what is next. Phase-by-phase evidence lives under `docs/`. |
 | [ARCHITECTURE](docs/ARCHITECTURE.md) | How the decomp, PSY-Z and the hosts fit together. |
 | [HOTKEYS](docs/HOTKEYS.md) | Controls, port hotkeys and diagnostic chords. |
