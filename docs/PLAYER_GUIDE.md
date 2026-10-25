@@ -9,7 +9,8 @@ PC and in an emulator but not yet on a Switch OLED; the release notes say which.
 
 Contents: [Setup](#setup), [Controls and hotkeys](#controls-and-hotkeys),
 [Title menu](#title-menu), [Options screen](#options-screen),
-[Cheats screen](#cheats-screen), [Return to title](#return-to-title),
+[Cheats screen](#cheats-screen), [Options in the field](#options-in-the-field),
+[Return to title](#return-to-title),
 [Saves](#saves), [Crashes and reports](#crashes-and-reports),
 [Known issues](#known-issues).
 
@@ -145,7 +146,8 @@ P6.18_PACING.md, P6.31_AUTOSAVE.md, P7.9_BATTLE_MENU_MEMORY.md; row names and
 defaults from port/options/port_options.c -->
 
 Options holds the features the port adds. Up and Down choose a row. B or A
-changes it. X goes back to the title. A line under the rows explains the
+changes it. X goes back (to the title, or to the field menu when opened there,
+see [Options in the field](#options-in-the-field)). A line under the rows explains the
 focused row. Changes are saved at once in `port_options.cfg`
 ([PORT_OPTIONS](PORT_OPTIONS.md#persistence)). Defaults keep the original
 game, except Widescreen.
@@ -193,11 +195,28 @@ select.
 Fill bag, Battle now and the page 2 actions are armed for this run only. A
 cheat changes the game in progress, and the game's own save keeps that change.
 
+## Options in the field
+
+<!-- Sources: PORT_OPTIONS.md#options-in-game-p97, HOTKEYS.md -->
+
+In the field, open the menu with Plus. The row above the last is **OPTIONS**
+(on EU: OPTIONS, OPZIONI, OPTIONEN, OPCIONES). B opens the same Options screen as
+the title, over the field, and X closes it back to the menu. The game waits
+behind it, as it does in the menu, and the music keeps playing.
+
+Every row changes the game at once: volumes, Fast-forward, the Restart hotkey,
+Encounter rate, Text speed, Battle cursor and Auto-save, and the change is saved
+in `port_options.cfg` as at the title. Two things are **greyed** and cannot
+change in the field: **Widescreen** (the map is laid out when an area loads, so
+change it at the title) and the **Y Cheats** hint (cheats are armed at the
+title). The line under the rows says "Locked in game". There is no entry in
+battle yet.
+
 ## Return to title
 
 <!-- Sources: PORT_OPTIONS.md#quit-and-return-to-title-p627-p628, HOTKEYS.md -->
 
-In the field, open the menu with Plus. The last row is **TITLE SCREEN** (on EU:
+In the field, open the menu with Plus. The last row, under OPTIONS, is **TITLE SCREEN** (on EU:
 RETOUR TITRE, TORNA AL TITOLO, TITELBILD, VOLVER AL INICIO). It asks Yes or No
 with the cursor on No. Yes runs the same reset as the restart chord. The
 save slots are flushed first and a failed flush cancels the reset. Unsaved
