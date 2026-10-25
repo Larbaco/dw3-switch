@@ -757,6 +757,25 @@ for _v in ("us", "eu"):
                   forbid_log=((0, r"corrupt sprite count"),),
                   note="Underground Path exit: the canal water is drawn (patches 0110, 0111)"))
 
+# P6.1 area-change iris and grid cover (patch 0115) and the encounter spiral, in
+# 16:9. Door: boot in the Underground Path, DW3_FORCE_EXIT leaves it; checkpoints
+# while the view closes and the grid closes over the picture (the gutters show
+# the grid, the view starts 320 + 2 * 53 wide). Battle: the walk of
+# encounter-walk; the spiral's swirl is 4:3 with black gutters (documented), the
+# checkpoints keep it from changing unnoticed.
+for _v in ("us", "eu"):
+    _add(Scenario(f"{_v}-ws-door-iris", _v, "full", timeout=300,
+                  cfg=(("widescreen", "1"),),
+                  env=(("DW3_START_MODE", "0x20B"), ("DW3_PROGRESS", "6"),
+                       ("DW3_FORCE_EXIT", "0x201:240:264:7:100")),
+                  expect_log=((0, r"DW3_FORCE_EXIT leaveField mode=0x201 x=240 y=264 dir=7"),),
+                  note="area-change iris and grid cover span 16:9 (patch 0115)"),
+         Scenario(f"{_v}-ws-battle-spiral", _v, "full", turbo=4, timeout=600,
+                  cfg=(("widescreen", "1"),),
+                  env=(("DW3_START_MODE", "0x233"), ("DW3_PROGRESS", "6")),
+                  expect_log=((0, r"FIGHTSTG_start"),),
+                  note="encounter spiral in 16:9: swirl 4:3, gutters black (documented)"))
+
 
 def by_name() -> dict[str, Scenario]:
     return {s.name: s for s in SCENARIOS}
