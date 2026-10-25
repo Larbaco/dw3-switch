@@ -808,6 +808,35 @@ def underground_exit(version):
     return r
 
 
+IRIS_SHOTS = (207, 216, 225, 234, 243, 252)
+SPIRAL_SHOTS = (1104, 1122, 1140, 1164, 1188, 1206)
+
+
+def ws_door_iris(version):
+    """The area-change iris and grid cover in 16:9 (patch 0115): the manifest's
+    env boots in the Underground Path (0x20B) and DW3_FORCE_EXIT (0110) leaves
+    it after 100 idle frames; the iris closes from frame ~205 and the grid
+    from ~213. Checkpoints during both."""
+    r = Rec(f"{version.upper()}: area-change iris and grid cover, 16:9 (env in manifest)")
+    for f in IRIS_SHOTS:
+        r.shot(f, f"iris-{f}")
+    r.end(280)
+    return r
+
+
+def ws_battle_spiral(version):
+    """The encounter spiral in 16:9 (patch 0115 leaves it alone: the swirl is
+    a copy of the 320x240 display): the Encounter rate 1x walk of
+    `encounter_walk` (Up from frame 300, battle after ~102 footsteps) with a
+    checkpoint on the swirl's way out."""
+    r = Rec(f"{version.upper()}: random-battle spiral, 16:9 (env in manifest)")
+    _pad(r, 300, UP)
+    for f in SPIRAL_SHOTS:
+        r.shot(f, f"spiral-{f}")
+    r.end(1270)
+    return r
+
+
 VICTORY_END = 12000
 
 
@@ -1299,6 +1328,8 @@ def main(out):
         (out / f"{v}-victory-music.rec").write_text(victory_music(v).text(True))
         (out / f"{v}-music-loop.rec").write_text(music_loop(v).text(True))
         (out / f"{v}-underground-exit.rec").write_text(underground_exit(v).text(True))
+        (out / f"{v}-ws-door-iris.rec").write_text(ws_door_iris(v).text(True))
+        (out / f"{v}-ws-battle-spiral.rec").write_text(ws_battle_spiral(v).text(True))
         (out / f"{v}-battle-music.rec").write_text(battle_music(v).text(True))
         (out / f"{v}-two-battles.rec").write_text(two_battles(v).text(True))
         (out / f"{v}-battle-report.rec").write_text(battle_report(v).text(True))
