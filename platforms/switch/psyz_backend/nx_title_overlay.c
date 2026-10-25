@@ -154,24 +154,39 @@ static GLuint make_texture(int w, int h, const void *pixels) {
     return tex;
 }
 
-/* The four title states, generated on the CPU (no art is shipped). The options
- * state is left transparent: the shared cache fills it on the next open. */
-static uint8_t *build_art(void) {
+/* Atlas states 0..STATE_OPTIONS-1 (the four title states and PRESS START) are
+ * rasterized on the CPU (no art is shipped), one at a time, and uploaded as
+ * they are needed; STATE_OPTIONS is left transparent: the shared cache fills it
+ * on the next open. A fresh or released atlas is not rebuilt in one go (that
+ * was ~0.3 s in one frame): the state on screen is built at once and the others
+ * one per frame after it (pump_states). */
+enum { STATES_ALL = (1 << STATE_OPTIONS) - 1 };
+static unsigned s_states_ready;
+
+static int upload_state(int state) {
     const size_t canvas_bytes = (size_t)CANVAS_W * CANVAS_H * 4;
-    uint8_t *pixels = (uint8_t *)malloc(canvas_bytes * STATE_COUNT);
+    uint8_t *pixels = (uint8_t *)malloc(canvas_bytes);
 
     if (!pixels) {
-        return NULL;
+        return 0;
     }
+    dw3_pc_title_overlay_art(pixels, CANVAS_W * 4, state == 0 ? -1 : state - 1);
+    glBindTexture(GL_TEXTURE_2D, s_art_tex);
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
+    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, state * CANVAS_H, CANVAS_W, CANVAS_H,
+                    GL_RGBA, GL_UNSIGNED_BYTE, pixels);
+    free(pixels);
+    s_states_ready |= 1u << state;
+    return 1;
+}
+
+/* The atlas content is stale (new texture, or EU labels changed): the options
+ * region must be sent again and every title state rebuilt. */
+static void atlas_content_reset(void) {
     s_art_generation = dw3_pc_title_overlay_generation();
-    memset(pixels, 0, canvas_bytes * STATE_COUNT);
-    for (int state = 0; state < STATE_OPTIONS; ++state) {
-        dw3_pc_title_overlay_art(pixels + (size_t)state * canvas_bytes,
-                                 CANVAS_W * 4, state == 0 ? -1 : state - 1);
-    }
-    /* The atlas was just (re)written: the options region must be sent again. */
+    s_states_ready = 0;
+    s_options_generation = ~0u;
     dw3_options_cache_invalidate();
-    return pixels;
 }
 
 #if DW3_NX_MENU_TIMING
@@ -414,24 +429,16 @@ static int ensure_program(void) {
     return 1;
 }
 
-/* Build the canvas states once per GL context. The canvas is generated on
- * the CPU (no art is shipped) and freed after the upload. */
+/* Create the atlas and the logo texture on the first use in a GL context, and
+ * again after release_title_textures. No state is rasterized here (see
+ * pump_states); an EU label change only marks the states stale. */
 static int ensure_gl(void) {
-    uint8_t *pixels;
-
     if (s_prog && glIsTexture(s_art_tex)) {
         /* EU labels change the title canvases (and the options text). */
         if (s_art_generation != dw3_pc_title_overlay_generation()) {
-            pixels = build_art();
-            if (pixels) {
-                glBindTexture(GL_TEXTURE_2D, s_art_tex);
-                glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
-                glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, CANVAS_W, ART_TEX_H,
-                                GL_RGBA, GL_UNSIGNED_BYTE, pixels);
-                free(pixels);
-                TITLE_LOG("dw3-title-overlay: canvas regenerated "
-                          "(generation %u)", s_art_generation);
-            }
+            atlas_content_reset();
+            TITLE_LOG("dw3-title-overlay: canvas regenerated "
+                      "(generation %u)", s_art_generation);
         }
         return 1;
     }
@@ -449,26 +456,66 @@ static int ensure_gl(void) {
 #if DW3_NX_MENU_TIMING
     const uint64_t build_t0 = timing_now_us();
 #endif
-    pixels = build_art();
-    if (!pixels) {
-        glDeleteProgram(s_prog);
-        s_prog = 0;
-        s_gl_failed = 1;
-        return 0;
+    s_art_tex = make_texture(CANVAS_W, ART_TEX_H, NULL);
+    {
+        /* The options region is drawn (faded) before the cache fills it. */
+        void *zero = calloc((size_t)CANVAS_W * CANVAS_H, 4);
+
+        if (!zero) {
+            glDeleteTextures(1, &s_art_tex);
+            s_art_tex = 0;
+            glDeleteProgram(s_prog);
+            s_prog = 0;
+            s_gl_failed = 1;
+            return 0;
+        }
+        glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
+        glTexSubImage2D(GL_TEXTURE_2D, 0, 0, STATE_OPTIONS * CANVAS_H,
+                        CANVAS_W, CANVAS_H, GL_RGBA, GL_UNSIGNED_BYTE, zero);
+        free(zero);
     }
-    s_art_tex = make_texture(CANVAS_W, ART_TEX_H, pixels);
-    free(pixels);
+    atlas_content_reset();
     s_logo_tex = make_texture(LOGO_W, LOGO_H, NULL);
     s_logo_dirty = s_logo_rgba != NULL;
     TITLE_LOG("dw3-title-overlay: %dx%d RGBA texture, %d states (GLES)",
               CANVAS_W, ART_TEX_H, STATE_COUNT);
 #if DW3_NX_MENU_TIMING
-    TITLE_LOG("dw3-title-overlay: atlas build #%u %u us (raster+upload)",
+    TITLE_LOG("dw3-title-overlay: atlas create #%u %u us",
               ++s_atlas_builds, (unsigned)(timing_now_us() - build_t0));
 #else
     ++s_atlas_builds;
 #endif
     return 1;
+}
+
+/* Rasterize and upload the atlas state `need` (-1: none on screen) if it is
+ * not there yet, else the next missing one: at most one per frame. */
+static void pump_states(int need) {
+    int state = -1;
+#if DW3_NX_MENU_TIMING
+    const uint64_t t0 = timing_now_us();
+#endif
+
+    if (s_states_ready == STATES_ALL) {
+        return;
+    }
+    if (need >= 0 && need < STATE_OPTIONS && !(s_states_ready & (1u << need))) {
+        state = need;
+    } else {
+        for (int i = 0; i < STATE_OPTIONS; ++i) {
+            if (!(s_states_ready & (1u << i))) {
+                state = i;
+                break;
+            }
+        }
+    }
+    if (state >= 0 && upload_state(state)) {
+#if DW3_NX_MENU_TIMING
+        TITLE_LOG("dw3-title-overlay: atlas state %d %u us%s", state,
+                  (unsigned)(timing_now_us() - t0),
+                  state == need ? " (needed)" : "");
+#endif
+    }
 }
 
 /* Draw texture rect (u0,v0)-(u1,v1) into canvas rect (x0,y0)-(x1,y1) of the
@@ -535,6 +582,9 @@ void dw3_nx_title_overlay_draw(int vx, int vy, int vw, int vh) {
     }
     if (title_visible ? !ensure_gl() : !ensure_program()) {
         return;
+    }
+    if (title_visible) {
+        pump_states(s_overlay_active && !options_open ? s_selection : -1);
     }
     if (s_options_alpha || (s_overlay_active && !s_options_cache_warm)) {
         /* Build the cache as soon as the title menu is up, so the first open
