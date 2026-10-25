@@ -698,6 +698,14 @@ gate, which stays open.
     display-wide band layers that now draw into the gutters.
   - [ ] The black hole in the middle of the technique magic circle (Ryubing
     and PC, same on main): look at it on the OLED first.
+  - [ ] **preview.31-rc1 OLED report (owner, EU): "leaving the Underground
+    Path the water texture is wrong until the screen scrolls down",
+    fixed, pending OLED (US and EU).** Not a renderer or VRAM / CLUT
+    problem: a map tile of the streets by the Cargo Tower (WSTAG202) counts 6
+    sprites in a depth and patch `0057`'s clamp made the next two depths read
+    garbage, which drew huge sprites over the canal while that tile was in
+    view (patch `0111`; test hook `0110`). Replay scenarios
+    `us/eu-underground-exit`. Details: [FIELD_TILE_SPRITES.md](FIELD_TILE_SPRITES.md).
   Details and evidence for each item:
   [P6.1_WIDESCREEN.md](P6.1_WIDESCREEN.md#open-transitions-2026-10-23) and
   [P6.1_WIDESCREEN_MENU_AUDIT.md](P6.1_WIDESCREEN_MENU_AUDIT.md) (partly

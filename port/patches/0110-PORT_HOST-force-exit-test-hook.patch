@@ -1,0 +1,56 @@
+Upstream-bound: no
+Subject: [PORT_HOST] DW3_FORCE_EXIT test hook (leave the field like an exit slot)
+
+DW3_FORCE_EXIT=<mode>:<x>:<y>:<dir>:<frames> (PC env, nothing happens when it
+is unset): once, after <frames> idle frames of the field (default 60),
+FIELDSTG_leaveField(mode, -1, x << 8, y << 8, dir), which is what
+FIELDSTG_setOffTrigger does for a SLOT_EXIT slot, so the player arrives in the
+next stage at that pixel position with the story-accurate camera. Used by the
+Underground Path water replay scenarios without walking to the exit.
+
+--- a/src/field/field_mode/field.c
++++ b/src/field/field_mode/field.c
+@@ -491,6 +491,43 @@
+                 long mode = 0;
+                 long arg = 0;
+ 
++                {
++                    /* Test hook: DW3_FORCE_EXIT=<mode>:<x>:<y>:<dir>:<frames> leaves the
++                       field once for that mode like an SLOT_EXIT slot does (the player
++                       comes back at pixel (x, y) facing dir), after <frames> idle frames
++                       of the first field. A walk to the exit is not needed to replay it. */
++                    const char *fx = getenv("DW3_FORCE_EXIT");
++                    static s32 fx_frames;
++                    static s32 fx_done;
++                    if (fx != NULL && fx[0] != '\0' && !fx_done) {
++                        long fm = strtol(fx, &end, 0);
++                        long fxx = 0;
++                        long fxy = 0;
++                        long fxd = 0;
++                        long fxn = 60;
++                        if (end != fx && *end == ':') {
++                            fxx = strtol(end + 1, &end, 0);
++                            if (*end == ':') {
++                                fxy = strtol(end + 1, &end, 0);
++                            }
++                            if (*end == ':') {
++                                fxd = strtol(end + 1, &end, 0);
++                            }
++                            if (*end == ':') {
++                                fxn = strtol(end + 1, &end, 0);
++                            }
++                        }
++                        if (end != fx && fm > 0 && ++fx_frames >= fxn) {
++                            fx_done = 1;
++                            fprintf(stderr,
++                                    "dw3: DW3_FORCE_EXIT leaveField mode=0x%lx x=%ld y=%ld dir=%ld\n",
++                                    fm, fxx, fxy, fxd);
++                            FIELDSTG_leaveField((s32)fm, -1, (s32)fxx << 8, (s32)fxy << 8, (s32)fxd);
++                            break;
++                        }
++                        end = NULL;
++                    }
++                }
+                 if (force != NULL && force[0] != '\0' && dw3_host_menu_force_once()) {
+                     mode = strtol(force, &end, 0);
+                     if (end != force && mode > 0) {

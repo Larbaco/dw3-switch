@@ -789,6 +789,25 @@ def music_loop(version):
     return r
 
 
+UNDERGROUND_EXIT_END = 700
+
+
+def underground_exit(version):
+    """Leaving the Underground Path (mode 0x20B) for the streets by the Cargo
+    Tower (0x201) at the exit slot's arrival point; the manifest's env boots in
+    the path and DW3_FORCE_EXIT (patch 0110) leaves it after 100 idle frames.
+    Checkpoints: the frame right after the exit, then while walking Down (the
+    camera scrolls). Before patch 0111 the canal water was black in both."""
+    r = Rec(f"{version.upper()}: Underground Path exit to Central Sector, then walk Down (env in manifest)")
+    r.shot(450, "after-exit")
+    _pad(r, 470, DOWN)
+    r.shot(560, "scroll-mid")
+    r.shot(660, "scroll-end")
+    _pad(r, 665, 0)
+    r.end(UNDERGROUND_EXIT_END)
+    return r
+
+
 VICTORY_END = 12000
 
 
@@ -1123,6 +1142,7 @@ def main(out):
         (out / f"{v}-save-screen.rec").write_text(save_screen(v).text(True))
         (out / f"{v}-victory-music.rec").write_text(victory_music(v).text(True))
         (out / f"{v}-music-loop.rec").write_text(music_loop(v).text(True))
+        (out / f"{v}-underground-exit.rec").write_text(underground_exit(v).text(True))
         (out / f"{v}-battle-music.rec").write_text(battle_music(v).text(True))
         (out / f"{v}-two-battles.rec").write_text(two_battles(v).text(True))
         (out / f"{v}-battle-report.rec").write_text(battle_report(v).text(True))

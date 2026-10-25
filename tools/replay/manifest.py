@@ -703,6 +703,26 @@ for _v, _title, _field, _subs, _plnmet in (
                                   r"gutter 0 px per side" % _plnmet),),
                   note="title menu, news caption and registration screen in 16:9 (patches 0085-0087)"))
 
+# Owner report (preview.31-rc1 OLED, EU): leaving the Underground Path the water
+# of the next area is wrong until the screen scrolls down. Cause (patch 0111):
+# the map tile in column 4, row 1 of the Central Sector streets (WSTAG202) counts
+# 6 sprites in depth 0 and the port's clamp read the other two depths from the
+# wrong place, drawing huge garbage sprites over the canal. The 16:9 field has
+# that tile in view from the arrival point. DW3_FORCE_EXIT (patch 0110) takes
+# the exit slot's destination (mode 0x201, pixel (240, 264), facing 7) after
+# 100 idle frames in the path (mode 0x20B), no walk needed. Checkpoints:
+# `after-exit`, `scroll-mid`, `scroll-end` (Down held). Without the fix the
+# water is black (all three captures differ from the reference).
+for _v in ("us", "eu"):
+    _add(Scenario(f"{_v}-underground-exit", _v, "full", timeout=300,
+                  cfg=(("widescreen", "1"),),
+                  env=(("DW3_START_MODE", "0x20B"), ("DW3_PROGRESS", "6"),
+                       ("DW3_FORCE_EXIT", "0x201:240:264:7:100")),
+                  expect_log=((0, r"DW3_FORCE_EXIT leaveField mode=0x201 x=240 y=264 dir=7(?s:.*)"
+                                  r"dw3-tile: tile 12 depth 0 counts 6 sprites"),),
+                  forbid_log=((0, r"corrupt sprite count"),),
+                  note="Underground Path exit: the canal water is drawn (patches 0110, 0111)"))
+
 
 def by_name() -> dict[str, Scenario]:
     return {s.name: s for s in SCENARIOS}
