@@ -85,6 +85,27 @@ def test_mem_verdict_first_use_texture_steps():
     assert not ry.mem_verdict(run, 0)[0]
 
 
+def test_mem_verdict_rebuild_after_release():
+    ry = _load()
+    title = "[I][f] dw3-title-overlay: 960x4320 RGBA texture, 6 states (GLES)"
+    logo = "[I][f] dw3-title-logo: active=1"
+    rel = "[I][f] dw3-title-overlay: title textures released (not on screen)"
+    # a restart after the 60% mark rebuilds the atlas: +3.5 MB transient on hw
+    run = ([_mem(321, 158, 172900)] * 8 + [title, logo, rel] +
+           [_mem(321, 158, 150400)] * 8 + [title, logo] +
+           [_mem(321, 158, 176400)] * 3 + [_mem(321, 158, 176400)] * 3)
+    ok, detail = ry.mem_verdict(run, 0)
+    assert ok and "+0K" in detail
+    # without the release line the second RGBA texture line is not first use
+    plain = [l for l in run if l != rel]
+    assert not ry.mem_verdict(plain, 0)[0]
+    # a leak that keeps growing after the rebuild still fails
+    run = ([_mem(321, 158, 172900)] * 8 + [title, logo, rel] +
+           [_mem(321, 158, 150400)] * 8 + [title, logo] +
+           [_mem(321, 158, 176400 + i * 300) for i in range(8)])
+    assert not ry.mem_verdict(run, 0)[0]
+
+
 def test_fatal_patterns():
     ry = _load()
     assert ry.FATAL_RE.search("00:03:00 |E| Cpu: Unhandled exception caught: Ryujinx...")
