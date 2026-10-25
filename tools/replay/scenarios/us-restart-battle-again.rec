@@ -73,6 +73,9 @@ pad 1455 0x0000
 shot 1580 field-after-battle
 pad 1600 0x0c09
 pad 1605 0x0000
+shot 1700 again-100
+shot 1800 again-200
+shot 1900 again-300
 pad 1950 0x0040
 pad 1960 0x0000
 pad 2010 0x4000

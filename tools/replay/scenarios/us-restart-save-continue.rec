@@ -1,4 +1,5 @@
 # US: field save, restart, Continue (env in manifest)
+shot 120 field-before
 shot 196 slot-question
 pad 700 0x4000
 pad 705 0x0000
@@ -26,4 +27,12 @@ shot 2030 slot-choice
 pad 2050 0x4000
 pad 2055 0x0000
 shot 2230 slot-result
-end 2250
+pad 2250 0x4000
+pad 2255 0x0000
+shot 2330 loading
+pad 2390 0x4000
+pad 2395 0x0000
+pad 2530 0x4000
+pad 2535 0x0000
+shot 2730 continued
+end 2750

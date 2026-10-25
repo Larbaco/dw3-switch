@@ -881,6 +881,15 @@ for _v, _ids in (("us", (0x159, 0x1FA, 0x1C2, 0x158)), ("eu", (0x167, 0x208, 0x1
                   expect_log=((0, r"saved(?s:.*)" + _RST_LINE),),
                   note="field save, restart, Load Game / Continue reads the save back (P6.9)"))
 
+    _add(Scenario(f"{_v}-restart-in-battle-redo", _v, "full", turbo=4, timeout=600,
+                  env=_P77_ENV_REPORT, cfg=_RST_CFG, expect_restore=((_fight, M), (_menu, S)) + _battle,
+                  expect_log=((0, r"FIGHTSTG_start(?s:.*)" + _RST_LINE
+                                  + r"(?s:.*)FIGHTSTG_start(?s:.*)WFIGHTMN_endBattle result=1"),),
+                  note="the chord inside a battle without START_MODE_ONCE: the battle starts again and ends (P6.9)"))
+    # No env: the Ryubing runner runs it too (the option file turns the hotkey on).
+    _add(Scenario(f"{_v}-restart-newgame", _v, "full", timeout=600, cfg=_RST_CFG,
+                  note="restart during the New Game opening, then New Game and the opening again (P6.9)"))
+
 
 def by_name() -> dict[str, Scenario]:
     return {s.name: s for s in SCENARIOS}

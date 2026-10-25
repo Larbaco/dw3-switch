@@ -1309,6 +1309,13 @@ def _restart_battle_inputs(r):
         r.press(f, CROSS)
 
 
+def _restart_battle_inputs_at(r, base):
+    """The same inputs, shifted to the chord's frame."""
+    _tech(r, base + 350)
+    for f in range(base + 520, base + 1470, 30):
+        r.press(f, CROSS)
+
+
 def restart_after_battle(version):
     """Restart in the field after a finished battle (START_MODE_ONCE: the
     restart lands on the real boot screen). Battle, report, field (turbo 4);
@@ -1336,6 +1343,8 @@ def restart_battle_again(version):
     base = 1600
     r.press(base, CHORD)
     # the battle again, 6 frames of the chord's release give the same start
+    for k in (100, 200, 300):
+        r.shot(base + k, f"again-{k}")
     _tech(r, base + 350)
     for f in range(base + 520, base + 1470, 30):
         r.press(f, CROSS)
@@ -1362,6 +1371,59 @@ def restart_in_battle(version):
     return r
 
 
+def restart_in_battle_redo(version, base=650):
+    """The chord inside a battle without START_MODE_ONCE: the restart re-enters
+    the forced battle (a fresh GAME after a battle torn down mid-turn) and the
+    same battle is played to the end, report and field. The restart does not
+    reseed the RNG, so who moves first in the second battle depends on the
+    chord's frame (US at 600, EU at 637 and 700 give the enemy the first move
+    and the script's Tech press then lands on a text box); 650 gives the
+    command menu on both."""
+    r = Rec(f"{version.upper()}: restart during a battle, then the battle to the end (env in manifest)")
+    _tech(r, 350)
+    r.shot(560, "battle-tech")
+    r.press(base, CHORD)
+    _restart_battle_inputs_at(r, base)
+    for k in (100, 200, 300):
+        r.shot(base + k, f"again-{k}")
+    r.shot(base + 340, "menu-again")
+    r.shot(base + 560, "tech-again")
+    r.shot(base + 700, "turn-again")
+    r.shot(base + 1580, "field-after-battle")
+    r.end(base + 1600)
+    return r
+
+
+def restart_newgame(version):
+    """No env, so Ryubing runs it too (the option file seeds the hotkey): New
+    Game, the opening's TV news, the chord, the boot screen, New Game again and
+    the same news again."""
+    r = Rec(f"{version.upper()}: restart during the New Game opening, then New Game again")
+    first = 900 if version == "eu" else 800
+    if version == "us":
+        r.press(20, START)
+        r.press(210, START)
+        r.press(320, CROSS)          # New Game
+    else:
+        for f in (110, 160, 190, 220, 280):
+            r.press(f, START)
+        r.press(390, CROSS)          # Start (New Game)
+    for f in range(first, 2300, CROSS_PERIOD):
+        r.press(f, CROSS)
+    r.shot(2100, "news")
+    base = 2400
+    r.press(base, CHORD)
+    r.shot(base + 60, "boot-a")
+    m = _boot_to_menu(r, version, base)
+    r.shot(m + 4, "menu")
+    r.press(m + 10, CROSS)           # New Game / Start again
+    for f in range(base + first, base + 2300, CROSS_PERIOD):
+        r.press(f, CROSS)
+    r.shot(base + 2100, "news-again")
+    r.end(base + 2300)
+    return r
+
+
 def restart_before_battle(version):
     """Restart in a random-battle field before any fight, then walk: Battle
     now (the cheats hook) makes the first footstep a battle. START_MODE is not
@@ -1379,7 +1441,7 @@ def restart_save_continue(version):
     and the loaded game. Checkpoints keep the pre-restart saved screen, the
     title after the restart and the loaded field."""
     r = Rec(f"{version.upper()}: field save, restart, Continue (env in manifest)")
-    for f, name in ((196, "slot-question"), (886, "slots")):
+    for f, name in ((120, "field-before"), (196, "slot-question"), (886, "slots")):
         r.shot(f, name)
     r.press(700, CROSS)              # Slot 1
     r.press(800, CROSS)              # YES, create the block
@@ -1395,12 +1457,19 @@ def restart_save_continue(version):
     r.press(m + 70, CROSS)
     r.shot(m + 400, "slot-choice")
     r.press(m + 420, CROSS)          # slot 1
-    r.shot(m + 600, "slot-result")
-    r.end(m + 620)
+    r.shot(m + 600, "slot-result")   # the block saved before the restart
+    r.press(m + 620, CROSS)          # execute
+    r.shot(m + 700, "loading")
+    r.press(m + 760, CROSS)
+    r.press(m + 900, CROSS)
+    r.shot(m + 1100, "continued")
+    r.end(m + 1120)
     return r
 
 
 RESTART_RECS = (("restart-after-battle", restart_after_battle),
+                ("restart-in-battle-redo", restart_in_battle_redo),
+                ("restart-newgame", restart_newgame),
                 ("restart-battle-again", restart_battle_again),
                 ("restart-in-battle", restart_in_battle),
                 ("restart-before-battle", restart_before_battle),
