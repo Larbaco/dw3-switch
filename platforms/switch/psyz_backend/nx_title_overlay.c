@@ -19,7 +19,14 @@
  * Both are drawn over the game picture's 4:3 viewport after the frame is
  * composited and before the debug HUD. The game loop and the present run on
  * the same thread; the logo is kept on the CPU and uploaded on the next draw
- * so a dock/handheld context loss can rebuild every GL object. */
+ * so a dock/handheld context loss can rebuild every GL object.
+ *
+ * Memory: the 16.2 MB atlas, the logo texture and the Yes / No window texture
+ * live in the GLES driver's libc heap. They are released after
+ * TEXTURE_IDLE_FRAMES draws in which they were not needed (the field, a
+ * battle, a movie) and rebuilt lazily on the next use: the title ones by
+ * ensure_gl (restart, Return to title, EU language select), the Yes / No one
+ * by the draw. */
 #include "nx_title_overlay.h"
 
 #include "../../pc/src/title_options_cache.h"
@@ -66,6 +73,9 @@ enum {
     LOGO_Y0 = 47,
     LOGO_X1 = 840,
     LOGO_Y1 = 373,
+    /* Draws without a use before a texture is released (~1.5 s at 60 fps), so
+     * a restart that flickers the overlay off for a few frames keeps it. */
+    TEXTURE_IDLE_FRAMES = 90,
 };
 
 static GLuint s_prog;
@@ -86,6 +96,10 @@ static GLint s_uni_tex = -1;
 static GLint s_uni_sub = -1;
 static GLint s_uni_alpha = -1;
 static int s_gl_failed;
+static unsigned s_atlas_builds;
+/* Consecutive draws without the title (or the Yes / No window) on screen. */
+static int s_title_idle;
+static int s_dialog_idle;
 
 static int s_selection;
 static int s_overlay_active;
@@ -314,6 +328,33 @@ static void release_options_cache(void) {
 #endif
 }
 
+/* Drop the title-only textures (atlas, logo) once the title has not been on
+ * screen for a while; ensure_gl rebuilds them on the next visit. The program,
+ * the buffer and the CPU logo stay. */
+static void release_title_textures(void) {
+    if (!s_art_tex && !s_logo_tex) {
+        return;
+    }
+    if (s_art_tex) glDeleteTextures(1, &s_art_tex);
+    if (s_logo_tex) glDeleteTextures(1, &s_logo_tex);
+    s_art_tex = 0;
+    s_logo_tex = 0;
+    /* A rebuilt atlas and logo texture are empty: send them again. */
+    s_logo_dirty = s_logo_rgba != NULL;
+    dw3_options_cache_invalidate();
+    TITLE_LOG("dw3-title-overlay: title textures released (not on screen)");
+}
+
+static void release_dialog_texture(void) {
+    if (!s_dialog_tex) {
+        return;
+    }
+    glDeleteTextures(1, &s_dialog_tex);
+    s_dialog_tex = 0;
+    s_dialog_dirty = 1;
+    TITLE_LOG("dw3-title-overlay: confirm window texture released");
+}
+
 /* The shader program and the quad buffer, shared by the title canvas and the
  * Yes / No window (which also shows in the field, where the canvas is not
  * built). */
@@ -405,6 +446,9 @@ static int ensure_gl(void) {
     if (!ensure_program()) {
         return 0;
     }
+#if DW3_NX_MENU_TIMING
+    const uint64_t build_t0 = timing_now_us();
+#endif
     pixels = build_art();
     if (!pixels) {
         glDeleteProgram(s_prog);
@@ -418,6 +462,12 @@ static int ensure_gl(void) {
     s_logo_dirty = s_logo_rgba != NULL;
     TITLE_LOG("dw3-title-overlay: %dx%d RGBA texture, %d states (GLES)",
               CANVAS_W, ART_TEX_H, STATE_COUNT);
+#if DW3_NX_MENU_TIMING
+    TITLE_LOG("dw3-title-overlay: atlas build #%u %u us (raster+upload)",
+              ++s_atlas_builds, (unsigned)(timing_now_us() - build_t0));
+#else
+    ++s_atlas_builds;
+#endif
     return 1;
 }
 
@@ -463,6 +513,18 @@ void dw3_nx_title_overlay_draw(int vx, int vy, int vw, int vh) {
     const int title_visible = s_overlay_active || logo || s_options_alpha;
     const int dialog = s_dialog_active;
 
+    if (title_visible) {
+        s_title_idle = 0;
+    } else if (s_title_idle < TEXTURE_IDLE_FRAMES &&
+               ++s_title_idle == TEXTURE_IDLE_FRAMES) {
+        release_title_textures();
+    }
+    if (dialog) {
+        s_dialog_idle = 0;
+    } else if (s_dialog_idle < TEXTURE_IDLE_FRAMES &&
+               ++s_dialog_idle == TEXTURE_IDLE_FRAMES) {
+        release_dialog_texture();
+    }
     if (!title_visible && !dialog) {
         /* Nothing is shown (restart, mode change): drop the retained canvases. */
         release_options_cache();
