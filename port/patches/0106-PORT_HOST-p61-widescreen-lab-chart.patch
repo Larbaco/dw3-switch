@@ -1,0 +1,77 @@
+Upstream-bound: no
+Subject: [PORT_HOST] P6.1 Digimon Lab chart screen hangs from the 16:9 left edge
+
+Patch 0104 gave the Lab's menu, party and slot screens the 16:9 layout but left
+the chart (the third screen, "<partner> digivolve") with its left parts at the
+4:3 edge: the title plate floated 53 px inside the picture, and the picked
+Digimon's description band (widened by DW3_MENU_BAND, so its icon box moved to
+the 16:9 edge) was left without its icon and its name and description, which
+stayed in the centre. This patch moves them with their plates:
+
+- the title plate (frame 0x44), its open-animation pivot and the title window
+  hang from the 16:9 left edge (DW3_MENU_LEFT);
+- the picked Digimon's icon on the description band, and the name and the
+  description windows, follow the band's left part (DW3_MENU_LEFT).
+
+The recipe grid, the arrows and the "1/4" plate (extended by 0104) are
+unchanged. The entry list, the entry panel and the skill panel have no
+other left-hung part. Only drawing positions change. Off (gutter 0) every
+position is the PS1 one.
+
+--- a/src/menus/digimon_lab/recipe_screen.c
++++ b/src/menus/digimon_lab/recipe_screen.c
+@@ -135,7 +135,7 @@
+             sprite.setPivot(0, 0xC2);
+             if (id != 0) {
+                 frame = STGDGLAB_data.funcs.getSprite(id);
+-                sprite.draw(FILE_CACHE.getEntry((FILE_LAB_SPRITES << 16) | 1), frame, 0x14, 0xAF);
++                sprite.draw(FILE_CACHE.getEntry((FILE_LAB_SPRITES << 16) | 1), frame, DW3_MENU_LEFT(0x14), 0xAF);
+             }
+             sprite.setTexture(0x280, 0x100);
+             sprite.draw(DW3_MENU_BAND(FILE_CACHE.getEntry(FILE_LAB_SPRITES << 16), 0x42, 160), 0x42, 0, 0xA8);
+@@ -143,7 +143,7 @@
+             sprite.setPivot(0, 0x4C);
+             if (id != 0) {
+                 frame = STGDGLAB_data.funcs.getSprite(id);
+-                sprite.draw(FILE_CACHE.getEntry((FILE_LAB_SPRITES << 16) | 1), frame, 0x14, 0x39);
++                sprite.draw(FILE_CACHE.getEntry((FILE_LAB_SPRITES << 16) | 1), frame, DW3_MENU_LEFT(0x14), 0x39);
+             }
+             sprite.setTexture(0x280, 0x100);
+             sprite.draw(DW3_MENU_BAND(FILE_CACHE.getEntry(FILE_LAB_SPRITES << 16), 0x42, 160), 0x42, 0, 0x32);
+@@ -171,9 +171,9 @@
+     sprite.setClutRow(0);
+     if (screen->panels[0].level != ONE) {
+         sprite.setScale(screen->panels[0].level, ONE, ONE);
+-        sprite.setPivot(0, 0x1F);
++        sprite.setPivot(DW3_MENU_LEFT(0), 0x1F);
+     }
+-    sprite.draw(FILE_CACHE.getEntry(FILE_LAB_SPRITES << 16), 0x44, 0, 0x11);
++    sprite.draw(FILE_CACHE.getEntry(FILE_LAB_SPRITES << 16), 0x44, DW3_MENU_LEFT(0), 0x11);
+     if (screen->panels[0].level != ONE) {
+         sprite.setPivot(DW3_MENU_RIGHT(0x140), 0x1F);
+     }
+@@ -465,11 +465,11 @@
+         nameId = GET_DIGIMON(id)->nameId;
+         if (id != 0) {
+             if (screen->slot < 2) {
+-                win->name->setPos(win->name, 0x3A, 0xAD);
+-                win->desc->setPos(win->desc, 0x3A, 0xBC);
++                win->name->setPos(win->name, DW3_MENU_LEFT(0x3A), 0xAD);
++                win->desc->setPos(win->desc, DW3_MENU_LEFT(0x3A), 0xBC);
+             } else {
+-                win->name->setPos(win->name, 0x3A, 0x37);
+-                win->desc->setPos(win->desc, 0x3A, 0x46);
++                win->name->setPos(win->name, DW3_MENU_LEFT(0x3A), 0x37);
++                win->desc->setPos(win->desc, DW3_MENU_LEFT(0x3A), 0x46);
+             }
+             win->name->setString(win->name, FILE_CACHE.load(TEXT_FILE(TEXT_DIGIMON_NAMES)), nameId);
+             win->desc->setString(win->desc, FILE_CACHE.load(TEXT_FILE(TEXT_DIGIMON_INFO)), nameId);
+@@ -576,7 +576,7 @@
+             screen->nextState(screen);
+             screen->table = GAME.funcs.getPartyMember(screen->lab->member);
+             screen->ownedCount = GAME.funcs.listPartnerEntries(screen->table, screen->owned);
+-            win->title = createTextWindow(screen->layer, 1, 0x14, 0x19);
++            win->title = createTextWindow(screen->layer, 1, DW3_MENU_LEFT(0x14), 0x19);
+             win->rowNumber = createTextWindow(screen->layer, 1, 0xFF, 0x19);
+             win->rowLabel = createTextWindow(screen->layer, 1, 0x101, 0x19);
+             win->prev = createTextWindow(screen->layer, 1, 0x27, 0xC4);

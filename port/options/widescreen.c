@@ -26,6 +26,7 @@
 #define DW3_WS_STCRDSHP 0x1CE
 #define DW3_WS_STGTRAIN 0x1F2
 #define DW3_WS_STGDGLAB 0x1EC
+#define DW3_WS_CNTY_SEL 0x165
 #else
 #define DW3_WS_FIELDSTG 0x158
 #define DW3_WS_FIGHTSTG 0x159
@@ -41,6 +42,7 @@
 #define DW3_WS_STCRDSHP 0x1C0
 #define DW3_WS_STGTRAIN 0x1F6
 #define DW3_WS_STGDGLAB 0x1DF
+#define DW3_WS_CNTY_SEL 0x157
 #endif
 
 enum { DW3_PORT_OPT_WIDESCREEN = 0 };
@@ -94,6 +96,10 @@ int dw3_port_widescreen_px(void) {
     if (mode_file == DW3_WS_STCRDSHP || mode_file == DW3_WS_STGTRAIN || mode_file == DW3_WS_STGDGLAB) {
         return DW3_WIDESCREEN_MENU_PX;
     }
+    /* The language / country select (patch 0109): the same backdrop */
+    if (mode_file == DW3_WS_CNTY_SEL) {
+        return DW3_WIDESCREEN_MENU_PX;
+    }
     /* The player name screen (Digimon Online registration): its scrolling
      * backdrop and side wings reach the gutters (patch 0087) */
     if (mode_file == DW3_WS_STPLNMET) {
@@ -121,7 +127,7 @@ int dw3_port_widescreen_menu_shift(void) {
  * frame ids (bytes) and one per frame to the frame's list: s16 part count,
  * CLUT row, blend, then s16 part index, x, y per part (the last ones are
  * drawn on top). The band is written as a one-frame sheet of the same form. */
-enum { BAND_PART_SIZE = 14, BAND_MAX_PARTS = 64, BAND_MAX_PART_INDEX = 256 };
+enum { BAND_PART_SIZE = 14, BAND_MAX_PARTS = 160, BAND_MAX_PART_INDEX = 256 };
 
 static void *menu_band(void *sheet, int frame, int split, int extend) {
     /* s32 storage: the drawer reads the header as s32 */

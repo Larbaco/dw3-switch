@@ -1,0 +1,18 @@
+# EU: P6.1 Digimon Lab chart in widescreen (env in manifest)
+pad 300 0x0040
+pad 305 0x0000
+pad 345 0x0040
+pad 350 0x0000
+pad 390 0x4000
+pad 395 0x0000
+shot 535 who
+pad 555 0x4000
+pad 560 0x0000
+shot 750 chart
+pad 770 0x4000
+pad 775 0x0000
+shot 965 description
+pad 985 0x0040
+pad 990 0x0000
+shot 1110 row-down
+end 1180

@@ -1,0 +1,7 @@
+# US: P6.1 language select in widescreen (env in manifest)
+shot 400 select
+shot 570 select-two
+pad 590 0x0040
+pad 595 0x0000
+shot 675 cursor-down
+end 745

@@ -1154,6 +1154,91 @@ def lab_digivolve(version):
     return r
 
 
+# P6.1 batch 2 (patches 0105-0109): the Lab's chart, entry and skill screens,
+# the item shop, the inn menu and the language select in widescreen. Same
+# conventions as above (env and the forced screen in the manifest); the
+# recordings are written as a short script: "d u l r x o t" press a button
+# (Down, Up, Left, Right, Cross, Circle, Triangle; held 5 frames, 45 frames
+# apart), "wait N" waits N frames more, "shot NAME" takes a capture. The
+# script starts at frame 300. Frames measured on the PC build; the same on
+# both discs.
+_SCRIPT_PADS = {"u": UP, "r": RIGHT, "d": DOWN, "l": LEFT, "x": CROSS, "o": 0x2000, "t": TRIANGLE}
+
+
+def _script_rec(title, script):
+    r = Rec(title)
+    f = 300
+    tokens = script.split()
+    i = 0
+    while i < len(tokens):
+        t = tokens[i]
+        if t == "wait":
+            f += int(tokens[i + 1])
+            i += 2
+        elif t == "shot":
+            r.shot(f, tokens[i + 1])
+            f += 20
+            i += 2
+        else:
+            r.press(f, _SCRIPT_PADS[t])
+            f += 45
+            i += 1
+    r.end(f + 50)
+    return r
+
+
+def lab_chart(version):
+    """STGDGLAB chart (the third screen) with Digimon entries (patch 0105's
+    hook): the partner to pick, the chart (title plate at the left edge), the
+    description band of the picked Digimon, the next row."""
+    return _script_rec(f"{version.upper()}: P6.1 Digimon Lab chart in widescreen (env in manifest)",
+                       "d d x wait 100 shot who x wait 150 shot chart x wait 150 shot description d wait 80 shot row-down")
+
+
+def lab_entries(version):
+    """STGDGLAB, Change digivolve type: the partner to pick, Select Action,
+    the list of the Digimon in the slots, the entry panel."""
+    return _script_rec(f"{version.upper()}: P6.1 Digimon Lab entries in widescreen (env in manifest)",
+                       "d x wait 100 shot who x wait 120 shot action x wait 150 shot list x wait 150 shot entries d wait 20 shot entry-down")
+
+
+def lab_skills(version):
+    """STGDGLAB, Load technique: Select Action, the list, the skill panel,
+    the Load? question."""
+    return _script_rec(f"{version.upper()}: P6.1 Digimon Lab skills in widescreen (env in manifest)",
+                       "d x wait 100 x wait 120 d x wait 150 shot list x wait 150 shot skills x wait 100 shot question x wait 100 shot loaded")
+
+
+def item_shop(version):
+    """STITSHOP buying (DW3_FORCE_MONEY, DW3_FORCE_ITEMS): the shop's menu,
+    the item list, the partner stats page, How many?, the total, Equip? and
+    Equip who?."""
+    return _script_rec(f"{version.upper()}: P6.1 item shop in widescreen (env in manifest)",
+                       "wait 100 shot menu x wait 150 shot list o wait 60 shot stats o wait 40 x wait 100 shot quantity "
+                       "x wait 100 shot total x wait 150 shot equip x wait 100 shot equip-who")
+
+
+def item_shop_sell(version):
+    """STITSHOP selling: the kinds, the bag's list, How many?, the total and
+    the list again."""
+    return _script_rec(f"{version.upper()}: P6.1 item shop selling in widescreen (env in manifest)",
+                       "wait 100 d x wait 150 shot kinds x wait 150 shot list x wait 100 shot quantity "
+                       "x wait 100 shot total x wait 100 shot sold")
+
+
+def inn_menu(version):
+    """The inn menu over the field (DW3_FORCE_NPC_ACTION=0x7A64): the
+    question, the cursor on No, back on Yes and Cross with no money."""
+    return _script_rec(f"{version.upper()}: P6.1 inn menu in widescreen (env in manifest)",
+                       "wait 150 shot question d wait 20 shot no u wait 20 shot yes x wait 60 shot no-money")
+
+
+def country_select(version):
+    """CNTY_SEL, the language select: the screen, then Down."""
+    return _script_rec(f"{version.upper()}: P6.1 language select in widescreen (env in manifest)",
+                       "wait 100 shot select wait 150 shot select-two d wait 40 shot cursor-down")
+
+
 # P6.20 Cheats screen (docs/PORT_OPTIONS.md "Cheats"). Square is 0x8000.
 SQUARE = 0x8000
 
@@ -1246,6 +1331,13 @@ def main(out):
         (out / f"{v}-gym.rec").write_text(gym(v).text(True))
         (out / f"{v}-digimon-lab.rec").write_text(digimon_lab(v).text(True))
         (out / f"{v}-lab-digivolve.rec").write_text(lab_digivolve(v).text(True))
+        (out / f"{v}-lab-chart.rec").write_text(lab_chart(v).text(True))
+        (out / f"{v}-lab-entries.rec").write_text(lab_entries(v).text(True))
+        (out / f"{v}-lab-skills.rec").write_text(lab_skills(v).text(True))
+        (out / f"{v}-item-shop.rec").write_text(item_shop(v).text(True))
+        (out / f"{v}-item-shop-sell.rec").write_text(item_shop_sell(v).text(True))
+        (out / f"{v}-inn-menu.rec").write_text(inn_menu(v).text(True))
+        (out / f"{v}-country-select.rec").write_text(country_select(v).text(True))
         (out / f"{v}-victory-music.rec").write_text(victory_music(v).text(True))
         (out / f"{v}-music-loop.rec").write_text(music_loop(v).text(True))
         (out / f"{v}-underground-exit.rec").write_text(underground_exit(v).text(True))

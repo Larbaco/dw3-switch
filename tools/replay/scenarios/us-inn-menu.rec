@@ -1,0 +1,12 @@
+# US: P6.1 inn menu in widescreen (env in manifest)
+shot 450 question
+pad 470 0x0040
+pad 475 0x0000
+shot 535 no
+pad 555 0x0010
+pad 560 0x0000
+shot 620 yes
+pad 640 0x4000
+pad 645 0x0000
+shot 745 no-money
+end 815

@@ -1,0 +1,553 @@
+Upstream-bound: no
+Subject: [PORT_HOST] P6.1 item shop plates hang from the 16:9 edges
+
+The item shop (STITSHOP) already had the scrolling backdrop in the gutters
+(patch 0053), but its plates were still at the 4:3 positions: the money bar,
+the BUY / SELL panel, the Back hint and the buy and sell dialogs hang from
+the right edge (a 4:3 picture cuts them off at x 320), and the bars of the
+details panel and the item list run off both edges, so in 16:9 their ends
+showed in the gutters. Drawing only; gated on the gutter (off, every
+position is the PS1 one). Same helpers as patches 0076 and 0101-0104:
+
+- shop.c: the money bar, the BUY / SELL panel and the Back hint move to the
+  16:9 right edge (DW3_MENU_RIGHT) with the money, BUY, SELL and help windows,
+  the cursor and the open-animation pivots. The shop's name plate is inside
+  the picture and stays.
+- item_list.c: the list frame is widened (DW3_MENU_BAND); the L1 / R1 hints
+  and their page arrows go to its ends (DW3_MENU_LEFT / DW3_MENU_RIGHT).
+- info.c: the details panel's name bar is widened at its joint (BAND, split
+  136) so its item name and icon hang from the left edge and the equip,
+  owned and price cells (windows too) from the right edge; the description
+  box is widened (BAND); the "Button: Effects" plate hangs from the left
+  edge. The partner stats page (three panels) stays in the middle.
+- trade.c: the buy and sell dialogs (How many?, the total with its Yes / No,
+  Equip?, the sell kinds) hang from the right edge with their windows,
+  cursors and pivots.
+
+Test hook (PC only, like DW3_FORCE_ITEMS of patch 0070): DW3_FORCE_MONEY=<bit>
+sets the money when the shop opens, and the shop honours DW3_FORCE_ITEMS
+too, so a replay reaches the buy and sell screens without playing for
+money and drops. Logs "dw3: DW3_FORCE_MONEY money N". Unset (every release,
+and the Switch) it does nothing.
+
+--- a/src/menus/item_shop/shop.c
++++ b/src/menus/item_shop/shop.c
+@@ -7,18 +7,20 @@
+ #endif
+ #if PORT_HOST
+ #include <stdio.h>
++char *getenv(const char *name);
++long strtol(const char *s, char **end, int base);
+ #endif
+ 
+ /* Creates the shop's windows: the help, the shop's name, the money, buy and sell,
+    and the cursor */
+ void STITSHOP_createShopWindows(ItemShop *shop, ItemShopWindows *win) {
+-    win->help = createTextWindow(shop->layer, 1, 0xD3, 0xCC);
++    win->help = createTextWindow(shop->layer, 1, DW3_MENU_RIGHT(0xD3), 0xCC);
+     win->title = createTextWindow(shop->layer, 1, 0x1D, 0x14);
+-    win->money = createTextWindow(shop->layer, 3, 0x117, 0x17);
+-    win->moneyLabel = createTextWindow(shop->layer, 3, 0x11A, 0x17);
+-    win->buy = createTextWindow(shop->layer, 1, 0xBE, 0x2F);
+-    win->sell = createTextWindow(shop->layer, 1, 0xBE, 0x3D);
+-    win->cursor = createCursor(shop->layer, 0, 0xB0, 0x2F);
++    win->money = createTextWindow(shop->layer, 3, DW3_MENU_RIGHT(0x117), 0x17);
++    win->moneyLabel = createTextWindow(shop->layer, 3, DW3_MENU_RIGHT(0x11A), 0x17);
++    win->buy = createTextWindow(shop->layer, 1, DW3_MENU_RIGHT(0xBE), 0x2F);
++    win->sell = createTextWindow(shop->layer, 1, DW3_MENU_RIGHT(0xBE), 0x3D);
++    win->cursor = createCursor(shop->layer, 0, DW3_MENU_RIGHT(0xB0), 0x2F);
+     win->cursor->setVisible(win->cursor, 0);
+ }
+ 
+@@ -40,29 +42,29 @@
+     if (shop->panels[1].level != 0) {
+         if (shop->panels[1].level != ONE) {
+             sprite.setScale(shop->panels[1].level, ONE, ONE);
+-            sprite.setPivot(0x140, 0x18);
++            sprite.setPivot(DW3_MENU_RIGHT(0x140), 0x18);
+         } else {
+             sprite.setScale(ONE, ONE, ONE);
+         }
+-        sprite.draw(FILE_CACHE.getEntry(FILE_SHOP_SPRITES << 16), 2, 0xD6, 0xF);
++        sprite.draw(FILE_CACHE.getEntry(FILE_SHOP_SPRITES << 16), 2, DW3_MENU_RIGHT(0xD6), 0xF);
+     }
+     if (shop->panels[2].level != 0) {
+         if (shop->panels[2].level != ONE) {
+             sprite.setScale(shop->panels[2].level, ONE, ONE);
+-            sprite.setPivot(0x140, 0x3B);
++            sprite.setPivot(DW3_MENU_RIGHT(0x140), 0x3B);
+         } else {
+             sprite.setScale(ONE, ONE, ONE);
+         }
+-        sprite.draw(FILE_CACHE.getEntry(FILE_SHOP_SPRITES << 16), 5, 0xA9, 0x26);
++        sprite.draw(FILE_CACHE.getEntry(FILE_SHOP_SPRITES << 16), 5, DW3_MENU_RIGHT(0xA9), 0x26);
+     }
+     if (shop->panels[3].level != 0) {
+         if (shop->panels[3].level != ONE) {
+             sprite.setScale(shop->panels[3].level, ONE, ONE);
+-            sprite.setPivot(0x140, 0xD2);
++            sprite.setPivot(DW3_MENU_RIGHT(0x140), 0xD2);
+         } else {
+             sprite.setScale(ONE, ONE, ONE);
+         }
+-        sprite.draw(FILE_CACHE.getEntry(FILE_SHOP_SPRITES << 16), 0, 0xC6, 0xC4);
++        sprite.draw(FILE_CACHE.getEntry(FILE_SHOP_SPRITES << 16), 0, DW3_MENU_RIGHT(0xC6), 0xC4);
+     }
+     sprite.setLayerId(shop->layer, 7);
+     if (shop->bgTick != 0) {
+@@ -127,7 +129,7 @@
+         }
+         if (choice != shop->choice) {
+             SOUND.playSound(SOUND_CURSOR);
+-            win->cursor->setPos(win->cursor, 0xB0, shop->choice * 0xE + 0x2F);
++            win->cursor->setPos(win->cursor, DW3_MENU_RIGHT(0xB0), shop->choice * 0xE + 0x2F);
+         }
+         if (PAD_PRESSED(PAD_CROSS)) {
+             SOUND.playSound(SOUND_SELECT);
+@@ -250,6 +252,42 @@
+     shop->showMoney = STITSHOP_showMoney;
+     shop->layer = SCREEN_LAYER;
+     shop->shop = GAME.funcs.getModeArg();
++#if PORT_HOST
++    {
++        /* Test hook: DW3_FORCE_MONEY=<bit> sets the player's money when the shop opens, so a
++           replay can reach the buy screens without playing for money. */
++        const char *forced = getenv("DW3_FORCE_MONEY");
++
++        if (forced != NULL) {
++            GAME.money = (s32)strtol(forced, NULL, 0);
++            fprintf(stderr, "dw3: DW3_FORCE_MONEY money %d\n", (int)GAME.money);
++        }
++        /* and DW3_FORCE_ITEMS (patch 0070's format) fills the bag, so the sell screens have items */
++        forced = getenv("DW3_FORCE_ITEMS");
++        if (forced != NULL) {
++            int first = 0;
++            int last = 0;
++            int count = 3;
++            int i;
++
++            if (sscanf(forced, "%d-%d:%d", &first, &last, &count) >= 2) {
++                if (first < 1) {
++                    first = 1;
++                }
++                if (last > 0x192) {
++                    last = 0x192;
++                }
++                if (count < 1 || count > 99) {
++                    count = 3;
++                }
++                for (i = first; i <= last; i++) {
++                    GAME.items[i] = count;
++                }
++                fprintf(stderr, "dw3: DW3_FORCE_ITEMS items %d..%d x%d\n", first, last, count);
++            }
++        }
++    }
++#endif
+     return shop;
+ }
+ 
+--- a/src/menus/item_shop/item_list.c
++++ b/src/menus/item_shop/item_list.c
+@@ -1,6 +1,9 @@
+ /* The list of the items to buy or sell, by pages */
+ 
+ #include "menus/item_shop.h"
++#if PORT_HOST
++#include "port_widescreen.h"
++#endif
+ 
+ /* Creates the item list's windows: 14 items in two columns, the page number, the
+    L1 and R1 labels (lower when selling) and the cursor */
+@@ -15,8 +18,8 @@
+     win->page = createTextWindow(list->layer, 1, 0x9B, y + 0x60);
+     win->slash = createTextWindow(list->layer, 1, 0x9C, y + 0x60);
+     win->pages = createTextWindow(list->layer, 1, 0xB0, y + 0x60);
+-    win->l1Label = createTextWindow(list->layer, 1, 0x2D, y + 0x5C + list->selling * 2);
+-    win->r1Label = createTextWindow(list->layer, 1, 0x102, y + 0x5C + list->selling * 2);
++    win->l1Label = createTextWindow(list->layer, 1, DW3_MENU_LEFT(0x2D), y + 0x5C + list->selling * 2);
++    win->r1Label = createTextWindow(list->layer, 1, DW3_MENU_RIGHT(0x102), y + 0x5C + list->selling * 2);
+     win->cursor = createCursor(list->layer, list->depth - 1, 0x1D, 0x24);
+     win->cursor->setVisible(win->cursor, 0);
+ }
+@@ -115,16 +118,16 @@
+                 sprite.setTexture(0x280, 0x100);
+                 sprite.setClutRow(list->clutRow);
+                 if (list->page != 0) {
+-                    sprite.draw(FILE_CACHE.getEntry(FILE_SHOP_SPRITES << 16), 0x10, 0x1E, list->selling * 0x2A + 0x5F);
++                    sprite.draw(FILE_CACHE.getEntry(FILE_SHOP_SPRITES << 16), 0x10, DW3_MENU_LEFT(0x1E), list->selling * 0x2A + 0x5F);
+                 }
+                 if (list->page < list->pages - 1) {
+-                    sprite.draw(FILE_CACHE.getEntry(FILE_SHOP_SPRITES << 16), 0x11, 0xFD, list->selling * 0x2A + 0x5F);
++                    sprite.draw(FILE_CACHE.getEntry(FILE_SHOP_SPRITES << 16), 0x11, DW3_MENU_RIGHT(0xFD), list->selling * 0x2A + 0x5F);
+                 }
+                 sprite.setClutRow(0);
+             }
+         }
+         sprite.setTexture(0x280, 0x100);
+-        sprite.draw(FILE_CACHE.getEntry(FILE_SHOP_SPRITES << 16), list->selling + 6, 0, 0x1D);
++        sprite.draw(DW3_MENU_BAND(FILE_CACHE.getEntry(FILE_SHOP_SPRITES << 16), list->selling + 6, 160), list->selling + 6, 0, 0x1D);
+     }
+ }
+ 
+--- a/src/menus/item_shop/info.c
++++ b/src/menus/item_shop/info.c
+@@ -2,6 +2,9 @@
+    equipping it would change in each partner's stats */
+ 
+ #include "menus/item_shop.h"
++#if PORT_HOST
++#include "port_widescreen.h"
++#endif
+ 
+ /* A partner's stats with its equipment, as main's computeStats gives them: the
+    weapons' attack (STAT_STRENGTH), the armor's defense (STAT_DEFENSE) and the
+@@ -357,16 +360,16 @@
+     s32 j;
+     s32 column;
+ 
+-    win->name = createTextWindow(info->layer, 1, 0x25, offset + STITSHOP_lineY(info, 0x73));
+-    win->equippedLabel = createTextWindow(info->layer, 1, 0xA1, offset + STITSHOP_lineY(info, 0x75));
+-    win->equipped = createTextWindow(info->layer, 1, 0xE1, offset + STITSHOP_lineY(info, 0x75));
+-    win->ownedLabel = createTextWindow(info->layer, 1, 0xEA, offset + STITSHOP_lineY(info, 0x75));
+-    win->owned = createTextWindow(info->layer, 1, 0x12A, offset + STITSHOP_lineY(info, 0x75));
+-    win->priceLabel = createTextWindow(info->layer, 3, 0x11A, offset + STITSHOP_lineY(info, 0x8B));
+-    win->price = createTextWindow(info->layer, 3, 0x117, offset + STITSHOP_lineY(info, 0x8B));
+-    win->desc = createTextWindow(info->layer, 1, 0x14, offset + 0xA1);
++    win->name = createTextWindow(info->layer, 1, DW3_MENU_LEFT(0x25), offset + STITSHOP_lineY(info, 0x73));
++    win->equippedLabel = createTextWindow(info->layer, 1, DW3_MENU_RIGHT(0xA1), offset + STITSHOP_lineY(info, 0x75));
++    win->equipped = createTextWindow(info->layer, 1, DW3_MENU_RIGHT(0xE1), offset + STITSHOP_lineY(info, 0x75));
++    win->ownedLabel = createTextWindow(info->layer, 1, DW3_MENU_RIGHT(0xEA), offset + STITSHOP_lineY(info, 0x75));
++    win->owned = createTextWindow(info->layer, 1, DW3_MENU_RIGHT(0x12A), offset + STITSHOP_lineY(info, 0x75));
++    win->priceLabel = createTextWindow(info->layer, 3, DW3_MENU_RIGHT(0x11A), offset + STITSHOP_lineY(info, 0x8B));
++    win->price = createTextWindow(info->layer, 3, DW3_MENU_RIGHT(0x117), offset + STITSHOP_lineY(info, 0x8B));
++    win->desc = createTextWindow(info->layer, 1, DW3_MENU_LEFT(0x14), offset + 0xA1);
+     win->desc->setLines(win->desc, 2);
+-    win->kind = createTextWindow(info->layer, 1, 0x14, offset + 0xAF);
++    win->kind = createTextWindow(info->layer, 1, DW3_MENU_LEFT(0x14), offset + 0xAF);
+     if (info->selling == 0) {
+         /* the match depends on the column counter of its own, apart from i, and
+            on x set from it in the stats loop */
+@@ -389,7 +392,7 @@
+             win->partners[i].changes[7] = createTextWindow(info->layer, 1, x + 0x63, 0xD6);
+             column++;
+         }
+-        win->pageHint = createTextWindow(info->layer, 1, 0x13, 0x87);
++        win->pageHint = createTextWindow(info->layer, 1, DW3_MENU_LEFT(0x13), 0x87);
+     }
+ }
+ 
+@@ -491,9 +494,9 @@
+     if (info->panels[1].level != 0) {
+         if (info->panels[1].level != ONE) {
+             sprite.setScale(info->panels[1].level, ONE, ONE);
+-            sprite.setPivot(0, 0x8C);
++            sprite.setPivot(DW3_MENU_LEFT(0), 0x8C);
+         }
+-        sprite.draw(FILE_CACHE.getEntry(FILE_SHOP_SPRITES << 16), 9, 0, 0x81);
++        sprite.draw(FILE_CACHE.getEntry(FILE_SHOP_SPRITES << 16), 9, DW3_MENU_LEFT(0), 0x81);
+     }
+     if (info->panels[3].level != 0) {
+         sprite.setScale(ONE, info->panels[3].level, ONE);
+@@ -787,14 +790,15 @@
+         if (info->panels[0].level != 0) {
+             if (info->panels[0].level != ONE) {
+                 sprite.setScale(info->panels[0].level, ONE, ONE);
+-                sprite.setPivot(0x140, offset + 0x81);
++                sprite.setPivot(DW3_MENU_RIGHT(0x140), offset + 0x81);
+             } else {
+                 sprite.setTexture(0x140, 0);
+-                sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), ITEM_FUNCS.getCategory(info->item), 0x16,
++                sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), ITEM_FUNCS.getCategory(info->item), DW3_MENU_LEFT(0x16),
+                             offset + STITSHOP_lineY(info, 0x73));
+             }
+             sprite.setTexture(0x280, 0x100);
+-            sprite.draw(FILE_CACHE.getEntry(FILE_SHOP_SPRITES << 16), 0xE, 0xF, offset + STITSHOP_lineY(info, 0x6C));
++            sprite.draw(DW3_MENU_BAND(FILE_CACHE.getEntry(FILE_SHOP_SPRITES << 16), 0xE, 136), 0xE, 0xF,
++                        offset + STITSHOP_lineY(info, 0x6C));
+         }
+         if (info->panels[2].level != 0) {
+             if (info->panels[2].level != ONE) {
+@@ -803,7 +807,7 @@
+             } else {
+                 sprite.setScale(ONE, ONE, ONE);
+             }
+-            sprite.draw(FILE_CACHE.getEntry(FILE_SHOP_SPRITES << 16), 3, 0, offset + 0x9C);
++            sprite.draw(DW3_MENU_BAND(FILE_CACHE.getEntry(FILE_SHOP_SPRITES << 16), 3, 160), 3, 0, offset + 0x9C);
+         }
+         break;
+     case TASK_DONE:
+--- a/src/menus/item_shop/trade.c
++++ b/src/menus/item_shop/trade.c
+@@ -2,16 +2,19 @@
+    the purchase or the sale */
+ 
+ #include "menus/item_shop.h"
++#if PORT_HOST
++#include "port_widescreen.h"
++#endif
+ 
+ /* Creates the buying dialog's windows: the quantity, the total with its yes and
+    no, and the cursor */
+ void STITSHOP_createBuyWindows(ShopBuy *buy, ShopBuyWindows *win) {
+-    win->quantityLabel = createTextWindow(buy->layer, 1, 0xB9, 0x3A);
+-    win->times = createTextWindow(buy->layer, 1, 0x103, 0x54);
+-    win->quantity = createTextWindow(buy->layer, 1, 0x11E, 0x54);
+-    win->total = createTextWindow(buy->layer, 1, 0x9A, 0x2C);
+-    win->yes = createTextWindow(buy->layer, 1, 0xC5, 0x49);
+-    win->no = createTextWindow(buy->layer, 1, 0xC5, 0x59);
++    win->quantityLabel = createTextWindow(buy->layer, 1, DW3_MENU_RIGHT(0xB9), 0x3A);
++    win->times = createTextWindow(buy->layer, 1, DW3_MENU_RIGHT(0x103), 0x54);
++    win->quantity = createTextWindow(buy->layer, 1, DW3_MENU_RIGHT(0x11E), 0x54);
++    win->total = createTextWindow(buy->layer, 1, DW3_MENU_RIGHT(0x9A), 0x2C);
++    win->yes = createTextWindow(buy->layer, 1, DW3_MENU_RIGHT(0xC5), 0x49);
++    win->no = createTextWindow(buy->layer, 1, DW3_MENU_RIGHT(0xC5), 0x59);
+     win->cursor = createCursor(buy->layer, buy->depth - 1, 0xB8, 0x49);
+     win->cursor->setVisible(win->cursor, 0);
+ }
+@@ -55,11 +58,11 @@
+     if (buy->panels[0].level != 0) {
+         sprite.setScale(buy->panels[0].level, ONE, ONE);
+         if (buy->panels[0].level != ONE) {
+-            sprite.setPivot(0x140, 0x42);
++            sprite.setPivot(DW3_MENU_RIGHT(0x140), 0x42);
+         }
+-        sprite.draw(FILE_CACHE.getEntry(FILE_SHOP_SPRITES << 16), 0xA, 0x9A, 0x34);
++        sprite.draw(FILE_CACHE.getEntry(FILE_SHOP_SPRITES << 16), 0xA, DW3_MENU_RIGHT(0x9A), 0x34);
+         if (buy->panels[0].level != ONE) {
+-            sprite.setPivot(0x140, 0x59);
++            sprite.setPivot(DW3_MENU_RIGHT(0x140), 0x59);
+         } else {
+             if (GFX.funcs.getTime() - buy->blinkTime >= 9) {
+                 buy->blinkTime = GFX.funcs.getTime();
+@@ -67,47 +70,47 @@
+             }
+             if (buy->blink) {
+                 if (buy->quantity < buy->max) {
+-                    sprite.draw(FILE_CACHE.getEntry(FILE_SHOP_SPRITES << 16), 0x12, 0x122, 0x51);
++                    sprite.draw(FILE_CACHE.getEntry(FILE_SHOP_SPRITES << 16), 0x12, DW3_MENU_RIGHT(0x122), 0x51);
+                 }
+                 if (buy->quantity >= 2) {
+-                    sprite.draw(FILE_CACHE.getEntry(FILE_SHOP_SPRITES << 16), 0x13, 0x122, 0x5B);
++                    sprite.draw(FILE_CACHE.getEntry(FILE_SHOP_SPRITES << 16), 0x13, DW3_MENU_RIGHT(0x122), 0x5B);
+                 }
+             }
+         }
+-        sprite.draw(FILE_CACHE.getEntry(FILE_SHOP_SPRITES << 16), 0xB, 0xF6, 0x4F);
++        sprite.draw(FILE_CACHE.getEntry(FILE_SHOP_SPRITES << 16), 0xB, DW3_MENU_RIGHT(0xF6), 0x4F);
+     }
+     if (buy->panels[1].level != 0) {
+         if (buy->panels[1].level != ONE) {
+             sprite.setScale(buy->panels[1].level, ONE, ONE);
+-            sprite.setPivot(0x140, 0x32);
++            sprite.setPivot(DW3_MENU_RIGHT(0x140), 0x32);
+         } else {
+             sprite.setScale(ONE, ONE, ONE);
+         }
+-        sprite.draw(FILE_CACHE.getEntry(FILE_SHOP_SPRITES << 16), 0x15, 0x7B, 0x26);
++        sprite.draw(FILE_CACHE.getEntry(FILE_SHOP_SPRITES << 16), 0x15, DW3_MENU_RIGHT(0x7B), 0x26);
+         if (buy->panels[1].level != ONE) {
+-            sprite.setPivot(0x140, 0x57);
++            sprite.setPivot(DW3_MENU_RIGHT(0x140), 0x57);
+         }
+-        sprite.draw(FILE_CACHE.getEntry(FILE_SHOP_SPRITES << 16), 0xC, 0xAF, 0x43);
++        sprite.draw(FILE_CACHE.getEntry(FILE_SHOP_SPRITES << 16), 0xC, DW3_MENU_RIGHT(0xAF), 0x43);
+     }
+     if (buy->panels[2].level != 0) {
+         sprite.setLayerId(buy->layer, buy->depth - 2);
+         if (buy->panels[2].level != ONE) {
+             sprite.setScale(buy->panels[2].level, ONE, ONE);
+-            sprite.setPivot(0x140, 0x32);
++            sprite.setPivot(DW3_MENU_RIGHT(0x140), 0x32);
+         } else {
+             sprite.setScale(ONE, ONE, ONE);
+         }
+-        sprite.draw(FILE_CACHE.getEntry(FILE_SHOP_SPRITES << 16), 0x15, 0x7B, 0x26);
++        sprite.draw(FILE_CACHE.getEntry(FILE_SHOP_SPRITES << 16), 0x15, DW3_MENU_RIGHT(0x7B), 0x26);
+     }
+     if (buy->panels[3].level != 0) {
+         sprite.setLayerId(buy->layer, buy->depth - 2);
+         if (buy->panels[3].level != ONE) {
+             sprite.setScale(buy->panels[3].level, ONE, ONE);
+-            sprite.setPivot(0x140, 0x32);
++            sprite.setPivot(DW3_MENU_RIGHT(0x140), 0x32);
+         } else {
+             sprite.setScale(ONE, ONE, ONE);
+         }
+-        sprite.draw(FILE_CACHE.getEntry(FILE_SHOP_SPRITES << 16), 0x15, 0x7B, 0x26);
++        sprite.draw(FILE_CACHE.getEntry(FILE_SHOP_SPRITES << 16), 0x15, DW3_MENU_RIGHT(0x7B), 0x26);
+     }
+     if (buy->markerShown) {
+         if (GFX.funcs.getTime() - buy->markerTime >= 9) {
+@@ -223,7 +226,7 @@
+     }
+     if (old != buy->choice) {
+         SOUND.playSound(SOUND_CURSOR);
+-        win->cursor->setPos(win->cursor, 0xB8, buy->choice * 0x10 + 0x49);
++        win->cursor->setPos(win->cursor, DW3_MENU_RIGHT(0xB8), buy->choice * 0x10 + 0x49);
+     } else if (win->info->shown && PAD_PRESSED(PAD_CROSS)) {
+         SOUND.playSound(SOUND_SELECT);
+         buy->setSubstate(buy, 20);
+@@ -290,7 +293,7 @@
+     }
+     if (old != buy->choice) {
+         SOUND.playSound(SOUND_CURSOR);
+-        win->cursor->setPos(win->cursor, 0xB8, buy->choice * 0x10 + 0x49);
++        win->cursor->setPos(win->cursor, DW3_MENU_RIGHT(0xB8), buy->choice * 0x10 + 0x49);
+     }
+     if (PAD_PRESSED(PAD_CROSS)) {
+         SOUND.playSound(SOUND_SELECT);
+@@ -367,7 +370,7 @@
+     if (STITSHOP_funcs.updateFade(&buy->panels[1]) != 0) {
+         STITSHOP_showBuyTotal(buy, win, 1);
+         buy->choice = 0;
+-        win->cursor->setPos(win->cursor, 0xB8, 0x49);
++        win->cursor->setPos(win->cursor, DW3_MENU_RIGHT(0xB8), 0x49);
+         win->cursor->setVisible(win->cursor, 1);
+         buy->substate++;
+     }
+@@ -382,7 +385,7 @@
+         win->yes->setString(win->yes, FILE_CACHE.load(TEXT_FILE(TEXT_ITEM_SHOP)), 0x16);
+         win->no->setString(win->no, FILE_CACHE.load(TEXT_FILE(TEXT_ITEM_SHOP)), 0x17);
+         buy->choice = 0;
+-        win->cursor->setPos(win->cursor, 0xB8, 0x49);
++        win->cursor->setPos(win->cursor, DW3_MENU_RIGHT(0xB8), 0x49);
+         win->cursor->setVisible(win->cursor, 1);
+         buy->substate++;
+     }
+@@ -713,15 +716,15 @@
+     win->cursor = createCursor(sell->layer, sell->depth - 1, 0, 0xB0);
+     win->cursor->setVisible(win->cursor, 0);
+     for (i = 0; i < 4; i++) {
+-        win->types[i] = createTextWindow(sell->layer, 1, 0xBE, i * 0xE + 0x2F);
++        win->types[i] = createTextWindow(sell->layer, 1, DW3_MENU_RIGHT(0xBE), i * 0xE + 0x2F);
+     }
+-    win->quantityLabel = createTextWindow(sell->layer, 1, 0xB9, 0x3A);
+-    win->times = createTextWindow(sell->layer, 1, 0x103, 0x54);
+-    win->quantity = createTextWindow(sell->layer, 1, 0x11E, 0x54);
+-    win->total = createTextWindow(sell->layer, 1, 0x9A, 0x2C);
+-    win->yes = createTextWindow(sell->layer, 1, 0xC5, 0x49);
+-    win->no = createTextWindow(sell->layer, 1, 0xC5, 0x59);
+-    win->message = createTextWindow(sell->layer, 1, 0x9A, 0x8A);
++    win->quantityLabel = createTextWindow(sell->layer, 1, DW3_MENU_RIGHT(0xB9), 0x3A);
++    win->times = createTextWindow(sell->layer, 1, DW3_MENU_RIGHT(0x103), 0x54);
++    win->quantity = createTextWindow(sell->layer, 1, DW3_MENU_RIGHT(0x11E), 0x54);
++    win->total = createTextWindow(sell->layer, 1, DW3_MENU_RIGHT(0x9A), 0x2C);
++    win->yes = createTextWindow(sell->layer, 1, DW3_MENU_RIGHT(0xC5), 0x49);
++    win->no = createTextWindow(sell->layer, 1, DW3_MENU_RIGHT(0xC5), 0x59);
++    win->message = createTextWindow(sell->layer, 1, DW3_MENU_RIGHT(0x9A), 0x8A);
+ }
+ 
+ /* Draws the selling screen's frames, and the quantity's blinking arrows */
+@@ -734,26 +737,26 @@
+         sprite.setLayerId(sell->layer, 1);
+         if (sell->panels[3].level != ONE) {
+             sprite.setScale(sell->panels[3].level, ONE, ONE);
+-            sprite.setPivot(0x140, 0x41);
++            sprite.setPivot(DW3_MENU_RIGHT(0x140), 0x41);
+         }
+-        sprite.draw(FILE_CACHE.getEntry(FILE_SHOP_SPRITES << 16), 0xD, 0xA0, 0x24);
++        sprite.draw(FILE_CACHE.getEntry(FILE_SHOP_SPRITES << 16), 0xD, DW3_MENU_RIGHT(0xA0), 0x24);
+     }
+     sprite.setLayerId(sell->layer, sell->depth);
+     if (sell->panels[0].level != 0) {
+         if (sell->panels[0].level != ONE) {
+             sprite.setScale(sell->panels[0].level, ONE, ONE);
+-            sprite.setPivot(0x140, 0x4F);
++            sprite.setPivot(DW3_MENU_RIGHT(0x140), 0x4F);
+         }
+-        sprite.draw(FILE_CACHE.getEntry(FILE_SHOP_SPRITES << 16), 4, 0xA9, 0x26);
++        sprite.draw(FILE_CACHE.getEntry(FILE_SHOP_SPRITES << 16), 4, DW3_MENU_RIGHT(0xA9), 0x26);
+     }
+     if (sell->panels[1].level != 0) {
+         if (sell->panels[1].level != ONE) {
+             sprite.setScale(sell->panels[1].level, ONE, ONE);
+-            sprite.setPivot(0x140, 0x42);
++            sprite.setPivot(DW3_MENU_RIGHT(0x140), 0x42);
+         }
+-        sprite.draw(FILE_CACHE.getEntry(FILE_SHOP_SPRITES << 16), 0xA, 0x9A, 0x34);
++        sprite.draw(FILE_CACHE.getEntry(FILE_SHOP_SPRITES << 16), 0xA, DW3_MENU_RIGHT(0x9A), 0x34);
+         if (sell->panels[1].level != ONE) {
+-            sprite.setPivot(0x140, 0x59);
++            sprite.setPivot(DW3_MENU_RIGHT(0x140), 0x59);
+         } else {
+             if (GFX.funcs.getTime() - sell->blinkTime >= 9) {
+                 sell->blinkTime = GFX.funcs.getTime();
+@@ -761,32 +764,32 @@
+             }
+             if (sell->blink) {
+                 if (sell->quantity < sell->max) {
+-                    sprite.draw(FILE_CACHE.getEntry(FILE_SHOP_SPRITES << 16), 0x12, 0x122, 0x51);
++                    sprite.draw(FILE_CACHE.getEntry(FILE_SHOP_SPRITES << 16), 0x12, DW3_MENU_RIGHT(0x122), 0x51);
+                 }
+                 if (sell->quantity >= 2) {
+-                    sprite.draw(FILE_CACHE.getEntry(FILE_SHOP_SPRITES << 16), 0x13, 0x122, 0x5B);
++                    sprite.draw(FILE_CACHE.getEntry(FILE_SHOP_SPRITES << 16), 0x13, DW3_MENU_RIGHT(0x122), 0x5B);
+                 }
+             }
+         }
+-        sprite.draw(FILE_CACHE.getEntry(FILE_SHOP_SPRITES << 16), 0xB, 0xF6, 0x4F);
++        sprite.draw(FILE_CACHE.getEntry(FILE_SHOP_SPRITES << 16), 0xB, DW3_MENU_RIGHT(0xF6), 0x4F);
+     }
+     if (sell->panels[2].level != 0) {
+         if (sell->panels[2].level != ONE) {
+             sprite.setScale(sell->panels[2].level, ONE, ONE);
+-            sprite.setPivot(0x140, 0x32);
++            sprite.setPivot(DW3_MENU_RIGHT(0x140), 0x32);
+         }
+-        sprite.draw(FILE_CACHE.getEntry(FILE_SHOP_SPRITES << 16), 0x15, 0x7B, 0x26);
++        sprite.draw(FILE_CACHE.getEntry(FILE_SHOP_SPRITES << 16), 0x15, DW3_MENU_RIGHT(0x7B), 0x26);
+         if (sell->panels[2].level != ONE) {
+-            sprite.setPivot(0x140, 0x57);
++            sprite.setPivot(DW3_MENU_RIGHT(0x140), 0x57);
+         }
+-        sprite.draw(FILE_CACHE.getEntry(FILE_SHOP_SPRITES << 16), 0xC, 0xAF, 0x43);
++        sprite.draw(FILE_CACHE.getEntry(FILE_SHOP_SPRITES << 16), 0xC, DW3_MENU_RIGHT(0xAF), 0x43);
+     }
+     if (sell->panels[4].level != 0) {
+         if (sell->panels[4].level != ONE) {
+             sprite.setScale(sell->panels[4].level, ONE, ONE);
+-            sprite.setPivot(0x140, 0x8F);
++            sprite.setPivot(DW3_MENU_RIGHT(0x140), 0x8F);
+         }
+-        sprite.draw(FILE_CACHE.getEntry(FILE_SHOP_SPRITES << 16), 0x15, 0x7B, 0x84);
++        sprite.draw(FILE_CACHE.getEntry(FILE_SHOP_SPRITES << 16), 0x15, DW3_MENU_RIGHT(0x7B), 0x84);
+     }
+ }
+ 
+@@ -799,7 +802,7 @@
+         for (i = 0; i < 4; i++) {
+             win->types[i]->setString(win->types[i], FILE_CACHE.load(TEXT_FILE(TEXT_ITEM_SHOP)), i + 0x1D);
+         }
+-        win->cursor->setPos(win->cursor, 0xB0, sell->type * 0xE + 0x2F);
++        win->cursor->setPos(win->cursor, DW3_MENU_RIGHT(0xB0), sell->type * 0xE + 0x2F);
+         win->cursor->setVisible(win->cursor, 1);
+         sell->substate++;
+     }
+@@ -822,7 +825,7 @@
+     }
+     if (old != sell->type) {
+         SOUND.playSound(SOUND_CURSOR);
+-        win->cursor->setPos(win->cursor, 0xB0, sell->type * 0xE + 0x2F);
++        win->cursor->setPos(win->cursor, DW3_MENU_RIGHT(0xB0), sell->type * 0xE + 0x2F);
+     }
+     if (PAD_PRESSED(PAD_CROSS)) {
+         SOUND.playSound(SOUND_SELECT);
+@@ -921,7 +924,7 @@
+         win->yes->setString(win->yes, FILE_CACHE.load(TEXT_FILE(TEXT_ITEM_SHOP)), 0x22);
+         win->no->setString(win->no, FILE_CACHE.load(TEXT_FILE(TEXT_ITEM_SHOP)), 0x14);
+         sell->choice = 0;
+-        win->cursor->setPos(win->cursor, 0xB8, 0x49);
++        win->cursor->setPos(win->cursor, DW3_MENU_RIGHT(0xB8), 0x49);
+         win->cursor->setVisible(win->cursor, 1);
+         sell->substate++;
+     }
+@@ -940,7 +943,7 @@
+     }
+     if (old != sell->choice) {
+         SOUND.playSound(SOUND_CURSOR);
+-        win->cursor->setPos(win->cursor, 0xB8, sell->choice * 0x10 + 0x49);
++        win->cursor->setPos(win->cursor, DW3_MENU_RIGHT(0xB8), sell->choice * 0x10 + 0x49);
+     } else if (PAD_PRESSED(PAD_CROSS)) {
+         SOUND.playSound(SOUND_SELECT);
+         if (sell->choice == 0) {

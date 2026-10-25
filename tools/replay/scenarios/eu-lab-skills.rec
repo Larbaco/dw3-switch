@@ -1,0 +1,22 @@
+# EU: P6.1 Digimon Lab skills in widescreen (env in manifest)
+pad 300 0x0040
+pad 305 0x0000
+pad 345 0x4000
+pad 350 0x0000
+pad 490 0x4000
+pad 495 0x0000
+pad 655 0x0040
+pad 660 0x0000
+pad 700 0x4000
+pad 705 0x0000
+shot 895 list
+pad 915 0x4000
+pad 920 0x0000
+shot 1110 skills
+pad 1130 0x4000
+pad 1135 0x0000
+shot 1275 question
+pad 1295 0x4000
+pad 1300 0x0000
+shot 1440 loaded
+end 1510

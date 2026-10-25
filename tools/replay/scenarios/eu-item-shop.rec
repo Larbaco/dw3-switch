@@ -1,0 +1,23 @@
+# EU: P6.1 item shop in widescreen (env in manifest)
+shot 400 menu
+pad 420 0x4000
+pad 425 0x0000
+shot 615 list
+pad 635 0x2000
+pad 640 0x0000
+shot 740 stats
+pad 760 0x2000
+pad 765 0x0000
+pad 845 0x4000
+pad 850 0x0000
+shot 990 quantity
+pad 1010 0x4000
+pad 1015 0x0000
+shot 1155 total
+pad 1175 0x4000
+pad 1180 0x0000
+shot 1370 equip
+pad 1390 0x4000
+pad 1395 0x0000
+shot 1535 equip-who
+end 1605

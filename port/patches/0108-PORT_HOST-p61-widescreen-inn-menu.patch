@@ -1,0 +1,86 @@
+Upstream-bound: no
+Subject: [PORT_HOST] P6.1 inn menu plates hang from the 16:9 right edge
+
+The inn menu (createInn, in the engine, opened over the field by the inn
+keepers) draws its panels at the 4:3 positions: the money bar, the question
+plate (the price and "You don't have enough BIT!") and the Yes / No panel
+hang from the right edge, so in the 16:9 field their ends floated 53 px
+inside the picture. The money bar and the Yes / No panel (with the money,
+the two answers, the cursor and the open pivots) move to the right edge
+(DW3_MENU_RIGHT), and the question plate keeps its start and runs to the
+edge (DW3_MENU_EXTEND). The inn's name plate is inside the picture. Drawing
+only; off (gutter 0) every position is the PS1 one.
+
+--- a/src/engine/menu/inn.c
++++ b/src/engine/menu/inn.c
+@@ -1,4 +1,7 @@
+ #include "engine/game.h"
++#if PORT_HOST
++#include "port_widescreen.h"
++#endif
+ 
+ /* updateInnMenu's substates: each group runs in order, by substate++ */
+ enum InnSubstate {
+@@ -117,7 +120,7 @@
+     }
+     if (prev != task->choice) {
+         SOUND.playSound(SOUND_CURSOR);
+-        data->cursor->setPos(data->cursor, 0xB8, task->choice * 16 + 0x5F);
++        data->cursor->setPos(data->cursor, DW3_MENU_RIGHT(0xB8), task->choice * 16 + 0x5F);
+         return;
+     }
+     if (PAD_PRESSED(PAD_CROSS)) {
+@@ -286,12 +289,12 @@
+             }
+         }
+         data->windows[0] = createTextWindow(task->layerId, 1, 0x1D, 0x14);
+-        data->windows[1] = createTextWindow(task->layerId, 3, 0x117, 0x17);
+-        data->windows[2] = createTextWindow(task->layerId, 3, 0x11A, 0x17);
++        data->windows[1] = createTextWindow(task->layerId, 3, DW3_MENU_RIGHT(0x117), 0x17);
++        data->windows[2] = createTextWindow(task->layerId, 3, DW3_MENU_RIGHT(0x11A), 0x17);
+         data->windows[3] = createTextWindow(task->layerId, 1, 0x79, 0x34);
+-        data->windows[4] = createTextWindow(task->layerId, 1, 0xC5, 0x5F);
+-        data->windows[5] = createTextWindow(task->layerId, 1, 0xC5, 0x6F);
+-        data->cursor = createCursor(task->layerId, 0, 0xB8, 0x5F);
++        data->windows[4] = createTextWindow(task->layerId, 1, DW3_MENU_RIGHT(0xC5), 0x5F);
++        data->windows[5] = createTextWindow(task->layerId, 1, DW3_MENU_RIGHT(0xC5), 0x6F);
++        data->cursor = createCursor(task->layerId, 0, DW3_MENU_RIGHT(0xB8), 0x5F);
+         data->cursor->setVisible(data->cursor, 0);
+         task->panels[0].duration = 10;
+         task->panels[1].duration = 10;
+@@ -310,27 +313,27 @@
+             }
+             obj.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x41, 0x16, 0x12);
+             if (task->panels[0].level != ONE) {
+-                obj.setPivot(0x140, 0x18);
++                obj.setPivot(DW3_MENU_RIGHT(0x140), 0x18);
+             }
+-            obj.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x42, 0xD6, 0xF);
++            obj.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x42, DW3_MENU_RIGHT(0xD6), 0xF);
+         }
+         if (task->panels[1].level != 0) {
+             if (task->panels[1].level != ONE) {
+                 obj.setScale(task->panels[1].level, ONE, ONE);
+-                obj.setPivot(0x140, 0x41);
++                obj.setPivot(DW3_MENU_RIGHT(0x140), 0x41);
+             }
+-            obj.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x43, 0x4C, 0x2E);
++            obj.draw(DW3_MENU_EXTEND(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x43), 0x43, DW3_MENU_RIGHT(0x4C), 0x2E);
+             if (task->panels[1].level != ONE) {
+-                obj.setPivot(0x140, 0x6D);
++                obj.setPivot(DW3_MENU_RIGHT(0x140), 0x6D);
+             }
+-            obj.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x44, 0xAF, 0x59);
++            obj.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x44, DW3_MENU_RIGHT(0xAF), 0x59);
+         }
+         if (task->panels[2].level != 0) {
+             if (task->panels[2].level != ONE) {
+                 obj.setScale(task->panels[2].level, ONE, ONE);
+-                obj.setPivot(0x140, 0x41);
++                obj.setPivot(DW3_MENU_RIGHT(0x140), 0x41);
+             }
+-            obj.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x43, 0x4C, 0x2E);
++            obj.draw(DW3_MENU_EXTEND(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x43), 0x43, DW3_MENU_RIGHT(0x4C), 0x2E);
+         }
+         break;
+     case TASK_DONE:

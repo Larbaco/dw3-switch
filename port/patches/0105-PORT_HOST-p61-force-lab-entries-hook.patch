@@ -1,0 +1,92 @@
+Upstream-bound: no
+Subject: [PORT_HOST] Test hook: DW3_FORCE_LAB_ENTRIES gives the partners Digimon entries
+
+Debug aid for the replay tests (like DW3_FORCE_CARDS of patch 0100): a new
+game's partners have only their first form, so the Digimon Lab's "Change
+digivolve type" says it can't, "Load technique" has nothing to list, and the
+chart (recipe screen) has no id to show. DW3_FORCE_LAB_ENTRIES=<id>,<id>,...
+(PC only, decimal or 0x hex Digimon ids from 3) gives each of the three party
+members those Digimon as entries when the Lab starts (STGDGLAB_createLab), at
+level 1 with their first three skills known; the first Digimon also fill the
+empty battle slots of the partner. Logs "dw3: DW3_FORCE_LAB_ENTRIES
+N entries added" on stderr. Unset (every release, and the Switch, which has no
+environment) it does nothing.
+
+--- a/src/menus/digimon_lab/lab.c
++++ b/src/menus/digimon_lab/lab.c
+@@ -7,6 +7,8 @@
+ #endif
+ #if PORT_HOST
+ #include <stdio.h>
++char *getenv(const char *name);
++long strtol(const char *s, char **end, int base);
+ #endif
+ 
+ /* Creates the main menu and opens the screen it picks, back to the menu when
+@@ -179,6 +181,66 @@
+     lab->packParty = STGDGLAB_packParty;
+     lab->fadeOut = STGDGLAB_fadeOutLab;
+     lab->layer = SCREEN_LAYER;
++#if PORT_HOST
++    {
++        /* Test hook: DW3_FORCE_LAB_ENTRIES=<id>,<id>,... (decimal or 0x hex, Digimon ids from
++           3) gives each of the three partners those Digimon as entries, at level 1 with
++           their first three skills known, so a replay can open the Lab's entry list, entry
++           panel, skill panel and chart without playing for them. */
++        const char *forced = getenv("DW3_FORCE_LAB_ENTRIES");
++
++        if (forced != NULL) {
++            s32 m;
++            s32 added = 0;
++
++            for (m = 0; m < 3; m++) {
++                s32 partner = GAME.funcs.getPartyMember(m);
++                s16 slots_out[4];
++                const char *p = forced;
++
++                if (partner < 0) {
++                    continue;
++                }
++                while (*p != 0) {
++                    char *end;
++                    long id = strtol(p, &end, 0);
++                    s32 index;
++
++                    if (end == p) {
++                        break;
++                    }
++                    p = (*end == ',') ? end + 1 : end;
++                    if (id < FIRST_ENTRY_ID) {
++                        continue;
++                    }
++                    if (GAME.funcs.addPartnerEntry(partner, (s32)id)) {
++                        index = findPartnerEntry(partner, (s32)id);
++                        if (index >= 0) {
++                            s32 k;
++
++                            for (k = 0; k < 3; k++) {
++                                GAME.partners[partner].info.entries[index].skills[k] = (k + 1) | SKILL_KNOWN;
++                            }
++                            added++;
++                        }
++                    }
++                    if (GAME.funcs.getPartnerSlots(partner, slots_out) < PARTNER_SLOT_COUNT && findPartnerEntry(partner, (s32)id) >= 0) {
++                        /* the first Digimon fill the empty battle slots */
++                        s32 k;
++
++                        for (k = 0; k < PARTNER_SLOT_COUNT; k++) {
++                            if (GAME.partners[partner].info.slots[k] < FIRST_ENTRY_ID) {
++                                GAME.partners[partner].info.slots[k] = (s16)id;
++                                break;
++                            }
++                        }
++                    }
++                }
++            }
++            fprintf(stderr, "dw3: DW3_FORCE_LAB_ENTRIES %d entries added\n", (int)added);
++        }
++    }
++#endif
+     return lab;
+ }
+ 

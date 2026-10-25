@@ -652,6 +652,45 @@ for _v, _field in (("us", 0x158), ("eu", 0x166)):
                       note=_note))
 
 
+# P6.1 batch 2 (patches 0105-0109): the Lab's chart, entry and skill screens,
+# the item shop, the inn menu and the language select in widescreen. The Lab
+# gets Digimon entries from patch 0105's hook, the shop money and a full bag
+# from patch 0107's, the inn is opened by DW3_FORCE_NPC_ACTION (0x7A00 + the
+# keeper's id), the language select is forced like the other screens. PC only
+# (env); the references come from the patched build.
+_LAB_ENTRIES = (("DW3_FORCE_LAB_ENTRIES", "3,5,6,12,19,20,26,27,213"),)
+_SHOP_ENV = (("DW3_FORCE_MONEY", "5000"), ("DW3_FORCE_ITEMS", "1-402"))
+# (name, DW3_FORCE_MENU mode or "" (none), extra env, US overlay, EU overlay, note)
+_WS2_SCREENS = (
+    ("lab-chart", "0xD00", _LAB_ENTRIES, 0x1DF, 0x1EC,
+     "the Digimon Lab's chart: the title plate at the left edge, the picked Digimon's band (patch 0106)"),
+    ("lab-entries", "0xD00", _LAB_ENTRIES, 0x1DF, 0x1EC,
+     "the Digimon Lab's Change digivolve type: the entry list and the entry panel (patches 0104, 0105)"),
+    ("lab-skills", "0xD00", _LAB_ENTRIES, 0x1DF, 0x1EC,
+     "the Digimon Lab's Load technique: the skill panel and its question (patches 0104, 0105)"),
+    ("item-shop", "0xF00", _SHOP_ENV, 0x1F7, 0x205,
+     "the item shop buying: menu, list, stats page, quantity, total, Equip? (patch 0107)"),
+    ("item-shop-sell", "0xF00", _SHOP_ENV, 0x1F7, 0x205,
+     "the item shop selling: the kinds, the bag's list, quantity, total (patch 0107)"),
+    ("country-select", "0x1600", (), 0x157, 0x165,
+     "the language select: backdrop, list panel, title strip and logo band (patch 0109)"),
+)
+for _v, _field in (("us", 0x158), ("eu", 0x166)):
+    for _name, _mode, _extra, _us, _eu, _note in _WS2_SCREENS:
+        _ovl = _us if _v == "us" else _eu
+        _add(Scenario(f"{_v}-{_name}", _v, "full", timeout=400,
+                      env=_CARD_ENV + (("DW3_FORCE_MENU", _mode),) + _extra,
+                      expect_restore=((_field, M), (_ovl, M)),
+                      forbid_log=((0, r"overlay restore file=0x%x kind=mode(?:(?!overlay restore)(?s:.))*?"
+                                      r"gutter 0 px per side" % _ovl),),
+                      note=_note))
+    _add(Scenario(f"{_v}-inn-menu", _v, "full", timeout=400,
+                  env=_CARD_ENV + (("DW3_FORCE_NPC_ACTION", "0x7A64"),),
+                  expect_restore=((_field, M),),
+                  expect_log=((0, r"DW3_FORCE_NPC_ACTION applyAction code=0x7a64"),),
+                  note="the inn menu over the field: money bar, question plate, Yes / No at the 16:9 right edge (patch 0108)"))
+
+
 # P6.20 Cheats screen (docs/PORT_OPTIONS.md "Cheats"), log only. The screen
 # itself: two phases on one config dir (no env, so Ryubing runs it too): the
 # master switch and Instant win are saved and read back, Fill bag and Battle

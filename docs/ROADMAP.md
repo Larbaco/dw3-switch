@@ -47,7 +47,7 @@ listed once, in [Pending OLED checks](#pending-oled-checks).
 | P5.3 | Save handling | done | [P5.3](P5.3_FLAT_SAVE.md) |
 | P5.4 | Error reporting | in progress (done-when met on the OLED; boot notice 60 s, #231; PR 2 OLED check open) | [P5.4](P5.4_CRASH.md) |
 | P5.5 | Stage sweep on hardware | open | — |
-| P6.1 | Scaling / widescreen | in progress (map, results, save, title, caption, registration, Items menu at 16:9 in preview.31; card album, deck editor, card shop, gym and Lab at 16:9 in the next preview (0100-0104, OLED pending); iris, spiral, card battle still 4:3) | [P6.1](P6.1_WIDESCREEN.md) |
+| P6.1 | Scaling / widescreen | in progress (map, results, save, title, caption, registration, Items menu at 16:9 in preview.31; card album, deck editor, card shop, gym and Lab at 16:9 in the next preview (0100-0104, OLED pending); Lab chart, item shop, inn menu and language select at 16:9 in the next preview (0105-0109, OLED pending); iris, spiral, card battle still 4:3) | [P6.1](P6.1_WIDESCREEN.md) |
 | P6.2 | PAL/NTSC, EU/US, language at boot | in progress | [P3_EU_BUILD](P3_EU_BUILD.md) |
 | P6.3 | PGXP-style vertex precision | open | — |
 | P6.4 | Fast-forward | done (owner confirmed on the OLED, 2026-10-24) | [P6.4](P6.4_FAST_FORWARD.md) |
@@ -121,8 +121,12 @@ Tick the item in the table once the owner confirms.
   card album and deck editor (from Card folders: all their panels, the card
   details, the list of cards owned), the card shop (Buy One Card; Open Booster
   was not captured), the gym and the Digimon Lab (menu, party, digivolve). US
-  and EU; in the Lab the chart, entry and skill screens still keep their left
-  panels at the 4:3 edge.
+  and EU. **New (0105-0109):** the Lab's chart (title plate at the left edge,
+  the picked Digimon's band with its icon, name and description), entry list,
+  entry panel and skill panel (Digivolve, Change digivolve type, Load
+  technique); the item shop (menu, list, partner stats page, buy dialogs,
+  sell dialogs: plates meet the 16:9 edges); the inn menu (an inn keeper, Stay
+  in Inn, with and without money); the language select (shown at every EU start). US and EU.
 - **P6.18:** a won battle with R3 on, the results screen at the
   battle's speed (#223); Instant text, the area banner's names whole, after a
   battle and at a door.

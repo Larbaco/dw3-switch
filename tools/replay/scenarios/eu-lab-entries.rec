@@ -1,0 +1,19 @@
+# EU: P6.1 Digimon Lab entries in widescreen (env in manifest)
+pad 300 0x0040
+pad 305 0x0000
+pad 345 0x4000
+pad 350 0x0000
+shot 490 who
+pad 510 0x4000
+pad 515 0x0000
+shot 675 action
+pad 695 0x4000
+pad 700 0x0000
+shot 890 list
+pad 910 0x4000
+pad 915 0x0000
+shot 1105 entries
+pad 1125 0x0040
+pad 1130 0x0000
+shot 1190 entry-down
+end 1260
