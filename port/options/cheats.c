@@ -349,9 +349,12 @@ static int ch_step(int row, int dir, int big) {
         return 1;
     case DW3_CHEAT_ROW_GIVE_ITEM:
         g_give_armed = !g_give_armed;
-        CHEAT_INFO("dw3-cheats: give item %s", g_give_armed
-                   ? "ready (id and count as picked, at the next idle moment "
-                     "in a field)" : "cancelled");
+        if (g_give_armed) {
+            CHEAT_INFO("dw3-cheats: give item ready: id %d x%d (at the next "
+                       "idle moment in a field)", g_item_id, g_item_count);
+        } else {
+            CHEAT_INFO("dw3-cheats: give item cancelled");
+        }
         return 1;
     default:
         return 0;

@@ -1200,6 +1200,56 @@ def cheat_fill_bag(version):
     return r
 
 
+def cheats_screen2(version):
+    """PR 2: title -> Options -> Square -> master ON, then page 2: Money +100,000
+    (Cross twice), Warp to the third area (Digimon Arena, Cross three times),
+    Item id 43 + 3 (Right) + 10 (R1) = 56, Item count 10 + 10 (R1) - 1 (Left) =
+    19, Give item ready, Triangle twice. The logs carry what was armed. No
+    checkpoints."""
+    r = Rec(f"{version.upper()}: Cheats screen page 2")
+    m = _to_title_menu(r, version)
+    r.press(m, DOWN)                 # New Game -> Options
+    r.press(m + 20, CROSS)           # open the Options screen
+    f = m + 70
+    r.press(f, SQUARE)               # the Cheats screen
+    f += 40
+    r.press(f, CROSS)                # master switch ON
+    f += 20
+    for _ in range(5):               # page 1's other rows, then Money
+        r.press(f, DOWN)
+        f += 20
+    for _ in range(2):               # Money: +10,000, +100,000
+        r.press(f, CROSS)
+        f += 20
+    r.press(f, DOWN)                 # Warp
+    f += 20
+    for _ in range(3):               # Asuka City, Digimon Lab, Digimon Arena
+        r.press(f, CROSS)
+        f += 20
+    r.press(f, DOWN)                 # Item id
+    f += 20
+    for _ in range(3):
+        r.press(f, RIGHT)
+        f += 20
+    r.press(f, R1)
+    f += 20
+    r.press(f, DOWN)                 # Item count
+    f += 20
+    r.press(f, R1)
+    f += 20
+    r.press(f, LEFT)
+    f += 20
+    r.press(f, DOWN)                 # Give item
+    f += 20
+    r.press(f, CROSS)
+    f += 40
+    r.press(f, TRIANGLE)             # back to Options
+    f += 40
+    r.press(f, TRIANGLE)             # leave
+    r.end(f + 50)
+    return r
+
+
 def main(out):
     out.mkdir(parents=True, exist_ok=True)
     (out / "us-title.rec").write_text(us_title().text())
@@ -1263,6 +1313,7 @@ def main(out):
             (out / f"{v}-cheats-screen-p{phase}.rec").write_text(
                 cheats_screen(v, phase).text(True))
         (out / f"{v}-cheat-fill-bag.rec").write_text(cheat_fill_bag(v).text(True))
+        (out / f"{v}-cheats-screen2.rec").write_text(cheats_screen2(v).text(True))
     (out / "us-repro-balloon.rec").write_text(repro_balloon("us").text(True))
     for version in ("us", "eu"):
         # Written unsorted, byte for byte as first committed with patch 0058.
