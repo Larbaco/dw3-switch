@@ -164,6 +164,12 @@ static Dw3Replay g_rp;
 static int g_rp_state; /* 0 untried, 1 replay, 2 record, 3 off */
 static unsigned g_rp_frame;
 static unsigned g_rec_last = 0xFFFFFFFFu;
+
+/* P5.1 PC memory sampler: the game frame (PadChkVsync count) of a replay or
+ * record run; 0 when neither is active. */
+unsigned dw3_pad_host_frame(void) {
+    return g_rp_frame;
+}
 static FILE *g_rec_fp;
 
 static void replay_shot_fire(const char *name, unsigned frame, void *ctx) {

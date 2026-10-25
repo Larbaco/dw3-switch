@@ -338,15 +338,28 @@ DISPENV *__wrap_PutDispEnv(DISPENV *env) {
     return ret;
 }
 
+/* P5.1: one buffer reused by every slice (the title movie converts one per
+ * frame; a malloc/free pair each was 0.9 MB of churn per frame, found by the
+ * allocation audit). LoadImage runs on the game thread only and the caller is
+ * done with the buffer when __real_LoadImage returns (it copies). */
+static u16 *g_rgb24_conv_buf;
+static size_t g_rgb24_conv_cap;
+
 static u16 *rgb888_packed_to_5551(const u8 *src, int pixel_w, int h) {
     size_t n = (size_t)pixel_w * (size_t)h;
     u16 *out;
     int y, x;
 
-    out = (u16 *)malloc(n * sizeof(u16));
-    if (out == NULL) {
-        return NULL;
+    if (n > g_rgb24_conv_cap) {
+        u16 *grown = (u16 *)realloc(g_rgb24_conv_buf, n * sizeof(u16));
+
+        if (grown == NULL) {
+            return NULL;
+        }
+        g_rgb24_conv_buf = grown;
+        g_rgb24_conv_cap = n;
     }
+    out = g_rgb24_conv_buf;
     for (y = 0; y < h; y++) {
         const u8 *row = src + (size_t)y * (size_t)pixel_w * 3u;
         u16 *dst = out + (size_t)y * (size_t)pixel_w;
@@ -409,7 +422,6 @@ int __wrap_LoadImage(RECT *rect, u_long *p) {
     pr.x = (short)(rect->x * 2 / 3);
     pr.w = (short)pixel_w;
     rc = __real_LoadImage(&pr, (u_long *)converted);
-    free(converted);
     g_rgb24_loads++;
     if (g_rgb24_loads == 1u || g_rgb24_loads == 20u ||
         g_rgb24_loads == 581u) {
