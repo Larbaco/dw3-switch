@@ -417,11 +417,11 @@ static void options_screen(void) {
         if(focus&&(full||options_layer==OPTIONS_LAYER_FOCUS)){
             box(x0+48,ry-6,w-96,OPT_ROW_H,16,74,156,255);
             box(x0+51,ry-3,w-102,OPT_ROW_H-6,0,8,74,255);
-            pointer(x0+66,ry+3);
+            pointer(x0+66,ry+1);
         }
         if(draw_static||(options_layer==OPTIONS_LAYER_FOCUS&&
                        i==options_layer_row))
-            word(kind==ROW_AUTOSAVE?&autosave_lang()->row:&rows[i],x0+106,ry,0,255,255,255);
+            word(kind==ROW_AUTOSAVE?&autosave_lang()->row:&rows[i],x0+106,ry-2,0,255,255,255);
         if(v<0)v=0;
         switch(kind) {
         case ROW_VOLUME:
@@ -447,7 +447,7 @@ static void options_screen(void) {
             value=&values[v];dim=v==0;break;
         }
         if(full||(options_layer==OPTIONS_LAYER_VALUE&&i==options_layer_row))
-            word(value,x1-96,ry,1,dim?150:255,dim?158:255,dim?196:255);
+            word(value,x1-96,ry-2,1,dim?150:255,dim?158:255,dim?196:255);
     }
     /* Message line for the focused choice, then the button hints. */
     if(draw_static)box(x0+30,y1-152,w-60,3,16,156,247,255);
