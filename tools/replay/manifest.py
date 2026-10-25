@@ -43,6 +43,9 @@ class Scenario:
     # Extra environment for the PC run (debug aids such as DW3_START_MODE).
     # The Switch build has no environment, so the Ryubing runner skips these.
     env: tuple[tuple[str, str], ...] = ()
+    # The process is meant to end by itself before the recording's end (the
+    # title menu's Quit game, P6.28): exit status 0 is the expected verdict.
+    quits: bool = False
     # The recording has no `shot` lines: the verdicts are the process, the
     # overlay markers and the log lines only (no reference captures needed).
     log_only: bool = False
@@ -840,6 +843,46 @@ for _v in ("us", "eu"):
                   env=(("DW3_START_MODE", "0x233"), ("DW3_PROGRESS", "6")),
                   expect_log=((0, r"FIGHTSTG_start"),),
                   note="encounter spiral in 16:9: swirl 4:3, gutters black (documented)"))
+
+
+# P6.28 Quit game on the title menu and P6.27 Return to title in the field menu
+# (patch 0123, port/options/confirm.c). Quit: Down to the fourth row, the Yes / No
+# window with the cursor on No (checkpoints), No, again, Yes: the saves are
+# flushed (`dw3-port-quit: saves flushed`) and the process ends with status 0
+# before the recording's end. Return to title: the South Sector field with the
+# Restart hotkey ON (the row is only offered then), Start, Down to the last row,
+# the window, No, again, Yes: P6.9's reset, then the title (US) / the language
+# select and the title (EU). rows7: the same field with the card folders row
+# (the six-row panel stretched for the seventh), cancelled. PC only (env / early exit).
+_RT_CFG = (("encounter_rate", "2"), ("restart_hotkey", "1"))
+_RT_ENV = _ITEMS_ENV[:-1]    # the party of the forced event battle, no bag
+for _v, _title in (("us", 0x1C1), ("eu", 0x1D0)):
+    _add(Scenario(f"{_v}-title-quit", _v, "full", timeout=300, quits=True,
+                  expect_log=((0, r"dw3-port-confirm: open quit \(cursor on No\)(?s:.*)"
+                                  r"dw3-port-confirm: No \(quit\); nothing changed(?s:.*)"
+                                  r"dw3-port-confirm: open quit \(cursor on No\)(?s:.*)"
+                                  r"dw3-port-confirm: cursor on Yes(?s:.*)"
+                                  r"dw3-port-confirm: Yes \(quit\)(?s:.*)"
+                                  r"dw3-port-quit: saves flushed; asking the host to quit"),),
+                  forbid_log=((0, r"save flush failed"),),
+                  note="title menu Quit game: No keeps the menu, Yes flushes the saves and ends the process (P6.28)"),
+         Scenario(f"{_v}-return-title", _v, "full", turbo=4, timeout=600,
+                  env=_RT_ENV, cfg=_RT_CFG,
+                  expect_restore=((_title, M),),
+                  expect_log=((0, r"dw3-port-confirm: open return to title \(cursor on No\)(?s:.*)"
+                                  r"dw3-port-confirm: No \(return to title\); nothing changed(?s:.*)"
+                                  r"dw3-port-confirm: open return to title \(cursor on No\)(?s:.*)"
+                                  r"dw3-port-confirm: Yes \(return to title\)(?s:.*)"
+                                  r"dw3-port-restart: requested from the field menu(?s:.*)"
+                                  r"dw3-port-restart: saves flushed; returning to the boot screen"),),
+                  forbid_log=((0, r"save flush failed"),),
+                  note="field menu Return to title: No keeps the menu, Yes runs the P6.9 reset (P6.27)"),
+         Scenario(f"{_v}-return-title-rows7", _v, "full", turbo=4, timeout=600,
+                  env=_ITEMS_ENV, cfg=_RT_CFG,
+                  expect_log=((0, r"dw3-port-confirm: open return to title \(cursor on No\)(?s:.*)"
+                                  r"dw3-port-confirm: cancelled \(return to title\); nothing changed"),),
+                  forbid_log=((0, r"dw3-port-restart"),),
+                  note="the field menu with the card folders row and Return to title: seven rows, cancelled (P6.27)"))
 
 
 def by_name() -> dict[str, Scenario]:

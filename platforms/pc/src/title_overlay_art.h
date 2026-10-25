@@ -1,9 +1,10 @@
 #ifndef DW3_PC_TITLE_OVERLAY_ART_H
 #define DW3_PC_TITLE_OVERLAY_ART_H
 #include <stdint.h>
-/* RGBA8888 byte order, 960x720 transparent canvas. selected is 0..2 for the
- * menu, -1 for PRESS START, DW3_TITLE_ART_OPTIONS for the Port options screen. */
-enum { DW3_TITLE_ART_OPTIONS = 3 };
+/* RGBA8888 byte order, 960x720 transparent canvas. selected is 0..3 for the
+ * menu (New Game, Options, Load Game, and since P6.28 Quit game), -1 for
+ * PRESS START, DW3_TITLE_ART_OPTIONS for the Port options screen. */
+enum { DW3_TITLE_MENU_ROWS = 4, DW3_TITLE_ART_OPTIONS = 4 };
 void dw3_pc_title_overlay_art(uint8_t *rgba, int pitch, int selected);
 enum {
     DW3_TITLE_OPTIONS_STATIC = 1,
@@ -16,6 +17,24 @@ enum {
 void dw3_pc_title_overlay_options_component(uint8_t *rgba, int pitch,
         int layer, int row, int value, int x, int y, int w, int h,
         int clear_region);
+
+/* P6.27 / P6.28 Yes / No confirmation window (port/options/confirm.c): the
+ * quit question of the title menu and the return-to-title question of the
+ * field menu. It is drawn into its own DW3_DIALOG_W x DW3_DIALOG_H RGBA
+ * texture (not part of the title canvas, so it also shows over the field) and
+ * placed at DW3_DIALOG_X, DW3_DIALOG_Y of the 960x720 canvas, which each host
+ * fits to the 4:3 middle of its picture. focus: 0 = No (the default), 1 =
+ * Yes. The words are in the language of the Options lettering
+ * (dw3_pc_title_overlay_set_options_language). */
+enum { DW3_DIALOG_QUIT = 0, DW3_DIALOG_RETURN = 1 };
+enum { DW3_DIALOG_W = 768, DW3_DIALOG_H = 348, DW3_DIALOG_X = 96, DW3_DIALOG_Y = 186 };
+void dw3_pc_dialog_art(uint8_t *rgba, int pitch, int kind, int focus);
+/* Host hook (title_menu_overlay.c, nx_title_overlay.c): show (active) or hide
+ * the window with that kind and focus. Cheap to call every frame. */
+void dw3_pc_dialog_set(int active, int kind, int focus);
+/* Bumped when the language of the lettering changes: a shown window must be
+ * drawn again. */
+unsigned dw3_pc_dialog_language_generation(void);
 
 /* Plaque labels. The defaults are the built-in English lettering; the EU disc
  * replaces them with its own words, captured from the title bank at runtime. */

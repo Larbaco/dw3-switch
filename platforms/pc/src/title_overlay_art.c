@@ -16,6 +16,7 @@ static int options_lang = DW3_TITLE_LANG_EN;
 static int footer_shown = 1;
 static unsigned art_generation;
 static unsigned options_generation;
+static unsigned dialog_language_generation;
 static int option_cursor;
 static int option_values[DW3_TITLE_OPTION_ROWS];
 enum { OPTIONS_LAYER_FULL, OPTIONS_LAYER_STATIC, OPTIONS_LAYER_FOCUS,
@@ -112,8 +113,9 @@ int dw3_pc_title_overlay_set_label(int slot,const uint8_t *coverage,int w,int h)
 }
 void dw3_pc_title_overlay_set_options_language(int lang) {
     if(lang<DW3_TITLE_LANG_EN||lang>DW3_TITLE_LANG_IT)lang=DW3_TITLE_LANG_EN;
-    if(lang!=options_lang){options_lang=lang;art_generation++;options_generation++;}
+    if(lang!=options_lang){options_lang=lang;art_generation++;options_generation++;dialog_language_generation++;}
 }
+unsigned dw3_pc_dialog_language_generation(void) { return dialog_language_generation; }
 void dw3_pc_title_overlay_set_footer(int show) {
     show=show?1:0;
     if(show!=footer_shown){footer_shown=show;art_generation++;}
@@ -454,6 +456,54 @@ static void options_screen(void) {
         box(x0+30,y1-36,w-60,3,0,66,156,255);
     }
 }
+/* --- P6.27 / P6.28 Yes / No window ------------------------------------------
+ * The Options window's look (white bezel, navy body, blue rules, the focus box
+ * and pointer of a chosen row, the two button hints) in its own small texture.
+ * Local coordinates: the window is DW3_DIALOG_W-8 x DW3_DIALOG_H-8 at (0, 0),
+ * its shadow 6 px right and 8 px down. Rows: Yes above No, like the game's own
+ * questions; focus 0 puts the pointer on No. */
+#define DLG_WORDS(l) {{WORD(opt_dlg_quit_title_##l),WORD(opt_dlg_ret_title_##l)}, \
+    {WORD(opt_dlg_quit_q_##l),WORD(opt_dlg_ret_q_##l)},WORD(opt_dlg_warn_##l), \
+    WORD(opt_dlg_yes_##l),WORD(opt_dlg_no_##l),WORD(opt_dlg_select_##l),WORD(opt_dlg_cancel_##l)}
+typedef struct DialogWords { Word title[2],question[2],warn,yes,no,select,cancel; } DialogWords;
+static const DialogWords dialog_words[5]={DLG_WORDS(en),DLG_WORDS(fr),DLG_WORDS(de),
+                                          DLG_WORDS(es),DLG_WORDS(it)};
+void dw3_pc_dialog_art(uint8_t *rgba,int pitch,int kind,int focus) {
+    const DialogWords *t=&dialog_words[options_lang>=DW3_TITLE_LANG_EN&&options_lang<=DW3_TITLE_LANG_IT?options_lang:0];
+    const int w=DW3_DIALOG_W-8,h=DW3_DIALOG_H-8,x1=w,y1=h;
+    const int k=kind==DW3_DIALOG_RETURN?1:0;
+    canvas=rgba;stride=pitch;clip_x0=clip_y0=0;clip_x1=DW3_DIALOG_W;clip_y1=DW3_DIALOG_H;
+    for(int j=0;j<DW3_DIALOG_H;j++)memset(rgba+(size_t)j*pitch,0,(size_t)DW3_DIALOG_W*4);
+    box(6,8,w,h,0,0,8,150);
+    box(0,0,w,h,255,255,255,255);
+    box(w-3,3,3,h-3,181,181,181,255);box(3,h-3,w-3,3,181,181,181,255);
+    box(9,9,w-18,h-18,49,49,49,255);
+    box(15,15,w-30,h-30,58,58,148,255);
+    box(18,18,w-36,h-36,0,0,49,255);
+    /* Title, then the stepped rule of the Options window under it. */
+    word(&t->title[k],40,34-t->title[k].top,0,255,255,255);
+    box(30,74,w-60,3,0,66,156,255);box(30,80,w-60,3,0,66,156,255);
+    word(&t->question[k],48,100,0,255,255,255);
+    word(&t->warn,48,140,0,255,224,140);
+    for(int i=0;i<2;i++) {
+        const int ry=168+i*42,choice_focus=i==(focus?0:1);
+        const Word *label=i==0?&t->yes:&t->no;
+        if(choice_focus){
+            box(48,ry-6,w-96,OPT_ROW_H,16,74,156,255);
+            box(51,ry-3,w-102,OPT_ROW_H-6,0,8,74,255);
+            pointer(66,ry+3);
+        }
+        word(label,106,ry,0,255,255,255);
+    }
+    {
+        const int hy=y1-74,bx=x1-48-t->cancel.w,cx=bx-36-t->select.w-60;
+        button(cx,hy+12,0);word(&t->select,cx+22,hy,0,255,255,255);
+        button(bx-22,hy+12,1);word(&t->cancel,bx,hy,0,255,255,255);
+        box(30,y1-36,w-60,3,0,66,156,255);
+    }
+    clip_x0=clip_y0=0;clip_x1=960;clip_y1=720;
+}
+
 static void title_screen(void) {
     /* The original game logo is retained and framed by the PC integrator.
      * This layer owns only the native menu and discreet legal footer. */
@@ -481,8 +531,12 @@ void dw3_pc_title_overlay_art(uint8_t *rgba,int pitch,int selected) {
             lettering(480,462,title_start,title_start_width,title_start_height,1,0,0);
         return;
     }
-    for(int row=0;row<3;row++) {
-        int x=230,y=400+row*60,w=500,h=54,focus=row==selected;
+    for(int row=0;row<DW3_TITLE_MENU_ROWS;row++) {
+        /* P6.28: four plaques. The first three are 48 px high on a 52 px
+         * pitch (they were 54 on 60) so the fourth, Quit game, fits above
+         * the credits; it sits a little lower, apart from Load Game, so it is
+         * not hit by accident. */
+        int x=230,y=row<3?384+row*52:548,w=500,h=48,focus=row==selected;
         /* Soft optical orange halo only on the focused hardware silhouette. */
         if(focus)for(int spread=8;spread>=1;spread--)
             plaque(x-spread,y-spread,w+spread*2,h+spread*2,10+spread,255,103,17,255,103,17,5);
@@ -495,9 +549,9 @@ void dw3_pc_title_overlay_art(uint8_t *rgba,int pitch,int selected) {
         box(x+36,y+2,w-72,1,143,198,232,220);
         box(x+36,y+h-3,w-72,1,78,120,173,255);
         int rr=focus?255:138,gg=focus?172:98,bb=focus?42:43;
-        box(x+37,y+8,w-74,2,rr,gg,bb,255);
-        box(x+37,y+h-10,w-74,2,rr,gg,bb,255);
-        if(focus){box(x+39,y+7,w-78,1,255,236,167,235);box(x+39,y+h-8,w-78,1,255,221,136,210);}
+        box(x+37,y+6,w-74,2,rr,gg,bb,255);
+        box(x+37,y+h-8,w-74,2,rr,gg,bb,255);
+        if(focus){box(x+39,y+5,w-78,1,255,236,167,235);box(x+39,y+h-6,w-78,1,255,221,136,210);}
         /* Cast-metal lateral clamps, bright chamfer, black inset channels. */
         for(int side=0;side<2;side++) {
             int cx=side?x+w-35:x+1;
@@ -505,9 +559,17 @@ void dw3_pc_title_overlay_art(uint8_t *rgba,int pitch,int selected) {
             plaque(cx+3,y+4,28,h-8,5,32,73,124,12,30,63,255);
             box(cx+5,y+7,2,h-14,106,166,209,215);
             box(cx+25,y+7,3,h-14,3,10,28,255);
-            for(int l=0;l<3;l++)lamp(cx+15,y+12+l*15,focus);
+            for(int l=0;l<3;l++)lamp(cx+15,y+10+l*14,focus);
             int railx=side?cx-5:cx+36;
-            for(int l=0;l<3;l++)box(railx,y+18+l*6,2,3,rr,gg,bb,255);
+            for(int l=0;l<3;l++)box(railx,y+16+l*6,2,3,rr,gg,bb,255);
+        }
+        if(row==3) {
+            const int li=options_lang>=DW3_TITLE_LANG_EN&&options_lang<=DW3_TITLE_LANG_IT?options_lang:0;
+            const unsigned char *runs[]={title_quit_en,title_quit_fr,title_quit_de,title_quit_es,title_quit_it};
+            const int ws[]={title_quit_en_width,title_quit_fr_width,title_quit_de_width,title_quit_es_width,title_quit_it_width};
+            const int hs[]={title_quit_en_height,title_quit_fr_height,title_quit_de_height,title_quit_es_height,title_quit_it_height};
+            text_mask(480,y+(h-hs[li])/2-1,runs[li],ws[li],hs[li],focus);
+            continue;
         }
         const int slot=row==0?DW3_TITLE_LABEL_NEW_GAME:row==1?DW3_TITLE_LABEL_OPTIONS:DW3_TITLE_LABEL_LOAD_GAME;
         if(label_mask[slot]) {

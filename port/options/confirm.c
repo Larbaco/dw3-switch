@@ -1,0 +1,196 @@
+/* P6.27 / P6.28: the Yes / No confirmation of Quit game (title menu) and
+ * Return to title (field menu). The window is drawn by the native overlay
+ * (title_overlay_art.c, dw3_pc_dialog_art); this file is its small state
+ * machine, the pad, and what a Yes does. See docs/PORT_OPTIONS.md
+ * "Quit and return to title". */
+#include "port_confirm.h"
+
+#include "memcard_host.h"
+#include "port_options.h"
+#include "port_restart.h"
+
+#include <stdio.h>
+#include <string.h>
+
+#if defined(DW3_PORT_CONFIRM_TEST)
+/* Host test: the pad, the sound and the host's quit are stubs of the test. */
+#define CF_INFO(...) (fprintf(stderr, __VA_ARGS__), fputc('\n', stderr))
+#define CF_WARN(...) (fprintf(stderr, __VA_ARGS__), fputc('\n', stderr))
+enum { CF_UP = 4, CF_RIGHT = 5, CF_DOWN = 6, CF_LEFT = 7, CF_CIRCLE = 12,
+       CF_CROSS = 13, CF_TRIANGLE = 14 };
+static unsigned g_test_pressed;
+void dw3_port_confirm_test_set_pressed(unsigned mask) { g_test_pressed = mask; }
+static int cf_pressed(int bit) { return (int)((g_test_pressed >> bit) & 1u); }
+static void cf_sound(int kind) { extern void dw3_port_confirm_test_sound(int); dw3_port_confirm_test_sound(kind); }
+#else
+#include <psyz/log.h>
+#include "engine/pad.h"
+#include "engine/sound.h"
+#define CF_INFO(...) INFOF(__VA_ARGS__)
+#define CF_WARN(...) WARNF(__VA_ARGS__)
+enum { CF_UP = PAD_UP, CF_RIGHT = PAD_RIGHT, CF_DOWN = PAD_DOWN, CF_LEFT = PAD_LEFT,
+       CF_CIRCLE = PAD_CIRCLE, CF_CROSS = PAD_CROSS, CF_TRIANGLE = PAD_TRIANGLE };
+static int cf_pressed(int bit) { return PAD_PRESSED(bit); }
+static void cf_sound(int kind) {
+    static const s32 id[3] = {SOUND_CURSOR, SOUND_SELECT, SOUND_MENU_CANCEL};
+    if (SOUND.playSound != NULL) {
+        SOUND.playSound(id[kind]);
+    }
+}
+#endif
+enum { CF_SND_CURSOR = 0, CF_SND_SELECT = 1, CF_SND_CANCEL = 2 };
+
+#if defined(DW3_TITLE_NATIVE_OVERLAY) || defined(DW3_PORT_CONFIRM_TEST)
+#include "title_overlay_art.h"
+#define CF_NATIVE 1
+/* The host's own way out (platforms/pc: the window's close request;
+ * platforms/switch: the HOME quit flag, so the game loop returns and the
+ * NRO exits to hbmenu). */
+extern void dw3_host_request_quit(void);
+#else
+#define CF_NATIVE 0
+#endif
+
+static int g_open;
+static int g_kind;
+static int g_focus; /* 0 = No (the default), 1 = Yes */
+static int g_just_opened;
+
+static const char *kind_name(int kind) {
+    return kind == DW3_CONFIRM_RETURN ? "return to title" : "quit";
+}
+
+static void push_view(void) {
+#if CF_NATIVE
+    dw3_pc_dialog_set(g_open, g_kind == DW3_CONFIRM_RETURN ? DW3_DIALOG_RETURN
+                                                           : DW3_DIALOG_QUIT,
+                      g_focus);
+#endif
+}
+
+int dw3_port_confirm_available(void) {
+    return CF_NATIVE;
+}
+
+int dw3_port_title_quit_enabled(void) {
+    return dw3_port_confirm_available();
+}
+
+int dw3_port_field_return_enabled(void) {
+    return dw3_port_confirm_available() && dw3_port_options_restart_enabled();
+}
+
+void dw3_port_confirm_open(int kind) {
+    if (g_open || !dw3_port_confirm_available()) {
+        return;
+    }
+    g_open = 1;
+    g_kind = kind == DW3_CONFIRM_RETURN ? DW3_CONFIRM_RETURN : DW3_CONFIRM_QUIT;
+    g_focus = 0;
+    g_just_opened = 1;
+    push_view();
+    CF_INFO("dw3-port-confirm: open %s (cursor on No)", kind_name(g_kind));
+}
+
+int dw3_port_confirm_is_open(void) {
+    return g_open != 0;
+}
+
+void dw3_port_confirm_close(void) {
+    if (!g_open) {
+        return;
+    }
+    g_open = 0;
+    g_just_opened = 0;
+    push_view();
+}
+
+/* Quit game: the saves go to the card files first, as on HOME. A failed
+ * flush cancels the quit (unlike HOME, the player can still save again). */
+static void accept_quit(void) {
+    if (memcard_host_flush_all() != 0) {
+        CF_WARN("dw3-port-quit: save flush failed; quit cancelled");
+        dw3_port_confirm_close();
+        return;
+    }
+    CF_INFO("dw3-port-quit: saves flushed; asking the host to quit");
+#if CF_NATIVE
+    dw3_host_request_quit();
+#endif
+    dw3_port_confirm_close();
+}
+
+/* Return to title: the P6.9 reset, run by dw3_port_restart_poll() right after
+ * the next pad update (it flushes the saves and cancels on a failure). */
+static void accept_return(void) {
+    CF_INFO("dw3-port-confirm: return to title confirmed");
+    dw3_port_restart_request();
+    dw3_port_confirm_close();
+}
+
+void dw3_port_confirm_tick(void) {
+    if (!g_open) {
+        return;
+    }
+    if (g_just_opened) {
+        /* The press that opened the window must not also answer it. */
+        g_just_opened = 0;
+        return;
+    }
+    if (cf_pressed(CF_UP) || cf_pressed(CF_DOWN) || cf_pressed(CF_LEFT) ||
+        cf_pressed(CF_RIGHT)) {
+        g_focus = !g_focus;
+        cf_sound(CF_SND_CURSOR);
+        push_view();
+        CF_INFO("dw3-port-confirm: cursor on %s", g_focus ? "Yes" : "No");
+    } else if (cf_pressed(CF_CROSS)) {
+        cf_sound(CF_SND_SELECT);
+        if (g_focus) {
+            CF_INFO("dw3-port-confirm: Yes (%s)", kind_name(g_kind));
+            if (g_kind == DW3_CONFIRM_RETURN) {
+                accept_return();
+            } else {
+                accept_quit();
+            }
+        } else {
+            CF_INFO("dw3-port-confirm: No (%s); nothing changed", kind_name(g_kind));
+            dw3_port_confirm_close();
+        }
+    } else if (cf_pressed(CF_TRIANGLE) || cf_pressed(CF_CIRCLE)) {
+        cf_sound(CF_SND_CANCEL);
+        CF_INFO("dw3-port-confirm: cancelled (%s); nothing changed", kind_name(g_kind));
+        dw3_port_confirm_close();
+    }
+}
+
+/* The field menu's row text. The game's font encoding of a string table:
+ * digits 4..13, A..Z 14..39, a..z 40..65, and 01 01 for a space. The words
+ * are in capitals like the other rows and use no accent (the glyph of an
+ * accent is a two-byte code that this file does not carry). */
+const char *dw3_port_field_return_label(int language) {
+    static char out[40];
+    const char *text;
+    char *p = out;
+
+    switch (language) {
+    case 3: text = "RETOUR TITRE"; break;
+    case 4: text = "TORNA AL TITOLO"; break;
+    case 5: text = "TITELBILD"; break;
+    case 6: text = "VOLVER AL INICIO"; break;
+    default: text = "TITLE SCREEN"; break;
+    }
+    for (; *text != '\0' && p < out + sizeof(out) - 3; text++) {
+        if (*text >= 'A' && *text <= 'Z') {
+            *p++ = (char)(14 + *text - 'A');
+        } else if (*text >= 'a' && *text <= 'z') {
+            *p++ = (char)(40 + *text - 'a');
+        } else if (*text >= '0' && *text <= '9') {
+            *p++ = (char)(4 + *text - '0');
+        } else {
+            *p++ = 1;
+            *p++ = 1;
+        }
+    }
+    *p = '\0';
+    return out;
+}
