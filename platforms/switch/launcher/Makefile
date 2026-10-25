@@ -20,7 +20,6 @@ SOURCES		:=	source ../../../port/region ../../../port/options
 INCLUDES	:=	../../../port/region ../../../port/include
 # Artifacts (.nro/.elf/.nacp). Override with OUTDIR=...
 OUTDIR		?=	$(CURDIR)
-ICON		:=	$(CURDIR)/../icon.jpg
 
 APP_TITLE	:=	Digimon World 3 launcher
 APP_AUTHOR	:=	dw3-switch
@@ -68,7 +67,7 @@ export APP_TITLE APP_AUTHOR APP_VERSION
 
 # switch_rules' %.nro rule never passes --nacp itself (see
 # platforms/switch/README.md, "The .nro must embed its NACP").
-export NROFLAGS	:=	--nacp=$(OUTPUT).nacp --icon=$(ICON)
+export NROFLAGS	:=	--nacp=$(OUTPUT).nacp
 
 .PHONY: $(BUILD) clean all
 

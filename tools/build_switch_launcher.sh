@@ -21,12 +21,15 @@ if ! command -v docker >/dev/null 2>&1; then
   exit 1
 fi
 
-# A previous run may have left files the container (root) owned.
-rm -rf "${SRC}" "${OUT}" 2>/dev/null || true
+# The container runs as root (user namespaces map it to an id the host user
+# does not own), so it leaves the tree world-writable and a later run can
+# clean it; the fallback below covers an older tree.
+if ! rm -rf "${SRC}" "${OUT}" 2>/dev/null; then
+  docker run --rm -v "${BUILD_DIR}:${BUILD_DIR}" "${IMAGE}" rm -rf "${SRC}" "${OUT}"
+fi
 mkdir -p "${SRC}/platforms/switch" "${SRC}/port/region" "${SRC}/port/options" \
          "${SRC}/port/include" "${OUT}"
 cp -r "${ROOT}/platforms/switch/launcher" "${SRC}/platforms/switch/launcher"
-cp "${ROOT}/platforms/switch/icon.jpg" "${SRC}/platforms/switch/icon.jpg"
 cp "${ROOT}/port/region/"*.c "${ROOT}/port/region/"*.h "${SRC}/port/region/"
 cp "${ROOT}/port/options/options_cfg.c" "${SRC}/port/options/"
 cp "${ROOT}/port/include/port_options_cfg.h" "${SRC}/port/include/"
@@ -38,7 +41,7 @@ docker run --rm \
   -v "${BUILD_DIR}:${BUILD_DIR}" \
   -w "${SRC}/platforms/switch/launcher" \
   "${IMAGE}" \
-  bash -c 'make -j"${DW3_BUILD_JOBS}" OUTDIR="'"${OUT}"'" && chown -R '"$(id -u):$(id -g)"' "'"${BUILD_DIR}"'"'
+  bash -c 'make -j"${DW3_BUILD_JOBS}" OUTDIR="'"${OUT}"'" && chmod -R a+rwX "'"${BUILD_DIR}"'"'
 
 NRO="${OUT}/dw3.nro"
 if [[ ! -f "${NRO}" ]]; then
