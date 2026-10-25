@@ -55,7 +55,7 @@ listed once, in [Pending OLED checks](#pending-oled-checks).
 | P6.6 | Localization goal | open | — |
 | P6.7 | Language packs (PT-BR first) | open | — |
 | P6.8 | Extra locales | open | — |
-| P6.9 | Restart-game hotkey | in progress (hotkey works on the OLED; more restart checks open) | [P6.9](P6.9_RESTART.md) |
+| P6.9 | Restart-game hotkey | in progress (hotkey works on the OLED; PC replays pass for battle, save and Continue on US and EU; OLED retest open) | [P6.9](P6.9_RESTART.md) |
 | P6.10 | Hardware render outside battle | future | [P5.2](P5.2_BATTLE_GPU.md) |
 | P6.11 | Internal resolution scaling | future | [PC README](../platforms/pc/README.md) |
 | P6.12, P6.14, P6.16, P6.19, P6.21 | Backlog goal notes | future | [backlog](#backlog--future-goals) |
@@ -130,6 +130,12 @@ Tick the item in the table once the owner confirms.
   [PORT_OPTIONS.md](PORT_OPTIONS.md#cheats-p620) (#236), and the page 2
   checklist (Money, Warp, Give item) in
   [PORT_OPTIONS.md](PORT_OPTIONS.md#oled-checklist-page-2-owner) (PR 2).
+- **P6.9:** restart on the OLED, US and EU, with Restart hotkey ON: the chord
+  in the field, inside a battle, after a won battle and right after saving at
+  a save point; each must reach the title (EU: the language select) with no
+  overlay left over, and Continue must load the save written before the
+  restart. PC replays pass ([P6.9_RESTART.md](P6.9_RESTART.md)); tick P6.9
+  only after this.
 - **P5.1:** a long session that fills the file cache; look for the
   `dw3-file-cache: ... evicted` lines in `dw3.log` (#235).
 - **P5.4:** the notice stays up to 60 s and A dismisses it (#231); the PR 2
@@ -143,7 +149,7 @@ Tick the item in the table once the owner confirms.
   rows; No, Yes: back at the title, or the language select on EU). US and EU, at
   least two EU languages. Checklist:
   [PORT_OPTIONS.md](PORT_OPTIONS.md#oled-checklist-quit-and-return-to-title-owner).
-- **Older, still open:** P6.9 (restart after a battle and after a save), P4.3
+- **Older, still open:** P6.9 (OLED retest of restart after a battle and a save; PC replays pass), P4.3
   (underrun count), P7.7 (Claw steal, HUD Digivolution name), P7.9 (rest of the
   checklist), P10.2 (HOME during a save write).
 
@@ -810,9 +816,17 @@ gate, which stays open.
   (cancels if the flush fails) and resets `GAME` state and the active
   mode/overlay inside `dw3_game_main()`. Owner OLED (EU, preview.26): the
   hotkey works; the EU language-select overlay bug it showed is fixed in #162
-  (Ryubing US and EU). Still open: restart before/after a battle and after an
-  in-game save on both discs, that a save written before the restart
-  reloads (Continue), and an OLED retest. Dated history:
+  (Ryubing US and EU). **PC replay validation (2026-10-25, US and EU, 14
+  scenarios, [P6.9_RESTART.md](P6.9_RESTART.md#2026-10-25-pc-replay-validation-us-and-eu)):**
+  restart before a battle, after a won battle and inside a battle (the chord
+  is allowed in every mode), after an in-game save, and a save written before
+  the restart loads with Load Game / Continue afterwards; a second New Game
+  after a restart reproduces the first byte for byte. No bug found; the
+  restart does not reseed the RNG (documented, not a leak). New test hook:
+  patch `0127` (`DW3_START_MODE_EVERY`, on top of 0124). Still open: the OLED retest (chord,
+  battle, save, Continue on hardware, US and EU) Ryubing passed for the
+  New Game restart (US and EU); its battle and save cases need a baked-env
+  replay NRO. Dated history:
   [P6.9_RESTART.md](P6.9_RESTART.md#history-moved-from-roadmapmd-2026-10-24).
 - [ ] **P6.10 Hardware render outside battle (goal).** Move the field
   (`FIELDSTG` map tiles, actors) and the menus (field menu, Status, shops,
