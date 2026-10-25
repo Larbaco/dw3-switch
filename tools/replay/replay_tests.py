@@ -241,7 +241,8 @@ def run_phase(rec: Path, version, binary, runtime, display, outdir: Path, memdir
               "DW3_AUTO_DOOR_FRAMES", "DW3_LANGUAGE", "DW3_FORCE_FORM", "DW3_FORCE_NICKNAME",
               "DW3_FORCE_TECH", "DW3_FORCE_HIT", "DW3_FORCE_STEAL", "DW3_FORCE_ENEMY_ITEM",
               "DW3_FORCE_ENEMY_HP", "DW3_EXTRA_TECHS", "DW3_FORCE_ITEMS", "DW3_FORCE_CARDS", "DW3_PACING_TRACKED",
-              "DW3_FILE_CACHE_SLOTS", "DW3_FORCE_MENU", "DW3_CHEATS_ARM", "DW3_FORCE_EXIT", "DW3_START_MODE_EVERY"):
+              "DW3_FILE_CACHE_SLOTS", "DW3_FORCE_MENU", "DW3_CHEATS_ARM", "DW3_FORCE_EXIT", "DW3_START_MODE_EVERY",
+              "DW3_MEMCARD_IMPORT_DIR", "DW3_CROSS_IMPORT"):
         env.pop(k, None)
     if cfgdir is not None:  # P9.4: never read or write the owner's port_options.cfg
         env["DW3_CONFIG_DIR"] = str(cfgdir)
@@ -344,10 +345,35 @@ def shot_names(name):
     return shots
 
 
+def mutate_save(path: Path, version: str, spec: str):
+    """P6.25: edit slot 0 of a card the game wrote, for the refusal scenarios.
+    "progress:<n>" sets GameState.progress and "badsum" flips the checksum
+    byte; the slot checksum (XOR of bytes 4 .. GAME_SAVE_SIZE) is redone for
+    progress. Raises if the save is not there."""
+    size = {"us": 0x26BC, "eu": 0x26C4}[version]
+    data = bytearray(path.read_bytes())
+    base = 0x300
+    kind, _, arg = spec.partition(":")
+    if kind == "progress":
+        data[base + 0x263C:base + 0x2640] = int(arg, 0).to_bytes(4, "little")
+        x = 0
+        for b in data[base + 4:base + size]:
+            x ^= b
+        data[base] = x
+    elif kind == "badsum":
+        data[base] ^= 0xA5
+    else:
+        raise ValueError(f"unknown save mutation {spec!r}")
+    path.write_bytes(bytes(data))
+
+
 def run_scenario(sc, binary, runtime, out: Path, stamp, label, stall, timeout_scale=1.0,
-                 no_turbo=False):
+                 no_turbo=False, by_version=None):
     """Run all phases of one scenario under its own Xvfb. Returns
-    (phase_results, sdir). Phases share one memcard dir."""
+    (phase_results, sdir). Phases share one memcard dir. P6.25: a scenario with
+    `phase_versions` runs each phase on its own disc (binary and runtime from
+    `by_version`), with one card folder per region; the phase gets
+    DW3_MEMCARD_IMPORT_DIR = the other region's folder."""
     sdir = out / label
     sdir.mkdir(parents=True, exist_ok=True)
     memdir = Path(tempfile.mkdtemp(prefix="dw3-replay-mc-"))
@@ -358,13 +384,27 @@ def run_scenario(sc, binary, runtime, out: Path, stamp, label, stall, timeout_sc
     results = []
     try:
         for i, phase in enumerate(sc.phases):
-            r = run_phase(SCEN_DIR / f"{phase}.rec", sc.version, binary, runtime, display,
-                          sdir, memdir, stamp, f"{sc.name}-p{i + 1}" if len(sc.phases) > 1 else sc.name,
+            pv, pbin, prt, pmem = sc.version, binary, runtime, memdir
+            penv = tuple(sc.env)
+            if sc.phase_versions:
+                pv = sc.phase_versions[i]
+                pbin, prt = by_version[pv]
+                pmem = memdir / pv
+                other = memdir / ("eu" if pv == "us" else "us")
+                pmem.mkdir(exist_ok=True)
+                other.mkdir(exist_ok=True)
+                penv += (("DW3_MEMCARD_IMPORT_DIR", str(other)),)
+            if sc.phase_env:
+                penv += tuple(sc.phase_env[i])
+            r = run_phase(SCEN_DIR / f"{phase}.rec", pv, pbin, prt, display,
+                          sdir, pmem, stamp, f"{sc.name}-p{i + 1}" if len(sc.phases) > 1 else sc.name,
                           int(sc.timeout * timeout_scale), stall, 0 if no_turbo else sc.turbo,
-                          sample_rss=True, cfgdir=cfgdir, extra_env=sc.env,
+                          sample_rss=True, cfgdir=cfgdir, extra_env=penv,
                           allow_early_exit=sc.quits)
             r["phase"] = phase
             results.append(r)
+            if sc.phase_mutate and sc.phase_mutate[i] and r["verdict"] == "OK":
+                mutate_save(pmem / "save0.bin", pv, sc.phase_mutate[i])
             if r["verdict"] != "OK":
                 break  # later phases depend on this one
     finally:
@@ -561,14 +601,16 @@ def main():
     rows_by = {}
 
     def job(sc):
-        if not bins[sc.version] or not bins[sc.version].is_file() or runtimes[sc.version] is None:
-            return sc.name, [(sc.name, "-", "SKIP", f"missing {'binary' if not bins[sc.version] else 'runtime'} for {sc.version}")]
+        for v in sorted(set(sc.phase_versions) | {sc.version}):
+            if not bins[v] or not bins[v].is_file() or runtimes[v] is None:
+                return sc.name, [(sc.name, "-", "SKIP", f"missing {'binary' if not bins[v] else 'runtime'} for {v}")]
         rows = []
         runs = []
         for run in (("a", "b") if a.twice else ("",)):
             label = f"{sc.name}-{run}" if run else sc.name
             results, sdir = run_scenario(sc, bins[sc.version], runtimes[sc.version], out, stamp,
-                                         label, a.stall, a.timeout_scale, a.no_turbo)
+                                         label, a.stall, a.timeout_scale, a.no_turbo,
+                                         {v: (bins[v], runtimes[v]) for v in ("us", "eu")})
             runs.append((results, sdir))
             ok = all(r["verdict"] == "OK" for r in results)
             with lock:

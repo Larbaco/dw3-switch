@@ -358,3 +358,75 @@ def test_p77_claw_expectation_needs_the_steal_before_the_end_of_the_battle(tmp_p
     lines = ok.splitlines(True)
     swapped = "".join([lines[0], lines[3], lines[1], lines[2]])   # the battle ends first
     assert rt.check_log_expect(sc.expect_log, 0, swapped, sc.forbid_log) != []
+
+
+# ---------------------------------------------------------------- P6.25 cross-region
+
+def test_cross_region_scenarios_are_consistent():
+    rt = _load("replay_tests")
+    xr = [sc for sc in rt.SCENARIOS if sc.phase_versions]
+    assert {sc.name for sc in xr} == {"xr-us-to-eu", "xr-eu-to-us", "xr-eu-extra-us",
+                                      "xr-us-badsum-eu"}
+    for sc in xr:
+        assert len(sc.phase_versions) == len(sc.phases) == 2, sc.name
+        assert set(sc.phase_versions) == {"us", "eu"}, sc.name
+        assert sc.version == sc.phase_versions[0] and sc.log_only, sc.name
+        assert len(sc.phase_env) == 2 and (not sc.phase_mutate or len(sc.phase_mutate) == 2)
+        for phase, v in zip(sc.phases, sc.phase_versions):
+            assert phase.startswith(v + "-xr-"), (sc.name, phase)
+    # the Ryubing runner cannot run them (one card folder per region): it must skip them
+    assert "phase_versions" in (REPLAY / "ryubing.py").read_text()
+
+
+def test_cross_region_phases_get_their_own_card_folder_and_import_dir(tmp_path, monkeypatch):
+    rt = _load("replay_tests")
+    man = _load("manifest")
+    monkeypatch.setenv("STUB_MODE", "memcard")
+    (tmp_path / "p1.rec").write_text("end 9\n")
+    (tmp_path / "p2.rec").write_text("end 9\n")
+    monkeypatch.setattr(rt, "SCEN_DIR", tmp_path)
+    sc = man.Scenario("fake", "us", "full", phases=("p1", "p2"), log_only=True,
+                      phase_versions=("us", "eu"), phase_env=((("A", "1"),), ()))
+    monkeypatch.setattr(rt, "start_xvfb",
+                        lambda work: (type("P", (), {"terminate": lambda s: None,
+                                                      "wait": lambda s, t=None: 0})(), ":99"))
+    seen = []
+    orig = rt.run_phase
+
+    def spy(*a, **k):
+        seen.append((a[1], a[6], dict(k["extra_env"])))   # version, memdir, env
+        monkeypatch.setenv("STUB_PHASE", str(len(seen)))
+        return orig(*a, **k)
+
+    monkeypatch.setattr(rt, "run_phase", spy)
+    stub = _stub(tmp_path)
+    results, _ = rt.run_scenario(sc, stub, tmp_path, tmp_path / "o", "s", "fake", 60,
+                                 by_version={"us": (stub, tmp_path), "eu": (stub, tmp_path)})
+    assert [r["verdict"] for r in results] == ["OK", "OK"]
+    (v1, m1, e1), (v2, m2, e2) = seen
+    assert (v1, v2) == ("us", "eu") and m1.name == "us" and m2.name == "eu"
+    assert m1.parent == m2.parent
+    assert e1["DW3_MEMCARD_IMPORT_DIR"] == str(m2) and e2["DW3_MEMCARD_IMPORT_DIR"] == str(m1)
+    assert e1["A"] == "1" and "A" not in e2
+
+
+def test_mutate_save(tmp_path):
+    rt = _load("replay_tests")
+    for version, size in (("us", 0x26BC), ("eu", 0x26C4)):
+        img = bytearray(0x8000)
+        for i in range(0x300, 0x300 + size):
+            img[i] = (i * 7) & 0xFF
+        p = tmp_path / f"{version}.bin"
+        p.write_bytes(bytes(img))
+        rt.mutate_save(p, version, "progress:0x2D")
+        d = p.read_bytes()
+        assert int.from_bytes(d[0x300 + 0x263C:0x300 + 0x2640], "little") == 0x2D
+        x = 0
+        for b in d[0x300 + 4:0x300 + size]:
+            x ^= b
+        assert d[0x300] == x
+        before = d[0x300]
+        rt.mutate_save(p, version, "badsum")
+        assert p.read_bytes()[0x300] != before
+        with pytest.raises(ValueError):
+            rt.mutate_save(p, version, "nope")

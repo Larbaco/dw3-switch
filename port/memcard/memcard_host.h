@@ -29,6 +29,27 @@ extern "C" {
 /* Directory that holds save0.bin / save1.bin (and optional legacy .mcr). */
 int memcard_host_set_dir(const char *dir);
 
+/* P6.25 cross-region saves (slice 1). When a port has no save of its own,
+ * memcard_host_ensure converts the other region's saveN.bin from `foreign_dir`
+ * in memory and writes the result as this port's save. The source is only
+ * read; `saveN.import` next to the new save records the import (and keeps it
+ * from running again). own_region is SAVE_REGION_US or SAVE_REGION_EU
+ * (save_convert.h). Call after memcard_host_set_dir; never set = no import.
+ * The sibling form takes the runtime root (".../us" or ".../eu") and looks in
+ * "<parent>/<other>/memcard"; it fails (no import) for any other root name. */
+int memcard_host_set_cross_import(const char *foreign_dir, int own_region);
+int memcard_host_set_cross_import_sibling(const char *runtime_root,
+                                          int own_region);
+
+/* Host wiring in one call, after memcard_host_set_dir and before the first
+ * memcard_host_ensure. Order: DW3_CROSS_IMPORT=0 turns it off;
+ * DW3_MEMCARD_IMPORT_DIR names the source folder (tests, any layout);
+ * otherwise the sibling folder of the runtime root, but only when the card
+ * folder is the default one (memdir_is_explicit == 0), so a replay run that
+ * sets DW3_MEMCARD_DIR never imports. Returns 0 if an import source is set. */
+int memcard_host_setup_cross_import(const char *runtime_root, int own_region,
+                                    int memdir_is_explicit);
+
 /* Flat save filenames for slot 0 / 1. */
 const char *memcard_host_slot_name(int slot);
 

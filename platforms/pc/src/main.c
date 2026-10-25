@@ -14,6 +14,7 @@
 #include "boot_tim_host.h"
 #include "cdfs.h"
 #include "memcard_host.h"
+#include "save_convert.h"
 #include "overlay_host.h"
 #include "port_options.h"
 #include "port_turbo.h"
@@ -231,6 +232,7 @@ static int init_paths(int argc, char **argv) {
     const char *memdir = env_or("DW3_MEMCARD_DIR", NULL);
     const char *cfgdir = env_or("DW3_CONFIG_DIR", NULL);
     char memcard_buf[512];
+    int memdir_explicit;
     char boot_path[512];
     int i;
 
@@ -278,6 +280,7 @@ static int init_paths(int argc, char **argv) {
                 "drained on vsync for logs; audible listen needs a device\n");
     }
 
+    memdir_explicit = (memdir != NULL);
     if (memdir == NULL) {
         snprintf(memcard_buf, sizeof(memcard_buf), "%s/memcard", root);
         memdir = memcard_buf;
@@ -286,6 +289,15 @@ static int init_paths(int argc, char **argv) {
         fprintf(stderr, "dw3-pc: memcard_host_set_dir(%s) failed\n", memdir);
         return -1;
     }
+    /* P6.25: a port with no save of its own takes the other region's (converted
+     * copy; the original is never touched). */
+    (void)memcard_host_setup_cross_import(root,
+#if defined(VERSION_EU) && VERSION_EU
+                                          SAVE_REGION_EU,
+#else
+                                          SAVE_REGION_US,
+#endif
+                                          memdir_explicit);
     if (memcard_host_ensure(0) != 0 || memcard_host_ensure(1) != 0) {
         fprintf(stderr, "dw3-pc: memcard ensure failed under %s\n", memdir);
         return -1;

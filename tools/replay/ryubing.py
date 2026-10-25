@@ -307,6 +307,10 @@ def main():
         # The NRO has no environment for the scenario's debug aids: PC only.
         print(f"skip {sc.name}: needs host env ({', '.join(k for k, _ in sc.env)}), PC only")
     todo = [sc for sc in todo if not sc.env]
+    for sc in [sc for sc in todo if sc.phase_versions]:
+        # Needs one card folder per region and the import folder (P6.25): PC only.
+        print(f"skip {sc.name}: runs phases on both discs (P6.25), PC only")
+    todo = [sc for sc in todo if not sc.phase_versions]
     for sc in [sc for sc in todo if sc.quits]:
         # The guest ends the emulator session by itself: nothing to replay on.
         print(f"skip {sc.name}: the game quits by itself (P6.28), PC only")

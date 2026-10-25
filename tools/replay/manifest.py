@@ -49,6 +49,19 @@ class Scenario:
     # The recording has no `shot` lines: the verdicts are the process, the
     # overlay markers and the log lines only (no reference captures needed).
     log_only: bool = False
+    # P6.25 cross-region saves: the disc each phase runs on (same length as
+    # phases), and extra environment per phase (same length as phases). A phase
+    # runs the binary and runtime of its own region, with its own card folder
+    # (one per region) and DW3_MEMCARD_IMPORT_DIR pointing at the other
+    # region's folder, so the save made on one disc is imported on the other.
+    # PC only: the Ryubing runner skips these.
+    phase_versions: tuple[str, ...] = ()
+    phase_env: tuple[tuple[tuple[str, str], ...], ...] = ()
+    # After phase i, edit the save that phase wrote ("" = leave it): the runner
+    # derives a synthetic variant of the game's own save at run time, for the
+    # refusal cases. "progress:0x2D" sets GameState.progress (the EU extra
+    # chapter) and "badsum" flips the slot checksum. Nothing is committed.
+    phase_mutate: tuple[str, ...] = ()
     # Memory sanity (soak): analyse RSS from this game frame on.
     rss_from_frame: int = 0
     note: str = ""
@@ -619,6 +632,51 @@ for _v, _ids in (("us", (0x158, 0x1E3)), ("eu", (0x166, 0x1EE))):
                   forbid_log=((0, r"overlay restore file=0x%x kind=mode(?:(?!overlay restore)(?s:.))*?"
                                   r"gutter 0 px per side" % _mcard),),
                   note="the save screen in widescreen: no card in the right gutter, header and slots at the 16:9 edges (patch 0082)"))
+
+
+# P6.25 cross-region saves: the game itself saves on one disc (the forced save
+# screen, as save-screen) and the other disc's build loads that save from the
+# Title menu (Load Game / Continue). The two phases run on different binaries
+# and runtimes; each has its own card folder, and the second one imports the
+# first one's (DW3_MEMCARD_IMPORT_DIR, set by the runner). Log verdicts only
+# (no checkpoints, no references): the write, the import and conversion, the
+# load of the right state, and the field reached with the saved mode.
+_XR_FIELD = {"us": 0x158, "eu": 0x166}
+_XR_MCARD = {"us": 0x1E3, "eu": 0x1EE}
+_XR_WRITE = (0, r"STGMCARD_writeSave port=0 slot=0 status=1")
+_XR_BAD = ((1, r"STGMCARD_loadSave (?:checksum|version|read) fail"),
+           (1, r"cross-import slot=\d FAILED"))
+for _a, _b in (("us", "eu"), ("eu", "us")):
+    _add(Scenario(f"xr-{_a}-to-{_b}", _a, "full", timeout=600, log_only=True,
+                  phases=(f"{_a}-xr-save", f"{_b}-xr-load"), phase_versions=(_a, _b),
+                  phase_env=(_SAVE_ENV, ()),
+                  expect_restore=((_XR_FIELD[_a], M), (_XR_MCARD[_a], M),
+                                  (_XR_MCARD[_b], M), (_XR_FIELD[_b], M)),
+                  expect_log=(_XR_WRITE,
+                              (1, r"cross-import slot=0 from=%s to=%s converter=1 usable=1 converted=1"
+                                  % (_a, _b)),
+                              (1, r"STGMCARD_loadSave ok port=0 slot=0 money=\d+ progress=6"
+                                  r"(?s:.*)FIELDSTG_pickStage mode=0x233")),
+                  forbid_log=_XR_BAD,
+                  note=f"P6.25: saved on the {_a.upper()} disc, loaded on the {_b.upper()} disc "
+                       f"(converted copy), field reached with the saved state"))
+# Two refusals, made from the game's own save by a run-time edit (phase_mutate):
+# an EU save past the base game (progress 0x2D, the extra chapter) has no stage
+# table in the US game, so nothing is imported and the US card stays empty; and
+# a save whose slot checksum is wrong is not imported either. Both: the Load
+# Game screen shows an empty card, no crash, nothing written, no import marker.
+for _name, _a, _b, _mut, _why in (
+        ("xr-eu-extra-us", "eu", "us", "progress:0x2D", "an EU extra-chapter save"),
+        ("xr-us-badsum-eu", "us", "eu", "badsum", "a save with a wrong slot checksum")):
+    _add(Scenario(_name, _a, "full", timeout=600, log_only=True,
+                  phases=(f"{_a}-xr-save", f"{_b}-xr-load"), phase_versions=(_a, _b),
+                  phase_env=(_SAVE_ENV, ()), phase_mutate=(_mut, ""),
+                  expect_restore=((_XR_MCARD[_a], M), (_XR_MCARD[_b], M)),
+                  expect_log=(_XR_WRITE,
+                              (1, r"cross-import slot=0 skipped: nothing usable")),
+                  forbid_log=((1, r"cross-import slot=\d from="), (1, r"STGMCARD_loadSave ok"),
+                              (1, r"overlay restore file=0x%x kind=mode" % _XR_FIELD[_b])),
+                  note=f"P6.25: {_why} is not imported into the other card (no crash)"))
 
 
 # P6.1 (patches 0100-0104): the card album, the deck editor, the card packs
