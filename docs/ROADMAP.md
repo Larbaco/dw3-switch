@@ -65,7 +65,7 @@ listed once, in [Pending OLED checks](#pending-oled-checks).
 | P6.18 | Pacing options | in progress (Instant text works; Instant banner and report speed #223; rest of the check open) | [P6.18](P6.18_PACING.md) |
 | P6.20 | Port debug / cheat menu in the Options screen | in progress (PR 1 merged, #236: Cheats screen; PR 2, #248: money, give item and warp on page 2, in review; OLED checks open) | [roadmap](#phase-6-goal-notes), [PORT_OPTIONS](PORT_OPTIONS.md) |
 | P6.22 | Turbo speed in scripted scenes | in progress (CPU rasterizer is ~97 % of a field frame; pixel-identical rasterizer 4-5x faster, #220) | [P6.22](P6.22_FIELD_CPU.md), [roadmap](#phase-6-goal-notes), [P6.4](P6.4_FAST_FORWARD.md) |
-| P6.23 | Documentation: player guide, docs index, contributor and modder docs (future goal) | in progress (slice 1 done: player guide and docs index; `CONTRIBUTING.md` and modder docs open) | [PLAYER_GUIDE](PLAYER_GUIDE.md), [docs index](README.md), [roadmap](#phase-6-goal-notes) |
+| P6.23 | Documentation: player guide, docs index, contributor and modder docs (future goal) | in progress (slice 1 done: player guide and docs index; slice 2: `CONTRIBUTING.md` and a pytest for all doc links, PR open; modder docs open) | [PLAYER_GUIDE](PLAYER_GUIDE.md), [docs index](README.md), [roadmap](#phase-6-goal-notes) |
 | P6.24 | One build for US and EU: one `.nro` and one PC binary, region found at boot, a boot picker with both discs (future goal; depends on P6.25 and P6.26) | future | [SINGLE_BUILD](SINGLE_BUILD.md), [roadmap](#phase-6-goal-notes) |
 | P6.25 | Cross-region saves: a US save loads in EU and the reverse, one canonical save container (future goal) | in progress (slice 1 built: converter and one-way import on load, PC replays US to EU and EU to US; container and store open; OLED check open) | [CROSS_REGION_SAVES](CROSS_REGION_SAVES.md), [roadmap](#phase-6-goal-notes) |
 | P6.26 | Per-user saves: saves bound to the Switch user profile chosen in the Switch profile selector, global options (future goal) | future (design done, no code) | [PER_USER_SAVES](PER_USER_SAVES.md), [roadmap](#phase-6-goal-notes) |
@@ -1563,8 +1563,14 @@ Statuses are in the [table](#status-at-a-glance).
   player guide [PLAYER_GUIDE.md](PLAYER_GUIDE.md) and the docs index
   [docs/README.md](README.md), linked from `README.md` and from the release
   `README.txt`; `tools/check_doc_links.py` checks the links, the anchors and
-  that the index lists every doc. Open: `CONTRIBUTING.md` and the modder
-  docs. **Defaults chosen while the owner was away (owner can change):** the
+  that the index lists every doc. **Slice 2 built 2026-10-25** (PR open, not
+  merged): [CONTRIBUTING.md](../CONTRIBUTING.md) (layout, builds, patch
+  workflow, replay tests, PSY-Z pin, PR rules; links AGENTS.md, does not
+  repeat it) and `tools/tests/test_doc_links.py`, which runs the checker over
+  every markdown file outside `vendor/` so CI catches a broken link. The
+  checker now keeps underscores in anchors like GitHub does (the
+  `PSYZ.md#empty-drawing-area-sdl3_gpu` link was right) and skips links into
+  an empty submodule checkout. Open: the modder docs. **Defaults chosen while the owner was away (owner can change):** the
   guide ships in the repo as `docs/PLAYER_GUIDE.md` and is linked from the
   README and the release `README.txt` (one line with the GitHub URL), with no
   separate site and no copy of the guide in the release bundle; the index is

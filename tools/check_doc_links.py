@@ -17,7 +17,8 @@ LINK = re.compile(r"(?<!\!)\[[^\]]*\]\(([^)\s]+)\)")
 
 def slug(heading: str) -> str:
     """GitHub-style anchor: lower case, drop punctuation, spaces to dashes."""
-    text = re.sub(r"[`*_]", "", heading.strip().lower())
+    # GitHub keeps underscores (sdl3_gpu); only backticks and stars go.
+    text = re.sub(r"[`*]", "", heading.strip().lower())
     text = re.sub(r"[^\w\- ]", "", text)
     return text.replace(" ", "-")
 
@@ -30,6 +31,18 @@ def anchors(path: Path) -> set:
         elif not in_code and line.startswith("#"):
             found.add(slug(line.lstrip("#")))
     return found
+
+
+def in_empty_submodule(dest: Path) -> bool:
+    """True when dest is under vendor/<name>/ and that checkout is empty."""
+    try:
+        parts = dest.relative_to(ROOT).parts
+    except ValueError:
+        return False
+    if len(parts) < 3 or parts[0] != "vendor":
+        return False
+    sub = ROOT / "vendor" / parts[1]
+    return not sub.is_dir() or not any(sub.iterdir())
 
 
 def check(path: Path) -> list:
@@ -45,6 +58,8 @@ def check(path: Path) -> list:
                 continue  # http, mailto, ...
             name, _, frag = target.partition("#")
             dest = path if not name else (path.parent / name).resolve()
+            if not dest.exists() and in_empty_submodule(dest):
+                continue  # submodule not checked out, cannot verify
             if not dest.exists():
                 errors.append(f"{path}:{no}: missing file {target}")
             elif frag and dest.suffix == ".md" and frag not in anchors(dest):
