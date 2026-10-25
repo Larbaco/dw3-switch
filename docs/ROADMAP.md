@@ -1296,7 +1296,19 @@ rumble, saves, turbo, or widescreen here; those stay in their phases.
   Done when: HOME sleep/resume and clean exit smoke tests pass with
   saves intact.
   - [x] Sleep and resume: owner confirmed on the OLED, 2026-10-24.
-  - [ ] HOME pressed during a save write section (open).
+  - [ ] HOME pressed during a save write section (open on hardware).
+    **Audit and fixes (2026-10-25, PC-tested, not yet on hardware):** every
+    way the process can stop was walked through in
+    [P5.3_HOME_QUIT.md](P5.3_HOME_QUIT.md#home-during-a-save-write-the-audit-p102-2026-10-25).
+    Gaps fixed: a kill between the `remove` and the `rename` of a save left no
+    `saveN.bin` (now a complete `.tmp` is promoted at boot, other `.tmp` files
+    are deleted); the `.name` sidecar was written in place (now atomic); no
+    `fsync` before the rename (added); a HOME/Quit/restart landing in the
+    middle of the game's own save burst flushed a half-updated image (the
+    exit now waits for the burst, up to 8 s, and the focus flush and restart
+    skip it); cheat marks now recover a complete `.tmp`. Host tests
+    `tools/tests/test_save_interrupt.py` inject a kill at each step. The
+    OLED steps are in [OLED_TEST_PLAN](OLED_TEST_PLAN.md) G2.
   - [ ] A HOME (not power button) pause, and the focus lines on an nxlink run
   (open). P10.2 stays in progress until these are closed.
   **Sleep part confirmed by the owner (2026-10-23, OLED handheld, US,
