@@ -220,3 +220,30 @@ by definition (they decide what loads).
    cannot launch from applet mode (Album): an in-game picker over
    `accountListAllUsers`, or require title takeover (the NRO started as a title
    override from hbmenu, where the preselect is expected)? Not decided.
+
+## History moved from ROADMAP.md (2026-10-24)
+
+Moved from the ROADMAP.md entries on 2026-10-24, word for word (two leading
+spaces removed). "Above" and "below" refer to the old entry. The roadmap
+keeps the current state and links here.
+
+**Today:** one save folder per region (`sdmc:/switch/dw3/<ver>/memcard/`,
+`boot_main.c` ~531; PC `runtime/<ver>/memcard/`) and `port_options.cfg` per
+region; the Switch host has no account or applet-type code.
+**Design.** libnx `accountInitialize(AccountServiceType_Application)`; the user
+is `accountGetPreselectedUser` (title-override mode, expected), else the only
+user, else the **Switch profile selector** (`pselShowUserSelector`; applet mode
+has no preselected user, and whether the selector launches there is checked on
+the OLED), else the `shared` profile. **Cancel:** if the player cancels the
+selector the game does not start; it exits cleanly back to the launching menu,
+with nothing created or written (owner decision 2026-10-24, "Se o jogador
+cancelar a escolha, O jogo não deve ser iniciado";
+[PER_USER_SAVES.md](PER_USER_SAVES.md#owner-decision-cancelling-the-profile-selector-2026-10-24)). Saves go to
+`sdmc:/switch/dw3/saves/<uid>/card0.dw3s, card1.dw3s` (uid = 32 hex digits;
+soft binding, not security). PC: profile `default`
+(`runtime/saves/default/`, `DW3_SAVE_PROFILE` to change). Legacy saves are
+**copied** to the user who accepts a prompt at first launch (second users can
+import later; originals untouched). **Options stay global** (recommended): one
+`port_options.cfg` next to the region folders, with the new keys
+`region_default`, `last_region`, `last_user`, `user_default`; migrated by copying.
+Replays and `DW3_MEMCARD_DIR` skip the profile logic.

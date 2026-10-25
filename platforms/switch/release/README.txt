@@ -1,100 +1,85 @@
 Digimon World 3 / 2003, Switch homebrew preview
 
-Release notes for v0.6.5-preview.30. The release tag and boot version
+Release notes for v0.6.5-preview.31. The release tag and boot version
 identify the actual source revision.
 
 New in this preview
 
-  Where a note says "OLED", the owner played a candidate build of this
-  preview (rc4 to rc8) on a Switch OLED. Everything else is checked on
-  PC and in the Ryubing emulator only, and is marked unverified.
+  No item below has been checked on a Switch OLED yet. Each is checked on
+  PC and in the Ryubing emulator only, and is marked unverified. Several
+  answer the owner's rc1 OLED notes; those are named.
 
-  Music loops again (#209). On the rc7 candidate the background
-  music played once and then stopped, in the field, the inn and battle
-  (not checked on preview.29). The sequence loop count is read again.
-  OLED (US, rc8): the music loops.
+  Field rasterizer 4 to 5 times faster (P6.22, #220). The software
+  rasterizer that draws the field is much faster, and its output is
+  pixel-identical (0 differing frames over 154605 replay frames). Turbo
+  should be much faster in the field. The estimate for the OLED is about
+  160 to 240 fps at 4x in the New Game opening, from the PC numbers; it is
+  not a measurement. Unverified on hardware: check the nxlink HUD fps in
+  the Forest Inn, top and bottom.
 
-  Win jingle and missing sounds (#215). The victory jingle on the
-  post-battle results screen never played on any build: the sequence
-  table rows were spaced wrong for 64-bit entries, so tracks 16 to 31 of
-  the system bank hit a misaligned entry. They now play. That also
-  brings the menu sounds (tracks 25, 26, 28) and the battle text blips
-  (22, 23), which were silent too, and the jingle follows Music volume.
-  Unverified on hardware: whether the jingle, blips and menu sounds are
-  audible and at a good level. If the battle blips sound too loud,
-  please report it. This is most likely the "silent after a won battle"
-  seen on rc8.
+  Widescreen reaches more screens (#218, #219, #224). The field menu
+  dissolve into and out of the menu covers the whole 16:9 picture (#218).
+  The menu panels sit at the picture edges on Items, Sort, Techniques,
+  Status and Card folders (#219). The title menu fills the screen, the TV
+  caption bar of the intro spans edge to edge, and the Digimon Online
+  registration screen fills 16:9 (#224). This answers the rc1 note that
+  the main menu did not fill the screen. Unverified on hardware.
 
-  Widescreen reaches more screens. The area name banner (#205) and the
-  technique backdrops (#202) now fill the 16:9 picture. OLED (US, rc8):
-  both extend correctly. The post-battle results screen (#213) was 4:3
-  with black side bars and now draws with the widescreen gutter. That
-  one is unverified on hardware.
+  The field map, the battle results header and the save and load memory
+  card screens are 16:9 (#240). The map is centred with black strips at
+  the sides. The stray disc or card no longer shows in the right corner
+  before the save or load animation, and the slots slide in from the 16:9
+  edge. Unverified on hardware.
 
-  EU title credits (#210). The EU title shows the game's own native
-  three-line credits in every language bank. OLED (rc8): the three lines
-  appear as expected.
+  Post-battle text and turbo (#223). The battle results screen runs at
+  turbo speed with R3 on, as the battle does. Before, it dropped to 1x
+  for the whole report. The win jingle plays at that speed too. With Text
+  speed Instant, the area name banner after a battle, and at a door, shows
+  its two names whole instead of typing them letter by letter. This answers
+  the rc1 note that post-battle text still crawled with turbo and Instant
+  on. Unverified on hardware.
 
-  Battle cursor (#206). A new row on the Options screen (now eight rows):
-  OFF, Command, or Command+Tech. With Command+Tech the battle menu opens
-  on the last command and the technique list on the technique that
-  partner used last. Off by default. OLED (US, rc7): works, and the
-  eight rows fit.
-
-  Items screen crash fix (#201). Opening Items in the field menu crashed
-  the game on US and EU (preview.29 too) the first time a bag held an
-  item. OLED (rc7): Items opens and works.
-
-  Instant text and the area banner (#203, #196, #200). Port options gain
-  Text speed (Normal, Fast, Instant) and Encounter rate (OFF, 0.5x, 1x,
-  1.5x, 2x); both default to the original game. The 103-frame "slow
-  pages" seen with Instant were the area name banner, not text, and are
-  no longer logged as text. OLED: Instant text works (US, rc7); Encounter
-  rate changes were exercised in rc4 and rc6 (EU). Fast is not checked on
+  Partner portrait in gpu-tex (#229). In the battle, the partner portrait
+  is no longer see-through where it is dark. Before, the stage showed
+  through dark parts such as Kotemon's kendo mask grid. Unverified on
   hardware.
 
-  Music volume and SFX volume (#194). Two Port options rows, 0 to 10,
-  10 is the original mix. Movie audio follows Music volume. The Options
-  screen plays the game's own cursor and choice sounds (#200; this part
-  is unverified on hardware). OLED (EU rc6, US rc7): the volume rows work.
+  File cache crash fixed (#235). Long sessions crashed when the file cache
+  ran out of its 64 slots (about 2 hours and several battles on the
+  owner's log). The cache now evicts the least recently used file, as the
+  PS1 heap does. Found in the rc1 OLED log, EU nxlink build, in the battle
+  report. The crash came in the second battle, and both US and EU builds
+  were affected. Unverified on hardware.
 
-  Port options are saved (#191). Widescreen, Fast-forward, Restart hotkey
-  and the new rows are written to port_options.cfg in the region folder
-  (sdmc:/switch/dw3/us or eu) on every change. OLED (EU, rc4): the file
-  is created and rewritten on every change. Restoring the values after
-  a relaunch from hbmenu is not yet confirmed on hardware.
+  Crash reports (P5.4, #217, #231). Software aborts, asserts, fatal errors
+  and exit codes now reach crash_report.txt and dw3.log. When the previous
+  run crashed, the next boot shows "The last run crashed." It stays up to
+  60 s with a countdown. A, B or + dismisses it after the first second, and
+  HOME ends it at once. The notice is not shown at the moment of the crash.
+  Unverified on hardware.
 
-  Crash reports (#204). crash_report.txt now has the module base,
-  a backtrace, the build id, and the last log lines, and dw3.log ends
-  with a CRASH line. tools/symbolize_crash.py in the source turns a
-  report into file:line when you have the matching .elf. OLED (US and
-  EU, test build with a deliberate fault): a full report was written and
-  resolved. The .elf files are not part of this release.
+  Crash symbols (#216). Releases now include dw3-switch-elf.zip, with the
+  unstripped US ELFs (dw3-switch-us.elf and dw3-switch-us-nxlink.elf) and
+  BUILD_IDS.txt. Use it with tools/symbolize_crash.py on a crash report
+  from the matching NRO. The build ids must match.
 
-  Battle fixes (#197, #198). Picking or Snapping Claw works on an enemy
-  the same hit knocks out ("Stole X!" comes before "Defeated!"), and the
-  battle HUD shows the Digimon the partner is fighting as after a
-  Digivolution. Both unverified on hardware.
-
-  Audio fix (#188). A technique sound effect no longer silences all audio
-  until the next map change (voices that end without a loop are freed).
-  Unverified in the game on hardware.
-
-  Under the hood: NULL-read guards for actor marks and the camera (#192),
-  loud failure when an overlay cannot be restored (#195), and the
-  nxlink HUD fps and the 60-pump log windows count one frame per VSync
-  again (#190; preview.29 showed double the real rate). Gameplay was
-  not affected by the counter.
+  Cheats screen in Options (P6.20, #236). Square (Y on Switch) opens it
+  from the Options screen once the master switch is on. Entries: fill
+  bag, instant win and battle now. Cheats are off by default. A save made
+  with cheats gets a save<N>.cheats marker file. The build option
+  DW3_CHEATS is on by default; tools/build_switch_game.sh --no-cheats
+  builds without the screen. Unverified on hardware.
 
 Known issues
 
   If the map stays silent after a battle (no field music once you are
   back), please send a --nxlink log. This was reported on rc8 (US) but
   could not be reproduced on PC or in Ryubing, so its cause is unknown.
+  The win jingle and SEP fix (#215) are in this release. The underrun
+  count is still open.
 
-  The Items menu is still 4:3: the transition into it and the menu
-  itself, while the background is 16:9. The area-change transition
-  (iris) is also 4:3 and was not checked on hardware.
+  The Map screen is 16:9 with black side strips (#240). The area-change
+  transition (iris) is also 4:3 and was not checked on hardware.
 
   Sleep and resume work and play time counts only play time, but the
   "applet focus" lines do not appear in dw3.log (OLED, rc7). Rumble is
@@ -120,21 +105,27 @@ Carried forward
   This chord can also toggle the nxlink debug HUD, whose own chord is
   Minus + L + R. See docs/HOTKEYS.md for all mapped controls.
 
-  From preview.29: faster Port options, crash-report rotation, rumble
-  (unverified), HOME/sleep save flush. From preview.28: EU language
-  selection at cold boot and after restart, battle camera/portrait
-  fixes, Options on its own game-style screen.
+  From preview.30: music loops (#209), the win jingle and the menu and
+  battle sounds (#215), widescreen area banner and technique backdrops,
+  EU title credits (#210), Battle cursor row (#206), Items screen crash
+  fix (#201), Text speed and Encounter rate (#203), Music and SFX volume
+  (#194), Port options saved to port_options.cfg (#191), crash-report
+  backtrace (#204). From preview.29: faster Port options, crash-report
+  rotation, rumble (unverified), HOME/sleep save flush. From preview.28:
+  EU language selection at cold boot and after restart, battle
+  camera/portrait fixes, Options on its own game-style screen.
 
 Bundle
 
   dw3-switch.nro              US ordinary build
   dw3-switch-nxlink.nro       US nxlink logging build
-  dw3-switch-eu.nro           EU ordinary build
+  dw3-switch-eu.nro           EU ordinary build (attached by hand)
+  dw3-switch-elf.zip          US unstripped ELFs and BUILD_IDS.txt
   README.txt                  these notes
 
-  This preview publishes the US pair from the release workflow, plus the
-  EU ordinary build attached to the release by hand. The EU nxlink build
-  is not published in this preview.
+  The US pair and dw3-switch-elf.zip come from the release workflow. The
+  EU ordinary build is attached by hand to the release, as in earlier
+  previews. The EU nxlink build is not published in this preview.
   No original game files, BIN/CUE/ISO, BIOS or extracted tree ship here.
 
 Own-disc setup and extraction
@@ -182,21 +173,41 @@ Install / nxlink
 
 OLED checklist
 
-  - Music: it loops in the field, the inn and battle; win a battle: the
-    win jingle should play on the results screen and the field music
-    should be back on the map (if not, send an nxlink log). The results
-    screen should have no black side bars. Menu sounds and the battle
-    text blips are new: check their level.
+  - Post-battle: with R3 on and Text speed Instant, win a battle. The
+    results screen should run at battle speed and the win jingle should
+    play. Back on the map the field music should be back (if not, send an
+    nxlink log). The area name banner's two names should appear whole.
+    dw3.log should have no "dw3-turbo: speed 1x" between the battle and the
+    field unless you pressed R3.
+  - Field menu: open Items, Sort, Techniques, Status and Card folders. The
+    panels should reach the edges of the 16:9 picture, and the dissolve
+    should cover the full width.
+  - Title screen, the intro TV caption bar and the Digimon Online
+    registration screen should fill 16:9, with no black side bars or seam.
+    Movies and the still screen stay 4:3.
+  - Battle in gpu-tex: Kotemon's portrait, in the first Kuwagamon fight and
+    with a few other partners, should not be see-through where it is dark.
+  - Field turbo: at 4x, note the nxlink HUD fps in the Forest Inn, top and
+    bottom.
+  - Long session: play 1 to 2 hours with several battles. dw3.log may show
+    "dw3-file-cache: all 64 slots taken" lines; there should be no crash.
+  - Crash notice: force a crash (docs/P5.4_CRASH.md, OLED checklist), boot
+    again and read the panel. Press A once it is read. Leave it alone once
+    to see the 60 s timeout. Press HOME during it once.
+  - Music: it loops in the field, the inn and battle. Menu sounds and the
+    battle text blips are new: check their level.
   - Options (eight rows): change every row, close, quit the NRO, start it
     again from hbmenu: the values must come back (port_options.cfg).
   - Techniques in battle: the backdrop fills 16:9 and, after a tech,
     sound effects and music keep playing. Steal with Claw on a last hit.
   - Save, press HOME, come back; save, sleep, wake. The save must
     survive closing and relaunching the NRO.
-  - EU: the title credits in each language.
+  - EU: the title credits in each language, and the title, caption bar and
+    registration screen at 16:9.
   - Rumble in field and battle (Joy-Con handheld, Pro Controller).
   - After any crash, keep crash_report.txt and dw3.log before
-    relaunching; the next boot keeps one previous report.
+    relaunching; the next boot keeps one previous report. Symbolize it
+    with the matching ELF from dw3-switch-elf.zip.
 
 This is a prerelease, not a finished port. Use the CMake game image,
 not the small Makefile host_hello sample built by CI job switch.

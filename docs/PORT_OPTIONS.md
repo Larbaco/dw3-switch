@@ -855,3 +855,128 @@ Switch. It must not promise a direct return to the title: the EU build
 re-enters its language-selection boot flow, while US returns through its
 ordinary title flow. This is a wording correction, not a hotkey behavior
 change.
+
+## History moved from ROADMAP.md (2026-10-24)
+
+Moved from the ROADMAP.md entries on 2026-10-24, word for word (two leading
+spaces removed). "Above" and "below" refer to the old entry. The roadmap
+keeps the current state and links here.
+
+### P9.4 history
+
+**Status (2026-10-22): implemented, PC and Ryubing validated on both
+discs; waiting for the OLED check.** `port_options.cfg` (key=value,
+`version=1`) in each region runtime root (`runtime/<ver>/`,
+`sdmc:/switch/dw3/<ver>/`), loaded in `init_paths` before any flag is
+read, saved on every change on the Options screen, FAT-safe atomic write.
+Format, rules and rationale: [PORT_OPTIONS.md](PORT_OPTIONS.md#persistence).
+Evidence: unit tests `tools/tests/test_options_persist.py`; two-phase
+replay scenarios `us/eu-options-persist` on the PC build (identical
+captures on two runs) and in Ryubing (Widescreen OFF, Fast-forward 3x,
+Restart hotkey ON written by one process, read back by the next; the file
+on the emulated SD has the same content).
+Ready to close? needs OLED: toggle, HOME->close, relaunch from hbmenu.
+Blocks: P6.12, P7.6–P7.10 and a persisted P6.9 restart
+setting (see [Backlog](ROADMAP.md#backlog--future-goals)); P6.17 (volume) and P6.18
+(pacing) are rows added on top of it (`music_volume`, `sfx_volume`,
+`encounter_rate`, `text_speed`).
+**Partial OLED evidence (2026-10-22, EU, preview.30-rc4, owner):** with no
+`port_options.cfg` on the SD card the first change created it and every
+later change saved it (56 `dw3-options: saved` lines, no failure logged).
+Not covered: relaunch from hbmenu and reading the values back, and US.
+Evidence: `tmp/evidence/2026-10-22-preview30-rc4-oled/dw3.log`. Stays open.
+
+### P6.20 history
+
+**What exists (cited, to be reused, not rebuilt):**
+- *The Options screen* ([PORT_OPTIONS.md](PORT_OPTIONS.md)): registry in
+  `port/options/port_options.c` (`DW3_PORT_OPT_COUNT` = 8, the Battle cursor
+  row of P7.9 is the latest), keys in `port_options.cfg`, saved on every
+  change, atomic write, unknown keys kept (so an older build does not erase a
+  newer build's cheat keys). The eight rows fill the window: 38 px rows on a
+  42 px pitch, the last ends at y 482, 26 px above the message rule at y 508
+  ([PORT_OPTIONS.md](PORT_OPTIONS.md#options-screen-2026-10-14), "Eight
+  rows"), so a ninth row does not fit without changing the layout. Labels are
+  pre-rendered lettering (`tools/generate_pc_title_lettering.py`).
+- *Dev hooks, today environment variables read by `PORT_HOST` patches*,
+  PC only and silent when unset: `DW3_START_MODE` / `DW3_PROGRESS` (boot into
+  a field or menu mode, patches `0020`, `0023`), `DW3_FORCE_ENCOUNTER` /
+  `DW3_FORCE_PARTY` (a forced battle, `0024`, `0040`), `DW3_FORCE_WIN` (jump
+  to the report, `0025`), `DW3_FORCE_ITEMS` (fills the bag with an item id
+  range, `0070`), `DW3_FORCE_MENU` / `DW3_FORCE_STAGE` (`0026`, `0030`), and
+  the P7.7 / P7.9 set (`DW3_FORCE_ENEMY_HP`, `FORM`, `TECH`, `HIT`, `STEAL`,
+  `EXTRA_TECHS`; `0064`, `0067`). The Switch NRO has no environment; only a
+  build-time `DW3_NX_TEST_ENV` bakes some in
+  (`platforms/switch/source/boot_main.c`). A cheat menu is therefore the first
+  way to set them at runtime on an ordinary NRO: the hooks would read the
+  port's flag store instead of `getenv`.
+- *Options and aids that already do a cheat's job*, no new work needed:
+  **Encounter rate OFF** is "no random encounters" (P6.18); **Text speed
+  Instant** and **Fast-forward** (P6.4) are the time savers;
+  `DW3_FORCE_CRASH` exercises the crash path
+  ([P5.4_CRASH.md](P5.4_CRASH.md)); the nxlink HUD
+  ([DEBUG_OVERLAY.md](DEBUG_OVERLAY.md)) shows the mode and the fps; the P6.15
+  replay scenarios ([P6.15_REPLAY_TESTS.md](P6.15_REPLAY_TESTS.md)) drive the
+  hooks on PC.
+**Candidate cheats** (cheap = a port flag or an existing hook; decomp =
+needs the field layout of `GameState` / party / battle structs from
+`vendor/dw3_decomp`, to be located first): give items (cheap, hook `0070`
+becomes a runtime action); instant battle win (cheap, hook `0025`); start a
+chosen battle (cheap, `0024` / `0040`); max money / bits (decomp, one field
+once found); infinite HP / MP and max stats (decomp, party and battle
+structs, re-applied every frame); unlock digivolutions (decomp, the
+requirement flags per form); walk speed (decomp, a field movement constant;
+it changes the walk length of the replays, so only when on); warp to map
+(decomp and the hardest: the hooks above act only at boot, an in-game warp
+must change mode safely, see P3.8 `DW3_FORCE_STAGE`; it would also help P5.5).
+**First slice:** (1) a Cheats sub-screen entered from the Options screen
+(layout decision first: a scrolling list, a second page or a ninth row), with
+the master switch off; (2) a runtime flag store in `port/options/` with its
+`cheat_*` keys; (3) three cheap entries wired to the existing hooks (give
+items, instant win, start a battle); (4) a log line per use. The decomp
+cheats follow one at a time after the field is located.
+**Constraints:** off by default, and a build or a config with every cheat
+off is bit-identical to today (the P6.15 replays must still match, plus one
+log-only replay per cheat). Decomp changes only as numbered `PORT_HOST`
+patches with a row in [PATCHES.md](PATCHES.md) (the next free number); the
+`getenv` hooks keep working for the replays. Persistence: **the options file,
+not the save.** The flat PS1 save image has no spare room (found in P7.9) and
+a cheat toggle must not edit P5.3 saves; `cheat_*` keys in
+`port_options.cfg` fit the current design, per region like every key. Toggles
+(infinite HP, walk speed) persist; one-shot actions (give items, max money)
+do not and run from the menu. A one-shot still changes the live game and the
+game's own save would then store it: say so on the screen and log it. No
+cheat may write a save file by itself.
+**PR 1 as built (2026-10-24):**
+- *Entry:* on the Options screen, **Square** (PC **Z**, Switch **Y**) opens the
+  Cheats screen and Triangle goes back. The hint "Square/Y Cheats" is drawn
+  **only while the master switch is on**: any always-visible entry (a ninth
+  row, paging, a hint) would change the Options screen's pixels and the
+  existing `*-options-persist`, `*-volume-persist` and
+  `*-battle-cursor-persist` references would fail; they are not refreshed.
+  With the master off the Options screen is pixel-identical and the eight
+  rows and the dirty-rectangle cache are untouched.
+- *Cheats screen:* five rows in the Options window: Cheats (master, persisted
+  as `cheat_enabled`), Fill bag (one-shot), Instant win (persisted as
+  `cheat_instant_win`), Battle now (one-shot) and Cheat saves (read-only
+  count). Rows 2-4 are greyed and inert while the master is off; turning the
+  master off disarms the one-shots.
+- *Cheats:* **Fill bag** puts 99 of every usable item, weapon, armour and
+  accessory (ids 43..359) in the bag through patch `0070`'s hook; **Instant
+  win** ends each battle as won on its first turn; **Battle now** makes the
+  next footstep in a random-battle area start a battle, even at Encounter
+  rate OFF. The `DW3_FORCE_*` variables keep working and win over the screen.
+- *Save flag:* a sidecar `save<N>.cheats` next to the memory card file, never
+  a byte in the save
+  ([PORT_OPTIONS.md](PORT_OPTIONS.md#the-cheat-used-flag-on-saves)). Shown as
+  the count on the Cheats screen and in the boot log; the in-game memory card
+  screen does not show it yet (follow-up).
+- *Code:* `port/options/cheats.c`, `cheat_saves.c`, `port/include/port_cheats.h`,
+  patch `0077-PORT_HOST-p620-cheats-hooks.patch` (every line in
+  `#ifdef DW3_CHEATS`), the Square/Z/Y hook in `port_options.c`, the lettering
+  (`CHEAT_TEXT` in `tools/generate_pc_title_lettering.py`).
+- *Tests:* `tools/tests/test_cheats.py`, the cache test now covers the Cheats
+  page and the hint, seven log-only replay pairs (`<v>-cheats-screen`,
+  `cheat-fill-bag[-off]`, `cheat-battle-now[-off]`, `cheat-instant-win[-off]`),
+  the full replay suite on the cheats-ON build against unchanged references,
+  and a section and symbol comparison of the cheats-OFF build with `main`.

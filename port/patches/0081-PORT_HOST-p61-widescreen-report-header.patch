@@ -1,0 +1,49 @@
+Upstream-bound: no
+Subject: [PORT_HOST] P6.1 battle report header at the 16:9 left edge
+
+The battle report's header bar (the exp of the partner being shown) hangs
+from the screen's left edge and opens by scaling from it. Since patch 0074
+the report is 16:9, so in widescreen its cut end sat one gutter inside the
+picture. With widescreen on it is drawn one gutter further left, with its
+exp text and its scale pivot, so it starts at the picture's edge, like the
+field menu's left column (patch 0076). The panels and the message box,
+which do not touch an edge, keep their places. Off, nothing changes.
+
+--- a/src/battle/report/report.c
++++ b/src/battle/report/report.c
+@@ -12,8 +12,14 @@
+ void STFGTREP_createWindows(FightReport *report, FightReportChildren *children) {
+     TextWindow *window;
+ 
++#if PORT_HOST
++    /* Widescreen: the header hangs from the picture's left edge (patch 0081) */
++    children->exp = createTextWindow(report->layer, 3, 0x42 - dw3_port_widescreen_px(), 0x17);
++    children->expLabel = createTextWindow(report->layer, 3, 0x45 - dw3_port_widescreen_px(), 0x17);
++#else
+     children->exp = createTextWindow(report->layer, 3, 0x42, 0x17);
+     children->expLabel = createTextWindow(report->layer, 3, 0x45, 0x17);
++#endif
+     window = createTextWindow(report->layer, 1, 0x14, 0xC2);
+     children->message = window;
+     window->setLines(window, 2);
+@@ -59,9 +65,20 @@
+     if (report->header.level != 0) {
+         if (report->header.level != 0x1000) {
+             sprite.setScale(report->header.level, 0x1000, 0x1000);
++#if PORT_HOST
++            /* Widescreen: the header opens from the picture's left edge */
++            sprite.setPivot(-dw3_port_widescreen_px(), 0x18);
++#else
+             sprite.setPivot(0, 0x18);
++#endif
+         }
++#if PORT_HOST
++        /* Widescreen: the header (the exp of the partner shown) hangs from the
++           left edge of the screen; at 16:9 it starts at the picture's edge */
++        sprite.draw(FILE_CACHE.getEntry((FILE_FGTREP_SPRITES - 1) << 16), 0x21, -dw3_port_widescreen_px(), 0xF);
++#else
+         sprite.draw(FILE_CACHE.getEntry((FILE_FGTREP_SPRITES - 1) << 16), 0x21, 0, 0xF);
++#endif
+     }
+     if (report->footer.level != 0) {
+         sprite.setScale(0x1000, report->footer.level, 0x1000);
