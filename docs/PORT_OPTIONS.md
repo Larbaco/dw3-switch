@@ -50,7 +50,7 @@ explicitly marked N/A in this note.
 | Pacing | **Encounter rate** (OFF / 0.5x / 1x / 1.5x / 2x) and **Text speed** (Normal / Fast / Instant), both default to the original game ([P6.18](P6.18_PACING.md)). Instant shows every dialogue page, report line and (since 2026-10-24) the area name banner's names whole; Normal and Fast leave the banner as the game types it | Phase 6 |
 | Battle menu memory | **Battle cursor** (OFF / Command / Command+Tech): the battle command menu and technique list open on your last pick; key `battle_menu_memory` 0 / 1 / 2, off by default (a row since P7.9's follow-up, it was file-only) ([P7.9](P7.9_BATTLE_MENU_MEMORY.md)) | Phase 7 |
 | Button layout / glyphs | **Button layout** (PlayStation positional, default / Nintendo A confirms, B cancels), ROADMAP P9.8; **Switch button glyphs** on/off, ROADMAP P10.6. Both future goals (2026-10-23); the glyphs follow the layout | Phase 9 / Phase 10 |
-| Cheats (test aid) | A **Cheats** sub-screen for hardware testing, reached with Square / Y on the Options screen: master switch, Fill bag, Instant win, Battle now and a count of saves flagged "cheat used" (a sidecar file, never the save). Off by default, keys `cheat_enabled` and `cheat_instant_win` in `port_options.cfg`; built in by default, removed by `DW3_CHEATS=OFF` / `--no-cheats`. Later money, HP / MP, warp. See [Cheats](#cheats-p620) and ROADMAP P6.20 | Phase 6 (P6.20) |
+| Cheats (test aid) | A **Cheats** sub-screen for hardware testing, reached with Square / Y on the Options screen: master switch, Fill bag, Instant win, Battle now and a count of saves flagged "cheat used" (a sidecar file, never the save). A second page (PR 2) has Money, Warp (13 areas), Item id, Item count and Give item. Off by default, keys `cheat_enabled` and `cheat_instant_win` in `port_options.cfg`; built in by default, removed by `DW3_CHEATS=OFF` / `--no-cheats`. Later HP / MP. See [Cheats](#cheats-p620) and ROADMAP P6.20 | Phase 6 (P6.20) |
 | Switch host | Rumble on/intensity, confirm A/B layout, `swkbd` name, CRT/sharp, system-language hint | Phase 10 (+ P4.4 / P5.3 always-on lifecycle) |
 | Restart game | Optional L1 + R1 + Start + Select in the shared PS1 pad map; OFF by default | Phase 6.9 |
 
@@ -679,7 +679,43 @@ is that the entry is not discoverable until someone knows the key; it is in
 | Battle now | one-shot | OFF / Ready | The next footstep in a random-battle area starts a random battle, even with Encounter rate OFF (the countdown is forced to its end); used up when the battle starts |
 | Cheat saves | read-only | None, or 1..6 | How many saves are marked "cheat used" (see below) |
 
-Everything is off by default. The toggles persist as `cheat_enabled` and
+**Page 2 (PR 2).** Down from "Cheat saves" goes on to page 2 (the title reads
+"CHEATS 1/2" / "CHEATS 2/2"; Up from its first row goes back). Its rows are
+one-shots like Fill bag and Battle now: armed here at the title, applied by the
+**field at its first idle frame** (the moment the field menu may open: no
+event, no menu, no fade), then used up and logged. The Options screen is only
+reachable from the title, and a new game or a load overwrites the game state, so
+nothing can be applied on the spot.
+
+| Row | Kind | Values | Does |
+|---|---|---|---|
+| Money | one-shot | OFF / +10,000 / +100,000 / MAX | Adds the amount to the money the player has (never above the game's maximum, 9,999,999); MAX sets 9,999,999. Cross / Circle / Left / Right step the value and wrap. Patch `0118` |
+| Warp | one-shot | OFF / 13 areas | The field leaves for that area as an exit slot does (`FIELDSTG_leaveField(mode, 0, 0, 0, 0)`): the stage's first start point, exactly what the debug stage select (`src/debug/stage_select`) gives with `requestMode(mode, 0)`. Areas, by game mode: Asuka City 0x200, Digimon Lab 0x206, Digimon Arena 0x209, Central Park 0x21D, Wire Forest 0x21E, Tyranno Valley 0x22B, Chinlong City 0x22E, Bulk Swamp 0x233, Suzaku City 0x23E, Noise Desert 0x248, Byakko City 0x25D, Snow Mountain 0x262, Genbu City 0x26F. Patch `0120` |
+| Item id | a pick | 43..359 | Left / Right +/- 1, L1 / R1 (Switch L / R) +/- 10, stops at the ends. Shown as a number: item names are text of the game's own archives, which this screen (pre-rendered lettering) does not draw. Default 43 |
+| Item count | a pick | 1..99 | The same keys. Default 10 |
+| Give item | one-shot | OFF / Ready | Adds Item count of Item id to the bag (at most 99 held). Patch `0119`. Unlike Fill bag (which sets 99 at the next field menu screen) it adds, and it does not wait for the field menu |
+
+Choices made without the owner (default chosen, owner can change): the **Item
+id range 43..359 is the same as Fill bag's**, so no key item (1..42, 360,
+395..402: they drive the story) and no card pack (361..394) can be given; the
+count is added to what the player holds; the item and warp picks are not kept
+between runs; the 13 areas are the four cities, the Digimon Lab and Arena,
+Asuka City and one random-battle area per region (Central Park, Wire Forest,
+Tyranno Valley, Bulk Swamp, Noise Desert, Snow Mountain) so that Battle now has
+somewhere to run; the area names are plain descriptive labels (translated in
+the five languages), not the game's own text. A warp is the stage select's
+entry, so a story-dependent map may look unfinished (events that need a flag),
+the same as in the debug stage select.
+
+Why money, items and warp are applied by the field and not at once: the
+game state exists only once a game is running. **Why the field is a safe
+place:** the warp leaves like an exit (the field closes through
+`FIELDSTG_closeField`, the next stage starts at its first start point), and
+the field menu records the place when it opens, so a save made after a warp is
+a normal save of that map (with the cheat mark, see below). The replay
+scenarios check the arrival and that the field menu opens there.
+
+Everything on page 1 is off by default. The toggles persist as `cheat_enabled` and
 `cheat_instant_win` in `port_options.cfg` (0 or 1; anything else is logged as
 not valid and read as 0), like the other keys. The one-shots are **not**
 persisted: they are armed for this run only. **No cheat writes a save by
@@ -692,7 +728,10 @@ The `DW3_FORCE_*` variables of the PC replay hooks keep working and win over
 the screen (`DW3_FORCE_ITEMS`, `DW3_FORCE_WIN`, `DW3_FORCE_ENCOUNTER`), and
 those hooks never mark a save: they are development aids of the replays, not
 cheats of a player. The PC-only variable `DW3_CHEATS_ARM=fill_bag,battle_now`
-arms the one-shots at boot for the replay tests (they still need the master on).
+arms the one-shots at boot for the replay tests (they still need the master on);
+PR 2 adds `money_10k` | `money_100k` | `money_max`, `warp=<game mode>` (for
+example `warp=0x206`) and `item=<id>:<count>` (for example `item=47:7`; ids
+outside 43..359 and counts outside 1..99 are ignored).
 
 ### The "cheat used" flag on saves
 
@@ -707,7 +746,8 @@ end=1
 ```
 
 - *Marking.* The game in progress is marked when a cheat changes it: Fill bag
-  applied, Instant win applied, or a Battle now battle started. When the memory
+  applied, Instant win applied, a Battle now battle started, or (PR 2) Money,
+  Give item or Warp applied. When the memory
   card screen then writes a slot, the slot's entry records the offset and size of
   the bytes written and their FNV-1a hash (patch `0077` calls
   `dw3_cheats_save_written` at the single place that writes a save). Writing a
@@ -785,13 +825,17 @@ language the Options screen uses (`options_lang`, from the EU language capture i
 reuse the Options words. To change a word or add a language:
 
 1. Edit the `CHEAT_TEXT` table in `tools/generate_pc_title_lettering.py`
-   (`en`, `fr`, `de`, `es`, `it`: title, hint, Change, Back, Ready, None, the five
-   row labels and the five message lines).
+   (`en`, `fr`, `de`, `es`, `it`: title and title2 ("... 1/2" and "... 2/2"), hint,
+   Change, Back, Ready, None, the five row labels and message lines of page 1 and
+   `rows2` / `desc2` of page 2, and the 13 names of `warp`, in the order of
+   `g_warp_modes` in `port/options/cheats.c`; the money values and the digits of
+   the two numbers are language-independent entries of `CHEAT_LETTERS`).
 2. `python3 tools/generate_pc_title_lettering.py` (needs Pillow and the DejaVu
    fonts in `/usr/share/fonts/truetype/dejavu`). It rewrites
    `platforms/pc/src/title_overlay_lettering.inc`; the entries before P6.20 stay
    byte-identical, and the cheat ones sit in one `#ifdef DW3_CHEATS` block at the
-   end (the file grew from 403 KB to 1.27 MB; OFF builds do not compile them).
+   end (the file grew from 403 KB to 1.27 MB, and with page 2 to 2.5 MB; OFF
+   builds do not compile them).
 3. Check the widths: a message line must fit 696 px and a row label 360 px (the
    generator writes `title_opt_cht_*_width`). The German and Spanish Fill bag
    messages were shortened to fit.
@@ -805,7 +849,12 @@ reuse the Options words. To change a word or add a language:
 (sidecar), `port/options/cheats_internal.h`, API `port/include/port_cheats.h`;
 the page is drawn by `cheats_screen()` in `platforms/pc/src/title_overlay_art.c`.
 The store starts lazily on the first call (`dw3_cheats_init(memcard_host_dir())`),
-so the hosts needed no change.
+so the hosts needed no change. PR 2: the rows, the three `dw3_cheats_take_*`
+hooks and the warp table (`g_warp_modes`) are in `cheats.c`; patches `0118`
+(money), `0119` (give item) and `0120` (warp) call the hooks from
+`openFieldMenu` in `field_mode/field.c`; page 2 is drawn by the same
+`cheats_screen()` (page `DW3_TITLE_OPTIONS_PAGE_CHEATS2`, digits drawn by
+`number()` from fixed-advance glyphs).
 
 ### Tests
 
@@ -814,12 +863,19 @@ so the hosts needed no change.
   answers the items hook once, the variable wins, Instant win once per battle,
   Battle now until a battle starts, the arm variable needs the master) and the
   save marks (mark, clear, replaced slot not counted, unwritable directory).
+- `python3 -m pytest tools/tests/test_cheats_page2.py` (PR 2): page 2 rows inert
+  while the master is off, the money modes and the clamp, the warp cycle and its
+  area table, the item pick (steps, ten at a time, the 43..359 and 1..99 ends),
+  Give item used up, the master off disarming page 2, the arm variable.
 - `tools/tests/test_options_cache.py`, now run with and without cheats: the Cheats
-  page and the late hint, and that the Options pages are unchanged.
+  page (both pages) and the late hint, and that the Options pages are unchanged.
 - Replays (log-only unless noted, see [P6.15_REPLAY_TESTS.md](P6.15_REPLAY_TESTS.md)):
   `cheats-screen`, `cheat-fill-bag[-off]`, `cheat-battle-now[-off]`,
   `cheat-instant-win[-off]`, US and EU; every `-off` twin proves nothing happens
-  with the master off.
+  with the master off. PR 2: `cheats-screen2`, `cheat-money[-off]`,
+  `cheat-warp[-off]`, `cheat-item[-off]` (the state change in the log: the
+  money before and after, the arrival mode and the field menu opening there,
+  the bag count before and after).
 - Switch: compiled for US and EU, normal, `--nxlink` and `--no-cheats`.
 
 ### OLED checklist (owner)
@@ -840,6 +896,31 @@ so the hosts needed no change.
    shows 1, `dw3.log` has `dw3-cheats: save... was written with cheats`; save a
    clean game over that slot, relaunch: None.
 8. `--no-cheats` build: Y does nothing, no `dw3-cheats` lines in `dw3.log`.
+
+### OLED checklist, page 2 (owner)
+
+PR 2. Build with the default (cheats included), master switch ON on page 1.
+
+1. Cheats screen: Down from "Cheat saves" goes to page 2 ("CHEATS 2/2" in the
+   title, labels in the game's language, all five in EU); Up from Money goes
+   back. With the master OFF the page-2 rows are greyed and do nothing.
+2. **Money:** arm +10,000 (Cross twice steps +10,000, +100,000; Left / Right
+   too), go to the title's New Game or Continue and into a field: the money in
+   the field menu (Start) shows the amount added. MAX: 9,999,999. The row is
+   OFF again the next time you open the screen.
+3. **Warp:** pick "Digimon Lab" (Cross steps through the areas), start or load a
+   game: on the first idle moment in the field (not during an event) the screen
+   fades and the player arrives in the Digimon Lab. Open the field menu there
+   (Start), save at a memory card screen, reload: the player is in the
+   Digimon Lab. Try Central Park or the Bulk Swamp too and walk: random battles
+   work.
+4. **Give item:** pick an id (Left / Right, L / R by ten) and a count, set Give
+   item to Ready, load a game: in the field menu, Items (or Weapons, Armor,
+   Accessories for equipment) lists it with the count; the item is not a key
+   item. A second arm adds again, up to 99.
+5. Each of the three sets the cheat mark: save, relaunch, "Cheat saves" shows
+   the slot and `dw3.log` has a `dw3-cheats: ... changed the game` line.
+6. `--no-cheats`: no Cheats screen, no `dw3-cheats` lines.
 
 ## Title-screen visual reference
 
@@ -983,3 +1064,17 @@ cheat may write a save file by itself.
   `cheat-fill-bag[-off]`, `cheat-battle-now[-off]`, `cheat-instant-win[-off]`),
   the full replay suite on the cheats-ON build against unchanged references,
   and a section and symbol comparison of the cheats-OFF build with `main`.
+**PR 2 as built (2026-10-25, patches `0118` to `0120`):**
+- *Layout:* the Cheats screen got a second page instead of a ninth row on the
+  Options screen (the eight Options rows are untouched; page 1 keeps its five
+  rows). Down from the last row of page 1 continues on page 2, the title reads
+  "1/2" and "2/2". Reason: five more rows do not fit the window with page 1's.
+- *Cheats:* Money (+10,000, +100,000, MAX), Warp (13 areas of the debug stage
+  select), Item id, Item count, Give item. All applied by the field at its first
+  idle frame, used up and logged; Give item needs no decomp patch beyond the
+  same hook place because it adds to `GAME.items` itself (patch `0119`).
+- *Not done:* infinite HP / MP, max stats, digivolution unlocks, walk speed
+  (their decomp fields are not located); item names on the picker (needs the
+  game's text archive in the overlay); P9.7 (Options in game).
+- *Defaults chosen without the owner (the owner can change them):* see
+  [Cheats, page 2](#cheats-p620) and ROADMAP P6.20.

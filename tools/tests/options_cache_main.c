@@ -194,6 +194,25 @@ int main(void) {
                         if (d.full) fail("unexpected full upload (cheats)", lang, c, cv);
                     }
         }
+        /* PR 2: the second page (Money, Warp, item id, count, Give item):
+         * the same checks with its own value ranges. */
+        for (int master = 0; master < 2; ++master) {
+            static const int top[DW3_TITLE_CHEAT_ROWS] = {3, 13, 359, 99, 1};
+            static const int low[DW3_TITLE_CHEAT_ROWS] = {0, 0, 43, 1, 0};
+            int cv[DW3_TITLE_OPTION_ROWS] = {0, 0, 43, 10, 0, 0, 0, 0};
+            dw3_pc_title_overlay_set_options_page(DW3_TITLE_OPTIONS_PAGE_CHEATS2, master);
+            step(lang, 0, cv, 1, &d);
+            if (!d.full || !d.rebuilt) fail("cheats page 2 did not rebuild", lang, 0, cv);
+            for (int c = 0; c < (lang == DW3_TITLE_LANG_EN || lang == DW3_TITLE_LANG_FR
+                                 ? DW3_TITLE_CHEAT_ROWS : 1); ++c)
+                for (int row = 0; row < DW3_TITLE_CHEAT_ROWS; ++row)
+                    for (int n = low[row]; n <= top[row]; n += row == 2 ? 29 : row == 3 ? 7 : 1) {
+                        cv[row] = n;
+                        step(lang, c, cv, 1, &d);
+                        steps++;
+                        if (d.full) fail("unexpected full upload (cheats 2)", lang, c, cv);
+                    }
+        }
         dw3_pc_title_overlay_set_options_page(DW3_TITLE_OPTIONS_PAGE_OPTIONS, 0);
         step(lang, 0, v, 1, &d);
         if (!d.rebuilt) fail("back to Options did not rebuild", lang, 0, v);

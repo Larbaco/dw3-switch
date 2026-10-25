@@ -26,8 +26,29 @@ enum {
     DW3_CHEAT_ROW_INSTANT_WIN = 2,/* OFF / ON (cheat_instant_win) */
     DW3_CHEAT_ROW_BATTLE_NOW = 3, /* OFF / Ready: one-shot */
     DW3_CHEAT_ROW_SAVES = 4,      /* read-only: marked saves, None or 1..6 */
-    DW3_CHEAT_ROWS = 5
+    /* Page 2 (PR 2): the same screen, the next five rows. */
+    DW3_CHEAT_ROW_MONEY = 5,      /* OFF / +10000 / +100000 / MAX: one-shot */
+    DW3_CHEAT_ROW_WARP = 6,       /* OFF / an area: one-shot */
+    DW3_CHEAT_ROW_ITEM_ID = 7,    /* the item id to give (a selection) */
+    DW3_CHEAT_ROW_ITEM_COUNT = 8, /* how many (a selection) */
+    DW3_CHEAT_ROW_GIVE_ITEM = 9,  /* OFF / Ready: one-shot */
+    DW3_CHEAT_ROWS = 10,
+    DW3_CHEAT_PAGE_ROWS = 5       /* rows on each page of the screen */
 };
+
+/* Money: the amounts of the row, indexed by its value (0 is OFF). The
+ * amounts are added to the money the player has; MAX sets the game's
+ * maximum. */
+enum { DW3_CHEAT_MONEY_OFF = 0, DW3_CHEAT_MONEY_10K = 1,
+       DW3_CHEAT_MONEY_100K = 2, DW3_CHEAT_MONEY_MAX = 3,
+       DW3_CHEAT_MONEY_MODES = 4 };
+
+/* Give item: the ids the picker offers (the same set as Fill bag: usable
+ * items, weapons, armour and accessories, no key item and no card pack) and
+ * the counts. The default is the first id and 10. */
+#define DW3_CHEAT_ITEM_FIRST DW3_CHEAT_FILL_FIRST
+#define DW3_CHEAT_ITEM_LAST DW3_CHEAT_FILL_LAST
+#define DW3_CHEAT_ITEM_COUNT_MAX 99
 
 #define DW3_CHEAT_KEY_ENABLED "cheat_enabled"
 #define DW3_CHEAT_KEY_INSTANT_WIN "cheat_instant_win"
@@ -85,6 +106,30 @@ int dw3_cheats_take_instant_win(void);
 int dw3_cheats_battle_now_armed(void);
 /* The random battle is starting: Battle now is used up (if it was ready). */
 void dw3_cheats_battle_now_started(void);
+
+/* --- PR 2: money, give item, warp (patches 0118, 0119, 0120) -------------
+ * The three are applied by the field, at its first idle frame (the same
+ * moment the field menu may open: no event, no menu, no fade) after the
+ * Cheats screen armed them at the title. Each is used up, logged, and marks
+ * the game. All three answer 0 while the master switch is off. */
+
+/* Money (patch 0118): 1 once when the Money row is armed; *out is the money
+ * the player must have, `current` plus the row's amount (at most `max`), or
+ * `max` for MAX. */
+int dw3_cheats_take_money(int current, int max, int *out);
+/* Give item (patch 0119): 1 once when Give item is ready; *id and *count are
+ * the row's pick. The field adds `count` to the bag, at most 99. */
+int dw3_cheats_take_item(int *id, int *count);
+/* Warp (patch 0120): 1 once when the Warp row is armed; *mode is the game
+ * mode (0x2xx) of the area, which the field leaves for with the first start
+ * of that stage, as the debug stage select does. */
+int dw3_cheats_take_warp(int *mode);
+
+/* The areas of the Warp row: DW3_CHEAT_WARP_AREAS entries, value 1..N on the
+ * row (0 is OFF). dw3_cheats_warp_mode gives the game mode of entry `index`
+ * (0-based), or 0 for a bad index. */
+enum { DW3_CHEAT_WARP_AREAS = 13 };
+int dw3_cheats_warp_mode(int index);
 
 /* The title menu starts: a new game or a load follows, so the mark of the
  * game in progress is cleared. */

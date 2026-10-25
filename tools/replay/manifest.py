@@ -718,6 +718,71 @@ for _v in ("us", "eu"):
                   forbid_log=((0, r"instant win \(battle"), (0, r"WFIGHTMN_endBattle")),
                   note="Instant win saved but the master switch off: the battle goes on"))
 
+# P6.20 PR 2 (page 2 of the Cheats screen: Money, Warp, Give item). The screen:
+# one phase, what was armed is in the log. The cheats: the one-shots armed by
+# DW3_CHEATS_ARM on the Encounter rate field (Bulk Swamp, mode 0x233), the
+# first idle frame of the field applies them (patches 0118-0120); the
+# recording is the Fill bag one (Start, Items, the Items list). Each has a
+# master-off twin where nothing may happen.
+for _v in ("us", "eu"):
+    _bag = (f"{_v}-cheat-fill-bag",)
+    _add(Scenario(f"{_v}-cheats-screen2", _v, "full", timeout=300, log_only=True,
+                  phases=(f"{_v}-cheats-screen2",),
+                  expect_log=((0, r"dw3-cheats: cheats off \(instant win off\)"),
+                              (0, r"dw3-options: saved cheat_enabled=1(?s:.*)"
+                                  r"dw3-cheats: money \+10000(?s:.*)"
+                                  r"dw3-cheats: money \+100000(?s:.*)"
+                                  r"dw3-cheats: warp to mode 0x200 \(area 1\)(?s:.*)"
+                                  r"dw3-cheats: warp to mode 0x206 \(area 2\)(?s:.*)"
+                                  r"dw3-cheats: warp to mode 0x209 \(area 3\)(?s:.*)"
+                                  r"dw3-cheats: give item ready: id 56 x19(?s:.*)"
+                                  r"dw3-cheats: close \(back to Options\)"),),
+                  forbid_log=((0, r"is not valid"),),
+                  note="Cheats screen page 2: money, warp area, item id and count armed on the screen (PR 2)"),
+         Scenario(f"{_v}-cheat-money", _v, "full", timeout=300, log_only=True, phases=_bag,
+                  env=_ENC_ENV + (("DW3_CHEATS_ARM", "money_10k"),),
+                  cfg=_CHEAT_ON + (("encounter_rate", "2"),),
+                  expect_log=((0, r"dw3-cheats: money \+10000: 0 -> 10000 \(used up\)(?s:.*)"
+                                  r"dw3: P6\.20 cheat money 0 -> 10000(?s:.*)"
+                                  r"field menu open \(START\)"),),
+                  note="Money +10000: GAME.money goes from 0 to 10000 at the first idle frame of the field"),
+         Scenario(f"{_v}-cheat-money-off", _v, "full", timeout=300, log_only=True, phases=_bag,
+                  env=_ENC_ENV + (("DW3_CHEATS_ARM", "money_10k"),),
+                  cfg=(("encounter_rate", "2"),),
+                  expect_log=((0, r"dw3-cheats: cheats off"),),
+                  forbid_log=((0, r"dw3-cheats: money \+"), (0, r"P6\.20 cheat money")),
+                  note="Money armed with the master switch off: GAME.money is not touched"),
+         Scenario(f"{_v}-cheat-warp", _v, "full", timeout=300, log_only=True, phases=_bag,
+                  env=_ENC_ENV + (("DW3_CHEATS_ARM", "warp=0x206"),),
+                  cfg=_CHEAT_ON + (("encounter_rate", "2"),),
+                  expect_log=((0, r"dw3-cheats: warp to mode 0x206 \(used up\)(?s:.*)"
+                                  r"dw3: P6\.20 cheat warp from mode=0x233 to mode=0x206(?s:.*)"
+                                  r"dw3: leaveField mode=0x206 arg=0(?s:.*)"
+                                  r"dw3: mode=0x206 mode_entry(?s:.*)"
+                                  r"field menu open \(START\) mode=0x206"),),
+                  note="Warp to the Digimon Lab: the field arrives on the target and its menu opens (savable)"),
+         Scenario(f"{_v}-cheat-warp-off", _v, "full", timeout=300, log_only=True, phases=_bag,
+                  env=_ENC_ENV + (("DW3_CHEATS_ARM", "warp=0x206"),),
+                  cfg=(("encounter_rate", "2"),),
+                  expect_log=((0, r"dw3-cheats: cheats off"),),
+                  forbid_log=((0, r"dw3-cheats: warp to"), (0, r"P6\.20 cheat warp"),
+                              (0, r"dw3: mode=0x206 mode_entry")),
+                  note="Warp armed with the master switch off: the player stays in the Bulk Swamp"),
+         Scenario(f"{_v}-cheat-item", _v, "full", timeout=300, log_only=True, phases=_bag,
+                  env=_ENC_ENV + (("DW3_CHEATS_ARM", "item=47:7"),),
+                  cfg=_CHEAT_ON + (("encounter_rate", "2"),),
+                  expect_log=((0, r"dw3-cheats: give item: id 47 x7 \(used up\)(?s:.*)"
+                                  r"dw3: P6\.20 cheat item 47 0 -> 7(?s:.*)"
+                                  r"field menu open \(START\)"),),
+                  forbid_log=((0, r"DW3_FORCE_ITEMS items"),),
+                  note="Give item 47 x7: the bag count goes from 0 to 7, the Items list opens on it"),
+         Scenario(f"{_v}-cheat-item-off", _v, "full", timeout=300, log_only=True, phases=_bag,
+                  env=_ENC_ENV + (("DW3_CHEATS_ARM", "item=47:7"),),
+                  cfg=(("encounter_rate", "2"),),
+                  expect_log=((0, r"dw3-cheats: cheats off"),),
+                  forbid_log=((0, r"give item: id"), (0, r"P6\.20 cheat item")),
+                  note="Give item armed with the master switch off: the bag is not touched"))
+
 # P6.1 (patches 0085-0087, owner's preview.31-rc1 OLED notes): the title menu,
 # the opening's news caption bar and the player name (Digimon Online
 # registration) screen fill 16:9. The New Game path of `newgame-field` up to

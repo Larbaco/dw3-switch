@@ -1,0 +1,45 @@
+Upstream-bound: no
+Subject: [PORT_HOST] P6.20 Cheats screen, page 2: Money (DW3_CHEATS builds only)
+
+The Money row of the Cheats screen (port/options/cheats.c, docs/PORT_OPTIONS.md
+"Cheats") adds +10000 or +100000 to GAME.money, or sets MONEY_MAX. The field
+applies it at its first idle frame (openFieldMenu: no menu, no event, no fade),
+the moment the field menu may open, because at the title the game's state is
+not there yet (a new game or a load overwrites it). dw3_cheats_take_money
+answers 0 while the master switch is off or the row is not armed, and uses
+the one-shot up. Logs "dw3: P6.20 cheat money A -> B".
+
+Every line is inside #ifdef DW3_CHEATS (CMake option DW3_CHEATS, default ON):
+a build with -DDW3_CHEATS=OFF compiles field.c exactly as without this patch.
+
+--- a/src/field/field_mode/field.c
++++ b/src/field/field_mode/field.c
+@@ -13,6 +13,9 @@
+ #include "overlay_host.h"
+ char *getenv(const char *name);
+ long strtol(const char *nptr, char **endptr, int base);
++#ifdef DW3_CHEATS
++#include "port_cheats.h"
++#endif
+ #endif
+ 
+ /* Has the battle's files read while the transition plays */
+@@ -483,6 +486,18 @@
+ static inline void openFieldMenu(FieldTask *task, FieldChildren *children) {
+     if (FIELDSTG_state.menuOpen != 1 && FIELDSTG_state.busy == 0 && FIELDSTG_state.acting == 0) {
+         do {
++#ifdef DW3_CHEATS
++            /* P6.20 Money (Cheats screen, page 2): the first idle frame of the
++               field adds the armed amount, or sets MAX; used up and logged */
++            {
++                s32 cheatMoney;
++
++                if (dw3_cheats_take_money(GAME.money, MONEY_MAX, &cheatMoney)) {
++                    fprintf(stderr, "dw3: P6.20 cheat money %d -> %d\n", (int)GAME.money, (int)cheatMoney);
++                    GAME.money = cheatMoney;
++                }
++            }
++#endif
+ #if PORT_HOST
+             {
+                 const char *force = getenv("DW3_FORCE_MENU");

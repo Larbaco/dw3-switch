@@ -8,7 +8,12 @@
  * port_options.cfg; the one-shots (Fill bag, Battle now) are armed for this
  * run and used up by the game. The hooks reuse the PC test hooks of the
  * decomp patches (DW3_FORCE_ITEMS of 0070, the forced win of 0025, the
- * encounter countdown of 0062) through patch 0077. */
+ * encounter countdown of 0062) through patch 0077.
+ *
+ * PR 2 adds a second page of rows (Money, Warp, Give item) to the screen.
+ * They are one-shots too, armed at the title and applied by the field at its
+ * first idle frame (patches 0118, 0119, 0120); the picks of the item id and
+ * count are not kept between runs. */
 #include "port_cheats.h"
 #include "port_options.h"
 #include "cheats_internal.h"
@@ -32,6 +37,11 @@ static int g_master;        /* cheat_enabled */
 static int g_instant_win;   /* cheat_instant_win */
 static int g_fill_armed;    /* Fill bag: ready, this run only */
 static int g_battle_armed;  /* Battle now: ready, this run only */
+static int g_money;         /* Money: DW3_CHEAT_MONEY_*, armed, this run only */
+static int g_warp;          /* Warp: 0 OFF, 1..DW3_CHEAT_WARP_AREAS armed */
+static int g_item_id = DW3_CHEAT_ITEM_FIRST; /* the pick, for Give item */
+static int g_item_count = 10;                /* and its count */
+static int g_give_armed;    /* Give item: ready, this run only */
 static int g_open;
 static int g_cursor;
 static int g_marked_saves;  /* counted when the screen opens */
@@ -41,19 +51,34 @@ static int g_won_serial;    /* the battle Instant win last ended */
 
 #ifdef DW3_PORT_OPTIONS_TEST
 enum { CH_UP = 4, CH_DOWN = 6, CH_CIRCLE = 12, CH_CROSS = 13,
-       CH_TRIANGLE = 14 };
+       CH_TRIANGLE = 14, CH_RIGHT = 5, CH_LEFT = 7, CH_L1 = 10, CH_R1 = 11 };
 static int ch_pressed(int bit) {
     return dw3_port_options_test_bit(bit);
 }
 #define CH_REPEATED(bit) 0
 #else
 enum { CH_UP = PAD_UP, CH_DOWN = PAD_DOWN, CH_CIRCLE = PAD_CIRCLE,
-       CH_CROSS = PAD_CROSS, CH_TRIANGLE = PAD_TRIANGLE };
+       CH_CROSS = PAD_CROSS, CH_TRIANGLE = PAD_TRIANGLE, CH_RIGHT = PAD_RIGHT,
+       CH_LEFT = PAD_LEFT, CH_L1 = PAD_L1, CH_R1 = PAD_R1 };
 static int ch_pressed(int bit) {
     return PAD_PRESSED(bit);
 }
 #define CH_REPEATED(bit) PAD_REPEATED(bit)
 #endif
+
+/* The areas of the Warp row, by game mode (WSTAG numbers in the stage
+ * select, vendor/dw3_decomp/src/debug/stage_select): Asuka City, the Digimon
+ * Lab, the Digimon Arena, Central Park, the Wire Forest entrance, Tyranno
+ * Valley, Chinlong City, the Bulk Swamp, Suzaku City, the Noise Desert,
+ * Byakko City, Snow Mountain and Genbu City. The field leaves for the mode
+ * with argument 0, the first start of the stage, as the stage select does. */
+static const int g_warp_modes[DW3_CHEAT_WARP_AREAS] = {
+    0x200, 0x206, 0x209, 0x21D, 0x21E, 0x22B, 0x22E,
+    0x233, 0x23E, 0x248, 0x25D, 0x262, 0x26F};
+
+int dw3_cheats_warp_mode(int index) {
+    return index >= 0 && index < DW3_CHEAT_WARP_AREAS ? g_warp_modes[index] : 0;
+}
 
 /* A value of the file: 0 or 1; anything else is logged and read as 0. */
 static int ch_file_bool(const char *key) {
@@ -68,9 +93,12 @@ static int ch_file_bool(const char *key) {
 
 /* PC test hook (replay scenarios, like the DW3_FORCE_* ones): arms the
  * one-shots at boot, e.g. DW3_CHEATS_ARM=fill_bag,battle_now. They still need
- * the master switch. Unset (the Switch has no environment) it does nothing. */
+ * the master switch. PR 2 adds money_10k | money_100k | money_max,
+ * warp=<game mode, e.g. 0x206> and item=<id>:<count>. Unset (the Switch has
+ * no environment) it does nothing. */
 static void ch_arm_from_env(void) {
     const char *arm = getenv("DW3_CHEATS_ARM");
+    const char *at;
 
     if (arm == NULL || arm[0] == '\0') {
         return;
@@ -84,6 +112,40 @@ static void ch_arm_from_env(void) {
     CHEAT_INFO("dw3-cheats: DW3_CHEATS_ARM=%s (fill bag %s, battle now %s)",
                arm, g_fill_armed ? "ready" : "off",
                g_battle_armed ? "ready" : "off");
+    if (strstr(arm, "money_100k") != NULL) {
+        g_money = DW3_CHEAT_MONEY_100K;
+    } else if (strstr(arm, "money_10k") != NULL) {
+        g_money = DW3_CHEAT_MONEY_10K;
+    } else if (strstr(arm, "money_max") != NULL) {
+        g_money = DW3_CHEAT_MONEY_MAX;
+    }
+    at = strstr(arm, "warp=");
+    if (at != NULL) {
+        int mode = (int)strtol(at + 5, NULL, 0);
+        int k;
+
+        for (k = 0; k < DW3_CHEAT_WARP_AREAS; k++) {
+            if (g_warp_modes[k] == mode) {
+                g_warp = k + 1;
+            }
+        }
+    }
+    at = strstr(arm, "item=");
+    if (at != NULL) {
+        char *end = NULL;
+        long id = strtol(at + 5, &end, 0);
+        long count = end != NULL && *end == ':' ? strtol(end + 1, NULL, 0) : 1;
+
+        if (id >= DW3_CHEAT_ITEM_FIRST && id <= DW3_CHEAT_ITEM_LAST &&
+            count >= 1 && count <= DW3_CHEAT_ITEM_COUNT_MAX) {
+            g_item_id = (int)id;
+            g_item_count = (int)count;
+            g_give_armed = 1;
+        }
+    }
+    CHEAT_INFO("dw3-cheats: DW3_CHEATS_ARM page 2: money %d, warp %d, give "
+               "item %s (id %d x%d)", g_money, g_warp,
+               g_give_armed ? "ready" : "off", g_item_id, g_item_count);
 }
 
 /* The Options page of the native overlay: Square/Y Cheats in its hints
@@ -101,6 +163,11 @@ void dw3_cheats_init(const char *memdir) {
     g_instant_win = ch_file_bool(DW3_CHEAT_KEY_INSTANT_WIN);
     g_fill_armed = 0;
     g_battle_armed = 0;
+    g_money = 0;
+    g_warp = 0;
+    g_give_armed = 0;
+    g_item_id = DW3_CHEAT_ITEM_FIRST;
+    g_item_count = 10;
     g_game_marked = 0;
     dw3_cheat_saves_set_dir(memdir);
     CHEAT_INFO("dw3-cheats: cheats %s (instant win %s); Options, Square/Y "
@@ -153,6 +220,16 @@ int dw3_cheats_value(int row) {
         return g_battle_armed;
     case DW3_CHEAT_ROW_SAVES:
         return g_marked_saves;
+    case DW3_CHEAT_ROW_MONEY:
+        return g_money;
+    case DW3_CHEAT_ROW_WARP:
+        return g_warp;
+    case DW3_CHEAT_ROW_ITEM_ID:
+        return g_item_id;
+    case DW3_CHEAT_ROW_ITEM_COUNT:
+        return g_item_count;
+    case DW3_CHEAT_ROW_GIVE_ITEM:
+        return g_give_armed;
     default:
         return 0;
     }
@@ -169,15 +246,20 @@ int dw3_cheats_is_open(void) {
 static void ch_push_view(void) {
 #if !defined(DW3_PORT_OPTIONS_TEST) && defined(DW3_TITLE_NATIVE_OVERLAY)
     int values[DW3_TITLE_OPTION_ROWS];
+    int page = g_cursor / DW3_CHEAT_PAGE_ROWS;
     int i;
 
+    /* The view holds the rows of the page on screen; the cursor is the
+     * row's place on it. */
     for (i = 0; i < DW3_TITLE_OPTION_ROWS; i++) {
-        values[i] = i < DW3_CHEAT_ROWS ? dw3_cheats_value(i) : 0;
+        values[i] = i < DW3_CHEAT_PAGE_ROWS
+                        ? dw3_cheats_value(page * DW3_CHEAT_PAGE_ROWS + i) : 0;
     }
-    dw3_pc_title_overlay_set_options_page(DW3_TITLE_OPTIONS_PAGE_CHEATS,
-                                          g_master);
-    dw3_pc_title_overlay_set_options_view(g_cursor, values,
-                                          DW3_TITLE_OPTION_ROWS);
+    dw3_pc_title_overlay_set_options_page(
+        page ? DW3_TITLE_OPTIONS_PAGE_CHEATS2 : DW3_TITLE_OPTIONS_PAGE_CHEATS,
+        g_master);
+    dw3_pc_title_overlay_set_options_view(g_cursor % DW3_CHEAT_PAGE_ROWS,
+                                          values, DW3_TITLE_OPTION_ROWS);
 #endif
 }
 
@@ -194,6 +276,9 @@ void dw3_cheats_open(void) {
                g_master ? "on" : "off", g_fill_armed ? "ready" : "off",
                g_instant_win ? "on" : "off", g_battle_armed ? "ready" : "off",
                g_marked_saves);
+    CHEAT_INFO("dw3-cheats: page 2: money %d, warp %d, give item %s (id %d "
+               "x%d)", g_money, g_warp, g_give_armed ? "ready" : "off",
+               g_item_id, g_item_count);
     ch_push_view();
 }
 
@@ -206,6 +291,76 @@ void dw3_cheats_close(void) {
     CHEAT_INFO("dw3-cheats: close (back to Options)");
 }
 
+/* Page 2 rows (the master must be on). `dir` is +1 or -1; `big` is 1 for
+ * a single step, 10 for L1 / R1 on the two numbers. Cross and Right step
+ * forward, Left backward; the choices wrap around, the numbers stop at their
+ * ends. Returns 1 when something changed. */
+static int ch_step(int row, int dir, int big) {
+    int v;
+
+    if (!g_master) {
+        return 0;
+    }
+    switch (row) {
+    case DW3_CHEAT_ROW_MONEY:
+        g_money = (g_money + dir + DW3_CHEAT_MONEY_MODES) %
+                  DW3_CHEAT_MONEY_MODES;
+        CHEAT_INFO("dw3-cheats: money %s", g_money == 0 ? "cancelled"
+                   : g_money == DW3_CHEAT_MONEY_10K
+                   ? "+10000 (the next idle moment in the field)"
+                   : g_money == DW3_CHEAT_MONEY_100K
+                   ? "+100000 (the next idle moment in the field)"
+                   : "MAX (the next idle moment in the field)");
+        return 1;
+    case DW3_CHEAT_ROW_WARP:
+        g_warp = (g_warp + dir + DW3_CHEAT_WARP_AREAS + 1) %
+                 (DW3_CHEAT_WARP_AREAS + 1);
+        if (g_warp == 0) {
+            CHEAT_INFO("dw3-cheats: warp cancelled");
+        } else {
+            CHEAT_INFO("dw3-cheats: warp to mode 0x%x (area %d), at the next "
+                       "idle moment in a field", g_warp_modes[g_warp - 1],
+                       g_warp);
+        }
+        return 1;
+    case DW3_CHEAT_ROW_ITEM_ID:
+        v = g_item_id + dir * big;
+        if (v < DW3_CHEAT_ITEM_FIRST) {
+            v = DW3_CHEAT_ITEM_FIRST;
+        } else if (v > DW3_CHEAT_ITEM_LAST) {
+            v = DW3_CHEAT_ITEM_LAST;
+        }
+        if (v == g_item_id) {
+            return 0;
+        }
+        g_item_id = v;
+        return 1;
+    case DW3_CHEAT_ROW_ITEM_COUNT:
+        v = g_item_count + dir * big;
+        if (v < 1) {
+            v = 1;
+        } else if (v > DW3_CHEAT_ITEM_COUNT_MAX) {
+            v = DW3_CHEAT_ITEM_COUNT_MAX;
+        }
+        if (v == g_item_count) {
+            return 0;
+        }
+        g_item_count = v;
+        return 1;
+    case DW3_CHEAT_ROW_GIVE_ITEM:
+        g_give_armed = !g_give_armed;
+        if (g_give_armed) {
+            CHEAT_INFO("dw3-cheats: give item ready: id %d x%d (at the next "
+                       "idle moment in a field)", g_item_id, g_item_count);
+        } else {
+            CHEAT_INFO("dw3-cheats: give item cancelled");
+        }
+        return 1;
+    default:
+        return 0;
+    }
+}
+
 /* Confirm on a row. Returns 1 when something changed. */
 static int ch_toggle(int row) {
     if (row == DW3_CHEAT_ROW_MASTER) {
@@ -214,6 +369,9 @@ static int ch_toggle(int row) {
             /* Off means off: nothing stays ready behind the switch. */
             g_fill_armed = 0;
             g_battle_armed = 0;
+            g_money = 0;
+            g_warp = 0;
+            g_give_armed = 0;
         }
         (void)dw3_port_options_store_int(DW3_CHEAT_KEY_ENABLED, g_master);
         CHEAT_INFO("dw3-cheats: master %s", g_master ? "on" : "off");
@@ -242,7 +400,7 @@ static int ch_toggle(int row) {
                    : "cancelled");
         return 1;
     }
-    return 0;
+    return ch_step(row, 1, 1);
 }
 
 void dw3_cheats_tick(void) {
@@ -271,16 +429,43 @@ void dw3_cheats_tick(void) {
             dw3_port_options_play_sound(DW3_PORT_OPTIONS_SOUND_SELECT);
         }
     }
+    /* Left / Right step the page 2 rows (auto-repeat), L1 / R1 by ten on
+     * the item id and the count. */
+    if (g_cursor >= DW3_CHEAT_PAGE_ROWS) {
+        int dir = 0;
+        int big = 1;
+
+        if (ch_pressed(CH_LEFT) || CH_REPEATED(CH_LEFT)) {
+            dir = -1;
+        } else if (ch_pressed(CH_RIGHT) || CH_REPEATED(CH_RIGHT)) {
+            dir = 1;
+        } else if (ch_pressed(CH_L1) || CH_REPEATED(CH_L1)) {
+            dir = -1;
+            big = 10;
+        } else if (ch_pressed(CH_R1) || CH_REPEATED(CH_R1)) {
+            dir = 1;
+            big = 10;
+        }
+        if (dir != 0 && (big == 1 || g_cursor == DW3_CHEAT_ROW_ITEM_ID ||
+                         g_cursor == DW3_CHEAT_ROW_ITEM_COUNT) &&
+            ch_step(g_cursor, dir, big)) {
+            dw3_port_options_play_sound(DW3_PORT_OPTIONS_SOUND_CURSOR);
+        }
+    }
     ch_push_view();
 }
 
 void dw3_cheats_draw_panel(void) {
 #ifndef DW3_PORT_OPTIONS_TEST
     static const char *const label[DW3_CHEAT_ROWS] = {
-        "Cheats", "Fill bag", "Instant win", "Battle now", "Cheat saves"};
-    char buf[DW3_CHEAT_ROWS][40];
-    const char *lines[DW3_CHEAT_ROWS + 3];
+        "Cheats", "Fill bag", "Instant win", "Battle now", "Cheat saves",
+        "Money", "Warp", "Item id", "Item count", "Give item"};
+    static const char *const money[DW3_CHEAT_MONEY_MODES] = {
+        "OFF", "+10000", "+100000", "MAX"};
+    char buf[DW3_CHEAT_PAGE_ROWS][40];
+    const char *lines[DW3_CHEAT_PAGE_ROWS + 3];
     DISPENV env;
+    int page = g_cursor / DW3_CHEAT_PAGE_ROWS;
     int n = 0;
     int i;
 
@@ -288,18 +473,25 @@ void dw3_cheats_draw_panel(void) {
         return;
     }
     GetDispEnv(&env);
-    lines[n++] = "Cheats (test aid)";
+    lines[n++] = page ? "Cheats 2/2 (test aid)" : "Cheats 1/2 (test aid)";
     lines[n++] = "-----------------";
-    for (i = 0; i < DW3_CHEAT_ROWS; i++) {
-        int v = dw3_cheats_value(i);
+    for (i = 0; i < DW3_CHEAT_PAGE_ROWS; i++) {
+        int row = page * DW3_CHEAT_PAGE_ROWS + i;
+        int v = dw3_cheats_value(row);
+        char mark = row == g_cursor ? '>' : ' ';
 
-        if (i == DW3_CHEAT_ROW_SAVES) {
-            snprintf(buf[i], sizeof(buf[i]), "%c %s: %d", i == g_cursor ? '>'
-                     : ' ', label[i], v);
+        if (row == DW3_CHEAT_ROW_SAVES || row == DW3_CHEAT_ROW_WARP ||
+            row == DW3_CHEAT_ROW_ITEM_ID || row == DW3_CHEAT_ROW_ITEM_COUNT) {
+            snprintf(buf[i], sizeof(buf[i]), "%c %s: %d", mark, label[row], v);
+        } else if (row == DW3_CHEAT_ROW_MONEY) {
+            snprintf(buf[i], sizeof(buf[i]), "%c %s: %s", mark, label[row],
+                     money[v]);
         } else {
-            snprintf(buf[i], sizeof(buf[i]), "%c %s: %s", i == g_cursor ? '>'
-                     : ' ', label[i], v ? (i == DW3_CHEAT_ROW_FILL_BAG ||
-                     i == DW3_CHEAT_ROW_BATTLE_NOW ? "READY" : "ON") : "OFF");
+            snprintf(buf[i], sizeof(buf[i]), "%c %s: %s", mark, label[row],
+                     v ? (row == DW3_CHEAT_ROW_FILL_BAG ||
+                          row == DW3_CHEAT_ROW_BATTLE_NOW ||
+                          row == DW3_CHEAT_ROW_GIVE_ITEM ? "READY" : "ON")
+                       : "OFF");
         }
         lines[n++] = buf[i];
     }
@@ -368,6 +560,58 @@ void dw3_cheats_battle_now_started(void) {
     CHEAT_INFO("dw3-cheats: battle now: a random battle starts on this "
                "footstep (used up)");
     ch_mark_game("battle now");
+}
+
+int dw3_cheats_take_money(int current, int max, int *out) {
+    static const int add[DW3_CHEAT_MONEY_MODES] = {0, 10000, 100000, 0};
+    int v;
+
+    ch_ready();
+    if (!g_master || g_money == DW3_CHEAT_MONEY_OFF) {
+        return 0;
+    }
+    if (g_money == DW3_CHEAT_MONEY_MAX) {
+        v = max;
+    } else {
+        v = current + add[g_money];
+        if (v > max || v < current) {
+            v = max;
+        }
+    }
+    CHEAT_INFO("dw3-cheats: money %s: %d -> %d (used up)",
+               g_money == DW3_CHEAT_MONEY_MAX ? "MAX"
+               : g_money == DW3_CHEAT_MONEY_100K ? "+100000" : "+10000",
+               current, v);
+    g_money = DW3_CHEAT_MONEY_OFF;
+    ch_mark_game("money");
+    *out = v;
+    return 1;
+}
+
+int dw3_cheats_take_item(int *id, int *count) {
+    ch_ready();
+    if (!g_master || !g_give_armed) {
+        return 0;
+    }
+    g_give_armed = 0;
+    *id = g_item_id;
+    *count = g_item_count;
+    CHEAT_INFO("dw3-cheats: give item: id %d x%d (used up)", g_item_id,
+               g_item_count);
+    ch_mark_game("give item");
+    return 1;
+}
+
+int dw3_cheats_take_warp(int *mode) {
+    ch_ready();
+    if (!g_master || g_warp == 0) {
+        return 0;
+    }
+    *mode = g_warp_modes[g_warp - 1];
+    CHEAT_INFO("dw3-cheats: warp to mode 0x%x (used up)", *mode);
+    g_warp = 0;
+    ch_mark_game("warp");
+    return 1;
 }
 
 void dw3_cheats_title_started(void) {

@@ -8,6 +8,11 @@
  *   row N              move the Cheats cursor to row N (Up / Down)
  *   press | back       Cross / Triangle
  *   show               print the five row values and the open flags
+ *   show2              print the page 2 values (money warp item count give)
+ *   left | right | l1 | r1   the pad buttons that step the page 2 rows
+ *   money CUR MAX      print dw3_cheats_take_money(CUR, MAX) and the result
+ *   item               print dw3_cheats_take_item()
+ *   warp               print dw3_cheats_take_warp()
  *   getenv NAME        print dw3_cheats_getenv(NAME) (or "(null)")
  *   battle             dw3_cheats_battle_begin()
  *   win                print dw3_cheats_take_instant_win()
@@ -33,8 +38,8 @@ void dw3_port_options_test_set_pressed(unsigned mask);
 int dw3_port_options_test_sound_count(int kind);
 int dw3_cheat_saves_count(int log);
 
-enum { BIT_UP = 4, BIT_DOWN = 6, BIT_CROSS = 13, BIT_TRIANGLE = 14,
-       BIT_SQUARE = 15 };
+enum { BIT_UP = 4, BIT_RIGHT = 5, BIT_DOWN = 6, BIT_LEFT = 7, BIT_L1 = 10,
+       BIT_R1 = 11, BIT_CROSS = 13, BIT_TRIANGLE = 14, BIT_SQUARE = 15 };
 enum { SLOT_SIZE = 0x26BC, SLOT0 = 0x200 + 0x80 * 2 };
 
 void dw3_port_audio_apply(int music_step, int sfx_step) {
@@ -108,6 +113,39 @@ int main(int argc, char **argv) {
                    dw3_cheats_value(3), dw3_cheats_value(4),
                    dw3_cheats_is_open(), dw3_cheats_cursor(),
                    dw3_port_options_is_open());
+        } else if (strcmp(s, "show2") == 0) {
+            printf("money=%d warp=%d id=%d count=%d give=%d cursor=%d\n",
+                   dw3_cheats_value(5), dw3_cheats_value(6),
+                   dw3_cheats_value(7), dw3_cheats_value(8),
+                   dw3_cheats_value(9), dw3_cheats_cursor());
+        } else if (strcmp(s, "left") == 0) {
+            press(BIT_LEFT);
+        } else if (strcmp(s, "right") == 0) {
+            press(BIT_RIGHT);
+        } else if (strcmp(s, "l1") == 0) {
+            press(BIT_L1);
+        } else if (strcmp(s, "r1") == 0) {
+            press(BIT_R1);
+        } else if (strcmp(s, "money") == 0 && i + 2 < argc) {
+            int out = -1;
+            int cur = atoi(argv[i + 1]);
+            int max = atoi(argv[i + 2]);
+            int took = dw3_cheats_take_money(cur, max, &out);
+
+            printf("money=%d out=%d\n", took, took ? out : cur);
+            i += 2;
+        } else if (strcmp(s, "item") == 0) {
+            int id = 0;
+            int count = 0;
+            int took = dw3_cheats_take_item(&id, &count);
+
+            printf("item=%d id=%d count=%d\n", took, took ? id : 0,
+                   took ? count : 0);
+        } else if (strcmp(s, "warp") == 0) {
+            int mode = 0;
+            int took = dw3_cheats_take_warp(&mode);
+
+            printf("warp=%d mode=0x%x\n", took, took ? mode : 0);
         } else if (strcmp(s, "getenv") == 0 && i + 1 < argc) {
             const char *v = dw3_cheats_getenv(argv[++i]);
 
