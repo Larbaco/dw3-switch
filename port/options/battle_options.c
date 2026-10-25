@@ -65,7 +65,11 @@ int dw3_port_battle_options_enabled(void) {
     return dw3_port_field_options_enabled();
 }
 
-int dw3_port_battle_options_holding(void) { return g_holding; }
+/* From the first iteration that skips the draw: the frame that opened the
+ * screen is still drawn and presented as any other. */
+int dw3_port_battle_options_holding(void) {
+    return g_holding && g_hold_frames > 0;
+}
 
 static void log_state(const char *what) {
     int events = -1;

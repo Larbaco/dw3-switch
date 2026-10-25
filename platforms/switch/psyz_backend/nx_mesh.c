@@ -3,6 +3,7 @@
 #include "nx_mesh.h"
 #include "nx_mesh_debug.h"
 #include "nx_vram_pack.h"
+#include "port_battle_options.h"
 
 #include <stddef.h>
 #include <stdio.h>
@@ -29,6 +30,11 @@ typedef enum {
 
 static bool s_ready;
 static bool s_had_content;
+/* P9.7 slice 2: the battle is held under the port Options screen, so no frame
+ * draws. The mesh FBO still holds the last picture; the per-frame "had mesh"
+ * flag (cleared after every present) is replaced by what it was on the last
+ * frame that drew, for as long as the battle is held. */
+static bool s_content_before_hold;
 /* CPU VRAM rectangle the GL sample texture has not seen yet: [x0,x1)×[y0,y1).
  * Empty when x1 <= x0. LoadImage / ClearImage / MoveImage grow it; the next
  * flush packs and uploads only this box instead of the full 1024×512. */
@@ -728,6 +734,7 @@ bool dw3_nx_mesh_init(void) {
     s_n_vtx = 0;
     s_n_idx = 0;
     s_had_content = false;
+    s_content_before_hold = false;
     mark_dirty_full();
     s_ready = true;
     fprintf(stderr, "nx_mesh: GLES3 mesh FBO ready\n");
@@ -756,6 +763,7 @@ void dw3_nx_mesh_discard(void) {
     s_n_vtx = 0;
     s_n_idx = 0;
     s_had_content = false;
+    s_content_before_hold = false;
     s_n_soft_views = 0;
 }
 
@@ -954,7 +962,14 @@ void dw3_nx_mesh_enqueue(const Dw3NxMeshVertex *v, int nverts,
 
 void dw3_nx_mesh_flush(const uint16_t *cpu_vram) { flush_locked(cpu_vram); }
 
-bool dw3_nx_mesh_has_content(void) { return s_had_content; }
+/* Content to composite this present: this frame's, or (battle held) the last
+ * drawn frame's. */
+static bool content_now(void) {
+    return s_had_content ||
+           (s_content_before_hold && dw3_port_battle_options_holding());
+}
+
+bool dw3_nx_mesh_has_content(void) { return content_now(); }
 
 uint64_t dw3_nx_mesh_prims_flushed(void) { return s_prims_flushed; }
 
@@ -962,7 +977,7 @@ void dw3_nx_mesh_present(int dx, int dy, int dw, int dh, int vx, int vy, int vw,
                          int vh) {
     GLuint tex = s_mesh_tex;
 
-    if (!s_ready || !s_had_content || dw <= 0 || dh <= 0 || vw <= 0 || vh <= 0) {
+    if (!s_ready || !content_now() || dw <= 0 || dh <= 0 || vw <= 0 || vh <= 0) {
         return;
     }
     if (s_gutter_px > 0 && s_gutter_fbo && dw == s_gutter_w) {
@@ -1036,6 +1051,12 @@ size_t dw3_nx_mesh_read_rect_rgba(int dx, int dy, int dw, int dh, uint8_t *dst,
 }
 
 void dw3_nx_mesh_end_frame(void) {
+    if (dw3_port_battle_options_holding()) {
+        /* Nothing was drawn: keep what is on screen (the FBO, the partner
+         * view's keep area) until the battle runs again. */
+        return;
+    }
+    s_content_before_hold = s_had_content;
     s_had_content = false;
     soft_views_age();
 }

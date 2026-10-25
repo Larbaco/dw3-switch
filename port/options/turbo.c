@@ -9,6 +9,7 @@
 #include <stdlib.h>
 
 #ifndef DW3_PORT_TURBO_TEST
+#include "port_battle_options.h"
 #include "engine/pad.h"
 #include "overlay_host.h"
 
@@ -87,6 +88,14 @@ int dw3_port_turbo_speed(void) {
     if (!g_active || speed < DW3_TURBO_SPEED_MIN) {
         return 1;
     }
+#ifndef DW3_PORT_TURBO_TEST
+    /* P9.7 slice 2: the Options screen over a held battle runs at 1x (a held
+     * direction would repeat 4x as fast); the battle's speed comes back on
+     * resume. */
+    if (dw3_port_battle_options_holding()) {
+        return 1;
+    }
+#endif
     mode_file = turbo_mode_file();
     if (mode_file != DW3_TURBO_FIELDSTG && mode_file != DW3_TURBO_FIGHTSTG &&
         mode_file != DW3_TURBO_STFGTREP) {
