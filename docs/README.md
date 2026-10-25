@@ -82,6 +82,7 @@ Files are named by roadmap item id (`P6.4_...`) or by topic.
 - [P6.18_PACING](P6.18_PACING.md): encounter rate and text speed.
 - [P6.22_FIELD_CPU](P6.22_FIELD_CPU.md): where a field frame's CPU time goes.
 - [P6.33_ITEMS_MENU](P6.33_ITEMS_MENU.md): Items menu redesign proposal.
+- [P6.32_MAP_ZOOM](P6.32_MAP_ZOOM.md): map zoom and full-screen map proposal.
 - [P7.7_BUG_FIXES](P7.7_BUG_FIXES.md): bug and text fixes.
 - [P7.9_BATTLE_MENU_MEMORY](P7.9_BATTLE_MENU_MEMORY.md): battle menu memory.
 - [P9.2_MENU](P9.2_MENU.md): menu entry and shell.

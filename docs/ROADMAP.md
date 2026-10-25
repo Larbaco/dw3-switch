@@ -74,7 +74,7 @@ listed once, in [Pending OLED checks](#pending-oled-checks).
 | P6.29 | Save editor: external tool on the owner's own saves, builds on P6.25 (future goal) | future | [roadmap](#phase-6-goal-notes), [CROSS_REGION_SAVES](CROSS_REGION_SAVES.md) |
 | P6.30 | Help, FAQ and tips from the pause menu (future goal) | future | [roadmap](#phase-6-goal-notes) |
 | P6.31 | Auto-save, off by default (future goal) | future | [roadmap](#phase-6-goal-notes), [P5.3](P5.3_FLAT_SAVE.md) |
-| P6.32 | Map zoom and full-screen map (future goal) | future | [roadmap](#phase-6-goal-notes), [P6.1](P6.1_WIDESCREEN.md) |
+| P6.32 | Map zoom and full-screen map (future goal) | future (design proposal, no code) | [roadmap](#phase-6-goal-notes), [P6.32](P6.32_MAP_ZOOM.md), [P6.1](P6.1_WIDESCREEN.md) |
 | P6.33 | Items menu usability redesign (future goal) | future (design proposal, no code) | [roadmap](#phase-6-goal-notes), [P6.33](P6.33_ITEMS_MENU.md), [P6.1](P6.1_WIDESCREEN.md) |
 | P7.1 | Inventory and boundaries | done | [COMMUNITY_QOL](COMMUNITY_QOL.md) |
 | P7.2 | Patched EU disc as data source | open | [COMMUNITY_QOL](COMMUNITY_QOL.md) |
@@ -1885,6 +1885,12 @@ Statuses are in the [table](#status-at-a-glance).
   full-screen map replaces the field menu's Map entry or is a second view;
   whether the zoomed view needs a wider scroll clamp (a logic change, not
   drawing); where the Port option for it lives (P9.4 key, Options screen).
+  **Design proposal (2026-10-25, no code):** [P6.32_MAP_ZOOM.md](P6.32_MAP_ZOOM.md)
+  surveys the map screen code (`map_screen.c`, overlay `STSTATUS`), what
+  zoom and full-screen can mean at 392 px source width, and compares four
+  options. Recommendation: fill the picture first (option A), then integer
+  zoom steps with a port-side pan (option B), each behind a Port option that
+  is off by default, with no save change.
   Done when (proposed): the map zooms and fills the screen on US and EU, the
   default is bit-identical, and the P6.15 map replay scenarios still match.
   Related: P6.1, P9.9.
