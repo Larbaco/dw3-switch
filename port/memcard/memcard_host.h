@@ -80,6 +80,12 @@ int memcard_host_file_read(int slot, uint32_t offset, void *buf, size_t len);
 int memcard_host_file_write(int slot, uint32_t offset, const void *buf,
                             size_t len);
 
+/* P6.31: write the resident image of a port to saveN.bin<suffix>
+ * (rename-atomic), a copy the player can put back. 0, or -1. */
+int memcard_host_snapshot(int slot, const char *suffix);
+/* Test hook: the next `count` flushes fail without touching the disk. */
+void memcard_host_test_fail_flush(int count);
+
 /* Flush dirty RAM to saveN.bin (rename-atomic). No-op if clean. */
 int memcard_host_flush(int slot);
 int memcard_host_flush_all(void);

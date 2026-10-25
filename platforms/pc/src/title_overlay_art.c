@@ -198,19 +198,30 @@ static void button(int cx,int cy,int back) {
 }
 /* Geometry of the Port options window and its rows, in canvas pixels. The
  * retained cache (title_options_cache.c) repeats the row numbers; the unit
- * test proves they agree. Eight rows share the window, so a row is 38 px high
- * on a 42 px pitch (it was 42 on 48 with seven rows, 52 on 60 with five, P6.17):
- * the first row starts at y 150 and the last ends at y 482, 26 px above the
- * message rule. */
+ * test proves they agree. Nine rows share the window (P6.31 added Auto-save),
+ * so a row is 34 px high on a 38 px pitch (it was 38 on 42 with eight rows, 42 on
+ * 48 with seven, 52 on 60 with five, P6.17): the first row starts at y 150 and
+ * the last ends at y 488, 20 px above the message rule. The Cheats pages and the
+ * Yes / No window keep the old 38 px row on a 42 px pitch (CHT_ROW_*). */
 enum { OPT_X0 = 84, OPT_Y0 = 60, OPT_W = 792, OPT_H = 600,
-       OPT_ROW_Y = OPT_Y0 + 96, OPT_ROW_STEP = 42, OPT_ROW_H = 38 };
+       OPT_ROW_Y = OPT_Y0 + 96, OPT_ROW_STEP = 38, OPT_ROW_H = 34,
+       CHT_ROW_STEP = 42, CHT_ROW_H = 38 };
 /* The rows' kinds: how a registry value is written. */
 enum { ROW_SWITCH, ROW_FAST_FORWARD, ROW_VOLUME, ROW_ENCOUNTER, ROW_TEXT,
-       ROW_BATTLE };
+       ROW_BATTLE, ROW_AUTOSAVE };
 static int row_kind(int row) {
     return row == 1 ? ROW_FAST_FORWARD : row == 3 || row == 4 ? ROW_VOLUME :
            row == 5 ? ROW_ENCOUNTER : row == 6 ? ROW_TEXT :
-           row == 7 ? ROW_BATTLE : ROW_SWITCH;
+           row == 7 ? ROW_BATTLE : row == 8 ? ROW_AUTOSAVE : ROW_SWITCH;
+}
+/* P6.31: the Auto-save row's lettering, in the language of the disc (en, fr,
+ * de, es, it: the DW3_TITLE_LANG_* order). OFF is the Options screen's word. */
+#define AUTOSAVE_WORDS(l) {WORD(opt_as_row_##l),WORD(opt_as_area_##l),WORD(opt_as_desc_##l)}
+typedef struct AutosaveWords { Word row,area,desc; } AutosaveWords;
+static const AutosaveWords autosave_words[5]={AUTOSAVE_WORDS(en),AUTOSAVE_WORDS(fr),AUTOSAVE_WORDS(de),
+                                              AUTOSAVE_WORDS(es),AUTOSAVE_WORDS(it)};
+static const AutosaveWords *autosave_lang(void) {
+    return &autosave_words[options_lang>=DW3_TITLE_LANG_EN&&options_lang<=DW3_TITLE_LANG_IT?options_lang:0];
 }
 #ifdef DW3_CHEATS
 /* P6.20: the Square (Y on the Switch) button cap of the "Cheats" hint. */
@@ -292,14 +303,14 @@ static void cheats_screen(void) {
     }
     for(int i=0;i<DW3_TITLE_CHEAT_ROWS;i++) {
         const int row=page2*DW3_TITLE_CHEAT_ROWS+i;
-        const int ry=OPT_ROW_Y+i*OPT_ROW_STEP,focus=i==option_cursor;
+        const int ry=OPT_ROW_Y+i*CHT_ROW_STEP,focus=i==option_cursor;
         const int grey=row>0&&!options_cheats_on;
         int v=option_values[i];
         const Word *value;
         int dim;
         if(focus&&(full||options_layer==OPTIONS_LAYER_FOCUS)){
-            box(x0+48,ry-6,w-96,OPT_ROW_H,16,74,156,255);
-            box(x0+51,ry-3,w-102,OPT_ROW_H-6,0,8,74,255);
+            box(x0+48,ry-6,w-96,CHT_ROW_H,16,74,156,255);
+            box(x0+51,ry-3,w-102,CHT_ROW_H-6,0,8,74,255);
             pointer(x0+66,ry+3);
         }
         if(draw_static||(options_layer==OPTIONS_LAYER_FOCUS&&i==options_layer_row))
@@ -410,7 +421,7 @@ static void options_screen(void) {
         }
         if(draw_static||(options_layer==OPTIONS_LAYER_FOCUS&&
                        i==options_layer_row))
-            word(&rows[i],x0+106,ry,0,255,255,255);
+            word(kind==ROW_AUTOSAVE?&autosave_lang()->row:&rows[i],x0+106,ry,0,255,255,255);
         if(v<0)v=0;
         switch(kind) {
         case ROW_VOLUME:
@@ -428,6 +439,9 @@ static void options_screen(void) {
         case ROW_BATTLE:
             if(v>2)v=2;
             value=&battle_cursor[v];dim=v==0;break;
+        case ROW_AUTOSAVE:
+            if(v>1)v=1;
+            value=v?&autosave_lang()->area:&values[0];dim=v==0;break;
         default:
             if(v>1)v=1;
             value=&values[v];dim=v==0;break;
@@ -439,7 +453,8 @@ static void options_screen(void) {
     if(draw_static)box(x0+30,y1-152,w-60,3,16,156,247,255);
     if((full||options_layer==OPTIONS_LAYER_DESCRIPTION)&&
        option_cursor>=0&&option_cursor<DW3_TITLE_OPTION_ROWS)
-        word(&desc[option_cursor],x0+48,y1-128,0,255,255,255);
+        word(row_kind(option_cursor)==ROW_AUTOSAVE?&autosave_lang()->desc:&desc[option_cursor],
+             x0+48,y1-128,0,255,255,255);
     if(draw_static) {
         const int hy=y1-74,bx=x1-48-back.w,cx=bx-36-change.w-60;
         button(cx,hy+12,0);word(&change,cx+22,hy,0,255,255,255);
@@ -489,8 +504,8 @@ void dw3_pc_dialog_art(uint8_t *rgba,int pitch,int kind,int focus) {
         const int ry=176+i*42,choice_focus=i==(focus?0:1);
         const Word *label=i==0?&t->yes:&t->no;
         if(choice_focus){
-            box(48,ry-6,w-96,OPT_ROW_H,16,74,156,255);
-            box(51,ry-3,w-102,OPT_ROW_H-6,0,8,74,255);
+            box(48,ry-6,w-96,CHT_ROW_H,16,74,156,255);
+            box(51,ry-3,w-102,CHT_ROW_H-6,0,8,74,255);
             pointer(66,ry+3);
         }
         word(label,106,ry,0,255,255,255);

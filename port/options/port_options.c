@@ -1,6 +1,7 @@
 /* P9.2 port options shell — stays on MODE_TITLE; never sets menu choice. */
 #include "port_options.h"
 #include "port_audio.h"
+#include "port_autosave.h"
 #include "port_battle_menu.h"
 #include "port_options_cfg.h"
 #include "port_pacing.h"
@@ -38,11 +39,12 @@
 #endif
 #endif
 
-/* DW3_PORT_OPT_ENCOUNTER_RATE (5), DW3_PORT_OPT_TEXT_SPEED (6) and
- * DW3_PORT_OPT_BATTLE_MENU (7) are in port_options.h: port/pacing/pacing.c and
- * port/battle_menu/battle_menu_memory.c read them. */
+/* DW3_PORT_OPT_ENCOUNTER_RATE (5), DW3_PORT_OPT_TEXT_SPEED (6),
+ * DW3_PORT_OPT_BATTLE_MENU (7) and DW3_PORT_OPT_AUTOSAVE (8) are in
+ * port_options.h: port/pacing/pacing.c, port/battle_menu/battle_menu_memory.c
+ * and port/autosave/autosave.c read them. */
 enum {
-    DW3_PORT_OPT_COUNT = 8,
+    DW3_PORT_OPT_COUNT = 9,
     DW3_PORT_OPT_WIDESCREEN = 0,
     DW3_PORT_OPT_FAST_FORWARD = 1,
     DW3_PORT_OPT_RESTART = 2,
@@ -87,6 +89,9 @@ static Dw3PortOptStub g_stubs[DW3_PORT_OPT_COUNT] = {
      * key is the one that was file-only before the row existed. */
     {"Battle cursor", DW3_BATTLE_MENU_MEMORY_KEY, DW3_BATTLE_MENU_MEMORY_OFF,
      DW3_BATTLE_MENU_MEMORY_OFF, NULL},
+    /* P6.31: 0 = OFF (the original game), 1 = On area change. Off by default;
+     * a switch row (Confirm toggles). */
+    {"Auto-save", DW3_AUTOSAVE_KEY, DW3_AUTOSAVE_OFF, DW3_AUTOSAVE_OFF, NULL},
 };
 
 /* P9.4 persistence. The registry values above are what the game reads; this
@@ -465,6 +470,10 @@ int dw3_port_options_persist_init(const char *dir) {
             g_saved[DW3_PORT_OPT_TEXT_SPEED],
             g_saved[DW3_PORT_OPT_BATTLE_MENU],
             bad ? " [some values reset]" : "");
+    if (g_stubs[DW3_PORT_OPT_AUTOSAVE].value != DW3_AUTOSAVE_OFF) {
+        PO_INFO("dw3-options: autosave=%d (on area change; docs/P6.31_AUTOSAVE.md)",
+                g_stubs[DW3_PORT_OPT_AUTOSAVE].value);
+    }
     /* DW3_MUSIC_VOLUME / DW3_SFX_VOLUME force a value for this run only. */
     po_stepped_env();
     po_audio_apply();
@@ -594,7 +603,8 @@ static void po_toggle(int index) {
     g_stubs[index].value = v;
     g_env_pinned &= ~(1u << index);
     fprintf(stderr, "dw3-port-options: %s %s\n",
-            index == DW3_PORT_OPT_RESTART ? "restart hotkey" : "widescreen",
+            index == DW3_PORT_OPT_RESTART ? "restart hotkey"
+            : index == DW3_PORT_OPT_AUTOSAVE ? "auto-save" : "widescreen",
             v ? "enabled" : "disabled");
     fflush(stderr);
     (void)po_save();

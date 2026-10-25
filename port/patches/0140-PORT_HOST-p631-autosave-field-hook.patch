@@ -1,0 +1,106 @@
+Upstream-bound: no
+Subject: [PORT_HOST] P6.31 auto-save: field idle hook
+
+P6.31 Auto-save (docs/P6.31_AUTOSAVE.md). At the field's first idle frame (the
+moment the field menu may open: no event, no menu, no fade, no banner), openFieldMenu
+(field_mode/field.c) asks dw3_autosave_field_idle (port/autosave/autosave.c) with
+FieldState's flags. With the Options screen's Auto-save row OFF (the default) the
+call returns at once: nothing is read, written or logged, and the game runs as
+without this patch. When the port answers "save now" (an area change, a slot the
+player used, not in a battle) autosaveField builds the save the way
+STGMCARD_fillSave does (the game's first GAME_SAVE_SIZE bytes, the XOR checksum
+from byte 4, the region's version byte) but with the current mode, player
+position and direction as the field menu would record them in GameState.fieldMode
+/ fieldPos / fieldDir, in a private buffer: GAME itself is not changed. The
+port writes it to the target slot (rename-atomic, rolled back on failure).
+
+--- a/src/field/field_mode/field.c
++++ b/src/field/field_mode/field.c
+@@ -11,6 +11,7 @@
+ #if PORT_HOST
+ #include <stdio.h>
+ #include "overlay_host.h"
++#include "port_autosave.h"
+ char *getenv(const char *name);
+ long strtol(const char *nptr, char **endptr, int base);
+ #ifdef DW3_CHEATS
+@@ -559,6 +560,53 @@
+  * From the story point 4 on, START opens the field menu (STSTATUS) while
+  * the field is idle; the player's place is kept to come back to
+  */
++#if PORT_HOST
++/* P6.31 auto-save: the field is idle on a new area, so write the game to the
++   slot the player used last. The save bytes are what STGMCARD_fillSave builds
++   (the game, its checksum from byte 4 and the region's version), with the
++   current area and the player's place as the field menu would record them
++   (GAME itself is not touched); the summary fields are the ones it fills for
++   the save list. port/autosave/autosave.c decides where and how it is written. */
++static void autosaveField(FieldChildren *children) {
++    static union {
++        u8 bytes[GAME_SAVE_SIZE];
++        GameState game;
++    } buf;
++    Dw3AutosaveSnapshot snap;
++    u8 sum = 0;
++    s32 i;
++    s32 member;
++
++    memcpy(buf.bytes, &GAME, GAME_SAVE_SIZE);
++    buf.game.fieldMode = GAME.funcs.getMode();
++    if (children->actors[0] != NULL) {
++        buf.game.fieldPos = children->actors[0]->pos;
++        buf.game.fieldDir = children->actors[0]->dir;
++    }
++    for (i = 4; i < GAME_SAVE_SIZE; i++) {
++        sum ^= buf.bytes[i];
++    }
++    buf.game.checksum = sum;
++#if VERSION_US
++    buf.game.version = 3;
++#elif VERSION_EU
++    buf.game.version = 4;
++#endif
++    snap.save = buf.bytes;
++    snap.save_size = GAME_SAVE_SIZE;
++    snap.mode = buf.game.fieldMode;
++    memcpy(snap.name, buf.game.name, sizeof(snap.name));
++    snap.money = buf.game.money;
++    memcpy(snap.play_time, &buf.game.playTime, sizeof(snap.play_time));
++    for (i = 0; i < 3; i++) {
++        member = GAME.funcs.getPartyMember(i);
++        snap.levels[i] = buf.game.partners[member].info.stats[STAT_LEVEL];
++        snap.partners[i] = buf.game.partners[member].unlocked;
++    }
++    dw3_autosave_commit(&snap);
++}
++#endif
++
+ static inline void openFieldMenu(FieldTask *task, FieldChildren *children) {
+     if (FIELDSTG_state.menuOpen != 1 && FIELDSTG_state.busy == 0 && FIELDSTG_state.acting == 0) {
+         do {
+@@ -606,6 +654,25 @@
+                             (unsigned)GAME.funcs.getMode(), (unsigned)cheatMode);
+                     FIELDSTG_leaveField(cheatMode, 0, 0, 0, 0);
+                     break;
++                }
++            }
++#endif
++#if PORT_HOST
++            /* P6.31 Auto-save: with the option on, the first idle frame of a
++               new area writes the game (see autosaveField); with it off the
++               call returns at once and nothing else happens */
++            {
++                Dw3AutosaveField autosave;
++
++                autosave.mode = GAME.funcs.getMode();
++                autosave.progress = GAME.progress;
++                autosave.battle_starting = FIELDSTG_state.battleStarting;
++                autosave.busy = FIELDSTG_state.busy;
++                autosave.acting = FIELDSTG_state.acting;
++                autosave.menu_open = FIELDSTG_state.menuOpen;
++                autosave.frozen = FIELDSTG_state.frozen;
++                if (dw3_autosave_field_idle(&autosave)) {
++                    autosaveField(children);
+                 }
+             }
+ #endif
