@@ -1,6 +1,6 @@
 Digimon World 3 / 2003, Switch homebrew preview
 
-Release notes for v0.6.5-preview.36. The release tag and boot version
+Release notes for v0.6.5-preview.37. The release tag and boot version
 identify the actual source revision.
 
 Player guide (setup, controls, Options, saves, crash reports):
@@ -11,25 +11,26 @@ New in this preview
   No item below has been checked on a Switch OLED yet. Each is checked on
   PC and in the Ryubing emulator only, and is marked unverified.
 
-  Options in the field menu (P9.7 slice 1, #270). The Start menu has an
-  OPTIONS row above TITLE SCREEN, which opens the Options screen over the
-  field. Fast-forward, Restart hotkey, both volumes, Encounter rate, Text
-  speed, Battle cursor and Auto-save take effect at once and are saved.
-  Widescreen is greyed in game ("change it at the title screen"), and the
-  Cheats screen stays title-only. The field menu is one row taller. Battle
-  is not covered yet. These defaults were chosen while the owner was away;
-  the owner can change them. Unverified on hardware.
+  Options in battle (P9.7 slice 2, #272). At the battle command menu, while
+  it waits for you, press Minus (Select) to open the Options screen. Do not
+  hold L, R, ZL or ZR. The battle is frozen while the screen is open: no
+  enemy turn, no gauge change, and no button press reaches the menu. The
+  battle music keeps playing. Triangle closes the screen and the battle goes
+  on. Widescreen and Cheats are greyed; Battle cursor applies from the next
+  turn's menu. There is no on-screen hint; the key is listed in
+  docs/HOTKEYS.md and the player guide. This default was chosen while the
+  owner was away; the owner can change it. Unverified on hardware.
 
-  Title screen textures freed outside the title (#268). On Switch, the
-  title screen textures (about 17 MB) are released after leaving the title
-  and rebuilt when it returns. The first title frame after a return may
-  take a moment longer. No blank or garbage frame in Ryubing. Unverified on
-  hardware.
-
-  Memory work, test side (#267, #266). A PC soak of 2 h US and 1 h EU at 1x
-  ran with no crash and no leak. The Ryubing memory check no longer flags
-  the one-time title texture allocation. Nothing here changes how the game
-  plays on Switch.
+  Save write safety (P10.2, #273). An interrupted save write now recovers:
+  a complete save temp file left behind is promoted at boot, and stale ones
+  are removed. The name sidecar is written atomically, and data is fsynced
+  before the rename. A HOME exit or restart during the game's own save burst
+  now waits up to 8 s for the burst to end, instead of flushing a
+  half-updated card. Also a small file-size lookup change, with no effect on
+  play. Tested on PC by stopping the write at every step. HOME during a save
+  on the Switch is not tested yet. If dw3.log shows
+  `recovered ... from an interrupted write`, a half-written save was
+  recovered: keep the log and tell the owner. Unverified on hardware.
 
 Known issues
 
@@ -71,6 +72,16 @@ Carried forward
   cancels restart. Unsaved progress is lost. Release before repeating.
   This chord can also toggle the nxlink debug HUD, whose own chord is
   Minus + L + R. See docs/HOTKEYS.md for all mapped controls.
+
+  From preview.36: Options from the field menu (P9.7 slice 1, #270): an
+  OPTIONS row above TITLE SCREEN opens Options over the field. Fast-forward,
+  Restart hotkey, volumes, Encounter rate, Text speed, Battle cursor and
+  Auto-save apply at once and are saved. Widescreen is greyed in game, and
+  Cheats stays title-only. Title screen textures (about 17 MB) are freed
+  outside the title on Switch and rebuilt on return (#268); the first title
+  frame after a return may be a little slower. PC soak of 2 h US and 1 h EU
+  with no crash or leak, and the Ryubing memory check no longer flags the
+  one-time title texture allocation (#266, #267). Unverified on hardware.
 
   From preview.35: Faster turbo outside battle (P6.22 pass 2, #263): with
   turbo above 1x, the Switch no longer draws the frames it will not show.
@@ -191,13 +202,13 @@ Install / nxlink
 OLED checklist
 
   New in this preview:
-  - Options in the field: in a town, open the Start menu and choose
-    OPTIONS. Change a volume, close, and keep playing; the change should
-    hold. Widescreen should be greyed with "change it at the title screen".
-    The field menu should fit its extra row in every language.
-  - Return to title: from the field menu, Yes. Back at the title, the
-    textures should be rebuilt with no glitch, and the first title frame may
-    be a little slower. Check the Yes / No window again too.
+  - Options in battle (D12): in a battle, when the command menu waits, press
+    Minus. The Options window opens over a frozen picture; wait 30 s and
+    nothing moves; the music keeps playing; Widescreen is greyed. Triangle
+    returns to the same menu and cursor, and the battle ends normally.
+  - HOME during a save (G2): press HOME while the save bar runs (handheld,
+    nxlink build). Afterwards the save should still load on Continue, and
+    dw3.log should be kept.
 
   Everything else in this preview, and the items still open from earlier
   previews, is in the ordered OLED test plan. Follow it:
