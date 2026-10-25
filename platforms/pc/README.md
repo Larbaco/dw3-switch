@@ -119,3 +119,11 @@ audible XA). Video presentation quality is a follow-up.
 
 Pad unit check (no window): `gcc …` via `tools/tests/test_pad_host.py` or
 the commands in that file.
+
+## Region launcher (P6.24 slice 1)
+
+`tools/build_pc_single.sh [OUT]` builds `dw3-pc-us`, `dw3-pc-eu` and a small
+`dw3-pc` launcher that finds `runtime/us` and `runtime/eu`, asks (3 s, with a
+default) when both exist, and starts the right binary. See
+[docs/SINGLE_BUILD.md](../../docs/SINGLE_BUILD.md#as-built-slice-1). The plain
+`DW3_VERSION=us|eu` builds are unchanged.

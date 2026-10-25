@@ -11,6 +11,8 @@ Tiers:
   full   gameplay scenarios (a few minutes each; run by default)
   soak   long walk, 15-20 min of game time (run with --soak or --only)
   repro  recordings of known, unfixed bugs; only with --only (expected to fail)
+  single P6.24 launcher scenarios; only with --single or --only (need the
+         launcher binary, --launcher / DW3_REPLAY_LAUNCHER)
 """
 from __future__ import annotations
 
@@ -62,6 +64,18 @@ class Scenario:
     # refusal cases. "progress:0x2D" sets GameState.progress (the EU extra
     # chapter) and "badsum" flips the slot checksum. Nothing is committed.
     phase_mutate: tuple[str, ...] = ()
+    # P6.24 single build: run the phases through the region launcher instead
+    # of a per-region binary. `launch` lists the region trees the launcher finds
+    # under its runtime base ("us", "eu" or "us+eu"; symlinks to the runtimes);
+    # `env` can force the region (DW3_REGION) or script the picker
+    # (DW3_REGION_PICK_KEYS). The runner leaves DW3_RUNTIME unset, so the
+    # launcher's choice decides which binary and runtime run. `version` is the
+    # region that must come out. PC only.
+    launch: str = ""
+    # Compare the captures with the references of this other scenario instead
+    # of the scenario's own (the launcher run must be bit-identical to the
+    # plain per-region run, so no reference of its own is needed).
+    ref_from: str = ""
     # Memory sanity (soak): analyse RSS from this game frame on.
     rss_from_frame: int = 0
     note: str = ""
@@ -1016,3 +1030,27 @@ for _lang in ("fr", "de", "it", "es"):
 
 def by_name() -> dict[str, Scenario]:
     return {s.name: s for s in SCENARIOS}
+
+# P6.24 slice 1: the same title recordings, started through the region
+# launcher with only US, only EU, and both trees present (the region forced by
+# DW3_REGION, or chosen in the picker by scripted keys). The captures must
+# match the references of the plain per-region scenarios.
+_SINGLE = (
+    ("single-us-only", "us", "us", "us-title", (), "only the US data is present"),
+    ("single-eu-only", "eu", "eu", "eu-lang-en", (), "only the EU data is present"),
+    ("single-both-env-us", "us", "us+eu", "us-title", (("DW3_REGION", "us"),), "region forced"),
+    ("single-both-env-eu", "eu", "us+eu", "eu-lang-en", (("DW3_REGION", "eu"),), "region forced"),
+    ("single-both-pick-us", "us", "us+eu", "us-title", (("DW3_REGION_PICK_KEYS", "la"),),
+     r"picker chose us"),
+    ("single-both-pick-eu", "eu", "us+eu", "eu-lang-en", (("DW3_REGION_PICK_KEYS", "ra"),),
+     r"picker chose eu"),
+    ("single-both-countdown", "us", "us+eu", "us-title", (("DW3_REGION_PICK_KEYS", ""),),
+     r"picker chose us \(countdown\)"),
+)
+for _n, _v, _l, _rec, _env, _why in _SINGLE:
+    _add(Scenario(_n, _v, "single", phases=(_rec,), launch=_l, ref_from=_rec, env=_env,
+                  timeout=120,
+                  expect_log=((0, rf"dw3-region: starting {_v} "), (0, _why),
+                              (0, rf"dw3-pc: cdfs root=\S*/{_v}\b")),
+                  forbid_log=((0, rf"dw3-region: starting {'eu' if _v == 'us' else 'us'} "),),
+                  note="P6.24: through the launcher; captures equal the plain run's"))

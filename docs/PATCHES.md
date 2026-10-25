@@ -150,6 +150,11 @@ patches on the same file are valid).
 The numbers 0130-0134 reserved for it are unused; the series now ends at 0127; the next free number is
 0128 (or 0130 within the P6.25 range).
 
+**P6.24 (one build for US and EU, slice 1) adds no patch.** The region choice,
+the picker logic and the PC launcher live in `port/region/` and
+`platforms/pc/`; the game is untouched. The numbers 0135-0139 reserved for it
+are unused; the next free number is still 0128 (or 0135 within the P6.24 range).
+
 ### Upstream `make compare` (P2.4 / P3.1)
 
 Match-neutral patches 0006/0007/0018/0022 are intended to stay byte-identical
