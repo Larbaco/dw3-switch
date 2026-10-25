@@ -1,6 +1,6 @@
 Digimon World 3 / 2003, Switch homebrew preview
 
-Release notes for v0.6.5-preview.34. The release tag and boot version
+Release notes for v0.6.5-preview.35. The release tag and boot version
 identify the actual source revision.
 
 Player guide (setup, controls, Options, saves, crash reports):
@@ -11,25 +11,18 @@ New in this preview
   No item below has been checked on a Switch OLED yet. Each is checked on
   PC and in the Ryubing emulator only, and is marked unverified.
 
-  Auto-save, off by default (P6.31, #260). A ninth Options row, Auto-save,
-  with the values OFF and Each area. OFF is the default. With it on, the
-  first idle field frame of each new area saves the game to the slot you
-  last saved to or loaded from. That overwrites that slot. The first time,
-  the build keeps a copy of your version as save<N>.bin.pre-auto. It never
-  runs before the first manual save or load of a session, and never during
-  battles, events, menus or fades. Cheat saves carry the cheat mark. The
-  Options rows are a little shorter to fit nine. Unverified on hardware.
+  Faster turbo outside battle (P6.22 pass 2, #263). With turbo above 1x,
+  the Switch no longer draws the frames it will not show. Drawing is
+  deferred and dropped unless something reads the pixels, such as the
+  present or a screen copy. The picture is identical: every presented frame
+  matched in tests on PC and in the Ryubing emulator. The colour conversion
+  at present is faster too. Expected effect: field and opening scenes at 4x
+  should run much closer to the cap. On PC the rasterizer is 3.5 to 4 times
+  faster per frame; the gain on the Switch is not measured yet. Battle is
+  unchanged. Unverified on hardware.
 
-  Both the slot choice and the timing are defaults chosen while the owner
-  was away. The owner can change them.
-
-  Region launcher, coming (P6.24, #258, #259). One launcher picks the US or
-  EU build. It is not in this release: the Switch launcher dw3.nro is a CI
-  artifact only, and no launcher is attached here.
-
-  Docs (#255, #256, #257): the player guide (linked above), CONTRIBUTING.md,
-  a test that checks every doc link, and the P6.32 map zoom design proposal
-  (docs/P6.32_MAP_ZOOM.md). Nothing in the game changed.
+  Player guide (#262): now covers Auto-save and the region launcher. Docs
+  only; the region launcher is still not in this release.
 
 Known issues
 
@@ -71,6 +64,17 @@ Carried forward
   cancels restart. Unsaved progress is lost. Release before repeating.
   This chord can also toggle the nxlink debug HUD, whose own chord is
   Minus + L + R. See docs/HOTKEYS.md for all mapped controls.
+
+  From preview.34: Auto-save, off by default (P6.31, #260): a ninth Options
+  row, OFF (default) or Each area. With it on, the first idle field frame of
+  each new area saves to the slot you last saved to or loaded from, which
+  overwrites that slot; the first time, the build keeps a copy of your version
+  as save<N>.bin.pre-auto. It never runs before the first manual save or load
+  of a session, and never during battles, events, menus or fades. Cheat saves
+  carry the cheat mark. The slot choice and timing are defaults the owner can
+  change. Region launcher (P6.24, #258, #259): not in this release. Docs
+  (#255, #256, #257): player guide, CONTRIBUTING.md, a doc-link test, and the
+  P6.32 map zoom proposal. Nothing in the game changed.
 
   From preview.33: Quit game on the title menu (P6.28, #250): a fourth
   plaque, Yes or No with the cursor on No; Yes flushes the dirty saves and
@@ -171,6 +175,13 @@ Install / nxlink
 OLED checklist
 
   New in this preview:
+  - Turbo: set turbo to 4x. In the opening and in a town (Forest Inn, top
+    and bottom), report the FPS next to preview.34 at 4x, and send dw3.log
+    (it has frame dt and defer dbg: lines). Also check the field-to-battle
+    transition at 2x, 3x and 4x: no hang, no crash, picture intact. Battle
+    itself is unchanged.
+
+  Still pending from preview.34:
   - Auto-save: in Options, set Auto-save to Each area (it starts OFF).
     Back up us/ or eu/ first; the slot it writes is overwritten. Save or
     load a slot, walk into a new area and wait. That slot should update,
@@ -179,9 +190,8 @@ OLED checklist
     menus or fades. The Options rows should fit nine in every language.
 
   Still pending from preview.33:
-  - Title: Down to Quit game (the last entry), Cross: the window opens on
-    No. Yes returns to hbmenu; dw3.log ends with "dw3-port-quit: saves
-    flushed". Check US and EU.
+  - Quit game: Down to the last entry, Cross opens on No. Yes returns to
+    hbmenu; dw3.log ends with "dw3-port-quit: saves flushed". US and EU.
   - Return to title: Plus, then the last row. Yes returns to the title (the
     language select on EU). The text should fit in every language.
   - Cross-region import: start EU with only a US save present (in us/),
