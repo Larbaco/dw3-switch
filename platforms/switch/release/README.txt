@@ -3,6 +3,9 @@ Digimon World 3 / 2003, Switch homebrew preview
 Release notes for v0.6.5-preview.33. The release tag and boot version
 identify the actual source revision.
 
+Player guide (setup, controls, Options, saves, crash reports):
+https://github.com/Larbaco/dw3-switch/blob/main/docs/PLAYER_GUIDE.md
+
 New in this preview
 
   No item below has been checked on a Switch OLED yet. Each is checked on
