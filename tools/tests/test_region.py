@@ -39,6 +39,19 @@ def launcher(tmp_path_factory) -> Path:
                  REGION / "dw3_region.c", OPTIONS / "options_cfg.c")
 
 
+@pytest.fixture(scope="module")
+def launcher_bin(tmp_path_factory) -> Path:
+    """P6.24 slice 2: the pure helpers of the Switch launcher NRO."""
+    return build(tmp_path_factory.mktemp("nxlauncher") / "launcher_test", TESTS / "launcher_main.c",
+                 REGION / "dw3_launcher.c", REGION / "dw3_region.c", OPTIONS / "options_cfg.c")
+
+
+def test_switch_launcher_helpers(launcher_bin: Path, tmp_path: Path):
+    r = subprocess.run([str(launcher_bin), str(tmp_path)], capture_output=True, text=True, timeout=60)
+    assert r.returncode == 0, r.stderr + r.stdout
+    assert "OK: launcher" in r.stdout
+
+
 def test_region_logic(region_bin: Path, tmp_path: Path):
     r = subprocess.run([str(region_bin), str(tmp_path)], capture_output=True, text=True, timeout=60)
     assert r.returncode == 0, r.stderr + r.stdout

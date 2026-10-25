@@ -13,6 +13,14 @@ devkitPro / libnx target for Digimon World 3.
 DW3_DK_TMPBUILD=/tmp/dw3-dk-build ./tools/dk.sh make -C platforms/switch
 ```
 
+### Region launcher (P6.24 slice 2)
+
+`launcher/` is a separate, game-free libnx project: a picker `.nro` that
+chain-loads `dw3-us.nro` or `dw3-eu.nro`. Build it with
+`tools/build_switch_launcher.sh` (output `build/switch-launcher/out/dw3.nro`);
+see [docs/SINGLE_BUILD.md](../../docs/SINGLE_BUILD.md#as-built-slice-2-the-switch-launcher).
+The Makefile above and the CMake game image do not build it.
+
 Current binary is the **combined host bring-up sample** (P4.2 EGL
 `gpu_hello` present + P4.3 `audio_hello` audren). No game data required.
 See [docs/P4.2_VIDEO.md](../../docs/P4.2_VIDEO.md) and

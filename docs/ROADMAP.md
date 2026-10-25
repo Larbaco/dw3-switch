@@ -66,7 +66,7 @@ listed once, in [Pending OLED checks](#pending-oled-checks).
 | P6.20 | Port debug / cheat menu in the Options screen | in progress (PR 1 merged, #236: Cheats screen; PR 2, #248: money, give item and warp on page 2, in review; OLED checks open) | [roadmap](#phase-6-goal-notes), [PORT_OPTIONS](PORT_OPTIONS.md) |
 | P6.22 | Turbo speed in scripted scenes | in progress (CPU rasterizer is ~97 % of a field frame; pixel-identical rasterizer 4-5x faster, #220) | [P6.22](P6.22_FIELD_CPU.md), [roadmap](#phase-6-goal-notes), [P6.4](P6.4_FAST_FORWARD.md) |
 | P6.23 | Documentation: player guide, docs index, contributor and modder docs (future goal) | in progress (slice 1 done: player guide and docs index; slice 2: `CONTRIBUTING.md` and a pytest for all doc links, PR open; modder docs open) | [PLAYER_GUIDE](PLAYER_GUIDE.md), [docs index](README.md), [roadmap](#phase-6-goal-notes) |
-| P6.24 | One build for US and EU: one `.nro` and one PC binary, region found at boot, a boot picker with both discs (future goal; depends on P6.25 and P6.26) | in progress (slice 1 built: run-time region choice, picker logic and a PC launcher in front of the separate US / EU binaries; dual-image link, Switch picker and CI open) | [SINGLE_BUILD](SINGLE_BUILD.md#as-built-slice-1), [roadmap](#phase-6-goal-notes) |
+| P6.24 | One build for US and EU: one `.nro` and one PC binary, region found at boot, a boot picker with both discs (future goal; depends on P6.25 and P6.26) | in progress (slice 1 built: run-time region choice, picker logic and a PC launcher in front of the separate US / EU binaries; slice 2 built: Switch launcher `.nro` that chain-loads the US / EU `.nro`, CI artifact only, OLED check open; dual-image link and release flow open) | [SINGLE_BUILD](SINGLE_BUILD.md#as-built-slice-1), [slice 2](SINGLE_BUILD.md#as-built-slice-2-the-switch-launcher), [roadmap](#phase-6-goal-notes) |
 | P6.25 | Cross-region saves: a US save loads in EU and the reverse, one canonical save container (future goal) | in progress (slice 1 built: converter and one-way import on load, PC replays US to EU and EU to US; container and store open; OLED check open) | [CROSS_REGION_SAVES](CROSS_REGION_SAVES.md), [roadmap](#phase-6-goal-notes) |
 | P6.26 | Per-user saves: saves bound to the Switch user profile chosen in the Switch profile selector, global options (future goal) | future (design done, no code) | [PER_USER_SAVES](PER_USER_SAVES.md), [roadmap](#phase-6-goal-notes) |
 | P6.27 | Return to title from the pause (field) menu | in progress (built, PC US and EU replays; owner OLED check open) | [PORT_OPTIONS](PORT_OPTIONS.md#quit-and-return-to-title-p627-p628), [roadmap](#phase-6-goal-notes) |
@@ -130,6 +130,15 @@ Tick the item in the table once the owner confirms.
   [PORT_OPTIONS.md](PORT_OPTIONS.md#cheats-p620) (#236), and the page 2
   checklist (Money, Warp, Give item) in
   [PORT_OPTIONS.md](PORT_OPTIONS.md#oled-checklist-page-2-owner) (PR 2).
+- **P6.24 (slice 2, Switch launcher):** copy the launcher `dw3.nro` (CI
+  artifact `dw3-switch-launcher-nro`) to `sdmc:/switch/dw3/` and the US and EU
+  builds there as `dw3-us.nro` and `dw3-eu.nro`; start `dw3` from hbmenu
+  (applet mode, not a title takeover). Steps and what to expect:
+  [SINGLE_BUILD.md](SINGLE_BUILD.md#oled-checklist-launcher-owner). Cases:
+  both regions (picker, 3 s countdown boots the last region, A, Y "always",
+  + quits), one region only (starts at once, no picker), no region (setup
+  message, + quits), and Minus held at start with a stored "always" (picker
+  comes back).
 - **P6.25 (slice 1):** a US save in the US folder and none in the EU folder:
   the EU build lists it under Continue and loads it; and the reverse; with a
   save in both folders nothing is imported. Checklist:
@@ -1627,7 +1636,7 @@ Statuses are in the [table](#status-at-a-glance).
   them, the release `README.txt` points to the guide, and a new tester can
   install the US or EU build and report a crash using only those pages.
   Related: P6.5, P8.5, [REPORTING_ISSUES.md](REPORTING_ISSUES.md).
-- [ ] **P6.24 One build for US and EU (in progress: slice 1 built 2026-10-25).** Dated 2026-10-24, owner
+- [ ] **P6.24 One build for US and EU (in progress: slices 1 and 2 built 2026-10-25).** Dated 2026-10-24, owner
   request: "Build única pra US e EU". One `.nro`, and one PC binary, that runs
   either disc, instead of the separate US and EU builds (`--eu`, two `.nro`
   files, EU attached to releases by hand). Goal note only, **nothing started,
@@ -1648,6 +1657,21 @@ Statuses are in the [table](#status-at-a-glance).
   builds and CI are unchanged. **Open:** the dual-image link (one binary), the
   Switch picker and auto-detection, CI/release on one `.nro`, disc images as a
   detection source, the Options row, an OLED check.
+  **Slice 2 (built, [As built](SINGLE_BUILD.md#as-built-slice-2-the-switch-launcher)):**
+  the Switch side of the same launcher approach. A small libnx `.nro`
+  (`platforms/switch/launcher/`, `tools/build_switch_launcher.sh`, 241 KB, no
+  game code) probes `sdmc:/switch/dw3/us` and `/eu` with `dw3_region`, draws a
+  console picker when both exist (3 s, A, Y always, + quit, Minus at start to
+  force it), and chain-loads `sdmc:/switch/dw3/dw3-us.nro` or `dw3-eu.nro` with
+  `envSetNextLoad()`. One region: chain-loads at once; none: the setup
+  message; no next-load support, a missing NRO or an `envSetNextLoad` error: a
+  message, no crash. The game `.nro` files still open `sdmc:/switch/dw3/<ver>/`,
+  so the path they are started from does not matter. Pure parts tested in
+  `tools/tests/test_region.py`; Ryubing runs the launcher (setup, missing
+  NRO, picker countdown to the no-loader screen) but cannot chain-load, so the
+  hand-over is an OLED check. CI builds it as an artifact (job
+  `switch-launcher`); not a release asset yet. The separate builds and the
+  release flow are unchanged.
   **Survey and approach (summary):** the region is a compile-time choice
   (`DW3_VERSION`); the decomp has 731 region blocks and the `GameState` and
   `BattleFuncs` layouts differ, so a run-time region variable is not

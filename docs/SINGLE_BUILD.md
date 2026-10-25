@@ -6,7 +6,9 @@ today. This note is the survey behind the
 [ROADMAP P6.24 entry](ROADMAP.md#phase-6-goal-notes). The owner has since
 decided how saves and the boot choice work (next section). **Slice 1 is built
 (2026-10-25): the run-time region choice, the picker logic and a PC launcher,
-see [As built](#as-built-slice-1) below; the dual-image link is not.** Numbers
+see [As built](#as-built-slice-1) below; the dual-image link is not.** Slice 2
+(2026-10-25) adds the Switch launcher `.nro`, see
+[As built, slice 2](#as-built-slice-2-the-switch-launcher). Numbers
 come from `origin/main` at `3e2a9b7`, the decomp at
 `b9caa6c` (`vendor/dw3_decomp`), the PC objects of a US build, and the
 preview.31-rc1 Switch builds (US and EU, `.nro` and `.elf`).
@@ -243,6 +245,8 @@ chose compile-time versions. Very high cost and risk; no benefit over (a).
 
 ### (c) Launcher `.nro` that chains to the region's `.nro`
 
+(Built as P6.24 slice 2, see [As built, slice 2](#as-built-slice-2-the-switch-launcher).)
+
 A small `.nro` detects the region (or shows a picker) and starts
 `dw3-switch-us.nro` or `dw3-switch-eu.nro` with libnx `envSetNextLoad()` (works
 under hbmenu / hbloader). Low cost and no change to the game build, but **not
@@ -442,6 +446,125 @@ plain PC builds); `pytest tools/tests` 361 passed, 2 skipped; the US and EU
 Switch `.nro` (10,219,692 and 10,252,460 B) still build. Evidence:
 `tmp/evidence/20261025-p624-single-build/` (not in git).
 
+## As built (slice 2: the Switch launcher)
+
+Slice 2 is the same launcher approach on the Switch, still **not** the dual-image
+link: option (c) above, built after all as the Switch front end of the slice 1
+logic. The game `.nro` files are unchanged.
+
+**Files.** `platforms/switch/launcher/` (a standalone libnx Makefile project and
+`source/main.c`), `port/region/dw3_launcher.{c,h}` (pure: NRO lookup and the
+text of every screen, host-testable), `tools/build_switch_launcher.sh` (same
+`devkitpro/devkita64` image as `tools/build_switch_game.sh`; it copies the few
+files it needs to `<build dir>/src` and builds there, so an NTFS checkout is
+fine; `DW3_LAUNCHER_BUILD_DIR`, default `build/switch-launcher`; output
+`<build dir>/out/dw3.nro`, 241,720 B, no game code and no PSY-Z). CI job
+`switch-launcher` builds it and uploads the artifact `dw3-switch-launcher-nro`;
+it is **not** a release asset and the release workflow does not know it.
+
+**SD layout (default chosen, owner can change).** Everything stays in the
+usual folder:
+
+```
+sdmc:/switch/dw3/dw3.nro        the launcher (what hbmenu starts)
+sdmc:/switch/dw3/dw3-us.nro     the US game build (dw3-switch.nro, renamed)
+sdmc:/switch/dw3/dw3-eu.nro     the EU game build (dw3-switch.nro from --eu, renamed)
+sdmc:/switch/dw3/us/  eu/       the runtime trees, as in RUNTIME_LAYOUT.md
+sdmc:/switch/dw3/port_options.cfg   region_default / last_region
+```
+
+`dw3-switch-us.nro` / `dw3-switch-eu.nro` are accepted as a second name. hbmenu
+lists the two game NROs as well; that is harmless (starting one directly still
+works and skips the launcher). **The data path does not depend on where the NRO
+sits**: the game NRO opens `sdmc:/switch/dw3/<ver>/` (`DW3_DEFAULT_RUNTIME`
+baked in at build time, `boot_main.c` ignores `argv`), so chain-loading from
+`dw3-us.nro` finds the same data as hbmenu starting `dw3-switch.nro`. Nothing
+in the game was changed to make this so.
+
+**Flow** (the slice 1 decision table, `dw3_region_decide`):
+
+1. Sample the pad for about 200 ms (12 frames) for **Minus held** (the pad is
+   late to report on the first frames).
+2. Probe `sdmc:/switch/dw3/us` and `/eu` (`files_<r>.json` + the executable),
+   read `region_default` / `last_region` from `sdmc:/switch/dw3/port_options.cfg`.
+3. One region: chain-load it at once. None: the setup message, **+** quits.
+   Both: the picker unless `region_default` is us/eu and Minus is not held.
+4. Picker on libnx's console (plain text, 80 columns of 16 px at 720p, white on
+   black): `> US <` / `> EU <`, "Starting US in 3...", "Always start this one:
+   off/ON". Left/Right (D-pad or left stick) choose and cancel the countdown, A
+   starts, Y toggles "always", + quits. The default entry is `last_region`,
+   else US.
+5. `chain_load`: finds the NRO (`dw3_launcher_nro_path`), checks
+   `envHasNextLoad()`, calls `envSetNextLoad(path, path)` (argv[0] = the NRO
+   path, as hbmenu passes it; the game ignores it), stores `last_region` (and
+   `region_default` when Y was on), and returns from `main`, so hbloader starts
+   the queued NRO.
+
+**Fail-safe screens** (all wait for **+**, none crashes): no data; the region's
+NRO missing (names the file to copy); `envHasNextLoad()` false, for example not
+started from hbmenu / hbloader or a title takeover (says so and names the NRO
+to start by hand); `envSetNextLoad` returned an error (shows the code).
+
+**Tests.** `tools/tests/test_region.py::test_switch_launcher_helpers` (C test
+`tools/tests/launcher_main.c`: NRO lookup order and name per region, every
+screen's text, picker marks, countdown and "always" line, tiny buffers); the
+slice 1 tests cover the decision table and the picker. The libnx glue itself
+(`main.c`) is only built, then run in Ryubing (below). **Ryubing smoke**
+(headless on its own Xvfb, own data root, `Ryujinx -r <root> <nro>`):
+- no data: the setup screen is drawn (evidence `none.png`);
+- EU tree only, no game NRO: "The EU game file is missing" (`one-nonro.png`);
+- both trees and both NROs: the picker countdown ran out (it is 3 s, shorter
+  than Ryubing's window start, so the picker screen itself was **not** captured
+  in the emulator; its text is covered by the host test), US was chosen, and
+  the **no-loader screen** came up (`both.png`, `both-t*.png`).
+**Ryubing cannot chain-load**: it runs the `.nro` directly as a program, with no
+hbloader, so `envHasNextLoad()` is false and the real `envSetNextLoad` hand-over
+is **not** tested; that is the first OLED check. The Minus-held path was not
+driven in the emulator either (the decision is the tested slice 1 table).
+Evidence: `tmp/evidence/20261025-p624-launcher/` (not in git).
+
+**Findings.** Ryubing hangs while loading an NRO that embeds the 256x256
+`icon.jpg` through this Makefile (the same file in the CMake game NRO loads
+fine); the launcher therefore ships with the stock libnx icon (default chosen,
+owner can change; not investigated further). The container runs as root and a
+user namespace maps it to an id the host does not own, so the build script
+leaves the tree world-writable (`chmod -R a+rwX`) instead of `chown`.
+
+**Not done / open for the launcher.** The launcher does not know the discs in
+the folder (only extracted trees, as in slice 1); its own icon; a real
+hbloader run (OLED, see [Pending OLED checks](ROADMAP.md#pending-oled-checks));
+the release workflow and README do not ship it yet.
+
+### OLED checklist (launcher, owner)
+
+Setup: `dw3.nro` (the launcher, CI artifact `dw3-switch-launcher-nro` or
+`tools/build_switch_launcher.sh`) in `sdmc:/switch/dw3/`, the US build as
+`dw3-us.nro` and the EU build (`--eu`) as `dw3-eu.nro` next to it. Start `dw3`
+from hbmenu in applet mode (hold R on a game to get a title takeover for the
+negative check at the end). Check the picker text is readable on the OLED at
+arm's length, handheld.
+
+1. **Both regions** (`us/` and `eu/` trees present): the picker appears with
+   `> US <`; do nothing: after 3 s the US game starts and is the same as
+   starting `dw3-switch.nro` (title, a save loads). Quit the game, start `dw3`
+   again: the picker now starts on the last region. Press Right, A: EU starts.
+2. **Y "always"**: Y until it says ON, A. Next start: no picker, that region
+   boots at once. **Hold Minus** while pressing A on `dw3` in hbmenu: the picker
+   comes back although "always" is stored. D-pad/stick cancel the countdown.
+   `+` quits to hbmenu without starting anything.
+3. **One region** (move `eu/` away): no picker, the US game starts at once (a
+   short pause of about 0.2 s for the Minus sample is expected). Then only EU.
+4. **No region** (move both away): the setup message names both folders;
+   `+` returns to hbmenu.
+5. **Missing game NRO** (remove `dw3-eu.nro`, choose EU): the message names
+   `sdmc:/switch/dw3/dw3-eu.nro`; `+` quits.
+6. **No next-load** (start `dw3.nro` as a title takeover, or from a loader
+   without next-load support): the "cannot start another program" message,
+   no crash.
+7. **Saves and options** of both regions are unchanged after going through the
+   launcher (it writes only `sdmc:/switch/dw3/port_options.cfg`).
+8. **Controllers**: the same with handheld Joy-Cons and a Pro Controller.
+
 **What remains for P6.24.**
 
 1. The dual-image link: `DW3_VERSION=both` in the three CMakeLists, the game
@@ -451,8 +574,9 @@ Switch `.nro` (10,219,692 and 10,252,460 B) still build. Evidence:
 2. The Switch: auto-detection on the SD card, a host-drawn picker in
    `boot_main.c` (debug-overlay font, Minus read at start), reading the
    same `dw3_region.c`; CI and the release workflow on one `.nro`; an OLED check
-   with each disc and with both. A stop-gap launcher `.nro` (option (c)) was not
-   built: it would be a third file to ship.
+   with each disc and with both. The stop-gap launcher `.nro` (option (c)) was
+   built in slice 2 (above); it is a third file to ship, which is why it is not
+   a release asset yet. This item is the in-image replacement of it.
 3. Disc images as a detection source (today only extracted trees count); the
    Options row "Region at boot"; the per-region language/title line in the
    picker; the open questions below.
