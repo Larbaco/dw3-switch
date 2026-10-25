@@ -1,0 +1,5 @@
+# US: restart in a field, then a random battle (env in manifest)
+pad 200 0x0c09
+pad 205 0x0000
+pad 500 0x0010
+end 1500

@@ -1,0 +1,35 @@
+# EU: field save, restart, Continue (env in manifest)
+shot 196 slot-question
+pad 700 0x4000
+pad 705 0x0000
+pad 800 0x4000
+pad 805 0x0000
+shot 886 slots
+pad 1000 0x4000
+pad 1005 0x0000
+shot 1294 saved
+pad 1320 0x0c09
+pad 1325 0x0000
+pad 1430 0x0008
+pad 1435 0x0000
+pad 1480 0x0008
+pad 1485 0x0000
+pad 1510 0x0008
+pad 1515 0x0000
+pad 1540 0x0008
+pad 1545 0x0000
+pad 1600 0x0008
+shot 1600 title
+pad 1605 0x0000
+pad 1710 0x0040
+pad 1715 0x0000
+pad 1730 0x0040
+pad 1735 0x0000
+shot 1760 load-selected
+pad 1770 0x4000
+pad 1775 0x0000
+shot 2100 slot-choice
+pad 2120 0x4000
+pad 2125 0x0000
+shot 2300 slot-result
+end 2320

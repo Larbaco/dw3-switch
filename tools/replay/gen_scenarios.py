@@ -1279,6 +1279,134 @@ def cheats_screen2(version):
     return r
 
 
+# --- P6.9 restart validation ------------------------------------------------
+
+# The restart chord, L1 + R1 + Start + Select (PS1 logical pad). The option
+# (restart_hotkey=1) is seeded by the manifest's cfg. The game frame counter
+# keeps running across the in-process restart, so the boot sequence after the
+# chord is the cold-boot sequence shifted by the frame of the chord.
+CHORD = 0x0C09
+
+
+def _boot_to_menu(r, version, f):
+    """Cold-boot input after a restart at frame f: US skips the opening movie
+    and presses PRESS START; EU picks the default language (English), skips
+    the splashes and presses PRESS START. Returns the frame of the Start /
+    Continue menu (every offset is the cold boot's, see us_title, load_menu)."""
+    if version == "us":
+        r.press(f + 20, START)
+        r.press(f + 210, START)
+        return f + 310
+    for k in (110, 160, 190, 220, 280):
+        r.press(f + k, START)
+    return f + 380
+
+
+def _restart_battle_inputs(r):
+    """The forced battle of p77_battle: Tech once, Cross through the report."""
+    _tech(r, 350)
+    for f in range(520, 1470, 30):
+        r.press(f, CROSS)
+
+
+def restart_after_battle(version):
+    """Restart in the field after a finished battle (START_MODE_ONCE: the
+    restart lands on the real boot screen). Battle, report, field (turbo 4);
+    the chord at 1600; then the boot screen and the title menu."""
+    r = Rec(f"{version.upper()}: restart in the field after a battle (env in manifest)")
+    _restart_battle_inputs(r)
+    r.shot(1580, "field-after-battle")
+    r.press(1600, CHORD)
+    r.shot(1660, "boot-a")
+    m = _boot_to_menu(r, version, 1600)
+    r.shot(m - 100, "title")
+    r.shot(m + 40, "menu")
+    r.end(m + 60)
+    return r
+
+
+def restart_battle_again(version):
+    """Restart after a battle without START_MODE_ONCE: the restart re-enters
+    the forced battle (a fresh GAME), and the same inputs, shifted by the
+    chord's frame, must give the same battle and report again."""
+    r = Rec(f"{version.upper()}: restart after a battle, then the same battle again (env in manifest)")
+    _restart_battle_inputs(r)
+    r.shot(1000, "battle-1-late")
+    r.shot(1580, "field-after-battle")
+    base = 1600
+    r.press(base, CHORD)
+    # the battle again, 6 frames of the chord's release give the same start
+    _tech(r, base + 350)
+    for f in range(base + 520, base + 1470, 30):
+        r.press(f, CROSS)
+    r.shot(base + 1000, "battle-2-late")
+    r.shot(base + 1580, "field-after-battle-2")
+    r.end(base + 1600)
+    return r
+
+
+def restart_in_battle(version):
+    """The chord inside a battle (the command menu is up): the host restarts
+    from any mode. START_MODE_ONCE: boot screen, title menu afterwards."""
+    r = Rec(f"{version.upper()}: restart during a battle (env in manifest)")
+    r.shot(340, "battle-menu")
+    _tech(r, 350)
+    r.shot(560, "battle-tech")
+    base = 600
+    r.press(base, CHORD)
+    r.shot(base + 60, "boot-a")
+    m = _boot_to_menu(r, version, base)
+    r.shot(m - 100, "title")
+    r.shot(m + 40, "menu")
+    r.end(m + 60)
+    return r
+
+
+def restart_before_battle(version):
+    """Restart in a random-battle field before any fight, then walk: Battle
+    now (the cheats hook) makes the first footstep a battle. START_MODE is not
+    one-shot here, so the restart re-enters the field. Log only."""
+    r = Rec(f"{version.upper()}: restart in a field, then a random battle (env in manifest)")
+    r.press(200, CHORD)
+    _pad(r, 500, UP)
+    r.end(1500)
+    return r
+
+
+def restart_save_continue(version):
+    """Field save, restart, Continue. The save screen of save_screen (slot 1,
+    YES, save), the chord, the boot screen, then Load Game / Continue, slot 1
+    and the loaded game. Checkpoints keep the pre-restart saved screen, the
+    title after the restart and the loaded field."""
+    r = Rec(f"{version.upper()}: field save, restart, Continue (env in manifest)")
+    for f, name in ((196, "slot-question"), (886, "slots")):
+        r.shot(f, name)
+    r.press(700, CROSS)              # Slot 1
+    r.press(800, CROSS)              # YES, create the block
+    r.press(1000, CROSS)             # save
+    r.shot(1294, "saved")
+    base = 1320
+    r.press(base, CHORD)
+    m = _boot_to_menu(r, version, base)
+    r.shot(m - 100, "title")
+    r.press(m + 10, DOWN)
+    r.press(m + 30, DOWN)            # third entry: Load Game / Continue
+    r.shot(m + 60, "load-selected")
+    r.press(m + 70, CROSS)
+    r.shot(m + 400, "slot-choice")
+    r.press(m + 420, CROSS)          # slot 1
+    r.shot(m + 600, "slot-result")
+    r.end(m + 620)
+    return r
+
+
+RESTART_RECS = (("restart-after-battle", restart_after_battle),
+                ("restart-battle-again", restart_battle_again),
+                ("restart-in-battle", restart_in_battle),
+                ("restart-before-battle", restart_before_battle),
+                ("restart-save-continue", restart_save_continue))
+
+
 def main(out):
     out.mkdir(parents=True, exist_ok=True)
     (out / "us-title.rec").write_text(us_title().text())
@@ -1345,6 +1473,9 @@ def main(out):
                 cheats_screen(v, phase).text(True))
         (out / f"{v}-cheat-fill-bag.rec").write_text(cheat_fill_bag(v).text(True))
         (out / f"{v}-cheats-screen2.rec").write_text(cheats_screen2(v).text(True))
+    for v in ("us", "eu"):
+        for name, fn in RESTART_RECS:
+            (out / f"{v}-{name}.rec").write_text(fn(v).text(True))
     (out / "us-repro-balloon.rec").write_text(repro_balloon("us").text(True))
     for version in ("us", "eu"):
         # Written unsorted, byte for byte as first committed with patch 0058.

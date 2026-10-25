@@ -841,6 +841,46 @@ for _v in ("us", "eu"):
                   expect_log=((0, r"FIGHTSTG_start"),),
                   note="encounter spiral in 16:9: swirl 4:3, gutters black (documented)"))
 
+# P6.9 restart validation (docs/P6.9_RESTART.md). The restart hotkey is turned
+# on through the option file (restart_hotkey=1, so the P9.4 reader is part of
+# the test) and the recording presses L1+R1+Start+Select (0x0C09). The game
+# frame counter keeps running across the in-process restart, so the checkpoints
+# after the chord are at the chord's frame plus the cold boot's. PC only (env).
+# DW3_START_MODE_ONCE (patch 0127): only the boot newGame honours START_MODE,
+# so the restart reaches the real boot screen (US title, EU language select);
+# without it the restart re-enters the forced mode, a fresh GAME.
+_RST_CFG = (("restart_hotkey", "1"),)
+_RST_LINE = r"dw3-port-restart: saves flushed; returning to the boot screen in-process"
+_RST_ONCE = (("DW3_START_MODE_ONCE", "1"),)
+for _v, _ids in (("us", (0x159, 0x1FA, 0x1C2, 0x158)), ("eu", (0x167, 0x208, 0x1D1, 0x166))):
+    _fight, _menu, _report, _field = _ids
+    _battle = ((_fight, M), (_menu, S), (_report, M), (_field, M))
+    _add(Scenario(f"{_v}-restart-after-battle", _v, "full", turbo=4, timeout=400,
+                  env=_P77_ENV_REPORT + _RST_ONCE, cfg=_RST_CFG, expect_restore=_battle,
+                  expect_log=((0, r"WFIGHTMN_endBattle result=1(?s:.*)" + _RST_LINE),),
+                  note="restart in the field after a battle: the boot screen, title menu (P6.9)"),
+         Scenario(f"{_v}-restart-battle-again", _v, "full", turbo=4, timeout=600,
+                  env=_P77_ENV_REPORT, cfg=_RST_CFG, expect_restore=_battle * 2,
+                  expect_log=((0, r"WFIGHTMN_endBattle result=1(?s:.*)" + _RST_LINE
+                                  + r"(?s:.*)WFIGHTMN_endBattle result=1"),),
+                  note="restart after a battle re-enters the forced battle: the same battle again (P6.9)"),
+         Scenario(f"{_v}-restart-in-battle", _v, "full", turbo=4, timeout=400,
+                  env=_P77_ENV_REPORT + _RST_ONCE, cfg=_RST_CFG,
+                  expect_log=((0, r"FIGHTSTG_start(?s:.*)" + _RST_LINE),),
+                  forbid_log=((0, r"WFIGHTMN_endBattle"),),
+                  note="the chord inside a battle restarts from any mode (P6.9)"),
+         Scenario(f"{_v}-restart-before-battle", _v, "full", turbo=4, timeout=400, log_only=True,
+                  phases=(f"{_v}-restart-before-battle",),
+                  env=_ENC_ENV + (("DW3_CHEATS_ARM", "battle_now"),),
+                  cfg=_RST_CFG + _CHEAT_ON + (("encounter_rate", "2"),),
+                  expect_log=((0, _RST_LINE + r"(?s:.*)dw3-cheats: battle now: a random battle starts"
+                                  r"(?s:.*)FIGHTSTG_start"),),
+                  note="restart in a field, then a random battle (Battle now) starts normally (P6.9)"),
+         Scenario(f"{_v}-restart-save-continue", _v, "full", timeout=900,
+                  env=_SAVE_ENV + _RST_ONCE, cfg=_RST_CFG,
+                  expect_log=((0, r"saved(?s:.*)" + _RST_LINE),),
+                  note="field save, restart, Load Game / Continue reads the save back (P6.9)"))
+
 
 def by_name() -> dict[str, Scenario]:
     return {s.name: s for s in SCENARIOS}
