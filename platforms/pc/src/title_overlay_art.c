@@ -23,11 +23,15 @@ enum { OPTIONS_LAYER_FULL, OPTIONS_LAYER_STATIC, OPTIONS_LAYER_FOCUS,
        OPTIONS_LAYER_VALUE, OPTIONS_LAYER_DESCRIPTION };
 static int options_layer = OPTIONS_LAYER_FULL;
 static int options_layer_row;
+/* The static layer's version: bumped when the page, the cheats master switch
+ * or (P9.7) the locked rows change, so the retained canvas rebuilds it. */
+static unsigned options_layout;
+/* P9.7: rows greyed in game (bit i = row i, bit 16 = the Cheats entry). */
+static unsigned options_locked;
 #ifdef DW3_CHEATS
 /* P6.20: which page the Options window shows, and the cheats master switch. */
 static int options_page = DW3_TITLE_OPTIONS_PAGE_OPTIONS;
 static int options_cheats_on;
-static unsigned options_layout;
 #endif
 static void pixel(int x,int y,int r,int g,int b,int alpha) {
     if(x<clip_x0||x>=clip_x1||y<clip_y0||y>=clip_y1||
@@ -134,6 +138,12 @@ int dw3_pc_title_overlay_options_cursor(void) { return option_cursor; }
 int dw3_pc_title_overlay_options_value(int row) {
     return row>=0&&row<DW3_TITLE_OPTION_ROWS?option_values[row]:0;
 }
+void dw3_pc_title_overlay_set_options_locked(unsigned mask) {
+    mask&=(1u<<DW3_TITLE_OPTION_ROWS)-1u|DW3_TITLE_LOCK_CHEATS;
+    if(mask!=options_locked){options_locked=mask;options_layout++;options_generation++;}
+}
+unsigned dw3_pc_title_overlay_options_locked(void) { return options_locked; }
+unsigned dw3_pc_title_overlay_options_layout(void) { return options_layout; }
 #ifdef DW3_CHEATS
 void dw3_pc_title_overlay_set_options_page(int page,int cheats_on) {
     page=page==DW3_TITLE_OPTIONS_PAGE_CHEATS||page==DW3_TITLE_OPTIONS_PAGE_CHEATS2?page:DW3_TITLE_OPTIONS_PAGE_OPTIONS;
@@ -143,7 +153,6 @@ void dw3_pc_title_overlay_set_options_page(int page,int cheats_on) {
         options_layout++;options_generation++;
     }
 }
-unsigned dw3_pc_title_overlay_options_layout(void) { return options_layout; }
 #endif
 
 /* --- Port options screen ---------------------------------------------------
@@ -223,10 +232,18 @@ static const AutosaveWords autosave_words[5]={AUTOSAVE_WORDS(en),AUTOSAVE_WORDS(
 static const AutosaveWords *autosave_lang(void) {
     return &autosave_words[options_lang>=DW3_TITLE_LANG_EN&&options_lang<=DW3_TITLE_LANG_IT?options_lang:0];
 }
+/* P9.7: the message line of a row that is locked in game, in the language of
+ * the disc (en, fr, de, es, it: the DW3_TITLE_LANG_* order). */
+static const Word lock_words[5]={WORD(opt_lock_en),WORD(opt_lock_fr),WORD(opt_lock_de),
+                                 WORD(opt_lock_es),WORD(opt_lock_it)};
+static const Word *lock_lang(void) {
+    return &lock_words[options_lang>=DW3_TITLE_LANG_EN&&options_lang<=DW3_TITLE_LANG_IT?options_lang:0];
+}
 #ifdef DW3_CHEATS
-/* P6.20: the Square (Y on the Switch) button cap of the "Cheats" hint. */
-static void button_square(int cx,int cy) {
-    disc(cx,cy,14,214,222,240);
+/* P6.20: the Square (Y on the Switch) button cap of the "Cheats" hint; grey
+ * when the entry is locked (P9.7, in game). */
+static void button_square(int cx,int cy,int locked) {
+    if(locked)disc(cx,cy,14,112,120,160);else disc(cx,cy,14,214,222,240);
 #if defined(__SWITCH__)
     const Word y_key=WORD(opt_key_y);
     word(&y_key,cx-y_key.w/2,cy-y_key.top-y_key.h/2,0,0,0,49);
@@ -421,7 +438,8 @@ static void options_screen(void) {
         }
         if(draw_static||(options_layer==OPTIONS_LAYER_FOCUS&&
                        i==options_layer_row))
-            word(kind==ROW_AUTOSAVE?&autosave_lang()->row:&rows[i],x0+106,ry-2,0,255,255,255);
+            word(kind==ROW_AUTOSAVE?&autosave_lang()->row:&rows[i],x0+106,ry-2,0,
+                 (options_locked>>i)&1u?120:255,(options_locked>>i)&1u?128:255,(options_locked>>i)&1u?170:255);
         if(v<0)v=0;
         switch(kind) {
         case ROW_VOLUME:
@@ -446,14 +464,16 @@ static void options_screen(void) {
             if(v>1)v=1;
             value=&values[v];dim=v==0;break;
         }
+        if((options_locked>>i)&1u)dim=2; /* P9.7: greyer than an OFF value */
         if(full||(options_layer==OPTIONS_LAYER_VALUE&&i==options_layer_row))
-            word(value,x1-96,ry-2,1,dim?150:255,dim?158:255,dim?196:255);
+            word(value,x1-96,ry-2,1,dim==2?120:dim?150:255,dim==2?128:dim?158:255,dim==2?170:dim?196:255);
     }
     /* Message line for the focused choice, then the button hints. */
     if(draw_static)box(x0+30,y1-152,w-60,3,16,156,247,255);
     if((full||options_layer==OPTIONS_LAYER_DESCRIPTION)&&
        option_cursor>=0&&option_cursor<DW3_TITLE_OPTION_ROWS)
-        word(row_kind(option_cursor)==ROW_AUTOSAVE?&autosave_lang()->desc:&desc[option_cursor],
+        word((options_locked>>option_cursor)&1u?lock_lang():
+             row_kind(option_cursor)==ROW_AUTOSAVE?&autosave_lang()->desc:&desc[option_cursor],
              x0+48,y1-128,0,255,255,255);
     if(draw_static) {
         const int hy=y1-74,bx=x1-48-back.w,cx=bx-36-change.w-60;
@@ -465,7 +485,9 @@ static void options_screen(void) {
         if(options_cheats_on){
             const Word *hint=&cheat_lang()->hint;
             const int sx=cx+22-96-hint->w;
-            button_square(sx,hy+12);word(hint,sx+22,hy,0,255,255,255);
+            const int lk=(options_locked&DW3_TITLE_LOCK_CHEATS)!=0;
+            button_square(sx,hy+12,lk);
+            word(hint,sx+22,hy,0,lk?120:255,lk?128:255,lk?170:255);
         }
 #endif
         box(x0+30,y1-36,w-60,3,0,66,156,255);

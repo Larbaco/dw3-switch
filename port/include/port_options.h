@@ -7,6 +7,17 @@ extern "C" {
 #endif
 
 void dw3_port_options_open(void);
+/* P9.7: open it from the field menu's Options row (port/options/
+ * field_options.c). Same screen and pad; the rows that cannot change safely in
+ * game are locked (Widescreen) and so is the Cheats entry. Closing returns to
+ * the menu that opened it. */
+void dw3_port_options_open_in_game(void);
+int dw3_port_options_in_game(void);
+/* 1 when `index` is a row that cannot change in game; always 0 from the title. */
+int dw3_port_options_row_locked(int index);
+/* Bit i: row i locked; DW3_PORT_OPTIONS_LOCK_CHEATS: the Cheats entry. */
+unsigned dw3_port_options_locked_mask(void);
+enum { DW3_PORT_OPTIONS_LOCK_CHEATS = 1u << 16 };
 void dw3_port_options_close(void);
 int dw3_port_options_is_open(void);
 

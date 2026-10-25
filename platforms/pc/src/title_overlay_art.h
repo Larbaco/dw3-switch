@@ -71,6 +71,18 @@ int dw3_pc_title_overlay_footer_shown(void);
 enum { DW3_TITLE_OPTION_ROWS = 9 };
 void dw3_pc_title_overlay_set_options_view(int cursor, const int *values,
                                            int count);
+/* P9.7: the Options screen opened from the field menu greys the rows that
+ * cannot change in game: bit i = row i (label and value in grey, and the
+ * message line says it is changed at the title), DW3_TITLE_LOCK_CHEATS = the
+ * Square / Y "Cheats" hint. 0 on the title. A change rebuilds the retained
+ * static layer (dw3_pc_title_overlay_options_layout). */
+enum { DW3_TITLE_LOCK_CHEATS = 1u << 16 };
+void dw3_pc_title_overlay_set_options_locked(unsigned mask);
+unsigned dw3_pc_title_overlay_options_locked(void);
+/* Bumped when the page, the cheats switch or the locked rows change: the
+ * static layer (labels, title, hints) must be drawn again
+ * (title_options_cache.c). */
+unsigned dw3_pc_title_overlay_options_layout(void);
 /* Bumped by setters that change the menu states; hosts re-upload on change. */
 unsigned dw3_pc_title_overlay_generation(void);
 /* Bumped only when the Port options screen (state 4) changes. */
@@ -90,8 +102,5 @@ enum { DW3_TITLE_OPTIONS_PAGE_OPTIONS = 0, DW3_TITLE_OPTIONS_PAGE_CHEATS = 1,
        DW3_TITLE_OPTIONS_PAGE_CHEATS2 = 2 };
 enum { DW3_TITLE_CHEAT_ROWS = 5, DW3_TITLE_CHEAT_PAGES = 2, DW3_TITLE_CHEAT_WARPS = 13 };
 void dw3_pc_title_overlay_set_options_page(int page, int cheats_on);
-/* Bumped when the page or cheats_on changes: the static layer (labels,
- * title, hints) must be drawn again (title_options_cache.c). */
-unsigned dw3_pc_title_overlay_options_layout(void);
 #endif
 #endif

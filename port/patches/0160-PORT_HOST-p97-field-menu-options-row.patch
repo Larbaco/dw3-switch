@@ -1,0 +1,235 @@
+Upstream-bound: no
+Subject: [PORT_HOST] P9.7 Options row in the field menu (the port options screen in game, slice 1)
+
+P9.7, slice 1 (the field, not battle yet): the field menu's option list gets
+one more row, Options, just above Return to title (P6.27, patch 0123), in the
+game's font, five EU languages (one on US). Cross on it opens the port
+options screen over the menu (port/options/field_options.c; the native
+overlay draws the same Options window it shows on the title). The menu task
+waits while it is open (the field menu is already a paused state), hands it
+the pad each frame and takes the pad back when Triangle closes it. Rows that
+cannot change safely in game are greyed (Widescreen, the Cheats screen).
+Without the native overlay nothing is added (dw3_port_field_options_enabled()
+is 0).
+
+The options panel has a sprite for five rows (0x1C) and six (0x1B). With the
+two port rows that is seven and, with the card folders row, eight, so the
+panel's bottom edge is covered and redrawn lower by drawFieldMenuPanelRow,
+now for any number of extra rows (patch 0123 drew exactly one).
+FieldMenuWindows.options grows from seven to eight windows (PORT_HOST only).
+
+--- a/src/engine/menu/field_menu.c
++++ b/src/engine/menu/field_menu.c
+@@ -5,6 +5,7 @@
+ #if PORT_HOST
+ #include "port_widescreen.h"
+ #include "port_confirm.h"
++#include "port_field_options.h"
+ /* P6.27: language of the Return to title row (the EU disc's LANGUAGE; the US
+    disc is English). */
+ #if VERSION_EU
+@@ -180,6 +181,11 @@
+     if (dw3_port_field_return_enabled()) {
+         task->count++;
+     }
++    /* P9.7: one more row above it, Options (the port options screen, drawn by
++       the same overlay). */
++    if (dw3_port_field_options_enabled()) {
++        task->count++;
++    }
+ #endif
+     if (getFieldZone() >= 0) {
+         task->option2Enabled = 1;
+@@ -189,16 +195,35 @@
+     createFieldMenuWindows(task, win);
+ }
+ 
++#if PORT_HOST
++/* P6.27 / P9.7: the rows the port adds at the end of the list, Options and
++   then Return to title (-1 when the row is not offered). */
++static s32 portReturnRow(FieldMenu *task) {
++    return dw3_port_field_return_enabled() ? task->count - 1 : -1;
++}
++
++static s32 portOptionsRow(FieldMenu *task) {
++    return dw3_port_field_options_enabled()
++               ? task->count - 1 - (dw3_port_field_return_enabled() ? 1 : 0)
++               : -1;
++}
++#endif
++
+ /* Once the second panel is open: the options (option 2 greyed when disabled) */
+ static inline void showFieldMenuOptions(FieldMenu *task, FieldMenuWindows *win) {
+     showPartnerPage(task, win, 1, 1);
+     for (task->counter = 0; task->counter < task->count; task->counter++) {
+ #if PORT_HOST
+-        if (dw3_port_field_return_enabled() && task->counter == task->count - 1) {
++        if (task->counter == portReturnRow(task)) {
+             win->options[task->counter]->setString(win->options[task->counter],
+                                   (char *)dw3_port_field_return_label(DW3_FIELD_RETURN_LANGUAGE), -1);
+             continue;
+         }
++        if (task->counter == portOptionsRow(task)) {
++            win->options[task->counter]->setString(win->options[task->counter],
++                                  (char *)dw3_port_field_options_label(DW3_FIELD_RETURN_LANGUAGE), -1);
++            continue;
++        }
+ #endif
+         win->options[task->counter]->setString(win->options[task->counter], FILE_CACHE.load(TEXT_FILE(TEXT_STATUS)),
+                                   FIELD_MENU_OPTIONS[task->extraOption][task->counter]);
+@@ -249,12 +274,18 @@
+             return;
+         }
+ #if PORT_HOST
+-        if (dw3_port_field_return_enabled() && task->cursor == task->count - 1) {
++        if (task->cursor == portReturnRow(task)) {
+             /* P6.27: Return to title asks first (Yes / No, the cursor on No);
+                the menu stays as it is until the answer. */
+             dw3_port_confirm_open(DW3_CONFIRM_RETURN);
+             return;
+         }
++        if (task->cursor == portOptionsRow(task)) {
++            /* P9.7: the port options screen opens over the menu; the menu
++               (and the field behind it) waits until Triangle closes it. */
++            dw3_port_field_options_open(DW3_FIELD_RETURN_LANGUAGE);
++            return;
++        }
+ #endif
+         done = 1;
+         if (GAME.funcs.getMode() == MODE_STATUS) {
+@@ -384,55 +415,60 @@
+ }
+ 
+ #if PORT_HOST
+-/* P6.27: the options panel for seven rows. The game's panels are five rows
+-   (0x1C) and six rows (0x1B, with the card folders). Return to title makes
+-   them six and seven; for seven this covers the six-row panel's bottom edge
+-   (the divider under row 6, the bottom border, its shadow and the bevel) with
+-   the panel's own colours and redraws them 14 pixels lower. It is submitted
+-   before the panel sprite, so the ordering table draws it after the sprite,
+-   in front of it. Colours and lines are those of the sprite (the divider
+-   under a row is 41,41,115, the border 82,82,165 and its shadow 0,0,8). */
+-static void drawFieldMenuPanelRow(s32 layerId, s32 depth) {
++/* P6.27 / P9.7: the options panel for more than six rows. The game's panels
++   are five rows (0x1C) and six rows (0x1B, with the card folders). The port's
++   rows (Options, Return to title) make them seven and eight. For `extra` rows
++   below the six-row panel this covers its bottom edge (the divider under row
++   6, the bottom border, its shadow and the bevel) with the panel's own colours
++   and redraws them 14 pixels lower per row, with a divider under each new row.
++   It is submitted before the panel sprite, so the ordering table draws it
++   after the sprite, in front of it. Colours and lines are those of the sprite
++   (the divider under a row is 41,41,115, the border 82,82,165 and its shadow
++   0,0,8). */
++static void drawFieldMenuPanelRow(s32 layerId, s32 depth, s32 extra) {
+     Layer *layer = GFX.funcs.getLayer(layerId);
+     u_long *ot = layer->getOtEntry(layer, depth);
+     PrimPtr prim;
+     TILE *tile;
+     s32 x0 = DW3_MENU_RIGHT(0xA8);
+     s32 x1 = DW3_MENU_RIGHT(0x140);
++    s32 j;
+ 
+     prim.any = GFX.funcs.getPrim();
+     tile = (TILE *)prim.any;
+-    /* body, rows 6 and 7 of the panel (the divider of row 6 stays) */
++    /* body, the rows below the sixth (the divider of row 6 stays) */
+     setTile(tile);
+     setRGB0(tile, 0, 0, 33);
+     setXY0(tile, x0 + 1, 132);
+-    setWH(tile, x1 - x0 - 1, 17);
++    setWH(tile, x1 - x0 - 1, 3 + 14 * extra);
+     addPrim(ot, tile);
+     tile++;
+     /* the left border, straight down to the new bottom edge */
+     setTile(tile);
+     setRGB0(tile, 107, 107, 214);
+     setXY0(tile, x0, 132);
+-    setWH(tile, 1, 18);
+-    addPrim(ot, tile);
+-    tile++;
+-    /* the divider under the seventh row's predecessor (row 6) */
+-    setTile(tile);
+-    setRGB0(tile, 41, 41, 115);
+-    setXY0(tile, x0 + 3, 145);
+-    setWH(tile, x1 - x0 - 3, 1);
++    setWH(tile, 1, 4 + 14 * extra);
+     addPrim(ot, tile);
+     tile++;
++    /* the divider under each row after the sixth */
++    for (j = 1; j <= extra; j++) {
++        setTile(tile);
++        setRGB0(tile, 41, 41, 115);
++        setXY0(tile, x0 + 3, 131 + 14 * j);
++        setWH(tile, x1 - x0 - 3, 1);
++        addPrim(ot, tile);
++        tile++;
++    }
+     /* the bottom border and its shadow */
+     setTile(tile);
+     setRGB0(tile, 82, 82, 165);
+-    setXY0(tile, x0 + 2, 149);
++    setXY0(tile, x0 + 2, 135 + 14 * extra);
+     setWH(tile, x1 - x0 - 2, 1);
+     addPrim(ot, tile);
+     tile++;
+     setTile(tile);
+     setRGB0(tile, 0, 0, 8);
+-    setXY0(tile, x0 + 3, 150);
++    setXY0(tile, x0 + 3, 136 + 14 * extra);
+     setWH(tile, x1 - x0 - 3, 2);
+     addPrim(ot, tile);
+     tile++;
+@@ -477,6 +513,11 @@
+             break;
+         case 3:
+ #if PORT_HOST
++            if (dw3_port_field_options_is_open()) {
++                /* P9.7: the options screen has the pad; the menu waits. */
++                dw3_port_field_options_tick();
++                break;
++            }
+             if (dw3_port_confirm_is_open()) {
+                 /* P6.27: the Yes / No window answers; the menu waits. */
+                 dw3_port_confirm_tick();
+@@ -543,21 +584,22 @@
+         }
+         if (task->panels[1].level != 0) {
+ #if PORT_HOST
+-            /* P6.27: the panel has a row for Return to title. With the card
+-               folders row there are seven rows; the game has no panel for that
+-               (0x1B is the six-row one), so the sixth row's bottom edge is
+-               covered and redrawn one row lower (drawFieldMenuPanelRow). */
+-            s32 portRows = task->count - 5;
++            /* P6.27 / P9.7: the panel has rows for Options and Return to
++               title. With them there are seven rows, eight with the card
++               folders row; the game has no panel for that (0x1B is the
++               six-row one), so the sixth row's bottom edge is covered and
++               redrawn lower (drawFieldMenuPanelRow). */
++            s32 portExtra = task->count - 6;
+             if (task->panels[1].level != ONE) {
+                 obj.setScale(task->panels[1].level, ONE, ONE);
+                 obj.setPivot(DW3_MENU_RIGHT(0x140), 0x52);
+             } else {
+                 obj.setScale(ONE, ONE, ONE);
+-                if (portRows > 1) {
+-                    drawFieldMenuPanelRow(task->layerId, task->depth);
++                if (portExtra > 0) {
++                    drawFieldMenuPanelRow(task->layerId, task->depth, portExtra);
+                 }
+             }
+-            obj.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x1C - (portRows > 0 ? 1 : 0), DW3_MENU_RIGHT(0xA8), 0x28);
++            obj.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x1C - (task->count > 5 ? 1 : 0), DW3_MENU_RIGHT(0xA8), 0x28);
+ #else
+             if (task->panels[1].level != ONE) {
+                 obj.setScale(task->panels[1].level, ONE, ONE);
+--- a/include/engine/menu.h
++++ b/include/engine/menu.h
+@@ -94,7 +94,7 @@
+     /* 0x04 */ TextWindow *moneyLabel;
+     /* 0x08 */ TextWindow *money;
+ #if PORT_HOST
+-    /* 0x0C */ TextWindow *options[7]; /* P6.27: one more for Return to title */
++    /* 0x0C */ TextWindow *options[8]; /* P6.27 / P9.7: two more, Options and Return to title */
+ #else
+     /* 0x0C */ TextWindow *options[6];
+ #endif

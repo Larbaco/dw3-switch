@@ -26,11 +26,9 @@ static int g_values[DW3_TITLE_OPTION_ROWS];
 static int g_full_pending = 1;
 /* update() reported rects that commit() has not acknowledged yet. */
 static int g_awaiting_commit;
-#ifdef DW3_CHEATS
-/* P6.20: dw3_pc_title_overlay_options_layout() of the static layer (the
- * Options or the Cheats page, and the cheats master switch). */
+/* dw3_pc_title_overlay_options_layout() of the static layer (the Options or
+ * the Cheats page, the cheats master switch, P9.7 the locked rows). */
 static unsigned g_layout;
-#endif
 
 static Dw3OptionsRect row_rect(int row) {
     return (Dw3OptionsRect){ROW_X, ROW_Y + ROW_STEP * row, ROW_W, ROW_H};
@@ -98,14 +96,9 @@ int dw3_options_cache_update(Dw3OptionsDirty *out) {
         return -1;
     }
     if (g_awaiting_commit) g_full_pending = 1;
-    if (!g_valid || g_art_generation != art_generation
-#ifdef DW3_CHEATS
-        || g_layout != dw3_pc_title_overlay_options_layout()
-#endif
-        ) {
-#ifdef DW3_CHEATS
+    if (!g_valid || g_art_generation != art_generation ||
+        g_layout != dw3_pc_title_overlay_options_layout()) {
         g_layout = dw3_pc_title_overlay_options_layout();
-#endif
         /* Open or language/label change: re-rasterize the static layer. */
         dw3_pc_title_overlay_options_component(g_static, DW3_OPTIONS_CANVAS_PITCH,
             DW3_TITLE_OPTIONS_STATIC, -1, 0, 0, 0, DW3_OPTIONS_CANVAS_W,
