@@ -855,6 +855,9 @@ _RST_ONCE = (("DW3_START_MODE_ONCE", "1"),)
 for _v, _ids in (("us", (0x159, 0x1FA, 0x1C2, 0x158)), ("eu", (0x167, 0x208, 0x1D1, 0x166))):
     _fight, _menu, _report, _field = _ids
     _battle = ((_fight, M), (_menu, S), (_report, M), (_field, M))
+    # field, memory card screen, the boot screen the restart reaches (US title,
+    # EU language select), the memory card screen of Continue, the field again
+    _sfield, _smcard, _stitle = (0x158, 0x1E3, 0x1C1) if _v == "us" else (0x166, 0x1EE, 0x165)
     _add(Scenario(f"{_v}-restart-after-battle", _v, "full", turbo=4, timeout=400,
                   env=_P77_ENV_REPORT + _RST_ONCE, cfg=_RST_CFG, expect_restore=_battle,
                   expect_log=((0, r"WFIGHTMN_endBattle result=1(?s:.*)" + _RST_LINE),),
@@ -878,7 +881,9 @@ for _v, _ids in (("us", (0x159, 0x1FA, 0x1C2, 0x158)), ("eu", (0x167, 0x208, 0x1
                   note="restart in a field, then a random battle (Battle now) starts normally (P6.9)"),
          Scenario(f"{_v}-restart-save-continue", _v, "full", timeout=900,
                   env=_SAVE_ENV + _RST_ONCE, cfg=_RST_CFG,
-                  expect_log=((0, r"saved(?s:.*)" + _RST_LINE),),
+                  expect_restore=((_sfield, M), (_smcard, M), (_stitle, M), (_smcard, M), (_sfield, M)),
+                  expect_log=((0, r"STGMCARD_writeSave port=0 slot=0 status=1(?s:.*)" + _RST_LINE
+                                  + r"(?s:.*)STGMCARD_loadSave ok port=0 slot=0 money=0 progress=6"),),
                   note="field save, restart, Load Game / Continue reads the save back (P6.9)"))
 
     _add(Scenario(f"{_v}-restart-in-battle-redo", _v, "full", turbo=4, timeout=600,
