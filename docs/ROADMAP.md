@@ -155,7 +155,7 @@ Tick the item in the table once the owner confirms.
   forced-assert check in [P5.4_CRASH.md](P5.4_CRASH.md#pr-2-owner-oled-check).
 - **P5.2:** partner view portrait in `gpu-tex` (#229): Kotemon, the first
   Kuwagamon fight, later battles.
-- **P6.22:** field turbo with the faster pixel-identical rasterizer (#220).
+- **P6.22:** field turbo with the faster pixel-identical rasterizer (#220) and pass 2 (frames turbo does not show are not drawn, cheaper present): US and EU, 4x, the opening and the Forest Inn top and bottom; read `frame dt us=` and `defer dbg:` in `dw3.log` ([P6.22_FIELD_CPU.md](P6.22_FIELD_CPU.md#pass-2-2026-10-25-frames-turbo-does-not-show-are-not-drawn)).
 - **P6.27 / P6.28:** Quit game on the title menu (the window, No, Yes: back to
   hbmenu with the flush line in `dw3.log` and the card files intact; HOME still
   exits) and Return to title in the field menu (six and seven
@@ -1556,7 +1556,11 @@ Statuses are in the [table](#status-at-a-glance).
   rc8 Forest inn (HUD reading): 120+ fps in the bottom corner, about 80 at the
   top, so the cost follows what is on screen. The PC profile puts the CPU
   rasterizer at about 97 % of a field frame, and a pixel-identical PSY-Z
-  rasterizer is 4-5x faster (#220; OLED check open). The candidates, the
+  rasterizer is 4-5x faster (#220; OLED check open). **Pass 2 (2026-10-25):** the
+  frames turbo does not present are queued and mostly never drawn (85 % of the
+  opening's primitives), pixel-identical in every presented frame: the raster
+  per game frame drops another 3.7-5x on the PC (PSY-Z `dw3-soft-defer`; OLED
+  check open). The candidates, the
   measure-first steps (a)-(c) and the A/B for the inn are in
   [P6.22_FIELD_CPU.md](P6.22_FIELD_CPU.md#history-moved-from-roadmapmd-2026-10-24). The port does not
   overclock (AGENTS.md, directive 7): the work is on the present path, the

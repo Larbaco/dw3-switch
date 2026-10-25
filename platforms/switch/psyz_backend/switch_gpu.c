@@ -753,8 +753,24 @@ static int in_fight_mode(void) {
            mode_file == DW3_FILE_FIGHTSTG_EU;
 }
 
+/* Development aids, set through DW3_NX_TEST_ENV (docs/P6.22_FIELD_CPU.md):
+ * DW3_NX_DEFER=0 keeps the immediate rasterizer; DW3_NX_PRESENT_HASH=1 logs a
+ * hash of every presented rectangle, so two runs of one replay (deferral on and
+ * off) can be compared frame by frame. */
+static int env_flag(const char *name, int dflt) {
+    const char *v = getenv(name);
+
+    return v && v[0] ? v[0] != '0' : dflt;
+}
+
 void dw3_nx_switch_gpu_set_defer(int want) {
-    int on = want && !in_fight_mode();
+    static int enabled = -1;
+    int on;
+
+    if (enabled < 0) {
+        enabled = env_flag("DW3_NX_DEFER", 1);
+    }
+    on = want && enabled && !in_fight_mode();
 
     if (SoftwareRasterizer_GetDefer() != on) {
         SoftwareRasterizer_SetDefer(on);
@@ -762,9 +778,36 @@ void dw3_nx_switch_gpu_set_defer(int want) {
 }
 
 void dw3_nx_switch_gpu_sync_display(const Dw3NxDisplay *d) {
-    if (d && d->on) {
-        SoftwareRasterizer_SyncRect(d->x, d->y, d->width, d->height,
-                                    d->gutter > 0);
+    static int hash_on = -1;
+    static unsigned presents;
+
+    if (!d || !d->on) {
+        return;
+    }
+    SoftwareRasterizer_SyncRect(d->x, d->y, d->width, d->height, d->gutter > 0);
+    if (hash_on < 0) {
+        hash_on = env_flag("DW3_NX_PRESENT_HASH", 0);
+    }
+    if (hash_on) {
+        const uint16_t *v = (const uint16_t *)SoftwareRasterizer_GetVramRaw();
+        uint64_t h = 1469598103934665603ull;
+        int y1 = d->y + d->height < 512 ? d->y + d->height : 512;
+        int x1 = d->x + d->width < 1024 ? d->x + d->width : 1024;
+
+        for (int y = d->y > 0 ? d->y : 0; y < y1; y++) {
+            for (int x = d->x > 0 ? d->x : 0; x < x1; x++) {
+                h = (h ^ v[y * 1024 + x]) * 1099511628211ull;
+            }
+            for (int side = 0; d->gutter > 0 && side < 2; side++) {
+                const uint16_t *g = (const uint16_t *)
+                    SoftwareRasterizer_GetGutterPlaneRaw(side);
+
+                for (int x = 0; x < d->gutter; x++) {
+                    h = (h ^ g[y * PSYZ_GUTTER_MAX + x]) * 1099511628211ull;
+                }
+            }
+        }
+        INFOF("present hash #%u %016llx", presents++, (unsigned long long)h);
     }
 }
 

@@ -9,7 +9,7 @@ libnx backend exists.
 |---|---|
 | Upstream | https://github.com/Xeeynamo/psyz.git |
 | Working fork (submodule URL) | https://github.com/Larbaco/psyz.git |
-| Commit | `e3a7e83` (`dw3-empty-scissor`: `sdl3_gpu` draws nothing while the drawing area is empty, one commit on top of `8bde35d`; see [Empty drawing area](#empty-drawing-area-sdl3_gpu)). `8bde35d` is (`dw3-gutter-flush`: `sdl3_gpu` draws the queued primitives before the drawing area start or end changes, one commit on top of `2f931d8`; see [Gutter flush](#gutter-flush-p61)). `2f931d8` is `dw3-soft-raster-fast`: P6.22 faster CPU rasterizer, same pixels, two commits on top of `ef67c4a`: `80fa492` the rasterizer, `2f931d8` triangles skip rows outside the drawing area again (review fix: an area starting at y >= 512 drew row 511); the merge of `dw3-seq-nrpn-loop` into `dw3-gutter-width`; see [CPU rasterizer speed](#cpu-rasterizer-speed-p622). `a79bc8c` is `dw3-seq-nrpn-loop`: libsnd SEQ/SEP NRPN loop count from Data Entry, music loops again, one commit on top of `fa0aee5`; see below. `fa0aee5` is `dw3-spu-bus-volume`: P6.17 host mixer buses with per-bus gain, libsnd track routing and bus stats, two commits on top of `2caa505`. `2caa505` is `dw3-spu-envx-release`: backport of upstream `a7862ba` / #205, a voice that ends without repeat reads ENVX 0, fixes #188 voice starvation; its parent `fabc2bf` is `dw3-pal-aspect` PAL 240-line aspect) |
+| Commit | `f168248` (`dw3-soft-defer`: deferred drawing in the CPU rasterizer, two commits on top of `e3a7e83`; see [Deferred drawing](#deferred-drawing-p622-pass-2)). `e3a7e83` is (`dw3-empty-scissor`: `sdl3_gpu` draws nothing while the drawing area is empty, one commit on top of `8bde35d`; see [Empty drawing area](#empty-drawing-area-sdl3_gpu)). `8bde35d` is (`dw3-gutter-flush`: `sdl3_gpu` draws the queued primitives before the drawing area start or end changes, one commit on top of `2f931d8`; see [Gutter flush](#gutter-flush-p61)). `2f931d8` is `dw3-soft-raster-fast`: P6.22 faster CPU rasterizer, same pixels, two commits on top of `ef67c4a`: `80fa492` the rasterizer, `2f931d8` triangles skip rows outside the drawing area again (review fix: an area starting at y >= 512 drew row 511); the merge of `dw3-seq-nrpn-loop` into `dw3-gutter-width`; see [CPU rasterizer speed](#cpu-rasterizer-speed-p622). `a79bc8c` is `dw3-seq-nrpn-loop`: libsnd SEQ/SEP NRPN loop count from Data Entry, music loops again, one commit on top of `fa0aee5`; see below. `fa0aee5` is `dw3-spu-bus-volume`: P6.17 host mixer buses with per-bus gain, libsnd track routing and bus stats, two commits on top of `2caa505`. `2caa505` is `dw3-spu-envx-release`: backport of upstream `a7862ba` / #205, a voice that ends without repeat reads ENVX 0, fixes #188 voice starvation; its parent `fabc2bf` is `dw3-pal-aspect` PAL 240-line aspect) |
 | Base upstream | `6d01339aadf16c5c9d6e44f44c0d66514752e472` |
 | License | MIT — see [`vendor/psyz/LICENSE`](../vendor/psyz/LICENSE) |
 
@@ -31,6 +31,25 @@ few seeds (the fuzz covers full 10-bit and inverted drawing areas, gutter x0
 0-1023 and width 1-1100, any gutter size, a 16-bit tpage, the horizontal
 grid), the same with `--san` (ASan, LeakSanitizer, UBSan) and the replay
 traces; method and numbers in [P6.22_FIELD_CPU.md](P6.22_FIELD_CPU.md).
+
+## Deferred drawing (P6.22 pass 2)
+
+`dw3-soft-defer` (on top of `e3a7e83`) adds `sdl3_software_defer.inc`, included
+by `sdl3_software.c`. With `SoftwareRasterizer_SetDefer(1)` the CPU rasterizer
+queues primitives (packet, drawing state, footprint) in layers instead of
+drawing them. A layer is drawn, in order and with the older layers it depends
+on, as soon as an image op, a write to VRAM it samples (the old pixels are kept
+for it instead when they are few), a gutter row clear, `SoftwareRasterizer_
+SyncRect` (the present) or `GetVram` could tell the difference; a layer that a
+later opaque rectangle or image op overwrites completely before that is
+dropped. The Switch host turns it on while turbo skips presents
+(`nx_gpu.c`), syncs the display rectangle at each present, and keeps it off in
+battle. `SetGutter` now returns early when nothing changes (the flip repeats
+it every frame). Gate for this pin: the immediate path is unchanged
+(`tools/soft_raster_bench.sh --ref e3a7e83 -- --fuzz 1000000 <seed>` and the
+traces: 0 differences) and the deferred path is compared with it by
+`--fuzz-defer` (also with `--check`, which verifies each footprint) and
+`--defer N <trace>`; numbers in [P6.22_FIELD_CPU.md](P6.22_FIELD_CPU.md).
 
 ## Gutter flush (P6.1)
 

@@ -197,6 +197,24 @@ int main(void) {
         failed = 1;
     }
 
+    /* Every halfword, in one row: the pack is a table lookup now. */
+    for (x = 0; x < 1024; x++) {
+        unsigned int v;
+        int rep;
+
+        for (rep = 0; rep < 64; rep++) {
+            v = (unsigned int)(rep * 1024 + x);
+            vram[(size_t)(100 + rep) * DW3_NX_VRAM_W + (size_t)x] = (uint16_t)v;
+        }
+    }
+    expand_full(vram, full);
+    for (y = 100; y < 164; y += 32) {
+        failed |= expect_rect(vram, full, packed, 0, y, 320, 32);
+        failed |= expect_rect(vram, full, packed, 320, y, 320, 32);
+        failed |= expect_rect(vram, full, packed, 640, y, 320, 32);
+        failed |= expect_rect(vram, full, packed, 704, y, 320, 32);
+    }
+
     failed |= check_wide(vram, full);
 
     free(vram);

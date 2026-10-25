@@ -18,6 +18,16 @@
  *                         and gutter planes (pixel-identity checks)
  *   DW3_SOFT_TRACE=path   binary trace of every Draw_* call the shadow sees,
  *                         for tools/soft_raster_bench.c
+ *   DW3_SOFT_DEFER=1      run the shadow the way the Switch host runs its
+ *                         rasterizer at turbo (P6.22 pass 2): frames turbo
+ *                         does not present are queued, not drawn, and the
+ *                         present syncs the display rectangle
+ *   DW3_SOFT_PRESENT_HASH=path
+ *                         one line per presented frame: hash of the display
+ *                         rectangle and its gutter rows as the Switch present
+ *                         would read them. Equal files with and without
+ *                         DW3_SOFT_DEFER=1 mean the deferral changed no
+ *                         presented pixel
  *
  * The `dw3-prof:` line also reports the SPU mixer (Psyz_SpuPullSamples): on
  * the PC it runs on SDL's audio thread, on the Switch on nx_audio's thread,
@@ -32,6 +42,7 @@
 #include <psyz/video.h>
 
 #include "rasterizer.h"
+#include "port_turbo.h"
 
 #include <pthread.h>
 #include <signal.h>
@@ -69,6 +80,8 @@ static unsigned s_window = 60;
 static unsigned s_frame;
 static FILE *s_hash_fp;
 static FILE *s_trace_fp;
+static FILE *s_present_fp;
+static int s_defer_env;
 
 /* per-window accumulators */
 enum {
@@ -105,7 +118,7 @@ static int s_rgb24;
 enum {
     T_RESET = 1, T_TEXPAGE, T_TWIN, T_AREA0, T_AREA1, T_OFFSET, T_MASK,
     T_CLEAR, T_LOAD, T_STORE, T_MOVE, T_PRIM, T_GUTTER, T_GUTTER_CLEAR,
-    T_FRAME
+    T_FRAME, T_GRID, T_DISPLAY
 };
 
 static void tr_u32(uint32_t v) { fwrite(&v, 4, 1, s_trace_fp); }
@@ -245,6 +258,9 @@ static void prof_exit(void) {
     if (s_hash_fp) {
         fclose(s_hash_fp);
     }
+    if (s_present_fp) {
+        fclose(s_present_fp);
+    }
     if (s_trace_fp) {
         fclose(s_trace_fp);
     }
@@ -265,6 +281,12 @@ static void prof_init(void) {
     }
     if ((v = getenv("DW3_SOFT_HASH")) && v[0]) {
         s_hash_fp = fopen(v, "w");
+    }
+    if ((v = getenv("DW3_SOFT_DEFER")) && v[0] == '1') {
+        s_defer_env = 1;
+    }
+    if ((v = getenv("DW3_SOFT_PRESENT_HASH")) && v[0]) {
+        s_present_fp = fopen(v, "w");
     }
     if ((v = getenv("DW3_SOFT_TRACE")) && v[0]) {
         s_trace_fp = fopen(v, "wb");
@@ -376,6 +398,25 @@ static void apply_gutter(void) {
     }
     SoftwareRasterizer_SetGutter(px, s_disp_x, w, s_mode_h);
     tr_op(T_GUTTER, 4, a);
+}
+
+/* The rectangle the Switch present reads (switch_gpu.c's
+ * dw3_nx_switch_gpu_display): the display mode's width, 240 lines, or the 24-bit
+ * movie's 416 lines from y 36. */
+static void display_rect(int *r) {
+    r[0] = s_disp_x;
+    r[1] = s_rgb24 ? 36 : s_disp_y;
+    r[2] = s_mode_w > 0 ? s_mode_w : 320;
+    r[3] = s_rgb24 ? 416 : 240;
+}
+
+static void trace_display(void) {
+    int32_t a[4];
+
+    if (s_trace_fp) {
+        display_rect(a);
+        tr_op(T_DISPLAY, 4, a);
+    }
 }
 
 /* ---- wrapped Draw_* contract --------------------------------------------- */
@@ -648,6 +689,7 @@ void __wrap_Draw_DisplayArea(unsigned x, unsigned y) {
     PCGPU_END();
     s_disp_x = (int)x;
     s_disp_y = (int)y;
+    trace_display();
     if (s_soft_on && moved && s_gutter > 0) {
         int32_t a[2] = {0, s_disp_y};
         int32_t b[2] = {s_disp_y + h, 512};
@@ -675,6 +717,7 @@ void __wrap_Draw_SetDisplayMode(DisplayMode *mode) {
     }
     s_rgb24 = mode->rgb24 ? 1 : 0;
     s_mode_h = mode->vertical_resolution ? 480 : 240;
+    trace_display();
     apply_gutter();
 }
 
@@ -699,6 +742,55 @@ void __wrap_Psyz_SpuPullSamples(short *out, int num_frames) {
     s_mix_frames += (uint64_t)(num_frames > 0 ? num_frames : 0);
 }
 
+/* What nx_gpu.c's Psyz_VideoVSync(0) does around the shadow rasterizer: queue
+ * the frames turbo does not show, sync the display rectangle for the ones it
+ * does (and hash what the present would read). */
+static void present_emulation(void) {
+    static int skipped;
+    int speed = dw3_port_turbo_speed();
+    int r[4];
+    uint64_t h = 1469598103934665603ull;
+
+    if (s_defer_env) {
+        int want = speed > 1;
+
+        if ((SoftwareRasterizer_GetDefer() != 0) != want) {
+            SOFT_BEGIN();
+            SoftwareRasterizer_SetDefer(want);
+            SOFT_END(K_OTHER);
+        }
+    }
+    if (speed > 1 && ++skipped < speed) {
+        return;
+    }
+    skipped = 0;
+    display_rect(r);
+    if (s_defer_env) {
+        SOFT_BEGIN();
+        SoftwareRasterizer_SyncRect(r[0], r[1], r[2], r[3], s_gutter > 0);
+        SOFT_END(K_OTHER);
+    }
+    if (s_present_fp) {
+        const uint16_t *v = SoftwareRasterizer_GetVramRaw();
+
+        for (int y = r[1]; y < r[1] + r[3] && y < 512; y++) {
+            for (int x = r[0]; x < r[0] + r[2] && x < 1024; x++) {
+                h = (h ^ v[y * 1024 + x]) * 1099511628211ull;
+            }
+            if (s_gutter > 0 && !s_rgb24) {
+                for (int side = 0; side < 2; side++) {
+                    const uint16_t *g = SoftwareRasterizer_GetGutterPlaneRaw(side);
+
+                    for (int x = 0; x < s_gutter; x++) {
+                        h = (h ^ g[y * PSYZ_GUTTER_MAX + x]) * 1099511628211ull;
+                    }
+                }
+            }
+        }
+        fprintf(s_present_fp, "%u %016llx\n", s_frame, (unsigned long long)h);
+    }
+}
+
 /* One game frame ends at each VSync(0) (Psyz_VideoVSync(0): the present). */
 int __real_Psyz_VideoVSync(int mode);
 int __wrap_Psyz_VideoVSync(int mode) {
@@ -709,6 +801,9 @@ int __wrap_Psyz_VideoVSync(int mode) {
         return __real_Psyz_VideoVSync(mode);
     }
     prof_init();
+    if (s_soft_on && (s_defer_env || s_present_fp)) {
+        present_emulation();
+    }
     t0 = thread_cpu_ns();
     s_phase = PH_VSYNC;
     rc = __real_Psyz_VideoVSync(mode);
