@@ -76,6 +76,40 @@ LETTERS = [
     ('opt_key_b', 'B', 19, 'DejaVuSans-Bold.ttf'),
     ('opt_key_x', 'X', 19, 'DejaVuSans-Bold.ttf'),
 ]
+# P6.27 / P6.28 title Quit plaque and the Yes / No confirmation (docs/PORT_OPTIONS.md
+# "Quit and return to title"), in the five languages of the EU disc (en is also
+# the US disc's). The plaque word is bold like the other plaques; the window
+# title is in capitals like the Options screen's. Keep each message line under
+# 650 px (the window body) and the words short enough for their button row.
+# The code reads them as title_quit_<lang> (the plaque) and
+# title_opt_dlg_<key>_<lang>.
+DIALOG_TEXT = {
+    'en': {'plaque': 'Quit game', 'quit_title': 'QUIT GAME', 'ret_title': 'TITLE SCREEN',
+           'quit_q': 'Quit the game?', 'ret_q': 'Return to the title screen?',
+           'warn': 'Progress since your last save will be lost.',
+           'yes': 'Yes', 'no': 'No', 'select': 'Select', 'cancel': 'Cancel'},
+    'fr': {'plaque': 'Quitter', 'quit_title': 'QUITTER', 'ret_title': 'ÉCRAN TITRE',
+           'quit_q': 'Quitter le jeu ?', 'ret_q': "Retourner à l'écran titre ?",
+           'warn': 'La progression non sauvegardée sera perdue.',
+           'yes': 'Oui', 'no': 'Non', 'select': 'Choisir', 'cancel': 'Annuler'},
+    'de': {'plaque': 'Beenden', 'quit_title': 'BEENDEN', 'ret_title': 'TITELBILD',
+           'quit_q': 'Spiel beenden?', 'ret_q': 'Zurück zum Titelbild?',
+           'warn': 'Nicht gespeicherter Fortschritt geht verloren.',
+           'yes': 'Ja', 'no': 'Nein', 'select': 'Wählen', 'cancel': 'Abbrechen'},
+    'es': {'plaque': 'Salir', 'quit_title': 'SALIR', 'ret_title': 'PANTALLA DE TÍTULO',
+           'quit_q': '¿Salir del juego?', 'ret_q': '¿Volver a la pantalla de título?',
+           'warn': 'Se perderá el progreso no guardado.',
+           'yes': 'Sí', 'no': 'No', 'select': 'Elegir', 'cancel': 'Cancelar'},
+    'it': {'plaque': 'Esci', 'quit_title': 'ESCI', 'ret_title': 'SCHERMATA TITOLO',
+           'quit_q': 'Uscire dal gioco?', 'ret_q': 'Tornare alla schermata del titolo?',
+           'warn': 'I progressi non salvati andranno persi.',
+           'yes': 'Sì', 'no': 'No', 'select': 'Scegli', 'cancel': 'Annulla'},
+}
+for _lang, _t in DIALOG_TEXT.items():
+    LETTERS.append(('quit_' + _lang, _t['plaque'], 29, 'DejaVuSansCondensed-Bold.ttf'))
+    for _key, _size in (('quit_title', 30), ('ret_title', 30), ('quit_q', 26), ('ret_q', 26),
+                        ('warn', 24), ('yes', 26), ('no', 26), ('select', 24), ('cancel', 24)):
+        LETTERS.append(('opt_dlg_%s_%s' % (_key, _lang), _t[_key], _size, 'DejaVuSans.ttf'))
 # P6.20 Cheats screen (docs/PORT_OPTIONS.md "Cheats"), in the five languages
 # of the EU disc (en is also the US disc's). Emitted inside #ifdef DW3_CHEATS,
 # so a build without cheats compiles none of it. ON / OFF and the numbers are

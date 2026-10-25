@@ -307,6 +307,10 @@ def main():
         # The NRO has no environment for the scenario's debug aids: PC only.
         print(f"skip {sc.name}: needs host env ({', '.join(k for k, _ in sc.env)}), PC only")
     todo = [sc for sc in todo if not sc.env]
+    for sc in [sc for sc in todo if sc.quits]:
+        # The guest ends the emulator session by itself: nothing to replay on.
+        print(f"skip {sc.name}: the game quits by itself (P6.28), PC only")
+    todo = [sc for sc in todo if not sc.quits]
     if not todo:
         ap.error("no scenarios selected")
 

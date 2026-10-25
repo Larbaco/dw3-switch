@@ -69,8 +69,8 @@ listed once, in [Pending OLED checks](#pending-oled-checks).
 | P6.24 | One build for US and EU: one `.nro` and one PC binary, region found at boot, a boot picker with both discs (future goal; depends on P6.25 and P6.26) | future | [SINGLE_BUILD](SINGLE_BUILD.md), [roadmap](#phase-6-goal-notes) |
 | P6.25 | Cross-region saves: a US save loads in EU and the reverse, one canonical save container (future goal) | future (survey and design done, no code) | [CROSS_REGION_SAVES](CROSS_REGION_SAVES.md), [roadmap](#phase-6-goal-notes) |
 | P6.26 | Per-user saves: saves bound to the Switch user profile chosen in the Switch profile selector, global options (future goal) | future (design done, no code) | [PER_USER_SAVES](PER_USER_SAVES.md), [roadmap](#phase-6-goal-notes) |
-| P6.27 | Return to title from the pause menu (future goal) | future | [roadmap](#phase-6-goal-notes) |
-| P6.28 | Quit game on the title menu, back to hbmenu (future goal) | future | [roadmap](#phase-6-goal-notes) |
+| P6.27 | Return to title from the pause (field) menu | in progress (built, PC US and EU replays; owner OLED check open) | [PORT_OPTIONS](PORT_OPTIONS.md#quit-and-return-to-title-p627-p628), [roadmap](#phase-6-goal-notes) |
+| P6.28 | Quit game on the title menu, back to hbmenu | in progress (built, PC US and EU replays; owner OLED check open) | [PORT_OPTIONS](PORT_OPTIONS.md#quit-and-return-to-title-p627-p628), [roadmap](#phase-6-goal-notes) |
 | P6.29 | Save editor: external tool on the owner's own saves, builds on P6.25 (future goal) | future | [roadmap](#phase-6-goal-notes), [CROSS_REGION_SAVES](CROSS_REGION_SAVES.md) |
 | P6.30 | Help, FAQ and tips from the pause menu (future goal) | future | [roadmap](#phase-6-goal-notes) |
 | P6.31 | Auto-save, off by default (future goal) | future | [roadmap](#phase-6-goal-notes), [P5.3](P5.3_FLAT_SAVE.md) |
@@ -143,6 +143,12 @@ Tick the item in the table once the owner confirms.
 - **P5.2:** partner view portrait in `gpu-tex` (#229): Kotemon, the first
   Kuwagamon fight, later battles.
 - **P6.22:** field turbo with the faster pixel-identical rasterizer (#220).
+- **P6.27 / P6.28:** Quit game on the title menu (the window, No, Yes: back to
+  hbmenu with the flush line in `dw3.log` and the card files intact; HOME still
+  exits) and Return to title in the field menu (six and seven
+  rows; No, Yes: back at the title, or the language select on EU). US and EU, at
+  least two EU languages. Checklist:
+  [PORT_OPTIONS.md](PORT_OPTIONS.md#oled-checklist-quit-and-return-to-title-owner).
 - **Older, still open:** P6.9 (OLED retest of restart after a battle and a save; PC replays pass), P4.3
   (underrun count), P7.7 (Claw steal, HUD Digivolution name), P7.9 (rest of the
   checklist), P10.2 (HOME during a save write).
@@ -817,7 +823,7 @@ gate, which stays open.
   the restart loads with Load Game / Continue afterwards; a second New Game
   after a restart reproduces the first byte for byte. No bug found; the
   restart does not reseed the RNG (documented, not a leak). New test hook:
-  patch `0127` (`DW3_START_MODE_ONCE`). Still open: the OLED retest (chord,
+  patch `0127` (`DW3_START_MODE_EVERY`, on top of 0124). Still open: the OLED retest (chord,
   battle, save, Continue on hardware, US and EU) Ryubing passed for the
   New Game restart (US and EU); its battle and save cases need a baked-env
   replay NRO. Dated history:
@@ -1697,56 +1703,58 @@ Statuses are in the [table](#status-at-a-glance).
   global versus per-user options; the legacy-import rules (see
   [SINGLE_BUILD.md](SINGLE_BUILD.md#open-questions-for-the-owner)).
   Related: P6.24, P6.25, P5.3, P9.4 ([PORT_OPTIONS.md](PORT_OPTIONS.md)), P6.15.
-- [ ] **P6.27 Return to title from the pause menu (future goal).** Dated
-  2026-10-24, owner request (Portuguese, "voltar ao título" in the pause
-  menu). Goal note only, nothing started. **What exists (cited):** the port
-  has no pause menu of its own; the closest screen is the game's field menu,
-  opened with START (`MODE_STATUS` 0x1000, [P3.4_MENUS.md](P3.4_MENUS.md)).
-  A reset to the title already exists: the restart chord (P6.9,
-  `port/options/restart.c`, [HOTKEYS.md](HOTKEYS.md)) flushes dirty save slots
-  and resets the running game to its title. **Scope:** one entry in that
-  pause menu that runs the same reset, so the player does not have to close
-  the game or use the chord.
-  **First slice:** a port-side entry (no decomp change if the entry can be
-  drawn in the existing field menu list; otherwise a numbered `PORT_HOST`
-  patch) that calls the P6.9 reset path, with the same save flush and the same
-  failure rule (a failed flush cancels the reset).
-  **Constraints:** no reset without a flush; the entry text in the five EU
-  languages (EN, FR, DE, IT, ES; one string on US) within the menu's width;
-  replays unchanged; US and EU tested.
-  **Open questions (owner):** should it ask for confirmation ("Yes / No") before
-  resetting; is it allowed in battle or only in the field menu; should unsaved
-  progress since the last save be warned about.
-  Done when (proposed): from the field menu the player returns to the title on
-  US and EU with saves flushed, and a failed flush keeps the game where it was.
+- [ ] **P6.27 Return to title from the pause menu.** Dated 2026-10-24, owner
+  request (Portuguese, "voltar ao título" in the pause menu). **State
+  (2026-10-25):** built, PC US and EU replays pass, owner OLED check open.
+  The port has no pause menu of its own; the closest screen is the game's field
+  menu (START, `MODE_STATUS` 0x1000, [P3.4_MENUS.md](P3.4_MENUS.md)). **Built:**
+  the field menu's options list gets a last row, **Return to title** (text in
+  the game's font, five EU languages; one on US), always. Cross opens a Yes / No window (cursor on No, "Progress since your last
+  save will be lost."); Yes runs the P6.9 reset unchanged (`restart_perform()`:
+  dirty save slots flushed, a failed flush cancels). Patches 0123 (the row, the
+  seven-row panel) and 0124 (a test hook); the window is the native overlay's
+  (shared with P6.28). Design, tests and the OLED checklist:
+  [PORT_OPTIONS.md](PORT_OPTIONS.md#quit-and-return-to-title-p627-p628);
+  restart notes: [P6.9_RESTART.md](P6.9_RESTART.md#return-to-title-from-the-field-menu-p627).
+  **Defaults chosen for the owner's open questions (owner can change):**
+  confirmation Yes / No with the cursor on No; the field menu only, not in
+  battle; the confirm text warns that progress since the last save is lost (the
+  game's saves are manual, and the reset flushes only the dirty port save slots,
+  as P6.9 does); it reuses the P6.9 reset exactly and a failed flush cancels
+  it. The row is not tied to the Restart hotkey setting (orchestrator
+  decision, 2026-10-25); the field menu screens' replay references were
+  regenerated.
+  Done when: from the field menu the player returns to the title on US and EU
+  with saves flushed, and a failed flush keeps the game where it was (replays:
+  yes on PC; the failed-flush case is covered by the unit test; OLED open).
   Related: P6.9, P6.14, P9.7, P5.3.
-- [ ] **P6.28 Quit game on the title menu (future goal).** Dated 2026-10-24,
-  owner request (Portuguese, "sair do jogo" on the title menu). Goal note
-  only, nothing started. **What exists (cited):** the title menu has Start /
-  Port options / Continue (P9.2, `port/options/title_entry.c`; the Switch title
-  overlay is `platforms/switch/psyz_backend/nx_title_overlay.c`); the title
-  sprites come from the disc (`STDWTITL_menuSprites`, five languages). There is
-  no Quit entry. The only exit today is the system one: HOME sets
-  `Psyz_QuitRequested` (`platforms/switch/psyz_backend/nx_os.c`,
-  `platforms/switch/source/boot_main.c`, `dw3_nx_service_applet_quit`), and dirty
-  saves flush before the process ends.
-  **Scope:** a Quit game entry on the title menu that flushes saves and returns
-  to hbmenu (the NRO exits to the launcher), without a crash notice and without
-  leaving a half-written card. On PC it closes the window.
-  **First slice:** the entry plus the existing quit path on Switch, one language
-  check; no Options row is needed, so it does not touch the full Options window
-  (see P9.9).
-  **Constraints:** the entry text in the five EU languages (EN, FR, DE, IT, ES)
-  and one US string; the title layout stays the 16:9 layout of P6.1 (patches
-  0085-0087); saves flushed before exit, as on HOME; US and EU tested on the
-  OLED.
-  **Open questions (owner):** should it ask for confirmation; should it be on
-  the title menu only or also in the pause menu (P6.27); should it sit at the
-  bottom of the list, away from "Continue"; should the release README say that
-  Quit returns to hbmenu.
-  Done when (proposed): Quit on the title menu on US and EU returns to hbmenu
-  with the card files intact and a flush log line, and the HOME path is
-  unchanged.
+- [ ] **P6.28 Quit game on the title menu, back to hbmenu.** Dated 2026-10-24,
+  owner request (Portuguese, "sair do jogo" on the title menu). **State
+  (2026-10-25):** built, PC US and EU replays pass, owner OLED check open.
+  **Built:** the native title menu (PC SDL3 GPU and the Switch GLES overlay) has a
+  fourth plaque, **Quit game** (Quitter, Beenden, Salir, Esci; authored lettering
+  like the Options plaque), the last row and a little apart from Load Game
+  (Continue). Cross opens the Yes / No window (cursor on No, the lost-progress
+  warning); Yes flushes the dirty save slots (`dw3-port-quit: saves flushed`) and
+  asks the host to end the session: the Switch sets the HOME exit flag
+  (`dw3_nx_set_quit_requested`, so `dw3_game_main()` returns and the NRO goes back
+  to hbmenu), the PC posts the window's close event. The HOME path
+  (`dw3_nx_service_applet_quit`) is not changed. The title layout and the 16:9
+  patches (0085-0087) are untouched: the plaques are 48 px high on a 52 px
+  pitch (they were 54 on 60) so four fit above the credits. Patch 0123; the
+  release README says Quit returns to hbmenu. Design, tests and the OLED
+  checklist: [PORT_OPTIONS.md](PORT_OPTIONS.md#quit-and-return-to-title-p627-p628).
+  **Defaults chosen for the owner's open questions (owner can change):**
+  confirmation Yes / No with the cursor on No; on the title menu only (the pause
+  menu has Return to title, P6.27); the last entry, away from Continue; the
+  release README gets a line saying Quit returns to hbmenu; it flushes saves as
+  HOME does and then exits (a failed flush cancels the quit, where HOME cannot);
+  the window also warns that progress since the last save is lost. On the PC GL
+  renderer (no native overlay) the title keeps three rows.
+  Done when: Quit on the title menu on US and EU returns to hbmenu with the card
+  files intact and a flush log line, and the HOME path is unchanged (replays: the
+  process ends by itself with status 0 and the flush line on PC US and EU; OLED
+  open).
   Related: P9.2, P10.2, P5.4, P6.9.
 - [ ] **P6.29 Save editor, external tool (future goal).** Dated 2026-10-24,
   owner request (Portuguese, an editor for saves). Goal note only, nothing

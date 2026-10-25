@@ -6,7 +6,7 @@ extern unsigned long long bench_calls, bench_rejected, bench_opaque, bench_alpha
 int main(void) {
     uint8_t *pixels = malloc(960 * 720 * 4);
     if (!pixels) return 2;
-    for (int state = -1; state <= 3; ++state) {
+    for (int state = -1; state <= DW3_TITLE_ART_OPTIONS; ++state) {
         bench_calls = bench_rejected = bench_opaque = bench_alpha = 0;
         dw3_pc_title_overlay_art(pixels, 960 * 4, state);
         printf("state=%d calls=%llu rejected=%llu opaque=%llu translucent=%llu\n",

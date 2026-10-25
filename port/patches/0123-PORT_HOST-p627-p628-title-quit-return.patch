@@ -1,0 +1,272 @@
+Upstream-bound: no
+Subject: [PORT_HOST] P6.27 / P6.28 Quit game on the title menu, Return to title in the field menu
+
+P6.27 / P6.28: the title menu's fourth row, Quit game, and the field menu's
+Return to title row, each behind a Yes / No window (port/options/confirm.c).
+
+Title menu (src/menus/title/menu.c): with the native overlay the Down limit
+moves from Continue to Quit game (DW3_TITLE_QUIT, row 3); Cross on it opens
+the window with the cursor on No and the menu takes no input until it is
+answered (the Port options screen's pattern: the window is ticked by the
+menu task, only on a frame after the one that opened it). Without the native
+overlay nothing changes (dw3_port_title_quit_enabled() is 0).
+
+Field menu (src/engine/menu/field_menu.c, include/engine/menu.h): the options
+list has one more row, the last, with the text of dw3_port_field_return_label()
+in the game's own font encoding (where the native overlay draws the window). The options panel is the next one up (the
+six-row sprite 0x1B for the five rows plus this one); with the card folders
+row there are seven rows and the game has no panel for that, so the six-row
+panel's bottom edge is covered and redrawn one row lower with five TILEs in
+the panel's colours (drawFieldMenuPanelRow, submitted before the sprite so the
+ordering table draws it in front). Cross on the row opens the window; the
+menu waits while it is up. A Yes asks the P6.9 reset (dw3_port_restart_request,
+same flush, a failed flush cancels). Without the native overlay nothing is added.
+FieldMenuWindows.options grows from six to seven windows (PORT_HOST only).
+
+--- a/include/engine/menu.h
++++ b/include/engine/menu.h
+@@ -93,7 +93,11 @@
+     /* 0x00 */ TextWindow *title;
+     /* 0x04 */ TextWindow *moneyLabel;
+     /* 0x08 */ TextWindow *money;
++#if PORT_HOST
++    /* 0x0C */ TextWindow *options[7]; /* P6.27: one more for Return to title */
++#else
+     /* 0x0C */ TextWindow *options[6];
++#endif
+     /* 0x24 */ struct Cursor *cursor;
+     /* 0x28 */ PartnerPage pages[3];
+ } FieldMenuWindows;
+--- a/src/engine/menu/field_menu.c
++++ b/src/engine/menu/field_menu.c
+@@ -4,6 +4,15 @@
+ #endif
+ #if PORT_HOST
+ #include "port_widescreen.h"
++#include "port_confirm.h"
++/* P6.27: language of the Return to title row (the EU disc's LANGUAGE; the US
++   disc is English). */
++#if VERSION_EU
++#define DW3_FIELD_RETURN_LANGUAGE LANGUAGE
++#else
++#define DW3_FIELD_RETURN_LANGUAGE 2
++#endif
++
+ #else
+ #define DW3_MENU_LEFT(x) (x)
+ #define DW3_MENU_RIGHT(x) (x)
+@@ -166,6 +175,12 @@
+         FIELD_MENU_CHOICE.extra = 0;
+     }
+     task->count = task->extraOption + 5;
++#if PORT_HOST
++    /* P6.27: one more row, Return to title (where the native overlay draws its window). */
++    if (dw3_port_field_return_enabled()) {
++        task->count++;
++    }
++#endif
+     if (getFieldZone() >= 0) {
+         task->option2Enabled = 1;
+     } else {
+@@ -178,6 +193,13 @@
+ static inline void showFieldMenuOptions(FieldMenu *task, FieldMenuWindows *win) {
+     showPartnerPage(task, win, 1, 1);
+     for (task->counter = 0; task->counter < task->count; task->counter++) {
++#if PORT_HOST
++        if (dw3_port_field_return_enabled() && task->counter == task->count - 1) {
++            win->options[task->counter]->setString(win->options[task->counter],
++                                  (char *)dw3_port_field_return_label(DW3_FIELD_RETURN_LANGUAGE), -1);
++            continue;
++        }
++#endif
+         win->options[task->counter]->setString(win->options[task->counter], FILE_CACHE.load(TEXT_FILE(TEXT_STATUS)),
+                                   FIELD_MENU_OPTIONS[task->extraOption][task->counter]);
+     }
+@@ -226,6 +248,14 @@
+         if (task->option2Enabled == 0 && task->cursor == 2) {
+             return;
+         }
++#if PORT_HOST
++        if (dw3_port_field_return_enabled() && task->cursor == task->count - 1) {
++            /* P6.27: Return to title asks first (Yes / No, the cursor on No);
++               the menu stays as it is until the answer. */
++            dw3_port_confirm_open(DW3_CONFIRM_RETURN);
++            return;
++        }
++#endif
+         done = 1;
+         if (GAME.funcs.getMode() == MODE_STATUS) {
+             task->step = 1;
+@@ -353,6 +383,63 @@
+     }
+ }
+ 
++#if PORT_HOST
++/* P6.27: the options panel for seven rows. The game's panels are five rows
++   (0x1C) and six rows (0x1B, with the card folders). Return to title makes
++   them six and seven; for seven this covers the six-row panel's bottom edge
++   (the divider under row 6, the bottom border, its shadow and the bevel) with
++   the panel's own colours and redraws them 14 pixels lower. It is submitted
++   before the panel sprite, so the ordering table draws it after the sprite,
++   in front of it. Colours and lines are those of the sprite (the divider
++   under a row is 41,41,115, the border 82,82,165 and its shadow 0,0,8). */
++static void drawFieldMenuPanelRow(s32 layerId, s32 depth) {
++    Layer *layer = GFX.funcs.getLayer(layerId);
++    u_long *ot = layer->getOtEntry(layer, depth);
++    PrimPtr prim;
++    TILE *tile;
++    s32 x0 = DW3_MENU_RIGHT(0xA8);
++    s32 x1 = DW3_MENU_RIGHT(0x140);
++
++    prim.any = GFX.funcs.getPrim();
++    tile = (TILE *)prim.any;
++    /* body, rows 6 and 7 of the panel (the divider of row 6 stays) */
++    setTile(tile);
++    setRGB0(tile, 0, 0, 33);
++    setXY0(tile, x0 + 1, 132);
++    setWH(tile, x1 - x0 - 1, 17);
++    addPrim(ot, tile);
++    tile++;
++    /* the left border, straight down to the new bottom edge */
++    setTile(tile);
++    setRGB0(tile, 107, 107, 214);
++    setXY0(tile, x0, 132);
++    setWH(tile, 1, 18);
++    addPrim(ot, tile);
++    tile++;
++    /* the divider under the seventh row's predecessor (row 6) */
++    setTile(tile);
++    setRGB0(tile, 41, 41, 115);
++    setXY0(tile, x0 + 3, 145);
++    setWH(tile, x1 - x0 - 3, 1);
++    addPrim(ot, tile);
++    tile++;
++    /* the bottom border and its shadow */
++    setTile(tile);
++    setRGB0(tile, 82, 82, 165);
++    setXY0(tile, x0 + 2, 149);
++    setWH(tile, x1 - x0 - 2, 1);
++    addPrim(ot, tile);
++    tile++;
++    setTile(tile);
++    setRGB0(tile, 0, 0, 8);
++    setXY0(tile, x0 + 3, 150);
++    setWH(tile, x1 - x0 - 3, 2);
++    addPrim(ot, tile);
++    tile++;
++    GFX.funcs.setPrim(tile);
++}
++#endif
++
+ /* Runs the field menu: opens its panels, moves the cursor and switches mode on a choice */
+ void updateFieldMenu(FieldMenu *task, FieldMenuWindows *win) {
+     SpriteDrawer obj;
+@@ -389,6 +476,13 @@
+             }
+             break;
+         case 3:
++#if PORT_HOST
++            if (dw3_port_confirm_is_open()) {
++                /* P6.27: the Yes / No window answers; the menu waits. */
++                dw3_port_confirm_tick();
++                break;
++            }
++#endif
+             chooseFieldMenuOption(task, win);
+             break;
+         case 4:
+@@ -448,6 +542,23 @@
+             obj.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x18, DW3_MENU_RIGHT(0x22), 0xD);
+         }
+         if (task->panels[1].level != 0) {
++#if PORT_HOST
++            /* P6.27: the panel has a row for Return to title. With the card
++               folders row there are seven rows; the game has no panel for that
++               (0x1B is the six-row one), so the sixth row's bottom edge is
++               covered and redrawn one row lower (drawFieldMenuPanelRow). */
++            s32 portRows = task->count - 5;
++            if (task->panels[1].level != ONE) {
++                obj.setScale(task->panels[1].level, ONE, ONE);
++                obj.setPivot(DW3_MENU_RIGHT(0x140), 0x52);
++            } else {
++                obj.setScale(ONE, ONE, ONE);
++                if (portRows > 1) {
++                    drawFieldMenuPanelRow(task->layerId, task->depth);
++                }
++            }
++            obj.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x1C - (portRows > 0 ? 1 : 0), DW3_MENU_RIGHT(0xA8), 0x28);
++#else
+             if (task->panels[1].level != ONE) {
+                 obj.setScale(task->panels[1].level, ONE, ONE);
+                 obj.setPivot(DW3_MENU_RIGHT(0x140), 0x52);
+@@ -455,6 +566,7 @@
+                 obj.setScale(ONE, ONE, ONE);
+             }
+             obj.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x1C - task->extraOption, DW3_MENU_RIGHT(0xA8), 0x28);
++#endif
+         }
+         if (task->panels[2].level != 0) {
+             if (task->panels[2].level != ONE) {
+--- a/src/menus/title/menu.c
++++ b/src/menus/title/menu.c
+@@ -4,6 +4,7 @@
+ #if PORT_HOST
+ #include "port_options.h"
+ #include "port_title_options.h"
++#include "port_confirm.h"
+ #ifdef DW3_CHEATS
+ #include "port_cheats.h"
+ #endif
+@@ -194,6 +195,10 @@
+         if (dw3_port_options_is_open()) {
+             break;
+         }
++        /* P6.28: the Quit game window is up; dw3_port_confirm_tick() answers it. */
++        if (dw3_port_confirm_is_open()) {
++            break;
++        }
+         if (PAD_PRESSED(PAD_SELECT) && !PAD_HELD(PAD_L1) &&
+             !PAD_HELD(PAD_R1) && !PAD_HELD(PAD_L2) && !PAD_HELD(PAD_R2)) {
+             dw3_port_options_open();
+@@ -215,7 +220,9 @@
+         }
+         if (PAD_PRESSED(PAD_DOWN) || PAD_REPEATED(PAD_DOWN)) {
+ #if PORT_HOST
+-            if (task->selection < DW3_TITLE_CONTINUE) {
++            /* P6.28: Quit game is the last row, apart from Continue. */
++            if (task->selection < (dw3_port_title_quit_enabled() ?
++                                   DW3_TITLE_QUIT : DW3_TITLE_CONTINUE)) {
+                 SOUND.playSound(SOUND_CURSOR);
+                 task->selection++;
+             }
+@@ -233,6 +240,12 @@
+                 SOUND.playSound(SOUND_SELECT);
+                 break;
+             }
++            if (task->selection == DW3_TITLE_QUIT) {
++                /* P6.28: ask first (Yes / No, the cursor on No). */
++                dw3_port_confirm_open(DW3_CONFIRM_QUIT);
++                SOUND.playSound(SOUND_SELECT);
++                break;
++            }
+ #endif
+             task->timer = 0;
+             SOUND.playSound(SOUND_SELECT);
+@@ -264,6 +277,7 @@
+ void STDWTITL_tickMenu(TitleMenuTask *task) {
+ #if PORT_HOST
+     int options_were_open = dw3_port_options_is_open();
++    int confirm_was_open = dw3_port_confirm_is_open();
+ #endif
+     switch (task->state) {
+     case TASK_INIT:
+@@ -290,6 +304,9 @@
+         if (options_were_open && dw3_port_options_is_open()) {
+             dw3_port_options_tick();
+         }
++        if (confirm_was_open && dw3_port_confirm_is_open()) {
++            dw3_port_confirm_tick();
++        }
+ #endif
+         break;
+     case TASK_KILL:

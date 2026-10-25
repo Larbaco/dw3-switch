@@ -31,6 +31,19 @@ New in this preview
   Any use sets the save cheat marker (save<N>.cheats). Unverified on
   hardware.
 
+  Quit game on the title menu (P6.28). The title has a fourth entry, Quit
+  game, below Load Game. It asks Yes or No (the cursor starts on No), saves
+  the dirty save slots and returns to hbmenu, as the HOME exit does. On a PC
+  build it closes the window. Unverified on hardware.
+
+  Return to title in the field menu (P6.27). The field menu (Plus) has a
+  last row, TITLE SCREEN (RETOUR TITRE, TORNA AL TITOLO, TITELBILD, VOLVER
+  AL INICIO). It asks Yes or No, then runs the same reset as the restart
+  hotkey: dirty saves are flushed, a failed flush cancels it, and unsaved
+  progress is lost. On the EU disc the game lands on the language select, as
+  the hotkey does. The field menu pictures (and the title menu's) changed
+  for this. Unverified on hardware.
+
   Docs only: the P6.33 Items menu proposal and a roadmap cleanup. No game
   change.
 
@@ -164,6 +177,13 @@ OLED checklist
   - Cheats page 2: with the master switch on, open Cheats (Square, or Y on
     Switch) and try Money, Warp and Give item. A save after use gets the
     save<N>.cheats marker.
+  - Title: Down to Quit game (the last entry), Cross: the window opens on
+    No. No closes it. Yes returns to hbmenu; dw3.log ends with "dw3-port-quit:
+    saves flushed". Your saves are still there on the next launch. HOME and
+    "close the software" must still exit as before.
+  - Return to title: open the field menu with Plus: the last row asks Yes or
+    No; Yes returns to the title (the language select on EU). The text should
+    fit in every language; with the card folders row the panel has seven rows.
   - After any crash, keep crash_report.txt and dw3.log before
     relaunching; the next boot keeps one previous report. Symbolize it
     with the matching ELF from dw3-switch-elf.zip.

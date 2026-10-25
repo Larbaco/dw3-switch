@@ -43,6 +43,9 @@ class Scenario:
     # Extra environment for the PC run (debug aids such as DW3_START_MODE).
     # The Switch build has no environment, so the Ryubing runner skips these.
     env: tuple[tuple[str, str], ...] = ()
+    # The process is meant to end by itself before the recording's end (the
+    # title menu's Quit game, P6.28): exit status 0 is the expected verdict.
+    quits: bool = False
     # The recording has no `shot` lines: the verdicts are the process, the
     # overlay markers and the log lines only (no reference captures needed).
     log_only: bool = False
@@ -846,12 +849,13 @@ for _v in ("us", "eu"):
 # the test) and the recording presses L1+R1+Start+Select (0x0C09). The game
 # frame counter keeps running across the in-process restart, so the checkpoints
 # after the chord are at the chord's frame plus the cold boot's. PC only (env).
-# DW3_START_MODE_ONCE (patch 0127): only the boot newGame honours START_MODE,
-# so the restart reaches the real boot screen (US title, EU language select);
-# without it the restart re-enters the forced mode, a fresh GAME.
+# Patch 0124 makes DW3_START_MODE apply on the boot's newGame only, so a restart
+# reaches the real boot screen (US title, EU language select). Patch 0127's
+# DW3_START_MODE_EVERY brings back the re-entry of the forced mode (a second
+# forced battle or field on a reset GAME) for the scenarios that need it.
 _RST_CFG = (("restart_hotkey", "1"),)
 _RST_LINE = r"dw3-port-restart: saves flushed; returning to the boot screen in-process"
-_RST_ONCE = (("DW3_START_MODE_ONCE", "1"),)
+_RST_EVERY = (("DW3_START_MODE_EVERY", "1"),)
 for _v, _ids in (("us", (0x159, 0x1FA, 0x1C2, 0x158)), ("eu", (0x167, 0x208, 0x1D1, 0x166))):
     _fight, _menu, _report, _field = _ids
     _battle = ((_fight, M), (_menu, S), (_report, M), (_field, M))
@@ -859,41 +863,91 @@ for _v, _ids in (("us", (0x159, 0x1FA, 0x1C2, 0x158)), ("eu", (0x167, 0x208, 0x1
     # EU language select), the memory card screen of Continue, the field again
     _sfield, _smcard, _stitle = (0x158, 0x1E3, 0x1C1) if _v == "us" else (0x166, 0x1EE, 0x165)
     _add(Scenario(f"{_v}-restart-after-battle", _v, "full", turbo=4, timeout=400,
-                  env=_P77_ENV_REPORT + _RST_ONCE, cfg=_RST_CFG, expect_restore=_battle,
+                  env=_P77_ENV_REPORT, cfg=_RST_CFG, expect_restore=_battle,
                   expect_log=((0, r"WFIGHTMN_endBattle result=1(?s:.*)" + _RST_LINE),),
                   note="restart in the field after a battle: the boot screen, title menu (P6.9)"),
          Scenario(f"{_v}-restart-battle-again", _v, "full", turbo=4, timeout=600,
-                  env=_P77_ENV_REPORT, cfg=_RST_CFG, expect_restore=_battle * 2,
+                  env=_P77_ENV_REPORT + _RST_EVERY, cfg=_RST_CFG, expect_restore=_battle * 2,
                   expect_log=((0, r"WFIGHTMN_endBattle result=1(?s:.*)" + _RST_LINE
                                   + r"(?s:.*)WFIGHTMN_endBattle result=1"),),
                   note="restart after a battle re-enters the forced battle: the same battle again (P6.9)"),
          Scenario(f"{_v}-restart-in-battle", _v, "full", turbo=4, timeout=400,
-                  env=_P77_ENV_REPORT + _RST_ONCE, cfg=_RST_CFG,
+                  env=_P77_ENV_REPORT, cfg=_RST_CFG,
                   expect_log=((0, r"FIGHTSTG_start(?s:.*)" + _RST_LINE),),
                   forbid_log=((0, r"WFIGHTMN_endBattle"),),
                   note="the chord inside a battle restarts from any mode (P6.9)"),
          Scenario(f"{_v}-restart-before-battle", _v, "full", turbo=4, timeout=400, log_only=True,
                   phases=(f"{_v}-restart-before-battle",),
-                  env=_ENC_ENV + (("DW3_CHEATS_ARM", "battle_now"),),
+                  env=_ENC_ENV + _RST_EVERY + (("DW3_CHEATS_ARM", "battle_now"),),
                   cfg=_RST_CFG + _CHEAT_ON + (("encounter_rate", "2"),),
                   expect_log=((0, _RST_LINE + r"(?s:.*)dw3-cheats: battle now: a random battle starts"
                                   r"(?s:.*)FIGHTSTG_start"),),
                   note="restart in a field, then a random battle (Battle now) starts normally (P6.9)"),
          Scenario(f"{_v}-restart-save-continue", _v, "full", timeout=900,
-                  env=_SAVE_ENV + _RST_ONCE, cfg=_RST_CFG,
+                  env=_SAVE_ENV, cfg=_RST_CFG,
                   expect_restore=((_sfield, M), (_smcard, M), (_stitle, M), (_smcard, M), (_sfield, M)),
                   expect_log=((0, r"STGMCARD_writeSave port=0 slot=0 status=1(?s:.*)" + _RST_LINE
                                   + r"(?s:.*)STGMCARD_loadSave ok port=0 slot=0 money=0 progress=6"),),
                   note="field save, restart, Load Game / Continue reads the save back (P6.9)"))
 
     _add(Scenario(f"{_v}-restart-in-battle-redo", _v, "full", turbo=4, timeout=600,
-                  env=_P77_ENV_REPORT, cfg=_RST_CFG, expect_restore=((_fight, M), (_menu, S)) + _battle,
+                  env=_P77_ENV_REPORT + _RST_EVERY, cfg=_RST_CFG, expect_restore=((_fight, M), (_menu, S)) + _battle,
                   expect_log=((0, r"FIGHTSTG_start(?s:.*)" + _RST_LINE
                                   + r"(?s:.*)FIGHTSTG_start(?s:.*)WFIGHTMN_endBattle result=1"),),
-                  note="the chord inside a battle without START_MODE_ONCE: the battle starts again and ends (P6.9)"))
+                  note="the chord inside a battle with DW3_START_MODE_EVERY: the battle starts again and ends (P6.9)"))
     # No env: the Ryubing runner runs it too (the option file turns the hotkey on).
     _add(Scenario(f"{_v}-restart-newgame", _v, "full", timeout=600, cfg=_RST_CFG,
                   note="restart during the New Game opening, then New Game and the opening again (P6.9)"))
+
+
+# P6.28 Quit game on the title menu and P6.27 Return to title in the field menu
+# (patch 0123, port/options/confirm.c). Quit: Down to the fourth row, the Yes / No
+# window with the cursor on No (checkpoints), No, again, Yes: the saves are
+# flushed (`dw3-port-quit: saves flushed`) and the process ends with status 0
+# before the recording's end. Return to title: the South Sector field with the
+# Start, Down to the last row,
+# the window, No, again, Yes: P6.9's reset, then the title (US) / the language
+# select and the title (EU). rows7: the same field with the card folders row
+# (the six-row panel stretched for the seventh), cancelled. PC only (env / early exit).
+_RT_CFG = (("encounter_rate", "2"),)
+_RT_ENV = _ITEMS_ENV[:-1]    # the party of the forced event battle, no bag
+for _v, _title in (("us", 0x1C1), ("eu", 0x1D0)):
+    _add(Scenario(f"{_v}-title-quit", _v, "full", timeout=300, quits=True,
+                  expect_log=((0, r"dw3-port-confirm: open quit \(cursor on No\)(?s:.*)"
+                                  r"dw3-port-confirm: No \(quit\); nothing changed(?s:.*)"
+                                  r"dw3-port-confirm: open quit \(cursor on No\)(?s:.*)"
+                                  r"dw3-port-confirm: cursor on Yes(?s:.*)"
+                                  r"dw3-port-confirm: Yes \(quit\)(?s:.*)"
+                                  r"dw3-port-quit: saves flushed; asking the host to quit"),),
+                  forbid_log=((0, r"save flush failed"),),
+                  note="title menu Quit game: No keeps the menu, Yes flushes the saves and ends the process (P6.28)"),
+         Scenario(f"{_v}-return-title", _v, "full", turbo=4, timeout=600,
+                  env=_RT_ENV, cfg=_RT_CFG,
+                  expect_restore=((_title, M),),
+                  expect_log=((0, r"dw3-port-confirm: open return to title \(cursor on No\)(?s:.*)"
+                                  r"dw3-port-confirm: No \(return to title\); nothing changed(?s:.*)"
+                                  r"dw3-port-confirm: open return to title \(cursor on No\)(?s:.*)"
+                                  r"dw3-port-confirm: Yes \(return to title\)(?s:.*)"
+                                  r"dw3-port-restart: requested from the field menu(?s:.*)"
+                                  r"dw3-port-restart: saves flushed; returning to the boot screen"),),
+                  forbid_log=((0, r"save flush failed"),),
+                  note="field menu Return to title: No keeps the menu, Yes runs the P6.9 reset (P6.27)"),
+         Scenario(f"{_v}-return-title-rows7", _v, "full", turbo=4, timeout=600,
+                  env=_ITEMS_ENV, cfg=_RT_CFG,
+                  expect_log=((0, r"dw3-port-confirm: open return to title \(cursor on No\)(?s:.*)"
+                                  r"dw3-port-confirm: cancelled \(return to title\); nothing changed"),),
+                  forbid_log=((0, r"dw3-port-restart"),),
+                  note="the field menu with the card folders row and Return to title: seven rows, cancelled (P6.27)"))
+
+# The Quit game plaque and the window in the other four EU languages (the
+# lettering is authored, docs/PORT_OPTIONS.md "Quit and return to title").
+for _lang in ("fr", "de", "it", "es"):
+    _add(Scenario(f"eu-title-quit-{_lang}", "eu", "full", timeout=300,
+                  expect_log=((0, r"dw3-port-confirm: open quit \(cursor on No\)(?s:.*)"
+                                  r"dw3-port-confirm: cursor on Yes(?s:.*)"
+                                  r"dw3-port-confirm: cancelled \(quit\); nothing changed"),),
+                  forbid_log=((0, r"dw3-port-quit"),),
+                  note=f"Quit game plaque and window in {_lang}; Triangle cancels, nothing is quit (P6.28)"))
 
 
 def by_name() -> dict[str, Scenario]:

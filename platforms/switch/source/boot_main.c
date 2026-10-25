@@ -69,6 +69,14 @@ void StCdInterrupt(void);
 #define DW3_RUNTIME_EXECUTABLE_TAG "SLUS_014.36"
 #endif
 
+/* P6.28: the title menu's Quit game ends the session the way HOME's exit
+ * request does: Psyz_QuitRequested turns on, the game loop returns from
+ * dw3_game_main() and main() returns to hbmenu. The saves were flushed by
+ * port/options/confirm.c before it asked. */
+void dw3_host_request_quit(void) {
+    dw3_nx_set_quit_requested();
+}
+
 static PsyzVSyncCb g_prev_vsync_cb;
 static int g_applet_exit_locked;
 static int g_quit_saves_flushed;

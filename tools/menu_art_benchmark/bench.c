@@ -27,12 +27,12 @@ int main(int argc, char **argv) {
         int values[3] = {i % 2, 2 + i % 3, i % 2};
         dw3_pc_title_overlay_set_options_view(i % 3, values, 3);
         double start = now_ms();
-        const int states[] = {-1, 0, 1, 2, 3};
+        const int states[] = {-1, 0, 1, 2, DW3_TITLE_ART_OPTIONS};
         for (int state = 0; state < (five ? 5 : 1); ++state) {
             uint8_t *dst = pixels + state * bytes;
             /* Match the host's extra clear, in addition to the art clear. */
             memset(dst, 0, bytes);
-            dw3_pc_title_overlay_art(dst, 960 * 4, five ? states[state] : 3);
+            dw3_pc_title_overlay_art(dst, 960 * 4, five ? states[state] : DW3_TITLE_ART_OPTIONS);
         }
         printf("%ld,%.6f\n", i, now_ms() - start);
     }
