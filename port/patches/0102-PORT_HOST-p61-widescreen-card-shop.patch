@@ -1,10 +1,20 @@
 Upstream-bound: no
 Subject: [PORT_HOST] P6.1 card packs shop fills 16:9
 
-The card packs shop (STCRDSHP) ran with gutter 0. Its scrolling background
-repeats every 96 pixels, so with a widescreen gutter it is drawn twice more,
-96 pixels to each side (as patch 0053), and port/options/widescreen.c gives
-the overlay the menu gutter. Off, nothing changes.
+The card packs shop (STCRDSHP: the shop menu, Buy One Card, Open Booster)
+ran with gutter 0. port/options/widescreen.c gives the overlay the menu
+gutter and:
+
+- the scrolling background (96 px period) is drawn twice more, 96 pixels to
+  each side, as patch 0053;
+- the plates that hang from the right edge (the money bar, the options panel
+  with its windows and cursor, the Back plate and its text, the buy dialog's
+  Yes / No panel) are drawn one gutter further right, with their open pivots;
+- the card details panel (as the album's, patch 0101) is drawn at the right
+  edge with its name and text plates extended (DW3_MENU_EXTEND), and the pack
+  list and help bands of the booster screen are widened with DW3_MENU_BAND.
+
+Only drawing positions change. Off (gutter 0) every position is the PS1 one.
 
 --- a/src/cardgame/card_packs/shop.c
 +++ b/src/cardgame/card_packs/shop.c

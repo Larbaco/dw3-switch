@@ -1,13 +1,15 @@
 Upstream-bound: no
-Subject: [PORT_HOST] Test hook: DW3_FORCE_CARDS fills the card album
+Subject: [PORT_HOST] Test hook: DW3_FORCE_CARDS fills the card collection
 
 Debug aid for the replay tests (like DW3_FORCE_ITEMS of patch 0070): a new
-game has seen 29 cards, none on the album's first page, so the album's card
-details (the panels on the right and below) could not be reached without
-playing for packs. DW3_FORCE_CARDS=<first>-<last>[:<count>] (PC only, ids
-1..314, count 1..3, default 1) marks those cards as seen and puts that many
-of each in the collection when STCRDABM_createAlbum runs. Logs "dw3:
-DW3_FORCE_CARDS cards A..B xN" on stderr. Unset (every release, and the
+game has seen 29 cards, none on the album's first page, and owns only the
+cards in its three folders, so the album's card details (the panels on the
+right and below) and the deck editor's list of cards owned could not be
+reached without playing for packs.
+DW3_FORCE_CARDS=<first>-<last>[:<count>] (PC only, ids 1..314, count 1..3,
+default 1) marks those cards as seen and puts that many of each in the
+collection when STCRDABM_createAlbum or STCRDDEK_createScreen runs. Logs
+"dw3: DW3_FORCE_CARDS cards A..B xN" on stderr. Unset (every release, and the
 Switch, which has no environment) it does nothing.
 
 --- a/src/cardgame/album/album.c

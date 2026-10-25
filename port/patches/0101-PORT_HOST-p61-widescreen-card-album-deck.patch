@@ -3,10 +3,26 @@ Subject: [PORT_HOST] P6.1 card album and deck editor fill 16:9
 
 The card album (STCRDABM) and the deck editor (STCRDDEK), both opened from
 the field menu's Card folders, ran with gutter 0: a 4:3 picture pillarboxed
-on a 16:9 screen. Their scrolling background repeats every 96 pixels, so with
-a widescreen gutter it is drawn twice more, 96 pixels to each side (the same
-as patch 0053), and port/options/widescreen.c gives both overlays the menu
-gutter. Off, nothing changes.
+on a 16:9 screen. port/options/widescreen.c gives both overlays the menu
+gutter and:
+
+- their scrolling background (96 px period) is drawn twice more, 96 pixels to
+  each side, as patch 0053;
+- the album's title plate hangs from the 16:9 left edge and its "Back" plate
+  from the right edge (DW3_MENU_LEFT / DW3_MENU_RIGHT, with their text
+  windows and open-animation pivots); the card details at the bottom (kind
+  icon, count and points windows, the "x N" plate) are drawn one gutter
+  further right and the name and text plates that run off the right edge are
+  extended to the picture's edge (DW3_MENU_EXTEND, new in port_widescreen.h);
+- the deck editor's title plate is extended the same way, the folder options
+  panel (Edit Folder / Change name, its windows and cursor) hangs from the
+  right edge, and the editor's right column (the card info panel, the list of
+  the cards owned with its lines, cursor and scroll bar, the list card's
+  details) follows the album's layout; the folder rows and the 9x5 grid stay
+  in the middle 4:3.
+
+Only drawing positions change: the cursors and the pad logic keep their
+values. Off (gutter 0) every position is the PS1 one.
 
 --- a/src/cardgame/album/album.c
 +++ b/src/cardgame/album/album.c

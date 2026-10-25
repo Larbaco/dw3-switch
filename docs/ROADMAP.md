@@ -46,7 +46,7 @@ listed once, in [Pending OLED checks](#pending-oled-checks).
 | P5.3 | Save handling | done | [P5.3](P5.3_FLAT_SAVE.md) |
 | P5.4 | Error reporting | in progress (done-when met on the OLED; boot notice 60 s, #231; PR 2 OLED check open) | [P5.4](P5.4_CRASH.md) |
 | P5.5 | Stage sweep on hardware | open | — |
-| P6.1 | Scaling / widescreen | in progress (map, results, save, title, caption, registration, Items menu at 16:9 in preview.31; album, deck, gym, Lab, card shop, iris, spiral still 4:3) | [P6.1](P6.1_WIDESCREEN.md) |
+| P6.1 | Scaling / widescreen | in progress (map, results, save, title, caption, registration, Items menu at 16:9 in preview.31; card album, deck editor, card shop, gym and Lab at 16:9 in the next preview (0100-0104, OLED pending); iris, spiral, card battle still 4:3) | [P6.1](P6.1_WIDESCREEN.md) |
 | P6.2 | PAL/NTSC, EU/US, language at boot | in progress | [P3_EU_BUILD](P3_EU_BUILD.md) |
 | P6.3 | PGXP-style vertex precision | open | — |
 | P6.4 | Fast-forward | in progress (turbo works on the OLED; report at turbo speed, #223; tick is the owner's call) | [P6.4](P6.4_FAST_FORWARD.md) |
@@ -113,7 +113,12 @@ Tick the item in the table once the owner confirms.
 - **P6.1:** 16:9 for the map screen, results header, save slot picker, title
   menu, news caption bar, registration screen (patches 0080-0082, 0085-0087),
   and the Items menu and field menu screens (0075, 0076, 0074). US and EU. The
-  banner and technique backdrops: EU still to do.
+  banner and technique backdrops: EU still to do. **New (0100-0104):** the
+  card album and deck editor (from Card folders: all their panels, the card
+  details, the list of cards owned), the card shop (Buy One Card; Open Booster
+  was not captured), the gym and the Digimon Lab (menu, party, digivolve). US
+  and EU; in the Lab the chart, entry and skill screens still keep their left
+  panels at the 4:3 edge.
 - **P6.4 / P6.18:** a won battle with R3 on, the results screen at the
   battle's speed (#223); Instant text, the area banner's names whole, after a
   battle and at a door.
@@ -669,16 +674,19 @@ gate, which stays open.
     screen `0087` (#224).
   - Map screen `0080`, results header `0081`, memory card slot picker `0082`
     (#240).
+  - Card album and deck editor `0101` (hook `0100`), card shop `0102`, gym
+    `0103`, Digimon Lab `0104` (branch `fix/p6.1-ws-cards`, PR open).
   - Everything from `0074` on is in preview.31 and pending the OLED check (US
     and EU); see [Pending OLED checks](#pending-oled-checks).
   **Still 4:3, in order** (source: the 2026-10-24 screen audit, summarised in
   [P6.1_WIDESCREEN.md](P6.1_WIDESCREEN.md#remaining-43-screens-audit-2026-10-24)):
-  - [ ] **Card album** (`STCRDABM`) and **deck editor** (`STCRDDEK`): opened
-    from the Card folders page, which is 16:9. The likely "card screen is not
-    16:9" report. Fix: the `0053` background repeat (96 px).
-  - [ ] **Gym** (`STGTRAIN`), **Digimon Lab** (`STGDGLAB`), **card packs
-    shop** (`STCRDSHP`, entry point unconfirmed): the same recipe. EU overlay
-    ids are not in `port/options/widescreen.c` yet.
+  - [x] **Card album** (`STCRDABM`) and **deck editor** (`STCRDDEK`): patches
+    `0100` (test hook) and `0101`; OLED pending.
+  - [x] **Gym** (`STGTRAIN`, `0103`), **Digimon Lab** (`STGDGLAB`, `0104`),
+    **card packs shop** (`STCRDSHP`, `0102`, entry point unconfirmed): done on
+    the replays, US and EU ids in `port/options/widescreen.c`; OLED pending.
+    Open: the Lab's chart, entry and skill screens' left panels, the Open
+    Booster screen (not captured).
   - [ ] **Area-change iris and grid cover** (`FIELDSTG_closeField`): start the
     clip at 320+2*gutter centred on the player and widen the blue grid.
   - [ ] **Encounter spiral** (`FIELDSTG_playBattleTransition`): the owner saw

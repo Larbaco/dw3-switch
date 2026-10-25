@@ -1,11 +1,20 @@
 Upstream-bound: no
 Subject: [PORT_HOST] P6.1 gym fills 16:9
 
-The gym (STGTRAIN: the party, the training menu and the results) ran with
-gutter 0. Its scrolling background repeats every 96 pixels, so with a
-widescreen gutter it is drawn twice more, 96 pixels to each side (as patch
-0053), and port/options/widescreen.c gives the overlay the menu gutter. Off,
-nothing changes.
+The gym (STGTRAIN: the party to train, the training list, the session and
+the results) ran with gutter 0. port/options/widescreen.c gives the overlay
+the menu gutter and:
+
+- the scrolling background (96 px period) is drawn twice more, 96 pixels to
+  each side, as patch 0053;
+- the status, stats and TP panels that hang from the left edge are drawn one
+  gutter further left (DW3_MENU_LEFT) with their windows, the partner
+  sprite and their open pivots;
+- the panels that run off the right edge (the party box, the training list,
+  the message and session plates) are extended to the picture's edge
+  (DW3_MENU_EXTEND) and their open pivots follow the 16:9 right edge.
+
+Only drawing positions change. Off (gutter 0) every position is the PS1 one.
 
 --- a/src/menus/gym/screen.c
 +++ b/src/menus/gym/screen.c
