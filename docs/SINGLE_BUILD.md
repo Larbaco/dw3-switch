@@ -437,7 +437,10 @@ EU, and both trees (region forced, picker keys, countdown). They compare with
 the references of the plain scenarios (`Scenario.ref_from`), so a pass means
 the captures are bit-identical to the separate builds: 0 px differ on all 7,
 US and EU. The existing `us` / `eu` scenarios and builds are unchanged and pass
-the full suite.
+the full suite (183 full + 6 quick scenarios, 1613 checks, 0 failed, on the
+plain PC builds); `pytest tools/tests` 361 passed, 2 skipped; the US and EU
+Switch `.nro` (10,219,692 and 10,252,460 B) still build. Evidence:
+`tmp/evidence/20261025-p624-single-build/` (not in git).
 
 **What remains for P6.24.**
 
