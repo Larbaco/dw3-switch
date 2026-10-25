@@ -64,6 +64,9 @@ typedef struct Dw3PortOptStub {
 } Dw3PortOptStub;
 
 static int g_open;
+/* P9.7: 1 while the screen was opened from the field menu (not the title):
+ * the rows that cannot change safely in game are locked (row_locked). */
+static int g_in_game;
 static int g_cursor;
 static int g_open_frames;
 static int g_logged_open;
@@ -143,20 +146,66 @@ static void po_push_view(void) {
     }
     dw3_pc_title_overlay_set_options_view(g_cursor, values,
                                           DW3_PORT_OPT_COUNT);
+    dw3_pc_title_overlay_set_options_locked(dw3_port_options_locked_mask());
 #endif
 }
 
-void dw3_port_options_open(void) {
+/* P9.7: the rows that change nothing in game. Widescreen: the gutter, the
+ * field's map streamer layout (15 slots at 16:9) and the battle camera are
+ * set up when a mode loads, so switching in the middle of a map would leave
+ * them half old, half new; it is changed at the title. Everything else reads
+ * its value where it is used (docs/PORT_OPTIONS.md "Options in game"). */
+int dw3_port_options_row_locked(int index) {
+    return g_in_game && index == DW3_PORT_OPT_WIDESCREEN;
+}
+
+/* Bit i = row i is locked; DW3_PORT_OPTIONS_LOCK_CHEATS = the Cheats entry
+ * (Square / Y), which is title-only: cheats are armed at the title. */
+unsigned dw3_port_options_locked_mask(void) {
+    unsigned mask = 0;
+    int i;
+
+    if (!g_in_game) {
+        return 0;
+    }
+    for (i = 0; i < DW3_PORT_OPT_COUNT; i++) {
+        if (dw3_port_options_row_locked(i)) {
+            mask |= 1u << i;
+        }
+    }
+    return mask | DW3_PORT_OPTIONS_LOCK_CHEATS;
+}
+
+int dw3_port_options_in_game(void) {
+    return g_in_game != 0;
+}
+
+static void po_open(int in_game) {
     if (g_open) {
         return;
     }
     g_open = 1;
+    g_in_game = in_game;
     g_cursor = 0;
     g_open_frames = 0;
     g_logged_open = 0;
     po_push_view();
-    fprintf(stderr, "dw3-port-options: open (stay MODE_TITLE)\n");
+    if (in_game) {
+        fprintf(stderr, "dw3-port-options: open in game (field menu; "
+                        "widescreen and cheats locked)\n");
+    } else {
+        fprintf(stderr, "dw3-port-options: open (stay MODE_TITLE)\n");
+    }
     fflush(stderr);
+}
+
+void dw3_port_options_open(void) {
+    po_open(0);
+}
+
+/* P9.7: from the field menu's Options row. */
+void dw3_port_options_open_in_game(void) {
+    po_open(1);
 }
 
 void dw3_port_options_close(void) {
@@ -165,7 +214,12 @@ void dw3_port_options_close(void) {
     }
     g_open = 0;
     g_open_frames = 0;
-    fprintf(stderr, "dw3-port-options: close (resume runOptions)\n");
+    if (g_in_game) {
+        g_in_game = 0;
+        fprintf(stderr, "dw3-port-options: close in game (back to the field menu)\n");
+    } else {
+        fprintf(stderr, "dw3-port-options: close (resume runOptions)\n");
+    }
     fflush(stderr);
     dw3_port_options_flush();
 }
@@ -530,12 +584,28 @@ static void po_sound(int kind) {
 #endif
 }
 
+/* P9.7: a press on a row that is locked in game changes nothing; the screen
+ * shows why (its message line). 1 = refused. */
+static int po_refuse_locked(int index) {
+    if (!dw3_port_options_row_locked(index)) {
+        return 0;
+    }
+    fprintf(stderr, "dw3-port-options: %s is locked in game "
+                    "(change it at the title)\n", g_stubs[index].label);
+    fflush(stderr);
+    return 1;
+}
+
 /* Move a stepped row (a volume 0..10, a pacing mode) by `delta` steps in
  * the row's order (po_value_at), clamped, and save. Plays the choice sound
  * once the new value (and, for a volume, its gain) is in effect. */
 static void po_step(int index, int delta) {
     int pos = po_pos_of(index, g_stubs[index].value) + delta;
     int v;
+
+    if (po_refuse_locked(index)) {
+        return;
+    }
 
     if (pos < 0) {
         pos = 0;
@@ -573,6 +643,10 @@ static void po_step(int index, int delta) {
  * Encounter rate 2x -> OFF). */
 static void po_toggle(int index) {
     int v;
+
+    if (po_refuse_locked(index)) {
+        return;
+    }
 
     if (index == DW3_PORT_OPT_FAST_FORWARD) {
         v = g_stubs[index].value;
@@ -640,6 +714,13 @@ void dw3_port_options_tick(void) {
 #else
     if (po_pressed(PAD_SQUARE)) {
 #endif
+        if (g_in_game) {
+            /* P9.7: cheats are armed at the title; the entry is greyed. */
+            fprintf(stderr, "dw3-port-options: cheats are locked in game "
+                            "(change them at the title)\n");
+            fflush(stderr);
+            return;
+        }
         po_sound(PO_SND_SELECT);
         dw3_cheats_open();
         return;

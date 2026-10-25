@@ -131,6 +131,19 @@ for _lang, _t in AUTOSAVE_TEXT.items():
     LETTERS.append(('opt_as_row_' + _lang, _t['row'], 26, 'DejaVuSans.ttf'))
     LETTERS.append(('opt_as_area_' + _lang, _t['area'], 26, 'DejaVuSans.ttf'))
     LETTERS.append(('opt_as_desc_' + _lang, _t['desc'], 25, 'DejaVuSans.ttf'))
+# P9.7 Options screen opened from the field menu (docs/PORT_OPTIONS.md "Options
+# in game"): the message line of a row that cannot change in game (Widescreen),
+# in the five languages of the EU disc (en is also the US disc's). Keep it under
+# 696 px (the message box).
+LOCK_TEXT = {
+    'en': 'Locked in game: change it at the title screen.',
+    'fr': "Verrouill\u00e9 en jeu : \u00e0 changer \u00e0 l'\u00e9cran titre.",
+    'de': 'Im Spiel gesperrt: im Titelbild \u00e4ndern.',
+    'es': 'Bloqueado en juego: c\u00e1mbialo en el t\u00edtulo.',
+    'it': 'Bloccato in gioco: cambialo nel titolo.',
+}
+for _lang, _text in LOCK_TEXT.items():
+    LETTERS.append(('opt_lock_' + _lang, _text, 25, 'DejaVuSans.ttf'))
 # P6.20 Cheats screen (docs/PORT_OPTIONS.md "Cheats"), in the five languages
 # of the EU disc (en is also the US disc's). Emitted inside #ifdef DW3_CHEATS,
 # so a build without cheats compiles none of it. ON / OFF and the numbers are

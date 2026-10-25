@@ -95,7 +95,7 @@ listed once, in [Pending OLED checks](#pending-oled-checks).
 | P9.4 | Persistence (blocks many goals) | done (owner confirmed on the OLED, 2026-10-24) | [PORT_OPTIONS](PORT_OPTIONS.md) |
 | P9.5 | Wire real features | in progress | [PORT_OPTIONS](PORT_OPTIONS.md) |
 | P9.6 | External save converter | open | — |
-| P9.7 | Port options reachable in game (future goal) | future | [roadmap](#phase-9--port-options-menu) |
+| P9.7 | Port options reachable in game | in progress (slice 1, the field menu: built, PC US and EU replays; battle open; owner OLED check open) | [PORT_OPTIONS](PORT_OPTIONS.md#options-in-game-p97), [roadmap](#phase-9--port-options-menu) |
 | P9.8 | Confirm / cancel layout option (PS positional or Nintendo A/B) (future goal) | future | [roadmap](#phase-9--port-options-menu), [HOTKEYS](HOTKEYS.md) |
 | P9.9 | Options screen redesign in the title menu's style, room for more rows (future goal) | future | [roadmap](#phase-9--port-options-menu), [PORT_OPTIONS](PORT_OPTIONS.md) |
 | P10.1 | Switch features goal note | done | [SWITCH_FEATURES](SWITCH_FEATURES.md) |
@@ -166,6 +166,11 @@ The ordered session plan for preview.35 is [OLED_TEST_PLAN](OLED_TEST_PLAN.md).
   rows; No, Yes: back at the title, or the language select on EU). US and EU, at
   least two EU languages. Checklist:
   [PORT_OPTIONS.md](PORT_OPTIONS.md#oled-checklist-quit-and-return-to-title-owner).
+- **P9.7 (slice 1):** the Options row of the field menu, US and EU, at least two
+  EU languages: the window over the field, Widescreen and the Cheats hint grey,
+  Music volume, Encounter rate, Text speed and the Restart hotkey apply at once,
+  B returns to the menu, the values persist. Checklist:
+  [PORT_OPTIONS.md](PORT_OPTIONS.md#oled-checklist-options-in-game-owner).
 - **P6.31:** Auto-save row (the ninth Options row, OFF by default; the rows are a
   little tighter) on US and EU, at least two EU languages: on, Continue a save,
   walk through a door, `dw3.log` shows `wrote card ...`, relaunch and Continue
@@ -1122,37 +1127,51 @@ PS1 game, with vanilla-safe defaults and persistence on owner storage.
   Done when: the tool reads a port save and writes a 128 KiB card image,
   and the reverse, without the game calling it.
 
-- [ ] **P9.7 Port options reachable in game from the pause / field menu
-  (future goal).** Dated 2026-10-22, owner request after the rc4 OLED test:
-  today the Options screen opens only from the title, so a setting cannot
-  be changed while playing (a volume in the field, the Encounter rate before a
-  walk, Widescreen on a battle). Goal note only, nothing started. It needs:
-  1. **Pausing game logic while the screen is open**, in the field and in
-     battle (the title screen can run its own task; a field or a battle must
-     stop its task list, timers, the random countdown and the sound script
-     but keep the music, and resume with the same state and without a frame of
-     input leaking into the game).
-  2. **Drawing over the field and over a battle**: the options canvas is drawn
-     by the native title overlay today; it must also draw in the field and
-     fight overlays (and over the widescreen gutters), on PC and Switch, and
-     deal with the draw-order and VRAM use of those modes.
-  3. **The entry point**, one of: (a) a **hotkey** (a chord, like the P6.9
-     restart chord), which is port-only, needs no text and no decomp change
-     beyond a poll, but is invisible to the player; or (b) a **new entry in the
-     game's own pause / field menu**, which is discoverable but needs a decomp
-     patch (`PORT_HOST`, numbered patch) for the menu list, its cursor and
-     layout, and **its name in the five EU languages** (EN, FR, DE, IT, ES; on
-     US one string) with the game's own font and width limits. Pick (a) first
-     if only one fits, (b) as the finished form.
-  4. **Live application of every option**: Widescreen (the gutter and the
-     present size change at runtime, and a battle in progress), Fast-forward,
-     the volumes and the pacing rows already read their value when used, but
-     Widescreen, Restart hotkey and the audio bus gains have to be re-applied
-     safely in the middle of a frame; each row needs a documented answer.
-  Done when: Port options opens and closes in the field and in battle on PC and
+- [ ] **P9.7 Port options reachable in game from the pause / field menu.**
+  Dated 2026-10-22, owner request after the rc4 OLED test: the Options screen
+  opened only from the title, so a setting could not be changed while playing
+  (a volume in the field, the Encounter rate before a walk, Widescreen on a
+  battle). **State (2026-10-25): slice 1 built, the field menu only; battle is
+  the next slice.** PC replays pass on US and EU; the owner's OLED check is
+  open ([Pending OLED checks](#pending-oled-checks)). The four needs of the
+  note, as answered by slice 1 (design, tests and the OLED checklist:
+  [PORT_OPTIONS.md](PORT_OPTIONS.md#options-in-game-p97)):
+  1. **Pausing game logic** while the screen is open: in the field it is the field
+     menu's own pause; the screen opens from inside the menu, the menu task hands
+     it the pad and waits, and no input frame leaks on close. Music keeps playing.
+     Battle: not done (the battle task list, its timers and the sound script need
+     the same pause).
+  2. **Drawing over the field**: the native overlay draws the Options window over
+     the field menu on PC and Switch, in 4:3 and in 16:9 (the dim covers the
+     gutters), the way patch `0123`'s Yes / No window already does. Over a battle:
+     not done (draw order and VRAM of the fight overlay).
+  3. **The entry point: (b), a new row in the game's own field menu**, **Options**,
+     just above Return to title (patch `0160`, on `0123`'s approach), in the game's
+     font in the five EU languages and English on US, with the six- to eight-row
+     panel redrawn for the extra rows. The hotkey fallback (a) was not needed.
+  4. **Live application**: every row except two applies at once; **Widescreen is
+     greyed** ("Locked in game: change it at the title screen.", the map layout is
+     set when a mode loads) and the **Cheats entry is greyed** (armed at the
+     title by design). The Restart hotkey reads its value on every poll, so it
+     applies at once. Persistence is the title's (`port_options.cfg`, written on
+     every change).
+  **Defaults chosen for the open questions (owner can change):** the entry is a
+  field-menu row, not a hotkey; field menu only for now; the pause is the menu's
+  own; Widescreen and Cheats stay title-only; changes save as today; the Restart
+  hotkey applies live.
+  Patch `0160` (the row, the pad hand-over, the panel rows); port code
+  `port/options/field_options.c`, the in-game mode of `port/options/port_options.c`
+  and the locked rows of the overlay art; replay scenarios `us/eu-field-options`,
+  `-cheats` and `eu-field-options-fr/de/it/es`; host tests `test_field_options.py`.
+  Ryubing (Switch build, US and EU, after #268's texture release): the Options screen and the
+  Return to title window draw with no blank or garbage frame on a reopen after the release
+  (`us/eu-field-options-nx`, `-release-nx`).
+  Done when: Port options opens and closes in the field **and in battle** on PC and
   Switch (US and EU), the game resumes exactly where it stopped, every row
-  changes the game at once, and the choice of entry point is written down.
-  Related: P6.17 / P6.18 rows, P9.2 (the title entry), P6.9 (the chord).
+  changes the game at once (or says why not), and the choice of entry point is
+  written down. Left: the battle slice and a live Widescreen switch.
+  Related: P6.17 / P6.18 rows, P9.2 (the title entry), P6.9 (the chord), P6.27
+  (the row it sits above).
 
 - [ ] **P9.8 Confirm / cancel layout option (future goal).** Dated
   2026-10-23, owner request after the preview.30-rc7 OLED test. Goal note

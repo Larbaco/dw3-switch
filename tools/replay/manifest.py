@@ -11,6 +11,8 @@ Tiers:
   full   gameplay scenarios (a few minutes each; run by default)
   soak   long walk, 15-20 min of game time (run with --soak or --only)
   repro  recordings of known, unfixed bugs; only with --only (expected to fail)
+  nx     P9.7 Switch-build-only scenarios (Ryubing, replay NRO with the env baked
+         in); only with --only
   single P6.24 launcher scenarios; only with --single or --only (need the
          launcher binary, --launcher / DW3_REPLAY_LAUNCHER)
 """
@@ -1097,6 +1099,72 @@ for _v, _title in (("us", 0x1C1), ("eu", 0x1D0)):
                                   r"dw3-port-confirm: cancelled \(return to title\); nothing changed"),),
                   forbid_log=((0, r"dw3-port-restart"),),
                   note="the field menu with the card folders row and Return to title: seven rows, cancelled (P6.27)"))
+
+# P9.7 slice 1: the port Options screen from the field menu's Options row
+# (patch 0160, port/options/field_options.c). Phase 1: Widescreen refuses a
+# change (locked in game), Music volume 10 -> 7 and Encounter rate 1x -> OFF
+# apply at once and are saved, the screen closes and the menu and the field go
+# on; phase 2 (a new process on the same config dir) shows the values read back.
+_FO_P1 = (r"dw3-port-options: open in game(?s:.*)"
+          r"dw3-port-options: Widescreen is locked in game \(change it at the title\)(?s:.*)"
+          r"dw3-port-options: music volume 7(?s:.*)"
+          r"dw3-port-options: encounter rate off(?s:.*)"
+          r"dw3-port-options: close in game(?s:.*)"
+          r"dw3: field menu Triangle cancel \(stay field\)",
+          r"dw3-options: saved \S*port_options\.cfg \(widescreen=1 fast_forward=2 restart_hotkey=0 "
+          r"music_volume=7 sfx_volume=10 encounter_rate=2 text_speed=0 battle_menu_memory=0\)")
+_FO_P2 = (r"dw3-options: \S*port_options\.cfg \(widescreen=1 fast_forward=2 restart_hotkey=0 "
+          r"music_volume=7 sfx_volume=10 encounter_rate=2 text_speed=0 battle_menu_memory=0\)",
+          r"dw3-port-options: open in game")
+for _v in ("us", "eu"):
+    _add(Scenario(f"{_v}-field-options", _v, "full", turbo=4, timeout=600,
+                  phases=(f"{_v}-field-options-p1", f"{_v}-field-options-p2"),
+                  env=_RT_ENV,
+                  expect_log=tuple((0, r) for r in _FO_P1) + tuple((1, r) for r in _FO_P2),
+                  forbid_log=((0, r"widescreen (enabled|disabled)"), (0, r"save flush failed"),
+                              (0, r"dw3-port-restart"), (0, r"sound \w+ not played")),
+                  note="field menu Options: Widescreen locked, Music volume and Encounter rate apply and persist, the menu and the field continue (P9.7)"),
+         Scenario(f"{_v}-field-options-cheats", _v, "full", turbo=4, timeout=600,
+                  env=_RT_ENV, cfg=(("cheat_enabled", "1"),),
+                  expect_log=((0, r"dw3-port-options: open in game(?s:.*)"
+                                  r"dw3-port-options: cheats are locked in game \(change them at the title\)(?s:.*)"
+                                  r"dw3-port-options: close in game"),),
+                  forbid_log=((0, r"dw3-cheats: open"),),
+                  note="the Cheats entry is greyed in game: Square (Y) does nothing (P9.7)"))
+# The same on the Switch build in Ryubing (tier "nx": only with --only; the NRO
+# has no environment, so the replay NRO is built with DW3_NX_TEST_ENV holding
+# _RT_ENV, see docs/P6.15_REPLAY_TESTS.md). P9.7 after #268's release of the
+# title overlay textures: the first Options open in the field builds them, a
+# reopen after 200 idle frames rebuilds them, and the Yes / No window of Return
+# to title (its own texture) is rebuilt too. The PC runner skips tier nx.
+_NX_FO_FORBID = ((0, r"widescreen (enabled|disabled)"), (0, r"save flush failed"),
+                 (0, r"dw3-port-restart"))
+for _v in ("us", "eu"):
+    _add(Scenario(f"{_v}-field-options-nx", _v, "nx", timeout=600,
+                  phases=(f"{_v}-field-options-p1", f"{_v}-field-options-p2"),
+                  expect_log=tuple((0, r) for r in _FO_P1) + tuple((1, r) for r in _FO_P2),
+                  forbid_log=_NX_FO_FORBID,
+                  note="Switch build: field menu Options (env baked into the NRO) (P9.7)"),
+         Scenario(f"{_v}-field-options-release-nx", _v, "nx", timeout=600,
+                  phases=(f"{_v}-field-options-release",),
+                  expect_log=((0, r"dw3-port-options: open in game(?s:.*)"
+                                  r"dw3-port-options: close in game(?s:.*)"
+                                  r"dw3-title-overlay: title textures released(?s:.*)"
+                                  r"dw3-port-options: open in game(?s:.*)"
+                                  r"dw3-port-options: close in game(?s:.*)"
+                                  r"dw3-title-overlay: title textures released(?s:.*)"
+                                  r"dw3-port-confirm: open return to title \(cursor on No\)(?s:.*)"
+                                  r"dw3-port-confirm: cancelled \(return to title\); nothing changed"),),
+                  forbid_log=_NX_FO_FORBID,
+                  note="Switch build: Options and the Yes / No window drawn after the title textures were released (P9.7, #268)"))
+
+# The Options row text and the screen's lock note in the other four EU languages.
+for _id, _lang in ((3, "fr"), (5, "de"), (4, "it"), (6, "es")):
+    _add(Scenario(f"eu-field-options-{_lang}", "eu", "full", turbo=4, timeout=600,
+                  env=_RT_ENV + (("DW3_LANGUAGE", str(_id)),),
+                  expect_log=((0, rf"LANGUAGE={_id} \(DW3_LANGUAGE\)(?s:.*)dw3-port-options: open in game"
+                                  r"(?s:.*)dw3-port-options: close in game"),),
+                  note=f"field menu Options row and the screen's lock note in {_lang} (P9.7)"))
 
 # The Quit game plaque and the window in the other four EU languages (the
 # lettering is authored, docs/PORT_OPTIONS.md "Quit and return to title").

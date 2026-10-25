@@ -53,6 +53,11 @@ port options:
   id, Item count, Give item) Left / Right step the row's value, and L1 / R1
   (Switch L / R) step the item id and the count by ten. See
   [PORT_OPTIONS.md](PORT_OPTIONS.md#cheats-p620).
+- The field menu (Start in the field) has a row **OPTIONS** (P9.7: OPTIONS,
+  OPZIONI, OPTIONEN, OPCIONES) above its last row. Cross on it opens the Options
+  screen over the field, with the title's keys (Up / Down choose, Left / Right and
+  Cross change, Triangle goes back to the menu). Widescreen and the Cheats entry
+  are greyed there. See [PORT_OPTIONS.md](PORT_OPTIONS.md#options-in-game-p97).
 - The field menu (Start in the field) has a last row,
   **Return to title** (P6.27: TITLE SCREEN, RETOUR TITRE, TORNA AL TITOLO,
   TITELBILD, VOLVER AL INICIO). Cross on it opens the same Yes / No window, with the
@@ -74,6 +79,7 @@ acceptance remains tracked separately in [P5.3_FLAT_SAVE.md](P5.3_FLAT_SAVE.md).
 | Open Port options directly | Select | Backspace | Minus | Only while the title choices are active; no L1/R1/L2/R2 held |
 | Toggle fast-forward on/off | R3 | 2 | Right-stick click | Field, battle and the battle report (results screen) only; configured speed must be 2x, 3x or 4x |
 | Restart game in-process | L1 + R1 + Start + Select | Q + R + Enter + Backspace | L + R + Plus + Minus | Enable **Restart hotkey** in Port options first; OFF by default |
+| Options from the field menu | Start, then the row above the last, Cross | Enter, ..., X | Plus, ..., B | Port options over the field; Widescreen and Cheats greyed (P9.7) |
 | Return to title from the field menu | Start, then the last row, Cross, Yes | Enter, ..., X | Plus, ..., B | Always there; the same reset as the chord, after a Yes / No question (P6.27) |
 | Quit game from the title menu | Last title row, Cross, Yes | ..., X | ..., B | Always on the native title; flushes the saves, then hbmenu (Switch) or closes the window (PC) (P6.28) |
 

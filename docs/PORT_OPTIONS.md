@@ -1040,7 +1040,9 @@ with the same button caps), in the five EU languages (the US disc is English).
   rows (`0x1C`) and six (`0x1B`, with the card folders). With Return to title
   that is six and seven. Seven has no sprite, so the six-row panel's bottom
   edge is covered and redrawn one row lower with five rectangles in the
-  panel's own colours.
+  panel's own colours. Since P9.7 the Options row sits above Return to title,
+  so the lists are seven and eight rows and the same drawing is repeated for
+  each extra row ([Options in game](#options-in-game-p97)).
 
 ### Languages and lettering
 
@@ -1094,6 +1096,150 @@ US and EU (at least two EU languages), a Switch OLED:
       `saves flushed`; a save written before still Continues.
 - [ ] The row is there with Restart hotkey OFF and ON.
 - [ ] Text fits in the other EU languages (the plaque and both windows).
+
+## Options in game (P9.7)
+
+Slice 1 of ROADMAP P9.7: the port Options screen from the **field menu**.
+Battle is a later slice. Owner's brief (2026-10-25, the owner away): work
+autonomously and pick the conservative option for each open question; every
+default below is **default chosen, owner can change**.
+
+### What the player sees
+
+Start in the field opens the game's menu. Its list now ends with **OPTIONS**
+and then TITLE SCREEN (OPTIONS, OPTIONS, OPTIONEN, OPZIONI, OPCIONES on the EU
+disc, in the game's own font). Cross on OPTIONS opens the same Options screen as
+the title, drawn over the menu and the field by the native overlay (PC SDL3 GPU
+and the Switch). Up / Down choose a row, Left / Right and Cross change it,
+Triangle (B) goes back to the menu. Changes are saved at once in
+`port_options.cfg` ([Persistence](#persistence)).
+
+### Defaults chosen (owner can change)
+
+1. **Entry point: a row of the field menu**, not a hotkey (option b of the
+   P9.7 note), just above Return to title and built the way patch `0123`
+   built that row: the text is in the game's font (ASCII capitals, one table
+   per language in `dw3_port_field_options_label`), shown in the five EU
+   languages and in English on the US disc. The menu could take the row
+   cleanly, so the hotkey fallback (option a) was not needed.
+2. **The menu's panel.** The game's panel sprites cover five rows (`0x1C`) and six
+   (`0x1B`, with the card folders row). With Options and Return to title the
+   list has seven rows, eight with the card folders. `drawFieldMenuPanelRow`
+   (patch `0123`, one extra row) now covers the six-row panel's bottom edge and
+   redraws it lower, with a divider per row, for any number of extra rows. The
+   eight-row panel ends at y 165 of the 240-pixel picture and does not touch the
+   money panel on the left.
+3. **Scope: the field menu only.** Battle has no entry yet. The row is in the
+   menu of the field and in the same menu inside the status screens
+   (`MODE_STATUS`), like Return to title.
+4. **Pausing: the menu's own.** The field menu is already a paused state
+   (the field task, its timers, the random-battle countdown and the auto-save
+   check wait while `FIELDSTG_state.menuOpen` is set). Opening the screen from
+   inside it inherits that, and the menu task simply does not read the pad while
+   the screen is up (`updateFieldMenu` calls `dw3_port_field_options_tick()`
+   instead of `chooseFieldMenuOption`). On Triangle the screen closes in its own
+   tick, so the same press cannot also cancel the menu: no input frame leaks to
+   the menu or the game. Music and the sound script keep running (the screen
+   plays the game's menu sounds, so the SFX volume row is audible).
+5. **Live apply**, row by row (what each one reads, and when):
+
+| Row | In game | Why |
+|---|---|---|
+| Widescreen | **Greyed, locked** ("Locked in game: change it at the title screen.") | The gutter, the 16:9 map streamer (15 host slots, patch `0052`), the camera and the battle layout are set up when a mode loads. Flipping the flag in the middle of a map would leave them half old, half new. Conservative: it changes at the title. |
+| Fast-forward | Applies at once | `dw3_port_turbo_poll` and `dw3_port_turbo_speed` read it every frame. R3 still switches the speed on and off; OFF disables R3 and drops an active fast-forward. |
+| Restart hotkey | Applies at once | `dw3_port_restart_poll` reads it on every frame. Trivial, so not greyed. |
+| Music volume, SFX volume | Applies at once | The step goes to the mixer (`dw3_port_audio_apply`) on the change. |
+| Encounter rate | Applies at once | `dw3_port_pacing_encounter_step` reads it per footstep. A battle already started is not touched. |
+| Text speed | Applies at once | Read when a message window opens its page. A page already typing finishes as it was. |
+| Battle cursor | Applies at once | Read when the battle command menu opens. |
+| Auto-save | Applies at once | Read at each area change (never while the menu is open, so not from here). |
+| Cheats (Square / Y) | **Greyed, locked** | Cheats are armed at the title by design (P6.20). The hint is drawn grey when the master switch is on; Square does nothing and logs `cheats are locked in game`. |
+
+6. **Persistence: as today.** A change is written to `port_options.cfg` the
+   moment it is made (`po_save`), the same code as the title screen.
+7. **Not done in this slice (still P9.7):** the battle screen (needs the battle
+   task list paused and a draw order over the fight and its 16:9 camera) and a
+   live Widescreen switch.
+
+### Design
+
+- `port/options/field_options.c`, `port/include/port_field_options.h`: the
+  row's text, `dw3_port_field_options_open(language)` (sets the overlay's
+  lettering language, opens the screen in game and shows it), `_tick()` (one
+  frame of the screen's own pad handling, then keeps the PC overlay showing or
+  hides it on close) and `_is_open()`.
+- `port/options/port_options.c`: `dw3_port_options_open_in_game()` sets an
+  in-game flag. While it is set `dw3_port_options_row_locked()` is true for
+  Widescreen, `po_step` / `po_toggle` refuse a locked row with a log line
+  (`<row> is locked in game (change it at the title)`) and no sound, and Square
+  does not open the Cheats screen. The flag is cleared on close, so the title
+  opens everything unlocked.
+- Patch `0160` (game side): the row, its Cross, the pad hand-over and the
+  panel rows; see [PATCHES.md](PATCHES.md). No decomp file is touched without
+  the native overlay.
+- Overlay: `dw3_pc_title_overlay_set_options_locked(mask)`
+  (`title_overlay_art.c`; bit i = row i, bit 16 = the Cheats hint). A locked
+  row's label and value are drawn grey, the message line says why
+  (`opt_lock_<lang>` lettering in the five languages, from
+  `tools/generate_pc_title_lettering.py`), and the retained canvas
+  (`title_options_cache.c`) rebuilds its static layer when the mask changes
+  (`options_layout` is no longer cheats-only). The PC overlay is kept showing by
+  `dw3_pc_title_menu_set_state(1, -1)` each frame of the open screen; the
+  Switch overlay follows `dw3_port_options_is_open()` by itself, as for the
+  title. Over the field the screen dims the 4:3 middle and, in widescreen, the
+  gutters, as it does over the title.
+
+### Tests
+
+- `tools/tests/test_field_options.py` (`field_options_main.c`): the label text
+  in the game's codes (five languages), the row offered only with the native
+  overlay, open / close, Widescreen refused (Cross, Circle, after Up x8), every
+  other row applying at once (Fast-forward cycles, Restart hotkey is read by
+  `dw3_port_options_restart_enabled`, the mixer gets the music step, Encounter
+  rate, Text speed, Battle cursor, Auto-save), Triangle closing and hiding the
+  overlay, the title opening with nothing locked, the values kept.
+  `locked_art_main.c`: a locked Widescreen row differs from the unlocked screen
+  only in its label, value and message line, in the five languages, and the
+  retained canvas equals the reference render when the lock appears and while the
+  cursor and the values move.
+  `test_cheats.py::test_cheats_entry_is_locked_in_game`: Square in game does not
+  open Cheats, at the title it does.
+- Switch build in Ryubing (US and EU, 12 checks each, all pass): `us/eu-field-options-nx`
+  and `us/eu-field-options-release-nx` (tier `nx`). After #268 releases the title
+  overlay's textures, the Options screen opens in the field with no blank or
+  garbage frame (captured 3 frames after the press), and so does the Return to
+  title window. A first-use draw can be invisible for a second in Ryubing while
+  it compiles the shader; see the replay doc.
+- Replay (PC, US and EU; [P6.15_REPLAY_TESTS.md](P6.15_REPLAY_TESTS.md)):
+  `us/eu-field-options` (two phases: the menu, Options, Widescreen refuses a
+  change, Music volume 10 to 7, Encounter rate 1x to OFF, close, the menu takes
+  Down and Triangle and the field goes on; phase 2 is a new process whose screen
+  shows the saved values and whose log reads them back from the cfg),
+  `us/eu-field-options-cheats` (master on: grey hint, Square does nothing),
+  `eu-field-options-fr/de/it/es` (the row and the lock note in each language).
+  `us/eu-return-title(-rows7)` press Down once more (Options sits above Return to
+  title); their eight-row panel is the new reference.
+
+### OLED checklist, Options in game (owner)
+
+US and EU (at least two EU languages), a Switch OLED, docked and handheld:
+
+- [ ] Plus in the field: the menu ends with OPTIONS and TITLE SCREEN (and, after a
+      card folder item, the eight-row panel closes cleanly under the last row).
+- [ ] Cross on OPTIONS: the Options window over the dimmed field, Widescreen in
+      grey with the "Locked in game" line; Cross on it does nothing. The sounds are
+      the Options sounds.
+- [ ] Music volume Left x3: the field music gets quieter at once and keeps playing.
+- [ ] Encounter rate OFF: walk in a random-battle area, no battle. Back to 1x: battles
+      again. Text speed Instant: the next dialogue types at once.
+- [ ] Restart hotkey ON then the chord (L + R + Plus + Minus) restarts at once.
+- [ ] B closes the window; the menu is as before, the cursor still on OPTIONS; B
+      again returns to the field and the character walks, nothing was pressed twice.
+- [ ] Quit to hbmenu and start again: the values changed in the field are still set
+      (`port_options.cfg`, `dw3.log` shows `saved` lines).
+- [ ] With the Cheats master ON at the title: in the field the Cheats hint is grey and
+      Y does nothing.
+- [ ] 16:9: the dim covers the gutters; no gap, no leftover of the window after B.
 
 ## Title-screen visual reference
 
