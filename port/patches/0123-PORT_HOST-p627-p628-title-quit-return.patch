@@ -11,18 +11,16 @@ answered (the Port options screen's pattern: the window is ticked by the
 menu task, only on a frame after the one that opened it). Without the native
 overlay nothing changes (dw3_port_title_quit_enabled() is 0).
 
-Field menu (src/engine/menu/field_menu.c, include/engine/menu.h): while the
-Restart hotkey setting is ON (P6.9's opt-in, off by default), the options
+Field menu (src/engine/menu/field_menu.c, include/engine/menu.h): the options
 list has one more row, the last, with the text of dw3_port_field_return_label()
-in the game's own font encoding. The options panel is the next one up (the
+in the game's own font encoding (where the native overlay draws the window). The options panel is the next one up (the
 six-row sprite 0x1B for the five rows plus this one); with the card folders
 row there are seven rows and the game has no panel for that, so the six-row
 panel's bottom edge is covered and redrawn one row lower with five TILEs in
 the panel's colours (drawFieldMenuPanelRow, submitted before the sprite so the
 ordering table draws it in front). Cross on the row opens the window; the
 menu waits while it is up. A Yes asks the P6.9 reset (dw3_port_restart_request,
-same flush, a failed flush cancels). With the setting OFF nothing is added and
-the drawing calls are the ones of the game (no replay reference changes).
+same flush, a failed flush cancels). Without the native overlay nothing is added.
 FieldMenuWindows.options grows from six to seven windows (PORT_HOST only).
 
 --- a/include/engine/menu.h
@@ -62,7 +60,7 @@ FieldMenuWindows.options grows from six to seven windows (PORT_HOST only).
      }
      task->count = task->extraOption + 5;
 +#if PORT_HOST
-+    /* P6.27: one more row, Return to title, while the Restart hotkey is ON. */
++    /* P6.27: one more row, Return to title (where the native overlay draws its window). */
 +    if (dw3_port_field_return_enabled()) {
 +        task->count++;
 +    }

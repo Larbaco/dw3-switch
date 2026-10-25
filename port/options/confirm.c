@@ -77,7 +77,7 @@ int dw3_port_title_quit_enabled(void) {
 }
 
 int dw3_port_field_return_enabled(void) {
-    return dw3_port_confirm_available() && dw3_port_options_restart_enabled();
+    return dw3_port_confirm_available();
 }
 
 void dw3_port_confirm_open(int kind) {

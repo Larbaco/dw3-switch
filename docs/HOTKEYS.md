@@ -31,8 +31,12 @@ port options:
 
 - Press Start (Enter / Plus) to reveal the title choices. Up/Down selects a row;
   Cross (X / B) confirms. The Switch GLES and PC SDL3 GPU presentations use
-  **New Game / Options / Load Game** (EU plaques use the game's current-language
-  words). Options opens the Port options shell.
+  **New Game / Options / Load Game / Quit game** (EU plaques use the game's
+  current-language words). Options opens the Port options shell. **Quit game**
+  (P6.28, the last row) opens a Yes / No window with the cursor on No: Cross
+  answers, the D-pad moves between Yes and No, Triangle or Circle (PC S or D;
+  Switch X or A) cancel. Yes flushes the saves and ends the session: the Switch
+  NRO returns to hbmenu, on PC the window closes. HOME still exits as before.
 - In Port options, Up/Down changes the selected setting. Cross **or Circle**
   (PC X or D; Switch B or A) toggles it. Triangle (PC S; Switch X) returns to
   the selected title row. Opening the shell does not toggle the first setting.
@@ -49,6 +53,12 @@ port options:
   id, Item count, Give item) Left / Right step the row's value, and L1 / R1
   (Switch L / R) step the item id and the count by ten. See
   [PORT_OPTIONS.md](PORT_OPTIONS.md#cheats-p620).
+- The field menu (Start in the field) has a last row,
+  **Return to title** (P6.27: TITLE SCREEN, RETOUR TITRE, TORNA AL TITOLO,
+  TITELBILD, VOLVER AL INICIO). Cross on it opens the same Yes / No window, with the
+  same keys; Yes runs the restart below (saves flushed, a failed flush cancels). The
+  row does not depend on the Restart hotkey setting. See
+  [PORT_OPTIONS.md](PORT_OPTIONS.md#quit-and-return-to-title-p627-p628).
 - During an opening movie, press or hold Start (Enter / Plus) to skip it.
   A held button is accepted after decoding a frame; this is not a fast-forward
   control.
@@ -64,6 +74,8 @@ acceptance remains tracked separately in [P5.3_FLAT_SAVE.md](P5.3_FLAT_SAVE.md).
 | Open Port options directly | Select | Backspace | Minus | Only while the title choices are active; no L1/R1/L2/R2 held |
 | Toggle fast-forward on/off | R3 | 2 | Right-stick click | Field, battle and the battle report (results screen) only; configured speed must be 2x, 3x or 4x |
 | Restart game in-process | L1 + R1 + Start + Select | Q + R + Enter + Backspace | L + R + Plus + Minus | Enable **Restart hotkey** in Port options first; OFF by default |
+| Return to title from the field menu | Start, then the last row, Cross, Yes | Enter, ..., X | Plus, ..., B | Always there; the same reset as the chord, after a Yes / No question (P6.27) |
+| Quit game from the title menu | Last title row, Cross, Yes | ..., X | ..., B | Always on the native title; flushes the saves, then hbmenu (Switch) or closes the window (PC) (P6.28) |
 
 Hold all four restart buttons together; one activation is allowed per chord
 press. Release the chord before another attempt. There is no timed long-press

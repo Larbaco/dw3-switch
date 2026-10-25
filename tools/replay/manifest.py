@@ -850,11 +850,11 @@ for _v in ("us", "eu"):
 # window with the cursor on No (checkpoints), No, again, Yes: the saves are
 # flushed (`dw3-port-quit: saves flushed`) and the process ends with status 0
 # before the recording's end. Return to title: the South Sector field with the
-# Restart hotkey ON (the row is only offered then), Start, Down to the last row,
+# Start, Down to the last row,
 # the window, No, again, Yes: P6.9's reset, then the title (US) / the language
 # select and the title (EU). rows7: the same field with the card folders row
 # (the six-row panel stretched for the seventh), cancelled. PC only (env / early exit).
-_RT_CFG = (("encounter_rate", "2"), ("restart_hotkey", "1"))
+_RT_CFG = (("encounter_rate", "2"),)
 _RT_ENV = _ITEMS_ENV[:-1]    # the party of the forced event battle, no bag
 for _v, _title in (("us", 0x1C1), ("eu", 0x1D0)):
     _add(Scenario(f"{_v}-title-quit", _v, "full", timeout=300, quits=True,
@@ -883,6 +883,16 @@ for _v, _title in (("us", 0x1C1), ("eu", 0x1D0)):
                                   r"dw3-port-confirm: cancelled \(return to title\); nothing changed"),),
                   forbid_log=((0, r"dw3-port-restart"),),
                   note="the field menu with the card folders row and Return to title: seven rows, cancelled (P6.27)"))
+
+# The Quit game plaque and the window in the other four EU languages (the
+# lettering is authored, docs/PORT_OPTIONS.md "Quit and return to title").
+for _lang in ("fr", "de", "it", "es"):
+    _add(Scenario(f"eu-title-quit-{_lang}", "eu", "full", timeout=300,
+                  expect_log=((0, r"dw3-port-confirm: open quit \(cursor on No\)(?s:.*)"
+                                  r"dw3-port-confirm: cursor on Yes(?s:.*)"
+                                  r"dw3-port-confirm: cancelled \(quit\); nothing changed"),),
+                  forbid_log=((0, r"dw3-port-quit"),),
+                  note=f"Quit game plaque and window in {_lang}; Triangle cancels, nothing is quit (P6.28)"))
 
 
 def by_name() -> dict[str, Scenario]:

@@ -21,9 +21,9 @@ int dw3_port_confirm_available(void);
 /* The title menu's fourth row, Quit game (always on where it is available). */
 int dw3_port_title_quit_enabled(void);
 
-/* The field menu's last row, Return to title. Shown only while the Restart
- * hotkey setting is ON (P6.9's opt-in), so the default field menu is the
- * game's own and the replay references of every field screen stay valid. */
+/* The field menu's last row, Return to title (always there where the native
+ * overlay is; independent of the Restart hotkey setting, which only gates the
+ * chord). */
 int dw3_port_field_return_enabled(void);
 
 /* The row's text in the game's own font encoding (uppercase letters and

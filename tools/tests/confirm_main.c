@@ -67,9 +67,9 @@ int main(void) {
     CHECK(dw3_port_confirm_available());
     CHECK(dw3_port_title_quit_enabled());
 
-    /* The field row follows the Restart hotkey setting. */
+    /* The field row does not depend on the Restart hotkey setting. */
     g_restart_enabled = 0;
-    CHECK(!dw3_port_field_return_enabled());
+    CHECK(dw3_port_field_return_enabled());
     g_restart_enabled = 1;
     CHECK(dw3_port_field_return_enabled());
 

@@ -1306,6 +1306,37 @@ def title_quit(version):
     return r
 
 
+def title_quit_lang(idx):
+    """P6.28: the Quit game plaque and the Yes / No window in one of the other
+    four EU languages (`eu-title-quit` is English): language select, title,
+    Down to the fourth row (`quit-focus`), Cross (`confirm-no`), Down to Yes
+    (`confirm-yes`), Triangle cancels (`after-cancel`). The process runs to the
+    end; nothing is quit."""
+    lang = EU_LANGS[idx]
+    r = Rec(f"EU: language select -> {lang}, title menu Quit game window (P6.28)")
+    f = 90
+    for _ in range(idx):
+        r.press(f, DOWN)
+        f += 15
+    c = f + 20
+    r.press(c, START)                # confirm the language
+    for k in (50, 80, 110):          # skip the splash / FMV
+        r.press(c + k, START)
+    r.press(c + 170, START)          # PRESS START
+    g = c + 290
+    for i in range(3):               # New Game, Options, Load Game, Quit game
+        r.press(g + 20 * i, DOWN)
+    r.shot(g + 100, "quit-focus")
+    r.press(g + 120, CROSS)
+    r.shot(g + 180, "confirm-no")
+    r.press(g + 200, DOWN)
+    r.shot(g + 260, "confirm-yes")
+    r.press(g + 280, TRIANGLE)
+    r.shot(g + 340, "after-cancel")
+    r.end(g + 400)
+    return r
+
+
 # After the reset (patch 0123): US lands on the title, EU on the language
 # select (P6.9), where English is confirmed and the splash skipped as in
 # `eu_language`. Frames measured on the PC build.
@@ -1437,6 +1468,9 @@ def main(out):
         (out / f"{v}-return-title.rec").write_text(return_title(v).text(True))
         (out / f"{v}-return-title-rows7.rec").write_text(
             return_title(v, rows7=True).text(True))
+    for i, lang in enumerate(EU_LANGS):
+        if lang != "en":
+            (out / f"eu-title-quit-{lang}.rec").write_text(title_quit_lang(i).text(True))
     (out / "us-repro-balloon.rec").write_text(repro_balloon("us").text(True))
     for version in ("us", "eu"):
         # Written unsorted, byte for byte as first committed with patch 0058.

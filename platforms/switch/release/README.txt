@@ -70,6 +70,17 @@ New in this preview
   DW3_CHEATS is on by default; tools/build_switch_game.sh --no-cheats
   builds without the screen. Unverified on hardware.
 
+  Quit game on the title menu (P6.28). The title has a fourth entry, Quit
+  game, below Load Game. It asks Yes or No (the cursor starts on No), saves
+  the dirty save slots and returns to hbmenu, as the HOME exit does. On a PC
+  build it closes the window. Unverified on hardware.
+
+  Return to title in the field menu (P6.27). The field menu (Plus) has a last row, TITLE SCREEN (RETOUR TITRE,
+  TORNA AL TITOLO, TITELBILD, VOLVER AL INICIO). It asks Yes or No, then runs
+  the same reset as the restart hotkey: dirty saves are flushed, a failed
+  flush cancels it, and unsaved progress is lost. On the EU disc the game
+  lands on the language select, as the hotkey does. Unverified on hardware.
+
 Known issues
 
   If the map stays silent after a battle (no field music once you are
@@ -198,6 +209,14 @@ OLED checklist
     battle text blips are new: check their level.
   - Options (eight rows): change every row, close, quit the NRO, start it
     again from hbmenu: the values must come back (port_options.cfg).
+  - Title: Down to Quit game (the last entry), Cross: the window opens on
+    No. No closes it. Yes returns to hbmenu; dw3.log ends with "dw3-port-quit:
+    saves flushed". Your saves are still there on the next launch. HOME and
+    "close the software" must still exit as before.
+  - Return to title: open the field menu with Plus:
+    the last row asks Yes or No; Yes returns to the title (the language
+    select on EU). The text should fit in every language; with the card
+    folders row the panel has seven rows.
   - Techniques in battle: the backdrop fills 16:9 and, after a tech,
     sound effects and music keep playing. Steal with Claw on a last hit.
   - Save, press HOME, come back; save, sleep, wake. The save must
