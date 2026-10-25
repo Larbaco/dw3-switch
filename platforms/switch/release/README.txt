@@ -1,51 +1,49 @@
 Digimon World 3 / 2003, Switch homebrew preview
 
-Release notes for v0.6.5-preview.32. The release tag and boot version
+Release notes for v0.6.5-preview.33. The release tag and boot version
 identify the actual source revision.
+
+Player guide (setup, controls, Options, saves, crash reports):
+https://github.com/Larbaco/dw3-switch/blob/main/docs/PLAYER_GUIDE.md
 
 New in this preview
 
   No item below has been checked on a Switch OLED yet. Each is checked on
   PC and in the Ryubing emulator only, and is marked unverified.
 
-  Canal water after the Underground Path (#242, patch 0111, test hook
-  0110). After leaving the Underground Path, the canal water in the Cargo
-  Tower streets was black or garbage until the screen scrolled. It only
-  happened in 16:9. A map tile with 6 sprites in one depth was misparsed;
-  the sprites past the fifth are now read past, as on the PS1. dw3.log
-  has dw3-tile: lines for these tiles. Unverified on hardware.
-
-  Card screens are 16:9 (#245, patches 0100-0104). The card album, deck
-  editor, card shop, gym and Digimon Lab fill the widescreen picture. The
-  Lab's chart, entry and skill screens still keep their left panels at
-  the 4:3 edge (see Known issues). Unverified on hardware.
-
-  Area-change transitions are 16:9 (#247, patch 0115). The door iris and
-  the blue grid cover now close from the full 16:9 picture. The encounter
-  spiral is still a 4:3 swirl with black bars; that is known and
-  documented. Unverified on hardware.
-
-  Cheats screen page 2 (P6.20, #248, patches 0118-0120). Page 2 has Money
-  (+10,000, +100,000 or MAX), Warp to 13 areas, and Give item (by id and
-  count). It sits behind the same master switch, which is off by default.
-  Any use sets the save cheat marker (save<N>.cheats). Unverified on
-  hardware.
-
-  Quit game on the title menu (P6.28). The title has a fourth entry, Quit
-  game, below Load Game. It asks Yes or No (the cursor starts on No), saves
-  the dirty save slots and returns to hbmenu, as the HOME exit does. On a PC
-  build it closes the window. Unverified on hardware.
+  Quit game on the title menu (P6.28). The title has a fourth plaque, Quit
+  game, below Load Game. It asks Yes or No (the cursor starts on No). Yes
+  flushes the dirty save slots and returns to hbmenu, as the HOME exit
+  does. A failed flush cancels the quit. On a PC build it closes the
+  window. The title plaques are now 48 px tall instead of 54, so four fit.
+  Unverified on hardware.
 
   Return to title in the field menu (P6.27). The field menu (Plus) has a
   last row, TITLE SCREEN (RETOUR TITRE, TORNA AL TITOLO, TITELBILD, VOLVER
   AL INICIO). It asks Yes or No, then runs the same reset as the restart
   hotkey: dirty saves are flushed, a failed flush cancels it, and unsaved
-  progress is lost. On the EU disc the game lands on the language select, as
-  the hotkey does. The field menu pictures (and the title menu's) changed
-  for this. Unverified on hardware.
+  progress is lost. On the EU disc the game lands on the language select,
+  as the hotkey does. Unverified on hardware.
 
-  Docs only: the P6.33 Items menu proposal and a roadmap cleanup. No game
-  change.
+  Both confirmations are defaults chosen while the owner was away. The
+  owner can change them.
+
+  Cross-region saves, slice 1 (P6.25, #252). When a region has no save of
+  its own, the build imports the other region's save once. It converts the
+  save in memory and writes a new native saveN.bin plus a saveN.import
+  marker. The original save is never modified. New saves stay native to
+  the region and do not flow back to the other one. Bad or corrupt sources
+  are refused, with no crash. EU extra-chapter saves are not imported into
+  US. The details and the OLED checklist are in
+  docs/CROSS_REGION_SAVES.md#as-built-slice-1. Unverified on hardware.
+
+  Restart hotkey validated on PC, US and EU (P6.9, #251). Checked before,
+  inside and after a battle, after an in-game save then Load Game, and
+  after New Game. No bugs found. Test only; no game change.
+
+  PC only: the map no longer reappears over the grid cover after a door
+  iris closes (#253). This showed on the PC sdl3_gpu renderer, in 4:3 too.
+  It is fixed in PSY-Z (pin e3a7e83). The Switch is unaffected.
 
 Known issues
 
@@ -88,9 +86,15 @@ Carried forward
   This chord can also toggle the nxlink debug HUD, whose own chord is
   Minus + L + R. See docs/HOTKEYS.md for all mapped controls.
 
-  From preview.31: field rasterizer 4 to 5 times faster (P6.22, #220);
-  16:9 for the field menu dissolve, the Items, Sort, Techniques, Status
-  and Card folders, the title menu, the intro caption bar and the
+  From preview.32: canal water in the Cargo Tower streets after the
+  Underground Path, fixed (#242, patch 0111); 16:9 for the card album, deck
+  editor, card shop, gym and Digimon Lab (#245; the Lab's chart, entry and
+  skill screens are still 4:3 at the edges); 16:9 door iris and blue grid
+  cover (#247); Cheats screen page 2 (P6.20, #248): Money, Warp to 13
+  areas and Give item, behind the same master switch, which is off by
+  default. From preview.31: field rasterizer 4 to 5 times faster (P6.22,
+  #220); 16:9 for the field menu dissolve, the Items, Sort, Techniques,
+  Status and Card folders, the title menu, the intro caption bar and the
   registration screen (#218, #219, #224); 16:9 for the map, battle results
   header and save and load screens (#240); post-battle report at turbo
   speed (#223); partner portrait in gpu-tex (#229); file cache eviction
@@ -141,8 +145,9 @@ Own-disc setup and extraction
   NRO's own extraction path.
 
   Preserve us/, eu/ and their memcard directories. Never delete or
-  move save0.bin, save1.bin or .mcr.bak to force extraction. No save
-  migration between US and EU is implied by this release.
+  move save0.bin, save1.bin or .mcr.bak to force extraction. Saves are
+  not shared between US and EU, except the one-time import of a region
+  that has no save of its own (see Cross-region saves above).
 
 Install / nxlink
 
@@ -165,28 +170,31 @@ Install / nxlink
 
 OLED checklist
 
-  - Door transitions: walk through a few doors and area changes. The iris
-    and the grid cover should fill the full 16:9 width. The encounter
-    spiral keeps black bars; that is known.
-  - Card screens: open the card album, deck editor, card shop, gym and
-    Digimon Lab. The panels should reach the edges of the 16:9 picture.
-    Note the Lab's chart, entry and skill screens.
-  - Underground Path: leave it into the Cargo Tower streets. The canal
-    water should be right at once, without scrolling. dw3.log should show
-    dw3-tile: lines.
-  - Cheats page 2: with the master switch on, open Cheats (Square, or Y on
-    Switch) and try Money, Warp and Give item. A save after use gets the
-    save<N>.cheats marker.
+  New in this preview:
   - Title: Down to Quit game (the last entry), Cross: the window opens on
     No. No closes it. Yes returns to hbmenu; dw3.log ends with "dw3-port-quit:
-    saves flushed". Your saves are still there on the next launch. HOME and
-    "close the software" must still exit as before.
+    saves flushed". Saves are still there on the next launch. HOME and
+    "close the software" must still exit as before. Check US and EU.
   - Return to title: open the field menu with Plus: the last row asks Yes or
     No; Yes returns to the title (the language select on EU). The text should
     fit in every language; with the card folders row the panel has seven rows.
-  - After any crash, keep crash_report.txt and dw3.log before
-    relaunching; the next boot keeps one previous report. Symbolize it
-    with the matching ELF from dw3-switch-elf.zip.
+  - Cross-region import: start EU with only a US save present (in us/),
+    then the reverse. The imported save should Continue with that progress,
+    and the import should happen once.
+
+  Still pending from preview.32:
+  - Door transitions: the iris and the grid cover should fill the full 16:9
+    width. The encounter spiral keeps black bars; that is known.
+  - Card screens: the card album, deck editor, card shop, gym and Digimon
+    Lab panels should reach the edges of the 16:9 picture.
+  - Underground Path: the canal water in the Cargo Tower streets should be
+    right at once, without scrolling.
+  - Cheats page 2: with the master switch on, try Money, Warp and Give item.
+    A save after use gets the save<N>.cheats marker.
+
+  After any crash, keep crash_report.txt and dw3.log before relaunching;
+  the next boot keeps one previous report. Symbolize it with the matching
+  ELF from dw3-switch-elf.zip.
 
 This is a prerelease, not a finished port. Use the CMake game image,
 not the small Makefile host_hello sample built by CI job switch.

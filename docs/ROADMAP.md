@@ -65,7 +65,7 @@ listed once, in [Pending OLED checks](#pending-oled-checks).
 | P6.18 | Pacing options | in progress (Instant text works; Instant banner and report speed #223; rest of the check open) | [P6.18](P6.18_PACING.md) |
 | P6.20 | Port debug / cheat menu in the Options screen | in progress (PR 1 merged, #236: Cheats screen; PR 2, #248: money, give item and warp on page 2, in review; OLED checks open) | [roadmap](#phase-6-goal-notes), [PORT_OPTIONS](PORT_OPTIONS.md) |
 | P6.22 | Turbo speed in scripted scenes | in progress (CPU rasterizer is ~97 % of a field frame; pixel-identical rasterizer 4-5x faster, #220) | [P6.22](P6.22_FIELD_CPU.md), [roadmap](#phase-6-goal-notes), [P6.4](P6.4_FAST_FORWARD.md) |
-| P6.23 | Documentation: player guide, docs index, contributor and modder docs (future goal) | future | [roadmap](#phase-6-goal-notes) |
+| P6.23 | Documentation: player guide, docs index, contributor and modder docs (future goal) | in progress (slice 1 done: player guide and docs index; slice 2: `CONTRIBUTING.md` and a pytest for all doc links, PR open; modder docs open) | [PLAYER_GUIDE](PLAYER_GUIDE.md), [docs index](README.md), [roadmap](#phase-6-goal-notes) |
 | P6.24 | One build for US and EU: one `.nro` and one PC binary, region found at boot, a boot picker with both discs (future goal; depends on P6.25 and P6.26) | in progress (slice 1 built: run-time region choice, picker logic and a PC launcher in front of the separate US / EU binaries; dual-image link, Switch picker and CI open) | [SINGLE_BUILD](SINGLE_BUILD.md#as-built-slice-1), [roadmap](#phase-6-goal-notes) |
 | P6.25 | Cross-region saves: a US save loads in EU and the reverse, one canonical save container (future goal) | in progress (slice 1 built: converter and one-way import on load, PC replays US to EU and EU to US; container and store open; OLED check open) | [CROSS_REGION_SAVES](CROSS_REGION_SAVES.md), [roadmap](#phase-6-goal-notes) |
 | P6.26 | Per-user saves: saves bound to the Switch user profile chosen in the Switch profile selector, global options (future goal) | future (design done, no code) | [PER_USER_SAVES](PER_USER_SAVES.md), [roadmap](#phase-6-goal-notes) |
@@ -74,7 +74,7 @@ listed once, in [Pending OLED checks](#pending-oled-checks).
 | P6.29 | Save editor: external tool on the owner's own saves, builds on P6.25 (future goal) | future | [roadmap](#phase-6-goal-notes), [CROSS_REGION_SAVES](CROSS_REGION_SAVES.md) |
 | P6.30 | Help, FAQ and tips from the pause menu (future goal) | future | [roadmap](#phase-6-goal-notes) |
 | P6.31 | Auto-save, off by default (future goal) | future | [roadmap](#phase-6-goal-notes), [P5.3](P5.3_FLAT_SAVE.md) |
-| P6.32 | Map zoom and full-screen map (future goal) | future | [roadmap](#phase-6-goal-notes), [P6.1](P6.1_WIDESCREEN.md) |
+| P6.32 | Map zoom and full-screen map (future goal) | future (design proposal, no code) | [roadmap](#phase-6-goal-notes), [P6.32](P6.32_MAP_ZOOM.md), [P6.1](P6.1_WIDESCREEN.md) |
 | P6.33 | Items menu usability redesign (future goal) | future (design proposal, no code) | [roadmap](#phase-6-goal-notes), [P6.33](P6.33_ITEMS_MENU.md), [P6.1](P6.1_WIDESCREEN.md) |
 | P7.1 | Inventory and boundaries | done | [COMMUNITY_QOL](COMMUNITY_QOL.md) |
 | P7.2 | Patched EU disc as data source | open | [COMMUNITY_QOL](COMMUNITY_QOL.md) |
@@ -1559,7 +1559,25 @@ Statuses are in the [table](#status-at-a-glance).
   state (the P6.15 replays still match) and a clean return to 1x.
   Related: P6.4, P6.10, P6.15, P6.18, P5.2.
 - [ ] **P6.23 Documentation (future goal).** Dated 2026-10-24, owner request:
-  "documentation". Goal note only, nothing written yet. **Gaps found by a
+  "documentation". **Slice 1 built 2026-10-25** (PR open, not merged): the
+  player guide [PLAYER_GUIDE.md](PLAYER_GUIDE.md) and the docs index
+  [docs/README.md](README.md), linked from `README.md` and from the release
+  `README.txt`; `tools/check_doc_links.py` checks the links, the anchors and
+  that the index lists every doc. **Slice 2 built 2026-10-25** (PR open, not
+  merged): [CONTRIBUTING.md](../CONTRIBUTING.md) (layout, builds, patch
+  workflow, replay tests, PSY-Z pin, PR rules; links AGENTS.md, does not
+  repeat it) and `tools/tests/test_doc_links.py`, which runs the checker over
+  every markdown file outside `vendor/` so CI catches a broken link. The
+  checker now keeps underscores in anchors like GitHub does (the
+  `PSYZ.md#empty-drawing-area-sdl3_gpu` link was right) and skips links into
+  an empty submodule checkout. Open: the modder docs. **Defaults chosen while the owner was away (owner can change):** the
+  guide ships in the repo as `docs/PLAYER_GUIDE.md` and is linked from the
+  README and the release `README.txt` (one line with the GitHub URL), with no
+  separate site and no copy of the guide in the release bundle; the index is
+  written by hand and checked by the script, not generated from the ROADMAP
+  table; the guide is named `PLAYER_GUIDE.md`, not `GUIDE.md`; it covers a
+  BIN and CUE dump only, as the setup docs do; the FAQ is not written yet.
+  The survey below is the original goal note. **Gaps found by a
   survey of `docs/` (about 80 files), `README.md`, `AGENTS.md` and
   `platforms/switch/release/README.txt`:**
   - *No player guide.* The player-facing text is spread over the README
@@ -1820,7 +1838,7 @@ Statuses are in the [table](#status-at-a-glance).
 - [ ] **P6.30 Help, FAQ and tips from the pause menu (future goal).** Dated
   2026-10-24, owner request (Portuguese, "ajuda / FAQ / dicas"). Goal note
   only, nothing started. **What exists (cited):** no in-game help text; the
-  player guide is planned as `docs/GUIDE.md` in P6.23, and the release
+  player guide is [PLAYER_GUIDE.md](PLAYER_GUIDE.md) (P6.23, slice 1), and the release
   `README.txt` (`platforms/switch/release/`) holds the install steps and the
   OLED checklist. **Scope:** an entry in the pause menu (P6.27) that opens a
   help screen: short pages for install and own-disc setup, controls and
@@ -1888,6 +1906,12 @@ Statuses are in the [table](#status-at-a-glance).
   full-screen map replaces the field menu's Map entry or is a second view;
   whether the zoomed view needs a wider scroll clamp (a logic change, not
   drawing); where the Port option for it lives (P9.4 key, Options screen).
+  **Design proposal (2026-10-25, no code):** [P6.32_MAP_ZOOM.md](P6.32_MAP_ZOOM.md)
+  surveys the map screen code (`map_screen.c`, overlay `STSTATUS`), what
+  zoom and full-screen can mean at 392 px source width, and compares four
+  options. Recommendation: fill the picture first (option A), then integer
+  zoom steps with a port-side pan (option B), each behind a Port option that
+  is off by default, with no save change.
   Done when (proposed): the map zooms and fills the screen on US and EU, the
   default is bit-identical, and the P6.15 map replay scenarios still match.
   Related: P6.1, P9.9.
