@@ -724,8 +724,10 @@ gate, which stays open.
   - [ ] **Items menu (16:9):** layout and open transition are `0075`/`0076`,
     pending OLED. A usability redesign is a separate item: **P6.33**
     ([design proposal](P6.33_ITEMS_MENU.md)).
-  - [ ] **PC `sdl3_gpu` only:** an empty drawing area (the 0x0 clip
-    `closeField` leaves on the map layer) must draw nothing (PSY-Z fix).
+  - [x] **PC `sdl3_gpu` only:** an empty drawing area (the 0x0 clip
+    `closeField` leaves on the map layer) draws nothing. Fixed in PSY-Z
+    `dw3-empty-scissor` (`e3a7e83`, [PSYZ.md](PSYZ.md#empty-drawing-area-sdl3_gpu));
+    4:3 replays `us/eu-door-iris43`. The Switch raster was already right.
   - [ ] **"Slow" transitions:** needs an OLED nxlink log across a door and
     into a battle; a shorter banner hold is the P6.18 owner's call.
   - [ ] **EU OLED pass** for the banner and backdrops, and a look for other

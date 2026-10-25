@@ -9,7 +9,7 @@ libnx backend exists.
 |---|---|
 | Upstream | https://github.com/Xeeynamo/psyz.git |
 | Working fork (submodule URL) | https://github.com/Larbaco/psyz.git |
-| Commit | `8bde35d` (`dw3-gutter-flush`: `sdl3_gpu` draws the queued primitives before the drawing area start or end changes, one commit on top of `2f931d8`; see [Gutter flush](#gutter-flush-p61)). `2f931d8` is `dw3-soft-raster-fast`: P6.22 faster CPU rasterizer, same pixels, two commits on top of `ef67c4a`: `80fa492` the rasterizer, `2f931d8` triangles skip rows outside the drawing area again (review fix: an area starting at y >= 512 drew row 511); the merge of `dw3-seq-nrpn-loop` into `dw3-gutter-width`; see [CPU rasterizer speed](#cpu-rasterizer-speed-p622). `a79bc8c` is `dw3-seq-nrpn-loop`: libsnd SEQ/SEP NRPN loop count from Data Entry, music loops again, one commit on top of `fa0aee5`; see below. `fa0aee5` is `dw3-spu-bus-volume`: P6.17 host mixer buses with per-bus gain, libsnd track routing and bus stats, two commits on top of `2caa505`. `2caa505` is `dw3-spu-envx-release`: backport of upstream `a7862ba` / #205, a voice that ends without repeat reads ENVX 0, fixes #188 voice starvation; its parent `fabc2bf` is `dw3-pal-aspect` PAL 240-line aspect) |
+| Commit | `e3a7e83` (`dw3-empty-scissor`: `sdl3_gpu` draws nothing while the drawing area is empty, one commit on top of `8bde35d`; see [Empty drawing area](#empty-drawing-area-sdl3_gpu)). `8bde35d` is (`dw3-gutter-flush`: `sdl3_gpu` draws the queued primitives before the drawing area start or end changes, one commit on top of `2f931d8`; see [Gutter flush](#gutter-flush-p61)). `2f931d8` is `dw3-soft-raster-fast`: P6.22 faster CPU rasterizer, same pixels, two commits on top of `ef67c4a`: `80fa492` the rasterizer, `2f931d8` triangles skip rows outside the drawing area again (review fix: an area starting at y >= 512 drew row 511); the merge of `dw3-seq-nrpn-loop` into `dw3-gutter-width`; see [CPU rasterizer speed](#cpu-rasterizer-speed-p622). `a79bc8c` is `dw3-seq-nrpn-loop`: libsnd SEQ/SEP NRPN loop count from Data Entry, music loops again, one commit on top of `fa0aee5`; see below. `fa0aee5` is `dw3-spu-bus-volume`: P6.17 host mixer buses with per-bus gain, libsnd track routing and bus stats, two commits on top of `2caa505`. `2caa505` is `dw3-spu-envx-release`: backport of upstream `a7862ba` / #205, a voice that ends without repeat reads ENVX 0, fixes #188 voice starvation; its parent `fabc2bf` is `dw3-pal-aspect` PAL 240-line aspect) |
 | Base upstream | `6d01339aadf16c5c9d6e44f44c0d66514752e472` |
 | License | MIT — see [`vendor/psyz/LICENSE`](../vendor/psyz/LICENSE) |
 
@@ -67,6 +67,28 @@ rasterizer gate above gives 0 differences (`tools/soft_raster_bench.sh --ref
 200000 for seeds 1, 7). The gpu change is gated by the replay suite: with
 widescreen off the picture scenarios match the previous build pixel for
 pixel (P6.1 doc, Results).
+
+## Empty drawing area (sdl3_gpu)
+
+`dw3-empty-scissor` (`e3a7e83`, one commit on `dw3-gutter-flush`) changes
+`Draw_FlushBuffer` in `psyz/src/platform/sdl3_gpu.c`: while the drawing area is
+empty (end before start in x or y, i.e. width or height 0 or inverted) the
+queued batch is dropped, not drawn. `UpdateScissor` ignores an empty area
+(`Draw_SetAreaStart` runs before `Draw_SetAreaEnd`, so a transient empty area is
+normal) and kept the previous scissor, so the primitives of a layer clipped to
+0x0 were drawn at the old rectangle. DW3's `FIELDSTG_closeField` leaves the map
+layer with a 0x0 clip once the iris is closed, and the map showed again over the
+grid cover (also in 4:3). The PS1 and the software rasterizer (the Switch)
+draw nothing there. Only `sdl3_gpu.c` changed; `sdl3_gl.c` has the same
+`UpdateScissor` shape and was not touched (not built by this port).
+
+Gate for this pin: `sdl3_software.c` is byte-identical to `2f931d8`, so the
+rasterizer gate (`tools/soft_raster_bench.sh --ref 2f931d8 -- --fuzz 1000000
+<seed>`, seeds 1, 7, 42, and `--san` with 200000 for seeds 1, 7) gives
+0 differences (all five runs). The gpu change is gated by the replay suite (1387
+checks on both discs, 0 failed: no existing reference changed; the only new
+references are the two `door-iris43` scenarios, whose frames 240-258 differ from
+the buggy build where the map showed; P6.1 doc, *Open transitions*).
 
 ## Mixer buses (P6.17)
 

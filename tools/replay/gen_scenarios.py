@@ -809,6 +809,9 @@ def underground_exit(version):
 
 
 IRIS_SHOTS = (207, 216, 225, 234, 243, 252)
+# 4:3 iris: in widescreen off the iris closes in 32 frames from ~205 and the
+# grid in 20 more, so the late checkpoints are where the map must stay hidden.
+IRIS43_SHOTS = (207, 225, 234, 240, 246, 252, 258, 264, 272)
 SPIRAL_SHOTS = (1104, 1122, 1140, 1164, 1188, 1206)
 
 
@@ -821,6 +824,18 @@ def ws_door_iris(version):
     for f in IRIS_SHOTS:
         r.shot(f, f"iris-{f}")
     r.end(280)
+    return r
+
+
+def door_iris43(version):
+    """The same door as `ws_door_iris` with widescreen off (4:3). After the iris
+    closes `closeField` leaves the map layer with an empty (0x0) drawing area,
+    which must draw nothing; PSY-Z `sdl3_gpu` used to keep the previous scissor
+    and showed the map again (dw3-empty-scissor)."""
+    r = Rec(f"{version.upper()}: area-change iris, 4:3, empty drawing area (env in manifest)")
+    for f in IRIS43_SHOTS:
+        r.shot(f, f"iris43-{f}")
+    r.end(285)
     return r
 
 
@@ -1645,6 +1660,7 @@ def main(out):
         (out / f"{v}-music-loop.rec").write_text(music_loop(v).text(True))
         (out / f"{v}-underground-exit.rec").write_text(underground_exit(v).text(True))
         (out / f"{v}-ws-door-iris.rec").write_text(ws_door_iris(v).text(True))
+        (out / f"{v}-door-iris43.rec").write_text(door_iris43(v).text(True))
         (out / f"{v}-ws-battle-spiral.rec").write_text(ws_battle_spiral(v).text(True))
         (out / f"{v}-battle-music.rec").write_text(battle_music(v).text(True))
         (out / f"{v}-two-battles.rec").write_text(two_battles(v).text(True))
