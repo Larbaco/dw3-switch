@@ -34,6 +34,8 @@ int dw3_game_main(void);
 void dw3_pc_title_menu_overlay_register(void);
 #endif
 
+void dw3_pc_mem_sampler_tick(void); /* P5.1, mem_sampler.c */
+
 extern volatile int StCdIntrFlag;
 void StCdInterrupt(void);
 extern char **environ;
@@ -213,6 +215,7 @@ static void dw3_pc_vsync_pump(void) {
     Psyz_CdPumpStream();
     dw3_pc_xa_evidence_drain();
     dw3_pc_turbo_pace();
+    dw3_pc_mem_sampler_tick();
     if (g_prev_vsync_cb) {
         g_prev_vsync_cb();
     }
