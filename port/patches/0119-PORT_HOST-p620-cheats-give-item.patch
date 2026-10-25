@@ -1,0 +1,42 @@
+Upstream-bound: no
+Subject: [PORT_HOST] P6.20 Cheats screen, page 2: Give item (DW3_CHEATS builds only)
+
+The Give item row picks an item id (usable items, weapons, armour and
+accessories, 43..359, as Fill bag) and a count. The field adds the count to
+GAME.items[id], at most 99, at its first idle frame after the row was armed
+(the same place as patch 0118's Money). Unlike Fill bag (patch 0077 with
+patch 0070's DW3_FORCE_ITEMS hook, which sets the count at the next field menu
+screen) it adds, and it does not wait for the field menu. Logs
+"dw3: P6.20 cheat item ID HAVE -> NOW".
+
+Every line is inside #ifdef DW3_CHEATS.
+
+--- a/src/field/field_mode/field.c
++++ b/src/field/field_mode/field.c
+@@ -498,6 +498,26 @@
+                 }
+             }
+ #endif
++#ifdef DW3_CHEATS
++            /* P6.20 Give item: adds the picked item to the bag, at most 99 */
++            {
++                s32 cheatId;
++                s32 cheatCount;
++
++                if (dw3_cheats_take_item(&cheatId, &cheatCount)) {
++                    if (cheatId > 0 && cheatId < 0x193) {
++                        s32 have = GAME.items[cheatId];
++
++                        if (have + cheatCount > 99) {
++                            cheatCount = 99 - have;
++                        }
++                        GAME.items[cheatId] = (s8)(have + cheatCount);
++                        fprintf(stderr, "dw3: P6.20 cheat item %d %d -> %d\n", (int)cheatId, (int)have,
++                                (int)GAME.items[cheatId]);
++                    }
++                }
++            }
++#endif
+ #if PORT_HOST
+             {
+                 const char *force = getenv("DW3_FORCE_MENU");

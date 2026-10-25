@@ -1,0 +1,40 @@
+Upstream-bound: no
+Subject: [PORT_HOST] P6.20 Cheats screen, page 2: Warp (DW3_CHEATS builds only)
+
+The Warp row picks an area of the stage select (Asuka City, the Digimon Lab,
+the Arena, Central Park, the Wire Forest, Tyranno Valley, the four cities, the
+Bulk Swamp, the Noise Desert and Snow Mountain). At the first idle frame of
+the field after it was armed (patch 0118's place), the field leaves for that
+mode with argument 0 (FIELDSTG_leaveField(mode, 0, 0, 0, 0)): the stage's first
+start point, which is what the debug stage select does (requestMode(mode, 0))
+and what a story exit slot does with its own argument. The field closes as
+for an exit, so the game is in the same state as after walking there: it can
+be saved (the field menu records the place) and played. Logs
+"dw3: P6.20 cheat warp from mode=0x.. to mode=0x..".
+
+Every line is inside #ifdef DW3_CHEATS.
+
+--- a/src/field/field_mode/field.c
++++ b/src/field/field_mode/field.c
+@@ -515,6 +515,21 @@
+                         fprintf(stderr, "dw3: P6.20 cheat item %d %d -> %d\n", (int)cheatId, (int)have,
+                                 (int)GAME.items[cheatId]);
+                     }
++                }
++            }
++#endif
++#ifdef DW3_CHEATS
++            /* P6.20 Warp: leaves for the armed area like an exit slot does, with
++               argument 0 (the stage's first start), as the debug stage select
++               requests a field (requestMode(mode, 0)) */
++            {
++                s32 cheatMode;
++
++                if (dw3_cheats_take_warp(&cheatMode)) {
++                    fprintf(stderr, "dw3: P6.20 cheat warp from mode=0x%x to mode=0x%x\n",
++                            (unsigned)GAME.funcs.getMode(), (unsigned)cheatMode);
++                    FIELDSTG_leaveField(cheatMode, 0, 0, 0, 0);
++                    break;
+                 }
+             }
+ #endif

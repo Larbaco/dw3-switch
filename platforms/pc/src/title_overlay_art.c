@@ -134,7 +134,7 @@ int dw3_pc_title_overlay_options_value(int row) {
 }
 #ifdef DW3_CHEATS
 void dw3_pc_title_overlay_set_options_page(int page,int cheats_on) {
-    page=page==DW3_TITLE_OPTIONS_PAGE_CHEATS?page:DW3_TITLE_OPTIONS_PAGE_OPTIONS;
+    page=page==DW3_TITLE_OPTIONS_PAGE_CHEATS||page==DW3_TITLE_OPTIONS_PAGE_CHEATS2?page:DW3_TITLE_OPTIONS_PAGE_OPTIONS;
     cheats_on=cheats_on?1:0;
     if(page!=options_page||cheats_on!=options_cheats_on){
         options_page=page;options_cheats_on=cheats_on;
@@ -224,15 +224,22 @@ static void button_square(int cx,int cy) {
 }
 /* The cheat lettering of one language (en, fr, de, es, it: the
  * DW3_TITLE_LANG_* order). */
+#define CHEAT_WARP(l,i) WORD(opt_cht_warp##i##_##l)
 #define CHEAT_WORDS(l) {WORD(opt_cht_title_##l),WORD(opt_cht_hint_##l),WORD(opt_cht_change_##l), \
-    WORD(opt_cht_back_##l),WORD(opt_cht_ready_##l),WORD(opt_cht_none_##l), \
+    WORD(opt_cht_back_##l),WORD(opt_cht_ready_##l),WORD(opt_cht_none_##l),WORD(opt_cht_title2_##l), \
     {WORD(opt_cht_row0_##l),WORD(opt_cht_row1_##l),WORD(opt_cht_row2_##l),WORD(opt_cht_row3_##l), \
-     WORD(opt_cht_row4_##l)}, \
+     WORD(opt_cht_row4_##l),WORD(opt_cht_row5_##l),WORD(opt_cht_row6_##l),WORD(opt_cht_row7_##l), \
+     WORD(opt_cht_row8_##l),WORD(opt_cht_row9_##l)}, \
     {WORD(opt_cht_desc0_##l),WORD(opt_cht_desc1_##l),WORD(opt_cht_desc2_##l),WORD(opt_cht_desc3_##l), \
-     WORD(opt_cht_desc4_##l)}}
+     WORD(opt_cht_desc4_##l),WORD(opt_cht_desc5_##l),WORD(opt_cht_desc6_##l),WORD(opt_cht_desc7_##l), \
+     WORD(opt_cht_desc8_##l),WORD(opt_cht_desc9_##l)}, \
+    {CHEAT_WARP(l,0),CHEAT_WARP(l,1),CHEAT_WARP(l,2),CHEAT_WARP(l,3),CHEAT_WARP(l,4),CHEAT_WARP(l,5), \
+     CHEAT_WARP(l,6),CHEAT_WARP(l,7),CHEAT_WARP(l,8),CHEAT_WARP(l,9),CHEAT_WARP(l,10),CHEAT_WARP(l,11), \
+     CHEAT_WARP(l,12)}}
 typedef struct CheatWords {
-    Word title,hint,change,back,ready,none;
-    Word rows[DW3_TITLE_CHEAT_ROWS],desc[DW3_TITLE_CHEAT_ROWS];
+    Word title,hint,change,back,ready,none,title2;
+    Word rows[DW3_TITLE_CHEAT_PAGES*DW3_TITLE_CHEAT_ROWS],desc[DW3_TITLE_CHEAT_PAGES*DW3_TITLE_CHEAT_ROWS];
+    Word warp[DW3_TITLE_CHEAT_WARPS];
 } CheatWords;
 static const CheatWords cheat_words[5]={CHEAT_WORDS(en),CHEAT_WORDS(fr),CHEAT_WORDS(de),
                                         CHEAT_WORDS(es),CHEAT_WORDS(it)};
@@ -243,14 +250,26 @@ static const CheatWords *cheat_lang(void) {
  * Fill bag, Instant win, Battle now, marked saves), the same focus box,
  * message line and hints, in the language of the disc. While the master
  * switch is off rows 1..4 are greyed. Same layers as options_screen. */
+/* A number of the Give item rows: the digits (fixed advance), right edge at x. */
+static void number(int v,int x,int y,int r,int g,int b) {
+    static const Word digits[10]={WORD(opt_cht_d0),WORD(opt_cht_d1),WORD(opt_cht_d2),WORD(opt_cht_d3),
+                                  WORD(opt_cht_d4),WORD(opt_cht_d5),WORD(opt_cht_d6),WORD(opt_cht_d7),
+                                  WORD(opt_cht_d8),WORD(opt_cht_d9)};
+    int n=v>=100?3:v>=10?2:1,adv=digits[0].w;
+    if(v<0)v=0;
+    for(int k=0,div=n==3?100:n==2?10:1;k<n;k++,div/=10)
+        word(&digits[(v/div)%10],x-(n-k)*adv,y,0,r,g,b);
+}
 static void cheats_screen(void) {
     static const Word values[]={WORD(opt_off),WORD(opt_on)};
+    static const Word money[]={WORD(opt_off),WORD(opt_cht_m10k),WORD(opt_cht_m100k),WORD(opt_cht_mmax)};
     static const Word steps[]={WORD(opt_n1),WORD(opt_n2),WORD(opt_n3),WORD(opt_n4),WORD(opt_n5),
                                WORD(opt_n6),WORD(opt_n7),WORD(opt_n8),WORD(opt_n9),WORD(opt_n10)};
     const CheatWords *t=cheat_lang();
     const int x0=OPT_X0,y0=OPT_Y0,w=OPT_W,h=OPT_H,x1=x0+w,y1=y0+h;
     const int full=options_layer==OPTIONS_LAYER_FULL;
     const int draw_static=full||options_layer==OPTIONS_LAYER_STATIC;
+    const int page2=options_page==DW3_TITLE_OPTIONS_PAGE_CHEATS2;
 
     if(draw_static) {
     box(0,0,960,720,0,0,16,150);
@@ -266,12 +285,13 @@ static void cheats_screen(void) {
         segment(xs,a+1.5f,xs+30,a+31.5f,1.6f,0,66,156);
         segment(xs+6,a+7.5f,xs+30,a+31.5f,1.6f,0,66,156);
         box(xs+30,a+30,x1-30-xs-30,3,0,66,156,255);
-        word(&t->title,xs+48,a+2-t->title.top,0,255,255,255);
+        word(page2?&t->title2:&t->title,xs+48,a+2-t->title.top,0,255,255,255);
     }
     }
     for(int i=0;i<DW3_TITLE_CHEAT_ROWS;i++) {
+        const int row=page2*DW3_TITLE_CHEAT_ROWS+i;
         const int ry=OPT_ROW_Y+i*OPT_ROW_STEP,focus=i==option_cursor;
-        const int grey=i>0&&!options_cheats_on;
+        const int grey=row>0&&!options_cheats_on;
         int v=option_values[i];
         const Word *value;
         int dim;
@@ -281,24 +301,34 @@ static void cheats_screen(void) {
             pointer(x0+66,ry+3);
         }
         if(draw_static||(options_layer==OPTIONS_LAYER_FOCUS&&i==options_layer_row))
-            word(&t->rows[i],x0+106,ry,0,grey?150:255,grey?158:255,grey?196:255);
+            word(&t->rows[row],x0+106,ry,0,grey?150:255,grey?158:255,grey?196:255);
         if(v<0)v=0;
-        if(i==4){
+        if(row==4){
             if(v>10)v=10;
             value=v?&steps[v-1]:&t->none;dim=v==0;
-        }else if(i==1||i==3){
+        }else if(row==1||row==3||row==9){
             value=v?&t->ready:&values[0];dim=v==0;
+        }else if(row==5){
+            if(v>3)v=3;
+            value=&money[v];dim=v==0;
+        }else if(row==6){
+            if(v>DW3_TITLE_CHEAT_WARPS)v=DW3_TITLE_CHEAT_WARPS;
+            value=v?&t->warp[v-1]:&values[0];dim=v==0;
+        }else if(row==7||row==8){
+            value=NULL;dim=0;
         }else{
             value=&values[v?1:0];dim=v==0;
         }
         if(grey)dim=1;
-        if(full||(options_layer==OPTIONS_LAYER_VALUE&&i==options_layer_row))
-            word(value,x1-96,ry,1,dim?150:255,dim?158:255,dim?196:255);
+        if(full||(options_layer==OPTIONS_LAYER_VALUE&&i==options_layer_row)){
+            if(value)word(value,x1-96,ry,1,dim?150:255,dim?158:255,dim?196:255);
+            else number(v,x1-96,ry,grey?150:255,grey?158:255,grey?196:255);
+        }
     }
     if(draw_static)box(x0+30,y1-152,w-60,3,16,156,247,255);
     if((full||options_layer==OPTIONS_LAYER_DESCRIPTION)&&
        option_cursor>=0&&option_cursor<DW3_TITLE_CHEAT_ROWS)
-        word(&t->desc[option_cursor],x0+48,y1-128,0,255,255,255);
+        word(&t->desc[page2*DW3_TITLE_CHEAT_ROWS+option_cursor],x0+48,y1-128,0,255,255,255);
     if(draw_static) {
         const int hy=y1-74,bx=x1-48-t->back.w,cx=bx-36-t->change.w-60;
         button(cx,hy+12,0);word(&t->change,cx+22,hy,0,255,255,255);
@@ -340,7 +370,7 @@ static void options_screen(void) {
     const int draw_static=full||options_layer==OPTIONS_LAYER_STATIC;
 
 #ifdef DW3_CHEATS
-    if(options_page==DW3_TITLE_OPTIONS_PAGE_CHEATS){cheats_screen();return;}
+    if(options_page==DW3_TITLE_OPTIONS_PAGE_CHEATS||options_page==DW3_TITLE_OPTIONS_PAGE_CHEATS2){cheats_screen();return;}
 #endif
     /* The title backdrop stays, dimmed; the logo and the menu are gone. */
     if(draw_static) {
