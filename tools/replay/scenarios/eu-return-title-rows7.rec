@@ -78,13 +78,15 @@ pad 2100 0x0040
 pad 2105 0x0000
 pad 2120 0x0040
 pad 2125 0x0000
-shot 2160 return-focus
-pad 2180 0x4000
-pad 2185 0x0000
-shot 2240 confirm-no
-pad 2260 0x1000
-pad 2265 0x0000
-shot 2320 after-cancel
-pad 2340 0x1000
-pad 2345 0x0000
-end 2440
+pad 2140 0x0040
+pad 2145 0x0000
+shot 2180 return-focus
+pad 2200 0x4000
+pad 2205 0x0000
+shot 2260 confirm-no
+pad 2280 0x1000
+pad 2285 0x0000
+shot 2340 after-cancel
+pad 2360 0x1000
+pad 2365 0x0000
+end 2460

@@ -1631,12 +1631,12 @@ def return_title(version, rows7=False):
     party of the forced event battle as in `items_menu`, Restart hotkey ON;
     rows7 also fills the bag, which lists the card folders). Cross walks the
     report back to the field, Start opens the field menu (`field-menu`), Down
-    to the last row (`return-focus`), Cross opens the window on No
+    to the last row, below Options since P9.7 (`return-focus`), Cross opens the window on No
     (`confirm-no`), Cross answers No (`after-no`), Cross again, Down to Yes
     (`confirm-yes`), Cross answers Yes: the P6.9 reset, back at the title
     (`back-at-title`; on the EU disc the language select first,
     `back-at-select`). rows7: the field menu inside STSTATUS (Items, then
-    Triangle), seven rows, the window and Triangle cancelling it."""
+    Triangle), eight rows since P9.7, the window and Triangle cancelling it."""
     r = Rec(f"{version.upper()}: field menu Return to title (env and cfg in manifest)")
     for f in range(300, 1200, 30):
         r.press(f, CROSS)            # battle report -> field
@@ -1652,7 +1652,7 @@ def return_title(version, rows7=False):
     else:
         r.shot(1400, "field-menu")
         f = 1420
-    for _ in range(6 if rows7 else 5):   # to the last row
+    for _ in range(7 if rows7 else 6):   # to the last row (P9.7: Options is above it)
         r.press(f, DOWN)
         f += 20
     r.shot(f + 20, "return-focus")
@@ -1681,6 +1681,103 @@ def return_title(version, rows7=False):
             r.press(g + k, START)
         r.shot(g + 600, "back-at-title")
         r.end(g + 700)
+    return r
+
+
+SQUARE_MASK = 0x8000
+
+
+def _field_options_open(r, shots=True, last="options-open"):
+    """Report -> field, Start (the field menu, `field-menu`), Down x5 to the
+    Options row (`options-focus`), Cross: the port Options screen over the menu
+    (`options-open`, frame 1620). Seven rows, no card folders (the env of
+    `return_title`). Returns the frame after the open checkpoint."""
+    for f in range(300, 1200, 30):
+        r.press(f, CROSS)            # battle report -> field
+    r.press(1250, START)             # the field menu
+    if shots:
+        r.shot(1400, "field-menu")
+    f = 1420
+    for _ in range(5):               # ITEMS .. STATUS, then Options
+        r.press(f, DOWN)
+        f += 20
+    if shots:
+        r.shot(f + 20, "options-focus")
+    r.press(f + 40, CROSS)           # the Options screen opens (the menu waits)
+    r.shot(f + 120, last)
+    return f + 140
+
+
+def field_options(version, phase=1):
+    """P9.7 slice 1: the port Options screen from the field menu (env in the
+    manifest: the party of the forced event battle as `return_title`; no cfg).
+    Phase 1: the screen opens with the cursor on Widescreen; Cross on it changes
+    nothing (it is locked in game: `widescreen-locked`); Down x3 to Music volume,
+    Left x3 (10 -> 7, `music-changed`), Down x2 to Encounter rate, Left x2
+    (1x -> 0.5x -> OFF, `encounter-off`); Triangle closes the screen back to the
+    field menu (`options-closed`); the menu still takes input (Down to Return to
+    title, `menu-alive`) and Triangle leaves it for the field (`field-after`).
+    Phase 2 is a new process on the same config dir: the same opening, and the
+    screen shows what phase 1 saved (`options-restored`: Music 7, Encounter
+    OFF, Widescreen still ON)."""
+    r = Rec(f"{version.upper()}: P9.7 port Options from the field menu, phase {phase} (env in manifest)")
+    if phase == 2:
+        f = _field_options_open(r, shots=False, last="options-restored")
+        r.end(f + 40)
+        return r
+    f = _field_options_open(r)
+    r.press(f, CROSS)                # Widescreen: locked, nothing changes
+    r.shot(f + 60, "widescreen-locked")
+    f += 80
+    for _ in range(3):               # Fast-forward, Restart hotkey, Music volume
+        r.press(f, DOWN)
+        f += 20
+    for _ in range(3):
+        r.press(f, LEFT)             # 10 -> 7
+        f += 20
+    r.shot(f + 40, "music-changed")
+    f += 60
+    for _ in range(2):               # SFX volume, Encounter rate
+        r.press(f, DOWN)
+        f += 20
+    for _ in range(2):
+        r.press(f, LEFT)             # 1x -> 0.5x -> OFF
+        f += 20
+    r.shot(f + 40, "encounter-off")
+    r.press(f + 60, TRIANGLE)        # close: back on the field menu
+    r.shot(f + 120, "options-closed")
+    r.press(f + 140, DOWN)           # the menu has the pad again
+    r.shot(f + 200, "menu-alive")
+    r.press(f + 220, TRIANGLE)       # leave the menu: the field resumes
+    r.shot(f + 420, "field-after")
+    r.end(f + 480)
+    return r
+
+
+def field_options_lang(idx):
+    """P9.7: the Options row and the screen's lock note in one of the other four
+    EU languages (env: the `field_options` env and DW3_LANGUAGE): the field menu
+    (the row's text in the game's font), the screen with Widescreen focused (its
+    message line is the lock note in that language), Triangle."""
+    lang = EU_LANGS[idx]
+    r = Rec(f"EU: P9.7 port Options from the field menu in {lang} (env in manifest)")
+    f = _field_options_open(r)
+    r.press(f, TRIANGLE)
+    r.shot(f + 60, "options-closed")
+    r.end(f + 100)
+    return r
+
+
+def field_options_cheats(version):
+    """P9.7: the Cheats entry is title-only. With the cheats master on (cfg
+    cheat_enabled=1) the Options screen shows its Square / Y "Cheats" hint
+    greyed; Square does nothing in game (`cheats-locked`: still the Options page)."""
+    r = Rec(f"{version.upper()}: P9.7 Cheats entry locked in game (env and cfg in manifest)")
+    f = _field_options_open(r)
+    r.press(f, SQUARE_MASK)
+    r.shot(f + 60, "cheats-locked")
+    r.press(f + 80, TRIANGLE)
+    r.end(f + 140)
     return r
 
 
@@ -1759,9 +1856,15 @@ def main(out):
         (out / f"{v}-return-title.rec").write_text(return_title(v).text(True))
         (out / f"{v}-return-title-rows7.rec").write_text(
             return_title(v, rows7=True).text(True))
+        for phase in (1, 2):
+            (out / f"{v}-field-options-p{phase}.rec").write_text(
+                field_options(v, phase).text(True))
+        (out / f"{v}-field-options-cheats.rec").write_text(
+            field_options_cheats(v).text(True))
     for i, lang in enumerate(EU_LANGS):
         if lang != "en":
             (out / f"eu-title-quit-{lang}.rec").write_text(title_quit_lang(i).text(True))
+            (out / f"eu-field-options-{lang}.rec").write_text(field_options_lang(i).text(True))
     for v in ("us", "eu"):
         for name, fn in RESTART_RECS:
             (out / f"{v}-{name}.rec").write_text(fn(v).text(True))

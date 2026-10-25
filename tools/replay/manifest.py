@@ -1098,6 +1098,45 @@ for _v, _title in (("us", 0x1C1), ("eu", 0x1D0)):
                   forbid_log=((0, r"dw3-port-restart"),),
                   note="the field menu with the card folders row and Return to title: seven rows, cancelled (P6.27)"))
 
+# P9.7 slice 1: the port Options screen from the field menu's Options row
+# (patch 0160, port/options/field_options.c). Phase 1: Widescreen refuses a
+# change (locked in game), Music volume 10 -> 7 and Encounter rate 1x -> OFF
+# apply at once and are saved, the screen closes and the menu and the field go
+# on; phase 2 (a new process on the same config dir) shows the values read back.
+_FO_P1 = (r"dw3-port-options: open in game(?s:.*)"
+          r"dw3-port-options: Widescreen is locked in game \(change it at the title\)(?s:.*)"
+          r"dw3-port-options: music volume 7(?s:.*)"
+          r"dw3-port-options: encounter rate off(?s:.*)"
+          r"dw3-port-options: close in game(?s:.*)"
+          r"dw3: field menu Triangle cancel \(stay field\)",
+          r"dw3-options: saved \S*port_options\.cfg \(widescreen=1 fast_forward=2 restart_hotkey=0 "
+          r"music_volume=7 sfx_volume=10 encounter_rate=2 text_speed=0 battle_menu_memory=0\)")
+_FO_P2 = (r"dw3-options: \S*port_options\.cfg \(widescreen=1 fast_forward=2 restart_hotkey=0 "
+          r"music_volume=7 sfx_volume=10 encounter_rate=2 text_speed=0 battle_menu_memory=0\)",
+          r"dw3-port-options: open in game")
+for _v in ("us", "eu"):
+    _add(Scenario(f"{_v}-field-options", _v, "full", turbo=4, timeout=600,
+                  phases=(f"{_v}-field-options-p1", f"{_v}-field-options-p2"),
+                  env=_RT_ENV,
+                  expect_log=tuple((0, r) for r in _FO_P1) + tuple((1, r) for r in _FO_P2),
+                  forbid_log=((0, r"widescreen (enabled|disabled)"), (0, r"save flush failed"),
+                              (0, r"dw3-port-restart"), (0, r"sound \w+ not played")),
+                  note="field menu Options: Widescreen locked, Music volume and Encounter rate apply and persist, the menu and the field continue (P9.7)"),
+         Scenario(f"{_v}-field-options-cheats", _v, "full", turbo=4, timeout=600,
+                  env=_RT_ENV, cfg=(("cheat_enabled", "1"),),
+                  expect_log=((0, r"dw3-port-options: open in game(?s:.*)"
+                                  r"dw3-port-options: cheats are locked in game \(change them at the title\)(?s:.*)"
+                                  r"dw3-port-options: close in game"),),
+                  forbid_log=((0, r"dw3-cheats: open"),),
+                  note="the Cheats entry is greyed in game: Square (Y) does nothing (P9.7)"))
+# The Options row text and the screen's lock note in the other four EU languages.
+for _id, _lang in ((3, "fr"), (5, "de"), (4, "it"), (6, "es")):
+    _add(Scenario(f"eu-field-options-{_lang}", "eu", "full", turbo=4, timeout=600,
+                  env=_RT_ENV + (("DW3_LANGUAGE", str(_id)),),
+                  expect_log=((0, rf"LANGUAGE={_id} \(DW3_LANGUAGE\)(?s:.*)dw3-port-options: open in game"
+                                  r"(?s:.*)dw3-port-options: close in game"),),
+                  note=f"field menu Options row and the screen's lock note in {_lang} (P9.7)"))
+
 # The Quit game plaque and the window in the other four EU languages (the
 # lettering is authored, docs/PORT_OPTIONS.md "Quit and return to title").
 for _lang in ("fr", "de", "it", "es"):
