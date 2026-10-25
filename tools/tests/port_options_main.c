@@ -38,7 +38,7 @@ int main(void) {
         return fail("re-open");
     }
 
-    if (dw3_port_options_count() != 8) {
+    if (dw3_port_options_count() != 9) {
         return fail("option count");
     }
     if (dw3_port_options_level(DW3_PORT_OPT_BATTLE_MENU) != 0 ||

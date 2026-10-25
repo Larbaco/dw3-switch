@@ -1,0 +1,19 @@
+# US: P6.31 Continue, walk into a random battle (log only)
+pad 20 0x0008
+pad 25 0x0000
+pad 210 0x0008
+pad 215 0x0000
+pad 330 0x0040
+pad 335 0x0000
+pad 350 0x0040
+pad 355 0x0000
+pad 390 0x4000
+pad 395 0x0000
+pad 740 0x4000
+pad 745 0x0000
+pad 1040 0x4000
+pad 1045 0x0000
+pad 1220 0x4000
+pad 1225 0x0000
+pad 1620 0x0010
+end 4720

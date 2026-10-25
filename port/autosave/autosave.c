@@ -270,6 +270,10 @@ int dw3_autosave_commit(const Dw3AutosaveSnapshot *snap) {
                 "%d slot %d aside (save%d.bin.pre-auto)", port, slot, port);
         return -1;
     }
+    if (g_target_manual) {
+        AS_INFO("dw3-autosave: your version of card %d is kept in "
+                "save%d.bin.pre-auto", port, port);
+    }
     memcpy(new_info, old_info, SAVE_INFO_SIZE);
     as_fill_summary(new_info + 8 + slot * SAVE_SUMMARY_SIZE, snap);
     new_info[1] = (unsigned char)slot;
