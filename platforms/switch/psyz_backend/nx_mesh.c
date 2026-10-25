@@ -3,7 +3,13 @@
 #include "nx_mesh.h"
 #include "nx_mesh_debug.h"
 #include "nx_vram_pack.h"
+#ifdef DW3_NX_GAME_IMAGE
 #include "port_battle_options.h"
+#else
+/* The devkitPro Makefile sample (host_hello) compiles this unit without the
+ * port: nothing is ever held. */
+static int dw3_port_battle_options_holding(void) { return 0; }
+#endif
 
 #include <stddef.h>
 #include <stdio.h>
