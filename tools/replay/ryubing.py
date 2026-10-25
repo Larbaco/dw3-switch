@@ -46,6 +46,13 @@ DEFAULT_OUT = "/mnt/windows/Jogos/dw3-switch/tmp/evidence/p615-ryubing"
 # Memory flatness (nxlink builds): `mem dbg:` high-water marks may rise by at
 # most this many KiB between the warm-up point and the end of the run.
 MEM_HW_GROWTH_KIB = 512
+# libc gets more room: the title Options screen frees a one-time 565-601 KiB
+# host allocation, and a 1.2 s sample that lands inside it raises the libc
+# high-water mark by that much. Whether the sample catches it depends on wall
+# time, so short title scenarios (eu-volume-persist, eu-pacing-persist) failed
+# at random with +565K/+601K, before and after P6.22 pass 2 alike
+# (docs/P6.15_REPLAY_TESTS.md). A real leak grows without bound and still fails.
+MEM_LIBC_HW_GROWTH_KIB = 768
 FATAL_RE = re.compile(r"Unhandled exception|Invalid memory access|Guest crash|"
                       r"ExecutionEngineException|StackOverflow|Segmentation fault")
 SHOT_LINE = re.compile(r"replay shot (\d+) ([A-Za-z0-9_-]+)")
@@ -136,10 +143,12 @@ def mem_verdict(lines, warm_frame_idx):
     base, last = samples[cut], samples[-1]
     names = ("heap", "heap hw", "fcache hw", "libc hw")
     growth = [last[i] - base[i] for i in (1, 2, 3)]
-    ok = all(g <= MEM_HW_GROWTH_KIB for g in growth)
+    limits = (MEM_HW_GROWTH_KIB, MEM_HW_GROWTH_KIB, MEM_LIBC_HW_GROWTH_KIB)
+    ok = all(g <= lim for g, lim in zip(growth, limits))
     detail = ("mem dbg hw growth since 60% mark: " +
               ", ".join(f"{n} {g:+d}K" for n, g in zip(names[1:], growth)) +
-              f" (limit {MEM_HW_GROWTH_KIB}K, {len(samples)} samples)")
+              f" (limit {MEM_HW_GROWTH_KIB}K, libc {MEM_LIBC_HW_GROWTH_KIB}K, "
+              f"{len(samples)} samples)")
     return ok, detail
 
 
