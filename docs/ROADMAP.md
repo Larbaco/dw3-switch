@@ -65,7 +65,7 @@ listed once, in [Pending OLED checks](#pending-oled-checks).
 | P6.18 | Pacing options | in progress (Instant text works; Instant banner and report speed #223; rest of the check open) | [P6.18](P6.18_PACING.md) |
 | P6.20 | Port debug / cheat menu in the Options screen | in progress (PR 1 merged, #236: Cheats screen; PR 2, #248: money, give item and warp on page 2, in review; OLED checks open) | [roadmap](#phase-6-goal-notes), [PORT_OPTIONS](PORT_OPTIONS.md) |
 | P6.22 | Turbo speed in scripted scenes | in progress (CPU rasterizer is ~97 % of a field frame; pixel-identical rasterizer 4-5x faster, #220) | [P6.22](P6.22_FIELD_CPU.md), [roadmap](#phase-6-goal-notes), [P6.4](P6.4_FAST_FORWARD.md) |
-| P6.23 | Documentation: player guide, docs index, contributor and modder docs (future goal) | future | [roadmap](#phase-6-goal-notes) |
+| P6.23 | Documentation: player guide, docs index, contributor and modder docs (future goal) | in progress (slice 1 done: player guide and docs index; `CONTRIBUTING.md` and modder docs open) | [PLAYER_GUIDE](PLAYER_GUIDE.md), [docs index](README.md), [roadmap](#phase-6-goal-notes) |
 | P6.24 | One build for US and EU: one `.nro` and one PC binary, region found at boot, a boot picker with both discs (future goal; depends on P6.25 and P6.26) | future | [SINGLE_BUILD](SINGLE_BUILD.md), [roadmap](#phase-6-goal-notes) |
 | P6.25 | Cross-region saves: a US save loads in EU and the reverse, one canonical save container (future goal) | in progress (slice 1 built: converter and one-way import on load, PC replays US to EU and EU to US; container and store open; OLED check open) | [CROSS_REGION_SAVES](CROSS_REGION_SAVES.md), [roadmap](#phase-6-goal-notes) |
 | P6.26 | Per-user saves: saves bound to the Switch user profile chosen in the Switch profile selector, global options (future goal) | future (design done, no code) | [PER_USER_SAVES](PER_USER_SAVES.md), [roadmap](#phase-6-goal-notes) |
@@ -1559,7 +1559,19 @@ Statuses are in the [table](#status-at-a-glance).
   state (the P6.15 replays still match) and a clean return to 1x.
   Related: P6.4, P6.10, P6.15, P6.18, P5.2.
 - [ ] **P6.23 Documentation (future goal).** Dated 2026-10-24, owner request:
-  "documentation". Goal note only, nothing written yet. **Gaps found by a
+  "documentation". **Slice 1 built 2026-10-25** (PR open, not merged): the
+  player guide [PLAYER_GUIDE.md](PLAYER_GUIDE.md) and the docs index
+  [docs/README.md](README.md), linked from `README.md` and from the release
+  `README.txt`; `tools/check_doc_links.py` checks the links, the anchors and
+  that the index lists every doc. Open: `CONTRIBUTING.md` and the modder
+  docs. **Defaults chosen while the owner was away (owner can change):** the
+  guide ships in the repo as `docs/PLAYER_GUIDE.md` and is linked from the
+  README and the release `README.txt` (one line with the GitHub URL), with no
+  separate site and no copy of the guide in the release bundle; the index is
+  written by hand and checked by the script, not generated from the ROADMAP
+  table; the guide is named `PLAYER_GUIDE.md`, not `GUIDE.md`; it covers a
+  BIN and CUE dump only, as the setup docs do; the FAQ is not written yet.
+  The survey below is the original goal note. **Gaps found by a
   survey of `docs/` (about 80 files), `README.md`, `AGENTS.md` and
   `platforms/switch/release/README.txt`:**
   - *No player guide.* The player-facing text is spread over the README
@@ -1805,7 +1817,7 @@ Statuses are in the [table](#status-at-a-glance).
 - [ ] **P6.30 Help, FAQ and tips from the pause menu (future goal).** Dated
   2026-10-24, owner request (Portuguese, "ajuda / FAQ / dicas"). Goal note
   only, nothing started. **What exists (cited):** no in-game help text; the
-  player guide is planned as `docs/GUIDE.md` in P6.23, and the release
+  player guide is [PLAYER_GUIDE.md](PLAYER_GUIDE.md) (P6.23, slice 1), and the release
   `README.txt` (`platforms/switch/release/`) holds the install steps and the
   OLED checklist. **Scope:** an entry in the pause menu (P6.27) that opens a
   help screen: short pages for install and own-disc setup, controls and
