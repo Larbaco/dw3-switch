@@ -25,7 +25,8 @@ void dw3_port_options_draw_hint(void);
 enum {
     DW3_PORT_OPT_ENCOUNTER_RATE = 5,
     DW3_PORT_OPT_TEXT_SPEED = 6,
-    DW3_PORT_OPT_BATTLE_MENU = 7
+    DW3_PORT_OPT_BATTLE_MENU = 7,
+    DW3_PORT_OPT_AUTOSAVE = 8 /* P6.31: 0 OFF, 1 On area change */
 };
 
 /* Registry; unavailable features remain safe no-op stubs. Values persist in
@@ -35,7 +36,8 @@ const char *dw3_port_options_label(int index);
 int dw3_port_options_value(int index);
 void dw3_port_options_set(int index, int value);
 /* Raw row value: 0/1, 0 (OFF) / 2..4 (speed) for Fast-forward, 0..10 for the
- * volumes, 0..4 for Encounter rate, 0..2 for Text speed and Battle cursor. */
+ * volumes, 0..4 for Encounter rate, 0..2 for Text speed and Battle cursor,
+ * 0/1 for Auto-save. */
 int dw3_port_options_level(int index);
 void dw3_port_options_set_level(int index, int level);
 

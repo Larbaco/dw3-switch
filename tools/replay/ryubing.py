@@ -307,6 +307,11 @@ def main():
         # The NRO has no environment for the scenario's debug aids: PC only.
         print(f"skip {sc.name}: needs host env ({', '.join(k for k, _ in sc.env)}), PC only")
     todo = [sc for sc in todo if not sc.env]
+    for sc in [sc for sc in todo if sc.phase_env and not sc.phase_versions]:
+        # P6.31: the debug aids of a phase (a forced exit, a forced start) need
+        # the host environment too.
+        print(f"skip {sc.name}: needs per-phase host env, PC only")
+    todo = [sc for sc in todo if not (sc.phase_env and not sc.phase_versions)]
     for sc in [sc for sc in todo if sc.phase_versions]:
         # Needs one card folder per region and the import folder (P6.25): PC only.
         print(f"skip {sc.name}: runs phases on both discs (P6.25), PC only")

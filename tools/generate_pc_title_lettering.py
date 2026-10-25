@@ -110,6 +110,27 @@ for _lang, _t in DIALOG_TEXT.items():
     for _key, _size in (('quit_title', 30), ('ret_title', 30), ('quit_q', 26), ('ret_q', 26),
                         ('warn', 24), ('yes', 26), ('no', 26), ('select', 24), ('cancel', 24)):
         LETTERS.append(('opt_dlg_%s_%s' % (_key, _lang), _t[_key], _size, 'DejaVuSans.ttf'))
+# P6.31 Auto-save row of the Options screen (docs/PORT_OPTIONS.md "Auto-save",
+# docs/P6.31_AUTOSAVE.md), in the five languages of the EU disc (en is also the
+# US disc's). OFF is the Options screen's word. Keep the label under 360 px, the
+# value under 214 px (the value cell is right-aligned at x 780 from x 560, and the
+# widest word, Command+Tech, is 214 px) and the description under 696 px.
+AUTOSAVE_TEXT = {
+    'en': {'row': 'Auto-save', 'area': 'Each area',
+           'desc': 'Saves over the slot you last used at each new area.'},
+    'fr': {'row': 'Sauvegarde auto', 'area': 'Chaque zone',
+           'desc': "\u00c9crase votre dernier emplacement \u00e0 chaque zone."},
+    'de': {'row': 'Auto-Speichern', 'area': 'Jedes Gebiet',
+           'desc': 'Überschreibt den letzten Platz bei jedem Gebiet.'},
+    'es': {'row': 'Autoguardado', 'area': 'Cada zona',
+           'desc': 'Sobrescribe tu \u00faltima ranura al entrar en cada zona.'},
+    'it': {'row': 'Salvataggio auto', 'area': 'Ogni area',
+           'desc': "Sovrascrive l'ultimo slot usato a ogni nuova area."},
+}
+for _lang, _t in AUTOSAVE_TEXT.items():
+    LETTERS.append(('opt_as_row_' + _lang, _t['row'], 26, 'DejaVuSans.ttf'))
+    LETTERS.append(('opt_as_area_' + _lang, _t['area'], 26, 'DejaVuSans.ttf'))
+    LETTERS.append(('opt_as_desc_' + _lang, _t['desc'], 25, 'DejaVuSans.ttf'))
 # P6.20 Cheats screen (docs/PORT_OPTIONS.md "Cheats"), in the five languages
 # of the EU disc (en is also the US disc's). Emitted inside #ifdef DW3_CHEATS,
 # so a build without cheats compiles none of it. ON / OFF and the numbers are

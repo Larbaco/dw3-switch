@@ -693,6 +693,87 @@ for _name, _a, _b, _mut, _why in (
                   note=f"P6.25: {_why} is not imported into the other card (no crash)"))
 
 
+# P6.31 auto-save (docs/P6.31_AUTOSAVE.md, patches 0140, 0141): the game itself
+# saves in the Underground Path (the forced save screen, as xr-save), a second
+# process Continues that save and leaves the field for another area
+# (DW3_FORCE_EXIT, patch 0110: 0x20B -> 0x201), and a third Continues again.
+#  autosave-area: the option is on (cfg autosave=1). The area change writes the
+#    slot the player loaded (log), and the third process lands in the NEW area
+#    (0x201), not the saved one (0x20B).
+#  autosave-off: the same without the option. Nothing is logged or written, and
+#    the third process lands in the player's own save (0x20B): option off gives
+#    the game as before, and a manual save is untouched.
+#  autosave-walk: the option is on, the game is loaded in Bulk Swamp and walks
+#    into a random battle: no area change, nothing is written, in or after the
+#    battle.
+# Log verdicts only (no checkpoints, no references). PC only (env).
+_AS_SAVE_ENV = (("DW3_START_MODE", "0x20B"), ("DW3_PROGRESS", "6"),
+                ("DW3_FORCE_MENU", "0xC00:0x80000000"))
+_AS_EXIT_ENV = (("DW3_FORCE_EXIT", "0x201:240:264:7:100"),)
+_AS_BAD = ((1, r"STGMCARD_loadSave (?:checksum|version|read) fail"),
+           (2, r"STGMCARD_loadSave (?:checksum|version|read) fail"),
+           (1, r"dw3-autosave: .*(?:FAILED|not saved: )"))
+for _v, _ids in (("us", (0x158, 0x1E3)), ("eu", (0x166, 0x1EE))):
+    _field, _mcard = _ids
+    _add(Scenario(f"{_v}-autosave-area", _v, "full", timeout=600, log_only=True,
+                  phases=(f"{_v}-xr-save", f"{_v}-as-load", f"{_v}-xr-load"),
+                  phase_env=(_AS_SAVE_ENV, _AS_EXIT_ENV, ()),
+                  cfg=(("autosave", "1"),),
+                  expect_restore=((_field, M), (_mcard, M)),
+                  expect_log=(_XR_WRITE,
+                              (0, r"dw3-autosave: target is card 0 slot 0 \(saved\)"),
+                              (1, r"dw3-options: autosave=1"),
+                              (1, r"dw3-autosave: target is card 0 slot 0 \(loaded\)"),
+                              (1, r"dw3-autosave: mode 0x20b: not saved \(first area \(baseline\)\)"),
+                              (1, r"DW3_FORCE_EXIT leaveField mode=0x201"),
+                              (1, r"dw3-autosave: area change to mode 0x201: saving to card 0 slot 0"),
+                              (1, r"dw3-autosave: wrote card 0 slot 0 \(area mode 0x201, #1\)"),
+                              (2, r"STGMCARD_loadSave ok port=0 slot=0 money=\d+ progress=6"
+                                  r"(?s:.*)FIELDSTG_pickStage mode=0x201")),
+                  forbid_log=_AS_BAD + ((2, r"FIELDSTG_pickStage mode=0x20b"),),
+                  note="P6.31: Continue, an area change writes the used slot, Continue lands in the new area"))
+    _add(Scenario(f"{_v}-autosave-off", _v, "full", timeout=600, log_only=True,
+                  phases=(f"{_v}-xr-save", f"{_v}-as-load", f"{_v}-xr-load"),
+                  phase_env=(_AS_SAVE_ENV, _AS_EXIT_ENV, ()),
+                  expect_restore=((_field, M), (_mcard, M)),
+                  expect_log=(_XR_WRITE,
+                              (1, r"DW3_FORCE_EXIT leaveField mode=0x201"),
+                              (1, r"FIELDSTG_pickStage mode=0x201"),
+                              (2, r"STGMCARD_loadSave ok port=0 slot=0 money=\d+ progress=6"
+                                  r"(?s:.*)FIELDSTG_pickStage mode=0x20b")),
+                  forbid_log=((0, r"dw3-autosave"), (1, r"dw3-autosave"), (2, r"dw3-autosave"),
+                              (1, r"dw3-options: autosave="), (2, r"FIELDSTG_pickStage mode=0x201")),
+                  note="P6.31: option off (the default): no auto-save line, the player's own save is the one Continue loads"))
+    # P6.20: an auto-save made after a cheat carries the cheat mark (the cheat
+    # money row is applied at the first idle frame of the loaded field, the area
+    # change then writes the slot and marks it; the next Continue keeps the game
+    # marked). Not in the replay of a build without cheats.
+    _add(Scenario(f"{_v}-autosave-cheat", _v, "full", timeout=600, log_only=True,
+                  phases=(f"{_v}-xr-save", f"{_v}-as-load", f"{_v}-xr-load"),
+                  phase_env=(_AS_SAVE_ENV, _AS_EXIT_ENV + (("DW3_CHEATS_ARM", "money_10k"),), ()),
+                  cfg=(("autosave", "1"), ("cheat_enabled", "1")),
+                  expect_restore=((_field, M), (_mcard, M)),
+                  expect_log=(_XR_WRITE,
+                              (1, r"dw3-cheats: money \+10000"),
+                              (1, r"dw3-autosave: wrote card 0 slot 0 \(area mode 0x201, #1\)"),
+                              (1, r"dw3-cheats: save0\.bin slot 0 marked: written with cheats"),
+                              (2, r"dw3-cheats: loaded save0\.bin slot 0, which was written with cheats")),
+                  forbid_log=_AS_BAD,
+                  note="P6.31 + P6.20: an auto-save after a cheat carries the cheat mark"))
+    _add(Scenario(f"{_v}-autosave-walk", _v, "full", timeout=900, log_only=True,
+                  phases=(f"{_v}-xr-save", f"{_v}-as-walk"),
+                  phase_env=(_SAVE_ENV, ()),
+                  cfg=(("autosave", "1"),),
+                  expect_restore=((_field, M), (_mcard, M)),
+                  expect_log=(_XR_WRITE,
+                              (1, r"dw3-autosave: target is card 0 slot 0 \(loaded\)"),
+                              (1, r"dw3-autosave: mode 0x233: not saved \(first area \(baseline\)\)"),
+                              (1, r"FIGHTSTG_start")),
+                  forbid_log=((1, r"dw3-autosave: (?:area change|wrote)"),
+                              (1, r"dw3-autosave: .*FAILED")),
+                  note="P6.31: loaded, walked into a random battle: nothing is auto-saved (no area change, never in a battle)"))
+
+
 # P6.1 (patches 0100-0104): the card album, the deck editor, the card packs
 # shop, the gym and the Digimon Lab in widescreen. Each screen is forced over
 # the field (DW3_FORCE_MENU=<mode>); the album and the deck editor get a

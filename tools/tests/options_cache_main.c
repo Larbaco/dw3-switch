@@ -99,7 +99,7 @@ int main(void) {
             for (int w = 0; w < 2; ++w)
                 for (int t = 0; t < 4; ++t)
                     for (int r = 0; r < 2; ++r) {
-                        const int target[DW3_TITLE_OPTION_ROWS] = {w, turbo[t], r, 10, 10, 0, 0, 0};
+                        const int target[DW3_TITLE_OPTION_ROWS] = {w, turbo[t], r, 10, 10, 0, 0, 0, 0};
                         for (int row = 0; row < DW3_TITLE_OPTION_ROWS; ++row) {
                             v[row] = target[row];
                             step(lang, c, v, 1, &d);
@@ -119,10 +119,10 @@ int main(void) {
 
         /* Every mode of the mode rows (Encounter rate 0..4, stored values:
          * 1x 0.5x OFF 1.5x 2x; Text speed 0..2; Battle cursor 0..2: OFF
-         * Command Command+Tech), from every cursor row. */
+         * Command Command+Tech; Auto-save 0..1), from every cursor row. */
         for (int c = 0; c < DW3_TITLE_OPTION_ROWS && (lang == DW3_TITLE_LANG_EN || lang == DW3_TITLE_LANG_DE); ++c)
             for (int row = 5; row < DW3_TITLE_OPTION_ROWS; ++row)
-                for (int n = 0; n <= (row == 5 ? 4 : 2); ++n) {
+                for (int n = 0; n <= (row == 5 ? 4 : row == 8 ? 1 : 2); ++n) {
                     v[row] = n;
                     step(lang, c, v, 1, &d);
                     steps++;
@@ -130,7 +130,7 @@ int main(void) {
                 }
 
         /* Cursor-only and value-only costs. */
-        v[0] = 1; v[1] = 3; v[2] = 0; v[3] = 6; v[4] = 10; v[5] = 1; v[6] = 2; v[7] = 1;
+        v[0] = 1; v[1] = 3; v[2] = 0; v[3] = 6; v[4] = 10; v[5] = 1; v[6] = 2; v[7] = 1; v[8] = 1;
         step(lang, 0, v, 1, NULL);
         step(lang, 1, v, 1, &d);
         if (d.bytes > g_max_cursor_bytes) g_max_cursor_bytes = d.bytes;
@@ -153,6 +153,7 @@ int main(void) {
             v[5] = (int)rnd(5);
             v[6] = (int)rnd(3);
             v[7] = (int)rnd(3);
+            v[8] = (int)rnd(2);
             step(lang, c, v, 1, &d);
             steps++;
         }
@@ -179,7 +180,7 @@ int main(void) {
         step(lang, 0, v, 1, &d);
         if (!d.full || !d.rebuilt) fail("hint did not rebuild", lang, 0, v);
         for (int master = 0; master < 2; ++master) {
-            int cv[DW3_TITLE_OPTION_ROWS] = {master, 0, 0, 0, 0, 0, 0, 0};
+            int cv[DW3_TITLE_OPTION_ROWS] = {master, 0, 0, 0, 0, 0, 0, 0, 0};
             dw3_pc_title_overlay_set_options_page(DW3_TITLE_OPTIONS_PAGE_CHEATS, master);
             step(lang, 0, cv, 1, &d);
             if (!d.full || !d.rebuilt) fail("cheats page did not rebuild", lang, 0, cv);

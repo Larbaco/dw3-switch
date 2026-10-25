@@ -333,7 +333,7 @@ def test_volume_keys_are_in_the_written_file_order(persist_bin: Path, tmp_path: 
             if "=" in l and not l.startswith("#")]
     assert keys == ["version", "widescreen", "fast_forward", "restart_hotkey",
                     "music_volume", "sfx_volume", "encounter_rate", "text_speed",
-                    "battle_menu_memory", "end"]
+                    "battle_menu_memory", "autosave", "end"]
 
 
 # --- P6.18 Encounter rate / Text speed rows ---------------------------------
@@ -527,8 +527,8 @@ def test_no_sound_when_nothing_changes(persist_bin: Path, tmp_path: Path):
     assert sounds(err) == ["cursor 10"] * 6          # Text speed is already at Normal
     _, err = session(persist_bin, tmp_path, "open", "row", "7", "left")
     assert sounds(err) == ["cursor 10"] * 7          # Battle cursor is already Off
-    _, err = session(persist_bin, tmp_path, "open", "row", "7", "down")
-    assert sounds(err) == ["cursor 10"] * 7          # the last row
+    _, err = session(persist_bin, tmp_path, "open", "row", "8", "down")
+    assert sounds(err) == ["cursor 10"] * 8          # the last row (Auto-save)
     # The plain open and close calls make no sound; the screen plays Select
     # for the opening from the title menu (decomp patch 0044), not here.
     _, err = session(persist_bin, tmp_path, "open", "close")
@@ -616,9 +616,10 @@ def test_battle_cursor_steps_and_confirm_wrap(persist_bin: Path, tmp_path: Path)
     for n, want in ((1, 1), (2, 2), (3, 0), (4, 1)):
         out, _ = fresh("open", "row", "7", *["press"] * n, "battle")
         assert out[0] == f"battle_menu_memory={want}", n   # Confirm wraps 2 -> 0
-    # The row is the last one: Down from it stays on it.
+    # Auto-save (P6.31) is the last row since: Down from Battle cursor goes to
+    # it, and Confirm there leaves Battle cursor alone.
     out, _ = fresh("open", "row", "7", "down", "press", "battle")
-    assert out[0] == "battle_menu_memory=1"
+    assert out[0] == "battle_menu_memory=0"
 
 
 def test_battle_cursor_is_the_old_file_key(persist_bin: Path, tmp_path: Path):
@@ -669,3 +670,53 @@ def test_battle_cursor_plays_the_choice_sound(persist_bin: Path, tmp_path: Path)
     (tmp_path / CFG).write_text("version=1\nbattle_menu_memory=2\nend=1\n")
     _, err = session(persist_bin, tmp_path, "open", "row", "7", "right")
     assert sounds(err)[-1].startswith("cursor ")      # only the move to the row
+
+
+# --- P6.31 Auto-save row ------------------------------------------------------
+
+def test_autosave_defaults_to_off_and_writes_no_file(persist_bin: Path, tmp_path: Path):
+    out, err = session(persist_bin, tmp_path, "autosave")
+    assert out == ["autosave=0"]
+    assert not (tmp_path / CFG).exists()
+    assert "autosave=" not in err                     # nothing is logged while off
+
+
+def test_autosave_confirm_toggles_and_is_saved(persist_bin: Path, tmp_path: Path):
+    out, err = session(persist_bin, tmp_path, "open", "row", "8", "press", "autosave")
+    assert out == ["autosave=1"]
+    assert "dw3-port-options: auto-save enabled" in err
+    assert "autosave=1\n" in (tmp_path / CFG).read_text()
+    # A new process reads it back, and says so.
+    out, err = session(persist_bin, tmp_path, "autosave")
+    assert out == ["autosave=1"]
+    assert "dw3-options: autosave=1" in err
+    # Confirm again turns it off; Left / Right do nothing on a switch row.
+    out, err = session(persist_bin, tmp_path, "open", "row", "8", "right", "autosave",
+                       "press", "autosave")
+    assert out == ["autosave=1", "autosave=0"]
+    assert "dw3-port-options: auto-save disabled" in err
+    assert "autosave=0\n" in (tmp_path / CFG).read_text()
+
+
+def test_autosave_bad_values_are_off(persist_bin: Path, tmp_path: Path):
+    for bad in ("2", "-1", "on", "", "1.5"):
+        (tmp_path / CFG).write_text(f"version=1\nautosave={bad}\nend=1\n")
+        out, err = session(persist_bin, tmp_path, "autosave")
+        assert out == ["autosave=0"], bad
+        assert "autosave=" in err and "is not valid" in err, bad
+
+
+def test_older_file_without_the_autosave_key_keeps_off(persist_bin: Path, tmp_path: Path):
+    (tmp_path / CFG).write_text("version=1\nwidescreen=0\nbattle_menu_memory=2\nend=1\n")
+    out, err = session(persist_bin, tmp_path, "autosave", "battle")
+    assert out == ["autosave=0", "battle_menu_memory=2"]
+    assert "is not valid" not in err
+    session(persist_bin, tmp_path, "open", "row", "8", "press")
+    text = (tmp_path / CFG).read_text()
+    assert "widescreen=0\n" in text and "battle_menu_memory=2\n" in text
+    assert "autosave=1\n" in text
+
+
+def test_autosave_plays_the_choice_sound(persist_bin: Path, tmp_path: Path):
+    _, err = session(persist_bin, tmp_path, "open", "row", "8", "press")
+    assert sounds(err)[-1].startswith("select ")

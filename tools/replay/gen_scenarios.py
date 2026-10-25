@@ -494,6 +494,47 @@ def xr_load(version):
 
 XR_LOAD_FRAMES = 1400
 
+# P6.31 auto-save: the load half of xr_load, then more frames in the field so a
+# forced exit (DW3_FORCE_EXIT, the manifest's env) and the area change it makes
+# can be waited out. AS_LOAD_FRAMES is measured on the PC build.
+AS_LOAD_FRAMES = {"us": 2600, "eu": 2800}
+AS_WALK = {"us": (1300, 4400), "eu": (1500, 4800)}
+
+
+def as_load(version):
+    """P6.31: Continue slot 1 of the card the first phase saved, then idle in
+    the field. The manifest's env forces an exit to another area a hundred idle
+    frames in (DW3_FORCE_EXIT); the auto-save, if it is on, fires on arrival.
+    No checkpoints; the verdict is the log."""
+    r = Rec(f"{version.upper()}: P6.31 Continue, then an area change in the field (log only)")
+    m = _to_title_menu(r, version)
+    r.press(m + 10, DOWN)
+    r.press(m + 30, DOWN)            # third entry: Load Game / Continue
+    r.press(m + 70, CROSS)
+    r.press(m + 420, CROSS)          # memory card slot 1 (port A)
+    r.press(m + 720, CROSS)          # the cursor is on the saved game: Load
+    r.press(m + 900, CROSS)          # close the "loaded" message; the field follows
+    r.end(m + AS_LOAD_FRAMES[version])
+    return r
+
+
+def as_walk(version):
+    """P6.31: Continue slot 1, then walk Up in a random-battle field until a
+    battle starts and goes on (the encounter walk). The auto-save must not
+    write: the area never changes, and never in a battle."""
+    start, end = AS_WALK[version]
+    r = Rec(f"{version.upper()}: P6.31 Continue, walk into a random battle (log only)")
+    m = _to_title_menu(r, version)
+    r.press(m + 10, DOWN)
+    r.press(m + 30, DOWN)
+    r.press(m + 70, CROSS)
+    r.press(m + 420, CROSS)
+    r.press(m + 720, CROSS)
+    r.press(m + 900, CROSS)
+    _pad(r, m + start, UP)
+    r.end(m + end)
+    return r
+
 
 R1 = 0x0800
 L1 = 0x0400
@@ -1685,6 +1726,8 @@ def main(out):
         (out / f"{v}-save-screen.rec").write_text(save_screen(v).text(True))
         (out / f"{v}-xr-save.rec").write_text(xr_save(v).text(True))
         (out / f"{v}-xr-load.rec").write_text(xr_load(v).text(True))
+        (out / f"{v}-as-load.rec").write_text(as_load(v).text(True))
+        (out / f"{v}-as-walk.rec").write_text(as_walk(v).text(True))
         (out / f"{v}-card-album.rec").write_text(card_album(v).text(True))
         (out / f"{v}-deck-editor.rec").write_text(deck_editor(v).text(True))
         (out / f"{v}-card-shop.rec").write_text(card_shop(v).text(True))

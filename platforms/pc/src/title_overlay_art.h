@@ -67,8 +67,8 @@ int dw3_pc_title_overlay_footer_shown(void);
  * (Widescreen 0/1, Fast-forward 0 or its 2..4 speed, Restart hotkey 0/1, the
  * two volumes 0..10, Encounter rate 0..4 = 1x / 0.5x / OFF / 1.5x / 2x, Text
  * speed 0..2 = Normal / Fast / Instant, Battle cursor 0..2 = OFF / Command /
- * Command+Tech). */
-enum { DW3_TITLE_OPTION_ROWS = 8 };
+ * Command+Tech, Auto-save 0/1 = OFF / On area change). */
+enum { DW3_TITLE_OPTION_ROWS = 9 };
 void dw3_pc_title_overlay_set_options_view(int cursor, const int *values,
                                            int count);
 /* Bumped by setters that change the menu states; hosts re-upload on change. */

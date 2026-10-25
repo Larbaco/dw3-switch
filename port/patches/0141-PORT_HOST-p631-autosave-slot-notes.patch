@@ -1,0 +1,59 @@
+Upstream-bound: no
+Subject: [PORT_HOST] P6.31 auto-save: slot loaded/saved and title notes
+
+P6.31 Auto-save: which slot is the auto-save's. STGMCARD_loadSave (after a
+successful load) and STGMCARD_writeSave (after a successful save) tell the port
+the card port and slot (dw3_autosave_note_loaded / _saved): that slot is where
+the next auto-save goes, so it never touches a slot the player did not use. The
+title menu's task start (new game, load, return to title) clears it. All three
+calls are inside PORT_HOST and do nothing with the option OFF.
+
+--- a/src/menus/memory_card/saves.c
++++ b/src/menus/memory_card/saves.c
+@@ -4,6 +4,7 @@
+ #include "menus/memory_card.h"
+ #if PORT_HOST
+ #include <stdio.h>
++#include "port_autosave.h"
+ char *getenv(const char *name);
+ #ifdef DW3_CHEATS
+ #include "port_cheats.h"
+@@ -475,6 +476,8 @@
+                 dw3_cheats_save_loaded(saves->port, STGMCARD_funcs.slot, STGMCARD_funcs.dataBuf->bytes,
+                                        sizeof(GameSave));
+ #endif
++                /* P6.31: the slot loaded is where an auto-save goes */
++                dw3_autosave_note_loaded(saves->port, STGMCARD_funcs.slot);
+                 if (getenv("DW3_FORCE_MCARD_LOAD") != NULL) {
+                     fprintf(stderr, "dw3: STGMCARD force-load done, leaving\n");
+                     saves->hide(saves);
+@@ -635,6 +638,8 @@
+             dw3_cheats_save_written(saves->port, STGMCARD_funcs.slot, MEMCARD_SYSTEM.card.offset,
+                                     STGMCARD_funcs.dataBuf->bytes, sizeof(GameSave));
+ #endif
++            /* P6.31: the slot saved is where an auto-save goes */
++            dw3_autosave_note_saved(saves->port, STGMCARD_funcs.slot);
+             if (getenv("DW3_FORCE_MCARD_SAVE") != NULL) {
+                 fprintf(stderr, "dw3: STGMCARD force-save done, leaving\n");
+                 saves->hide(saves);
+--- a/src/menus/title/menu.c
++++ b/src/menus/title/menu.c
+@@ -5,6 +5,7 @@
+ #include "port_options.h"
+ #include "port_title_options.h"
+ #include "port_confirm.h"
++#include "port_autosave.h"
+ #ifdef DW3_CHEATS
+ #include "port_cheats.h"
+ #endif
+@@ -285,6 +286,10 @@
+ #ifdef DW3_CHEATS
+         dw3_cheats_title_started();
+ #endif
++#if PORT_HOST
++        /* P6.31: a new game or a load follows; no slot is the auto-save's */
++        dw3_autosave_title_started();
++#endif
+         if (task->skip == 0) {
+             task->nextState(task);
+         } else {

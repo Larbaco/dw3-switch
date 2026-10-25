@@ -73,7 +73,7 @@ listed once, in [Pending OLED checks](#pending-oled-checks).
 | P6.28 | Quit game on the title menu, back to hbmenu | in progress (built, PC US and EU replays; owner OLED check open) | [PORT_OPTIONS](PORT_OPTIONS.md#quit-and-return-to-title-p627-p628), [roadmap](#phase-6-goal-notes) |
 | P6.29 | Save editor: external tool on the owner's own saves, builds on P6.25 (future goal) | future | [roadmap](#phase-6-goal-notes), [CROSS_REGION_SAVES](CROSS_REGION_SAVES.md) |
 | P6.30 | Help, FAQ and tips from the pause menu (future goal) | future | [roadmap](#phase-6-goal-notes) |
-| P6.31 | Auto-save, off by default (future goal) | future | [roadmap](#phase-6-goal-notes), [P5.3](P5.3_FLAT_SAVE.md) |
+| P6.31 | Auto-save, off by default | in progress (built: Options row, area-change write to the slot in use, PC US and EU replays; owner OLED check open) | [P6.31_AUTOSAVE](P6.31_AUTOSAVE.md), [roadmap](#phase-6-goal-notes), [P5.3](P5.3_FLAT_SAVE.md) |
 | P6.32 | Map zoom and full-screen map (future goal) | future (design proposal, no code) | [roadmap](#phase-6-goal-notes), [P6.32](P6.32_MAP_ZOOM.md), [P6.1](P6.1_WIDESCREEN.md) |
 | P6.33 | Items menu usability redesign (future goal) | future (design proposal, no code) | [roadmap](#phase-6-goal-notes), [P6.33](P6.33_ITEMS_MENU.md), [P6.1](P6.1_WIDESCREEN.md) |
 | P7.1 | Inventory and boundaries | done | [COMMUNITY_QOL](COMMUNITY_QOL.md) |
@@ -162,6 +162,12 @@ Tick the item in the table once the owner confirms.
   rows; No, Yes: back at the title, or the language select on EU). US and EU, at
   least two EU languages. Checklist:
   [PORT_OPTIONS.md](PORT_OPTIONS.md#oled-checklist-quit-and-return-to-title-owner).
+- **P6.31:** Auto-save row (the ninth Options row, OFF by default; the rows are a
+  little tighter) on US and EU, at least two EU languages: on, Continue a save,
+  walk through a door, `dw3.log` shows `wrote card ...`, relaunch and Continue
+  lands in the new area; `save0.bin.pre-auto` holds your version; a new game
+  writes nothing until you save once; off leaves no `dw3-autosave` line.
+  Checklist: [P6.31_AUTOSAVE.md](P6.31_AUTOSAVE.md#oled-checklist-owner-us-and-eu-builds-from-this-pr).
 - **Older, still open:** P6.9 (OLED retest of restart after a battle and a save; PC replays pass), P4.3
   (underrun count), P7.7 (Claw steal, HUD Digivolution name), P7.9 (rest of the
   checklist), P10.2 (HOME during a save write).
@@ -1172,8 +1178,10 @@ PS1 game, with vanilla-safe defaults and persistence on owner storage.
   menu). Goal note only, nothing started. **What exists (cited):** the Options
   window is drawn in the game's window style by `port/options/port_options.c`
   and the PC overlay ([PORT_OPTIONS.md](PORT_OPTIONS.md), "Eight rows", where
-  the window is already full at eight rows); the P6.20 Cheats row needs a ninth
-  row, and P6.31 (auto-save) and P6.12 (button mapping) want rows too. The
+  the window was full at eight rows); the P6.20 Cheats row needed a ninth
+  row (it became a sub-screen), P6.31 (auto-save) took the ninth row by
+  tightening the pitch to 34 px on 38, and P6.12 (button mapping) wants one too:
+  the window is full again at nine. The
   title menu's look is set in [TITLE_MENU_DESIGN.md](TITLE_MENU_DESIGN.md), the
   P6.1 16:9 title layout (patches 0085-0087) and `platforms/pc/src/title_menu_overlay.c`.
   **Scope:** the Options screen gets the title menu's identity (its backdrop,
@@ -1884,39 +1892,40 @@ Statuses are in the [table](#status-at-a-glance).
   reads the controls page, and finds the answers for install and crash reports
   without leaving the console.
   Related: P6.23, P6.27, P6.7, P9.2.
-- [ ] **P6.31 Auto-save (future goal, off by default).** Dated 2026-10-24,
-  owner request (Portuguese, "salvamento automático"). Goal note only, nothing
-  started. **What exists (cited):** the game saves only when the player saves
-  at a save point; the port holds the card in RAM and flushes dirty slots
-  ([P5.3_FLAT_SAVE.md](P5.3_FLAT_SAVE.md), `port/memcard/memcard_host.c`), and the
-  restart and HOME paths already flush. **Open design questions (owner):**
-  1. **Which slot.** A dedicated auto slot that the game's own load screen does
-     not show, or the slot the player saved to last (overwrites the player's
-     save). The auto slot needs a place in the card files and a rule for the
-     cross-region container of P6.25.
-  2. **When it triggers.** On an area change (a field map transition), after a
-     battle, or both. Not in the middle of a script or a battle.
-  3. **P6.20 cheat marks.** A save made after a cheat (P6.20, test menu) must not
-     look like a normal save; decide whether an auto-save is refused, or flagged
-     as cheated, while cheats are on.
-  4. **P6.26 per-user saves.** The auto slot is per user
-     (`sdmc:/switch/dw3/saves/<uid>/`, [PER_USER_SAVES.md](PER_USER_SAVES.md)),
-     never shared between profiles.
-  5. **Off by default, or behind an option.** Default OFF; the switch is a
-     `port_options.cfg` key (add one key per row; persistence is P9.4) with a
-     row in the Options screen (see P9.9 for the room the screen needs).
-  **Scope:** the trigger and the slot choice above, a flush that never blocks a
-  frame for long, and a failure notice that does not stop the game.
-  **First slice:** a design note in `docs/` that settles the slot and trigger
-  questions, then a log-only build that counts the triggers on the OLED without
-  writing.
-  **Constraints:** saves keep the P5.3 rules; a failed write never overwrites the
-  last good save; replays unchanged; US and EU tested; any new text in the five
-  EU languages.
-  Done when (proposed): with the option on, an area change and a battle each
-  leave one recoverable save, the old save survives a forced write failure, and
-  with the option off nothing changes.
-  Related: P6.14, P6.16, P6.20, P6.25, P6.26, P9.4, P5.3.
+- [ ] **P6.31 Auto-save (off by default).** Dated 2026-10-24, owner request
+  (Portuguese, "salvamento automático"). **Built 2026-10-25 (branch
+  `feat/p6.31-autosave`, patches `0140`, `0141`), PC US and EU replays pass;
+  owner OLED check open.** Design, defaults and checklist:
+  [P6.31_AUTOSAVE.md](P6.31_AUTOSAVE.md). The Options screen has a ninth row,
+  **Auto-save** (OFF / Each area, key `autosave`, default OFF). With it on, the
+  first idle frame of a new field area writes the game to the slot the player last
+  saved to or loaded from. The owner was away; the open questions were settled
+  with the conservative option (**default chosen, owner can change**):
+  1. **Which slot:** the card file has room for exactly three saves (`0x500`
+     bytes free of `0x8000`), so there is no auto slot the load screen could show.
+     Default: the slot last used; the player's version of the card is first kept in
+     `save<N>.bin.pre-auto` (once, until the player saves or loads again). No slot
+     used yet (a new game): no auto-save.
+  2. **When:** area change only (not after a battle, not on a timer); only where
+     the game's field menu would open (`progress >= 4`, no event, menu, banner,
+     fade or battle).
+  3. **P6.20 cheat marks:** the auto-save is made and carries the cheat mark
+     (`save<N>.cheats`); the next Continue keeps the game marked.
+  4. **P6.26:** the files sit in the card folder, so they follow the user folder.
+  5. **Option:** row 9 and key `autosave`, default OFF. The rows are 34 px on a 38
+     px pitch to fit nine ([PORT_OPTIONS.md](PORT_OPTIONS.md)); the P9.9 redesign
+     still owns the room for more rows.
+  A failed write never touches the old save (rename-atomic file, RAM rolled back,
+  logged). Replays: `us/eu-autosave-area`, `-off`, `-walk`, `-cheat`
+  ([P6.15](P6.15_REPLAY_TESTS.md)); unit tests `tools/tests/test_autosave.py`.
+  **Still open:** a separate auto slot with its own Continue entry; an on-screen
+  notice (success or failure); an after-battle trigger and a minimum interval;
+  the cost of the SD write per area change on hardware.
+  Done when: with the option on, an area change leaves one recoverable save and
+  the old save survives a forced write failure (both proven on the PC), and with
+  the option off nothing changes (proven: the replay suite). The OLED check is in
+  [Pending OLED checks](#pending-oled-checks).
+  Related: P6.14, P6.16, P6.20, P6.25, P6.26, P9.4, P9.9, P5.3.
 
 - [ ] **P6.32 Map zoom and full-screen map (future goal).** Dated 2026-10-24,
   owner request. Goal note only, nothing started, no code. Zoom in and out on

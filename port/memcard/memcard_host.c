@@ -865,6 +865,29 @@ int memcard_host_file_write(int slot, uint32_t offset, const void *buf,
     return (int)len;
 }
 
+static int g_test_fail_flush;
+
+void memcard_host_test_fail_flush(int count) {
+    g_test_fail_flush = count;
+}
+
+int memcard_host_snapshot(int slot, const char *suffix) {
+    char path[MEMCARD_PATH_MAX];
+    char dest[MEMCARD_PATH_MAX + 16];
+    int n;
+
+    if (!slot_ok(slot) || suffix == NULL || suffix[0] == '\0' ||
+        !memcard_host_has_file(slot) ||
+        flat_path(slot, path, sizeof(path)) != 0) {
+        return -1;
+    }
+    n = snprintf(dest, sizeof(dest), "%s%s", path, suffix);
+    if (n < 0 || (size_t)n >= sizeof(dest)) {
+        return -1;
+    }
+    return atomic_write_file(dest, g_slots[slot].data, MEMCARD_FLAT_SIZE);
+}
+
 int memcard_host_flush(int slot) {
     char path[MEMCARD_PATH_MAX];
 
@@ -873,6 +896,12 @@ int memcard_host_flush(int slot) {
     }
     if (!g_slots[slot].dirty || !memcard_host_has_file(slot)) {
         return 0;
+    }
+    if (g_test_fail_flush > 0) {
+        g_test_fail_flush--;
+        g_slots[slot].flush_failed = 1;
+        fprintf(stderr, "dw3: memcard flush FAILED slot=%d (test)\n", slot);
+        return -1;
     }
     if (flat_path(slot, path, sizeof(path)) != 0) {
         g_slots[slot].flush_failed = 1;
