@@ -111,6 +111,7 @@ listed once, in [Pending OLED checks](#pending-oled-checks).
 Test on **v0.6.5-preview.31** (US and EU builds attached; tag published
 2026-10-24). One line per item; the entry holds the steps and the history.
 Tick the item in the table once the owner confirms.
+The ordered session plan for preview.35 is [OLED_TEST_PLAN](OLED_TEST_PLAN.md).
 
 - **P5 gate:** start → first boss on hardware, US and EU. The Phase 5 gate is
   not met yet (owner, 2026-10-24); see [Phase 5](#phase-5--playable-on-switch).
