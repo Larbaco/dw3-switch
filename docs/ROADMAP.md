@@ -818,8 +818,9 @@ gate, which stays open.
   after a restart reproduces the first byte for byte. No bug found; the
   restart does not reseed the RNG (documented, not a leak). New test hook:
   patch `0127` (`DW3_START_MODE_ONCE`). Still open: the OLED retest (chord,
-  battle, save, Continue on hardware, US and EU) and Ryubing for the battle
-  and save cases (they need a baked-env replay NRO). Dated history:
+  battle, save, Continue on hardware, US and EU) Ryubing passed for the
+  New Game restart (US and EU); its battle and save cases need a baked-env
+  replay NRO. Dated history:
   [P6.9_RESTART.md](P6.9_RESTART.md#history-moved-from-roadmapmd-2026-10-24).
 - [ ] **P6.10 Hardware render outside battle (goal).** Move the field
   (`FIELDSTG` map tiles, actors) and the menus (field menu, Status, shops,
