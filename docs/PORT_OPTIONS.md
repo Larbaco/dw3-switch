@@ -664,8 +664,9 @@ do nothing), the choice sound plays, the file is written at once, and
 list: a row is **34 px high on a 38 px pitch** (it was 38 on 42), the first row at
 y 150 as before and the last ending at y 488, 20 px above the message rule at y 508;
 the 26 px lettering, the pointer and the focus box keep their size (the focus box
-interior is 28 px). The Cheats pages and the Yes / No window keep their own 38 px
-rows. The cache sends one 696x34 rect per row on a cursor move and a 268x34 cell
+interior is 28 px). The Cheats pages share the new row geometry (they are
+log-only in the replays, so no reference changed); the Yes / No window keeps its own 38 px
+row. The cache sends one 696x34 rect per row on a cursor move and a 268x34 cell
 for a value change; at most 3 + 6 rects per update, so `DW3_OPTIONS_MAX_DIRTY` stays
 10, and `tools/tests/test_options_cache.py` renders every state of the nine rows
 against the full reference render. The window is full again: a tenth row needs the

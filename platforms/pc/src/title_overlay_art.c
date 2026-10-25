@@ -201,8 +201,8 @@ static void button(int cx,int cy,int back) {
  * test proves they agree. Nine rows share the window (P6.31 added Auto-save),
  * so a row is 34 px high on a 38 px pitch (it was 38 on 42 with eight rows, 42 on
  * 48 with seven, 52 on 60 with five, P6.17): the first row starts at y 150 and
- * the last ends at y 488, 20 px above the message rule. The Cheats pages and the
- * Yes / No window keep the old 38 px row on a 42 px pitch (CHT_ROW_*). */
+ * the last ends at y 488, 20 px above the message rule. The Cheats pages share it; the
+ * Yes / No window keeps the old 38 px row on a 42 px pitch (CHT_ROW_*). */
 enum { OPT_X0 = 84, OPT_Y0 = 60, OPT_W = 792, OPT_H = 600,
        OPT_ROW_Y = OPT_Y0 + 96, OPT_ROW_STEP = 38, OPT_ROW_H = 34,
        CHT_ROW_STEP = 42, CHT_ROW_H = 38 };
@@ -303,18 +303,18 @@ static void cheats_screen(void) {
     }
     for(int i=0;i<DW3_TITLE_CHEAT_ROWS;i++) {
         const int row=page2*DW3_TITLE_CHEAT_ROWS+i;
-        const int ry=OPT_ROW_Y+i*CHT_ROW_STEP,focus=i==option_cursor;
+        const int ry=OPT_ROW_Y+i*OPT_ROW_STEP,focus=i==option_cursor;
         const int grey=row>0&&!options_cheats_on;
         int v=option_values[i];
         const Word *value;
         int dim;
         if(focus&&(full||options_layer==OPTIONS_LAYER_FOCUS)){
-            box(x0+48,ry-6,w-96,CHT_ROW_H,16,74,156,255);
-            box(x0+51,ry-3,w-102,CHT_ROW_H-6,0,8,74,255);
-            pointer(x0+66,ry+3);
+            box(x0+48,ry-6,w-96,OPT_ROW_H,16,74,156,255);
+            box(x0+51,ry-3,w-102,OPT_ROW_H-6,0,8,74,255);
+            pointer(x0+66,ry+1);
         }
         if(draw_static||(options_layer==OPTIONS_LAYER_FOCUS&&i==options_layer_row))
-            word(&t->rows[row],x0+106,ry,0,grey?150:255,grey?158:255,grey?196:255);
+            word(&t->rows[row],x0+106,ry-2,0,grey?150:255,grey?158:255,grey?196:255);
         if(v<0)v=0;
         if(row==4){
             if(v>10)v=10;
@@ -334,8 +334,8 @@ static void cheats_screen(void) {
         }
         if(grey)dim=1;
         if(full||(options_layer==OPTIONS_LAYER_VALUE&&i==options_layer_row)){
-            if(value)word(value,x1-96,ry,1,dim?150:255,dim?158:255,dim?196:255);
-            else number(v,x1-96,ry,grey?150:255,grey?158:255,grey?196:255);
+            if(value)word(value,x1-96,ry-2,1,dim?150:255,dim?158:255,dim?196:255);
+            else number(v,x1-96,ry-2,grey?150:255,grey?158:255,grey?196:255);
         }
     }
     if(draw_static)box(x0+30,y1-152,w-60,3,16,156,247,255);
