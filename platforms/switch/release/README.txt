@@ -1,6 +1,6 @@
 Digimon World 3 / 2003, Switch homebrew preview
 
-Release notes for v0.6.5-preview.33. The release tag and boot version
+Release notes for v0.6.5-preview.34. The release tag and boot version
 identify the actual source revision.
 
 Player guide (setup, controls, Options, saves, crash reports):
@@ -11,39 +11,25 @@ New in this preview
   No item below has been checked on a Switch OLED yet. Each is checked on
   PC and in the Ryubing emulator only, and is marked unverified.
 
-  Quit game on the title menu (P6.28). The title has a fourth plaque, Quit
-  game, below Load Game. It asks Yes or No (the cursor starts on No). Yes
-  flushes the dirty save slots and returns to hbmenu, as the HOME exit
-  does. A failed flush cancels the quit. On a PC build it closes the
-  window. The title plaques are now 48 px tall instead of 54, so four fit.
-  Unverified on hardware.
+  Auto-save, off by default (P6.31, #260). A ninth Options row, Auto-save,
+  with the values OFF and Each area. OFF is the default. With it on, the
+  first idle field frame of each new area saves the game to the slot you
+  last saved to or loaded from. That overwrites that slot. The first time,
+  the build keeps a copy of your version as save<N>.bin.pre-auto. It never
+  runs before the first manual save or load of a session, and never during
+  battles, events, menus or fades. Cheat saves carry the cheat mark. The
+  Options rows are a little shorter to fit nine. Unverified on hardware.
 
-  Return to title in the field menu (P6.27). The field menu (Plus) has a
-  last row, TITLE SCREEN (RETOUR TITRE, TORNA AL TITOLO, TITELBILD, VOLVER
-  AL INICIO). It asks Yes or No, then runs the same reset as the restart
-  hotkey: dirty saves are flushed, a failed flush cancels it, and unsaved
-  progress is lost. On the EU disc the game lands on the language select,
-  as the hotkey does. Unverified on hardware.
+  Both the slot choice and the timing are defaults chosen while the owner
+  was away. The owner can change them.
 
-  Both confirmations are defaults chosen while the owner was away. The
-  owner can change them.
+  Region launcher, coming (P6.24, #258, #259). One launcher picks the US or
+  EU build. It is not in this release: the Switch launcher dw3.nro is a CI
+  artifact only, and no launcher is attached here.
 
-  Cross-region saves, slice 1 (P6.25, #252). When a region has no save of
-  its own, the build imports the other region's save once. It converts the
-  save in memory and writes a new native saveN.bin plus a saveN.import
-  marker. The original save is never modified. New saves stay native to
-  the region and do not flow back to the other one. Bad or corrupt sources
-  are refused, with no crash. EU extra-chapter saves are not imported into
-  US. The details and the OLED checklist are in
-  docs/CROSS_REGION_SAVES.md#as-built-slice-1. Unverified on hardware.
-
-  Restart hotkey validated on PC, US and EU (P6.9, #251). Checked before,
-  inside and after a battle, after an in-game save then Load Game, and
-  after New Game. No bugs found. Test only; no game change.
-
-  PC only: the map no longer reappears over the grid cover after a door
-  iris closes (#253). This showed on the PC sdl3_gpu renderer, in 4:3 too.
-  It is fixed in PSY-Z (pin e3a7e83). The Switch is unaffected.
+  Docs (#255, #256, #257): the player guide (linked above), CONTRIBUTING.md,
+  a test that checks every doc link, and the P6.32 map zoom design proposal
+  (docs/P6.32_MAP_ZOOM.md). Nothing in the game changed.
 
 Known issues
 
@@ -86,7 +72,20 @@ Carried forward
   This chord can also toggle the nxlink debug HUD, whose own chord is
   Minus + L + R. See docs/HOTKEYS.md for all mapped controls.
 
-  From preview.32: canal water in the Cargo Tower streets after the
+  From preview.33: Quit game on the title menu (P6.28, #250): a fourth
+  plaque, Yes or No with the cursor on No; Yes flushes the dirty saves and
+  returns to hbmenu, a failed flush cancels, and on PC it closes the window.
+  Return to title in the field menu (P6.27, #250): same reset as the restart
+  hotkey, Yes or No; EU lands on the language select. Cross-region saves,
+  slice 1 (P6.25, #252): a region with no save of its own imports the other
+  region's save once, one way, into a new native saveN.bin plus a
+  saveN.import marker; the original is never modified, corrupt sources are
+  refused, and EU extra-chapter saves are not imported into US (details in
+  docs/CROSS_REGION_SAVES.md#as-built-slice-1). Restart hotkey validated on
+  PC, US and EU (P6.9, #251), test only. PC only: the map no longer shows
+  over the grid cover after a door iris closes (#253, PSY-Z pin e3a7e83);
+  the Switch was unaffected. Both confirmations are defaults the owner can
+  change. From preview.32: canal water in the Cargo Tower streets after the
   Underground Path, fixed (#242, patch 0111); 16:9 for the card album, deck
   editor, card shop, gym and Digimon Lab (#245; the Lab's chart, entry and
   skill screens are still 4:3 at the edges); 16:9 door iris and blue grid
@@ -145,9 +144,10 @@ Own-disc setup and extraction
   NRO's own extraction path.
 
   Preserve us/, eu/ and their memcard directories. Never delete or
-  move save0.bin, save1.bin or .mcr.bak to force extraction. Saves are
-  not shared between US and EU, except the one-time import of a region
-  that has no save of its own (see Cross-region saves above).
+  move save0.bin, save1.bin, any save<N>.bin.pre-auto or .mcr.bak to force
+  extraction. Saves are not shared between US and EU, except the one-time
+  import of a region that has no save of its own (see Cross-region saves
+  above).
 
 Install / nxlink
 
@@ -171,26 +171,22 @@ Install / nxlink
 OLED checklist
 
   New in this preview:
+  - Auto-save: in Options, set Auto-save to Each area (it starts OFF).
+    Back up us/ or eu/ first; the slot it writes is overwritten. Save or
+    load a slot, walk into a new area and wait. That slot should update,
+    and save<N>.bin.pre-auto should appear the first time. Nothing should
+    be written before that first save or load, or during battles, events,
+    menus or fades. The Options rows should fit nine in every language.
+
+  Still pending from preview.33:
   - Title: Down to Quit game (the last entry), Cross: the window opens on
-    No. No closes it. Yes returns to hbmenu; dw3.log ends with "dw3-port-quit:
-    saves flushed". Saves are still there on the next launch. HOME and
-    "close the software" must still exit as before. Check US and EU.
-  - Return to title: open the field menu with Plus: the last row asks Yes or
-    No; Yes returns to the title (the language select on EU). The text should
-    fit in every language; with the card folders row the panel has seven rows.
+    No. Yes returns to hbmenu; dw3.log ends with "dw3-port-quit: saves
+    flushed". Check US and EU.
+  - Return to title: Plus, then the last row. Yes returns to the title (the
+    language select on EU). The text should fit in every language.
   - Cross-region import: start EU with only a US save present (in us/),
     then the reverse. The imported save should Continue with that progress,
     and the import should happen once.
-
-  Still pending from preview.32:
-  - Door transitions: the iris and the grid cover should fill the full 16:9
-    width. The encounter spiral keeps black bars; that is known.
-  - Card screens: the card album, deck editor, card shop, gym and Digimon
-    Lab panels should reach the edges of the 16:9 picture.
-  - Underground Path: the canal water in the Cargo Tower streets should be
-    right at once, without scrolling.
-  - Cheats page 2: with the master switch on, try Money, Warp and Give item.
-    A save after use gets the save<N>.cheats marker.
 
   After any crash, keep crash_report.txt and dw3.log before relaunching;
   the next boot keeps one previous report. Symbolize it with the matching
