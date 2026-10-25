@@ -44,7 +44,10 @@ port options:
   screen (P6.20) and Triangle returns to Options. The hint "Square/Y Cheats" is
   drawn only once the Cheats master switch is on, so the key is not discoverable
   from the screen; builds made with `--no-cheats` have no such screen. Inside
-  it Up/Down selects a row, Cross / Circle change it. See
+  it Up/Down selects a row (Down from the last row of page 1, "Cheat saves",
+  goes on to page 2), Cross / Circle change it. On page 2 (Money, Warp, Item
+  id, Item count, Give item) Left / Right step the row's value, and L1 / R1
+  (Switch L / R) step the item id and the count by ten. See
   [PORT_OPTIONS.md](PORT_OPTIONS.md#cheats-p620).
 - During an opening movie, press or hold Start (Enter / Plus) to skip it.
   A held button is accepted after decoding a frame; this is not a fast-forward

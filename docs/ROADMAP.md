@@ -63,7 +63,7 @@ listed once, in [Pending OLED checks](#pending-oled-checks).
 | P6.15 | Regression replay tests | in progress | [P6.15](P6.15_REPLAY_TESTS.md) |
 | P6.17 | Music / SFX volume | done (owner confirmed on the OLED, 2026-10-24) | [P6.17](P6.17_VOLUME.md) |
 | P6.18 | Pacing options | in progress (Instant text works; Instant banner and report speed #223; rest of the check open) | [P6.18](P6.18_PACING.md) |
-| P6.20 | Port debug / cheat menu in the Options screen | in progress (PR 1 merged, #236: Cheats screen; OLED check open) | [roadmap](#phase-6-goal-notes), [PORT_OPTIONS](PORT_OPTIONS.md) |
+| P6.20 | Port debug / cheat menu in the Options screen | in progress (PR 1 merged, #236: Cheats screen; PR 2: money, give item and warp on page 2, in review; OLED checks open) | [roadmap](#phase-6-goal-notes), [PORT_OPTIONS](PORT_OPTIONS.md) |
 | P6.22 | Turbo speed in scripted scenes | in progress (CPU rasterizer is ~97 % of a field frame; pixel-identical rasterizer 4-5x faster, #220) | [P6.22](P6.22_FIELD_CPU.md), [roadmap](#phase-6-goal-notes), [P6.4](P6.4_FAST_FORWARD.md) |
 | P6.23 | Documentation: player guide, docs index, contributor and modder docs (future goal) | future | [roadmap](#phase-6-goal-notes) |
 | P6.24 | One build for US and EU: one `.nro` and one PC binary, region found at boot, a boot picker with both discs (future goal; depends on P6.25 and P6.26) | future | [SINGLE_BUILD](SINGLE_BUILD.md), [roadmap](#phase-6-goal-notes) |
@@ -127,7 +127,9 @@ Tick the item in the table once the owner confirms.
   battle's speed (#223); Instant text, the area banner's names whole, after a
   battle and at a door.
 - **P6.20:** the Cheats screen checklist in
-  [PORT_OPTIONS.md](PORT_OPTIONS.md#cheats-p620) (#236).
+  [PORT_OPTIONS.md](PORT_OPTIONS.md#cheats-p620) (#236), and the page 2
+  checklist (Money, Warp, Give item) in
+  [PORT_OPTIONS.md](PORT_OPTIONS.md#oled-checklist-page-2-owner) (PR 2).
 - **P5.1:** a long session that fills the file cache; look for the
   `dw3-file-cache: ... evicted` lines in `dw3.log` (#235).
 - **P5.4:** the notice stays up to 60 s and A dismisses it (#231); the PR 2
@@ -1449,13 +1451,40 @@ Statuses are in the [table](#status-at-a-glance).
   (one-shot) and Cheat saves (read-only count of saves flagged by the sidecar
   `save<N>.cheats`). Details, code list and tests:
   [PORT_OPTIONS.md](PORT_OPTIONS.md#p620-history).
-  **Follow-ups (out of PR 1):** money / bits, infinite HP / MP, max stats,
-  digivolution unlocks, map warp, walk speed (all need the decomp fields to be
-  located first); a chosen encounter id (`DW3_FORCE_ENCOUNTER`) instead of the
-  random one; the "cheat used" mark on the in-game memory card screen
-  (STGMCARD); P9.7 (Options reachable in game).
-  **Still open (hardware):** the OLED checklist in
-  [PORT_OPTIONS.md](PORT_OPTIONS.md#cheats-p620), so the item stays unticked.
+  **PR 2 as built (2026-10-25, patches `0118` to `0120`, branch
+  `feat/p6.20-cheats-2`):** page 2 of the Cheats screen (Down from "Cheat
+  saves" goes on to it; the title reads "CHEATS 1/2" and "CHEATS 2/2"):
+  **Money** (OFF, +10,000, +100,000, MAX = 9,999,999, `0118`), **Warp** (OFF or
+  one of 13 areas of the debug stage select, `0120`), **Item id** (43..359),
+  **Item count** (1..99) and **Give item** (OFF / Ready, `0119`). All are
+  one-shots armed at the title and applied by the field at its first idle
+  frame (the moment the field menu may open: no event, menu or fade), used up,
+  logged, and they set the save cheat marker; with the master switch off they
+  do nothing, and turning it off disarms them. Warp leaves the field the way an
+  exit slot does, for the area's first start point (what the stage select's
+  `requestMode(mode, 0)` gives), so the game keeps its normal state: the field
+  menu opens there and a save made there is a normal save (with the cheat
+  mark). Labels are in the five EU languages and English. **Defaults chosen,
+  owner can change:** the area list (Asuka City, Digimon Lab, Digimon Arena,
+  Central Park, Wire Forest, Tyranno Valley, Chinlong City, Bulk Swamp, Suzaku
+  City, Noise Desert, Byakko City, Snow Mountain, Genbu City: the cities, the
+  Lab and Arena, and one random-battle area per region); the money amounts; the
+  item picker offers only ids 43..359 like Fill bag (no key item, no card
+  pack), shown as numbers because item names are game text the port does not
+  draw (ids are in [PORT_OPTIONS.md](PORT_OPTIONS.md#cheats-p620)); Give item
+  adds (at most 99) where Fill bag sets; the picks are not kept between runs;
+  the area names are plain labels, not the game's own text. Details, tests and
+  the OLED checklist: [PORT_OPTIONS.md](PORT_OPTIONS.md#cheats-p620).
+  **Follow-ups (out of PR 1 and 2):** infinite HP / MP, max stats,
+  digivolution unlocks, walk speed (all need the decomp fields to be located
+  first); a chosen encounter id (`DW3_FORCE_ENCOUNTER`) instead of the random
+  one; the "cheat used" mark on the in-game memory card screen (STGMCARD); item
+  names on the picker; P9.7 (Options reachable in game: warp and money could
+  then apply at once); the warp could also offer a chosen start point.
+  **Still open (hardware):** the OLED checklists in
+  [PORT_OPTIONS.md](PORT_OPTIONS.md#cheats-p620) (PR 1) and
+  [page 2](PORT_OPTIONS.md#oled-checklist-page-2-owner) (PR 2), so the item
+  stays unticked.
   Done when: the sub-screen works on the PC and the Switch build with US and
   EU (PC done, Switch compiles; OLED open), every cheat in the slice works and
   is logged (done, replays), the default is bit-identical to a build without it
