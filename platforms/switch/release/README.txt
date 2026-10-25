@@ -1,6 +1,6 @@
 Digimon World 3 / 2003, Switch homebrew preview
 
-Release notes for v0.6.5-preview.35. The release tag and boot version
+Release notes for v0.6.5-preview.36. The release tag and boot version
 identify the actual source revision.
 
 Player guide (setup, controls, Options, saves, crash reports):
@@ -11,18 +11,25 @@ New in this preview
   No item below has been checked on a Switch OLED yet. Each is checked on
   PC and in the Ryubing emulator only, and is marked unverified.
 
-  Faster turbo outside battle (P6.22 pass 2, #263). With turbo above 1x,
-  the Switch no longer draws the frames it will not show. Drawing is
-  deferred and dropped unless something reads the pixels, such as the
-  present or a screen copy. The picture is identical: every presented frame
-  matched in tests on PC and in the Ryubing emulator. The colour conversion
-  at present is faster too. Expected effect: field and opening scenes at 4x
-  should run much closer to the cap. On PC the rasterizer is 3.5 to 4 times
-  faster per frame; the gain on the Switch is not measured yet. Battle is
-  unchanged. Unverified on hardware.
+  Options in the field menu (P9.7 slice 1, #270). The Start menu has an
+  OPTIONS row above TITLE SCREEN, which opens the Options screen over the
+  field. Fast-forward, Restart hotkey, both volumes, Encounter rate, Text
+  speed, Battle cursor and Auto-save take effect at once and are saved.
+  Widescreen is greyed in game ("change it at the title screen"), and the
+  Cheats screen stays title-only. The field menu is one row taller. Battle
+  is not covered yet. These defaults were chosen while the owner was away;
+  the owner can change them. Unverified on hardware.
 
-  Player guide (#262): now covers Auto-save and the region launcher. Docs
-  only; the region launcher is still not in this release.
+  Title screen textures freed outside the title (#268). On Switch, the
+  title screen textures (about 17 MB) are released after leaving the title
+  and rebuilt when it returns. The first title frame after a return may
+  take a moment longer. No blank or garbage frame in Ryubing. Unverified on
+  hardware.
+
+  Memory work, test side (#267, #266). A PC soak of 2 h US and 1 h EU at 1x
+  ran with no crash and no leak. The Ryubing memory check no longer flags
+  the one-time title texture allocation. Nothing here changes how the game
+  plays on Switch.
 
 Known issues
 
@@ -64,6 +71,15 @@ Carried forward
   cancels restart. Unsaved progress is lost. Release before repeating.
   This chord can also toggle the nxlink debug HUD, whose own chord is
   Minus + L + R. See docs/HOTKEYS.md for all mapped controls.
+
+  From preview.35: Faster turbo outside battle (P6.22 pass 2, #263): with
+  turbo above 1x, the Switch no longer draws the frames it will not show.
+  Drawing is deferred and dropped unless something reads the pixels, such as
+  the present or a screen copy. The picture is identical, and the colour
+  conversion at present is faster. Expected gain in the field and opening at
+  4x, not measured on Switch yet; battle is unchanged. Player guide covers
+  Auto-save and the region launcher (#262); the region launcher is still not
+  in a release. Unverified on hardware.
 
   From preview.34: Auto-save, off by default (P6.31, #260): a ninth Options
   row, OFF (default) or Each area. With it on, the first idle field frame of
@@ -175,28 +191,17 @@ Install / nxlink
 OLED checklist
 
   New in this preview:
-  - Turbo: set turbo to 4x. In the opening and in a town (Forest Inn, top
-    and bottom), report the FPS next to preview.34 at 4x, and send dw3.log
-    (it has frame dt and defer dbg: lines). Also check the field-to-battle
-    transition at 2x, 3x and 4x: no hang, no crash, picture intact. Battle
-    itself is unchanged.
+  - Options in the field: in a town, open the Start menu and choose
+    OPTIONS. Change a volume, close, and keep playing; the change should
+    hold. Widescreen should be greyed with "change it at the title screen".
+    The field menu should fit its extra row in every language.
+  - Return to title: from the field menu, Yes. Back at the title, the
+    textures should be rebuilt with no glitch, and the first title frame may
+    be a little slower. Check the Yes / No window again too.
 
-  Still pending from preview.34:
-  - Auto-save: in Options, set Auto-save to Each area (it starts OFF).
-    Back up us/ or eu/ first; the slot it writes is overwritten. Save or
-    load a slot, walk into a new area and wait. That slot should update,
-    and save<N>.bin.pre-auto should appear the first time. Nothing should
-    be written before that first save or load, or during battles, events,
-    menus or fades. The Options rows should fit nine in every language.
-
-  Still pending from preview.33:
-  - Quit game: Down to the last entry, Cross opens on No. Yes returns to
-    hbmenu; dw3.log ends with "dw3-port-quit: saves flushed". US and EU.
-  - Return to title: Plus, then the last row. Yes returns to the title (the
-    language select on EU). The text should fit in every language.
-  - Cross-region import: start EU with only a US save present (in us/),
-    then the reverse. The imported save should Continue with that progress,
-    and the import should happen once.
+  Everything else in this preview, and the items still open from earlier
+  previews, is in the ordered OLED test plan. Follow it:
+  https://github.com/Larbaco/dw3-switch/blob/main/docs/OLED_TEST_PLAN.md
 
   After any crash, keep crash_report.txt and dw3.log before relaunching;
   the next boot keeps one previous report. Symbolize it with the matching
