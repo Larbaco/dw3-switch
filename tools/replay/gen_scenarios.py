@@ -1796,6 +1796,81 @@ def field_options_release(version):
     return r
 
 
+SELECT = 0x0001
+
+# P9.7 slice 2: the battle excursion. The forced battle of p77_battle (Tech
+# once, Cross to the report and the field). BO_SELECT is the frame Select is
+# pressed at (the command menu is up: the battle is idle there), BO_CLOSE the
+# frame Triangle closes the screen; the battle is held from the frame after
+# Select to the one Triangle is seen, so every later game frame happens
+# BO_HELD = BO_CLOSE - BO_SELECT replay frames later than in the plain battle.
+BO_SELECT = 330
+BO_CLOSE = 630
+BO_HELD = BO_CLOSE - BO_SELECT
+# Plain battle: checkpoints (name, frame). The excursion run takes the same
+# pictures BO_HELD frames later and must match them pixel for pixel.
+BO_SHOTS = ((310, "battle-before"), (345, "battle-after"), (400, "battle-tech"),
+            (520, "battle-turn"), (700, "battle-mid"))
+BO_END = 1500
+
+
+def battle_options_ref(version):
+    """P9.7 slice 2, the control run: the forced battle without the Options
+    screen, with the checkpoints the excursion run must reproduce."""
+    r = Rec(f"{version.upper()}: P9.7 battle control run, no Options (env in manifest)")
+    _restart_battle_inputs(r)
+    for frame, name in BO_SHOTS:
+        r.shot(frame, name)
+    r.end(BO_END)
+    return r
+
+
+def battle_options(version):
+    """P9.7 slice 2: Select at the battle's command menu opens the port Options
+    screen over the held battle (`options-open`); Widescreen refuses a change,
+    Down x3 to Music volume, Left x3 (10 -> 7, `music-changed`); the screen
+    stays open for BO_HELD frames (`options-held`: the battle behind it has not
+    moved), Triangle closes it. The battle then goes on from the same frame: the
+    plain battle's checkpoints, BO_HELD frames later, are pixel-identical
+    (manifest ref_map), the Tech is used and the battle ends in the report and
+    the field as the plain one."""
+    r = Rec(f"{version.upper()}: P9.7 Options at the battle command menu, "
+            f"{BO_HELD} frames held (env in manifest)")
+    h = BO_HELD
+    # The plain battle's inputs: before the excursion as they are, after it shifted.
+    def after(f):
+        return f + h if f > BO_SELECT else f
+    _pad(r, after(350), DOWN)
+    _pad(r, after(360), 0)
+    r.press(after(410), CROSS)
+    r.press(after(460), CROSS)
+    for f in range(520, 1470, 30):
+        r.press(after(f), CROSS)
+    r.press(BO_SELECT, SELECT)
+    r.shot(BO_SELECT + 30, "options-open")
+    f = BO_SELECT + 50
+    r.press(f, CROSS)                # Widescreen: locked, nothing changes
+    r.shot(f + 40, "widescreen-locked")
+    f += 60
+    for _ in range(3):               # Fast-forward, Restart hotkey, Music volume
+        r.press(f, DOWN)
+        f += 20
+    for _ in range(3):
+        r.press(f, LEFT)             # 10 -> 7
+        f += 20
+    r.shot(f + 20, "music-changed")
+    assert f + 20 < BO_CLOSE - 10
+    r.shot(BO_CLOSE - 10, "options-held")
+    r.press(BO_CLOSE, TRIANGLE)
+    for frame, name in BO_SHOTS:
+        if frame > BO_SELECT:
+            r.shot(frame + h, name)
+        else:
+            r.shot(frame, name)
+    r.end(BO_END + h)
+    return r
+
+
 def field_options_cheats(version):
     """P9.7: the Cheats entry is title-only. With the cheats master on (cfg
     cheat_enabled=1) the Options screen shows its Square / Y "Cheats" hint
@@ -1891,6 +1966,9 @@ def main(out):
             field_options_cheats(v).text(True))
         (out / f"{v}-field-options-release.rec").write_text(
             field_options_release(v).text(True))
+        (out / f"{v}-battle-options-ref.rec").write_text(
+            battle_options_ref(v).text(True))
+        (out / f"{v}-battle-options.rec").write_text(battle_options(v).text(True))
     for i, lang in enumerate(EU_LANGS):
         if lang != "en":
             (out / f"eu-title-quit-{lang}.rec").write_text(title_quit_lang(i).text(True))

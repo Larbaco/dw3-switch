@@ -78,6 +78,11 @@ class Scenario:
     # of the scenario's own (the launcher run must be bit-identical to the
     # plain per-region run, so no reference of its own is needed).
     ref_from: str = ""
+    # P9.7 slice 2: checkpoints compared with a named checkpoint of another
+    # scenario instead of their own reference: (shot, scenario, its shot). The
+    # battle's excursion run takes the plain run's pictures a few frames later
+    # and must match them; run the plain scenario with --update first.
+    ref_map: tuple[tuple[str, str, str], ...] = ()
     # Memory sanity (soak): analyse RSS from this game frame on.
     rss_from_frame: int = 0
     note: str = ""
@@ -1157,6 +1162,43 @@ for _v in ("us", "eu"):
                                   r"dw3-port-confirm: cancelled \(return to title\); nothing changed"),),
                   forbid_log=_NX_FO_FORBID,
                   note="Switch build: Options and the Yes / No window drawn after the title textures were released (P9.7, #268)"))
+
+# P9.7 slice 2: the port Options screen in battle (patch 0165, port/options/
+# battle_options.c). The forced battle of p77 (env of _P77_ENV_REPORT: Kotemon
+# vs Kunemon, Tech once, Cross to the report and the field). The control run
+# has no Options; the excursion run presses Select at the command menu, changes
+# Music volume, waits 300 frames and closes the screen. The battle is frozen for
+# those 150 frames: the log's two state lines (the queued events, their times,
+# the HP, the GFX frame and clock) are identical, and the plain run's pictures,
+# taken 300 frames later, are reproduced pixel for pixel. PC only (env).
+_BO_STATE = (r"gfx_frame=(\d+) time_counter=(\d+) events=([1-9]\d*) event_time=(-?\d+) hp=(\d+)\n")
+_BO_STATE_BACK = r"gfx_frame=\1 time_counter=\2 events=\3 event_time=\4 hp=\5\n"
+for _v, _ids in (("us", (0x159, 0x1FA, 0x1C2, 0x158)), ("eu", (0x167, 0x208, 0x1D1, 0x166))):
+    _fight, _menu, _report, _field = _ids
+    _battle = ((_fight, M), (_menu, S), (_report, M), (_field, M))
+    _shots = ("battle-before", "battle-after", "battle-tech", "battle-turn", "battle-mid")
+    _add(Scenario(f"{_v}-battle-options-ref", _v, "full", turbo=4, timeout=300,
+                  env=_P77_ENV_REPORT, expect_restore=_battle,
+                  expect_log=((0, r"WFIGHTMN_endBattle result=1"),),
+                  forbid_log=((0, r"dw3-battle-options"), (0, r"dw3-port-options: open")),
+                  note="control run of the battle Options excursion: the plain forced battle (P9.7)"),
+         Scenario(f"{_v}-battle-options", _v, "full", turbo=4, timeout=300,
+                  env=_P77_ENV_REPORT, expect_restore=_battle,
+                  ref_map=tuple((s, f"{_v}-battle-options-ref", s) for s in _shots),
+                  expect_log=((0, r"dw3-battle-options: open at the command menu, battle frozen: (?s:.*)"
+                                  r"dw3-port-options: open in game \(battle command menu; (?s:.*)"
+                                  r"dw3-battle-options: held, battle state: " + _BO_STATE +
+                                  r"(?s:.*)dw3-port-options: Widescreen is locked in game \(change it at the title\)(?s:.*)"
+                                  r"dw3-port-options: music volume 7(?s:.*)"
+                                  r"dw3-port-options: close in game \(back to the battle\)(?s:.*)"
+                                  r"dw3-battle-options: resume after 300 held frame\(s\); the vsync clock ran on [1-9]\d* during the hold and is put back\n"
+                                  r"dw3-battle-options: resume, battle state: " + _BO_STATE_BACK +
+                                  r"(?s:.*)WFIGHTMN_endBattle result=1"),),
+                  forbid_log=((0, r"widescreen (enabled|disabled)"), (0, r"save flush failed"),
+                              (0, r"dw3-port-restart"), (0, r"reset while held"),
+                              (0, r"sound \w+ not played")),
+                  note="Select at the battle command menu: the battle is frozen under the Options screen, "
+                       "resumes on the same frame (pictures identical to the control run) and ends normally (P9.7)"))
 
 # The Options row text and the screen's lock note in the other four EU languages.
 for _id, _lang in ((3, "fr"), (5, "de"), (4, "it"), (6, "es")):

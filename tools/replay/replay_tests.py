@@ -481,6 +481,15 @@ def judge_scenario(sc, results, sdir, refs: Path, checkpoints, update, labelname
             got = sdir / f"{shot}.{ext}"
             ref = refs / (name if update else (sc.ref_from or name)) / f"{shot}.{ext}"
             label = f"{shot}.{ext}"
+            # P9.7: a checkpoint compared with another scenario's capture (the
+            # excursion run must equal the plain run, shifted), never its own.
+            mapped = next((m for m in sc.ref_map if m[0] == shot), None)
+            if mapped is not None:
+                ref = refs / mapped[1] / f"{mapped[2]}.{ext}"
+                if update:
+                    rows.append((name, label, "REF",
+                                 f"no own reference: compared with {mapped[1]}/{mapped[2]}"))
+                    continue
             if not got.is_file():
                 rows.append((name, label, "FAIL",
                              "no capture (process did not get that far)" if bad_proc else "no capture"))

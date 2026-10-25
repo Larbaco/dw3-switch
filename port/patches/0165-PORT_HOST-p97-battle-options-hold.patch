@@ -1,0 +1,142 @@
+Upstream-bound: no
+Subject: [PORT_HOST] P9.7 slice 2: the port Options screen in battle (hold the main loop)
+
+P9.7, slice 2 (battle). The battle has no menu the port controls, so the
+entry is a button: while the battle's command menu waits for the player
+(FIGHTSTG_updateCommandMenu, TASK_RUN) Select (Minus on the Switch) with no
+shoulder button held calls dw3_port_battle_options_poll, which opens the port
+Options screen (the in-game mode of slice 1, drawn by the native overlay) and
+asks the main loop to hold the battle.
+
+The hold is in main(): while dw3_port_battle_options_hold_frame() is 1 the
+iteration does not run the task list, the widescreen frame or drawFrame, so no
+task, timer, event, gauge, animation or random countdown moves, no task reads
+the pad, and nothing is submitted (the display keeps the last picture). It
+only presents (VSync), updates the pad and runs the port's polls, the file
+cache and the sound loader; the music keeps playing because the sequencer ticks
+in the vsync callback. RANDOM.next() is skipped so the roll sequence is the one
+the battle would have had. When the screen closes, the port gives the game's
+vsync clocks (GFX.timeCounter, frameTimeCounter, GAME.playTime.frames) back as
+they were: the callback kept adding to them, and the battle compares absolute
+GFX times (messages, arrows) and takes its frame length from them. A restart
+chord while held forgets the hold.
+
+Without the native overlay the entry is not offered
+(dw3_port_battle_options_enabled() is 0).
+
+--- a/src/engine/system/main.c
++++ b/src/engine/system/main.c
+@@ -6,6 +6,7 @@
+ /* Avoid psyz.h here: it pulls POSIX open/read that clash with game.h. */
+ int Psyz_QuitRequested(void);
+ #include "port_audio.h"
++#include "port_battle_options.h"
+ #include "port_restart.h"
+ #include "port_turbo.h"
+ #include "port_widescreen.h"
+@@ -25,6 +26,9 @@
+     RECT rect;
+     GsIMAGE tim;
+     u_char param[8];
++#if PORT_HOST
++    int held; /* P9.7: the battle is held under the port Options screen */
++#endif
+ 
+ #if VERSION_US
+     SetVideoMode(MODE_NTSC);
+@@ -104,16 +108,30 @@
+             GAME.funcs.commitMode();
+             ROOT_TASK = createModeTask();
+         }
++#if PORT_HOST
++        /* P9.7 slice 2: while the port Options screen is open over a battle
++           the task list does not run and nothing is drawn (the display keeps
++           the last picture); the frame is still paced (VSync) and the pad,
++           the music, the loaders and the screen go on. */
++        held = dw3_port_battle_options_hold_frame();
++        if (held) {
++            VSync(0);
++        } else {
++#endif
+         ROOT_TASK = TASK_REGISTRY.funcs.run(ROOT_TASK);
+ #if PORT_HOST
+         dw3_port_widescreen_frame();
+ #endif
+         GFX.funcs.drawFrame(ROOT_TASK);
++#if PORT_HOST
++        }
++#endif
+         PAD.update();
+ #if PORT_HOST
+         dw3_port_turbo_poll();
+         dw3_port_audio_poll();
+         if (dw3_port_restart_poll()) {
++            dw3_port_battle_options_reset();
+             GAME.funcs.newGame();
+             OVERLAY_LOADER.mode = -1;
+             OVERLAY_LOADER.subOverlay = -1;
+@@ -121,6 +139,9 @@
+             continue;
+         }
+ #endif
++#if PORT_HOST
++        if (!held)
++#endif
+         RANDOM.next();
+         FILE_CACHE.update();
+         SOUND.updateLoading();
+--- a/src/battle/battle_mode/command_menu.c
++++ b/src/battle/battle_mode/command_menu.c
+@@ -1,6 +1,38 @@
+ /* FIGHTSTG's command menu, the six commands of the player's turn. */
+ 
+ #include "battle/battle_mode.h"
++#if PORT_HOST
++#include "port_battle_options.h"
++/* P9.7 slice 2: language of the Options screen's lettering (the EU disc's
++   LANGUAGE; the US disc is English). */
++#if VERSION_EU
++#define DW3_BATTLE_OPTIONS_LANGUAGE LANGUAGE
++#else
++#define DW3_BATTLE_OPTIONS_LANGUAGE 2
++#endif
++
++/* What the battle's clock holds, for the log lines that show the freeze: the
++   queued events, their remaining times and the fighters' HP. */
++static void portBattleProbe(int *events, int *eventTime, int *hp) {
++    s32 i;
++    s32 j;
++
++    *events = 0;
++    *eventTime = 0;
++    *hp = 0;
++    for (i = 0; i < 99; i++) {
++        if (FIGHTSTG_events.events[i].type != 0) {
++            (*events)++;
++            *eventTime += FIGHTSTG_events.events[i].time;
++        }
++    }
++    for (i = 0; i < 2; i++) {
++        for (j = 0; j < 3; j++) {
++            *hp += FIGHTSTG_battle.state.fighters[i][j].hp;
++        }
++    }
++}
++#endif
+ 
+ /* Shows the six commands once, greying out attack, techniques and digivolve
+    when the active fighter is asleep and digivolve when it has flag 0x20 (the
+@@ -51,6 +83,13 @@
+         task->nextState(task);
+         break;
+     case TASK_RUN:
++#if PORT_HOST
++        /* P9.7 slice 2: Select opens the port Options screen while the menu
++           waits for the player; the main loop then holds the whole battle. */
++        if (dw3_port_battle_options_poll(DW3_BATTLE_OPTIONS_LANGUAGE, portBattleProbe)) {
++            break;
++        }
++#endif
+         do {
+             if (!(PAD.getPressed(0) & (1 << PAD_CROSS))) {
+                 break;

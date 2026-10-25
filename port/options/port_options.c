@@ -67,6 +67,10 @@ static int g_open;
 /* P9.7: 1 while the screen was opened from the field menu (not the title):
  * the rows that cannot change safely in game are locked (row_locked). */
 static int g_in_game;
+/* Where the in-game screen was opened from, for the log (P9.7: the field menu,
+ * or the battle's command menu). */
+static const char *g_where = "field menu";
+static const char *g_back = "the field menu";
 static int g_cursor;
 static int g_open_frames;
 static int g_logged_open;
@@ -191,8 +195,8 @@ static void po_open(int in_game) {
     g_logged_open = 0;
     po_push_view();
     if (in_game) {
-        fprintf(stderr, "dw3-port-options: open in game (field menu; "
-                        "widescreen and cheats locked)\n");
+        fprintf(stderr, "dw3-port-options: open in game (%s; "
+                        "widescreen and cheats locked)\n", g_where);
     } else {
         fprintf(stderr, "dw3-port-options: open (stay MODE_TITLE)\n");
     }
@@ -201,6 +205,11 @@ static void po_open(int in_game) {
 
 void dw3_port_options_open(void) {
     po_open(0);
+}
+
+void dw3_port_options_set_origin(const char *where, const char *back) {
+    g_where = where != NULL ? where : "field menu";
+    g_back = back != NULL ? back : "the field menu";
 }
 
 /* P9.7: from the field menu's Options row. */
@@ -216,7 +225,7 @@ void dw3_port_options_close(void) {
     g_open_frames = 0;
     if (g_in_game) {
         g_in_game = 0;
-        fprintf(stderr, "dw3-port-options: close in game (back to the field menu)\n");
+        fprintf(stderr, "dw3-port-options: close in game (back to %s)\n", g_back);
     } else {
         fprintf(stderr, "dw3-port-options: close (resume runOptions)\n");
     }
