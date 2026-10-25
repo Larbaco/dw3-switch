@@ -26,6 +26,7 @@ Files are named by roadmap item id (`P6.4_...`) or by topic.
 - [CONTRIBUTING](../CONTRIBUTING.md): short guide for contributors and AI agents (build, patches, replay tests, PRs).
 - [ARCHITECTURE](ARCHITECTURE.md): how the decomp, PSY-Z and the hosts fit together.
 - [ROADMAP](ROADMAP.md): phases, gates and what is next.
+- [OLED_TEST_PLAN](OLED_TEST_PLAN.md): one ordered owner checklist for the OLED, preview.35.
 - [PATCHES](PATCHES.md): the decomp patch series.
 - [PSYZ](PSYZ.md): the PSY-Z shim pin and renderer notes.
 - [SWITCH_BACKEND](SWITCH_BACKEND.md): the Switch PSY-Z backend.

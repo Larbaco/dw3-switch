@@ -296,3 +296,4 @@ Known issues change with every preview. They are not copied here.
   [platforms/switch/release/README.txt](../platforms/switch/release/README.txt)).
 - Release history and builds to avoid: [RELEASES](RELEASES.md).
 - Open work and planned features: [ROADMAP](ROADMAP.md).
+- Testing on a Switch and want a checklist: [OLED_TEST_PLAN](OLED_TEST_PLAN.md).
