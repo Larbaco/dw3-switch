@@ -79,6 +79,11 @@ void dw3_cheats_open(void);
 void dw3_cheats_close(void);
 int dw3_cheats_is_open(void);
 void dw3_cheats_tick(void);
+
+/* P5.1 PC soak driver: arm the one-shots again with a DW3_CHEATS_ARM style
+ * spec ("battle_now", "warp=0x206", "money_10k", "item=47:7", "fill_bag").
+ * Needs the master switch (cheat_enabled=1) to have any effect. */
+void dw3_cheats_soak_arm(const char *spec);
 int dw3_cheats_cursor(void);
 /* The value a row shows: 0/1 for the switches and the armed one-shots, the
  * number of marked saves (0..6) for the last row. */

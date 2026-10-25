@@ -19,6 +19,7 @@
  *   win                print dw3_cheats_take_instant_win()
  *   armed              print dw3_cheats_battle_now_armed()
  *   started            dw3_cheats_battle_now_started()
+ *   rearm SPEC         dw3_cheats_soak_arm(SPEC) (P5.1 soak driver)
  *   title              dw3_cheats_title_started()
  *   marked             print dw3_cheats_game_marked()
  *   save P S SEED      write slot S of card P with bytes from SEED, then
@@ -159,6 +160,8 @@ int main(int argc, char **argv) {
             printf("win=%d\n", dw3_cheats_take_instant_win());
         } else if (strcmp(s, "armed") == 0) {
             printf("armed=%d\n", dw3_cheats_battle_now_armed());
+        } else if (strcmp(s, "rearm") == 0 && i + 1 < argc) {
+            dw3_cheats_soak_arm(argv[++i]);
         } else if (strcmp(s, "started") == 0) {
             dw3_cheats_battle_now_started();
         } else if (strcmp(s, "title") == 0) {

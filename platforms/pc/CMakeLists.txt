@@ -47,6 +47,7 @@ endif()
 
 add_executable(dw3-pc
   src/main.c
+  src/mem_sampler.c
   src/psyz_host_overrides.c
   src/psyz_dma_present.c
   # Direct TU so PadGetState / PadInitDirect win over PSY-Z stubs in libpsyz.a

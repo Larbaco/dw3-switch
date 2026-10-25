@@ -56,6 +56,56 @@ def test_mem_verdict_flat_and_growing():
     assert ry.mem_verdict(flat[:3], 0) is None
 
 
+def test_mem_verdict_first_use_texture_steps():
+    ry = _load()
+    title = "[I][nx_title_overlay.c:419][ensure_gl] dw3-title-overlay: 960x4320 RGBA texture, 6 states (GLES)"
+    logo = "[I][f] dw3-title-logo: active=1"
+    confirm = "[I][confirm.c:92][f] dw3-port-confirm: open quit (cursor on No)"
+    # eu-lang-es: the 23.7 MB atlas lands after the 60% sample (+23769K)
+    run = ([_mem(321, 158, 149128)] * 9 + [title, logo] +
+           [_mem(321, 158, 172897)] * 3)
+    ok, detail = ry.mem_verdict(run, 0)
+    assert ok and "+0K" in detail and "first-use" in detail
+    # without the marker lines it is still a failure
+    plain = [l for l in run if l not in (title, logo)]
+    assert not ry.mem_verdict(plain, 0)[0]
+    # eu-title-quit-fr: the Yes / No texture (+1154K) on the first open
+    run = ([_mem(321, 158, 172897)] * 12 + [confirm] +
+           [_mem(321, 158, 174051)] * 8)
+    assert ry.mem_verdict(run, 0)[0]
+    # only the FIRST open moves the baseline: a leak per open still fails
+    run = [_mem(321, 158, 172897)] * 12 + [confirm]
+    for i in range(6):
+        run += [_mem(321, 158, 174051 + i * 600)] * 2 + [confirm]
+    run += [_mem(321, 158, 174051 + 6 * 600)] * 2
+    assert not ry.mem_verdict(run, 0)[0]
+    # heap and file cache keep the 512K limit after the baseline moves
+    run = ([_mem(321, 158, 149128)] * 9 + [title, logo] +
+           [_mem(321, 158, 172897)] + [_mem(321, 158 + 601, 172897)] * 4)
+    assert not ry.mem_verdict(run, 0)[0]
+
+
+def test_mem_verdict_rebuild_after_release():
+    ry = _load()
+    title = "[I][f] dw3-title-overlay: 960x4320 RGBA texture, 6 states (GLES)"
+    logo = "[I][f] dw3-title-logo: active=1"
+    rel = "[I][f] dw3-title-overlay: title textures released (not on screen)"
+    # a restart after the 60% mark rebuilds the atlas: +3.5 MB transient on hw
+    run = ([_mem(321, 158, 172900)] * 8 + [title, logo, rel] +
+           [_mem(321, 158, 150400)] * 8 + [title, logo] +
+           [_mem(321, 158, 176400)] * 3 + [_mem(321, 158, 176400)] * 3)
+    ok, detail = ry.mem_verdict(run, 0)
+    assert ok and "+0K" in detail
+    # without the release line the second RGBA texture line is not first use
+    plain = [l for l in run if l != rel]
+    assert not ry.mem_verdict(plain, 0)[0]
+    # a leak that keeps growing after the rebuild still fails
+    run = ([_mem(321, 158, 172900)] * 8 + [title, logo, rel] +
+           [_mem(321, 158, 150400)] * 8 + [title, logo] +
+           [_mem(321, 158, 176400 + i * 300) for i in range(8)])
+    assert not ry.mem_verdict(run, 0)[0]
+
+
 def test_fatal_patterns():
     ry = _load()
     assert ry.FATAL_RE.search("00:03:00 |E| Cpu: Unhandled exception caught: Ryujinx...")

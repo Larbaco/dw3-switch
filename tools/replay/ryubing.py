@@ -60,6 +60,26 @@ END_LINE = re.compile(r"replay end (\d+)")
 FRAME_LINE = re.compile(r"dw3-replay: frame (\d+)")
 MEM_LINE = re.compile(r"mem dbg: heap=(\d+)K/\d+K hw=(\d+)K .*?fcache=\d+K/hw=(\d+)K .*?libc=\d+K/hw=(\d+)K")
 GUEST_RE = re.compile(r"OutputDebugString: (.*)")
+# First-use allocations of the Switch GL path. The GLES driver keeps textures in
+# libc, so the first draw of each costs a one-time, bounded step (docs/
+# P6.15_REPLAY_TESTS.md, "libc one-time steps"): the title overlay atlas
+# (960x4320 RGBA, +23.7 MB with the options canvas and the logo, ready at
+# `title-logo: active=1`), and the Yes / No window texture (768x348 RGBA,
+# +1.1 MB). The memory baseline moves to the first sample after the FIRST
+# occurrence of each, so a leak that repeats per screen open still shows.
+# The Switch overlay releases these textures when it is not on screen (the
+# field, a battle) and rebuilds them on the next visit; the release lines
+# below re-arm the matching markers, so the rebuild step counts as first use
+# again (the memory goes down in between, it is not a per-open leak).
+ONE_TIME_ALLOC_RES = (
+    re.compile(r"dw3-title-overlay: \d+x\d+ RGBA texture"),
+    re.compile(r"dw3-title-logo: active=1"),
+    re.compile(r"dw3-port-confirm: open "),
+)
+ALLOC_RELEASE_RES = (
+    (re.compile(r"dw3-title-overlay: title textures released"), (0, 1)),
+    (re.compile(r"dw3-title-overlay: confirm window texture released"), (2,)),
+)
 
 
 def nro_path(version: str, nxlink: bool) -> Path:
@@ -134,18 +154,38 @@ def guest_lines(text: str):
 
 def mem_verdict(lines, warm_frame_idx):
     """`mem dbg:` high-water flatness. Returns (ok, detail) or None if absent."""
-    samples = [tuple(int(x) for x in m.groups()) for m in
-               (MEM_LINE.search(l) for l in lines) if m]
+    samples = []          # (line index, heap hw, fcache hw, libc hw)
+    first_use = {}        # ONE_TIME_ALLOC_RES index -> line index of first hit
+    armed = set(range(len(ONE_TIME_ALLOC_RES)))
+    for li, l in enumerate(lines):
+        m = MEM_LINE.search(l)
+        if m:
+            samples.append((li,) + tuple(int(x) for x in m.groups()))
+            continue
+        for ri, rx in enumerate(ONE_TIME_ALLOC_RES):
+            if ri in armed and rx.search(l):
+                first_use[ri] = li
+                armed.discard(ri)
+        for rx, rearm in ALLOC_RELEASE_RES:
+            if rx.search(l):
+                armed.update(rearm)
     if len(samples) < 8:
         return None
     # skip the first 60%: opening, movie, first transitions
     cut = int(len(samples) * 0.6)
-    base, last = samples[cut], samples[-1]
+    # ... and the first sample after each first-use texture allocation
+    warm_line = max(first_use.values(), default=-1)
+    after = next((i for i, smp in enumerate(samples) if smp[0] > warm_line),
+                 len(samples) - 1)
+    moved = after > cut
+    base, last = samples[max(cut, after)][1:], samples[-1][1:]
     names = ("heap", "heap hw", "fcache hw", "libc hw")
     growth = [last[i] - base[i] for i in (1, 2, 3)]
     limits = (MEM_HW_GROWTH_KIB, MEM_HW_GROWTH_KIB, MEM_LIBC_HW_GROWTH_KIB)
     ok = all(g <= lim for g, lim in zip(growth, limits))
-    detail = ("mem dbg hw growth since 60% mark: " +
+    detail = ("mem dbg hw growth since " +
+              ("the first-use texture allocations" if moved else "60%") +
+              " mark: " +
               ", ".join(f"{n} {g:+d}K" for n, g in zip(names[1:], growth)) +
               f" (limit {MEM_HW_GROWTH_KIB}K, libc {MEM_LIBC_HW_GROWTH_KIB}K, "
               f"{len(samples)} samples)")

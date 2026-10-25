@@ -158,6 +158,19 @@ def test_battle_now_until_a_battle_starts(cheats_bin, dirs):
     assert out == ["marked=0", "marked=1"]
 
 
+def test_soak_rearm_arms_the_one_shots_again(cheats_bin, dirs):
+    """P5.1: the PC soak driver (platforms/pc/src/mem_sampler.c) arms the
+    one-shots again in the middle of a run, with a DW3_CHEATS_ARM spec."""
+    (dirs[0] / CFG).write_text("version=1\ncheat_enabled=1\nend=1\n")
+    out, _ = run(cheats_bin, dirs, "armed", "rearm", "battle_now", "armed",
+                 "started", "armed", "rearm", "battle_now", "armed",
+                 "rearm", "warp=0x206", "warp", "warp",
+                 "rearm", "item=47:7", "item", "item")
+    assert out == ["armed=0", "armed=1", "armed=0", "armed=1",
+                   "warp=1 mode=0x206", "warp=0 mode=0x0",
+                   "item=1 id=47 count=7", "item=0 id=0 count=0"]
+
+
 def test_arm_needs_the_master_switch(cheats_bin, dirs):
     out, _ = run(cheats_bin, dirs, "armed", "getenv", "DW3_FORCE_ITEMS",
                  env={"DW3_CHEATS_ARM": "fill_bag,battle_now"})
