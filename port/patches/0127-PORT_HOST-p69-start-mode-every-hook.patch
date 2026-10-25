@@ -1,0 +1,27 @@
+Upstream-bound: no
+Subject: [PORT_HOST] P6.9 DW3_START_MODE_EVERY test hook
+
+Patch 0124 makes DW3_START_MODE apply on the boot's newGame() only, so the
+restart chord (patch 0046) reaches the real boot screen. The P6.9 replay
+scenarios that test a second forced battle or field after a restart (a
+fresh GAME, no title in between) need the old behaviour: with
+DW3_START_MODE_EVERY set, every newGame() honours DW3_START_MODE again.
+PC test hook only; nothing changes when the variable is unset.
+
+--- a/src/engine/game/state.c
++++ b/src/engine/game/state.c
+@@ -36,6 +36,14 @@
+            to title, P6.27) must reach the title, not the forced mode again. */
+         static int start_mode_used;
+ 
++        /* P6.9 test hook: DW3_START_MODE_EVERY=1 undoes the boot-only rule, so
++           a restart re-enters the forced mode (a second forced battle or
++           field on a reset GAME). */
++        const char *every = getenv("DW3_START_MODE_EVERY");
++
++        if (every != NULL && every[0] != '\0') {
++            start_mode_used = 0;
++        }
+         if (start != NULL && start[0] != '\0' && !start_mode_used) {
+             mode = strtol(start, &end, 0);
+             if (end != start && mode > 0) {
