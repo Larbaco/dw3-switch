@@ -53,6 +53,7 @@ explicitly marked N/A in this note.
 | Cheats (test aid) | A **Cheats** sub-screen for hardware testing, reached with Square / Y on the Options screen: master switch, Fill bag, Instant win, Battle now and a count of saves flagged "cheat used" (a sidecar file, never the save). A second page (PR 2) has Money, Warp (13 areas), Item id, Item count and Give item. Off by default, keys `cheat_enabled` and `cheat_instant_win` in `port_options.cfg`; built in by default, removed by `DW3_CHEATS=OFF` / `--no-cheats`. Later HP / MP. See [Cheats](#cheats-p620) and ROADMAP P6.20 | Phase 6 (P6.20) |
 | Switch host | Rumble on/intensity, confirm A/B layout, `swkbd` name, CRT/sharp, system-language hint | Phase 10 (+ P4.4 / P5.3 always-on lifecycle) |
 | Restart game | Optional L1 + R1 + Start + Select in the shared PS1 pad map; OFF by default | Phase 6.9 |
+| Auto-save | **Auto-save** (OFF / Each area; key `autosave`, row 9): the first idle frame of a new field area writes the game to the slot the player last saved to or loaded from; the player's version is kept in `save<N>.bin.pre-auto`. Off by default; with it off the game is as before ([P6.31](P6.31_AUTOSAVE.md)) | Phase 6 (P6.31) |
 
 Defaults: **off** or equivalent to stock PS1 behaviour unless a feature is
 purely host presentation with no gameplay impact (document exceptions).
@@ -105,6 +106,7 @@ sfx_volume=10
 encounter_rate=0
 text_speed=0
 battle_menu_memory=0
+autosave=0
 end=1
 ```
 
@@ -132,7 +134,7 @@ Rules, implemented in `port/options/options_cfg.c` and `port/options/port_option
 |---|---|
 | No file | Defaults (Widescreen ON, Fast-forward 2x armed, Restart hotkey OFF, Music volume 10, SFX volume 10, Encounter rate 1x, Text speed Normal, Battle cursor OFF). The file is first written on the first change, not at boot. |
 | Missing key | That option keeps its default. |
-| Invalid value (not an integer, or out of range: Fast-forward must be 0 or 2..4, the volumes 0..10, `encounter_rate` 0..4, `text_speed` 0..2, `battle_menu_memory` 0..2, the others 0 or 1) | That option falls back to its default and a `dw3-options: <key>=<v> is not valid` line is logged. The bad line is replaced on the next save. |
+| Invalid value (not an integer, or out of range: Fast-forward must be 0 or 2..4, the volumes 0..10, `encounter_rate` 0..4, `text_speed` 0..2, `battle_menu_memory` 0..2, the others (`autosave` too) 0 or 1) | That option falls back to its default and a `dw3-options: <key>=<v> is not valid` line is logged. The bad line is replaced on the next save. |
 | Malformed line, over-long key or value, junk | Skipped and counted (`ignored N malformed line(s)` in the log). |
 | File over 4 KiB, or unreadable | Defaults, logged; the next change replaces it. |
 | Unknown key | Ignored by the game, kept in memory and written back in its original position, so a build with fewer rows does not delete a newer build's settings (up to 48 keys). |
@@ -157,6 +159,12 @@ the order is in the screen only, never in the file.
 `text_speed`: 0 = Normal (the game), 1 = Fast, 2 = Instant. Both are integers
 so the file never holds a word that a later build would have to keep
 understanding.
+
+`autosave` (P6.31, 0 or 1, default 0, row 9 of the Options screen) is read and written
+like the others; it is not part of the `dw3-options:` boot and `saved` log lines (those
+keep their text, which the replay scenarios match). With it on the boot logs one extra
+line, `dw3-options: autosave=1 (...)`. A file from before the row has no key and reads
+as OFF; an invalid value (`2`, `on`, ...) is logged and reads as OFF.
 
 Adding a row means one entry in the registry table (`key`, default, valid
 range); nothing else in the store changes.
@@ -260,6 +268,10 @@ asks first and then runs this reset ([below](#quit-and-return-to-title-p627-p628
 - `test_options_persist.py` (P7.9 row): the row's default, its steps with clamping
   and the Confirm wrap, the file value of P7.9 read and written back, bad values,
   a file without the key, the choice sound.
+- `test_options_persist.py` (P6.31 row): `autosave` defaults to off and writes no
+  file, Confirm toggles and saves, a second process reads it back, bad values fall
+  back to off, a file from before the row, the choice sound; the unit tests of the
+  feature itself are `tools/tests/test_autosave.py` ([P6.31](P6.31_AUTOSAVE.md)).
 - `test_options_persist.py::test_file_only_int_key`: a key with no row is read
   from the file, falls back to its default when absent or not a number, and is
   still in the file after the Options screen rewrites it.
@@ -642,6 +654,32 @@ sound logs `dw3-port-options: sound <cursor|select|cancel> (sfx volume N, voice 
 (`voice` is the SPU voice of the key-on) and a missing bank would log
 `sound ... not played: bank N is not loaded`. Evidence: [P6.17](P6.17_VOLUME.md#sound-feedback-on-the-options-screen).
 
+## Auto-save row (P6.31)
+
+**Nine rows (P6.31).** The **Auto-save** row (OFF / Each area, key `autosave`) is
+row 9, appended so the registry indexes of the first eight stay
+(`DW3_PORT_OPT_AUTOSAVE` = 8). It is a switch row: Confirm toggles it (Left / Right
+do nothing), the choice sound plays, the file is written at once, and
+`dw3-port-options: auto-save enabled|disabled` is logged. Nine rows need a tighter
+list: a row is **34 px high on a 38 px pitch** (it was 38 on 42), the first row at
+y 150 as before and the last ending at y 488, 20 px above the message rule at y 508;
+the 26 px lettering, the pointer and the focus box keep their size (the focus box
+interior is 28 px). The Cheats pages and the Yes / No window keep their own 38 px
+rows. The cache sends one 696x34 rect per row on a cursor move and a 268x34 cell
+for a value change; at most 3 + 6 rects per update, so `DW3_OPTIONS_MAX_DIRTY` stays
+10, and `tools/tests/test_options_cache.py` renders every state of the nine rows
+against the full reference render. The window is full again: a tenth row needs the
+P9.9 redesign (or a sub-screen like the Cheats one).
+
+The row's label, its value word and its message line are in the five languages of
+the EU disc (English on the US disc), generated by
+`tools/generate_pc_title_lettering.py` (`opt_as_row_<lang>`, `opt_as_area_<lang>`,
+`opt_as_desc_<lang>`): `Auto-save` / `Sauvegarde auto` / `Auto-Speichern` /
+`Autoguardado` / `Salvataggio auto`, value `Each area` / `Chaque zone` / `Jedes
+Gebiet` / `Cada zona` / `Ogni area`, OFF is the shared word. The other eight rows
+stay English on both discs, as before. What the row does, its defaults and the
+checklist: [P6.31_AUTOSAVE.md](P6.31_AUTOSAVE.md).
+
 ## Cheats (P6.20)
 
 A test aid for hardware testing: reach a battle, or a full bag, without
@@ -656,7 +694,7 @@ build-time option removes the whole feature. ROADMAP P6.20 has the history.
 On the Options screen press **Square** (PC **Z**, Switch **Y**). The Cheats
 screen replaces the Options rows in the same window (same background, pointer,
 sounds and message line); **Triangle** (PC S, Switch X) goes back to Options.
-The Options screen keeps its eight rows. The hint "Square/Y Cheats" is drawn
+The Options screen has nine rows since P6.31. The hint "Square/Y Cheats" is drawn
 left of Change **only while the master switch is on**.
 
 Why a hint that appears late and not a ninth row, a second page or an

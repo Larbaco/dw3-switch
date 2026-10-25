@@ -730,6 +730,22 @@ for _v, _ids in (("us", (0x158, 0x1E3)), ("eu", (0x166, 0x1EE))):
                   forbid_log=((0, r"dw3-autosave"), (1, r"dw3-autosave"), (2, r"dw3-autosave"),
                               (1, r"dw3-options: autosave="), (2, r"FIELDSTG_pickStage mode=0x201")),
                   note="P6.31: option off (the default): no auto-save line, the player's own save is the one Continue loads"))
+    # P6.20: an auto-save made after a cheat carries the cheat mark (the cheat
+    # money row is applied at the first idle frame of the loaded field, the area
+    # change then writes the slot and marks it; the next Continue keeps the game
+    # marked). Not in the replay of a build without cheats.
+    _add(Scenario(f"{_v}-autosave-cheat", _v, "full", timeout=600, log_only=True,
+                  phases=(f"{_v}-xr-save", f"{_v}-as-load", f"{_v}-xr-load"),
+                  phase_env=(_AS_SAVE_ENV, _AS_EXIT_ENV + (("DW3_CHEATS_ARM", "money_10k"),), ()),
+                  cfg=(("autosave", "1"), ("cheat_enabled", "1")),
+                  expect_restore=((_field, M), (_mcard, M)),
+                  expect_log=(_XR_WRITE,
+                              (1, r"dw3-cheats: money \+10000"),
+                              (1, r"dw3-autosave: wrote card 0 slot 0 \(area mode 0x201, #1\)"),
+                              (1, r"dw3-cheats: save0\.bin slot 0 marked: written with cheats"),
+                              (2, r"dw3-cheats: loaded save0\.bin slot 0, which was written with cheats")),
+                  forbid_log=_AS_BAD,
+                  note="P6.31 + P6.20: an auto-save after a cheat carries the cheat mark"))
     _add(Scenario(f"{_v}-autosave-walk", _v, "full", timeout=900, log_only=True,
                   phases=(f"{_v}-xr-save", f"{_v}-as-walk"),
                   phase_env=(_SAVE_ENV, ()),
