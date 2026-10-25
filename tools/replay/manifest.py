@@ -1207,7 +1207,7 @@ for _v, _ids in (("us", (0x159, 0x1FA, 0x1C2, 0x158)), ("eu", (0x167, 0x208, 0x1
 # owner's eyes and the informational screenshots; the log proves the freeze.
 for _v, _ids in (("us", (0x159, 0x1FA, 0x1C2, 0x158)), ("eu", (0x167, 0x208, 0x1D1, 0x166))):
     _fight, _menu, _report, _field = _ids
-    _add(Scenario(f"{_v}-battle-options-nx", _v, "nx", timeout=900, log_only=True,
+    _add(Scenario(f"{_v}-battle-options-nx", _v, "nx", timeout=900,
                   phases=(f"{_v}-battle-options",),
                   expect_restore=((_fight, M), (_menu, S), (_report, M), (_field, M)),
                   expect_log=((0, r"dw3-battle-options: open at the command menu, battle frozen: (?s:.*)"
