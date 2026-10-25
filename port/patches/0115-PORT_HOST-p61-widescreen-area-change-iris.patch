@@ -1,0 +1,207 @@
+Upstream-bound: no
+Subject: [PORT_HOST] P6.1 area-change iris and grid cover reach the 16:9 picture
+
+FIELDSTG_closeField shrinks the map's clip rectangle (a 320 x 240 box that
+starts at the whole screen and centres on the player) and then closes the blue
+grid cover from both sides. A drawing area only takes the side gutters when it
+spans the display's columns, so the box and the closing grid were 4:3 with
+black gutters (0051 only widened the cover's blocks).
+
+With widescreen on (gutter > 0; off, the code is the PS1's):
+- substate 1: the map layer keeps a display-wide area, clipped in rows only
+  (it takes the gutters), and the view closes from 320 + 2 * gutter columns, the
+  game's own task->width scaled, so the frame count does not change. The columns
+  outside the view get the grid over black, drawn in the map layer by the new
+  FIELDSTG_drawCoverSpan (a copy of FIELDSTG_drawCoverBlock cropped to a column
+  range, with an opaque black quad under it), so the map no longer shows there.
+- substate 2: the cover layer keeps a display-wide area and the grid closes
+  from the edges of the gutters to the middle in the same 20 steps; the map
+  layer's area is moved to a row below the display, which draws nothing. That
+  also avoids the PC sdl3_gpu bug of a 0x0 clip keeping the previous scissor (the
+  shifted map that showed again while the grid closed) for this path.
+
+--- a/include/field/field_mode.h
++++ b/include/field/field_mode.h
+@@ -803,6 +803,9 @@
+ Vec2 *FIELDSTG_getMapSize(MapStreamer *task);
+ MapStreamer *FIELDSTG_createMapStreamer(s32 file);
+ void FIELDSTG_drawCover(s32 id, s32 level);
++#if PORT_HOST
++void FIELDSTG_drawCoverSpan(Layer *layer, s32 xa, s32 xb, s32 level);
++#endif
+ 
+ /* stream.c */
+ void FIELDSTG_touchStream(StreamTask *task);
+--- a/src/field/field_mode/field.c
++++ b/src/field/field_mode/field.c
+@@ -218,6 +218,9 @@
+     Actor *player;
+     s32 width;
+     s32 height;
++#if PORT_HOST
++    s32 gutter;
++#endif
+ 
+     switch (task->substate) {
+     default:
+@@ -254,6 +257,51 @@
+             clip.x = SCREEN_WIDTH / 2;
+             clip.y = SCREEN_HEIGHT / 2;
+         }
++#if PORT_HOST
++        gutter = dw3_port_widescreen_px();
++        if (gutter > 0) {
++            /* Widescreen: the view closes from 320 + 2 * gutter columns, in the
++               game's own frame count (task->width scaled), centred on the player.
++               The map layer keeps a display-wide drawing area (clipped in rows
++               only, so that it takes the gutters), and the columns outside the
++               view are covered with the grid over black. */
++            s32 full = SCREEN_WIDTH + 2 * gutter;
++            s32 vw = task->width <= 0 ? 0 : task->width * full / SCREEN_WIDTH;
++            s32 vl = clip.x - vw / 2;
++            s32 vr;
++
++            if (vl < -gutter) {
++                vl = -gutter;
++            }
++            vr = vl + vw;
++            if (vr > SCREEN_WIDTH + gutter) {
++                vr = SCREEN_WIDTH + gutter;
++            }
++            clip.y -= task->height / 2;
++            if (clip.y < 0) {
++                clip.y = 0;
++            }
++            height = task->height;
++            if (clip.y + height > SCREEN_HEIGHT) {
++                height = SCREEN_HEIGHT - clip.y;
++            }
++            if (height <= 0 || task->width <= 0) {
++                /* closed: a row below the display draws nothing and keeps the area valid */
++                clip.y = SCREEN_HEIGHT;
++                height = 1;
++                vl = vr = 0;
++            }
++            layer->setClipPos(layer, 0, clip.y);
++            layer->setClipSize(layer, SCREEN_WIDTH, height);
++            FIELDSTG_drawCoverSpan(layer, vr, SCREEN_WIDTH + gutter, task->fade);
++            FIELDSTG_drawCoverSpan(layer, -gutter, vl, task->fade);
++            FIELDSTG_drawCover(FIELD_LAYER_COVER, task->fade);
++            if (task->fade != 0x8000) {
++                task->fade += 0x400;
++            }
++            break;
++        }
++#endif
+         clip.x -= task->width / 2;
+         if (clip.x < 0) {
+             clip.x = 0;
+@@ -289,6 +337,34 @@
+             break;
+         }
+         task->width += 8;
++#if PORT_HOST
++        gutter = dw3_port_widescreen_px();
++        if (gutter > 0) {
++            /* Widescreen: the grid closes over the whole picture, from the edges of
++               the gutters to the middle in the game's own steps. The cover layer
++               keeps a display-wide drawing area (it takes the gutters), the grid is
++               cropped to what is still open and the map layer draws nothing. */
++            s32 inset = task->width * (SCREEN_WIDTH / 2 + gutter) / (SCREEN_WIDTH / 2);
++
++            if (inset > SCREEN_WIDTH / 2 + gutter) {
++                inset = SCREEN_WIDTH / 2 + gutter;
++            }
++            layer->setClipPos(layer, 0, 0);
++            layer->setClipSize(layer, SCREEN_WIDTH, SCREEN_HEIGHT);
++            FIELDSTG_drawCoverSpan(layer, -gutter + inset, SCREEN_WIDTH + gutter - inset, 0x8000);
++            layer = GFX.funcs.getLayer(FIELD_LAYER_MAP);
++            layer->setClipPos(layer, 0, SCREEN_HEIGHT);
++            layer->setClipSize(layer, SCREEN_WIDTH, 1);
++            if (task->width > SCREEN_WIDTH / 2) {
++                GAME.funcs.requestMode(task->nextMode, task->nextModeArg);
++                GAME.fieldMode = GAME.funcs.getMode();
++                GAME.fieldPos = children->actors[0]->pos;
++                GAME.fieldDir = children->actors[0]->dir;
++                task->nextSubstate(task);
++            }
++            break;
++        }
++#endif
+         layer->setClipPos(layer, task->width, task->height);
+         layer->setClipSize(layer, (SCREEN_WIDTH / 2 - task->width) * 2, (SCREEN_HEIGHT / 2 - task->height) * 2);
+         if (task->width > SCREEN_WIDTH / 2) {
+--- a/src/field/field_mode/map_streamer.c
++++ b/src/field/field_mode/map_streamer.c
+@@ -437,3 +437,71 @@
+         }
+     }
+ }
++
++#if PORT_HOST
++/* Widescreen iris (patch 0115): the cover's grid cropped to the columns
++   xa <= x < xb of `layer` (which may reach into the side gutters), over an
++   opaque black quad of the same columns, so that it also hides what the layer
++   draws there (the map outside the iris' view). Both go to the layer's entry 0,
++   the grid first and the quad last, so the quad is drawn first. */
++void FIELDSTG_drawCoverSpan(Layer *layer, s32 xa, s32 xb, s32 level) {
++    PrimPtr prim;
++    u_long *ot;
++    s32 shade;
++    s32 x;
++    s32 y;
++    s32 i;
++    s32 sx;
++    s32 sy;
++    s32 x0;
++    s32 x1;
++    POLY_F4 *quad;
++
++    if (xb <= xa) {
++        return;
++    }
++    ot = (u_long *)layer->getOtEntry(layer, 0);
++    shade = level >> 8;
++    prim.any = GFX.funcs.getPrim();
++    for (y = 0; y < SCREEN_HEIGHT; y += 0x80) {
++        for (x = -0xC0; x < SCREEN_WIDTH + 0x80; x += 0x80) {
++            for (i = 0; i < 4; i++) {
++                sx = x + ((i & 1) << 6);
++                sy = y + ((i << 5) & 0x40);
++                x0 = sx < xa ? xa : sx;
++                x1 = sx + 0x40 > xb ? xb : sx + 0x40;
++                if (x1 <= x0) {
++                    continue;
++                }
++                SetSprt(prim.sprt);
++                if (shade != 0xFF) {
++                    SetSemiTrans(prim.sprt, 1);
++                }
++                prim.sprt->r0 = prim.sprt->g0 = prim.sprt->b0 = shade;
++                prim.sprt->x0 = x0;
++                prim.sprt->y0 = sy;
++                prim.sprt->u0 = FIELDSTG_state.images.field->u + (x0 - sx);
++                prim.sprt->v0 = FIELDSTG_state.images.field->v;
++                prim.sprt->w = x1 - x0;
++                prim.sprt->h = 0x40;
++                prim.sprt->clut = GetClut(FIELDSTG_state.images.field->clutX, FIELDSTG_state.images.field->clutY);
++                addPrim(ot, prim.any);
++                prim.sprt++;
++                SetDrawTPage(prim.tpage, 0, 1,
++                             GetTPage(0, 1, FIELDSTG_state.images.field->x, FIELDSTG_state.images.field->y));
++                addPrim(ot, prim.any);
++                prim.tpage++;
++            }
++        }
++    }
++    quad = (POLY_F4 *)prim.any;
++    setPolyF4(quad);
++    setRGB0(quad, 0, 0, 0);
++    quad->x0 = quad->x2 = xa;
++    quad->x1 = quad->x3 = xb;
++    quad->y0 = quad->y1 = 0;
++    quad->y2 = quad->y3 = SCREEN_HEIGHT;
++    addPrim(ot, quad);
++    GFX.funcs.setPrim(quad + 1);
++}
++#endif
