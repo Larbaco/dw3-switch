@@ -49,11 +49,14 @@ void *dw3_port_widescreen_menu_band(void *sheet, int frame, int split);
 #define DW3_MENU_BAND(sheet, frame, split) dw3_port_widescreen_menu_band((sheet), (frame), (split))
 
 /* A plate that starts inside the 4:3 picture and runs off its right edge
- * (the card album's name and text plates): a copy of frame `frame` whose last
- * column is repeated for 2 * shift more pixels. Draw it with the same frame id
- * at DW3_MENU_RIGHT(x), so its start stays at x and its end reaches the
- * picture's right edge. Same return and lifetime as DW3_MENU_BAND. */
-#define DW3_MENU_EXTEND(sheet, frame) dw3_port_widescreen_menu_band((sheet), (frame), 0x7FFF)
+ * (the card album's name and text plates): a copy of frame `frame` whose body
+ * tile (the part most often repeated in it) is repeated to 2 * shift beyond its
+ * end. Draw it with the same frame id at DW3_MENU_RIGHT(x), so its start stays
+ * at x and its end reaches the picture's right edge. Returns `sheet` itself
+ * when the shift is 0 or the frame has no repeated tile. Same lifetime as
+ * DW3_MENU_BAND. */
+void *dw3_port_widescreen_menu_extend(void *sheet, int frame);
+#define DW3_MENU_EXTEND(sheet, frame) dw3_port_widescreen_menu_extend((sheet), (frame))
 
 /* The title screen's backdrop calls this every frame it is drawn (patch
  * 0085): only then does the title overlay (which also plays the movies and

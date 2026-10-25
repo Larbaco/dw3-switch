@@ -618,6 +618,40 @@ for _v, _ids in (("us", (0x158, 0x1E3)), ("eu", (0x166, 0x1EE))):
                   note="the save screen in widescreen: no card in the right gutter, header and slots at the 16:9 edges (patch 0082)"))
 
 
+# P6.1 (patches 0100-0104): the card album, the deck editor, the card packs
+# shop, the gym and the Digimon Lab in widescreen. Each screen is forced over
+# the field (DW3_FORCE_MENU=<mode>); the album and the deck editor get a
+# filled collection (DW3_FORCE_CARDS, patch 0100). PC only (env); the
+# references come from the patched build. The widescreen check: the overlay
+# must not run with "gutter 0 px per side".
+_CARD_ENV = (("DW3_START_MODE", "0x233"), ("DW3_PROGRESS", "6"))
+_CARDS = (("DW3_FORCE_CARDS", "1-120:2"),)
+# (name, DW3_FORCE_MENU mode, extra env, US overlay, EU overlay, note)
+_WS_SCREENS = (
+    ("card-album", "0x1200", _CARDS, 0x177, 0x185,
+     "the card album: background, plates and card details reach the 16:9 edges (patch 0101)"),
+    ("deck-editor", "0x400", _CARDS, 0x1BC, 0x1CA,
+     "the deck editor: folders, options, editor, card info and the list of cards owned (patch 0101)"),
+    ("card-shop", "0x1300", (), 0x1C0, 0x1CE,
+     "the card packs shop and Buy One Card (patch 0102)"),
+    ("gym", "0xA00", (), 0x1F6, 0x1F2,
+     "the gym: the party, the training list and a training (patch 0103)"),
+    ("digimon-lab", "0xD00", (), 0x1DF, 0x1EC,
+     "the Digimon Lab: the menu, the party and its details (patch 0104)"),
+    ("lab-digivolve", "0xD00", (), 0x1DF, 0x1EC,
+     "the Digimon Lab's Digivolve screens (patch 0104)"),
+)
+for _v, _field in (("us", 0x158), ("eu", 0x166)):
+    for _name, _mode, _extra, _us, _eu, _note in _WS_SCREENS:
+        _ovl = _us if _v == "us" else _eu
+        _add(Scenario(f"{_v}-{_name}", _v, "full", timeout=400,
+                      env=_CARD_ENV + (("DW3_FORCE_MENU", _mode),) + _extra,
+                      expect_restore=((_field, M), (_ovl, M)),
+                      forbid_log=((0, r"overlay restore file=0x%x kind=mode(?:(?!overlay restore)(?s:.))*?"
+                                      r"gutter 0 px per side" % _ovl),),
+                      note=_note))
+
+
 # P6.20 Cheats screen (docs/PORT_OPTIONS.md "Cheats"), log only. The screen
 # itself: two phases on one config dir (no env, so Ryubing runs it too): the
 # master switch and Instant win are saved and read back, Fill bag and Battle

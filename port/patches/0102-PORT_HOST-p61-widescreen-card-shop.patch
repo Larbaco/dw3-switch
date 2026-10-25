@@ -1,0 +1,347 @@
+Upstream-bound: no
+Subject: [PORT_HOST] P6.1 card packs shop fills 16:9
+
+The card packs shop (STCRDSHP) ran with gutter 0. Its scrolling background
+repeats every 96 pixels, so with a widescreen gutter it is drawn twice more,
+96 pixels to each side (as patch 0053), and port/options/widescreen.c gives
+the overlay the menu gutter. Off, nothing changes.
+
+--- a/src/cardgame/card_packs/shop.c
++++ b/src/cardgame/card_packs/shop.c
+@@ -3,6 +3,9 @@
+ 
+ #include "cardgame/card_packs.h"
+ #if PORT_HOST
++#include "port_widescreen.h"
++#endif
++#if PORT_HOST
+ #include <stdio.h>
+ char *getenv(const char *name);
+ #endif
+@@ -14,14 +17,14 @@
+     s32 j;
+ 
+     win->title = createTextWindow(shop->layer, 1, 0x1D, 0x16);
+-    win->help = createTextWindow(shop->layer, 1, 0xD3, 0xCC);
+-    win->money = createTextWindow(shop->layer, 3, 0x117, 0x1C);
+-    win->moneyLabel = createTextWindow(shop->layer, 3, 0x11A, 0x1C);
++    win->help = createTextWindow(shop->layer, 1, DW3_MENU_RIGHT(0xD3), 0xCC);
++    win->money = createTextWindow(shop->layer, 3, DW3_MENU_RIGHT(0x117), 0x1C);
++    win->moneyLabel = createTextWindow(shop->layer, 3, DW3_MENU_RIGHT(0x11A), 0x1C);
+     for (i = 0; i < 3; i++) {
+-        win->options[i] = createTextWindow(shop->layer, 1, 0xA7, i * 14 + 0x35);
++        win->options[i] = createTextWindow(shop->layer, 1, DW3_MENU_RIGHT(0xA7), i * 14 + 0x35);
+     }
+     j = 0; /* the match depends on setting it here and on the loop's form */
+-    win->cursor = createCursor(shop->layer, shop->depth - 2, 0xA7, shop->cursor * 14 + 0x35);
++    win->cursor = createCursor(shop->layer, shop->depth - 2, DW3_MENU_RIGHT(0xA7), shop->cursor * 14 + 0x35);
+     win->cursor->setVisible(win->cursor, 0);
+     win->message = createTextWindow(shop->layer, 1, 0x9A, 0x71);
+     windows = shop->children;
+@@ -78,6 +81,14 @@
+         shop->scrollWait = 1;
+     }
+     sprite.draw(FILE_CACHE.getEntry(FILE_CARDSHOP_SPRITES << 16), 8, shop->scroll, shop->scroll);
++#if PORT_HOST
++    /* Widescreen: the pattern repeats every 96 pixels; two more copies
++       cover the side gutters at every scroll */
++    if (dw3_port_widescreen_px() > 0) {
++        sprite.draw(FILE_CACHE.getEntry(FILE_CARDSHOP_SPRITES << 16), 8, shop->scroll - 96, shop->scroll);
++        sprite.draw(FILE_CACHE.getEntry(FILE_CARDSHOP_SPRITES << 16), 8, shop->scroll + 96, shop->scroll);
++    }
++#endif
+     sprite.setLayerId(shop->layer, shop->depth - 1);
+     if (shop->fades[0].level != 0) {
+         if (shop->fades[0].level != ONE) {
+@@ -86,25 +97,25 @@
+         }
+         sprite.draw(FILE_CACHE.getEntry(FILE_CARDSHOP_SPRITES << 16), 0x28, 0x16, 0x14);
+         if (shop->fades[0].level != ONE) {
+-            sprite.setPivot(0x140, 0x1D);
++            sprite.setPivot(DW3_MENU_RIGHT(0x140), 0x1D);
+         }
+-        sprite.draw(FILE_CACHE.getEntry(FILE_CARDSHOP_SPRITES << 16), 0x29, 0xD6, 0x15);
++        sprite.draw(FILE_CACHE.getEntry(FILE_CARDSHOP_SPRITES << 16), 0x29, DW3_MENU_RIGHT(0xD6), 0x15);
+     }
+     if (shop->fades[1].level != 0) {
+         if (shop->fades[1].level != ONE) {
+             sprite.setScale(shop->fades[1].level, ONE, ONE);
+-            sprite.setPivot(0x140, 0x49);
++            sprite.setPivot(DW3_MENU_RIGHT(0x140), 0x49);
+         }
+-        sprite.draw(FILE_CACHE.getEntry(FILE_CARDSHOP_SPRITES << 16), 0x2F, 0x92, 0x2E);
++        sprite.draw(FILE_CACHE.getEntry(FILE_CARDSHOP_SPRITES << 16), 0x2F, DW3_MENU_RIGHT(0x92), 0x2E);
+         if (shop->fades[1].level != ONE) {
+-            sprite.setPivot(0x140, 0xD2);
++            sprite.setPivot(DW3_MENU_RIGHT(0x140), 0xD2);
+         }
+-        sprite.draw(FILE_CACHE.getEntry(FILE_CARDSHOP_SPRITES << 16), 0xF, 0xC6, 0xC4);
++        sprite.draw(FILE_CACHE.getEntry(FILE_CARDSHOP_SPRITES << 16), 0xF, DW3_MENU_RIGHT(0xC6), 0xC4);
+     }
+     if (shop->fades[2].level != 0) {
+         if (shop->fades[2].level != ONE) {
+             sprite.setScale(shop->fades[2].level, ONE, ONE);
+-            sprite.setPivot(0x140, 0x77);
++            sprite.setPivot(DW3_MENU_RIGHT(0x140), 0x77);
+         }
+         sprite.draw(FILE_CACHE.getEntry(FILE_CARDSHOP_SPRITES << 16), 0x2C, 0x7B, 0x6B);
+     }
+@@ -126,7 +137,7 @@
+                 fprintf(stderr, "dw3: DW3_FORCE_PACK_OPEN seed items[91]=1 (card pack)\n");
+             }
+             shop->cursor = 1; /* Open Pack */
+-            win->cursor->setPos(win->cursor, 0x9A, shop->cursor * 14 + 0x35);
++            win->cursor->setPos(win->cursor, DW3_MENU_RIGHT(0x9A), shop->cursor * 14 + 0x35);
+             SOUND.playSound(SOUND_SELECT);
+             shop->substate = 10;
+             fprintf(stderr, "dw3: DW3_FORCE_PACK_OPEN choose Open Pack\n");
+@@ -147,7 +158,7 @@
+     }
+     if (cursor != shop->cursor) {
+         SOUND.playSound(SOUND_CURSOR);
+-        win->cursor->setPos(win->cursor, 0x9A, shop->cursor * 14 + 0x35);
++        win->cursor->setPos(win->cursor, DW3_MENU_RIGHT(0x9A), shop->cursor * 14 + 0x35);
+     }
+     if (PAD_PRESSED(PAD_CROSS)) {
+         SOUND.playSound(SOUND_SELECT);
+@@ -238,7 +249,7 @@
+     case 2:
+         if (STCRDSHP_funcs.updateFade(&shop->fades[1]) != 0) {
+             STCRDSHP_showOptions(shop, win, 1);
+-            win->cursor->setPos(win->cursor, 0x9A, shop->cursor * 14 + 0x35);
++            win->cursor->setPos(win->cursor, DW3_MENU_RIGHT(0x9A), shop->cursor * 14 + 0x35);
+             win->cursor->setVisible(win->cursor, 1);
+             shop->substate++;
+         }
+--- a/src/cardgame/card_packs/buy.c
++++ b/src/cardgame/card_packs/buy.c
+@@ -1,28 +1,31 @@
+ /* The screen that buys cards from a shop's stock */
+ 
+ #include "cardgame/card_packs.h"
++#if PORT_HOST
++#include "port_widescreen.h"
++#endif
+ 
+ /* Creates the screen's windows and its cursor */
+ void STCRDSHP_createBuyWindows(CardShopBuy *buy, CardShopBuyWindows *win) {
+     win->name = createTextWindow(buy->layer, 1, 0x88, 0x80);
+-    win->pointsLabel = createTextWindow(buy->layer, 1, 0x115, 0x80);
+-    win->points = createTextWindow(buy->layer, 1, 0x126, 0x80);
+-    win->countLabel = createTextWindow(buy->layer, 1, 0x115, 0xA6);
+-    win->count = createTextWindow(buy->layer, 1, 0x12C, 0xA6);
++    win->pointsLabel = createTextWindow(buy->layer, 1, DW3_MENU_RIGHT(0x115), 0x80);
++    win->points = createTextWindow(buy->layer, 1, DW3_MENU_RIGHT(0x126), 0x80);
++    win->countLabel = createTextWindow(buy->layer, 1, DW3_MENU_RIGHT(0x115), 0xA6);
++    win->count = createTextWindow(buy->layer, 1, DW3_MENU_RIGHT(0x12C), 0xA6);
+     win->text = createTextWindow(buy->layer, 1, 0x50, 0x97);
+     win->apLabel = createTextWindow(buy->layer, 1, 0xCE, 0x97);
+     win->ap = createTextWindow(buy->layer, 1, 0xF0, 0x97);
+     win->hpLabel = createTextWindow(buy->layer, 1, 0xCE, 0xA4);
+     win->hp = createTextWindow(buy->layer, 1, 0xF0, 0xA4);
+-    win->price = createTextWindow(buy->layer, 3, 0x117, 0xC7);
+-    win->priceLabel = createTextWindow(buy->layer, 3, 0x11A, 0xC7);
++    win->price = createTextWindow(buy->layer, 3, DW3_MENU_RIGHT(0x117), 0xC7);
++    win->priceLabel = createTextWindow(buy->layer, 3, DW3_MENU_RIGHT(0x11A), 0xC7);
+     win->prev = createTextWindow(buy->layer, 1, 0x12, 0x67);
+     win->next = createTextWindow(buy->layer, 1, 0x121, 0x67);
+     win->next->setDepth(win->next, buy->depth);
+     win->message = createTextWindow(buy->layer, 1, 0x9A, 0x39);
+-    win->yes = createTextWindow(buy->layer, 1, 0xC5, 0x56);
+-    win->no = createTextWindow(buy->layer, 1, 0xC5, 0x66);
+-    win->cursor = createCursor(buy->layer, buy->depth - 3, 0xB8, 0x56);
++    win->yes = createTextWindow(buy->layer, 1, DW3_MENU_RIGHT(0xC5), 0x56);
++    win->no = createTextWindow(buy->layer, 1, DW3_MENU_RIGHT(0xC5), 0x66);
++    win->cursor = createCursor(buy->layer, buy->depth - 3, DW3_MENU_RIGHT(0xB8), 0x56);
+     win->cursor->setVisible(win->cursor, 0);
+ }
+ 
+@@ -105,7 +108,7 @@
+         drawer.setCard(card);
+         if (buy->fades[0].level != ONE) {
+             sprite.setScale(buy->fades[0].level, ONE, ONE);
+-            sprite.setPivot(0x140, 0x87);
++            sprite.setPivot(DW3_MENU_RIGHT(0x140), 0x87);
+         }
+         kind = drawer.getKind();
+         if (kind == 1) {
+@@ -115,31 +118,31 @@
+         } else {
+             frame = drawer.card->color + 0x13;
+         }
+-        sprite.draw(FILE_CACHE.getEntry(FILE_CARDSHOP_SPRITES << 16), frame, 0x103, 0x7E);
+-        sprite.draw(FILE_CACHE.getEntry(FILE_CARDSHOP_SPRITES << 16), 0xD, 0xFC, 0x7C);
++        sprite.draw(FILE_CACHE.getEntry(FILE_CARDSHOP_SPRITES << 16), frame, DW3_MENU_RIGHT(0x103), 0x7E);
++        sprite.draw(FILE_CACHE.getEntry(FILE_CARDSHOP_SPRITES << 16), 0xD, DW3_MENU_RIGHT(0xFC), 0x7C);
+         if (buy->fades[0].level != ONE) {
+-            sprite.setPivot(0x140, 0x87);
++            sprite.setPivot(DW3_MENU_RIGHT(0x140), 0x87);
+         }
+-        sprite.draw(FILE_CACHE.getEntry(FILE_CARDSHOP_SPRITES << 16), 0xA, 0x82, 0x7C);
++        sprite.draw(DW3_MENU_EXTEND(FILE_CACHE.getEntry(FILE_CARDSHOP_SPRITES << 16), 0xA), 0xA, DW3_MENU_RIGHT(0x82), 0x7C);
+         if (buy->fades[0].level != ONE) {
+-            sprite.setPivot(0x140, 0xAF);
++            sprite.setPivot(DW3_MENU_RIGHT(0x140), 0xAF);
+         }
+-        sprite.draw(FILE_CACHE.getEntry(FILE_CARDSHOP_SPRITES << 16), 0x10, 0x103, 0xA4);
+-        sprite.draw(FILE_CACHE.getEntry(FILE_CARDSHOP_SPRITES << 16), 0xD, 0xFC, 0xA2);
++        sprite.draw(FILE_CACHE.getEntry(FILE_CARDSHOP_SPRITES << 16), 0x10, DW3_MENU_RIGHT(0x103), 0xA4);
++        sprite.draw(FILE_CACHE.getEntry(FILE_CARDSHOP_SPRITES << 16), 0xD, DW3_MENU_RIGHT(0xFC), 0xA2);
+         if (buy->fades[0].level != ONE) {
+-            sprite.setPivot(0x140, 0xA5);
++            sprite.setPivot(DW3_MENU_RIGHT(0x140), 0xA5);
+         }
+         if (kind != 0) {
+-            sprite.draw(FILE_CACHE.getEntry(FILE_CARDSHOP_SPRITES << 16), 0xB, 0x4A, 0x92);
++            sprite.draw(DW3_MENU_EXTEND(FILE_CACHE.getEntry(FILE_CARDSHOP_SPRITES << 16), 0xB), 0xB, DW3_MENU_RIGHT(0x4A), 0x92);
+         } else if (card == 0x45 || card == 0x70 || card == 0x9B || card == 0xC6 || card == 0xF1) {
+-            sprite.draw(FILE_CACHE.getEntry(FILE_CARDSHOP_SPRITES << 16), 0xB, 0x4A, 0x92);
++            sprite.draw(DW3_MENU_EXTEND(FILE_CACHE.getEntry(FILE_CARDSHOP_SPRITES << 16), 0xB), 0xB, DW3_MENU_RIGHT(0x4A), 0x92);
+         } else {
+-            sprite.draw(FILE_CACHE.getEntry(FILE_CARDSHOP_SPRITES << 16), 0xC, 0xC7, 0x92);
++            sprite.draw(DW3_MENU_EXTEND(FILE_CACHE.getEntry(FILE_CARDSHOP_SPRITES << 16), 0xC), 0xC, DW3_MENU_RIGHT(0xC7), 0x92);
+         }
+         if (buy->fades[1].level != ONE) {
+-            sprite.setPivot(0x140, 0xC8);
++            sprite.setPivot(DW3_MENU_RIGHT(0x140), 0xC8);
+         }
+-        sprite.draw(FILE_CACHE.getEntry(FILE_CARDSHOP_SPRITES << 16), 0x29, 0xD6, 0xBF);
++        sprite.draw(FILE_CACHE.getEntry(FILE_CARDSHOP_SPRITES << 16), 0x29, DW3_MENU_RIGHT(0xD6), 0xBF);
+     }
+     if (buy->cursorShown != 0) {
+         if (GFX.funcs.getTime() - buy->cursorTime >= 4) {
+@@ -172,15 +175,15 @@
+         sprite.setLayerId(buy->layer, buy->depth - 2);
+         if (buy->fades[1].level != ONE) {
+             sprite.setScale(buy->fades[1].level, ONE, ONE);
+-            sprite.setPivot(0x140, 0x3F);
++            sprite.setPivot(DW3_MENU_RIGHT(0x140), 0x3F);
+         }
+         sprite.draw(FILE_CACHE.getEntry(FILE_CARDSHOP_SPRITES << 16), 0x2C, 0x7B, 0x33);
+         if (buy->fades[2].level != 0) {
+             if (buy->fades[2].level != ONE) {
+                 sprite.setScale(buy->fades[2].level, ONE, ONE);
+-                sprite.setPivot(0x140, 0x64);
++                sprite.setPivot(DW3_MENU_RIGHT(0x140), 0x64);
+             }
+-            sprite.draw(FILE_CACHE.getEntry(FILE_CARDSHOP_SPRITES << 16), 0x2D, 0xAF, 0x50);
++            sprite.draw(FILE_CACHE.getEntry(FILE_CARDSHOP_SPRITES << 16), 0x2D, DW3_MENU_RIGHT(0xAF), 0x50);
+         }
+     }
+ }
+@@ -302,7 +305,7 @@
+         win->message->setNumber(win->message, 1, buy->price);
+         win->yes->setString(win->yes, FILE_CACHE.load(TEXT_FILE(TEXT_CARD_SHOP)), 0xD);
+         win->no->setString(win->no, FILE_CACHE.load(TEXT_FILE(TEXT_CARD_SHOP)), 0xE);
+-        win->cursor->setPos(win->cursor, 0xB8, buy->choice * 0x10 + 0x56);
++        win->cursor->setPos(win->cursor, DW3_MENU_RIGHT(0xB8), buy->choice * 0x10 + 0x56);
+         win->cursor->setVisible(win->cursor, 1);
+         buy->substate++;
+     }
+@@ -320,7 +323,7 @@
+     }
+     if (old != buy->choice) {
+         SOUND.playSound(SOUND_CURSOR);
+-        win->cursor->setPos(win->cursor, 0xB8, buy->choice * 0x10 + 0x56);
++        win->cursor->setPos(win->cursor, DW3_MENU_RIGHT(0xB8), buy->choice * 0x10 + 0x56);
+     }
+     if (PAD_PRESSED(PAD_CROSS)) {
+         SOUND.playSound(SOUND_SELECT);
+--- a/src/cardgame/card_packs/pack_open.c
++++ b/src/cardgame/card_packs/pack_open.c
+@@ -2,6 +2,9 @@
+ 
+ #include "cardgame/card_packs.h"
+ #if PORT_HOST
++#include "port_widescreen.h"
++#endif
++#if PORT_HOST
+ #include "cardgame/album.h"
+ #include <stdio.h>
+ char *getenv(const char *name);
+@@ -28,10 +31,10 @@
+     win->help[0] = createTextWindow(open->layer, 1, 0x14, 0xC2);
+     win->help[1] = createTextWindow(open->layer, 1, 0x14, 0xD0);
+     win->cardName = createTextWindow(open->layer, 1, 0x88, 0x80);
+-    win->pointsLabel = createTextWindow(open->layer, 1, 0x115, 0x80);
+-    win->points = createTextWindow(open->layer, 1, 0x126, 0x80);
+-    win->cardCountLabel = createTextWindow(open->layer, 1, 0x115, 0xA6);
+-    win->cardCount = createTextWindow(open->layer, 1, 0x12C, 0xA6);
++    win->pointsLabel = createTextWindow(open->layer, 1, DW3_MENU_RIGHT(0x115), 0x80);
++    win->points = createTextWindow(open->layer, 1, DW3_MENU_RIGHT(0x126), 0x80);
++    win->cardCountLabel = createTextWindow(open->layer, 1, DW3_MENU_RIGHT(0x115), 0xA6);
++    win->cardCount = createTextWindow(open->layer, 1, DW3_MENU_RIGHT(0x12C), 0xA6);
+     win->cardText = createTextWindow(open->layer, 1, 0x50, 0x97);
+     win->apLabel = createTextWindow(open->layer, 1, 0xCE, 0x97);
+     win->ap = createTextWindow(open->layer, 1, 0xF0, 0x97);
+@@ -211,12 +214,12 @@
+                 sprite.setClutRow(0);
+             }
+         }
+-        sprite.draw(FILE_CACHE.getEntry(FILE_CARDSHOP_SPRITES << 16), 0x2B, 0, 0x32);
++        sprite.draw(DW3_MENU_BAND(FILE_CACHE.getEntry(FILE_CARDSHOP_SPRITES << 16), 0x2B, 160), 0x2B, 0, 0x32);
+     }
+     if (open->fades[1].level != 0) {
+         if (open->fades[1].level != ONE) {
+             sprite.setScale(open->fades[1].level, ONE, ONE);
+-            sprite.setPivot(0x140, 0x8F);
++            sprite.setPivot(DW3_MENU_RIGHT(0x140), 0x8F);
+         } else {
+             sprite.setTexture(0x140, 0);
+             pack = open->packs[open->cursor];
+@@ -230,7 +233,7 @@
+         if (open->fades[2].level != ONE) {
+             sprite.setPivot(0xA0, 0xCF);
+         }
+-        sprite.draw(FILE_CACHE.getEntry(FILE_CARDSHOP_SPRITES << 16), 0x2A, 0, 0xBD);
++        sprite.draw(DW3_MENU_BAND(FILE_CACHE.getEntry(FILE_CARDSHOP_SPRITES << 16), 0x2A, 160), 0x2A, 0, 0xBD);
+     }
+     if (open->fades[3].level != 0) {
+         card = open->cards[open->card];
+@@ -238,7 +241,7 @@
+         drawer.setCard(card);
+         sprite.setScale(open->fades[3].level, ONE, ONE);
+         if (open->fades[3].level != ONE) {
+-            sprite.setPivot(0x140, 0x87);
++            sprite.setPivot(DW3_MENU_RIGHT(0x140), 0x87);
+         }
+         kind = drawer.getKind();
+         if (kind == 1) {
+@@ -248,26 +251,26 @@
+         } else {
+             frame = drawer.card->color + 0x13;
+         }
+-        sprite.draw(FILE_CACHE.getEntry(FILE_CARDSHOP_SPRITES << 16), frame, 0x103, 0x7E);
+-        sprite.draw(FILE_CACHE.getEntry(FILE_CARDSHOP_SPRITES << 16), 0xD, 0xFC, 0x7C);
++        sprite.draw(FILE_CACHE.getEntry(FILE_CARDSHOP_SPRITES << 16), frame, DW3_MENU_RIGHT(0x103), 0x7E);
++        sprite.draw(FILE_CACHE.getEntry(FILE_CARDSHOP_SPRITES << 16), 0xD, DW3_MENU_RIGHT(0xFC), 0x7C);
+         if (open->fades[3].level != ONE) {
+-            sprite.setPivot(0x140, 0x87);
++            sprite.setPivot(DW3_MENU_RIGHT(0x140), 0x87);
+         }
+-        sprite.draw(FILE_CACHE.getEntry(FILE_CARDSHOP_SPRITES << 16), 0xA, 0x82, 0x7C);
++        sprite.draw(DW3_MENU_EXTEND(FILE_CACHE.getEntry(FILE_CARDSHOP_SPRITES << 16), 0xA), 0xA, DW3_MENU_RIGHT(0x82), 0x7C);
+         if (open->fades[3].level != ONE) {
+-            sprite.setPivot(0x140, 0xAF);
++            sprite.setPivot(DW3_MENU_RIGHT(0x140), 0xAF);
+         }
+-        sprite.draw(FILE_CACHE.getEntry(FILE_CARDSHOP_SPRITES << 16), 0x10, 0x103, 0xA4);
+-        sprite.draw(FILE_CACHE.getEntry(FILE_CARDSHOP_SPRITES << 16), 0xD, 0xFC, 0xA2);
++        sprite.draw(FILE_CACHE.getEntry(FILE_CARDSHOP_SPRITES << 16), 0x10, DW3_MENU_RIGHT(0x103), 0xA4);
++        sprite.draw(FILE_CACHE.getEntry(FILE_CARDSHOP_SPRITES << 16), 0xD, DW3_MENU_RIGHT(0xFC), 0xA2);
+         if (open->fades[3].level != ONE) {
+-            sprite.setPivot(0x140, 0xA5);
++            sprite.setPivot(DW3_MENU_RIGHT(0x140), 0xA5);
+         }
+         if (kind != 0) {
+-            sprite.draw(FILE_CACHE.getEntry(FILE_CARDSHOP_SPRITES << 16), 0xB, 0x4A, 0x92);
++            sprite.draw(DW3_MENU_EXTEND(FILE_CACHE.getEntry(FILE_CARDSHOP_SPRITES << 16), 0xB), 0xB, DW3_MENU_RIGHT(0x4A), 0x92);
+         } else if (card == 0x45 || card == 0x70 || card == 0x9B || card == 0xC6 || card == 0xF1) {
+-            sprite.draw(FILE_CACHE.getEntry(FILE_CARDSHOP_SPRITES << 16), 0xB, 0x4A, 0x92);
++            sprite.draw(DW3_MENU_EXTEND(FILE_CACHE.getEntry(FILE_CARDSHOP_SPRITES << 16), 0xB), 0xB, DW3_MENU_RIGHT(0x4A), 0x92);
+         } else {
+-            sprite.draw(FILE_CACHE.getEntry(FILE_CARDSHOP_SPRITES << 16), 0xC, 0xC7, 0x92);
++            sprite.draw(DW3_MENU_EXTEND(FILE_CACHE.getEntry(FILE_CARDSHOP_SPRITES << 16), 0xC), 0xC, DW3_MENU_RIGHT(0xC7), 0x92);
+         }
+         if (open->glowShown != 0) {
+             if (GFX.funcs.getTime() - open->glowTime >= 5) {

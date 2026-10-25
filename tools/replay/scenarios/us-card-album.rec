@@ -1,0 +1,12 @@
+# US: P6.1 card album in widescreen (env in manifest)
+shot 160 opening
+shot 300 album
+pad 500 0x0800
+pad 505 0x0000
+shot 640 page-two
+pad 700 0x0020
+pad 705 0x0000
+pad 740 0x0040
+pad 745 0x0000
+shot 800 cursor
+end 820

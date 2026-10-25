@@ -1,0 +1,9 @@
+# EU: P6.1 gym in widescreen (env in manifest)
+shot 300 party
+pad 400 0x4000
+pad 405 0x0000
+shot 700 trainings
+pad 750 0x4000
+pad 755 0x0000
+shot 1000 session
+end 1100

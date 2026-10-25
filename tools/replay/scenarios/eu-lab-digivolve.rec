@@ -1,0 +1,13 @@
+# EU: P6.1 Digimon Lab digivolve in widescreen (env in manifest)
+pad 300 0x0040
+pad 305 0x0000
+pad 400 0x4000
+pad 405 0x0000
+shot 600 who
+pad 650 0x4000
+pad 655 0x0000
+shot 850 type
+pad 900 0x4000
+pad 905 0x0000
+shot 1100 type-choice
+end 1150
