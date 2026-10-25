@@ -92,12 +92,12 @@ tracks flat sector pacing; see [docs/P5.3_FLAT_SAVE.md](../../docs/P5.3_FLAT_SAV
 ```bash
 mkdir -p build
 gcc -std=c11 -Wall -Wextra -O2 \
-  -o build/memcard_rw tools/memcard_rw.c port/memcard/memcard_host.c \
+  -o build/memcard_rw tools/memcard_rw.c port/memcard/memcard_host.c port/memcard/save_convert.c \
   -Iport/memcard
 
 gcc -std=c11 -Wall -Wextra -O2 \
   -o build/memcard_flat_test tools/memcard_flat_test.c \
-  port/memcard/memcard_libmcrd.c port/memcard/memcard_host.c \
+  port/memcard/memcard_libmcrd.c port/memcard/memcard_host.c port/memcard/save_convert.c \
   -Iport/memcard
 ```
 
