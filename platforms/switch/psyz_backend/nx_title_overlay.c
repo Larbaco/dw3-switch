@@ -53,8 +53,9 @@ void psyz_log(unsigned int level, const char *file, unsigned int line,
 enum {
     CANVAS_W = 960,
     CANVAS_H = 720,
-    STATE_COUNT = 5,
-    STATE_OPTIONS = 4,
+    /* PRESS START, the four menu rows (P6.28 added Quit game), the options. */
+    STATE_COUNT = 6,
+    STATE_OPTIONS = 5,
     /* Port options screen fade, in alpha steps per frame (about 13 frames). */
     OPTIONS_FADE_STEP = 20,
     ART_TEX_H = CANVAS_H * STATE_COUNT,
@@ -70,6 +71,14 @@ enum {
 static GLuint s_prog;
 static GLuint s_art_tex;
 static GLuint s_logo_tex;
+/* P6.27 / P6.28 Yes / No window: its own small texture, rendered on the CPU
+ * when its kind, focus or language changes and uploaded on the next draw. */
+static GLuint s_dialog_tex;
+static int s_dialog_active;
+static int s_dialog_kind;
+static int s_dialog_focus;
+static int s_dialog_dirty;
+static unsigned s_dialog_language = ~0u;
 static GLuint s_vbo;
 static GLint s_attr_pos = -1;
 static GLint s_attr_t = -1;
@@ -305,9 +314,10 @@ static void release_options_cache(void) {
 #endif
 }
 
-/* Build the canvas states once per GL context. The canvas is generated on
- * the CPU (no art is shipped) and freed after the upload. */
-static int ensure_gl(void) {
+/* The shader program and the quad buffer, shared by the title canvas and the
+ * Yes / No window (which also shows in the field, where the canvas is not
+ * built). */
+static int ensure_program(void) {
     static const char *VS =
         "attribute vec2 a_pos;\n"
         "attribute vec2 a_t;\n"
@@ -321,36 +331,16 @@ static int ensure_gl(void) {
         "uniform float u_alpha;\n"
         "void main(){vec4 c=texture2D(u_tex,v_t);\n"
         "  gl_FragColor=vec4(max(c.rgb-vec3(u_sub),0.0),c.a*u_alpha);}\n";
-    uint8_t *pixels;
     GLuint vs;
     GLuint fs;
     GLint ok = 0;
 
-    if (s_prog && glIsTexture(s_art_tex)) {
-        /* EU labels change the title canvases (and the options text). */
-        if (s_art_generation != dw3_pc_title_overlay_generation()) {
-            pixels = build_art();
-            if (pixels) {
-                glBindTexture(GL_TEXTURE_2D, s_art_tex);
-                glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
-                glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, CANVAS_W, ART_TEX_H,
-                                GL_RGBA, GL_UNSIGNED_BYTE, pixels);
-                free(pixels);
-                TITLE_LOG("dw3-title-overlay: canvas regenerated "
-                          "(generation %u)", s_art_generation);
-            }
-        }
+    if (s_prog && s_vbo) {
         return 1;
     }
     if (s_gl_failed) {
         return 0;
     }
-    /* A recreated context left these names dangling; drop them. */
-    s_prog = 0;
-    s_art_tex = 0;
-    s_logo_tex = 0;
-    s_vbo = 0;
-
     vs = compile_shader(GL_VERTEX_SHADER, VS);
     fs = compile_shader(GL_FRAGMENT_SHADER, FS);
     if (!vs || !fs) {
@@ -377,7 +367,44 @@ static int ensure_gl(void) {
     s_uni_tex = glGetUniformLocation(s_prog, "u_tex");
     s_uni_sub = glGetUniformLocation(s_prog, "u_sub");
     s_uni_alpha = glGetUniformLocation(s_prog, "u_alpha");
+    glGenBuffers(1, &s_vbo);
+    glBindBuffer(GL_ARRAY_BUFFER, s_vbo);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(float) * 16, NULL, GL_DYNAMIC_DRAW);
+    return 1;
+}
 
+/* Build the canvas states once per GL context. The canvas is generated on
+ * the CPU (no art is shipped) and freed after the upload. */
+static int ensure_gl(void) {
+    uint8_t *pixels;
+
+    if (s_prog && glIsTexture(s_art_tex)) {
+        /* EU labels change the title canvases (and the options text). */
+        if (s_art_generation != dw3_pc_title_overlay_generation()) {
+            pixels = build_art();
+            if (pixels) {
+                glBindTexture(GL_TEXTURE_2D, s_art_tex);
+                glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
+                glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, CANVAS_W, ART_TEX_H,
+                                GL_RGBA, GL_UNSIGNED_BYTE, pixels);
+                free(pixels);
+                TITLE_LOG("dw3-title-overlay: canvas regenerated "
+                          "(generation %u)", s_art_generation);
+            }
+        }
+        return 1;
+    }
+    if (s_gl_failed) {
+        return 0;
+    }
+    /* A recreated context left these names dangling; drop them. The program
+     * and the buffer are kept when the Yes / No window already built them in
+     * this context. */
+    s_art_tex = 0;
+    s_logo_tex = 0;
+    if (!ensure_program()) {
+        return 0;
+    }
     pixels = build_art();
     if (!pixels) {
         glDeleteProgram(s_prog);
@@ -389,10 +416,6 @@ static int ensure_gl(void) {
     free(pixels);
     s_logo_tex = make_texture(LOGO_W, LOGO_H, NULL);
     s_logo_dirty = s_logo_rgba != NULL;
-
-    glGenBuffers(1, &s_vbo);
-    glBindBuffer(GL_ARRAY_BUFFER, s_vbo);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(float) * 16, NULL, GL_DYNAMIC_DRAW);
     TITLE_LOG("dw3-title-overlay: %dx%d RGBA texture, %d states (GLES)",
               CANVAS_W, ART_TEX_H, STATE_COUNT);
     return 1;
@@ -437,7 +460,10 @@ void dw3_nx_title_overlay_draw(int vx, int vy, int vw, int vh) {
         s_options_alpha -= OPTIONS_FADE_STEP;
         if (s_options_alpha < 0) s_options_alpha = 0;
     }
-    if (!s_overlay_active && !logo && !s_options_alpha) {
+    const int title_visible = s_overlay_active || logo || s_options_alpha;
+    const int dialog = s_dialog_active;
+
+    if (!title_visible && !dialog) {
         /* Nothing is shown (restart, mode change): drop the retained canvases. */
         release_options_cache();
         return;
@@ -445,7 +471,7 @@ void dw3_nx_title_overlay_draw(int vx, int vy, int vw, int vh) {
     if (vw <= 0 || vh <= 0) {
         return;
     }
-    if (!ensure_gl()) {
+    if (title_visible ? !ensure_gl() : !ensure_program()) {
         return;
     }
     if (s_options_alpha || (s_overlay_active && !s_options_cache_warm)) {
@@ -537,6 +563,35 @@ void dw3_nx_title_overlay_draw(int vx, int vy, int vw, int vh) {
         }
     }
 
+    if (dialog) {
+        if (!glIsTexture(s_dialog_tex)) {
+            s_dialog_tex = make_texture(DW3_DIALOG_W, DW3_DIALOG_H, NULL);
+            s_dialog_dirty = 1;
+        }
+        if (s_dialog_dirty) {
+            uint8_t *pixels = (uint8_t *)malloc((size_t)DW3_DIALOG_W *
+                                                DW3_DIALOG_H * 4);
+            if (pixels) {
+                dw3_pc_dialog_art(pixels, DW3_DIALOG_W * 4, s_dialog_kind,
+                                  s_dialog_focus);
+                glBindTexture(GL_TEXTURE_2D, s_dialog_tex);
+                glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
+                glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, DW3_DIALOG_W,
+                                DW3_DIALOG_H, GL_RGBA, GL_UNSIGNED_BYTE,
+                                pixels);
+                free(pixels);
+                s_dialog_dirty = 0;
+            }
+        }
+        if (!s_dialog_dirty) {
+            glUniform1f(s_uni_sub, 0.0f);
+            glUniform1f(s_uni_alpha, 1.0f);
+            draw_quad(s_dialog_tex, DW3_DIALOG_X, DW3_DIALOG_Y,
+                      DW3_DIALOG_X + DW3_DIALOG_W,
+                      DW3_DIALOG_Y + DW3_DIALOG_H, 0.0f, 0.0f, 1.0f, 1.0f);
+        }
+    }
+
     glDisable(GL_BLEND);
 }
 
@@ -544,10 +599,13 @@ void dw3_nx_title_overlay_invalidate_gl(void) {
     if (s_prog) glDeleteProgram(s_prog);
     if (s_art_tex) glDeleteTextures(1, &s_art_tex);
     if (s_logo_tex) glDeleteTextures(1, &s_logo_tex);
+    if (s_dialog_tex) glDeleteTextures(1, &s_dialog_tex);
     if (s_vbo) glDeleteBuffers(1, &s_vbo);
     s_prog = 0;
     s_art_tex = 0;
     s_logo_tex = 0;
+    s_dialog_tex = 0;
+    s_dialog_dirty = 1;
     s_vbo = 0;
     /* Dock/handheld context change: the new texture needs the whole canvas. */
     dw3_options_cache_invalidate();
@@ -606,8 +664,8 @@ void dw3_pc_title_menu_set_state(int active, int selected) {
     }
     if (selected < 0) {
         s_selection = 0;
-    } else if (selected >= 2) {
-        s_selection = 3;
+    } else if (selected >= DW3_TITLE_MENU_ROWS) {
+        s_selection = DW3_TITLE_MENU_ROWS;
     } else {
         s_selection = selected + 1;
     }
@@ -615,4 +673,23 @@ void dw3_pc_title_menu_set_state(int active, int selected) {
      * ends, and a reset would flash it at full brightness over black. The
      * title task resets the fade when a new visit starts. */
     s_overlay_active = 1;
+}
+
+/* P6.27 / P6.28: the Yes / No window (port/options/confirm.c). Rasterized and
+ * uploaded by the draw, only when its kind, focus or language changed. */
+void dw3_pc_dialog_set(int active, int kind, int focus) {
+    const unsigned language = dw3_pc_dialog_language_generation();
+
+    if (!active) {
+        s_dialog_active = 0;
+        return;
+    }
+    if (kind != s_dialog_kind || focus != s_dialog_focus ||
+        language != s_dialog_language || !s_dialog_active) {
+        s_dialog_kind = kind;
+        s_dialog_focus = focus;
+        s_dialog_language = language;
+        s_dialog_dirty = 1;
+    }
+    s_dialog_active = 1;
 }

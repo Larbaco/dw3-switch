@@ -315,6 +315,18 @@ static int init_paths(int argc, char **argv) {
     return 0;
 }
 
+/* P6.28: the title menu's Quit game closes the window the way its close button
+ * does: the same SDL quit event, so PSY-Z sets Psyz_QuitRequested, the game
+ * loop returns from dw3_game_main() and the saves are flushed once more on
+ * the way out (port/options/confirm.c flushed them already). */
+void dw3_host_request_quit(void) {
+    SDL_Event event;
+
+    SDL_zero(event);
+    event.type = SDL_EVENT_QUIT;
+    SDL_PushEvent(&event);
+}
+
 int main(int argc, char **argv) {
     const char *internal_res = getenv("DW3_PC_INTERNAL_RES");
 

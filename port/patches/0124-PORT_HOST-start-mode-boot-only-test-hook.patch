@@ -1,0 +1,29 @@
+Upstream-bound: no
+Subject: [PORT_HOST] DW3_START_MODE test hook applies on the boot's newGame only
+
+Test hook (PC env, nothing changes when DW3_START_MODE is unset): the forced
+start mode of patch 0020 applied on every newGame(), so a restart (P6.9) or
+the field menu's Return to title (P6.27, patch 0123) from a run started with
+DW3_START_MODE went straight back into the forced field instead of the
+title. It now applies on the boot's newGame() only. The replay scenarios
+us/eu-return-title need the reset to reach the title (US) or the language
+select (EU) from the South Sector field they start in.
+
+--- a/src/engine/game/state.c
++++ b/src/engine/game/state.c
+@@ -32,10 +32,14 @@
+         const char *start = getenv("DW3_START_MODE");
+         char *end = NULL;
+         long mode;
++        /* Only the boot's newGame: a restart (P6.9, the field menu's Return
++           to title, P6.27) must reach the title, not the forced mode again. */
++        static int start_mode_used;
+ 
+-        if (start != NULL && start[0] != '\0') {
++        if (start != NULL && start[0] != '\0' && !start_mode_used) {
+             mode = strtol(start, &end, 0);
+             if (end != start && mode > 0) {
++                start_mode_used = 1;
+                 GAME.mode = (s32)mode;
+                 GAME.nextMode = (s32)mode;
+                 fprintf(stderr, "dw3: DW3_START_MODE=0x%lx\n", mode);

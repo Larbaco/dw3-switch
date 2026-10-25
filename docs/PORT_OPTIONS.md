@@ -217,7 +217,9 @@ The restart hotkey was the first live setting in the registry. It is OFF by
 default and, since P9.4, stays on once enabled. When enabled, the chord
 flushes dirty P5.3 slots before returning the game to its title boot flow. A
 failed flush cancels the restart. This does not format, delete, or change
-clean save files. See [P6.9_RESTART.md](P6.9_RESTART.md).
+clean save files. See [P6.9_RESTART.md](P6.9_RESTART.md). Since P6.27 the field
+menu also has a **Return to title** row (always, not tied to this setting), which
+asks first and then runs this reset ([below](#quit-and-return-to-title-p627-p628)).
 
 ### Tests and validation (P9.4)
 
@@ -921,6 +923,138 @@ PR 2. Build with the default (cheats included), master switch ON on page 1.
 5. Each of the three sets the cheat mark: save, relaunch, "Cheat saves" shows
    the slot and `dw3.log` has a `dw3-cheats: ... changed the game` line.
 6. `--no-cheats`: no Cheats screen, no `dw3-cheats` lines.
+
+## Quit and return to title (P6.27, P6.28)
+
+Two entries that end the running game on purpose, each behind a Yes / No
+window. Owner request of 2026-10-24; the questions that were open were
+answered with the defaults below (**default chosen, owner can change**).
+
+| Entry | Where | Needs | Does on Yes |
+|---|---|---|---|
+| **Quit game** (P6.28) | Title menu, fourth and last row, a little apart from Load Game / Continue | Always there (PC SDL3 GPU and the Switch; the PC GL path has no native title menu and keeps three rows) | Flushes the dirty save slots, then ends the session: on the Switch the NRO returns to hbmenu, on PC the window closes |
+| **Return to title** (P6.27) | Field menu (START in the field, and the same menu inside the status screens), last row | Always there (same builds as Quit game); independent of the Restart hotkey setting, which only gates the chord | The P6.9 reset: dirty save slots flushed, a failed flush cancels, the game goes back to its boot flow |
+
+Words: the field row reads TITLE SCREEN (US and English), RETOUR TITRE,
+TORNA AL TITOLO, TITELBILD, VOLVER AL INICIO, in the game's own font and
+capitals like the other rows. The title plaque is **Quit game**, Quitter,
+Beenden, Salir, Esci (the same lettering as the Options plaque, bold 29 px
+DejaVu Sans Condensed). The window is lettering of the Options screen's style
+(white bezel, navy body, the focus box and pointer, the Select / Cancel hints
+with the same button caps), in the five EU languages (the US disc is English).
+
+### Defaults chosen (owner can change)
+
+1. **Confirmation, cursor on No.** Both entries ask "Quit the game?" or
+   "Return to the title screen?"; the cursor starts on No. Cross answers,
+   Up / Down / Left / Right move the cursor, Triangle or Circle cancel. A
+   press that opens the window does not also answer it.
+2. **Field menu only, not in battle.** Return to title is a row of the field
+   menu. The battle menu has none, and the other screens (shops, memory card,
+   card game) are not touched.
+3. **Warns that progress is lost.** Both windows say "Progress since your last
+   save will be lost." (translated). The game's saves are manual; the reset
+   and the quit write only the dirty port save slots, as P6.9 does, and never
+   save the game for the player.
+4. **Return to title is the P6.9 path, unchanged.** `dw3_port_restart_request()`
+   asks for it and the next `dw3_port_restart_poll()` runs the same flush and
+   the same reset as the chord. A failed flush cancels the reset and the game
+   stays where it was. On the EU disc the reset lands on the language select
+   (P6.9), not on the title; the title follows once a language is chosen.
+5. **Quit flushes like HOME, then exits.** Yes flushes the save slots
+   (`dw3-port-quit: saves flushed; asking the host to quit` in `dw3.log`) and asks
+   the host to end the session: the Switch sets the same quit flag as HOME's exit
+   request (`dw3_nx_set_quit_requested`), the PC pushes the window's close
+   event. The game loop returns from `dw3_game_main()` and the existing exit
+   code runs (`memcard_host_shutdown`, the options flush). A failed flush
+   cancels the quit (`dw3-port-quit: save flush failed; quit cancelled`), where
+   HOME has no choice. The HOME path itself is unchanged.
+6. **Quit is the last title row, apart from Continue.** The gap above it is
+   12 px where the other rows have 4, so it is not hit by accident.
+7. **The release README says Quit returns to hbmenu.** One line in
+   `platforms/switch/release/README.txt`.
+8. **Return to title is always visible**, decoupled from the Restart hotkey
+   setting (orchestrator decision, 2026-10-25: it is a normal pause-menu feature;
+   a first version hid it behind the setting). The field menu screens that show it
+   have new replay references (see the PR for the list).
+
+### Design
+
+- `port/options/confirm.c`, `port/include/port_confirm.h`: the window's state
+  machine (open, cursor, answer), the two entries' switches and the field row's
+  text. Platform independent; the pad is the game's (`PAD_PRESSED`), so the
+  replay recordings drive it.
+- The window is drawn by the native overlay: `dw3_pc_dialog_art()` in
+  `platforms/pc/src/title_overlay_art.c` (shared by the PC and the Switch)
+  renders a 768 x 348 RGBA texture only when its kind, cursor or language
+  changes; `title_menu_overlay.c` (SDL3 GPU) and `nx_title_overlay.c` (GLES)
+  upload it and draw it over the 4:3 middle of the picture, so it also shows
+  over the field. The Switch builds only the shader and the quad buffer for it
+  outside the title (not the title canvas).
+- The title's atlas has six states now (PRESS START, four focused rows, the
+  Port options screen): `DW3_TITLE_ART_OPTIONS` moved from 3 to 4. The plaques
+  are 48 px high on a 52 px pitch (they were 54 on 60) so a fourth fits above
+  the credits; the credit plate and the Port options screen are unchanged.
+- Patch `0123` is the game side (the two menus), `0124` a test hook; see
+  [PATCHES.md](PATCHES.md). No decomp file is touched when the entries are off.
+- The seven-row panel: the field menu's options panel has a sprite for five
+  rows (`0x1C`) and six (`0x1B`, with the card folders). With Return to title
+  that is six and seven. Seven has no sprite, so the six-row panel's bottom
+  edge is covered and redrawn one row lower with five rectangles in the
+  panel's own colours.
+
+### Languages and lettering
+
+The window's and the plaque's words are pre-rendered lettering like the
+Options screen's: `DIALOG_TEXT` in `tools/generate_pc_title_lettering.py`
+holds the five languages (en, fr, de, es, it). To change or add a word edit
+that table, run `python3 tools/generate_pc_title_lettering.py` (Pillow and the
+DejaVu fonts) and commit `platforms/pc/src/title_overlay_lettering.inc`; the
+entries before it stay byte-identical. Keep each message under 650 px. The
+field row's text is ASCII capitals in `dw3_port_field_return_label()` (the
+game's font codes: A to Z are 14 to 39, a space is the two bytes 01 01); an
+accent there would need the font's two-byte code, which is why the words avoid
+them.
+
+### Tests
+
+- `tools/tests/test_confirm.py`: the state machine (cursor, Yes / No / cancel,
+  one answer per press, the flush before the quit, a failed flush cancelling
+  it, the P6.9 request) and the artwork of the window in five languages and the
+  four title states (`dialog_art_main.c`, which also writes every state as a
+  PPM when given a directory).
+- Replay (PC, US and EU): `us/eu-title-quit` (Down to Quit game, No, again, Yes:
+  the process ends by itself with status 0 and the flush line),
+  `eu-title-quit-fr/de/it/es` (plaque and window in the other languages),
+  `us/eu-return-title` (START in the South Sector field with the party of the
+  forced battle, Return to title: No, again, Yes, back at the title, or on the
+  EU disc the language select), `us/eu-return-title-rows7` (the card folders
+  row, seven rows, cancelled). See
+  [P6.15_REPLAY_TESTS.md](P6.15_REPLAY_TESTS.md).
+
+### OLED checklist, Quit and Return to title (owner)
+
+US and EU (at least two EU languages), a Switch OLED:
+
+- [ ] Title: Down goes New Game, Options, Load Game (Continue), **Quit game**; it
+      sits a little lower and is the last row; Down again does nothing.
+- [ ] Cross on Quit game: the window opens with the cursor on **No**; Cross (or
+      Triangle) closes it and the title is as before; the Select / Cancel hints
+      show the Switch letters (B and X).
+- [ ] Open it again, move to **Yes**, Cross: the NRO ends and hbmenu comes back;
+      `sdmc:/switch/dw3/dw3.log` ends with `dw3-port-quit: saves flushed; asking the host
+      to quit`; the card files (`save0.bin`, `save1.bin`) are intact, and the next
+      launch Continues from a save made before.
+- [ ] HOME and "close the software" still exit as before (`applet exit` line).
+- [ ] In the field press Plus: the menu has a
+      last row (TITLE SCREEN, RETOUR TITRE, ...); with Card folders (after the card
+      folder item) the panel has seven rows and the last is inside it.
+- [ ] Cross on it: the window, cursor on No. No: the menu is as before. Yes: the
+      game goes back to the title (US) or the language select (EU); `dw3.log` has
+      `dw3-port-restart: requested from the field menu` then
+      `saves flushed`; a save written before still Continues.
+- [ ] The row is there with Restart hotkey OFF and ON.
+- [ ] Text fits in the other EU languages (the plaque and both windows).
 
 ## Title-screen visual reference
 

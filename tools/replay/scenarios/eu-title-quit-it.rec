@@ -1,0 +1,34 @@
+# EU: language select -> it, title menu Quit game window (P6.28)
+pad 90 0x0040
+pad 95 0x0000
+pad 105 0x0040
+pad 110 0x0000
+pad 120 0x0040
+pad 125 0x0000
+pad 155 0x0008
+pad 160 0x0000
+pad 205 0x0008
+pad 210 0x0000
+pad 235 0x0008
+pad 240 0x0000
+pad 265 0x0008
+pad 270 0x0000
+pad 325 0x0008
+pad 330 0x0000
+pad 445 0x0040
+pad 450 0x0000
+pad 465 0x0040
+pad 470 0x0000
+pad 485 0x0040
+pad 490 0x0000
+shot 545 quit-focus
+pad 565 0x4000
+pad 570 0x0000
+shot 625 confirm-no
+pad 645 0x0040
+pad 650 0x0000
+shot 705 confirm-yes
+pad 725 0x1000
+pad 730 0x0000
+shot 785 after-cancel
+end 845

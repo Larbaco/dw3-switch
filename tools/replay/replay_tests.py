@@ -223,7 +223,7 @@ def write_seed_cfg(cfgdir: Path, cfg):
 
 def run_phase(rec: Path, version, binary, runtime, display, outdir: Path, memdir: Path,
               stamp, label, timeout, stall, turbo, sample_rss=True, cfgdir: Path | None = None,
-              extra_env=()):
+              extra_env=(), allow_early_exit=False):
     """One process run. Returns a dict with rc/verdict/seconds/frames/rss/log."""
     outdir.mkdir(parents=True, exist_ok=True)
     xdg = Path(tempfile.mkdtemp(prefix="dw3-replay-xdg-"))
@@ -301,7 +301,7 @@ def run_phase(rec: Path, version, binary, runtime, display, outdir: Path, memdir
             verdict, detail = "CRASH", f"killed by {sig} (last frame {last_frame})"
         elif rc != 0:
             verdict, detail = "EXIT", f"exit status {rc} (last frame {last_frame})"
-        elif b"dw3-replay: end at frame" not in text:
+        elif b"dw3-replay: end at frame" not in text and not allow_early_exit:
             verdict, detail = "NOEND", f"exited 0 before the recording's end (last frame {last_frame})"
     shutil.rmtree(xdg, ignore_errors=True)
     return dict(rc=rc, verdict=verdict, detail=detail, secs=time.time() - t0,
@@ -361,7 +361,8 @@ def run_scenario(sc, binary, runtime, out: Path, stamp, label, stall, timeout_sc
             r = run_phase(SCEN_DIR / f"{phase}.rec", sc.version, binary, runtime, display,
                           sdir, memdir, stamp, f"{sc.name}-p{i + 1}" if len(sc.phases) > 1 else sc.name,
                           int(sc.timeout * timeout_scale), stall, 0 if no_turbo else sc.turbo,
-                          sample_rss=True, cfgdir=cfgdir, extra_env=sc.env)
+                          sample_rss=True, cfgdir=cfgdir, extra_env=sc.env,
+                          allow_early_exit=sc.quits)
             r["phase"] = phase
             results.append(r)
             if r["verdict"] != "OK":

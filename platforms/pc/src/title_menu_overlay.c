@@ -39,8 +39,9 @@
 #define OVERLAY_SHADER_FORMAT SDL_GPU_SHADERFORMAT_SPIRV
 #endif
 
-/* PRESS START, the three focused menu rows, and the Port options screen. */
-enum { CANVAS_W = 960, CANVAS_H = 720, STATE_COUNT = 5, STATE_OPTIONS = 4 };
+/* PRESS START, the four focused menu rows (P6.28 added Quit game), and the
+ * Port options screen. */
+enum { CANVAS_W = 960, CANVAS_H = 720, STATE_COUNT = 6, STATE_OPTIONS = 5 };
 #define ART_TEXTURE_H (CANVAS_H * STATE_COUNT)
 
 typedef struct OverlayVertex {
@@ -55,6 +56,10 @@ static SDL_GPUBuffer *g_vertices;
 static SDL_GPUTexture *g_texture;
 static SDL_GPUTransferBuffer *g_options_transfer;
 static SDL_GPUTexture *g_logo_texture;
+/* P6.27 / P6.28: the Yes / No window (title_overlay_art.c dw3_pc_dialog_art). */
+static SDL_GPUTexture *g_dialog_texture;
+static int g_dialog_active, g_dialog_kind, g_dialog_focus = -1;
+static unsigned g_dialog_language = ~0u;
 static SDL_GPUTexture *g_background_texture;
 static SDL_GPUSampler *g_background_sampler;
 static int g_background_ready;
@@ -289,6 +294,7 @@ static void release_gpu_resources(void) {
     if (g_options_transfer) SDL_ReleaseGPUTransferBuffer(g_device, g_options_transfer);
     if (g_texture) SDL_ReleaseGPUTexture(g_device, g_texture);
     if (g_logo_texture) SDL_ReleaseGPUTexture(g_device, g_logo_texture);
+    if (g_dialog_texture) SDL_ReleaseGPUTexture(g_device, g_dialog_texture);
     if (g_background_texture) SDL_ReleaseGPUTexture(g_device, g_background_texture);
     if (g_background_sampler) SDL_ReleaseGPUSampler(g_device, g_background_sampler);
     if (g_sampler) SDL_ReleaseGPUSampler(g_device, g_sampler);
@@ -298,6 +304,9 @@ static void release_gpu_resources(void) {
     g_options_transfer = NULL;
     g_texture = NULL;
     g_logo_texture = NULL;
+    g_dialog_texture = NULL;
+    g_dialog_active = 0;
+    g_dialog_focus = -1;
     g_background_texture = NULL;
     g_background_sampler = NULL;
     g_background_ready = 0;
@@ -358,6 +367,12 @@ static int upload_art_and_quad(void) {
         .sample_count = SDL_GPU_SAMPLECOUNT_1,
     };
     g_logo_texture = SDL_CreateGPUTexture(g_device, &logo_texture_info);
+    {
+        SDL_GPUTextureCreateInfo dialog_info = logo_texture_info;
+        dialog_info.width = DW3_DIALOG_W;
+        dialog_info.height = DW3_DIALOG_H;
+        g_dialog_texture = SDL_CreateGPUTexture(g_device, &dialog_info);
+    }
     const SDL_GPUSamplerCreateInfo logo_sampler_info = {
         .min_filter = SDL_GPU_FILTER_LINEAR,
         .mag_filter = SDL_GPU_FILTER_LINEAR,
@@ -367,7 +382,8 @@ static int upload_art_and_quad(void) {
         .address_mode_w = SDL_GPU_SAMPLERADDRESSMODE_CLAMP_TO_EDGE,
     };
     g_logo_sampler = SDL_CreateGPUSampler(g_device, &logo_sampler_info);
-    if (!g_texture || !g_sampler || !g_logo_texture || !g_logo_sampler) {
+    if (!g_texture || !g_sampler || !g_logo_texture || !g_logo_sampler ||
+        !g_dialog_texture) {
         free(pixels);
         return -1;
     }
@@ -390,7 +406,7 @@ static int upload_art_and_quad(void) {
         return -1;
     }
 
-    OverlayVertex quads[STATE_COUNT * 6 + 30];
+    OverlayVertex quads[STATE_COUNT * 6 + 36];
     for (int row = 0; row < STATE_COUNT; ++row) {
         const float u0 = 0.0f;
         const float u1 = 1.0f;
@@ -411,6 +427,20 @@ static int upload_art_and_quad(void) {
         const OverlayVertex c = {{840.0f / CANVAS_W, 373.0f / CANVAS_H}, {1, 1}};
         const OverlayVertex d = {{120.0f / CANVAS_W, 373.0f / CANVAS_H}, {0, 1}};
         OverlayVertex *q = &quads[STATE_COUNT * 6];
+        q[0] = a; q[1] = b; q[2] = c;
+        q[3] = a; q[4] = c; q[5] = d;
+    }
+    {
+        /* The Yes / No window, at its place of the 960x720 canvas. */
+        const float dx0 = (float)DW3_DIALOG_X / CANVAS_W;
+        const float dy0 = (float)DW3_DIALOG_Y / CANVAS_H;
+        const float dx1 = (float)(DW3_DIALOG_X + DW3_DIALOG_W) / CANVAS_W;
+        const float dy1 = (float)(DW3_DIALOG_Y + DW3_DIALOG_H) / CANVAS_H;
+        const OverlayVertex a = {{dx0, dy0}, {0, 0}};
+        const OverlayVertex b = {{dx1, dy0}, {1, 0}};
+        const OverlayVertex c = {{dx1, dy1}, {1, 1}};
+        const OverlayVertex d = {{dx0, dy1}, {0, 1}};
+        OverlayVertex *q = &quads[(STATE_COUNT + 5) * 6];
         q[0] = a; q[1] = b; q[2] = c;
         q[3] = a; q[4] = c; q[5] = d;
     }
@@ -572,8 +602,9 @@ static int upload_art_and_quad(void) {
     SDL_ReleaseGPUTransferBuffer(g_device, transfer);
     fprintf(stderr,
             "dw3-title-overlay: %dx%d RGBA texture (%zu bytes), "
-            "4 states, 24 vertices and 1 draw/frame\n",
-            CANVAS_W, ART_TEXTURE_H, texture_bytes);
+            "%d states, %d vertices and 1 draw/frame\n",
+            CANVAS_W, ART_TEXTURE_H, texture_bytes, STATE_COUNT,
+            (int)(sizeof(quads) / sizeof(quads[0])));
     return 0;
 }
 
@@ -875,6 +906,41 @@ void dw3_pc_title_menu_logo_set_active(int active) {
     g_logo_active = active && g_logo_texture_ready;
 }
 
+/* P6.27 / P6.28: show or hide the Yes / No window. The window is rasterized
+ * and uploaded only when its kind, focus or language changed, so the call is
+ * cheap every frame. It draws over the title, the field menu and anything
+ * else the 4:3 middle of the picture shows. */
+static int dialog_upload(int kind, int focus) {
+    uint8_t *pixels = (uint8_t *)malloc((size_t)DW3_DIALOG_W * DW3_DIALOG_H * 4);
+    int rc;
+    if (!pixels) return -1;
+    dw3_pc_dialog_art(pixels, DW3_DIALOG_W * 4, kind, focus);
+    rc = upload_rgba(g_dialog_texture, pixels, DW3_DIALOG_W, DW3_DIALOG_H,
+                     DW3_DIALOG_W * 4);
+    free(pixels);
+    return rc;
+}
+
+void dw3_pc_dialog_set(int active, int kind, int focus) {
+    const unsigned language = dw3_pc_dialog_language_generation();
+    if (!active || !g_device || !g_dialog_texture || !g_pipeline ||
+        !g_vertices || !g_sampler || !g_window) {
+        g_dialog_active = 0;
+        return;
+    }
+    if (kind != g_dialog_kind || focus != g_dialog_focus ||
+        language != g_dialog_language) {
+        if (dialog_upload(kind, focus) != 0) {
+            g_dialog_active = 0;
+            return;
+        }
+        g_dialog_kind = kind;
+        g_dialog_focus = focus;
+        g_dialog_language = language;
+    }
+    g_dialog_active = 1;
+}
+
 /* The SDL3 GPU shader has no tint input; the edge fade is not followed here. */
 void dw3_pc_title_menu_set_fade(int level) { (void)level; }
 
@@ -914,7 +980,7 @@ void dw3_pc_title_menu_set_state(int active, int selected) {
         return;
     }
     if (selected < 0) g_selection = 0;
-    else if (selected >= 2) g_selection = 3;
+    else if (selected >= DW3_TITLE_MENU_ROWS) g_selection = DW3_TITLE_MENU_ROWS;
     else g_selection = selected + 1;
     refresh_art();
     g_overlay_active = 1;
@@ -923,7 +989,7 @@ void dw3_pc_title_menu_set_state(int active, int selected) {
 
 static void render_overlay(SDL_GPUCommandBuffer *cmd, SDL_GPURenderPass *pass) {
     set_three_x_presentation_size();
-    if ((!g_overlay_active && !g_logo_active && !g_background_ready) || !g_pipeline || !g_texture || !g_vertices ||
+    if ((!g_overlay_active && !g_logo_active && !g_background_ready && !g_dialog_active) || !g_pipeline || !g_texture || !g_vertices ||
         !g_sampler || !g_window) return;
     int window_w = 0, window_h = 0;
     SDL_GetWindowSizeInPixels(g_window, &window_w, &window_h);
@@ -1016,15 +1082,26 @@ static void render_overlay(SDL_GPUCommandBuffer *cmd, SDL_GPURenderPass *pass) {
         SDL_BindGPUFragmentSamplers(pass, 0, &logo_binding, 1);
         SDL_DrawGPUPrimitives(pass, 6, 1, STATE_COUNT * 6, 0);
     }
-    if (!g_overlay_active) return;
-    SDL_BindGPUGraphicsPipeline(pass, g_pipeline);
-    const SDL_GPUTextureSamplerBinding sampler_binding = {
-        .texture = g_texture,
-        .sampler = g_sampler,
-    };
-    SDL_BindGPUFragmentSamplers(pass, 0, &sampler_binding, 1);
-    SDL_DrawGPUPrimitives(pass, 6, 1, (Uint32)(g_selection * 6), 0);
-    profile_overlay_draw_complete();
+    if (g_overlay_active) {
+        SDL_BindGPUGraphicsPipeline(pass, g_pipeline);
+        const SDL_GPUTextureSamplerBinding sampler_binding = {
+            .texture = g_texture,
+            .sampler = g_sampler,
+        };
+        SDL_BindGPUFragmentSamplers(pass, 0, &sampler_binding, 1);
+        SDL_DrawGPUPrimitives(pass, 6, 1, (Uint32)(g_selection * 6), 0);
+        profile_overlay_draw_complete();
+    }
+    if (g_dialog_active && g_dialog_texture && g_logo_sampler) {
+        const SDL_GPUTextureSamplerBinding dialog_binding = {
+            .texture = g_dialog_texture,
+            .sampler = g_logo_sampler,
+        };
+        SDL_BindGPUGraphicsPipeline(pass, g_pipeline);
+        SDL_BindGPUVertexBuffers(pass, 0, &binding, 1);
+        SDL_BindGPUFragmentSamplers(pass, 0, &dialog_binding, 1);
+        SDL_DrawGPUPrimitives(pass, 6, 1, (STATE_COUNT + 5) * 6, 0);
+    }
     (void)cmd;
 }
 

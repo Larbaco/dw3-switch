@@ -1279,6 +1279,125 @@ def cheats_screen2(version):
     return r
 
 
+def title_quit(version):
+    """P6.28: the title menu's Quit game. Down to the fourth row (checkpoint
+    `quit-focus`), Cross opens the Yes / No window with the cursor on No
+    (`confirm-no`), Cross answers No (`after-no`: the menu as before), Cross
+    opens it again, Down moves to Yes (`confirm-yes`), Cross answers Yes: the
+    saves are flushed and the process ends by itself (the manifest allows the
+    early exit and expects the flush line)."""
+    r = Rec(f"{version.upper()}: title menu Quit game, No then Yes (P6.28)")
+    m = _to_title_menu(r, version)
+    r.shot(m, "menu")
+    f = m + 20
+    for _ in range(3):               # New Game, Options, Load Game, Quit game
+        r.press(f, DOWN)
+        f += 20
+    r.shot(f + 20, "quit-focus")
+    r.press(f + 40, CROSS)           # the window, cursor on No
+    r.shot(f + 100, "confirm-no")
+    r.press(f + 120, CROSS)          # No
+    r.shot(f + 180, "after-no")
+    r.press(f + 200, CROSS)          # again
+    r.press(f + 250, DOWN)           # cursor to Yes
+    r.shot(f + 310, "confirm-yes")
+    r.press(f + 330, CROSS)          # Yes: flush, quit
+    r.end(f + 700)
+    return r
+
+
+def title_quit_lang(idx):
+    """P6.28: the Quit game plaque and the Yes / No window in one of the other
+    four EU languages (`eu-title-quit` is English): language select, title,
+    Down to the fourth row (`quit-focus`), Cross (`confirm-no`), Down to Yes
+    (`confirm-yes`), Triangle cancels (`after-cancel`). The process runs to the
+    end; nothing is quit."""
+    lang = EU_LANGS[idx]
+    r = Rec(f"EU: language select -> {lang}, title menu Quit game window (P6.28)")
+    f = 90
+    for _ in range(idx):
+        r.press(f, DOWN)
+        f += 15
+    c = f + 20
+    r.press(c, START)                # confirm the language
+    for k in (50, 80, 110):          # skip the splash / FMV
+        r.press(c + k, START)
+    r.press(c + 170, START)          # PRESS START
+    g = c + 290
+    for i in range(3):               # New Game, Options, Load Game, Quit game
+        r.press(g + 20 * i, DOWN)
+    r.shot(g + 100, "quit-focus")
+    r.press(g + 120, CROSS)
+    r.shot(g + 180, "confirm-no")
+    r.press(g + 200, DOWN)
+    r.shot(g + 260, "confirm-yes")
+    r.press(g + 280, TRIANGLE)
+    r.shot(g + 340, "after-cancel")
+    r.end(g + 400)
+    return r
+
+
+# After the reset (patch 0123): US lands on the title, EU on the language
+# select (P6.9), where English is confirmed and the splash skipped as in
+# `eu_language`. Frames measured on the PC build.
+def return_title(version, rows7=False):
+    """P6.27: the field menu's Return to title (env and cfg in manifest: the
+    party of the forced event battle as in `items_menu`, Restart hotkey ON;
+    rows7 also fills the bag, which lists the card folders). Cross walks the
+    report back to the field, Start opens the field menu (`field-menu`), Down
+    to the last row (`return-focus`), Cross opens the window on No
+    (`confirm-no`), Cross answers No (`after-no`), Cross again, Down to Yes
+    (`confirm-yes`), Cross answers Yes: the P6.9 reset, back at the title
+    (`back-at-title`; on the EU disc the language select first,
+    `back-at-select`). rows7: the field menu inside STSTATUS (Items, then
+    Triangle), seven rows, the window and Triangle cancelling it."""
+    r = Rec(f"{version.upper()}: field menu Return to title (env and cfg in manifest)")
+    for f in range(300, 1200, 30):
+        r.press(f, CROSS)            # battle report -> field
+    r.press(1250, START)             # the field menu
+    if rows7:
+        # DW3_FORCE_ITEMS (patch 0070) runs when the menu mode starts: Items
+        # (the dissolve, STSTATUS), Triangle back to the field menu inside it,
+        # which now lists the card folders (the cursor stands on Items).
+        r.press(1420, CROSS)
+        r.press(1700, TRIANGLE)
+        r.shot(2000, "field-menu")
+        f = 2020
+    else:
+        r.shot(1400, "field-menu")
+        f = 1420
+    for _ in range(6 if rows7 else 5):   # to the last row
+        r.press(f, DOWN)
+        f += 20
+    r.shot(f + 20, "return-focus")
+    r.press(f + 40, CROSS)           # the window, cursor on No
+    r.shot(f + 100, "confirm-no")
+    if rows7:
+        r.press(f + 120, TRIANGLE)   # cancel
+        r.shot(f + 180, "after-cancel")
+        r.press(f + 200, TRIANGLE)   # close the menu
+        r.end(f + 300)
+        return r
+    r.press(f + 120, CROSS)          # No
+    r.shot(f + 180, "after-no")
+    r.press(f + 200, CROSS)          # again
+    r.press(f + 250, DOWN)           # cursor to Yes
+    r.shot(f + 310, "confirm-yes")
+    r.press(f + 330, CROSS)          # Yes: the reset
+    g = f + 330
+    if version == "us":
+        r.shot(g + 600, "back-at-title")
+        r.end(g + 700)
+    else:
+        r.shot(g + 200, "back-at-select")
+        r.press(g + 220, START)      # English
+        for k in (270, 300, 330):    # skip the splash / FMV
+            r.press(g + k, START)
+        r.shot(g + 600, "back-at-title")
+        r.end(g + 700)
+    return r
+
+
 def main(out):
     out.mkdir(parents=True, exist_ok=True)
     (out / "us-title.rec").write_text(us_title().text())
@@ -1345,6 +1464,13 @@ def main(out):
                 cheats_screen(v, phase).text(True))
         (out / f"{v}-cheat-fill-bag.rec").write_text(cheat_fill_bag(v).text(True))
         (out / f"{v}-cheats-screen2.rec").write_text(cheats_screen2(v).text(True))
+        (out / f"{v}-title-quit.rec").write_text(title_quit(v).text(True))
+        (out / f"{v}-return-title.rec").write_text(return_title(v).text(True))
+        (out / f"{v}-return-title-rows7.rec").write_text(
+            return_title(v, rows7=True).text(True))
+    for i, lang in enumerate(EU_LANGS):
+        if lang != "en":
+            (out / f"eu-title-quit-{lang}.rec").write_text(title_quit_lang(i).text(True))
     (out / "us-repro-balloon.rec").write_text(repro_balloon("us").text(True))
     for version in ("us", "eu"):
         # Written unsorted, byte for byte as first committed with patch 0058.
