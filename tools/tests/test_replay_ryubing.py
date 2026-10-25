@@ -44,6 +44,13 @@ def test_mem_verdict_flat_and_growing():
     grow = [_mem(321 + i * 100, 158, 175000 + i * 300) for i in range(40)]
     ok, detail = ry.mem_verdict(grow, 0)
     assert not ok
+    # a one-time libc step of 565-601 KiB passes; heap and file cache keep 512
+    step = [_mem(321, 158, 175000)] * 14 + [_mem(321, 158, 175601)] * 6
+    assert ry.mem_verdict(step, 0)[0]
+    step = [_mem(321, 158, 175000)] * 14 + [_mem(321, 158 + 601, 175000)] * 6
+    assert not ry.mem_verdict(step, 0)[0]
+    step = [_mem(321, 158, 175000)] * 14 + [_mem(321, 158, 175900)] * 6
+    assert not ry.mem_verdict(step, 0)[0]
     # nothing to judge without an nxlink build's samples
     assert ry.mem_verdict(["no samples here"] * 20, 0) is None
     assert ry.mem_verdict(flat[:3], 0) is None
