@@ -13,9 +13,33 @@
 #include "nx_vram_pack.h"
 
 #include <stdint.h>
+#include <string.h>
 
 static uint8_t color_5to8(unsigned int c5) {
     return (uint8_t)((c5 * 255u + 15u) / 31u);
+}
+
+/* P6.22 pass 2: the Cortex-A57 spent most of a present (about 2.8 ms of the
+ * rc7 log's present_us) expanding 102000 pixels with three multiplies and
+ * shifts each. One 256 KiB table from the halfword to its four output bytes
+ * (the same bytes, built with color_5to8) makes it a load and a store per
+ * pixel. Built on first use; the present runs on the game thread only. */
+static uint32_t s_lut[65536];
+static int s_lut_ready;
+
+static void lut_init(void) {
+    unsigned int v;
+
+    for (v = 0; v < 65536u; v++) {
+        uint8_t px[4];
+
+        px[0] = color_5to8(v & 0x1Fu);
+        px[1] = color_5to8((v >> 5) & 0x1Fu);
+        px[2] = color_5to8((v >> 10) & 0x1Fu);
+        px[3] = (v & 0x8000u) ? 0xFFu : 0x00u;
+        memcpy(&s_lut[v], px, 4);
+    }
+    s_lut_ready = 1;
 }
 
 /* Shrink one axis into [0, limit). Uses a wide accumulator so a huge size
@@ -66,6 +90,9 @@ size_t dw3_nx_pack_rgb555_rect(const uint16_t *src, int dx, int dy, int dw,
     if (!src || !dst || dw <= 0 || dh <= 0) {
         return 0;
     }
+    if (!s_lut_ready) {
+        lut_init();
+    }
     if (!clamp_axis(dx, dw, DW3_NX_VRAM_W, &x, &w) ||
         !clamp_axis(dy, dh, DW3_NX_VRAM_H, &y, &h)) {
         return 0;
@@ -82,12 +109,7 @@ size_t dw3_nx_pack_rgb555_rect(const uint16_t *src, int dx, int dy, int dw,
         int col;
 
         for (col = 0; col < w; col++) {
-            uint16_t v = srow[col];
-
-            dst[0] = color_5to8(v & 0x1Fu);
-            dst[1] = color_5to8((v >> 5) & 0x1Fu);
-            dst[2] = color_5to8((v >> 10) & 0x1Fu);
-            dst[3] = (v & 0x8000u) ? 0xFFu : 0x00u;
+            memcpy(dst, &s_lut[srow[col]], 4);
             dst += 4;
         }
     }
@@ -98,12 +120,7 @@ static uint8_t *expand_row(const uint16_t *s, int n, uint8_t *dst) {
     int col;
 
     for (col = 0; col < n; col++) {
-        uint16_t v = s[col];
-
-        dst[0] = color_5to8(v & 0x1Fu);
-        dst[1] = color_5to8((v >> 5) & 0x1Fu);
-        dst[2] = color_5to8((v >> 10) & 0x1Fu);
-        dst[3] = (v & 0x8000u) ? 0xFFu : 0x00u;
+        memcpy(dst, &s_lut[s[col]], 4);
         dst += 4;
     }
     return dst;
@@ -118,6 +135,9 @@ size_t dw3_nx_pack_rgb555_wide(const uint16_t *src, const uint16_t *left,
         dw <= 0 || dh <= 0 || dx < 0 || dy < 0 || dx + dw > DW3_NX_VRAM_W ||
         dy + dh > DW3_NX_VRAM_H) {
         return 0;
+    }
+    if (!s_lut_ready) {
+        lut_init();
     }
     for (row = 0; row < dh; row++) {
         size_t y = (size_t)(dy + row);

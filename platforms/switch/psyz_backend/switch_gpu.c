@@ -729,8 +729,102 @@ const uint16_t *dw3_nx_switch_gpu_vram(void) {
     return (const uint16_t *)SoftwareRasterizer_GetVram();
 }
 
+const uint16_t *dw3_nx_switch_gpu_vram_nosync(void) {
+    return (const uint16_t *)SoftwareRasterizer_GetVramRaw();
+}
+
+/* No sync: the present calls dw3_nx_switch_gpu_sync_display() first, and the
+ * planes are only read there. */
 const uint16_t *dw3_nx_switch_gpu_gutter_plane(int side) {
-    return (const uint16_t *)SoftwareRasterizer_GetGutterPlane(side);
+    return (const uint16_t *)SoftwareRasterizer_GetGutterPlaneRaw(side);
+}
+
+/* --- P6.22 pass 2: deferred drawing ---------------------------------------
+ *
+ * Turbo presents one game frame in `speed`. The CPU rasterizer used to draw
+ * all of them; with deferral the others are queued and dropped when a later
+ * frame covers them (PSY-Z sdl3_software_defer.inc). Anything that could see
+ * the difference draws what it needs first, so the presented frames are the
+ * same pixels. Battle keeps the immediate path (the mesh layer reads VRAM). */
+static int in_fight_mode(void) {
+    int32_t mode_file = dw3_overlay_current_mode_file();
+
+    return mode_file == DW3_FILE_FIGHTSTG_US ||
+           mode_file == DW3_FILE_FIGHTSTG_EU;
+}
+
+/* Development aids, set through DW3_NX_TEST_ENV (docs/P6.22_FIELD_CPU.md):
+ * DW3_NX_DEFER=0 keeps the immediate rasterizer; DW3_NX_PRESENT_HASH=1 logs a
+ * hash of every presented rectangle, so two runs of one replay (deferral on and
+ * off) can be compared frame by frame. */
+static int env_flag(const char *name, int dflt) {
+    const char *v = getenv(name);
+
+    return v && v[0] ? v[0] != '0' : dflt;
+}
+
+void dw3_nx_switch_gpu_set_defer(int want) {
+    static int enabled = -1;
+    int on;
+
+    if (enabled < 0) {
+        enabled = env_flag("DW3_NX_DEFER", 1);
+    }
+    on = want && enabled && !in_fight_mode();
+
+    if (SoftwareRasterizer_GetDefer() != on) {
+        SoftwareRasterizer_SetDefer(on);
+    }
+}
+
+void dw3_nx_switch_gpu_sync_display(const Dw3NxDisplay *d) {
+    static int hash_on = -1;
+    static unsigned presents;
+
+    if (!d || !d->on) {
+        return;
+    }
+    SoftwareRasterizer_SyncRect(d->x, d->y, d->width, d->height, d->gutter > 0);
+    if (hash_on < 0) {
+        hash_on = env_flag("DW3_NX_PRESENT_HASH", 0);
+    }
+    if (hash_on) {
+        const uint16_t *v = (const uint16_t *)SoftwareRasterizer_GetVramRaw();
+        uint64_t h = 1469598103934665603ull;
+        int y1 = d->y + d->height < 512 ? d->y + d->height : 512;
+        int x1 = d->x + d->width < 1024 ? d->x + d->width : 1024;
+
+        for (int y = d->y > 0 ? d->y : 0; y < y1; y++) {
+            for (int x = d->x > 0 ? d->x : 0; x < x1; x++) {
+                h = (h ^ v[y * 1024 + x]) * 1099511628211ull;
+            }
+            for (int side = 0; d->gutter > 0 && side < 2; side++) {
+                const uint16_t *g = (const uint16_t *)
+                    SoftwareRasterizer_GetGutterPlaneRaw(side);
+
+                for (int x = 0; x < d->gutter; x++) {
+                    h = (h ^ g[y * PSYZ_GUTTER_MAX + x]) * 1099511628211ull;
+                }
+            }
+        }
+        INFOF("present hash #%u %016llx", presents++, (unsigned long long)h);
+    }
+}
+
+void dw3_nx_switch_gpu_defer_log(void) {
+    unsigned long queued;
+    unsigned long dropped;
+    unsigned long run;
+    unsigned long sync_layers;
+    unsigned long other_layers;
+
+    SoftwareRasterizer_GetDeferStats(&queued, &dropped, &run, &sync_layers,
+                                     &other_layers, 1);
+    if (queued) {
+        INFOF("defer dbg: queued=%lu dropped=%lu drawn=%lu layers_at_present=%lu "
+              "layers_other=%lu",
+              queued, dropped, run, sync_layers, other_layers);
+    }
 }
 
 /* --- video state the rasterizer reads back -------------------------------- */

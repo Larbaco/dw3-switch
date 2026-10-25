@@ -369,8 +369,10 @@ int Psyz_VideoVSync(int mode) {
         static int turbo_skipped;
         int speed = dw3_port_turbo_speed();
 
+        /* P6.22: the frames turbo does not show are queued, not drawn. */
+        dw3_nx_switch_gpu_set_defer(speed > 1);
         if (speed > 1 && ++turbo_skipped < speed) {
-            dw3_nx_gpu_skip_present(dw3_nx_switch_gpu_vram());
+            dw3_nx_gpu_skip_present(dw3_nx_switch_gpu_vram_nosync());
             last_vsync_us = now_us;
             return lines;
         }
@@ -396,7 +398,8 @@ int Psyz_VideoVSync(int mode) {
                          disp.x, disp.y, disp.width, disp.height, s_width,
                          s_height);
             }
-            dw3_nx_gpu_present(dw3_nx_switch_gpu_vram(), disp.x, disp.y,
+            dw3_nx_switch_gpu_sync_display(&disp);
+            dw3_nx_gpu_present(dw3_nx_switch_gpu_vram_nosync(), disp.x, disp.y,
                                disp.width, disp.height,
                                dw3_nx_display_aspect(disp.range_w, disp.range_h,
                                                      disp.pal),
