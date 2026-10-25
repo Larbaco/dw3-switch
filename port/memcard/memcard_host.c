@@ -9,6 +9,11 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#ifdef _WIN32
+#include <io.h>
+#else
+#include <unistd.h>
+#endif
 
 #define MEMCARD_DIR_MAX 512
 #define MEMCARD_PATH_MAX 640
@@ -21,6 +26,7 @@ typedef struct MemSlot {
     char name[21];
     int present; /* resident flat save loaded or created */
     int dirty;
+    int section_open; /* a game write section is in flight (RAM is partial) */
     int flush_failed;
     unsigned flush_count;
 } MemSlot;
@@ -177,6 +183,7 @@ static void slot_clear_ram(int slot) {
     s->name[0] = '\0';
     s->present = 0;
     s->dirty = 0;
+    s->section_open = 0;
     s->flush_failed = 0;
 }
 
@@ -213,10 +220,10 @@ static void store_name(int slot, const char *name) {
     g_slots[slot].name[n] = '\0';
 }
 
+static int atomic_write_file(const char *path, const uint8_t *data, size_t len);
+
 static int write_name_sidecar(int slot) {
     char path[MEMCARD_PATH_MAX];
-    FILE *fp;
-    size_t n;
 
     if (!slot_ok(slot) || g_slots[slot].name[0] == '\0') {
         return 0;
@@ -224,17 +231,8 @@ static int write_name_sidecar(int slot) {
     if (name_path(slot, path, sizeof(path)) != 0) {
         return -1;
     }
-    fp = fopen(path, "wb");
-    if (fp == NULL) {
-        return -1;
-    }
-    n = strlen(g_slots[slot].name);
-    if (fwrite(g_slots[slot].name, 1, n, fp) != n || fflush(fp) != 0) {
-        fclose(fp);
-        return -1;
-    }
-    fclose(fp);
-    return 0;
+    return atomic_write_file(path, (const uint8_t *)g_slots[slot].name,
+                             strlen(g_slots[slot].name));
 }
 
 static int read_name_sidecar(int slot) {
@@ -421,6 +419,52 @@ static int quarantine_bad_flat(int slot) {
     return 0;
 }
 
+/* Test hook (P10.2): simulate the process dying at step N of an atomic
+ * write, leaving the disk exactly as a kill at that point would. 1 = tmp
+ * created and empty, 2 = tmp half written, 3 = tmp complete and closed,
+ * 4 = destination removed, 5 = renamed (write complete). The hook fires in
+ * the `nth` atomic write after arming (1 = the saveN.bin write, 2 = the
+ * saveN.name sidecar that follows it in a flush). 0 = off. The environment
+ * variables DW3_MEMCARD_FAULT_STEP / DW3_MEMCARD_FAULT_NTH arm the same hook
+ * in any build. */
+static int g_test_fault_step;
+static int g_test_fault_nth = 1;
+static int g_fault_here;
+static int g_fault_env_read;
+
+void memcard_host_test_fault_step(int step, int nth) {
+    g_test_fault_step = step;
+    g_test_fault_nth = nth > 0 ? nth : 1;
+    g_fault_env_read = 1;
+}
+
+static void fault_begin(void) {
+    if (!g_fault_env_read) {
+        const char *e = getenv("DW3_MEMCARD_FAULT_STEP");
+        const char *n = getenv("DW3_MEMCARD_FAULT_NTH");
+
+        g_fault_env_read = 1;
+        if (e != NULL) {
+            g_test_fault_step = atoi(e);
+            g_test_fault_nth = n != NULL && atoi(n) > 0 ? atoi(n) : 1;
+        }
+    }
+    g_fault_here = 0;
+    if (g_test_fault_step != 0 && --g_test_fault_nth <= 0) {
+        g_fault_here = 1;
+    }
+}
+
+static int fault_at(int step) {
+    if (g_fault_here && g_test_fault_step == step) {
+        g_test_fault_step = 0;
+        g_fault_here = 0;
+        errno = EINTR;
+        return 1;
+    }
+    return 0;
+}
+
 static int atomic_write_file(const char *path, const uint8_t *data, size_t len) {
     char tmp[MEMCARD_PATH_MAX + 8];
     FILE *fp;
@@ -428,6 +472,7 @@ static int atomic_write_file(const char *path, const uint8_t *data, size_t len) 
     int n;
     int err;
 
+    fault_begin();
     n = snprintf(tmp, sizeof(tmp), "%s.tmp", path);
     if (n < 0 || (size_t)n >= sizeof(tmp)) {
         return -1;
@@ -436,8 +481,26 @@ static int atomic_write_file(const char *path, const uint8_t *data, size_t len) 
     if (fp == NULL) {
         return -1;
     }
-    nw = fwrite(data, 1, len, fp);
-    if (nw != len || fflush(fp) != 0) {
+    if (fault_at(1)) {
+        fclose(fp);
+        return -1;
+    }
+    nw = fwrite(data, 1, len / 2, fp);
+    if (fault_at(2)) {
+        fflush(fp);
+        fclose(fp);
+        return -1;
+    }
+    nw += fwrite(data + len / 2, 1, len - len / 2, fp);
+    /* fsync before the rename: the new name must never point at data that
+     * is still only in the SD driver's cache when the power goes. */
+    if (nw != len || fflush(fp) != 0 ||
+#ifdef _WIN32
+        _commit(_fileno(fp)) != 0
+#else
+        fsync(fileno(fp)) != 0
+#endif
+        ) {
         err = errno;
         fclose(fp);
         remove(tmp);
@@ -448,6 +511,9 @@ static int atomic_write_file(const char *path, const uint8_t *data, size_t len) 
         err = errno;
         remove(tmp);
         errno = err;
+        return -1;
+    }
+    if (fault_at(3)) {
         return -1;
     }
     /*
@@ -463,6 +529,9 @@ static int atomic_write_file(const char *path, const uint8_t *data, size_t len) 
         errno = err;
         return -1;
     }
+    if (fault_at(4)) {
+        return -1;
+    }
     if (rename(tmp, path) != 0) {
         err = errno;
         fprintf(stderr,
@@ -473,7 +542,58 @@ static int atomic_write_file(const char *path, const uint8_t *data, size_t len) 
         errno = err;
         return -1;
     }
+    (void)fault_at(5);
     return 0;
+}
+
+/* P10.2: leftovers of an interrupted write, on the next boot. The write is
+ * tmp (fsynced) -> remove dest -> rename, so a kill leaves one of: dest only
+ * (old file, maybe a stale tmp), a short tmp, or tmp only (dest removed, tmp
+ * complete). A tmp the exact size of the file is promoted when dest is
+ * missing; every other tmp is dropped. `want` is the size a good file has
+ * (0 = any non-empty size, for the name sidecar). */
+static void recover_tmp(const char *path, long want) {
+    char tmp[MEMCARD_PATH_MAX + 8];
+    FILE *fp;
+    FILE *tf;
+    long tsz = -1;
+    int have_dest;
+
+    if (snprintf(tmp, sizeof(tmp), "%s.tmp", path) >= (int)sizeof(tmp)) {
+        return;
+    }
+    tf = fopen(tmp, "rb");
+    if (tf == NULL) {
+        return;
+    }
+    if (fseek(tf, 0, SEEK_END) == 0) {
+        tsz = ftell(tf);
+    }
+    fclose(tf);
+    fp = fopen(path, "rb");
+    have_dest = fp != NULL;
+    if (fp != NULL) {
+        fclose(fp);
+    }
+    if (!have_dest && tsz > 0 && (want == 0 || tsz == want) &&
+        rename(tmp, path) == 0) {
+        fprintf(stderr, "dw3: memcard: recovered %s from an interrupted write\n",
+                path);
+        return;
+    }
+    fprintf(stderr, "dw3: memcard: removed stale %s (%ld bytes)\n", tmp, tsz);
+    remove(tmp);
+}
+
+static void recover_slot_tmp(int slot) {
+    char path[MEMCARD_PATH_MAX];
+
+    if (flat_path(slot, path, sizeof(path)) == 0) {
+        recover_tmp(path, (long)MEMCARD_FLAT_SIZE);
+    }
+    if (name_path(slot, path, sizeof(path)) == 0) {
+        recover_tmp(path, 0);
+    }
 }
 
 static int load_flat_from_disk(int slot) {
@@ -894,6 +1014,7 @@ int memcard_host_flush(int slot) {
     if (!slot_ok(slot)) {
         return -1;
     }
+    g_slots[slot].section_open = 0; /* a flush call ends the caller's section */
     if (!g_slots[slot].dirty || !memcard_host_has_file(slot)) {
         return 0;
     }
@@ -974,6 +1095,7 @@ int memcard_host_ensure(int slot) {
     if (flat_path(slot, path, sizeof(path)) != 0) {
         return -1;
     }
+    recover_slot_tmp(slot);
     /* One open via load_flat_from_disk (no probe fopen). Missing file falls
      * through to migrate; present-but-bad is quarantined then migrated. */
     t0 = mono_us();
@@ -1003,9 +1125,77 @@ int memcard_host_ensure(int slot) {
     return 0;
 }
 
+void memcard_host_section_begin(int slot) {
+    if (slot_ok(slot)) {
+        g_slots[slot].section_open = 1;
+    }
+}
+
+int memcard_host_section_open_any(void) {
+    int slot;
+
+    for (slot = 0; slot < MEMCARD_HOST_SLOTS; slot++) {
+        if (g_slots[slot].section_open) {
+            return 1;
+        }
+    }
+    return 0;
+}
+
+/* Flush every slot that is not mid-section. A slot whose game write is half
+ * done holds a RAM image the game never meant to leave on the card (data
+ * written, summary not yet), so it stays out. */
+int memcard_host_flush_settled(void) {
+    int slot;
+    int rc = 0;
+
+    for (slot = 0; slot < MEMCARD_HOST_SLOTS; slot++) {
+        if (g_slots[slot].section_open) {
+            continue;
+        }
+        if (memcard_host_flush(slot) != 0) {
+            rc = -1;
+        }
+    }
+    return rc;
+}
+
+/* Give up the unfinished sections: the card file keeps its last complete
+ * content. Only for a process that is about to end. */
+void memcard_host_abandon_sections(void) {
+    int slot;
+
+    for (slot = 0; slot < MEMCARD_HOST_SLOTS; slot++) {
+        if (g_slots[slot].section_open) {
+            fprintf(stderr, "dw3: memcard: slot=%d write section unfinished; "
+                    "the card file keeps its previous content\n", slot);
+            g_slots[slot].section_open = 0;
+            g_slots[slot].dirty = 0;
+        }
+    }
+}
+
+/* HOME / Quit exit gate (P10.2). 1 = the host may end the session now (the
+ * settled slots are flushed); 0 = a game save is mid-write, call again next
+ * frame. `waited_us` is how long the exit has been held; past
+ * MEMCARD_EXIT_WAIT_US the section is abandoned (HOME force-kills at 15 s). */
+int memcard_host_exit_ready(uint64_t waited_us) {
+    if (memcard_host_section_open_any()) {
+        if (waited_us < MEMCARD_EXIT_WAIT_US) {
+            return 0;
+        }
+        memcard_host_abandon_sections();
+    }
+    (void)memcard_host_flush_settled();
+    return 1;
+}
+
 void memcard_host_shutdown(void) {
     int slot;
 
+    /* A section still open here ended its burst without a later MemCard call
+     * (the game loop returned): the RAM image is the finished save, flush it.
+     * A section the exit gate gave up on was already dropped (dirty = 0). */
     (void)memcard_host_flush_all();
     for (slot = 0; slot < MEMCARD_HOST_SLOTS; slot++) {
         slot_clear_ram(slot);

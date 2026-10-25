@@ -214,6 +214,7 @@ long MemCardWriteFile(long chan, char *file, unsigned long *adrs, long offset,
         return 1;
     }
     /* Stay dirty until the write section ends (next non-write MemCard*). */
+    memcard_host_section_begin(slot);
     pending_set(McFuncWriteFile, McErrNone);
     return 1;
 }

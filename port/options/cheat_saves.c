@@ -80,6 +80,27 @@ static void cs_load(int port, Dw3OptCfg *cfg) {
     }
     fp = fopen(path, "rb");
     if (fp == NULL) {
+        /* P10.2: a write killed between the remove and the rename leaves a
+         * complete .tmp (it ends with `end=1`); a torn one is ignored. */
+        char tmp[DW3_OPTCFG_PATH_MAX];
+
+        if (cs_path(port, ".tmp", tmp, sizeof(tmp)) != 0 ||
+            (fp = fopen(tmp, "rb")) == NULL) {
+            return;
+        }
+        n = fread(text, 1, sizeof(text), fp);
+        fclose(fp);
+        if (n >= sizeof(text)) {
+            return;
+        }
+        dw3_optcfg_parse(cfg, text, n);
+        if (!cfg->complete) {
+            dw3_optcfg_init(cfg);
+            return;
+        }
+        if (rename(tmp, path) == 0) {
+            CHEAT_WARN("dw3-cheats: %s was missing; recovered %s", path, tmp);
+        }
         return;
     }
     n = fread(text, 1, sizeof(text), fp);

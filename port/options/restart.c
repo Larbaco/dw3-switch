@@ -21,6 +21,13 @@ static int restart_chord_held(void) {
  * (P6.27): flush the dirty save slots, cancel on a failure, then hide what the
  * discarded tasks cannot. 1 = the caller resets the game. */
 static int restart_perform(void) {
+    if (memcard_host_section_open_any()) {
+        /* A game save is half written: the reset would discard its tasks and
+         * the card file would keep the old content. Try again when it ends. */
+        fprintf(stderr, "dw3-port-restart: a save is being written; restart cancelled\n");
+        fflush(stderr);
+        return 0;
+    }
     if (memcard_host_flush_all() != 0) {
         fprintf(stderr, "dw3-port-restart: save flush failed; restart cancelled\n");
         fflush(stderr);

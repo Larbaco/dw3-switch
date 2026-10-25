@@ -7,6 +7,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <sys/stat.h>
+#include <sys/types.h>
 
 #define CDFS_ROOT_MAX 512
 #define CDFS_PATH_MAX 512
@@ -577,24 +579,20 @@ int cdfs_load_map(const char *json_path) {
     return load_map_file(path);
 }
 
+/* One stat() per size query instead of fopen + fseek + ftell + fclose (PR
+ * #267 audit). A regular file only; a missing file, a directory or a size over
+ * 4 GiB is -1, as before. libnx/newlib implement stat on both the sdmc: and
+ * romfs: devoptabs (fsdev_stat / romfs_stat), the same ones fopen uses. */
 static int host_file_size(const char *path, uint32_t *out) {
-    FILE *fp;
-    long sz;
+    struct stat st;
 
-    fp = fopen(path, "rb");
-    if (fp == NULL) {
+    if (stat(path, &st) != 0 || !S_ISREG(st.st_mode)) {
         return -1;
     }
-    if (fseek(fp, 0, SEEK_END) != 0) {
-        fclose(fp);
+    if (st.st_size < 0 || (uint64_t)st.st_size > 0xFFFFFFFFull) {
         return -1;
     }
-    sz = ftell(fp);
-    fclose(fp);
-    if (sz < 0 || sz > 0xFFFFFFFFl) {
-        return -1;
-    }
-    *out = (uint32_t)sz;
+    *out = (uint32_t)st.st_size;
     return 0;
 }
 

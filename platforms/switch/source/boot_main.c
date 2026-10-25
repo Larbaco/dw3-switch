@@ -81,6 +81,9 @@ void dw3_host_request_quit(void) {
 static PsyzVSyncCb g_prev_vsync_cb;
 static int g_applet_exit_locked;
 static int g_quit_saves_flushed;
+static int g_exit_pending;
+static int g_exit_deferred_logged;
+static uint64_t g_exit_since_us;
 
 static uint64_t restore_now_us(void) {
     return armTicksToNs(armGetSystemTick()) / 1000ULL;
@@ -97,23 +100,35 @@ static void dw3_nx_service_applet_quit(void) {
     if (Psyz_QuitRequested()) {
         return;
     }
-    for (n = 0; n < 4; n++) {
-        if (appletMainLoop()) {
-            continue;
-        }
-        dw3_nx_set_quit_requested();
-        if (!g_quit_saves_flushed) {
-            int flush_rc;
-
-            g_quit_saves_flushed = 1;
-            flush_rc = memcard_host_flush_all();
-            if (flush_rc != 0) {
-                ERRORF("applet exit: memcard flush_all failed");
-            } else {
-                INFOF("applet exit: flat saves flushed");
+    if (!g_exit_pending) {
+        for (n = 0; n < 4; n++) {
+            if (appletMainLoop()) {
+                continue;
             }
+            g_exit_pending = 1;
+            g_exit_since_us = restore_now_us();
+            break;
         }
-        break;
+        if (!g_exit_pending) {
+            return;
+        }
+    }
+    /* P10.2: an exit request that arrives while the game is half way through
+     * a save (MemCardWriteFile burst) waits for the section to end, so the
+     * card file gets the whole new save, not a half written one. Bounded:
+     * HOME force-kills 15 s after the request; past 8 s the section is
+     * dropped and the card keeps its previous complete content. */
+    if (!memcard_host_exit_ready(restore_now_us() - g_exit_since_us)) {
+        if (!g_exit_deferred_logged) {
+            g_exit_deferred_logged = 1;
+            INFOF("applet exit: a save is being written; waiting for it");
+        }
+        return;
+    }
+    dw3_nx_set_quit_requested();
+    if (!g_quit_saves_flushed) {
+        g_quit_saves_flushed = 1;
+        INFOF("applet exit: flat saves flushed");
     }
 }
 
@@ -148,7 +163,9 @@ static void dw3_nx_service_applet_focus(void) {
             g_applet_focus_out = 1;
             INFOF("applet focus: lost (state=%d, flushing)", (int)focus);
             Psyz_AudioPause();
-            if (memcard_host_flush_all() != 0) {
+            /* Not a save that is half written (P10.2): that one finishes
+             * through the game's own next MemCard call. */
+            if (memcard_host_flush_settled() != 0) {
                 ERRORF("applet focus: memcard flush_all failed");
             } else {
                 INFOF("applet focus: flat saves flushed");

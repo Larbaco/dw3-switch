@@ -90,6 +90,18 @@ void memcard_host_test_fail_flush(int count);
 int memcard_host_flush(int slot);
 int memcard_host_flush_all(void);
 
+/* P10.2: a game write section (MemCardWriteFile burst) holds a partial RAM
+ * image until the next non-write MemCard call. The hooks that flush from the
+ * vsync pump must not commit it. */
+void memcard_host_section_begin(int slot);
+int memcard_host_section_open_any(void);
+int memcard_host_flush_settled(void);
+void memcard_host_abandon_sections(void);
+#define MEMCARD_EXIT_WAIT_US 8000000ull /* HOME force-kills after 15 s */
+int memcard_host_exit_ready(uint64_t waited_us);
+/* Test hook: stop the nth next atomic write at step 1..5 (see memcard_host.c). */
+void memcard_host_test_fault_step(int step, int nth);
+
 /* Flush dirty slots, then clear host state. */
 void memcard_host_shutdown(void);
 
