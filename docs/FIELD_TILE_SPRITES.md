@@ -77,3 +77,19 @@ checkpoints `after-exit`, `scroll-mid`, `scroll-end` (Down held) with
 widescreen on, and the log must show `tile 12 depth 0 counts 6 sprites` and no
 `corrupt sprite count`. Without `0111` the log line is missing and all three
 captures differ from the reference by 13 to 32 % of the pixels (black water).
+
+## Results (2026-10-24, PC `sdl3_gpu` under Xvfb, US and EU)
+
+- Reproduced before the fix: black canal water after the exit, both discs,
+  also from the Inn (`0x20A`) and from `0x201` itself; fine in 4:3.
+- After: both scenarios pass (log and the three captures per disc).
+- Full replay suite (`tools/replay_tests.sh`, `--jobs 2`, `LP_NUM_THREADS=2`,
+  no soak): 845 checks, 12 differences, all in `us/eu-load-menu`
+  (`slot-choice`, `not-found`), `us-battle-report` (`report-b`),
+  `eu-battle-report` (`report-a`) and `us/eu-menu-screens` (`map`). They
+  differ by the same pixel counts on a build without patch `0111`, so they are
+  stale references from earlier menu / widescreen changes and not from this
+  fix; the references were not updated.
+- Switch NROs for US (9,621,676 bytes) and EU (9,650,348 bytes) build with
+  `tools/build_switch_game.sh` and `--eu`. `python3 -m pytest tools/tests`:
+  304 passed, 2 skipped.
