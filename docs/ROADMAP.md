@@ -95,7 +95,7 @@ listed once, in [Pending OLED checks](#pending-oled-checks).
 | P9.4 | Persistence (blocks many goals) | done (owner confirmed on the OLED, 2026-10-24) | [PORT_OPTIONS](PORT_OPTIONS.md) |
 | P9.5 | Wire real features | in progress | [PORT_OPTIONS](PORT_OPTIONS.md) |
 | P9.6 | External save converter | open | — |
-| P9.7 | Port options reachable in game | in progress (slice 1, the field menu: built, PC US and EU replays; battle open; owner OLED check open) | [PORT_OPTIONS](PORT_OPTIONS.md#options-in-game-p97), [roadmap](#phase-9--port-options-menu) |
+| P9.7 | Port options reachable in game | in progress (slice 1, the field menu, and slice 2, battle: built, PC US and EU replays, Switch Ryubing nx scenarios; live Widescreen open; owner OLED checks open) | [PORT_OPTIONS](PORT_OPTIONS.md#options-in-game-p97), [roadmap](#phase-9--port-options-menu) |
 | P9.8 | Confirm / cancel layout option (PS positional or Nintendo A/B) (future goal) | future | [roadmap](#phase-9--port-options-menu), [HOTKEYS](HOTKEYS.md) |
 | P9.9 | Options screen redesign in the title menu's style, room for more rows (future goal) | future | [roadmap](#phase-9--port-options-menu), [PORT_OPTIONS](PORT_OPTIONS.md) |
 | P10.1 | Switch features goal note | done | [SWITCH_FEATURES](SWITCH_FEATURES.md) |
@@ -171,6 +171,14 @@ The ordered session plan for preview.35 is [OLED_TEST_PLAN](OLED_TEST_PLAN.md).
   Music volume, Encounter rate, Text speed and the Restart hotkey apply at once,
   B returns to the menu, the values persist. Checklist:
   [PORT_OPTIONS.md](PORT_OPTIONS.md#oled-checklist-options-in-game-owner).
+- **P9.7 (slice 2):** Options in battle, US and EU, at least two EU languages:
+  Minus at the command menu opens the window over the frozen battle (3D picture
+  kept, no flicker), nothing moves while it is open (30 s), music keeps playing
+  and follows the volume, Triangle returns to the same command menu and the
+  battle ends normally; Minus does nothing during attacks or with L / R held.
+  Checklist:
+  [PORT_OPTIONS.md](PORT_OPTIONS.md#oled-checklist-options-in-battle-owner)
+  (OLED_TEST_PLAN D12).
 - **P6.31:** Auto-save row (the ninth Options row, OFF by default; the rows are a
   little tighter) on US and EU, at least two EU languages: on, Continue a save,
   walk through a door, `dw3.log` shows `wrote card ...`, relaunch and Continue
@@ -1131,24 +1139,36 @@ PS1 game, with vanilla-safe defaults and persistence on owner storage.
   Dated 2026-10-22, owner request after the rc4 OLED test: the Options screen
   opened only from the title, so a setting could not be changed while playing
   (a volume in the field, the Encounter rate before a walk, Widescreen on a
-  battle). **State (2026-10-25): slice 1 built, the field menu only; battle is
-  the next slice.** PC replays pass on US and EU; the owner's OLED check is
+  battle). **State (2026-10-25): slice 1 (the field menu) and slice 2 (battle)
+  built.** PC replays pass on US and EU; the owner's OLED checks are
   open ([Pending OLED checks](#pending-oled-checks)). The four needs of the
-  note, as answered by slice 1 (design, tests and the OLED checklist:
-  [PORT_OPTIONS.md](PORT_OPTIONS.md#options-in-game-p97)):
+  note, as answered by slice 1 and slice 2 (design, tests and the OLED
+  checklists: [PORT_OPTIONS.md](PORT_OPTIONS.md#options-in-game-p97) and
+  [Options in battle](PORT_OPTIONS.md#options-in-battle-p97-slice-2)):
   1. **Pausing game logic** while the screen is open: in the field it is the field
      menu's own pause; the screen opens from inside the menu, the menu task hands
      it the pad and waits, and no input frame leaks on close. Music keeps playing.
-     Battle: not done (the battle task list, its timers and the sound script need
-     the same pause).
+     **Battle (slice 2, patch `0165`):** `main()` does not run the task list, the
+     widescreen frame or `drawFrame` while the screen is open, so no task, timer,
+     event, gauge or animation moves, nothing reads the pad, the display keeps
+     the last picture, the random sequence is not advanced; the music (ticked by
+     the vsync callback) keeps playing; the game's vsync clocks are put back on
+     close. PC replays show the battle resuming pixel-identical to a battle that
+     was never paused.
   2. **Drawing over the field**: the native overlay draws the Options window over
      the field menu on PC and Switch, in 4:3 and in 16:9 (the dim covers the
-     gutters), the way patch `0123`'s Yes / No window already does. Over a battle:
-     not done (draw order and VRAM of the fight overlay).
+     gutters), the way patch `0123`'s Yes / No window already does. Over a
+     battle: the same overlay over the held picture (PC SDL3 GPU, Switch; the
+     battle is 4:3 on both); the Switch's mesh layer keeps its last picture
+     while held (`nx_mesh.c`).
   3. **The entry point: (b), a new row in the game's own field menu**, **Options**,
      just above Return to title (patch `0160`, on `0123`'s approach), in the game's
      font in the five EU languages and English on US, with the six- to eight-row
      panel redrawn for the extra rows. The hotkey fallback (a) was not needed.
+     **Battle (slice 2): (a), a button**: **Select / Minus** with no shoulder
+     button held, polled by the command menu while it waits for the player (the
+     battle has no menu the port controls). Documented in
+     [HOTKEYS.md](HOTKEYS.md).
   4. **Live application**: every row except two applies at once; **Widescreen is
      greyed** ("Locked in game: change it at the title screen.", the map layout is
      set when a mode loads) and the **Cheats entry is greyed** (armed at the
@@ -1158,7 +1178,12 @@ PS1 game, with vanilla-safe defaults and persistence on owner storage.
   **Defaults chosen for the open questions (owner can change):** the entry is a
   field-menu row, not a hotkey; field menu only for now; the pause is the menu's
   own; Widescreen and Cheats stay title-only; changes save as today; the Restart
-  hotkey applies live.
+  hotkey applies live. **Slice 2 defaults (owner can change):** the battle entry is
+  Select / Minus (the title's own Options key; no chord with a shoulder button
+  is touched) and only at the top command menu, not during attacks or sub-menus;
+  no on-screen hint; Battle cursor applies from the next turn's menu;
+  Widescreen and Cheats stay greyed; fast-forward runs at 1x while the screen is
+  open.
   Patch `0160` (the row, the pad hand-over, the panel rows); port code
   `port/options/field_options.c`, the in-game mode of `port/options/port_options.c`
   and the locked rows of the overlay art; replay scenarios `us/eu-field-options`,
@@ -1166,10 +1191,15 @@ PS1 game, with vanilla-safe defaults and persistence on owner storage.
   Ryubing (Switch build, US and EU, after #268's texture release): the Options screen and the
   Return to title window draw with no blank or garbage frame on a reopen after the release
   (`us/eu-field-options-nx`, `-release-nx`).
+  Slice 2: patch `0165`, `port/options/battle_options.c`, `nx_mesh.c`; replay
+  scenarios `us/eu-battle-options-ref`, `us/eu-battle-options` (the excursion's
+  pictures equal the plain battle's pixel for pixel, 300 frames held) and
+  `us/eu-battle-options-nx` (Ryubing); host tests `test_battle_options.py`.
   Done when: Port options opens and closes in the field **and in battle** on PC and
   Switch (US and EU), the game resumes exactly where it stopped, every row
   changes the game at once (or says why not), and the choice of entry point is
-  written down. Left: the battle slice and a live Widescreen switch.
+  written down. Left: the owner's OLED checks of both slices and a live
+  Widescreen switch.
   Related: P6.17 / P6.18 rows, P9.2 (the title entry), P6.9 (the chord), P6.27
   (the row it sits above).
 

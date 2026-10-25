@@ -1200,6 +1200,29 @@ for _v, _ids in (("us", (0x159, 0x1FA, 0x1C2, 0x158)), ("eu", (0x167, 0x208, 0x1
                   note="Select at the battle command menu: the battle is frozen under the Options screen, "
                        "resumes on the same frame (pictures identical to the control run) and ends normally (P9.7)"))
 
+# The same excursion on the Switch build in Ryubing (tier "nx", log only): the
+# replay NRO is built with DW3_NX_TEST_ENV="DW3_START_MODE=0x600,
+# DW3_FORCE_ENCOUNTER=34,DW3_FORCE_PARTY=0" (the env of _P77_ENV_REPORT), so
+# there is no `env` here. The held frame's picture (the mesh layer's) is for the
+# owner's eyes and the informational screenshots; the log proves the freeze.
+for _v, _ids in (("us", (0x159, 0x1FA, 0x1C2, 0x158)), ("eu", (0x167, 0x208, 0x1D1, 0x166))):
+    _fight, _menu, _report, _field = _ids
+    _add(Scenario(f"{_v}-battle-options-nx", _v, "nx", timeout=900, log_only=True,
+                  phases=(f"{_v}-battle-options",),
+                  expect_restore=((_fight, M), (_menu, S), (_report, M), (_field, M)),
+                  expect_log=((0, r"dw3-battle-options: open at the command menu, battle frozen: (?s:.*)"
+                                  r"dw3-port-options: open in game \(battle command menu; (?s:.*)"
+                                  r"dw3-battle-options: held, battle state: " + _BO_STATE +
+                                  r"(?s:.*)dw3-port-options: Widescreen is locked in game \(change it at the title\)(?s:.*)"
+                                  r"dw3-port-options: music volume 7(?s:.*)"
+                                  r"dw3-port-options: close in game \(back to the battle\)(?s:.*)"
+                                  r"dw3-battle-options: resume after 300 held frame\(s\); the vsync clock ran on [1-9]\d* during the hold and is put back(?s:.*)"
+                                  r"dw3-battle-options: resume, battle state: " + _BO_STATE_BACK +
+                                  r"(?s:.*)WFIGHTMN_endBattle result=1"),),
+                  forbid_log=((0, r"widescreen (enabled|disabled)"), (0, r"save flush failed"),
+                              (0, r"dw3-port-restart"), (0, r"reset while held")),
+                  note="Switch build: Select at the battle command menu, battle held under the Options screen, resumes and ends (P9.7)"))
+
 # The Options row text and the screen's lock note in the other four EU languages.
 for _id, _lang in ((3, "fr"), (5, "de"), (4, "it"), (6, "es")):
     _add(Scenario(f"eu-field-options-{_lang}", "eu", "full", turbo=4, timeout=600,

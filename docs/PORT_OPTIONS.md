@@ -1100,7 +1100,7 @@ US and EU (at least two EU languages), a Switch OLED:
 ## Options in game (P9.7)
 
 Slice 1 of ROADMAP P9.7: the port Options screen from the **field menu**.
-Battle is a later slice. Owner's brief (2026-10-25, the owner away): work
+Battle is slice 2 ([Options in battle](#options-in-battle-p97-slice-2)). Owner's brief (2026-10-25, the owner away): work
 autonomously and pick the conservative option for each open question; every
 default below is **default chosen, owner can change**.
 
@@ -1157,9 +1157,9 @@ Triangle (B) goes back to the menu. Changes are saved at once in
 
 6. **Persistence: as today.** A change is written to `port_options.cfg` the
    moment it is made (`po_save`), the same code as the title screen.
-7. **Not done in this slice (still P9.7):** the battle screen (needs the battle
-   task list paused and a draw order over the fight and its 16:9 camera) and a
-   live Widescreen switch.
+7. **Not done in this slice (still P9.7):** the battle screen (done in slice 2,
+   [Options in battle](#options-in-battle-p97-slice-2)) and a live Widescreen
+   switch.
 
 ### Design
 
@@ -1240,6 +1240,163 @@ US and EU (at least two EU languages), a Switch OLED, docked and handheld:
 - [ ] With the Cheats master ON at the title: in the field the Cheats hint is grey and
       Y does nothing.
 - [ ] 16:9: the dim covers the gutters; no gap, no leftover of the window after B.
+
+## Options in battle (P9.7, slice 2)
+
+Slice 2 of ROADMAP P9.7: the same Options screen from a **battle**. Owner's brief
+(2026-10-25, the owner away): work autonomously, the conservative option for each
+open question; every default below is **default chosen, owner can change**.
+
+### What the player sees
+
+In a battle, while the **command menu** (Fight, Tech, DV, Tag, Item, Run) is
+waiting for you, press **Select** (PC Backspace, Switch **Minus**) with no
+shoulder button held. The Options window opens over the battle, which stays on
+screen exactly as it was and does not move: no enemy attack, no gauge, no
+animation, no message. The music keeps playing (and follows the volume you set).
+Up / Down choose a row, Left / Right and Cross change it, **Triangle** (PC S,
+Switch X) goes back; the command menu is then as it was, with the same cursor,
+and the battle goes on from the same frame.
+
+### Defaults chosen (owner can change)
+
+1. **Entry: a button, not a menu row.** The battle has no menu the port controls
+   (its command menu is the game's own, six rows with the game's own window art
+   and no spare row), so option (a) of the P9.7 note applies. **Select / Minus**,
+   because the battle code never reads Select (only the debug battle test does),
+   because it is the key that already opens Options directly at the title, and
+   because every chord the port owns holds a shoulder button or a stick click (R3
+   fast-forward; the restart chord L + R + Plus + Minus; the Switch debug chords
+   Minus + L + R and Minus + ZL + ZR). The entry therefore ignores a Select press
+   while L, R, ZL or ZR is held. Plus (Start) would have mirrored the field menu,
+   but it is part of the restart chord and a stray Plus is easy; Select is the more
+   conservative key. No on-screen hint (a hint would change every battle reference
+   picture and the game's own window layout); the key is in
+   [HOTKEYS](HOTKEYS.md) and the [player guide](PLAYER_GUIDE.md).
+2. **Only at a safe point: the command menu waiting for input.** The poll is in
+   `FIGHTSTG_updateCommandMenu` (`TASK_RUN`), which runs only while the top
+   command menu waits for a command. Select does nothing during an attack, the
+   enemy's turn, messages, the technique / item / switch / digivolve lists, the
+   confused menu or the report. (A later slice could add the sub-menus.) The
+   command menu is the game's natural pause for the player, so nothing has to
+   be done to the battle's own state to open there.
+3. **Pause: the main loop does not run the battle.** While the screen is open,
+   `main()` (patch `0165`) skips the whole task list, the widescreen frame and
+   `drawFrame`, so **no** task runs: the battle clock (`FIGHTSTG_battle.frames`,
+   from which the event queue, the model and sprite animations and the camera
+   moves take their time), the queued events (the enemy's turn timer), the
+   fighters' HP and gauges, the message and cursor blink, the battle sound task
+   and the random countdown all stand still, and no task reads the pad. It does
+   not draw either: nothing is submitted, so the display keeps the last picture
+   (PC: VRAM; Switch: the same plus the mesh layer's picture, see 6).
+   `RANDOM.next()` is skipped too, so the roll sequence after the pause is the one
+   the battle would have had. The iteration still presents (`VSync(0)`), reads the
+   pad, polls the restart chord, the file cache and the sound loader. **The
+   music** is not a task: the sequencer ticks in the vsync callback, so it keeps
+   playing and a volume change is heard at once. A sound effect already started
+   finishes.
+4. **The clocks come back.** The vsync callback keeps adding to the game's clocks
+   (`GFX.timeCounter`, `frameTimeCounter`, `GAME.playTime.frames`) during the
+   pause, and the battle compares absolute `GFX` times (message and arrow timers)
+   and takes the next frame's length from the frame-time counter. They are put
+   back to what they were at the first held frame, so the first frame after the
+   pause is a normal one and the play time does not count the pause.
+5. **No input leaks.** The Select that opened it is an edge already gone when the
+   screen reads the pad; the Triangle that closes it is read by the screen in a
+   held iteration, and the next iteration (where the battle runs again) sees
+   that button only as held, not pressed. No battle task reads the pad while it
+   is open.
+6. **Drawing.** The same native overlay as slice 1 (PC SDL3 GPU and Switch GLES)
+   draws the window over the held picture. The battle is 4:3 on both hosts (the
+   16:9 gutters belong to the field); the window sits inside the 4:3 picture and
+   the black bars stay black (captured in a 16:9 PC window). On the Switch the
+   battle is on the GLES mesh layer, and a frame without draws would drop its
+   per-frame flag and show only the CPU layer: `nx_mesh.c` keeps the last
+   frame's flag, the mesh FBO and the partner view's keep area while the battle
+   is held (`dw3_port_battle_options_holding()`), so the 3D picture stays. While
+   held, fast-forward counts as 1x (a held Down would otherwise repeat 4x as
+   fast); the battle's speed comes back on resume.
+7. **Live apply**, row by row: the same as the field's table above. Widescreen
+   and the Cheats entry are **greyed, locked** (the camera, the gutter and the
+   battle layout are set when the mode loads). Fast-forward, Restart hotkey,
+   Music volume, SFX volume apply at once (the SFX volume is audible: the screen
+   plays the menu sounds). **Encounter rate**, **Text speed**, **Auto-save**
+   apply at once and are read where the game next needs them (the next footstep,
+   the next message page, the next area change); the battle in progress is not
+   touched. **Battle cursor** also applies at once: it is read when the command
+   menu *opens*, so it takes effect from the next turn's menu (the menu that is
+   open keeps its cursor); it is not greyed.
+8. **A restart chord while it is open** (Restart hotkey ON) forgets the hold and
+   closes the screen (`dw3_port_battle_options_reset`), then restarts as always.
+9. **Not offered without the native overlay** (`dw3_port_battle_options_enabled()`
+   is 0 where `dw3_port_field_options_enabled()` is), like the field row.
+
+### Design
+
+- `port/options/battle_options.c`, `port/include/port_battle_options.h`:
+  `dw3_port_battle_options_poll(language, probe)` (the entry, called by the
+  command menu), `_hold_frame()` (the main loop, once per iteration; also gives
+  the clocks back), `_holding()` (the presenters; true from the first iteration
+  that skips the draw), `_reset()`. `probe` is a small function in
+  `command_menu.c` that sums the queued events, their remaining times and the
+  fighters' HP for the log. `dw3_port_options_set_origin` only changes the words
+  of the open / close log lines.
+- Patch `0165` ([PATCHES](PATCHES.md)): the poll in `FIGHTSTG_updateCommandMenu`
+  and the hold branch in `main()`. It adds no decomp state.
+- `platforms/switch/psyz_backend/nx_mesh.c`: `end_frame` and `has_content` keep
+  the mesh layer's last picture while held. `port/options/turbo.c`: 1x while held.
+
+### Tests
+
+- `tools/tests/test_battle_options.py` (`battle_options_main.c`): the entry (not
+  offered without the overlay, not without Select, not with a shoulder button
+  held), the frame that opens it is still drawn, held iterations run no task and
+  advance no frame, the clocks are put back at resume, the closing iteration is
+  still held, a second open, a reset while held; the patch wires the poll, the
+  hold branch and the reset.
+- Replay (PC, US and EU; [P6.15_REPLAY_TESTS.md](P6.15_REPLAY_TESTS.md)):
+  `us/eu-battle-options-ref` is the plain forced battle (Tech once, Cross to the
+  report and the field) with five checkpoints; `us/eu-battle-options` is the same
+  battle with Select at frame 330 (the command menu), Widescreen refusing a
+  change, Music volume 10 to 7, the screen left open for **300 frames**
+  (`options-held`), Triangle, and the rest of the battle shifted by 300 frames.
+  The runner compares its five checkpoints taken after the pause **pixel for
+  pixel with the plain run's** (`ref_map`): 0 differing pixels on both discs, in
+  both the PS1 frame and the window grab, so the battle resumed on the same frame
+  with the same animation, camera and rolls. The log must show
+  `dw3-battle-options: held, battle state: ... events=N event_time=T hp=H` and,
+  300 frames later, `resume, battle state:` with the same `gfx_frame`, `events`,
+  `event_time`, `hp` and `time_counter`, and the clock line
+  `the vsync clock ran on ... during the hold and is put back`. The battle ends
+  with `WFIGHTMN_endBattle result=1` and the four overlay restores of a battle.
+  In the plain battle nothing logs `dw3-battle-options`.
+- Switch build in Ryubing (tier `nx`, log only): `us/eu-battle-options-nx` (see
+  the replay doc). A 16:9 PC window (`DW3_PC_INTERNAL_RES=3`) was captured once
+  as evidence.
+- No existing reference changes: the entry has no on-screen hint and the pad
+  recordings never press Select in a battle. The new scenarios have their own
+  references; the plain run is the reference of the excursion run.
+
+### OLED checklist, Options in battle (owner)
+
+US and EU (at least two EU languages), a Switch OLED, docked and handheld:
+
+- [ ] At the command menu press Minus: the Options window over the battle, which
+      stays on screen (models, HUD, partner portrait): no black frame, no flicker,
+      the 3D part not missing. Widescreen grey. The music keeps playing.
+- [ ] Wait 30 seconds with it open: the enemy does not attack, no gauge moves,
+      nothing animates behind the window.
+- [ ] Music volume Left x3: quieter at once. Triangle (X): the command menu as it
+      was (same cursor), the battle goes on and nothing was pressed twice.
+- [ ] Open it on a later turn too, and after changing Battle cursor: the menu opens
+      on the remembered command from the next turn.
+- [ ] Minus during an attack animation, on the enemy's turn and in the Tech list: it
+      does nothing. L + Minus or R + Minus does not open it.
+- [ ] With Restart hotkey ON, the chord while it is open restarts.
+- [ ] Dock or undock with it open (optional): the picture may go dark until you
+      close it, then the battle is back.
+- [ ] `dw3.log` has the `dw3-battle-options:` lines (open, held, resume) with the
+      same `events=`, `event_time=` and `hp=` on `held` and `resume`.
 
 ## Title-screen visual reference
 
