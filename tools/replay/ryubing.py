@@ -67,10 +67,18 @@ GUEST_RE = re.compile(r"OutputDebugString: (.*)")
 # `title-logo: active=1`), and the Yes / No window texture (768x348 RGBA,
 # +1.1 MB). The memory baseline moves to the first sample after the FIRST
 # occurrence of each, so a leak that repeats per screen open still shows.
+# The Switch overlay releases these textures when it is not on screen (the
+# field, a battle) and rebuilds them on the next visit; the release lines
+# below re-arm the matching markers, so the rebuild step counts as first use
+# again (the memory goes down in between, it is not a per-open leak).
 ONE_TIME_ALLOC_RES = (
     re.compile(r"dw3-title-overlay: \d+x\d+ RGBA texture"),
     re.compile(r"dw3-title-logo: active=1"),
     re.compile(r"dw3-port-confirm: open "),
+)
+ALLOC_RELEASE_RES = (
+    (re.compile(r"dw3-title-overlay: title textures released"), (0, 1)),
+    (re.compile(r"dw3-title-overlay: confirm window texture released"), (2,)),
 )
 
 
@@ -148,14 +156,19 @@ def mem_verdict(lines, warm_frame_idx):
     """`mem dbg:` high-water flatness. Returns (ok, detail) or None if absent."""
     samples = []          # (line index, heap hw, fcache hw, libc hw)
     first_use = {}        # ONE_TIME_ALLOC_RES index -> line index of first hit
+    armed = set(range(len(ONE_TIME_ALLOC_RES)))
     for li, l in enumerate(lines):
         m = MEM_LINE.search(l)
         if m:
             samples.append((li,) + tuple(int(x) for x in m.groups()))
             continue
         for ri, rx in enumerate(ONE_TIME_ALLOC_RES):
-            if ri not in first_use and rx.search(l):
+            if ri in armed and rx.search(l):
                 first_use[ri] = li
+                armed.discard(ri)
+        for rx, rearm in ALLOC_RELEASE_RES:
+            if rx.search(l):
+                armed.update(rearm)
     if len(samples) < 8:
         return None
     # skip the first 60%: opening, movie, first transitions
