@@ -927,6 +927,24 @@ def ws_battle_spiral(version):
     return r
 
 
+R3 = 0x0004
+
+
+def ws_battle_spiral_turbo(version):
+    """The same walk and checkpoints as `ws_battle_spiral`, with the turbo toggled
+    on by R3 at frame 250 (the Fast-forward level comes from the option file, 2 to
+    4): the in-game route to the speeds the Switch runs the swirl at, where the
+    CPU rasterizer defers drawing. The pictures must be the turbo-4 run's."""
+    r = Rec(f"{version.upper()}: random-battle spiral, 16:9, turbo toggled on with R3 (env and cfg in manifest)")
+    _pad(r, 250, R3)
+    _pad(r, 256, 0)
+    _pad(r, 300, UP)
+    for f in SPIRAL_SHOTS:
+        r.shot(f, f"spiral-{f}")
+    r.end(1270)
+    return r
+
+
 VICTORY_END = 12000
 
 
@@ -1941,6 +1959,7 @@ def main(out):
         (out / f"{v}-ws-door-iris.rec").write_text(ws_door_iris(v).text(True))
         (out / f"{v}-door-iris43.rec").write_text(door_iris43(v).text(True))
         (out / f"{v}-ws-battle-spiral.rec").write_text(ws_battle_spiral(v).text(True))
+        (out / f"{v}-ws-battle-spiral-turbo.rec").write_text(ws_battle_spiral_turbo(v).text(True))
         (out / f"{v}-battle-music.rec").write_text(battle_music(v).text(True))
         (out / f"{v}-two-battles.rec").write_text(two_battles(v).text(True))
         (out / f"{v}-battle-report.rec").write_text(battle_report(v).text(True))

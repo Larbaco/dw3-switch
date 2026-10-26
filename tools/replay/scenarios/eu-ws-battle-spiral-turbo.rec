@@ -1,0 +1,15 @@
+# EU: random-battle spiral, 16:9, turbo toggled on with R3 (env and cfg in manifest)
+pad 250 0x0004
+pad 256 0x0000
+pad 300 0x0010
+shot 1104 spiral-1104
+shot 1110 spiral-1110
+shot 1116 spiral-1116
+shot 1122 spiral-1122
+shot 1128 spiral-1128
+shot 1140 spiral-1140
+shot 1152 spiral-1152
+shot 1164 spiral-1164
+shot 1188 spiral-1188
+shot 1206 spiral-1206
+end 1270

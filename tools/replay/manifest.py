@@ -993,6 +993,11 @@ for _v in ("us", "eu"):
 # gutters into the transition image, gutter-width tiles hang off the first and
 # last tile of each row). The 1x variant is the same recording without turbo:
 # the frames must be the same.
+def _SPIRAL_REFS(v):
+    return tuple((f"spiral-{f}", f"{v}-ws-battle-spiral", f"spiral-{f}")
+                 for f in (1104, 1110, 1116, 1122, 1128, 1140, 1152, 1164, 1188, 1206))
+
+
 for _v in ("us", "eu"):
     _add(Scenario(f"{_v}-ws-door-iris", _v, "full", timeout=300,
                   cfg=(("widescreen", "1"),),
@@ -1015,8 +1020,44 @@ for _v in ("us", "eu"):
                   phases=(f"{_v}-ws-battle-spiral",),
                   cfg=(("widescreen", "1"),),
                   env=(("DW3_START_MODE", "0x233"), ("DW3_PROGRESS", "6")),
-                  expect_log=((0, r"FIGHTSTG_start"),),
-                  note="the same spiral at turbo off: same frames as the 4x run (patch 0175)"))
+                  ref_map=_SPIRAL_REFS(_v),
+                  expect_log=((0, r"FIELDSTG_start"),),
+                  note="the same spiral at turbo off: the pictures of the 4x run (patch 0175)"))
+    # Turbo toggled on in game (R3, Fast-forward level from the option file): the
+    # speeds the Switch runs the swirl at; the pictures are the 4x run's.
+    for _t in (2, 3, 4):
+        _add(Scenario(f"{_v}-ws-battle-spiral-t{_t}", _v, "full", timeout=900,
+                      phases=(f"{_v}-ws-battle-spiral-turbo",),
+                      cfg=(("widescreen", "1"), ("fast_forward", str(_t))),
+                      env=(("DW3_START_MODE", "0x233"), ("DW3_PROGRESS", "6")),
+                      ref_map=_SPIRAL_REFS(_v),
+                      expect_log=((0, r"FIELDSTG_start(?s:.*)"),
+                                  (0, rf"dw3-turbo: speed {_t}x")),
+                      note=f"the same spiral with turbo {_t}x toggled on by R3: the pictures of the 4x run (patch 0175)"))
+
+# The spiral on the Switch build in Ryubing (tier "nx", log only: the replay NRO
+# is built with DW3_NX_TEST_ENV="DW3_START_MODE=0x233,DW3_PROGRESS=6"). The
+# turbo runs set the Fast-forward level through the option file and toggle it
+# with R3; with turbo on the CPU rasterizer defers drawing in the field, which
+# the swirl's gutter copy has to draw first (patch 0175). The log proves the
+# copy happened (53 px) and the battle was reached; the informational
+# screenshots are for the owner's eyes.
+for _v, _ids in (("us", (0x158, 0x159)), ("eu", (0x166, 0x167))):
+    _field, _fight = _ids
+    _add(Scenario(f"{_v}-ws-battle-spiral-nx", _v, "nx", timeout=900,
+                  phases=(f"{_v}-ws-battle-spiral",),
+                  cfg=(("widescreen", "1"),),
+                  expect_restore=((_field, M), (_fight, M)),
+                  expect_log=((0, r"dw3-widescreen: gutters copied beside the image at x 640: 53 px"),),
+                  note="Switch build: the encounter spiral in 16:9 at turbo off (patch 0175)"))
+    for _t in (2, 3, 4):
+        _add(Scenario(f"{_v}-ws-battle-spiral-nx-t{_t}", _v, "nx", timeout=900,
+                      phases=(f"{_v}-ws-battle-spiral-turbo",),
+                      cfg=(("widescreen", "1"), ("fast_forward", str(_t))),
+                      expect_restore=((_field, M), (_fight, M)),
+                      expect_log=((0, rf"dw3-turbo: speed {_t}x(?s:.*)"
+                                      r"dw3-widescreen: gutters copied beside the image at x 640: 53 px"),),
+                      note=f"Switch build: the encounter spiral in 16:9 with turbo {_t}x (deferred drawing) (patch 0175)"))
 
 # P6.9 restart validation (docs/P6.9_RESTART.md). The restart hotkey is turned
 # on through the option file (restart_hotkey=1, so the P9.4 reader is part of

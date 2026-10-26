@@ -98,8 +98,7 @@ Fresh start from hbmenu, US then EU. Main source:
 US then EU, widescreen ON (default). Encounter rate stays OFF from A6 so walks
 are not interrupted. Look for black strips, shifted parts, wrong textures.
 Sources: the ROADMAP [P6.1 line](ROADMAP.md#pending-oled-checks) and
-[P6.1_WIDESCREEN](P6.1_WIDESCREEN.md). Known and expected: the encounter spiral
-is 4:3 with black bars; the Lab's chart, entry and skill screens keep their
+[P6.1_WIDESCREEN](P6.1_WIDESCREEN.md). Known and expected: the Lab's chart, entry and skill screens keep their
 left panels at the 4:3 edge; Open Booster was not captured.
 
 | # | Action | Expect | If it fails, send | Patch / item |
@@ -115,7 +114,7 @@ left panels at the 4:3 edge; Open Booster was not captured.
 | B9 | Other shops and the Forest Inn | No shifted or cut panel; note any display-wide band layer that now draws in the side strips | photo | P6.1 (ROADMAP: "a look for other display-wide band layers") |
 | B10 | **Door iris:** walk through several doors and area exits | View closes from the full 16:9 picture; grid cover covers the whole picture; no map shifted back after it closes | photo, `dw3.log` | 0115 / P6.1 |
 | B11 | **Underground Path water:** leave the Underground Path to the Cargo Tower streets | Canal water texture right at once, not wrong until you scroll down | photo, `dw3.log` | 0111 / P7.7, P6.1 ([FIELD_TILE_SPRITES](FIELD_TILE_SPRITES.md)) |
-| B12 | Set Encounter rate back to 1x, enter a random battle | Encounter spiral is 4:3 with black bars (confirm that is what you saw) | photo | P6.1 |
+| B12 | **Encounter spiral (patch 0175).** Set Encounter rate back to 1x, enter a random battle; try it at turbo off and at 2x, 3x and 4x (Options) | The swirl covers the whole 16:9 picture: the gutters do not go black on its first frame and the tiles slide off across the full width (a tile column hangs off each side of the spiral), in the same time as before. The picture then goes black as before, the battle appears | photo of the first spiral frames at each turbo speed, `dw3.log`, region | 0175 / P6.1 (PSY-Z `dw3-gutter-capture`) |
 | B13 | In a battle, a technique's magic circle | Say whether a black hole shows in its middle (also on PC and Ryubing) | photo | P6.1 (ROADMAP open item) |
 | B14 | nxlink build: a door and then a battle | Say if the transitions feel slow; send the log | nxlink log across both | P6.1 "Slow transitions" (a shorter banner hold is the owner's call, P6.18) |
 | B15 | **Options from the field (#270, P9.7).** In the field press Plus; the list ends with OPTIONS (EU: OPTIONS, OPZIONI, OPTIONEN, OPCIONES) and then TITLE SCREEN. Cross on OPTIONS. Left x3 on Music volume. Triangle, then Triangle again, and walk | The Options window opens over the dimmed field; **Widescreen is grey** with the "Locked in game" line and Cross on it does nothing; the field music gets quieter at once and keeps playing; Triangle returns to the menu with the cursor still on OPTIONS, the second Triangle to the field and the character walks (nothing was pressed twice). The 16:9 dim covers the side strips and no part of the window stays after closing | photo, `dw3.log` (`dw3-port-options: open in game` and `close in game`) | P9.7 slice 1 ([checklist](PORT_OPTIONS.md#oled-checklist-options-in-game-owner)) |
