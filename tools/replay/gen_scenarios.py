@@ -886,7 +886,8 @@ IRIS_SHOTS = (207, 216, 225, 234, 243, 252)
 # 4:3 iris: in widescreen off the iris closes in 32 frames from ~205 and the
 # grid in 20 more, so the late checkpoints are where the map must stay hidden.
 IRIS43_SHOTS = (207, 225, 234, 240, 246, 252, 258, 264, 272)
-SPIRAL_SHOTS = (1104, 1122, 1140, 1164, 1188, 1206)
+# 1104: the walk, 1110-1122: the swirl's first frames, then its way out
+SPIRAL_SHOTS = (1104, 1110, 1116, 1122, 1128, 1140, 1152, 1164, 1188, 1206)
 
 
 def ws_door_iris(version):
@@ -914,8 +915,8 @@ def door_iris43(version):
 
 
 def ws_battle_spiral(version):
-    """The encounter spiral in 16:9 (patch 0115 leaves it alone: the swirl is
-    a copy of the 320x240 display): the Encounter rate 1x walk of
+    """The encounter spiral in 16:9 (patch 0175: the swirl is a copy of the
+    display with its gutters, in tiles that span 16:9): the Encounter rate 1x walk of
     `encounter_walk` (Up from frame 300, battle after ~102 footsteps) with a
     checkpoint on the swirl's way out."""
     r = Rec(f"{version.upper()}: random-battle spiral, 16:9 (env in manifest)")

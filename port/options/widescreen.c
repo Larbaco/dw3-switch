@@ -494,6 +494,7 @@ int dw3_port_widescreen_copy_gutters(int src_y, int h, int dx, int dy) {
         return 0;
     }
     px = Psyz_VideoCopyGutters(src_y, h, dx, dy);
+    INFOF("dw3-widescreen: gutters copied beside the image at x %d: %d px", dx, px);
     return px > 0 ? px : 0;
 }
 

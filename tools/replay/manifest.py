@@ -989,8 +989,10 @@ for _v in ("us", "eu"):
 # 16:9. Door: boot in the Underground Path, DW3_FORCE_EXIT leaves it; checkpoints
 # while the view closes and the grid closes over the picture (the gutters show
 # the grid, the view starts 320 + 2 * 53 wide). Battle: the walk of
-# encounter-walk; the spiral's swirl is 4:3 with black gutters (documented), the
-# checkpoints keep it from changing unnoticed.
+# encounter-walk; since patch 0175 the swirl spans 16:9 (PSY-Z copies the
+# gutters into the transition image, gutter-width tiles hang off the first and
+# last tile of each row). The 1x variant is the same recording without turbo:
+# the frames must be the same.
 for _v in ("us", "eu"):
     _add(Scenario(f"{_v}-ws-door-iris", _v, "full", timeout=300,
                   cfg=(("widescreen", "1"),),
@@ -1008,7 +1010,13 @@ for _v in ("us", "eu"):
                   cfg=(("widescreen", "1"),),
                   env=(("DW3_START_MODE", "0x233"), ("DW3_PROGRESS", "6")),
                   expect_log=((0, r"FIGHTSTG_start"),),
-                  note="encounter spiral in 16:9: swirl 4:3, gutters black (documented)"))
+                  note="encounter spiral in 16:9: the swirl spans the gutters (patch 0175)"),
+         Scenario(f"{_v}-ws-battle-spiral-1x", _v, "full", timeout=900,
+                  phases=(f"{_v}-ws-battle-spiral",),
+                  cfg=(("widescreen", "1"),),
+                  env=(("DW3_START_MODE", "0x233"), ("DW3_PROGRESS", "6")),
+                  expect_log=((0, r"FIGHTSTG_start"),),
+                  note="the same spiral at turbo off: same frames as the 4x run (patch 0175)"))
 
 # P6.9 restart validation (docs/P6.9_RESTART.md). The restart hotkey is turned
 # on through the option file (restart_hotkey=1, so the P9.4 reader is part of
