@@ -1021,7 +1021,7 @@ for _v in ("us", "eu"):
                   cfg=(("widescreen", "1"),),
                   env=(("DW3_START_MODE", "0x233"), ("DW3_PROGRESS", "6")),
                   ref_map=_SPIRAL_REFS(_v),
-                  expect_log=((0, r"FIELDSTG_start"),),
+                  expect_log=((0, r"FIGHTSTG_start"),),
                   note="the same spiral at turbo off: the pictures of the 4x run (patch 0175)"))
     # Turbo toggled on in game (R3, Fast-forward level from the option file): the
     # speeds the Switch runs the swirl at; the pictures are the 4x run's.
@@ -1031,7 +1031,7 @@ for _v in ("us", "eu"):
                       cfg=(("widescreen", "1"), ("fast_forward", str(_t))),
                       env=(("DW3_START_MODE", "0x233"), ("DW3_PROGRESS", "6")),
                       ref_map=_SPIRAL_REFS(_v),
-                      expect_log=((0, r"FIELDSTG_start(?s:.*)"),
+                      expect_log=((0, r"FIGHTSTG_start(?s:.*)"),
                                   (0, rf"dw3-turbo: speed {_t}x")),
                       note=f"the same spiral with turbo {_t}x toggled on by R3: the pictures of the 4x run (patch 0175)"))
 
