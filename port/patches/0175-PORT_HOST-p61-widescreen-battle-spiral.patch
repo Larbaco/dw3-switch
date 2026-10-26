@@ -1,0 +1,101 @@
+Upstream-bound: no
+Subject: [PORT_HOST] P6.1 the encounter swirl covers the 16:9 picture
+
+FIELDSTG_playBattleTransition copies the 320 x 240 display to VRAM (MoveImage
+to x 0x280) and breaks the copy into 5 x 6 tiles that slide off in a spiral.
+The side gutters are not in VRAM, so the swirl was a 4:3 copy: the gutters
+went black on its first frame and the tiles slid off inside the 4:3 box (0051
+only widened the darkening quad).
+
+With widescreen on (gutter > 0; off, the code is the PS1's): the copy is taken
+from the buffer on display (GFX.disp[GFX.dispBuffer]), the last frame drawn;
+the buffer at y 0 can be the one drawn next, whose gutters the renderer has
+already blanked at the flip. Right after the MoveImage,
+dw3_port_widescreen_copy_gutters (PSY-Z Psyz_VideoCopyGutters) puts
+the gutter columns of the same rows beside the copy in VRAM, left of x 0x280
+and right of x 0x280 + 320. Each row then gets two more tiles, one of gutter
+width hanging off the left edge of the row's first tile and one off the right
+edge of its last tile, sampling those strips. They take the position of the
+tile they hang off, and drop out when it does, so the spiral keeps its order
+and its frame count. 0051's widened darkening quad is unchanged.
+
+--- a/src/field/field_mode/field.c
++++ b/src/field/field_mode/field.c
+@@ -36,6 +36,12 @@
+ #endif
+ }
+ 
++#if PORT_HOST
++/* Widescreen: how many gutter columns per side the swirl's image holds beside
++   the copy of the display (0: none, the PS1's 320 columns) */
++static s32 sTransitionGutter;
++#endif
++
+ /* Puts the transition's tiles where they cover the screen */
+ static inline void placeTransitionTiles(void) {
+     s32 row;
+@@ -128,7 +134,20 @@
+     case 0:
+         FILE_CACHE.markCached();
+         setRECT(&FIELDSTG_screenRect, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
++#if PORT_HOST
++        /* Widescreen: take the buffer on display, the last frame drawn. The
++           buffer at y 0 can be the one being drawn next, whose gutters the
++           renderer has already blanked for it */
++        if (dw3_port_widescreen_px() > 0) {
++            FIELDSTG_screenRect.y = GFX.disp[GFX.dispBuffer].disp.y;
++        }
++#endif
+         MoveImage(&FIELDSTG_screenRect, TRANSITION_IMAGE_X, 0);
++#if PORT_HOST
++        /* Widescreen: the gutter columns go beside the copy, so the swirl
++           spans the 16:9 picture (tiles of its own, drawn below) */
++        sTransitionGutter = dw3_port_widescreen_copy_gutters(FIELDSTG_screenRect.y, SCREEN_HEIGHT, TRANSITION_IMAGE_X, 0);
++#endif
+         layer = GFX.funcs.getLayer(FIELD_LAYER_BACK);
+         layer->setBgColor(layer, 0, 0, 0);
+         layer = GFX.funcs.getLayer(FIELD_LAYER_MAP);
+@@ -203,6 +222,43 @@
+                     }
+                 }
+             }
++#if PORT_HOST
++            /* Widescreen: a tile of gutter width beside each row's first and
++               last tile, moving with it (the left one hangs off the first tile's
++               left edge, the right one off the last tile's right edge) */
++            for (i = 0; i < TRANSITION_ROWS && sTransitionGutter > 0; i++) {
++                for (k = 0; k < 2; k++) {
++                    Vec2 *tile = &FIELDSTG_tiles[k == 0 ? 0 : TRANSITION_COLUMNS - 1][i];
++
++                    if (tile->x == TRANSITION_GONE || tile->y == TRANSITION_GONE) {
++                        continue;
++                    }
++                    /* opaque: a gutter has no picture under it to blend with */
++                    setPolyFT4(poly);
++                    setRGB0(poly, 0x80, 0x80, 0x80);
++                    if (k == 0) {
++                        x = tile->x - sTransitionGutter;
++                        poly->u0 = poly->u2 = TRANSITION_TILE_WIDTH - sTransitionGutter;
++                        poly->u1 = poly->u3 = TRANSITION_TILE_WIDTH;
++                        poly->tpage = getTPage(2, 0, TRANSITION_IMAGE_X - TRANSITION_TILE_WIDTH, 0);
++                    } else {
++                        x = tile->x + TRANSITION_TILE_WIDTH;
++                        poly->u0 = poly->u2 = 0;
++                        poly->u1 = poly->u3 = sTransitionGutter;
++                        poly->tpage = getTPage(2, 0, TRANSITION_IMAGE_X + SCREEN_WIDTH, 0);
++                    }
++                    poly->x0 = poly->x2 = x;
++                    poly->x1 = poly->x3 = x + sTransitionGutter;
++                    y = tile->y;
++                    poly->v0 = poly->v1 = i * TRANSITION_TILE_HEIGHT;
++                    poly->v2 = poly->v3 = i * TRANSITION_TILE_HEIGHT + TRANSITION_TILE_HEIGHT;
++                    poly->y0 = poly->y1 = y;
++                    poly->y2 = poly->y3 = y + TRANSITION_TILE_HEIGHT;
++                    addPrim(ot, poly);
++                    poly++;
++                }
++            }
++#endif
+             GFX.funcs.setPrim(poly);
+         } else {
+             task->nextSubstate(task);

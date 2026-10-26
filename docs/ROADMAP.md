@@ -47,7 +47,7 @@ listed once, in [Pending OLED checks](#pending-oled-checks).
 | P5.3 | Save handling | done | [P5.3](P5.3_FLAT_SAVE.md) |
 | P5.4 | Error reporting | in progress (done-when met on the OLED; boot notice 60 s, #231; PR 2 OLED check open) | [P5.4](P5.4_CRASH.md) |
 | P5.5 | Stage sweep on hardware | open | — |
-| P6.1 | Scaling / widescreen | in progress (map, results, save, title, caption, registration, Items menu at 16:9 in preview.31; card album, deck editor, card shop, gym and Lab at 16:9 in the next preview (0100-0104, OLED pending); iris and grid cover at 16:9 in the next preview (0115, OLED pending); spiral swirl and card battle still 4:3) | [P6.1](P6.1_WIDESCREEN.md) |
+| P6.1 | Scaling / widescreen | in progress (map, results, save, title, caption, registration, Items menu at 16:9 in preview.31; card album, deck editor, card shop, gym and Lab at 16:9 in the next preview (0100-0104, OLED pending); iris and grid cover at 16:9 in the next preview (0115, OLED pending); encounter swirl at 16:9 in the next preview (0175, OLED pending); card battle still 4:3) | [P6.1](P6.1_WIDESCREEN.md) |
 | P6.2 | PAL/NTSC, EU/US, language at boot | in progress | [P3_EU_BUILD](P3_EU_BUILD.md) |
 | P6.3 | PGXP-style vertex precision | open | — |
 | P6.4 | Fast-forward | done (owner confirmed on the OLED, 2026-10-24) | [P6.4](P6.4_FAST_FORWARD.md) |
@@ -118,7 +118,7 @@ The ordered session plan for preview.35 is [OLED_TEST_PLAN](OLED_TEST_PLAN.md).
 - **P6.1:** 16:9 for the map screen, results header, save slot picker, title
   menu, news caption bar, registration screen (patches 0080-0082, 0085-0087),
   and the Items menu and field menu screens (0075, 0076, 0074). US and EU. The
-  banner and technique backdrops: EU still to do. **New (0115):** the area-change iris and grid cover (walk through a door or exit: the view should close from the full 16:9 picture, the grid cover covering the whole picture, no map shifted back after it closes); the encounter spiral swirl stays 4:3 with black bars (confirm that is what you saw). **New (0100-0104):** the
+  banner and technique backdrops: EU still to do. **New (0115):** the area-change iris and grid cover (walk through a door or exit: the view should close from the full 16:9 picture, the grid cover covering the whole picture, no map shifted back after it closes); **New (0175):** the encounter spiral swirl now covers the 16:9 picture (enter a random battle at turbo off and at 2x, 3x and 4x: the gutters must not go black on the swirl's first frame and its tiles must slide off across the full width; B12 of the [OLED test plan](OLED_TEST_PLAN.md)). **New (0100-0104):** the
   card album and deck editor (from Card folders: all their panels, the card
   details, the list of cards owned), the card shop (Buy One Card; Open Booster
   was not captured), the gym and the Digimon Lab (menu, party, digivolve). US
@@ -731,8 +731,9 @@ gate, which stays open.
   - Field, battle scene and fades: patches `0047`-`0053`; the 16:9 field
     crash of preview.26 EU is fixed by `0057` (#158).
   - Area name banner `0071` and technique backdrops `0072`: owner-verified on
-    the OLED, US, rc8 (EU still to do). The encounter spiral reaches 16:9 on
-    the OLED (owner, rc8).
+    the OLED, US, rc8 (EU still to do). The encounter spiral's black 16:9 around a
+    4:3 swirl was what the owner saw on the OLED (rc8); the swirl itself spans
+    16:9 since `0175`.
   - Results screen `0074` (#213); Items menu dissolve `0075` (#218); field
     menu screens re-anchored to the 16:9 edges `0076` (#219).
   - Title menu `0085`, news caption bar `0086`, Digimon Online registration
@@ -756,11 +757,13 @@ gate, which stays open.
     `0115`; the view closes from 320+2*gutter columns centred on the player
     and the grid covers the whole picture. PC US and EU replays
     `us/eu-ws-door-iris`; OLED pending.
-  - [ ] **Encounter spiral** (`FIELDSTG_playBattleTransition`): checked with
-    PC captures (2026-10-25, US and EU): the swirl itself is 4:3, the gutters
-    are black from its first frame; only the black bars and the darkening
-    reach the 16:9 edges. Not small (PSY-Z would copy the gutters into the
-    transition image), so left open and documented; low priority.
+  - [x] **Encounter spiral** (`FIELDSTG_playBattleTransition`): patch `0175` +
+    PSY-Z `dw3-gutter-capture` (`3208f31`, `Psyz_VideoCopyGutters`). The gutters
+    are not in VRAM, so PSY-Z copies them beside the swirl's image (a 426-px
+    image) and each tile row gets gutter-width tiles that move with its first and
+    last tile; the spiral keeps its order and frame count. PC US and EU replays
+    `us/eu-ws-battle-spiral` (turbo 4) and `-1x` (turbo off, same pictures);
+    widescreen off unchanged; OLED pending (B12, at turbo off, 2x, 3x and 4x).
   - [ ] Low priority: card battle, country select (EU only), and the cosmetic
     cut ends (item shop and memory card panels, inn menu right panels, field
     dialogue windows).
