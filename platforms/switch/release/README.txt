@@ -1,6 +1,6 @@
 Digimon World 3 / 2003, Switch homebrew preview
 
-Release notes for v0.6.5-preview.37. The release tag and boot version
+Release notes for v0.6.5-preview.38. The release tag and boot version
 identify the actual source revision.
 
 Player guide (setup, controls, Options, saves, crash reports):
@@ -11,26 +11,12 @@ New in this preview
   No item below has been checked on a Switch OLED yet. Each is checked on
   PC and in the Ryubing emulator only, and is marked unverified.
 
-  Options in battle (P9.7 slice 2, #272). At the battle command menu, while
-  it waits for you, press Minus (Select) to open the Options screen. Do not
-  hold L, R, ZL or ZR. The battle is frozen while the screen is open: no
-  enemy turn, no gauge change, and no button press reaches the menu. The
-  battle music keeps playing. Triangle closes the screen and the battle goes
-  on. Widescreen and Cheats are greyed; Battle cursor applies from the next
-  turn's menu. There is no on-screen hint; the key is listed in
-  docs/HOTKEYS.md and the player guide. This default was chosen while the
-  owner was away; the owner can change it. Unverified on hardware.
-
-  Save write safety (P10.2, #273). An interrupted save write now recovers:
-  a complete save temp file left behind is promoted at boot, and stale ones
-  are removed. The name sidecar is written atomically, and data is fsynced
-  before the rename. A HOME exit or restart during the game's own save burst
-  now waits up to 8 s for the burst to end, instead of flushing a
-  half-updated card. Also a small file-size lookup change, with no effect on
-  play. Tested on PC by stopping the write at every step. HOME during a save
-  on the Switch is not tested yet. If dw3.log shows
-  `recovered ... from an interrupted write`, a half-written save was
-  recovered: keep the log and tell the owner. Unverified on hardware.
+  Encounter swirl covers the 16:9 picture (P6.1, #275). At the start of a
+  random battle, the swirl now fills the full widescreen picture. Before,
+  the side gutters went black on its first frame and the swirl stayed in a
+  4:3 box. Now the tiles slide off across the full width, in the same time
+  as before. Checked on PC and in the Ryubing emulator at turbo off, 2x, 3x
+  and 4x. Widescreen off is unchanged. Unverified on hardware.
 
 Known issues
 
@@ -40,8 +26,7 @@ Known issues
   The win jingle and SEP fix (#215) are in this release. The underrun
   count is still open.
 
-  The Map screen is 16:9 with black side strips (#240). The encounter
-  spiral is 4:3 with black bars (#247), by design for now.
+  The Map screen is 16:9 with black side strips (#240).
 
   The Digimon Lab's chart, entry and skill screens keep their left panels
   at the 4:3 edge (#245). Open Booster was not captured in the 16:9 pass.
@@ -72,6 +57,15 @@ Carried forward
   cancels restart. Unsaved progress is lost. Release before repeating.
   This chord can also toggle the nxlink debug HUD, whose own chord is
   Minus + L + R. See docs/HOTKEYS.md for all mapped controls.
+
+  From preview.37: Options in battle (P9.7 slice 2, #272): at the battle
+  command menu, Minus (Select) opens Options over the frozen battle; do not
+  hold L, R, ZL or ZR. Triangle closes it and the battle goes on. Widescreen
+  and Cheats are greyed; there is no on-screen hint, the key is in
+  docs/HOTKEYS.md. Save write safety (P10.2, #273): an interrupted save write
+  recovers at boot, and HOME or restart during the game's save burst waits up
+  to 8 s. If dw3.log shows `recovered ... from an interrupted write`, keep the
+  log and tell the owner. Both unverified on hardware.
 
   From preview.36: Options from the field menu (P9.7 slice 1, #270): an
   OPTIONS row above TITLE SCREEN opens Options over the field. Fast-forward,
@@ -202,13 +196,10 @@ Install / nxlink
 OLED checklist
 
   New in this preview:
-  - Options in battle (D12): in a battle, when the command menu waits, press
-    Minus. The Options window opens over a frozen picture; wait 30 s and
-    nothing moves; the music keeps playing; Widescreen is greyed. Triangle
-    returns to the same menu and cursor, and the battle ends normally.
-  - HOME during a save (G2): press HOME while the save bar runs (handheld,
-    nxlink build). Afterwards the save should still load on Continue, and
-    dw3.log should be kept.
+  - Encounter swirl in 16:9 (B12): set Encounter rate back to 1x, enter a
+    random battle, and try it at turbo off and at 2x, 3x and 4x (Options).
+    The swirl should cover the whole widescreen picture: no black gutters on
+    its first frame, and the tiles slide off across the full width.
 
   Everything else in this preview, and the items still open from earlier
   previews, is in the ordered OLED test plan. Follow it:
