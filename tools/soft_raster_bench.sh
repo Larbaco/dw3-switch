@@ -52,7 +52,14 @@ if [ "$use_ref" = 1 ]; then
     -DSoftwareRasterizer_SetGutter=ref_SoftwareRasterizer_SetGutter \
     -DSoftwareRasterizer_GetGutter=ref_SoftwareRasterizer_GetGutter \
     -DSoftwareRasterizer_GetGutterPlane=ref_SoftwareRasterizer_GetGutterPlane \
-    -DSoftwareRasterizer_ClearGutterRows=ref_SoftwareRasterizer_ClearGutterRows
+    -DSoftwareRasterizer_ClearGutterRows=ref_SoftwareRasterizer_ClearGutterRows \
+    -DSoftwareRasterizer_GetVramRaw=ref_SoftwareRasterizer_GetVramRaw \
+    -DSoftwareRasterizer_GetGutterPlaneRaw=ref_SoftwareRasterizer_GetGutterPlaneRaw \
+    -DSoftwareRasterizer_SetDefer=ref_SoftwareRasterizer_SetDefer \
+    -DSoftwareRasterizer_GetDefer=ref_SoftwareRasterizer_GetDefer \
+    -DSoftwareRasterizer_SyncAll=ref_SoftwareRasterizer_SyncAll \
+    -DSoftwareRasterizer_SyncRect=ref_SoftwareRasterizer_SyncRect \
+    -DSoftwareRasterizer_GetDeferStats=ref_SoftwareRasterizer_GetDeferStats
   objs+=("$out/ref.o")
   defs+=(-DWITH_REF)
 fi

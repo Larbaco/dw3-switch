@@ -25,6 +25,14 @@ int dw3_port_widescreen_enabled(void);
  * their culling and camera bounds by this. */
 int dw3_port_widescreen_px(void);
 
+/* After a MoveImage of the displayed framebuffer (rows src_y .. src_y + h - 1)
+ * to (dx, dy): copies the gutter columns of those rows into VRAM beside the
+ * copy, left of dx and right of dx + 320, so a textured primitive can sample
+ * the picture and its gutters (the encounter swirl, patch 0175). Returns the
+ * gutter width per side, 0 when there is none (widescreen off: the call does
+ * nothing). */
+int dw3_port_widescreen_copy_gutters(int src_y, int h, int dx, int dy);
+
 /* Once per frame, before drawFrame: hands the mode's gutter to the renderer. */
 void dw3_port_widescreen_frame(void);
 

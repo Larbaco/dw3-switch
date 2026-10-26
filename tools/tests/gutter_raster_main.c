@@ -147,6 +147,43 @@ int main(void) {
     check(plane(0, G - 40, 15) == 0 && plane(1, 0, 15) == 0,
           "ClearGutterRows blacks the rows out");
 
+    /* CopyGutters: after a MoveImage of the display to x 640, the gutter
+     * columns land beside the copy, as one image 2 * G + 320 wide, also when
+     * the drawing that made them is still deferred. */
+    for (int defer = 0; defer < 2; defer++) {
+        SoftwareRasterizer_SetDefer(defer);
+        software_rasterizer.offset(0, 0);
+        area(0, 0, 319, 239);
+        tile(0, 0, 320, 240, 0xF8);
+        quad(-40, 100, 360, 110, 0xF800);
+        rect.x = 0;
+        rect.y = 0;
+        rect.w = 320;
+        rect.h = 240;
+        software_rasterizer.move_image(&rect, 640, 0);
+        check(SoftwareRasterizer_CopyGutters(0, 240, 640, 0) == G,
+              "CopyGutters returns the gutter width");
+        check(vram(640 - G, 0) == RED && vram(639, 239) == RED &&
+                  vram(960, 0) == RED && vram(960 + G - 1, 239) == RED,
+              "CopyGutters copies both strips of the clear");
+        check(vram(640 - 40, 105) == GREEN && vram(640 - 41, 105) == RED &&
+                  vram(960 + 39, 105) == GREEN && vram(960 + 40, 105) == RED,
+              "CopyGutters copies the geometry past the edges");
+        check(vram(640, 105) == GREEN && vram(959, 0) == RED,
+              "CopyGutters leaves the MoveImage copy alone");
+        check(vram(640 - G - 1, 0) == 0 && vram(960 + G, 0) == 0,
+              "CopyGutters writes nothing past the strips");
+        check(SoftwareRasterizer_CopyGutters(0, 240, 10, 0) == -1 &&
+                  SoftwareRasterizer_CopyGutters(0, 240, 1000, 0) == -1,
+              "CopyGutters refuses strips outside VRAM");
+        SoftwareRasterizer_SetDefer(0);
+        rect.x = 640 - G;
+        rect.y = 0;
+        rect.w = 320 + 2 * G;
+        rect.h = 240;
+        software_rasterizer.clear_image(&rect, 0, 0, 0);
+    }
+
     /* Off: the gutters are dropped and nothing is drawn past the area. */
     software_rasterizer.offset(0, 0);
     area(0, 0, 319, 239);
@@ -159,6 +196,8 @@ int main(void) {
     tile(0, 0, 320, 240, 0xF8);
     check(plane(0, 0, 0) == 0 && vram(320, 0) == 0,
           "clear does not grow while off");
+    check(SoftwareRasterizer_CopyGutters(0, 240, 640, 0) == 0,
+          "CopyGutters is a no-op while off");
 
     if (failures) {
         return 1;

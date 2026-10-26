@@ -541,6 +541,30 @@ void Draw_MoveImage(PS1_RECT *rect, unsigned int x, unsigned int y) {
     mark_dirty_rect(rect, (int)x, (int)y);
 }
 
+/* P6.1: the gutter columns of the displayed rows beside a MoveImage copy (see
+ * Psyz_VideoCopyGutters in psyz/video.h). The gutter planes are the
+ * rasterizer's; the strips land in its VRAM. */
+int Psyz_VideoCopyGutters(int src_y, int h, int dx, int dy) {
+    int px;
+
+    if (s_gutter == 0) {
+        return 0;
+    }
+    if (mesh_battle_active()) {
+        dw3_nx_mesh_flush((const uint16_t *)SoftwareRasterizer_GetVram());
+    } else {
+        dw3_nx_mesh_discard();
+    }
+    px = SoftwareRasterizer_CopyGutters(src_y, h, dx, dy);
+    if (px > 0) {
+        int w = s_disp_mode_w > 0 ? s_disp_mode_w : 320;
+
+        dw3_nx_mesh_mark_vram_dirty_rect(dx - px, dy, px, h);
+        dw3_nx_mesh_mark_vram_dirty_rect(dx + w, dy, px, h);
+    }
+    return px;
+}
+
 void Draw_ResetBuffer(void) {
     software_rasterizer.reset_buffer();
 }

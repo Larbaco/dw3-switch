@@ -487,6 +487,16 @@ void dw3_port_widescreen_frame(void) {
     }
 }
 
+int dw3_port_widescreen_copy_gutters(int src_y, int h, int dx, int dy) {
+    int px;
+
+    if (dw3_port_widescreen_px() == 0) {
+        return 0;
+    }
+    px = Psyz_VideoCopyGutters(src_y, h, dx, dy);
+    return px > 0 ? px : 0;
+}
+
 int dw3_port_sprite_frame_bounds(const void *sheet, int frame, int *x0, int *y0, int *x1, int *y1) {
     const int32_t *head = sheet;
     const uint8_t *base = sheet;
