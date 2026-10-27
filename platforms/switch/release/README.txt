@@ -1,6 +1,6 @@
 Digimon World 3 / 2003, Switch homebrew preview
 
-Release notes for v0.6.5-preview.42. The release tag and boot version
+Release notes for v0.6.5-preview.43. The release tag and boot version
 identify the actual source revision.
 
 Player guide (setup, controls, Options, saves, crash reports):
@@ -11,12 +11,20 @@ New in this preview
   No item below has been checked on a Switch OLED yet. Each is checked on
   PC and in the Ryubing emulator only, and is marked unverified.
 
-  App name (#289): the title in hbmenu and Sphaira is now Digimon World 3
-  NX. The nxlink build shows Digimon World 3 NX (nxlink). The .nro file
-  names are unchanged (dw3-switch.nro, dw3-switch-eu.nro,
-  dw3-switch-nxlink.nro). A forwarder made from an older build keeps the
-  old name, so recreate the forwarder in Sphaira (or re-add the .nro in
-  hbmenu) to see the new name. Unverified on hardware.
+  Per-user saves (P6.26, #292): saves are kept per Switch user profile, in
+  sdmc:/switch/dw3/saves/<profile>/<us|eu>/memcard/ (save0, save1 and
+  autosave). The profile comes from the forwarder's profile selector, else
+  the only user on the console, else the system selector. Cancelling the
+  system selector exits without starting the game. Legacy saves (the old
+  <us|eu>/memcard/ folder) are COPIED into each profile's folder on that
+  profile's first launch; the originals are not touched. On a shared console
+  each profile gets its own copy, so A's later saves are not in B's copy.
+  Unverified on hardware: test plan E5.
+
+  Logs (#290): sdmc:/switch/dw3/dw3.log keeps the last 5 runs (dw3.log is
+  the newest, then dw3.1.log ... dw3.4.log). Game messages for the map,
+  options and saves now reach the log, and new proof lines match the OLED
+  test plan items. Send the whole set of sdmc:/switch/dw3/dw3*.log files.
 
   Still open from preview.39: the Quit game and field OPTIONS fixes need
   OLED confirmation (plan A7 and B15), and the #188 audio check is plan D13.
@@ -62,6 +70,13 @@ Carried forward
   cancels restart. Unsaved progress is lost. Release before repeating.
   This chord can also toggle the nxlink debug HUD, whose own chord is
   Minus + L + R. See docs/HOTKEYS.md for all mapped controls.
+
+  From preview.42: App name (#289): the title in hbmenu and Sphaira is now
+  Digimon World 3 NX. The nxlink build shows Digimon World 3 NX (nxlink). The
+  .nro file names are unchanged (dw3-switch.nro, dw3-switch-eu.nro,
+  dw3-switch-nxlink.nro). A forwarder made from an older build keeps the old
+  name, so recreate the forwarder in Sphaira (or re-add the .nro in hbmenu) to
+  see the new name. Unverified on hardware.
 
   From preview.41: Turbo: menus run at 1.5x (P6.4, #286). With turbo on, menus
   in the field (the Start list, Options and Cheats, the Return to title
@@ -195,9 +210,12 @@ Own-disc setup and extraction
 
   Preserve us/, eu/ and their memcard directories. Never delete or
   move save0.bin, save1.bin, any save<N>.bin.pre-auto or .mcr.bak to force
-  extraction. Saves are not shared between US and EU, except the one-time
-  import of a region that has no save of its own (see Cross-region saves
-  above).
+  extraction. From this preview the game reads and writes each profile's
+  copy in sdmc:/switch/dw3/saves/<profile>/<us|eu>/memcard/. The legacy
+  <us|eu>/memcard/ files stay in place and are copied, never moved, into a
+  profile on its first launch. Saves are not shared between US and EU, except
+  the one-time import of a region that has no save of its own (see Cross-region
+  saves above).
 
 Install / nxlink
 
@@ -222,6 +240,14 @@ Install / nxlink
 OLED checklist
 
   New in this preview:
+  - Per-user saves (plan E5, E5.1 to E5.9): the profile selector, the
+    per-profile folders, the copy of legacy saves, cancelling the selector
+    and the crash report's profile line. Send dw3*.log and the folder listing
+    of sdmc:/switch/dw3/saves/.
+  - Logs (#290): each test item names the dw3*.log lines that prove it; send
+    the whole set of dw3*.log files after the run.
+
+  From preview.42, still open:
   - App name (#289): recreate the Sphaira forwarder (or re-add the .nro in
     hbmenu); the title reads Digimon World 3 NX, and the nxlink build reads
     Digimon World 3 NX (nxlink).
