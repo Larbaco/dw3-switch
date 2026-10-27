@@ -27,6 +27,7 @@ See `port/memcard/README.md` for the flat-save host and P5.3 notes.
 | `options/` | P9.2 port options shell (`dw3_port_options_*`; title Select entry); P6.20 Cheats screen and save marks (`cheats.c`, `cheat_saves.c`, `port_cheats.h`; only with `DW3_CHEATS`) |
 | `audio/` | P6.17 music / SFX volume: step -> gain curve, SPU mixer bus glue, optional bus statistics (`port_audio.h`) |
 | `pacing/` | P6.18 encounter rate and text speed: pure policy (`pacing_policy.c`) and the hooks of patches 0062 / 0063 (`pacing.c`, `port_pacing.h`) |
+| `items_menu/` | P6.33 Items menu usability: the partner cycle policy of the equip panel (`items_menu.c`, `port_items_menu.h`, patch 0128) |
 | `ui/` | Shared 8×8 VRAM text blit for port UI (not Switch debug overlay) |
 
 ## Build (engine + PC host)

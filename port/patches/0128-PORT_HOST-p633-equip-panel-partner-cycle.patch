@@ -1,0 +1,83 @@
+Upstream-bound: no
+Subject: [PORT_HOST] P6.33 equip panel: ZL / ZR change the partner on the slot list
+
+P6.33 phase 1 (docs/P6.33_ITEMS_MENU.md). On the Status screen's Equipment
+panel, while the slot list waits for a choice (STSTATUS_chooseEquipSlot),
+ZL / ZR (PAD_L2 / PAD_R2; W / E on the PC keyboard) move to the previous or
+next party member, wrapping. The panel keeps the slot cursor and does not
+close: StatsScreen.member and EquipPanel.partner change, then the page
+(STSTATUS_showChosenPage), the experience, the stats (STSTATUS_previewStats
+with slot -1, then STSTATUS_showPartnerStats) and the slots
+(STSTATUS_showEquipment) are redrawn with the helpers the question step
+uses. The portraits, the party cursor and the slot icons follow
+screen->member / panel->partner on their own, every frame.
+
+The switch happens only on the slot list, never inside the item list, so
+STSTATUS_previewStats never holds a temporary copy of PartnerStats.equip
+across it. Switching writes nothing in GAME: the log line
+"dw3-items-menu: partner switch ..." shows the bag and worn totals.
+
+On by default; key items_partner_switch=0 in port_options.cfg (or
+DW3_ITEMS_PARTNER_SWITCH=0) turns it off, and then the code path is the
+original. Policy in port/items_menu/items_menu.c.
+
+--- a/src/menus/field_menu/equip_panel.c
++++ b/src/menus/field_menu/equip_panel.c
+@@ -2,6 +2,9 @@
+    panel of STSTATUS_createEquipPanel: its rodata starts at 0x800826CC (USA). */
+ 
+ #include "menus/field_menu.h"
++#if PORT_HOST
++#include "port_items_menu.h"
++#endif
+ 
+ /* Creates the equipment panel's windows: the six slots, the list of items that
+    fit the chosen one, their counts, the help and the slot's item */
+@@ -262,6 +265,33 @@
+     }
+ }
+ 
++#if PORT_HOST
++/* P6.33: ZL / ZR on the slot list change the partner without leaving the
++   panel. Only called between frames of the slot list (never while the item
++   list holds a stat preview). The page, the stats and the slots are refreshed
++   with the helpers the question step uses; the slot cursor stays. */
++static void STSTATUS_portSwitchPartner(EquipPanel *panel, EquipPanelWindows *windows, s32 dir) {
++    StatsScreen *screen = panel->screen;
++    StatsScreenWindows *screenWindows = screen->children;
++    s32 member = dw3_port_items_partner_next(screen->member, screen->count, dir);
++    s32 from = screen->member;
++
++    if (member == from) {
++        return;
++    }
++    screen->previewStats(screen, -1, 0); /* stats as they are, before the switch */
++    screen->member = member;
++    panel->partner = GAME.funcs.getPartyMember(member);
++    STSTATUS_showChosenPage(screen, screenWindows, member, 1);
++    screenWindows->exp->setNumber(screenWindows->exp, 0, GAME.funcs.getPartnerStats(panel->partner)->exp);
++    screenWindows->exp->setRightAlign(screenWindows->exp, 1);
++    STSTATUS_showPartnerStats(screen, screenWindows, 1);
++    STSTATUS_showEquipment(panel, windows, 1);
++    SOUND.playSound(SOUND_CURSOR);
++    dw3_port_items_partner_switched(from, member, panel->partner);
++}
++#endif
++
+ /* Choosing a slot: up and down move the cursor, cross lists the owned items
+    for the slot ("none" first, then those the partner can equip, then the
+    others), triangle closes the panel */
+@@ -271,6 +301,13 @@
+     s32 n;
+     s32 i;
+ 
++#if PORT_HOST
++    /* P6.33: ZL / ZR change the partner (port option items_partner_switch). */
++    if ((PAD_PRESSED(PAD_L2) || PAD_PRESSED(PAD_R2)) && dw3_port_items_partner_switch_enabled()) {
++        STSTATUS_portSwitchPartner(panel, windows, PAD_PRESSED(PAD_R2) ? 1 : -1);
++        return;
++    }
++#endif
+     oldSlot = panel->slot;
+     if (PAD_PRESSED(PAD_UP) || PAD_REPEATED(PAD_UP)) {
+         panel->slot--;
