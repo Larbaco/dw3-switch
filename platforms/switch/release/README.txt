@@ -1,6 +1,6 @@
 Digimon World 3 / 2003, Switch homebrew preview
 
-Release notes for v0.6.5-preview.39. The release tag and boot version
+Release notes for v0.6.5-preview.40. The release tag and boot version
 identify the actual source revision.
 
 Player guide (setup, controls, Options, saves, crash reports):
@@ -11,13 +11,25 @@ New in this preview
   No item below has been checked on a Switch OLED yet. Each is checked on
   PC and in the Ryubing emulator only, and is marked unverified.
 
-  Quit game no longer ends with a system error (#280). Quit game now stops
-  the audio and closes the GPU before the NRO leaves. Before, the exit could
-  end with a Horizon error screen. Needs OLED confirmation (plan A7).
+  Equipment screen: ZL / ZR change the partner without leaving (P6.33
+  phase 1, #282). On the Status screen's Equipment slot list, ZL and ZR
+  switch to the previous or next party member. On by default; the file key
+  items_partner_switch (in port_options.cfg) turns it off. Needs two or
+  more partners. Plan G8.
 
-  Field menu OPTIONS no longer shows a black square (#280). The title's fade
-  carried into the in-game Options screen opened from the field menu, so the
-  screen was drawn darkened. Now it is not. Needs OLED confirmation.
+  Auto-save goes to its own file, autosave.bin, and never over your save
+  slots (P6.31, #283). Title Continue loads the auto-save. The new Load Game
+  row opens the slot list. Without autosave.bin the title is unchanged.
+  Plan E2.
+
+  Full-screen map view, proof of concept (P6.32, #284). Open Map from the
+  field menu, then press Y (Square). The D-pad pans, L / R zoom, ZL / ZR
+  cycle the scaler (its name is on screen), and B or Y returns. Turbo is
+  off there. The scaled images are built in the background and cached in
+  sdmc:/switch/dw3/cache/. Widescreen only. Plan B16.
+
+  Still open from preview.39: the Quit game and field OPTIONS fixes need
+  OLED confirmation (plan A7 and B15), and the #188 audio check is plan D13.
 
 Known issues
 
@@ -205,6 +217,14 @@ Install / nxlink
 OLED checklist
 
   New in this preview:
+  - Equipment ZL / ZR partner cycle (plan G8): the partner changes on each
+    press, and nothing changes with items_partner_switch=0.
+  - Auto-save and Load Game (plan E2): Continue loads autosave.bin, and
+    Load Game opens your own slots.
+  - Full-screen map view (plan B16): Y opens it, B or Y closes it, and the
+    scaler names and cache folder are as described above.
+
+  From preview.39, still open:
   - Quit game (plan A7): the exit must end with no Horizon error, and the
     log must show `audio stopped` and `gpu closed; leaving main`.
   - Field menu OPTIONS (plan B15): no black square when it opens.
