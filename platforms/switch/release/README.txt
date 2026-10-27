@@ -1,6 +1,6 @@
 Digimon World 3 / 2003, Switch homebrew preview
 
-Release notes for v0.6.5-preview.41. The release tag and boot version
+Release notes for v0.6.5-preview.42. The release tag and boot version
 identify the actual source revision.
 
 Player guide (setup, controls, Options, saves, crash reports):
@@ -11,19 +11,12 @@ New in this preview
   No item below has been checked on a Switch OLED yet. Each is checked on
   PC and in the Ryubing emulator only, and is marked unverified.
 
-  Turbo: menus run at 1.5x (P6.4, #286). With turbo on, menus in the field
-  (the Start list, Options and Cheats, the Return to title question) and the
-  battle menus (the command menu and the technique list) run at 1.5x instead
-  of full turbo. Walking, text, cutscenes and battle animations keep full
-  turbo. Map, Items and shops stay at 1x. Plan C7-C9.
-
-  Title: menu plaques evenly spaced, constant logo size (patch 0129,
-  #287). All menu plaques sit on one spacing, 4 or 5 rows. The logo no
-  longer shrinks when the menu appears. The EU logo sits where the game
-  places it and is about 6% smaller than before. Needs OLED confirmation.
-
-  Integration check of main before #287: 2395 replay
-  checks, 0 failed; soak RSS flat. PC and Ryubing only.
+  App name (#289): the title in hbmenu and Sphaira is now Digimon World 3
+  NX. The nxlink build shows Digimon World 3 NX (nxlink). The .nro file
+  names are unchanged (dw3-switch.nro, dw3-switch-eu.nro,
+  dw3-switch-nxlink.nro). A forwarder made from an older build keeps the
+  old name, so recreate the forwarder in Sphaira (or re-add the .nro in
+  hbmenu) to see the new name. Unverified on hardware.
 
   Still open from preview.39: the Quit game and field OPTIONS fixes need
   OLED confirmation (plan A7 and B15), and the #188 audio check is plan D13.
@@ -69,6 +62,17 @@ Carried forward
   cancels restart. Unsaved progress is lost. Release before repeating.
   This chord can also toggle the nxlink debug HUD, whose own chord is
   Minus + L + R. See docs/HOTKEYS.md for all mapped controls.
+
+  From preview.41: Turbo: menus run at 1.5x (P6.4, #286). With turbo on, menus
+  in the field (the Start list, Options and Cheats, the Return to title
+  question) and the battle menus (the command menu and the technique list) run
+  at 1.5x instead of full turbo. Walking, text, cutscenes and battle
+  animations keep full turbo. Map, Items and shops stay at 1x. Plan C7-C9.
+
+  Title: menu plaques evenly spaced, constant logo size (patch 0129,
+  #287). All menu plaques sit on one spacing, 4 or 5 rows. The logo no
+  longer shrinks when the menu appears. The EU logo sits where the game
+  places it and is about 6% smaller than before. Needs OLED confirmation.
 
   From preview.38: encounter swirl covers the 16:9 picture (P6.1, #275). At
   the start of a random battle, the swirl now fills the full widescreen
@@ -161,11 +165,12 @@ Bundle
   dw3-switch-nxlink.nro       US nxlink logging build
   dw3-switch-eu.nro           EU ordinary build (attached by hand)
   dw3-switch-elf.zip          US unstripped ELFs and BUILD_IDS.txt
+  dw3-switch-eu-elf.zip       EU unstripped ELF and BUILD_IDS.txt
   README.txt                  these notes
 
   The US pair and dw3-switch-elf.zip come from the release workflow. The
-  EU ordinary build is attached by hand to the release, as in earlier
-  previews. The EU nxlink build is not published in this preview.
+  EU ordinary build and dw3-switch-eu-elf.zip are attached by hand to the
+  release, as in earlier previews. The EU nxlink build is not published in this preview.
   No original game files, BIN/CUE/ISO, BIOS or extracted tree ship here.
 
 Own-disc setup and extraction
@@ -217,6 +222,11 @@ Install / nxlink
 OLED checklist
 
   New in this preview:
+  - App name (#289): recreate the Sphaira forwarder (or re-add the .nro in
+    hbmenu); the title reads Digimon World 3 NX, and the nxlink build reads
+    Digimon World 3 NX (nxlink).
+
+  From preview.41, still open:
   - Turbo menus at 1.5x (plan C7-C9): menus run slower than walking at 4x,
     and Map, Items and shops stay at 1x. The `dw3-turbo` log lines show it.
   - Title spacing and logo (#287, no separate plan): the plaques are evenly

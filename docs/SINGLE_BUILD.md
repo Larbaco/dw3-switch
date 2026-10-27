@@ -279,7 +279,7 @@ ship, and nothing for the PC. Useful only as a stop-gap for the boot UX.
 - **Releases.** `tools/pack_release_elfs.py` gets two items (release and
   nxlink) instead of four; the "EU is a manual step" section of
   [RELEASES.md](RELEASES.md) goes away because CI builds both regions by
-  construction. The NACP name stays `dw3-switch`.
+  construction. The NACP name is `Digimon World 3 NX` (set in `platforms/switch/CMakeLists.txt`).
 - **CI.** EU gets built and unit-tested on every PR for free, which it is not
   today.
 - **Per-region tools.** `pack_runtime.py --version` and `build_file_map.py`
