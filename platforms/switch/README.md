@@ -77,7 +77,7 @@ hbmenu shows the NACP version for copies installed on the SD card. An
 `nxlink` load may not refresh that metadata; the same full label is logged
 once at boot as `dw3: version=…` (stderr on nxlink, and `sdmc:/switch/dw3/dw3.log`).
 `tools/build_switch_game.sh` checks the generated `.nacp` after each build.
-Manual check: in hbmenu, highlight `dw3-switch` / `dw3-switch nxlink` and read
+Manual check: in hbmenu, highlight `Digimon World 3 NX` / `Digimon World 3 NX (nxlink)` and read
 the version under the title.
 
 ### Displayed app name
