@@ -80,6 +80,16 @@ once at boot as `dw3: version=…` (stderr on nxlink, and `sdmc:/switch/dw3/dw3.
 Manual check: in hbmenu, highlight `dw3-switch` / `dw3-switch nxlink` and read
 the version under the title.
 
+### Displayed app name
+
+The title shown in hbmenu and Sphaira comes from the NACP name, not the file name.
+Release builds (US and EU) show **Digimon World 3 NX**; the nxlink build shows
+**Digimon World 3 NX (nxlink)**, and the replay test build appends ` (replay)`.
+The `.nro` file names (`dw3-switch.nro`, `dw3-switch-eu.nro`, `-nxlink`, `-replay`)
+are unchanged. A forwarder created from an earlier build keeps the old name, so
+recreate the forwarder in Sphaira (or re-add the `.nro` in hbmenu) to pick up the
+new name. Set in `platforms/switch/CMakeLists.txt` (`DW3_NACP_NAME`).
+
 ### CMake build — the game image (P4.7, in progress)
 
 `platforms/switch/CMakeLists.txt` is the entry point that links the Phase 3 game
