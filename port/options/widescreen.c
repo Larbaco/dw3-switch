@@ -472,18 +472,22 @@ void *dw3_port_widescreen_wings(void *sheet, int frame, int x) {
 
 void dw3_port_widescreen_frame(void) {
     int px = dw3_port_widescreen_px();
+    int prev;
 
     g_frame_no++;
     if (px == g_applied) {
         return;
     }
+    prev = g_applied;
     g_applied = px;
     if (Psyz_VideoSetGutter((unsigned)px) != 0) {
         WARNF("dw3-widescreen: renderer has no gutters (%d px)", px);
     } else {
         /* psyz_log, not stderr: on Switch stderr only reaches nxlink, and
          * this line is the check in sdmc:/switch/dw3/dw3.log. */
-        INFOF("dw3-widescreen: gutter %d px per side", px);
+        INFOF("dw3-widescreen: gutter %d px per side (was %d; %s) mode file "
+              "0x%x frame %u", px, prev, px ? "16:9" : "4:3 picture",
+              (unsigned)dw3_overlay_current_mode_file(), g_frame_no);
     }
 }
 

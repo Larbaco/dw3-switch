@@ -518,7 +518,9 @@ static Thread s_map_thread;
 
 static void map_view_precompute_entry(void *arg) {
     (void)arg;
+    INFOF("dw3-map: precompute thread running");
     dw3_map_view_precompute_run();
+    INFOF("dw3-map: precompute thread finished");
 }
 
 static void map_view_precompute_start(const char *config_dir) {
@@ -717,6 +719,16 @@ int main(int argc, char **argv) {
         ERRORF("sdmc: mount failed; runtime paths will not resolve");
     }
     dw3_nx_log_open();
+#ifndef DW3_NX_REPLAY
+#ifdef DW3_NXLINK_STDIO
+    if (g_nxlink_fd < 0)
+#endif
+    {
+        /* Game-side fprintf(stderr) lines (dw3-port-options, memcard, ...)
+         * otherwise reach no sink on an ordinary build. */
+        dw3_nx_log_capture_stderr();
+    }
+#endif
 #ifdef DW3_NX_REPLAY
     /* P6.15 replay build: game code writes markers (overlay restores, replay
      * shot/end, ...) with fprintf(stderr), which is invisible under an
@@ -733,6 +745,7 @@ int main(int argc, char **argv) {
     dw3_overlay_set_strict(1);
 #endif
     INFOF("dw3: version=%s", DW3_NRO_VERSION_STR);
+    dw3_nx_log_run_header();
     if (test_env_count > 0) {
         INFOF("dw3: DW3_NX_TEST_ENV applied %d vars: %s", test_env_count,
               DW3_NX_TEST_ENV_STR);
@@ -828,7 +841,9 @@ int main(int argc, char **argv) {
 #endif
     {
         int game_result = dw3_game_main();
-        INFOF("dw3_game_main returned %d; shutting down", game_result);
+        INFOF("dw3_game_main returned %d; shutting down (quit path: %s)",
+              game_result,
+              g_exit_pending ? "HOME / applet exit" : "title Quit game");
         memcard_host_shutdown();
         /* P38: leave the way the P4 sample does, services closed in reverse
          * order of their opening, before libnx tears the rest down. Quit game
