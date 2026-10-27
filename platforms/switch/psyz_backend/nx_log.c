@@ -34,9 +34,13 @@
 #include <stdio.h>
 
 #include <switch.h>
+#include <sys/iosupport.h>
 
-/* Device-relative path inside the "sdmc" FsFileSystem. */
+/* Device-relative path inside the "sdmc" FsFileSystem. The folder keeps the
+ * last DW3_NX_LOG_KEEP runs: dw3.log is the current one, dw3.1.log the run
+ * before it, ... dw3.<KEEP-1>.log the oldest. */
 #define DW3_NX_LOG_FS_PATH "/switch/dw3/dw3.log"
+#define DW3_NX_LOG_KEEP 5
 #define DW3_NX_LOG_MAX 1024
 
 static FsFile s_log_file;
@@ -44,6 +48,59 @@ static volatile int s_log_ok;
 static volatile s64 s_log_off; /* end of the last complete write */
 static Mutex s_log_mutex;
 static Dw3LogRing s_log_ring;
+/* Set once game stderr is routed into psyz_log; psyz_log then must not write
+ * stderr itself (it would loop). */
+static volatile int s_stderr_captured;
+
+/* "dw3.log" for n == 0, "dw3.<n>.log" otherwise. */
+static void log_path(char *out, size_t cap, int n) {
+    if (n == 0) {
+        snprintf(out, cap, "%s", DW3_NX_LOG_FS_PATH);
+    } else {
+        snprintf(out, cap, "/switch/dw3/dw3.%d.log", n);
+    }
+}
+
+/* Shift dw3.log -> dw3.1.log -> ... and drop the oldest. Renames only (no
+ * copying), and every failure is ignored: a missing older file is the normal
+ * case on the first boots, and a log that cannot rotate must not stop the
+ * game. */
+static void log_rotate(FsFileSystem *fs) {
+    char from[48];
+    char to[48];
+    int n;
+
+    log_path(to, sizeof(to), DW3_NX_LOG_KEEP - 1);
+    fsFsDeleteFile(fs, to);
+    for (n = DW3_NX_LOG_KEEP - 2; n >= 0; n--) {
+        log_path(from, sizeof(from), n);
+        log_path(to, sizeof(to), n + 1);
+        fsFsRenameFile(fs, from, to);
+    }
+}
+
+void dw3_nx_log_run_header(void) {
+    u64 now = 0;
+    TimeCalendarTime cal;
+    TimeCalendarAdditionalInfo info;
+
+    if (R_SUCCEEDED(timeInitialize()) &&
+        R_SUCCEEDED(timeGetCurrentTime(TimeType_UserSystemClock, &now)) &&
+        R_SUCCEEDED(timeToCalendarTimeWithMyRule(now, &cal, &info))) {
+        psyz_log(1, __FILE__, __LINE__, __func__,
+                 "dw3-run: started %04d-%02d-%02d %02d:%02d:%02d (console "
+                 "clock, epoch=%llu); previous runs are dw3.1.log ... "
+                 "dw3.%d.log, newest first",
+                 (int)cal.year, (int)cal.month, (int)cal.day, (int)cal.hour,
+                 (int)cal.minute, (int)cal.second, (unsigned long long)now,
+                 DW3_NX_LOG_KEEP - 1);
+    } else {
+        psyz_log(1, __FILE__, __LINE__, __func__,
+                 "dw3-run: started (console clock unavailable); previous "
+                 "runs are dw3.1.log ... dw3.%d.log, newest first",
+                 DW3_NX_LOG_KEEP - 1);
+    }
+}
 
 void dw3_nx_log_open(void) {
     FsFileSystem *fs;
@@ -55,9 +112,10 @@ void dw3_nx_log_open(void) {
     if (!fs) {
         return;
     }
-    /* Create if missing (AlreadyExists is fine), then truncate: one run per
-     * file, so the tail is always the latest boot. Append mode lets each
-     * write at the end offset grow the file. */
+    /* One run per file: move the older runs up, then start a fresh dw3.log.
+     * Create (AlreadyExists is fine) then truncate in case the rename failed.
+     * Append mode lets each write at the end offset grow the file. */
+    log_rotate(fs);
     fsFsCreateFile(fs, DW3_NX_LOG_FS_PATH, 0, 0);
     if (R_FAILED(fsFsOpenFile(fs, DW3_NX_LOG_FS_PATH,
                               FsOpenMode_Write | FsOpenMode_Append,
@@ -93,6 +151,103 @@ unsigned dw3_nx_log_ring_walk(void (*emit)(void *ctx, const char *line,
                                            unsigned len),
                               void *ctx, unsigned *skipped) {
     return dw3_log_ring_walk(&s_log_ring, emit, ctx, skipped);
+}
+
+/* Game code reports most of its "dw3-<area>: ..." lines with
+ * fprintf(stderr, ...). With nothing attached that went nowhere, so those lines
+ * (port-options open/close, memcard recovery, restart, map view, battle
+ * options, ...) never reached dw3.log. This devoptab takes over fd 2, cuts
+ * the byte stream into lines and hands each to psyz_log. */
+/* Per-thread line buffers: the audio, precompute and game threads all write
+ * stderr, and a piece of a line (no newline yet) from one must never be glued
+ * to bytes of another. (newlib already makes one fprintf a single write.) */
+static __thread char s_err_line[DW3_NX_LOG_MAX - 128];
+static __thread unsigned s_err_len;
+
+/* Safety valve: every stderr line is now a synchronous SD write, so a loop
+ * that prints per frame must not be able to fill the card or stall the game.
+ * More than ERR_MAX_PER_SEC lines in one second are dropped and counted; the
+ * count is logged at the start of the next window. Measured need on PC
+ * replays: boot burst ~300 lines, then well under 5 lines/s. */
+#define ERR_MAX_PER_SEC 400
+static Mutex s_err_mutex;
+static u64 s_err_window_start;
+static unsigned s_err_window_count, s_err_dropped;
+
+static int err_allow(unsigned *dropped_before) {
+    const u64 now = armGetSystemTick();
+    int ok;
+
+    *dropped_before = 0;
+    mutexLock(&s_err_mutex);
+    if (now - s_err_window_start >= armGetSystemTickFreq()) {
+        *dropped_before = s_err_dropped;
+        s_err_dropped = 0;
+        s_err_window_start = now;
+        s_err_window_count = 0;
+    }
+    ok = s_err_window_count < ERR_MAX_PER_SEC;
+    if (ok) {
+        s_err_window_count++;
+    } else {
+        s_err_dropped++;
+    }
+    mutexUnlock(&s_err_mutex);
+    return ok;
+}
+
+static void err_flush_line(void) {
+    unsigned dropped;
+
+    if (s_err_len == 0) {
+        return;
+    }
+    s_err_line[s_err_len] = '\0';
+    s_err_len = 0;
+    if (!err_allow(&dropped)) {
+        return;
+    }
+    if (dropped) {
+        psyz_log(2, "stderr", 0, "game",
+                 "dw3-log: %u stderr lines dropped (more than %d per second)",
+                 dropped, ERR_MAX_PER_SEC);
+    }
+    psyz_log(1, "stderr", 0, "game", "%s", s_err_line);
+}
+
+static ssize_t err_write(struct _reent *r, void *fd, const char *ptr,
+                         size_t len) {
+    size_t i;
+
+    (void)r;
+    (void)fd;
+    for (i = 0; i < len; i++) {
+        if (ptr[i] == '\n') {
+            err_flush_line();
+        } else if (ptr[i] != '\r') {
+            if (s_err_len >= sizeof(s_err_line) - 1) {
+                err_flush_line();
+            }
+            s_err_line[s_err_len++] = ptr[i];
+        }
+    }
+    return (ssize_t)len;
+}
+
+static const devoptab_t s_err_devoptab = {
+    .name = "dw3err",
+    .structSize = 0,
+    .write_r = err_write,
+};
+
+void dw3_nx_log_capture_stderr(void) {
+    if (s_stderr_captured) {
+        return;
+    }
+    mutexInit(&s_err_mutex);
+    devoptab_list[STD_ERR] = &s_err_devoptab;
+    setvbuf(stderr, NULL, _IONBF, 0);
+    s_stderr_captured = 1;
 }
 
 void psyz_log(unsigned int level, const char *file, unsigned int line,
@@ -133,7 +288,9 @@ void psyz_log(unsigned int level, const char *file, unsigned int line,
         }
         mutexUnlock(&s_log_mutex);
     }
-    fwrite(buf, 1, (size_t)len, stderr);
-    fflush(stderr);
+    if (!s_stderr_captured) {
+        fwrite(buf, 1, (size_t)len, stderr);
+        fflush(stderr);
+    }
     svcOutputDebugString(buf, (u64)len);
 }

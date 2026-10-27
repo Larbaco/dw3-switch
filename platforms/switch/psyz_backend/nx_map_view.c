@@ -14,6 +14,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 
 #include <GLES3/gl3.h>
 
@@ -27,6 +28,15 @@ static GLuint s_prog, s_vbo, s_map_tex, s_hud_tex;
 static GLint s_attr_pos = -1, s_attr_t = -1, s_uni_tex = -1;
 static unsigned s_map_gen = ~0u, s_hud_gen = ~0u;
 static int s_map_w, s_map_h, s_idle, s_failed, s_linear = -1, s_logged;
+static GLenum s_last_draw_err;
+static int s_skip_logged; /* "waiting for the map texture" once per open */
+
+static long long now_us(void) {
+    struct timespec ts;
+
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    return (long long)ts.tv_sec * 1000000LL + ts.tv_nsec / 1000;
+}
 
 static GLuint compile(GLenum type, const char *src) {
     GLuint sh = glCreateShader(type);
@@ -36,6 +46,12 @@ static GLuint compile(GLenum type, const char *src) {
     glCompileShader(sh);
     glGetShaderiv(sh, GL_COMPILE_STATUS, &ok);
     if (!ok) {
+        char msg[200];
+
+        msg[0] = 0;
+        glGetShaderInfoLog(sh, sizeof(msg), NULL, msg);
+        MV_LOG("dw3-map: switch shader compile FAILED (%s): %s",
+               type == GL_VERTEX_SHADER ? "vertex" : "fragment", msg);
         glDeleteShader(sh);
         return 0;
     }
@@ -57,6 +73,7 @@ static int ensure_program(void) {
     vs = compile(GL_VERTEX_SHADER, VS);
     fs = compile(GL_FRAGMENT_SHADER, FS);
     if (!vs || !fs) {
+        MV_LOG("dw3-map: switch program not built: map view disabled");
         s_failed = 1;
         return 0;
     }
@@ -68,6 +85,7 @@ static int ensure_program(void) {
     glDeleteShader(fs);
     glGetProgramiv(s_prog, GL_LINK_STATUS, &ok);
     if (!ok) {
+        MV_LOG("dw3-map: switch program link FAILED: map view disabled");
         glDeleteProgram(s_prog);
         s_prog = 0;
         s_failed = 1;
@@ -76,6 +94,8 @@ static int ensure_program(void) {
     s_attr_pos = glGetAttribLocation(s_prog, "a_pos");
     s_attr_t = glGetAttribLocation(s_prog, "a_t");
     s_uni_tex = glGetUniformLocation(s_prog, "u_tex");
+    MV_LOG("dw3-map: switch program ready (attr pos=%d t=%d, uniform tex=%d)",
+           s_attr_pos, s_attr_t, s_uni_tex);
     glGenBuffers(1, &s_vbo);
     glBindBuffer(GL_ARRAY_BUFFER, s_vbo);
     glBufferData(GL_ARRAY_BUFFER, sizeof(float) * 16, NULL, GL_DYNAMIC_DRAW);
@@ -147,6 +167,7 @@ void dw3_nx_map_view_draw(int vx, int vy, int vw, int vh) {
             MV_LOG("dw3-map: switch textures released");
         }
         s_logged = 0;
+        s_skip_logged = 0;
         return;
     }
     s_idle = 0;
@@ -174,12 +195,33 @@ void dw3_nx_map_view_draw(int vx, int vy, int vw, int vh) {
         }
         glBindTexture(GL_TEXTURE_2D, s_map_tex);
         glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
-        glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, d.tex_w, d.tex_h, GL_RGBA,
-                        GL_UNSIGNED_BYTE, d.tex_rgba);
+        {
+            GLint maxtex = 0;
+            GLenum err;
+            long long t0;
+
+            long long clear_a = 0, i;
+
+            for (i = 0; i < (long long)d.tex_w * d.tex_h; ++i) {
+                if (d.tex_rgba[i * 4 + 3] != 255) ++clear_a;
+            }
+            MV_LOG("dw3-map: switch texture gen %u alpha check: %lld of %lld "
+                   "texels are not opaque (255)", d.tex_gen, clear_a,
+                   (long long)d.tex_w * d.tex_h);
+            glGetIntegerv(GL_MAX_TEXTURE_SIZE, &maxtex);
+            (void)glGetError(); /* drop anything a neighbour left behind */
+            t0 = now_us();
+            glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, d.tex_w, d.tex_h, GL_RGBA,
+                            GL_UNSIGNED_BYTE, d.tex_rgba);
+            err = glGetError();
+            MV_LOG("dw3-map: switch texture %dx%d upload %s (GL error 0x%x, "
+                   "max texture %d, tex id %u, %lld us, %s)", d.tex_w, d.tex_h,
+                   err == GL_NO_ERROR ? "ok" : "FAILED", (unsigned)err,
+                   (int)maxtex, (unsigned)s_map_tex, now_us() - t0,
+                   d.linear ? "linear" : "nearest");
+        }
         s_map_gen = d.tex_gen;
         dw3_map_view_tex_taken(d.tex_gen);
-        MV_LOG("dw3-map: switch texture %dx%d uploaded (%s)", d.tex_w, d.tex_h,
-               d.linear ? "linear" : "nearest");
     }
     if (d.hud_gen != s_hud_gen && d.hud_rgba && s_hud_tex) {
         glBindTexture(GL_TEXTURE_2D, s_hud_tex);
@@ -188,7 +230,16 @@ void dw3_nx_map_view_draw(int vx, int vy, int vw, int vh) {
                         GL_RGBA, GL_UNSIGNED_BYTE, d.hud_rgba);
         s_hud_gen = d.hud_gen;
     }
-    if (!s_map_tex || s_map_gen != d.tex_gen) return;
+    if (!s_map_tex || s_map_gen != d.tex_gen) {
+        if (!s_skip_logged) {
+            s_skip_logged = 1;
+            MV_LOG("dw3-map: switch map not drawn: no texture yet (tex id %u, "
+                   "gen have %u want %u, cpu image %s) - only the game's own "
+                   "background shows", (unsigned)s_map_tex, s_map_gen,
+                   d.tex_gen, d.tex_rgba ? "present" : "missing");
+        }
+        return;
+    }
     if (s_linear != d.linear) {
         const GLint f = d.linear ? GL_LINEAR : GL_NEAREST;
 
@@ -198,6 +249,27 @@ void dw3_nx_map_view_draw(int vx, int vy, int vw, int vh) {
         s_linear = d.linear;
     }
 
+    {
+        /* Whatever the mesh or the title overlay left enabled: a stray vertex
+         * array without a buffer makes glDrawArrays fail with
+         * INVALID_OPERATION, which would show exactly as "only the
+         * background". Start from a known state. */
+        GLint i, maxattr = 0, vao = 0, fbo = 0, prog = 0;
+
+        glGetIntegerv(GL_MAX_VERTEX_ATTRIBS, &maxattr);
+        glGetIntegerv(GL_VERTEX_ARRAY_BINDING, &vao);
+        glGetIntegerv(GL_FRAMEBUFFER_BINDING, &fbo);
+        glGetIntegerv(GL_CURRENT_PROGRAM, &prog);
+        if (!s_logged) {
+            MV_LOG("dw3-map: switch draw state before: vao=%d fbo=%d "
+                   "program=%d (ours %u), max attribs %d", (int)vao, (int)fbo,
+                   (int)prog, (unsigned)s_prog, (int)maxattr);
+        }
+        for (i = 0; i < maxattr && i < 16; ++i) {
+            glDisableVertexAttribArray((GLuint)i);
+        }
+        (void)glGetError();
+    }
     glViewport(vx, vy, vw, vh);
     glEnable(GL_SCISSOR_TEST);
     glScissor(vx, vy, vw, vh);
@@ -210,9 +282,21 @@ void dw3_nx_map_view_draw(int vx, int vy, int vw, int vh) {
     glEnable(GL_BLEND);
     draw_quad(s_hud_tex, 0.0f, 0.0f, 1.0f, 1.0f);
     glDisable(GL_SCISSOR_TEST);
+    {
+        const GLenum derr = glGetError();
+
+        if (derr != GL_NO_ERROR && derr != s_last_draw_err) {
+            MV_LOG("dw3-map: switch draw GL error 0x%x (map tex %u hud tex %u)",
+                   (unsigned)derr, (unsigned)s_map_tex, (unsigned)s_hud_tex);
+        }
+        s_last_draw_err = derr;
+    }
     if (!s_logged) {
         s_logged = 1;
-        MV_LOG("dw3-map: switch draw viewport %d,%d %dx%d", vx, vy, vw, vh);
+        MV_LOG("dw3-map: switch first draw viewport %d,%d %dx%d, map rect "
+               "%.3f,%.3f-%.3f,%.3f, GL error 0x%x", vx, vy, vw, vh,
+               (double)d.x0, (double)d.y0, (double)d.x1, (double)d.y1,
+               (unsigned)glGetError());
     }
 }
 #endif /* DW3_NX_GAME_IMAGE */

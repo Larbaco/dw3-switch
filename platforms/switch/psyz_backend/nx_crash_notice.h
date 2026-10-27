@@ -151,8 +151,8 @@ static inline void dw3_notice_layout(Dw3NoticeLayout *lay,
     dw3_notice_push(lay, "", 0, DW3_NOTICE_BODY);
     dw3_notice_push(lay, "Report saved to", 15, DW3_NOTICE_BODY);
     dw3_notice_push(lay, kept, strlen(kept), DW3_NOTICE_LABEL);
-    dw3_notice_push(lay, "Please attach it and dw3.log to a bug report.",
-                    45, DW3_NOTICE_BODY);
+    dw3_notice_push(lay, "Please attach it and the dw3*.log files.",
+                    40, DW3_NOTICE_BODY);
     dw3_notice_push(lay, "", 0, DW3_NOTICE_BODY);
     /* No stdio: "Press A to continue (60)". */
     memcpy(hint, "Press A to continue (", 21);

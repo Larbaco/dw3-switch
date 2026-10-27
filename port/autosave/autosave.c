@@ -1,3 +1,6 @@
+#ifndef _POSIX_C_SOURCE
+#define _POSIX_C_SOURCE 200809L /* clock_gettime under -std=c11 */
+#endif
 /* P6.31 auto-save (off by default): policy, the file and the load.
  * Design: docs/P6.31_AUTOSAVE.md.
  *
@@ -17,6 +20,7 @@
 
 #include <stdio.h>
 #include <string.h>
+#include <time.h>
 
 #ifdef DW3_AUTOSAVE_TEST
 #define AS_INFO(...) (fprintf(stderr, __VA_ARGS__), fputc('\n', stderr))
@@ -228,7 +232,15 @@ static void as_fill_summary(unsigned char *s, const Dw3AutosaveSnapshot *snap) {
     }
 }
 
+static double as_now_ms(void) {
+    struct timespec ts;
+
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    return (double)ts.tv_sec * 1000.0 + (double)ts.tv_nsec / 1.0e6;
+}
+
 int dw3_autosave_commit(const Dw3AutosaveSnapshot *snap) {
+    double t_start = as_now_ms(), t_flush;
     static unsigned char old_slot[SAVE_SLOT_STRIDE];
     unsigned char old_info[SAVE_INFO_SIZE];
     unsigned char new_info[SAVE_INFO_SIZE];
@@ -272,6 +284,7 @@ int dw3_autosave_commit(const Dw3AutosaveSnapshot *snap) {
         AS_WARN("dw3-autosave: write into RAM failed; autosave.bin unchanged");
         goto rollback;
     }
+    t_flush = as_now_ms();
     if (memcard_host_flush(MEMCARD_HOST_AUTO) != 0) {
         AS_WARN("dw3-autosave: FAILED to write autosave.bin (the file on "
                 "disk is as it was)");
@@ -279,8 +292,11 @@ int dw3_autosave_commit(const Dw3AutosaveSnapshot *snap) {
     }
     g_count++;
     g_file_ok = 1;
-    AS_INFO("dw3-autosave: wrote autosave.bin (area mode 0x%x, #%u)",
-            snap->mode, g_count);
+    AS_INFO("dw3-autosave: wrote autosave.bin (area mode 0x%x, #%u) in %.1f "
+            "ms (SD write %.1f ms, the game was stalled that long); option "
+            "Auto-save=%d",
+            snap->mode, g_count, as_now_ms() - t_start, as_now_ms() - t_flush,
+            dw3_autosave_mode());
 #if defined(DW3_CHEATS) && !defined(DW3_AUTOSAVE_TEST)
     /* P6.20: an auto-save made after a cheat carries the cheat mark. */
     dw3_cheats_save_written(MEMCARD_HOST_AUTO, 0, SAVE_DATA_OFFSET, snap->save,

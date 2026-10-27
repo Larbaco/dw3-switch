@@ -189,26 +189,48 @@ static void build_texture(int scaler) {
     s.built_ms = 0;
     if (scaler == MV_SCALER_NEAREST || scaler == MV_SCALER_SHARP) {
         /* a copy, or a 5 ms integer prescale: not worth an SD cache file */
-        dw3_mv_scale(scaler, &s.base, &out, &ms);
+        if (dw3_mv_scale(scaler, &s.base, &out, &ms) != 0 || !out.rgba) {
+            fprintf(stderr, "dw3-map: scaler %s FAILED (no image built, the "
+                    "map picture cannot be shown)\n", dw3_mv_scaler_name(scaler));
+            return;
+        }
+        s.built_ms = (int)(ms + 0.5);
+        fprintf(stderr, "dw3-map: scaler %s built in %d ms (no cache, %dx%d)\n",
+                dw3_mv_scaler_name(scaler), s.built_ms, out.w, out.h);
     } else {
         cache_path(path, sizeof(path), s.half, scaler);
         if (g_cache_dir[0] && dw3_mv_cache_read(path, &out) == 0 &&
             out.w == s.base.w * MV_SCALE && out.h == s.base.h * MV_SCALE) {
             s.built_ms = -1;
-            fprintf(stderr, "dw3-map: scaler %s loaded from cache in %d ms\n",
-                    dw3_mv_scaler_name(scaler), (int)(now_ms() - t0));
+            fprintf(stderr, "dw3-map: scaler %s loaded from cache in %d ms "
+                    "(%dx%d, cache hit %s)\n", dw3_mv_scaler_name(scaler),
+                    (int)(now_ms() - t0), out.w, out.h, path);
         } else {
             dw3_mv_image_free(&out);
-            if (dw3_mv_scale(scaler, &s.base, &out, &ms) != 0) return;
+            fprintf(stderr, "dw3-map: cache miss %s\n",
+                    g_cache_dir[0] ? path : "(no cache folder)");
+            if (dw3_mv_scale(scaler, &s.base, &out, &ms) != 0) {
+                fprintf(stderr, "dw3-map: scaler %s FAILED (no image built)\n",
+                        dw3_mv_scaler_name(scaler));
+                return;
+            }
             s.built_ms = (int)(ms + 0.5);
-            fprintf(stderr, "dw3-map: scaler %s built in %d ms\n",
-                    dw3_mv_scaler_name(scaler), s.built_ms);
-            if (g_cache_dir[0]) dw3_mv_cache_write(path, &out);
+            fprintf(stderr, "dw3-map: scaler %s built in %d ms (%dx%d)\n",
+                    dw3_mv_scaler_name(scaler), s.built_ms, out.w, out.h);
+            if (g_cache_dir[0]) {
+                int wrc = dw3_mv_cache_write(path, &out);
+
+                fprintf(stderr, "dw3-map: cache write %s: %s\n", path,
+                        wrc == 0 ? "ok" : "FAILED");
+            }
         }
     }
     s.scaler = scaler;
     g_scaler = scaler;
     set_texture(&out, dw3_mv_scaler_linear(scaler));
+    fprintf(stderr, "dw3-map: texture %dx%d queued for the GPU (gen %u, scaler "
+            "%s, %s)\n", s.tex.w, s.tex.h, s.tex_gen, dw3_mv_scaler_name(scaler),
+            s.tex_linear ? "linear" : "nearest");
 }
 
 /* --- HUD ---------------------------------------------------------------------*/
@@ -309,7 +331,7 @@ static void close_view(void) {
     s.hud = NULL;
     s.active = 0;
     ++s.tex_gen; /* the host drops its texture after a few idle frames */
-    fprintf(stderr, "dw3-map: close\n");
+    fprintf(stderr, "dw3-map: close after %u frames\n", s.frame);
 }
 
 static void open_view(const void *sheet, int sheet_file, int half, int home_x,
@@ -326,6 +348,8 @@ static void open_view(const void *sheet, int sheet_file, int half, int home_x,
     if (g_cache_dir[0]) {
         cache_path(path, sizeof(path), half, MV_SCALER_NEAREST);
         if (dw3_mv_cache_read(path, &s.base) == 0) s.source = 1;
+        fprintf(stderr, "dw3-map: base image cache %s: %s\n",
+                s.source == 1 ? "hit" : "miss", path);
     }
     if (s.source == 0 || getenv("DW3_MAP_VERIFY")) {
         MvImage live;
@@ -333,6 +357,13 @@ static void open_view(const void *sheet, int sheet_file, int half, int home_x,
 
         live.rgba = NULL;
         live.w = live.h = 0;
+        fprintf(stderr, "dw3-map: open half=%d region=%s: sheet file 0x%x "
+                "size=%u, image file 0x%x size=%u; base from %s\n", half,
+                MV_REGION, (unsigned)sheet_file,
+                (unsigned)cdfs_file_size((uint32_t)sheet_file),
+                (unsigned)(sheet_file + 1),
+                (unsigned)cdfs_file_size((uint32_t)sheet_file + 1u),
+                s.source == 1 ? "cache + vram check" : "vram capture");
         if (s.source == 1) {
             /* the cross-check: the cached (disc-built) base against the VRAM */
             MvImage cached = s.base;
@@ -346,7 +377,11 @@ static void open_view(const void *sheet, int sheet_file, int half, int home_x,
                     cached.w, cached.h, live.w, live.h);
             dw3_mv_image_free(&live);
         } else {
-            if (base_from_vram(sheet, sheet_file) != 0) {
+            int rc = base_from_vram(sheet, sheet_file);
+
+            fprintf(stderr, "dw3-map: compose from vram rc=%d image=%dx%d\n",
+                    rc, s.base.w, s.base.h);
+            if (rc != 0) {
                 fprintf(stderr, "dw3-map: capture failed, screen not opened\n");
                 return;
             }
@@ -371,7 +406,10 @@ static void open_view(const void *sheet, int sheet_file, int half, int home_x,
             }
         }
     }
-    if (!s.base.rgba) return;
+    if (!s.base.rgba) {
+        fprintf(stderr, "dw3-map: no base image, screen not opened\n");
+        return;
+    }
     s.box.x0 = s.base.ox;
     s.box.y0 = s.base.oy;
     if (getenv("DW3_MAP_VERIFY")) {
@@ -430,8 +468,14 @@ int dw3_port_map_view_frame(const void *sheet, int sheet_file, int half,
 
 #define BIT(b) (1u << (b))
     if (!s.active) {
-        if (!(pressed & BIT(DW3_MV_PAD_SQUARE)) || !map_view_available())
+        if (!(pressed & BIT(DW3_MV_PAD_SQUARE))) return 0;
+        if (!map_view_available()) {
+            fprintf(stderr, "dw3-map: Square pressed, view not available "
+                    "(host=%d map_screen=%d widescreen shift=%d)\n", MV_HOST_OK,
+                    dw3_port_options_file_int("map_screen", 1),
+                    dw3_port_widescreen_menu_shift());
             return 0;
+        }
         open_view(sheet, sheet_file, half, home_x, home_y, visited, spot_x,
                   spot_y);
         return s.active;
@@ -450,10 +494,15 @@ int dw3_port_map_view_frame(const void *sheet, int sheet_file, int half,
         moved = 1;
     }
     if (moved) {
-        fprintf(stderr, "dw3-map: zoom step %d (%s) centre %.1f,%.1f\n",
-                s.view.step,
+        float rx0, ry0, rx1, ry1;
+
+        dw3_mv_view_rect(&s.view, s.base.w, s.base.h, VW, VH, &rx0, &ry0, &rx1,
+                         &ry1);
+        fprintf(stderr, "dw3-map: zoom step %d (%s) centre %.1f,%.1f draw rect "
+                "%.0f,%.0f-%.0f,%.0f of %dx%d\n", s.view.step,
                 s.view.step == 0 ? "fit" : "x", (double)s.view.cx,
-                (double)s.view.cy);
+                (double)s.view.cy, (double)rx0, (double)ry0, (double)rx1,
+                (double)ry1, VW, VH);
     }
     if (pressed & (BIT(DW3_MV_PAD_R2) | BIT(DW3_MV_PAD_L2))) {
         int dir = (pressed & BIT(DW3_MV_PAD_R2)) ? 1 : -1;

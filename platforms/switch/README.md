@@ -76,6 +76,8 @@ field in 16 bytes (15 printable chars + NUL); the helper compresses
 hbmenu shows the NACP version for copies installed on the SD card. An
 `nxlink` load may not refresh that metadata; the same full label is logged
 once at boot as `dw3: version=…` (stderr on nxlink, and `sdmc:/switch/dw3/dw3.log`).
+Each boot rotates the log: `dw3.log` is the current run, `dw3.1.log` the one
+before, up to `dw3.4.log` (5 runs kept). The `dw3-run:` line dates the run.
 `tools/build_switch_game.sh` checks the generated `.nacp` after each build.
 Manual check: in hbmenu, highlight `Digimon World 3 NX` / `Digimon World 3 NX (nxlink)` and read
 the version under the title.

@@ -69,6 +69,8 @@ static int turbo_mode_file(void) { return dw3_overlay_current_mode_file(); }
 #define TURBO_LOG(msg, ...) INFOF("dw3-turbo: " msg, __VA_ARGS__)
 #endif
 
+static int g_menu_mode; /* mode file when the menu rate started */
+
 static void turbo_read_env(void) {
     const char *env;
     int speed;
@@ -161,9 +163,16 @@ static void turbo_menu_track(int on) {
     g_menu_logged = on;
     if (on) {
         g_menu_frames = 0;
-        TURBO_LOG("menu 1.5x (speed %dx)", dw3_port_turbo_speed());
+        g_menu_mode = turbo_mode_file();
+        TURBO_LOG("menu 1.5x (speed %dx) in the %s, mode file 0x%x",
+                  dw3_port_turbo_speed(),
+                  g_menu_mode == DW3_TURBO_FIGHTSTG ? "battle menu"
+                                                    : "field menus",
+                  g_menu_mode);
     } else {
-        TURBO_LOG("menu off (frames=%u)", g_menu_frames);
+        TURBO_LOG("menu off (frames=%u) after the %s", g_menu_frames,
+                  g_menu_mode == DW3_TURBO_FIGHTSTG ? "battle menu"
+                                                    : "field menus");
     }
 }
 

@@ -669,6 +669,7 @@ void dw3_nx_title_overlay_draw(int vx, int vy, int vw, int vh) {
                   0.0f, v0, 1.0f, v1);
     }
     if (s_options_alpha) {
+        dw3_port_options_note_shown();
         const float v0 = (float)(STATE_OPTIONS * CANVAS_H) / (float)ART_TEX_H;
         const float v1 = (float)((STATE_OPTIONS + 1) * CANVAS_H) /
                          (float)ART_TEX_H;
@@ -771,6 +772,14 @@ void dw3_pc_title_menu_logo_set_active(int active) {
 
     if (next != s_logo_active) {
         TITLE_LOG("dw3-title-logo: active=%d", next);
+        if (next) {
+            /* Proof that the logo does not change size or place after load:
+             * the same numbers every time the menu appears. */
+            TITLE_LOG("dw3-title-logo: drawn at canvas %d,%d-%d,%d (%dx%d "
+                      "texture, canvas %dx%d)", (int)LOGO_X0, (int)LOGO_Y0,
+                      (int)LOGO_X1, (int)LOGO_Y1, (int)LOGO_W, (int)LOGO_H,
+                      (int)CANVAS_W, (int)CANVAS_H);
+        }
     }
     s_logo_active = next;
 }

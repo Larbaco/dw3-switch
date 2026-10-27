@@ -210,7 +210,8 @@ Install / nxlink
   This preview publishes only the US nxlink build. Do not probe TCP 28280
   first: an empty connection can break the receiver. A failed logging
   connection does not prevent boot; logs also go to
-  sdmc:/switch/dw3/dw3.log.
+  sdmc:/switch/dw3/dw3.log. That folder keeps the last 5 runs (dw3.log is
+  the newest, then dw3.1.log ... dw3.4.log); send all of them.
 
   hbmenu's NACP version is limited to 15 characters. Build tooling
   derives it and the full boot-log version from the release tag. Check
@@ -248,7 +249,8 @@ OLED checklist
   previews, is in the ordered OLED test plan. Follow it:
   https://github.com/Larbaco/dw3-switch/blob/main/docs/OLED_TEST_PLAN.md
 
-  After any crash, keep crash_report.txt and dw3.log before relaunching;
+  After any crash, keep crash_report.txt and the dw3*.log files (the last 5 runs are kept
+  automatically, but copy them off before 5 more launches);
   the next boot keeps one previous report. Symbolize it with the matching
   ELF from dw3-switch-elf.zip.
 

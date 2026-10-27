@@ -48,8 +48,10 @@ The US disc BIN/CUE sits beside `us/`, the EU one inside `eu/`. **Back up the
 
 **Capture:**
 
-- `dw3.log`: copy `sdmc:/switch/dw3/dw3.log` off the SD card **before
-  relaunching**, and name it per session. Lines to grep are named in the rows.
+- `dw3.log`: every launch rotates the log (`dw3.log` newest, then `dw3.1.log`
+  ... `dw3.4.log`; 5 runs kept). Send the whole `sdmc:/switch/dw3/*.log` set.
+  The first line of each run (`dw3-run:`) has its date. Lines to grep are named
+  in the rows.
 - nxlink log: in hbmenu press **Y** (NetLoader) first, do not probe TCP 28280,
   then `nxlink -a <Switch-IP> -s dw3-switch-nxlink.nro 2>&1 | tee p-<session>-<date>.log`
   ([README](../platforms/switch/release/README.txt),
@@ -90,7 +92,7 @@ Fresh start from hbmenu, US then EU. Main source:
 | A4 | Cross on Quit game | Window opens on **No**; Cross or Triangle closes it; hints show Switch letters (B, X) | photo | P6.28 |
 | A5 | Options from the title: move over all rows, handheld and docked | **Nine** rows, the ninth is Auto-save, OFF; rows a little tighter but fit; no clipping top or bottom. EU: labels in the disc's language | photo per language | P6.31 row ([item 1](P6.31_AUTOSAVE.md#oled-checklist-owner-us-and-eu-builds-from-this-pr)), [P6.18 item 8](P6.18_PACING.md#oled-check-for-the-owner) |
 | A6 | Set Encounter rate OFF and Text speed Instant, close from the HOME menu, relaunch, open Options | Values kept | `port_options.cfg`, photo | P6.18 ([item 7](P6.18_PACING.md#oled-check-for-the-owner)) |
-| A7 | Title: Quit game, move to Yes, Cross | NRO ends, back in hbmenu. `dw3.log` ends with `dw3-port-quit: saves flushed; asking the host to quit`, `dw3_game_main returned 0`, `audio stopped`, `gpu closed; leaving main` (P38: preview.38 ended in a Horizon error here). `save0.bin`/`save1.bin` intact; next launch Continues from an earlier save | `dw3.log` tail, memcard folder listing | P6.28 |
+| A7 | Title: Quit game, move to Yes, Cross (title path = `dw3-port-quit:` lines, HOME path = `applet exit`) | NRO ends, back in hbmenu. `dw3.log` ends with `dw3-port-quit: saves flushed; asking the host to quit`, `dw3_game_main returned 0`, `audio stopped`, `gpu closed; leaving main` (P38: preview.38 ended in a Horizon error here). `save0.bin`/`save1.bin` intact; next launch Continues from an earlier save | `dw3.log` tail, memcard folder listing | P6.28 |
 | A8 | Relaunch, HOME, close the software | Exits as before; `dw3.log` has the `applet exit` line | `dw3.log` | P6.28 |
 
 ## Session B: field and 16:9 screens tour
@@ -117,8 +119,8 @@ left panels at the 4:3 edge; Open Booster was not captured.
 | B12 | **Encounter spiral (patch 0175).** Set Encounter rate back to 1x, enter a random battle; try it at turbo off and at 2x, 3x and 4x (Options) | The swirl covers the whole 16:9 picture: the gutters do not go black on its first frame and the tiles slide off across the full width (a tile column hangs off each side of the spiral), in the same time as before. The picture then goes black as before, the battle appears | photo of the first spiral frames at each turbo speed, `dw3.log`, region | 0175 / P6.1 (PSY-Z `dw3-gutter-capture`) |
 | B13 | In a battle, a technique's magic circle | Say whether a black hole shows in its middle (also on PC and Ryubing) | photo | P6.1 (ROADMAP open item) |
 | B14 | nxlink build: a door and then a battle | Say if the transitions feel slow; send the log | nxlink log across both | P6.1 "Slow transitions" (a shorter banner hold is the owner's call, P6.18) |
-| B15 | **Options from the field (#270, P9.7).** In the field press Plus; the list ends with OPTIONS (EU: OPTIONS, OPZIONI, OPTIONEN, OPCIONES) and then TITLE SCREEN. Cross on OPTIONS. Left x3 on Music volume. Triangle, then Triangle again, and walk | The Options window opens over the dimmed field; **Widescreen is grey** with the "Locked in game" line and Cross on it does nothing; the field music gets quieter at once and keeps playing; Triangle returns to the menu with the cursor still on OPTIONS, the second Triangle to the field and the character walks (nothing was pressed twice). The 16:9 dim covers the side strips and no part of the window stays after closing | photo, `dw3.log` (`dw3-port-options: open in game` and `close in game`) | P9.7 slice 1 ([checklist](PORT_OPTIONS.md#oled-checklist-options-in-game-owner)) |
-| B16 | **Full-screen map view (P6.32 PoC, #284).** Widescreen ON. Field menu (Plus), Map, then **Y** (Square). Pan with the D-pad, zoom with **L / R**, **ZL / ZR** to cycle the scaler (its name shows on screen), Circle to hide the text, **B** or **Y** to return. Try it at fit, 1.0, 1.25, 1.5 and 2.0 while panning slowly. Turbo: press **R3** in the view | Map fills the 16:9 picture; no pan past the edge, no seams or flicker; the scaler name changes; R3 does not speed the game up there; B / Y returns to the Map screen as it was, and the Map closes with B as before. Say which scaler you prefer and how long a first-time Lanczos2 or FSR 1 took | photo per scaler, `dw3.log` (`dw3-map` lines: `built in N ms`), say whether `sdmc:/switch/dw3/cache/` filled | P6.32 ([section 8](P6.32_MAP_ZOOM.md#8-oled-checklist-for-the-owner-poc)), patch 0146 |
+| B15 | **Options from the field (#270, P9.7).** In the field press Plus; the list ends with OPTIONS (EU: OPTIONS, OPZIONI, OPTIONEN, OPCIONES) and then TITLE SCREEN. Cross on OPTIONS. Left x3 on Music volume. Triangle, then Triangle again, and walk | The Options window opens over the dimmed field; **Widescreen is grey** with the "Locked in game" line and Cross on it does nothing; the field music gets quieter at once and keeps playing; Triangle returns to the menu with the cursor still on OPTIONS, the second Triangle to the field and the character walks (nothing was pressed twice). The 16:9 dim covers the side strips and no part of the window stays after closing | photo, `dw3.log` (`dw3-port-options: open in game`, `first frame shown N ms after the open request` = the stutter, `longest frame gap N ms`, `title-overlay options update #N ... compose= upload=`, `close in game`, `open for N ms`) | P9.7 slice 1 ([checklist](PORT_OPTIONS.md#oled-checklist-options-in-game-owner)) |
+| B16 | **Full-screen map view (P6.32 PoC, #284).** Widescreen ON. Field menu (Plus), Map, then **Y** (Square). Pan with the D-pad, zoom with **L / R**, **ZL / ZR** to cycle the scaler (its name shows on screen), Circle to hide the text, **B** or **Y** to return. Try it at fit, 1.0, 1.25, 1.5 and 2.0 while panning slowly. Turbo: press **R3** in the view | Map fills the 16:9 picture; no pan past the edge, no seams or flicker; the scaler name changes; R3 does not speed the game up there; B / Y returns to the Map screen as it was, and the Map closes with B as before. Say which scaler you prefer and how long a first-time Lanczos2 or FSR 1 took | photo per scaler, `dw3.log` (`dw3-map:` lines: `open half=`, sheet/image file sizes, `compose from vram rc=`, `scaler X built in N ms` / `cache hit|miss`, `texture WxH queued`, `switch texture upload ok|FAILED (GL error)`, `switch map not drawn: no texture yet`, `zoom step .. draw rect`, `close after N frames`), say whether `sdmc:/switch/dw3/cache/` filled | P6.32 ([section 8](P6.32_MAP_ZOOM.md#8-oled-checklist-for-the-owner-poc)), patch 0146 |
 
 ## Session C: turbo speed
 
@@ -135,7 +137,7 @@ the README OLED checklist.
 | C4 | Only if C1 looks wrong: A/B with `DW3_NX_DEFER=0` in `DW3_NX_TEST_ENV` (nxlink build); `DW3_NX_PRESENT_HASH=1` logs a hash per presented frame | Same picture both ways | both logs | P6.22 |
 | C5 | Field-to-battle transition at **2x, 3x and 4x** | No hang, no crash, picture intact; battle itself is unchanged | crash report, `dw3.log`, photo | P6.22 |
 | C6 | Watch the field picture at 4x | Nothing missing or flickering against 1x | photo | P6.22 |
-| C7 | **Menus at 1.5x (patch 0176, P6.4).** Turbo on at 4x. In the field press Plus (field menu), hold Down on the list, open OPTIONS and hold Down / Left on a row, close it, open TITLE SCREEN (the Yes / No question) and cancel | The menu and its cursor are visibly quicker than at 1x but clearly slower than field walking at 4x; a held direction is easy to stop on a row. `dw3.log`: `dw3-turbo: menu 1.5x (speed 4x)` on opening and `menu off (frames=N)` on leaving, no `speed 1x` in between | `dw3.log`, region | P6.4 |
+| C7 | **Menus at 1.5x (patch 0176, P6.4).** Turbo on at 4x. In the field press Plus (field menu), hold Down on the list, open OPTIONS and hold Down / Left on a row, close it, open TITLE SCREEN (the Yes / No question) and cancel | The menu and its cursor are visibly quicker than at 1x but clearly slower than field walking at 4x; a held direction is easy to stop on a row. `dw3.log`: `dw3-turbo: menu 1.5x (speed 4x) in the field menus, mode file 0x..` on opening and `menu off (frames=N) after the ...` on leaving, no `speed 1x` in between | `dw3.log`, region | P6.4 |
 | C8 | Same turbo, battle: at the command menu move the cursor, open Tech and move in the list, pick one | Cursor and list at 1.5x; the technique animation, messages and enemy turn at the full 4x | `dw3.log` (`menu 1.5x` / `menu off` pairs around the turn) | P6.4 |
 | C9 | Turbo on: open the field menu Map, Items and a shop, then walk | These stay at 1x (no `menu 1.5x` line from them); walking is back at the full speed as soon as the field menu closes | `dw3.log` | P6.4 |
 
@@ -160,7 +162,7 @@ Ordinary builds. Sources: [P5.2](P5.2_BATTLE_GPU.md),
 | D10 | Growlmon or WarGrowlmon with a Picking or Snapping Claw (needs the item) | "Stole <item>!" before "Defeated!" at least sometimes (low chance); item in the bag | photo, `dw3.log` | P7.7 item 5 |
 | D11 | After a won battle: is there field music? | Music plays. Known: silent map after a battle was reported on rc8 US, cause unknown | nxlink log | known issue ([README](../platforms/switch/release/README.txt)) |
 | D12 | **Options in battle (P9.7 slice 2).** In a battle, when the command menu (Fight, Tech, ...) is waiting, press **Minus** (no L, R, ZL or ZR held). Move to Music volume, Left x3, Triangle. Do it again on a later turn. Also press Minus while an attack plays: nothing should happen | The Options window opens over the battle, which stays on screen frozen (3D models, HUD, partner portrait, no flicker or black frame); nothing moves for as long as you wait (try 30 s: no enemy attack, no gauge change); the battle music keeps playing and gets quieter; Widescreen is grey. Triangle: the command menu is back as it was, the cursor where it was, and the battle goes on and ends normally; no button press reached the menu | photo of the frozen picture, `dw3.log` (`dw3-battle-options: held` and `resume` lines show equal `events=`, `event_time=`, `hp=`), say docked or handheld | P9.7 slice 2 ([checklist](PORT_OPTIONS.md#oled-checklist-options-in-battle-owner)) |
-| D13 | **Audio after many techs (#188).** EU build. Use 10 or more techs in a row across battles (the same or different battles, the field in between). Then play on: a battle, the field, the menus | Music and sound effects keep playing in the battle, after it and in the field; no silence that does not come back | nxlink log (`dw3.log`) if audio dies, say when it died and what was used last, region, language, handheld or docked | #188 |
+| D13 | **Audio after many techs (#188).** EU build. Use 10 or more techs in a row across battles (the same or different battles, the field in between). Then play on: a battle, the field, the menus | Music and sound effects keep playing in the battle, after it and in the field; no silence that does not come back | `dw3.log`: `dw3-battle: technique picked id=.. N techs this session`, `dw3-audio: health` every 30 s (output peak, voices, music requests), `dw3-audio: WARNING output silent for N s while music is expected`; say when it died, region, language, handheld or docked | #188 |
 
 ## Session E: saves
 
@@ -179,7 +181,7 @@ Ordinary builds, memcard folders backed up. Sources:
 | E1.3 | Open again, Yes | Back to the title (US) or the language select (EU). `dw3.log` has `dw3-port-restart: requested from the field menu` then `saves flushed`. A save written before still Continues | `dw3.log` | P6.27 |
 | E1.4 | Options: Restart hotkey ON. Hold **L + R + Plus + Minus** in the field, inside a battle, after a won battle, and right after saving at a save point (release between tries) | Each reaches the title (EU: the language select) with no overlay left over. Continue loads the save written before the restart | `dw3.log`, photo of any leftover overlay | **P6.9** (tick only after this; PC replays already pass) |
 | E1.5 | Note: the chord contains Minus + L + R, so it can also toggle the nxlink HUD | Expected | | [README](../platforms/switch/release/README.txt) |
-| E1.6 | After the Yes in E1.3, at the title (US) or the language select and title (EU): look at the logo, the menu rows and the backdrop for a few seconds, open Options and Quit game's window, then start Continue | Textures rebuild with no glitch (#268 releases the title overlay's textures outside the title): no blank, garbled or half-drawn logo, menu or Options window; the rows are where they were on the first boot | photo, `dw3.log` (`dw3-title-overlay:` lines) | #268 / P9.7 |
+| E1.6 | After the Yes in E1.3, at the title (US) or the language select and title (EU): look at the logo, the menu rows and the backdrop for a few seconds, open Options and Quit game's window, then start Continue | Textures rebuild with no glitch (#268 releases the title overlay's textures outside the title): no blank, garbled or half-drawn logo, menu or Options window; the rows are where they were on the first boot | photo, `dw3.log` (`dw3-title-overlay:` lines; `dw3-title-logo: drawn at canvas 120,47-840,373` identical on every boot; `dw3-widescreen: gutter N px per side (was M; ...) mode file 0x..` names the frame where the 4:3 flash happens) | #268 / P9.7 |
 
 ### E2. Auto-save
 
@@ -192,7 +194,7 @@ Ordinary builds, memcard folders backed up. Sources:
 | E2.4 | Load Game | The slot list shows your own saves, unchanged (the old area) | photo | P6.31 |
 | E2.4b | New Game with the option on, reach progress 4, change area | `autosave.bin` replaced by the new game | `dw3.log` | P6.31 |
 | E2.5 | Option OFF with the file still there: Continue, play, change area | Continue still loads it; no `wrote autosave.bin` | `dw3.log` | P6.31 |
-| E2.6 | Feel: does the write stall a frame at an area change? | A feel report is enough (no timing line yet). Not covered by PC replays: a real SD write failure, HOME during the write | note | P6.31 ([item 6](P6.31_AUTOSAVE.md#oled-checklist-owner-us-and-eu-builds-from-this-pr)) |
+| E2.6 | Feel: does the write stall a frame at an area change? | `wrote autosave.bin ... in N ms (SD write M ms ...); option Auto-save=1` is the stall, measured. Not covered by PC replays: a real SD write failure, HOME during the write | note | P6.31 ([item 6](P6.31_AUTOSAVE.md#oled-checklist-owner-us-and-eu-builds-from-this-pr)) |
 
 ### E3. Cross-region import
 
@@ -247,7 +249,7 @@ handheld on the charger, `nxlink -s` captured to a file, keep
 | # | Action | Expect | If it fails, send | Ticks |
 |---|---|---|---|---|
 | G1 | **P5.4 PR 2 forced crash.** Two special `--force-crash` nxlink builds (US forced assert right after boot, handheld; EU forced abort on the title after about 25 s, docked), each followed by the normal NRO. Follow [P5.4_CRASH](P5.4_CRASH.md#pr-2-owner-oled-check) steps 1-5 as written | Panel readable; US: A ends it early; EU: full 60 s; report symbolizes with the copied ELF; step 5 boots with no panel | the files listed in the source (step 2, 4, 5 logs, Atmosphere log, photo) | P5.4 (tick after) |
-| G2 | **P10.2:** HOME during a save write. Use the nxlink build (US, then EU), handheld. Back up the memcard folder first. Steps: **(a)** Continue a save, open the field menu, Save, pick the slot, confirm; the instant the "saving" bar shows, press HOME and choose Close Software (X on the HOME menu tile). Repeat **8 times**, pressing HOME at different moments (before the bar, on the bar, right after it). **(b)** Options: Auto-save **Each area**; walk through a door and press HOME at once, close the game; 3 times. **(c)** After every close: relaunch from hbmenu, Continue the slot you saved to. **(d)** Look at `sdmc:/switch/dw3/<us or eu>/memcard/` | Every relaunch: Continue loads (the new save or the one before, never a corrupt one). The folder has `save0.bin` of exactly 32768 bytes, **no** `save0.bin.bad`, and no lasting `save0.bin.tmp` / `save0.name.tmp` (one left by the close is removed by the next boot). `dw3.log` shows one of: `applet exit: flat saves flushed` (normal), `applet exit: a save is being written; waiting for it` followed by `flat saves flushed` (the new deferral worked), `dw3: memcard: recovered ... from an interrupted write` or `removed stale ...` (a close landed inside the write; the file is still valid). Not acceptable: `bad flat`, `quarantined`, an empty slot where a save was | `dw3.log` copied before each relaunch (name them g2-1 ... g2-8), the nxlink log, folder listing with sizes after each try, which moment HOME was pressed | P10.2 (stays unticked until you report; [audit](P5.3_HOME_QUIT.md#home-during-a-save-write-the-audit-p102-2026-10-25)) |
+| G2 | **P10.2:** HOME during a save write. Use the nxlink build (US, then EU), handheld. Back up the memcard folder first. Steps: **(a)** Continue a save, open the field menu, Save, pick the slot, confirm; the instant the "saving" bar shows, press HOME and choose Close Software (X on the HOME menu tile). Repeat **8 times**, pressing HOME at different moments (before the bar, on the bar, right after it). **(b)** Options: Auto-save **Each area**; walk through a door and press HOME at once, close the game; 3 times. **(c)** After every close: relaunch from hbmenu, Continue the slot you saved to. **(d)** Look at `sdmc:/switch/dw3/<us or eu>/memcard/` | Every relaunch: Continue loads (the new save or the one before, never a corrupt one). The folder has `save0.bin` of exactly 32768 bytes, **no** `save0.bin.bad`, and no lasting `save0.bin.tmp` / `save0.name.tmp` (one left by the close is removed by the next boot). `dw3.log` shows one of: `applet exit: flat saves flushed` (normal), `applet exit: a save is being written; waiting for it` followed by `flat saves flushed` (the new deferral worked), `dw3: memcard: recovered ... from an interrupted write` or `removed stale ...` (a close landed inside the write; the file is still valid). Not acceptable: `bad flat`, `quarantined`, an empty slot where a save was | the `dw3*.log` set (each try is one run), the nxlink log, folder listing with sizes after each try, which moment HOME was pressed | P10.2 (stays unticked until you report; [audit](P5.3_HOME_QUIT.md#home-during-a-save-write-the-audit-p102-2026-10-25)) |
 | G3 | **P10.2:** HOME (not the power button) pause mid-game, nxlink run | `applet focus: ... state=3` line, audio cut, game continues, no time jump. Known: these lines did not appear on rc7 | nxlink log | P10.2 |
 | G4 | **P4.3:** nxlink session of 10 min or more: title 1 min, opening movie 2 min, field walk 4 min, battle 3 min, one save | `nx_audio dbg:` lines show `underruns=0`, `seq` advancing, no `audrvUpdate failed`. Listen: movie XA mix, field BGM, battle SFX, no gap | log | P4.3 ([recipe](P4.3_AUDIO_HW.md#hardware-session-recipe)) |
 | G5 | P7.7 HUD name and Claw steal | Done in D8-D10 | | P7.7 |
@@ -275,8 +277,29 @@ picker text is readable at arm's length, handheld.
 
 ## What to send back
 
-Per session: the letter, region, language, handheld or docked, `dw3.log` copied
-before relaunch, the nxlink log if used, photos of anything wrong, and the
+Send the whole `sdmc:/switch/dw3/*.log` set (the last 5 runs are kept, so no
+copying between launches). Logs answer the "did it work" part of each row; the
+owner reports feel, looks and preferences. Per session: the letter, region,
+language, handheld or docked, the nxlink log if used, photos of anything wrong, and the
 crash report after a crash (format in [REPORTING_ISSUES](REPORTING_ISSUES.md)).
 When a row passes, tick the item in the [ROADMAP](ROADMAP.md) table and remove
 it from Pending OLED checks.
+
+## Proof lines by item (added with the rotating log)
+
+| Item | Lines in `dw3*.log` |
+|---|---|
+| A1 | `dw3-run: started <date>`, `dw3: version=`, `crash report ids:` (build id), `runtime version=<region>` |
+| A7, A8 | `dw3_game_main returned 0; shutting down (quit path: title Quit game or HOME / applet exit)` |
+| B15 | `dw3-port-options: first frame shown N ms after the open request`, `longest frame gap N ms`, `open for N ms` |
+| B16 | `dw3-map:` lines (see the row); a missing picture shows as `switch map not drawn: no texture yet`, `scaler ... FAILED` or `upload FAILED (GL error 0x..)` |
+| C7-C9 | `dw3-turbo: menu 1.5x (speed Nx) in the field menus or battle menu, mode file 0x..`, `menu off (frames=N) after the ...` |
+| D13 | `dw3-battle: technique picked id=`, `dw3-audio: health`, `dw3-audio: WARNING output silent` |
+| E1 | `dw3-widescreen: gutter ...` with mode file and frame |
+| E2 | `dw3-autosave: wrote autosave.bin ... in N ms (SD write M ms ...); option Auto-save=N` |
+| G8 | `dw3-options: file keys items_partner_switch=N map_screen=N` at boot, `dw3-items-menu: partner switch` |
+
+Game-side `fprintf(stderr)` lines (`dw3-port-options`, `dw3-map`, `dw3: memcard`,
+`dw3-port-restart`, `dw3-battle-options`) now reach `dw3.log` too: the Switch
+build routes stderr into the log when nxlink is not attached. Before this they
+did not, on an ordinary build.

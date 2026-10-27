@@ -13,6 +13,9 @@ void dw3_port_options_open(void);
  * the menu that opened it. */
 void dw3_port_options_open_in_game(void);
 int dw3_port_options_in_game(void);
+/* Host overlay: the Options screen was drawn for the first time since it
+ * opened; logs the time from the open request (the stutter measure). */
+void dw3_port_options_note_shown(void);
 /* P9.7 slice 2: the words of the in-game open / close log lines ("field menu" /
  * "the field menu" by default; the battle sets its own). NULL restores them. */
 void dw3_port_options_set_origin(const char *where, const char *back);

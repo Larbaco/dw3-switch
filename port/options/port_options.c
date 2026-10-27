@@ -1,3 +1,6 @@
+#ifndef _POSIX_C_SOURCE
+#define _POSIX_C_SOURCE 200809L /* clock_gettime under -std=c11 */
+#endif
 /* P9.2 port options shell — stays on MODE_TITLE; never sets menu choice. */
 #include "port_options.h"
 #include "port_audio.h"
@@ -10,6 +13,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 
 #ifdef DW3_PORT_OPTIONS_TEST
 #define PO_INFO(...) fprintf(stderr, __VA_ARGS__)
@@ -184,11 +188,49 @@ int dw3_port_options_in_game(void) {
     return g_in_game != 0;
 }
 
+/* Open-to-screen timing (the owner felt a stutter opening Options in game):
+ * the open request, the first frame the host drew it, and the longest gap
+ * between two ticks in the first PO_WATCH_FRAMES frames. */
+enum { PO_WATCH_FRAMES = 90 };
+static double g_open_ms, g_last_tick_ms, g_max_gap_ms;
+static int g_max_gap_frame, g_shown_logged, g_watch_logged;
+
+static double po_now_ms(void) {
+    struct timespec ts;
+
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    return (double)ts.tv_sec * 1000.0 + (double)ts.tv_nsec / 1.0e6;
+}
+
+static void po_watch_report(const char *why) {
+    if (g_watch_logged) {
+        return;
+    }
+    g_watch_logged = 1;
+    fprintf(stderr, "dw3-port-options: longest frame gap %.1f ms (frame %d of "
+            "the first %d after open; %s)\n", g_max_gap_ms, g_max_gap_frame,
+            g_open_frames, why);
+}
+
+void dw3_port_options_note_shown(void) {
+    if (!g_open || g_shown_logged) {
+        return;
+    }
+    g_shown_logged = 1;
+    fprintf(stderr, "dw3-port-options: first frame shown %.1f ms after the open "
+            "request (%s, tick %d)\n", po_now_ms() - g_open_ms,
+            g_in_game ? "in game" : "title", g_open_frames);
+}
+
 static void po_open(int in_game) {
     if (g_open) {
         return;
     }
     g_open = 1;
+    g_open_ms = g_last_tick_ms = po_now_ms();
+    g_max_gap_ms = 0.0;
+    g_max_gap_frame = 0;
+    g_shown_logged = g_watch_logged = 0;
     g_in_game = in_game;
     g_cursor = 0;
     g_open_frames = 0;
@@ -221,6 +263,9 @@ void dw3_port_options_close(void) {
     if (!g_open) {
         return;
     }
+    po_watch_report("closed");
+    fprintf(stderr, "dw3-port-options: open for %.0f ms\n",
+            po_now_ms() - g_open_ms);
     g_open = 0;
     g_open_frames = 0;
     if (g_in_game) {
@@ -537,6 +582,13 @@ int dw3_port_options_persist_init(const char *dir) {
         PO_INFO("dw3-options: autosave=%d (on area change; docs/P6.31_AUTOSAVE.md)",
                 g_stubs[DW3_PORT_OPT_AUTOSAVE].value);
     }
+    /* File-only keys (not rows): their values at boot, so a log says which
+     * way the test ran. */
+    PO_INFO("dw3-options: file keys items_partner_switch=%d map_screen=%d "
+            "battle_menu_memory=%d",
+            dw3_port_options_file_int("items_partner_switch", 1),
+            dw3_port_options_file_int("map_screen", 1),
+            g_saved[DW3_PORT_OPT_BATTLE_MENU]);
     /* DW3_MUSIC_VOLUME / DW3_SFX_VOLUME force a value for this run only. */
     po_stepped_env();
     po_audio_apply();
@@ -703,6 +755,18 @@ void dw3_port_options_tick(void) {
         return;
     }
     g_open_frames++;
+    if (g_open_frames <= PO_WATCH_FRAMES) {
+        double now = po_now_ms();
+
+        if (now - g_last_tick_ms > g_max_gap_ms) {
+            g_max_gap_ms = now - g_last_tick_ms;
+            g_max_gap_frame = g_open_frames;
+        }
+        g_last_tick_ms = now;
+        if (g_open_frames == PO_WATCH_FRAMES) {
+            po_watch_report("watch window over");
+        }
+    }
     if (!g_logged_open && g_open_frames == 1) {
         g_logged_open = 1;
         fprintf(stderr, "dw3-port-options: shell tick (Select opened)\n");

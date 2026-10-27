@@ -158,6 +158,12 @@ These hold for any agent working on the owner's desktop, whatever the tool
 11. **Codex PRs**: when a PR is opened or merged, record in `docs/ROADMAP.md`
     or in the PR what changed and what is still open, so any agent can see
     where the work stopped.
+12. **Logs answer the test plan.** Every OLED test-plan item names the
+    `dw3.log` line(s) that prove its result, and new features log their
+    user-visible decisions and timings (once per event, not per frame), so the
+    owner only has to report feel, looks and preferences. Keep the last runs in
+    the log folder (the Switch build rotates `dw3.log` to `dw3.1.log` ...
+    `dw3.4.log`, 5 runs); never rely on the owner copying a log between runs.
 
 ## Working style
 
