@@ -28,6 +28,7 @@
 #include "overlay_host.h"
 #include "map_view.h"
 #include "port_options.h"
+#include "user_switch.h"
 #include "runtime_extract.h"
 #include "str_stream.h"
 
@@ -537,6 +538,11 @@ static int init_paths(void) {
     int memdir_explicit;
     char boot_path[512];
 
+    /* P6.26: the chosen user's folder (user_switch.c); NULL when skipped. */
+    if (memdir == NULL) {
+        memdir = dw3_switch_user_memdir();
+    }
+
     /* A card with a matching BIN and no complete versioned tree is filled in
      * here. The bar is the same callback the STR rewrite uses, so register it
      * first. */
@@ -747,10 +753,32 @@ int main(int argc, char **argv) {
         ERRORF("appletLockExit failed; HOME may force-kill before flush");
     }
 
+    /* P6.26: whose saves. Cancelling the system profile selector means the
+     * game does not start: leave cleanly, nothing is written. */
+    if (dw3_switch_user_boot(env_or("DW3_RUNTIME", DW3_DEFAULT_RUNTIME),
+#if defined(VERSION_EU) && VERSION_EU
+                             "eu"
+#else
+                             "us"
+#endif
+                             ) == DW3_USER_BOOT_STOP) {
+        INFOF("no user chosen: leaving without starting the game");
+        dw3_nx_crash_allow_exit();
+        if (g_applet_exit_locked) {
+            appletUnlockExit();
+            g_applet_exit_locked = 0;
+        }
+#ifdef DW3_NXLINK_STDIO
+        dw3_nxlink_stdio_shutdown();
+#endif
+        return 0;
+    }
+
     if (!dw3_nx_gpu_init()) {
         ERRORF("dw3_nx_gpu_init failed");
         /* Logged setup failure, not a crash: exit(1) stays a plain exit. */
         dw3_nx_crash_allow_exit();
+        dw3_switch_user_exit();
         if (g_applet_exit_locked) {
             appletUnlockExit();
             g_applet_exit_locked = 0;
@@ -771,6 +799,7 @@ int main(int argc, char **argv) {
         /* Logged setup failure (runtime, audio, memcard, boot TIM), not a
          * crash: exit(1) stays a plain exit. */
         dw3_nx_crash_allow_exit();
+        dw3_switch_user_exit();
         if (g_applet_exit_locked) {
             appletUnlockExit();
             g_applet_exit_locked = 0;
@@ -810,6 +839,7 @@ int main(int argc, char **argv) {
         INFOF("audio stopped");
         dw3_nx_gpu_shutdown();
         INFOF("gpu closed; leaving main");
+        dw3_switch_user_exit();
 #ifdef DW3_NXLINK_STDIO
         dw3_nxlink_stdio_shutdown();
 #endif

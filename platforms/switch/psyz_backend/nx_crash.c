@@ -32,6 +32,7 @@
 
 #include "nx.h"
 #include "nx_crash_fmt.h"
+#include "port_user_saves.h"
 
 #include <stdalign.h>
 #include <stdio.h>
@@ -295,6 +296,8 @@ static void crash_write_head(Dw3CrashLine *l, const char *reason) {
     dw3_cl_char(l, ')');
 #endif
     crash_line_end(l);
+    /* P6.26: first 8 hex of the user uid (never the nickname). */
+    crash_kv(l, "profile: ", dw3_user_profile_hash()[0] ? dw3_user_profile_hash() : "n/a");
     crash_kv(l, "git: ", DW3_GIT_HASH_STR);
     dw3_cl_str(l, "build_id: ");
     crash_cl_build_id(l);
