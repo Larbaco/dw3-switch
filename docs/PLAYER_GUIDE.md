@@ -307,8 +307,9 @@ English on both regions.
 To report a crash:
 
 1. Before relaunching more than once, copy `crash_report.txt` or
-   `crash_report_prev.txt` and `sdmc:/switch/dw3/dw3.log` off the SD card. Only
-   one previous report is kept.
+   `crash_report_prev.txt` and the `sdmc:/switch/dw3/dw3*.log` files off the SD
+   card. Only one previous report is kept; the logs keep the last 5 runs
+   (`dw3.log` is the newest).
 2. Open an issue on the
    [tracker](https://github.com/Larbaco/dw3-switch/issues). Say the version,
    region, console and what you did, and attach both files.

@@ -15,6 +15,11 @@ enum {
     BUS_MUSIC = 1  /* exclusive (music) SEP tracks */
 };
 
+/* Host hooks for the audio health line (Switch: nx_audio.c). Weak, so hosts
+ * without them (PC, host tests) link and skip the call. */
+void dw3_host_audio_note_music(int seq, int sep) __attribute__((weak));
+void dw3_host_audio_note_volume(int music_step) __attribute__((weak));
+
 static int g_music_step = DW3_AUDIO_VOLUME_MAX;
 static int g_sfx_step = DW3_AUDIO_VOLUME_MAX;
 
@@ -42,6 +47,9 @@ void dw3_port_audio_apply(int music_step, int sfx_step) {
     }
     g_music_step = music_step;
     g_sfx_step = sfx_step;
+    if (dw3_host_audio_note_volume) {
+        dw3_host_audio_note_volume(music_step);
+    }
 }
 
 void dw3_port_audio_note_sequence(int seq_access_num, int sep, int music) {
@@ -53,6 +61,14 @@ void dw3_port_audio_note_sequence(int seq_access_num, int sep, int music) {
     dw3_port_audio_track_slot(seq_access_num, sep, &slot_seq, &slot_sep);
     Psyz_SndSetSeqBus((short)slot_seq, (short)slot_sep,
                       music ? BUS_MUSIC : BUS_SFX);
+    if (music) {
+        /* one line per music start (a few per area, not per frame) */
+        INFOF("dw3-audio: music track requested seq=%d sep=%d (slot %d/%d)",
+              seq_access_num, sep, slot_seq, slot_sep);
+        if (dw3_host_audio_note_music) {
+            dw3_host_audio_note_music(slot_seq, slot_sep);
+        }
+    }
 }
 
 /* --- optional bus statistics (evidence for docs/P6.17_VOLUME.md) ---------

@@ -98,7 +98,22 @@ int dw3_port_battle_menu_tech_wanted(int member) {
     return g_tech[member];
 }
 
+static unsigned g_tech_uses, g_tech_member_uses[BM_MEMBERS];
+
 void dw3_port_battle_menu_tech_picked(int member, int tech) {
+    /* Always (not only with the memory on): one line per technique picked, so
+     * a log shows what was used last and how many (#188, audio after techs). */
+    if (tech > 0) {
+        g_tech_uses++;
+        if (member >= 0 && member < BM_MEMBERS) {
+            g_tech_member_uses[member]++;
+        }
+        BM_LOG("dw3-battle: technique picked id=%d (0x%x) partner=%d; "
+               "%u techs this session, %u by this partner", tech,
+               (unsigned)tech, member, g_tech_uses,
+               member >= 0 && member < BM_MEMBERS ? g_tech_member_uses[member]
+                                                  : 0u);
+    }
     if (dw3_port_battle_menu_mode() != DW3_BATTLE_MENU_MEMORY_TECH ||
         member < 0 || member >= BM_MEMBERS || tech <= 0) {
         return;

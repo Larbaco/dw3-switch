@@ -10,8 +10,11 @@
 #include <malloc.h>
 #include <math.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <switch.h>
+
+#include <psyz/spu.h>
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
@@ -86,6 +89,144 @@ static int s_driver_inited;
 
 void Psyz_AudioDestroy(void);
 
+/* --- audio health (#188: "audio dies after many techs") -------------------
+ * One `dw3-audio: health` line every HEALTH_BUFFERS buffers (~30 s) and a
+ * warning when the final output is silent for a long stretch while a music
+ * track was requested and the music volume is above 0. Measured on the very
+ * buffers audren plays, so a dead mixer, a dead sequence and a muted bus are
+ * told apart by the voice counts next to the peak. Counted here, read and
+ * logged by the audio thread. */
+#define HEALTH_BUFFERS ((30 * SAMPLE_RATE) / BUF_FRAMES)
+#define SILENT_PEAK 4
+#define SILENT_WARN_SEC 10
+static int s_win_peak;
+static unsigned s_win_buffers, s_win_audible;
+static unsigned long long s_win_energy, s_win_samples;
+static unsigned s_silent_run;      /* consecutive silent, unpaused buffers */
+static unsigned s_silent_next_warn;/* next run length (buffers) to warn at */
+static unsigned s_silent_reported; /* run length of the last warning */
+static volatile unsigned s_music_requests;
+static volatile int s_music_seq = -1, s_music_sep = -1;
+static volatile unsigned long long s_music_at; /* buffers_queued at the request */
+static volatile int s_music_step = 10;
+static int s_bus_stats_on;
+
+static unsigned buffers_to_sec(unsigned long long b) {
+    return (unsigned)(b * BUF_FRAMES / SAMPLE_RATE);
+}
+
+/* Hooks called by port/audio/audio_bus.c (weak there; PC has none). */
+void dw3_host_audio_note_music(int seq, int sep) {
+    s_music_seq = seq;
+    s_music_sep = sep;
+    s_music_at = s_buffers_queued;
+    s_music_requests++;
+}
+
+void dw3_host_audio_note_volume(int music_step) { s_music_step = music_step; }
+
+static unsigned isqrt_ull(unsigned long long v) {
+    unsigned long long r = 0, bit = 1ULL << 62;
+
+    while (bit > v) bit >>= 2;
+    while (bit) {
+        if (v >= r + bit) {
+            v -= r + bit;
+            r = (r >> 1) + bit;
+        } else {
+            r >>= 1;
+        }
+        bit >>= 2;
+    }
+    return (unsigned)r;
+}
+
+/* Audio thread, no lock held. */
+static void health_report(void) {
+    PsyzSpuBusStats st[PSYZ_SPU_NUM_BUSES + 1];
+    unsigned long long fr = 1, vf = 0;
+    int bus_peak[3] = {0, 0, 0};
+    int i;
+
+    memset(st, 0, sizeof(st));
+    if (s_bus_stats_on) {
+        rmutexLock(&s_mutex);
+        Psyz_SpuGetBusStats(st);
+        Psyz_SpuEnableBusStats(1); /* clears the counters */
+        rmutexUnlock(&s_mutex);
+        if (st[0].frames) fr = st[0].frames;
+        for (i = 0; i < PSYZ_SPU_NUM_BUSES; i++) vf += st[i].active;
+        bus_peak[0] = st[0].out_peak;
+        bus_peak[1] = st[1].out_peak;
+        bus_peak[2] = st[PSYZ_SPU_BUS_CD].out_peak;
+    }
+    fprintf(stderr,
+            "dw3-audio: health %us: output peak=%d rms=%u audible=%u/%u "
+            "buffers, avg active voices=%.1f, bus peaks sfx=%d music=%d cd=%d, "
+            "underruns=%llu, music requests=%u (last seq %d sep %d, %us ago), "
+            "music volume=%d, silent run now %us, %s\n",
+            buffers_to_sec(s_win_buffers), s_win_peak,
+            s_win_samples ? isqrt_ull(s_win_energy / s_win_samples) : 0u,
+            s_win_audible, s_win_buffers, (double)vf / (double)fr, bus_peak[0],
+            bus_peak[1], bus_peak[2], (unsigned long long)s_underruns,
+            s_music_requests, s_music_seq, s_music_sep,
+            s_music_requests ? buffers_to_sec(s_buffers_queued - s_music_at) : 0u,
+            s_music_step, buffers_to_sec(s_silent_run),
+            s_paused ? "paused" : "running");
+    s_win_peak = 0;
+    s_win_buffers = s_win_audible = 0;
+    s_win_energy = s_win_samples = 0;
+}
+
+static void health_note_buffer(const short *pcm, int paused) {
+    int peak = 0;
+    int i;
+
+    if (paused) {
+        return; /* HOME/sleep: silence is expected, not counted */
+    }
+    for (i = 0; i < BUF_FRAMES * N_CHANNELS; i++) {
+        int v = pcm[i] < 0 ? -pcm[i] : pcm[i];
+
+        if (v > peak) peak = v;
+        s_win_energy += (unsigned long long)v * (unsigned long long)v;
+    }
+    s_win_samples += BUF_FRAMES * N_CHANNELS;
+    if (peak > s_win_peak) s_win_peak = peak;
+    s_win_buffers++;
+    if (peak > SILENT_PEAK) {
+        s_win_audible++;
+        if (s_silent_reported) {
+            fprintf(stderr, "dw3-audio: output audible again after %us of "
+                    "silence\n", buffers_to_sec(s_silent_run));
+        }
+        s_silent_run = s_silent_reported = 0;
+        s_silent_next_warn = (SILENT_WARN_SEC * SAMPLE_RATE) / BUF_FRAMES;
+    } else {
+        s_silent_run++;
+        if (s_silent_next_warn == 0) {
+            s_silent_next_warn = (SILENT_WARN_SEC * SAMPLE_RATE) / BUF_FRAMES;
+        }
+        if (s_silent_run >= s_silent_next_warn && s_music_requests &&
+            s_music_step > 0) {
+            fprintf(stderr,
+                    "dw3-audio: WARNING output silent for %us while music is "
+                    "expected (last music request seq %d sep %d %us ago, music "
+                    "volume %d, %u requests so far)\n",
+                    buffers_to_sec(s_silent_run), s_music_seq, s_music_sep,
+                    buffers_to_sec(s_buffers_queued - s_music_at), s_music_step,
+                    s_music_requests);
+            s_silent_reported = s_silent_run;
+            /* 10 s, then 40 s, 100 s and every 5 min after: no spam */
+            s_silent_next_warn = s_silent_run < 40 * 43u
+                                     ? 40 * 43u
+                                     : s_silent_run < 100 * 43u
+                                           ? 100 * 43u
+                                           : s_silent_run + 300 * 43u;
+        }
+    }
+}
+
 static void fill_wavebuf(AudioDriverWaveBuf *wb) {
     short *pcm = (short *)wb->data_raw;
 
@@ -95,6 +236,7 @@ static void fill_wavebuf(AudioDriverWaveBuf *wb) {
     } else {
         Psyz_SpuPullSamples(pcm, BUF_FRAMES);
     }
+    health_note_buffer(pcm, s_paused);
     rmutexUnlock(&s_mutex);
 
     armDCacheFlush(pcm, s_buf_bytes);
@@ -125,6 +267,9 @@ static void audio_thread(void *arg) {
         Result rc = audrvUpdate(&s_drv);
         if (R_FAILED(rc)) {
             fprintf(stderr, "nx_audio: audrvUpdate failed: 0x%x\n", rc);
+        }
+        if (s_win_buffers >= HEALTH_BUFFERS) {
+            health_report();
         }
 
         if (!audrvVoiceIsPlaying(&s_drv, VOICE_ID)) {
@@ -246,6 +391,14 @@ int Psyz_AudioInit(void) {
     }
     s_thread_started = 1;
     s_audio_init = 1;
+    if (getenv("DW3_AUDIO_STATS") == NULL) {
+        /* the health line reads the per-bus voice counts and peaks; the env
+         * knob owns the same counters when it is set */
+        rmutexLock(&s_mutex);
+        Psyz_SpuEnableBusStats(1);
+        rmutexUnlock(&s_mutex);
+        s_bus_stats_on = 1;
+    }
     fprintf(stderr,
             "nx_audio: Psyz_AudioInit OK (audren, %d Hz stereo, %d-frame "
             "x %d buffers)\n",
