@@ -343,6 +343,7 @@ target_include_directories(dw3-switch PRIVATE
   ${DW3_NX_PORTLIBS}/include
   ${CMAKE_CURRENT_SOURCE_DIR}/psyz_backend
   ${CMAKE_CURRENT_SOURCE_DIR}/../../port/cdfs
+  ${CMAKE_CURRENT_SOURCE_DIR}/../../port/map_view
   ${CMAKE_CURRENT_SOURCE_DIR}/../../port/memcard
   ${CMAKE_CURRENT_SOURCE_DIR}/../../port/movies
   ${CMAKE_CURRENT_SOURCE_DIR}/../../port/overlays

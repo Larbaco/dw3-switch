@@ -1,0 +1,72 @@
+Upstream-bound: no
+Subject: [PORT_HOST] P6.32 phase 0: the new full-screen map screen opens from the Map screen (Square)
+
+P6.32 phase 0 spike (docs/P6.32_MAP_ZOOM.md, option D). STSTATUS_updateMapScreen,
+in TASK_RUN, calls mapViewFrame, which gathers what the port screen needs and
+hands it to dw3_port_map_view_frame (port/map_view/map_view.c): the map's
+sprite sheet, the file and game half, the home mark, the visited flags, the 47
+spot positions and the logical pad (held and pressed masks). Square opens the
+new host-drawn screen, Triangle or Square close it. While it is open the
+function returns 1: the game's screen skips its own pad read (so the Triangle
+that closes the new screen does not also close the Map), its area lookup and
+sound, and only draws its frozen frame underneath. Nothing is written to GAME
+or to the task. With the option file key map_screen=0, widescreen off, or
+without the native overlay the function returns 0 and nothing changes: the Map
+screen is the one of patch 0080.
+
+--- a/src/menus/field_menu/map_screen.c
++++ b/src/menus/field_menu/map_screen.c
+@@ -2,6 +2,9 @@
+    last object, which has no rodata: where its code starts is a guess */
+ 
+ #include "menus/field_menu.h"
++#if PORT_HOST
++#include "port_map_view.h"
++#endif
+ 
+ /* Finds the area under the cursor and shows its name */
+ void STSTATUS_showMapArea(StatusMapScreen *screen, TextWindow **windows) {
+@@ -348,6 +351,30 @@
+ #endif
+ }
+ 
++#if PORT_HOST
++/* Patch 0146: the new full-screen map screen (P6.32). Square opens it over this
++   screen, which stays as it is (frozen: no pad, no area lookup, still drawn).
++   Returns 1 while the new screen has the pad. */
++static s32 mapViewFrame(StatusMapScreen *screen) {
++    s32 spotX[47];
++    s32 spotY[47];
++    unsigned held = 0;
++    unsigned pressed = 0;
++    s32 i;
++
++    for (i = 0; i < 47; i++) {
++        spotX[i] = STSTATUS_data.spots[i].x;
++        spotY[i] = STSTATUS_data.spots[i].y;
++    }
++    for (i = 0; i < 16; i++) {
++        held |= (unsigned)(PAD_HELD(i) & 1) << i;
++        pressed |= (unsigned)(PAD_PRESSED(i) & 1) << i;
++    }
++    return dw3_port_map_view_frame(FILE_CACHE.getEntry(screen->archive), screen->file, screen->gameHalf, screen->homeX,
++                                   screen->homeY, screen->visited, spotX, spotY, held, pressed);
++}
++#endif
++
+ /* The map screen's update */
+ void STSTATUS_updateMapScreen(StatusMapScreen *screen, TextWindow **windows) {
+     s32 area;
+@@ -386,6 +413,12 @@
+         }
+         break;
+     case TASK_RUN:
++#if PORT_HOST
++        if (mapViewFrame(screen)) {
++            STSTATUS_drawMapScreen(screen);
++            break;
++        }
++#endif
+         STSTATUS_runMapScreen(screen, windows);
+         STSTATUS_showMapArea(screen, windows);
+         STSTATUS_drawMapScreen(screen);
