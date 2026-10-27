@@ -90,7 +90,7 @@ Fresh start from hbmenu, US then EU. Main source:
 | A4 | Cross on Quit game | Window opens on **No**; Cross or Triangle closes it; hints show Switch letters (B, X) | photo | P6.28 |
 | A5 | Options from the title: move over all rows, handheld and docked | **Nine** rows, the ninth is Auto-save, OFF; rows a little tighter but fit; no clipping top or bottom. EU: labels in the disc's language | photo per language | P6.31 row ([item 1](P6.31_AUTOSAVE.md#oled-checklist-owner-us-and-eu-builds-from-this-pr)), [P6.18 item 8](P6.18_PACING.md#oled-check-for-the-owner) |
 | A6 | Set Encounter rate OFF and Text speed Instant, close from the HOME menu, relaunch, open Options | Values kept | `port_options.cfg`, photo | P6.18 ([item 7](P6.18_PACING.md#oled-check-for-the-owner)) |
-| A7 | Title: Quit game, move to Yes, Cross | NRO ends, back in hbmenu. `dw3.log` ends with `dw3-port-quit: saves flushed; asking the host to quit`. `save0.bin`/`save1.bin` intact; next launch Continues from an earlier save | `dw3.log` tail, memcard folder listing | P6.28 |
+| A7 | Title: Quit game, move to Yes, Cross | NRO ends, back in hbmenu. `dw3.log` ends with `dw3-port-quit: saves flushed; asking the host to quit`, `dw3_game_main returned 0`, `audio stopped`, `gpu closed; leaving main` (P38: preview.38 ended in a Horizon error here). `save0.bin`/`save1.bin` intact; next launch Continues from an earlier save | `dw3.log` tail, memcard folder listing | P6.28 |
 | A8 | Relaunch, HOME, close the software | Exits as before; `dw3.log` has the `applet exit` line | `dw3.log` | P6.28 |
 
 ## Session B: field and 16:9 screens tour
