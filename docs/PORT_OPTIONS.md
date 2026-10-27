@@ -1114,6 +1114,14 @@ and the Switch). Up / Down choose a row, Left / Right and Cross change it,
 Triangle (B) goes back to the menu. Changes are saved at once in
 `port_options.cfg` ([Persistence](#persistence)).
 
+> **P38 (black square on the Switch).** The title's edge fade ends at 255 and the
+> Switch overlay kept that level, so the Options screen opened from the field
+> was drawn fully darkened: a black square. Replays start in the field and never
+> run the title, so neither the PC nor the Ryubing `field-options` runs saw it.
+> `nx_title_overlay.c` now ignores the fade for an in-game Options screen and
+> forgets it once the title is off screen (`nx_title_fade.h`, unit test
+> `tools/tests/test_title_fade.py`). OLED check: Title, Continue, START, OPTIONS.
+
 ### Defaults chosen (owner can change)
 
 1. **Entry point: a row of the field menu**, not a hotkey (option b of the
