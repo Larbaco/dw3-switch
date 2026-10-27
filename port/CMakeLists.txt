@@ -267,6 +267,8 @@ add_library(dw3_port_options OBJECT
   "${CMAKE_CURRENT_SOURCE_DIR}/battle_menu/battle_menu_memory.c"
   "${CMAKE_CURRENT_SOURCE_DIR}/file_cache/file_cache_host.c"
   "${CMAKE_CURRENT_SOURCE_DIR}/items_menu/items_menu.c"
+  "${CMAKE_CURRENT_SOURCE_DIR}/map_view/map_view.c"
+  "${CMAKE_CURRENT_SOURCE_DIR}/map_view/map_view_core.c"
   "${CMAKE_CURRENT_SOURCE_DIR}/options/battle_options.c"
   "${CMAKE_CURRENT_SOURCE_DIR}/options/confirm.c"
   "${CMAKE_CURRENT_SOURCE_DIR}/options/field_options.c"
@@ -291,7 +293,8 @@ if(DW3_CHEATS)
   )
 endif()
 add_dependencies(dw3_port_options dw3_decomp_patched)
-target_include_directories(dw3_port_options PRIVATE ${_DW3_GAME_INCLUDES})
+target_include_directories(dw3_port_options PRIVATE ${_DW3_GAME_INCLUDES}
+  "${CMAKE_CURRENT_SOURCE_DIR}/map_view")
 target_compile_definitions(dw3_port_options PRIVATE ${_DW3_GAME_DEFS})
 target_compile_options(dw3_port_options PRIVATE ${_DW3_GAME_OPTS})
 set_target_properties(dw3_port_options PROPERTIES

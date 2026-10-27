@@ -16,6 +16,13 @@
 #include "memcard_host.h"
 #include "save_convert.h"
 #include "overlay_host.h"
+#include "map_view.h"
+#include <pthread.h>
+#if defined(__linux__)
+#include <sys/resource.h>
+#include <sys/syscall.h>
+#include <unistd.h>
+#endif
 #include "port_options.h"
 #include "port_turbo.h"
 #include "runtime_extract.h"
@@ -230,6 +237,29 @@ static const char *env_or(const char *key, const char *fallback) {
 #define DW3_DEFAULT_RUNTIME "runtime/us"
 #endif
 
+/* P6.32: the map view's cache is prepared on a low-priority thread from the
+ * runtime tree while the title plays (port/map_view/map_view.c). DW3_MAP_PRECOMPUTE=0
+ * turns it off. */
+static void *map_view_precompute_thread(void *arg) {
+    (void)arg;
+#if defined(__linux__)
+    (void)setpriority(PRIO_PROCESS, (id_t)syscall(SYS_gettid), 19);
+#endif
+    dw3_map_view_precompute_run();
+    return NULL;
+}
+
+static void dw3_pc_map_view_precompute_start(const char *config_dir) {
+    pthread_t thread;
+    const char *off = getenv("DW3_MAP_PRECOMPUTE");
+
+    dw3_map_view_init(config_dir);
+    if (off != NULL && off[0] == '0') return;
+    if (pthread_create(&thread, NULL, map_view_precompute_thread, NULL) == 0) {
+        pthread_detach(thread);
+    }
+}
+
 static int init_paths(int argc, char **argv) {
     const char *root = env_or("DW3_RUNTIME", DW3_DEFAULT_RUNTIME);
     const char *memdir = env_or("DW3_MEMCARD_DIR", NULL);
@@ -314,6 +344,7 @@ static int init_paths(int argc, char **argv) {
      * is loaded before anything reads widescreen / fast-forward / restart. */
     (void)dw3_port_options_persist_init(cfgdir != NULL ? cfgdir : root);
     atexit(dw3_port_options_flush);
+    dw3_pc_map_view_precompute_start(cfgdir != NULL ? cfgdir : root);
 
     snprintf(boot_path, sizeof(boot_path), "%s/boot_tim.bin", root);
     if (dw3_host_load_boot_tim(boot_path) != 0) {

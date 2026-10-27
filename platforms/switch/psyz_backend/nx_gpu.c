@@ -4,6 +4,7 @@
 #include "nx.h"
 #include "nx_debug_overlay.h"
 #include "nx_title_overlay.h"
+#include "nx_map_view.h"
 #include "nx_mesh.h"
 #include "nx_mesh_debug.h"
 #include "nx_vram_dump.h"
@@ -228,6 +229,7 @@ bool dw3_nx_gpu_init(void) {
 void dw3_nx_gpu_shutdown(void) {
     dw3_nx_debug_overlay_invalidate_gl();
     dw3_nx_title_overlay_invalidate_gl();
+    dw3_nx_map_view_invalidate_gl();
     deinit_egl();
     s_win = NULL;
     s_width = 0;
@@ -247,6 +249,7 @@ void dw3_nx_gpu_update_mode(void) {
     /* Must tear down EGL before nwindowSetDimensions (buffers registered). */
     dw3_nx_debug_overlay_invalidate_gl();
     dw3_nx_title_overlay_invalidate_gl();
+    dw3_nx_map_view_invalidate_gl();
     deinit_egl();
     if (!apply_window_geometry(docked)) {
         return;
@@ -823,6 +826,8 @@ void dw3_nx_gpu_present(const uint16_t *vram, int dx, int dy, int dw, int dh,
     dw3_nx_mesh_end_frame();
     /* Native title menu/logo over the 4:3 title picture (inactive elsewhere). */
     dw3_nx_title_overlay_draw(vx, vy, vw, vh);
+    /* P6.32: the full-screen map screen, over the whole picture. */
+    dw3_nx_map_view_draw(vx, vy, vw, vh);
     /* HUD after game blit; does not own the framebuffer (see DEBUG_OVERLAY.md). */
     dw3_nx_debug_overlay_note_present(use_mesh);
     dw3_nx_debug_overlay_draw(s_width, s_height);

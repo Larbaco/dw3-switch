@@ -987,8 +987,65 @@ void dw3_pc_title_menu_set_state(int active, int selected) {
     profile_end();
 }
 
+/* P6.32 phase 0: the map view (map_view_overlay.c) draws with this overlay's
+ * pipeline and full-quad vertices, over the whole picture. */
+typedef struct Dw3PcOverlayGpu {
+    SDL_GPUDevice *device;
+    SDL_Window *window;
+    SDL_GPUGraphicsPipeline *pipeline;
+    SDL_GPUBuffer *vertices;
+    unsigned quad_first;
+    float pic_x, pic_y, pic_w, pic_h;
+} Dw3PcOverlayGpu;
+void dw3_pc_map_view_prepare(void);
+void dw3_pc_map_view_render(SDL_GPURenderPass *pass);
+void dw3_pc_map_view_destroy(void);
+
+int dw3_pc_overlay_gpu_ctx(Dw3PcOverlayGpu *ctx) {
+    int window_w = 0, window_h = 0;
+    unsigned gutter;
+    float picture_w, picture_h;
+
+    if (!g_device || !g_window || !g_pipeline || !g_vertices) return 0;
+    SDL_GetWindowSizeInPixels(g_window, &window_w, &window_h);
+    if (window_w <= 0 || window_h <= 0) return 0;
+    gutter = Psyz_VideoGetGutter();
+    picture_w = (float)window_w;
+    picture_h = picture_w * 3.0f / 4.0f;
+    if (picture_h > (float)window_h) {
+        picture_h = (float)window_h;
+        picture_w = picture_h * 4.0f / 3.0f;
+    }
+    if (gutter > 0) {
+        const float aspect = 4.0f / 3.0f * (320.0f + 2.0f * (float)gutter) / 320.0f;
+
+        picture_w = (float)window_w;
+        picture_h = picture_w / aspect;
+        if (picture_h > (float)window_h) {
+            picture_h = (float)window_h;
+            picture_w = picture_h * aspect;
+        }
+    }
+    ctx->device = g_device;
+    ctx->window = g_window;
+    ctx->pipeline = g_pipeline;
+    ctx->vertices = g_vertices;
+    ctx->quad_first = (STATE_COUNT + 4) * 6;
+    ctx->pic_x = ((float)window_w - picture_w) / 2.0f;
+    ctx->pic_y = ((float)window_h - picture_h) / 2.0f;
+    ctx->pic_w = picture_w;
+    ctx->pic_h = picture_h;
+    return 1;
+}
+
+static void overlay_frame(void) {
+    set_three_x_presentation_size();
+    dw3_pc_map_view_prepare();
+}
+
 static void render_overlay(SDL_GPUCommandBuffer *cmd, SDL_GPURenderPass *pass) {
     set_three_x_presentation_size();
+    dw3_pc_map_view_render(pass);
     if ((!g_overlay_active && !g_logo_active && !g_background_ready && !g_dialog_active) || !g_pipeline || !g_texture || !g_vertices ||
         !g_sampler || !g_window) return;
     int window_w = 0, window_h = 0;
@@ -1106,13 +1163,14 @@ static void render_overlay(SDL_GPUCommandBuffer *cmd, SDL_GPURenderPass *pass) {
 }
 
 static void destroy_overlay(void) {
+    dw3_pc_map_view_destroy();
     release_gpu_resources();
     dw3_options_cache_release();
 }
 
 void dw3_pc_title_menu_overlay_register(void) {
     Psyz_OverlayInit_SDL3GPU(init_overlay);
-    Psyz_OverlayFrameCB(set_three_x_presentation_size);
+    Psyz_OverlayFrameCB(overlay_frame);
     Psyz_OverlayRender_SDL3GPU(render_overlay);
     Psyz_OverlayDestroyCB(destroy_overlay);
 }

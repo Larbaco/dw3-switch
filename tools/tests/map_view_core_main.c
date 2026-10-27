@@ -119,7 +119,7 @@ static void test_disc(void) {
 static void make_image(MvImage *img, int w, int h, int pattern) {
     int x, y;
 
-    img->w = w; img->h = h;
+    img->w = w; img->h = h; img->ox = img->oy = 0;
     img->rgba = (uint8_t *)malloc((size_t)w * h * 4);
     for (y = 0; y < h; ++y) for (x = 0; x < w; ++x) {
         uint8_t *p = img->rgba + ((size_t)y * w + x) * 4;
@@ -208,11 +208,13 @@ static void test_cache(const char *dir) {
     uint8_t junk[4] = {1, 2, 3, 4};
 
     make_image(&a, 17, 9, 1);
+    a.ox = 3;
+    a.oy = -4;
     dw3_mv_cache_name(path, sizeof(path), dir, "us", 1, MV_SCALER_FSR);
     CHECK(strstr(path, "map_us_h1_s3.rgba") != NULL, "cache name %s", path);
     CHECK(dw3_mv_cache_write(path, &a) == 0, "cache write");
     CHECK(dw3_mv_cache_read(path, &b) == 0, "cache read");
-    CHECK(b.w == 17 && b.h == 9 && b.rgba && memcmp(a.rgba, b.rgba, 17 * 9 * 4) == 0,
+    CHECK(b.w == 17 && b.h == 9 && b.ox == 3 && b.oy == -4 && b.rgba && memcmp(a.rgba, b.rgba, 17 * 9 * 4) == 0,
           "cache round trip");
     dw3_mv_image_free(&b);
     f = fopen(path, "wb");

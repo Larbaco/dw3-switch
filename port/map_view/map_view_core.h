@@ -25,6 +25,7 @@ enum { MV_VRAM_W = 1024, MV_VRAM_H = 512 };
 
 typedef struct MvImage {
     int w, h;
+    int ox, oy;    /* the image's top left in sprite space (the frame's box) */
     uint8_t *rgba; /* malloc'd, w * h * 4, straight alpha (always 255 here) */
 } MvImage;
 
@@ -100,7 +101,7 @@ void dw3_mv_view_rect(const MvView *v, int map_w, int map_h, int vw, int vh,
                       float *x0, float *y0, float *x1, float *y1);
 
 /* --- cache ---------------------------------------------------------------
- * <dir>/<name>: "DW3M", version, w, h, then w * h * 4 RGBA bytes. */
+ * <dir>/<name>: "DW3M", version, w, h, ox, oy, then w * h * 4 RGBA bytes. */
 int dw3_mv_cache_write(const char *path, const MvImage *img);
 int dw3_mv_cache_read(const char *path, MvImage *img);
 void dw3_mv_cache_name(char *out, size_t cap, const char *dir, const char *region,

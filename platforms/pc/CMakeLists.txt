@@ -34,6 +34,7 @@ if(PSYZ_RENDERER STREQUAL "sdl3_gpu")
     DW3_PC_SDL3_GPU=1 DW3_TITLE_NATIVE_OVERLAY=1)
   set(_DW3_PC_TITLE_OVERLAY_SOURCES
     src/title_menu_overlay.c
+    src/map_view_overlay.c
     src/title_overlay_art.c
     src/title_options_cache.c
     src/title_logo_resample.c
@@ -59,6 +60,7 @@ if(PSYZ_RENDERER STREQUAL "sdl3_gpu")
   target_sources(dw3-pc PRIVATE ${_DW3_PC_TITLE_OVERLAY_SOURCES})
 endif()
 target_include_directories(dw3-pc PRIVATE
+  ${CMAKE_SOURCE_DIR}/../../port/map_view
   ${CMAKE_SOURCE_DIR}/../../port/cdfs
   ${CMAKE_SOURCE_DIR}/../../port/memcard
   ${CMAKE_SOURCE_DIR}/../../port/movies

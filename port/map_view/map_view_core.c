@@ -161,6 +161,7 @@ int dw3_mv_compose(const uint16_t *vram, const int32_t *sheet,
 
     out->rgba = NULL;
     out->w = out->h = 0;
+    out->ox = out->oy = 0;
     if (!vram || dw3_mv_sheet_frame_box(sheet, sheet_len, frame, &box) != 0)
         return -1;
     if (find_frame(b, sheet_len, frame, &foff, &poff) != 0) return -1;
@@ -219,6 +220,8 @@ int dw3_mv_compose(const uint16_t *vram, const int32_t *sheet,
     for (i = 0; i < w * h; ++i) px[(size_t)i * 4 + 3] = 255;
     out->w = w;
     out->h = h;
+    out->ox = box.x0;
+    out->oy = box.y0;
     out->rgba = px;
     if (box_out) *box_out = box;
     return 0;
@@ -347,6 +350,7 @@ static int alloc_image(MvImage *img, int w, int h) {
     img->rgba = (uint8_t *)malloc((size_t)w * (size_t)h * 4);
     img->w = w;
     img->h = h;
+    img->ox = img->oy = 0;
     if (!img->rgba) {
         img->w = img->h = 0;
         return -1;
@@ -619,6 +623,7 @@ int dw3_mv_scale(int scaler, const MvImage *src, MvImage *dst, double *ms) {
     if (!src || !src->rgba || !dst) return -1;
     dst->rgba = NULL;
     dst->w = dst->h = 0;
+    dst->ox = dst->oy = 0;
     switch (scaler) {
     case MV_SCALER_SHARP: rc = scale_sharp(src, dst); break;
     case MV_SCALER_LANCZOS2: rc = scale_lanczos(src, dst); break;
@@ -627,6 +632,10 @@ int dw3_mv_scale(int scaler, const MvImage *src, MvImage *dst, double *ms) {
         rc = alloc_image(dst, src->w, src->h);
         if (rc == 0) memcpy(dst->rgba, src->rgba, (size_t)src->w * src->h * 4);
         break;
+    }
+    if (rc == 0) {
+        dst->ox = src->ox * (dst->w / src->w);
+        dst->oy = src->oy * (dst->h / src->h);
     }
     if (ms) *ms = now_ms() - t0;
     return rc;
@@ -679,11 +688,11 @@ void dw3_mv_view_rect(const MvView *v, int map_w, int map_h, int vw, int vh,
 /* --- cache ---------------------------------------------------------------*/
 
 #define MV_CACHE_MAGIC 0x4D335744u /* "DW3M" little-endian */
-#define MV_CACHE_VERSION 1u
+#define MV_CACHE_VERSION 2u
 
 int dw3_mv_cache_write(const char *path, const MvImage *img) {
     FILE *f;
-    uint32_t hdr[4];
+    uint32_t hdr[6];
     char tmp[600];
     size_t bytes;
     int ok;
@@ -696,6 +705,8 @@ int dw3_mv_cache_write(const char *path, const MvImage *img) {
     hdr[1] = MV_CACHE_VERSION;
     hdr[2] = (uint32_t)img->w;
     hdr[3] = (uint32_t)img->h;
+    hdr[4] = (uint32_t)img->ox;
+    hdr[5] = (uint32_t)img->oy;
     bytes = (size_t)img->w * (size_t)img->h * 4;
     ok = fwrite(hdr, sizeof(hdr), 1, f) == 1 &&
          fwrite(img->rgba, 1, bytes, f) == bytes;
@@ -709,11 +720,12 @@ int dw3_mv_cache_write(const char *path, const MvImage *img) {
 
 int dw3_mv_cache_read(const char *path, MvImage *img) {
     FILE *f = fopen(path, "rb");
-    uint32_t hdr[4];
+    uint32_t hdr[6];
     size_t bytes;
 
     img->rgba = NULL;
     img->w = img->h = 0;
+    img->ox = img->oy = 0;
     if (!f) return -1;
     if (fread(hdr, sizeof(hdr), 1, f) != 1 || hdr[0] != MV_CACHE_MAGIC ||
         hdr[1] != MV_CACHE_VERSION || hdr[2] == 0 || hdr[3] == 0 ||
@@ -732,6 +744,8 @@ int dw3_mv_cache_read(const char *path, MvImage *img) {
     fclose(f);
     img->w = (int)hdr[2];
     img->h = (int)hdr[3];
+    img->ox = (int)hdr[4];
+    img->oy = (int)hdr[5];
     return 0;
 }
 

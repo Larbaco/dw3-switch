@@ -1172,6 +1172,72 @@ def map_screen(version):
     return r
 
 
+CIRCLE_MAP, SQUARE_MAP, R3_MAP = 0x2000, 0x8000, 0x0004
+L1_MAP, R1_MAP, L2_MAP, R2_MAP = 0x0400, 0x0800, 0x0100, 0x0200
+
+
+def map_view(version):
+    """P6.32 phase 0 (patch 0146): the new full-screen map screen. Same path as
+    `map_screen` up to the open Map; Square opens the new screen (the captured
+    map, sharp bilinear, zoom 1.0), the pad pans it, R1 / L1 step the zoom
+    (1.25, 1.5, 2.0, 3.0, then back down to fit), R2 cycles the scaler (Lanczos2
+    and FSR 1 are built on the CPU, with a log line each), R3 does nothing (no
+    turbo), Circle hides the help text, Triangle returns to the unchanged game
+    Map and a second Triangle closes it. With widescreen off (the `-43`
+    scenario) Square is ignored and the screen never opens. The host draws the
+    screen, so the references come from the PC build only."""
+    r = Rec(f"{version.upper()}: P6.32 new full-screen map screen (env and cfg in manifest)")
+    for f in range(300, 1200, 30):
+        r.press(f, CROSS)            # battle report -> field
+    r.press(1250, START)             # field menu, over the field
+    r.press(1420, CROSS)             # Items: the dissolve, then STSTATUS
+    f = 1640
+    for name, button, wait in MENU_SCREENS_STEPS:
+        if name == "map":
+            break
+        if button:
+            r.press(f, button)
+        f += wait
+    assert f == 4000, f
+    r.shot(3997, "game-map")
+    r.press(4000, SQUARE_MAP)        # the new screen
+    r.shot(4040, "mv-open")
+    _pad(r, 4050, RIGHT)
+    _pad(r, 4130, 0)
+    r.shot(4140, "mv-pan-right")
+    _pad(r, 4150, DOWN)
+    _pad(r, 4230, 0)
+    r.shot(4240, "mv-pan-down")
+    f = 4250
+    for name, button in (("mv-zoom-125", R1_MAP), ("mv-zoom-150", R1_MAP),
+                         ("mv-zoom-200", R1_MAP), ("mv-zoom-300", R1_MAP)):
+        r.press(f, button)
+        r.shot(f + 20, name)
+        f += 40
+    for name, button in (("mv-zoom-out-200", L1_MAP), (None, L1_MAP), (None, L1_MAP),
+                         (None, L1_MAP), ("mv-fit", L1_MAP)):
+        r.press(f, button)
+        if name:
+            r.shot(f + 20, name)
+        f += 40
+    r.press(f, R1_MAP)               # back to 1.0 for the scalers
+    r.shot(f + 20, "mv-zoom-100")
+    f += 40
+    for name in ("mv-lanczos2", "mv-fsr", "mv-nearest", "mv-sharp"):
+        r.press(f, R2_MAP)           # the CPU builds stall the game thread, not the frame count
+        r.shot(f + 100, name)
+        f += 120
+    r.press(f, R3_MAP)               # turbo toggle: nothing
+    r.press(f + 30, CIRCLE_MAP)
+    r.shot(f + 60, "mv-no-hud")
+    r.press(f + 70, CIRCLE_MAP)
+    r.press(f + 100, TRIANGLE)       # back to the game's Map
+    r.shot(f + 160, "mv-closed")
+    r.press(f + 200, TRIANGLE)       # the game's Triangle closes the Map
+    r.end(f + 400)
+    return r
+
+
 # The battle report's checkpoints (patch 0081): the header bar opens from the
 # left edge, then holds the partner's exp, then the fade. The EU report comes
 # ~120 frames before the US one (measured, DW3_TURBO=4).
@@ -1977,6 +2043,7 @@ def main(out):
         (out / f"{v}-items-menu.rec").write_text(items_menu(v).text(True))
         (out / f"{v}-menu-screens.rec").write_text(menu_screens(v).text(True))
         (out / f"{v}-map-screen.rec").write_text(map_screen(v).text(True))
+        (out / f"{v}-map-view.rec").write_text(map_view(v).text(True))
         (out / f"{v}-items-equip-switch.rec").write_text(items_equip_switch(v).text(True))
         (out / f"{v}-battle-results.rec").write_text(battle_results(v).text(True))
         (out / f"{v}-save-screen.rec").write_text(save_screen(v).text(True))

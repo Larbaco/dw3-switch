@@ -26,6 +26,7 @@
 #include "memcard_host.h"
 #include "save_convert.h"
 #include "overlay_host.h"
+#include "map_view.h"
 #include "port_options.h"
 #include "runtime_extract.h"
 #include "str_stream.h"
@@ -508,6 +509,26 @@ static const char *env_or(const char *key, const char *fallback) {
     return (v != NULL && v[0] != '\0') ? v : fallback;
 }
 
+/* P6.32: the map view's cache is prepared from the runtime tree on a
+ * low-priority thread on core 2 (the game and audio threads run on the default
+ * core) while the title plays; it frees what it allocated when it is done
+ * (port/map_view/map_view.c). */
+static Thread s_map_thread;
+
+static void map_view_precompute_entry(void *arg) {
+    (void)arg;
+    dw3_map_view_precompute_run();
+}
+
+static void map_view_precompute_start(const char *config_dir) {
+    dw3_map_view_init(config_dir);
+    if (R_FAILED(threadCreate(&s_map_thread, map_view_precompute_entry, NULL,
+                              NULL, 0x40000, 0x3B, 2)) ||
+        R_FAILED(threadStart(&s_map_thread))) {
+        INFOF("map view precompute thread not started");
+    }
+}
+
 static int init_paths(void) {
     const char *root = env_or("DW3_RUNTIME", DW3_DEFAULT_RUNTIME);
     const char *memdir = env_or("DW3_MEMCARD_DIR", NULL);
@@ -587,6 +608,7 @@ static int init_paths(void) {
      * it is made (nothing to flush on HOME); atexit only retries a failure. */
     (void)dw3_port_options_persist_init(cfgdir != NULL ? cfgdir : root);
     atexit(dw3_port_options_flush);
+    map_view_precompute_start(cfgdir != NULL ? cfgdir : root);
 
     snprintf(boot_path, sizeof(boot_path), "%s/boot_tim.bin", root);
     if (dw3_host_load_boot_tim(boot_path) != 0) {

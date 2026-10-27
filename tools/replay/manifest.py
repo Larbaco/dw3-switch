@@ -660,6 +660,28 @@ for _v, _ids in (("us", (0x159, 0x1FA, 0x1C2, 0x158, 0x1F9)),
                   forbid_log=((0, r"overlay restore file=0x%x kind=mode(?:(?!overlay restore)(?s:.))*?"
                                   r"gutter 0 px per side" % _status),),
                   note="the Map screen in widescreen: whole map centred, cursor to every edge (patch 0080)"))
+    # P6.32 phase 0 (patch 0146): the new full-screen map screen, opened with Square
+    # from the Map; the references are the PC host overlay's picture. DW3_MAP_VERIFY
+    # logs the cross-check of the captured map against the disc-built one.
+    _add(Scenario(f"{_v}-map-view", _v, "full", turbo=4, timeout=600,
+                  phases=(f"{_v}-map-view",), env=_ITEMS_ENV + (("DW3_MAP_VERIFY", "1"),),
+                  cfg=(("encounter_rate", "2"),),
+                  expect_restore=((_fight, M), (_menu, S), (_report, M), (_field, M),
+                                  (_status, M)),
+                  expect_log=((0, r"dw3-map: open half=0 image=392x352 source=\w+ in \d+ ms "
+                                  r"markers=\d+ home=\d+,\d+ turbo=1"
+                                  r"(?s:.*)scaler LANCZOS2 (?:built in|loaded from cache in) \d+ ms"
+                                  r"(?s:.*)scaler AMD FSR 1 (?:built in|loaded from cache in) \d+ ms"
+                                  r"(?s:.*)dw3-map: close"),),
+                  forbid_log=((0, r"dw3-map: capture failed"),),
+                  note="Square opens the new full-screen map, pan, zoom, scaler cycle, back (patch 0146)"))
+    _add(Scenario(f"{_v}-map-view-43", _v, "full", turbo=4, timeout=600,
+                  phases=(f"{_v}-map-view",), env=_ITEMS_ENV,
+                  cfg=(("encounter_rate", "2"), ("widescreen", "0")),
+                  expect_restore=((_fight, M), (_menu, S), (_report, M), (_field, M),
+                                  (_status, M)),
+                  forbid_log=((0, r"dw3-map: open"),),
+                  note="widescreen off: Square does nothing, the new screen never opens (owner decision 8)"))
     _add(Scenario(f"{_v}-battle-results", _v, "full", turbo=4, timeout=300,
                   env=_P77_ENV_REPORT,
                   expect_restore=((_fight, M), (_menu, S), (_report, M), (_field, M)),
