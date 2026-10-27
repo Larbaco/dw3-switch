@@ -1,6 +1,6 @@
 Digimon World 3 / 2003, Switch homebrew preview
 
-Release notes for v0.6.5-preview.38. The release tag and boot version
+Release notes for v0.6.5-preview.39. The release tag and boot version
 identify the actual source revision.
 
 Player guide (setup, controls, Options, saves, crash reports):
@@ -11,12 +11,13 @@ New in this preview
   No item below has been checked on a Switch OLED yet. Each is checked on
   PC and in the Ryubing emulator only, and is marked unverified.
 
-  Encounter swirl covers the 16:9 picture (P6.1, #275). At the start of a
-  random battle, the swirl now fills the full widescreen picture. Before,
-  the side gutters went black on its first frame and the swirl stayed in a
-  4:3 box. Now the tiles slide off across the full width, in the same time
-  as before. Checked on PC and in the Ryubing emulator at turbo off, 2x, 3x
-  and 4x. Widescreen off is unchanged. Unverified on hardware.
+  Quit game no longer ends with a system error (#280). Quit game now stops
+  the audio and closes the GPU before the NRO leaves. Before, the exit could
+  end with a Horizon error screen. Needs OLED confirmation (plan A7).
+
+  Field menu OPTIONS no longer shows a black square (#280). The title's fade
+  carried into the in-game Options screen opened from the field menu, so the
+  screen was drawn darkened. Now it is not. Needs OLED confirmation.
 
 Known issues
 
@@ -57,6 +58,14 @@ Carried forward
   cancels restart. Unsaved progress is lost. Release before repeating.
   This chord can also toggle the nxlink debug HUD, whose own chord is
   Minus + L + R. See docs/HOTKEYS.md for all mapped controls.
+
+  From preview.38: encounter swirl covers the 16:9 picture (P6.1, #275). At
+  the start of a random battle, the swirl now fills the full widescreen
+  picture. Before, the side gutters went black on its first frame and the
+  swirl stayed in a 4:3 box. Now the tiles slide off across the full width,
+  in the same time as before. Checked on PC and in the Ryubing emulator at
+  turbo off, 2x, 3x and 4x. Widescreen off is unchanged. Unverified on
+  hardware. OLED check B12 is still open.
 
   From preview.37: Options in battle (P9.7 slice 2, #272): at the battle
   command menu, Minus (Select) opens Options over the frozen battle; do not
@@ -196,10 +205,9 @@ Install / nxlink
 OLED checklist
 
   New in this preview:
-  - Encounter swirl in 16:9 (B12): set Encounter rate back to 1x, enter a
-    random battle, and try it at turbo off and at 2x, 3x and 4x (Options).
-    The swirl should cover the whole widescreen picture: no black gutters on
-    its first frame, and the tiles slide off across the full width.
+  - Quit game (plan A7): the exit must end with no Horizon error, and the
+    log must show `audio stopped` and `gpu closed; leaving main`.
+  - Field menu OPTIONS (plan B15): no black square when it opens.
 
   Everything else in this preview, and the items still open from earlier
   previews, is in the ordered OLED test plan. Follow it:
