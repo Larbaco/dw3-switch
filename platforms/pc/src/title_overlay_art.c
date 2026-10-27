@@ -586,6 +586,9 @@ void dw3_pc_title_overlay_art(uint8_t *rgba,int pitch,int selected) {
         int x=230,w=500,h=compact?40:48,focus=row==selected;
         int y=row<quit_row?384+row*(compact?44:52):(compact?570:548);
         const int cut=compact?8:10;
+        /* Soft optical orange halo only on the focused hardware silhouette. */
+        if(focus)for(int spread=8;spread>=1;spread--)
+            plaque(x-spread,y-spread,w+spread*2,h+spread*2,cut+spread,255,103,17,255,103,17,5);
         plaque(x+1,y+4,w,h,cut,0,3,10,0,3,10,190);
         plaque(x,y,w,h,cut,focus?255:99,focus?180:149,focus?60:196,focus?207:17,focus?100:40,focus?26:77,255);
         plaque(x+1,y+1,w-2,h-2,cut-1,99,149,196,17,40,77,255);
