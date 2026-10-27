@@ -80,8 +80,13 @@ the game's own windows rather than of these plaques; see
 Switch menus start on New Game.
 
 The original logo art is not redrawn or resampled into a new font. Its game
-sprites and glint receive a uniform 21/25 SpriteDrawer scale and matching
-pivot on the GPU path; they are rasterized through the existing 3× internal
+sprites and glint receive a uniform 4/5 SpriteDrawer scale about the pivot
+(132, -10) on the GPU path (patch `0129`; it was 21/25 about (157, -23), 5%
+larger than the overlay's logo, which made the logo shrink when the overlay
+took over). The overlay logo is 2.4 canvas px per sprite px (0.8 of the 3x
+canvas), the US 300x136 crop or the EU opaque box at its own place in the
+same 720x326 texture, so the sprite logo and the overlay logo are one size at
+one place from the first frame; they are rasterized through the existing 3× internal
 renderer. No new logo filter is applied. The original background code is not
 modified. The GPU overlay replaces the original menu and footer sprites with
 the native-resolution labels and three-line credits.

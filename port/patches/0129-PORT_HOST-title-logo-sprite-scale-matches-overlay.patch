@@ -1,0 +1,74 @@
+Upstream-bound: no
+Subject: [PORT_HOST] Title logo sprites drawn at the overlay logo's size
+
+The game draws the title logo itself (sprites 0-3, the glint) while the
+logo animates; once the animation is done the native overlay replaces it with
+the resampled logo texture (port/options/title_logo_capture.c, 720x326 for a
+300x136 crop = 2.4 canvas px per sprite px, 0.8 of the 3x canvas). Patch 0050
+scaled those sprites by 21/25 about (157, -23) (2.52 px per sprite px), so the
+logo shrank 5% (and moved up) when the overlay took over. The sprites are now
+scaled by 4/5 about (132, -10), the map that sends the crop's corner (17, 22)
+to the overlay quad's corner (40, 15.67) at 0.8: the sprite logo and the
+overlay logo are the same size at the same place from the first frame.
+
+--- a/src/menus/title/glint.c
++++ b/src/menus/title/glint.c
+@@ -101,8 +101,8 @@
+         sprite.setTexture(0x280, STDWTITL_TEXTURE_Y);
+         sprite.setAltClut(0, 0x1F0);
+         #if defined(DW3_TITLE_NATIVE_OVERLAY)
+-        sprite.setScale((ONE * 21) / 25, (ONE * 21) / 25, ONE);
+-        sprite.setPivot(157, -23);
++        sprite.setScale((ONE * 4) / 5, (ONE * 4) / 5, ONE);
++        sprite.setPivot(132, -10);
+ #endif
+         sprite.draw(FILE_CACHE.getEntry(STDWTITL_spriteBank), 2, 253, 100);
+         initSpriteDrawer(&sprite);
+@@ -112,8 +112,8 @@
+         sprite.setTexture(0x280, STDWTITL_TEXTURE_Y);
+         sprite.setClutRow(task->frame);
+         #if defined(DW3_TITLE_NATIVE_OVERLAY)
+-        sprite.setScale((ONE * 21) / 25, (ONE * 21) / 25, ONE);
+-        sprite.setPivot(157, -23);
++        sprite.setScale((ONE * 4) / 5, (ONE * 4) / 5, ONE);
++        sprite.setPivot(132, -10);
+ #endif
+         sprite.draw(FILE_CACHE.getEntry(STDWTITL_spriteBank), 4, 243, 90);
+     }
+--- a/src/menus/title/logo.c
++++ b/src/menus/title/logo.c
+@@ -59,8 +59,8 @@
+         sprite.setTexture(0x280, STDWTITL_TEXTURE_Y);
+         sprite.setClutRow(task->anims[0].frame);
+ #if defined(DW3_TITLE_NATIVE_OVERLAY)
+-        sprite.setScale((ONE * 21) / 25, (ONE * 21) / 25, ONE);
+-        sprite.setPivot(157, -23);
++        sprite.setScale((ONE * 4) / 5, (ONE * 4) / 5, ONE);
++        sprite.setPivot(132, -10);
+ #endif
+         sprite.draw(FILE_CACHE.getEntry(STDWTITL_spriteBank), 3, 8, 28);
+         initSpriteDrawer(&sprite);
+--- a/src/menus/title/slides.c
++++ b/src/menus/title/slides.c
+@@ -93,8 +93,8 @@
+     sprite.setAltClut(0, 0x1F0);
+     sprite.setTexture(0x280, STDWTITL_TEXTURE_Y);
+ #if defined(DW3_TITLE_NATIVE_OVERLAY)
+-    sprite.setScale((ONE * 21) / 25, (ONE * 21) / 25, ONE);
+-    sprite.setPivot(157, -23);
++    sprite.setScale((ONE * 4) / 5, (ONE * 4) / 5, ONE);
++    sprite.setPivot(132, -10);
+ #endif
+     sprite.draw(FILE_CACHE.getEntry(STDWTITL_spriteBank), 1, task->x, task->y);
+ }
+@@ -238,8 +238,8 @@
+     sprite.setAltClut(0, 0x1F0);
+     sprite.setTexture(0x280, STDWTITL_TEXTURE_Y);
+ #if defined(DW3_TITLE_NATIVE_OVERLAY)
+-    sprite.setScale((ONE * 21) / 25, (ONE * 21) / 25, ONE);
+-    sprite.setPivot(157, -23);
++    sprite.setScale((ONE * 4) / 5, (ONE * 4) / 5, ONE);
++    sprite.setPivot(132, -10);
+ #endif
+     sprite.draw(FILE_CACHE.getEntry(STDWTITL_spriteBank), 0, task->x, task->y);
+ }
