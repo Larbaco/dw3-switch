@@ -178,6 +178,7 @@ static void dw3_pc_turbo_pace(void) {
     Uint64 period_ns;
     Uint64 now_ns;
     int speed = dw3_port_turbo_speed();
+    int rate_x2 = dw3_port_turbo_rate_x2();
 
     if (speed <= 1) {
         if (engaged) {
@@ -196,7 +197,7 @@ static void dw3_pc_turbo_pace(void) {
     if (Psyz_VideoStats(&stats) == 0 && stats.target_frame_time_us > 1000.0) {
         base_us = stats.target_frame_time_us;
     }
-    period_ns = (Uint64)(base_us * 1000.0 / (double)speed);
+    period_ns = (Uint64)(base_us * 2000.0 / (double)rate_x2);
     next_ns += period_ns;
     if (next_ns > now_ns) {
         SDL_DelayPrecise(next_ns - now_ns);

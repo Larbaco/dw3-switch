@@ -22,6 +22,22 @@ void dw3_port_turbo_poll(void);
  * always run at normal speed. Hosts read it every vsync. */
 int dw3_port_turbo_speed(void);
 
+/* Menus inside the field run at 1.5x, not at the full setting: the field menu
+ * task (patch 0176) calls dw3_port_turbo_menu_frame() on each update, and while
+ * that is current in the field, dw3_port_turbo_menu_active() is 1.
+ * dw3_port_turbo_speed() is not changed by it (it stays the field's factor). */
+void dw3_port_turbo_menu_frame(void);
+int dw3_port_turbo_menu_active(void);
+
+/* Game frames per vsync times two (2 = 1x, 3 = the menu's 1.5x, 2 * speed
+ * otherwise). Hosts that pace by time (PC) use it instead of speed(). */
+int dw3_port_turbo_rate_x2(void);
+
+/* Hosts that skip presents (Switch) call it once per game frame at the present:
+ * 1 = show this frame, 0 = skip it. At whole speeds that is one in `speed`; at
+ * 1.5x it alternates 2 and 1 game frames per present. */
+int dw3_port_turbo_present_due(void);
+
 #ifdef DW3_PORT_TURBO_TEST
 void dw3_port_turbo_test_set(int r3_held, int mode_file);
 #endif

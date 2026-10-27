@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import re
 import subprocess
 from pathlib import Path
 
@@ -52,6 +53,9 @@ def test_turbo_policy(turbo_bin: Path):
     assert "dw3-turbo: on" in result.stderr
     assert "dw3-turbo: speed 2x" in result.stderr
     assert "dw3-turbo: off" in result.stderr
+    # P6.4: the menu rate is its own line; the speed line stays the field's
+    assert "dw3-turbo: menu 1.5x (speed 4x)" in result.stderr
+    assert re.search(r"dw3-turbo: menu off \(frames=\d+\)", result.stderr)
 
 
 def test_turbo_env_starts_on(turbo_bin: Path):

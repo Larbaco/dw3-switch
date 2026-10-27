@@ -1,0 +1,65 @@
+Upstream-bound: no
+Subject: [PORT_HOST] P6.4 turbo: menus report that they are waiting (menus run at 1.5x)
+
+P6.4 / owner decision 2026-10-27 ("pode acelerar os menus um pouco, algo tipo
+50%"). `updateFieldMenu` (`engine/menu/field_menu.c`) calls
+`dw3_port_turbo_menu_frame()` (port/options/turbo.c) at the top of each update.
+The turbo policy stamps the frame; while the stamp is current and the mode is
+the field, fast-forward runs at 1.5x instead of the full setting. The task
+hosts the field menu list, the port Options / Cheats screen (patch 0160) and
+the Return to title Yes / No window (patch 0123), so one call covers them. A
+killed task stops stamping, so nothing can stay stuck at the slow speed.
+
+Battle: `FIGHTSTG_updateCursor` (`battle/battle_mode/cursor.c`) makes the same
+call while its cursor is not locked, that is, while a menu waits for the player
+(the command menu, the technique, item, switch and digivolve lists all use it).
+The Yes / No and Options paths of the battle are not involved (Options over a
+held battle stays at 1x). No game state is read or changed.
+
+--- a/src/engine/menu/field_menu.c
++++ b/src/engine/menu/field_menu.c
+@@ -6,6 +6,7 @@
+ #include "port_widescreen.h"
+ #include "port_confirm.h"
+ #include "port_field_options.h"
++#include "port_turbo.h"
+ /* P6.27: language of the Return to title row (the EU disc's LANGUAGE; the US
+    disc is English). */
+ #if VERSION_EU
+@@ -483,6 +484,11 @@
+     s32 y;
+     s32 y2;
+
++#if PORT_HOST
++    /* P6.4: the turbo policy runs menus at 1.5x while this task is updating
++       (its list, the Options screen and the Yes / No window it hosts). */
++    dw3_port_turbo_menu_frame();
++#endif
+     switch (task->state) {
+     case 0:
+     default:
+--- a/src/battle/battle_mode/cursor.c
++++ b/src/battle/battle_mode/cursor.c
+@@ -1,6 +1,9 @@
+ /* FIGHTSTG's menu cursor. */
+ 
+ #include "battle/battle_mode.h"
++#if PORT_HOST
++#include "port_turbo.h"
++#endif
+ 
+ /* where FIGHTSTG_drawCursorBar puts the cursor's bar in VRAM */
+ RECT FIGHTSTG_cursorBarRect = { 0, 0xF4, 12, 12 };
+@@ -108,6 +111,12 @@
+                 FIGHTSTG_drawCursorSprites(task);
+             }
+             if (task->locked == 0) {
++#if PORT_HOST
++                /* P6.4: a battle menu waiting for the player runs at 1.5x
++                   under turbo (the command, technique, item, switch and
++                   digivolve lists all use this cursor). */
++                dw3_port_turbo_menu_frame();
++#endif
+                 pressed = PAD.getRepeated(0) | PAD.getPressed(0);
+                 if (pressed & (1 << PAD_UP)) {
+                     if (task->sel != 0) {
