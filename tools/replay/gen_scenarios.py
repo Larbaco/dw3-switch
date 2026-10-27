@@ -1852,7 +1852,7 @@ def return_title(version, rows7=False):
 SQUARE_MASK = 0x8000
 
 
-def _field_options_open(r, shots=True, last="options-open"):
+def _field_options_open(r, shots=True, last="options-open", shot_last=True):
     """Report -> field, Start (the field menu, `field-menu`), Down x5 to the
     Options row (`options-focus`), Cross: the port Options screen over the menu
     (`options-open`, frame 1620). Seven rows, no card folders (the env of
@@ -1869,7 +1869,8 @@ def _field_options_open(r, shots=True, last="options-open"):
     if shots:
         r.shot(f + 20, "options-focus")
     r.press(f + 40, CROSS)           # the Options screen opens (the menu waits)
-    r.shot(f + 120, last)
+    if shot_last:
+        r.shot(f + 120, last)
     return f + 140
 
 
@@ -1916,6 +1917,24 @@ def field_options(version, phase=1):
     r.press(f + 220, TRIANGLE)       # leave the menu: the field resumes
     r.shot(f + 420, "field-after")
     r.end(f + 480)
+    return r
+
+
+def turbo_menu(version):
+    """P6.4: menus run at 1.5x under turbo (env in the manifest: `field_options`
+    env, turbo 4; no checkpoints, the proof is the `dw3-turbo:` log). Report ->
+    field (full turbo), Start (the field menu list), Down x5 and Cross: the
+    port Options screen over it, Triangle closes it, Down to Return to title,
+    Cross: the Yes / No window on No, Triangle cancels it, Triangle leaves the
+    menu, then 200 idle field frames (full turbo again)."""
+    r = Rec(f"{version.upper()}: P6.4 turbo menus at 1.5x (env in manifest)")
+    f = _field_options_open(r, shot_last=False, shots=False)
+    r.press(f, TRIANGLE)             # close Options: back on the field menu
+    r.press(f + 60, DOWN)            # Return to title
+    r.press(f + 120, CROSS)          # the Yes / No window
+    r.press(f + 200, TRIANGLE)       # cancel it
+    r.press(f + 260, TRIANGLE)       # leave the menu: the field resumes
+    r.end(f + 520)
     return r
 
 
@@ -2133,6 +2152,7 @@ def main(out):
         for phase in (1, 2):
             (out / f"{v}-field-options-p{phase}.rec").write_text(
                 field_options(v, phase).text(True))
+        (out / f"{v}-turbo-menu.rec").write_text(turbo_menu(v).text(True))
         (out / f"{v}-field-options-cheats.rec").write_text(
             field_options_cheats(v).text(True))
         (out / f"{v}-field-options-release.rec").write_text(

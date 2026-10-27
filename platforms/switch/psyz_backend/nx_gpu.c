@@ -369,17 +369,15 @@ int Psyz_VideoVSync(int mode) {
          * ones neither upload nor swap, so nothing waits for the display and
          * the game runs `speed` frames per vsync (or as many as the CPU
          * rasterizer manages). */
-        static int turbo_skipped;
         int speed = dw3_port_turbo_speed();
 
         /* P6.22: the frames turbo does not show are queued, not drawn. */
         dw3_nx_switch_gpu_set_defer(speed > 1);
-        if (speed > 1 && ++turbo_skipped < speed) {
+        if (speed > 1 && !dw3_port_turbo_present_due()) {
             dw3_nx_gpu_skip_present(dw3_nx_switch_gpu_vram_nosync());
             last_vsync_us = now_us;
             return lines;
         }
-        turbo_skipped = 0;
 
         dw3_nx_switch_gpu_display(&disp);
         if (disp.on) {

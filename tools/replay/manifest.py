@@ -1256,6 +1256,38 @@ for _v in ("us", "eu"):
                                   r"dw3-port-options: close in game"),),
                   forbid_log=((0, r"dw3-cheats: open"),),
                   note="the Cheats entry is greyed in game: Square (Y) does nothing (P9.7)"))
+# P6.4 turbo menus (patch 0176, port/options/turbo.c). With turbo on, menus
+# opened inside the field run at 1.5x: the field menu list, the Options screen
+# over it and the Return to title Yes / No window. The log has `speed 4x` (the
+# field's factor) before and after, `menu 1.5x (field 4x)` when the menu opens
+# and `menu off (frames=N)` when it is gone, and no `speed` line in between (the
+# field factor does not change, only the menu's rate does). The menu is up for
+# about 700 game frames in this recording.
+for _v in ("us", "eu"):
+    _add(Scenario(f"{_v}-turbo-menu", _v, "full", turbo=4, timeout=600, log_only=True,
+                  env=_RT_ENV,
+                  expect_log=((0, r"dw3-turbo: speed 4x(?s:.*)"
+                                  r"dw3-turbo: menu 1\.5x \(speed 4x\)(?s:.*)"
+                                  r"dw3: field menu Triangle cancel \(stay field\)(?s:.*)"
+                                  r"dw3-turbo: menu off \(frames=(?:[3-9]\d\d|\d{4,})\)"),),
+                  forbid_log=((0, r"dw3-turbo: menu 1\.5x(?:(?!dw3-turbo: menu off)(?s:.))*?dw3-turbo: speed"),
+                              (0, r"dw3-turbo: menu off(?s:.*)dw3-turbo: menu 1\.5x")),
+                  note="turbo on: the field menu, Options and the Return to title window run at 1.5x, the field factor stays 4x (P6.4)"))
+# P6.4: the battle's command menu and technique list (WFIGHTMN is a sub overlay
+# of FIGHTSTG, so the mode file does not change there: they ran at the full
+# turbo speed before patch 0176). The forced battle of `p77` with Tech once: the
+# menu rate shows between the battle's start and the report, and goes off again.
+_TB_ENV = (("DW3_START_MODE", "0x600"), ("DW3_FORCE_ENCOUNTER", "34"),
+           ("DW3_FORCE_PARTY", "0"))
+for _v in ("us", "eu"):
+    _add(Scenario(f"{_v}-turbo-battle-menu", _v, "full", turbo=4, timeout=300, log_only=True,
+                  phases=(f"{_v}-p77-battle",), env=_TB_ENV,
+                  expect_log=((0, r"FIGHTSTG_start(?s:.*)"
+                                  r"dw3-turbo: menu 1\.5x \(speed 4x\)(?s:.*)"
+                                  r"dw3-turbo: menu off \(frames=\d+\)(?s:.*)"
+                                  r"STFGTREP_start"),),
+                  forbid_log=((0, r"dw3-turbo: menu 1\.5x(?:(?!dw3-turbo: menu off)(?s:.))*?dw3-turbo: speed"),),
+                  note="turbo on: the battle command menu and technique list run at 1.5x, the battle itself at 4x (P6.4)"))
 # The same on the Switch build in Ryubing (tier "nx": only with --only; the NRO
 # has no environment, so the replay NRO is built with DW3_NX_TEST_ENV holding
 # _RT_ENV, see docs/P6.15_REPLAY_TESTS.md). P9.7 after #268's release of the

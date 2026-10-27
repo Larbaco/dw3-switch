@@ -135,6 +135,9 @@ the README OLED checklist.
 | C4 | Only if C1 looks wrong: A/B with `DW3_NX_DEFER=0` in `DW3_NX_TEST_ENV` (nxlink build); `DW3_NX_PRESENT_HASH=1` logs a hash per presented frame | Same picture both ways | both logs | P6.22 |
 | C5 | Field-to-battle transition at **2x, 3x and 4x** | No hang, no crash, picture intact; battle itself is unchanged | crash report, `dw3.log`, photo | P6.22 |
 | C6 | Watch the field picture at 4x | Nothing missing or flickering against 1x | photo | P6.22 |
+| C7 | **Menus at 1.5x (patch 0176, P6.4).** Turbo on at 4x. In the field press Plus (field menu), hold Down on the list, open OPTIONS and hold Down / Left on a row, close it, open TITLE SCREEN (the Yes / No question) and cancel | The menu and its cursor are visibly quicker than at 1x but clearly slower than field walking at 4x; a held direction is easy to stop on a row. `dw3.log`: `dw3-turbo: menu 1.5x (speed 4x)` on opening and `menu off (frames=N)` on leaving, no `speed 1x` in between | `dw3.log`, region | P6.4 |
+| C8 | Same turbo, battle: at the command menu move the cursor, open Tech and move in the list, pick one | Cursor and list at 1.5x; the technique animation, messages and enemy turn at the full 4x | `dw3.log` (`menu 1.5x` / `menu off` pairs around the turn) | P6.4 |
+| C9 | Turbo on: open the field menu Map, Items and a shop, then walk | These stay at 1x (no `menu 1.5x` line from them); walking is back at the full speed as soon as the field menu closes | `dw3.log` | P6.4 |
 
 ## Session D: battles
 
