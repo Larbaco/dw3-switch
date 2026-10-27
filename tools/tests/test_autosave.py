@@ -40,8 +40,9 @@ def test_policy_state_machine_and_write(autosave_bin: Path, tmp_path: Path):
     r = subprocess.run([str(autosave_bin), str(tmp_path)], capture_output=True, text=True)
     assert r.returncode == 0, r.stdout + r.stderr
     assert "OK: autosave" in r.stdout
-    # The player's version of the slot is kept aside, next to the card.
-    assert (tmp_path / "save0.bin.pre-auto").stat().st_size == 0x8000
+    # The auto-save is its own 32 KiB card file; no .pre-auto copy exists.
+    assert (tmp_path / "autosave.bin").stat().st_size == 0x8000
+    assert not (tmp_path / "save0.bin.pre-auto").exists()
 
 
 def decomp_area_table() -> dict[int, int]:
@@ -90,7 +91,18 @@ def test_patch_0141_hooks_are_notes_only():
     text = (PATCHES / "0141-PORT_HOST-p631-autosave-slot-notes.patch").read_text()
     added = "\n".join(l[1:] for l in text.splitlines()
                       if l.startswith("+") and not l.startswith("+++"))
-    for call in ("dw3_autosave_note_loaded(saves->port, STGMCARD_funcs.slot)",
-                 "dw3_autosave_note_saved(saves->port, STGMCARD_funcs.slot)",
-                 "dw3_autosave_title_started()"):
+    for call in ("dw3_autosave_note_loaded()", "dw3_autosave_title_started()"):
         assert call in added
+    assert "note_saved" not in added
+
+
+def test_patch_0142_continue_loads_the_autosave():
+    text = (PATCHES / "0142-PORT_HOST-p631-autosave-continue-title.patch").read_text()
+    added = "\n".join(l[1:] for l in text.splitlines()
+                      if l.startswith("+") and not l.startswith("+++"))
+    assert "dw3_autosave_load(autosave, GAME_SAVE_SIZE" in added
+    assert "dw3_port_title_load_row()" in added
+    assert "task->choice = 4;" in added
+    assert "requestMode(GAME.fieldMode, 0)" in added
+    # falls back to the slot list if the file cannot be read
+    assert "requestMode(MODE_CONTINUE, 0)" in added
