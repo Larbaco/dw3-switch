@@ -2,9 +2,15 @@
 #define DW3_PC_TITLE_OVERLAY_ART_H
 #include <stdint.h>
 /* RGBA8888 byte order, 960x720 transparent canvas. selected is 0..3 for the
- * menu (New Game, Options, Load Game, and since P6.28 Quit game), -1 for
+ * menu (New Game, Options, Load Game, and since P6.28 Quit game; with the
+ * Load row, P6.31, Continue / Load Game / Quit game = 2 / 3 / 4), -1 for
  * PRESS START, DW3_TITLE_ART_OPTIONS for the Port options screen. */
-enum { DW3_TITLE_MENU_ROWS = 4, DW3_TITLE_ART_OPTIONS = 4 };
+enum { DW3_TITLE_MENU_ROWS = 5, DW3_TITLE_ART_OPTIONS = 5 };
+/* P6.31: 1 while the title menu has the extra Load row (an auto-save file
+ * exists): five plaques (New Game, Options, Continue, Load Game, Quit game),
+ * state 4 = Quit game. 0 = the four of P6.28 (state 4 then has no focused
+ * row). A change bumps dw3_pc_title_overlay_generation. */
+void dw3_pc_title_overlay_set_load_row(int on);
 void dw3_pc_title_overlay_art(uint8_t *rgba, int pitch, int selected);
 enum {
     DW3_TITLE_OPTIONS_STATIC = 1,

@@ -647,8 +647,15 @@ void dw3_cheats_save_loaded(int port, int slot, const void *data, int size) {
     ch_ready();
     g_game_marked = dw3_cheat_saves_is_marked(port, slot, data, size);
     if (g_game_marked) {
-        CHEAT_INFO("dw3-cheats: loaded save%d.bin slot %d, which was written "
-                   "with cheats: the game stays marked", port, slot);
+        char name[16];
+
+        if (port == 2) { /* MEMCARD_HOST_AUTO */
+            snprintf(name, sizeof(name), "autosave.bin");
+        } else {
+            snprintf(name, sizeof(name), "save%d.bin", port);
+        }
+        CHEAT_INFO("dw3-cheats: loaded %s slot %d, which was written "
+                   "with cheats: the game stays marked", name, slot);
     }
 }
 

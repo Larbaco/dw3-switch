@@ -43,7 +43,7 @@ static char g_dir[MEMCARD_DIR_MAX];
  * region (SAVE_REGION_*). Empty = no cross-region import. */
 static char g_import_dir[MEMCARD_DIR_MAX];
 static int g_own_region;
-static MemSlot g_slots[MEMCARD_HOST_SLOTS];
+static MemSlot g_slots[MEMCARD_HOST_ALL];
 
 static uint64_t mono_us(void) {
     struct timespec ts;
@@ -70,6 +70,9 @@ const char *memcard_host_slot_name(int slot) {
     }
     if (slot == 1) {
         return "save1.bin";
+    }
+    if (slot == MEMCARD_HOST_AUTO) {
+        return "autosave.bin";
     }
     return NULL;
 }
@@ -128,7 +131,7 @@ void memcard_host_format_image(uint8_t *buf) {
 }
 
 static int slot_ok(int slot) {
-    return slot >= 0 && slot < MEMCARD_HOST_SLOTS;
+    return slot >= 0 && slot < MEMCARD_HOST_ALL;
 }
 
 static int join_path(char *out, size_t outlen, const char *leaf) {
@@ -156,7 +159,11 @@ static int name_path(int slot, char *out, size_t outlen) {
     char leaf[32];
     int n;
 
-    n = snprintf(leaf, sizeof(leaf), "save%d.name", slot);
+    if (slot == MEMCARD_HOST_AUTO) {
+        n = snprintf(leaf, sizeof(leaf), "autosave.name");
+    } else {
+        n = snprintf(leaf, sizeof(leaf), "save%d.name", slot);
+    }
     if (n < 0 || (size_t)n >= sizeof(leaf)) {
         return -1;
     }
@@ -1052,7 +1059,7 @@ int memcard_host_flush_all(void) {
     int slot;
     int rc = 0;
 
-    for (slot = 0; slot < MEMCARD_HOST_SLOTS; slot++) {
+    for (slot = 0; slot < MEMCARD_HOST_ALL; slot++) {
         if (memcard_host_flush(slot) != 0) {
             rc = -1;
         }
@@ -1114,6 +1121,9 @@ int memcard_host_ensure(int slot) {
         (void)quarantine_bad_flat(slot);
         slot_clear_ram(slot);
     }
+    if (slot == MEMCARD_HOST_AUTO) {
+        return 0; /* no legacy image, no cross-region import: absent */
+    }
     /* One-time migration from this port's older 128 KiB image. */
     if (migrate_legacy_mcr(slot) != 0) {
         return -1;
@@ -1134,7 +1144,7 @@ void memcard_host_section_begin(int slot) {
 int memcard_host_section_open_any(void) {
     int slot;
 
-    for (slot = 0; slot < MEMCARD_HOST_SLOTS; slot++) {
+    for (slot = 0; slot < MEMCARD_HOST_ALL; slot++) {
         if (g_slots[slot].section_open) {
             return 1;
         }
@@ -1149,7 +1159,7 @@ int memcard_host_flush_settled(void) {
     int slot;
     int rc = 0;
 
-    for (slot = 0; slot < MEMCARD_HOST_SLOTS; slot++) {
+    for (slot = 0; slot < MEMCARD_HOST_ALL; slot++) {
         if (g_slots[slot].section_open) {
             continue;
         }
@@ -1165,7 +1175,7 @@ int memcard_host_flush_settled(void) {
 void memcard_host_abandon_sections(void) {
     int slot;
 
-    for (slot = 0; slot < MEMCARD_HOST_SLOTS; slot++) {
+    for (slot = 0; slot < MEMCARD_HOST_ALL; slot++) {
         if (g_slots[slot].section_open) {
             fprintf(stderr, "dw3: memcard: slot=%d write section unfinished; "
                     "the card file keeps its previous content\n", slot);
@@ -1197,7 +1207,7 @@ void memcard_host_shutdown(void) {
      * (the game loop returned): the RAM image is the finished save, flush it.
      * A section the exit gate gave up on was already dropped (dirty = 0). */
     (void)memcard_host_flush_all();
-    for (slot = 0; slot < MEMCARD_HOST_SLOTS; slot++) {
+    for (slot = 0; slot < MEMCARD_HOST_ALL; slot++) {
         slot_clear_ram(slot);
         g_slots[slot].flush_count = 0;
         g_slots[slot].flush_failed = 0;

@@ -14,6 +14,8 @@ static uint8_t *label_mask[DW3_TITLE_LABEL_COUNT];
 static int label_w[DW3_TITLE_LABEL_COUNT], label_h[DW3_TITLE_LABEL_COUNT];
 static int options_lang = DW3_TITLE_LANG_EN;
 static int footer_shown = 1;
+/* P6.31: the title menu has the extra Load row (an auto-save file exists). */
+static int load_row;
 static unsigned art_generation;
 static unsigned options_generation;
 static unsigned dialog_language_generation;
@@ -125,6 +127,10 @@ void dw3_pc_title_overlay_set_footer(int show) {
     if(show!=footer_shown){footer_shown=show;art_generation++;}
 }
 int dw3_pc_title_overlay_footer_shown(void) { return footer_shown; }
+void dw3_pc_title_overlay_set_load_row(int on) {
+    on=on?1:0;
+    if(on!=load_row){load_row=on;art_generation++;}
+}
 void dw3_pc_title_overlay_set_options_view(int cursor,const int *values,int count) {
     int changed=cursor!=option_cursor;
     if(count>DW3_TITLE_OPTION_ROWS)count=DW3_TITLE_OPTION_ROWS;
@@ -568,20 +574,26 @@ void dw3_pc_title_overlay_art(uint8_t *rgba,int pitch,int selected) {
             lettering(480,462,title_start,title_start_width,title_start_height,1,0,0);
         return;
     }
-    for(int row=0;row<DW3_TITLE_MENU_ROWS;row++) {
+    for(int row=0;row<(load_row?DW3_TITLE_MENU_ROWS:DW3_TITLE_MENU_ROWS-1);row++) {
         /* P6.28: four plaques. The first three are 48 px high on a 52 px
          * pitch (they were 54 on 60) so the fourth, Quit game, fits above
          * the credits; it sits a little lower, apart from Load Game, so it is
-         * not hit by accident. */
-        int x=230,y=row<3?384+row*52:548,w=500,h=48,focus=row==selected;
+         * not hit by accident. P6.31: with an auto-save file there are five
+         * (Continue, then Load Game): 40 px high on a 44 px pitch, Quit game
+         * still apart and its bottom edge on the credits' top. */
+        const int compact=load_row;
+        const int quit_row=load_row?4:3;
+        int x=230,w=500,h=compact?40:48,focus=row==selected;
+        int y=row<quit_row?384+row*(compact?44:52):(compact?570:548);
+        const int cut=compact?8:10;
         /* Soft optical orange halo only on the focused hardware silhouette. */
         if(focus)for(int spread=8;spread>=1;spread--)
-            plaque(x-spread,y-spread,w+spread*2,h+spread*2,10+spread,255,103,17,255,103,17,5);
-        plaque(x+1,y+4,w,h,10,0,3,10,0,3,10,190);
-        plaque(x,y,w,h,10,focus?255:99,focus?180:149,focus?60:196,focus?207:17,focus?100:40,focus?26:77,255);
-        plaque(x+1,y+1,w-2,h-2,9,99,149,196,17,40,77,255);
-        plaque(x+2,y+2,w-4,h-4,9,25,57,98,49,90,141,255);
-        plaque(x+5,y+5,w-10,h-10,7,5,16,39,13,29,57,255);
+            plaque(x-spread,y-spread,w+spread*2,h+spread*2,cut+spread,255,103,17,255,103,17,5);
+        plaque(x+1,y+4,w,h,cut,0,3,10,0,3,10,190);
+        plaque(x,y,w,h,cut,focus?255:99,focus?180:149,focus?60:196,focus?207:17,focus?100:40,focus?26:77,255);
+        plaque(x+1,y+1,w-2,h-2,cut-1,99,149,196,17,40,77,255);
+        plaque(x+2,y+2,w-4,h-4,cut-1,25,57,98,49,90,141,255);
+        plaque(x+5,y+5,w-10,h-10,cut-3,5,16,39,13,29,57,255);
         /* Reflective top and lower lips. */
         box(x+36,y+2,w-72,1,143,198,232,220);
         box(x+36,y+h-3,w-72,1,78,120,173,255);
@@ -596,15 +608,35 @@ void dw3_pc_title_overlay_art(uint8_t *rgba,int pitch,int selected) {
             plaque(cx+3,y+4,28,h-8,5,32,73,124,12,30,63,255);
             box(cx+5,y+7,2,h-14,106,166,209,215);
             box(cx+25,y+7,3,h-14,3,10,28,255);
-            for(int l=0;l<3;l++)lamp(cx+15,y+10+l*14,focus);
+            for(int l=0;l<3;l++)lamp(cx+15,compact?y+9+l*11:y+10+l*14,focus);
             int railx=side?cx-5:cx+36;
-            for(int l=0;l<3;l++)box(railx,y+16+l*6,2,3,rr,gg,bb,255);
+            for(int l=0;l<3;l++)box(railx,compact?y+13+l*5:y+16+l*6,2,3,rr,gg,bb,255);
         }
-        if(row==3) {
+        if(row==quit_row) {
             const int li=options_lang>=DW3_TITLE_LANG_EN&&options_lang<=DW3_TITLE_LANG_IT?options_lang:0;
             const unsigned char *runs[]={title_quit_en,title_quit_fr,title_quit_de,title_quit_es,title_quit_it};
             const int ws[]={title_quit_en_width,title_quit_fr_width,title_quit_de_width,title_quit_es_width,title_quit_it_width};
             const int hs[]={title_quit_en_height,title_quit_fr_height,title_quit_de_height,title_quit_es_height,title_quit_it_height};
+            text_mask(480,y+(h-hs[li])/2-1,runs[li],ws[li],hs[li],focus);
+            continue;
+        }
+        if(load_row&&row==2) {
+            /* P6.31: Continue (loads the auto-save); the game's own label
+             * moves to the Load row below it. */
+            const int li=options_lang>=DW3_TITLE_LANG_EN&&options_lang<=DW3_TITLE_LANG_IT?options_lang:0;
+            const unsigned char *runs[]={title_continue_en,title_continue_fr,title_continue_de,title_continue_es,title_continue_it};
+            const int ws[]={title_continue_en_width,title_continue_fr_width,title_continue_de_width,title_continue_es_width,title_continue_it_width};
+            const int hs[]={title_continue_en_height,title_continue_fr_height,title_continue_de_height,title_continue_es_height,title_continue_it_height};
+            text_mask(480,y+(h-hs[li])/2-1,runs[li],ws[li],hs[li],focus);
+            continue;
+        }
+        if(load_row&&row==3) {
+            /* P6.31: Load Game (the slot list) in the port's own lettering:
+             * the EU disc's label for this row says "Continue". */
+            const int li=options_lang>=DW3_TITLE_LANG_EN&&options_lang<=DW3_TITLE_LANG_IT?options_lang:0;
+            const unsigned char *runs[]={title_loadgame_en,title_loadgame_fr,title_loadgame_de,title_loadgame_es,title_loadgame_it};
+            const int ws[]={title_loadgame_en_width,title_loadgame_fr_width,title_loadgame_de_width,title_loadgame_es_width,title_loadgame_it_width};
+            const int hs[]={title_loadgame_en_height,title_loadgame_fr_height,title_loadgame_de_height,title_loadgame_es_height,title_loadgame_it_height};
             text_mask(480,y+(h-hs[li])/2-1,runs[li],ws[li],hs[li],focus);
             continue;
         }
@@ -618,7 +650,7 @@ void dw3_pc_title_overlay_art(uint8_t *rgba,int pitch,int selected) {
         if(row==1&&options_lang==DW3_TITLE_LANG_DE){labels[1]=title_options_de;widths[1]=title_options_de_width;heights[1]=title_options_de_height;}
         if(row==1&&options_lang==DW3_TITLE_LANG_ES){labels[1]=title_options_es;widths[1]=title_options_es_width;heights[1]=title_options_es_height;}
         if(row==1&&options_lang==DW3_TITLE_LANG_IT){labels[1]=title_options_it;widths[1]=title_options_it_width;heights[1]=title_options_it_height;}
-        text_mask(480,y+(h-heights[row])/2-1,labels[row],widths[row],heights[row],focus);
+        text_mask(480,y+(h-heights[row>2?2:row])/2-1,labels[row>2?2:row],widths[row>2?2:row],heights[row>2?2:row],focus);
     }
 }
 

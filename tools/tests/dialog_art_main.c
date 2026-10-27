@@ -122,13 +122,13 @@ int main(int argc, char **argv) {
                 write_ppm(dir, name, b, DW3_DIALOG_W, DW3_DIALOG_H, pitch);
             }
         }
-        /* The title's four plaques: the Quit game one is drawn in the focus
+        /* The title's four plaques (no auto-save file): the Quit game one is drawn in the focus
          * state and not in the others; the footer (y 610..669) is intact. */
         {
             int sel;
-            long quit_pixels[4];
+            long quit_pixels[5];
 
-            for (sel = 0; sel < DW3_TITLE_MENU_ROWS; sel++) {
+            for (sel = 0; sel < DW3_TITLE_MENU_ROWS - 1; sel++) {
                 memset(title, 0xEE, (size_t)960 * 720 * 4);
                 dw3_pc_title_overlay_art(title, 960 * 4, sel);
                 quit_pixels[sel] = opaque_pixels(title, 960, 720, 960 * 4, 230,
@@ -142,6 +142,24 @@ int main(int argc, char **argv) {
                 }
             }
             CHECK(quit_pixels[3] > 0 && quit_pixels[0] > 0);
+            /* P6.31: with the Load row there are five plaques; Quit game is
+             * row 4 at y 570..610 and Continue is lettered (row 2). */
+            dw3_pc_title_overlay_set_load_row(1);
+            for (sel = 0; sel < DW3_TITLE_MENU_ROWS; sel++) {
+                memset(title, 0xEE, (size_t)960 * 720 * 4);
+                dw3_pc_title_overlay_art(title, 960 * 4, sel);
+                quit_pixels[sel] = opaque_pixels(title, 960, 720, 960 * 4, 230,
+                                                 570, 730, 610);
+                CHECK(opaque_pixels(title, 960, 720, 960 * 4, 230, 384, 730, 610) > 50000);
+                CHECK(opaque_pixels(title, 960, 720, 960 * 4, 252, 611, 708, 669) > 1000);
+                if (dir) {
+                    char name[64];
+                    snprintf(name, sizeof(name), "title5-%s-%d", lang_name[lang], sel);
+                    write_ppm(dir, name, title, 960, 720, 960 * 4);
+                }
+            }
+            CHECK(quit_pixels[4] > 0 && quit_pixels[0] > 0);
+            dw3_pc_title_overlay_set_load_row(0);
         }
     }
     /* The options screen is still its own state (4), unchanged by the menu rows. */

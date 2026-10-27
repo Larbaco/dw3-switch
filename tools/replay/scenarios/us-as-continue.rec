@@ -1,0 +1,12 @@
+# US: P6.31 title Continue loads the auto-save (log only)
+pad 20 0x0008
+pad 25 0x0000
+pad 210 0x0008
+pad 215 0x0000
+pad 330 0x0040
+pad 335 0x0000
+pad 350 0x0040
+pad 355 0x0000
+pad 390 0x4000
+pad 395 0x0000
+end 1220

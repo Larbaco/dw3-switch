@@ -41,7 +41,7 @@
 
 /* PRESS START, the four focused menu rows (P6.28 added Quit game), and the
  * Port options screen. */
-enum { CANVAS_W = 960, CANVAS_H = 720, STATE_COUNT = 6, STATE_OPTIONS = 5 };
+enum { CANVAS_W = 960, CANVAS_H = 720, STATE_COUNT = 7, STATE_OPTIONS = 6 };
 #define ART_TEXTURE_H (CANVAS_H * STATE_COUNT)
 
 typedef struct OverlayVertex {

@@ -27,7 +27,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-enum { CS_PORTS = MEMCARD_HOST_SLOTS, CS_SLOTS = 3 };
+enum { CS_PORTS = MEMCARD_HOST_ALL, CS_SLOTS = 3 };
 
 static char g_dir[DW3_OPTCFG_PATH_MAX];
 
@@ -61,8 +61,23 @@ unsigned dw3_cheat_saves_hash(const void *data, int size) {
     return h;
 }
 
+static const char *cs_bin(int port) {
+    static const char *const names[] = {"save0.bin", "save1.bin", "autosave.bin"};
+
+    return port >= 0 && port < 3 ? names[port] : "save?.bin";
+}
+
+static const char *cs_side(int port) {
+    static const char *const names[] = {"save0.cheats", "save1.cheats", "autosave.cheats"};
+
+    return port >= 0 && port < 3 ? names[port] : "save?.cheats";
+}
+
 static int cs_path(int port, const char *suffix, char *out, size_t cap) {
-    int n = snprintf(out, cap, "%s/save%d.cheats%s", g_dir, port, suffix);
+    /* P6.31: port MEMCARD_HOST_AUTO is autosave.bin, mark in autosave.cheats */
+    int n = port == MEMCARD_HOST_AUTO
+                ? snprintf(out, cap, "%s/autosave.cheats%s", g_dir, suffix)
+                : snprintf(out, cap, "%s/save%d.cheats%s", g_dir, port, suffix);
 
     return (n < 0 || (size_t)n >= cap) ? -1 : 0;
 }
@@ -131,8 +146,8 @@ static int cs_store(int port, const Dw3OptCfg *cfg) {
     if (fp == NULL) {
         return -1;
     }
-    ok = fprintf(fp, "# dw3-switch: slots of save%d.bin written with cheats "
-                     "(docs/PORT_OPTIONS.md)\nversion=1\n", port) > 0;
+    ok = fprintf(fp, "# dw3-switch: slots of %s written with cheats "
+                     "(docs/PORT_OPTIONS.md)\nversion=1\n", cs_bin(port)) > 0;
     for (i = 0; ok && i < cfg->count; i++) {
         ok = fprintf(fp, "%s=%s\n", cfg->entry[i].key, cfg->entry[i].val) > 0;
     }
@@ -186,8 +201,8 @@ int dw3_cheat_saves_mark(int port, int slot, int offset, const void *data,
         snprintf(val, sizeof(val), "%d:%d:%08x", offset, size,
                  dw3_cheat_saves_hash(data, size));
         if (dw3_optcfg_set(&cfg, key, val) != 0) {
-            CHEAT_WARN("dw3-cheats: cannot stage the mark of save%d.bin "
-                       "slot %d", port, slot);
+            CHEAT_WARN("dw3-cheats: cannot stage the mark of %s "
+                       "slot %d", cs_bin(port), slot);
             return -1;
         }
     } else {
@@ -204,16 +219,16 @@ int dw3_cheat_saves_mark(int port, int slot, int offset, const void *data,
         cfg = kept;
     }
     if (cs_store(port, &cfg) != 0) {
-        CHEAT_WARN("dw3-cheats: cannot write %s/save%d.cheats (the mark of "
-                   "slot %d is not saved)", g_dir, port, slot);
+        CHEAT_WARN("dw3-cheats: cannot write %s/%s (the mark of "
+                   "slot %d is not saved)", g_dir, cs_side(port), slot);
         return -1;
     }
     if (marked) {
-        CHEAT_INFO("dw3-cheats: save%d.bin slot %d marked: written with "
-                   "cheats (save%d.cheats)", port, slot, port);
+        CHEAT_INFO("dw3-cheats: %s slot %d marked: written with "
+                   "cheats (%s)", cs_bin(port), slot, cs_side(port));
     } else {
-        CHEAT_INFO("dw3-cheats: save%d.bin slot %d: written without cheats, "
-                   "mark removed", port, slot);
+        CHEAT_INFO("dw3-cheats: %s slot %d: written without cheats, "
+                   "mark removed", cs_bin(port), slot);
     }
     return 0;
 }
@@ -261,16 +276,16 @@ int dw3_cheat_saves_count(int log) {
                 memcard_host_file_read(port, offset, buf, size) < 0 ||
                 dw3_cheat_saves_hash(buf, (int)size) != hash) {
                 if (log) {
-                    CHEAT_INFO("dw3-cheats: save%d.bin slot %d: the mark no "
+                    CHEAT_INFO("dw3-cheats: %s slot %d: the mark no "
                                "longer matches the slot (replaced); ignored",
-                               port, slot);
+                               cs_bin(port), slot);
                 }
                 continue;
             }
             count++;
             if (log) {
-                CHEAT_INFO("dw3-cheats: save%d.bin slot %d was written with "
-                           "cheats", port, slot);
+                CHEAT_INFO("dw3-cheats: %s slot %d was written with "
+                           "cheats", cs_bin(port), slot);
             }
         }
     }
