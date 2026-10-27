@@ -777,7 +777,17 @@ int main(int argc, char **argv) {
 #endif
     {
         int game_result = dw3_game_main();
+        INFOF("dw3_game_main returned %d; shutting down", game_result);
         memcard_host_shutdown();
+        /* P38: leave the way the P4 sample does, services closed in reverse
+         * order of their opening, before libnx tears the rest down. Quit game
+         * (P6.28) was the first return from main that was not a HOME kill, and
+         * it left the audren worker thread running and the EGL surface and
+         * nwindow open while exit() ran: Horizon reported a fatal error. */
+        dw3_nx_audio_shutdown();
+        INFOF("audio stopped");
+        dw3_nx_gpu_shutdown();
+        INFOF("gpu closed; leaving main");
 #ifdef DW3_NXLINK_STDIO
         dw3_nxlink_stdio_shutdown();
 #endif
