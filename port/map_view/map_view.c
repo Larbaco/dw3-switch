@@ -202,9 +202,9 @@ static void build_texture(int scaler) {
         if (g_cache_dir[0] && dw3_mv_cache_read(path, &out) == 0 &&
             out.w == s.base.w * MV_SCALE && out.h == s.base.h * MV_SCALE) {
             s.built_ms = -1;
-            fprintf(stderr, "dw3-map: cache hit %s: scaler %s loaded in %d ms "
-                    "(%dx%d)\n", path, dw3_mv_scaler_name(scaler),
-                    (int)(now_ms() - t0), out.w, out.h);
+            fprintf(stderr, "dw3-map: scaler %s loaded from cache in %d ms "
+                    "(%dx%d, cache hit %s)\n", dw3_mv_scaler_name(scaler),
+                    (int)(now_ms() - t0), out.w, out.h, path);
         } else {
             dw3_mv_image_free(&out);
             fprintf(stderr, "dw3-map: cache miss %s\n",

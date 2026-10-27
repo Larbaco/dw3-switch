@@ -14,7 +14,9 @@
 #include <string.h>
 #include <switch.h>
 
+#ifdef DW3_NX_GAME_IMAGE
 #include <psyz/spu.h>
+#endif
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
@@ -89,6 +91,7 @@ static int s_driver_inited;
 
 void Psyz_AudioDestroy(void);
 
+#ifdef DW3_NX_GAME_IMAGE
 /* --- audio health (#188: "audio dies after many techs") -------------------
  * One `dw3-audio: health` line every HEALTH_BUFFERS buffers (~30 s) and a
  * warning when the final output is silent for a long stretch while a music
@@ -227,6 +230,18 @@ static void health_note_buffer(const short *pcm, int paused) {
     }
 }
 
+#else
+/* The hello sample has no PSY-Z headers: no health line there. */
+static unsigned s_win_buffers;
+static int s_bus_stats_on;
+#define HEALTH_BUFFERS 0xFFFFFFFFu
+static void health_report(void) {}
+static void health_note_buffer(const short *pcm, int paused) {
+    (void)pcm;
+    (void)paused;
+}
+#endif
+
 static void fill_wavebuf(AudioDriverWaveBuf *wb) {
     short *pcm = (short *)wb->data_raw;
 
@@ -266,7 +281,12 @@ static void audio_thread(void *arg) {
 
         Result rc = audrvUpdate(&s_drv);
         if (R_FAILED(rc)) {
-            fprintf(stderr, "nx_audio: audrvUpdate failed: 0x%x\n", rc);
+            static unsigned s_update_fail;
+
+            if (s_update_fail++ % 1000 == 0) { /* ~40 passes a second */
+                fprintf(stderr, "nx_audio: audrvUpdate failed: 0x%x (%u so "
+                        "far)\n", rc, s_update_fail);
+            }
         }
         if (s_win_buffers >= HEALTH_BUFFERS) {
             health_report();
@@ -391,6 +411,7 @@ int Psyz_AudioInit(void) {
     }
     s_thread_started = 1;
     s_audio_init = 1;
+#ifdef DW3_NX_GAME_IMAGE
     if (getenv("DW3_AUDIO_STATS") == NULL) {
         /* the health line reads the per-bus voice counts and peaks; the env
          * knob owns the same counters when it is set */
@@ -399,6 +420,7 @@ int Psyz_AudioInit(void) {
         rmutexUnlock(&s_mutex);
         s_bus_stats_on = 1;
     }
+#endif
     fprintf(stderr,
             "nx_audio: Psyz_AudioInit OK (audren, %d Hz stereo, %d-frame "
             "x %d buffers)\n",

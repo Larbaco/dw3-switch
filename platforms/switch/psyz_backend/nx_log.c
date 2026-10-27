@@ -158,16 +158,60 @@ unsigned dw3_nx_log_ring_walk(void (*emit)(void *ctx, const char *line,
  * (port-options open/close, memcard recovery, restart, map view, battle
  * options, ...) never reached dw3.log. This devoptab takes over fd 2, cuts
  * the byte stream into lines and hands each to psyz_log. */
-static char s_err_line[DW3_NX_LOG_MAX - 128];
-static unsigned s_err_len;
+/* Per-thread line buffers: the audio, precompute and game threads all write
+ * stderr, and a piece of a line (no newline yet) from one must never be glued
+ * to bytes of another. (newlib already makes one fprintf a single write.) */
+static __thread char s_err_line[DW3_NX_LOG_MAX - 128];
+static __thread unsigned s_err_len;
+
+/* Safety valve: every stderr line is now a synchronous SD write, so a loop
+ * that prints per frame must not be able to fill the card or stall the game.
+ * More than ERR_MAX_PER_SEC lines in one second are dropped and counted; the
+ * count is logged at the start of the next window. Measured need on PC
+ * replays: boot burst ~300 lines, then well under 5 lines/s. */
+#define ERR_MAX_PER_SEC 400
 static Mutex s_err_mutex;
+static u64 s_err_window_start;
+static unsigned s_err_window_count, s_err_dropped;
+
+static int err_allow(unsigned *dropped_before) {
+    const u64 now = armGetSystemTick();
+    int ok;
+
+    *dropped_before = 0;
+    mutexLock(&s_err_mutex);
+    if (now - s_err_window_start >= armGetSystemTickFreq()) {
+        *dropped_before = s_err_dropped;
+        s_err_dropped = 0;
+        s_err_window_start = now;
+        s_err_window_count = 0;
+    }
+    ok = s_err_window_count < ERR_MAX_PER_SEC;
+    if (ok) {
+        s_err_window_count++;
+    } else {
+        s_err_dropped++;
+    }
+    mutexUnlock(&s_err_mutex);
+    return ok;
+}
 
 static void err_flush_line(void) {
+    unsigned dropped;
+
     if (s_err_len == 0) {
         return;
     }
     s_err_line[s_err_len] = '\0';
     s_err_len = 0;
+    if (!err_allow(&dropped)) {
+        return;
+    }
+    if (dropped) {
+        psyz_log(2, "stderr", 0, "game",
+                 "dw3-log: %u stderr lines dropped (more than %d per second)",
+                 dropped, ERR_MAX_PER_SEC);
+    }
     psyz_log(1, "stderr", 0, "game", "%s", s_err_line);
 }
 
@@ -177,7 +221,6 @@ static ssize_t err_write(struct _reent *r, void *fd, const char *ptr,
 
     (void)r;
     (void)fd;
-    mutexLock(&s_err_mutex);
     for (i = 0; i < len; i++) {
         if (ptr[i] == '\n') {
             err_flush_line();
@@ -188,7 +231,6 @@ static ssize_t err_write(struct _reent *r, void *fd, const char *ptr,
             s_err_line[s_err_len++] = ptr[i];
         }
     }
-    mutexUnlock(&s_err_mutex);
     return (ssize_t)len;
 }
 
