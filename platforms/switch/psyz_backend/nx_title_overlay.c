@@ -34,6 +34,7 @@
 #include "../../pc/src/title_overlay_art.h"
 #include "nx_debug_overlay.h"
 #include "port_options.h"
+#include "port_screen_fade.h"
 
 #include <stdint.h>
 #include <stdio.h>
@@ -120,6 +121,9 @@ static size_t s_options_pack_bytes;
 static int s_options_cache_failed_logged;
 /* The cache was built (and the options region filled) for this title visit. */
 static int s_options_cache_warm;
+/* Both window layouts are composed (dw3_options_cache_prewarm_tick). */
+static int s_options_prewarmed;
+static unsigned s_prewarm_generation = ~0u;
 /* Port options screen opacity, 0..255. */
 static int s_options_alpha;
 /* The screen on view (or fading out) was opened in game (P38). */
@@ -250,11 +254,11 @@ static void timing_note(const Dw3OptionsDirty *d, uint32_t compose_us,
 
     s_timing.session_updates++;
     if (total > s_timing.total_max) s_timing.total_max = total;
-    if (d->full || d->rebuilt || s_timing.session_updates <= 8) {
+    if (d->full || d->rebuilt || d->cached || s_timing.session_updates <= 8) {
         TITLE_LOG("dw3-title-overlay: options update #%u %s rects=%d bytes=%u "
                   "compose=%u us upload=%u us",
                   s_timing.session_updates,
-                  d->rebuilt ? "rebuild" : d->full ? "full" : "dirty", d->count,
+                  d->rebuilt ? "rebuild" : d->cached ? "cached" : d->full ? "full" : "dirty", d->count,
                   (unsigned)d->bytes, compose_us, upload_us);
     } else {
         s_timing.batch++;
@@ -333,9 +337,11 @@ static void update_options_texture(void) {
 #endif
 }
 
-/* Free the retained canvases once nothing of the overlay is on screen. */
+/* Free the working canvas once nothing of the overlay is on screen. The
+ * composed window layers (title and in-game layouts) stay, so opening
+ * Options again is a copy and a few redrawn rows, not a 150 ms raster. */
 static void release_options_cache(void) {
-    dw3_options_cache_release();
+    dw3_options_cache_idle();
     free(s_options_pack);
     s_options_pack = NULL;
     s_options_pack_bytes = 0;
@@ -548,7 +554,7 @@ static void draw_quad(GLuint tex, float x0, float y0, float x1, float y1,
     glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 }
 
-void dw3_nx_title_overlay_draw(int vx, int vy, int vw, int vh) {
+static void draw_layers(int vx, int vy, int vw, int vh) {
     const int options_open = dw3_port_options_is_open();
     /* The options screen has no logo; it comes back as the screen fades. */
     int logo = s_logo_active && s_logo_rgba && !options_open;
@@ -586,6 +592,22 @@ void dw3_nx_title_overlay_draw(int vx, int vy, int vw, int vh) {
                ++s_dialog_idle == TEXTURE_IDLE_FRAMES) {
         release_dialog_texture();
     }
+    if (s_prewarm_generation != dw3_pc_title_overlay_generation()) {
+        /* EU language / labels changed: the composed layers are stale. */
+        s_prewarm_generation = dw3_pc_title_overlay_generation();
+        s_options_prewarmed = 0;
+    }
+    if (!options_open && !s_options_alpha && !s_options_prewarmed) {
+        /* Compose the window layers a band of rows per frame while the screen
+         * is closed (title layout, then the in-game one), so no frame has to
+         * raster them when the owner opens Options. */
+        s_options_prewarmed =
+            dw3_options_cache_prewarm_tick(dw3_port_options_locked_mask_for(1));
+        if (s_options_prewarmed) {
+            TITLE_LOG("dw3-title-overlay: options window layers composed "
+                      "ahead of the first open");
+        }
+    }
     if (!title_visible && !dialog) {
         /* Nothing is shown (restart, mode change): drop the retained canvases. */
         release_options_cache();
@@ -600,7 +622,8 @@ void dw3_nx_title_overlay_draw(int vx, int vy, int vw, int vh) {
     if (title_visible) {
         pump_states(s_overlay_active && !options_open ? s_selection : -1);
     }
-    if (s_options_alpha || (s_overlay_active && !s_options_cache_warm)) {
+    if (s_options_alpha ||
+        (s_overlay_active && !s_options_cache_warm && s_options_prewarmed)) {
         /* Build the cache as soon as the title menu is up, so the first open
          * of the screen is a normal dirty-region update, not a raster. */
         s_options_cache_warm = 1;
@@ -723,7 +746,52 @@ void dw3_nx_title_overlay_draw(int vx, int vy, int vw, int vh) {
     glDisable(GL_BLEND);
 }
 
+/* The whole-picture fade to black of the return to title (restart.c): a
+ * black quad over the picture, whatever else the overlay shows. */
+static GLuint s_fade_tex;
+static int s_fade_logged;
+
+static void draw_screen_fade(int vx, int vy, int vw, int vh) {
+    const int level = dw3_port_screen_fade_level();
+
+    if (level <= 0 || vw <= 0 || vh <= 0 || !ensure_program()) {
+        s_fade_logged = 0;
+        return;
+    }
+    if (!s_fade_tex || !glIsTexture(s_fade_tex)) {
+        static const uint8_t white[4] = {255, 255, 255, 255};
+
+        s_fade_tex = make_texture(1, 1, white);
+    }
+    if (!s_fade_logged) {
+        s_fade_logged = 1;
+        TITLE_LOG("dw3-title-overlay: screen fade to black on (level %d, "
+                  "picture %dx%d)", level, vw, vh);
+    }
+    glDisable(GL_DEPTH_TEST);
+    glDisable(GL_CULL_FACE);
+    glDisable(GL_SCISSOR_TEST);
+    glEnable(GL_BLEND);
+    glBlendEquation(GL_FUNC_ADD);
+    glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE,
+                        GL_ONE_MINUS_SRC_ALPHA);
+    glViewport(vx, vy, vw, vh);
+    glUseProgram(s_prog);
+    glUniform1i(s_uni_tex, 0);
+    glUniform1f(s_uni_sub, 1.0f);   /* rgb to black, alpha is the level */
+    glUniform1f(s_uni_alpha, (float)level / 255.0f);
+    glActiveTexture(GL_TEXTURE0);
+    draw_quad(s_fade_tex, 0.0f, 0.0f, CANVAS_W, CANVAS_H, 0.0f, 0.0f, 1.0f, 1.0f);
+    glDisable(GL_BLEND);
+}
+
+void dw3_nx_title_overlay_draw(int vx, int vy, int vw, int vh) {
+    draw_layers(vx, vy, vw, vh);
+    draw_screen_fade(vx, vy, vw, vh);
+}
+
 void dw3_nx_title_overlay_invalidate_gl(void) {
+    s_fade_tex = 0;
     if (s_prog) glDeleteProgram(s_prog);
     if (s_art_tex) glDeleteTextures(1, &s_art_tex);
     if (s_logo_tex) glDeleteTextures(1, &s_logo_tex);

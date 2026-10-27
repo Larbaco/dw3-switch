@@ -275,6 +275,7 @@ add_library(dw3_port_options OBJECT
   "${CMAKE_CURRENT_SOURCE_DIR}/options/options_cfg.c"
   "${CMAKE_CURRENT_SOURCE_DIR}/options/port_options.c"
   "${CMAKE_CURRENT_SOURCE_DIR}/options/restart.c"
+  "${CMAKE_CURRENT_SOURCE_DIR}/options/screen_fade.c"
   "${CMAKE_CURRENT_SOURCE_DIR}/options/title_entry.c"
   "${CMAKE_CURRENT_SOURCE_DIR}/options/title_logo_capture.c"
   "${CMAKE_CURRENT_SOURCE_DIR}/options/turbo.c"

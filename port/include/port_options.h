@@ -23,6 +23,9 @@ void dw3_port_options_set_origin(const char *where, const char *back);
 int dw3_port_options_row_locked(int index);
 /* Bit i: row i locked; DW3_PORT_OPTIONS_LOCK_CHEATS: the Cheats entry. */
 unsigned dw3_port_options_locked_mask(void);
+/* The mask the screen opens with at the title (0) or in game: lets the
+ * native overlay draw that layout before the screen is opened. */
+unsigned dw3_port_options_locked_mask_for(int in_game);
 enum { DW3_PORT_OPTIONS_LOCK_CHEATS = 1u << 16 };
 void dw3_port_options_close(void);
 int dw3_port_options_is_open(void);

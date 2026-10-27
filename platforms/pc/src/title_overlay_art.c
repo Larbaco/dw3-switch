@@ -46,7 +46,12 @@ static void pixel(int x,int y,int r,int g,int b,int alpha) {
     p[2]=(b*alpha+p[2]*p[3]*(255-alpha)/255)/a;p[3]=a;
 }
 static void box(int x,int y,int w,int h,int r,int g,int b,int a) {
-    for(int j=0;j<h;j++)for(int i=0;i<w;i++)pixel(x+i,y+j,r,g,b,a);
+    /* Clamp to the clip first: same pixels as testing every one, but a band
+     * or a dirty rect no longer walks the whole box (title_options_cache.c
+     * renders the static layer a band at a time). */
+    int x0=x<clip_x0?clip_x0:x,y0=y<clip_y0?clip_y0:y;
+    int x1=x+w>clip_x1?clip_x1:x+w,y1=y+h>clip_y1?clip_y1:y+h;
+    for(int j=y0;j<y1;j++)for(int i=x0;i<x1;i++)pixel(i,j,r,g,b,a);
 }
 /* Clipped octagonal hardware silhouette, with a vertical metallic ramp. */
 static void plaque(int x,int y,int w,int h,int cut,int r1,int g1,int b1,int r2,int g2,int b2,int a) {
@@ -678,4 +683,39 @@ void dw3_pc_title_overlay_options_component(uint8_t *rgba,int pitch,
     options_layer=OPTIONS_LAYER_FULL;
     options_layer_row=0;
     clip_x0=clip_y0=0;clip_x1=960;clip_y1=720;
+}
+
+/* The static layer of one layout (locked rows, page, cheats switch), rows
+ * y..y+h-1, cleared first. Same pixels as options_component(STATIC) under
+ * that layout, without touching the layout the live view is in. */
+void dw3_pc_title_overlay_options_static_band(uint8_t *rgba,int pitch,
+        unsigned locked,int page,int cheats_on,int y,int h) {
+    const unsigned old_locked=options_locked;
+#ifdef DW3_CHEATS
+    const int old_page=options_page,old_cheats=options_cheats_on;
+    options_page=page;options_cheats_on=cheats_on;
+#else
+    (void)page;(void)cheats_on;
+#endif
+    options_locked=locked;
+    dw3_pc_title_overlay_options_component(rgba,pitch,OPTIONS_LAYER_STATIC,-1,0,
+                                           0,y,960,h,1);
+    options_locked=old_locked;
+#ifdef DW3_CHEATS
+    options_page=old_page;options_cheats_on=old_cheats;
+#endif
+}
+int dw3_pc_title_overlay_options_cheats_on(void) {
+#ifdef DW3_CHEATS
+    return options_cheats_on;
+#else
+    return 0;
+#endif
+}
+int dw3_pc_title_overlay_options_page(void) {
+#ifdef DW3_CHEATS
+    return options_page;
+#else
+    return 0;
+#endif
 }

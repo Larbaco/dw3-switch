@@ -1215,9 +1215,14 @@ for _v, _title in (("us", 0x1C1), ("eu", 0x1D0)):
                                   r"dw3-port-confirm: open return to title \(cursor on No\)(?s:.*)"
                                   r"dw3-port-confirm: Yes \(return to title\)(?s:.*)"
                                   r"dw3-port-restart: requested from the field menu(?s:.*)"
-                                  r"dw3-port-restart: saves flushed; returning to the boot screen"),),
+                                  r"dw3-port-restart: fading to black before the reset \(field menu, 20 frames\)(?s:.*)"
+                                  r"dw3-port-restart: screen is black after 20 frames; resetting now(?s:.*)"
+                                  r"dw3-port-restart: saves flushed; returning to the boot screen(?s:.*)"
+                                  r"dw3-widescreen: gutter 0 px per side \(was 53; 4:3 picture\)(?s:.*)"
+                                  r"dw3-port-restart: new screen ready after \d+ black frames; fading in(?s:.*)"
+                                  r"dw3-port-restart: fade finished"),),
                   forbid_log=((0, r"save flush failed"),),
-                  note="field menu Return to title: No keeps the menu, Yes runs the P6.9 reset (P6.27)"),
+                  note="field menu Return to title: No keeps the menu, Yes fades to black, runs the P6.9 reset on black and fades the title in (P6.27); the 4:3 gutter switch falls inside the black"),
          Scenario(f"{_v}-return-title-rows7", _v, "full", turbo=4, timeout=600,
                   env=_ITEMS_ENV, cfg=_RT_CFG,
                   expect_log=((0, r"dw3-port-confirm: open return to title \(cursor on No\)(?s:.*)"

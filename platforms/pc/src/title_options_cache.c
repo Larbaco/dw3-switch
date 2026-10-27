@@ -16,7 +16,22 @@ enum {
     DESC_Y = 524, DESC_H = 52,
 };
 
-static uint8_t *g_static;
+/* Static layers (everything but the focus box, values and description) kept
+ * per layout, so opening the screen again, or opening it in game after the
+ * title (a different locked-row layout), does not rasterize the window.
+ * Two slots: the title layout and the in-game layout. A slot is drawn a band
+ * of rows at a time by prewarm_tick() while the screen is closed. */
+enum { SLOTS = 2, BAND_ROWS = 16 };
+typedef struct StaticSlot {
+    uint8_t *px;
+    unsigned art_generation, locked;
+    int page, cheats_on;
+    int rows_done;      /* 0..CANVAS_H; CANVAS_H = complete */
+    unsigned stamp;     /* last use, for eviction */
+} StaticSlot;
+static StaticSlot g_slots[SLOTS];
+static unsigned g_stamp;
+static const uint8_t *g_static;   /* the complete slot the canvas mirrors */
 static uint8_t *g_canvas;
 static int g_valid;
 static unsigned g_art_generation;
@@ -76,6 +91,52 @@ static void draw_state_in(Dw3OptionsRect rect, int cursor, const int *values) {
         draw(part, DW3_TITLE_OPTIONS_DESCRIPTION, cursor, 0);
 }
 
+static int slot_matches(const StaticSlot *s, unsigned art, unsigned locked,
+                        int page, int cheats_on) {
+    return s->px && s->art_generation == art && s->locked == locked &&
+           s->page == page && s->cheats_on == cheats_on;
+}
+
+/* The slot for a layout: the one already holding it (complete or part way),
+ * else the least recently used slot that is not the one the canvas mirrors.
+ * NULL when memory is short. */
+static StaticSlot *slot_for(unsigned art, unsigned locked, int page, int cheats_on) {
+    StaticSlot *victim = NULL;
+    const size_t bytes = (size_t)DW3_OPTIONS_CANVAS_PITCH * DW3_OPTIONS_CANVAS_H;
+
+    for (int i = 0; i < SLOTS; ++i)
+        if (slot_matches(&g_slots[i], art, locked, page, cheats_on))
+            return &g_slots[i];
+    for (int i = 0; i < SLOTS; ++i) {
+        if (g_slots[i].px && g_slots[i].px == g_static) continue;
+        if (!victim || !g_slots[i].px ||
+            (victim->px && g_slots[i].stamp < victim->stamp))
+            victim = &g_slots[i];
+    }
+    if (!victim) return NULL;
+    if (!victim->px) victim->px = (uint8_t *)malloc(bytes);
+    if (!victim->px) return NULL;
+    victim->art_generation = art;
+    victim->locked = locked;
+    victim->page = page;
+    victim->cheats_on = cheats_on;
+    victim->rows_done = 0;
+    return victim;
+}
+
+/* Draw up to `rows` more rows of the slot's static layer. */
+static void slot_advance(StaticSlot *s, int rows) {
+    while (rows > 0 && s->rows_done < DW3_OPTIONS_CANVAS_H) {
+        int n = DW3_OPTIONS_CANVAS_H - s->rows_done;
+        if (n > rows) n = rows;
+        dw3_pc_title_overlay_options_static_band(s->px, DW3_OPTIONS_CANVAS_PITCH,
+            s->locked, s->page, s->cheats_on, s->rows_done, n);
+        s->rows_done += n;
+        rows -= n;
+    }
+    s->stamp = ++g_stamp;
+}
+
 int dw3_options_cache_update(Dw3OptionsDirty *out) {
     const size_t canvas_bytes = (size_t)DW3_OPTIONS_CANVAS_PITCH * DW3_OPTIONS_CANVAS_H;
     const unsigned art_generation = dw3_pc_title_overlay_generation();
@@ -84,13 +145,13 @@ int dw3_options_cache_update(Dw3OptionsDirty *out) {
     Dw3OptionsDirty dirty;
     int values[DW3_TITLE_OPTION_ROWS];
     int rebuilt = 0;
+    int from_cache = 0;
 
     memset(&dirty, 0, sizeof(dirty));
     for (int i = 0; i < DW3_TITLE_OPTION_ROWS; ++i)
         values[i] = dw3_pc_title_overlay_options_value(i);
-    if (!g_static) g_static = (uint8_t *)malloc(canvas_bytes);
     if (!g_canvas) g_canvas = (uint8_t *)malloc(canvas_bytes);
-    if (!g_static || !g_canvas) {
+    if (!g_canvas) {
         dw3_options_cache_release();
         if (out) memset(out, 0, sizeof(*out));
         return -1;
@@ -98,11 +159,21 @@ int dw3_options_cache_update(Dw3OptionsDirty *out) {
     if (g_awaiting_commit) g_full_pending = 1;
     if (!g_valid || g_art_generation != art_generation ||
         g_layout != dw3_pc_title_overlay_options_layout()) {
+        StaticSlot *slot;
         g_layout = dw3_pc_title_overlay_options_layout();
-        /* Open or language/label change: re-rasterize the static layer. */
-        dw3_pc_title_overlay_options_component(g_static, DW3_OPTIONS_CANVAS_PITCH,
-            DW3_TITLE_OPTIONS_STATIC, -1, 0, 0, 0, DW3_OPTIONS_CANVAS_W,
-            DW3_OPTIONS_CANVAS_H, 1);
+        /* Open or language/label change: take the static layer of this
+         * layout from the cache, drawing what is missing. */
+        slot = slot_for(art_generation, dw3_pc_title_overlay_options_locked(),
+                        dw3_pc_title_overlay_options_page(),
+                        dw3_pc_title_overlay_options_cheats_on());
+        if (!slot) {
+            dw3_options_cache_release();
+            if (out) memset(out, 0, sizeof(*out));
+            return -1;
+        }
+        from_cache = slot->rows_done >= DW3_OPTIONS_CANVAS_H;
+        slot_advance(slot, DW3_OPTIONS_CANVAS_H);
+        g_static = slot->px;
         memcpy(g_canvas, g_static, canvas_bytes);
         g_art_generation = art_generation;
         g_valid = 1;
@@ -141,7 +212,8 @@ int dw3_options_cache_update(Dw3OptionsDirty *out) {
         dirty.rects[dirty.count++] = whole;
         dirty.full = 1;
     }
-    dirty.rebuilt = rebuilt;
+    dirty.rebuilt = rebuilt && !from_cache;
+    dirty.cached = rebuilt && from_cache;
     for (int i = 0; i < dirty.count; ++i)
         dirty.bytes += (size_t)dirty.rects[i].w * dirty.rects[i].h * 4;
     g_awaiting_commit = dirty.count > 0;
@@ -158,15 +230,43 @@ void dw3_options_cache_invalidate(void) {
     g_full_pending = 1;
 }
 
-void dw3_options_cache_release(void) {
-    free(g_static);
+/* Drop the working canvas only. The static layers stay, so the next open
+ * (or an open in game) is a copy and a few redrawn rows, not a raster. */
+void dw3_options_cache_idle(void) {
     free(g_canvas);
-    g_static = NULL;
     g_canvas = NULL;
+    g_static = NULL;
     g_valid = 0;
     g_cursor = -1;
     g_full_pending = 1;
     g_awaiting_commit = 0;
+}
+
+void dw3_options_cache_release(void) {
+    dw3_options_cache_idle();
+    for (int i = 0; i < SLOTS; ++i) {
+        free(g_slots[i].px);
+        memset(&g_slots[i], 0, sizeof(g_slots[i]));
+    }
+    g_static = NULL;
+}
+
+int dw3_options_cache_prewarm(unsigned locked, int page, int cheats_on) {
+    StaticSlot *slot = slot_for(dw3_pc_title_overlay_generation(), locked, page,
+                                cheats_on);
+
+    if (!slot) return 1;   /* out of memory: the open draws it, as before */
+    if (slot->rows_done >= DW3_OPTIONS_CANVAS_H) return 1;
+    slot_advance(slot, BAND_ROWS);
+    return slot->rows_done >= DW3_OPTIONS_CANVAS_H;
+}
+
+int dw3_options_cache_prewarm_tick(unsigned in_game_locked) {
+    const int page0 = 0;   /* DW3_TITLE_OPTIONS_PAGE_OPTIONS */
+    const int cheats = dw3_pc_title_overlay_options_cheats_on();
+
+    if (!dw3_options_cache_prewarm(0, page0, cheats)) return 0;
+    return dw3_options_cache_prewarm(in_game_locked, page0, cheats);
 }
 
 const uint8_t *dw3_options_cache_pixels(void) {

@@ -1236,6 +1236,38 @@ Triangle (B) goes back to the menu. Changes are saved at once in
   `us/eu-return-title(-rows7)` press Down once more (Options sits above Return to
   title); their eight-row panel is the new reference.
 
+### Opening without a stutter (preview.42 follow-up)
+
+preview.41's log: every open of the screen logged `options update #1 rebuild
+rects=1 bytes=2764800 compose=166 ms upload=2.5 ms`. The cost was the static
+layer (window, bezel, rules, labels, hints) of the 960x720 canvas, drawn on the
+CPU on the opening frame, and it was thrown away each time the screen closed
+(`release_options_cache`). Now (`title_options_cache.c`):
+
+- The static layer is kept per layout (title: no locked rows; in game: Widescreen
+  and the Cheats hint locked; and the language, page and cheats switch), two slots,
+  5.5 MB. Closing the screen frees only the working canvas (`dw3_options_cache_idle`).
+- While the screen is closed, one band of 16 rows of the missing layer is drawn per
+  frame (`dw3_options_cache_prewarm_tick`, called by the Switch overlay and the PC
+  overlay every frame): title layout first, then in game, about 90 bands (a second and a half). Then
+  `dw3-title-overlay: options window layers composed ahead of the first open`.
+- An open copies the retained layer into the canvas and draws the focus box, the
+  values and the description, and uploads the canvas once. A language change
+  invalidates the layers (their key holds the art generation) and they are composed
+  again in the background.
+- The pixels are the same: a band is the same raster with a clip (`box` now clamps to
+  the clip first), and `tools/tests/options_cache_main.c` proves every cached open
+  and every dirty update against the full reference render.
+
+Measured on the PC (replay `us-field-options`, turbo 4):
+`options update rebuild ... compose=35246 us`, first frame shown 36.5 ms after the
+open request before; `options update cached ... compose=1602 us`, first frame shown
+2.8 ms after. The widest prewarm band is 1.2 ms there (both layouts, 89 bands of 16
+rows, 79 ms in total). The Switch ran the old rebuild 4.7 times slower than the PC
+(166 ms against 35 ms), which puts the open at about 8 ms of compose plus 2.5 ms of
+upload and a prewarm band at 4 to 6 ms: expected, not yet measured on the OLED
+([OLED_TEST_PLAN B15](OLED_TEST_PLAN.md)).
+
 ### OLED checklist, Options in game (owner)
 
 US and EU (at least two EU languages), a Switch OLED, docked and handheld:

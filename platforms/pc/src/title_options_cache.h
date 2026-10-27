@@ -30,6 +30,9 @@ typedef struct Dw3OptionsDirty {
     int full;
     /* The static layer was re-rasterized this call (open / language change). */
     int rebuilt;
+    /* The static layer came from the retained copy (no raster this call):
+     * still a full upload. */
+    int cached;
     size_t bytes;
 } Dw3OptionsDirty;
 
@@ -47,7 +50,20 @@ void dw3_options_cache_commit(void);
  * re-upload): the next update reports the whole canvas again. */
 void dw3_options_cache_invalidate(void);
 
-/* Free both canvases (teardown, restart, leaving the title). */
+/* Drop only the working canvas (the screen is not on show): the static
+ * layers of the title and in-game layouts stay, so reopening is a copy. */
+void dw3_options_cache_idle(void);
+
+/* Draw one band of the static layer for a layout the screen has not been
+ * opened with yet (call once per frame while it is closed). Returns 1 when
+ * that layout is complete. page 0 = the Options page. */
+int dw3_options_cache_prewarm(unsigned locked, int page, int cheats_on);
+/* Prewarm the title layout, then the in-game one (in_game_locked is the
+ * locked-row mask the screen opens with in game). Returns 1 when both are
+ * done, after which the call costs nothing. */
+int dw3_options_cache_prewarm_tick(unsigned in_game_locked);
+
+/* Free the canvas and every retained layer (teardown, language change). */
 void dw3_options_cache_release(void);
 
 /* Current working canvas (960x720 RGBA, pitch DW3_OPTIONS_CANVAS_PITCH), or

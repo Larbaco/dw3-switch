@@ -216,8 +216,34 @@ int main(void) {
         }
         dw3_pc_title_overlay_set_options_page(DW3_TITLE_OPTIONS_PAGE_OPTIONS, 0);
         step(lang, 0, v, 1, &d);
-        if (!d.rebuilt) fail("back to Options did not rebuild", lang, 0, v);
+        if (!d.rebuilt && !d.cached) fail("back to Options did not rebuild", lang, 0, v);
 #endif
+
+        /* The screen closes (idle: canvas freed, composed layers kept) and
+         * opens again, with the title and the in-game layout: the layers
+         * are prewarmed a band at a time, then an open is a copy that must
+         * equal the reference render of that layout. */
+        {
+            static const unsigned game_mask = 1u | (1u << 16);
+            int bands = 0;
+            dw3_pc_title_overlay_set_options_locked(0);
+            dw3_options_cache_idle();
+            if (dw3_options_cache_pixels() != NULL) fail("pixels survive idle", lang, 0, v);
+            while (!dw3_options_cache_prewarm_tick(game_mask) && bands < 200) bands++;
+            if (bands < 20 || bands >= 200) fail("prewarm is not banded", lang, bands, v);
+            step(lang, 0, v, 1, &d);
+            if (!d.cached || d.rebuilt || !d.full) fail("open after prewarm was not a cached copy", lang, 0, v);
+            dw3_options_cache_idle();
+            dw3_pc_title_overlay_set_options_locked(game_mask);
+            step(lang, 0, v, 1, &d);
+            if (!d.cached || d.rebuilt) fail("in-game open after prewarm was not cached", lang, 0, v);
+            dw3_options_cache_idle();
+            dw3_pc_title_overlay_set_options_locked(0);
+            step(lang, 0, v, 1, &d);
+            if (!d.cached) fail("title reopen was not cached", lang, 0, v);
+            /* A language change makes the layers stale. */
+            dw3_options_cache_idle();
+        }
 
         /* Restart / teardown: pixels disappear, the next open rebuilds. */
         dw3_options_cache_release();
