@@ -54,6 +54,7 @@ explicitly marked N/A in this note.
 | Switch host | Rumble on/intensity, confirm A/B layout, `swkbd` name, CRT/sharp, system-language hint | Phase 10 (+ P4.4 / P5.3 always-on lifecycle) |
 | Restart game | Optional L1 + R1 + Start + Select in the shared PS1 pad map; OFF by default | Phase 6.9 |
 | Items menu | **Partner switch on the equip panel** (key `items_partner_switch`, 0 or 1, **default 1**, file-only: the Options window is full at nine rows, so there is no row): ZL / ZR change the party member on the Status screen's Equipment slot list without leaving ([P6.33](P6.33_ITEMS_MENU.md), patch `0128`, `DW3_ITEMS_PARTNER_SWITCH=0` forces it off for a run). A documented exception to "off by default": the owner decided on (2026-10-26) | Phase 6 |
+| Map screen (P6.32 PoC) | **New full-screen map** (key `map_screen`, 0 or 1, **PoC default 1**, file-only, no row): Square on the game's Map screen opens a host-drawn full-screen map with pan, zoom and a live scaler switch; widescreen only. The real feature will default to off and get its row ([P6.32](P6.32_MAP_ZOOM.md#7-phase-0-results-2026-10-27-spike-and-scaler-poc), patch `0146`) | Phase 6 |
 | Auto-save | **Auto-save** (OFF / Each area; key `autosave`, row 9): the first idle frame of a new field area writes the game to the slot the player last saved to or loaded from; the player's version is kept in `save<N>.bin.pre-auto`. Off by default; with it off the game is as before ([P6.31](P6.31_AUTOSAVE.md)) | Phase 6 (P6.31) |
 
 Defaults: **off** or equivalent to stock PS1 behaviour unless a feature is

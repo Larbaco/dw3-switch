@@ -74,7 +74,7 @@ listed once, in [Pending OLED checks](#pending-oled-checks).
 | P6.29 | Save editor: external tool on the owner's own saves, builds on P6.25 (future goal) | future | [roadmap](#phase-6-goal-notes), [CROSS_REGION_SAVES](CROSS_REGION_SAVES.md) |
 | P6.30 | Help, FAQ and tips from the pause menu (future goal) | future | [roadmap](#phase-6-goal-notes) |
 | P6.31 | Auto-save, off by default | in progress (built: Options row, area-change write to the slot in use, PC US and EU replays; owner OLED check open) | [P6.31_AUTOSAVE](P6.31_AUTOSAVE.md), [roadmap](#phase-6-goal-notes), [P5.3](P5.3_FLAT_SAVE.md) |
-| P6.32 | Map zoom and full-screen map (future goal) | design (owner decisions recorded) | [roadmap](#phase-6-goal-notes), [P6.32](P6.32_MAP_ZOOM.md), [P6.1](P6.1_WIDESCREEN.md) |
+| P6.32 | Map zoom and full-screen map (future goal) | phase 0 PoC built (PR `feat/p6.32-map-poc`), OLED look pending | [roadmap](#phase-6-goal-notes), [P6.32](P6.32_MAP_ZOOM.md), [P6.1](P6.1_WIDESCREEN.md) |
 | P6.33 | Items menu usability redesign | in progress (owner decisions recorded 2026-10-26; phase 1 partner cycle built: patch 0128, ZL / ZR, on by default; phases 2, 3 and 4 open; owner OLED check open) | [roadmap](#phase-6-goal-notes), [P6.33](P6.33_ITEMS_MENU.md), [P6.1](P6.1_WIDESCREEN.md) |
 | P7.1 | Inventory and boundaries | done | [COMMUNITY_QOL](COMMUNITY_QOL.md) |
 | P7.2 | Patched EU disc as data source | open | [COMMUNITY_QOL](COMMUNITY_QOL.md) |
@@ -2034,6 +2034,19 @@ Statuses are in the [table](#status-at-a-glance).
   committed under `assets/map/` (with LICENSE and PROVENANCE.md), or a
   user-generated local pack. Phase 0 feasibility, upscale survey and the plan
   (patches 0146-0159 proposed) are in [P6.32_MAP_ZOOM.md](P6.32_MAP_ZOOM.md).
+  **Phase 0 (2026-10-27, PR `feat/p6.32-map-poc`):** the new screen exists as a
+  PoC (patch `0146`, `port/map_view/`, a PC and a Switch overlay): Square opens
+  it from the Map screen, pan, zoom fit / 1.0 / 1.25 / 1.5 / 2.0 / 3.0 on L1 / R1,
+  **L2 / R2 cycle the scaler live** (nearest, sharp bilinear, Lanczos2, AMD FSR 1,
+  CPU, timings in the log), no turbo, option key `map_screen` (PoC default on).
+  The map is **392 x 352**; it can be **read from the disc files** (identical to
+  the VRAM capture on US and EU, 0 bytes differ) and is **precomputed on a spare
+  core / low-priority thread** and cached under `sdmc:/switch/dw3/cache/` (PC:
+  the config dir). Verdict D: go; **open: the area-name boxes**. Free field
+  buttons, memory (+7.8 MB while open) and the rest are in
+  [P6.32 section 7](P6.32_MAP_ZOOM.md#7-phase-0-results-2026-10-27-spike-and-scaler-poc);
+  the owner's OLED checklist is section 8. Tests: `test_map_view_core.py`,
+  replay `us/eu-map-view` and `-43`, Ryubing US and EU.
   Done when (proposed): the new map screen opens from the Map screen on US and
   EU on PC and the Switch, zooms and pans over the full image, shows the
   game's area names, the default is bit-identical, and the P6.15 map replay
