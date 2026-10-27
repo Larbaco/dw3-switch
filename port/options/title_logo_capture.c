@@ -261,8 +261,8 @@ static int opaque_bounds(const LogoPixel *canvas, int *x0, int *y0, int *x1,
     return *x1 >= *x0;
 }
 
-/* The EU logo's opaque box, fitted into the 720x326 logo texture keeping its
- * aspect and centered; the rest stays transparent. */
+/* The EU logo's opaque box, scaled like the US crop into the 720x326 logo
+ * texture at the place its scaled sprites have; the rest stays transparent. */
 static int fit_logo(const LogoPixel *canvas, uint8_t *output) {
     int x0, y0, x1, y1, w, h, ow, oh, ox, oy, y, rc;
     uint8_t *cropped, *scaled;
@@ -270,12 +270,26 @@ static int fit_logo(const LogoPixel *canvas, uint8_t *output) {
     if (!opaque_bounds(canvas, &x0, &y0, &x1, &y1)) return -1;
     w = x1 - x0 + 1;
     h = y1 - y0 + 1;
-    if (w * LOGO_OUTPUT_H >= h * LOGO_OUTPUT_W) {
-        ow = LOGO_OUTPUT_W;
-        oh = (h * LOGO_OUTPUT_W + w / 2) / w;
-    } else {
-        oh = LOGO_OUTPUT_H;
-        ow = (w * LOGO_OUTPUT_H + h / 2) / h;
+    /* Same pixels-per-sprite-pixel as the US crop (LOGO_OUTPUT_W / SOURCE_W)
+     * and at the position the scaled game sprites have (patch 0129), so the
+     * overlay logo has the size and place of the sprite logo it replaces. */
+    ow = (w * LOGO_OUTPUT_W + LOGO_SOURCE_W / 2) / LOGO_SOURCE_W;
+    oh = (h * LOGO_OUTPUT_W + LOGO_SOURCE_W / 2) / LOGO_SOURCE_W;
+    ox = ((x0 - LOGO_CROP_X) * LOGO_OUTPUT_W + LOGO_SOURCE_W / 2) / LOGO_SOURCE_W;
+    oy = ((y0 - LOGO_CROP_Y) * LOGO_OUTPUT_W + LOGO_SOURCE_W / 2) / LOGO_SOURCE_W;
+    if (x0 < LOGO_CROP_X || y0 < LOGO_CROP_Y ||
+        ox + ow > LOGO_OUTPUT_W || oy + oh > LOGO_OUTPUT_H) {
+        /* Outside the US crop (a bank with another layout): fitted and
+         * centered, as before. */
+        if (w * LOGO_OUTPUT_H >= h * LOGO_OUTPUT_W) {
+            ow = LOGO_OUTPUT_W;
+            oh = (h * LOGO_OUTPUT_W + w / 2) / w;
+        } else {
+            oh = LOGO_OUTPUT_H;
+            ow = (w * LOGO_OUTPUT_H + h / 2) / h;
+        }
+        ox = (LOGO_OUTPUT_W - ow) / 2;
+        oy = (LOGO_OUTPUT_H - oh) / 2;
     }
     if (ow < 1 || oh < 1) return -1;
     cropped = (uint8_t *)malloc((size_t)w * h * 4);
@@ -293,15 +307,13 @@ static int fit_logo(const LogoPixel *canvas, uint8_t *output) {
                                     ow * 4, DW3_PC_LOGO_LANCZOS2_FINE);
     if (rc == 0) {
         memset(output, 0, (size_t)LOGO_OUTPUT_W * LOGO_OUTPUT_H * 4);
-        ox = (LOGO_OUTPUT_W - ow) / 2;
-        oy = (LOGO_OUTPUT_H - oh) / 2;
         for (y = 0; y < oh; ++y) {
             memcpy(output + ((size_t)(oy + y) * LOGO_OUTPUT_W + ox) * 4,
                    scaled + (size_t)y * ow * 4, (size_t)ow * 4);
         }
     }
-    fprintf(stderr, "dw3-title-logo: EU logo box %dx%d at %d,%d -> %dx%d\n",
-            w, h, x0, y0, ow, oh);
+    fprintf(stderr, "dw3-title-logo: EU logo box %dx%d at %d,%d -> %dx%d at %d,%d\n",
+            w, h, x0, y0, ow, oh, ox, oy);
     free(cropped);
     free(scaled);
     return rc;

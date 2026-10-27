@@ -105,7 +105,10 @@ frame is an additive flash and is left out. Some colored parts take CLUT rows
 that the title fills in after loading its sprites, so the EU logo is composed
 on the first readiness check, once the title stands still, rather than at
 load. The composite is cropped to its opaque box and fitted into the same
-720x326 texture keeping its aspect, centered. The patch also hides the Alt
+720x326 texture at the US scale (2.4 px per sprite px) and at the place its
+scaled sprites have (patch `0129`; before it the box was fitted keeping its
+aspect and centered, which made the logo change size and place when the overlay
+took over; a box outside the US crop still falls back to that fit). The patch also hides the Alt
 title and glint draws while the native logo is active. Once that logo is
 active, the late, reddish fade of the original EU logo no longer shows: it
 darkens with the background. Validated in Ryubing with the EU disc in all
