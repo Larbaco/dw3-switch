@@ -22,6 +22,7 @@ from pathlib import Path
 
 START, DOWN, CROSS = 0x0008, 0x0040, 0x4000
 TRIANGLE = 0x1000
+L2, R2 = 0x0100, 0x0200
 UP, RIGHT, LEFT = 0x0010, 0x0020, 0x0080
 EU_LANGS = ["en", "fr", "de", "it", "es"]
 HOLD = 5  # frames a button is held; PadChkVsync can miss a 1-frame edge
@@ -1089,6 +1090,41 @@ def menu_screens(version):
     return r
 
 
+def items_equip_switch(version):
+    """P6.33 phase 1 (patch 0128): R2 / L2 change the partner on the equip
+    panel's slot list. The path of `menu_screens` (the manifest's env and cfg)
+    to the slot list of the second party member (the `status-equip` step),
+    then R2, R2 (wraps), L2, Down to the second slot, R2 (the slot cursor
+    stays), Cross (the item list of the new partner), Triangle, Triangle.
+    The log line `dw3-items-menu: partner switch` carries the bag and worn
+    totals, which must not change. Frames measured on the PC build."""
+    r = Rec(f"{version.upper()}: P6.33 equip panel partner cycle (env and cfg in manifest)")
+    for f in range(300, 1200, 30):
+        r.press(f, CROSS)            # battle report -> field
+    r.press(1250, START)             # field menu, over the field
+    r.press(1420, CROSS)             # Items: the dissolve, then STSTATUS
+    f = 1640
+    for name, button, wait in MENU_SCREENS_STEPS:
+        if name == "status-equip":
+            break
+        if button:
+            r.press(f, button)
+        f += wait
+    # f: the equipment panel's slot list is up for the second partner
+    r.shot(f, "slots-before")
+    steps = (("switch-next", R2), ("switch-wrap", R2), ("switch-prev", L2),
+             ("slot-moved", DOWN), ("switch-slot", R2), ("item-list", CROSS),
+             (None, TRIANGLE), (None, TRIANGLE))
+    f += 40
+    for name, button in steps:
+        r.press(f, button)
+        if name:
+            r.shot(f + 30, name)
+        f += 90
+    r.end(f + 100)
+    return r
+
+
 def map_screen(version):
     """P6.1 (patch 0080): the field menu's Map screen in widescreen. The same
     path as `menu_screens` (the manifest's env and cfg) up to the Map entry;
@@ -1941,6 +1977,7 @@ def main(out):
         (out / f"{v}-items-menu.rec").write_text(items_menu(v).text(True))
         (out / f"{v}-menu-screens.rec").write_text(menu_screens(v).text(True))
         (out / f"{v}-map-screen.rec").write_text(map_screen(v).text(True))
+        (out / f"{v}-items-equip-switch.rec").write_text(items_equip_switch(v).text(True))
         (out / f"{v}-battle-results.rec").write_text(battle_results(v).text(True))
         (out / f"{v}-save-screen.rec").write_text(save_screen(v).text(True))
         (out / f"{v}-xr-save.rec").write_text(xr_save(v).text(True))
