@@ -68,7 +68,7 @@ listed once, in [Pending OLED checks](#pending-oled-checks).
 | P6.23 | Documentation: player guide, docs index, contributor and modder docs (future goal) | in progress (slice 1 done: player guide and docs index; slice 2: `CONTRIBUTING.md` and a pytest for all doc links, PR open; modder docs open) | [PLAYER_GUIDE](PLAYER_GUIDE.md), [docs index](README.md), [roadmap](#phase-6-goal-notes) |
 | P6.24 | One build for US and EU: one `.nro` and one PC binary, region found at boot, a boot picker with both discs (future goal; depends on P6.25 and P6.26) | in progress (slice 1 built: run-time region choice, picker logic and a PC launcher in front of the separate US / EU binaries; slice 2 built: Switch launcher `.nro` that chain-loads the US / EU `.nro`, CI artifact only, OLED check open; dual-image link and release flow open) | [SINGLE_BUILD](SINGLE_BUILD.md#as-built-slice-1), [slice 2](SINGLE_BUILD.md#as-built-slice-2-the-switch-launcher), [roadmap](#phase-6-goal-notes) |
 | P6.25 | Cross-region saves: a US save loads in EU and the reverse, one canonical save container (future goal) | in progress (slice 1 built: converter and one-way import on load, PC replays US to EU and EU to US; container and store open; OLED check open) | [CROSS_REGION_SAVES](CROSS_REGION_SAVES.md), [roadmap](#phase-6-goal-notes) |
-| P6.26 | Per-user saves: saves bound to the Switch user profile chosen in the Switch profile selector, global options (future goal) | future (design done, no code) | [PER_USER_SAVES](PER_USER_SAVES.md), [roadmap](#phase-6-goal-notes) |
+| P6.26 | Per-user saves: saves bound to the Switch user profile chosen in the Switch profile selector, global options (future goal) | in progress (slice 1 built: user-resolution seam, Switch account + profile selector, saves per profile with a safe legacy copy; OLED check open; import prompt, canonical store and global options open) | [PER_USER_SAVES](PER_USER_SAVES.md), [roadmap](#phase-6-goal-notes) |
 | P6.27 | Return to title from the pause (field) menu | in progress (built, PC US and EU replays; owner OLED check open) | [PORT_OPTIONS](PORT_OPTIONS.md#quit-and-return-to-title-p627-p628), [roadmap](#phase-6-goal-notes) |
 | P6.28 | Quit game on the title menu, back to hbmenu | in progress (built, PC US and EU replays; owner OLED check open) | [PORT_OPTIONS](PORT_OPTIONS.md#quit-and-return-to-title-p627-p628), [roadmap](#phase-6-goal-notes) |
 | P6.29 | Save editor: external tool on the owner's own saves, builds on P6.25 (future goal) | future | [roadmap](#phase-6-goal-notes), [CROSS_REGION_SAVES](CROSS_REGION_SAVES.md) |
@@ -1840,7 +1840,22 @@ Statuses are in the [table](#status-at-a-glance).
   extra-chapter save is refused on US and survives untouched; the legacy import
   keeps the originals; replays unchanged.
   Related: P6.24, P6.26, P5.3 ([P5.3_FLAT_SAVE.md](P5.3_FLAT_SAVE.md)), P9.6, P6.2.
-- [ ] **P6.26 Per-user saves (future goal).** Dated 2026-10-24, owner decision:
+- [ ] **P6.26 Per-user saves.** **State (2026-10-27):** slice 1 built (design
+  Order steps 1 to 3 adapted), Switch US and EU build, PC replays and pytest
+  green, **OLED check open**. Built: the seam `dw3_switch_user_resolve()` with
+  unit tests; Switch resolution (applet type, preselect, one user, system
+  profile selector; cancel = the game does not start, nothing written;
+  `shared` if the account service fails); saves in
+  `sdmc:/switch/dw3/saves/<uid>/<us|eu>/memcard/` in today's flat format
+  (**not** `card0.dw3s`: P6.25 is not done); `profile.txt`; legacy saves
+  **copied** into a new profile's region folder (`imported.txt`); PC profile
+  `default` / `DW3_SAVE_PROFILE`; the uid hash in the log and the crash report.
+  **Still open:** the interactive import prompt, the P6.25 canonical store,
+  global options (`port_options.cfg` stays per region), the applet-mode
+  fallback if `psel` cannot launch there. As built:
+  [PER_USER_SAVES.md](PER_USER_SAVES.md#as-built-slice-1-2026-10-27); OLED
+  items: [OLED_TEST_PLAN E5](OLED_TEST_PLAN.md#e5-per-user-saves-p626).
+  Original entry. Dated 2026-10-24, owner decision:
   saves are bound to the Switch user profile that is playing, chosen with the
   Switch profile selector ("Quero usar o seletor de perfil do Switch."). **Design
   done, no code.** Full note: [PER_USER_SAVES.md](PER_USER_SAVES.md).

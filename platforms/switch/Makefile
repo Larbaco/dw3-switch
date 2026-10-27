@@ -62,7 +62,7 @@ export DEPSDIR	:=	$(CURDIR)/$(BUILD)
 #   nx_crash.c    CMake game image (P5.4); needs overlay_host for mode/stage
 #   nx_title_overlay.c  CMake game image (native title canvas)
 #   nx_rumble.c   P10.4 PadSetAct -> hid rumble; includes psyz.h (needs libpsyz)
-CFILES		:=	$(filter-out boot_main.c nx_input.c nx_present.c stgetnext_invalidate.c switch_gpu.c nx_vram_dump.c nx_crash.c nx_title_overlay.c nx_rumble.c,$(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.c))))
+CFILES		:=	$(filter-out boot_main.c user_switch.c nx_input.c nx_present.c stgetnext_invalidate.c switch_gpu.c nx_vram_dump.c nx_crash.c nx_title_overlay.c nx_rumble.c,$(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.c))))
 
 CPPFILES	:=	$(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.cpp)))
 SFILES		:=	$(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.s)))

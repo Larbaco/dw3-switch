@@ -3,8 +3,9 @@
 Owner decision (2026-10-24, recorded in [SINGLE_BUILD.md](SINGLE_BUILD.md)):
 **saves are bound to the Switch user profile that is playing.** This note is the
 design behind the [ROADMAP P6.26 entry](ROADMAP.md#phase-6-goal-notes).
-**Nothing is implemented.** It builds on [P6.25](CROSS_REGION_SAVES.md) (the
-canonical save container) and P6.24 (one build) depends on it.
+Slice 1 is built, see [As built](#as-built-slice-1-2026-10-27); the rest below is the
+design. It builds on [P6.25](CROSS_REGION_SAVES.md) (the canonical save container,
+not done yet) and P6.24 (one build) depends on it.
 
 ## Owner decision: the Switch profile selector (2026-10-24)
 
@@ -220,6 +221,79 @@ by definition (they decide what loads).
    cannot launch from applet mode (Album): an in-game picker over
    `accountListAllUsers`, or require title takeover (the NRO started as a title
    override from hbmenu, where the preselect is expected)? Not decided.
+
+## As built (slice 1, 2026-10-27)
+
+Design "Order" steps 1 to 3, adapted. **OLED-unverified**: the Switch account
+and `psel` calls have only been compiled, never run on a console. Every step
+logs its facts (below) so the first run answers the open "check" items.
+
+- **Seam.** `port/saves/user_saves.c` (`port/include/port_user_saves.h`):
+  `dw3_switch_user_resolve(provider, &out)` returns uid, key (32 hex, or
+  `shared`) and a reason (`preselected`, `single-user`, `selector`,
+  `shared(account-init-failed)`, `shared(no-users)`, `cancelled`, `error`).
+  Unit tests with a fake provider: `tools/tests/test_user_saves.py`.
+  `dw3_pc_user_resolve()` gives the PC profile (`default`, or
+  `DW3_SAVE_PROFILE`).
+- **Switch wrapper.** `platforms/switch/source/user_switch.c`, called from
+  `main()` before the GPU is created: `appletGetAppletType`,
+  `accountInitialize(AccountServiceType_Application)` (failure -> `shared`),
+  `accountGetPreselectedUser` (the forwarder-with-selector case), the only user
+  from `accountListAllUsers`, else `pselShowUserSelector`. Cancel or error:
+  the game does not start, `main()` returns 0 to the launcher, and nothing is
+  created. `accountExit` runs at shutdown. Replay builds (`DW3_NX_REPLAY`) and
+  `DW3_MEMCARD_DIR` skip the whole step. If the profile folder cannot be made
+  the game falls back to the legacy folder (and logs it).
+- **Layout deviation from the design.** P6.25's `card0.dw3s` store does not
+  exist, so the per-region flat format stays:
+
+  ```
+  sdmc:/switch/dw3/saves/<uid32hex>/        (PC: runtime/saves/<profile>/)
+    profile.txt          nickname= and first_seen=YYYY-MM-DD, written once
+    us/ eu/              one folder per region, as today
+      imported.txt       what was copied from the legacy folder, and when
+      memcard/           save0.bin save1.bin autosave.bin (+ .cheats sidecars)
+  ```
+
+  Everything `memcard_host` and `port/autosave` write follows
+  `memcard_host_set_dir`, so no other code changed. When P6.25 lands the
+  `memcard/` folder is replaced by `card0.dw3s` and the import prompt below.
+- **Legacy copy (interim, safe).** When a profile's region folder does not exist
+  yet, the legacy files of `sdmc:/switch/dw3/<region>/memcard/` (`save0.bin`,
+  `save1.bin`, `autosave.bin` and their `.cheats` files) are **copied** (never
+  moved or deleted) into it. The folder is built under `<region>.tmp` and
+  renamed, so a stop half way leaves no half-imported region. The same is done
+  for the other region, so the P6.25 cross-region import keeps working from the
+  user's own folder (`DW3_MEMCARD_IMPORT_DIR` is pointed at it; the legacy
+  folder is never an import source for a profile). **Every profile that starts
+  the game the first time gets a copy of the legacy saves**; on a shared console
+  that means the second player starts with the first player's saves. The
+  interactive "Import for <nickname>? [Import] [Not now]" prompt from the
+  [migration section](#migration-of-the-existing-saves) is **future work**.
+- **Options** stay per region (`port_options.cfg` in the runtime root); the
+  global file and its migration (design step 4) are not part of this slice.
+- **PC.** The default profile is `default`: `runtime/saves/default/<region>/memcard/`,
+  filled with a copy of `runtime/<ver>/memcard/` the first time.
+  `DW3_SAVE_PROFILE=<name>` picks another. `DW3_MEMCARD_DIR` / `--memcard-dir`
+  still mean "this directory is the store" (replays).
+- **Log lines** (`dw3.log`, Switch; the PC prints `dw3-pc: user: ...`):
+  `user: applet type=<name> (<n>)`, `user: accountInitialize rc=`,
+  `user: accountGetPreselectedUser rc= valid=`,
+  `user: accountListAllUsers rc= count=`,
+  `user: showing the system profile selector`,
+  `user: pselShowUserSelector rc= (module desc) valid=`,
+  `user: profile=<8 hex> reason=<reason> init_rc= preselect_rc= users= selector_rc=`,
+  `user: <region> migration: new region folder, copied N legacy file(s) from <dir>`
+  (or `region folder already exists: no migration`), `user: save dir=<path>`,
+  and on a cancel `user: result=cancelled ... the game does not start; nothing written`
+  followed by `no user chosen: leaving without starting the game`. The uid is
+  logged only as its first 8 hex digits, never the nickname. The crash report
+  has `profile: <8 hex>` after the `disc:` line (`n/a` before a user is chosen).
+- **Not known until the OLED run:** whether libnx gives a distinct result code for
+  a cancelled selector (cancel and error are handled the same way); whether
+  `pselShowUserSelector` works from applet mode (hbmenu started from the Album).
+  If it fails there the log shows `reason=error` and the game does not start;
+  the open question for the owner (in-game picker or title takeover) then applies.
 
 ## History moved from ROADMAP.md (2026-10-24)
 

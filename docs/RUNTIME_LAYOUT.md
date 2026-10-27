@@ -144,6 +144,20 @@ On Switch the copy drives the same progress hook as the STR rewrite
 (`dw3_str_restore_set_progress`). The bar swaps about every 300 ms, matching
 the restore, because `eglSwapBuffers` waits for vsync.
 
+### Saves per user (P6.26)
+
+Since P6.26 slice 1 the saves of the Switch build are not in `<runtime-root>/memcard/`
+any more, but per Switch profile:
+`sdmc:/switch/dw3/saves/<uid32hex>/<us|eu>/memcard/` (`save0.bin`, `save1.bin`,
+`autosave.bin`, `.cheats` sidecars), with `profile.txt` next to the region
+folders and `imported.txt` inside each region folder. The first time a profile
+starts a region, the old `<runtime-root>/memcard/` files are **copied** into it
+(the old folder stays, untouched). PC: `runtime/saves/<profile>/<us|eu>/memcard/`,
+profile `default` or `DW3_SAVE_PROFILE`. `DW3_MEMCARD_DIR` still forces a plain
+folder. Details: [PER_USER_SAVES.md](PER_USER_SAVES.md#as-built-slice-1-2026-10-27).
+The `memcard/` folder below is still needed: it is the legacy source and the
+fallback when the profile folder cannot be made.
+
 ### Memory-card directory
 
 The Switch host expects `<runtime-root>/memcard/` to exist. US and EU boot

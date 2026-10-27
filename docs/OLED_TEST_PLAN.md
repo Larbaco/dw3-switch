@@ -223,6 +223,25 @@ Both builds on one SD card.
 | E4.8 | Save after a cheat, relaunch | "Cheat saves" shows 1; `dw3.log` has `dw3-cheats: save... was written with cheats` (page 2: `dw3-cheats: ... changed the game`). Save a clean game over that slot, relaunch: None | `dw3.log` | page 1 item 7, page 2 item 5 |
 | E4.9 | Note: Warp can leave a story-flagged map looking unfinished | Known | | [README](../platforms/switch/release/README.txt) |
 
+### E5. Per-user saves (P6.26)
+
+Needs a console with at least two user profiles. Read `dw3.log` after each row:
+every row names the `user:` lines that prove it. Profile folders are under
+`sdmc:/switch/dw3/saves/`; the folder name is 32 hex digits, the log shows the
+first 8.
+
+| # | Action | Expect | If it fails, send | Ticks |
+|---|---|---|---|---|
+| E5.1 | Create a forwarder in sphaira with the **profile selector** option, pick profile A, launch | Starts without another selector. Log: `user: applet type=` (note which), `user: accountGetPreselectedUser rc=0x0 valid=1`, `user: profile=<8hex> reason=preselected`, `user: save dir=.../saves/<uid>/<region>/memcard` | `dw3.log` | P6.26 |
+| E5.2 | First launch of A with old saves in `<region>/memcard/` | Continue and Load show the old saves. Log: `migration: new region folder, copied N legacy file(s)`. Folder `saves/<uid>/` has `profile.txt`, `<region>/imported.txt`, `<region>/memcard/save0.bin`. The old `<region>/memcard/` files are still there, same size and time | `dw3.log`, folder listing | P6.26 |
+| E5.3 | As A: save in slot 2 (or play to an auto-save), quit. Launch a forwarder for profile B | B has its own folder (different `profile=<8hex>`); B's saves are the copy of the old ones, **not** A's new save. Save something different as B | `dw3.log` | P6.26 |
+| E5.4 | Back as A: Continue / Load | A sees A's save and auto-save, not B's. B likewise | `dw3.log` | P6.26 |
+| E5.5 | Forwarder with the selector: at the system selector press **B/cancel** | The game does not start, back to the launcher, no black screen hang. Log: `user: result=cancelled` (or `error`: send the `rc=` and `module/desc` of `pselShowUserSelector`), `no user chosen: leaving without starting the game`. No new folder under `saves/` | `dw3.log`, folder listing | P6.26 |
+| E5.6 | Start from hbmenu in **applet mode** (hold nothing, launch from the Album) with several users | Either the system selector appears (log: `showing the system profile selector`, `reason=selector`) or it does not launch (log `pselShowUserSelector rc=` non-zero, `reason=error`, the game does not start). **Both outcomes are information: write which one happened** | `dw3.log` | P6.26 (open question) |
+| E5.7 | Hbmenu in title-override mode (hold R on a game), several users | Note whether `accountGetPreselectedUser` is valid (`reason=preselected`) or the selector appears | `dw3.log` | P6.26 |
+| E5.8 | A console with one profile | No extra screen. Log: `reason=single-user`, `users=1` | `dw3.log` | P6.26 |
+| E5.9 | Cause a crash if safe (nxlink force-crash build) or read an old report | `crash_report.txt` has `profile: <8hex>` after `disc:`, no nickname | crash report | P6.26 |
+
 ## Session F: the 2 hour memory run (nxlink)
 
 **[P5.1]** US first, then EU, each as its own session, on the nxlink build (EU

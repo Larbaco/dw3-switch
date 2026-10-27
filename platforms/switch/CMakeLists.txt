@@ -163,6 +163,7 @@ add_executable(dw3-switch
   # bring-up sample for the devkitPro Makefile build, so it is deliberately not
   # listed here — two main()s would collide.
   source/boot_main.c
+  source/user_switch.c
   ${DW3_NX_BACKEND_SOURCES}
   # Shared 64-bit host glue: PSY-Z's SeqStruct grows with 64-bit pointers and
   # would overflow the game's PS1-sized table. Not PC-specific (aarch64 is LP64
