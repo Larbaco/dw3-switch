@@ -746,7 +746,6 @@ void __wrap_Psyz_SpuPullSamples(short *out, int num_frames) {
  * the frames turbo does not show, sync the display rectangle for the ones it
  * does (and hash what the present would read). */
 static void present_emulation(void) {
-    static int skipped;
     int speed = dw3_port_turbo_speed();
     int r[4];
     uint64_t h = 1469598103934665603ull;
@@ -760,10 +759,9 @@ static void present_emulation(void) {
             SOFT_END(K_OTHER);
         }
     }
-    if (speed > 1 && ++skipped < speed) {
+    if (speed > 1 && !dw3_port_turbo_present_due()) {
         return;
     }
-    skipped = 0;
     display_rect(r);
     if (s_defer_env) {
         SOFT_BEGIN();

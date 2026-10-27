@@ -108,7 +108,12 @@ Fast-forward starts inactive at 1x, with a configured R3 speed of 2x. In Port
 options, confirming its row cycles **2x → 3x → 4x → OFF → 2x**. OFF disables R3.
 A press toggles turbo; release R3 before toggling again. It affects field and
 battle modes only; title, movies, separately loaded menus, memory-card screens
-and card game remain 1x. Menus inside the field mode can still accelerate.
+and card game remain 1x; so do the Status, Items and Map screens of the field
+menu and the shops. Menus that are open inside the field or a battle (the field
+menu list, Options and Return to title's Yes / No question over it, and the
+battle's command menu and lists) run at about 1.5x while turbo is on, not at the
+full setting (owner decision 2026-10-27); walking, text, cutscenes, transitions
+and battle animation keep the full speed.
 Music and SFX also speed up because the sequencer ticks per game frame. Actual
 speed gain is performance-dependent; OLED throughput is not established by this
 document. See [P6.4_FAST_FORWARD.md](P6.4_FAST_FORWARD.md).

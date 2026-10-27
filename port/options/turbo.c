@@ -29,12 +29,26 @@
 #define DW3_TURBO_STFGTREP 0x1C2
 #endif
 
+/* Menus opened inside the field (the field menu list, the Options / Cheats
+ * screen over it, the Return to title Yes / No window) run at 1.5x, not at the
+ * full setting and not at 1x (owner decision 2026-10-27: "pode acelerar os
+ * menus um pouco, algo tipo 50%"). Rates are kept in half game frames per
+ * vsync so that 1.5x is an integer: 3. At 1.5x the presents alternate between
+ * 2 and 1 game frames. */
+#define DW3_TURBO_MENU_RATE_X2 3
+
 enum { DW3_PORT_OPT_FAST_FORWARD = 1 };
 
 static int g_env_read;
 static int g_active;
 static int g_latched;
 static int g_logged_speed = 1;
+static unsigned g_poll_frames;   /* game frames seen by dw3_port_turbo_poll */
+static unsigned g_menu_stamp;    /* g_poll_frames when the field menu last ran */
+static int g_menu_seen;
+static int g_menu_logged;        /* the menu rate is in force (for the log) */
+static int g_credit_x2;          /* present_due: game frames owed, in halves */
+static unsigned g_menu_frames;   /* game frames at the menu rate, for the log */
 
 #ifdef DW3_PORT_TURBO_TEST
 static int g_test_r3;
@@ -46,13 +60,13 @@ void dw3_port_turbo_test_set(int r3_held, int mode_file) {
 }
 static int turbo_r3_held(void) { return g_test_r3; }
 static int turbo_mode_file(void) { return g_test_mode_file; }
-#define TURBO_LOG(msg, arg) fprintf(stderr, "dw3-turbo: " msg "\n", arg)
+#define TURBO_LOG(msg, ...) fprintf(stderr, "dw3-turbo: " msg "\n", __VA_ARGS__)
 #else
 static int turbo_r3_held(void) { return PAD_HELD(PAD_R3); }
 static int turbo_mode_file(void) { return dw3_overlay_current_mode_file(); }
 /* psyz_log, not stderr: on Switch stderr only reaches nxlink, and these
  * lines are the check in sdmc:/switch/dw3/dw3.log. */
-#define TURBO_LOG(msg, arg) INFOF("dw3-turbo: " msg, arg)
+#define TURBO_LOG(msg, ...) INFOF("dw3-turbo: " msg, __VA_ARGS__)
 #endif
 
 static void turbo_read_env(void) {
@@ -104,10 +118,80 @@ int dw3_port_turbo_speed(void) {
     return speed > DW3_TURBO_SPEED_MAX ? DW3_TURBO_SPEED_MAX : speed;
 }
 
+/* Called by the field menu task and the battle menu cursor (patch 0176) on
+ * each update while a menu waits for the player. A stamp, not a
+ * flag: a task that is killed stops stamping and the menu rate ends one frame
+ * later by itself, so no code path can leave the game stuck at the slow rate. */
+void dw3_port_turbo_menu_frame(void) {
+    g_menu_stamp = g_poll_frames;
+    g_menu_seen = 1;
+}
+
+int dw3_port_turbo_menu_active(void) {
+    int mode_file;
+
+    if (!g_menu_seen || g_poll_frames - g_menu_stamp > 1) {
+        return 0;
+    }
+    if (dw3_port_turbo_speed() < 2) {
+        return 0;
+    }
+    /* The field's menus and the battle's (FIGHTSTG: the command menu and the
+     * lists are sub overlays of it, WFIGHTMN, so the mode file is the same). */
+    mode_file = turbo_mode_file();
+    return mode_file == DW3_TURBO_FIELDSTG || mode_file == DW3_TURBO_FIGHTSTG;
+}
+
+int dw3_port_turbo_rate_x2(void) {
+    int full = dw3_port_turbo_speed() * 2;
+
+    if (full > 2 && dw3_port_turbo_menu_active() &&
+        DW3_TURBO_MENU_RATE_X2 < full) {
+        return DW3_TURBO_MENU_RATE_X2;
+    }
+    return full;
+}
+
+/* Log the edges of the menu rate; the speed line (`speed Nx`) keeps reporting
+ * the field's factor, so a test can see that only the menu changed. */
+static void turbo_menu_track(int on) {
+    if (on == g_menu_logged) {
+        return;
+    }
+    g_menu_logged = on;
+    if (on) {
+        g_menu_frames = 0;
+        TURBO_LOG("menu 1.5x (speed %dx)", dw3_port_turbo_speed());
+    } else {
+        TURBO_LOG("menu off (frames=%u)", g_menu_frames);
+    }
+}
+
+int dw3_port_turbo_present_due(void) {
+    int rate = dw3_port_turbo_rate_x2();
+    int due = 1;
+
+    if (rate > 2) {
+        g_credit_x2 += 2;
+        if (g_credit_x2 < rate) {
+            due = 0;
+        } else {
+            g_credit_x2 -= rate;
+            if (g_credit_x2 >= rate) {
+                g_credit_x2 = 0;
+            }
+        }
+    } else {
+        g_credit_x2 = 0;
+    }
+    return due;
+}
+
 void dw3_port_turbo_poll(void) {
     int speed;
 
     turbo_read_env();
+    g_poll_frames++;
     if (!turbo_r3_held()) {
         g_latched = 0;
     } else if (!g_latched) {
@@ -127,5 +211,13 @@ void dw3_port_turbo_poll(void) {
     if (speed != g_logged_speed) {
         g_logged_speed = speed;
         TURBO_LOG("speed %dx", speed);
+    }
+    /* Once per game frame, so the frame count is the menu's length. */
+    if (dw3_port_turbo_rate_x2() == DW3_TURBO_MENU_RATE_X2 &&
+        dw3_port_turbo_menu_active()) {
+        turbo_menu_track(1);
+        g_menu_frames++;
+    } else {
+        turbo_menu_track(0);
     }
 }
