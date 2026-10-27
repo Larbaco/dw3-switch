@@ -117,16 +117,31 @@ for _lang, _t in DIALOG_TEXT.items():
 # widest word, Command+Tech, is 214 px) and the description under 696 px.
 AUTOSAVE_TEXT = {
     'en': {'row': 'Auto-save', 'area': 'Each area',
-           'desc': 'Saves over the slot you last used at each new area.'},
+           'desc': 'Saves to its own file at each new area. Use Continue.'},
     'fr': {'row': 'Sauvegarde auto', 'area': 'Chaque zone',
-           'desc': "\u00c9crase votre dernier emplacement \u00e0 chaque zone."},
+           'desc': "Sauvegarde dans son propre fichier. Voir Continuer."},
     'de': {'row': 'Auto-Speichern', 'area': 'Jedes Gebiet',
-           'desc': 'Überschreibt den letzten Platz bei jedem Gebiet.'},
+           'desc': 'Eigene Datei bei jedem Gebiet. Laden mit Weiter.'},
     'es': {'row': 'Autoguardado', 'area': 'Cada zona',
-           'desc': 'Sobrescribe tu \u00faltima ranura al entrar en cada zona.'},
+           'desc': 'Guarda en su propio archivo. Carga con Continuar.'},
     'it': {'row': 'Salvataggio auto', 'area': 'Ogni area',
-           'desc': "Sovrascrive l'ultimo slot usato a ogni nuova area."},
+           'desc': "Salva in un file a parte. Si carica con Continua."},
 }
+# P6.31 follow-up: the title menu's Continue plaque (it loads the auto-save;
+# shown, with the game's own label moved to a Load Game row, only when an
+# auto-save file exists). Same bold condensed face as the Quit plaque; keep each
+# under 420 px.
+CONTINUE_TEXT = {'en': 'Continue', 'fr': 'Continuer', 'de': 'Weiter',
+                 'es': 'Continuar', 'it': 'Continua'}
+# The Load Game plaque beside it (the old Continue: the slot list). The EU
+# disc's own label for that row reads "Continue", so with two rows it would say
+# it twice: both discs use this lettering while the Continue row is there.
+LOAD_TEXT = {'en': 'Load Game', 'fr': 'Charger', 'de': 'Laden',
+             'es': 'Cargar', 'it': 'Carica'}
+for _lang, _text in CONTINUE_TEXT.items():
+    LETTERS.append(('continue_' + _lang, _text, 29, 'DejaVuSansCondensed-Bold.ttf'))
+for _lang, _text in LOAD_TEXT.items():
+    LETTERS.append(('loadgame_' + _lang, _text, 29, 'DejaVuSansCondensed-Bold.ttf'))
 for _lang, _t in AUTOSAVE_TEXT.items():
     LETTERS.append(('opt_as_row_' + _lang, _t['row'], 26, 'DejaVuSans.ttf'))
     LETTERS.append(('opt_as_area_' + _lang, _t['area'], 26, 'DejaVuSans.ttf'))

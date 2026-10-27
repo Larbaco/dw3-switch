@@ -67,15 +67,15 @@ def test_dialog_art_writes_evidence(dialog_art_bin: Path, tmp_path: Path):
     names = {p.name for p in tmp_path.glob("*.ppm")}
     assert "dialog-fr-return-yes.ppm" in names
     assert "title-es-3.ppm" in names
-    assert len(names) == 5 * (4 + 4)
+    assert len(names) == 5 * (4 + 4 + 5)
 
 
-def test_options_art_selector_moved_to_four():
+def test_options_art_selector_moved_to_five():
     """The Port options screen is art state 4 since the title gained a fourth
     row (DW3_TITLE_ART_OPTIONS); the hosts' atlas order follows it."""
     header = (SRC / "title_overlay_art.h").read_text()
-    assert "DW3_TITLE_MENU_ROWS = 4, DW3_TITLE_ART_OPTIONS = 4" in header
+    assert "DW3_TITLE_MENU_ROWS = 5, DW3_TITLE_ART_OPTIONS = 5" in header
     for host in (SRC / "title_menu_overlay.c",
                  ROOT / "platforms/switch/psyz_backend/nx_title_overlay.c"):
         text = host.read_text()
-        assert "STATE_COUNT = 6" in text and "STATE_OPTIONS = 5" in text, host.name
+        assert "STATE_COUNT = 7" in text and "STATE_OPTIONS = 6" in text, host.name

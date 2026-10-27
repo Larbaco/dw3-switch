@@ -1,16 +1,15 @@
-/* P6.31 auto-save (off by default): policy, target and the write.
- * Design and the defaults chosen without the owner: docs/P6.31_AUTOSAVE.md.
+/* P6.31 auto-save (off by default): policy, the file and the load.
+ * Design: docs/P6.31_AUTOSAVE.md.
  *
- * The game's card file has room for exactly three saves (header, icons, info
- * section and three data copies fill 0x7B00 of the 0x8000 bytes), so there is
- * no free slot for the auto-save. Default chosen, owner can change: the
- * auto-save goes to the slot the player last saved to or loaded from, and the
- * player's version of that slot is first copied aside (saveN.bin.pre-auto),
- * once, before the first auto-save writes over it.
+ * Owner decision 2026-10-26: the auto-save is its own card file in the card
+ * folder (autosave.bin, the same 32 KiB card format, one save in slot 0). It
+ * never touches save0.bin / save1.bin. The title screen's Continue loads it
+ * when it exists.
  *
- * The game side (patches 0140, 0141) only asks dw3_autosave_field_idle at the
- * field's idle frame, and hands a snapshot to dw3_autosave_commit when it was
- * told to. With the option OFF the first call returns at once. */
+ * The game side (patches 0140, 0141, 0142) asks dw3_autosave_field_idle at the
+ * field's idle frame, hands a snapshot to dw3_autosave_commit when told to, and
+ * loads through dw3_autosave_load. With the option OFF the first call returns
+ * at once. */
 #include "port_autosave.h"
 #include "port_options.h"
 #include "memcard_host.h"
@@ -31,18 +30,12 @@
 #endif
 #endif
 
-#define AS_PLAYTIME_HOURS 4
-#define AS_PLAYTIME_MINUTES 6
-#define AS_PLAYTIME_SECONDS 8
 #define AS_SUMMARY_NAME 0x18
+#define AS_FILE_NAME "DW3-AUTOSAVE"
 
 static int g_mode_override = -1;
-static int g_port = -1;
-static int g_slot = -1;
 static int g_last_mode = -1;
-/* 1 while the target slot holds what the player saved or loaded, 0 once an
- * auto-save wrote it (a later manual save or load sets it again). */
-static int g_target_manual;
+static int g_file_ok = -1; /* cached validity of autosave.bin, -1 = unknown */
 static unsigned g_count;
 
 const char *dw3_autosave_skip_name(Dw3AutosaveVerdict v) {
@@ -101,20 +94,10 @@ int dw3_autosave_mode(void) {
 #endif
 }
 
-int dw3_autosave_target_port(void) {
-    return g_port;
-}
-
-int dw3_autosave_target_slot(void) {
-    return g_slot;
-}
-
 void dw3_autosave_test_reset(void) {
     g_mode_override = -1;
-    g_port = -1;
-    g_slot = -1;
     g_last_mode = -1;
-    g_target_manual = 0;
+    g_file_ok = -1;
     g_count = 0;
 }
 
@@ -137,7 +120,7 @@ int dw3_autosave_field_idle(const Dw3AutosaveField *f) {
     ctx.frozen = f->frozen != 0;
     ctx.mode = f->mode;
     ctx.last_mode = g_last_mode;
-    ctx.has_target = g_port >= 0 && g_slot >= 0;
+    ctx.has_target = 1; /* its own file: always a place to write */
     v = dw3_autosave_decide(&ctx);
     if (dw3_autosave_verdict_is_transient(v) ||
         v == DW3_AUTOSAVE_SKIP_SAME_AREA) {
@@ -148,8 +131,8 @@ int dw3_autosave_field_idle(const Dw3AutosaveField *f) {
     }
     g_last_mode = f->mode;
     if (v == DW3_AUTOSAVE_GO) {
-        AS_INFO("dw3-autosave: area change to mode 0x%x: saving to card %d "
-                "slot %d", f->mode, g_port, g_slot);
+        AS_INFO("dw3-autosave: area change to mode 0x%x: saving to "
+                "autosave.bin", f->mode);
         return 1;
     }
     AS_INFO("dw3-autosave: mode 0x%x: not saved (%s)", f->mode,
@@ -157,36 +140,68 @@ int dw3_autosave_field_idle(const Dw3AutosaveField *f) {
     return 0;
 }
 
-void dw3_autosave_note_loaded(int port, int slot) {
-    g_port = port;
-    g_slot = slot;
-    g_last_mode = -1;
-    g_target_manual = 1;
-    if (dw3_autosave_mode() == DW3_AUTOSAVE_AREA) {
-        AS_INFO("dw3-autosave: target is card %d slot %d (loaded)", port,
-                slot);
-    }
+void dw3_autosave_note_loaded(void) {
+    g_last_mode = -1; /* loading is not an area change */
 }
 
-void dw3_autosave_note_saved(int port, int slot) {
-    g_port = port;
-    g_slot = slot;
-    g_target_manual = 1;
-    if (dw3_autosave_mode() == DW3_AUTOSAVE_AREA) {
-        AS_INFO("dw3-autosave: target is card %d slot %d (saved)", port,
-                slot);
+/* Whether autosave.bin holds a save: a DW3 card (info magic and checksum),
+ * slot 0 named, and a data slot with a good checksum and version byte.
+ * Returns its SAVE_REGION_*, or 0. */
+static int as_check_file(unsigned char *out_slot) {
+    static unsigned char slot[SAVE_SLOT_STRIDE];
+    unsigned char info[SAVE_INFO_SIZE];
+    int region;
+
+    if (memcard_host_ensure(MEMCARD_HOST_AUTO) != 0 ||
+        !memcard_host_has_file(MEMCARD_HOST_AUTO) ||
+        memcard_host_file_read(MEMCARD_HOST_AUTO, SAVE_INFO_OFFSET, info,
+                               SAVE_INFO_SIZE) != SAVE_INFO_SIZE ||
+        memcard_host_file_read(MEMCARD_HOST_AUTO, SAVE_DATA_OFFSET, slot,
+                               SAVE_SLOT_STRIDE) != (int)SAVE_SLOT_STRIDE) {
+        return 0;
     }
+    if (info[4] != 'D' || info[5] != 'M' || info[6] != 'W' || info[7] != '3' ||
+        info[0] != save_xor(info + 4, SAVE_INFO_SIZE - 4) || info[8] == '\0') {
+        return 0;
+    }
+    region = save_slot_region(slot);
+    if (region != SAVE_REGION_NONE && out_slot != NULL) {
+        memcpy(out_slot, slot, SAVE_SLOT_STRIDE);
+    }
+    return region;
 }
 
 void dw3_autosave_title_started(void) {
-    g_port = -1;
-    g_slot = -1;
     g_last_mode = -1;
-    g_target_manual = 0;
+    g_file_ok = as_check_file(NULL) != 0;
+    if (g_file_ok) {
+        AS_INFO("dw3-autosave: autosave.bin found: Continue loads it");
+    }
 }
 
-static int as_u16(const unsigned char *p) {
-    return (short)(p[0] | (p[1] << 8));
+int dw3_autosave_file_present(void) {
+    if (g_file_ok < 0) {
+        g_file_ok = as_check_file(NULL) != 0;
+    }
+    return g_file_ok;
+}
+
+int dw3_autosave_load(unsigned char *dst, int size, int region) {
+    static unsigned char slot[SAVE_SLOT_STRIDE];
+
+    if (dst == NULL || size <= 0 || (unsigned)size > SAVE_SLOT_STRIDE ||
+        as_check_file(slot) != region) {
+        AS_WARN("dw3-autosave: Continue: autosave.bin cannot be loaded");
+        return -1;
+    }
+    memcpy(dst, slot, (size_t)size);
+    AS_INFO("dw3-autosave: Continue loads autosave.bin");
+#if defined(DW3_CHEATS) && !defined(DW3_AUTOSAVE_TEST)
+    /* P6.20: the cheat mark follows the file (autosave.cheats). */
+    dw3_cheats_save_loaded(MEMCARD_HOST_AUTO, 0, dst, size);
+#endif
+    dw3_autosave_note_loaded();
+    return 0;
 }
 
 static void as_put32(unsigned char *p, int v) {
@@ -194,12 +209,6 @@ static void as_put32(unsigned char *p, int v) {
     p[1] = (unsigned char)((v >> 8) & 0xFF);
     p[2] = (unsigned char)((v >> 16) & 0xFF);
     p[3] = (unsigned char)((v >> 24) & 0xFF);
-}
-
-static long as_seconds(const unsigned char *time12) {
-    return (long)as_u16(time12 + AS_PLAYTIME_HOURS) * 3600L +
-           (long)as_u16(time12 + AS_PLAYTIME_MINUTES) * 60L +
-           (long)as_u16(time12 + AS_PLAYTIME_SECONDS);
 }
 
 /* The 0x44-byte summary the save list shows (MemCardSave). */
@@ -223,95 +232,71 @@ int dw3_autosave_commit(const Dw3AutosaveSnapshot *snap) {
     static unsigned char old_slot[SAVE_SLOT_STRIDE];
     unsigned char old_info[SAVE_INFO_SIZE];
     unsigned char new_info[SAVE_INFO_SIZE];
-    unsigned char *summary;
-    unsigned offset;
-    int port = g_port;
-    int slot = g_slot;
-    int rc;
+    int had_file;
 
     if (snap == NULL || snap->save == NULL || snap->save_size <= 0 ||
-        (unsigned)snap->save_size > SAVE_SLOT_STRIDE || port < 0 ||
-        port >= MEMCARD_HOST_SLOTS || slot < 0 || slot >= SAVE_SLOT_COUNT) {
-        AS_WARN("dw3-autosave: not saved (bad snapshot or no target)");
+        (unsigned)snap->save_size > SAVE_SLOT_STRIDE) {
+        AS_WARN("dw3-autosave: not saved (bad snapshot)");
         return -1;
     }
-    if (!memcard_host_has_file(port)) {
-        AS_WARN("dw3-autosave: not saved: card %d has no save file", port);
+    (void)memcard_host_ensure(MEMCARD_HOST_AUTO);
+    had_file = memcard_host_has_file(MEMCARD_HOST_AUTO);
+    if (had_file) {
+        if (memcard_host_file_read(MEMCARD_HOST_AUTO, SAVE_INFO_OFFSET,
+                                   old_info, SAVE_INFO_SIZE) !=
+                SAVE_INFO_SIZE ||
+            memcard_host_file_read(MEMCARD_HOST_AUTO, SAVE_DATA_OFFSET,
+                                   old_slot, SAVE_SLOT_STRIDE) !=
+                (int)SAVE_SLOT_STRIDE) {
+            AS_WARN("dw3-autosave: not saved: autosave.bin cannot be read");
+            return -1;
+        }
+    } else if (memcard_host_create_file(MEMCARD_HOST_AUTO, AS_FILE_NAME) !=
+               0) {
+        AS_WARN("dw3-autosave: not saved: cannot create autosave.bin");
         return -1;
     }
-    offset = SAVE_DATA_OFFSET + (unsigned)slot * SAVE_SLOT_STRIDE;
-    if (memcard_host_file_read(port, SAVE_INFO_OFFSET, old_info,
-                               SAVE_INFO_SIZE) != SAVE_INFO_SIZE ||
-        memcard_host_file_read(port, offset, old_slot, SAVE_SLOT_STRIDE) !=
-            (int)SAVE_SLOT_STRIDE) {
-        AS_WARN("dw3-autosave: not saved: card %d cannot be read", port);
-        return -1;
-    }
-    /* Only a card the game wrote, and only the slot of this very game. */
-    if (old_info[4] != 'D' || old_info[5] != 'M' || old_info[6] != 'W' ||
-        old_info[7] != '3' ||
-        old_info[0] != save_xor(old_info + 4, SAVE_INFO_SIZE - 4)) {
-        AS_WARN("dw3-autosave: not saved: card %d info section is not a "
-                "DW3 card", port);
-        return -1;
-    }
-    summary = old_info + 8 + slot * SAVE_SUMMARY_SIZE;
-    if (summary[0] == '\0' ||
-        strncmp((const char *)summary, (const char *)snap->name,
-                AS_SUMMARY_NAME) != 0 ||
-        as_seconds(summary + 0x24) > as_seconds(snap->play_time)) {
-        AS_WARN("dw3-autosave: not saved: card %d slot %d holds another "
-                "game (name or play time differ)", port, slot);
-        return -1;
-    }
-    if (g_target_manual &&
-        memcard_host_snapshot(port, ".pre-auto") != 0) {
-        AS_WARN("dw3-autosave: not saved: cannot keep your version of card "
-                "%d slot %d aside (save%d.bin.pre-auto)", port, slot, port);
-        return -1;
-    }
-    if (g_target_manual) {
-        AS_INFO("dw3-autosave: your version of card %d is kept in "
-                "save%d.bin.pre-auto", port, port);
-    }
-    memcpy(new_info, old_info, SAVE_INFO_SIZE);
-    as_fill_summary(new_info + 8 + slot * SAVE_SUMMARY_SIZE, snap);
-    new_info[1] = (unsigned char)slot;
+    /* The file is ours: the info section is built whole (one save in slot 0,
+     * the other two summaries empty). A new game overwrites the old one. */
+    memset(new_info, 0, SAVE_INFO_SIZE);
+    new_info[4] = 'D';
+    new_info[5] = 'M';
+    new_info[6] = 'W';
+    new_info[7] = '3';
+    as_fill_summary(new_info + 8, snap);
     new_info[0] = save_xor(new_info + 4, SAVE_INFO_SIZE - 4);
-    if (memcard_host_file_write(port, offset, snap->save,
+    if (memcard_host_file_write(MEMCARD_HOST_AUTO, SAVE_DATA_OFFSET, snap->save,
                                 (size_t)snap->save_size) < 0 ||
-        memcard_host_file_write(port, SAVE_INFO_OFFSET, new_info,
+        memcard_host_file_write(MEMCARD_HOST_AUTO, SAVE_INFO_OFFSET, new_info,
                                 SAVE_INFO_SIZE) < 0) {
-        (void)memcard_host_file_write(port, offset, old_slot,
-                                      (size_t)snap->save_size);
-        (void)memcard_host_file_write(port, SAVE_INFO_OFFSET, old_info,
-                                      SAVE_INFO_SIZE);
-        AS_WARN("dw3-autosave: write into RAM failed; card %d unchanged",
-                port);
-        return -1;
+        AS_WARN("dw3-autosave: write into RAM failed; autosave.bin unchanged");
+        goto rollback;
     }
-    rc = memcard_host_flush(port);
-    if (rc != 0) {
-        /* The file on disk is the old one (the write goes to a .tmp first).
-         * Put the old bytes back in RAM too, so nothing else can write the
-         * auto-save later by accident, and try the old image once more. */
-        (void)memcard_host_file_write(port, offset, old_slot,
-                                      (size_t)snap->save_size);
-        (void)memcard_host_file_write(port, SAVE_INFO_OFFSET, old_info,
-                                      SAVE_INFO_SIZE);
-        AS_WARN("dw3-autosave: FAILED to write card %d (%s kept as it was)",
-                port, "your save");
-        (void)memcard_host_flush(port);
-        return -1;
+    if (memcard_host_flush(MEMCARD_HOST_AUTO) != 0) {
+        AS_WARN("dw3-autosave: FAILED to write autosave.bin (the file on "
+                "disk is as it was)");
+        goto rollback;
     }
-    g_target_manual = 0;
     g_count++;
-    AS_INFO("dw3-autosave: wrote card %d slot %d (area mode 0x%x, #%u)",
-            port, slot, snap->mode, g_count);
+    g_file_ok = 1;
+    AS_INFO("dw3-autosave: wrote autosave.bin (area mode 0x%x, #%u)",
+            snap->mode, g_count);
 #if defined(DW3_CHEATS) && !defined(DW3_AUTOSAVE_TEST)
     /* P6.20: an auto-save made after a cheat carries the cheat mark. */
-    dw3_cheats_save_written(port, slot, (int)offset, snap->save,
+    dw3_cheats_save_written(MEMCARD_HOST_AUTO, 0, SAVE_DATA_OFFSET, snap->save,
                             snap->save_size);
 #endif
     return 0;
+rollback:
+    /* The disk still has the old file (rename-atomic). Put RAM back too. */
+    if (had_file) {
+        (void)memcard_host_file_write(MEMCARD_HOST_AUTO, SAVE_DATA_OFFSET,
+                                      old_slot, SAVE_SLOT_STRIDE);
+        (void)memcard_host_file_write(MEMCARD_HOST_AUTO, SAVE_INFO_OFFSET,
+                                      old_info, SAVE_INFO_SIZE);
+        (void)memcard_host_flush(MEMCARD_HOST_AUTO);
+    } else {
+        (void)memcard_host_format_slot(MEMCARD_HOST_AUTO);
+    }
+    return -1;
 }

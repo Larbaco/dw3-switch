@@ -519,6 +519,50 @@ def as_load(version):
     return r
 
 
+def as_continue(version):
+    """P6.31 follow-up: with autosave.bin on the card the title's third row is
+    Continue and loads it at once (no slot list). Down, Down, Cross, then idle
+    in the field. The verdict is the log."""
+    r = Rec(f"{version.upper()}: P6.31 title Continue loads the auto-save (log only)")
+    m = _to_title_menu(r, version)
+    r.press(m + 10, DOWN)
+    r.press(m + 30, DOWN)            # third entry: Continue (the auto-save)
+    r.press(m + 70, CROSS)
+    r.end(m + 900)
+    return r
+
+
+def as_loadrow(version):
+    """P6.31 follow-up: the same title, one row lower: Load opens the slot
+    list, and the player's own save loads from it (not the auto-save)."""
+    r = Rec(f"{version.upper()}: P6.31 title Load opens the slot list (log only)")
+    m = _to_title_menu(r, version)
+    r.press(m + 10, DOWN)
+    r.press(m + 30, DOWN)
+    r.press(m + 50, DOWN)            # fourth entry: Load Game
+    r.press(m + 90, CROSS)
+    r.press(m + 440, CROSS)          # memory card slot 1 (port A)
+    r.press(m + 740, CROSS)          # the cursor is on the saved game: Load
+    r.press(m + 920, CROSS)          # close the "loaded" message; the field follows
+    r.end(m + XR_LOAD_FRAMES)
+    return r
+
+
+def as_title(version):
+    """P6.31 follow-up: the five-plaque title menu (an auto-save exists):
+    checkpoints with the focus on New Game, Continue, Load Game, Quit game."""
+    r = Rec(f"{version.upper()}: P6.31 title with Continue and Load rows")
+    m = _to_title_menu(r, version)
+    r.shot(m, "new-focus")
+    f = m + 20
+    for name in ("options-focus", "continue-focus", "load-focus", "quit-focus"):
+        r.press(f, DOWN)
+        r.shot(f + 20, name)
+        f += 40
+    r.end(f + 10)
+    return r
+
+
 def as_walk(version):
     """P6.31: Continue slot 1, then walk Up in a random-battle field until a
     battle starts and goes on (the encounter walk). The auto-save must not
@@ -1984,6 +2028,9 @@ def main(out):
         (out / f"{v}-xr-load.rec").write_text(xr_load(v).text(True))
         (out / f"{v}-as-load.rec").write_text(as_load(v).text(True))
         (out / f"{v}-as-walk.rec").write_text(as_walk(v).text(True))
+        (out / f"{v}-as-continue.rec").write_text(as_continue(v).text(True))
+        (out / f"{v}-as-loadrow.rec").write_text(as_loadrow(v).text(True))
+        (out / f"{v}-as-title.rec").write_text(as_title(v).text(True))
         (out / f"{v}-card-album.rec").write_text(card_album(v).text(True))
         (out / f"{v}-deck-editor.rec").write_text(deck_editor(v).text(True))
         (out / f"{v}-card-shop.rec").write_text(card_shop(v).text(True))

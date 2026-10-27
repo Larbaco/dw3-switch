@@ -1,6 +1,6 @@
-/* P6.31 auto-save (off by default). Policy, target and write live in
- * port/autosave/autosave.c; the game side is two small hooks (patches 0140,
- * 0141). Design, defaults and the open questions: docs/P6.31_AUTOSAVE.md. */
+/* P6.31 auto-save (off by default). Policy, file and load live in
+ * port/autosave/autosave.c; the game side is small hooks (patches 0140, 0141,
+ * 0142). The auto-save is its own card file, autosave.bin. Design, defaults and the open questions: docs/P6.31_AUTOSAVE.md. */
 #ifndef DW3_PORT_AUTOSAVE_H
 #define DW3_PORT_AUTOSAVE_H
 
@@ -14,7 +14,7 @@ extern "C" {
 
 enum {
     DW3_AUTOSAVE_OFF = 0,  /* the original game: nothing is ever written */
-    DW3_AUTOSAVE_AREA = 1, /* after each area change, to the last used slot */
+    DW3_AUTOSAVE_AREA = 1, /* after each area change, to autosave.bin */
     DW3_AUTOSAVE_MODE_MAX = 1
 };
 
@@ -33,8 +33,8 @@ typedef enum Dw3AutosaveVerdict {
     DW3_AUTOSAVE_SKIP_BASELINE,   /* first idle frame of a loaded or new game:
                                      the area is not "changed", only noted */
     DW3_AUTOSAVE_SKIP_SAME_AREA,  /* the area is the one already seen */
-    DW3_AUTOSAVE_SKIP_NO_TARGET,  /* the player has not saved or loaded a slot
-                                     this run, or a new game started */
+    DW3_AUTOSAVE_SKIP_NO_TARGET,  /* unused since the separate file (kept so the
+                                     verdict numbers stay) */
     DW3_AUTOSAVE_SKIP_CARD,       /* no card file for the target, or the slot
                                      holds another game */
     DW3_AUTOSAVE_SKIP_COUNT
@@ -50,7 +50,7 @@ typedef struct Dw3AutosaveCtx {
     int frozen;          /* FieldState.frozen: banner or fade */
     int mode;            /* the field mode now */
     int last_mode;       /* the mode seen at the last decision, -1 unknown */
-    int has_target;      /* a slot was loaded or saved this run */
+    int has_target;      /* always 1 since the separate file */
 } Dw3AutosaveCtx;
 
 /* The decision. Transient reasons (battle, busy, transition, no menu) do not
@@ -76,14 +76,21 @@ typedef struct Dw3AutosaveField {
 } Dw3AutosaveField;
 int dw3_autosave_field_idle(const Dw3AutosaveField *f);
 
-/* A game was loaded from `slot` of card `port`, or saved to it by the player:
- * that slot becomes the auto-save target. A load also makes the loaded area the
- * baseline (loading is not an area change). */
-void dw3_autosave_note_loaded(int port, int slot);
-void dw3_autosave_note_saved(int port, int slot);
+/* A game was loaded (any slot, or the auto-save): the loaded area is the
+ * baseline, loading is not an area change. */
+void dw3_autosave_note_loaded(void);
 /* The title menu started (new game or load follows, or a return to title):
- * no target, no baseline. */
+ * no baseline; autosave.bin is looked at again for the Continue row. */
 void dw3_autosave_title_started(void);
+/* 1 when autosave.bin holds a save this build can continue (cached at the
+ * title start and after each write). The title menu shows Load as a separate
+ * row, and Continue loads the auto-save, only then. */
+int dw3_autosave_file_present(void);
+/* Continue: copy the auto-save's game bytes (`size` = GAME_SAVE_SIZE) to
+ * dst. `region` = SAVE_REGION_US (1) or _EU (2) of this build. Checks the
+ * file again (checksum, version); -1 = cannot be loaded, dst unchanged. Marks
+ * the load for the cheat sidecar (autosave.cheats) and resets the baseline. */
+int dw3_autosave_load(unsigned char *dst, int size, int region);
 
 /* What the game side collects, from GAME (see patch 0140). `save` is the
  * game's save bytes as STGMCARD_fillSave leaves them (field position of the
@@ -100,10 +107,10 @@ typedef struct Dw3AutosaveSnapshot {
     short levels[3];
 } Dw3AutosaveSnapshot;
 
-/* Write the snapshot to the target slot: keep the player's version aside
- * (first time), write the slot and the info section, flush atomically, roll
- * the card back if the flush fails. Returns 0 on success, -1 when nothing was
- * written (the card is as it was). Never blocks beyond one flat-file write. */
+/* Write the snapshot to autosave.bin (slot 0 of a card-format file, rename-
+ * atomic; created on the first write, replaced on every one, so a new game
+ * overwrites the previous auto-save). Rolls back if the write fails. 0 on
+ * success, -1 when nothing was written. Never touches save0.bin / save1.bin. */
 int dw3_autosave_commit(const Dw3AutosaveSnapshot *snap);
 
 /* The Options screen's current mode (DW3_AUTOSAVE_*). */
@@ -114,10 +121,6 @@ int dw3_autosave_mode(void);
 int dw3_autosave_area_of_mode(int mode);
 /* The place string index the list shows (STGMCARD_places[0]: a generic one). */
 enum { DW3_AUTOSAVE_PLACE = 43 };
-
-/* Target of the next auto-save, -1 when none (tests, logs). */
-int dw3_autosave_target_port(void);
-int dw3_autosave_target_slot(void);
 
 /* Test hooks: forget the state, or choose the mode without the registry. */
 void dw3_autosave_test_reset(void);

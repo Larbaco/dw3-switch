@@ -164,7 +164,7 @@ game, except Widescreen.
 | Encounter rate | OFF / 0.5x / 1x / 1.5x / 2x | 1x | Random battles only. Story battles stay. [P6.18](P6.18_PACING.md) |
 | Text speed | Normal / Fast / Instant | Normal | How fast dialogue is typed out. Normal is the original. |
 | Battle cursor | OFF / Command / Command+Tech | OFF | The battle command menu (and with Command+Tech the technique list) opens on your last pick. [P7.9](P7.9_BATTLE_MENU_MEMORY.md) |
-| Auto-save | OFF / Each area | OFF | With Each area: at each new field area the game saves to the slot you last saved to or loaded from, and overwrites it. Nothing is saved until you have saved or loaded a slot in this run. See [Saves](#saves). [P6.31](P6.31_AUTOSAVE.md) |
+| Auto-save | OFF / Each area | OFF | With Each area: at each new field area the game saves to its own file, `autosave.bin`, never over your slots. On the title, **Continue** loads it. See [Saves](#saves). [P6.31](P6.31_AUTOSAVE.md) |
 
 The row lines on the screen are English on every disc, except the Auto-save
 row, which is in the five EU languages on the EU disc.
@@ -250,30 +250,27 @@ P6.31_AUTOSAVE.md (Auto-save, the ninth row) -->
   and are kept as `.mcr.bak`. Details: [P5.3_FLAT_SAVE](P5.3_FLAT_SAVE.md).
 - **In-game saving is manual,** as in the original game. The port flushes
   changed slots at safe points and on HOME or sleep. It never saves for you,
-  unless Auto-save is on (see below).
+  unless Auto-save is on (see below; it writes its own file).
 - **Auto-save (Options, OFF by default).** With **Each area**, the first idle
-  frame of each new field area writes the game to the slot you last saved to or
-  loaded from in this run. The write **overwrites that slot**. Loading a save
-  is not an area change: the first idle frame after a load only sets the
-  starting point, and the save happens at the next area change.
-  - Before the first auto-save of a run, your version of the whole card is
-    copied to `save<N>.bin.pre-auto` in the same folder (N is the card, 0 or 1).
-    It is made again only after you save or load a slot again, never between
-    two auto-saves. To undo an overwrite, close the game and put that file back
-    as `save<N>.bin`.
-  - It does **not** run when: no slot was saved to or loaded from in this run
-    (a new game, or nothing used yet); you are in an event, a menu, a talk,
-    a climb, an area banner or fade, or a battle is starting; the story is
-    not far enough for the field menu to open (progress 4 or more); the map
-    is not one the save list knows; or the slot is not the same character
-    name, has a longer play time than the game now, is empty, or is on a card
-    that is not a DW3 card. A refused auto-save changes nothing. A battle that
-    returns you to the same area does not count as an area change.
-  - A new game or Return to title clears the slot the auto-save would use.
-  - If a cheat changed the game, the auto-save is still made and marked, the
-    same as a manual save (see Cheat marker below).
-  - A failed write is logged and the game carries on. There is no on-screen
-    notice yet. Log lines starting `dw3-autosave` are in `dw3.log`.
+  frame of each new field area writes the game to its **own file,
+  `autosave.bin`**, in the card folder. It never touches your save slots.
+  Loading a save is not an area change: the first idle frame after a load only
+  sets the starting point.
+  - **Continue and Load.** When `autosave.bin` exists the title shows five
+    plaques: New Game, Options, **Continue** (loads the auto-save at once),
+    **Load Game** (the slot list, as the old Continue) and Quit game. Without the
+    file the title has four plaques and the third opens the slot list. Continue
+    loads the file even if the option has since been turned OFF.
+  - There is one auto-save. A new game replaces it at its first area change.
+  - It does **not** run when: you are in an event, a menu, a talk, a climb, an
+    area banner or fade, or a battle is starting; the story is not far enough
+    for the field menu to open (progress 4 or more); or the map is not one the
+    save list knows. A battle that returns you to the same area does not count.
+  - If a cheat changed the game, the auto-save is still made and marked
+    (`autosave.cheats`), and Continue keeps the game marked (see Cheat marker).
+  - A failed write is logged and the game carries on (the old auto-save stays).
+    There is no on-screen notice yet. Log lines starting `dw3-autosave` are in
+    `dw3.log`.
   - Not yet checked on a Switch OLED. Details: [P6.31_AUTOSAVE](P6.31_AUTOSAVE.md).
 - **US and EU saves are separate,** with one exception: the import below.
 - **Cross-region import (slice 1).** If a region has no save of its own, the

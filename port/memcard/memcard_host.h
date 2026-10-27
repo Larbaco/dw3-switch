@@ -23,10 +23,16 @@ extern "C" {
 #define MEMCARD_HOST_SECTOR_SIZE 128u
 #define MEMCARD_HOST_SECTORS (MEMCARD_HOST_SIZE / MEMCARD_HOST_SECTOR_SIZE)
 #define MEMCARD_HOST_SLOTS 2
+/* P6.31: a third resident file, autosave.bin, in the card format. It is not a
+ * port: the game's MemCard calls never reach it (libmcrd takes ports 0 and 1
+ * only); port/autosave/autosave.c reads and writes it. */
+#define MEMCARD_HOST_AUTO 2
+#define MEMCARD_HOST_ALL 3
 #define MEMCARD_FLAT_SIZE 0x8000u /* 4 blocks × 0x2000 */
 #define MEMCARD_FLAT_BLOCKS 4
 
-/* Directory that holds save0.bin / save1.bin (and optional legacy .mcr). */
+/* Directory that holds save0.bin / save1.bin / autosave.bin (and optional
+ * legacy .mcr). */
 int memcard_host_set_dir(const char *dir);
 
 /* P6.25 cross-region saves (slice 1). When a port has no save of its own,

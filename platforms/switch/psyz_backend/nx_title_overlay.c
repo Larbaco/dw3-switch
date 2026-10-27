@@ -62,8 +62,8 @@ enum {
     CANVAS_W = 960,
     CANVAS_H = 720,
     /* PRESS START, the four menu rows (P6.28 added Quit game), the options. */
-    STATE_COUNT = 6,
-    STATE_OPTIONS = 5,
+    STATE_COUNT = 7,
+    STATE_OPTIONS = 6,
     /* Port options screen fade, in alpha steps per frame (about 13 frames). */
     OPTIONS_FADE_STEP = 20,
     ART_TEX_H = CANVAS_H * STATE_COUNT,
