@@ -332,6 +332,9 @@ def main():
                     help="seconds without game-frame progress => HANG (default 600; the JIT is slow at boot)")
     ap.add_argument("--timeout", type=int, default=None, help="per phase seconds (default per scenario x6)")
     ap.add_argument("--scen-dir")
+    ap.add_argument("--baked-env", action="store_true",
+                    help="the NRO was built with the scenario env baked in (DW3_NX_TEST_ENV, "
+                         "tools/build_switch_game.sh): run the scenarios that need host env")
     a = ap.parse_args()
     if a.scen_dir:
         rt.SCEN_DIR = Path(a.scen_dir).expanduser().resolve()
@@ -352,10 +355,11 @@ def main():
         sel = {sc.name for sc in manifest.SCENARIOS if sc.tier in tiers}
     versions = ("us", "eu") if a.version == "both" else (a.version,)
     todo = [sc for sc in manifest.SCENARIOS if sc.name in sel and sc.version in versions]
-    for sc in [sc for sc in todo if sc.env]:
-        # The NRO has no environment for the scenario's debug aids: PC only.
-        print(f"skip {sc.name}: needs host env ({', '.join(k for k, _ in sc.env)}), PC only")
-    todo = [sc for sc in todo if not sc.env]
+    if not a.baked_env:
+        for sc in [sc for sc in todo if sc.env]:
+            # The NRO has no environment for the scenario's debug aids: PC only.
+            print(f"skip {sc.name}: needs host env ({', '.join(k for k, _ in sc.env)}), PC only")
+        todo = [sc for sc in todo if not sc.env]
     for sc in [sc for sc in todo if sc.phase_env and not sc.phase_versions]:
         # P6.31: the debug aids of a phase (a forced exit, a forced start) need
         # the host environment too.

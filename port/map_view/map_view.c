@@ -284,14 +284,10 @@ static void hud_build(void) {
     if (s.view.step == 0) snprintf(line, sizeof(line), "MAP  ZOOM FIT");
     else snprintf(line, sizeof(line), "MAP  ZOOM %.2fX", (double)zoom);
     hud_text(6, 4, line, 0xFFFFFFFFu);
-    if (s.built_ms > 0)
-        snprintf(line, sizeof(line), "SCALER: %s (BUILT IN %d MS)",
-                 dw3_mv_scaler_name(s.scaler), s.built_ms);
-    else if (s.built_ms < 0)
-        snprintf(line, sizeof(line), "SCALER: %s (FROM CACHE)",
-                 dw3_mv_scaler_name(s.scaler));
-    else
-        snprintf(line, sizeof(line), "SCALER: %s", dw3_mv_scaler_name(s.scaler));
+    /* the build time is in the log, not on screen: it varies per run and
+     * would make every capture differ */
+    snprintf(line, sizeof(line), "SCALER %d/%d: %s", s.scaler + 1,
+             MV_SCALER_COUNT, dw3_mv_scaler_name(s.scaler));
     hud_text(6, 16, line, 0xFFE070FFu);
     hud_rect(0, DW3_MV_HUD_H - 16, DW3_MV_HUD_W, DW3_MV_HUD_H, 0x000000B0u);
     hud_text(6, DW3_MV_HUD_H - 12,
@@ -378,6 +374,23 @@ static void open_view(const void *sheet, int sheet_file, int half, int home_x,
     if (!s.base.rgba) return;
     s.box.x0 = s.base.ox;
     s.box.y0 = s.base.oy;
+    if (getenv("DW3_MAP_VERIFY")) {
+        /* P6.32 phase 0, question 4.2g: which spots lie where the PS1 cursor
+         * cannot reach (its map-space reach is x 22..370, y 15 on; a spot is
+         * hit from x + 7 to x + 18 and y + 7 to y + 18) */
+        int outside = 0;
+
+        for (i = 1; i < 47; ++i) {
+            if (spot_x[i] + 18 < 22 || spot_x[i] + 7 > 370 || spot_y[i] + 18 < 15)
+                ++outside;
+        }
+        fprintf(stderr, "dw3-map: spots outside the PS1 cursor reach: %d of 46\n",
+                outside);
+        for (i = 1; i < 47; ++i) {
+            fprintf(stderr, "dw3-map: spot %d at %d,%d%s\n", i, spot_x[i],
+                    spot_y[i], visited[i - 1] ? " visited" : "");
+        }
+    }
     s.nspots = 0;
     for (i = 0; i < 47; ++i) {
         /* spot i + 1 is visited when visited[i] is set; markers sit at the
