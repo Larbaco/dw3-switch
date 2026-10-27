@@ -1894,8 +1894,8 @@ Statuses are in the [table](#status-at-a-glance).
   (2026-10-25):** built, PC US and EU replays pass, owner OLED check open.
   **Built:** the native title menu (PC SDL3 GPU and the Switch GLES overlay) has a
   fourth plaque, **Quit game** (Quitter, Beenden, Salir, Esci; authored lettering
-  like the Options plaque), the last row and a little apart from Load Game
-  (Continue). Cross opens the Yes / No window (cursor on No, the lost-progress
+  like the Options plaque), the last row (first set a little apart from Load Game, on the same pitch as the
+  others since the preview.38 OLED note). Cross opens the Yes / No window (cursor on No, the lost-progress
   warning); Yes flushes the dirty save slots (`dw3-port-quit: saves flushed`) and
   asks the host to end the session: the Switch sets the HOME exit flag
   (`dw3_nx_set_quit_requested`, so `dw3_game_main()` returns and the NRO goes back

@@ -1014,8 +1014,10 @@ with the same button caps), in the five EU languages (the US disc is English).
    code runs (`memcard_host_shutdown`, the options flush). A failed flush
    cancels the quit (`dw3-port-quit: save flush failed; quit cancelled`), where
    HOME has no choice. The HOME path itself is unchanged.
-6. **Quit is the last title row, apart from Continue.** The gap above it is
-   12 px where the other rows have 4, so it is not hit by accident.
+6. **Quit is the last title row.** It first sat apart (12 px above it where
+   the others have 4); the owner's preview.38 OLED check found the spacing
+   uneven, so it now has the same pitch as the other rows (the Yes / No
+   window still guards the action).
 7. **The release README says Quit returns to hbmenu.** One line in
    `platforms/switch/release/README.txt`.
 8. **Return to title is always visible**, decoupled from the Restart hotkey

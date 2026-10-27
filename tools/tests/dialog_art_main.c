@@ -48,6 +48,24 @@ static void write_ppm(const char *dir, const char *name, const uint8_t *rgba,
     fclose(fp);
 }
 
+/* Tops of the fully opaque plaque bodies down column x (the shadow is
+ * translucent): returns how many, and the tops in tops[]. */
+static int plaque_tops(const uint8_t *rgba, int pitch, int x, int *tops, int max) {
+    int n = 0;
+    int y;
+    int prev = 0;
+
+    for (y = 300; y < 720; y++) {
+        const int solid = rgba[(size_t)y * pitch + x * 4 + 3] == 255;
+
+        if (solid && !prev && n < max) {
+            tops[n++] = y;
+        }
+        prev = solid;
+    }
+    return n;
+}
+
 static long opaque_pixels(const uint8_t *rgba, int w, int h, int pitch, int x0,
                           int y0, int x1, int y1) {
     long n = 0;
@@ -122,7 +140,7 @@ int main(int argc, char **argv) {
                 write_ppm(dir, name, b, DW3_DIALOG_W, DW3_DIALOG_H, pitch);
             }
         }
-        /* The title's four plaques (no auto-save file): the Quit game one is drawn in the focus
+        /* The title's four plaques (no auto-save file): the Quit game one (y 540..588) is drawn in the focus
          * state and not in the others; the footer (y 610..669) is intact. */
         {
             int sel;
@@ -132,9 +150,18 @@ int main(int argc, char **argv) {
                 memset(title, 0xEE, (size_t)960 * 720 * 4);
                 dw3_pc_title_overlay_art(title, 960 * 4, sel);
                 quit_pixels[sel] = opaque_pixels(title, 960, 720, 960 * 4, 230,
-                                                 548, 730, 596);
-                CHECK(opaque_pixels(title, 960, 720, 960 * 4, 230, 384, 730, 596) > 50000);
+                                                 540, 730, 588);
+                CHECK(opaque_pixels(title, 960, 720, 960 * 4, 230, 384, 730, 588) > 50000);
                 CHECK(opaque_pixels(title, 960, 720, 960 * 4, 252, 610, 708, 669) > 1000);
+                {
+                    /* One pitch for every row, Quit game included. */
+                    int tops[8];
+                    const int n = plaque_tops(title, 960 * 4, 300, tops, 8);
+
+                    CHECK(n == 4);
+                    CHECK(n == 4 && tops[0] == 384 && tops[1] == 436 &&
+                          tops[2] == 488 && tops[3] == 540);
+                }
                 if (dir) {
                     char name[64];
                     snprintf(name, sizeof(name), "title-%s-%d", lang_name[lang], sel);
@@ -143,15 +170,23 @@ int main(int argc, char **argv) {
             }
             CHECK(quit_pixels[3] > 0 && quit_pixels[0] > 0);
             /* P6.31: with the Load row there are five plaques; Quit game is
-             * row 4 at y 570..610 and Continue is lettered (row 2). */
+             * row 4 at y 560..600 and Continue is lettered (row 2). */
             dw3_pc_title_overlay_set_load_row(1);
             for (sel = 0; sel < DW3_TITLE_MENU_ROWS; sel++) {
                 memset(title, 0xEE, (size_t)960 * 720 * 4);
                 dw3_pc_title_overlay_art(title, 960 * 4, sel);
                 quit_pixels[sel] = opaque_pixels(title, 960, 720, 960 * 4, 230,
-                                                 570, 730, 610);
-                CHECK(opaque_pixels(title, 960, 720, 960 * 4, 230, 384, 730, 610) > 50000);
+                                                 560, 730, 600);
+                CHECK(opaque_pixels(title, 960, 720, 960 * 4, 230, 384, 730, 600) > 50000);
                 CHECK(opaque_pixels(title, 960, 720, 960 * 4, 252, 611, 708, 669) > 1000);
+                {
+                    int tops[8];
+                    const int n = plaque_tops(title, 960 * 4, 300, tops, 8);
+
+                    CHECK(n == 5);
+                    CHECK(n == 5 && tops[0] == 384 && tops[1] == 428 &&
+                          tops[2] == 472 && tops[3] == 516 && tops[4] == 560);
+                }
                 if (dir) {
                     char name[64];
                     snprintf(name, sizeof(name), "title5-%s-%d", lang_name[lang], sel);

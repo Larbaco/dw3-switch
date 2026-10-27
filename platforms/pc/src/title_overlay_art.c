@@ -575,16 +575,17 @@ void dw3_pc_title_overlay_art(uint8_t *rgba,int pitch,int selected) {
         return;
     }
     for(int row=0;row<(load_row?DW3_TITLE_MENU_ROWS:DW3_TITLE_MENU_ROWS-1);row++) {
-        /* P6.28: four plaques. The first three are 48 px high on a 52 px
-         * pitch (they were 54 on 60) so the fourth, Quit game, fits above
-         * the credits; it sits a little lower, apart from Load Game, so it is
-         * not hit by accident. P6.31: with an auto-save file there are five
-         * (Continue, then Load Game): 40 px high on a 44 px pitch, Quit game
-         * still apart and its bottom edge on the credits' top. */
+        /* P6.28: four plaques, 48 px high on a 52 px pitch (they were 54 on
+         * 60) so Quit game fits above the credits. P6.31: with an auto-save
+         * file there are five (Continue, then Load Game): 40 px high on a
+         * 44 px pitch. The pitch is the same for every row, Quit game too
+         * (it was set apart by 8-10 px more, which read as uneven spacing on
+         * the Switch's screen); the last bottom edge is 588 / 600, above the
+         * credits. */
         const int compact=load_row;
         const int quit_row=load_row?4:3;
         int x=230,w=500,h=compact?40:48,focus=row==selected;
-        int y=row<quit_row?384+row*(compact?44:52):(compact?570:548);
+        int y=384+row*(compact?44:52);
         const int cut=compact?8:10;
         /* Soft optical orange halo only on the focused hardware silhouette. */
         if(focus)for(int spread=8;spread>=1;spread--)
