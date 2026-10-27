@@ -1,0 +1,25 @@
+# EU: P6.31 title with Continue and Load rows
+pad 110 0x0008
+pad 115 0x0000
+pad 160 0x0008
+pad 165 0x0000
+pad 190 0x0008
+pad 195 0x0000
+pad 220 0x0008
+pad 225 0x0000
+pad 280 0x0008
+pad 285 0x0000
+shot 390 new-focus
+pad 410 0x0040
+pad 415 0x0000
+shot 430 options-focus
+pad 450 0x0040
+pad 455 0x0000
+shot 470 continue-focus
+pad 490 0x0040
+pad 495 0x0000
+shot 510 load-focus
+pad 530 0x0040
+pad 535 0x0000
+shot 550 quit-focus
+end 580

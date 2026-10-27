@@ -180,11 +180,13 @@ Ordinary builds, memcard folders backed up. Sources:
 
 | # | Action | Expect | If it fails, send | Ticks |
 |---|---|---|---|---|
-| E2.1 | Options: Auto-save to **Each area**. Continue a save, walk through a door, wait | `dw3.log`: `target is card ... (loaded)`, then `area change ...`, then `wrote card ...` | `dw3.log` (`dw3-autosave` lines) | P6.31 |
-| E2.2 | Close, relaunch, Continue the same slot | You arrive in the new area, not where you saved; the list entry shows that area | photo | P6.31 |
-| E2.3 | Look at the card folder | `save0.bin.pre-auto` (and `save1.bin.pre-auto` for card 2) exists and holds your earlier version | folder listing | P6.31 |
-| E2.4 | New Game with the option on | Nothing written until you save once by hand | `dw3.log` | P6.31 |
-| E2.5 | Option OFF, play | No `dw3-autosave` line in `dw3.log` | `dw3.log` | P6.31 |
+| E2.0 | No `autosave.bin` in the card folder: look at the title | Four plaques as before; the third (Load Game / Continue) opens the slot list | photo | P6.31 |
+| E2.1 | Options: Auto-save to **Each area**. Load a save (progress 4 or more), walk through a door, wait | `dw3.log`: `area change ...`, then `wrote autosave.bin`; `autosave.bin` appears; `save0.bin` / `save1.bin` unchanged, no `.pre-auto` | `dw3.log` (`dw3-autosave` lines), folder listing | P6.31 |
+| E2.2 | Close, relaunch, look at the title | Five evenly spaced plaques: New Game, Options, **Continue**, **Load Game**, Quit game (EU: in the chosen language) | photo per language | P6.31 |
+| E2.3 | Continue | You arrive in the new area at once, no card screen; `dw3.log` `Continue loads autosave.bin` | photo, `dw3.log` | P6.31 |
+| E2.4 | Load Game | The slot list shows your own saves, unchanged (the old area) | photo | P6.31 |
+| E2.4b | New Game with the option on, reach progress 4, change area | `autosave.bin` replaced by the new game | `dw3.log` | P6.31 |
+| E2.5 | Option OFF with the file still there: Continue, play, change area | Continue still loads it; no `wrote autosave.bin` | `dw3.log` | P6.31 |
 | E2.6 | Feel: does the write stall a frame at an area change? | A feel report is enough (no timing line yet). Not covered by PC replays: a real SD write failure, HOME during the write | note | P6.31 ([item 6](P6.31_AUTOSAVE.md#oled-checklist-owner-us-and-eu-builds-from-this-pr)) |
 
 ### E3. Cross-region import
