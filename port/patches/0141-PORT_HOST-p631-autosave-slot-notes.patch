@@ -1,12 +1,12 @@
 Upstream-bound: no
-Subject: [PORT_HOST] P6.31 auto-save: slot loaded/saved and title notes
+Subject: [PORT_HOST] P6.31 auto-save: load baseline and title start notes
 
-P6.31 Auto-save: which slot is the auto-save's. STGMCARD_loadSave (after a
-successful load) and STGMCARD_writeSave (after a successful save) tell the port
-the card port and slot (dw3_autosave_note_loaded / _saved): that slot is where
-the next auto-save goes, so it never touches a slot the player did not use. The
-title menu's task start (new game, load, return to title) clears it. All three
-calls are inside PORT_HOST and do nothing with the option OFF.
+P6.31 Auto-save: STGMCARD_loadSave (after a successful load of a card slot)
+tells the port (dw3_autosave_note_loaded) so the loaded area is the baseline:
+loading is not an area change. The title menu's task start (new game, load,
+return to title) calls dw3_autosave_title_started, which forgets the baseline
+and looks at autosave.bin again for the Continue / Load rows (patch 0142).
+Both calls do nothing with the option OFF and no auto-save file.
 
 --- a/src/menus/memory_card/saves.c
 +++ b/src/menus/memory_card/saves.c
@@ -22,20 +22,11 @@ calls are inside PORT_HOST and do nothing with the option OFF.
                  dw3_cheats_save_loaded(saves->port, STGMCARD_funcs.slot, STGMCARD_funcs.dataBuf->bytes,
                                         sizeof(GameSave));
  #endif
-+                /* P6.31: the slot loaded is where an auto-save goes */
-+                dw3_autosave_note_loaded(saves->port, STGMCARD_funcs.slot);
++                /* P6.31: loading is not an area change (auto-save baseline) */
++                dw3_autosave_note_loaded();
                  if (getenv("DW3_FORCE_MCARD_LOAD") != NULL) {
                      fprintf(stderr, "dw3: STGMCARD force-load done, leaving\n");
                      saves->hide(saves);
-@@ -635,6 +638,8 @@
-             dw3_cheats_save_written(saves->port, STGMCARD_funcs.slot, MEMCARD_SYSTEM.card.offset,
-                                     STGMCARD_funcs.dataBuf->bytes, sizeof(GameSave));
- #endif
-+            /* P6.31: the slot saved is where an auto-save goes */
-+            dw3_autosave_note_saved(saves->port, STGMCARD_funcs.slot);
-             if (getenv("DW3_FORCE_MCARD_SAVE") != NULL) {
-                 fprintf(stderr, "dw3: STGMCARD force-save done, leaving\n");
-                 saves->hide(saves);
 --- a/src/menus/title/menu.c
 +++ b/src/menus/title/menu.c
 @@ -5,6 +5,7 @@

@@ -1,0 +1,105 @@
+Upstream-bound: no
+Subject: [PORT_HOST] P6.31 auto-save: Continue loads it, Load is its own title row
+
+P6.31 follow-up (owner decision 2026-10-26). The auto-save is a separate card
+file (autosave.bin). On the title menu, when that file exists and the native
+overlay is on, Continue (row 2) loads it and the former Continue, which opens
+the slot list, becomes a separate Load row (row 3); Quit game moves to row 4.
+Without the file the menu is exactly as before (Continue opens the slot list,
+Quit game is row 3).
+
+menus/title/menu.c: the Down limit and the Quit row follow
+dw3_port_title_quit_row(); Cross on Continue sets choice 4 when the Load row is
+there. menus/title/title.c: choice 4 starts a Continue by hand: a new game's
+state, the saved bytes (dw3_autosave_load checks the file again; the cheat mark
+of autosave.cheats follows), then the saved field mode, as the load screen's
+last step does. If the file cannot be read after all, it falls back to
+MODE_CONTINUE (the slot list).
+
+--- a/src/menus/title/menu.c
++++ b/src/menus/title/menu.c
+@@ -221,9 +221,10 @@
+         }
+         if (PAD_PRESSED(PAD_DOWN) || PAD_REPEATED(PAD_DOWN)) {
+ #if PORT_HOST
+-            /* P6.28: Quit game is the last row, apart from Continue. */
++            /* P6.28: Quit game is the last row, apart from Continue (and,
++               P6.31, from the Load row an auto-save file adds). */
+             if (task->selection < (dw3_port_title_quit_enabled() ?
+-                                   DW3_TITLE_QUIT : DW3_TITLE_CONTINUE)) {
++                                   dw3_port_title_quit_row() : DW3_TITLE_CONTINUE)) {
+                 SOUND.playSound(SOUND_CURSOR);
+                 task->selection++;
+             }
+@@ -241,7 +242,7 @@
+                 SOUND.playSound(SOUND_SELECT);
+                 break;
+             }
+-            if (task->selection == DW3_TITLE_QUIT) {
++            if (dw3_port_title_quit_enabled() && task->selection == dw3_port_title_quit_row()) {
+                 /* P6.28: ask first (Yes / No, the cursor on No). */
+                 dw3_port_confirm_open(DW3_CONFIRM_QUIT);
+                 SOUND.playSound(SOUND_SELECT);
+@@ -257,10 +258,16 @@
+         if ((++task->timer & 3) == 0) {
+             task->timer = 0;
+             if (++task->blink >= 3) {
+-                if (task->selection != 0) {
++                if (task->selection == 0) {
++                    task->choice = 1;
++#if PORT_HOST
++                } else if (task->selection == DW3_TITLE_CONTINUE && dw3_port_title_load_row()) {
++                    /* P6.31: with an auto-save file, Continue loads it (the
++                       Load row below opens the slot list) */
++                    task->choice = 4;
++#endif
++                } else {
+                     task->choice = 2;
+-                } else {
+-                    task->choice = 1;
+                 }
+                 task->nextSubstate(task);
+                 task->blink = 0;
+--- a/src/menus/title/title.c
++++ b/src/menus/title/title.c
+@@ -4,6 +4,7 @@
+ #include "menus/title.h"
+ #if PORT_HOST
+ #include "port_title_options.h"
++#include "port_autosave.h"
+ #endif
+ #if defined(DW3_TITLE_NATIVE_OVERLAY)
+ extern int dw3_port_title_logo_capture(const s32 *sheet);
+@@ -40,6 +41,32 @@
+             MEMCARD_FUNCS.setFileName();
+             GAME.funcs.requestMode(MODE_CONTINUE, 0);
+             break;
++#if PORT_HOST
++        case 4:
++            /* P6.31: Continue with an auto-save file loads it, as a Continue
++               of a slot would: a new game's state, then the saved bytes,
++               then the saved field mode. A file that cannot be read after
++               all falls back to the slot list. */
++            {
++                static u8 autosave[GAME_SAVE_SIZE];
++
++                left = 1;
++                GAME.funcs.newGame();
++                BATTLE_SETUP.clearGauges();
++                MEMCARD_FUNCS.setFileName();
++#if VERSION_US
++                if (dw3_autosave_load(autosave, GAME_SAVE_SIZE, 1) == 0) {
++#else
++                if (dw3_autosave_load(autosave, GAME_SAVE_SIZE, 2) == 0) {
++#endif
++                    memcpy(&GAME, autosave, GAME_SAVE_SIZE);
++                    GAME.funcs.requestMode(GAME.fieldMode, 0);
++                } else {
++                    GAME.funcs.requestMode(MODE_CONTINUE, 0);
++                }
++            }
++            break;
++#endif
+         case 3:
+ #if VERSION_US
+             GAME.funcs.requestMode(MODE_OPENING, 0);

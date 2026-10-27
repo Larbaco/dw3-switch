@@ -8,6 +8,7 @@
 
 extern void dw3_pc_title_menu_set_state(int active, int selected);
 extern void dw3_pc_title_menu_set_fade(int level);
+extern void dw3_pc_title_overlay_set_load_row(int on);
 
 void dw3_port_title_overlay_fade(int level) {
     dw3_pc_title_menu_set_fade(level);
@@ -42,6 +43,8 @@ void dw3_port_title_options_draw(int layer_id, int x, int y, int selected) {
         dw3_pc_title_menu_set_state(0, -2);
         return;
     }
+    /* P6.31: five plaques while an auto-save file exists (Continue + Load) */
+    dw3_pc_title_overlay_set_load_row(dw3_port_title_load_row());
     dw3_pc_title_menu_set_state(selected != -2, selected);
 }
 
