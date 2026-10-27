@@ -90,6 +90,7 @@ acceptance remains tracked separately in [P5.3_FLAT_SAVE.md](P5.3_FLAT_SAVE.md).
 | Options in battle | Select, while the command menu waits | Backspace | Minus | Port options over the held battle; no L1/R1/L2/R2 held; not during attacks or in the sub-menus; Widescreen and Cheats greyed; Triangle returns (P9.7 slice 2) |
 | Return to title from the field menu | Start, then the last row, Cross, Yes | Enter, ..., X | Plus, ..., B | Always there; the same reset as the chord, after a Yes / No question (P6.27) |
 | Quit game from the title menu | Last title row, Cross, Yes | ..., X | ..., B | Always on the native title; flushes the saves, then hbmenu (Switch) or closes the window (PC) (P6.28) |
+| Change partner on the equip panel (P6.33) | L2 / R2 | W / E | ZL / ZR | Status, Equipment, while the slot list waits (not inside the item list); previous / next party member, wraps; the slot cursor stays. Needs 2 or more partners. On by default; `items_partner_switch=0` in `port_options.cfg` turns it off. No on-screen help line yet (the panel has no free line in the five EU languages) |
 
 Hold all four restart buttons together; one activation is allowed per chord
 press. Release the chord before another attempt. There is no timed long-press

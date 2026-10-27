@@ -266,6 +266,7 @@ add_library(dw3_port_options OBJECT
   "${CMAKE_CURRENT_SOURCE_DIR}/autosave/autosave_areas.c"
   "${CMAKE_CURRENT_SOURCE_DIR}/battle_menu/battle_menu_memory.c"
   "${CMAKE_CURRENT_SOURCE_DIR}/file_cache/file_cache_host.c"
+  "${CMAKE_CURRENT_SOURCE_DIR}/items_menu/items_menu.c"
   "${CMAKE_CURRENT_SOURCE_DIR}/options/battle_options.c"
   "${CMAKE_CURRENT_SOURCE_DIR}/options/confirm.c"
   "${CMAKE_CURRENT_SOURCE_DIR}/options/field_options.c"

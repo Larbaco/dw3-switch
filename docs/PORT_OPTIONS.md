@@ -53,6 +53,7 @@ explicitly marked N/A in this note.
 | Cheats (test aid) | A **Cheats** sub-screen for hardware testing, reached with Square / Y on the Options screen: master switch, Fill bag, Instant win, Battle now and a count of saves flagged "cheat used" (a sidecar file, never the save). A second page (PR 2) has Money, Warp (13 areas), Item id, Item count and Give item. Off by default, keys `cheat_enabled` and `cheat_instant_win` in `port_options.cfg`; built in by default, removed by `DW3_CHEATS=OFF` / `--no-cheats`. Later HP / MP. See [Cheats](#cheats-p620) and ROADMAP P6.20 | Phase 6 (P6.20) |
 | Switch host | Rumble on/intensity, confirm A/B layout, `swkbd` name, CRT/sharp, system-language hint | Phase 10 (+ P4.4 / P5.3 always-on lifecycle) |
 | Restart game | Optional L1 + R1 + Start + Select in the shared PS1 pad map; OFF by default | Phase 6.9 |
+| Items menu | **Partner switch on the equip panel** (key `items_partner_switch`, 0 or 1, **default 1**, file-only: the Options window is full at nine rows, so there is no row): ZL / ZR change the party member on the Status screen's Equipment slot list without leaving ([P6.33](P6.33_ITEMS_MENU.md), patch `0128`, `DW3_ITEMS_PARTNER_SWITCH=0` forces it off for a run). A documented exception to "off by default": the owner decided on (2026-10-26) | Phase 6 |
 | Auto-save | **Auto-save** (OFF / Each area; key `autosave`, row 9): the first idle frame of a new field area writes the game to its own file, `autosave.bin`; the title's Continue loads it. Off by default; with it off the game is as before ([P6.31](P6.31_AUTOSAVE.md)) | Phase 6 (P6.31) |
 
 Defaults: **off** or equivalent to stock PS1 behaviour unless a feature is
@@ -165,6 +166,10 @@ like the others; it is not part of the `dw3-options:` boot and `saved` log lines
 keep their text, which the replay scenarios match). With it on the boot logs one extra
 line, `dw3-options: autosave=1 (...)`. A file from before the row has no key and reads
 as OFF; an invalid value (`2`, `on`, ...) is logged and reads as OFF.
+
+`items_partner_switch` (P6.33, 0 or 1, default 1) is a file-only key like `battle_menu_memory` was before its row:
+read by `dw3_port_items_partner_switch_enabled`, kept when the Options screen rewrites the file, not part of
+the `dw3-options:` log lines. A missing or invalid value reads as 1 (on).
 
 Adding a row means one entry in the registry table (`key`, default, valid
 range); nothing else in the store changes.
@@ -1113,6 +1118,14 @@ the title, drawn over the menu and the field by the native overlay (PC SDL3 GPU
 and the Switch). Up / Down choose a row, Left / Right and Cross change it,
 Triangle (B) goes back to the menu. Changes are saved at once in
 `port_options.cfg` ([Persistence](#persistence)).
+
+> **P38 (black square on the Switch).** The title's edge fade ends at 255 and the
+> Switch overlay kept that level, so the Options screen opened from the field
+> was drawn fully darkened: a black square. Replays start in the field and never
+> run the title, so neither the PC nor the Ryubing `field-options` runs saw it.
+> `nx_title_overlay.c` now ignores the fade for an in-game Options screen and
+> forgets it once the title is off screen (`nx_title_fade.h`, unit test
+> `tools/tests/test_title_fade.py`). OLED check: Title, Continue, START, OPTIONS.
 
 ### Defaults chosen (owner can change)
 

@@ -74,8 +74,8 @@ listed once, in [Pending OLED checks](#pending-oled-checks).
 | P6.29 | Save editor: external tool on the owner's own saves, builds on P6.25 (future goal) | future | [roadmap](#phase-6-goal-notes), [CROSS_REGION_SAVES](CROSS_REGION_SAVES.md) |
 | P6.30 | Help, FAQ and tips from the pause menu (future goal) | future | [roadmap](#phase-6-goal-notes) |
 | P6.31 | Auto-save, off by default | in progress (built: Options row, area-change write to its own file `autosave.bin`, title Continue loads it and the old Continue is Load; PC US and EU replays; owner OLED check open) | [P6.31_AUTOSAVE](P6.31_AUTOSAVE.md), [roadmap](#phase-6-goal-notes), [P5.3](P5.3_FLAT_SAVE.md) |
-| P6.32 | Map zoom and full-screen map (future goal) | future (design proposal, no code) | [roadmap](#phase-6-goal-notes), [P6.32](P6.32_MAP_ZOOM.md), [P6.1](P6.1_WIDESCREEN.md) |
-| P6.33 | Items menu usability redesign (future goal) | future (design proposal, no code) | [roadmap](#phase-6-goal-notes), [P6.33](P6.33_ITEMS_MENU.md), [P6.1](P6.1_WIDESCREEN.md) |
+| P6.32 | Map zoom and full-screen map (future goal) | design (owner decisions recorded) | [roadmap](#phase-6-goal-notes), [P6.32](P6.32_MAP_ZOOM.md), [P6.1](P6.1_WIDESCREEN.md) |
+| P6.33 | Items menu usability redesign | in progress (owner decisions recorded 2026-10-26; phase 1 partner cycle built: patch 0128, ZL / ZR, on by default; phases 2, 3 and 4 open; owner OLED check open) | [roadmap](#phase-6-goal-notes), [P6.33](P6.33_ITEMS_MENU.md), [P6.1](P6.1_WIDESCREEN.md) |
 | P7.1 | Inventory and boundaries | done | [COMMUNITY_QOL](COMMUNITY_QOL.md) |
 | P7.2 | Patched EU disc as data source | open | [COMMUNITY_QOL](COMMUNITY_QOL.md) |
 | P7.3 | Binary-patch limits | in progress | [COMMUNITY_QOL](COMMUNITY_QOL.md) |
@@ -2023,11 +2023,22 @@ Statuses are in the [table](#status-at-a-glance).
   options. Recommendation: fill the picture first (option A), then integer
   zoom steps with a port-side pan (option B), each behind a Port option that
   is off by default, with no save change.
-  Done when (proposed): the map zooms and fills the screen on US and EU, the
-  default is bit-identical, and the P6.15 map replay scenarios still match.
-  Related: P6.1, P9.9.
-- [ ] **P6.33 Items menu usability redesign (future goal).** Dated 2026-10-24,
-  owner request. Goal note only, nothing started, no code. Make the Items
+  **Owner decisions (2026-10-26/27):** build option D, a port-drawn full-screen
+  map as a **new second screen** (the game's Map entry unchanged, no turbo),
+  opened from the game's Map screen with Square (an optional field hotkey
+  later), non-integer zoom steps with L/R, remappable, Switch and PC, US and
+  EU, one Port option key, widescreen only; option B (integer zoom with pan) is
+  the fallback. The picture may be the captured map, an original fan-art map
+  committed under `assets/map/` (with LICENSE and PROVENANCE.md), or a
+  user-generated local pack. Phase 0 feasibility, upscale survey and the plan
+  (patches 0146-0159 proposed) are in [P6.32_MAP_ZOOM.md](P6.32_MAP_ZOOM.md).
+  Done when (proposed): the new map screen opens from the Map screen on US and
+  EU on PC and the Switch, zooms and pans over the full image, shows the
+  game's area names, the default is bit-identical, and the P6.15 map replay
+  scenarios still match.
+- [ ] **P6.33 Items menu usability redesign (in progress).** Dated 2026-10-24,
+  owner request. Owner decisions recorded 2026-10-26 in section 5 of the
+  design note (ZL / ZR cycle, on by default, 4:3 and 16:9, side list dropped). Make the Items
   menu easier to use: switch the Digimon while equipping, and see the bag
   items while doing it. This is separate from the P6.1 sub-item "Items menu
   (16:9)", which is only the layout and the open transition (patches `0075`,

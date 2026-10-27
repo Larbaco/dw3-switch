@@ -618,6 +618,28 @@ for _v, _ids in (("us", (0x159, 0x1FA, 0x1C2, 0x158, 0x1F9)),
                                   r"gutter 0 px per side" % _status),),
                   note="the field menu's screens in widescreen: panels at the 16:9 edges (patch 0076)"))
 
+# P6.33 phase 1 (patch 0128): ZL / ZR (R2 / L2 in the recording) change the
+# partner on the equip panel's slot list. The env and cfg of menu-screens;
+# The party has 3 members: R2 goes 1 -> 2, R2 wraps 2 -> 0, L2 wraps back 0 -> 2,
+# R2 again 2 -> 0. `-43` runs the same recording with Widescreen off (the 4:3 layout). The log
+# line "partner switch" carries the bag and worn totals, which must be the
+# same on every switch (switching writes nothing in GAME). References come
+# from the patched build. PC only (env).
+for _v, _ids in (("us", (0x159, 0x1FA, 0x1C2, 0x158, 0x1F9)),
+                 ("eu", (0x167, 0x208, 0x1D1, 0x166, 0x207))):
+    _fight, _menu, _report, _field, _status = _ids
+    for _suffix, _cfg in (("", (("encounter_rate", "2"),)),
+                          ("-43", (("encounter_rate", "2"), ("widescreen", "0")))):
+        _add(Scenario(f"{_v}-items-equip-switch{_suffix}", _v, "full", turbo=4, timeout=400,
+                      phases=(f"{_v}-items-equip-switch",), env=_ITEMS_ENV, cfg=_cfg,
+                      expect_restore=((_fight, M), (_menu, S), (_report, M), (_field, M),
+                                      (_status, M)),
+                      expect_log=((0, r"partner switch member 1 -> 2 .*bag=(\d+) worn=(\d+)"
+                                      r"(?s:.*)partner switch member 2 -> 0 .*bag=\1 worn=\2"
+                                      r"(?s:.*)partner switch member 0 -> 2 .*bag=\1 worn=\2"
+                                      r"(?s:.*)partner switch member 2 -> 0 .*bag=\1 worn=\2"),),
+                      note="R2 / L2 change the partner on the equip slot list, counts unchanged (patch 0128)"))
+
 # P6.1 (patches 0080, 0081, 0082): the three screens the owner's preview.31-rc1
 # feedback named. PC only (env), references from the patched build.
 #  map-screen: the env and cfg of menu-screens; Map opens at frame 4000 and the

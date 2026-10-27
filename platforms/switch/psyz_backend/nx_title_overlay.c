@@ -28,6 +28,7 @@
  * ensure_gl (restart, Return to title, EU language select), the Yes / No one
  * by the draw. */
 #include "nx_title_overlay.h"
+#include "nx_title_fade.h"
 
 #include "../../pc/src/title_options_cache.h"
 #include "../../pc/src/title_overlay_art.h"
@@ -121,6 +122,8 @@ static int s_options_cache_failed_logged;
 static int s_options_cache_warm;
 /* Port options screen opacity, 0..255. */
 static int s_options_alpha;
+/* The screen on view (or fading out) was opened in game (P38). */
+static int s_options_in_game;
 
 static GLuint compile_shader(GLenum type, const char *src) {
     GLuint sh = glCreateShader(type);
@@ -559,6 +562,17 @@ void dw3_nx_title_overlay_draw(int vx, int vy, int vw, int vh) {
     }
     const int title_visible = s_overlay_active || logo || s_options_alpha;
     const int dialog = s_dialog_active;
+    /* P38: the edge fade of the last title visit ended at 255; it must not
+     * darken the Options screen opened in game (a black square). */
+    if (options_open) {
+        s_options_in_game = dw3_port_options_in_game();
+    } else if (!s_options_alpha) {
+        s_options_in_game = 0;
+    }
+    const int in_game_options = s_options_alpha && s_options_in_game;
+
+    s_fade = dw3_title_fade_keep(s_fade, s_overlay_active || logo ||
+                                             (s_options_alpha && !in_game_options));
 
     if (title_visible) {
         s_title_idle = 0;
@@ -631,7 +645,8 @@ void dw3_nx_title_overlay_draw(int vx, int vy, int vw, int vh) {
     glUniform1i(s_uni_tex, 0);
     /* Follow the title's edge fade: it subtracts its level at the centre and
      * twice that at the edges; the overlay spans both, so use 1.5x. */
-    glUniform1f(s_uni_sub, (float)s_fade * 1.5f / 255.0f);
+    glUniform1f(s_uni_sub, (float)dw3_title_fade_level(s_fade, in_game_options) *
+                           1.5f / 255.0f);
     glUniform1f(s_uni_alpha, 1.0f);
     glActiveTexture(GL_TEXTURE0);
 

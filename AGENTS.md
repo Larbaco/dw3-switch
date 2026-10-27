@@ -60,6 +60,11 @@ Rules:
 - Put reusable glue under `port/`, not inside the Switch tree.
 - Do **not** vend game assets into git. `disks/`, `romfs/game/`, `*.bin`,
   `*.cue`, `*.iso` are gitignored on purpose.
+  Exception (owner-approved 2026-10-27): original artwork created for this port
+  (fan art) may be committed under `assets/` if it has a LICENSE and a
+  PROVENANCE.md stating that no extracted or derived game asset (no tracing,
+  img2img or upscaling of game images) was used. Anything derived from the
+  owner's disc, including upscales, stays out of git.
 - Treat `vendor/dw3_decomp/` as upstream. Prefer patches/glue in `port/` or
   `platforms/`. Only edit the submodule when there is a clear upstream-bound
   fix, and say so explicitly.
@@ -78,7 +83,10 @@ Rules:
 4. **Overlays/stages need an explicit loader story.** Do not assume fixed PS1
    VRAM addresses work as-is on AArch64.
 5. **Own-disc only.** Never add, commit, or upload original game files, BIOS,
-   or redistributable ROMs.
+   or redistributable ROMs. Exception (owner-approved 2026-10-27): original
+   fan art for this port may be committed under `assets/` as described in the
+   "Do not vend game assets" rule above; anything derived from the disc stays
+   out of git.
 6. **Keep Phase 0/1 honest.** A minimal `.nro` (boot, framebuffer, pad, log)
    comes before linking game code.
 7. **Do not overclock.** Leave the CPU and GPU clocks where the console
