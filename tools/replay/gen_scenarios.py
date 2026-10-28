@@ -2018,6 +2018,117 @@ def field_options(version, phase=1):
     return r
 
 
+# --- P6.30 technical help ---------------------------------------------------
+# The Help group is the fifth plaque of the group list (Display, Sound,
+# Gameplay, Saves, then Help; Cheats would sit before it once its master switch
+# is on). The L1 / R1 masks are the page keys of the book.
+GRP_HELP = 4
+
+
+def _help_reading(r, f):
+    """In the help (the page list is up): the list, the second page (Controls)
+    scrolled by a line and by screenfuls to its end, the next two pages, two pages
+    back, Back to the list, Back out of the help to the group list. Returns the frame after."""
+    r.shot(f + 30, "help-list")
+    f = _keys(r, f + 40, DOWN)           # Controls
+    r.shot(f + 10, "help-list-controls")
+    f = _keys(r, f + 20, CROSS)          # open the page
+    r.shot(f + 30, "controls-top")
+    f = _keys(r, f + 40, DOWN, DOWN, DOWN)
+    r.shot(f + 10, "controls-line3")
+    f = _keys(r, f + 20, RIGHT, RIGHT, RIGHT)   # screenfuls to the end
+    r.shot(f + 10, "controls-end")
+    f = _keys(r, f + 20, R1)             # next page: Port hotkeys
+    r.shot(f + 10, "hotkeys-top")
+    f = _keys(r, f + 20, R1)             # Turbo (the Setup page is not a checkpoint: it
+    r.shot(f + 10, "turbo-top")          # shows the run's temp folder; help_main.c checks it)
+    f = _keys(r, f + 20, L1, L1)         # back two pages: Controls again
+    r.shot(f + 10, "controls-back")
+    f = _keys(r, f + 20, TRIANGLE)       # to the page list
+    r.shot(f + 10, "help-list-back")
+    f = _keys(r, f + 20, TRIANGLE)       # out of the help: the group list
+    r.shot(f + 10, "options-after")
+    return f + 20
+
+
+def help_title(version):
+    """P6.30: title -> Options -> Help, the pages as above, then Triangle
+    closes the Options screen. Checkpoints: `options-list` (the group list with
+    the new Help plaque), then `_help_reading`."""
+    r = Rec(f"{version.upper()}: P6.30 technical help from the title")
+    m = _to_title_menu(r, version)
+    r.press(m, DOWN)                     # New Game -> Options
+    r.press(m + 20, CROSS)               # open the Options screen
+    r.shot(m + 60, "options-list")
+    f = _group(r, m + 70, GRP_DISPLAY, GRP_HELP)
+    f = _help_reading(r, f)
+    r.press(f, TRIANGLE)                 # close Options
+    r.end(f + 60)
+    return r
+
+
+def help_field(version):
+    """P6.30: the help from the field menu's OPTIONS row (env in the manifest, as
+    `field_options`): the same reading, then Triangle closes the Options screen
+    and the field menu has the pad again."""
+    r = Rec(f"{version.upper()}: P6.30 technical help from the field menu (env in manifest)")
+    f = _field_options_open(r, shots=False, shot_last=False)
+    f = _group(r, f, GRP_DISPLAY, GRP_HELP)
+    f = _help_reading(r, f)
+    r.press(f, TRIANGLE)                 # close Options: back on the field menu
+    r.press(f + 60, DOWN)                # the menu has the pad again
+    r.shot(f + 120, "menu-alive")
+    r.end(f + 180)
+    return r
+
+
+def help_battle(version):
+    """P6.30: the help from the battle's Options (Select at the command menu; env
+    in the manifest as `battle_options`): the page list, Controls and its end,
+    then Triangle three times: the battle is released at the command menu."""
+    r = Rec(f"{version.upper()}: P6.30 technical help from the battle (env in manifest)")
+    r.press(BO_SELECT, SELECT)
+    f = BO_SELECT + 50
+    f = _group(r, f, GRP_DISPLAY, GRP_HELP)
+    r.shot(f + 30, "help-list")
+    f = _keys(r, f + 40, DOWN, CROSS)    # Controls
+    r.shot(f + 30, "controls-top")
+    f = _keys(r, f + 40, RIGHT, RIGHT, RIGHT)
+    r.shot(f + 10, "controls-end")
+    f = _keys(r, f + 20, TRIANGLE, TRIANGLE, TRIANGLE)   # list, group list, close
+    r.shot(f + 40, "battle-after")
+    r.end(f + 120)
+    return r
+
+
+def help_lang(idx):
+    """P6.30 (EU): the help in one of the other four languages. The files are
+    stubs for now, so the pages show English and the log has the fallback line;
+    the screen's lettering (group name, header) is in the language already."""
+    lang = EU_LANGS[idx]
+    r = Rec(f"EU: P6.30 technical help, language {lang} (stub: English fallback)")
+    f = 90
+    for _ in range(idx):
+        r.press(f, DOWN)
+        f += 15
+    c = f + 20
+    r.press(c, START)                    # confirm the language
+    for k in (50, 80, 110):              # skip splash / FMV stages
+        r.press(c + k, START)
+    r.press(c + 170, START)              # PRESS START
+    m = c + 270
+    r.press(m, DOWN)                     # Start -> Options
+    r.press(m + 20, CROSS)
+    r.shot(m + 60, "options-list")
+    f = _group(r, m + 70, GRP_DISPLAY, GRP_HELP)
+    r.shot(f + 30, "help-list")
+    f = _keys(r, f + 40, DOWN, CROSS)
+    r.shot(f + 30, "controls-top")
+    f = _keys(r, f + 40, TRIANGLE, TRIANGLE, TRIANGLE)
+    r.end(f + 60)
+    return r
+
+
 def turbo_menu(version):
     """P6.4: menus run at 1.5x under turbo (env in the manifest: `field_options`
     env, turbo 4; no checkpoints, the proof is the `dw3-turbo:` log). Report ->
@@ -2260,6 +2371,9 @@ def main(out):
             (out / f"{v}-field-options-p{phase}.rec").write_text(
                 field_options(v, phase).text(True))
         (out / f"{v}-turbo-menu.rec").write_text(turbo_menu(v).text(True))
+        (out / f"{v}-help-title.rec").write_text(help_title(v).text(True))
+        (out / f"{v}-help-field.rec").write_text(help_field(v).text(True))
+        (out / f"{v}-help-battle.rec").write_text(help_battle(v).text(True))
         (out / f"{v}-field-options-cheats.rec").write_text(
             field_options_cheats(v).text(True))
         (out / f"{v}-field-options-release.rec").write_text(
@@ -2271,6 +2385,8 @@ def main(out):
         if lang != "en":
             (out / f"eu-title-quit-{lang}.rec").write_text(title_quit_lang(i).text(True))
             (out / f"eu-field-options-{lang}.rec").write_text(field_options_lang(i).text(True))
+            if lang == "fr":
+                (out / f"eu-help-{lang}.rec").write_text(help_lang(i).text(True))
     for v in ("us", "eu"):
         for name, fn in RESTART_RECS:
             (out / f"{v}-{name}.rec").write_text(fn(v).text(True))

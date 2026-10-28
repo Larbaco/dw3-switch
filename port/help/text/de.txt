@@ -1,0 +1,12 @@
+# DW3NX technical help, German text (P6.30). TODO STUB.
+# The base game's languages need the help at launch (owner decision 2026-10-28,
+# docs/P6.30_HELP.md Q3). Until this file carries every key of en.txt, the help
+# falls back to English for de and logs it. Translate the values only: keep the
+# keys, the qualifiers, and the {btn:..} {path:..} tokens as in en.txt.
+# tools/generate_help_assets.py --check warns while this file is a stub, and
+# --release fails.
+
+@format = 1
+@book = help
+@lang = de
+@status = todo stub, falls back to English

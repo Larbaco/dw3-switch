@@ -6,6 +6,7 @@
 #include "port_audio.h"
 #include "port_autosave.h"
 #include "port_battle_menu.h"
+#include "port_help.h"
 #include "port_options_cfg.h"
 #include "port_options_groups.h"
 #include "port_pacing.h"
@@ -33,6 +34,7 @@
 #endif
 
 #ifndef DW3_PORT_OPTIONS_TEST
+#include "memcard_host.h"
 #include "port_text.h"
 #include <libgpu.h>
 #include "engine/pad.h"
@@ -77,6 +79,7 @@ typedef struct Dw3PortOptStub {
 } Dw3PortOptStub;
 
 static int g_open;
+static void po_help_shutdown(void);
 /* P9.7: 1 while the screen was opened from the field menu (not the title):
  * the rows that cannot change safely in game are locked (row_locked). */
 static int g_in_game;
@@ -363,6 +366,7 @@ void dw3_port_options_close(void) {
         return;
     }
     po_watch_report("closed");
+    po_help_shutdown();
     fprintf(stderr, "dw3-port-options: open for %.0f ms\n",
             po_now_ms() - g_open_ms);
     g_open = 0;
@@ -861,6 +865,8 @@ int dw3_port_options_restart_enabled(void) {
 #define po_key_right() po_pressed(PO_BIT_RIGHT)
 #define po_key_confirm() (po_pressed(PO_BIT_CROSS) || po_pressed(PO_BIT_CIRCLE))
 #define po_key_square() po_pressed(15) /* PAD_SQUARE */
+#define po_key_prev() po_pressed(10)   /* PAD_L1 */
+#define po_key_next() po_pressed(11)   /* PAD_R1 */
 #else
 #define po_key_back() po_pressed(PAD_TRIANGLE)
 #define po_key_up() (po_pressed(PAD_UP) || PAD_REPEATED(PAD_UP))
@@ -869,7 +875,147 @@ int dw3_port_options_restart_enabled(void) {
 #define po_key_right() (po_pressed(PAD_RIGHT) || PAD_REPEATED(PAD_RIGHT))
 #define po_key_confirm() (po_pressed(PAD_CROSS) || po_pressed(PAD_CIRCLE))
 #define po_key_square() po_pressed(PAD_SQUARE)
+#define po_key_prev() po_pressed(PAD_L1)
+#define po_key_next() po_pressed(PAD_R1)
 #endif
+
+/* --- P6.30 technical help ------------------------------------------------
+ * The Help group is a screen of its own (port/help/help.c), like Cheats: while
+ * it is open it has the pad, and the native overlay shows its layer instead of
+ * the Options layer. A host test build only tracks that it is open (the real
+ * flow is tools/tests/help_main.c). */
+#ifdef DW3_PORT_OPTIONS_TEST
+static int g_test_help_open;
+#endif
+
+static int po_help_open_p(void) {
+#ifdef DW3_PORT_OPTIONS_TEST
+    return g_test_help_open;
+#else
+    return dw3_help_is_open();
+#endif
+}
+
+#ifndef DW3_PORT_OPTIONS_TEST
+/* {path:root}: the runtime folder above the region's (sdmc:/switch/dw3/). */
+static char g_help_root[DW3_OPTCFG_PATH_MAX];
+
+static const char *po_help_root(void) {
+    const char *dir = dw3_port_options_cfg_dir();
+    size_t n = strlen(dir);
+
+    if (n == 0 || n >= sizeof(g_help_root) - 2) {
+        return "";
+    }
+    memcpy(g_help_root, dir, n + 1);
+    while (n > 0 && (g_help_root[n - 1] == '/' || g_help_root[n - 1] == '\\')) {
+        g_help_root[--n] = '\0';
+    }
+    if (n >= 3 && (strcmp(g_help_root + n - 3, "/us") == 0 ||
+                   strcmp(g_help_root + n - 3, "/eu") == 0)) {
+        g_help_root[n - 2] = '\0';
+    } else {
+        g_help_root[n] = '/';
+        g_help_root[n + 1] = '\0';
+    }
+    return g_help_root;
+}
+#endif
+
+#ifndef DW3_PORT_OPTIONS_TEST
+/* Hand the help's view to the native overlay (or take it away). */
+static void po_help_present(void) {
+#if defined(DW3_TITLE_NATIVE_OVERLAY)
+    dw3_pc_help_set_view(dw3_help_is_open() ? dw3_help_view() : NULL);
+#endif
+}
+#endif
+
+static void po_open_help(void) {
+#ifdef DW3_PORT_OPTIONS_TEST
+    g_test_help_open = 1;
+    fprintf(stderr, "dw3-port-options: group open help (test)\n");
+    po_sound(PO_SND_SELECT);
+#else
+    Dw3HelpConfig c;
+
+    memset(&c, 0, sizeof(c));
+    c.from = !g_in_game ? DW3_HELP_FROM_TITLE
+             : strcmp(g_where, "field menu") == 0 ? DW3_HELP_FROM_FIELD
+                                                  : DW3_HELP_FROM_BATTLE;
+    c.in_game = g_in_game;
+#if VERSION_EU
+    c.region = DW3_PAGES_EU;
+#else
+    c.region = DW3_PAGES_US;
+#endif
+#ifdef __SWITCH__
+    c.platform = DW3_PAGES_SWITCH;
+#else
+    c.platform = DW3_PAGES_PC;
+#endif
+#if defined(DW3_TITLE_NATIVE_OVERLAY)
+    c.lang = dw3_pc_title_overlay_get_options_language();
+#endif
+    c.root = po_help_root();
+    c.memcard = memcard_host_dir();
+#ifdef DW3_NRO_VERSION_STR
+    c.version = DW3_NRO_VERSION_STR;
+#endif
+    if (dw3_help_open(&c) != 0) {
+        PO_WARN("dw3-port-options: help cannot be opened (see dw3-help)");
+        return;
+    }
+    PO_INFO("dw3-port-options: group open help (%s)",
+            g_in_game ? "in game" : "title");
+    po_sound(PO_SND_SELECT);
+    po_help_present();
+#endif
+}
+
+static void po_help_shutdown(void) {
+#ifndef DW3_PORT_OPTIONS_TEST
+    dw3_help_close();
+    po_help_present();
+#else
+    g_test_help_open = 0;
+#endif
+}
+
+/* The help's tick: the keys of this frame, the sound it asks for. */
+static void po_help_tick(void) {
+#ifdef DW3_PORT_OPTIONS_TEST
+    if (po_key_back()) {
+        g_test_help_open = 0;
+        po_sound(PO_SND_CANCEL);
+        fprintf(stderr, "dw3-port-options: group close help (test)\n");
+    }
+#else
+    unsigned k = 0;
+    int snd;
+
+    if (po_key_up()) k |= DW3_HELP_KEY_UP;
+    if (po_key_down()) k |= DW3_HELP_KEY_DOWN;
+    if (po_key_left()) k |= DW3_HELP_KEY_LEFT;
+    if (po_key_right()) k |= DW3_HELP_KEY_RIGHT;
+    if (po_key_prev()) k |= DW3_HELP_KEY_PREV;
+    if (po_key_next()) k |= DW3_HELP_KEY_NEXT;
+    if (po_key_back()) k |= DW3_HELP_KEY_BACK;
+    if (po_key_confirm()) k |= DW3_HELP_KEY_CONFIRM;
+    snd = dw3_help_tick(k);
+    if (snd == DW3_HELP_SND_CURSOR) {
+        po_sound(PO_SND_CURSOR);
+    } else if (snd == DW3_HELP_SND_SELECT) {
+        po_sound(PO_SND_SELECT);
+    } else if (snd == DW3_HELP_SND_CANCEL) {
+        po_sound(PO_SND_CANCEL);
+    }
+    po_help_present();
+    if (!dw3_help_is_open()) {
+        PO_INFO("dw3-port-options: group close help (back to the group list)");
+    }
+#endif
+}
 
 #ifdef DW3_CHEATS
 /* Open the Cheats screen (title only: cheats are armed at the title). */
@@ -899,6 +1045,10 @@ static void po_group_open(int group) {
         return;
     }
 #endif
+    if (group == DW3_OPTGRP_HELP) {
+        po_open_help();
+        return;
+    }
     g_level = 1;
     g_group = group;
     g_cursor = g_scroll = 0;
@@ -938,6 +1088,14 @@ void dw3_port_options_tick(void) {
         g_logged_open = 1;
         fprintf(stderr, "dw3-port-options: shell tick (Select opened)\n");
         fflush(stderr);
+    }
+    /* P6.30: the Help screen has the pad while it is open. */
+    if (po_help_open_p()) {
+        po_help_tick();
+        if (!po_help_open_p()) {
+            po_push_view(); /* back on the group list */
+        }
+        return;
     }
 #ifdef DW3_CHEATS
     /* P6.20: the Cheats screen has the pad while it is open; Square (Y on
@@ -1052,6 +1210,40 @@ static void dw3_port_options_maybe_fb_dump(void) {
 }
 #endif
 
+#if !defined(DW3_PORT_OPTIONS_TEST) && !defined(DW3_TITLE_NATIVE_OVERLAY)
+/* P6.30: the help on a host without the native overlay (plain text panel). */
+static void po_help_draw_plain(short ox, short oy) {
+    const Dw3HelpView *v = dw3_help_view();
+    char buf[14][60];
+    const char *lines[14];
+    int n = 0;
+    int i;
+
+    if (v->screen == DW3_HELP_SCREEN_LIST) {
+        for (i = v->scroll; i < v->npages && n < 13; i++) {
+            snprintf(buf[n], sizeof(buf[n]), "%c %s",
+                     i == v->cursor ? '>' : ' ', v->titles[i]);
+            lines[n] = buf[n];
+            n++;
+        }
+    } else {
+        for (i = 0; i < v->panel && v->top + i < v->nlines && n < 13; i++) {
+            const Dw3PagesLine *ln = &v->lines[v->top + i];
+            int len = ln->len[0] < 58 ? ln->len[0] : 58;
+
+            memcpy(buf[n], ln->s[0] != NULL ? ln->s[0] : "", (size_t)len);
+            buf[n][len] = '\0';
+            lines[n] = buf[n];
+            n++;
+        }
+    }
+    snprintf(buf[n], sizeof(buf[n]), "%s", v->hint[v->nhints - 1]);
+    lines[n] = buf[n];
+    n++;
+    dw3_port_text_draw_panel((int)ox + 8, (int)oy + 8, 304, 224, lines, n);
+}
+#endif
+
 void dw3_port_options_draw(void) {
 #ifdef DW3_PORT_OPTIONS_TEST
     (void)g_cursor;
@@ -1079,6 +1271,10 @@ void dw3_port_options_draw(void) {
     GetDispEnv(&env);
     ox = env.disp.x;
     oy = env.disp.y;
+    if (dw3_help_is_open()) {
+        po_help_draw_plain(ox, oy);
+        return;
+    }
 
     if (!g_level) {
         /* P9.9: the group list (PS1-primitive fallback, plain text). */

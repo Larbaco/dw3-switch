@@ -85,6 +85,10 @@ add_executable(dw3-pc
   # Direct TU so PadGetState / PadInitDirect win over PSY-Z stubs in libpsyz.a
   ${CMAKE_SOURCE_DIR}/../../port/psyz_missing/psyz_pad_host.c
   ${CMAKE_SOURCE_DIR}/../../port/replay/dw3_replay.c
+  # P6.30 page engine and glyph atlas: the host side (the overlay art draws the
+  # help from them); the help itself (port/help/help.c) is in the game copy.
+  ${CMAKE_SOURCE_DIR}/../../port/pages/pages.c
+  ${CMAKE_SOURCE_DIR}/../../port/pages/glyph_atlas.c
 )
 if(PSYZ_RENDERER STREQUAL "sdl3_gpu")
   target_compile_definitions(dw3-pc PRIVATE DW3_PC_SDL3_GPU=1)
