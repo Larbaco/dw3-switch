@@ -248,6 +248,14 @@ CONTINUE_TEXT = {'en': 'Continue', 'fr': 'Continuer', 'de': 'Weiter',
 # it twice: both discs use this lettering while the Continue row is there.
 LOAD_TEXT = {'en': 'Load Game', 'fr': 'Charger', 'de': 'Laden',
              'es': 'Cargar', 'it': 'Carica'}
+# The first plaque on the EU disc: its own words are "Start" (en, de),
+# "Commencer", "Inizia", "Comenzar". The disc's sprites are a white bubble with
+# a dark word inside, so the plaque looked unlike the port's other plaques;
+# every plaque now uses this lettering (same face and shadow).
+NEWGAME_TEXT = {'en': 'Start', 'fr': 'Commencer', 'de': 'Start',
+                'es': 'Comenzar', 'it': 'Inizia'}
+for _lang, _text in NEWGAME_TEXT.items():
+    LETTERS.append(('newgame_' + _lang, _text, 29, 'DejaVuSansCondensed-Bold.ttf'))
 for _lang, _text in CONTINUE_TEXT.items():
     LETTERS.append(('continue_' + _lang, _text, 29, 'DejaVuSansCondensed-Bold.ttf'))
 for _lang, _text in LOAD_TEXT.items():

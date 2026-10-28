@@ -110,9 +110,16 @@ def _add(*s: Scenario) -> None:
     SCENARIOS.extend(s)
 
 
-_add(Scenario("us-title", "us", "quick", expect_restore=((0x1C1, M),)))
+_add(Scenario("us-title", "us", "quick", expect_restore=((0x1C1, M),),
+              expect_log=((0, r"dw3-title-menu: no autosave\.bin: plaques New Game, Options, "
+                              r"Load Game \(slot list\), Quit game"),)))
 for _lang in EU_LANGS:
-    _add(Scenario(f"eu-lang-{_lang}", "eu", "quick"))
+    # P6.1 (patch 0177): the language select takes the 16:9 gutter; the
+    # title that follows still has the four plaques (no auto-save file).
+    _add(Scenario(f"eu-lang-{_lang}", "eu", "quick",
+                  expect_log=((0, r"dw3-widescreen: gutter 53 px per side \(was -?\d+; 16:9\) mode file 0x165"
+                                  r"(?s:.*)dw3-title-menu: no autosave\.bin: plaques New Game, Options, "
+                                  r"Load Game \(slot list\), Quit game"),)))
 
 # Gameplay. DW3_TURBO=4 only changes pacing (field/fight modes); the replay
 # is frame-keyed, so captures do not depend on it.
@@ -832,6 +839,8 @@ for _v, _ids in (("us", (0x158, 0x1E3)), ("eu", (0x166, 0x1EE))):
                   phase_env=(_AS_SAVE_ENV, _AS_EXIT_ENV, ()),
                   cfg=(("autosave", "1"),),
                   expect_restore=((_field, M), (_mcard, M)),
+                  expect_log=((2, r"dw3-title-menu: plaques New Game, Options, Continue \(autosave\.bin\), "
+                                  r"Load Game \(slot list\), Quit game"),),
                   note="P6.31: the title menu with Continue and Load Game rows (an auto-save exists), focus on each row"))
     _add(Scenario(f"{_v}-autosave-off", _v, "full", timeout=600, log_only=True,
                   phases=(f"{_v}-xr-save", f"{_v}-as-load", f"{_v}-xr-load"),
@@ -1241,11 +1250,14 @@ for _v, _title in (("us", 0x1C1), ("eu", 0x1D0)):
                                   r"dw3-port-restart: fading to black before the reset \(field menu, 20 frames\)(?s:.*)"
                                   r"dw3-port-restart: screen is black after 20 frames; resetting now(?s:.*)"
                                   r"dw3-port-restart: saves flushed; returning to the boot screen(?s:.*)"
-                                  r"dw3-widescreen: gutter 0 px per side \(was 53; 4:3 picture\)(?s:.*)"
+                                  # EU: the language select has the gutter too (patch 0177), so
+                                  # the picture stays 16:9 through the reset: no switch at all
+                                  + (r"dw3-widescreen: gutter 0 px per side \(was 53; 4:3 picture\)(?s:.*)"
+                                     if _v == "us" else "") +
                                   r"dw3-port-restart: new screen ready after \d+ black frames; fading in(?s:.*)"
                                   r"dw3-port-restart: fade finished"),),
                   forbid_log=((0, r"save flush failed"),),
-                  note="field menu Return to title: No keeps the menu, Yes fades to black, runs the P6.9 reset on black and fades the title in (P6.27); the 4:3 gutter switch falls inside the black"),
+                  note="field menu Return to title: No keeps the menu, Yes fades to black, runs the P6.9 reset on black and fades the title in (P6.27); the 4:3 gutter switch falls inside the black (US; EU stays 16:9 since patch 0177)"),
          Scenario(f"{_v}-return-title-rows7", _v, "full", turbo=4, timeout=600,
                   env=_ITEMS_ENV, cfg=_RT_CFG,
                   expect_log=((0, r"dw3-port-confirm: open return to title \(cursor on No\)(?s:.*)"

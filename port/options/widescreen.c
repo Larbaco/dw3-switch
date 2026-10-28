@@ -26,6 +26,7 @@
 #define DW3_WS_STCRDSHP 0x1CE
 #define DW3_WS_STGTRAIN 0x1F2
 #define DW3_WS_STGDGLAB 0x1EC
+#define DW3_WS_CNTYSEL 0x165
 #else
 #define DW3_WS_FIELDSTG 0x158
 #define DW3_WS_FIGHTSTG 0x159
@@ -99,6 +100,13 @@ int dw3_port_widescreen_px(void) {
     if (mode_file == DW3_WS_STPLNMET) {
         return DW3_WIDESCREEN_MENU_PX;
     }
+#if VERSION_EU
+    /* The EU language select (CNTY_SEL): its repeating backdrop is carried
+     * into the gutters (patch 0177); panels and options stay in the 4:3 middle */
+    if (mode_file == DW3_WS_CNTYSEL) {
+        return DW3_WIDESCREEN_MENU_PX;
+    }
+#endif
     /* The title overlay also plays the movies and the still screen: only the
      * title screen, whose backdrop is drawn mirrored into the gutters (patch
      * 0085), gets them. The backdrop marks every frame it is drawn. */
@@ -120,7 +128,7 @@ int dw3_port_widescreen_new_screen_ready(void) {
         return 1;
     }
 #if VERSION_EU
-    return dw3_overlay_current_mode_file() == 0x165; /* CNTY_SEL */
+    return dw3_overlay_current_mode_file() == DW3_WS_CNTYSEL;
 #else
     return 0;
 #endif

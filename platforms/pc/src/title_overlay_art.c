@@ -822,6 +822,26 @@ void dw3_pc_title_overlay_art(uint8_t *rgba,int pitch,int selected) {
             text_mask(480,y+(h-hs[li])/2-1,runs[li],ws[li],hs[li],focus);
             continue;
         }
+        if((row==0&&label_mask[DW3_TITLE_LABEL_NEW_GAME])||
+           (row==2&&label_mask[DW3_TITLE_LABEL_LOAD_GAME])) {
+            /* EU: the disc's own words, in the lettering of the other
+             * plaques. Its sprites (a white bubble round a dark word, a
+             * different look) are not drawn. The third plaque with no
+             * auto-save file is Load Game (it opens the slot list); the
+             * disc's sprite for it says "Continue". */
+            const int li=options_lang>=DW3_TITLE_LANG_EN&&options_lang<=DW3_TITLE_LANG_IT?options_lang:0;
+            const unsigned char *const *runs=row==0?
+                (const unsigned char *const[]){title_newgame_en,title_newgame_fr,title_newgame_de,title_newgame_es,title_newgame_it}:
+                (const unsigned char *const[]){title_loadgame_en,title_loadgame_fr,title_loadgame_de,title_loadgame_es,title_loadgame_it};
+            const int ws[]={row==0?title_newgame_en_width:title_loadgame_en_width,row==0?title_newgame_fr_width:title_loadgame_fr_width,
+                row==0?title_newgame_de_width:title_loadgame_de_width,row==0?title_newgame_es_width:title_loadgame_es_width,
+                row==0?title_newgame_it_width:title_loadgame_it_width};
+            const int hs[]={row==0?title_newgame_en_height:title_loadgame_en_height,row==0?title_newgame_fr_height:title_loadgame_fr_height,
+                row==0?title_newgame_de_height:title_loadgame_de_height,row==0?title_newgame_es_height:title_loadgame_es_height,
+                row==0?title_newgame_it_height:title_loadgame_it_height};
+            text_mask(480,y+(h-hs[li])/2-1,runs[li],ws[li],hs[li],focus);
+            continue;
+        }
         const int slot=row==0?DW3_TITLE_LABEL_NEW_GAME:row==1?DW3_TITLE_LABEL_OPTIONS:DW3_TITLE_LABEL_LOAD_GAME;
         if(label_mask[slot]) {
             text_raw(480,y+(h-label_h[slot])/2-1,label_mask[slot],label_w[slot],label_h[slot],focus);

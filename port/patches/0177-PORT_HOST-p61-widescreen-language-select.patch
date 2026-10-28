@@ -1,0 +1,106 @@
+Upstream-bound: no
+Subject: [PORT_HOST] P6.1 EU language select (CNTY_SEL) fills 16:9
+
+The EU language select (CNTY_SEL, mode file 0x165) ran with gutter 0, a 4:3
+picture pillarboxed on a 16:9 screen. It now takes the menu gutter
+(port/options/widescreen.c) and fills it:
+
+- The scrolling background repeats every 96 pixels (a pattern of hexagons, as
+  the player name screen's, patch 0087): DW3_WIDE_PERIODIC adds, at draw
+  time, the copies of its parts moved by whole periods that show in a gutter.
+- The three panels (the header band, the logo band, the flags' panel) are
+  straight lines that run to the 4:3 edges: DW3_WIDE_WINGS repeats their outer
+  8 columns across the gutters, so each runs to the picture's edge (the flags'
+  panel also covers the logo band's overhang that sat past the 4:3 edge).
+- The fade-out polygon reaches the picture's edges.
+
+The panels' contents, the options and the cursor keep their places (the 4:3
+middle). Off, nothing changes. The US disc has no language select; the mode is
+never entered there.
+
+--- a/include/menus/country_select.h
++++ b/include/menus/country_select.h
+@@ -14,6 +14,15 @@
+ 
+ #include "engine/game.h"
+ 
++#if PORT_HOST
++#include "port_widescreen.h"
++#else
++#define DW3_WIDE_PERIODIC(sheet, frame, x, y, dx, dy) (sheet)
++#define DW3_WIDE_WINGS(sheet, frame, x) (sheet)
++#endif
++/* The background repeats every 96 pixels, both ways (CNTY_SEL_drawBackground) */
++#define CNTY_SEL_BACKGROUND_PERIOD 96
++
+ /*
+  * The screen's tasks use the engine states (task.h); the owner sets TASK_DONE
+  * to make a task fade out, flash, or open/close its panel.
+--- a/src/menus/country_select/country_select.c
++++ b/src/menus/country_select/country_select.c
+@@ -89,7 +89,10 @@
+     sprite.setTexture(0x280, 0);
+     /* The background repeats every 96 pixels */
+     offset = (s16)((s16)(task->scroll / 2) % 96);
+-    sprite.draw(FILE_CACHE.getEntry(CNTY_SEL_SPRITES), SPRITE_BACKGROUND, offset, offset);
++    /* widescreen (patch 0177): the pattern carried into the gutters */
++    sprite.draw(DW3_WIDE_PERIODIC(FILE_CACHE.getEntry(CNTY_SEL_SPRITES), SPRITE_BACKGROUND, offset, offset,
++                                  CNTY_SEL_BACKGROUND_PERIOD, 0),
++                SPRITE_BACKGROUND, offset, offset);
+ }
+ 
+ /* How dark the fade-out is on its frame `time`: 0 to 255 over 30 frames */
+@@ -106,14 +109,19 @@
+     u_long *ot = layer->getOtEntry(layer, 0);
+     POLY_F4 *poly = GFX.funcs.getPrim();
+     DR_TPAGE *mode;
++    s32 wide = 0;
+ 
++#if PORT_HOST
++    /* widescreen (patch 0177): the fade reaches the picture's edges */
++    wide = dw3_port_widescreen_px();
++#endif
+     setlen(poly, 5);
+     poly->r0 = poly->g0 = poly->b0 = level;
+     setcode(poly, 0x2A); /* semi-transparent POLY_F4 */
+-    poly->x0 = CNTY_SEL_fadeRect.x;
+-    poly->x1 = CNTY_SEL_fadeRect.x + CNTY_SEL_fadeRect.w;
+-    poly->x2 = CNTY_SEL_fadeRect.x;
+-    poly->x3 = CNTY_SEL_fadeRect.x + CNTY_SEL_fadeRect.w;
++    poly->x0 = CNTY_SEL_fadeRect.x - wide;
++    poly->x1 = CNTY_SEL_fadeRect.x + CNTY_SEL_fadeRect.w + wide;
++    poly->x2 = CNTY_SEL_fadeRect.x - wide;
++    poly->x3 = CNTY_SEL_fadeRect.x + CNTY_SEL_fadeRect.w + wide;
+     poly->y0 = CNTY_SEL_fadeRect.y;
+     poly->y1 = CNTY_SEL_fadeRect.y;
+     poly->y2 = CNTY_SEL_fadeRect.y + CNTY_SEL_fadeRect.h;
+@@ -267,7 +275,8 @@
+     sprite.setTexture(0x280, 0);
+     sprite.setPivot(148, 0);
+     sprite.setScale(task->scaleX, task->scaleY, ONE);
+-    sprite.draw(FILE_CACHE.getEntry(CNTY_SEL_SPRITES), SPRITE_TOP_PANEL, 148, 0);
++    /* widescreen (patch 0177): the panel's lines run to the picture's edge */
++    sprite.draw(DW3_WIDE_WINGS(FILE_CACHE.getEntry(CNTY_SEL_SPRITES), SPRITE_TOP_PANEL, 148), SPRITE_TOP_PANEL, 148, 0);
+ }
+ 
+ /* The top panel's task: draws it; each TASK_DONE from the controller opens it, the
+@@ -338,7 +347,8 @@
+     sprite.setTexture(0x280, 0);
+     sprite.setPivot(320, 20);
+     sprite.setScale(task->scaleX, task->scaleY, ONE);
+-    sprite.draw(FILE_CACHE.getEntry(CNTY_SEL_SPRITES), SPRITE_RIGHT_PANEL, 320, 20);
++    /* widescreen (patch 0177): the panel's lines run to the picture's edge */
++    sprite.draw(DW3_WIDE_WINGS(FILE_CACHE.getEntry(CNTY_SEL_SPRITES), SPRITE_RIGHT_PANEL, 320), SPRITE_RIGHT_PANEL, 320, 20);
+ }
+ 
+ /* The right panel's task: draws it; each TASK_DONE from the controller opens it, the
+@@ -411,7 +421,8 @@
+     sprite.setAltClut(0, 0x1F0);
+     sprite.setPivot(0, 158);
+     sprite.setScale(task->scaleX, task->scaleY, ONE);
+-    sprite.draw(FILE_CACHE.getEntry(CNTY_SEL_SPRITES), SPRITE_LEFT_PANEL, 0, 158);
++    /* widescreen (patch 0177): the panel's lines run to the picture's edge */
++    sprite.draw(DW3_WIDE_WINGS(FILE_CACHE.getEntry(CNTY_SEL_SPRITES), SPRITE_LEFT_PANEL, 0), SPRITE_LEFT_PANEL, 0, 158);
+ }
+ 
+ /* The left panel's task: draws it; each TASK_DONE from the controller opens it, the

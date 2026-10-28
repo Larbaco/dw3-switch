@@ -21,7 +21,9 @@
  * the same thread; the logo is kept on the CPU and uploaded on the next draw
  * so a dock/handheld context loss can rebuild every GL object.
  *
- * Memory: the 16.2 MB atlas, the logo texture and the Yes / No window texture
+ * Memory: the 13.8 MB title atlas, the logo texture, the 2.6 MB options texture
+ * (its own texture: opening Options in game creates only this one, P9.9 fix)
+ * and the Yes / No window texture
  * live in the GLES driver's libc heap. They are released after
  * TEXTURE_IDLE_FRAMES draws in which they were not needed (the field, a
  * battle, a movie) and rebuilt lazily on the next use: the title ones by
@@ -68,7 +70,10 @@ enum {
     STATE_OPTIONS = 6,
     /* Port options screen fade, in alpha steps per frame (about 13 frames). */
     OPTIONS_FADE_STEP = 20,
-    ART_TEX_H = CANVAS_H * STATE_COUNT,
+    /* The title atlas holds states 0..STATE_OPTIONS-1 only; the options screen
+     * has its own 960x720 texture (2.6 MB), so opening Options in game never
+     * allocates the 16.5 MB atlas and the logo. */
+    ART_TEX_H = CANVAS_H * STATE_OPTIONS,
     LOGO_W = 720,
     LOGO_H = 326,
     /* Logo placement in canvas pixels, as on PC. */
@@ -83,6 +88,7 @@ enum {
 
 static GLuint s_prog;
 static GLuint s_art_tex;
+static GLuint s_opt_tex;
 static GLuint s_logo_tex;
 /* P6.27 / P6.28 Yes / No window: its own small texture, rendered on the CPU
  * when its kind, focus or language changes and uploaded on the next draw. */
@@ -204,11 +210,9 @@ static void atlas_content_reset(void) {
     dw3_options_cache_invalidate();
 }
 
-#if DW3_NX_MENU_TIMING
 static uint64_t timing_now_us(void) {
     return armTicksToNs(armGetSystemTick()) / 1000ULL;
 }
-#endif
 
 /* Fallback when the cache canvases cannot be allocated: render the whole
  * options canvas and upload it, as before the cache. */
@@ -224,9 +228,9 @@ static void update_options_reference(void) {
     }
     memset(options, 0, (size_t)CANVAS_W * CANVAS_H * 4);
     dw3_pc_title_overlay_art(options, CANVAS_W * 4, DW3_TITLE_ART_OPTIONS);
-    glBindTexture(GL_TEXTURE_2D, s_art_tex);
+    glBindTexture(GL_TEXTURE_2D, s_opt_tex);
     glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
-    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, STATE_OPTIONS * CANVAS_H, CANVAS_W,
+    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, CANVAS_W,
                     CANVAS_H, GL_RGBA, GL_UNSIGNED_BYTE, options);
     free(options);
     s_options_generation = dw3_pc_title_overlay_options_generation();
@@ -311,7 +315,7 @@ static void update_options_texture(void) {
 #if DW3_NX_MENU_TIMING
     t1 = timing_now_us();
 #endif
-    glBindTexture(GL_TEXTURE_2D, s_art_tex);
+    glBindTexture(GL_TEXTURE_2D, s_opt_tex);
     glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
     for (int i = 0; i < d.count; ++i) {
         const Dw3OptionsRect r = d.rects[i];
@@ -336,7 +340,7 @@ static void update_options_texture(void) {
             dw3_options_cache_pack_rect(r, s_options_pack);
             src = s_options_pack;
         }
-        glTexSubImage2D(GL_TEXTURE_2D, 0, r.x, STATE_OPTIONS * CANVAS_H + r.y,
+        glTexSubImage2D(GL_TEXTURE_2D, 0, r.x, r.y,
                         r.w, r.h, GL_RGBA, GL_UNSIGNED_BYTE, src);
     }
     dw3_options_cache_commit();
@@ -364,9 +368,11 @@ static void release_options_cache(void) {
  * screen for a while; ensure_gl rebuilds them on the next visit. The program,
  * the buffer and the CPU logo stay. */
 static void release_title_textures(void) {
-    if (!s_art_tex && !s_logo_tex) {
+    if (!s_art_tex && !s_logo_tex && !s_opt_tex) {
         return;
     }
+    if (s_opt_tex) glDeleteTextures(1, &s_opt_tex);
+    s_opt_tex = 0;
     if (s_art_tex) glDeleteTextures(1, &s_art_tex);
     if (s_logo_tex) glDeleteTextures(1, &s_logo_tex);
     s_art_tex = 0;
@@ -470,38 +476,35 @@ static int ensure_gl(void) {
     if (!ensure_program()) {
         return 0;
     }
-#if DW3_NX_MENU_TIMING
     const uint64_t build_t0 = timing_now_us();
-#endif
     s_art_tex = make_texture(CANVAS_W, ART_TEX_H, NULL);
-    {
-        /* The options region is drawn (faded) before the cache fills it. */
-        void *zero = calloc((size_t)CANVAS_W * CANVAS_H, 4);
-
-        if (!zero) {
-            glDeleteTextures(1, &s_art_tex);
-            s_art_tex = 0;
-            glDeleteProgram(s_prog);
-            s_prog = 0;
-            s_gl_failed = 1;
-            return 0;
-        }
-        glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
-        glTexSubImage2D(GL_TEXTURE_2D, 0, 0, STATE_OPTIONS * CANVAS_H,
-                        CANVAS_W, CANVAS_H, GL_RGBA, GL_UNSIGNED_BYTE, zero);
-        free(zero);
-    }
     atlas_content_reset();
     s_logo_tex = make_texture(LOGO_W, LOGO_H, NULL);
     s_logo_dirty = s_logo_rgba != NULL;
-    TITLE_LOG("dw3-title-overlay: %dx%d RGBA texture, %d states (GLES)",
-              CANVAS_W, ART_TEX_H, STATE_COUNT);
-#if DW3_NX_MENU_TIMING
-    TITLE_LOG("dw3-title-overlay: atlas create #%u %u us",
-              ++s_atlas_builds, (unsigned)(timing_now_us() - build_t0));
-#else
+    TITLE_LOG("dw3-title-overlay: %dx%d RGBA title atlas, %d states (GLES), "
+              "create %u us", CANVAS_W, ART_TEX_H, STATE_OPTIONS,
+              (unsigned)(timing_now_us() - build_t0));
     ++s_atlas_builds;
-#endif
+    return 1;
+}
+
+/* The options screen's own texture (created on the first open, released with
+ * the title textures). A fresh texture is empty: the cache is invalidated so
+ * the next update sends the whole canvas. */
+static int ensure_options_tex(void) {
+    if (glIsTexture(s_opt_tex)) {
+        return 1;
+    }
+    if (!s_prog) {
+        return 0;
+    }
+    const uint64_t t0 = timing_now_us();
+    s_opt_tex = make_texture(CANVAS_W, CANVAS_H, NULL);
+    s_options_generation = ~0u;
+    dw3_options_cache_invalidate();
+    TITLE_LOG("dw3-title-overlay: %dx%d RGBA options texture (GLES), "
+              "create %u us", CANVAS_W, CANVAS_H,
+              (unsigned)(timing_now_us() - t0));
     return 1;
 }
 
@@ -632,10 +635,16 @@ static void draw_layers(int vx, int vy, int vw, int vh) {
     if (vw <= 0 || vh <= 0) {
         return;
     }
-    if (title_visible ? !ensure_gl() : !ensure_program()) {
+    /* Opened in game, only the options texture is needed: no atlas, no logo. */
+    const int need_atlas = s_overlay_active || logo ||
+                           (s_options_alpha && !s_options_in_game);
+    if (need_atlas ? !ensure_gl() : !ensure_program()) {
         return;
     }
-    if (title_visible) {
+    if (s_options_alpha && !ensure_options_tex()) {
+        return;
+    }
+    if (need_atlas) {
         pump_states(s_overlay_active && !options_open ? s_selection : -1);
     }
     if (s_options_alpha ||
@@ -709,23 +718,19 @@ static void draw_layers(int vx, int vy, int vw, int vh) {
     }
     if (s_options_alpha) {
         dw3_port_options_note_shown();
-        const float v0 = (float)(STATE_OPTIONS * CANVAS_H) / (float)ART_TEX_H;
-        const float v1 = (float)((STATE_OPTIONS + 1) * CANVAS_H) /
-                         (float)ART_TEX_H;
         glUniform1f(s_uni_alpha, (float)s_options_alpha / 255.0f);
-        draw_quad(s_art_tex, 0.0f, 0.0f, CANVAS_W, CANVAS_H,
-                  0.0f, v0, 1.0f, v1);
+        draw_quad(s_opt_tex, 0.0f, 0.0f, CANVAS_W, CANVAS_H,
+                  0.0f, 0.0f, 1.0f, 1.0f);
         if (vx > wide_x) {
             /* The gutters (patch 0085): one texel of the screen's uniformly
              * dimmed corner over each, as the PC overlay does. */
             const float u = 0.5f / (float)CANVAS_W;
-            const float v = ((float)(STATE_OPTIONS * CANVAS_H) + 0.5f) /
-                            (float)ART_TEX_H;
+            const float v = 0.5f / (float)CANVAS_H;
 
             glViewport(wide_x, vy, vx - wide_x, vh);
-            draw_quad(s_art_tex, 0.0f, 0.0f, CANVAS_W, CANVAS_H, u, v, u, v);
+            draw_quad(s_opt_tex, 0.0f, 0.0f, CANVAS_W, CANVAS_H, u, v, u, v);
             glViewport(vx + vw, vy, wide_x + wide_w - (vx + vw), vh);
-            draw_quad(s_art_tex, 0.0f, 0.0f, CANVAS_W, CANVAS_H, u, v, u, v);
+            draw_quad(s_opt_tex, 0.0f, 0.0f, CANVAS_W, CANVAS_H, u, v, u, v);
             glViewport(vx, vy, vw, vh);
         }
     }
@@ -810,11 +815,13 @@ void dw3_nx_title_overlay_invalidate_gl(void) {
     s_fade_tex = 0;
     if (s_prog) glDeleteProgram(s_prog);
     if (s_art_tex) glDeleteTextures(1, &s_art_tex);
+    if (s_opt_tex) glDeleteTextures(1, &s_opt_tex);
     if (s_logo_tex) glDeleteTextures(1, &s_logo_tex);
     if (s_dialog_tex) glDeleteTextures(1, &s_dialog_tex);
     if (s_vbo) glDeleteBuffers(1, &s_vbo);
     s_prog = 0;
     s_art_tex = 0;
+    s_opt_tex = 0;
     s_logo_tex = 0;
     s_dialog_tex = 0;
     s_dialog_dirty = 1;

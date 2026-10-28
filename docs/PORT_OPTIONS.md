@@ -1414,6 +1414,31 @@ while the frame thread keeps updating), none of it on the frame thread. The Swit
 upload and the worker at roughly 150 ms per layout on core 2, off the frame thread: expected, not yet measured on the OLED
 ([OLED_TEST_PLAN B15](OLED_TEST_PLAN.md)).
 
+### The in-game open without the title atlas (2026-10-28, preview.45 feedback)
+
+Cause. The Switch overlay (`nx_title_overlay.c`) kept the Port options screen in
+the last 960x720 band of one 960x5040 atlas (seven states, 19 MB) that also
+holds the title's states. The textures are released 90 draws after the title
+leaves the screen (#268), so an Options open from the field found no texture
+and `ensure_gl` created the whole atlas and the logo texture before drawing:
+`dw3-title-overlay: 960x5040 RGBA texture, 7 states (GLES)` then
+`first frame shown 92.6 ms`, `longest frame gap 95.6 ms (frame 1)` (EU,
+preview.45; the title's open was 20 ms because the atlas was already there).
+The #298 prewarm covers the compose, not the GL objects.
+
+Fix. The options screen has its own 960x720 texture (2.6 MB, `s_opt_tex`); the
+title atlas is 960x4320 (six states, 16.5 MB) and is created only when the
+title, the logo or an Options opened from the title is on screen
+(`need_atlas`). Opening Options in game creates only the small texture (no
+zero-fill upload either: the first cache update sends the whole canvas, which
+the cached layer makes a copy). Both are released with the other title textures
+after the idle frames. Logged once per creation:
+`dw3-title-overlay: 960x720 RGBA options texture (GLES), create N us` and
+`960x4320 RGBA title atlas, 6 states (GLES), create N us`. PC is unchanged (its
+SDL3 GPU overlay keeps the textures).
+Goal: first frame under 20 ms in game; **not measured on the OLED**
+([OLED_TEST_PLAN B15b](OLED_TEST_PLAN.md)).
+
 ### OLED checklist, Options in game (owner)
 
 US and EU (at least two EU languages), a Switch OLED, docked and handheld:
