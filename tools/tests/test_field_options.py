@@ -51,7 +51,7 @@ def test_locked_rows_art(tmp_path: Path):
     cmd = ["gcc", "-std=gnu11", "-Wall", "-Wextra", "-Werror", "-O2", "-DDW3_CHEATS",
            "-o", str(out), str(TESTS / "locked_art_main.c"),
            str(SRC / "title_overlay_art.c"), str(SRC / "title_options_cache.c"),
-           f"-I{SRC}", "-lm"]
+           f"-I{SRC}", f"-I{ROOT / 'port' / 'include'}", "-lm"]
     r = subprocess.run(cmd, capture_output=True, text=True)
     assert r.returncode == 0, r.stderr + r.stdout
     r = subprocess.run([str(out)], capture_output=True, text=True, timeout=120)

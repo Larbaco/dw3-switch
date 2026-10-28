@@ -1,13 +1,15 @@
 /* Host test of the P9.7 locked rows of the Port options screen
  * (platforms/pc/src/title_overlay_art.c, title_options_cache.c): with
- * Widescreen locked (and the Cheats hint locked) only the label, the value and
- * the message line of that row change; the retained canvas of the cache is
+ * Widescreen locked (and the Cheats group locked) only the label, the value and
+ * the message line of that row change on the Display page, the Sound page does
+ * not change at all; the retained canvas of the cache is
  * byte-identical to the reference render both when the lock appears and when
  * the cursor and the values move afterwards; the lock note is lettered in all
  * five languages. argv[1], when given, receives each state as a PPM (evidence,
  * never committed). */
 #include "title_overlay_art.h"
 #include "title_options_cache.h"
+#include "port_options_groups.h"
 
 #include <stdint.h>
 #include <stdio.h>
@@ -92,7 +94,6 @@ int main(int argc, char **argv) {
     int values[DW3_TITLE_OPTION_ROWS] = {1, 2, 0, 10, 10, 0, 0, 0, 0};
     unsigned layout;
     int lang;
-    int row;
 
     if (!open_ref || !locked || !other) {
         return 2;
@@ -101,6 +102,7 @@ int main(int argc, char **argv) {
         long label, value, message, other_row, window;
 
         dw3_pc_title_overlay_set_options_language(lang);
+        dw3_pc_title_overlay_set_options_page(dw3_optlist_page(DW3_OPTGRP_DISPLAY, 0), 0);
         dw3_pc_title_overlay_set_options_locked(0);
         dw3_pc_title_overlay_set_options_view(0, values, DW3_TITLE_OPTION_ROWS);
         render(open_ref);
@@ -110,22 +112,22 @@ int main(int argc, char **argv) {
         dw3_pc_title_overlay_set_options_locked(1u); /* same mask: nothing bumps */
         CHECK(dw3_pc_title_overlay_options_layout() == layout + 1);
         render(locked);
-        /* Row 0 label, value and the message line changed ... */
-        label = diff_in(open_ref, locked, 160, 150, 540, 184);
-        value = diff_in(open_ref, locked, 560, 150, 828, 184);
-        message = diff_in(open_ref, locked, 132, 524, 828, 576);
+        /* The Widescreen plaque's label and value and the message line
+         * changed ... */
+        label = diff_in(open_ref, locked, 160, 124, 500, 174);
+        value = diff_in(open_ref, locked, 500, 124, 760, 174);
+        message = diff_in(open_ref, locked, 120, 532, 840, 592);
         CHECK(label > 100);
         CHECK(value > 20);
         CHECK(message > 500);
-        /* ... and nothing else did: not the other rows, not the window. */
-        other_row = 0;
-        for (row = 1; row < DW3_TITLE_OPTION_ROWS; row++) {
-            other_row += diff_in(open_ref, locked, 132, 150 + 38 * row, 828, 184 + 38 * row);
-        }
+        /* ... and nothing else did: not the other plaque slots, not the rest
+         * of the screen. */
+        other_row = diff_in(open_ref, locked, 152, 190, 808, 524);
         CHECK(other_row == 0);
-        window = diff_in(open_ref, locked, 0, 0, W, 150) +
-                 diff_in(open_ref, locked, 0, 490, W, 524) +
-                 diff_in(open_ref, locked, 0, 576, W, H);
+        window = diff_in(open_ref, locked, 0, 0, W, 124) +
+                 diff_in(open_ref, locked, 0, 174, 152, 532) +
+                 diff_in(open_ref, locked, 808, 174, W, 532) +
+                 diff_in(open_ref, locked, 0, 592, W, H);
         CHECK(window == 0);
         if (dir) {
             char name[64];
@@ -133,10 +135,22 @@ int main(int argc, char **argv) {
             snprintf(name, sizeof(name), "options-locked-%s", lang_name[lang]);
             write_ppm(dir, name, locked);
         }
-        /* The lock note is not the row's own message line. */
-        dw3_pc_title_overlay_set_options_view(3, values, DW3_TITLE_OPTION_ROWS);
+        /* The Sound page does not depend on the lock at all. */
+        dw3_pc_title_overlay_set_options_page(dw3_optlist_page(DW3_OPTGRP_SOUND, 0), 0);
+        dw3_pc_title_overlay_set_options_view(0, values, DW3_TITLE_OPTION_ROWS);
         render(other);
-        CHECK(diff_in(locked, other, 132, 524, 828, 576) > 500);
+        dw3_pc_title_overlay_set_options_locked(0);
+        render(open_ref);
+        CHECK(diff_in(open_ref, other, 0, 0, W, H) == 0);
+        /* The group list greys the Display plaque (all its rows are locked)
+         * and the Cheats plaque. */
+        dw3_pc_title_overlay_set_options_page(DW3_TITLE_OPTIONS_PAGE_OPTIONS, 1);
+        render(open_ref);
+        dw3_pc_title_overlay_set_options_locked(1u | DW3_TITLE_LOCK_CHEATS);
+        render(locked);
+        CHECK(diff_in(open_ref, locked, 230, 124, 730, 174) > 100);      /* Display */
+        CHECK(diff_in(open_ref, locked, 230, 124 + 66, 730, 174 + 66) == 0); /* Sound */
+        CHECK(diff_in(open_ref, locked, 230, 124 + 66 * 4, 730, 174 + 66 * 4) > 100); /* Cheats */
         dw3_pc_title_overlay_set_options_locked(0);
     }
 
@@ -144,20 +158,23 @@ int main(int argc, char **argv) {
      * and while the cursor and the values move, locked and not. */
     dw3_pc_title_overlay_set_options_language(DW3_TITLE_LANG_EN);
     dw3_pc_title_overlay_set_options_locked(0);
+    dw3_pc_title_overlay_set_options_page(dw3_optlist_page(DW3_OPTGRP_DISPLAY, 0), 0);
     dw3_pc_title_overlay_set_options_view(0, values, DW3_TITLE_OPTION_ROWS);
     check_cache(other, "open, unlocked");
     dw3_pc_title_overlay_set_options_locked(1u | DW3_TITLE_LOCK_CHEATS);
     check_cache(other, "lock appears (full rebuild)");
-    dw3_pc_title_overlay_set_options_view(3, values, DW3_TITLE_OPTION_ROWS);
-    check_cache(other, "locked, cursor on Music volume");
-    values[3] = 7;
-    dw3_pc_title_overlay_set_options_view(3, values, DW3_TITLE_OPTION_ROWS);
-    check_cache(other, "locked, Music volume 7");
-    dw3_pc_title_overlay_set_options_view(0, values, DW3_TITLE_OPTION_ROWS);
-    check_cache(other, "locked, cursor back on Widescreen");
     values[0] = 0;
     dw3_pc_title_overlay_set_options_view(0, values, DW3_TITLE_OPTION_ROWS);
     check_cache(other, "locked, Widescreen value drawn");
+    dw3_pc_title_overlay_set_options_page(dw3_optlist_page(DW3_OPTGRP_SOUND, 0), 0);
+    dw3_pc_title_overlay_set_options_view(1, values, DW3_TITLE_OPTION_ROWS);
+    check_cache(other, "locked, Sound page, cursor on SFX volume");
+    values[1] = 7;
+    dw3_pc_title_overlay_set_options_view(1, values, DW3_TITLE_OPTION_ROWS);
+    check_cache(other, "locked, SFX volume 7");
+    dw3_pc_title_overlay_set_options_page(DW3_TITLE_OPTIONS_PAGE_OPTIONS, 1);
+    dw3_pc_title_overlay_set_options_view(4, values, DW3_TITLE_OPTION_ROWS);
+    check_cache(other, "locked, group list, cursor on Cheats");
     dw3_pc_title_overlay_set_options_locked(0);
     check_cache(other, "lock gone (full rebuild)");
     dw3_options_cache_release();

@@ -178,9 +178,9 @@ def test_environment_override_is_not_saved(persist_bin: Path, tmp_path: Path):
     text = (tmp_path / CFG).read_text()
     assert "widescreen=1\n" in text and "restart_hotkey=1\n" in text
     # Toggling the forced row itself is the user's choice: saved.
-    session(persist_bin, tmp_path, "env", "0", "0", "open", "press")
+    session(persist_bin, tmp_path, "env", "0", "0", "open", "row", "0", "press")
     assert "widescreen=1\n" in (tmp_path / CFG).read_text()  # was forced 0 -> 1
-    session(persist_bin, tmp_path, "env", "0", "1", "open", "press")
+    session(persist_bin, tmp_path, "env", "0", "1", "open", "row", "0", "press")
     assert "widescreen=0\n" in (tmp_path / CFG).read_text()  # forced 1 -> 0
     # DW3_TURBO=4 (fast-forward) likewise.
     (tmp_path / CFG).unlink()
@@ -504,12 +504,16 @@ def sounds(err: str) -> list[str]:
 def test_sound_on_value_change_confirm_and_left_right(persist_bin: Path, tmp_path: Path):
     # Confirm on a switch row, a stepped row and the Fast-forward row: the
     # game's choice sound (select); the cursor moves between rows tick.
+    # (P9.9: the first Confirm opens a group, and plays it too.)
     _, err = session(persist_bin, tmp_path, "open", "press")
     assert sounds(err) == ["select 10"]
+    _, err = session(persist_bin, tmp_path, "open", "press", "press")
+    assert sounds(err) == ["select 10", "select 10"]
     _, err = session(persist_bin, tmp_path, "open", "down", "press")
     assert sounds(err) == ["cursor 10", "select 10"]
-    _, err = session(persist_bin, tmp_path, "open", "row", "5", "press")
-    assert sounds(err)[-1] == "select 10" and sounds(err).count("cursor 10") == 5
+    # Encounter rate: two groups down, open Gameplay, two rows down, Confirm.
+    _, err = session(persist_bin, tmp_path, "open", "nav", "5", "press")
+    assert sounds(err)[-1] == "select 10" and sounds(err).count("cursor 10") == 4
     # Left / Right on a stepped row change the value, so they play it too.
     _, err = session(persist_bin, tmp_path, "open", "row", "6", "right", "left")
     assert sounds(err)[-2:] == ["select 10", "select 10"]
@@ -521,14 +525,16 @@ def test_no_sound_when_nothing_changes(persist_bin: Path, tmp_path: Path):
     # own menus are at the end of a list.
     _, err = session(persist_bin, tmp_path, "open", "up", "left", "right")
     assert sounds(err) == []
-    _, err = session(persist_bin, tmp_path, "open", "row", "3", "right")
-    assert sounds(err) == ["cursor 10"] * 3          # Music volume is already at 10
-    _, err = session(persist_bin, tmp_path, "open", "row", "6", "left")
-    assert sounds(err) == ["cursor 10"] * 6          # Text speed is already at Normal
-    _, err = session(persist_bin, tmp_path, "open", "row", "7", "left")
-    assert sounds(err) == ["cursor 10"] * 7          # Battle cursor is already Off
-    _, err = session(persist_bin, tmp_path, "open", "row", "8", "down")
-    assert sounds(err) == ["cursor 10"] * 8          # the last row (Auto-save)
+    # (The cursor and group-open sounds of the walk to the row are expected.)
+    cur, sel = "cursor 10", "select 10"
+    _, err = session(persist_bin, tmp_path, "open", "nav", "3", "right")
+    assert sounds(err) == [cur, sel]                 # Music volume is already at 10
+    _, err = session(persist_bin, tmp_path, "open", "nav", "6", "left")
+    assert sounds(err) == [cur] * 2 + [sel] + [cur] * 3   # Text speed is already Normal
+    _, err = session(persist_bin, tmp_path, "open", "nav", "7", "left")
+    assert sounds(err) == [cur] * 2 + [sel] + [cur] * 4   # Battle cursor is already Off
+    _, err = session(persist_bin, tmp_path, "open", "nav", "8", "down")
+    assert sounds(err) == [cur] * 3 + [sel]          # the only row of Saves
     # The plain open and close calls make no sound; the screen plays Select
     # for the opening from the title menu (decomp patch 0044), not here.
     _, err = session(persist_bin, tmp_path, "open", "close")
@@ -539,6 +545,22 @@ def test_cancel_sound_on_back(persist_bin: Path, tmp_path: Path):
     out, err = session(persist_bin, tmp_path, "open", "back")
     assert sounds(err) == ["cancel 10"]
     assert "dw3-port-options: close" in err
+
+
+def test_back_from_a_group_returns_to_the_list_with_the_cursor_kept(
+        persist_bin: Path, tmp_path: Path):
+    # Back inside a group goes to the list (cancel sound, group close line); a
+    # second Back closes the screen. P9.9.
+    _, err = session(persist_bin, tmp_path, "open", "down", "press", "back")
+    assert sounds(err) == ["cursor 10", "select 10", "cancel 10"]
+    assert "dw3-port-options: group open sound (2 row(s), title)" in err
+    assert "dw3-port-options: group close sound (back to the group list)" in err
+    assert "dw3-port-options: close" not in err.replace("group close", "")
+    out, err = session(persist_bin, tmp_path, "open", "down", "press", "back", "back")
+    assert sounds(err)[-1] == "cancel 10" and "dw3-port-options: close (resume" in err
+    # The list cursor is still on Sound: Confirm opens Sound again.
+    _, err = session(persist_bin, tmp_path, "open", "down", "press", "back", "press")
+    assert err.count("group open sound") == 2
 
 
 def assert_apply_then_sound(err: str, applied: str, sound: str) -> None:
@@ -618,7 +640,7 @@ def test_battle_cursor_steps_and_confirm_wrap(persist_bin: Path, tmp_path: Path)
         assert out[0] == f"battle_menu_memory={want}", n   # Confirm wraps 2 -> 0
     # Auto-save (P6.31) is the last row since: Down from Battle cursor goes to
     # it, and Confirm there leaves Battle cursor alone.
-    out, _ = fresh("open", "row", "7", "down", "press", "battle")
+    out, _ = fresh("open", "row", "7", "nav", "8", "press", "battle")
     assert out[0] == "battle_menu_memory=0"
 
 
@@ -668,7 +690,7 @@ def test_battle_cursor_plays_the_choice_sound(persist_bin: Path, tmp_path: Path)
     assert sounds(err)[-1].startswith("select ")
     # At the end of the row nothing changes and nothing plays.
     (tmp_path / CFG).write_text("version=1\nbattle_menu_memory=2\nend=1\n")
-    _, err = session(persist_bin, tmp_path, "open", "row", "7", "right")
+    _, err = session(persist_bin, tmp_path, "open", "nav", "7", "right")
     assert sounds(err)[-1].startswith("cursor ")      # only the move to the row
 
 

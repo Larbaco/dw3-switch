@@ -24,28 +24,16 @@ LETTERS = [
     # The Port options screen, styled after the game's own windows: plain
     # white text, the window title in capitals as the memory card screen's.
     ('opt_title_en', 'OPTIONS', 30, 'DejaVuSans.ttf'),
+    ('opt_title_fr', 'OPTIONS', 30, 'DejaVuSans.ttf'),
     ('opt_title_de', 'OPTIONEN', 30, 'DejaVuSans.ttf'),
     ('opt_title_es', 'OPCIONES', 30, 'DejaVuSans.ttf'),
     ('opt_title_it', 'OPZIONI', 30, 'DejaVuSans.ttf'),
-    ('opt_row0', 'Widescreen', 26, 'DejaVuSans.ttf'),
-    ('opt_row1', 'Fast-forward', 26, 'DejaVuSans.ttf'),
-    ('opt_row2', 'Restart hotkey', 26, 'DejaVuSans.ttf'),
     # P6.17 volume rows: label, then the step numbers 1..10 (0 is "OFF").
-    ('opt_row3', 'Music volume', 26, 'DejaVuSans.ttf'),
-    ('opt_row4', 'SFX volume', 26, 'DejaVuSans.ttf'),
     # P6.18 rows: Encounter rate (OFF / 0.5x / 1x / 1.5x / 2x) and Text speed.
-    ('opt_row5', 'Encounter rate', 26, 'DejaVuSans.ttf'),
-    ('opt_row6', 'Text speed', 26, 'DejaVuSans.ttf'),
     # P7.9 row: Battle cursor (OFF / Command / Command+Tech).
-    ('opt_row7', 'Battle cursor', 26, 'DejaVuSans.ttf'),
     ('opt_1x', '1x', 26, 'DejaVuSans.ttf'),
     ('opt_05x', '0.5x', 26, 'DejaVuSans.ttf'),
     ('opt_15x', '1.5x', 26, 'DejaVuSans.ttf'),
-    ('opt_normal', 'Normal', 26, 'DejaVuSans.ttf'),
-    ('opt_fast', 'Fast', 26, 'DejaVuSans.ttf'),
-    ('opt_instant', 'Instant', 26, 'DejaVuSans.ttf'),
-    ('opt_command', 'Command', 26, 'DejaVuSans.ttf'),
-    ('opt_command_tech', 'Command+Tech', 26, 'DejaVuSans.ttf'),
     ('opt_on', 'ON', 26, 'DejaVuSans.ttf'),
     ('opt_off', 'OFF', 26, 'DejaVuSans.ttf'),
     ('opt_2x', '2x', 26, 'DejaVuSans.ttf'),
@@ -61,21 +49,143 @@ LETTERS = [
     ('opt_n8', '8', 26, 'DejaVuSans.ttf'),
     ('opt_n9', '9', 26, 'DejaVuSans.ttf'),
     ('opt_n10', '10', 26, 'DejaVuSans.ttf'),
-    ('opt_desc0', 'Uses the full 16:9 screen where the game allows it.', 25, 'DejaVuSans.ttf'),
-    ('opt_desc1_pc', 'Press R3 in the field or in battle to switch speed.', 25, 'DejaVuSans.ttf'),
-    ('opt_desc1_nx', 'Click the right stick in the field or in battle.', 25, 'DejaVuSans.ttf'),
-    ('opt_desc2_pc', 'L1 + R1 + Start + Select restarts the game.', 25, 'DejaVuSans.ttf'),
-    ('opt_desc2_nx', 'L + R + Plus + Minus restarts the game.', 25, 'DejaVuSans.ttf'),
-    ('opt_desc3', 'Left / Right change the music volume (10 = original).', 25, 'DejaVuSans.ttf'),
-    ('opt_desc4', 'Left / Right change the effects volume (10 = original).', 25, 'DejaVuSans.ttf'),
-    ('opt_desc5', 'Random battles only: OFF to 2x. Story battles stay.', 25, 'DejaVuSans.ttf'),
-    ('opt_desc6', 'How fast dialogue is typed out. Normal = original.', 25, 'DejaVuSans.ttf'),
-    ('opt_desc7', 'Battle menu opens on your last pick. Off = original.', 25, 'DejaVuSans.ttf'),
-    ('opt_change', 'Change', 24, 'DejaVuSans.ttf'),
-    ('opt_back', 'Back', 24, 'DejaVuSans.ttf'),
     ('opt_key_b', 'B', 19, 'DejaVuSans-Bold.ttf'),
     ('opt_key_x', 'X', 19, 'DejaVuSans-Bold.ttf'),
 ]
+# P9.9 Options screen: groups and sub-screens (docs/PORT_OPTIONS.md "Groups and
+# sub-screens"), in the five languages of the EU disc (en is also the US disc's).
+# Everything here is read as title_opt_<kind>_<key>_<lang>. Limits (checked
+# below, the generator fails when a text is too wide): group names are bold
+# plaque lettering under 330 px; row labels 290 px (the value cell starts 500 px
+# from the plaque's left edge); values 236 px; descriptions 690 px (the message
+# strip).
+LANGS = ('en', 'fr', 'de', 'es', 'it')
+GROUP_TEXT = {
+    'display': {'name': ('Display', 'Affichage', 'Anzeige', 'Pantalla', 'Schermo'),
+                'desc': ('How the picture fills the screen.',
+                         "Comment l'image remplit l'écran.",
+                         'Wie das Bild den Bildschirm füllt.',
+                         'Cómo la imagen llena la pantalla.',
+                         "Come l'immagine riempie lo schermo.")},
+    'sound': {'name': ('Sound', 'Son', 'Ton', 'Sonido', 'Audio'),
+              'desc': ('Music and sound effects volume.',
+                       'Volume de la musique et des effets.',
+                       'Lautstärke von Musik und Effekten.',
+                       'Volumen de la música y los efectos.',
+                       'Volume di musica ed effetti.')},
+    'gameplay': {'name': ('Gameplay', 'Jouabilité', 'Gameplay', 'Jugabilidad', 'Gameplay'),
+                 'desc': ('Speed, encounters, text and battle menu.',
+                          'Vitesse, combats, texte et menu de combat.',
+                          'Tempo, Kämpfe, Text und Kampfmenü.',
+                          'Velocidad, combates, texto y menú de combate.',
+                          'Velocità, scontri, testo e menu di battaglia.')},
+    'saves': {'name': ('Saves', 'Sauvegardes', 'Speichern', 'Partidas', 'Salvataggi'),
+              'desc': ('How and when the game saves.',
+                       'Comment et quand le jeu sauvegarde.',
+                       'Wie und wann das Spiel speichert.',
+                       'Cómo y cuándo guarda el juego.',
+                       'Come e quando il gioco salva.')},
+    'cheats': {'name': ('Cheats', 'Triches', 'Cheats', 'Trucos', 'Trucchi'),
+               'desc': ('Test menu. Everything is off until you turn it on.',
+                        "Menu de test. Tout est désactivé par défaut.",
+                        'Testmenü. Alles ist aus, bis du es einschaltest.',
+                        'Menú de pruebas. Todo está apagado por defecto.',
+                        'Menu di prova. Tutto è spento finché non lo attivi.')},
+}
+OPEN_TEXT = ('Open', 'Ouvrir', 'Öffnen', 'Abrir', 'Apri')
+CHANGE_TEXT = ('Change', 'Changer', 'Ändern', 'Cambiar', 'Cambia')
+BACK_TEXT = ('Back', 'Retour', 'Zurück', 'Volver', 'Indietro')
+# Registry rows, in registry order (port/options/port_options.c). Auto-save is
+# P6.31's opt_as_* above. desc1 / desc2 differ on PC and Switch (pc / nx).
+ROW_TEXT = (
+    ('Widescreen', 'Écran large', 'Breitbild', 'Pantalla ancha', 'Schermo largo'),
+    ('Fast-forward', 'Avance rapide', 'Schnellvorlauf', 'Avance rápido', 'Avanzamento rapido'),
+    ('Restart hotkey', 'Raccourci de reset', 'Neustart-Kürzel', 'Atajo de reinicio', 'Scorciatoia reset'),
+    ('Music volume', 'Volume musique', 'Musikvolumen', 'Volumen música', 'Volume musica'),
+    ('SFX volume', 'Volume effets', 'Effektvolumen', 'Volumen efectos', 'Volume effetti'),
+    ('Encounter rate', 'Taux de combats', 'Kampfhäufigkeit', 'Frec. de combates', 'Frequenza scontri'),
+    ('Text speed', 'Vitesse du texte', 'Textgeschwindigkeit', 'Velocidad del texto', 'Velocità del testo'),
+    ('Battle cursor', 'Curseur de combat', 'Kampfcursor', 'Cursor de combate', 'Cursore battaglia'),
+)
+DESC_TEXT = (
+    ('Uses the full 16:9 screen where the game allows it.',
+     "Utilise tout l'écran 16:9 quand le jeu le permet.",
+     'Nutzt den ganzen 16:9-Schirm, wo das Spiel es kann.',
+     'Usa toda la pantalla 16:9 donde el juego lo permite.',
+     'Usa tutto lo schermo 16:9 dove il gioco lo consente.'),
+    None,  # desc1: PC / Switch below
+    None,  # desc2: PC / Switch below
+    ('Left / Right change the music volume (10 = original).',
+     'Gauche / Droite : volume musique (10 = original).',
+     'Links / Rechts: Musikvolumen (10 = Original).',
+     'Izq. / Der.: volumen de música (10 = original).',
+     'Sinistra / Destra: volume musica (10 = originale).'),
+    ('Left / Right change the effects volume (10 = original).',
+     'Gauche / Droite : volume des effets (10 = original).',
+     'Links / Rechts: Effektvolumen (10 = Original).',
+     'Izq. / Der.: volumen de efectos (10 = original).',
+     'Sinistra / Destra: volume effetti (10 = originale).'),
+    ('Random battles only: OFF to 2x. Story battles stay.',
+     'Combats aléatoires seulement : OFF à 2x.',
+     'Nur Zufallskämpfe: OFF bis 2x. Story-Kämpfe bleiben.',
+     'Solo combates aleatorios: de OFF a 2x.',
+     'Solo scontri casuali: da OFF a 2x.'),
+    ('How fast dialogue is typed out. Normal = original.',
+     "Vitesse d'affichage des dialogues. Normal = original.",
+     'Tempo der Dialoge. Normal = Original.',
+     'Velocidad de los diálogos. Normal = original.',
+     'Velocità dei dialoghi. Normale = originale.'),
+    ('Battle menu opens on your last pick. Off = original.',
+     "Le menu de combat s'ouvre sur votre dernier choix.",
+     'Das Kampfmenü öffnet bei der letzten Wahl.',
+     'El menú de combate abre en tu última elección.',
+     "Il menu di battaglia si apre sull'ultima scelta."),
+)
+DESC1 = {'pc': ('Press R3 in the field or in battle to switch speed.',
+                'R3 sur la carte ou en combat change la vitesse.',
+                'R3 im Feld oder im Kampf wechselt das Tempo.',
+                'R3 en el mapa o en combate cambia la velocidad.',
+                'R3 sul campo o in battaglia cambia la velocità.'),
+         'nx': ('Click the right stick in the field or in battle.',
+                'Clic du stick droit sur la carte ou en combat.',
+                'Rechten Stick drücken im Feld oder im Kampf.',
+                'Pulsa el stick derecho en el mapa o en combate.',
+                'Premi lo stick destro sul campo o in battaglia.')}
+DESC2 = {'pc': ('L1 + R1 + Start + Select restarts the game.',
+                'L1 + R1 + Start + Select redémarre le jeu.',
+                'L1 + R1 + Start + Select startet das Spiel neu.',
+                'L1 + R1 + Start + Select reinicia el juego.',
+                'L1 + R1 + Start + Select riavvia il gioco.'),
+         'nx': ('L + R + Plus + Minus restarts the game.',
+                'L + R + Plus + Moins redémarre le jeu.',
+                'L + R + Plus + Minus startet das Spiel neu.',
+                'L + R + Más + Menos reinicia el juego.',
+                'L + R + Più + Meno riavvia il gioco.')}
+VALUE_TEXT = {
+    'normal': ('Normal', 'Normal', 'Normal', 'Normal', 'Normale'),
+    'fast': ('Fast', 'Rapide', 'Schnell', 'Rápido', 'Veloce'),
+    'instant': ('Instant', 'Instantané', 'Sofort', 'Instantáneo', 'Istantaneo'),
+    'command': ('Command', 'Commande', 'Befehl', 'Comando', 'Comando'),
+    'command_tech': ('Command+Tech', 'Commande+Tech', 'Befehl+Tech', 'Comando+Téc.', 'Comando+Tec.'),
+}
+LIMITS = {'grp': 330, 'row': 290, 'val': 236, 'desc': 690}
+for _i, _lang in enumerate(LANGS):
+    for _key, _t in GROUP_TEXT.items():
+        LETTERS.append(('opt_grp_%s_%s' % (_key, _lang), _t['name'][_i], 29, 'DejaVuSansCondensed-Bold.ttf'))
+        LETTERS.append(('opt_grpdesc_%s_%s' % (_key, _lang), _t['desc'][_i], 25, 'DejaVuSans.ttf'))
+    LETTERS.append(('opt_open_' + _lang, OPEN_TEXT[_i], 24, 'DejaVuSans.ttf'))
+    LETTERS.append(('opt_change_' + _lang, CHANGE_TEXT[_i], 24, 'DejaVuSans.ttf'))
+    LETTERS.append(('opt_back_' + _lang, BACK_TEXT[_i], 24, 'DejaVuSans.ttf'))
+    for _r, _row in enumerate(ROW_TEXT):
+        LETTERS.append(('opt_row%d_%s' % (_r, _lang), _row[_i], 26, 'DejaVuSans.ttf'))
+    for _r, _desc in enumerate(DESC_TEXT):
+        if _desc is not None:
+            LETTERS.append(('opt_desc%d_%s' % (_r, _lang), _desc[_i], 25, 'DejaVuSans.ttf'))
+    for _plat in ('pc', 'nx'):
+        LETTERS.append(('opt_desc1_%s_%s' % (_plat, _lang), DESC1[_plat][_i], 25, 'DejaVuSans.ttf'))
+        LETTERS.append(('opt_desc2_%s_%s' % (_plat, _lang), DESC2[_plat][_i], 25, 'DejaVuSans.ttf'))
+    for _key, _t in VALUE_TEXT.items():
+        LETTERS.append(('opt_val_%s_%s' % (_key, _lang), _t[_i], 26, 'DejaVuSans.ttf'))
 # P6.27 / P6.28 title Quit plaque and the Yes / No confirmation (docs/PORT_OPTIONS.md
 # "Quit and return to title"), in the five languages of the EU disc (en is also
 # the US disc's). The plaque word is bold like the other plaques; the window
@@ -243,6 +353,7 @@ for lang, t in CHEAT_TEXT.items():
         CHEAT_LETTERS.append(('opt_cht_%s_%s' % (key, lang), t[key], 26, 'DejaVuSans.ttf'))
     for key in ('change', 'back', 'hint'):
         CHEAT_LETTERS.append(('opt_cht_%s_%s' % (key, lang), t[key], 24, 'DejaVuSans.ttf'))
+TOO_WIDE = []
 lines = ['/* Generated by tools/generate_pc_title_lettering.py. DejaVu font license applies. */']
 ENTRIES = [(e, False) for e in LETTERS] + [(e, True) for e in CHEAT_LETTERS]
 for index, (entry, cheat) in enumerate(ENTRIES):
@@ -259,6 +370,11 @@ for index, (entry, cheat) in enumerate(ENTRIES):
         # Fixed advance: the glyph keeps its own side bearing.
         image = Image.new('L', (advance, bounds[3]-bounds[1]))
         ImageDraw.Draw(image).text((0, -bounds[1]), text, font=font, fill=255)
+    limit = (LIMITS['grp'] if name.startswith('opt_grp_') else LIMITS['row'] if name.startswith('opt_row') else
+             LIMITS['val'] if name.startswith('opt_val_') else
+             LIMITS['desc'] if name.startswith(('opt_desc', 'opt_grpdesc', 'opt_lock')) else None)
+    if limit is not None and image.width > limit:
+        TOO_WIDE.append('%s is %d px wide (limit %d): %r' % (name, image.width, limit, text))
     pixels = image.tobytes()
     runs = []
     position = 0
@@ -276,3 +392,5 @@ for index, (entry, cheat) in enumerate(ENTRIES):
     if cheat and index == len(ENTRIES) - 1:
         lines.append('#endif /* DW3_CHEATS */')
 (ROOT / 'platforms/pc/src/title_overlay_lettering.inc').write_text('\n'.join(lines)+'\n')
+if TOO_WIDE:
+    raise SystemExit('\n'.join(TOO_WIDE))

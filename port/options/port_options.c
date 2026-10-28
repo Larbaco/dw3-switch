@@ -7,6 +7,7 @@
 #include "port_autosave.h"
 #include "port_battle_menu.h"
 #include "port_options_cfg.h"
+#include "port_options_groups.h"
 #include "port_pacing.h"
 #include "port_turbo.h"
 
@@ -56,6 +57,14 @@ enum {
     DW3_PORT_OPT_SFX_VOLUME = 4
 };
 
+/* port_options_groups.h repeats these registry numbers. */
+_Static_assert(DW3_PORT_OPT_WIDESCREEN == 0 && DW3_PORT_OPT_FAST_FORWARD == 1 &&
+               DW3_PORT_OPT_RESTART == 2 && DW3_PORT_OPT_MUSIC_VOLUME == 3 &&
+               DW3_PORT_OPT_SFX_VOLUME == 4 && DW3_PORT_OPT_ENCOUNTER_RATE == 5 &&
+               DW3_PORT_OPT_TEXT_SPEED == 6 && DW3_PORT_OPT_BATTLE_MENU == 7 &&
+               DW3_PORT_OPT_AUTOSAVE == 8 && DW3_PORT_OPT_COUNT == 9,
+               "registry indexes changed: update port_options_groups.h");
+
 typedef struct Dw3PortOptStub {
     const char *label;
     const char *key; /* P9.4 option file key */
@@ -75,7 +84,14 @@ static int g_in_game;
  * or the battle's command menu). */
 static const char *g_where = "field menu";
 static const char *g_back = "the field menu";
-static int g_cursor;
+/* P9.9: the screen is a list of groups (level 0) or one group's rows (level 1).
+ * Each level keeps its own cursor, so Back lands on the group that was open. */
+static int g_level;
+static int g_group;      /* the open group, at level 1 */
+static int g_gcursor;    /* item of the group list */
+static int g_gscroll;    /* first visible item of the group list */
+static int g_cursor;     /* item of the open group's rows */
+static int g_scroll;     /* first visible item of the rows */
 static int g_open_frames;
 static int g_logged_open;
 static Dw3PortOptStub g_stubs[DW3_PORT_OPT_COUNT] = {
@@ -136,24 +152,100 @@ void dw3_port_options_test_set_pressed(unsigned mask) {
 static int po_pressed(int bit) {
     return (int)((g_test_pressed >> bit) & 1u);
 }
+/* Host tests: put the cursor on registry row `reg` (its group opened) without
+ * the keys, the sounds or the log lines. */
+void dw3_port_options_test_goto_row(int reg) {
+    int g, k;
+
+    for (g = 0; g < DW3_OPTGRP_COUNT; g++) {
+        for (k = 0; k < dw3_optgroups[g].nrows; k++) {
+            if (dw3_optgroups[g].rows[k] == reg) {
+                g_level = 1;
+                g_group = g;
+                g_cursor = k;
+                g_scroll = 0;
+                return;
+            }
+        }
+    }
+}
 #else
 static int po_pressed(int bit) {
     return PAD_PRESSED(bit);
 }
 #endif
 
-/* Hand the cursor and values to the native overlay, which regenerates its
- * options screen only when they change. */
+/* The groups' words, for the log. */
+static const char *const g_group_names[DW3_OPTGRP_COUNT] = {
+    "display", "sound", "gameplay", "saves", "cheats", "controls", "help",
+    "walkthrough"};
+
+static int po_cheats_on(void) {
+#ifdef DW3_CHEATS
+    return dw3_cheats_enabled();
+#else
+    return 0;
+#endif
+}
+
+/* The group at item `item` of the group list. */
+static int po_group_at(int item) {
+    int ids[DW3_OPTGRP_COUNT];
+    int n = dw3_optgroups_visible(po_cheats_on(), ids);
+
+    return item >= 0 && item < n ? ids[item] : -1;
+}
+
+/* Keep the cursors inside their lists (the Cheats group can come and go with
+ * its master switch) and the cursor's item on screen. */
+static void po_fit_cursors(void) {
+    int n = dw3_optlist_count(-1, po_cheats_on());
+
+    if (g_gcursor >= n) {
+        g_gcursor = n - 1;
+    }
+    if (g_gcursor < 0) {
+        g_gcursor = 0;
+    }
+    g_gscroll = dw3_optlist_scroll_for(g_gscroll, g_gcursor, n);
+    if (g_level) {
+        n = dw3_optlist_count(g_group, po_cheats_on());
+        if (g_cursor >= n) {
+            g_cursor = n - 1;
+        }
+        if (g_cursor < 0) {
+            g_cursor = 0;
+        }
+        g_scroll = dw3_optlist_scroll_for(g_scroll, g_cursor, n);
+    }
+}
+
+/* Registry row under the cursor of the open group (level 1). */
+static int po_cursor_row(void) {
+    return dw3_optgroups[g_group].rows[g_cursor];
+}
+
+/* Hand the page, cursor and values to the native overlay, which regenerates
+ * its options screen only when they change. */
 static void po_push_view(void) {
+    po_fit_cursors();
 #if !defined(DW3_PORT_OPTIONS_TEST) && defined(DW3_TITLE_NATIVE_OVERLAY)
-    int values[DW3_PORT_OPT_COUNT];
+    int values[DW3_TITLE_OPTION_ROWS];
     int i;
 
-    for (i = 0; i < DW3_PORT_OPT_COUNT; i++) {
-        values[i] = g_stubs[i].value;
+    for (i = 0; i < DW3_TITLE_OPTION_ROWS; i++) {
+        values[i] = 0;
     }
-    dw3_pc_title_overlay_set_options_view(g_cursor, values,
-                                          DW3_PORT_OPT_COUNT);
+    if (g_level) {
+        for (i = 0; i < dw3_optgroups[g_group].nrows; i++) {
+            values[i] = g_stubs[dw3_optgroups[g_group].rows[i]].value;
+        }
+    }
+    dw3_pc_title_overlay_set_options_page(
+        dw3_optlist_page(g_level ? g_group : -1,
+                         g_level ? g_scroll : g_gscroll), po_cheats_on());
+    dw3_pc_title_overlay_set_options_view(g_level ? g_cursor : g_gcursor,
+                                          values, DW3_TITLE_OPTION_ROWS);
     dw3_pc_title_overlay_set_options_locked(dw3_port_options_locked_mask());
 #endif
 }
@@ -183,6 +275,14 @@ unsigned dw3_port_options_locked_mask(void) {
 
 int dw3_port_options_in_game(void) {
     return g_in_game != 0;
+}
+
+int dw3_port_options_group(void) {
+    return g_level ? g_group : -1;
+}
+
+int dw3_port_options_cursor(void) {
+    return g_level ? g_cursor : g_gcursor;
 }
 
 /* Open-to-screen timing (the owner felt a stutter opening Options in game):
@@ -229,7 +329,9 @@ static void po_open(int in_game) {
     g_max_gap_frame = 0;
     g_shown_logged = g_watch_logged = 0;
     g_in_game = in_game;
-    g_cursor = 0;
+    g_level = 0;
+    g_group = 0;
+    g_gcursor = g_gscroll = g_cursor = g_scroll = 0;
     g_open_frames = 0;
     g_logged_open = 0;
     po_push_view();
@@ -747,6 +849,70 @@ int dw3_port_options_restart_enabled(void) {
     return g_stubs[DW3_PORT_OPT_RESTART].value != 0;
 }
 
+#ifdef DW3_PORT_OPTIONS_TEST
+#define po_key_back() po_pressed(PO_BIT_TRIANGLE)
+#define po_key_up() po_pressed(PO_BIT_UP)
+#define po_key_down() po_pressed(PO_BIT_DOWN)
+#define po_key_left() po_pressed(PO_BIT_LEFT)
+#define po_key_right() po_pressed(PO_BIT_RIGHT)
+#define po_key_confirm() (po_pressed(PO_BIT_CROSS) || po_pressed(PO_BIT_CIRCLE))
+#define po_key_square() po_pressed(15) /* PAD_SQUARE */
+#else
+#define po_key_back() po_pressed(PAD_TRIANGLE)
+#define po_key_up() (po_pressed(PAD_UP) || PAD_REPEATED(PAD_UP))
+#define po_key_down() (po_pressed(PAD_DOWN) || PAD_REPEATED(PAD_DOWN))
+#define po_key_left() (po_pressed(PAD_LEFT) || PAD_REPEATED(PAD_LEFT))
+#define po_key_right() (po_pressed(PAD_RIGHT) || PAD_REPEATED(PAD_RIGHT))
+#define po_key_confirm() (po_pressed(PAD_CROSS) || po_pressed(PAD_CIRCLE))
+#define po_key_square() po_pressed(PAD_SQUARE)
+#endif
+
+#ifdef DW3_CHEATS
+/* Open the Cheats screen (title only: cheats are armed at the title). */
+static void po_open_cheats(const char *how) {
+    if (g_in_game) {
+        /* P9.7: the entry is greyed in game. */
+        fprintf(stderr, "dw3-port-options: cheats are locked in game "
+                        "(change them at the title)\n");
+        fflush(stderr);
+        return;
+    }
+    fprintf(stderr, "dw3-port-options: group open cheats (%s)\n", how);
+    fflush(stderr);
+    po_sound(PO_SND_SELECT);
+    dw3_cheats_open();
+}
+#endif
+
+/* Open a group from the list: its rows, or the Cheats screen. */
+static void po_group_open(int group) {
+    if (group < 0 || group >= DW3_OPTGRP_COUNT) {
+        return;
+    }
+#ifdef DW3_CHEATS
+    if (group == DW3_OPTGRP_CHEATS) {
+        po_open_cheats("group");
+        return;
+    }
+#endif
+    g_level = 1;
+    g_group = group;
+    g_cursor = g_scroll = 0;
+    po_sound(PO_SND_SELECT);
+    fprintf(stderr, "dw3-port-options: group open %s (%d row(s), %s)\n",
+            g_group_names[group], dw3_optgroups[group].nrows,
+            g_in_game ? "in game" : "title");
+    fflush(stderr);
+}
+
+/* Back from a group to the list, the cursor on the group that was open. */
+static void po_group_back(void) {
+    fprintf(stderr, "dw3-port-options: group close %s (back to the group "
+                    "list)\n", g_group_names[g_group]);
+    fflush(stderr);
+    g_level = 0;
+}
+
 void dw3_port_options_tick(void) {
     if (!g_open) {
         return;
@@ -771,92 +937,65 @@ void dw3_port_options_tick(void) {
     }
 #ifdef DW3_CHEATS
     /* P6.20: the Cheats screen has the pad while it is open; Square (Y on
-     * the Switch) opens it. */
+     * the Switch) opens it from any list, the Cheats group does too. */
     if (dw3_cheats_is_open()) {
         dw3_cheats_tick();
         if (!dw3_cheats_is_open()) {
-            po_push_view(); /* back on the Options page */
+            po_push_view(); /* back on the list it was opened from */
         }
         return;
     }
-#ifdef DW3_PORT_OPTIONS_TEST
-    if (po_pressed(15)) { /* PAD_SQUARE */
-#else
-    if (po_pressed(PAD_SQUARE)) {
-#endif
-        if (g_in_game) {
-            /* P9.7: cheats are armed at the title; the entry is greyed. */
-            fprintf(stderr, "dw3-port-options: cheats are locked in game "
-                            "(change them at the title)\n");
-            fflush(stderr);
-            return;
-        }
-        po_sound(PO_SND_SELECT);
-        dw3_cheats_open();
+    if (po_key_square()) {
+        po_open_cheats("Square / Y shortcut");
         return;
     }
 #endif
+    if (po_key_back()) {
+        po_sound(PO_SND_CANCEL);
+        if (g_level) {
+            po_group_back();
+        } else {
+            dw3_port_options_close();
+        }
+        return;
+    }
+    if (po_key_up() && (g_level ? g_cursor : g_gcursor) > 0) {
+        if (g_level) {
+            g_cursor--;
+        } else {
+            g_gcursor--;
+        }
+        po_sound(PO_SND_CURSOR);
+    }
+    if (po_key_down() &&
+        (g_level ? g_cursor : g_gcursor) <
+            dw3_optlist_count(g_level ? g_group : -1, po_cheats_on()) - 1) {
+        if (g_level) {
+            g_cursor++;
+        } else {
+            g_gcursor++;
+        }
+        po_sound(PO_SND_CURSOR);
+    }
+    if (!g_level) {
+        if (po_key_confirm()) {
+            po_group_open(po_group_at(g_gcursor));
+        }
+    } else {
+        const int row = po_cursor_row();
 
-#ifdef DW3_PORT_OPTIONS_TEST
-    /* Close is Triangle only — Select is the open chord on the title menu. */
-    if (po_pressed(PO_BIT_TRIANGLE)) {
-        po_sound(PO_SND_CANCEL);
-        dw3_port_options_close();
-        return;
-    }
-    if (po_pressed(PO_BIT_UP)) {
-        if (g_cursor > 0) {
-            g_cursor--;
-            po_sound(PO_SND_CURSOR);
+        if (po_is_stepped(row)) {
+            if (po_key_left()) {
+                po_step(row, -1);
+            }
+            if (po_key_right()) {
+                po_step(row, 1);
+            }
+        }
+        if (po_key_confirm()) {
+            po_toggle(row);
         }
     }
-    if (po_pressed(PO_BIT_DOWN)) {
-        if (g_cursor < DW3_PORT_OPT_COUNT - 1) {
-            g_cursor++;
-            po_sound(PO_SND_CURSOR);
-        }
-    }
-    if (po_is_stepped(g_cursor)) {
-        if (po_pressed(PO_BIT_LEFT)) {
-            po_step(g_cursor, -1);
-        }
-        if (po_pressed(PO_BIT_RIGHT)) {
-            po_step(g_cursor, 1);
-        }
-    }
-    if (po_pressed(PO_BIT_CROSS) || po_pressed(PO_BIT_CIRCLE)) {
-        po_toggle(g_cursor);
-    }
-#else
-    if (po_pressed(PAD_TRIANGLE)) {
-        po_sound(PO_SND_CANCEL);
-        dw3_port_options_close();
-        return;
-    }
-    if (po_pressed(PAD_UP) || PAD_REPEATED(PAD_UP)) {
-        if (g_cursor > 0) {
-            g_cursor--;
-            po_sound(PO_SND_CURSOR);
-        }
-    }
-    if (po_pressed(PAD_DOWN) || PAD_REPEATED(PAD_DOWN)) {
-        if (g_cursor < DW3_PORT_OPT_COUNT - 1) {
-            g_cursor++;
-            po_sound(PO_SND_CURSOR);
-        }
-    }
-    if (po_is_stepped(g_cursor)) {
-        if (po_pressed(PAD_LEFT) || PAD_REPEATED(PAD_LEFT)) {
-            po_step(g_cursor, -1);
-        }
-        if (po_pressed(PAD_RIGHT) || PAD_REPEATED(PAD_RIGHT)) {
-            po_step(g_cursor, 1);
-        }
-    }
-    if (po_pressed(PAD_CROSS) || po_pressed(PAD_CIRCLE)) {
-        po_toggle(g_cursor);
-    }
-#endif
     po_push_view();
 }
 
@@ -937,28 +1076,45 @@ void dw3_port_options_draw(void) {
     ox = env.disp.x;
     oy = env.disp.y;
 
-    lines[n++] = "Port options";
-    lines[n++] = "------------";
-    for (i = 0; i < DW3_PORT_OPT_COUNT && n < DW3_PORT_OPT_COUNT + 2; i++) {
-        char *buf = lines_buf[i];
-        if (po_is_mode(i)) {
-            snprintf(buf, sizeof(lines_buf[i]), "%c %s: %s",
-                     (i == g_cursor) ? '>' : ' ', g_stubs[i].label,
-                     po_mode_name(i, g_stubs[i].value));
-        } else if (po_is_volume(i)) {
-            snprintf(buf, sizeof(lines_buf[i]), "%c %s: %d",
-                     (i == g_cursor) ? '>' : ' ', g_stubs[i].label,
-                     g_stubs[i].value);
-        } else if (i == DW3_PORT_OPT_FAST_FORWARD && g_stubs[i].value) {
-            snprintf(buf, sizeof(lines_buf[i]), "%c %s: %dx (R3)",
-                     (i == g_cursor) ? '>' : ' ', g_stubs[i].label,
-                     g_stubs[i].value);
-        } else {
-            snprintf(buf, sizeof(lines_buf[i]), "%c %s: %s",
-                     (i == g_cursor) ? '>' : ' ', g_stubs[i].label,
-                     g_stubs[i].value ? "ON" : "OFF");
+    if (!g_level) {
+        /* P9.9: the group list (PS1-primitive fallback, plain text). */
+        int ids[DW3_OPTGRP_COUNT];
+        int count = dw3_optgroups_visible(po_cheats_on(), ids);
+
+        lines[n++] = "Port options";
+        lines[n++] = "------------";
+        for (i = 0; i < count && n < DW3_PORT_OPT_COUNT + 2; i++) {
+            snprintf(lines_buf[i], sizeof(lines_buf[i]), "%c %s",
+                     (i == g_gcursor) ? '>' : ' ', g_group_names[ids[i]]);
+            lines[n++] = lines_buf[i];
         }
-        lines[n++] = buf;
+    } else {
+        lines[n++] = g_group_names[g_group];
+        lines[n++] = "------------";
+        for (int k = 0; k < dw3_optgroups[g_group].nrows &&
+                        n < DW3_PORT_OPT_COUNT + 2; k++) {
+            char *buf = lines_buf[k];
+
+            i = dw3_optgroups[g_group].rows[k];
+            if (po_is_mode(i)) {
+                snprintf(buf, sizeof(lines_buf[k]), "%c %s: %s",
+                         (k == g_cursor) ? '>' : ' ', g_stubs[i].label,
+                         po_mode_name(i, g_stubs[i].value));
+            } else if (po_is_volume(i)) {
+                snprintf(buf, sizeof(lines_buf[k]), "%c %s: %d",
+                         (k == g_cursor) ? '>' : ' ', g_stubs[i].label,
+                         g_stubs[i].value);
+            } else if (i == DW3_PORT_OPT_FAST_FORWARD && g_stubs[i].value) {
+                snprintf(buf, sizeof(lines_buf[k]), "%c %s: %dx (R3)",
+                         (k == g_cursor) ? '>' : ' ', g_stubs[i].label,
+                         g_stubs[i].value);
+            } else {
+                snprintf(buf, sizeof(lines_buf[k]), "%c %s: %s",
+                         (k == g_cursor) ? '>' : ' ', g_stubs[i].label,
+                         g_stubs[i].value ? "ON" : "OFF");
+            }
+            lines[n++] = buf;
+        }
     }
     snprintf(back_line, sizeof(back_line), "Triangle (S): Back");
     lines[n++] = back_line;
