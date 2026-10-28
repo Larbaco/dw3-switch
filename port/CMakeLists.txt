@@ -1412,6 +1412,8 @@ if(DW3_PORT_PART STREQUAL "host")
 add_library(dw3_region_rt OBJECT
   "${CMAKE_CURRENT_SOURCE_DIR}/region/dw3_region.c"
   "${CMAKE_CURRENT_SOURCE_DIR}/region/dw3_region_rt.c"
+  "${CMAKE_CURRENT_SOURCE_DIR}/region/dw3_region_boot.c"
+  "${CMAKE_CURRENT_SOURCE_DIR}/region/dw3_launcher.c"
   "${CMAKE_CURRENT_SOURCE_DIR}/options/options_cfg.c"
 )
 target_include_directories(dw3_region_rt PRIVATE

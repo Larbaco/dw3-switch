@@ -17,6 +17,8 @@
 #ifndef DW3_GAME_API_H
 #define DW3_GAME_API_H
 
+#include <stdint.h>
+
 #include "dw3_region.h"
 
 #ifdef __cplusplus
@@ -25,7 +27,7 @@ extern "C" {
 
 struct Dw3MapViewDraw;
 
-#define DW3_GAME_API_ABI 1
+#define DW3_GAME_API_ABI 2
 
 typedef struct Dw3GameApi {
     unsigned abi;       /* DW3_GAME_API_ABI */
@@ -34,6 +36,13 @@ typedef struct Dw3GameApi {
     int (*game_main)(void);
     int (*host_load_boot_tim)(const char *path);
     void (*overlay_register_title)(void);
+
+    /* overlay host (port/overlays/overlay_host.h): the Switch backend and the
+     * crash report ask which mode and stage file are loaded */
+    int32_t (*overlay_current_mode_file)(void);
+    int32_t (*overlay_current_sub_file)(void);
+    const char *(*overlay_file_name)(int32_t file_id);
+    void (*overlay_set_strict)(int on);
 
     /* P6.32 map view */
     void (*map_view_init)(const char *config_dir);
@@ -46,11 +55,14 @@ typedef struct Dw3GameApi {
     int (*port_options_persist_init)(const char *dir);
     void (*port_options_flush)(void);
     int (*port_options_is_open)(void);
+    int (*port_options_in_game)(void);
+    int (*port_battle_options_holding)(void);
     int (*port_options_level)(int index);
     unsigned (*port_options_locked_mask_for)(int in_game);
     void (*port_options_note_shown)(void);
     int (*port_screen_fade_level)(void);
     int (*port_turbo_speed)(void);
+    int (*port_turbo_present_due)(void);
     int (*port_turbo_rate_x2)(void);
     void (*cheats_soak_arm)(const char *spec); /* NULL without DW3_CHEATS */
 
@@ -59,6 +71,7 @@ typedef struct Dw3GameApi {
     const int *file_sectors;
     const unsigned short *file_sector_counts;
     const int *file_count;
+    const int32_t *language;          /* EU: LANGUAGE (set by CNTY_SEL); NULL in the US copy */
     const void *heap;                 /* the game's HEAP (HeapView ABI) */
     unsigned char *host_heap;         /* DW3_HOST_HEAP arena */
     const unsigned long *host_heap_size;
@@ -89,12 +102,19 @@ const Dw3GameApi *dw3_game(void);
 #define dw3_port_options_persist_init(d) DW3_API(port_options_persist_init)(d)
 #define dw3_port_options_flush() DW3_API(port_options_flush)()
 #define dw3_port_options_is_open() DW3_API(port_options_is_open)()
+#define dw3_port_options_in_game() DW3_API(port_options_in_game)()
+#define dw3_port_battle_options_holding() DW3_API(port_battle_options_holding)()
+#define dw3_overlay_current_mode_file() DW3_API(overlay_current_mode_file)()
+#define dw3_overlay_current_sub_file() DW3_API(overlay_current_sub_file)()
+#define dw3_overlay_file_name(id) DW3_API(overlay_file_name)(id)
+#define dw3_overlay_set_strict(on) DW3_API(overlay_set_strict)(on)
 #define dw3_port_options_level(i) DW3_API(port_options_level)(i)
 #define dw3_port_options_locked_mask_for(m) \
     DW3_API(port_options_locked_mask_for)(m)
 #define dw3_port_options_note_shown() DW3_API(port_options_note_shown)()
 #define dw3_port_screen_fade_level() DW3_API(port_screen_fade_level)()
 #define dw3_port_turbo_speed() DW3_API(port_turbo_speed)()
+#define dw3_port_turbo_present_due() DW3_API(port_turbo_present_due)()
 #define dw3_port_turbo_rate_x2() DW3_API(port_turbo_rate_x2)()
 #define dw3_cheats_soak_arm(s) DW3_API(cheats_soak_arm)(s)
 #endif

@@ -11,7 +11,8 @@ see [As built](#as-built-slice-1) below.** Slice 2
 [As built, slice 2](#as-built-slice-2-the-switch-launcher). **Slice 3
 (2026-10-28, owner priority) is the dual-image link itself: one `dw3-pc` with
 both game copies, see [As built, slice 3](#as-built-slice-3-the-dual-image-link-pc);
-the Switch half (one `.nro`, the boot picker in the image) is the next PR.** Numbers
+the Switch half (one `.nro`, the boot picker in the image) is
+[slice 4](#as-built-slice-4-the-combined-switch-nro).** Numbers
 come from `origin/main` at `3e2a9b7`, the decomp at
 `b9caa6c` (`vendor/dw3_decomp`), the PC objects of a US build, and the
 preview.31-rc1 Switch builds (US and EU, `.nro` and `.elf`).
@@ -721,6 +722,99 @@ title lines of `nx_crash.c` still use the compile-time region on the Switch
 the per-region title in the picker (below). The `tools/build_pc_single.sh`
 launcher is no longer needed on the PC but stays until the Switch path is
 confirmed on the OLED.
+
+## As built (slice 4: the combined Switch `.nro`)
+
+PR B of the 2026-10-28 priority. The dual-image link of slice 3 on the Switch,
+plus what only the console has: finding the data, the picker, the build, CI and
+the release asset.
+
+```bash
+tools/build_switch_game.sh --both            # build/switch-both/dw3-switch.nro
+tools/build_switch_game.sh --both --nxlink   # build/switch-both-nxlink/dw3-switch-nxlink.nro
+```
+
+NACP name "Digimon World 3 NX" (the nxlink variant "Digimon World 3 NX
+(nxlink)"), as for the separate builds. Sizes (this tree): US 11.10 MB, **combined
+14.21 MB** (+3.1 MB over one region; the survey estimate of about 12 MB was low,
+the ordinary build had grown since; still inside the "about 12 MB is fine"
+default, record it and tell me if it is not).
+
+**What it does at boot** (`platforms/switch/source/boot_main.c`,
+`psyz_backend/nx_region_boot.c`, `port/region/dw3_region_boot.c`):
+
+1. Log, pad and SD come up as always; then, before the profile selector (which
+   needs the region's save folder), the region step runs.
+2. **Forced** (`DW3_REGION` in the environment, as a replay NRO's baked test
+   environment, or `DW3_RUNTIME`): no probe, no picker, no extra frame, nothing
+   written (the P6.15 rule).
+3. Else it looks under `sdmc:/switch/dw3/` for `us/` and `eu/` (a complete tree:
+   `files_<r>.json` plus the executable; a region folder that only holds a disc
+   image, `*.cue` / `*.bin` / `*.iso` directly inside it, also counts, so a first
+   run from a disc still extracts). It reads `region_default` and `last_region`
+   from `sdmc:/switch/dw3/port_options.cfg`.
+4. Only US or only EU: that one runs, no picker. None: the setup screen (names
+   both folders) and `+` quits. Both: the picker, unless `region_default` is `us`
+   or `eu`; **holding Minus at launch** (sampled for about 200 ms, and only when it
+   can matter: both present and a region stored) asks again.
+5. The picker is drawn on the EGL surface with the 8x8 HUD font (scissor clears,
+   like the crash notice; the text is the stop-gap launcher's): `> US <  > EU <`,
+   "Starting US in 3...", "Always start this one: off/ON". Default entry
+   `last_region`, else US; 3 s countdown that Left/Right/Y cancel; A starts; Y
+   toggles always; `+` quits to hbmenu; HOME ends it. After A it waits (up to
+   0.6 s) for the buttons to be released so the press cannot reach the title.
+6. `last_region` is stored every time a region boots (not when forced);
+   `region_default` only when Y was on. Then `dw3_region_select()` fixes the
+   region and the boot continues as the separate build does (user step,
+   `sdmc:/switch/dw3/<r>` as the runtime root, extraction, memcard, title).
+   Saves are the per-user, cross-region store of P6.25 / P6.26, unchanged.
+
+**Log proof (AGENTS.md rule 12).** Every decision is one line in `dw3.log`:
+`dw3-region: data found us=<0|1> eu=<0|1> under <base>`, `stored
+region_default=<ask|us|eu> last_region=<us|eu|none> minus_held=<0|1|n/a>`,
+`decision <boot|pick|no-data> region=<r>: <why>`, `picker shown (default entry
+<r>, timeout 3000 ms)`, `picker result <r> by <countdown|button A> after N ms
+always=<0|1>` or `picker quit by + after N ms`, `saved last_region=<r>
+[region_default=<r>]`, `forced <r> by <source>: ...`, and then `running <r>
+(<source>), one image with both game copies`. The OLED plan rows G9.* name them.
+
+**Other host changes.** The crash report's `disc:` and EU `language:` lines are
+run time (`none yet` before a region is chosen, so a crash in the picker still
+writes a report); the backend files that call the game (`nx_gpu.c`,
+`nx_crash.c`, `nx_title_overlay.c`, `switch_gpu.c`, ...) include
+`nx_game_api.h` last, which redirects the calls in a `both` image. The table
+grew by the overlay host (mode, stage and file name), `port_options_in_game`,
+`port_battle_options_holding`, `port_turbo_present_due`, `overlay_set_strict` and
+the EU `LANGUAGE` pointer, and before a region is chosen it is a harmless
+"no game" table, so the HUD or the crash handler cannot call through nothing.
+
+**CI and release.** CI job `switch-game-both` builds the ordinary and the nxlink
+combined `.nro` and uploads the artifact `dw3-switch-both-nro`. The release
+workflow also builds them and publishes `dw3-switch-both.nro`,
+`dw3-switch-both-nxlink.nro` and `dw3-switch-both-elf.zip` as extra assets;
+nothing it published before is removed or renamed ([RELEASES](RELEASES.md)).
+
+**Tests.** `tools/tests/region_boot_main.c` (via `test_region.py`): the flow with a
+fake console, 11 cases: no data, only US, only EU, both with the countdown, the
+last choice as default, Right + A, Y stored, `region_default` with and without the
+Minus sample, `+`, forced, a disc image counting as present, a picker that cannot
+run. The pure parts of the picker and the decision table are the slice 1 tests.
+Ryubing (below). The plain US and EU Switch builds still build.
+
+SLICE4_RYUBING
+
+**Orchestrator defaults in this slice (owner may change):** the picker is a plain
+English screen; Minus is hold-to-ask; the separate US / EU `.nro` files keep
+shipping next to the combined one until you confirm it on the OLED; no region
+switching in game; a disc image has to sit in `us/` or `eu/` for a first-run
+extraction to be found (an extracted tree works wherever the disc was).
+
+**Not done / open.** Nothing was run on a console: the picker's look at arm's
+length, the Minus hold and the profile selector coming up after an EGL surface
+exists (it normally comes before it) are OLED checks
+([OLED_TEST_PLAN G9](OLED_TEST_PLAN.md#g9-combined-p624-one-nro-for-both-regions-pr-b)).
+The Options row "Region at boot" and the per-region title in the picker are still
+open. The stop-gap launcher stays until the OLED check passes.
 
 ## History moved from ROADMAP.md (2026-10-24)
 
