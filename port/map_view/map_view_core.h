@@ -132,6 +132,19 @@ void dw3_mv_view_zoom(MvView *v, int dir, int map_w, int map_h, int vw, int vh);
 void dw3_mv_view_rect(const MvView *v, int map_w, int map_h, int vw, int vh,
                       float *x0, float *y0, float *x1, float *y1);
 
+/* --- name box placement --------------------------------------------------
+ * The game decides above / below ONCE, when the cursor gets on a location
+ * (STSTATUS_showMapArea sets hoverY then and never again). The host mirrors
+ * that: the answer is latched at the entry and kept while the cursor stays on
+ * a location, so a zoom or a view follow (which move the cursor's screen row
+ * without the cursor moving) cannot flip the box. */
+typedef struct MvNameBox {
+    int hover;  /* the location of the last call, 0 = none */
+    int bottom; /* latched: the box is at the bottom */
+} MvNameBox;
+/* `scr_y` is the cursor's row in the 240-line picture now; returns bottom. */
+int dw3_mv_namebox_bottom(MvNameBox *nb, int hover, float scr_y);
+
 /* --- cache ---------------------------------------------------------------
  * <dir>/<name>: "DW3M", version, w, h, ox, oy, reveal hash, then w * h * 4
  * RGBA bytes. The base (scaler 0) is always the bare map (reveal 0); a scaled

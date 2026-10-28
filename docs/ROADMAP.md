@@ -192,7 +192,7 @@ the history. Tick the item in the table once the owner confirms every part of
 its done-when. The ordered session plan (written for preview.36) is
 [OLED_TEST_PLAN](OLED_TEST_PLAN.md).
 
-- **Owner preview.47 US log (2026-10-28): PASSED** A5, A7, A9-A12, C7, E1.3, E2.1, E2.2, G8 (the `items_partner_switch=0` sub-check of G8 not done) and B15b; marks and log evidence are in [OLED_TEST_PLAN](OLED_TEST_PLAN.md). Still open: app name #289 (look only), B16 map balloon/cursor/zoom (not opened in that log), E1.6b (needs an EU run), D13 #188.
+- **Owner preview.47 US log (2026-10-28): PASSED** A5, A7, A9-A12, C7, E1.3, E2.1, E2.2, G8 (the `items_partner_switch=0` sub-check of G8 not done) and B15b; marks and log evidence are in [OLED_TEST_PLAN](OLED_TEST_PLAN.md). Owner confirmed on the OLED (2026-10-28, preview.47/48): app name #289 shows "Digimon World 3 NX" (**PASSED**); B16 map view icons, balloon and cursor work (**PASSED**), except the name box jumping while zooming with the right stick, fixed in the branch `fix/map-namebox-stick-zoom` (the placement is latched when the cursor gets on a location, as the game does; retest B16 with the stick on a location). Still open: E1.6b (needs an EU run), D13 #188.
 - **P5 gate:** start → first boss on hardware, US and EU. The Phase 5 gate is
   not met yet (owner, 2026-10-24); see [Phase 5](#phase-5--playable-on-switch).
 - **P5.5:** the stage sweep on the OLED, US and EU: `stage_sweep=1` in

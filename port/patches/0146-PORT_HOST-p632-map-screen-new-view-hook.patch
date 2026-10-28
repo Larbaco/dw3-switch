@@ -38,7 +38,7 @@ new screen closes.
  
  /* Finds the area under the cursor and shows its name */
  void STSTATUS_showMapArea(StatusMapScreen *screen, TextWindow **windows) {
-@@ -348,6 +351,95 @@
+@@ -348,6 +351,94 @@
  #endif
  }
  
@@ -118,7 +118,6 @@ new screen closes.
 +        screen->cursorY = io.scr_y;
 +        screen->scrollX = io.scr_x - io.cur_x;
 +        screen->scrollY = io.scr_y - io.cur_y;
-+        screen->hoverY = io.scr_y;
 +        STSTATUS_showMapArea(screen, windows);
 +    } else if (savedFor == screen) {
 +        screen->cursorX = saved[0];
@@ -134,7 +133,7 @@ new screen closes.
  /* The map screen's update */
  void STSTATUS_updateMapScreen(StatusMapScreen *screen, TextWindow **windows) {
      s32 area;
-@@ -386,6 +478,12 @@
+@@ -386,6 +477,12 @@
          }
          break;
      case TASK_RUN:

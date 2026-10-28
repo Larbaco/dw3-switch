@@ -79,6 +79,7 @@ typedef struct MapViewState {
     int hover_x;                /* the cursor's x when it got on the location */
     int home_alt;               /* the balloon faces the other way (EU) */
     int name_x0, name_y0, name_x1, name_y1; /* the name box frame, logical */
+    MvNameBox name_nb;          /* the latched placement (core) */
     int name_bottom;            /* the box is at the bottom (cursor in the top half) */
     int hole;                   /* the game's name box is shown */
     /* the CPU scalers on a worker thread */
@@ -1017,6 +1018,7 @@ static void open_view(const void *sheet, int sheet_file, int half, int home_x,
     s.was_moving = 0;
     s.home_alt = -1;
     s.name_bottom = -1;
+    memset(&s.name_nb, 0, sizeof(s.name_nb));
     s.hole = 0;
     s.show_hud = 1;
     s.frame = 0;
@@ -1145,7 +1147,8 @@ static void update_name_box(void) {
 
     cursor_draw_pos(&x, &y);
     sprite_to_view(x, y, &vx, &vy);
-    bottom = (vy / (float)VH * 240.0f) < 120.0f;
+    bottom = dw3_mv_namebox_bottom(&s.name_nb, s.hover,
+                                   vy / (float)VH * 240.0f);
     shown = s.hover > 0 && s.show_hud && s.name_x1 > s.name_x0;
     if (shown != s.hole || (shown && bottom != s.name_bottom)) {
         if (shown) {
@@ -1160,6 +1163,13 @@ static void update_name_box(void) {
         }
     }
     s.hole = shown;
+    if (shown && s.name_bottom >= 0 && bottom != s.name_bottom) {
+        fprintf(stderr, "dw3-map: name box placement changed %s->%s at zoom "
+                "%.3f (location id=%d)\n", s.name_bottom ? "bottom" : "top",
+                bottom ? "bottom" : "top",
+                (double)dw3_mv_view_cur_zoom(&s.view, s.base.w, s.base.h, VW,
+                                             VH), s.hover);
+    }
     s.name_bottom = bottom;
 }
 
