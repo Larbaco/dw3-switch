@@ -97,7 +97,7 @@ Files are named by roadmap item id (`P6.4_...`) or by topic.
 - [SURVEY](SURVEY.md): port-oriented repository survey.
 - [COMMUNITY_QOL](COMMUNITY_QOL.md): community quality-of-life patches and companion projects.
 - [TEXTURE_PACKS](TEXTURE_PACKS.md): texture pack compatibility.
-- [MOD_MAP_UPSCALE](MOD_MAP_UPSCALE.md): first mod, an upscaled map pack: design and loader plan.
+- [MOD_MAP_UPSCALE](MOD_MAP_UPSCALE.md): first mod, an upscaled map pack: design, loader as built, how to make and install the pack.
 - [NSP_PACKAGING](NSP_PACKAGING.md): NSP packaging research (P10.7).
 - [MENU_COMPOSITION_INVESTIGATION](MENU_COMPOSITION_INVESTIGATION.md): native menu composition investigation.
 - [BALLOON_NULL_ACTOR](BALLOON_NULL_ACTOR.md): NULL reads the PS1 tolerated.

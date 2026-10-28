@@ -329,16 +329,16 @@ static int place_tim(const uint8_t *tim, size_t avail, int image_x, int image_y,
     return 0;
 }
 
-int dw3_mv_disc_load_map_vram(const uint8_t *file, size_t len,
-                              uint16_t *vram) {
+int dw3_mv_disc_load_entry(const uint8_t *file, size_t len, int entry,
+                           int image_x, int image_y, uint16_t *vram) {
     const uint8_t *arch;
     uint8_t *buf;
     int placed = 0, i;
-    int image_x = 0x280;
 
-    if (!file || !vram || len < 16) return -1;
-    if ((size_t)rd32(file) >= len) return -1;
-    arch = file + rd32(file); /* entry 0 of the file: the TIM archive */
+    if (!file || !vram || len < 16 || entry < 0 || entry > 2) return -1;
+    if ((size_t)rd32(file + 4 * entry) <= 0 ||
+        (size_t)rd32(file + 4 * entry) >= len) return -1;
+    arch = file + rd32(file + 4 * entry); /* the entry's TIM archive */
     buf = (uint8_t *)malloc(0x10000);
     if (!buf) return -1;
     for (i = 0; i < 16; ++i) {
@@ -379,7 +379,7 @@ int dw3_mv_disc_load_map_vram(const uint8_t *file, size_t len,
             tim = buf;
             avail = n;
         }
-        if (place_tim(tim, avail, image_x, 0, 0x140, 0x100, vram) != 0) {
+        if (place_tim(tim, avail, image_x, image_y, 0x140, 0x100, vram) != 0) {
             placed = -1;
             break;
         }
@@ -388,6 +388,11 @@ int dw3_mv_disc_load_map_vram(const uint8_t *file, size_t len,
     }
     free(buf);
     return placed;
+}
+
+int dw3_mv_disc_load_map_vram(const uint8_t *file, size_t len,
+                              uint16_t *vram) {
+    return dw3_mv_disc_load_entry(file, len, 0, 0x280, 0, vram);
 }
 
 /* --- scalers -------------------------------------------------------------*/

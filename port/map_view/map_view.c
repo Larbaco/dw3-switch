@@ -12,6 +12,7 @@
 #include "cdfs.h"
 #include "map_view.h"
 #include "map_view_core.h"
+#include "mod_pack.h"
 #include "port_options.h"
 #include "port_turbo.h"
 #include "port_widescreen.h"
@@ -40,6 +41,10 @@ typedef struct MapViewState {
     int built_ms;        /* last CPU build, -1 = from the cache, 0 = none */
     int source;          /* 0 vram, 1 cache, 2 disc */
     MvImage base;        /* the map and its reveal layer, kept while open */
+    MvImage mod;         /* the mod pack's map with its reveal layer (scale x
+                          * base), kept while open; rgba NULL = no pack */
+    int mod_scale;
+    char mod_id[64];
     int pieces_in;       /* pieces the game sent */
     int pieces_drawn;    /* pieces composed into base */
     int towns_drawn, areas_drawn;
@@ -85,6 +90,8 @@ typedef struct MapViewState {
 
 static MapViewState s;
 static char g_cache_dir[480];
+/* <config dir>/mods on the PC, sdmc:/switch/dw3/mods on the Switch */
+static char g_mods_dir[480];
 /* The scaler the next open starts with: nearest (the owner's choice after the
  * OLED look of preview.45), then whatever the player left it on. */
 static int g_scaler = MV_SCALER_NEAREST;
@@ -137,16 +144,26 @@ static void cache_path(char *out, size_t cap, int half, int scaler) {
 }
 
 void dw3_map_view_init(const char *config_dir) {
+    const char *env_mods = getenv("DW3_MODS_DIR");
+
 #if defined(__SWITCH__)
     snprintf(g_cache_dir, sizeof(g_cache_dir), "sdmc:/switch/dw3/cache");
+    snprintf(g_mods_dir, sizeof(g_mods_dir), "sdmc:/switch/dw3/mods");
     (void)config_dir;
 #else
-    if (!config_dir || !config_dir[0]) {
-        g_cache_dir[0] = 0;
-        return;
+    g_mods_dir[0] = 0;
+    g_cache_dir[0] = 0;
+    if (config_dir && config_dir[0]) {
+        snprintf(g_mods_dir, sizeof(g_mods_dir), "%s/mods", config_dir);
+        snprintf(g_cache_dir, sizeof(g_cache_dir), "%s/cache", config_dir);
     }
-    snprintf(g_cache_dir, sizeof(g_cache_dir), "%s/cache", config_dir);
 #endif
+    if (env_mods && env_mods[0]) { /* tests and replays */
+        snprintf(g_mods_dir, sizeof(g_mods_dir), "%s", env_mods);
+    }
+    fprintf(stderr, "dw3-map: mods folder %s\n",
+            g_mods_dir[0] ? g_mods_dir : "(none)");
+    if (!g_cache_dir[0]) return;
     mkdir(g_cache_dir, 0777);
     fprintf(stderr, "dw3-map: cache folder %s\n", g_cache_dir);
 }
@@ -281,6 +298,161 @@ static int bank_build(const uint16_t *vram, int sheet_file, const void *sheet2) 
             s.bank[BK_HOME].rgba ? "ok" : "MISSING",
             s.bank[BK_HOME_ALT].rgba ? "ok" : "no (US)");
     return built;
+}
+
+/* --- mod pack (docs/MOD_MAP_UPSCALE.md) ---------------------------------------*/
+
+enum { MV_MOD_MAX_SCALE = 4, MV_MOD_SPRITES = 96 };
+
+static void mod_free(void) {
+    dw3_mv_image_free(&s.mod);
+    s.mod_scale = 0;
+    s.mod_id[0] = 0;
+}
+
+/* A reveal sprite of the 1x composition drawn N times larger with nearest
+ * (used for a piece the pack has no valid sprite for). */
+static int mod_piece_nearest(const uint16_t *vram, const void *sheet, size_t len,
+                             int frame, int tex_x, const MvBox *box, int scale,
+                             Dw3ModImage *out) {
+    MvImage tmp;
+    int x, y, k, l, rc;
+
+    memset(&tmp, 0, sizeof(tmp));
+    tmp.w = box->x1 - box->x0;
+    tmp.h = box->y1 - box->y0;
+    tmp.rgba = (uint8_t *)calloc((size_t)tmp.w * tmp.h, 4);
+    out->rgba = (uint8_t *)calloc((size_t)tmp.w * scale * tmp.h * scale, 4);
+    out->w = tmp.w * scale;
+    out->h = tmp.h * scale;
+    if (!tmp.rgba || !out->rgba) {
+        free(tmp.rgba);
+        free(out->rgba);
+        out->rgba = NULL;
+        return -1;
+    }
+    rc = dw3_mv_blit_frame(vram, (const int32_t *)sheet, len, frame, tex_x,
+                           0x100, 0x140, 0x100, &tmp, -box->x0, -box->y0);
+    for (y = 0; rc == 0 && y < tmp.h; ++y) {
+        for (x = 0; x < tmp.w; ++x) {
+            const uint8_t *p = tmp.rgba + ((size_t)y * tmp.w + x) * 4;
+
+            if (p[3] == 0) continue;
+            for (l = 0; l < scale; ++l)
+                for (k = 0; k < scale; ++k)
+                    memcpy(out->rgba + ((size_t)(y * scale + l) * out->w +
+                                        (size_t)(x * scale + k)) * 4, p, 4);
+        }
+    }
+    free(tmp.rgba);
+    if (rc != 0) {
+        free(out->rgba);
+        out->rgba = NULL;
+        return -1;
+    }
+    return 0;
+}
+
+/* Builds s.mod for this open when a valid pack exists: the pack's map at N x
+ * with the reveal layer on top (the pack's sprites, or the game's own cells
+ * drawn N times larger where the pack has none). Everything stays in source
+ * pixels for the logic; only the texture is N times larger. Logs one line. */
+static void mod_build(const uint16_t *vram, int sheet_file, const void *sheet1,
+                      const void *sheet2, const int *pieces, int npieces) {
+    Dw3ModPack pack;
+    Dw3ModImage map, cache_img[MV_MOD_SPRITES];
+    int cache_key[MV_MOD_SPRITES], cache_1x[MV_MOD_SPRITES];
+    char why[DW3_MOD_WHY], first_bad[DW3_MOD_WHY];
+    const char *want = getenv("DW3_MOD_PACK");
+    double t0 = now_ms();
+    int scale = 0, i, ncache = 0, from_pack = 0, at_1x = 0, skipped = 0;
+    uint32_t len = sheet_len(sheet_file);
+
+    mod_free();
+    first_bad[0] = 0;
+    if (dw3_port_options_file_int("map_mod", 1) == 0) {
+        fprintf(stderr, "dw3-map: mod: original map (map_mod=0 in "
+                "port_options.cfg)\n");
+        return;
+    }
+    if (dw3_mod_pack_find(g_mods_dir, want, MV_REGION, &pack, why,
+                          sizeof(why)) != 0) {
+        fprintf(stderr, "dw3-map: mod: original map (%s; folder %s)\n", why,
+                g_mods_dir[0] ? g_mods_dir : "none");
+        return;
+    }
+    if (dw3_mod_load_map(&pack, MV_REGION, s.half, s.base.w, s.base.h,
+                         MV_MOD_MAX_SCALE, &map, &scale, why, sizeof(why)) != 0) {
+        fprintf(stderr, "dw3-map: mod: original map (pack \"%s\": %s)\n",
+                pack.man.id, why);
+        return;
+    }
+    for (i = 0; i < npieces; ++i) {
+        int kind = pieces[i * 4], frame = pieces[i * 4 + 1], key = kind * 256 + frame;
+        const void *sheet = kind == 1 ? sheet1 : sheet2;
+        Dw3ModImage *sp = NULL;
+        MvBox box;
+        int j, x, y, is_1x = 0;
+
+        if (!sheet || dw3_mv_sheet_frame_box((const int32_t *)sheet, len, frame,
+                                             &box) != 0) {
+            ++skipped;
+            continue;
+        }
+        for (j = 0; j < ncache; ++j) {
+            if (cache_key[j] == key) {
+                sp = &cache_img[j];
+                is_1x = cache_1x[j];
+            }
+        }
+        if (!sp && ncache < MV_MOD_SPRITES) {
+            sp = &cache_img[ncache];
+            cache_key[ncache] = key;
+            cache_1x[ncache] = 0;
+            why[0] = 0;
+            if (pack.man.reveal &&
+                dw3_mod_load_sprite(&pack, MV_REGION, s.half,
+                                    kind == 1 ? "towns" : "areas", frame, scale,
+                                    box.x1 - box.x0, box.y1 - box.y0, sp, why,
+                                    sizeof(why)) == 0) {
+                ++ncache;
+            } else if (mod_piece_nearest(vram, sheet, len, frame,
+                                         kind == 1 ? 0x380 : 0x300, &box, scale,
+                                         sp) == 0) {
+                /* no (valid) sprite in the pack: the game's own cell, N times
+                 * larger with nearest */
+                if (!first_bad[0] && why[0]) {
+                    snprintf(first_bad, sizeof(first_bad), "%s", why);
+                }
+                cache_1x[ncache] = is_1x = 1;
+                ++ncache;
+            } else {
+                sp = NULL;
+            }
+        }
+        if (!sp) {
+            ++skipped;
+            continue;
+        }
+        x = (pieces[i * 4 + 2] - s.base.ox + box.x0) * scale;
+        y = (pieces[i * 4 + 3] - s.base.oy + box.y0) * scale;
+        dw3_mod_blend(&map, sp, x, y);
+        if (is_1x) ++at_1x;
+        else ++from_pack;
+    }
+    for (i = 0; i < ncache; ++i) dw3_mod_image_free(&cache_img[i]);
+    s.mod.w = map.w;
+    s.mod.h = map.h;
+    s.mod.rgba = map.rgba; /* ownership moves; malloc'd by stb (plain malloc) */
+    s.mod.reveal = s.base.reveal;
+    s.mod_scale = scale;
+    snprintf(s.mod_id, sizeof(s.mod_id), "%s", pack.man.id);
+    fprintf(stderr, "dw3-map: mod: pack \"%s\" %s loaded: map_%s_h%d@%dx.png "
+            "%dx%d, reveal %d pieces from the pack, %d at 1x nearest, %d "
+            "skipped, %d ms%s%s%s\n", pack.man.id, pack.man.version, MV_REGION,
+            s.half, scale, s.mod.w, s.mod.h, from_pack, at_1x, skipped,
+            (int)(now_ms() - t0), first_bad[0] ? " (first sprite refused: " : "",
+            first_bad, first_bad[0] ? ")" : "");
 }
 
 /* The same map built from the disc files; used for the cross-check and by the
@@ -507,6 +679,24 @@ static void build_texture(int scaler) {
     out.rgba = NULL;
     out.w = out.h = 0;
     s.built_ms = 0;
+    if (s.mod.rgba) {
+        /* the mod pack's map is already upscaled: no CPU scaler, only the GPU
+         * filter follows the player's scaler (nearest unless he cycles it) */
+        size_t n = (size_t)s.mod.w * (size_t)s.mod.h * 4;
+
+        job_abandon();
+        out = s.mod;
+        out.rgba = (uint8_t *)malloc(n);
+        if (out.rgba) {
+            memcpy(out.rgba, s.mod.rgba, n);
+            install_texture(scaler, &out);
+            return;
+        }
+        fprintf(stderr, "dw3-map: mod: out of memory for the texture, the "
+                "original map is shown\n");
+        mod_free();
+        out.rgba = NULL;
+    }
     if (scaler == MV_SCALER_NEAREST || scaler == MV_SCALER_SHARP) {
         /* a copy, or a 5 ms integer prescale: not worth an SD cache file */
         if (dw3_mv_scale(scaler, &s.base, &out, &ms) != 0 || !out.rgba) {
@@ -608,6 +798,11 @@ static void hud_build(void) {
     if (s.view.step == 0 && s.view.zoom <= 0.0f)
         snprintf(line, sizeof(line), "MAP  ZOOM FIT");
     else snprintf(line, sizeof(line), "MAP  ZOOM %.2fX", (double)zoom);
+    if (s.mod.rgba) {
+        size_t n = strlen(line);
+
+        snprintf(line + n, sizeof(line) - n, "  MOD %dX", s.mod_scale);
+    }
     hud_text(6, 4, line, 0xFFFFFFFFu);
     /* the build time is in the log, not on screen: it varies per run and
      * would make every capture differ */
@@ -637,6 +832,7 @@ static void close_view(void) {
     s.base_reveal_last = s.base.reveal;
     job_abandon();
     bank_free();
+    mod_free();
     dw3_mv_image_free(&s.base);
     dw3_mv_image_free(&s.tex);
     free(s.hud);
@@ -752,6 +948,7 @@ static void open_view(const void *sheet, int sheet_file, int half, int home_x,
     s.pieces_drawn = compose_reveal(vram, sheet_file, sheet1, sheet2, pieces,
                                     npieces);
     bank_build(vram, sheet_file, sheet2);
+    mod_build(vram, sheet_file, sheet1, sheet2, pieces, npieces);
     free(vram);
     fprintf(stderr, "dw3-map: reveal layer: %d pieces from the game (%d towns "
             "+ %d visited areas drawn), %d drawn, hash %08x%s\n", npieces,

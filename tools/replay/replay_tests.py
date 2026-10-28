@@ -241,7 +241,7 @@ def run_phase(rec: Path, version, binary, runtime, display, outdir: Path, memdir
               "DW3_AUTO_DOOR_FRAMES", "DW3_LANGUAGE", "DW3_FORCE_FORM", "DW3_FORCE_NICKNAME",
               "DW3_FORCE_TECH", "DW3_FORCE_HIT", "DW3_FORCE_STEAL", "DW3_FORCE_ENEMY_ITEM",
               "DW3_FORCE_ENEMY_HP", "DW3_EXTRA_TECHS", "DW3_FORCE_ITEMS", "DW3_MAP_VERIFY", "DW3_MAP_PRECOMPUTE", "DW3_MAP_SYNC", "DW3_FORCE_CARDS", "DW3_PACING_TRACKED",
-              "DW3_FILE_CACHE_SLOTS", "DW3_FORCE_MENU", "DW3_CHEATS_ARM", "DW3_FORCE_EXIT", "DW3_START_MODE_EVERY",
+              "DW3_FILE_CACHE_SLOTS", "DW3_MODS_DIR", "DW3_MOD_PACK", "DW3_FORCE_MENU", "DW3_CHEATS_ARM", "DW3_FORCE_EXIT", "DW3_START_MODE_EVERY",
               "DW3_MEMCARD_IMPORT_DIR", "DW3_CROSS_IMPORT", "DW3_REGION", "DW3_REGION_PICK",
               "DW3_REGION_PICK_KEYS", "DW3_SAVE_PROFILE", "DW3_RUNTIME_BASE", "DW3_PC_BIN_US", "DW3_PC_BIN_EU"):
         env.pop(k, None)
@@ -394,6 +394,12 @@ def run_scenario(sc, binary, runtime, out: Path, stamp, label, stall, timeout_sc
     cfgdir = Path(tempfile.mkdtemp(prefix="dw3-replay-cfg-"))   # shared by the phases
     if sc.cfg:
         write_seed_cfg(cfgdir, sc.cfg)
+    if sc.mod_pack == "synthetic":  # MOD map upscale: gradients, no game art
+        sys.path.insert(0, str(ROOT / "tools" / "mods"))
+        import make_synthetic_pack
+        make_synthetic_pack.make_pack(cfgdir / "mods", (sc.version,))
+    elif os.environ.get("DW3_REPLAY_MODS"):  # a local aid: look at a real pack
+        (cfgdir / "mods").symlink_to(Path(os.environ["DW3_REPLAY_MODS"]).resolve())
     xvfb, display = start_xvfb(sdir)
     results = []
     launch, base = None, None

@@ -359,7 +359,7 @@ dw3-switch/
 ├── docs/                      # roadmap, gates, phase evidence
 ├── platforms/pc/              # PSY-Z + SDL3 -> dw3-pc
 ├── platforms/switch/          # Makefile sample + CMake game target, psyz_backend/
-├── port/                      # overlays, cdfs, memcard, movies, patches
+├── port/                      # overlays, cdfs, memcard, movies, mods, patches
 ├── tools/                     # pack/extract, stage_sweep, compare_harness, ...
 ├── vendor/dw3_decomp/         # upstream decomp (submodule)
 └── vendor/psyz/               # PSY-Z (submodule)
