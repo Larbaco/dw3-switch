@@ -1,6 +1,6 @@
 Digimon World 3 / 2003, Switch homebrew preview
 
-Release notes for v0.6.5-preview.45. The release tag and boot version
+Release notes for v0.6.5-preview.46. The release tag and boot version
 identify the actual source revision.
 
 Player guide (setup, controls, Options, saves, crash reports):
@@ -8,8 +8,19 @@ https://github.com/Larbaco/dw3-switch/blob/main/docs/PLAYER_GUIDE.md
 
 New in this preview
 
-  No item below has been checked on a Switch OLED yet. Each is checked on
-  PC and in the Ryubing emulator only, and is marked unverified.
+  Except log rotation, no item below has been checked on a Switch OLED yet.
+  Each is checked on PC and in the Ryubing emulator only, and is marked
+  unverified. Log rotation (#296, #301) was confirmed on the OLED with
+  preview.45: dw3.1.log is kept and the rotated line shows rc=0x0.
+
+  Options is a list of groups (P9.9 slice 1, #303): Options from the title
+  menu opens a list of plaques in the title menu's style, Display, Sound,
+  Gameplay and Saves, plus Cheats once its master switch is on. B opens a
+  group; X goes back to the list, with the cursor kept on the group you left. The same groups appear from the field menu OPTIONS and from the
+  battle Options (Minus at the command menu). Widescreen and Cheats are greyed
+  in game, as before. Every setting, key and port_options.cfg entry is
+  unchanged, and the five EU languages carry the new labels. Plans A5, A9 to
+  A12. Unverified on hardware.
 
   Options opens without the stutter (#298): the static Options window is
   prepared ahead of time on a worker thread, so an open is a copy. Expected
@@ -64,7 +75,7 @@ New in this preview
   Still open from preview.43: per-user saves (plan E5) and the audio check
   after many techs on the EU build (#188, plan D13). The map reveal and
   Options timing are not on hardware yet (B15, B16). Log rotation (#296,
-  #301) is not on hardware yet either.
+  #301) was confirmed on the OLED with preview.45.
 
   Still open from preview.39: the Quit game and field OPTIONS fixes need
   OLED confirmation (plan A7 and B15), and the #188 audio check is plan D13.
@@ -91,6 +102,11 @@ Known issues
   "applet focus" lines do not appear in dw3.log (OLED, rc7). Rumble is
   still unverified on hardware.
 
+  In-game Options: the first frame after the open takes about 93 ms on the
+  Switch (P9.9, being worked on). The EU language select is still 4:3. The
+  EU title plaque lettering shading is not consistent yet. The map view
+  does not show the balloon, the cursor or the location name yet.
+
 Carried forward
 
   Widescreen starts ON; Port options can turn it OFF. Battle defaults
@@ -100,7 +116,7 @@ Carried forward
   at 1x; gameplay audio accelerates with turbo.
 
   Native title choices New Game / Options / Load Game, with EU labels
-  from the current game language; Options opens Port options.
+  from the current game language; Options opens its group list (#303).
   The bridge "I need my partner" event (patch 0058) passes without a
   crash on US and EU hardware.
 
@@ -280,10 +296,14 @@ Install / nxlink
 OLED checklist
 
   New in this preview:
-  - Log rotation (#296, #301): after two launches, sdmc:/switch/dw3/ has
-    dw3.log and dw3.1.log with different `dw3-run: started` times. The new
-    dw3.log has a `dw3-log: rotated (...)` line that shows rc=0x0. Send the
-    whole set of dw3*.log files.
+  - Options groups (plan A5, A9 to A12): from the title, the field menu
+    (OPTIONS) and battle (Minus at the command menu), the four groups open
+    and go back as described above, the plaques look like the title menu's,
+    and the first open of a group is no black or garbage frame. Send the
+    `dw3-port-options:` and `dw3-title-overlay:` lines, and a photo of the
+    group list in handheld and docked.
+  - Log rotation (#296, #301): confirmed on the OLED with preview.45 (dw3.1.log
+    kept, rc=0x0). Keep sending the whole set of dw3*.log files.
   - Options open timing (plan B15): the `dw3-port-options:` lines give the
     prewarm, the first frame after the open request, the longest frame gap
     and the time the window stayed open. Expected about 10 ms to open, with

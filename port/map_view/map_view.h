@@ -25,6 +25,14 @@ void dw3_map_view_init(const char *config_dir);
  * writes them to the cache. Frees everything it allocated before returning. */
 void dw3_map_view_precompute_run(void);
 
+/* The host's thread starter for the CPU scalers (Lanczos2, FSR 1), so the game
+ * keeps taking input while they build. Run fn(arg) on a low-priority thread
+ * and return 0; return -1 when it cannot (the build then runs on the caller).
+ * Defined by the host; map_view.c has a weak fallback that returns -1.
+ * DW3_MAP_SYNC=1 forces the synchronous build (the replays need the frame at
+ * which the scaler changes to be fixed). */
+int dw3_map_view_async_start(void (*fn)(void *), void *arg);
+
 /* The right stick's vertical axis for the zoom, -127..127, up positive (a PS1
  * analog byte distance from the centre, raw). Hosts call it every frame; the
  * dead zone and the scaling are done here. 0 when no stick. */
@@ -32,6 +40,19 @@ void dw3_map_view_set_zoom_stick(int raw_up);
 
 /* --- host overlays ---------------------------------------------------------*/
 enum { DW3_MV_HUD_W = 640, DW3_MV_HUD_H = 360 };
+/* The game's own sprites that sit on the map (the cursor, the balloon of the
+ * current area): composed from the VRAM into small RGBA images when the view
+ * opens (the bank), drawn by the host as quads in map space. */
+enum { DW3_MV_BANK_N = 12, DW3_MV_SPRITES = 4 };
+typedef struct Dw3MapViewBankImg {
+    const uint8_t *rgba; /* straight alpha, NULL when the frame was not built */
+    int w, h;
+} Dw3MapViewBankImg;
+typedef struct Dw3MapViewSprite {
+    int bank;                /* index into the bank */
+    float x0, y0, x1, y1;    /* fractions of the picture */
+} Dw3MapViewSprite;
+
 typedef struct Dw3MapViewDraw {
     int active;
     unsigned tex_gen;          /* changes when the map texture must be sent */
@@ -41,6 +62,15 @@ typedef struct Dw3MapViewDraw {
     float x0, y0, x1, y1;      /* the map's rectangle, fractions of the picture */
     unsigned hud_gen;
     const uint8_t *hud_rgba;   /* DW3_MV_HUD_W x DW3_MV_HUD_H, straight alpha */
+    unsigned bank_gen;         /* changes when the bank images must be sent */
+    Dw3MapViewBankImg bank[DW3_MV_BANK_N];
+    int nspr;                  /* sprites to draw, in order (map, then these) */
+    Dw3MapViewSprite spr[DW3_MV_SPRITES];
+    /* The name box: the game draws it itself (its frame and text window), so
+     * the host leaves this rectangle of the picture to the game's own pixels
+     * (fractions of the picture); hole = 0 when there is none. */
+    int hole;
+    float hx0, hy0, hx1, hy1;
 } Dw3MapViewDraw;
 void dw3_map_view_get_draw(Dw3MapViewDraw *d);
 /* The host copied tex_rgba into its own texture: the CPU copy can go. */

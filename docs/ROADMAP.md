@@ -74,7 +74,7 @@ listed once, in [Pending OLED checks](#pending-oled-checks).
 | P6.29 | Save editor: external tool on the owner's own saves, builds on P6.25 (future goal) | future | [roadmap](#phase-6-goal-notes), [CROSS_REGION_SAVES](CROSS_REGION_SAVES.md) |
 | P6.30 | Help, FAQ and tips from the pause menu and the title menu (future goal; owner answers recorded 2026-10-27; after P9.9) | future | [roadmap](#phase-6-goal-notes) |
 | P6.31 | Auto-save, off by default | in progress (built: Options row, area-change write to its own file `autosave.bin`, title Continue loads it and the old Continue is Load; PC US and EU replays; owner OLED check open) | [P6.31_AUTOSAVE](P6.31_AUTOSAVE.md), [roadmap](#phase-6-goal-notes), [P5.3](P5.3_FLAT_SAVE.md) |
-| P6.32 | Map zoom and full-screen map (future goal) | phase 0 PoC built (PR `feat/p6.32-map-poc`), OLED look pending | [roadmap](#phase-6-goal-notes), [P6.32](P6.32_MAP_ZOOM.md), [P6.1](P6.1_WIDESCREEN.md) |
+| P6.32 | Map zoom and full-screen map (future goal) | phase 0 PoC built (PR `feat/p6.32-map-poc`), OLED look pending | [roadmap](#phase-6-goal-notes), [P6.32](P6.32_MAP_ZOOM.md), [P6.1](P6.1_WIDESCREEN.md), [map upscale mod](MOD_MAP_UPSCALE.md) |
 | P6.33 | Items menu usability redesign | in progress (owner decisions recorded 2026-10-26; phase 1 partner cycle built: patch 0128, ZL / ZR, on by default; phases 2, 3 and 4 open; owner OLED check open) | [roadmap](#phase-6-goal-notes), [P6.33](P6.33_ITEMS_MENU.md), [P6.1](P6.1_WIDESCREEN.md) |
 | P6.34 | Redesign of the items / status / equipment menu flow (future goal) | future | [roadmap](#phase-6-goal-notes), [P6.33](P6.33_ITEMS_MENU.md) |
 | P6.35 | In-game walkthrough help: where to go next and what to do, by story progress (future goal) | future | [roadmap](#phase-6-goal-notes), [PLAYER_GUIDE](PLAYER_GUIDE.md) |
@@ -87,10 +87,10 @@ listed once, in [Pending OLED checks](#pending-oled-checks).
 | P7.7 | Bug and text fixes | in progress (2 of 5 fixed; Claw steal and HUD name not yet checked on the OLED; Underground Path water texture bug open) | [P7.7](P7.7_BUG_FIXES.md) |
 | P7.9 | Battle menu memory | in progress (part A confirmed on the US OLED, rc7; part B deferred) | [P7.9](P7.9_BATTLE_MENU_MEMORY.md) |
 | P8.1 | Texture pack goal note | done | [TEXTURE_PACKS](TEXTURE_PACKS.md) |
-| P8.2 | Pack layout | open | [TEXTURE_PACKS](TEXTURE_PACKS.md) |
+| P8.2 | Pack layout | open | [TEXTURE_PACKS](TEXTURE_PACKS.md), [MOD_MAP_UPSCALE](MOD_MAP_UPSCALE.md) |
 | P8.3 | Formats and scaling | open | [TEXTURE_PACKS](TEXTURE_PACKS.md) |
 | P8.4 | Tooling (optional) | open | — |
-| P8.5 | Modding API: mod folder, asset and data-table overrides (future goal) | future | [roadmap](#phase-8--texture-pack-compatibility), [TEXTURE_PACKS](TEXTURE_PACKS.md) |
+| P8.5 | Modding API: mod folder, asset and data-table overrides (future goal) | future (first mod: map upscale, design note) | [roadmap](#phase-8--texture-pack-compatibility), [TEXTURE_PACKS](TEXTURE_PACKS.md), [MOD_MAP_UPSCALE](MOD_MAP_UPSCALE.md) |
 | P9.1 | Port options goal note | done | [PORT_OPTIONS](PORT_OPTIONS.md) |
 | P9.2 | Menu entry and shell | done | [P9.2](P9.2_MENU.md) |
 | P9.3 | Toggle registry | done | [PORT_OPTIONS](PORT_OPTIONS.md) |
@@ -1052,7 +1052,8 @@ the port or committing assets. Details: [TEXTURE_PACKS.md](TEXTURE_PACKS.md).
   mod per kind (a texture, a string, a table row) loads on the PC and the
   Switch build with US and EU, the loader reports conflicts, the default is
   bit-identical, and the modder docs (P6.23) describe it.
-  Related: P8.2 to P8.4, P6.7, P6.8, P7.2, P6.23, P9.4.
+  Related: P8.2 to P8.4, P6.7, P6.8, P7.2, P6.23, P9.4. First mod (2026-10-28,
+  design note): [MOD_MAP_UPSCALE.md](MOD_MAP_UPSCALE.md).
 
 Gate: P8.2 works with an owner-supplied minimal pack. P8.4 is best-effort.
 P8.5 is a future goal outside the gate.
@@ -2088,6 +2089,15 @@ Statuses are in the [table](#status-at-a-glance).
   [P6.32 section 7](P6.32_MAP_ZOOM.md#7-phase-0-results-2026-10-27-spike-and-scaler-poc);
   the owner's OLED checklist is section 8. Tests: `test_map_view_core.py`,
   replay `us/eu-map-view` and `-43`, Ryubing US and EU.
+  **HUD elements (2026-10-28, owner after preview.45, branch
+  `fix/map-view-hud-elements`):** the view now shows the game's **balloon** on
+  the current area, a **cursor** moved with the D-pad / left stick (the view
+  follows it, the right stick zooms), and the **game's own name box** for the
+  location under the cursor (screen-space, 16:9-aware, hidden by the HUD
+  toggle); **Nearest is the default scaler**; Lanczos2 / FSR 1 build on a
+  worker thread and no longer block input ([P6.32 section
+  10](P6.32_MAP_ZOOM.md#10-the-balloon-the-cursor-and-the-name-box-owner-after-preview45)).
+  Open: OLED look (left-stick feel, core-2 worker), the other EU languages.
   Done when (proposed): the new map screen opens from the Map screen on US and
   EU on PC and the Switch, zooms and pans over the full image, shows the
   game's area names, the default is bit-identical, and the P6.15 map replay

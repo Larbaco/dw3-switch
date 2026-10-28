@@ -17,6 +17,25 @@ enum {
     DW3_MV_PAD_SQUARE = 15
 };
 
+/* What the game gives the new screen each frame (in) and what the screen gives
+ * back (out), patch 0146. */
+typedef struct Dw3MapViewIo {
+    /* in: the animation the game's own Map screen is on (it keeps running,
+     * frozen, underneath): STSTATUS_cursorFrames[screen->cursorFrame] and
+     * screen->homeFrame. */
+    int cursor_anim, home_anim;
+    /* in: the bounds of the name box's frame (FILE_STATUS_SPRITES frame 0x3B,
+     * drawn at y 0x14 or 0xB4 of the 320x240 menu picture), from
+     * dw3_port_sprite_frame_bounds. */
+    int name_x0, name_y0, name_x1, name_y1;
+    /* out: the cursor in map (sprite) space, and where it is on the 320x240
+     * menu picture (x runs from -gutter to 320 + gutter in 16:9). The game's
+     * own cursor is set to these, with the scroll that makes
+     * cursor - scroll = map position, so its area lookup and its name window
+     * work on the view's cursor. */
+    int cur_x, cur_y, scr_x, scr_y;
+} Dw3MapViewIo;
+
 /* Called every frame of the game's Map screen from STSTATUS_updateMapScreen.
  * `sheet` is the map's sprite sheet (entry 0 of file `sheet_file`), `half` the
  * game half, (home_x, home_y) the current area's mark and spot_x / spot_y the
@@ -30,13 +49,14 @@ enum {
  * while the new screen has the pad (the game then skips its own pad read and
  * the area lookup and only draws its frozen screen), 0 otherwise. Square opens
  * it (widescreen on, option file key `map_screen` not 0); Triangle or Square
- * close it. */
+ * close it. While it is open the pad (D-pad and left stick) moves its cursor
+ * and `io` carries the cursor back to the game (see Dw3MapViewIo). */
 int dw3_port_map_view_frame(const void *sheet, int sheet_file, int half,
                             int home_x, int home_y, const int *visited,
                             const int *spot_x, const int *spot_y,
                             unsigned held, unsigned pressed, const void *sheet1,
                             const void *sheet2, const int *pieces,
-                            int npieces);
+                            int npieces, Dw3MapViewIo *io);
 int dw3_port_map_view_active(void);
 
 #ifdef __cplusplus
