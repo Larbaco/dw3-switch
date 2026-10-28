@@ -27,6 +27,8 @@ typedef struct MvImage {
     int w, h;
     int ox, oy;    /* the image's top left in sprite space (the frame's box) */
     uint8_t *rgba; /* malloc'd, w * h * 4, straight alpha (always 255 here) */
+    uint32_t reveal; /* hash of the revealed pieces composed into it (0: the
+                      * bare map); stored in the cache file */
 } MvImage;
 
 /* The scalers, in the order the button cycles them. */
@@ -59,6 +61,16 @@ int dw3_mv_compose(const uint16_t *vram, const int32_t *sheet,
                    size_t sheet_len, int frame, int tex_x, int tex_y,
                    int alt_x, int alt_y, MvImage *out, MvBox *box);
 
+/* Draws frame `frame` of `sheet` over `dst` (RGBA, opaque) with the sheet's
+ * origin on dst pixel (org_x, org_y): the game's town and area cells, VRAM
+ * colour 0 transparent, clipped. tex_* / alt_* as for dw3_mv_compose. */
+int dw3_mv_blit_frame(const uint16_t *vram, const int32_t *sheet,
+                      size_t sheet_len, int frame, int tex_x, int tex_y,
+                      int alt_x, int alt_y, MvImage *dst, int org_x,
+                      int org_y);
+/* FNV-1a over `len` bytes; `seed` 0 starts a new hash, else continues one. */
+uint32_t dw3_mv_hash(const void *data, size_t len, uint32_t seed);
+
 /* --- disc ----------------------------------------------------------------
  * `file` is the whole map image file (FILE_STATUS_BG + 1 in the first half of
  * the game, + 3 in the second). Entry 0 is an archive of TIMs (some RLEN
@@ -87,21 +99,36 @@ void dw3_mv_fsr_rcas(MvImage *img, float attenuation);
 enum { MV_ZOOM_STEPS = 6 };
 extern const float MV_ZOOM_TABLE[MV_ZOOM_STEPS]; /* 0 = FIT, then 1.0 ... 3.0 */
 typedef struct MvView {
-    int step;     /* index into MV_ZOOM_TABLE */
+    int step;     /* index into MV_ZOOM_TABLE (the nearest one when zoom > 0) */
+    float zoom;   /* > 0: a smooth zoom between the steps (the right stick),
+                   * logical, same units as the table; 0: the step rules */
     float cx, cy; /* source pixel at the middle of the viewport */
 } MvView;
 /* Source pixel -> viewport pixel scale for the step (px per source px). */
 float dw3_mv_view_scale(int step, int map_w, int map_h, int vw, int vh);
+/* The scale and the logical zoom of the view as it is now (step or smooth). */
+float dw3_mv_view_cur_scale(const MvView *v, int map_w, int map_h, int vw,
+                            int vh);
+float dw3_mv_view_cur_zoom(const MvView *v, int map_w, int map_h, int vw,
+                           int vh);
+/* Smooth zoom: multiply the zoom by `factor` (> 1 in), keep it between FIT and
+ * the top of the table, no snapping to the steps (FIT is the floor). */
+void dw3_mv_view_zoom_by(MvView *v, float factor, int map_w, int map_h, int vw,
+                         int vh);
 /* Keep the view on the map: centre when the map is smaller than the view. */
 void dw3_mv_view_clamp(MvView *v, int map_w, int map_h, int vw, int vh);
-/* Change the step keeping the source point under the viewport centre. */
+/* Button step: the next table step in that direction (from a smooth zoom, the
+ * next table zoom above or below it). Change the step keeping the source point under the viewport centre. */
 void dw3_mv_view_zoom(MvView *v, int dir, int map_w, int map_h, int vw, int vh);
 /* The map's rectangle in viewport pixels (may extend past the viewport). */
 void dw3_mv_view_rect(const MvView *v, int map_w, int map_h, int vw, int vh,
                       float *x0, float *y0, float *x1, float *y1);
 
 /* --- cache ---------------------------------------------------------------
- * <dir>/<name>: "DW3M", version, w, h, ox, oy, then w * h * 4 RGBA bytes. */
+ * <dir>/<name>: "DW3M", version, w, h, ox, oy, reveal hash, then w * h * 4
+ * RGBA bytes. The base (scaler 0) is always the bare map (reveal 0); a scaled
+ * file is only used when its reveal hash is the one of the pieces the game
+ * shows now, else it is rebuilt and overwritten. */
 int dw3_mv_cache_write(const char *path, const MvImage *img);
 int dw3_mv_cache_read(const char *path, MvImage *img);
 void dw3_mv_cache_name(char *out, size_t cap, const char *dir, const char *region,

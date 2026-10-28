@@ -39,6 +39,11 @@ static int g_stub_last_set_port = -1;
 static int g_stub_act_port = -1;
 static unsigned char g_stub_act[2] = {0, 0};
 
+/* port/map_view/map_view.c: the right stick for the map view's zoom (the pad
+ * host feeds it from wire byte 5 of an analog pad every PadChkVsync). */
+static int g_zoom_stick_last = 12345;
+void dw3_map_view_set_zoom_stick(int raw_up) { g_zoom_stick_last = raw_up; }
+
 /* Provide InitPAD/StartPAD/Psyz_* when not linking full PSY-Z (unit harness). */
 #ifdef DW3_PAD_TEST_STUB_PSYZ
 int InitPAD(char *bufA, int lenA, char *bufB, int lenB) {
@@ -188,6 +193,24 @@ int main(void) {
     CHECK(mode == 7, "analog CurExID=%d want 7 (PAD_ID_ANALOG)", mode);
     CHECK(PadInfoMode(0, InfoModeCurExOffs, 0) == 1,
           "analog CurExOffs=%d want 1", PadInfoMode(0, InfoModeCurExOffs, 0));
+
+    /* the right stick (byte 5, up is smaller) goes to the map view's zoom,
+     * only for an analog pad */
+    CHECK(PadChkVsync() == 1, "PadChkVsync after the analog frame");
+    CHECK(g_zoom_stick_last == 0, "centred right stick -> %d want 0",
+          g_zoom_stick_last);
+    frame[5] = (char)0x00; /* full up */
+    Psyz_PadsSet(0, frame, BUF_LEN);
+    CHECK(PadChkVsync() == 1, "PadChkVsync with the stick up");
+    CHECK(g_zoom_stick_last == 128, "right stick up -> %d want 128",
+          g_zoom_stick_last);
+    frame[5] = (char)0xFF; /* full down */
+    Psyz_PadsSet(0, frame, BUF_LEN);
+    CHECK(PadChkVsync() == 1, "PadChkVsync with the stick down");
+    CHECK(g_zoom_stick_last == -127, "right stick down -> %d want -127",
+          g_zoom_stick_last);
+    frame[5] = (char)0x80;
+    Psyz_PadsSet(0, frame, BUF_LEN);
 
     /* ---- P10.4 rumble handshake: actuator table + the Stable handoff ------ */
     /* pad.c/port.c call chain on a stable analog pad: pollPadState ->

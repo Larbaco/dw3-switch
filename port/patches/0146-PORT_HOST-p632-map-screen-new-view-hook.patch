@@ -26,17 +26,25 @@ screen is the one of patch 0080.
  
  /* Finds the area under the cursor and shows its name */
  void STSTATUS_showMapArea(StatusMapScreen *screen, TextWindow **windows) {
-@@ -348,6 +351,30 @@
+@@ -348,6 +351,57 @@
  #endif
  }
  
 +#if PORT_HOST
 +/* Patch 0146: the new full-screen map screen (P6.32). Square opens it over this
 +   screen, which stays as it is (frozen: no pad, no area lookup, still drawn).
-+   Returns 1 while the new screen has the pad. */
++   Returns 1 while the new screen has the pad. The reveal layer is what
++   STSTATUS_drawMapScreen draws over the dark map: the towns of the list for
++   GAME.progress (archive1 cells, texture 0x380,0x100) and the visited area
++   cells (archive2, texture 0x300,0x100); they go to the host as 4 s32 each
++   (kind 1 / 2, frame, x, y in map space, as the draw passes them before the
++   scroll and the top). */
 +static s32 mapViewFrame(StatusMapScreen *screen) {
 +    s32 spotX[47];
 +    s32 spotY[47];
++    s32 pieces[4 * 80];
++    s32 *towns;
++    s32 npieces = 0;
 +    unsigned held = 0;
 +    unsigned pressed = 0;
 +    s32 i;
@@ -49,15 +57,34 @@ screen is the one of patch 0080.
 +        held |= (unsigned)(PAD_HELD(i) & 1) << i;
 +        pressed |= (unsigned)(PAD_PRESSED(i) & 1) << i;
 +    }
++    towns = STSTATUS_data.funcs.getList(screen->gameHalf, screen->progress);
++    for (i = 0; towns[i] != 0 && npieces < 24; i++) {
++        pieces[npieces * 4 + 0] = 1;
++        pieces[npieces * 4 + 1] = towns[i] - 1;
++        pieces[npieces * 4 + 2] = STSTATUS_data.towns[towns[i]].x;
++        pieces[npieces * 4 + 3] = STSTATUS_data.towns[towns[i]].y;
++        npieces++;
++    }
++    for (i = 1; i < 47; i++) {
++        if (screen->visited[i - 1]) {
++            pieces[npieces * 4 + 0] = 2;
++            pieces[npieces * 4 + 1] = STSTATUS_data.spots[i].sprite;
++            pieces[npieces * 4 + 2] = STSTATUS_data.spots[i].x;
++            pieces[npieces * 4 + 3] = STSTATUS_data.spots[i].y;
++            npieces++;
++        }
++    }
 +    return dw3_port_map_view_frame(FILE_CACHE.getEntry(screen->archive), screen->file, screen->gameHalf, screen->homeX,
-+                                   screen->homeY, screen->visited, spotX, spotY, held, pressed);
++                                   screen->homeY, screen->visited, spotX, spotY, held, pressed,
++                                   FILE_CACHE.getEntry(screen->archive1), FILE_CACHE.getEntry(screen->archive2),
++                                   pieces, npieces);
 +}
 +#endif
 +
  /* The map screen's update */
  void STSTATUS_updateMapScreen(StatusMapScreen *screen, TextWindow **windows) {
      s32 area;
-@@ -386,6 +413,12 @@
+@@ -386,6 +440,12 @@
          }
          break;
      case TASK_RUN:

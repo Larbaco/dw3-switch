@@ -1218,13 +1218,18 @@ def map_screen(version):
 
 CIRCLE_MAP, SQUARE_MAP, R3_MAP = 0x2000, 0x8000, 0x0004
 L1_MAP, R1_MAP, L2_MAP, R2_MAP = 0x0400, 0x0800, 0x0100, 0x0200
+# Bits above the 16 pad bits stand for the right stick in a recording (the
+# host turns them into the analog axis the zoom reads, port/psyz_missing/
+# psyz_pad_host.c): 0x10000 up (zoom in), 0x20000 down (zoom out).
+RSTICK_UP, RSTICK_DOWN = 0x10000, 0x20000
 
 
 def map_view(version):
     """P6.32 phase 0 (patch 0146): the new full-screen map screen. Same path as
     `map_screen` up to the open Map; Square opens the new screen (the captured
-    map, sharp bilinear, zoom 1.0), the pad pans it, R1 / L1 step the zoom
-    (1.25, 1.5, 2.0, 3.0, then back down to fit), R2 cycles the scaler (Lanczos2
+    map with its reveal layer, sharp bilinear, zoom 1.0), the pad pans it, R1 /
+    L1 step the zoom (1.25, 1.5, 2.0, 3.0, then back down to fit), the right
+    stick zooms smoothly (`mv-stick-in`, `mv-stick-out`), R2 cycles the scaler (Lanczos2
     and FSR 1 are built on the CPU, with a log line each), R3 does nothing (no
     turbo), Circle hides the help text, Triangle returns to the unchanged game
     Map and a second Triangle closes it. With widescreen off (the `-43`
@@ -1275,10 +1280,18 @@ def map_view(version):
     r.press(f + 30, CIRCLE_MAP)
     r.shot(f + 60, "mv-no-hud")
     r.press(f + 70, CIRCLE_MAP)
-    r.press(f + 100, TRIANGLE)       # back to the game's Map
-    r.shot(f + 160, "mv-closed")
-    r.press(f + 200, TRIANGLE)       # the game's Triangle closes the Map
-    r.end(f + 400)
+    # the right stick zooms smoothly (the owner's request): up 40 frames from
+    # the 1.0 step, then down 40 frames; both end between the table steps
+    _pad(r, f + 90, RSTICK_UP)
+    _pad(r, f + 130, 0)
+    r.shot(f + 150, "mv-stick-in")
+    _pad(r, f + 160, RSTICK_DOWN)
+    _pad(r, f + 190, 0)
+    r.shot(f + 210, "mv-stick-out")
+    r.press(f + 230, TRIANGLE)       # back to the game's Map
+    r.shot(f + 290, "mv-closed")
+    r.press(f + 330, TRIANGLE)       # the game's Triangle closes the Map
+    r.end(f + 530)
     return r
 
 
