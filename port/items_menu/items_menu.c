@@ -69,3 +69,19 @@ void dw3_port_items_partner_switched(int from, int to, int partner) {
     IM_LOG("dw3-items-menu: partner switch member %d -> %d (partner %d) bag=%d worn=%d",
            from, to, partner, IM_ITEMS_TOTAL(), IM_EQUIPPED_TOTAL());
 }
+
+void dw3_port_items_menu_selected(int list, int item, int other_list, int equip_kind) {
+    const char *what = equip_kind == 3 ? "weapon" : equip_kind == 4 ? "armor" : equip_kind == 5 ? "accessory" : "item";
+
+    if (equip_kind != 0) {
+        IM_LOG("dw3-items-menu: Cross on %s %d (list %d): the original game does nothing here "
+               "(the Items menu only uses consumables; equip from Status > Equipment, or see the "
+               "P6.34 proposal). Not a port regression (items_partner_switch=%d)",
+               what, item, list, dw3_port_items_partner_switch_enabled());
+    } else {
+        IM_LOG("dw3-items-menu: Cross on %s %d (list %d%s): the original game does nothing here "
+               "(%s)", what, item, list, other_list ? ", not the consumables list" : "",
+               other_list ? "only the first list opens the use-on-a-partner step"
+                          : "no use-from-menu flag on this item");
+    }
+}

@@ -1056,6 +1056,31 @@ def items_screen(version, evidence=False):
     return r
 
 
+def items_select_equip(version):
+    """P6.33 finding (patch 0180): Cross on a weapon in the Items menu's list.
+    The original game does nothing (no sound, no state change); the port logs
+    one `dw3-items-menu: Cross on weapon` line per press. The env of
+    `items_screen` (3 of every item); the path: field menu, Items, Down to the
+    second option, Cross (its list), Cross on the first item, Down, Cross on
+    the second, then back out. Run with `items_partner_switch` 1 and 0: the
+    result is the same, so patch 0128 is not the cause."""
+    r = Rec(f"{version.upper()}: P6.33 Cross on equipment in the Items menu (env and cfg in manifest)")
+    for f in range(300, 1200, 30):
+        r.press(f, CROSS)            # battle report -> field
+    r.press(1250, START)             # field menu
+    r.press(1420, CROSS)             # Items (loads the STSTATUS overlay)
+    r.press(1700, DOWN)              # the second option
+    r.press(1800, CROSS)             # its list
+    r.press(2000, CROSS)             # Cross on the first item: nothing happens
+    r.press(2100, DOWN)
+    r.press(2150, CROSS)             # and on the second
+    r.press(2300, TRIANGLE)          # close the list
+    r.press(2450, TRIANGLE)          # back to the field menu
+    r.press(2600, TRIANGLE)          # and to the field
+    r.end(2700)
+    return r
+
+
 def items_menu(version):
     """P6.1 (patch 0075): field menu -> Items in widescreen and back, with
     checkpoints on the pictures. The same forced event battle as
@@ -1421,6 +1446,26 @@ def card_shop(version):
     r.press(550, CROSS)              # the first card
     r.shot(700, "not-enough")
     r.end(900)
+    return r
+
+
+def item_shop(version):
+    """STITSHOP: the shop (250: money bar, Buy / Sell panel, back plate), the
+    Buy list (Cross, 500), the details of the first item (580), its effects
+    page (Circle, 700), the quantity (Cross, 900) and the total (Cross, 1100)
+    with money from the cheat hook."""
+    r = Rec(f"{version.upper()}: P6.1 item shop in widescreen (env in manifest)")
+    r.shot(250, "shop")
+    r.press(300, CROSS)              # Buy
+    r.shot(500, "buy-list")
+    r.press(520, 0x2000)             # Circle: effects page
+    r.shot(700, "buy-effects")
+    r.press(720, 0x2000)             # back to the description
+    r.press(760, CROSS)              # the first item
+    r.shot(900, "buy-quantity")
+    r.press(950, CROSS)              # the quantity
+    r.shot(1100, "buy-total")
+    r.end(1200)
     return r
 
 
@@ -2145,6 +2190,7 @@ def main(out):
         (out / f"{v}-map-screen.rec").write_text(map_screen(v).text(True))
         (out / f"{v}-map-view.rec").write_text(map_view(v).text(True))
         (out / f"{v}-items-equip-switch.rec").write_text(items_equip_switch(v).text(True))
+        (out / f"{v}-items-select-equip.rec").write_text(items_select_equip(v).text(True))
         (out / f"{v}-battle-results.rec").write_text(battle_results(v).text(True))
         (out / f"{v}-save-screen.rec").write_text(save_screen(v).text(True))
         (out / f"{v}-xr-save.rec").write_text(xr_save(v).text(True))
@@ -2157,6 +2203,7 @@ def main(out):
         (out / f"{v}-card-album.rec").write_text(card_album(v).text(True))
         (out / f"{v}-deck-editor.rec").write_text(deck_editor(v).text(True))
         (out / f"{v}-card-shop.rec").write_text(card_shop(v).text(True))
+        (out / f"{v}-item-shop.rec").write_text(item_shop(v).text(True))
         (out / f"{v}-gym.rec").write_text(gym(v).text(True))
         (out / f"{v}-digimon-lab.rec").write_text(digimon_lab(v).text(True))
         (out / f"{v}-lab-digivolve.rec").write_text(lab_digivolve(v).text(True))

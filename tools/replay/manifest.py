@@ -662,6 +662,22 @@ for _v, _ids in (("us", (0x159, 0x1FA, 0x1C2, 0x158, 0x1F9)),
                                       r"(?s:.*)partner switch member 2 -> 0 .*bag=\1 worn=\2"),),
                       note="R2 / L2 change the partner on the equip slot list, counts unchanged (patch 0128)"))
 
+# P6.33 finding (patch 0180): Cross on equipment in the Items menu does nothing
+# in the original game. The log line says so; run with items_partner_switch on
+# (the default) and off (patch 0128's path out), the same line either way.
+for _v, _ids in (("us", (0x159, 0x1FA, 0x1C2, 0x158, 0x1F9)),
+                 ("eu", (0x167, 0x208, 0x1D1, 0x166, 0x207))):
+    _fight, _menu, _report, _field, _status = _ids
+    for _suffix, _cfg in (("", (("encounter_rate", "2"),)),
+                          ("-switch0", (("encounter_rate", "2"), ("items_partner_switch", "0")))):
+        _add(Scenario(f"{_v}-items-select-equip{_suffix}", _v, "full", timeout=300, log_only=True,
+                      phases=(f"{_v}-items-select-equip",), env=_ITEMS_ENV, cfg=_cfg,
+                      expect_restore=((_fight, M), (_menu, S), (_report, M), (_field, M), (_status, M)),
+                      expect_log=((0, r"dw3-items-menu: Cross on \w+ \d+ \(list [1-4]\): the original game "
+                                      r"does nothing here(?s:.*)dw3-items-menu: Cross on \w+ \d+ \(list [1-4]\)"),),
+                      forbid_log=((0, r"dw3-items-menu: partner switch"),),
+                      note="Cross on equipment in the Items menu: the original game does nothing (patch 0180)"))
+
 # P6.1 (patches 0080, 0081, 0082): the three screens the owner's preview.31-rc1
 # feedback named. PC only (env), references from the patched build.
 #  map-screen: the env and cfg of menu-screens; Map opens at frame 4000 and the
@@ -937,6 +953,8 @@ _WS_SCREENS = (
      "the deck editor: folders, options, editor, card info and the list of cards owned (patch 0101)"),
     ("card-shop", "0x1300", (), 0x1C0, 0x1CE,
      "the card packs shop and Buy One Card (patch 0102)"),
+    ("item-shop", "0xF00", (("DW3_CHEATS_ARM", "money_10k"),), 0x1F7, 0x205,
+     "the item shop: panels, Buy list and an item's details reach the 16:9 edges (patch 0179)"),
     ("gym", "0xA00", (), 0x1F6, 0x1F2,
      "the gym: the party, the training list and a training (patch 0103)"),
     ("digimon-lab", "0xD00", (), 0x1DF, 0x1EC,
@@ -949,6 +967,9 @@ for _v, _field in (("us", 0x158), ("eu", 0x166)):
         _ovl = _us if _v == "us" else _eu
         _add(Scenario(f"{_v}-{_name}", _v, "full", timeout=400,
                       env=_CARD_ENV + (("DW3_FORCE_MENU", _mode),) + _extra,
+                      cfg=(("cheat_enabled", "1"),) if _name == "item-shop" else (),
+                      expect_log=((0, r"dw3-widescreen: screen STITSHOP \(arg 0\) opened: gutter 53 px, 16:9 layout, "
+                                      r"mode file 0x%x \(STITSHOP\)" % _ovl),) if _name == "item-shop" else (),
                       expect_restore=((_field, M), (_ovl, M)),
                       forbid_log=((0, r"overlay restore file=0x%x kind=mode(?:(?!overlay restore)(?s:.))*?"
                                       r"gutter 0 px per side" % _ovl),),

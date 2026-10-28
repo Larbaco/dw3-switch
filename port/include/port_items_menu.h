@@ -29,6 +29,14 @@ int dw3_port_items_partner_next(int member, int count, int dir);
  * change them. */
 void dw3_port_items_partner_switched(int from, int to, int partner);
 
+/* Cross was pressed on an item of the Items menu's list that the game does
+ * not act on (patch 0180): `list` is the option (0 the consumables, 1..4 the
+ * others), `item` its id, `usable_list` 1 for a list other than the first,
+ * `equip_kind` 3 weapon, 4 armor, 5 accessory, 0 none. Logs one
+ * `dw3-items-menu:` line saying what the original game allows; changes
+ * nothing. */
+void dw3_port_items_menu_selected(int list, int item, int other_list, int equip_kind);
+
 #ifdef __cplusplus
 }
 #endif

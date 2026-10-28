@@ -128,6 +128,10 @@ row above and updates `platforms/switch/release/README.txt`), also update the
 [README](../README.md) "Latest preview" link and its Status rows, so the front
 page does not go stale.
 
+Before a release, prune the "still open" lists in the notes against the
+PASSED marks in [OLED_TEST_PLAN.md](OLED_TEST_PLAN.md) and the owner's latest
+logs: list only items that are really still open.
+
 Since preview.18, [`platforms/switch/release/README.txt`](../platforms/switch/release/README.txt)
 holds the notes shipped with each release.
 

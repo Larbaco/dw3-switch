@@ -51,6 +51,8 @@ static int g_applied = -1;
 /* dw3_port_widescreen_frame calls; the title backdrop's last draw (0085) */
 static unsigned g_frame_no;
 static unsigned g_title_frame = 0x80000000u;
+/* the mode file the last widescreen log line named */
+static int32_t g_mode_logged = -1;
 
 int dw3_port_widescreen_enabled(void) {
     if (!g_env_read) {
@@ -496,25 +498,64 @@ void *dw3_port_widescreen_wings(void *sheet, int frame, int x) {
     return wide_emit(frame);
 }
 
+/* The overlay name of a mode file, for the log lines (AGENTS.md rule 12) */
+static const char *ws_mode_name(int32_t f) {
+    if (f == DW3_WS_FIELDSTG) return "FIELDSTG";
+    if (f == DW3_WS_FIGHTSTG) return "FIGHTSTG";
+    if (f == DW3_WS_STSTATUS) return "STSTATUS";
+    if (f == DW3_WS_STITSHOP) return "STITSHOP";
+    if (f == DW3_WS_STGMCARD) return "STGMCARD";
+    if (f == DW3_WS_STDGNAME) return "STDGNAME";
+    if (f == DW3_WS_STFGTREP) return "STFGTREP";
+    if (f == DW3_WS_STDWTITL) return "STDWTITL";
+    if (f == DW3_WS_STPLNMET) return "STPLNMET";
+    if (f == DW3_WS_STCRDABM) return "STCRDABM";
+    if (f == DW3_WS_STCRDDEK) return "STCRDDEK";
+    if (f == DW3_WS_STCRDSHP) return "STCRDSHP";
+    if (f == DW3_WS_STGTRAIN) return "STGTRAIN";
+    if (f == DW3_WS_STGDGLAB) return "STGDGLAB";
+#if VERSION_EU
+    if (f == DW3_WS_CNTYSEL) return "CNTY_SEL";
+#endif
+    return "other";
+}
+
 void dw3_port_widescreen_frame(void) {
     int px = dw3_port_widescreen_px();
+    int32_t mode = dw3_overlay_current_mode_file();
     int prev;
 
     g_frame_no++;
     if (px == g_applied) {
+        /* Same gutter, new screen (field -> item shop is 53 px both ways):
+         * say so, so the log alone shows which screen ran with which gutter. */
+        if (mode != g_mode_logged) {
+            g_mode_logged = mode;
+            INFOF("dw3-widescreen: mode file 0x%x (%s): gutter stays %d px (%s) frame %u",
+                  (unsigned)mode, ws_mode_name(mode), px, px ? "16:9" : "4:3 picture", g_frame_no);
+        }
         return;
     }
     prev = g_applied;
     g_applied = px;
+    g_mode_logged = mode;
     if (Psyz_VideoSetGutter((unsigned)px) != 0) {
         WARNF("dw3-widescreen: renderer has no gutters (%d px)", px);
     } else {
         /* psyz_log, not stderr: on Switch stderr only reaches nxlink, and
          * this line is the check in sdmc:/switch/dw3/dw3.log. */
         INFOF("dw3-widescreen: gutter %d px per side (was %d; %s) mode file "
-              "0x%x frame %u", px, prev, px ? "16:9" : "4:3 picture",
-              (unsigned)dw3_overlay_current_mode_file(), g_frame_no);
+              "0x%x (%s) frame %u", px, prev, px ? "16:9" : "4:3 picture",
+              (unsigned)mode, ws_mode_name(mode), g_frame_no);
     }
+}
+
+void dw3_port_widescreen_screen(const char *name, int arg) {
+    int px = dw3_port_widescreen_px();
+
+    INFOF("dw3-widescreen: screen %s (arg %d) opened: gutter %d px, %s layout, mode file 0x%x (%s)",
+          name, arg, px, px ? "16:9" : "4:3", (unsigned)dw3_overlay_current_mode_file(),
+          ws_mode_name(dw3_overlay_current_mode_file()));
 }
 
 int dw3_port_widescreen_copy_gutters(int src_y, int h, int dx, int dy) {

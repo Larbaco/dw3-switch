@@ -130,15 +130,13 @@ New in this preview
   options and saves now reach the log, and new proof lines match the OLED
   test plan items. Send the whole set of sdmc:/switch/dw3/dw3*.log files.
 
-  Still open from preview.43: per-user saves (plan E5) and the audio check
-  after many techs on the EU build (#188, plan D13). The map reveal and
-  Options timing are not on hardware yet (B15, B16). Log rotation (#296,
-  #301) was confirmed on the OLED with preview.45.
-
-  Still open from preview.39: the Quit game and field OPTIONS fixes need
-  OLED confirmation (plan A7 and B15), and the #188 audio check is plan D13.
-  Still open from preview.40: the equipment partner cycle (plan G8), the
-  auto-save rows (plan E2) and the full-screen map view (plan B16).
+  Still open (checked against the OLED test plan and the owner's preview.47
+  log): the app name (#289, look only), the full-screen map view's balloon,
+  cursor and zoom (plan B16; it was not opened in the preview.47 log), the EU
+  language select at 16:9 (plan E1.6b, needs an EU run), the audio check after
+  many techs on the EU build (#188, plan D13), and the items_partner_switch=0
+  sub-check of the partner cycle (plan G8). Log rotation (#296, #301) was
+  confirmed on the OLED with preview.45.
 
 Known issues
 
