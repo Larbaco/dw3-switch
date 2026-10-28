@@ -19,6 +19,7 @@
 #include <GLES3/gl3.h>
 
 #include "map_view.h"
+#include "nx_game_api.h" /* last: a `both` image redirects the game calls */
 
 void psyz_log(unsigned int level, const char *file, unsigned int line,
               const char *func, const char *fmt, ...);

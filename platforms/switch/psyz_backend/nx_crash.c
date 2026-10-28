@@ -44,6 +44,10 @@
 #ifdef DW3_NX_GAME_IMAGE
 #include "overlay_host.h"
 #endif
+#include "nx_game_api.h" /* last: a `both` image redirects the game calls */
+#if defined(DW3_NX_GAME_IMAGE) && defined(DW3_BOTH)
+#include "dw3_region_rt.h"
+#endif
 
 #ifndef DW3_NX_FORCE_CRASH
 #define DW3_NX_FORCE_CRASH 0
@@ -56,11 +60,29 @@
 #define DW3_GIT_HASH_STR "unknown"
 #endif
 
-#if defined(DW3_NX_GAME_IMAGE) && defined(VERSION_EU)
+#if defined(DW3_NX_GAME_IMAGE) && defined(DW3_BOTH)
+/* P6.24: one image, two game copies. Before a region is chosen (picker, setup
+ * screen, an early failure) there is no copy to ask: dw3_game() is NULL and the
+ * report says so instead of calling through it. */
+static const char *crash_disc_name(void) {
+    switch (dw3_region()) {
+    case DW3_REGION_EU:
+        return "EU";
+    case DW3_REGION_US:
+        return "US";
+    default:
+        return "none yet";
+    }
+}
+#define DW3_CRASH_DISC crash_disc_name()
+#define crash_have_game() (dw3_game() != NULL)
+#elif defined(DW3_NX_GAME_IMAGE) && defined(VERSION_EU)
 #define DW3_CRASH_DISC "EU"
 extern int32_t LANGUAGE; /* engine/file.h; set by CNTY_SEL */
+#define crash_have_game() 1
 #elif defined(DW3_NX_GAME_IMAGE) && defined(VERSION_US)
 #define DW3_CRASH_DISC "US"
+#define crash_have_game() 1
 #else
 #define DW3_CRASH_DISC "n/a"
 #endif
@@ -257,7 +279,7 @@ static void crash_cl_file(Dw3CrashLine *l, const char *key, int32_t file) {
     dw3_cl_hex(l, (u32)file, 0);
 #ifdef DW3_NX_GAME_IMAGE
     {
-        const char *name = file != 0 ? dw3_overlay_file_name(file) : NULL;
+        const char *name = (file != 0 && crash_have_game()) ? dw3_overlay_file_name(file) : NULL;
         if (name) {
             dw3_cl_str(l, " (");
             dw3_cl_str(l, name);
@@ -275,8 +297,10 @@ static void crash_write_head(Dw3CrashLine *l, const char *reason) {
     int32_t stage_file = 0;
 
 #ifdef DW3_NX_GAME_IMAGE
-    mode_file = dw3_overlay_current_mode_file();
-    stage_file = dw3_overlay_current_sub_file();
+    if (crash_have_game()) {
+        mode_file = dw3_overlay_current_mode_file();
+        stage_file = dw3_overlay_current_sub_file();
+    }
 #endif
 
     /* Keep version / reason / mode_file / stage_file in the first 512 bytes:
@@ -288,7 +312,17 @@ static void crash_write_head(Dw3CrashLine *l, const char *reason) {
     crash_cl_file(l, "stage_file: ", stage_file);
     dw3_cl_str(l, "disc: ");
     dw3_cl_str(l, DW3_CRASH_DISC);
-#if defined(DW3_NX_GAME_IMAGE) && defined(VERSION_EU)
+#if defined(DW3_NX_GAME_IMAGE) && defined(DW3_BOTH)
+    if (dw3_region() == DW3_REGION_EU && crash_have_game() && dw3_game()->language != NULL) {
+        int32_t lang = *dw3_game()->language;
+
+        dw3_cl_str(l, " language: ");
+        dw3_cl_dec(l, (u32)lang);
+        dw3_cl_str(l, " (");
+        dw3_cl_str(l, dw3_crash_eu_language_name(lang));
+        dw3_cl_char(l, ')');
+    }
+#elif defined(DW3_NX_GAME_IMAGE) && defined(VERSION_EU)
     dw3_cl_str(l, " language: ");
     dw3_cl_dec(l, (u32)LANGUAGE);
     dw3_cl_str(l, " (");

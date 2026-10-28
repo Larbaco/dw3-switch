@@ -604,6 +604,10 @@ void dw3_port_options_flush(void) {
     }
 }
 
+const char *dw3_port_options_cfg_dir(void) {
+    return g_persist_on ? g_cfg_dir : "";
+}
+
 int dw3_port_options_persist_init(const char *dir) {
     char path[DW3_OPTCFG_PATH_MAX];
     int rc;

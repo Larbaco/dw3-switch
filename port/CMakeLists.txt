@@ -358,6 +358,8 @@ if(DW3_CHEATS)
   target_sources(dw3_port_options${_S} PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}/options/cheats.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/options/cheat_saves.c"
+    # P5.5 stage sweep (opt-in test run; stage_sweep=1 in port_options.cfg)
+    "${CMAKE_CURRENT_SOURCE_DIR}/sweep/stage_sweep.c"
   )
 endif()
 # P6.24: the table through which a `both` image's host reaches this copy
@@ -1416,6 +1418,8 @@ if(DW3_PORT_PART STREQUAL "host")
 add_library(dw3_region_rt OBJECT
   "${CMAKE_CURRENT_SOURCE_DIR}/region/dw3_region.c"
   "${CMAKE_CURRENT_SOURCE_DIR}/region/dw3_region_rt.c"
+  "${CMAKE_CURRENT_SOURCE_DIR}/region/dw3_region_boot.c"
+  "${CMAKE_CURRENT_SOURCE_DIR}/region/dw3_launcher.c"
   "${CMAKE_CURRENT_SOURCE_DIR}/options/options_cfg.c"
 )
 target_include_directories(dw3_region_rt PRIVATE

@@ -31,6 +31,8 @@
 #include "user_switch.h"
 #include "runtime_extract.h"
 #include "str_stream.h"
+#include "dw3_region_rt.h"
+#include "dw3_game_api.h" /* last of the port headers: in a `both` image it redirects the game calls */
 
 #include "../psyz_backend/nx.h"
 #include "../psyz_backend/nx_crash.h"
@@ -39,6 +41,9 @@
 #include "../psyz_backend/nx_mem_budget.h"
 #include "../psyz_backend/nx_mesh_debug.h"
 #include "../psyz_backend/nx_movie_debug.h"
+#if defined(DW3_BOTH) && DW3_BOTH
+#include "../psyz_backend/nx_region_boot.h"
+#endif
 #if DW3_NX_DEBUG_OVERLAY
 #include "debug_overlay_text.h"
 #endif
@@ -55,7 +60,9 @@
 #undef close
 #endif
 
+#if !(defined(DW3_BOTH) && DW3_BOTH)
 int dw3_game_main(void);
+#endif
 
 extern volatile int StCdIntrFlag;
 void StCdInterrupt(void);
@@ -64,13 +71,20 @@ void StCdInterrupt(void);
 #ifndef DW3_DEFAULT_RUNTIME
 #define DW3_DEFAULT_RUNTIME "sdmc:/switch/dw3/us"
 #endif
-#if defined(VERSION_EU) && VERSION_EU
-#define DW3_RUNTIME_VERSION_TAG "eu"
-#define DW3_RUNTIME_EXECUTABLE_TAG "SLES_039.36"
-#else
-#define DW3_RUNTIME_VERSION_TAG "us"
-#define DW3_RUNTIME_EXECUTABLE_TAG "SLUS_014.36"
+/* P6.24: the region is a run-time fact (dw3_region(), port/region/dw3_region_rt.h):
+ * constant in a plain build, chosen at boot (dw3_nx_region_boot) in a `both` one. */
+#define DW3_RUNTIME_VERSION_TAG (dw3_region_name(dw3_region()))
+#define DW3_RUNTIME_EXECUTABLE_TAG \
+    (dw3_region() == DW3_REGION_EU ? "SLES_039.36" : "SLUS_014.36")
+
+/* The folder that holds us/ and eu/ (a `both` image looks in both). */
+#ifndef DW3_NX_BASE
+#define DW3_NX_BASE "sdmc:/switch/dw3"
 #endif
+/* The runtime root of this run: DW3_RUNTIME, else the plain build's baked
+ * path, else <base>/<region> once the region is known. */
+static char g_runtime_root[512];
+static const char *dw3_nx_runtime_root(void);
 
 /* P6.28: the title menu's Quit game ends the session the way HOME's exit
  * request does: Psyz_QuitRequested turns on, the game loop returns from
@@ -582,8 +596,15 @@ static void map_view_precompute_start(const char *config_dir) {
     }
 }
 
+/* atexit() takes an address, which the `both` redirect (a macro) cannot give. */
+static void dw3_nx_flush_options(void) { dw3_port_options_flush(); }
+
+static const char *dw3_nx_runtime_root(void) {
+    return g_runtime_root[0] != '\0' ? g_runtime_root : env_or("DW3_RUNTIME", DW3_DEFAULT_RUNTIME);
+}
+
 static int init_paths(void) {
-    const char *root = env_or("DW3_RUNTIME", DW3_DEFAULT_RUNTIME);
+    const char *root = dw3_nx_runtime_root();
     const char *memdir = env_or("DW3_MEMCARD_DIR", NULL);
     const char *cfgdir = env_or("DW3_CONFIG_DIR", NULL);
     char memcard_buf[512];
@@ -599,14 +620,12 @@ static int init_paths(void) {
      * here. The bar is the same callback the STR rewrite uses, so register it
      * first. */
     dw3_str_restore_set_progress(str_restore_progress);
-#if (defined(VERSION_US) && VERSION_US) || (defined(VERSION_EU) && VERSION_EU)
     if (dw3_runtime_ensure(root) != 0) {
         ERRORF("runtime extract failed");
         return -1;
     }
     INFOF("runtime version=%s root=%s executable=%s",
           DW3_RUNTIME_VERSION_TAG, root, DW3_RUNTIME_EXECUTABLE_TAG);
-#endif
     if (cdfs_set_root(root) != 0) {
         ERRORF("cdfs_set_root(%s) failed", root);
         return -1;
@@ -646,11 +665,9 @@ static int init_paths(void) {
     /* P6.25: a port with no save of its own takes the other region's (converted
      * copy; the original is never touched). */
     (void)memcard_host_setup_cross_import(root,
-#if defined(VERSION_EU) && VERSION_EU
-                                          SAVE_REGION_EU,
-#else
-                                          SAVE_REGION_US,
-#endif
+                                          dw3_region() == DW3_REGION_EU
+                                              ? SAVE_REGION_EU
+                                              : SAVE_REGION_US,
                                           memdir_explicit);
     if (memcard_host_ensure(0) != 0 || memcard_host_ensure(1) != 0) {
         ERRORF("memcard ensure failed under %s", memdir);
@@ -665,7 +682,7 @@ static int init_paths(void) {
      * reads widescreen / fast-forward / restart. Each change is written when
      * it is made (nothing to flush on HOME); atexit only retries a failure. */
     (void)dw3_port_options_persist_init(cfgdir != NULL ? cfgdir : root);
-    atexit(dw3_port_options_flush);
+    atexit(dw3_nx_flush_options);
     map_view_precompute_start(cfgdir != NULL ? cfgdir : root);
 
     snprintf(boot_path, sizeof(boot_path), "%s/boot_tim.bin", root);
@@ -675,7 +692,9 @@ static int init_paths(void) {
     }
     INFOF("boot TIM loaded from %s", boot_path);
 
-#if defined(VERSION_EU) && VERSION_EU
+#if defined(DW3_BOTH) && DW3_BOTH
+    DW3_API(overlay_register_title)();
+#elif defined(VERSION_EU) && VERSION_EU
     dw3_overlay_register_eu_title();
 #else
     dw3_overlay_register_us_title();
@@ -816,15 +835,64 @@ int main(int argc, char **argv) {
         ERRORF("appletLockExit failed; HOME may force-kill before flush");
     }
 
+#if defined(DW3_BOTH) && DW3_BOTH
+    /* P6.24: which game copy runs. Before the user step, which needs the
+     * region's save folder. Forced (nothing probed, no picker, nothing written):
+     * DW3_REGION (the test environment of a replay NRO). Otherwise the data on
+     * the card decides, and the picker asks when both regions are there. */
+    {
+        Dw3RegionBootOut rb;
+        Dw3Region forced = dw3_region_parse(getenv("DW3_REGION"));
+        const char *base = env_or("DW3_RUNTIME_BASE", DW3_NX_BASE);
+        const char *explicit_root = env_or("DW3_RUNTIME", NULL);
+        const char *forced_by = "DW3_REGION";
+
+        if (forced == DW3_REGION_NONE && explicit_root != NULL) {
+            /* a runtime folder given by hand: judged by what it holds */
+            Dw3RegionRequest req;
+            Dw3RegionChoice choice;
+
+            memset(&req, 0, sizeof(req));
+            req.root = explicit_root;
+            req.base = base;
+            if (dw3_region_resolve(&req, &choice) == 0) {
+                forced = choice.region;
+                forced_by = "DW3_RUNTIME";
+            }
+        }
+        dw3_nx_region_boot(base, forced, forced_by, &rb);
+        if (rb.result != DW3_RB_RUN || dw3_region_select(rb.region, rb.source) != 0) {
+            INFOF("region: %s: leaving without starting the game",
+                  rb.result == DW3_RB_NO_DATA ? "no game data" :
+                  rb.result == DW3_RB_QUIT ? "left the picker" : "no region");
+            dw3_nx_crash_allow_exit();
+            if (g_applet_exit_locked) {
+                appletUnlockExit();
+                g_applet_exit_locked = 0;
+            }
+#ifdef DW3_NXLINK_STDIO
+            dw3_nxlink_stdio_shutdown();
+#endif
+            if (rb.result == DW3_RB_RUN) {
+                return 1; /* the copy itself was refused (ABI mismatch): a real failure */
+            }
+            dw3_nx_gpu_shutdown();
+            dw3_nx_log_close();
+            return 0;
+        }
+        if (explicit_root != NULL) {
+            snprintf(g_runtime_root, sizeof(g_runtime_root), "%s", explicit_root);
+        } else {
+            snprintf(g_runtime_root, sizeof(g_runtime_root), "%s/%s", base,
+                     dw3_region_name(rb.region));
+        }
+    }
+#endif
+
     /* P6.26: whose saves. Cancelling the system profile selector means the
      * game does not start: leave cleanly, nothing is written. */
-    if (dw3_switch_user_boot(env_or("DW3_RUNTIME", DW3_DEFAULT_RUNTIME),
-#if defined(VERSION_EU) && VERSION_EU
-                             "eu"
-#else
-                             "us"
-#endif
-                             ) == DW3_USER_BOOT_STOP) {
+    if (dw3_switch_user_boot(dw3_nx_runtime_root(),
+                             dw3_region_name(dw3_region())) == DW3_USER_BOOT_STOP) {
         INFOF("no user chosen: leaving without starting the game");
         dw3_nx_crash_allow_exit();
         if (g_applet_exit_locked) {

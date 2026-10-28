@@ -77,7 +77,7 @@ lines are still wanted as proof.
 | D. Battles | US + EU ordinary | P5.2, P6.18, P6.20 battle rows, P7.7, P9.7 battle Options |
 | E. Saves | US + EU ordinary | P6.27, P6.9, P6.25, P6.31, P6.20 save mark, title textures after Return to title |
 | F. 2 h memory run | US then EU nxlink | **[P5.1]**, **[GATE]**, P5.4 notice |
-| G. Everything else | mixed | P5.4 forced crash, P10.2, P4.3, **[LAUNCHER]**, **[COMBINED]** (G9) |
+| G. Everything else | mixed | P5.4 forced crash, P10.2, P4.3, **P5.5 stage sweep (G10)**, **[LAUNCHER]**, **[COMBINED]** (G9) |
 
 **[GATE]** (New Game to the first boss, US and EU) is normal play, not a
 single check. Do it in session F, where you play for hours anyway. Do the
@@ -293,6 +293,7 @@ handheld on the charger, `nxlink -s` captured to a file, keep
 | G5 | P7.7 HUD name and Claw steal | Done in D8-D10 | | P7.7 |
 | G6 | Rumble (optional, still unverified on hardware) | Report the feel | note | [P10.4](P10.4_RUMBLE.md) |
 | G8 | **Equipment partner cycle (P6.33 phase 1, #282).** Field menu, Status, Equipment: the slot list waits. Press **ZL** and **ZR** to change the party member (two or more partners needed; the slot cursor stays). Then quit to hbmenu, set the file key `items_partner_switch=0` in the region folder (`sdmc:/switch/dw3/us/port_options.cfg` or `.../eu/...`; file-only, not a row, see [PORT_OPTIONS](PORT_OPTIONS.md#persistence)): relaunch, and ZL / ZR must do nothing there. Default is ON | Partner changes on each press, wraps at both ends, the panel shows that partner's gear; no leave to the menu and no item list opened by ZL / ZR; with the key 0, nothing changes | photo, `dw3.log` if the panel did not change, say which key value was on, how many partners, region | P6.33 ([phase 1](P6.33_ITEMS_MENU.md#phase-1-status-2026-10-26)), patch 0128. **PARTIAL**: owner, 2026-10-27, preview.41: the partner cycle works; the key-0 check not reported **PASSED**: owner log, 2026-10-28, preview.47 US (log partner switch member 1 -> 0; the items_partner_switch=0 sub-check was not done) |
+| G10 | **P5.5 stage sweep (US, then EU).** Ordinary NRO of a preview (it has the Cheats screen; a `--no-cheats` build has no sweep). Quit to hbmenu. In `sdmc:/switch/dw3/us/port_options.cfg` add the line `stage_sweep=1` above `end=1` (EU: the same in `eu/port_options.cfg`). Start the game and leave the pad alone: the screen flicks through the stages one by one (a stage, then the debug stage list, about a second each; 5 to 10 minutes in all) and ends on the stage list, still. If the game closes or crashes in between, **keep `crash_report.txt`**, start the NRO again: it carries on with the next stage. When the list has been still for a minute, quit with HOME. **Then set the line to `stage_sweep=0`** (or delete it). Details: [P5.5_STAGE_SWEEP](P5.5_STAGE_SWEEP.md) | Nothing is written to the saves (`dw3-autosave:` never appears). The last run's `dw3.log` ends with `dw3-sweep: done 237/237 ok, failed: none; skipped: WSTAG460`, and has a `dw3-sweep: stage WSTAGxxx ok in N ms (frames 90, mem free M, load L ms)` line per stage | all `sdmc:/switch/dw3/dw3*.log`, `crash_report*.txt`, `us/stage_sweep.txt` (or `eu/`); nothing else is needed, the `done` line and the `FAILED` lines name every problem stage | P5.5 (ticked once US and EU both load and return the set; send the failures, they become findings) |
 
 ### G7. [LAUNCHER] P6.24 slice 2 (not in the release)
 
@@ -315,8 +316,9 @@ picker text is readable at arm's length, handheld.
 
 ### G9. [COMBINED] P6.24 one `.nro` for both regions (PR B)
 
-**Status: planned; the combined `.nro` ships with PR B (`tools/build_switch_game.sh --both`,
-CI artifact `dw3-switch-both-nro`, release asset `dw3-switch-both.nro`).** The
+**Status: built in PR B, never run on a console.** The combined `.nro` comes from
+`tools/build_switch_game.sh --both`, the CI artifact `dw3-switch-both-nro` or the
+release asset `dw3-switch-both.nro`. The
 separate US and EU `.nro` files keep shipping next to it until you have confirmed
 this one. Put `dw3-switch-both.nro` (or the nxlink variant, whose NACP name ends
 in "(nxlink)") in `sdmc:/switch/dw3/` and start it from hbmenu in applet mode.
@@ -330,7 +332,7 @@ picker readable at arm's length, handheld; does the countdown feel right).
 
 | # | Action | Expect on screen | Proof lines in `dw3.log` (all begin `dw3-region:`) |
 |---|---|---|---|
-| G9.1 | **Only US data**: move `eu/` away. Start the combined `.nro` | No picker; the US game starts at once (a pause of about 0.2 s for the Minus check is normal). Same game as the US-only `.nro` | `data found us=1 eu=0`, `decision boot region=us: only the US data is present`, no `picker shown` line, `running us (only the US data is present)` |
+| G9.1 | **Only US data**: move `eu/` away. Start the combined `.nro` | No picker and no pause; the US game starts at once. Same game as the US-only `.nro` | `data found us=1 eu=0`, `stored ... minus_held=n/a`, `decision boot region=us: only the US data is present`, no `picker shown` line, `running us (only the US data is present)` |
 | G9.2 | **Only EU data**: put `eu/` back, move `us/` away | No picker; the EU game starts at once (language select first, as always) | `data found us=0 eu=1`, `decision boot region=eu: only the EU data is present`, no `picker shown` line, `running eu (...)` |
 | G9.3 | **Both, picker and timeout**: both folders present, `region_default` not stored (delete `port_options.cfg`). Start and press nothing | The picker: `> US <` highlighted and "Starting US in 3..." counting down; after 3 s the US game starts | `data found us=1 eu=1`, `decision pick region=us: both present: picker`, `picker shown (default entry us, timeout 3000 ms)`, `picker result us by countdown after 3000 ms always=0`, `saved last_region=us`, `running us (picker)` |
 | G9.4 | **Default = last choice**: start again, press Right to EU (the countdown stops), A | The picker starts on US (last was US); Right moves to EU and stops the countdown; A starts EU. Start once more and press nothing: the picker now starts on EU and the countdown boots EU | first run: `picker result eu by button A after N ms always=0`, `saved last_region=eu`; next run: `picker shown (default entry eu, ...)` and `picker result eu by countdown after 3000 ms` |
@@ -375,6 +377,7 @@ it from Pending OLED checks.
 | E1 | `dw3-port-restart: fading to black before the reset`, `screen is black after N frames; resetting now`, `new screen ready after N black frames; fading in`, `fade finished, N frames from the request`; `dw3-title-overlay: screen fade to black on`; `dw3-widescreen: gutter 0 px per side (was 53; 4:3 picture) mode file 0x..` must come **between** `screen is black` and `fading in` |
 | E2 | `dw3-autosave: wrote autosave.bin ... in N ms (SD write M ms ...); option Auto-save=N` |
 | G8 | `dw3-options: file keys items_partner_switch=N map_screen=N` at boot, `dw3-items-menu: partner switch` |
+| G10 | `dw3-sweep: stage sweep on (key stage_sweep=1, 238 stages ...`, per stage `dw3-sweep: stage WSTAGxxx (mode 0x..) begin` then `... ok in N ms (frames F, mem free M, load L ms)` or `... FAILED: <reason>`; after a crash the next run says `FAILED: crash or hang in the previous run`; the end is `dw3-sweep: done X/Y ok, failed: ...`. A finished sweep relaunched logs `the previous sweep is complete; not running again`. `dw3-autosave:` must not appear. Reasons: [P5.5_STAGE_SWEEP](P5.5_STAGE_SWEEP.md#log-lines) |
 
 Game-side `fprintf(stderr)` lines (`dw3-port-options`, `dw3-map`, `dw3: memcard`,
 `dw3-port-restart`, `dw3-battle-options`) now reach `dw3.log` too: the Switch

@@ -5,368 +5,196 @@
 
 # DW3NX
 
-A native Nintendo Switch port of Digimon World 3 (Digimon World 2003 in
-Europe), built from the matching PlayStation decompilation. It shows as
-"Digimon World 3 NX" in hbmenu and Sphaira.
+A native port of Digimon World 3 (Digimon World 2003 in Europe) to the
+Nintendo Switch and to the PC, built from the matching PlayStation
+decompilation. It shows as "Digimon World 3 NX" in hbmenu and Sphaira.
 
-Latest preview: [v0.6.5-preview.47](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.47).
-To try it, see [Play it on Switch](#play-it-on-switch). New to the port? Read
-the [player guide](docs/PLAYER_GUIDE.md). All docs are listed in the
+Latest preview: [v0.6.5-preview.48](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.48)
+([release history](docs/RELEASES.md)). New to the port? Read the
+[player guide](docs/PLAYER_GUIDE.md). To try it, see
+[Play it on Switch](#play-it-on-switch). All docs are listed in the
 [docs index](docs/README.md). To contribute, see
 [CONTRIBUTING.md](CONTRIBUTING.md).
 
 <p align="center">
   <img src="docs/assets/screenshots/title-menu.png" width="400"
-       alt="Title screen with the native New Game, Options and Load Game menu">
-  <img src="docs/assets/screenshots/field-city.png" width="400"
-       alt="Field: the player and partner Digimon walking through Asuka City">
+       alt="Title menu with five plaques: New Game, Options, Continue, Load Game and Quit game">
+  <img src="docs/assets/screenshots/field.png" width="400"
+       alt="Field at 16:9: the player and partner Digimon on a sandy patch with wooden planks">
   <br>
   <img src="docs/assets/screenshots/battle-widescreen.png" width="400"
-       alt="Widescreen battle on a grassy plain: Monmon and Kunemon with the Fight command menu and HP bars">
-  <img src="docs/assets/screenshots/eu-language.png" width="400"
-       alt="Digimon World 2003 (EU) language selection at boot">
+       alt="Battle at 16:9 on a grassy plain with the Fight, Tech, DV, Tag, Item and Run command menu and HP bars">
+  <img src="docs/assets/screenshots/options-screen.png" width="400"
+       alt="Options screen, Gameplay group: Fast-forward, Restart hotkey, Encounter rate, Text speed and Battle cursor">
+  <br>
+  <img src="docs/assets/screenshots/map-view.png" width="400"
+       alt="Full-screen map view with the game's balloon on the current area, the cursor and the control hints">
 </p>
-<p align="center"><sub>Captured from the Switch build in Ryubing and from the PC build.</sub></p>
+<p align="center"><sub>Captured from the PC build at 16:9 (Widescreen on).</sub></p>
 
 ## What this is
 
-The game logic is the C code from the matching PS1 decompilation,
+The game logic is the C code of the matching PS1 decompilation,
 [ReGame-Labs/dw3_decomp](https://github.com/ReGame-Labs/dw3_decomp). Console
 APIs go through [PSY-Z](https://github.com/Xeeynamo/psyz), a Psy-Q compatible
 shim. A thin host supplies video, audio, input and files: SDL3 on PC, libnx
 on the Switch.
-
-This is a source port, not a static recompilation: the game is compiled
-from the matching decomp's C, with PSY-Z standing in for the Psy-Q
-libraries.
 
 ```text
 decomp C  ->  PSY-Z  ->  SDL3 backend (PC)
                      ->  libnx backend (Switch)
 ```
 
-This is not:
-
-- An emulator wrapper. The `.nro` contains no PS1 core.
-- A remake with a new engine.
-- A place to get ROMs, disc images or BIOS files. You supply your own disc.
-
-## How it works
-
-- The decomp C is built natively for x86-64 and AArch64, after an audit of
-  pointer and size assumptions: [P3.1_64BIT_AUDIT](docs/P3.1_64BIT_AUDIT.md).
-- PSY-Z provides the Psy-Q API. On Switch it has a libnx backend that
-  presents through GLES: [SWITCH_BACKEND](docs/SWITCH_BACKEND.md),
-  [PSYZ](docs/PSYZ.md).
-- Changes to the decomp are a patch series applied to a build copy; the
-  submodule stays clean: [PATCHES](docs/PATCHES.md).
-- On first boot the console extracts its runtime files from your own BIN,
-  then reads plain files from the SD card:
-  [STATIC_SD_LOAD](docs/STATIC_SD_LOAD.md),
-  [RUNTIME_LAYOUT](docs/RUNTIME_LAYOUT.md).
-- PC came first. A harness compares PC captures against DuckStation:
-  [P3.9_REFERENCE](docs/P3.9_REFERENCE.md).
+This is a source port, not an emulator wrapper (the `.nro` has no PS1 core),
+not a static recompilation and not a remake with a new engine. You supply
+your own disc; see [Legal](#legal). How the layers fit:
+[ARCHITECTURE](docs/ARCHITECTURE.md), [PSYZ](docs/PSYZ.md),
+[SWITCH_BACKEND](docs/SWITCH_BACKEND.md), [PATCHES](docs/PATCHES.md).
 
 ## Status
 
-This is an early preview series. Expect bugs, rough visuals in some scenes
-and the occasional crash. Report problems on the
-[issue tracker](https://github.com/Larbaco/dw3-switch/issues).
+An early preview series. Expect bugs, rough visuals in some scenes and the
+occasional crash. Many features are checked on PC and in the Ryubing emulator
+but not yet on a Switch OLED; each release's notes say which. Report problems
+on the [issue tracker](https://github.com/Larbaco/dw3-switch/issues)
+([REPORTING_ISSUES](docs/REPORTING_ISSUES.md)).
 
-| Area | State on Switch | Notes |
-|---|---|---|
-| Title and menus | Works | Native New Game / Continue / Load Game / Options / Quit game. EU title plaques share one lettering and the EU language select is 16:9 (#308, not yet on the OLED). Options is a list of groups in the title menu's style (#303, not yet on the OLED). Spacing, the 16:9 intro caption strip and Quit through a forwarder are confirmed on the OLED (preview.41 to 43). Quitting the full Sphaira app errors; the forwarder is the target. Returning to the title fades through black, so no 4:3 frame should show (#298, not yet on the OLED). |
-| Field | Works | Software rendering. Menus at 1.5x under turbo, the water texture fix, Options from the field menu and Continue after returning to the title are confirmed on the OLED. Field Options uses the same groups (#303, not yet on the OLED). Options opens without the stutter (#298, not yet on the OLED). The full-screen map view draws the revealed towns and areas, with the game's balloon, cursor and name box, stick zoom and Nearest as the default scaler (#299, #306, not yet on the OLED). |
-| Battle | Works | GPU textured rendering by default. The owner reports the sky stage fixed and battle above 60 fps on US and EU; the per-mode frame-time benchmark was not run. A battle crash from the preview.26 reports is still open in the roadmap. |
-| Movies | Plays | The opening runs at about 15 fps with XA audio, and turbo works in the intro. Image quality and the full movie are not validated. |
-| Audio | Works | Music loops (#209, confirmed on the OLED). The win jingle, menu sounds and battle blips play since #215 (not yet heard on hardware). Silence on EU after many techs ([#188](https://github.com/Larbaco/dw3-switch/issues/188)) awaits an OLED check. A silent field map after a battle was reported once and not reproduced (P4.3). Underrun behavior has not been measured. |
-| Saves | Works | Flat files per Switch user profile under `saves/<uid>/` (P6.26). The forwarder profile selector, a separate Continue per profile and cancel returning to HOME are confirmed on the OLED. Auto-save on area change and on HOME close is confirmed. The Equipment ZL / ZR partner cycle is confirmed. `dw3.log` keeps the previous runs (`dw3.1.log` to `dw3.4.log`), confirmed on the OLED with preview.45 (#296, #301). |
-| Rumble | Implemented, not verified on hardware | PS1 vibration requests go to HD rumble on handheld Joy-Con and player 1 (#183); on by default, `DW3_NX_RUMBLE=0` turns it off. The retail game never requests vibration, so normal play has nothing to feel yet. Left stick and D-pad work. |
-| EU version | Early | Language select and own-disc extraction work. Save reload after HOME and relaunch is confirmed; a full playthrough is not yet confirmed. |
-| PC host | Works | Needs your own US disc packed to `runtime/us`. |
+- PC: the game plays from title to field and battle on your own US or EU disc.
+- Switch: the title, field, battle, movies, audio and saves work on an OLED
+  (US most tested; EU is earlier). The Phase 5 gate (a full run from the start
+  to the first boss on hardware, US and EU) is not met yet, and the stage
+  sweep on hardware is open.
+- Known open items include EU audio after many techs
+  ([#188](https://github.com/Larbaco/dw3-switch/issues/188)) and the opening
+  movie, which runs at about 15 fps.
 
-Phases, gates and open items are in [docs/ROADMAP.md](docs/ROADMAP.md).
+Work order: [ROADMAP Priority](docs/ROADMAP.md#priority). Per-item state:
+[ROADMAP Status at a glance](docs/ROADMAP.md#status-at-a-glance).
 
 ## Features
 
-Things this port adds to the original game.
+What the port adds to the original game. The [player guide](docs/PLAYER_GUIDE.md)
+has the controls and the details.
 
-### Available now
-
-- **Widescreen.** About 16:9 in field and battle, on by default, switchable
-  in Port options. Title and movies stay 4:3:
-  [P6.1_WIDESCREEN](docs/P6.1_WIDESCREEN.md).
-- **Fast-forward.** R3 toggles 2x, 3x or 4x in field, battle and the
-  results screen after a battle:
-  [P6.4_FAST_FORWARD](docs/P6.4_FAST_FORWARD.md).
-- **Music and SFX volume.** Two rows in Port options, 0 to 10, 10 is the
-  original mix; saved with the other options. The Options screen plays the
-  game's own menu sounds, so a volume change is heard. Stepping and saving were
-  seen in an EU OLED log; not yet confirmed by ear or on US:
-  [P6.17_VOLUME](docs/P6.17_VOLUME.md).
-- **Pacing options.** Encounter rate (off, 0.5x, 1x, 1.5x or 2x for random
-  battles; story battles are never touched) and Text speed (Normal, Fast,
-  Instant), both default to the original game and are saved with the other
-  options. Partly seen in an EU OLED log (US is open; the "103 frame" lines of
-  that log were the area name banner, not text, and are not logged as pages
-  any more; real scrolled lines got a hold in patch 0068, not yet rechecked on
-  the OLED): [P6.18_PACING](docs/P6.18_PACING.md).
-- **Port options screen.** Opens from the title and holds the toggles below.
-  Settings are saved in `port_options.cfg` next to the runtime data and are
-  kept across launches (checked on PC and in an emulator; the relaunch step
-  is not yet checked on the console):
-  [PORT_OPTIONS](docs/PORT_OPTIONS.md#persistence).
-- **Native title menu.** New Game / Continue / Load Game / Options / Quit game
-  at native resolution, with EU labels in the current game language.
-- **Auto-save.** An Options row, off by default. When on, it saves to its
-  own file `autosave.bin` on each area change and when HOME closes the game.
-  Continue loads it; Load Game opens the slots (P6.31): [P6.31_AUTOSAVE](docs/P6.31_AUTOSAVE.md).
-- **Options in game.** An OPTIONS row in the field menu, and Minus at the
-  battle command menu (P9.7): [PORT_OPTIONS](docs/PORT_OPTIONS.md#options-in-game-p97).
-- **Quit game and Return to title.** Quit game on the title menu flushes saves
-  and returns to hbmenu or the forwarder (P6.28); the field menu can return to
-  the title (P6.27):
-  [PORT_OPTIONS](docs/PORT_OPTIONS.md#quit-and-return-to-title-p627-p628).
-- **Turbo menus.** Under fast-forward, field and battle menus run at 1.5x
-  (P6.4): [P6.4_FAST_FORWARD](docs/P6.4_FAST_FORWARD.md).
-- **Full-screen map view (proof of concept).** Y on the Map screen opens a
-  zoomable, pannable map with a scaler choice; widescreen only (P6.32):
-  [P6.32_MAP_ZOOM](docs/P6.32_MAP_ZOOM.md).
-- **Equipment partner cycle.** ZL / ZR change the partner on the Equipment
-  screen without leaving it (P6.33): [P6.33_ITEMS_MENU](docs/P6.33_ITEMS_MENU.md).
+- **Widescreen.** About 16:9 in the field, in battle and in many menus; on by
+  default, switchable in Options. Movies and the card battle stay 4:3
+  ([P6.1](docs/P6.1_WIDESCREEN.md)).
+- **Fast-forward.** R3 toggles 2x, 3x or 4x in the field, in battle and on the
+  results screen. Under turbo the field and battle menus run at 1.5x
+  ([P6.4](docs/P6.4_FAST_FORWARD.md)).
+- **Options screen.** A list of groups in the title menu's style: Display,
+  Sound, Gameplay and Saves (plus Cheats). It opens from the title, from the
+  field menu and with Minus in battle, and is saved in `port_options.cfg`.
+  Rows include Widescreen, Fast-forward, Music and SFX volume, Encounter rate,
+  Text speed, Battle cursor, Restart hotkey and Auto-save
+  ([PORT_OPTIONS](docs/PORT_OPTIONS.md)).
+- **Auto-save.** Off by default. When on, it writes its own `autosave.bin` on
+  each new field area, never over your slots; the title then shows Continue
+  next to Load Game ([P6.31](docs/P6.31_AUTOSAVE.md)).
 - **Per-user saves.** Saves follow the Switch user profile chosen in the
-  forwarder or the system selector (P6.26):
-  [PER_USER_SAVES](docs/PER_USER_SAVES.md).
-- **Cheats screen.** Square / Y on the Options screen: money, warp, give item
-  and more, a test aid that is off by default (P6.20):
-  [PORT_OPTIONS](docs/PORT_OPTIONS.md#cheats-p620).
-- **Forwarder-friendly.** The app is named "Digimon World 3 NX" (#289), so a
-  Sphaira forwarder shows that name. A forwarder is the recommended way to
-  launch it and the way to pick a profile.
-- **Restart hotkey.** Optional, off by default. Returns to the title after
-  flushing saves, without leaving the `.nro`:
-  [P6.9_RESTART](docs/P6.9_RESTART.md).
-- **Battle fixes.** The battle HUD shows the name of the form the partner
-  fights as, and Picking / Snapping Claw steal on the killing blow. Always on;
-  not yet seen on the OLED: [P7.7_BUG_FIXES](docs/P7.7_BUG_FIXES.md).
-- **Battle menu memory (Battle cursor).** A row in Port options: OFF, Command
-  (the command menu opens on the last command picked) or Command+Tech (and the
-  technique list opens on the technique used last). Off by default, saved as
-  `battle_menu_memory` in `port_options.cfg` like the other rows; the Options
-  screen now has eight rows. Checked on the PC build and in Ryubing, not yet on
-  the OLED: [P7.9_BATTLE_MENU_MEMORY](docs/P7.9_BATTLE_MENU_MEMORY.md).
-- **EU version.** The original language-select screen at boot, and its own
-  runtime: [P3_EU_BUILD](docs/P3_EU_BUILD.md).
-- **Own-disc extraction on the console.** First boot builds the runtime from
-  your BIN/CUE with a progress bar: [STATIC_SD_LOAD](docs/STATIC_SD_LOAD.md).
-- **Flat saves.** One file per card slot, flushed at safe points, and
-  written so an interrupted write recovers at boot. Old `.mcr` files convert
-  once: [P5.3_FLAT_SAVE](docs/P5.3_FLAT_SAVE.md).
-- **Battle render modes (Switch).** Minus + ZL + ZR cycles software and GPU
-  rendering: [HOTKEYS](docs/HOTKEYS.md).
-- **Diagnostics (Switch).** Release builds write `dw3.log` on the SD card
-  (the last 5 runs are meant to be kept) and crashes write a report. The
-  `-nxlink` build also streams logs and shows a debug HUD:
-  [NXLINK_DEBUG](docs/NXLINK_DEBUG.md), [P5.4_CRASH](docs/P5.4_CRASH.md).
-- **Title background in widescreen (PC).** The US title fills the side
-  margins: [PC_TITLE_WIDESCREEN](docs/PC_TITLE_WIDESCREEN.md).
+  forwarder or the system selector ([PER_USER_SAVES](docs/PER_USER_SAVES.md)).
+- **Cross-region save import.** A region with no save of its own imports the
+  other region's save once, converted, and never changes the original
+  ([CROSS_REGION_SAVES](docs/CROSS_REGION_SAVES.md)).
+- **One `.nro` for US and EU.** `dw3-switch-both.nro` holds both game copies and
+  picks the region at boot, with a boot picker when both discs are present
+  (P6.24, new in preview.48; not yet checked on an OLED; the separate US and EU
+  `.nro` files keep shipping): [SINGLE_BUILD](docs/SINGLE_BUILD.md).
+- **Full-screen map view and a first mod loader.** Y on the Map screen opens a
+  zoomable, pannable map with the game's balloon, cursor and name box
+  ([P6.32](docs/P6.32_MAP_ZOOM.md)). Packs you generate from your own disc can
+  replace the map with an upscaled one (folder `sdmc:/switch/dw3/mods/`,
+  `map_mod=0` turns it off); no pack ships with the port
+  ([MOD_MAP_UPSCALE](docs/MOD_MAP_UPSCALE.md)).
+- **Cheats screen.** A test aid, off behind a master switch: money, warp, give
+  item and more ([PORT_OPTIONS](docs/PORT_OPTIONS.md#cheats-p620)).
+- **Quit, restart and return to title.** Quit game on the title menu returns
+  to hbmenu or the forwarder; the field menu can return to the title; an
+  opt-in chord restarts the game without leaving the `.nro`
+  ([P6.9](docs/P6.9_RESTART.md)).
+- **Equipment partner cycle.** ZL / ZR change the partner on the Equipment
+  screen ([P6.33](docs/P6.33_ITEMS_MENU.md)).
+- **Bug fixes.** For example the Underground Path canal water and the battle
+  HUD form name ([P7.7](docs/P7.7_BUG_FIXES.md)).
+- **Logs and crash reports.** `dw3.log` keeps the last five runs
+  (`dw3.1.log` to `dw3.4.log`); a crash writes `crash_report.txt` and the next
+  launch shows a notice ([NXLINK_DEBUG](docs/NXLINK_DEBUG.md),
+  [P5.4_CRASH](docs/P5.4_CRASH.md)).
 
-### Planned
-
-These are goals, not promises. The full list is in
-[docs/ROADMAP.md](docs/ROADMAP.md).
-
-- GPU rendering for the field and menus.
-- Rumble tuning (an intensity setting, in-game events), other controller
-  layouts, and Switch lifecycle checks (HOME, sleep, docking):
-  [SWITCH_FEATURES](docs/SWITCH_FEATURES.md).
-- Community quality-of-life features from the EU patch suite, reimplemented
-  natively: [COMMUNITY_QOL](docs/COMMUNITY_QOL.md).
-- Language packs, with Brazilian Portuguese first.
-- Texture pack support: [TEXTURE_PACKS](docs/TEXTURE_PACKS.md), and later a
-  modding API (mod folder, asset and data-table overrides, P8.5).
-- Contributor and modder docs (P6.23). The player guide and the docs index
-  are done: [PLAYER_GUIDE](docs/PLAYER_GUIDE.md), [docs/README.md](docs/README.md).
-- Help / FAQ / tips from the pause menu (P6.30).
-- Button remapping (P6.12).
-- A redesign of the items / status / equipment menu flow; the options and
-  their order feel odd (P6.34). The Equipment partner cycle is the first step
-  (P6.33).
-- A save editor for the owner's own saves, as a tool outside the game (P6.29).
-- An Options screen in the title menu's style, with room for more rows (P9.9).
-- One build for both discs: a single `.nro` (and PC binary) that finds the US
-  or EU disc at boot, instead of two builds (P6.24,
-  [SINGLE_BUILD](docs/SINGLE_BUILD.md)).
-- A separate tool to convert saves to and from PS1 memory-card images.
+Planned work (button remapping, a technical help screen, a menu-flow redesign,
+language packs, texture packs and more) is in the
+[ROADMAP](docs/ROADMAP.md).
 
 ## Play it on Switch
 
-You need:
+You need a Switch running Atmosphère with hbmenu, and your own disc dumped as
+a Mode2 BIN/CUE pair: Digimon World 3 (USA, SLUS-01436) or Digimon World 2003
+(Europe, SLES-03936). No game data ships with the port.
 
-- A Switch running Atmosphère with hbmenu.
-- Your own disc, dumped as a Mode2 BIN/CUE pair.
-- The matching build: the US disc (SLUS-01436) with the US `.nro`, the EU
-  disc (SLES-03936) with the EU `.nro`. A wrong-region disc is rejected.
-
-Steps:
-
-1. Download the `.nro` for your region from the
-   [latest release](https://github.com/Larbaco/dw3-switch/releases/latest):
-   `dw3-switch.nro` (US) or `dw3-switch-eu.nro` (EU).
-2. Copy it to `sdmc:/switch/` on the SD card.
-3. Copy your disc's BIN and CUE files into `sdmc:/switch/dw3/` for US, or
-   `sdmc:/switch/dw3/eu/` for EU.
-4. Launch the game from hbmenu. The first boot extracts the game data from
-   the disc and shows a progress bar. Leave it running.
-
-The SD card then looks like this (US shown; the EU build uses `eu/`):
+1. Download a `.nro` from the
+   [latest release](https://github.com/Larbaco/dw3-switch/releases/latest) and
+   copy it to `sdmc:/switch/`:
+   - `dw3-switch-both.nro`: US and EU in one file (new in preview.48; the region
+     is chosen at boot), or
+   - `dw3-switch.nro` (US) or `dw3-switch-eu.nro` (EU): one region each.
+2. Copy your disc's BIN and CUE files:
+   - separate builds: US into `sdmc:/switch/dw3/`, EU into `sdmc:/switch/dw3/eu/`
+     (a disc in `sdmc:/switch/dw3/` is found by both separate builds);
+   - combined build: into `sdmc:/switch/dw3/us/` or `sdmc:/switch/dw3/eu/`. It
+     does not look in `sdmc:/switch/dw3/` itself. With both regions present it
+     shows a picker at boot; with one it starts that region.
+3. Launch from hbmenu. The first boot extracts the game data from the disc and
+   shows a progress bar. Leave it running.
 
 ```text
-sdmc:/switch/dw3-switch.nro
-sdmc:/switch/dw3/Digimon World 3.cue
-sdmc:/switch/dw3/Digimon World 3.bin
-sdmc:/switch/dw3/us/            created on first boot
+sdmc:/switch/dw3-switch.nro                 (or dw3-switch-both.nro)
+sdmc:/switch/dw3/Digimon World 3.cue        your disc, BIN/CUE (separate builds;
+sdmc:/switch/dw3/Digimon World 3.bin        the combined build wants it in us/ or eu/)
+sdmc:/switch/dw3/us/                        created on first boot (eu/ for EU)
+sdmc:/switch/dw3/saves/<uid>/<us|eu>/memcard/   saves, per Switch profile
+sdmc:/switch/dw3/dw3.log                    logs; send them with a bug report
 ```
 
-Launching through a forwarder (for example Sphaira) is recommended. The app
-shows as "Digimon World 3 NX"; recreate the forwarder after updating to see
-the name. The forwarder's profile selector picks the Switch user.
+A forwarder (for example Sphaira) is the recommended way to launch it, and the
+way to pick the Switch user. The port does not overclock. Back up `saves/`
+before deleting a region folder. Details, controls and troubleshooting:
+[PLAYER_GUIDE](docs/PLAYER_GUIDE.md). Release history and builds to avoid:
+[RELEASES](docs/RELEASES.md).
 
-Saves are `save0.bin`, `save1.bin` and `autosave.bin` per profile, in
-`sdmc:/switch/dw3/saves/<uid>/<us|eu>/memcard/`. The first time a profile
-launches, any older saves in `<us|eu>/memcard/` are copied into its folder;
-the originals are kept, as are `.mcr.bak` files. Back up `saves/` before
-deleting the region folder to force a re-extract. `dw3.log` and `dw3.1.log`
-to `dw3.4.log` in `sdmc:/switch/dw3/` are the logs to send with a bug report.
+## Build the PC version
 
-Each release also has a `-nxlink` build that streams logs to a PC. It is for
-development and not needed to play. The clocks are left as the console sets
-them; the port does not overclock.
-
-Release history and builds to avoid: [docs/RELEASES.md](docs/RELEASES.md).
-
-## Controls
-
-Switch face buttons follow the PS1 positions, not the Nintendo layout:
-B is Cross and confirms, A is Circle.
-
-| PS1 | Switch | PC keyboard |
-|---|---|---|
-| D-pad | D-pad or left stick | Arrow keys |
-| Cross | B | X |
-| Circle | A | D |
-| Triangle | X | S |
-| Square | Y | Z |
-| Start | Plus | Enter |
-| Select | Minus | Backspace |
-| L1 / R1 | L / R | Q / R |
-| L2 / R2 | ZL / ZR | W / E |
-
-Port hotkeys:
-
-- Press Start at the title, then pick **Options** to open Port options.
-  Triangle (X on Switch) goes back. In the field, the menu's **OPTIONS** row
-  opens it too; Square (Y on Switch) in Options opens Cheats.
-- On the Equipment screen, ZL / ZR change the partner. On the Map screen, Y
-  opens the full-screen map view.
-- R3 (right-stick click) toggles fast-forward in field, battle and the
-  results screen after a battle. Choose
-  2x, 3x, 4x or off in Port options.
-- An opt-in restart chord (L + R + Plus + Minus on Switch) returns to the
-  title after flushing saves. Enable it in Port options first.
-
-All mappings, limits and diagnostic chords: [docs/HOTKEYS.md](docs/HOTKEYS.md).
-
-## Build from source
-
-### Clone
+You need your own US or EU disc. No disc is needed to run the tests.
 
 ```bash
 git clone https://github.com/Larbaco/dw3-switch.git
 cd dw3-switch
 git submodule update --init vendor/dw3_decomp vendor/psyz
 git -C vendor/psyz submodule update --init nugget external/SDL
-```
 
-Do not initialize nugget recursively. Its `third_party/xmake-psx` is a PS1
-matching toolchain that these hosts do not use, and fetching it can fail
-with HTTP 429 or 503. See [docs/CI_SUBMODULES.md](docs/CI_SUBMODULES.md).
-
-### Disc to runtime
-
-Pack your own disc contents into the runtime tree. Layout and disc
-requirements are in [docs/DISC_SETUP.md](docs/DISC_SETUP.md) and
-[docs/RUNTIME_LAYOUT.md](docs/RUNTIME_LAYOUT.md).
-
-```bash
+# pack your own disc into runtime/us (layout: docs/DISC_SETUP.md)
 python3 tools/pack_runtime.py --version us --disks disks/us --out runtime/us
-```
 
-Add `--force` if `runtime/us` already exists and is not empty.
-
-### PC
-
-```bash
 cmake -S platforms/pc -B build/pc -G Ninja -DPSYZ_RENDERER=sdl3_gpu
 cmake --build build/pc -j"$(nproc)"
 ./build/pc/dw3-pc
 ```
 
-The runtime directory defaults to `runtime/us`; use `--runtime <dir>` for
-another. More in [platforms/pc/README.md](platforms/pc/README.md).
+Do not initialize nugget recursively
+([CI_SUBMODULES](docs/CI_SUBMODULES.md)). `-DDW3_VERSION=eu` builds EU and
+`-DDW3_VERSION=both` builds one binary with both regions
+([platforms/pc/README.md](platforms/pc/README.md)). Switch build
+(`tools/build_switch_game.sh`, needs devkitPro), crash symbolization and
+replay tests: [CONTRIBUTING.md](CONTRIBUTING.md),
+[platforms/switch/README.md](platforms/switch/README.md),
+[P6.15_REPLAY_TESTS](docs/P6.15_REPLAY_TESTS.md).
 
-### Switch
+## Controls
 
-Needs devkitPro. CI builds in the `devkitpro/devkita64` image.
-
-```bash
-bash tools/build_switch_game.sh           # build/switch/dw3-switch.nro
-bash tools/build_switch_game.sh --nxlink  # logging variant
-bash tools/build_switch_game.sh --eu      # EU build
-bash tools/build_switch_game.sh --no-cheats  # without the Cheats screen (P6.20)
-```
-
-A `crash_report.txt` from the console is symbolized with the `.elf` the
-build leaves next to the `.nro`:
-`python3 tools/symbolize_crash.py crash_report.txt build/switch/dw3-switch.elf`
-([P5.4_CRASH](docs/P5.4_CRASH.md)). For a released `.nro`, use the `.elf`
-from the release's `dw3-switch-elf.zip` (a local rebuild has another build id).
-
-Releases are produced by the `switch-release.yml` workflow. Build notes,
-nxlink usage and Docker details are in
-[platforms/switch/README.md](platforms/switch/README.md) and
-[tools/docker/README.md](tools/docker/README.md). The EU build is described
-in [docs/P3_EU_BUILD.md](docs/P3_EU_BUILD.md).
-
-### Tests
-
-No disc needed.
-
-```bash
-python3 -m pytest tools/tests -q
-
-# P6.15 pad-replay regression run (needs the owner's discs; Xvfb):
-# tools/replay_tests.sh --quick   title menus, US + EU x5 languages
-# tools/replay_tests.sh           + new game, field walk, load menu (US + EU)
-# tools/replay_ryubing.sh         the Switch build in Ryubing
-# (docs/P6.15_REPLAY_TESTS.md)
-```
-
-## Repository layout
-
-```text
-dw3-switch/
-├── docs/                      # roadmap, gates, phase evidence
-├── platforms/pc/              # PSY-Z + SDL3 -> dw3-pc
-├── platforms/switch/          # Makefile sample + CMake game target, psyz_backend/
-├── port/                      # overlays, cdfs, memcard, movies, mods, patches
-├── tools/                     # pack/extract, stage_sweep, compare_harness, ...
-├── vendor/dw3_decomp/         # upstream decomp (submodule)
-└── vendor/psyz/               # PSY-Z (submodule)
-```
-
-Prefer patches in `port/` and `platforms/` over edits inside the decomp
-submodule, unless the fix belongs upstream.
+Switch face buttons follow the PS1 positions: B is Cross and confirms, A is
+Circle. Press Plus at the title to show the menu. R3 toggles fast-forward;
+Minus opens Options at the title and in battle. The full table, the PC keys
+and the port hotkeys are in [HOTKEYS](docs/HOTKEYS.md) and the
+[player guide](docs/PLAYER_GUIDE.md#controls-and-hotkeys).
 
 ## Documentation
 
@@ -374,68 +202,33 @@ submodule, unless the fix belongs upstream.
 |---|---|
 | [PLAYER_GUIDE](docs/PLAYER_GUIDE.md) | Setup, controls, menus, saves and crash reports for players. |
 | [Docs index](docs/README.md) | One line per doc in `docs/`. |
-| [ROADMAP](docs/ROADMAP.md) | Phases, gates and what is next. Phase-by-phase evidence lives under `docs/`. |
-| [ARCHITECTURE](docs/ARCHITECTURE.md) | How the decomp, PSY-Z and the hosts fit together. |
-| [HOTKEYS](docs/HOTKEYS.md) | Controls, port hotkeys and diagnostic chords. |
-| [DISC_SETUP](docs/DISC_SETUP.md) and [RUNTIME_LAYOUT](docs/RUNTIME_LAYOUT.md) | From your disc to the runtime tree. |
-| [PORT_OPTIONS](docs/PORT_OPTIONS.md) | The Port options screen. |
-| [SWITCH_BACKEND](docs/SWITCH_BACKEND.md) | The libnx backend and its hardware evidence. |
-| [PSYZ](docs/PSYZ.md) | PSY-Z pin and renderer notes. |
-| [PATCHES](docs/PATCHES.md) | Policy for patching the decomp. |
-| [RELEASES](docs/RELEASES.md) | Preview index, builds to avoid, hardware observations. |
-| [REPORTING_ISSUES](docs/REPORTING_ISSUES.md) | How testers report bugs, with an example issue. |
-| [GUIDE_HTML](docs/GUIDE_HTML.md) | Convert a locally saved guide into an offline chapter package or a single HTML file. Source text and output are not distributed here. |
-| [AGENTS.md](AGENTS.md) | Rules for contributors and AI agents. |
-
-## Contributing
-
-Useful help, roughly in order:
-
-- Test on a Switch and report what you see. Use the `-nxlink` build for
-  logs ([NXLINK_DEBUG](docs/NXLINK_DEBUG.md)). Crashes also write
-  `sdmc:/switch/dw3/crash_report.txt` ([P5.4_CRASH](docs/P5.4_CRASH.md)).
-- Open pull requests. [AGENTS.md](AGENTS.md) has the repo rules.
-
-Report bugs and ideas on the
-[issue tracker](https://github.com/Larbaco/dw3-switch/issues).
-[REPORTING_ISSUES](docs/REPORTING_ISSUES.md) lists what to include and shows
-an example. Never attach
-disc images or game files to an issue.
+| [ROADMAP](docs/ROADMAP.md) | Priority, status and phases. |
+| [RELEASES](docs/RELEASES.md) | Preview index, builds to avoid. |
+| [CONTRIBUTING](CONTRIBUTING.md) and [AGENTS.md](AGENTS.md) | Rules, build and test commands for contributors and AI agents. |
+| [REPORTING_ISSUES](docs/REPORTING_ISSUES.md) | How to report a bug. Never attach disc images or game files. |
 
 ## Credits
 
 This port stands on other people's work.
 
-**Foundations**
-
 | Project | Thanks for |
 |---|---|
-| [ReGame-Labs/dw3_decomp](https://github.com/ReGame-Labs/dw3_decomp) | The matching Digimon World 3 / 2003 decompilation. The game logic this port builds on (`vendor/dw3_decomp`). |
-| [Xeeynamo/psyz](https://github.com/Xeeynamo/psyz) | PSY-Z, the Psy-Q compatible shim (`vendor/psyz`). PC uses its SDL3 backends; Switch uses the libnx backend in `platforms/switch/psyz_backend/`. Switch fork pin: [PSYZ](docs/PSYZ.md). |
+| [ReGame-Labs/dw3_decomp](https://github.com/ReGame-Labs/dw3_decomp) | The matching Digimon World 3 / 2003 decompilation, the game logic this port builds on (`vendor/dw3_decomp`). |
+| [Xeeynamo/psyz](https://github.com/Xeeynamo/psyz) | PSY-Z, the Psy-Q compatible shim (`vendor/psyz`). PC uses its SDL3 backends; Switch uses the libnx backend in `platforms/switch/psyz_backend/`. Pin: [PSYZ](docs/PSYZ.md). |
 | [libsdl-org/SDL](https://github.com/libsdl-org/SDL) | SDL3, used through PSY-Z's desktop backends. |
-
-**Prior art and research**
-
-| Project | Thanks for |
-|---|---|
-| [Xive080/D-W-3-Recomp](https://github.com/Xive080/D-W-3-Recomp) (OpenWorld2003) | A public PC recomp of the same game. A reference for CD and filesystem pitfalls, and for launcher and mod catalog shape. Not a dependency. |
-| [markisha64/ddw3](https://github.com/markisha64/ddw3) | Parallel Digimon World 2003 decomp (Rust/asm). Reference for Digimon profiles, evolution labeling, TIM/map tooling and language tables. |
-| [dorijantomic/dw2003-play-code](https://github.com/dorijantomic/dw2003-play-code) | Browser recreation built from ddw3 with ReGame cross-checks. A research oracle for battle formulas, GTE, the SPU exclusive track, save-block size and the field tick. |
-| [rsigristc/dw2003-qol-patch](https://github.com/rsigristc/dw2003-qol-patch) (**Harmony**, with Flawe, guiomatos, markisha64, EmeraldPhoenix and others) | EU-only (SLES-03936) BPS quality-of-life suite, tracked for own-disc data and native reimplementation. See [COMMUNITY_QOL](docs/COMMUNITY_QOL.md). Binary patches do not load into the `.nro`. |
-
-**Platform and tooling**
-
-| Project | Thanks for |
-|---|---|
-| [devkitPro](https://devkitpro.org/) and [libnx](https://github.com/switchbrew/libnx) | The Switch homebrew toolchain and APIs for the `.nro` host. |
-| The matching-decompilation and recomp communities | Patterns for shims, PC-first bring-up and honest progress reporting. |
+| [devkitPro](https://devkitpro.org/) and [libnx](https://github.com/switchbrew/libnx) | The Switch homebrew toolchain and APIs. |
+| [Xive080/D-W-3-Recomp](https://github.com/Xive080/D-W-3-Recomp) (OpenWorld2003) | A public PC recomp of the same game; a reference for CD and filesystem pitfalls and for launcher and mod catalog shape. Not a dependency. |
+| [markisha64/ddw3](https://github.com/markisha64/ddw3) | Parallel Digimon World 2003 decomp (Rust/asm); reference for Digimon profiles, TIM/map tooling and language tables. |
+| [dorijantomic/dw2003-play-code](https://github.com/dorijantomic/dw2003-play-code) | Browser recreation built from ddw3; a research oracle for battle formulas, the SPU and the save-block size. |
+| [rsigristc/dw2003-qol-patch](https://github.com/rsigristc/dw2003-qol-patch) (**Harmony**, with Flawe, guiomatos, markisha64, EmeraldPhoenix and others) | The EU-only (SLES-03936) quality-of-life patch suite, tracked for native reimplementation: [COMMUNITY_QOL](docs/COMMUNITY_QOL.md). |
 
 ## Legal
 
 Use a legally obtained copy of Digimon World 3 (USA, SLUS-01436) or Digimon
-World 2003 (Europe, SLES-03936). Never commit disc images, BIOS files or
-extracted trees; `disks/`, `runtime/` and disc-image extensions are
-gitignored. Releases do not ship them.
+World 2003 (Europe, SLES-03936). This repository and its releases contain no
+game data: never commit disc images, BIOS files or extracted trees (`disks/`,
+`runtime/` and disc-image extensions are gitignored). The screenshots above are
+the one owner-approved exception ([AGENTS.md](AGENTS.md)).
 
 *Digimon* and *Digimon World* are trademarks of their respective owners.
 This is an unofficial fan project, not affiliated with Bandai Namco or

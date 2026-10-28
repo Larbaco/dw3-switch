@@ -1,0 +1,70 @@
+Upstream-bound: no
+Subject: [PORT_HOST] P5.5 stage sweep hook in updateModeTask (DW3_CHEATS builds only)
+
+Opt-in test run (stage_sweep=1 in port_options.cfg, docs/P5.5_STAGE_SWEEP.md):
+once per game frame of the mode task, dw3_sweep_tick() gets the game mode and
+names the mode to request next (STAGSLCT -> stage -> STAGSLCT -> ...). The
+party is seeded first, as the P3.8 sweep aids (patch 0030) do. The tick is a
+no-op unless the key is set. The debug stage select's TASK_KILL does not
+overwrite the requested mode while the sweep is on (the env check of patch
+0030 has no equivalent on the Switch). Every line is inside #ifdef DW3_CHEATS.
+
+--- a/src/engine/system/overlay.c
++++ b/src/engine/system/overlay.c
+@@ -6,6 +6,9 @@
+ char *getenv(const char *name);
+ long strtol(const char *nptr, char **endptr, int base);
+ void exit(int status);
++#ifdef DW3_CHEATS
++#include "port_stage_sweep.h"
++#endif
+ /* Armed by CARDGAME return when DW3_AFTER_CARD_ALBUM is set. */
+ s32 DW3_afterCardAlbumArm;
+ #endif
+@@ -223,6 +226,20 @@
+             }
+         }
+ #endif
++#ifdef DW3_CHEATS
++        /* P5.5 stage sweep (opt-in: stage_sweep=1 in port_options.cfg): one
++           call per game frame; the sweep names the mode to request next */
++        if (dw3_sweep_enabled()) {
++            s32 sweepMode = dw3_sweep_tick((int)GAME.funcs.getMode());
++
++            if (sweepMode != 0) {
++                if (GAME.funcs.getPartyMember(0) < 0) {
++                    GAME.funcs.setParty(0);
++                }
++                GAME.funcs.requestMode(sweepMode, 0);
++            }
++        }
++#endif
+         if (GAME.funcs.isModeChangePending() != 0) {
+             task->setState(task, TASK_KILL);
+         }
+--- a/src/debug/stage_select/stage_select.c
++++ b/src/debug/stage_select/stage_select.c
+@@ -1,6 +1,9 @@
+ #include "debug/stage_select.h"
+ #if PORT_HOST
+ char *getenv(const char *name);
++#ifdef DW3_CHEATS
++#include "port_stage_sweep.h"
++#endif
+ #endif
+ 
+ #if VERSION_EU
+@@ -1058,7 +1061,12 @@
+         /* P3.8: DW3_FORCE_STAGE already requested the target mode from
+            updateModeTask; do not let the cursor entry overwrite it (entry 0
+            is MODE_STAGE_SELECT). */
+-        if (getenv("DW3_FORCE_STAGE") != NULL && getenv("DW3_FORCE_STAGE")[0] != '\0') {
++        if ((getenv("DW3_FORCE_STAGE") != NULL && getenv("DW3_FORCE_STAGE")[0] != '\0')
++#ifdef DW3_CHEATS
++            /* P5.5: the stage sweep requests the modes itself */
++            || dw3_sweep_active()
++#endif
++        ) {
+             GAME.stageSelectTop = sel->top;
+             GAME.stageSelectCursor = sel->cursor;
+             break;

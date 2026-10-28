@@ -1498,6 +1498,22 @@ for _lang in ("fr", "de", "it", "es"):
                   note=f"Quit game plaque and window in {_lang}; Triangle cancels, nothing is quit (P6.28)"))
 
 
+# P5.5 stage sweep (port/sweep, docs/P5.5_STAGE_SWEEP.md): a five-stage subset
+# of the sweep (Asuka City, the Digimon Lab, the Arena, the Bulk Swamp, the Noise
+# Desert) from the boot, on a fresh card folder; the recording has no input.
+# The full set is `DW3_STAGE_SWEEP=1` without ONLY (about 3 min on the PC).
+for _v in ("us", "eu"):
+    _add(Scenario(f"{_v}-stage-sweep", _v, "full", timeout=300, quits=True, log_only=True,
+                  env=(("DW3_STAGE_SWEEP", "1"), ("DW3_STAGE_SWEEP_EXIT", "1"),
+                       ("DW3_STAGE_SWEEP_FRAMES", "60"),
+                       ("DW3_STAGE_SWEEP_ONLY", "0x200,0x206,0x209,0x233,0x248")),
+                  expect_log=((0, r"dw3-sweep: stage WSTAG200 ok in \d+ ms \(frames 60, mem free \d+, "
+                                  r"load \d+ ms\)(?s:.*)dw3-sweep: done 5/5 ok, failed: none"),),
+                  forbid_log=((0, r"dw3-sweep: stage WSTAG\d+ FAILED"), (0, r"dw3-autosave: wrote"),
+                              (0, r"null-guard hit")),
+                  note="P5.5: five stages one after the other and back to the stage select, no save written"))
+
+
 def by_name() -> dict[str, Scenario]:
     return {s.name: s for s in SCENARIOS}
 

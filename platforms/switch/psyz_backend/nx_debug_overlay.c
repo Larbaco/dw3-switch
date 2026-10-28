@@ -9,6 +9,7 @@
 #include "nx_mesh_debug.h"
 #include "nx_vram_dump.h"
 #include "overlay_host.h"
+#include "nx_game_api.h" /* last: a `both` image redirects the game calls */
 #include "../source/debug_overlay_font.h"
 #include "../source/debug_overlay_glyph.h"
 

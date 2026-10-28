@@ -25,6 +25,7 @@ Newest first.
 
 | Tag | What it was for |
 |---|---|
+| [preview.48](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.48) | One .nro for US and EU (P6.24, #314, #316): `dw3-switch-both.nro` starts the only region whose data is on the SD, or shows a 3 s picker when both are there (Y = don't ask again, Minus at launch = ask again, every decision a `dw3-region:` line). First mod: map upscale loader (#313, plan B17): packs in `sdmc:/switch/dw3/mods/`, `map_mod=0` turns it off, the pack is not shipped. Audio health and the #188 leak signature (P4.3, #315, plans D13, D14) and `dw3-save: write ... committed` lines (P10.2, plan G2). Docs: roadmap Priority (#310), walkthrough design (#311), controls design (#317), technical help design and draft (#318), OLED bookkeeping (#312). US, EU and nxlink builds are attached as usual; the combined build is only on the release workflow. Notes: [`platforms/switch/release/README.txt`](../platforms/switch/release/README.txt). |
 | [preview.47](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.47) | Map view has the game's balloon, cursor and location name box (#306): D-pad or left stick moves the cursor and the view follows it, right stick and L / R zoom, ZL / ZR the scaler, Circle hides the HUD; Nearest is the default and Lanczos2 / FSR 1 build on a worker thread. In-game Options has its own 960x720 texture, so it no longer builds the title atlas (#308). EU language select is 16:9, EU plaques share one lettering, and the title verbs are New Game / Options / Load Game / Quit game, or Continue + Load Game with an autosave. Still open: the map HUD strip covers the top of the map at 1.00x, and #188 EU audio. OLED-unverified: plans B15b, B16, E1.6b, E2.0 and E2.2. EU attached by hand, with dw3-switch-eu-elf.zip. Notes: [`platforms/switch/release/README.txt`](../platforms/switch/release/README.txt). |
 | [preview.46](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.46) | Options is a list of groups in the title menu's style (P9.9 slice 1, #303): Display, Sound, Gameplay and Saves, plus Cheats when its master switch is on. B opens a group, X goes back with the cursor kept. The same groups show from the title, the field menu and battle. Keys and saved settings unchanged; EU labels in all five languages. Preview.45's `dw3.log` rotation (#296, #301) is confirmed on the OLED (dw3.1.log kept, rc=0x0). Still open: Options first frame about 93 ms on Switch, EU language select still 4:3, EU title plaque lettering shading, map view balloon, cursor and location name. OLED-unverified: plan A5 and A9 to A12. EU attached by hand, with dw3-switch-eu-elf.zip. Notes: [`platforms/switch/release/README.txt`](../platforms/switch/release/README.txt). |
 | [preview.45](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.45) | `dw3.log` rotation fixed for the Switch file service (#301): the rotation paths are sized to FS_MAX_PATH, which fixes the Ryubing replay crash from #290 and may be why `dw3.1.log` never appeared on hardware. After two launches expect `dw3.log` and `dw3.1.log`, and the `dw3-log: rotated` line shows rc=0x0. Everything else is the preview.44 set, still OLED-unverified: Options stutter (B15), return-to-title fade (E1), map reveal and zoom (B16), per-user saves (E5). EU attached by hand, with dw3-switch-eu-elf.zip. Notes: [`platforms/switch/release/README.txt`](../platforms/switch/release/README.txt). |
@@ -83,6 +84,25 @@ To test the packing without a release, run the script on local builds
 (`tools/tests/test_pack_release_elfs.py` covers it in `pytest`). The
 workflow itself has no dry-run path: `workflow_dispatch` always publishes
 the tag it is given.
+
+**Combined US + EU build (P6.24).** From the first release made after the
+combined image landed, the workflow also builds `tools/build_switch_game.sh
+--both` (ordinary and nxlink) and publishes, as extra assets next to the ones
+above (nothing is removed or renamed):
+
+```
+dw3-switch-both.nro          US + EU in one image, region chosen at boot (picker)
+dw3-switch-both-nxlink.nro   the same, nxlink logging build
+dw3-switch-both-elf.zip      unstripped ELFs of both, with BUILD_IDS.txt
+```
+
+The separate US and EU `.nro` files keep shipping until the owner has confirmed
+the combined one on the OLED. The combined image needs both runtimes under
+`sdmc:/switch/dw3/us` and `/eu` to show the picker; with one it starts that one
+(see [SINGLE_BUILD](SINGLE_BUILD.md#as-built-slice-4-the-combined-switch-nro)).
+Its crash reports are symbolized with `dw3-switch-both-elf.zip`, one `.elf` per
+`.nro`; the report's `disc:` line says the region. The release README must list
+`dw3-switch-both*` only in a release that really carries them.
 
 **EU is a manual step.** Build EU once, then upload the `.nro` and its
 `.elf` zip from that same build (the `.elf` must come from the build that

@@ -2256,6 +2256,11 @@ def main(out):
         # Written unsorted, byte for byte as first committed with patch 0058.
         (out / f"{version}-bridge-partner-gate.rec").write_text(
             bridge_partner_gate(version).text())
+    for version in ("us", "eu"):
+        # P5.5: no input; the sweep ends the process by itself (the end line is
+        # only a guard).
+        (out / f"{version}-stage-sweep.rec").write_text(
+            f"# {version.upper()}: stage sweep, no input\nend 20000\n")
 
 
 if __name__ == "__main__":

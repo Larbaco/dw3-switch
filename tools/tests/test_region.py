@@ -173,6 +173,19 @@ def region_rt_bin(tmp_path_factory) -> Path:
                  REGION / "dw3_region_rt.c", REGION / "dw3_region.c", OPTIONS / "options_cfg.c")
 
 
+@pytest.fixture(scope="module")
+def region_boot_bin(tmp_path_factory) -> Path:
+    """P6.24 PR B: the boot flow of the combined image (port/region/dw3_region_boot.c)."""
+    return build(tmp_path_factory.mktemp("regionboot") / "region_boot_test", TESTS / "region_boot_main.c",
+                 REGION / "dw3_region_boot.c", REGION / "dw3_region.c", OPTIONS / "options_cfg.c")
+
+
+def test_region_boot_flow(region_boot_bin: Path, tmp_path: Path):
+    r = subprocess.run([str(region_boot_bin), str(tmp_path)], capture_output=True, text=True, timeout=60)
+    assert r.returncode == 0, r.stderr + r.stdout
+    assert "OK: region_boot" in r.stdout
+
+
 def test_region_resolve(region_rt_bin: Path, tmp_path: Path):
     r = subprocess.run([str(region_rt_bin), str(tmp_path)], capture_output=True, text=True, timeout=60)
     assert r.returncode == 0, r.stderr + r.stdout

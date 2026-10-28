@@ -10,6 +10,7 @@
  * port: nothing is ever held. */
 static int dw3_port_battle_options_holding(void) { return 0; }
 #endif
+#include "nx_game_api.h" /* last: a `both` image redirects the game calls */
 
 #include <stddef.h>
 #include <stdio.h>

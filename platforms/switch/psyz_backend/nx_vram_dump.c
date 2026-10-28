@@ -9,6 +9,7 @@
 #include "nx_mesh.h"
 #include "nx_vram_pack.h"
 #include "overlay_host.h"
+#include "nx_game_api.h" /* last: a `both` image redirects the game calls */
 #include "nx.h"
 
 #include <stdio.h>

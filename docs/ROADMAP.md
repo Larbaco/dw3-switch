@@ -39,13 +39,14 @@ highest non-empty tier.
   select at 16:9 and the map balloon, cursor and name box (fixes in preview.47,
   waiting for the owner).
 - [P6.24](SINGLE_BUILD.md): **one `.nro` that plays both US and EU** (owner
-  priority 2026-10-28). Option (a), two PRs. PR A, PC: `DW3_VERSION=both`, the
-  game side built twice and linked once, the P6.15 replays of both regions on
-  the one `dw3-pc` ([slice 3](SINGLE_BUILD.md#as-built-slice-3-the-dual-image-link-pc)).
-  PR B, Switch: `tools/build_switch_game.sh --both`, detection of the game data
-  on the SD card, the boot picker, a CI job and the release asset. Separate US /
-  EU `.nro` files keep shipping until the owner confirms the combined one on the
-  OLED. Defaults taken for the open questions are in
+  priority 2026-10-28). Built and shipped in preview.48 as
+  `dw3-switch-both.nro`: PC in #314 (`DW3_VERSION=both`, the game side built
+  twice and linked once, the P6.15 replays of both regions on the one
+  `dw3-pc`), Switch in #316 (detection of the game data on the SD card, the
+  boot picker, the CI job and the release asset). What is left is the OLED
+  check ([OLED_TEST_PLAN G9](OLED_TEST_PLAN.md#g9-combined-p624-one-nro-for-both-regions-pr-b)).
+  Separate US / EU `.nro` files keep shipping until the owner confirms the
+  combined one on the OLED. Defaults taken for the open questions are in
   [SINGLE_BUILD](SINGLE_BUILD.md#owner-priority-2026-10-28-and-orchestrator-defaults).
 
 ### Tier 1 — Stability
@@ -119,8 +120,8 @@ listed once, in [Pending OLED checks](#pending-oled-checks).
 | P5.2 | Performance pass | done (partner portrait fix #229, OLED pending) | [P5.2](P5.2_BATTLE_GPU.md) |
 | P5.3 | Save handling | done | [P5.3](P5.3_FLAT_SAVE.md) |
 | P5.4 | Error reporting | in progress (done-when met on the OLED; boot notice 60 s, #231; PR 2 OLED check open) | [P5.4](P5.4_CRASH.md) |
-| P5.5 | Stage sweep on hardware | open | — |
-| P6.1 | Scaling / widescreen | in progress (map, results, save, title, caption, registration, Items menu at 16:9 in preview.31; card album, deck editor, card shop, gym and Lab at 16:9 in the next preview (0100-0104, OLED pending); iris and grid cover at 16:9 in the next preview (0115, OLED pending); encounter swirl at 16:9 in the next preview (0175, OLED pending); card battle still 4:3; intro news caption bar at 16:9 confirmed on the OLED 2026-10-27, preview.41; EU language select at 16:9 (0177) pending preview.47) | [P6.1](P6.1_WIDESCREEN.md) |
+| P5.5 | Stage sweep on hardware | in progress (opt-in sweep built, #320: PC 237/237 US and EU; not in preview.48, next preview; OLED run G10 pending) | [P5.5](P5.5_STAGE_SWEEP.md) |
+| P6.1 | Scaling / widescreen | in progress (map, results, save, title, caption, registration, Items menu at 16:9 in preview.31; card album, deck editor, card shop, gym and Lab at 16:9 in the next preview (0100-0104, OLED pending); iris and grid cover at 16:9 in the next preview (0115, OLED pending); encounter swirl at 16:9 in the next preview (0175, OLED pending); card battle still 4:3; intro news caption bar at 16:9 confirmed on the OLED 2026-10-27, preview.41; EU language select at 16:9 (0177, in preview.47, OLED pending) | [P6.1](P6.1_WIDESCREEN.md) |
 | P6.2 | PAL/NTSC, EU/US, language at boot | in progress | [P3_EU_BUILD](P3_EU_BUILD.md) |
 | P6.3 | PGXP-style vertex precision | open | — |
 | P6.4 | Fast-forward | done (owner confirmed on the OLED, 2026-10-24; 1.5x in menus, patch 0176, confirmed 2026-10-27, preview.41) | [P6.4](P6.4_FAST_FORWARD.md) |
@@ -140,14 +141,14 @@ listed once, in [Pending OLED checks](#pending-oled-checks).
 | P6.20 | Port debug / cheat menu in the Options screen | in progress (PR 1 merged, #236: Cheats screen; PR 2, #248: money, give item and warp on page 2, in review; OLED checks open) | [roadmap](#phase-6-goal-notes), [PORT_OPTIONS](PORT_OPTIONS.md) |
 | P6.22 | Turbo speed in scripted scenes | in progress (CPU rasterizer is ~97 % of a field frame; pixel-identical rasterizer 4-5x faster, #220; turbo in the intro confirmed on the OLED 2026-10-27, preview.41; Forest Inn and the frame lines still open) | [P6.22](P6.22_FIELD_CPU.md), [roadmap](#phase-6-goal-notes), [P6.4](P6.4_FAST_FORWARD.md) |
 | P6.23 | Documentation: player guide, docs index, contributor and modder docs (future goal) | in progress (slice 1 done: player guide and docs index; slice 2: `CONTRIBUTING.md` and a pytest for all doc links, PR open; modder docs open) | [PLAYER_GUIDE](PLAYER_GUIDE.md), [docs index](README.md), [roadmap](#phase-6-goal-notes) |
-| P6.24 | One build for US and EU: one `.nro` and one PC binary, region found at boot, a boot picker with both discs (**owner priority 2026-10-28, Tier 0**; P6.25 and P6.26 are built) | in progress (slice 1 built: run-time region choice, picker logic and a PC launcher; slice 2 built: Switch launcher `.nro`, CI artifact only, OLED check open; **slice 3 built (PR A): `DW3_VERSION=both`, one `dw3-pc` with both game copies, P6.15 replays of both regions pass on it**; the Switch `.nro` with the in-image picker, CI and the release asset are PR B) | [SINGLE_BUILD](SINGLE_BUILD.md#as-built-slice-1), [slice 2](SINGLE_BUILD.md#as-built-slice-2-the-switch-launcher), [slice 3](SINGLE_BUILD.md#as-built-slice-3-the-dual-image-link-pc), [roadmap](#phase-6-goal-notes) |
+| P6.24 | One build for US and EU: one `.nro` and one PC binary, region found at boot, a boot picker with both discs (**owner priority 2026-10-28, Tier 0**; P6.25 and P6.26 are built) | built and shipped in preview.48 (`dw3-switch-both.nro`, #316 Switch; `dw3-pc` with both game copies, #314 PC); OLED check G9.x open; the separate US and EU `.nro` still ship; the Switch stop-gap launcher `dw3.nro` is a CI artifact only (slice 2) | [SINGLE_BUILD](SINGLE_BUILD.md#as-built-slice-1), [slice 2](SINGLE_BUILD.md#as-built-slice-2-the-switch-launcher), [slice 3](SINGLE_BUILD.md#as-built-slice-3-the-dual-image-link-pc), [roadmap](#phase-6-goal-notes) |
 | P6.25 | Cross-region saves: a US save loads in EU and the reverse, one canonical save container (future goal) | in progress (slice 1 built: converter and one-way import on load, PC replays US to EU and EU to US; container and store open; OLED check open) | [CROSS_REGION_SAVES](CROSS_REGION_SAVES.md), [roadmap](#phase-6-goal-notes) |
 | P6.26 | Per-user saves: saves bound to the Switch user profile chosen in the Switch profile selector, global options (future goal) | in progress (slice 1 built: user-resolution seam, Switch account + profile selector, saves per profile with a safe legacy copy; owner OLED, preview.43/44 (2026-10-27/28): each profile has its own Continue, cancelling the profile selector returns to the Switch HOME; E5.1, E5.2 and the logs not reported; import prompt, canonical store and global options open) | [PER_USER_SAVES](PER_USER_SAVES.md), [roadmap](#phase-6-goal-notes) |
 | P6.27 | Return to title from the pause (field) menu | in progress (built, PC US and EU replays; owner OLED, 2026-10-27, preview.41: Return to title works and Continue after it works; the Yes / No window, fade and card checks not reported) | [PORT_OPTIONS](PORT_OPTIONS.md#quit-and-return-to-title-p627-p628), [roadmap](#phase-6-goal-notes) |
 | P6.28 | Quit game on the title menu, back to hbmenu | in progress (built, PC US and EU replays; owner OLED, 2026-10-27, preview.41: Quit through the Sphaira forwarder works and returns to hbmenu; the full-app Sphaira launch shows errors, the forwarder is fine; card files, flush line and the US / EU split not reported) | [PORT_OPTIONS](PORT_OPTIONS.md#quit-and-return-to-title-p627-p628), [roadmap](#phase-6-goal-notes) |
 | P6.29 | Save editor: external tool on the owner's own saves, builds on P6.25 (future goal) | future | [roadmap](#phase-6-goal-notes), [CROSS_REGION_SAVES](CROSS_REGION_SAVES.md) |
 | P6.30 | Help, FAQ and tips from the pause menu and the title menu (future goal; owner answers recorded 2026-10-27; after P9.9) | future (design and first English text draft written 2026-10-28, owner review pending; page engine shared with P6.35; **owner 2026-10-28: at launch in every language the base game has, EN + FR/DE/IT/ES on the EU disc, pt-BR later with P6.7**) | [roadmap](#phase-6-goal-notes), [design](P6.30_HELP.md), [draft text](../port/help/text/en.txt) |
-| P6.31 | Auto-save, off by default | in progress (built: Options row, area-change write to its own file `autosave.bin`, title Continue loads it and the old Continue is Load; PC US and EU replays; owner OLED, 2026-10-27, preview.41: writes on an area change and on HOME close, title plaque spacing (#287); the save-file, Continue and Load Game checks not reported) | [P6.31_AUTOSAVE](P6.31_AUTOSAVE.md), [roadmap](#phase-6-goal-notes), [P5.3](P5.3_FLAT_SAVE.md) |
+| P6.31 | Auto-save, off by default | in progress (built: Options row, area-change write to its own file `autosave.bin`, title Continue loads it and the old Continue is Load; PC US and EU replays; owner OLED, 2026-10-27, preview.41: title plaque spacing (#287) confirmed; the write is on an area change only (code, 2026-10-28; the owner's "and on HOME close" note is not in the code, to re-check, E2.1); the save-file, Continue and Load Game checks not reported) | [P6.31_AUTOSAVE](P6.31_AUTOSAVE.md), [roadmap](#phase-6-goal-notes), [P5.3](P5.3_FLAT_SAVE.md) |
 | P6.32 | Map zoom and full-screen map (future goal) | phase 0 PoC built (PR `feat/p6.32-map-poc`); owner OLED, preview.45 (2026-10-28): the map shows and Nearest is the preferred scaler; balloon, cursor and name box pending preview.47; mod pack loader for an upscaled map built (`feat/mod-map-upscale`, OLED item B17 pending) | [roadmap](#phase-6-goal-notes), [P6.32](P6.32_MAP_ZOOM.md), [P6.1](P6.1_WIDESCREEN.md), [map upscale mod](MOD_MAP_UPSCALE.md) |
 | P6.33 | Items menu usability redesign | in progress (owner decisions recorded 2026-10-26; phase 1 partner cycle built: patch 0128, ZL / ZR, on by default; phases 2, 3 and 4 open; phase 1 cycle confirmed on the OLED 2026-10-27, preview.41; the `items_partner_switch=0` check open; phases 2–4 folded into P6.34) | [roadmap](#phase-6-goal-notes), [P6.33](P6.33_ITEMS_MENU.md), [P6.1](P6.1_WIDESCREEN.md) |
 | P6.34 | Redesign of the items / status / equipment menu flow (future goal) | future | [roadmap](#phase-6-goal-notes), [P6.33](P6.33_ITEMS_MENU.md) |
@@ -194,6 +195,9 @@ its done-when. The ordered session plan (written for preview.36) is
 - **Owner preview.47 US log (2026-10-28): PASSED** A5, A7, A9-A12, C7, E1.3, E2.1, E2.2, G8 (the `items_partner_switch=0` sub-check of G8 not done) and B15b; marks and log evidence are in [OLED_TEST_PLAN](OLED_TEST_PLAN.md). Still open: app name #289 (look only), B16 map balloon/cursor/zoom (not opened in that log), E1.6b (needs an EU run), D13 #188.
 - **P5 gate:** start → first boss on hardware, US and EU. The Phase 5 gate is
   not met yet (owner, 2026-10-24); see [Phase 5](#phase-5--playable-on-switch).
+- **P5.5:** the stage sweep on the OLED, US and EU: `stage_sweep=1` in
+  `port_options.cfg`, start the game, wait for `dw3-sweep: done`, send
+  `dw3.log` ([P5.5_STAGE_SWEEP](P5.5_STAGE_SWEEP.md), OLED_TEST_PLAN G10).
 - **P6.1:** **Item shop (B18, patch 0179):** the owner saw it still in 4:3 on preview.47 (panels had stayed in the middle 320 columns); panels now hang from the 16:9 edges, and the log says which gutter the shop ran with (`dw3-widescreen: screen STITSHOP ...`). Pending OLED. 16:9 for the map screen, results header, save slot picker, title
   menu, news caption bar, registration screen (patches 0080-0082, 0085-0087),
   and the Items menu and field menu screens (0075, 0076, 0074). US and EU. The
@@ -267,7 +271,7 @@ its done-when. The ordered session plan (written for preview.36) is
   area), **Load Game** opens the slot list with your own save; with no
   `autosave.bin` the title is as before. Checklist:
   [P6.31_AUTOSAVE.md](P6.31_AUTOSAVE.md#oled-checklist-owner-us-and-eu-builds-from-this-pr).
-  Confirmed 2026-10-27 (preview.41): the auto-save writes on an area change and on HOME close; title plaque spacing (#287). Still open: the save-file checks, Continue loading the auto-save, Load Game, and the title with no file.
+  Confirmed 2026-10-27 (preview.41): title plaque spacing (#287). The owner's note also said "and on HOME close"; the code writes on an area change only (no HOME, sleep or exit hook: [P6.31 when it saves](P6.31_AUTOSAVE.md#when-it-saves)), so that part is to be re-checked on the OLED (E2.1). Still open: the save-file checks, Continue loading the auto-save, Load Game, and the title with no file.
 - **P6.26 (per-user saves, slice 1):** confirmed on the OLED 2026-10-27/28
   (preview.43/44): each Switch profile has its own Continue, and cancelling the
   profile selector returns to the Switch HOME (E5.3 to E5.5; logs not sent).
@@ -798,6 +802,20 @@ speed.
   longer crashes. EU had passed it on the preview.29 OLED run, so both discs
   are now checked on the console
   ([BALLOON_NULL_ACTOR.md](BALLOON_NULL_ACTOR.md)).
+  **Stage sweep built (2026-10-28):** one opt-in run that logs, per stage,
+  whether it loads and returns, so the owner's `dw3.log` is the whole report.
+  Set `stage_sweep=1` in the region's `port_options.cfg` (builds with the
+  Cheats screen; off by default; it never writes a save) and start the game:
+  it goes `STAGSLCT` → stage → `STAGSLCT` through the 237 loadable stages
+  (`WSTAG460` is skipped, it is a stub), logs `dw3-sweep: stage WSTAGxxx ok in
+  N ms (frames F, mem free M)` or the failure, ends with `dw3-sweep: done X/Y
+  ok, failed: ...`, and a progress file (`stage_sweep.txt`) lets a relaunch
+  after a crash or hang report that stage and continue. PC: **237/237 ok on
+  US and on EU**, replay scenarios `us/eu-stage-sweep`, patch `0185`. Design,
+  keys and every log line: [P5.5_STAGE_SWEEP.md](P5.5_STAGE_SWEEP.md). **Open:**
+  the OLED run, US and EU ([OLED_TEST_PLAN](OLED_TEST_PLAN.md) G10); the EU
+  extra chapter's stages are not in the set yet. P5.5 is ticked when that run
+  loads and returns the set on the console.
 
 Gate: start → first boss on hardware, both versions.
 
@@ -1870,7 +1888,7 @@ Statuses are in the [table](#status-at-a-glance).
   them, the release `README.txt` points to the guide, and a new tester can
   install the US or EU build and report a crash using only those pages.
   Related: P6.5, P8.5, [REPORTING_ISSUES.md](REPORTING_ISSUES.md).
-- [ ] **P6.24 One build for US and EU (in progress: slices 1 and 2 built 2026-10-25, slice 3 / PR A 2026-10-28).** Dated 2026-10-24, owner
+- [ ] **P6.24 One build for US and EU (built; in preview.48 as `dw3-switch-both.nro`; OLED check open, G9.x).** Slices 1 and 2 built 2026-10-25, slice 3 / PR A (#314) 2026-10-28, PR B (#316) on main. Dated 2026-10-24, owner
   request: "Build única pra US e EU". One `.nro`, and one PC binary, that runs
   either disc, instead of the separate US and EU builds (`--eu`, two `.nro`
   files, EU attached to releases by hand). **Owner priority 2026-10-28: top of
@@ -1890,12 +1908,14 @@ Statuses are in the [table](#status-at-a-glance).
   only the running region, `us` and `eu` builds are unchanged. +5.0 MB on the
   PC binary. Tests: the localize tool on two copies of one C file, the region
   resolver, CI builds `both` on every PR, and the P6.15 replays of both regions
-  on the one binary (`--bin-both`, private copy of the references). **Open
-  (PR B, Switch):** `tools/build_switch_game.sh --both`, one `.nro` (NACP
-  "Digimon World 3 NX", nxlink "(nxlink)"), detection of the game data on the
-  SD card (only US: run it, only EU: run it, both: the picker), the host
-  picker, CI job and release asset, OLED checks
-  ([OLED_TEST_PLAN G9](OLED_TEST_PLAN.md#g9-combined-p624-one-nro-for-both-regions-pr-b)).
+  on the one binary (`--bin-both`, private copy of the references). **Switch
+  (PR B, #316, shipped in preview.48):** `tools/build_switch_game.sh --both`,
+  one `.nro` (NACP "Digimon World 3 NX", nxlink "(nxlink)"), detection of the
+  game data on the SD card (only US: run it, only EU: run it, both: the
+  picker), the host picker, CI job and release asset. **Open:** the OLED
+  checks ([OLED_TEST_PLAN G9](OLED_TEST_PLAN.md#g9-combined-p624-one-nro-for-both-regions-pr-b)).
+  Detection looks only in `us/` and `eu/` under `sdmc:/switch/dw3/`, not in
+  that folder itself (see [SINGLE_BUILD](SINGLE_BUILD.md#how-data-is-found-at-run-time)).
   **Slice 1 (built, [As built](SINGLE_BUILD.md#as-built-slice-1)):** the pieces
   around the dual image, chosen because the dual-image link is the risky part
   and the picker is useful on its own. `port/region/` (probe, the decision
@@ -2201,7 +2221,7 @@ Statuses are in the [table](#status-at-a-glance).
   **Still open:** an on-screen notice (success or failure); an after-battle
   trigger and a minimum interval; the cost of the SD write per area change on
   hardware; the title logo report of preview.38 (a separate fix; the spacing report is fixed by #287 and was confirmed on the OLED 2026-10-27).
-  **Owner OLED (preview.41, 2026-10-27):** the auto-save writes on an area change and on HOME close; the title plaque spacing (#287) is confirmed. Not reported yet: the save-file checks, Continue, Load Game and the write time.
+  **Owner OLED (preview.41, 2026-10-27):** the title plaque spacing (#287) is confirmed. The owner's note "writes on an area change and on HOME close": the code writes on an area change only; re-check (E2.1). Not reported yet: the save-file checks, Continue, Load Game and the write time.
   Done when: with the option on, an area change leaves one recoverable save and
   the old save survives a forced write failure (both proven on the PC), and with
   the option off nothing changes (proven: the replay suite). The OLED check is in

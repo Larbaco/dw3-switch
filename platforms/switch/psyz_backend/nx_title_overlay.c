@@ -37,6 +37,7 @@
 #include "nx_debug_overlay.h"
 #include "port_options.h"
 #include "port_screen_fade.h"
+#include "nx_game_api.h" /* last: a `both` image redirects the game calls */
 
 #include <stdint.h>
 #include <stdio.h>

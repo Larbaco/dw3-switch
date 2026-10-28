@@ -1,6 +1,6 @@
 Digimon World 3 / 2003, Switch homebrew preview
 
-Release notes for v0.6.5-preview.47. The release tag and boot version
+Release notes for v0.6.5-preview.48. The release tag and boot version
 identify the actual source revision.
 
 Player guide (setup, controls, Options, saves, crash reports):
@@ -12,6 +12,35 @@ New in this preview
   Each is checked on PC and in the Ryubing emulator only, and is marked
   unverified. Log rotation (#296, #301) was confirmed on the OLED with
   preview.45: dw3.1.log is kept and the rotated line shows rc=0x0.
+
+  One .nro for US and EU (P6.24, #314, #316): dw3-switch-both.nro carries
+  both games. It looks for the data under sdmc:/switch/dw3/us/ and
+  sdmc:/switch/dw3/eu/. With only one of them present it starts that game at
+  once. With both, a picker shows for 3 seconds and starts the last choice
+  (the default). Press Y to stop asking (start that region every time); hold
+  Minus while you press A on the .nro in hbmenu to ask again; + quits. Every
+  decision is a `dw3-region:` line in dw3.log. The separate US and EU .nro
+  files are still published until the owner confirms the combined one on the
+  OLED. It has not yet been run on a Switch OLED: see plan G9.x in the OLED
+  test plan before relying on it.
+
+  First mod: map upscale loader (#313, plan B17). The map can use an
+  upscaled picture pack in sdmc:/switch/dw3/mods/<pack>/. Without a pack, or
+  if a pack is bad, the original map is used. map_mod=0 in port_options.cfg
+  turns it off. The pack itself is NOT in this release: it is made locally
+  from your own disc with tools/mods/extract_map_assets.py.
+
+  Audio health and the #188 leak signature (P4.3, #315, plans D13 and D14):
+  dw3.log has a `dw3-audio: health` line every 30 s, `dw3-audio: underruns`
+  lines every minute and a `dw3-audio: exit:` line at quit. A rising voices
+  count with nothing playing, or `WARNING SsUtKeyOn found no free voice`, is
+  the #188 voice leak. Save writes also log `dw3-save: write ... committed`
+  lines (P10.2, plan G2).
+
+  Docs only (#310, #311, #312, #317, #318): the roadmap Priority section, the
+  in-game walkthrough design, OLED bookkeeping, the controls bundle design
+  and the technical help design with its first English text draft. Nothing in
+  the game changed for them.
 
   Map view has the game's own balloon, cursor and name box (#306, plan
   B16). The balloon sits on your current area and the cursor (an arrow, or a
@@ -259,17 +288,22 @@ Carried forward
 
 Bundle
 
-  dw3-switch.nro              US ordinary build
-  dw3-switch-nxlink.nro       US nxlink logging build
-  dw3-switch-eu.nro           EU ordinary build (attached by hand)
-  dw3-switch-elf.zip          US unstripped ELFs and BUILD_IDS.txt
-  dw3-switch-eu-elf.zip       EU unstripped ELF and BUILD_IDS.txt
-  README.txt                  these notes
+  dw3-switch.nro                 US ordinary build
+  dw3-switch-nxlink.nro          US nxlink logging build
+  dw3-switch-eu.nro              EU ordinary build (attached by hand)
+  dw3-switch-eu-nxlink.nro       EU nxlink logging build (attached by hand)
+  dw3-switch-elf.zip             US unstripped ELFs and BUILD_IDS.txt
+  dw3-switch-eu-elf.zip          EU unstripped ELF and BUILD_IDS.txt
+  dw3-switch-eu-nxlink-elf.zip   EU nxlink unstripped ELF and BUILD_IDS.txt
+  dw3-switch-both.nro            US + EU in one image (new; region chosen at boot)
+  dw3-switch-both-nxlink.nro     the same, nxlink logging build
+  dw3-switch-both-elf.zip        unstripped ELFs of both combined builds
+  README.txt                     these notes
 
-  The US pair and dw3-switch-elf.zip come from the release workflow. The
-  EU ordinary build and dw3-switch-eu-elf.zip are attached by hand to the
-  release, as in earlier previews. The EU nxlink build is not published in this preview.
-  No original game files, BIN/CUE/ISO, BIOS or extracted tree ship here.
+  The US pair, dw3-switch-elf.zip and the dw3-switch-both* files come from
+  the release workflow. The EU files are attached by hand to the release, as
+  in earlier previews. No original game files, BIN/CUE/ISO, BIOS or extracted
+  tree ship here.
 
 Own-disc setup and extraction
 
@@ -308,7 +342,9 @@ Install / nxlink
 
     nxlink -a <Switch-IP> -s dw3-switch-nxlink.nro
 
-  This preview publishes only the US nxlink build. Do not probe TCP 28280
+  The US and EU nxlink builds are published (dw3-switch-eu-nxlink.nro is the
+  EU one); the combined dw3-switch-both-nxlink.nro is the same logging build
+  for either region. Do not probe TCP 28280
   first: an empty connection can break the receiver. A failed logging
   connection does not prevent boot; logs also go to
   sdmc:/switch/dw3/dw3.log. That folder keeps the last 5 runs (dw3.log is
@@ -346,6 +382,16 @@ OLED checklist
     of sdmc:/switch/dw3/saves/.
   - Logs (#290): each test item names the dw3*.log lines that prove it; send
     the whole set of dw3*.log files after the run.
+  - Combined .nro (plan G9.1 to G9.6, P6.24): dw3-switch-both.nro with only
+    one region's data, with both (picker, 3 s default, Y, Minus) and the
+    stored choice. Send the `dw3-region:` lines.
+  - Map upscale mod (plan B17): with a locally made pack the map is the
+    upscaled picture; without it, or with map_mod=0, the original map. Send
+    the `dw3-map:` lines.
+  - Audio (plans D13 and D14, #188): the `dw3-audio:` health, underrun and
+    exit lines after many techs and in a 10 minute session.
+  - Save writes (plan G2, P10.2): the `dw3-save: write ... committed` and
+    `interrupted` lines after HOME during a save.
 
   From preview.42, still open:
   - App name (#289): recreate the Sphaira forwarder (or re-add the .nro in

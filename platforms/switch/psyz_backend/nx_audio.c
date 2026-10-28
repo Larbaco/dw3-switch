@@ -18,7 +18,10 @@
 #include <psyz/spu.h>
 
 #include "../../../port/audio/audio_health.h"
+#include "dw3_game_api.h"
+#if !(defined(DW3_BOTH) && DW3_BOTH)
 void dw3_port_audio_health_exit(void);
+#endif
 #endif
 
 #ifndef M_PI
