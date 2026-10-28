@@ -17,7 +17,64 @@ for starting the next phase's real work. A goal note written early
 (P7.1, P8.1, P9.1, P10.1) or a packaging task the owner asked for early
 (P6.5) does not start that phase. No time estimates on purpose. Facts
 behind the tasks are in [SURVEY.md](SURVEY.md); layering is in
-[ARCHITECTURE.md](ARCHITECTURE.md).
+[ARCHITECTURE.md](ARCHITECTURE.md). The phase order is the dependency order;
+the [Priority](#priority) section is the work order, and agents pick work from
+the highest non-empty tier.
+
+## Priority
+
+Work order, approved by the owner on 2026-10-28. Agents pick work from the
+highest non-empty tier.
+
+### Tier 0 — Now
+
+- Fixes from the owner's latest preview feedback (see
+  [Pending OLED checks](#pending-oled-checks)).
+- Bookkeeping: tick items the owner confirmed on the OLED that are still listed
+  under [Pending OLED checks](#pending-oled-checks). None are pending as of
+  2026-10-28; P6.4, P6.17 and P9.4 are already ticked.
+
+### Tier 1 — Stability
+
+- [P5.5](#phase-5--playable-on-switch): stage sweep on hardware.
+- [#188](https://github.com/Larbaco/dw3-switch/issues/188) and
+  [P4.3](P4.3_AUDIO.md): audio, underrun count.
+- [P10.2](SWITCH_FEATURES.md): HOME during a save write.
+- [P6.1](P6.1_WIDESCREEN.md): 16:9 batch 2. Stopped by the owner; resumes only
+  when the owner allows.
+
+### Tier 2 — UI base (in this order)
+
+1. [P9.9](PORT_OPTIONS.md): finish the Cheats screen restyle and the remaining
+   sub-screens.
+2. Controls bundle, done together because they touch the same menus:
+   [P6.12](#phase-6-goal-notes) remapping, [P9.8](HOTKEYS.md) A/B layout and
+   [P10.6](TEXTURE_PACKS.md) Switch glyphs.
+3. [P6.30](#phase-6-goal-notes): technical help.
+4. [P6.34](#phase-6-goal-notes): menu-flow redesign. It absorbs
+   [P6.33](P6.33_ITEMS_MENU.md) phases 2–4, so the items menu is redesigned once.
+5. [P6.32](P6.32_MAP_ZOOM.md): map phase 1.
+
+### Tier 3 — Content and QoL
+
+- [P6.35](PLAYER_GUIDE.md): walkthrough. It lives in the new Options sub-screens,
+  so it comes after Tier 2.
+- [P6.20](PORT_OPTIONS.md#cheats-p620): cheats PR 2
+  ([#248](https://github.com/Larbaco/dw3-switch/pull/248)).
+- [P6.18](P6.18_PACING.md): pacing.
+- [P6.22](P6.22_FIELD_CPU.md): turbo in scripted scenes.
+- [P6.24](SINGLE_BUILD.md) and [P6.25](CROSS_REGION_SAVES.md): single build and
+  cross-region saves.
+
+### Tier 4 — Long term
+
+- [P6.7](#phase-6--polish-and-options): PT-BR and localization.
+- [P8](TEXTURE_PACKS.md): texture packs.
+- [P6.3](#phase-6--polish-and-options): PGXP vertex precision.
+- [P6.10](P5.2_BATTLE_GPU.md): hardware render outside battle.
+- [P7.5](COMMUNITY_QOL.md): companion.
+- Exception: the first mod, the map upscale ([P8.5](MOD_MAP_UPSCALE.md)), runs
+  now at the owner's request.
 
 ## Status at a glance
 
@@ -75,7 +132,7 @@ listed once, in [Pending OLED checks](#pending-oled-checks).
 | P6.30 | Help, FAQ and tips from the pause menu and the title menu (future goal; owner answers recorded 2026-10-27; after P9.9) | future | [roadmap](#phase-6-goal-notes) |
 | P6.31 | Auto-save, off by default | in progress (built: Options row, area-change write to its own file `autosave.bin`, title Continue loads it and the old Continue is Load; PC US and EU replays; owner OLED check open) | [P6.31_AUTOSAVE](P6.31_AUTOSAVE.md), [roadmap](#phase-6-goal-notes), [P5.3](P5.3_FLAT_SAVE.md) |
 | P6.32 | Map zoom and full-screen map (future goal) | phase 0 PoC built (PR `feat/p6.32-map-poc`), OLED look pending | [roadmap](#phase-6-goal-notes), [P6.32](P6.32_MAP_ZOOM.md), [P6.1](P6.1_WIDESCREEN.md), [map upscale mod](MOD_MAP_UPSCALE.md) |
-| P6.33 | Items menu usability redesign | in progress (owner decisions recorded 2026-10-26; phase 1 partner cycle built: patch 0128, ZL / ZR, on by default; phases 2, 3 and 4 open; owner OLED check open) | [roadmap](#phase-6-goal-notes), [P6.33](P6.33_ITEMS_MENU.md), [P6.1](P6.1_WIDESCREEN.md) |
+| P6.33 | Items menu usability redesign | in progress (owner decisions recorded 2026-10-26; phase 1 partner cycle built: patch 0128, ZL / ZR, on by default; phases 2, 3 and 4 open; owner OLED check open; phases 2–4 folded into P6.34) | [roadmap](#phase-6-goal-notes), [P6.33](P6.33_ITEMS_MENU.md), [P6.1](P6.1_WIDESCREEN.md) |
 | P6.34 | Redesign of the items / status / equipment menu flow (future goal) | future | [roadmap](#phase-6-goal-notes), [P6.33](P6.33_ITEMS_MENU.md) |
 | P6.35 | In-game walkthrough help: where to go next and what to do, by story progress (future goal) | future | [roadmap](#phase-6-goal-notes), [PLAYER_GUIDE](PLAYER_GUIDE.md) |
 | P7.1 | Inventory and boundaries | done | [COMMUNITY_QOL](COMMUNITY_QOL.md) |
@@ -2124,10 +2181,12 @@ Statuses are in the [table](#status-at-a-glance).
   while equipping on US and EU, the menu still fits 16:9 and 4:3, and the
   P6.15 Items replay scenarios (`us/eu-items-screen[-normal]`) still match.
   Related: P6.1, P6.15.
+  Phases 2–4 are folded into P6.34 (owner, 2026-10-28).
 - [ ] **P6.34 Items / status / equipment menu flow redesign (future goal).**
   Dated 2026-10-27, owner: the options and their order in the items, status
   and equipment menus feel odd. A redesign of the whole flow, beyond the
-  partner cycle of P6.33. No design yet; start from the P6.33 note. Done when
+  partner cycle of P6.33. No design yet; start from the P6.33 note. Phases 2–4
+  of P6.33 are folded into this item (owner, 2026-10-28). Done when
   (proposed): the owner approves a flow and it works on US and EU, 4:3 and 16:9.
 
 - [ ] **P6.35 In-game walkthrough help (future goal).** Dated 2026-10-27,
