@@ -265,6 +265,9 @@ Bundle
   dw3-switch-nxlink.nro       US nxlink logging build
   dw3-switch-eu.nro           EU ordinary build (attached by hand)
   dw3-switch-elf.zip          US unstripped ELFs and BUILD_IDS.txt
+  dw3-switch-both.nro         US + EU in one image (new; region chosen at boot)
+  dw3-switch-both-nxlink.nro  the same, nxlink logging build
+  dw3-switch-both-elf.zip     unstripped ELFs of both combined builds
   dw3-switch-eu-elf.zip       EU unstripped ELF and BUILD_IDS.txt
   README.txt                  these notes
 

@@ -18,6 +18,9 @@
 #
 # Disc version: default US. Pass --eu (or DW3_VERSION=eu) for Digimon World
 # 2003. EU extracts its matching owner BIN/CUE into sdmc:/switch/dw3/eu/.
+# Pass --both (or DW3_VERSION=both) for the P6.24 combined image: one NRO with
+# both game copies (build/switch-both/), the region chosen at boot from the
+# data on the card (sdmc:/switch/dw3/us and /eu) and the boot picker.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -35,10 +38,12 @@ DW3_NX_TEST_ENV="${DW3_NX_TEST_ENV:-}"
 DW3_VERSION="$(echo "${DW3_VERSION:-us}" | tr '[:upper:]' '[:lower:]')"
 
 usage() {
-  echo "usage: $0 [--eu] [--nxlink] [--replay] [--force-crash] [--no-cheats]"
+  echo "usage: $0 [--eu|--both] [--nxlink] [--replay] [--force-crash] [--no-cheats]"
   echo "  default       US game NRO at build/switch/dw3-switch.nro"
   echo "  --eu          EU game NRO at build/switch-eu/dw3-switch.nro"
-  echo "  --nxlink      nxlink development NRO (build/switch[-eu]-nxlink/)"
+  echo "  --both        P6.24 combined NRO, US and EU in one image, region chosen at boot"
+  echo "                (build/switch-both/dw3-switch.nro; NACP \"Digimon World 3 NX\")"
+  echo "  --nxlink      nxlink development NRO (build/switch[-eu|-both]-nxlink/)"
   echo "  --replay      P6.15 test NRO: reads sdmc:/switch/dw3/replay.rec"
   echo "                (build/switch[-eu][-nxlink]-replay/dw3-switch[-nxlink]-replay.nro;"
   echo "                never release/preview, see docs/P6.15_REPLAY_TESTS.md)"
@@ -55,6 +60,9 @@ while (( $# > 0 )); do
   case "$1" in
     --eu)
       DW3_VERSION=eu
+      ;;
+    --both)
+      DW3_VERSION=both
       ;;
     --nxlink)
       NXLINK_STDIO=ON
@@ -81,8 +89,8 @@ while (( $# > 0 )); do
   shift
 done
 
-if [[ "${DW3_VERSION}" != "us" && "${DW3_VERSION}" != "eu" ]]; then
-  echo "DW3_VERSION must be us or eu (got '${DW3_VERSION}')" >&2
+if [[ "${DW3_VERSION}" != "us" && "${DW3_VERSION}" != "eu" && "${DW3_VERSION}" != "both" ]]; then
+  echo "DW3_VERSION must be us, eu or both (got '${DW3_VERSION}')" >&2
   exit 2
 fi
 
@@ -91,7 +99,17 @@ if [[ "${DW3_NX_FORCE_CRASH}" == "ON" && "${NXLINK_STDIO}" != "ON" ]]; then
       "and there will be no live log; recommended: --nxlink --force-crash" >&2
 fi
 
-if [[ "${DW3_VERSION}" == "eu" ]]; then
+if [[ "${DW3_VERSION}" == "both" ]]; then
+  if [[ "${NXLINK_STDIO}" == "ON" ]]; then
+    BUILD_DIR="${ROOT}/build/switch-both-nxlink"
+    NRO_NAME="dw3-switch-nxlink"
+  else
+    BUILD_DIR="${ROOT}/build/switch-both"
+    NRO_NAME="dw3-switch"
+  fi
+  # No region at compile time: the base folder that holds us/ and eu/.
+  RUNTIME_PATH="sdmc:/switch/dw3"
+elif [[ "${DW3_VERSION}" == "eu" ]]; then
   if [[ "${NXLINK_STDIO}" == "ON" ]]; then
     BUILD_DIR="${ROOT}/build/switch-eu-nxlink"
     NRO_NAME="dw3-switch-nxlink"
@@ -244,7 +262,11 @@ fi
 
 bytes="$(stat -c%s "${NRO}")"
 if [[ "${bytes}" -lt 6000000 ]]; then
-  echo "game .nro is ${bytes} bytes; expected about 8.9MB" >&2
+  echo "game .nro is ${bytes} bytes; expected about 8.9MB (about 12MB with --both)" >&2
+  exit 1
+fi
+if [[ "${DW3_VERSION}" == "both" && "${bytes}" -lt 10500000 ]]; then
+  echo "combined .nro is ${bytes} bytes; two game copies should make it about 12MB" >&2
   exit 1
 fi
 

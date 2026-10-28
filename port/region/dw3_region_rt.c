@@ -10,8 +10,54 @@
 extern const Dw3GameApi us_dw3_game_api;
 extern const Dw3GameApi eu_dw3_game_api;
 
+/* Before a region is chosen (the picker, the setup screen, an early failure, a
+ * crash report) there is no game copy. The host still calls through the table in
+ * a few places that run then (the backend's HUD, the crash handler), so the
+ * table of "no game" is real and harmless: calls return 0 and do nothing. */
+static int none_game_main(void) { return -1; }
+static int none_load_boot_tim(const char *p) { (void)p; return -1; }
+static void none_void(void) {}
+static int none_int(void) { return 0; }
+static int none_int_i(int v) { (void)v; return 0; }
+static int none_int_s(const char *s) { (void)s; return -1; }
+static unsigned none_mask(int v) { (void)v; return 0; }
+static void none_void_i(int v) { (void)v; }
+static void none_void_s(const char *s) { (void)s; }
+static void none_void_u(unsigned v) { (void)v; }
+static void none_draw(struct Dw3MapViewDraw *d) { (void)d; }
+static int32_t none_file(void) { return 0; }
+static const char *none_name(int32_t id) { (void)id; return NULL; }
+static const Dw3GameApi g_no_game = {
+    .abi = DW3_GAME_API_ABI,
+    .region = DW3_REGION_NONE,
+    .game_main = none_game_main,
+    .host_load_boot_tim = none_load_boot_tim,
+    .overlay_register_title = none_void,
+    .overlay_current_mode_file = none_file,
+    .overlay_current_sub_file = none_file,
+    .overlay_file_name = none_name,
+    .overlay_set_strict = none_void_i,
+    .map_view_init = none_void_s,
+    .map_view_precompute_run = none_void,
+    .map_view_set_zoom_stick = none_void_i,
+    .map_view_get_draw = none_draw,
+    .map_view_tex_taken = none_void_u,
+    .port_options_persist_init = none_int_s,
+    .port_options_flush = none_void,
+    .port_options_is_open = none_int,
+    .port_options_in_game = none_int,
+    .port_battle_options_holding = none_int,
+    .port_options_level = none_int_i,
+    .port_options_locked_mask_for = none_mask,
+    .port_options_note_shown = none_void,
+    .port_screen_fade_level = none_int,
+    .port_turbo_speed = none_int,
+    .port_turbo_present_due = none_int,
+    .port_turbo_rate_x2 = none_int,
+};
+
 static Dw3Region g_region = DW3_REGION_NONE;
-static const Dw3GameApi *g_api;
+static const Dw3GameApi *g_api = &g_no_game;
 
 Dw3Region dw3_region(void) { return g_region; }
 

@@ -23,6 +23,7 @@
 #include "nx_mesh.h"
 #include "nx_mesh_debug.h"
 #include "overlay_host.h"
+#include "nx_game_api.h" /* last: a `both` image redirects the game calls */
 
 #include <stdio.h>
 #include <stdlib.h>

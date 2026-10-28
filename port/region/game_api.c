@@ -15,9 +15,11 @@
 #include "boot_tim_host.h"
 #include "map_view.h"
 #include "overlay_host.h"
+#include "port_battle_options.h"
 #include "port_options.h"
 #include "port_screen_fade.h"
 #include "port_turbo.h"
+#include "port_audio.h"
 #ifdef DW3_CHEATS
 #include "port_cheats.h"
 #endif
@@ -34,6 +36,13 @@
 
 int dw3_game_main(void);
 
+#if defined(VERSION_EU) && VERSION_EU
+extern int32_t LANGUAGE; /* src/engine/data/eu_settings.c, set by CNTY_SEL */
+#define DW3_LANGUAGE_PTR &LANGUAGE
+#else
+#define DW3_LANGUAGE_PTR 0
+#endif
+
 /* game: engine/file/file_table.c, engine heap, port/overlays/host_heap.c */
 extern int FILE_SECTORS[];
 extern unsigned short FILE_SECTOR_COUNTS[];
@@ -48,6 +57,10 @@ const Dw3GameApi dw3_game_api = {
     dw3_game_main,
     dw3_host_load_boot_tim,
     DW3_REGISTER_TITLE,
+    dw3_overlay_current_mode_file,
+    dw3_overlay_current_sub_file,
+    dw3_overlay_file_name,
+    dw3_overlay_set_strict,
     dw3_map_view_init,
     dw3_map_view_precompute_run,
     dw3_map_view_set_zoom_stick,
@@ -56,20 +69,25 @@ const Dw3GameApi dw3_game_api = {
     dw3_port_options_persist_init,
     dw3_port_options_flush,
     dw3_port_options_is_open,
+    dw3_port_options_in_game,
+    dw3_port_battle_options_holding,
     dw3_port_options_level,
     dw3_port_options_locked_mask_for,
     dw3_port_options_note_shown,
     dw3_port_screen_fade_level,
     dw3_port_turbo_speed,
+    dw3_port_turbo_present_due,
     dw3_port_turbo_rate_x2,
 #ifdef DW3_CHEATS
     dw3_cheats_soak_arm,
 #else
     0,
 #endif
+    dw3_port_audio_health_exit,
     FILE_SECTORS,
     FILE_SECTOR_COUNTS,
     &FILE_COUNT,
+    DW3_LANGUAGE_PTR,
     HEAP,
     DW3_HOST_HEAP,
     &DW3_HOST_HEAP_SIZE,

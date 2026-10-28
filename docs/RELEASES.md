@@ -84,6 +84,25 @@ To test the packing without a release, run the script on local builds
 workflow itself has no dry-run path: `workflow_dispatch` always publishes
 the tag it is given.
 
+**Combined US + EU build (P6.24).** From the first release made after the
+combined image landed, the workflow also builds `tools/build_switch_game.sh
+--both` (ordinary and nxlink) and publishes, as extra assets next to the ones
+above (nothing is removed or renamed):
+
+```
+dw3-switch-both.nro          US + EU in one image, region chosen at boot (picker)
+dw3-switch-both-nxlink.nro   the same, nxlink logging build
+dw3-switch-both-elf.zip      unstripped ELFs of both, with BUILD_IDS.txt
+```
+
+The separate US and EU `.nro` files keep shipping until the owner has confirmed
+the combined one on the OLED. The combined image needs both runtimes under
+`sdmc:/switch/dw3/us` and `/eu` to show the picker; with one it starts that one
+(see [SINGLE_BUILD](SINGLE_BUILD.md#as-built-slice-4-the-combined-switch-nro)).
+Its crash reports are symbolized with `dw3-switch-both-elf.zip`, one `.elf` per
+`.nro`; the report's `disc:` line says the region. The release README must list
+`dw3-switch-both*` only in a release that really carries them.
+
 **EU is a manual step.** Build EU once, then upload the `.nro` and its
 `.elf` zip from that same build (the `.elf` must come from the build that
 made the `.nro`):
