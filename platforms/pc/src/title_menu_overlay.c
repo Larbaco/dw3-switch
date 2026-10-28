@@ -68,6 +68,11 @@ static SDL_GPUTexture *g_logo_texture;
 static SDL_GPUTexture *g_dialog_texture;
 static int g_dialog_active, g_dialog_kind, g_dialog_focus = -1;
 static unsigned g_dialog_language = ~0u;
+/* P6.30 technical help: its own 960x720 layer (title_overlay_art.c
+ * dw3_pc_help_render), drawn instead of the Options layer while it is open.
+ * Created when the help opens, released when it closes. */
+static SDL_GPUTexture *g_help_texture;
+static unsigned g_help_uploaded;
 static SDL_GPUTexture *g_background_texture;
 /* 64 x 1 black ramp (alpha i/63): the screen fade samples one texel of it. */
 static SDL_GPUTexture *g_fade_texture;
@@ -306,6 +311,7 @@ static void release_gpu_resources(void) {
     if (g_texture) SDL_ReleaseGPUTexture(g_device, g_texture);
     if (g_logo_texture) SDL_ReleaseGPUTexture(g_device, g_logo_texture);
     if (g_dialog_texture) SDL_ReleaseGPUTexture(g_device, g_dialog_texture);
+    if (g_help_texture) SDL_ReleaseGPUTexture(g_device, g_help_texture);
     if (g_fade_texture) SDL_ReleaseGPUTexture(g_device, g_fade_texture);
     if (g_background_texture) SDL_ReleaseGPUTexture(g_device, g_background_texture);
     if (g_background_sampler) SDL_ReleaseGPUSampler(g_device, g_background_sampler);
@@ -317,6 +323,8 @@ static void release_gpu_resources(void) {
     g_texture = NULL;
     g_logo_texture = NULL;
     g_dialog_texture = NULL;
+    g_help_texture = NULL;
+    g_help_uploaded = 0;
     g_dialog_active = 0;
     g_dialog_focus = -1;
     g_fade_texture = NULL;
@@ -1004,6 +1012,42 @@ void dw3_pc_dialog_set(int active, int kind, int focus) {
     g_dialog_active = 1;
 }
 
+/* P6.30: keep the help layer's texture in step with its view: made and filled
+ * while the help is open (a changed view is uploaded whole, 2.7 MB, like an
+ * Options rebuild), released when it closes. */
+static void help_refresh(void) {
+    unsigned version = 0;
+    const uint8_t *pixels;
+
+    if (!dw3_pc_help_active()) {
+        if (g_help_texture) {
+            SDL_ReleaseGPUTexture(g_device, g_help_texture);
+            g_help_texture = NULL;
+            g_help_uploaded = 0;
+        }
+        return;
+    }
+    if (!g_device) return;
+    if (!g_help_texture) {
+        SDL_GPUTextureCreateInfo info = {
+            .type = SDL_GPU_TEXTURETYPE_2D,
+            .format = SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UNORM,
+            .usage = SDL_GPU_TEXTUREUSAGE_SAMPLER,
+            .width = CANVAS_W, .height = CANVAS_H,
+            .layer_count_or_depth = 1, .num_levels = 1,
+            .sample_count = SDL_GPU_SAMPLECOUNT_1,
+        };
+        g_help_texture = SDL_CreateGPUTexture(g_device, &info);
+        g_help_uploaded = 0;
+        if (!g_help_texture) return;
+    }
+    pixels = dw3_pc_help_render(&version);
+    if (pixels && version != g_help_uploaded &&
+        upload_rgba(g_help_texture, pixels, CANVAS_W, CANVAS_H, CANVAS_W * 4) == 0) {
+        g_help_uploaded = version;
+    }
+}
+
 /* The SDL3 GPU shader has no tint input; the edge fade is not followed here. */
 void dw3_pc_title_menu_set_fade(int level) { (void)level; }
 
@@ -1027,11 +1071,13 @@ void dw3_pc_title_menu_set_state(int active, int selected) {
         } else {
             refresh_art();
         }
+        help_refresh();
         g_selection = STATE_OPTIONS;
         g_overlay_active = 1;
         profile_end();
         return;
     }
+    help_refresh();
     if (!active || !g_pipeline || !g_texture || !g_vertices || !g_sampler) {
         g_overlay_active = 0;
         profile_end();
@@ -1229,12 +1275,16 @@ static void render_overlay_layers(SDL_GPUCommandBuffer *cmd, SDL_GPURenderPass *
     if (g_overlay_active) {
         if (g_selection == STATE_OPTIONS) dw3_port_options_note_shown();
         SDL_BindGPUGraphicsPipeline(pass, g_pipeline);
+        /* P6.30: the help's layer replaces the Options layer while it is open. */
+        const int help_on = g_selection == STATE_OPTIONS && g_help_texture &&
+                            g_help_uploaded && dw3_pc_help_active();
         const SDL_GPUTextureSamplerBinding sampler_binding = {
-            .texture = g_texture,
+            .texture = help_on ? g_help_texture : g_texture,
             .sampler = g_sampler,
         };
         SDL_BindGPUFragmentSamplers(pass, 0, &sampler_binding, 1);
-        SDL_DrawGPUPrimitives(pass, 6, 1, (Uint32)(g_selection * 6), 0);
+        SDL_DrawGPUPrimitives(pass, 6, 1,
+                              (Uint32)((help_on ? STATE_COUNT + 4 : g_selection) * 6), 0);
         profile_overlay_draw_complete();
     }
     if (g_dialog_active && g_dialog_texture && g_logo_sampler) {

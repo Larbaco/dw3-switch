@@ -94,6 +94,11 @@ static GLuint s_logo_tex;
 /* P6.27 / P6.28 Yes / No window: its own small texture, rendered on the CPU
  * when its kind, focus or language changes and uploaded on the next draw. */
 static GLuint s_dialog_tex;
+/* P6.30 technical help: its own 960x720 layer (title_overlay_art.c
+ * dw3_pc_help_render), drawn instead of the Options layer while it is open and
+ * released when it closes. */
+static GLuint s_help_tex;
+static unsigned s_help_uploaded;
 static int s_dialog_active;
 static int s_dialog_kind;
 static int s_dialog_focus;
@@ -382,6 +387,16 @@ static void release_title_textures(void) {
     s_logo_dirty = s_logo_rgba != NULL;
     dw3_options_cache_invalidate();
     TITLE_LOG("dw3-title-overlay: title textures released (not on screen)");
+}
+
+static void release_help_texture(void) {
+    if (!s_help_tex) {
+        return;
+    }
+    glDeleteTextures(1, &s_help_tex);
+    s_help_tex = 0;
+    s_help_uploaded = 0;
+    TITLE_LOG("dw3-title-overlay: help texture released");
 }
 
 static void release_dialog_texture(void) {
@@ -718,9 +733,32 @@ static void draw_layers(int vx, int vy, int vw, int vh) {
                   0.0f, v0, 1.0f, v1);
     }
     if (s_options_alpha) {
+        GLuint shown = s_opt_tex;
+
         dw3_port_options_note_shown();
+        if (dw3_pc_help_active()) {
+            unsigned version = 0;
+            const uint8_t *pixels = dw3_pc_help_render(&version);
+
+            if (!glIsTexture(s_help_tex)) {
+                s_help_tex = make_texture(CANVAS_W, CANVAS_H, NULL);
+                s_help_uploaded = 0;
+            }
+            if (pixels && s_help_tex && version != s_help_uploaded) {
+                glBindTexture(GL_TEXTURE_2D, s_help_tex);
+                glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
+                glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, CANVAS_W, CANVAS_H,
+                                GL_RGBA, GL_UNSIGNED_BYTE, pixels);
+                s_help_uploaded = version;
+            }
+            if (s_help_tex && s_help_uploaded) {
+                shown = s_help_tex;
+            }
+        } else if (s_help_tex) {
+            release_help_texture();
+        }
         glUniform1f(s_uni_alpha, (float)s_options_alpha / 255.0f);
-        draw_quad(s_opt_tex, 0.0f, 0.0f, CANVAS_W, CANVAS_H,
+        draw_quad(shown, 0.0f, 0.0f, CANVAS_W, CANVAS_H,
                   0.0f, 0.0f, 1.0f, 1.0f);
         if (vx > wide_x) {
             /* The gutters (patch 0085): one texel of the screen's uniformly
@@ -819,6 +857,9 @@ void dw3_nx_title_overlay_invalidate_gl(void) {
     if (s_opt_tex) glDeleteTextures(1, &s_opt_tex);
     if (s_logo_tex) glDeleteTextures(1, &s_logo_tex);
     if (s_dialog_tex) glDeleteTextures(1, &s_dialog_tex);
+    if (s_help_tex) glDeleteTextures(1, &s_help_tex);
+    s_help_tex = 0;
+    s_help_uploaded = 0;
     if (s_vbo) glDeleteBuffers(1, &s_vbo);
     s_prog = 0;
     s_art_tex = 0;

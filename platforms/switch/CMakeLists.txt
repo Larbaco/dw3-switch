@@ -202,6 +202,9 @@ target_sources(dw3-switch PRIVATE
   ${CMAKE_CURRENT_SOURCE_DIR}/../pc/src/title_overlay_art.c
   ${CMAKE_CURRENT_SOURCE_DIR}/../pc/src/title_options_cache.c
   ${CMAKE_CURRENT_SOURCE_DIR}/../pc/src/title_logo_resample.c
+  # P6.30 page engine and glyph atlas (the help's text, drawn by the art).
+  ${CMAKE_CURRENT_SOURCE_DIR}/../../port/pages/pages.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/../../port/pages/glyph_atlas.c
 )
 foreach(_s IN LISTS _dw3_sfx ITEMS "")
   if(_dw3_both AND _s STREQUAL "")
@@ -283,6 +286,14 @@ string(REPLACE "\\" "\\\\" _dw3_nro_ver_c "${DW3_NRO_VERSION}")
 string(REPLACE "\"" "\\\"" _dw3_nro_ver_c "${_dw3_nro_ver_c}")
 target_compile_definitions(dw3-switch PRIVATE
   "DW3_NRO_VERSION_STR=\"${_dw3_nro_ver_c}\"")
+# P6.30: the help's {build:version} token (bug report page) reads it too.
+foreach(_s IN LISTS _dw3_sfx ITEMS "")
+  if(_dw3_both AND _s STREQUAL "")
+    continue()
+  endif()
+  target_compile_definitions(dw3_port_options${_s} PRIVATE
+    "DW3_NRO_VERSION_STR=\"${_dw3_nro_ver_c}\"")
+endforeach()
 # P5.4: git commit in the crash report, to match a report to its .elf. The
 # report also prints the GNU build-id the linker stamps into the image
 # (.note.gnu.build-id), which tools/symbolize_crash.py checks against the
