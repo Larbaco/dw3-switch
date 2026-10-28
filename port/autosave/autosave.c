@@ -180,6 +180,11 @@ void dw3_autosave_title_started(void) {
     g_file_ok = as_check_file(NULL) != 0;
     if (g_file_ok) {
         AS_INFO("dw3-autosave: autosave.bin found: Continue loads it");
+        AS_INFO("dw3-title-menu: plaques New Game, Options, Continue "
+                "(autosave.bin), Load Game (slot list), Quit game");
+    } else {
+        AS_INFO("dw3-title-menu: no autosave.bin: plaques New Game, Options, "
+                "Load Game (slot list), Quit game");
     }
 }
 
