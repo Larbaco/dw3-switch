@@ -40,7 +40,8 @@ RULES: list[tuple[str, object]] = [
     (r"^tools/(mods|guide|memaudit|compare_harness|testdata|audio_|menu_art|docker)", NONE),
     (r"^tools/[^/]*\.(sh|py|c)$", NONE),        # build/dev helpers (not tools/replay/)
     (r"^platforms/switch/", NONE),              # Switch host: Ryubing, not the PC replay
-    (r"^port/help/", ("*options*",)),
+    (r"^port/help/", ("*help*", "*options*")),
+    (r"^port/pages/", ("*help*", "*walkthrough*", "*options*")),
     # --- areas by directory ------------------------------------------------
     (r"^port/walkthrough/", ("*walkthrough*",)),
     (r"^port/autosave/", ("*autosave*", "*title-continue*")),
