@@ -55,7 +55,7 @@ Replay runner (2 jobs, `--bin-both`): quick tier 32.6 s for 68 checks (6
 scenarios); a 12-scenario slice of the full tier 119.8 s for 128 checks. The
 runner spends 98% of that in the game processes (sum of process seconds 236 s,
 2 jobs, 120 s wall); PNG compare and Xvfb start are noise. The full tier has
-245 scenarios (116 US, 128 EU), so at about 20 s of game time each it is about
+about 250 scenarios (116 US, 128 EU), so at about 20 s of game time each it is about
 80 min of process time, 40 min at 2 jobs on a quiet machine. The ~3 h seen on
 the loaded desktop is the same work running slower under load, not extra work.
 
@@ -168,8 +168,8 @@ wins, rules are regexes on the path with scenario-name globs.
   (`p77` to `*p77*`, `p620-cheats` to `*cheat*`, and so on).
 * **A file under `port/`, `platforms/pc/`, `vendor/`, CMake or the runner with no
   rule selects the full tier** (the safe default), as does a new decomp pin.
-  So does an engine-wide patch (`match-neutral-*`, the first `PORT_HOST-*`
-  engine ones). `port/options/cheats.c` alone selects 43 of 273 scenarios; a
+  So does any patch without a topic rule (`match-neutral-*`, the early
+  `PORT_HOST-*` engine fixes). `port/options/cheats.c` alone selects 43 of 273 scenarios; a
   `port/ui/` change 128.
 
 `--changed` is a heuristic for the pre-PR loop. It is not a substitute for the
