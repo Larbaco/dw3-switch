@@ -17,6 +17,9 @@
 #include "port_options.h"
 #include "memcard_host.h"
 #include "save_convert.h"
+#if defined(DW3_CHEATS) && !defined(DW3_AUTOSAVE_TEST)
+#include "port_stage_sweep.h"
+#endif
 
 #include <stdio.h>
 #include <string.h>
@@ -116,6 +119,11 @@ int dw3_autosave_field_idle(const Dw3AutosaveField *f) {
     if (dw3_autosave_mode() != DW3_AUTOSAVE_AREA) {
         return 0; /* OFF: nothing is read, counted or logged */
     }
+#if defined(DW3_CHEATS) && !defined(DW3_AUTOSAVE_TEST)
+    if (dw3_sweep_active()) {
+        return 0; /* P5.5: the stage sweep never writes a save */
+    }
+#endif
     ctx.option = DW3_AUTOSAVE_AREA;
     ctx.in_field = dw3_autosave_area_of_mode(f->mode) != 0;
     ctx.menu_allowed = f->progress >= 4;

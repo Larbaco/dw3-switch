@@ -9,7 +9,7 @@ A native port of Digimon World 3 (Digimon World 2003 in Europe) to the
 Nintendo Switch and to the PC, built from the matching PlayStation
 decompilation. It shows as "Digimon World 3 NX" in hbmenu and Sphaira.
 
-Latest preview: [v0.6.5-preview.47](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.47)
+Latest preview: [v0.6.5-preview.48](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.48)
 ([release history](docs/RELEASES.md)). New to the port? Read the
 [player guide](docs/PLAYER_GUIDE.md). To try it, see
 [Play it on Switch](#play-it-on-switch). All docs are listed in the
@@ -103,7 +103,8 @@ has the controls and the details.
 - **Full-screen map view and a first mod loader.** Y on the Map screen opens a
   zoomable, pannable map with the game's balloon, cursor and name box
   ([P6.32](docs/P6.32_MAP_ZOOM.md)). Packs you generate from your own disc can
-  replace the map with an upscaled one; no pack ships with the port
+  replace the map with an upscaled one (folder `sdmc:/switch/dw3/mods/`,
+  `map_mod=0` turns it off); no pack ships with the port
   ([MOD_MAP_UPSCALE](docs/MOD_MAP_UPSCALE.md)).
 - **Cheats screen.** A test aid, off behind a master switch: money, warp, give
   item and more ([PORT_OPTIONS](docs/PORT_OPTIONS.md#cheats-p620)).
@@ -133,7 +134,7 @@ a Mode2 BIN/CUE pair: Digimon World 3 (USA, SLUS-01436) or Digimon World 2003
 1. Download a `.nro` from the
    [latest release](https://github.com/Larbaco/dw3-switch/releases/latest) and
    copy it to `sdmc:/switch/`:
-   - `dw3-switch-both.nro`: US and EU in one file (from preview.48; the region
+   - `dw3-switch-both.nro`: US and EU in one file (new in preview.48; the region
      is chosen at boot), or
    - `dw3-switch.nro` (US) or `dw3-switch-eu.nro` (EU): one region each.
 2. Copy your disc's BIN and CUE files:
