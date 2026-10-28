@@ -45,7 +45,7 @@ linked into the NRO, so only data loaded by file id can be replaced as a file;
 tables compiled into the overlays need a port hook. Mods never carry original
 game data. See ROADMAP P8.5. The first concrete mod is the AI-upscaled map:
 see [MOD_MAP_UPSCALE.md](MOD_MAP_UPSCALE.md) (pack folder `mods/<pack>/map/`,
-manifest, loader plan).
+manifest, loader as built 2026-10-28).
 
 ## Out of scope
 
