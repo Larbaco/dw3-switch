@@ -77,7 +77,7 @@ listed once, in [Pending OLED checks](#pending-oled-checks).
 | P6.32 | Map zoom and full-screen map (future goal) | phase 0 PoC built (PR `feat/p6.32-map-poc`), OLED look pending | [roadmap](#phase-6-goal-notes), [P6.32](P6.32_MAP_ZOOM.md), [P6.1](P6.1_WIDESCREEN.md), [map upscale mod](MOD_MAP_UPSCALE.md) |
 | P6.33 | Items menu usability redesign | in progress (owner decisions recorded 2026-10-26; phase 1 partner cycle built: patch 0128, ZL / ZR, on by default; phases 2, 3 and 4 open; owner OLED check open) | [roadmap](#phase-6-goal-notes), [P6.33](P6.33_ITEMS_MENU.md), [P6.1](P6.1_WIDESCREEN.md) |
 | P6.34 | Redesign of the items / status / equipment menu flow (future goal) | future | [roadmap](#phase-6-goal-notes), [P6.33](P6.33_ITEMS_MENU.md) |
-| P6.35 | In-game walkthrough help: where to go next and what to do, by story progress (future goal) | future | [roadmap](#phase-6-goal-notes), [PLAYER_GUIDE](PLAYER_GUIDE.md) |
+| P6.35 | In-game walkthrough help: where to go next and what to do, by story progress (future goal) | future (design written 2026-10-28, owner decisions recorded) | [roadmap](#phase-6-goal-notes), [design](P6.35_WALKTHROUGH.md), [PLAYER_GUIDE](PLAYER_GUIDE.md) |
 | P7.1 | Inventory and boundaries | done | [COMMUNITY_QOL](COMMUNITY_QOL.md) |
 | P7.2 | Patched EU disc as data source | open | [COMMUNITY_QOL](COMMUNITY_QOL.md) |
 | P7.3 | Binary-patch limits | in progress | [COMMUNITY_QOL](COMMUNITY_QOL.md) |
@@ -2165,7 +2165,22 @@ Statuses are in the [table](#status-at-a-glance).
   include side content, such as recruitable Digimon and card or item
   locations? (4) who writes the text: an agent drafts it from the decomp and the
   progress flags, and the owner reviews it?
-  Done when (proposed): at a given story point, a tester opens the help from the
+  **Owner decisions (2026-10-28), they replace the open questions above:**
+  (1) spoilers: each area has a spoiler sub-area that the player opens only
+  if lost, hidden by default and shown after an explicit reveal; (2) the screen
+  shows the current step, derived from the story progress, with an option to
+  browse other steps and chapters; (3) side content (optional quests, recruits,
+  items and the like) is included and marked as optional; (4) agents draft the
+  text and the owner reviews it before it ships. Earlier P6.30 decisions still
+  apply (offline, scrolling pages, Portuguese with P6.7).
+  **Design (2026-10-28, no code):** [P6.35_WALKTHROUGH](P6.35_WALKTHROUGH.md):
+  `GAME.progress` and the event flags as the step key (with file:line), a step
+  table separate from per-language text tables, UI flow, the two-step spoiler
+  reveal, side content, a phased plan (phase 1: main steps of the first area as
+  a slice), the authoring and review workflow, the test plan with log proof
+  lines, and seven open questions for the owner.
+  Done when (proposed; the hint-then-answer wording is superseded by decision 1):
+  at a given story point, a tester opens the help from the
   pause menu on US and EU and sees only the next step, the hint first and the
   full answer on request; every text is in the five EU languages and US
   English; a long page scrolls; nothing is copied from outside sources.
