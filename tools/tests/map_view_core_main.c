@@ -166,6 +166,47 @@ static void test_smooth_zoom(void) {
     CHECK(fabsf(z - fit) < 1e-4f, "FIT zoom %f vs %f", z, fit);
 }
 
+/* The name box must not flip while the stick zooms and the view follows the
+ * cursor (owner OLED report, preview.47/48). The cursor stays on a location;
+ * the view re-centres as the zoom changes, moving the cursor's screen row
+ * across the middle of the picture. */
+static void test_namebox_stick_zoom(void) {
+    const int mw = 392, mh = 352, vw = 1280, vh = 720;
+    MvView v;
+    MvNameBox nb;
+    int i, flips = 0, first = -1, last = -1, pass;
+    float cur_sy = 176.0f; /* the cursor, a source pixel row (map middle) */
+
+    memset(&nb, 0, sizeof(nb));
+    v.step = 0; v.zoom = 0.0f; v.cx = 196; v.cy = 176;
+    for (pass = 0; pass < 2; ++pass) {
+        for (i = 0; i < 400; ++i) {
+            float f = pass ? 0.99f : 1.01f, sc, vy;
+            int b;
+
+            dw3_mv_view_zoom_by(&v, f, mw, mh, vw, vh);
+            /* follow_cursor: keep the cursor inside the middle 40 % */
+            sc = dw3_mv_view_cur_scale(&v, mw, mh, vw, vh);
+            vy = (float)vh / 2.0f + (cur_sy - v.cy) * sc;
+            if (vy < 0.3f * vh) v.cy -= (0.3f * vh - vy) / sc;
+            if (vy > 0.7f * vh) v.cy += (vy - 0.7f * vh) / sc;
+            dw3_mv_view_clamp(&v, mw, mh, vw, vh);
+            vy = (float)vh / 2.0f + (cur_sy - v.cy) * sc;
+            b = dw3_mv_namebox_bottom(&nb, 7, vy / (float)vh * 240.0f);
+            if (first < 0) first = b;
+            if (b != last && last >= 0) ++flips;
+            last = b;
+        }
+    }
+    CHECK(flips == 0, "name box flipped %d times during a stick zoom", flips);
+    /* leaving and entering again re-decides */
+    dw3_mv_namebox_bottom(&nb, 0, 200.0f);
+    CHECK(dw3_mv_namebox_bottom(&nb, 3, 50.0f) == 1, "entry in the top half -> bottom");
+    dw3_mv_namebox_bottom(&nb, 0, 50.0f);
+    CHECK(dw3_mv_namebox_bottom(&nb, 3, 200.0f) == 0, "entry in the bottom half -> top");
+    CHECK(dw3_mv_namebox_bottom(&nb, 4, 10.0f) == 0, "location to location keeps it (as the game)");
+}
+
 static void test_disc(void) {
     static uint8_t file[4096];
     uint16_t *vram = (uint16_t *)calloc((size_t)MV_VRAM_W * MV_VRAM_H, 2);
@@ -374,6 +415,7 @@ int main(int argc, char **argv) {
     test_blit();
     test_hash();
     test_smooth_zoom();
+    test_namebox_stick_zoom();
     test_cache(argc > 1 ? argv[1] : "/mnt/cabal/tmp");
     if (!g_fail) printf("OK: map view core\n");
     return g_fail;

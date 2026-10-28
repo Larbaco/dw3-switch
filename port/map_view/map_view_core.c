@@ -862,3 +862,9 @@ void dw3_mv_cache_name(char *out, size_t cap, const char *dir, const char *regio
     snprintf(out, cap, "%s/map_%s_h%d_s%d.rgba", dir ? dir : ".", region, half,
              scaler);
 }
+
+int dw3_mv_namebox_bottom(MvNameBox *nb, int hover, float scr_y) {
+    if (hover > 0 && nb->hover <= 0) nb->bottom = scr_y < 120.0f;
+    nb->hover = hover > 0 ? hover : 0;
+    return nb->bottom;
+}
