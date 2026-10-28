@@ -1,6 +1,11 @@
 /* Native-resolution PC title plaques. Geometry is authored in 960x720 pixels. */
 #include "title_overlay_art.h"
 #include "port_options_groups.h"
+#include "port_atlas.h"
+#include "port_help.h"
+#include "port_pages.h"
+#include <stdio.h>
+#include <time.h>
 #include <math.h>
 #include <stdatomic.h>
 #include <stdlib.h>
@@ -155,6 +160,7 @@ int dw3_pc_title_overlay_set_label(int slot,const uint8_t *coverage,int w,int h)
     art_generation++;
     return 0;
 }
+int dw3_pc_title_overlay_get_options_language(void) { return options_lang; }
 void dw3_pc_title_overlay_set_options_language(int lang) {
     if(lang<DW3_TITLE_LANG_EN||lang>DW3_TITLE_LANG_IT)lang=DW3_TITLE_LANG_EN;
     if(lang!=options_lang){options_lang=lang;art_generation++;options_generation++;dialog_language_generation++;}
@@ -500,9 +506,11 @@ static void arrow(int cx,int y,int up) {
     {WORD(opt_grp_sound_##l),WORD(opt_grpdesc_sound_##l)}, \
     {WORD(opt_grp_gameplay_##l),WORD(opt_grpdesc_gameplay_##l)}, \
     {WORD(opt_grp_saves_##l),WORD(opt_grpdesc_saves_##l)}, \
-    {WORD(opt_grp_cheats_##l),WORD(opt_grpdesc_cheats_##l)}}
+    {WORD(opt_grp_cheats_##l),WORD(opt_grpdesc_cheats_##l)}, \
+    {{NULL,0,0,0},{NULL,0,0,0}}, /* Controls: not built */ \
+    {WORD(opt_grp_help_##l),WORD(opt_grpdesc_help_##l)}}
 typedef struct GroupWords { Word name,desc; } GroupWords;
-enum { LISTED_GROUPS = 5 }; /* the groups with lettering (the built ones) */
+enum { LISTED_GROUPS = 7 }; /* the groups with lettering: indexed by group id up to Help */
 static const GroupWords group_words[5][LISTED_GROUPS]={GROUP_WORDS(en),GROUP_WORDS(fr),GROUP_WORDS(de),
                                                        GROUP_WORDS(es),GROUP_WORDS(it)};
 #if defined(__SWITCH__)
@@ -945,4 +953,194 @@ unsigned dw3_pc_title_overlay_options_lock_key(int page,unsigned locked) {
                                        group_row_mask(DW3_OPTGRP_SOUND)|group_row_mask(DW3_OPTGRP_GAMEPLAY)|
                                        group_row_mask(DW3_OPTGRP_SAVES)));
     return in_game|(locked&group_row_mask(group));
+}
+
+/* --- P6.30 technical help ----------------------------------------------------
+ * The Help sub-screen of the Options screen (docs/P6.30_HELP.md), in the title
+ * menu's identity: the dimmed backdrop, the header plaque, navy plaques with
+ * steel bevels and amber rails, the message strip and the button hints. It is
+ * its own full 960x720 layer, drawn by the host over (instead of) the Options
+ * layer while the help is open, so it never touches the Options cache. The
+ * text is the page engine's lines drawn from the baked glyph atlas
+ * (port_atlas.h): the page was laid out at open, only the visible lines are
+ * blitted. The canvas is allocated when the help opens and freed when it
+ * closes. */
+static const Dw3HelpView *help_view;
+static uint8_t *help_canvas;
+static unsigned help_drawn_generation, help_version, help_shown_serial;
+
+static double help_now_ms(void) {
+    struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC,&ts);
+    return (double)ts.tv_sec*1000.0+(double)ts.tv_nsec/1.0e6;
+}
+
+/* UTF-8 text from the atlas: x is the pen, base the baseline. Returns the width. */
+static int atlas_text(int face,int x,int base,const char *s,int len,int r,int g,int b) {
+    int i=0,pen=x;
+    while(i<len) {
+        unsigned cp;
+        const int u=dw3_pages_utf8(s+i,len-i,&cp);
+        if(u<=0)break;
+        {
+            const Dw3AtlasGlyph *gl=dw3_atlas_glyph(face,cp);
+            if(gl->w&&gl->h) {
+                const unsigned char *cv=dw3_atlas_coverage(gl);
+                const int gx=pen+gl->left,gy=base-gl->top;
+                for(int j=0;j<gl->h;j++)for(int k=0;k<gl->w;k++) {
+                    const int a=cv[j*gl->w+k];
+                    if(a)pixel(gx+k,gy+j,r,g,b,a);
+                }
+            }
+            pen+=gl->adv;
+        }
+        i+=u;
+    }
+    return pen-x;
+}
+static int atlas_width(int face,const char *s) {
+    return dw3_atlas_measure(face,s,(int)strlen(s));
+}
+/* The title menu's lettering: a one pixel dark shadow under warm or cool text. */
+static void atlas_shadow(int face,int x,int base,const char *s,int r,int g,int b) {
+    const int n=(int)strlen(s);
+    atlas_text(face,x+1,base+2,s,n,2,7,19);
+    atlas_text(face,x,base,s,n,r,g,b);
+}
+static void atlas_centered(int face,int cx,int base,const char *s,int r,int g,int b) {
+    atlas_shadow(face,cx-atlas_width(face,s)/2,base,s,r,g,b);
+}
+
+/* A text plaque: bevel, shadow, navy body with a vertical ramp, amber rail. */
+static void text_plaque(int x,int y,int w,int h) {
+    plaque(x+1,y+4,w,h,6,0,3,10,0,3,10,190);
+    plaque(x,y,w,h,6,99,149,196,17,40,77,255);
+    plaque(x+2,y+2,w-4,h-4,5,5,16,39,13,29,57,255);
+    box(x+24,y+5,w-48,2,138,98,43,255);
+}
+
+static void help_line(const Dw3PagesLine *ln,int x0,int top) {
+    static const int col[][3]={{214,230,250},{214,230,250},{255,198,98},{214,230,250},
+                               {214,230,250},{181,219,255},{255,186,132},{236,247,255},
+                               {214,230,250}};
+    const int st=ln->style<=DW3_PAGES_S_A?ln->style:DW3_PAGES_S_P;
+    const int base=top+dw3_atlas_ascent(0)+1;
+    for(int r=0;r<2;r++) {
+        if(!ln->s[r]||ln->len[r]<=0)continue;
+        if(st==DW3_PAGES_S_ROW&&r==1)
+            atlas_text(ln->face[r],x0+ln->x[r],base,ln->s[r],ln->len[r],255,216,119);
+        else
+            atlas_text(ln->face[r],x0+ln->x[r],base,ln->s[r],ln->len[r],col[st][0],col[st][1],col[st][2]);
+    }
+    if(ln->flags&DW3_PAGES_LF_BULLET)atlas_text(DW3_ATLAS_BOLD,x0+6,base,"\xE2\x80\xA2",3,243,158,45);
+    if(ln->flags&DW3_PAGES_LF_BAR) {
+        /* Never colour alone: a note is one solid bar, a warning two thin ones. */
+        if(st==DW3_PAGES_S_WARN){box(x0+2,top,2,DW3_HELP_LINE_PITCH,255,138,43,255);
+                                 box(x0+7,top,2,DW3_HELP_LINE_PITCH,255,138,43,255);}
+        else box(x0+3,top,3,DW3_HELP_LINE_PITCH,99,149,196,255);
+    }
+}
+
+/* The hints, right aligned in the strip's width, the last one first. */
+static void help_hints(const Dw3HelpView *v) {
+    const int hy=618;
+    int xr=L_DESC_X+L_DESC_W;
+    for(int i=v->nhints-1;i>=0;i--) {
+        const char *s=v->hint[i];
+        if(!s[0])continue;
+        {
+            const int w=atlas_width(DW3_ATLAS_BODY,s),xt=xr-w;
+            if(v->hint_cap[i])button(xt-22,hy+12,v->hint_cap[i]==2);
+            atlas_shadow(DW3_ATLAS_BODY,xt,hy+22,s,255,255,255);
+            xr=xt-(v->hint_cap[i]?36:0)-44;
+        }
+    }
+}
+
+static void help_draw(const Dw3HelpView *v) {
+    const int on_list=v->screen==DW3_HELP_SCREEN_LIST;
+    canvas=help_canvas;stride=960*4;clip_x0=clip_y0=0;clip_x1=960;clip_y1=720;
+    memset(help_canvas,0,(size_t)960*720*4);
+    box(0,0,960,720,0,0,16,v->in_game?DIM_IN_GAME:DIM_TITLE);
+    options_plaque(L_GRP_X,L_HEAD_Y,L_GRP_W,0,0);
+    if(on_list) {
+        const int lang=v->lang>=DW3_TITLE_LANG_EN&&v->lang<=DW3_TITLE_LANG_IT?v->lang:DW3_TITLE_LANG_EN;
+        plaque_word(&group_words[lang][DW3_OPTGRP_HELP].name,480,L_HEAD_Y+9,255,198,98);
+    } else {
+        atlas_centered(DW3_ATLAS_TITLE,480,L_HEAD_Y+35,v->header,255,198,98);
+    }
+    /* Message strip frame, text, hints. */
+    plaque(L_DESC_X+1,L_DESC_Y+4,L_DESC_W,L_DESC_H,6,0,3,10,0,3,10,190);
+    plaque(L_DESC_X,L_DESC_Y,L_DESC_W,L_DESC_H,6,99,149,196,17,40,77,255);
+    plaque(L_DESC_X+2,L_DESC_Y+2,L_DESC_W-4,L_DESC_H-4,5,5,16,39,13,29,57,255);
+    box(L_DESC_X+24,L_DESC_Y+5,L_DESC_W-48,2,138,98,43,255);
+    box(L_DESC_X,666,L_DESC_W,3,0,66,156,255);
+    atlas_shadow(DW3_ATLAS_BODY,L_DESC_X+28,L_DESC_Y+37,v->strip,255,255,255);
+    help_hints(v);
+    if(on_list) {
+        if(v->scroll>0)arrow(480,L_ROW_Y0-10,1);
+        if(v->scroll+DW3_OPTLIST_VISIBLE<v->npages)arrow(480,L_ROW_Y0+DW3_OPTLIST_VISIBLE*L_ROW_PITCH-8,0);
+        for(int s=0;s<DW3_OPTLIST_VISIBLE;s++) {
+            const int a=v->scroll+s,py=slot_y(s)+L_PLQ_DY;
+            if(a>=v->npages)break;
+            options_plaque(L_GRP_X,py,L_GRP_W,0,0);
+            if(a==v->cursor)options_plaque(L_GRP_X,py,L_GRP_W,0,1);
+            atlas_centered(DW3_ATLAS_TITLE,480,py+35,v->titles[a],a==v->cursor?236:181,a==v->cursor?247:219,255);
+        }
+        return;
+    }
+    text_plaque(DW3_HELP_PANEL_X,DW3_HELP_PANEL_Y,DW3_HELP_PANEL_W,DW3_HELP_PANEL_H);
+    if(v->arrow_up)arrow(480,DW3_HELP_PANEL_Y-12,1);
+    if(v->arrow_down)arrow(480,DW3_HELP_PANEL_Y+DW3_HELP_PANEL_H+4,0);
+    for(int k=0;k<v->panel&&v->top+k<v->nlines;k++)
+        help_line(&v->lines[v->top+k],DW3_HELP_PANEL_X+DW3_HELP_PAD_X,
+                  DW3_HELP_PANEL_Y+DW3_HELP_PAD_Y+k*DW3_HELP_LINE_PITCH);
+}
+
+void dw3_pc_help_set_view(const Dw3HelpView *view) {
+    help_view=view;
+    if(!view) {
+        if(help_canvas) {
+            free(help_canvas);help_canvas=NULL;
+            fprintf(stderr,"dw3-help: panel canvas released\n");
+        }
+        help_drawn_generation=0;
+        return;
+    }
+    if(!help_canvas) {
+        help_canvas=(uint8_t *)malloc((size_t)960*720*4);
+        if(!help_canvas) {
+            fprintf(stderr,"dw3-help: panel canvas of %d bytes cannot be allocated\n",960*720*4);
+            help_view=NULL;
+            return;
+        }
+        fprintf(stderr,"dw3-help: panel canvas allocated, %d bytes (960x720 RGBA)\n",960*720*4);
+        help_drawn_generation=0;
+    }
+}
+int dw3_pc_help_active(void) {
+    return help_view!=NULL&&help_canvas!=NULL;
+}
+const uint8_t *dw3_pc_help_render(unsigned *version) {
+    static unsigned composes;
+    if(!dw3_pc_help_active())return NULL;
+    if(help_view->generation!=help_drawn_generation||!help_version) {
+        const double t0=help_now_ms();
+        double ms;
+        help_draw(help_view);
+        help_drawn_generation=help_view->generation;
+        help_version++;
+        composes++;
+        ms=help_now_ms()-t0;
+        if(help_view->open_serial!=help_shown_serial) {
+            help_shown_serial=help_view->open_serial;
+            fprintf(stderr,"dw3-help: first frame composed %.1f ms after open\n",
+                    help_now_ms()-help_view->open_ms);
+        }
+        if(composes<=2||ms>20.0)
+            fprintf(stderr,"dw3-help: panel composed in %.0f us (%s, compose %u)\n",ms*1000.0,
+                    help_view->screen==DW3_HELP_SCREEN_LIST?"list":"page",composes);
+    }
+    if(version)*version=help_version;
+    return help_canvas;
 }

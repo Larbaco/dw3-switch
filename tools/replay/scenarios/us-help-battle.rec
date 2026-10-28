@@ -1,0 +1,34 @@
+# US: P6.30 technical help from the battle (env in manifest)
+pad 330 0x0001
+pad 335 0x0000
+pad 380 0x0040
+pad 385 0x0000
+pad 400 0x0040
+pad 405 0x0000
+pad 420 0x0040
+pad 425 0x0000
+pad 440 0x0040
+pad 445 0x0000
+pad 460 0x4000
+pad 465 0x0000
+shot 510 help-list
+pad 520 0x0040
+pad 525 0x0000
+pad 540 0x4000
+pad 545 0x0000
+shot 590 controls-top
+pad 600 0x0020
+pad 605 0x0000
+pad 620 0x0020
+pad 625 0x0000
+pad 640 0x0020
+pad 645 0x0000
+shot 670 controls-end
+pad 680 0x1000
+pad 685 0x0000
+pad 700 0x1000
+pad 705 0x0000
+pad 720 0x1000
+pad 725 0x0000
+shot 780 battle-after
+end 860

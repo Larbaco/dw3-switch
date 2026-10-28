@@ -1519,6 +1519,74 @@ for _id, _lang in ((3, "fr"), (5, "de"), (4, "it"), (6, "es")):
                                   r"(?s:.*)dw3-port-options: close in game"),),
                   note=f"field menu Options row and the screen's lock note in {_lang} (P9.7)"))
 
+# P6.30 technical help (port/help/, docs/P6.30_HELP.md): the Help plaque of the
+# Options group list, the page list, Controls scrolled by a line and by
+# screenfuls to its end, L1 / R1 between pages, Back to the list and out. The
+# proof is the `dw3-help:` / `dw3-pages:` lines (AGENTS.md rule 12) and the
+# pictures. The same from the title, the field menu's OPTIONS row and the
+# battle's Options, on both discs.
+_HELP_READ = (r"dw3-help: panel canvas allocated, 2764800 bytes \(960x720 RGBA\)(?s:.*)"
+              r"dw3-help: first frame composed [\d.]+ ms after open(?s:.*)"
+              r"dw3-help: page controls \(from list, \d+ lines, panel 13 lines, unverified blocks 0\)(?s:.*)"
+              r"dw3-help: page controls end reached \(line \d+ of \d+\)(?s:.*)"
+              r"dw3-help: page controls closed after \d+ ms \(read to line \d+ of \d+\)(?s:.*)"
+              r"dw3-help: page hotkeys \(from next, \d+ lines, panel 13 lines, unverified blocks 0\)(?s:.*)"
+              r"dw3-help: page turbo \(from next,(?s:.*)"
+              r"dw3-help: page hotkeys \(from prev,(?s:.*)"
+              r"dw3-help: page controls \(from prev,(?s:.*)"
+              r"dw3-help: page controls closed after \d+ ms(?s:.*)"
+              r"dw3-help: closed after \d+ ms \(pages opened 5\)(?s:.*)"
+              r"dw3-help: panel canvas released(?s:.*)"
+              r"dw3-port-options: group close help \(back to the group list\)")
+_HELP_FORBID = ((0, r"unresolved"), (0, r"dw3-pages: text fallback"), (0, r"cannot be (opened|allocated|laid out)"),
+                (0, r"save flush failed"), (0, r"sound \w+ not played"))
+for _v, _reg in (("us", "US"), ("eu", "EU")):
+    _add(Scenario(f"{_v}-help-title", _v, "full", timeout=300,
+                  expect_log=((0, r"dw3-help: open \(from title, region " + _reg +
+                                  r", platform pc, language en, 10 pages\)(?s:.*)"
+                                  r"dw3-port-options: group open help \(title\)(?s:.*)" + _HELP_READ),
+                              (0, r"dw3-pages: text help en loaded \(\d+ keys, \d+ qualified, \d+ filtered "
+                                  r"out for " + _reg + r"/pc, \d+ bytes\)"),
+                              (0, r"dw3-pages: token \{btn:cross\} -> \"\[X\]\""),
+                              (0, r"dw3-port-options: close \(resume runOptions\)")),
+                  forbid_log=_HELP_FORBID,
+                  note="technical help from the title's Options: page list, Controls scrolled to its end, "
+                       "L1 / R1 between pages, Back out (P6.30)"),
+         Scenario(f"{_v}-help-field", _v, "full", turbo=4, timeout=600, env=_RT_ENV,
+                  expect_log=((0, r"dw3-port-options: open in game(?s:.*)"
+                                  r"dw3-help: open \(from field, region " + _reg +
+                                  r", platform pc, language en, 10 pages\)(?s:.*)"
+                                  r"dw3-port-options: group open help \(in game\)(?s:.*)" + _HELP_READ +
+                                  r"(?s:.*)dw3-port-options: close in game \(back to the field menu\)"),),
+                  forbid_log=_HELP_FORBID + ((0, r"widescreen (enabled|disabled)"),),
+                  note="technical help from the field menu's OPTIONS row: the field waits behind it (P6.30)"))
+    _fight, _menu, _report, _field = ((0x159, 0x1FA, 0x1C2, 0x158) if _v == "us"
+                                      else (0x167, 0x208, 0x1D1, 0x166))
+    _add(Scenario(f"{_v}-help-battle", _v, "full", turbo=4, timeout=300,
+                  env=_P77_ENV_REPORT,
+                  expect_restore=((_fight, M), (_menu, S)),
+                  expect_log=((0, r"dw3-battle-options: open at the command menu, battle frozen: (?s:.*)"
+                                  r"dw3-help: open \(from battle, region " + _reg +
+                                  r", platform pc, language en, 10 pages\)(?s:.*)"
+                                  r"dw3-help: page controls \(from list,(?s:.*)"
+                                  r"dw3-help: page controls end reached(?s:.*)"
+                                  r"dw3-help: closed after \d+ ms \(pages opened 1\)(?s:.*)"
+                                  r"dw3-port-options: close in game \(back to the battle\)(?s:.*)"
+                                  r"dw3-battle-options: resume after"),),
+                  forbid_log=_HELP_FORBID,
+                  note="technical help from the battle's Options (Select at the command menu): "
+                       "the battle stays frozen and resumes after it (P6.30)"))
+# The base game's other languages: the files are stubs until the translations
+# land, so the pages are English and the log says so (one line).
+_add(Scenario("eu-help-fr", "eu", "full", timeout=300,
+              expect_log=((0, r"dw3-help: open \(from title, region EU, platform pc, language fr, 10 pages\)"),
+                          (0, r"dw3-pages: text fallback help \* \(fr\): the language file has no keys yet "
+                              r"\(stub\), English shown"),
+                          (0, r"dw3-help: page controls \(from list,")),
+              forbid_log=((0, r"unresolved"), (0, r"cannot be (opened|allocated|laid out)")),
+              note="technical help with the EU disc set to French: the stub falls back to English "
+                   "with a log line, the screen's own lettering is French (P6.30, Q3)"))
+
 # The Quit game plaque and the window in the other four EU languages (the
 # lettering is authored, docs/PORT_OPTIONS.md "Quit and return to title").
 for _lang in ("fr", "de", "it", "es"):

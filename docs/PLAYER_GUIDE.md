@@ -9,7 +9,7 @@ PC and in an emulator but not yet on a Switch OLED; the release notes say which.
 
 Contents: [Setup](#setup), [Controls and hotkeys](#controls-and-hotkeys),
 [Title menu](#title-menu), [Options screen](#options-screen),
-[Cheats screen](#cheats-screen), [Options in the field](#options-in-the-field),
+[Help](#help), [Cheats screen](#cheats-screen), [Options in the field](#options-in-the-field),
 [Options in battle](#options-in-battle),
 [Return to title](#return-to-title),
 [Saves](#saves), [Crashes and reports](#crashes-and-reports),
@@ -183,8 +183,8 @@ P6.18_PACING.md, P6.31_AUTOSAVE.md, P7.9_BATTLE_MENU_MEMORY.md; row names and
 defaults from port/options/port_options.c -->
 
 Options holds the features the port adds. It is a list of groups, drawn like
-the title menu: **Display**, **Sound**, **Gameplay**, **Saves** (and **Cheats**
-once you have turned the master switch on, see [Cheats screen](#cheats-screen)).
+the title menu: **Display**, **Sound**, **Gameplay**, **Saves**, **Help** (and **Cheats**,
+before Help, once you have turned the master switch on, see [Cheats screen](#cheats-screen)).
 Up and Down choose a group, B or A opens it. Inside, Up and Down choose a row and
 B or A changes it. X goes back: from a group to the list (the cursor stays on that
 group), from the list to the title, or to the field menu when opened there, see
@@ -208,6 +208,30 @@ game, except Widescreen.
 The groups, rows, values and lines on the screen are in the language of the
 disc (English on the US disc; English, French, German, Spanish or Italian on the
 EU disc). Widescreen is locked while a game is running; change it at the title.
+
+## Help
+
+<!-- Sources: P6.30_HELP.md, port/help/text/en.txt, HOTKEYS.md -->
+
+**Help** is the last group of the Options screen, so it opens from the title, from the
+field menu's OPTIONS row and in a battle. It is a short book of ten pages that you can read
+without leaving the game: Setup, Controls, Port hotkeys, Turbo, Options explained, Saves,
+Widescreen, Map view and mods, Logs and bug reports, and a FAQ. It needs no network and
+changes nothing in the game.
+
+- Up and Down choose a page, B or A opens it, X goes back.
+- On a page, Up and Down scroll one line, Left and Right a screenful. Amber arrows above or
+  below the text show that there is more. **L** and **R** go to the previous and next page. X
+  returns to the page list; X on the list returns to the Options list.
+- Button names are written in brackets, for example [B] or [ZR], and follow your console
+  (the keys on PC).
+- A line that is not yet checked on a Switch OLED ends with **(unverified)**. The page title
+  says **(draft)** while the owner has not yet signed off the text.
+- The pages are in English for now. The EU disc has the screen's own words in French, German,
+  Italian and Spanish; the page text for those languages is still to come, so the game shows
+  the English page and writes a line in `dw3.log`. Brazilian Portuguese arrives with the
+  game's own pt-BR language.
+- The Cheats screen is not described in the help.
 
 ## Cheats screen
 

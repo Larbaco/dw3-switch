@@ -69,6 +69,9 @@ highest non-empty tier.
    [P6.12](#phase-6-goal-notes) remapping, [P9.8](HOTKEYS.md) A/B layout and
    [P10.6](TEXTURE_PACKS.md) Switch glyphs. Design: [CONTROLS_BUNDLE](CONTROLS_BUNDLE.md).
 3. [P6.30](#phase-6-goal-notes): technical help. Design: [P6.30_HELP](P6.30_HELP.md).
+   **Phases 1 to 4 built (2026-10-28, PR open, OLED pending):** page engine, glyph
+   atlas, the Help group with its ten English pages; FR / DE / IT / ES are TODO stubs
+   with an English fallback (launch requirement).
 4. [P6.34](#phase-6-goal-notes): menu-flow redesign. It absorbs
    [P6.33](P6.33_ITEMS_MENU.md) phases 2–4, so the items menu is redesigned once.
 5. [P6.32](P6.32_MAP_ZOOM.md): map phase 1.
@@ -148,7 +151,7 @@ listed once, in [Pending OLED checks](#pending-oled-checks).
 | P6.27 | Return to title from the pause (field) menu | in progress (built, PC US and EU replays; owner OLED, 2026-10-27, preview.41: Return to title works and Continue after it works; the Yes / No window, fade and card checks not reported) | [PORT_OPTIONS](PORT_OPTIONS.md#quit-and-return-to-title-p627-p628), [roadmap](#phase-6-goal-notes) |
 | P6.28 | Quit game on the title menu, back to hbmenu | in progress (built, PC US and EU replays; owner OLED, 2026-10-27, preview.41: Quit through the Sphaira forwarder works and returns to hbmenu; the full-app Sphaira launch shows errors, the forwarder is fine; card files, flush line and the US / EU split not reported) | [PORT_OPTIONS](PORT_OPTIONS.md#quit-and-return-to-title-p627-p628), [roadmap](#phase-6-goal-notes) |
 | P6.29 | Save editor: external tool on the owner's own saves, builds on P6.25 (future goal) | future | [roadmap](#phase-6-goal-notes), [CROSS_REGION_SAVES](CROSS_REGION_SAVES.md) |
-| P6.30 | Help, FAQ and tips from the pause menu and the title menu (future goal; owner answers recorded 2026-10-27; after P9.9) | future (design and first English text draft written 2026-10-28, owner review pending; page engine shared with P6.35; **owner 2026-10-28: at launch in every language the base game has, EN + FR/DE/IT/ES on the EU disc, pt-BR later with P6.7**) | [roadmap](#phase-6-goal-notes), [design](P6.30_HELP.md), [draft text](../port/help/text/en.txt) |
+| P6.30 | Help, FAQ and tips from the pause menu and the title menu (owner answers recorded 2026-10-27; after P9.9) | **phases 1 to 4 built 2026-10-28 (PR open; PC replays US and EU pass; OLED H1 to H8 pending; English text still draft, owner review pending)**; the page engine is shared with P6.35; **owner 2026-10-28: at launch in every language the base game has, EN + FR/DE/IT/ES on the EU disc, pt-BR later with P6.7**: the four files are TODO stubs that fall back to English with a log line, and CI warns while they are stubs | [roadmap](#phase-6-goal-notes), [design](P6.30_HELP.md), [draft text](../port/help/text/en.txt) |
 | P6.31 | Auto-save, off by default | in progress (built: Options row, area-change write to its own file `autosave.bin`, title Continue loads it and the old Continue is Load; PC US and EU replays; owner OLED, 2026-10-27, preview.41: title plaque spacing (#287) confirmed; the write is on an area change only (code, 2026-10-28; the owner's "and on HOME close" note is not in the code, to re-check, E2.1); the save-file, Continue and Load Game checks not reported) | [P6.31_AUTOSAVE](P6.31_AUTOSAVE.md), [roadmap](#phase-6-goal-notes), [P5.3](P5.3_FLAT_SAVE.md) |
 | P6.32 | Map zoom and full-screen map (future goal) | phase 0 PoC built (PR `feat/p6.32-map-poc`); owner OLED, preview.45 (2026-10-28): the map shows and Nearest is the preferred scaler; balloon, cursor and name box pending preview.47; mod pack loader for an upscaled map built (`feat/mod-map-upscale`, OLED item B17 pending) | [roadmap](#phase-6-goal-notes), [P6.32](P6.32_MAP_ZOOM.md), [P6.1](P6.1_WIDESCREEN.md), [map upscale mod](MOD_MAP_UPSCALE.md) |
 | P6.33 | Items menu usability redesign | in progress (owner decisions recorded 2026-10-26; phase 1 partner cycle built: patch 0128, ZL / ZR, on by default; phases 2, 3 and 4 open; phase 1 cycle confirmed on the OLED 2026-10-27, preview.41; the `items_partner_switch=0` check open; phases 2–4 folded into P6.34) | [roadmap](#phase-6-goal-notes), [P6.33](P6.33_ITEMS_MENU.md), [P6.1](P6.1_WIDESCREEN.md) |
@@ -1390,8 +1393,8 @@ PS1 game, with vanilla-safe defaults and persistence on owner storage.
   `cheats-screen`/`cheats-screen2` US and EU now compare pictures; the stage
   sweep (P5.5) has no row on that screen, it is a config key. Details:
   [PORT_OPTIONS](PORT_OPTIONS.md#cheats-sub-screen-p99-slice-2).
-  **Still open:** OLED validation (OLED_TEST_PLAN A5, A9 to A13); Controls (P6.12), Help (P6.30) and Walkthrough (P6.35) are hidden
-  placeholders in `port_options_groups.h`; the open questions below are answered
+  **Still open:** OLED validation (OLED_TEST_PLAN A5, A9 to A13); Controls (P6.12) and Walkthrough (P6.35) are hidden
+  placeholders in `port_options_groups.h` (Help, P6.30, is built since 2026-10-28); the open questions below are answered
   by defaults (Cheats group listed only with the master switch on; the plain dim of
   the title backdrop, deeper in game; no fallback to the old window). Original
   goal note follows. Dated 2026-10-24, owner
@@ -2215,6 +2218,18 @@ Statuses are in the [table](#status-at-a-glance).
   owner review pending**. Open questions with recommended defaults: atlas against
   baked pages, entry through Options only, English-only on EU until P6.7, Cheats
   left out, `(unverified)` tags, drift check against the guide.
+  **Built 2026-10-28 (phases 1 to 4, first PR):** `port/pages/` (parser with
+  `@us/@eu/@switch/@pc` and `!unv`, tokens `{btn:..}` `{path:..}` `{build:..}` as plain
+  `[B]` names until P10.6, wrap, scroll), the 195 KB glyph atlas, `port/help/` (list,
+  page, Up / Down per line, Left / Right per screenful, L / R page), the Help group
+  (`built = 1`) reached from the title Options, the field menu OPTIONS row and the
+  battle Options, PC and Switch drawing, `dw3-help:` / `dw3-pages:` logs, unit tests,
+  PC replays `us|eu-help-title|field|battle` and `eu-help-fr`. Language fallback to
+  English with a log line, FR / DE / IT / ES stubs and a validator that warns (CI) while
+  they are stubs and fails in `--release`. **Open:** the four translations (launch
+  requirement), pt-BR with P6.7, owner review of the English text, OLED checks H1 to H8
+  (compose time of the layer on the Switch), the doc-drift check. Details:
+  [P6.30_HELP section 11](P6.30_HELP.md#11-as-built-2026-10-28).
   Related: P6.23, P6.27, P6.7, P6.35, P9.2, P9.9.
 - [ ] **P6.31 Auto-save (off by default).** Dated 2026-10-24, owner request
   (Portuguese, "salvamento automático"). First slice 2026-10-25 (patches `0140`,

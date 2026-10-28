@@ -8,6 +8,7 @@
 
 void dw3_port_options_test_set_pressed(unsigned mask);
 void dw3_port_options_test_goto_row(int reg);
+int dw3_port_options_test_sound_count(int kind);
 
 void dw3_port_audio_apply(int music_step, int sfx_step) {
     (void)music_step;
@@ -154,11 +155,12 @@ int main(void) {
         int seen[9] = {0};
         int g, k;
 
-        if (dw3_optgroups_visible(0, ids) != 4 || ids[0] != DW3_OPTGRP_DISPLAY ||
-            ids[3] != DW3_OPTGRP_SAVES) {
+        if (dw3_optgroups_visible(0, ids) != 5 || ids[0] != DW3_OPTGRP_DISPLAY ||
+            ids[3] != DW3_OPTGRP_SAVES || ids[4] != DW3_OPTGRP_HELP) {
             return fail("visible groups without cheats");
         }
-        if (dw3_optgroups_visible(1, ids) != 5 || ids[4] != DW3_OPTGRP_CHEATS) {
+        if (dw3_optgroups_visible(1, ids) != 6 || ids[4] != DW3_OPTGRP_CHEATS ||
+            ids[5] != DW3_OPTGRP_HELP) {
             return fail("Cheats group follows the master switch");
         }
         for (g = 0; g < DW3_OPTGRP_COUNT; g++) {
@@ -188,6 +190,35 @@ int main(void) {
                 grp != 2 || sc != 3 || dw3_optlist_decode(1, &grp, &sc)) {
                 return fail("page decode");
             }
+        }
+    }
+
+    /* P6.30: the Help group is a screen of its own (a host test only tracks that
+     * it is open): Cross on it keeps the Options screen open on the list, and
+     * Triangle leaves the help, not the Options screen. */
+    dw3_port_options_open();
+    {
+        int i;
+
+        for (i = 0; i < 4; i++) {
+            dw3_port_options_test_set_pressed(1u << BIT_DOWN);
+            dw3_port_options_tick();
+        }
+        dw3_port_options_test_set_pressed(1u << BIT_CROSS);
+        dw3_port_options_tick();
+        if (!dw3_port_options_is_open() || dw3_port_options_group() != -1 ||
+            dw3_port_options_test_sound_count(1) < 1) {
+            return fail("Help opens as a screen, the group list stays");
+        }
+        dw3_port_options_test_set_pressed(1u << BIT_TRIANGLE);
+        dw3_port_options_tick();
+        if (!dw3_port_options_is_open()) {
+            return fail("Triangle in the help leaves the help only");
+        }
+        dw3_port_options_test_set_pressed(1u << BIT_TRIANGLE);
+        dw3_port_options_tick();
+        if (dw3_port_options_is_open()) {
+            return fail("Triangle on the list closes");
         }
     }
 

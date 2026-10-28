@@ -65,6 +65,8 @@ enum {
  * Returns 0, or -1 when the mask is rejected. */
 int dw3_pc_title_overlay_set_label(int slot, const uint8_t *coverage, int w,
                                    int h);
+/* The language the Options lettering is in (DW3_TITLE_LANG_*). */
+int dw3_pc_title_overlay_get_options_language(void);
 /* Authored lettering for the port-only Options row. */
 void dw3_pc_title_overlay_set_options_language(int lang);
 /* 0 drops the three-line credits drawn at the foot of the title canvas (the
@@ -151,4 +153,15 @@ unsigned dw3_pc_title_overlay_options_lock_key(int page, unsigned locked);
 int dw3_pc_title_overlay_options_dynamic_labels(int page);
 /* The page whose static layer `page` uses (the Cheats sub-screen: its offset 0). */
 int dw3_pc_title_overlay_options_static_page(int page);
+/* P6.30 technical help (port/help/help.c, docs/P6.30_HELP.md): the Help
+ * sub-screen is its own full 960x720 RGBA layer, composed on the CPU from the
+ * view the help keeps (the page list or a page of text) and drawn by the host
+ * instead of the Options layer while it is active. set_view(NULL) hides it and
+ * frees the canvas; a view is composed again when its generation changes.
+ * render returns the canvas (pitch 960 * 4) and a version that changes when
+ * the host must upload it again, or NULL while the help is not open. */
+struct Dw3HelpView;
+void dw3_pc_help_set_view(const struct Dw3HelpView *view);
+int dw3_pc_help_active(void);
+const uint8_t *dw3_pc_help_render(unsigned *version);
 #endif

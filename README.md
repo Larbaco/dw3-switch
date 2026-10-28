@@ -9,7 +9,7 @@ A native port of Digimon World 3 (Digimon World 2003 in Europe) to the
 Nintendo Switch and to the PC, built from the matching PlayStation
 decompilation. It shows as "Digimon World 3 NX" in hbmenu and Sphaira.
 
-Latest preview: [v0.6.5-preview.49](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.49)
+Latest preview: [v0.6.5-preview.50](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.50)
 ([release history](docs/RELEASES.md)). New to the port? Read the
 [player guide](docs/PLAYER_GUIDE.md). To try it, see
 [Play it on Switch](#play-it-on-switch). All docs are listed in the
@@ -98,7 +98,8 @@ has the controls and the details.
   ([CROSS_REGION_SAVES](docs/CROSS_REGION_SAVES.md)).
 - **One `.nro` for US and EU.** `dw3-switch-both.nro` holds both game copies and
   picks the region at boot, with a boot picker when both discs are present
-  (P6.24, new in preview.48; not yet checked on an OLED; the separate US and EU
+  (P6.24, new in preview.48; the picker and region choice were checked on an OLED
+  with preview.48, the other cases are still open; the separate US and EU
   `.nro` files keep shipping): [SINGLE_BUILD](docs/SINGLE_BUILD.md).
 - **Full-screen map view and a first mod loader.** Y on the Map screen opens a
   zoomable, pannable map with the game's balloon, cursor and name box

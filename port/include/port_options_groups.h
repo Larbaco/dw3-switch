@@ -18,7 +18,7 @@ enum {
     DW3_OPTGRP_CHEATS = 4,      /* P6.20 Cheats: a sub-screen of 10 rows (scrolls) */
     /* Not built yet: hidden until the feature lands, then flip `built`. */
     DW3_OPTGRP_CONTROLS = 5,    /* P6.12 button mapping */
-    DW3_OPTGRP_HELP = 6,        /* P6.30 technical help */
+    DW3_OPTGRP_HELP = 6,        /* P6.30 technical help (built: a screen of its own) */
     DW3_OPTGRP_WALKTHROUGH = 7, /* P6.35 walkthrough help */
     DW3_OPTGRP_COUNT = 8,
     DW3_OPTGRP_MAX_ROWS = 10
@@ -40,7 +40,7 @@ static const Dw3OptGroup dw3_optgroups[DW3_OPTGRP_COUNT] = {
     /* Saves    */ {1, 1, {8}},
     /* Cheats   */ {1, 10, {0, 1, 2, 3, 4, 5, 6, 7, 8, 9}},
     /* Controls */ {0, 0, {0}},
-    /* Help     */ {0, 0, {0}},
+    /* Help     */ {1, 0, {0}}, /* P6.30: no rows, a screen (port/help/help.c) */
     /* Walk     */ {0, 0, {0}},
 };
 

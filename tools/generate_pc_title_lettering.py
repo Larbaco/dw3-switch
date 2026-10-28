@@ -91,6 +91,13 @@ GROUP_TEXT = {
                         'Testmenü. Alles ist aus, bis du es einschaltest.',
                         'Menú de pruebas. Todo está apagado por defecto.',
                         'Menu di prova. Tutto è spento finché non lo attivi.')},
+    # P6.30 Help: the group name and the message line under the group list.
+    'help': {'name': ('Help', 'Aide', 'Hilfe', 'Ayuda', 'Aiuto'),
+             'desc': ('Controls, hotkeys, saves and bug reports.',
+                      'Commandes, raccourcis, sauvegardes, signalement.',
+                      'Steuerung, Kürzel, Speichern und Fehlerberichte.',
+                      'Controles, atajos, partidas e informes de errores.',
+                      'Comandi, scorciatoie, salvataggi e segnalazioni.')},
 }
 OPEN_TEXT = ('Open', 'Ouvrir', 'Öffnen', 'Abrir', 'Apri')
 CHANGE_TEXT = ('Change', 'Changer', 'Ändern', 'Cambiar', 'Cambia')
