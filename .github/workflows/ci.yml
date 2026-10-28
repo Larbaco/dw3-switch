@@ -67,6 +67,23 @@ jobs:
           cmake -S platforms/pc -B build/pc -G Ninja -DPSYZ_RENDERER=sdl3_gpu
           cmake --build build/pc -j"$(nproc)"
           test -x build/pc/dw3-pc
+      - name: Configure & build PC host, both regions in one image (P6.24)
+        run: |
+          cmake -S platforms/pc -B build/pc-both -G Ninja -DPSYZ_RENDERER=sdl3_gpu \
+            -DDW3_VERSION=both
+          cmake --build build/pc-both -j"$(nproc)"
+          test -x build/pc-both/dw3-pc
+          # Each game copy exports one symbol, its table; the rest is local.
+          for r in us eu; do
+            test "$(nm -g --defined-only build/pc-both/port-$r/game_$r.o | awk '{print $3}')" = "${r}_dw3_game_api"
+          done
+          # A region typo stops before any window or data is touched.
+          set +e
+          build/pc-both/dw3-pc --region xx 2> build/pc-both/region-typo.log
+          rc=$?
+          set -e
+          test "$rc" = 1
+          grep -q 'must be us or eu' build/pc-both/region-typo.log
       - name: Unit tests (tools)
         run: |
           # Pillow: replay/menu replay tests import PIL directly (importorskip

@@ -12,7 +12,11 @@
 #include "runtime_extract.h"
 
 #include "cdfs.h"
+#include "dw3_region_rt.h"
 #include "str_disc.h"
+#if defined(DW3_BOTH) && DW3_BOTH
+#include "dw3_game_api.h"
+#endif
 
 #include <ctype.h>
 #include <errno.h>
@@ -31,29 +35,32 @@
 #define PROGRESS_MARK (8ull * 1024ull * 1024ull)
 #define EXE_HEADER 0x800u
 #define EXE_LOAD 0x80010000u
-#if defined(VERSION_EU) && VERSION_EU
-#define RUNTIME_VERSION "eu"
-#define RUNTIME_EXECUTABLE "SLES_039.36"
-#define RUNTIME_OTHER_EXECUTABLE "SLUS_014.36"
-#define RUNTIME_MAP "files_eu.json"
-#define STAGE_VRAM 0x800A5DE0u
-#else
-#define RUNTIME_VERSION "us"
-#define RUNTIME_EXECUTABLE "SLUS_014.36"
-#define RUNTIME_OTHER_EXECUTABLE "SLES_039.36"
-#define RUNTIME_MAP "files_us.json"
-#define STAGE_VRAM 0x800A4CA4u
-#endif
+/* P6.24: the region is a run-time fact (dw3_region(), port/region/dw3_region_rt.h).
+ * A plain us / eu image answers from its VERSION macro; a `both` image from
+ * the region chosen at boot. */
+static int rt_is_eu(void) { return dw3_region() == DW3_REGION_EU; }
+#define RUNTIME_VERSION (rt_is_eu() ? "eu" : "us")
+#define RUNTIME_EXECUTABLE (rt_is_eu() ? "SLES_039.36" : "SLUS_014.36")
+#define RUNTIME_OTHER_EXECUTABLE (rt_is_eu() ? "SLUS_014.36" : "SLES_039.36")
+#define RUNTIME_MAP (rt_is_eu() ? "files_eu.json" : "files_us.json")
+#define STAGE_VRAM (rt_is_eu() ? 0x800A5DE0u : 0x800A4CA4u)
 #define MAX_FILES 8192
 #define MAX_DIRS 1024
 #define MAX_DIR_BYTES (4u * 1024u * 1024u)
 #define MAX_EXE_BYTES (16ull * 1024ull * 1024ull)
 #define PATH_MAX_REL 480
 
+#if defined(DW3_BOTH) && DW3_BOTH
+/* file_table.c of the running region's game copy, through its table. */
+#define FILE_SECTORS (DW3_API(file_sectors))
+#define FILE_SECTOR_COUNTS (DW3_API(file_sector_counts))
+#define FILE_COUNT (*DW3_API(file_count))
+#else
 /* file_table.c owns these. s32 is signed int, u16 is unsigned short. */
 extern int FILE_SECTORS[];
 extern unsigned short FILE_SECTOR_COUNTS[];
 extern int FILE_COUNT;
+#endif
 
 static unsigned long long g_done;
 static unsigned long long g_total;
@@ -306,6 +313,7 @@ static int exe_ok(const char *root) {
 
 static int map_identity_ok(const char *path) {
     char head[256];
+    char want[64];
     FILE *fp = fopen(path, "rb");
     size_t n;
     if (fp == NULL) {
@@ -314,8 +322,12 @@ static int map_identity_ok(const char *path) {
     n = fread(head, 1, sizeof(head) - 1, fp);
     fclose(fp);
     head[n] = '\0';
-    return strstr(head, "\"version\": \"" RUNTIME_VERSION "\"") != NULL &&
-           strstr(head, "\"executable\": \"" RUNTIME_EXECUTABLE "\"") != NULL;
+    snprintf(want, sizeof(want), "\"version\": \"%s\"", RUNTIME_VERSION);
+    if (strstr(head, want) == NULL) {
+        return 0;
+    }
+    snprintf(want, sizeof(want), "\"executable\": \"%s\"", RUNTIME_EXECUTABLE);
+    return strstr(head, want) != NULL;
 }
 
 static int boot_tim_ok(const char *root) {
@@ -1236,30 +1248,30 @@ int dw3_runtime_ensure(const char *root) {
     if (tree_ready(root)) {
         return ensure_memcard(root);
     }
-#if defined(VERSION_EU) && VERSION_EU
-    /* The EU image is expected beside its runtime root (or in its parent).
-     * files_eu.json is written last and is the completion marker: until it
-     * validates against the SLES executable and every mapped file, boot must
-     * not hand the partial tree to CDFS. Keeping the disc beside the extracted
-     * files also avoids moving/copying a 600+ MiB tree on the SD card. */
-    if (dw3_str_find_disc(root, bin, sizeof(bin), disc_min_bytes()) != 0) {
-        if (dir_exists(root)) {
-            dw3_str_restore_emit(
-                "EU runtime incomplete; place the matching EU BIN/CUE beside it",
-                0, 0);
+    if (rt_is_eu()) {
+        /* The EU image is expected beside its runtime root (or in its parent).
+         * files_eu.json is written last and is the completion marker: until it
+         * validates against the SLES executable and every mapped file, boot must
+         * not hand the partial tree to CDFS. Keeping the disc beside the extracted
+         * files also avoids moving/copying a 600+ MiB tree on the SD card. */
+        if (dw3_str_find_disc(root, bin, sizeof(bin), disc_min_bytes()) != 0) {
+            if (dir_exists(root)) {
+                dw3_str_restore_emit(
+                    "EU runtime incomplete; place the matching EU BIN/CUE beside it",
+                    0, 0);
+                return -1;
+            }
+            return 0;
+        }
+        if (extract_from_bin(root, bin) != 0) {
             return -1;
         }
-        return 0;
+        if (!tree_ready(root)) {
+            dw3_str_restore_emit("EU runtime validation failed; map not accepted", 0, 0);
+            return -1;
+        }
+        return ensure_memcard(root);
     }
-    if (extract_from_bin(root, bin) != 0) {
-        return -1;
-    }
-    if (!tree_ready(root)) {
-        dw3_str_restore_emit("EU runtime validation failed; map not accepted", 0, 0);
-        return -1;
-    }
-    return ensure_memcard(root);
-#else
     if (FILE_COUNT < 1 || FILE_COUNT > MAX_FILES) {
         if (dir_exists(root)) {
             return ensure_memcard(root);
@@ -1276,5 +1288,4 @@ int dw3_runtime_ensure(const char *root) {
         return -1;
     }
     return ensure_memcard(root);
-#endif
 }

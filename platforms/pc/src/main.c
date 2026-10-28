@@ -28,6 +28,8 @@
 #include "port_turbo.h"
 #include "runtime_extract.h"
 #include "str_stream.h"
+#include "dw3_region_rt.h"
+#include "dw3_game_api.h" /* last: in a `both` image it redirects the game calls */
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -37,7 +39,9 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
+#if !(defined(DW3_BOTH) && DW3_BOTH)
 int dw3_game_main(void);
+#endif
 #if defined(DW3_PC_SDL3_GPU)
 void dw3_pc_title_menu_overlay_register(void);
 #endif
@@ -235,15 +239,76 @@ static const char *env_or(const char *key, const char *fallback) {
     return (v != NULL && v[0] != '\0') ? v : fallback;
 }
 
-#if defined(VERSION_EU) && VERSION_EU
-#define DW3_PC_REGION "eu"
-#else
-#define DW3_PC_REGION "us"
-#endif
+#define DW3_PC_REGION (dw3_region_name(dw3_region()))
 
 #ifndef DW3_DEFAULT_RUNTIME
 #define DW3_DEFAULT_RUNTIME "runtime/us"
 #endif
+
+/* P6.24: the region of this run. A plain us / eu build is fixed (a --region or
+ * DW3_REGION for the other one is ignored, with a line in the log); a `both`
+ * build takes it from --region, DW3_REGION, the runtime folder that is given,
+ * or the runtime folders that are present (port/region/dw3_region_rt.c), and
+ * the default runtime folder follows it. `root_explicit` is DW3_RUNTIME or
+ * --runtime, or NULL. Returns 0, or -1 when the flag names no region. */
+static int dw3_pc_pick_region(int argc, char **argv, const char *root_explicit,
+                              const char *cfgdir, char *root_out,
+                              size_t root_cap) {
+    const char *flag = NULL;
+    const char *base = env_or("DW3_RUNTIME_BASE", "runtime");
+    int i;
+
+    for (i = 1; i < argc; i++) {
+        if (strcmp(argv[i], "--region") == 0 && i + 1 < argc) {
+            flag = argv[++i];
+        }
+    }
+#if defined(DW3_BOTH) && DW3_BOTH
+    {
+        Dw3RegionRequest req;
+        Dw3RegionChoice choice;
+
+        req.flag = flag;
+        req.env = getenv("DW3_REGION");
+        req.root = root_explicit;
+        req.base = base;
+        req.cfg_dir = cfgdir;
+        if (dw3_region_resolve(&req, &choice) != 0) {
+            fprintf(stderr, "dw3-pc: --region / DW3_REGION must be us or eu (got '%s')\n",
+                    flag != NULL ? flag : req.env);
+            return -1;
+        }
+        if (choice.probe.has_us || choice.probe.has_eu) {
+            fprintf(stderr, "dw3-pc: region data under %s: us=%d eu=%d\n", base,
+                    choice.probe.has_us, choice.probe.has_eu);
+        }
+        if (dw3_region_select(choice.region, choice.source) != 0) {
+            return -1;
+        }
+        if (root_explicit != NULL) {
+            snprintf(root_out, root_cap, "%s", root_explicit);
+        } else {
+            snprintf(root_out, root_cap, "%s/%s", base, dw3_region_name(choice.region));
+        }
+    }
+#else
+    {
+        const char *forced = flag != NULL ? flag : getenv("DW3_REGION");
+
+        (void)base;
+        (void)cfgdir;
+        if (forced != NULL && forced[0] != '\0' &&
+            dw3_region_parse(forced) != dw3_region()) {
+            fprintf(stderr,
+                    "dw3-pc: ignoring region '%s': this build is %s only\n",
+                    forced, dw3_region_name(dw3_region()));
+        }
+        snprintf(root_out, root_cap, "%s",
+                 root_explicit != NULL ? root_explicit : DW3_DEFAULT_RUNTIME);
+    }
+#endif
+    return 0;
+}
 
 /* P6.32: the map view's cache is prepared on a low-priority thread from the
  * runtime tree while the title plays (port/map_view/map_view.c). DW3_MAP_PRECOMPUTE=0
@@ -301,8 +366,13 @@ static void dw3_pc_map_view_precompute_start(const char *config_dir) {
     }
 }
 
+/* atexit() takes an address, which the `both` redirect (a macro) cannot give. */
+static void dw3_pc_flush_options(void) { dw3_port_options_flush(); }
+
 static int init_paths(int argc, char **argv) {
-    const char *root = env_or("DW3_RUNTIME", DW3_DEFAULT_RUNTIME);
+    const char *root_explicit = env_or("DW3_RUNTIME", NULL);
+    const char *root;
+    char root_buf[480]; /* < 512 - "/boot_tim.bin", so the joins below fit */
     const char *memdir = env_or("DW3_MEMCARD_DIR", NULL);
     const char *cfgdir = env_or("DW3_CONFIG_DIR", NULL);
     char memcard_buf[512];
@@ -312,20 +382,26 @@ static int init_paths(int argc, char **argv) {
 
     for (i = 1; i < argc; i++) {
         if (strcmp(argv[i], "--runtime") == 0 && i + 1 < argc) {
-            root = argv[++i];
+            root_explicit = argv[++i];
         } else if (strcmp(argv[i], "--memcard-dir") == 0 && i + 1 < argc) {
             memdir = argv[++i];
         } else if (strcmp(argv[i], "--config-dir") == 0 && i + 1 < argc) {
             cfgdir = argv[++i];
         }
     }
-
-#if defined(VERSION_US) && VERSION_US
-    if (dw3_runtime_ensure(root) != 0) {
-        fprintf(stderr, "dw3-pc: runtime extract failed\n");
+    if (dw3_pc_pick_region(argc, argv, root_explicit, cfgdir, root_buf,
+                           sizeof(root_buf)) != 0) {
         return -1;
     }
-#endif
+    root = root_buf;
+    fprintf(stderr, "dw3-pc: region=%s\n", DW3_PC_REGION);
+
+    if (dw3_region() == DW3_REGION_US) {
+        if (dw3_runtime_ensure(root) != 0) {
+            fprintf(stderr, "dw3-pc: runtime extract failed\n");
+            return -1;
+        }
+    }
     if (cdfs_set_root(root) != 0) {
         fprintf(stderr, "dw3-pc: cdfs_set_root(%s) failed\n", root);
         return -1;
@@ -403,11 +479,9 @@ static int init_paths(int argc, char **argv) {
     /* P6.25: a port with no save of its own takes the other region's (converted
      * copy; the original is never touched). */
     (void)memcard_host_setup_cross_import(root,
-#if defined(VERSION_EU) && VERSION_EU
-                                          SAVE_REGION_EU,
-#else
-                                          SAVE_REGION_US,
-#endif
+                                          dw3_region() == DW3_REGION_EU
+                                              ? SAVE_REGION_EU
+                                              : SAVE_REGION_US,
                                           memdir_explicit);
     if (memcard_host_ensure(0) != 0 || memcard_host_ensure(1) != 0) {
         fprintf(stderr, "dw3-pc: memcard ensure failed under %s\n", memdir);
@@ -421,7 +495,7 @@ static int init_paths(int argc, char **argv) {
     /* P9.4: port_options.cfg lives in the runtime root unless redirected, and
      * is loaded before anything reads widescreen / fast-forward / restart. */
     (void)dw3_port_options_persist_init(cfgdir != NULL ? cfgdir : root);
-    atexit(dw3_port_options_flush);
+    atexit(dw3_pc_flush_options);
     dw3_pc_map_view_precompute_start(cfgdir != NULL ? cfgdir : root);
 
     snprintf(boot_path, sizeof(boot_path), "%s/boot_tim.bin", root);
@@ -431,7 +505,9 @@ static int init_paths(int argc, char **argv) {
     }
     fprintf(stderr, "dw3-pc: boot TIM loaded from %s\n", boot_path);
 
-#if defined(VERSION_EU) && VERSION_EU
+#if defined(DW3_BOTH) && DW3_BOTH
+    DW3_API(overlay_register_title)();
+#elif defined(VERSION_EU) && VERSION_EU
     dw3_overlay_register_eu_title();
 #else
     dw3_overlay_register_us_title();

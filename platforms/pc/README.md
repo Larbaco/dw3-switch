@@ -18,7 +18,25 @@ test -x build/pc/dw3-pc
 cmake -S platforms/pc -B build/pc-eu -G Ninja \
   -DDW3_VERSION=eu -DPSYZ_RENDERER=sdl3_gpu -DSDL_X11_XSCRNSAVER=OFF
 ninja -C build/pc-eu dw3-pc
+
+# Both regions in ONE binary (P6.24; the game side is built twice, the region
+# is chosen at run time):
+cmake -S platforms/pc -B build/pc-both -G Ninja \
+  -DDW3_VERSION=both -DPSYZ_RENDERER=sdl3_gpu -DSDL_X11_XSCRNSAVER=OFF
+ninja -C build/pc-both dw3-pc
+build/pc-both/dw3-pc --region eu          # or DW3_REGION=eu
 ```
+
+`dw3-pc` from a `both` build takes the region from `--region us|eu`, then
+`DW3_REGION`, then the runtime folder it is given (`DW3_RUNTIME` /
+`--runtime`: judged by `files_<r>.json` and the executable in it, then by a
+trailing `/us` or `/eu`), then the folders that are present under
+`DW3_RUNTIME_BASE` (default `runtime`): one present boots it, both boot the
+stored `region_default` / `last_region` (`port_options.cfg` in
+`DW3_CONFIG_DIR`, else the base folder), else US. It logs
+`dw3-region: running <r> (<source>)` and `dw3-pc: region=<r>`. A wrong value
+(`--region xx`) stops with status 1 before anything is opened. See
+[docs/SINGLE_BUILD.md](../../docs/SINGLE_BUILD.md#as-built-slice-3-the-dual-image-link-pc).
 
 If system `cmake` is missing, this host has used:
 
@@ -126,4 +144,5 @@ the commands in that file.
 `dw3-pc` launcher that finds `runtime/us` and `runtime/eu`, asks (3 s, with a
 default) when both exist, and starts the right binary. See
 [docs/SINGLE_BUILD.md](../../docs/SINGLE_BUILD.md#as-built-slice-1). The plain
-`DW3_VERSION=us|eu` builds are unchanged.
+`DW3_VERSION=us|eu` builds are unchanged. With `DW3_VERSION=both` (above) the
+launcher is not needed on the PC: one binary holds both regions.

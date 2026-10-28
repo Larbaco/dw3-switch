@@ -43,6 +43,7 @@
 
 #include "rasterizer.h"
 #include "port_turbo.h"
+#include "dw3_game_api.h" /* last: in a `both` image it redirects the game calls */
 
 #include <pthread.h>
 #include <signal.h>

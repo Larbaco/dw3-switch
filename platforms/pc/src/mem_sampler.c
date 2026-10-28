@@ -38,6 +38,7 @@
 #ifdef DW3_CHEATS
 #include "port_cheats.h"
 #endif
+#include "dw3_game_api.h" /* last: in a `both` image it redirects the game calls */
 
 unsigned dw3_pad_host_frame(void);
 
@@ -61,9 +62,16 @@ typedef struct HeapView {
     MemBlockView *end;
 } HeapView;
 
+#if defined(DW3_BOTH) && DW3_BOTH
+/* the running region's game copy (its arrays are local to the copy) */
+#define HEAP (*(const HeapView *)DW3_API(heap))
+#define DW3_HOST_HEAP (DW3_API(host_heap))
+#define DW3_HOST_HEAP_SIZE (*DW3_API(host_heap_size))
+#else
 extern HeapView HEAP;
 extern unsigned char DW3_HOST_HEAP[];
 extern const unsigned long DW3_HOST_HEAP_SIZE;
+#endif
 
 static int g_init;
 static int g_on;

@@ -41,6 +41,10 @@ import manifest  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[2]
 SCEN_DIR = Path(__file__).resolve().parent / "scenarios"
+# P6.24 DW3_VERSION=both: one binary for both regions (--bin-both). The runner
+# picks the region of each phase with DW3_REGION; nothing else changes, so the
+# captures are compared with the references of the plain builds.
+BOTH_BIN = None
 
 # Per-channel tolerance (0-255) below which two pixels count as equal, and the
 # fraction of differing pixels a checkpoint may have. Same-machine runs are
@@ -245,6 +249,8 @@ def run_phase(rec: Path, version, binary, runtime, display, outdir: Path, memdir
               "DW3_MEMCARD_IMPORT_DIR", "DW3_CROSS_IMPORT", "DW3_REGION", "DW3_REGION_PICK",
               "DW3_REGION_PICK_KEYS", "DW3_SAVE_PROFILE", "DW3_RUNTIME_BASE", "DW3_PC_BIN_US", "DW3_PC_BIN_EU"):
         env.pop(k, None)
+    if BOTH_BIN is not None and launch is None and Path(binary).resolve() == BOTH_BIN:
+        env["DW3_REGION"] = version  # P6.24: the one binary, told which game copy to run
     if launch is not None:  # P6.24: the launcher picks the runtime and the binary
         env.pop("DW3_RUNTIME", None)
         env.update(DW3_RUNTIME_BASE=str(launch["base"]),
@@ -562,6 +568,9 @@ def main():
                     help="results dir (captures, diffs, logs)")
     ap.add_argument("--bin-us", default=os.environ.get("DW3_REPLAY_BIN_US"))
     ap.add_argument("--bin-eu", default=os.environ.get("DW3_REPLAY_BIN_EU"))
+    ap.add_argument("--bin-both", default=os.environ.get("DW3_REPLAY_BIN_BOTH"),
+                    help="P6.24: ONE dw3-pc built with DW3_VERSION=both, used for every "
+                         "scenario of both regions (DW3_REGION is set per phase)")
     ap.add_argument("--launcher", default=os.environ.get("DW3_REPLAY_LAUNCHER"),
                     help="P6.24 region launcher binary (the 'single' scenarios)")
     ap.add_argument("--single", action="store_true",
@@ -617,6 +626,10 @@ def main():
     out.mkdir(parents=True, exist_ok=True)
     refs.mkdir(parents=True, exist_ok=True)
 
+    global BOTH_BIN
+    if a.bin_both:
+        BOTH_BIN = Path(a.bin_both).expanduser().resolve()
+        a.bin_us = a.bin_eu = str(BOTH_BIN)
     bins, runtimes = {}, {}
     for v in ("us", "eu"):
         arg = getattr(a, f"bin_{v}")
