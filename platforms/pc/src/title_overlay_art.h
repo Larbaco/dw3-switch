@@ -89,6 +89,14 @@ unsigned dw3_pc_title_overlay_options_locked(void);
  * static layer (labels, title, hints) must be drawn again
  * (title_options_cache.c). */
 unsigned dw3_pc_title_overlay_options_layout(void);
+/* The static layer of an arbitrary layout, rows y..y+h-1 of a 960x720
+ * canvas (cleared first), without changing the live layout. Lets the cache
+ * draw the layout a menu will open with before it is open. */
+void dw3_pc_title_overlay_options_static_band(uint8_t *rgba, int pitch,
+        unsigned locked, int page, int cheats_on, int y, int h);
+/* Live page / cheats switch (0 without DW3_CHEATS). */
+int dw3_pc_title_overlay_options_cheats_on(void);
+int dw3_pc_title_overlay_options_page(void);
 /* Bumped by setters that change the menu states; hosts re-upload on change. */
 unsigned dw3_pc_title_overlay_generation(void);
 /* Bumped only when the Port options screen (state 4) changes. */

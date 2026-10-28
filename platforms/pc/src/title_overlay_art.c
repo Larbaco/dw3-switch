@@ -5,9 +5,9 @@
 #include <string.h>
 #include "title_overlay_labels.inc"
 #include "title_overlay_lettering.inc"
-static uint8_t *canvas;
-static int stride;
-static int clip_x0,clip_y0,clip_x1=960,clip_y1=720;
+static _Thread_local uint8_t *canvas;
+static _Thread_local int stride;
+static _Thread_local int clip_x0,clip_y0,clip_x1=960,clip_y1=720;
 enum { LABEL_MAX_W = 440, LABEL_MAX_H = 48 };
 /* Runtime label masks (raw coverage), the Options language and the footer. */
 static uint8_t *label_mask[DW3_TITLE_LABEL_COUNT];
@@ -23,8 +23,8 @@ static int option_cursor;
 static int option_values[DW3_TITLE_OPTION_ROWS];
 enum { OPTIONS_LAYER_FULL, OPTIONS_LAYER_STATIC, OPTIONS_LAYER_FOCUS,
        OPTIONS_LAYER_VALUE, OPTIONS_LAYER_DESCRIPTION };
-static int options_layer = OPTIONS_LAYER_FULL;
-static int options_layer_row;
+static _Thread_local int options_layer = OPTIONS_LAYER_FULL;
+static _Thread_local int options_layer_row;
 /* The static layer's version: bumped when the page, the cheats master switch
  * or (P9.7) the locked rows change, so the retained canvas rebuilds it. */
 static unsigned options_layout;
@@ -34,6 +34,23 @@ static unsigned options_locked;
 /* P6.20: which page the Options window shows, and the cheats master switch. */
 static int options_page = DW3_TITLE_OPTIONS_PAGE_OPTIONS;
 static int options_cheats_on;
+#endif
+/* The worker thread that composes the options window's static layer ahead of
+ * time (title_options_cache.c) draws with its own canvas, clip and layout:
+ * everything the renderer writes is thread-local, and the layout the worker
+ * draws (locked rows, page, cheats switch) overrides the live one for that
+ * thread only, so the main thread's view is never touched. */
+static _Thread_local int ovr_on;
+static _Thread_local unsigned ovr_locked;
+static _Thread_local int ovr_page,ovr_cheats;
+#ifdef DW3_CHEATS
+#define ELOCKED (ovr_on?ovr_locked:options_locked)
+#define EPAGE (ovr_on?ovr_page:options_page)
+#define ECHEATS (ovr_on?ovr_cheats:options_cheats_on)
+#else
+#define ELOCKED (ovr_on?ovr_locked:options_locked)
+#define EPAGE 0
+#define ECHEATS 0
 #endif
 static void pixel(int x,int y,int r,int g,int b,int alpha) {
     if(x<clip_x0||x>=clip_x1||y<clip_y0||y>=clip_y1||
@@ -46,7 +63,12 @@ static void pixel(int x,int y,int r,int g,int b,int alpha) {
     p[2]=(b*alpha+p[2]*p[3]*(255-alpha)/255)/a;p[3]=a;
 }
 static void box(int x,int y,int w,int h,int r,int g,int b,int a) {
-    for(int j=0;j<h;j++)for(int i=0;i<w;i++)pixel(x+i,y+j,r,g,b,a);
+    /* Clamp to the clip first: same pixels as testing every one, but a band
+     * or a dirty rect no longer walks the whole box (title_options_cache.c
+     * renders the static layer a band at a time). */
+    int x0=x<clip_x0?clip_x0:x,y0=y<clip_y0?clip_y0:y;
+    int x1=x+w>clip_x1?clip_x1:x+w,y1=y+h>clip_y1?clip_y1:y+h;
+    for(int j=y0;j<y1;j++)for(int i=x0;i<x1;i++)pixel(i,j,r,g,b,a);
 }
 /* Clipped octagonal hardware silhouette, with a vertical metallic ramp. */
 static void plaque(int x,int y,int w,int h,int cut,int r1,int g1,int b1,int r2,int g2,int b2,int a) {
@@ -305,7 +327,7 @@ static void cheats_screen(void) {
     const int x0=OPT_X0,y0=OPT_Y0,w=OPT_W,h=OPT_H,x1=x0+w,y1=y0+h;
     const int full=options_layer==OPTIONS_LAYER_FULL;
     const int draw_static=full||options_layer==OPTIONS_LAYER_STATIC;
-    const int page2=options_page==DW3_TITLE_OPTIONS_PAGE_CHEATS2;
+    const int page2=EPAGE==DW3_TITLE_OPTIONS_PAGE_CHEATS2;
 
     if(draw_static) {
     box(0,0,960,720,0,0,16,150);
@@ -327,7 +349,7 @@ static void cheats_screen(void) {
     for(int i=0;i<DW3_TITLE_CHEAT_ROWS;i++) {
         const int row=page2*DW3_TITLE_CHEAT_ROWS+i;
         const int ry=OPT_ROW_Y+i*OPT_ROW_STEP,focus=i==option_cursor;
-        const int grey=row>0&&!options_cheats_on;
+        const int grey=row>0&&!ECHEATS;
         int v=option_values[i];
         const Word *value;
         int dim;
@@ -406,7 +428,7 @@ static void options_screen(void) {
     const int draw_static=full||options_layer==OPTIONS_LAYER_STATIC;
 
 #ifdef DW3_CHEATS
-    if(options_page==DW3_TITLE_OPTIONS_PAGE_CHEATS||options_page==DW3_TITLE_OPTIONS_PAGE_CHEATS2){cheats_screen();return;}
+    if(EPAGE==DW3_TITLE_OPTIONS_PAGE_CHEATS||EPAGE==DW3_TITLE_OPTIONS_PAGE_CHEATS2){cheats_screen();return;}
 #endif
     /* The title backdrop stays, dimmed; the logo and the menu are gone. */
     if(draw_static) {
@@ -445,7 +467,7 @@ static void options_screen(void) {
         if(draw_static||(options_layer==OPTIONS_LAYER_FOCUS&&
                        i==options_layer_row))
             word(kind==ROW_AUTOSAVE?&autosave_lang()->row:&rows[i],x0+106,ry-2,0,
-                 (options_locked>>i)&1u?120:255,(options_locked>>i)&1u?128:255,(options_locked>>i)&1u?170:255);
+                 (ELOCKED>>i)&1u?120:255,(ELOCKED>>i)&1u?128:255,(ELOCKED>>i)&1u?170:255);
         if(v<0)v=0;
         switch(kind) {
         case ROW_VOLUME:
@@ -470,7 +492,7 @@ static void options_screen(void) {
             if(v>1)v=1;
             value=&values[v];dim=v==0;break;
         }
-        if((options_locked>>i)&1u)dim=2; /* P9.7: greyer than an OFF value */
+        if((ELOCKED>>i)&1u)dim=2; /* P9.7: greyer than an OFF value */
         if(full||(options_layer==OPTIONS_LAYER_VALUE&&i==options_layer_row))
             word(value,x1-96,ry-2,1,dim==2?120:dim?150:255,dim==2?128:dim?158:255,dim==2?170:dim?196:255);
     }
@@ -478,7 +500,7 @@ static void options_screen(void) {
     if(draw_static)box(x0+30,y1-152,w-60,3,16,156,247,255);
     if((full||options_layer==OPTIONS_LAYER_DESCRIPTION)&&
        option_cursor>=0&&option_cursor<DW3_TITLE_OPTION_ROWS)
-        word((options_locked>>option_cursor)&1u?lock_lang():
+        word((ELOCKED>>option_cursor)&1u?lock_lang():
              row_kind(option_cursor)==ROW_AUTOSAVE?&autosave_lang()->desc:&desc[option_cursor],
              x0+48,y1-128,0,255,255,255);
     if(draw_static) {
@@ -488,10 +510,10 @@ static void options_screen(void) {
 #ifdef DW3_CHEATS
         /* P6.20: once the master switch is on, Square/Y Cheats left of
          * Change (the screen is unchanged while it is off). */
-        if(options_cheats_on){
+        if(ECHEATS){
             const Word *hint=&cheat_lang()->hint;
             const int sx=cx+22-96-hint->w;
-            const int lk=(options_locked&DW3_TITLE_LOCK_CHEATS)!=0;
+            const int lk=(ELOCKED&DW3_TITLE_LOCK_CHEATS)!=0;
             button_square(sx,hy+12,lk);
             word(hint,sx+22,hy,0,lk?120:255,lk?128:255,lk?170:255);
         }
@@ -678,4 +700,38 @@ void dw3_pc_title_overlay_options_component(uint8_t *rgba,int pitch,
     options_layer=OPTIONS_LAYER_FULL;
     options_layer_row=0;
     clip_x0=clip_y0=0;clip_x1=960;clip_y1=720;
+}
+
+/* The static layer of one layout (locked rows, page, cheats switch), rows
+ * y..y+h-1, cleared first. Same pixels as options_component(STATIC) under
+ * that layout; safe to call from the worker thread while the main thread
+ * draws (only thread-local state is written). */
+void dw3_pc_title_overlay_options_static_band(uint8_t *rgba,int pitch,
+        unsigned locked,int page,int cheats_on,int y,int h) {
+    if(!rgba||pitch<960*4||y<0||h<=0||y+h>720)return;
+    ovr_on=1;ovr_locked=locked;ovr_page=page;ovr_cheats=cheats_on;
+    canvas=rgba;stride=pitch;
+    clip_x0=0;clip_y0=y;clip_x1=960;clip_y1=y+h;
+    for(int j=y;j<y+h;j++)memset(rgba+(size_t)j*pitch,0,960*4);
+    options_layer=OPTIONS_LAYER_STATIC;
+    options_layer_row=-1;
+    options_screen();
+    options_layer=OPTIONS_LAYER_FULL;
+    options_layer_row=0;
+    clip_x0=clip_y0=0;clip_x1=960;clip_y1=720;
+    ovr_on=0;
+}
+int dw3_pc_title_overlay_options_cheats_on(void) {
+#ifdef DW3_CHEATS
+    return options_cheats_on;
+#else
+    return 0;
+#endif
+}
+int dw3_pc_title_overlay_options_page(void) {
+#ifdef DW3_CHEATS
+    return options_page;
+#else
+    return 0;
+#endif
 }

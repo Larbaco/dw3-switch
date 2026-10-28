@@ -5,9 +5,16 @@
 #include <psyz/overlay_sdl3_gpu.h>
 #include <psyz/video.h>
 #include "port_options.h"
+#include "port_screen_fade.h"
 #include "title_options_cache.h"
 
+#include <pthread.h>
 #include <stddef.h>
+#if defined(__linux__)
+#include <sys/resource.h>
+#include <sys/syscall.h>
+#include <unistd.h>
+#endif
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -61,6 +68,9 @@ static SDL_GPUTexture *g_dialog_texture;
 static int g_dialog_active, g_dialog_kind, g_dialog_focus = -1;
 static unsigned g_dialog_language = ~0u;
 static SDL_GPUTexture *g_background_texture;
+/* 64 x 1 black ramp (alpha i/63): the screen fade samples one texel of it. */
+static SDL_GPUTexture *g_fade_texture;
+enum { FADE_LEVELS = 64 };
 static SDL_GPUSampler *g_background_sampler;
 static int g_background_ready;
 static SDL_GPUSampler *g_sampler;
@@ -295,6 +305,7 @@ static void release_gpu_resources(void) {
     if (g_texture) SDL_ReleaseGPUTexture(g_device, g_texture);
     if (g_logo_texture) SDL_ReleaseGPUTexture(g_device, g_logo_texture);
     if (g_dialog_texture) SDL_ReleaseGPUTexture(g_device, g_dialog_texture);
+    if (g_fade_texture) SDL_ReleaseGPUTexture(g_device, g_fade_texture);
     if (g_background_texture) SDL_ReleaseGPUTexture(g_device, g_background_texture);
     if (g_background_sampler) SDL_ReleaseGPUSampler(g_device, g_background_sampler);
     if (g_sampler) SDL_ReleaseGPUSampler(g_device, g_sampler);
@@ -307,6 +318,7 @@ static void release_gpu_resources(void) {
     g_dialog_texture = NULL;
     g_dialog_active = 0;
     g_dialog_focus = -1;
+    g_fade_texture = NULL;
     g_background_texture = NULL;
     g_background_sampler = NULL;
     g_background_ready = 0;
@@ -321,6 +333,8 @@ static void release_gpu_resources(void) {
     dw3_options_cache_invalidate();
 }
 
+static int upload_rgba(SDL_GPUTexture *texture, const uint8_t *rgba,
+                       int width, int height, int pitch);
 static int upload_art_and_quad(void) {
     const size_t canvas_bytes = (size_t)CANVAS_W * CANVAS_H * 4;
     const size_t texture_bytes = canvas_bytes * STATE_COUNT;
@@ -406,7 +420,7 @@ static int upload_art_and_quad(void) {
         return -1;
     }
 
-    OverlayVertex quads[STATE_COUNT * 6 + 36];
+    OverlayVertex quads[STATE_COUNT * 6 + 36 + FADE_LEVELS * 6];
     for (int row = 0; row < STATE_COUNT; ++row) {
         const float u0 = 0.0f;
         const float u1 = 1.0f;
@@ -480,6 +494,30 @@ static int upload_art_and_quad(void) {
         OverlayVertex *q = &quads[(STATE_COUNT + 3) * 6];
         q[0] = a; q[1] = b; q[2] = c;
         q[3] = a; q[4] = c; q[5] = d;
+    }
+
+    /* The screen fade (restart.c): one quad per level over the whole picture,
+     * each sampling its own texel of the black ramp. */
+    for (int level = 0; level < FADE_LEVELS; ++level) {
+        const float u = ((float)level + 0.5f) / (float)FADE_LEVELS;
+        const OverlayVertex a = {{0, 0}, {u, 0.5f}};
+        const OverlayVertex b = {{1, 0}, {u, 0.5f}};
+        const OverlayVertex c = {{1, 1}, {u, 0.5f}};
+        const OverlayVertex d = {{0, 1}, {u, 0.5f}};
+        OverlayVertex *q = &quads[(STATE_COUNT + 6 + level) * 6];
+        q[0] = a; q[1] = b; q[2] = c;
+        q[3] = a; q[4] = c; q[5] = d;
+    }
+    {
+        const SDL_GPUTextureCreateInfo fade_info = {
+            .type = SDL_GPU_TEXTURETYPE_2D,
+            .format = SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UNORM,
+            .usage = SDL_GPU_TEXTUREUSAGE_SAMPLER,
+            .width = FADE_LEVELS, .height = 1,
+            .layer_count_or_depth = 1, .num_levels = 1,
+            .sample_count = SDL_GPU_SAMPLECOUNT_1,
+        };
+        g_fade_texture = SDL_CreateGPUTexture(g_device, &fade_info);
     }
 
     SDL_GPUShader *vs = create_shader(OVERLAY_VERT, OVERLAY_VERT_LEN,
@@ -600,6 +638,17 @@ static int upload_art_and_quad(void) {
     SDL_SubmitGPUCommandBuffer(cmd);
     SDL_WaitForGPUIdle(g_device);
     SDL_ReleaseGPUTransferBuffer(g_device, transfer);
+    if (g_fade_texture) {
+        uint8_t ramp[FADE_LEVELS * 4];
+        for (int i = 0; i < FADE_LEVELS; ++i) {
+            ramp[i * 4 + 0] = ramp[i * 4 + 1] = ramp[i * 4 + 2] = 0;
+            ramp[i * 4 + 3] = (uint8_t)(i * 255 / (FADE_LEVELS - 1));
+        }
+        if (upload_rgba(g_fade_texture, ramp, FADE_LEVELS, 1, FADE_LEVELS * 4) != 0) {
+            SDL_ReleaseGPUTexture(g_device, g_fade_texture);
+            g_fade_texture = NULL;
+        }
+    }
     fprintf(stderr,
             "dw3-title-overlay: %dx%d RGBA texture (%zu bytes), "
             "%d states, %d vertices and 1 draw/frame\n",
@@ -877,11 +926,24 @@ static int upload_options_dirty(const Dw3OptionsDirty *dirty) {
 static int refresh_art_cached(void) {
     Dw3OptionsDirty dirty;
     Uint64 start = profile_counter();
+    const Uint64 wall0 = SDL_GetTicksNS();
     if (dw3_options_cache_update(&dirty) != 0) return -1;
     profile_add(&g_profile_raster_ns, start);
     if (!dirty.count) return 0;
     if (dirty.rebuilt || dirty.full) g_profile_rebuilds++;
-    if (upload_options_dirty(&dirty) != 0) return -1;
+    {
+        const Uint64 composed = SDL_GetTicksNS();
+        if (upload_options_dirty(&dirty) != 0) return -1;
+        /* Same line as the Switch overlay (the OLED test plan, B15). */
+        if (dirty.rebuilt || dirty.cached || dirty.full) {
+            fprintf(stderr, "dw3-title-overlay: options update %s rects=%d "
+                    "bytes=%u compose=%u us upload=%u us\n",
+                    dirty.rebuilt ? "rebuild" : dirty.cached ? "cached" : "full",
+                    dirty.count, (unsigned)dirty.bytes,
+                    (unsigned)((composed - wall0) / 1000),
+                    (unsigned)((SDL_GetTicksNS() - composed) / 1000));
+        }
+    }
     dw3_options_cache_commit();
     g_options_generation = dw3_pc_title_overlay_options_generation();
     return 0;
@@ -1038,12 +1100,36 @@ int dw3_pc_overlay_gpu_ctx(Dw3PcOverlayGpu *ctx) {
     return 1;
 }
 
+static void *options_prewarm_thread(void *arg) {
+    (void)arg;
+#if defined(__linux__)
+    (void)setpriority(PRIO_PROCESS, (id_t)syscall(SYS_gettid), 19);
+#endif
+    dw3_options_cache_prewarm_worker();
+    return NULL;
+}
+
 static void overlay_frame(void) {
+    /* Compose the options window layers (title and in-game layouts) on a
+     * low-priority worker thread while the screen is closed, so opening it
+     * never rasters on the frame thread (title_options_cache.h). */
+    static int worker_failed;
+
+    if (!worker_failed && !dw3_port_options_is_open() &&
+        dw3_options_cache_prewarm_begin(dw3_port_options_locked_mask_for(1))) {
+        pthread_t thread;
+        if (pthread_create(&thread, NULL, options_prewarm_thread, NULL) == 0) {
+            pthread_detach(thread);
+        } else {
+            dw3_options_cache_prewarm_cancel();
+            worker_failed = 1;
+        }
+    }
     set_three_x_presentation_size();
     dw3_pc_map_view_prepare();
 }
 
-static void render_overlay(SDL_GPUCommandBuffer *cmd, SDL_GPURenderPass *pass) {
+static void render_overlay_layers(SDL_GPUCommandBuffer *cmd, SDL_GPURenderPass *pass) {
     set_three_x_presentation_size();
     dw3_pc_map_view_render(pass);
     if ((!g_overlay_active && !g_logo_active && !g_background_ready && !g_dialog_active) || !g_pipeline || !g_texture || !g_vertices ||
@@ -1140,6 +1226,7 @@ static void render_overlay(SDL_GPUCommandBuffer *cmd, SDL_GPURenderPass *pass) {
         SDL_DrawGPUPrimitives(pass, 6, 1, STATE_COUNT * 6, 0);
     }
     if (g_overlay_active) {
+        if (g_selection == STATE_OPTIONS) dw3_port_options_note_shown();
         SDL_BindGPUGraphicsPipeline(pass, g_pipeline);
         const SDL_GPUTextureSamplerBinding sampler_binding = {
             .texture = g_texture,
@@ -1160,6 +1247,46 @@ static void render_overlay(SDL_GPUCommandBuffer *cmd, SDL_GPURenderPass *pass) {
         SDL_DrawGPUPrimitives(pass, 6, 1, (STATE_COUNT + 5) * 6, 0);
     }
     (void)cmd;
+}
+
+/* The whole-picture fade to black of the return to title (restart.c), over
+ * everything else the overlay draws. */
+static void render_screen_fade(SDL_GPURenderPass *pass) {
+    static int logged;
+    const int level = dw3_port_screen_fade_level();
+    int window_w = 0, window_h = 0;
+
+    if (level <= 0) {
+        logged = 0;
+        return;
+    }
+    if (!g_fade_texture || !g_pipeline || !g_vertices || !g_background_sampler ||
+        !g_window) return;
+    SDL_GetWindowSizeInPixels(g_window, &window_w, &window_h);
+    if (window_w <= 0 || window_h <= 0) return;
+    if (!logged) {
+        logged = 1;
+        fprintf(stderr, "dw3-title-overlay: screen fade to black on (level %d)\n", level);
+    }
+    const SDL_GPUViewport full = {
+        .x = 0.0f, .y = 0.0f, .w = (float)window_w, .h = (float)window_h,
+        .min_depth = 0.0f, .max_depth = 1.0f,
+    };
+    const SDL_GPUBufferBinding binding = {.buffer = g_vertices, .offset = 0};
+    const SDL_GPUTextureSamplerBinding ramp = {
+        .texture = g_fade_texture, .sampler = g_background_sampler,
+    };
+    SDL_BindGPUGraphicsPipeline(pass, g_pipeline);
+    SDL_BindGPUVertexBuffers(pass, 0, &binding, 1);
+    SDL_BindGPUFragmentSamplers(pass, 0, &ramp, 1);
+    SDL_SetGPUViewport(pass, &full);
+    SDL_DrawGPUPrimitives(pass, 6, 1,
+        (STATE_COUNT + 6 + (level * (FADE_LEVELS - 1) + 127) / 255) * 6, 0);
+}
+
+static void render_overlay(SDL_GPUCommandBuffer *cmd, SDL_GPURenderPass *pass) {
+    render_overlay_layers(cmd, pass);
+    render_screen_fade(pass);
 }
 
 static void destroy_overlay(void) {

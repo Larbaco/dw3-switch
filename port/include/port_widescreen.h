@@ -33,6 +33,11 @@ int dw3_port_widescreen_px(void);
  * nothing). */
 int dw3_port_widescreen_copy_gutters(int src_y, int h, int dx, int dy);
 
+/* 1 once the screen a restart lands on (the title, or the EU language
+ * select) is drawing; the return-to-title fade keeps the screen black until
+ * then. */
+int dw3_port_widescreen_new_screen_ready(void);
+
 /* Once per frame, before drawFrame: hands the mode's gutter to the renderer. */
 void dw3_port_widescreen_frame(void);
 

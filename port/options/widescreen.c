@@ -108,6 +108,24 @@ int dw3_port_widescreen_px(void) {
     return 0;
 }
 
+/* The screen a restart lands on is drawing: the title once its backdrop is
+ * drawn (US and EU), or the EU language select (restart.c fades in then). */
+int dw3_port_widescreen_new_screen_ready(void) {
+    if (g_frame_no - g_title_frame <= 1u) {
+        return 1;
+    }
+    /* A restart that lands in a gutter mode (a forced start mode in the
+     * replays) is drawing too. */
+    if (dw3_port_widescreen_px() > 0) {
+        return 1;
+    }
+#if VERSION_EU
+    return dw3_overlay_current_mode_file() == 0x165; /* CNTY_SEL */
+#else
+    return 0;
+#endif
+}
+
 void dw3_port_widescreen_title_backdrop(void) {
     g_title_frame = g_frame_no;
 }

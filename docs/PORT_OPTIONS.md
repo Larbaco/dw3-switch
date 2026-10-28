@@ -1236,6 +1236,46 @@ Triangle (B) goes back to the menu. Changes are saved at once in
   `us/eu-return-title(-rows7)` press Down once more (Options sits above Return to
   title); their eight-row panel is the new reference.
 
+### Opening without a stutter (preview.42 follow-up)
+
+preview.41 and preview.43 OLED logs: every open of the screen logged `options update #1 rebuild
+rects=1 bytes=2764800 compose=166 ms upload=2.5 ms`. The cost was the static
+layer (window, bezel, rules, labels, hints) of the 960x720 canvas, drawn on the
+CPU on the opening frame, and it was thrown away each time the screen closed
+(`release_options_cache`). Now (`title_options_cache.c`):
+
+- The static layer is kept per layout (title: no locked rows; in game: Widescreen
+  and the Cheats hint locked; and the language, page and cheats switch), two slots,
+  8.3 MB (three slots, one is the worker's). Closing the screen frees only the working canvas (`dw3_options_cache_idle`).
+- While the screen is closed, a **worker thread** composes the missing layers (title
+  layout first, then in game) and the frame thread never draws them: Switch core 2,
+  priority 0x3B, 128 KB stack (the map precompute's pattern, `nx_title_overlay.c`);
+  PC a plain thread at nice 19 (`title_menu_overlay.c`). The host asks every frame
+  (`dw3_options_cache_prewarm_begin`, a short locked lookup) and starts the thread
+  only when a layer is missing, e.g. after boot or a language change. The worker
+  draws with thread-local state only (`title_overlay_art.c`: canvas, clip, layer and
+  the layout override are `_Thread_local`), into a third slot, and publishes the
+  finished layer under a spin lock held for a few instructions. It logs
+  `dw3-port-options: prewarm title ready in N ms (worker)` and `... in-game ...`.
+  If an open comes before the layer is ready it composes synchronously, as before
+  the worker existed (nothing waits on the worker).
+- An open copies the retained layer into the canvas and draws the focus box, the
+  values and the description, and uploads the canvas once. A language change
+  invalidates the layers (their key holds the art generation) and they are composed
+  again in the background.
+- The pixels are the same: a band is the same raster with a clip (`box` now clamps to
+  the clip first), and `tools/tests/options_cache_main.c` proves every cached open
+  and every dirty update against the full reference render.
+
+Measured on the PC (replay `us-field-options`, turbo 4):
+`options update rebuild ... compose=35246 us`, first frame shown 36.5 ms after the
+open request before; `options update cached ... compose=1602 us`, first frame shown
+2.8 ms after. The worker needs about 30 ms per layout on the PC (threaded test: 28 to 31 ms,
+while the frame thread keeps updating), none of it on the frame thread. The Switch ran the old rebuild 4.7 times slower than the PC
+(166 ms against 35 ms), which puts the open at about 8 ms of compose plus 2.5 ms of
+upload and the worker at roughly 150 ms per layout on core 2, off the frame thread: expected, not yet measured on the OLED
+([OLED_TEST_PLAN B15](OLED_TEST_PLAN.md)).
+
 ### OLED checklist, Options in game (owner)
 
 US and EU (at least two EU languages), a Switch OLED, docked and handheld:

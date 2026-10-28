@@ -169,19 +169,16 @@ int dw3_port_options_row_locked(int index) {
 
 /* Bit i = row i is locked; DW3_PORT_OPTIONS_LOCK_CHEATS = the Cheats entry
  * (Square / Y), which is title-only: cheats are armed at the title. */
-unsigned dw3_port_options_locked_mask(void) {
-    unsigned mask = 0;
-    int i;
-
-    if (!g_in_game) {
+unsigned dw3_port_options_locked_mask_for(int in_game) {
+    if (!in_game) {
         return 0;
     }
-    for (i = 0; i < DW3_PORT_OPT_COUNT; i++) {
-        if (dw3_port_options_row_locked(i)) {
-            mask |= 1u << i;
-        }
-    }
-    return mask | DW3_PORT_OPTIONS_LOCK_CHEATS;
+    /* The same rows dw3_port_options_row_locked() reports in game. */
+    return (1u << DW3_PORT_OPT_WIDESCREEN) | DW3_PORT_OPTIONS_LOCK_CHEATS;
+}
+
+unsigned dw3_port_options_locked_mask(void) {
+    return dw3_port_options_locked_mask_for(g_in_game);
 }
 
 int dw3_port_options_in_game(void) {

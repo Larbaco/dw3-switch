@@ -1603,12 +1603,13 @@ def restart_battle_again(version):
     """Restart after a battle with DW3_START_MODE_EVERY: the restart re-enters
     the forced battle (a fresh GAME), and the same inputs, shifted by the
     chord's frame, must give the same battle and report again."""
-    r = Rec(f"{version.upper()}: restart after a battle, then the same battle again (env in manifest)")
+    r = Rec(f"{version.upper()}: restart after a battle, then the same battle again (env in manifest); the chord is 20 frames earlier than before the return fade, so the reset lands on the same frame (the battle RNG depends on the frame count)")
     _restart_battle_inputs(r)
     r.shot(1000, "battle-1-late")
-    r.shot(1580, "field-after-battle")
+    r.shot(1575, "field-after-battle")
     base = 1600
-    r.press(base, CHORD)
+    # the restart now fades to black for 20 frames before it resets (restart.c)
+    r.press(base - 20, CHORD)
     # the battle again, 6 frames of the chord's release give the same start
     for k in (100, 200, 300):
         r.shot(base + k, f"again-{k}")
