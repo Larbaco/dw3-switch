@@ -12,11 +12,11 @@
 #include "nx_region_boot.h"
 
 #include "dw3_launcher.h"
+#include "str_disc.h"
 
 #include "../source/debug_overlay_font.h"
 #include "../source/debug_overlay_glyph.h"
 
-#include <dirent.h>
 #include <stdio.h>
 #include <string.h>
 #include <strings.h>
@@ -300,41 +300,6 @@ static void io_show_no_data(void *ud, const char *base) {
     dw3_nx_gpu_swap();
 }
 
-static int has_ext(const char *name, const char *ext) {
-    size_t n = strlen(name), e = strlen(ext);
-
-    return n > e && strcasecmp(name + n - e, ext) == 0;
-}
-
-/* A disc image waiting in `<base>/<r>/` (the folder the runtime extraction
- * already reads) makes the region count as present, so a first run from a disc
- * still works. boot_tim.bin is never a disc image. */
-static int io_disc_waiting(void *ud, const char *base, Dw3Region r) {
-    char dir[512];
-    DIR *d;
-    struct dirent *ent;
-    int found = 0;
-
-    (void)ud;
-    snprintf(dir, sizeof(dir), "%s/%s", base, dw3_region_name(r));
-    d = opendir(dir);
-    if (d == NULL) {
-        return 0;
-    }
-    while ((ent = readdir(d)) != NULL) {
-        if (strcasecmp(ent->d_name, "boot_tim.bin") == 0) {
-            continue;
-        }
-        if (has_ext(ent->d_name, ".cue") || has_ext(ent->d_name, ".bin") ||
-            has_ext(ent->d_name, ".iso")) {
-            found = 1;
-            break;
-        }
-    }
-    closedir(d);
-    return found;
-}
-
 void dw3_nx_region_boot(const char *base, Dw3Region forced, const char *forced_by,
                         Dw3RegionBootOut *out) {
     Dw3RegionBootIO io;
@@ -345,11 +310,13 @@ void dw3_nx_region_boot(const char *base, Dw3Region forced, const char *forced_b
     io.sample_minus = io_sample_minus;
     io.run_picker = io_run_picker;
     io.show_no_data = io_show_no_data;
-    io.disc_waiting = io_disc_waiting;
     in.base = base;
     in.forced = forced;
     in.forced_by = forced_by;
     dw3_region_boot(&in, &io, out);
+    /* A disc image found in the parent folder: the extraction reads this one
+     * (the separate builds find it by walking up from their runtime folder). */
+    dw3_str_set_disc_hint(out->disc);
 }
 
 #endif /* DW3_BOTH */

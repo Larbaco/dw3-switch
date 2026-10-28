@@ -5,6 +5,7 @@
 #include "dw3_region_boot.h"
 
 #include "port_options_cfg.h"
+#include "fake_iso.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -29,7 +30,6 @@ typedef struct Fake {
     int no_data_calls;
     unsigned script[8]; /* button edges, one per picker step */
     int script_len;
-    int disc_us, disc_eu;
 } Fake;
 
 static void fk_log(void *ud, const char *line) {
@@ -68,13 +68,6 @@ static void fk_no_data(void *ud, const char *base) {
     ((Fake *)ud)->no_data_calls++;
 }
 
-static int fk_disc(void *ud, const char *base, Dw3Region r) {
-    Fake *f = (Fake *)ud;
-
-    (void)base;
-    return r == DW3_REGION_US ? f->disc_us : f->disc_eu;
-}
-
 static void touch(const char *dir, const char *rel) {
     char path[512];
     FILE *fp;
@@ -105,6 +98,10 @@ static void clean(const char *base) {
     }
 }
 
+static void path_in(const char *dir, const char *name, char *out, size_t n) {
+    snprintf(out, n, "%s/%s", dir, name);
+}
+
 static Dw3RegionBootOut run(const char *base, Fake *f, Dw3Region forced) {
     Dw3RegionBootIO io;
     Dw3RegionBootIn in;
@@ -116,7 +113,6 @@ static Dw3RegionBootOut run(const char *base, Fake *f, Dw3Region forced) {
     io.sample_minus = fk_minus;
     io.run_picker = fk_picker;
     io.show_no_data = fk_no_data;
-    io.disc_waiting = fk_disc;
     in.base = base;
     in.forced = forced;
     in.forced_by = "test";
@@ -135,6 +131,7 @@ int main(int argc, char **argv) {
     Fake f;
     Dw3RegionBootOut o;
     Dw3Region pref, last;
+    char p1[400], p2[400];
 
     if (argc != 2) {
         fprintf(stderr, "usage: %s <scratch dir>\n", argv[0]);
@@ -262,12 +259,104 @@ int main(int argc, char **argv) {
     /* 10. a disc image waiting in a region folder makes that region present */
     clean(base);
     make_tree(base, "eu");
-    f.disc_us = 1;
+    {
+        char dir[400];
+
+        snprintf(dir, sizeof(dir), "%s/us", base);
+        mkdir(dir, 0777);
+        touch(dir, "disc.bin");
+    }
     o = run(base, &f, DW3_REGION_NONE);
     CHECK(f.picker_calls == 1); /* eu tree + us disc: both present, ask */
     CHECK(strstr(f.log, "data found us=1 eu=1 under") != NULL);
-    CHECK(strstr(f.log, "(us: disc image, needs extraction)") != NULL);
-    f.disc_us = 0;
+    CHECK(strstr(f.log, "(us: disc image ") != NULL && strstr(f.log, "needs extraction)") != NULL);
+    CHECK(o.disc[0] == '\0'); /* in the region folder: no hint needed */
+
+    /* 12. issue #322: a US disc directly in <base>, nothing else */
+    clean(base);
+    path_in(base, "Digimon World 3 (USA).bin", p1, sizeof(p1));
+    (void)make_iso(p1, "SLUS_014.36");
+    o = run(base, &f, DW3_REGION_NONE);
+    CHECK(o.result == DW3_RB_RUN && o.region == DW3_REGION_US && f.picker_calls == 0);
+    CHECK(strstr(f.log, "data found us=1 eu=0 under") != NULL);
+    CHECK(strstr(f.log, "(us: disc image ") != NULL && strstr(f.log, "Digimon World 3 (USA).bin, needs extraction)") != NULL);
+    CHECK(strstr(f.log, "decision boot region=us: only the US data is present") != NULL);
+    CHECK(strstr(f.log, "us will be extracted from the disc image ") != NULL);
+    CHECK(strcmp(o.disc, p1) == 0);
+
+    /* 13. an EU disc in <base>, via a CUE with a differently named BIN */
+    clean(base);
+    path_in(base, "eu image.bin", p1, sizeof(p1));
+    (void)make_iso(p1, "SLES_039.36");
+    path_in(base, "eu image.cue", p2, sizeof(p2));
+    {
+        FILE *fp = fopen(p2, "wb");
+
+        fputs("FILE \"eu image.bin\" BINARY\n  TRACK 01 MODE2/2352\n    INDEX 01 00:00:00\n", fp);
+        fclose(fp);
+    }
+    o = run(base, &f, DW3_REGION_NONE);
+    CHECK(o.result == DW3_RB_RUN && o.region == DW3_REGION_EU && f.picker_calls == 0);
+    CHECK(strstr(f.log, "data found us=0 eu=1 under") != NULL);
+    CHECK(strcmp(o.disc, p1) == 0); /* cue and bin are one image, not two */
+
+    /* 14. both discs in <base>: the picker; the choice picks the matching image */
+    clean(base);
+    path_in(base, "a.bin", p1, sizeof(p1));
+    path_in(base, "b.bin", p2, sizeof(p2));
+    (void)make_iso(p1, "SLES_039.36");
+    (void)make_iso(p2, "SLUS_014.36");
+    o = run(base, &f, DW3_REGION_NONE);
+    CHECK(f.picker_calls == 1 && o.region == DW3_REGION_US);
+    CHECK(strstr(f.log, "data found us=1 eu=1 under") != NULL);
+    CHECK(strcmp(o.disc, p2) == 0);
+    f.script[0] = DW3_PK_RIGHT;
+    f.script[1] = DW3_PK_A;
+    f.script_len = 2;
+    o = run(base, &f, DW3_REGION_NONE);
+    CHECK(o.region == DW3_REGION_EU && strcmp(o.disc, p1) == 0);
+    f.script_len = 0;
+
+    /* 15. a US disc in <base> and an extracted EU tree: both present, picker */
+    clean(base);
+    make_tree(base, "eu");
+    path_in(base, "us.bin", p1, sizeof(p1));
+    (void)make_iso(p1, "SLUS_014.36");
+    o = run(base, &f, DW3_REGION_NONE);
+    CHECK(f.picker_calls == 1);
+    CHECK(strstr(f.log, "data found us=1 eu=1 under") != NULL);
+    CHECK(strstr(f.log, "(us: disc image ") != NULL);
+    CHECK(strstr(f.log, "eu: disc image") == NULL);
+    CHECK(strcmp(o.disc, p1) == 0); /* the countdown boots US, which needs the disc */
+
+    /* 16. the extracted tree wins over a disc of the same region left in <base> */
+    clean(base);
+    make_tree(base, "us");
+    path_in(base, "us.bin", p1, sizeof(p1));
+    (void)make_iso(p1, "SLUS_014.36");
+    o = run(base, &f, DW3_REGION_NONE);
+    CHECK(o.region == DW3_REGION_US && o.disc[0] == '\0');
+    CHECK(strstr(f.log, "disc image") == NULL);
+
+    /* 17. an image that is neither region (and boot_tim.bin) is ignored, logged */
+    clean(base);
+    path_in(base, "other.bin", p1, sizeof(p1));
+    (void)make_iso(p1, "SCUS_999.99");
+    path_in(base, "boot_tim.bin", p2, sizeof(p2));
+    (void)make_iso(p2, "SLUS_014.36");
+    o = run(base, &f, DW3_REGION_NONE);
+    CHECK(o.result == DW3_RB_NO_DATA);
+    CHECK(strstr(f.log, "disc image ignored: ") != NULL && strstr(f.log, "other.bin is neither") != NULL);
+    CHECK(strstr(f.log, "(1 image(s) in ") != NULL);
+    CHECK(strstr(f.log, "data found us=0 eu=0 under") != NULL);
+
+    /* 18. a file that is not an ISO at all is ignored too */
+    clean(base);
+    path_in(base, "junk.bin", p1, sizeof(p1));
+    touch(base, "junk.bin");
+    o = run(base, &f, DW3_REGION_NONE);
+    CHECK(o.result == DW3_RB_NO_DATA);
+    CHECK(strstr(f.log, "disc image ignored: ") != NULL);
 
     /* 11. a picker that does not run (no screen) cannot hang the boot */
     {

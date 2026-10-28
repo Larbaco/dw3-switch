@@ -5,6 +5,7 @@
 #include "dw3_region_rt.h"
 
 #include "port_options_cfg.h"
+#include "fake_iso.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -125,6 +126,23 @@ int main(int argc, char **argv) {
     CHECK(rc != 0);
     c = resolve("", "", NULL, base, cfg, &rc); /* empty means "not given" */
     CHECK(rc == 0 && strcmp(c.source, "probe-pref") == 0);
+
+    /* issue #322: a disc in the parent folder counts as that region's data */
+    {
+        char b2[300], p[340];
+
+        snprintf(b2, sizeof(b2), "%s/rt2", argv[1]);
+        mkdir(b2, 0777);
+        snprintf(p, sizeof(p), "%s/eu.bin", b2);
+        CHECK(make_iso(p, "SLES_039.36") == 0);
+        c = resolve(NULL, NULL, NULL, b2, cfg, &rc);
+        CHECK(rc == 0 && c.region == DW3_REGION_EU && strcmp(c.source, "probe-one") == 0);
+        CHECK(!c.probe.has_us && c.probe.has_eu);
+        snprintf(p, sizeof(p), "%s/us.bin", b2);
+        CHECK(make_iso(p, "SLUS_014.36") == 0);
+        c = resolve(NULL, NULL, NULL, b2, cfg, &rc);
+        CHECK(c.probe.has_us && c.probe.has_eu);
+    }
 
     /* the plain build's answer */
     CHECK(dw3_region() == DW3_REGION_US);

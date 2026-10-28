@@ -225,11 +225,22 @@ static int disc_in_dir(const char *dir, char *out, size_t n, unsigned long long 
     return -1;
 }
 
+static char g_hint[1024];
+
+void dw3_str_set_disc_hint(const char *bin_path) {
+    snprintf(g_hint, sizeof(g_hint), "%s", bin_path != NULL ? bin_path : "");
+}
+
 int dw3_str_find_disc(const char *runtime_root, char *out, size_t n,
                       unsigned long long min_bytes) {
     const char *env;
     char parent[512];
     char resolved[1024];
+
+    if (g_hint[0] != '\0' && bin_is_image(g_hint, min_bytes)) {
+        snprintf(out, n, "%s", g_hint);
+        return 0;
+    }
 
     env = getenv("DW3_DISC_BIN");
     if (bin_is_image(env, min_bytes)) {

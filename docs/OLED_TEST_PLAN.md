@@ -319,7 +319,8 @@ release asset `dw3-switch-both.nro`. The
 separate US and EU `.nro` files keep shipping next to it until you have confirmed
 this one. Put `dw3-switch-both.nro` (or the nxlink variant, whose NACP name ends
 in "(nxlink)") in `sdmc:/switch/dw3/` and start it from hbmenu in applet mode.
-Data: `sdmc:/switch/dw3/us/` and `/eu/` as always (see
+Data: `sdmc:/switch/dw3/us/` and `/eu/` as always, or a disc image directly in
+`sdmc:/switch/dw3/` (G9.11 to G9.13; see
 [RUNTIME_LAYOUT](RUNTIME_LAYOUT.md)); the stored choice is
 `sdmc:/switch/dw3/port_options.cfg` (`region_default`, `last_region`). Design and
 the defaults taken (picker in English, Minus to ask again, no region switching
@@ -339,6 +340,9 @@ picker readable at arm's length, handheld; does the countdown feel right).
 | G9.8 | **Both regions play and save**: from the combined `.nro`, start US, load or make a save, quit; start EU, same. Then check the folders | Each region keeps its own saves ([PER_USER_SAVES](PER_USER_SAVES.md)); the other region imports a converted copy once ([CROSS_REGION_SAVES](CROSS_REGION_SAVES.md)); options and the game behave as in the separate `.nro` of that region | `running us/eu`, `runtime version=<r> root=sdmc:/switch/dw3/<r>`, `cross-import ...` as in E3; folder listing of `saves/<uid>/us|eu/memcard/` |
 | G9.9 | **Crash report names the region** (optional, nxlink build, forced crash is not needed): after any crash, the first lines of `crash_report.txt` | `disc: us` or `disc: eu` (and the EU `language:` line) | `crash_report.txt` header |
 | G9.10 | **Handheld Joy-Cons and a Pro Controller** for G9.3 to G9.6 | Same picker behaviour with both; D-pad or left stick moves the choice | the log is identical apart from times |
+| G9.11 | **Disc in the parent folder, one region** ([#322](https://github.com/Larbaco/dw3-switch/issues/322)): move `us/` and `eu/` away (keep `saves/`), put only your US BIN/CUE directly in `sdmc:/switch/dw3/` (not in `us/`). Start the combined `.nro`. Repeat with only the EU disc | The progress bar of the first extraction appears and the game of that region starts, no picker and no setup message. Second start: no extraction | `data found us=1 eu=0 under sdmc:/switch/dw3 (us: disc image sdmc:/switch/dw3/<name>.bin, needs extraction)`, `decision boot region=us: only the US data is present`, `us will be extracted from the disc image sdmc:/switch/dw3/<name>.bin`, `runtime extract wrote=N`, `running us (...)`; second run: `data found us=1 eu=0 under sdmc:/switch/dw3` without `disc image`. For EU the same with `eu` |
+| G9.12 | **Both discs in the parent folder**: US and EU BIN/CUE both directly in `sdmc:/switch/dw3/` (names that do not say the region; `us/` and `eu/` away). Start; press A on EU, then on a second start A on US | The picker appears (both regions present); the chosen region is extracted from its own disc (not "disc region mismatch") and starts | `data found us=1 eu=1 under ... (us: disc image <path>; eu: disc image <path>, needs extraction)`, `decision pick region=us: both present: picker`, `picker result eu by button A ...`, `eu will be extracted from the disc image <the EU file>`, `runtime extract wrote=N`; no `disc region mismatch` line |
+| G9.13 | **One disc in the parent, the other region already extracted**: keep an extracted `eu/` tree, US disc directly in `sdmc:/switch/dw3/`, no `us/`. Start; pick US | Picker; US extracts from the parent disc and starts. Next start: the disc is not read again | `data found us=1 eu=1 under ... (us: disc image ...)`, no `eu: disc image`, `us will be extracted from the disc image ...`; next run `data found us=1 eu=1 under sdmc:/switch/dw3` with no `disc image` text |
 
 Also tell me: is the picker text readable handheld at arm's length; is 3 s the
 right countdown; is Minus a good key to hold; is a 12 MB `.nro` acceptable (it is
@@ -371,6 +375,7 @@ it from Pending OLED checks.
 | E1 | `dw3-port-restart: fading to black before the reset`, `screen is black after N frames; resetting now`, `new screen ready after N black frames; fading in`, `fade finished, N frames from the request`; `dw3-title-overlay: screen fade to black on`; `dw3-widescreen: gutter 0 px per side (was 53; 4:3 picture) mode file 0x..` must come **between** `screen is black` and `fading in` |
 | E2 | `dw3-autosave: wrote autosave.bin ... in N ms (SD write M ms ...); option Auto-save=N` |
 | G8 | `dw3-options: file keys items_partner_switch=N map_screen=N` at boot, `dw3-items-menu: partner switch` |
+| G9.11 to G9.13 | `dw3-region: data found ... (us: disc image <path>, needs extraction)`, `dw3-region: <r> will be extracted from the disc image <path>`, `dw3-region: disc image ignored: <path> is neither a US nor an EU disc` (a stray BIN), then the usual `decision`, `picker`, `running` lines |
 | G10 | `dw3-sweep: stage sweep on (key stage_sweep=1, 238 stages ...`, per stage `dw3-sweep: stage WSTAGxxx (mode 0x..) begin` then `... ok in N ms (frames F, mem free M, load L ms)` or `... FAILED: <reason>`; after a crash the next run says `FAILED: crash or hang in the previous run`; the end is `dw3-sweep: done X/Y ok, failed: ...`. A finished sweep relaunched logs `the previous sweep is complete; not running again`. `dw3-autosave:` must not appear. Reasons: [P5.5_STAGE_SWEEP](P5.5_STAGE_SWEEP.md#log-lines) |
 
 Game-side `fprintf(stderr)` lines (`dw3-port-options`, `dw3-map`, `dw3: memcard`,
