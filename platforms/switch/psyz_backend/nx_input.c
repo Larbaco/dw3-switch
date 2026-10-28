@@ -167,11 +167,17 @@ void Psyz_PadsPoll(void) {
          * L1/R1) in wire byte 3, both active low. */
         frame[2] = (char)(~(pressed >> 8) & 0xFF);
         frame[3] = (char)(~pressed & 0xFF);
-        /* Right stick stays centred. The left stick is the PS1 left stick:
+        /* The right stick is wire bytes 4 and 5 (analog[0], [1]), which the
+         * game does not read; only the full-screen map's zoom does (up is a
+         * smaller byte, as on the PS1). The left stick is the PS1 left stick:
          * wire bytes 6 and 7, which the decomp reads as analog[2] and
          * analog[3]. Y is inverted in dw3_nx_stick_axis. */
-        frame[4] = (char)0x80;
-        frame[5] = (char)0x80;
+        {
+            HidAnalogStickState rstick = padGetStickPos(&s_pad, 1);
+
+            frame[4] = (char)dw3_nx_stick_axis(rstick.x, 0);
+            frame[5] = (char)dw3_nx_stick_axis(rstick.y, 1);
+        }
         frame[6] = (char)dw3_nx_stick_axis(stick.x, 0);
         frame[7] = (char)dw3_nx_stick_axis(stick.y, 1);
         {

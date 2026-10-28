@@ -668,12 +668,24 @@ for _v, _ids in (("us", (0x159, 0x1FA, 0x1C2, 0x158, 0x1F9)),
                   cfg=(("encounter_rate", "2"),),
                   expect_restore=((_fight, M), (_menu, S), (_report, M), (_field, M),
                                   (_status, M)),
-                  expect_log=((0, r"dw3-map: open half=0 image=392x352 source=\w+ in \d+ ms "
+                  # the reveal layer (the towns of the progress list and the visited
+                  # area cells) is composed into the picture: at least one piece
+                  # drawn, none refused; the right stick zooms (source=stick); the
+                  # scaled images are keyed by the reveal hash
+                  expect_log=((0, r"dw3-map: reveal layer: \d+ pieces from the game "
+                                  r"\(\d+ towns \+ \d+ visited areas drawn\), [1-9]\d* drawn, "
+                                  r"hash [0-9a-f]{8}\n"
+                                  r"(?s:.*)dw3-map: open half=0 image=392x352 source=\w+ in \d+ ms "
                                   r"markers=\d+ home=\d+,\d+ turbo=1"
-                                  r"(?s:.*)scaler LANCZOS2 (?:built in|loaded from cache in) \d+ ms"
+                                  r"(?s:.*)dw3-map: zoom source=button step"
+                                  r"(?s:.*)scaler LANCZOS2 (?:built in \d+ ms \(1176x1056, reveal hash [0-9a-f]{8}\)"
+                                  r"|loaded from cache in \d+ ms \(1176x1056, cache hit \S+, reveal hash [0-9a-f]{8}\))"
                                   r"(?s:.*)scaler AMD FSR 1 (?:built in|loaded from cache in) \d+ ms"
-                                  r"(?s:.*)dw3-map: close"),),
-                  forbid_log=((0, r"dw3-map: capture failed"),),
+                                  r"(?s:.*)dw3-map: zoom source=stick \(axis 127\) zoom"
+                                  r"(?s:.*)dw3-map: zoom source=stick \(axis -127\) zoom"
+                                  r"(?s:.*)dw3-map: close after \d+ frames \(zoom: [1-9]\d* stick frames, "
+                                  r"[1-9]\d* button presses, last source stick; reveal hash [0-9a-f]{8}\)"),),
+                  forbid_log=((0, r"dw3-map: capture failed|NOTHING DRAWN|not drawn"),),
                   note="Square opens the new full-screen map, pan, zoom, scaler cycle, back (patch 0146)"))
     _add(Scenario(f"{_v}-map-view-43", _v, "full", turbo=4, timeout=600,
                   phases=(f"{_v}-map-view",), env=_ITEMS_ENV,

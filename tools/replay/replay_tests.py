@@ -243,7 +243,7 @@ def run_phase(rec: Path, version, binary, runtime, display, outdir: Path, memdir
               "DW3_FORCE_ENEMY_HP", "DW3_EXTRA_TECHS", "DW3_FORCE_ITEMS", "DW3_MAP_VERIFY", "DW3_MAP_PRECOMPUTE", "DW3_FORCE_CARDS", "DW3_PACING_TRACKED",
               "DW3_FILE_CACHE_SLOTS", "DW3_FORCE_MENU", "DW3_CHEATS_ARM", "DW3_FORCE_EXIT", "DW3_START_MODE_EVERY",
               "DW3_MEMCARD_IMPORT_DIR", "DW3_CROSS_IMPORT", "DW3_REGION", "DW3_REGION_PICK",
-              "DW3_REGION_PICK_KEYS", "DW3_RUNTIME_BASE", "DW3_PC_BIN_US", "DW3_PC_BIN_EU"):
+              "DW3_REGION_PICK_KEYS", "DW3_SAVE_PROFILE", "DW3_RUNTIME_BASE", "DW3_PC_BIN_US", "DW3_PC_BIN_EU"):
         env.pop(k, None)
     if launch is not None:  # P6.24: the launcher picks the runtime and the binary
         env.pop("DW3_RUNTIME", None)

@@ -24,6 +24,7 @@
 #include <unistd.h>
 #endif
 #include "port_options.h"
+#include "port_user_saves.h"
 #include "port_turbo.h"
 #include "runtime_extract.h"
 #include "str_stream.h"
@@ -234,6 +235,12 @@ static const char *env_or(const char *key, const char *fallback) {
     return (v != NULL && v[0] != '\0') ? v : fallback;
 }
 
+#if defined(VERSION_EU) && VERSION_EU
+#define DW3_PC_REGION "eu"
+#else
+#define DW3_PC_REGION "us"
+#endif
+
 #ifndef DW3_DEFAULT_RUNTIME
 #define DW3_DEFAULT_RUNTIME "runtime/us"
 #endif
@@ -314,6 +321,43 @@ static int init_paths(int argc, char **argv) {
                 "drained on vsync for logs; audible listen needs a device\n");
     }
 
+    /* P6.26: saves per profile, runtime/saves/<profile>/<us|eu>/memcard/, the
+     * profile being DW3_SAVE_PROFILE or "default". A new profile folder is
+     * filled with a COPY of the legacy runtime/<ver>/memcard files. A forced
+     * DW3_MEMCARD_DIR / --memcard-dir (replays) skips all of it. */
+    if (memdir == NULL) {
+        char base[512], legacy[600], other_legacy[600], other_dir[640];
+        const char *region = DW3_PC_REGION;
+        const char *other = (strcmp(region, "eu") == 0) ? "us" : "eu";
+        Dw3UserResolved ur;
+        Dw3UserPrep prep;
+
+        (void)dw3_pc_user_resolve(NULL, &ur);
+        if (dw3_user_saves_base_from_root(root, base, sizeof(base)) == 0) {
+            snprintf(legacy, sizeof(legacy), "%s/memcard", root);
+            snprintf(other_legacy, sizeof(other_legacy), "%s/%s/memcard", base, other);
+            dw3_user_saves_set_current_hash(ur.hash);
+            if (dw3_user_saves_prepare(base, ur.key, region, legacy, NULL, &prep) == 0 &&
+                dw3_user_saves_dir(memcard_buf, sizeof(memcard_buf), base, ur.key, region) == 0) {
+                Dw3UserPrep prep2;
+
+                fprintf(stderr, "dw3-pc: user: profile=%s reason=%s\n", ur.key,
+                        dw3_user_reason_name(ur.reason));
+                if (prep.created) {
+                    fprintf(stderr, "dw3-pc: user: new region folder, copied %d legacy file(s) from %s\n",
+                            prep.copied, legacy);
+                }
+                (void)dw3_user_saves_prepare(base, ur.key, other, other_legacy, NULL, &prep2);
+                if (dw3_user_saves_dir(other_dir, sizeof(other_dir), base, ur.key, other) == 0) {
+                    setenv("DW3_MEMCARD_IMPORT_DIR", other_dir, 0);
+                }
+                memdir = memcard_buf;
+            } else {
+                fprintf(stderr, "dw3-pc: user: profile folder failed (%s); using %s\n",
+                        prep.errmsg, legacy);
+            }
+        }
+    }
     memdir_explicit = (memdir != NULL);
     if (memdir == NULL) {
         snprintf(memcard_buf, sizeof(memcard_buf), "%s/memcard", root);

@@ -71,6 +71,8 @@ void Psyz_AudioUnpause(void);
  * diagnosable, because Ryubing loads the .nro directly and there is no nxlink
  * to receive guest stderr (see docs/SWITCH_BACKEND.md). */
 void dw3_nx_log_open(void);
+/* Close dw3.log at the end of main (the loader process outlives the NRO). */
+void dw3_nx_log_close(void);
 /* One "dw3-run:" line (console clock) so each kept run is dated. */
 void dw3_nx_log_run_header(void);
 /* Route game fprintf(stderr, ...) lines into psyz_log (so into dw3.log). Not

@@ -25,6 +25,7 @@ Newest first.
 
 | Tag | What it was for |
 |---|---|
+| [preview.43](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.43) | Per-user saves (P6.26, #292): saves per Switch user profile in `sdmc:/switch/dw3/saves/<profile>/<us\|eu>/memcard/`; legacy saves are copied into each profile on its first launch; cancelling the profile selector exits without starting. OLED-unverified (test plan E5). Logs (#290): `dw3.log` keeps the last 5 runs (`dw3.1.log` ... `dw3.4.log`), game messages reach the log, proof lines per OLED test item. EU attached by hand, with dw3-switch-eu-elf.zip. Notes: [`platforms/switch/release/README.txt`](../platforms/switch/release/README.txt). |
 | [preview.42](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.42) | App name in hbmenu and Sphaira is now Digimon World 3 NX (#289); the nxlink build is Digimon World 3 NX (nxlink). .nro file names unchanged; recreate the Sphaira forwarder to see the new name. Otherwise the same as preview.41 (turbo menus at 1.5x #286, title plaques and logo #287). EU attached by hand, with dw3-switch-eu-elf.zip. Notes: [`platforms/switch/release/README.txt`](../platforms/switch/release/README.txt). |
 | [preview.41](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.41) | Turbo menus at 1.5x (P6.4, #286): menus in the field and battle menus run at 1.5x under turbo; walking, text, cutscenes and battle animations stay at full turbo; Map, Items and shops stay at 1x. Title plaques evenly spaced and the logo keeps its size when the menu appears (#287). Integration check of main before #287: 2395 replay checks, 0 failed; soak RSS flat. Still open from preview.40: G8, E2, B16. EU attached by hand. Notes: [`platforms/switch/release/README.txt`](../platforms/switch/release/README.txt). |
 | [preview.40](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.40) | Equipment screen: ZL / ZR change the partner without leaving (P6.33 phase 1, #282; on by default, key `items_partner_switch`). Auto-save in its own file `autosave.bin` (P6.31, #283): Continue loads it, Load Game is its own row. Full-screen map view, proof of concept (P6.32, #284): Y on the Map screen, pan, zoom, scaler cycle; widescreen only. Quit game and field OPTIONS fixes (#280) still need OLED confirmation. EU attached by hand. Notes: [`platforms/switch/release/README.txt`](../platforms/switch/release/README.txt). |
@@ -97,6 +98,11 @@ For an EU nxlink build add a second `--item
 build/switch-eu-nxlink/dw3-switch-nxlink.nro build/switch-eu-nxlink/dw3-switch.elf
 dw3-switch-eu-nxlink.elf` and upload that `.nro` too. The release README
 lists only the files actually published.
+
+**Release notes PR checklist.** In the notes PR (the one that adds the index
+row above and updates `platforms/switch/release/README.txt`), also update the
+[README](../README.md) "Latest preview" link and its Status rows, so the front
+page does not go stale.
 
 Since preview.18, [`platforms/switch/release/README.txt`](../platforms/switch/release/README.txt)
 holds the notes shipped with each release.

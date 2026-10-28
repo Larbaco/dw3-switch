@@ -61,22 +61,120 @@ static void log_path(char *out, size_t cap, int n) {
     }
 }
 
-/* Shift dw3.log -> dw3.1.log -> ... and drop the oldest. Renames only (no
- * copying), and every failure is ignored: a missing older file is the normal
- * case on the first boots, and a log that cannot rotate must not stop the
- * game. */
+/* Per-step outcome of the rotation, logged once the new file is open. */
+static Result s_rot_rc[DW3_NX_LOG_KEEP]; /* [n] = dw3.<n>.log -> dw3.<n+1>.log */
+static char s_rot_how[DW3_NX_LOG_KEEP];  /* r renamed, c copied, - none/failed */
+static Result s_rot_del_rc;
+static int s_rot_missing; /* dw3.log did not exist: nothing to move */
+static int s_rotate_done; /* rotation runs exactly once per process */
+static u8 s_copy_buf[16384];
+
+/* Fallback when a rename is refused: copy `from` into `to`, then delete
+ * `from`. Returns 0 on success, else the failing Result. */
+static Result log_copy(FsFileSystem *fs, const char *from, const char *to) {
+    FsFile in, out;
+    s64 size = 0, off = 0;
+    Result rc;
+
+    rc = fsFsOpenFile(fs, from, FsOpenMode_Read, &in);
+    if (R_FAILED(rc)) {
+        return rc;
+    }
+    rc = fsFileGetSize(&in, &size);
+    if (R_SUCCEEDED(rc)) {
+        fsFsDeleteFile(fs, to);
+        rc = fsFsCreateFile(fs, to, 0, 0);
+    }
+    if (R_SUCCEEDED(rc)) {
+        rc = fsFsOpenFile(fs, to, FsOpenMode_Write | FsOpenMode_Append, &out);
+        if (R_SUCCEEDED(rc)) {
+            while (off < size) {
+                u64 got = 0;
+
+                rc = fsFileRead(&in, off, s_copy_buf, sizeof(s_copy_buf),
+                                FsReadOption_None, &got);
+                if (R_FAILED(rc) || got == 0) {
+                    break;
+                }
+                rc = fsFileWrite(&out, off, s_copy_buf, got,
+                                 FsWriteOption_None);
+                if (R_FAILED(rc)) {
+                    break;
+                }
+                off += (s64)got;
+            }
+            if (R_SUCCEEDED(rc)) {
+                rc = fsFileFlush(&out);
+            }
+            fsFileClose(&out);
+        }
+    }
+    fsFileClose(&in);
+    if (R_SUCCEEDED(rc)) {
+        fsFsDeleteFile(fs, from);
+    }
+    return rc;
+}
+
+/* Shift dw3.log -> dw3.1.log -> ... and drop the oldest. Rename first (cheap);
+ * if the FS refuses, copy + delete so the previous run survives anyway. Every
+ * failure is non-fatal (a missing older file is the normal case on the first
+ * boots), but each step's Result is kept for the log line written afterwards.
+ * Runs once per process: a second call would rotate the fresh file. */
 static void log_rotate(FsFileSystem *fs) {
     char from[48];
     char to[48];
     int n;
 
+    if (s_rotate_done) {
+        return;
+    }
+    s_rotate_done = 1;
     log_path(to, sizeof(to), DW3_NX_LOG_KEEP - 1);
-    fsFsDeleteFile(fs, to);
+    s_rot_del_rc = fsFsDeleteFile(fs, to);
     for (n = DW3_NX_LOG_KEEP - 2; n >= 0; n--) {
+        Result rc;
+
         log_path(from, sizeof(from), n);
         log_path(to, sizeof(to), n + 1);
-        fsFsRenameFile(fs, from, to);
+        rc = fsFsRenameFile(fs, from, to);
+        s_rot_how[n] = R_SUCCEEDED(rc) ? 'r' : '-';
+        if (R_FAILED(rc)) {
+            FsFile probe;
+
+            /* Nothing there to move is not worth a copy. */
+            if (R_SUCCEEDED(fsFsOpenFile(fs, from, FsOpenMode_Read, &probe))) {
+                fsFileClose(&probe);
+                rc = log_copy(fs, from, to);
+                s_rot_how[n] = R_SUCCEEDED(rc) ? 'c' : '-';
+            } else if (n == 0) {
+                s_rot_missing = 1;
+            } else if (n == 0) {
+                s_rot_missing = 1;
+            }
+        }
+        s_rot_rc[n] = rc;
     }
+}
+
+static void log_rotate_report(void) {
+    char line[320];
+    int len = 0, n, kept = 0;
+
+    line[0] = '\0';
+    for (n = 0; n < DW3_NX_LOG_KEEP - 1; n++) {
+        len += snprintf(line + len, sizeof(line) - (size_t)len,
+                        "%sdw3.%d.log %c rc=0x%x", n ? ", " : "", n,
+                        s_rot_how[n], (unsigned)s_rot_rc[n]);
+        if (s_rot_how[n] != '-') {
+            kept++;
+        }
+    }
+    psyz_log(1, __FILE__, __LINE__, __func__,
+             "dw3-log: rotated (dw3.N.log -> dw3.N+1.log; r=renamed "
+             "c=copied -=nothing to move or failed): %s; delete dw3.%d.log "
+             "rc=0x%x; kept %d previous run(s)",
+             line, DW3_NX_LOG_KEEP - 1, (unsigned)s_rot_del_rc, kept);
 }
 
 void dw3_nx_log_run_header(void) {
@@ -122,13 +220,38 @@ void dw3_nx_log_open(void) {
                               &s_log_file))) {
         return;
     }
-    if (R_FAILED(fsFileSetSize(&s_log_file, 0))) {
-        fsFileClose(&s_log_file);
-        return;
-    }
     mutexInit(&s_log_mutex);
     s_log_off = 0;
+    if (s_rot_how[0] == 'r' || s_rot_how[0] == 'c' || s_rot_missing) {
+        if (R_FAILED(fsFileSetSize(&s_log_file, 0))) {
+            fsFileClose(&s_log_file);
+            return;
+        }
+    } else {
+        /* dw3.log could not be moved aside (renamed nor copied). Never
+         * truncate it then: append after the old run so that run survives. */
+        s64 size = 0;
+
+        if (R_SUCCEEDED(fsFileGetSize(&s_log_file, &size))) {
+            s_log_off = size;
+        }
+    }
     s_log_ok = 1;
+    log_rotate_report();
+}
+
+/* Close the file at the end of main. The chain-loaded launcher/hbloader
+ * process outlives one NRO, so a handle left open can make the next run's
+ * rename of dw3.log fail. */
+void dw3_nx_log_close(void) {
+    if (!s_log_ok) {
+        return;
+    }
+    mutexLock(&s_log_mutex);
+    s_log_ok = 0;
+    fsFileFlush(&s_log_file);
+    fsFileClose(&s_log_file);
+    mutexUnlock(&s_log_mutex);
 }
 
 /* Lock-free: the exception handler may have interrupted a psyz_log holding

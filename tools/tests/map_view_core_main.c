@@ -76,6 +76,96 @@ static void test_compose(void) {
     free(vram);
 }
 
+/* The reveal layer: a frame blitted over a base keeps the base where the cell
+ * is transparent (VRAM colour 0), honours the origin and clips. */
+static void test_blit(void) {
+    static uint8_t sheet[256];
+    uint16_t *vram = (uint16_t *)calloc((size_t)MV_VRAM_W * MV_VRAM_H, 2);
+    MvImage base;
+    uint8_t keep[16 * 8 * 4];
+    size_t len = build_sheet(sheet);
+    int x, y;
+
+    for (y = 0; y < 2; ++y)
+        for (x = 0; x < 4; ++x)
+            vram[y * MV_VRAM_W + 0x280 + x] =
+                (uint16_t)((2 * x + 1) | ((2 * x + 2) << 8));
+    for (x = 0; x < 9; ++x)
+        vram[256 * MV_VRAM_W + 0x140 + x] = (uint16_t)((x * 3) | ((x * 3) << 5));
+    vram[256 * MV_VRAM_W + 0x140 + 3] = 0; /* texel index 3: transparent */
+    base.rgba = (uint8_t *)malloc(16 * 8 * 4);
+    base.w = 16; base.h = 8; base.ox = base.oy = 0; base.reveal = 0;
+    memset(base.rgba, 0x55, 16 * 8 * 4);
+    memcpy(keep, base.rgba, sizeof(keep));
+    /* the sheet's frame 0: two cells at (10,20) and (14,20), 4x2 texels each
+     * (8 px wide in all); the origin goes on pixel (2 - 10, 3 - 20) so the
+     * first texel lands on pixel (2, 3) */
+    CHECK(dw3_mv_blit_frame(vram, (const int32_t *)sheet, len, 0, 0x280, 0,
+                            0x140, 0x100, &base, 2 - 10, 3 - 20) == 0, "blit");
+    for (x = 0; x < 16; ++x) {
+        const uint8_t *d = base.rgba + ((size_t)3 * 16 + (size_t)x) * 4;
+        int cell = x - 2;
+
+        if (cell >= 0 && cell < 8 && cell != 2) {
+            unsigned v = (unsigned)(cell + 1) * 3u;
+            unsigned want = (v * 255u + 15u) / 31u;
+
+            CHECK(d[0] == want && d[1] == want, "blit pixel %d: %u want %u", x,
+                  d[0], want);
+        } else {
+            CHECK(memcmp(d, keep, 4) == 0, "blit leaves pixel %d alone", x);
+        }
+    }
+    CHECK(memcmp(base.rgba, keep, 16 * 3 * 4) == 0, "rows above untouched");
+    CHECK(dw3_mv_blit_frame(vram, (const int32_t *)sheet, len, 9, 0x280, 0,
+                            0x140, 0x100, &base, 0, 0) != 0, "bad frame");
+    memcpy(keep, base.rgba, sizeof(keep));
+    CHECK(dw3_mv_blit_frame(vram, (const int32_t *)sheet, len, 0, 0x280, 0,
+                            0x140, 0x100, &base, 500, -500) == 0, "clip");
+    CHECK(memcmp(base.rgba, keep, sizeof(keep)) == 0, "clipped blit is a no-op");
+    dw3_mv_image_free(&base);
+    free(vram);
+}
+
+static void test_hash(void) {
+    int a[8] = {1, 0, 171, 65, 2, 3, 60, 53};
+    int b[8] = {1, 0, 171, 65, 2, 3, 60, 54};
+    uint32_t ha = dw3_mv_hash(a, sizeof(a), 0), hb = dw3_mv_hash(b, sizeof(b), 0);
+
+    CHECK(ha != hb, "one coordinate changes the hash");
+    CHECK(ha == dw3_mv_hash(a, sizeof(a), 0), "stable");
+    CHECK(ha != 0, "non-zero");
+}
+
+static void test_smooth_zoom(void) {
+    MvView v;
+    float z, fit;
+    int i;
+
+    v.step = 1; v.zoom = 0.0f; v.cx = 196; v.cy = 176;
+    fit = dw3_mv_view_scale(0, 392, 352, 1280, 720) * 240.0f / 720.0f;
+    z = dw3_mv_view_cur_zoom(&v, 392, 352, 1280, 720);
+    CHECK(fabsf(z - 1.0f) < 1e-4f, "step 1 is zoom 1.0 (%f)", z);
+    dw3_mv_view_zoom_by(&v, 1.1f, 392, 352, 1280, 720);
+    z = dw3_mv_view_cur_zoom(&v, 392, 352, 1280, 720);
+    CHECK(fabsf(z - 1.1f) < 1e-4f && v.zoom > 0.0f && v.step == 1,
+          "smooth zoom 1.1 keeps a non-integer value (%f, step %d)", z, v.step);
+    dw3_mv_view_zoom(&v, 1, 392, 352, 1280, 720);
+    CHECK(v.zoom == 0.0f && v.step == 2, "button from 1.1 goes to 1.25 (step %d)",
+          v.step);
+    dw3_mv_view_zoom_by(&v, 1.1f, 392, 352, 1280, 720);
+    dw3_mv_view_zoom(&v, -1, 392, 352, 1280, 720);
+    CHECK(v.zoom == 0.0f && v.step == 2, "button from 1.375 goes down to 1.25 (step %d)",
+          v.step);
+    for (i = 0; i < 100; ++i) dw3_mv_view_zoom_by(&v, 1.2f, 392, 352, 1280, 720);
+    z = dw3_mv_view_cur_zoom(&v, 392, 352, 1280, 720);
+    CHECK(fabsf(z - 3.0f) < 1e-4f, "smooth zoom is capped at 3.0 (%f)", z);
+    for (i = 0; i < 100; ++i) dw3_mv_view_zoom_by(&v, 0.8f, 392, 352, 1280, 720);
+    CHECK(v.step == 0 && v.zoom == 0.0f, "smooth zoom out ends on FIT");
+    z = dw3_mv_view_cur_zoom(&v, 392, 352, 1280, 720);
+    CHECK(fabsf(z - fit) < 1e-4f, "FIT zoom %f vs %f", z, fit);
+}
+
 static void test_disc(void) {
     static uint8_t file[4096];
     uint16_t *vram = (uint16_t *)calloc((size_t)MV_VRAM_W * MV_VRAM_H, 2);
@@ -210,11 +300,12 @@ static void test_cache(const char *dir) {
     make_image(&a, 17, 9, 1);
     a.ox = 3;
     a.oy = -4;
+    a.reveal = 0xC0FFEE11u;
     dw3_mv_cache_name(path, sizeof(path), dir, "us", 1, MV_SCALER_FSR);
     CHECK(strstr(path, "map_us_h1_s3.rgba") != NULL, "cache name %s", path);
     CHECK(dw3_mv_cache_write(path, &a) == 0, "cache write");
     CHECK(dw3_mv_cache_read(path, &b) == 0, "cache read");
-    CHECK(b.w == 17 && b.h == 9 && b.ox == 3 && b.oy == -4 && b.rgba && memcmp(a.rgba, b.rgba, 17 * 9 * 4) == 0,
+    CHECK(b.w == 17 && b.h == 9 && b.ox == 3 && b.oy == -4 && b.reveal == 0xC0FFEE11u && b.rgba && memcmp(a.rgba, b.rgba, 17 * 9 * 4) == 0,
           "cache round trip");
     dw3_mv_image_free(&b);
     f = fopen(path, "wb");
@@ -280,6 +371,9 @@ int main(int argc, char **argv) {
     test_disc();
     test_scalers();
     test_view();
+    test_blit();
+    test_hash();
+    test_smooth_zoom();
     test_cache(argc > 1 ? argv[1] : "/mnt/cabal/tmp");
     if (!g_fail) printf("OK: map view core\n");
     return g_fail;

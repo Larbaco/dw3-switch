@@ -150,28 +150,18 @@ int dw3_mv_sheet_frame_box(const int32_t *sheet, size_t sheet_len, int frame,
 
 static uint8_t expand5(unsigned v) { return (uint8_t)((v * 255u + 15u) / 31u); }
 
-int dw3_mv_compose(const uint16_t *vram, const int32_t *sheet,
-                   size_t sheet_len, int frame, int tex_x, int tex_y,
-                   int alt_x, int alt_y, MvImage *out, MvBox *box_out) {
-    const uint8_t *b = (const uint8_t *)sheet;
-    size_t foff, poff;
-    MvBox box;
-    int count, row, i, w, h;
-    uint8_t *px;
+/* Draws every part of the frame at foff into px (w x h), the frame's origin
+ * landing on pixel (org_x, org_y). transparent: VRAM colour 0 is skipped (the
+ * PS1 sprite rule), as for the town and area cells over the map; 0 writes it
+ * (the map's own frame, which has no holes). The parts go in list order: the
+ * game submits them last to first, and a later primitive of one OT entry is
+ * drawn first, so the first part is the bottom one. */
+static void draw_frame(const uint16_t *vram, const uint8_t *b, size_t foff,
+                       size_t poff, int tex_x, int tex_y, int alt_x, int alt_y,
+                       int org_x, int org_y, uint8_t *px, int w, int h,
+                       int transparent) {
+    int count = rd16(b + foff), row = rd16(b + foff + 2), i;
 
-    out->rgba = NULL;
-    out->w = out->h = 0;
-    out->ox = out->oy = 0;
-    if (!vram || dw3_mv_sheet_frame_box(sheet, sheet_len, frame, &box) != 0)
-        return -1;
-    if (find_frame(b, sheet_len, frame, &foff, &poff) != 0) return -1;
-    w = box.x1 - box.x0;
-    h = box.y1 - box.y0;
-    if (w <= 0 || h <= 0 || w > 2048 || h > 2048) return -1;
-    px = (uint8_t *)calloc((size_t)w * (size_t)h, 4);
-    if (!px) return -1;
-    count = rd16(b + foff);
-    row = rd16(b + foff + 2);
     for (i = 0; i < count; ++i) {
         const uint8_t *p = b + foff + 6 + (size_t)i * 6;
         int pi = rd16(p), dx = rd16(p + 2), dy = rd16(p + 4);
@@ -191,11 +181,11 @@ int dw3_mv_compose(const uint16_t *vram, const int32_t *sheet,
         if (pal_x < 0 || pal_x >= MV_VRAM_W || pal_y < 0 || pal_y >= MV_VRAM_H)
             continue;
         for (y = 0; y < ph; ++y) {
-            int oy = dy + y - box.y0;
+            int oy = org_y + dy + y;
 
             if (oy < 0 || oy >= h) continue;
             for (x = 0; x < pw; ++x) {
-                int ox = dx + x - box.x0;
+                int ox = org_x + dx + x;
                 int sx = source_u + x;
                 int wx, wy, idx;
                 unsigned packed, color;
@@ -208,6 +198,7 @@ int dw3_mv_compose(const uint16_t *vram, const int32_t *sheet,
                 idx = (int)((packed >> ((sx & mask) * bits)) &
                             ((1u << bits) - 1u));
                 color = vram[pal_y * MV_VRAM_W + ((pal_x + idx) % MV_VRAM_W)];
+                if (transparent && (color & 0xffffu) == 0) continue;
                 d = px + ((size_t)oy * (size_t)w + (size_t)ox) * 4;
                 d[0] = expand5(color & 31u);
                 d[1] = expand5((color >> 5) & 31u);
@@ -216,6 +207,31 @@ int dw3_mv_compose(const uint16_t *vram, const int32_t *sheet,
             }
         }
     }
+}
+
+int dw3_mv_compose(const uint16_t *vram, const int32_t *sheet,
+                   size_t sheet_len, int frame, int tex_x, int tex_y,
+                   int alt_x, int alt_y, MvImage *out, MvBox *box_out) {
+    const uint8_t *b = (const uint8_t *)sheet;
+    size_t foff, poff;
+    MvBox box;
+    int i, w, h;
+    uint8_t *px;
+
+    out->rgba = NULL;
+    out->w = out->h = 0;
+    out->ox = out->oy = 0;
+    out->reveal = 0;
+    if (!vram || dw3_mv_sheet_frame_box(sheet, sheet_len, frame, &box) != 0)
+        return -1;
+    if (find_frame(b, sheet_len, frame, &foff, &poff) != 0) return -1;
+    w = box.x1 - box.x0;
+    h = box.y1 - box.y0;
+    if (w <= 0 || h <= 0 || w > 2048 || h > 2048) return -1;
+    px = (uint8_t *)calloc((size_t)w * (size_t)h, 4);
+    if (!px) return -1;
+    draw_frame(vram, b, foff, poff, tex_x, tex_y, alt_x, alt_y, -box.x0,
+               -box.y0, px, w, h, 0);
     /* Texels no part covers stay black but opaque. */
     for (i = 0; i < w * h; ++i) px[(size_t)i * 4 + 3] = 255;
     out->w = w;
@@ -225,6 +241,36 @@ int dw3_mv_compose(const uint16_t *vram, const int32_t *sheet,
     out->rgba = px;
     if (box_out) *box_out = box;
     return 0;
+}
+
+int dw3_mv_blit_frame(const uint16_t *vram, const int32_t *sheet,
+                      size_t sheet_len, int frame, int tex_x, int tex_y,
+                      int alt_x, int alt_y, MvImage *dst, int org_x,
+                      int org_y) {
+    const uint8_t *b = (const uint8_t *)sheet;
+    size_t foff, poff;
+    int count;
+
+    if (!vram || !dst || !dst->rgba) return -1;
+    if (find_frame(b, sheet_len, frame, &foff, &poff) != 0) return -1;
+    count = rd16(b + foff);
+    if (count <= 0 || count > 64 || foff + 6 + (size_t)count * 6 > sheet_len)
+        return -1;
+    draw_frame(vram, b, foff, poff, tex_x, tex_y, alt_x, alt_y, org_x, org_y,
+               dst->rgba, dst->w, dst->h, 1);
+    return 0;
+}
+
+uint32_t dw3_mv_hash(const void *data, size_t len, uint32_t seed) {
+    const uint8_t *p = (const uint8_t *)data;
+    uint32_t h = seed ? seed : 2166136261u;
+    size_t i;
+
+    for (i = 0; i < len; ++i) {
+        h ^= p[i];
+        h *= 16777619u;
+    }
+    return h;
 }
 
 /* --- disc ----------------------------------------------------------------*/
@@ -351,6 +397,7 @@ static int alloc_image(MvImage *img, int w, int h) {
     img->w = w;
     img->h = h;
     img->ox = img->oy = 0;
+    img->reveal = 0;
     if (!img->rgba) {
         img->w = img->h = 0;
         return -1;
@@ -624,6 +671,7 @@ int dw3_mv_scale(int scaler, const MvImage *src, MvImage *dst, double *ms) {
     dst->rgba = NULL;
     dst->w = dst->h = 0;
     dst->ox = dst->oy = 0;
+    dst->reveal = 0;
     switch (scaler) {
     case MV_SCALER_SHARP: rc = scale_sharp(src, dst); break;
     case MV_SCALER_LANCZOS2: rc = scale_lanczos(src, dst); break;
@@ -636,6 +684,7 @@ int dw3_mv_scale(int scaler, const MvImage *src, MvImage *dst, double *ms) {
     if (rc == 0) {
         dst->ox = src->ox * (dst->w / src->w);
         dst->oy = src->oy * (dst->h / src->h);
+        dst->reveal = src->reveal;
     }
     if (ms) *ms = now_ms() - t0;
     return rc;
@@ -656,8 +705,19 @@ float dw3_mv_view_scale(int step, int map_w, int map_h, int vw, int vh) {
     return sw < sh ? sw : sh;
 }
 
+float dw3_mv_view_cur_scale(const MvView *v, int map_w, int map_h, int vw,
+                            int vh) {
+    if (v->zoom > 0.0f) return v->zoom * (float)vh / 240.0f;
+    return dw3_mv_view_scale(v->step, map_w, map_h, vw, vh);
+}
+
+float dw3_mv_view_cur_zoom(const MvView *v, int map_w, int map_h, int vw,
+                           int vh) {
+    return dw3_mv_view_cur_scale(v, map_w, map_h, vw, vh) * 240.0f / (float)vh;
+}
+
 void dw3_mv_view_clamp(MvView *v, int map_w, int map_h, int vw, int vh) {
-    float s = dw3_mv_view_scale(v->step, map_w, map_h, vw, vh);
+    float s = dw3_mv_view_cur_scale(v, map_w, map_h, vw, vh);
     float hx = (float)vw * 0.5f / s, hy = (float)vh * 0.5f / s;
 
     if ((float)map_w <= 2.0f * hx) v->cx = (float)map_w * 0.5f;
@@ -667,17 +727,57 @@ void dw3_mv_view_clamp(MvView *v, int map_w, int map_h, int vw, int vh) {
 }
 
 void dw3_mv_view_zoom(MvView *v, int dir, int map_w, int map_h, int vw, int vh) {
-    int step = v->step + (dir < 0 ? -1 : 1);
+    int step;
 
+    if (v->zoom > 0.0f) {
+        /* off the table (the stick): the next table zoom in that direction */
+        float cur = dw3_mv_view_cur_zoom(v, map_w, map_h, vw, vh);
+        float fit = dw3_mv_view_scale(0, map_w, map_h, vw, vh) * 240.0f /
+                    (float)vh;
+        int i;
+
+        step = dir < 0 ? 0 : MV_ZOOM_STEPS - 1;
+        if (dir < 0) {
+            for (i = MV_ZOOM_STEPS - 1; i >= 1; --i)
+                if (MV_ZOOM_TABLE[i] < cur - 0.001f &&
+                    MV_ZOOM_TABLE[i] > fit + 0.001f) { step = i; break; }
+        } else {
+            for (i = 1; i < MV_ZOOM_STEPS; ++i)
+                if (MV_ZOOM_TABLE[i] > cur + 0.001f) { step = i; break; }
+        }
+        v->zoom = 0.0f;
+    } else {
+        step = v->step + (dir < 0 ? -1 : 1);
+    }
     if (step < 0) step = 0;
     if (step >= MV_ZOOM_STEPS) step = MV_ZOOM_STEPS - 1;
     v->step = step;
     dw3_mv_view_clamp(v, map_w, map_h, vw, vh);
 }
 
+void dw3_mv_view_zoom_by(MvView *v, float factor, int map_w, int map_h, int vw,
+                         int vh) {
+    float fit = dw3_mv_view_scale(0, map_w, map_h, vw, vh) * 240.0f / (float)vh;
+    float z = dw3_mv_view_cur_zoom(v, map_w, map_h, vw, vh) * factor;
+    int i, best = 1;
+
+    if (z > MV_ZOOM_TABLE[MV_ZOOM_STEPS - 1]) z = MV_ZOOM_TABLE[MV_ZOOM_STEPS - 1];
+    if (z <= fit + 0.0005f) {
+        v->step = 0;
+        v->zoom = 0.0f;
+    } else {
+        v->zoom = z;
+        for (i = 1; i < MV_ZOOM_STEPS; ++i)
+            if (fabsf(MV_ZOOM_TABLE[i] - z) < fabsf(MV_ZOOM_TABLE[best] - z))
+                best = i;
+        v->step = best;
+    }
+    dw3_mv_view_clamp(v, map_w, map_h, vw, vh);
+}
+
 void dw3_mv_view_rect(const MvView *v, int map_w, int map_h, int vw, int vh,
                       float *x0, float *y0, float *x1, float *y1) {
-    float s = dw3_mv_view_scale(v->step, map_w, map_h, vw, vh);
+    float s = dw3_mv_view_cur_scale(v, map_w, map_h, vw, vh);
 
     *x0 = (float)vw * 0.5f - v->cx * s;
     *y0 = (float)vh * 0.5f - v->cy * s;
@@ -688,11 +788,11 @@ void dw3_mv_view_rect(const MvView *v, int map_w, int map_h, int vw, int vh,
 /* --- cache ---------------------------------------------------------------*/
 
 #define MV_CACHE_MAGIC 0x4D335744u /* "DW3M" little-endian */
-#define MV_CACHE_VERSION 2u
+#define MV_CACHE_VERSION 3u
 
 int dw3_mv_cache_write(const char *path, const MvImage *img) {
     FILE *f;
-    uint32_t hdr[6];
+    uint32_t hdr[7];
     char tmp[600];
     size_t bytes;
     int ok;
@@ -707,6 +807,7 @@ int dw3_mv_cache_write(const char *path, const MvImage *img) {
     hdr[3] = (uint32_t)img->h;
     hdr[4] = (uint32_t)img->ox;
     hdr[5] = (uint32_t)img->oy;
+    hdr[6] = img->reveal;
     bytes = (size_t)img->w * (size_t)img->h * 4;
     ok = fwrite(hdr, sizeof(hdr), 1, f) == 1 &&
          fwrite(img->rgba, 1, bytes, f) == bytes;
@@ -720,12 +821,13 @@ int dw3_mv_cache_write(const char *path, const MvImage *img) {
 
 int dw3_mv_cache_read(const char *path, MvImage *img) {
     FILE *f = fopen(path, "rb");
-    uint32_t hdr[6];
+    uint32_t hdr[7];
     size_t bytes;
 
     img->rgba = NULL;
     img->w = img->h = 0;
     img->ox = img->oy = 0;
+    img->reveal = 0;
     if (!f) return -1;
     if (fread(hdr, sizeof(hdr), 1, f) != 1 || hdr[0] != MV_CACHE_MAGIC ||
         hdr[1] != MV_CACHE_VERSION || hdr[2] == 0 || hdr[3] == 0 ||
@@ -746,6 +848,7 @@ int dw3_mv_cache_read(const char *path, MvImage *img) {
     img->h = (int)hdr[3];
     img->ox = (int)hdr[4];
     img->oy = (int)hdr[5];
+    img->reveal = hdr[6];
     return 0;
 }
 

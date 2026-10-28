@@ -1,6 +1,7 @@
 /* P6.32 phase 0 spike: the new full-screen map screen. See map_view.h. */
 #include "engine/gfx.h"
 
+#include <math.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -38,7 +39,13 @@ typedef struct MapViewState {
     int show_hud;
     int built_ms;        /* last CPU build, -1 = from the cache, 0 = none */
     int source;          /* 0 vram, 1 cache, 2 disc */
-    MvImage base;        /* the captured map, kept while open */
+    MvImage base;        /* the map and its reveal layer, kept while open */
+    int pieces_in;       /* pieces the game sent */
+    int pieces_drawn;    /* pieces composed into base */
+    int towns_drawn, areas_drawn;
+    int zoom_src;        /* 0 none yet, 1 stick, 2 button */
+    unsigned zoom_stick_frames, zoom_button_presses;
+    uint32_t base_reveal_last;
     MvBox box;
     MvImage tex;         /* waiting for the host to take it */
     unsigned tex_gen;
@@ -57,6 +64,12 @@ static char g_cache_dir[480];
 /* The scaler the next open starts with: sharp bilinear (the design's default),
  * then whatever the player left it on. */
 static int g_scaler = MV_SCALER_SHARP;
+/* The right stick's vertical axis, -127..127, up positive, with the dead zone
+ * taken out; fed by the hosts every frame (dw3_map_view_set_zoom_stick). */
+static int g_zoom_stick;
+/* Smooth zoom speed at full tilt: octaves per second (1.0 to 3.0 is 1.58). */
+#define MV_STICK_OCTAVES_PER_S 1.5f
+#define MV_STICK_DEADZONE 20
 
 static double now_ms(void) {
     struct timespec ts;
@@ -83,6 +96,17 @@ static int map_view_available(void) {
 
 /* --- cache ---------------------------------------------------------------*/
 
+void dw3_map_view_set_zoom_stick(int raw_up) {
+    int a = raw_up < 0 ? -raw_up : raw_up;
+
+    if (a > 127) a = 127;
+    if (a < MV_STICK_DEADZONE) g_zoom_stick = 0;
+    else {
+        a = (a - MV_STICK_DEADZONE) * 127 / (127 - MV_STICK_DEADZONE);
+        g_zoom_stick = raw_up < 0 ? -a : a;
+    }
+}
+
 static void cache_path(char *out, size_t cap, int half, int scaler) {
     dw3_mv_cache_name(out, cap, g_cache_dir[0] ? g_cache_dir : NULL, MV_REGION,
                       half, scaler);
@@ -105,25 +129,70 @@ void dw3_map_view_init(const char *config_dir) {
 
 /* --- building the base map -------------------------------------------------*/
 
-static int base_from_vram(const void *sheet, int sheet_file) {
+/* The live VRAM (1024 x 512 halfwords), or NULL. */
+static uint16_t *capture_vram(void) {
     RECT rect;
     u_long *vram;
-    uint32_t len;
-    int rc;
 
     rect.x = 0;
     rect.y = 0;
     rect.w = MV_VRAM_W;
     rect.h = MV_VRAM_H;
     vram = (u_long *)calloc((size_t)MV_VRAM_W * MV_VRAM_H, 2);
-    if (!vram) return -1;
+    if (!vram) return NULL;
     Draw_StoreImage(&rect, vram);
-    len = cdfs_file_size((uint32_t)sheet_file);
+    return (uint16_t *)vram;
+}
+
+static uint32_t sheet_len(int sheet_file) {
+    uint32_t len = cdfs_file_size((uint32_t)sheet_file);
+
     if (len == (uint32_t)-1 || len > 0x10000) len = 0x1000;
-    rc = dw3_mv_compose((const uint16_t *)vram, (const int32_t *)sheet, len, 0,
-                        0x280, 0, 0x140, 0x100, &s.base, &s.box);
-    free(vram);
-    return rc;
+    return len;
+}
+
+static int base_from_vram(const uint16_t *vram, const void *sheet,
+                          int sheet_file) {
+    return dw3_mv_compose(vram, (const int32_t *)sheet, sheet_len(sheet_file), 0,
+                          0x280, 0, 0x140, 0x100, &s.base, &s.box);
+}
+
+/* The reveal layer: what STSTATUS_drawMapScreen draws over the dark map (the
+ * towns of the progress list, then the visited area cells), composed from the
+ * live VRAM with the same cells, palettes and positions as the game. The hash
+ * of the piece list is the cache key of the scaled images. Returns the
+ * number of pieces drawn. */
+static int compose_reveal(const uint16_t *vram, int sheet_file,
+                          const void *sheet1, const void *sheet2,
+                          const int *pieces, int npieces) {
+    uint32_t len = sheet_len(sheet_file);
+    int i, drawn = 0;
+
+    s.towns_drawn = s.areas_drawn = 0;
+    s.base.reveal = 0;
+    if (!vram || !pieces || npieces <= 0) return 0;
+    for (i = 0; i < npieces; ++i) {
+        int kind = pieces[i * 4], frame = pieces[i * 4 + 1];
+        int x = pieces[i * 4 + 2] - s.base.ox, y = pieces[i * 4 + 3] - s.base.oy;
+        const void *sheet = kind == 1 ? sheet1 : sheet2;
+        int rc;
+
+        if (!sheet) continue;
+        rc = dw3_mv_blit_frame(vram, (const int32_t *)sheet, len, frame,
+                               kind == 1 ? 0x380 : 0x300, 0x100, 0x140, 0x100,
+                               &s.base, x, y);
+        if (rc == 0) {
+            ++drawn;
+            if (kind == 1) ++s.towns_drawn;
+            else ++s.areas_drawn;
+        } else {
+            fprintf(stderr, "dw3-map: reveal piece kind %d frame %d at %d,%d "
+                    "not drawn\n", kind, frame, x, y);
+        }
+    }
+    s.base.reveal = dw3_mv_hash(pieces, (size_t)npieces * 4 * sizeof(int), 0);
+    if (s.base.reveal == 0) s.base.reveal = 1;
+    return drawn;
 }
 
 /* The same map built from the disc files; used for the cross-check and by the
@@ -198,14 +267,28 @@ static void build_texture(int scaler) {
         fprintf(stderr, "dw3-map: scaler %s built in %d ms (no cache, %dx%d)\n",
                 dw3_mv_scaler_name(scaler), s.built_ms, out.w, out.h);
     } else {
+        int stale = 0;
+
         cache_path(path, sizeof(path), s.half, scaler);
         if (g_cache_dir[0] && dw3_mv_cache_read(path, &out) == 0 &&
-            out.w == s.base.w * MV_SCALE && out.h == s.base.h * MV_SCALE) {
+            out.w == s.base.w * MV_SCALE && out.h == s.base.h * MV_SCALE &&
+            out.reveal == s.base.reveal) {
             s.built_ms = -1;
             fprintf(stderr, "dw3-map: scaler %s loaded from cache in %d ms "
-                    "(%dx%d, cache hit %s)\n", dw3_mv_scaler_name(scaler),
-                    (int)(now_ms() - t0), out.w, out.h, path);
+                    "(%dx%d, cache hit %s, reveal hash %08x)\n",
+                    dw3_mv_scaler_name(scaler), (int)(now_ms() - t0), out.w,
+                    out.h, path, (unsigned)out.reveal);
         } else {
+            /* a file made for other pieces (the bare map the precompute
+             * builds, or an older state of the player's exploration) is
+             * not shown: the picture would lack the reveal layer */
+            stale = out.rgba != NULL && out.w == s.base.w * MV_SCALE &&
+                    out.reveal != s.base.reveal;
+            if (stale) {
+                fprintf(stderr, "dw3-map: cache stale %s (reveal hash %08x, "
+                        "now %08x)\n", path, (unsigned)out.reveal,
+                        (unsigned)s.base.reveal);
+            }
             dw3_mv_image_free(&out);
             fprintf(stderr, "dw3-map: cache miss %s\n",
                     g_cache_dir[0] ? path : "(no cache folder)");
@@ -215,8 +298,9 @@ static void build_texture(int scaler) {
                 return;
             }
             s.built_ms = (int)(ms + 0.5);
-            fprintf(stderr, "dw3-map: scaler %s built in %d ms (%dx%d)\n",
-                    dw3_mv_scaler_name(scaler), s.built_ms, out.w, out.h);
+            fprintf(stderr, "dw3-map: scaler %s built in %d ms (%dx%d, reveal "
+                    "hash %08x)\n", dw3_mv_scaler_name(scaler), s.built_ms,
+                    out.w, out.h, (unsigned)out.reveal);
             if (g_cache_dir[0]) {
                 int wrc = dw3_mv_cache_write(path, &out);
 
@@ -282,12 +366,14 @@ static void to_hud(float ix, float iy, int *hx, int *hy) {
 static void hud_build(void) {
     char line[96];
     int i, hx, hy;
-    float zoom = MV_ZOOM_TABLE[s.view.step];
+    float zoom = dw3_mv_view_cur_zoom(&s.view, s.base.w, s.base.h, VW, VH);
 
     if (!s.hud) return;
     memset(s.hud, 0, (size_t)DW3_MV_HUD_W * DW3_MV_HUD_H * 4);
-    /* markers: visited spots (small crosses) and the current area (ring) */
-    for (i = 0; i < s.nspots; ++i) {
+    /* markers: the visited areas are cells of the reveal layer (in the image);
+     * only without it small crosses stand in for them. The current area is a
+     * ring */
+    for (i = 0; i < (s.areas_drawn > 0 ? 0 : s.nspots); ++i) {
         to_hud((float)s.spot_x[i], (float)s.spot_y[i], &hx, &hy);
         hud_rect(hx - 2, hy - 2, hx + 3, hy + 3, 0x101010E0u);
         hud_rect(hx - 1, hy - 1, hx + 2, hy + 2, 0xFFD040FFu);
@@ -303,7 +389,8 @@ static void hud_build(void) {
     }
     if (!s.show_hud) return;
     hud_rect(0, 0, DW3_MV_HUD_W, 38, 0x000000B0u);
-    if (s.view.step == 0) snprintf(line, sizeof(line), "MAP  ZOOM FIT");
+    if (s.view.step == 0 && s.view.zoom <= 0.0f)
+        snprintf(line, sizeof(line), "MAP  ZOOM FIT");
     else snprintf(line, sizeof(line), "MAP  ZOOM %.2fX", (double)zoom);
     hud_text(6, 4, line, 0xFFFFFFFFu);
     /* the build time is in the log, not on screen: it varies per run and
@@ -313,7 +400,7 @@ static void hud_build(void) {
     hud_text(6, 16, line, 0xFFE070FFu);
     hud_rect(0, DW3_MV_HUD_H - 16, DW3_MV_HUD_W, DW3_MV_HUD_H, 0x000000B0u);
     hud_text(6, DW3_MV_HUD_H - 12,
-             "L1/R1 ZOOM  PAD PAN  L2/R2 SCALER  CIRCLE HUD  TRIANGLE BACK",
+             "R-STICK/L1/R1 ZOOM  PAD PAN  L2/R2 SCALER  CIRCLE HUD  TRIANGLE BACK",
              0xC0FFC0FFu);
 }
 
@@ -325,31 +412,52 @@ static void hud_touch(void) {
 /* --- open / tick / close ---------------------------------------------------*/
 
 static void close_view(void) {
+    s.base_reveal_last = s.base.reveal;
     dw3_mv_image_free(&s.base);
     dw3_mv_image_free(&s.tex);
     free(s.hud);
     s.hud = NULL;
     s.active = 0;
     ++s.tex_gen; /* the host drops its texture after a few idle frames */
-    fprintf(stderr, "dw3-map: close after %u frames\n", s.frame);
+    fprintf(stderr, "dw3-map: close after %u frames (zoom: %u stick frames, %u "
+            "button presses, last source %s; reveal hash %08x)\n", s.frame,
+            s.zoom_stick_frames, s.zoom_button_presses,
+            s.zoom_src == 1 ? "stick" : s.zoom_src == 2 ? "button" : "none",
+            (unsigned)s.base_reveal_last);
 }
 
 static void open_view(const void *sheet, int sheet_file, int half, int home_x,
                       int home_y, const int *visited, const int *spot_x,
-                      const int *spot_y) {
+                      const int *spot_y, const void *sheet1,
+                      const void *sheet2, const int *pieces, int npieces) {
     char path[600];
     double t0 = now_ms();
+    uint16_t *vram = NULL;
     int i;
 
     memset(&s.base, 0, sizeof(s.base));
     memset(&s.tex, 0, sizeof(s.tex));
     s.half = half;
     s.source = 0;
+    s.pieces_in = npieces;
+    s.pieces_drawn = s.towns_drawn = s.areas_drawn = 0;
+    s.zoom_src = 0;
+    s.zoom_stick_frames = s.zoom_button_presses = 0;
     if (g_cache_dir[0]) {
         cache_path(path, sizeof(path), half, MV_SCALER_NEAREST);
         if (dw3_mv_cache_read(path, &s.base) == 0) s.source = 1;
         fprintf(stderr, "dw3-map: base image cache %s: %s\n",
                 s.source == 1 ? "hit" : "miss", path);
+    }
+    /* the live VRAM: the base when the cache has none, and always the cells of
+     * the reveal layer (the towns and the visited areas the game shows) */
+    if (s.source == 0 || npieces > 0 || getenv("DW3_MAP_VERIFY")) {
+        vram = capture_vram();
+        if (!vram) {
+            fprintf(stderr, "dw3-map: VRAM capture failed (out of memory)\n");
+            dw3_mv_image_free(&s.base);
+            return;
+        }
     }
     if (s.source == 0 || getenv("DW3_MAP_VERIFY")) {
         MvImage live;
@@ -357,6 +465,7 @@ static void open_view(const void *sheet, int sheet_file, int half, int home_x,
 
         live.rgba = NULL;
         live.w = live.h = 0;
+        live.reveal = 0;
         fprintf(stderr, "dw3-map: open half=%d region=%s: sheet file 0x%x "
                 "size=%u, image file 0x%x size=%u; base from %s\n", half,
                 MV_REGION, (unsigned)sheet_file,
@@ -369,7 +478,7 @@ static void open_view(const void *sheet, int sheet_file, int half, int home_x,
             MvImage cached = s.base;
 
             memset(&s.base, 0, sizeof(s.base));
-            rc = base_from_vram(sheet, sheet_file);
+            rc = base_from_vram(vram, sheet, sheet_file);
             live = s.base;
             s.base = cached;
             fprintf(stderr, "dw3-map: verify cache vs vram: %d differing bytes "
@@ -377,12 +486,13 @@ static void open_view(const void *sheet, int sheet_file, int half, int home_x,
                     cached.w, cached.h, live.w, live.h);
             dw3_mv_image_free(&live);
         } else {
-            int rc = base_from_vram(sheet, sheet_file);
+            int rc = base_from_vram(vram, sheet, sheet_file);
 
             fprintf(stderr, "dw3-map: compose from vram rc=%d image=%dx%d\n",
                     rc, s.base.w, s.base.h);
             if (rc != 0) {
                 fprintf(stderr, "dw3-map: capture failed, screen not opened\n");
+                free(vram);
                 return;
             }
             if (getenv("DW3_MAP_VERIFY")) {
@@ -401,6 +511,7 @@ static void open_view(const void *sheet, int sheet_file, int half, int home_x,
                 dw3_mv_image_free(&disc);
             }
             if (g_cache_dir[0]) {
+                /* the bare map only: the reveal layer is added below, per open */
                 cache_path(path, sizeof(path), half, MV_SCALER_NEAREST);
                 dw3_mv_cache_write(path, &s.base);
             }
@@ -408,8 +519,17 @@ static void open_view(const void *sheet, int sheet_file, int half, int home_x,
     }
     if (!s.base.rgba) {
         fprintf(stderr, "dw3-map: no base image, screen not opened\n");
+        free(vram);
         return;
     }
+    s.pieces_drawn = compose_reveal(vram, sheet_file, sheet1, sheet2, pieces,
+                                    npieces);
+    free(vram);
+    fprintf(stderr, "dw3-map: reveal layer: %d pieces from the game (%d towns "
+            "+ %d visited areas drawn), %d drawn, hash %08x%s\n", npieces,
+            s.towns_drawn, s.areas_drawn, s.pieces_drawn,
+            (unsigned)s.base.reveal,
+            npieces > 0 && s.pieces_drawn == 0 ? " (NOTHING DRAWN)" : "");
     s.box.x0 = s.base.ox;
     s.box.y0 = s.base.oy;
     if (getenv("DW3_MAP_VERIFY")) {
@@ -445,6 +565,7 @@ static void open_view(const void *sheet, int sheet_file, int half, int home_x,
     s.frame = 0;
     s.hud = (uint8_t *)calloc((size_t)DW3_MV_HUD_W * DW3_MV_HUD_H, 4);
     s.view.step = 1;
+    s.view.zoom = 0.0f;
     s.view.cx = (float)s.home_x;
     s.view.cy = (float)s.home_y;
     dw3_mv_view_clamp(&s.view, s.base.w, s.base.h, VW, VH);
@@ -462,9 +583,11 @@ int dw3_port_map_view_active(void) { return s.active; }
 int dw3_port_map_view_frame(const void *sheet, int sheet_file, int half,
                             int home_x, int home_y, const int *visited,
                             const int *spot_x, const int *spot_y,
-                            unsigned held, unsigned pressed) {
+                            unsigned held, unsigned pressed, const void *sheet1,
+                            const void *sheet2, const int *pieces,
+                            int npieces) {
     float step;
-    int moved = 0;
+    int moved = 0, zoomed = 0;
 
 #define BIT(b) (1u << (b))
     if (!s.active) {
@@ -477,7 +600,7 @@ int dw3_port_map_view_frame(const void *sheet, int sheet_file, int half,
             return 0;
         }
         open_view(sheet, sheet_file, half, home_x, home_y, visited, spot_x,
-                  spot_y);
+                  spot_y, sheet1, sheet2, pieces, npieces);
         return s.active;
     }
     ++s.frame;
@@ -487,20 +610,41 @@ int dw3_port_map_view_frame(const void *sheet, int sheet_file, int half,
     }
     if (pressed & BIT(DW3_MV_PAD_L1)) {
         dw3_mv_view_zoom(&s.view, -1, s.base.w, s.base.h, VW, VH);
-        moved = 1;
+        moved = zoomed = 1;
     }
     if (pressed & BIT(DW3_MV_PAD_R1)) {
         dw3_mv_view_zoom(&s.view, 1, s.base.w, s.base.h, VW, VH);
-        moved = 1;
+        moved = zoomed = 1;
     }
-    if (moved) {
+    if (zoomed) {
+        ++s.zoom_button_presses;
+        s.zoom_src = 2;
+    }
+    if (g_zoom_stick != 0) {
+        /* the right stick: up zooms in, down zooms out, smoothly (no steps) */
+        float f = powf(2.0f, (float)g_zoom_stick / 127.0f *
+                       MV_STICK_OCTAVES_PER_S / 60.0f);
+
+        dw3_mv_view_zoom_by(&s.view, f, s.base.w, s.base.h, VW, VH);
+        if (s.zoom_src != 1 || (s.zoom_stick_frames % 30u) == 0u) {
+            fprintf(stderr, "dw3-map: zoom source=stick (axis %d) zoom %.3f "
+                    "centre %.1f,%.1f\n", g_zoom_stick,
+                    (double)dw3_mv_view_cur_zoom(&s.view, s.base.w, s.base.h,
+                                                 VW, VH),
+                    (double)s.view.cx, (double)s.view.cy);
+        }
+        s.zoom_src = 1;
+        ++s.zoom_stick_frames;
+        moved = zoomed = 1;
+    }
+    if (pressed & (BIT(DW3_MV_PAD_L1) | BIT(DW3_MV_PAD_R1))) {
         float rx0, ry0, rx1, ry1;
 
         dw3_mv_view_rect(&s.view, s.base.w, s.base.h, VW, VH, &rx0, &ry0, &rx1,
                          &ry1);
-        fprintf(stderr, "dw3-map: zoom step %d (%s) centre %.1f,%.1f draw rect "
-                "%.0f,%.0f-%.0f,%.0f of %dx%d\n", s.view.step,
-                s.view.step == 0 ? "fit" : "x", (double)s.view.cx,
+        fprintf(stderr, "dw3-map: zoom source=button step %d (%s) centre "
+                "%.1f,%.1f draw rect %.0f,%.0f-%.0f,%.0f of %dx%d\n",
+                s.view.step, s.view.step == 0 ? "fit" : "x", (double)s.view.cx,
                 (double)s.view.cy, (double)rx0, (double)ry0, (double)rx1,
                 (double)ry1, VW, VH);
     }
@@ -515,7 +659,7 @@ int dw3_port_map_view_frame(const void *sheet, int sheet_file, int half,
         moved = 1;
     }
     /* pan: a constant speed on screen, 150 px/s at the 720 line */
-    step = 2.5f * 3.0f / dw3_mv_view_scale(s.view.step, s.base.w, s.base.h, VW, VH);
+    step = 2.5f * 3.0f / dw3_mv_view_cur_scale(&s.view, s.base.w, s.base.h, VW, VH);
     if (held & BIT(DW3_MV_PAD_LEFT)) { s.view.cx -= step; moved = 1; }
     if (held & BIT(DW3_MV_PAD_RIGHT)) { s.view.cx += step; moved = 1; }
     if (held & BIT(DW3_MV_PAD_UP)) { s.view.cy -= step; moved = 1; }
