@@ -42,6 +42,7 @@
 #include <string.h>
 
 #include <GLES3/gl3.h>
+#include <switch.h>
 
 /* Per-update timing for nxlink and HUD builds only; the release image does
  * not read the clock and does not log from this path. */
@@ -123,7 +124,14 @@ static int s_options_cache_failed_logged;
 static int s_options_cache_warm;
 /* Both window layouts are composed (dw3_options_cache_prewarm_tick). */
 static int s_options_prewarmed;
-static unsigned s_prewarm_generation = ~0u;
+static int s_prewarm_failed;
+static int s_prewarm_thread_live;
+static Thread s_prewarm_thread;
+
+static void options_prewarm_entry(void *arg) {
+    (void)arg;
+    dw3_options_cache_prewarm_worker();
+}
 /* Port options screen opacity, 0..255. */
 static int s_options_alpha;
 /* The screen on view (or fading out) was opened in game (P38). */
@@ -592,22 +600,30 @@ static void draw_layers(int vx, int vy, int vw, int vh) {
                ++s_dialog_idle == TEXTURE_IDLE_FRAMES) {
         release_dialog_texture();
     }
-    if (s_prewarm_generation != dw3_pc_title_overlay_generation()) {
-        /* EU language / labels changed: the composed layers are stale. */
-        s_prewarm_generation = dw3_pc_title_overlay_generation();
-        s_options_prewarmed = 0;
-    }
-    if (!options_open && !s_options_alpha && !s_options_prewarmed) {
-        /* Compose the window layers a band of rows per frame while the screen
-         * is closed (title layout, then the in-game one), so no frame has to
-         * raster them when the owner opens Options. */
-        s_options_prewarmed =
-            dw3_options_cache_prewarm_tick(dw3_port_options_locked_mask_for(1));
-        if (s_options_prewarmed) {
-            TITLE_LOG("dw3-title-overlay: options window layers composed "
-                      "ahead of the first open");
+    if (!s_prewarm_failed && !options_open && !s_options_alpha) {
+        /* Compose the window layers (title layout, then the in-game one) on a
+         * low-priority thread on core 2, like the map precompute, while the
+         * screen is closed: the frame thread never rasters them. */
+        if (dw3_options_cache_prewarm_begin(dw3_port_options_locked_mask_for(1))) {
+            if (s_prewarm_thread_live) {
+                threadWaitForExit(&s_prewarm_thread);
+                threadClose(&s_prewarm_thread);
+                s_prewarm_thread_live = 0;
+            }
+            if (R_FAILED(threadCreate(&s_prewarm_thread, options_prewarm_entry,
+                                      NULL, NULL, 0x20000, 0x3B, 2)) ||
+                R_FAILED(threadStart(&s_prewarm_thread))) {
+                TITLE_LOG("dw3-title-overlay: options prewarm thread not "
+                          "started; opens compose on the frame thread");
+                dw3_options_cache_prewarm_cancel();
+                s_prewarm_failed = 1;
+            } else {
+                s_prewarm_thread_live = 1;
+            }
         }
     }
+    s_options_prewarmed =
+        dw3_options_cache_layers_ready(dw3_port_options_locked_mask_for(1));
     if (!title_visible && !dialog) {
         /* Nothing is shown (restart, mode change): drop the retained canvases. */
         release_options_cache();

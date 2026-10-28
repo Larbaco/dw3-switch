@@ -8,7 +8,13 @@
 #include "port_screen_fade.h"
 #include "title_options_cache.h"
 
+#include <pthread.h>
 #include <stddef.h>
+#if defined(__linux__)
+#include <sys/resource.h>
+#include <sys/syscall.h>
+#include <unistd.h>
+#endif
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -1094,19 +1100,30 @@ int dw3_pc_overlay_gpu_ctx(Dw3PcOverlayGpu *ctx) {
     return 1;
 }
 
-static void overlay_frame(void) {
-    /* Compose the options window layers (title and in-game layouts) a band
-     * per frame while the screen is closed, so opening it never rasters. */
-    static int prewarmed;
-    static unsigned prewarm_generation = ~0u;
+static void *options_prewarm_thread(void *arg) {
+    (void)arg;
+#if defined(__linux__)
+    (void)setpriority(PRIO_PROCESS, (id_t)syscall(SYS_gettid), 19);
+#endif
+    dw3_options_cache_prewarm_worker();
+    return NULL;
+}
 
-    if (prewarm_generation != dw3_pc_title_overlay_generation()) {
-        prewarm_generation = dw3_pc_title_overlay_generation();
-        prewarmed = 0;
-    }
-    if (!prewarmed && !dw3_port_options_is_open()) {
-        prewarmed = dw3_options_cache_prewarm_tick(
-            dw3_port_options_locked_mask_for(1));
+static void overlay_frame(void) {
+    /* Compose the options window layers (title and in-game layouts) on a
+     * low-priority worker thread while the screen is closed, so opening it
+     * never rasters on the frame thread (title_options_cache.h). */
+    static int worker_failed;
+
+    if (!worker_failed && !dw3_port_options_is_open() &&
+        dw3_options_cache_prewarm_begin(dw3_port_options_locked_mask_for(1))) {
+        pthread_t thread;
+        if (pthread_create(&thread, NULL, options_prewarm_thread, NULL) == 0) {
+            pthread_detach(thread);
+        } else {
+            dw3_options_cache_prewarm_cancel();
+            worker_failed = 1;
+        }
     }
     set_three_x_presentation_size();
     dw3_pc_map_view_prepare();

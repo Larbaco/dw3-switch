@@ -54,14 +54,20 @@ void dw3_options_cache_invalidate(void);
  * layers of the title and in-game layouts stay, so reopening is a copy. */
 void dw3_options_cache_idle(void);
 
-/* Draw one band of the static layer for a layout the screen has not been
- * opened with yet (call once per frame while it is closed). Returns 1 when
- * that layout is complete. page 0 = the Options page. */
-int dw3_options_cache_prewarm(unsigned locked, int page, int cheats_on);
-/* Prewarm the title layout, then the in-game one (in_game_locked is the
- * locked-row mask the screen opens with in game). Returns 1 when both are
- * done, after which the call costs nothing. */
-int dw3_options_cache_prewarm_tick(unsigned in_game_locked);
+/* Composing the static layers ahead of time, off the frame thread. Every
+ * frame the host calls prewarm_begin(in_game_locked) (cheap: a locked table
+ * lookup); when it returns 1 the host starts a low-priority worker thread
+ * that runs dw3_options_cache_prewarm_worker() to the end (title layout, then
+ * the in-game one with that locked-row mask) and logs `dw3-port-options:
+ * prewarm <layout> ready in N ms (worker)`. If the thread cannot be started
+ * the host calls prewarm_cancel() and never asks again; the open then
+ * composes synchronously, as before. Pixels are the same as a synchronous
+ * compose (the worker draws with thread-local state only). */
+/* 1 when both layers are composed (an open is then a copy). */
+int dw3_options_cache_layers_ready(unsigned in_game_locked);
+int dw3_options_cache_prewarm_begin(unsigned in_game_locked);
+void dw3_options_cache_prewarm_cancel(void);
+void dw3_options_cache_prewarm_worker(void);
 
 /* Free the canvas and every retained layer (teardown, language change). */
 void dw3_options_cache_release(void);

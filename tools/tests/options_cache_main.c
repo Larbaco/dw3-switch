@@ -5,6 +5,7 @@
 #include "../../platforms/pc/src/title_options_cache.h"
 #include "../../platforms/pc/src/title_overlay_art.h"
 
+#include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -18,6 +19,12 @@ static uint8_t *g_pack;
 static int g_failures;
 static unsigned g_rng = 12345u;
 static size_t g_max_cursor_bytes, g_max_value_bytes;
+
+static void *worker_main(void *arg) {
+    (void)arg;
+    dw3_options_cache_prewarm_worker();
+    return NULL;
+}
 
 static unsigned rnd(unsigned n) {
     g_rng = g_rng * 1664525u + 1013904223u;
@@ -225,12 +232,27 @@ int main(void) {
          * equal the reference render of that layout. */
         {
             static const unsigned game_mask = 1u | (1u << 16);
-            int bands = 0;
+            double t0;
             dw3_pc_title_overlay_set_options_locked(0);
             dw3_options_cache_idle();
             if (dw3_options_cache_pixels() != NULL) fail("pixels survive idle", lang, 0, v);
-            while (!dw3_options_cache_prewarm_tick(game_mask) && bands < 200) bands++;
-            if (bands < 20 || bands >= 200) fail("prewarm is not banded", lang, bands, v);
+            if (!dw3_options_cache_prewarm_begin(game_mask)) fail("prewarm not needed after a language change", lang, 0, v);
+            if (dw3_options_cache_prewarm_begin(game_mask)) fail("second worker started", lang, 0, v);
+            /* The worker thread composes while this thread keeps updating
+             * the live view: neither may disturb the other's pixels. */
+            {
+                pthread_t th;
+                pthread_create(&th, NULL, worker_main, NULL);
+                t0 = 0;
+                for (int i = 0; i < 40; ++i) {
+                    v[3] = i % 11;
+                    step(lang, i % DW3_TITLE_OPTION_ROWS, v, 1, &d);
+                    t0 += 1;
+                }
+                pthread_join(th, NULL);
+            }
+            if (dw3_options_cache_prewarm_begin(game_mask)) fail("layers not complete after the worker", lang, 0, v);
+            dw3_options_cache_idle();
             step(lang, 0, v, 1, &d);
             if (!d.cached || d.rebuilt || !d.full) fail("open after prewarm was not a cached copy", lang, 0, v);
             dw3_options_cache_idle();
