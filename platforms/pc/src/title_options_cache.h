@@ -33,6 +33,9 @@ typedef struct Dw3OptionsDirty {
     /* The static layer came from the retained copy (no raster this call):
      * still a full upload. */
     int cached;
+    /* A group's layer was made over the shared sub-screen layer (a copy, a
+     * header, a few plaques and labels), not rasterized from nothing. */
+    int based;
     size_t bytes;
 } Dw3OptionsDirty;
 

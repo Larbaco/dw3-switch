@@ -143,7 +143,10 @@ int main(void) {
             list_page(g, 0, 0);
             for (int k = 0; k < DW3_TITLE_OPTION_ROWS; ++k) v[k] = 0;
             step(lang, 0, v, 1, &d);
-            if (!d.full || !(d.rebuilt || d.cached)) fail("group page did not rebuild", lang, g, v);
+            if (!d.full || !(d.rebuilt || d.cached || d.based)) fail("group page did not rebuild", lang, g, v);
+            /* P9.9 slice 3: the first group may have to compose the shared
+             * layer; every other group is made over it (never a raster). */
+            if (g > 0 && !(d.based || d.cached)) fail("group open was a full raster", lang, g, v);
             for (int c = 0; c < grp->nrows && (lang == DW3_TITLE_LANG_EN || lang == DW3_TITLE_LANG_DE); ++c)
                 for (int k = 0; k < grp->nrows; ++k)
                     for (int n = 0; n <= reg_max(grp->rows[k]); ++n) {
@@ -223,7 +226,7 @@ int main(void) {
          * rects (the labels and arrows are drawn per update). */
         dw3_pc_title_overlay_set_options_page(DW3_TITLE_OPTIONS_PAGE_OPTIONS, 1);
         step(lang, 0, v, 1, &d);
-        if (!d.full || !(d.rebuilt || d.cached)) fail("Cheats group did not rebuild", lang, 0, v);
+        if (!d.full || !(d.rebuilt || d.cached || d.based)) fail("Cheats group did not rebuild", lang, 0, v);
         {
             static const int top[DW3_CHEAT_ROWS_T] = {1, 1, 1, 1, 7, 3, 13, 359, 99, 1};
             static const int low[DW3_CHEAT_ROWS_T] = {0, 0, 0, 0, 0, 0, 0, 43, 1, 0};
@@ -233,12 +236,13 @@ int main(void) {
                 step(lang, 0, v, 1, &d);
                 list_page(DW3_OPTGRP_CHEATS, 0, master);
                 step(lang, 0, cv, 1, &d);
-                if (!d.full || !(d.rebuilt || d.cached)) fail("cheats page did not rebuild", lang, 0, cv);
+                if (!d.full || !(d.rebuilt || d.cached || d.based)) fail("cheats page did not rebuild", lang, 0, cv);
+                if (d.rebuilt) fail("opening the Cheats group must be made over the shared layer", lang, 0, cv);
                 for (int sc = 0; sc <= 4; ++sc) {
                     list_page(DW3_OPTGRP_CHEATS, sc, master);
                     step(lang, sc, cv, 1, &d);
                     steps++;
-                    if (d.rebuilt || d.cached || d.full || d.count > DW3_OPTIONS_MAX_DIRTY)
+                    if (d.rebuilt || d.cached || d.based || d.full || d.count > DW3_OPTIONS_MAX_DIRTY)
                         fail("a scroll step must be a dirty-row update", lang, sc, cv);
                     /* Every cursor on screen for two languages, one for the rest. */
                     for (int c = sc; c <= sc + 5; ++c) {
@@ -265,7 +269,7 @@ int main(void) {
                     mv[0] = !master;
                     step(lang, sc, mv, 1, &d);
                     steps++;
-                    if (d.rebuilt || d.cached || d.full || d.count < 1)
+                    if (d.rebuilt || d.cached || d.based || d.full || d.count < 1)
                         fail("the master switch must be a dirty-row update", lang, sc, mv);
                 }
             }
@@ -312,6 +316,21 @@ int main(void) {
             dw3_pc_title_overlay_set_options_locked(0);
             step(lang, 0, v, 1, &d);
             if (!d.cached) fail("title reopen was not cached", lang, 0, v);
+            /* After the prewarm every group opens over the shared layer of its
+             * layout, at the title and in game: no raster on the open. */
+            for (int ingame = 0; ingame < 2; ++ingame) {
+                for (int g = 0; g < 4; ++g) {
+                    dw3_options_cache_idle();
+                    dw3_pc_title_overlay_set_options_locked(ingame ? game_mask : 0);
+                    list_page(g, 0, 0);
+                    step(lang, 0, v, 1, &d);
+                    if (!(d.based || d.cached) || d.rebuilt)
+                        fail("group open after the prewarm was a raster", lang, g, v);
+                }
+            }
+            list_page(-1, 0, 0);
+            dw3_pc_title_overlay_set_options_locked(0);
+            step(lang, 0, v, 1, &d);
             /* A language change makes the layers stale. */
             dw3_options_cache_idle();
         }

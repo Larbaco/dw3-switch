@@ -97,6 +97,15 @@ unsigned dw3_pc_title_overlay_options_layout(void);
  * draw the layout a menu will open with before it is open. */
 void dw3_pc_title_overlay_options_static_band(uint8_t *rgba, int pitch,
         unsigned locked, int page, int cheats_on, int y, int h);
+/* The same layer in two parts (page SUB_BASE: the part shared by every group,
+ * page = a group page: part 1 shared, part 2 the group's own, over a canvas that
+ * holds the shared part; clear = 0 keeps the canvas). A group's layer is then a
+ * copy of the shared layer plus a header, a few plaques and labels, not a raster
+ * of the whole screen. */
+void dw3_pc_title_overlay_options_static_part(uint8_t *rgba, int pitch,
+        unsigned locked, int page, int cheats_on, int part, int y, int h, int clear);
+/* 1 when `page` is a group's sub-screen (not the group list). */
+int dw3_pc_title_overlay_options_is_group_page(int page);
 /* Live page / cheats switch. */
 int dw3_pc_title_overlay_options_cheats_on(void);
 int dw3_pc_title_overlay_options_page(void);
@@ -119,7 +128,9 @@ int dw3_pc_title_overlay_options_value(int row);
  * on screen) and the values are those of the group's rows in screen order (a
  * group list ignores them). A change rebuilds the retained static layer, except
  * the master switch on the Cheats sub-screen, which is a dirty-row update. */
-enum { DW3_TITLE_OPTIONS_PAGE_OPTIONS = 0 };
+enum { DW3_TITLE_OPTIONS_PAGE_OPTIONS = 0,
+       /* Never shown: the cache's layer shared by every group sub-screen. */
+       DW3_TITLE_OPTIONS_PAGE_SUB_BASE = 1 };
 enum { DW3_TITLE_CHEAT_WARPS = 13 };
 void dw3_pc_title_overlay_set_options_page(int page, int cheats_on);
 /* Layout of a page for the retained cache. kind: the rectangle of a plaque

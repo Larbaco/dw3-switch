@@ -936,10 +936,10 @@ static int refresh_art_cached(void) {
         const Uint64 composed = SDL_GetTicksNS();
         if (upload_options_dirty(&dirty) != 0) return -1;
         /* Same line as the Switch overlay (the OLED test plan, B15). */
-        if (dirty.rebuilt || dirty.cached || dirty.full) {
+        if (dirty.rebuilt || dirty.cached || dirty.based || dirty.full) {
             fprintf(stderr, "dw3-title-overlay: options update %s rects=%d "
                     "bytes=%u compose=%u us upload=%u us\n",
-                    dirty.rebuilt ? "rebuild" : dirty.cached ? "cached" : "full",
+                    dirty.rebuilt ? "rebuild" : dirty.based ? "group-over-base" : dirty.cached ? "cached" : "full",
                     dirty.count, (unsigned)dirty.bytes,
                     (unsigned)((composed - wall0) / 1000),
                     (unsigned)((SDL_GetTicksNS() - composed) / 1000));

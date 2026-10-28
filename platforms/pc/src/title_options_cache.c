@@ -20,10 +20,13 @@
  * They are composed ahead of time by a low-priority worker thread (the host
  * starts it: dw3_options_cache_prewarm_begin / _worker), never on the frame
  * that needs them unless the worker has not finished (then the open composes
- * synchronously, as before). Four slots: the group list at the title and in game,
- * the sub-screen being shown, and one to compose the next. The slot table is guarded by a spin lock held for a few
+ * synchronously, as before). Six slots (P9.9 slice 3): the group list at the title and in
+ * game, the layer shared by every sub-screen at the title and in game (page
+ * DW3_TITLE_OPTIONS_PAGE_SUB_BASE), the sub-screen being shown, and one to
+ * compose the next. Opening a group copies the shared layer and draws only the
+ * header, plaques and labels over it. The slot table is guarded by a spin lock held for a few
  * instructions; the pixels are drawn outside it. */
-enum { SLOTS = 4, BAND_ROWS = 48 };
+enum { SLOTS = 6, BAND_ROWS = 48 };
 enum { S_EMPTY, S_COMPLETE, S_WORKER, S_MAIN };
 typedef struct StaticSlot {
     uint8_t *px;
@@ -168,18 +171,30 @@ static StaticSlot *claim_slot(int state, unsigned art, unsigned locked,
     StaticSlot *victim = NULL;
     const size_t bytes = (size_t)DW3_OPTIONS_CANVAS_PITCH * DW3_OPTIONS_CANVAS_H;
 
+    /* The shared sub-screen layers and the group lists are evicted last. */
+    for (int pass = 0; pass < 2 && !victim; ++pass)
     for (int i = 0; i < SLOTS; ++i) {
         StaticSlot *s = &g_slots[i];
         if (s->state == S_WORKER || s->state == S_MAIN) continue;
         if (s->px && s->px == g_static) continue;
+        if (pass == 0 && s->state == S_COMPLETE &&
+            (s->page == DW3_TITLE_OPTIONS_PAGE_SUB_BASE || s->page == 0))
+            continue;
         if (!victim || s->state == S_EMPTY ||
             (victim->state != S_EMPTY && s->stamp < victim->stamp))
             victim = s;
         if (s->state == S_EMPTY) break;
     }
     if (!victim) return NULL;
-    if (!victim->px) victim->px = (uint8_t *)malloc(bytes);
-    if (!victim->px) return NULL;
+    if (!victim->px) {
+        int held = 0;
+        victim->px = (uint8_t *)malloc(bytes);
+        if (!victim->px) return NULL;
+        for (int i = 0; i < SLOTS; ++i) held += g_slots[i].px != NULL;
+        fprintf(stderr, "dw3-port-options: options layer slot %d allocated "
+                "(%d of %d, %.1f MB held)\n", (int)(victim - g_slots) + 1, held,
+                SLOTS, (double)held * (double)bytes / 1048576.0);
+    }
     victim->state = state;
     victim->art_generation = art;
     victim->locked = locked;
@@ -203,6 +218,40 @@ static int slot_compose(StaticSlot *s, int check_generation) {
     return 1;
 }
 
+/* Compose a group's static layer over the shared sub-screen layer (composed
+ * first when it is missing). Returns 1 when the shared layer had to be
+ * rasterized here. */
+static int slot_compose_over_base(StaticSlot *s) {
+    const size_t bytes = (size_t)DW3_OPTIONS_CANVAS_PITCH * DW3_OPTIONS_CANVAS_H;
+    const unsigned art = s->art_generation;
+    const unsigned base_key = s->locked & (1u << 31);
+    StaticSlot *base;
+    int raster = 0;
+
+    tbl_lock();
+    base = find_complete(art, base_key, DW3_TITLE_OPTIONS_PAGE_SUB_BASE, 0);
+    if (!base) base = claim_slot(S_MAIN, art, base_key,
+                                 DW3_TITLE_OPTIONS_PAGE_SUB_BASE, 0);
+    else base->stamp = ++g_stamp;
+    tbl_unlock();
+    if (base && base->state == S_MAIN) {
+        slot_compose(base, 0);
+        tbl_lock();
+        base->state = S_COMPLETE;
+        base->stamp = ++g_stamp;
+        tbl_unlock();
+        raster = 1;
+    }
+    if (!base) {
+        slot_compose(s, 0);
+        return 1;
+    }
+    memcpy(s->px, base->px, bytes);
+    dw3_pc_title_overlay_options_static_part(s->px, DW3_OPTIONS_CANVAS_PITCH,
+        s->locked, s->page, s->cheats_on, 2, 0, DW3_OPTIONS_CANVAS_H, 0);
+    return raster;
+}
+
 int dw3_options_cache_update(Dw3OptionsDirty *out) {
     const size_t canvas_bytes = (size_t)DW3_OPTIONS_CANVAS_PITCH * DW3_OPTIONS_CANVAS_H;
     const unsigned art_generation = dw3_pc_title_overlay_generation();
@@ -212,6 +261,7 @@ int dw3_options_cache_update(Dw3OptionsDirty *out) {
     int values[DW3_TITLE_OPTION_ROWS];
     int rebuilt = 0;
     int from_cache = 0;
+    int based = 0;
 
     memset(&dirty, 0, sizeof(dirty));
     g_page = dw3_pc_title_overlay_options_page();
@@ -254,7 +304,17 @@ int dw3_options_cache_update(Dw3OptionsDirty *out) {
             return -1;
         }
         if (!from_cache) {
-            slot_compose(slot, 0);
+            const double t0 = now_ms();
+            const int group = dw3_pc_title_overlay_options_is_group_page(page);
+            int raster = 1;
+            if (group) raster = slot_compose_over_base(slot);
+            else slot_compose(slot, 0);
+            if (group) {
+                based = !raster;
+                fprintf(stderr, "dw3-port-options: group layer page %d %s in "
+                        "%.1f ms\n", page, raster ? "rebuild (no shared layer yet)"
+                        : "built over the shared layer", now_ms() - t0);
+            }
             tbl_lock();
             slot->state = S_COMPLETE;
             slot->stamp = ++g_stamp;
@@ -321,7 +381,8 @@ int dw3_options_cache_update(Dw3OptionsDirty *out) {
         dirty.rects[dirty.count++] = whole;
         dirty.full = 1;
     }
-    dirty.rebuilt = rebuilt && !from_cache;
+    dirty.based = based;
+    dirty.rebuilt = rebuilt && !from_cache && !based;
     dirty.cached = rebuilt && from_cache;
     for (int i = 0; i < dirty.count; ++i)
         dirty.bytes += (size_t)dirty.rects[i].w * dirty.rects[i].h * 4;
@@ -388,7 +449,10 @@ int dw3_options_cache_prewarm_begin(unsigned in_game_locked) {
     if (atomic_load(&g_worker_running)) return 0;
     tbl_lock();
     need = !find_complete(art, 0, 0, cheats) ||
-           !find_complete(art, dw3_pc_title_overlay_options_lock_key(0, in_game_locked), 0, cheats);
+           !find_complete(art, dw3_pc_title_overlay_options_lock_key(0, in_game_locked), 0, cheats) ||
+           !find_complete(art, 0, DW3_TITLE_OPTIONS_PAGE_SUB_BASE, 0) ||
+           !find_complete(art, dw3_pc_title_overlay_options_lock_key(
+               DW3_TITLE_OPTIONS_PAGE_SUB_BASE, in_game_locked), DW3_TITLE_OPTIONS_PAGE_SUB_BASE, 0);
     tbl_unlock();
     if (!need) return 0;
     g_worker_mask = in_game_locked;
@@ -401,17 +465,23 @@ void dw3_options_cache_prewarm_cancel(void) {
 }
 
 void dw3_options_cache_prewarm_worker(void) {
-    for (int k = 0; k < 2; ++k) {
+    /* The group list of the title and of the game, then the layer every group
+     * sub-screen is made over (title and in game). */
+    static const char *const names[4] = {"title", "in-game", "sub-screen title",
+                                         "sub-screen in-game"};
+    for (int k = 0; k < 4; ++k) {
         const unsigned art = dw3_pc_title_overlay_generation();
-        const unsigned locked = k == 0 ? 0u
-            : dw3_pc_title_overlay_options_lock_key(0, g_worker_mask);
-        const int cheats = dw3_pc_title_overlay_options_cheats_on();
+        const int base = k >= 2;
+        const int page = base ? DW3_TITLE_OPTIONS_PAGE_SUB_BASE : 0;
+        const unsigned locked = (k & 1) == 0 ? 0u
+            : dw3_pc_title_overlay_options_lock_key(page, g_worker_mask);
+        const int cheats = base ? 0 : dw3_pc_title_overlay_options_cheats_on();
         StaticSlot *slot;
         double t0;
 
         tbl_lock();
-        slot = find_complete(art, locked, 0, cheats);
-        if (!slot) slot = claim_slot(S_WORKER, art, locked, 0, cheats);
+        slot = find_complete(art, locked, page, cheats);
+        if (!slot) slot = claim_slot(S_WORKER, art, locked, page, cheats);
         else slot = NULL;
         tbl_unlock();
         if (!slot) continue;
@@ -422,7 +492,7 @@ void dw3_options_cache_prewarm_worker(void) {
             slot->stamp = ++g_stamp;
             tbl_unlock();
             fprintf(stderr, "dw3-port-options: prewarm %s ready in %.0f ms "
-                    "(worker)\n", k == 0 ? "title" : "in-game", now_ms() - t0);
+                    "(worker)\n", names[k], now_ms() - t0);
             fflush(stderr);
         } else {
             tbl_lock();

@@ -1383,8 +1383,10 @@ PS1 game, with vanilla-safe defaults and persistence on owner storage.
   **Slice 2 (2026-10-28):** the Cheats screen (P6.20, both pages) is a sub-screen
   of the list in the same style (ten rows, six on screen, it scrolls; rows,
   keys and behaviour unchanged; title only); the master switch, a scroll step, a
-  cursor move and a value change are dirty-row updates, no 2.7 MB rebuild (the
-  preview.47 `rebuild ... compose=48-80 ms` on a change); PC replays
+  cursor move and a value change are dirty-row updates; **slice 3:** opening a
+  group is made over a prewarmed shared layer (the preview.47 log showed the
+  `rebuild ... compose=48-81 ms` lines came from every first group open, not from
+  value changes, which were already `dirty`; +5.3 MB of cache); PC replays
   `cheats-screen`/`cheats-screen2` US and EU now compare pictures; the stage
   sweep (P5.5) has no row on that screen, it is a config key. Details:
   [PORT_OPTIONS](PORT_OPTIONS.md#cheats-sub-screen-p99-slice-2).

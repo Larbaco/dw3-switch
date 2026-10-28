@@ -766,9 +766,10 @@ against the reference.
   show, one spare; the fourth slot is 2.76 MB more than #298 kept, the plaque
   sprites add about 0.6 MB; the third and fourth slots are allocated on first use). The prewarm worker (#298) still composes the group list for
   the title and for in game on a low-priority thread with thread-local renderer
-  state; a sub-screen is composed on first use (about 7 ms on a desktop CPU,
-  logged as `options update rebuild ... compose=N us`; a second visit is a
-  `cached` copy).
+  state; since slice 3 it also composes the layer shared by the sub-screens (six
+  slots now), and a group is made over it on first use (0.5 to 1.2 ms on a
+  desktop CPU, logged as `options update group-over-base ... compose=N us`; a
+  second visit is a `cached` copy). See "Opening a group no longer rasterizes".
 
 ### Logs
 
@@ -831,23 +832,54 @@ the cursor is the row). `port_options_groups.h` has the group with 10 rows
 `DW3_TITLE_OPTION_ROWS` is 10. The PS1-primitive fallback keeps its plain text
 panel.
 
-**Dirty rows instead of a rebuild.** The owner's preview.47 log showed
-`options update #N rebuild rects=1 bytes=2764800 compose=48-80 ms` when a value
-was changed: a change of the cheats master switch changed the layer key (the
-greyed labels were in the static layer), so the whole 2.7 MB canvas was rebuilt
-and uploaded. Now the labels of the Cheats sub-screen and its two scroll arrows
-are drawn per update (layer `DW3_TITLE_OPTIONS_LABEL`), the static layer of the
-sub-screen is one for every scroll offset, and the master switch is not part of
-its key. So the master switch, a scroll step, a cursor move and a value change
-are all dirty-row updates (`options update dirty rects=N`, N at most 9, a few
-hundred KB at most, no raster); only opening the sub-screen the first time
-composes the layer (`rebuild`, then `cached`). A value on the other groups was
-already a one-cell update (a 268x50 cell, about 54 KB). The compose and upload
-time of every update is still logged (`options update #N dirty|cached|rebuild
-rects=N bytes=N compose=N us upload=N us`, the first eight of each open, then
-batches of 30 as `options N updates compose avg=.. max=.. us`), so the next OLED
-log proves it. The open of the Options screen in game is unchanged (the title
-atlas is not touched; the group list layers are the prewarmed ones).
+**Opening a group no longer rasterizes (slice 3, same PR).** The owner's
+preview.47 log (`dw3.log`, US) shows that value changes and cursor moves were
+already `dirty rects=3 ... compose=2-3 ms`. The 2.7 MB `rebuild` lines (compose
+48 to 81 ms on the Switch, upload about 3 ms) came **right after
+`dw3-port-options: group open <name>`**, at the title and in game: the first
+visit of every group composed its whole static layer (dim backdrop, header,
+plaques, labels, strip, hints) on the frame thread; only the second visit was a
+`cached` copy at 3 ms. (An earlier version of this section blamed the cheats
+master switch; the log shows it was every group open. The master switch change
+below is a separate, smaller case that is now also a dirty-row update.)
+
+Now a sub-screen's layer is **two parts**. The part every group shares (the dim
+backdrop, the message strip frame and the Change / Back hints) is one layer per
+layout (title, in game; cache page `DW3_TITLE_OPTIONS_PAGE_SUB_BASE`), composed
+ahead of time by the same low-priority prewarm worker as the group lists (Switch
+core 2), after them. Opening a group copies that layer (a 2.7 MB `memcpy`) and
+draws only the header plaque with the group's name, up to six plaques with
+their labels and the Cheats arrows over it
+(`dw3_pc_title_overlay_options_static_part`, part 2). On a desktop CPU that is
+0.5 to 1.2 ms (a raster was about 7 ms); the Switch is several times slower, so
+the target is **under 10 ms of compose** instead of 48-80 ms. The result is the
+byte-identical layer a full raster gives (the unit test compares every group,
+cursor and value with the reference render), and it is kept in a slot, so
+the second visit is still a `cached` copy. Only if the shared layer is missing
+(the worker has not finished, or it was evicted) does the open compose it first
+(a `rebuild`, as before).
+
+Memory: the cache holds **six** slots of 2.76 MB instead of four (the group
+list at the title and in game, the shared sub-screen layer at the title and in
+game, the group on show, one spare): **+5.3 MB** (15.8 MB held with all six
+allocated, 10.5 MB before). The slots are allocated on first use and each one
+logs `dw3-port-options: options layer slot N allocated (K of 6, X MB held)`.
+The shared layers and the group lists are the last to be evicted. The in-game
+open path (group list from the prewarmed layer, about 28 ms with the 2.7 MB
+upload) is unchanged; the extra prewarm work is on the worker.
+
+Logs per group open: `dw3-port-options: group layer page N built over the shared
+layer in X ms` (or `rebuild (no shared layer yet) in X ms`), then the usual
+`dw3-title-overlay: options update #N group-over-base|cached|rebuild rects=1
+bytes=2764800 compose=N us upload=N us`; the worker logs `prewarm sub-screen
+title ready in N ms (worker)` and `prewarm sub-screen in-game ready in N ms
+(worker)` after the two list lines.
+
+**The Cheats master switch and scroll.** The Cheats labels and scroll arrows are
+drawn per update (layer `DW3_TITLE_OPTIONS_LABEL`), one static layer serves every
+scroll offset, and the master switch is not part of its key. So the master
+switch, a scroll step, a cursor move and a value change on that sub-screen are
+`dirty` updates (at most 9 rects, no raster).
 
 Tests: `tools/tests/options_cache_main.c` renders every cursor and value of the
 sub-screen at all five scroll offsets, master off and on, in five languages

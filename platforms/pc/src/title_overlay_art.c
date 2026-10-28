@@ -44,6 +44,10 @@ static int options_cheats_on;
 static _Thread_local int ovr_on;
 static _Thread_local unsigned ovr_locked;
 static _Thread_local int ovr_page,ovr_cheats;
+/* Which part of a sub-screen's static layer is drawn: 0 all, 1 the part shared by
+ * every group (backdrop, message strip, hints), 2 the part of the open group
+ * (header, plaques, labels) over a canvas that holds the shared part. */
+static _Thread_local int static_part;
 #define ELOCKED (ovr_on?ovr_locked:options_locked)
 #define EPAGE (ovr_on?ovr_page:options_page)
 #define ECHEATS (ovr_on?ovr_cheats:options_cheats_on)
@@ -196,6 +200,10 @@ int dw3_pc_title_overlay_options_dynamic_labels(int page) {
 /* The page whose static layer `page` shows: the Cheats sub-screen scrolls over
  * one layer (its plaques are the same at every offset; labels and arrows are
  * drawn per update), the other pages have a layer per scroll offset. */
+int dw3_pc_title_overlay_options_is_group_page(int page) {
+    int group,scroll;
+    return dw3_optlist_decode(page,&group,&scroll)&&group>=0;
+}
 int dw3_pc_title_overlay_options_static_page(int page) {
     return dw3_pc_title_overlay_options_dynamic_labels(page)?dw3_optlist_page(DW3_OPTGRP_CHEATS,0):page;
 }
@@ -590,21 +598,23 @@ static void options_list_screen(int group,int scroll) {
     const int n=on_groups?dw3_optgroups_visible(ECHEATS,ids):dw3_optgroups[group].nrows;
     const unsigned locked=ELOCKED;
     const int cursor=options_layer==OPTIONS_LAYER_STATIC?-1:option_cursor;
+    const int shared=static_part!=2,specific=static_part!=1;
 
     if(draw_static) {
         /* The title backdrop stays, dimmed; the logo and the menu are gone.
          * Over the field or a battle (a locked mask means in game) the dim is
          * deeper: the menu behind must not read through the plaques. */
-        box(0,0,960,720,0,0,16,locked?DIM_IN_GAME:DIM_TITLE);
+        if(shared)box(0,0,960,720,0,0,16,locked?DIM_IN_GAME:DIM_TITLE);
         /* Header plaque: OPTIONS, or the name of the open group. */
-        options_plaque(L_GRP_X,L_HEAD_Y,L_GRP_W,0,0);
-        {
+        if(specific)options_plaque(L_GRP_X,L_HEAD_Y,L_GRP_W,0,0);
+        if(specific){
             const Word *name=on_groups?&t->title:&group_lang(group)->name;
             plaque_word(name,480,L_HEAD_Y+(on_groups?8:9),255,198,98); /* one baseline for every word */
         }
-        if(!cht&&scroll>0)arrow(480,L_ROW_Y0-10,1);
-        if(!cht&&scroll+DW3_OPTLIST_VISIBLE<n)arrow(480,L_ROW_Y0+DW3_OPTLIST_VISIBLE*L_ROW_PITCH-8,0);
+        if(specific&&!cht&&scroll>0)arrow(480,L_ROW_Y0-10,1);
+        if(specific&&!cht&&scroll+DW3_OPTLIST_VISIBLE<n)arrow(480,L_ROW_Y0+DW3_OPTLIST_VISIBLE*L_ROW_PITCH-8,0);
         /* Message strip frame, then the button hints. */
+        if(shared){
         plaque(L_DESC_X+1,L_DESC_Y+4,L_DESC_W,L_DESC_H,6,0,3,10,0,3,10,190);
         plaque(L_DESC_X,L_DESC_Y,L_DESC_W,L_DESC_H,6,99,149,196,17,40,77,255);
         plaque(L_DESC_X+2,L_DESC_Y+2,L_DESC_W-4,L_DESC_H-4,5,5,16,39,13,29,57,255);
@@ -615,6 +625,7 @@ static void options_list_screen(int group,int scroll) {
             button(cx,hy+12,0);wordsh(act,cx+22,hy,0,255,255,255);
             button(bx-22,hy+12,1);wordsh(&t->back,bx,hy,0,255,255,255);
             box(L_DESC_X,666,L_DESC_W,3,0,66,156,255);
+        }
         }
     }
     for(int s=0;s<DW3_OPTLIST_VISIBLE;s++) {
@@ -642,11 +653,11 @@ static void options_list_screen(int group,int scroll) {
          * over the restored idle one. The label comes after the plaque. */
         const int lit=focus&&options_layer!=OPTIONS_LAYER_STATIC&&
                       (full||options_layer==OPTIONS_LAYER_FOCUS);
-        if(draw_static)options_plaque(px,py,pw,!on_groups,0);
+        if(draw_static&&specific)options_plaque(px,py,pw,!on_groups,0);
         if(lit)options_plaque(px,py,pw,!on_groups,1);
         /* Cheats labels follow the master switch, so they are not in the static
          * layer: FULL, FOCUS and LABEL draw them (title_options_cache.c). */
-        if((draw_static&&(!cht||full))||lit||
+        if((draw_static&&specific&&(!cht||full))||lit||
            (cht&&options_layer==OPTIONS_LAYER_LABEL&&a==options_layer_row)){
             const int cr=lock?(lit?150:110):(lit?236:181);
             const int cg=lock?(lit?158:118):(lit?247:219);
@@ -873,20 +884,27 @@ void dw3_pc_title_overlay_options_component(uint8_t *rgba,int pitch,
  * y..y+h-1, cleared first. Same pixels as options_component(STATIC) under
  * that layout; safe to call from the worker thread while the main thread
  * draws (only thread-local state is written). */
-void dw3_pc_title_overlay_options_static_band(uint8_t *rgba,int pitch,
-        unsigned locked,int page,int cheats_on,int y,int h) {
+void dw3_pc_title_overlay_options_static_part(uint8_t *rgba,int pitch,
+        unsigned locked,int page,int cheats_on,int part,int y,int h,int clear) {
     if(!rgba||pitch<960*4||y<0||h<=0||y+h>720)return;
+    if(page==DW3_TITLE_OPTIONS_PAGE_SUB_BASE){page=dw3_optlist_page(DW3_OPTGRP_DISPLAY,0);part=1;}
     ovr_on=1;ovr_locked=locked;ovr_page=page;ovr_cheats=cheats_on;
+    static_part=part;
     canvas=rgba;stride=pitch;
     clip_x0=0;clip_y0=y;clip_x1=960;clip_y1=y+h;
-    for(int j=y;j<y+h;j++)memset(rgba+(size_t)j*pitch,0,960*4);
+    if(clear)for(int j=y;j<y+h;j++)memset(rgba+(size_t)j*pitch,0,960*4);
     options_layer=OPTIONS_LAYER_STATIC;
     options_layer_row=-1;
     options_screen();
     options_layer=OPTIONS_LAYER_FULL;
     options_layer_row=0;
     clip_x0=clip_y0=0;clip_x1=960;clip_y1=720;
+    static_part=0;
     ovr_on=0;
+}
+void dw3_pc_title_overlay_options_static_band(uint8_t *rgba,int pitch,
+        unsigned locked,int page,int cheats_on,int y,int h) {
+    dw3_pc_title_overlay_options_static_part(rgba,pitch,locked,page,cheats_on,0,y,h,1);
 }
 int dw3_pc_title_overlay_options_cheats_on(void) {
     return options_cheats_on;
@@ -921,6 +939,7 @@ unsigned dw3_pc_title_overlay_options_lock_key(int page,unsigned locked) {
     int group,sc;
     /* In game (a locked mask) the backdrop is dimmed deeper: bit 31 keeps those layers apart. */
     const unsigned in_game=locked?1u<<31:0;
+    if(page==DW3_TITLE_OPTIONS_PAGE_SUB_BASE)return in_game;
     if(!dw3_optlist_decode(page,&group,&sc))return 0;
     if(group<0)return in_game|(locked&(DW3_TITLE_LOCK_CHEATS|group_row_mask(DW3_OPTGRP_DISPLAY)|
                                        group_row_mask(DW3_OPTGRP_SOUND)|group_row_mask(DW3_OPTGRP_GAMEPLAY)|
