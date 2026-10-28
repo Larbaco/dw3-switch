@@ -73,6 +73,7 @@ Files are named by roadmap item id (`P6.4_...`) or by topic.
 - [P5.3_HOME_QUIT](P5.3_HOME_QUIT.md): HOME exit, focus and sleep.
 - [P5.4_CRASH](P5.4_CRASH.md): crash report to the SD card.
 - [P5.4_ERROR_REPORT](P5.4_ERROR_REPORT.md): error reporting research.
+- [P5.5_STAGE_SWEEP](P5.5_STAGE_SWEEP.md): the opt-in stage sweep (`stage_sweep=1`), its log lines and resume.
 - [P6.1_WIDESCREEN](P6.1_WIDESCREEN.md): widescreen in field and battle.
 - [P6.1_WIDESCREEN_MENU_AUDIT](P6.1_WIDESCREEN_MENU_AUDIT.md): widescreen menu and transition audit.
 - [P6.4_FAST_FORWARD](P6.4_FAST_FORWARD.md): fast-forward (turbo).

@@ -172,6 +172,11 @@ as OFF; an invalid value (`2`, `on`, ...) is logged and reads as OFF.
 read by `dw3_port_items_partner_switch_enabled`, kept when the Options screen rewrites the file, not part of
 the `dw3-options:` log lines. A missing or invalid value reads as 1 (on).
 
+`stage_sweep` (P5.5, 0, 1 or 2, default 0) and `stage_sweep_frames` (30 to 3600, default 90) are file-only
+keys of the opt-in stage sweep: read by `port/sweep/stage_sweep.c` (builds with the Cheats screen), kept when
+the Options screen rewrites the file, not part of the `dw3-options:` log lines. `1` runs or resumes the sweep,
+`2` starts it over; see [P5.5_STAGE_SWEEP](P5.5_STAGE_SWEEP.md).
+
 Adding a row means one entry in the registry table (`key`, default, valid
 range); nothing else in the store changes.
 

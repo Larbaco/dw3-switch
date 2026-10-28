@@ -108,7 +108,7 @@ listed once, in [Pending OLED checks](#pending-oled-checks).
 | P5.2 | Performance pass | done (partner portrait fix #229, OLED pending) | [P5.2](P5.2_BATTLE_GPU.md) |
 | P5.3 | Save handling | done | [P5.3](P5.3_FLAT_SAVE.md) |
 | P5.4 | Error reporting | in progress (done-when met on the OLED; boot notice 60 s, #231; PR 2 OLED check open) | [P5.4](P5.4_CRASH.md) |
-| P5.5 | Stage sweep on hardware | open | — |
+| P5.5 | Stage sweep on hardware | in progress (opt-in sweep built; PC 237/237 US and EU; OLED run pending) | [P5.5](P5.5_STAGE_SWEEP.md) |
 | P6.1 | Scaling / widescreen | in progress (map, results, save, title, caption, registration, Items menu at 16:9 in preview.31; card album, deck editor, card shop, gym and Lab at 16:9 in the next preview (0100-0104, OLED pending); iris and grid cover at 16:9 in the next preview (0115, OLED pending); encounter swirl at 16:9 in the next preview (0175, OLED pending); card battle still 4:3; intro news caption bar at 16:9 confirmed on the OLED 2026-10-27, preview.41; EU language select at 16:9 (0177) pending preview.47) | [P6.1](P6.1_WIDESCREEN.md) |
 | P6.2 | PAL/NTSC, EU/US, language at boot | in progress | [P3_EU_BUILD](P3_EU_BUILD.md) |
 | P6.3 | PGXP-style vertex precision | open | — |
@@ -181,6 +181,9 @@ its done-when. The ordered session plan (written for preview.36) is
 
 - **P5 gate:** start → first boss on hardware, US and EU. The Phase 5 gate is
   not met yet (owner, 2026-10-24); see [Phase 5](#phase-5--playable-on-switch).
+- **P5.5:** the stage sweep on the OLED, US and EU: `stage_sweep=1` in
+  `port_options.cfg`, start the game, wait for `dw3-sweep: done`, send
+  `dw3.log` ([P5.5_STAGE_SWEEP](P5.5_STAGE_SWEEP.md), OLED_TEST_PLAN G9).
 - **P6.1:** 16:9 for the map screen, results header, save slot picker, title
   menu, news caption bar, registration screen (patches 0080-0082, 0085-0087),
   and the Items menu and field menu screens (0075, 0076, 0074). US and EU. The
@@ -782,6 +785,20 @@ speed.
   longer crashes. EU had passed it on the preview.29 OLED run, so both discs
   are now checked on the console
   ([BALLOON_NULL_ACTOR.md](BALLOON_NULL_ACTOR.md)).
+  **Stage sweep built (2026-10-28):** one opt-in run that logs, per stage,
+  whether it loads and returns, so the owner's `dw3.log` is the whole report.
+  Set `stage_sweep=1` in the region's `port_options.cfg` (builds with the
+  Cheats screen; off by default; it never writes a save) and start the game:
+  it goes `STAGSLCT` → stage → `STAGSLCT` through the 237 loadable stages
+  (`WSTAG460` is skipped, it is a stub), logs `dw3-sweep: stage WSTAGxxx ok in
+  N ms (frames F, mem free M)` or the failure, ends with `dw3-sweep: done X/Y
+  ok, failed: ...`, and a progress file (`stage_sweep.txt`) lets a relaunch
+  after a crash or hang report that stage and continue. PC: **237/237 ok on
+  US and on EU**, replay scenarios `us/eu-stage-sweep`, patch `0185`. Design,
+  keys and every log line: [P5.5_STAGE_SWEEP.md](P5.5_STAGE_SWEEP.md). **Open:**
+  the OLED run, US and EU ([OLED_TEST_PLAN](OLED_TEST_PLAN.md) G9); the EU
+  extra chapter's stages are not in the set yet. P5.5 is ticked when that run
+  loads and returns the set on the console.
 
 Gate: start → first boss on hardware, both versions.
 

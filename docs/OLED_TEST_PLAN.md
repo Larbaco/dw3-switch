@@ -77,7 +77,7 @@ lines are still wanted as proof.
 | D. Battles | US + EU ordinary | P5.2, P6.18, P6.20 battle rows, P7.7, P9.7 battle Options |
 | E. Saves | US + EU ordinary | P6.27, P6.9, P6.25, P6.31, P6.20 save mark, title textures after Return to title |
 | F. 2 h memory run | US then EU nxlink | **[P5.1]**, **[GATE]**, P5.4 notice |
-| G. Everything else | mixed | P5.4 forced crash, P10.2, P4.3, **[LAUNCHER]** |
+| G. Everything else | mixed | P5.4 forced crash, P10.2, P4.3, **P5.5 stage sweep (G9)**, **[LAUNCHER]** |
 
 **[GATE]** (New Game to the first boss, US and EU) is normal play, not a
 single check. Do it in session F, where you play for hours anyway. Do the
@@ -289,6 +289,7 @@ handheld on the charger, `nxlink -s` captured to a file, keep
 | G5 | P7.7 HUD name and Claw steal | Done in D8-D10 | | P7.7 |
 | G6 | Rumble (optional, still unverified on hardware) | Report the feel | note | [P10.4](P10.4_RUMBLE.md) |
 | G8 | **Equipment partner cycle (P6.33 phase 1, #282).** Field menu, Status, Equipment: the slot list waits. Press **ZL** and **ZR** to change the party member (two or more partners needed; the slot cursor stays). Then quit to hbmenu, set the file key `items_partner_switch=0` in the region folder (`sdmc:/switch/dw3/us/port_options.cfg` or `.../eu/...`; file-only, not a row, see [PORT_OPTIONS](PORT_OPTIONS.md#persistence)): relaunch, and ZL / ZR must do nothing there. Default is ON | Partner changes on each press, wraps at both ends, the panel shows that partner's gear; no leave to the menu and no item list opened by ZL / ZR; with the key 0, nothing changes | photo, `dw3.log` if the panel did not change, say which key value was on, how many partners, region | P6.33 ([phase 1](P6.33_ITEMS_MENU.md#phase-1-status-2026-10-26)), patch 0128. **PARTIAL**: owner, 2026-10-27, preview.41: the partner cycle works; the key-0 check not reported |
+| G9 | **P5.5 stage sweep (US, then EU).** Ordinary NRO of a preview (it has the Cheats screen; a `--no-cheats` build has no sweep). Quit to hbmenu. In `sdmc:/switch/dw3/us/port_options.cfg` add the line `stage_sweep=1` above `end=1` (EU: the same in `eu/port_options.cfg`). Start the game and leave the pad alone: the screen flicks through the stages one by one (a stage, then the debug stage list, about a second each; 5 to 10 minutes in all) and ends on the stage list, still. If the game closes or crashes in between, **keep `crash_report.txt`**, start the NRO again: it carries on with the next stage. When the list has been still for a minute, quit with HOME. **Then set the line to `stage_sweep=0`** (or delete it). Details: [P5.5_STAGE_SWEEP](P5.5_STAGE_SWEEP.md) | Nothing is written to the saves (`dw3-autosave:` never appears). The last run's `dw3.log` ends with `dw3-sweep: done 237/237 ok, failed: none; skipped: WSTAG460`, and has a `dw3-sweep: stage WSTAGxxx ok in N ms (frames 90, mem free M, load L ms)` line per stage | all `sdmc:/switch/dw3/dw3*.log`, `crash_report*.txt`, `us/stage_sweep.txt` (or `eu/`); nothing else is needed, the `done` line and the `FAILED` lines name every problem stage | P5.5 (ticked once US and EU both load and return the set; send the failures, they become findings) |
 
 ### G7. [LAUNCHER] P6.24 slice 2 (not in the release)
 
@@ -335,6 +336,7 @@ it from Pending OLED checks.
 | E1 | `dw3-port-restart: fading to black before the reset`, `screen is black after N frames; resetting now`, `new screen ready after N black frames; fading in`, `fade finished, N frames from the request`; `dw3-title-overlay: screen fade to black on`; `dw3-widescreen: gutter 0 px per side (was 53; 4:3 picture) mode file 0x..` must come **between** `screen is black` and `fading in` |
 | E2 | `dw3-autosave: wrote autosave.bin ... in N ms (SD write M ms ...); option Auto-save=N` |
 | G8 | `dw3-options: file keys items_partner_switch=N map_screen=N` at boot, `dw3-items-menu: partner switch` |
+| G9 | `dw3-sweep: stage sweep on (key stage_sweep=1, 238 stages ...`, per stage `dw3-sweep: stage WSTAGxxx (mode 0x..) begin` then `... ok in N ms (frames F, mem free M, load L ms)` or `... FAILED: <reason>`; after a crash the next run says `FAILED: crash or hang in the previous run`; the end is `dw3-sweep: done X/Y ok, failed: ...`. A finished sweep relaunched logs `the previous sweep is complete; not running again`. `dw3-autosave:` must not appear. Reasons: [P5.5_STAGE_SWEEP](P5.5_STAGE_SWEEP.md#log-lines) |
 
 Game-side `fprintf(stderr)` lines (`dw3-port-options`, `dw3-map`, `dw3: memcard`,
 `dw3-port-restart`, `dw3-battle-options`) now reach `dw3.log` too: the Switch
