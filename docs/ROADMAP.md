@@ -155,7 +155,7 @@ listed once, in [Pending OLED checks](#pending-oled-checks).
 | P6.31 | Auto-save, off by default | in progress (built: Options row, area-change write to its own file `autosave.bin`, title Continue loads it and the old Continue is Load; PC US and EU replays; owner OLED, 2026-10-27, preview.41: title plaque spacing (#287) confirmed; the write is on an area change only (code, 2026-10-28; the owner's "and on HOME close" note is not in the code, to re-check, E2.1); the save-file, Continue and Load Game checks not reported) | [P6.31_AUTOSAVE](P6.31_AUTOSAVE.md), [roadmap](#phase-6-goal-notes), [P5.3](P5.3_FLAT_SAVE.md) |
 | P6.32 | Map zoom and full-screen map (future goal) | phase 0 PoC built (PR `feat/p6.32-map-poc`); owner OLED, preview.45 (2026-10-28): the map shows and Nearest is the preferred scaler; balloon, cursor and name box pending preview.47; mod pack loader for an upscaled map built (`feat/mod-map-upscale`, OLED item B17 pending) | [roadmap](#phase-6-goal-notes), [P6.32](P6.32_MAP_ZOOM.md), [P6.1](P6.1_WIDESCREEN.md), [map upscale mod](MOD_MAP_UPSCALE.md) |
 | P6.33 | Items menu usability redesign | in progress (owner decisions recorded 2026-10-26; phase 1 partner cycle built: patch 0128, ZL / ZR, on by default; phases 2, 3 and 4 open; phase 1 cycle confirmed on the OLED 2026-10-27, preview.41; the `items_partner_switch=0` check open; phases 2–4 folded into P6.34) | [roadmap](#phase-6-goal-notes), [P6.33](P6.33_ITEMS_MENU.md), [P6.1](P6.1_WIDESCREEN.md) |
-| P6.34 | Redesign of the items / status / equipment menu flow (future goal) | future | [roadmap](#phase-6-goal-notes), [P6.33](P6.33_ITEMS_MENU.md) |
+| P6.34 | Redesign of the items / status / equipment menu flow | design written 2026-10-28 (5 phases, patches 0188-0192 proposed, 10 owner questions open); no code | [roadmap](#phase-6-goal-notes), [P6.34](P6.34_MENU_FLOW.md), [P6.33](P6.33_ITEMS_MENU.md) |
 | P6.35 | In-game walkthrough help: where to go next and what to do, by story progress (future goal) | future; **phase 1 data layer built** (step resolver, `ch01` table progress 0 to 4 confirmed by US and EU PC replays, English draft, FR/DE/IT/ES stubs, no UI yet; [As built](P6.35_WALKTHROUGH.md#as-built-phase-1-data-layer)) (owner 2026-10-28: at launch in every language the base game has, EN + FR/DE/IT/ES on the EU disc, pt-BR later with P6.7; design written 2026-10-28, owner decisions recorded) | [roadmap](#phase-6-goal-notes), [design](P6.35_WALKTHROUGH.md), [PLAYER_GUIDE](PLAYER_GUIDE.md) |
 | P7.1 | Inventory and boundaries | done | [COMMUNITY_QOL](COMMUNITY_QOL.md) |
 | P7.2 | Patched EU disc as data source | open | [COMMUNITY_QOL](COMMUNITY_QOL.md) |
@@ -2343,10 +2343,10 @@ Statuses are in the [table](#status-at-a-glance).
   P6.15 Items replay scenarios (`us/eu-items-screen[-normal]`) still match.
   Related: P6.1, P6.15.
   Phases 2–4 are folded into P6.34 (owner, 2026-10-28).
-- [ ] **P6.34 Items / status / equipment menu flow redesign (future goal).**
+- [ ] **P6.34 Items / status / equipment menu flow redesign (design written, awaiting owner answers).**
   Dated 2026-10-27, owner: the options and their order in the items, status
   and equipment menus feel odd. A redesign of the whole flow, beyond the
-  partner cycle of P6.33. No design yet; start from the P6.33 note. Phases 2–4
+  partner cycle of P6.33. **Design written 2026-10-28 (no code):** [P6.34_MENU_FLOW.md](P6.34_MENU_FLOW.md) (as-is flow, problems, five phases starting with equip-from-Items, logs, replay and OLED items, patches `0188`-`0192`, ten owner questions with defaults). Phases 2–4
   of P6.33 are folded into this item (owner, 2026-10-28). Done when
   (proposed): the owner approves a flow and it works on US and EU, 4:3 and 16:9.
   **Proposal added 2026-10-28 (preview.47 feedback): equip from the Items
