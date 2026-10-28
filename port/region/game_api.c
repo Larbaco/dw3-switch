@@ -19,6 +19,7 @@
 #include "port_options.h"
 #include "port_screen_fade.h"
 #include "port_turbo.h"
+#include "port_audio.h"
 #ifdef DW3_CHEATS
 #include "port_cheats.h"
 #endif
@@ -82,6 +83,7 @@ const Dw3GameApi dw3_game_api = {
 #else
     0,
 #endif
+    dw3_port_audio_health_exit,
     FILE_SECTORS,
     FILE_SECTOR_COUNTS,
     &FILE_COUNT,
