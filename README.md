@@ -9,7 +9,7 @@ A native Nintendo Switch port of Digimon World 3 (Digimon World 2003 in
 Europe), built from the matching PlayStation decompilation. It shows as
 "Digimon World 3 NX" in hbmenu and Sphaira.
 
-Latest preview: [v0.6.5-preview.46](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.46).
+Latest preview: [v0.6.5-preview.47](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.47).
 To try it, see [Play it on Switch](#play-it-on-switch). New to the port? Read
 the [player guide](docs/PLAYER_GUIDE.md). All docs are listed in the
 [docs index](docs/README.md). To contribute, see
@@ -75,8 +75,8 @@ and the occasional crash. Report problems on the
 
 | Area | State on Switch | Notes |
 |---|---|---|
-| Title and menus | Works | Native New Game / Continue / Load Game / Options / Quit game. Options is a list of groups in the title menu's style (#303, not yet on the OLED). Spacing, the 16:9 intro caption strip and Quit through a forwarder are confirmed on the OLED (preview.41 to 43). Quitting the full Sphaira app errors; the forwarder is the target. Returning to the title fades through black, so no 4:3 frame should show (#298, not yet on the OLED). |
-| Field | Works | Software rendering. Menus at 1.5x under turbo, the water texture fix, Options from the field menu and Continue after returning to the title are confirmed on the OLED. Field Options uses the same groups (#303, not yet on the OLED). Options opens without the stutter (#298, not yet on the OLED). The full-screen map view draws the revealed towns and areas, with right-stick zoom (#299, not yet on the OLED). |
+| Title and menus | Works | Native New Game / Continue / Load Game / Options / Quit game. EU title plaques share one lettering and the EU language select is 16:9 (#308, not yet on the OLED). Options is a list of groups in the title menu's style (#303, not yet on the OLED). Spacing, the 16:9 intro caption strip and Quit through a forwarder are confirmed on the OLED (preview.41 to 43). Quitting the full Sphaira app errors; the forwarder is the target. Returning to the title fades through black, so no 4:3 frame should show (#298, not yet on the OLED). |
+| Field | Works | Software rendering. Menus at 1.5x under turbo, the water texture fix, Options from the field menu and Continue after returning to the title are confirmed on the OLED. Field Options uses the same groups (#303, not yet on the OLED). Options opens without the stutter (#298, not yet on the OLED). The full-screen map view draws the revealed towns and areas, with the game's balloon, cursor and name box, stick zoom and Nearest as the default scaler (#299, #306, not yet on the OLED). |
 | Battle | Works | GPU textured rendering by default. The owner reports the sky stage fixed and battle above 60 fps on US and EU; the per-mode frame-time benchmark was not run. A battle crash from the preview.26 reports is still open in the roadmap. |
 | Movies | Plays | The opening runs at about 15 fps with XA audio, and turbo works in the intro. Image quality and the full movie are not validated. |
 | Audio | Works | Music loops (#209, confirmed on the OLED). The win jingle, menu sounds and battle blips play since #215 (not yet heard on hardware). Silence on EU after many techs ([#188](https://github.com/Larbaco/dw3-switch/issues/188)) awaits an OLED check. A silent field map after a battle was reported once and not reproduced (P4.3). Underrun behavior has not been measured. |
