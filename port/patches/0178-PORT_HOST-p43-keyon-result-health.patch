@@ -1,0 +1,35 @@
+Upstream-bound: no
+Subject: [PORT_HOST] P4.3 / #188 count SsUtKeyOn results for the audio health line
+
+playSound and soundKeyOn pass the result of SsUtKeyOn (a voice number, or -1
+when libsnd has no free voice) to the port, which counts the key-ons and the
+failures for the `dw3-audio: underruns ...` line and warns when a sound was
+dropped. Counting only; the return values and the game state are unchanged.
+
+--- a/src/engine/sound/sound.c
++++ b/src/engine/sound/sound.c
+@@ -251,6 +251,9 @@
+             }
+ #endif
+             voice = SsUtKeyOn(SOUND.banks[slot].vabId, prog, tone, note, 0, SOUND_VOLUME_MAX, SOUND_VOLUME_MAX);
++#if PORT_HOST
++            dw3_port_audio_note_keyon(voice);
++#endif
+         } else {
+ #if PORT_HOST
+             {
+@@ -431,7 +434,14 @@
+ 
+ /* Plays one note of a program from the bank in slot `slot`; returns the voice */
+ short soundKeyOn(s32 slot, short prog, short note) {
++#if PORT_HOST
++    short voice = SsUtKeyOn(SOUND.banks[slot].vabId, prog, 0, note, 0, SOUND_VOLUME_MAX, SOUND_VOLUME_MAX);
++
++    dw3_port_audio_note_keyon(voice);
++    return voice;
++#else
+     return SsUtKeyOn(SOUND.banks[slot].vabId, prog, 0, note, 0, SOUND_VOLUME_MAX, SOUND_VOLUME_MAX);
++#endif
+ }
+ 
+ /* Releases the voice that a key-on sound id started */

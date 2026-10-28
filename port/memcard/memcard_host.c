@@ -472,12 +472,23 @@ static int fault_at(int step) {
     return 0;
 }
 
+static const char *path_base(const char *path) {
+    const char *a = strrchr(path, '/');
+    const char *b = strrchr(path, '\\');
+
+    if (b != NULL && (a == NULL || b > a)) {
+        a = b;
+    }
+    return a != NULL ? a + 1 : path;
+}
+
 static int atomic_write_file(const char *path, const uint8_t *data, size_t len) {
     char tmp[MEMCARD_PATH_MAX + 8];
     FILE *fp;
     size_t nw;
     int n;
     int err;
+    uint64_t t_begin = mono_us();
 
     fault_begin();
     n = snprintf(tmp, sizeof(tmp), "%s.tmp", path);
@@ -550,6 +561,9 @@ static int atomic_write_file(const char *path, const uint8_t *data, size_t len) 
         return -1;
     }
     (void)fault_at(5);
+    fprintf(stderr, "dw3-save: write %s committed (%zu bytes, fsync + rename, "
+            "%llu us)\n", path_base(path), len,
+            (unsigned long long)(mono_us() - t_begin));
     return 0;
 }
 
@@ -586,9 +600,14 @@ static void recover_tmp(const char *path, long want) {
         rename(tmp, path) == 0) {
         fprintf(stderr, "dw3: memcard: recovered %s from an interrupted write\n",
                 path);
+        fprintf(stderr, "dw3-save: write %s interrupted after the old file "
+                "was removed; the complete new file was recovered\n",
+                path_base(path));
         return;
     }
     fprintf(stderr, "dw3: memcard: removed stale %s (%ld bytes)\n", tmp, tsz);
+    fprintf(stderr, "dw3-save: write %s interrupted, previous file %s\n",
+            path_base(path), have_dest ? "kept" : "absent (nothing to keep)");
     remove(tmp);
 }
 
@@ -1179,6 +1198,8 @@ void memcard_host_abandon_sections(void) {
         if (g_slots[slot].section_open) {
             fprintf(stderr, "dw3: memcard: slot=%d write section unfinished; "
                     "the card file keeps its previous content\n", slot);
+            fprintf(stderr, "dw3-save: write slot=%d interrupted, previous "
+                    "file kept (exit with a save section open)\n", slot);
             g_slots[slot].section_open = 0;
             g_slots[slot].dirty = 0;
         }

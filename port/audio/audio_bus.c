@@ -2,6 +2,7 @@
  * SPU mixer buses (vendor/psyz psyz/spu.h). Shared by the PC and Switch
  * hosts; docs/P6.17_VOLUME.md has the design. */
 #include "port_audio.h"
+#include "audio_health.h"
 
 #include <psyz/audio.h>
 #include <psyz/log.h>
@@ -9,6 +10,8 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
+#include <time.h>
 
 enum {
     BUS_SFX = 0,   /* SsUtKeyOn voices and non-music tracks (the default bus) */
@@ -19,6 +22,9 @@ enum {
  * without them (PC, host tests) link and skip the call. */
 void dw3_host_audio_note_music(int seq, int sep) __attribute__((weak));
 void dw3_host_audio_note_volume(int music_step) __attribute__((weak));
+/* Fills the output-queue statistics since the last call and starts a new
+ * window (Switch: nx_audio.c). Absent on PC: the line says n/a. */
+void dw3_host_audio_queue_window(Dw3AudioQueueWin *out) __attribute__((weak));
 
 static int g_music_step = DW3_AUDIO_VOLUME_MAX;
 static int g_sfx_step = DW3_AUDIO_VOLUME_MAX;
@@ -107,10 +113,100 @@ static void log_bus(const char *name, const PsyzSpuBusStats *st) {
           st->active);
 }
 
+/* --- audio health line (P4.3 underruns, #188 voice leak) ------------------
+ * Every HEALTH_PERIOD_MS of wall time: `dw3-audio: underruns N in last 60 s
+ * ...` (audio_health.h), plus an `exit:` line with the run totals. Voices in
+ * use are counted from ENVX (voice register +0x0C): libsnd frees a voice only
+ * when ENVX reads 0, so a leaked voice stays non-zero for good. Key-on
+ * failures come from playSound (patch 0178). Cost: 24 register reads every
+ * second frame and one log line a minute. */
+#define HEALTH_PERIOD_MS 60000u
+#define HEALTH_SAMPLE_EVERY 2u
+
+static Dw3AudioHealth g_health;
+static unsigned long long g_health_last_ms;
+static unsigned g_health_frame;
+static int g_health_started;
+
+static unsigned long long health_now_ms(void) {
+    struct timespec ts;
+
+    if (clock_gettime(CLOCK_MONOTONIC, &ts) != 0) {
+        return 0;
+    }
+    return (unsigned long long)ts.tv_sec * 1000ull +
+           (unsigned long long)ts.tv_nsec / 1000000ull;
+}
+
+static unsigned health_voices_in_use(void) {
+    unsigned n = 0;
+    unsigned v;
+
+    Psyz_AudioLock();
+    for (v = 0; v < DW3_AUDIO_VOICES; v++) {
+        if (Psyz_SpuRead(v * 16u + 0x0Cu) != 0) {
+            n++;
+        }
+    }
+    Psyz_AudioUnlock();
+    return n;
+}
+
+static void health_report(int final) {
+    Dw3AudioQueueWin q;
+    char line[384];
+    unsigned long long now = health_now_ms();
+    unsigned secs = (unsigned)((now - g_health_last_ms + 500) / 1000);
+
+    memset(&q, 0, sizeof(q));
+    if (dw3_host_audio_queue_window) {
+        dw3_host_audio_queue_window(&q);
+    }
+    dw3_audio_health_format(&g_health, dw3_host_audio_queue_window ? &q : NULL,
+                            secs, final, line, sizeof(line));
+    INFOF("%s", line);
+    g_health_last_ms = now;
+}
+
+static void health_exit(void) {
+    if (g_health_started) {
+        g_health_started = 0;
+        health_report(1);
+    }
+}
+
+void dw3_port_audio_note_keyon(int voice) {
+    if (dw3_audio_health_note_keyon(&g_health, voice)) {
+        INFOF("dw3-audio: WARNING SsUtKeyOn found no free voice (%llu failed "
+              "so far, %u of %u voices in use now): a sound was dropped, "
+              "possible voice leak (#188)", g_health.ko_fail_total,
+              health_voices_in_use(), DW3_AUDIO_VOICES);
+    }
+}
+
+void dw3_port_audio_health_exit(void) { health_exit(); }
+
+static void health_poll(void) {
+    if (!g_health_started) {
+        dw3_audio_health_reset(&g_health);
+        g_health_last_ms = health_now_ms();
+        g_health_started = 1;
+        atexit(health_exit);
+    }
+    if (++g_health_frame % HEALTH_SAMPLE_EVERY == 0) {
+        dw3_audio_health_note_voices(&g_health, health_voices_in_use());
+    }
+    if (g_health_frame % 60u == 0 &&
+        health_now_ms() - g_health_last_ms >= HEALTH_PERIOD_MS) {
+        health_report(0);
+    }
+}
+
 void dw3_port_audio_poll(void) {
     PsyzSpuBusStats st[PSYZ_SPU_NUM_BUSES + 1];
     const char *env;
 
+    health_poll();
     if (g_stats_every < 0) {
         env = getenv("DW3_AUDIO_STATS");
         g_stats_every = env != NULL ? atoi(env) : 0;

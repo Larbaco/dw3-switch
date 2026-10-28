@@ -52,8 +52,10 @@ highest non-empty tier.
 
 - [P5.5](#phase-5--playable-on-switch): stage sweep on hardware.
 - [#188](https://github.com/Larbaco/dw3-switch/issues/188) and
-  [P4.3](P4.3_AUDIO.md): audio, underrun count.
-- [P10.2](SWITCH_FEATURES.md): HOME during a save write.
+  [P4.3](P4.3_AUDIO.md): audio, underrun count (counters in the log since
+  2026-10-28; waiting for an OLED run, items D13 and D14).
+- [P10.2](SWITCH_FEATURES.md): HOME during a save write (`dw3-save:` log lines
+  added 2026-10-28; waiting for the OLED check, item G2).
 - [P6.1](P6.1_WIDESCREEN.md): 16:9 batch 2. Stopped by the owner; resumes only
   when the owner allows.
 
@@ -63,7 +65,7 @@ highest non-empty tier.
    sub-screens.
 2. Controls bundle, done together because they touch the same menus:
    [P6.12](#phase-6-goal-notes) remapping, [P9.8](HOTKEYS.md) A/B layout and
-   [P10.6](TEXTURE_PACKS.md) Switch glyphs.
+   [P10.6](TEXTURE_PACKS.md) Switch glyphs. Design: [CONTROLS_BUNDLE](CONTROLS_BUNDLE.md).
 3. [P6.30](#phase-6-goal-notes): technical help.
 4. [P6.34](#phase-6-goal-notes): menu-flow redesign. It absorbs
    [P6.33](P6.33_ITEMS_MENU.md) phases 2–4, so the items menu is redesigned once.
@@ -108,7 +110,7 @@ listed once, in [Pending OLED checks](#pending-oled-checks).
 | P3.1–P3.9 | Game bring-up on PC | done | [P3_GATE](P3_GATE.md), [P3_EU_BUILD](P3_EU_BUILD.md), P3.x docs |
 | P4.1 | Backend spike | done | [SWITCH_BACKEND](SWITCH_BACKEND.md) |
 | P4.2 | Video | done | [P4.2](P4.2_VIDEO.md) |
-| P4.3 | Audio | in progress (BGM loop and win jingle fixed; no underrun count yet) | [P4.3](P4.3_AUDIO.md) |
+| P4.3 | Audio | in progress (BGM loop and win jingle fixed; underrun count and voice-leak counters are in the log since 2026-10-28, waiting for an OLED run) | [P4.3](P4.3_AUDIO.md) |
 | P4.4 | Input | done | [P4.4](P4.4_INPUT_STATUS.md) |
 | P4.5 | Filesystem + log + time | done (log rotation keeps `dw3.log` to `dw3.4.log`, rc=0x0: owner OLED, 2026-10-28, preview.45) | [P4.5](P4.5_STATUS.md) |
 | P4.6 | Static modules on Switch | in progress | [P4.6](P4.6_MODULES_STATUS.md) |
@@ -129,8 +131,9 @@ listed once, in [Pending OLED checks](#pending-oled-checks).
 | P6.9 | Restart-game hotkey | in progress (hotkey works on the OLED; PC replays pass for battle, save and Continue on US and EU; OLED retest open) | [P6.9](P6.9_RESTART.md) |
 | P6.10 | Hardware render outside battle | future | [P5.2](P5.2_BATTLE_GPU.md) |
 | P6.11 | Internal resolution scaling | future | [PC README](../platforms/pc/README.md) |
-| P6.12, P6.14, P6.16, P6.19, P6.21 | Backlog goal notes | future | [backlog](#backlog--future-goals) |
-| P6.13 | Mapping submenu, merged into P6.12 (owner, 2026-10-24) | merged | [backlog](#backlog--future-goals) |
+| P6.12 | Button mapping (design written 2026-10-28) | future | [CONTROLS_BUNDLE](CONTROLS_BUNDLE.md), [goal note](#phase-6-goal-notes) |
+| P6.14, P6.16, P6.19, P6.21 | Backlog goal notes | future | [backlog](#backlog--future-goals) |
+| P6.13 | Mapping submenu, merged into P6.12 (owner, 2026-10-24) | merged | [CONTROLS_BUNDLE](CONTROLS_BUNDLE.md) |
 | P6.15 | Regression replay tests | in progress | [P6.15](P6.15_REPLAY_TESTS.md) |
 | P6.17 | Music / SFX volume | done (owner confirmed on the OLED, 2026-10-24) | [P6.17](P6.17_VOLUME.md) |
 | P6.18 | Pacing options | in progress (Instant text works; Instant banner and report speed #223; rest of the check open) | [P6.18](P6.18_PACING.md) |
@@ -169,14 +172,14 @@ listed once, in [Pending OLED checks](#pending-oled-checks).
 | P9.5 | Wire real features | in progress | [PORT_OPTIONS](PORT_OPTIONS.md) |
 | P9.6 | External save converter | open | — |
 | P9.7 | Port options reachable in game | in progress (slice 1, the field menu, and slice 2, battle: built, PC US and EU replays, Switch Ryubing nx scenarios; live Widescreen open; owner OLED checks open) | [PORT_OPTIONS](PORT_OPTIONS.md#options-in-game-p97), [roadmap](#phase-9--port-options-menu) |
-| P9.8 | Confirm / cancel layout option (PS positional or Nintendo A/B) (future goal) | future | [roadmap](#phase-9--port-options-menu), [HOTKEYS](HOTKEYS.md) |
+| P9.8 | Confirm / cancel layout option (PS positional or Nintendo A/B) (future goal; design written 2026-10-28) | future | [roadmap](#phase-9--port-options-menu), [CONTROLS_BUNDLE](CONTROLS_BUNDLE.md), [HOTKEYS](HOTKEYS.md) |
 | P9.9 | Options screen redesign in the title menu's style, room for more rows (slice 1 done 2026-10-27: groups and sub-screens; OLED pending; Cheats screen restyle, Controls, Help, Walkthrough follow) | slice 1 in review | [roadmap](#phase-9--port-options-menu), [PORT_OPTIONS](PORT_OPTIONS.md) |
 | P10.1 | Switch features goal note | done | [SWITCH_FEATURES](SWITCH_FEATURES.md) |
-| P10.2 | Lifecycle hardening (has P5.3's leftover) | in progress (sleep and resume: owner confirmed on the OLED, 2026-10-24; HOME during a save write open) | [SWITCH_FEATURES](SWITCH_FEATURES.md) |
+| P10.2 | Lifecycle hardening (has P5.3's leftover) | in progress (sleep and resume: owner confirmed on the OLED, 2026-10-24; HOME during a save write: atomic write, exit gate and `dw3-save:` log lines done, OLED check open) | [SWITCH_FEATURES](SWITCH_FEATURES.md) |
 | P10.3 | Presentation modes | open | — |
 | P10.4 | Rumble polish (optional) | open | — |
 | P10.5 | Extra applets (optional) | open | — |
-| P10.6 | Switch-style button glyphs (future goal) | future | [roadmap](#phase-10--native-switch-features-residual), [TEXTURE_PACKS](TEXTURE_PACKS.md) |
+| P10.6 | Switch-style button glyphs (future goal; design written 2026-10-28) | future | [roadmap](#phase-10--native-switch-features-residual), [CONTROLS_BUNDLE](CONTROLS_BUNDLE.md), [TEXTURE_PACKS](TEXTURE_PACKS.md) |
 | P10.7 | NSP packaging: forwarder, full NSP or stay NRO | dropped | [NSP_PACKAGING](NSP_PACKAGING.md), [roadmap](#phase-10--native-switch-features-residual) |
 
 ## Pending OLED checks
@@ -620,7 +623,10 @@ console.
   log. The owner decides whether a listen is enough, or sets a number (for
   example 0 underruns over 10 min of field and battle in the nxlink log). The
   listen + underrun recipe is in [P4.3_AUDIO_HW.md](P4.3_AUDIO_HW.md) (not run
-  yet). Dated history: [P4.3_AUDIO.md](P4.3_AUDIO.md#history-moved-from-roadmapmd-2026-10-24).
+  yet). **2026-10-28:** the log now has the count: `dw3-audio: underruns N in
+  last 60 s (total T), queue depth ..., voices in use ..., key-on K ok F failed`
+  every minute and at exit, with the #188 voice-leak signal; OLED items D13
+  and D14 read it ([P4.3_AUDIO.md](P4.3_AUDIO.md#audio-health-line-underruns-and-the-voice-leak-188-2026-10-28)). Dated history: [P4.3_AUDIO.md](P4.3_AUDIO.md#history-moved-from-roadmapmd-2026-10-24).
 - [x] **P4.4 Input.** `hid` → PS1 pad bits, including the digital/analog
   modes `PadInfoMode`/`PadSetMainMode` expect; rumble via `PadSetAct` →
   HD rumble (optional).
@@ -1337,6 +1343,12 @@ PS1 game, with vanilla-safe defaults and persistence on owner storage.
   Done when: the row works on the Switch (and PC) with US and EU, the choice
   survives a relaunch, the default is bit-identical to today, and HOTKEYS.md
   and P4.4_INPUT_STATUS.md describe both layouts.
+  **Design (2026-10-28):** [CONTROLS_BUNDLE.md](CONTROLS_BUNDLE.md). The layout
+  is a preset of the P6.12 button map, applied at the shared pad host
+  (`psyz_pad_host.c` `refresh_port`), phase 1 of three. Found there: the game
+  cancels with Triangle (Switch X), not Circle, so "Nintendo" needs A = Cross, B =
+  Triangle, X = Circle (owner question 1); US and EU confirm with the same
+  physical button.
   Related: P6.12 / P6.13, P10.6, [SWITCH_FEATURES.md](SWITCH_FEATURES.md)
   (the "Confirm/Cancel layout" row).
 - [ ] **P9.9 Options screen redesign (slice 1 done 2026-10-27).** **Status:**
@@ -1498,6 +1510,12 @@ rumble, saves, turbo, or widescreen here; those stay in their phases.
   Done when: with the option on, the icons shown in the field, battle, menus
   and shops are Switch glyphs on the US and EU discs, they match the layout
   chosen in P9.8, and the option off restores the original icons.
+  **Design (2026-10-28):** [CONTROLS_BUNDLE.md](CONTROLS_BUNDLE.md), phase 3.
+  The icons are kind-1 glyphs of the font (`FONT_ICONS_1..3`, per-disc cells);
+  the plan patches those cells in VRAM at runtime so the glyph follows the active
+  map (a static pack cannot follow a remap), with original art under
+  `assets/glyphs/` (LICENSE + PROVENANCE.md). Step 0 is a dump to prove which
+  icons are the buttons.
   Related: P8.2/P8.3, P9.8, P6.12, [HOTKEYS.md](HOTKEYS.md).
 
 - [ ] **P10.7 NSP packaging (dropped).** **Dropped 2026-10-24, owner
@@ -1573,6 +1591,11 @@ Statuses are in the [table](#status-at-a-glance).
   gate. Done when the submenu opens from Port options, lists each mapped button,
   returns with the mapping saved, and a remap survives a restart and works on
   the US and EU discs.
+  **Design (2026-10-28):** [CONTROLS_BUNDLE.md](CONTROLS_BUNDLE.md), phase 2 of
+  three (phase 1 is the P9.8 layout, which builds the mapper). A permutation of
+  the raw pad word at the shared pad host, per PS button, global in
+  `port_options.cfg` (`button_layout`, `button_map`), a Customize screen in the
+  Controls group, Start / Select reserved, `dw3-controls:` log lines.
 - **P6.13 Mapping submenu.** Merged into P6.12 (owner, 2026-10-24). Its goal
   and done-when are in P6.12; the id stays for references.
 - [ ] **P6.14 In-game load / new save menu (future goal).** A load or
