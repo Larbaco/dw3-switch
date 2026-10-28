@@ -76,6 +76,7 @@ listed once, in [Pending OLED checks](#pending-oled-checks).
 | P6.31 | Auto-save, off by default | in progress (built: Options row, area-change write to its own file `autosave.bin`, title Continue loads it and the old Continue is Load; PC US and EU replays; owner OLED check open) | [P6.31_AUTOSAVE](P6.31_AUTOSAVE.md), [roadmap](#phase-6-goal-notes), [P5.3](P5.3_FLAT_SAVE.md) |
 | P6.32 | Map zoom and full-screen map (future goal) | phase 0 PoC built (PR `feat/p6.32-map-poc`), OLED look pending | [roadmap](#phase-6-goal-notes), [P6.32](P6.32_MAP_ZOOM.md), [P6.1](P6.1_WIDESCREEN.md) |
 | P6.33 | Items menu usability redesign | in progress (owner decisions recorded 2026-10-26; phase 1 partner cycle built: patch 0128, ZL / ZR, on by default; phases 2, 3 and 4 open; owner OLED check open) | [roadmap](#phase-6-goal-notes), [P6.33](P6.33_ITEMS_MENU.md), [P6.1](P6.1_WIDESCREEN.md) |
+| P6.34 | Redesign of the items / status / equipment menu flow (future goal) | future | [roadmap](#phase-6-goal-notes), [P6.33](P6.33_ITEMS_MENU.md) |
 | P7.1 | Inventory and boundaries | done | [COMMUNITY_QOL](COMMUNITY_QOL.md) |
 | P7.2 | Patched EU disc as data source | open | [COMMUNITY_QOL](COMMUNITY_QOL.md) |
 | P7.3 | Binary-patch limits | in progress | [COMMUNITY_QOL](COMMUNITY_QOL.md) |
@@ -2086,6 +2087,11 @@ Statuses are in the [table](#status-at-a-glance).
   while equipping on US and EU, the menu still fits 16:9 and 4:3, and the
   P6.15 Items replay scenarios (`us/eu-items-screen[-normal]`) still match.
   Related: P6.1, P6.15.
+- [ ] **P6.34 Items / status / equipment menu flow redesign (future goal).**
+  Dated 2026-10-27, owner: the options and their order in the items, status
+  and equipment menus feel odd. A redesign of the whole flow, beyond the
+  partner cycle of P6.33. No design yet; start from the P6.33 note. Done when
+  (proposed): the owner approves a flow and it works on US and EU, 4:3 and 16:9.
 
 ### Phase 7 goal notes
 
