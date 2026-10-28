@@ -96,7 +96,7 @@ Fresh start from hbmenu, US then EU. Main source:
 | A8 | Relaunch, HOME, close the software | Exits as before; `dw3.log` has the `applet exit` line | `dw3.log` | P6.28 |
 | A9 | Options from the title, B on Sound, X (back), B on Gameplay, X, X | B opens a group, X returns to the list with the cursor on the group you left, X on the list returns to the title menu. The choice sound plays on open, the cancel sound on back. Feel: the plaques look like the title menu's; the cursor moves without a stutter | `dw3.log` lines in the proof table below, photo | P9.9 |
 | A10 | Open a group for the first time (Sound, then Gameplay), then again | The first open of a group may take a frame longer than later ones; no black or garbage frame. `options update rebuild` once per group, then `cached` | `dw3.log`: `dw3-title-overlay: options update ... compose=N us` (a compose over about 40000 us on the Switch is worth reporting) | P9.9 |
-| A11 | Options in game (field menu OPTIONS), Display group | Widescreen greyed with the lock note; the deeper dim keeps the field menu behind from reading through; Cheats group (if the master switch is on) greyed; X, X back to the field menu | photo, `dw3.log` | P9.9, P9.7 |
+| A11 | Options in game (field menu OPTIONS), Display group | Widescreen greyed with the lock note; the near-opaque dim keeps the field menu behind from being legible; Cheats group (if the master switch is on) greyed; X, X back to the field menu | photo, `dw3.log` | P9.9, P9.7 |
 | A12 | Options in battle (Minus at the command menu), Sound, change Music, X, X | The battle stays held; closes after two X; the battle resumes as before | `dw3.log` | P9.9, P9.7 slice 2 |
 
 ## Session B: field and 16:9 screens tour

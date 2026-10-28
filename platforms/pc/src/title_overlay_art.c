@@ -413,7 +413,7 @@ static void cheats_screen(void) {
  * plaque of the focused item and its label; VALUE = a row's value; DESCRIPTION
  * = the message line for the focused item. The cache asks for the rectangles
  * with dw3_pc_title_overlay_options_rect. */
-enum { DIM_TITLE = 150, DIM_IN_GAME = 208 };
+enum { DIM_TITLE = 150, DIM_IN_GAME = 252 };
 enum { L_ROW_X = 152, L_ROW_W = 656, L_ROW_Y0 = 116, L_ROW_PITCH = 66,
        L_PLQ_H = 50, L_PLQ_DY = 8, L_GRP_X = 230, L_GRP_W = 500,
        L_ROWPLQ_X = 160, L_ROWPLQ_W = 640, L_VAL_X = 500, L_VAL_W = 260,
@@ -636,7 +636,7 @@ static void options_list_screen(int group,int scroll) {
         options_plaque(L_GRP_X,L_HEAD_Y,L_GRP_W,0,0);
         {
             const Word *name=on_groups?&t->title:&group_lang(group)->name;
-            plaque_word(name,480,L_HEAD_Y+L_PLQ_H/2-name->top-name->h/2-1,255,198,98);
+            plaque_word(name,480,L_HEAD_Y+(on_groups?8:9),255,198,98); /* one baseline for every word */
         }
         if(scroll>0)arrow(480,L_ROW_Y0-10,1);
         if(scroll+DW3_OPTLIST_VISIBLE<n)arrow(480,L_ROW_Y0+DW3_OPTLIST_VISIBLE*L_ROW_PITCH-8,0);
@@ -677,7 +677,7 @@ static void options_list_screen(int group,int scroll) {
             const int cr=lock?(lit?150:110):(lit?236:181);
             const int cg=lock?(lit?158:118):(lit?247:219);
             const int cb=lock?(lit?190:160):255;
-            if(on_groups)plaque_word(label,480,py+L_PLQ_H/2-label->top-label->h/2-1,cr,cg,cb);
+            if(on_groups)plaque_word(label,480,py+9,cr,cg,cb); /* origin, not ink: same baseline on every plaque */
             else wordsh(label,px+58,py+9,0,cr,cg,cb);
         }
         if(on_groups)continue;
