@@ -162,6 +162,7 @@ int main(void) {
             return fail("Cheats group follows the master switch");
         }
         for (g = 0; g < DW3_OPTGRP_COUNT; g++) {
+            if (g == DW3_OPTGRP_CHEATS) continue; /* cheat rows, not registry rows */
             for (k = 0; k < dw3_optgroups[g].nrows; k++) {
                 seen[dw3_optgroups[g].rows[k]]++;
             }

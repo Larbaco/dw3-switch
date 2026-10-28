@@ -1005,7 +1005,7 @@ for _v, _field in (("us", 0x158), ("eu", 0x166)):
 # master-off twin where nothing may happen.
 _CHEAT_ON = (("cheat_enabled", "1"),)
 for _v in ("us", "eu"):
-    _add(Scenario(f"{_v}-cheats-screen", _v, "full", timeout=300, log_only=True,
+    _add(Scenario(f"{_v}-cheats-screen", _v, "full", timeout=300,
                   phases=(f"{_v}-cheats-screen-p1", f"{_v}-cheats-screen-p2"),
                   expect_log=((0, r"dw3-cheats: cheats off \(instant win off\)"),
                               (0, r"dw3-cheats: open \(master off, fill bag off, instant win off, "
@@ -1071,7 +1071,7 @@ for _v in ("us", "eu"):
 # master-off twin where nothing may happen.
 for _v in ("us", "eu"):
     _bag = (f"{_v}-cheat-fill-bag",)
-    _add(Scenario(f"{_v}-cheats-screen2", _v, "full", timeout=300, log_only=True,
+    _add(Scenario(f"{_v}-cheats-screen2", _v, "full", timeout=300,
                   phases=(f"{_v}-cheats-screen2",),
                   expect_log=((0, r"dw3-cheats: cheats off \(instant win off\)"),
                               (0, r"dw3-options: saved cheat_enabled=1(?s:.*)"

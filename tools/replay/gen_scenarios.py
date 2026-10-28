@@ -1530,7 +1530,9 @@ def cheats_screen(version, phase):
     Cheats screen) -> master switch ON, Fill bag ready, Instant win ON, Battle
     now ready, Triangle back to Options, Triangle. Phase 2 is a new process:
     Options -> Square -> Triangle -> Triangle. The logs carry the toggles saved
-    and read back, and the one-shots not kept. No checkpoints."""
+    and read back, and the one-shots not kept. P9.9: one checkpoint on the
+    Cheats sub-screen per phase (`cheats-p1`: the rows just set, `cheats-p2`:
+    the toggles read back)."""
     r = Rec(f"{version.upper()}: Cheats screen, phase {phase}")
     m = _to_title_menu(r, version)
     r.press(m, DOWN)                 # New Game -> Options
@@ -1546,6 +1548,8 @@ def cheats_screen(version, phase):
             f += 20
             r.press(f, CROSS)
             f += 20
+    r.shot(f + 10, f"cheats-p{phase}")
+    f += 30
     r.press(f, TRIANGLE)             # back to Options
     f += 40
     r.press(f, TRIANGLE)             # leave
@@ -1571,8 +1575,8 @@ def cheats_screen2(version):
     """PR 2: title -> Options -> Square -> master ON, then page 2: Money +100,000
     (Cross twice), Warp to the third area (Digimon Arena, Cross three times),
     Item id 43 + 3 (Right) + 10 (R1) = 56, Item count 10 + 10 (R1) - 1 (Left) =
-    19, Give item ready, Triangle twice. The logs carry what was armed. No
-    checkpoints."""
+    19, Give item ready, Triangle twice. The logs carry what was armed. P9.9: two
+    checkpoints (`cheats-warp`, `cheats-give`)."""
     r = Rec(f"{version.upper()}: Cheats screen page 2")
     m = _to_title_menu(r, version)
     r.press(m, DOWN)                 # New Game -> Options
@@ -1593,6 +1597,8 @@ def cheats_screen2(version):
     for _ in range(3):               # Asuka City, Digimon Lab, Digimon Arena
         r.press(f, CROSS)
         f += 20
+    r.shot(f + 10, "cheats-warp")    # P9.9: the list has scrolled (Warp, row 7 of 10)
+    f += 30
     r.press(f, DOWN)                 # Item id
     f += 20
     for _ in range(3):
@@ -1610,6 +1616,8 @@ def cheats_screen2(version):
     f += 20
     r.press(f, CROSS)
     f += 40
+    r.shot(f, "cheats-give")         # P9.9: the end of the list (Give item, row 10 of 10)
+    f += 20
     r.press(f, TRIANGLE)             # back to Options
     f += 40
     r.press(f, TRIANGLE)             # leave

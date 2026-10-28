@@ -62,8 +62,9 @@ highest non-empty tier.
 
 ### Tier 2 — UI base (in this order)
 
-1. [P9.9](PORT_OPTIONS.md): finish the Cheats screen restyle and the remaining
-   sub-screens.
+1. [P9.9](PORT_OPTIONS.md): the Cheats screen restyle is done (slice 2, 2026-10-28,
+   PR open, OLED pending); the remaining sub-screens (Controls, Help, Walkthrough)
+   come with their features.
 2. Controls bundle, done together because they touch the same menus:
    [P6.12](#phase-6-goal-notes) remapping, [P9.8](HOTKEYS.md) A/B layout and
    [P10.6](TEXTURE_PACKS.md) Switch glyphs. Design: [CONTROLS_BUNDLE](CONTROLS_BUNDLE.md).
@@ -138,7 +139,7 @@ listed once, in [Pending OLED checks](#pending-oled-checks).
 | P6.15 | Regression replay tests | in progress | [P6.15](P6.15_REPLAY_TESTS.md) |
 | P6.17 | Music / SFX volume | done (owner confirmed on the OLED, 2026-10-24) | [P6.17](P6.17_VOLUME.md) |
 | P6.18 | Pacing options | in progress (Instant text works; Instant banner and report speed #223; rest of the check open) | [P6.18](P6.18_PACING.md) |
-| P6.20 | Port debug / cheat menu in the Options screen | in progress (PR 1 merged, #236: Cheats screen; PR 2, #248: money, give item and warp on page 2, in review; OLED checks open) | [roadmap](#phase-6-goal-notes), [PORT_OPTIONS](PORT_OPTIONS.md) |
+| P6.20 | Port debug / cheat menu in the Options screen | in progress (PR 1 merged, #236: Cheats screen; PR 2, #248: money, give item and warp on page 2, in review; 2026-10-28: the screen is now a scrolling sub-screen of the P9.9 list, same rows and behaviour; OLED checks open) | [roadmap](#phase-6-goal-notes), [PORT_OPTIONS](PORT_OPTIONS.md) |
 | P6.22 | Turbo speed in scripted scenes | in progress (CPU rasterizer is ~97 % of a field frame; pixel-identical rasterizer 4-5x faster, #220; turbo in the intro confirmed on the OLED 2026-10-27, preview.41; Forest Inn and the frame lines still open) | [P6.22](P6.22_FIELD_CPU.md), [roadmap](#phase-6-goal-notes), [P6.4](P6.4_FAST_FORWARD.md) |
 | P6.23 | Documentation: player guide, docs index, contributor and modder docs (future goal) | in progress (slice 1 done: player guide and docs index; slice 2: `CONTRIBUTING.md` and a pytest for all doc links, PR open; modder docs open) | [PLAYER_GUIDE](PLAYER_GUIDE.md), [docs index](README.md), [roadmap](#phase-6-goal-notes) |
 | P6.24 | One build for US and EU: one `.nro` and one PC binary, region found at boot, a boot picker with both discs (**owner priority 2026-10-28, Tier 0**; P6.25 and P6.26 are built) | built and shipped in preview.48 (`dw3-switch-both.nro`, #316 Switch; `dw3-pc` with both game copies, #314 PC); OLED check G9.x open; the separate US and EU `.nro` still ship; the Switch stop-gap launcher `dw3.nro` is a CI artifact only (slice 2) | [SINGLE_BUILD](SINGLE_BUILD.md#as-built-slice-1), [slice 2](SINGLE_BUILD.md#as-built-slice-2-the-switch-launcher), [slice 3](SINGLE_BUILD.md#as-built-slice-3-the-dual-image-link-pc), [roadmap](#phase-6-goal-notes) |
@@ -174,7 +175,7 @@ listed once, in [Pending OLED checks](#pending-oled-checks).
 | P9.6 | External save converter | open | — |
 | P9.7 | Port options reachable in game | in progress (slice 1, the field menu, and slice 2, battle: built, PC US and EU replays, Switch Ryubing nx scenarios; live Widescreen open; owner OLED checks open) | [PORT_OPTIONS](PORT_OPTIONS.md#options-in-game-p97), [roadmap](#phase-9--port-options-menu) |
 | P9.8 | Confirm / cancel layout option (PS positional or Nintendo A/B) (future goal; design written 2026-10-28) | future | [roadmap](#phase-9--port-options-menu), [CONTROLS_BUNDLE](CONTROLS_BUNDLE.md), [HOTKEYS](HOTKEYS.md) |
-| P9.9 | Options screen redesign in the title menu's style, room for more rows (slice 1 done 2026-10-27: groups and sub-screens; OLED pending; Cheats screen restyle, Controls, Help, Walkthrough follow) | slice 1 in review | [roadmap](#phase-9--port-options-menu), [PORT_OPTIONS](PORT_OPTIONS.md) |
+| P9.9 | Options screen redesign in the title menu's style, room for more rows (slice 1 done 2026-10-27: groups and sub-screens; OLED pending; slice 2 done 2026-10-28: Cheats screen restyled as a scrolling sub-screen and value changes are dirty-row updates; Controls, Help, Walkthrough follow) | slices 1 and 2 in review | [roadmap](#phase-9--port-options-menu), [PORT_OPTIONS](PORT_OPTIONS.md) |
 | P10.1 | Switch features goal note | done | [SWITCH_FEATURES](SWITCH_FEATURES.md) |
 | P10.2 | Lifecycle hardening (has P5.3's leftover) | in progress (sleep and resume: owner confirmed on the OLED, 2026-10-24; HOME during a save write: atomic write, exit gate and `dw3-save:` log lines done, OLED check open) | [SWITCH_FEATURES](SWITCH_FEATURES.md) |
 | P10.3 | Presentation modes | open | — |
@@ -1379,9 +1380,17 @@ PS1 game, with vanilla-safe defaults and persistence on owner storage.
   label (and, since the sub-screens show them, the row labels, values and message
   lines) is in en / fr / de / es / it; a list of more than six items scrolls
   (not used yet). Details: [PORT_OPTIONS](PORT_OPTIONS.md#groups-and-sub-screens-p99).
-  **Still open:** OLED validation (OLED_TEST_PLAN A5, A9 to A12); the Cheats
-  screen keeps the old window (restyle it with the owner's answer on the dark
-  tone); Controls (P6.12), Help (P6.30) and Walkthrough (P6.35) are hidden
+  **Slice 2 (2026-10-28):** the Cheats screen (P6.20, both pages) is a sub-screen
+  of the list in the same style (ten rows, six on screen, it scrolls; rows,
+  keys and behaviour unchanged; title only); the master switch, a scroll step, a
+  cursor move and a value change are dirty-row updates; **slice 3:** opening a
+  group is made over a prewarmed shared layer (the preview.47 log showed the
+  `rebuild ... compose=48-81 ms` lines came from every first group open, not from
+  value changes, which were already `dirty`; +5.3 MB of cache); PC replays
+  `cheats-screen`/`cheats-screen2` US and EU now compare pictures; the stage
+  sweep (P5.5) has no row on that screen, it is a config key. Details:
+  [PORT_OPTIONS](PORT_OPTIONS.md#cheats-sub-screen-p99-slice-2).
+  **Still open:** OLED validation (OLED_TEST_PLAN A5, A9 to A13); Controls (P6.12), Help (P6.30) and Walkthrough (P6.35) are hidden
   placeholders in `port_options_groups.h`; the open questions below are answered
   by defaults (Cheats group listed only with the master switch on; the plain dim of
   the title backdrop, deeper in game; no fallback to the old window). Original
