@@ -52,6 +52,27 @@ class Rec:
         return "\n".join(lines) + "\n"
 
 
+# P9.9: the Options screen is a list of groups (Display, Sound, Gameplay,
+# Saves; Cheats joins once its master switch is on); a group opens a sub-screen
+# with its rows and Triangle goes back to the list with the cursor kept.
+GRP_DISPLAY, GRP_SOUND, GRP_GAMEPLAY, GRP_SAVES = 0, 1, 2, 3
+
+
+def _keys(r, f, *masks, gap=20):
+    """Press the masks one after the other, `gap` frames apart; returns the
+    frame after the last one."""
+    for m in masks:
+        r.press(f, m)
+        f += gap
+    return f
+
+
+def _group(r, f, frm, to):
+    """From the list's cursor on group `frm`, move to group `to` and open it."""
+    step = DOWN if to > frm else UP
+    return _keys(r, f, *([step] * abs(to - frm)), CROSS)
+
+
 def us_title():
     r = Rec("US: boot, skip splash/opening movie, title, menu")
     r.press(20, START)           # skip the opening FMV
@@ -684,21 +705,26 @@ def options_persist(version, phase):
             r.press(f, START)
         m = 390
     r.press(m, DOWN)                 # New Game -> Options
-    r.press(m + 20, CROSS)           # open the Options screen
+    r.press(m + 20, CROSS)           # open the Options screen (the group list)
     if phase == 1:
         r.shot(m + 60, "options-defaults")
-        r.press(m + 70, CROSS)       # Widescreen ON -> OFF
-        r.press(m + 90, DOWN)
-        r.press(m + 110, CROSS)      # Fast-forward 2x -> 3x
-        r.press(m + 130, DOWN)
-        r.press(m + 150, CROSS)      # Restart hotkey OFF -> ON
-        r.shot(m + 190, "options-changed")
-        r.press(m + 200, TRIANGLE)   # leave
-        r.end(m + 240)
+        f = _group(r, m + 70, GRP_DISPLAY, GRP_DISPLAY)    # Display
+        r.shot(f + 20, "display-defaults")
+        r.press(f + 40, CROSS)       # Widescreen ON -> OFF
+        f = _keys(r, f + 60, TRIANGLE)                     # back to the list
+        f = _group(r, f, GRP_DISPLAY, GRP_GAMEPLAY)        # Gameplay
+        r.press(f, CROSS)            # Fast-forward 2x -> 3x
+        f = _keys(r, f + 20, DOWN, CROSS)                  # Restart hotkey OFF -> ON
+        r.shot(f + 40, "options-changed")
+        f = _keys(r, f + 60, TRIANGLE, TRIANGLE)           # list, then leave
+        r.end(f + 40)
     else:
-        r.shot(m + 60, "options-restored")
-        r.press(m + 70, TRIANGLE)
-        r.end(m + 110)
+        f = _group(r, m + 70, GRP_DISPLAY, GRP_GAMEPLAY)   # Gameplay
+        r.shot(f + 40, "options-restored")
+        f = _keys(r, f + 60, TRIANGLE, UP, UP, CROSS)      # Display again
+        r.shot(f + 40, "display-restored")
+        f = _keys(r, f + 60, TRIANGLE, TRIANGLE)
+        r.end(f + 40)
     return r
 
 
@@ -720,25 +746,18 @@ def volume_persist(version, phase):
     r.press(m + 20, CROSS)           # open the Options screen
     if phase == 1:
         r.shot(m + 60, "volume-defaults")
-        f = m + 70
-        for _ in range(3):           # Widescreen -> Fast-forward -> Restart -> Music
-            r.press(f, DOWN)
-            f += 20
-        for _ in range(3):           # Music volume 10 -> 7
-            r.press(f, LEFT)
-            f += 20
-        r.press(f, DOWN)             # SFX volume
-        f += 20
-        for _ in range(7):           # SFX volume 10 -> 3
-            r.press(f, LEFT)
-            f += 20
+        f = _group(r, m + 70, GRP_DISPLAY, GRP_SOUND)      # Sound: Music volume
+        f = _keys(r, f, LEFT, LEFT, LEFT)                  # Music volume 10 -> 7
+        f = _keys(r, f, DOWN)                              # SFX volume
+        f = _keys(r, f, *([LEFT] * 7))                     # SFX volume 10 -> 3
         r.shot(f + 40, "volume-changed")
-        r.press(f + 50, TRIANGLE)    # leave
-        r.end(f + 90)
+        f = _keys(r, f + 50, TRIANGLE, TRIANGLE)           # list, then leave
+        r.end(f + 40)
     else:
-        r.shot(m + 60, "volume-restored")
-        r.press(m + 70, TRIANGLE)
-        r.end(m + 110)
+        f = _group(r, m + 70, GRP_DISPLAY, GRP_SOUND)
+        r.shot(f + 40, "volume-restored")
+        f = _keys(r, f + 50, TRIANGLE, TRIANGLE)
+        r.end(f + 40)
     return r
 
 
@@ -764,20 +783,13 @@ def pacing_persist(version, phase):
     r.press(m, DOWN)                 # New Game -> Options
     r.press(m + 20, CROSS)           # open the Options screen
     if phase == 1:
-        f = m + 70
-        for _ in range(5):           # Widescreen -> ... -> Encounter rate
-            r.press(f, DOWN)
-            f += 20
-        r.press(f, LEFT)             # 1x -> 0.5x (the screen steps OFF, 0.5x, 1x, 1.5x, 2x)
-        f += 20
-        r.press(f, DOWN)             # Text speed
-        f += 20
-        r.press(f, RIGHT)            # Normal -> Fast
-        f += 20
-        r.press(f, RIGHT)            # Fast -> Instant
-        f += 20
-        r.press(f + 20, TRIANGLE)    # leave
-        r.end(f + 60)
+        f = _group(r, m + 70, GRP_DISPLAY, GRP_GAMEPLAY)   # Gameplay
+        f = _keys(r, f, DOWN, DOWN)  # Fast-forward -> Restart hotkey -> Encounter rate
+        f = _keys(r, f, LEFT)        # 1x -> 0.5x (the screen steps OFF, 0.5x, 1x, 1.5x, 2x)
+        f = _keys(r, f, DOWN)        # Text speed
+        f = _keys(r, f, RIGHT, RIGHT)  # Normal -> Fast -> Instant
+        f = _keys(r, f + 20, TRIANGLE, TRIANGLE)           # list, then leave
+        r.end(f + 40)
     else:
         r.press(m + 70, TRIANGLE)
         r.end(m + 110)
@@ -793,47 +805,42 @@ def battle_cursor_persist(version, phase):
     m = _to_title_menu(r, version)
     r.press(m, DOWN)                 # New Game -> Options
     r.press(m + 20, CROSS)           # open the Options screen
-    f = m + 70
-    for _ in range(7):               # Widescreen -> ... -> Battle cursor
-        r.press(f, DOWN)
-        f += 20
+    f = _group(r, m + 70, GRP_DISPLAY, GRP_GAMEPLAY)       # Gameplay
+    f = _keys(r, f, *([DOWN] * 4))   # Fast-forward -> ... -> Battle cursor
     if phase == 1:
         r.shot(f + 20, "battle-cursor-off")
         r.press(f + 40, RIGHT)       # Off -> Command
         r.shot(f + 80, "battle-cursor-command")
         r.press(f + 100, RIGHT)      # Command -> Command+Tech
         r.shot(f + 140, "battle-cursor-command-tech")
-        r.press(f + 160, TRIANGLE)   # leave
-        r.end(f + 200)
+        f = _keys(r, f + 160, TRIANGLE, TRIANGLE)          # list, then leave
+        r.end(f + 40)
     else:
         r.shot(f + 20, "battle-cursor-restored")
-        r.press(f + 40, TRIANGLE)
-        r.end(f + 80)
+        f = _keys(r, f + 40, TRIANGLE, TRIANGLE)
+        r.end(f + 40)
     return r
 
 
 def options_sound(version):
-    """Options screen sound feedback: title -> Options, four cursor moves down
-    to SFX volume, Left twice (10 -> 8, each change plays the choice sound at
-    the new level), one more row down to Encounter rate and Right (1x -> 1.5x),
-    then Triangle (the cancel sound). The log carries every sound with the SFX
-    volume it was played at."""
+    """Options screen sound feedback: title -> Options; Down (a cursor tick) and
+    Cross open Sound (the choice sound), Down to SFX volume and Left twice (10
+    -> 8, each change plays the choice sound at the new level), Triangle (the
+    cancel sound) back to the list, Down and Cross open Gameplay, two rows down
+    to Encounter rate and Right (1x -> 1.5x), Triangle twice (the cancel sound
+    each). The log carries every sound with the SFX volume it was played at."""
     r = Rec(f"{version.upper()}: Options screen sound feedback")
     m = _to_title_menu(r, version)
     r.press(m, DOWN)                 # New Game -> Options
     r.press(m + 20, CROSS)           # open the Options screen
-    f = m + 70
-    for _ in range(4):               # Widescreen -> ... -> SFX volume
-        r.press(f, DOWN)
-        f += 20
-    for _ in range(2):               # SFX volume 10 -> 9 -> 8
-        r.press(f, LEFT)
-        f += 20
-    r.press(f, DOWN)                 # Encounter rate
-    f += 20
-    r.press(f, RIGHT)                # 1x -> 1.5x
-    f += 20
-    r.press(f + 10, TRIANGLE)        # leave
+    f = _group(r, m + 70, GRP_DISPLAY, GRP_SOUND)          # Sound
+    f = _keys(r, f, DOWN)            # SFX volume
+    f = _keys(r, f, LEFT, LEFT)      # SFX volume 10 -> 9 -> 8
+    f = _keys(r, f, TRIANGLE)        # back to the list (the cancel sound)
+    f = _group(r, f, GRP_SOUND, GRP_GAMEPLAY)              # Gameplay
+    f = _keys(r, f, DOWN, DOWN)      # Encounter rate
+    f = _keys(r, f, RIGHT)           # 1x -> 1.5x
+    f = _keys(r, f + 10, TRIANGLE, TRIANGLE)               # list, then leave
     r.end(f + 60)
     return r
 
@@ -1891,46 +1898,50 @@ def _field_options_open(r, shots=True, last="options-open", shot_last=True):
 def field_options(version, phase=1):
     """P9.7 slice 1: the port Options screen from the field menu (env in the
     manifest: the party of the forced event battle as `return_title`; no cfg).
-    Phase 1: the screen opens with the cursor on Widescreen; Cross on it changes
-    nothing (it is locked in game: `widescreen-locked`); Down x3 to Music volume,
-    Left x3 (10 -> 7, `music-changed`), Down x2 to Encounter rate, Left x2
-    (1x -> 0.5x -> OFF, `encounter-off`); Triangle closes the screen back to the
-    field menu (`options-closed`); the menu still takes input (Down to Return to
-    title, `menu-alive`) and Triangle leaves it for the field (`field-after`).
+    Phase 1: the screen opens on the group list (`options-open`); Cross opens
+    Display (`display-open`), Cross on Widescreen changes nothing (it is locked
+    in game: `widescreen-locked`); Triangle, Down, Cross: Sound, Left x3 (Music
+    10 -> 7, `music-changed`); Triangle, Down, Cross: Gameplay, Down x2 to
+    Encounter rate, Left x2 (1x -> 0.5x -> OFF, `encounter-off`); Triangle back to the
+    list and Triangle again close the screen back to the field menu
+    (`options-closed`); the menu still takes input (Down to Return to title,
+    `menu-alive`) and Triangle leaves it for the field (`field-after`).
     Phase 2 is a new process on the same config dir: the same opening, and the
-    screen shows what phase 1 saved (`options-restored`: Music 7, Encounter
-    OFF, Widescreen still ON)."""
+    groups show what phase 1 saved (`options-restored`: Music 7;
+    `options-restored-gameplay`: Encounter OFF; Widescreen still ON)."""
     r = Rec(f"{version.upper()}: P9.7 port Options from the field menu, phase {phase} (env in manifest)")
     if phase == 2:
-        f = _field_options_open(r, shots=False, last="options-restored")
-        r.end(f + 40)
+        f = _field_options_open(r, shots=False, last="options-open-restored")
+        f = _group(r, f, GRP_DISPLAY, GRP_SOUND)           # Sound: Music 7
+        r.shot(f + 40, "options-restored")
+        f = _keys(r, f + 60, TRIANGLE)
+        f = _group(r, f, GRP_SOUND, GRP_GAMEPLAY)          # Gameplay: Encounter OFF
+        f = _keys(r, f, DOWN, DOWN)
+        r.shot(f + 40, "options-restored-gameplay")
+        r.end(f + 100)
         return r
     f = _field_options_open(r)
-    r.press(f, CROSS)                # Widescreen: locked, nothing changes
-    r.shot(f + 60, "widescreen-locked")
-    f += 80
-    for _ in range(3):               # Fast-forward, Restart hotkey, Music volume
-        r.press(f, DOWN)
-        f += 20
-    for _ in range(3):
-        r.press(f, LEFT)             # 10 -> 7
-        f += 20
+    r.press(f, CROSS)                # the Display group
+    r.shot(f + 40, "display-open")
+    r.press(f + 60, CROSS)           # Widescreen: locked, nothing changes
+    r.shot(f + 120, "widescreen-locked")
+    f = _keys(r, f + 140, TRIANGLE)  # back to the list
+    f = _group(r, f, GRP_DISPLAY, GRP_SOUND)               # Sound: Music volume
+    f = _keys(r, f, LEFT, LEFT, LEFT)                      # 10 -> 7
     r.shot(f + 40, "music-changed")
-    f += 60
-    for _ in range(2):               # SFX volume, Encounter rate
-        r.press(f, DOWN)
-        f += 20
-    for _ in range(2):
-        r.press(f, LEFT)             # 1x -> 0.5x -> OFF
-        f += 20
+    f = _keys(r, f + 60, TRIANGLE)
+    f = _group(r, f, GRP_SOUND, GRP_GAMEPLAY)              # Gameplay
+    f = _keys(r, f, DOWN, DOWN)      # Fast-forward, Restart hotkey, Encounter rate
+    f = _keys(r, f, LEFT, LEFT)      # 1x -> 0.5x -> OFF
     r.shot(f + 40, "encounter-off")
-    r.press(f + 60, TRIANGLE)        # close: back on the field menu
-    r.shot(f + 120, "options-closed")
-    r.press(f + 140, DOWN)           # the menu has the pad again
-    r.shot(f + 200, "menu-alive")
-    r.press(f + 220, TRIANGLE)       # leave the menu: the field resumes
-    r.shot(f + 420, "field-after")
-    r.end(f + 480)
+    f = _keys(r, f + 60, TRIANGLE)   # back to the list
+    r.press(f, TRIANGLE)             # close: back on the field menu
+    r.shot(f + 60, "options-closed")
+    r.press(f + 80, DOWN)            # the menu has the pad again
+    r.shot(f + 140, "menu-alive")
+    r.press(f + 160, TRIANGLE)       # leave the menu: the field resumes
+    r.shot(f + 360, "field-after")
+    r.end(f + 420)
     return r
 
 
@@ -1960,8 +1971,10 @@ def field_options_lang(idx):
     lang = EU_LANGS[idx]
     r = Rec(f"EU: P9.7 port Options from the field menu in {lang} (env in manifest)")
     f = _field_options_open(r)
-    r.press(f, TRIANGLE)
-    r.shot(f + 60, "options-closed")
+    r.press(f, CROSS)                # Display: the lock note in that language
+    r.shot(f + 60, "display-locked")
+    f = _keys(r, f + 80, TRIANGLE, TRIANGLE)               # list, then close
+    r.shot(f + 40, "options-closed")
     r.end(f + 100)
     return r
 
@@ -2025,10 +2038,11 @@ def battle_options_ref(version):
 
 def battle_options(version):
     """P9.7 slice 2: Select at the battle's command menu opens the port Options
-    screen over the held battle (`options-open`); Widescreen refuses a change,
-    Down x3 to Music volume, Left x3 (10 -> 7, `music-changed`); the screen
-    stays open for BO_HELD frames (`options-held`: the battle behind it has not
-    moved), Triangle closes it. The battle then goes on from the same frame: the
+    screen over the held battle (`options-open`, the group list); Display and
+    Widescreen refuse a change (`widescreen-locked`), Sound, Left x3 on Music
+    volume (10 -> 7, `music-changed`); the screen stays open for BO_HELD frames
+    (`options-held`: the battle behind it has not moved), Triangle goes back to the
+    list and Triangle again closes it. The battle then goes on from the same frame: the
     plain battle's checkpoints, BO_HELD frames later, are pixel-identical
     (manifest ref_map), the Tech is used and the battle ends in the report and
     the field as the plain one."""
@@ -2047,19 +2061,17 @@ def battle_options(version):
     r.press(BO_SELECT, SELECT)
     r.shot(BO_SELECT + 30, "options-open")
     f = BO_SELECT + 50
-    r.press(f, CROSS)                # Widescreen: locked, nothing changes
-    r.shot(f + 40, "widescreen-locked")
-    f += 60
-    for _ in range(3):               # Fast-forward, Restart hotkey, Music volume
-        r.press(f, DOWN)
-        f += 20
-    for _ in range(3):
-        r.press(f, LEFT)             # 10 -> 7
-        f += 20
-    r.shot(f + 20, "music-changed")
-    assert f + 20 < BO_CLOSE - 10
+    r.press(f, CROSS)                # the Display group
+    r.press(f + 20, CROSS)           # Widescreen: locked, nothing changes
+    r.shot(f + 50, "widescreen-locked")
+    f = _keys(r, f + 60, TRIANGLE)   # back to the list
+    f = _group(r, f, GRP_DISPLAY, GRP_SOUND)               # Sound: Music volume
+    f = _keys(r, f, LEFT, LEFT, LEFT)                      # 10 -> 7
+    r.shot(f + 10, "music-changed")
+    assert f + 10 < BO_CLOSE - 40
+    r.press(BO_CLOSE - 30, TRIANGLE)  # back to the list
     r.shot(BO_CLOSE - 10, "options-held")
-    r.press(BO_CLOSE, TRIANGLE)
+    r.press(BO_CLOSE, TRIANGLE)      # close
     for frame, name in BO_SHOTS:
         if frame > BO_SELECT:
             r.shot(frame + h, name)
@@ -2071,14 +2083,17 @@ def battle_options(version):
 
 def field_options_cheats(version):
     """P9.7: the Cheats entry is title-only. With the cheats master on (cfg
-    cheat_enabled=1) the Options screen shows its Square / Y "Cheats" hint
-    greyed; Square does nothing in game (`cheats-locked`: still the Options page)."""
+    cheat_enabled=1) the group list shows the Cheats group greyed; Square and
+    Cross on that group do nothing in game (`cheats-locked`,
+    `cheats-group-locked`: still the group list)."""
     r = Rec(f"{version.upper()}: P9.7 Cheats entry locked in game (env and cfg in manifest)")
     f = _field_options_open(r)
-    r.press(f, SQUARE_MASK)
+    r.press(f, SQUARE_MASK)          # the shortcut: refused
     r.shot(f + 60, "cheats-locked")
-    r.press(f + 80, TRIANGLE)
-    r.end(f + 140)
+    f = _keys(r, f + 80, DOWN, DOWN, DOWN, DOWN, CROSS)    # the greyed Cheats group
+    r.shot(f + 40, "cheats-group-locked")
+    r.press(f + 60, TRIANGLE)
+    r.end(f + 120)
     return r
 
 

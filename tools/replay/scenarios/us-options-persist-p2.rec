@@ -7,7 +7,24 @@ pad 320 0x0040
 pad 325 0x0000
 pad 340 0x4000
 pad 345 0x0000
-shot 380 options-restored
-pad 390 0x1000
+pad 390 0x0040
 pad 395 0x0000
-end 430
+pad 410 0x0040
+pad 415 0x0000
+pad 430 0x4000
+pad 435 0x0000
+shot 490 options-restored
+pad 510 0x1000
+pad 515 0x0000
+pad 530 0x0010
+pad 535 0x0000
+pad 550 0x0010
+pad 555 0x0000
+pad 570 0x4000
+pad 575 0x0000
+shot 630 display-restored
+pad 650 0x1000
+pad 655 0x0000
+pad 670 0x1000
+pad 675 0x0000
+end 730

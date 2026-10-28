@@ -156,9 +156,15 @@ _add(
 # start of the scenario). Phase 1 switches Widescreen OFF, Fast-forward
 # 2x -> 3x and the Restart hotkey ON; phase 2 only opens the screen again.
 _OPT_P1 = (r"dw3-options: no \S*port_options\.cfg; defaults",
+           r"dw3-port-options: group open display \(1 row\(s\), title\)(?s:.*)"
+           r"dw3-port-options: group close display \(back to the group list\)(?s:.*)"
+           r"dw3-port-options: group open gameplay \(5 row\(s\), title\)(?s:.*)"
+           r"dw3-port-options: group close gameplay \(back to the group list\)(?s:.*)"
+           r"dw3-port-options: close \(resume runOptions\)",
            r"dw3-options: saved \S*port_options\.cfg \(widescreen=0 fast_forward=3 restart_hotkey=1 music_volume=10 sfx_volume=10 "
            r"encounter_rate=0 text_speed=0 battle_menu_memory=0\)")
-_OPT_P2 = (r"dw3-options: \S*port_options\.cfg \(widescreen=0 fast_forward=3 restart_hotkey=1 "
+_OPT_P2 = (r"dw3-port-options: group open gameplay \(5 row\(s\), title\)",
+           r"dw3-options: \S*port_options\.cfg \(widescreen=0 fast_forward=3 restart_hotkey=1 "
            r"music_volume=10 sfx_volume=10 encounter_rate=0 text_speed=0 battle_menu_memory=0\)",)
 for _v in ("us", "eu"):
     _add(Scenario(f"{_v}-options-persist", _v, "full", timeout=300,
@@ -169,6 +175,7 @@ for _v in ("us", "eu"):
 # P6.17: Music volume 10 -> 7 and SFX volume 10 -> 3 in phase 1 (Left on the
 # volume rows), read back by phase 2 from the same config dir.
 _VOL_P1 = (r"dw3-options: no \S*port_options\.cfg; defaults",
+           r"dw3-port-options: group open sound \(2 row\(s\), title\)",
            r"dw3-options: saved \S*port_options\.cfg \(widescreen=1 fast_forward=2 restart_hotkey=0 "
            r"music_volume=7 sfx_volume=3 encounter_rate=0 text_speed=0 battle_menu_memory=0\)")
 _VOL_P2 = (r"dw3-options: \S*port_options\.cfg \(widescreen=1 fast_forward=2 restart_hotkey=0 "
@@ -216,11 +223,15 @@ for _v in ("us", "eu"):
 for _v in ("us", "eu"):
     _snd = lambda kind, vol: rf"dw3-port-options: sound {kind} \(sfx volume {vol}, voice -?[0-9]+\)"
     _add(Scenario(f"{_v}-options-sound", _v, "full", timeout=300, log_only=True,
-                  expect_log=((0, _snd("cursor", 10) + r"(?s:.*)" + _snd("select", 9) + r"(?s:.*)" +
-                                  _snd("select", 8) + r"(?s:.*)" + r"encounter rate 1\.5x(?s:.*)" +
-                                  _snd("select", 8) + r"(?s:.*)" + _snd("cancel", 8)),),
+                  expect_log=((0, _snd("cursor", 10) + r"(?s:.*)" + _snd("select", 10) +
+                                  r"(?s:.*)group open sound(?s:.*)" + _snd("cursor", 10) + r"(?s:.*)" +
+                                  _snd("select", 9) + r"(?s:.*)" + _snd("select", 8) + r"(?s:.*)" +
+                                  _snd("cancel", 8) + r"(?s:.*)group close sound(?s:.*)" +
+                                  r"group open gameplay(?s:.*)encounter rate 1\.5x(?s:.*)" +
+                                  _snd("select", 8) + r"(?s:.*)" + _snd("cancel", 8) + r"(?s:.*)" +
+                                  _snd("cancel", 8)),),
                   forbid_log=((0, r"sound \w+ not played"),),
-                  note="cursor ticks, each SFX volume change plays the choice sound at the new level, Triangle cancels"))
+                  note="cursor ticks, opening a group and each SFX volume change play the choice sound at the new level, Triangle cancels"))
 
 # Text speed: New Game, then no input; the first scripted pages type out and
 # wait. `text page typed in N frame(s)` is the typing time of a page.
@@ -1248,8 +1259,11 @@ for _v, _title in (("us", 0x1C1), ("eu", 0x1D0)):
 # apply at once and are saved, the screen closes and the menu and the field go
 # on; phase 2 (a new process on the same config dir) shows the values read back.
 _FO_P1 = (r"dw3-port-options: open in game(?s:.*)"
+          r"dw3-port-options: group open display \(1 row\(s\), in game\)(?s:.*)"
           r"dw3-port-options: Widescreen is locked in game \(change it at the title\)(?s:.*)"
+          r"dw3-port-options: group open sound \(2 row\(s\), in game\)(?s:.*)"
           r"dw3-port-options: music volume 7(?s:.*)"
+          r"dw3-port-options: group open gameplay \(5 row\(s\), in game\)(?s:.*)"
           r"dw3-port-options: encounter rate off(?s:.*)"
           r"dw3-port-options: close in game(?s:.*)"
           r"dw3: field menu Triangle cancel \(stay field\)",
@@ -1270,9 +1284,10 @@ for _v in ("us", "eu"):
                   env=_RT_ENV, cfg=(("cheat_enabled", "1"),),
                   expect_log=((0, r"dw3-port-options: open in game(?s:.*)"
                                   r"dw3-port-options: cheats are locked in game \(change them at the title\)(?s:.*)"
+                                  r"dw3-port-options: cheats are locked in game \(change them at the title\)(?s:.*)"
                                   r"dw3-port-options: close in game"),),
                   forbid_log=((0, r"dw3-cheats: open"),),
-                  note="the Cheats entry is greyed in game: Square (Y) does nothing (P9.7)"))
+                  note="the Cheats entry and the Cheats group are greyed in game: Square (Y) and Cross do nothing (P9.7, P9.9)"))
 # P6.4 turbo menus (patch 0176, port/options/turbo.c). With turbo on, menus
 # opened inside the field run at 1.5x: the field menu list, the Options screen
 # over it and the Return to title Yes / No window. The log has `speed 4x` (the
@@ -1358,6 +1373,7 @@ for _v, _ids in (("us", (0x159, 0x1FA, 0x1C2, 0x158)), ("eu", (0x167, 0x208, 0x1
                                   r"dw3-port-options: open in game \(battle command menu; (?s:.*)"
                                   r"dw3-battle-options: held, battle state: " + _BO_STATE +
                                   r"(?s:.*)dw3-port-options: Widescreen is locked in game \(change it at the title\)(?s:.*)"
+                                  r"dw3-port-options: group open sound \(2 row\(s\), in game\)(?s:.*)"
                                   r"dw3-port-options: music volume 7(?s:.*)"
                                   r"dw3-port-options: close in game \(back to the battle\)(?s:.*)"
                                   r"dw3-battle-options: resume after 300 held frame\(s\); the vsync clock ran on [1-9]\d* during the hold and is put back\n"
@@ -1383,6 +1399,7 @@ for _v, _ids in (("us", (0x159, 0x1FA, 0x1C2, 0x158)), ("eu", (0x167, 0x208, 0x1
                                   r"dw3-port-options: open in game \(battle command menu; (?s:.*)"
                                   r"dw3-battle-options: held, battle state: " + _BO_STATE +
                                   r"(?s:.*)dw3-port-options: Widescreen is locked in game \(change it at the title\)(?s:.*)"
+                                  r"dw3-port-options: group open sound \(2 row\(s\), in game\)(?s:.*)"
                                   r"dw3-port-options: music volume 7(?s:.*)"
                                   r"dw3-port-options: close in game \(back to the battle\)(?s:.*)"
                                   r"dw3-battle-options: resume after 300 held frame\(s\); the vsync clock ran on [1-9]\d* during the hold and is put back(?s:.*)"

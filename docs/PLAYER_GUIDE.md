@@ -147,35 +147,41 @@ P6.1_WIDESCREEN.md, P6.4_FAST_FORWARD.md, P6.9_RESTART.md, P6.17_VOLUME.md,
 P6.18_PACING.md, P6.31_AUTOSAVE.md, P7.9_BATTLE_MENU_MEMORY.md; row names and
 defaults from port/options/port_options.c -->
 
-Options holds the features the port adds. Up and Down choose a row. B or A
-changes it. X goes back (to the title, or to the field menu when opened there,
-see [Options in the field](#options-in-the-field)). A line under the rows explains the
-focused row. Changes are saved at once in `port_options.cfg`
+Options holds the features the port adds. It is a list of groups, drawn like
+the title menu: **Display**, **Sound**, **Gameplay**, **Saves** (and **Cheats**
+once you have turned the master switch on, see [Cheats screen](#cheats-screen)).
+Up and Down choose a group, B or A opens it. Inside, Up and Down choose a row and
+B or A changes it. X goes back: from a group to the list (the cursor stays on that
+group), from the list to the title, or to the field menu when opened there, see
+[Options in the field](#options-in-the-field). A line under the list explains the
+focused item. The words are in the language of the disc. Changes are saved at once in `port_options.cfg`
 ([PORT_OPTIONS](PORT_OPTIONS.md#persistence)). Defaults keep the original
 game, except Widescreen.
 
-| Row | Values | Default | What it does |
-|---|---|---|---|
-| Widescreen | ON / OFF | ON | About 16:9 in the field and battle, and in several menus. The title and movies stay 4:3. [P6.1](P6.1_WIDESCREEN.md) |
-| Fast-forward | 2x / 3x / 4x / OFF | 2x | The speed R3 switches to. The game still starts at 1x. OFF disables R3. Music and sound effects speed up too. [P6.4](P6.4_FAST_FORWARD.md) |
-| Restart hotkey | ON / OFF | OFF | Enables the L + R + Plus + Minus restart chord. [P6.9](P6.9_RESTART.md) |
-| Music volume | OFF, 1 to 10 | 10 | 10 is the original mix. Left and Right step; B steps up and wraps 10 to 0. [P6.17](P6.17_VOLUME.md) |
-| SFX volume | OFF, 1 to 10 | 10 | Same keys. The screen plays the game's menu sounds, so you hear the change. |
-| Encounter rate | OFF / 0.5x / 1x / 1.5x / 2x | 1x | Random battles only. Story battles stay. [P6.18](P6.18_PACING.md) |
-| Text speed | Normal / Fast / Instant | Normal | How fast dialogue is typed out. Normal is the original. |
-| Battle cursor | OFF / Command / Command+Tech | OFF | The battle command menu (and with Command+Tech the technique list) opens on your last pick. [P7.9](P7.9_BATTLE_MENU_MEMORY.md) |
-| Auto-save | OFF / Each area | OFF | With Each area: at each new field area the game saves to its own file, `autosave.bin`, never over your slots. On the title, **Continue** loads it. See [Saves](#saves). [P6.31](P6.31_AUTOSAVE.md) |
+| Group | Row | Values | Default | What it does |
+|---|---|---|---|---|
+| Display | Widescreen | ON / OFF | ON | About 16:9 in the field and battle, and in several menus. The title and movies stay 4:3. [P6.1](P6.1_WIDESCREEN.md) |
+| Gameplay | Fast-forward | 2x / 3x / 4x / OFF | 2x | The speed R3 switches to. The game still starts at 1x. OFF disables R3. Music and sound effects speed up too. [P6.4](P6.4_FAST_FORWARD.md) |
+| Gameplay | Restart hotkey | ON / OFF | OFF | Enables the L + R + Plus + Minus restart chord. [P6.9](P6.9_RESTART.md) |
+| Sound | Music volume | OFF, 1 to 10 | 10 | 10 is the original mix. Left and Right step; B steps up and wraps 10 to 0. [P6.17](P6.17_VOLUME.md) |
+| Sound | SFX volume | OFF, 1 to 10 | 10 | Same keys. The screen plays the game's menu sounds, so you hear the change. |
+| Gameplay | Encounter rate | OFF / 0.5x / 1x / 1.5x / 2x | 1x | Random battles only. Story battles stay. [P6.18](P6.18_PACING.md) |
+| Gameplay | Text speed | Normal / Fast / Instant | Normal | How fast dialogue is typed out. Normal is the original. |
+| Gameplay | Battle cursor | OFF / Command / Command+Tech | OFF | The battle command menu (and with Command+Tech the technique list) opens on your last pick. [P7.9](P7.9_BATTLE_MENU_MEMORY.md) |
+| Saves | Auto-save | OFF / Each area | OFF | With Each area: at each new field area the game saves to its own file, `autosave.bin`, never over your slots. On the title, **Continue** loads it. See [Saves](#saves). [P6.31](P6.31_AUTOSAVE.md) |
 
-The row lines on the screen are English on every disc, except the Auto-save
-row, which is in the five EU languages on the EU disc.
+The groups, rows, values and lines on the screen are in the language of the
+disc (English on the US disc; English, French, German, Spanish or Italian on the
+EU disc). Widescreen is locked while a game is running; change it at the title.
 
 ## Cheats screen
 
 <!-- Source: PORT_OPTIONS.md#cheats-p620 -->
 
 The Cheats screen is a test aid, not a game mode. On the Options screen press
-Y. X goes back. The "Y Cheats" hint shows only once the master switch is on,
-so you will not see it before you know the key. Builds made with
+Y (from the list or from any group). X goes back. The **Cheats** group in the
+list shows only once the master switch is on, so you will not see it before you
+know the key. Builds made with
 `--no-cheats` do not have the screen.
 
 The master row **Cheats** is OFF by default. While it is off, no cheat does

@@ -413,6 +413,7 @@ static void cheats_screen(void) {
  * plaque of the focused item and its label; VALUE = a row's value; DESCRIPTION
  * = the message line for the focused item. The cache asks for the rectangles
  * with dw3_pc_title_overlay_options_rect. */
+enum { DIM_TITLE = 150, DIM_IN_GAME = 208 };
 enum { L_ROW_X = 152, L_ROW_W = 656, L_ROW_Y0 = 116, L_ROW_PITCH = 66,
        L_PLQ_H = 50, L_PLQ_DY = 8, L_GRP_X = 230, L_GRP_W = 500,
        L_ROWPLQ_X = 160, L_ROWPLQ_W = 640, L_VAL_X = 500, L_VAL_W = 260,
@@ -627,8 +628,10 @@ static void options_list_screen(int group,int scroll) {
     const int cursor=options_layer==OPTIONS_LAYER_STATIC?-1:option_cursor;
 
     if(draw_static) {
-        /* The title backdrop stays, dimmed; the logo and the menu are gone. */
-        box(0,0,960,720,0,0,16,150);
+        /* The title backdrop stays, dimmed; the logo and the menu are gone.
+         * Over the field or a battle (a locked mask means in game) the dim is
+         * deeper: the menu behind must not read through the plaques. */
+        box(0,0,960,720,0,0,16,locked?DIM_IN_GAME:DIM_TITLE);
         /* Header plaque: OPTIONS, or the name of the open group. */
         options_plaque(L_GRP_X,L_HEAD_Y,L_GRP_W,0,0);
         {
@@ -919,9 +922,11 @@ void dw3_pc_title_overlay_options_rect(int page,int kind,int slot,int *x,int *y,
  * layout that cannot differ (Sound in game and at the title) shares one layer. */
 unsigned dw3_pc_title_overlay_options_lock_key(int page,unsigned locked) {
     int group,sc;
+    /* In game (a locked mask) the backdrop is dimmed deeper: bit 31 keeps those layers apart. */
+    const unsigned in_game=locked?1u<<31:0;
     if(!dw3_optlist_decode(page,&group,&sc))return 0;
-    if(group<0)return locked&(DW3_TITLE_LOCK_CHEATS|group_row_mask(DW3_OPTGRP_DISPLAY)|
-                              group_row_mask(DW3_OPTGRP_SOUND)|group_row_mask(DW3_OPTGRP_GAMEPLAY)|
-                              group_row_mask(DW3_OPTGRP_SAVES));
-    return locked&group_row_mask(group);
+    if(group<0)return in_game|(locked&(DW3_TITLE_LOCK_CHEATS|group_row_mask(DW3_OPTGRP_DISPLAY)|
+                                       group_row_mask(DW3_OPTGRP_SOUND)|group_row_mask(DW3_OPTGRP_GAMEPLAY)|
+                                       group_row_mask(DW3_OPTGRP_SAVES)));
+    return in_game|(locked&group_row_mask(group));
 }

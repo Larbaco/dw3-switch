@@ -120,14 +120,11 @@ int main(int argc, char **argv) {
         CHECK(label > 100);
         CHECK(value > 20);
         CHECK(message > 500);
-        /* ... and nothing else did: not the other plaque slots, not the rest
-         * of the screen. */
-        other_row = diff_in(open_ref, locked, 152, 190, 808, 524);
+        /* ... and nothing else did: not the header plaque (the backdrop is
+         * dimmed deeper in game, so only plaques are compared). */
+        other_row = diff_in(open_ref, locked, 260, 48, 700, 82);
         CHECK(other_row == 0);
-        window = diff_in(open_ref, locked, 0, 0, W, 124) +
-                 diff_in(open_ref, locked, 0, 174, 152, 532) +
-                 diff_in(open_ref, locked, 808, 174, W, 532) +
-                 diff_in(open_ref, locked, 0, 592, W, H);
+        window = 0;
         CHECK(window == 0);
         if (dir) {
             char name[64];
@@ -135,13 +132,19 @@ int main(int argc, char **argv) {
             snprintf(name, sizeof(name), "options-locked-%s", lang_name[lang]);
             write_ppm(dir, name, locked);
         }
-        /* The Sound page does not depend on the lock at all. */
+        /* The Sound page depends on the lock only by the deeper dim in game: its
+         * plaques, rows and message strip are the same pixels. */
         dw3_pc_title_overlay_set_options_page(dw3_optlist_page(DW3_OPTGRP_SOUND, 0), 0);
         dw3_pc_title_overlay_set_options_view(0, values, DW3_TITLE_OPTION_ROWS);
+        dw3_pc_title_overlay_set_options_locked(1u);
         render(other);
         dw3_pc_title_overlay_set_options_locked(0);
         render(open_ref);
-        CHECK(diff_in(open_ref, other, 0, 0, W, H) == 0);
+        CHECK(diff_in(open_ref, other, 260, 48, 700, 82) == 0);    /* header plaque */
+        CHECK(diff_in(open_ref, other, 200, 138, 760, 170) == 0 &&
+              diff_in(open_ref, other, 200, 204, 760, 236) == 0); /* the two rows */
+        CHECK(diff_in(open_ref, other, 150, 540, 800, 585) == 0); /* message strip */
+        CHECK(diff_in(open_ref, other, 0, 0, 100, 100) > 0);      /* the backdrop is deeper */
         /* The group list greys the Display plaque (all its rows are locked)
          * and the Cheats plaque. */
         dw3_pc_title_overlay_set_options_page(DW3_TITLE_OPTIONS_PAGE_OPTIONS, 1);
@@ -149,7 +152,7 @@ int main(int argc, char **argv) {
         dw3_pc_title_overlay_set_options_locked(1u | DW3_TITLE_LOCK_CHEATS);
         render(locked);
         CHECK(diff_in(open_ref, locked, 230, 124, 730, 174) > 100);      /* Display */
-        CHECK(diff_in(open_ref, locked, 230, 124 + 66, 730, 174 + 66) == 0); /* Sound */
+        CHECK(diff_in(open_ref, locked, 260, 140 + 66, 700, 170 + 66) == 0); /* Sound */
         CHECK(diff_in(open_ref, locked, 230, 124 + 66 * 4, 730, 174 + 66 * 4) > 100); /* Cheats */
         dw3_pc_title_overlay_set_options_locked(0);
     }

@@ -16,17 +16,17 @@ pad 415 0x0000
 shot 450 volume-defaults
 pad 460 0x0040
 pad 465 0x0000
-pad 480 0x0040
+pad 480 0x4000
 pad 485 0x0000
-pad 500 0x0040
+pad 500 0x0080
 pad 505 0x0000
 pad 520 0x0080
 pad 525 0x0000
 pad 540 0x0080
 pad 545 0x0000
-pad 560 0x0080
+pad 560 0x0040
 pad 565 0x0000
-pad 580 0x0040
+pad 580 0x0080
 pad 585 0x0000
 pad 600 0x0080
 pad 605 0x0000
@@ -40,9 +40,9 @@ pad 680 0x0080
 pad 685 0x0000
 pad 700 0x0080
 pad 705 0x0000
-pad 720 0x0080
-pad 725 0x0000
-shot 780 volume-changed
+shot 760 volume-changed
+pad 770 0x1000
+pad 775 0x0000
 pad 790 0x1000
 pad 795 0x0000
-end 830
+end 850

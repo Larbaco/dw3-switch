@@ -179,7 +179,8 @@ int main(void) {
             step(lang, 0, v, 1, &d);
             list_page(DW3_OPTGRP_SOUND, 0, 0);
             step(lang, 1, v, 1, &d);
-            if (dw3_pc_title_overlay_options_lock_key(dw3_optlist_page(DW3_OPTGRP_SOUND, 0), game_locked) != 0)
+            if ((dw3_pc_title_overlay_options_lock_key(dw3_optlist_page(DW3_OPTGRP_SOUND, 0), game_locked) &
+                 0x7fffffffu) != 0)
                 fail("Sound page depends on the locked rows", lang, 1, v);
             dw3_pc_title_overlay_set_options_locked(0);
         }
