@@ -862,6 +862,7 @@ int main(int argc, char **argv) {
             appletUnlockExit();
             g_applet_exit_locked = 0;
         }
+        dw3_nx_log_close();
         return game_result;
     }
 }

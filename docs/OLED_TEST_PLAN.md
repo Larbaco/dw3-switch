@@ -309,6 +309,7 @@ it from Pending OLED checks.
 | Item | Lines in `dw3*.log` |
 |---|---|
 | A1 | `dw3-run: started <date>`, `dw3: version=`, `crash report ids:` (build id), `runtime version=<region>` |
+| Log rotation | Owner check: after two launches `sdmc:/switch/dw3/` has `dw3.log` and `dw3.1.log` with different `dw3-run: started` times. Line `dw3-log: rotated (...)` in the new `dw3.log` shows each step (`r` renamed, `c` copied, `-` nothing/failed) with its rc and `kept N previous run(s)`; if dw3.log could not be moved aside the new run is appended, never truncated |
 | A7, A8 | `dw3_game_main returned 0; shutting down (quit path: title Quit game or HOME / applet exit)` |
 | B15 | `dw3-port-options: first frame shown N ms after the open request`, `longest frame gap N ms`, `open for N ms` |
 | B16 | `dw3-map:` lines (see the row); a missing picture shows as `switch map not drawn: no texture yet`, `scaler ... FAILED` or `upload FAILED (GL error 0x..)` |
