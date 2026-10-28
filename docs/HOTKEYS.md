@@ -37,8 +37,8 @@ port options:
   answers, the D-pad moves between Yes and No, Triangle or Circle (PC S or D;
   Switch X or A) cancel. Yes flushes the saves and ends the session: the Switch
   NRO returns to hbmenu, on PC the window closes. HOME still exits as before.
-- Port options is a list of groups (P9.9: Display, Sound, Gameplay, Saves, and
-  Cheats once its master switch is on). Up/Down moves the cursor; Cross **or
+- Port options is a list of groups (P9.9: Display, Sound, Gameplay, Saves, Help (P6.30), and
+  Cheats before Help once its master switch is on). Up/Down moves the cursor; Cross **or
   Circle** (PC X or D; Switch B or A) opens a group. In a group Up/Down selects a
   setting and Cross **or Circle** toggles it. Triangle (PC S; Switch X) in a group
   goes back to the list with the cursor on that group; on the list it returns to
@@ -48,6 +48,12 @@ port options:
   volume down / up from 10 to 0 (a held direction repeats; it stops at the
   ends), and Cross / Circle step up and wrap 10 to 0. See
   [P6.17_VOLUME.md](P6.17_VOLUME.md).
+- **Help** (P6.30, the last group of Options; Cross or Circle opens it, in the title, the field
+  menu and a battle alike): Up / Down move over the page list; Cross or Circle opens a page. On a
+  page Up / Down scroll one line (a held direction repeats), Left / Right a screenful, **L1 / R1**
+  (Switch L / R) go to the previous / next page, Triangle (Switch X) goes back to the list, and
+  Triangle on the list returns to the Options list. Cross and Circle do nothing on a page. The
+  Cheats screen is not described in the help. See [P6.30_HELP](P6.30_HELP.md).
 - On the Options screen (the list or any group), **Square** (PC **Z**, Switch
   **Y**) opens the Cheats screen (P6.20) and Triangle returns to Options. It is
   the same screen as the Cheats group, which is listed only once the Cheats

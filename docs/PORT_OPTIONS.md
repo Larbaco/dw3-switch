@@ -699,7 +699,8 @@ hints (Open or Change, Back).
 | Gameplay | Fast-forward (1), Restart hotkey (2), Encounter rate (5), Text speed (6), Battle cursor (7) | Restart hotkey moves to Controls when P6.12 exists |
 | Saves | Auto-save (8) | |
 | Cheats | the ten P6.20 cheat rows (not registry rows), a scrolling sub-screen | Listed once the Cheats master switch is on; greyed in game, and title-only |
-| Controls, Help, Walkthrough | not built | P6.12, P6.30, P6.35: hidden placeholders in `port_options_groups.h` (`built = 0`); flip the flag when the screen exists |
+| Help | no rows, a screen of its own (P6.30, built) | Always listed (it is not secret), after Saves and Cheats. Confirm opens the technical help (`port/help/`, [P6.30_HELP](P6.30_HELP.md)): a list of ten pages and a scrolling text page, on its own full-canvas layer that the host draws instead of the Options layer (the Options cache is untouched). Up / Down scroll a page by line, Left / Right by screenful, L1 / R1 (L / R) change page, Back goes to the page list and out. Title, field menu and battle Options all reach it |
+| Controls, Walkthrough | not built | P6.12, P6.35: hidden placeholders in `port_options_groups.h` (`built = 0`); flip the flag when the screen exists |
 
 Keys: Up / Down move the cursor; **Confirm** (Cross, Circle) opens the group;
 **Back** (Triangle, X on the Switch) in a group returns to the list with the
