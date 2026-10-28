@@ -801,7 +801,23 @@ Minus sample, `+`, forced, a disc image counting as present, a picker that canno
 run. The pure parts of the picker and the decision table are the slice 1 tests.
 Ryubing (below). The plain US and EU Switch builds still build.
 
-SLICE4_RYUBING
+**Ryubing runs** (headless on its own Xvfb, own data root with the real US and
+EU runtimes, `Ryujinx -r <root> <nro>`, evidence in
+`tmp/evidence/20261028-p624-both/`, not in git):
+
+| Case | Result (from `dw3.log`) |
+|---|---|
+| only `us/` | `data found us=1 eu=0`, `decision boot region=us: only the US data is present`, `saved last_region=us`, `running us`, `runtime version=us ... SLUS_014.36`, `entering dw3_game_main()`; the US opening movie plays |
+| only `eu/` | the same for EU: `running eu`, `executable=SLES_039.36`, `entering dw3_game_main()` |
+| both, nothing stored | `decision pick region=us: both present: picker`, `picker shown (default entry us, timeout 3000 ms)`, `picker result us by countdown after 3046 ms always=0`, `saved last_region=us`, then the US game |
+| none | `data found us=0 eu=0`, `decision no-data`, the setup screen is drawn (the first overlay draw of a Ryubing session is invisible while it compiles the shader, as noted for the title overlay; the text is the launcher's tested one) |
+| both, picker kept up (a throw-away build with a 40 s countdown, not committed) | the picker is drawn on the EGL surface, readable at 1280x960: title, `> US <   EU`, "Always start this one: off", "Starting US in 33...", the key hints and the Minus line; it counts down and boots US at 40 s |
+
+**Not covered by the emulator:** pad input. Ryubing's window does not get
+the injected keys while the guest starts, so Left / Right / A / Y / + and
+hold-Minus were not driven (the same limit as the launcher's smoke); they are
+host-tested through the flow and the picker state machine and are the first OLED
+check (G9.3 to G9.7).
 
 **Orchestrator defaults in this slice (owner may change):** the picker is a plain
 English screen; Minus is hold-to-ask; the separate US / EU `.nro` files keep
