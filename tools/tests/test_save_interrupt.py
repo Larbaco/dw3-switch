@@ -123,6 +123,48 @@ def test_atexit_shutdown_after_a_timeout_keeps_the_old_file(drv: Path, tmp_path:
     assert run(drv, "section", str(tmp_path), "timeout-shutdown") == f"disk={OLD}"
 
 
+# --- the log lines the OLED test plan (G2) greps for ----------------------------
+
+def run_err(drv: Path, *args: str) -> str:
+    r = subprocess.run([str(drv), *args], capture_output=True, text=True)
+    assert r.returncode == 0, r.stdout + r.stderr
+    return r.stderr
+
+
+def test_completed_write_logs_committed(drv: Path, tmp_path: Path):
+    err = run_err(drv, "write", str(tmp_path), "5", "1")
+    assert "dw3-save: write save0.bin committed (32768 bytes" in err
+    assert err.count("save0.bin committed") == 2  # setup + the write under test
+
+
+def test_kill_before_commit_logs_nothing_then_boot_keeps_previous_file(drv: Path, tmp_path: Path):
+    # the second write dies at step 2: the first one is the previous file
+    err = run_err(drv, "write", str(tmp_path), "2", "1")
+    # only the setup write (the previous file) committed; the killed one did not
+    assert err.count("save0.bin committed") == 1
+    err = run_err(drv, "boot", str(tmp_path))
+    assert "dw3-save: write save0.bin interrupted, previous file absent" in err \
+        or "dw3-save: write save0.bin interrupted, previous file kept" in err
+
+
+def test_boot_after_stale_tmp_logs_previous_file_kept(drv: Path, tmp_path: Path):
+    kill_at(drv, tmp_path, 5)
+    (tmp_path / "save0.bin.tmp").write_bytes(b"\xcc" * 0x4000)
+    err = run_err(drv, "boot", str(tmp_path))
+    assert "dw3-save: write save0.bin interrupted, previous file kept" in err
+
+
+def test_boot_after_kill_between_remove_and_rename_logs_recovery(drv: Path, tmp_path: Path):
+    kill_at(drv, tmp_path, 4)
+    err = run_err(drv, "boot", str(tmp_path))
+    assert "dw3-save: write save0.bin interrupted after the old file was removed" in err
+
+
+def test_exit_timeout_logs_previous_file_kept(drv: Path, tmp_path: Path):
+    err = run_err(drv, "section", str(tmp_path), "timeout")
+    assert "interrupted, previous file kept (exit with a save section open)" in err
+
+
 def test_hooks_are_wired():
     lib = (ROOT / "port" / "memcard" / "memcard_libmcrd.c").read_text()
     assert "memcard_host_section_begin(slot)" in lib
