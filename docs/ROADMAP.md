@@ -66,7 +66,7 @@ highest non-empty tier.
 2. Controls bundle, done together because they touch the same menus:
    [P6.12](#phase-6-goal-notes) remapping, [P9.8](HOTKEYS.md) A/B layout and
    [P10.6](TEXTURE_PACKS.md) Switch glyphs. Design: [CONTROLS_BUNDLE](CONTROLS_BUNDLE.md).
-3. [P6.30](#phase-6-goal-notes): technical help.
+3. [P6.30](#phase-6-goal-notes): technical help. Design: [P6.30_HELP](P6.30_HELP.md).
 4. [P6.34](#phase-6-goal-notes): menu-flow redesign. It absorbs
    [P6.33](P6.33_ITEMS_MENU.md) phases 2–4, so the items menu is redesigned once.
 5. [P6.32](P6.32_MAP_ZOOM.md): map phase 1.
@@ -146,7 +146,7 @@ listed once, in [Pending OLED checks](#pending-oled-checks).
 | P6.27 | Return to title from the pause (field) menu | in progress (built, PC US and EU replays; owner OLED, 2026-10-27, preview.41: Return to title works and Continue after it works; the Yes / No window, fade and card checks not reported) | [PORT_OPTIONS](PORT_OPTIONS.md#quit-and-return-to-title-p627-p628), [roadmap](#phase-6-goal-notes) |
 | P6.28 | Quit game on the title menu, back to hbmenu | in progress (built, PC US and EU replays; owner OLED, 2026-10-27, preview.41: Quit through the Sphaira forwarder works and returns to hbmenu; the full-app Sphaira launch shows errors, the forwarder is fine; card files, flush line and the US / EU split not reported) | [PORT_OPTIONS](PORT_OPTIONS.md#quit-and-return-to-title-p627-p628), [roadmap](#phase-6-goal-notes) |
 | P6.29 | Save editor: external tool on the owner's own saves, builds on P6.25 (future goal) | future | [roadmap](#phase-6-goal-notes), [CROSS_REGION_SAVES](CROSS_REGION_SAVES.md) |
-| P6.30 | Help, FAQ and tips from the pause menu and the title menu (future goal; owner answers recorded 2026-10-27; after P9.9) | future | [roadmap](#phase-6-goal-notes) |
+| P6.30 | Help, FAQ and tips from the pause menu and the title menu (future goal; owner answers recorded 2026-10-27; after P9.9) | future (design and first English text draft written 2026-10-28, owner review pending; page engine shared with P6.35) | [roadmap](#phase-6-goal-notes), [design](P6.30_HELP.md), [draft text](../port/help/text/en.txt) |
 | P6.31 | Auto-save, off by default | in progress (built: Options row, area-change write to its own file `autosave.bin`, title Continue loads it and the old Continue is Load; PC US and EU replays; owner OLED, 2026-10-27, preview.41: writes on an area change and on HOME close, title plaque spacing (#287); the save-file, Continue and Load Game checks not reported) | [P6.31_AUTOSAVE](P6.31_AUTOSAVE.md), [roadmap](#phase-6-goal-notes), [P5.3](P5.3_FLAT_SAVE.md) |
 | P6.32 | Map zoom and full-screen map (future goal) | phase 0 PoC built (PR `feat/p6.32-map-poc`); owner OLED, preview.45 (2026-10-28): the map shows and Nearest is the preferred scaler; balloon, cursor and name box pending preview.47; mod pack loader for an upscaled map built (`feat/mod-map-upscale`, OLED item B17 pending) | [roadmap](#phase-6-goal-notes), [P6.32](P6.32_MAP_ZOOM.md), [P6.1](P6.1_WIDESCREEN.md), [map upscale mod](MOD_MAP_UPSCALE.md) |
 | P6.33 | Items menu usability redesign | in progress (owner decisions recorded 2026-10-26; phase 1 partner cycle built: patch 0128, ZL / ZR, on by default; phases 2, 3 and 4 open; phase 1 cycle confirmed on the OLED 2026-10-27, preview.41; the `items_partner_switch=0` check open; phases 2–4 folded into P6.34) | [roadmap](#phase-6-goal-notes), [P6.33](P6.33_ITEMS_MENU.md), [P6.1](P6.1_WIDESCREEN.md) |
@@ -2159,6 +2159,20 @@ Statuses are in the [table](#status-at-a-glance).
   Done when (proposed): a tester opens Help from the pause menu on US and EU,
   reads the controls page, and finds the answers for install and crash reports
   without leaving the console.
+  **Design (2026-10-28):** [P6.30_HELP](P6.30_HELP.md). The help is a book of
+  ten scrollable pages (Setup, Controls, Port hotkeys, Turbo, Options explained,
+  Saves, Widescreen, Map view and mods, Logs and bug reports, FAQ) in the hidden
+  Help group of Options, reached from the title Options, the field menu OPTIONS
+  row and the battle Options. It defines the **page engine shared with
+  [P6.35](P6.35_WALKTHROUGH.md)**: a `key = value` text file per language
+  (`port/help/text/<lang>.txt`) separate from the logic, region / platform /
+  unverified qualifiers, button-name tokens (plain names until the P10.6 glyphs),
+  fallback to English, a baked glyph atlas for the body text, scrolling, and
+  `dw3-pages:` / `dw3-help:` log lines. Seven small phases. First draft of the
+  English text: [`port/help/text/en.txt`](../port/help/text/en.txt), **draft,
+  owner review pending**. Open questions with recommended defaults: atlas against
+  baked pages, entry through Options only, English-only on EU until P6.7, Cheats
+  left out, `(unverified)` tags, drift check against the guide.
   Related: P6.23, P6.27, P6.7, P6.35, P9.2, P9.9.
 - [ ] **P6.31 Auto-save (off by default).** Dated 2026-10-24, owner request
   (Portuguese, "salvamento automático"). First slice 2026-10-25 (patches `0140`,
