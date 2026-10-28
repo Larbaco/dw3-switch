@@ -713,7 +713,18 @@ runner sets `DW3_REGION` per phase and compares with the plain builds'
 references, private copy of the refs):
 
 - quick tier, US and EU: 68 checks, 0 failed, every capture 0 px different;
-- full tier: REPLAY_FULL_RESULT
+- full tier, a curated subset of both regions, chosen to cover every kind of
+  scenario: the 25 that finished before the run was cut (new game, field walk,
+  bridge gate, load, the four autosave scenarios, title continue/load, field
+  Options, banners and the four cross-region import scenarios `xr-*`), then 31
+  names for each region (load menu, options/volume persistence, two battles,
+  battle report, file-cache-full, items, map view, battle results, save screen,
+  card album/shop/deck, gym, lab, cheats screen, restarts, title quit, return to
+  title, turbo menu, battle options, door iris, underground exit, encounter,
+  text speed, HUD/claw, menu screens): 768 checks, 0 failed, 0 skipped, every
+  capture 0 px different from the plain builds' references. The other full-tier
+  scenarios (about 233 in all, about 3 h at 2 jobs) were not run on the `both`
+  binary; CI and the owner can run `tools/replay_tests.sh --bin-both PATH`
 
 **Not done / open.** The Switch image and picker (PR B). The EU language and
 title lines of `nx_crash.c` still use the compile-time region on the Switch
