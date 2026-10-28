@@ -250,7 +250,7 @@ its done-when. The ordered session plan (written for preview.36) is
   Music volume, Encounter rate, Text speed and the Restart hotkey apply at once,
   B returns to the menu, the values persist. Checklist:
   [PORT_OPTIONS.md](PORT_OPTIONS.md#oled-checklist-options-in-game-owner).
-  Still lagged on preview.45 (B15b); the fix is in preview.47, pending the owner.
+  B15b **PASSED** (owner, 2026-10-28, preview.47 US: no hitch felt; first frame 27-28 ms in game, was 92.6 ms on preview.45; the 20 ms target was not met numerically, the owner accepts the feel). Still open: the rest of this checklist, EU.
 - **P9.7 (slice 2):** Options in battle, US and EU, at least two EU languages:
   Minus at the command menu opens the window over the frozen battle (3D picture
   kept, no flicker), nothing moves while it is open (30 s), music keeps playing
