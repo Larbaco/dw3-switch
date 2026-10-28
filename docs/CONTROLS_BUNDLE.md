@@ -92,6 +92,7 @@ and before the engine reads a bit.** The map belongs there (section 2.1).
 | Fast-forward (R3) | `port/options/turbo.c:65` | `PAD_HELD(PAD_R3)` | follows |
 | Restart chord L1+R1+Start+Select | `port/options/restart.c:18-19` | logical | follows |
 | Select in battle, shoulders held | `port/options/battle_options.c:50-53` | `PAD_SELECT`, L1/R1/L2/R2 | follows |
+| Full-screen map view close (P6.32, `port/map_view/map_view.c`, patch `0146`) | `MV_CANCEL_BIT` = PS-side Triangle bit of the logical pad that the game's `PAD_PRESSED` reads | logical cancel (owner decision 2026-10-28: the view closes with the game's cancel button; Square, which opens it, does not close it) | follows the map automatically, and the P9.8 layout too: no code change when P6.12 lands. The game's Map screen closes with the same bit, so the two always agree. Opening stays on PS-side Square, which the remap moves with its function (the open key is the P6.32 phase 4 binding) |
 | Movie skip | patch `0034` | Start | Start is reserved |
 | Debug HUD Minus+L+R, renderer Minus+ZL+ZR | `nx_debug_overlay.c:34,280`, `nx_battle_mode.c:16,76` | **physical** hid bits from `dw3_nx_input_buttons_raw()` | does not follow |
 | PC F4 / F6 / Escape | PSY-Z `sdl3_common.h:898-904` | host keys | not pad |

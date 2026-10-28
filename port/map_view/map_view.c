@@ -832,6 +832,11 @@ static void hud_touch(void) {
 
 /* --- open / tick / close ---------------------------------------------------*/
 
+/* The game's cancel (back) button as a PS-side pad bit: STSTATUS_runMapScreen
+ * closes the Map screen with PAD_TRIANGLE, and the controls remap works on the
+ * raw word before the engine reads a bit, so this logical bit never moves. */
+#define MV_CANCEL_BIT DW3_MV_PAD_TRIANGLE
+
 static void close_view(void) {
     s.base_reveal_last = s.base.reveal;
     job_abandon();
@@ -1219,10 +1224,23 @@ int dw3_port_map_view_frame(const void *sheet, int sheet_file, int half,
         s.name_x1 = io->name_x1;
         s.name_y1 = io->name_y1;
     }
-    if (pressed & (BIT(DW3_MV_PAD_TRIANGLE) | BIT(DW3_MV_PAD_SQUARE))) {
+    /* Close with the game's cancel button (owner decision, 2026-10-28).
+     * `pressed` is the logical (PS-side) pad that the game reads, so this
+     * follows the P6.12 / P9.8 remap by itself: the game cancels with the
+     * PS-side Triangle bit whatever physical button is mapped to it
+     * (docs/CONTROLS_BUNDLE.md). Square, the button that opens the view, does
+     * not close it. */
+    if (pressed & BIT(MV_CANCEL_BIT)) {
+        fprintf(stderr, "dw3-map: close requested by the cancel button (PS-side "
+                "bit %d, the game's own cancel; follows a button remap)\n",
+                MV_CANCEL_BIT);
         fill_io(io);
         close_view();
-        return 1; /* this frame's Triangle must not close the game's screen */
+        return 1; /* this frame's cancel must not close the game's screen */
+    }
+    if (pressed & BIT(DW3_MV_PAD_SQUARE)) {
+        fprintf(stderr, "dw3-map: Square ignored in the view (it opens the view; "
+                "close with the cancel button, PS-side bit %d)\n", MV_CANCEL_BIT);
     }
     if (pressed & BIT(DW3_MV_PAD_L1)) {
         dw3_mv_view_zoom(&s.view, -1, s.base.w, s.base.h, VW, VH);
