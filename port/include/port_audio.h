@@ -36,9 +36,17 @@ void dw3_port_audio_apply(int music_step, int sfx_step);
  * id). Routes the track's voices to the music bus or the SFX bus. */
 void dw3_port_audio_note_sequence(int seq_access_num, int sep, int music);
 
-/* Once per frame (patch 0060): the optional bus statistics log
- * (DW3_AUDIO_STATS=<frames>); does nothing otherwise. */
+/* Once per frame (patch 0060): the audio health counters and their line
+ * every 60 s, and the optional bus statistics log (DW3_AUDIO_STATS=<frames>). */
 void dw3_port_audio_poll(void);
+
+/* From playSound (patch 0178): the result of SsUtKeyOn (a voice number, -1 =
+ * no free voice). Counts the key-ons for the audio health line and warns when
+ * voices ran out (#188). */
+void dw3_port_audio_note_keyon(int voice);
+
+/* The run-total audio health line; also runs at exit. Safe to call twice. */
+void dw3_port_audio_health_exit(void);
 
 #ifdef __cplusplus
 }

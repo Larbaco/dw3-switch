@@ -43,8 +43,10 @@ highest non-empty tier.
 
 - [P5.5](#phase-5--playable-on-switch): stage sweep on hardware.
 - [#188](https://github.com/Larbaco/dw3-switch/issues/188) and
-  [P4.3](P4.3_AUDIO.md): audio, underrun count.
-- [P10.2](SWITCH_FEATURES.md): HOME during a save write.
+  [P4.3](P4.3_AUDIO.md): audio, underrun count (counters in the log since
+  2026-10-28; waiting for an OLED run, items D13 and D14).
+- [P10.2](SWITCH_FEATURES.md): HOME during a save write (`dw3-save:` log lines
+  added 2026-10-28; waiting for the OLED check, item G2).
 - [P6.1](P6.1_WIDESCREEN.md): 16:9 batch 2. Stopped by the owner; resumes only
   when the owner allows.
 
@@ -99,7 +101,7 @@ listed once, in [Pending OLED checks](#pending-oled-checks).
 | P3.1–P3.9 | Game bring-up on PC | done | [P3_GATE](P3_GATE.md), [P3_EU_BUILD](P3_EU_BUILD.md), P3.x docs |
 | P4.1 | Backend spike | done | [SWITCH_BACKEND](SWITCH_BACKEND.md) |
 | P4.2 | Video | done | [P4.2](P4.2_VIDEO.md) |
-| P4.3 | Audio | in progress (BGM loop and win jingle fixed; no underrun count yet) | [P4.3](P4.3_AUDIO.md) |
+| P4.3 | Audio | in progress (BGM loop and win jingle fixed; underrun count and voice-leak counters are in the log since 2026-10-28, waiting for an OLED run) | [P4.3](P4.3_AUDIO.md) |
 | P4.4 | Input | done | [P4.4](P4.4_INPUT_STATUS.md) |
 | P4.5 | Filesystem + log + time | done (log rotation keeps `dw3.log` to `dw3.4.log`, rc=0x0: owner OLED, 2026-10-28, preview.45) | [P4.5](P4.5_STATUS.md) |
 | P4.6 | Static modules on Switch | in progress | [P4.6](P4.6_MODULES_STATUS.md) |
@@ -163,7 +165,7 @@ listed once, in [Pending OLED checks](#pending-oled-checks).
 | P9.8 | Confirm / cancel layout option (PS positional or Nintendo A/B) (future goal) | future | [roadmap](#phase-9--port-options-menu), [HOTKEYS](HOTKEYS.md) |
 | P9.9 | Options screen redesign in the title menu's style, room for more rows (slice 1 done 2026-10-27: groups and sub-screens; OLED pending; Cheats screen restyle, Controls, Help, Walkthrough follow) | slice 1 in review | [roadmap](#phase-9--port-options-menu), [PORT_OPTIONS](PORT_OPTIONS.md) |
 | P10.1 | Switch features goal note | done | [SWITCH_FEATURES](SWITCH_FEATURES.md) |
-| P10.2 | Lifecycle hardening (has P5.3's leftover) | in progress (sleep and resume: owner confirmed on the OLED, 2026-10-24; HOME during a save write open) | [SWITCH_FEATURES](SWITCH_FEATURES.md) |
+| P10.2 | Lifecycle hardening (has P5.3's leftover) | in progress (sleep and resume: owner confirmed on the OLED, 2026-10-24; HOME during a save write: atomic write, exit gate and `dw3-save:` log lines done, OLED check open) | [SWITCH_FEATURES](SWITCH_FEATURES.md) |
 | P10.3 | Presentation modes | open | — |
 | P10.4 | Rumble polish (optional) | open | — |
 | P10.5 | Extra applets (optional) | open | — |
@@ -611,7 +613,10 @@ console.
   log. The owner decides whether a listen is enough, or sets a number (for
   example 0 underruns over 10 min of field and battle in the nxlink log). The
   listen + underrun recipe is in [P4.3_AUDIO_HW.md](P4.3_AUDIO_HW.md) (not run
-  yet). Dated history: [P4.3_AUDIO.md](P4.3_AUDIO.md#history-moved-from-roadmapmd-2026-10-24).
+  yet). **2026-10-28:** the log now has the count: `dw3-audio: underruns N in
+  last 60 s (total T), queue depth ..., voices in use ..., key-on K ok F failed`
+  every minute and at exit, with the #188 voice-leak signal; OLED items D13
+  and D14 read it ([P4.3_AUDIO.md](P4.3_AUDIO.md#audio-health-line-underruns-and-the-voice-leak-188-2026-10-28)). Dated history: [P4.3_AUDIO.md](P4.3_AUDIO.md#history-moved-from-roadmapmd-2026-10-24).
 - [x] **P4.4 Input.** `hid` → PS1 pad bits, including the digital/analog
   modes `PadInfoMode`/`PadSetMainMode` expect; rumble via `PadSetAct` →
   HD rumble (optional).

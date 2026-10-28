@@ -16,6 +16,9 @@
 
 #ifdef DW3_NX_GAME_IMAGE
 #include <psyz/spu.h>
+
+#include "../../../port/audio/audio_health.h"
+void dw3_port_audio_health_exit(void);
 #endif
 
 #ifndef M_PI
@@ -113,6 +116,34 @@ static volatile int s_music_seq = -1, s_music_sep = -1;
 static volatile unsigned long long s_music_at; /* buffers_queued at the request */
 static volatile int s_music_step = 10;
 static int s_bus_stats_on;
+
+/* --- queue depth window for the `dw3-audio: underruns N in last 60 s` line
+ * (port/audio/audio_bus.c reads it through dw3_host_audio_queue_window).
+ * Written by the audio thread once per pass, read and cleared by the game
+ * thread once a minute; one small mutex, not the audio lock. */
+static Mutex s_qw_mutex;
+static Dw3AudioQueueWin s_qw;
+
+static void queue_note(unsigned depth) {
+    mutexLock(&s_qw_mutex);
+    if (s_qw.samples == 0 || depth < s_qw.depth_min) s_qw.depth_min = depth;
+    if (depth > s_qw.depth_max) s_qw.depth_max = depth;
+    s_qw.depth_sum += depth;
+    s_qw.samples++;
+    s_qw.depth_cap = NUM_BUFFERS;
+    s_qw.underruns = s_underruns;
+    mutexUnlock(&s_qw_mutex);
+}
+
+void dw3_host_audio_queue_window(Dw3AudioQueueWin *out) {
+    mutexLock(&s_qw_mutex);
+    s_qw.underruns = s_underruns;
+    s_qw.depth_cap = NUM_BUFFERS;
+    *out = s_qw;
+    s_qw.samples = s_qw.depth_min = s_qw.depth_max = 0;
+    s_qw.depth_sum = 0;
+    mutexUnlock(&s_qw_mutex);
+}
 
 static unsigned buffers_to_sec(unsigned long long b) {
     return (unsigned)(b * BUF_FRAMES / SAMPLE_RATE);
@@ -236,6 +267,7 @@ static unsigned s_win_buffers;
 static int s_bus_stats_on;
 #define HEALTH_BUFFERS 0xFFFFFFFFu
 static void health_report(void) {}
+static void queue_note(unsigned depth) { (void)depth; }
 static void health_note_buffer(const short *pcm, int paused) {
     (void)pcm;
     (void)paused;
@@ -262,6 +294,18 @@ static void audio_thread(void *arg) {
 
     while (!s_stop) {
         int queued_this_pass = 0;
+        unsigned depth = 0;
+
+        for (int i = 0; i < NUM_BUFFERS; i++) {
+            if (s_wavebufs[i].state != AudioDriverWaveBufState_Free &&
+                s_wavebufs[i].state != AudioDriverWaveBufState_Done) {
+                depth++;
+            }
+        }
+        if (depth == 0 && !s_paused) {
+            s_underruns++; /* every buffer played out: the output ran dry */
+        }
+        queue_note(depth);
 
         for (int i = 0; i < NUM_BUFFERS; i++) {
             AudioDriverWaveBuf *wb = &s_wavebufs[i];
@@ -472,7 +516,12 @@ void Psyz_AudioUnpause(void) { s_paused = 0; }
 
 bool dw3_nx_audio_init(void) { return Psyz_AudioInit() == 0; }
 
-void dw3_nx_audio_shutdown(void) { Psyz_AudioDestroy(); }
+void dw3_nx_audio_shutdown(void) {
+#ifdef DW3_NX_GAME_IMAGE
+    dw3_port_audio_health_exit(); /* the run-total line, before the counters go */
+#endif
+    Psyz_AudioDestroy();
+}
 
 void dw3_nx_audio_get_stats(Dw3NxAudioStats *out) {
     if (!out) {
