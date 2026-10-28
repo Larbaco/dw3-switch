@@ -14,7 +14,8 @@
 #                      {chord:restart} {path:root} {path:memcard} {build:version}
 #                      {build:region}
 #                      \n forced line break; {{ and }} are literal braces
-#   key = help.<page>.<kind>[.<n>]; kinds: title blurb h p li row note warn q a
+#   key = help.<page>.<kind>[.<n>]; kinds: title blurb h p li row note warn q a str
+#   (str = a word of the screen itself, page ui: help.ui.str.<name>; never a block)
 #   The order of this English file is the page order and the block order.
 #   Other languages carry the same keys; a missing key falls back to this file.
 #   A row is "left | right". The Cheats screen is deliberately not described here:
@@ -24,6 +25,15 @@
 @book = help
 @lang = en
 @status = draft, owner review pending
+
+# --------------------------------------------------- the screen's own words
+help.ui.str.open = Open
+help.ui.str.back = Back
+help.ui.str.scroll = Scroll
+help.ui.str.pages = Pages
+help.ui.str.page = Page
+help.ui.str.unverified = (unverified)
+help.ui.str.draft = (draft)
 
 # ---------------------------------------------------------------- setup
 help.setup.title = Setup
@@ -37,7 +47,7 @@ help.setup.note.1 = US and EU keep separate folders and separate settings.
 
 # ------------------------------------------------------------- controls
 help.controls.title = Controls
-help.controls.blurb = Which button does what, in the game and in the menus.
+help.controls.blurb = Which button does what, in the game and the menus.
 help.controls.p.1 = The game thinks in PlayStation buttons. The port maps your buttons by position, so the face buttons are not in Nintendo's usual order. The right column shows the button that produces each PlayStation button right now.
 help.controls.row.1 = Move | {btn:dpad}
 help.controls.row.2 = Cross, confirms | {btn:cross}
@@ -86,7 +96,7 @@ help.turbo.note.1 = Music and sound effects speed up too. How much faster the ga
 # -------------------------------------------------------------- options
 help.options.title = Options explained
 help.options.blurb = Every row, its values and its default.
-help.options.p.1 = Options is a list of groups: Display, Sound, Gameplay and Saves. Up and Down choose, {btn:cross} or {btn:circle} opens a group or changes a row, {btn:triangle} goes back. A line under the list explains the focused row. Changes apply at once and are saved in port_options.cfg.
+help.options.p.1 = Options is a list of groups: Display, Sound, Gameplay, Saves and Help. Up and Down choose, {btn:cross} or {btn:circle} opens a group or changes a row, {btn:triangle} goes back. A line under the list explains the focused row. Changes apply at once and are saved in port_options.cfg.
 help.options.p.2 = Open it from the title menu, from the OPTIONS row of the field menu, or in a battle with {btn:select}.
 help.options.h.1 = Display
 help.options.li.1 = Widescreen: ON or OFF, default ON. About 16:9 in the field, in battles and in several menus. The title and the movies stay 4:3.
@@ -105,7 +115,7 @@ help.options.note.2 = On the EU disc the rows and lines appear in the language o
 
 # ---------------------------------------------------------------- saves
 help.saves.title = Saves
-help.saves.blurb = Slots, auto-save, profiles, imports and where the files live.
+help.saves.blurb = Slots, auto-save, profiles and imports.
 help.saves.p.1 = Saving is manual, as in the original game. The port writes changed slots at safe points and when you press HOME or put the console to sleep. It never saves for you unless Auto-save is on, and then it writes its own file.
 help.saves.h.1 = Slots and files
 help.saves.li.1 = Two slots: save0.bin and save1.bin, plus autosave.bin once Auto-save has run.
