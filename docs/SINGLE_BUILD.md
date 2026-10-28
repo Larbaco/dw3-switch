@@ -207,10 +207,11 @@ arena does not double.
   `boot_tim.bin`, `memcard/` and `port_options.cfg`
   ([RUNTIME_LAYOUT.md](RUNTIME_LAYOUT.md)).
 - Shared, one level up: `dw3.log`, `crash_report.txt` (and `_prev`),
-  `replay.rec`. A disc image may sit in the parent folder (`sdmc:/switch/dw3/`)
-  for the separate builds, which search the region folder and then its parent
-  (`dw3_str_find_disc`). The combined build does not search the parent: its
-  disc must be in `us/` or `eu/` ([issue #322](https://github.com/Larbaco/dw3-switch/issues/322)).
+  `replay.rec`. A disc image may sit in the parent folder (`sdmc:/switch/dw3/`):
+  the separate builds search the region folder and then its parent
+  (`dw3_str_find_disc`), and the combined build does too since
+  [issue #322](https://github.com/Larbaco/dw3-switch/issues/322) (see "Disc in
+  the parent folder" below).
 - `port/cdfs/runtime_extract.c` already **identifies a disc image by its
   executable**: it extracts only when `RUNTIME_EXECUTABLE` is in the image and
   rejects an image that holds `RUNTIME_OTHER_EXECUTABLE` (the other region).
@@ -765,10 +766,11 @@ default, record it and tell me if it is not).
 3. Else it looks under `sdmc:/switch/dw3/` for `us/` and `eu/` (a complete tree:
    `files_<r>.json` plus the executable; a region folder that only holds a disc
    image, `*.cue` / `*.bin` / `*.iso` directly inside it, also counts, so a first
-   run from a disc still extracts). Only `<base>/us` and `<base>/eu` are read: a
-   disc image placed directly in `sdmc:/switch/dw3/` is not found here, unlike
-   with the separate builds ([issue #322](https://github.com/Larbaco/dw3-switch/issues/322)). It reads `region_default` and `last_region`
-   from `sdmc:/switch/dw3/port_options.cfg`.
+   run from a disc still extracts). A region with no complete tree and no image
+   in its folder also counts as present when `sdmc:/switch/dw3/` itself holds a
+   disc image of that region ([Disc in the parent folder](#disc-in-the-parent-folder-issue-322)).
+   It reads `region_default` and `last_region` from
+   `sdmc:/switch/dw3/port_options.cfg`.
 4. Only US or only EU: that one runs, no picker. None: the setup screen (names
    both folders) and `+` quits. Both: the picker, unless `region_default` is `us`
    or `eu`; **holding Minus at launch** (sampled for about 200 ms, and only when it
@@ -792,7 +794,39 @@ region_default=<ask|us|eu> last_region=<us|eu|none> minus_held=<0|1|n/a>`,
 <r>, timeout 3000 ms)`, `picker result <r> by <countdown|button A> after N ms
 always=<0|1>` or `picker quit by + after N ms`, `saved last_region=<r>
 [region_default=<r>]`, `forced <r> by <source>: ...`, and then `running <r>
-(<source>), one image with both game copies`. The OLED plan rows G9.* name them.
+(<source>), one image with both game copies`. With a disc in the parent folder,
+`data found` carries `(us: disc image <path>, needs extraction)`, a `<r> will be
+extracted from the disc image <path>` line follows the choice, and an image that
+is neither region is logged as `disc image ignored: <path> is neither a US nor
+an EU disc`. The OLED plan rows G9.* name them.
+
+### Disc in the parent folder (issue #322)
+
+Code: `port/region/dw3_disc.c` (`dw3_disc_scan`, `dw3_disc_region_of`),
+`dw3_region_boot.c`, `str_disc.c` (`dw3_str_set_disc_hint`); host test
+`tools/tests/region_boot_main.c` with synthetic images (`fake_iso.h`).
+
+- **Where it looks.** For each region without a complete tree: any
+  `*.cue/*.bin/*.iso` inside `<base>/<r>/` (as before), else the images directly
+  in `<base>` (`sdmc:/switch/dw3/`): `*.bin`, and the BIN a `*.cue` names.
+  `boot_tim.bin` is never a disc. A region whose tree is complete is not looked at,
+  so a leftover disc of an extracted region changes nothing.
+- **Which region an image is.** Not the file name: the ISO9660 root directory of
+  the Mode2/2352 image is read (PVD at sector 16) and holds `SLUS_014.36` (US) or
+  `SLES_039.36` (EU), the same two names `runtime_extract.c` checks. An image
+  that is neither (or not an ISO) is skipped and logged.
+- **Cases.** One disc in the parent: that region is present and starts at once
+  (no picker). A US and an EU disc there: both present, the picker asks. One disc
+  in the parent plus the other region already extracted: both present, picker.
+  Two images of the same region: the smallest file name is used.
+- **How the extraction gets it.** The chosen region's image path is handed to
+  `dw3_str_find_disc` as a hint (`Dw3RegionBootOut.disc`), which returns it first.
+  Without that, a parent holding two cues would be ambiguous ("the only .cue").
+  The extraction itself is unchanged (`dw3_runtime_ensure`, tree in `<base>/<r>/`).
+- **PC `both` build.** `dw3_region_resolve` counts such a disc as present and
+  `dw3-pc` sets the same hint (log: `dw3-pc: <r> will be extracted from the disc
+  image <path>`); `--region` / `DW3_REGION` choose which as before. Since this
+  PC build only extracted the US disc, it now also extracts EU from the parent.
 
 **Other host changes.** The crash report's `disc:` and EU `language:` lines are
 run time (`none yet` before a region is chosen, so a crash in the picker still
@@ -840,10 +874,11 @@ English screen; Minus is hold-to-ask; the separate US / EU `.nro` files keep
 shipping next to the combined one until you confirm it on the OLED; no region
 switching in game; a disc image has to sit in `us/` or `eu/` for a first-run
 extraction to be found (an extracted tree works wherever the disc was). This was
-written as a default for both, but the separate builds also find a disc in
-`sdmc:/switch/dw3/` (their extraction searches the parent folder); the combined
-build does not ([issue #322](https://github.com/Larbaco/dw3-switch/issues/322)).
-So for the combined build the rule is: disc in `us/` or `eu/`.
+written as a default for both, but the separate builds also found a disc in
+`sdmc:/switch/dw3/` (their extraction searches the parent folder) while the
+combined build did not ([issue #322](https://github.com/Larbaco/dw3-switch/issues/322)).
+Fixed: the combined build now accepts the disc in `us/` / `eu/` or in
+`sdmc:/switch/dw3/`, and tells the region from the image.
 
 **Not done / open.** Nothing was run on a console: the picker's look at arm's
 length, the Minus hold and the profile selector coming up after an EGL surface

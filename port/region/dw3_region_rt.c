@@ -1,5 +1,6 @@
 /* P6.24: the running region; see dw3_region_rt.h. */
 #include "dw3_region_rt.h"
+#include "dw3_disc.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -150,6 +151,19 @@ int dw3_region_resolve(const Dw3RegionRequest *req, Dw3RegionChoice *out) {
         return 0;
     }
     dw3_region_probe(base, &out->probe);
+    {
+        /* a disc image for a region without a complete tree counts as present
+         * (issue #322), as in the Switch boot flow (dw3_region_boot.c) */
+        Dw3DiscScan scan;
+
+        dw3_disc_scan(base, &out->probe, &scan);
+        if (scan.hit[0].found) {
+            out->probe.has_us = 1;
+        }
+        if (scan.hit[1].found) {
+            out->probe.has_eu = 1;
+        }
+    }
     if (out->probe.has_us != out->probe.has_eu) {
         out->region = out->probe.has_us ? DW3_REGION_US : DW3_REGION_EU;
         out->source = "probe-one";

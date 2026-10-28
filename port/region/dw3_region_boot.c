@@ -11,10 +11,11 @@ void dw3_region_boot(const Dw3RegionBootIn *in, const Dw3RegionBootIO *io,
     Dw3RegionInput ri;
     Dw3BootDecision d;
     Dw3RegionProbe tree;
-    char line[320];
-    char note[96];
+    char line[3 * DW3_DISC_PATH];
+    char note[2 * DW3_DISC_PATH + 64];
     const char *minus_txt = "n/a";
-    int disc_us = 0, disc_eu = 0;
+    Dw3DiscScan scan;
+    int i;
     Dw3Region region;
     const char *how;
     int always = 0;
@@ -36,24 +37,40 @@ void dw3_region_boot(const Dw3RegionBootIn *in, const Dw3RegionBootIO *io,
 
     dw3_region_probe(in->base, &tree);
     ri.probe = tree;
-    if (io->disc_waiting != NULL) {
-        if (!tree.has_us && io->disc_waiting(io->ud, in->base, DW3_REGION_US)) {
-            disc_us = 1;
-            ri.probe.has_us = 1;
-        }
-        if (!tree.has_eu && io->disc_waiting(io->ud, in->base, DW3_REGION_EU)) {
-            disc_eu = 1;
-            ri.probe.has_eu = 1;
+    /* A region without a complete tree still counts as present when a disc
+     * image for it waits in <base>/<r>/ or, identified by its executable, in
+     * <base> itself (issue #322); the extraction unpacks it. */
+    dw3_disc_scan(in->base, &tree, &scan);
+    for (i = 0; i < 2; i++) {
+        if (scan.hit[i].found) {
+            if (i == 0) {
+                ri.probe.has_us = 1;
+            } else {
+                ri.probe.has_eu = 1;
+            }
         }
     }
     note[0] = '\0';
-    if (disc_us || disc_eu) {
-        snprintf(note, sizeof(note), " (%s%s%s: disc image, needs extraction)",
-                 disc_us ? "us" : "", disc_us && disc_eu ? ", " : "", disc_eu ? "eu" : "");
+    for (i = 0; i < 2; i++) {
+        size_t len = strlen(note);
+
+        if (scan.hit[i].found && len < sizeof(note) - 1) {
+            snprintf(note + len, sizeof(note) - len, "%s%s: disc image %s",
+                     len == 0 ? " (" : "; ", i == 0 ? "us" : "eu", scan.hit[i].path);
+        }
+    }
+    if (note[0] != '\0') {
+        strncat(note, ", needs extraction)", sizeof(note) - strlen(note) - 1);
     }
     snprintf(line, sizeof(line), "dw3-region: data found us=%d eu=%d under %s%s",
              ri.probe.has_us, ri.probe.has_eu, in->base, note);
     io->log(io->ud, line);
+    if (scan.unidentified > 0) {
+        snprintf(line, sizeof(line),
+                 "dw3-region: disc image ignored: %s is neither a US nor an EU disc "
+                 "(%d image(s) in %s)", scan.unidentified_first, scan.unidentified, in->base);
+        io->log(io->ud, line);
+    }
 
     dw3_region_cfg_read(in->base, &ri.pref, &ri.last);
     /* The hold-Minus sample costs about 200 ms, so take it only when it can
@@ -130,4 +147,10 @@ void dw3_region_boot(const Dw3RegionBootIn *in, const Dw3RegionBootIO *io,
     out->result = DW3_RB_RUN;
     out->region = region;
     out->source = how;
+    if (scan.hit[region - DW3_REGION_US].in_parent) {
+        snprintf(out->disc, sizeof(out->disc), "%s", scan.hit[region - DW3_REGION_US].path);
+        snprintf(line, sizeof(line), "dw3-region: %s will be extracted from the disc image %s",
+                 dw3_region_name(region), out->disc);
+        io->log(io->ud, line);
+    }
 }

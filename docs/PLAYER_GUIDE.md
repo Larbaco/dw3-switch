@@ -67,10 +67,11 @@ Steps:
 3. Copy your disc's BIN and CUE files:
    - Separate builds: US into `sdmc:/switch/dw3/`, next to the `us/` folder; EU
      into `sdmc:/switch/dw3/eu/`, for example `disc.bin` and `disc.cue`.
-   - Combined build: into `sdmc:/switch/dw3/us/` (or `eu/`), creating the folder
-     if needed. The combined build does **not** look in `sdmc:/switch/dw3/`
-     itself: a disc left there is not found, and it shows the setup message
-     instead of starting ([issue #322](https://github.com/Larbaco/dw3-switch/issues/322)).
+   - Combined build: into `sdmc:/switch/dw3/` or into `sdmc:/switch/dw3/us/`
+     (or `eu/`). It finds a disc in either place and tells the region from the
+     disc itself (its executable: `SLUS_014.36` is US, `SLES_039.36` is EU), not
+     from the file name. You can leave a US and an EU disc side by side in
+     `sdmc:/switch/dw3/`: both regions count as present and the picker appears.
 4. Launch from hbmenu. The first boot extracts the game data from the disc and
    draws a progress bar. Leave it running.
 
@@ -83,24 +84,35 @@ sdmc:/switch/dw3/Digimon World 3.bin
 sdmc:/switch/dw3/us/            created on first boot
 ```
 
-With the combined build the disc sits inside the region folder:
+With the combined build the disc sits in the same place, or inside the region
+folder (`us/` or `eu/`); either works:
 
 ```text
 sdmc:/switch/dw3-switch-both.nro
-sdmc:/switch/dw3/us/Digimon World 3.cue
-sdmc:/switch/dw3/us/Digimon World 3.bin
+sdmc:/switch/dw3/Digimon World 3.cue
+sdmc:/switch/dw3/Digimon World 3.bin
+sdmc:/switch/dw3/us/            created on first boot
+```
+
+Both regions from discs in the parent folder (the picker then asks which to
+start, and extracts the one you choose; the other is extracted the first time you
+choose it):
+
+```text
+sdmc:/switch/dw3/Digimon World 3.bin        US disc
+sdmc:/switch/dw3/Digimon World 2003.bin     EU disc
 ```
 
 After the first boot:
 
 - The next boot checks the extracted files and does not read the BIN again.
 - Do not pre-extract files by hand when you want the port to extract them.
-- Keep `us/`, `eu/` and their `memcard/` folders. Never delete or move
-  `save0.bin`, `save1.bin` or `.mcr.bak` to force an extraction. Back up
-  `memcard/` before deleting a region folder.
+- Keep `us/`, `eu/` and `saves/`. Never delete or move `save0.bin`,
+  `save1.bin` or `.mcr.bak` to force an extraction. Back up `saves/` (and the old
+  `memcard/` folders, if you have them) before deleting a region folder.
 - US and EU keep separate folders and settings.
-- The port writes `port_options.cfg` (settings) in the region folder and
-  `memcard/` (saves). Logs and crash reports go one level up, in
+- The port writes `port_options.cfg` (settings) in the region folder and the
+  saves under `saves/` (see Saves below). Logs and crash reports go one level up, in
   `sdmc:/switch/dw3/`.
 
 The `-nxlink` build streams logs to a PC and is for development. You do not
@@ -274,7 +286,12 @@ field menu only, not in battle.
 CROSS_REGION_SAVES.md#as-built-slice-1, PORT_OPTIONS.md#cheats-p620,
 P6.31_AUTOSAVE.md (Auto-save, the ninth row) -->
 
-- **Where:** `sdmc:/switch/dw3/us/memcard/` or `sdmc:/switch/dw3/eu/memcard/`.
+- **Where:** one folder per Switch profile and region,
+  `sdmc:/switch/dw3/saves/<uid>/us/memcard/` or `.../saves/<uid>/eu/memcard/`
+  (`<uid>` is the profile key, 32 hex digits; `shared` or `default` when there is no profile). The first time a
+  profile starts a region, the saves of the old per-region folder
+  (`sdmc:/switch/dw3/us/memcard/` or `eu/memcard/`, where earlier versions kept
+  them) are **copied** into it; the old folder is left as it was.
   Slots are `save0.bin` and `save1.bin`. Old `memcardN.mcr` files convert once
   and are kept as `.mcr.bak`. Details: [P5.3_FLAT_SAVE](P5.3_FLAT_SAVE.md).
 - **In-game saving is manual,** as in the original game. The port flushes

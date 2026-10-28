@@ -28,7 +28,9 @@
 #include "port_turbo.h"
 #include "runtime_extract.h"
 #include "str_stream.h"
+#include "dw3_disc.h"
 #include "dw3_region_rt.h"
+#include "str_disc.h"
 #include "dw3_game_api.h" /* last: in a `both` image it redirects the game calls */
 
 #include <stdio.h>
@@ -245,6 +247,9 @@ static const char *env_or(const char *key, const char *fallback) {
 #define DW3_DEFAULT_RUNTIME "runtime/us"
 #endif
 
+/* issue #322: set when a `both` build found its region's disc in the parent. */
+static int g_pc_disc_from_parent;
+
 /* P6.24: the region of this run. A plain us / eu build is fixed (a --region or
  * DW3_REGION for the other one is ignored, with a line in the log); a `both`
  * build takes it from --region, DW3_REGION, the runtime folder that is given,
@@ -288,7 +293,22 @@ static int dw3_pc_pick_region(int argc, char **argv, const char *root_explicit,
         if (root_explicit != NULL) {
             snprintf(root_out, root_cap, "%s", root_explicit);
         } else {
+            Dw3RegionProbe tree;
+            Dw3DiscScan scan;
+            const Dw3DiscHit *hit;
+
             snprintf(root_out, root_cap, "%s/%s", base, dw3_region_name(choice.region));
+            /* issue #322: a disc image in the parent folder, identified by its
+             * executable, is what the extraction of this region reads */
+            dw3_region_probe(base, &tree);
+            dw3_disc_scan(base, &tree, &scan);
+            hit = &scan.hit[choice.region - DW3_REGION_US];
+            if (hit->found && hit->in_parent) {
+                dw3_str_set_disc_hint(hit->path);
+                g_pc_disc_from_parent = 1;
+                fprintf(stderr, "dw3-pc: %s will be extracted from the disc image %s\n",
+                        dw3_region_name(choice.region), hit->path);
+            }
         }
     }
 #else
@@ -396,7 +416,7 @@ static int init_paths(int argc, char **argv) {
     root = root_buf;
     fprintf(stderr, "dw3-pc: region=%s\n", DW3_PC_REGION);
 
-    if (dw3_region() == DW3_REGION_US) {
+    if (dw3_region() == DW3_REGION_US || g_pc_disc_from_parent) {
         if (dw3_runtime_ensure(root) != 0) {
             fprintf(stderr, "dw3-pc: runtime extract failed\n");
             return -1;

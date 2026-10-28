@@ -9,7 +9,8 @@
  * (tools/tests/region_boot_main.c).
  *
  * Lines it logs, all starting `dw3-region: `:
- *   data found us=<0|1> eu=<0|1> under <base> [(us: disc image, needs extraction) ...]
+ *   data found us=<0|1> eu=<0|1> under <base> [(us: disc image <path>, needs extraction) ...]
+ *   disc image ignored: <path> is neither a US nor an EU disc (N image(s) in <base>)
  *   stored region_default=<ask|us|eu> last_region=<us|eu|none> minus_held=<0|1|n/a>
  *   decision <boot|pick|no-data> region=<us|eu|none>: <why>
  *   picker shown (default entry <r>, timeout 3000 ms)
@@ -21,6 +22,7 @@
 #ifndef DW3_REGION_BOOT_H
 #define DW3_REGION_BOOT_H
 
+#include "dw3_disc.h"
 #include "dw3_region.h"
 
 #ifdef __cplusplus
@@ -40,9 +42,6 @@ typedef struct Dw3RegionBootIO {
     unsigned (*run_picker)(void *ud, Dw3Picker *p);
     /* The "no game data" screen, until the player dismisses it. */
     void (*show_no_data)(void *ud, const char *base);
-    /* 1 when `<base>/<r>/` has no complete tree but holds a disc image that the
-     * runtime extraction can unpack (the region then counts as present). NULL = no. */
-    int (*disc_waiting)(void *ud, const char *base, Dw3Region r);
 } Dw3RegionBootIO;
 
 typedef struct Dw3RegionBootIn {
@@ -60,6 +59,8 @@ typedef enum Dw3RegionBootResult {
 typedef struct Dw3RegionBootOut {
     Dw3RegionBootResult result;
     Dw3Region region;
+    char disc[DW3_DISC_PATH]; /* the disc image in <base> to extract for `region`
+                                 (dw3_str_set_disc_hint), or "" */
     const char *source; /* "forced", "only the US data is present", "region_default",
                            "picker (button A)", "picker (countdown)", ... */
 } Dw3RegionBootOut;

@@ -20,7 +20,7 @@ INCLUDE = ROOT / "port" / "include"
 
 def build(out: Path, *srcs: Path) -> Path:
     cmd = ["gcc", "-std=gnu11", "-Wall", "-Wextra", "-Werror", "-O2", "-o", str(out),
-           *map(str, srcs), f"-I{REGION}", f"-I{INCLUDE}"]
+           *map(str, srcs), f"-I{REGION}", f"-I{INCLUDE}", f"-I{TESTS}"]
     r = subprocess.run(cmd, capture_output=True, text=True)
     assert r.returncode == 0, r.stderr + r.stdout
     return out
@@ -170,14 +170,14 @@ def test_forced_region_skips_picker_and_files(launcher, fake_bins, tmp_path):
 def region_rt_bin(tmp_path_factory) -> Path:
     """P6.24: the run-time choice of a `both` image (port/region/dw3_region_rt.c)."""
     return build(tmp_path_factory.mktemp("regionrt") / "region_rt_test", TESTS / "region_rt_main.c",
-                 REGION / "dw3_region_rt.c", REGION / "dw3_region.c", OPTIONS / "options_cfg.c")
+                 REGION / "dw3_region_rt.c", REGION / "dw3_disc.c", REGION / "dw3_region.c", OPTIONS / "options_cfg.c")
 
 
 @pytest.fixture(scope="module")
 def region_boot_bin(tmp_path_factory) -> Path:
     """P6.24 PR B: the boot flow of the combined image (port/region/dw3_region_boot.c)."""
     return build(tmp_path_factory.mktemp("regionboot") / "region_boot_test", TESTS / "region_boot_main.c",
-                 REGION / "dw3_region_boot.c", REGION / "dw3_region.c", OPTIONS / "options_cfg.c")
+                 REGION / "dw3_region_boot.c", REGION / "dw3_disc.c", REGION / "dw3_region.c", OPTIONS / "options_cfg.c")
 
 
 def test_region_boot_flow(region_boot_bin: Path, tmp_path: Path):
