@@ -634,12 +634,16 @@ static void job_abandon(void) {
     s.pending_scaler = -1;
 }
 
+#ifndef DW3_REGION_IMAGE
+/* A game copy of a `both` image (P6.24) has none: its symbols are local, so a
+ * weak definition here would shadow the host's real one. */
 __attribute__((weak)) int dw3_map_view_async_start(void (*fn)(void *),
                                                    void *arg) {
     (void)fn;
     (void)arg;
     return -1;
 }
+#endif
 
 static void job_start(int scaler) {
     MvJob *j = (MvJob *)calloc(1, sizeof(*j));

@@ -1,0 +1,189 @@
+# DW3NX technical help, English master text (P6.30).
+# DRAFT, OWNER REVIEW PENDING. Nothing in this file may ship before the owner
+# approves it (docs/P6.30_HELP.md section 9). Facts come only from the repo docs
+# (HOTKEYS, PLAYER_GUIDE, PORT_OPTIONS, P5.4_CRASH, P6.31_AUTOSAVE, PER_USER_SAVES,
+# CROSS_REGION_SAVES, MOD_MAP_UPSCALE, the release README). Original writing.
+#
+# Format (docs/P6.30_HELP.md section 4):
+#   key [qualifier ...] = value      one entry per line, UTF-8, '#' starts a comment
+#   qualifiers: @us @eu @switch @pc  show only on that region / platform
+#               !unv                 not yet checked on a Switch OLED (a tag is shown)
+#   tokens in values:  {btn:cross}  the physical button that produces a PS1 button,
+#                                   under the active map (names on PC: the keys)
+#                      {ps:cross}   the PS1 name
+#                      {chord:restart} {path:root} {path:memcard} {build:version}
+#                      {build:region}
+#                      \n forced line break; {{ and }} are literal braces
+#   key = help.<page>.<kind>[.<n>]; kinds: title blurb h p li row note warn q a
+#   The order of this English file is the page order and the block order.
+#   Other languages carry the same keys; a missing key falls back to this file.
+#   A row is "left | right". The Cheats screen is deliberately not described here:
+#   it stays hidden in the game (PORT_OPTIONS, groups), see PLAYER_GUIDE.
+
+@format = 1
+@book = help
+@lang = en
+@status = draft, owner review pending
+
+# ---------------------------------------------------------------- setup
+help.setup.title = Setup
+help.setup.blurb = What you need and what the first launch does.
+help.setup.p.1 = You need a Switch with Atmosphere and hbmenu, the port's .nro for your disc's region, and your own disc dumped as a BIN and CUE pair. No game files come with the port, and a disc of the wrong region is refused.
+help.setup.li.1 @us = US disc (SLUS-01436): dw3-switch.nro. Runtime folder {path:root}us/. Put the BIN and CUE in {path:root}.
+help.setup.li.2 @eu = EU disc (SLES-03936): dw3-switch-eu.nro. Runtime folder {path:root}eu/. Put the BIN and CUE in {path:root}eu/.
+help.setup.p.2 = The first launch reads the disc, extracts the game data and draws a progress bar. Leave it running. Later launches check the extracted files and do not read the BIN again.
+help.setup.warn.1 = Never delete or move the save files to force a new extraction. Back up the memcard folder before you delete a region folder.
+help.setup.note.1 = US and EU keep separate folders and separate settings.
+
+# ------------------------------------------------------------- controls
+help.controls.title = Controls
+help.controls.blurb = Which button does what, in the game and in the menus.
+help.controls.p.1 = The game thinks in PlayStation buttons. The port maps your buttons by position, so the face buttons are not in Nintendo's usual order. The right column shows the button that produces each PlayStation button right now.
+help.controls.row.1 = Move | {btn:dpad}
+help.controls.row.2 = Cross, confirms | {btn:cross}
+help.controls.row.3 = Circle, also confirms in Options | {btn:circle}
+help.controls.row.4 = Triangle, back in Options | {btn:triangle}
+help.controls.row.5 = Square | {btn:square}
+help.controls.row.6 = Start | {btn:start}
+help.controls.row.7 = Select | {btn:select}
+help.controls.row.8 = L1 and R1 | {btn:l1} and {btn:r1}
+help.controls.row.9 = L2 and R2 | {btn:l2} and {btn:r2}
+help.controls.row.10 = L3 and R3 | {btn:l3} and {btn:r3}
+help.controls.h.1 = Menus
+help.controls.li.1 = At the title, {btn:start} shows the choices: New Game, Options, Load Game and Quit game. Up and Down move, {btn:cross} confirms.
+help.controls.li.2 = In the field, {btn:start} opens the game's menu. It has an OPTIONS row and, last, a TITLE SCREEN row.
+help.controls.li.3 = During an opening movie, press or hold {btn:start} to skip it.
+help.controls.li.4 @pc = PC only: F4 toggles fullscreen, Escape closes the window.
+help.controls.note.1 = What a button does is decided by the scene you are in. The port hotkeys have their own page.
+
+# -------------------------------------------------------------- hotkeys
+help.hotkeys.title = Port hotkeys
+help.hotkeys.blurb = Shortcuts the port adds to the game.
+help.hotkeys.row.1 = Fast-forward on or off | {btn:r3}
+help.hotkeys.row.2 = Restart the game | {chord:restart}
+help.hotkeys.row.3 = Options from the title | {btn:select}
+help.hotkeys.row.4 = Options in a battle | {btn:select}
+help.hotkeys.row.5 = Map view, on the Map screen | {btn:square}
+help.hotkeys.row.6 = Partner change, Equipment panel | {btn:l2} and {btn:r2}
+help.hotkeys.h.1 = Restart
+help.hotkeys.p.1 = The restart chord is off until you turn on Restart hotkey in Options. Hold all four buttons together; it fires once per press, so release them before you try again. Save slots are written first, and if that fails the restart is cancelled. Progress since your last save is lost. The TITLE SCREEN row of the field menu does the same restart after a Yes or No question.
+help.hotkeys.h.2 = Options
+help.hotkeys.p.2 = {btn:select} opens Options from the title only while the title choices show and no shoulder or trigger button is held. In a battle it works only while the command menu waits for you, never during attacks or in the technique and item lists. The battle stands completely still while Options is open.
+help.hotkeys.h.3 = Partner change
+help.hotkeys.p.3 = In Status, Equipment, while the slot list waits, {btn:l2} and {btn:r2} move to the previous or next party member. It needs two or more partners.
+
+# ---------------------------------------------------------------- turbo
+help.turbo.title = Turbo
+help.turbo.blurb = Fast-forward: what it speeds up and what it does not.
+help.turbo.p.1 = Press {btn:r3} to switch turbo on or off. The game always starts at normal speed. Release the stick before pressing again.
+help.turbo.p.2 = The speed it switches to is the Fast-forward row in Options: 2x, 3x, 4x or OFF. 2x is the default. OFF disables the button.
+help.turbo.h.1 = Where it works
+help.turbo.li.1 = Full speed: walking, text, cutscenes, transitions and battle animation in the field and in battles, and the battle report.
+help.turbo.li.2 = About 1.5x while turbo is on: the menus opened over the field or a battle, such as the field menu list, Options and the battle command menu.
+help.turbo.li.3 = Normal speed always: the title, movies, memory card screens, the card game, the Status, Items and Map screens of the field menu, and shops.
+help.turbo.note.1 = Music and sound effects speed up too. How much faster the game really runs depends on how much the console can keep up with.
+
+# -------------------------------------------------------------- options
+help.options.title = Options explained
+help.options.blurb = Every row, its values and its default.
+help.options.p.1 = Options is a list of groups: Display, Sound, Gameplay and Saves. Up and Down choose, {btn:cross} or {btn:circle} opens a group or changes a row, {btn:triangle} goes back. A line under the list explains the focused row. Changes apply at once and are saved in port_options.cfg.
+help.options.p.2 = Open it from the title menu, from the OPTIONS row of the field menu, or in a battle with {btn:select}.
+help.options.h.1 = Display
+help.options.li.1 = Widescreen: ON or OFF, default ON. About 16:9 in the field, in battles and in several menus. The title and the movies stay 4:3.
+help.options.h.2 = Sound
+help.options.li.2 = Music volume and SFX volume: OFF, or 1 to 10, default 10, which is the original mix. Left and Right step; {btn:cross} steps up and wraps from 10 to 0. The screen plays the game's menu sounds so you can hear the change.
+help.options.h.3 = Gameplay
+help.options.li.3 = Fast-forward: 2x, 3x, 4x or OFF, default 2x. The speed {btn:r3} switches to.
+help.options.li.4 = Restart hotkey: ON or OFF, default OFF. Enables the restart chord.
+help.options.li.5 = Encounter rate: OFF, 0.5x, 1x, 1.5x or 2x, default 1x. Random battles only; story battles still happen.
+help.options.li.6 = Text speed: Normal, Fast or Instant, default Normal, which is the original.
+help.options.li.7 = Battle cursor: OFF, Command or Command+Tech, default OFF. The battle command menu, and with Command+Tech the technique list, opens on your last pick. A change applies from the next turn.
+help.options.h.4 = Saves
+help.options.li.8 = Auto-save: OFF or Each area, default OFF. See the Saves page.
+help.options.note.1 = In the field and in battles Widescreen is greyed and says it is locked. The map is laid out when an area loads, so change it at the title.
+help.options.note.2 = On the EU disc the rows and lines appear in the language of the game.
+
+# ---------------------------------------------------------------- saves
+help.saves.title = Saves
+help.saves.blurb = Slots, auto-save, profiles, imports and where the files live.
+help.saves.p.1 = Saving is manual, as in the original game. The port writes changed slots at safe points and when you press HOME or put the console to sleep. It never saves for you unless Auto-save is on, and then it writes its own file.
+help.saves.h.1 = Slots and files
+help.saves.li.1 = Two slots: save0.bin and save1.bin, plus autosave.bin once Auto-save has run.
+help.saves.li.2 = They live in {path:memcard}
+help.saves.li.3 @switch !unv = Saves belong to the Switch user profile that is playing. The profile comes from the launcher's profile selector, else the only user on the console, else the system selector. If you cancel the system selector, the game does not start.
+help.saves.li.4 @switch !unv = Saves from older previews (the plain us or eu memcard folder) are copied into each profile's folder the first time that profile starts. The originals stay. Later saves of one profile do not appear in another.
+help.saves.li.5 = US and EU keep their own saves and settings.
+help.saves.li.6 = Settings are in port_options.cfg in the region folder.
+help.saves.h.2 = Auto-save
+help.saves.p.2 = With Auto-save set to Each area, the first quiet moment in each new field area writes the game to autosave.bin. It never touches your two slots, and there is only one auto-save: a new game replaces it at its first area change.
+help.saves.li.7 = With an auto-save present the title shows Continue, which loads it at once, and Load Game, which opens the slot list. Without one, the title has no Continue.
+help.saves.li.8 = It does not run during events, menus, talks, climbs, area banners, fades or when a battle starts, before the story is far enough for the field menu to open, or on a map the save list does not know. A battle that returns to the same area does not count.
+help.saves.li.9 = A failed write is logged and the game carries on with the old auto-save. There is no on-screen message yet.
+help.saves.h.3 = Importing from the other region
+help.saves.p.3 !unv = If a region has no save of its own, the build copies the other region's save once, converted, into its own slot. It never changes the original, only runs when the region has no save file at all, and does not run again if you delete the copy. Saves made afterwards stay in their own region. A save from the EU extra chapter is not imported into US.
+help.saves.h.4 = Backups
+help.saves.p.4 = Copy the memcard folder from the SD card to keep a backup. Do it before you delete a region folder.
+
+# --------------------------------------------------------- widescreen
+help.widescreen.title = Widescreen
+help.widescreen.blurb = The wide picture and where it applies.
+help.widescreen.p.1 = Widescreen is ON by default. Supported scenes, the field, battles and several menus, use wide side areas for about 16:9. The title screen and the movies stay 4:3. The EU disc's 240-line picture follows the same aspect rule.
+help.widescreen.p.2 = It is a live toggle in Options, but it is locked while a game is running because the maps are laid out when an area loads. Change it at the title.
+help.widescreen.note.1 = The map view needs Widescreen ON.
+
+# ------------------------------------------------------------ map & mods
+help.map.title = Map view and mods
+help.map.blurb = The full-screen map and the optional map pack.
+help.map.h.1 = Map view
+help.map.p.1 !unv = Open the field menu with {btn:start}, choose Map, then press {btn:square}. The map fills the wide picture and shows the towns and areas you have revealed. Widescreen must be ON.
+help.map.li.1 = {btn:dpad} moves the cursor, which starts on your current area. On a location the game's name box appears.
+help.map.li.2 = The right stick zooms smoothly; {btn:l1} and {btn:r1} zoom in steps.
+help.map.li.3 = {btn:l2} and {btn:r2} change the scaler. Nearest is the default. Lanczos2 and FSR 1 build in the background, and the screen says BUILDING meanwhile.
+help.map.li.4 = {btn:circle} hides the text and the name box. {btn:square} closes the view. {btn:r3} does nothing here.
+help.map.h.2 = Map upscale pack
+help.map.p.2 !unv = A pack replaces the map picture with a sharper one. None comes with the port, because it is made from your own disc. A PC tool in the repository (tools/mods/extract_map_assets.py) extracts the base map, runs an upscaler you install, and writes a folder you copy to {path:root}mods/<pack>/ on the SD card.
+help.map.li.5 !unv = There is no Options row. The pack is used whenever a valid pack for your region is in the mods folder. The view then shows MOD 4X.
+help.map.li.6 !unv = A file of the wrong size, or a missing pack, makes the view fall back to the original map. The game never needs a pack to start.
+help.map.li.7 !unv = To go back to the original map, rename or remove the pack folder, or put map_mod=0 in port_options.cfg.
+help.map.li.8 !unv = With a pack, {btn:l2} and {btn:r2} only change the filter, sharp or smooth.
+
+# ---------------------------------------------------------- logs & bugs
+help.logs.title = Logs and bug reports
+help.logs.blurb = Where the logs are and what to send.
+help.logs.h.1 = Logs
+help.logs.p.1 = The port writes dw3.log in {path:root}. It keeps the last five runs: dw3.log is the newest, then dw3.1.log up to dw3.4.log. Each launch writes a dw3-log: rotated line that says whether the older log was renamed, copied or lost.
+help.logs.p.2 = Features log what they decided, once per event, with a prefix such as dw3-port-options: or dw3-map:, so a report with the logs usually shows what happened.
+help.logs.h.2 = After a crash
+help.logs.p.3 = A crash writes crash_report.txt next to the logs. On the next launch a panel says The last run crashed. and shows the version, the reason and the report's path. It waits up to 60 seconds, or until you press A, B or Plus, and appears once per crash. The report is then moved to crash_report_prev.txt.
+help.logs.warn.1 = Only one previous report is kept. If the game crashes again, copy crash_report.txt, crash_report_prev.txt and every dw3*.log off the SD card first.
+help.logs.h.3 = Reporting a bug
+help.logs.li.1 = Open an issue on the project's GitHub tracker (Larbaco/dw3-switch). Search first, and add to an existing issue if it matches.
+help.logs.li.2 = Say the version ({build:version}), the region ({build:region}), the console and mode, numbered steps, what you expected and what happened, and how often.
+help.logs.li.3 = Attach the whole log set and any crash report. Be specific: the map, the menu, the Digimon, the technique.
+help.logs.warn.2 = Never attach a disc image, BIOS files or extracted game data.
+
+# ------------------------------------------------------------------ faq
+help.faq.title = FAQ
+help.faq.blurb = Short answers to common questions.
+help.faq.q.1 = Widescreen is greyed out in the game.
+help.faq.a.1 = It is locked while a game runs. Return to the title (field menu, last row) and change it there.
+help.faq.q.2 = {btn:r3} does not speed things up.
+help.faq.a.2 = Check that Fast-forward is not OFF. Turbo works only in the field, in battles and on the battle report; the title, movies, card game and the Status, Items and Map screens stay at normal speed.
+help.faq.q.3 = The restart chord does nothing.
+help.faq.a.3 = Restart hotkey is OFF by default. Turn it on in Options, Gameplay. Release the buttons before trying again.
+help.faq.q.4 = {btn:select} does not open Options.
+help.faq.a.4 = At the title the choices must be showing, and in a battle the command menu must be waiting. It is ignored while a shoulder or trigger button is held.
+help.faq.q.5 = The title shows Continue and Load Game.
+help.faq.a.5 = Continue loads the auto-save at once. Load Game opens the list of slots. The title only shows Continue when an auto-save exists.
+help.faq.q.6 = Auto-save did not write.
+help.faq.a.6 = It writes at the first quiet moment of a new area. It waits out events, menus and battles, does not run early in the story, and a failed write is only logged. Check Options, Saves.
+help.faq.q.7 = My saves from the other region are missing.
+help.faq.a.7 = The two regions keep separate saves. The only copy is a one-time import into a region that has no save at all.
+help.faq.q.8 = The game closed when I cancelled the profile choice.
+help.faq.a.8 @switch !unv = That is intended: the game starts only with a chosen profile.
+help.faq.q.9 = Quit game did not quit.
+help.faq.a.9 = Quit writes your slots first. If that fails, the quit is cancelled so no progress is lost. Try again, and send the log if it repeats.
+help.faq.q.10 = Does the port overclock the console?
+help.faq.a.10 = No. It leaves the CPU and GPU clocks where the console set them.
+help.faq.q.11 = Where are the known issues?
+help.faq.a.11 = They change with every preview, so they are not copied here. Read the release notes and the open issues on the project's GitHub page.

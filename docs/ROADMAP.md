@@ -38,13 +38,24 @@ highest non-empty tier.
   and P9.4 are ticked. Still open: the in-game Options lag, the EU language
   select at 16:9 and the map balloon, cursor and name box (fixes in preview.47,
   waiting for the owner).
+- [P6.24](SINGLE_BUILD.md): **one `.nro` that plays both US and EU** (owner
+  priority 2026-10-28). Option (a), two PRs. PR A, PC: `DW3_VERSION=both`, the
+  game side built twice and linked once, the P6.15 replays of both regions on
+  the one `dw3-pc` ([slice 3](SINGLE_BUILD.md#as-built-slice-3-the-dual-image-link-pc)).
+  PR B, Switch: `tools/build_switch_game.sh --both`, detection of the game data
+  on the SD card, the boot picker, a CI job and the release asset. Separate US /
+  EU `.nro` files keep shipping until the owner confirms the combined one on the
+  OLED. Defaults taken for the open questions are in
+  [SINGLE_BUILD](SINGLE_BUILD.md#owner-priority-2026-10-28-and-orchestrator-defaults).
 
 ### Tier 1 — Stability
 
 - [P5.5](#phase-5--playable-on-switch): stage sweep on hardware.
 - [#188](https://github.com/Larbaco/dw3-switch/issues/188) and
-  [P4.3](P4.3_AUDIO.md): audio, underrun count.
-- [P10.2](SWITCH_FEATURES.md): HOME during a save write.
+  [P4.3](P4.3_AUDIO.md): audio, underrun count (counters in the log since
+  2026-10-28; waiting for an OLED run, items D13 and D14).
+- [P10.2](SWITCH_FEATURES.md): HOME during a save write (`dw3-save:` log lines
+  added 2026-10-28; waiting for the OLED check, item G2).
 - [P6.1](P6.1_WIDESCREEN.md): 16:9 batch 2. Stopped by the owner; resumes only
   when the owner allows.
 
@@ -54,8 +65,8 @@ highest non-empty tier.
    sub-screens.
 2. Controls bundle, done together because they touch the same menus:
    [P6.12](#phase-6-goal-notes) remapping, [P9.8](HOTKEYS.md) A/B layout and
-   [P10.6](TEXTURE_PACKS.md) Switch glyphs.
-3. [P6.30](#phase-6-goal-notes): technical help.
+   [P10.6](TEXTURE_PACKS.md) Switch glyphs. Design: [CONTROLS_BUNDLE](CONTROLS_BUNDLE.md).
+3. [P6.30](#phase-6-goal-notes): technical help. Design: [P6.30_HELP](P6.30_HELP.md).
 4. [P6.34](#phase-6-goal-notes): menu-flow redesign. It absorbs
    [P6.33](P6.33_ITEMS_MENU.md) phases 2–4, so the items menu is redesigned once.
 5. [P6.32](P6.32_MAP_ZOOM.md): map phase 1.
@@ -68,8 +79,8 @@ highest non-empty tier.
   ([#248](https://github.com/Larbaco/dw3-switch/pull/248)).
 - [P6.18](P6.18_PACING.md): pacing.
 - [P6.22](P6.22_FIELD_CPU.md): turbo in scripted scenes.
-- [P6.24](SINGLE_BUILD.md) and [P6.25](CROSS_REGION_SAVES.md): single build and
-  cross-region saves.
+- [P6.25](CROSS_REGION_SAVES.md): cross-region saves (P6.24, the single build,
+  moved to Tier 0 on 2026-10-28).
 
 ### Tier 4 — Long term
 
@@ -99,7 +110,7 @@ listed once, in [Pending OLED checks](#pending-oled-checks).
 | P3.1–P3.9 | Game bring-up on PC | done | [P3_GATE](P3_GATE.md), [P3_EU_BUILD](P3_EU_BUILD.md), P3.x docs |
 | P4.1 | Backend spike | done | [SWITCH_BACKEND](SWITCH_BACKEND.md) |
 | P4.2 | Video | done | [P4.2](P4.2_VIDEO.md) |
-| P4.3 | Audio | in progress (BGM loop and win jingle fixed; no underrun count yet) | [P4.3](P4.3_AUDIO.md) |
+| P4.3 | Audio | in progress (BGM loop and win jingle fixed; underrun count and voice-leak counters are in the log since 2026-10-28, waiting for an OLED run) | [P4.3](P4.3_AUDIO.md) |
 | P4.4 | Input | done | [P4.4](P4.4_INPUT_STATUS.md) |
 | P4.5 | Filesystem + log + time | done (log rotation keeps `dw3.log` to `dw3.4.log`, rc=0x0: owner OLED, 2026-10-28, preview.45) | [P4.5](P4.5_STATUS.md) |
 | P4.6 | Static modules on Switch | in progress | [P4.6](P4.6_MODULES_STATUS.md) |
@@ -120,21 +131,22 @@ listed once, in [Pending OLED checks](#pending-oled-checks).
 | P6.9 | Restart-game hotkey | in progress (hotkey works on the OLED; PC replays pass for battle, save and Continue on US and EU; OLED retest open) | [P6.9](P6.9_RESTART.md) |
 | P6.10 | Hardware render outside battle | future | [P5.2](P5.2_BATTLE_GPU.md) |
 | P6.11 | Internal resolution scaling | future | [PC README](../platforms/pc/README.md) |
-| P6.12, P6.14, P6.16, P6.19, P6.21 | Backlog goal notes | future | [backlog](#backlog--future-goals) |
-| P6.13 | Mapping submenu, merged into P6.12 (owner, 2026-10-24) | merged | [backlog](#backlog--future-goals) |
+| P6.12 | Button mapping (design written 2026-10-28) | future | [CONTROLS_BUNDLE](CONTROLS_BUNDLE.md), [goal note](#phase-6-goal-notes) |
+| P6.14, P6.16, P6.19, P6.21 | Backlog goal notes | future | [backlog](#backlog--future-goals) |
+| P6.13 | Mapping submenu, merged into P6.12 (owner, 2026-10-24) | merged | [CONTROLS_BUNDLE](CONTROLS_BUNDLE.md) |
 | P6.15 | Regression replay tests | in progress | [P6.15](P6.15_REPLAY_TESTS.md) |
 | P6.17 | Music / SFX volume | done (owner confirmed on the OLED, 2026-10-24) | [P6.17](P6.17_VOLUME.md) |
 | P6.18 | Pacing options | in progress (Instant text works; Instant banner and report speed #223; rest of the check open) | [P6.18](P6.18_PACING.md) |
 | P6.20 | Port debug / cheat menu in the Options screen | in progress (PR 1 merged, #236: Cheats screen; PR 2, #248: money, give item and warp on page 2, in review; OLED checks open) | [roadmap](#phase-6-goal-notes), [PORT_OPTIONS](PORT_OPTIONS.md) |
 | P6.22 | Turbo speed in scripted scenes | in progress (CPU rasterizer is ~97 % of a field frame; pixel-identical rasterizer 4-5x faster, #220; turbo in the intro confirmed on the OLED 2026-10-27, preview.41; Forest Inn and the frame lines still open) | [P6.22](P6.22_FIELD_CPU.md), [roadmap](#phase-6-goal-notes), [P6.4](P6.4_FAST_FORWARD.md) |
 | P6.23 | Documentation: player guide, docs index, contributor and modder docs (future goal) | in progress (slice 1 done: player guide and docs index; slice 2: `CONTRIBUTING.md` and a pytest for all doc links, PR open; modder docs open) | [PLAYER_GUIDE](PLAYER_GUIDE.md), [docs index](README.md), [roadmap](#phase-6-goal-notes) |
-| P6.24 | One build for US and EU: one `.nro` and one PC binary, region found at boot, a boot picker with both discs (future goal; depends on P6.25 and P6.26) | in progress (slice 1 built: run-time region choice, picker logic and a PC launcher in front of the separate US / EU binaries; slice 2 built: Switch launcher `.nro` that chain-loads the US / EU `.nro`, CI artifact only, OLED check open; dual-image link and release flow open) | [SINGLE_BUILD](SINGLE_BUILD.md#as-built-slice-1), [slice 2](SINGLE_BUILD.md#as-built-slice-2-the-switch-launcher), [roadmap](#phase-6-goal-notes) |
+| P6.24 | One build for US and EU: one `.nro` and one PC binary, region found at boot, a boot picker with both discs (**owner priority 2026-10-28, Tier 0**; P6.25 and P6.26 are built) | in progress (slice 1 built: run-time region choice, picker logic and a PC launcher; slice 2 built: Switch launcher `.nro`, CI artifact only, OLED check open; **slice 3 built (PR A): `DW3_VERSION=both`, one `dw3-pc` with both game copies, P6.15 replays of both regions pass on it**; the Switch `.nro` with the in-image picker, CI and the release asset are PR B) | [SINGLE_BUILD](SINGLE_BUILD.md#as-built-slice-1), [slice 2](SINGLE_BUILD.md#as-built-slice-2-the-switch-launcher), [slice 3](SINGLE_BUILD.md#as-built-slice-3-the-dual-image-link-pc), [roadmap](#phase-6-goal-notes) |
 | P6.25 | Cross-region saves: a US save loads in EU and the reverse, one canonical save container (future goal) | in progress (slice 1 built: converter and one-way import on load, PC replays US to EU and EU to US; container and store open; OLED check open) | [CROSS_REGION_SAVES](CROSS_REGION_SAVES.md), [roadmap](#phase-6-goal-notes) |
 | P6.26 | Per-user saves: saves bound to the Switch user profile chosen in the Switch profile selector, global options (future goal) | in progress (slice 1 built: user-resolution seam, Switch account + profile selector, saves per profile with a safe legacy copy; owner OLED, preview.43/44 (2026-10-27/28): each profile has its own Continue, cancelling the profile selector returns to the Switch HOME; E5.1, E5.2 and the logs not reported; import prompt, canonical store and global options open) | [PER_USER_SAVES](PER_USER_SAVES.md), [roadmap](#phase-6-goal-notes) |
 | P6.27 | Return to title from the pause (field) menu | in progress (built, PC US and EU replays; owner OLED, 2026-10-27, preview.41: Return to title works and Continue after it works; the Yes / No window, fade and card checks not reported) | [PORT_OPTIONS](PORT_OPTIONS.md#quit-and-return-to-title-p627-p628), [roadmap](#phase-6-goal-notes) |
 | P6.28 | Quit game on the title menu, back to hbmenu | in progress (built, PC US and EU replays; owner OLED, 2026-10-27, preview.41: Quit through the Sphaira forwarder works and returns to hbmenu; the full-app Sphaira launch shows errors, the forwarder is fine; card files, flush line and the US / EU split not reported) | [PORT_OPTIONS](PORT_OPTIONS.md#quit-and-return-to-title-p627-p628), [roadmap](#phase-6-goal-notes) |
 | P6.29 | Save editor: external tool on the owner's own saves, builds on P6.25 (future goal) | future | [roadmap](#phase-6-goal-notes), [CROSS_REGION_SAVES](CROSS_REGION_SAVES.md) |
-| P6.30 | Help, FAQ and tips from the pause menu and the title menu (future goal; owner answers recorded 2026-10-27; after P9.9) | future | [roadmap](#phase-6-goal-notes) |
+| P6.30 | Help, FAQ and tips from the pause menu and the title menu (future goal; owner answers recorded 2026-10-27; after P9.9) | future (design and first English text draft written 2026-10-28, owner review pending; page engine shared with P6.35) | [roadmap](#phase-6-goal-notes), [design](P6.30_HELP.md), [draft text](../port/help/text/en.txt) |
 | P6.31 | Auto-save, off by default | in progress (built: Options row, area-change write to its own file `autosave.bin`, title Continue loads it and the old Continue is Load; PC US and EU replays; owner OLED, 2026-10-27, preview.41: writes on an area change and on HOME close, title plaque spacing (#287); the save-file, Continue and Load Game checks not reported) | [P6.31_AUTOSAVE](P6.31_AUTOSAVE.md), [roadmap](#phase-6-goal-notes), [P5.3](P5.3_FLAT_SAVE.md) |
 | P6.32 | Map zoom and full-screen map (future goal) | phase 0 PoC built (PR `feat/p6.32-map-poc`); owner OLED, preview.45 (2026-10-28): the map shows and Nearest is the preferred scaler; balloon, cursor and name box pending preview.47; mod pack loader for an upscaled map built (`feat/mod-map-upscale`, OLED item B17 pending) | [roadmap](#phase-6-goal-notes), [P6.32](P6.32_MAP_ZOOM.md), [P6.1](P6.1_WIDESCREEN.md), [map upscale mod](MOD_MAP_UPSCALE.md) |
 | P6.33 | Items menu usability redesign | in progress (owner decisions recorded 2026-10-26; phase 1 partner cycle built: patch 0128, ZL / ZR, on by default; phases 2, 3 and 4 open; phase 1 cycle confirmed on the OLED 2026-10-27, preview.41; the `items_partner_switch=0` check open; phases 2–4 folded into P6.34) | [roadmap](#phase-6-goal-notes), [P6.33](P6.33_ITEMS_MENU.md), [P6.1](P6.1_WIDESCREEN.md) |
@@ -160,14 +172,14 @@ listed once, in [Pending OLED checks](#pending-oled-checks).
 | P9.5 | Wire real features | in progress | [PORT_OPTIONS](PORT_OPTIONS.md) |
 | P9.6 | External save converter | open | — |
 | P9.7 | Port options reachable in game | in progress (slice 1, the field menu, and slice 2, battle: built, PC US and EU replays, Switch Ryubing nx scenarios; live Widescreen open; owner OLED checks open) | [PORT_OPTIONS](PORT_OPTIONS.md#options-in-game-p97), [roadmap](#phase-9--port-options-menu) |
-| P9.8 | Confirm / cancel layout option (PS positional or Nintendo A/B) (future goal) | future | [roadmap](#phase-9--port-options-menu), [HOTKEYS](HOTKEYS.md) |
+| P9.8 | Confirm / cancel layout option (PS positional or Nintendo A/B) (future goal; design written 2026-10-28) | future | [roadmap](#phase-9--port-options-menu), [CONTROLS_BUNDLE](CONTROLS_BUNDLE.md), [HOTKEYS](HOTKEYS.md) |
 | P9.9 | Options screen redesign in the title menu's style, room for more rows (slice 1 done 2026-10-27: groups and sub-screens; OLED pending; Cheats screen restyle, Controls, Help, Walkthrough follow) | slice 1 in review | [roadmap](#phase-9--port-options-menu), [PORT_OPTIONS](PORT_OPTIONS.md) |
 | P10.1 | Switch features goal note | done | [SWITCH_FEATURES](SWITCH_FEATURES.md) |
-| P10.2 | Lifecycle hardening (has P5.3's leftover) | in progress (sleep and resume: owner confirmed on the OLED, 2026-10-24; HOME during a save write open) | [SWITCH_FEATURES](SWITCH_FEATURES.md) |
+| P10.2 | Lifecycle hardening (has P5.3's leftover) | in progress (sleep and resume: owner confirmed on the OLED, 2026-10-24; HOME during a save write: atomic write, exit gate and `dw3-save:` log lines done, OLED check open) | [SWITCH_FEATURES](SWITCH_FEATURES.md) |
 | P10.3 | Presentation modes | open | — |
 | P10.4 | Rumble polish (optional) | open | — |
 | P10.5 | Extra applets (optional) | open | — |
-| P10.6 | Switch-style button glyphs (future goal) | future | [roadmap](#phase-10--native-switch-features-residual), [TEXTURE_PACKS](TEXTURE_PACKS.md) |
+| P10.6 | Switch-style button glyphs (future goal; design written 2026-10-28) | future | [roadmap](#phase-10--native-switch-features-residual), [CONTROLS_BUNDLE](CONTROLS_BUNDLE.md), [TEXTURE_PACKS](TEXTURE_PACKS.md) |
 | P10.7 | NSP packaging: forwarder, full NSP or stay NRO | dropped | [NSP_PACKAGING](NSP_PACKAGING.md), [roadmap](#phase-10--native-switch-features-residual) |
 
 ## Pending OLED checks
@@ -183,7 +195,7 @@ its done-when. The ordered session plan (written for preview.36) is
   not met yet (owner, 2026-10-24); see [Phase 5](#phase-5--playable-on-switch).
 - **P5.5:** the stage sweep on the OLED, US and EU: `stage_sweep=1` in
   `port_options.cfg`, start the game, wait for `dw3-sweep: done`, send
-  `dw3.log` ([P5.5_STAGE_SWEEP](P5.5_STAGE_SWEEP.md), OLED_TEST_PLAN G9).
+  `dw3.log` ([P5.5_STAGE_SWEEP](P5.5_STAGE_SWEEP.md), OLED_TEST_PLAN G10).
 - **P6.1:** 16:9 for the map screen, results header, save slot picker, title
   menu, news caption bar, registration screen (patches 0080-0082, 0085-0087),
   and the Items menu and field menu screens (0075, 0076, 0074). US and EU. The
@@ -614,7 +626,10 @@ console.
   log. The owner decides whether a listen is enough, or sets a number (for
   example 0 underruns over 10 min of field and battle in the nxlink log). The
   listen + underrun recipe is in [P4.3_AUDIO_HW.md](P4.3_AUDIO_HW.md) (not run
-  yet). Dated history: [P4.3_AUDIO.md](P4.3_AUDIO.md#history-moved-from-roadmapmd-2026-10-24).
+  yet). **2026-10-28:** the log now has the count: `dw3-audio: underruns N in
+  last 60 s (total T), queue depth ..., voices in use ..., key-on K ok F failed`
+  every minute and at exit, with the #188 voice-leak signal; OLED items D13
+  and D14 read it ([P4.3_AUDIO.md](P4.3_AUDIO.md#audio-health-line-underruns-and-the-voice-leak-188-2026-10-28)). Dated history: [P4.3_AUDIO.md](P4.3_AUDIO.md#history-moved-from-roadmapmd-2026-10-24).
 - [x] **P4.4 Input.** `hid` → PS1 pad bits, including the digital/analog
   modes `PadInfoMode`/`PadSetMainMode` expect; rumble via `PadSetAct` →
   HD rumble (optional).
@@ -796,7 +811,7 @@ speed.
   after a crash or hang report that stage and continue. PC: **237/237 ok on
   US and on EU**, replay scenarios `us/eu-stage-sweep`, patch `0185`. Design,
   keys and every log line: [P5.5_STAGE_SWEEP.md](P5.5_STAGE_SWEEP.md). **Open:**
-  the OLED run, US and EU ([OLED_TEST_PLAN](OLED_TEST_PLAN.md) G9); the EU
+  the OLED run, US and EU ([OLED_TEST_PLAN](OLED_TEST_PLAN.md) G10); the EU
   extra chapter's stages are not in the set yet. P5.5 is ticked when that run
   loads and returns the set on the console.
 
@@ -1345,6 +1360,12 @@ PS1 game, with vanilla-safe defaults and persistence on owner storage.
   Done when: the row works on the Switch (and PC) with US and EU, the choice
   survives a relaunch, the default is bit-identical to today, and HOTKEYS.md
   and P4.4_INPUT_STATUS.md describe both layouts.
+  **Design (2026-10-28):** [CONTROLS_BUNDLE.md](CONTROLS_BUNDLE.md). The layout
+  is a preset of the P6.12 button map, applied at the shared pad host
+  (`psyz_pad_host.c` `refresh_port`), phase 1 of three. Found there: the game
+  cancels with Triangle (Switch X), not Circle, so "Nintendo" needs A = Cross, B =
+  Triangle, X = Circle (owner question 1); US and EU confirm with the same
+  physical button.
   Related: P6.12 / P6.13, P10.6, [SWITCH_FEATURES.md](SWITCH_FEATURES.md)
   (the "Confirm/Cancel layout" row).
 - [ ] **P9.9 Options screen redesign (slice 1 done 2026-10-27).** **Status:**
@@ -1506,6 +1527,12 @@ rumble, saves, turbo, or widescreen here; those stay in their phases.
   Done when: with the option on, the icons shown in the field, battle, menus
   and shops are Switch glyphs on the US and EU discs, they match the layout
   chosen in P9.8, and the option off restores the original icons.
+  **Design (2026-10-28):** [CONTROLS_BUNDLE.md](CONTROLS_BUNDLE.md), phase 3.
+  The icons are kind-1 glyphs of the font (`FONT_ICONS_1..3`, per-disc cells);
+  the plan patches those cells in VRAM at runtime so the glyph follows the active
+  map (a static pack cannot follow a remap), with original art under
+  `assets/glyphs/` (LICENSE + PROVENANCE.md). Step 0 is a dump to prove which
+  icons are the buttons.
   Related: P8.2/P8.3, P9.8, P6.12, [HOTKEYS.md](HOTKEYS.md).
 
 - [ ] **P10.7 NSP packaging (dropped).** **Dropped 2026-10-24, owner
@@ -1581,6 +1608,11 @@ Statuses are in the [table](#status-at-a-glance).
   gate. Done when the submenu opens from Port options, lists each mapped button,
   returns with the mapping saved, and a remap survives a restart and works on
   the US and EU discs.
+  **Design (2026-10-28):** [CONTROLS_BUNDLE.md](CONTROLS_BUNDLE.md), phase 2 of
+  three (phase 1 is the P9.8 layout, which builds the mapper). A permutation of
+  the raw pad word at the shared pad host, per PS button, global in
+  `port_options.cfg` (`button_layout`, `button_map`), a Customize screen in the
+  Controls group, Start / Select reserved, `dw3-controls:` log lines.
 - **P6.13 Mapping submenu.** Merged into P6.12 (owner, 2026-10-24). Its goal
   and done-when are in P6.12; the id stays for references.
 - [ ] **P6.14 In-game load / new save menu (future goal).** A load or
@@ -1854,12 +1886,32 @@ Statuses are in the [table](#status-at-a-glance).
   them, the release `README.txt` points to the guide, and a new tester can
   install the US or EU build and report a crash using only those pages.
   Related: P6.5, P8.5, [REPORTING_ISSUES.md](REPORTING_ISSUES.md).
-- [ ] **P6.24 One build for US and EU (in progress: slices 1 and 2 built 2026-10-25).** Dated 2026-10-24, owner
+- [ ] **P6.24 One build for US and EU (in progress: slices 1 and 2 built 2026-10-25, slice 3 / PR A 2026-10-28).** Dated 2026-10-24, owner
   request: "Build única pra US e EU". One `.nro`, and one PC binary, that runs
   either disc, instead of the separate US and EU builds (`--eu`, two `.nro`
-  files, EU attached to releases by hand). Goal note only, **nothing started,
-  no code**. Survey, sizes and the options in detail:
+  files, EU attached to releases by hand). **Owner priority 2026-10-28: top of
+  the work order (Tier 0).** Survey, sizes and the options in detail:
   [SINGLE_BUILD.md](SINGLE_BUILD.md).
+  **Slice 3 (built, PR A, [As built](SINGLE_BUILD.md#as-built-slice-3-the-dual-image-link-pc)):**
+  the dual-image link, option (a), PC. `DW3_VERSION=both` builds the game side
+  twice (`VERSION_US` / `VERSION_EU`, from the one patched `build/decomp-src`),
+  packs each copy with `ld -r` into one object whose only global is its
+  `dw3_game_api` table (`us_` / `eu_`; `tools/localize_region_obj.py`), renames
+  the `dw3data_*` / `dw3bss_*` restore sections and their `__start_` / `__stop_`
+  references per region, and links the host (PSY-Z, platform, cdfs, memcard,
+  movies) once. The host reaches the game only through the table (24 entries);
+  the host `#if VERSION_*` sites became `dw3_region()`. Region from `--region`,
+  `DW3_REGION`, the runtime folder given, or the runtime present. PSY-Z
+  overrides and `--wrap` still win (same link order), the overlay restore covers
+  only the running region, `us` and `eu` builds are unchanged. +5.0 MB on the
+  PC binary. Tests: the localize tool on two copies of one C file, the region
+  resolver, CI builds `both` on every PR, and the P6.15 replays of both regions
+  on the one binary (`--bin-both`, private copy of the references). **Open
+  (PR B, Switch):** `tools/build_switch_game.sh --both`, one `.nro` (NACP
+  "Digimon World 3 NX", nxlink "(nxlink)"), detection of the game data on the
+  SD card (only US: run it, only EU: run it, both: the picker), the host
+  picker, CI job and release asset, OLED checks
+  ([OLED_TEST_PLAN G9](OLED_TEST_PLAN.md#g9-combined-p624-one-nro-for-both-regions-pr-b)).
   **Slice 1 (built, [As built](SINGLE_BUILD.md#as-built-slice-1)):** the pieces
   around the dual image, chosen because the dual-image link is the risky part
   and the picker is useful on its own. `port/region/` (probe, the decision
@@ -2124,6 +2176,20 @@ Statuses are in the [table](#status-at-a-glance).
   Done when (proposed): a tester opens Help from the pause menu on US and EU,
   reads the controls page, and finds the answers for install and crash reports
   without leaving the console.
+  **Design (2026-10-28):** [P6.30_HELP](P6.30_HELP.md). The help is a book of
+  ten scrollable pages (Setup, Controls, Port hotkeys, Turbo, Options explained,
+  Saves, Widescreen, Map view and mods, Logs and bug reports, FAQ) in the hidden
+  Help group of Options, reached from the title Options, the field menu OPTIONS
+  row and the battle Options. It defines the **page engine shared with
+  [P6.35](P6.35_WALKTHROUGH.md)**: a `key = value` text file per language
+  (`port/help/text/<lang>.txt`) separate from the logic, region / platform /
+  unverified qualifiers, button-name tokens (plain names until the P10.6 glyphs),
+  fallback to English, a baked glyph atlas for the body text, scrolling, and
+  `dw3-pages:` / `dw3-help:` log lines. Seven small phases. First draft of the
+  English text: [`port/help/text/en.txt`](../port/help/text/en.txt), **draft,
+  owner review pending**. Open questions with recommended defaults: atlas against
+  baked pages, entry through Options only, English-only on EU until P6.7, Cheats
+  left out, `(unverified)` tags, drift check against the guide.
   Related: P6.23, P6.27, P6.7, P6.35, P9.2, P9.9.
 - [ ] **P6.31 Auto-save (off by default).** Dated 2026-10-24, owner request
   (Portuguese, "salvamento automático"). First slice 2026-10-25 (patches `0140`,

@@ -8,6 +8,7 @@ Files are named by roadmap item id (`P6.4_...`) or by topic.
 
 - [PLAYER_GUIDE](PLAYER_GUIDE.md): setup, controls, menus, saves, crash reports.
 - [HOTKEYS](HOTKEYS.md): controls, port hotkeys and diagnostic chords.
+- [CONTROLS_BUNDLE](CONTROLS_BUNDLE.md): design of the controls bundle (P6.12 button remap, P9.8 confirm layout, P10.6 Switch glyphs).
 - [PORT_OPTIONS](PORT_OPTIONS.md): the Options screen, the Cheats screen, Quit and Return to title.
 - [DISC_SETUP](DISC_SETUP.md): from your disc image to the extracted tree and file map.
 - [RUNTIME_LAYOUT](RUNTIME_LAYOUT.md): the runtime folder on PC and on the SD card.
@@ -85,6 +86,7 @@ Files are named by roadmap item id (`P6.4_...`) or by topic.
 - [P6.18_PACING](P6.18_PACING.md): encounter rate and text speed.
 - [P6.22_FIELD_CPU](P6.22_FIELD_CPU.md): where a field frame's CPU time goes.
 - [P6.33_ITEMS_MENU](P6.33_ITEMS_MENU.md): Items menu redesign proposal.
+- [P6.30_HELP](P6.30_HELP.md): technical help screen and the page engine it shares with the walkthrough: page model, text format, entry points, logs, plan.
 - [P6.35_WALKTHROUGH](P6.35_WALKTHROUGH.md): in-game walkthrough help: step mapping, data format, spoiler UX, phased plan.
 - [P6.32_MAP_ZOOM](P6.32_MAP_ZOOM.md): map zoom and full-screen map proposal.
 - [P6.31_AUTOSAVE](P6.31_AUTOSAVE.md): auto-save, off by default: design, defaults, checklist.

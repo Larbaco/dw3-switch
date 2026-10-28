@@ -37,6 +37,28 @@ for **residual** Switch-only UX after those phases land. Hosts stay thin:
 | Capture button / album screenshot | best-effort | Video capture likely N/A in homebrew |
 | Amiibo, gyro aiming, touch-in-game, NSO cloud | skip | Poor fit for DW3 / retail-only |
 
+### P10.2: HOME during a save write (2026-10-28)
+
+A card file (`saveN.bin`, `autosave.bin`, the `.name` sidecar, `.pre-auto`) is
+written as `X.tmp` + `fsync` + remove + rename, so a kill at any step leaves
+the old complete file or the new complete file; the next boot promotes a
+complete `.tmp` whose destination is missing and drops every other one. HOME,
+Quit and sleep go through the exit gate (`memcard_host_exit_ready`): a save
+section that is half written holds the exit (up to 8 s; HOME force-kills at
+15 s), then the previous file is kept. The audit, the kill table and the tests
+are in [P5.3_HOME_QUIT.md](P5.3_HOME_QUIT.md#home-during-a-save-write-the-audit-p102-2026-10-25).
+New in this change: the log says what happened, once per write.
+
+| Log line | Meaning |
+|---|---|
+| `dw3-save: write save0.bin committed (32768 bytes, fsync + rename, N us)` | the write finished; also `autosave.bin`, `save0.name` |
+| `dw3-save: write save0.bin interrupted, previous file kept` | the next boot found a leftover `.tmp` of a write that did not finish; the old file is untouched |
+| `dw3-save: write save0.bin interrupted after the old file was removed; the complete new file was recovered` | killed between remove and rename; the new file is in place |
+| `dw3-save: write slot=N interrupted, previous file kept (exit with a save section open)` | the exit gate gave up on a half-written game save |
+
+Tested on the PC build with injected kills (`tools/tests/test_save_interrupt.py`,
+which also checks these lines). Not run on hardware: OLED item G2.
+
 ## Layering
 
 | Layer | Responsibility |

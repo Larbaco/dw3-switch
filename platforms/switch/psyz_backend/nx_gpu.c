@@ -20,6 +20,7 @@
 #ifdef DW3_NX_GAME_IMAGE
 #include "port_turbo.h"
 #endif
+#include "nx_game_api.h" /* last: a `both` image redirects the game calls */
 
 #if DW3_NX_DEBUG_MESH
 static uint64_t gpu_now_us(void) {

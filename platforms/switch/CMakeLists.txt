@@ -25,8 +25,19 @@ cmake_minimum_required(VERSION 3.21)
 project(dw3-switch C CXX)
 
 set(CMAKE_C_STANDARD 11)
-set(DW3_VERSION "us" CACHE STRING "Game disc version: us or eu")
-set_property(CACHE DW3_VERSION PROPERTY STRINGS us eu)
+# P6.24: -DDW3_VERSION=both links both game copies into one .nro; the region is
+# chosen at boot (sdmc:/switch/dw3/us and /eu present, the picker, the stored
+# choice). See docs/SINGLE_BUILD.md, "As built (slice 4)".
+set(DW3_VERSION "us" CACHE STRING "Game disc version: us, eu or both")
+set_property(CACHE DW3_VERSION PROPERTY STRINGS us eu both)
+string(TOLOWER "${DW3_VERSION}" _dw3_ver)
+if(_dw3_ver STREQUAL "both")
+  set(_dw3_both ON)
+  set(_dw3_sfx _us _eu)
+else()
+  set(_dw3_both OFF)
+  set(_dw3_sfx "")
+endif()
 option(DW3_NXLINK_STDIO "Redirect game stdout/stderr through nxlink (development only)" OFF)
 # Default ON for a fresh --nxlink configure (separate build dir); OFF for the
 # standard release NRO. Override with -DDW3_NX_DEBUG_MESH=OFF|ON.
@@ -133,17 +144,26 @@ if(DW3_CHEATS)
   add_compile_definitions(DW3_CHEATS=1)
   message(STATUS "P6.20 Cheats screen compiled in (DW3_CHEATS)")
 endif()
-add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../../port ${CMAKE_BINARY_DIR}/port)
+if(_dw3_both)
+  include(${CMAKE_CURRENT_SOURCE_DIR}/../../port/dual_region.cmake)
+  dw3_add_both_game(${CMAKE_CURRENT_SOURCE_DIR}/../../port)
+else()
+  add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../../port ${CMAKE_BINARY_DIR}/port)
+endif()
 
-string(TOLOWER "${DW3_VERSION}" _dw3_ver)
 if(_dw3_ver STREQUAL "us")
   set(_dw3_ver_macro VERSION_US=1)
   set(_dw3_default_runtime "sdmc:/switch/dw3/us")
 elseif(_dw3_ver STREQUAL "eu")
   set(_dw3_ver_macro VERSION_EU=1)
   set(_dw3_default_runtime "sdmc:/switch/dw3/eu")
+elseif(_dw3_both)
+  # No region at compile time: dw3_region() / dw3_game() decide at boot. The
+  # base folder holds us/ and eu/; the default runtime is <base>/<region>.
+  set(_dw3_ver_macro DW3_BOTH=1)
+  set(_dw3_default_runtime "sdmc:/switch/dw3/us")
 else()
-  message(FATAL_ERROR "DW3_VERSION must be us or eu (got '${DW3_VERSION}')")
+  message(FATAL_ERROR "DW3_VERSION must be us, eu or both (got '${DW3_VERSION}')")
 endif()
 message(STATUS "DW3_VERSION=${_dw3_ver} (${_dw3_ver_macro})")
 message(STATUS "DW3_DEFAULT_RUNTIME=${_dw3_default_runtime}")
@@ -183,15 +203,27 @@ target_sources(dw3-switch PRIVATE
   ${CMAKE_CURRENT_SOURCE_DIR}/../pc/src/title_options_cache.c
   ${CMAKE_CURRENT_SOURCE_DIR}/../pc/src/title_logo_resample.c
 )
-target_compile_definitions(dw3_title PRIVATE DW3_TITLE_NATIVE_OVERLAY=1)
-target_compile_definitions(dw3_port_options PRIVATE DW3_TITLE_NATIVE_OVERLAY=1)
-target_include_directories(dw3_port_options PRIVATE
-  ${CMAKE_CURRENT_SOURCE_DIR}/../pc/src)
+foreach(_s IN LISTS _dw3_sfx ITEMS "")
+  if(_dw3_both AND _s STREQUAL "")
+    continue()
+  endif()
+  target_compile_definitions(dw3_title${_s} PRIVATE DW3_TITLE_NATIVE_OVERLAY=1)
+  target_compile_definitions(dw3_port_options${_s} PRIVATE DW3_TITLE_NATIVE_OVERLAY=1)
+  target_include_directories(dw3_port_options${_s} PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/../pc/src)
+endforeach()
 
 target_compile_definitions(dw3-switch PRIVATE
   ${_dw3_ver_macro}
   DW3_NX_GAME_IMAGE
   DW3_DEFAULT_RUNTIME="${_dw3_default_runtime}")
+target_include_directories(dw3-switch PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../../port/region)
+if(NOT _dw3_both)
+  # dw3_region_name() / dw3_region_parse(); options_cfg.c comes from the game
+  # archive. A `both` image has them (and the boot flow) in dw3_region_rt.
+  target_sources(dw3-switch PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../port/region/dw3_region.c)
+endif()
 
 # NRO / NACP version for hbmenu (display_version is 15 printable chars).
 # Prefer -DDW3_NRO_VERSION=... from tools/build_switch_game.sh; otherwise
@@ -365,6 +397,25 @@ target_link_directories(dw3-switch PRIVATE ${DW3_NX_PORTLIBS}/lib)
 # Link through g++ so libstdc++ comes along (nouveau codegen inside libEGL.a).
 set_target_properties(dw3-switch PROPERTIES LINKER_LANGUAGE CXX)
 
+if(_dw3_both)
+  # The two game copies are plain objects (every other symbol is local); the
+  # host archive and PSY-Z follow the executable's own objects, as in a plain
+  # build (see platforms/pc/CMakeLists.txt).
+  foreach(_r us eu)
+    set_source_files_properties(${DW3_GAME_COPY_O_${_r}} PROPERTIES
+      EXTERNAL_OBJECT TRUE GENERATED TRUE)
+    target_sources(dw3-switch PRIVATE ${DW3_GAME_COPY_O_${_r}})
+  endforeach()
+  add_dependencies(dw3-switch ${DW3_GAME_COPY_TARGETS})
+  target_link_libraries(dw3-switch PRIVATE
+    "-Wl,--start-group"
+    dw3_host_objs
+    "-Wl,--end-group"
+    psyz
+    # libnx's -lnx/-lm come from the platform module.
+    EGL GLESv2 glapi drm_nouveau
+  )
+else()
 target_link_libraries(dw3-switch PRIVATE
   "-Wl,--start-group"
   "-Wl,--whole-archive" dw3_p32_field dw3_p33_battle dw3_p34_menus dw3_p35_cardgame
@@ -376,6 +427,7 @@ target_link_libraries(dw3-switch PRIVATE
   # libnx's -lnx/-lm come from the platform module.
   EGL GLESv2 glapi drm_nouveau
 )
+endif()
 
 target_link_options(dw3-switch PRIVATE
   # P5.4 PR 2: software aborts write the crash report too
@@ -416,6 +468,11 @@ target_link_options(dw3-switch PRIVATE
   "-Wl,--wrap=CdSetDebug"
   "-Wl,--wrap=SetGraphDebug"
   "-Wl,--wrap=CdControl"
+)
+# A `both` image needs none of the --undefined lines: overlay_sections.c of
+# each game copy refers to its own __start_dw3data_<region>_* symbols.
+if(NOT _dw3_both)
+target_link_options(dw3-switch PRIVATE
   # Keep the named overlay .data/.bss orphan sections (overlay_sections.c).
   "-Wl,--undefined=__start_dw3data_fieldstg"
   "-Wl,--undefined=__start_dw3data_stplnmet"
@@ -439,6 +496,7 @@ target_link_options(dw3-switch PRIVATE
   "-Wl,--undefined=__start_dw3data_stagslct"
   "-Wl,--undefined=__start_dw3data_cnty_sel"
 )
+endif()
 
 # .nacp + .nro from the devkitPro platform module. Passing NACP is what stops
 # elf2nro falling back to its stock "HOMEBREW" asset section — the trap the

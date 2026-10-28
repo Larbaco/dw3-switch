@@ -9,24 +9,65 @@ set(DECOMP_SRC "${DW3_ROOT}/build/decomp-src")
 set(PSYZ_INCLUDE "${DW3_ROOT}/vendor/psyz/psyz/include")
 set(APPLY_PATCHES "${DW3_ROOT}/tools/apply_patches.sh")
 
-set(DW3_VERSION "us" CACHE STRING "Game disc version: us or eu")
-set_property(CACHE DW3_VERSION PROPERTY STRINGS us eu)
-string(TOLOWER "${DW3_VERSION}" _dw3_ver)
+# P6.24: DW3_VERSION=both builds the game side twice into one program. The
+# platform CMakeLists then adds this directory three times (dw3_add_both_game
+# in dual_region.cmake): DW3_PORT_PART=host once (cdfs, memcard, movies,
+# psyz_missing, the run-time region code: everything that is not the game), and
+# DW3_PORT_PART=game twice with DW3_REGION_BUILD=us|eu, which gives every game
+# target the suffix _us / _eu. A plain us / eu build is DW3_PORT_PART=all with
+# no suffix, as before. See docs/SINGLE_BUILD.md, "As built (slice 3)".
+if(NOT DEFINED DW3_PORT_PART)
+  set(DW3_PORT_PART "all")
+endif()
+set(_dw3_part_host OFF)
+set(_dw3_part_game OFF)
+if(DW3_PORT_PART STREQUAL "all")
+  set(_dw3_part_host ON)
+  set(_dw3_part_game ON)
+elseif(DW3_PORT_PART STREQUAL "host")
+  set(_dw3_part_host ON)
+elseif(DW3_PORT_PART STREQUAL "game")
+  set(_dw3_part_game ON)
+else()
+  message(FATAL_ERROR "DW3_PORT_PART must be all, host or game (got '${DW3_PORT_PART}')")
+endif()
+
+set(_S "")
+if(DW3_PORT_PART STREQUAL "game" AND DEFINED DW3_REGION_BUILD)
+  string(TOLOWER "${DW3_REGION_BUILD}" _dw3_ver)
+  set(_S "_${_dw3_ver}")
+elseif(DW3_PORT_PART STREQUAL "host")
+  set(_dw3_ver "")
+else()
+  set(DW3_VERSION "us" CACHE STRING "Game disc version: us, eu or both")
+  set_property(CACHE DW3_VERSION PROPERTY STRINGS us eu both)
+  string(TOLOWER "${DW3_VERSION}" _dw3_ver)
+endif()
 if(_dw3_ver STREQUAL "us")
   set(DW3_VERSION_MACRO "VERSION_US=1")
   set(DW3_OVERLAY_TABLE "${CMAKE_CURRENT_SOURCE_DIR}/overlays/overlay_table_us.c")
 elseif(_dw3_ver STREQUAL "eu")
   set(DW3_VERSION_MACRO "VERSION_EU=1")
   set(DW3_OVERLAY_TABLE "${CMAKE_CURRENT_SOURCE_DIR}/overlays/overlay_table_eu.c")
+elseif(DW3_PORT_PART STREQUAL "host")
+  # the host knows no region at compile time (dw3_region())
+  set(DW3_VERSION_MACRO "")
 else()
   message(FATAL_ERROR "DW3_VERSION must be us or eu (got '${DW3_VERSION}')")
 endif()
-message(STATUS "DW3_VERSION=${_dw3_ver} (${DW3_VERSION_MACRO})")
+if(DW3_PORT_PART STREQUAL "host")
+  message(STATUS "DW3_VERSION=both: host part (no region macro)")
+else()
+  message(STATUS "DW3_VERSION=${_dw3_ver} (${DW3_VERSION_MACRO}) part=${DW3_PORT_PART}")
+endif()
 
 if(NOT EXISTS "${APPLY_PATCHES}")
   message(FATAL_ERROR "missing ${APPLY_PATCHES}")
 endif()
 
+# The patched tree is shared: in a `both` build only the first directory
+# processed (the host part) defines the apply step.
+if(NOT TARGET dw3_decomp_patched)
 # Configure-time: refresh patched tree so GLOB sees sources.
 execute_process(
   COMMAND "${APPLY_PATCHES}"
@@ -54,7 +95,9 @@ add_custom_command(
   VERBATIM
 )
 add_custom_target(dw3_decomp_patched DEPENDS "${DECOMP_SRC}/.dw3-patches-stamp")
+endif()
 
+if(_dw3_part_game)
 file(GLOB_RECURSE DW3_ENGINE_SOURCES CONFIGURE_DEPENDS
   "${DECOMP_SRC}/src/engine/*.c")
 list(FILTER DW3_ENGINE_SOURCES EXCLUDE REGEX "\\.inc\\.c$")
@@ -63,8 +106,8 @@ if(_dw3_engine_count EQUAL 0)
   message(FATAL_ERROR "no engine .c under ${DECOMP_SRC}/src/engine (run tools/apply_patches.sh)")
 endif()
 
-add_library(dw3_engine OBJECT ${DW3_ENGINE_SOURCES})
-add_dependencies(dw3_engine dw3_decomp_patched)
+add_library(dw3_engine${_S} OBJECT ${DW3_ENGINE_SOURCES})
+add_dependencies(dw3_engine${_S} dw3_decomp_patched)
 
 # US title overlay (STDWTITL) — P2.8 / E6.
 set(DW3_TITLE_SOURCES
@@ -83,11 +126,11 @@ set(DW3_TITLE_SOURCES
   "${DECOMP_SRC}/src/menus/title/data/title.c"
   "${DECOMP_SRC}/src/menus/title/data/movie.c"
 )
-add_library(dw3_title OBJECT ${DW3_TITLE_SOURCES})
-add_dependencies(dw3_title dw3_decomp_patched)
+add_library(dw3_title${_S} OBJECT ${DW3_TITLE_SOURCES})
+add_dependencies(dw3_title${_S} dw3_decomp_patched)
 
 # Host overlay address buffers (P2.3) + static restore model (P2.6) + title stubs.
-add_library(dw3_host_overlays OBJECT
+add_library(dw3_host_overlays${_S} OBJECT
   "${CMAKE_CURRENT_SOURCE_DIR}/overlays/host_vram.c"
   "${CMAKE_CURRENT_SOURCE_DIR}/overlays/host_heap.c"
   "${CMAKE_CURRENT_SOURCE_DIR}/overlays/overlay_host.c"
@@ -96,7 +139,9 @@ add_library(dw3_host_overlays OBJECT
   "${CMAKE_CURRENT_SOURCE_DIR}/overlays/mode_stubs.c"
   "${CMAKE_CURRENT_SOURCE_DIR}/overlays/boot_tim_host.c"
 )
+endif() # _dw3_part_game
 
+if(_dw3_part_host)
 # Psy-Q APIs missing from the pinned PSY-Z build (title bring-up).
 add_library(dw3_psyz_missing OBJECT
   "${CMAKE_CURRENT_SOURCE_DIR}/psyz_missing/psyz_missing.c"
@@ -144,6 +189,7 @@ target_include_directories(dw3_memcard PRIVATE
   "${CMAKE_CURRENT_SOURCE_DIR}/include"
 )
 target_compile_definitions(dw3_memcard PRIVATE __psyz)
+endif() # _dw3_part_host
 
 # Include order: port host → PSY-Z (Psy-Q names) → decomp headers/sources.
 # port/include/common.h shadows decomp common.h so gnu89 does not redefine
@@ -164,6 +210,12 @@ set(_DW3_GAME_DEFS
   SKIP_ASM=1
   __psyz
 )
+if(DEFINED DW3_REGION_BUILD AND _dw3_part_game)
+  # one of two game copies in a `both` image: the host defines
+  # dw3_map_view_async_start, so map_view.c must not carry its weak fallback
+  # (a weak definition inside the copy would win once the symbols are local)
+  list(APPEND _DW3_GAME_DEFS DW3_REGION_IMAGE=1)
+endif()
 # Log (once per site) when a PORT_HOST NULL guard is taken, see
 # port/include/port_null_guard.h and docs/BALLOON_NULL_ACTOR.md. On for PC
 # Debug builds and the Switch --nxlink build (DW3_NXLINK_STDIO), off for
@@ -201,15 +253,17 @@ set(_DW3_GAME_OPTS
   -Werror=int-to-pointer-cast
 )
 
-target_include_directories(dw3_engine PRIVATE ${_DW3_GAME_INCLUDES})
-target_include_directories(dw3_title PRIVATE ${_DW3_GAME_INCLUDES})
-target_include_directories(dw3_host_overlays PRIVATE
-  "${CMAKE_CURRENT_SOURCE_DIR}/overlays"
-)
+if(_dw3_part_host)
 target_include_directories(dw3_cdfs PUBLIC
   "${CMAKE_CURRENT_SOURCE_DIR}/cdfs"
 )
 target_compile_definitions(dw3_cdfs PRIVATE ${DW3_VERSION_MACRO})
+# P6.24: runtime_extract.c asks dw3_region() (dw3_region_rt.h); in a `both`
+# image the host part has no VERSION macro and goes through dw3_game_api.h.
+target_include_directories(dw3_cdfs PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/region")
+if(DW3_PORT_PART STREQUAL "host")
+  target_compile_definitions(dw3_cdfs PRIVATE DW3_BOTH=1)
+endif()
 target_include_directories(dw3_memcard PUBLIC
   "${CMAKE_CURRENT_SOURCE_DIR}/memcard"
 )
@@ -217,29 +271,6 @@ target_include_directories(dw3_psyz_missing PRIVATE
   "${PSYZ_INCLUDE}"
 )
 target_compile_definitions(dw3_psyz_missing PRIVATE __psyz)
-
-target_compile_definitions(dw3_engine PRIVATE ${_DW3_GAME_DEFS})
-target_compile_definitions(dw3_title PRIVATE ${_DW3_GAME_DEFS})
-target_compile_definitions(dw3_host_overlays PRIVATE
-  ${DW3_VERSION_MACRO}
-  PORT_HOST=1
-)
-
-set_target_properties(dw3_engine PROPERTIES
-  C_STANDARD 90
-  C_STANDARD_REQUIRED ON
-  C_EXTENSIONS ON
-)
-set_target_properties(dw3_title PROPERTIES
-  C_STANDARD 90
-  C_STANDARD_REQUIRED ON
-  C_EXTENSIONS ON
-)
-set_target_properties(dw3_host_overlays PROPERTIES
-  C_STANDARD 90
-  C_STANDARD_REQUIRED ON
-  C_EXTENSIONS ON
-)
 set_target_properties(dw3_cdfs PROPERTIES
   C_STANDARD 11
   C_STANDARD_REQUIRED ON
@@ -255,14 +286,46 @@ set_target_properties(dw3_psyz_missing PROPERTIES
   C_STANDARD_REQUIRED ON
   C_EXTENSIONS ON
 )
+endif() # _dw3_part_host
+
+if(_dw3_part_game)
+target_include_directories(dw3_engine${_S} PRIVATE ${_DW3_GAME_INCLUDES})
+target_include_directories(dw3_title${_S} PRIVATE ${_DW3_GAME_INCLUDES})
+target_include_directories(dw3_host_overlays${_S} PRIVATE
+  "${CMAKE_CURRENT_SOURCE_DIR}/overlays"
+)
+
+target_compile_definitions(dw3_engine${_S} PRIVATE ${_DW3_GAME_DEFS})
+target_compile_definitions(dw3_title${_S} PRIVATE ${_DW3_GAME_DEFS})
+target_compile_definitions(dw3_host_overlays${_S} PRIVATE
+  ${DW3_VERSION_MACRO}
+  PORT_HOST=1
+)
+
+set_target_properties(dw3_engine${_S} PROPERTIES
+  C_STANDARD 90
+  C_STANDARD_REQUIRED ON
+  C_EXTENSIONS ON
+)
+set_target_properties(dw3_title${_S} PROPERTIES
+  C_STANDARD 90
+  C_STANDARD_REQUIRED ON
+  C_EXTENSIONS ON
+)
+set_target_properties(dw3_host_overlays${_S} PROPERTIES
+  C_STANDARD 90
+  C_STANDARD_REQUIRED ON
+  C_EXTENSIONS ON
+)
 
 # Host-relevant subset of vendor/dw3_decomp/mk/toolchain/gcc.mk GCC_CFLAGS.
-target_compile_options(dw3_engine PRIVATE ${_DW3_GAME_OPTS})
-target_compile_options(dw3_title PRIVATE ${_DW3_GAME_OPTS})
+target_compile_options(dw3_engine${_S} PRIVATE ${_DW3_GAME_OPTS})
+target_compile_options(dw3_title${_S} PRIVATE ${_DW3_GAME_OPTS})
 
 # P9.2 port options shell + shared 8×8 VRAM text (title Config/Extra).
-add_library(dw3_port_options OBJECT
+add_library(dw3_port_options${_S} OBJECT
   "${CMAKE_CURRENT_SOURCE_DIR}/audio/audio_bus.c"
+  "${CMAKE_CURRENT_SOURCE_DIR}/audio/audio_health.c"
   "${CMAKE_CURRENT_SOURCE_DIR}/audio/volume.c"
   "${CMAKE_CURRENT_SOURCE_DIR}/autosave/autosave.c"
   "${CMAKE_CURRENT_SOURCE_DIR}/autosave/autosave_areas.c"
@@ -292,20 +355,26 @@ add_library(dw3_port_options OBJECT
 # P6.20 Cheats screen and save mark; DW3_CHEATS is set by the platform
 # CMakeLists (option DW3_CHEATS, default ON).
 if(DW3_CHEATS)
-  target_sources(dw3_port_options PRIVATE
+  target_sources(dw3_port_options${_S} PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}/options/cheats.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/options/cheat_saves.c"
     # P5.5 stage sweep (opt-in test run; stage_sweep=1 in port_options.cfg)
     "${CMAKE_CURRENT_SOURCE_DIR}/sweep/stage_sweep.c"
   )
 endif()
-add_dependencies(dw3_port_options dw3_decomp_patched)
-target_include_directories(dw3_port_options PRIVATE ${_DW3_GAME_INCLUDES}
+# P6.24: the table through which a `both` image's host reaches this copy
+# (port/region/dw3_game_api.h); the plain images have no use for it.
+if(DEFINED DW3_REGION_BUILD)
+  target_sources(dw3_port_options${_S} PRIVATE
+    "${CMAKE_CURRENT_SOURCE_DIR}/region/game_api.c")
+endif()
+add_dependencies(dw3_port_options${_S} dw3_decomp_patched)
+target_include_directories(dw3_port_options${_S} PRIVATE ${_DW3_GAME_INCLUDES}
   "${CMAKE_CURRENT_SOURCE_DIR}/map_view"
   "${CMAKE_CURRENT_SOURCE_DIR}/mods")
-target_compile_definitions(dw3_port_options PRIVATE ${_DW3_GAME_DEFS})
-target_compile_options(dw3_port_options PRIVATE ${_DW3_GAME_OPTS})
-set_target_properties(dw3_port_options PROPERTIES
+target_compile_definitions(dw3_port_options${_S} PRIVATE ${_DW3_GAME_DEFS})
+target_compile_options(dw3_port_options${_S} PRIVATE ${_DW3_GAME_OPTS})
+set_target_properties(dw3_port_options${_S} PROPERTIES
   C_STANDARD 90
   C_STANDARD_REQUIRED ON
   C_EXTENSIONS ON
@@ -314,6 +383,7 @@ set_target_properties(dw3_port_options PROPERTIES
 # P3.1: compile-only audit of overlay/stage TUs under cast warning-as-error.
 # Not linked into dw3_engine_objs until P3.2+ brings overlays in for real.
 # Title sources stay on dw3_title (exclude to avoid duplicate OBJECT membership).
+if(NOT DEFINED DW3_REGION_BUILD) # not worth compiling twice in a `both` image
 file(GLOB_RECURSE DW3_P31_SOURCES CONFIGURE_DEPENDS
   "${DECOMP_SRC}/src/field/*.c"
   "${DECOMP_SRC}/src/battle/*.c"
@@ -335,16 +405,17 @@ list(LENGTH DW3_P31_SOURCES _dw3_p31_count)
 if(_dw3_p31_count EQUAL 0)
   message(FATAL_ERROR "no P3.1 audit .c under ${DECOMP_SRC}/src/{field,battle,cardgame,menus,debug}")
 endif()
-add_library(dw3_p31_audit OBJECT ${DW3_P31_SOURCES})
-add_dependencies(dw3_p31_audit dw3_decomp_patched)
-target_include_directories(dw3_p31_audit PRIVATE ${_DW3_GAME_INCLUDES})
-target_compile_definitions(dw3_p31_audit PRIVATE ${_DW3_GAME_DEFS})
-target_compile_options(dw3_p31_audit PRIVATE ${_DW3_GAME_OPTS})
-set_target_properties(dw3_p31_audit PROPERTIES
+add_library(dw3_p31_audit${_S} OBJECT ${DW3_P31_SOURCES})
+add_dependencies(dw3_p31_audit${_S} dw3_decomp_patched)
+target_include_directories(dw3_p31_audit${_S} PRIVATE ${_DW3_GAME_INCLUDES})
+target_compile_definitions(dw3_p31_audit${_S} PRIVATE ${_DW3_GAME_DEFS})
+target_compile_options(dw3_p31_audit${_S} PRIVATE ${_DW3_GAME_OPTS})
+set_target_properties(dw3_p31_audit${_S} PROPERTIES
   C_STANDARD 90
   C_STANDARD_REQUIRED ON
   C_EXTENSIONS ON
 )
+endif()
 
 # ---------------------------------------------------------------------------
 # P3.2: FIELDSTG + STPLNMET + WSTAG260/780/785/790 with prefixed stage symbols
@@ -996,15 +1067,15 @@ set_source_files_properties(${DW3_P32_HOST_OBJECTS} PROPERTIES
   EXTERNAL_OBJECT TRUE
   GENERATED TRUE
 )
-add_custom_target(dw3_p32_field_objs DEPENDS ${DW3_P32_HOST_OBJECTS})
+add_custom_target(dw3_p32_field_objs${_S} DEPENDS ${DW3_P32_HOST_OBJECTS})
 
 # Whole-archive field/stage host objects so named .data/.bss sections land in
 # the final link (orphan __start_/__stop_ symbols from overlay_sections.c).
-add_library(dw3_p32_field STATIC ${DW3_P32_HOST_OBJECTS})
-set_target_properties(dw3_p32_field PROPERTIES
+add_library(dw3_p32_field${_S} STATIC ${DW3_P32_HOST_OBJECTS})
+set_target_properties(dw3_p32_field${_S} PROPERTIES
   LINKER_LANGUAGE C
 )
-add_dependencies(dw3_p32_field dw3_p32_field_objs)
+add_dependencies(dw3_p32_field${_S} dw3_p32_field_objs${_S})
 
 # ---------------------------------------------------------------------------
 # P3.3: FIGHTSTG + WFIGHTMN + STFGTREP with named .data/.bss restore.
@@ -1078,13 +1149,13 @@ set_source_files_properties(${DW3_P33_HOST_OBJECTS} PROPERTIES
   EXTERNAL_OBJECT TRUE
   GENERATED TRUE
 )
-add_custom_target(dw3_p33_battle_objs DEPENDS ${DW3_P33_HOST_OBJECTS})
+add_custom_target(dw3_p33_battle_objs${_S} DEPENDS ${DW3_P33_HOST_OBJECTS})
 
-add_library(dw3_p33_battle STATIC ${DW3_P33_HOST_OBJECTS})
-set_target_properties(dw3_p33_battle PROPERTIES
+add_library(dw3_p33_battle${_S} STATIC ${DW3_P33_HOST_OBJECTS})
+set_target_properties(dw3_p33_battle${_S} PROPERTIES
   LINKER_LANGUAGE C
 )
-add_dependencies(dw3_p33_battle dw3_p33_battle_objs)
+add_dependencies(dw3_p33_battle${_S} dw3_p33_battle_objs${_S})
 
 # ---------------------------------------------------------------------------
 # P3.4: menu / shop overlays with named .data/.bss restore.
@@ -1156,13 +1227,13 @@ set_source_files_properties(${DW3_P34_HOST_OBJECTS} PROPERTIES
   EXTERNAL_OBJECT TRUE
   GENERATED TRUE
 )
-add_custom_target(dw3_p34_menu_objs DEPENDS ${DW3_P34_HOST_OBJECTS})
+add_custom_target(dw3_p34_menu_objs${_S} DEPENDS ${DW3_P34_HOST_OBJECTS})
 
-add_library(dw3_p34_menus STATIC ${DW3_P34_HOST_OBJECTS})
-set_target_properties(dw3_p34_menus PROPERTIES
+add_library(dw3_p34_menus${_S} STATIC ${DW3_P34_HOST_OBJECTS})
+set_target_properties(dw3_p34_menus${_S} PROPERTIES
   LINKER_LANGUAGE C
 )
-add_dependencies(dw3_p34_menus dw3_p34_menu_objs)
+add_dependencies(dw3_p34_menus${_S} dw3_p34_menu_objs${_S})
 
 # ---------------------------------------------------------------------------
 # P3.5: CARDGAME + STCRDDEK + STCRDSHP + STCRDABM with named .data/.bss restore.
@@ -1213,13 +1284,13 @@ set_source_files_properties(${DW3_P35_HOST_OBJECTS} PROPERTIES
   EXTERNAL_OBJECT TRUE
   GENERATED TRUE
 )
-add_custom_target(dw3_p35_cardgame_objs DEPENDS ${DW3_P35_HOST_OBJECTS})
+add_custom_target(dw3_p35_cardgame_objs${_S} DEPENDS ${DW3_P35_HOST_OBJECTS})
 
-add_library(dw3_p35_cardgame STATIC ${DW3_P35_HOST_OBJECTS})
-set_target_properties(dw3_p35_cardgame PROPERTIES
+add_library(dw3_p35_cardgame${_S} STATIC ${DW3_P35_HOST_OBJECTS})
+set_target_properties(dw3_p35_cardgame${_S} PROPERTIES
   LINKER_LANGUAGE C
 )
-add_dependencies(dw3_p35_cardgame dw3_p35_cardgame_objs)
+add_dependencies(dw3_p35_cardgame${_S} dw3_p35_cardgame_objs${_S})
 
 # ---------------------------------------------------------------------------
 # P3.8: STAGSLCT debug stage select with named .data/.bss restore.
@@ -1241,13 +1312,13 @@ set_source_files_properties(${DW3_P38_HOST_OBJECTS} PROPERTIES
   EXTERNAL_OBJECT TRUE
   GENERATED TRUE
 )
-add_custom_target(dw3_p38_stagslct_objs DEPENDS ${DW3_P38_HOST_OBJECTS})
+add_custom_target(dw3_p38_stagslct_objs${_S} DEPENDS ${DW3_P38_HOST_OBJECTS})
 
-add_library(dw3_p38_stagslct STATIC ${DW3_P38_HOST_OBJECTS})
-set_target_properties(dw3_p38_stagslct PROPERTIES
+add_library(dw3_p38_stagslct${_S} STATIC ${DW3_P38_HOST_OBJECTS})
+set_target_properties(dw3_p38_stagslct${_S} PROPERTIES
   LINKER_LANGUAGE C
 )
-add_dependencies(dw3_p38_stagslct dw3_p38_stagslct_objs)
+add_dependencies(dw3_p38_stagslct${_S} dw3_p38_stagslct_objs${_S})
 
 # ---------------------------------------------------------------------------
 # P6.2: CNTY_SEL country / language select with named .data/.bss restore.
@@ -1271,30 +1342,105 @@ set_source_files_properties(${DW3_P62_HOST_OBJECTS} PROPERTIES
   EXTERNAL_OBJECT TRUE
   GENERATED TRUE
 )
-add_custom_target(dw3_p62_cnty_sel_objs DEPENDS ${DW3_P62_HOST_OBJECTS})
+add_custom_target(dw3_p62_cnty_sel_objs${_S} DEPENDS ${DW3_P62_HOST_OBJECTS})
 
-add_library(dw3_p62_cnty_sel STATIC ${DW3_P62_HOST_OBJECTS})
-set_target_properties(dw3_p62_cnty_sel PROPERTIES
+add_library(dw3_p62_cnty_sel${_S} STATIC ${DW3_P62_HOST_OBJECTS})
+set_target_properties(dw3_p62_cnty_sel${_S} PROPERTIES
   LINKER_LANGUAGE C
 )
-add_dependencies(dw3_p62_cnty_sel dw3_p62_cnty_sel_objs)
+add_dependencies(dw3_p62_cnty_sel${_S} dw3_p62_cnty_sel_objs${_S})
 
+if(DEFINED DW3_REGION_BUILD)
+# P6.24: one game copy of a `both` image. The game objects (no host glue) go in
+# one archive; the copy is then packed into game_<region>.o with only its
+# dw3_game_api global (tools/localize_region_obj.py). The host links the .o
+# like any object and reaches the copy through us_/eu_dw3_game_api.
+add_library(dw3_game_objs${_S} STATIC
+  $<TARGET_OBJECTS:dw3_engine${_S}>
+  $<TARGET_OBJECTS:dw3_title${_S}>
+  $<TARGET_OBJECTS:dw3_host_overlays${_S}>
+  $<TARGET_OBJECTS:dw3_port_options${_S}>
+)
+set_target_properties(dw3_game_objs${_S} PROPERTIES
+  OUTPUT_NAME dw3_game${_S}
+  LINKER_LANGUAGE C
+)
+add_dependencies(dw3_game_objs${_S}
+  dw3_engine${_S} dw3_title${_S} dw3_host_overlays${_S} dw3_port_options${_S})
+
+set(DW3_GAME_COPY_O "${CMAKE_CURRENT_BINARY_DIR}/game_${_dw3_ver}.o")
+add_custom_command(
+  OUTPUT "${DW3_GAME_COPY_O}"
+  COMMAND ${DW3_PACK_ENV} python3 "${DW3_ROOT}/tools/localize_region_obj.py"
+    --region "${_dw3_ver}" --out "${DW3_GAME_COPY_O}"
+    --whole-archive
+      $<TARGET_FILE:dw3_p32_field${_S}> $<TARGET_FILE:dw3_p33_battle${_S}>
+      $<TARGET_FILE:dw3_p34_menus${_S}> $<TARGET_FILE:dw3_p35_cardgame${_S}>
+      $<TARGET_FILE:dw3_p38_stagslct${_S}> $<TARGET_FILE:dw3_p62_cnty_sel${_S}>
+    --archive $<TARGET_FILE:dw3_game_objs${_S}>
+  DEPENDS
+    dw3_p32_field${_S} dw3_p33_battle${_S} dw3_p34_menus${_S}
+    dw3_p35_cardgame${_S} dw3_p38_stagslct${_S} dw3_p62_cnty_sel${_S}
+    dw3_game_objs${_S}
+    "${DW3_ROOT}/tools/localize_region_obj.py"
+  COMMENT "P6.24 pack the ${_dw3_ver} game copy"
+  VERBATIM
+)
+add_custom_target(dw3_game_copy${_S} DEPENDS "${DW3_GAME_COPY_O}")
+set(DW3_GAME_COPY_O_${_dw3_ver} "${DW3_GAME_COPY_O}" PARENT_SCOPE)
+elseif(DW3_PORT_PART STREQUAL "all")
 # Archive for the PC host: engine + title + port glue (field/battle/menu objs separate).
-add_library(dw3_engine_objs STATIC
-  $<TARGET_OBJECTS:dw3_engine>
-  $<TARGET_OBJECTS:dw3_title>
-  $<TARGET_OBJECTS:dw3_host_overlays>
+add_library(dw3_engine_objs${_S} STATIC
+  $<TARGET_OBJECTS:dw3_engine${_S}>
+  $<TARGET_OBJECTS:dw3_title${_S}>
+  $<TARGET_OBJECTS:dw3_host_overlays${_S}>
   $<TARGET_OBJECTS:dw3_cdfs>
   $<TARGET_OBJECTS:dw3_memcard>
   $<TARGET_OBJECTS:dw3_psyz_missing>
   $<TARGET_OBJECTS:dw3_movies>
-  $<TARGET_OBJECTS:dw3_port_options>
+  $<TARGET_OBJECTS:dw3_port_options${_S}>
 )
-set_target_properties(dw3_engine_objs PROPERTIES
-  OUTPUT_NAME dw3_engine
+set_target_properties(dw3_engine_objs${_S} PROPERTIES
+  OUTPUT_NAME dw3_engine${_S}
   LINKER_LANGUAGE C
 )
-add_dependencies(dw3_engine_objs
-  dw3_engine dw3_title dw3_host_overlays dw3_cdfs dw3_memcard dw3_psyz_missing
-  dw3_movies dw3_port_options)
+add_dependencies(dw3_engine_objs${_S}
+  dw3_engine${_S} dw3_title${_S} dw3_host_overlays${_S} dw3_cdfs dw3_memcard dw3_psyz_missing
+  dw3_movies dw3_port_options${_S})
+endif()
+endif() # _dw3_part_game
+
+if(DW3_PORT_PART STREQUAL "host")
+# P6.24: the host half of a `both` image, linked once: everything that is not
+# the game, plus the run-time region code. options_cfg.c is also in each game
+# copy (it is a plain module); this one reads region_default / last_region for
+# dw3_region_resolve().
+add_library(dw3_region_rt OBJECT
+  "${CMAKE_CURRENT_SOURCE_DIR}/region/dw3_region.c"
+  "${CMAKE_CURRENT_SOURCE_DIR}/region/dw3_region_rt.c"
+  "${CMAKE_CURRENT_SOURCE_DIR}/region/dw3_region_boot.c"
+  "${CMAKE_CURRENT_SOURCE_DIR}/region/dw3_launcher.c"
+  "${CMAKE_CURRENT_SOURCE_DIR}/options/options_cfg.c"
+)
+target_include_directories(dw3_region_rt PRIVATE
+  "${CMAKE_CURRENT_SOURCE_DIR}/region"
+  "${CMAKE_CURRENT_SOURCE_DIR}/include"
+  "${CMAKE_CURRENT_SOURCE_DIR}/options"
+)
+target_compile_definitions(dw3_region_rt PRIVATE DW3_BOTH=1)
+set_target_properties(dw3_region_rt PROPERTIES
+  C_STANDARD 11
+  C_STANDARD_REQUIRED ON
+  C_EXTENSIONS ON
+)
+add_library(dw3_host_objs STATIC
+  $<TARGET_OBJECTS:dw3_cdfs>
+  $<TARGET_OBJECTS:dw3_memcard>
+  $<TARGET_OBJECTS:dw3_psyz_missing>
+  $<TARGET_OBJECTS:dw3_movies>
+  $<TARGET_OBJECTS:dw3_region_rt>
+)
+set_target_properties(dw3_host_objs PROPERTIES LINKER_LANGUAGE C)
+add_dependencies(dw3_host_objs dw3_cdfs dw3_memcard dw3_psyz_missing dw3_movies dw3_region_rt)
+endif()
 

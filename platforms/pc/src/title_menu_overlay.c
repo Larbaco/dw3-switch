@@ -7,6 +7,7 @@
 #include "port_options.h"
 #include "port_screen_fade.h"
 #include "title_options_cache.h"
+#include "dw3_game_api.h" /* last: in a `both` image it redirects the game calls */
 
 #include <pthread.h>
 #include <stddef.h>
