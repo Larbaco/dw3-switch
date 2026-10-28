@@ -24,6 +24,8 @@ typedef struct Dw3PcOverlayGpu {
 extern int dw3_pc_overlay_gpu_ctx(Dw3PcOverlayGpu *ctx);
 
 static SDL_GPUTexture *g_map_tex, *g_hud_tex, *g_black_tex;
+static SDL_GPUTexture *g_bank_tex[DW3_MV_BANK_N]; /* the game's cursor and balloon */
+static unsigned g_bank_gen = ~0u;
 static SDL_GPUSampler *g_linear, *g_nearest;
 static SDL_GPUDevice *g_dev;
 static unsigned g_map_gen = ~0u, g_hud_gen = ~0u;
@@ -36,6 +38,15 @@ static void release_all(void) {
     if (g_black_tex) SDL_ReleaseGPUTexture(g_dev, g_black_tex);
     if (g_linear) SDL_ReleaseGPUSampler(g_dev, g_linear);
     if (g_nearest) SDL_ReleaseGPUSampler(g_dev, g_nearest);
+    {
+        int i;
+
+        for (i = 0; i < DW3_MV_BANK_N; ++i) {
+            if (g_bank_tex[i]) SDL_ReleaseGPUTexture(g_dev, g_bank_tex[i]);
+            g_bank_tex[i] = NULL;
+        }
+        g_bank_gen = ~0u;
+    }
     g_map_tex = g_hud_tex = g_black_tex = NULL;
     g_linear = g_nearest = NULL;
     g_map_gen = g_hud_gen = ~0u;
@@ -156,6 +167,24 @@ void dw3_pc_map_view_prepare(void) {
                     d.tex_h, d.linear ? "linear" : "nearest");
         }
     }
+    if (d.bank_gen != g_bank_gen) {
+        int i;
+
+        for (i = 0; i < DW3_MV_BANK_N; ++i) {
+            if (g_bank_tex[i]) SDL_ReleaseGPUTexture(g_dev, g_bank_tex[i]);
+            g_bank_tex[i] = NULL;
+            if (!d.bank[i].rgba || d.bank[i].w <= 0) continue;
+            g_bank_tex[i] = make_texture(g_dev, d.bank[i].w, d.bank[i].h);
+            if (g_bank_tex[i] &&
+                upload(g_dev, g_bank_tex[i], d.bank[i].rgba, d.bank[i].w,
+                       d.bank[i].h) != 0) {
+                SDL_ReleaseGPUTexture(g_dev, g_bank_tex[i]);
+                g_bank_tex[i] = NULL;
+            }
+        }
+        g_bank_gen = d.bank_gen;
+        fprintf(stderr, "dw3-map: pc sprite bank uploaded (gen %u)\n", d.bank_gen);
+    }
     if (d.hud_gen != g_hud_gen && d.hud_rgba && g_hud_tex &&
         upload(g_dev, g_hud_tex, d.hud_rgba, DW3_MV_HUD_W, DW3_MV_HUD_H) == 0) {
         g_hud_gen = d.hud_gen;
@@ -164,14 +193,67 @@ void dw3_pc_map_view_prepare(void) {
 
 void dw3_pc_map_view_destroy(void) { release_all(); }
 
+/* One pass over the picture, clipped to `clip` (window pixels): the backdrop,
+ * the map, the game's sprites on it (map space), the HUD canvas. */
+static void draw_layers(SDL_GPURenderPass *pass, const Dw3PcOverlayGpu *ctx,
+                        const Dw3MapViewDraw *d, const SDL_Rect *clip) {
+    SDL_GPUViewport vp;
+    SDL_GPUTextureSamplerBinding tb;
+    int i;
+
+    if (clip->w <= 0 || clip->h <= 0) return;
+    memset(&vp, 0, sizeof(vp));
+    vp.min_depth = 0.0f;
+    vp.max_depth = 1.0f;
+    SDL_SetGPUScissor(pass, clip);
+
+    /* backdrop */
+    vp.x = ctx->pic_x; vp.y = ctx->pic_y; vp.w = ctx->pic_w; vp.h = ctx->pic_h;
+    SDL_SetGPUViewport(pass, &vp);
+    tb.texture = g_black_tex; tb.sampler = g_nearest;
+    SDL_BindGPUFragmentSamplers(pass, 0, &tb, 1);
+    SDL_DrawGPUPrimitives(pass, 6, 1, ctx->quad_first, 0);
+
+    /* the map: the quad fills the viewport, which is the map's rectangle */
+    vp.x = ctx->pic_x + d->x0 * ctx->pic_w;
+    vp.y = ctx->pic_y + d->y0 * ctx->pic_h;
+    vp.w = (d->x1 - d->x0) * ctx->pic_w;
+    vp.h = (d->y1 - d->y0) * ctx->pic_h;
+    SDL_SetGPUViewport(pass, &vp);
+    tb.texture = g_map_tex; tb.sampler = d->linear ? g_linear : g_nearest;
+    SDL_BindGPUFragmentSamplers(pass, 0, &tb, 1);
+    SDL_DrawGPUPrimitives(pass, 6, 1, ctx->quad_first, 0);
+
+    /* the cursor and the balloon, nearest, in map space like the map */
+    for (i = 0; i < d->nspr; ++i) {
+        const Dw3MapViewSprite *sp = &d->spr[i];
+
+        if (sp->bank < 0 || sp->bank >= DW3_MV_BANK_N || !g_bank_tex[sp->bank])
+            continue;
+        vp.x = ctx->pic_x + sp->x0 * ctx->pic_w;
+        vp.y = ctx->pic_y + sp->y0 * ctx->pic_h;
+        vp.w = (sp->x1 - sp->x0) * ctx->pic_w;
+        vp.h = (sp->y1 - sp->y0) * ctx->pic_h;
+        SDL_SetGPUViewport(pass, &vp);
+        tb.texture = g_bank_tex[sp->bank]; tb.sampler = g_nearest;
+        SDL_BindGPUFragmentSamplers(pass, 0, &tb, 1);
+        SDL_DrawGPUPrimitives(pass, 6, 1, ctx->quad_first, 0);
+    }
+
+    /* the HUD canvas over the whole picture */
+    vp.x = ctx->pic_x; vp.y = ctx->pic_y; vp.w = ctx->pic_w; vp.h = ctx->pic_h;
+    SDL_SetGPUViewport(pass, &vp);
+    tb.texture = g_hud_tex; tb.sampler = g_nearest;
+    SDL_BindGPUFragmentSamplers(pass, 0, &tb, 1);
+    SDL_DrawGPUPrimitives(pass, 6, 1, ctx->quad_first, 0);
+}
+
 /* Render callback (inside the pass, over the finished game picture). */
 void dw3_pc_map_view_render(SDL_GPURenderPass *pass) {
     Dw3MapViewDraw d;
     Dw3PcOverlayGpu ctx;
-    SDL_GPUViewport vp;
-    SDL_Rect scissor;
     SDL_GPUBufferBinding binding;
-    SDL_GPUTextureSamplerBinding tb;
+    SDL_Rect scissor, pic;
     int ww = 0, wh = 0;
 
     dw3_map_view_get_draw(&d);
@@ -183,38 +265,36 @@ void dw3_pc_map_view_render(SDL_GPURenderPass *pass) {
     binding.offset = 0;
     SDL_BindGPUGraphicsPipeline(pass, ctx.pipeline);
     SDL_BindGPUVertexBuffers(pass, 0, &binding, 1);
-    memset(&vp, 0, sizeof(vp));
-    vp.min_depth = 0.0f;
-    vp.max_depth = 1.0f;
-    scissor.x = (int)(ctx.pic_x + 0.5f);
-    scissor.y = (int)(ctx.pic_y + 0.5f);
-    scissor.w = (int)(ctx.pic_w + 0.5f);
-    scissor.h = (int)(ctx.pic_h + 0.5f);
-    SDL_SetGPUScissor(pass, &scissor);
+    pic.x = (int)(ctx.pic_x + 0.5f);
+    pic.y = (int)(ctx.pic_y + 0.5f);
+    pic.w = (int)(ctx.pic_w + 0.5f);
+    pic.h = (int)(ctx.pic_h + 0.5f);
+    if (d.hole) {
+        /* the game's name box: its rectangle of the picture is left to the
+         * game's own pixels, so the picture is drawn in up to four strips
+         * around it */
+        SDL_Rect h, r;
+        int hx0 = (int)(ctx.pic_x + d.hx0 * ctx.pic_w + 0.5f);
+        int hx1 = (int)(ctx.pic_x + d.hx1 * ctx.pic_w + 0.5f);
+        int hy0 = (int)(ctx.pic_y + d.hy0 * ctx.pic_h + 0.5f);
+        int hy1 = (int)(ctx.pic_y + d.hy1 * ctx.pic_h + 0.5f);
 
-    /* backdrop */
-    vp.x = ctx.pic_x; vp.y = ctx.pic_y; vp.w = ctx.pic_w; vp.h = ctx.pic_h;
-    SDL_SetGPUViewport(pass, &vp);
-    tb.texture = g_black_tex; tb.sampler = g_nearest;
-    SDL_BindGPUFragmentSamplers(pass, 0, &tb, 1);
-    SDL_DrawGPUPrimitives(pass, 6, 1, ctx.quad_first, 0);
-
-    /* the map: the quad fills the viewport, which is the map's rectangle */
-    vp.x = ctx.pic_x + d.x0 * ctx.pic_w;
-    vp.y = ctx.pic_y + d.y0 * ctx.pic_h;
-    vp.w = (d.x1 - d.x0) * ctx.pic_w;
-    vp.h = (d.y1 - d.y0) * ctx.pic_h;
-    SDL_SetGPUViewport(pass, &vp);
-    tb.texture = g_map_tex; tb.sampler = d.linear ? g_linear : g_nearest;
-    SDL_BindGPUFragmentSamplers(pass, 0, &tb, 1);
-    SDL_DrawGPUPrimitives(pass, 6, 1, ctx.quad_first, 0);
-
-    /* the HUD canvas over the whole picture */
-    vp.x = ctx.pic_x; vp.y = ctx.pic_y; vp.w = ctx.pic_w; vp.h = ctx.pic_h;
-    SDL_SetGPUViewport(pass, &vp);
-    tb.texture = g_hud_tex; tb.sampler = g_nearest;
-    SDL_BindGPUFragmentSamplers(pass, 0, &tb, 1);
-    SDL_DrawGPUPrimitives(pass, 6, 1, ctx.quad_first, 0);
+        if (hx0 < pic.x) hx0 = pic.x;
+        if (hy0 < pic.y) hy0 = pic.y;
+        if (hx1 > pic.x + pic.w) hx1 = pic.x + pic.w;
+        if (hy1 > pic.y + pic.h) hy1 = pic.y + pic.h;
+        h.x = hx0; h.y = hy0; h.w = hx1 - hx0; h.h = hy1 - hy0;
+        r.x = pic.x; r.y = pic.y; r.w = pic.w; r.h = h.y - pic.y;
+        draw_layers(pass, &ctx, &d, &r);                       /* above */
+        r.y = h.y + h.h; r.h = pic.y + pic.h - r.y;
+        draw_layers(pass, &ctx, &d, &r);                       /* below */
+        r.x = pic.x; r.y = h.y; r.w = h.x - pic.x; r.h = h.h;
+        draw_layers(pass, &ctx, &d, &r);                       /* left */
+        r.x = h.x + h.w; r.w = pic.x + pic.w - r.x;
+        draw_layers(pass, &ctx, &d, &r);                       /* right */
+    } else {
+        draw_layers(pass, &ctx, &d, &pic);
+    }
     scissor.x = 0; scissor.y = 0; scissor.w = ww; scissor.h = wh;
     SDL_SetGPUScissor(pass, &scissor);
     if (!g_logged_draw) {

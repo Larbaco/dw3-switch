@@ -2089,6 +2089,15 @@ Statuses are in the [table](#status-at-a-glance).
   [P6.32 section 7](P6.32_MAP_ZOOM.md#7-phase-0-results-2026-10-27-spike-and-scaler-poc);
   the owner's OLED checklist is section 8. Tests: `test_map_view_core.py`,
   replay `us/eu-map-view` and `-43`, Ryubing US and EU.
+  **HUD elements (2026-10-28, owner after preview.45, branch
+  `fix/map-view-hud-elements`):** the view now shows the game's **balloon** on
+  the current area, a **cursor** moved with the D-pad / left stick (the view
+  follows it, the right stick zooms), and the **game's own name box** for the
+  location under the cursor (screen-space, 16:9-aware, hidden by the HUD
+  toggle); **Nearest is the default scaler**; Lanczos2 / FSR 1 build on a
+  worker thread and no longer block input ([P6.32 section
+  10](P6.32_MAP_ZOOM.md#10-the-balloon-the-cursor-and-the-name-box-owner-after-preview45)).
+  Open: OLED look (left-stick feel, core-2 worker), the other EU languages.
   Done when (proposed): the new map screen opens from the Map screen on US and
   EU on PC and the Switch, zooms and pans over the full image, shows the
   game's area names, the default is bit-identical, and the P6.15 map replay

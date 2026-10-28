@@ -25,6 +25,8 @@ void psyz_log(unsigned int level, const char *file, unsigned int line,
 #define MV_LOG(...) psyz_log(1, "nx_map_view.c", __LINE__, __func__, __VA_ARGS__)
 
 static GLuint s_prog, s_vbo, s_map_tex, s_hud_tex;
+static GLuint s_bank_tex[DW3_MV_BANK_N]; /* the game's cursor and balloon */
+static unsigned s_bank_gen = ~0u;
 static GLint s_attr_pos = -1, s_attr_t = -1, s_uni_tex = -1;
 static unsigned s_map_gen = ~0u, s_hud_gen = ~0u;
 static int s_map_w, s_map_h, s_idle, s_failed, s_linear = -1, s_logged;
@@ -118,8 +120,15 @@ static GLuint make_texture(int w, int h, GLint filter) {
 }
 
 static void release_textures(void) {
+    int i;
+
     if (s_map_tex) glDeleteTextures(1, &s_map_tex);
     if (s_hud_tex) glDeleteTextures(1, &s_hud_tex);
+    for (i = 0; i < DW3_MV_BANK_N; ++i) {
+        if (s_bank_tex[i]) glDeleteTextures(1, &s_bank_tex[i]);
+        s_bank_tex[i] = 0;
+    }
+    s_bank_gen = ~0u;
     s_map_tex = s_hud_tex = 0;
     s_map_gen = s_hud_gen = ~0u;
     s_map_w = s_map_h = 0;
@@ -128,6 +137,8 @@ static void release_textures(void) {
 
 void dw3_nx_map_view_invalidate_gl(void) {
     /* A recreated context left every name dangling; just forget them. */
+    memset(s_bank_tex, 0, sizeof(s_bank_tex));
+    s_bank_gen = ~0u;
     s_prog = s_vbo = s_map_tex = s_hud_tex = 0;
     s_map_gen = s_hud_gen = ~0u;
     s_map_w = s_map_h = 0;
@@ -155,6 +166,28 @@ static void draw_quad(GLuint tex, float x0, float y0, float x1, float y1) {
     glVertexAttribPointer((GLuint)s_attr_t, 2, GL_FLOAT, GL_FALSE,
                           sizeof(float) * 4, (const void *)(sizeof(float) * 2));
     glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+}
+
+/* One strip of the picture (GL window rectangle sx,sy,sw,sh): the backdrop,
+ * the map, the game's cursor and balloon on it (map space), the HUD canvas. */
+static void draw_layers(const Dw3MapViewDraw *d, int sx, int sy, int sw, int sh) {
+    int i;
+
+    if (sw <= 0 || sh <= 0) return;
+    glScissor(sx, sy, sw, sh);
+    glDisable(GL_BLEND);
+    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT);
+    draw_quad(s_map_tex, d->x0, d->y0, d->x1, d->y1);
+    glEnable(GL_BLEND);
+    for (i = 0; i < d->nspr; ++i) {
+        const Dw3MapViewSprite *sp = &d->spr[i];
+
+        if (sp->bank < 0 || sp->bank >= DW3_MV_BANK_N || !s_bank_tex[sp->bank])
+            continue;
+        draw_quad(s_bank_tex[sp->bank], sp->x0, sp->y0, sp->x1, sp->y1);
+    }
+    draw_quad(s_hud_tex, 0.0f, 0.0f, 1.0f, 1.0f);
 }
 
 void dw3_nx_map_view_draw(int vx, int vy, int vw, int vh) {
@@ -230,6 +263,23 @@ void dw3_nx_map_view_draw(int vx, int vy, int vw, int vh) {
                         GL_RGBA, GL_UNSIGNED_BYTE, d.hud_rgba);
         s_hud_gen = d.hud_gen;
     }
+    if (d.bank_gen != s_bank_gen) {
+        int i;
+
+        for (i = 0; i < DW3_MV_BANK_N; ++i) {
+            if (s_bank_tex[i]) glDeleteTextures(1, &s_bank_tex[i]);
+            s_bank_tex[i] = 0;
+            if (!d.bank[i].rgba || d.bank[i].w <= 0) continue;
+            s_bank_tex[i] = make_texture(d.bank[i].w, d.bank[i].h, GL_NEAREST);
+            glBindTexture(GL_TEXTURE_2D, s_bank_tex[i]);
+            glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
+            glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, d.bank[i].w, d.bank[i].h,
+                            GL_RGBA, GL_UNSIGNED_BYTE, d.bank[i].rgba);
+        }
+        s_bank_gen = d.bank_gen;
+        MV_LOG("dw3-map: switch sprite bank uploaded (gen %u, GL error 0x%x)",
+               d.bank_gen, (unsigned)glGetError());
+    }
     if (!s_map_tex || s_map_gen != d.tex_gen) {
         if (!s_skip_logged) {
             s_skip_logged = 1;
@@ -272,15 +322,28 @@ void dw3_nx_map_view_draw(int vx, int vy, int vw, int vh) {
     }
     glViewport(vx, vy, vw, vh);
     glEnable(GL_SCISSOR_TEST);
-    glScissor(vx, vy, vw, vh);
-    glDisable(GL_BLEND);
-    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-    glClear(GL_COLOR_BUFFER_BIT);
     glUseProgram(s_prog);
     glUniform1i(s_uni_tex, 0);
-    draw_quad(s_map_tex, d.x0, d.y0, d.x1, d.y1);
-    glEnable(GL_BLEND);
-    draw_quad(s_hud_tex, 0.0f, 0.0f, 1.0f, 1.0f);
+    if (d.hole) {
+        /* The game's name box (its frame and text window) is drawn by the game
+         * into its own picture: the rectangle is left alone and the rest is
+         * drawn in up to four strips around it (GL rows run bottom up). */
+        int hx0 = vx + (int)(d.hx0 * (float)vw + 0.5f);
+        int hx1 = vx + (int)(d.hx1 * (float)vw + 0.5f);
+        int hy0 = vy + vh - (int)(d.hy1 * (float)vh + 0.5f); /* bottom edge */
+        int hy1 = vy + vh - (int)(d.hy0 * (float)vh + 0.5f); /* top edge */
+
+        if (hx0 < vx) hx0 = vx;
+        if (hx1 > vx + vw) hx1 = vx + vw;
+        if (hy0 < vy) hy0 = vy;
+        if (hy1 > vy + vh) hy1 = vy + vh;
+        draw_layers(&d, vx, vy, vw, hy0 - vy);                  /* below */
+        draw_layers(&d, vx, hy1, vw, vy + vh - hy1);            /* above */
+        draw_layers(&d, vx, hy0, hx0 - vx, hy1 - hy0);          /* left */
+        draw_layers(&d, hx1, hy0, vx + vw - hx1, hy1 - hy0);    /* right */
+    } else {
+        draw_layers(&d, vx, vy, vw, vh);
+    }
     glDisable(GL_SCISSOR_TEST);
     {
         const GLenum derr = glGetError();

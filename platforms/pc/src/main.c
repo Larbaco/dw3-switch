@@ -257,6 +257,39 @@ static void *map_view_precompute_thread(void *arg) {
     return NULL;
 }
 
+/* The map view's CPU scalers (Lanczos2, FSR 1) build on a short-lived
+ * low-priority thread so the game keeps taking input (map_view.h). */
+typedef struct MapViewJob {
+    void (*fn)(void *);
+    void *arg;
+} MapViewJob;
+
+static void *map_view_job_thread(void *p) {
+    MapViewJob job = *(MapViewJob *)p;
+
+    free(p);
+#if defined(__linux__)
+    (void)setpriority(PRIO_PROCESS, (id_t)syscall(SYS_gettid), 19);
+#endif
+    job.fn(job.arg);
+    return NULL;
+}
+
+int dw3_map_view_async_start(void (*fn)(void *), void *arg) {
+    pthread_t thread;
+    MapViewJob *job = (MapViewJob *)malloc(sizeof(*job));
+
+    if (!job) return -1;
+    job->fn = fn;
+    job->arg = arg;
+    if (pthread_create(&thread, NULL, map_view_job_thread, job) != 0) {
+        free(job);
+        return -1;
+    }
+    pthread_detach(thread);
+    return 0;
+}
+
 static void dw3_pc_map_view_precompute_start(const char *config_dir) {
     pthread_t thread;
     const char *off = getenv("DW3_MAP_PRECOMPUTE");

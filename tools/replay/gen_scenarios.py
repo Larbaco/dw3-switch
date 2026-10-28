@@ -1258,12 +1258,20 @@ def map_view(version):
     r.shot(3997, "game-map")
     r.press(4000, SQUARE_MAP)        # the new screen
     r.shot(4040, "mv-open")
+    # the cursor (patch 0146): it starts on the current area (balloon, hover
+    # cursor, the game's name box), leaves it to the right, comes back, then
+    # goes down to the next visited location
     _pad(r, 4050, RIGHT)
-    _pad(r, 4130, 0)
-    r.shot(4140, "mv-pan-right")
-    _pad(r, 4150, DOWN)
-    _pad(r, 4230, 0)
-    r.shot(4240, "mv-pan-down")
+    _pad(r, 4070, 0)
+    r.shot(4080, "mv-cursor-free")
+    _pad(r, 4090, LEFT)
+    _pad(r, 4110, 0)
+    r.shot(4120, "mv-cursor-back")
+    _pad(r, 4130, RIGHT)         # to the map's right edge and the bottom: the
+    _pad(r, 4170, 0)             # arrow stays on the map
+    _pad(r, 4180, DOWN)
+    _pad(r, 4240, 0)
+    r.shot(4245, "mv-cursor-down")
     f = 4250
     for name, button in (("mv-zoom-125", R1_MAP), ("mv-zoom-150", R1_MAP),
                          ("mv-zoom-200", R1_MAP), ("mv-zoom-300", R1_MAP)):
@@ -1279,7 +1287,7 @@ def map_view(version):
     r.press(f, R1_MAP)               # back to 1.0 for the scalers
     r.shot(f + 20, "mv-zoom-100")
     f += 40
-    for name in ("mv-lanczos2", "mv-fsr", "mv-nearest", "mv-sharp"):
+    for name in ("mv-sharp", "mv-lanczos2", "mv-fsr", "mv-nearest"):  # starts on nearest
         r.press(f, R2_MAP)           # the CPU builds stall the game thread, not the frame count
         r.shot(f + 100, name)
         f += 120
