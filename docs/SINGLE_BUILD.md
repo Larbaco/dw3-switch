@@ -207,7 +207,10 @@ arena does not double.
   `boot_tim.bin`, `memcard/` and `port_options.cfg`
   ([RUNTIME_LAYOUT.md](RUNTIME_LAYOUT.md)).
 - Shared, one level up: `dw3.log`, `crash_report.txt` (and `_prev`),
-  `replay.rec`, and a disc image may sit in the parent folder too.
+  `replay.rec`. A disc image may sit in the parent folder (`sdmc:/switch/dw3/`)
+  for the separate builds, which search the region folder and then its parent
+  (`dw3_str_find_disc`). The combined build does not search the parent: its
+  disc must be in `us/` or `eu/` ([issue #322](https://github.com/Larbaco/dw3-switch/issues/322)).
 - `port/cdfs/runtime_extract.c` already **identifies a disc image by its
   executable**: it extracts only when `RUNTIME_EXECUTABLE` is in the image and
   rejects an image that holds `RUNTIME_OTHER_EXECUTABLE` (the other region).
@@ -762,7 +765,9 @@ default, record it and tell me if it is not).
 3. Else it looks under `sdmc:/switch/dw3/` for `us/` and `eu/` (a complete tree:
    `files_<r>.json` plus the executable; a region folder that only holds a disc
    image, `*.cue` / `*.bin` / `*.iso` directly inside it, also counts, so a first
-   run from a disc still extracts). It reads `region_default` and `last_region`
+   run from a disc still extracts). Only `<base>/us` and `<base>/eu` are read: a
+   disc image placed directly in `sdmc:/switch/dw3/` is not found here, unlike
+   with the separate builds ([issue #322](https://github.com/Larbaco/dw3-switch/issues/322)). It reads `region_default` and `last_region`
    from `sdmc:/switch/dw3/port_options.cfg`.
 4. Only US or only EU: that one runs, no picker. None: the setup screen (names
    both folders) and `+` quits. Both: the picker, unless `region_default` is `us`
@@ -834,7 +839,11 @@ check (G9.3 to G9.7).
 English screen; Minus is hold-to-ask; the separate US / EU `.nro` files keep
 shipping next to the combined one until you confirm it on the OLED; no region
 switching in game; a disc image has to sit in `us/` or `eu/` for a first-run
-extraction to be found (an extracted tree works wherever the disc was).
+extraction to be found (an extracted tree works wherever the disc was). This was
+written as a default for both, but the separate builds also find a disc in
+`sdmc:/switch/dw3/` (their extraction searches the parent folder); the combined
+build does not ([issue #322](https://github.com/Larbaco/dw3-switch/issues/322)).
+So for the combined build the rule is: disc in `us/` or `eu/`.
 
 **Not done / open.** Nothing was run on a console: the picker's look at arm's
 length, the Minus hold and the profile selector coming up after an EGL surface
