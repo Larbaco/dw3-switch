@@ -1,6 +1,6 @@
 Digimon World 3 / 2003, Switch homebrew preview
 
-Release notes for v0.6.5-preview.44. The release tag and boot version
+Release notes for v0.6.5-preview.45. The release tag and boot version
 identify the actual source revision.
 
 Player guide (setup, controls, Options, saves, crash reports):
@@ -32,6 +32,13 @@ New in this preview
   previous runs. After two launches sdmc:/switch/dw3/ should hold dw3.log and
   dw3.1.log.
 
+  Log rotation paths sized for the Switch file service (#301): the rotation
+  paths were 48-byte stack arrays, but libnx passes the Fs service a fixed
+  0x301-byte path buffer. That read past them and crashed the Ryubing replay
+  right after boot. The paths are now FS_MAX_PATH bytes. This may also be why
+  dw3.1.log was never kept on hardware; not confirmed yet. Check the OLED
+  item for the log below.
+
   Profile id in the log (#294): the short id in dw3.log (`user: profile=`)
   and in crash_report.txt (`profile:`) is now a hash of the user id, so each
   profile shows its own value. The saves folder name is unchanged.
@@ -56,7 +63,8 @@ New in this preview
 
   Still open from preview.43: per-user saves (plan E5) and the audio check
   after many techs on the EU build (#188, plan D13). The map reveal and
-  Options timing are not on hardware yet (B15, B16).
+  Options timing are not on hardware yet (B15, B16). Log rotation (#296,
+  #301) is not on hardware yet either.
 
   Still open from preview.39: the Quit game and field OPTIONS fixes need
   OLED confirmation (plan A7 and B15), and the #188 audio check is plan D13.
@@ -272,9 +280,10 @@ Install / nxlink
 OLED checklist
 
   New in this preview:
-  - Log rotation (#296): after two launches, sdmc:/switch/dw3/ has dw3.log
-    and dw3.1.log with different `dw3-run: started` times. The new dw3.log
-    has `dw3-log: rotated (...)`. Send the whole set of dw3*.log files.
+  - Log rotation (#296, #301): after two launches, sdmc:/switch/dw3/ has
+    dw3.log and dw3.1.log with different `dw3-run: started` times. The new
+    dw3.log has a `dw3-log: rotated (...)` line that shows rc=0x0. Send the
+    whole set of dw3*.log files.
   - Options open timing (plan B15): the `dw3-port-options:` lines give the
     prewarm, the first frame after the open request, the longest frame gap
     and the time the window stayed open. Expected about 10 ms to open, with

@@ -9,7 +9,7 @@ A native Nintendo Switch port of Digimon World 3 (Digimon World 2003 in
 Europe), built from the matching PlayStation decompilation. It shows as
 "Digimon World 3 NX" in hbmenu and Sphaira.
 
-Latest preview: [v0.6.5-preview.44](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.44).
+Latest preview: [v0.6.5-preview.45](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.45).
 To try it, see [Play it on Switch](#play-it-on-switch). New to the port? Read
 the [player guide](docs/PLAYER_GUIDE.md). All docs are listed in the
 [docs index](docs/README.md). To contribute, see
@@ -80,7 +80,7 @@ and the occasional crash. Report problems on the
 | Battle | Works | GPU textured rendering by default. The owner reports the sky stage fixed and battle above 60 fps on US and EU; the per-mode frame-time benchmark was not run. A battle crash from the preview.26 reports is still open in the roadmap. |
 | Movies | Plays | The opening runs at about 15 fps with XA audio, and turbo works in the intro. Image quality and the full movie are not validated. |
 | Audio | Works | Music loops (#209, confirmed on the OLED). The win jingle, menu sounds and battle blips play since #215 (not yet heard on hardware). Silence on EU after many techs ([#188](https://github.com/Larbaco/dw3-switch/issues/188)) awaits an OLED check. A silent field map after a battle was reported once and not reproduced (P4.3). Underrun behavior has not been measured. |
-| Saves | Works | Flat files per Switch user profile under `saves/<uid>/` (P6.26). The forwarder profile selector, a separate Continue per profile and cancel returning to HOME are confirmed on the OLED. Auto-save on area change and on HOME close is confirmed. The Equipment ZL / ZR partner cycle is confirmed. `dw3.log` keeps the previous runs (`dw3.1.log` to `dw3.4.log`) (#296, not yet on the OLED). |
+| Saves | Works | Flat files per Switch user profile under `saves/<uid>/` (P6.26). The forwarder profile selector, a separate Continue per profile and cancel returning to HOME are confirmed on the OLED. Auto-save on area change and on HOME close is confirmed. The Equipment ZL / ZR partner cycle is confirmed. `dw3.log` keeps the previous runs (`dw3.1.log` to `dw3.4.log`) (#296, #301, not yet on the OLED). |
 | Rumble | Implemented, not verified on hardware | PS1 vibration requests go to HD rumble on handheld Joy-Con and player 1 (#183); on by default, `DW3_NX_RUMBLE=0` turns it off. The retail game never requests vibration, so normal play has nothing to feel yet. Left stick and D-pad work. |
 | EU version | Early | Language select and own-disc extraction work. Save reload after HOME and relaunch is confirmed; a full playthrough is not yet confirmed. |
 | PC host | Works | Needs your own US disc packed to `runtime/us`. |
