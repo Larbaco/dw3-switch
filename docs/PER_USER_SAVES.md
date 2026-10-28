@@ -113,8 +113,11 @@ the SD card. The goal is separation, not security. Real Nintendo save data
 (`fsdevMountSaveData`) is not used: an NRO has no title of its own to bind it
 to, and the SD file model keeps saves editable and backed up by hand.
 
-The crash report and the log carry the uid hash (first 8 hex digits), never the
-nickname.
+The crash report and the log carry a short id: 8 hex digits of FNV-1a 32 over
+the 16 uid bytes (`dw3_uid_short_id`, one helper for both). It is not a prefix
+of the uid, because every Switch account uid starts with the same bytes
+(`10000000...`), so a prefix tells profiles apart badly. The folder name stays
+the full 32 hex digits. The nickname is never logged.
 
 ### PC
 
@@ -287,8 +290,9 @@ logs its facts (below) so the first run answers the open "check" items.
   (or `region folder already exists: no migration`), `user: save dir=<path>`,
   and on a cancel `user: result=cancelled ... the game does not start; nothing written`
   followed by `no user chosen: leaving without starting the game`. The uid is
-  logged only as its first 8 hex digits, never the nickname. The crash report
-  has `profile: <8 hex>` after the `disc:` line (`n/a` before a user is chosen).
+  logged only as its short id (8 hex digits, FNV-1a of the uid, see above), never
+  the nickname. The crash report has `profile: <8 hex>` after the `disc:` line
+  (`n/a` before a user is chosen). Two profiles must show different short ids.
 - **Not known until the OLED run:** whether libnx gives a distinct result code for
   a cancelled selector (cancel and error are handled the same way); whether
   `pselShowUserSelector` works from applet mode (hbmenu started from the Album).

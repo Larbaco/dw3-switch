@@ -15,7 +15,7 @@ typedef struct {
 
 #define DW3_UID_HEX_LEN 32
 #define DW3_USER_KEY_MAX 64 /* folder name: 32 hex, "shared" or a PC profile */
-#define DW3_USER_HASH_LEN 9 /* first 8 chars of the key + NUL */
+#define DW3_USER_HASH_LEN 9 /* 8 chars of short id + NUL */
 
 typedef enum {
     DW3_USER_PRESELECTED = 0,   /* the system preselected a user (forwarder with selector) */
@@ -49,7 +49,7 @@ typedef struct {
     int selector_rc;    /* show_selector result, DW3_USER_RC_UNASKED when not shown */
     Dw3Uid uid;         /* valid for PRESELECTED / SINGLE / SELECTOR */
     char key[DW3_USER_KEY_MAX];   /* folder name; "" when the game must not start */
-    char hash[DW3_USER_HASH_LEN]; /* first 8 chars of key, for logs */
+    char hash[DW3_USER_HASH_LEN]; /* short id for logs: dw3_uid_short_id (Switch), key prefix (PC) */
 } Dw3UserResolved;
 
 /* Resolve order: init (fail -> shared), preselected, the only user, the
@@ -65,6 +65,13 @@ const char *dw3_user_reason_name(Dw3UserReason r);
 
 /* 32 lowercase hex digits: uid[0] then uid[1], %016llx each. out >= 33 bytes. */
 void dw3_uid_to_hex(const Dw3Uid *u, char *out);
+
+/* Short id for logs and the crash report: FNV-1a 32-bit over the 16 uid bytes
+ * in the order of dw3_uid_to_hex, printed as 8 lowercase hex digits. Every
+ * Switch account uid starts with the same high bytes, so the folder-name
+ * prefix would be the same for everyone; the full uid is hashed instead. The
+ * nickname is never part of it. out >= DW3_USER_HASH_LEN bytes. */
+void dw3_uid_short_id(const Dw3Uid *u, char *out);
 
 /* ---- folders ---- */
 

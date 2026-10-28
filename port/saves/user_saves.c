@@ -30,6 +30,22 @@ void dw3_uid_to_hex(const Dw3Uid *u, char *out) {
              (unsigned long long)u->uid[0], (unsigned long long)u->uid[1]);
 }
 
+void dw3_uid_short_id(const Dw3Uid *u, char *out) {
+    static const uint32_t k_fnv_offset = 0x811c9dc5u;
+    static const uint32_t k_fnv_prime = 0x01000193u;
+    uint32_t h = k_fnv_offset;
+    int word;
+    int shift;
+
+    for (word = 0; word < 2; word++) {
+        for (shift = 56; shift >= 0; shift -= 8) {
+            h ^= (uint32_t)((u->uid[word] >> shift) & 0xffu);
+            h *= k_fnv_prime;
+        }
+    }
+    snprintf(out, DW3_USER_HASH_LEN, "%08x", (unsigned)h);
+}
+
 static int uid_valid(const Dw3Uid *u) { return u->uid[0] != 0 || u->uid[1] != 0; }
 
 static void set_key(Dw3UserResolved *o, const char *key) {
@@ -50,6 +66,7 @@ static void set_uid(Dw3UserResolved *o, const Dw3Uid *u, Dw3UserReason why) {
     o->uid = *u;
     dw3_uid_to_hex(u, hex);
     set_key(o, hex);
+    dw3_uid_short_id(u, o->hash); /* replaces the key prefix set by set_key */
     o->reason = why;
 }
 
