@@ -342,6 +342,27 @@ for _v in ("us", "eu"):
                   forbid_log=((0, r"SEP end-of-track"),),
                   note="field music jumps back at its loop end at least twice (US 3, EU 4 times in 3000 frames) and never reaches end-of-track"))
 
+# P6.35 walkthrough, phase 1 (docs/P6.35_WALKTHROUGH.md): the step resolver on
+# the real game state. The debug probe (patch 0186, DW3_WALKTHROUGH_PROBE) logs
+# `dw3-walkthrough: progress P half H area A -> chapter C step S (rule R)` when
+# the progress, the map or the flag changes. Three points of the first chapter:
+# progress 0 in Kusanagi City's street corner (the real world, no map area),
+# progress 2 in the Login Room, progress 3 in the Central Sector (Genji's flag
+# 0x400D is clear: the step has a sub-condition, rule progress+flag).
+for _v in ("us", "eu"):
+    for _tag, _mode, _prog, _line in (
+        ("p0", "0x2D7", "0", r"progress 0 half -1 area -1 -> chapter ch01 step ch01\.s01 \(rule progress\)"),
+        ("p2", "0x207", "2", r"progress 2 half 0 area 19 -> chapter ch01 step ch01\.s03 \(rule progress\)"),
+        ("p3", "0x200", "3", r"progress 3 half 0 area 19 -> chapter ch01 step ch01\.s04 \(rule progress\+flag\)"),
+    ):
+        _add(Scenario(f"{_v}-walkthrough-{_tag}", _v, "full", turbo=4, timeout=120, log_only=True,
+                      phases=(f"{_v}-walkthrough",),
+                      env=(("DW3_START_MODE", _mode), ("DW3_PROGRESS", _prog),
+                           ("DW3_WALKTHROUGH_PROBE", "1")),
+                      expect_log=((0, r"dw3-walkthrough: " + _line),),
+                      forbid_log=((0, r"step not recognised|chapter - step -"),),
+                      note="P6.35 phase 1: the resolver logs the step for this progress value"))
+
 # The battle theme is the same bug: a long song (bank 2 on the US disc) whose
 # NRPN loop never repeated, so a battle was silent after one pass. The walk is
 # the Encounter rate 1x one (a random battle after ~100 footsteps), then no
