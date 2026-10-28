@@ -16,7 +16,7 @@ New in this preview
   list (also from the field menu and the battle Options). It opens a page
   list with 10 pages in English: Setup, Controls, Port hotkeys, Turbo, Options
   explained, Saves, Widescreen, Map view and mods, Logs and bug reports, and
-  FAQ. Up and Down move through the list and Cross (Switch A) opens a page.
+  FAQ. Up and Down move through the list and Cross (Switch B) opens a page.
   On a page, Up and Down scroll a line at a time, Left and Right a screenful,
   L and R change the page, and the cancel button (Switch X) goes back. Setup
   shows only the lines for this disc (US or EU). French, German, Italian and
@@ -31,7 +31,7 @@ New in this preview
   From preview.50:
 
   EU language select takes the confirm button (#330, patch 0187, plan E1.6c).
-  On the EU language select, Cross (Switch A, PS1 Cross) picks the language as
+  On the EU language select, Cross (Switch B, PS1 Cross) picks the language as
   well as Start, which still works. The confirm button follows a future
   button remap. The log line `dw3-lang-select: language N chosen by Cross
   (confirm)` (or `by Start`) shows which one was used.
