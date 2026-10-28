@@ -1,6 +1,6 @@
 Digimon World 3 / 2003, Switch homebrew preview
 
-Release notes for v0.6.5-preview.49. The release tag and boot version
+Release notes for v0.6.5-preview.50. The release tag and boot version
 identify the actual source revision.
 
 Player guide (setup, controls, Options, saves, crash reports):
@@ -11,6 +11,29 @@ New in this preview
   The owner's OLED checks are recorded in docs/OLED_TEST_PLAN.md (rows marked
   PASSED). Items that are not there yet are checked on PC and in the Ryubing
   emulator only, and are marked unverified.
+
+  EU language select takes the confirm button (#330, patch 0187, plan E1.6c).
+  On the EU language select, Cross (Switch A, PS1 Cross) picks the language as
+  well as Start, which still works. The confirm button follows a future
+  button remap. The log line `dw3-lang-select: language N chosen by Cross
+  (confirm)` (or `by Start`) shows which one was used.
+
+  Map view: the cursor and the balloon keep their size at zoom 1.0 at any
+  zoom, and their positions follow the map. The revealed areas still scale
+  with the map. One `dw3-map: sprites at fixed size` line is logged per open.
+  DW3_MAP_SPRITES_FIXED=0 restores the old look, where the sprites scale with
+  the map (#330, plan B16 section 11).
+
+  Faster turbo in scenes (P6.22 pass 3, #331): a textured triangle fast path
+  in PSY-Z draws the same pixels with less raster work (about 30% less in
+  dialogue and about 10% in the field, measured on PC). The audio mixer runs
+  on its own thread on core 1. The new `pace dbg:` line (game_fps,
+  presented and skipped frames, sync, present, swap and other times in us,
+  busy_pct, mix_us) is logged next to `frame dt us=`. Plans C1 to C3 and C10.
+  To compare the mixer on the game thread's core, set DW3_NX_AUDIO_CORE=-2 in
+  the nxlink environment (C10).
+
+  From preview.49:
 
   Stage sweep (P5.5, #320): opt-in. Set stage_sweep=1 in the region's
   port_options.cfg (builds with the Cheats screen). The sweep loads all 237
@@ -51,8 +74,10 @@ New in this preview
   Minus while you press A on the .nro in hbmenu to ask again; + quits. Every
   decision is a `dw3-region:` line in dw3.log. The separate US and EU .nro
   files are still published until the owner confirms the combined one on the
-  OLED. It has not yet been run on a Switch OLED: see plan G9.x in the OLED
-  test plan before relying on it.
+  OLED. The owner ran it on a Switch OLED with preview.48 (EU chosen): the
+  picker with both regions, the button choice and "always" work. The other
+  G9 rows (only one region present, timeout, Minus, disc image in the parent
+  folder) are still open in the OLED test plan.
 
   First mod: map upscale loader (#313, plan B17). The map can use an
   upscaled picture pack in sdmc:/switch/dw3/mods/<pack>/. Without a pack, or
@@ -161,11 +186,16 @@ New in this preview
   test plan items. Send the whole set of sdmc:/switch/dw3/dw3*.log files.
 
   Still open on the OLED (checked against the OLED test plan and the owner's
-  preview.47 log): the EU language select at 16:9 (plan E1.6b, needs an EU
-  run), the audio check after many techs on the EU build (#188, plan D13), the
-  combined .nro (plan G9), the map mod (plan B17), save writes with HOME (plan
-  G2), the new items of preview.49 (plans B18, B19, B20 and G10), and the name
-  box staying put during zoom (#326, plan B16).
+  preview.48 and preview.49 logs): the combined .nro with only one region
+  present, the timeout, Minus and disc images in the parent folder (plan G9.1
+  to G9.3, G9.6, G9.11 to G9.13), the audio check after many techs on the EU
+  build (#188, plan D13), the map mod (plan B17), save writes with HOME (plan
+  G2), the Cheats sub-screen (plan A13), the group open stall (plan A10), the
+  item shop at 16:9 (plan B18), equipment in the Items menu (plan B19), the map
+  view close button (plan B20), the stage sweep (plan G10), and the name box
+  staying put during zoom (#326, plan B16). New in preview.50, not yet on the
+  OLED: the EU language select confirm button (plan E1.6c) and the map sprites
+  at fixed size (plan B16 section 11).
 
 Known issues
 
