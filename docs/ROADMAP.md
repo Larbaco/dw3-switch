@@ -145,7 +145,7 @@ listed once, in [Pending OLED checks](#pending-oled-checks).
 | P6.29 | Save editor: external tool on the owner's own saves, builds on P6.25 (future goal) | future | [roadmap](#phase-6-goal-notes), [CROSS_REGION_SAVES](CROSS_REGION_SAVES.md) |
 | P6.30 | Help, FAQ and tips from the pause menu and the title menu (future goal; owner answers recorded 2026-10-27; after P9.9) | future | [roadmap](#phase-6-goal-notes) |
 | P6.31 | Auto-save, off by default | in progress (built: Options row, area-change write to its own file `autosave.bin`, title Continue loads it and the old Continue is Load; PC US and EU replays; owner OLED, 2026-10-27, preview.41: writes on an area change and on HOME close, title plaque spacing (#287); the save-file, Continue and Load Game checks not reported) | [P6.31_AUTOSAVE](P6.31_AUTOSAVE.md), [roadmap](#phase-6-goal-notes), [P5.3](P5.3_FLAT_SAVE.md) |
-| P6.32 | Map zoom and full-screen map (future goal) | phase 0 PoC built (PR `feat/p6.32-map-poc`); owner OLED, preview.45 (2026-10-28): the map shows and Nearest is the preferred scaler; balloon, cursor and name box pending preview.47 | [roadmap](#phase-6-goal-notes), [P6.32](P6.32_MAP_ZOOM.md), [P6.1](P6.1_WIDESCREEN.md), [map upscale mod](MOD_MAP_UPSCALE.md) |
+| P6.32 | Map zoom and full-screen map (future goal) | phase 0 PoC built (PR `feat/p6.32-map-poc`); owner OLED, preview.45 (2026-10-28): the map shows and Nearest is the preferred scaler; balloon, cursor and name box pending preview.47; mod pack loader for an upscaled map built (`feat/mod-map-upscale`, OLED item B17 pending) | [roadmap](#phase-6-goal-notes), [P6.32](P6.32_MAP_ZOOM.md), [P6.1](P6.1_WIDESCREEN.md), [map upscale mod](MOD_MAP_UPSCALE.md) |
 | P6.33 | Items menu usability redesign | in progress (owner decisions recorded 2026-10-26; phase 1 partner cycle built: patch 0128, ZL / ZR, on by default; phases 2, 3 and 4 open; phase 1 cycle confirmed on the OLED 2026-10-27, preview.41; the `items_partner_switch=0` check open; phases 2–4 folded into P6.34) | [roadmap](#phase-6-goal-notes), [P6.33](P6.33_ITEMS_MENU.md), [P6.1](P6.1_WIDESCREEN.md) |
 | P6.34 | Redesign of the items / status / equipment menu flow (future goal) | future | [roadmap](#phase-6-goal-notes), [P6.33](P6.33_ITEMS_MENU.md) |
 | P6.35 | In-game walkthrough help: where to go next and what to do, by story progress (future goal) | future (design written 2026-10-28, owner decisions recorded) | [roadmap](#phase-6-goal-notes), [design](P6.35_WALKTHROUGH.md), [PLAYER_GUIDE](PLAYER_GUIDE.md) |
@@ -161,7 +161,7 @@ listed once, in [Pending OLED checks](#pending-oled-checks).
 | P8.2 | Pack layout | open | [TEXTURE_PACKS](TEXTURE_PACKS.md), [MOD_MAP_UPSCALE](MOD_MAP_UPSCALE.md) |
 | P8.3 | Formats and scaling | open | [TEXTURE_PACKS](TEXTURE_PACKS.md) |
 | P8.4 | Tooling (optional) | open | — |
-| P8.5 | Modding API: mod folder, asset and data-table overrides (future goal) | future (first mod: map upscale, design note) | [roadmap](#phase-8--texture-pack-compatibility), [TEXTURE_PACKS](TEXTURE_PACKS.md), [MOD_MAP_UPSCALE](MOD_MAP_UPSCALE.md) |
+| P8.5 | Modding API: mod folder, asset and data-table overrides (future goal) | first mod built: map upscale loader (`port/mods`, PNG packs under `mods/<pack>/`, PC and Switch), extraction tool, tests; OLED B17 pending; the rest of the API (file-id overrides, load order) still future | [roadmap](#phase-8--texture-pack-compatibility), [TEXTURE_PACKS](TEXTURE_PACKS.md), [MOD_MAP_UPSCALE](MOD_MAP_UPSCALE.md) |
 | P9.1 | Port options goal note | done | [PORT_OPTIONS](PORT_OPTIONS.md) |
 | P9.2 | Menu entry and shell | done | [P9.2](P9.2_MENU.md) |
 | P9.3 | Toggle registry | done | [PORT_OPTIONS](PORT_OPTIONS.md) |
@@ -1140,6 +1140,18 @@ the port or committing assets. Details: [TEXTURE_PACKS.md](TEXTURE_PACKS.md).
   bit-identical, and the modder docs (P6.23) describe it.
   Related: P8.2 to P8.4, P6.7, P6.8, P7.2, P6.23, P9.4. First mod (2026-10-28,
   design note): [MOD_MAP_UPSCALE.md](MOD_MAP_UPSCALE.md).
+  **First mod built (2026-10-28, branch `feat/mod-map-upscale`):** `port/mods/`
+  loads PNG packs from `sdmc:/switch/dw3/mods/<pack>/` (PC `<config dir>/mods/`):
+  `mod.json` (format 1), the map at 2x to 4x and the reveal sprites (towns and
+  visited-area icons) per region and half, each validated against the size the
+  game's own data implies; a bad or missing pack falls back to the original map
+  and the log says why (`dw3-map: mod: ...`). `tools/mods/extract_map_assets.py`
+  extracts the art from the user's own `runtime/<region>` and upscales it with
+  realesr-animevideov3 (owner's model choice); nothing derived from the disc is in
+  git. Still open: the OLED look (item B17 of the
+  [OLED test plan](OLED_TEST_PLAN.md)), an EU pack run on EU data, and the
+  generic part of the API (file-id replacement in `port/cdfs`, load order,
+  conflicts, an Options row).
 
 Gate: P8.2 works with an owner-supplied minimal pack. P8.4 is best-effort.
 P8.5 is a future goal outside the gate.

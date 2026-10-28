@@ -333,6 +333,8 @@ add_library(dw3_port_options${_S} OBJECT
   "${CMAKE_CURRENT_SOURCE_DIR}/items_menu/items_menu.c"
   "${CMAKE_CURRENT_SOURCE_DIR}/map_view/map_view.c"
   "${CMAKE_CURRENT_SOURCE_DIR}/map_view/map_view_core.c"
+  "${CMAKE_CURRENT_SOURCE_DIR}/mods/mod_pack.c"
+  "${CMAKE_CURRENT_SOURCE_DIR}/mods/png_stb.c"
   "${CMAKE_CURRENT_SOURCE_DIR}/options/battle_options.c"
   "${CMAKE_CURRENT_SOURCE_DIR}/options/confirm.c"
   "${CMAKE_CURRENT_SOURCE_DIR}/options/field_options.c"
@@ -365,7 +367,8 @@ if(DEFINED DW3_REGION_BUILD)
 endif()
 add_dependencies(dw3_port_options${_S} dw3_decomp_patched)
 target_include_directories(dw3_port_options${_S} PRIVATE ${_DW3_GAME_INCLUDES}
-  "${CMAKE_CURRENT_SOURCE_DIR}/map_view")
+  "${CMAKE_CURRENT_SOURCE_DIR}/map_view"
+  "${CMAKE_CURRENT_SOURCE_DIR}/mods")
 target_compile_definitions(dw3_port_options${_S} PRIVATE ${_DW3_GAME_DEFS})
 target_compile_options(dw3_port_options${_S} PRIVATE ${_DW3_GAME_OPTS})
 set_target_properties(dw3_port_options${_S} PROPERTIES

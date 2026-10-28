@@ -79,6 +79,14 @@ uint32_t dw3_mv_hash(const void *data, size_t len, uint32_t seed);
  * halfwords. Returns the number of TIMs placed, or -1. */
 int dw3_mv_disc_load_map_vram(const uint8_t *file, size_t len,
                               uint16_t *vram);
+/* The same for entry 0..2 of the file, its TIMs placed from (image_x, image_y)
+ * in steps of 0x40 across: the map's own entry 0 at (0x280, 0), the towns'
+ * entry 1 at (0x380, 0x100) and the areas' entry 2 at (0x300, 0x100) (the
+ * texture origin the reveal cells are drawn with; their 4-bit palettes are the
+ * last rows of those pages). The CLUT of a TIM that has one goes to
+ * (0x140, 0x100). Returns the TIMs placed, or -1. */
+int dw3_mv_disc_load_entry(const uint8_t *file, size_t len, int entry,
+                           int image_x, int image_y, uint16_t *vram);
 
 /* --- scalers -------------------------------------------------------------
  * Builds the 3x image for SHARP, LANCZOS2 or FSR (NEAREST copies). *ms is the
