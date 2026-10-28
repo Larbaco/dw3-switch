@@ -50,6 +50,12 @@ static int g_awaiting_commit;
 /* dw3_pc_title_overlay_options_layout() of the static layer (the Options or
  * the Cheats page, the cheats master switch, P9.7 the locked rows). */
 static unsigned g_layout;
+/* The cheats master switch of the last update (a change greys or lights the
+ * labels of the Cheats sub-screen, which are drawn per row). */
+static int g_cheats_on;
+/* The page of the last update: a scroll step on the Cheats sub-screen keeps
+ * the static layer and redraws the rows and arrows. */
+static int g_last_page = -1;
 
 /* The page on screen while update() runs. */
 static int g_page, g_scroll, g_items, g_nslots;
@@ -103,8 +109,19 @@ static void draw_state_in(Dw3OptionsRect rect, int cursor, const int *values) {
         const int row = g_scroll + slot;
         if (cursor == row && intersect(rect, row_rect(row), &part))
             draw(part, DW3_TITLE_OPTIONS_FOCUS, row, 0);
+        else if (dw3_pc_title_overlay_options_dynamic_labels(g_page) &&
+                 intersect(rect, row_rect(row), &part))
+            draw(part, DW3_TITLE_OPTIONS_LABEL, row, 0);
         if (intersect(rect, value_rect(row), &part))
             draw(part, DW3_TITLE_OPTIONS_VALUE, row, values[row]);
+    }
+    if (dw3_pc_title_overlay_options_dynamic_labels(g_page)) {
+        int x, y, w, h;
+        for (int k = DW3_OPTRECT_ARROW_UP; k <= DW3_OPTRECT_ARROW_DOWN; ++k) {
+            dw3_pc_title_overlay_options_rect(g_page, k, 0, &x, &y, &w, &h);
+            if (intersect(rect, (Dw3OptionsRect){x, y, w, h}, &part))
+                draw(part, DW3_TITLE_OPTIONS_LABEL, -1, 0);
+        }
     }
     if (cursor >= 0 && cursor < g_items &&
         intersect(rect, description_rect(), &part))
@@ -126,6 +143,12 @@ static double now_ms(void) {
 }
 
 /* Caller holds the lock. */
+/* The cheats switch as part of a layer key: not on the Cheats sub-screen,
+ * whose static layer does not depend on it. */
+static int key_cheats(int page, int cheats_on) {
+    return dw3_pc_title_overlay_options_dynamic_labels(page) ? 0 : cheats_on;
+}
+
 static StaticSlot *find_complete(unsigned art, unsigned locked, int page,
                                  int cheats_on) {
     for (int i = 0; i < SLOTS; ++i) {
@@ -206,10 +229,11 @@ int dw3_options_cache_update(Dw3OptionsDirty *out) {
     if (!g_valid || g_art_generation != art_generation ||
         g_layout != dw3_pc_title_overlay_options_layout()) {
         StaticSlot *slot;
-        const int page = g_page;
+        const int page = dw3_pc_title_overlay_options_static_page(g_page);
         const unsigned locked = dw3_pc_title_overlay_options_lock_key(page,
             dw3_pc_title_overlay_options_locked());
-        const int cheats_on = dw3_pc_title_overlay_options_cheats_on();
+        const int cheats_on = key_cheats(page,
+            dw3_pc_title_overlay_options_cheats_on());
         g_layout = dw3_pc_title_overlay_options_layout();
         /* Open or language/label change: take the static layer of this
          * layout from the cache; if the worker has not composed it yet,
@@ -246,10 +270,30 @@ int dw3_options_cache_update(Dw3OptionsDirty *out) {
         g_full_pending = 1;
         dirty.rects[dirty.count++] = whole;
     } else {
+        const int live_cheats = dw3_pc_title_overlay_options_cheats_on();
+        int all_rows = 0, scrolled = 0;
+        if (dw3_pc_title_overlay_options_dynamic_labels(g_page)) {
+            /* The master switch: every label may change colour. A scroll
+             * step: the rows show other items and the arrows change. */
+            scrolled = g_last_page != g_page;
+            all_rows = scrolled || live_cheats != g_cheats_on;
+        }
+        if (all_rows) {
+            for (int slot = 0; slot < g_nslots && g_scroll + slot < g_items; ++slot)
+                dirty.rects[dirty.count++] = row_rect(g_scroll + slot);
+        }
+        if (scrolled) {
+            /* After the rows: the arrows are drawn over them. */
+            Dw3OptionsRect r;
+            for (int k = DW3_OPTRECT_ARROW_UP; k <= DW3_OPTRECT_ARROW_DOWN; ++k) {
+                dw3_pc_title_overlay_options_rect(g_page, k, 0, &r.x, &r.y, &r.w, &r.h);
+                dirty.rects[dirty.count++] = r;
+            }
+        }
         if (cursor != g_cursor) {
-            if (item_slot(g_cursor) >= 0)
+            if (!all_rows && item_slot(g_cursor) >= 0)
                 dirty.rects[dirty.count++] = row_rect(g_cursor);
-            if (item_slot(cursor) >= 0)
+            if (!all_rows && item_slot(cursor) >= 0)
                 dirty.rects[dirty.count++] = row_rect(cursor);
             dirty.rects[dirty.count++] = description_rect();
         }
@@ -268,6 +312,8 @@ int dw3_options_cache_update(Dw3OptionsDirty *out) {
         draw_state_in(dirty.rects[i], cursor, values);
     }
     g_cursor = cursor;
+    g_cheats_on = dw3_pc_title_overlay_options_cheats_on();
+    g_last_page = g_page;
     memcpy(g_values, values, sizeof(values));
 
     if (g_full_pending) {

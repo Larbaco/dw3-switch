@@ -672,7 +672,8 @@ sound logs `dw3-port-options: sound <cursor|select|cancel> (sfx volume N, voice 
 
 *Slice 1, 2026-10-27. This section is the current Options screen; the section
 above it (2026-10-14 and its row-count notes) describes the single window it
-replaced, which the Cheats screen still uses.*
+replaced. Since slice 2 (2026-10-28) the Cheats screen is a sub-screen of
+the same list, see "Cheats sub-screen (P9.9 slice 2)" below.*
 
 Owner decision (2026-10-27): "esse menu de opções pode ter submenus". Options
 is a **list of groups**; a group opens a **sub-screen** with its rows. The two
@@ -697,7 +698,7 @@ hints (Open or Change, Back).
 | Sound | Music volume (3), SFX volume (4) | |
 | Gameplay | Fast-forward (1), Restart hotkey (2), Encounter rate (5), Text speed (6), Battle cursor (7) | Restart hotkey moves to Controls when P6.12 exists |
 | Saves | Auto-save (8) | |
-| Cheats | opens the P6.20 Cheats screen | Listed once the Cheats master switch is on; greyed in game |
+| Cheats | the ten P6.20 cheat rows (not registry rows), a scrolling sub-screen | Listed once the Cheats master switch is on; greyed in game, and title-only |
 | Controls, Help, Walkthrough | not built | P6.12, P6.30, P6.35: hidden placeholders in `port_options_groups.h` (`built = 0`); flip the flag when the screen exists |
 
 Keys: Up / Down move the cursor; **Confirm** (Cross, Circle) opens the group;
@@ -756,7 +757,8 @@ against the reference.
   once per size and state into small sprites and blitted (the halo alone for the
   lit one), so a focus change on the retained canvas costs about 0.4 ms on a
   desktop CPU instead of about 2.6 ms; `box` and `pixel` got exact opaque and
-  empty-destination fast paths. The Cheats pages keep the old window.
+  empty-destination fast paths. The Cheats group is drawn by the same function
+  (slice 2).
 - `title_options_cache.c` asks the art for the rectangles (row with its halo,
   value cell, message strip) of the live page and addresses rows by item index.
   The layer cache keys are (art generation, locked bits that matter for the
@@ -793,11 +795,66 @@ include the group lines.
 
 ### Not done in slice 1
 
-- The Cheats screen keeps the old white-bezel window (it has its own value
-  widgets: numbers and area names); restyling it is a follow-up.
+- (Done in slice 2: the Cheats screen is a sub-screen in the same style.)
 - The PS1-primitive fallback (SDL3 GL path) lists the groups as plain text.
 - Controls, Help and Walkthrough (hidden placeholders).
 - OLED validation (below).
+
+### Cheats sub-screen (P9.9 slice 2)
+
+*2026-10-28. The old white-bezel Cheats window and its two pages are gone.*
+
+The Cheats group opens a sub-screen like the other groups: the dimmed title
+backdrop, the OPTIONS-style header plaque (CHEATS), the navy plaques with the lit
+focus cue, the title lettering with its shadow, the message strip and the two
+button hints (Change, Back). It has **ten rows** (Cheats master, Fill bag,
+Instant win, Battle now, Cheat saves, Money, Warp, Item id, Item count, Give
+item), six on screen, so it **scrolls** with the cursor and shows an amber arrow
+at the end that has more. The old page 1 / page 2 split is the scroll: the rows,
+their order, their keys and their behaviour are the ones of
+[Cheats (P6.20)](#cheats-p620) (Down from Cheat saves goes on to Money, Up from
+Money goes back); Left / Right and L1 / R1 step Money, Warp, Item id and Item
+count as before. Rows 2 to 10 are greyed while the master switch is off, with
+their values. Item id and Item count are drawn as numbers in the title lettering.
+The labels, values, area names and message lines are the same pre-rendered
+lettering as before in the five EU languages; the generator now checks them
+against the sub-screen limits (row label 290 px, value 236 px, message line
+690 px: all of them fit, no lettering changed).
+
+Entry and exit did not change: the Cheats group, or Square / Y from any list,
+title only (in game the log says `cheats are locked in game`); Back (Triangle, X)
+returns to the group list with the cursor on Cheats. The input and the cheat
+logic stay in `port/options/cheats.c` (`dw3_cheats_tick`); only the view it hands
+to the overlay changed (`dw3_optlist_page(DW3_OPTGRP_CHEATS, scroll)`, ten values,
+the cursor is the row). `port_options_groups.h` has the group with 10 rows
+(`DW3_OPTGRP_MAX_ROWS` is 10) whose `rows[]` are cheat rows, not registry rows;
+`DW3_TITLE_OPTION_ROWS` is 10. The PS1-primitive fallback keeps its plain text
+panel.
+
+**Dirty rows instead of a rebuild.** The owner's preview.47 log showed
+`options update #N rebuild rects=1 bytes=2764800 compose=48-80 ms` when a value
+was changed: a change of the cheats master switch changed the layer key (the
+greyed labels were in the static layer), so the whole 2.7 MB canvas was rebuilt
+and uploaded. Now the labels of the Cheats sub-screen and its two scroll arrows
+are drawn per update (layer `DW3_TITLE_OPTIONS_LABEL`), the static layer of the
+sub-screen is one for every scroll offset, and the master switch is not part of
+its key. So the master switch, a scroll step, a cursor move and a value change
+are all dirty-row updates (`options update dirty rects=N`, N at most 9, a few
+hundred KB at most, no raster); only opening the sub-screen the first time
+composes the layer (`rebuild`, then `cached`). A value on the other groups was
+already a one-cell update (a 268x50 cell, about 54 KB). The compose and upload
+time of every update is still logged (`options update #N dirty|cached|rebuild
+rects=N bytes=N compose=N us upload=N us`, the first eight of each open, then
+batches of 30 as `options N updates compose avg=.. max=.. us`), so the next OLED
+log proves it. The open of the Options screen in game is unchanged (the title
+atlas is not touched; the group list layers are the prewarmed ones).
+
+Tests: `tools/tests/options_cache_main.c` renders every cursor and value of the
+sub-screen at all five scroll offsets, master off and on, in five languages
+against the full reference render, and fails when a scroll step or a master
+switch is not a dirty-row update. Replays `us|eu-cheats-screen` (checkpoints
+`cheats-p1`, `cheats-p2`) and `us|eu-cheats-screen2` (`cheats-warp`, the list
+scrolled; `cheats-give`, the end of the list) now compare pictures.
 
 ### OLED checklist, groups and sub-screens (owner)
 
@@ -841,10 +898,12 @@ build-time option removes the whole feature. ROADMAP P6.20 has the history.
 
 ### Reaching the screen
 
-On the Options screen press **Square** (PC **Z**, Switch **Y**). The Cheats
-screen replaces the Options rows in the same window (same background, pointer,
-sounds and message line); **Triangle** (PC S, Switch X) goes back to Options.
-The Options screen has nine rows since P6.31. The hint "Square/Y Cheats" is drawn
+On the Options screen press **Square** (PC **Z**, Switch **Y**), or open the
+Cheats group of the list. Since P9.9 slice 2 the Cheats screen is a sub-screen
+of the group list in the title menu's style (the paragraphs below about "the
+same window" and the 38 px rows describe the screen before that and are kept for
+the history); **Triangle** (PC S, Switch X) goes back to the list.
+The Options screen had nine rows since P6.31. The hint "Square/Y Cheats" is drawn
 left of Change **only while the master switch is on**.
 
 Why a hint that appears late and not a ninth row, a second page or an
@@ -869,7 +928,7 @@ is that the entry is not discoverable until someone knows the key; it is in
 | Battle now | one-shot | OFF / Ready | The next footstep in a random-battle area starts a random battle, even with Encounter rate OFF (the countdown is forced to its end); used up when the battle starts |
 | Cheat saves | read-only | None, or 1..6 | How many saves are marked "cheat used" (see below) |
 
-**Page 2 (PR 2).** Down from "Cheat saves" goes on to page 2 (the title reads
+**Page 2 (PR 2; since P9.9 slice 2 it is the lower half of the scrolling list, with no "1/2" title).** Down from "Cheat saves" goes on to page 2 (the title reads
 "CHEATS 1/2" / "CHEATS 2/2"; Up from its first row goes back). Its rows are
 one-shots like Fill bag and Battle now: armed here at the title, applied by the
 **field at its first idle frame** (the moment the field menu may open: no
@@ -1037,14 +1096,13 @@ reuse the Options words. To change a word or add a language:
 
 `port/options/cheats.c` (store, screen logic, hooks), `port/options/cheat_saves.c`
 (sidecar), `port/options/cheats_internal.h`, API `port/include/port_cheats.h`;
-the page is drawn by `cheats_screen()` in `platforms/pc/src/title_overlay_art.c`.
+the rows are drawn by `options_list_screen()` in `platforms/pc/src/title_overlay_art.c` (P9.9 slice 2; `cheats_screen()` is gone).
 The store starts lazily on the first call (`dw3_cheats_init(memcard_host_dir())`),
 so the hosts needed no change. PR 2: the rows, the three `dw3_cheats_take_*`
 hooks and the warp table (`g_warp_modes`) are in `cheats.c`; patches `0118`
 (money), `0119` (give item) and `0120` (warp) call the hooks from
-`openFieldMenu` in `field_mode/field.c`; page 2 is drawn by the same
-`cheats_screen()` (page `DW3_TITLE_OPTIONS_PAGE_CHEATS2`, digits drawn by
-`number()` from fixed-advance glyphs).
+`openFieldMenu` in `field_mode/field.c`; page 2 is the lower half of the
+same list (digits drawn by `number()` from fixed-advance glyphs).
 
 ### Tests
 
@@ -1091,8 +1149,9 @@ hooks and the warp table (`g_warp_modes`) are in `cheats.c`; patches `0118`
 
 PR 2. Build with the default (cheats included), master switch ON on page 1.
 
-1. Cheats screen: Down from "Cheat saves" goes to page 2 ("CHEATS 2/2" in the
-   title, labels in the game's language, all five in EU); Up from Money goes
+1. Cheats screen: Down from "Cheat saves" goes on to Money and the list scrolls
+   (the title reads CHEATS; the page 2 rows are the lower half, the arrows show
+   there is more above or below; labels in the game's language, all five in EU); Up from Money goes
    back. With the master OFF the page-2 rows are greyed and do nothing.
 2. **Money:** arm +10,000 (Cross twice steps +10,000, +100,000; Left / Right
    too), go to the title's New Game or Continue and into a field: the money in

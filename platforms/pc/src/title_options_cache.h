@@ -16,7 +16,7 @@ enum {
     DW3_OPTIONS_CANVAS_H = 720,
     DW3_OPTIONS_CANVAS_PITCH = DW3_OPTIONS_CANVAS_W * 4,
     /* Old row, new row, description, and up to seven value cells. */
-    DW3_OPTIONS_MAX_DIRTY = 10,
+    DW3_OPTIONS_MAX_DIRTY = 12,
 };
 
 typedef struct Dw3OptionsRect {

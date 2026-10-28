@@ -9,8 +9,9 @@ pad 340 0x4000
 pad 345 0x0000
 pad 390 0x8000
 pad 395 0x0000
-pad 430 0x1000
-pad 435 0x0000
-pad 470 0x1000
-pad 475 0x0000
-end 520
+shot 440 cheats-p2
+pad 460 0x1000
+pad 465 0x0000
+pad 500 0x1000
+pad 505 0x0000
+end 550

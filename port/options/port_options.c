@@ -159,7 +159,7 @@ void dw3_port_options_test_goto_row(int reg) {
 
     for (g = 0; g < DW3_OPTGRP_COUNT; g++) {
         for (k = 0; k < dw3_optgroups[g].nrows; k++) {
-            if (dw3_optgroups[g].rows[k] == reg) {
+            if (g != DW3_OPTGRP_CHEATS && dw3_optgroups[g].rows[k] == reg) {
                 g_level = 1;
                 g_group = g;
                 g_cursor = k;

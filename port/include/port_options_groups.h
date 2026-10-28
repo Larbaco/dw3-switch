@@ -15,18 +15,18 @@ enum {
     DW3_OPTGRP_SOUND = 1,
     DW3_OPTGRP_GAMEPLAY = 2,
     DW3_OPTGRP_SAVES = 3,
-    DW3_OPTGRP_CHEATS = 4,      /* opens the P6.20 Cheats screen */
+    DW3_OPTGRP_CHEATS = 4,      /* P6.20 Cheats: a sub-screen of 10 rows (scrolls) */
     /* Not built yet: hidden until the feature lands, then flip `built`. */
     DW3_OPTGRP_CONTROLS = 5,    /* P6.12 button mapping */
     DW3_OPTGRP_HELP = 6,        /* P6.30 technical help */
     DW3_OPTGRP_WALKTHROUGH = 7, /* P6.35 walkthrough help */
     DW3_OPTGRP_COUNT = 8,
-    DW3_OPTGRP_MAX_ROWS = 6
+    DW3_OPTGRP_MAX_ROWS = 10
 };
 
 typedef struct Dw3OptGroup {
     int built;                       /* 0 = a placeholder, never listed */
-    int nrows;                       /* 0 for Cheats (a screen of its own) */
+    int nrows;                       /* Cheats: 10 cheat rows (port_cheats.h), not registry rows */
     int rows[DW3_OPTGRP_MAX_ROWS];   /* registry indexes, in screen order */
 } Dw3OptGroup;
 
@@ -38,7 +38,7 @@ static const Dw3OptGroup dw3_optgroups[DW3_OPTGRP_COUNT] = {
     /* Sound    */ {1, 2, {3, 4}},
     /* Gameplay */ {1, 5, {1, 2, 5, 6, 7}},
     /* Saves    */ {1, 1, {8}},
-    /* Cheats   */ {1, 0, {0}},
+    /* Cheats   */ {1, 10, {0, 1, 2, 3, 4, 5, 6, 7, 8, 9}},
     /* Controls */ {0, 0, {0}},
     /* Help     */ {0, 0, {0}},
     /* Walk     */ {0, 0, {0}},

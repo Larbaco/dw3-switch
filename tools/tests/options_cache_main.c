@@ -87,6 +87,7 @@ static int reg_max(int reg) {
 static const int turbo[4] = {0, 2, 3, 4};
 static int reg_value(int reg, int n) { return reg == 1 ? turbo[n] : n; }
 
+enum { DW3_CHEAT_ROWS_T = 10 };
 /* Page of a list screen (group < 0: the group list) with the Cheats switch. */
 static void list_page(int group, int scroll, int cheats_on) {
     dw3_pc_title_overlay_set_options_page(dw3_optlist_page(group, scroll), cheats_on);
@@ -215,47 +216,59 @@ int main(void) {
         if (!d.full || d.rebuilt) fail("invalidate must resend without re-raster", lang, 2, v);
 
 #ifdef DW3_CHEATS
-        /* P6.20: the group list with the Cheats group, then the Cheats
-         * page with the master switch off and on: a page or master change
-         * rebuilds the static layer; cursor moves and values are dirty rects
-         * like on the Options page. */
+        /* P6.20 / P9.9: the group list with the Cheats group, then the Cheats
+         * sub-screen (ten rows, six on screen, scrolled) with the master
+         * switch off and on. Opening it rebuilds the static layer once; a
+         * scroll step, the master switch, cursor moves and values are dirty
+         * rects (the labels and arrows are drawn per update). */
         dw3_pc_title_overlay_set_options_page(DW3_TITLE_OPTIONS_PAGE_OPTIONS, 1);
         step(lang, 0, v, 1, &d);
         if (!d.full || !(d.rebuilt || d.cached)) fail("Cheats group did not rebuild", lang, 0, v);
-        for (int master = 0; master < 2; ++master) {
-            int cv[DW3_TITLE_OPTION_ROWS] = {master, 0, 0, 0, 0, 0, 0, 0, 0};
-            dw3_pc_title_overlay_set_options_page(DW3_TITLE_OPTIONS_PAGE_CHEATS, master);
-            step(lang, 0, cv, 1, &d);
-            if (!d.full || !(d.rebuilt || d.cached)) fail("cheats page did not rebuild", lang, 0, cv);
-            /* Every cursor row for two languages, the first for the rest. */
-            for (int c = 0; c < (lang == DW3_TITLE_LANG_EN || lang == DW3_TITLE_LANG_DE
-                                 ? DW3_TITLE_CHEAT_ROWS : 1); ++c)
-                for (int row = 1; row < DW3_TITLE_CHEAT_ROWS; ++row)
-                    for (int n = 0; n <= (row == 4 ? 7 : 1); ++n) {
-                        cv[row] = n;
-                        step(lang, c, cv, 1, &d);
-                        steps++;
-                        if (d.full) fail("unexpected full upload (cheats)", lang, c, cv);
+        {
+            static const int top[DW3_CHEAT_ROWS_T] = {1, 1, 1, 1, 7, 3, 13, 359, 99, 1};
+            static const int low[DW3_CHEAT_ROWS_T] = {0, 0, 0, 0, 0, 0, 0, 43, 1, 0};
+            for (int master = 0; master < 2; ++master) {
+                int cv[DW3_TITLE_OPTION_ROWS] = {master, 0, 0, 0, 0, 0, 0, 43, 10, 0};
+                dw3_pc_title_overlay_set_options_page(DW3_TITLE_OPTIONS_PAGE_OPTIONS, 1);
+                step(lang, 0, v, 1, &d);
+                list_page(DW3_OPTGRP_CHEATS, 0, master);
+                step(lang, 0, cv, 1, &d);
+                if (!d.full || !(d.rebuilt || d.cached)) fail("cheats page did not rebuild", lang, 0, cv);
+                for (int sc = 0; sc <= 4; ++sc) {
+                    list_page(DW3_OPTGRP_CHEATS, sc, master);
+                    step(lang, sc, cv, 1, &d);
+                    steps++;
+                    if (d.rebuilt || d.cached || d.full || d.count > DW3_OPTIONS_MAX_DIRTY)
+                        fail("a scroll step must be a dirty-row update", lang, sc, cv);
+                    /* Every cursor on screen for two languages, one for the rest. */
+                    for (int c = sc; c <= sc + 5; ++c) {
+                        if (!(lang == DW3_TITLE_LANG_EN || lang == DW3_TITLE_LANG_DE) && c != sc) continue;
+                        for (int row = 0; row < DW3_CHEAT_ROWS_T; ++row) {
+                            if (row == 0 && sc != 0) continue;
+                            for (int n = low[row]; n <= top[row];
+                                 n += row == 7 ? 97 : row == 8 ? 29 : 1) {
+                                cv[row] = n;
+                                step(lang, c, cv, 1, &d);
+                                steps++;
+                                if (d.full) fail("unexpected full upload (cheats)", lang, c, cv);
+                            }
+                            cv[row] = low[row];
+                        }
                     }
-        }
-        /* PR 2: the second page (Money, Warp, item id, count, Give item):
-         * the same checks with its own value ranges. */
-        for (int master = 0; master < 2; ++master) {
-            static const int top[DW3_TITLE_CHEAT_ROWS] = {3, 13, 359, 99, 1};
-            static const int low[DW3_TITLE_CHEAT_ROWS] = {0, 0, 43, 1, 0};
-            int cv[DW3_TITLE_OPTION_ROWS] = {0, 0, 43, 10, 0, 0, 0, 0};
-            dw3_pc_title_overlay_set_options_page(DW3_TITLE_OPTIONS_PAGE_CHEATS2, master);
-            step(lang, 0, cv, 1, &d);
-            if (!d.full || !(d.rebuilt || d.cached)) fail("cheats page 2 did not rebuild", lang, 0, cv);
-            for (int c = 0; c < (lang == DW3_TITLE_LANG_EN || lang == DW3_TITLE_LANG_FR
-                                 ? DW3_TITLE_CHEAT_ROWS : 1); ++c)
-                for (int row = 0; row < DW3_TITLE_CHEAT_ROWS; ++row)
-                    for (int n = low[row]; n <= top[row]; n += row == 2 ? 29 : row == 3 ? 7 : 1) {
-                        cv[row] = n;
-                        step(lang, c, cv, 1, &d);
-                        steps++;
-                        if (d.full) fail("unexpected full upload (cheats 2)", lang, c, cv);
-                    }
+                }
+                /* The master switch itself, on the first and the scrolled view. */
+                for (int sc = 0; sc <= 4; sc += 4) {
+                    int mv[DW3_TITLE_OPTION_ROWS] = {master, 0, 0, 0, 0, 0, 0, 43, 10, 0};
+                    list_page(DW3_OPTGRP_CHEATS, sc, master);
+                    step(lang, sc, mv, 1, &d);
+                    list_page(DW3_OPTGRP_CHEATS, sc, !master);
+                    mv[0] = !master;
+                    step(lang, sc, mv, 1, &d);
+                    steps++;
+                    if (d.rebuilt || d.cached || d.full || d.count < 1)
+                        fail("the master switch must be a dirty-row update", lang, sc, mv);
+                }
+            }
         }
         dw3_pc_title_overlay_set_options_page(DW3_TITLE_OPTIONS_PAGE_OPTIONS, 0);
         step(lang, 0, v, 1, &d);
