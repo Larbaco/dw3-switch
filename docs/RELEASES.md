@@ -99,6 +99,11 @@ build/switch-eu-nxlink/dw3-switch-nxlink.nro build/switch-eu-nxlink/dw3-switch.e
 dw3-switch-eu-nxlink.elf` and upload that `.nro` too. The release README
 lists only the files actually published.
 
+**Release notes PR checklist.** In the notes PR (the one that adds the index
+row above and updates `platforms/switch/release/README.txt`), also update the
+[README](../README.md) "Latest preview" link and its Status rows, so the front
+page does not go stale.
+
 Since preview.18, [`platforms/switch/release/README.txt`](../platforms/switch/release/README.txt)
 holds the notes shipped with each release.
 

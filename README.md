@@ -6,9 +6,10 @@
 # DW3NX
 
 A native Nintendo Switch port of Digimon World 3 (Digimon World 2003 in
-Europe), built from the matching PlayStation decompilation.
+Europe), built from the matching PlayStation decompilation. It shows as
+"Digimon World 3 NX" in hbmenu and Sphaira.
 
-Latest preview: [v0.6.5-preview.30](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.30).
+Latest preview: [v0.6.5-preview.43](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.43).
 To try it, see [Play it on Switch](#play-it-on-switch). New to the port? Read
 the [player guide](docs/PLAYER_GUIDE.md). All docs are listed in the
 [docs index](docs/README.md). To contribute, see
@@ -74,12 +75,12 @@ and the occasional crash. Report problems on the
 
 | Area | State on Switch | Notes |
 |---|---|---|
-| Title and menus | Works | New Game / Options / Load Game drawn at native resolution. |
-| Field | Works | Software rendering. A crash on 16:9 field maps was reported on EU; the fix (patch 0057) has shipped since preview.27 and is not yet confirmed on hardware. |
+| Title and menus | Works | Native New Game / Continue / Load Game / Options / Quit game. Spacing, the 16:9 intro caption strip and Quit through a forwarder are confirmed on the OLED (preview.41 to 43). Quitting the full Sphaira app errors; the forwarder is the target. A brief 4:3 frame shows when returning to the title (fix in progress). |
+| Field | Works | Software rendering. Menus at 1.5x under turbo, the water texture fix, Options from the field menu and Continue after returning to the title are confirmed on the OLED. Options has a stutter when it opens (fix in progress). The full-screen map view shows the background and markers but not yet the revealed areas (fix in progress). |
 | Battle | Works | GPU textured rendering by default. The owner reports the sky stage fixed and battle above 60 fps on US and EU; the per-mode frame-time benchmark was not run. A battle crash from the preview.26 reports is still open in the roadmap. |
-| Movies | Plays | The opening runs at about 15 fps with XA audio. Image quality and the full movie are not validated. |
-| Audio | Works | Music loops (#209, confirmed on the OLED). The win jingle, menu sounds and battle blips play since #215 (not yet heard on hardware). A silent field map after a battle was reported once and not reproduced (P4.3). Underrun behavior has not been measured. |
-| Saves | Works | Flat `save0.bin` and `save1.bin`. Save → HOME/X → relaunch → Continue was confirmed on US and EU discs (#171). Sleep/focus-loss flush and the time-delta clamp are wired (preview.29) but not yet confirmed on hardware (P10.2). |
+| Movies | Plays | The opening runs at about 15 fps with XA audio, and turbo works in the intro. Image quality and the full movie are not validated. |
+| Audio | Works | Music loops (#209, confirmed on the OLED). The win jingle, menu sounds and battle blips play since #215 (not yet heard on hardware). Silence on EU after many techs ([#188](https://github.com/Larbaco/dw3-switch/issues/188)) awaits an OLED check. A silent field map after a battle was reported once and not reproduced (P4.3). Underrun behavior has not been measured. |
+| Saves | Works | Flat files per Switch user profile under `saves/<uid>/` (P6.26). The forwarder profile selector, a separate Continue per profile and cancel returning to HOME are confirmed on the OLED. Auto-save on area change and on HOME close is confirmed. The Equipment ZL / ZR partner cycle is confirmed. `dw3.log` does not yet keep previous runs on hardware (fix in progress). |
 | Rumble | Implemented, not verified on hardware | PS1 vibration requests go to HD rumble on handheld Joy-Con and player 1 (#183); on by default, `DW3_NX_RUMBLE=0` turns it off. The retail game never requests vibration, so normal play has nothing to feel yet. Left stick and D-pad work. |
 | EU version | Early | Language select and own-disc extraction work. Save reload after HOME and relaunch is confirmed; a full playthrough is not yet confirmed. |
 | PC host | Works | Needs your own US disc packed to `runtime/us`. |
@@ -115,8 +116,33 @@ Things this port adds to the original game.
   kept across launches (checked on PC and in an emulator; the relaunch step
   is not yet checked on the console):
   [PORT_OPTIONS](docs/PORT_OPTIONS.md#persistence).
-- **Native title menu.** New Game / Options / Load Game at native
-  resolution, with EU labels in the current game language.
+- **Native title menu.** New Game / Continue / Load Game / Options / Quit game
+  at native resolution, with EU labels in the current game language.
+- **Auto-save.** An Options row, off by default. When on, it saves to its
+  own file `autosave.bin` on each area change and when HOME closes the game.
+  Continue loads it; Load Game opens the slots (P6.31): [P6.31_AUTOSAVE](docs/P6.31_AUTOSAVE.md).
+- **Options in game.** An OPTIONS row in the field menu, and Minus at the
+  battle command menu (P9.7): [PORT_OPTIONS](docs/PORT_OPTIONS.md#options-in-game-p97).
+- **Quit game and Return to title.** Quit game on the title menu flushes saves
+  and returns to hbmenu or the forwarder (P6.28); the field menu can return to
+  the title (P6.27):
+  [PORT_OPTIONS](docs/PORT_OPTIONS.md#quit-and-return-to-title-p627-p628).
+- **Turbo menus.** Under fast-forward, field and battle menus run at 1.5x
+  (P6.4): [P6.4_FAST_FORWARD](docs/P6.4_FAST_FORWARD.md).
+- **Full-screen map view (proof of concept).** Y on the Map screen opens a
+  zoomable, pannable map with a scaler choice; widescreen only (P6.32):
+  [P6.32_MAP_ZOOM](docs/P6.32_MAP_ZOOM.md).
+- **Equipment partner cycle.** ZL / ZR change the partner on the Equipment
+  screen without leaving it (P6.33): [P6.33_ITEMS_MENU](docs/P6.33_ITEMS_MENU.md).
+- **Per-user saves.** Saves follow the Switch user profile chosen in the
+  forwarder or the system selector (P6.26):
+  [PER_USER_SAVES](docs/PER_USER_SAVES.md).
+- **Cheats screen.** Square / Y on the Options screen: money, warp, give item
+  and more, a test aid that is off by default (P6.20):
+  [PORT_OPTIONS](docs/PORT_OPTIONS.md#cheats-p620).
+- **Forwarder-friendly.** The app is named "Digimon World 3 NX" (#289), so a
+  Sphaira forwarder shows that name. A forwarder is the recommended way to
+  launch it and the way to pick a profile.
 - **Restart hotkey.** Optional, off by default. Returns to the title after
   flushing saves, without leaving the `.nro`:
   [P6.9_RESTART](docs/P6.9_RESTART.md).
@@ -133,12 +159,14 @@ Things this port adds to the original game.
   runtime: [P3_EU_BUILD](docs/P3_EU_BUILD.md).
 - **Own-disc extraction on the console.** First boot builds the runtime from
   your BIN/CUE with a progress bar: [STATIC_SD_LOAD](docs/STATIC_SD_LOAD.md).
-- **Flat saves.** One file per card slot, flushed at safe points. Old `.mcr`
-  files convert once: [P5.3_FLAT_SAVE](docs/P5.3_FLAT_SAVE.md).
+- **Flat saves.** One file per card slot, flushed at safe points, and
+  written so an interrupted write recovers at boot. Old `.mcr` files convert
+  once: [P5.3_FLAT_SAVE](docs/P5.3_FLAT_SAVE.md).
 - **Battle render modes (Switch).** Minus + ZL + ZR cycles software and GPU
   rendering: [HOTKEYS](docs/HOTKEYS.md).
-- **Diagnostics (Switch).** The `-nxlink` build streams logs and shows a
-  debug HUD, and crashes write a report to the SD card:
+- **Diagnostics (Switch).** Release builds write `dw3.log` on the SD card
+  (the last 5 runs are meant to be kept) and crashes write a report. The
+  `-nxlink` build also streams logs and shows a debug HUD:
   [NXLINK_DEBUG](docs/NXLINK_DEBUG.md), [P5.4_CRASH](docs/P5.4_CRASH.md).
 - **Title background in widescreen (PC).** The US title fills the side
   margins: [PC_TITLE_WIDESCREEN](docs/PC_TITLE_WIDESCREEN.md).
@@ -157,13 +185,14 @@ These are goals, not promises. The full list is in
 - Language packs, with Brazilian Portuguese first.
 - Texture pack support: [TEXTURE_PACKS](docs/TEXTURE_PACKS.md), and later a
   modding API (mod folder, asset and data-table overrides, P8.5).
-- A cheats sub-screen in Port options, to speed up testing (P6.20; first slice built, off by default, removable with `--no-cheats`).
 - Contributor and modder docs (P6.23). The player guide and the docs index
   are done: [PLAYER_GUIDE](docs/PLAYER_GUIDE.md), [docs/README.md](docs/README.md).
-- In-game pause menu: return to title and help / FAQ / tips (P6.27, P6.30);
-  Quit game on the title menu, back to hbmenu (P6.28).
+- Help / FAQ / tips from the pause menu (P6.30).
+- Button remapping (P6.12).
+- A redesign of the items / status / equipment menu flow; the options and
+  their order feel odd (P6.34). The Equipment partner cycle is the first step
+  (P6.33).
 - A save editor for the owner's own saves, as a tool outside the game (P6.29).
-- Auto-save, off by default (P6.31).
 - An Options screen in the title menu's style, with room for more rows (P9.9).
 - One build for both discs: a single `.nro` (and PC binary) that finds the US
   or EU disc at boot, instead of two builds (P6.24,
@@ -199,10 +228,16 @@ sdmc:/switch/dw3/Digimon World 3.bin
 sdmc:/switch/dw3/us/            created on first boot
 ```
 
-Saves are `save0.bin` and `save1.bin` in the `memcard/` folder of the
-region directory (for example `sdmc:/switch/dw3/us/memcard/`). Old
-`memcardN.mcr` saves are converted once and kept as `.mcr.bak`. Back up
-`memcard/` before deleting the region folder to force a re-extract.
+Launching through a forwarder (for example Sphaira) is recommended. The app
+shows as "Digimon World 3 NX"; recreate the forwarder after updating to see
+the name. The forwarder's profile selector picks the Switch user.
+
+Saves are `save0.bin`, `save1.bin` and `autosave.bin` per profile, in
+`sdmc:/switch/dw3/saves/<uid>/<us|eu>/memcard/`. The first time a profile
+launches, any older saves in `<us|eu>/memcard/` are copied into its folder;
+the originals are kept, as are `.mcr.bak` files. Back up `saves/` before
+deleting the region folder to force a re-extract. `dw3.log` and `dw3.1.log`
+to `dw3.4.log` in `sdmc:/switch/dw3/` are the logs to send with a bug report.
 
 Each release also has a `-nxlink` build that streams logs to a PC. It is for
 development and not needed to play. The clocks are left as the console sets
@@ -230,7 +265,10 @@ B is Cross and confirms, A is Circle.
 Port hotkeys:
 
 - Press Start at the title, then pick **Options** to open Port options.
-  Triangle (X on Switch) goes back.
+  Triangle (X on Switch) goes back. In the field, the menu's **OPTIONS** row
+  opens it too; Square (Y on Switch) in Options opens Cheats.
+- On the Equipment screen, ZL / ZR change the partner. On the Map screen, Y
+  opens the full-screen map view.
 - R3 (right-stick click) toggles fast-forward in field, battle and the
   results screen after a battle. Choose
   2x, 3x, 4x or off in Port options.
