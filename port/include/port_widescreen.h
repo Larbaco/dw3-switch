@@ -38,6 +38,12 @@ int dw3_port_widescreen_copy_gutters(int src_y, int h, int dx, int dy);
  * then. */
 int dw3_port_widescreen_new_screen_ready(void);
 
+/* A screen that lays itself out for the gutter (the item shop, patch 0179)
+ * calls this once when it opens: logs `dw3-widescreen: screen NAME (arg N)
+ * opened: gutter G px, 16:9|4:3 layout, mode file ...` so the log alone says
+ * whether the screen ran in 16:9. */
+void dw3_port_widescreen_screen(const char *name, int arg);
+
 /* Once per frame, before drawFrame: hands the mode's gutter to the renderer. */
 void dw3_port_widescreen_frame(void);
 

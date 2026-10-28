@@ -1,0 +1,17 @@
+# US: P6.1 item shop in widescreen (env in manifest)
+shot 250 shop
+pad 300 0x4000
+pad 305 0x0000
+shot 500 buy-list
+pad 520 0x2000
+pad 525 0x0000
+shot 700 buy-effects
+pad 720 0x2000
+pad 725 0x0000
+pad 760 0x4000
+pad 765 0x0000
+shot 900 buy-quantity
+pad 950 0x4000
+pad 955 0x0000
+shot 1100 buy-total
+end 1200

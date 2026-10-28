@@ -146,12 +146,12 @@ listed once, in [Pending OLED checks](#pending-oled-checks).
 | P6.27 | Return to title from the pause (field) menu | in progress (built, PC US and EU replays; owner OLED, 2026-10-27, preview.41: Return to title works and Continue after it works; the Yes / No window, fade and card checks not reported) | [PORT_OPTIONS](PORT_OPTIONS.md#quit-and-return-to-title-p627-p628), [roadmap](#phase-6-goal-notes) |
 | P6.28 | Quit game on the title menu, back to hbmenu | in progress (built, PC US and EU replays; owner OLED, 2026-10-27, preview.41: Quit through the Sphaira forwarder works and returns to hbmenu; the full-app Sphaira launch shows errors, the forwarder is fine; card files, flush line and the US / EU split not reported) | [PORT_OPTIONS](PORT_OPTIONS.md#quit-and-return-to-title-p627-p628), [roadmap](#phase-6-goal-notes) |
 | P6.29 | Save editor: external tool on the owner's own saves, builds on P6.25 (future goal) | future | [roadmap](#phase-6-goal-notes), [CROSS_REGION_SAVES](CROSS_REGION_SAVES.md) |
-| P6.30 | Help, FAQ and tips from the pause menu and the title menu (future goal; owner answers recorded 2026-10-27; after P9.9) | future (design and first English text draft written 2026-10-28, owner review pending; page engine shared with P6.35) | [roadmap](#phase-6-goal-notes), [design](P6.30_HELP.md), [draft text](../port/help/text/en.txt) |
+| P6.30 | Help, FAQ and tips from the pause menu and the title menu (future goal; owner answers recorded 2026-10-27; after P9.9) | future (design and first English text draft written 2026-10-28, owner review pending; page engine shared with P6.35; **owner 2026-10-28: at launch in every language the base game has, EN + FR/DE/IT/ES on the EU disc, pt-BR later with P6.7**) | [roadmap](#phase-6-goal-notes), [design](P6.30_HELP.md), [draft text](../port/help/text/en.txt) |
 | P6.31 | Auto-save, off by default | in progress (built: Options row, area-change write to its own file `autosave.bin`, title Continue loads it and the old Continue is Load; PC US and EU replays; owner OLED, 2026-10-27, preview.41: writes on an area change and on HOME close, title plaque spacing (#287); the save-file, Continue and Load Game checks not reported) | [P6.31_AUTOSAVE](P6.31_AUTOSAVE.md), [roadmap](#phase-6-goal-notes), [P5.3](P5.3_FLAT_SAVE.md) |
 | P6.32 | Map zoom and full-screen map (future goal) | phase 0 PoC built (PR `feat/p6.32-map-poc`); owner OLED, preview.45 (2026-10-28): the map shows and Nearest is the preferred scaler; balloon, cursor and name box pending preview.47; mod pack loader for an upscaled map built (`feat/mod-map-upscale`, OLED item B17 pending) | [roadmap](#phase-6-goal-notes), [P6.32](P6.32_MAP_ZOOM.md), [P6.1](P6.1_WIDESCREEN.md), [map upscale mod](MOD_MAP_UPSCALE.md) |
 | P6.33 | Items menu usability redesign | in progress (owner decisions recorded 2026-10-26; phase 1 partner cycle built: patch 0128, ZL / ZR, on by default; phases 2, 3 and 4 open; phase 1 cycle confirmed on the OLED 2026-10-27, preview.41; the `items_partner_switch=0` check open; phases 2–4 folded into P6.34) | [roadmap](#phase-6-goal-notes), [P6.33](P6.33_ITEMS_MENU.md), [P6.1](P6.1_WIDESCREEN.md) |
 | P6.34 | Redesign of the items / status / equipment menu flow (future goal) | future | [roadmap](#phase-6-goal-notes), [P6.33](P6.33_ITEMS_MENU.md) |
-| P6.35 | In-game walkthrough help: where to go next and what to do, by story progress (future goal) | future (design written 2026-10-28, owner decisions recorded) | [roadmap](#phase-6-goal-notes), [design](P6.35_WALKTHROUGH.md), [PLAYER_GUIDE](PLAYER_GUIDE.md) |
+| P6.35 | In-game walkthrough help: where to go next and what to do, by story progress (future goal) | future (owner 2026-10-28: at launch in every language the base game has, EN + FR/DE/IT/ES on the EU disc, pt-BR later with P6.7; design written 2026-10-28, owner decisions recorded) | [roadmap](#phase-6-goal-notes), [design](P6.35_WALKTHROUGH.md), [PLAYER_GUIDE](PLAYER_GUIDE.md) |
 | P7.1 | Inventory and boundaries | done | [COMMUNITY_QOL](COMMUNITY_QOL.md) |
 | P7.2 | Patched EU disc as data source | open | [COMMUNITY_QOL](COMMUNITY_QOL.md) |
 | P7.3 | Binary-patch limits | in progress | [COMMUNITY_QOL](COMMUNITY_QOL.md) |
@@ -193,7 +193,7 @@ its done-when. The ordered session plan (written for preview.36) is
 
 - **P5 gate:** start → first boss on hardware, US and EU. The Phase 5 gate is
   not met yet (owner, 2026-10-24); see [Phase 5](#phase-5--playable-on-switch).
-- **P6.1:** 16:9 for the map screen, results header, save slot picker, title
+- **P6.1:** **Item shop (B18, patch 0179):** the owner saw it still in 4:3 on preview.47 (panels had stayed in the middle 320 columns); panels now hang from the 16:9 edges, and the log says which gutter the shop ran with (`dw3-widescreen: screen STITSHOP ...`). Pending OLED. 16:9 for the map screen, results header, save slot picker, title
   menu, news caption bar, registration screen (patches 0080-0082, 0085-0087),
   and the Items menu and field menu screens (0075, 0076, 0074). US and EU. The
   banner and technique backdrops: EU still to do. The intro news caption bar at 16:9 is confirmed (owner, 2026-10-27, preview.41). **Pending preview.47:** the EU language select at 16:9 (patch 0177, E1.6b). **New (0115):** the area-change iris and grid cover (walk through a door or exit: the view should close from the full 16:9 picture, the grid cover covering the whole picture, no map shifted back after it closes); **New (0175):** the encounter spiral swirl now covers the 16:9 picture (enter a random battle at turbo off and at 2x, 3x and 4x: the gutters must not go black on the swirl's first frame and its tiles must slide off across the full width; B12 of the [OLED test plan](OLED_TEST_PLAN.md)). **New (0100-0104):** the
@@ -2291,6 +2291,16 @@ Statuses are in the [table](#status-at-a-glance).
   partner cycle of P6.33. No design yet; start from the P6.33 note. Phases 2–4
   of P6.33 are folded into this item (owner, 2026-10-28). Done when
   (proposed): the owner approves a flow and it works on US and EU, 4:3 and 16:9.
+  **Proposal added 2026-10-28 (preview.47 feedback): equip from the Items
+  menu.** In the original game, Cross on a weapon, armor or accessory in the
+  Items menu does nothing (it is listed and described only; findings in
+  [P6.33](P6.33_ITEMS_MENU.md#6-selecting-equipment-in-the-items-menu-finding-2026-10-28)).
+  The owner expects it to work. Proposal: Cross on an equipment item opens
+  the partner step the consumables already have, then the slot choice, and
+  equips through the same `STSTATUS_equip` rules as Status > Equipment (grey
+  rows for partners that cannot equip it, the stats preview). Behind a
+  Port option, on by default only once approved; no save change. Until then
+  the port logs `dw3-items-menu: Cross on weapon N ...` (patch `0180`).
 
 - [ ] **P6.35 In-game walkthrough help (future goal).** Dated 2026-10-27,
   owner request (Portuguese: "um menu de ajuda mais no sentido do walkthrough,
