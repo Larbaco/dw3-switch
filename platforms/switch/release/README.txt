@@ -1,6 +1,6 @@
 Digimon World 3 / 2003, Switch homebrew preview
 
-Release notes for v0.6.5-preview.46. The release tag and boot version
+Release notes for v0.6.5-preview.47. The release tag and boot version
 identify the actual source revision.
 
 Player guide (setup, controls, Options, saves, crash reports):
@@ -13,7 +13,36 @@ New in this preview
   unverified. Log rotation (#296, #301) was confirmed on the OLED with
   preview.45: dw3.1.log is kept and the rotated line shows rc=0x0.
 
-  Options is a list of groups (P9.9 slice 1, #303): Options from the title
+  Map view has the game's own balloon, cursor and name box (#306, plan
+  B16). The balloon sits on your current area and the cursor (an arrow, or a
+  hexagon on a location) moves with the D-pad or left stick; the view follows
+  it when zoomed. The right stick and L / R zoom, ZL / ZR cycle the scaler,
+  and Circle hides the HUD. On a location the game's name box appears. The
+  balloon, cursor and name box scale and pan with the map. Nearest is the
+  default scaler. Lanczos2 and FSR 1 build on a worker thread: the HUD shows
+  BUILDING and the buttons stay live while they build.
+
+  In-game Options opens faster (#308, plan B15b): the Options screen has its
+  own 960x720 texture, so opening it from the field no longer builds the big
+  title atlas. The log line `dw3-title-overlay: 960x720 RGBA options texture
+  (GLES), create N us` shows the cost. Preview.45 had the first frame about
+  93 ms after the open.
+
+  EU language select is 16:9 (patch 0177, #308, plan E1.6b): the tile
+  pattern, the header and logo bands and the flags' panel run to the side
+  edges, with no 4:3 frame before the title.
+
+  Title lettering and verbs (#308, plans E2.0 and E2.2): on EU, every plaque
+  uses the port's lettering, the same as Options and Quit game. Without an
+  autosave the title shows New Game, Options, Load Game and Quit game. With an
+  autosave it shows New Game, Options, Continue, Load Game and Quit game, in
+  the five EU languages.
+
+  Docs only (#305, #307): the MOD_MAP_UPSCALE design note (the first mod: an
+  AI-upscaled map pack, not in any release) and a docs index fix. Nothing in
+  the game changed for them.
+
+  From preview.46: Options is a list of groups (P9.9 slice 1, #303): Options from the title
   menu opens a list of plaques in the title menu's style, Display, Sound,
   Gameplay and Saves, plus Cheats once its master switch is on. B opens a
   group; X goes back to the list, with the cursor kept on the group you left. The same groups appear from the field menu OPTIONS and from the
@@ -102,10 +131,10 @@ Known issues
   "applet focus" lines do not appear in dw3.log (OLED, rc7). Rumble is
   still unverified on hardware.
 
-  In-game Options: the first frame after the open takes about 93 ms on the
-  Switch (P9.9, being worked on). The EU language select is still 4:3. The
-  EU title plaque lettering shading is not consistent yet. The map view
-  does not show the balloon, the cursor or the location name yet.
+  In-game Options: the first frame after the open took about 93 ms on the
+  Switch in preview.45. preview.47 aims for under 20 ms (plan B15b), not
+  measured on the OLED yet. The map HUD strip covers the top of the map at
+  1.00x. EU audio after many techs is still open (#188, plan D13).
 
 Carried forward
 
