@@ -1,4 +1,5 @@
 cmake_minimum_required(VERSION 3.21)
+include(${CMAKE_CURRENT_LIST_DIR}/../../tools/cmake/dw3_ccache.cmake)
 project(dw3-pc C)
 
 set(CMAKE_C_STANDARD 11)

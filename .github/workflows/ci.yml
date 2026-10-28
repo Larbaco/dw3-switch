@@ -5,6 +5,19 @@ on:
     branches: [main, phase1-toolchains-hosts, phase2-engine, phase2-io]
   pull_request:
 
+# A new push to a pull request supersedes the run still going for the old one.
+# Runs on main (and other branches) are never cancelled.
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+# Build speed (docs/BUILD_SPEED.md): ccache for every game compile, restored
+# from and saved to the Actions cache (one cache per job, newest wins), shallow
+# submodule clones, and the Python tests in their own job so they run beside
+# the builds instead of after them. The release workflow does not use ccache.
+env:
+  CCACHE_MAXSIZE: 400M
+
 jobs:
   # Docs-only changes (docs/**, *.md) skip the build jobs below. Skipped jobs
   # count as passing for required status checks, so docs PRs stay mergeable.
@@ -43,9 +56,10 @@ jobs:
           submodules: false
       - name: Init PC submodules
         run: |
-          git submodule update --init vendor/dw3_decomp vendor/psyz
+          # Shallow: only the pinned commits are needed (not their history).
+          git submodule update --init --depth 1 vendor/dw3_decomp vendor/psyz
           # Both hosts use nugget/bsdec; skip its PS1 matching toolchain.
-          git -C vendor/psyz submodule update --init nugget external/SDL
+          git -C vendor/psyz submodule update --init --depth 1 nugget external/SDL
       - name: Check decomp patches
         run: tools/apply_patches.sh --check
       - name: Install deps
@@ -55,15 +69,29 @@ jobs:
           # X11/EGL/wayland bits keep SDL3 configure happy on Ubuntu runners.
           sudo apt-get update
           sudo apt-get install -y \
-            cmake ninja-build pkg-config \
+            ccache cmake ninja-build pkg-config \
             libgl1-mesa-dev libegl1-mesa-dev libgles2-mesa-dev \
             libx11-dev libxext-dev libxrandr-dev libxcursor-dev \
             libxfixes-dev libxi-dev libxss-dev libxtst-dev \
             libxkbcommon-dev \
             libasound2-dev libpulse-dev \
             libwayland-dev libdecor-0-dev
+      - name: ccache environment
+        run: |
+          . tools/dw3_ccache_env.sh
+          export DW3_CCACHE_DIR="$GITHUB_WORKSPACE/.ccache"
+          dw3_ccache_setup "$GITHUB_WORKSPACE"
+          env | grep '^CCACHE_' >> "$GITHUB_ENV"
+      - name: Restore ccache
+        id: ccache
+        uses: actions/cache/restore@v4
+        with:
+          path: .ccache
+          key: ccache-pc-${{ github.sha }}
+          restore-keys: ccache-pc-
       - name: Configure & build PC host
         run: |
+          ccache -z
           cmake -S platforms/pc -B build/pc -G Ninja -DPSYZ_RENDERER=sdl3_gpu
           cmake --build build/pc -j"$(nproc)"
           test -x build/pc/dw3-pc
@@ -84,12 +112,36 @@ jobs:
           set -e
           test "$rc" = 1
           grep -q 'must be us or eu' build/pc-both/region-typo.log
+      - name: ccache statistics
+        run: ccache -s
+      - name: Save ccache
+        if: ${{ success() }}
+        uses: actions/cache/save@v4
+        with:
+          path: .ccache
+          key: ccache-pc-${{ github.sha }}
+
+  # The Python/C unit tests need no PC build (the decomp patch check and the
+  # host-side test programs compile on their own), so they run beside `pc`.
+  tools-tests:
+    needs: changes
+    if: ${{ !cancelled() && needs.changes.outputs.code != 'false' }}
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: false
+      - name: Init PC submodules
+        run: |
+          git submodule update --init --depth 1 vendor/dw3_decomp vendor/psyz
+          git -C vendor/psyz submodule update --init --depth 1 nugget external/SDL
       - name: Unit tests (tools)
         run: |
           # Pillow: replay/menu replay tests import PIL directly (importorskip
           # on main, hard import on menu-replay branches); install so they run.
-          python3 -m pip install pytest pillow
-          python3 -m pytest tools/tests -v
+          # xdist: the tests are independent; a few compile C and dominate.
+          python3 -m pip install pytest pytest-xdist pillow
+          python3 -m pytest tools/tests -v -n auto
 
   # Makefile host_hello sample (EGL + audren). Not the game image.
   # The game .nro is job switch-game below, and a Release only from
@@ -118,6 +170,9 @@ jobs:
     if: ${{ !cancelled() && needs.changes.outputs.code != 'false' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 60
+    env:
+      DW3_CCACHE_FETCH: "1"
+      DW3_CCACHE_DIR: ${{ github.workspace }}/.ccache
     steps:
       - uses: actions/checkout@v4
         with:
@@ -127,13 +182,25 @@ jobs:
           fetch-depth: 0
       - name: Init game submodules
         run: |
-          git submodule update --init vendor/dw3_decomp vendor/psyz
+          git submodule update --init --depth 1 vendor/dw3_decomp vendor/psyz
           # nugget without --recursive: codeberg xmake-psx returns HTTP 429.
-          git -C vendor/psyz submodule update --init nugget external/SDL
+          git -C vendor/psyz submodule update --init --depth 1 nugget external/SDL
+      - name: Restore ccache
+        uses: actions/cache/restore@v4
+        with:
+          path: .ccache
+          key: ccache-switch-game-${{ github.sha }}
+          restore-keys: ccache-switch-game-
       - name: Build CMake game .nro
         # Untagged CI: NACP/hbmenu version is the short GITHUB_SHA (e.g. a0e4973).
         # Tagged releases use switch-release.yml + RELEASE_TAG instead.
         run: bash tools/build_switch_game.sh
+      - name: Save ccache
+        if: ${{ success() }}
+        uses: actions/cache/save@v4
+        with:
+          path: .ccache
+          key: ccache-switch-game-${{ github.sha }}
       - name: Upload game .nro artifact
         uses: actions/upload-artifact@v4
         with:
@@ -149,6 +216,9 @@ jobs:
     if: ${{ !cancelled() && needs.changes.outputs.code != 'false' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 60
+    env:
+      DW3_CCACHE_FETCH: "1"
+      DW3_CCACHE_DIR: ${{ github.workspace }}/.ccache
     steps:
       - uses: actions/checkout@v4
         with:
@@ -156,8 +226,14 @@ jobs:
           fetch-depth: 0
       - name: Init game submodules
         run: |
-          git submodule update --init vendor/dw3_decomp vendor/psyz
-          git -C vendor/psyz submodule update --init nugget external/SDL
+          git submodule update --init --depth 1 vendor/dw3_decomp vendor/psyz
+          git -C vendor/psyz submodule update --init --depth 1 nugget external/SDL
+      - name: Restore ccache
+        uses: actions/cache/restore@v4
+        with:
+          path: .ccache
+          key: ccache-switch-both-${{ github.sha }}
+          restore-keys: ccache-switch-both-
       - name: Build the combined .nro (ordinary and nxlink)
         run: |
           bash tools/build_switch_game.sh --both
@@ -165,6 +241,12 @@ jobs:
           mkdir -p dist-both
           cp build/switch-both/dw3-switch.nro dist-both/dw3-switch-both.nro
           cp build/switch-both-nxlink/dw3-switch-nxlink.nro dist-both/dw3-switch-both-nxlink.nro
+      - name: Save ccache
+        if: ${{ success() }}
+        uses: actions/cache/save@v4
+        with:
+          path: .ccache
+          key: ccache-switch-both-${{ github.sha }}
       - name: Upload combined .nro artifact
         uses: actions/upload-artifact@v4
         with:

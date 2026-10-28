@@ -1,5 +1,7 @@
 # Build
 /build/
+/build
+/.ccache/
 platforms/*/build/
 /out/
 *.o

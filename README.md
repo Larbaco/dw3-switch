@@ -187,7 +187,9 @@ Do not initialize nugget recursively
 (`tools/build_switch_game.sh`, needs devkitPro), crash symbolization and
 replay tests: [CONTRIBUTING.md](CONTRIBUTING.md),
 [platforms/switch/README.md](platforms/switch/README.md),
-[P6.15_REPLAY_TESTS](docs/P6.15_REPLAY_TESTS.md).
+[P6.15_REPLAY_TESTS](docs/P6.15_REPLAY_TESTS.md). Faster local builds and
+tests (`tools/build_pc.sh`, ccache, `--changed` replay selection):
+[BUILD_SPEED](docs/BUILD_SPEED.md).
 
 ## Controls
 
