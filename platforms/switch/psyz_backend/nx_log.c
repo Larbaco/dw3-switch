@@ -122,8 +122,14 @@ static Result log_copy(FsFileSystem *fs, const char *from, const char *to) {
  * boots), but each step's Result is kept for the log line written afterwards.
  * Runs once per process: a second call would rotate the fresh file. */
 static void log_rotate(FsFileSystem *fs) {
-    char from[48];
-    char to[48];
+    /* FS_MAX_PATH (0x301) bytes each, not just enough for the string: libnx
+     * hands the caller's pointer to the Fs service as a fixed 0x301-byte
+     * buffer. A shorter stack array makes the service read past it; at the
+     * top of the main thread's stack that is unmapped memory, which Ryubing
+     * reports as an Fs "Not mapped: size=0x301" crash right after boot (all
+     * the other fsFs* calls pass string literals in .rodata). */
+    char from[FS_MAX_PATH];
+    char to[FS_MAX_PATH];
     int n;
 
     if (s_rotate_done) {
