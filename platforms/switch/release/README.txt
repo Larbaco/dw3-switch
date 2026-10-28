@@ -1,6 +1,6 @@
 Digimon World 3 / 2003, Switch homebrew preview
 
-Release notes for v0.6.5-preview.48. The release tag and boot version
+Release notes for v0.6.5-preview.49. The release tag and boot version
 identify the actual source revision.
 
 Player guide (setup, controls, Options, saves, crash reports):
@@ -8,10 +8,40 @@ https://github.com/Larbaco/dw3-switch/blob/main/docs/PLAYER_GUIDE.md
 
 New in this preview
 
-  Except log rotation, no item below has been checked on a Switch OLED yet.
-  Each is checked on PC and in the Ryubing emulator only, and is marked
-  unverified. Log rotation (#296, #301) was confirmed on the OLED with
-  preview.45: dw3.1.log is kept and the rotated line shows rc=0x0.
+  The owner's OLED checks are recorded in docs/OLED_TEST_PLAN.md (rows marked
+  PASSED). Items that are not there yet are checked on PC and in the Ryubing
+  emulator only, and are marked unverified.
+
+  Stage sweep (P5.5, #320): opt-in. Set stage_sweep=1 in the region's
+  port_options.cfg (builds with the Cheats screen). The sweep loads all 237
+  stages in turn, logs a `dw3-sweep:` line per stage and a summary, resumes
+  after a crash and never writes saves. A run ends with `dw3-sweep: done`
+  (plan G10).
+
+  Item shop at 16:9 (#323, patch 0179, plan B18), with a widescreen log line
+  for it.
+
+  Items menu: selecting equipment does nothing. That is the original game,
+  not a port regression, and it is now logged (plan B19). Equip from
+  Status > Equipment.
+
+  Map view closes with the cancel button (Switch X, PS1 Triangle). Y inside
+  the view does nothing; it only opens the view (plan B20).
+
+  Combined .nro finds a disc image placed directly in sdmc:/switch/dw3/
+  (#325, fixes #322). The region is read from the executable in the image
+  (plans G9.11 to G9.13).
+
+  Map name box no longer jumps during right-stick zoom (#326): the box stays
+  where it was when the cursor reached the location (plan B16).
+
+  Options: Cheats is a scrolling sub-screen in the title menu's style
+  (P9.9 slice 2, #327, plan A13). Opening any Options group no longer costs a
+  50-80 ms rebuild; the group is drawn over a shared layer prepared ahead
+  (plan A10).
+
+  Walkthrough data layer (P6.35 phase 1, #328): the data and an English
+  draft only. There is no screen yet, so nothing changes on the screen.
 
   One .nro for US and EU (P6.24, #314, #316): dw3-switch-both.nro carries
   both games. It looks for the data under sdmc:/switch/dw3/us/ and
@@ -130,13 +160,12 @@ New in this preview
   options and saves now reach the log, and new proof lines match the OLED
   test plan items. Send the whole set of sdmc:/switch/dw3/dw3*.log files.
 
-  Still open (checked against the OLED test plan and the owner's preview.47
-  log): the app name (#289, look only), the full-screen map view's balloon,
-  cursor and zoom (plan B16; it was not opened in the preview.47 log), the EU
-  language select at 16:9 (plan E1.6b, needs an EU run), the audio check after
-  many techs on the EU build (#188, plan D13), and the items_partner_switch=0
-  sub-check of the partner cycle (plan G8). Log rotation (#296, #301) was
-  confirmed on the OLED with preview.45.
+  Still open on the OLED (checked against the OLED test plan and the owner's
+  preview.47 log): the EU language select at 16:9 (plan E1.6b, needs an EU
+  run), the audio check after many techs on the EU build (#188, plan D13), the
+  combined .nro (plan G9), the map mod (plan B17), save writes with HOME (plan
+  G2), the new items of preview.49 (plans B18, B19, B20 and G10), and the name
+  box staying put during zoom (#326, plan B16).
 
 Known issues
 
@@ -158,10 +187,10 @@ Known issues
   "applet focus" lines do not appear in dw3.log (OLED, rc7). Rumble is
   still unverified on hardware.
 
-  In-game Options: the first frame after the open took about 93 ms on the
-  Switch in preview.45. preview.47 aims for under 20 ms (plan B15b), not
-  measured on the OLED yet. The map HUD strip covers the top of the map at
-  1.00x. EU audio after many techs is still open (#188, plan D13).
+  In-game Options: the first frame after the open is 27 to 28 ms on the
+  Switch with preview.47 (it was 93 ms in preview.45); the owner accepts the
+  feel (plan B15b). The map HUD strip covers the top of the map at 1.00x.
+  EU audio after many techs is still open (#188, plan D13).
 
 Carried forward
 

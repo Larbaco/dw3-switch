@@ -96,6 +96,15 @@ static char g_mods_dir[480];
 /* The scaler the next open starts with: nearest (the owner's choice after the
  * OLED look of preview.45), then whatever the player left it on. */
 static int g_scaler = MV_SCALER_NEAREST;
+
+/* 1: the cursor and the balloon keep the size they have at zoom 1.0 while the
+ * map zooms (positions follow the map). DW3_MAP_SPRITES_FIXED=0 gives the old
+ * look (they scale with the map), for comparisons. */
+static int sprites_fixed(void) {
+    const char *v = getenv("DW3_MAP_SPRITES_FIXED");
+
+    return !(v && v[0] == '0');
+}
 /* The right stick's vertical axis, -127..127, up positive, with the dead zone
  * taken out; fed by the hosts every frame (dw3_map_view_set_zoom_stick). */
 static int g_zoom_stick;
@@ -1033,6 +1042,12 @@ static void open_view(const void *sheet, int sheet_file, int half, int home_x,
             "markers=%d home=%d,%d turbo=%d\n", half, s.base.w, s.base.h,
             s.source == 1 ? "cache" : "vram", (int)(now_ms() - t0), s.nspots,
             s.home_x, s.home_y, dw3_port_turbo_speed());
+    fprintf(stderr, "dw3-map: sprites at %s (scale 1/Z, Z = zoom, reference zoom "
+            "1.0 = %.2f px per source px; the reveal layer, the lit towns and "
+            "visited areas, scales with the map; the name box is the game's own "
+            "window)\n", sprites_fixed() ? "fixed size" : "map scale (fixed size "
+            "off: DW3_MAP_SPRITES_FIXED=0)",
+            (double)dw3_mv_view_scale(1, s.base.w, s.base.h, VW, VH));
     build_texture(g_scaler);
     hud_touch();
 }
@@ -1341,24 +1356,22 @@ int dw3_port_map_view_frame(const void *sheet, int sheet_file, int half,
 
 /* --- host side -------------------------------------------------------------*/
 
-static void add_sprite(Dw3MapViewDraw *d, int bank, int px, int py, float rx0,
-                       float ry0, float rx1, float ry1) {
+static void add_sprite(Dw3MapViewDraw *d, int bank, int px, int py) {
     const MvImage *b;
-    float fx, fy;
-    int ix, iy;
+    float x0, y0, x1, y1;
 
     if (bank < 0 || bank >= DW3_MV_BANK_N || !s.bank[bank].rgba ||
         d->nspr >= DW3_MV_SPRITES) return;
     b = &s.bank[bank];
-    ix = px + b->ox - s.box.x0;
-    iy = py + b->oy - s.box.y0;
-    fx = (rx1 - rx0) / (float)s.base.w;
-    fy = (ry1 - ry0) / (float)s.base.h;
+    /* anchor = the sprite's origin in map pixels; offset and size follow */
+    dw3_mv_sprite_rect(&s.view, s.base.w, s.base.h, VW, VH,
+                       (float)(px - s.box.x0), (float)(py - s.box.y0), b->ox,
+                       b->oy, b->w, b->h, sprites_fixed(), &x0, &y0, &x1, &y1);
     d->spr[d->nspr].bank = bank;
-    d->spr[d->nspr].x0 = (rx0 + fx * (float)ix) / (float)VW;
-    d->spr[d->nspr].y0 = (ry0 + fy * (float)iy) / (float)VH;
-    d->spr[d->nspr].x1 = (rx0 + fx * (float)(ix + b->w)) / (float)VW;
-    d->spr[d->nspr].y1 = (ry0 + fy * (float)(iy + b->h)) / (float)VH;
+    d->spr[d->nspr].x0 = x0 / (float)VW;
+    d->spr[d->nspr].y0 = y0 / (float)VH;
+    d->spr[d->nspr].x1 = x1 / (float)VW;
+    d->spr[d->nspr].y1 = y1 / (float)VH;
     ++d->nspr;
 }
 
@@ -1393,13 +1406,11 @@ void dw3_map_view_get_draw(Dw3MapViewDraw *d) {
         cursor_draw_pos(&cx, &cy);
         a = s.cursor_anim;
         if (a < 0 || a > 2) a = 0;
-        add_sprite(d, (s.hover > 0 ? BK_HOVER : BK_CURSOR) + a, cx, cy, x0, y0,
-                   x1, y1);
+        add_sprite(d, (s.hover > 0 ? BK_HOVER : BK_CURSOR) + a, cx, cy);
         a = s.home_anim;
         if (a < 0 || a > 2) a = 0;
         add_sprite(d, (s.home_alt > 0 && s.bank[BK_HOME_ALT].rgba ?
-                       BK_HOME_ALT : BK_HOME) + a, s.home_sx, s.home_sy, x0, y0,
-                   x1, y1);
+                       BK_HOME_ALT : BK_HOME) + a, s.home_sx, s.home_sy);
         if (s.hole) {
             const int g = dw3_port_widescreen_menu_shift();
             const int oy = s.name_bottom ? 0xB4 : 0x14;

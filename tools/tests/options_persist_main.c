@@ -89,6 +89,7 @@ static void nav(int reg) {
     int g, k, want_g = -1, want_k = 0, ids[DW3_OPTGRP_COUNT], n, idx = 0;
 
     for (g = 0; g < DW3_OPTGRP_COUNT && want_g < 0; g++) {
+        if (g == DW3_OPTGRP_CHEATS) continue;
         for (k = 0; k < dw3_optgroups[g].nrows; k++) {
             if (dw3_optgroups[g].rows[k] == reg) {
                 want_g = g;

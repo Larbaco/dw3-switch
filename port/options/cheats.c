@@ -16,6 +16,7 @@
  * count are not kept between runs. */
 #include "port_cheats.h"
 #include "port_options.h"
+#include "port_options_groups.h"
 #include "cheats_internal.h"
 #include "memcard_host.h"
 
@@ -44,6 +45,7 @@ static int g_item_count = 10;                /* and its count */
 static int g_give_armed;    /* Give item: ready, this run only */
 static int g_open;
 static int g_cursor;
+static int g_scroll; /* first row on screen (the sub-screen scrolls) */
 static int g_marked_saves;  /* counted when the screen opens */
 static int g_game_marked;   /* a cheat changed the game in progress */
 static int g_battle_serial; /* battles started this run */
@@ -253,23 +255,21 @@ int dw3_cheats_is_open(void) {
     return g_open;
 }
 
+/* P9.9: the Cheats group is a scrolling sub-screen of the Options list (ten
+ * rows, six on screen); the view holds every row, the cursor is the row. */
 static void ch_push_view(void) {
 #if !defined(DW3_PORT_OPTIONS_TEST) && defined(DW3_TITLE_NATIVE_OVERLAY)
     int values[DW3_TITLE_OPTION_ROWS];
-    int page = g_cursor / DW3_CHEAT_PAGE_ROWS;
     int i;
 
-    /* The view holds the rows of the page on screen; the cursor is the
-     * row's place on it. */
+    g_scroll = dw3_optlist_scroll_for(g_scroll, g_cursor, DW3_CHEAT_ROWS);
     for (i = 0; i < DW3_TITLE_OPTION_ROWS; i++) {
-        values[i] = i < DW3_CHEAT_PAGE_ROWS
-                        ? dw3_cheats_value(page * DW3_CHEAT_PAGE_ROWS + i) : 0;
+        values[i] = i < DW3_CHEAT_ROWS ? dw3_cheats_value(i) : 0;
     }
     dw3_pc_title_overlay_set_options_page(
-        page ? DW3_TITLE_OPTIONS_PAGE_CHEATS2 : DW3_TITLE_OPTIONS_PAGE_CHEATS,
-        g_master);
-    dw3_pc_title_overlay_set_options_view(g_cursor % DW3_CHEAT_PAGE_ROWS,
-                                          values, DW3_TITLE_OPTION_ROWS);
+        dw3_optlist_page(DW3_OPTGRP_CHEATS, g_scroll), g_master);
+    dw3_pc_title_overlay_set_options_view(g_cursor, values,
+                                          DW3_TITLE_OPTION_ROWS);
 #endif
 }
 
@@ -280,6 +280,7 @@ void dw3_cheats_open(void) {
     }
     g_open = 1;
     g_cursor = 0;
+    g_scroll = 0;
     g_marked_saves = dw3_cheat_saves_count(0);
     CHEAT_INFO("dw3-cheats: open (master %s, fill bag %s, instant win %s, "
                "battle now %s, %d marked save(s))",

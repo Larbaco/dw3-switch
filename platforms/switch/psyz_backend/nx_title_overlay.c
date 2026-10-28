@@ -271,7 +271,7 @@ static void timing_note(const Dw3OptionsDirty *d, uint32_t compose_us,
         TITLE_LOG("dw3-title-overlay: options update #%u %s rects=%d bytes=%u "
                   "compose=%u us upload=%u us",
                   s_timing.session_updates,
-                  d->rebuilt ? "rebuild" : d->cached ? "cached" : d->full ? "full" : "dirty", d->count,
+                  d->rebuilt ? "rebuild" : d->based ? "group-over-base" : d->cached ? "cached" : d->full ? "full" : "dirty", d->count,
                   (unsigned)d->bytes, compose_us, upload_us);
     } else {
         s_timing.batch++;

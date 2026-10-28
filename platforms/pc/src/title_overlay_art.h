@@ -17,6 +17,9 @@ enum {
     DW3_TITLE_OPTIONS_FOCUS = 2,
     DW3_TITLE_OPTIONS_VALUE = 3,
     DW3_TITLE_OPTIONS_DESCRIPTION = 4,
+    /* P9.9: the label of one idle row, on the sub-screens whose labels change
+     * with a value (Cheats: greyed while the master switch is off). */
+    DW3_TITLE_OPTIONS_LABEL = 5,
 };
 /* Draw a single Options component into its clipped bounds on the retained
  * 960x720 canvas. The selected row/value are used only by their layer. */
@@ -74,7 +77,7 @@ int dw3_pc_title_overlay_footer_shown(void);
  * two volumes 0..10, Encounter rate 0..4 = 1x / 0.5x / OFF / 1.5x / 2x, Text
  * speed 0..2 = Normal / Fast / Instant, Battle cursor 0..2 = OFF / Command /
  * Command+Tech, Auto-save 0/1 = OFF / On area change). */
-enum { DW3_TITLE_OPTION_ROWS = 9 };
+enum { DW3_TITLE_OPTION_ROWS = 10 };
 void dw3_pc_title_overlay_set_options_view(int cursor, const int *values,
                                            int count);
 /* P9.7: the Options screen opened from the field menu greys the rows that
@@ -94,6 +97,15 @@ unsigned dw3_pc_title_overlay_options_layout(void);
  * draw the layout a menu will open with before it is open. */
 void dw3_pc_title_overlay_options_static_band(uint8_t *rgba, int pitch,
         unsigned locked, int page, int cheats_on, int y, int h);
+/* The same layer in two parts (page SUB_BASE: the part shared by every group,
+ * page = a group page: part 1 shared, part 2 the group's own, over a canvas that
+ * holds the shared part; clear = 0 keeps the canvas). A group's layer is then a
+ * copy of the shared layer plus a header, a few plaques and labels, not a raster
+ * of the whole screen. */
+void dw3_pc_title_overlay_options_static_part(uint8_t *rgba, int pitch,
+        unsigned locked, int page, int cheats_on, int part, int y, int h, int clear);
+/* 1 when `page` is a group's sub-screen (not the group list). */
+int dw3_pc_title_overlay_options_is_group_page(int page);
 /* Live page / cheats switch. */
 int dw3_pc_title_overlay_options_cheats_on(void);
 int dw3_pc_title_overlay_options_page(void);
@@ -106,24 +118,26 @@ int dw3_pc_title_overlay_options_cursor(void);
 int dw3_pc_title_overlay_options_value(int row);
 /* Which page the Options screen shows (port_options_groups.h dw3_optlist_page):
  * PAGE_OPTIONS = the list of groups, a larger code = a group's sub-screen (its
- * rows, scrolled), P6.20 PAGE_CHEATS / PAGE_CHEATS2 = the Cheats screen (the
- * Options window of P9.2: five rows). cheats_on = the cheats master switch:
- * the Cheats group is listed while it is on, and on the Cheats pages it dims
- * rows 1..4 while it is off. The Cheats pages' view values are the cheat rows
- * (port_cheats.h: master, Fill bag, Instant win, Battle now, marked saves 0..6;
- * page 2: Money (0..3), Warp (0 OFF, 1..13), the item id, the item count and
- * Give item (0/1)). On a list page the view's cursor is the item's index in the
- * whole list (not its place on screen) and the values are those of the group's
- * rows in screen order (a group list ignores them). A change rebuilds the
- * retained static layer. */
-enum { DW3_TITLE_OPTIONS_PAGE_OPTIONS = 0, DW3_TITLE_OPTIONS_PAGE_CHEATS = 1,
-       DW3_TITLE_OPTIONS_PAGE_CHEATS2 = 2 };
-enum { DW3_TITLE_CHEAT_ROWS = 5, DW3_TITLE_CHEAT_PAGES = 2, DW3_TITLE_CHEAT_WARPS = 13 };
+ * rows, scrolled). The Cheats group (P6.20) is such a sub-screen since P9.9:
+ * ten rows, six on screen, its view values are the cheat rows (port_cheats.h:
+ * master, Fill bag, Instant win, Battle now, marked saves 0..6, Money (0..3),
+ * Warp (0 OFF, 1..13), the item id, the item count and Give item (0/1)).
+ * cheats_on = the cheats master switch: the Cheats group is listed while it is
+ * on, and on its own sub-screen it greys rows 1..9 while it is off. On a list
+ * page the view's cursor is the item's index in the whole list (not its place
+ * on screen) and the values are those of the group's rows in screen order (a
+ * group list ignores them). A change rebuilds the retained static layer, except
+ * the master switch on the Cheats sub-screen, which is a dirty-row update. */
+enum { DW3_TITLE_OPTIONS_PAGE_OPTIONS = 0,
+       /* Never shown: the cache's layer shared by every group sub-screen. */
+       DW3_TITLE_OPTIONS_PAGE_SUB_BASE = 1 };
+enum { DW3_TITLE_CHEAT_WARPS = 13 };
 void dw3_pc_title_overlay_set_options_page(int page, int cheats_on);
 /* Layout of a page for the retained cache. kind: the rectangle of a plaque
  * (with its halo), of its value cell, or of the message strip; `slot` is the
  * plaque's place on screen (the strip ignores it). */
-enum { DW3_OPTRECT_ROW = 0, DW3_OPTRECT_VALUE = 1, DW3_OPTRECT_DESC = 2 };
+enum { DW3_OPTRECT_ROW = 0, DW3_OPTRECT_VALUE = 1, DW3_OPTRECT_DESC = 2,
+       DW3_OPTRECT_ARROW_UP = 3, DW3_OPTRECT_ARROW_DOWN = 4 };
 void dw3_pc_title_overlay_options_rect(int page, int kind, int slot, int *x,
         int *y, int *w, int *h);
 /* scroll = first visible item, items = items in the list, slots = plaques that
@@ -132,4 +146,9 @@ void dw3_pc_title_overlay_options_page_info(int page, int cheats_on,
         int *scroll, int *items, int *slots);
 /* The bits of `locked` that change the static layer of `page`. */
 unsigned dw3_pc_title_overlay_options_lock_key(int page, unsigned locked);
+/* 1 when the labels of `page` are not in its static layer (drawn per row by
+ * DW3_TITLE_OPTIONS_LABEL), and the cheats switch is not part of its layer key. */
+int dw3_pc_title_overlay_options_dynamic_labels(int page);
+/* The page whose static layer `page` uses (the Cheats sub-screen: its offset 0). */
+int dw3_pc_title_overlay_options_static_page(int page);
 #endif

@@ -125,6 +125,14 @@ for _lang in EU_LANGS:
                                   r"(?s:.*)dw3-title-menu: no autosave\.bin: plaques New Game, Options, "
                                   r"Load Game \(slot list\), Quit game"),)))
 
+# Patch 0187: Cross (the confirm button) picks the language as well as Start;
+# the log names the button and the title follows.
+_add(Scenario("eu-lang-cross-fr", "eu", "full",
+              expect_log=((0, r"dw3-lang-select: language \d chosen by Cross \(confirm\)"
+                              r"(?s:.*)dw3-title-menu: no autosave\.bin: plaques New Game, Options, "
+                              r"Load Game \(slot list\), Quit game"),),
+              note="the EU language select confirms with Cross"))
+
 # Gameplay. DW3_TURBO=4 only changes pacing (field/fight modes); the replay
 # is frame-keyed, so captures do not depend on it.
 _add(
@@ -759,7 +767,10 @@ for _v, _ids in (("us", (0x159, 0x1FA, 0x1C2, 0x158, 0x1F9)),
                                   r"(?s:.*)dw3-map: name box hidden \(cursor on no location\)"
                                   r"(?s:.*)dw3-map: cursor at rest at \d+,\d+, location id=\1 name id=\1"
                                   r"(?s:.*)dw3-map: HUD off \(name box hidden\)"
-                                  r"(?s:.*)dw3-map: HUD on \(name box allowed\)"),),
+                                  r"(?s:.*)dw3-map: HUD on \(name box allowed\)"),
+                              # owner, preview.48: the cursor and the balloon keep one size
+                              (0, r"dw3-map: sprites at fixed size \(scale 1/Z, Z = zoom, "
+                                  r"reference zoom 1\.0 = [\d.]+ px per source px; the reveal layer"),),
                   forbid_log=((0, r"dw3-map: capture failed|NOTHING DRAWN|not drawn|MISSING"),),
                   note="Square opens the new full-screen map: balloon, cursor, name box, zoom, scaler cycle, back (patch 0146)"))
     # MOD map upscale: the same recording with a synthetic pack in the config
@@ -1005,7 +1016,7 @@ for _v, _field in (("us", 0x158), ("eu", 0x166)):
 # master-off twin where nothing may happen.
 _CHEAT_ON = (("cheat_enabled", "1"),)
 for _v in ("us", "eu"):
-    _add(Scenario(f"{_v}-cheats-screen", _v, "full", timeout=300, log_only=True,
+    _add(Scenario(f"{_v}-cheats-screen", _v, "full", timeout=300,
                   phases=(f"{_v}-cheats-screen-p1", f"{_v}-cheats-screen-p2"),
                   expect_log=((0, r"dw3-cheats: cheats off \(instant win off\)"),
                               (0, r"dw3-cheats: open \(master off, fill bag off, instant win off, "
@@ -1071,7 +1082,7 @@ for _v in ("us", "eu"):
 # master-off twin where nothing may happen.
 for _v in ("us", "eu"):
     _bag = (f"{_v}-cheat-fill-bag",)
-    _add(Scenario(f"{_v}-cheats-screen2", _v, "full", timeout=300, log_only=True,
+    _add(Scenario(f"{_v}-cheats-screen2", _v, "full", timeout=300,
                   phases=(f"{_v}-cheats-screen2",),
                   expect_log=((0, r"dw3-cheats: cheats off \(instant win off\)"),
                               (0, r"dw3-options: saved cheat_enabled=1(?s:.*)"

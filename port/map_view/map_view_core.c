@@ -790,6 +790,33 @@ void dw3_mv_view_rect(const MvView *v, int map_w, int map_h, int vw, int vh,
     *y1 = *y0 + (float)map_h * s;
 }
 
+float dw3_mv_sprite_factor(const MvView *v, int map_w, int map_h, int vw, int vh) {
+    /* the size at zoom 1.0 (step 1): the view the screen opens in and the size
+     * the game draws them at on the PS1 */
+    float ref = dw3_mv_view_scale(1, map_w, map_h, vw, vh);
+    float cur = dw3_mv_view_cur_scale(v, map_w, map_h, vw, vh);
+
+    if (cur <= 0.0f) return 1.0f;
+    return ref / cur;
+}
+
+void dw3_mv_sprite_rect(const MvView *v, int map_w, int map_h, int vw, int vh,
+                        float ax, float ay, int ox, int oy, int w, int h,
+                        int fixed, float *x0, float *y0, float *x1, float *y1) {
+    float rx0, ry0, rx1, ry1;
+    float s = dw3_mv_view_cur_scale(v, map_w, map_h, vw, vh);
+    float k = fixed ? dw3_mv_sprite_factor(v, map_w, map_h, vw, vh) : 1.0f;
+    float px, py;
+
+    dw3_mv_view_rect(v, map_w, map_h, vw, vh, &rx0, &ry0, &rx1, &ry1);
+    px = rx0 + s * ax;
+    py = ry0 + s * ay;
+    *x0 = px + s * k * (float)ox;
+    *y0 = py + s * k * (float)oy;
+    *x1 = px + s * k * (float)(ox + w);
+    *y1 = py + s * k * (float)(oy + h);
+}
+
 /* --- cache ---------------------------------------------------------------*/
 
 #define MV_CACHE_MAGIC 0x4D335744u /* "DW3M" little-endian */

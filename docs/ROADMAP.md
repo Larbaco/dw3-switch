@@ -62,8 +62,9 @@ highest non-empty tier.
 
 ### Tier 2 — UI base (in this order)
 
-1. [P9.9](PORT_OPTIONS.md): finish the Cheats screen restyle and the remaining
-   sub-screens.
+1. [P9.9](PORT_OPTIONS.md): the Cheats screen restyle is done (slice 2, 2026-10-28,
+   PR open, OLED pending); the remaining sub-screens (Controls, Help, Walkthrough)
+   come with their features.
 2. Controls bundle, done together because they touch the same menus:
    [P6.12](#phase-6-goal-notes) remapping, [P9.8](HOTKEYS.md) A/B layout and
    [P10.6](TEXTURE_PACKS.md) Switch glyphs. Design: [CONTROLS_BUNDLE](CONTROLS_BUNDLE.md).
@@ -138,7 +139,7 @@ listed once, in [Pending OLED checks](#pending-oled-checks).
 | P6.15 | Regression replay tests | in progress | [P6.15](P6.15_REPLAY_TESTS.md) |
 | P6.17 | Music / SFX volume | done (owner confirmed on the OLED, 2026-10-24) | [P6.17](P6.17_VOLUME.md) |
 | P6.18 | Pacing options | in progress (Instant text works; Instant banner and report speed #223; rest of the check open) | [P6.18](P6.18_PACING.md) |
-| P6.20 | Port debug / cheat menu in the Options screen | in progress (PR 1 merged, #236: Cheats screen; PR 2, #248: money, give item and warp on page 2, in review; OLED checks open) | [roadmap](#phase-6-goal-notes), [PORT_OPTIONS](PORT_OPTIONS.md) |
+| P6.20 | Port debug / cheat menu in the Options screen | in progress (PR 1 merged, #236: Cheats screen; PR 2, #248: money, give item and warp on page 2, in review; 2026-10-28: the screen is now a scrolling sub-screen of the P9.9 list, same rows and behaviour; OLED checks open) | [roadmap](#phase-6-goal-notes), [PORT_OPTIONS](PORT_OPTIONS.md) |
 | P6.22 | Turbo speed in scripted scenes | in progress (CPU rasterizer is ~97 % of a field frame; pixel-identical rasterizer 4-5x faster, #220; pass 2 #263 skips drawing frames that won't be shown; pass 3 built 2026-10-28, PR open: textured triangles ~1.6x faster, mixer thread on core 1, `pace dbg:` line; turbo in the intro confirmed on the OLED 2026-10-27, preview.41; Forest Inn and the frame lines still open) | [P6.22](P6.22_FIELD_CPU.md), [roadmap](#phase-6-goal-notes), [P6.4](P6.4_FAST_FORWARD.md) |
 | P6.23 | Documentation: player guide, docs index, contributor and modder docs (future goal) | in progress (slice 1 done: player guide and docs index; slice 2: `CONTRIBUTING.md` and a pytest for all doc links, PR open; modder docs open) | [PLAYER_GUIDE](PLAYER_GUIDE.md), [docs index](README.md), [roadmap](#phase-6-goal-notes) |
 | P6.24 | One build for US and EU: one `.nro` and one PC binary, region found at boot, a boot picker with both discs (**owner priority 2026-10-28, Tier 0**; P6.25 and P6.26 are built) | built and shipped in preview.48 (`dw3-switch-both.nro`, #316 Switch; `dw3-pc` with both game copies, #314 PC); OLED check G9.x open; the separate US and EU `.nro` still ship; the Switch stop-gap launcher `dw3.nro` is a CI artifact only (slice 2) | [SINGLE_BUILD](SINGLE_BUILD.md#as-built-slice-1), [slice 2](SINGLE_BUILD.md#as-built-slice-2-the-switch-launcher), [slice 3](SINGLE_BUILD.md#as-built-slice-3-the-dual-image-link-pc), [roadmap](#phase-6-goal-notes) |
@@ -174,7 +175,7 @@ listed once, in [Pending OLED checks](#pending-oled-checks).
 | P9.6 | External save converter | open | — |
 | P9.7 | Port options reachable in game | in progress (slice 1, the field menu, and slice 2, battle: built, PC US and EU replays, Switch Ryubing nx scenarios; live Widescreen open; owner OLED checks open) | [PORT_OPTIONS](PORT_OPTIONS.md#options-in-game-p97), [roadmap](#phase-9--port-options-menu) |
 | P9.8 | Confirm / cancel layout option (PS positional or Nintendo A/B) (future goal; design written 2026-10-28) | future | [roadmap](#phase-9--port-options-menu), [CONTROLS_BUNDLE](CONTROLS_BUNDLE.md), [HOTKEYS](HOTKEYS.md) |
-| P9.9 | Options screen redesign in the title menu's style, room for more rows (slice 1 done 2026-10-27: groups and sub-screens; OLED pending; Cheats screen restyle, Controls, Help, Walkthrough follow) | slice 1 in review | [roadmap](#phase-9--port-options-menu), [PORT_OPTIONS](PORT_OPTIONS.md) |
+| P9.9 | Options screen redesign in the title menu's style, room for more rows (slice 1 done 2026-10-27: groups and sub-screens; OLED pending; slice 2 done 2026-10-28: Cheats screen restyled as a scrolling sub-screen and value changes are dirty-row updates; Controls, Help, Walkthrough follow) | slices 1 and 2 in review | [roadmap](#phase-9--port-options-menu), [PORT_OPTIONS](PORT_OPTIONS.md) |
 | P10.1 | Switch features goal note | done | [SWITCH_FEATURES](SWITCH_FEATURES.md) |
 | P10.2 | Lifecycle hardening (has P5.3's leftover) | in progress (sleep and resume: owner confirmed on the OLED, 2026-10-24; HOME during a save write: atomic write, exit gate and `dw3-save:` log lines done, OLED check open) | [SWITCH_FEATURES](SWITCH_FEATURES.md) |
 | P10.3 | Presentation modes | open | — |
@@ -192,7 +193,7 @@ the history. Tick the item in the table once the owner confirms every part of
 its done-when. The ordered session plan (written for preview.36) is
 [OLED_TEST_PLAN](OLED_TEST_PLAN.md).
 
-- **Owner preview.47 US log (2026-10-28): PASSED** A5, A7, A9-A12, C7, E1.3, E2.1, E2.2, G8 (the `items_partner_switch=0` sub-check of G8 not done) and B15b; marks and log evidence are in [OLED_TEST_PLAN](OLED_TEST_PLAN.md). Owner confirmed on the OLED (2026-10-28, preview.47/48): app name #289 shows "Digimon World 3 NX" (**PASSED**); B16 map view icons, balloon and cursor work (**PASSED**), except the name box jumping while zooming with the right stick, fixed in the branch `fix/map-namebox-stick-zoom` (the placement is latched when the cursor gets on a location, as the game does; retest B16 with the stick on a location). Still open: E1.6b (needs an EU run), D13 #188.
+- **Owner preview.47 US log (2026-10-28): PASSED** A5, A7, A9-A12, C7, E1.3, E2.1, E2.2, G8 (the `items_partner_switch=0` sub-check of G8 not done) and B15b; marks and log evidence are in [OLED_TEST_PLAN](OLED_TEST_PLAN.md). Owner confirmed on the OLED (2026-10-28, preview.47/48): app name #289 shows "Digimon World 3 NX" (**PASSED**); B16 map view icons, balloon and cursor work (**PASSED**), except the name box jumping while zooming with the right stick, fixed in the branch `fix/map-namebox-stick-zoom` (the placement is latched when the cursor gets on a location, as the game does; retest B16 with the stick on a location). **Owner preview.48 EU OLED log (2026-10-28):** E1.6b EU language select 16:9 **PASSED by log** (`dw3-widescreen: gutter 53 px per side (was -1; 16:9) mode file 0x165 frame 1`; no 4:3 seen). G9 combined `.nro`: the both-present picker, the button choice and the "always" save **PASSED by log** (`data found us=1 eu=1`, `picker shown (default entry us, timeout 3000 ms)`, `picker result eu by button A after 19473 ms always=1`, `saved last_region=eu region_default=eu`, `running eu`); the 3 s timeout did not fire because the owner moved the cursor first, which cancels the countdown by design (`dw3_picker_step`), so G9.3's timeout, the only-US, only-EU, Minus and disc-in-parent rows stay open. B16: the name-box jitter was not reproduced on preview.48 (fix #326 ships in preview.49 anyway). Not tested in that session: D13 #188 (one Techniques command only; the audio health line was healthy, 0 underruns, 0 key-on failed, voices max 23 of 24), B17 map mod (no mods folder on the SD), G2 save + HOME (no `dw3-save` line). **Owner feedback fixed in `fix/p48-feedback`:** the EU language select also confirms with the confirm button (patch 0187, E1.6c) and the full-screen map keeps the cursor and the balloon at one on-screen size while zooming ([P6.32 section 11](P6.32_MAP_ZOOM.md#11-fixed-size-overlay-sprites-owner-preview48-oled); retest B16). Still open: D13 #188.
 - **P5 gate:** start → first boss on hardware, US and EU. The Phase 5 gate is
   not met yet (owner, 2026-10-24); see [Phase 5](#phase-5--playable-on-switch).
 - **P5.5:** the stage sweep on the OLED, US and EU: `stage_sweep=1` in
@@ -201,7 +202,7 @@ its done-when. The ordered session plan (written for preview.36) is
 - **P6.1:** **Item shop (B18, patch 0179):** the owner saw it still in 4:3 on preview.47 (panels had stayed in the middle 320 columns); panels now hang from the 16:9 edges, and the log says which gutter the shop ran with (`dw3-widescreen: screen STITSHOP ...`). Pending OLED. 16:9 for the map screen, results header, save slot picker, title
   menu, news caption bar, registration screen (patches 0080-0082, 0085-0087),
   and the Items menu and field menu screens (0075, 0076, 0074). US and EU. The
-  banner and technique backdrops: EU still to do. The intro news caption bar at 16:9 is confirmed (owner, 2026-10-27, preview.41). **Pending preview.47:** the EU language select at 16:9 (patch 0177, E1.6b). **New (0115):** the area-change iris and grid cover (walk through a door or exit: the view should close from the full 16:9 picture, the grid cover covering the whole picture, no map shifted back after it closes); **New (0175):** the encounter spiral swirl now covers the 16:9 picture (enter a random battle at turbo off and at 2x, 3x and 4x: the gutters must not go black on the swirl's first frame and its tiles must slide off across the full width; B12 of the [OLED test plan](OLED_TEST_PLAN.md)). **New (0100-0104):** the
+  banner and technique backdrops: EU still to do. The intro news caption bar at 16:9 is confirmed (owner, 2026-10-27, preview.41). The EU language select at 16:9 (patch 0177, E1.6b) is **PASSED** by the preview.48 log. **New (0115):** the area-change iris and grid cover (walk through a door or exit: the view should close from the full 16:9 picture, the grid cover covering the whole picture, no map shifted back after it closes); **New (0175):** the encounter spiral swirl now covers the 16:9 picture (enter a random battle at turbo off and at 2x, 3x and 4x: the gutters must not go black on the swirl's first frame and its tiles must slide off across the full width; B12 of the [OLED test plan](OLED_TEST_PLAN.md)). **New (0100-0104):** the
   card album and deck editor (from Card folders: all their panels, the card
   details, the list of cards owned), the card shop (Buy One Card; Open Booster
   was not captured), the gym and the Digimon Lab (menu, party, digivolve). US
@@ -1379,9 +1380,17 @@ PS1 game, with vanilla-safe defaults and persistence on owner storage.
   label (and, since the sub-screens show them, the row labels, values and message
   lines) is in en / fr / de / es / it; a list of more than six items scrolls
   (not used yet). Details: [PORT_OPTIONS](PORT_OPTIONS.md#groups-and-sub-screens-p99).
-  **Still open:** OLED validation (OLED_TEST_PLAN A5, A9 to A12); the Cheats
-  screen keeps the old window (restyle it with the owner's answer on the dark
-  tone); Controls (P6.12), Help (P6.30) and Walkthrough (P6.35) are hidden
+  **Slice 2 (2026-10-28):** the Cheats screen (P6.20, both pages) is a sub-screen
+  of the list in the same style (ten rows, six on screen, it scrolls; rows,
+  keys and behaviour unchanged; title only); the master switch, a scroll step, a
+  cursor move and a value change are dirty-row updates; **slice 3:** opening a
+  group is made over a prewarmed shared layer (the preview.47 log showed the
+  `rebuild ... compose=48-81 ms` lines came from every first group open, not from
+  value changes, which were already `dirty`; +5.3 MB of cache); PC replays
+  `cheats-screen`/`cheats-screen2` US and EU now compare pictures; the stage
+  sweep (P5.5) has no row on that screen, it is a config key. Details:
+  [PORT_OPTIONS](PORT_OPTIONS.md#cheats-sub-screen-p99-slice-2).
+  **Still open:** OLED validation (OLED_TEST_PLAN A5, A9 to A13); Controls (P6.12), Help (P6.30) and Walkthrough (P6.35) are hidden
   placeholders in `port_options_groups.h`; the open questions below are answered
   by defaults (Cheats group listed only with the master switch on; the plain dim of
   the title backdrop, deeper in game; no fallback to the old window). Original
@@ -2290,6 +2299,7 @@ Statuses are in the [table](#status-at-a-glance).
   10](P6.32_MAP_ZOOM.md#10-the-balloon-the-cursor-and-the-name-box-owner-after-preview45)).
   **Owner OLED (preview.45, 2026-10-28):** the map shows and Nearest is the preferred scaler. Not confirmed, pending preview.47: the balloon, the cursor and the name box.
   Open: OLED look (left-stick feel, core-2 worker), the other EU languages.
+  **Owner OLED (preview.48, 2026-10-28):** icons, balloon and cursor were giant at the top zoom; they now keep the size they have at zoom 1.0 while their positions follow the map, the reveal layer still scales with it ([P6.32 section 11](P6.32_MAP_ZOOM.md#11-fixed-size-overlay-sprites-owner-preview48-oled), log `dw3-map: sprites at fixed size`). Pending OLED (B16).
   Done when (proposed): the new map screen opens from the Map screen on US and
   EU on PC and the Switch, zooms and pans over the full image, shows the
   game's area names, the default is bit-identical, and the P6.15 map replay

@@ -378,9 +378,10 @@ for index, (entry, cheat) in enumerate(ENTRIES):
         # Fixed advance: the glyph keeps its own side bearing.
         image = Image.new('L', (advance, bounds[3]-bounds[1]))
         ImageDraw.Draw(image).text((0, -bounds[1]), text, font=font, fill=255)
-    limit = (LIMITS['grp'] if name.startswith('opt_grp_') else LIMITS['row'] if name.startswith('opt_row') else
-             LIMITS['val'] if name.startswith('opt_val_') else
-             LIMITS['desc'] if name.startswith(('opt_desc', 'opt_grpdesc', 'opt_lock')) else None)
+    limit = (LIMITS['grp'] if name.startswith('opt_grp_') else LIMITS['row'] if name.startswith(('opt_row', 'opt_cht_row')) else
+             LIMITS['val'] if name.startswith(('opt_val_', 'opt_cht_warp', 'opt_cht_ready', 'opt_cht_none',
+                                               'opt_cht_m10k', 'opt_cht_m100k', 'opt_cht_mmax')) else
+             LIMITS['desc'] if name.startswith(('opt_desc', 'opt_grpdesc', 'opt_lock', 'opt_cht_desc')) else None)
     if limit is not None and image.width > limit:
         TOO_WIDE.append('%s is %d px wide (limit %d): %r' % (name, image.width, limit, text))
     pixels = image.tobytes()

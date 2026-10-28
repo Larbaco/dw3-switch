@@ -24,7 +24,7 @@ static unsigned dialog_language_generation;
 static int option_cursor;
 static int option_values[DW3_TITLE_OPTION_ROWS];
 enum { OPTIONS_LAYER_FULL, OPTIONS_LAYER_STATIC, OPTIONS_LAYER_FOCUS,
-       OPTIONS_LAYER_VALUE, OPTIONS_LAYER_DESCRIPTION };
+       OPTIONS_LAYER_VALUE, OPTIONS_LAYER_DESCRIPTION, OPTIONS_LAYER_LABEL };
 static _Thread_local int options_layer = OPTIONS_LAYER_FULL;
 static _Thread_local int options_layer_row;
 /* The static layer's version: bumped when the page, the cheats master switch
@@ -44,6 +44,10 @@ static int options_cheats_on;
 static _Thread_local int ovr_on;
 static _Thread_local unsigned ovr_locked;
 static _Thread_local int ovr_page,ovr_cheats;
+/* Which part of a sub-screen's static layer is drawn: 0 all, 1 the part shared by
+ * every group (backdrop, message strip, hints), 2 the part of the open group
+ * (header, plaques, labels) over a canvas that holds the shared part. */
+static _Thread_local int static_part;
 #define ELOCKED (ovr_on?ovr_locked:options_locked)
 #define EPAGE (ovr_on?ovr_page:options_page)
 #define ECHEATS (ovr_on?ovr_cheats:options_cheats_on)
@@ -184,18 +188,41 @@ void dw3_pc_title_overlay_set_options_locked(unsigned mask) {
 }
 unsigned dw3_pc_title_overlay_options_locked(void) { return options_locked; }
 unsigned dw3_pc_title_overlay_options_layout(void) { return options_layout; }
+int dw3_pc_title_overlay_options_dynamic_labels(int page) {
+#ifdef DW3_CHEATS
+    int group,scroll;
+    return dw3_optlist_decode(page,&group,&scroll)&&group==DW3_OPTGRP_CHEATS;
+#else
+    (void)page;
+    return 0;
+#endif
+}
+/* The page whose static layer `page` shows: the Cheats sub-screen scrolls over
+ * one layer (its plaques are the same at every offset; labels and arrows are
+ * drawn per update), the other pages have a layer per scroll offset. */
+int dw3_pc_title_overlay_options_is_group_page(int page) {
+    int group,scroll;
+    return dw3_optlist_decode(page,&group,&scroll)&&group>=0;
+}
+int dw3_pc_title_overlay_options_static_page(int page) {
+    return dw3_pc_title_overlay_options_dynamic_labels(page)?dw3_optlist_page(DW3_OPTGRP_CHEATS,0):page;
+}
 void dw3_pc_title_overlay_set_options_page(int page,int cheats_on) {
     int group,scroll;
-#ifdef DW3_CHEATS
-    const int cheats_page=page==DW3_TITLE_OPTIONS_PAGE_CHEATS||page==DW3_TITLE_OPTIONS_PAGE_CHEATS2;
-#else
-    const int cheats_page=0;
-#endif
-    if(!cheats_page&&!dw3_optlist_decode(page,&group,&scroll))page=DW3_TITLE_OPTIONS_PAGE_OPTIONS;
+    if(!dw3_optlist_decode(page,&group,&scroll))page=DW3_TITLE_OPTIONS_PAGE_OPTIONS;
     cheats_on=cheats_on?1:0;
-    if(page!=options_page||cheats_on!=options_cheats_on){
+    if(page!=options_page){
+        const int relayout=dw3_pc_title_overlay_options_static_page(page)!=
+                           dw3_pc_title_overlay_options_static_page(options_page);
         options_page=page;options_cheats_on=cheats_on;
-        options_layout++;options_generation++;
+        if(relayout)options_layout++;
+        options_generation++;
+    }else if(cheats_on!=options_cheats_on){
+        /* The master switch on the Cheats sub-screen only greys labels, which
+         * are drawn per row: a dirty-row update, not a new static layer. */
+        options_cheats_on=cheats_on;
+        if(!dw3_pc_title_overlay_options_dynamic_labels(page))options_layout++;
+        options_generation++;
     }
 }
 
@@ -300,7 +327,7 @@ static const Word *lock_lang(void) {
      CHEAT_WARP(l,12)}}
 typedef struct CheatWords {
     Word title,hint,change,back,ready,none,title2;
-    Word rows[DW3_TITLE_CHEAT_PAGES*DW3_TITLE_CHEAT_ROWS],desc[DW3_TITLE_CHEAT_PAGES*DW3_TITLE_CHEAT_ROWS];
+    Word rows[10],desc[10];
     Word warp[DW3_TITLE_CHEAT_WARPS];
 } CheatWords;
 static const CheatWords cheat_words[5]={CHEAT_WORDS(en),CHEAT_WORDS(fr),CHEAT_WORDS(de),
@@ -308,12 +335,8 @@ static const CheatWords cheat_words[5]={CHEAT_WORDS(en),CHEAT_WORDS(fr),CHEAT_WO
 static const CheatWords *cheat_lang(void) {
     return &cheat_words[options_lang>=DW3_TITLE_LANG_EN&&options_lang<=DW3_TITLE_LANG_IT?options_lang:0];
 }
-/* The Cheats page: the Options window, its own title, five rows (master,
- * Fill bag, Instant win, Battle now, marked saves), the same focus box,
- * message line and hints, in the language of the disc. While the master
- * switch is off rows 1..4 are greyed. Same layers as options_screen. */
 /* A number of the Give item rows: the digits (fixed advance), right edge at x. */
-static void number(int v,int x,int y,int r,int g,int b) {
+static void number_plain(int v,int x,int y,int r,int g,int b) {
     static const Word digits[10]={WORD(opt_cht_d0),WORD(opt_cht_d1),WORD(opt_cht_d2),WORD(opt_cht_d3),
                                   WORD(opt_cht_d4),WORD(opt_cht_d5),WORD(opt_cht_d6),WORD(opt_cht_d7),
                                   WORD(opt_cht_d8),WORD(opt_cht_d9)};
@@ -322,80 +345,27 @@ static void number(int v,int x,int y,int r,int g,int b) {
     for(int k=0,div=n==3?100:n==2?10:1;k<n;k++,div/=10)
         word(&digits[(v/div)%10],x-(n-k)*adv,y,0,r,g,b);
 }
-static void cheats_screen(void) {
+/* The same with the title menu's one pixel dark shadow. */
+static void number(int v,int x,int y,int r,int g,int b) {
+    number_plain(v,x+1,y+2,2,7,19);
+    number_plain(v,x,y,r,g,b);
+}
+/* The value of cheat row `row` (port_cheats.h): a word, or NULL for the two
+ * numbers (item id, count). *dim = 1 for an OFF-like value. */
+static const Word *cheat_value(const CheatWords *t,int row,int v,int *dim) {
     static const Word values[]={WORD(opt_off),WORD(opt_on)};
     static const Word money[]={WORD(opt_off),WORD(opt_cht_m10k),WORD(opt_cht_m100k),WORD(opt_cht_mmax)};
     static const Word steps[]={WORD(opt_n1),WORD(opt_n2),WORD(opt_n3),WORD(opt_n4),WORD(opt_n5),
                                WORD(opt_n6),WORD(opt_n7),WORD(opt_n8),WORD(opt_n9),WORD(opt_n10)};
-    const CheatWords *t=cheat_lang();
-    const int x0=OPT_X0,y0=OPT_Y0,w=OPT_W,h=OPT_H,x1=x0+w,y1=y0+h;
-    const int full=options_layer==OPTIONS_LAYER_FULL;
-    const int draw_static=full||options_layer==OPTIONS_LAYER_STATIC;
-    const int page2=EPAGE==DW3_TITLE_OPTIONS_PAGE_CHEATS2;
-
-    if(draw_static) {
-    box(0,0,960,720,0,0,16,150);
-    box(x0+6,y0+8,w,h,0,0,8,150);
-    box(x0,y0,w,h,255,255,255,255);
-    box(x0+w-3,y0+3,3,h-3,181,181,181,255);box(x0+3,y0+h-3,w-3,3,181,181,181,255);
-    box(x0+9,y0+9,w-18,h-18,49,49,49,255);
-    box(x0+15,y0+15,w-30,h-30,58,58,148,255);
-    box(x0+18,y0+18,w-36,h-36,0,0,49,255);
-    {
-        const int a=y0+36,xs=x0+500;
-        box(x0+30,a,xs-x0-30,3,0,66,156,255);box(x0+30,a+6,xs-x0-24,3,0,66,156,255);
-        segment(xs,a+1.5f,xs+30,a+31.5f,1.6f,0,66,156);
-        segment(xs+6,a+7.5f,xs+30,a+31.5f,1.6f,0,66,156);
-        box(xs+30,a+30,x1-30-xs-30,3,0,66,156,255);
-        word(page2?&t->title2:&t->title,xs+48,a+2-t->title.top,0,255,255,255);
-    }
-    }
-    for(int i=0;i<DW3_TITLE_CHEAT_ROWS;i++) {
-        const int row=page2*DW3_TITLE_CHEAT_ROWS+i;
-        const int ry=OPT_ROW_Y+i*OPT_ROW_STEP,focus=i==option_cursor;
-        const int grey=row>0&&!ECHEATS;
-        int v=option_values[i];
-        const Word *value;
-        int dim;
-        if(focus&&(full||options_layer==OPTIONS_LAYER_FOCUS)){
-            box(x0+48,ry-6,w-96,OPT_ROW_H,16,74,156,255);
-            box(x0+51,ry-3,w-102,OPT_ROW_H-6,0,8,74,255);
-            pointer(x0+66,ry+1);
-        }
-        if(draw_static||(options_layer==OPTIONS_LAYER_FOCUS&&i==options_layer_row))
-            word(&t->rows[row],x0+106,ry-2,0,grey?150:255,grey?158:255,grey?196:255);
-        if(v<0)v=0;
-        if(row==4){
-            if(v>10)v=10;
-            value=v?&steps[v-1]:&t->none;dim=v==0;
-        }else if(row==1||row==3||row==9){
-            value=v?&t->ready:&values[0];dim=v==0;
-        }else if(row==5){
-            if(v>3)v=3;
-            value=&money[v];dim=v==0;
-        }else if(row==6){
-            if(v>DW3_TITLE_CHEAT_WARPS)v=DW3_TITLE_CHEAT_WARPS;
-            value=v?&t->warp[v-1]:&values[0];dim=v==0;
-        }else if(row==7||row==8){
-            value=NULL;dim=0;
-        }else{
-            value=&values[v?1:0];dim=v==0;
-        }
-        if(grey)dim=1;
-        if(full||(options_layer==OPTIONS_LAYER_VALUE&&i==options_layer_row)){
-            if(value)word(value,x1-96,ry-2,1,dim?150:255,dim?158:255,dim?196:255);
-            else number(v,x1-96,ry-2,grey?150:255,grey?158:255,grey?196:255);
-        }
-    }
-    if(draw_static)box(x0+30,y1-152,w-60,3,16,156,247,255);
-    if((full||options_layer==OPTIONS_LAYER_DESCRIPTION)&&
-       option_cursor>=0&&option_cursor<DW3_TITLE_CHEAT_ROWS)
-        word(&t->desc[page2*DW3_TITLE_CHEAT_ROWS+option_cursor],x0+48,y1-128,0,255,255,255);
-    if(draw_static) {
-        const int hy=y1-74,bx=x1-48-t->back.w,cx=bx-36-t->change.w-60;
-        button(cx,hy+12,0);word(&t->change,cx+22,hy,0,255,255,255);
-        button(bx-22,hy+12,1);word(&t->back,bx,hy,0,255,255,255);
-        box(x0+30,y1-36,w-60,3,0,66,156,255);
+    if(v<0)v=0;
+    *dim=v==0;
+    switch(row){
+    case 4:if(v>10)v=10;return v?&steps[v-1]:&t->none;
+    case 1:case 3:case 9:return v?&t->ready:&values[0];
+    case 5:if(v>3)v=3;*dim=v==0;return &money[v];
+    case 6:if(v>DW3_TITLE_CHEAT_WARPS)v=DW3_TITLE_CHEAT_WARPS;*dim=v==0;return v?&t->warp[v-1]:&values[0];
+    case 7:case 8:*dim=0;return NULL;
+    default:return &values[v?1:0];
     }
 }
 #endif
@@ -419,10 +389,6 @@ enum { L_ROW_X = 152, L_ROW_W = 656, L_ROW_Y0 = 116, L_ROW_PITCH = 66,
        L_ROWPLQ_X = 160, L_ROWPLQ_W = 640, L_VAL_X = 500, L_VAL_W = 260,
        L_DESC_X = 120, L_DESC_Y = 532, L_DESC_W = 720, L_DESC_H = 60,
        L_HEAD_Y = 40 };
-/* The cheats pages keep the Options window of P9.2-P9.7 (its geometry). */
-enum { C_ROW_X = 132, C_ROW_Y = 150, C_ROW_W = 696, C_ROW_H = 34, C_ROW_STEP = 38,
-       C_VAL_X = 560, C_VAL_W = 268, C_DESC_Y = 524, C_DESC_H = 52 };
-
 /* Does the clipped area touch this rectangle? (a draw skips work it would clip) */
 static int clip_hits(int x,int y,int w,int h) {
     return x<clip_x1&&x+w>clip_x0&&y<clip_y1&&y+h>clip_y0;
@@ -566,6 +532,7 @@ static const GroupWords *group_lang(int group) {
  * locked in game (Display: Widescreen) greys its plaque. */
 static unsigned group_row_mask(int group) {
     unsigned m=0;
+    if(group==DW3_OPTGRP_CHEATS)return 0; /* cheat rows, not registry rows */
     for(int k=0;k<dw3_optgroups[group].nrows;k++)m|=1u<<dw3_optgroups[group].rows[k];
     return m;
 }
@@ -622,25 +589,32 @@ static void options_list_screen(int group,int scroll) {
     const int full=options_layer==OPTIONS_LAYER_FULL;
     const int draw_static=full||options_layer==OPTIONS_LAYER_STATIC;
     const int on_groups=group<0;
+#ifdef DW3_CHEATS
+    const int cht=group==DW3_OPTGRP_CHEATS; /* P6.20 rows: their own words and values */
+#else
+    const int cht=0;
+#endif
     int ids[DW3_OPTGRP_COUNT];
     const int n=on_groups?dw3_optgroups_visible(ECHEATS,ids):dw3_optgroups[group].nrows;
     const unsigned locked=ELOCKED;
     const int cursor=options_layer==OPTIONS_LAYER_STATIC?-1:option_cursor;
+    const int shared=static_part!=2,specific=static_part!=1;
 
     if(draw_static) {
         /* The title backdrop stays, dimmed; the logo and the menu are gone.
          * Over the field or a battle (a locked mask means in game) the dim is
          * deeper: the menu behind must not read through the plaques. */
-        box(0,0,960,720,0,0,16,locked?DIM_IN_GAME:DIM_TITLE);
+        if(shared)box(0,0,960,720,0,0,16,locked?DIM_IN_GAME:DIM_TITLE);
         /* Header plaque: OPTIONS, or the name of the open group. */
-        options_plaque(L_GRP_X,L_HEAD_Y,L_GRP_W,0,0);
-        {
+        if(specific)options_plaque(L_GRP_X,L_HEAD_Y,L_GRP_W,0,0);
+        if(specific){
             const Word *name=on_groups?&t->title:&group_lang(group)->name;
             plaque_word(name,480,L_HEAD_Y+(on_groups?8:9),255,198,98); /* one baseline for every word */
         }
-        if(scroll>0)arrow(480,L_ROW_Y0-10,1);
-        if(scroll+DW3_OPTLIST_VISIBLE<n)arrow(480,L_ROW_Y0+DW3_OPTLIST_VISIBLE*L_ROW_PITCH-8,0);
+        if(specific&&!cht&&scroll>0)arrow(480,L_ROW_Y0-10,1);
+        if(specific&&!cht&&scroll+DW3_OPTLIST_VISIBLE<n)arrow(480,L_ROW_Y0+DW3_OPTLIST_VISIBLE*L_ROW_PITCH-8,0);
         /* Message strip frame, then the button hints. */
+        if(shared){
         plaque(L_DESC_X+1,L_DESC_Y+4,L_DESC_W,L_DESC_H,6,0,3,10,0,3,10,190);
         plaque(L_DESC_X,L_DESC_Y,L_DESC_W,L_DESC_H,6,99,149,196,17,40,77,255);
         plaque(L_DESC_X+2,L_DESC_Y+2,L_DESC_W-4,L_DESC_H-4,5,5,16,39,13,29,57,255);
@@ -651,6 +625,7 @@ static void options_list_screen(int group,int scroll) {
             button(cx,hy+12,0);wordsh(act,cx+22,hy,0,255,255,255);
             button(bx-22,hy+12,1);wordsh(&t->back,bx,hy,0,255,255,255);
             box(L_DESC_X,666,L_DESC_W,3,0,66,156,255);
+        }
         }
     }
     for(int s=0;s<DW3_OPTLIST_VISIBLE;s++) {
@@ -663,17 +638,27 @@ static void options_list_screen(int group,int scroll) {
         if(a>=n)break;
         if(!clip_hits(L_ROW_X,slot_y(s),L_ROW_W,L_ROW_PITCH))continue;
         reg=on_groups?-1:dw3_optgroups[group].rows[a];
-        lock=on_groups?group_locked(ids[a],locked):(int)((locked>>reg)&1u);
+        lock=on_groups?group_locked(ids[a],locked):cht?0:(int)((locked>>reg)&1u);
         label=on_groups?&group_lang(ids[a])->name
               :row_kind(reg)==ROW_AUTOSAVE?&autosave_lang()->row:&t->row[reg];
+#ifdef DW3_CHEATS
+        if(cht){
+            /* Rows 1..9 are inert (greyed) while the master switch is off. */
+            label=&cheat_lang()->rows[reg];
+            lock=reg>0&&!ECHEATS;
+        }
+#endif
         /* STATIC: every plaque idle. FULL: the idle plaque, and the lit one over
          * it for the focused row. FOCUS: the lit plaque and its label again
          * over the restored idle one. The label comes after the plaque. */
         const int lit=focus&&options_layer!=OPTIONS_LAYER_STATIC&&
                       (full||options_layer==OPTIONS_LAYER_FOCUS);
-        if(draw_static)options_plaque(px,py,pw,!on_groups,0);
+        if(draw_static&&specific)options_plaque(px,py,pw,!on_groups,0);
         if(lit)options_plaque(px,py,pw,!on_groups,1);
-        if(draw_static||lit){
+        /* Cheats labels follow the master switch, so they are not in the static
+         * layer: FULL, FOCUS and LABEL draw them (title_options_cache.c). */
+        if((draw_static&&specific&&(!cht||full))||lit||
+           (cht&&options_layer==OPTIONS_LAYER_LABEL&&a==options_layer_row)){
             const int cr=lock?(lit?150:110):(lit?236:181);
             const int cg=lock?(lit?158:118):(lit?247:219);
             const int cb=lock?(lit?190:160):255;
@@ -682,10 +667,23 @@ static void options_list_screen(int group,int scroll) {
         }
         if(on_groups)continue;
         if(full||(options_layer==OPTIONS_LAYER_VALUE&&a==options_layer_row)) {
+#ifdef DW3_CHEATS
+            if(cht)value=cheat_value(cheat_lang(),reg,option_values[a],&dim);
+            else
+#endif
             value=list_value(t,reg,option_values[a],&dim);
             if(lock)dim=2; /* P9.7: greyer than an OFF value */
-            wordsh(value,px+pw-58,py+9,1,dim==2?120:dim?150:255,dim==2?128:dim?158:255,dim==2?170:dim?196:255);
+            if(value)wordsh(value,px+pw-58,py+9,1,dim==2?120:dim?150:255,dim==2?128:dim?158:255,dim==2?170:dim?196:255);
+#ifdef DW3_CHEATS
+            else number(option_values[a],px+pw-58,py+9,dim==2?120:255,dim==2?128:255,dim==2?170:255);
+#endif
         }
+    }
+    /* The Cheats sub-screen scrolls, and its arrows are drawn last (per update,
+     * not in the static layer): FULL, and LABEL with no row. */
+    if(cht&&(full||(options_layer==OPTIONS_LAYER_LABEL&&options_layer_row<0))) {
+        if(scroll>0)arrow(480,L_ROW_Y0-10,1);
+        if(scroll+DW3_OPTLIST_VISIBLE<n)arrow(480,L_ROW_Y0+DW3_OPTLIST_VISIBLE*L_ROW_PITCH-8,0);
     }
     /* The message line of the focused item: a locked one says why. */
     if((full||options_layer==OPTIONS_LAYER_DESCRIPTION)&&cursor>=0&&cursor<n) {
@@ -693,6 +691,10 @@ static void options_list_screen(int group,int scroll) {
         if(on_groups)d=group_locked(ids[cursor],locked)?lock_lang():&group_lang(ids[cursor])->desc;
         else {
             const int reg=dw3_optgroups[group].rows[cursor];
+#ifdef DW3_CHEATS
+            if(cht)d=&cheat_lang()->desc[reg];
+            else
+#endif
             d=(locked>>reg)&1u?lock_lang():row_kind(reg)==ROW_AUTOSAVE?&autosave_lang()->desc:&t->desc[reg];
         }
         wordsh(d,L_DESC_X+28,L_DESC_Y+14,0,255,255,255);
@@ -700,9 +702,6 @@ static void options_list_screen(int group,int scroll) {
 }
 static void options_screen(void) {
     int group=-1,scroll=0;
-#ifdef DW3_CHEATS
-    if(EPAGE==DW3_TITLE_OPTIONS_PAGE_CHEATS||EPAGE==DW3_TITLE_OPTIONS_PAGE_CHEATS2){cheats_screen();return;}
-#endif
     if(!dw3_optlist_decode(EPAGE,&group,&scroll)){group=-1;scroll=0;}
     options_list_screen(group,scroll);
 }
@@ -861,7 +860,7 @@ void dw3_pc_title_overlay_options_component(uint8_t *rgba,int pitch,
     const int old_cursor=option_cursor;
     const int old_value=(row>=0&&row<DW3_TITLE_OPTION_ROWS)?option_values[row]:0;
     if(!rgba||pitch<960*4||layer<OPTIONS_LAYER_STATIC||
-       layer>OPTIONS_LAYER_DESCRIPTION||x<0||y<0||w<=0||h<=0||
+       layer>OPTIONS_LAYER_LABEL||x<0||y<0||w<=0||h<=0||
        x+w>960||y+h>720)return;
     canvas=rgba;stride=pitch;
     clip_x0=x;clip_y0=y;clip_x1=x+w;clip_y1=y+h;
@@ -885,20 +884,27 @@ void dw3_pc_title_overlay_options_component(uint8_t *rgba,int pitch,
  * y..y+h-1, cleared first. Same pixels as options_component(STATIC) under
  * that layout; safe to call from the worker thread while the main thread
  * draws (only thread-local state is written). */
-void dw3_pc_title_overlay_options_static_band(uint8_t *rgba,int pitch,
-        unsigned locked,int page,int cheats_on,int y,int h) {
+void dw3_pc_title_overlay_options_static_part(uint8_t *rgba,int pitch,
+        unsigned locked,int page,int cheats_on,int part,int y,int h,int clear) {
     if(!rgba||pitch<960*4||y<0||h<=0||y+h>720)return;
+    if(page==DW3_TITLE_OPTIONS_PAGE_SUB_BASE){page=dw3_optlist_page(DW3_OPTGRP_DISPLAY,0);part=1;}
     ovr_on=1;ovr_locked=locked;ovr_page=page;ovr_cheats=cheats_on;
+    static_part=part;
     canvas=rgba;stride=pitch;
     clip_x0=0;clip_y0=y;clip_x1=960;clip_y1=y+h;
-    for(int j=y;j<y+h;j++)memset(rgba+(size_t)j*pitch,0,960*4);
+    if(clear)for(int j=y;j<y+h;j++)memset(rgba+(size_t)j*pitch,0,960*4);
     options_layer=OPTIONS_LAYER_STATIC;
     options_layer_row=-1;
     options_screen();
     options_layer=OPTIONS_LAYER_FULL;
     options_layer_row=0;
     clip_x0=clip_y0=0;clip_x1=960;clip_y1=720;
+    static_part=0;
     ovr_on=0;
+}
+void dw3_pc_title_overlay_options_static_band(uint8_t *rgba,int pitch,
+        unsigned locked,int page,int cheats_on,int y,int h) {
+    dw3_pc_title_overlay_options_static_part(rgba,pitch,locked,page,cheats_on,0,y,h,1);
 }
 int dw3_pc_title_overlay_options_cheats_on(void) {
     return options_cheats_on;
@@ -911,31 +917,20 @@ int dw3_pc_title_overlay_options_page(void) {
  * the plaques on screen (a list scrolls: slot s shows item scroll + s). */
 void dw3_pc_title_overlay_options_page_info(int page,int cheats_on,int *scroll,int *items,int *slots) {
     int group,sc;
-    if(dw3_optlist_decode(page,&group,&sc)) {
-        *scroll=sc;
-        *items=dw3_optlist_count(group,cheats_on);
-        *slots=DW3_OPTLIST_VISIBLE;
-    } else { /* a Cheats page: the Options window's five rows */
-        *scroll=0;
-        *items=*slots=5;
-    }
+    if(!dw3_optlist_decode(page,&group,&sc)){group=-1;sc=0;}
+    *scroll=sc;
+    *items=dw3_optlist_count(group,cheats_on);
+    *slots=DW3_OPTLIST_VISIBLE;
 }
 void dw3_pc_title_overlay_options_rect(int page,int kind,int slot,int *x,int *y,int *w,int *h) {
-    int group,sc;
-    if(dw3_optlist_decode(page,&group,&sc)) {
-        const int ry=slot_y(slot);
-        switch(kind) {
-        case DW3_OPTRECT_ROW:*x=L_ROW_X;*y=ry;*w=L_ROW_W;*h=L_ROW_PITCH;break;
-        case DW3_OPTRECT_VALUE:*x=L_VAL_X;*y=ry+L_PLQ_DY;*w=L_VAL_W;*h=L_PLQ_H;break;
-        default:*x=L_DESC_X;*y=L_DESC_Y;*w=L_DESC_W;*h=L_DESC_H;break;
-        }
-    } else {
-        const int ry=C_ROW_Y+C_ROW_STEP*slot;
-        switch(kind) {
-        case DW3_OPTRECT_ROW:*x=C_ROW_X;*y=ry;*w=C_ROW_W;*h=C_ROW_H;break;
-        case DW3_OPTRECT_VALUE:*x=C_VAL_X;*y=ry;*w=C_VAL_W;*h=C_ROW_H;break;
-        default:*x=C_ROW_X;*y=C_DESC_Y;*w=C_ROW_W;*h=C_DESC_H;break;
-        }
+    const int ry=slot_y(slot);
+    (void)page;
+    switch(kind) {
+    case DW3_OPTRECT_ROW:*x=L_ROW_X;*y=ry;*w=L_ROW_W;*h=L_ROW_PITCH;break;
+    case DW3_OPTRECT_VALUE:*x=L_VAL_X;*y=ry+L_PLQ_DY;*w=L_VAL_W;*h=L_PLQ_H;break;
+    case DW3_OPTRECT_ARROW_UP:*x=464;*y=L_ROW_Y0-12;*w=32;*h=12;break;
+    case DW3_OPTRECT_ARROW_DOWN:*x=464;*y=L_ROW_Y0+DW3_OPTLIST_VISIBLE*L_ROW_PITCH-8;*w=32;*h=10;break;
+    default:*x=L_DESC_X;*y=L_DESC_Y;*w=L_DESC_W;*h=L_DESC_H;break;
     }
 }
 /* The part of the locked mask that changes the static layer of `page`, so a
@@ -944,6 +939,7 @@ unsigned dw3_pc_title_overlay_options_lock_key(int page,unsigned locked) {
     int group,sc;
     /* In game (a locked mask) the backdrop is dimmed deeper: bit 31 keeps those layers apart. */
     const unsigned in_game=locked?1u<<31:0;
+    if(page==DW3_TITLE_OPTIONS_PAGE_SUB_BASE)return in_game;
     if(!dw3_optlist_decode(page,&group,&sc))return 0;
     if(group<0)return in_game|(locked&(DW3_TITLE_LOCK_CHEATS|group_row_mask(DW3_OPTGRP_DISPLAY)|
                                        group_row_mask(DW3_OPTGRP_SOUND)|group_row_mask(DW3_OPTGRP_GAMEPLAY)|
