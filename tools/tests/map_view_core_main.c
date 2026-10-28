@@ -207,6 +207,48 @@ static void test_namebox_stick_zoom(void) {
     CHECK(dw3_mv_namebox_bottom(&nb, 4, 10.0f) == 0, "location to location keeps it (as the game)");
 }
 
+/* P6.32 (owner OLED, preview.48): the cursor and the balloon keep one
+ * on-screen size while the map zooms; their anchor follows the map. */
+static void test_fixed_sprites(void) {
+    const int mw = 392, mh = 352, vw = 1280, vh = 720;
+    const float ax = 100.0f, ay = 120.0f; /* anchor in map pixels */
+    const int ox = -8, oy = -8, w = 16, h = 16; /* a 16x16 sprite centred on it */
+    float zooms[4] = {1.0f, 1.5f, 2.0f, 3.0f};
+    float x0, y0, x1, y1, rx0, ry0, rx1, ry1, k, sc, w1 = 0.0f;
+    int i;
+    MvView v;
+
+    memset(&v, 0, sizeof(v));
+    for (i = 0; i < 4; ++i) {
+        v.step = 1;
+        v.zoom = zooms[i] == 1.0f ? 0.0f : zooms[i];
+        v.cx = ax; v.cy = ay; /* view centred on the anchor, then clamped */
+        dw3_mv_view_clamp(&v, mw, mh, vw, vh);
+        sc = dw3_mv_view_cur_scale(&v, mw, mh, vw, vh);
+        k = dw3_mv_sprite_factor(&v, mw, mh, vw, vh);
+        CHECK(fabsf(k - 1.0f / zooms[i]) < 1e-4f, "k = 1/Z at %.1f: %f", (double)zooms[i], (double)k);
+        dw3_mv_sprite_rect(&v, mw, mh, vw, vh, ax, ay, ox, oy, w, h, 1, &x0, &y0, &x1, &y1);
+        dw3_mv_view_rect(&v, mw, mh, vw, vh, &rx0, &ry0, &rx1, &ry1);
+        /* the sprite's centre is the anchor's place on the map picture */
+        CHECK(fabsf((x0 + x1) * 0.5f - (rx0 + sc * ax)) < 1e-2f, "x follows the map");
+        CHECK(fabsf((y0 + y1) * 0.5f - (ry0 + sc * ay)) < 1e-2f, "y follows the map");
+        /* one size at every zoom: 16 source px at the zoom 1.0 scale */
+        if (i == 0) w1 = x1 - x0;
+        CHECK(fabsf((x1 - x0) - w1) < 1e-2f && fabsf((y1 - y0) - w1) < 1e-2f,
+              "size is constant: %f vs %f", (double)(x1 - x0), (double)w1);
+        CHECK(fabsf(w1 - 16.0f * dw3_mv_view_scale(1, mw, mh, vw, vh)) < 1e-2f, "size at 1.0");
+        /* off: the sprite scales with the map */
+        dw3_mv_sprite_rect(&v, mw, mh, vw, vh, ax, ay, ox, oy, w, h, 0, &x0, &y0, &x1, &y1);
+        CHECK(fabsf((x1 - x0) - 16.0f * sc) < 1e-2f, "unfixed scales with the map");
+    }
+    /* FIT: the factor is 1/Z with Z < 1, so the sprite is as big as at 1.0 */
+    memset(&v, 0, sizeof(v));
+    v.cx = ax; v.cy = ay;
+    dw3_mv_view_clamp(&v, mw, mh, vw, vh);
+    dw3_mv_sprite_rect(&v, mw, mh, vw, vh, ax, ay, ox, oy, w, h, 1, &x0, &y0, &x1, &y1);
+    CHECK(fabsf((x1 - x0) - w1) < 1e-2f, "size at FIT equals size at 1.0");
+}
+
 static void test_disc(void) {
     static uint8_t file[4096];
     uint16_t *vram = (uint16_t *)calloc((size_t)MV_VRAM_W * MV_VRAM_H, 2);
@@ -416,6 +458,7 @@ int main(int argc, char **argv) {
     test_hash();
     test_smooth_zoom();
     test_namebox_stick_zoom();
+    test_fixed_sprites();
     test_cache(argc > 1 ? argv[1] : "/mnt/cabal/tmp");
     if (!g_fail) printf("OK: map view core\n");
     return g_fail;

@@ -339,6 +339,7 @@ add_library(dw3_port_options${_S} OBJECT
   "${CMAKE_CURRENT_SOURCE_DIR}/options/battle_options.c"
   "${CMAKE_CURRENT_SOURCE_DIR}/options/confirm.c"
   "${CMAKE_CURRENT_SOURCE_DIR}/options/field_options.c"
+  "${CMAKE_CURRENT_SOURCE_DIR}/options/lang_select.c"
   "${CMAKE_CURRENT_SOURCE_DIR}/options/options_cfg.c"
   "${CMAKE_CURRENT_SOURCE_DIR}/options/port_options.c"
   "${CMAKE_CURRENT_SOURCE_DIR}/options/restart.c"

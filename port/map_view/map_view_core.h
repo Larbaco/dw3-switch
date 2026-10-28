@@ -132,6 +132,24 @@ void dw3_mv_view_zoom(MvView *v, int dir, int map_w, int map_h, int vw, int vh);
 void dw3_mv_view_rect(const MvView *v, int map_w, int map_h, int vw, int vh,
                       float *x0, float *y0, float *x1, float *y1);
 
+/* --- fixed-size overlay sprites ------------------------------------------
+ * The game's sprites that sit on the map (the cursor, the balloon) are small
+ * images in source pixels. A plain zoom would scale them with the map (3x at
+ * the top step: giants). Their POSITIONS follow the map, their SIZES stay as at
+ * zoom 1.0, the view the screen opens in (and the PS1 size): the sprite is scaled
+ * about its anchor by k = scale(1.0) / cur_scale = 1/Z (Z = the logical zoom;
+ * 1 at 1.0, 1/3 at the top step, above 1 below 1.0 down to FIT). The reveal layer (lit towns, visited areas) is part of the map
+ * picture and keeps scaling with it. */
+float dw3_mv_sprite_factor(const MvView *v, int map_w, int map_h, int vw, int vh);
+/* The sprite's rectangle in viewport pixels: the anchor is the map point
+ * (ax, ay) in map pixels (the image's own pixels), (ox, oy) the sprite's offset
+ * from the anchor in source pixels and (w, h) its size in source pixels. With
+ * `fixed` the offset and the size are scaled by k (above), else they zoom with
+ * the map. */
+void dw3_mv_sprite_rect(const MvView *v, int map_w, int map_h, int vw, int vh,
+                        float ax, float ay, int ox, int oy, int w, int h,
+                        int fixed, float *x0, float *y0, float *x1, float *y1);
+
 /* --- name box placement --------------------------------------------------
  * The game decides above / below ONCE, when the cursor gets on a location
  * (STSTATUS_showMapArea sets hoverY then and never again). The host mirrors

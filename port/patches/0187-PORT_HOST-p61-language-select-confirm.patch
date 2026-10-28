@@ -1,0 +1,58 @@
+Upstream-bound: no
+Subject: [PORT_HOST] P6.1 EU language select (CNTY_SEL) confirms with Cross as well as Start
+
+Owner OLED report (preview.48, EU): the language select only accepted Start
+(Plus), which is easy to miss. CNTY_SEL_tickMenu (MENU_SELECT) now also accepts
+PAD_CROSS, the game's logical confirm bit. The host maps the physical buttons
+before the engine reads the pad (psyz_pad_host.c), so this follows the future
+button remap (P6.12 / P9.8, docs/CONTROLS_BUNDLE.md) with no change here. Start
+keeps working and wins when both arrive on the same frame. The decision is
+dw3_port_lang_select_confirm (port/options/lang_select.c, unit tested) and one
+log line per choice: `dw3-lang-select: language N chosen by <Start|Cross
+(confirm)>`. The US disc has no language select; the mode is never entered.
+
+--- a/src/menus/country_select/country_select.c
++++ b/src/menus/country_select/country_select.c
+@@ -1,4 +1,7 @@
+ #include "menus/country_select.h"
++#if PORT_HOST
++#include "port_lang_select.h"
++#endif
+ 
+ RECT CNTY_SEL_screenRect = {0, 0, SCREEN_WIDTH, SCREEN_HEIGHT};
+ RECT CNTY_SEL_vramRect = {0, 0, 1024, 512};
+@@ -505,6 +508,9 @@
+    pick an option with Up and Down until Start, which in the European version sets
+    LANGUAGE; then flashes it, closes the panels, fades out and moves on to the next mode */
+ void CNTY_SEL_tickMenu(CountryMenuTask *task, MenuChildren *children) {
++#if PORT_HOST
++    int confirmed;
++#endif
+     switch (task->state) {
+     case TASK_INIT:
+     default:
+@@ -554,7 +560,14 @@
+             task->nextSubstate(task);
+             break;
+         case MENU_SELECT:
++#if PORT_HOST
++            /* port (patch 0187): the game's confirm button (logical Cross) picks
++               the language too, so a Switch player is not forced to reach for Plus */
++            confirmed = dw3_port_lang_select_confirm(PAD_PRESSED(PAD_START), PAD_PRESSED(PAD_CROSS));
++            if (confirmed != DW3_LANG_CONFIRM_NONE) {
++#else
+             if (PAD_PRESSED(PAD_START)) {
++#endif
+                 SOUND.playSound(SOUND_MENU_CONFIRM);
+                 children->cursor->setState(children->cursor, TASK_DONE);
+                 task->nextSubstate(task);
+@@ -562,6 +575,9 @@
+ #if VERSION_EU
+                 LANGUAGE = CNTY_SEL_languages[task->selection];
+ #endif
++#if PORT_HOST && VERSION_EU
++                dw3_port_lang_select_chosen(LANGUAGE, confirmed);
++#endif
+             } else {
+                 moveSelection(task);
+             }
