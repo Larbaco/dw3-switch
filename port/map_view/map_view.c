@@ -57,13 +57,37 @@ typedef struct MapViewState {
     int nspots;
     int spot_x[47], spot_y[47];
     unsigned frame;
+    /* the game's own sprites on the map (bank_build) */
+    MvImage bank[DW3_MV_BANK_N];
+    int bank_ok;
+    unsigned bank_gen;
+    /* the cursor, in sprite space (the game's map space), and the locations */
+    int home_sx, home_sy;       /* the home mark, sprite space */
+    int home_spot;              /* the spot id of the current area, 0 = none */
+    int all_x[47], all_y[47];   /* every spot, sprite space */
+    int vis[47];                /* vis[i]: spot i is visited (i >= 1) */
+    int cur_x, cur_y;
+    int hover;                  /* spot under the cursor, 0 = none */
+    int hold_x, hold_y;         /* frames each axis has been held */
+    int was_moving;
+    int cursor_anim, home_anim;
+    int hover_x;                /* the cursor's x when it got on the location */
+    int home_alt;               /* the balloon faces the other way (EU) */
+    int name_x0, name_y0, name_x1, name_y1; /* the name box frame, logical */
+    int name_bottom;            /* the box is at the bottom (cursor in the top half) */
+    int hole;                   /* the game's name box is shown */
+    /* the CPU scalers on a worker thread */
+    int req_scaler;             /* the scaler asked for (shown on the HUD) */
+    struct MvJob *job;
+    int pending_scaler;         /* -1, or the scaler to start when the job ends */
+    unsigned job_id;
 } MapViewState;
 
 static MapViewState s;
 static char g_cache_dir[480];
-/* The scaler the next open starts with: sharp bilinear (the design's default),
- * then whatever the player left it on. */
-static int g_scaler = MV_SCALER_SHARP;
+/* The scaler the next open starts with: nearest (the owner's choice after the
+ * OLED look of preview.45), then whatever the player left it on. */
+static int g_scaler = MV_SCALER_NEAREST;
 /* The right stick's vertical axis, -127..127, up positive, with the dead zone
  * taken out; fed by the hosts every frame (dw3_map_view_set_zoom_stick). */
 static int g_zoom_stick;
@@ -195,6 +219,70 @@ static int compose_reveal(const uint16_t *vram, int sheet_file,
     return drawn;
 }
 
+/* The game's cursor and balloon: frames of the marks sheet (archive 2), drawn
+ * by STSTATUS_drawMapScreen with the cells' texture (0x300,0x100): 0x32 + the
+ * cursor animation frame (0, 1, 2) is the free cursor, 0x38 + it the cursor on
+ * a location, 0x35 + the home frame (0, 1, 2) the balloon of the current
+ * area and, on the EU version, 0x3B + it the same balloon turned the other
+ * way (when the cursor is on the home mark's right). Composed once per open
+ * from the live VRAM into small images, VRAM colour 0 transparent. */
+enum { BK_CURSOR = 0, BK_HOVER = 3, BK_HOME = 6, BK_HOME_ALT = 9 };
+static const int k_bank_frame[DW3_MV_BANK_N] = {
+    0x32, 0x33, 0x34, 0x38, 0x39, 0x3A, 0x35, 0x36, 0x37, 0x3B, 0x3C, 0x3D,
+};
+
+static void bank_free(void) {
+    int i;
+
+    for (i = 0; i < DW3_MV_BANK_N; ++i) dw3_mv_image_free(&s.bank[i]);
+    s.bank_ok = 0;
+}
+
+static int bank_build(const uint16_t *vram, int sheet_file, const void *sheet2) {
+    uint32_t len = sheet_len(sheet_file);
+    int i, built = 0;
+
+    bank_free();
+    if (!vram || !sheet2) return 0;
+    for (i = 0; i < DW3_MV_BANK_N; ++i) {
+        MvBox box;
+        MvImage *img = &s.bank[i];
+
+        if (dw3_mv_sheet_frame_box((const int32_t *)sheet2, len,
+                                   k_bank_frame[i], &box) != 0) continue;
+        img->w = box.x1 - box.x0;
+        img->h = box.y1 - box.y0;
+        if (img->w <= 0 || img->h <= 0 || img->w > 256 || img->h > 256) {
+            img->w = img->h = 0;
+            continue;
+        }
+        img->rgba = (uint8_t *)calloc((size_t)img->w * img->h, 4);
+        if (!img->rgba) {
+            img->w = img->h = 0;
+            continue;
+        }
+        img->ox = box.x0;
+        img->oy = box.y0;
+        if (dw3_mv_blit_frame(vram, (const int32_t *)sheet2, len,
+                              k_bank_frame[i], 0x300, 0x100, 0x140, 0x100, img,
+                              -box.x0, -box.y0) != 0) {
+            dw3_mv_image_free(img);
+            continue;
+        }
+        ++built;
+    }
+    s.bank_ok = s.bank[BK_CURSOR].rgba && s.bank[BK_HOVER].rgba &&
+                s.bank[BK_HOME].rgba;
+    ++s.bank_gen;
+    fprintf(stderr, "dw3-map: sprite bank: %d of %d frames built (cursor %s, "
+            "hover cursor %s, balloon %s, balloon turned %s)\n", built,
+            DW3_MV_BANK_N, s.bank[BK_CURSOR].rgba ? "ok" : "MISSING",
+            s.bank[BK_HOVER].rgba ? "ok" : "MISSING",
+            s.bank[BK_HOME].rgba ? "ok" : "MISSING",
+            s.bank[BK_HOME_ALT].rgba ? "ok" : "no (US)");
+    return built;
+}
+
 /* The same map built from the disc files; used for the cross-check and by the
  * background precompute. */
 static int base_from_disc(int half, MvImage *out, MvBox *box) {
@@ -248,10 +336,173 @@ static void set_texture(MvImage *img, int linear) {
     ++s.tex_gen;
 }
 
+static void build_texture(int scaler);
+static void install_texture(int scaler, MvImage *out) {
+    s.scaler = scaler;
+    s.req_scaler = scaler;
+    g_scaler = scaler;
+    set_texture(out, dw3_mv_scaler_linear(scaler));
+    fprintf(stderr, "dw3-map: texture %dx%d queued for the GPU (gen %u, scaler "
+            "%s, %s)\n", s.tex.w, s.tex.h, s.tex_gen, dw3_mv_scaler_name(scaler),
+            s.tex_linear ? "linear" : "nearest");
+}
+
+/* The CPU scalers: a job on a worker thread (Lanczos2 took 6.4 s and FSR 1
+ * 2.1 s on the Switch, which stalled the whole game). It owns a copy of the
+ * base map, so the screen can close or change under it; the picture changes
+ * when it is done. The state word is the only thing both sides touch while it
+ * runs: 0 running, 1 done (the game thread takes the result), 2 abandoned (the
+ * worker frees the job). */
+typedef struct MvJob {
+    int scaler;
+    unsigned id;
+    MvImage src, out;
+    char path[600];
+    int use_cache;
+    int rc, from_cache, cache_rc;
+    double ms, t0;
+    int state;
+} MvJob;
+
+static void job_free(MvJob *j) {
+    dw3_mv_image_free(&j->src);
+    dw3_mv_image_free(&j->out);
+    free(j);
+}
+
+static void job_run(void *arg) {
+    MvJob *j = (MvJob *)arg;
+
+    j->rc = -1;
+    j->cache_rc = -2;
+    if (j->use_cache && dw3_mv_cache_read(j->path, &j->out) == 0 &&
+        j->out.w == j->src.w * MV_SCALE && j->out.h == j->src.h * MV_SCALE &&
+        j->out.reveal == j->src.reveal) {
+        j->from_cache = 1;
+        j->rc = 0;
+    } else {
+        int stale = j->out.rgba != NULL && j->out.w == j->src.w * MV_SCALE &&
+                    j->out.reveal != j->src.reveal;
+
+        /* a file made for other pieces (the bare map the precompute builds,
+         * or an older state of the player's exploration) is not shown: the
+         * picture would lack the reveal layer */
+        if (stale) {
+            fprintf(stderr, "dw3-map: cache stale %s (reveal hash %08x, now "
+                    "%08x)\n", j->path, (unsigned)j->out.reveal,
+                    (unsigned)j->src.reveal);
+        }
+        dw3_mv_image_free(&j->out);
+        fprintf(stderr, "dw3-map: cache miss %s\n",
+                j->use_cache ? j->path : "(no cache folder)");
+        if (dw3_mv_scale(j->scaler, &j->src, &j->out, &j->ms) == 0 &&
+            j->out.rgba) {
+            j->rc = 0;
+            if (j->use_cache) j->cache_rc = dw3_mv_cache_write(j->path, &j->out);
+        }
+    }
+    if (__atomic_exchange_n(&j->state, 1, __ATOMIC_ACQ_REL) == 2) job_free(j);
+}
+
+static void job_take(void) {
+    MvJob *j = s.job;
+    int pending = s.pending_scaler;
+
+    s.job = NULL;
+    s.pending_scaler = -1;
+    if (j->rc != 0 || !j->out.rgba) {
+        fprintf(stderr, "dw3-map: scaler %s FAILED (no image built, the %s "
+                "stays)\n", dw3_mv_scaler_name(j->scaler),
+                dw3_mv_scaler_name(s.scaler));
+        s.req_scaler = s.scaler;
+    } else if (j->from_cache) {
+        s.built_ms = -1;
+        fprintf(stderr, "dw3-map: scaler %s loaded from cache in %d ms "
+                "(%dx%d, cache hit %s, reveal hash %08x)\n",
+                dw3_mv_scaler_name(j->scaler), (int)(now_ms() - j->t0),
+                j->out.w, j->out.h, j->path, (unsigned)j->out.reveal);
+        install_texture(j->scaler, &j->out);
+    } else {
+        s.built_ms = (int)(j->ms + 0.5);
+        fprintf(stderr, "dw3-map: scaler %s built in %d ms (%dx%d, reveal hash "
+                "%08x)\n", dw3_mv_scaler_name(j->scaler), s.built_ms, j->out.w,
+                j->out.h, (unsigned)j->out.reveal);
+        if (j->use_cache) {
+            fprintf(stderr, "dw3-map: cache write %s: %s\n", j->path,
+                    j->cache_rc == 0 ? "ok" : "FAILED");
+        }
+        install_texture(j->scaler, &j->out);
+    }
+    job_free(j);
+    if (pending >= 0 && pending != s.scaler) {
+        fprintf(stderr, "dw3-map: scaler %s was asked for while the last one "
+                "was building: starting it now\n", dw3_mv_scaler_name(pending));
+        s.req_scaler = pending;
+        build_texture(pending);
+    }
+}
+
+/* Every frame: take a finished job. Returns 1 when the picture changed. */
+static int job_poll(void) {
+    if (!s.job || __atomic_load_n(&s.job->state, __ATOMIC_ACQUIRE) != 1) return 0;
+    job_take();
+    return 1;
+}
+
+/* The screen closed or opened again: forget the job (it frees itself). */
+static void job_abandon(void) {
+    if (!s.job) return;
+    if (__atomic_exchange_n(&s.job->state, 2, __ATOMIC_ACQ_REL) == 1) {
+        job_free(s.job);
+    } else {
+        fprintf(stderr, "dw3-map: scaler %s still building at close: left to "
+                "the worker\n", dw3_mv_scaler_name(s.job->scaler));
+    }
+    s.job = NULL;
+    s.pending_scaler = -1;
+}
+
+__attribute__((weak)) int dw3_map_view_async_start(void (*fn)(void *),
+                                                   void *arg) {
+    (void)fn;
+    (void)arg;
+    return -1;
+}
+
+static void job_start(int scaler) {
+    MvJob *j = (MvJob *)calloc(1, sizeof(*j));
+    int async = !getenv("DW3_MAP_SYNC");
+
+    if (!j) return;
+    j->scaler = scaler;
+    j->id = ++s.job_id;
+    j->t0 = now_ms();
+    j->src = s.base;
+    j->src.rgba = (uint8_t *)malloc((size_t)s.base.w * s.base.h * 4);
+    if (!j->src.rgba) {
+        free(j);
+        return;
+    }
+    memcpy(j->src.rgba, s.base.rgba, (size_t)s.base.w * s.base.h * 4);
+    cache_path(j->path, sizeof(j->path), s.half, scaler);
+    j->use_cache = g_cache_dir[0] != 0;
+    s.job = j;
+    s.req_scaler = scaler;
+    fprintf(stderr, "dw3-map: scaler %s requested (%s)\n",
+            dw3_mv_scaler_name(scaler), async ? "worker thread, input stays "
+            "live" : "synchronous, DW3_MAP_SYNC");
+    if (async && dw3_map_view_async_start(job_run, j) == 0) return;
+    if (async) {
+        fprintf(stderr, "dw3-map: no worker thread, building on the game "
+                "thread\n");
+    }
+    job_run(j);
+    job_poll();
+}
+
 static void build_texture(int scaler) {
     MvImage out;
-    char path[600];
-    double t0 = now_ms(), ms = 0.0;
+    double ms = 0.0;
 
     out.rgba = NULL;
     out.w = out.h = 0;
@@ -266,55 +517,19 @@ static void build_texture(int scaler) {
         s.built_ms = (int)(ms + 0.5);
         fprintf(stderr, "dw3-map: scaler %s built in %d ms (no cache, %dx%d)\n",
                 dw3_mv_scaler_name(scaler), s.built_ms, out.w, out.h);
-    } else {
-        int stale = 0;
-
-        cache_path(path, sizeof(path), s.half, scaler);
-        if (g_cache_dir[0] && dw3_mv_cache_read(path, &out) == 0 &&
-            out.w == s.base.w * MV_SCALE && out.h == s.base.h * MV_SCALE &&
-            out.reveal == s.base.reveal) {
-            s.built_ms = -1;
-            fprintf(stderr, "dw3-map: scaler %s loaded from cache in %d ms "
-                    "(%dx%d, cache hit %s, reveal hash %08x)\n",
-                    dw3_mv_scaler_name(scaler), (int)(now_ms() - t0), out.w,
-                    out.h, path, (unsigned)out.reveal);
-        } else {
-            /* a file made for other pieces (the bare map the precompute
-             * builds, or an older state of the player's exploration) is
-             * not shown: the picture would lack the reveal layer */
-            stale = out.rgba != NULL && out.w == s.base.w * MV_SCALE &&
-                    out.reveal != s.base.reveal;
-            if (stale) {
-                fprintf(stderr, "dw3-map: cache stale %s (reveal hash %08x, "
-                        "now %08x)\n", path, (unsigned)out.reveal,
-                        (unsigned)s.base.reveal);
-            }
-            dw3_mv_image_free(&out);
-            fprintf(stderr, "dw3-map: cache miss %s\n",
-                    g_cache_dir[0] ? path : "(no cache folder)");
-            if (dw3_mv_scale(scaler, &s.base, &out, &ms) != 0) {
-                fprintf(stderr, "dw3-map: scaler %s FAILED (no image built)\n",
-                        dw3_mv_scaler_name(scaler));
-                return;
-            }
-            s.built_ms = (int)(ms + 0.5);
-            fprintf(stderr, "dw3-map: scaler %s built in %d ms (%dx%d, reveal "
-                    "hash %08x)\n", dw3_mv_scaler_name(scaler), s.built_ms,
-                    out.w, out.h, (unsigned)out.reveal);
-            if (g_cache_dir[0]) {
-                int wrc = dw3_mv_cache_write(path, &out);
-
-                fprintf(stderr, "dw3-map: cache write %s: %s\n", path,
-                        wrc == 0 ? "ok" : "FAILED");
-            }
-        }
+        job_abandon(); /* a slow one still running is no longer wanted */
+        install_texture(scaler, &out);
+        return;
     }
-    s.scaler = scaler;
-    g_scaler = scaler;
-    set_texture(&out, dw3_mv_scaler_linear(scaler));
-    fprintf(stderr, "dw3-map: texture %dx%d queued for the GPU (gen %u, scaler "
-            "%s, %s)\n", s.tex.w, s.tex.h, s.tex_gen, dw3_mv_scaler_name(scaler),
-            s.tex_linear ? "linear" : "nearest");
+    if (s.job) {
+        s.pending_scaler = scaler;
+        s.req_scaler = scaler;
+        fprintf(stderr, "dw3-map: scaler %s asked for while %s is building: "
+                "queued\n", dw3_mv_scaler_name(scaler),
+                dw3_mv_scaler_name(s.job->scaler));
+        return;
+    }
+    job_start(scaler);
 }
 
 /* --- HUD ---------------------------------------------------------------------*/
@@ -378,7 +593,8 @@ static void hud_build(void) {
         hud_rect(hx - 2, hy - 2, hx + 3, hy + 3, 0x101010E0u);
         hud_rect(hx - 1, hy - 1, hx + 2, hy + 2, 0xFFD040FFu);
     }
-    if (s.home_x >= 0) {
+    if (s.home_x >= 0 && !s.bank_ok) {
+        /* the game's balloon could not be composed: a ring stands in */
         int pulse = (int)((s.frame / 20u) & 1u);
         int r = 6 + pulse;
 
@@ -395,12 +611,18 @@ static void hud_build(void) {
     hud_text(6, 4, line, 0xFFFFFFFFu);
     /* the build time is in the log, not on screen: it varies per run and
      * would make every capture differ */
-    snprintf(line, sizeof(line), "SCALER %d/%d: %s", s.scaler + 1,
-             MV_SCALER_COUNT, dw3_mv_scaler_name(s.scaler));
+    if (s.job) {
+        snprintf(line, sizeof(line), "SCALER %d/%d: %s  BUILDING, %s STAYS",
+                 s.req_scaler + 1, MV_SCALER_COUNT,
+                 dw3_mv_scaler_name(s.req_scaler), dw3_mv_scaler_name(s.scaler));
+    } else {
+        snprintf(line, sizeof(line), "SCALER %d/%d: %s", s.scaler + 1,
+                 MV_SCALER_COUNT, dw3_mv_scaler_name(s.scaler));
+    }
     hud_text(6, 16, line, 0xFFE070FFu);
     hud_rect(0, DW3_MV_HUD_H - 16, DW3_MV_HUD_W, DW3_MV_HUD_H, 0x000000B0u);
     hud_text(6, DW3_MV_HUD_H - 12,
-             "R-STICK/L1/R1 ZOOM  PAD PAN  L2/R2 SCALER  CIRCLE HUD  TRIANGLE BACK",
+             "PAD/L-STICK CURSOR  R-STICK/L1/R1 ZOOM  L2/R2 SCALER  CIRCLE HUD  TRI BACK",
              0xC0FFC0FFu);
 }
 
@@ -413,11 +635,14 @@ static void hud_touch(void) {
 
 static void close_view(void) {
     s.base_reveal_last = s.base.reveal;
+    job_abandon();
+    bank_free();
     dw3_mv_image_free(&s.base);
     dw3_mv_image_free(&s.tex);
     free(s.hud);
     s.hud = NULL;
     s.active = 0;
+    s.hole = 0;
     ++s.tex_gen; /* the host drops its texture after a few idle frames */
     fprintf(stderr, "dw3-map: close after %u frames (zoom: %u stick frames, %u "
             "button presses, last source %s; reveal hash %08x)\n", s.frame,
@@ -437,6 +662,8 @@ static void open_view(const void *sheet, int sheet_file, int half, int home_x,
 
     memset(&s.base, 0, sizeof(s.base));
     memset(&s.tex, 0, sizeof(s.tex));
+    job_abandon();
+    s.pending_scaler = -1;
     s.half = half;
     s.source = 0;
     s.pieces_in = npieces;
@@ -451,7 +678,7 @@ static void open_view(const void *sheet, int sheet_file, int half, int home_x,
     }
     /* the live VRAM: the base when the cache has none, and always the cells of
      * the reveal layer (the towns and the visited areas the game shows) */
-    if (s.source == 0 || npieces > 0 || getenv("DW3_MAP_VERIFY")) {
+    if (s.source == 0 || npieces > 0 || sheet2 || getenv("DW3_MAP_VERIFY")) {
         vram = capture_vram();
         if (!vram) {
             fprintf(stderr, "dw3-map: VRAM capture failed (out of memory)\n");
@@ -524,6 +751,7 @@ static void open_view(const void *sheet, int sheet_file, int half, int home_x,
     }
     s.pieces_drawn = compose_reveal(vram, sheet_file, sheet1, sheet2, pieces,
                                     npieces);
+    bank_build(vram, sheet_file, sheet2);
     free(vram);
     fprintf(stderr, "dw3-map: reveal layer: %d pieces from the game (%d towns "
             "+ %d visited areas drawn), %d drawn, hash %08x%s\n", npieces,
@@ -561,6 +789,29 @@ static void open_view(const void *sheet, int sheet_file, int half, int home_x,
     }
     s.home_x = home_x - s.box.x0;
     s.home_y = home_y - s.box.y0;
+    s.home_sx = home_x;
+    s.home_sy = home_y;
+    for (i = 0; i < 47; ++i) {
+        s.all_x[i] = spot_x[i];
+        s.all_y[i] = spot_y[i];
+        s.vis[i] = i >= 1 && visited[i - 1] != 0;
+    }
+    s.home_spot = 0;
+    for (i = 1; i < 47; ++i) {
+        if (spot_x[i] + 0xC == home_x && spot_y[i] + 0xC == home_y) {
+            s.home_spot = i;
+            break;
+        }
+    }
+    /* the cursor starts on the current area, as the game's does */
+    s.cur_x = home_x;
+    s.cur_y = home_y;
+    s.hover = 0;
+    s.hold_x = s.hold_y = 0;
+    s.was_moving = 0;
+    s.home_alt = -1;
+    s.name_bottom = -1;
+    s.hole = 0;
     s.show_hud = 1;
     s.frame = 0;
     s.hud = (uint8_t *)calloc((size_t)DW3_MV_HUD_W * DW3_MV_HUD_H, 4);
@@ -580,14 +831,158 @@ static void open_view(const void *sheet, int sheet_file, int half, int home_x,
 
 int dw3_port_map_view_active(void) { return s.active; }
 
+/* --- the cursor ------------------------------------------------------------*/
+
+/* A sprite-space point (the game's map space) in the virtual 1280x720 viewport. */
+static void sprite_to_view(int sx, int sy, float *vx, float *vy) {
+    float x0, y0, x1, y1;
+
+    dw3_mv_view_rect(&s.view, s.base.w, s.base.h, VW, VH, &x0, &y0, &x1, &y1);
+    *vx = x0 + (x1 - x0) * (float)(sx - s.box.x0) / (float)s.base.w;
+    *vy = y0 + (y1 - y0) * (float)(sy - s.box.y0) / (float)s.base.h;
+}
+
+/* The spot under the cursor, 0 = none: the game's own test
+ * (STSTATUS_showMapArea) on the visited spots, in sprite space. */
+static int spot_under(int x, int y) {
+    int i;
+
+    for (i = 1; i < 47; ++i) {
+        if (!s.vis[i]) continue;
+        if (s.all_x[i] + 6 < x && x <= s.all_x[i] + 0x12 &&
+            s.all_y[i] + 6 < y && y <= s.all_y[i] + 0x12) return i;
+    }
+    return 0;
+}
+
+/* Where the cursor sprite is drawn: on the spot while it is on one. */
+static void cursor_draw_pos(int *x, int *y) {
+    if (s.hover > 0) {
+        *x = s.all_x[s.hover] + 0xC;
+        *y = s.all_y[s.hover] + 0xC;
+    } else {
+        *x = s.cur_x;
+        *y = s.cur_y;
+    }
+}
+
+static int axis_speed(int held_frames) {
+    /* the game's: 2 px a frame when the pad goes down, 3 and then 4 while it
+     * is held (screen->speedX / speedY) */
+    return held_frames <= 10 ? 2 : held_frames <= 20 ? 3 : 4;
+}
+
+static void update_hover(void) {
+    int now = spot_under(s.cur_x, s.cur_y);
+
+    if (now == s.hover) return;
+    if (now) {
+        s.hover_x = s.cur_x;
+        fprintf(stderr, "dw3-map: cursor on location id=%d (name id=%d, spot "
+                "at %d,%d) cursor %d,%d\n", now, now, s.all_x[now],
+                s.all_y[now], s.cur_x, s.cur_y);
+    } else {
+        fprintf(stderr, "dw3-map: cursor left location id=%d, free at %d,%d\n",
+                s.hover, s.cur_x, s.cur_y);
+    }
+    s.hover = now;
+}
+
+/* The cursor reaches the whole map, but its sprite (an arrow whose tip is the
+ * cursor) stays on the map. */
+static void clamp_cursor(void) {
+    const MvImage *c = &s.bank[BK_CURSOR];
+    int right = c->rgba ? c->ox + c->w : 12, down = c->rgba ? c->oy + c->h : 16;
+    int left = c->rgba ? -c->ox : 0, up = c->rgba ? -c->oy : 0;
+
+    if (s.cur_x < s.box.x0 + left) s.cur_x = s.box.x0 + left;
+    if (s.cur_x > s.box.x0 + s.base.w - right) s.cur_x = s.box.x0 + s.base.w - right;
+    if (s.cur_y < s.box.y0 + up) s.cur_y = s.box.y0 + up;
+    if (s.cur_y > s.box.y0 + s.base.h - down) s.cur_y = s.box.y0 + s.base.h - down;
+}
+
+/* The view follows the cursor: it stays inside the middle of the picture. */
+static void follow_cursor(void) {
+    float vx, vy, scale, mx = (float)VW * 0.30f, my = (float)VH * 0.30f;
+    int x, y;
+
+    cursor_draw_pos(&x, &y);
+    sprite_to_view(x, y, &vx, &vy);
+    scale = dw3_mv_view_cur_scale(&s.view, s.base.w, s.base.h, VW, VH);
+    if (vx < mx) s.view.cx -= (mx - vx) / scale;
+    if (vx > (float)VW - mx) s.view.cx += (vx - ((float)VW - mx)) / scale;
+    if (vy < my) s.view.cy -= (my - vy) / scale;
+    if (vy > (float)VH - my) s.view.cy += (vy - ((float)VH - my)) / scale;
+    dw3_mv_view_clamp(&s.view, s.base.w, s.base.h, VW, VH);
+}
+
+static void fill_io(Dw3MapViewIo *io) {
+    float vx, vy;
+    int x, y, g = dw3_port_widescreen_menu_shift();
+
+    if (!io) return;
+    cursor_draw_pos(&x, &y);
+    sprite_to_view(x, y, &vx, &vy);
+    io->cur_x = s.cur_x;
+    io->cur_y = s.cur_y;
+    io->scr_x = (int)floorf(vx / (float)VW * (float)(320 + 2 * g)) - g;
+    io->scr_y = (int)floorf(vy / (float)VH * 240.0f);
+}
+
+/* The name box: shown by the game while the cursor is on a location (its
+ * frame and its text window; the host leaves its rectangle to the game's own
+ * pixels). It sits at the bottom while the cursor is in the top half of the
+ * picture, as the game's does. */
+static void update_name_box(void) {
+    float vx, vy;
+    int x, y, bottom, shown;
+
+    cursor_draw_pos(&x, &y);
+    sprite_to_view(x, y, &vx, &vy);
+    bottom = (vy / (float)VH * 240.0f) < 120.0f;
+    shown = s.hover > 0 && s.show_hud && s.name_x1 > s.name_x0;
+    if (shown != s.hole || (shown && bottom != s.name_bottom)) {
+        if (shown) {
+            fprintf(stderr, "dw3-map: name box shown for location id=%d (name "
+                    "id=%d) at the %s of the picture, logical x %d..%d y "
+                    "%d..%d\n", s.hover, s.hover, bottom ? "bottom" : "top",
+                    s.name_x0, s.name_x1, s.name_y0 + (bottom ? 0xB4 : 0x14),
+                    s.name_y1 + (bottom ? 0xB4 : 0x14));
+        } else {
+            fprintf(stderr, "dw3-map: name box hidden (%s)\n",
+                    s.hover > 0 ? "HUD off" : "cursor on no location");
+        }
+    }
+    s.hole = shown;
+    s.name_bottom = bottom;
+}
+
+static void update_balloon(void) {
+    int alt = 0;
+
+    /* the EU balloon faces the cursor: turned when the cursor (where it got on
+     * the location, while it is on one) is not to the left of the home mark */
+    if (MV_REGION[0] == 'e') {
+        int x = s.hover > 0 ? s.hover_x : s.cur_x;
+
+        alt = x >= s.home_sx;
+    }
+    if (alt != s.home_alt) {
+        fprintf(stderr, "dw3-map: balloon at sprite %d,%d (image %d,%d) on "
+                "location id=%d, frame 0x%x (%s)\n", s.home_sx, s.home_sy,
+                s.home_x, s.home_y, s.home_spot, alt ? 0x3B : 0x35,
+                alt ? "turned" : "plain");
+        s.home_alt = alt;
+    }
+}
+
 int dw3_port_map_view_frame(const void *sheet, int sheet_file, int half,
                             int home_x, int home_y, const int *visited,
                             const int *spot_x, const int *spot_y,
                             unsigned held, unsigned pressed, const void *sheet1,
                             const void *sheet2, const int *pieces,
-                            int npieces) {
-    float step;
-    int moved = 0, zoomed = 0;
+                            int npieces, Dw3MapViewIo *io) {
+    int moved = 0, zoomed = 0, dx = 0, dy = 0;
 
 #define BIT(b) (1u << (b))
     if (!s.active) {
@@ -601,10 +996,30 @@ int dw3_port_map_view_frame(const void *sheet, int sheet_file, int half,
         }
         open_view(sheet, sheet_file, half, home_x, home_y, visited, spot_x,
                   spot_y, sheet1, sheet2, pieces, npieces);
+        if (s.active && io) {
+            s.name_x0 = io->name_x0;
+            s.name_y0 = io->name_y0;
+            s.name_x1 = io->name_x1;
+            s.name_y1 = io->name_y1;
+            update_hover();
+            update_balloon();
+            update_name_box();
+            fill_io(io);
+            hud_touch();
+        }
         return s.active;
     }
     ++s.frame;
+    if (io) {
+        s.cursor_anim = io->cursor_anim;
+        s.home_anim = io->home_anim;
+        s.name_x0 = io->name_x0;
+        s.name_y0 = io->name_y0;
+        s.name_x1 = io->name_x1;
+        s.name_y1 = io->name_y1;
+    }
     if (pressed & (BIT(DW3_MV_PAD_TRIANGLE) | BIT(DW3_MV_PAD_SQUARE))) {
+        fill_io(io);
         close_view();
         return 1; /* this frame's Triangle must not close the game's screen */
     }
@@ -651,29 +1066,76 @@ int dw3_port_map_view_frame(const void *sheet, int sheet_file, int half,
     if (pressed & (BIT(DW3_MV_PAD_R2) | BIT(DW3_MV_PAD_L2))) {
         int dir = (pressed & BIT(DW3_MV_PAD_R2)) ? 1 : -1;
 
-        build_texture(dw3_mv_scaler_step(s.scaler, dir));
+        build_texture(dw3_mv_scaler_step(s.req_scaler, dir));
         moved = 1;
     }
+    if (job_poll()) moved = 1;
     if (pressed & BIT(DW3_MV_PAD_CIRCLE)) {
         s.show_hud = !s.show_hud;
+        fprintf(stderr, "dw3-map: HUD %s (name box %s)\n",
+                s.show_hud ? "on" : "off", s.show_hud ? "allowed" : "hidden");
         moved = 1;
     }
-    /* pan: a constant speed on screen, 150 px/s at the 720 line */
-    step = 2.5f * 3.0f / dw3_mv_view_cur_scale(&s.view, s.base.w, s.base.h, VW, VH);
-    if (held & BIT(DW3_MV_PAD_LEFT)) { s.view.cx -= step; moved = 1; }
-    if (held & BIT(DW3_MV_PAD_RIGHT)) { s.view.cx += step; moved = 1; }
-    if (held & BIT(DW3_MV_PAD_UP)) { s.view.cy -= step; moved = 1; }
-    if (held & BIT(DW3_MV_PAD_DOWN)) { s.view.cy += step; moved = 1; }
+    /* the cursor: the pad and the left stick (the game's pad bits), at the
+     * game's speeds, over the whole map */
+    if (held & BIT(DW3_MV_PAD_LEFT)) dx -= 1;
+    if (held & BIT(DW3_MV_PAD_RIGHT)) dx += 1;
+    if (held & BIT(DW3_MV_PAD_UP)) dy -= 1;
+    if (held & BIT(DW3_MV_PAD_DOWN)) dy += 1;
+    s.hold_x = dx ? s.hold_x + 1 : 0;
+    s.hold_y = dy ? s.hold_y + 1 : 0;
+    if (dx || dy) {
+        s.cur_x += dx * axis_speed(s.hold_x);
+        s.cur_y += dy * axis_speed(s.hold_y);
+        clamp_cursor();
+        moved = 1;
+    }
     if (moved) dw3_mv_view_clamp(&s.view, s.base.w, s.base.h, VW, VH);
-    /* the home ring pulses, so the HUD changes every 20 frames anyway */
-    if (moved || (s.frame % 20u) == 0u) hud_touch();
+    update_hover();
+    follow_cursor();
+    update_balloon();
+    update_name_box();
+    if ((dx || dy) != s.was_moving) {
+        s.was_moving = dx || dy;
+        if (!s.was_moving) {
+            fprintf(stderr, "dw3-map: cursor at rest at %d,%d, location "
+                    "id=%d name id=%d (view centre %.1f,%.1f)\n", s.cur_x,
+                    s.cur_y, s.hover, s.hover, (double)s.view.cx,
+                    (double)s.view.cy);
+        }
+    }
+    if (moved || (!s.bank_ok && (s.frame % 20u) == 0u)) hud_touch();
+    fill_io(io);
 #undef BIT
     return 1;
 }
 
 /* --- host side -------------------------------------------------------------*/
 
+static void add_sprite(Dw3MapViewDraw *d, int bank, int px, int py, float rx0,
+                       float ry0, float rx1, float ry1) {
+    const MvImage *b;
+    float fx, fy;
+    int ix, iy;
+
+    if (bank < 0 || bank >= DW3_MV_BANK_N || !s.bank[bank].rgba ||
+        d->nspr >= DW3_MV_SPRITES) return;
+    b = &s.bank[bank];
+    ix = px + b->ox - s.box.x0;
+    iy = py + b->oy - s.box.y0;
+    fx = (rx1 - rx0) / (float)s.base.w;
+    fy = (ry1 - ry0) / (float)s.base.h;
+    d->spr[d->nspr].bank = bank;
+    d->spr[d->nspr].x0 = (rx0 + fx * (float)ix) / (float)VW;
+    d->spr[d->nspr].y0 = (ry0 + fy * (float)iy) / (float)VH;
+    d->spr[d->nspr].x1 = (rx0 + fx * (float)(ix + b->w)) / (float)VW;
+    d->spr[d->nspr].y1 = (ry0 + fy * (float)(iy + b->h)) / (float)VH;
+    ++d->nspr;
+}
+
 void dw3_map_view_get_draw(Dw3MapViewDraw *d) {
+    int i;
+
     memset(d, 0, sizeof(*d));
     d->active = s.active;
     d->tex_gen = s.tex_gen;
@@ -683,14 +1145,43 @@ void dw3_map_view_get_draw(Dw3MapViewDraw *d) {
     d->linear = s.tex_linear;
     d->hud_gen = s.hud_gen;
     d->hud_rgba = s.hud;
+    d->bank_gen = s.bank_gen;
+    for (i = 0; i < DW3_MV_BANK_N; ++i) {
+        d->bank[i].rgba = s.bank[i].rgba;
+        d->bank[i].w = s.bank[i].w;
+        d->bank[i].h = s.bank[i].h;
+    }
     if (s.active && s.base.w > 0) {
         float x0, y0, x1, y1;
+        int cx, cy, a;
 
         dw3_mv_view_rect(&s.view, s.base.w, s.base.h, VW, VH, &x0, &y0, &x1, &y1);
         d->x0 = x0 / (float)VW;
         d->y0 = y0 / (float)VH;
         d->x1 = x1 / (float)VW;
         d->y1 = y1 / (float)VH;
+        /* the cursor under the balloon, as the game's depths put them */
+        cursor_draw_pos(&cx, &cy);
+        a = s.cursor_anim;
+        if (a < 0 || a > 2) a = 0;
+        add_sprite(d, (s.hover > 0 ? BK_HOVER : BK_CURSOR) + a, cx, cy, x0, y0,
+                   x1, y1);
+        a = s.home_anim;
+        if (a < 0 || a > 2) a = 0;
+        add_sprite(d, (s.home_alt > 0 && s.bank[BK_HOME_ALT].rgba ?
+                       BK_HOME_ALT : BK_HOME) + a, s.home_sx, s.home_sy, x0, y0,
+                   x1, y1);
+        if (s.hole) {
+            const int g = dw3_port_widescreen_menu_shift();
+            const int oy = s.name_bottom ? 0xB4 : 0x14;
+            const float w = (float)(320 + 2 * g);
+
+            d->hole = 1;
+            d->hx0 = (float)(s.name_x0 + g) / w;
+            d->hx1 = (float)(s.name_x1 + g) / w;
+            d->hy0 = (float)(s.name_y0 + oy) / 240.0f;
+            d->hy1 = (float)(s.name_y1 + oy) / 240.0f;
+        }
     }
 }
 

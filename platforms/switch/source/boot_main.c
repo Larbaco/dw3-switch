@@ -523,6 +523,56 @@ static void map_view_precompute_entry(void *arg) {
     INFOF("dw3-map: precompute thread finished");
 }
 
+/* The map view's CPU scalers (Lanczos2 took 6.4 s, FSR 1 2.1 s on the Switch)
+ * build on a worker thread on core 2 so the game keeps taking input
+ * (map_view.h). Two slots: the screen may be closed and opened again while the
+ * last build still runs; a slot is closed and reused once its thread has
+ * finished. When both are busy the caller builds on its own thread. */
+typedef struct MapViewSlot {
+    Thread thread;
+    void (*fn)(void *);
+    void *arg;
+    volatile int state; /* 0 free, 1 running, 2 finished (thread to close) */
+} MapViewSlot;
+
+static MapViewSlot s_map_slots[2];
+
+static void map_view_job_entry(void *p) {
+    MapViewSlot *slot = (MapViewSlot *)p;
+
+    slot->fn(slot->arg);
+    __atomic_store_n(&slot->state, 2, __ATOMIC_RELEASE);
+}
+
+int dw3_map_view_async_start(void (*fn)(void *), void *arg) {
+    int i;
+
+    for (i = 0; i < 2; ++i) {
+        MapViewSlot *slot = &s_map_slots[i];
+        int st = __atomic_load_n(&slot->state, __ATOMIC_ACQUIRE);
+
+        if (st == 1) continue;
+        if (st == 2) {
+            threadWaitForExit(&slot->thread);
+            threadClose(&slot->thread);
+            slot->state = 0;
+        }
+        slot->fn = fn;
+        slot->arg = arg;
+        slot->state = 1;
+        if (R_FAILED(threadCreate(&slot->thread, map_view_job_entry, slot, NULL,
+                                  0x40000, 0x3B, 2)) ||
+            R_FAILED(threadStart(&slot->thread))) {
+            INFOF("dw3-map: scaler worker thread not started (slot %d)", i);
+            slot->state = 0;
+            return -1;
+        }
+        INFOF("dw3-map: scaler worker thread started (slot %d, core 2)", i);
+        return 0;
+    }
+    return -1;
+}
+
 static void map_view_precompute_start(const char *config_dir) {
     dw3_map_view_init(config_dir);
     if (R_FAILED(threadCreate(&s_map_thread, map_view_precompute_entry, NULL,

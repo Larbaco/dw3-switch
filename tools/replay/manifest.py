@@ -675,7 +675,7 @@ for _v, _ids in (("us", (0x159, 0x1FA, 0x1C2, 0x158, 0x1F9)),
     # from the Map; the references are the PC host overlay's picture. DW3_MAP_VERIFY
     # logs the cross-check of the captured map against the disc-built one.
     _add(Scenario(f"{_v}-map-view", _v, "full", turbo=4, timeout=600,
-                  phases=(f"{_v}-map-view",), env=_ITEMS_ENV + (("DW3_MAP_VERIFY", "1"),),
+                  phases=(f"{_v}-map-view",), env=_ITEMS_ENV + (("DW3_MAP_VERIFY", "1"), ("DW3_MAP_SYNC", "1")),
                   cfg=(("encounter_rate", "2"),),
                   expect_restore=((_fight, M), (_menu, S), (_report, M), (_field, M),
                                   (_status, M)),
@@ -695,9 +695,25 @@ for _v, _ids in (("us", (0x159, 0x1FA, 0x1C2, 0x158, 0x1F9)),
                                   r"(?s:.*)dw3-map: zoom source=stick \(axis 127\) zoom"
                                   r"(?s:.*)dw3-map: zoom source=stick \(axis -127\) zoom"
                                   r"(?s:.*)dw3-map: close after \d+ frames \(zoom: [1-9]\d* stick frames, "
-                                  r"[1-9]\d* button presses, last source stick; reveal hash [0-9a-f]{8}\)"),),
-                  forbid_log=((0, r"dw3-map: capture failed|NOTHING DRAWN|not drawn"),),
-                  note="Square opens the new full-screen map, pan, zoom, scaler cycle, back (patch 0146)"))
+                                  r"[1-9]\d* button presses, last source stick; reveal hash [0-9a-f]{8}\)"),
+                  # the game's own elements (owner, after preview.45): the balloon on
+                  # the current area, the cursor on a location (location id + name
+                  # id), the game's name box shown, the cursor moved off and back,
+                  # the HUD toggle hiding the name box
+                              (0, r"dw3-map: sprite bank: \d+ of 12 frames built \(cursor ok, hover "
+                                  r"cursor ok, balloon ok, balloon turned (?:ok|no \(US\))\)"
+                                  r"(?s:.*)dw3-map: cursor on location id=([1-9]\d*) \(name id=\1, spot at \d+,\d+\)"
+                                  r"(?s:.*)dw3-map: balloon at sprite \d+,\d+ \(image \d+,\d+\) on "
+                                  r"location id=\1, frame 0x3[5b] \((?:plain|turned)\)"
+                                  r"(?s:.*)dw3-map: name box shown for location id=\1 \(name id=\1\) at the "
+                                  r"(?:top|bottom) of the picture, logical x \d+\.\.\d+ y \d+\.\.\d+"
+                                  r"(?s:.*)dw3-map: cursor left location id=\1, free at \d+,\d+"
+                                  r"(?s:.*)dw3-map: name box hidden \(cursor on no location\)"
+                                  r"(?s:.*)dw3-map: cursor at rest at \d+,\d+, location id=\1 name id=\1"
+                                  r"(?s:.*)dw3-map: HUD off \(name box hidden\)"
+                                  r"(?s:.*)dw3-map: HUD on \(name box allowed\)"),),
+                  forbid_log=((0, r"dw3-map: capture failed|NOTHING DRAWN|not drawn|MISSING"),),
+                  note="Square opens the new full-screen map: balloon, cursor, name box, zoom, scaler cycle, back (patch 0146)"))
     _add(Scenario(f"{_v}-map-view-43", _v, "full", turbo=4, timeout=600,
                   phases=(f"{_v}-map-view",), env=_ITEMS_ENV,
                   cfg=(("encounter_rate", "2"), ("widescreen", "0")),

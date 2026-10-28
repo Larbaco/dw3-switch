@@ -14,6 +14,18 @@ or to the task. With the option file key map_screen=0, widescreen off, or
 without the native overlay the function returns 0 and nothing changes: the Map
 screen is the one of patch 0080.
 
+P6.32 HUD elements (owner, after preview.45): the full-screen view now shows the
+game's own balloon, cursor and name box. While it is open the pad (and the left
+stick) moves the view's cursor over the whole map; mapViewFrame sets the game's
+cursor and scroll to it every frame (cursorX/Y = its place on the 320x240 menu
+picture, the scroll so that cursor - scroll is the map position) and runs
+STSTATUS_showMapArea on it, so the area lookup, the confirm sound, the name
+window and its text are the game's, drawn into the frozen game picture; the host
+leaves the name box's rectangle to those pixels. The animation frames of the
+cursor and of the home mark, and the bounds of the name box frame, go to the
+host through Dw3MapViewIo. The game's cursor and scroll are put back when the
+new screen closes.
+
 --- a/src/menus/field_menu/map_screen.c
 +++ b/src/menus/field_menu/map_screen.c
 @@ -2,6 +2,9 @@
@@ -26,7 +38,7 @@ screen is the one of patch 0080.
  
  /* Finds the area under the cursor and shows its name */
  void STSTATUS_showMapArea(StatusMapScreen *screen, TextWindow **windows) {
-@@ -348,6 +351,57 @@
+@@ -348,6 +351,95 @@
  #endif
  }
  
@@ -38,8 +50,18 @@ screen is the one of patch 0080.
 +   GAME.progress (archive1 cells, texture 0x380,0x100) and the visited area
 +   cells (archive2, texture 0x300,0x100); they go to the host as 4 s32 each
 +   (kind 1 / 2, frame, x, y in map space, as the draw passes them before the
-+   scroll and the top). */
-+static s32 mapViewFrame(StatusMapScreen *screen) {
++   scroll and the top).
++   While the new screen is open the pad moves ITS cursor (the pad and the
++   left stick, over the whole map); the game's cursor is set to it every frame
++   (cursorX/Y = where it is on the 320x240 menu picture, the scroll so that
++   cursor - scroll is its map position) and the game's own area lookup and name
++   window run on it, so the name box, the sound and the text are the game's.
++   The game's cursor and scroll are put back when the new screen closes. */
++static s32 mapViewFrame(StatusMapScreen *screen, TextWindow **windows) {
++    static StatusMapScreen *savedFor;
++    static s32 saved[4];
++    Dw3MapViewIo io;
++    s32 active;
 +    s32 spotX[47];
 +    s32 spotY[47];
 +    s32 pieces[4 * 80];
@@ -74,22 +96,50 @@ screen is the one of patch 0080.
 +            npieces++;
 +        }
 +    }
-+    return dw3_port_map_view_frame(FILE_CACHE.getEntry(screen->archive), screen->file, screen->gameHalf, screen->homeX,
-+                                   screen->homeY, screen->visited, spotX, spotY, held, pressed,
-+                                   FILE_CACHE.getEntry(screen->archive1), FILE_CACHE.getEntry(screen->archive2),
-+                                   pieces, npieces);
++    io.cursor_anim = STSTATUS_cursorFrames[screen->cursorFrame];
++    io.home_anim = screen->homeFrame;
++    io.name_x0 = io.name_y0 = io.name_x1 = io.name_y1 = 0;
++    dw3_port_sprite_frame_bounds(FILE_CACHE.getEntry(FILE_STATUS_SPRITES << 16), 0x3B, &io.name_x0, &io.name_y0,
++                                 &io.name_x1, &io.name_y1);
++    io.cur_x = io.cur_y = io.scr_x = io.scr_y = 0;
++    active = dw3_port_map_view_frame(FILE_CACHE.getEntry(screen->archive), screen->file, screen->gameHalf,
++                                     screen->homeX, screen->homeY, screen->visited, spotX, spotY, held, pressed,
++                                     FILE_CACHE.getEntry(screen->archive1), FILE_CACHE.getEntry(screen->archive2),
++                                     pieces, npieces, &io);
++    if (active) {
++        if (savedFor != screen) {
++            savedFor = screen;
++            saved[0] = screen->cursorX;
++            saved[1] = screen->cursorY;
++            saved[2] = screen->scrollX;
++            saved[3] = screen->scrollY;
++        }
++        screen->cursorX = io.scr_x;
++        screen->cursorY = io.scr_y;
++        screen->scrollX = io.scr_x - io.cur_x;
++        screen->scrollY = io.scr_y - io.cur_y;
++        screen->hoverY = io.scr_y;
++        STSTATUS_showMapArea(screen, windows);
++    } else if (savedFor == screen) {
++        screen->cursorX = saved[0];
++        screen->cursorY = saved[1];
++        screen->scrollX = saved[2];
++        screen->scrollY = saved[3];
++        savedFor = 0;
++    }
++    return active;
 +}
 +#endif
 +
  /* The map screen's update */
  void STSTATUS_updateMapScreen(StatusMapScreen *screen, TextWindow **windows) {
      s32 area;
-@@ -386,6 +440,12 @@
+@@ -386,6 +478,12 @@
          }
          break;
      case TASK_RUN:
 +#if PORT_HOST
-+        if (mapViewFrame(screen)) {
++        if (mapViewFrame(screen, windows)) {
 +            STSTATUS_drawMapScreen(screen);
 +            break;
 +        }
