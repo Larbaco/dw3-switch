@@ -83,6 +83,10 @@ class Scenario:
     # battle's excursion run takes the plain run's pictures a few frames later
     # and must match them; run the plain scenario with --update first.
     ref_map: tuple[tuple[str, str, str], ...] = ()
+    # MOD map upscale: "synthetic" makes the runner write the synthetic map pack
+    # (tools/mods/make_synthetic_pack.py, gradients, no game art) into the run's
+    # config folder (`mods/`) before the first phase. PC only.
+    mod_pack: str = ""
     # Memory sanity (soak): analyse RSS from this game frame on.
     rss_from_frame: int = 0
     note: str = ""
@@ -721,6 +725,23 @@ for _v, _ids in (("us", (0x159, 0x1FA, 0x1C2, 0x158, 0x1F9)),
                                   r"(?s:.*)dw3-map: HUD on \(name box allowed\)"),),
                   forbid_log=((0, r"dw3-map: capture failed|NOTHING DRAWN|not drawn|MISSING"),),
                   note="Square opens the new full-screen map: balloon, cursor, name box, zoom, scaler cycle, back (patch 0146)"))
+    # MOD map upscale: the same recording with a synthetic pack in the config
+    # folder. The pack replaces the map picture (1568x1408 texture, same
+    # geometry), the reveal layer is the game's own cells drawn 4x larger, and the
+    # log says so; references are this scenario's own (run with --update).
+    _add(Scenario(f"{_v}-map-view-mod", _v, "full", turbo=4, timeout=600,
+                  phases=(f"{_v}-map-view",), env=_ITEMS_ENV + (("DW3_MAP_SYNC", "1"),),
+                  cfg=(("encounter_rate", "2"),), mod_pack="synthetic",
+                  expect_restore=((_fight, M), (_menu, S), (_report, M), (_field, M),
+                                  (_status, M)),
+                  expect_log=((0, r"dw3-map: mod: pack \"synthetic-test\" 0\.0\.1 loaded: "
+                                  r"map_%s_h0@4x\.png 1568x1408, reveal [1-9]\d* pieces from the pack|"
+                                  r"dw3-map: mod: pack \"synthetic-test\" 0\.0\.1 loaded: "
+                                  r"map_%s_h0@4x\.png 1568x1408, reveal 0 pieces from the pack, [1-9]\d* at 1x nearest"
+                                  % (_v, _v)),
+                              (0, r"dw3-map: texture 1568x1408 queued for the GPU"),),
+                  forbid_log=((0, r"dw3-map: mod: original map|dw3-map: capture failed|NOTHING DRAWN"),),
+                  note="the map view with a mod pack: 4x texture, same geometry, silent fallback otherwise"))
     _add(Scenario(f"{_v}-map-view-43", _v, "full", turbo=4, timeout=600,
                   phases=(f"{_v}-map-view",), env=_ITEMS_ENV,
                   cfg=(("encounter_rate", "2"), ("widescreen", "0")),

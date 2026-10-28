@@ -1,6 +1,9 @@
-# MOD: map upscale (design note, phase 1)
+# MOD: map upscale (design note and as built, phase 2)
 
-Status: design only, no game code changed. Owner request (2026-10-28,
+Status: **phase 2 built** (2026-10-28): the loader, the extraction tool and the
+tests are in the tree; see [section 7](#7-as-built-phase-2) for what exists and
+how to install the mod on the SD card. Sections 1 to 6 are the design as
+written in phase 1 and are kept for the reasons behind it. Owner request (2026-10-28,
 translated): "generate some AI-upscaled images for me to use later; this will
 be the first MOD, upscaling some assets, starting with the map". The owner's
 preferred in-game scaler on the map view is Nearest (pixel look). Related:
@@ -152,4 +155,132 @@ the generator and the owner of their output.
 Open questions for the owner: which model the example generator command should
 name (see the local contact sheets), whether reveal option B is wanted, and
 whether `mods/<pack>/` should also host later mods (title, battle), which this
-layout allows.
+layout allows. **Answered 2026-10-28:** the model is realesr-animevideov3, the
+reveal sprites are upscaled too, and `mods/<pack>/` stays open for later mods.
+
+## 7. As built (phase 2)
+
+Owner decisions (2026-10-28): the model is **realesr-animevideov3** (through
+realesrgan-ncnn-vulkan on the GPU); the reveal layer is upscaled too (the
+game's cells one by one, a variant of option B of section 4); no Options row is
+added, the mod is on when a valid pack is in the folder.
+
+### What is in git
+
+| Path | What |
+|---|---|
+| `port/mods/mod_pack.[ch]` | pure-C loader: the `mod.json` subset parser, pack discovery, validated PNG loads, alpha blend |
+| `port/mods/png_stb.c`, `port/mods/third_party/stb_image.h` | the PNG decoder (stb_image v2.30, public domain / MIT, PNG only, from memory), in its own TU |
+| `port/map_view/map_view.c` | `mod_build()`: builds the N x texture when a pack is valid; one log line says what happened |
+| `port/map_view/map_view_core.[ch]` | `dw3_mv_disc_load_entry` (entries 1 and 2 of the image file, for the extractor) |
+| `tools/mods/extract_map_assets.py`, `tools/mods/map_assets_dump.c` | extract the base map and the reveal sprites from the user's own `runtime/<region>`, run the user's upscaler, write the SD layout |
+| `tools/mods/make_synthetic_pack.py` | gradient pack for tests (no game art) |
+| `tools/tests/test_mod_pack.py`, `mod_pack_main.c` | unit test of the loader |
+| replay `us-map-view-mod`, `eu-map-view-mod` | the map view with the synthetic pack |
+
+No image, frame or pack is in git.
+
+### Pack layout (format 1)
+
+```
+sdmc:/switch/dw3/mods/<pack>/            PC: <config dir>/mods/<pack>/
+  mod.json
+  map/map_<region>_h<half>@<N>x.png     region us|eu, half 0|1, N 2..4
+  map/reveal/<region>_h<half>/<kind>_<id>@<N>x.png
+```
+
+`kind` is `towns` (map sheet entry 1) or `areas` (entry 2, the visited-area
+icons); `id` is the sheet's frame id (the `frame` of a reveal piece of patch
+`0146`). A map file must be exactly **392 x N by 352 x N**; a sprite exactly its
+frame box times N (the box comes from the game's own sheet at run time), with
+straight alpha (the original is VRAM colour 0 = transparent). Any other size is
+refused and logged. The loader takes the highest N the manifest lists that
+loads (cap 4). Manifest keys read: `format` (1), `id`, `name`, `version`,
+`regions`, `map.scales`, `map.filter` (a hint; the scaler row on the view
+wins), `map.reveal` (true when the sprites are present), `generator`. Unknown
+keys are ignored; a `format` above 1 refuses the pack.
+
+### What the view does with a pack
+
+- Which pack: the first folder (by name) under the mods folder whose manifest is
+  valid and lists the running region. `DW3_MOD_PACK=<folder>` picks one (PC,
+  tests); `DW3_MODS_DIR` moves the mods folder (tests). Off switch:
+  `map_mod=0` in `port_options.cfg` (a file-only key, default 1, like
+  `map_screen`). No pack, an unreadable one, a wrong size: the original path
+  runs, unchanged and bit-identical (the replays prove it).
+- The picture: the pack's map, then every reveal piece the game sends (the
+  towns of the progress list, the visited areas) blended on top at N x: the
+  pack's upscaled sprite, or, where the pack has none that is valid, the game's
+  own cell drawn N times larger with nearest. Geometry stays in source pixels
+  (spots, cursor, name box, scroll limits, the 392 x 352 box); only the texture
+  is N times larger and the quad keeps its source-space size. The cursor, the
+  balloon and the name box are the game's own, drawn as before.
+- Scalers: with a pack the CPU scalers are not run; **ZL / ZR** only switches
+  the GPU filter (Nearest is nearest, the others bilinear). The HUD adds
+  `MOD 4X`.
+- Memory: 1568 x 1408 RGBA is 8.8 MB, held while the view is open plus one copy
+  for the texture hand-off; freed on close.
+- Log, one line per open (AGENTS.md rule 12). In use:
+
+  `dw3-map: mod: pack "map-upscale-animevideov3" 1.0.0 loaded: map_us_h0@4x.png 1568x1408, reveal 17 pieces from the pack, 0 at 1x nearest, 0 skipped, 41 ms`
+
+  followed by `dw3-map: texture 1568x1408 queued for the GPU (...)`. On
+  fallback: `dw3-map: mod: original map (<reason>; folder <dir>)`, for example
+  `no packs in the mods folder`, `no mods folder ...`,
+  `pack "x": map_us_h0@4x.png is 1560x1408, expected 1568x1408`,
+  `map_mod=0 in port_options.cfg`. At boot `dw3-map: mods folder <dir>` says
+  where it looks.
+
+### Making the mod (extraction and upscale)
+
+```
+tools/mods/extract_map_assets.py \
+  --runtime runtime/us [--runtime runtime/eu] \
+  --out tmp/assets/mods/map-upscale/<date> \
+  --upscaler <realesrgan-ncnn-vulkan> --models <its models folder>
+```
+
+It builds `map_assets_dump` with `cc`, reads the sheet and image files by the
+file ids of `runtime/<region>/files_<region>.json` (US `0x78A` on, EU `0x799`
+on), writes the sources to `OUT/src/<region>/`, upscales with
+`-n realesr-animevideov3 -s 4`, and writes
+`OUT/sd/switch/dw3/mods/map-upscale-animevideov3/`. The base map goes through
+the model as it is. A reveal sprite has alpha and the model works on RGB only,
+so the colour is **bled** into the transparent texels (no dark halo), padded by
+4 px, upscaled; the alpha goes through the model on its own as a grey image;
+both are cropped to exactly N times the box and recombined. animevideov3 is a
+x4 model, so N = 4 needs no resize step. `--extract-only` stops after `src/`;
+`--model` names another ncnn model (the loader does not care which model made
+the files). The US run (2 maps and 171 sprites) took about two minutes on the
+RX 6700. The reveal sprites need the game's VRAM layout: entry 1 (towns) of the
+image file goes to (0x380, 0x100) and entry 2 (areas) to (0x300, 0x100), where
+their 4-bit palettes are the last rows of the page.
+
+### Installing the mod on the SD card
+
+1. Run the tool above, or take a pack it made, so that you have
+   `.../sd/switch/dw3/mods/<pack>/`.
+2. Copy the `switch` folder onto the SD card root (it merges into
+   `sdmc:/switch/dw3/`), so that `sdmc:/switch/dw3/mods/<pack>/mod.json` exists.
+3. Start the game, open the Map (Plus, Map), press **Y**. `dw3.log` has the
+   `dw3-map: mod: pack ... loaded` line. To go back to the original map, delete
+   the folder or set `map_mod=0`.
+4. On the PC the same folder goes under `<config dir>/mods/` (next to
+   `port_options.cfg`).
+
+A pack made from the US disc lists `"regions": ["us"]`. Make the EU pack from
+the EU `runtime/eu` with a second `--runtime`: the EU base map was
+byte-identical in phase 1, but the EU sprites were not compared, so the tool
+writes the region list from what it was given.
+
+### Tests
+
+- `python3 -m pytest tools/tests/test_mod_pack.py`: the loader on synthetic PNGs
+  (valid, missing file, missing folder, wrong size, truncated PNG, newer
+  `format`, junk manifest, other region, sprite size mismatch, blend clipping),
+  the C90 compile check, and the extractor's bleed and pad helpers.
+- Replays: `us-map-view` must still match its references with no pack present
+  (0 differing pixels, see the PR). `us-map-view-mod` / `eu-map-view-mod` run
+  the same recording with the synthetic pack written to the run's config folder
+  and check the log; their references are their own (`--update` once, outside
+  git).
