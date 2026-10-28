@@ -127,7 +127,7 @@ for _lang in EU_LANGS:
 
 # Patch 0187: Cross (the confirm button) picks the language as well as Start;
 # the log names the button and the title follows.
-_add(Scenario("eu-lang-cross-fr", "eu", "quick",
+_add(Scenario("eu-lang-cross-fr", "eu", "full",
               expect_log=((0, r"dw3-lang-select: language \d chosen by Cross \(confirm\)"
                               r"(?s:.*)dw3-title-menu: no autosave\.bin: plaques New Game, Options, "
                               r"Load Game \(slot list\), Quit game"),),
