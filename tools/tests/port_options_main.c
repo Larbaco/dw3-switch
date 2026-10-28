@@ -1,11 +1,13 @@
 /* Headless P9.2 port-options state machine (no disc / GPU). */
 #include "port_audio.h"
 #include "port_options.h"
+#include "port_options_groups.h"
 
 #include <stdio.h>
 #include <string.h>
 
 void dw3_port_options_test_set_pressed(unsigned mask);
+void dw3_port_options_test_goto_row(int reg);
 
 void dw3_port_audio_apply(int music_step, int sfx_step) {
     (void)music_step;
@@ -77,9 +79,38 @@ int main(void) {
         return fail("fast-forward default 2x");
     }
 
-    /* Fast-forward cycles 2x -> 3x -> 4x -> OFF -> 2x. */
+    /* P9.9: the screen opens on the group list. Down, Confirm opens Sound;
+     * Back returns to the list with the cursor kept; Back again closes. */
+    if (dw3_port_options_group() != -1 || dw3_port_options_cursor() != 0) {
+        return fail("opens on the group list");
+    }
     dw3_port_options_test_set_pressed(1u << BIT_DOWN);
     dw3_port_options_tick();
+    dw3_port_options_test_set_pressed(1u << BIT_CROSS);
+    dw3_port_options_tick();
+    if (dw3_port_options_group() != DW3_OPTGRP_SOUND ||
+        dw3_port_options_cursor() != 0) {
+        return fail("Confirm opens the Sound group");
+    }
+    dw3_port_options_test_set_pressed(1u << BIT_DOWN);
+    dw3_port_options_tick();
+    if (dw3_port_options_cursor() != 1) {
+        return fail("Down moves to SFX volume");
+    }
+    dw3_port_options_test_set_pressed(1u << BIT_DOWN);
+    dw3_port_options_tick();
+    if (dw3_port_options_cursor() != 1) {
+        return fail("Down stops on the last row");
+    }
+    dw3_port_options_test_set_pressed(1u << BIT_TRIANGLE);
+    dw3_port_options_tick();
+    if (!dw3_port_options_is_open() || dw3_port_options_group() != -1 ||
+        dw3_port_options_cursor() != DW3_OPTGRP_SOUND) {
+        return fail("Back returns to the list, cursor on Sound");
+    }
+
+    /* Fast-forward cycles 2x -> 3x -> 4x -> OFF -> 2x. */
+    dw3_port_options_test_goto_row(1);
     dw3_port_options_test_set_pressed(1u << BIT_CROSS);
     dw3_port_options_tick();
     if (dw3_port_options_level(1) != 3) {
@@ -98,8 +129,7 @@ int main(void) {
         return fail("fast-forward wraps to 2x");
     }
 
-    dw3_port_options_test_set_pressed(1u << BIT_DOWN);
-    dw3_port_options_tick();
+    dw3_port_options_test_goto_row(2);
     dw3_port_options_test_set_pressed(1u << BIT_CROSS);
     dw3_port_options_tick();
     if (dw3_port_options_restart_enabled() != 1) {
@@ -108,8 +138,56 @@ int main(void) {
 
     dw3_port_options_test_set_pressed(1u << BIT_TRIANGLE);
     dw3_port_options_tick();
+    if (!dw3_port_options_is_open() || dw3_port_options_group() != -1) {
+        return fail("triangle in a group goes back to the list");
+    }
+    dw3_port_options_test_set_pressed(1u << BIT_TRIANGLE);
+    dw3_port_options_tick();
     if (dw3_port_options_is_open()) {
-        return fail("triangle close");
+        return fail("triangle on the list closes");
+    }
+
+    /* The group table: placeholders are hidden, Cheats follows its switch,
+     * every registry row is in exactly one group, a long list scrolls. */
+    {
+        int ids[DW3_OPTGRP_COUNT];
+        int seen[9] = {0};
+        int g, k;
+
+        if (dw3_optgroups_visible(0, ids) != 4 || ids[0] != DW3_OPTGRP_DISPLAY ||
+            ids[3] != DW3_OPTGRP_SAVES) {
+            return fail("visible groups without cheats");
+        }
+        if (dw3_optgroups_visible(1, ids) != 5 || ids[4] != DW3_OPTGRP_CHEATS) {
+            return fail("Cheats group follows the master switch");
+        }
+        for (g = 0; g < DW3_OPTGRP_COUNT; g++) {
+            for (k = 0; k < dw3_optgroups[g].nrows; k++) {
+                seen[dw3_optgroups[g].rows[k]]++;
+            }
+        }
+        for (k = 0; k < 9; k++) {
+            if (seen[k] != 1) {
+                return fail("every registry row is in exactly one group");
+            }
+        }
+        if (dw3_optlist_scroll_for(0, 7, 8) != 2 ||
+            dw3_optlist_scroll_for(2, 1, 8) != 1 ||
+            dw3_optlist_scroll_for(5, 3, 5) != 0 ||
+            dw3_optlist_scroll_for(0, 2, 5) != 0) {
+            return fail("scroll keeps the cursor on screen");
+        }
+        if (dw3_optlist_page(-1, 0) != 0 ||
+            dw3_optlist_page(2, 3) == dw3_optlist_page(2, 0)) {
+            return fail("page codes");
+        }
+        {
+            int grp, sc;
+            if (!dw3_optlist_decode(dw3_optlist_page(2, 3), &grp, &sc) ||
+                grp != 2 || sc != 3 || dw3_optlist_decode(1, &grp, &sc)) {
+                return fail("page decode");
+            }
+        }
     }
 
     dw3_port_options_open();

@@ -11,7 +11,7 @@ pad 390 0x0040
 pad 395 0x0000
 pad 410 0x0040
 pad 415 0x0000
-pad 430 0x0040
+pad 430 0x4000
 pad 435 0x0000
 pad 450 0x0040
 pad 455 0x0000
@@ -30,4 +30,6 @@ pad 635 0x0000
 shot 670 battle-cursor-command-tech
 pad 690 0x1000
 pad 695 0x0000
-end 730
+pad 710 0x1000
+pad 715 0x0000
+end 770

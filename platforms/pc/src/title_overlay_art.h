@@ -94,7 +94,7 @@ unsigned dw3_pc_title_overlay_options_layout(void);
  * draw the layout a menu will open with before it is open. */
 void dw3_pc_title_overlay_options_static_band(uint8_t *rgba, int pitch,
         unsigned locked, int page, int cheats_on, int y, int h);
-/* Live page / cheats switch (0 without DW3_CHEATS). */
+/* Live page / cheats switch. */
 int dw3_pc_title_overlay_options_cheats_on(void);
 int dw3_pc_title_overlay_options_page(void);
 /* Bumped by setters that change the menu states; hosts re-upload on change. */
@@ -104,17 +104,32 @@ unsigned dw3_pc_title_overlay_options_generation(void);
 int dw3_pc_title_overlay_options_cursor(void);
 /* Value last handed to set_options_view for a row (0 for a bad row). */
 int dw3_pc_title_overlay_options_value(int row);
-#ifdef DW3_CHEATS
-/* P6.20: the Options window shows the Options page or the Cheats page
- * (port/options/cheats.c). On the Cheats page the view's values are the
- * cheat rows (port_cheats.h: master, Fill bag, Instant win, Battle now 0/1,
- * marked saves 0..6) and cheats_on dims rows 1..4 while the master switch is
- * off; on the Options page cheats_on adds the Square/Y "Cheats" hint.
- * PAGE_CHEATS2 is the second page (PR 2): the view's values are Money (0..3),
- * Warp (0 OFF, 1..13), the item id, the item count and Give item (0/1). */
+/* Which page the Options screen shows (port_options_groups.h dw3_optlist_page):
+ * PAGE_OPTIONS = the list of groups, a larger code = a group's sub-screen (its
+ * rows, scrolled), P6.20 PAGE_CHEATS / PAGE_CHEATS2 = the Cheats screen (the
+ * Options window of P9.2: five rows). cheats_on = the cheats master switch:
+ * the Cheats group is listed while it is on, and on the Cheats pages it dims
+ * rows 1..4 while it is off. The Cheats pages' view values are the cheat rows
+ * (port_cheats.h: master, Fill bag, Instant win, Battle now, marked saves 0..6;
+ * page 2: Money (0..3), Warp (0 OFF, 1..13), the item id, the item count and
+ * Give item (0/1)). On a list page the view's cursor is the item's index in the
+ * whole list (not its place on screen) and the values are those of the group's
+ * rows in screen order (a group list ignores them). A change rebuilds the
+ * retained static layer. */
 enum { DW3_TITLE_OPTIONS_PAGE_OPTIONS = 0, DW3_TITLE_OPTIONS_PAGE_CHEATS = 1,
        DW3_TITLE_OPTIONS_PAGE_CHEATS2 = 2 };
 enum { DW3_TITLE_CHEAT_ROWS = 5, DW3_TITLE_CHEAT_PAGES = 2, DW3_TITLE_CHEAT_WARPS = 13 };
 void dw3_pc_title_overlay_set_options_page(int page, int cheats_on);
-#endif
+/* Layout of a page for the retained cache. kind: the rectangle of a plaque
+ * (with its halo), of its value cell, or of the message strip; `slot` is the
+ * plaque's place on screen (the strip ignores it). */
+enum { DW3_OPTRECT_ROW = 0, DW3_OPTRECT_VALUE = 1, DW3_OPTRECT_DESC = 2 };
+void dw3_pc_title_overlay_options_rect(int page, int kind, int slot, int *x,
+        int *y, int *w, int *h);
+/* scroll = first visible item, items = items in the list, slots = plaques that
+ * fit on screen. */
+void dw3_pc_title_overlay_options_page_info(int page, int cheats_on,
+        int *scroll, int *items, int *slots);
+/* The bits of `locked` that change the static layer of `page`. */
+unsigned dw3_pc_title_overlay_options_lock_key(int page, unsigned locked);
 #endif

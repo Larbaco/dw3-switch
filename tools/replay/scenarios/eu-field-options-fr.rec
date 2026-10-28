@@ -76,7 +76,12 @@ shot 1540 options-focus
 pad 1560 0x4000
 pad 1565 0x0000
 shot 1640 options-open
-pad 1660 0x1000
+pad 1660 0x4000
 pad 1665 0x0000
-shot 1720 options-closed
-end 1760
+shot 1720 display-locked
+pad 1740 0x1000
+pad 1745 0x0000
+pad 1760 0x1000
+pad 1765 0x0000
+shot 1820 options-closed
+end 1880

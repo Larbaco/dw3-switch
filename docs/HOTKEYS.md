@@ -37,17 +37,21 @@ port options:
   answers, the D-pad moves between Yes and No, Triangle or Circle (PC S or D;
   Switch X or A) cancel. Yes flushes the saves and ends the session: the Switch
   NRO returns to hbmenu, on PC the window closes. HOME still exits as before.
-- In Port options, Up/Down changes the selected setting. Cross **or Circle**
-  (PC X or D; Switch B or A) toggles it. Triangle (PC S; Switch X) returns to
-  the selected title row. Opening the shell does not toggle the first setting.
+- Port options is a list of groups (P9.9: Display, Sound, Gameplay, Saves, and
+  Cheats once its master switch is on). Up/Down moves the cursor; Cross **or
+  Circle** (PC X or D; Switch B or A) opens a group. In a group Up/Down selects a
+  setting and Cross **or Circle** toggles it. Triangle (PC S; Switch X) in a group
+  goes back to the list with the cursor on that group; on the list it returns to
+  the selected title row (or the field menu, or the battle). Opening the shell
+  does not open the first group. [PORT_OPTIONS](PORT_OPTIONS.md#groups-and-sub-screens-p99).
   On the two volume rows (Music volume, SFX volume) Left / Right step the
   volume down / up from 10 to 0 (a held direction repeats; it stops at the
   ends), and Cross / Circle step up and wrap 10 to 0. See
   [P6.17_VOLUME.md](P6.17_VOLUME.md).
-- On the Options screen, **Square** (PC **Z**, Switch **Y**) opens the Cheats
-  screen (P6.20) and Triangle returns to Options. The hint "Square/Y Cheats" is
-  drawn only once the Cheats master switch is on, so the key is not discoverable
-  from the screen; builds made with `--no-cheats` have no such screen. Inside
+- On the Options screen (the list or any group), **Square** (PC **Z**, Switch
+  **Y**) opens the Cheats screen (P6.20) and Triangle returns to Options. It is
+  the same screen as the Cheats group, which is listed only once the Cheats
+  master switch is on, so the key is how you reach it the first time; builds made with `--no-cheats` have no such screen. Inside
   it Up/Down selects a row (Down from the last row of page 1, "Cheat saves",
   goes on to page 2), Cross / Circle change it. On page 2 (Money, Warp, Item
   id, Item count, Give item) Left / Right step the row's value, and L1 / R1

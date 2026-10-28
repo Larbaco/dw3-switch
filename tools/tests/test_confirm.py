@@ -37,7 +37,7 @@ def dialog_art_bin(request, tmp_path_factory) -> Path:
     cmd = [
         "gcc", "-std=gnu11", "-Wall", "-Wextra", "-Werror", "-O2", *defs,
         "-o", str(out), str(TESTS / "dialog_art_main.c"),
-        str(SRC / "title_overlay_art.c"), f"-I{SRC}", "-lm",
+        str(SRC / "title_overlay_art.c"), f"-I{SRC}", f"-I{ROOT / 'port' / 'include'}", "-lm",
     ]
     r = subprocess.run(cmd, capture_output=True, text=True)
     assert r.returncode == 0, r.stderr + r.stdout

@@ -24,7 +24,7 @@ def options_cache_test(request, tmp_path_factory) -> Path:
         "-o", str(out),
         str(TEST_C), str(SRC / "title_options_cache.c"),
         str(SRC / "title_overlay_art.c"),
-        "-pthread", "-lm",
+        f"-I{ROOT / 'port' / 'include'}", "-pthread", "-lm",
     ]
     r = subprocess.run(cmd, capture_output=True, text=True)
     assert r.returncode == 0, r.stderr + r.stdout

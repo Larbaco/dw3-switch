@@ -5,6 +5,7 @@
  * stubs. Built with -DDW3_PORT_OPTIONS_TEST -DDW3_FIELD_OPTIONS_TEST. */
 #include "port_field_options.h"
 #include "port_options.h"
+#include "port_options_groups.h"
 
 #include "title_overlay_art.h"
 
@@ -13,6 +14,7 @@
 #include <string.h>
 
 void dw3_port_options_test_set_pressed(unsigned mask);
+void dw3_port_options_test_goto_row(int reg);
 int dw3_port_options_test_sound_count(int kind);
 
 enum { UP = 4, RIGHT = 5, DOWN = 6, LEFT = 7, CIRCLE = 12, CROSS = 13,
@@ -57,12 +59,6 @@ static void title_press(int bit) {
     dw3_port_options_test_set_pressed(1u << bit);
     dw3_port_options_tick();
     dw3_port_options_test_set_pressed(0);
-}
-
-static void down(int n) {
-    while (n-- > 0) {
-        press(DOWN);
-    }
 }
 
 int main(void) {
@@ -122,21 +118,27 @@ int main(void) {
     dw3_port_field_options_open(2); /* already open: ignored */
     CHECK(g_language == DW3_TITLE_LANG_DE);
 
-    /* Widescreen is locked: Cross, Circle and the tick change nothing. */
+    /* Widescreen is locked: Cross opens the Display group (a select sound),
+     * Cross, Circle and the tick on its row change nothing. */
     CHECK(dw3_port_options_value(0) == 1);
+    press(CROSS);
+    CHECK(dw3_port_options_group() == DW3_OPTGRP_DISPLAY);
+    CHECK(dw3_port_options_test_sound_count(1) == 1); /* the group open only */
     press(CROSS);
     press(CIRCLE);
     CHECK(dw3_port_options_value(0) == 1);
-    CHECK(dw3_port_options_test_sound_count(1) == 0); /* no select sound */
+    CHECK(dw3_port_options_test_sound_count(1) == 1); /* no select sound */
+    press(TRIANGLE);                                  /* back to the group list */
+    CHECK(dw3_port_options_is_open() && dw3_port_options_group() == -1);
 
     /* Fast-forward cycles at once (2x -> 3x). */
-    press(DOWN);
+    dw3_port_options_test_goto_row(1);
     CHECK(dw3_port_options_level(1) == 2);
     press(CROSS);
     CHECK(dw3_port_options_level(1) == 3);
 
     /* The Restart hotkey applies at once: the chord reads this value. */
-    press(DOWN);
+    dw3_port_options_test_goto_row(2);
     CHECK(!dw3_port_options_restart_enabled());
     press(CROSS);
     CHECK(dw3_port_options_restart_enabled());
@@ -144,7 +146,7 @@ int main(void) {
     CHECK(!dw3_port_options_restart_enabled());
 
     /* Music volume: Left steps it down and the mixer gets it at once. */
-    press(DOWN);
+    dw3_port_options_test_goto_row(3);
     music_before = g_audio_calls;
     press(LEFT);
     CHECK(dw3_port_options_level(3) == 9);
@@ -154,7 +156,7 @@ int main(void) {
     CHECK(dw3_port_options_level(3) == 7 && g_music == 7);
 
     /* Encounter rate: OFF, 0.5x, 1x, 1.5x, 2x by position; Left x2 from 1x. */
-    down(2);
+    dw3_port_options_test_goto_row(5);
     CHECK(dw3_port_options_level(5) == 0);
     press(LEFT);
     CHECK(dw3_port_options_level(5) == 1);
@@ -162,25 +164,26 @@ int main(void) {
     CHECK(dw3_port_options_level(5) == 2); /* stored value of OFF */
 
     /* Text speed, Battle cursor, Auto-save: all apply at once. */
-    press(DOWN);
+    dw3_port_options_test_goto_row(6);
     press(RIGHT);
     CHECK(dw3_port_options_level(6) == 1);
-    press(DOWN);
+    dw3_port_options_test_goto_row(7);
     press(RIGHT);
     CHECK(dw3_port_options_level(7) == 1);
-    press(DOWN);
+    dw3_port_options_test_goto_row(8);
     press(CROSS);
     CHECK(dw3_port_options_level(8) == 1);
 
-    /* Up walks back to the locked row and it still refuses. */
-    for (lang = 0; lang < 8; lang++) {
-        press(UP);
-    }
+    /* Back on the locked row it still refuses. */
+    dw3_port_options_test_goto_row(0);
     press(CROSS);
     CHECK(dw3_port_options_value(0) == 1);
 
-    /* Triangle closes: back to the field menu, the overlay hidden, the pad
-     * not read by anything else this frame, in-game mode off. */
+    /* Triangle: out of the group, then closes: back to the field menu, the
+     * overlay hidden, the pad not read by anything else this frame, in-game
+     * mode off. */
+    press(TRIANGLE);
+    CHECK(dw3_port_options_is_open() && dw3_port_options_group() == -1);
     g_state_calls = 0;
     press(TRIANGLE);
     CHECK(!dw3_port_options_is_open());
@@ -196,6 +199,8 @@ int main(void) {
     CHECK(dw3_port_options_is_open() && !dw3_port_options_in_game());
     CHECK(!dw3_port_field_options_is_open());
     CHECK(!dw3_port_options_row_locked(0));
+    CHECK(dw3_port_options_group() == -1);       /* opens on the group list */
+    dw3_port_options_test_goto_row(0);
     title_press(CROSS); /* Widescreen toggles at the title */
     CHECK(dw3_port_options_value(0) == 0);
     dw3_port_options_close();

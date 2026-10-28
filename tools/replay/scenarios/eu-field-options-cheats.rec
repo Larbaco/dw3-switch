@@ -79,6 +79,17 @@ shot 1640 options-open
 pad 1660 0x8000
 pad 1665 0x0000
 shot 1720 cheats-locked
-pad 1740 0x1000
+pad 1740 0x0040
 pad 1745 0x0000
-end 1800
+pad 1760 0x0040
+pad 1765 0x0000
+pad 1780 0x0040
+pad 1785 0x0000
+pad 1800 0x0040
+pad 1805 0x0000
+pad 1820 0x4000
+pad 1825 0x0000
+shot 1880 cheats-group-locked
+pad 1900 0x1000
+pad 1905 0x0000
+end 1960

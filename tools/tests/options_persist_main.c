@@ -7,7 +7,9 @@
  *   pacing             print the Encounter rate / Text speed modes
  *   battle             print the Battle cursor mode (battle_menu_memory)
  *   open | close       open / close the Options screen
- *   row N              move the cursor to row N
+ *   row N              put the cursor on registry row N (opens its group, no keys)
+ *   nav N              the same with the keys: Down / Confirm / Down ... as a
+ *                      player would (cursor and select sounds are played)
  *   press              Cross on the current row
  *   left | right       D-pad Left / Right (volume rows)
  *   back               Triangle (close with the cancel sound)
@@ -19,12 +21,14 @@
  */
 #include "port_audio.h"
 #include "port_options.h"
+#include "port_options_groups.h"
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
 void dw3_port_options_test_set_pressed(unsigned mask);
+void dw3_port_options_test_goto_row(int reg);
 
 enum { BIT_UP = 4, BIT_RIGHT = 5, BIT_DOWN = 6, BIT_LEFT = 7, BIT_CROSS = 13,
        BIT_TRIANGLE = 14 };
@@ -79,9 +83,46 @@ static void press(int bit) {
     dw3_port_options_test_set_pressed(0);
 }
 
+/* Walk to registry row `reg` with the keys: back to the group list, down to
+ * the row's group, open it, down to the row. */
+static void nav(int reg) {
+    int g, k, want_g = -1, want_k = 0, ids[DW3_OPTGRP_COUNT], n, idx = 0;
+
+    for (g = 0; g < DW3_OPTGRP_COUNT && want_g < 0; g++) {
+        for (k = 0; k < dw3_optgroups[g].nrows; k++) {
+            if (dw3_optgroups[g].rows[k] == reg) {
+                want_g = g;
+                want_k = k;
+                break;
+            }
+        }
+    }
+    if (want_g < 0) {
+        return;
+    }
+    if (dw3_port_options_group() >= 0) {
+        press(BIT_TRIANGLE);
+    }
+    n = dw3_optgroups_visible(0, ids);
+    for (k = 0; k < n; k++) {
+        if (ids[k] == want_g) {
+            idx = k;
+        }
+    }
+    while (dw3_port_options_cursor() < idx) {
+        press(BIT_DOWN);
+    }
+    while (dw3_port_options_cursor() > idx) {
+        press(BIT_UP);
+    }
+    press(BIT_CROSS);
+    while (dw3_port_options_cursor() < want_k) {
+        press(BIT_DOWN);
+    }
+}
+
 int main(int argc, char **argv) {
     int i;
-    int cursor = 0;
 
     if (argc < 2) {
         return 2;
@@ -102,20 +143,12 @@ int main(int argc, char **argv) {
             autosave();
         } else if (strcmp(argv[i], "open") == 0) {
             dw3_port_options_open();
-            cursor = 0;
         } else if (strcmp(argv[i], "close") == 0) {
             dw3_port_options_close();
         } else if (strcmp(argv[i], "row") == 0 && i + 1 < argc) {
-            int want = atoi(argv[++i]);
-
-            while (cursor < want) {
-                press(BIT_DOWN);
-                cursor++;
-            }
-            while (cursor > want) {
-                press(BIT_UP);
-                cursor--;
-            }
+            dw3_port_options_test_goto_row(atoi(argv[++i]));
+        } else if (strcmp(argv[i], "nav") == 0 && i + 1 < argc) {
+            nav(atoi(argv[++i]));
         } else if (strcmp(argv[i], "press") == 0) {
             press(BIT_CROSS);
         } else if (strcmp(argv[i], "left") == 0) {
@@ -126,14 +159,8 @@ int main(int argc, char **argv) {
             press(BIT_TRIANGLE);
         } else if (strcmp(argv[i], "up") == 0) {
             press(BIT_UP);
-            if (cursor > 0) {
-                cursor--;
-            }
         } else if (strcmp(argv[i], "down") == 0) {
             press(BIT_DOWN);
-            if (cursor < 8) {
-                cursor++;
-            }
         } else if (strcmp(argv[i], "gains") == 0) {
             gains();
         } else if (strcmp(argv[i], "fileint") == 0 && i + 2 < argc) {

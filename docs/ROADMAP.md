@@ -99,7 +99,7 @@ listed once, in [Pending OLED checks](#pending-oled-checks).
 | P9.6 | External save converter | open | — |
 | P9.7 | Port options reachable in game | in progress (slice 1, the field menu, and slice 2, battle: built, PC US and EU replays, Switch Ryubing nx scenarios; live Widescreen open; owner OLED checks open) | [PORT_OPTIONS](PORT_OPTIONS.md#options-in-game-p97), [roadmap](#phase-9--port-options-menu) |
 | P9.8 | Confirm / cancel layout option (PS positional or Nintendo A/B) (future goal) | future | [roadmap](#phase-9--port-options-menu), [HOTKEYS](HOTKEYS.md) |
-| P9.9 | Options screen redesign in the title menu's style, room for more rows (future goal; submenus decided 2026-10-27) | future | [roadmap](#phase-9--port-options-menu), [PORT_OPTIONS](PORT_OPTIONS.md) |
+| P9.9 | Options screen redesign in the title menu's style, room for more rows (slice 1 done 2026-10-27: groups and sub-screens; OLED pending; Cheats screen restyle, Controls, Help, Walkthrough follow) | slice 1 in review | [roadmap](#phase-9--port-options-menu), [PORT_OPTIONS](PORT_OPTIONS.md) |
 | P10.1 | Switch features goal note | done | [SWITCH_FEATURES](SWITCH_FEATURES.md) |
 | P10.2 | Lifecycle hardening (has P5.3's leftover) | in progress (sleep and resume: owner confirmed on the OLED, 2026-10-24; HOME during a save write open) | [SWITCH_FEATURES](SWITCH_FEATURES.md) |
 | P10.3 | Presentation modes | open | — |
@@ -1240,7 +1240,22 @@ PS1 game, with vanilla-safe defaults and persistence on owner storage.
   and P4.4_INPUT_STATUS.md describe both layouts.
   Related: P6.12 / P6.13, P10.6, [SWITCH_FEATURES.md](SWITCH_FEATURES.md)
   (the "Confirm/Cancel layout" row).
-- [ ] **P9.9 Options screen redesign (future goal).** Dated 2026-10-24, owner
+- [ ] **P9.9 Options screen redesign (slice 1 done 2026-10-27).** **Status:**
+  slice 1 is the list of groups (Display, Sound, Gameplay, Saves, and Cheats once
+  its master switch is on) with a sub-screen per group, in the title menu's
+  plaques, focus cue and lettering, on PC and Switch, on the title, in the field
+  menu and in battle; Back returns to the list with the cursor kept; the
+  registry indexes and the `port_options.cfg` keys did not change; every new
+  label (and, since the sub-screens show them, the row labels, values and message
+  lines) is in en / fr / de / es / it; a list of more than six items scrolls
+  (not used yet). Details: [PORT_OPTIONS](PORT_OPTIONS.md#groups-and-sub-screens-p99).
+  **Still open:** OLED validation (OLED_TEST_PLAN A5, A9 to A12); the Cheats
+  screen keeps the old window (restyle it with the owner's answer on the dark
+  tone); Controls (P6.12), Help (P6.30) and Walkthrough (P6.35) are hidden
+  placeholders in `port_options_groups.h`; the open questions below are answered
+  by defaults (Cheats group listed only with the master switch on; the plain dim of
+  the title backdrop, deeper in game; no fallback to the old window). Original
+  goal note follows. Dated 2026-10-24, owner
   request (Portuguese, a new Options layout in the visual style of the title
   menu). Goal note only, nothing started. **What exists (cited):** the Options
   window is drawn in the game's window style by `port/options/port_options.c`

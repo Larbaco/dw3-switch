@@ -512,6 +512,9 @@ were not tested; P9.3/P9.4 remain open and the overall Phase 9 gate is open.
 
 ## Options screen (2026-10-14)
 
+> Superseded by [Groups and sub-screens (P9.9)](#groups-and-sub-screens-p99)
+> for the list of rows; the Cheats screen still uses this window.
+
 On the PC SDL3 GPU path and the Switch, Options opens its own screen instead
 of the old text panel. The title backdrop stays, dimmed (also over the PC
 widescreen side extensions); the logo, the menu and the credits (the native
@@ -659,6 +662,141 @@ the new level; a Music volume change plays it at the current SFX level. Every
 sound logs `dw3-port-options: sound <cursor|select|cancel> (sfx volume N, voice V)`
 (`voice` is the SPU voice of the key-on) and a missing bank would log
 `sound ... not played: bank N is not loaded`. Evidence: [P6.17](P6.17_VOLUME.md#sound-feedback-on-the-options-screen).
+
+## Groups and sub-screens (P9.9)
+
+*Slice 1, 2026-10-27. This section is the current Options screen; the section
+above it (2026-10-14 and its row-count notes) describes the single window it
+replaced, which the Cheats screen still uses.*
+
+Owner decision (2026-10-27): "esse menu de opções pode ter submenus". Options
+is a **list of groups**; a group opens a **sub-screen** with its rows. The two
+help screens (P6.30 technical help, P6.35 walkthrough) and the button mapping
+(P6.12) are meant to be groups of this list later.
+
+### What the player sees
+
+The list of groups and every sub-screen are drawn in the title menu's
+identity ([TITLE_MENU_DESIGN](TITLE_MENU_DESIGN.md)): the dimmed title
+backdrop (deeper over the field or a battle, so the menu behind does not read
+through), the same navy hardware plaques with steel bevels, amber rails and
+fasteners, lit rails, lit fasteners and a short orange halo on the focused
+plaque, and the same warm lettering with a one pixel dark shadow. A header
+plaque names the screen (OPTIONS, or the open group). A message strip under the
+list explains the focused item (a locked one says why), then the two button
+hints (Open or Change, Back).
+
+| Group | Rows (registry index, unchanged) | Notes |
+|---|---|---|
+| Display | Widescreen (0) | Locked in game, as before: the plaque and the row are greyed |
+| Sound | Music volume (3), SFX volume (4) | |
+| Gameplay | Fast-forward (1), Restart hotkey (2), Encounter rate (5), Text speed (6), Battle cursor (7) | Restart hotkey moves to Controls when P6.12 exists |
+| Saves | Auto-save (8) | |
+| Cheats | opens the P6.20 Cheats screen | Listed once the Cheats master switch is on; greyed in game |
+| Controls, Help, Walkthrough | not built | P6.12, P6.30, P6.35: hidden placeholders in `port_options_groups.h` (`built = 0`); flip the flag when the screen exists |
+
+Keys: Up / Down move the cursor; **Confirm** (Cross, Circle) opens the group;
+**Back** (Triangle, X on the Switch) in a group returns to the list with the
+cursor on that group, Back on the list closes the screen (to the title, the
+field menu or the battle, as before). On a row nothing changed: Confirm and
+Left / Right do what they did, values are applied and saved at once. The
+Square / Y shortcut to the Cheats screen still works from the list and from any
+group (it is title-only: in game the log says it is locked), and so does the
+Cheats group. The field menu and battle Options open on the list too.
+
+Grouping is a proposal; the code takes any split, `port_options_groups.h` is
+the single table. The Cheats group is listed only while the master switch is
+on (the old "Square / Y Cheats" hint was drawn only then, so the cheats stay
+undiscoverable on a normal install); the shortcut gets you there the first time.
+That answers the owner's open question about hiding it in the safest way; it is
+one line (`dw3_optgroups_visible`) to change.
+
+### Languages
+
+Every new label exists in US English and the five EU languages (EN, FR, DE, ES,
+IT): the group names and their message lines, Open / Change / Back, the
+OPTIONS title (FR was missing and uses the English word). Since the sub-screens
+show them too, the registry row labels, the value words (Normal / Fast /
+Instant, Command, Command+Tech) and the eight message lines were translated in
+the same change (they were English on every disc). ON, OFF, the numbers, 1x,
+0.5x... are the same in every language. `tools/generate_pc_title_lettering.py`
+checks the widths (group name 330 px, row label 290 px, value 236 px, message
+line 690 px) and fails when a text does not fit. All of it is DejaVu lettering
+generated into `title_overlay_lettering.inc`; no game art or font is shipped.
+
+### Scrolling
+
+A list shows six plaques (`DW3_OPTLIST_VISIBLE`); a longer one scrolls with the
+cursor and draws an amber arrow above or below when there is more. Today no
+list is longer than five, so nothing scrolls in the shipped screens; the help
+pages and the group list once it passes six will. The scroll offset is part of
+the overlay's page code (`dw3_optlist_page`), so a scrolled page is its own
+retained layer; `tools/tests/options_cache_main.c` renders scrolled pages
+against the reference.
+
+### Design
+
+- `port/include/port_options_groups.h` is the one table (groups, their registry
+  rows, visible list, scroll, page codes), read by `port_options.c` and by the
+  overlay art. `port_options.c` has a `_Static_assert` that the registry numbers
+  in it did not change.
+- `port_options.c` keeps the registry, persistence and the sounds. New state:
+  level (list or group), the open group, one cursor and scroll per level. It
+  hands the page, the cursor (the item's place in the whole list) and the values
+  of the group's rows to the overlay.
+- `title_overlay_art.c`: `options_list_screen` draws both levels. The plaques
+  are the title menu's (`title_plaque`, one function for the title loop and the
+  Options; the title menu is pixel-identical to before, checked by the
+  `--quick` replay against the old references). Options plaques are rasterized
+  once per size and state into small sprites and blitted (the halo alone for the
+  lit one), so a focus change on the retained canvas costs about 0.4 ms on a
+  desktop CPU instead of about 2.6 ms; `box` and `pixel` got exact opaque and
+  empty-destination fast paths. The Cheats pages keep the old window.
+- `title_options_cache.c` asks the art for the rectangles (row with its halo,
+  value cell, message strip) of the live page and addresses rows by item index.
+  The layer cache keys are (art generation, locked bits that matter for the
+  page, page, Cheats switch); four slots (two group lists, the sub-screen on
+  show, one spare; the fourth slot is 2.76 MB more than #298 kept, the plaque
+  sprites add about 0.6 MB; the third and fourth slots are allocated on first use). The prewarm worker (#298) still composes the group list for
+  the title and for in game on a low-priority thread with thread-local renderer
+  state; a sub-screen is composed on first use (about 7 ms on a desktop CPU,
+  logged as `options update rebuild ... compose=N us`; a second visit is a
+  `cached` copy).
+
+### Logs
+
+`dw3-port-options: group open <name> (<n> row(s), title|in game)`, `group close
+<name> (back to the group list)`, `group open cheats (group|Square / Y
+shortcut)`; the existing lines stay (open / close, `open for N ms`, `first
+frame shown`, `longest frame gap`, `prewarm ... ready`, row changes, sounds,
+`saved port_options.cfg`). Opening a group plays the choice sound, Back plays
+the cancel sound, as on the other screens.
+
+### Tests
+
+`tools/tests/port_options_main.c` (list, open, back with the cursor kept, close,
+table, scroll helpers, page codes), `options_persist_main.c` (`nav N` walks to a
+row with the keys, `row N` jumps for the old tests; sound and group log
+checks), `options_cache_main.c` (every group page, cursor and value, scrolled
+pages, locked layouts, the cheats pages, the prewarm worker, all against the
+reference render, five languages), `locked_art_main.c`, `field_options_main.c`.
+Replays (`tools/replay/gen_scenarios.py`, regenerated): options-persist,
+volume-persist, pacing-persist, battle-cursor-persist, options-sound,
+field-options (+ the four EU languages), field-options-cheats, battle-options,
+turbo-menu. Their checkpoints are the new screens; their log expectations
+include the group lines.
+
+### Not done in slice 1
+
+- The Cheats screen keeps the old white-bezel window (it has its own value
+  widgets: numbers and area names); restyling it is a follow-up.
+- The PS1-primitive fallback (SDL3 GL path) lists the groups as plain text.
+- Controls, Help and Walkthrough (hidden placeholders).
+- OLED validation (below).
+
+### OLED checklist, groups and sub-screens (owner)
+
+See [OLED_TEST_PLAN](OLED_TEST_PLAN.md) A5, A9 to A12 and their proof lines.
 
 ## Auto-save row (P6.31)
 

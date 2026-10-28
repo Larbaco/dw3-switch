@@ -13,6 +13,10 @@ void dw3_port_options_open(void);
  * the menu that opened it. */
 void dw3_port_options_open_in_game(void);
 int dw3_port_options_in_game(void);
+/* P9.9: the open group (a DW3_OPTGRP_* of port_options_groups.h) or -1 on the
+ * group list, and the cursor's item on the list on screen. */
+int dw3_port_options_group(void);
+int dw3_port_options_cursor(void);
 /* Host overlay: the Options screen was drawn for the first time since it
  * opened; logs the time from the open request (the stutter measure). */
 void dw3_port_options_note_shown(void);
@@ -30,7 +34,10 @@ enum { DW3_PORT_OPTIONS_LOCK_CHEATS = 1u << 16 };
 void dw3_port_options_close(void);
 int dw3_port_options_is_open(void);
 
-/* Pad + stub registry while open. Does not set title menu choice. */
+/* Pad + stub registry while open. Does not set title menu choice. The screen
+ * is a list of groups (Display, Sound, Gameplay, Saves, Cheats); Confirm opens
+ * one (its rows, or the Cheats screen) and Back returns to the list with the
+ * cursor kept; Back on the list closes the screen. */
 void dw3_port_options_tick(void);
 
 /* Draw panel over title after STDWTITL_drawMenu. */

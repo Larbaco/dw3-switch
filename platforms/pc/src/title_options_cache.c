@@ -7,17 +7,12 @@
 #include <string.h>
 #include <time.h>
 
-/* Layout of the Port options screen in canvas pixels. Must cover everything
- * options_screen() draws for its FOCUS / VALUE / DESCRIPTION layers; the
- * unit test proves it against the full reference render. Nine rows of 34 px
- * on a 38 px pitch (title_overlay_art.c OPT_ROW_*): the window is 600 px
- * high, y 60..660, inside the 720 px canvas. The value cell starts at 560: the
- * widest word, "Command+Tech", is 214 px wide and ends at 780. */
-enum {
-    ROW_X = 132, ROW_Y = 150, ROW_W = 696, ROW_H = 34, ROW_STEP = 38,
-    VALUE_X = 560, VALUE_W = 268,
-    DESC_Y = 524, DESC_H = 52,
-};
+/* The layout of the page on screen comes from the art
+ * (dw3_pc_title_overlay_options_rect): the plaques with their halo, the value
+ * cells and the message strip of a list screen (P9.9), or the Options window's
+ * rows of the Cheats pages. Rows are addressed by item index; a list that
+ * scrolls shows item scroll + slot in slot. The unit test proves that the
+ * layers cover everything the full reference render draws. */
 
 /* Static layers (everything but the focus box, values and description) kept
  * per layout, so opening the screen again, or opening it in game after the
@@ -25,10 +20,10 @@ enum {
  * They are composed ahead of time by a low-priority worker thread (the host
  * starts it: dw3_options_cache_prewarm_begin / _worker), never on the frame
  * that needs them unless the worker has not finished (then the open composes
- * synchronously, as before). Three slots: title, in game, and the one being
- * composed. The slot table is guarded by a spin lock held for a few
+ * synchronously, as before). Four slots: the group list at the title and in game,
+ * the sub-screen being shown, and one to compose the next. The slot table is guarded by a spin lock held for a few
  * instructions; the pixels are drawn outside it. */
-enum { SLOTS = 3, BAND_ROWS = 48 };
+enum { SLOTS = 4, BAND_ROWS = 48 };
 enum { S_EMPTY, S_COMPLETE, S_WORKER, S_MAIN };
 typedef struct StaticSlot {
     uint8_t *px;
@@ -56,14 +51,27 @@ static int g_awaiting_commit;
  * the Cheats page, the cheats master switch, P9.7 the locked rows). */
 static unsigned g_layout;
 
-static Dw3OptionsRect row_rect(int row) {
-    return (Dw3OptionsRect){ROW_X, ROW_Y + ROW_STEP * row, ROW_W, ROW_H};
+/* The page on screen while update() runs. */
+static int g_page, g_scroll, g_items, g_nslots;
+
+static Dw3OptionsRect geo(int kind, int slot) {
+    Dw3OptionsRect r;
+    dw3_pc_title_overlay_options_rect(g_page, kind, slot, &r.x, &r.y, &r.w, &r.h);
+    return r;
 }
-static Dw3OptionsRect value_rect(int row) {
-    return (Dw3OptionsRect){VALUE_X, ROW_Y + ROW_STEP * row, VALUE_W, ROW_H};
+/* Item `item` is on screen. */
+static int item_slot(int item) {
+    const int slot = item - g_scroll;
+    return item >= 0 && item < g_items && slot >= 0 && slot < g_nslots ? slot : -1;
+}
+static Dw3OptionsRect row_rect(int item) {
+    return geo(DW3_OPTRECT_ROW, item_slot(item));
+}
+static Dw3OptionsRect value_rect(int item) {
+    return geo(DW3_OPTRECT_VALUE, item_slot(item));
 }
 static Dw3OptionsRect description_rect(void) {
-    return (Dw3OptionsRect){ROW_X, DESC_Y, ROW_W, DESC_H};
+    return geo(DW3_OPTRECT_DESC, 0);
 }
 
 static int intersect(Dw3OptionsRect a, Dw3OptionsRect b, Dw3OptionsRect *out) {
@@ -91,13 +99,14 @@ static void draw(Dw3OptionsRect r, int layer, int row, int value) {
 /* Draw the focus box, values and description that fall inside rect. */
 static void draw_state_in(Dw3OptionsRect rect, int cursor, const int *values) {
     Dw3OptionsRect part;
-    for (int row = 0; row < DW3_TITLE_OPTION_ROWS; ++row) {
+    for (int slot = 0; slot < g_nslots && g_scroll + slot < g_items; ++slot) {
+        const int row = g_scroll + slot;
         if (cursor == row && intersect(rect, row_rect(row), &part))
             draw(part, DW3_TITLE_OPTIONS_FOCUS, row, 0);
         if (intersect(rect, value_rect(row), &part))
             draw(part, DW3_TITLE_OPTIONS_VALUE, row, values[row]);
     }
-    if (cursor >= 0 && cursor < DW3_TITLE_OPTION_ROWS &&
+    if (cursor >= 0 && cursor < g_items &&
         intersect(rect, description_rect(), &part))
         draw(part, DW3_TITLE_OPTIONS_DESCRIPTION, cursor, 0);
 }
@@ -182,6 +191,9 @@ int dw3_options_cache_update(Dw3OptionsDirty *out) {
     int from_cache = 0;
 
     memset(&dirty, 0, sizeof(dirty));
+    g_page = dw3_pc_title_overlay_options_page();
+    dw3_pc_title_overlay_options_page_info(g_page,
+        dw3_pc_title_overlay_options_cheats_on(), &g_scroll, &g_items, &g_nslots);
     for (int i = 0; i < DW3_TITLE_OPTION_ROWS; ++i)
         values[i] = dw3_pc_title_overlay_options_value(i);
     if (!g_canvas) g_canvas = (uint8_t *)malloc(canvas_bytes);
@@ -194,8 +206,9 @@ int dw3_options_cache_update(Dw3OptionsDirty *out) {
     if (!g_valid || g_art_generation != art_generation ||
         g_layout != dw3_pc_title_overlay_options_layout()) {
         StaticSlot *slot;
-        const unsigned locked = dw3_pc_title_overlay_options_locked();
-        const int page = dw3_pc_title_overlay_options_page();
+        const int page = g_page;
+        const unsigned locked = dw3_pc_title_overlay_options_lock_key(page,
+            dw3_pc_title_overlay_options_locked());
         const int cheats_on = dw3_pc_title_overlay_options_cheats_on();
         g_layout = dw3_pc_title_overlay_options_layout();
         /* Open or language/label change: take the static layer of this
@@ -234,15 +247,15 @@ int dw3_options_cache_update(Dw3OptionsDirty *out) {
         dirty.rects[dirty.count++] = whole;
     } else {
         if (cursor != g_cursor) {
-            if (g_cursor >= 0 && g_cursor < DW3_TITLE_OPTION_ROWS)
+            if (item_slot(g_cursor) >= 0)
                 dirty.rects[dirty.count++] = row_rect(g_cursor);
-            if (cursor >= 0 && cursor < DW3_TITLE_OPTION_ROWS)
+            if (item_slot(cursor) >= 0)
                 dirty.rects[dirty.count++] = row_rect(cursor);
             dirty.rects[dirty.count++] = description_rect();
         }
         for (int i = 0; i < DW3_TITLE_OPTION_ROWS; ++i) {
             int covered = 0;
-            if (values[i] == g_values[i]) continue;
+            if (values[i] == g_values[i] || item_slot(i) < 0) continue;
             /* A row rect already being redrawn contains its value cell. */
             for (int j = 0; j < dirty.count; ++j)
                 if (intersect(dirty.rects[j], value_rect(i), NULL)) covered = 1;
@@ -316,7 +329,7 @@ int dw3_options_cache_layers_ready(unsigned in_game_locked) {
 
     tbl_lock();
     ready = find_complete(art, 0, 0, cheats) &&
-            find_complete(art, in_game_locked, 0, cheats);
+            find_complete(art, dw3_pc_title_overlay_options_lock_key(0, in_game_locked), 0, cheats);
     tbl_unlock();
     return ready;
 }
@@ -329,7 +342,7 @@ int dw3_options_cache_prewarm_begin(unsigned in_game_locked) {
     if (atomic_load(&g_worker_running)) return 0;
     tbl_lock();
     need = !find_complete(art, 0, 0, cheats) ||
-           !find_complete(art, in_game_locked, 0, cheats);
+           !find_complete(art, dw3_pc_title_overlay_options_lock_key(0, in_game_locked), 0, cheats);
     tbl_unlock();
     if (!need) return 0;
     g_worker_mask = in_game_locked;
@@ -344,7 +357,8 @@ void dw3_options_cache_prewarm_cancel(void) {
 void dw3_options_cache_prewarm_worker(void) {
     for (int k = 0; k < 2; ++k) {
         const unsigned art = dw3_pc_title_overlay_generation();
-        const unsigned locked = k == 0 ? 0u : g_worker_mask;
+        const unsigned locked = k == 0 ? 0u
+            : dw3_pc_title_overlay_options_lock_key(0, g_worker_mask);
         const int cheats = dw3_pc_title_overlay_options_cheats_on();
         StaticSlot *slot;
         double t0;

@@ -7,7 +7,13 @@ pad 320 0x0040
 pad 325 0x0000
 pad 340 0x4000
 pad 345 0x0000
-shot 380 volume-restored
-pad 390 0x1000
+pad 390 0x0040
 pad 395 0x0000
-end 430
+pad 410 0x4000
+pad 415 0x0000
+shot 470 volume-restored
+pad 480 0x1000
+pad 485 0x0000
+pad 500 0x1000
+pad 505 0x0000
+end 560

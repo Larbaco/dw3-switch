@@ -73,5 +73,21 @@ pad 1500 0x0040
 pad 1505 0x0000
 pad 1560 0x4000
 pad 1565 0x0000
-shot 1640 options-restored
-end 1700
+shot 1640 options-open-restored
+pad 1660 0x0040
+pad 1665 0x0000
+pad 1680 0x4000
+pad 1685 0x0000
+shot 1740 options-restored
+pad 1760 0x1000
+pad 1765 0x0000
+pad 1780 0x0040
+pad 1785 0x0000
+pad 1800 0x4000
+pad 1805 0x0000
+pad 1820 0x0040
+pad 1825 0x0000
+pad 1840 0x0040
+pad 1845 0x0000
+shot 1900 options-restored-gameplay
+end 1960

@@ -74,9 +74,11 @@ geometry. The menu overlay remains active until the options shell opens or the
 title flow fades out. The title patch keeps vanilla New Game and Continue
 choice values: **Load Game** enters the original Continue flow and
 memory-card screen; **Options** opens the P9.2 shell. On the native
-overlay that shell is a fifth canvas state, a full screen in the style of
-the game's own windows rather than of these plaques; see
-[PORT_OPTIONS.md](PORT_OPTIONS.md#options-screen-2026-10-14). The PC and
+overlay that shell is a fifth canvas state. Since P9.9 it is a list of
+groups and one sub-screen per group drawn with these plaques, the same focus cue
+and lettering ([PORT_OPTIONS.md](PORT_OPTIONS.md#groups-and-sub-screens-p99));
+the Cheats screen still has the older window in the game's own style
+([PORT_OPTIONS.md](PORT_OPTIONS.md#options-screen-2026-10-14)). The PC and
 Switch menus start on New Game.
 
 The original logo art is not redrawn or resampled into a new font. Its game

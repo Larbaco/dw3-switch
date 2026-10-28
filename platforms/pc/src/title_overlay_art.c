@@ -1,6 +1,8 @@
 /* Native-resolution PC title plaques. Geometry is authored in 960x720 pixels. */
 #include "title_overlay_art.h"
+#include "port_options_groups.h"
 #include <math.h>
+#include <stdatomic.h>
 #include <stdlib.h>
 #include <string.h>
 #include "title_overlay_labels.inc"
@@ -30,11 +32,10 @@ static _Thread_local int options_layer_row;
 static unsigned options_layout;
 /* P9.7: rows greyed in game (bit i = row i, bit 16 = the Cheats entry). */
 static unsigned options_locked;
-#ifdef DW3_CHEATS
-/* P6.20: which page the Options window shows, and the cheats master switch. */
+/* Which page the Options screen shows (the group list, a group's sub-screen,
+ * P6.20 the Cheats pages) and whether the cheats master switch is on. */
 static int options_page = DW3_TITLE_OPTIONS_PAGE_OPTIONS;
 static int options_cheats_on;
-#endif
 /* The worker thread that composes the options window's static layer ahead of
  * time (title_options_cache.c) draws with its own canvas, clip and layout:
  * everything the renderer writes is thread-local, and the layout the worker
@@ -43,19 +44,15 @@ static int options_cheats_on;
 static _Thread_local int ovr_on;
 static _Thread_local unsigned ovr_locked;
 static _Thread_local int ovr_page,ovr_cheats;
-#ifdef DW3_CHEATS
 #define ELOCKED (ovr_on?ovr_locked:options_locked)
 #define EPAGE (ovr_on?ovr_page:options_page)
 #define ECHEATS (ovr_on?ovr_cheats:options_cheats_on)
-#else
-#define ELOCKED (ovr_on?ovr_locked:options_locked)
-#define EPAGE 0
-#define ECHEATS 0
-#endif
 static void pixel(int x,int y,int r,int g,int b,int alpha) {
     if(x<clip_x0||x>=clip_x1||y<clip_y0||y>=clip_y1||
        x<0||x>=960||y<0||y>=720||alpha<=0)return;
     uint8_t *p=canvas+y*stride+x*4;
+    /* Opaque, or over a transparent pixel: the blend below gives exactly r,g,b. */
+    if(alpha>=255||!p[3]){p[0]=r;p[1]=g;p[2]=b;p[3]=alpha>255?255:alpha;return;}
     int a=alpha+p[3]*(255-alpha)/255;
     if(!a)return;
     p[0]=(r*alpha+p[0]*p[3]*(255-alpha)/255)/a;
@@ -68,7 +65,22 @@ static void box(int x,int y,int w,int h,int r,int g,int b,int a) {
      * renders the static layer a band at a time). */
     int x0=x<clip_x0?clip_x0:x,y0=y<clip_y0?clip_y0:y;
     int x1=x+w>clip_x1?clip_x1:x+w,y1=y+h>clip_y1?clip_y1:y+h;
-    for(int j=y0;j<y1;j++)for(int i=x0;i<x1;i++)pixel(i,j,r,g,b,a);
+    if(x0<0){x0=0;}
+    if(y0<0){y0=0;}
+    if(x1>960){x1=960;}
+    if(y1>720){y1=720;}
+    if(a<=0)return;
+    for(int j=y0;j<y1;j++) {
+        uint8_t *p=canvas+(size_t)j*stride+(size_t)x0*4;
+        if(a>=255){for(int i=x0;i<x1;i++,p+=4){p[0]=r;p[1]=g;p[2]=b;p[3]=255;}continue;}
+        for(int i=x0;i<x1;i++,p+=4) {
+            if(!p[3]){p[0]=r;p[1]=g;p[2]=b;p[3]=a;continue;}
+            const int na=a+p[3]*(255-a)/255;
+            p[0]=(r*a+p[0]*p[3]*(255-a)/255)/na;
+            p[1]=(g*a+p[1]*p[3]*(255-a)/255)/na;
+            p[2]=(b*a+p[2]*p[3]*(255-a)/255)/na;p[3]=na;
+        }
+    }
 }
 /* Clipped octagonal hardware silhouette, with a vertical metallic ramp. */
 static void plaque(int x,int y,int w,int h,int cut,int r1,int g1,int b1,int r2,int g2,int b2,int a) {
@@ -172,16 +184,20 @@ void dw3_pc_title_overlay_set_options_locked(unsigned mask) {
 }
 unsigned dw3_pc_title_overlay_options_locked(void) { return options_locked; }
 unsigned dw3_pc_title_overlay_options_layout(void) { return options_layout; }
-#ifdef DW3_CHEATS
 void dw3_pc_title_overlay_set_options_page(int page,int cheats_on) {
-    page=page==DW3_TITLE_OPTIONS_PAGE_CHEATS||page==DW3_TITLE_OPTIONS_PAGE_CHEATS2?page:DW3_TITLE_OPTIONS_PAGE_OPTIONS;
+    int group,scroll;
+#ifdef DW3_CHEATS
+    const int cheats_page=page==DW3_TITLE_OPTIONS_PAGE_CHEATS||page==DW3_TITLE_OPTIONS_PAGE_CHEATS2;
+#else
+    const int cheats_page=0;
+#endif
+    if(!cheats_page&&!dw3_optlist_decode(page,&group,&scroll))page=DW3_TITLE_OPTIONS_PAGE_OPTIONS;
     cheats_on=cheats_on?1:0;
     if(page!=options_page||cheats_on!=options_cheats_on){
         options_page=page;options_cheats_on=cheats_on;
         options_layout++;options_generation++;
     }
 }
-#endif
 
 /* --- Port options screen ---------------------------------------------------
  * Modelled on the game's own windows (the memory card screen): a white bezel
@@ -268,18 +284,6 @@ static const Word *lock_lang(void) {
     return &lock_words[options_lang>=DW3_TITLE_LANG_EN&&options_lang<=DW3_TITLE_LANG_IT?options_lang:0];
 }
 #ifdef DW3_CHEATS
-/* P6.20: the Square (Y on the Switch) button cap of the "Cheats" hint; grey
- * when the entry is locked (P9.7, in game). */
-static void button_square(int cx,int cy,int locked) {
-    if(locked)disc(cx,cy,14,112,120,160);else disc(cx,cy,14,214,222,240);
-#if defined(__SWITCH__)
-    const Word y_key=WORD(opt_key_y);
-    word(&y_key,cx-y_key.w/2,cy-y_key.top-y_key.h/2,0,0,0,49);
-#else
-    segment(cx-7,cy-7,cx+7,cy-7,1.4f,0,0,49);segment(cx+7,cy-7,cx+7,cy+7,1.4f,0,0,49);
-    segment(cx+7,cy+7,cx-7,cy+7,1.4f,0,0,49);segment(cx-7,cy+7,cx-7,cy-7,1.4f,0,0,49);
-#endif
-}
 /* The cheat lettering of one language (en, fr, de, es, it: the
  * DW3_TITLE_LANG_* order). */
 #define CHEAT_WARP(l,i) WORD(opt_cht_warp##i##_##l)
@@ -395,131 +399,312 @@ static void cheats_screen(void) {
     }
 }
 #endif
-static void options_screen(void) {
-    static const Word rows[DW3_TITLE_OPTION_ROWS]={WORD(opt_row0),WORD(opt_row1),WORD(opt_row2),
-                                                   WORD(opt_row3),WORD(opt_row4),WORD(opt_row5),
-                                                   WORD(opt_row6),WORD(opt_row7)};
-    static const Word values[]={WORD(opt_off),WORD(opt_on),WORD(opt_2x),WORD(opt_3x),WORD(opt_4x)};
-    /* Volume steps 1..10 (step 0 reads OFF). */
-    static const Word steps[]={WORD(opt_n1),WORD(opt_n2),WORD(opt_n3),WORD(opt_n4),WORD(opt_n5),
-                               WORD(opt_n6),WORD(opt_n7),WORD(opt_n8),WORD(opt_n9),WORD(opt_n10)};
-    /* P6.18: Encounter rate, indexed by the stored value (0 1x, 1 0.5x, 2 OFF,
-     * 3 1.5x, 4 2x; the screen steps them OFF, 0.5x, 1x, 1.5x, 2x), and Text
-     * speed Normal / Fast / Instant. */
-    static const Word encounter[]={WORD(opt_1x),WORD(opt_05x),WORD(opt_off),WORD(opt_15x),WORD(opt_2x)};
-    static const Word text_speed[]={WORD(opt_normal),WORD(opt_fast),WORD(opt_instant)};
-    /* P7.9: Battle cursor OFF / Command / Command+Tech. */
-    static const Word battle_cursor[]={WORD(opt_off),WORD(opt_command),WORD(opt_command_tech)};
+/* --- P9.9 Options list screens ------------------------------------------------
+ * The Options screen is a list of groups; a group opens a sub-screen with its
+ * rows (port_options_groups.h). Both are drawn in the title menu's identity:
+ * the dimmed title backdrop, the same navy hardware plaques with steel bevels,
+ * amber rails and fasteners (title_plaque), a lit rail, lit fasteners and a
+ * short orange halo as the focus cue, and the same warm lettering with a dark
+ * one pixel shadow. Six plaques are on screen at a time (DW3_OPTLIST_VISIBLE);
+ * a longer list scrolls and shows an arrow at the end that has more.
+ *
+ * Layers (the retained canvas, title_options_cache.c): STATIC = backdrop, header,
+ * idle plaques and their labels, arrows, message strip, hints; FOCUS = the lit
+ * plaque of the focused item and its label; VALUE = a row's value; DESCRIPTION
+ * = the message line for the focused item. The cache asks for the rectangles
+ * with dw3_pc_title_overlay_options_rect. */
+enum { DIM_TITLE = 150, DIM_IN_GAME = 252 };
+enum { L_ROW_X = 152, L_ROW_W = 656, L_ROW_Y0 = 116, L_ROW_PITCH = 66,
+       L_PLQ_H = 50, L_PLQ_DY = 8, L_GRP_X = 230, L_GRP_W = 500,
+       L_ROWPLQ_X = 160, L_ROWPLQ_W = 640, L_VAL_X = 500, L_VAL_W = 260,
+       L_DESC_X = 120, L_DESC_Y = 532, L_DESC_W = 720, L_DESC_H = 60,
+       L_HEAD_Y = 40 };
+/* The cheats pages keep the Options window of P9.2-P9.7 (its geometry). */
+enum { C_ROW_X = 132, C_ROW_Y = 150, C_ROW_W = 696, C_ROW_H = 34, C_ROW_STEP = 38,
+       C_VAL_X = 560, C_VAL_W = 268, C_DESC_Y = 524, C_DESC_H = 52 };
+
+/* Does the clipped area touch this rectangle? (a draw skips work it would clip) */
+static int clip_hits(int x,int y,int w,int h) {
+    return x<clip_x1&&x+w>clip_x0&&y<clip_y1&&y+h>clip_y0;
+}
+/* The title menu's plaque (the loop of dw3_pc_title_overlay_art draws the same):
+ * halo, shadow, bevels, lips, rails, and the lateral clamps with their lamps.
+ * `compact` is the 40 px high, five plaque variant. */
+enum { PLQ_TITLE = 0, PLQ_LIST = 1, PLQ_LIST_FOCUS = 2 };
+/* mode: PLQ_TITLE draws the halo, then the shadow (the title menu's order);
+ * PLQ_LIST draws the shadow, then the halo, so that the retained canvas, which
+ * has the idle plaque and its shadow already, gets the same pixels from
+ * PLQ_LIST_FOCUS (halo and lit plaque only) as a full render gets from
+ * PLQ_LIST. */
+static void title_plaque_ex(int x,int y,int w,int h,int focus,int compact,int mode) {
+    const int cut=compact?8:10;
+    if(mode==PLQ_LIST)plaque(x+1,y+4,w,h,cut,0,3,10,0,3,10,190);
+    /* Soft optical orange halo only on the focused hardware silhouette. */
+    if(focus)for(int spread=8;spread>=1;spread--)
+        plaque(x-spread,y-spread,w+spread*2,h+spread*2,cut+spread,255,103,17,255,103,17,5);
+    if(mode==PLQ_TITLE)plaque(x+1,y+4,w,h,cut,0,3,10,0,3,10,190);
+    plaque(x,y,w,h,cut,focus?255:99,focus?180:149,focus?60:196,focus?207:17,focus?100:40,focus?26:77,255);
+    plaque(x+1,y+1,w-2,h-2,cut-1,99,149,196,17,40,77,255);
+    plaque(x+2,y+2,w-4,h-4,cut-1,25,57,98,49,90,141,255);
+    plaque(x+5,y+5,w-10,h-10,cut-3,5,16,39,13,29,57,255);
+    /* Reflective top and lower lips. */
+    box(x+36,y+2,w-72,1,143,198,232,220);
+    box(x+36,y+h-3,w-72,1,78,120,173,255);
+    int rr=focus?255:138,gg=focus?172:98,bb=focus?42:43;
+    box(x+37,y+6,w-74,2,rr,gg,bb,255);
+    box(x+37,y+h-8,w-74,2,rr,gg,bb,255);
+    if(focus){box(x+39,y+5,w-78,1,255,236,167,235);box(x+39,y+h-6,w-78,1,255,221,136,210);}
+    /* Cast-metal lateral clamps, bright chamfer, black inset channels. */
+    for(int side=0;side<2;side++) {
+        int cx=side?x+w-35:x+1;
+        plaque(cx,y+1,34,h-2,7,100,160,206,17,47,95,255);
+        plaque(cx+3,y+4,28,h-8,5,32,73,124,12,30,63,255);
+        box(cx+5,y+7,2,h-14,106,166,209,215);
+        box(cx+25,y+7,3,h-14,3,10,28,255);
+        for(int l=0;l<3;l++)lamp(cx+15,compact?y+9+l*11:y+10+l*14,focus);
+        int railx=side?cx-5:cx+36;
+        for(int l=0;l<3;l++)box(railx,compact?y+13+l*5:y+16+l*6,2,3,rr,gg,bb,255);
+    }
+}
+static void title_plaque(int x,int y,int w,int h,int focus,int compact) {
+    title_plaque_ex(x,y,w,h,focus,compact,PLQ_TITLE);
+}
+/* The Options plaques are rasterized once per size and state into small
+ * sprites (the halo and lit plaque alone for the lit one, the shadow and idle
+ * plaque for the idle one) and blitted: a focus change on the retained canvas
+ * is then a blit, not ~1M blended pixels (it matters on the Switch's CPU).
+ * The sprites are shared by the frame thread and the prewarm worker; they are
+ * built once, under a spin lock, and never freed. A sprite has PLQ_PAD px
+ * around the plaque for the halo and the shadow. */
+enum { PLQ_PAD = 8, PLQ_H = 50 };
+typedef struct PlaqueSprite { int w,h; uint8_t *px; } PlaqueSprite;
+static PlaqueSprite plq_sprites[2][2]; /* [0 narrow: group, 1 wide: row][idle, lit] */
+static atomic_flag plq_lock=ATOMIC_FLAG_INIT;
+static const PlaqueSprite *plaque_sprite(int pw,int wide,int lit) {
+    PlaqueSprite *sp=&plq_sprites[wide][lit];
+    while(atomic_flag_test_and_set_explicit(&plq_lock,memory_order_acquire)){}
+    if(!sp->px) {
+        const int w=pw+2*PLQ_PAD,h=PLQ_H+2*PLQ_PAD;
+        uint8_t *buf=(uint8_t*)calloc((size_t)w*h,4);
+        if(buf) {
+            /* This thread's drawing state, swapped for the sprite and back. */
+            uint8_t *sc=canvas;const int ss=stride,cx0=clip_x0,cy0=clip_y0,cx1=clip_x1,cy1=clip_y1;
+            canvas=buf;stride=w*4;clip_x0=clip_y0=0;clip_x1=w;clip_y1=h;
+            title_plaque_ex(PLQ_PAD,PLQ_PAD,pw,PLQ_H,lit,0,lit?PLQ_LIST_FOCUS:PLQ_LIST);
+            canvas=sc;stride=ss;clip_x0=cx0;clip_y0=cy0;clip_x1=cx1;clip_y1=cy1;
+            sp->w=w;sp->h=h;sp->px=buf;
+        }
+    }
+    atomic_flag_clear_explicit(&plq_lock,memory_order_release);
+    return sp->px?sp:NULL;
+}
+/* Blit a sprite so that its plaque is at (x, y), inside the clip. */
+static void plaque_blit(const PlaqueSprite *sp,int x,int y) {
+    x-=PLQ_PAD;y-=PLQ_PAD;
+    for(int j=0;j<sp->h;j++) {
+        const int yy=y+j;
+        if(yy<clip_y0||yy>=clip_y1)continue;
+        const uint8_t *q=sp->px+(size_t)j*sp->w*4;
+        for(int i=0;i<sp->w;i++,q+=4)if(q[3])pixel(x+i,yy,q[0],q[1],q[2],q[3]);
+    }
+}
+static void options_plaque(int x,int y,int pw,int wide,int lit) {
+    const PlaqueSprite *sp=plaque_sprite(pw,wide,lit);
+    if(sp)plaque_blit(sp,x,y);
+    else title_plaque_ex(x,y,pw,50,lit,0,lit?PLQ_LIST_FOCUS:PLQ_LIST);
+}
+/* A Word with the title menu's one pixel dark shadow. */
+static void wordsh(const Word *t,int x,int y,int align,int r,int g,int b) {
+    word(t,x+1,y+2,align,2,7,19);
+    word(t,x,y,align,r,g,b);
+}
+/* Centered lettering of a plaque. */
+static void plaque_word(const Word *t,int cx,int y,int r,int g,int b) {
+    wordsh(t,cx-t->w/2,y,0,r,g,b);
+}
+/* Scroll arrow: a small solid triangle, up or down, centered at cx. */
+static void arrow(int cx,int y,int up) {
+    for(int j=0;j<9;j++){
+        const int span=up?j:8-j;
+        box(cx-span,y+j,span*2+1,1,243,158,45,255);
+    }
+}
+
+#define GROUP_WORDS(l) {{WORD(opt_grp_display_##l),WORD(opt_grpdesc_display_##l)}, \
+    {WORD(opt_grp_sound_##l),WORD(opt_grpdesc_sound_##l)}, \
+    {WORD(opt_grp_gameplay_##l),WORD(opt_grpdesc_gameplay_##l)}, \
+    {WORD(opt_grp_saves_##l),WORD(opt_grpdesc_saves_##l)}, \
+    {WORD(opt_grp_cheats_##l),WORD(opt_grpdesc_cheats_##l)}}
+typedef struct GroupWords { Word name,desc; } GroupWords;
+enum { LISTED_GROUPS = 5 }; /* the groups with lettering (the built ones) */
+static const GroupWords group_words[5][LISTED_GROUPS]={GROUP_WORDS(en),GROUP_WORDS(fr),GROUP_WORDS(de),
+                                                       GROUP_WORDS(es),GROUP_WORDS(it)};
 #if defined(__SWITCH__)
-    static const Word desc[DW3_TITLE_OPTION_ROWS]={WORD(opt_desc0),WORD(opt_desc1_nx),WORD(opt_desc2_nx),
-                                                   WORD(opt_desc3),WORD(opt_desc4),WORD(opt_desc5),
-                                                   WORD(opt_desc6),WORD(opt_desc7)};
+#define DESC_P(n,l) WORD(opt_desc##n##_nx_##l)
 #else
-    static const Word desc[DW3_TITLE_OPTION_ROWS]={WORD(opt_desc0),WORD(opt_desc1_pc),WORD(opt_desc2_pc),
-                                                   WORD(opt_desc3),WORD(opt_desc4),WORD(opt_desc5),
-                                                   WORD(opt_desc6),WORD(opt_desc7)};
+#define DESC_P(n,l) WORD(opt_desc##n##_pc_##l)
 #endif
-    static const Word titles[]={WORD(opt_title_en),WORD(opt_title_de),WORD(opt_title_es),WORD(opt_title_it)};
-    const Word change=WORD(opt_change),back=WORD(opt_back);
-    const Word *title=&titles[options_lang==DW3_TITLE_LANG_DE?1:options_lang==DW3_TITLE_LANG_ES?2:
-                              options_lang==DW3_TITLE_LANG_IT?3:0];
-    const int x0=OPT_X0,y0=OPT_Y0,w=OPT_W,h=OPT_H,x1=x0+w,y1=y0+h;
+#define DESC_N(n,l) WORD(opt_desc##n##_##l)
+#define ROW_WORDS(l) {{WORD(opt_row0_##l),WORD(opt_row1_##l),WORD(opt_row2_##l),WORD(opt_row3_##l), \
+    WORD(opt_row4_##l),WORD(opt_row5_##l),WORD(opt_row6_##l),WORD(opt_row7_##l)}, \
+    {DESC_N(0,l),DESC_P(1,l),DESC_P(2,l),DESC_N(3,l),DESC_N(4,l),DESC_N(5,l),DESC_N(6,l),DESC_N(7,l)}, \
+    {WORD(opt_val_normal_##l),WORD(opt_val_fast_##l),WORD(opt_val_instant_##l),WORD(opt_val_command_##l), \
+     WORD(opt_val_command_tech_##l)}, \
+    WORD(opt_title_##l),WORD(opt_open_##l),WORD(opt_change_##l),WORD(opt_back_##l)}
+typedef struct ListWords {
+    Word row[8],desc[8],value[5],title,open,change,back;
+} ListWords;
+static const ListWords list_words[5]={ROW_WORDS(en),ROW_WORDS(fr),ROW_WORDS(de),ROW_WORDS(es),ROW_WORDS(it)};
+static const ListWords *list_lang(void) {
+    return &list_words[options_lang>=DW3_TITLE_LANG_EN&&options_lang<=DW3_TITLE_LANG_IT?options_lang:0];
+}
+static const GroupWords *group_lang(int group) {
+    return &group_words[options_lang>=DW3_TITLE_LANG_EN&&options_lang<=DW3_TITLE_LANG_IT?options_lang:0]
+                       [group>=0&&group<LISTED_GROUPS?group:0];
+}
+/* The registry rows of every locked bit of a group: a group whose rows are all
+ * locked in game (Display: Widescreen) greys its plaque. */
+static unsigned group_row_mask(int group) {
+    unsigned m=0;
+    for(int k=0;k<dw3_optgroups[group].nrows;k++)m|=1u<<dw3_optgroups[group].rows[k];
+    return m;
+}
+static int group_locked(int group,unsigned locked) {
+    if(group==DW3_OPTGRP_CHEATS)return (locked&DW3_TITLE_LOCK_CHEATS)!=0;
+    return dw3_optgroups[group].nrows>0&&(locked&group_row_mask(group))==group_row_mask(group);
+}
+/* The geometry of slot s (0 = the first visible plaque). */
+static int slot_y(int s) { return L_ROW_Y0+s*L_ROW_PITCH; }
+
+static const Word v_onoff[]={WORD(opt_off),WORD(opt_on),WORD(opt_2x),WORD(opt_3x),WORD(opt_4x)};
+static const Word v_steps[]={WORD(opt_n1),WORD(opt_n2),WORD(opt_n3),WORD(opt_n4),WORD(opt_n5),
+                             WORD(opt_n6),WORD(opt_n7),WORD(opt_n8),WORD(opt_n9),WORD(opt_n10)};
+/* P6.18: Encounter rate, indexed by the stored value (0 1x, 1 0.5x, 2 OFF,
+ * 3 1.5x, 4 2x; the screen steps them OFF, 0.5x, 1x, 1.5x, 2x). */
+static const Word v_encounter[]={WORD(opt_1x),WORD(opt_05x),WORD(opt_off),WORD(opt_15x),WORD(opt_2x)};
+/* The word of registry row `reg` holding `v`; *dim = 1 for an OFF-like value. */
+static const Word *list_value(const ListWords *t,int reg,int v,int *dim) {
+    if(v<0)v=0;
+    *dim=0;
+    switch(row_kind(reg)) {
+    case ROW_VOLUME:
+        if(v>10)v=10;
+        *dim=v==0;
+        return v?&v_steps[v-1]:&v_onoff[0];
+    case ROW_FAST_FORWARD:
+        if(v>4)v=4;
+        *dim=v==0;
+        return &v_onoff[v];
+    case ROW_ENCOUNTER:
+        if(v>4)v=4;
+        *dim=v==2;
+        return &v_encounter[v];
+    case ROW_TEXT:
+        if(v>2)v=2;
+        return &t->value[v];
+    case ROW_BATTLE:
+        if(v>2)v=2;
+        *dim=v==0;
+        return v==0?&v_onoff[0]:&t->value[v==1?3:4];
+    case ROW_AUTOSAVE:
+        if(v>1)v=1;
+        *dim=v==0;
+        return v?&autosave_lang()->area:&v_onoff[0];
+    default:
+        if(v>1)v=1;
+        *dim=v==0;
+        return &v_onoff[v];
+    }
+}
+/* Items of a list: the visible groups (ids[]) or the rows of `group`. */
+static void options_list_screen(int group,int scroll) {
+    const ListWords *t=list_lang();
     const int full=options_layer==OPTIONS_LAYER_FULL;
     const int draw_static=full||options_layer==OPTIONS_LAYER_STATIC;
+    const int on_groups=group<0;
+    int ids[DW3_OPTGRP_COUNT];
+    const int n=on_groups?dw3_optgroups_visible(ECHEATS,ids):dw3_optgroups[group].nrows;
+    const unsigned locked=ELOCKED;
+    const int cursor=options_layer==OPTIONS_LAYER_STATIC?-1:option_cursor;
 
+    if(draw_static) {
+        /* The title backdrop stays, dimmed; the logo and the menu are gone.
+         * Over the field or a battle (a locked mask means in game) the dim is
+         * deeper: the menu behind must not read through the plaques. */
+        box(0,0,960,720,0,0,16,locked?DIM_IN_GAME:DIM_TITLE);
+        /* Header plaque: OPTIONS, or the name of the open group. */
+        options_plaque(L_GRP_X,L_HEAD_Y,L_GRP_W,0,0);
+        {
+            const Word *name=on_groups?&t->title:&group_lang(group)->name;
+            plaque_word(name,480,L_HEAD_Y+(on_groups?8:9),255,198,98); /* one baseline for every word */
+        }
+        if(scroll>0)arrow(480,L_ROW_Y0-10,1);
+        if(scroll+DW3_OPTLIST_VISIBLE<n)arrow(480,L_ROW_Y0+DW3_OPTLIST_VISIBLE*L_ROW_PITCH-8,0);
+        /* Message strip frame, then the button hints. */
+        plaque(L_DESC_X+1,L_DESC_Y+4,L_DESC_W,L_DESC_H,6,0,3,10,0,3,10,190);
+        plaque(L_DESC_X,L_DESC_Y,L_DESC_W,L_DESC_H,6,99,149,196,17,40,77,255);
+        plaque(L_DESC_X+2,L_DESC_Y+2,L_DESC_W-4,L_DESC_H-4,5,5,16,39,13,29,57,255);
+        box(L_DESC_X+24,L_DESC_Y+5,L_DESC_W-48,2,138,98,43,255);
+        {
+            const Word *act=on_groups?&t->open:&t->change;
+            const int hy=618,bx=L_DESC_X+L_DESC_W-t->back.w,cx=bx-36-act->w-60;
+            button(cx,hy+12,0);wordsh(act,cx+22,hy,0,255,255,255);
+            button(bx-22,hy+12,1);wordsh(&t->back,bx,hy,0,255,255,255);
+            box(L_DESC_X,666,L_DESC_W,3,0,66,156,255);
+        }
+    }
+    for(int s=0;s<DW3_OPTLIST_VISIBLE;s++) {
+        const int a=scroll+s;
+        const int py=slot_y(s)+L_PLQ_DY,px=on_groups?L_GRP_X:L_ROWPLQ_X,pw=on_groups?L_GRP_W:L_ROWPLQ_W;
+        const int focus=a==cursor;
+        int reg,lock,dim;
+        const Word *label,*value;
+
+        if(a>=n)break;
+        if(!clip_hits(L_ROW_X,slot_y(s),L_ROW_W,L_ROW_PITCH))continue;
+        reg=on_groups?-1:dw3_optgroups[group].rows[a];
+        lock=on_groups?group_locked(ids[a],locked):(int)((locked>>reg)&1u);
+        label=on_groups?&group_lang(ids[a])->name
+              :row_kind(reg)==ROW_AUTOSAVE?&autosave_lang()->row:&t->row[reg];
+        /* STATIC: every plaque idle. FULL: the idle plaque, and the lit one over
+         * it for the focused row. FOCUS: the lit plaque and its label again
+         * over the restored idle one. The label comes after the plaque. */
+        const int lit=focus&&options_layer!=OPTIONS_LAYER_STATIC&&
+                      (full||options_layer==OPTIONS_LAYER_FOCUS);
+        if(draw_static)options_plaque(px,py,pw,!on_groups,0);
+        if(lit)options_plaque(px,py,pw,!on_groups,1);
+        if(draw_static||lit){
+            const int cr=lock?(lit?150:110):(lit?236:181);
+            const int cg=lock?(lit?158:118):(lit?247:219);
+            const int cb=lock?(lit?190:160):255;
+            if(on_groups)plaque_word(label,480,py+9,cr,cg,cb); /* origin, not ink: same baseline on every plaque */
+            else wordsh(label,px+58,py+9,0,cr,cg,cb);
+        }
+        if(on_groups)continue;
+        if(full||(options_layer==OPTIONS_LAYER_VALUE&&a==options_layer_row)) {
+            value=list_value(t,reg,option_values[a],&dim);
+            if(lock)dim=2; /* P9.7: greyer than an OFF value */
+            wordsh(value,px+pw-58,py+9,1,dim==2?120:dim?150:255,dim==2?128:dim?158:255,dim==2?170:dim?196:255);
+        }
+    }
+    /* The message line of the focused item: a locked one says why. */
+    if((full||options_layer==OPTIONS_LAYER_DESCRIPTION)&&cursor>=0&&cursor<n) {
+        const Word *d;
+        if(on_groups)d=group_locked(ids[cursor],locked)?lock_lang():&group_lang(ids[cursor])->desc;
+        else {
+            const int reg=dw3_optgroups[group].rows[cursor];
+            d=(locked>>reg)&1u?lock_lang():row_kind(reg)==ROW_AUTOSAVE?&autosave_lang()->desc:&t->desc[reg];
+        }
+        wordsh(d,L_DESC_X+28,L_DESC_Y+14,0,255,255,255);
+    }
+}
+static void options_screen(void) {
+    int group=-1,scroll=0;
 #ifdef DW3_CHEATS
     if(EPAGE==DW3_TITLE_OPTIONS_PAGE_CHEATS||EPAGE==DW3_TITLE_OPTIONS_PAGE_CHEATS2){cheats_screen();return;}
 #endif
-    /* The title backdrop stays, dimmed; the logo and the menu are gone. */
-    if(draw_static) {
-    box(0,0,960,720,0,0,16,150);
-    /* Window: white bezel shaded on its lower right, dark rim, blue-violet
-     * inner line, navy body (the memory card window's colors). */
-    box(x0+6,y0+8,w,h,0,0,8,150);
-    box(x0,y0,w,h,255,255,255,255);
-    box(x0+w-3,y0+3,3,h-3,181,181,181,255);box(x0+3,y0+h-3,w-3,3,181,181,181,255);
-    box(x0+9,y0+9,w-18,h-18,49,49,49,255);
-    box(x0+15,y0+15,w-30,h-30,58,58,148,255);
-    box(x0+18,y0+18,w-36,h-36,0,0,49,255);
-    /* Stepped title rule, the window title right of the step. */
-    {
-        const int a=y0+36,xs=x0+500;
-        box(x0+30,a,xs-x0-30,3,0,66,156,255);box(x0+30,a+6,xs-x0-24,3,0,66,156,255);
-        segment(xs,a+1.5f,xs+30,a+31.5f,1.6f,0,66,156);
-        segment(xs+6,a+7.5f,xs+30,a+31.5f,1.6f,0,66,156);
-        box(xs+30,a+30,x1-30-xs-30,3,0,66,156,255);
-        word(title,xs+48,a+2-title->top,0,255,255,255);
-    }
-    }
-    /* Choices: label left, value right; the focused one sits in the game's
-     * choice box with the pointer. */
-    for(int i=0;i<DW3_TITLE_OPTION_ROWS;i++) {
-        const int ry=OPT_ROW_Y+i*OPT_ROW_STEP,focus=i==option_cursor;
-        const int kind=row_kind(i);
-        int v=option_values[i];
-        const Word *value;
-        int dim;
-        if(focus&&(full||options_layer==OPTIONS_LAYER_FOCUS)){
-            box(x0+48,ry-6,w-96,OPT_ROW_H,16,74,156,255);
-            box(x0+51,ry-3,w-102,OPT_ROW_H-6,0,8,74,255);
-            pointer(x0+66,ry+1);
-        }
-        if(draw_static||(options_layer==OPTIONS_LAYER_FOCUS&&
-                       i==options_layer_row))
-            word(kind==ROW_AUTOSAVE?&autosave_lang()->row:&rows[i],x0+106,ry-2,0,
-                 (ELOCKED>>i)&1u?120:255,(ELOCKED>>i)&1u?128:255,(ELOCKED>>i)&1u?170:255);
-        if(v<0)v=0;
-        switch(kind) {
-        case ROW_VOLUME:
-            if(v>10)v=10;
-            value=v?&steps[v-1]:&values[0];dim=v==0;break;
-        case ROW_FAST_FORWARD:
-            if(v>4)v=4;
-            value=&values[v];dim=v==0;break;
-        case ROW_ENCOUNTER:
-            if(v>4)v=4;
-            value=&encounter[v];dim=v==2;break;
-        case ROW_TEXT:
-            if(v>2)v=2;
-            value=&text_speed[v];dim=0;break;
-        case ROW_BATTLE:
-            if(v>2)v=2;
-            value=&battle_cursor[v];dim=v==0;break;
-        case ROW_AUTOSAVE:
-            if(v>1)v=1;
-            value=v?&autosave_lang()->area:&values[0];dim=v==0;break;
-        default:
-            if(v>1)v=1;
-            value=&values[v];dim=v==0;break;
-        }
-        if((ELOCKED>>i)&1u)dim=2; /* P9.7: greyer than an OFF value */
-        if(full||(options_layer==OPTIONS_LAYER_VALUE&&i==options_layer_row))
-            word(value,x1-96,ry-2,1,dim==2?120:dim?150:255,dim==2?128:dim?158:255,dim==2?170:dim?196:255);
-    }
-    /* Message line for the focused choice, then the button hints. */
-    if(draw_static)box(x0+30,y1-152,w-60,3,16,156,247,255);
-    if((full||options_layer==OPTIONS_LAYER_DESCRIPTION)&&
-       option_cursor>=0&&option_cursor<DW3_TITLE_OPTION_ROWS)
-        word((ELOCKED>>option_cursor)&1u?lock_lang():
-             row_kind(option_cursor)==ROW_AUTOSAVE?&autosave_lang()->desc:&desc[option_cursor],
-             x0+48,y1-128,0,255,255,255);
-    if(draw_static) {
-        const int hy=y1-74,bx=x1-48-back.w,cx=bx-36-change.w-60;
-        button(cx,hy+12,0);word(&change,cx+22,hy,0,255,255,255);
-        button(bx-22,hy+12,1);word(&back,bx,hy,0,255,255,255);
-#ifdef DW3_CHEATS
-        /* P6.20: once the master switch is on, Square/Y Cheats left of
-         * Change (the screen is unchanged while it is off). */
-        if(ECHEATS){
-            const Word *hint=&cheat_lang()->hint;
-            const int sx=cx+22-96-hint->w;
-            const int lk=(ELOCKED&DW3_TITLE_LOCK_CHEATS)!=0;
-            button_square(sx,hy+12,lk);
-            word(hint,sx+22,hy,0,lk?120:255,lk?128:255,lk?170:255);
-        }
-#endif
-        box(x0+30,y1-36,w-60,3,0,66,156,255);
-    }
+    if(!dw3_optlist_decode(EPAGE,&group,&scroll)){group=-1;scroll=0;}
+    options_list_screen(group,scroll);
 }
 /* --- P6.27 / P6.28 Yes / No window ------------------------------------------
  * The Options window's look (white bezel, navy body, blue rules, the focus box
@@ -608,33 +793,7 @@ void dw3_pc_title_overlay_art(uint8_t *rgba,int pitch,int selected) {
         const int quit_row=load_row?4:3;
         int x=230,w=500,h=compact?40:48,focus=row==selected;
         int y=384+row*(compact?44:52);
-        const int cut=compact?8:10;
-        /* Soft optical orange halo only on the focused hardware silhouette. */
-        if(focus)for(int spread=8;spread>=1;spread--)
-            plaque(x-spread,y-spread,w+spread*2,h+spread*2,cut+spread,255,103,17,255,103,17,5);
-        plaque(x+1,y+4,w,h,cut,0,3,10,0,3,10,190);
-        plaque(x,y,w,h,cut,focus?255:99,focus?180:149,focus?60:196,focus?207:17,focus?100:40,focus?26:77,255);
-        plaque(x+1,y+1,w-2,h-2,cut-1,99,149,196,17,40,77,255);
-        plaque(x+2,y+2,w-4,h-4,cut-1,25,57,98,49,90,141,255);
-        plaque(x+5,y+5,w-10,h-10,cut-3,5,16,39,13,29,57,255);
-        /* Reflective top and lower lips. */
-        box(x+36,y+2,w-72,1,143,198,232,220);
-        box(x+36,y+h-3,w-72,1,78,120,173,255);
-        int rr=focus?255:138,gg=focus?172:98,bb=focus?42:43;
-        box(x+37,y+6,w-74,2,rr,gg,bb,255);
-        box(x+37,y+h-8,w-74,2,rr,gg,bb,255);
-        if(focus){box(x+39,y+5,w-78,1,255,236,167,235);box(x+39,y+h-6,w-78,1,255,221,136,210);}
-        /* Cast-metal lateral clamps, bright chamfer, black inset channels. */
-        for(int side=0;side<2;side++) {
-            int cx=side?x+w-35:x+1;
-            plaque(cx,y+1,34,h-2,7,100,160,206,17,47,95,255);
-            plaque(cx+3,y+4,28,h-8,5,32,73,124,12,30,63,255);
-            box(cx+5,y+7,2,h-14,106,166,209,215);
-            box(cx+25,y+7,3,h-14,3,10,28,255);
-            for(int l=0;l<3;l++)lamp(cx+15,compact?y+9+l*11:y+10+l*14,focus);
-            int railx=side?cx-5:cx+36;
-            for(int l=0;l<3;l++)box(railx,compact?y+13+l*5:y+16+l*6,2,3,rr,gg,bb,255);
-        }
+        title_plaque(x,y,w,h,focus,compact);
         if(row==quit_row) {
             const int li=options_lang>=DW3_TITLE_LANG_EN&&options_lang<=DW3_TITLE_LANG_IT?options_lang:0;
             const unsigned char *runs[]={title_quit_en,title_quit_fr,title_quit_de,title_quit_es,title_quit_it};
@@ -722,16 +881,52 @@ void dw3_pc_title_overlay_options_static_band(uint8_t *rgba,int pitch,
     ovr_on=0;
 }
 int dw3_pc_title_overlay_options_cheats_on(void) {
-#ifdef DW3_CHEATS
     return options_cheats_on;
-#else
-    return 0;
-#endif
 }
 int dw3_pc_title_overlay_options_page(void) {
-#ifdef DW3_CHEATS
     return options_page;
-#else
-    return 0;
-#endif
+}
+
+/* What the cache needs to lay a page out (title_options_cache.c). Slots are
+ * the plaques on screen (a list scrolls: slot s shows item scroll + s). */
+void dw3_pc_title_overlay_options_page_info(int page,int cheats_on,int *scroll,int *items,int *slots) {
+    int group,sc;
+    if(dw3_optlist_decode(page,&group,&sc)) {
+        *scroll=sc;
+        *items=dw3_optlist_count(group,cheats_on);
+        *slots=DW3_OPTLIST_VISIBLE;
+    } else { /* a Cheats page: the Options window's five rows */
+        *scroll=0;
+        *items=*slots=5;
+    }
+}
+void dw3_pc_title_overlay_options_rect(int page,int kind,int slot,int *x,int *y,int *w,int *h) {
+    int group,sc;
+    if(dw3_optlist_decode(page,&group,&sc)) {
+        const int ry=slot_y(slot);
+        switch(kind) {
+        case DW3_OPTRECT_ROW:*x=L_ROW_X;*y=ry;*w=L_ROW_W;*h=L_ROW_PITCH;break;
+        case DW3_OPTRECT_VALUE:*x=L_VAL_X;*y=ry+L_PLQ_DY;*w=L_VAL_W;*h=L_PLQ_H;break;
+        default:*x=L_DESC_X;*y=L_DESC_Y;*w=L_DESC_W;*h=L_DESC_H;break;
+        }
+    } else {
+        const int ry=C_ROW_Y+C_ROW_STEP*slot;
+        switch(kind) {
+        case DW3_OPTRECT_ROW:*x=C_ROW_X;*y=ry;*w=C_ROW_W;*h=C_ROW_H;break;
+        case DW3_OPTRECT_VALUE:*x=C_VAL_X;*y=ry;*w=C_VAL_W;*h=C_ROW_H;break;
+        default:*x=C_ROW_X;*y=C_DESC_Y;*w=C_ROW_W;*h=C_DESC_H;break;
+        }
+    }
+}
+/* The part of the locked mask that changes the static layer of `page`, so a
+ * layout that cannot differ (Sound in game and at the title) shares one layer. */
+unsigned dw3_pc_title_overlay_options_lock_key(int page,unsigned locked) {
+    int group,sc;
+    /* In game (a locked mask) the backdrop is dimmed deeper: bit 31 keeps those layers apart. */
+    const unsigned in_game=locked?1u<<31:0;
+    if(!dw3_optlist_decode(page,&group,&sc))return 0;
+    if(group<0)return in_game|(locked&(DW3_TITLE_LOCK_CHEATS|group_row_mask(DW3_OPTGRP_DISPLAY)|
+                                       group_row_mask(DW3_OPTGRP_SOUND)|group_row_mask(DW3_OPTGRP_GAMEPLAY)|
+                                       group_row_mask(DW3_OPTGRP_SAVES)));
+    return in_game|(locked&group_row_mask(group));
 }
