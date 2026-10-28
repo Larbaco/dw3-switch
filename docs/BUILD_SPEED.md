@@ -211,36 +211,46 @@ GiB each). Check that none of them is another agent's live work before using
 Workflow changes in `.github/workflows/ci.yml`:
 
 * `concurrency`: a new push to a PR cancels the older run of that PR.
-* ccache for `pc`, `switch-game` and `switch-game-both`: `actions/cache`
-  restore and save per job (newest cache wins, `CCACHE_MAXSIZE=400M`; about 20 to
-  40 MB each). The release workflow is unchanged and uncached.
+* ccache for `pc`, `pc-both`, `switch-game` and `switch-game-both`:
+  `actions/cache` restore and save per job (newest cache wins,
+  `CCACHE_MAXSIZE=400M`; about 20 to 40 MB each). The release workflow is
+  unchanged and uncached.
 * Submodules are cloned with `--depth 1`.
-* The Python/C unit tests moved out of `pc` into their own job `tools-tests`,
-  which runs beside the builds, with `pytest -n auto` (xdist; the suite passed
-  with 4 workers, 91 s serial to 49 s; one test, `test_options_cache[cheats]`,
-  takes 32 s alone).
+* The Python/C unit tests moved out of `pc` into their own job `tools-tests`
+  (decomp and psyz only, no SDL or nugget), which runs beside the builds, with
+  `pytest -n auto --dist worksteal` (xdist; the suite passed with 4 workers,
+  91 s serial to 49 s locally; one test, `test_options_cache[cheats]`, takes
+  32 s alone).
+* The both-regions PC build is its own job `pc-both`, beside `pc`.
 
-Job durations in seconds, same workflow, GitHub-hosted runners. "Before" is the
-range of three recent PR runs on `main` code. Run 1 is this PR with an empty
-cache, run 2 the next push (cache restored from run 1).
+Job durations in seconds, GitHub-hosted runners. "Before" is the range of three
+recent PR runs on `main` code. Run 1 is the first push of this PR (empty cache,
+no `pc-both` job yet), run 5 a later push with every cache restored (the final
+job layout).
 
-| | Before | Run 1 (cold) | Run 2 (warm) |
+| | Before | Run 1 (cold) | Run 5 (warm) |
 |---|---|---|---|
-| Whole run (wall) | 266 to 298 | 142 | 130 |
-| pc (builds, no tests now) | 254 to 282 (with tests) | 122 | 110 |
-| tools-tests (new job) | 90 to 116 (inside pc) | 89 | 115 |
-| switch-game | 96 to 168 | 111 | 58 |
-| switch-game-both | 146 to 210 | 127 | 92 |
-| switch, switch-launcher, changes | 28 to 38, 28 to 38, 8 to 11 | 30, 29, 6 | 32, 30, 8 |
+| Whole run (wall) | 266 to 298 | 142 | 120 |
+| pc | 254 to 282 (builds and tests) | 122 (US and both builds) | 78 |
+| pc-both (new) | | | 98 |
+| tools-tests (new) | 90 to 116 (inside pc) | 89 | 107 |
+| switch-game | 96 to 168 | 111 | 74 |
+| switch-game-both | 146 to 210 | 127 | 108 |
+| switch, switch-launcher, changes | 28 to 38, 28 to 38, 8 to 11 | 30, 29, 6 | 28, 27, 6 |
+
+Five runs of this PR after the change took 142, 130, 136, 113 and 120 s wall
+(mean 128 s against a mean of 280 s before: -54%). Single jobs move 20 to 40%
+between runs on the same code (`tools-tests` 60 to 107 s, `switch-game-both` 69
+to 108 s), so read the table as a range, not a point.
 
 What moved the whole run: unit tests no longer sit behind the builds (the old
 critical path was `pc` = submodules + deps + 2 builds + tests), shallow
-submodule clones (15 to 87 s per job down to 8 to 19 s), and the cache for the
-two Switch jobs (`switch-game` 111 to 58 s, `switch-game-both` 127 to 92 s once
-warm). The critical path is now `tools-tests` (`pytest` 73 to 87 s on the
-runner, mostly one 32 s test); the second push trims its submodule init to the
-two it needs and uses xdist work stealing. `pc` is limited by SDL3's CMake
-configure (about 15 s per build) and apt (12 to 17 s).
+submodule clones (15 to 87 s per job down to 8 to 19 s), the two PC builds
+running side by side, and the cache for the Switch jobs (`switch-game` 111 s cold, 55 to 74 s
+once warm). With a warm cache the PC jobs report 100% hits, and what is
+left is SDL3's CMake configure (15 s on a 16-core desktop, 36 s on the runner),
+apt (12 to 18 s) and the link. `switch-game-both` keeps about 30 s per build
+(docker, configure, link) even at 99% hits.
 
 The cache only pays for objects that did not change: a PR that touches a
 header used everywhere recompiles most of the game side, as before.
