@@ -1,0 +1,54 @@
+Upstream-bound: no
+Subject: [PORT_HOST] P6.33 log what the Items menu allows on Cross for equipment
+
+Owner report (preview.47): "selecting a weapon in the Items menu does nothing; it
+only works from Status > Equipment". Read from the decomp, this is the original
+behavior: STSTATUS_runItemList only acts on Cross for the first list (option
+0) and there only for an item with ITEM_USE_MENU; weapons, armor and
+accessories are listed and described, never used (no sound either), and patch
+0128 touches only equip_panel.c. This patch changes no behavior: it logs one
+`dw3-items-menu: Cross on weapon N (list L): the original game does nothing
+here ...` line per press, so an OLED log says what the game allows. Policy and
+log text in port/items_menu/items_menu.c.
+
+--- a2/src/menus/field_menu/item_list.c
++++ b2/src/menus/field_menu/item_list.c
+@@ -2,6 +2,9 @@
+    panels (STSTATUS_createItemList): its rodata starts at 0x80082B90 (USA). */
+ 
+ #include "menus/field_menu.h"
++#if PORT_HOST
++#include "port_items_menu.h"
++#endif
+ 
+ /* Creates the item list's windows: its title, two columns of 8 items, the page
+    number, the page arrows and the cursor */
+@@ -207,7 +210,28 @@
+                         STSTATUS_showItemHelp(panel->screen, -1);
+                         panel->substate++;
+                     }
++#if PORT_HOST
++                    else {
++                        /* the original game does nothing here, silently */
++                        dw3_port_items_menu_selected(panel->list, panel->screen->item, 0,
++                                                     ITEM_FUNCS.isKind(panel->screen->item, ITEM_KIND_WEAPON) ? ITEM_KIND_WEAPON :
++                                                     ITEM_FUNCS.isKind(panel->screen->item, ITEM_KIND_ARMOR) ? ITEM_KIND_ARMOR :
++                                                     ITEM_FUNCS.isKind(panel->screen->item, ITEM_KIND_ACCESSORY) ? ITEM_KIND_ACCESSORY : 0);
++                    }
++#endif
++                }
++#if PORT_HOST
++                else if (panel->cursor >= 0 && panel->cursor < panel->count) {
++                    /* the other lists (weapons, armor, accessories, ...) only list and
++                       describe: the original game does nothing on Cross, silently */
++                    s32 item = panel->items[panel->cursor];
++
++                    dw3_port_items_menu_selected(panel->list, item, 1,
++                                                 ITEM_FUNCS.isKind(item, ITEM_KIND_WEAPON) ? ITEM_KIND_WEAPON :
++                                                 ITEM_FUNCS.isKind(item, ITEM_KIND_ARMOR) ? ITEM_KIND_ARMOR :
++                                                 ITEM_FUNCS.isKind(item, ITEM_KIND_ACCESSORY) ? ITEM_KIND_ACCESSORY : 0);
+                 }
++#endif
+             } else if (PAD_PRESSED(PAD_TRIANGLE)) {
+                 SOUND.playSound(SOUND_MENU_CANCEL);
+                 panel->screen->itemIndex = -1;

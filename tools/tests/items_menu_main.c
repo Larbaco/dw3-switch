@@ -62,6 +62,8 @@ int main(void) {
     CHECK(dw3_port_items_partner_switch_enabled() == 1);
 
     dw3_port_items_partner_switched(1, 2, 4);
+    dw3_port_items_menu_selected(1, 12, 1, 3);
+    dw3_port_items_menu_selected(0, 40, 0, 0);
     if (g_failed) {
         return 1;
     }

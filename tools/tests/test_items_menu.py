@@ -32,3 +32,9 @@ def test_items_menu_policy(items_bin: Path):
     assert "OK: items menu policy" in r.stdout
     assert ("dw3-items-menu: partner switch member 1 -> 2 (partner 4) "
             "bag=120 worn=7") in r.stderr
+    # patch 0180: Cross on equipment logs what the original game allows
+    assert ("dw3-items-menu: Cross on weapon 12 (list 1): the original game does "
+            "nothing here") in r.stderr
+    assert "Not a port regression" in r.stderr
+    assert ("dw3-items-menu: Cross on item 40 (list 0): the original game does "
+            "nothing here") in r.stderr
