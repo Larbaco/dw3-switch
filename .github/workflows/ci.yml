@@ -131,17 +131,17 @@ jobs:
       - uses: actions/checkout@v4
         with:
           submodules: false
-      - name: Init PC submodules
+      - name: Init submodules
         run: |
+          # The tests need the decomp and the psyz headers, not SDL or nugget.
           git submodule update --init --depth 1 vendor/dw3_decomp vendor/psyz
-          git -C vendor/psyz submodule update --init --depth 1 nugget external/SDL
       - name: Unit tests (tools)
         run: |
           # Pillow: replay/menu replay tests import PIL directly (importorskip
           # on main, hard import on menu-replay branches); install so they run.
           # xdist: the tests are independent; a few compile C and dominate.
           python3 -m pip install pytest pytest-xdist pillow
-          python3 -m pytest tools/tests -v -n auto
+          python3 -m pytest tools/tests -v -n auto --dist worksteal --durations=8
 
   # Makefile host_hello sample (EGL + audren). Not the game image.
   # The game .nro is job switch-game below, and a Release only from

@@ -54,10 +54,22 @@ a busier machine, measured Switch US at 30 s and Switch both at 27 s.
 Replay runner (2 jobs, `--bin-both`): quick tier 32.6 s for 68 checks (6
 scenarios); a 12-scenario slice of the full tier 119.8 s for 128 checks. The
 runner spends 98% of that in the game processes (sum of process seconds 236 s,
-2 jobs, 120 s wall); PNG compare and Xvfb start are noise. The full tier has
-about 250 scenarios (116 US, 128 EU), so at about 20 s of game time each it is about
-80 min of process time, 40 min at 2 jobs on a quiet machine. The ~3 h seen on
-the loaded desktop is the same work running slower under load, not extra work.
+2 jobs, 120 s wall); PNG compare and Xvfb start are noise. Scenario length
+varies a lot: that slice averaged 20 s of game time per scenario, the 14 cheat
+scenarios of the `--changed` run below averaged 66 s. The full tier has about
+250 scenarios (116 US, 128 EU); the ~3 h at 2 jobs the owner sees is about 85 s
+per scenario, i.e. the work itself, not overhead. Only parallelism (more jobs)
+or running fewer scenarios (`--changed`) shortens it.
+
+`--changed` on a `port/options/cheats.c` edit selects 43 of 273 scenarios (about
+17% of the full tier, so roughly 25 to 30 min at 2 jobs instead of ~3 h). Measured
+with `--fail-fast`: 14 scenarios ran in 487 s wall (2 jobs), then the run
+stopped on `us-field-options-cheats` and skipped 32. That failure is not from
+this change: the capture of an unchanged `origin/main` binary differs 2% from
+the reference, and that reference (`~/.cache/dw3-switch/replay-refs`, shared by
+every agent) was rewritten at 18:00 the same day by someone else's `--update`,
+probably against another branch's options UI. Worth knowing: that directory is
+shared and mutable, so a failing UI scenario can mean "the refs moved".
 
 ### Where the time goes
 
@@ -207,7 +219,30 @@ Workflow changes in `.github/workflows/ci.yml`:
   with 4 workers, 91 s serial to 49 s; one test, `test_options_cache[cheats]`,
   takes 32 s alone).
 
-CI_TIMINGS_PLACEHOLDER
+Job durations in seconds, same workflow, GitHub-hosted runners. "Before" is the
+range of three recent PR runs on `main` code. Run 1 is this PR with an empty
+cache, run 2 the next push (cache restored from run 1).
+
+| | Before | Run 1 (cold) | Run 2 (warm) |
+|---|---|---|---|
+| Whole run (wall) | 266 to 298 | 142 | 130 |
+| pc (builds, no tests now) | 254 to 282 (with tests) | 122 | 110 |
+| tools-tests (new job) | 90 to 116 (inside pc) | 89 | 115 |
+| switch-game | 96 to 168 | 111 | 58 |
+| switch-game-both | 146 to 210 | 127 | 92 |
+| switch, switch-launcher, changes | 28 to 38, 28 to 38, 8 to 11 | 30, 29, 6 | 32, 30, 8 |
+
+What moved the whole run: unit tests no longer sit behind the builds (the old
+critical path was `pc` = submodules + deps + 2 builds + tests), shallow
+submodule clones (15 to 87 s per job down to 8 to 19 s), and the cache for the
+two Switch jobs (`switch-game` 111 to 58 s, `switch-game-both` 127 to 92 s once
+warm). The critical path is now `tools-tests` (`pytest` 73 to 87 s on the
+runner, mostly one 32 s test); the second push trims its submodule init to the
+two it needs and uses xdist work stealing. `pc` is limited by SDL3's CMake
+configure (about 15 s per build) and apt (12 to 17 s).
+
+The cache only pays for objects that did not change: a PR that touches a
+header used everywhere recompiles most of the game side, as before.
 
 ### Why `switch-game-both` still runs on every code change
 
@@ -230,7 +265,7 @@ code PR, so the saving is small.
 3. Pre-PR: `tools/replay_tests.sh --changed --jobs 2 --fail-fast`. Read the
    printed selection; if it says "full tier", that is the area map telling you the
    change is engine-wide.
-4. Run the full tier (`tools/replay_tests.sh --jobs 2`, ~40 min to 3 h) for an
+4. Run the full tier (`tools/replay_tests.sh --jobs 2`, about 3 h) for an
    engine-wide change, before a preview, or when asked. `--soak` only for
    memory work.
 5. `DW3_NO_CCACHE=1` for a build whose bytes matter (preview/release candidates
