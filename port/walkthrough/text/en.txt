@@ -1,0 +1,60 @@
+# DW3NX walkthrough, English master text, phase 1 (P6.35).
+# DRAFT, OWNER REVIEW PENDING. Nothing in this file may ship before the owner
+# approves it (docs/P6.35_WALKTHROUGH.md, section 7). Original writing from the
+# decomp's stage scripts (progress values confirmed by PC replay); not taken
+# from any external guide. Lines marked TODO(verify) are not yet played through.
+#
+# Format (shared with docs/P6.30_HELP.md section 4):
+#   key = value      one entry per line, UTF-8, '#' starts a comment
+#   key = wt.<step id>.<layer>   layers: title (always visible), goal (safe: where
+#         to go and what to do, no answers), help (the spoiler sub-area, shown
+#         only after the two-step reveal)
+#   wt.<chapter>.title           chapter name
+#   wt.area.<area>.title / .help  the area's spoiler sub-area ("Whole area")
+#   \n forced line break; {{ and }} are literal braces
+#   Budgets (checked by tools/tests/test_walkthrough.py): title <= 40, goal <= 240,
+#   help <= 480 characters.
+#   Other languages carry the same keys; a missing key falls back to this file.
+
+@format = 1
+@book = walkthrough
+@lang = en
+@status = draft, owner review pending
+
+# ---------------------------------------------------------------- chapter 1
+wt.ch01.title = Chapter 1: Getting started
+
+wt.ch01.s01.title = Visit the Online Center
+wt.ch01.s01.goal = Junior is in Kusanagi City, the real world, with his friends. Head for the Online Center to sign up for the game.
+wt.ch01.s01.help = The Online Center is close to the street corner where the story begins. Go inside and talk to the Account Clerk. That scene finishes the sign-up and moves the story on.
+
+wt.ch01.s02.title = Log in to Asuka City
+wt.ch01.s02.goal = You are signed up. Enter the game world and report to the Login Room in Asuka City.
+wt.ch01.s02.help = After the Online Center, the Chamber Room takes Junior into the game. In the Login Room of Asuka City, talk to the Account Clerk to finish logging in. TODO(verify): the walk from the Chamber Room.
+
+wt.ch01.s03.title = Get your first partner
+wt.ch01.s03.goal = Go to the Main Lobby in Asuka City and find the Tamer Service. It hands out your first partner.
+wt.ch01.s03.help = The Tamer Service offers three starter packs, called A, B and C, and downloads the one you choose. Pick any: the story goes on the same way with each of them.
+
+wt.ch01.s04.title = Meet Tamer Genji
+wt.ch01.s04.goal = A tamer named Genji waits in the Central Sector of Asuka City. Find him in the streets near the bridge.
+wt.ch01.s04.help = Speak to Genji where the Central Sector meets the bridge. After you talk, a battle starts.
+
+wt.ch01.s05.title = Finish up with Genji
+wt.ch01.s05.goal = Genji's battle is over, but your business with him is not. The talk goes on in the same street.
+wt.ch01.s05.help = The follow-up scene plays when the Central Sector loads again after the battle. If nothing happens, step out of the street and come back in. This moves the story on to the next step. TODO(verify): the exact trigger.
+
+wt.ch01.s06.title = Travel to Seiryu City
+wt.ch01.s06.goal = Asuka City is open now. When you are ready, take the East Station to the East Sector and speak to the Seiryu Leader in Seiryu City.
+wt.ch01.s06.help = The Seiryu Leader tests you in a battle, then gives you a Silver ID and the Seiryu Badge.
+
+wt.ch01.x01.title = New faces around Asuka
+wt.ch01.x01.goal = Optional. From this step on, several buildings in Asuka City have new people inside.
+wt.ch01.x01.help = Look into the Digimon Lab, the Inn (both floors), the Junk Shop, Lamb Chop and El Dorado. TODO(verify): what each person offers.
+
+# ---------------------------------------------------------------- areas
+wt.area.kusanagi.title = Kusanagi City
+wt.area.kusanagi.help = Kusanagi City is the real world, where the story starts. Only two places matter here: the street corner and the Online Center.
+
+wt.area.asuka.title = Asuka City
+wt.area.asuka.help = Asuka City is the first town. In order: the Login Room, the Main Lobby (starter partner), then the Central Sector, where Genji waits. Once Genji is done, the shops and buildings fill up, and the way to the East Station opens.

@@ -1,0 +1,30 @@
+Upstream-bound: no
+Subject: [PORT_HOST] P6.35 walkthrough probe in updateModeTask (DW3_CHEATS builds only)
+
+Debug path for the P6.35 step resolver (docs/P6.35_WALKTHROUGH.md, "As built
+(phase 1)"): once per game frame of the mode task, dw3_walkthrough_probe_tick()
+reads GAME.progress, GAME.fieldMode and one FLAGS_00 check and, when the env
+DW3_WALKTHROUGH_PROBE is set and one of them changed, logs
+"dw3-walkthrough: progress P half H area A -> chapter C step S (rule R)".
+No-op otherwise; read-only. Every line is inside #ifdef DW3_CHEATS.
+
+--- a/src/engine/system/overlay.c
++++ b/src/engine/system/overlay.c
+@@ -8,6 +8,7 @@
+ void exit(int status);
+ #ifdef DW3_CHEATS
+ #include "port_stage_sweep.h"
++#include "port_walkthrough.h"
+ #endif
+ /* Armed by CARDGAME return when DW3_AFTER_CARD_ALBUM is set. */
+ s32 DW3_afterCardAlbumArm;
+@@ -239,6 +240,9 @@
+                 GAME.funcs.requestMode(sweepMode, 0);
+             }
+         }
++        /* P6.35 walkthrough probe (debug: env DW3_WALKTHROUGH_PROBE): logs the
++           resolved step when the progress, the map or the flag changes */
++        dw3_walkthrough_probe_tick();
+ #endif
+         if (GAME.funcs.isModeChangePending() != 0) {
+             task->setState(task, TASK_KILL);

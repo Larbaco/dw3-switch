@@ -915,6 +915,17 @@ def music_loop(version):
     return r
 
 
+WALKTHROUGH_END = 600
+
+
+def walkthrough(version):
+    """P6.35: no input; the manifest's env boots a field map at a progress value
+    and the debug probe logs the resolved step (env in manifest)."""
+    r = Rec(f"{version.upper()}: idle in a field map, the walkthrough probe logs the step (env in manifest)")
+    r.end(WALKTHROUGH_END)
+    return r
+
+
 UNDERGROUND_EXIT_END = 700
 
 
@@ -2209,6 +2220,7 @@ def main(out):
         (out / f"{v}-lab-digivolve.rec").write_text(lab_digivolve(v).text(True))
         (out / f"{v}-victory-music.rec").write_text(victory_music(v).text(True))
         (out / f"{v}-music-loop.rec").write_text(music_loop(v).text(True))
+        (out / f"{v}-walkthrough.rec").write_text(walkthrough(v).text(True))
         (out / f"{v}-underground-exit.rec").write_text(underground_exit(v).text(True))
         (out / f"{v}-ws-door-iris.rec").write_text(ws_door_iris(v).text(True))
         (out / f"{v}-door-iris43.rec").write_text(door_iris43(v).text(True))

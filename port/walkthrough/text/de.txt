@@ -1,0 +1,12 @@
+# DW3NX walkthrough, de text (P6.35).
+# STUB. TODO: the owner rule is that the walkthrough exists at launch in every base-game
+# language (EN, and FR/DE/IT/ES on the EU disc). This file must be drafted and reviewed
+# before anything ships; a stub makes the release validator fail. Until then every key
+# falls back to en.txt and the fallback is logged. Same keys as en.txt (wt.<step id>.title,
+# goal, help; wt.<chapter>.title; wt.area.<area>.title and .help). Original writing, not
+# translated from external guides.
+
+@format = 1
+@book = walkthrough
+@lang = de
+@status = stub, TODO draft and owner review pending
