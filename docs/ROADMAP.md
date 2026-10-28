@@ -72,11 +72,12 @@ listed once, in [Pending OLED checks](#pending-oled-checks).
 | P6.27 | Return to title from the pause (field) menu | in progress (built, PC US and EU replays; owner OLED check open) | [PORT_OPTIONS](PORT_OPTIONS.md#quit-and-return-to-title-p627-p628), [roadmap](#phase-6-goal-notes) |
 | P6.28 | Quit game on the title menu, back to hbmenu | in progress (built, PC US and EU replays; owner OLED check open) | [PORT_OPTIONS](PORT_OPTIONS.md#quit-and-return-to-title-p627-p628), [roadmap](#phase-6-goal-notes) |
 | P6.29 | Save editor: external tool on the owner's own saves, builds on P6.25 (future goal) | future | [roadmap](#phase-6-goal-notes), [CROSS_REGION_SAVES](CROSS_REGION_SAVES.md) |
-| P6.30 | Help, FAQ and tips from the pause menu (future goal) | future | [roadmap](#phase-6-goal-notes) |
+| P6.30 | Help, FAQ and tips from the pause menu and the title menu (future goal; owner answers recorded 2026-10-27; after P9.9) | future | [roadmap](#phase-6-goal-notes) |
 | P6.31 | Auto-save, off by default | in progress (built: Options row, area-change write to its own file `autosave.bin`, title Continue loads it and the old Continue is Load; PC US and EU replays; owner OLED check open) | [P6.31_AUTOSAVE](P6.31_AUTOSAVE.md), [roadmap](#phase-6-goal-notes), [P5.3](P5.3_FLAT_SAVE.md) |
 | P6.32 | Map zoom and full-screen map (future goal) | phase 0 PoC built (PR `feat/p6.32-map-poc`), OLED look pending | [roadmap](#phase-6-goal-notes), [P6.32](P6.32_MAP_ZOOM.md), [P6.1](P6.1_WIDESCREEN.md) |
 | P6.33 | Items menu usability redesign | in progress (owner decisions recorded 2026-10-26; phase 1 partner cycle built: patch 0128, ZL / ZR, on by default; phases 2, 3 and 4 open; owner OLED check open) | [roadmap](#phase-6-goal-notes), [P6.33](P6.33_ITEMS_MENU.md), [P6.1](P6.1_WIDESCREEN.md) |
 | P6.34 | Redesign of the items / status / equipment menu flow (future goal) | future | [roadmap](#phase-6-goal-notes), [P6.33](P6.33_ITEMS_MENU.md) |
+| P6.35 | In-game walkthrough help: where to go next and what to do, by story progress (future goal) | future | [roadmap](#phase-6-goal-notes), [PLAYER_GUIDE](PLAYER_GUIDE.md) |
 | P7.1 | Inventory and boundaries | done | [COMMUNITY_QOL](COMMUNITY_QOL.md) |
 | P7.2 | Patched EU disc as data source | open | [COMMUNITY_QOL](COMMUNITY_QOL.md) |
 | P7.3 | Binary-patch limits | in progress | [COMMUNITY_QOL](COMMUNITY_QOL.md) |
@@ -98,7 +99,7 @@ listed once, in [Pending OLED checks](#pending-oled-checks).
 | P9.6 | External save converter | open | — |
 | P9.7 | Port options reachable in game | in progress (slice 1, the field menu, and slice 2, battle: built, PC US and EU replays, Switch Ryubing nx scenarios; live Widescreen open; owner OLED checks open) | [PORT_OPTIONS](PORT_OPTIONS.md#options-in-game-p97), [roadmap](#phase-9--port-options-menu) |
 | P9.8 | Confirm / cancel layout option (PS positional or Nintendo A/B) (future goal) | future | [roadmap](#phase-9--port-options-menu), [HOTKEYS](HOTKEYS.md) |
-| P9.9 | Options screen redesign in the title menu's style, room for more rows (future goal) | future | [roadmap](#phase-9--port-options-menu), [PORT_OPTIONS](PORT_OPTIONS.md) |
+| P9.9 | Options screen redesign in the title menu's style, room for more rows (future goal; submenus decided 2026-10-27) | future | [roadmap](#phase-9--port-options-menu), [PORT_OPTIONS](PORT_OPTIONS.md) |
 | P10.1 | Switch features goal note | done | [SWITCH_FEATURES](SWITCH_FEATURES.md) |
 | P10.2 | Lifecycle hardening (has P5.3's leftover) | in progress (sleep and resume: owner confirmed on the OLED, 2026-10-24; HOME during a save write open) | [SWITCH_FEATURES](SWITCH_FEATURES.md) |
 | P10.3 | Presentation modes | open | — |
@@ -915,7 +916,7 @@ gate, which stays open.
   GTE/3D path renders above native on PC and Switch with US and EU discs, and
   the 2D/UI layers and widescreen patches still match soft rendering.
 
-- **P6.12–P6.33** (except P6.15, P6.17, P6.18, P6.20 and P6.22, which have their own entries) are goal notes, kept with their ids in
+- **P6.12–P6.35** (except P6.15, P6.17, P6.18, P6.20 and P6.22, which have their own entries) are goal notes, kept with their ids in
   [Backlog / future goals](#backlog--future-goals).
 
 Gate: polish options from P6.1–P6.5 land as needed; localization P6.6–P6.8
@@ -1264,15 +1265,20 @@ PS1 game, with vanilla-safe defaults and persistence on owner storage.
   IT, ES) and US English; the dirty-rectangle cache of the Options canvas keeps
   working; the widescreen gutters are filled (P6.1); docs in the same change
   ([PORT_OPTIONS.md](PORT_OPTIONS.md)); tested on the OLED for US and EU.
-  **Open questions (owner):** groups (Audio, Display, Gameplay, Tools) or one
-  scrolling list; should the Cheats group be hidden unless a switch is on;
+  **Owner decision (2026-10-27): submenus.** Quote: "esse menu de opções pode
+  ter submenus" (this options menu can have submenus). The groups are
+  submenus, for example Display / Sound / Gameplay / Saves / Cheats / Controls /
+  Help (a first list, not final; it replaces the Audio / Display / Gameplay /
+  Tools sketch). Help is the P6.30 submenu, and the in-game walkthrough is the
+  P6.35 submenu, so both land after this redesign.
+  **Open questions (owner):** should the Cheats group be hidden unless a switch is on;
   should the title-menu backdrop be used as is or in a darker tone for
   readability; keep the old window as a fallback option until the owner
   approves the new one.
   Done when (proposed): the Options screen matches the title menu's look on US
   and EU, every existing row works unchanged, a ninth row fits (P6.20), and the
   file written by the old build still loads.
-  Related: P6.20, P6.13, P6.17, P6.18, P9.7, P6.1, P6.27, P6.31.
+  Related: P6.20, P6.13, P6.17, P6.18, P9.7, P6.1, P6.27, P6.30, P6.31, P6.35.
 
 Gate: P9.2 + P9.4 with at least one persistent toggle (stub or real).
 P9.5 stays best-effort as features ship. P9.6 does not block the gate.
@@ -1981,14 +1987,20 @@ Statuses are in the [table](#status-at-a-glance).
   says which languages it has; text stays within the window; only what is
   confirmed on hardware (unverified items link to the ROADMAP); screenshots only
   from the owner-approved set (AGENTS.md).
-  **Open questions (owner):** should the help screen also open from the title
-  menu; should it be translated to Brazilian Portuguese first (tied to P6.7);
-  should FAQ answers link to the docs on GitHub, or stay offline only (the
-  Switch may be offline); how long a page may be.
+  **Owner answers (2026-10-27), they replace the open questions:** (1) it
+  opens from the pause menu **and** from the title menu ("sim, pelo menu
+  principal também", yes, from the title menu too); (2) no Brazilian Portuguese
+  first: pt-BR comes when that language is added to the game (P6.7) ("ela deve
+  ter português quando formos adicionar essa língua ao jogo", it should have
+  Portuguese when we add that language to the game); (3) everything is offline,
+  no links needed ("Tudo offline", everything offline); (4) a page may scroll
+  ("pode ter rolagem", it can have scrolling).
+  **Placement (owner, 2026-10-27):** the help is a submenu of the redesigned
+  Options screen ([P9.9](#phase-9--port-options-menu)). Order: after P9.9 lands.
   Done when (proposed): a tester opens Help from the pause menu on US and EU,
   reads the controls page, and finds the answers for install and crash reports
   without leaving the console.
-  Related: P6.23, P6.27, P6.7, P9.2.
+  Related: P6.23, P6.27, P6.7, P6.35, P9.2, P9.9.
 - [ ] **P6.31 Auto-save (off by default).** Dated 2026-10-24, owner request
   (Portuguese, "salvamento automático"). First slice 2026-10-25 (patches `0140`,
   `0141`) wrote over the slot in use. **Reworked 2026-10-27 after the owner's
@@ -2092,6 +2104,47 @@ Statuses are in the [table](#status-at-a-glance).
   and equipment menus feel odd. A redesign of the whole flow, beyond the
   partner cycle of P6.33. No design yet; start from the P6.33 note. Done when
   (proposed): the owner approves a flow and it works on US and EU, 4:3 and 16:9.
+
+- [ ] **P6.35 In-game walkthrough help (future goal).** Dated 2026-10-27,
+  owner request (Portuguese: "um menu de ajuda mais no sentido do walkthrough,
+  pra ajudar o jogador no jogo", a help menu closer to a walkthrough, to help
+  the player in the game). The owner also said "quero os 2" (I want both): this
+  is player guidance, separate from the technical help of P6.30. Goal note
+  only, nothing started.
+  **What exists (cited):** the port gives no in-game guidance on where to go
+  next. P6.30 covers only the technical help (install, controls, saves, crash
+  reports), and the player guide ([PLAYER_GUIDE.md](PLAYER_GUIDE.md), P6.23)
+  is for setup, not for play.
+  **Scope:** a screen that tells the player where to go next and what to do,
+  by story progress. Each step may have spoiler levels: a hint first, then the
+  full answer, shown only when the player asks for it.
+  **Proposal (no code):** drive the screen from the game's story progress
+  flags, so it shows only the current step and never reveals later steps
+  (spoiler-safe). The screen only reads the flags; it does not write them and
+  the save format does not change. The flags are not mapped yet (to do: find
+  them in the decomp).
+  **Where it opens:** from the pause menu, as a submenu of the redesigned
+  Options screen (P9.9). Maybe also from the title menu, as an open question
+  for P6.30 (answered yes there).
+  **Offline, scrolling, languages:** everything offline, no links; a page may
+  scroll; no Brazilian Portuguese first, pt-BR comes with P6.7; the five EU
+  languages and US English, as P6.30.
+  **Constraints:** all text is original, written for this port. Never copied
+  from existing walkthroughs or FAQs (GameFAQs and similar), and never from the
+  game's disc script beyond short names (character, item and place names, so
+  the player can find things). No game data in git; anything derived from the
+  disc stays out of git (AGENTS.md). Screenshots only from the owner-approved
+  set.
+  **Open questions (owner):** (1) spoiler levels: is the hint-then-answer split
+  wanted? (2) per-step hints tied to progress, or a full chapter list? (3)
+  include side content, such as recruitable Digimon and card or item
+  locations? (4) who writes the text: an agent drafts it from the decomp and the
+  progress flags, and the owner reviews it?
+  Done when (proposed): at a given story point, a tester opens the help from the
+  pause menu on US and EU and sees only the next step, the hint first and the
+  full answer on request; every text is in the five EU languages and US
+  English; a long page scrolls; nothing is copied from outside sources.
+  Related: P6.30, P9.9, P6.23, P6.7.
 
 ### Phase 7 goal notes
 
