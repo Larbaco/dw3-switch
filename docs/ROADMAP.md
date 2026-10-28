@@ -191,6 +191,7 @@ the history. Tick the item in the table once the owner confirms every part of
 its done-when. The ordered session plan (written for preview.36) is
 [OLED_TEST_PLAN](OLED_TEST_PLAN.md).
 
+- **Owner preview.47 US log (2026-10-28): PASSED** A5, A7, A9-A12, C7, E1.3, E2.1, E2.2, G8 (the `items_partner_switch=0` sub-check of G8 not done) and B15b; marks and log evidence are in [OLED_TEST_PLAN](OLED_TEST_PLAN.md). Still open: app name #289 (look only), B16 map balloon/cursor/zoom (not opened in that log), E1.6b (needs an EU run), D13 #188.
 - **P5 gate:** start → first boss on hardware, US and EU. The Phase 5 gate is
   not met yet (owner, 2026-10-24); see [Phase 5](#phase-5--playable-on-switch).
 - **P6.1:** **Item shop (B18, patch 0179):** the owner saw it still in 4:3 on preview.47 (panels had stayed in the middle 320 columns); panels now hang from the 16:9 edges, and the log says which gutter the shop ran with (`dw3-widescreen: screen STITSHOP ...`). Pending OLED. 16:9 for the map screen, results header, save slot picker, title
