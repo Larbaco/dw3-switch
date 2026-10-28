@@ -1,6 +1,6 @@
 Digimon World 3 / 2003, Switch homebrew preview
 
-Release notes for v0.6.5-preview.43. The release tag and boot version
+Release notes for v0.6.5-preview.44. The release tag and boot version
 identify the actual source revision.
 
 Player guide (setup, controls, Options, saves, crash reports):
@@ -10,6 +10,34 @@ New in this preview
 
   No item below has been checked on a Switch OLED yet. Each is checked on
   PC and in the Ryubing emulator only, and is marked unverified.
+
+  Options opens without the stutter (#298): the static Options window is
+  prepared ahead of time on a worker thread, so an open is a copy. Expected
+  about 10 ms on the Switch, not measured on hardware yet (plan B15).
+
+  Return to title fades through black (#298): the field menu entry and the
+  restart chord fade the picture to black, wait for the title (EU: the
+  language select) and fade it in, so no squeezed 4:3 frame should show.
+  Plan E1.
+
+  Map view shows the revealed map (#299): on the Map screen, Y draws the
+  towns and the visited areas the way the game's Map does. Before, only the
+  dark base map showed. The right analog stick zooms (up in, down out); L and
+  R still step. Plan B16.
+
+  Log rotation fixed (#296): dw3.log is closed at exit. If the system refuses
+  to rename it, the build copies and deletes it instead, and never truncates
+  it. Each launch writes `dw3-log: rotated (...)`, with r (renamed), c
+  (copied) or - (nothing or failed) for each step, and the count of kept
+  previous runs. After two launches sdmc:/switch/dw3/ should hold dw3.log and
+  dw3.1.log.
+
+  Profile id in the log (#294): the short id in dw3.log (`user: profile=`)
+  and in crash_report.txt (`profile:`) is now a hash of the user id, so each
+  profile shows its own value. The saves folder name is unchanged.
+
+  Docs only (#295, #297): README refresh; roadmap decisions for P6.30 and a
+  new walkthrough help goal, P6.35.
 
   Per-user saves (P6.26, #292): saves are kept per Switch user profile, in
   sdmc:/switch/dw3/saves/<profile>/<us|eu>/memcard/ (save0, save1 and
@@ -25,6 +53,10 @@ New in this preview
   the newest, then dw3.1.log ... dw3.4.log). Game messages for the map,
   options and saves now reach the log, and new proof lines match the OLED
   test plan items. Send the whole set of sdmc:/switch/dw3/dw3*.log files.
+
+  Still open from preview.43: per-user saves (plan E5) and the audio check
+  after many techs on the EU build (#188, plan D13). The map reveal and
+  Options timing are not on hardware yet (B15, B16).
 
   Still open from preview.39: the Quit game and field OPTIONS fixes need
   OLED confirmation (plan A7 and B15), and the #188 audio check is plan D13.
@@ -240,6 +272,18 @@ Install / nxlink
 OLED checklist
 
   New in this preview:
+  - Log rotation (#296): after two launches, sdmc:/switch/dw3/ has dw3.log
+    and dw3.1.log with different `dw3-run: started` times. The new dw3.log
+    has `dw3-log: rotated (...)`. Send the whole set of dw3*.log files.
+  - Options open timing (plan B15): the `dw3-port-options:` lines give the
+    prewarm, the first frame after the open request, the longest frame gap
+    and the time the window stayed open. Expected about 10 ms to open, with
+    no `rebuild` line (that was the old stutter).
+  - Return to title fade (plan E1): the field fades to black, then the
+    title or language select fades in, with no 4:3 picture ever on screen.
+  - Map reveal, stick zoom and scaler preference (plan B16): the revealed
+    towns and areas show on the Map, the right stick zooms, and the scaler
+    keeps its choice. Send the `dw3-map:` lines.
   - Per-user saves (plan E5, E5.1 to E5.9): the profile selector, the
     per-profile folders, the copy of legacy saves, cancelling the selector
     and the crash report's profile line. Send dw3*.log and the folder listing
