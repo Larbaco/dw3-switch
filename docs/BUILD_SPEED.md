@@ -39,6 +39,7 @@ worktree that hits objects another worktree cached.
 | Step | Before | After, cold cache | After, warm cache |
 |---|---|---|---|
 | PC US, clean | 24.7 s (92 cpu-s) | 30.0 s (133 cpu-s) | 22.1 s (66 cpu-s) |
+| PC US via `tools/build_pc.sh` (only the `dw3-pc` target), clean | | | 19.8 s (60 cpu-s) |
 | PC both, clean | 27.1 s (108 cpu-s) | 27.4 s (102 cpu-s) | 24.2 s (91 cpu-s) |
 | Switch US, clean | 18.9 s | 21.2 s | 8.3 s |
 | Switch both, clean | 19.0 s | 14.7 s (shares the US run's objects) | 13.1 s |
