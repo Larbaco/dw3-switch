@@ -138,17 +138,18 @@ a Mode2 BIN/CUE pair: Digimon World 3 (USA, SLUS-01436) or Digimon World 2003
      is chosen at boot), or
    - `dw3-switch.nro` (US) or `dw3-switch-eu.nro` (EU): one region each.
 2. Copy your disc's BIN and CUE files:
-   - separate builds: US into `sdmc:/switch/dw3/`, EU into `sdmc:/switch/dw3/eu/`;
-   - combined build: into `sdmc:/switch/dw3/us/` and `sdmc:/switch/dw3/eu/`.
-     With both regions present it shows a picker at boot; with one it starts
-     that region.
+   - separate builds: US into `sdmc:/switch/dw3/`, EU into `sdmc:/switch/dw3/eu/`
+     (a disc in `sdmc:/switch/dw3/` is found by both separate builds);
+   - combined build: into `sdmc:/switch/dw3/us/` or `sdmc:/switch/dw3/eu/`. It
+     does not look in `sdmc:/switch/dw3/` itself. With both regions present it
+     shows a picker at boot; with one it starts that region.
 3. Launch from hbmenu. The first boot extracts the game data from the disc and
    shows a progress bar. Leave it running.
 
 ```text
 sdmc:/switch/dw3-switch.nro                 (or dw3-switch-both.nro)
-sdmc:/switch/dw3/Digimon World 3.cue        your disc, BIN/CUE
-sdmc:/switch/dw3/Digimon World 3.bin
+sdmc:/switch/dw3/Digimon World 3.cue        your disc, BIN/CUE (separate builds;
+sdmc:/switch/dw3/Digimon World 3.bin        the combined build wants it in us/ or eu/)
 sdmc:/switch/dw3/us/                        created on first boot (eu/ for EU)
 sdmc:/switch/dw3/saves/<uid>/<us|eu>/memcard/   saves, per Switch profile
 sdmc:/switch/dw3/dw3.log                    logs; send them with a bug report

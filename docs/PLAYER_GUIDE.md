@@ -32,40 +32,63 @@ No game files ship with the port. A wrong-region disc is rejected.
 
 | Region | Disc | Build | Runtime folder |
 |---|---|---|---|
-| US | Digimon World 3 (`SLUS-01436`) | `dw3-switch.nro` | `sdmc:/switch/dw3/us/` |
-| EU | Digimon World 2003 (`SLES-03936`) | `dw3-switch-eu.nro` | `sdmc:/switch/dw3/eu/` |
+| US | Digimon World 3 (`SLUS-01436`) | `dw3-switch.nro`, or `dw3-switch-both.nro` | `sdmc:/switch/dw3/us/` |
+| EU | Digimon World 2003 (`SLES-03936`) | `dw3-switch-eu.nro`, or `dw3-switch-both.nro` | `sdmc:/switch/dw3/eu/` |
 
 Disc dump: the docs describe a Mode2/2352 BIN with its CUE. They do not
 describe a plain ISO as supported, so use a BIN and CUE. If the CUE names a
 different BIN than the one you have, the port picks the only other `.bin` in
 that folder, if it is large enough ([RUNTIME_LAYOUT](RUNTIME_LAYOUT.md)).
 
-**Region launcher (P6.24).** The game is still two builds, one per region. A
-launcher can start the right one:
+**One file for both regions (P6.24, preview.48).** `dw3-switch-both.nro` holds
+both games and chooses at launch:
 
-- PC: the `dw3-pc` launcher starts the US or EU binary for the runtime folder it finds.
-- Switch: a launcher `.nro` (`dw3.nro`, in `sdmc:/switch/dw3/`) is built by CI but
-  **not shipped in releases yet**. Use the region `.nro` above until it is.
+- Only one region's data is found: that game starts at once.
+- Both are found: a picker shows for 3 seconds and starts the last choice (US
+  the first time). D-pad or left stick moves the choice and stops the countdown;
+  A starts the highlighted region; Y turns on "always start this one" (no picker
+  next time); + quits.
+- Hold Minus while you press A on the `.nro` in hbmenu to see the picker again.
+- Every decision is a `dw3-region:` line in `dw3.log`.
+
+The separate `dw3-switch.nro` (US) and `dw3-switch-eu.nro` (EU) are still
+published. The combined file has not yet been checked on a Switch OLED.
+
+**Launcher.** A separate launcher `dw3.nro` (a stop-gap, built by CI only) is
+**not in releases**. Use the `.nro` files above.
 
 Steps:
 
-1. Download the `.nro` for your region from the
-   [latest release](https://github.com/Larbaco/dw3-switch/releases/latest).
-   The EU build is attached to releases by hand.
+1. Download a `.nro` from the
+   [latest release](https://github.com/Larbaco/dw3-switch/releases/latest):
+   `dw3-switch-both.nro`, or the one for your region. Each release says which
+   files it carries.
 2. Copy it to `sdmc:/switch/`.
 3. Copy your disc's BIN and CUE files:
-   - US: into `sdmc:/switch/dw3/`, next to the `us/` folder.
-   - EU: into `sdmc:/switch/dw3/eu/`, for example `disc.bin` and `disc.cue`.
+   - Separate builds: US into `sdmc:/switch/dw3/`, next to the `us/` folder; EU
+     into `sdmc:/switch/dw3/eu/`, for example `disc.bin` and `disc.cue`.
+   - Combined build: into `sdmc:/switch/dw3/us/` (or `eu/`), creating the folder
+     if needed. The combined build does **not** look in `sdmc:/switch/dw3/`
+     itself: a disc left there is not found, and it shows the setup message
+     instead of starting ([issue #322](https://github.com/Larbaco/dw3-switch/issues/322)).
 4. Launch from hbmenu. The first boot extracts the game data from the disc and
    draws a progress bar. Leave it running.
 
-The US card then looks like this (EU uses `eu/`):
+The US card with a separate build then looks like this (EU uses `eu/`):
 
 ```text
 sdmc:/switch/dw3-switch.nro
 sdmc:/switch/dw3/Digimon World 3.cue
 sdmc:/switch/dw3/Digimon World 3.bin
 sdmc:/switch/dw3/us/            created on first boot
+```
+
+With the combined build the disc sits inside the region folder:
+
+```text
+sdmc:/switch/dw3-switch-both.nro
+sdmc:/switch/dw3/us/Digimon World 3.cue
+sdmc:/switch/dw3/us/Digimon World 3.bin
 ```
 
 After the first boot:
@@ -160,7 +183,7 @@ game, except Widescreen.
 
 | Group | Row | Values | Default | What it does |
 |---|---|---|---|---|
-| Display | Widescreen | ON / OFF | ON | About 16:9 in the field and battle, and in several menus. The title and movies stay 4:3. [P6.1](P6.1_WIDESCREEN.md) |
+| Display | Widescreen | ON / OFF | ON | 16:9 in the field, the 3D battle and most menus: the title menu, the intro's news caption bar, the EU language select, the player name screen, the map, results and save screens, the Items menu, and the card album, deck editor, card shop, gym and Digimon Lab (a few Lab panels are still 4:3). Movies, the still screen and the card battle stay 4:3. Which screens are confirmed on the OLED: [P6.1](P6.1_WIDESCREEN.md). |
 | Gameplay | Fast-forward | 2x / 3x / 4x / OFF | 2x | The speed R3 switches to. The game still starts at 1x. OFF disables R3. Music and sound effects speed up too. [P6.4](P6.4_FAST_FORWARD.md) |
 | Gameplay | Restart hotkey | ON / OFF | OFF | Enables the L + R + Plus + Minus restart chord. [P6.9](P6.9_RESTART.md) |
 | Sound | Music volume | OFF, 1 to 10 | 10 | 10 is the original mix. Left and Right step; B steps up and wraps 10 to 0. [P6.17](P6.17_VOLUME.md) |
@@ -260,6 +283,7 @@ P6.31_AUTOSAVE.md (Auto-save, the ninth row) -->
 - **Auto-save (Options, OFF by default).** With **Each area**, the first idle
   frame of each new field area writes the game to its **own file,
   `autosave.bin`**, in the card folder. It never touches your save slots.
+  Only an area change writes it: not HOME, sleep or quitting.
   Loading a save is not an area change: the first idle frame after a load only
   sets the starting point.
   - **Continue and Load.** When `autosave.bin` exists the title shows five
