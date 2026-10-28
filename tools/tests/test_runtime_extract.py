@@ -222,6 +222,8 @@ def _compile(tmp: Path, version: str = "us") -> Path:
             str(ROOT / "port" / "cdfs"),
             "-I",
             str(ROOT / "port" / "movies"),
+            "-I",
+            str(ROOT / "port" / "region"),
             "-o",
             str(exe),
             str(ROOT / "port" / "cdfs" / "runtime_extract.c"),

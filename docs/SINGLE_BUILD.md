@@ -6,9 +6,12 @@ today. This note is the survey behind the
 [ROADMAP P6.24 entry](ROADMAP.md#phase-6-goal-notes). The owner has since
 decided how saves and the boot choice work (next section). **Slice 1 is built
 (2026-10-25): the run-time region choice, the picker logic and a PC launcher,
-see [As built](#as-built-slice-1) below; the dual-image link is not.** Slice 2
+see [As built](#as-built-slice-1) below.** Slice 2
 (2026-10-25) adds the Switch launcher `.nro`, see
-[As built, slice 2](#as-built-slice-2-the-switch-launcher). Numbers
+[As built, slice 2](#as-built-slice-2-the-switch-launcher). **Slice 3
+(2026-10-28, owner priority) is the dual-image link itself: one `dw3-pc` with
+both game copies, see [As built, slice 3](#as-built-slice-3-the-dual-image-link-pc);
+the Switch half (one `.nro`, the boot picker in the image) is the next PR.** Numbers
 come from `origin/main` at `3e2a9b7`, the decomp at
 `b9caa6c` (`vendor/dw3_decomp`), the PC objects of a US build, and the
 preview.31-rc1 Switch builds (US and EU, `.nro` and `.elf`).
@@ -30,6 +33,27 @@ Final; they replace the matching open questions at the end of this note.
 3. **Saves are bound to the Switch user profile that is playing.** Its own item,
    **P6.26**, in [PER_USER_SAVES.md](PER_USER_SAVES.md). The user choice is the
    Switch profile selector (`pselShowUserSelector`), decided 2026-10-24.
+
+## Owner priority (2026-10-28) and orchestrator defaults
+
+On 2026-10-28 the owner made **one `.nro` that plays both US and EU the top
+priority** (ROADMAP P6.24, Tier 0 of the Priority section). The work is
+option (a) below, in two PRs: PR A is the PC (`DW3_VERSION=both`, the dual-image
+link, the P6.15 replays of both regions on the one binary), PR B is the Switch
+(`tools/build_switch_game.sh --both`, auto-detection on the SD card, the boot
+picker, CI and the release asset).
+
+The questions that were still open on 2026-10-28 got these answers from the
+orchestrator, so work could start without waiting. **Orchestrator defaults,
+owner may change any of them:**
+
+| Question | Default taken |
+|---|---|
+| Look and languages of the picker | A simple host screen in English. Title-menu style comes later, with the P9.9 work |
+| Hold-to-ask button | **Minus**, held while the `.nro` starts |
+| Size | About 12 MB for the combined `.nro` is fine |
+| Separate US / EU `.nro` files | Keep shipping them next to the combined one until the owner has confirmed the combined one on the OLED |
+| Switching region without quitting | Out of scope; changing region means quitting |
 
 **Roadmap shape.** P6.25 (cross-region saves) and P6.26 (per-user saves) are
 separate items and **P6.24 depends on both**: each can be built, tested and
@@ -580,6 +604,134 @@ arm's length, handheld.
 3. Disc images as a detection source (today only extracted trees count); the
    Options row "Region at boot"; the per-region language/title line in the
    picker; the open questions below.
+
+## As built (slice 3: the dual-image link, PC)
+
+Slice 3 is option (a): the game side compiled twice, linked once. PR A of the
+2026-10-28 priority, PC only; the Switch `.nro` follows in PR B. The plain
+`DW3_VERSION=us` and `eu` builds are unchanged (same flags, same objects, same
+link line; the only additions are `dw3_region.c` in the executable, so the host
+can name the region, and a log line when `--region` / `DW3_REGION` names the
+other one).
+
+```bash
+cmake -S platforms/pc -B build/pc-both -G Ninja -DDW3_VERSION=both \
+  -DPSYZ_RENDERER=sdl3_gpu
+ninja -C build/pc-both dw3-pc
+build/pc-both/dw3-pc --region eu      # or DW3_REGION=eu, else the runtime present
+```
+
+**How it is built.**
+
+- `port/CMakeLists.txt` has three parts, chosen by `DW3_PORT_PART`: `all` (a
+  plain build, as before), `host` and `game`. `port/dual_region.cmake`
+  (`dw3_add_both_game`) adds the directory three times: the host part once
+  (cdfs, memcard, movies, `psyz_missing`, the run-time region code, one archive
+  `dw3_host_objs`) and the game part twice with `DW3_REGION_BUILD=us|eu`, which
+  gives every game target the suffix `_us` / `_eu` (`dw3_engine_eu`,
+  `dw3_p32_field_us`, ...). Each game copy compiles from the same
+  `build/decomp-src`, with its own `VERSION_US=1` / `VERSION_EU=1`, its own
+  overlay table and its own `host_ovl/` folder. The patched tree is applied
+  once. The P3.1 audit target is not built twice.
+- `tools/localize_region_obj.py` packs one copy into `game_<r>.o`: `ld -r` over
+  the copy's archives, pulling members from the root symbol (so an object that
+  nothing used stays out, as in a plain link; the six overlay archives are taken
+  whole), then `objcopy`: every global becomes local except `dw3_game_api`, which
+  becomes `us_dw3_game_api` / `eu_dw3_game_api`; the restore sections
+  `dw3data_<x>` / `dw3bss_<x>` become `dw3data_<r>_<x>` / `dw3bss_<r>_<x>` (510
+  per copy) and the undefined `__start_` / `__stop_` references of
+  `overlay_sections.c` (1,020) follow, so GNU ld synthesizes them per region and
+  each region's overlay restore covers only its own sections. The host symbols a
+  copy needs (PSY-Z, the platform backend, cdfs, memcard, movies ...) stay
+  undefined and global, so the final link resolves them once with the same rules
+  as a plain build: the executable's own objects come first, then the host
+  archive, then PSY-Z, with the same `--wrap` options. `psyz_pad_host.c`,
+  `psyz_host_overrides.c` and the `--wrap` redirections therefore still win
+  exactly as before. The tool refuses to finish if a global is left over, an
+  export is missing, or a `__start_` has no section.
+- **The door.** `port/region/dw3_game_api.h` is a table of what the host calls
+  in the game: `dw3_game_main`, the boot TIM loader, the title registration, the
+  map view calls, the port-options calls the title overlay makes
+  (`is_open`, `level`, `locked_mask_for`, ...), the turbo and screen-fade
+  levels, the cheats soak hook, and the pointers to the arrays the host reads
+  (`FILE_SECTORS`, `FILE_SECTOR_COUNTS`, `FILE_COUNT`, `HEAP`, `DW3_HOST_HEAP`).
+  `port/region/game_api.c` fills it inside each copy (it is the one symbol that
+  copy exports). That is 24 entries; they are the same 24 symbols a count with
+  `nm` over the US objects found in the survey, with the 17 overlay-table
+  entries staying inside the copy. In host code compiled with `DW3_BOTH=1` the
+  calls are redirected by macros in that header (`dw3_port_options_level(i)`
+  becomes `dw3_game()->port_options_level(i)`); in a plain build the header does
+  nothing and the calls are direct.
+- **`dw3_region()`** (`port/region/dw3_region_rt.h`) replaces the host's
+  `#if VERSION_EU` tests: inline and constant in a plain build, the region chosen
+  at boot in a `both` build. The sites that became run-time: all of
+  `port/cdfs/runtime_extract.c` (version string, executable names, map name,
+  `STAGE_VRAM`, the EU extract branch, the file tables through the table) and in
+  `platforms/pc/src/main.c` (the log tag, the US-only runtime extract, the
+  cross-import region, the title registration, `DW3_DEFAULT_RUNTIME`). The game
+  copies keep their compile-time `#if`s: they are built once per region.
+- One weak fallback had to go: `map_view.c` defines a weak
+  `dw3_map_view_async_start` for tests, and a weak definition inside a copy
+  would shadow the host's real one once the symbols are local. A copy compiles
+  with `DW3_REGION_IMAGE=1`, which leaves it out.
+
+**Choosing the region** (`dw3_region_resolve`, tested on its own): `--region`,
+then `DW3_REGION`, then the runtime folder that is given (`DW3_RUNTIME` /
+`--runtime`: by the files it holds, then by a trailing `/us` or `/eu`), then the
+folders present under `DW3_RUNTIME_BASE` (default `runtime`): one present boots
+it, both boot `region_default`, else `last_region` (read from `port_options.cfg`
+in `DW3_CONFIG_DIR`, else the base), else US. Nothing present: US, so the
+disc-extract path of the US build still works. A value that is not `us` or `eu`
+stops with status 1 before anything is opened. No picker, no extra frame and
+nothing written on the PC; the picker is the Switch's (PR B). The log says what
+was chosen: `dw3-region: running <r> (<source>), one image with both game
+copies` and `dw3-pc: region=<r>`.
+
+**Findings.**
+
+- The boundary is as small as the survey said: only 24 host-to-game references,
+  and none from PSY-Z. There is one duplicate (the weak fallback above) and no
+  game definition of a name PSY-Z also defines.
+- `ld -r` with `-u dw3_game_api` and archives keeps archive semantics; whole
+  objects were not forced in, so no new undefined reference appeared.
+- Size on the PC (debug-less default build): `dw3-pc` 13.4 MB (one region) to
+  18.4 MB (both), +5.0 MB. RSS in the replays is the same as a plain build (about
+  190-200 MiB at the title). The configure-and-build of the second copy is the
+  cost: the game side compiles twice.
+- The window title of a `both` build is plain `dw3-pc` (the plain builds say
+  `dw3-pc Phase 2` / `dw3-pc EU`).
+
+**Tests.** `tools/tests/test_localize_region_obj.py` (two copies of one C file,
+same globals, same restore section: a raw link fails, the localized objects link
+and keep separate state, separate section spans and a shared host function),
+`tools/tests/test_region.py::test_region_resolve` (`region_rt_main.c`), the
+existing `runtime_extract` tests (now through `dw3_region()`), and CI: the `pc`
+job also builds `DW3_VERSION=both` and checks that each copy exports exactly
+`<r>_dw3_game_api` and that `--region xx` stops with status 1.
+**P6.15 replays on the one binary** (`tools/replay_tests.sh --bin-both PATH`; the
+runner sets `DW3_REGION` per phase and compares with the plain builds'
+references, private copy of the refs):
+
+- quick tier, US and EU: 68 checks, 0 failed, every capture 0 px different;
+- full tier, a curated subset of both regions, chosen to cover every kind of
+  scenario: the 25 that finished before the run was cut (new game, field walk,
+  bridge gate, load, the four autosave scenarios, title continue/load, field
+  Options, banners and the four cross-region import scenarios `xr-*`), then 31
+  names for each region (load menu, options/volume persistence, two battles,
+  battle report, file-cache-full, items, map view, battle results, save screen,
+  card album/shop/deck, gym, lab, cheats screen, restarts, title quit, return to
+  title, turbo menu, battle options, door iris, underground exit, encounter,
+  text speed, HUD/claw, menu screens): 768 checks, 0 failed, 0 skipped, every
+  capture 0 px different from the plain builds' references. The other full-tier
+  scenarios (about 233 in all, about 3 h at 2 jobs) were not run on the `both`
+  binary; CI and the owner can run `tools/replay_tests.sh --bin-both PATH`
+
+**Not done / open.** The Switch image and picker (PR B). The EU language and
+title lines of `nx_crash.c` still use the compile-time region on the Switch
+(PR B). Disc images as a detection source, the Options row "Region at boot", and
+the per-region title in the picker (below). The `tools/build_pc_single.sh`
+launcher is no longer needed on the PC but stays until the Switch path is
+confirmed on the OLED.
 
 ## History moved from ROADMAP.md (2026-10-24)
 

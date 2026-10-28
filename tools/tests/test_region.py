@@ -164,3 +164,16 @@ def test_forced_region_skips_picker_and_files(launcher, fake_bins, tmp_path):
     assert r.returncode == 2 and "no eu data" in r.stderr
     r = run(launcher, one, fake_bins, "--region", "xx")
     assert r.returncode == 2
+
+
+@pytest.fixture(scope="module")
+def region_rt_bin(tmp_path_factory) -> Path:
+    """P6.24: the run-time choice of a `both` image (port/region/dw3_region_rt.c)."""
+    return build(tmp_path_factory.mktemp("regionrt") / "region_rt_test", TESTS / "region_rt_main.c",
+                 REGION / "dw3_region_rt.c", REGION / "dw3_region.c", OPTIONS / "options_cfg.c")
+
+
+def test_region_resolve(region_rt_bin: Path, tmp_path: Path):
+    r = subprocess.run([str(region_rt_bin), str(tmp_path)], capture_output=True, text=True, timeout=60)
+    assert r.returncode == 0, r.stderr + r.stdout
+    assert "OK: region_rt" in r.stdout

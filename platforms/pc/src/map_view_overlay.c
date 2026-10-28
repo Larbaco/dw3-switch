@@ -12,6 +12,7 @@
 #include <string.h>
 
 #include "map_view.h"
+#include "dw3_game_api.h" /* last: in a `both` image it redirects the game calls */
 
 typedef struct Dw3PcOverlayGpu {
     SDL_GPUDevice *device;

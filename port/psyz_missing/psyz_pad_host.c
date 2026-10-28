@@ -86,8 +86,13 @@ static void dw3_auto_pad_inject(void);
 static void dw3_pad_publish_mask(unsigned mask);
 static void dw3_replay_vsync(void);
 /* port/map_view/map_view.c: the right stick's vertical axis, for the zoom of
- * the full-screen map (-127..127, up positive) */
+ * the full-screen map (-127..127, up positive). In a `both` image the call goes
+ * to the running region's copy (dw3_game_api.h). */
+#if defined(DW3_BOTH) && DW3_BOTH
+#include "dw3_game_api.h"
+#else
 extern void dw3_map_view_set_zoom_stick(int raw_up);
+#endif
 /* Replay masks: bits above the 16 pad bits stand for the right stick (the
  * recording cannot hold an analog value): 0x10000 up, 0x20000 down. */
 #define DW3_REPLAY_RSTICK_UP 0x10000u
