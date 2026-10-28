@@ -77,7 +77,7 @@ lines are still wanted as proof.
 | D. Battles | US + EU ordinary | P5.2, P6.18, P6.20 battle rows, P7.7, P9.7 battle Options |
 | E. Saves | US + EU ordinary | P6.27, P6.9, P6.25, P6.31, P6.20 save mark, title textures after Return to title |
 | F. 2 h memory run | US then EU nxlink | **[P5.1]**, **[GATE]**, P5.4 notice |
-| G. Everything else | mixed | P5.4 forced crash, P10.2, P4.3, **[LAUNCHER]** |
+| G. Everything else | mixed | P5.4 forced crash, P10.2, P4.3, **[LAUNCHER]**, **[COMBINED]** (G9) |
 
 **[GATE]** (New Game to the first boss, US and EU) is normal play, not a
 single check. Do it in session F, where you play for hours anyway. Do the
@@ -307,6 +307,38 @@ picker text is readable at arm's length, handheld.
 | G7.5 | Remove `dw3-eu.nro`, choose EU | Message names `sdmc:/switch/dw3/dw3-eu.nro`; `+` quits | photo |
 | G7.6 | Start `dw3.nro` as a title takeover (hold R on a game) | "cannot start another program" message, no crash | photo |
 | G7.7 | Saves and options of both regions after going through the launcher; handheld Joy-Cons and a Pro Controller | Unchanged (it writes only `port_options.cfg`); same results on both controllers | folder listing |
+
+### G9. [COMBINED] P6.24 one `.nro` for both regions (PR B)
+
+**Status: planned; the combined `.nro` ships with PR B (`tools/build_switch_game.sh --both`,
+CI artifact `dw3-switch-both-nro`, release asset `dw3-switch-both.nro`).** The
+separate US and EU `.nro` files keep shipping next to it until you have confirmed
+this one. Put `dw3-switch-both.nro` (or the nxlink variant, whose NACP name ends
+in "(nxlink)") in `sdmc:/switch/dw3/` and start it from hbmenu in applet mode.
+Data: `sdmc:/switch/dw3/us/` and `/eu/` as always (see
+[RUNTIME_LAYOUT](RUNTIME_LAYOUT.md)); the stored choice is
+`sdmc:/switch/dw3/port_options.cfg` (`region_default`, `last_region`). Design and
+the defaults taken (picker in English, Minus to ask again, no region switching
+in game): [SINGLE_BUILD](SINGLE_BUILD.md#owner-priority-2026-10-28-and-orchestrator-defaults).
+Every row has its proof in `dw3.log`, so you only report feel and looks (is the
+picker readable at arm's length, handheld; does the countdown feel right).
+
+| # | Action | Expect on screen | Proof lines in `dw3.log` (all begin `dw3-region:`) |
+|---|---|---|---|
+| G9.1 | **Only US data**: move `eu/` away. Start the combined `.nro` | No picker; the US game starts at once (a pause of about 0.2 s for the Minus check is normal). Same game as the US-only `.nro` | `data found us=1 eu=0`, `decision boot region=us: only the US data is present`, no `picker shown` line, `running us (only the US data is present)` |
+| G9.2 | **Only EU data**: put `eu/` back, move `us/` away | No picker; the EU game starts at once (language select first, as always) | `data found us=0 eu=1`, `decision boot region=eu: only the EU data is present`, no `picker shown` line, `running eu (...)` |
+| G9.3 | **Both, picker and timeout**: both folders present, `region_default` not stored (delete `port_options.cfg`). Start and press nothing | The picker: `> US <` highlighted and "Starting US in 3..." counting down; after 3 s the US game starts | `data found us=1 eu=1`, `decision pick region=us: both present: picker`, `picker shown (default entry us, timeout 3000 ms)`, `picker result us by countdown after 3000 ms always=0`, `saved last_region=us`, `running us (picker)` |
+| G9.4 | **Default = last choice**: start again, press Right to EU (the countdown stops), A | The picker starts on US (last was US); Right moves to EU and stops the countdown; A starts EU. Start once more and press nothing: the picker now starts on EU and the countdown boots EU | first run: `picker result eu by button A after N ms always=0`, `saved last_region=eu`; next run: `picker shown (default entry eu, ...)` and `picker result eu by countdown after 3000 ms` |
+| G9.5 | **Don't ask again**: at the picker press **Y** until "Always start this one: ON", then A. Quit to hbmenu and start again | The next start has no picker and boots that region at once | `picker result <r> by button A after N ms always=1`, `saved last_region=<r> region_default=<r>`; next run `decision boot region=<r>: region_default`, no `picker shown` line |
+| G9.6 | **Minus asks again**: with "always" stored, hold **Minus** while pressing A on the `.nro` in hbmenu, and keep holding until the picker appears | The picker comes back although a region is stored; choose either | `minus_held=1`, `decision pick region=<last>: Minus held: picker`, `picker shown (...)`. Without Minus on the same card: `minus_held=0` and no picker |
+| G9.7 | **Quit from the picker and no data**: at the picker press **+**; then move both folders away and start | **+** returns to hbmenu and nothing is started; with no data a setup message names both folders and **+** returns | `picker quit by +`, no `running` line; `data found us=0 eu=0`, `decision no-data` |
+| G9.8 | **Both regions play and save**: from the combined `.nro`, start US, load or make a save, quit; start EU, same. Then check the folders | Each region keeps its own saves ([PER_USER_SAVES](PER_USER_SAVES.md)); the other region imports a converted copy once ([CROSS_REGION_SAVES](CROSS_REGION_SAVES.md)); options and the game behave as in the separate `.nro` of that region | `running us/eu`, `runtime version=<r> root=sdmc:/switch/dw3/<r>`, `cross-import ...` as in E3; folder listing of `saves/<uid>/us|eu/memcard/` |
+| G9.9 | **Crash report names the region** (optional, nxlink build, forced crash is not needed): after any crash, the first lines of `crash_report.txt` | `disc: us` or `disc: eu` (and the EU `language:` line) | `crash_report.txt` header |
+| G9.10 | **Handheld Joy-Cons and a Pro Controller** for G9.3 to G9.6 | Same picker behaviour with both; D-pad or left stick moves the choice | the log is identical apart from times |
+
+Also tell me: is the picker text readable handheld at arm's length; is 3 s the
+right countdown; is Minus a good key to hold; is a 12 MB `.nro` acceptable (it is
+about 9.3 MB for one region today).
 
 ## What to send back
 

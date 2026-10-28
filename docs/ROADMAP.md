@@ -38,6 +38,15 @@ highest non-empty tier.
   and P9.4 are ticked. Still open: the in-game Options lag, the EU language
   select at 16:9 and the map balloon, cursor and name box (fixes in preview.47,
   waiting for the owner).
+- [P6.24](SINGLE_BUILD.md): **one `.nro` that plays both US and EU** (owner
+  priority 2026-10-28). Option (a), two PRs. PR A, PC: `DW3_VERSION=both`, the
+  game side built twice and linked once, the P6.15 replays of both regions on
+  the one `dw3-pc` ([slice 3](SINGLE_BUILD.md#as-built-slice-3-the-dual-image-link-pc)).
+  PR B, Switch: `tools/build_switch_game.sh --both`, detection of the game data
+  on the SD card, the boot picker, a CI job and the release asset. Separate US /
+  EU `.nro` files keep shipping until the owner confirms the combined one on the
+  OLED. Defaults taken for the open questions are in
+  [SINGLE_BUILD](SINGLE_BUILD.md#owner-priority-2026-10-28-and-orchestrator-defaults).
 
 ### Tier 1 — Stability
 
@@ -68,8 +77,8 @@ highest non-empty tier.
   ([#248](https://github.com/Larbaco/dw3-switch/pull/248)).
 - [P6.18](P6.18_PACING.md): pacing.
 - [P6.22](P6.22_FIELD_CPU.md): turbo in scripted scenes.
-- [P6.24](SINGLE_BUILD.md) and [P6.25](CROSS_REGION_SAVES.md): single build and
-  cross-region saves.
+- [P6.25](CROSS_REGION_SAVES.md): cross-region saves (P6.24, the single build,
+  moved to Tier 0 on 2026-10-28).
 
 ### Tier 4 — Long term
 
@@ -128,7 +137,7 @@ listed once, in [Pending OLED checks](#pending-oled-checks).
 | P6.20 | Port debug / cheat menu in the Options screen | in progress (PR 1 merged, #236: Cheats screen; PR 2, #248: money, give item and warp on page 2, in review; OLED checks open) | [roadmap](#phase-6-goal-notes), [PORT_OPTIONS](PORT_OPTIONS.md) |
 | P6.22 | Turbo speed in scripted scenes | in progress (CPU rasterizer is ~97 % of a field frame; pixel-identical rasterizer 4-5x faster, #220; turbo in the intro confirmed on the OLED 2026-10-27, preview.41; Forest Inn and the frame lines still open) | [P6.22](P6.22_FIELD_CPU.md), [roadmap](#phase-6-goal-notes), [P6.4](P6.4_FAST_FORWARD.md) |
 | P6.23 | Documentation: player guide, docs index, contributor and modder docs (future goal) | in progress (slice 1 done: player guide and docs index; slice 2: `CONTRIBUTING.md` and a pytest for all doc links, PR open; modder docs open) | [PLAYER_GUIDE](PLAYER_GUIDE.md), [docs index](README.md), [roadmap](#phase-6-goal-notes) |
-| P6.24 | One build for US and EU: one `.nro` and one PC binary, region found at boot, a boot picker with both discs (future goal; depends on P6.25 and P6.26) | in progress (slice 1 built: run-time region choice, picker logic and a PC launcher in front of the separate US / EU binaries; slice 2 built: Switch launcher `.nro` that chain-loads the US / EU `.nro`, CI artifact only, OLED check open; dual-image link and release flow open) | [SINGLE_BUILD](SINGLE_BUILD.md#as-built-slice-1), [slice 2](SINGLE_BUILD.md#as-built-slice-2-the-switch-launcher), [roadmap](#phase-6-goal-notes) |
+| P6.24 | One build for US and EU: one `.nro` and one PC binary, region found at boot, a boot picker with both discs (**owner priority 2026-10-28, Tier 0**; P6.25 and P6.26 are built) | in progress (slice 1 built: run-time region choice, picker logic and a PC launcher; slice 2 built: Switch launcher `.nro`, CI artifact only, OLED check open; **slice 3 built (PR A): `DW3_VERSION=both`, one `dw3-pc` with both game copies, P6.15 replays of both regions pass on it**; the Switch `.nro` with the in-image picker, CI and the release asset are PR B) | [SINGLE_BUILD](SINGLE_BUILD.md#as-built-slice-1), [slice 2](SINGLE_BUILD.md#as-built-slice-2-the-switch-launcher), [slice 3](SINGLE_BUILD.md#as-built-slice-3-the-dual-image-link-pc), [roadmap](#phase-6-goal-notes) |
 | P6.25 | Cross-region saves: a US save loads in EU and the reverse, one canonical save container (future goal) | in progress (slice 1 built: converter and one-way import on load, PC replays US to EU and EU to US; container and store open; OLED check open) | [CROSS_REGION_SAVES](CROSS_REGION_SAVES.md), [roadmap](#phase-6-goal-notes) |
 | P6.26 | Per-user saves: saves bound to the Switch user profile chosen in the Switch profile selector, global options (future goal) | in progress (slice 1 built: user-resolution seam, Switch account + profile selector, saves per profile with a safe legacy copy; owner OLED, preview.43/44 (2026-10-27/28): each profile has its own Continue, cancelling the profile selector returns to the Switch HOME; E5.1, E5.2 and the logs not reported; import prompt, canonical store and global options open) | [PER_USER_SAVES](PER_USER_SAVES.md), [roadmap](#phase-6-goal-notes) |
 | P6.27 | Return to title from the pause (field) menu | in progress (built, PC US and EU replays; owner OLED, 2026-10-27, preview.41: Return to title works and Continue after it works; the Yes / No window, fade and card checks not reported) | [PORT_OPTIONS](PORT_OPTIONS.md#quit-and-return-to-title-p627-p628), [roadmap](#phase-6-goal-notes) |
@@ -1825,12 +1834,32 @@ Statuses are in the [table](#status-at-a-glance).
   them, the release `README.txt` points to the guide, and a new tester can
   install the US or EU build and report a crash using only those pages.
   Related: P6.5, P8.5, [REPORTING_ISSUES.md](REPORTING_ISSUES.md).
-- [ ] **P6.24 One build for US and EU (in progress: slices 1 and 2 built 2026-10-25).** Dated 2026-10-24, owner
+- [ ] **P6.24 One build for US and EU (in progress: slices 1 and 2 built 2026-10-25, slice 3 / PR A 2026-10-28).** Dated 2026-10-24, owner
   request: "Build única pra US e EU". One `.nro`, and one PC binary, that runs
   either disc, instead of the separate US and EU builds (`--eu`, two `.nro`
-  files, EU attached to releases by hand). Goal note only, **nothing started,
-  no code**. Survey, sizes and the options in detail:
+  files, EU attached to releases by hand). **Owner priority 2026-10-28: top of
+  the work order (Tier 0).** Survey, sizes and the options in detail:
   [SINGLE_BUILD.md](SINGLE_BUILD.md).
+  **Slice 3 (built, PR A, [As built](SINGLE_BUILD.md#as-built-slice-3-the-dual-image-link-pc)):**
+  the dual-image link, option (a), PC. `DW3_VERSION=both` builds the game side
+  twice (`VERSION_US` / `VERSION_EU`, from the one patched `build/decomp-src`),
+  packs each copy with `ld -r` into one object whose only global is its
+  `dw3_game_api` table (`us_` / `eu_`; `tools/localize_region_obj.py`), renames
+  the `dw3data_*` / `dw3bss_*` restore sections and their `__start_` / `__stop_`
+  references per region, and links the host (PSY-Z, platform, cdfs, memcard,
+  movies) once. The host reaches the game only through the table (24 entries);
+  the host `#if VERSION_*` sites became `dw3_region()`. Region from `--region`,
+  `DW3_REGION`, the runtime folder given, or the runtime present. PSY-Z
+  overrides and `--wrap` still win (same link order), the overlay restore covers
+  only the running region, `us` and `eu` builds are unchanged. +5.0 MB on the
+  PC binary. Tests: the localize tool on two copies of one C file, the region
+  resolver, CI builds `both` on every PR, and the P6.15 replays of both regions
+  on the one binary (`--bin-both`, private copy of the references). **Open
+  (PR B, Switch):** `tools/build_switch_game.sh --both`, one `.nro` (NACP
+  "Digimon World 3 NX", nxlink "(nxlink)"), detection of the game data on the
+  SD card (only US: run it, only EU: run it, both: the picker), the host
+  picker, CI job and release asset, OLED checks
+  ([OLED_TEST_PLAN G9](OLED_TEST_PLAN.md#g9-combined-p624-one-nro-for-both-regions-pr-b)).
   **Slice 1 (built, [As built](SINGLE_BUILD.md#as-built-slice-1)):** the pieces
   around the dual image, chosen because the dual-image link is the risky part
   and the picker is useful on its own. `port/region/` (probe, the decision
