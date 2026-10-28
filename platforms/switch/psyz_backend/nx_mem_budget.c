@@ -42,9 +42,17 @@ typedef struct Dw3HeapView {
     Dw3MemBlockView *end;
 } Dw3HeapView;
 
+#if defined(DW3_BOTH) && DW3_BOTH
+/* P6.24: the running region's game copy (its arrays are local to the copy). */
+#include "dw3_game_api.h"
+#define HEAP (*(const Dw3HeapView *)DW3_API(heap))
+#define DW3_HOST_HEAP (DW3_API(host_heap))
+#define DW3_HOST_HEAP_SIZE (*DW3_API(host_heap_size))
+#else
 extern Dw3HeapView HEAP;
 extern unsigned char DW3_HOST_HEAP[];
 extern const unsigned long DW3_HOST_HEAP_SIZE;
+#endif
 
 static uint64_t s_heap_used_hw;
 static uint64_t s_file_cache_hw;
