@@ -295,6 +295,8 @@ if(DW3_CHEATS)
   target_sources(dw3_port_options PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}/options/cheats.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/options/cheat_saves.c"
+    # P5.5 stage sweep (opt-in test run; stage_sweep=1 in port_options.cfg)
+    "${CMAKE_CURRENT_SOURCE_DIR}/sweep/stage_sweep.c"
   )
 endif()
 add_dependencies(dw3_port_options dw3_decomp_patched)

@@ -93,6 +93,11 @@ void dw3_port_options_apply_env(int index, int level);
  * Options screen rewrites the file. */
 int dw3_port_options_file_int(const char *key, int def);
 
+/* The directory port_options.cfg lives in (the dir given to _persist_init),
+ * or "" when the options are session-only. Small files of the port's own
+ * (the P5.5 stage sweep's progress) are kept beside it. */
+const char *dw3_port_options_cfg_dir(void);
+
 /* Retry a write that failed earlier (the SD was busy); a no-op otherwise.
  * Hosts register it with atexit. Changes are written when they are made. */
 void dw3_port_options_flush(void);
