@@ -1238,7 +1238,7 @@ Triangle (B) goes back to the menu. Changes are saved at once in
 
 ### Opening without a stutter (preview.42 follow-up)
 
-preview.41's log: every open of the screen logged `options update #1 rebuild
+preview.41 and preview.43 OLED logs: every open of the screen logged `options update #1 rebuild
 rects=1 bytes=2764800 compose=166 ms upload=2.5 ms`. The cost was the static
 layer (window, bezel, rules, labels, hints) of the 960x720 canvas, drawn on the
 CPU on the opening frame, and it was thrown away each time the screen closed
