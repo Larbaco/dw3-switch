@@ -83,9 +83,10 @@ def us_title():
     return r
 
 
-def eu_language(idx):
+def eu_language(idx, confirm=START):
     lang = EU_LANGS[idx]
-    r = Rec(f"EU: language select -> {lang}, title, menu")
+    how = " with Cross" if confirm == CROSS else ""
+    r = Rec(f"EU: language select -> {lang}{how}, title, menu")
     r.shot(80, "select-default")
     f = 90
     for _ in range(idx):
@@ -93,7 +94,7 @@ def eu_language(idx):
         f += 15
     r.shot(f + 10, "select-cursor")
     c = f + 20
-    r.press(c, START)            # confirm language
+    r.press(c, confirm)          # confirm language (patch 0187: Cross works too)
     for k in (50, 80, 110):      # skip splash/FMV stages
         r.press(c + k, START)
     r.shot(c + 160, "title")
@@ -2174,6 +2175,8 @@ def main(out):
     (out / "us-title.rec").write_text(us_title().text())
     for i, lang in enumerate(EU_LANGS):
         (out / f"eu-lang-{lang}.rec").write_text(eu_language(i).text())
+    # patch 0187: the confirm button picks the language as well as Start
+    (out / "eu-lang-cross-fr.rec").write_text(eu_language(1, CROSS).text())
     for v in ("us", "eu"):
         (out / f"{v}-newgame-field.rec").write_text(newgame_field(v).text(True))
         (out / f"{v}-field-walk.rec").write_text(field_walk(v).text(True))
