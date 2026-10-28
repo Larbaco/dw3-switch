@@ -87,16 +87,63 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: .ccache
-          key: ccache-pc-${{ github.sha }}
-          restore-keys: ccache-pc-
+          key: ccache-pcus-${{ github.sha }}
+          restore-keys: ccache-pcus-
       - name: Configure & build PC host
         run: |
           ccache -z
           cmake -S platforms/pc -B build/pc -G Ninja -DPSYZ_RENDERER=sdl3_gpu
           cmake --build build/pc -j"$(nproc)"
           test -x build/pc/dw3-pc
+      - name: ccache statistics
+        run: ccache -s
+      - name: Save ccache
+        if: ${{ success() }}
+        uses: actions/cache/save@v4
+        with:
+          path: .ccache
+          key: ccache-pcus-${{ github.sha }}
+
+  # P6.24: the PC host with both regions in one image. A job of its own so it
+  # runs beside `pc` (its two configures were the longest part of that job).
+  pc-both:
+    needs: changes
+    if: ${{ !cancelled() && needs.changes.outputs.code != 'false' }}
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: false
+      - name: Init PC submodules
+        run: |
+          git submodule update --init --depth 1 vendor/dw3_decomp vendor/psyz
+          git -C vendor/psyz submodule update --init --depth 1 nugget external/SDL
+      - name: Install deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            ccache cmake ninja-build pkg-config \
+            libgl1-mesa-dev libegl1-mesa-dev libgles2-mesa-dev \
+            libx11-dev libxext-dev libxrandr-dev libxcursor-dev \
+            libxfixes-dev libxi-dev libxss-dev libxtst-dev \
+            libxkbcommon-dev \
+            libasound2-dev libpulse-dev \
+            libwayland-dev libdecor-0-dev
+      - name: ccache environment
+        run: |
+          . tools/dw3_ccache_env.sh
+          export DW3_CCACHE_DIR="$GITHUB_WORKSPACE/.ccache"
+          dw3_ccache_setup "$GITHUB_WORKSPACE"
+          env | grep '^CCACHE_' >> "$GITHUB_ENV"
+      - name: Restore ccache
+        uses: actions/cache/restore@v4
+        with:
+          path: .ccache
+          key: ccache-pcboth-${{ github.sha }}
+          restore-keys: ccache-pcboth-
       - name: Configure & build PC host, both regions in one image (P6.24)
         run: |
+          ccache -z
           cmake -S platforms/pc -B build/pc-both -G Ninja -DPSYZ_RENDERER=sdl3_gpu \
             -DDW3_VERSION=both
           cmake --build build/pc-both -j"$(nproc)"
@@ -119,7 +166,7 @@ jobs:
         uses: actions/cache/save@v4
         with:
           path: .ccache
-          key: ccache-pc-${{ github.sha }}
+          key: ccache-pcboth-${{ github.sha }}
 
   # The Python/C unit tests need no PC build (the decomp patch check and the
   # host-side test programs compile on their own), so they run beside `pc`.
