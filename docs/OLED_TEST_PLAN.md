@@ -227,8 +227,9 @@ Both builds on one SD card.
 
 Needs a console with at least two user profiles. Read `dw3.log` after each row:
 every row names the `user:` lines that prove it. Profile folders are under
-`sdmc:/switch/dw3/saves/`; the folder name is 32 hex digits, the log shows the
-first 8.
+`sdmc:/switch/dw3/saves/`; the folder name is 32 hex digits; the log shows the
+short id (8 hex digits, a hash of the uid, not a prefix). Two profiles must
+show different short ids; if they match, write it down, that is a bug.
 
 | # | Action | Expect | If it fails, send | Ticks |
 |---|---|---|---|---|

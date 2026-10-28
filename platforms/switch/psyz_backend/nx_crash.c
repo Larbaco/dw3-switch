@@ -296,7 +296,7 @@ static void crash_write_head(Dw3CrashLine *l, const char *reason) {
     dw3_cl_char(l, ')');
 #endif
     crash_line_end(l);
-    /* P6.26: first 8 hex of the user uid (never the nickname). */
+    /* P6.26: short id of the user uid, dw3_uid_short_id (never the nickname). */
     crash_kv(l, "profile: ", dw3_user_profile_hash()[0] ? dw3_user_profile_hash() : "n/a");
     crash_kv(l, "git: ", DW3_GIT_HASH_STR);
     dw3_cl_str(l, "build_id: ");

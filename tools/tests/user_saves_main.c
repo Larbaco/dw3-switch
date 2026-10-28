@@ -116,7 +116,7 @@ static void test_resolve(void) {
     CHECK(dw3_switch_user_resolve(&p, &r) == 1);
     CHECK(r.reason == DW3_USER_PRESELECTED && f.sel_calls == 0);
     CHECK(strcmp(r.key, "00000000000000010000000000000002") == 0);
-    CHECK(strcmp(r.hash, "00000000") == 0 && r.user_count == -1);
+    CHECK(strcmp(r.hash, "462054ec") == 0 && r.user_count == -1);
 
     /* Preselect error, one user: that user, no selector. */
     memset(&f, 0, sizeof(f));
@@ -127,7 +127,7 @@ static void test_resolve(void) {
     CHECK(dw3_switch_user_resolve(&p, &r) == 1);
     CHECK(r.reason == DW3_USER_SINGLE && f.sel_calls == 0 && r.user_count == 1);
     CHECK(r.preselect_rc == 0x1234);
-    CHECK(strcmp(r.hash, "aabbccdd") == 0);
+    CHECK(strcmp(r.hash, "1e5c9d58") == 0);
 
     /* Preselect "ok" with an all-zero uid does not count. */
     memset(&f, 0, sizeof(f));
@@ -181,6 +181,40 @@ static void test_resolve(void) {
     CHECK(dw3_pc_user_resolve("..", &r) == 1 && strcmp(r.key, "default") == 0);
     CHECK(dw3_pc_user_resolve("kid", &r) == 1 && strcmp(r.key, "kid") == 0);
     unsetenv("DW3_SAVE_PROFILE");
+}
+
+static void test_short_id(void) {
+    char id[DW3_USER_HASH_LEN];
+    Dw3UserResolved r;
+    Fake f;
+    Dw3UserProvider p;
+
+    /* Known vectors (FNV-1a 32 over the 16 uid bytes, checked against an
+     * independent Python implementation). */
+    dw3_uid_short_id(&(Dw3Uid){{1, 2}}, id);
+    CHECK(strcmp(id, "462054ec") == 0);
+    dw3_uid_short_id(&(Dw3Uid){{0x100000000047359aull, 0xa05a2b7c39f747bfull}}, id);
+    CHECK(strcmp(id, "8d8d4548") == 0);
+
+    /* Switch accounts share the high bytes 0x10000000...: the short id must
+     * still tell them apart (the old key-prefix id did not). */
+    dw3_uid_short_id(&(Dw3Uid){{0x1000000000000000ull, 0x1111}}, id);
+    CHECK(strcmp(id, "da46519f") == 0);
+    dw3_uid_short_id(&(Dw3Uid){{0x1000000000000000ull, 0x2222}}, id);
+    CHECK(strcmp(id, "9d754fcd") == 0);
+    CHECK(strlen(id) == 8);
+
+    /* The resolved short id goes with the uid, never the nickname or the key. */
+    memset(&f, 0, sizeof(f));
+    f.pre = U(0x1000000000000000ull, 0x1111);
+    p = prov(&f);
+    CHECK(dw3_switch_user_resolve(&p, &r) == 1);
+    CHECK(strcmp(r.hash, "da46519f") == 0);
+    CHECK(strcmp(r.key, "10000000000000000000000000001111") == 0);
+    f.pre = U(0x1000000000000000ull, 0x2222);
+    CHECK(dw3_switch_user_resolve(&p, &r) == 1);
+    CHECK(strcmp(r.hash, "9d754fcd") == 0);
+    CHECK(strcmp(r.hash, "10000000") != 0);
 }
 
 static void test_dirs(const char *scratch) {
@@ -267,6 +301,7 @@ int main(int argc, char **argv) {
         return 2;
     }
     test_resolve();
+    test_short_id();
     test_dirs(argv[1]);
     if (g_fail) {
         return 1;
