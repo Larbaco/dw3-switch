@@ -269,6 +269,7 @@ static void dw3_nx_vsync_pump(void) {
             }
             INFOF("frame dt us=%llu", (unsigned long long)dt_us);
             dw3_nx_switch_gpu_defer_log();
+            dw3_nx_gpu_pace_log(dt_us);
             last_dt_us = dt_us; /* report field: see dw3_nx_crash_note_vsync */
 #if DW3_NX_DEBUG_MOVIE
             /* Movie producer/consumer health for this 60-pump window: how many

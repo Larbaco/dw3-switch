@@ -277,6 +277,18 @@ static void health_note_buffer(const short *pcm, int paused) {
 }
 #endif
 
+/* P6.22: the mixer's own CPU time (the `mix_us` of the `pace dbg:` line). */
+static volatile unsigned long long s_mix_ticks;
+static unsigned long long s_mix_ticks_taken;
+
+unsigned long long dw3_nx_audio_mix_us_take(void) {
+    unsigned long long now = s_mix_ticks;
+    unsigned long long d = now - s_mix_ticks_taken;
+
+    s_mix_ticks_taken = now;
+    return armTicksToNs(d) / 1000ULL;
+}
+
 static void fill_wavebuf(AudioDriverWaveBuf *wb) {
     short *pcm = (short *)wb->data_raw;
 
@@ -284,7 +296,10 @@ static void fill_wavebuf(AudioDriverWaveBuf *wb) {
     if (s_paused) {
         memset(pcm, 0, s_buf_bytes);
     } else {
+        u64 t0 = armGetSystemTick();
+
         Psyz_SpuPullSamples(pcm, BUF_FRAMES);
+        s_mix_ticks += armGetSystemTick() - t0;
     }
     health_note_buffer(pcm, s_paused);
     rmutexUnlock(&s_mutex);
@@ -443,7 +458,29 @@ int Psyz_AudioInit(void) {
     audrvUpdate(&s_drv);
     audrvVoiceStart(&s_drv, VOICE_ID);
 
-    rc = threadCreate(&s_thread, audio_thread, NULL, NULL, 0x10000, 0x20, -2);
+    /* P6.22: the mixer used to share the game thread's core (cpuid -2, the
+     * process default), at a higher priority, so its 5-8 % of a core came out
+     * of the game thread, and turbo runs the game thread flat out. Core 1 is
+     * free (the map view workers already use core 2). DW3_NX_AUDIO_CORE=-2 in
+     * DW3_NX_TEST_ENV puts it back for an A/B; if the thread cannot be made
+     * on the chosen core it falls back to -2. */
+    {
+        const char *env = getenv("DW3_NX_AUDIO_CORE");
+        int core = env && *env ? atoi(env) : 1;
+
+        rc = threadCreate(&s_thread, audio_thread, NULL, NULL, 0x10000, 0x20,
+                          core);
+        if (R_FAILED(rc) && core != -2) {
+            fprintf(stderr,
+                    "nx_audio: mixer thread on core %d failed: 0x%x, using "
+                    "the default core\n", core, rc);
+            core = -2;
+            rc = threadCreate(&s_thread, audio_thread, NULL, NULL, 0x10000,
+                              0x20, core);
+        }
+        fprintf(stderr, "nx_audio: mixer thread on core %d (prio 0x20)\n",
+                core);
+    }
     if (R_FAILED(rc)) {
         fprintf(stderr, "nx_audio: threadCreate failed: 0x%x\n", rc);
         Psyz_AudioDestroy();
