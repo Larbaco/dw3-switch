@@ -238,8 +238,8 @@ job layout).
 | switch-game-both | 146 to 210 | 127 | 108 |
 | switch, switch-launcher, changes | 28 to 38, 28 to 38, 8 to 11 | 30, 29, 6 | 28, 27, 6 |
 
-Five runs of this PR after the change took 142, 130, 136, 113 and 120 s wall
-(mean 128 s against a mean of 280 s before: -54%). Single jobs move 20 to 40%
+Six runs of this PR after the change took 142, 130, 136, 113, 120 and 138 s
+wall (mean 130 s against a mean of 280 s before: -54%). Single jobs move 20 to 40%
 between runs on the same code (`tools-tests` 60 to 107 s, `switch-game-both` 69
 to 108 s), so read the table as a range, not a point.
 
