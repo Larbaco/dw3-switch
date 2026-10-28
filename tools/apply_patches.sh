@@ -3,6 +3,13 @@
 # Usage:
 #   tools/apply_patches.sh          # copy + apply
 #   tools/apply_patches.sh --check  # verify pin, clean tree, patches apply
+#   tools/apply_patches.sh --force  # copy + apply even when nothing changed
+#
+# Incremental (docs/BUILD_SPEED.md): the result is stamped with a hash of the
+# pin, the patches and this script. When the stamp matches and nothing in the
+# build copy was edited since, the copy is left alone. When the inputs did
+# change, the new tree is built on the side and synced into place by content,
+# so only the files whose bytes changed get a new mtime (and recompile).
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -11,6 +18,7 @@ DST="${ROOT}/build/decomp-src"
 PIN_FILE="${ROOT}/port/patches/DECOMP_PIN"
 PATCH_DIR="${ROOT}/port/patches"
 MODE="apply"
+FORCE=0
 
 usage() {
   echo "Usage: $0 [--check]" >&2
@@ -23,6 +31,7 @@ fi
 if [[ $# -eq 1 ]]; then
   case "$1" in
     --check) MODE="check" ;;
+    --force) FORCE=1 ;;
     -h|--help) usage ;;
     *) usage ;;
   esac
@@ -136,6 +145,34 @@ check_patches_with_git_apply() {
   rm -rf -- "$tmp"
 }
 
+inputs_hash() {
+  {
+    cat "$PIN_FILE" "${BASH_SOURCE[0]}"
+    list_patches | while IFS= read -r p; do
+      [[ -n "$p" ]] || continue
+      basename "$p"
+      cat "$p"
+    done
+  } | sha256sum | awk '{print $1}'
+}
+
+# Build the patched tree beside DST, then sync it into DST by content. The
+# first run (no DST) is a plain rename.
+apply_incremental() {
+  local stage="${DST}.new"
+  copy_src_to "$stage"
+  apply_patches_to "$stage" 0
+  if [[ -d "$DST" ]] && command -v rsync >/dev/null 2>&1; then
+    # No -t: a file whose content changed gets mtime=now, so ninja rebuilds it;
+    # identical files keep their old mtime. dw3-* stamps stay.
+    rsync -rlc --delete --exclude='/.dw3-*' "${stage}/" "${DST}/"
+    rm -rf "$stage"
+  else
+    rm -rf "$DST"
+    mv "$stage" "$DST"
+  fi
+}
+
 require_src
 
 case "$MODE" in
@@ -146,9 +183,16 @@ case "$MODE" in
     ;;
   apply)
     verify_pin_and_clean
+    HASH_FILE="${DST}/.dw3-apply-hash"
+    want="$(inputs_hash)"
+    if [[ "$FORCE" -eq 0 && -f "$HASH_FILE" && "$(cat "$HASH_FILE")" == "$want" \
+          && -z "$(find "$DST" -type f -newer "$HASH_FILE" ! -name '.dw3-*' -print -quit)" ]]; then
+      echo "OK: ${DST} up to date (pin and patches unchanged)"
+      exit 0
+    fi
     echo "Copying ${SRC} -> ${DST}"
-    copy_src_to "$DST"
-    apply_patches_to "$DST" 0
+    apply_incremental
+    printf '%s\n' "$want" > "$HASH_FILE"
     echo "OK: ${DST} ready"
     ;;
 esac

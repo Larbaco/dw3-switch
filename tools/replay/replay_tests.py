@@ -38,6 +38,7 @@ from PIL import Image, ImageChops
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import manifest  # noqa: E402
+import areas  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[2]
 SCEN_DIR = Path(__file__).resolve().parent / "scenarios"
@@ -87,6 +88,64 @@ def compare_images(ref: Path, got: Path, diff_out: Path | None):
         out.paste(hl, (w * 2, 0))
         out.save(diff_out)
     return n, total, None
+
+
+def mem_available_mib() -> int | None:
+    """MemAvailable from /proc/meminfo in MiB (None where unreadable)."""
+    try:
+        with open("/proc/meminfo") as f:
+            for line in f:
+                if line.startswith("MemAvailable:"):
+                    return int(line.split()[1]) // 1024
+    except OSError:
+        return None
+    return None
+
+
+# One scenario = a dw3-pc (RSS ~200 MiB, soak more), its Xvfb and the PNG diffing.
+MIB_PER_JOB = 700
+
+
+def auto_jobs(cpus: int | None = None, avail_mib: int | None = None) -> int:
+    """--jobs auto: half the cores (the game thread and the mixer need a core
+    each), at most 8, and no more than the free RAM can hold."""
+    cpus = cpus if cpus is not None else (os.cpu_count() or 2)
+    avail = avail_mib if avail_mib is not None else mem_available_mib()
+    n = max(1, min(8, cpus // 2))
+    if avail:
+        n = min(n, max(1, avail // MIB_PER_JOB))
+    return n
+
+
+def wait_for_memory(min_avail_mib: int, announce, limit_s: int = 900) -> None:
+    """RAM guard: hold a scenario back while MemAvailable is below the floor
+    (the owner's desktop apps come and go). Gives up waiting after limit_s."""
+    if min_avail_mib <= 0:
+        return
+    t0, told = time.time(), False
+    while True:
+        avail = mem_available_mib()
+        if avail is None or avail >= min_avail_mib or time.time() - t0 > limit_s:
+            return
+        if not told:
+            announce(f"waiting for memory: {avail} MiB available < {min_avail_mib} MiB")
+            told = True
+        time.sleep(5)
+
+
+def changed_files(base: str | None) -> list[str]:
+    """Files touched by the branch (BASE...HEAD) plus the working tree."""
+    def git(*args):
+        r = subprocess.run(["git", "-C", str(ROOT), *args], capture_output=True, text=True)
+        return r.stdout.splitlines() if r.returncode == 0 else []
+    if not base:
+        base = next((b for b in ("origin/main", "main")
+                     if subprocess.run(["git", "-C", str(ROOT), "rev-parse", "--verify", "-q", b],
+                                       capture_output=True).returncode == 0), "HEAD")
+    files = set(git("diff", "--name-only", "--no-renames", f"{base}...HEAD"))
+    files |= set(git("diff", "--name-only", "--no-renames", "HEAD"))
+    files |= set(git("ls-files", "--others", "--exclude-standard"))
+    return sorted(files)
 
 
 def find_runtime(version: str, arg: str | None) -> Path | None:
@@ -559,11 +618,30 @@ def main():
     ap.add_argument("--soak", action="store_true",
                     help="also run the soak scenarios (15-20 min of game time each)")
     ap.add_argument("--list", action="store_true", help="list scenarios and exit")
+    ap.add_argument("--dry-run", action="store_true",
+                    help="print the selected scenarios (--changed / --quick / --only) and exit")
     ap.add_argument("--twice", action="store_true",
                     help="run every selected scenario twice and require identical captures "
                          "(determinism check; needs no references)")
     ap.add_argument("--no-turbo", action="store_true", help="ignore the per-scenario DW3_TURBO speed")
-    ap.add_argument("--jobs", type=int, default=3, help="scenarios run in parallel (default 3)")
+    ap.add_argument("--jobs", default="3",
+                    help="scenarios run in parallel: a number (default 3), or 'auto' = half "
+                         "the cores, at most 8, limited by free RAM. Agents on the owner's "
+                         "desktop use 2 (AGENTS.md); CI and a dedicated box can use auto")
+    ap.add_argument("--min-avail-mib", type=int,
+                    default=int(os.environ.get("DW3_REPLAY_MIN_AVAIL_MIB", "1536")),
+                    help="RAM guard: do not start a scenario while MemAvailable is below this "
+                         "(MiB, default 1536; 0 = off)")
+    ap.add_argument("--fail-fast", action="store_true",
+                    help="after the first failing scenario, do not start the rest "
+                         "(they are reported as SKIP)")
+    ap.add_argument("--changed", nargs="?", const="", metavar="BASE",
+                    help="pre-PR aid: run only the scenarios the files changed since BASE "
+                         "(default origin/main, plus the working tree) can affect, plus the "
+                         "quick tier and a smoke set. Anything unmapped selects the full "
+                         "tier. CI and release checks run the full tier, not this")
+    ap.add_argument("--changed-files", nargs="+", metavar="PATH",
+                    help="like --changed with an explicit file list (no git)")
     ap.add_argument("--stall", type=int, default=DEFAULT_STALL,
                     help=f"seconds without game-frame progress before HANG (default {DEFAULT_STALL})")
     ap.add_argument("--timeout-scale", type=float, default=1.0)
@@ -602,6 +680,18 @@ def main():
         if unknown:
             ap.error(f"unknown scenario(s): {', '.join(unknown)}")
         selected = set(a.only)
+    elif a.changed is not None or a.changed_files:
+        files = a.changed_files if a.changed_files else changed_files(a.changed or None)
+        sel = areas.select(files, SCENARIOS)
+        selected = sel.names
+        print(f"--changed: {len(files)} changed file(s) -> {len(selected)} scenario(s)"
+              f"{' (full tier: ' + 'an unmapped or engine-wide file' + ')' if sel.everything else ''}")
+        for path, why in sel.reasons[:40]:
+            print(f"  {path}: {why}")
+        if len(sel.reasons) > 40:
+            print(f"  ... {len(sel.reasons) - 40} more")
+        for g in sorted(set(sel.unmapped_globs)):
+            print(f"  note: rule pattern {g!r} matches no scenario (areas.py is stale?)")
     elif a.single:
         selected = {sc.name for sc in SCENARIOS if sc.tier == "single"}
     elif a.quick:
@@ -611,6 +701,10 @@ def main():
         selected = {sc.name for sc in SCENARIOS if sc.tier in tiers}
     if not selected:
         ap.error("no scenarios selected")
+    if a.dry_run:
+        print(f"{len(selected)} of {len(SCENARIOS)} scenarios selected:")
+        print("\n".join(f"  {sc.name}" for sc in SCENARIOS if sc.name in selected))
+        return 0
     try:
         checkpoints = {n: shot_names(n) for n in selected}
     except (OSError, ValueError) as exc:
@@ -654,8 +748,19 @@ def main():
     order = sorted(todo, key=lambda sc: -sc.timeout * len(sc.phases))
     lock = threading.Lock()
     rows_by = {}
+    stop = threading.Event()    # --fail-fast: set by the first failing scenario
+    jobs = auto_jobs() if str(a.jobs).lower() == "auto" else max(1, int(a.jobs))
+    print(f"replay: {len(todo)} scenario(s), {jobs} in parallel"
+          f"{' (auto)' if str(a.jobs).lower() == 'auto' else ''}", flush=True)
+
+    def say(msg):
+        with lock:
+            print(msg, flush=True)
 
     def job(sc):
+        if a.fail_fast and stop.is_set():
+            return sc.name, [(sc.name, "-", "SKIP", "not started: --fail-fast after an earlier failure")]
+        wait_for_memory(a.min_avail_mib, lambda m: say(f"[{sc.name}] {m}"))
         if sc.launch and not (launcher and launcher.is_file()):
             return sc.name, [(sc.name, "-", "SKIP", "missing launcher binary (--launcher)")]
         for v in sorted(set(sc.phase_versions) | {sc.version} | set(sc.launch.split("+") if sc.launch else ())):
@@ -680,9 +785,11 @@ def main():
                 rows += determinism_rows(sc, runs[0][1], runs[1][1], checkpoints[sc.name])
             else:
                 rows.append((sc.name, "(determinism)", "FAIL", "the second run failed; no comparison"))
+        if a.fail_fast and any(r[2] not in ("PASS", "REF", "INFO") for r in rows):
+            stop.set()
         return sc.name, rows
 
-    with ThreadPoolExecutor(max_workers=max(1, a.jobs)) as pool:
+    with ThreadPoolExecutor(max_workers=jobs) as pool:
         for name, rows in pool.map(job, order):
             rows_by[name] = rows
     rows = [r for sc in todo for r in rows_by.get(sc.name, [])]

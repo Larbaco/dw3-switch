@@ -164,6 +164,16 @@ These hold for any agent working on the owner's desktop, whatever the tool
     owner only has to report feel, looks and preferences. Keep the last runs in
     the log folder (the Switch build rotates `dw3.log` to `dw3.1.log` ...
     `dw3.4.log`, 5 runs); never rely on the owner copying a log between runs.
+13. **Build and test speed** (`docs/BUILD_SPEED.md`). Build with
+    `tools/build_pc.sh` and `tools/build_switch_game.sh`: both use the shared
+    ccache when there is one (`tools/get_ccache.sh` installs it; worktrees hit
+    each other's objects when `build/` is a real directory in
+    `/mnt/cabal/tmp/dw3-<topic>`; `DW3_NO_CCACHE=1` for a byte-exact release
+    build). Before a PR run `tools/replay_tests.sh --changed --jobs 2
+    --fail-fast`; the full tier only for engine-wide changes (`--changed`
+    selects it by itself when a file has no area rule), before a preview, or
+    when asked. CI always runs everything. `tools/cleanup_tmp.py` lists stale
+    scratch dirs (dry run; the owner decides what to delete).
 
 ## Working style
 

@@ -24,6 +24,8 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+# shellcheck source=tools/dw3_ccache_env.sh
+source "${ROOT}/tools/dw3_ccache_env.sh"
 IMAGE="${DW3_DK_IMAGE:-devkitpro/devkita64:latest}"
 NXLINK_STDIO=OFF
 DW3_NX_FORCE_CRASH=OFF
@@ -32,6 +34,11 @@ DW3_NX_REPLAY=OFF
 # whole feature out (CMake DW3_CHEATS=OFF; docs/PORT_OPTIONS.md).
 DW3_CHEATS=ON
 # DW3_BUILD_JOBS=N limits the ninja jobs in the container (default: nproc).
+# ccache (docs/BUILD_SPEED.md): used when a ccache is found (PATH, or
+# ~/.cache/dw3-switch/bin from tools/get_ccache.sh; DW3_CCACHE_FETCH=1 fetches
+# it). It is mounted into the container, with the shared cache dir
+# (DW3_CCACHE_DIR, default ~/.cache/dw3-switch/ccache). DW3_NO_CCACHE=1 turns it
+# off. The NRO/ELF are the same with or without it.
 # Development-only K=V,K=V environment baked into the NRO (CMake
 # DW3_NX_TEST_ENV). Always passed, so a build dir never keeps an old value.
 DW3_NX_TEST_ENV="${DW3_NX_TEST_ENV:-}"
@@ -190,6 +197,26 @@ if [[ -L "${ROOT}/build" ]]; then
   BUILD_LINK_ARGS=(-v "${BUILD_LINK_TARGET}:${BUILD_LINK_TARGET}")
 fi
 
+# ccache: the container needs a static binary (no libc match with the host).
+CCACHE_ARGS=()
+CCACHE_PATH_SUFFIX=""
+dw3_ccache_setup "${ROOT}"
+if [[ -n "${DW3_CCACHE_BIN}" ]] && ! dw3_ccache_is_static "${DW3_CCACHE_BIN}"; then
+  DW3_CCACHE_BIN="$("${ROOT}/tools/get_ccache.sh" 2>/dev/null || true)"
+fi
+if [[ -n "${DW3_CCACHE_BIN}" ]] && dw3_ccache_is_static "${DW3_CCACHE_BIN}"; then
+  CCACHE_ARGS=(
+    -v "${DW3_CCACHE_BIN}:/usr/local/bin/ccache:ro"
+    -v "${CCACHE_DIR}:${CCACHE_DIR}"
+    -e CCACHE_DIR -e CCACHE_BASEDIR -e CCACHE_NOHASHDIR -e CCACHE_SLOPPINESS
+    -e CCACHE_MAXSIZE -e CCACHE_COMPRESS
+  )
+  CCACHE_PATH_SUFFIX=":/usr/local/bin"
+  echo "ccache: ${DW3_CCACHE_BIN} (cache ${CCACHE_DIR})"
+else
+  echo "ccache: off (not found or not static; see docs/BUILD_SPEED.md)"
+fi
+
 # No login shell: bash -l lets /etc/profile drop devkitA64/bin from PATH,
 # and aarch64-none-elf-nm lives there. Mount at the host absolute path so
 # worktree gitlinks and tools/apply_patches.sh still resolve.
@@ -208,13 +235,15 @@ docker run --rm \
   -e GIT_CONFIG_COUNT=1 \
   -e GIT_CONFIG_KEY_0=safe.directory \
   -e GIT_CONFIG_VALUE_0='*' \
-  -e PATH="/opt/devkitpro/tools/bin:/opt/devkitpro/devkitA64/bin:/usr/bin:/bin" \
+  -e PATH="/opt/devkitpro/tools/bin:/opt/devkitpro/devkitA64/bin:/usr/bin:/bin${CCACHE_PATH_SUFFIX}" \
   -v "${ROOT}:${ROOT}" \
   "${GIT_MOUNT_ARGS[@]}" \
   "${BUILD_LINK_ARGS[@]}" \
+  "${CCACHE_ARGS[@]}" \
   -w "${ROOT}" \
   "${IMAGE}" \
-  bash -c 'cmake -S platforms/switch -B "$DW3_SWITCH_BUILD_DIR" -G Ninja \
+  bash -c 'command -v ccache >/dev/null && ccache -z >/dev/null; \
+    cmake -S platforms/switch -B "$DW3_SWITCH_BUILD_DIR" -G Ninja \
     -DCMAKE_TOOLCHAIN_FILE=/opt/devkitpro/cmake/Switch.cmake \
     -DCMAKE_BUILD_TYPE=Release \
     -DDW3_VERSION="$DW3_VERSION" \
@@ -225,7 +254,8 @@ docker run --rm \
     -DDW3_NX_TEST_ENV="$DW3_NX_TEST_ENV" \
     -DDW3_NRO_VERSION="$DW3_NRO_VERSION" \
     -DDW3_NACP_VERSION="$DW3_NACP_VERSION" && \
-    cmake --build "$DW3_SWITCH_BUILD_DIR" -j"${DW3_BUILD_JOBS:-$(nproc)}"'
+    cmake --build "$DW3_SWITCH_BUILD_DIR" -j"${DW3_BUILD_JOBS:-$(nproc)}" && \
+    { command -v ccache >/dev/null && ccache -s | sed -n "1,6p"; true; }'
 
 if ! grep -F -x -q "DW3_NXLINK_STDIO:BOOL=${NXLINK_STDIO}" "${BUILD_DIR}/CMakeCache.txt"; then
   echo "CMake cache does not match requested nxlink mode (${NXLINK_STDIO})" >&2

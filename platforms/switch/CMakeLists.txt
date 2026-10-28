@@ -22,6 +22,7 @@ cmake_minimum_required(VERSION 3.21)
 # CXX is needed for the link, not for our sources: libEGL.a carries nouveau's
 # nv50_ir codegen, which is C++ and needs libstdc++. The devkitPro Makefile
 # build works around the same thing with `LD := $(CXX)`.
+include(${CMAKE_CURRENT_LIST_DIR}/../../tools/cmake/dw3_ccache.cmake)
 project(dw3-switch C CXX)
 
 set(CMAKE_C_STANDARD 11)
