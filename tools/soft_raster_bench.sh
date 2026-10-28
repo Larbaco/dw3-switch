@@ -57,6 +57,7 @@ if [ "$use_ref" = 1 ]; then
     -DSoftwareRasterizer_GetGutterPlaneRaw=ref_SoftwareRasterizer_GetGutterPlaneRaw \
     -DSoftwareRasterizer_SetDefer=ref_SoftwareRasterizer_SetDefer \
     -DSoftwareRasterizer_GetDefer=ref_SoftwareRasterizer_GetDefer \
+    -DSoftwareRasterizer_CopyGutters=ref_SoftwareRasterizer_CopyGutters \
     -DSoftwareRasterizer_SyncAll=ref_SoftwareRasterizer_SyncAll \
     -DSoftwareRasterizer_SyncRect=ref_SoftwareRasterizer_SyncRect \
     -DSoftwareRasterizer_GetDeferStats=ref_SoftwareRasterizer_GetDeferStats

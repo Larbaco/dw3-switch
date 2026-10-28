@@ -22,10 +22,21 @@
 #endif
 #include "nx_game_api.h" /* last: a `both` image redirects the game calls */
 
-#if DW3_NX_DEBUG_MESH
 static uint64_t gpu_now_us(void) {
     return armTicksToNs(armGetSystemTick()) / 1000ULL;
 }
+
+#ifdef DW3_NX_GAME_IMAGE
+/* P6.22: where the time of a 60-pump window goes, for the `pace dbg:` line
+ * (dw3_nx_gpu_pace_log). Counted once per frame or per present, never per
+ * pixel; the cost is a few system-tick reads per present. */
+static struct {
+    unsigned frames;      /* Psyz_VideoVSync(0) calls: game frames */
+    unsigned presents;    /* of those, the ones shown */
+    unsigned long long sync_us;    /* drawing the queued primitives of the shown frame */
+    unsigned long long present_us; /* pack, upload and draw of the shown frame */
+    unsigned long long swap_us;    /* inside eglSwapBuffers: the wait for the display */
+} s_pace;
 #endif
 
 int dw3_nx_backend_sketch_version(void) {
@@ -372,6 +383,7 @@ int Psyz_VideoVSync(int mode) {
          * rasterizer manages). */
         int speed = dw3_port_turbo_speed();
 
+        s_pace.frames++;
         /* P6.22: the frames turbo does not show are queued, not drawn. */
         dw3_nx_switch_gpu_set_defer(speed > 1);
         if (speed > 1 && !dw3_port_turbo_present_due()) {
@@ -400,19 +412,33 @@ int Psyz_VideoVSync(int mode) {
                          disp.x, disp.y, disp.width, disp.height, s_width,
                          s_height);
             }
+            uint64_t t_sync = gpu_now_us();
+            uint64_t t_present;
+
             dw3_nx_switch_gpu_sync_display(&disp);
+            t_present = gpu_now_us();
             dw3_nx_gpu_present(dw3_nx_switch_gpu_vram_nosync(), disp.x, disp.y,
                                disp.width, disp.height,
                                dw3_nx_display_aspect(disp.range_w, disp.range_h,
                                                      disp.pal),
                                disp.gutter);
+            s_pace.sync_us += t_present - t_sync;
+            s_pace.present_us += gpu_now_us() - t_present;
         } else {
             /* SetDispMask said "no display"; on hardware that is a black
              * screen, so do not keep showing the last frame. */
             dw3_nx_gpu_clear(0.0f, 0.0f, 0.0f, 1.0f);
         }
-#endif
+        s_pace.presents++;
+        {
+            uint64_t t_swap = gpu_now_us();
+
+            dw3_nx_gpu_swap();
+            s_pace.swap_us += gpu_now_us() - t_swap;
+        }
+#else
         dw3_nx_gpu_swap();
+#endif
         if (entered == 1) {
             entered = 2;
             psyz_log(1, "nx_gpu.c", __LINE__, __func__,
@@ -422,6 +448,52 @@ int Psyz_VideoVSync(int mode) {
     }
     return lines;
 }
+
+#ifdef DW3_NX_GAME_IMAGE
+/* One `pace dbg:` line for the 60 game frames since the last call (P6.22).
+ * dt_us is the wall time of those frames (the `frame dt us=` sample).
+ *
+ *   game_fps   frames * 1e6 / dt: the game frames per second, the number turbo
+ *              is after (240 at 4x on the US disc, 200 on EU)
+ *   presented  frames that reached the display; skipped the others (turbo)
+ *   sync_us    CPU rasterizer work at the presents: the queued primitives the
+ *              shown frame needs are drawn here (the skipped frames cost only
+ *              their queueing, in other_us)
+ *   present_us pack to RGBA, texture upload and draw of the shown frame
+ *   swap_us    time inside eglSwapBuffers: waiting for the display. Large =
+ *              the game is faster than the display lets it be (at the cap)
+ *   other_us   the rest of the window: game logic, the OT walk, queueing the
+ *              skipped frames, the vsync pump, waits on the audio lock
+ *   busy_pct   100 * (dt - swap) / dt: how much of the window the game thread
+ *              worked. Near 100 with game_fps under the cap = CPU bound.
+ *   mix_us     the SPU mixer thread's CPU in the window (its own thread)
+ */
+void dw3_nx_gpu_pace_log(unsigned long long dt_us) {
+    unsigned frames = s_pace.frames;
+    unsigned long long other;
+    unsigned long long used =
+        s_pace.sync_us + s_pace.present_us + s_pace.swap_us;
+    unsigned long long mix_us = dw3_nx_audio_mix_us_take();
+
+    if (frames == 0 || dt_us == 0) {
+        memset(&s_pace, 0, sizeof(s_pace));
+        return;
+    }
+    other = dt_us > used ? dt_us - used : 0;
+    psyz_log(1, "nx_gpu.c", __LINE__, __func__,
+             "pace dbg: speed=%dx game_fps=%llu.%llu frames=%u presented=%u "
+             "skipped=%u sync_us=%llu present_us=%llu swap_us=%llu "
+             "other_us=%llu busy_pct=%llu mix_us=%llu",
+             dw3_port_turbo_speed(), frames * 1000000ULL / dt_us,
+             frames * 10000000ULL / dt_us % 10, frames, s_pace.presents,
+             frames - s_pace.presents, s_pace.sync_us, s_pace.present_us,
+             s_pace.swap_us, other,
+             100ULL * (dt_us > s_pace.swap_us ? dt_us - s_pace.swap_us : 0) /
+                 dt_us,
+             mix_us);
+    memset(&s_pace, 0, sizeof(s_pace));
+}
+#endif
 
 /* --- VRAM present (P4.7 Stage 3) --------------------------------------- */
 

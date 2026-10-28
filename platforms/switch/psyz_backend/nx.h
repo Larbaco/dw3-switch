@@ -157,6 +157,14 @@ const uint16_t *dw3_nx_switch_gpu_vram_nosync(void);
  * queued in it. Called with the 60-pump `frame dt` sample. */
 void dw3_nx_switch_gpu_defer_log(void);
 
+/* P6.22: one `pace dbg:` line for the 60 game frames since the last call: the
+ * game frames per second and where the window's time went (raster at the
+ * presents, present, wait for the display, the rest, the mixer). dt_us is the
+ * window's wall time. Called with the 60-pump `frame dt` sample. */
+void dw3_nx_gpu_pace_log(unsigned long long dt_us);
+/* The SPU mixer thread's CPU time since the last call, in microseconds. */
+unsigned long long dw3_nx_audio_mix_us_take(void);
+
 /* RGB555 side gutters, side 0 = left: row y is the gutter of VRAM row y,
  * DW3_NX_GUTTER_STRIDE pixels per row (PSYZ_GUTTER_MAX). */
 #define DW3_NX_GUTTER_STRIDE 64
