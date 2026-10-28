@@ -1,4 +1,4 @@
-# US: restart after a battle, then the same battle again (env in manifest)
+# US: restart after a battle, then the same battle again (env in manifest); the chord is 20 frames earlier than before the return fade, so the reset lands on the same frame (the battle RNG depends on the frame count)
 pad 350 0x0040
 pad 360 0x0000
 pad 410 0x4000
@@ -70,9 +70,9 @@ pad 1420 0x4000
 pad 1425 0x0000
 pad 1450 0x4000
 pad 1455 0x0000
-shot 1580 field-after-battle
-pad 1600 0x0c09
-pad 1605 0x0000
+shot 1575 field-after-battle
+pad 1580 0x0c09
+pad 1585 0x0000
 shot 1700 again-100
 shot 1800 again-200
 shot 1900 again-300

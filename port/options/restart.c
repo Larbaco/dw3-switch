@@ -58,7 +58,7 @@ enum { RF_IDLE, RF_OUT, RF_BLACK, RF_IN };
 enum {
     FADE_OUT_FRAMES = 20,
     BLACK_MIN_FRAMES = 4,
-    BLACK_MAX_FRAMES = 300,   /* never stay black if the new screen is not seen */
+    BLACK_MAX_FRAMES = 90,     /* never stay black if the new screen is not seen */
     FADE_IN_FRAMES = 15,
 };
 static int g_rf_state = RF_IDLE;
