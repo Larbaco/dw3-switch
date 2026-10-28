@@ -85,6 +85,13 @@ static void dw3_pad_host_debug_buttons(void);
 static void dw3_auto_pad_inject(void);
 static void dw3_pad_publish_mask(unsigned mask);
 static void dw3_replay_vsync(void);
+/* port/map_view/map_view.c: the right stick's vertical axis, for the zoom of
+ * the full-screen map (-127..127, up positive) */
+extern void dw3_map_view_set_zoom_stick(int raw_up);
+/* Replay masks: bits above the 16 pad bits stand for the right stick (the
+ * recording cannot hold an analog value): 0x10000 up, 0x20000 down. */
+#define DW3_REPLAY_RSTICK_UP 0x10000u
+#define DW3_REPLAY_RSTICK_DOWN 0x20000u
 static void dw3_replay_record_sample(void);
 static int buf_connected(const unsigned char *buf);
 
@@ -260,7 +267,9 @@ static void dw3_replay_vsync(void) {
             fflush(stderr);
             exit(0);
         }
-        dw3_pad_publish_mask(mask);
+        dw3_map_view_set_zoom_stick((mask & DW3_REPLAY_RSTICK_UP) ? 127
+                                    : (mask & DW3_REPLAY_RSTICK_DOWN) ? -127 : 0);
+        dw3_pad_publish_mask(mask & 0xFFFFu);
     }
 }
 
@@ -485,6 +494,15 @@ int PadChkVsync(void) {
     }
     refresh_port(0);
     refresh_port(1);
+    if (g_rp_state != 1) {
+        /* the right stick (wire byte 5, 0x80 centred, up is smaller) of an
+         * analog pad; the game reads only the left one (analog[2], [3]) */
+        const unsigned char *b0 = g_pad_rx[0];
+
+        dw3_map_view_set_zoom_stick(
+            (b0 != NULL && buf_connected(b0) && (b0[1] & 0xF0) == 0x70)
+                ? 0x80 - (int)b0[5] : 0);
+    }
     dw3_replay_record_sample();
     dw3_pad_host_debug_buttons();
     return 1;

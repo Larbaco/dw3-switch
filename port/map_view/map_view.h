@@ -25,6 +25,11 @@ void dw3_map_view_init(const char *config_dir);
  * writes them to the cache. Frees everything it allocated before returning. */
 void dw3_map_view_precompute_run(void);
 
+/* The right stick's vertical axis for the zoom, -127..127, up positive (a PS1
+ * analog byte distance from the centre, raw). Hosts call it every frame; the
+ * dead zone and the scaling are done here. 0 when no stick. */
+void dw3_map_view_set_zoom_stick(int raw_up);
+
 /* --- host overlays ---------------------------------------------------------*/
 enum { DW3_MV_HUD_W = 640, DW3_MV_HUD_H = 360 };
 typedef struct Dw3MapViewDraw {

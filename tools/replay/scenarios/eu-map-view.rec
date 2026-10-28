@@ -155,9 +155,15 @@ pad 5165 0x0000
 shot 5190 mv-no-hud
 pad 5200 0x2000
 pad 5205 0x0000
-pad 5230 0x1000
-pad 5235 0x0000
-shot 5290 mv-closed
-pad 5330 0x1000
-pad 5335 0x0000
-end 5530
+pad 5220 0x10000
+pad 5260 0x0000
+shot 5280 mv-stick-in
+pad 5290 0x20000
+pad 5320 0x0000
+shot 5340 mv-stick-out
+pad 5360 0x1000
+pad 5365 0x0000
+shot 5420 mv-closed
+pad 5460 0x1000
+pad 5465 0x0000
+end 5660
