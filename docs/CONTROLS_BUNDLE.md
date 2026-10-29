@@ -4,7 +4,8 @@ Status: **phases 1 and 2 built** (2026-10-28 P9.8: the Nintendo / PlayStation
 layout, the mapper and the log; see [Phase 1 as built](#phase-1-as-built-2026-10-28);
 2026-10-29 P6.12: the custom map and the Customize screen, see
 [Phase 2 as built](#phase-2-as-built-2026-10-29)). Phase 3 (glyphs, P10.6) is
-design only. The owner
+design only; **step 0 is done**: see [P10.6_GLYPHS](P10.6_GLYPHS.md), which
+proves where the icons are (section 1.5 below is superseded by it). The owner
 questions of section 7 are answered by **orchestrator defaults** pending the
 owner's confirmation. It is
 ROADMAP "Priority work order", Tier 2 item 2: the goal notes
@@ -125,7 +126,7 @@ ROADMAP P10.6 said this was not investigated. What the decomp shows:
   (`decomp:src/engine/text/font.c:4-9`). The tables have `#if VERSION_US` / EU
   branches, so the cells differ per disc, which fits the owner's remark that the
   two discs' icons differ. Cells are about 8x12 at size 1.
-- Which of the 114 icons are the button icons is **not yet proven**. By
+- (Step 0 proved it: [P10.6_GLYPHS](P10.6_GLYPHS.md#1-where-the-game-draws-the-ps-button-icons-proved).) Which of the 114 icons are the button icons was **not yet proven**. By
   Shift-JIS identity the candidates are 0x817E (x), 0x819B (circle), 0x81A0
   (square), 0x81A2 (triangle). Step 0 of phase 3 proves it by dumping the cells.
 - Button art outside the font (battle HUD, shops, the title's PRESS START) is

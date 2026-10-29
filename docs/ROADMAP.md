@@ -201,7 +201,7 @@ listed once, in [Pending OLED checks](#pending-oled-checks).
 | P10.3 | Presentation modes | open | — |
 | P10.4 | Rumble polish (optional) | open | — |
 | P10.5 | Extra applets (optional) | open | — |
-| P10.6 | Switch-style button glyphs (future goal; design written 2026-10-28) | future | [roadmap](#phase-10--native-switch-features-residual), [CONTROLS_BUNDLE](CONTROLS_BUNDLE.md), [TEXTURE_PACKS](TEXTURE_PACKS.md) |
+| P10.6 | Switch-style button glyphs (future goal; design written 2026-10-28; step 0 investigation done 2026-10-29) | future | [roadmap](#phase-10--native-switch-features-residual), [P10.6_GLYPHS](P10.6_GLYPHS.md), [CONTROLS_BUNDLE](CONTROLS_BUNDLE.md), [TEXTURE_PACKS](TEXTURE_PACKS.md) |
 | P10.7 | NSP packaging: forwarder, full NSP or stay NRO | dropped | [NSP_PACKAGING](NSP_PACKAGING.md), [roadmap](#phase-10--native-switch-features-residual) |
 
 ## Pending OLED checks
@@ -1559,7 +1559,12 @@ rumble, saves, turbo, or widescreen here; those stay in their phases.
   ([TEXTURE_PACKS.md](TEXTURE_PACKS.md), P8.2/P8.3, a pack that is optional and
   falls back to the disc) or a host **overlay** drawn over the icon; the first
   keeps one path for US and EU, the second can follow the layout at runtime.
-  Not yet investigated: which sprites or font glyphs hold the icons in each
+  **Step 0 done (2026-10-29, [P10.6_GLYPHS](P10.6_GLYPHS.md)):** the icons
+  are font cells (`FONT_ICONS_1`, size 1 only; EU draws coloured discs, US plain
+  symbols; no shoulder or Start icons); dump tool `tools/dump_font_cells.py`;
+  plan: patch the cells at load, art as 12x12 PNG files; string census and a
+  port-UI fix for the Options hint row still to do. Originally "not yet
+  investigated": which sprites or font glyphs hold the icons in each
   disc, whether they sit inside text strings (so a width change touches the
   five EU languages), and where the game shows each one. The glyph for an
   action must follow the confirm/cancel layout of P9.8 (B confirms in
