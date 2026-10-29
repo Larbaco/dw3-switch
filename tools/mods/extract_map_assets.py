@@ -15,8 +15,16 @@ What it makes (all derived from the disc: LOCAL ONLY, never commit it):
     OUT/up/...                                 intermediate upscaler folders
     OUT/sd/switch/dw3/mods/<pack>/             copy this folder to the SD card
         mod.json
-        map/map_<region>_h<half>@4x.png
+        map/map_h<half>@4x.png                       shared by US and EU
+        map/reveal/h<half>/<kind>_<id>@4x.png        shared sprites
+        map/map_<region>_h<half>@4x.png              only where the regions differ
         map/reveal/<region>_h<half>/<kind>_<id>@4x.png
+
+With two --runtime folders every extracted piece (the bare map of each half and
+each reveal sprite) is compared pixel for pixel between the regions: identical
+pieces are upscaled once and written as shared files, pieces that differ get a
+per-region file. The run prints `identical: N of M pieces`. With one --runtime
+the pack lists that region only and every file is the region's own (as before).
 
 The reveal sprites are the cells STSTATUS_drawMapScreen draws over the dark map
 (map sheet entry 1 = towns, entry 2 = visited-area icons). Alpha is VRAM colour
@@ -128,8 +136,36 @@ def run_upscaler(args, src: Path, dst: Path) -> None:
     subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 
-def upscale_sprites(args, region: str, half: int, frames: list[Path], work: Path) -> dict[str, int]:
-    """Upscale every sprite PNG in `frames`; returns {name: opaque pixel count}."""
+def piece_key(path: Path):
+    """What makes two extracted pieces the same picture: size and RGBA bytes."""
+    img = Image.open(path).convert("RGBA")
+    return img.size, img.tobytes()
+
+
+def compare_regions(out: Path, regions: list[str]) -> dict:
+    """{half: {"shared": [names], "region": {region: [names]}, "total": N}}.
+    With one region nothing is shared (every piece is that region's own)."""
+    res = {}
+    for half in HALVES:
+        names = {}
+        for region in regions:
+            for f in (out / "src" / region).glob(f"*_h{half}*.png"):
+                names.setdefault(f.name, []).append(region)
+        shared, own = [], {r: [] for r in regions}
+        for name, have in sorted(names.items()):
+            if len(regions) == 2 and len(have) == 2 and (
+                    piece_key(out / "src" / have[0] / name) == piece_key(out / "src" / have[1] / name)):
+                shared.append(name)
+            else:
+                for r in have:
+                    own[r].append(name)
+        res[half] = {"shared": shared, "region": own, "total": len(names)}
+    return res
+
+
+def upscale_sprites(args, dst_name: str, half: int, frames: list[Path], work: Path) -> dict[str, int]:
+    """Upscale every sprite PNG in `frames` into map/reveal/<dst_name>;
+    returns {name: opaque pixel count}."""
     rgb_in, a_in = work / "rgb_in", work / "a_in"
     rgb_out, a_out = work / "rgb_out", work / "a_out"
     for d in (rgb_in, a_in, rgb_out, a_out):
@@ -146,7 +182,7 @@ def upscale_sprites(args, region: str, half: int, frames: list[Path], work: Path
         pad_replicate(Image.merge("RGB", (alpha, alpha, alpha)), PAD).save(a_in / f.name)
     run_upscaler(args, rgb_in, rgb_out)
     run_upscaler(args, a_in, a_out)
-    dst = args.pack_dir / "map" / "reveal" / f"{region}_h{half}"
+    dst = args.pack_dir / "map" / "reveal" / dst_name
     dst.mkdir(parents=True, exist_ok=True)
     counts: dict[str, int] = {}
     for f in kept:
@@ -195,23 +231,43 @@ def main() -> None:
         for pam in sorted(src.glob("*.pam")):
             pam_to_png(pam, pam.with_suffix(".png"))
     if args.extract_only:
+        cmp = compare_regions(out, regions)
+        for half in HALVES:
+            c = cmp[half]
+            print(f"h{half}: identical: {len(c['shared'])} of {c['total']} pieces "
+                  f"(regions: {', '.join(regions)})")
         print(f"extracted to {out / 'src'}")
         return
     if not args.upscaler or not args.models:
         sys.exit("--upscaler and --models are required unless --extract-only")
 
-    for region in regions:
-        src = out / "src" / region
-        for half in HALVES:
-            base = src / f"base_h{half}.png"
-            dst = args.pack_dir / "map" / f"map_{region}_h{half}@{SCALE}x.png"
+    cmp = compare_regions(out, regions)
+    for half in HALVES:
+        c = cmp[half]
+        print(f"h{half}: identical: {len(c['shared'])} of {c['total']} pieces "
+              f"(regions: {', '.join(regions)})")
+    for half in HALVES:
+        c = cmp[half]
+        # the bare map: one file when both regions have the same picture
+        for region, base_name in ([(None, f"base_h{half}.png")] if f"base_h{half}.png" in c["shared"] else
+                                  [(r, f"base_h{half}.png") for r in regions]):
+            src_region = region or regions[0]
+            base = out / "src" / src_region / base_name
+            dst = args.pack_dir / "map" / (f"map_{region}_h{half}@{SCALE}x.png" if region
+                                           else f"map_h{half}@{SCALE}x.png")
             dst.parent.mkdir(parents=True, exist_ok=True)
             run_upscaler(args, base, dst)
             w, h = Image.open(dst).size
-            print(f"{region} h{half}: base {Image.open(base).size} -> {w}x{h}")
-            frames = sorted(src.glob(f"*_h{half}_*.png"))
-            counts = upscale_sprites(args, region, half, frames, work / f"{region}_h{half}")
-            print(f"{region} h{half}: {len(counts)} reveal sprites upscaled")
+            print(f"{region or 'shared'} h{half}: base {Image.open(base).size} -> {w}x{h}")
+        shared = [out / "src" / regions[0] / n for n in c["shared"] if not n.startswith("base_")]
+        if shared:
+            counts = upscale_sprites(args, f"h{half}", half, sorted(shared), work / f"shared_h{half}")
+            print(f"shared h{half}: {len(counts)} reveal sprites upscaled")
+        for region in regions:
+            own = [out / "src" / region / n for n in c["region"][region] if not n.startswith("base_")]
+            if own:
+                counts = upscale_sprites(args, f"{region}_h{half}", half, sorted(own), work / f"{region}_h{half}")
+                print(f"{region} h{half}: {len(counts)} region-only reveal sprites upscaled")
 
     manifest = {
         "format": 1,

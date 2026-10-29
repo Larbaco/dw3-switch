@@ -68,6 +68,9 @@ highest non-empty tier.
   start row in the combined image and ZL + ZR as a hold-to-pick try, unverified on the
   console (A17; `port/options`, `nx_region_boot.c`, no decomp patch); a `stage_sweep` key in
   the wrong file is logged (G10); the map view opens at 1.5x with the bars hidden (B16).
+- [P51 feedback](P51_FEEDBACK.md), **PR 3 built 2026-10-29**: one map mod pack for US and EU
+  (shared files, per-region only where the 13 differing reveal sprites are; loader fallback,
+  tool compares both runtimes; OLED B17).
 - [P6.1](P6.1_WIDESCREEN.md): 16:9 batch 2. Stopped by the owner; resumes only
   when the owner allows.
 

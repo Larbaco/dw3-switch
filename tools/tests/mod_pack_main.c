@@ -100,6 +100,40 @@ static void test_valid(const char *dir) {
     dw3_mod_image_free(&spr);
 }
 
+/* P51 item 3: one pack for both regions. shared_root/shared: shared maps of
+ * both halves (map_h0 / map_h1 @4x), a shared towns_5 sprite, and for EU only a
+ * region file map_eu_h1@4x (a different size would be refused, so it is the right
+ * one) and a region sprite towns_5 that must win over the shared one. */
+static void test_shared(const char *dir) {
+    char mods[600], why[DW3_MOD_WHY];
+    Dw3ModPack pack;
+    Dw3ModImage img, spr;
+    int scale = 0;
+    int r;
+    const char *region[2] = {"us", "eu"};
+
+    path_to(mods, sizeof(mods), dir, "shared_root");
+    for (r = 0; r < 2; r++) {
+        CHECK(dw3_mod_pack_find(mods, "shared", region[r], &pack, why, sizeof(why)) == 0,
+              "shared pack opens for %s: %s", region[r], why);
+        CHECK(dw3_mod_load_map(&pack, region[r], 0, 8, 6, 4, &img, &scale, why,
+                               sizeof(why)) == 0 && img.w == 32 && img.shared == 1,
+              "%s h0 comes from the shared file: %s", region[r], why);
+        dw3_mod_image_free(&img);
+        CHECK(dw3_mod_load_map(&pack, region[r], 1, 8, 6, 4, &img, &scale, why,
+                               sizeof(why)) == 0 && img.w == 32 &&
+              img.shared == (r == 0 ? 1 : 0),
+              "%s h1: %s", region[r], why);
+        dw3_mod_image_free(&img);
+        CHECK(dw3_mod_load_sprite(&pack, region[r], 0, "towns", 5, 4, 3, 2, &spr, why,
+                                  sizeof(why)) == 0 && spr.shared == (r == 0 ? 1 : 0),
+              "%s sprite: %s", region[r], why);
+        dw3_mod_image_free(&spr);
+        CHECK(dw3_mod_load_sprite(&pack, region[r], 0, "areas", 9, 4, 3, 2, &spr, why,
+                                  sizeof(why)) != 0, "no such sprite in either place");
+    }
+}
+
 static void test_invalid(const char *dir) {
     char mods[600], why[DW3_MOD_WHY];
     Dw3ModPack pack;
@@ -143,6 +177,7 @@ int main(int argc, char **argv) {
     test_manifest();
     test_valid(dir);
     test_invalid(dir);
+    test_shared(dir);
     if (!g_fail) printf("OK: mod pack loader\n");
     return g_fail;
 }
