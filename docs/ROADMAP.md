@@ -1562,8 +1562,11 @@ rumble, saves, turbo, or widescreen here; those stay in their phases.
   **Step 0 done (2026-10-29, [P10.6_GLYPHS](P10.6_GLYPHS.md)):** the icons
   are font cells (`FONT_ICONS_1`, size 1 only; EU draws coloured discs, US plain
   symbols; no shoulder or Start icons); dump tool `tools/dump_font_cells.py`;
-  plan: patch the cells at load, art as 12x12 PNG files; string census and a
-  port-UI fix for the Options hint row still to do. Originally "not yet
+  plan: patch the cells at load, art as 12x12 PNG files; string census still to
+  do. **Fix-now built (2026-10-29, PR open, OLED L17 to L20 pending):** the
+  Switch hint caps (Options, Cheats, Help) and the map view footer name the
+  button that really confirms / goes back under the map (A / B with Nintendo, a
+  custom map's own sources); log `dw3-controls: hint caps ...`. Originally "not yet
   investigated": which sprites or font glyphs hold the icons in each
   disc, whether they sit inside text strings (so a width change touches the
   five EU languages), and where the game shows each one. The glyph for an
