@@ -167,6 +167,12 @@ static unsigned char g_map[DW3_BTN_COUNT] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
 static int g_layout = DW3_LAYOUT_PLAYSTATION;
 static int g_identity_map = 1;   /* the map is the identity: skip the permute */
 static int g_first_logged;       /* the "first press" line, re-armed by a change */
+/* After a layout change the buttons held at that moment are read as released
+ * until all of them are up: the press that changed the layout (B on PlayStation,
+ * A on Nintendo) would otherwise be a new press of another PS button in the new
+ * map (Triangle, Circle) and fire a second action (back out of the group, or
+ * switch the layout again, every frame while it is held). */
+static int g_swallow;
 
 int dw3_button_map_layout(void) {
     return g_layout;
@@ -184,6 +190,7 @@ static void bm_set(int layout) {
     g_layout = layout;
     g_identity_map = memcmp(g_map, g_identity, DW3_BTN_COUNT) == 0;
     g_first_logged = 0;
+    g_swallow = 0;
 }
 
 /* `dw3-controls: map cross<-A circle<-X ...` and the hotkeys line. */
@@ -233,6 +240,7 @@ void dw3_button_map_change(int layout, const char *how) {
     int old = g_layout;
 
     bm_set(layout);
+    g_swallow = 1;
     BM_LOG("dw3-controls: layout changed %s -> %s (%s)",
            dw3_button_layout_name(old), dw3_button_layout_name(g_layout),
            how != NULL ? how : "screen");
@@ -245,8 +253,25 @@ void dw3_button_map_log_invalid(const char *reason) {
 }
 
 unsigned dw3_button_map_apply(unsigned word) {
-    unsigned out = g_identity_map ? (word & 0xFFFFu)
-                                  : dw3_button_map_permute(g_map, word);
+    unsigned out;
+
+    if (g_swallow) {
+        unsigned held = 0;
+        int i;
+
+        for (i = 0; i < DW3_BTN_COUNT; i++) {
+            if (((word >> g_raw_bit[i]) & 1u) == 0) {
+                held |= 1u << g_raw_bit[i];
+            }
+        }
+        if (held != 0) {
+            word |= held; /* still down since the change: read as released */
+        } else {
+            g_swallow = 0;
+        }
+    }
+    out = g_identity_map ? (word & 0xFFFFu)
+                         : dw3_button_map_permute(g_map, word);
 
     if (!g_first_logged && ((out >> g_raw_bit[DW3_BTN_CROSS]) & 1u) == 0) {
         g_first_logged = 1;

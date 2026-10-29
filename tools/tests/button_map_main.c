@@ -161,11 +161,43 @@ static void test_state(void) {
     CHECK(dw3_button_map_apply(a) == b, "nintendo: A -> Cross");
     CHECK(dw3_button_map_apply(a) == b, "apply is idempotent per frame");
     dw3_button_map_change(DW3_LAYOUT_PLAYSTATION, "screen");
+    CHECK(dw3_button_map_apply(0xFFFFu) == 0xFFFFu, "nothing held after the change");
     CHECK(dw3_button_map_apply(b) == b, "back to playstation");
     dw3_button_map_log_invalid("button_layout is not playstation or nintendo");
 }
 
+/* The press that changes the layout must not be read in the new map. */
+static void test_swallow(void) {
+    int circle[1] = {DW3_BTN_CIRCLE};
+    int cross[1] = {DW3_BTN_CROSS};
+    int start[1] = {DW3_BTN_L1};
+    unsigned a = word_with(circle, 1);
+    unsigned b = word_with(cross, 1);
+    unsigned l = word_with(start, 1);
+    unsigned idle = 0xFFFFu;
+
+    dw3_button_map_load(DW3_LAYOUT_PLAYSTATION, "default");
+    /* B (the Cross position) is held while the row switches to Nintendo */
+    CHECK(dw3_button_map_apply(b) == b, "before: B is Cross");
+    dw3_button_map_change(DW3_LAYOUT_NINTENDO, "screen");
+    CHECK(dw3_button_map_apply(b) == idle, "B still held: not a Triangle press");
+    CHECK(dw3_button_map_apply(b & l) == idle, "held buttons stay swallowed");
+    CHECK(dw3_button_map_apply(idle) == idle, "released");
+    CHECK(dw3_button_map_apply(a) == b, "after the release the map is live: A is Cross");
+    /* A held while switching back to PlayStation: no Circle press */
+    dw3_button_map_change(DW3_LAYOUT_PLAYSTATION, "screen");
+    CHECK(dw3_button_map_apply(a) == idle, "A still held: not a Circle press");
+    CHECK(dw3_button_map_apply(idle) == idle, "released again");
+    CHECK(dw3_button_map_apply(a) == a, "PlayStation: A is Circle");
+    /* Start and the d-pad are never swallowed */
+    dw3_button_map_change(DW3_LAYOUT_NINTENDO, "screen");
+    CHECK(dw3_button_map_apply(0xFFFFu & ~(1u << 3)) == (0xFFFFu & ~(1u << 3)),
+          "Start passes while swallowing");
+    dw3_button_map_load(DW3_LAYOUT_PLAYSTATION, "default");
+}
+
 int main(void) {
+    test_swallow();
     test_presets();
     test_validate_and_parse();
     test_permute();

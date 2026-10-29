@@ -509,6 +509,22 @@ after each load or layout change (not only once per boot), so the proof in C2
 still shows the new source after the player switched layouts. The `assign`,
 `reset`, `glyphs` lines belong to phases 2 and 3.
 
+**The press that changes the layout is swallowed.** Switching the row with B
+(PlayStation to Nintendo) leaves B held for a few frames, and in the new map the
+B position is Triangle: a new press that backs out of the group. Switching back
+with A would read as a new Circle and toggle the row again, every frame. So after
+a layout *change* (not at boot) `dw3_button_map_apply` reads the ten remappable
+buttons that are down at that moment as released until all of them are up, then
+the map is live; Start, Select and the d-pad are never held back. Unit-tested
+(`test_swallow` in `tools/tests/button_map_main.c`). Replays cannot show it
+(they bypass the map except in the `*-nintendo-*` runs, which change nothing
+mid-run), so L2 of the OLED plan checks it by hand.
+
+**Where the file lives.** `button_layout` is in the region's own
+`port_options.cfg` like every other option (`sdmc:/switch/dw3/us/` and `.../eu/`,
+section 2.4's "one global file" was not how P9.4 stores options): set it once per
+disc. The combined build uses the folder of the region it runs.
+
 **`DW3_BUTTON_MAP=default`** forces the PlayStation layout for one run (log
 `source=env`), is never written (the row stays pinned to the file's value until
 changed on the screen), and recovers a bad map without touching the file.
