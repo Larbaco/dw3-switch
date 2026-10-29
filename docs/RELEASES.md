@@ -133,7 +133,13 @@ page does not go stale.
 
 Before a release, prune the "still open" lists in the notes against the
 PASSED marks in [OLED_TEST_PLAN.md](OLED_TEST_PLAN.md) and the owner's latest
-logs: list only items that are really still open.
+logs: list only items that are really still open. Run
+`python3 tools/oled_open_rows.py --notes platforms/switch/release/README.txt`
+first: it lists the plan rows without a clean PASSED mark, and warns about
+PASSED rows that the OLED checklist still names. A warning is a prompt, not a
+failure: a row can be PASSED for an old behaviour and still need a re-check
+(then say so in the notes). The checklist is rebuilt from that list, not from
+the previous release's text.
 
 Since preview.18, [`platforms/switch/release/README.txt`](../platforms/switch/release/README.txt)
 holds the notes shipped with each release.
