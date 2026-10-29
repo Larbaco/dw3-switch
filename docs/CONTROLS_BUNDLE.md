@@ -538,3 +538,39 @@ changed on the screen), and recovers a bad map without touching the file.
 - The title's hint `Select/Backspace: Port options` and the in-game screens that
   name buttons by PS1 word are not changed.
 - Port 2 and a second controller are not supported by the port at all.
+
+### Phase 1 test results (2026-10-28)
+
+Built and run on the PC host, `nice -n 10`, 2 jobs, Xvfb, private copy of the
+references (`DW3_REPLAY_REFS`), US, EU and the combined (`DW3_VERSION=both`)
+image; the Switch images (`tools/build_switch_game.sh`, US, `--eu`, `--both`)
+build. Not run on a console.
+
+- **Full tier, existing references** (266 scenarios, 2941 checks, binary of this
+  branch): **2853 pass, 88 differ, all explained**. Every scenario that reaches
+  the game, a battle, a save or a movie matches its reference, which is the proof
+  that the default (PlayStation, the identity map) is bit-identical. The 88 are:
+  - the Options **group list** now has a Controls plaque (Help moved one place
+    down): the screens that show it (`us/eu-field-options`, `-field-options-cheats`
+    (the Cheats-on list scrolls), `-battle-options`, `-volume-persist`,
+    `-options-persist`, `-field-options-de/es/fr/it`) differ by 0.16 to 2.3 % of the
+    picture;
+  - the help: `us/eu-help-title/-field/-battle` and `eu-help-fr` (the Controls page
+    text and the Options list), and the recordings were regenerated because Help is
+    now the sixth plaque (`GRP_HELP = 5` in `gen_scenarios.py`);
+  - `eu-controls-layout`: new, no reference yet;
+  - `us-map-view-mod` (0.6 to 1.5 %): **not from this change**. The same eight
+    zoom captures differ by the same pixel counts with a binary built from
+    `ff6967f` (main) against the same references, so the shared reference is
+    stale for that scenario.
+- **After refreshing the private references of exactly those scenarios** (a
+  `--update` run, then a compare run): 582 checks, 0 failed, on the per-region
+  binaries and again on the `both` binary. This includes the seven
+  `*-nintendo-*` scenarios against the **plain** scenarios' references (0 px) and
+  `us/eu-controls-layout`.
+- The shared `~/.cache/dw3-switch/replay-refs` got only the two new scenarios'
+  references (`us-controls-layout`, `eu-controls-layout`). The other scenarios
+  above will fail against it until someone refreshes them after the merge:
+  `tools/replay_tests.sh --update --only <name> ...` for that list (look at the
+  pictures first).
+- Unit tests: `tools/tests` 478 pass, 2 skipped.
