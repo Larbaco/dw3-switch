@@ -192,6 +192,37 @@ void dw3_port_items_bag_viewed(int filter, int slot, int rows, int worn_elsewher
 void dw3_port_items_bag_move_begin(void);
 void dw3_port_items_bag_moved(int item, int from, int from_slot, int to, int slot);
 
+/* ---- P6.34 phase 4: "use item" stays on the partner step (patch 0193) -----
+ * Design: docs/P6.34_MENU_FLOW.md section 15 (Q9 default: the "Items to
+ * Equipment" jump of P6.33 phase 4 is dropped, equip from Items replaces it).
+ * In the Items menu, Cross on a partner uses a consumable (STSTATUS_useItem)
+ * and the screen stays where it is: the item panel and the partner pages stay
+ * open, the result shows in the help window, the owned count is redrawn, and
+ * Up / Down + Cross use the next copy on another Digimon. The original closes
+ * the pages, waits for Cross, reopens the list and the partner step (about 400
+ * frames per use). The last copy (the list loses the row) and Triangle take the
+ * original way back to the list. */
+
+/* Key of port_options.cfg (file-only): 0 or 1, default 1. DW3_ITEMS_USE_STAYS
+ * overrides the file for tests. With 0 the Items menu is the original game's. */
+#define DW3_ITEMS_USE_STAYS_KEY "items_use_stays"
+int dw3_port_items_use_stays_enabled(void);
+
+/* Whether the use of an item with `count` copies in the bag keeps the partner
+ * step open: yes while a copy is left after the use (count > 1). Pure. */
+int dw3_port_items_use_stays_keeps(int count);
+
+/* A use ran: `before` / `after` the copies in the bag, `member` the page index
+ * and `partner` the party member id, `row` the item's row in its list, `stays`
+ * whether the partner step stays open (0: the last copy, the original way
+ * back). Logs `use-stays item=.. partner=.. member=.. count=a->b effect=..
+ * list=stays|closes row=.. uses=..`. */
+void dw3_port_items_use_done(int item, int partner, int member, int before, int after, int row, int stays);
+
+/* Triangle left the partner step: logs `use-stays left item=.. uses=..` when
+ * a use stayed (and resets the count of uses). */
+void dw3_port_items_use_left(int item);
+
 #ifdef __cplusplus
 }
 #endif

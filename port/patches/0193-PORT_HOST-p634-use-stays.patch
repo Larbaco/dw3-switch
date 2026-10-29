@@ -1,0 +1,84 @@
+Upstream-bound: no
+Subject: [PORT_HOST] P6.34 phase 4: "use item" stays on the partner step
+
+P6.34 phase 4 (docs/P6.34_MENU_FLOW.md section 15, P6.33 owner decision 6;
+orchestrator defaults pending owner confirmation). In the Items menu the original
+game, after Cross on a partner, closes the item panel and the partner pages,
+shows the result, waits for Cross, reopens the list and then the partner step for
+the next use (about 400 frames and three fades per use). With the key
+items_use_stays on (default 1; DW3_ITEMS_USE_STAYS=0 or the file key 0 is the
+original flow) STSTATUS_chooseItemMember (item_screen.c) does this for a
+consumable while a copy is left after the use:
+
+* STSTATUS_useItem runs as before (the only writer: the effect, GAME.items,
+  the partner's page, the sound, the result line in the help window);
+* nothing fades: the item panel and the partner pages stay, the owned count of
+  the item is redrawn, the cursor stays on the Digimon;
+* Up / Down choose another Digimon (the item's help returns in the help window)
+  and Cross uses the next copy; a use that has no effect (full HP) stays too and
+  keeps the count;
+* the last copy takes the original way (the list loses the row, so the pages
+  close and the list reopens), and Triangle is the original way back to the list.
+
+Equipment (phase 1) is unchanged. Logs (port/items_menu): "dw3-items-menu:
+use-stays item=.. partner=.. member=.. count=a->b effect=used|none
+list=stays|closes row=.. uses=.." and "use-stays left item=.. uses=..".
+
+--- a/src/menus/field_menu/item_screen.c
++++ b/src/menus/field_menu/item_screen.c
+@@ -756,6 +756,20 @@
+     SOUND.playSound(SOUND_SELECT);
+     portRefusalShown = 0;
+ }
++
++/* P6.34 phase 4 (patch 0193): a consumable used on a partner while copies are
++   left leaves the screen as it is: the item panel and the partner pages stay
++   open, the result is in the help window, the owned count is redrawn. */
++static void portUseStays(ItemScreen *screen, ItemScreenWindows *windows) {
++    s32 before = GAME.items[screen->item];
++
++    STSTATUS_useItem(screen, windows);
++    windows->owned->setNumber(windows->owned, 0, GAME.items[screen->item]);
++    windows->owned->setRightAlign(windows->owned, 1);
++    dw3_port_items_use_done(screen->item, GAME.funcs.getPartyMember(screen->member), screen->member, before,
++                            GAME.items[screen->item], screen->itemIndex, 1);
++    portRefusalShown = 1; /* the next move of the cursor shows the item's help again */
++}
+ #endif
+ 
+ /* Choosing the member to use the item on: up and down move the cursor, cross
+@@ -799,13 +813,24 @@
+                 screen->step = 0;
+                 screen->blink = 1;
+             }
++        } else if (dw3_port_items_use_stays_enabled() && dw3_port_items_use_stays_keeps(GAME.items[screen->item])) {
++            portUseStays(screen, windows);
+         } else
+ #endif
+         {
++#if PORT_HOST
++        s32 useBefore = GAME.items[screen->item];
++#endif
+         STSTATUS_fadeItemInfo(screen, 0);
+         STSTATUS_data.funcs.startFade(&screen->fades[0], 0);
+         windows->title->setVisible(windows->title, 0);
+         STSTATUS_useItem(screen, windows);
++#if PORT_HOST
++        if (dw3_port_items_use_stays_enabled()) {
++            dw3_port_items_use_done(screen->item, GAME.funcs.getPartyMember(screen->member), screen->member,
++                                    useBefore, GAME.items[screen->item], screen->itemIndex, 0);
++        }
++#endif
+         screen->substate = 0x64;
+         screen->step = 0;
+         screen->blink = 1;
+@@ -815,6 +840,9 @@
+         if (portIsEquipment(screen->item)) {
+             dw3_port_items_equip_cancelled();
+             portRefusalShown = 0;
++        } else if (dw3_port_items_use_stays_enabled()) {
++            dw3_port_items_use_left(screen->item);
++            portRefusalShown = 0;
+         }
+ #endif
+         SOUND.playSound(SOUND_MENU_CANCEL);

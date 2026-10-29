@@ -13,8 +13,12 @@ static int g_file = -1; /* -1: key absent */
 static int g_file_equip = -1;
 static int g_file_stays = -1;
 static int g_file_bag = -1;
+static int g_file_use = -1;
 
 int dw3_port_options_file_int(const char *key, int def) {
+    if (strcmp(key, DW3_ITEMS_USE_STAYS_KEY) == 0) {
+        return g_file_use >= 0 ? g_file_use : def;
+    }
     if (strcmp(key, DW3_ITEMS_BAG_VIEW_KEY) == 0) {
         return g_file_bag >= 0 ? g_file_bag : def;
     }
@@ -231,6 +235,27 @@ int main(void) {
     dw3_port_items_bag_viewed(3, 2, 2, 2);
     dw3_port_items_bag_move_begin();
     dw3_port_items_bag_moved(77, 4, 2, 5, 2);
+
+    /* phase 4: the key, the keep rule, the log lines */
+    unsetenv("DW3_ITEMS_USE_STAYS");
+    g_file_use = -1;
+    CHECK(dw3_port_items_use_stays_enabled() == 1);
+    g_file_use = 0;
+    CHECK(dw3_port_items_use_stays_enabled() == 0);
+    setenv("DW3_ITEMS_USE_STAYS", "1", 1);
+    CHECK(dw3_port_items_use_stays_enabled() == 1);
+    setenv("DW3_ITEMS_USE_STAYS", "0", 1);
+    CHECK(dw3_port_items_use_stays_enabled() == 0);
+    unsetenv("DW3_ITEMS_USE_STAYS");
+    CHECK(dw3_port_items_use_stays_keeps(0) == 0);
+    CHECK(dw3_port_items_use_stays_keeps(1) == 0);
+    CHECK(dw3_port_items_use_stays_keeps(2) == 1);
+    CHECK(dw3_port_items_use_stays_keeps(99) == 1);
+    dw3_port_items_use_done(5, 1, 0, 3, 2, 4, 1);
+    dw3_port_items_use_done(5, 2, 1, 2, 2, 4, 1);
+    dw3_port_items_use_left(5);
+    dw3_port_items_use_left(5);
+    dw3_port_items_use_done(5, 2, 1, 1, 0, 4, 0);
 
     if (g_failed) {
         return 1;

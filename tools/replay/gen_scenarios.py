@@ -1700,6 +1700,55 @@ def items_bag_view(version):
     return r
 
 
+def items_use_stays(version):
+    """P6.34 phase 4 (patch 0193): "use item" stays on the partner step. The
+    path of `menu_screens` to the partner step of the Items list (row 4 of the usable
+    items, 3 copies in the test bag). Member B (Down): use, the
+    result stays in the help window, the owned count falls; Down to C: use; Up
+    twice to A: the last copy is used the original way (the pages close, the
+    list reopens without the row); Cross; Triangle twice leaves the screen.
+    With the key off every use takes the original way back, so the recording is
+    the same and the screenshots of the `-off` run are the pre-patch ones.
+    Frames measured on the PC build."""
+    r = Rec(f"{version.upper()}: P6.34 use item stays on the partner step (env and cfg in manifest)")
+    for f in range(300, 1200, 30):
+        r.press(f, CROSS)            # battle report -> field
+    r.press(1250, START)             # field menu, over the field
+    r.press(1420, CROSS)             # Items: the dissolve, then STSTATUS
+    f = 1640
+    for name, button, wait in MENU_SCREENS_STEPS:
+        if name == "item-list-page2":
+            break
+        if button:
+            r.press(f, button)
+        f += wait
+    r.press(f, L1)                   # page 1, the cursor on its first row (item 43, a potion
+    f += 80                          # that does nothing at full HP)
+    for k in range(4):
+        r.press(f + 40 * k, DOWN)    # row 4: the first stat item (item 47), 3 copies
+    r.press(f + 200, CROSS)          # the partner step
+    f += 400
+    r.shot(f - 3, "partner-step")
+    r.press(f, DOWN)                 # member B
+    r.press(f + 120, CROSS)          # use 1
+    r.shot(f + 220, "use-1")
+    r.press(f + 260, DOWN)           # member C
+    r.shot(f + 360, "moved")
+    r.press(f + 400, CROSS)          # use 2
+    r.shot(f + 500, "use-2")
+    r.press(f + 540, UP)
+    r.press(f + 600, UP)             # member A
+    r.press(f + 680, CROSS)          # use 3: the last copy
+    r.shot(f + 780, "use-3")
+    f += 900
+    r.press(f, CROSS)                # the original way back to the list
+    r.shot(f + 400, "list-after")
+    r.press(f + 450, TRIANGLE)
+    r.press(f + 700, TRIANGLE)
+    r.end(f + 1000)
+    return r
+
+
 def map_screen(version):
     """P6.1 (patch 0080): the field menu's Map screen in widescreen. The same
     path as `menu_screens` (the manifest's env and cfg) up to the Map entry;
@@ -2830,6 +2879,7 @@ def main(out):
         (out / f"{v}-items-equip-switch.rec").write_text(items_equip_switch(v).text(True))
         (out / f"{v}-items-equip-stays.rec").write_text(items_equip_stays(v).text(True))
         (out / f"{v}-items-bag-view.rec").write_text(items_bag_view(v).text(True))
+        (out / f"{v}-items-use-stays.rec").write_text(items_use_stays(v).text(True))
         (out / f"{v}-items-select-equip.rec").write_text(items_select_equip(v).text(True))
         (out / f"{v}-items-equip-from-items.rec").write_text(items_equip_from_items(v).text(True))
         (out / f"{v}-items-equip-refused.rec").write_text(items_equip_refused(v).text(True))
