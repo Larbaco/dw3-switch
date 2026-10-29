@@ -150,7 +150,7 @@ void dw3_port_items_stays_landed(int slot, int frames);
 void dw3_port_items_stays_list_open(int slot, int row, int cursor, int scroll, int item, int count);
 
 /* ---- P6.34 phase 3: the whole bag in the equip list, move between Digimon
- * (patch 0191) --------------------------------------------------------------
+ * (patch 0192) --------------------------------------------------------------
  * Design: docs/P6.34_MENU_FLOW.md section 14 (P6.33 owner decisions 2 and 3,
  * orchestrator defaults pending confirmation). In Status > Equipment's item
  * list, Square cycles the filter: 0 this slot (the original list), 1 all

@@ -402,7 +402,7 @@ void dw3_port_items_stays_list_open(int slot, int row, int cursor, int scroll, i
            cursor, scroll, item, count);
 }
 
-/* ---- P6.34 phase 3: the whole bag in the equip list (patch 0191) --------- */
+/* ---- P6.34 phase 3: the whole bag in the equip list (patch 0192) --------- */
 
 int dw3_port_items_bag_view_enabled(void) {
     return im_flag("DW3_ITEMS_BAG_VIEW", DW3_ITEMS_BAG_VIEW_KEY);

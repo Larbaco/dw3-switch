@@ -35,7 +35,7 @@ worn=a->b".
      }
  }
 +
-+/* P6.34 phase 3 (patch 0191): Square in the item list cycles the filter (the
++/* P6.34 phase 3 (patch 0192): Square in the item list cycles the filter (the
 +   slot's items, all weapons, all armor and accessories, the items the other
 +   party members wear). The list is rebuilt in panel->items; the rows of the
 +   last filter also keep who wears the item and in which slot. */

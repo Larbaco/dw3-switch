@@ -1627,7 +1627,7 @@ def items_equip_stays(version):
 
 
 def items_bag_view(version):
-    """P6.34 phase 3 (patch 0191): the whole bag in the equip list and moving an
+    """P6.34 phase 3 (patch 0192): the whole bag in the equip list and moving an
     item between Digimon. The path of `items_equip_stays` to the first accessory
     slot of the second party member (B; the accessories are the items several
     Digimon can wear, the weapons are one Digimon's each): Cross, Down, Cross wears the first fitting
