@@ -39,8 +39,9 @@ def pages_bin(tmp_path_factory) -> Path:
 def help_bin(tmp_path_factory) -> Path:
     return build(tmp_path_factory.mktemp("help") / "help_test",
                  [TESTS / "help_main.c", HELP / "help.c", PAGES / "pages.c",
-                  PAGES / "glyph_atlas.c"],
-                 ["-DDW3_PORT_OPTIONS_TEST", "-fsanitize=address,undefined"])
+                  PAGES / "glyph_atlas.c", ROOT / "port" / "options" / "button_map.c"],
+                 ["-DDW3_PORT_OPTIONS_TEST", "-DDW3_BUTTON_MAP_TEST",
+                  "-fsanitize=address,undefined"])
 
 
 def test_page_engine(pages_bin: Path):

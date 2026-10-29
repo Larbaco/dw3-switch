@@ -6,6 +6,7 @@
 #include "port_audio.h"
 #include "port_autosave.h"
 #include "port_battle_menu.h"
+#include "port_button_map.h"
 #include "port_help.h"
 #include "port_options_cfg.h"
 #include "port_options_groups.h"
@@ -47,11 +48,12 @@
 #endif
 
 /* DW3_PORT_OPT_ENCOUNTER_RATE (5), DW3_PORT_OPT_TEXT_SPEED (6),
- * DW3_PORT_OPT_BATTLE_MENU (7) and DW3_PORT_OPT_AUTOSAVE (8) are in
+ * DW3_PORT_OPT_BATTLE_MENU (7), DW3_PORT_OPT_AUTOSAVE (8) and
+ * DW3_PORT_OPT_BUTTON_LAYOUT (9) are in
  * port_options.h: port/pacing/pacing.c, port/battle_menu/battle_menu_memory.c
  * and port/autosave/autosave.c read them. */
 enum {
-    DW3_PORT_OPT_COUNT = 9,
+    DW3_PORT_OPT_COUNT = 10,
     DW3_PORT_OPT_WIDESCREEN = 0,
     DW3_PORT_OPT_FAST_FORWARD = 1,
     DW3_PORT_OPT_RESTART = 2,
@@ -64,7 +66,8 @@ _Static_assert(DW3_PORT_OPT_WIDESCREEN == 0 && DW3_PORT_OPT_FAST_FORWARD == 1 &&
                DW3_PORT_OPT_RESTART == 2 && DW3_PORT_OPT_MUSIC_VOLUME == 3 &&
                DW3_PORT_OPT_SFX_VOLUME == 4 && DW3_PORT_OPT_ENCOUNTER_RATE == 5 &&
                DW3_PORT_OPT_TEXT_SPEED == 6 && DW3_PORT_OPT_BATTLE_MENU == 7 &&
-               DW3_PORT_OPT_AUTOSAVE == 8 && DW3_PORT_OPT_COUNT == 9,
+               DW3_PORT_OPT_AUTOSAVE == 8 &&
+               DW3_PORT_OPT_BUTTON_LAYOUT == 9 && DW3_PORT_OPT_COUNT == 10,
                "registry indexes changed: update port_options_groups.h");
 
 typedef struct Dw3PortOptStub {
@@ -122,6 +125,12 @@ static Dw3PortOptStub g_stubs[DW3_PORT_OPT_COUNT] = {
     /* P6.31: 0 = OFF (the original game), 1 = On area change. Off by default;
      * a switch row (Confirm toggles). */
     {"Auto-save", DW3_AUTOSAVE_KEY, DW3_AUTOSAVE_OFF, DW3_AUTOSAVE_OFF, NULL},
+    /* P9.8: 0 = PlayStation (the original buttons), 1 = Nintendo (A confirms,
+     * B cancels). The file holds the words, button_layout=playstation|nintendo
+     * (docs/CONTROLS_BUNDLE.md); DW3_BUTTON_MAP=default forces the first one
+     * for a run. */
+    {"Button layout", "button_layout", DW3_LAYOUT_PLAYSTATION,
+     DW3_LAYOUT_PLAYSTATION, NULL},
 };
 
 /* P9.4 persistence. The registry values above are what the game reads; this
@@ -412,6 +421,12 @@ void dw3_port_options_set(int index, int value) {
 
 static int po_is_volume(int index);
 static void po_audio_apply(void);
+static int po_valid_layout(int v);
+static void po_layout_boot(int from_cfg);
+
+static int po_valid_layout(int v) {
+    return v >= 0 && v < DW3_LAYOUT_COUNT;
+}
 
 int dw3_port_options_level(int index) {
     if (index < 0 || index >= DW3_PORT_OPT_COUNT) {
@@ -428,6 +443,9 @@ void dw3_port_options_set_level(int index, int level) {
     if (po_is_volume(index)) {
         po_audio_apply();
     }
+    if (index == DW3_PORT_OPT_BUTTON_LAYOUT && po_valid_layout(level)) {
+        dw3_button_map_change(level, "api");
+    }
 }
 
 
@@ -436,12 +454,13 @@ static int po_is_volume(int index) {
            index == DW3_PORT_OPT_SFX_VOLUME;
 }
 
-/* The P6.18 rows and the Battle cursor hold a mode, 0 = the original
- * behaviour. */
+/* The P6.18 rows, the Battle cursor and the Button layout hold a mode, 0 = the
+ * original behaviour. */
 static int po_is_mode(int index) {
     return index == DW3_PORT_OPT_ENCOUNTER_RATE ||
            index == DW3_PORT_OPT_TEXT_SPEED ||
-           index == DW3_PORT_OPT_BATTLE_MENU;
+           index == DW3_PORT_OPT_BATTLE_MENU ||
+           index == DW3_PORT_OPT_BUTTON_LAYOUT;
 }
 
 /* Rows that Left / Right step and Confirm cycles: the volumes and the modes. */
@@ -454,6 +473,7 @@ static int po_value_max(int index) {
     return po_is_volume(index) ? DW3_AUDIO_VOLUME_MAX
            : index == DW3_PORT_OPT_ENCOUNTER_RATE ? DW3_ENCOUNTER_MODE_MAX
            : index == DW3_PORT_OPT_BATTLE_MENU ? DW3_BATTLE_MENU_MEMORY_TECH
+           : index == DW3_PORT_OPT_BUTTON_LAYOUT ? DW3_LAYOUT_COUNT - 1
                                                    : DW3_PACING_MODE_MAX;
 }
 
@@ -540,6 +560,23 @@ static void po_stepped_env(void) {
     }
 }
 
+/* Boot: the layout in force becomes the map the pad host reads, and the log
+ * says so (`dw3-controls: map loaded ...`). DW3_BUTTON_MAP=default forces the
+ * PlayStation layout for this run only, like DW3_TURBO: it is never written
+ * (the row stays pinned until it is changed on the screen). */
+static void po_layout_boot(int from_cfg) {
+    const char *env = getenv("DW3_BUTTON_MAP");
+
+    if (env != NULL && strcmp(env, "default") == 0) {
+        g_stubs[DW3_PORT_OPT_BUTTON_LAYOUT].value = DW3_LAYOUT_PLAYSTATION;
+        g_env_pinned |= 1u << DW3_PORT_OPT_BUTTON_LAYOUT;
+        dw3_button_map_load(DW3_LAYOUT_PLAYSTATION, "env");
+        return;
+    }
+    dw3_button_map_load(g_stubs[DW3_PORT_OPT_BUTTON_LAYOUT].value,
+                        from_cfg ? "cfg" : "default");
+}
+
 void dw3_port_options_apply_env(int index, int level) {
     if (index < 0 || index >= DW3_PORT_OPT_COUNT) {
         return;
@@ -564,7 +601,11 @@ static int po_save(void) {
     }
     for (i = 0; i < DW3_PORT_OPT_COUNT; i++) {
         out[i] = (g_env_pinned >> i) & 1u ? g_saved[i] : g_stubs[i].value;
-        snprintf(num, sizeof(num), "%d", out[i]);
+        if (i == DW3_PORT_OPT_BUTTON_LAYOUT) {
+            snprintf(num, sizeof(num), "%s", dw3_button_layout_name(out[i]));
+        } else {
+            snprintf(num, sizeof(num), "%d", out[i]);
+        }
         if (dw3_optcfg_set(&g_cfg, g_stubs[i].key, num) != 0) {
             PO_WARN("dw3-options: cannot stage %s", g_stubs[i].key);
         }
@@ -617,6 +658,7 @@ int dw3_port_options_persist_init(const char *dir) {
     int rc;
     int i;
     int bad = 0;
+    int layout_from_cfg = 0;
 
     g_persist_on = 0;
     g_dirty = 0;
@@ -627,6 +669,7 @@ int dw3_port_options_persist_init(const char *dir) {
         PO_WARN("dw3-options: no usable config dir; options are session-only");
         po_stepped_env();
         po_audio_apply();
+        po_layout_boot(0);
         return -1;
     }
     strcpy(g_cfg_dir, dir);
@@ -660,6 +703,21 @@ int dw3_port_options_persist_init(const char *dir) {
         for (i = 0; i < DW3_PORT_OPT_COUNT; i++) {
             v = dw3_optcfg_get(&g_cfg, g_stubs[i].key);
             if (v == NULL) {
+                continue;
+            }
+            if (i == DW3_PORT_OPT_BUTTON_LAYOUT) {
+                n = dw3_button_layout_parse(v);
+                if (n < 0) {
+                    PO_WARN("dw3-options: %s=%s is not valid; using default %s",
+                            g_stubs[i].key, v,
+                            dw3_button_layout_name(g_stubs[i].def));
+                    dw3_button_map_log_invalid("button_layout is not "
+                                               "playstation or nintendo");
+                    bad++;
+                    continue;
+                }
+                g_stubs[i].value = n;
+                layout_from_cfg = 1;
                 continue;
             }
             if (dw3_optcfg_parse_int(v, &n) != 0 || !po_valid(i, n)) {
@@ -699,6 +757,7 @@ int dw3_port_options_persist_init(const char *dir) {
     /* DW3_MUSIC_VOLUME / DW3_SFX_VOLUME force a value for this run only. */
     po_stepped_env();
     po_audio_apply();
+    po_layout_boot(layout_from_cfg);
     return rc == DW3_OPTCFG_LOAD_ERROR ? -1 : 0;
 }
 
@@ -709,11 +768,14 @@ static const char *po_mode_name(int index, int v) {
     static const char *const text[3] = {"normal", "fast", "instant"};
     static const char *const battle[3] = {"off", "command",
                                           "command+technique"};
+    static const char *const layout[DW3_LAYOUT_COUNT] = {"playstation",
+                                                         "nintendo"};
 
     if (v < 0 || v > po_value_max(index)) {
         return "?";
     }
     return index == DW3_PORT_OPT_ENCOUNTER_RATE ? encounter[v]
+           : index == DW3_PORT_OPT_BUTTON_LAYOUT ? layout[v]
            : index == DW3_PORT_OPT_BATTLE_MENU ? battle[v] : text[v];
 }
 
@@ -795,12 +857,18 @@ static void po_step(int index, int delta) {
         fprintf(stderr, "dw3-port-options: %s %s\n",
                 index == DW3_PORT_OPT_ENCOUNTER_RATE ? "encounter rate"
                 : index == DW3_PORT_OPT_BATTLE_MENU ? "battle cursor"
+                : index == DW3_PORT_OPT_BUTTON_LAYOUT ? "button layout"
                                                     : "text speed",
                 po_mode_name(index, v));
     }
     fflush(stderr);
     if (po_is_volume(index)) {
         po_audio_apply();
+    }
+    if (index == DW3_PORT_OPT_BUTTON_LAYOUT) {
+        /* In force from the next pad poll (the pad host reads the map every
+         * frame): the choice sound below is already played with it. */
+        dw3_button_map_change(v, "screen");
     }
     (void)po_save();
     po_sound(PO_SND_SELECT);

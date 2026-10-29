@@ -27,7 +27,7 @@ for **residual** Switch-only UX after those phases land. Hosts stay thin:
 | Item | Default | Notes |
 |---|---|---|
 | Focus loss: pause audio/logic; clamp time delta on resume | always on | Complements P5.3 flush; prevents battle/CD jumps after sleep. Event map + wiring: [P5.3_HOME_QUIT.md](P5.3_HOME_QUIT.md) |
-| Confirm/Cancel layout (PS positional vs Nintendo A/B) | PS positional | Toggle in Phase 9, ROADMAP P9.8 (future goal, 2026-10-23) |
+| Confirm/Cancel layout (PS positional vs Nintendo A/B) | PS positional (default) | Options, Controls, Button layout, ROADMAP P9.8 (built 2026-10-28, OLED check open) |
 | Switch-style button glyphs (A/B/X/Y, L/R/ZL/ZR/+/-) instead of the PS icons, US and EU | original icons | ROADMAP P10.6 (future goal, 2026-10-23); texture pack (P8) or overlay; follows the P9.8 layout |
 | System language → EU `LANGUAGE` hint | off / follow stock boot | Override still via `CNTY_SEL` / packs |
 | `swkbd` for tamer name | off | Filter to game charset/font |

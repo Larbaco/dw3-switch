@@ -34,9 +34,9 @@ def cfg_bin(tmp_path_factory) -> Path:
 @pytest.fixture(scope="module")
 def persist_bin(tmp_path_factory) -> Path:
     return build(tmp_path_factory.mktemp("optpersist") / "options_persist_test",
-                 TESTS / "options_persist_main.c", OPTIONS / "port_options.c",
+                 TESTS / "options_persist_main.c", OPTIONS / "port_options.c", OPTIONS / "button_map.c",
                  OPTIONS / "options_cfg.c", ROOT / "port" / "audio" / "volume.c",
-                 defs=["-DDW3_PORT_OPTIONS_TEST"])
+                 defs=["-DDW3_PORT_OPTIONS_TEST", "-DDW3_BUTTON_MAP_TEST"])
 
 
 def session(binary: Path, cfgdir: Path, *steps: str):
@@ -333,7 +333,7 @@ def test_volume_keys_are_in_the_written_file_order(persist_bin: Path, tmp_path: 
             if "=" in l and not l.startswith("#")]
     assert keys == ["version", "widescreen", "fast_forward", "restart_hotkey",
                     "music_volume", "sfx_volume", "encounter_rate", "text_speed",
-                    "battle_menu_memory", "autosave", "end"]
+                    "battle_menu_memory", "autosave", "button_layout", "end"]
 
 
 # --- P6.18 Encounter rate / Text speed rows ---------------------------------
@@ -742,3 +742,57 @@ def test_older_file_without_the_autosave_key_keeps_off(persist_bin: Path, tmp_pa
 def test_autosave_plays_the_choice_sound(persist_bin: Path, tmp_path: Path):
     _, err = session(persist_bin, tmp_path, "open", "row", "8", "press")
     assert sounds(err)[-1].startswith("select ")
+
+
+# --- P9.8 Button layout (docs/CONTROLS_BUNDLE.md) ---------------------------
+
+
+def test_button_layout_defaults_to_playstation_and_logs_the_map(persist_bin: Path, tmp_path: Path):
+    out, err = session(persist_bin, tmp_path, "layout")
+    assert out == ["button_layout=0"]
+    assert "dw3-controls: map loaded layout=playstation source=default" in err
+    assert "dw3-controls: map cross<-B circle<-A triangle<-X square<-Y" in err
+    assert not (tmp_path / CFG).exists()          # reading alone writes nothing
+
+
+def test_button_layout_confirm_toggles_and_is_saved_as_a_word(persist_bin: Path, tmp_path: Path):
+    out, err = session(persist_bin, tmp_path, "open", "row", "9", "press", "layout")
+    assert out == ["button_layout=1"]
+    assert "button_layout=nintendo\n" in (tmp_path / CFG).read_text()
+    assert "dw3-controls: layout changed playstation -> nintendo (screen)" in err
+    assert "dw3-controls: map cross<-A circle<-X triangle<-B square<-Y" in err
+    out, err = session(persist_bin, tmp_path, "layout")
+    assert out == ["button_layout=1"]
+    assert "dw3-controls: map loaded layout=nintendo source=cfg" in err
+    out, err = session(persist_bin, tmp_path, "open", "row", "9", "left", "layout")
+    assert out == ["button_layout=0"]
+    assert "button_layout=playstation\n" in (tmp_path / CFG).read_text()
+
+
+def test_button_layout_bad_values_fall_back_to_playstation(persist_bin: Path, tmp_path: Path):
+    for bad in ("custom", "1", "Nintendo", ""):
+        (tmp_path / CFG).write_text(f"version=1\nbutton_layout={bad}\nend=1\n")
+        out, err = session(persist_bin, tmp_path, "layout")
+        assert out == ["button_layout=0"], bad
+        assert "dw3-controls: map invalid (" in err and "using default" in err, bad
+        assert "dw3-controls: map loaded layout=playstation source=default" in err, bad
+
+
+def test_button_layout_keeps_the_other_rows_and_old_files(persist_bin: Path, tmp_path: Path):
+    (tmp_path / CFG).write_text("version=1\nwidescreen=0\nend=1\n")
+    out, _ = session(persist_bin, tmp_path, "layout", "show")
+    assert out == ["button_layout=0", "widescreen=0 fast_forward=2 restart_hotkey=0"]
+
+
+def test_dw3_button_map_default_forces_playstation_for_one_run(persist_bin: Path, tmp_path: Path):
+    (tmp_path / CFG).write_text("version=1\nbutton_layout=nintendo\nend=1\n")
+    env = dict(os.environ, DW3_BUTTON_MAP="default")
+    r = subprocess.run([str(persist_bin), str(tmp_path), "layout", "open", "row", "0", "press", "close"],
+                       capture_output=True, text=True, env=env)
+    assert r.returncode == 0, r.stderr
+    assert r.stdout.split()[0] == "button_layout=0"
+    assert "dw3-controls: map loaded layout=playstation source=env" in r.stderr
+    # an unrelated change does not write the forced value over the file's
+    assert "button_layout=nintendo\n" in (tmp_path / CFG).read_text()
+    out, err = session(persist_bin, tmp_path, "layout")
+    assert out == ["button_layout=1"]

@@ -6,25 +6,48 @@ The Switch Makefile `host_hello` sample has different controls and is not covere
 
 ## Normal pad controls
 
-Switch face buttons follow physical PS1 positions, not Nintendo's usual A-to-confirm
-convention. A **Button layout** option (PlayStation or Nintendo A/B) is a
-planned Options row, ROADMAP P9.8; until it exists the table below is the only
-layout, and when it lands this table has to be re-audited for both layouts and
-no new chord may use A or B. The PC columns describe the PSY-Z SDL3 keyboard map. PC gamepads use
-SDL's positional mapping; controller labels and SDL device mappings may vary.
+By default the Switch face buttons follow physical PS1 positions, not Nintendo's
+usual A-to-confirm convention. **Options, Controls, Button layout** (P9.8, built
+2026-10-28) chooses between two layouts; the default, **PlayStation**, is the
+table's first column and is bit-identical to the game before the option existed.
+**Nintendo** makes A confirm and B cancel (the game cancels with Triangle, so B
+produces Triangle, not Circle; see [CONTROLS_BUNDLE](CONTROLS_BUNDLE.md#22-the-confirm--cancel-layout-p98-is-a-preset-of-the-map)).
+The layout is stored per region in `port_options.cfg` (`button_layout=playstation|nintendo`),
+applies at once, and works the same on US, EU and the combined build. No new
+chord may use Cross or Circle, whichever physical button they are on. The PC columns
+describe the PSY-Z SDL3 keyboard map; PC gamepads use SDL's positional mapping;
+controller labels and SDL device mappings may vary.
 
-| PS1 logical button | PC keyboard | Switch physical button |
-|---|---|---|
-| D-pad | Arrow keys | D-pad (left stick also supplies movement) |
-| Cross | X | B |
-| Circle | D | A |
-| Triangle | S | X |
-| Square | Z | Y |
-| Start | Enter | Plus (+) |
-| Select | Backspace | Minus (−) |
-| L1 / R1 | Q / R | L / R |
-| L2 / R2 | W / E | ZL / ZR |
-| L3 / R3 | 1 / 2 | Left / right stick click |
+| PS1 logical button | PC keyboard (PlayStation / Nintendo) | Switch, PlayStation layout (default) | Switch, Nintendo layout |
+|---|---|---|---|
+| D-pad | Arrow keys | D-pad (left stick also supplies movement) | same |
+| Cross (confirm) | X / D | B | **A** |
+| Circle (secondary: shop trade, card picks, Options also confirms) | D / S | A | **X** |
+| Triangle (cancel, back) | S / X | X | **B** |
+| Square | Z / Z | Y | Y |
+| Start | Enter | Plus (+) | same |
+| Select | Backspace | Minus (−) | same |
+| L1 / R1 | Q / R | L / R | same |
+| L2 / R2 | W / E | ZL / ZR | same |
+| L3 / R3 | 1 / 2 | Left / right stick click | same |
+
+Only the three face buttons A, B and X move in the Nintendo layout; Y, the
+shoulders, the triggers, the sticks, Plus and Minus stay. With Nintendo on a PC
+keyboard the key that produced Circle (D) confirms and the key that produced
+Cross (X) cancels: the map acts on the PS button each key produces, and the
+keyboard table itself is PSY-Z's.
+
+**Which hotkeys follow the layout.** Port hotkeys are named in PS1 buttons and
+read the game's logical buttons, so they follow the map: fast-forward (R3), the
+restart chord (L1 + R1 + Start + Select), Select (Options from the title and in
+a battle), the map view (Square opens it, the cancel button closes it: B in the
+Nintendo layout), the Options, Cheats and Yes / No screens (Cross **or** Circle
+confirms, Triangle goes back: A or X confirms and B goes back in Nintendo) and
+the EU language select (Cross or Start). The Switch diagnostic chords (Minus +
+L + R debug HUD, Minus + ZL + ZR renderer mode) read the physical buttons and
+never move, and neither do the region picker at start-up, the launcher and the
+crash notice (raw Switch buttons, outside the game). Both are listed in
+[CONTROLS_BUNDLE section 1.4](CONTROLS_BUNDLE.md#14-port-code-that-reads-buttons).
 
 The game decides each button's action in its current scene. For the title and
 port options:
@@ -37,8 +60,9 @@ port options:
   answers, the D-pad moves between Yes and No, Triangle or Circle (PC S or D;
   Switch X or A) cancel. Yes flushes the saves and ends the session: the Switch
   NRO returns to hbmenu, on PC the window closes. HOME still exits as before.
-- Port options is a list of groups (P9.9: Display, Sound, Gameplay, Saves, Help (P6.30), and
-  Cheats before Help once its master switch is on). Up/Down moves the cursor; Cross **or
+- Port options is a list of groups (P9.9: Display, Sound, Gameplay, Saves, Controls (P9.8:
+  the Button layout row; Confirm or Left / Right switch it), Help (P6.30), and
+  Cheats before Controls once its master switch is on). Up/Down moves the cursor; Cross **or
   Circle** (PC X or D; Switch B or A) opens a group. In a group Up/Down selects a
   setting and Cross **or Circle** toggles it. Triangle (PC S; Switch X) in a group
   goes back to the list with the cursor on that group; on the list it returns to
@@ -100,7 +124,7 @@ acceptance remains tracked separately in [P5.3_FLAT_SAVE.md](P5.3_FLAT_SAVE.md).
 | Options in battle | Select, while the command menu waits | Backspace | Minus | Port options over the held battle; no L1/R1/L2/R2 held; not during attacks or in the sub-menus; Widescreen and Cheats greyed; Triangle returns (P9.7 slice 2) |
 | Return to title from the field menu | Start, then the last row, Cross, Yes | Enter, ..., X | Plus, ..., B | Always there; the same reset as the chord, after a Yes / No question (P6.27) |
 | Quit game from the title menu | Last title row, Cross, Yes | ..., X | ..., B | Always on the native title; flushes the saves, then hbmenu (Switch) or closes the window (PC) (P6.28) |
-| Open the new full-screen map (P6.32 PoC) | Square on the game's Map screen | Z | Y | Widescreen on and `map_screen` not 0 (PoC default on). In it: **D-pad (or left stick) moves the cursor** like the game's (the view follows it when zoomed; the game's name box shows on a location), **the right stick zooms** (up in, down out, smooth, not in steps), L1 / R1 zoom in steps, **L2 / R2 (ZL / ZR) change the scaler** (Nearest is the default), Circle hides the text and the name box, the cancel button (PS1 Triangle: Switch X, PC S; it follows the button remap once P6.12 lands) closes it, Square does not; R3 does nothing (no turbo). Free-button table for a future field hotkey: [P6.32 section 7.5](P6.32_MAP_ZOOM.md#75-free-buttons-in-the-field-for-a-future-field-hotkey) |
+| Open the new full-screen map (P6.32 PoC) | Square on the game's Map screen | Z | Y (both layouts) | Widescreen on and `map_screen` not 0 (PoC default on). In it: **D-pad (or left stick) moves the cursor** like the game's (the view follows it when zoomed; the game's name box shows on a location), **the right stick zooms** (up in, down out, smooth, not in steps), L1 / R1 zoom in steps, **L2 / R2 (ZL / ZR) change the scaler** (Nearest is the default), Circle hides the text and the name box, the cancel button (PS1 Triangle: Switch X, or B with the Nintendo layout; PC S; it follows the layout and, later, the P6.12 remap) closes it, Square does not; R3 does nothing (no turbo). Free-button table for a future field hotkey: [P6.32 section 7.5](P6.32_MAP_ZOOM.md#75-free-buttons-in-the-field-for-a-future-field-hotkey) |
 | Change partner on the equip panel (P6.33) | L2 / R2 | W / E | ZL / ZR | Status, Equipment, while the slot list waits (not inside the item list); previous / next party member, wraps; the slot cursor stays. Needs 2 or more partners. On by default; `items_partner_switch=0` in `port_options.cfg` turns it off. No on-screen help line yet (the panel has no free line in the five EU languages) |
 
 Hold all four restart buttons together; one activation is allowed per chord

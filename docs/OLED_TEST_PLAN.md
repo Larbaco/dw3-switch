@@ -71,7 +71,7 @@ lines are still wanted as proof.
 
 | Session | Build | Ticks or decides |
 |---|---|---|
-| A. Boot and title | US + EU ordinary | P6.28, P6.31 row, language fit, P6.30 help (H1 to H8) |
+| A. Boot and title | US + EU ordinary | P6.28, P6.31 row, language fit, P6.30 help (H1 to H8), P9.8 Button layout (L1 to L8) |
 | B. Field and 16:9 tour | US + EU ordinary | P6.1, P7.7 water, P9.7 field Options |
 | C. Turbo speed | US + EU nxlink | P6.22 pass 2 |
 | D. Battles | US + EU ordinary | P5.2, P6.18, P6.20 battle rows, P7.7, P9.7 battle Options |
@@ -124,6 +124,26 @@ are not failures.
 | H6 | **Saves**, **Map view and mods** and **FAQ** (last answers) | Lines not yet checked on the OLED end with `(unverified)` (the per-profile saves, the cross-region import, the map pack) | photo | P6.30. Proof: `dw3-help: page saves (... unverified blocks N)` with N above 0, `dw3-help: text en status "draft, ...", N unverified block(s)` |
 | H7 | Open every page of the list once | No `[?...]` text anywhere, no cut-off line, no overlap with the arrows or the strip | photo of any problem | P6.30. Proof: **no** `dw3-pages: token ... unresolved` line, no `dw3-help: page ... cannot be laid out` line |
 | H8 | EU disc: set each of the five languages (language select) and open Help | The group name and the screen words (Open, Back) in the language's lettering where authored; the pages are **English** for FR, DE, IT and ES (the translations are still to come) | `dw3.log` | P6.30 launch gap. Proof: `dw3-help: open (from title, region EU, platform switch, language fr\|de\|es\|it, 10 pages)` and `dw3-pages: text fallback help * (fr): the language file has no keys yet (stub), English shown` |
+
+### A15. Button layout (P9.8, Session A or B; the L items)
+
+Use a preview that carries P9.8, US and EU ordinary NROs. The layout lives in
+`port_options.cfg` of **each region**, so set it once per disc. Every row names
+the `dw3.log` line that proves it (AGENTS.md rule 12); the owner only reports
+how it feels. Known gap: the Options hint row still shows the letters **B** and
+**X** in both layouts (the glyphs are phase 3, P10.6); with Nintendo the real
+confirm is A and the back button is B. Report it as a note, not a failure.
+
+| # | Action | Expect | If it fails, send | Ticks |
+|---|---|---|---|---|
+| L1 | Fresh launch (no `button_layout` key), US then EU. Title: Plus, Down, **B** on Options, **B** on Controls, then **X**, **X** | The default is the game as before: B confirms, X backs out, A is the secondary button. Options list has **Controls** between Saves and Help; its one row says **PlayStation**. Proof: `dw3-controls: map loaded layout=playstation source=default`, `dw3-controls: map cross<-B circle<-A triangle<-X square<-Y l1<-L r1<-R l2<-ZL r2<-ZR l3<-StickL r3<-StickR`, `dw3-controls: hotkeys fast-forward=R3 (Right stick click) restart=L1+R1+Start+Select (L+R+Plus+Minus)`, then `dw3-controls: first press source=B -> logical cross` | `dw3.log` (all `dw3-controls:` lines), photo | P9.8 |
+| L2 | Options, Controls, **Button layout**: press **B** (it says **Nintendo**), **X** twice back to the title, then **A** on New Game's row | The row changes at once, with the menu sound. The map changes before the next press: A confirms, B backs out. Proof: `dw3-controls: layout changed playstation -> nintendo (screen)`, the new map line `cross<-A circle<-X triangle<-B square<-Y ...`, `dw3-options: saved ... port_options.cfg`, then `dw3-controls: first press source=A -> logical cross` | `dw3.log`, photo | P9.8 |
+| L3 | Nintendo, in the field and in a battle: open the field menu with Plus, **A** on a row, **B** to leave it; in a shop try the secondary action; in a battle open Tech with **A** and leave with **B**; Minus opens Options in a battle | A confirms, B cancels a menu, the shop's secondary action (the PS1 Circle: trade, card picks) is on **X**; Plus and Minus unchanged. Proof: the map line shows `triangle<-B circle<-X`; no `dw3-controls: map invalid` | `dw3.log`, say which screen felt wrong | P9.8 |
+| L4 | Leave with the title's Quit game (or HOME), relaunch, US and EU (set Nintendo on each disc) | The layout is kept: the Controls row says Nintendo and A confirms from the first screen, including the **EU language select** (A picks the language, as does Plus; patch 0187). Proof: `dw3-controls: map loaded layout=nintendo source=cfg` on both discs, `dw3-lang-select: language N chosen by Cross (confirm)` on EU | `dw3.log` of both runs (`dw3.1.log` for the first), `port_options.cfg` (`button_layout=nintendo`) | P9.8 |
+| L5 | Nintendo: the full-screen map (Plus, Map, **Y**, then **B**) and the restart chord (L + R + Plus + Minus, with Restart hotkey on) and fast-forward (right stick click) | The map view closes with **B** (the cancel button) and Y inside it does nothing; the chord and fast-forward work exactly as before. Proof: `dw3-map: close requested by the cancel button (PS-side bit 14, ...)`, the restart lines of E1 and the `dw3-turbo:` toggle line of C7 | `dw3.log` | P9.8, P6.32 |
+| L6 | Nintendo: Help (Options, Help), the **Controls** and **Port hotkeys** pages | Cross [A], Circle [X], Triangle [B], Square [Y], Start [+], and the restart chord `[L] + [R] + [+] + [-]`. With PlayStation they read [B], [A], [X], [Y]. Proof: `dw3-pages: token {btn:cross} -> "[A]"` (Nintendo) and `"[B]"` (PlayStation) | photo, `dw3.log` | P9.8, P6.30 |
+| L7 | nxlink build, both layouts: **Minus + L + R** (debug HUD) and **Minus + ZL + ZR** (renderer mode) | The chords are unchanged by the layout (they read the physical buttons). The region picker (A, Y, Plus), the launcher and the crash notice also keep their physical buttons | nxlink log | P9.8 (CONTROLS_BUNDLE section 1.4) |
+| L8 | Developer: nxlink build with `DW3_BUTTON_MAP=default` in `DW3_NX_TEST_ENV`, cfg set to Nintendo | The run plays with the PlayStation buttons and the file is not changed by an unrelated option change. Proof: `dw3-controls: map loaded layout=playstation source=env`; `port_options.cfg` still `button_layout=nintendo` | `dw3.log`, `port_options.cfg` | P9.8 |
 
 ## Session B: field and 16:9 screens tour
 

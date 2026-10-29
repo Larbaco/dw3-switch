@@ -49,7 +49,8 @@ explicitly marked N/A in this note.
 | Original-game fixes | **None are toggles.** P7.7's HUD Digivolution name (patch `0065`) and Claw steal on the killing blow (`0066`) are always on; reasoning in [P7.7_BUG_FIXES.md](P7.7_BUG_FIXES.md) | Phase 7 |
 | Pacing | **Encounter rate** (OFF / 0.5x / 1x / 1.5x / 2x) and **Text speed** (Normal / Fast / Instant), both default to the original game ([P6.18](P6.18_PACING.md)). Instant shows every dialogue page, report line and (since 2026-10-24) the area name banner's names whole; Normal and Fast leave the banner as the game types it | Phase 6 |
 | Battle menu memory | **Battle cursor** (OFF / Command / Command+Tech): the battle command menu and technique list open on your last pick; key `battle_menu_memory` 0 / 1 / 2, off by default (a row since P7.9's follow-up, it was file-only) ([P7.9](P7.9_BATTLE_MENU_MEMORY.md)) | Phase 7 |
-| Button layout / glyphs | **Button layout** (PlayStation positional, default / Nintendo A confirms, B cancels), ROADMAP P9.8; **Switch button glyphs** on/off, ROADMAP P10.6. Both future goals (2026-10-23); the glyphs follow the layout | Phase 9 / Phase 10 |
+| Button layout | **Button layout** (PlayStation positional, default / Nintendo A confirms, B cancels), ROADMAP P9.8, **built 2026-10-28**: row 9, in the Controls group, key `button_layout`, see [Button layout row](#button-layout-row-p98) | Phase 9 (P9.8) |
+| Switch button glyphs | **Switch button glyphs** on/off, ROADMAP P10.6. Future goal (2026-10-23); the glyphs follow the layout | Phase 10 |
 | Cheats (test aid) | A **Cheats** sub-screen for hardware testing, reached with Square / Y on the Options screen: master switch, Fill bag, Instant win, Battle now and a count of saves flagged "cheat used" (a sidecar file, never the save). A second page (PR 2) has Money, Warp (13 areas), Item id, Item count and Give item. Off by default, keys `cheat_enabled` and `cheat_instant_win` in `port_options.cfg`; built in by default, removed by `DW3_CHEATS=OFF` / `--no-cheats`. Later HP / MP. See [Cheats](#cheats-p620) and ROADMAP P6.20 | Phase 6 (P6.20) |
 | Switch host | Rumble on/intensity, confirm A/B layout, `swkbd` name, CRT/sharp, system-language hint | Phase 10 (+ P4.4 / P5.3 always-on lifecycle) |
 | Restart game | Optional L1 + R1 + Start + Select in the shared PS1 pad map; OFF by default | Phase 6.9 |
@@ -109,6 +110,7 @@ encounter_rate=0
 text_speed=0
 battle_menu_memory=0
 autosave=0
+button_layout=playstation
 end=1
 ```
 
@@ -167,6 +169,17 @@ like the others; it is not part of the `dw3-options:` boot and `saved` log lines
 keep their text, which the replay scenarios match). With it on the boot logs one extra
 line, `dw3-options: autosave=1 (...)`. A file from before the row has no key and reads
 as OFF; an invalid value (`2`, `on`, ...) is logged and reads as OFF.
+
+`button_layout` (P9.8) is the one key that holds a **word**, `playstation` or
+`nintendo` (default `playstation`), not an integer: it names a layout, and the
+custom map of P6.12 will add a third word and a `button_map` key
+([CONTROLS_BUNDLE](CONTROLS_BUNDLE.md)). Another value is logged
+(`dw3-options: button_layout=<v> is not valid` and `dw3-controls: map invalid
+(...), using default`) and reads as PlayStation. It is not part of the
+`dw3-options:` boot and `saved` log lines (their text is matched by the replay
+scenarios); the boot line is `dw3-controls: map loaded layout=... source=cfg|default|env`.
+`DW3_BUTTON_MAP=default` forces PlayStation for one run, is not saved and leaves
+the file's value alone.
 
 `items_partner_switch` (P6.33, 0 or 1, default 1) is a file-only key like `battle_menu_memory` was before its row:
 read by `dw3_port_items_partner_switch_enabled`, kept when the Options screen rewrites the file, not part of
@@ -698,9 +711,10 @@ hints (Open or Change, Back).
 | Sound | Music volume (3), SFX volume (4) | |
 | Gameplay | Fast-forward (1), Restart hotkey (2), Encounter rate (5), Text speed (6), Battle cursor (7) | Restart hotkey moves to Controls when P6.12 exists |
 | Saves | Auto-save (8) | |
+| Controls | Button layout (9) | P9.8, built: PlayStation (default) / Nintendo, see [Button layout row](#button-layout-row-p98). The remap (P6.12) adds rows here and moves Restart hotkey in |
 | Cheats | the ten P6.20 cheat rows (not registry rows), a scrolling sub-screen | Listed once the Cheats master switch is on; greyed in game, and title-only |
 | Help | no rows, a screen of its own (P6.30, built) | Always listed (it is not secret), after Saves and Cheats. Confirm opens the technical help (`port/help/`, [P6.30_HELP](P6.30_HELP.md)): a list of ten pages and a scrolling text page, on its own full-canvas layer that the host draws instead of the Options layer (the Options cache is untouched). Up / Down scroll a page by line, Left / Right by screenful, L1 / R1 (L / R) change page, Back goes to the page list and out. Title, field menu and battle Options all reach it |
-| Controls, Walkthrough | not built | P6.12, P6.35: hidden placeholders in `port_options_groups.h` (`built = 0`); flip the flag when the screen exists |
+| Walkthrough | not built | P6.35: hidden placeholder in `port_options_groups.h` (`built = 0`); flip the flag when the screen exists |
 
 Keys: Up / Down move the cursor; **Confirm** (Cross, Circle) opens the group;
 **Back** (Triangle, X on the Switch) in a group returns to the list with the
@@ -919,6 +933,35 @@ the EU disc (English on the US disc), generated by
 Gebiet` / `Cada zona` / `Ogni area`, OFF is the shared word. The other eight rows
 stay English on both discs, as before. What the row does, its defaults and the
 checklist: [P6.31_AUTOSAVE.md](P6.31_AUTOSAVE.md).
+
+## Button layout row (P9.8)
+
+**Ten rows.** **Button layout** is registry row 9 (`DW3_PORT_OPT_BUTTON_LAYOUT`,
+appended so the first nine indexes stay), alone in the **Controls** group, which
+is listed between Cheats and Help (so the group list now has six plaques, seven
+with Cheats on, and scrolls only then). It is a stepped row: Confirm toggles
+PlayStation / Nintendo, Left / Right step, the choice sound plays, the file is
+written at once and the map changes before the next pad poll. The in-game and
+the battle Options reach it too: the layout row is not locked anywhere.
+Lettering (row, the two values, the message line `Nintendo: A confirms, B
+cancels. Applies now.`, the group name and its line) is in the five languages
+of the EU disc, generated by `tools/generate_pc_title_lettering.py`
+(`opt_row_bl_`, `opt_val_bl_ps_`, `opt_val_bl_nin_`, `opt_desc_bl_`,
+`opt_grp_controls_`, `opt_grpdesc_controls_`); `PlayStation` and `Nintendo` are
+product names. What it does and why the preset moves three buttons, not two:
+[CONTROLS_BUNDLE sections 2.2 and 2.3](CONTROLS_BUNDLE.md). Owner-facing answers
+used while the owner is away (Q1 A confirms and B cancels, Q2 hotkeys follow the
+layout, Q3 glyphs later) are recorded there as orchestrator defaults.
+
+Logs (`dw3.log`): `dw3-controls: map loaded layout=... source=cfg|default|env`,
+the map and hotkey lines, `layout changed ... (screen)`, `first press
+source=A -> logical cross`; the screen's own `dw3-port-options: button layout
+nintendo` and `dw3-options: saved ...`. Unit tests: `test_button_map.py`,
+`test_options_persist.py` (the layout cases), `test_pad_host.py`. Replay:
+`us/eu-controls-layout` (new references) and the seven `*-nintendo-*`
+scenarios ([P6.15](P6.15_REPLAY_TESTS.md)). The Options hint row keeps the
+PlayStation marks (PC) or the letters B and X (Switch) in both layouts until
+phase 3 (P10.6) makes them follow the map.
 
 ## Cheats (P6.20)
 

@@ -3,6 +3,7 @@
  * fallback. Log lines go to stderr; test_help.py checks them. */
 #include "port_atlas.h"
 #include "port_help.h"
+#include "port_button_map.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -161,6 +162,15 @@ static void test_regions(void) {
     CHECK(page_has("(unverified)", NULL));
     CHECK(page_has("Switch user profile", NULL));
     dw3_help_close();
+    /* P9.8: under the Nintendo layout the Controls page names A for Cross. */
+    dw3_button_map_load(DW3_LAYOUT_NINTENDO, "cfg");
+    CHECK(dw3_help_open(&eu) == 0);
+    dw3_help_tick(DW3_HELP_KEY_CONFIRM);   /* Setup */
+    dw3_help_tick(DW3_HELP_KEY_NEXT);      /* Controls */
+    CHECK(page_has("Cross, confirms", NULL) && page_has("[A]", NULL) &&
+          page_has("[X]", NULL));
+    dw3_help_close();
+    dw3_button_map_load(DW3_LAYOUT_PLAYSTATION, "default");
     /* on PC the @switch lines and their tags are gone */
     {
         Dw3HelpConfig pc = cfg(DW3_PAGES_EU, DW3_PAGES_PC, 0, DW3_HELP_FROM_TITLE);

@@ -1640,3 +1640,62 @@ for _n, _v, _l, _rec, _env, _why in _SINGLE:
                               (0, rf"dw3-pc: cdfs root=\S*/{_v}\b")),
                   forbid_log=((0, rf"dw3-region: starting {'eu' if _v == 'us' else 'us'} "),),
                   note="P6.24: through the launcher; captures equal the plain run's"))
+
+
+# --- P9.8 confirm / cancel layout (docs/CONTROLS_BUNDLE.md, ROADMAP P9.8) ------
+# Replays hand the game the PS buttons it must see, so the layout map is
+# bypassed and the plain scenarios prove the default is bit-identical. These
+# scenarios turn on the dev variable DW3_REPLAY_SOURCE=1: the recording's masks
+# are button *positions* (Switch A is the Circle position, B Cross, X Triangle,
+# Y Square, as a real pad reports them) and go through the map, with
+# button_layout=nintendo in the seeded port_options.cfg. The recordings are the
+# plain ones converted by tools/replay/gen_scenarios.py, so the game sees exactly
+# the original input and every capture is compared with the PLAIN scenario's
+# reference (ref_from): a wrong map shows as a different picture or a different
+# log, and no reference of its own is stored for them.
+import dataclasses  # noqa: E402
+
+_NIN_CFG = (("button_layout", "nintendo"),)
+_NIN_ENV = (("DW3_REPLAY_SOURCE", "1"),)
+_NIN_LOG = (r"dw3-controls: map loaded layout=nintendo source=cfg(?s:.*)"
+            r"dw3-controls: map cross<-A circle<-X triangle<-B square<-Y(?s:.*)"
+            r"dw3-controls: first press source=A -> logical cross",)
+
+
+def _nintendo(base_name, name, phase, note):
+    b = by_name()[base_name]
+    logs = tuple(e for e in b.expect_log if e[0] == 0)
+    return dataclasses.replace(
+        b, name=name, phases=(phase,), cfg=b.cfg + _NIN_CFG, env=b.env + _NIN_ENV,
+        expect_log=logs + tuple((0, r) for r in _NIN_LOG),
+        forbid_log=tuple(e for e in b.forbid_log if e[0] == 0)
+        + ((0, r"dw3-controls: map invalid"),),
+        ref_from=base_name, note=note)
+
+
+for _v in ("us", "eu"):
+    _add(
+        _nintendo(f"{_v}-field-options", f"{_v}-nintendo-menu", f"{_v}-nintendo-menu",
+                  "Nintendo layout: A opens the field menu and the Options screen, B backs out "
+                  "of the group, the screen and the menu (P9.8); same pictures as the plain run"),
+        _nintendo(f"{_v}-map-view", f"{_v}-nintendo-map-view", f"{_v}-nintendo-map-view",
+                  "Nintendo layout: the full-screen map opens with Square (Y) and closes with the "
+                  "logical cancel bit, B (P9.8, P6.32)"),
+        _nintendo(f"{_v}-title-quit", f"{_v}-nintendo-title-quit", f"{_v}-nintendo-title-quit",
+                  "Nintendo layout: the title menu and the Quit Yes / No window confirm with A "
+                  "and cancel with B (P9.8)"),
+        Scenario(f"{_v}-controls-layout", _v, "full", timeout=300,
+                 phases=(f"{_v}-controls-layout-p1", f"{_v}-controls-layout-p2"),
+                 expect_log=((0, r"dw3-controls: map loaded layout=playstation source=default(?s:.*)"
+                                 r"dw3-port-options: group open controls \(1 row\(s\), title\)(?s:.*)"
+                                 r"dw3-controls: layout changed playstation -> nintendo \(screen\)(?s:.*)"
+                                 r"dw3-controls: map cross<-A circle<-X triangle<-B square<-Y"),
+                             (1, r"dw3-controls: map loaded layout=nintendo source=cfg"),
+                             (1, r"dw3-port-options: group open controls \(1 row\(s\), title\)")),
+                 forbid_log=((0, r"dw3-controls: map invalid"), (1, r"dw3-controls: map invalid")),
+                 note="Controls group: the Button layout row switches to Nintendo and is read back "
+                      "from port_options.cfg by the next process (P9.8)"),
+    )
+_add(_nintendo("eu-lang-cross-fr", "eu-nintendo-lang-cross-fr", "eu-nintendo-lang-cross-fr",
+               "Nintendo layout: the EU language select confirms with A, the logical Cross (patch "
+               "0187, P9.8)"))

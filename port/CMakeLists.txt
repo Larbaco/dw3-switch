@@ -338,6 +338,7 @@ add_library(dw3_port_options${_S} OBJECT
   "${CMAKE_CURRENT_SOURCE_DIR}/mods/mod_pack.c"
   "${CMAKE_CURRENT_SOURCE_DIR}/mods/png_stb.c"
   "${CMAKE_CURRENT_SOURCE_DIR}/options/battle_options.c"
+  "${CMAKE_CURRENT_SOURCE_DIR}/options/button_map.c"
   "${CMAKE_CURRENT_SOURCE_DIR}/options/confirm.c"
   "${CMAKE_CURRENT_SOURCE_DIR}/options/field_options.c"
   "${CMAKE_CURRENT_SOURCE_DIR}/options/lang_select.c"

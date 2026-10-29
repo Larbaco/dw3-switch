@@ -1,0 +1,27 @@
+# US: title menu Quit game, No then Yes (P6.28) (Nintendo layout: the masks are button positions, DW3_REPLAY_SOURCE=1)
+pad 20 0x0008
+pad 25 0x0000
+pad 210 0x0008
+pad 215 0x0000
+shot 320 menu
+pad 340 0x0040
+pad 345 0x0000
+pad 360 0x0040
+pad 365 0x0000
+pad 380 0x0040
+pad 385 0x0000
+shot 420 quit-focus
+pad 440 0x2000
+pad 445 0x0000
+shot 500 confirm-no
+pad 520 0x2000
+pad 525 0x0000
+shot 580 after-no
+pad 600 0x2000
+pad 605 0x0000
+pad 650 0x0040
+pad 655 0x0000
+shot 710 confirm-yes
+pad 730 0x2000
+pad 735 0x0000
+end 1100
