@@ -104,6 +104,34 @@ def test_all_launch_languages_exist():
                 assert set(keys) <= set(en), f"{lang}: keys not in en"
 
 
+def test_translations_are_complete_and_fit():
+    """fr/de/it/es carry every key of en.txt (a drafted language is complete,
+    no English fallback), stay inside the budgets, keep the TODO(verify)
+    markers, use only characters of the help glyph atlas (Latin-1 and the few
+    symbols of generate_help_assets.CHARSET), and say they need native review."""
+    _, en = parse_text(WT / "text" / "en.txt")
+    charset = set(range(0x20, 0x7F)) | set(range(0xA0, 0x100)) | {
+        0x2013, 0x2014, 0x2018, 0x2019, 0x201C, 0x201D, 0x2022, 0x2026}
+    for lang in LANGS[1:]:
+        headers, keys = parse_text(WT / "text" / f"{lang}.txt")
+        assert "machine-drafted" in headers["status"], lang
+        assert "native review" in headers["status"], lang
+        assert list(keys) == list(en), f"{lang}: keys differ from en.txt"
+        for k, v in keys.items():
+            layer = k.rsplit(".", 1)[1]
+            assert v, f"{lang}: {k} is empty"
+            if re.match(r"wt\.ch\d+\.[sx]\d+\.", k):
+                limit = BUDGET[layer]
+            elif k.startswith("wt.area.") and layer == "help":
+                limit = BUDGET["help"]
+            else:
+                limit = BUDGET["title"]
+            assert len(v) <= limit, f"{lang}: {k} over budget ({len(v)} > {limit})"
+            assert v.count("TODO(verify)") == en[k].count("TODO(verify)"), f"{lang}: {k} TODO marker"
+            bad = {c for c in v if ord(c) not in charset}
+            assert not bad, f"{lang}: {k} has glyphs outside the atlas: {bad}"
+
+
 def test_no_unverified_marker_in_release():
     """A release build refuses TODO(verify); today it is only counted, so the
     draft state is visible in CI output."""

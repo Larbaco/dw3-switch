@@ -2390,11 +2390,11 @@ def help_battle(version):
 
 
 def help_lang(idx):
-    """P6.30 (EU): the help in one of the other four languages. The files are
-    stubs for now, so the pages show English and the log has the fallback line;
-    the screen's lettering (group name, header) is in the language already."""
+    """P6.30 (EU): the help in one of the other four languages (fr, de, it, es:
+    machine-drafted text, needs native review). The page list, the Controls page
+    and the Options page (the longest one) are captured in the language."""
     lang = EU_LANGS[idx]
-    r = Rec(f"EU: P6.30 technical help, language {lang} (stub: English fallback)")
+    r = Rec(f"EU: P6.30 technical help, language {lang} (machine-drafted text)")
     f = 90
     for _ in range(idx):
         r.press(f, DOWN)
@@ -2412,6 +2412,8 @@ def help_lang(idx):
     r.shot(f + 30, "help-list")
     f = _keys(r, f + 40, DOWN, CROSS)
     r.shot(f + 30, "controls-top")
+    f = _keys(r, f + 40, TRIANGLE, DOWN, DOWN, DOWN, CROSS)   # list, Options explained
+    r.shot(f + 30, "options-top")
     f = _keys(r, f + 40, TRIANGLE, TRIANGLE, TRIANGLE)
     r.end(f + 60)
     return r
@@ -2685,8 +2687,7 @@ def main(out):
         if lang != "en":
             (out / f"eu-title-quit-{lang}.rec").write_text(title_quit_lang(i).text(True))
             (out / f"eu-field-options-{lang}.rec").write_text(field_options_lang(i).text(True))
-            if lang == "fr":
-                (out / f"eu-help-{lang}.rec").write_text(help_lang(i).text(True))
+            (out / f"eu-help-{lang}.rec").write_text(help_lang(i).text(True))
     for v in ("us", "eu"):
         for name, fn in RESTART_RECS:
             (out / f"{v}-{name}.rec").write_text(fn(v).text(True))

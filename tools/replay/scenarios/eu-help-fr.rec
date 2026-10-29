@@ -1,4 +1,4 @@
-# EU: P6.30 technical help, language fr (stub: English fallback)
+# EU: P6.30 technical help, language fr (machine-drafted text)
 pad 90 0x0040
 pad 95 0x0000
 pad 125 0x0008
@@ -38,8 +38,19 @@ pad 670 0x0000
 shot 715 controls-top
 pad 725 0x1000
 pad 730 0x0000
-pad 745 0x1000
+pad 745 0x0040
 pad 750 0x0000
-pad 765 0x1000
+pad 765 0x0040
 pad 770 0x0000
-end 845
+pad 785 0x0040
+pad 790 0x0000
+pad 805 0x4000
+pad 810 0x0000
+shot 855 options-top
+pad 865 0x1000
+pad 870 0x0000
+pad 885 0x1000
+pad 890 0x0000
+pad 905 0x1000
+pad 910 0x0000
+end 985
