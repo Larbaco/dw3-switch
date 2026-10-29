@@ -1,6 +1,6 @@
 Digimon World 3 / 2003, Switch homebrew preview
 
-Release notes for v0.6.5-preview.50. The release tag and boot version
+Release notes for v0.6.5-preview.51. The release tag and boot version
 identify the actual source revision.
 
 Player guide (setup, controls, Options, saves, crash reports):
@@ -12,8 +12,26 @@ New in this preview
   PASSED). Items that are not there yet are checked on PC and in the Ryubing
   emulator only, and are marked unverified.
 
+  Technical help (P6.30, #333): Options has a Help group, the last row of the
+  list (also from the field menu and the battle Options). It opens a page
+  list with 10 pages in English: Setup, Controls, Port hotkeys, Turbo, Options
+  explained, Saves, Widescreen, Map view and mods, Logs and bug reports, and
+  FAQ. Up and Down move through the list and Cross (Switch B) opens a page.
+  On a page, Up and Down scroll a line at a time, Left and Right a screenful,
+  L and R change the page, and the cancel button (Switch X) goes back. Setup
+  shows only the lines for this disc (US or EU). French, German, Italian and
+  Spanish show the English pages for now; the translations come later. The
+  game waits behind the help, as it does behind Options. Not yet checked on
+  the OLED (plans H1 to H8).
+
+  Build and test speed (#334, docs/BUILD_SPEED.md): ccache for the builds,
+  incremental decomp patches and a faster replay selection. No change to the
+  game in this preview.
+
+  From preview.50:
+
   EU language select takes the confirm button (#330, patch 0187, plan E1.6c).
-  On the EU language select, Cross (Switch A, PS1 Cross) picks the language as
+  On the EU language select, Cross (Switch B, PS1 Cross) picks the language as
   well as Start, which still works. The confirm button follows a future
   button remap. The log line `dw3-lang-select: language N chosen by Cross
   (confirm)` (or `by Start`) shows which one was used.
@@ -185,17 +203,17 @@ New in this preview
   options and saves now reach the log, and new proof lines match the OLED
   test plan items. Send the whole set of sdmc:/switch/dw3/dw3*.log files.
 
-  Still open on the OLED (checked against the OLED test plan and the owner's
-  preview.48 and preview.49 logs): the combined .nro with only one region
-  present, the timeout, Minus and disc images in the parent folder (plan G9.1
-  to G9.3, G9.6, G9.11 to G9.13), the audio check after many techs on the EU
-  build (#188, plan D13), the map mod (plan B17), save writes with HOME (plan
-  G2), the Cheats sub-screen (plan A13), the group open stall (plan A10), the
-  item shop at 16:9 (plan B18), equipment in the Items menu (plan B19), the map
-  view close button (plan B20), the stage sweep (plan G10), and the name box
-  staying put during zoom (#326, plan B16). New in preview.50, not yet on the
-  OLED: the EU language select confirm button (plan E1.6c) and the map sprites
-  at fixed size (plan B16 section 11).
+  Still open on the OLED (the rows of docs/OLED_TEST_PLAN.md without a PASSED
+  mark): the help, plans H1 to H8; the EU language select confirm button
+  (E1.6c); the map sprites at fixed size and the name box staying put during
+  zoom (B16, section 11 and #326); the Cheats sub-screen (A13) and the group
+  open after the prewarm (A10); the item shop at 16:9 (B18); equipment in the
+  Items menu (B19); the map view close button (B20); the map mod (B17); the
+  stage sweep (G10); the audio check after many techs on the EU build (#188,
+  D13); save writes with HOME (G2); the faster turbo in scenes (C1 to C3, C10);
+  and the combined .nro with one region present (G9.1, G9.2), the timeout
+  (G9.3), the start after a choice without the picker (G9.4, G9.5), Minus
+  (G9.6) and disc images in the parent folder (G9.11 to G9.13).
 
 Known issues
 

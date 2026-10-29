@@ -9,7 +9,7 @@ A native port of Digimon World 3 (Digimon World 2003 in Europe) to the
 Nintendo Switch and to the PC, built from the matching PlayStation
 decompilation. It shows as "Digimon World 3 NX" in hbmenu and Sphaira.
 
-Latest preview: [v0.6.5-preview.50](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.50)
+Latest preview: [v0.6.5-preview.51](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.51)
 ([release history](docs/RELEASES.md)). New to the port? Read the
 [player guide](docs/PLAYER_GUIDE.md). To try it, see
 [Play it on Switch](#play-it-on-switch). All docs are listed in the
