@@ -571,6 +571,7 @@ All with the orchestrator defaults (pending the owner's confirmation). Items 1 (
 
 The Region row needs the new registry row to be in `dw3_optgroups[Gameplay]` only in the
 combined image, so the plain builds' Gameplay screens are unchanged.
+<<<<<<< HEAD
 
 ## 11. Built: PR 3, one map pack for both regions (2026-10-29)
 
@@ -588,3 +589,5 @@ Orchestrator default 3: one shared pack, per-region files only where the pieces 
   icons). So the shared pack is right, with 13 regional sprites.
 - Docs: [MOD_MAP_UPSCALE](MOD_MAP_UPSCALE.md); replays `us/eu-map-view-mod-shared`;
   unit tests in `test_mod_pack.py`; OLED B17 (test the pack on US and EU).
+=======
+>>>>>>> origin/main
