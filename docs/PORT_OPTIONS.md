@@ -49,11 +49,13 @@ explicitly marked N/A in this note.
 | Original-game fixes | **None are toggles.** P7.7's HUD Digivolution name (patch `0065`) and Claw steal on the killing blow (`0066`) are always on; reasoning in [P7.7_BUG_FIXES.md](P7.7_BUG_FIXES.md) | Phase 7 |
 | Pacing | **Encounter rate** (OFF / 0.5x / 1x / 1.5x / 2x) and **Text speed** (Normal / Fast / Instant), both default to the original game ([P6.18](P6.18_PACING.md)). Instant shows every dialogue page, report line and (since 2026-10-24) the area name banner's names whole; Normal and Fast leave the banner as the game types it | Phase 6 |
 | Battle menu memory | **Battle cursor** (OFF / Command / Command+Tech): the battle command menu and technique list open on your last pick; key `battle_menu_memory` 0 / 1 / 2, off by default (a row since P7.9's follow-up, it was file-only) ([P7.9](P7.9_BATTLE_MENU_MEMORY.md)) | Phase 7 |
-| Button layout / glyphs | **Button layout** (PlayStation positional, default / Nintendo A confirms, B cancels), ROADMAP P9.8; **Switch button glyphs** on/off, ROADMAP P10.6. Both future goals (2026-10-23); the glyphs follow the layout | Phase 9 / Phase 10 |
+| Button layout | **Button layout** (PlayStation positional, default / Nintendo A confirms, B cancels), ROADMAP P9.8, **built 2026-10-28**: row 9, in the Controls group, key `button_layout`, see [Button layout row](#button-layout-row-p98) | Phase 9 (P9.8) |
+| Switch button glyphs | **Switch button glyphs** on/off, ROADMAP P10.6. Future goal (2026-10-23); the glyphs follow the layout | Phase 10 |
 | Cheats (test aid) | A **Cheats** sub-screen for hardware testing, reached with Square / Y on the Options screen: master switch, Fill bag, Instant win, Battle now and a count of saves flagged "cheat used" (a sidecar file, never the save). A second page (PR 2) has Money, Warp (13 areas), Item id, Item count and Give item. Off by default, keys `cheat_enabled` and `cheat_instant_win` in `port_options.cfg`; built in by default, removed by `DW3_CHEATS=OFF` / `--no-cheats`. Later HP / MP. See [Cheats](#cheats-p620) and ROADMAP P6.20 | Phase 6 (P6.20) |
 | Switch host | Rumble on/intensity, confirm A/B layout, `swkbd` name, CRT/sharp, system-language hint | Phase 10 (+ P4.4 / P5.3 always-on lifecycle) |
 | Restart game | Optional L1 + R1 + Start + Select in the shared PS1 pad map; OFF by default | Phase 6.9 |
 | Items menu | **Equip from the Items menu** (key `items_equip_from_items`, 0 or 1, **default 1**, file-only until the Menus group of P6.34 phase 5; `DW3_ITEMS_EQUIP_FROM_ITEMS=0` forces it off for a run): Cross on a weapon, armor or accessory in the Items menu opens the partner step and equips through the game's own `STSTATUS_equip` ([P6.34](P6.34_MENU_FLOW.md#12-phase-1-built-2026-10-28-findings-defaults-and-strings), patch `0188`). With 0 the Items menu is the original game's. **On by default is an orchestrator default pending the owner's answer to P6.34 Q1** | Phase 6 |
+| Items menu | **Equip stays on the slot list** (key `items_equip_stays`, 0 or 1, **default 1**, file-only until the Menus group of P6.34 phase 5; `DW3_ITEMS_EQUIP_STAYS=0` forces it off for a run): in Status > Equipment, Cross on an item equips it and the panel returns to the slot list in about 9 frames (the original fades four panels out and in) with the slot cursor on the slot just changed; the next list opens on the worn item when a spare copy is in it ([P6.34](P6.34_MENU_FLOW.md#13-phase-2-built-2026-10-29-equip-stays-on-the-slot-list), patch `0190`). With 0 the panel is the original game's. **On by default is an orchestrator default pending the owner's answer to P6.34 Q6** | Phase 6 |
 | Items menu | **Partner switch on the equip panel** (key `items_partner_switch`, 0 or 1, **default 1**, file-only: the Options window is full at nine rows, so there is no row): ZL / ZR change the party member on the Status screen's Equipment slot list without leaving ([P6.33](P6.33_ITEMS_MENU.md), patch `0128`, `DW3_ITEMS_PARTNER_SWITCH=0` forces it off for a run). A documented exception to "off by default": the owner decided on (2026-10-26) | Phase 6 |
 | Map screen (P6.32 PoC) | **New full-screen map** (key `map_screen`, 0 or 1, **PoC default 1**, file-only, no row): Square on the game's Map screen opens a host-drawn full-screen map with pan, zoom and a live scaler switch; widescreen only. The real feature will default to off and get its row ([P6.32](P6.32_MAP_ZOOM.md#7-phase-0-results-2026-10-27-spike-and-scaler-poc), patch `0146`) | Phase 6 |
 | Auto-save | **Auto-save** (OFF / Each area; key `autosave`, row 9): the first idle frame of a new field area writes the game to its own file, `autosave.bin`; the title's Continue loads it. Off by default; with it off the game is as before ([P6.31](P6.31_AUTOSAVE.md)) | Phase 6 (P6.31) |
@@ -110,6 +112,7 @@ encounter_rate=0
 text_speed=0
 battle_menu_memory=0
 autosave=0
+button_layout=playstation
 end=1
 ```
 
@@ -168,6 +171,21 @@ like the others; it is not part of the `dw3-options:` boot and `saved` log lines
 keep their text, which the replay scenarios match). With it on the boot logs one extra
 line, `dw3-options: autosave=1 (...)`. A file from before the row has no key and reads
 as OFF; an invalid value (`2`, `on`, ...) is logged and reads as OFF.
+
+`button_layout` (P9.8) is the one key that holds a **word**, `playstation`,
+`nintendo` or `custom` (default `playstation`), not an integer: it names a layout.
+`custom` (P6.12) needs a second key, `button_map`: ten digits that are a
+permutation of 0 to 9 (one per PS button, in the order Cross, Circle, Triangle,
+Square, L1, R1, L2, R2, L3, R3; each digit names the source position that makes
+it, `0123456789` is the identity). The key is only written while the layout is
+custom (it is removed otherwise) and a `button_map` beside another layout is
+ignored ([CONTROLS_BUNDLE](CONTROLS_BUNDLE.md)). Another value is logged
+(`dw3-options: button_layout=<v> is not valid` and `dw3-controls: map invalid
+(...), using default`) and reads as PlayStation. It is not part of the
+`dw3-options:` boot and `saved` log lines (their text is matched by the replay
+scenarios); the boot line is `dw3-controls: map loaded layout=... source=cfg|default|env`.
+`DW3_BUTTON_MAP=default` forces PlayStation for one run, is not saved and leaves
+the file's value alone.
 
 `items_partner_switch` (P6.33, 0 or 1, default 1) is a file-only key like `battle_menu_memory` was before its row:
 read by `dw3_port_items_partner_switch_enabled`, kept when the Options screen rewrites the file, not part of
@@ -699,9 +717,10 @@ hints (Open or Change, Back).
 | Sound | Music volume (3), SFX volume (4) | |
 | Gameplay | Fast-forward (1), Restart hotkey (2), Encounter rate (5), Text speed (6), Battle cursor (7) | Restart hotkey moves to Controls when P6.12 exists |
 | Saves | Auto-save (8) | |
-| Cheats | the ten P6.20 cheat rows (not registry rows), a scrolling sub-screen | Listed once the Cheats master switch is on; greyed in game, and title-only |
+| Controls | Button layout (9), Customize buttons (11), Reset to default (12) | P9.8: PlayStation (default) / Nintendo, P6.12: Custom, the Customize buttons screen and Reset, see [Button layout row](#button-layout-row-p98) and [Customize buttons](#customize-buttons-p612). Restart hotkey stays in Gameplay |
+| Cheats | the ten P6.20 cheat rows (not registry rows), a scrolling sub-screen | **Always listed** (P51 item 5; it used to appear only once the master switch was on, so nobody found it): the title opens the Cheats screen where the master switch is; greyed in game (title-only). `DW3_OPTGRP_CHEATS_LISTED` in `port_options_groups.h` (the build has the Cheats feature); `dw3-port-options: group list n=7 (cheats listed, master off, locked in game 0)` once per open |
 | Help | no rows, a screen of its own (P6.30, built) | Always listed (it is not secret), after Saves and Cheats. Confirm opens the technical help (`port/help/`, [P6.30_HELP](P6.30_HELP.md)): a list of ten pages and a scrolling text page, on its own full-canvas layer that the host draws instead of the Options layer (the Options cache is untouched). Up / Down scroll a page by line, Left / Right by screenful, L1 / R1 (L / R) change page, Back goes to the page list and out. Title, field menu and battle Options all reach it |
-| Controls, Walkthrough | not built | P6.12, P6.35: hidden placeholders in `port_options_groups.h` (`built = 0`); flip the flag when the screen exists |
+| Walkthrough | not built | P6.35: hidden placeholder in `port_options_groups.h` (`built = 0`); flip the flag when the screen exists |
 
 Keys: Up / Down move the cursor; **Confirm** (Cross, Circle) opens the group;
 **Back** (Triangle, X on the Switch) in a group returns to the list with the
@@ -894,6 +913,62 @@ scrolled; `cheats-give`, the end of the list) now compare pictures.
 
 See [OLED_TEST_PLAN](OLED_TEST_PLAN.md) A5, A9 to A12 and their proof lines.
 
+## Menu background (P51 item 6)
+
+The title's Options, Cheats and Help screens draw the game's own field-menu background
+(sprite 0x1D of the status sprites: a 96 x 96 period of blue panels) under the plaques,
+dimmed (alpha 90 of 255), instead of the dimmed title picture. In game the near-opaque dim
+stays (the field menu behind must not read through). **Static, not scrolling:** the
+game scrolls it one pixel every other frame, but the Options layers are retained (the
+cache of #298 / #327 composes them once), and a scroll would recompose the layer, about 160 ms,
+every frame. A scrolling version needs a textured quad with a UV offset drawn under the canvas
+in both hosts (SDL3 GPU and the Switch GLES overlay); that is the follow-up, and the OLED
+row A18 asks whether the owner wants it.
+
+Code: `platforms/pc/src/menu_bg_tile.c` reads `STSTATCS.BIN` and `STSTATTM.BIN`
+(FILE_STATUS_SPRITES 0x3F4 US / 0x404 EU and the file after it) through cdfs, places entry 0
+(two TIMs at VRAM (0x280, 0x100) and (0x2C0, 0x100)), decodes the 4-bit parts of frame 0x1D
+that fall in one period with the game's sprite rules, and returns an RGBA tile; no game data
+is written anywhere. `dw3_pc_title_overlay_menu_tile_prepare()` runs it once, on the frame
+thread, before the first layer is composed (`dw3_options_cache_prewarm_begin` / `_update`),
+and logs `dw3-options: menu background tile 96x96 from the status sprites (sprite 0x1D) ready
+in N us` (4 to 6 ms in the PC runs) or `... not available (reason), using the title backdrop`.
+The 16:9 side strips use the canvas's top-left texel, so it holds the tile's average colour
+(dimmed): flat navy beside the tiled middle. Same art code on the Switch (the overlay is shared).
+
+## Region at start row (P51 item 4)
+
+A sixth row of the Gameplay group, **only in the combined image** (`DW3_VERSION=both`;
+the plain US and EU images have no other region to start, `DW3_OPT_REGION_ROW` in
+`port_options_groups.h`). Registry row 10, **Region at start: Ask / US / EU**
+(Confirm cycles, Left / Right step). It is stored as `region_default` (`ask`, `us`,
+`eu`) in the **top-level** `sdmc:/switch/dw3/port_options.cfg`, the picker's file,
+through `dw3_region_cfg_write` (which refuses to overwrite a file it cannot read, keeps
+the other keys and writes `end=1` last); the region folder's own file never gets it.
+The folder is the parent of the region's config folder, or `DW3_CONFIG_DIR` when that
+is set (the replays keep both files in one folder). It takes effect at the next start;
+a change in game never changes the running region, and the row is not locked in game.
+Ask = the picker every start (3 s countdown), the fresh-install default.
+
+Logs: `dw3-options: region_default us read from <dir>/port_options.cfg` at boot and
+`dw3-options: region_default eu saved to <dir>/port_options.cfg (takes effect at the
+next start)` per change (`... NOT saved ...` when the file cannot be read or written);
+the boot picker's own `dw3-region: stored region_default=... minus_held=...` line
+follows. The lettering (Region at start, Ask in five languages, US, EU) is generated
+by `tools/generate_pc_title_lettering.py` (`REGION_TEXT`). Tests:
+`tools/tests/test_options_persist.py::test_region_row_*` (the registry built as the
+combined image's game copies are, `-DDW3_REGION_IMAGE=1`), replay `us/eu-options-region`
+(tier `both`: `tools/replay_tests.sh --only us-options-region --only eu-options-region
+--bin-both build/pc-both/dw3-pc`).
+
+**The hold-to-pick buttons** (a try, unverified on the console): at launch the combined
+image samples the pad for 12 frames; **Minus** (hbmenu or Sphaira may take it) or **ZL and
+ZR held together** ask for the picker, when both regions are present and a region is
+stored. The line `dw3-region: pick buttons seen minus=M zl=Z zr=R (12 frames)` says what
+the game saw, so one run settles whether the launcher passes ZL / ZR. The small launcher
+(`platforms/switch/launcher`) takes ZL + ZR the same way. The Options row is the supported
+way; `region_default=ask` needs no button.
+
 ## Auto-save row (P6.31)
 
 **Nine rows (P6.31).** The **Auto-save** row (OFF / Each area, key `autosave`) is
@@ -920,6 +995,64 @@ the EU disc (English on the US disc), generated by
 Gebiet` / `Cada zona` / `Ogni area`, OFF is the shared word. The other eight rows
 stay English on both discs, as before. What the row does, its defaults and the
 checklist: [P6.31_AUTOSAVE.md](P6.31_AUTOSAVE.md).
+
+## Button layout row (P9.8)
+
+**Ten rows.** **Button layout** is registry row 9 (`DW3_PORT_OPT_BUTTON_LAYOUT`,
+appended so the first nine indexes stay), alone in the **Controls** group, which
+is listed between Cheats and Help (so the group list now has six plaques, seven
+with Cheats on, and scrolls only then). It is a stepped row: Confirm toggles
+PlayStation / Nintendo, Left / Right step, the choice sound plays, the file is
+written at once and the map changes before the next pad poll. The in-game and
+the battle Options reach it too: the layout row is not locked anywhere.
+Lettering (row, the two values, the message line `Nintendo: A confirms, B
+cancels. Applies now.`, the group name and its line) is in the five languages
+of the EU disc, generated by `tools/generate_pc_title_lettering.py`
+(`opt_row_bl_`, `opt_val_bl_ps_`, `opt_val_bl_nin_`, `opt_desc_bl_`,
+`opt_grp_controls_`, `opt_grpdesc_controls_`); `PlayStation` and `Nintendo` are
+product names. What it does and why the preset moves three buttons, not two:
+[CONTROLS_BUNDLE sections 2.2 and 2.3](CONTROLS_BUNDLE.md). Owner-facing answers
+used while the owner is away (Q1 A confirms and B cancels, Q2 hotkeys follow the
+layout, Q3 glyphs later) are recorded there as orchestrator defaults.
+
+Logs (`dw3.log`): `dw3-controls: map loaded layout=... source=cfg|default|env`,
+the map and hotkey lines, `layout changed ... (screen)`, `first press
+source=A -> logical cross`; the screen's own `dw3-port-options: button layout
+nintendo` and `dw3-options: saved ...`. Unit tests: `test_button_map.py`,
+`test_options_persist.py` (the layout cases), `test_pad_host.py`. Replay:
+`us/eu-controls-layout` (new references) and the seven `*-nintendo-*`
+scenarios ([P6.15](P6.15_REPLAY_TESTS.md)). The Options hint row keeps the
+PlayStation marks (PC) or the letters B and X (Switch) in both layouts until
+phase 3 (P10.6) makes them follow the map.
+
+## Customize buttons (P6.12)
+
+**Thirteen registry rows.** Rows 11 **Customize buttons** and 12 **Reset to default**
+are actions with no value and no cfg key, listed in the Controls group after Button
+layout (`DW3_PORT_OPT_CUSTOMIZE`, `DW3_PORT_OPT_RESET_MAP`). Button layout gets a third
+value, **Custom**, that Confirm and Left / Right reach in the cycle: it keeps the map
+in force and only names it custom (choosing PlayStation or Nintendo again replaces the
+map). Confirm on Customize buttons opens a sub-screen (`DW3_OPTGRP_CUSTOM`, never on
+the group list) of ten rows, a PS button on the left and the console button that
+produces it on the right, scrolling six at a time. The Customize row is title only
+(greyed in game with the usual "Locked in game" line, registry bit 11 of the locked
+mask); Reset works everywhere. The prompt: the row reads "Press a button" and the
+message line says Start or Select cancels; the screen reads the raw word before the
+map (`dw3_button_map_source_word`), ignores what was held when the prompt opened until
+it is released, and times out after 300 ticks. Lettering (EN, FR, DE, IT, ES; FR / DE /
+IT / ES are machine-drafted, needs native review): `opt_row_cz_`, `opt_desc_cz_`,
+`opt_row_rs_`, `opt_desc_rs_`, `opt_val_cp_`, `opt_desc_cp_`, `opt_val_bl_cus_`,
+`opt_grp_custom_`, `opt_grpdesc_custom_`, and the language-free `opt_row_ps_*` and
+`opt_val_btn_*`.
+
+Logs (`dw3.log`): `dw3-port-options: group open customize (10 row(s), title)`,
+`customize waiting for a button for L1`, `dw3-controls: assign l1<-R (r1<-L swapped in)
+[custom]`, the `map digits` and `map ...` lines, `customize L1 cancelled (Start /
+Select | timeout)`, `dw3-controls: reset to default (layout=playstation) (screen)`, and
+at boot `map loaded layout=custom source=cfg`. Unit tests: `test_button_map.py`,
+`test_options_persist.py` (the `test_customize_*` and `test_custom_layout_*` cases),
+`test_field_options.py` (the lock mask). Replay: `us/eu-controls-custom` (two phases),
+`us/eu-controls-custom-invalid`.
 
 ## Cheats (P6.20)
 

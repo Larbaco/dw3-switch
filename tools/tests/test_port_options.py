@@ -20,11 +20,12 @@ def port_options_bin(tmp_path_factory) -> Path:
         "-Wextra",
         "-Werror",
         "-O2",
-        "-DDW3_PORT_OPTIONS_TEST",
+        "-DDW3_PORT_OPTIONS_TEST", "-DDW3_BUTTON_MAP_TEST",
         "-o",
         str(out),
         str(ROOT / "tools" / "tests" / "port_options_main.c"),
         str(ROOT / "port" / "options" / "port_options.c"),
+        str(ROOT / "port" / "options" / "button_map.c"),
         str(ROOT / "port" / "options" / "options_cfg.c"),
         f"-I{ROOT / 'port' / 'include'}",
     ]

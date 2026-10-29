@@ -60,7 +60,22 @@ def mod_bin(tmp_path_factory) -> Path:
     return out
 
 
+def make_shared_pack(root: Path) -> None:
+    """P51 item 3: one pack for both regions; the EU has its own h1 map and its
+    own towns_5 sprite, which must win over the shared files."""
+    pack = root / "shared"
+    (pack / "map" / "reveal" / "h0").mkdir(parents=True)
+    (pack / "map" / "reveal" / "eu_h0").mkdir(parents=True)
+    (pack / "mod.json").write_text(json.dumps(manifest(id="shared", regions=["us", "eu"])))
+    for half in (0, 1):
+        gradient(32, 24).save(pack / "map" / f"map_h{half}@4x.png")
+    gradient(32, 24).save(pack / "map" / "map_eu_h1@4x.png")
+    gradient(12, 8, alpha=True).save(pack / "map" / "reveal" / "h0" / "towns_5@4x.png")
+    gradient(12, 8, alpha=True).save(pack / "map" / "reveal" / "eu_h0" / "towns_5@4x.png")
+
+
 def test_mod_pack(mod_bin: Path, tmp_path: Path):
+    make_shared_pack(tmp_path / "shared_root")
     good = tmp_path / "good_root"
     make_pack(good, "good", manifest(), maps=[(0, 4, (32, 24)), (0, 2, (16, 12)),
                                               (1, 4, (32, 24)), (1, 2, (16, 12))],

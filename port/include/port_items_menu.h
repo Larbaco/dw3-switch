@@ -113,6 +113,42 @@ enum { DW3_ITEMS_MSG_DONE = 0, DW3_ITEMS_MSG_REFUSED = 1 };
 int dw3_port_items_equip_message(char *out, int cap, int language, int which, const char *a,
                                  const char *b, const char *c);
 
+
+/* ---- P6.34 phase 2: equip without the long round trip (patch 0190) --------
+ * Design: docs/P6.34_MENU_FLOW.md (phase 2, owner question 6, orchestrator
+ * default pending confirmation). In Status > Equipment, Cross on an item equips
+ * it and the panel returns to the slot list with the panel fades shortened to
+ * one frame each (the original game fades the item list, the slot's item and
+ * the title out and the slots in, about 70 frames), the slot cursor on the slot
+ * just changed. The next list opens on the row of the item worn in that slot
+ * when a spare copy of it is in the list, else on "none" as in the original. */
+
+/* Key of port_options.cfg (file-only): 0 or 1, default 1. DW3_ITEMS_EQUIP_STAYS
+ * overrides the file for tests. With 0 the panel is the original game's. */
+#define DW3_ITEMS_EQUIP_STAYS_KEY "items_equip_stays"
+int dw3_port_items_equip_stays_enabled(void);
+
+/* The row of `worn` in the list `items[0..count)` (row 0 is "none", -1), or 0
+ * when it is not there (no spare copy) or nothing is worn. Pure. */
+int dw3_port_items_stays_row(const short *items, int count, int worn);
+
+/* The first row shown when the list of `count` rows opens with the cursor on
+ * `row`: 0 while the row is on the first page of eight, else the page that
+ * keeps three rows above it, never past the last page. Pure. */
+int dw3_port_items_stays_scroll(int row, int count);
+
+/* Cross equipped `item` in `slot` of `partner`: the quick return starts. Logs
+ * `equip-stays begin` with the bag and worn totals. */
+void dw3_port_items_stays_begin(int partner, int slot, int item);
+
+/* The panel is back on the slot list after `frames` frames. Logs
+ * `equip-stays slot=.. after=equip frames=..` (the original takes about 70). */
+void dw3_port_items_stays_landed(int slot, int frames);
+
+/* The list opened for `slot` with the cursor on `cursor` and the page at
+ * `scroll` (row = cursor + scroll, `item` the id there, -1 for none). */
+void dw3_port_items_stays_list_open(int slot, int row, int cursor, int scroll, int item, int count);
+
 #ifdef __cplusplus
 }
 #endif

@@ -1,0 +1,18 @@
+# EU: language select -> fr with Cross, title, menu (Nintendo layout: the masks are button positions, DW3_REPLAY_SOURCE=1)
+shot 80 select-default
+pad 90 0x0040
+pad 95 0x0000
+shot 115 select-cursor
+pad 125 0x2000
+pad 130 0x0000
+pad 175 0x0008
+pad 180 0x0000
+pad 205 0x0008
+pad 210 0x0000
+pad 235 0x0008
+pad 240 0x0000
+shot 285 title
+pad 295 0x0008
+pad 300 0x0000
+shot 395 menu
+end 405

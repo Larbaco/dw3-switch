@@ -3,6 +3,7 @@
  * fallback. Log lines go to stderr; test_help.py checks them. */
 #include "port_atlas.h"
 #include "port_help.h"
+#include "port_button_map.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -161,6 +162,15 @@ static void test_regions(void) {
     CHECK(page_has("(unverified)", NULL));
     CHECK(page_has("Switch user profile", NULL));
     dw3_help_close();
+    /* P9.8: under the Nintendo layout the Controls page names A for Cross. */
+    dw3_button_map_load(DW3_LAYOUT_NINTENDO, "cfg");
+    CHECK(dw3_help_open(&eu) == 0);
+    dw3_help_tick(DW3_HELP_KEY_CONFIRM);   /* Setup */
+    dw3_help_tick(DW3_HELP_KEY_NEXT);      /* Controls */
+    CHECK(page_has("Cross, confirms", NULL) && page_has("[A]", NULL) &&
+          page_has("[X]", NULL));
+    dw3_help_close();
+    dw3_button_map_load(DW3_LAYOUT_PLAYSTATION, "default");
     /* on PC the @switch lines and their tags are gone */
     {
         Dw3HelpConfig pc = cfg(DW3_PAGES_EU, DW3_PAGES_PC, 0, DW3_HELP_FROM_TITLE);
@@ -177,6 +187,7 @@ static void test_regions(void) {
 static void test_language(void) {
     Dw3HelpConfig fr = cfg(DW3_PAGES_EU, DW3_PAGES_SWITCH, 1, DW3_HELP_FROM_TITLE);
     const Dw3HelpView *v;
+    static const char stub[] = "@format = 1\n@book = help\n@lang = fr\n@status = stub\n";
     static const char partial[] =
         "@format = 1\n@book = help\n@lang = fr\n@status = test\n"
         "help.controls.title = Commandes\n"
@@ -184,7 +195,13 @@ static void test_language(void) {
         "help.controls.p.1 = Le jeu pense en boutons PlayStation.\n"
         "help.ui.str.back = Retour\n";
 
-    /* the stub: English, one log line */
+    /* the real French text (machine-drafted): every page in French */
+    CHECK(dw3_help_open(&fr) == 0);
+    v = dw3_help_view();
+    CHECK(v->npages == 10 && strcmp(v->titles[1], "Commandes") == 0);
+    dw3_help_close();
+    /* a stub (header only): English, one log line */
+    dw3_help_test_set_text(1, stub);
     CHECK(dw3_help_open(&fr) == 0);
     v = dw3_help_view();
     CHECK(v->npages == 10 && strcmp(v->titles[1], "Controls") == 0);
@@ -205,15 +222,22 @@ static void test_language(void) {
 
 /* "dump": every page of the real text on the real metrics, both regions and
  * hosts (test_help.py reads the counts). */
-static int dump(void) {
+static int dump(int all_langs) {
     static const int envs[4][2] = {{DW3_PAGES_US, DW3_PAGES_PC},
                                    {DW3_PAGES_EU, DW3_PAGES_PC},
                                    {DW3_PAGES_US, DW3_PAGES_SWITCH},
                                    {DW3_PAGES_EU, DW3_PAGES_SWITCH}};
     int e;
+    int lang;
 
+    for (lang = all_langs ? 1 : 0; lang < (all_langs ? 5 : 1); lang++)
     for (e = 0; e < 4; e++) {
-        Dw3HelpConfig c = cfg(envs[e][0], envs[e][1], 0, DW3_HELP_FROM_TITLE);
+        Dw3HelpConfig c;
+
+        if (all_langs && envs[e][0] != DW3_PAGES_EU) {
+            continue;
+        }
+        c = cfg(envs[e][0], envs[e][1], lang, DW3_HELP_FROM_TITLE);
         const Dw3HelpView *v;
         int p;
 
@@ -228,8 +252,8 @@ static int dump(void) {
             if (!page_has("zzzzqq", &lines)) {
                 (void)0;
             }
-            printf("PAGE env=%d/%d %d %s lines=%d unresolved=%d\n", envs[e][0],
-                   envs[e][1], p, v->screen == DW3_HELP_SCREEN_PAGE ? "ok" : "?",
+            printf("PAGE env=%d/%d lang=%d %d %s lines=%d unresolved=%d\n", envs[e][0],
+                   envs[e][1], lang, p, v->screen == DW3_HELP_SCREEN_PAGE ? "ok" : "?",
                    lines, page_has("[?", NULL));
             dw3_help_tick(DW3_HELP_KEY_BACK);
             dw3_help_tick(DW3_HELP_KEY_DOWN);
@@ -241,7 +265,10 @@ static int dump(void) {
 
 int main(int argc, char **argv) {
     if (argc > 1 && strcmp(argv[1], "dump") == 0) {
-        return dump();
+        return dump(0);
+    }
+    if (argc > 1 && strcmp(argv[1], "dumplang") == 0) {
+        return dump(1);
     }
     test_flow();
     test_regions();

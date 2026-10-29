@@ -1,12 +1,52 @@
-# DW3NX walkthrough, fr text (P6.35).
-# STUB. TODO: the owner rule is that the walkthrough exists at launch in every base-game
-# language (EN, and FR/DE/IT/ES on the EU disc). This file must be drafted and reviewed
-# before anything ships; a stub makes the release validator fail. Until then every key
-# falls back to en.txt and the fallback is logged. Same keys as en.txt (wt.<step id>.title,
-# goal, help; wt.<chapter>.title; wt.area.<area>.title and .help). Original writing, not
-# translated from external guides.
+# DW3NX walkthrough, French text, phase 1 (P6.35).
+# MACHINE-DRAFTED, NEEDS NATIVE REVIEW. Written by an AI agent from en.txt; the
+# owner approved the English and cannot check the other languages
+# (docs/P6.35_WALKTHROUGH.md, section 7). Same keys, same budgets as en.txt
+# (title <= 40, goal <= 240, help <= 480 characters). Town, building and character
+# names (Kusanagi City, Online Center, Genji, ...) are left as the English
+# originals: the EU disc's own spelling of them is not confirmed (see the doc).
+# Menu words follow the EU disc (OBJETS, CARTE, STATUT). TODO(verify) markers are
+# kept as in en.txt.
 
 @format = 1
 @book = walkthrough
 @lang = fr
-@status = stub, TODO draft and owner review pending
+@status = draft, machine-drafted, needs native review
+
+# ---------------------------------------------------------------- chapter 1
+wt.ch01.title = Chapitre 1 : Les débuts
+
+wt.ch01.s01.title = Aller au Online Center
+wt.ch01.s01.goal = Junior est à Kusanagi City, le monde réel, avec ses amis. Rendez-vous au Online Center pour vous inscrire au jeu.
+wt.ch01.s01.help = Le Online Center est près du coin de rue où commence l'histoire. Entrez et parlez à l'Account Clerk. Cette scène termine l'inscription et fait avancer l'histoire.
+
+wt.ch01.s02.title = Se connecter à Asuka City
+wt.ch01.s02.goal = Vous êtes inscrit. Entrez dans le monde du jeu et présentez-vous à la Login Room d'Asuka City.
+wt.ch01.s02.help = Après le Online Center, la Chamber Room emmène Junior dans le jeu. Dans la Login Room d'Asuka City, parlez à l'Account Clerk pour terminer la connexion. TODO(verify): le trajet depuis la Chamber Room.
+
+wt.ch01.s03.title = Obtenir votre premier partenaire
+wt.ch01.s03.goal = Allez au Main Lobby d'Asuka City et trouvez le Tamer Service. Il vous remet votre premier partenaire.
+wt.ch01.s03.help = Le Tamer Service propose trois packs de départ, appelés A, B et C, et télécharge celui que vous choisissez. Prenez n'importe lequel : l'histoire se poursuit de la même façon avec chacun.
+
+wt.ch01.s04.title = Rencontrer le dresseur Genji
+wt.ch01.s04.goal = Un dresseur nommé Genji vous attend dans le Central Sector d'Asuka City. Trouvez-le dans les rues près du pont.
+wt.ch01.s04.help = Parlez à Genji là où le Central Sector rejoint le pont. Après votre discussion, un combat commence.
+
+wt.ch01.s05.title = En finir avec Genji
+wt.ch01.s05.goal = Le combat contre Genji est terminé, mais vous n'en avez pas fini avec lui. La conversation continue dans la même rue.
+wt.ch01.s05.help = La scène suivante se joue quand le Central Sector se recharge après le combat. Si rien ne se passe, sortez de la rue et revenez. Cela fait avancer l'histoire à l'étape suivante. TODO(verify): le déclencheur exact.
+
+wt.ch01.s06.title = Partir pour Seiryu City
+wt.ch01.s06.goal = Asuka City est ouverte. Quand vous êtes prêt, prenez l'East Station jusqu'à l'East Sector et parlez au Seiryu Leader à Seiryu City.
+wt.ch01.s06.help = Le Seiryu Leader vous éprouve lors d'un combat, puis vous remet un Silver ID et le Seiryu Badge.
+
+wt.ch01.x01.title = Nouveaux visages à Asuka
+wt.ch01.x01.goal = Facultatif. À partir de cette étape, plusieurs bâtiments d'Asuka City abritent de nouveaux personnages.
+wt.ch01.x01.help = Passez voir le Digimon Lab, l'Inn (les deux étages), le Junk Shop, Lamb Chop et El Dorado. TODO(verify): ce que propose chaque personne.
+
+# ---------------------------------------------------------------- areas
+wt.area.kusanagi.title = Kusanagi City
+wt.area.kusanagi.help = Kusanagi City est le monde réel, où commence l'histoire. Seuls deux endroits comptent ici : le coin de rue et le Online Center.
+
+wt.area.asuka.title = Asuka City
+wt.area.asuka.help = Asuka City est la première ville. Dans l'ordre : la Login Room, le Main Lobby (partenaire de départ), puis le Central Sector, où attend Genji. Une fois Genji terminé, les boutiques et les bâtiments se remplissent, et le chemin vers l'East Station s'ouvre.

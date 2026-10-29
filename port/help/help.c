@@ -4,6 +4,7 @@
 /* P6.30 technical help (port_help.h, docs/P6.30_HELP.md). */
 #include "port_help.h"
 #include "port_atlas.h"
+#include "port_button_map.h"
 #include "port_options_groups.h"
 
 #include <stdarg.h>
@@ -121,26 +122,67 @@ static const BtnName k_btn[] = {
     {"dpad", "D-pad", "[D-pad]", "[Arrows]"},
 };
 
+/* The entry of k_btn named `name`, or NULL. */
+static const BtnName *btn_by_name(const char *name) {
+    unsigned i;
+
+    for (i = 0; i < sizeof(k_btn) / sizeof(k_btn[0]); i++) {
+        if (strcmp(k_btn[i].name, name) == 0) {
+            return &k_btn[i];
+        }
+    }
+    return NULL;
+}
+
+/* The console / keyboard name of the button that produces the PS button `name`
+ * under the layout in force (P9.8, docs/CONTROLS_BUNDLE.md): {btn:cross} reads
+ * [B] with the PlayStation layout and [A] with the Nintendo one. The ten
+ * remappable buttons follow the map; Start, Select and the D-pad do not. */
+static const BtnName *btn_physical(const char *name) {
+    int i;
+
+    for (i = 0; i < DW3_BTN_COUNT; i++) {
+        if (strcmp(dw3_button_ps_name(i), name) == 0) {
+            const BtnName *src = btn_by_name(
+                dw3_button_ps_name(dw3_button_map_current()[i]));
+
+            return src != NULL ? src : btn_by_name(name);
+        }
+    }
+    return btn_by_name(name);
+}
+
+/* "[L] + [R] + [+] + [-]" with L1 and R1 as the map has them. */
+static const char *restart_chord(char *buf, size_t n) {
+    const BtnName *l1 = btn_physical("l1");
+    const BtnName *r1 = btn_physical("r1");
+    const int nx = g_cfg.platform == DW3_PAGES_SWITCH;
+
+    if (l1 == NULL || r1 == NULL) {
+        return NULL;
+    }
+    snprintf(buf, n, nx ? "%s + %s + [+] + [-]" : "%s + %s + [Enter] + [Backspace]",
+             nx ? l1->nx : l1->pc, nx ? r1->nx : r1->pc);
+    return buf;
+}
+
 static int token_fn(void *ud, const char *kind, const char *name, char *out,
                     int outsz) {
-    unsigned i;
+    const BtnName *b;
+    char chord[64];
     const char *s = NULL;
 
     (void)ud;
     if (strcmp(kind, "btn") == 0 || strcmp(kind, "ps") == 0) {
-        for (i = 0; i < sizeof(k_btn) / sizeof(k_btn[0]); i++) {
-            if (strcmp(k_btn[i].name, name) == 0) {
-                s = kind[0] == 'p'
-                        ? k_btn[i].ps
-                        : (g_cfg.platform == DW3_PAGES_SWITCH ? k_btn[i].nx
-                                                              : k_btn[i].pc);
-                break;
-            }
+        /* {ps:..} is the PS1 name; {btn:..} is the physical button now. */
+        b = kind[0] == 'p' ? btn_by_name(name) : btn_physical(name);
+        if (b != NULL) {
+            s = kind[0] == 'p'
+                    ? b->ps
+                    : (g_cfg.platform == DW3_PAGES_SWITCH ? b->nx : b->pc);
         }
     } else if (strcmp(kind, "chord") == 0 && strcmp(name, "restart") == 0) {
-        s = g_cfg.platform == DW3_PAGES_SWITCH
-                ? "[L] + [R] + [+] + [-]"
-                : "[Q] + [R] + [Enter] + [Backspace]";
+        s = restart_chord(chord, sizeof(chord));
     } else if (strcmp(kind, "path") == 0) {
         if (strcmp(name, "root") == 0) {
             s = g_cfg.root;

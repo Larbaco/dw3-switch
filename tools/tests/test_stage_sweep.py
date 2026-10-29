@@ -134,3 +134,34 @@ def test_off_by_default(sweep_bin, tmp_path):
     assert r.returncode == 0, r.stderr
     r = subprocess.run([str(exe)], env=env, capture_output=True, text=True)
     assert r.returncode == 0 and r.stderr == ""
+
+
+def test_stage_sweep_in_the_top_level_file_is_logged_and_ignored(tmp_path):
+    """P51 item 7: the picker's file holds stage_sweep=1 (the wrong file): one
+    log line names both files, the sweep stays off."""
+    top = tmp_path / "dw3"
+    region = top / "eu"
+    region.mkdir(parents=True)
+    env = {k: v for k, v in os.environ.items() if not k.startswith("DW3_")}
+    env["DW3_STAGE_SWEEP_DIR"] = str(region)
+    src = tmp_path / "stray.c"
+    src.write_text(
+        '#include "port_stage_sweep.h"\n'
+        "int main(void){ int i; for(i=0;i<1000;i++) if(dw3_sweep_tick(0xE00)) "
+        "return 1; return dw3_sweep_enabled(); }\n")
+    exe = tmp_path / "stray"
+    r = subprocess.run(["gcc", "-std=gnu11", "-DDW3_SWEEP_TEST", "-pthread", "-o", str(exe),
+                        str(src), str(SWEEP / "stage_sweep.c"),
+                        f"-I{ROOT / 'port' / 'include'}", f"-I{SWEEP}"],
+                       capture_output=True, text=True)
+    assert r.returncode == 0, r.stderr
+    (top / "port_options.cfg").write_text("region_default=eu\nstage_sweep=1\nend=1\n")
+    r = subprocess.run([str(exe)], env=env, capture_output=True, text=True)
+    assert r.returncode == 0                 # the sweep stays off
+    assert r.stderr.count("dw3-sweep: stage_sweep found in") == 1
+    assert (f"dw3-sweep: stage_sweep found in {top}/port_options.cfg, ignored; "
+            f"put it in {region}/port_options.cfg") in r.stderr
+    # no stray key, no line
+    (top / "port_options.cfg").write_text("region_default=eu\nstage_sweep=0\nend=1\n")
+    r = subprocess.run([str(exe)], env=env, capture_output=True, text=True)
+    assert r.returncode == 0 and r.stderr == ""

@@ -45,7 +45,7 @@ RULES: list[tuple[str, object]] = [
     # --- areas by directory ------------------------------------------------
     (r"^port/walkthrough/", ("*walkthrough*",)),
     (r"^port/autosave/", ("*autosave*", "*title-continue*")),
-    (r"^port/battle_menu/", ("*p79*", "*battle-options*")),
+    (r"^port/battle_menu/", ("*p79*", "*battle-options*", "*battle-list-bar*")),
     (r"^port/(items_menu/|include/port_items_menu\.h)", ("*items*", "*menu-screens*")),
     (r"^port/map_view/", ("*map*",)),
     (r"^port/saves/|^port/memcard/", ("*save*", "xr-*", "*continue*", "*restart*", "*autosave*")),
@@ -58,6 +58,13 @@ RULES: list[tuple[str, object]] = [
     (r"^port/options/(widescreen|screen_fade)", ("*ws-*", "*iris*", "*title-intro*")),
     (r"^port/options/turbo", ("*turbo*",)),
     (r"^port/options/restart", ("*restart*",)),
+    # P9.8: the layout map. Replays bypass it (except the *nintendo* scenarios,
+    # which turn it on with DW3_REPLAY_SOURCE=1), so the default is identical by
+    # construction; the screens and the scenarios that read buttons are the check.
+    (r"^port/options/button_map", _OPTIONS + _TITLE + ("*nintendo*", "*controls*", "*help*", "*map-view*")),
+    (r"^port/psyz_missing/psyz_pad_host", _OPTIONS + _TITLE + ("*nintendo*", "*controls*", "*help*", "*map*",
+                                                                 "*menu*", "*items*", "*battle*", "*restart*",
+                                                                 "*quit*", "*card*", "*shop*", "*lab*", "*deck*")),
     (r"^port/options/title_", _TITLE),
     (r"^port/options/(field_options|battle_options)", ("*options*",)),
     (r"^port/options/(port_options|options_cfg|confirm)", _OPTIONS + _TITLE),
@@ -70,6 +77,7 @@ RULES: list[tuple[str, object]] = [
     (r"^port/patches/\d+-PORT_HOST-p63[34]-", ("*items*", "*menu-screens*")),
     (r"^port/patches/\d+-PORT_HOST-p77-", ("*p77*",)),
     (r"^port/patches/\d+-PORT_HOST-p79-", ("*p79*",)),
+    (r"^port/patches/\d+-PORT_HOST-p51-battle", ("*battle-list-bar*", "*p79*", "*p77*", "*two-battles*", "*battle-options*")),
     (r"^port/patches/\d+-PORT_HOST-p61-widescreen-battle-spiral", ("*spiral*",)),
     (r"^port/patches/\d+-PORT_HOST-p61-widescreen-area-change-iris", ("*iris*",)),
     (r"^port/patches/\d+-PORT_HOST-p61-widescreen-map-screen", ("*map*",)),
@@ -127,7 +135,7 @@ def select(files, scenarios) -> Selection:
                 sel.reasons.append((path, "pin/engine-wide: full tier"))
             elif what == "scenario-recording":
                 phase = path.rsplit("/", 1)[-1].removesuffix(".rec")
-                got = owners.get(phase, set())
+                got = owners.get(phase, set()) & full_tier  # nx and both scenarios run elsewhere
                 sel.names |= got
                 sel.reasons.append((path, "recording of " + (", ".join(sorted(got)) or "no scenario")))
             elif what:

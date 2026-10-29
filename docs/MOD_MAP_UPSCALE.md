@@ -185,10 +185,25 @@ No image, frame or pack is in git.
 ```
 sdmc:/switch/dw3/mods/<pack>/            PC: <config dir>/mods/<pack>/
   mod.json
-  map/map_<region>_h<half>@<N>x.png     region us|eu, half 0|1, N 2..4
+  map/map_h<half>@<N>x.png              SHARED by US and EU (P51 item 3), half 0|1, N 2..4
+  map/reveal/h<half>/<kind>_<id>@<N>x.png     shared sprites
+  map/map_<region>_h<half>@<N>x.png     one region's own file: wins over the shared one
   map/reveal/<region>_h<half>/<kind>_<id>@<N>x.png
 ```
 
+**One pack for both regions (P51 item 3, 2026-10-29).** The loader tries the
+region's own file first and then the shared one, for the map and for each
+sprite (`dw3_mod_load_map` / `dw3_mod_load_sprite`; an old pack with only
+per-region files works as before). A pack that serves both discs lists
+`"regions": ["us", "eu"]`. The log line of an open ends with
+`shared=A region=B`: how many of the pack's files (the map and each distinct
+sprite) came from the shared names and how many from the region's own.
+**Compared on the owner's discs (2026-10-29, `--extract-only` on both
+runtimes):** the two bare maps are identical in both halves, and so are
+91 of 94 reveal sprites of half 0 and 84 of 94 of half 1. The ones that
+differ between US and EU are `areas` 59, 60 and 61 (both halves) and, in half 1,
+`towns` 0, 34, 46, 47, 48, 49 and 50; a pack made from both discs keeps those as
+per-region files and shares the rest.
 `kind` is `towns` (map sheet entry 1) or `areas` (entry 2, the visited-area
 icons); `id` is the sheet's frame id (the `frame` of a reveal piece of patch
 `0146`). A map file must be exactly **392 x N by 352 x N**; a sprite exactly its
@@ -268,10 +283,14 @@ their 4-bit palettes are the last rows of the page.
 4. On the PC the same folder goes under `<config dir>/mods/` (next to
    `port_options.cfg`).
 
-A pack made from the US disc lists `"regions": ["us"]`. Make the EU pack from
-the EU `runtime/eu` with a second `--runtime`: the EU base map was
-byte-identical in phase 1, but the EU sprites were not compared, so the tool
-writes the region list from what it was given.
+A pack made from one runtime lists that region only (honest: nothing was
+compared). **Give both** (`--runtime runtime/us --runtime runtime/eu`): the tool
+compares every piece pixel for pixel, upscales the identical ones **once** into the
+shared names (about half the time of two separate runs), writes the pieces that
+differ as per-region files, lists `["us", "eu"]` and prints
+`h0: identical: 91 of 94 pieces (regions: us, eu)`. `--extract-only` prints that
+line without the upscaler (the comparison needs no GPU). The upscaled files are
+derived from the owner's disc: never commit them.
 
 ### Tests
 
@@ -279,6 +298,11 @@ writes the region list from what it was given.
   (valid, missing file, missing folder, wrong size, truncated PNG, newer
   `format`, junk manifest, other region, sprite size mismatch, blend clipping),
   the C90 compile check, and the extractor's bleed and pad helpers.
+- `test_mod_pack.py` also covers the shared fallback (a pack with only shared
+  files loads on US and EU, a region file or sprite wins over the shared one,
+  `Dw3ModImage.shared` says which). Replay `us/eu-map-view-mod-shared`: the synthetic
+  pack with one shared map and no per-region file (`--shared` of
+  `tools/mods/make_synthetic_pack.py`), log `loaded: map_h0@4x.png ... shared=1 region=0`.
 - Replays: `us-map-view` must still match its references with no pack present
   (0 differing pixels, see the PR). `us-map-view-mod` / `eu-map-view-mod` run
   the same recording with the synthetic pack written to the run's config folder

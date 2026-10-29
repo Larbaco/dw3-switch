@@ -23,6 +23,7 @@
 #include <string.h>
 
 #include "nx_stick.h"
+#include "port_button_map.h"
 
 enum { BUF_LEN = 34 };
 
@@ -321,10 +322,53 @@ int main(void) {
     CHECK(dw3_nx_publish_kind(PSYZ_CTRL_DISCONNECTED) == PSYZ_CTRL_DISCONNECTED,
           "disconnect was rewritten");
 
+    /* ---- P9.8 layout map: the host passes the raw word of port 1 through it
+     * after the platform's frame is copied (docs/CONTROLS_BUNDLE.md). The
+     * platform reports positions: PADRright is the Circle position (Switch A),
+     * PADRdown the Cross position (B). raw = buf[2] | buf[3] << 8, a clear bit
+     * is a press; Circle is raw bit 13, Cross 14, Triangle 12. ---------------- */
+    {
+        unsigned w;
+
+        make_frame(frame, PSYZ_CTRL_ANALOG_PAD, PADRright);
+        Psyz_PadsSet(0, frame, BUF_LEN);
+        dw3_button_map_load(DW3_LAYOUT_PLAYSTATION, "default");
+        CHECK(PadChkVsync() == 1, "PadChkVsync (layout)");
+        w = (unsigned)buf0[2] | ((unsigned)buf0[3] << 8);
+        CHECK(((w >> 13) & 1u) == 0 && ((w >> 14) & 1u) == 1,
+              "PlayStation: A position must stay Circle (w=0x%04x)", w);
+
+        dw3_button_map_load(DW3_LAYOUT_NINTENDO, "cfg");
+        CHECK(PadChkVsync() == 1, "PadChkVsync (nintendo)");
+        w = (unsigned)buf0[2] | ((unsigned)buf0[3] << 8);
+        CHECK(((w >> 14) & 1u) == 0 && ((w >> 13) & 1u) == 1,
+              "Nintendo: A (Circle position) must read as Cross (w=0x%04x)", w);
+        /* the same through PadGetState's refresh, and not mapped twice */
+        (void)PadGetState(0);
+        w = (unsigned)buf0[2] | ((unsigned)buf0[3] << 8);
+        CHECK(((w >> 14) & 1u) == 0 && ((w >> 13) & 1u) == 1,
+              "Nintendo: refresh through PadGetState maps once (w=0x%04x)", w);
+        make_frame(frame, PSYZ_CTRL_ANALOG_PAD, PADRdown | PADstart);
+        Psyz_PadsSet(0, frame, BUF_LEN);
+        (void)PadChkVsync();
+        w = (unsigned)buf0[2] | ((unsigned)buf0[3] << 8);
+        CHECK(((w >> 12) & 1u) == 0 && ((w >> 14) & 1u) == 1 &&
+                  ((w >> 3) & 1u) == 0,
+              "Nintendo: B must read as Triangle, Start unchanged (w=0x%04x)", w);
+        /* a disconnected port is left alone */
+        memset(frame, 0xFF, BUF_LEN);
+        Psyz_PadsSet(0, frame, BUF_LEN);
+        (void)PadChkVsync();
+        CHECK(buf0[0] == 0xFF && buf0[2] == 0xFF && buf0[3] == 0xFF,
+              "disconnected frame was rewritten");
+        dw3_button_map_load(DW3_LAYOUT_PLAYSTATION, "default");
+    }
+
     printf("OK: PadGetState=%d CurExID=%d pressed=0x%04x (Start)\n", state, mode,
            (unsigned)pressed);
     printf("OK: mode table digital ExOffs=0 analog ExOffs=1; "
            "PadSetMainMode switches the published kind and rejects bad args\n");
+    printf("OK: layout map applied after the platform frame, once, port 1 only\n");
     printf("OK: left stick deadzone=%d kind 0x41/0x53 -> 0x73\n",
            DW3_NX_STICK_DEADZONE);
     printf("OK: PadInfoAct 2 actuators on analog; PadGetState "

@@ -560,6 +560,34 @@ for _lang, _id in (("fr", 3), ("it", 4), ("de", 5), ("es", 6)):
                                   r"battle HUD partner name of the Digimon \(Digimon id 386, [0-9]+ px\)"),),
                   note=f"the Digimon's name is read from the {_lang} text file (patch 0065)"))
 
+# P51 item 5: the Cheats group is on the title's group list with the master
+# switch OFF (it used to appear only once the master was on). Opens the Cheats
+# screen from the list and returns with the cursor on Cheats.
+for _v in ("us", "eu"):
+    _add(Scenario(f"{_v}-options-cheats-listed", _v, "full", timeout=300,
+                  expect_log=((0, r"dw3-port-options: group list n=7 \(cheats listed, master off, "
+                                  r"locked in game 0\)(?s:.*)dw3-port-options: group open cheats \(group\)"),
+                              # P51 item 6: the game's menu background under the Options screens
+                              (0, r"dw3-options: menu background tile 96x96 from the status sprites "
+                                  r"\(sprite 0x1D\) ready in \d+ us"),),
+                  forbid_log=((0, r"menu background tile not available"),),
+                  note="the Cheats group is listed with the master switch off (P51 item 5)"))
+
+# P51 item 4: the Region at start row of the combined image (tier `both`: needs
+# `--bin-both`, the one binary of both game copies; a plain US or EU build has no
+# such row). Two phases on one config folder, which is also the top-level folder
+# here (DW3_CONFIG_DIR), so the row writes region_default into the file the
+# picker reads.
+for _v in ("us", "eu"):
+    _add(Scenario(f"{_v}-options-region", _v, "both", timeout=300,
+                  phases=(f"{_v}-options-region-p1", f"{_v}-options-region-p2"),
+                  expect_log=((0, r"dw3-options: region_default us saved to \S+port_options\.cfg "
+                                  r"\(takes effect at the next start\)(?s:.*)"
+                                  r"dw3-options: region_default eu saved to \S+port_options\.cfg"),
+                              (1, r"dw3-options: region_default eu read from \S+port_options\.cfg")),
+                  forbid_log=((0, r"NOT saved"), (1, r"NOT saved")),
+                  note="Options > Gameplay > Region at start: Ask, US, EU, read back (P51 item 4, --bin-both)"))
+
 # P7.9 battle menu memory (patch 0067, port/battle_menu): the file-only key
 # `battle_menu_memory` in port_options.cfg (Scenario.cfg) turns it on. The same
 # forced battle (`<v>-p79-menu`, an enemy with 2000 HP so there is a second turn,
@@ -610,6 +638,54 @@ for _v in ("us", "eu"):
                                   r"WFIGHTMN_endBattle result=1"),),
                   note="the memory lasts across battles of one session: battle 2's first menu opens on Techniques (patch 0067)"))
 
+
+# P51 item 1: the selection bar of the battle's Items and technique lists
+# (FIGHTSTG_drawCursorBar, a vsync callback that hands its ordering table to
+# ContinueDraw; a no-op stub until this fix, so the lists had no marker). The
+# forced battle of the p79 scenarios plus a full bag (DW3_FORCE_BATTLE_BAG,
+# patch 0189). Checkpoints on both lists at several cursor lines. `-t4` runs
+# turbo 4x (the pictures are the 1x run's), `-43` Widescreen off (own refs).
+# PC only (env). The Switch renderer modes (gpu-tex, soft) are checked in
+# Ryubing by hand (docs/P51_FEEDBACK.md item 1).
+_BAR_ENV = _P79_ENV + (("DW3_FORCE_BATTLE_BAG", "1-402"),)
+_BAR_SHOTS = ("battle-cmd-items", "items-line0", "items-line1", "items-line2", "tech-line0", "tech-line1")
+_BAR_LOG = ((0, r"dw3-battle-cursor: open list=items(?s:.*)"
+                r"dw3-battle-cursor: close list=items count=\d+ sel=2 bar=submitted(?s:.*)"
+                r"dw3-battle-cursor: open list=tech(?s:.*)"
+                r"dw3-battle-cursor: close list=tech count=\d+ sel=1 bar=submitted"),)
+_BAR_FORBID = ((0, r"bar=dropped"),)
+for _v in ("us", "eu"):
+    _bar = (f"{_v}-battle-list-bar",)
+    _add(
+        Scenario(f"{_v}-battle-list-bar", _v, "full", timeout=300, phases=_bar, env=_BAR_ENV,
+                 expect_log=_BAR_LOG, forbid_log=_BAR_FORBID,
+                 note="the Items and technique lists show the cursor bar (P51 item 1, patch 0189)"),
+        Scenario(f"{_v}-battle-list-bar-t4", _v, "full", turbo=4, timeout=300, phases=_bar, env=_BAR_ENV,
+                 ref_map=tuple((n, f"{_v}-battle-list-bar", n) for n in _BAR_SHOTS),
+                 expect_log=_BAR_LOG, forbid_log=_BAR_FORBID,
+                 note="the same lists under turbo 4x: bar submitted, same pictures (P51 item 1)"),
+        Scenario(f"{_v}-battle-list-bar-43", _v, "full", timeout=300, phases=_bar, env=_BAR_ENV,
+                 cfg=(("widescreen", "0"),),
+                 expect_log=_BAR_LOG, forbid_log=_BAR_FORBID,
+                 note="the same lists with Widescreen off (4:3) (P51 item 1)"),
+    )
+
+# P51 item 1 on the Switch build in Ryubing (tier nx, only with --only; log
+# judgement plus informational screenshots): the same recording, the replay NRO
+# built with DW3_NX_TEST_ENV="DW3_START_MODE=0x600,DW3_FORCE_ENCOUNTER=34,
+# DW3_FORCE_PARTY=0,DW3_FORCE_ENEMY_HP=2000,DW3_FORCE_BATTLE_BAG=1-402" (and
+# DW3_MESH_SOFT=1 for the `-soft` one: the CPU renderer instead of the default
+# gpu-tex mesh). A comma cannot go in that variable, so there are no extra
+# techniques: the technique list has one line. The `mode=` token of the open
+# line names the renderer the bar was submitted under.
+for _v in ("us", "eu"):
+    for _suffix, _mode in (("", "gpu-tex"), ("-soft", "soft")):
+        _add(Scenario(f"{_v}-battle-list-bar-nx{_suffix}", _v, "nx", timeout=900,
+                      phases=(f"{_v}-battle-list-bar",),
+                      expect_log=((0, r"dw3-battle-cursor: open list=items mode=" + _mode + r" (?s:.*)"
+                                      r"dw3-battle-cursor: close list=items count=\d+ sel=2 bar=submitted"),),
+                      forbid_log=((0, r"bar=dropped"),),
+                      note=f"the battle Items list's bar on the Switch build, renderer {_mode} (P51 item 1)"))
 
 # Field menu -> Items after a battle (patches 0069 fix, 0070 hook): the Items
 # list used to crash the host (NULL ItemInfo in getItemCategory) as soon as the
@@ -690,6 +766,32 @@ for _v, _ids in (("us", (0x159, 0x1FA, 0x1C2, 0x158, 0x1F9)),
                                       r"(?s:.*)partner switch member 0 -> 2 .*bag=\1 worn=\2"
                                       r"(?s:.*)partner switch member 2 -> 0 .*bag=\1 worn=\2"),),
                       note="R2 / L2 change the partner on the equip slot list, counts unchanged (patch 0128)"))
+
+# P6.34 phase 2 (patch 0190): equip in Status > Equipment and return to the slot
+# list without the long fade round trip, key on (the default). `-off` is the
+# same recording with items_equip_stays=0: the original flow, no equip-stays line.
+for _v, _ids in (("us", (0x159, 0x1FA, 0x1C2, 0x158, 0x1F9)),
+                 ("eu", (0x167, 0x208, 0x1D1, 0x166, 0x207))):
+    _fight, _menu, _report, _field, _status = _ids
+    _add(Scenario(f"{_v}-items-equip-stays", _v, "full", turbo=4, timeout=400,
+                  phases=(f"{_v}-items-equip-stays",), env=_ITEMS_ENV,
+                  cfg=(("encounter_rate", "2"),),
+                  expect_restore=((_fight, M), (_menu, S), (_report, M), (_field, M), (_status, M)),
+                  expect_log=((0, r"file keys items_equip_from_items=1 items_equip_stays=1(?s:.*)"
+                                  r"equip-stays begin partner=\d+ slot=2 item=\d+ bag=(\d+) worn=(\d+)(?s:.*)"
+                                  r"equip-stays slot=2 after=equip frames=\d{1,2} bag=\d+ worn=\d+(?s:.*)"
+                                  r"equip-stays list-open slot=2 row=[1-9]\d* cursor=\d+ scroll=\d+ item=\d+ count=\d+(?s:.*)"
+                                  r"equip-stays begin partner=\d+ slot=2(?s:.*)"
+                                  r"equip-stays slot=2 after=equip frames=\d{1,2} "),),
+                  note="equip in Status > Equipment returns to the slot list at once, "
+                       "the list opens on the worn item (patch 0190)"))
+    _add(Scenario(f"{_v}-items-equip-stays-off", _v, "full", turbo=4, timeout=400,
+                  phases=(f"{_v}-items-equip-stays",), env=_ITEMS_ENV,
+                  cfg=(("encounter_rate", "2"), ("items_equip_stays", "0")),
+                  expect_restore=((_fight, M), (_menu, S), (_report, M), (_field, M), (_status, M)),
+                  expect_log=((0, r"file keys items_equip_from_items=1 items_equip_stays=0"),),
+                  forbid_log=((0, r"equip-stays (?:begin|slot=|list-open)"),),
+                  note="items_equip_stays=0: the original equip round trip, no equip-stays line (patch 0190)"))
 
 # P6.33 finding (patch 0180): Cross on equipment in the Items menu does nothing
 # in the original game. The log line says so; run with items_partner_switch on
@@ -794,7 +896,7 @@ for _v, _ids in (("us", (0x159, 0x1FA, 0x1C2, 0x158, 0x1F9)),
                                   r"\(\d+ towns \+ \d+ visited areas drawn\), [1-9]\d* drawn, "
                                   r"hash [0-9a-f]{8}\n"
                                   r"(?s:.*)dw3-map: open half=0 image=392x352 source=\w+ in \d+ ms "
-                                  r"markers=\d+ home=\d+,\d+ turbo=1"
+                                  r"markers=\d+ home=\d+,\d+ turbo=1 zoom=1\.50 hud=off"
                                   r"(?s:.*)dw3-map: zoom source=button step"
                                   r"(?s:.*)scaler LANCZOS2 (?:built in \d+ ms \(1176x1056, reveal hash [0-9a-f]{8}\)"
                                   r"|loaded from cache in \d+ ms \(1176x1056, cache hit \S+, reveal hash [0-9a-f]{8}\))"
@@ -817,8 +919,8 @@ for _v, _ids in (("us", (0x159, 0x1FA, 0x1C2, 0x158, 0x1F9)),
                                   r"(?s:.*)dw3-map: cursor left location id=\1, free at \d+,\d+"
                                   r"(?s:.*)dw3-map: name box hidden \(cursor on no location\)"
                                   r"(?s:.*)dw3-map: cursor at rest at \d+,\d+, location id=\1 name id=\1"
-                                  r"(?s:.*)dw3-map: HUD off \(name box hidden\)"
-                                  r"(?s:.*)dw3-map: HUD on \(name box allowed\)"),
+                                  r"(?s:.*)dw3-map: HUD on \(the bars; the name box stays\)"
+                                  r"(?s:.*)dw3-map: HUD off \(the bars; the name box stays\)"),
                               # owner, preview.48: the cursor and the balloon keep one size
                               (0, r"dw3-map: sprites at fixed size \(scale 1/Z, Z = zoom, "
                                   r"reference zoom 1\.0 = [\d.]+ px per source px; the reveal layer"),),
@@ -841,6 +943,19 @@ for _v, _ids in (("us", (0x159, 0x1FA, 0x1C2, 0x158, 0x1F9)),
                               (0, r"dw3-map: texture 1568x1408 queued for the GPU"),),
                   forbid_log=((0, r"dw3-map: mod: original map|dw3-map: capture failed|NOTHING DRAWN"),),
                   note="the map view with a mod pack: 4x texture, same geometry, silent fallback otherwise"))
+    # P51 item 3: the same with ONE shared map for both regions (map_h<half>@4x.png,
+    # no per-region file): the loader falls back to it on US and EU alike. The
+    # pictures are the per-region synthetic pack's (same gradients): ref_map.
+    _add(Scenario(f"{_v}-map-view-mod-shared", _v, "full", turbo=4, timeout=600,
+                  phases=(f"{_v}-map-view",), env=_ITEMS_ENV + (("DW3_MAP_SYNC", "1"),),
+                  cfg=(("encounter_rate", "2"),), mod_pack="synthetic-shared",
+                  expect_restore=((_fight, M), (_menu, S), (_report, M), (_field, M),
+                                  (_status, M)),
+                  expect_log=((0, r"dw3-map: mod: pack \"synthetic-test\" 0\.0\.1 loaded: "
+                                  r"map_h0@4x\.png 1568x1408, reveal 0 pieces from the pack, "
+                                  r"[1-9]\d* at 1x nearest.* shared=1 region=0"),),
+                  forbid_log=((0, r"dw3-map: mod: original map|dw3-map: capture failed|NOTHING DRAWN"),),
+                  note="one shared map pack serves this region (P51 item 3)"))
     _add(Scenario(f"{_v}-map-view-43", _v, "full", turbo=4, timeout=600,
                   phases=(f"{_v}-map-view",), env=_ITEMS_ENV,
                   cfg=(("encounter_rate", "2"), ("widescreen", "0")),
@@ -1627,16 +1742,19 @@ for _v, _reg in (("us", "US"), ("eu", "EU")):
                   forbid_log=_HELP_FORBID,
                   note="technical help from the battle's Options (Select at the command menu): "
                        "the battle stays frozen and resumes after it (P6.30)"))
-# The base game's other languages: the files are stubs until the translations
-# land, so the pages are English and the log says so (one line).
-_add(Scenario("eu-help-fr", "eu", "full", timeout=300,
-              expect_log=((0, r"dw3-help: open \(from title, region EU, platform pc, language fr, 10 pages\)"),
-                          (0, r"dw3-pages: text fallback help \* \(fr\): the language file has no keys yet "
-                              r"\(stub\), English shown"),
-                          (0, r"dw3-help: page controls \(from list,")),
-              forbid_log=((0, r"unresolved"), (0, r"cannot be (opened|allocated|laid out)")),
-              note="technical help with the EU disc set to French: the stub falls back to English "
-                   "with a log line, the screen's own lettering is French (P6.30, Q3)"))
+# The base game's other languages (machine-drafted text, needs native review):
+# the help is in the language, with no English fallback line.
+for _lang in ("fr", "de", "it", "es"):
+    _add(Scenario(f"eu-help-{_lang}", "eu", "full", timeout=300,
+                  expect_log=((0, r"dw3-help: open \(from title, region EU, platform pc, language " + _lang +
+                                  r", 10 pages\)"),
+                              (0, r"dw3-pages: text help " + _lang + r" loaded \(\d+ keys, \d+ qualified, "
+                                  r"\d+ filtered out, \d+ bytes\)"),
+                              (0, r"dw3-help: page controls \(from list,(?s:.*)dw3-help: page options \(from list,")),
+                  forbid_log=((0, r"unresolved"), (0, r"dw3-pages: text fallback"),
+                              (0, r"cannot be (opened|allocated|laid out)")),
+                  note=f"technical help with the EU disc set to {_lang}: the machine-drafted translation "
+                       "(page list, Controls, Options explained), no English fallback (P6.30, Q3)"))
 
 # The Quit game plaque and the window in the other four EU languages (the
 # lettering is authored, docs/PORT_OPTIONS.md "Quit and return to title").
@@ -1691,3 +1809,96 @@ for _n, _v, _l, _rec, _env, _why in _SINGLE:
                               (0, rf"dw3-pc: cdfs root=\S*/{_v}\b")),
                   forbid_log=((0, rf"dw3-region: starting {'eu' if _v == 'us' else 'us'} "),),
                   note="P6.24: through the launcher; captures equal the plain run's"))
+
+
+# --- P9.8 confirm / cancel layout (docs/CONTROLS_BUNDLE.md, ROADMAP P9.8) ------
+# Replays hand the game the PS buttons it must see, so the layout map is
+# bypassed and the plain scenarios prove the default is bit-identical. These
+# scenarios turn on the dev variable DW3_REPLAY_SOURCE=1: the recording's masks
+# are button *positions* (Switch A is the Circle position, B Cross, X Triangle,
+# Y Square, as a real pad reports them) and go through the map, with
+# button_layout=nintendo in the seeded port_options.cfg. The recordings are the
+# plain ones converted by tools/replay/gen_scenarios.py, so the game sees exactly
+# the original input and every capture is compared with the PLAIN scenario's
+# reference (ref_from): a wrong map shows as a different picture or a different
+# log, and no reference of its own is stored for them.
+import dataclasses  # noqa: E402
+
+_NIN_CFG = (("button_layout", "nintendo"),)
+_NIN_ENV = (("DW3_REPLAY_SOURCE", "1"),)
+_NIN_LOG = (r"dw3-controls: map loaded layout=nintendo source=cfg(?s:.*)"
+            r"dw3-controls: map cross<-A circle<-X triangle<-B square<-Y(?s:.*)"
+            r"dw3-controls: first press source=A -> logical cross",)
+
+
+def _nintendo(base_name, name, phase, note):
+    b = by_name()[base_name]
+    logs = tuple(e for e in b.expect_log if e[0] == 0)
+    return dataclasses.replace(
+        b, name=name, phases=(phase,), cfg=b.cfg + _NIN_CFG, env=b.env + _NIN_ENV,
+        expect_log=logs + tuple((0, r) for r in _NIN_LOG),
+        forbid_log=tuple(e for e in b.forbid_log if e[0] == 0)
+        + ((0, r"dw3-controls: map invalid"),),
+        ref_from=base_name, note=note)
+
+
+for _v in ("us", "eu"):
+    _add(
+        _nintendo(f"{_v}-field-options", f"{_v}-nintendo-menu", f"{_v}-nintendo-menu",
+                  "Nintendo layout: A opens the field menu and the Options screen, B backs out "
+                  "of the group, the screen and the menu (P9.8); same pictures as the plain run"),
+        _nintendo(f"{_v}-map-view", f"{_v}-nintendo-map-view", f"{_v}-nintendo-map-view",
+                  "Nintendo layout: the full-screen map opens with Square (Y) and closes with the "
+                  "logical cancel bit, B (P9.8, P6.32)"),
+        _nintendo(f"{_v}-title-quit", f"{_v}-nintendo-title-quit", f"{_v}-nintendo-title-quit",
+                  "Nintendo layout: the title menu and the Quit Yes / No window confirm with A "
+                  "and cancel with B (P9.8)"),
+        Scenario(f"{_v}-controls-layout", _v, "full", timeout=300,
+                 phases=(f"{_v}-controls-layout-p1", f"{_v}-controls-layout-p2"),
+                 expect_log=((0, r"dw3-controls: map loaded layout=playstation source=default(?s:.*)"
+                                 r"dw3-port-options: group open controls \(3 row\(s\), title\)(?s:.*)"
+                                 r"dw3-controls: layout changed playstation -> nintendo \(screen\)(?s:.*)"
+                                 r"dw3-controls: map cross<-A circle<-X triangle<-B square<-Y"),
+                             (1, r"dw3-controls: map loaded layout=nintendo source=cfg"),
+                             (1, r"dw3-port-options: group open controls \(3 row\(s\), title\)")),
+                 forbid_log=((0, r"dw3-controls: map invalid"), (1, r"dw3-controls: map invalid")),
+                 note="Controls group: the Button layout row switches to Nintendo and is read back "
+                      "from port_options.cfg by the next process (P9.8)"),
+    )
+
+# --- P6.12 custom remap (docs/CONTROLS_BUNDLE.md, phase 2) -----------------------
+# The Customize buttons screen. DW3_REPLAY_SOURCE=1: the recording's masks are button
+# positions, so the assignments go through the map; the references are their own
+# (the pictures of the new screens), kept outside git.
+for _v in ("us", "eu"):
+    _add(
+        Scenario(f"{_v}-controls-custom", _v, "full", timeout=400,
+                 phases=(f"{_v}-controls-custom-p1", f"{_v}-controls-custom-p2"),
+                 env=_NIN_ENV,
+                 expect_log=((0, r"dw3-controls: map loaded layout=playstation source=default(?s:.*)"
+                                 r"dw3-port-options: group open customize \(10 row\(s\), title\)(?s:.*)"
+                                 r"dw3-port-options: customize waiting for a button for L1(?s:.*)"
+                                 r"dw3-controls: assign l1<-R \(r1<-L swapped in\) \[custom\](?s:.*)"
+                                 r"dw3-controls: map cross<-B circle<-A triangle<-X square<-Y "
+                                 r"l1<-R r1<-L l2<-ZL r2<-ZR l3<-StickL r3<-StickR(?s:.*)"
+                                 r"dw3-port-options: group open help"),
+                             (0, r"dw3-options: saved \S+ \(.*\)"),
+                             (1, r"dw3-controls: map loaded layout=custom source=cfg(?s:.*)"
+                                 r"dw3-controls: map cross<-B circle<-A triangle<-X square<-Y "
+                                 r"l1<-R r1<-L(?s:.*)"
+                                 r"dw3-controls: reset to default \(layout=playstation\)")),
+                 forbid_log=((0, r"dw3-controls: map invalid"), (1, r"dw3-controls: map invalid")),
+                 note="Customize buttons: swap L1 and R1, the Help pages turn accordingly, the map "
+                      "is read back from port_options.cfg, Reset restores (P6.12)"),
+        Scenario(f"{_v}-controls-custom-invalid", _v, "full", timeout=200,
+                 env=_NIN_ENV,
+                 cfg=(("button_layout", "custom"), ("button_map", "0123456780")),
+                 expect_log=((0, r"dw3-controls: map invalid \(button_map is not a permutation of 0-9\), "
+                                 r"using default(?s:.*)"
+                                 r"dw3-controls: map loaded layout=playstation source=default"),),
+                 note="button_layout=custom with a button_map that is not a permutation: default + "
+                      "one log line (P6.12)"),
+    )
+_add(_nintendo("eu-lang-cross-fr", "eu-nintendo-lang-cross-fr", "eu-nintendo-lang-cross-fr",
+               "Nintendo layout: the EU language select confirms with A, the logical Cross (patch "
+               "0187, P9.8)"))

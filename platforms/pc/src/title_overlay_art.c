@@ -1,5 +1,6 @@
 /* Native-resolution PC title plaques. Geometry is authored in 960x720 pixels. */
 #include "title_overlay_art.h"
+#include "menu_bg_tile.h"
 #include "port_options_groups.h"
 #include "port_atlas.h"
 #include "port_help.h"
@@ -188,12 +189,17 @@ int dw3_pc_title_overlay_options_cursor(void) { return option_cursor; }
 int dw3_pc_title_overlay_options_value(int row) {
     return row>=0&&row<DW3_TITLE_OPTION_ROWS?option_values[row]:0;
 }
+enum { OPT_LOCK_ROWS = 13 }; /* registry rows 0..12: the lock mask's width */
 void dw3_pc_title_overlay_set_options_locked(unsigned mask) {
-    mask&=((1u<<DW3_TITLE_OPTION_ROWS)-1u)|DW3_TITLE_LOCK_CHEATS;
+    mask&=((1u<<OPT_LOCK_ROWS)-1u)|DW3_TITLE_LOCK_CHEATS;
     if(mask!=options_locked){options_locked=mask;options_layout++;options_generation++;}
 }
 unsigned dw3_pc_title_overlay_options_locked(void) { return options_locked; }
 unsigned dw3_pc_title_overlay_options_layout(void) { return options_layout; }
+int dw3_pc_title_overlay_options_desc_follows_value(int page) {
+    int group,scroll;
+    return dw3_optlist_decode(page,&group,&scroll)&&group==DW3_OPTGRP_CUSTOM;
+}
 int dw3_pc_title_overlay_options_dynamic_labels(int page) {
 #ifdef DW3_CHEATS
     int group,scroll;
@@ -294,11 +300,13 @@ enum { OPT_X0 = 84, OPT_Y0 = 60, OPT_W = 792, OPT_H = 600,
        CHT_ROW_STEP = 42, CHT_ROW_H = 38 };
 /* The rows' kinds: how a registry value is written. */
 enum { ROW_SWITCH, ROW_FAST_FORWARD, ROW_VOLUME, ROW_ENCOUNTER, ROW_TEXT,
-       ROW_BATTLE, ROW_AUTOSAVE };
+       ROW_BATTLE, ROW_AUTOSAVE, ROW_LAYOUT, ROW_REGION, ROW_CUSTOMIZE, ROW_RESET };
 static int row_kind(int row) {
     return row == 1 ? ROW_FAST_FORWARD : row == 3 || row == 4 ? ROW_VOLUME :
            row == 5 ? ROW_ENCOUNTER : row == 6 ? ROW_TEXT :
-           row == 7 ? ROW_BATTLE : row == 8 ? ROW_AUTOSAVE : ROW_SWITCH;
+           row == 7 ? ROW_BATTLE : row == 8 ? ROW_AUTOSAVE :
+           row == 9 ? ROW_LAYOUT : row == 10 ? ROW_REGION :
+           row == 11 ? ROW_CUSTOMIZE : row == 12 ? ROW_RESET : ROW_SWITCH;
 }
 /* P6.31: the Auto-save row's lettering, in the language of the disc (en, fr,
  * de, es, it: the DW3_TITLE_LANG_* order). OFF is the Options screen's word. */
@@ -308,6 +316,45 @@ static const AutosaveWords autosave_words[5]={AUTOSAVE_WORDS(en),AUTOSAVE_WORDS(
                                               AUTOSAVE_WORDS(es),AUTOSAVE_WORDS(it)};
 static const AutosaveWords *autosave_lang(void) {
     return &autosave_words[options_lang>=DW3_TITLE_LANG_EN&&options_lang<=DW3_TITLE_LANG_IT?options_lang:0];
+}
+/* P9.8: the Button layout row's lettering, in the language of the disc. The two
+ * values are product names, the same in every language. */
+#define LAYOUT_WORDS(l) {WORD(opt_row_bl_##l),WORD(opt_val_bl_ps_##l),WORD(opt_val_bl_nin_##l),WORD(opt_desc_bl_##l)}
+typedef struct LayoutWords { Word row,ps,nintendo,desc; } LayoutWords;
+static const LayoutWords layout_words[5]={LAYOUT_WORDS(en),LAYOUT_WORDS(fr),LAYOUT_WORDS(de),
+                                          LAYOUT_WORDS(es),LAYOUT_WORDS(it)};
+static const LayoutWords *layout_lang(void) {
+    return &layout_words[options_lang>=DW3_TITLE_LANG_EN&&options_lang<=DW3_TITLE_LANG_IT?options_lang:0];
+}
+/* P6.12: the Customize buttons and Reset to default rows of Controls, the Custom
+ * value of Button layout and the prompt of the Customize screen, in the language
+ * of the disc. The PlayStation and Switch button names are the same everywhere. */
+#define CUSTOM_WORDS(l) {WORD(opt_row_cz_##l),WORD(opt_desc_cz_##l),WORD(opt_row_rs_##l),WORD(opt_desc_rs_##l), \
+    WORD(opt_val_cp_##l),WORD(opt_desc_cp_##l),WORD(opt_val_bl_cus_##l),WORD(opt_grp_custom_##l), \
+    WORD(opt_grpdesc_custom_##l)}
+typedef struct CustomWords { Word row,rowdesc,reset,resetdesc,prompt,promptdesc,custom,name,desc; } CustomWords;
+static const CustomWords custom_words[5]={CUSTOM_WORDS(en),CUSTOM_WORDS(fr),CUSTOM_WORDS(de),
+                                          CUSTOM_WORDS(es),CUSTOM_WORDS(it)};
+static const CustomWords *custom_lang(void) {
+    return &custom_words[options_lang>=DW3_TITLE_LANG_EN&&options_lang<=DW3_TITLE_LANG_IT?options_lang:0];
+}
+/* The Customize screen's rows (the PS buttons, map order) and their values (the
+ * Switch button that makes each one). */
+static const Word ps_words[10]={WORD(opt_row_ps_cross),WORD(opt_row_ps_circle),WORD(opt_row_ps_triangle),
+    WORD(opt_row_ps_square),WORD(opt_row_ps_l1),WORD(opt_row_ps_r1),WORD(opt_row_ps_l2),WORD(opt_row_ps_r2),
+    WORD(opt_row_ps_l3),WORD(opt_row_ps_r3)};
+static const Word btn_words[10]={WORD(opt_val_btn_b),WORD(opt_val_btn_a),WORD(opt_val_btn_x),WORD(opt_val_btn_y),
+    WORD(opt_val_btn_l),WORD(opt_val_btn_r),WORD(opt_val_btn_zl),WORD(opt_val_btn_zr),WORD(opt_val_btn_lstick),
+    WORD(opt_val_btn_rstick)};
+/* P51 item 4: the Region at start row (combined image): Ask in the language
+ * of the disc, US and EU the same everywhere. */
+#define REGION_WORDS(l) {WORD(opt_row_rg_##l),WORD(opt_val_rg_ask_##l),WORD(opt_desc_rg_##l)}
+typedef struct RegionWords { Word row,ask,desc; } RegionWords;
+static const RegionWords region_words[5]={REGION_WORDS(en),REGION_WORDS(fr),REGION_WORDS(de),
+                                          REGION_WORDS(es),REGION_WORDS(it)};
+static const Word v_region_us=WORD(opt_val_rg_us),v_region_eu=WORD(opt_val_rg_eu);
+static const RegionWords *region_lang(void) {
+    return &region_words[options_lang>=DW3_TITLE_LANG_EN&&options_lang<=DW3_TITLE_LANG_IT?options_lang:0];
 }
 /* P9.7: the message line of a row that is locked in game, in the language of
  * the disc (en, fr, de, es, it: the DW3_TITLE_LANG_* order). */
@@ -389,7 +436,71 @@ static const Word *cheat_value(const CheatWords *t,int row,int v,int *dim) {
  * plaque of the focused item and its label; VALUE = a row's value; DESCRIPTION
  * = the message line for the focused item. The cache asks for the rectangles
  * with dw3_pc_title_overlay_options_rect. */
-enum { DIM_TITLE = 150, DIM_IN_GAME = 252 };
+enum { DIM_TITLE = 150, DIM_IN_GAME = 252, DIM_TILE = 90 };
+
+/* P51 item 6: the game's field-menu background (sprite 0x1D of the status
+ * sprites, one 96 x 96 period) under the title's Options, Cheats and Help
+ * screens, drawn once into the retained STATIC layer, so it costs no frame time.
+ * In game the near-opaque dim stays (the field menu behind must not read through
+ * and the tile would only show at 2 %). Untried until the first prewarm / update
+ * asks (a frame-thread call: the disc read), then 1 ready or -1 not available
+ * (the dimmed title backdrop stays). The game scrolls it; a scroll would need
+ * the layer recomposed every frame (the cache exists to avoid that), so this is
+ * the static version (docs/P51_FEEDBACK.md item 6). */
+static uint8_t menu_tile[MENU_BG_TILE*MENU_BG_TILE*4];
+static atomic_int menu_tile_state;
+void dw3_pc_title_overlay_menu_tile_prepare(void) {
+    double ms=0.0;
+    char why[96];
+    if(atomic_load(&menu_tile_state)!=0)return;
+    why[0]=0;
+    if(!dw3_menu_bg_tile_load) {
+        atomic_store(&menu_tile_state,-1);
+        return;
+    }
+    if(dw3_menu_bg_tile_load(menu_tile,&ms,why,sizeof(why))==0) {
+        fprintf(stderr,"dw3-options: menu background tile %dx%d from the status sprites "
+                "(sprite 0x1D) ready in %.0f us\n",MENU_BG_TILE,MENU_BG_TILE,ms*1000.0);
+        atomic_store(&menu_tile_state,1);
+    } else {
+        fprintf(stderr,"dw3-options: menu background tile not available (%s), using the "
+                "title backdrop (%.0f us)\n",why,ms*1000.0);
+        atomic_store(&menu_tile_state,-1);
+    }
+}
+/* The screen's backdrop: the dimmed game tile at the title, else the dimmed
+ * title picture (or the deeper in-game dim). The canvas is 3x the game's 320. */
+static void backdrop(int in_game) {
+    if(in_game||atomic_load(&menu_tile_state)!=1) {
+        box(0,0,960,720,0,0,16,in_game?DIM_IN_GAME:DIM_TITLE);
+        return;
+    }
+    int x0=clip_x0<0?0:clip_x0,y0=clip_y0<0?0:clip_y0;
+    int x1=clip_x1>960?960:clip_x1,y1=clip_y1>720?720:clip_y1;
+    for(int j=y0;j<y1;j++) {
+        uint8_t *p=canvas+(size_t)j*stride+(size_t)x0*4;
+        const uint8_t *row=menu_tile+(size_t)((j/3)%MENU_BG_TILE)*MENU_BG_TILE*4;
+        for(int i=x0;i<x1;i++,p+=4) {
+            const uint8_t *s=row+(size_t)((i/3)%MENU_BG_TILE)*4;
+            p[0]=(uint8_t)(s[0]*(255-DIM_TILE)/255);
+            p[1]=(uint8_t)(s[1]*(255-DIM_TILE)/255);
+            p[2]=(uint8_t)(s[2]*(255-DIM_TILE)/255);
+            p[3]=255;
+        }
+    }
+    /* The hosts stretch the canvas's top-left texel over the 16:9 side strips
+     * (title_menu_overlay.c, nx_title_overlay.c): the tile's average colour,
+     * dimmed, makes those strips a flat navy beside the tiled middle. */
+    if(clip_x0<=0&&clip_y0<=0) {
+        unsigned sum[3]={0,0,0};
+        for(int i=0;i<MENU_BG_TILE*MENU_BG_TILE;i++) {
+            sum[0]+=menu_tile[i*4];sum[1]+=menu_tile[i*4+1];sum[2]+=menu_tile[i*4+2];
+        }
+        for(int c=0;c<3;c++)
+            canvas[c]=(uint8_t)(sum[c]/(MENU_BG_TILE*MENU_BG_TILE)*(255-DIM_TILE)/255);
+        canvas[3]=255;
+    }
+}
 enum { L_ROW_X = 152, L_ROW_W = 656, L_ROW_Y0 = 116, L_ROW_PITCH = 66,
        L_PLQ_H = 50, L_PLQ_DY = 8, L_GRP_X = 230, L_GRP_W = 500,
        L_ROWPLQ_X = 160, L_ROWPLQ_W = 640, L_VAL_X = 500, L_VAL_W = 260,
@@ -507,7 +618,7 @@ static void arrow(int cx,int y,int up) {
     {WORD(opt_grp_gameplay_##l),WORD(opt_grpdesc_gameplay_##l)}, \
     {WORD(opt_grp_saves_##l),WORD(opt_grpdesc_saves_##l)}, \
     {WORD(opt_grp_cheats_##l),WORD(opt_grpdesc_cheats_##l)}, \
-    {{NULL,0,0,0},{NULL,0,0,0}}, /* Controls: not built */ \
+    {WORD(opt_grp_controls_##l),WORD(opt_grpdesc_controls_##l)}, \
     {WORD(opt_grp_help_##l),WORD(opt_grpdesc_help_##l)}}
 typedef struct GroupWords { Word name,desc; } GroupWords;
 enum { LISTED_GROUPS = 7 }; /* the groups with lettering: indexed by group id up to Help */
@@ -540,7 +651,7 @@ static const GroupWords *group_lang(int group) {
  * locked in game (Display: Widescreen) greys its plaque. */
 static unsigned group_row_mask(int group) {
     unsigned m=0;
-    if(group==DW3_OPTGRP_CHEATS)return 0; /* cheat rows, not registry rows */
+    if(group==DW3_OPTGRP_CHEATS||group==DW3_OPTGRP_CUSTOM)return 0; /* not registry rows */
     for(int k=0;k<dw3_optgroups[group].nrows;k++)m|=1u<<dw3_optgroups[group].rows[k];
     return m;
 }
@@ -585,6 +696,15 @@ static const Word *list_value(const ListWords *t,int reg,int v,int *dim) {
         if(v>1)v=1;
         *dim=v==0;
         return v?&autosave_lang()->area:&v_onoff[0];
+    case ROW_LAYOUT:
+        if(v>2)v=2;
+        return v==2?&custom_lang()->custom:v?&layout_lang()->nintendo:&layout_lang()->ps;
+    case ROW_CUSTOMIZE:case ROW_RESET:
+        return NULL; /* an action: no value */
+    case ROW_REGION:
+        if(v>2)v=2;
+        *dim=v==0;
+        return v==0?&region_lang()->ask:v==1?&v_region_us:&v_region_eu;
     default:
         if(v>1)v=1;
         *dim=v==0;
@@ -602,8 +722,9 @@ static void options_list_screen(int group,int scroll) {
 #else
     const int cht=0;
 #endif
+    const int cus=group==DW3_OPTGRP_CUSTOM; /* P6.12 Customize: the PS buttons and their sources */
     int ids[DW3_OPTGRP_COUNT];
-    const int n=on_groups?dw3_optgroups_visible(ECHEATS,ids):dw3_optgroups[group].nrows;
+    const int n=on_groups?dw3_optgroups_visible(DW3_OPTGRP_CHEATS_LISTED,ids):dw3_optgroups[group].nrows;
     const unsigned locked=ELOCKED;
     const int cursor=options_layer==OPTIONS_LAYER_STATIC?-1:option_cursor;
     const int shared=static_part!=2,specific=static_part!=1;
@@ -612,11 +733,11 @@ static void options_list_screen(int group,int scroll) {
         /* The title backdrop stays, dimmed; the logo and the menu are gone.
          * Over the field or a battle (a locked mask means in game) the dim is
          * deeper: the menu behind must not read through the plaques. */
-        if(shared)box(0,0,960,720,0,0,16,locked?DIM_IN_GAME:DIM_TITLE);
+        if(shared)backdrop(locked!=0);
         /* Header plaque: OPTIONS, or the name of the open group. */
         if(specific)options_plaque(L_GRP_X,L_HEAD_Y,L_GRP_W,0,0);
         if(specific){
-            const Word *name=on_groups?&t->title:&group_lang(group)->name;
+            const Word *name=on_groups?&t->title:cus?&custom_lang()->name:&group_lang(group)->name;
             plaque_word(name,480,L_HEAD_Y+(on_groups?8:9),255,198,98); /* one baseline for every word */
         }
         if(specific&&!cht&&scroll>0)arrow(480,L_ROW_Y0-10,1);
@@ -646,9 +767,14 @@ static void options_list_screen(int group,int scroll) {
         if(a>=n)break;
         if(!clip_hits(L_ROW_X,slot_y(s),L_ROW_W,L_ROW_PITCH))continue;
         reg=on_groups?-1:dw3_optgroups[group].rows[a];
-        lock=on_groups?group_locked(ids[a],locked):cht?0:(int)((locked>>reg)&1u);
+        lock=on_groups?group_locked(ids[a],locked):cht||cus?0:(int)((locked>>reg)&1u);
         label=on_groups?&group_lang(ids[a])->name
-              :row_kind(reg)==ROW_AUTOSAVE?&autosave_lang()->row:&t->row[reg];
+              :cus?&ps_words[reg]
+              :row_kind(reg)==ROW_CUSTOMIZE?&custom_lang()->row
+              :row_kind(reg)==ROW_RESET?&custom_lang()->reset
+              :row_kind(reg)==ROW_AUTOSAVE?&autosave_lang()->row
+              :row_kind(reg)==ROW_LAYOUT?&layout_lang()->row
+              :row_kind(reg)==ROW_REGION?&region_lang()->row:&t->row[reg];
 #ifdef DW3_CHEATS
         if(cht){
             /* Rows 1..9 are inert (greyed) while the master switch is off. */
@@ -679,11 +805,16 @@ static void options_list_screen(int group,int scroll) {
             if(cht)value=cheat_value(cheat_lang(),reg,option_values[a],&dim);
             else
 #endif
-            value=list_value(t,reg,option_values[a],&dim);
+            if(cus){
+                /* the source that makes this PS button, or 10: waiting for a press */
+                const int v=option_values[a];
+                dim=0;
+                value=v>=10?&custom_lang()->prompt:&btn_words[v<0?0:v];
+            }else value=list_value(t,reg,option_values[a],&dim);
             if(lock)dim=2; /* P9.7: greyer than an OFF value */
             if(value)wordsh(value,px+pw-58,py+9,1,dim==2?120:dim?150:255,dim==2?128:dim?158:255,dim==2?170:dim?196:255);
 #ifdef DW3_CHEATS
-            else number(option_values[a],px+pw-58,py+9,dim==2?120:255,dim==2?128:255,dim==2?170:255);
+            else if(cht)number(option_values[a],px+pw-58,py+9,dim==2?120:255,dim==2?128:255,dim==2?170:255);
 #endif
         }
     }
@@ -703,7 +834,12 @@ static void options_list_screen(int group,int scroll) {
             if(cht)d=&cheat_lang()->desc[reg];
             else
 #endif
-            d=(locked>>reg)&1u?lock_lang():row_kind(reg)==ROW_AUTOSAVE?&autosave_lang()->desc:&t->desc[reg];
+            d=cus?(option_values[cursor]>=10?&custom_lang()->promptdesc:&custom_lang()->desc)
+              :(locked>>reg)&1u?lock_lang():row_kind(reg)==ROW_CUSTOMIZE?&custom_lang()->rowdesc
+              :row_kind(reg)==ROW_RESET?&custom_lang()->resetdesc
+              :row_kind(reg)==ROW_AUTOSAVE?&autosave_lang()->desc
+              :row_kind(reg)==ROW_LAYOUT?&layout_lang()->desc
+              :row_kind(reg)==ROW_REGION?&region_lang()->desc:&t->desc[reg];
         }
         wordsh(d,L_DESC_X+28,L_DESC_Y+14,0,255,255,255);
     }
@@ -927,7 +1063,8 @@ void dw3_pc_title_overlay_options_page_info(int page,int cheats_on,int *scroll,i
     int group,sc;
     if(!dw3_optlist_decode(page,&group,&sc)){group=-1;sc=0;}
     *scroll=sc;
-    *items=dw3_optlist_count(group,cheats_on);
+    *items=dw3_optlist_count(group,DW3_OPTGRP_CHEATS_LISTED);
+    (void)cheats_on; /* P51: the group list no longer follows the master switch */
     *slots=DW3_OPTLIST_VISIBLE;
 }
 void dw3_pc_title_overlay_options_rect(int page,int kind,int slot,int *x,int *y,int *w,int *h) {
@@ -1061,7 +1198,7 @@ static void help_draw(const Dw3HelpView *v) {
     const int on_list=v->screen==DW3_HELP_SCREEN_LIST;
     canvas=help_canvas;stride=960*4;clip_x0=clip_y0=0;clip_x1=960;clip_y1=720;
     memset(help_canvas,0,(size_t)960*720*4);
-    box(0,0,960,720,0,0,16,v->in_game?DIM_IN_GAME:DIM_TITLE);
+    backdrop(v->in_game!=0);
     options_plaque(L_GRP_X,L_HEAD_Y,L_GRP_W,0,0);
     if(on_list) {
         const int lang=v->lang>=DW3_TITLE_LANG_EN&&v->lang<=DW3_TITLE_LANG_IT?v->lang:DW3_TITLE_LANG_EN;

@@ -22,6 +22,7 @@ static int none_int(void) { return 0; }
 static int none_int_i(int v) { (void)v; return 0; }
 static int none_int_s(const char *s) { (void)s; return -1; }
 static unsigned none_mask(int v) { (void)v; return 0; }
+static unsigned none_word(unsigned w) { return w; }
 static void none_void_i(int v) { (void)v; }
 static void none_void_s(const char *s) { (void)s; }
 static void none_void_u(unsigned v) { (void)v; }
@@ -55,6 +56,7 @@ static const Dw3GameApi g_no_game = {
     .port_turbo_speed = none_int,
     .port_turbo_present_due = none_int,
     .port_turbo_rate_x2 = none_int,
+    .button_map_apply = none_word,
 };
 
 static Dw3Region g_region = DW3_REGION_NONE;

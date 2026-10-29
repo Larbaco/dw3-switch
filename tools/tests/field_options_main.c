@@ -114,7 +114,8 @@ int main(void) {
           !dw3_port_options_row_locked(3) && !dw3_port_options_row_locked(4) &&
           !dw3_port_options_row_locked(5) && !dw3_port_options_row_locked(6) &&
           !dw3_port_options_row_locked(7) && !dw3_port_options_row_locked(8));
-    CHECK(dw3_port_options_locked_mask() == (1u | DW3_PORT_OPTIONS_LOCK_CHEATS));
+    CHECK(dw3_port_options_locked_mask() ==
+          (1u | (1u << DW3_PORT_OPT_CUSTOMIZE) | DW3_PORT_OPTIONS_LOCK_CHEATS));
     dw3_port_field_options_open(2); /* already open: ignored */
     CHECK(g_language == DW3_TITLE_LANG_DE);
 

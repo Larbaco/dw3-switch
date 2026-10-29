@@ -1,0 +1,161 @@
+Upstream-bound: no
+Subject: [PORT_HOST] P6.34 phase 2: equip in Status > Equipment without the long round trip
+
+P6.34 phase 2 (docs/P6.34_MENU_FLOW.md, owner question 6, orchestrator default
+pending confirmation). In the equipment panel's item list
+(STSTATUS_chooseEquipItem, equip_panel.c), Cross on an item calls STSTATUS_equip
+as before and then goes to substate 0x14, which fades the list, the slot's item
+and (from substate 0) the title and the slots back in: four 10-frame panel
+fades each way. With the key items_equip_stays on (default 1;
+DW3_ITEMS_EQUIP_STAYS=0 or the file key 0 gives the original flow) the four
+PanelAnim durations are set to 1 frame until the panel is back on the slot list
+(STSTATUS_chooseEquipSlot, which restores 10 and logs the landing), so the same
+state machine runs without the visible fades. panel->slot is not touched: the
+slot cursor stays on the slot just changed. Triangle (cancel) is unchanged.
+
+When the list opens (STSTATUS_closeEquipSlots, STSTATUS_enterEquipList) it
+starts on the row of the item worn in that slot if a spare copy of it is in the
+list (a worn item only appears in the list while a copy is in the bag), with
+the cursor, the preview of the stats and the scroll bar (the USA bar follows
+the chosen item, the European one the page) for that row; otherwise on "none"
+as before. STSTATUS_equip is still the only writer of the equipment.
+
+Logs (port/items_menu): "dw3-items-menu: equip-stays begin|list-open ..." and
+"equip-stays slot=.. after=equip frames=..".
+
+--- a/src/menus/field_menu/equip_panel.c
++++ b/src/menus/field_menu/equip_panel.c
+@@ -4,6 +4,21 @@
+ #include "menus/field_menu.h"
+ #if PORT_HOST
+ #include "port_items_menu.h"
++
++/* P6.34 phase 2 (patch 0190): after an equip the panel returns to the slot list
++   with one-frame fades (the original fades four panels out and in, ~70 frames).
++   The panel is a single task, so its state is kept here. */
++static s32 portQuickReturn;    /* 1 from the equip until the slot list is back */
++static s32 portQuickFrames;    /* frames spent in the quick return */
++static s32 portOpenRow;        /* the row the next list opens on */
++
++static void portSetFadeFrames(EquipPanel *panel, s32 frames) {
++    s32 i;
++
++    for (i = 0; i < 4; i++) {
++        panel->panels[i].duration = frames;
++    }
++}
+ #endif
+ 
+ /* Creates the equipment panel's windows: the six slots, the list of items that
+@@ -302,6 +317,12 @@
+     s32 i;
+ 
+ #if PORT_HOST
++    /* P6.34 phase 2: back on the slot list after an equip; the fades return to 10 frames. */
++    if (portQuickReturn) {
++        portQuickReturn = 0;
++        portSetFadeFrames(panel, 10);
++        dw3_port_items_stays_landed(panel->slot, portQuickFrames);
++    }
+     /* P6.33: ZL / ZR change the partner (port option items_partner_switch). */
+     if ((PAD_PRESSED(PAD_L2) || PAD_PRESSED(PAD_R2)) && dw3_port_items_partner_switch_enabled()) {
+         STSTATUS_portSwitchPartner(panel, windows, PAD_PRESSED(PAD_R2) ? 1 : -1);
+@@ -339,6 +360,13 @@
+         }
+         panel->count = count + 1;
+         panel->items[0] = -1;
++#if PORT_HOST
++        /* P6.34 phase 2: the list opens on the worn item when a spare copy is in it */
++        portOpenRow = dw3_port_items_equip_stays_enabled() ?
++                          dw3_port_items_stays_row(panel->items, panel->count,
++                                                   GAME.funcs.getPartnerStats(panel->partner)->equip[panel->slot]) :
++                          0;
++#endif
+         panel->substate = 10;
+     }
+     if (PAD_PRESSED(PAD_TRIANGLE)) {
+@@ -354,6 +382,12 @@
+     windows->cursor->setVisible(windows->cursor, 0);
+     panel->cursor = 0;
+     panel->scroll = 0;
++#if PORT_HOST
++    if (portOpenRow > 0) {
++        panel->scroll = dw3_port_items_stays_scroll(portOpenRow, panel->count);
++        panel->cursor = portOpenRow - panel->scroll;
++    }
++#endif
+     panel->substate++;
+ }
+ 
+@@ -381,15 +415,37 @@
+ static inline void STSTATUS_enterEquipList(EquipPanel *panel, EquipPanelWindows *windows) {
+     if (STSTATUS_data.funcs.updateFade(&panel->panels[2])) {
+         STSTATUS_showEquipList(panel, windows, 1);
++#if PORT_HOST
++        if (portOpenRow > 0) {
++            /* P6.34 phase 2: the cursor, the preview and the scroll bar follow the opening row */
++            s32 openItem = panel->items[panel->cursor + panel->scroll];
++
++            windows->listCursor->setPos(windows->listCursor, DW3_MENU_RIGHT(0x89), panel->cursor * 14 + 0x4B);
++            windows->listCursor->setVisible(windows->listCursor, 1);
++            panel->screen->previewStats(panel->screen, panel->slot, openItem);
++            dw3_port_items_stays_list_open(panel->slot, portOpenRow, panel->cursor, panel->scroll, openItem,
++                                           panel->count);
++        } else {
++            windows->listCursor->setPos(windows->listCursor, DW3_MENU_RIGHT(0x89), 0x4B);
++            windows->listCursor->setVisible(windows->listCursor, 1);
++            panel->screen->previewStats(panel->screen, panel->slot, 0);
++        }
++        portOpenRow = 0;
++#else
+         windows->listCursor->setPos(windows->listCursor, DW3_MENU_RIGHT(0x89), 0x4B);
+         windows->listCursor->setVisible(windows->listCursor, 1);
+         panel->screen->previewStats(panel->screen, panel->slot, 0);
++#endif
+         if (panel->count >= 9) {
+             windows->scrollBar = STSTATUS_createScrollBar();
+             windows->scrollBar->setX(windows->scrollBar, DW3_MENU_RIGHT(0x125), 0xC);
+             windows->scrollBar->setRange(windows->scrollBar, 0x4E, 0xB3);
+             windows->scrollBar->setCount(windows->scrollBar, 8, panel->count);
++#if PORT_HOST
++            windows->scrollBar->setPos(windows->scrollBar, VERSION_US ? panel->cursor + panel->scroll : panel->scroll);
++#else
+             windows->scrollBar->setPos(windows->scrollBar, 0);
++#endif
+         }
+         panel->substate++;
+     }
+@@ -482,6 +538,15 @@
+                 windows->scrollBar->state = 3;
+             }
+             SOUND.playSound(SOUND_SELECT);
++#if PORT_HOST
++            if (dw3_port_items_equip_stays_enabled()) {
++                /* P6.34 phase 2: one-frame fades back to the slot list, slot cursor kept */
++                portQuickReturn = 1;
++                portQuickFrames = 0;
++                portSetFadeFrames(panel, 1);
++                dw3_port_items_stays_begin(panel->partner, panel->slot, item);
++            }
++#endif
+         }
+     } else if (PAD_PRESSED(PAD_TRIANGLE)) {
+         SOUND.playSound(SOUND_MENU_CANCEL);
+@@ -600,8 +665,17 @@
+         panel->panels[1].duration = 10;
+         panel->panels[2].duration = 10;
+         panel->panels[0].duration = 10;
++#if PORT_HOST
++        portQuickReturn = 0;
++        portOpenRow = 0;
++#endif
+         break;
+     case TASK_RUN:
++#if PORT_HOST
++        if (portQuickReturn) {
++            portQuickFrames++;
++        }
++#endif
+         STSTATUS_runEquipPanel(panel, windows);
+         STSTATUS_drawEquipPanel(panel);
+         break;

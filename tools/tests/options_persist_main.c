@@ -6,6 +6,8 @@
  *   volumes            print the Music / SFX volume steps
  *   pacing             print the Encounter rate / Text speed modes
  *   battle             print the Battle cursor mode (battle_menu_memory)
+ *   layout             print the Button layout (0 PlayStation, 1 Nintendo)
+ *   region             print the Region at start row (0 Ask, 1 US, 2 EU; DW3_REGION_IMAGE build)
  *   open | close       open / close the Options screen
  *   row N              put the cursor on registry row N (opens its group, no keys)
  *   nav N              the same with the keys: Down / Confirm / Down ... as a
@@ -17,9 +19,13 @@
  *   gains              print the Q15 gains last handed to the mixer
  *   env I L            apply_env(I, L) (DW3_WIDESCREEN / DW3_TURBO stand-in)
  *   fileint KEY DEF    print dw3_port_options_file_int(KEY, DEF) (file-only keys)
+ *   raw HEX            hand the pad host's raw word (a clear bit = pressed) to the map
+ *   tick               one Options tick with nothing pressed
+ *   map                print the map in force (ten digits) and its layout
  *   noinit             skip persist_init (session-only)
  */
 #include "port_audio.h"
+#include "port_button_map.h"
 #include "port_options.h"
 #include "port_options_groups.h"
 
@@ -65,6 +71,14 @@ static void pacing(void) {
 
 static void battle(void) {
     printf("battle_menu_memory=%d\n", dw3_port_options_level(7));
+}
+
+static void layout(void) {
+    printf("button_layout=%d\n", dw3_port_options_level(9));
+}
+
+static void region(void) {
+    printf("region_row=%d\n", dw3_port_options_level(10));
 }
 
 static void autosave(void) {
@@ -142,6 +156,10 @@ int main(int argc, char **argv) {
             battle();
         } else if (strcmp(argv[i], "autosave") == 0) {
             autosave();
+        } else if (strcmp(argv[i], "region") == 0) {
+            region();
+        } else if (strcmp(argv[i], "layout") == 0) {
+            layout();
         } else if (strcmp(argv[i], "open") == 0) {
             dw3_port_options_open();
         } else if (strcmp(argv[i], "close") == 0) {
@@ -162,6 +180,15 @@ int main(int argc, char **argv) {
             press(BIT_UP);
         } else if (strcmp(argv[i], "down") == 0) {
             press(BIT_DOWN);
+        } else if (strcmp(argv[i], "raw") == 0 && i + 1 < argc) {
+            (void)dw3_button_map_apply((unsigned)strtoul(argv[++i], NULL, 16));
+        } else if (strcmp(argv[i], "tick") == 0) {
+            dw3_port_options_tick();
+        } else if (strcmp(argv[i], "map") == 0) {
+            char digits[DW3_BTN_COUNT + 1];
+
+            dw3_button_map_format(dw3_button_map_current(), digits);
+            printf("map=%s layout=%d\n", digits, dw3_button_map_layout());
         } else if (strcmp(argv[i], "gains") == 0) {
             gains();
         } else if (strcmp(argv[i], "fileint") == 0 && i + 2 < argc) {

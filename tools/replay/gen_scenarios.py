@@ -22,6 +22,7 @@ from pathlib import Path
 
 START, DOWN, CROSS = 0x0008, 0x0040, 0x4000
 TRIANGLE = 0x1000
+CIRCLE = 0x2000
 L2, R2 = 0x0100, 0x0200
 UP, RIGHT, LEFT = 0x0010, 0x0020, 0x0080
 EU_LANGS = ["en", "fr", "de", "it", "es"]
@@ -56,6 +57,8 @@ class Rec:
 # Saves; Cheats joins once its master switch is on); a group opens a sub-screen
 # with its rows and Triangle goes back to the list with the cursor kept.
 GRP_DISPLAY, GRP_SOUND, GRP_GAMEPLAY, GRP_SAVES = 0, 1, 2, 3
+GRP_CHEATS = 4    # P51 item 5: always on the list (greyed in game)
+GRP_CONTROLS = 5  # P9.8: the Button layout row (Cheats comes before it)
 
 
 def _keys(r, f, *masks, gap=20):
@@ -655,6 +658,35 @@ def p79_menu(version, page2=False, evidence=False):
     return r
 
 
+def battle_list_bar(version):
+    """P51 item 1: the bar of the battle's bar-only lists. One forced battle
+    (the p79 env: Kotemon vs an enemy with 2000 HP, extra techniques, a full
+    bag). Turn 1: Fight -> Tech -> Item, open the Items list and move Down
+    twice, back, up to Tech, open the technique list and move Down. A
+    checkpoint per cursor position: the highlighted bar must be in each."""
+    r = Rec(f"{version.upper()}: battle Items / technique list bar (env in manifest)")
+    for f in (350, 375, 400, 425):   # Fight -> Tech -> DV -> Tag -> Item
+        r.press(f, DOWN)
+    r.shot(450, "battle-cmd-items")
+    r.press(460, CROSS)              # open the Items list
+    r.shot(530, "items-line0")
+    r.press(540, DOWN)
+    r.shot(600, "items-line1")
+    r.press(610, DOWN)
+    r.shot(670, "items-line2")
+    r.press(680, TRIANGLE)           # back to the command menu
+    for f in (720, 745, 770, 795):   # Item -> Tag -> DV -> Tech -> Fight
+        r.press(f, UP)
+    r.press(820, DOWN)               # Fight -> Tech
+    r.press(850, CROSS)              # open the technique list
+    r.shot(920, "tech-line0")
+    r.press(930, DOWN)
+    r.shot(990, "tech-line1")
+    r.press(1000, TRIANGLE)          # close the list: the log line of its bar
+    r.end(1040)
+    return r
+
+
 def p79_two_battles(version):
     """P7.9: the two forced battles of two_battles, but battle 2 starts with
     Cross, Cross (no Down): with the memory on its first menu already stands
@@ -688,6 +720,63 @@ def p77_square(version):
     _pad(r, 600, SQUARE | 0x2000)    # Square + Circle
     _pad(r, 620, 0)
     r.end(700)
+    return r
+
+
+def _to_options(r, version):
+    """Title -> Options (the group list); returns the frame it is open at."""
+    if version == "us":
+        r.press(20, START)           # skip the opening FMV
+        r.press(210, START)          # PRESS START
+        m = 320                      # title menu is up
+    else:
+        for f in (110, 160, 190, 220, 280):   # confirm English, skip splash/FMV, PRESS START
+            r.press(f, START)
+        m = 390
+    r.press(m, DOWN)                 # New Game -> Options
+    r.press(m + 20, CROSS)           # open the Options screen (the group list)
+    return m
+
+
+def options_cheats_listed(version):
+    """P51 item 5: the Cheats group is on the title's group list with the master
+    switch off. The list (`cheats-listed`), Down to Cheats and Cross: the Cheats
+    screen opens on its master switch (`cheats-open`, master OFF), Triangle
+    back to the list with the cursor on Cheats (`cheats-back`), Triangle."""
+    r = Rec(f"{version.upper()}: P51 Cheats group listed with the master off")
+    m = _to_options(r, version)
+    r.shot(m + 60, "cheats-listed")
+    f = _group(r, m + 70, GRP_DISPLAY, GRP_CHEATS)
+    r.shot(f + 40, "cheats-open")
+    r.press(f + 60, TRIANGLE)        # back to the list
+    r.shot(f + 120, "cheats-back")
+    r.press(f + 140, TRIANGLE)       # leave
+    r.end(f + 200)
+    return r
+
+
+def options_region(version, phase):
+    """P51 item 4 (the combined image only, run with --bin-both): Options ->
+    Gameplay -> Down x5 to the Region at start row. Phase 1: Cross steps Ask ->
+    US -> EU (`region-ask`, `region-us`, `region-eu`), Triangle out. Phase 2 is a
+    new process on the same config folder: the row is read back (`region-back`)."""
+    r = Rec(f"{version.upper()}: P51 Region at start row, phase {phase}")
+    m = _to_options(r, version)
+    f = _group(r, m + 70, GRP_DISPLAY, GRP_GAMEPLAY)
+    f = _keys(r, f + 20, DOWN, DOWN, DOWN, DOWN, DOWN)       # Region at start
+    if phase == 1:
+        r.shot(f + 20, "region-ask")
+        r.press(f + 40, CROSS)       # Ask -> US
+        r.shot(f + 80, "region-us")
+        r.press(f + 100, CROSS)      # US -> EU
+        r.shot(f + 140, "region-eu")
+        f += 160
+    else:
+        r.shot(f + 20, "region-back")
+        f += 40
+    r.press(f, TRIANGLE)             # back to the list
+    r.press(f + 40, TRIANGLE)        # leave
+    r.end(f + 100)
     return r
 
 
@@ -726,6 +815,161 @@ def options_persist(version, phase):
         r.shot(f + 40, "display-restored")
         f = _keys(r, f + 60, TRIANGLE, TRIANGLE)
         r.end(f + 40)
+    return r
+
+
+def controls_layout(version, phase):
+    """P9.8: title -> Options -> Controls -> Button layout. Phase 1 shows the
+    group list (the Controls plaque), the row on PlayStation, then switches it
+    to Nintendo with Confirm and leaves; phase 2 is a fresh process on the same
+    config dir whose checkpoint shows the value read back from the file."""
+    r = Rec(f"{version.upper()}: P9.8 Button layout row, phase {phase}")
+    if version == "us":
+        r.press(20, START)           # skip the opening FMV
+        r.press(210, START)          # PRESS START
+        m = 320                      # title menu is up
+    else:
+        for f in (110, 160, 190, 220, 280):   # confirm English, skip splash/FMV, PRESS START
+            r.press(f, START)
+        m = 390
+    r.press(m, DOWN)                 # New Game -> Options
+    r.press(m + 20, CROSS)           # open the Options screen (the group list)
+    if phase == 1:
+        r.shot(m + 60, "options-list")
+        f = _group(r, m + 70, GRP_DISPLAY, GRP_CONTROLS)   # Controls
+        r.shot(f + 20, "controls-playstation")
+        r.press(f + 40, CROSS)       # PlayStation -> Nintendo
+        r.shot(f + 80, "controls-nintendo")
+        f = _keys(r, f + 100, TRIANGLE, TRIANGLE)          # list, then leave
+        r.end(f + 40)
+    else:
+        f = _group(r, m + 70, GRP_DISPLAY, GRP_CONTROLS)   # Controls
+        r.shot(f + 40, "controls-restored")
+        f = _keys(r, f + 60, TRIANGLE, TRIANGLE)
+        r.end(f + 40)
+    return r
+
+
+# P9.8 layout scenarios (docs/CONTROLS_BUNDLE.md, section 6). The replay hands the
+# game the PS buttons it must see, so the map is bypassed; with the dev variable
+# DW3_REPLAY_SOURCE=1 the masks are positions as a real pad reports them (Switch
+# A is the Circle position, B Cross, X Triangle, Y Square) and go through the map.
+# These recordings are the plain ones turned into positions under the Nintendo
+# layout: the game must see exactly the original input, so every checkpoint equals
+# the plain scenario's reference.
+NINTENDO_DIGITS = "1203456789"      # Cross<-A (Circle pos), Circle<-X, Triangle<-B
+_FACE_BITS = {"cross": 14, "circle": 13, "triangle": 12, "square": 15,
+              "l1": 10, "r1": 11, "l2": 8, "r2": 9, "l3": 1, "r3": 2}
+_FACE_ORDER = ("cross", "circle", "triangle", "square", "l1", "r1", "l2", "r2", "l3", "r3")
+
+
+def nintendo_source_mask(mask):
+    """The position word that produces `mask` (PS buttons) under Nintendo."""
+    out = mask & ~sum(1 << b for b in _FACE_BITS.values())
+    for ps, digit in enumerate(NINTENDO_DIGITS):
+        if mask & (1 << _FACE_BITS[_FACE_ORDER[ps]]):
+            out |= 1 << _FACE_BITS[_FACE_ORDER[int(digit)]]
+    return out
+
+
+def nintendo_source_rec(text, note):
+    lines = text.splitlines()
+    head = lines[0] if lines and lines[0].startswith("#") else "# recording"
+    out = [f"{head} ({note})"]
+    for line in lines[1:] if head == lines[0] else lines:
+        parts = line.split()
+        if parts and parts[0] == "pad":
+            mask = nintendo_source_mask(int(parts[2], 16))
+            out.append(f"pad {parts[1]} 0x{mask:04x}")
+        else:
+            out.append(line)
+    return "\n".join(out) + "\n"
+
+
+# (new recording, plain recording it is made from)
+NINTENDO_RECS = (
+    ("{v}-nintendo-menu", "{v}-field-options-p1"),
+    ("{v}-nintendo-map-view", "{v}-map-view"),
+    ("{v}-nintendo-title-quit", "{v}-title-quit"),
+)
+
+
+def _controls_open(r, version):
+    """Boot to the title, open Options and the Controls group (Button layout row
+    focused). Returns the frame after."""
+    m = _to_title_menu(r, version)
+    r.press(m, DOWN)                 # New Game -> Options
+    r.press(m + 20, CROSS)           # open the Options screen (the group list)
+    return _group(r, m + 70, GRP_DISPLAY, GRP_CONTROLS)
+
+
+def _help_controls_page(r, f):
+    """From the group list with the cursor on Controls: down to Help, open it, the
+    page list's second row (Controls), open the page. Returns the frame after."""
+    return _keys(r, f, DOWN, CROSS, DOWN, CROSS)
+
+
+def controls_custom(version, phase):
+    """P6.12: Controls -> Customize buttons. The masks are button positions
+    (DW3_REPLAY_SOURCE=1 in the manifest). Phase 1: the Controls rows, the Customize
+    list, Left / Right is not used; the L1 row waits for a press (shot), R (the R1
+    position) is pressed, so L1 <- R and R1 <- L (shot), back to Controls (Button
+    layout reads Custom), then the Help: on its Controls page the L1 position now
+    turns the page FORWARD and the R1 position back (the pages turn accordingly).
+    Phase 2 is a fresh process on the same config dir: the custom map is read back
+    (shots, the L1 position still turns forward), then Reset to default and the R1
+    position turns forward again."""
+    r = Rec(f"{version.upper()}: P6.12 Customize buttons, phase {phase}")
+    f = _controls_open(r, version)
+    if phase == 1:
+        r.shot(f + 20, "controls-rows")
+        f = _keys(r, f + 40, DOWN, CROSS)                  # Customize buttons
+        r.shot(f + 20, "customize-list")
+        f = _keys(r, f + 40, DOWN, DOWN, DOWN, DOWN, CROSS)  # the L1 row waits
+        r.shot(f + 20, "customize-prompt")
+        r.press(f + 40, R1)                                # the R position: L1 <- R, R1 <- L
+        r.shot(f + 80, "customize-swapped")
+        f = _keys(r, f + 100, TRIANGLE)                    # back to Controls
+        r.shot(f + 20, "controls-custom")
+        f = _keys(r, f + 40, TRIANGLE)                     # the group list
+        f = _help_controls_page(r, f + 20)
+        r.shot(f + 30, "help-controls")
+        r.press(f + 50, L1)                                # the L position is R1 now: next page
+        r.shot(f + 90, "help-turned-forward")
+        r.press(f + 110, R1)                               # the R position is L1 now: back
+        r.shot(f + 150, "help-turned-back")
+        f = _keys(r, f + 170, TRIANGLE, TRIANGLE, TRIANGLE)  # page list, group list, close
+        r.end(f + 40)
+    else:
+        r.shot(f + 20, "controls-restored")
+        f = _keys(r, f + 40, DOWN, CROSS)                  # Customize buttons
+        r.shot(f + 20, "customize-restored")
+        f = _keys(r, f + 40, TRIANGLE, TRIANGLE)           # Controls, the group list
+        f = _help_controls_page(r, f + 20)
+        r.press(f + 30, L1)                                # still R1 (the map was read back)
+        r.shot(f + 70, "help-turned-restored")
+        f = _keys(r, f + 90, TRIANGLE, TRIANGLE)           # page list, group list
+        f = _keys(r, f + 20, UP, CROSS)                    # Controls again
+        f = _keys(r, f + 20, DOWN, DOWN, CROSS)            # Reset to default
+        r.shot(f + 40, "controls-reset")
+        f = _keys(r, f + 60, TRIANGLE)                     # the group list
+        f = _help_controls_page(r, f + 20)
+        r.press(f + 30, R1)                                # the identity again: R1 is next
+        r.shot(f + 70, "help-turned-reset")
+        f = _keys(r, f + 90, TRIANGLE, TRIANGLE, TRIANGLE)
+        r.end(f + 40)
+    return r
+
+
+def controls_custom_invalid(version):
+    """P6.12: port_options.cfg holds button_layout=custom with a button_map that is
+    not a permutation (manifest cfg): the default applies, with one log line, and
+    the Controls row reads PlayStation."""
+    r = Rec(f"{version.upper()}: P6.12 invalid button_map in the cfg")
+    f = _controls_open(r, version)
+    r.shot(f + 30, "controls-invalid-default")
+    f = _keys(r, f + 50, TRIANGLE, TRIANGLE)
+    r.end(f + 40)
     return r
 
 
@@ -1330,6 +1574,58 @@ def items_equip_switch(version):
     return r
 
 
+def items_equip_stays(version):
+    """P6.34 phase 2 (patch 0190): equip in Status > Equipment and come back to
+    the slot list without the long fade round trip. The path of
+    `items_equip_switch` to the slot list of the second partner; Down twice (the
+    right hand slot), Cross (the list), Down, Cross (the first fitting item
+    is worn: the panel is back on the slot list, `after-equip`), Cross again (the
+    list opens on the worn item, which has spare copies: `list-on-worn`), Down,
+    Cross (a second equip), Cross (the list again), Triangle (the original
+    long way back), Triangle. The waits after an equip are long enough for the
+    original flow too, so the same recording runs with the key off.
+    Frames measured on the PC build."""
+    r = Rec(f"{version.upper()}: P6.34 equip stays on the slot list (env and cfg in manifest)")
+    for f in range(300, 1200, 30):
+        r.press(f, CROSS)            # battle report -> field
+    r.press(1250, START)             # field menu, over the field
+    r.press(1420, CROSS)             # Items: the dissolve, then STSTATUS
+    f = 1640
+    for name, button, wait in MENU_SCREENS_STEPS:
+        if name == "status-equip":
+            break
+        if button:
+            r.press(f, button)
+        f += wait
+    r.shot(f, "slots-before")
+    r.press(f + 40, DOWN)            # head -> body
+    r.press(f + 80, DOWN)            # right hand
+    f += 120
+    r.press(f, CROSS)               # the list for the slot
+    r.shot(f + 200, "list-first")
+    r.press(f + 210, DOWN)
+    r.press(f + 260, CROSS)         # equips the first item that fits
+    f += 300
+    r.shot(f, "after-equip-1")       # key on: slot list, cursor on the right hand
+    f += 200
+    r.press(f, CROSS)               # the list again: on the worn item
+    r.shot(f + 220, "list-on-worn")
+    r.press(f + 230, DOWN)
+    r.shot(f + 260, "list-on-worn-down")
+    r.press(f + 280, CROSS)         # a second equip
+    f += 320
+    r.shot(f, "after-equip-2")
+    f += 200
+    r.press(f, CROSS)               # the list again
+    r.shot(f + 220, "list-again")
+    r.press(f + 230, TRIANGLE)      # cancel: the original way back
+    f += 450
+    r.shot(f, "slots-after")
+    r.press(f + 20, TRIANGLE)
+    r.end(f + 300)
+    return r
+
+
 def map_screen(version):
     """P6.1 (patch 0080): the field menu's Map screen in widescreen. The same
     path as `menu_screens` (the manifest's env and cfg) up to the Map entry;
@@ -1392,7 +1688,7 @@ def map_view(version):
     L1 step the zoom (1.25, 1.5, 2.0, 3.0, then back down to fit), the right
     stick zooms smoothly (`mv-stick-in`, `mv-stick-out`), R2 cycles the scaler (Lanczos2
     and FSR 1 are built on the CPU, with a log line each), R3 does nothing (no
-    turbo), Circle hides the help text, Triangle returns to the unchanged game
+    turbo), Circle shows the help bars (hidden at open; the view opens at 1.5x), Triangle returns to the unchanged game
     Map and a second Triangle closes it. With widescreen off (the `-43`
     scenario) Square is ignored and the screen never opens. The host draws the
     screen, so the references come from the PC build only."""
@@ -1427,6 +1723,12 @@ def map_view(version):
     _pad(r, 4240, 0)
     r.shot(4245, "mv-cursor-down")
     f = 4250
+    # P51 item 2: the view opens at 1.5x; two steps down is the 1.0 the zoom
+    # tour below starts from (it used to be the opening zoom)
+    r.press(f, L1_MAP)
+    r.press(f + 20, L1_MAP)
+    r.shot(f + 40, "mv-zoom-100-open")
+    f += 60
     for name, button in (("mv-zoom-125", R1_MAP), ("mv-zoom-150", R1_MAP),
                          ("mv-zoom-200", R1_MAP), ("mv-zoom-300", R1_MAP)):
         r.press(f, button)
@@ -1446,9 +1748,9 @@ def map_view(version):
         r.shot(f + 100, name)
         f += 120
     r.press(f, R3_MAP)               # turbo toggle: nothing
-    r.press(f + 30, CIRCLE_MAP)
-    r.shot(f + 60, "mv-no-hud")
-    r.press(f + 70, CIRCLE_MAP)
+    r.press(f + 30, CIRCLE_MAP)      # P51 item 2: the bars come on (off at open)
+    r.shot(f + 60, "mv-hud-on")
+    r.press(f + 70, CIRCLE_MAP)      # and go again
     # the right stick zooms smoothly (the owner's request): up 40 frames from
     # the 1.0 step, then down 40 frames; both end between the table steps
     _pad(r, f + 90, RSTICK_UP)
@@ -2136,10 +2438,10 @@ def field_options(version, phase=1):
 
 
 # --- P6.30 technical help ---------------------------------------------------
-# The Help group is the fifth plaque of the group list (Display, Sound,
-# Gameplay, Saves, then Help; Cheats would sit before it once its master switch
-# is on). The L1 / R1 masks are the page keys of the book.
-GRP_HELP = 4
+# The Help group is the sixth plaque of the group list (Display, Sound,
+# Gameplay, Saves, Controls (P9.8), then Help; Cheats would sit before Controls
+# once its master switch is on). The L1 / R1 masks are the page keys of the book.
+GRP_HELP = 6
 
 
 def _help_reading(r, f):
@@ -2219,11 +2521,11 @@ def help_battle(version):
 
 
 def help_lang(idx):
-    """P6.30 (EU): the help in one of the other four languages. The files are
-    stubs for now, so the pages show English and the log has the fallback line;
-    the screen's lettering (group name, header) is in the language already."""
+    """P6.30 (EU): the help in one of the other four languages (fr, de, it, es:
+    machine-drafted text, needs native review). The page list, the Controls page
+    and the Options page (the longest one) are captured in the language."""
     lang = EU_LANGS[idx]
-    r = Rec(f"EU: P6.30 technical help, language {lang} (stub: English fallback)")
+    r = Rec(f"EU: P6.30 technical help, language {lang} (machine-drafted text)")
     f = 90
     for _ in range(idx):
         r.press(f, DOWN)
@@ -2241,6 +2543,8 @@ def help_lang(idx):
     r.shot(f + 30, "help-list")
     f = _keys(r, f + 40, DOWN, CROSS)
     r.shot(f + 30, "controls-top")
+    f = _keys(r, f + 40, TRIANGLE, DOWN, DOWN, DOWN, CROSS)   # list, Options explained
+    r.shot(f + 30, "options-top")
     f = _keys(r, f + 40, TRIANGLE, TRIANGLE, TRIANGLE)
     r.end(f + 60)
     return r
@@ -2418,6 +2722,16 @@ def main(out):
                 options_persist(v, phase).text(True))
     for v in ("us", "eu"):
         for phase in (1, 2):
+            (out / f"{v}-controls-layout-p{phase}.rec").write_text(
+                controls_layout(v, phase).text(True))
+    for v in ("us", "eu"):
+        for phase in (1, 2):
+            (out / f"{v}-controls-custom-p{phase}.rec").write_text(
+                controls_custom(v, phase).text(True))
+        (out / f"{v}-controls-custom-invalid.rec").write_text(
+            controls_custom_invalid(v).text(True))
+    for v in ("us", "eu"):
+        for phase in (1, 2):
             (out / f"{v}-volume-persist-p{phase}.rec").write_text(
                 volume_persist(v, phase).text(True))
     for v in ("us", "eu"):
@@ -2440,6 +2754,7 @@ def main(out):
         (out / f"{v}-map-screen.rec").write_text(map_screen(v).text(True))
         (out / f"{v}-map-view.rec").write_text(map_view(v).text(True))
         (out / f"{v}-items-equip-switch.rec").write_text(items_equip_switch(v).text(True))
+        (out / f"{v}-items-equip-stays.rec").write_text(items_equip_stays(v).text(True))
         (out / f"{v}-items-select-equip.rec").write_text(items_select_equip(v).text(True))
         (out / f"{v}-items-equip-from-items.rec").write_text(items_equip_from_items(v).text(True))
         (out / f"{v}-items-equip-refused.rec").write_text(items_equip_refused(v).text(True))
@@ -2478,6 +2793,11 @@ def main(out):
         (out / f"{v}-p79-menu.rec").write_text(p79_menu(v).text(True))
         (out / f"{v}-p79-menu-page2.rec").write_text(p79_menu(v, page2=True).text(True))
         (out / f"{v}-p79-two-battles.rec").write_text(p79_two_battles(v).text(True))
+        (out / f"{v}-options-cheats-listed.rec").write_text(options_cheats_listed(v).text(True))
+        for phase in (1, 2):
+            (out / f"{v}-options-region-p{phase}.rec").write_text(
+                options_region(v, phase).text(True))
+        (out / f"{v}-battle-list-bar.rec").write_text(battle_list_bar(v).text(True))
         for phase in (1, 2):
             (out / f"{v}-cheats-screen-p{phase}.rec").write_text(
                 cheats_screen(v, phase).text(True))
@@ -2505,8 +2825,7 @@ def main(out):
         if lang != "en":
             (out / f"eu-title-quit-{lang}.rec").write_text(title_quit_lang(i).text(True))
             (out / f"eu-field-options-{lang}.rec").write_text(field_options_lang(i).text(True))
-            if lang == "fr":
-                (out / f"eu-help-{lang}.rec").write_text(help_lang(i).text(True))
+            (out / f"eu-help-{lang}.rec").write_text(help_lang(i).text(True))
     for v in ("us", "eu"):
         for name, fn in RESTART_RECS:
             (out / f"{v}-{name}.rec").write_text(fn(v).text(True))
@@ -2515,6 +2834,13 @@ def main(out):
         # Written unsorted, byte for byte as first committed with patch 0058.
         (out / f"{version}-bridge-partner-gate.rec").write_text(
             bridge_partner_gate(version).text())
+    # P9.8: made last, from the plain recordings written above (or committed).
+    note = "Nintendo layout: the masks are button positions, DW3_REPLAY_SOURCE=1"
+    pairs = [(n.format(v=v), b.format(v=v)) for v in ("us", "eu") for n, b in NINTENDO_RECS]
+    pairs.append(("eu-nintendo-lang-cross-fr", "eu-lang-cross-fr"))
+    for new, base in pairs:
+        (out / f"{new}.rec").write_text(
+            nintendo_source_rec((out / f"{base}.rec").read_text(), note))
     for version in ("us", "eu"):
         # P5.5: no input; the sweep ends the process by itself (the end line is
         # only a guard).

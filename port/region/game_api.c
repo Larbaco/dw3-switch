@@ -16,6 +16,7 @@
 #include "map_view.h"
 #include "overlay_host.h"
 #include "port_battle_options.h"
+#include "port_button_map.h"
 #include "port_options.h"
 #include "port_screen_fade.h"
 #include "port_turbo.h"
@@ -84,6 +85,7 @@ const Dw3GameApi dw3_game_api = {
     0,
 #endif
     dw3_port_audio_health_exit,
+    dw3_button_map_apply,
     FILE_SECTORS,
     FILE_SECTOR_COUNTS,
     &FILE_COUNT,

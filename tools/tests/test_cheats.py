@@ -20,8 +20,8 @@ CFG = "port_options.cfg"
 def cheats_bin(tmp_path_factory) -> Path:
     out = tmp_path_factory.mktemp("cheats") / "cheats_test"
     cmd = ["gcc", "-std=c11", "-Wall", "-Wextra", "-Werror", "-O2",
-           "-DDW3_PORT_OPTIONS_TEST", "-DDW3_CHEATS", "-o", str(out),
-           str(TESTS / "cheats_main.c"), str(OPTIONS / "port_options.c"),
+           "-DDW3_PORT_OPTIONS_TEST", "-DDW3_BUTTON_MAP_TEST", "-DDW3_CHEATS", "-o", str(out),
+           str(TESTS / "cheats_main.c"), str(OPTIONS / "port_options.c"), str(OPTIONS / "button_map.c"),
            str(OPTIONS / "options_cfg.c"), str(OPTIONS / "cheats.c"),
            str(OPTIONS / "cheat_saves.c"), str(ROOT / "port" / "audio" / "volume.c"),
            str(ROOT / "port" / "memcard" / "memcard_host.c"),

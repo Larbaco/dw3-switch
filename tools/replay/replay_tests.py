@@ -296,14 +296,14 @@ def run_phase(rec: Path, version, binary, runtime, display, outdir: Path, memdir
                DW3_MEMCARD_DIR=str(memdir),
                DW3_REPLAY=str(rec),
                DW3_REPLAY_OUT=str(outdir), DW3_REPLAY_XSHOT="1")
-    for k in ("DW3_AUTO_PAD", "DW3_REPLAY_RECORD", "DW3_PC_INTERNAL_RES", "DW3_TURBO",
+    for k in ("DW3_AUTO_PAD", "DW3_REPLAY_SOURCE", "DW3_BUTTON_MAP", "DW3_REPLAY_RECORD", "DW3_PC_INTERNAL_RES", "DW3_TURBO",
               "DW3_CONFIG_DIR", "DW3_WIDESCREEN", "DW3_MUSIC_VOLUME", "DW3_SFX_VOLUME",
               "DW3_ENCOUNTER_RATE", "DW3_TEXT_SPEED", "DW3_START_MODE", "DW3_PROGRESS",
               "DW3_FORCE_NPC_ACTION", "DW3_OVERLAY_STRICT", "DW3_FORCE_ENCOUNTER",
               "DW3_FORCE_PARTY", "DW3_FORCE_WIN", "DW3_AUTO_DOOR_MODE",
               "DW3_AUTO_DOOR_FRAMES", "DW3_LANGUAGE", "DW3_FORCE_FORM", "DW3_FORCE_NICKNAME",
               "DW3_FORCE_TECH", "DW3_FORCE_HIT", "DW3_FORCE_STEAL", "DW3_FORCE_ENEMY_ITEM",
-              "DW3_FORCE_ENEMY_HP", "DW3_EXTRA_TECHS", "DW3_FORCE_ITEMS", "DW3_MAP_VERIFY", "DW3_MAP_PRECOMPUTE", "DW3_MAP_SYNC", "DW3_FORCE_CARDS", "DW3_PACING_TRACKED",
+              "DW3_FORCE_ENEMY_HP", "DW3_EXTRA_TECHS", "DW3_FORCE_ITEMS", "DW3_FORCE_BATTLE_BAG", "DW3_MAP_VERIFY", "DW3_MAP_PRECOMPUTE", "DW3_MAP_SYNC", "DW3_FORCE_CARDS", "DW3_PACING_TRACKED",
               "DW3_FILE_CACHE_SLOTS", "DW3_MODS_DIR", "DW3_MOD_PACK", "DW3_FORCE_MENU", "DW3_CHEATS_ARM", "DW3_STAGE_SWEEP", "DW3_STAGE_SWEEP_EXIT", "DW3_STAGE_SWEEP_FRAMES", "DW3_STAGE_SWEEP_ONLY", "DW3_STAGE_SWEEP_DIR", "DW3_STAGE_SWEEP_HANG_MS", "DW3_FORCE_EXIT", "DW3_START_MODE_EVERY", "DW3_WALKTHROUGH_PROBE",
               "DW3_MEMCARD_IMPORT_DIR", "DW3_CROSS_IMPORT", "DW3_REGION", "DW3_REGION_PICK",
               "DW3_REGION_PICK_KEYS", "DW3_SAVE_PROFILE", "DW3_RUNTIME_BASE", "DW3_PC_BIN_US", "DW3_PC_BIN_EU"):
@@ -463,6 +463,9 @@ def run_scenario(sc, binary, runtime, out: Path, stamp, label, stall, timeout_sc
         sys.path.insert(0, str(ROOT / "tools" / "mods"))
         import make_synthetic_pack
         make_synthetic_pack.make_pack(cfgdir / "mods", (sc.version,))
+    elif sc.mod_pack == "synthetic-shared":  # P51 item 3: one shared map, both regions listed
+        import make_synthetic_pack
+        make_synthetic_pack.make_pack(cfgdir / "mods", ("us", "eu"), shared=True)
     elif os.environ.get("DW3_REPLAY_MODS"):  # a local aid: look at a real pack
         (cfgdir / "mods").symlink_to(Path(os.environ["DW3_REPLAY_MODS"]).resolve())
     xvfb, display = start_xvfb(sdir)
@@ -761,6 +764,8 @@ def main():
         if a.fail_fast and stop.is_set():
             return sc.name, [(sc.name, "-", "SKIP", "not started: --fail-fast after an earlier failure")]
         wait_for_memory(a.min_avail_mib, lambda m: say(f"[{sc.name}] {m}"))
+        if sc.tier == "both" and BOTH_BIN is None:
+            return sc.name, [(sc.name, "-", "SKIP", "needs the combined binary (--bin-both)")]
         if sc.launch and not (launcher and launcher.is_file()):
             return sc.name, [(sc.name, "-", "SKIP", "missing launcher binary (--launcher)")]
         for v in sorted(set(sc.phase_versions) | {sc.version} | set(sc.launch.split("+") if sc.launch else ())):

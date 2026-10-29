@@ -253,6 +253,7 @@ static int slot_compose_over_base(StaticSlot *s) {
 }
 
 int dw3_options_cache_update(Dw3OptionsDirty *out) {
+    dw3_pc_title_overlay_menu_tile_prepare(); /* P51 item 6: a no-op after the first */
     const size_t canvas_bytes = (size_t)DW3_OPTIONS_CANVAS_PITCH * DW3_OPTIONS_CANVAS_H;
     const unsigned art_generation = dw3_pc_title_overlay_generation();
     const int cursor = dw3_pc_title_overlay_options_cursor();
@@ -364,6 +365,10 @@ int dw3_options_cache_update(Dw3OptionsDirty *out) {
             for (int j = 0; j < dirty.count; ++j)
                 if (intersect(dirty.rects[j], value_rect(i), NULL)) covered = 1;
             if (!covered) dirty.rects[dirty.count++] = value_rect(i);
+            /* P6.12: the Customize screen's message line follows the focused
+             * row's value (waiting for a press). */
+            if (i == cursor && dw3_pc_title_overlay_options_desc_follows_value(g_page))
+                dirty.rects[dirty.count++] = description_rect();
         }
     }
     for (int i = 0; i < dirty.count; ++i) {
@@ -442,6 +447,7 @@ int dw3_options_cache_layers_ready(unsigned in_game_locked) {
 }
 
 int dw3_options_cache_prewarm_begin(unsigned in_game_locked) {
+    dw3_pc_title_overlay_menu_tile_prepare(); /* P51 item 6: once, before any layer */
     const unsigned art = dw3_pc_title_overlay_generation();
     const int cheats = dw3_pc_title_overlay_options_cheats_on();
     int need;

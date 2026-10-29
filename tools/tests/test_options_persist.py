@@ -32,11 +32,23 @@ def cfg_bin(tmp_path_factory) -> Path:
 
 
 @pytest.fixture(scope="module")
+def region_bin(tmp_path_factory) -> Path:
+    """The registry as the combined image's game copies compile it: the Region
+    at start row (P51 item 4) is listed and writes the top-level file."""
+    return build(tmp_path_factory.mktemp("optregion") / "options_region_test",
+                 TESTS / "options_persist_main.c", OPTIONS / "port_options.c", OPTIONS / "button_map.c",
+                 OPTIONS / "options_cfg.c", ROOT / "port" / "audio" / "volume.c",
+                 ROOT / "port" / "region" / "dw3_region.c",
+                 defs=["-DDW3_PORT_OPTIONS_TEST", "-DDW3_BUTTON_MAP_TEST", "-DDW3_REGION_IMAGE=1",
+                       f"-I{ROOT / 'port' / 'region'}"])
+
+
+@pytest.fixture(scope="module")
 def persist_bin(tmp_path_factory) -> Path:
     return build(tmp_path_factory.mktemp("optpersist") / "options_persist_test",
-                 TESTS / "options_persist_main.c", OPTIONS / "port_options.c",
+                 TESTS / "options_persist_main.c", OPTIONS / "port_options.c", OPTIONS / "button_map.c",
                  OPTIONS / "options_cfg.c", ROOT / "port" / "audio" / "volume.c",
-                 defs=["-DDW3_PORT_OPTIONS_TEST"])
+                 defs=["-DDW3_PORT_OPTIONS_TEST", "-DDW3_BUTTON_MAP_TEST"])
 
 
 def session(binary: Path, cfgdir: Path, *steps: str):
@@ -333,7 +345,7 @@ def test_volume_keys_are_in_the_written_file_order(persist_bin: Path, tmp_path: 
             if "=" in l and not l.startswith("#")]
     assert keys == ["version", "widescreen", "fast_forward", "restart_hotkey",
                     "music_volume", "sfx_volume", "encounter_rate", "text_speed",
-                    "battle_menu_memory", "autosave", "end"]
+                    "battle_menu_memory", "autosave", "button_layout", "end"]
 
 
 # --- P6.18 Encounter rate / Text speed rows ---------------------------------
@@ -742,3 +754,196 @@ def test_older_file_without_the_autosave_key_keeps_off(persist_bin: Path, tmp_pa
 def test_autosave_plays_the_choice_sound(persist_bin: Path, tmp_path: Path):
     _, err = session(persist_bin, tmp_path, "open", "row", "8", "press")
     assert sounds(err)[-1].startswith("select ")
+
+
+# --- P9.8 Button layout (docs/CONTROLS_BUNDLE.md) ---------------------------
+
+
+def test_button_layout_defaults_to_playstation_and_logs_the_map(persist_bin: Path, tmp_path: Path):
+    out, err = session(persist_bin, tmp_path, "layout")
+    assert out == ["button_layout=0"]
+    assert "dw3-controls: map loaded layout=playstation source=default" in err
+    assert "dw3-controls: map cross<-B circle<-A triangle<-X square<-Y" in err
+    assert not (tmp_path / CFG).exists()          # reading alone writes nothing
+
+
+def test_button_layout_confirm_toggles_and_is_saved_as_a_word(persist_bin: Path, tmp_path: Path):
+    out, err = session(persist_bin, tmp_path, "open", "row", "9", "press", "layout")
+    assert out == ["button_layout=1"]
+    assert "button_layout=nintendo\n" in (tmp_path / CFG).read_text()
+    assert "dw3-controls: layout changed playstation -> nintendo (screen)" in err
+    assert "dw3-controls: map cross<-A circle<-X triangle<-B square<-Y" in err
+    out, err = session(persist_bin, tmp_path, "layout")
+    assert out == ["button_layout=1"]
+    assert "dw3-controls: map loaded layout=nintendo source=cfg" in err
+    out, err = session(persist_bin, tmp_path, "open", "row", "9", "left", "layout")
+    assert out == ["button_layout=0"]
+    assert "button_layout=playstation\n" in (tmp_path / CFG).read_text()
+
+
+def test_button_layout_bad_values_fall_back_to_playstation(persist_bin: Path, tmp_path: Path):
+    for bad in ("custom", "1", "Nintendo", ""):   # custom without a button_map is bad too
+        (tmp_path / CFG).write_text(f"version=1\nbutton_layout={bad}\nend=1\n")
+        out, err = session(persist_bin, tmp_path, "layout")
+        assert out == ["button_layout=0"], bad
+        assert "dw3-controls: map invalid (" in err and "using default" in err, bad
+        assert "dw3-controls: map loaded layout=playstation source=default" in err, bad
+
+
+def test_button_layout_keeps_the_other_rows_and_old_files(persist_bin: Path, tmp_path: Path):
+    (tmp_path / CFG).write_text("version=1\nwidescreen=0\nend=1\n")
+    out, _ = session(persist_bin, tmp_path, "layout", "show")
+    assert out == ["button_layout=0", "widescreen=0 fast_forward=2 restart_hotkey=0"]
+
+
+def test_dw3_button_map_default_forces_playstation_for_one_run(persist_bin: Path, tmp_path: Path):
+    (tmp_path / CFG).write_text("version=1\nbutton_layout=nintendo\nend=1\n")
+    env = dict(os.environ, DW3_BUTTON_MAP="default")
+    r = subprocess.run([str(persist_bin), str(tmp_path), "layout", "open", "row", "0", "press", "close"],
+                       capture_output=True, text=True, env=env)
+    assert r.returncode == 0, r.stderr
+    assert r.stdout.split()[0] == "button_layout=0"
+    assert "dw3-controls: map loaded layout=playstation source=env" in r.stderr
+    # an unrelated change does not write the forced value over the file's
+    assert "button_layout=nintendo\n" in (tmp_path / CFG).read_text()
+    out, err = session(persist_bin, tmp_path, "layout")
+    assert out == ["button_layout=1"]
+
+
+# --- P6.12 Customize buttons (docs/CONTROLS_BUNDLE.md) ------------------------
+
+# raw words, a clear bit = pressed: Circle position (A) bit 13, R1 bit 11, Start bit 3
+IDLE, SRC_A, SRC_R1, START = "FFFF", "DFFF", "F7FF", "FFF7"
+
+
+def test_customize_assign_is_saved_as_custom_with_the_map(persist_bin: Path, tmp_path: Path):
+    out, err = session(persist_bin, tmp_path, "open", "row", "11", "raw", IDLE, "press",   # opens Customize
+                       "press",                                                          # row Cross waits
+                       "raw", SRC_A, "tick", "map", "layout")
+    assert out == ["map=1023456789 layout=2", "button_layout=2"]
+    assert "dw3-port-options: group open customize (10 row(s), title)" in err
+    assert "dw3-port-options: customize waiting for a button for Cross" in err
+    assert "dw3-controls: assign cross<-A (circle<-B swapped in) [custom]" in err
+    text = (tmp_path / CFG).read_text()
+    assert "button_layout=custom\n" in text and "button_map=1023456789\n" in text
+    out, err = session(persist_bin, tmp_path, "map", "layout")
+    assert out == ["map=1023456789 layout=2", "button_layout=2"]
+    assert "dw3-controls: map loaded layout=custom source=cfg" in err
+    assert "dw3-controls: map cross<-A circle<-B triangle<-X square<-Y" in err
+
+
+def test_customize_reset_restores_the_default_and_drops_the_map(persist_bin: Path, tmp_path: Path):
+    (tmp_path / CFG).write_text("version=1\nbutton_layout=custom\nbutton_map=0123546789\nend=1\n")
+    out, err = session(persist_bin, tmp_path, "map", "open", "row", "12", "press", "map", "layout")
+    assert out == ["map=0123546789 layout=2", "map=0123456789 layout=0", "button_layout=0"]
+    assert "dw3-controls: reset to default (layout=playstation)" in err
+    text = (tmp_path / CFG).read_text()
+    assert "button_layout=playstation\n" in text and "button_map" not in text
+
+
+def test_customize_prompt_cancels_with_start_and_the_timeout(persist_bin: Path, tmp_path: Path):
+    out, err = session(persist_bin, tmp_path, "open", "row", "11", "raw", IDLE, "press", "press",
+                       "raw", START, "tick", "map")
+    assert out == ["map=0123456789 layout=0"]
+    assert "customize Cross cancelled (Start / Select)" in err
+    assert not (tmp_path / CFG).exists()
+    out, err = session(persist_bin, tmp_path, "open", "row", "11", "raw", IDLE, "press", "press",
+                       *(["tick"] * 305), "map")
+    assert out == ["map=0123456789 layout=0"]
+    assert "customize Cross cancelled (timeout)" in err
+
+
+def test_customize_ignores_the_press_that_opened_the_prompt(persist_bin: Path, tmp_path: Path):
+    # A is still down when the prompt opens (the Confirm press): it is not taken
+    # until it has been let go. R1 then goes to the Cross row.
+    out, err = session(persist_bin, tmp_path, "open", "row", "11", "raw", SRC_A, "press", "press",
+                       "raw", SRC_A, "tick", "map", "raw", IDLE, "tick", "raw", SRC_R1, "tick", "map")
+    assert out == ["map=0123456789 layout=0", "map=5123406789 layout=2"]
+    assert "assign cross<-R (r1<-B swapped in) [custom]" in err
+
+
+def test_customize_left_right_cycle_the_sources(persist_bin: Path, tmp_path: Path):
+    out, err = session(persist_bin, tmp_path, "open", "row", "11", "press", "right", "map")
+    assert out == ["map=1023456789 layout=2"]
+    assert "dw3-controls: assign cross<-A (circle<-B swapped in) [custom]" in err
+    assert "button_map=1023456789\n" in (tmp_path / CFG).read_text()
+
+
+def test_custom_layout_cfg_must_carry_a_valid_map(persist_bin: Path, tmp_path: Path):
+    for text in ("button_layout=custom\n", "button_layout=custom\nbutton_map=0123456780\n",
+                 "button_layout=custom\nbutton_map=abc\n", "button_layout=custom\nbutton_map=012345678\n"):
+        (tmp_path / CFG).write_text("version=1\n" + text + "end=1\n")
+        out, err = session(persist_bin, tmp_path, "map", "layout")
+        assert out == ["map=0123456789 layout=0", "button_layout=0"], text
+        assert "dw3-controls: map invalid (" in err and "using default" in err, text
+    # a stale map beside a preset is ignored
+    (tmp_path / CFG).write_text("version=1\nbutton_layout=nintendo\nbutton_map=0123546789\nend=1\n")
+    out, _ = session(persist_bin, tmp_path, "map")
+    assert out == ["map=1203456789 layout=1"]
+
+
+def test_dw3_button_map_default_keeps_the_custom_map_in_the_file(persist_bin: Path, tmp_path: Path):
+    (tmp_path / CFG).write_text("version=1\nbutton_layout=custom\nbutton_map=0123546789\nend=1\n")
+    env = dict(os.environ, DW3_BUTTON_MAP="default")
+    r = subprocess.run([str(persist_bin), str(tmp_path), "map", "open", "row", "0", "press", "close"],
+                       capture_output=True, text=True, env=env)
+    assert r.returncode == 0, r.stderr
+    assert r.stdout.split()[0] == "map=0123456789"
+    text = (tmp_path / CFG).read_text()
+    assert "button_layout=custom\n" in text and "button_map=0123546789\n" in text
+
+
+def region_tree(tmp_path: Path, top: str = "") -> tuple[Path, Path]:
+    """<tmp>/dw3 (the top-level folder) with the region folder <tmp>/dw3/eu."""
+    base = tmp_path / "dw3"
+    (base / "eu").mkdir(parents=True)
+    if top:
+        (base / CFG).write_text(top)
+    return base, base / "eu"
+
+
+def test_region_row_is_off_the_list_of_a_single_region_build(persist_bin: Path, tmp_path: Path):
+    out, _ = session(persist_bin, tmp_path, "region")
+    assert out == ["region_row=0"]          # registry slot exists, never listed (groups test)
+
+
+def test_region_row_reads_the_top_level_file(region_bin: Path, tmp_path: Path):
+    base, eu = region_tree(tmp_path, "region_default=us\nlast_region=eu\nend=1\n")
+    out, err = session(region_bin, eu, "region")
+    assert out == ["region_row=1"]
+    assert f"dw3-options: region_default us read from {base}/{CFG}" in err
+    base2, eu2 = region_tree(tmp_path / "b", "region_default=bogus\nend=1\n")
+    out, _ = session(region_bin, eu2, "region")
+    assert out == ["region_row=0"]          # an unreadable value is Ask
+
+
+def test_region_row_confirm_cycles_and_writes_only_the_top_level_file(region_bin: Path, tmp_path: Path):
+    base, eu = region_tree(tmp_path, "last_region=eu\nstage_sweep=0\nend=1\n")
+    out, err = session(region_bin, eu, "open", "row", "10", "press", "region")
+    assert out == ["region_row=1"]          # Ask -> US
+    assert f"dw3-options: region_default us saved to {base}/{CFG} (takes effect at the next start)" in err
+    top = (base / CFG).read_text()
+    assert "region_default=us\n" in top and "last_region=eu\n" in top and "stage_sweep=0\n" in top
+    assert top.rstrip().endswith("end=1")
+    # the region folder gets no file from this row
+    assert not (eu / CFG).exists()          # this row never creates the region file
+    out, err = session(region_bin, eu, "open", "row", "10", "press", "region")
+    assert out == ["region_row=2"]          # US -> EU
+    assert "region_default=eu\n" in (base / CFG).read_text()
+    out, err = session(region_bin, eu, "open", "row", "10", "press", "region")
+    assert out == ["region_row=0"]          # EU -> Ask
+    assert "region_default=ask\n" in (base / CFG).read_text()
+    out, _ = session(region_bin, eu, "region")
+    assert out == ["region_row=0"]
+
+
+def test_region_row_never_overwrites_a_top_level_file_it_cannot_read(region_bin: Path, tmp_path: Path):
+    base, eu = region_tree(tmp_path, "region_default=eu\nend=1\n")
+    os.chmod(base / CFG, 0)
+    try:
+        out, err = session(region_bin, eu, "open", "row", "10", "press", "region")
+        assert out == ["region_row=1"]      # the screen shows the choice
+        assert "NOT saved" in err
+    finally:
+        os.chmod(base / CFG, stat.S_IRUSR | stat.S_IWUSR)
+    assert (base / CFG).read_text() == "region_default=eu\nend=1\n"

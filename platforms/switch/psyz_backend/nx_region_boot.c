@@ -202,19 +202,41 @@ static void io_log(void *ud, const char *line) {
     INFOF("%s", line);
 }
 
+/* The hold-to-pick request: Minus (the launcher may eat it: Sphaira shows a
+ * toast), or ZL and ZR held together (P51 item 4: a try, not verified on the
+ * console, the hbmenu / Sphaira launchers may take it too). What the sampler
+ * saw is logged so one run settles it. The Options row "Region at start" is
+ * the supported way. */
 static int io_sample_minus(void *ud) {
-    int i, held = 0;
+    int i, minus = 0, zl = 0, zr = 0, both = 0;
+    char line[96];
 
-    (void)ud;
     pad_ready();
     for (i = 0; i < MINUS_SAMPLE_FRAMES; i++) {
+        uint64_t b;
+
         padUpdate(&s_pad);
-        if (padGetButtons(&s_pad) & HidNpadButton_Minus) {
-            held = 1;
+        b = padGetButtons(&s_pad);
+        if (b & HidNpadButton_Minus) {
+            minus = 1;
+        }
+        if (b & HidNpadButton_ZL) {
+            zl = 1;
+        }
+        if (b & HidNpadButton_ZR) {
+            zr = 1;
+        }
+        if ((b & HidNpadButton_ZL) && (b & HidNpadButton_ZR)) {
+            both = 1;
         }
         svcSleepThread(REGION_POLL_NS);
     }
-    return held;
+    snprintf(line, sizeof(line),
+             "dw3-region: pick buttons seen minus=%d zl=%d zr=%d (%d frames)%s",
+             minus, zl, zr, MINUS_SAMPLE_FRAMES,
+             both ? ", ZL+ZR held together: asks" : "");
+    io_log(ud, line);
+    return minus || both;
 }
 
 /* Leaves a plain black frame behind, and waits until the buttons are up so the

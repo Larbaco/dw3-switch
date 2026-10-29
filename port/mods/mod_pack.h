@@ -35,6 +35,8 @@ enum {
 typedef struct Dw3ModImage {
     int w, h;
     uint8_t *rgba; /* malloc'd, w * h * 4, straight alpha */
+    int shared;    /* set by dw3_mod_load_map / _sprite: 1 = the pack's shared file
+                    * (both regions), 0 = the file of this region */
 } Dw3ModImage;
 
 typedef struct Dw3ModManifest {

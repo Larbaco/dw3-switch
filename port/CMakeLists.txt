@@ -329,6 +329,7 @@ add_library(dw3_port_options${_S} OBJECT
   "${CMAKE_CURRENT_SOURCE_DIR}/audio/volume.c"
   "${CMAKE_CURRENT_SOURCE_DIR}/autosave/autosave.c"
   "${CMAKE_CURRENT_SOURCE_DIR}/autosave/autosave_areas.c"
+  "${CMAKE_CURRENT_SOURCE_DIR}/battle_menu/battle_cursor.c"
   "${CMAKE_CURRENT_SOURCE_DIR}/battle_menu/battle_menu_memory.c"
   "${CMAKE_CURRENT_SOURCE_DIR}/file_cache/file_cache_host.c"
   "${CMAKE_CURRENT_SOURCE_DIR}/help/help.c"
@@ -338,6 +339,7 @@ add_library(dw3_port_options${_S} OBJECT
   "${CMAKE_CURRENT_SOURCE_DIR}/mods/mod_pack.c"
   "${CMAKE_CURRENT_SOURCE_DIR}/mods/png_stb.c"
   "${CMAKE_CURRENT_SOURCE_DIR}/options/battle_options.c"
+  "${CMAKE_CURRENT_SOURCE_DIR}/options/button_map.c"
   "${CMAKE_CURRENT_SOURCE_DIR}/options/confirm.c"
   "${CMAKE_CURRENT_SOURCE_DIR}/options/field_options.c"
   "${CMAKE_CURRENT_SOURCE_DIR}/options/lang_select.c"
@@ -376,6 +378,7 @@ if(DEFINED DW3_REGION_BUILD)
 endif()
 add_dependencies(dw3_port_options${_S} dw3_decomp_patched)
 target_include_directories(dw3_port_options${_S} PRIVATE ${_DW3_GAME_INCLUDES}
+  "${CMAKE_CURRENT_SOURCE_DIR}/region"
   "${CMAKE_CURRENT_SOURCE_DIR}/map_view"
   "${CMAKE_CURRENT_SOURCE_DIR}/mods")
 target_compile_definitions(dw3_port_options${_S} PRIVATE ${_DW3_GAME_DEFS})

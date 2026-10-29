@@ -1,0 +1,31 @@
+# US: P9.8 Button layout row, phase 1
+pad 20 0x0008
+pad 25 0x0000
+pad 210 0x0008
+pad 215 0x0000
+pad 320 0x0040
+pad 325 0x0000
+pad 340 0x4000
+pad 345 0x0000
+shot 380 options-list
+pad 390 0x0040
+pad 395 0x0000
+pad 410 0x0040
+pad 415 0x0000
+pad 430 0x0040
+pad 435 0x0000
+pad 450 0x0040
+pad 455 0x0000
+pad 470 0x0040
+pad 475 0x0000
+pad 490 0x4000
+pad 495 0x0000
+shot 530 controls-playstation
+pad 550 0x4000
+pad 555 0x0000
+shot 590 controls-nintendo
+pad 610 0x1000
+pad 615 0x0000
+pad 630 0x1000
+pad 635 0x0000
+end 690

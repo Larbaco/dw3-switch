@@ -6,11 +6,15 @@
 #include "port_audio.h"
 #include "port_autosave.h"
 #include "port_battle_menu.h"
+#include "port_button_map.h"
 #include "port_help.h"
 #include "port_options_cfg.h"
 #include "port_options_groups.h"
 #include "port_pacing.h"
 #include "port_turbo.h"
+#if DW3_OPT_REGION_ROW
+#include "dw3_region.h"
+#endif
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -47,11 +51,12 @@
 #endif
 
 /* DW3_PORT_OPT_ENCOUNTER_RATE (5), DW3_PORT_OPT_TEXT_SPEED (6),
- * DW3_PORT_OPT_BATTLE_MENU (7) and DW3_PORT_OPT_AUTOSAVE (8) are in
+ * DW3_PORT_OPT_BATTLE_MENU (7), DW3_PORT_OPT_AUTOSAVE (8) and
+ * DW3_PORT_OPT_BUTTON_LAYOUT (9) are in
  * port_options.h: port/pacing/pacing.c, port/battle_menu/battle_menu_memory.c
  * and port/autosave/autosave.c read them. */
 enum {
-    DW3_PORT_OPT_COUNT = 9,
+    DW3_PORT_OPT_COUNT = 13,
     DW3_PORT_OPT_WIDESCREEN = 0,
     DW3_PORT_OPT_FAST_FORWARD = 1,
     DW3_PORT_OPT_RESTART = 2,
@@ -64,7 +69,10 @@ _Static_assert(DW3_PORT_OPT_WIDESCREEN == 0 && DW3_PORT_OPT_FAST_FORWARD == 1 &&
                DW3_PORT_OPT_RESTART == 2 && DW3_PORT_OPT_MUSIC_VOLUME == 3 &&
                DW3_PORT_OPT_SFX_VOLUME == 4 && DW3_PORT_OPT_ENCOUNTER_RATE == 5 &&
                DW3_PORT_OPT_TEXT_SPEED == 6 && DW3_PORT_OPT_BATTLE_MENU == 7 &&
-               DW3_PORT_OPT_AUTOSAVE == 8 && DW3_PORT_OPT_COUNT == 9,
+               DW3_PORT_OPT_AUTOSAVE == 8 &&
+               DW3_PORT_OPT_BUTTON_LAYOUT == 9 && DW3_PORT_OPT_REGION == 10 &&
+               DW3_PORT_OPT_CUSTOMIZE == 11 && DW3_PORT_OPT_RESET_MAP == 12 &&
+               DW3_PORT_OPT_COUNT == 13,
                "registry indexes changed: update port_options_groups.h");
 
 typedef struct Dw3PortOptStub {
@@ -122,6 +130,19 @@ static Dw3PortOptStub g_stubs[DW3_PORT_OPT_COUNT] = {
     /* P6.31: 0 = OFF (the original game), 1 = On area change. Off by default;
      * a switch row (Confirm toggles). */
     {"Auto-save", DW3_AUTOSAVE_KEY, DW3_AUTOSAVE_OFF, DW3_AUTOSAVE_OFF, NULL},
+    /* P9.8: 0 = PlayStation (the original buttons), 1 = Nintendo (A confirms,
+     * B cancels). The file holds the words, button_layout=playstation|nintendo
+     * (docs/CONTROLS_BUNDLE.md); DW3_BUTTON_MAP=default forces the first one
+     * for a run. */
+    {"Button layout", "button_layout", DW3_LAYOUT_PLAYSTATION,
+     DW3_LAYOUT_PLAYSTATION, NULL},
+    /* P51 item 4: 0 = Ask, 1 = US, 2 = EU; the combined image only lists it.
+     * No key of this file: region_default lives in the top-level file next to
+     * the region folders (po_region_load / po_region_save). */
+    {"Region at start", NULL, 0, 0, NULL},
+    /* P6.12: action rows, no value and no key. */
+    {"Customize buttons", NULL, 0, 0, NULL},
+    {"Reset to default", NULL, 0, 0, NULL},
 };
 
 /* P9.4 persistence. The registry values above are what the game reads; this
@@ -135,6 +156,13 @@ static Dw3OptCfg g_cfg;          /* the loaded file; keeps unknown keys */
 static int g_saved[DW3_PORT_OPT_COUNT]; /* what the file holds */
 static unsigned g_env_pinned;    /* values forced by DW3_WIDESCREEN/DW3_TURBO */
 static int g_dirty;              /* a write failed; retried by _flush */
+/* P6.12: the map of button_layout=custom as read from the file. */
+static unsigned char g_custom_map[DW3_BTN_COUNT] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
+/* P6.12: the PS button the Customize screen is waiting for a press for (-1 =
+ * none) and the frames the prompt has been up (5 s at 60 fps). */
+static int g_assign_btn = -1;
+static int g_assign_frames;
+enum { PO_ASSIGN_TIMEOUT = 300 };
 
 #ifdef DW3_PORT_OPTIONS_TEST
 /* Button bits match engine/pad.h. */
@@ -181,7 +209,7 @@ static int po_pressed(int bit) {
 /* The groups' words, for the log. */
 static const char *const g_group_names[DW3_OPTGRP_COUNT] = {
     "display", "sound", "gameplay", "saves", "cheats", "controls", "help",
-    "walkthrough"};
+    "walkthrough", "customize"};
 
 static int po_cheats_on(void) {
 #ifdef DW3_CHEATS
@@ -194,7 +222,7 @@ static int po_cheats_on(void) {
 /* The group at item `item` of the group list. */
 static int po_group_at(int item) {
     int ids[DW3_OPTGRP_COUNT];
-    int n = dw3_optgroups_visible(po_cheats_on(), ids);
+    int n = dw3_optgroups_visible(DW3_OPTGRP_CHEATS_LISTED, ids);
 
     return item >= 0 && item < n ? ids[item] : -1;
 }
@@ -202,7 +230,7 @@ static int po_group_at(int item) {
 /* Keep the cursors inside their lists (the Cheats group can come and go with
  * its master switch) and the cursor's item on screen. */
 static void po_fit_cursors(void) {
-    int n = dw3_optlist_count(-1, po_cheats_on());
+    int n = dw3_optlist_count(-1, DW3_OPTGRP_CHEATS_LISTED);
 
     if (g_gcursor >= n) {
         g_gcursor = n - 1;
@@ -212,7 +240,7 @@ static void po_fit_cursors(void) {
     }
     g_gscroll = dw3_optlist_scroll_for(g_gscroll, g_gcursor, n);
     if (g_level) {
-        n = dw3_optlist_count(g_group, po_cheats_on());
+        n = dw3_optlist_count(g_group, DW3_OPTGRP_CHEATS_LISTED);
         if (g_cursor >= n) {
             g_cursor = n - 1;
         }
@@ -239,7 +267,16 @@ static void po_push_view(void) {
     for (i = 0; i < DW3_TITLE_OPTION_ROWS; i++) {
         values[i] = 0;
     }
-    if (g_level) {
+    if (g_level && g_group == DW3_OPTGRP_CUSTOM) {
+        /* P6.12: a row's value is the source that makes the PS button; 10 =
+         * the row is waiting for a press. */
+        for (i = 0; i < DW3_BTN_COUNT && i < DW3_TITLE_OPTION_ROWS; i++) {
+            values[i] = dw3_button_map_current()[i];
+        }
+        if (g_assign_btn >= 0) {
+            values[g_assign_btn] = 10;
+        }
+    } else if (g_level) {
         for (i = 0; i < dw3_optgroups[g_group].nrows; i++) {
             values[i] = g_stubs[dw3_optgroups[g_group].rows[i]].value;
         }
@@ -259,7 +296,8 @@ static void po_push_view(void) {
  * them half old, half new; it is changed at the title. Everything else reads
  * its value where it is used (docs/PORT_OPTIONS.md "Options in game"). */
 int dw3_port_options_row_locked(int index) {
-    return g_in_game && index == DW3_PORT_OPT_WIDESCREEN;
+    return g_in_game && (index == DW3_PORT_OPT_WIDESCREEN ||
+                         index == DW3_PORT_OPT_CUSTOMIZE);
 }
 
 /* Bit i = row i is locked; DW3_PORT_OPTIONS_LOCK_CHEATS = the Cheats entry
@@ -269,7 +307,8 @@ unsigned dw3_port_options_locked_mask_for(int in_game) {
         return 0;
     }
     /* The same rows dw3_port_options_row_locked() reports in game. */
-    return (1u << DW3_PORT_OPT_WIDESCREEN) | DW3_PORT_OPTIONS_LOCK_CHEATS;
+    return (1u << DW3_PORT_OPT_WIDESCREEN) | (1u << DW3_PORT_OPT_CUSTOMIZE) |
+           DW3_PORT_OPTIONS_LOCK_CHEATS;
 }
 
 unsigned dw3_port_options_locked_mask(void) {
@@ -335,6 +374,7 @@ static void po_open(int in_game) {
     g_level = 0;
     g_group = 0;
     g_gcursor = g_gscroll = g_cursor = g_scroll = 0;
+    g_assign_btn = -1;
     g_open_frames = 0;
     g_logged_open = 0;
     po_push_view();
@@ -343,6 +383,17 @@ static void po_open(int in_game) {
                         "widescreen and cheats locked)\n", g_where);
     } else {
         fprintf(stderr, "dw3-port-options: open (stay MODE_TITLE)\n");
+    }
+    {
+        /* P51 item 5: the Cheats group is always on the list; say what the
+         * owner should see, once per open. */
+        int ids[DW3_OPTGRP_COUNT];
+        int n = dw3_optgroups_visible(DW3_OPTGRP_CHEATS_LISTED, ids);
+
+        fprintf(stderr, "dw3-port-options: group list n=%d (cheats %s, master %s, "
+                        "locked in game %d)\n", n,
+                DW3_OPTGRP_CHEATS_LISTED ? "listed" : "not built",
+                po_cheats_on() ? "on" : "off", in_game ? 1 : 0);
     }
     fflush(stderr);
 }
@@ -412,6 +463,12 @@ void dw3_port_options_set(int index, int value) {
 
 static int po_is_volume(int index);
 static void po_audio_apply(void);
+static int po_valid_layout(int v);
+static void po_layout_boot(int from_cfg);
+
+static int po_valid_layout(int v) {
+    return v >= 0 && v < DW3_LAYOUT_COUNT;
+}
 
 int dw3_port_options_level(int index) {
     if (index < 0 || index >= DW3_PORT_OPT_COUNT) {
@@ -428,6 +485,9 @@ void dw3_port_options_set_level(int index, int level) {
     if (po_is_volume(index)) {
         po_audio_apply();
     }
+    if (index == DW3_PORT_OPT_BUTTON_LAYOUT && po_valid_layout(level)) {
+        dw3_button_map_change(level, "api");
+    }
 }
 
 
@@ -436,12 +496,14 @@ static int po_is_volume(int index) {
            index == DW3_PORT_OPT_SFX_VOLUME;
 }
 
-/* The P6.18 rows and the Battle cursor hold a mode, 0 = the original
- * behaviour. */
+/* The P6.18 rows, the Battle cursor and the Button layout hold a mode, 0 = the
+ * original behaviour. */
 static int po_is_mode(int index) {
     return index == DW3_PORT_OPT_ENCOUNTER_RATE ||
            index == DW3_PORT_OPT_TEXT_SPEED ||
-           index == DW3_PORT_OPT_BATTLE_MENU;
+           index == DW3_PORT_OPT_BATTLE_MENU ||
+           index == DW3_PORT_OPT_BUTTON_LAYOUT ||
+           index == DW3_PORT_OPT_REGION;
 }
 
 /* Rows that Left / Right step and Confirm cycles: the volumes and the modes. */
@@ -454,6 +516,8 @@ static int po_value_max(int index) {
     return po_is_volume(index) ? DW3_AUDIO_VOLUME_MAX
            : index == DW3_PORT_OPT_ENCOUNTER_RATE ? DW3_ENCOUNTER_MODE_MAX
            : index == DW3_PORT_OPT_BATTLE_MENU ? DW3_BATTLE_MENU_MEMORY_TECH
+           : index == DW3_PORT_OPT_BUTTON_LAYOUT ? DW3_LAYOUT_COUNT - 1
+           : index == DW3_PORT_OPT_REGION ? 2
                                                    : DW3_PACING_MODE_MAX;
 }
 
@@ -540,6 +604,27 @@ static void po_stepped_env(void) {
     }
 }
 
+/* Boot: the layout in force becomes the map the pad host reads, and the log
+ * says so (`dw3-controls: map loaded ...`). DW3_BUTTON_MAP=default forces the
+ * PlayStation layout for this run only, like DW3_TURBO: it is never written
+ * (the row stays pinned until it is changed on the screen). */
+static void po_layout_boot(int from_cfg) {
+    const char *env = getenv("DW3_BUTTON_MAP");
+
+    if (env != NULL && strcmp(env, "default") == 0) {
+        g_stubs[DW3_PORT_OPT_BUTTON_LAYOUT].value = DW3_LAYOUT_PLAYSTATION;
+        g_env_pinned |= 1u << DW3_PORT_OPT_BUTTON_LAYOUT;
+        dw3_button_map_load(DW3_LAYOUT_PLAYSTATION, "env");
+        return;
+    }
+    if (from_cfg && g_stubs[DW3_PORT_OPT_BUTTON_LAYOUT].value == DW3_LAYOUT_CUSTOM) {
+        dw3_button_map_load_custom(g_custom_map, "cfg");
+        return;
+    }
+    dw3_button_map_load(g_stubs[DW3_PORT_OPT_BUTTON_LAYOUT].value,
+                        from_cfg ? "cfg" : "default");
+}
+
 void dw3_port_options_apply_env(int index, int level) {
     if (index < 0 || index >= DW3_PORT_OPT_COUNT) {
         return;
@@ -550,6 +635,84 @@ void dw3_port_options_apply_env(int index, int level) {
         po_audio_apply();
     }
 }
+
+/* P51 item 4: the Region at start row (combined image). The key is
+ * region_default of the TOP-LEVEL port_options.cfg (`ask`, `us`, `eu`), the
+ * file the region boot reads (port/region/dw3_region.h); the region folder's
+ * own file is never touched by this row. The folder is the parent of the
+ * region's config dir (sdmc:/switch/dw3 beside us/ and eu/), or DW3_CONFIG_DIR
+ * when that is set (the PC replays keep both files in one folder). */
+#if DW3_OPT_REGION_ROW
+static char g_region_base[DW3_OPTCFG_PATH_MAX];
+
+static const char *po_region_base(void) {
+    const char *env = getenv("DW3_CONFIG_DIR");
+    char *slash;
+    size_t n;
+
+    if (env != NULL && env[0] != '\0' && strlen(env) < sizeof(g_region_base)) {
+        strcpy(g_region_base, env);
+        return g_region_base;
+    }
+    if (!g_persist_on || g_cfg_dir[0] == '\0') {
+        return NULL;
+    }
+    strcpy(g_region_base, g_cfg_dir);
+    n = strlen(g_region_base);
+    while (n > 1 && g_region_base[n - 1] == '/') {
+        g_region_base[--n] = '\0';
+    }
+    slash = strrchr(g_region_base, '/');
+    if (slash == NULL || slash == g_region_base) {
+        return NULL;
+    }
+    *slash = '\0';
+    return g_region_base;
+}
+
+static void po_region_load(void) {
+    const char *base = po_region_base();
+    Dw3Region pref = DW3_REGION_NONE;
+    Dw3Region last = DW3_REGION_NONE;
+
+    g_stubs[DW3_PORT_OPT_REGION].value = 0;
+    if (base == NULL) {
+        return;
+    }
+    dw3_region_cfg_read(base, &pref, &last);
+    g_stubs[DW3_PORT_OPT_REGION].value =
+        pref == DW3_REGION_US ? 1 : pref == DW3_REGION_EU ? 2 : 0;
+    PO_INFO("dw3-options: region_default %s read from %s/%s",
+            pref == DW3_REGION_NONE ? "ask" : dw3_region_name(pref), base,
+            DW3_OPTCFG_FILE);
+}
+
+static void po_region_save(int v) {
+    const char *base = po_region_base();
+    Dw3Region pref = v == 1 ? DW3_REGION_US : v == 2 ? DW3_REGION_EU
+                                                      : DW3_REGION_NONE;
+
+    if (base == NULL) {
+        PO_WARN("dw3-options: region_default not saved: no top-level folder "
+                "(options are session-only)");
+        return;
+    }
+    if (dw3_region_cfg_write(base, DW3_REGION_NONE, 1, pref) != 0) {
+        PO_WARN("dw3-options: region_default %s NOT saved to %s/%s "
+                "(cannot read or write it)",
+                pref == DW3_REGION_NONE ? "ask" : dw3_region_name(pref), base,
+                DW3_OPTCFG_FILE);
+        return;
+    }
+    PO_INFO("dw3-options: region_default %s saved to %s/%s (takes effect at "
+            "the next start)",
+            pref == DW3_REGION_NONE ? "ask" : dw3_region_name(pref), base,
+            DW3_OPTCFG_FILE);
+}
+#else
+static void po_region_load(void) {}
+static void po_region_save(int v) { (void)v; }
+#endif
 
 /* Write every option to the file. An option still forced by the environment
  * keeps the value the file had, so `DW3_WIDESCREEN=0 dw3-pc` for one run is
@@ -564,9 +727,30 @@ static int po_save(void) {
     }
     for (i = 0; i < DW3_PORT_OPT_COUNT; i++) {
         out[i] = (g_env_pinned >> i) & 1u ? g_saved[i] : g_stubs[i].value;
-        snprintf(num, sizeof(num), "%d", out[i]);
+        if (g_stubs[i].key == NULL) {
+            continue; /* the Region at start row: the top-level file */
+        }
+        if (i == DW3_PORT_OPT_BUTTON_LAYOUT) {
+            snprintf(num, sizeof(num), "%s", dw3_button_layout_name(out[i]));
+        } else {
+            snprintf(num, sizeof(num), "%d", out[i]);
+        }
         if (dw3_optcfg_set(&g_cfg, g_stubs[i].key, num) != 0) {
             PO_WARN("dw3-options: cannot stage %s", g_stubs[i].key);
+        }
+    }
+    /* P6.12: button_map only exists while the layout is custom. A layout the
+     * environment pinned leaves the file's map alone. */
+    if (!((g_env_pinned >> DW3_PORT_OPT_BUTTON_LAYOUT) & 1u)) {
+        if (out[DW3_PORT_OPT_BUTTON_LAYOUT] == DW3_LAYOUT_CUSTOM) {
+            char digits[DW3_BTN_COUNT + 1];
+
+            dw3_button_map_format(dw3_button_map_current(), digits);
+            if (dw3_optcfg_set(&g_cfg, "button_map", digits) != 0) {
+                PO_WARN("dw3-options: cannot stage button_map");
+            }
+        } else {
+            (void)dw3_optcfg_remove(&g_cfg, "button_map");
         }
     }
     if (dw3_optcfg_save(&g_cfg, g_cfg_dir) != 0) {
@@ -617,6 +801,7 @@ int dw3_port_options_persist_init(const char *dir) {
     int rc;
     int i;
     int bad = 0;
+    int layout_from_cfg = 0;
 
     g_persist_on = 0;
     g_dirty = 0;
@@ -627,6 +812,7 @@ int dw3_port_options_persist_init(const char *dir) {
         PO_WARN("dw3-options: no usable config dir; options are session-only");
         po_stepped_env();
         po_audio_apply();
+        po_layout_boot(0);
         return -1;
     }
     strcpy(g_cfg_dir, dir);
@@ -658,8 +844,47 @@ int dw3_port_options_persist_init(const char *dir) {
                     g_cfg.skipped);
         }
         for (i = 0; i < DW3_PORT_OPT_COUNT; i++) {
+            if (g_stubs[i].key == NULL) {
+                continue;
+            }
             v = dw3_optcfg_get(&g_cfg, g_stubs[i].key);
             if (v == NULL) {
+                continue;
+            }
+            if (i == DW3_PORT_OPT_BUTTON_LAYOUT) {
+                n = dw3_button_layout_parse(v);
+                if (n < 0) {
+                    PO_WARN("dw3-options: %s=%s is not valid; using default %s",
+                            g_stubs[i].key, v,
+                            dw3_button_layout_name(g_stubs[i].def));
+                    dw3_button_map_log_invalid("button_layout is not "
+                                               "playstation, nintendo or "
+                                               "custom");
+                    bad++;
+                    continue;
+                }
+                if (n == DW3_LAYOUT_CUSTOM) {
+                    const char *mv = dw3_optcfg_get(&g_cfg, "button_map");
+
+                    if (mv == NULL) {
+                        PO_WARN("dw3-options: button_layout=custom has no "
+                                "button_map; using default");
+                        dw3_button_map_log_invalid("button_layout is custom "
+                                                   "but button_map is missing");
+                        bad++;
+                        continue;
+                    }
+                    if (dw3_button_map_parse(mv, g_custom_map) != 0) {
+                        PO_WARN("dw3-options: button_map=%s is not valid; "
+                                "using default", mv);
+                        dw3_button_map_log_invalid("button_map is not a "
+                                                   "permutation of 0-9");
+                        bad++;
+                        continue;
+                    }
+                }
+                g_stubs[i].value = n;
+                layout_from_cfg = 1;
                 continue;
             }
             if (dw3_optcfg_parse_int(v, &n) != 0 || !po_valid(i, n)) {
@@ -671,6 +896,7 @@ int dw3_port_options_persist_init(const char *dir) {
             g_stubs[i].value = n;
         }
     }
+    po_region_load();
     for (i = 0; i < DW3_PORT_OPT_COUNT; i++) {
         g_saved[i] = g_stubs[i].value;
     }
@@ -691,15 +917,17 @@ int dw3_port_options_persist_init(const char *dir) {
     }
     /* File-only keys (not rows): their values at boot, so a log says which
      * way the test ran. */
-    PO_INFO("dw3-options: file keys items_equip_from_items=%d items_partner_switch=%d "
+    PO_INFO("dw3-options: file keys items_equip_from_items=%d items_equip_stays=%d items_partner_switch=%d "
             "map_screen=%d battle_menu_memory=%d",
             dw3_port_options_file_int("items_equip_from_items", 1),
+            dw3_port_options_file_int("items_equip_stays", 1),
             dw3_port_options_file_int("items_partner_switch", 1),
             dw3_port_options_file_int("map_screen", 1),
             g_saved[DW3_PORT_OPT_BATTLE_MENU]);
     /* DW3_MUSIC_VOLUME / DW3_SFX_VOLUME force a value for this run only. */
     po_stepped_env();
     po_audio_apply();
+    po_layout_boot(layout_from_cfg);
     return rc == DW3_OPTCFG_LOAD_ERROR ? -1 : 0;
 }
 
@@ -710,11 +938,16 @@ static const char *po_mode_name(int index, int v) {
     static const char *const text[3] = {"normal", "fast", "instant"};
     static const char *const battle[3] = {"off", "command",
                                           "command+technique"};
+    static const char *const layout[DW3_LAYOUT_COUNT] = {"playstation",
+                                                         "nintendo", "custom"};
+    static const char *const region[3] = {"ask", "us", "eu"};
 
     if (v < 0 || v > po_value_max(index)) {
         return "?";
     }
     return index == DW3_PORT_OPT_ENCOUNTER_RATE ? encounter[v]
+           : index == DW3_PORT_OPT_BUTTON_LAYOUT ? layout[v]
+           : index == DW3_PORT_OPT_REGION ? region[v]
            : index == DW3_PORT_OPT_BATTLE_MENU ? battle[v] : text[v];
 }
 
@@ -796,6 +1029,8 @@ static void po_step(int index, int delta) {
         fprintf(stderr, "dw3-port-options: %s %s\n",
                 index == DW3_PORT_OPT_ENCOUNTER_RATE ? "encounter rate"
                 : index == DW3_PORT_OPT_BATTLE_MENU ? "battle cursor"
+                : index == DW3_PORT_OPT_BUTTON_LAYOUT ? "button layout"
+                : index == DW3_PORT_OPT_REGION ? "region at start"
                                                     : "text speed",
                 po_mode_name(index, v));
     }
@@ -803,7 +1038,99 @@ static void po_step(int index, int delta) {
     if (po_is_volume(index)) {
         po_audio_apply();
     }
+    if (index == DW3_PORT_OPT_BUTTON_LAYOUT) {
+        /* In force from the next pad poll (the pad host reads the map every
+         * frame): the choice sound below is already played with it. */
+        dw3_button_map_change(v, "screen");
+    }
+    if (index == DW3_PORT_OPT_REGION) {
+        po_region_save(v);
+    } else {
+        (void)po_save();
+    }
+    po_sound(PO_SND_SELECT);
+}
+
+/* --- P6.12 Customize buttons --------------------------------------------
+ * The Controls group's Customize row opens a list of the ten remappable PS
+ * buttons, each showing the physical button that produces it. Confirm on a row
+ * waits for a press (the source word before the map, button_map.c), Left /
+ * Right pick a source without one. The map stays a permutation: the PS button
+ * that had the new source gets the old one. Start / Select cancel the prompt
+ * and the d-pad is ignored; the prompt also gives up after five seconds. */
+static void po_custom_open(void) {
+    g_level = 1;
+    g_group = DW3_OPTGRP_CUSTOM;
+    g_cursor = g_scroll = 0;
+    g_assign_btn = -1;
+    fprintf(stderr, "dw3-port-options: group open customize (%d row(s), %s)\n",
+            dw3_optgroups[DW3_OPTGRP_CUSTOM].nrows,
+            g_in_game ? "in game" : "title");
+    fflush(stderr);
+    po_sound(PO_SND_SELECT);
+}
+
+static void po_custom_back(void) {
+    fprintf(stderr, "dw3-port-options: group close customize (back to "
+                    "controls)\n");
+    fflush(stderr);
+    g_assign_btn = -1;
+    g_group = DW3_OPTGRP_CONTROLS;
+    g_cursor = 1; /* the Customize row */
+    g_scroll = 0;
+}
+
+/* The map changed from this screen: the Button layout row reads Custom (or
+ * PlayStation after a reset) and the file is written. */
+static void po_map_changed(int layout) {
+    g_stubs[DW3_PORT_OPT_BUTTON_LAYOUT].value = layout;
+    g_env_pinned &= ~(1u << DW3_PORT_OPT_BUTTON_LAYOUT);
     (void)po_save();
+}
+
+static void po_assign(int button, int source) {
+    const int before = dw3_button_map_current()[button];
+
+    if (dw3_button_map_assign(button, source) < 0 || before == source) {
+        return;
+    }
+    po_map_changed(DW3_LAYOUT_CUSTOM);
+    po_sound(PO_SND_SELECT);
+}
+
+static void po_assign_begin(int button) {
+    g_assign_btn = button;
+    g_assign_frames = 0;
+    dw3_button_map_capture_begin();
+    fprintf(stderr, "dw3-port-options: customize waiting for a button for %s\n",
+            dw3_button_ps_label(button));
+    fflush(stderr);
+    po_sound(PO_SND_SELECT);
+}
+
+/* One frame of the prompt: a press assigns, Start / Select or the timeout
+ * cancel. */
+static void po_assign_tick(void) {
+    const int btn = g_assign_btn;
+    const int r = dw3_button_map_capture_poll();
+
+    g_assign_frames++;
+    if (r >= 0) {
+        g_assign_btn = -1;
+        po_assign(btn, r);
+    } else if (r == DW3_CAPTURE_CANCEL || g_assign_frames > PO_ASSIGN_TIMEOUT) {
+        g_assign_btn = -1;
+        fprintf(stderr, "dw3-port-options: customize %s cancelled (%s)\n",
+                dw3_button_ps_label(btn),
+                r == DW3_CAPTURE_CANCEL ? "Start / Select" : "timeout");
+        fflush(stderr);
+        po_sound(PO_SND_CANCEL);
+    }
+}
+
+static void po_reset_map(void) {
+    dw3_button_map_reset("screen");
+    po_map_changed(DW3_LAYOUT_PLAYSTATION);
     po_sound(PO_SND_SELECT);
 }
 
@@ -814,6 +1141,14 @@ static void po_toggle(int index) {
     int v;
 
     if (po_refuse_locked(index)) {
+        return;
+    }
+    if (index == DW3_PORT_OPT_CUSTOMIZE) {
+        po_custom_open();
+        return;
+    }
+    if (index == DW3_PORT_OPT_RESET_MAP) {
+        po_reset_map();
         return;
     }
 
@@ -879,6 +1214,20 @@ int dw3_port_options_restart_enabled(void) {
 #define po_key_prev() po_pressed(PAD_L1)
 #define po_key_next() po_pressed(PAD_R1)
 #endif
+
+static void po_custom_tick(void) {
+    const int btn = g_cursor;
+
+    if (po_key_left() || po_key_right()) {
+        const int src = dw3_button_map_current()[btn];
+
+        po_assign(btn, (src + (po_key_right() ? 1 : DW3_BTN_COUNT - 1)) %
+                           DW3_BTN_COUNT);
+    }
+    if (po_key_confirm()) {
+        po_assign_begin(btn);
+    }
+}
 
 /* --- P6.30 technical help ------------------------------------------------
  * The Help group is a screen of its own (port/help/help.c), like Cheats: while
@@ -1113,9 +1462,17 @@ void dw3_port_options_tick(void) {
         return;
     }
 #endif
+    /* P6.12: the prompt of the Customize screen takes every press. */
+    if (g_assign_btn >= 0) {
+        po_assign_tick();
+        po_push_view();
+        return;
+    }
     if (po_key_back()) {
         po_sound(PO_SND_CANCEL);
-        if (g_level) {
+        if (g_level && g_group == DW3_OPTGRP_CUSTOM) {
+            po_custom_back();
+        } else if (g_level) {
             po_group_back();
         } else {
             dw3_port_options_close();
@@ -1132,7 +1489,7 @@ void dw3_port_options_tick(void) {
     }
     if (po_key_down() &&
         (g_level ? g_cursor : g_gcursor) <
-            dw3_optlist_count(g_level ? g_group : -1, po_cheats_on()) - 1) {
+            dw3_optlist_count(g_level ? g_group : -1, DW3_OPTGRP_CHEATS_LISTED) - 1) {
         if (g_level) {
             g_cursor++;
         } else {
@@ -1144,6 +1501,8 @@ void dw3_port_options_tick(void) {
         if (po_key_confirm()) {
             po_group_open(po_group_at(g_gcursor));
         }
+    } else if (g_group == DW3_OPTGRP_CUSTOM) {
+        po_custom_tick();
     } else {
         const int row = po_cursor_row();
 
@@ -1280,7 +1639,7 @@ void dw3_port_options_draw(void) {
     if (!g_level) {
         /* P9.9: the group list (PS1-primitive fallback, plain text). */
         int ids[DW3_OPTGRP_COUNT];
-        int count = dw3_optgroups_visible(po_cheats_on(), ids);
+        int count = dw3_optgroups_visible(DW3_OPTGRP_CHEATS_LISTED, ids);
 
         lines[n++] = "Port options";
         lines[n++] = "------------";
@@ -1297,7 +1656,10 @@ void dw3_port_options_draw(void) {
             char *buf = lines_buf[k];
 
             i = dw3_optgroups[g_group].rows[k];
-            if (po_is_mode(i)) {
+            if (i == DW3_PORT_OPT_CUSTOMIZE || i == DW3_PORT_OPT_RESET_MAP) {
+                snprintf(buf, sizeof(lines_buf[k]), "%c %s",
+                         (k == g_cursor) ? '>' : ' ', g_stubs[i].label);
+            } else if (po_is_mode(i)) {
                 snprintf(buf, sizeof(lines_buf[k]), "%c %s: %s",
                          (k == g_cursor) ? '>' : ' ', g_stubs[i].label,
                          po_mode_name(i, g_stubs[i].value));

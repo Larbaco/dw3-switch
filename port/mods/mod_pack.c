@@ -404,25 +404,37 @@ int dw3_mod_load_map(const Dw3ModPack *pack, const char *region, int half,
         int i;
 
         if (!(pack->man.scales & (1u << n))) continue;
-        snprintf(path, sizeof(path), "%.400s/map/map_%.4s_h%d@%dx.png", pack->dir,
-                 region, half, n);
-        one[0] = 0;
-        if (dw3_mod_png_load(path, out, one, sizeof(one)) != 0) {
-            if (!first[0]) snprintf(first, sizeof(first), "%s", one);
-            continue;
-        }
-        if (out->w != src_w * n || out->h != src_h * n) {
-            if (!first[0]) {
-                snprintf(first, sizeof(first),
-                         "map_%s_h%d@%dx.png is %dx%d, expected %dx%d", region,
-                         half, n, out->w, out->h, src_w * n, src_h * n);
+        int pass;
+
+        /* P51 item 3: this region's own file wins; the pack's shared file
+         * (map_h<half>@Nx.png, the same picture on both discs) comes next */
+        for (pass = 0; pass < 2; ++pass) {
+            char name[48];
+
+            if (pass == 0) {
+                snprintf(name, sizeof(name), "map_%.4s_h%d@%dx.png", region, half, n);
+            } else {
+                snprintf(name, sizeof(name), "map_h%d@%dx.png", half, n);
             }
-            dw3_mod_image_free(out);
-            continue;
+            snprintf(path, sizeof(path), "%.400s/map/%s", pack->dir, name);
+            one[0] = 0;
+            if (dw3_mod_png_load(path, out, one, sizeof(one)) != 0) {
+                if (!first[0] && pass == 0) snprintf(first, sizeof(first), "%s", one);
+                continue;
+            }
+            if (out->w != src_w * n || out->h != src_h * n) {
+                if (!first[0] || pass == 1) {
+                    snprintf(first, sizeof(first), "%s is %dx%d, expected %dx%d",
+                             name, out->w, out->h, src_w * n, src_h * n);
+                }
+                dw3_mod_image_free(out);
+                continue;
+            }
+            for (i = 3; i < out->w * out->h * 4; i += 4) out->rgba[i] = 255;
+            out->shared = pass;
+            *scale = n;
+            return 0;
         }
-        for (i = 3; i < out->w * out->h * 4; i += 4) out->rgba[i] = 255;
-        *scale = n;
-        return 0;
     }
     if (why && why_cap) {
         snprintf(why, why_cap, "%s", first[0] ? first : "pack has no map scale in 2..4");
@@ -434,19 +446,37 @@ int dw3_mod_load_sprite(const Dw3ModPack *pack, const char *region, int half,
                         const char *kind, int frame, int scale, int w, int h,
                         Dw3ModImage *out, char *why, size_t why_cap) {
     char path[700];
+    int pass;
 
-    snprintf(path, sizeof(path), "%.400s/map/reveal/%.4s_h%d/%.8s_%d@%dx.png", pack->dir,
-             region, half, kind, frame, scale);
-    if (dw3_mod_png_load(path, out, why, why_cap) != 0) return -1;
-    if (out->w != w * scale || out->h != h * scale) {
-        if (why && why_cap) {
-            snprintf(why, why_cap, "%s_%d@%dx.png is %dx%d, expected %dx%d", kind,
-                     frame, scale, out->w, out->h, w * scale, h * scale);
+    /* P51 item 3: the region's own sprite, else the pack's shared one
+     * (map/reveal/h<half>/<kind>_<id>@<N>x.png) */
+    for (pass = 0; pass < 2; ++pass) {
+        char why1[DW3_MOD_WHY];
+
+        if (pass == 0) {
+            snprintf(path, sizeof(path), "%.400s/map/reveal/%.4s_h%d/%.8s_%d@%dx.png",
+                     pack->dir, region, half, kind, frame, scale);
+        } else {
+            snprintf(path, sizeof(path), "%.400s/map/reveal/h%d/%.8s_%d@%dx.png",
+                     pack->dir, half, kind, frame, scale);
         }
-        dw3_mod_image_free(out);
-        return -1;
+        why1[0] = 0;
+        if (dw3_mod_png_load(path, out, why1, sizeof(why1)) != 0) {
+            if (pass == 0 && why && why_cap) snprintf(why, why_cap, "%s", why1);
+            continue;
+        }
+        if (out->w != w * scale || out->h != h * scale) {
+            if (why && why_cap) {
+                snprintf(why, why_cap, "%s_%d@%dx.png is %dx%d, expected %dx%d", kind,
+                         frame, scale, out->w, out->h, w * scale, h * scale);
+            }
+            dw3_mod_image_free(out);
+            continue;
+        }
+        out->shared = pass;
+        return 0;
     }
-    return 0;
+    return -1;
 }
 
 void dw3_mod_blend(Dw3ModImage *dst, const Dw3ModImage *src, int x, int y) {

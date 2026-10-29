@@ -21,9 +21,9 @@ def field_options_bin(tmp_path_factory) -> Path:
     out = tmp_path_factory.mktemp("field_options") / "field_options_test"
     cmd = [
         "gcc", "-std=c11", "-Wall", "-Wextra", "-Werror", "-O2",
-        "-DDW3_PORT_OPTIONS_TEST", "-DDW3_FIELD_OPTIONS_TEST", "-o", str(out),
+        "-DDW3_PORT_OPTIONS_TEST", "-DDW3_BUTTON_MAP_TEST", "-DDW3_FIELD_OPTIONS_TEST", "-o", str(out),
         str(TESTS / "field_options_main.c"), str(OPTIONS / "field_options.c"),
-        str(OPTIONS / "port_options.c"), str(OPTIONS / "options_cfg.c"),
+        str(OPTIONS / "port_options.c"), str(OPTIONS / "button_map.c"), str(OPTIONS / "options_cfg.c"),
         f"-I{ROOT / 'port' / 'include'}", f"-I{SRC}",
     ]
     r = subprocess.run(cmd, capture_output=True, text=True)

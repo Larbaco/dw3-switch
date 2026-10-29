@@ -33,11 +33,17 @@ extern const uint8_t dw3_port_font8x8[95][8];
  * the real picture. */
 enum { VW = 1280, VH = 720 };
 
+/* P51 item 2: the view opens at 1.5x (MV_ZOOM_TABLE step 3), on the current
+ * area. 1.0 needs a third of the map's height in panning and draws the towns
+ * small; 2.0 shows only 56 % of the width at 16:9. */
+enum { MAP_OPEN_STEP = 3 };
+
 typedef struct MapViewState {
     int active;
     int half;
     int scaler;
-    int show_hud;
+    int show_hud;        /* the top and bottom bars (P51 item 2: off at open) */
+    int show_name;       /* the game's name box over a location (always on) */
     int built_ms;        /* last CPU build, -1 = from the cache, 0 = none */
     int source;          /* 0 vram, 1 cache, 2 disc */
     MvImage base;        /* the map and its reveal layer, kept while open */
@@ -376,6 +382,8 @@ static void mod_build(const uint16_t *vram, int sheet_file, const void *sheet1,
     const char *want = getenv("DW3_MOD_PACK");
     double t0 = now_ms();
     int scale = 0, i, ncache = 0, from_pack = 0, at_1x = 0, skipped = 0;
+    int shared_files = 0, region_files = 0;
+    char mapfile[48];
     uint32_t len = sheet_len(sheet_file);
 
     mod_free();
@@ -457,12 +465,27 @@ static void mod_build(const uint16_t *vram, int sheet_file, const void *sheet1,
     s.mod.reveal = s.base.reveal;
     s.mod_scale = scale;
     snprintf(s.mod_id, sizeof(s.mod_id), "%s", pack.man.id);
-    fprintf(stderr, "dw3-map: mod: pack \"%s\" %s loaded: map_%s_h%d@%dx.png "
+    /* P51 item 3: the map and each distinct sprite came from the pack's shared
+     * files (both regions) or from this region's own */
+    for (i = 0; i < ncache; ++i) {
+        if (!cache_1x[i]) {
+            if (cache_img[i].shared) ++shared_files;
+            else ++region_files;
+        }
+    }
+    if (map.shared) ++shared_files;
+    else ++region_files;
+    if (map.shared) {
+        snprintf(mapfile, sizeof(mapfile), "map_h%d@%dx.png", s.half, scale);
+    } else {
+        snprintf(mapfile, sizeof(mapfile), "map_%s_h%d@%dx.png", MV_REGION, s.half, scale);
+    }
+    fprintf(stderr, "dw3-map: mod: pack \"%s\" %s loaded: %s "
             "%dx%d, reveal %d pieces from the pack, %d at 1x nearest, %d "
-            "skipped, %d ms%s%s%s\n", pack.man.id, pack.man.version, MV_REGION,
-            s.half, scale, s.mod.w, s.mod.h, from_pack, at_1x, skipped,
+            "skipped, %d ms%s%s%s shared=%d region=%d\n", pack.man.id, pack.man.version, mapfile,
+            s.mod.w, s.mod.h, from_pack, at_1x, skipped,
             (int)(now_ms() - t0), first_bad[0] ? " (first sprite refused: " : "",
-            first_bad, first_bad[0] ? ")" : "");
+            first_bad, first_bad[0] ? ")" : "", shared_files, region_files);
 }
 
 /* The same map built from the disc files; used for the cross-check and by the
@@ -1029,19 +1052,22 @@ static void open_view(const void *sheet, int sheet_file, int half, int home_x,
     s.name_bottom = -1;
     memset(&s.name_nb, 0, sizeof(s.name_nb));
     s.hole = 0;
-    s.show_hud = 1;
+    s.show_hud = 0;      /* P51 item 2: the picture fills the screen; Circle brings the bars */
+    s.show_name = 1;
     s.frame = 0;
     s.hud = (uint8_t *)calloc((size_t)DW3_MV_HUD_W * DW3_MV_HUD_H, 4);
-    s.view.step = 1;
+    s.view.step = MAP_OPEN_STEP;  /* P51 item 2: 1.5x (the table's step 3) */
     s.view.zoom = 0.0f;
     s.view.cx = (float)s.home_x;
     s.view.cy = (float)s.home_y;
     dw3_mv_view_clamp(&s.view, s.base.w, s.base.h, VW, VH);
     s.active = 1;
     fprintf(stderr, "dw3-map: open half=%d image=%dx%d source=%s in %d ms "
-            "markers=%d home=%d,%d turbo=%d\n", half, s.base.w, s.base.h,
-            s.source == 1 ? "cache" : "vram", (int)(now_ms() - t0), s.nspots,
-            s.home_x, s.home_y, dw3_port_turbo_speed());
+            "markers=%d home=%d,%d turbo=%d zoom=%.2f hud=%s\n", half, s.base.w,
+            s.base.h, s.source == 1 ? "cache" : "vram", (int)(now_ms() - t0),
+            s.nspots, s.home_x, s.home_y, dw3_port_turbo_speed(),
+            (double)dw3_mv_view_cur_zoom(&s.view, s.base.w, s.base.h, VW, VH),
+            s.show_hud ? "on" : "off");
     fprintf(stderr, "dw3-map: sprites at %s (scale 1/Z, Z = zoom, reference zoom "
             "1.0 = %.2f px per source px; the reveal layer, the lit towns and "
             "visited areas, scales with the map; the name box is the game's own "
@@ -1164,7 +1190,7 @@ static void update_name_box(void) {
     sprite_to_view(x, y, &vx, &vy);
     bottom = dw3_mv_namebox_bottom(&s.name_nb, s.hover,
                                    vy / (float)VH * 240.0f);
-    shown = s.hover > 0 && s.show_hud && s.name_x1 > s.name_x0;
+    shown = s.hover > 0 && s.show_name && s.name_x1 > s.name_x0;
     if (shown != s.hole || (shown && bottom != s.name_bottom)) {
         if (shown) {
             fprintf(stderr, "dw3-map: name box shown for location id=%d (name "
@@ -1174,7 +1200,7 @@ static void update_name_box(void) {
                     s.name_y1 + (bottom ? 0xB4 : 0x14));
         } else {
             fprintf(stderr, "dw3-map: name box hidden (%s)\n",
-                    s.hover > 0 ? "HUD off" : "cursor on no location");
+                    s.hover > 0 ? "name box off" : "cursor on no location");
         }
     }
     s.hole = shown;
@@ -1316,8 +1342,8 @@ int dw3_port_map_view_frame(const void *sheet, int sheet_file, int half,
     if (job_poll()) moved = 1;
     if (pressed & BIT(DW3_MV_PAD_CIRCLE)) {
         s.show_hud = !s.show_hud;
-        fprintf(stderr, "dw3-map: HUD %s (name box %s)\n",
-                s.show_hud ? "on" : "off", s.show_hud ? "allowed" : "hidden");
+        fprintf(stderr, "dw3-map: HUD %s (the bars; the name box stays)\n",
+                s.show_hud ? "on" : "off");
         moved = 1;
     }
     /* the cursor: the pad and the left stick (the game's pad bits), at the

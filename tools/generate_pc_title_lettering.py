@@ -91,6 +91,22 @@ GROUP_TEXT = {
                         'Testmenü. Alles ist aus, bis du es einschaltest.',
                         'Menú de pruebas. Todo está apagado por defecto.',
                         'Menu di prova. Tutto è spento finché non lo attivi.')},
+    # P9.8 Controls: the Button layout row lives here (docs/CONTROLS_BUNDLE.md).
+    'controls': {'name': ('Controls', 'Commandes', 'Steuerung', 'Controles', 'Comandi'),
+                 'desc': ('Which button confirms and which cancels.',
+                          'Quel bouton valide et quel bouton annule.',
+                          'Welche Taste bestätigt und welche bricht ab.',
+                          'Qué botón confirma y cuál cancela.',
+                          'Quale pulsante conferma e quale annulla.')},
+    # P6.12 Customize buttons: the header of the sub-screen and the message
+    # line of its rows. FR / DE / IT / ES are machine-drafted, needs native
+    # review.
+    'custom': {'name': ('Customize', 'Personnaliser', 'Anpassen', 'Personalizar', 'Personalizza'),
+               'desc': ('Confirm, then press a button. Left / Right picks one.',
+                        'Valider, puis appuyer. Gauche / Droite choisit.',
+                        'Bestätigen, dann Taste drücken. Links / Rechts wählt.',
+                        'Confirma y pulsa un botón. Izquierda / Derecha elige.',
+                        'Conferma, poi premi un tasto. Sinistra / Destra sceglie.')},
     # P6.30 Help: the group name and the message line under the group list.
     'help': {'name': ('Help', 'Aide', 'Hilfe', 'Ayuda', 'Aiuto'),
              'desc': ('Controls, hotkeys, saves and bug reports.',
@@ -244,6 +260,90 @@ AUTOSAVE_TEXT = {
     'it': {'row': 'Salvataggio auto', 'area': 'Ogni area',
            'desc': "Salva in un file a parte. Si carica con Continua."},
 }
+# P9.8 Button layout row of the Controls group (docs/CONTROLS_BUNDLE.md), in the
+# five languages of the EU disc (en is also the US disc's). The two values are
+# product names, the same in every language. Keep the label under 290 px, the
+# values under 236 px and the description under 690 px.
+LAYOUT_TEXT = {
+    'en': {'row': 'Button layout',
+           'desc': 'Nintendo: A confirms, B cancels. Applies now.'},
+    'fr': {'row': 'Disposition boutons',
+           'desc': 'Nintendo : A valide, B annule. Effet immédiat.'},
+    'de': {'row': 'Tastenbelegung',
+           'desc': 'Nintendo: A bestätigt, B bricht ab. Sofort aktiv.'},
+    'es': {'row': 'Botones',
+           'desc': 'Nintendo: A confirma, B cancela. Se aplica ya.'},
+    'it': {'row': 'Disposizione tasti',
+           'desc': 'Nintendo: A conferma, B annulla. Subito attivo.'},
+}
+for _lang, _t in LAYOUT_TEXT.items():
+    LETTERS.append(('opt_row_bl_' + _lang, _t['row'], 26, 'DejaVuSans.ttf'))
+    LETTERS.append(('opt_val_bl_ps_' + _lang, 'PlayStation', 26, 'DejaVuSans.ttf'))
+    LETTERS.append(('opt_val_bl_nin_' + _lang, 'Nintendo', 26, 'DejaVuSans.ttf'))
+    LETTERS.append(('opt_desc_bl_' + _lang, _t['desc'], 25, 'DejaVuSans.ttf'))
+# P6.12 Controls group, phase 2 (docs/CONTROLS_BUNDLE.md): the Customize buttons
+# and Reset to default rows, the Custom value of Button layout, the prompt of the
+# Customize screen. FR / DE / IT / ES are machine-drafted, needs native review.
+# The PlayStation button names and the Switch button names are the same in every
+# language. Keep labels under 290 px, values under 236 px, descriptions under 690.
+CUSTOM_TEXT = {
+    'en': {'row': 'Customize buttons', 'rowdesc': 'Pick which button makes each PlayStation button.',
+           'reset': 'Reset to default', 'resetdesc': 'Back to the PlayStation layout. Applies now.',
+           'prompt': 'Press a button', 'promptdesc': 'Press the new button. Start or Select cancels.',
+           'custom': 'Custom'},
+    'fr': {'row': 'Personnaliser', 'rowdesc': 'Choisir le bouton de chaque touche PlayStation.',
+           'reset': 'Réinitialiser', 'resetdesc': 'Retour à la disposition PlayStation. Effet immédiat.',
+           'prompt': 'Appuyez', 'promptdesc': 'Appuyez sur le nouveau bouton. Start/Select annule.',
+           'custom': 'Perso'},
+    'de': {'row': 'Tasten anpassen', 'rowdesc': 'Wähle, welche Taste jede PlayStation-Taste auslöst.',
+           'reset': 'Zurücksetzen', 'resetdesc': 'Zurück zur PlayStation-Belegung. Sofort aktiv.',
+           'prompt': 'Taste drücken', 'promptdesc': 'Neue Taste drücken. Start oder Select bricht ab.',
+           'custom': 'Eigene'},
+    'es': {'row': 'Personalizar botones', 'rowdesc': 'Elige qué botón hace cada botón de PlayStation.',
+           'reset': 'Restablecer', 'resetdesc': 'Vuelve a la disposición PlayStation. Se aplica ya.',
+           'prompt': 'Pulsa un botón', 'promptdesc': 'Pulsa el botón nuevo. Start o Select cancela.',
+           'custom': 'Otra'},
+    'it': {'row': 'Personalizza tasti', 'rowdesc': 'Scegli quale tasto fa ogni tasto PlayStation.',
+           'reset': 'Ripristina', 'resetdesc': 'Torna alla disposizione PlayStation. Subito attivo.',
+           'prompt': 'Premi un tasto', 'promptdesc': 'Premi il nuovo tasto. Start o Select annulla.',
+           'custom': 'Personale'},
+}
+for _lang, _t in CUSTOM_TEXT.items():
+    LETTERS.append(('opt_row_cz_' + _lang, _t['row'], 26, 'DejaVuSans.ttf'))
+    LETTERS.append(('opt_desc_cz_' + _lang, _t['rowdesc'], 25, 'DejaVuSans.ttf'))
+    LETTERS.append(('opt_row_rs_' + _lang, _t['reset'], 26, 'DejaVuSans.ttf'))
+    LETTERS.append(('opt_desc_rs_' + _lang, _t['resetdesc'], 25, 'DejaVuSans.ttf'))
+    LETTERS.append(('opt_val_cp_' + _lang, _t['prompt'], 26, 'DejaVuSans.ttf'))
+    LETTERS.append(('opt_desc_cp_' + _lang, _t['promptdesc'], 25, 'DejaVuSans.ttf'))
+    LETTERS.append(('opt_val_bl_cus_' + _lang, _t['custom'], 26, 'DejaVuSans.ttf'))
+# The rows of the Customize screen: the ten PS buttons (map order) and the Switch
+# button that can make each one (port/options/button_map.c, g_src_label).
+for _name in ('Cross', 'Circle', 'Triangle', 'Square', 'L1', 'R1', 'L2', 'R2', 'L3', 'R3'):
+    LETTERS.append(('opt_row_ps_' + _name.lower(), _name, 26, 'DejaVuSans.ttf'))
+for _key, _name in (('b', 'B'), ('a', 'A'), ('x', 'X'), ('y', 'Y'), ('l', 'L'), ('r', 'R'),
+                    ('zl', 'ZL'), ('zr', 'ZR'), ('lstick', 'L stick'), ('rstick', 'R stick')):
+    LETTERS.append(('opt_val_btn_' + _key, _name, 26, 'DejaVuSans.ttf'))
+# P51 item 4: the Region at start row of the Gameplay group, shown only in the
+# combined build (docs/P51_FEEDBACK.md). Values: Ask (per language), US and EU
+# (the same in every language). Label under 290 px, description under 690 px.
+REGION_TEXT = {
+    'en': {'row': 'Region at start', 'ask': 'Ask',
+           'desc': 'Used at the next start. Ask = choose US or EU.'},
+    'fr': {'row': 'R\u00e9gion au d\u00e9marrage', 'ask': 'Demander',
+           'desc': 'Prochain d\u00e9marrage. Demander = choisir US ou EU.'},
+    'de': {'row': 'Region beim Start', 'ask': 'Fragen',
+           'desc': 'Beim n\u00e4chsten Start. Fragen = US oder EU w\u00e4hlen.'},
+    'es': {'row': 'Regi\u00f3n al iniciar', 'ask': 'Preguntar',
+           'desc': 'En el pr\u00f3ximo inicio. Preguntar = elegir US o EU.'},
+    'it': {'row': 'Regione all\'avvio', 'ask': 'Chiedere',
+           'desc': 'Al prossimo avvio. Chiedere = scegliere US o EU.'},
+}
+for _lang, _t in REGION_TEXT.items():
+    LETTERS.append(('opt_row_rg_' + _lang, _t['row'], 26, 'DejaVuSans.ttf'))
+    LETTERS.append(('opt_val_rg_ask_' + _lang, _t['ask'], 26, 'DejaVuSans.ttf'))
+    LETTERS.append(('opt_desc_rg_' + _lang, _t['desc'], 25, 'DejaVuSans.ttf'))
+LETTERS.append(('opt_val_rg_us', 'US', 26, 'DejaVuSans.ttf'))
+LETTERS.append(('opt_val_rg_eu', 'EU', 26, 'DejaVuSans.ttf'))
 # P6.31 follow-up: the title menu's Continue plaque (it loads the auto-save;
 # shown, with the game's own label moved to a Load Game row, only when an
 # auto-save file exists). Same bold condensed face as the Quit plaque; keep each

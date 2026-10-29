@@ -311,6 +311,50 @@ static void sw_parse_only(const char *s) {
     }
 }
 
+/* P51 item 7: `stage_sweep=1` in the TOP-LEVEL port_options.cfg (the region
+ * picker's file, beside the us/ and eu/ folders) is not read: the sweep reads
+ * its key from the region folder's file. When the owner put it in the wrong one
+ * the log says so, once per boot, and nothing else changes. */
+static void sw_note_stray_key(void) {
+    char top[300];
+    char path[320];
+    char line[160];
+    char *slash;
+    size_t n;
+    FILE *f;
+    int found = 0;
+
+    if (g_dir[0] == '\0' || strlen(g_dir) >= sizeof(top)) {
+        return;
+    }
+    strcpy(top, g_dir);
+    n = strlen(top);
+    while (n > 1 && top[n - 1] == '/') {
+        top[--n] = '\0';
+    }
+    slash = strrchr(top, '/');
+    if (slash == NULL || slash == top) {
+        return;
+    }
+    *slash = '\0';
+    snprintf(path, sizeof(path), "%s/port_options.cfg", top);
+    f = fopen(path, "r");
+    if (f == NULL) {
+        return;
+    }
+    while (fgets(line, sizeof(line), f) != NULL) {
+        if (strncmp(line, SW_KEY "=", sizeof(SW_KEY)) == 0 &&
+            strtol(line + sizeof(SW_KEY), NULL, 0) != 0) {
+            found = 1;
+        }
+    }
+    fclose(f);
+    if (found) {
+        SW_INFO("dw3-sweep: stage_sweep found in %s, ignored; put it in %s/port_options.cfg",
+                path, g_dir);
+    }
+}
+
 /* Reads the key (or the environment). Returns the key value: 0 off, 1 run or
  * resume, 2 start from the beginning. */
 static int sw_read_config(void) {
@@ -355,6 +399,9 @@ static int sw_read_config(void) {
     v = getenv("DW3_STAGE_SWEEP_ONLY");
     if (v != NULL && v[0] != '\0') {
         sw_parse_only(v);
+    }
+    if (level == 0) {
+        sw_note_stray_key();
     }
     return level;
 }
