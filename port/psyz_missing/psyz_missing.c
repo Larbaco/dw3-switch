@@ -225,9 +225,23 @@ void GsGetTimInfo(unsigned long *addr, GsIMAGE *img) {
 
 u_long *BreakDraw(void) { return 0; }
 
+/* P51: ContinueDraw is the PS1's "put this ordering table in front of what the
+ * GPU is drawing". The one user is FIGHTSTG_drawCursorBar, the vsync callback of
+ * the battle lists' selection bar: it runs in VSync(0) from drawFrame after the
+ * finished frame's DrawSync and before the flip, so drawing the table now puts
+ * the bar on the frame about to be shown. The table holds DR_MOVE copies of a
+ * VRAM bar frame onto both display pages, which DrawOTag sends to
+ * Draw_MoveImage. Until this was done the stub dropped the bar, and the Items
+ * and technique lists (no sprite cursor) showed no marker at all. */
+unsigned dw3_battle_bar_submits;
+
 void ContinueDraw(u_long *inst_ot, u_long *cont_ot) {
-    (void)inst_ot;
     (void)cont_ot;
+    if (inst_ot != NULL) {
+        DrawOTag((OT_TYPE *)inst_ot);
+        DrawSync(0);
+        dw3_battle_bar_submits++;
+    }
 }
 
 int IsIdleGPU(int maxcount) {

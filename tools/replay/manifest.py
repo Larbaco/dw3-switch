@@ -611,6 +611,54 @@ for _v in ("us", "eu"):
                   note="the memory lasts across battles of one session: battle 2's first menu opens on Techniques (patch 0067)"))
 
 
+# P51 item 1: the selection bar of the battle's Items and technique lists
+# (FIGHTSTG_drawCursorBar, a vsync callback that hands its ordering table to
+# ContinueDraw; a no-op stub until this fix, so the lists had no marker). The
+# forced battle of the p79 scenarios plus a full bag (DW3_FORCE_BATTLE_BAG,
+# patch 0189). Checkpoints on both lists at several cursor lines. `-t4` runs
+# turbo 4x (the pictures are the 1x run's), `-43` Widescreen off (own refs).
+# PC only (env). The Switch renderer modes (gpu-tex, soft) are checked in
+# Ryubing by hand (docs/P51_FEEDBACK.md item 1).
+_BAR_ENV = _P79_ENV + (("DW3_FORCE_BATTLE_BAG", "1-402"),)
+_BAR_SHOTS = ("battle-cmd-items", "items-line0", "items-line1", "items-line2", "tech-line0", "tech-line1")
+_BAR_LOG = ((0, r"dw3-battle-cursor: open list=items(?s:.*)"
+                r"dw3-battle-cursor: close list=items count=\d+ sel=2 bar=submitted(?s:.*)"
+                r"dw3-battle-cursor: open list=tech(?s:.*)"
+                r"dw3-battle-cursor: close list=tech count=\d+ sel=1 bar=submitted"),)
+_BAR_FORBID = ((0, r"bar=dropped"),)
+for _v in ("us", "eu"):
+    _bar = (f"{_v}-battle-list-bar",)
+    _add(
+        Scenario(f"{_v}-battle-list-bar", _v, "full", timeout=300, phases=_bar, env=_BAR_ENV,
+                 expect_log=_BAR_LOG, forbid_log=_BAR_FORBID,
+                 note="the Items and technique lists show the cursor bar (P51 item 1, patch 0189)"),
+        Scenario(f"{_v}-battle-list-bar-t4", _v, "full", turbo=4, timeout=300, phases=_bar, env=_BAR_ENV,
+                 ref_map=tuple((n, f"{_v}-battle-list-bar", n) for n in _BAR_SHOTS),
+                 expect_log=_BAR_LOG, forbid_log=_BAR_FORBID,
+                 note="the same lists under turbo 4x: bar submitted, same pictures (P51 item 1)"),
+        Scenario(f"{_v}-battle-list-bar-43", _v, "full", timeout=300, phases=_bar, env=_BAR_ENV,
+                 cfg=(("widescreen", "0"),),
+                 expect_log=_BAR_LOG, forbid_log=_BAR_FORBID,
+                 note="the same lists with Widescreen off (4:3) (P51 item 1)"),
+    )
+
+# P51 item 1 on the Switch build in Ryubing (tier nx, only with --only; log
+# judgement plus informational screenshots): the same recording, the replay NRO
+# built with DW3_NX_TEST_ENV="DW3_START_MODE=0x600,DW3_FORCE_ENCOUNTER=34,
+# DW3_FORCE_PARTY=0,DW3_FORCE_ENEMY_HP=2000,DW3_FORCE_BATTLE_BAG=1-402" (and
+# DW3_MESH_SOFT=1 for the `-soft` one: the CPU renderer instead of the default
+# gpu-tex mesh). A comma cannot go in that variable, so there are no extra
+# techniques: the technique list has one line. The `mode=` token of the open
+# line names the renderer the bar was submitted under.
+for _v in ("us", "eu"):
+    for _suffix, _mode in (("", "gpu-tex"), ("-soft", "soft")):
+        _add(Scenario(f"{_v}-battle-list-bar-nx{_suffix}", _v, "nx", timeout=900,
+                      phases=(f"{_v}-battle-list-bar",),
+                      expect_log=((0, r"dw3-battle-cursor: open list=items mode=" + _mode + r" (?s:.*)"
+                                      r"dw3-battle-cursor: close list=items count=\d+ sel=2 bar=submitted"),),
+                      forbid_log=((0, r"bar=dropped"),),
+                      note=f"the battle Items list's bar on the Switch build, renderer {_mode} (P51 item 1)"))
+
 # Field menu -> Items after a battle (patches 0069 fix, 0070 hook): the Items
 # list used to crash the host (NULL ItemInfo in getItemCategory) as soon as the
 # bag held one item, which is the owner's preview.30-rc6 OLED crash. A forced
@@ -623,7 +671,7 @@ for _v in ("us", "eu"):
 _ITEMS_ENV = (("DW3_START_MODE", "0x233"), ("DW3_PROGRESS", "6"),
               ("DW3_FORCE_NPC_ACTION", "0x7400"), ("DW3_FORCE_ENCOUNTER", "34"),
               ("DW3_FORCE_PARTY", "0"), ("DW3_FORCE_WIN", "1"),
-              ("DW3_FORCE_ITEMS", "1-402"))
+              ("DW3_FORCE_BATTLE_BAG", "1-402"))
 for _v, _ids in (("us", (0x159, 0x1FA, 0x1C2, 0x158, 0x1F9)),
                  ("eu", (0x167, 0x208, 0x1D1, 0x166, 0x207))):
     _fight, _menu, _report, _field, _status = _ids

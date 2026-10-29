@@ -1,0 +1,113 @@
+Upstream-bound: no
+Subject: [PORT_HOST] P51: battle list bar log (cursor.c) and DW3_FORCE_BATTLE_BAG test hook
+
+preview.51 OLED: the battle's Items list showed no selection marker. The
+Items and technique lists have no sprite cursor (`CursorLayout.sprite` is -1),
+their marker is the bar `FIGHTSTG_drawCursorBar` draws in the vsync callback
+and hands to `ContinueDraw()`, which the port had as a no-op. The fix is host
+code (`ContinueDraw` in port/psyz_missing/psyz_missing.c draws the table); this
+patch only adds the log (docs/P51_FEEDBACK.md, item 1):
+
+* `FIGHTSTG_createCursor` (`battle/battle_mode/cursor.c`) names the list
+  (command, items, tech, switch, switch-in, digivolve, confused) and calls
+  `dw3_port_battle_cursor_open()`; `FIGHTSTG_updateCursor` TASK_KILL calls
+  `dw3_port_battle_cursor_close()`. Logs `dw3-battle-cursor: open list=...
+  mode=... widescreen=W turbo=T` and `close list=... count=N sel=S
+  bar=submitted|dropped vsyncs=K`. No game state is read or changed.
+
+Test hook (PC only): DW3_FORCE_ITEMS (patch 0070) fills the bag when the field
+menu starts, which a forced battle never runs, so the battle's Items list was
+always empty ("No items.") in the replays.
+DW3_FORCE_BATTLE_BAG=<first>-<last>[:<count>] (ids 1..402, default count 3)
+sets GAME.items of every id of the range when the battle's root task starts
+(`FIGHTSTG_updateRoot`). Logs "dw3: DW3_FORCE_BATTLE_BAG items A..B xN".
+Unset (every release, and the Switch, which has no environment) it does
+nothing.
+
+--- a/src/battle/battle_mode/start.c
++++ b/src/battle/battle_mode/start.c
+@@ -44,6 +44,33 @@
+                 GAME.funcs.setParty(0);
+                 fprintf(stderr, "dw3: FIGHTSTG setParty(0) (empty party)\n");
+             }
++            {
++                /* P51 test hook: DW3_FORCE_BATTLE_BAG=<first>-<last>[:<count>] puts that
++                 * many (default 3) of each item id of the range into the bag when the
++                 * battle starts, so a replay can open the battle's Items list (the
++                 * field menu's DW3_FORCE_ITEMS never runs in a forced battle). */
++                const char *bag = getenv("DW3_FORCE_BATTLE_BAG");
++                int first = 0;
++                int last = 0;
++                int count = 3;
++                int id;
++
++                if (bag != NULL && sscanf(bag, "%d-%d:%d", &first, &last, &count) >= 2) {
++                    if (first < 1) {
++                        first = 1;
++                    }
++                    if (last > 0x192) {
++                        last = 0x192;
++                    }
++                    if (count < 1 || count > 99) {
++                        count = 3;
++                    }
++                    for (id = first; id <= last; id++) {
++                        GAME.items[id] = count;
++                    }
++                    fprintf(stderr, "dw3: DW3_FORCE_BATTLE_BAG items %d..%d x%d\n", first, last, count);
++                }
++            }
+             if (enc != NULL && enc[0] != '\0') {
+                 n = strtol(enc, &end, 0);
+                 if (end != enc && n >= 0) {
+--- a/src/battle/battle_mode/cursor.c
++++ b/src/battle/battle_mode/cursor.c
+@@ -3,6 +3,7 @@
+ #include "battle/battle_mode.h"
+ #if PORT_HOST
+ #include "port_turbo.h"
++#include "port_battle_cursor.h"
+ #endif
+ 
+ /* where FIGHTSTG_drawCursorBar puts the cursor's bar in VRAM */
+@@ -136,6 +137,10 @@
+     case TASK_DONE:
+         break;
+     case TASK_KILL:
++#if PORT_HOST
++        /* P51: log whether the list's bar reached the GPU (once per list). */
++        dw3_port_battle_cursor_close(task, (int)task->params.count, (int)task->sel);
++#endif
+         GFX.vsyncFunc = NULL;
+         break;
+     }
+@@ -146,5 +151,29 @@
+     MenuCursor *task = createTask(FIGHTSTG_updateCursor, sizeof(MenuCursor), 0);
+ 
+     task->params = *layout;
++#if PORT_HOST
++    {
++        /* P51: name the list for the log (the bar is the only marker of the
++           Items and technique lists). */
++        const char *list = "other";
++
++        if (layout == &FIGHTSTG_commandCursor) {
++            list = "command";
++        } else if (layout == &FIGHTSTG_itemCursor) {
++            list = "items";
++        } else if (layout == &FIGHTSTG_techCursor) {
++            list = "tech";
++        } else if (layout == &FIGHTSTG_switchCursor) {
++            list = "switch";
++        } else if (layout == &FIGHTSTG_changeCursor) {
++            list = "digivolve";
++        } else if (layout == &FIGHTSTG_pairCursors[0] || layout == &FIGHTSTG_pairCursors[1]) {
++            list = "switch-in";
++        } else if (layout == &FIGHTSTG_confusedCursor) {
++            list = "confused";
++        }
++        dw3_port_battle_cursor_open(task, list);
++    }
++#endif
+     return task;
+ }
