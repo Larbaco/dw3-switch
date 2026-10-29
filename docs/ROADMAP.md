@@ -2410,7 +2410,7 @@ Statuses are in the [table](#status-at-a-glance).
   Port option, on by default only once approved; no save change. Until then
   the port logs `dw3-items-menu: Cross on weapon N ...` (patch `0180`).
 
-- [ ] **P6.35 In-game walkthrough help (future goal).** Dated 2026-10-27,
+- [~] **P6.35 In-game walkthrough help.** Dated 2026-10-27,
   owner request (Portuguese: "um menu de ajuda mais no sentido do walkthrough,
   pra ajudar o jogador no jogo", a help menu closer to a walkthrough, to help
   the player in the game). The owner also said "quero os 2" (I want both): this
@@ -2463,7 +2463,18 @@ Statuses are in the [table](#status-at-a-glance).
   `ch01`, hook and debug probe, patch `0186`), `port/walkthrough/text/en.txt`
   (draft, owner review pending) and FR/DE/IT/ES drafted 2026-10-29 (machine-drafted,
   **needs native review**, [P6.35_WALKTHROUGH](P6.35_WALKTHROUGH.md#text-status-and-the-owners-language-rule)), host tests and the replay checks
-  `*-walkthrough-p0/p2/p3`. Next: the screen, with the P6.30 page engine.
+  `*-walkthrough-p0/p2/p3`. 
+  **Phase 2 the screen (built 2026-10-29, PR open):** `port/walkthrough/walkthrough_screen.c`,
+  the eighth group of Options (Walkthrough) at the title, in the field menu and
+  in battle, on the P6.30 page engine: the current step page, the step list, the
+  area spoiler pages, the two-action reveal, nothing shown beyond the player's
+  progress, `ch01` only plus a `More chapters coming` page. The game's field menu
+  opens only from `GAME.progress` 4, so in game the screen is reachable from
+  `ch01.s06`. The eighth plaque makes the Options list scroll, so every Options-list
+  reference was refreshed. PC replays `us/eu-walkthrough-screen-*` pass; host tests
+  `tools/tests/test_walkthrough.py`. **Left:** OLED W1 to W7 ([A19](OLED_TEST_PLAN.md)),
+  chapters after `ch01`, native review of FR/DE/IT/ES, the release validator
+  ([As built, phase 2](P6.35_WALKTHROUGH.md#as-built-phase-2-the-screen)).
   Done when (proposed; the hint-then-answer wording is superseded by decision 1):
   at a given story point, a tester opens the help from the
   pause menu on US and EU and sees only the next step, the hint first and the
