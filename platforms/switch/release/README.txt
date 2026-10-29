@@ -1,6 +1,6 @@
 Digimon World 3 / 2003, Switch homebrew preview
 
-Release notes for v0.6.5-preview.51. The release tag and boot version
+Release notes for v0.6.5-preview.52. The release tag and boot version
 identify the actual source revision.
 
 Player guide (setup, controls, Options, saves, crash reports):
@@ -10,7 +10,78 @@ New in this preview
 
   The owner's OLED checks are recorded in docs/OLED_TEST_PLAN.md (rows marked
   PASSED). Items that are not there yet are checked on PC and in the Ryubing
-  emulator only, and are marked unverified.
+  emulator only, and are marked unverified. The OLED checklist at the end lists
+  every row of that plan without a PASSED mark.
+
+  Built locally, attached by hand: the files of this release were built on the
+  build machine with tools/build_switch_game.sh and ccache on (docs/BUILD_SPEED.md).
+  The release workflow run for the tag was cancelled before it published
+  anything. The workflow does not use ccache, so a CI build of this tag can
+  differ in the file-path strings that the cache rewrites.
+
+  Equip from the Items menu (P6.34 phase 1, #339, patch 0188; plans B19 and
+  B21): in Items, Cross on a weapon, armor or accessory opens the partner step,
+  and Cross on a partner equips it through the game's own equip code. The list
+  is rebuilt after the equip. When both hand slots are full, the first one is
+  replaced and the result line says so. A partner who cannot equip the item is
+  refused with a "cannot equip" line. Nothing is unequipped. The setting is
+  items_equip_from_items in port_options.cfg (1 by default; 0 restores the old
+  behaviour, where selecting equipment does nothing and is logged). These are
+  defaults taken for now, pending the owner's confirmation, and the French,
+  German, Italian and Spanish strings need a native review.
+
+  Controls group and button layout (P9.8 phase 1, #338; plans L1 to L8): Options
+  has a Controls group, between Cheats and Help, with a Button layout row.
+  PlayStation (the default, unchanged): Cross = Switch B, Circle = Switch A,
+  Triangle = Switch X, Square = Switch Y. Nintendo: A confirms, B cancels and X
+  is Circle. The Help pages and the restart chord show the names of the layout
+  in use. Options, Cheats, Quit, Help, battle Select, R3 fast-forward, the
+  restart chord, the map view's cancel, the EU language select and the movie
+  skip read the layout. The Switch debug chords, the region picker, the
+  launcher and the crash notice keep the physical buttons. The setting is
+  button_layout in port_options.cfg, per region; the press that changes it is
+  ignored until released. The Options hint row does not follow the layout yet.
+  No custom remap yet (phase 2).
+
+  Battle Items and technique lists draw their selection bar again (#343, patch
+  0189; plan D15). The bar is built by the battle code, but the drawing call
+  was an empty stub since P3.3, so it never showed. Host code only; the log
+  lines are `dw3-battle-cursor:`.
+
+  Cheats group always listed (#344, plan A16): the Cheats group shows on the
+  Options list with the master switch OFF. In game it stays greyed.
+
+  Region at start (#344, plan A17, combined .nro only): the Gameplay group has
+  a Region row (Ask, US or EU) for the start. It writes region_default in the
+  top-level port_options.cfg. Holding ZL and ZR together at launch also asks for
+  the picker; the ZL + ZR try is not verified on the console.
+
+  Map view opens at 1.5x with the bars hidden (#344, plan B16): Circle shows or
+  hides the bars, and the name box has its own flag. Logged as
+  `dw3-map: open ... zoom=1.50 hud=off`.
+
+  stage_sweep in the top-level port_options.cfg is logged once and ignored
+  (plan G10). The key belongs in the region's own file.
+
+  One map mod pack for US and EU (#345, plan B17): a pack can hold map files
+  shared by both discs, and a region's own file wins where the discs differ
+  (13 of the reveal sprites differ; tools/mods/extract_map_assets.py reports
+  the count). The pack is still made locally from your own disc. No pack is in
+  this release.
+
+  Options background (#346, plan A18): at the title, the Options, Cheats and
+  Help screens show the game's own menu background, the dimmed blue panel tile
+  of the field status menu, behind the plaques. It is static, not scrolling.
+  Logged once at boot as `dw3-options: menu background tile`. Not run on the
+  console yet.
+
+  Docs only, nothing in the game changed for them: the P6.34 menu-flow design
+  (#335, docs/P6.34_MENU_FLOW.md); a docs CI job that runs the doc-link check on
+  docs-only PRs (#337); the P6.36 goal, music at normal speed while turbo is on
+  (#340; not built yet); and the preview.51 feedback design with OLED
+  bookkeeping (#342, docs/P51_FEEDBACK.md).
+
+  From preview.51:
 
   Technical help (P6.30, #333): Options has a Help group, the last row of the
   list (also from the field menu and the battle Options). It opens a page
@@ -203,18 +274,6 @@ New in this preview
   options and saves now reach the log, and new proof lines match the OLED
   test plan items. Send the whole set of sdmc:/switch/dw3/dw3*.log files.
 
-  Still open on the OLED (the rows of docs/OLED_TEST_PLAN.md without a PASSED
-  mark): the help, plans H1 to H8; the EU language select confirm button
-  (E1.6c); the map sprites at fixed size and the name box staying put during
-  zoom (B16, section 11 and #326); the Cheats sub-screen (A13) and the group
-  open after the prewarm (A10); the item shop at 16:9 (B18); equipment in the
-  Items menu (B19); the map view close button (B20); the map mod (B17); the
-  stage sweep (G10); the audio check after many techs on the EU build (#188,
-  D13); save writes with HOME (G2); the faster turbo in scenes (C1 to C3, C10);
-  and the combined .nro with one region present (G9.1, G9.2), the timeout
-  (G9.3), the start after a choice without the picker (G9.4, G9.5), Minus
-  (G9.6) and disc images in the parent folder (G9.11 to G9.13).
-
 Known issues
 
   If the map stays silent after a battle (no field music once you are
@@ -377,10 +436,10 @@ Bundle
   dw3-switch-both-elf.zip        unstripped ELFs of both combined builds
   README.txt                     these notes
 
-  The US pair, dw3-switch-elf.zip and the dw3-switch-both* files come from
-  the release workflow. The EU files are attached by hand to the release, as
-  in earlier previews. No original game files, BIN/CUE/ISO, BIOS or extracted
-  tree ship here.
+  This release's files were built locally and attached by hand; the release
+  workflow run for the tag was cancelled before it published (see New in this
+  preview). No original game files, BIN/CUE/ISO, BIOS or extracted tree ship
+  here.
 
 Own-disc setup and extraction
 
@@ -435,64 +494,164 @@ Install / nxlink
 
 OLED checklist
 
-  New in this preview:
-  - Options groups (plan A5, A9 to A12): from the title, the field menu
-    (OPTIONS) and battle (Minus at the command menu), the four groups open
-    and go back as described above, the plaques look like the title menu's,
-    and the first open of a group is no black or garbage frame. Send the
-    `dw3-port-options:` and `dw3-title-overlay:` lines, and a photo of the
-    group list in handheld and docked.
-  - Log rotation (#296, #301): confirmed on the OLED with preview.45 (dw3.1.log
-    kept, rc=0x0). Keep sending the whole set of dw3*.log files.
-  - Options open timing (plan B15): the `dw3-port-options:` lines give the
-    prewarm, the first frame after the open request, the longest frame gap
-    and the time the window stayed open. Expected about 10 ms to open, with
-    no `rebuild` line (that was the old stutter).
-  - Return to title fade (plan E1): the field fades to black, then the
-    title or language select fades in, with no 4:3 picture ever on screen.
-  - Map reveal, stick zoom and scaler preference (plan B16): the revealed
-    towns and areas show on the Map, the right stick zooms, and the scaler
-    keeps its choice. Send the `dw3-map:` lines.
-  - Per-user saves (plan E5, E5.1 to E5.9): the profile selector, the
-    per-profile folders, the copy of legacy saves, cancelling the selector
-    and the crash report's profile line. Send dw3*.log and the folder listing
-    of sdmc:/switch/dw3/saves/.
-  - Logs (#290): each test item names the dw3*.log lines that prove it; send
-    the whole set of dw3*.log files after the run.
-  - Combined .nro (plan G9.1 to G9.6, P6.24): dw3-switch-both.nro with only
-    one region's data, with both (picker, 3 s default, Y, Minus) and the
-    stored choice. Send the `dw3-region:` lines.
-  - Map upscale mod (plan B17): with a locally made pack the map is the
-    upscaled picture; without it, or with map_mod=0, the original map. Send
-    the `dw3-map:` lines.
-  - Audio (plans D13 and D14, #188): the `dw3-audio:` health, underrun and
-    exit lines after many techs and in a 10 minute session.
-  - Save writes (plan G2, P10.2): the `dw3-save: write ... committed` and
-    `interrupted` lines after HOME during a save.
+  Still open on the OLED: 123 rows of docs/OLED_TEST_PLAN.md without a PASSED
+  mark. The list is built from those rows only; the checklist below gives each
+  one.
+  A: A1, A2, A3, A4, A6, A8, A13, A18, A16, A17
+  L: L1, L2, L3, L4, L5, L6, L7, L8
+  B: B1, B2, B3, B4, B5, B6, B7, B8, B9, B10, B12, B13, B14, B15, B17, B19,
+    B21, B20
+  C: C1, C2, C3, C4, C10, C5, C6, C8, C9
+  D: D1, D2, D3, D4, D5, D6, D7, D8, D9, D10, D11, D12, D14, D15
+  E: E1.1, E1.2, E1.4, E1.5, E1.6, E2.0, E2.3, E2.4, E2.4b, E2.5, E2.6, E3.1,
+    E3.2, E3.3, E3.4, E3.5, E3.6, E4.1, E4.2, E4.3, E4.4, E4.5, E4.6, E4.7,
+    E4.8, E4.9, E5.1, E5.2, E5.3, E5.4, E5.6, E5.7, E5.8, E5.9
+  F: F1, F2, F3, F4, F5, F6, F7
+  G: G1, G2, G3, G4, G5, G6, G7.1, G7.2, G7.3, G7.4, G7.5, G7.6, G7.7, G9.1,
+    G9.2, G9.6, G9.7, G9.8, G9.9, G9.10, G9.11, G9.12, G9.13
 
-  From preview.42, still open:
-  - App name (#289): recreate the Sphaira forwarder (or re-add the .nro in
-    hbmenu); the title reads Digimon World 3 NX, and the nxlink build reads
-    Digimon World 3 NX (nxlink).
+  Button names: Cross = Switch B, Circle = Switch A, Triangle = Switch X,
+  Square = Switch Y (PlayStation layout, the default). Each row of
+  docs/OLED_TEST_PLAN.md has the steps and the log lines to send.
 
-  From preview.41, still open:
-  - Turbo menus at 1.5x (plan C7-C9): menus run slower than walking at 4x,
-    and Map, Items and shops stay at 1x. The `dw3-turbo` log lines show it.
-  - Title spacing and logo (#287, no separate plan): the plaques are evenly
-    spaced and the logo keeps its size when the menu appears.
+  Session A, boot and title:
+  - A1 Launch the NRO (first run: wait out the extraction bar)
+  - A2 EU: pick a language at the select; repeat later for a second language
+  - A3 Title: Down through the choices
+  - A4 Cross on Quit game
+  - A6 Set Encounter rate OFF and Text speed Instant, close from the HOME ...
+  - A8 Relaunch, HOME, close the software
+  - A13 Cheats sub-screen (P9.9 slice 2)
+  - A18 Options background (P51 item 6)
+  - A16 Cheats is on the Options list with the master OFF (P51 item 5)
+  - A17 Region at start row (combined .nro only, P51 item 4)
 
-  Still open from preview.40:
-  - Equipment ZL / ZR partner cycle (plan G8): the partner changes on each
-    press, and nothing changes with items_partner_switch=0.
-  - Auto-save and Load Game (plan E2): Continue loads autosave.bin, and
-    Load Game opens your own slots.
-  - Full-screen map view (plan B16): Y opens it, B or Y closes it, and the
-    scaler names and cache folder are as described above.
+  A15, button layout (P9.8):
+  - L1 Fresh launch (no button_layout key), US then EU
+  - L2 Options, Controls, Button layout: press B (it says Nintendo), X twice ...
+  - L3 Nintendo, in the field and in a battle: open the field menu with Plus, ...
+  - L4 Leave with the title's Quit game (or HOME), relaunch, US and EU (set ...
+  - L5 Nintendo: the full-screen map (Plus, Map, Y, then B) and the restart ...
+  - L6 Nintendo: Help (Options, Help), the Controls and Port hotkeys pages
+  - L7 nxlink build, both layouts: Minus + L + R (debug HUD) and Minus + ZL + ...
+  - L8 Developer: nxlink build with DW3_BUTTON_MAP=default in DW3_NX_TEST_ENV, ...
 
-  From preview.39, still open:
-  - Quit game (plan A7): the exit must end with no Horizon error, and the
-    log must show `audio stopped` and `gpu closed; leaving main`.
-  - Field menu OPTIONS (plan B15): no black square when it opens.
+  Session B, field and 16:9 screens:
+  - B1 Title menu, intro news caption bar, registration screen (New Game)
+  - B2 Field menu (Plus): the dissolve, then Items, Sort, Techniques, Status, ...
+  - B3 Map screen
+  - B4 Save and load screens (save point, Continue)
+  - B5 Area banner on entering an area, and a technique backdrop
+  - B6 Card folders: card album and deck editor (all panels, card details, ...
+  - B7 Card shop, Buy One Card
+  - B8 Gym; Digimon Lab (menu, party, digivolve)
+  - B9 Other shops and the Forest Inn
+  - B10 Door iris: walk through several doors and area exits
+  - B12 Encounter spiral (patch 0175)
+  - B13 In a battle, a technique's magic circle
+  - B14 nxlink build: a door and then a battle
+  - B15 Options from the field (#270, P9.7)
+  - B17 Map upscale mod (P8.5 first mod, P6.32)
+  - B19 Equip from the Items menu (P6.34 phase 1, patch 0188; replaces the ...
+  - B21 Equip from the Items menu, both hand slots full, key off, and the EU ...
+  - B20 Map view closes with the cancel button (owner decision 2026-10-28)
+
+  Session C, turbo speed:
+  - C1 New Game opening at 4x
+  - C2 Forest Inn, top and bottom, at 4x
+  - C3 Read the defer dbg: queued= dropped= drawn= lines
+  - C4 Only if C1 looks wrong: A/B with DW3_NX_DEFER=0 in DW3_NX_TEST_ENV ...
+  - C10 A text-heavy scene at 4x (the opening's dialogue, a long NPC talk), ...
+  - C5 Field-to-battle transition at 2x, 3x and 4x
+  - C6 Watch the field picture at 4x
+  - C8 Same turbo, battle: at the command menu move the cursor, open Tech and ...
+  - C9 Turbo on: open the field menu Map, Items and a shop, then walk
+
+  Session D, battles:
+  - D1 First Kuwagamon fight with Kotemon, then later battles: partner ...
+  - D2 Win a battle with R3 turbo on; watch the results screen
+  - D3 Text speed Instant: read the post-battle report and the area banner ...
+  - D4 Instant at a door: the area banner
+  - D5 Encounter rate OFF: walk about 400 steps; then a story or boss fight
+  - D6 Cheats (Y on Options, master ON): Battle now Ready, walk
+  - D7 Cheats Instant win ON, enter a random battle
+  - D8 Partner at Champion or higher (Digivolve in the field menu first): the ...
+  - D9 Digivolve command in battle; a Nickname Shop name; a default-name Rookie
+  - D10 Growlmon or WarGrowlmon with a Picking or Snapping Claw (needs the item)
+  - D11 After a won battle: is there field music?
+  - D12 Options in battle (P9.7 slice 2)
+  - D14 Audio underruns (P4.3): Any build, handheld, nxlink or the log rotation
+  - D15 Battle Items and technique lists show the selection bar (P51 item 1, ...
+
+  Session E, saves:
+  - E1.1 In the field press Plus: the last row (TITLE SCREEN; EU: RETOUR TITRE ...
+  - E1.2 Cross on it
+  - E1.4 Options: Restart hotkey ON
+  - E1.5 Note: the chord contains Minus + L + R, so it can also toggle the ...
+  - E1.6 After the Yes in E1.3, at the title (US) or the language select and ...
+  - E2.0 No autosave.bin in the card folder: look at the title (US and each EU ...
+  - E2.3 Continue
+  - E2.4 Load Game
+  - E2.4b New Game with the option on, reach progress 4, change area
+  - E2.5 Option OFF with the file still there: Continue, play, change area
+  - E2.6 Feel: does the write stall a frame at an area change?
+  - E3.1 A US save in us/memcard/, none in eu/memcard/ (move the EU ones aside)
+  - E3.2 Title, Continue, slot 1
+  - E3.3 Reverse: an EU save, no US save, start US
+  - E3.4 A save in both folders
+  - E3.5 If you have one, an EU extra-chapter save going to US
+  - E3.6 Start the same build again
+  - E4.1 Options: Y with the master OFF
+  - E4.2 Y opens the Cheats screen: title and rows in the game language (EU: all ...
+  - E4.3 Fill bag Ready, then field menu Items
+  - E4.4 Down from "Cheat saves" to page 2 ("CHEATS 2/2"); with master OFF the ...
+  - E4.5 Money: arm +10,000 (Cross twice steps +10,000, +100,000), enter a ...
+  - E4.6 Warp: to Digimon Lab, load a game
+  - E4.7 Give item: (Left/Right, L/R by ten, a count), Ready, load
+  - E4.8 Save after a cheat, relaunch
+  - E4.9 Note: Warp can leave a story-flagged map looking unfinished
+  - E5.1 Create a forwarder in sphaira with the profile selector option, pick ...
+  - E5.2 First launch of A with old saves in <region>/memcard/
+  - E5.3 As A: save in slot 2 (or play to an auto-save), quit
+  - E5.4 Back as A: Continue / Load
+  - E5.6 Start from hbmenu in applet mode (hold nothing, launch from the Album) ...
+  - E5.7 Hbmenu in title-override mode (hold R on a game), several users
+  - E5.8 A console with one profile
+  - E5.9 Cause a crash if safe (nxlink force-crash build) or read an old report
+
+  Session F, the 2 hour memory run:
+  - F1 Play 2 h of wall time without restarting the NRO, at 1x (or note how ...
+  - F2 Every 15 min note the HUD line or take it from the log: heap=/hw=, ...
+  - F3 Pass test
+  - F4 Report
+  - F5 Reference for F3
+  - F6 [GATE]: New Game to the first boss, US and EU (in this run or a ...
+  - F7 If the boot shows "The last run crashed."
+
+  Session G, anything else:
+  - G1 P5.4 PR 2 forced crash: Two special --force-crash nxlink builds (US ...
+  - G2 P10.2: HOME during a save write
+  - G3 P10.2: HOME (not the power button) pause mid-game, nxlink run
+  - G4 P4.3: nxlink session of 10 min or more: title 1 min, opening movie 2 ...
+  - G5 P7.7 HUD name and Claw steal
+  - G6 Rumble (optional, still unverified on hardware)
+  - G7.1 Both us/ and eu/ present
+  - G7.2 Y until "always" is ON, A
+  - G7.3 One region only (move eu/ away, then us/)
+  - G7.4 No region
+  - G7.5 Remove dw3-eu.nro, choose EU
+  - G7.6 Start dw3.nro as a title takeover (hold R on a game)
+  - G7.7 Saves and options of both regions after going through the launcher; ...
+  - G9.1 Only US data: move eu/ away
+  - G9.2 Only EU data: put eu/ back, move us/ away
+  - G9.6 Minus asks again: with "always" stored, hold Minus while pressing A on ...
+  - G9.7 Quit from the picker and no data
+  - G9.8 Both regions play and save: from the combined .nro, start US, load or ...
+  - G9.9 Crash report names the region
+  - G9.10 Handheld Joy-Cons and a Pro Controller
+  - G9.11 Disc in the parent folder, one region
+  - G9.12 Both discs in the parent folder
+  - G9.13 One disc in the parent, the other region already extracted
 
   Everything else in this preview, and the items still open from earlier
   previews, is in the ordered OLED test plan. Follow it:
