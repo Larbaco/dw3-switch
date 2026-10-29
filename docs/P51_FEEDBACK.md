@@ -585,3 +585,20 @@ textured quad with a UV offset under the canvas in both hosts, to be built only 
 (OLED A18). The tile was checked in the PC replays (US and EU) and the Switch builds compile; the
 Switch overlay is the same art code and the same corner-texel trick, **not run on the console**.
 Every Options picture of the title changes; those references are refreshed after merge, not here.
+
+## 11. Built: PR 3, one map pack for both regions (2026-10-29)
+
+Orchestrator default 3: one shared pack, per-region files only where the pieces differ.
+
+- Loader (`port/mods/mod_pack.c`): the region file first, then the shared file, for the
+  map and the sprites; `Dw3ModImage.shared`; the open line gains `shared=A region=B`.
+- Tool (`tools/mods/extract_map_assets.py`): two `--runtime` folders are compared piece by
+  piece; identical pieces are upscaled once into the shared names, the others per region;
+  `identical: N of M pieces` is printed (also with `--extract-only`).
+- **The open question is answered** (run on both runtimes in `~/.cache/dw3-switch/runtime/{us,eu}`):
+  the bare maps of both halves are identical; of the 94 reveal sprites per half, 91 (half 0)
+  and 84 (half 1) are identical. The 13 that differ are `areas` 59, 60, 61 (both halves) and
+  `towns` 0, 34, 46, 47, 48, 49, 50 of half 1 (the regional variants of a few town and area
+  icons). So the shared pack is right, with 13 regional sprites.
+- Docs: [MOD_MAP_UPSCALE](MOD_MAP_UPSCALE.md); replays `us/eu-map-view-mod-shared`;
+  unit tests in `test_mod_pack.py`; OLED B17 (test the pack on US and EU).

@@ -463,6 +463,9 @@ def run_scenario(sc, binary, runtime, out: Path, stamp, label, stall, timeout_sc
         sys.path.insert(0, str(ROOT / "tools" / "mods"))
         import make_synthetic_pack
         make_synthetic_pack.make_pack(cfgdir / "mods", (sc.version,))
+    elif sc.mod_pack == "synthetic-shared":  # P51 item 3: one shared map, both regions listed
+        import make_synthetic_pack
+        make_synthetic_pack.make_pack(cfgdir / "mods", ("us", "eu"), shared=True)
     elif os.environ.get("DW3_REPLAY_MODS"):  # a local aid: look at a real pack
         (cfgdir / "mods").symlink_to(Path(os.environ["DW3_REPLAY_MODS"]).resolve())
     xvfb, display = start_xvfb(sdir)

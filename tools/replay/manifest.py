@@ -917,6 +917,19 @@ for _v, _ids in (("us", (0x159, 0x1FA, 0x1C2, 0x158, 0x1F9)),
                               (0, r"dw3-map: texture 1568x1408 queued for the GPU"),),
                   forbid_log=((0, r"dw3-map: mod: original map|dw3-map: capture failed|NOTHING DRAWN"),),
                   note="the map view with a mod pack: 4x texture, same geometry, silent fallback otherwise"))
+    # P51 item 3: the same with ONE shared map for both regions (map_h<half>@4x.png,
+    # no per-region file): the loader falls back to it on US and EU alike. The
+    # pictures are the per-region synthetic pack's (same gradients): ref_map.
+    _add(Scenario(f"{_v}-map-view-mod-shared", _v, "full", turbo=4, timeout=600,
+                  phases=(f"{_v}-map-view",), env=_ITEMS_ENV + (("DW3_MAP_SYNC", "1"),),
+                  cfg=(("encounter_rate", "2"),), mod_pack="synthetic-shared",
+                  expect_restore=((_fight, M), (_menu, S), (_report, M), (_field, M),
+                                  (_status, M)),
+                  expect_log=((0, r"dw3-map: mod: pack \"synthetic-test\" 0\.0\.1 loaded: "
+                                  r"map_h0@4x\.png 1568x1408, reveal 0 pieces from the pack, "
+                                  r"[1-9]\d* at 1x nearest.* shared=1 region=0"),),
+                  forbid_log=((0, r"dw3-map: mod: original map|dw3-map: capture failed|NOTHING DRAWN"),),
+                  note="one shared map pack serves this region (P51 item 3)"))
     _add(Scenario(f"{_v}-map-view-43", _v, "full", turbo=4, timeout=600,
                   phases=(f"{_v}-map-view",), env=_ITEMS_ENV,
                   cfg=(("encounter_rate", "2"), ("widescreen", "0")),

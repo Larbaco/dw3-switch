@@ -32,11 +32,17 @@ def synthetic_map(half: int, scale: int) -> Image.Image:
     return img
 
 
-def make_pack(mods_dir: Path, regions=("us", "eu"), scale: int = 4, name: str = "synthetic") -> Path:
+def make_pack(mods_dir: Path, regions=("us", "eu"), scale: int = 4, name: str = "synthetic",
+              shared: bool = False) -> Path:
+    """shared=True writes the one shared map per half (map_h<half>@Nx.png, P51
+    item 3) instead of one file per region; the manifest lists the regions."""
     pack = mods_dir / name
     (pack / "map").mkdir(parents=True, exist_ok=True)
     for half in (0, 1):
         img = synthetic_map(half, scale)
+        if shared:
+            img.save(pack / "map" / f"map_h{half}@{scale}x.png")
+            continue
         for region in regions:
             img.save(pack / "map" / f"map_{region}_h{half}@{scale}x.png")
     manifest = {"format": 1, "id": "synthetic-test", "name": "Synthetic test pack",
@@ -52,8 +58,9 @@ def main() -> None:
     ap.add_argument("dest", type=Path)
     ap.add_argument("--scale", type=int, default=4)
     ap.add_argument("--regions", nargs="+", default=["us", "eu"])
+    ap.add_argument("--shared", action="store_true", help="one shared map per half, no per-region files")
     a = ap.parse_args()
-    print(make_pack(a.dest, tuple(a.regions), a.scale))
+    print(make_pack(a.dest, tuple(a.regions), a.scale, shared=a.shared))
 
 
 if __name__ == "__main__":
