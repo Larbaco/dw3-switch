@@ -86,8 +86,8 @@ highest non-empty tier.
    [P10.6](TEXTURE_PACKS.md) Switch glyphs. Design: [CONTROLS_BUNDLE](CONTROLS_BUNDLE.md).
 3. [P6.30](#phase-6-goal-notes): technical help. Design: [P6.30_HELP](P6.30_HELP.md).
    **Phases 1 to 4 built (2026-10-28, PR open, OLED pending):** page engine, glyph
-   atlas, the Help group with its ten English pages; FR / DE / IT / ES are TODO stubs
-   with an English fallback (launch requirement).
+   atlas, the Help group with its ten English pages; FR / DE / IT / ES are drafted
+   (2026-10-29, machine-drafted, **needs native review**).
 4. [P6.34](#phase-6-goal-notes): menu-flow redesign. It absorbs
    [P6.33](P6.33_ITEMS_MENU.md) phases 2–4, so the items menu is redesigned once.
 5. [P6.32](P6.32_MAP_ZOOM.md): map phase 1.
@@ -167,12 +167,12 @@ listed once, in [Pending OLED checks](#pending-oled-checks).
 | P6.27 | Return to title from the pause (field) menu | in progress (built, PC US and EU replays; owner OLED, 2026-10-27, preview.41: Return to title works and Continue after it works; the Yes / No window, fade and card checks not reported) | [PORT_OPTIONS](PORT_OPTIONS.md#quit-and-return-to-title-p627-p628), [roadmap](#phase-6-goal-notes) |
 | P6.28 | Quit game on the title menu, back to hbmenu | in progress (built, PC US and EU replays; owner OLED, 2026-10-27, preview.41: Quit through the Sphaira forwarder works and returns to hbmenu; the full-app Sphaira launch shows errors, the forwarder is fine; card files, flush line and the US / EU split not reported) | [PORT_OPTIONS](PORT_OPTIONS.md#quit-and-return-to-title-p627-p628), [roadmap](#phase-6-goal-notes) |
 | P6.29 | Save editor: external tool on the owner's own saves, builds on P6.25 (future goal) | future | [roadmap](#phase-6-goal-notes), [CROSS_REGION_SAVES](CROSS_REGION_SAVES.md) |
-| P6.30 | Help, FAQ and tips from the pause menu and the title menu (owner answers recorded 2026-10-27; after P9.9) | **phases 1 to 4 built 2026-10-28 (PR open; PC replays US and EU pass; OLED H1 to H8 **PASSED in English only** (owner, preview.51, 2026-10-28); FR/DE/IT/ES need native reviewers; English text still draft, owner review pending)**; the page engine is shared with P6.35; **owner 2026-10-28: at launch in every language the base game has, EN + FR/DE/IT/ES on the EU disc, pt-BR later with P6.7**: the four files are TODO stubs that fall back to English with a log line, and CI warns while they are stubs | [roadmap](#phase-6-goal-notes), [design](P6.30_HELP.md), [draft text](../port/help/text/en.txt) |
+| P6.30 | Help, FAQ and tips from the pause menu and the title menu (owner answers recorded 2026-10-27; after P9.9) | **phases 1 to 4 built 2026-10-28 (PR open; PC replays US and EU pass; OLED H1 to H8 **PASSED in English only** (owner, preview.51, 2026-10-28); FR/DE/IT/ES need native reviewers; English text still draft, owner review pending)**; the page engine is shared with P6.35; **owner 2026-10-28: at launch in every language the base game has, EN + FR/DE/IT/ES on the EU disc, pt-BR later with P6.7**: FR/DE/IT/ES **drafted 2026-10-29, machine-drafted, needs native review** ([section 12](P6.30_HELP.md#12-translations-machine-drafted)); a stub still falls back to English with a log line | [roadmap](#phase-6-goal-notes), [design](P6.30_HELP.md), [draft text](../port/help/text/en.txt) |
 | P6.31 | Auto-save, off by default | in progress (built: Options row, area-change write to its own file `autosave.bin`, title Continue loads it and the old Continue is Load; PC US and EU replays; owner OLED, 2026-10-27, preview.41: title plaque spacing (#287) confirmed; the write is on an area change only (code, 2026-10-28; the owner's "and on HOME close" note is not in the code, to re-check, E2.1); the save-file, Continue and Load Game checks not reported) | [P6.31_AUTOSAVE](P6.31_AUTOSAVE.md), [roadmap](#phase-6-goal-notes), [P5.3](P5.3_FLAT_SAVE.md) |
 | P6.32 | Map zoom and full-screen map (future goal) | phase 0 PoC built (PR `feat/p6.32-map-poc`); owner OLED, preview.45 (2026-10-28): the map shows and Nearest is the preferred scaler; balloon, cursor and name box pending preview.47; mod pack loader for an upscaled map built (`feat/mod-map-upscale`, OLED item B17 pending) | [roadmap](#phase-6-goal-notes), [P6.32](P6.32_MAP_ZOOM.md), [P6.1](P6.1_WIDESCREEN.md), [map upscale mod](MOD_MAP_UPSCALE.md) |
 | P6.33 | Items menu usability redesign | in progress (owner decisions recorded 2026-10-26; phase 1 partner cycle built: patch 0128, ZL / ZR, on by default; phases 2, 3 and 4 open; phase 1 cycle confirmed on the OLED 2026-10-27, preview.41; the `items_partner_switch=0` check open; phases 2–4 folded into P6.34) | [roadmap](#phase-6-goal-notes), [P6.33](P6.33_ITEMS_MENU.md), [P6.1](P6.1_WIDESCREEN.md) |
 | P6.34 | Redesign of the items / status / equipment menu flow | design written 2026-10-28 (5 phases, 10 owner questions open); **phase 1 built 2026-10-28** (equip from the Items menu, patch `0188`, key `items_equip_from_items`, default on = orchestrator default pending owner confirmation of Q1 to Q5 and Q10); **phase 2 built 2026-10-29** (equip in Status > Equipment returns to the slot list without the long fades, patch `0190`, key `items_equip_stays`, default on = orchestrator default pending owner confirmation of Q6; replay `us/eu-items-equip-stays[-off]`); phases 3 to 5 (patches 0191-0193 proposed) not built; PC replay US and EU passes, OLED items B19 (revised), B21 and B22 pending | [roadmap](#phase-6-goal-notes), [P6.34](P6.34_MENU_FLOW.md), [P6.33](P6.33_ITEMS_MENU.md) |
-| P6.35 | In-game walkthrough help: where to go next and what to do, by story progress (future goal) | future; **phase 1 data layer built** (step resolver, `ch01` table progress 0 to 4 confirmed by US and EU PC replays, English draft, FR/DE/IT/ES stubs, no UI yet; [As built](P6.35_WALKTHROUGH.md#as-built-phase-1-data-layer)) (owner 2026-10-28: at launch in every language the base game has, EN + FR/DE/IT/ES on the EU disc, pt-BR later with P6.7; design written 2026-10-28, owner decisions recorded) | [roadmap](#phase-6-goal-notes), [design](P6.35_WALKTHROUGH.md), [PLAYER_GUIDE](PLAYER_GUIDE.md) |
+| P6.35 | In-game walkthrough help: where to go next and what to do, by story progress (future goal) | future; **phase 1 data layer built** (step resolver, `ch01` table progress 0 to 4 confirmed by US and EU PC replays, English draft, FR/DE/IT/ES drafted 2026-10-29 (machine-drafted, needs native review), no UI yet; [As built](P6.35_WALKTHROUGH.md#as-built-phase-1-data-layer)) (owner 2026-10-28: at launch in every language the base game has, EN + FR/DE/IT/ES on the EU disc, pt-BR later with P6.7; design written 2026-10-28, owner decisions recorded) | [roadmap](#phase-6-goal-notes), [design](P6.35_WALKTHROUGH.md), [PLAYER_GUIDE](PLAYER_GUIDE.md) |
 | P6.36 | Music at normal speed while turbo is on (future goal) | future | [roadmap](#phase-6-goal-notes), [P6.4](P6.4_FAST_FORWARD.md), [P4.3](P4.3_AUDIO.md) |
 | P7.1 | Inventory and boundaries | done | [COMMUNITY_QOL](COMMUNITY_QOL.md) |
 | P7.2 | Patched EU disc as data source | open | [COMMUNITY_QOL](COMMUNITY_QOL.md) |
@@ -2253,10 +2253,12 @@ Statuses are in the [table](#status-at-a-glance).
   page, Up / Down per line, Left / Right per screenful, L / R page), the Help group
   (`built = 1`) reached from the title Options, the field menu OPTIONS row and the
   battle Options, PC and Switch drawing, `dw3-help:` / `dw3-pages:` logs, unit tests,
-  PC replays `us|eu-help-title|field|battle` and `eu-help-fr`. Language fallback to
-  English with a log line, FR / DE / IT / ES stubs and a validator that warns (CI) while
-  they are stubs and fails in `--release`. **Open:** the four translations (launch
-  requirement), pt-BR with P6.7, owner review of the English text, OLED checks H1 to H8
+  PC replays `us|eu-help-title|field|battle` and `eu-help-fr|de|it|es`. Language fallback to
+  English with a log line for a stub, and a validator that warns (CI) while a language is a
+  stub and fails in `--release`. **Translations (2026-10-29):** FR / DE / IT / ES are drafted
+  (152 keys each, machine-drafted, **needs native review**, the owner cannot check them;
+  [section 12](P6.30_HELP.md#12-translations-machine-drafted)). **Open:** native review of those
+  four files, pt-BR with P6.7, owner review of the English text, OLED checks H1 to H8
   (**passed in English only**, owner, preview.51, 2026-10-28; the other four languages need native reviewers), the doc-drift check. Details:
   [P6.30_HELP section 11](P6.30_HELP.md#11-as-built-2026-10-28).
   Related: P6.23, P6.27, P6.7, P6.35, P9.2, P9.9.
@@ -2441,8 +2443,8 @@ Statuses are in the [table](#status-at-a-glance).
   lines, and seven open questions for the owner.
   **Phase 1 data layer (built):** `port/walkthrough/` (pure resolver, step table
   `ch01`, hook and debug probe, patch `0186`), `port/walkthrough/text/en.txt`
-  (draft, owner review pending) and FR/DE/IT/ES stubs that must be filled before
-  any release (owner rule), host tests and the replay checks
+  (draft, owner review pending) and FR/DE/IT/ES drafted 2026-10-29 (machine-drafted,
+  **needs native review**, [P6.35_WALKTHROUGH](P6.35_WALKTHROUGH.md#text-status-and-the-owners-language-rule)), host tests and the replay checks
   `*-walkthrough-p0/p2/p3`. Next: the screen, with the P6.30 page engine.
   Done when (proposed; the hint-then-answer wording is superseded by decision 1):
   at a given story point, a tester opens the help from the

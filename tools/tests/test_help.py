@@ -85,11 +85,34 @@ def test_page_lengths_and_tokens(help_bin: Path):
     rows = [l.split() for l in r.stdout.splitlines() if l.startswith("PAGE")]
     assert len(rows) == 40            # 10 pages x (US, EU) x (PC, Switch)
     for row in rows:
-        lines = int(row[4].split("=")[1])
-        assert row[5] == "unresolved=0", row
+        lines = int(row[5].split("=")[1])
+        assert row[6] == "unresolved=0", row
         if lines > 120:
             warnings.warn(f"help page {row[3]} has {lines} lines (> 120)")
         assert lines <= 200, row
+
+
+def test_translated_pages_fit(help_bin: Path):
+    """fr, de, it, es (machine-drafted): every page lays out in the same engine,
+    no unresolved token, no page over the line limit, and no page much longer
+    than its English original."""
+    def pages(args):
+        r = subprocess.run([str(help_bin), *args], capture_output=True, text=True, timeout=120)
+        assert r.returncode == 0, r.stderr
+        assert "cannot be laid out" not in r.stderr
+        assert "dw3-pages: text fallback" not in r.stderr, "a translated language fell back to English"
+        return [l.split() for l in r.stdout.splitlines() if l.startswith("PAGE")]
+
+    en = {(row[1], row[3]): int(row[5].split("=")[1]) for row in pages(["dump"])
+          if row[1].startswith("env=2/")}
+    rows = pages(["dumplang"])
+    assert len(rows) == 80            # 4 languages x 10 pages x (PC, Switch), EU
+    for row in rows:
+        lines = int(row[5].split("=")[1])
+        assert row[6] == "unresolved=0", row
+        assert lines <= 200, row
+        base = en[(row[1], row[3])]
+        assert lines <= base * 1.5 + 4, f"{row} vs English {base}"
 
 
 @pytest.mark.parametrize("src", [PAGES / "pages.c", PAGES / "glyph_atlas.c", HELP / "help.c"])

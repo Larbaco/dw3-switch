@@ -45,6 +45,7 @@ CHARSET = (list(range(0x20, 0x7F)) + list(range(0xA0, 0x100)) +
 
 # Limits in pixels (docs/P6.30_HELP.md 4.5).
 TITLE_LIMIT_FACE2 = 330
+TITLE_TAG_LIMIT_FACE2 = 410  # title plus " (draft)" in fr, de, it, es: the plaque is about 440 px inside; 421 touched its edges
 BLURB_LIMIT_FACE0 = 664   # the message strip: 720 px frame less 28 px each side, 24 px body face
 LINES_WARN = 120
 
@@ -288,6 +289,7 @@ def validate(release: bool = False):
                 errors.append(f'{lang}.txt is a stub: the base-game languages need the help at launch')
             continue
         have = {}
+        draft_word = next((v for k, _q, v, _n in entries if k == 'help.ui.str.draft'), '(draft)')
         for key, quals, value, n in entries:
             have.setdefault(key, []).append(n)
             if key not in en_keys:
@@ -304,6 +306,10 @@ def validate(release: bool = False):
             k = key.split('.')[2]
             if k == 'title' and text_width(2, chars) > TITLE_LIMIT_FACE2:
                 errors.append(f'{lang}.txt:{n}: {key}: title too wide')
+            if k == 'title' and 'draft' in headers.get('status', '') and \
+                    text_width(2, chars + ' ' + draft_word) > TITLE_TAG_LIMIT_FACE2:
+                errors.append(f'{lang}.txt:{n}: {key}: title with the draft tag is '
+                              f'{text_width(2, chars + " " + draft_word)} px (limit {TITLE_TAG_LIMIT_FACE2})')
             if k == 'blurb' and text_width(0, chars) > BLURB_LIMIT_FACE0:
                 errors.append(f'{lang}.txt:{n}: {key}: blurb too wide')
         missing = [k for k in en_keys if k not in have]
