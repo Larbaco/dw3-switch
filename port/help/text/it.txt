@@ -82,7 +82,7 @@ help.turbo.li.3 = Sempre velocità normale: la schermata del titolo, i filmati, 
 help.turbo.note.1 = Accelerano anche la musica e gli effetti sonori. Quanto più veloce giri davvero il gioco dipende da quanto riesce a stare al passo la console.
 
 # -------------------------------------------------------------- options
-help.options.title = Le Opzioni spiegate
+help.options.title = Opzioni spiegate
 help.options.blurb = Ogni riga, i suoi valori e il valore predefinito.
 help.options.p.1 = Le Opzioni sono un elenco di gruppi: Schermo, Audio, Gameplay, Salvataggi, Comandi e Aiuto. Su e Giù scelgono, {btn:cross} o {btn:circle} apre un gruppo o cambia una riga, {btn:triangle} torna indietro. Una riga sotto l'elenco spiega la riga selezionata. Le modifiche valgono subito e sono salvate in port_options.cfg.
 help.options.p.2 = Aprile dal menu del titolo, dalla riga OPZIONI del menu del campo, o in battaglia con {btn:select}.

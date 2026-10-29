@@ -81,7 +81,7 @@ help.turbo.li.3 = Toujours vitesse normale : l'écran titre, les vidéos, les é
 help.turbo.note.1 = La musique et les effets sonores sont accélérés aussi. La vitesse réelle dépend de ce que la console parvient à suivre.
 
 # -------------------------------------------------------------- options
-help.options.title = Options en détail
+help.options.title = Les Options
 help.options.blurb = Chaque ligne, ses valeurs et sa valeur par défaut.
 help.options.p.1 = Options est une liste de groupes : Affichage, Son, Jouabilité, Sauvegardes, Commandes et Aide. Haut et Bas choisissent, {btn:cross} ou {btn:circle} ouvre un groupe ou change une ligne, {btn:triangle} revient en arrière. Une ligne sous la liste explique la ligne choisie. Les changements s'appliquent aussitôt et sont enregistrés dans port_options.cfg.
 help.options.p.2 = Ouvrez-les depuis le menu de l'écran titre, depuis la ligne OPTIONS du menu de la carte, ou en combat avec {btn:select}.
@@ -147,7 +147,7 @@ help.map.li.7 !unv = Pour revenir à la carte d'origine, renommez ou supprimez l
 help.map.li.8 !unv = Avec un pack, {btn:l2} et {btn:r2} ne changent que le filtre, net ou doux.
 
 # ---------------------------------------------------------- logs & bugs
-help.logs.title = Journaux et bogues
+help.logs.title = Journaux, bugs
 help.logs.blurb = Où sont les journaux et quoi envoyer.
 help.logs.h.1 = Journaux
 help.logs.p.1 = Le portage écrit dw3.log dans {path:root}. Il garde les cinq derniers lancements : dw3.log est le plus récent, puis dw3.1.log jusqu'à dw3.4.log. Chaque lancement écrit une ligne dw3-log: rotated qui indique si l'ancien journal a été renommé, copié ou perdu.

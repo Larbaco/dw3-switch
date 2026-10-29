@@ -1723,7 +1723,7 @@ for _lang in ("fr", "de", "it", "es"):
                   expect_log=((0, r"dw3-help: open \(from title, region EU, platform pc, language " + _lang +
                                   r", 10 pages\)"),
                               (0, r"dw3-pages: text help " + _lang + r" loaded \(\d+ keys, \d+ qualified, "
-                                  r"\d+ filtered out for EU/pc, \d+ bytes\)"),
+                                  r"\d+ filtered out, \d+ bytes\)"),
                               (0, r"dw3-help: page controls \(from list,(?s:.*)dw3-help: page options \(from list,")),
                   forbid_log=((0, r"unresolved"), (0, r"dw3-pages: text fallback"),
                               (0, r"cannot be (opened|allocated|laid out)")),

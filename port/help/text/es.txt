@@ -82,7 +82,7 @@ help.turbo.li.3 = Siempre a velocidad normal: la pantalla de título, los vídeo
 help.turbo.note.1 = También se aceleran la música y los efectos de sonido. Cuánto más rápido va el juego en realidad depende de lo que la consola pueda seguir.
 
 # -------------------------------------------------------------- options
-help.options.title = Opciones explicadas
+help.options.title = Las Opciones
 help.options.blurb = Cada fila, sus valores y su valor predeterminado.
 help.options.p.1 = Opciones es una lista de grupos: Pantalla, Sonido, Jugabilidad, Partidas, Controles y Ayuda. Arriba y Abajo eligen, {btn:cross} o {btn:circle} abre un grupo o cambia una fila, {btn:triangle} vuelve atrás. Una línea bajo la lista explica la fila seleccionada. Los cambios se aplican al instante y se guardan en port_options.cfg.
 help.options.p.2 = Ábrelas desde el menú del título, desde la fila OPCIONES del menú del mapa, o en un combate con {btn:select}.
@@ -148,7 +148,7 @@ help.map.li.7 !unv = Para volver al mapa original, cambia el nombre de la carpet
 help.map.li.8 !unv = Con un paquete, {btn:l2} y {btn:r2} solo cambian el filtro, nítido o suave.
 
 # ---------------------------------------------------------- logs & bugs
-help.logs.title = Registros y errores
+help.logs.title = Registros, bugs
 help.logs.blurb = Dónde están los registros y qué enviar.
 help.logs.h.1 = Registros
 help.logs.p.1 = La adaptación escribe dw3.log en {path:root}. Guarda las últimas cinco ejecuciones: dw3.log es la más reciente, luego dw3.1.log hasta dw3.4.log. Cada inicio escribe una línea dw3-log: rotated que indica si el registro anterior se renombró, se copió o se perdió.
@@ -163,7 +163,7 @@ help.logs.li.3 = Adjunta todos los registros y cualquier informe de cierre inesp
 help.logs.warn.2 = No adjuntes nunca una imagen de disco, archivos de BIOS ni datos extraídos del juego.
 
 # ------------------------------------------------------------------ faq
-help.faq.title = Preguntas frecuentes
+help.faq.title = FAQ
 help.faq.blurb = Respuestas breves a dudas habituales.
 help.faq.q.1 = Pantalla ancha aparece en gris en el juego.
 help.faq.a.1 = Está bloqueada mientras hay una partida en marcha. Vuelve a la pantalla de título (menú del mapa, última fila) y cámbiala allí.

@@ -25,7 +25,7 @@ help.ui.str.draft = (Entwurf)
 
 # ---------------------------------------------------------------- setup
 help.setup.title = Einrichtung
-help.setup.blurb = Was du brauchst und was der erste Start macht.
+help.setup.blurb = Was du brauchst, und was der erste Start macht.
 help.setup.p.1 = Du brauchst eine Switch mit Atmosphere und hbmenu, die .nro der Portierung für die Region deiner Disc und deine eigene Disc als BIN- und CUE-Paar. Zur Portierung gehören keine Spieldateien, und eine Disc der falschen Region wird abgelehnt.
 help.setup.li.1 @us = US-Disc (SLUS-01436): dw3-switch.nro. Laufzeitordner {path:root}us/. Lege BIN und CUE in {path:root}.
 help.setup.li.2 @eu = EU-Disc (SLES-03936): dw3-switch-eu.nro. Laufzeitordner {path:root}eu/. Lege BIN und CUE in {path:root}eu/.
