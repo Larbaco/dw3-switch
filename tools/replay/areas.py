@@ -135,7 +135,7 @@ def select(files, scenarios) -> Selection:
                 sel.reasons.append((path, "pin/engine-wide: full tier"))
             elif what == "scenario-recording":
                 phase = path.rsplit("/", 1)[-1].removesuffix(".rec")
-                got = owners.get(phase, set())
+                got = owners.get(phase, set()) & full_tier  # nx and both scenarios run elsewhere
                 sel.names |= got
                 sel.reasons.append((path, "recording of " + (", ".join(sorted(got)) or "no scenario")))
             elif what:
