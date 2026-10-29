@@ -1495,6 +1495,58 @@ def items_equip_switch(version):
     return r
 
 
+def items_equip_stays(version):
+    """P6.34 phase 2 (patch 0190): equip in Status > Equipment and come back to
+    the slot list without the long fade round trip. The path of
+    `items_equip_switch` to the slot list of the second partner; Down twice (the
+    right hand slot), Cross (the list), Down, Cross (the first fitting item
+    is worn: the panel is back on the slot list, `after-equip`), Cross again (the
+    list opens on the worn item, which has spare copies: `list-on-worn`), Down,
+    Cross (a second equip), Cross (the list again), Triangle (the original
+    long way back), Triangle. The waits after an equip are long enough for the
+    original flow too, so the same recording runs with the key off.
+    Frames measured on the PC build."""
+    r = Rec(f"{version.upper()}: P6.34 equip stays on the slot list (env and cfg in manifest)")
+    for f in range(300, 1200, 30):
+        r.press(f, CROSS)            # battle report -> field
+    r.press(1250, START)             # field menu, over the field
+    r.press(1420, CROSS)             # Items: the dissolve, then STSTATUS
+    f = 1640
+    for name, button, wait in MENU_SCREENS_STEPS:
+        if name == "status-equip":
+            break
+        if button:
+            r.press(f, button)
+        f += wait
+    r.shot(f, "slots-before")
+    r.press(f + 40, DOWN)            # head -> body
+    r.press(f + 80, DOWN)            # right hand
+    f += 120
+    r.press(f, CROSS)               # the list for the slot
+    r.shot(f + 200, "list-first")
+    r.press(f + 210, DOWN)
+    r.press(f + 260, CROSS)         # equips the first item that fits
+    f += 300
+    r.shot(f, "after-equip-1")       # key on: slot list, cursor on the right hand
+    f += 200
+    r.press(f, CROSS)               # the list again: on the worn item
+    r.shot(f + 220, "list-on-worn")
+    r.press(f + 230, DOWN)
+    r.shot(f + 260, "list-on-worn-down")
+    r.press(f + 280, CROSS)         # a second equip
+    f += 320
+    r.shot(f, "after-equip-2")
+    f += 200
+    r.press(f, CROSS)               # the list again
+    r.shot(f + 220, "list-again")
+    r.press(f + 230, TRIANGLE)      # cancel: the original way back
+    f += 450
+    r.shot(f, "slots-after")
+    r.press(f + 20, TRIANGLE)
+    r.end(f + 300)
+    return r
+
+
 def map_screen(version):
     """P6.1 (patch 0080): the field menu's Map screen in widescreen. The same
     path as `menu_screens` (the manifest's env and cfg) up to the Map entry;
@@ -2615,6 +2667,7 @@ def main(out):
         (out / f"{v}-map-screen.rec").write_text(map_screen(v).text(True))
         (out / f"{v}-map-view.rec").write_text(map_view(v).text(True))
         (out / f"{v}-items-equip-switch.rec").write_text(items_equip_switch(v).text(True))
+        (out / f"{v}-items-equip-stays.rec").write_text(items_equip_stays(v).text(True))
         (out / f"{v}-items-select-equip.rec").write_text(items_select_equip(v).text(True))
         (out / f"{v}-items-equip-from-items.rec").write_text(items_equip_from_items(v).text(True))
         (out / f"{v}-items-equip-refused.rec").write_text(items_equip_refused(v).text(True))
