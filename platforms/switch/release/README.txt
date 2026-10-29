@@ -1,6 +1,6 @@
 Digimon World 3 / 2003, Switch homebrew preview
 
-Release notes for v0.6.5-preview.52. The release tag and boot version
+Release notes for v0.6.5-preview.53. The release tag and boot version
 identify the actual source revision.
 
 Player guide (setup, controls, Options, saves, crash reports):
@@ -18,6 +18,71 @@ New in this preview
   The release workflow run for the tag was cancelled before it published
   anything. The workflow does not use ccache, so a CI build of this tag can
   differ in the file-path strings that the cache rewrites.
+
+  Equipment: the slot list comes back at once (#348, P6.34 phase 2, patch
+  0190; plan B22). In Status > Equipment, Cross on an item equips it and the
+  panel returns to the slot list in 9 frames, where the original game fades
+  four panels out and in. The slot cursor stays on the slot just changed, and
+  the next list opens on the worn item when a spare copy is in the bag. The
+  setting is items_equip_stays in port_options.cfg (1 by default; 0 restores
+  the old fades). The default is pending the owner's confirmation.
+
+  Whole bag in Equipment (#357, P6.34 phase 3, patch 0192; plan B23). In
+  Status > Equipment's item list, Square (Switch Y) cycles the filter: this
+  slot, all weapons, all armor and gear, or worn by others. Cross on a worn-
+  by-others row moves the item from its wearer to the Digimon on this status
+  screen. The slot it leaves stays empty; nothing is swapped. The setting is
+  items_bag_view (1 by default; 0 restores the old list, where Square does
+  nothing). The filter order and names, the rule that the "others" are the
+  current party, and the default are pending the owner's confirmation. The
+  French, German, Italian and Spanish strings need a native review.
+
+  Custom button remap (#351, P6.12 phase 2; plans L9 to L16). With Button
+  layout set to Custom, Options > Controls > Customize buttons (title screen)
+  lists the ten PlayStation buttons, with the console button on the right of
+  each. Confirm (Cross, Switch B, by default) waits for a press; Left and
+  Right choose the source; Start or Select cancels; a prompt times out after 5
+  seconds. Reset to default works from the title, the field menu and in game.
+  The setting is button_layout=custom and button_map=<ten digits> in
+  port_options.cfg, per region. A missing or invalid map falls back to
+  PlayStation and logs `dw3-controls: map invalid`. The Help pages follow the
+  map, and so do the hotkeys, as in phase 1. The FR, DE, IT and ES lettering
+  is machine-drafted and needs native review.
+
+  Hint letters follow the button layout on Switch (#355, P10.6 fix-now; plans
+  L17 to L20). The confirm and back caps on the Options, Cheats and Help hint
+  rows, and the map view footer, show the letter of the console button that
+  sends Cross and Triangle under the layout in use: B and X (PlayStation), A
+  and B (Nintendo), or the letters of a custom map. The PC keeps its PS marks.
+  Each change logs `dw3-controls: hint caps confirm=.. back=..`. The Options
+  hint row, which did not follow the layout in preview.52, now does.
+
+  Turbo music (#356, P6.36 phases 1 and 2, patch 0191; plans T1 to T6).
+  Options > Sound > Turbo music: 1x, the default, keeps the music at normal
+  speed while turbo is on, so it no longer speeds up with turbo; Fast keeps
+  the old behaviour, where the music speeds up with it. Fade-outs follow the
+  same setting. Logs: `dw3-audio: music tick source=...` and `dw3-options:
+  turbo_music=1x|fast` at boot. The default is pending the owner's
+  confirmation. Known issue: at 1x the field music cuts the win jingle after
+  about 1 second (T4). The owner's decision on that is pending. Phase 3 (wait
+  for the jingle to end) is not built.
+
+  Technical help and walkthrough text in FR, DE, IT and ES (#349, P6.30 and
+  P6.35). The help pages (152 keys each) are translated, and so is the
+  walkthrough draft (26 keys each; data only, no screen yet). Before this
+  release the four languages showed the English pages. The text was drafted by
+  a machine, with the words of the EU disc's own menus, and needs native
+  review before it is trusted. The town and NPC names in the walkthrough stay
+  in English.
+
+  Docs and test tooling, no change to the game: the P6.36 design (#350,
+  docs/P6.36_TURBO_MUSIC.md, which the turbo music row above was built from);
+  the P10.6 glyph investigation and tools/dump_font_cells.py (#354,
+  docs/P10.6_GLYPHS.md; the Switch button icons are not changed yet); replay
+  references per binary for the combined build (#352); and the OLED checklist
+  helper tools/oled_open_rows.py with its intro-line fix (#341, #353).
+
+  From preview.52:
 
   Equip from the Items menu (P6.34 phase 1, #339, patch 0188; plans B19 and
   B21): in Items, Cross on a weapon, armor or accessory opens the partner step,
@@ -276,6 +341,18 @@ New in this preview
 
 Known issues
 
+  Turbo music at 1x: the field music cuts the win jingle after about 1 second
+  (T4). Owner decision pending.
+
+  Help and walkthrough text in FR, DE, IT and ES is machine-drafted, not
+  checked by a native reviewer, and not run on the console. The English help
+  pages passed on the OLED (plans H1 to H8, English only); the four other
+  languages show the new text, not the English fallback that H8 describes.
+
+  Defaults taken for now and pending the owner's confirmation:
+  items_equip_stays (on), items_bag_view (on) with its filter order, turbo
+  music (1x), and the remap's hotkeys following the map.
+
   If the map stays silent after a battle (no field music once you are
   back), please send a --nxlink log. This was reported on rc8 (US) but
   could not be reproduced on PC or in Ryubing, so its cause is unknown.
@@ -495,21 +572,22 @@ Install / nxlink
 
 OLED checklist
 
-  Still open on the OLED: 123 rows of docs/OLED_TEST_PLAN.md without a PASSED
-  mark. The list is built from those rows only; the checklist below gives each
-  one.
-  A: A1, A2, A3, A4, A6, A8, A13, A18, A16, A17
-  L: L1, L2, L3, L4, L5, L6, L7, L8
-  B: B1, B2, B3, B4, B5, B6, B7, B8, B9, B10, B12, B13, B14, B15, B17, B19,
-    B21, B20
+  Still open on the OLED: 152 rows of docs/OLED_TEST_PLAN.md without a PASSED mark. The list is built from those rows only; the checklist below gives each one.
+  A: A1, A2, A3, A4, A6, A7, A8, A13, A18, A16, A17
+  L: L1, L2, L3, L4, L5, L6, L7, L8, L9, L10, L11, L12, L13, L14, L15, L16,
+    L17, L18, L19, L20
+  B: B1, B2, B3, B4, B5, B6, B7, B8, B9, B10, B12, B13, B14, B15, B16, B17,
+    B19, B21, B22, B23, B20
   C: C1, C2, C3, C4, C10, C5, C6, C8, C9
   D: D1, D2, D3, D4, D5, D6, D7, D8, D9, D10, D11, D12, D14, D15
-  E: E1.1, E1.2, E1.4, E1.5, E1.6, E2.0, E2.3, E2.4, E2.4b, E2.5, E2.6, E3.1,
-    E3.2, E3.3, E3.4, E3.5, E3.6, E4.1, E4.2, E4.3, E4.4, E4.5, E4.6, E4.7,
-    E4.8, E4.9, E5.1, E5.2, E5.3, E5.4, E5.6, E5.7, E5.8, E5.9
+  E: E1.1, E1.2, E1.3, E1.4, E1.5, E1.6, E2.0, E2.1, E2.2, E2.3, E2.4, E2.4b,
+    E2.5, E2.6, E3.1, E3.2, E3.3, E3.4, E3.5, E3.6, E4.1, E4.2, E4.3, E4.4,
+    E4.5, E4.6, E4.7, E4.8, E4.9, E5.1, E5.2, E5.3, E5.4, E5.6, E5.7, E5.8,
+    E5.9
   F: F1, F2, F3, F4, F5, F6, F7
-  G: G1, G2, G3, G4, G5, G6, G7.1, G7.2, G7.3, G7.4, G7.5, G7.6, G7.7, G9.1,
-    G9.2, G9.6, G9.7, G9.8, G9.9, G9.10, G9.11, G9.12, G9.13
+  G: G1, G2, G3, G4, G5, G6, G8, G7.1, G7.2, G7.3, G7.4, G7.5, G7.6, G7.7,
+    G9.1, G9.2, G9.3, G9.4, G9.5, G9.6, G9.7, G9.8, G9.9, G9.10, G9.11, G9.12,
+    G9.13
 
   Button names: Cross = Switch B, Circle = Switch A, Triangle = Switch X,
   Square = Switch Y (PlayStation layout, the default). Each row of
@@ -521,6 +599,7 @@ OLED checklist
   - A3 Title: Down through the choices
   - A4 Cross on Quit game
   - A6 Set Encounter rate OFF and Text speed Instant, close from the HOME ...
+  - A7 Title: Quit game, move to Yes, Cross (title path = dw3-port-quit: ...
   - A8 Relaunch, HOME, close the software
   - A13 Cheats sub-screen (P9.9 slice 2)
   - A18 Options background (P51 item 6)
@@ -536,6 +615,18 @@ OLED checklist
   - L6 Nintendo: Help (Options, Help), the Controls and Port hotkeys pages
   - L7 nxlink build, both layouts: Minus + L + R (debug HUD) and Minus + ZL + ...
   - L8 Developer: nxlink build with DW3_BUTTON_MAP=default in DW3_NX_TEST_ENV, ...
+  - L9 Options, Controls: three rows (Button layout, Customize buttons, Reset ...
+  - L10 In that prompt press R
+  - L11 Back to Controls: Button layout
+  - L12 Quit and relaunch (US, then EU; set the swap on each disc): Controls
+  - L13 Customize, Cross row: press Plus; then again and wait 6 seconds; then ...
+  - L14 Customize, Triangle row: Left and Right with no press
+  - L15 Reset to default: (also from the field menu's Options in game); in game ...
+  - L16 Developer: put button_layout=custom and button_map=0123456780 in ...
+  - L17 Options (title), the hint row at the bottom right of the message strip, ...
+  - L18 Customize buttons: set Cross to ZL and Triangle to R (one press each), ...
+  - L19 Nintendo: Options, Help (the list and a page): the hint row there; ...
+  - L20 Nintendo then PlayStation: the full-screen map view (Plus, Map, Y), ...
 
   Session B, field and 16:9 screens:
   - B1 Title menu, intro news caption bar, registration screen (New Game)
@@ -552,9 +643,12 @@ OLED checklist
   - B13 In a battle, a technique's magic circle
   - B14 nxlink build: a door and then a battle
   - B15 Options from the field (#270, P9.7)
+  - B16 Full-screen map view (P6.32 PoC, #284)
   - B17 Map upscale mod (P8.5 first mod, P6.32)
   - B19 Equip from the Items menu (P6.34 phase 1, patch 0188; replaces the ...
   - B21 Equip from the Items menu, both hand slots full, key off, and the EU ...
+  - B22 Equip in Status > Equipment returns to the slot list at once (P6.34 ...
+  - B23 The whole bag and moving an item between Digimon (P6.34 phase 3, patch ...
   - B20 Map view closes with the cancel button (owner decision 2026-10-28)
 
   Session C, turbo speed:
@@ -587,10 +681,13 @@ OLED checklist
   Session E, saves:
   - E1.1 In the field press Plus: the last row (TITLE SCREEN; EU: RETOUR TITRE ...
   - E1.2 Cross on it
+  - E1.3 Open again, Yes
   - E1.4 Options: Restart hotkey ON
   - E1.5 Note: the chord contains Minus + L + R, so it can also toggle the ...
   - E1.6 After the Yes in E1.3, at the title (US) or the language select and ...
   - E2.0 No autosave.bin in the card folder: look at the title (US and each EU ...
+  - E2.1 Options: Auto-save to Each area
+  - E2.2 Close, relaunch, look at the title
   - E2.3 Continue
   - E2.4 Load Game
   - E2.4b New Game with the option on, reach progress 4, change area
@@ -636,6 +733,7 @@ OLED checklist
   - G4 P4.3: nxlink session of 10 min or more: title 1 min, opening movie 2 ...
   - G5 P7.7 HUD name and Claw steal
   - G6 Rumble (optional, still unverified on hardware)
+  - G8 Equipment partner cycle (P6.33 phase 1, #282)
   - G7.1 Both us/ and eu/ present
   - G7.2 Y until "always" is ON, A
   - G7.3 One region only (move eu/ away, then us/)
@@ -645,6 +743,9 @@ OLED checklist
   - G7.7 Saves and options of both regions after going through the launcher; ...
   - G9.1 Only US data: move eu/ away
   - G9.2 Only EU data: put eu/ back, move us/ away
+  - G9.3 Both, picker and timeout: both folders present, region_default not ...
+  - G9.4 Default = last choice: start again, press Right to EU (the countdown ...
+  - G9.5 Don't ask again: at the picker press Y until "Always start this one: ...
   - G9.6 Minus asks again: with "always" stored, hold Minus while pressing A on ...
   - G9.7 Quit from the picker and no data
   - G9.8 Both regions play and save: from the combined .nro, start US, load or ...
