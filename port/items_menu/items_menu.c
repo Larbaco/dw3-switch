@@ -85,3 +85,271 @@ void dw3_port_items_menu_selected(int list, int item, int other_list, int equip_
                           : "no use-from-menu flag on this item");
     }
 }
+
+/* ---- P6.34 phase 1: equip from the Items menu (patch 0188) --------------- */
+
+int dw3_port_items_equip_enabled(void) {
+    return im_flag("DW3_ITEMS_EQUIP_FROM_ITEMS", DW3_ITEMS_EQUIP_FROM_ITEMS_KEY);
+}
+
+static const char *im_kind_name(int kind) {
+    switch (kind) {
+    case DW3_EQUIP_HEAD:
+    case DW3_EQUIP_BODY:
+        return "armor";
+    case DW3_EQUIP_ACCESSORY:
+    case DW3_EQUIP_GROUP_ACCESSORY:
+        return "accessory";
+    case DW3_EQUIP_RIGHT_HAND:
+    case DW3_EQUIP_LEFT_HAND:
+    case DW3_EQUIP_EITHER_HAND:
+    case DW3_EQUIP_BOTH_HANDS:
+        return "weapon";
+    default:
+        return "unmapped";
+    }
+}
+
+int dw3_port_items_equip_slot(int kind, int group, const int worn[6], const int worn_group[6],
+                              const char **rule) {
+    const char *r = "unmapped";
+    int slot = -1;
+
+    switch (kind) {
+    case DW3_EQUIP_HEAD:
+        slot = 0;
+        r = "head";
+        break;
+    case DW3_EQUIP_BODY:
+        slot = 1;
+        r = "body";
+        break;
+    case DW3_EQUIP_RIGHT_HAND:
+        slot = 2;
+        r = worn[2] == 0 ? "hand-empty" : "hand-replace";
+        break;
+    case DW3_EQUIP_LEFT_HAND:
+        slot = 3;
+        r = worn[3] == 0 ? "hand-empty" : "hand-replace";
+        break;
+    case DW3_EQUIP_EITHER_HAND:
+        if (worn[2] == 0) {
+            slot = 2;
+            r = "hand-empty";
+        } else if (worn[3] == 0) {
+            slot = 3;
+            r = "hand-empty";
+        } else {
+            slot = 2;
+            r = "hand-replace";
+        }
+        break;
+    case DW3_EQUIP_BOTH_HANDS:
+        slot = 2;
+        r = "both-hands";
+        break;
+    case DW3_EQUIP_ACCESSORY:
+        if (worn[4] == 0) {
+            slot = 4;
+            r = "acc-empty";
+        } else if (worn[5] == 0) {
+            slot = 5;
+            r = "acc-empty";
+        } else {
+            slot = 4;
+            r = "acc-replace";
+        }
+        break;
+    case DW3_EQUIP_GROUP_ACCESSORY:
+        /* STSTATUS_equip empties every worn accessory of the same group, so
+         * the item goes where its group mate is */
+        if (worn[4] != 0 && worn_group[4] == group) {
+            slot = 4;
+            r = "group";
+        } else if (worn[5] != 0 && worn_group[5] == group) {
+            slot = 5;
+            r = "group";
+        } else if (worn[4] == 0) {
+            slot = 4;
+            r = "acc-empty";
+        } else if (worn[5] == 0) {
+            slot = 5;
+            r = "acc-empty";
+        } else {
+            slot = 4;
+            r = "acc-replace";
+        }
+        break;
+    default:
+        break;
+    }
+    if (rule != NULL) {
+        *rule = r;
+    }
+    return slot;
+}
+
+static int g_im_bag0;
+static int g_im_worn0;
+static int g_im_rebuild_armed;
+
+int dw3_port_items_equip_open(int list, int item, int kind, int bag) {
+    if (!dw3_port_items_equip_enabled()) {
+        return 0;
+    }
+    if (kind < DW3_EQUIP_RIGHT_HAND || kind > DW3_EQUIP_GROUP_ACCESSORY) {
+        IM_LOG("dw3-items-menu: equip-from-items refused partner=-1 item=%d reason=unmapped-kind (kind %d, list %d)",
+               item, kind, list);
+        return 0;
+    }
+    if (bag <= 0) {
+        IM_LOG("dw3-items-menu: equip-from-items refused partner=-1 item=%d reason=not-in-bag "
+               "(only worn copies; unequip in Status > Equipment)", item);
+        return 0;
+    }
+    IM_LOG("dw3-items-menu: equip-from-items open item=%d kind=%s list=%d", item, im_kind_name(kind), list);
+    return 1;
+}
+
+void dw3_port_items_equip_begin(void) {
+    g_im_bag0 = IM_ITEMS_TOTAL();
+    g_im_worn0 = IM_EQUIPPED_TOTAL();
+}
+
+void dw3_port_items_equip_refused(int partner, int item, const char *reason) {
+    IM_LOG("dw3-items-menu: equip-from-items refused partner=%d item=%d reason=%s", partner, item, reason);
+}
+
+void dw3_port_items_equip_chosen(int slot, const char *rule, int replaces, int replaces2) {
+    if (replaces2 != 0 && replaces2 != replaces) {
+        IM_LOG("dw3-items-menu: equip-from-items slot=%d rule=%s replaces=%d replaces2=%d", slot, rule, replaces,
+               replaces2);
+    } else {
+        IM_LOG("dw3-items-menu: equip-from-items slot=%d rule=%s replaces=%d", slot, rule, replaces);
+    }
+}
+
+void dw3_port_items_equip_done(int partner, int slot, int item) {
+    int bag1 = IM_ITEMS_TOTAL();
+    int worn1 = IM_EQUIPPED_TOTAL();
+
+    IM_LOG("dw3-items-menu: equip-from-items done partner=%d slot=%d item=%d bag=%d->%d worn=%d->%d", partner,
+           slot, item, g_im_bag0, bag1, g_im_worn0, worn1);
+    g_im_rebuild_armed = 1;
+}
+
+void dw3_port_items_equip_cancelled(void) {
+    IM_LOG("dw3-items-menu: equip-from-items cancelled at=partner");
+}
+
+void dw3_port_items_equip_list_rebuilt(int count, int cursor) {
+    if (!g_im_rebuild_armed) {
+        return;
+    }
+    g_im_rebuild_armed = 0;
+    IM_LOG("dw3-items-menu: equip-from-items list rebuilt count=%d cursor=%d", count, cursor);
+}
+
+/* language: 2 EN, 3 FR, 4 IT, 5 DE, 6 ES (the EU disc's LANGUAGE). Capitals,
+ * lower case, digits and spaces only: those are the glyphs verified in both
+ * font sheets (docs/P6.34_MENU_FLOW.md section 12), so accents and
+ * punctuation are left out of the drafts. */
+typedef struct ImWords {
+    const char *equipped_by; /* "<item> equipped by <partner>" */
+    const char *returned;    /* "<item> returned to the bag" */
+    const char *cannot;      /* "<partner> cannot equip this" */
+} ImWords;
+
+static const ImWords k_words[5] = {
+    {" equipped by ", " returned to the bag", " cannot equip this"},              /* EN */
+    {" \303\251quip\303\251 par ", " remis dans le sac", " ne peut pas l'\303\251quiper"}, /* FR */
+    {" equipaggiato da ", " rimesso nella borsa", " non pu\303\262 equipaggiarlo"},  /* IT */
+    {" ausger\303\274stet von ", " zur\303\274ck im Beutel", " kann das nicht tragen"},  /* DE */
+    {" equipado por ", " devuelto a la bolsa", " no puede equiparlo"},            /* ES */
+};
+
+typedef struct ImOut {
+    char *p;
+    char *end;
+} ImOut;
+
+static void im_put(ImOut *o, char c) {
+    if (o->p < o->end) {
+        *o->p++ = c;
+    }
+}
+
+static void im_icon(ImOut *o, int n) {
+    im_put(o, 1);
+    im_put(o, (char)n);
+}
+
+/* UTF-8 (Latin-1 range) in, game-font bytes out. Letters and digits are
+ * glyphs; the space, '.', the apostrophe and the accents the drafts use are
+ * icons (01 n): 1 space, 5 period, 19 apostrophe, 81 e acute, 88 o grave,
+ * 94 u diaeresis. Read off the EU sheet by a probe run; the US sheet has the
+ * same first icons. */
+static void im_text(ImOut *o, const char *s) {
+    for (; *s != '\0'; s++) {
+        unsigned char c = (unsigned char)*s;
+
+        if (c >= 'A' && c <= 'Z') {
+            im_put(o, (char)(14 + c - 'A'));
+        } else if (c >= 'a' && c <= 'z') {
+            im_put(o, (char)(40 + c - 'a'));
+        } else if (c >= '0' && c <= '9') {
+            im_put(o, (char)(4 + c - '0'));
+        } else if (c == '.') {
+            im_icon(o, 5);
+        } else if (c == '\'') {
+            im_icon(o, 19);
+        } else if (c == 0xC3 && s[1] != '\0') {
+            s++;
+            switch ((unsigned char)*s) {
+            case 0xA9: im_icon(o, 81); break;
+            case 0xB2: im_icon(o, 88); break;
+            case 0xBC: im_icon(o, 94); break;
+            default: im_icon(o, 1); break;
+            }
+        } else {
+            im_icon(o, 1);
+        }
+    }
+}
+
+static void im_name(ImOut *o, const char *s) {
+    for (; s != NULL && *s != '\0'; s++) {
+        im_put(o, *s);
+    }
+}
+
+int dw3_port_items_equip_message(char *out, int cap, int language, int which, const char *a,
+                                 const char *b, const char *c) {
+    const ImWords *w = &k_words[language >= 3 && language <= 6 ? language - 2 : 0];
+    ImOut o;
+
+    if (cap < 1) {
+        return 0;
+    }
+    o.p = out;
+    o.end = out + cap - 1;
+    if (which == DW3_ITEMS_MSG_REFUSED) {
+        im_name(&o, a);
+        im_text(&o, w->cannot);
+        im_text(&o, ".");
+    } else {
+        im_name(&o, a);
+        im_text(&o, w->equipped_by);
+        im_name(&o, b);
+        im_text(&o, ".");
+        if (c != NULL && c[0] != '\0') {
+            im_put(&o, 2); /* new line */
+            im_put(&o, 1);
+            im_name(&o, c);
+            im_text(&o, w->returned);
+            im_text(&o, ".");
+        }
+    }
+    *o.p = '\0';
+    return (int)(o.p - out);
+}

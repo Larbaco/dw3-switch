@@ -697,8 +697,12 @@ for _v, _ids in (("us", (0x159, 0x1FA, 0x1C2, 0x158, 0x1F9)),
 for _v, _ids in (("us", (0x159, 0x1FA, 0x1C2, 0x158, 0x1F9)),
                  ("eu", (0x167, 0x208, 0x1D1, 0x166, 0x207))):
     _fight, _menu, _report, _field, _status = _ids
-    for _suffix, _cfg in (("", (("encounter_rate", "2"),)),
-                          ("-switch0", (("encounter_rate", "2"), ("items_partner_switch", "0")))):
+    # P6.34 patch 0188 turned equip-from-Items on by default, so these two run
+    # with items_equip_from_items=0: the key-off proof that the original
+    # behavior (and the 0180 line) is intact.
+    for _suffix, _cfg in (("", (("encounter_rate", "2"), ("items_equip_from_items", "0"))),
+                          ("-switch0", (("encounter_rate", "2"), ("items_equip_from_items", "0"),
+                                        ("items_partner_switch", "0")))):
         _add(Scenario(f"{_v}-items-select-equip{_suffix}", _v, "full", timeout=300, log_only=True,
                       phases=(f"{_v}-items-select-equip",), env=_ITEMS_ENV, cfg=_cfg,
                       expect_restore=((_fight, M), (_menu, S), (_report, M), (_field, M), (_status, M)),
@@ -706,6 +710,53 @@ for _v, _ids in (("us", (0x159, 0x1FA, 0x1C2, 0x158, 0x1F9)),
                                       r"does nothing here(?s:.*)dw3-items-menu: Cross on \w+ \d+ \(list [1-4]\)"),),
                       forbid_log=((0, r"dw3-items-menu: partner switch"),),
                       note="Cross on equipment in the Items menu: the original game does nothing (patch 0180)"))
+
+# P6.34 phase 1 (patch 0188): the result and refusal lines in the four extra
+# EU languages (draft words, native review pending; accents are icons).
+for _lang, _id in (("fr", 3), ("it", 4), ("de", 5), ("es", 6)):
+    _add(Scenario(f"eu-items-equip-refused-{_lang}", "eu", "full", turbo=4, timeout=400,
+                  phases=("eu-items-equip-refused",),
+                  env=_ITEMS_ENV + (("DW3_LANGUAGE", str(_id)),), cfg=(("encounter_rate", "2"),),
+                  expect_log=((0, rf"LANGUAGE={_id} \(DW3_LANGUAGE\)(?s:.*)equip-from-items refused partner=\d+ item=92 "
+                                  r"reason=partner-mask(?s:.*)equip-from-items done partner=0 slot=2"),),
+                  note=f"the equip result and refusal lines in {_lang} (patch 0188)"))
+
+# P6.34 phase 1 (patch 0188): equip from the Items menu, key on (the default).
+for _v, _ids in (("us", (0x159, 0x1FA, 0x1C2, 0x158, 0x1F9)),
+                 ("eu", (0x167, 0x208, 0x1D1, 0x166, 0x207))):
+    _fight, _menu, _report, _field, _status = _ids
+    _add(Scenario(f"{_v}-items-equip-from-items", _v, "full", turbo=4, timeout=400,
+                  phases=(f"{_v}-items-equip-from-items",), env=_ITEMS_ENV,
+                  cfg=(("encounter_rate", "2"),),
+                  expect_restore=((_fight, M), (_menu, S), (_report, M), (_field, M), (_status, M)),
+                  expect_log=((0, r"equip-from-items open item=92 kind=weapon list=1(?s:.*)"
+                                  r"slot=2 rule=hand-empty replaces=0(?s:.*)"
+                                  r"done partner=0 slot=2 item=92 bag=(\d+)->(\d+) worn=0->1(?s:.*)"
+                                  r"list rebuilt count=\d+ cursor=0(?s:.*)"
+                                  r"open item=92(?s:.*)cancelled at=partner"),),
+                  forbid_log=((0, r"unmapped-kind|Cross on \w+ \d+ \(list"),),
+                  note="Cross on equipment in the Items menu opens the partner step and equips (patch 0188)"))
+    _eq_logs = {
+        "refused": (r"open item=92(?s:.*)refused partner=6 item=92 reason=partner-mask(?s:.*)"
+                    r"refused partner=7 item=92 reason=partner-mask(?s:.*)"
+                    r"done partner=0 slot=2 item=92 bag=\d+->\d+ worn=0->1"),
+        "replace": (r"slot=2 rule=hand-empty replaces=0(?s:.*)slot=3 rule=hand-empty replaces=0(?s:.*)"
+                    r"slot=2 rule=hand-replace replaces=92(?s:.*)"
+                    r"done partner=0 slot=2 item=96 bag=(\d+)->\1 worn=2->2(?s:.*)"
+                    r"open item=\d+ kind=armor list=2(?s:.*)slot=0 rule=head(?s:.*)"
+                    r"open item=\d+ kind=accessory list=3(?s:.*)slot=4 rule=acc-empty(?s:.*)"
+                    r"done partner=0 slot=4 item=\d+ bag=\d+->\d+ worn=3->4"),
+    }
+    for _name in ("refused", "replace"):
+        _add(Scenario(f"{_v}-items-equip-{_name}", _v, "full", turbo=4, timeout=600,
+                      phases=(f"{_v}-items-equip-{_name}",), env=_ITEMS_ENV,
+                      cfg=(("encounter_rate", "2"),),
+                      expect_restore=((_fight, M), (_menu, S), (_report, M), (_field, M), (_status, M)),
+                      expect_log=((0, _eq_logs[_name]),),
+                      forbid_log=((0, r"unmapped-kind"),),
+                      note="equip from the Items menu: " + (
+                          "a partner that cannot wear the item is refused" if _name == "refused" else
+                          "both hand slots full, then armor and an accessory") + " (patch 0188)"))
 
 # P6.1 (patches 0080, 0081, 0082): the three screens the owner's preview.31-rc1
 # feedback named. PC only (env), references from the patched build.

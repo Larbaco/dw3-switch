@@ -1093,6 +1093,123 @@ def items_select_equip(version):
     return r
 
 
+def items_equip_from_items(version):
+    """P6.34 phase 1 (patch 0188): equip from the Items menu. The env and cfg
+    of `items_select_equip`. Items, the Weapons option and its list; Cross on
+    the first weapon opens the partner step (`partner-step`), Cross on
+    member 0 equips (`equipped`) or is refused (the partner cannot wear it);
+    Cross closes the result and the list is rebuilt (`list-after`); Triangle
+    at the partner step goes back to the list. Frames measured on the PC build."""
+    r = Rec(f"{version.upper()}: P6.34 equip from the Items menu (env and cfg in manifest)")
+    for f in range(300, 1200, 30):
+        r.press(f, CROSS)            # battle report -> field
+    r.press(1250, START)             # field menu
+    r.press(1420, CROSS)             # Items (loads the STSTATUS overlay)
+    r.press(1700, DOWN)              # Weapons
+    r.press(1800, CROSS)             # its list
+    r.shot(1990, "weapons-list")
+    r.press(2000, CROSS)             # the first weapon: the partner step
+    r.shot(2300, "partner-step")
+    r.press(2350, CROSS)             # member 0
+    r.shot(2500, "result")
+    r.press(2600, CROSS)             # back to the list
+    r.shot(2900, "list-after")
+    r.press(3000, CROSS)             # the same weapon again
+    r.press(3300, TRIANGLE)          # the partner step: back to the list
+    r.shot(3600, "list-cancelled")
+    r.press(3700, TRIANGLE)          # close the list
+    r.end(3900)
+    return r
+
+
+def _eq_open(r, f, downs=0):
+    """Cross on the list's item (the partner step opens), then `downs` Downs
+    to the member, then Cross on that member; returns the frame after."""
+    r.press(f, CROSS)                # the item: the partner step
+    f += 300
+    for _ in range(downs):
+        r.press(f, DOWN)
+        f += 40
+    r.press(f, CROSS)                # the member
+    return f + 150
+
+
+def _eq_confirm(r, f):
+    """Cross closes the result line; the list opens again on the item."""
+    r.press(f, CROSS)
+    return f + 300
+
+
+def _eq_start(r):
+    for f in range(300, 1200, 30):
+        r.press(f, CROSS)            # battle report -> field
+    r.press(1250, START)             # field menu
+    r.press(1420, CROSS)             # Items (loads the STSTATUS overlay)
+
+
+def items_equip_refused(version):
+    """P6.34 phase 1 (patch 0188): a partner that cannot wear the item stays
+    selectable and Cross is refused. The first weapon (Short Sword) fits only
+    member 0: Cross on member 1 and on member 2 is refused (`refused`, the
+    "cannot equip" line), then Up Up and Cross on member 0 equips it."""
+    r = Rec(f"{version.upper()}: P6.34 equip from Items, partner refused (env and cfg in manifest)")
+    _eq_start(r)
+    r.press(1700, DOWN)              # Weapons
+    r.press(1800, CROSS)             # its list
+    r.press(2000, CROSS)             # the first weapon: the partner step
+    r.press(2300, DOWN)              # member 1
+    r.press(2350, CROSS)             # refused
+    r.shot(2450, "refused-1")
+    r.press(2500, DOWN)              # member 2
+    r.press(2550, CROSS)             # refused
+    r.shot(2650, "refused-2")
+    r.press(2700, UP)                # member 1: the refusal line goes
+    r.press(2750, UP)                # member 0
+    r.press(2800, CROSS)             # equipped
+    r.shot(2950, "equipped")
+    r.press(3000, CROSS)             # the list again
+    r.end(3400)
+    return r
+
+
+def items_equip_replace(version):
+    """P6.34 phase 1 (patch 0188): both hand slots full. Three weapons that fit
+    member 0 go on in turn (the first two fill slots 2 and 3, the third replaces
+    slot 2 and the first returns to the bag, said in the result line), then the
+    first armor and the first accessory. The bag and worn totals of `done`
+    must move by exactly one each time."""
+    r = Rec(f"{version.upper()}: P6.34 equip from Items, both slots and every list (env and cfg in manifest)")
+    _eq_start(r)
+    r.press(1700, DOWN)              # Weapons
+    r.press(1800, CROSS)             # its list
+    f = _eq_open(r, 2000)            # item 1 -> slot 2
+    f = _eq_confirm(r, f)
+    r.press(f, DOWN)                 # item 2
+    f = _eq_open(r, f + 60)          # -> slot 3
+    f = _eq_confirm(r, f)
+    r.press(f, DOWN)                 # item 3
+    f = _eq_open(r, f + 60)          # both full: replaces slot 2
+    r.shot(f, "replaced")
+    f = _eq_confirm(r, f)
+    r.shot(f, "list-after-replace")
+    r.press(f, TRIANGLE)             # close the list
+    f += 300
+    r.press(f, DOWN)                 # Armor
+    r.press(f + 60, CROSS)           # its list
+    f = _eq_open(r, f + 300)
+    r.shot(f, "armor")
+    f = _eq_confirm(r, f)
+    r.press(f, TRIANGLE)
+    f += 300
+    r.press(f, DOWN)                 # Accessories
+    r.press(f + 60, CROSS)
+    f = _eq_open(r, f + 300)
+    r.shot(f, "accessory")
+    f = _eq_confirm(r, f)
+    r.end(f + 100)
+    return r
+
+
 def items_menu(version):
     """P6.1 (patch 0075): field menu -> Items in widescreen and back, with
     checkpoints on the pictures. The same forced event battle as
@@ -2324,6 +2441,9 @@ def main(out):
         (out / f"{v}-map-view.rec").write_text(map_view(v).text(True))
         (out / f"{v}-items-equip-switch.rec").write_text(items_equip_switch(v).text(True))
         (out / f"{v}-items-select-equip.rec").write_text(items_select_equip(v).text(True))
+        (out / f"{v}-items-equip-from-items.rec").write_text(items_equip_from_items(v).text(True))
+        (out / f"{v}-items-equip-refused.rec").write_text(items_equip_refused(v).text(True))
+        (out / f"{v}-items-equip-replace.rec").write_text(items_equip_replace(v).text(True))
         (out / f"{v}-battle-results.rec").write_text(battle_results(v).text(True))
         (out / f"{v}-save-screen.rec").write_text(save_screen(v).text(True))
         (out / f"{v}-xr-save.rec").write_text(xr_save(v).text(True))
