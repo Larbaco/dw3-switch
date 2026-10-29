@@ -1626,6 +1626,72 @@ def items_equip_stays(version):
     return r
 
 
+def items_bag_view(version):
+    """P6.34 phase 3 (patch 0191): the whole bag in the equip list and moving an
+    item between Digimon. The path of `items_equip_stays` to the first accessory
+    slot of the second party member (B; the accessories are the items several
+    Digimon can wear, the weapons are one Digimon's each): Cross, Down, Cross wears the first fitting
+    item. R2 switches to the third member (C); Cross opens the list, Square three
+    times (all weapons, all armor and gear, worn by others: B's item is a
+    row, the wearer note shows), Down, Cross moves the item to C. L2 back to B,
+    Cross, Square x3 (C's item is the row), Down, Cross moves it back. Square a
+    fourth time returns to this slot's list; Triangle, Triangle. With the key off
+    Square does nothing. Frames measured on the PC build."""
+    r = Rec(f"{version.upper()}: P6.34 bag view and move between Digimon (env and cfg in manifest)")
+    for f in range(300, 1200, 30):
+        r.press(f, CROSS)            # battle report -> field
+    r.press(1250, START)             # field menu, over the field
+    r.press(1420, CROSS)             # Items: the dissolve, then STSTATUS
+    f = 1640
+    for name, button, wait in MENU_SCREENS_STEPS:
+        if name == "status-equip":
+            break
+        if button:
+            r.press(f, button)
+        f += wait
+    for k in range(4):
+        r.press(f + 40 * (k + 1), DOWN)  # head, body, right hand, left hand, first accessory
+    f += 200
+    r.press(f, CROSS)                # B: the list for the slot
+    r.press(f + 60, DOWN)
+    r.press(f + 110, CROSS)          # B wears the first fitting item
+    f += 300
+    r.shot(f, "b-worn")
+    r.press(f + 40, R2)              # C
+    f += 80
+    r.press(f, CROSS)                # C: the list for the accessory
+    r.shot(f + 150, "c-list-slot")
+    for name in ("c-weapons", "c-gear", "c-worn"):
+        f += 160
+        r.press(f, SQUARE)
+        r.shot(f + 100, name)
+    r.press(f + 120, DOWN)           # the first row: B's item, the wearer note
+    r.shot(f + 170, "c-worn-row")
+    r.press(f + 200, CROSS)          # moved to C
+    f += 520
+    r.shot(f, "c-moved")
+    r.press(f + 40, L2)              # back to B
+    f += 100
+    r.press(f, CROSS)
+    for name in ("b-weapons", "b-gear", "b-worn-filter"):
+        f += 160
+        r.press(f, SQUARE)
+        r.shot(f + 100, name)
+    r.press(f + 120, DOWN)
+    r.shot(f + 170, "b-worn-row")
+    r.press(f + 200, CROSS)          # moved back to B
+    f += 520
+    r.shot(f, "b-moved")
+    r.press(f + 40, CROSS)           # the list again
+    r.press(f + 200, SQUARE)         # key on: weapons; key off: nothing
+    r.shot(f + 300, "b-list-again")
+    r.press(f + 340, TRIANGLE)
+    f += 800
+    r.press(f, TRIANGLE)
+    r.end(f + 300)
+    return r
+
+
 def map_screen(version):
     """P6.1 (patch 0080): the field menu's Map screen in widescreen. The same
     path as `menu_screens` (the manifest's env and cfg) up to the Map entry;
@@ -2755,6 +2821,7 @@ def main(out):
         (out / f"{v}-map-view.rec").write_text(map_view(v).text(True))
         (out / f"{v}-items-equip-switch.rec").write_text(items_equip_switch(v).text(True))
         (out / f"{v}-items-equip-stays.rec").write_text(items_equip_stays(v).text(True))
+        (out / f"{v}-items-bag-view.rec").write_text(items_bag_view(v).text(True))
         (out / f"{v}-items-select-equip.rec").write_text(items_select_equip(v).text(True))
         (out / f"{v}-items-equip-from-items.rec").write_text(items_equip_from_items(v).text(True))
         (out / f"{v}-items-equip-refused.rec").write_text(items_equip_refused(v).text(True))

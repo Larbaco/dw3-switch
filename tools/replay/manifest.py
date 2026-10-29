@@ -797,6 +797,46 @@ for _v, _ids in (("us", (0x159, 0x1FA, 0x1C2, 0x158, 0x1F9)),
                   forbid_log=((0, r"equip-stays (?:begin|slot=|list-open)"),),
                   note="items_equip_stays=0: the original equip round trip, no equip-stays line (patch 0190)"))
 
+# P6.34 phase 3 (patch 0191): the whole bag in the equip list (Square cycles the
+# filter) and moving an item between Digimon. One recording; `-43` runs it with
+# Widescreen off; `-off` has items_bag_view=0 (Square does nothing, no bag-view
+# or move line).
+for _v, _ids in (("us", (0x159, 0x1FA, 0x1C2, 0x158, 0x1F9)),
+                 ("eu", (0x167, 0x208, 0x1D1, 0x166, 0x207))):
+    _fight, _menu, _report, _field, _status = _ids
+    for _suffix, _cfg in (("", (("encounter_rate", "2"),)),
+                          ("-43", (("encounter_rate", "2"), ("widescreen", "0")))):
+        _add(Scenario(f"{_v}-items-bag-view{_suffix}", _v, "full", turbo=4, timeout=500,
+                      phases=(f"{_v}-items-bag-view",), env=_ITEMS_ENV, cfg=_cfg,
+                      expect_restore=((_fight, M), (_menu, S), (_report, M), (_field, M), (_status, M)),
+                      expect_log=((0, r"file keys items_equip_from_items=1 items_equip_stays=1 items_bag_view=1(?s:.*)"
+                                      r"equip-stays begin partner=(\d+) slot=4 item=(\d+) (?s:.*)"
+                                      r"bag-view filter=weapons slot=4 rows=\d+ worn-elsewhere=1(?s:.*)"
+                                      r"bag-view filter=gear slot=4 rows=\d+ worn-elsewhere=1(?s:.*)"
+                                      r"bag-view filter=worn-by-others slot=4 rows=1 worn-elsewhere=1(?s:.*)"
+                                      r"move item=\2 from=\1 from-slot=4 to=(\d+) slot=4 bag=(\d+)->\4 worn=(\d+)->\5(?s:.*)"
+                                      r"bag-view filter=worn-by-others slot=4 rows=1 worn-elsewhere=1(?s:.*)"
+                                      r"move item=\2 from=\3 from-slot=4 to=\1 slot=4 bag=\4->\4 worn=\5->\5"),),
+                      note="Square cycles the equip list's filter; Cross on a row worn by another "
+                           "Digimon moves it (patch 0191)"))
+    _add(Scenario(f"{_v}-items-bag-view-off", _v, "full", turbo=4, timeout=500,
+                  phases=(f"{_v}-items-bag-view",), env=_ITEMS_ENV,
+                  cfg=(("encounter_rate", "2"), ("items_bag_view", "0")),
+                  expect_restore=((_fight, M), (_menu, S), (_report, M), (_field, M), (_status, M)),
+                  expect_log=((0, r"file keys items_equip_from_items=1 items_equip_stays=1 items_bag_view=0"),),
+                  forbid_log=((0, r"bag-view filter=|dw3-items-menu: move item="),),
+                  note="items_bag_view=0: Square does nothing in the equip list, no bag-view or move line (patch 0191)"))
+
+# P6.34 phase 3 (patch 0191): the filter titles and the wearer note in the four
+# extra EU languages (draft words, native review pending; accents are icons).
+for _lang, _id in (("fr", 3), ("it", 4), ("de", 5), ("es", 6)):
+    _add(Scenario(f"eu-items-bag-view-{_lang}", "eu", "full", turbo=4, timeout=500,
+                  phases=("eu-items-bag-view",),
+                  env=_ITEMS_ENV + (("DW3_LANGUAGE", str(_id)),), cfg=(("encounter_rate", "2"),),
+                  expect_log=((0, rf"LANGUAGE={_id} \(DW3_LANGUAGE\)(?s:.*)bag-view filter=worn-by-others slot=4 rows=1 "
+                                  r"worn-elsewhere=1(?s:.*)move item=\d+ from=\d+ from-slot=4 to=\d+ slot=4"),),
+                  note=f"the bag view's titles and wearer note in {_lang} (patch 0191)"))
+
 # P6.33 finding (patch 0180): Cross on equipment in the Items menu does nothing
 # in the original game. The log line says so; run with items_partner_switch on
 # (the default) and off (patch 0128's path out), the same line either way.
