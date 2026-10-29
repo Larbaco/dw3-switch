@@ -691,8 +691,9 @@ int dw3_port_options_persist_init(const char *dir) {
     }
     /* File-only keys (not rows): their values at boot, so a log says which
      * way the test ran. */
-    PO_INFO("dw3-options: file keys items_partner_switch=%d map_screen=%d "
-            "battle_menu_memory=%d",
+    PO_INFO("dw3-options: file keys items_equip_from_items=%d items_partner_switch=%d "
+            "map_screen=%d battle_menu_memory=%d",
+            dw3_port_options_file_int("items_equip_from_items", 1),
             dw3_port_options_file_int("items_partner_switch", 1),
             dw3_port_options_file_int("map_screen", 1),
             g_saved[DW3_PORT_OPT_BATTLE_MENU]);
