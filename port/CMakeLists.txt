@@ -329,6 +329,7 @@ add_library(dw3_port_options${_S} OBJECT
   "${CMAKE_CURRENT_SOURCE_DIR}/audio/volume.c"
   "${CMAKE_CURRENT_SOURCE_DIR}/autosave/autosave.c"
   "${CMAKE_CURRENT_SOURCE_DIR}/autosave/autosave_areas.c"
+  "${CMAKE_CURRENT_SOURCE_DIR}/battle_menu/battle_cursor.c"
   "${CMAKE_CURRENT_SOURCE_DIR}/battle_menu/battle_menu_memory.c"
   "${CMAKE_CURRENT_SOURCE_DIR}/file_cache/file_cache_host.c"
   "${CMAKE_CURRENT_SOURCE_DIR}/help/help.c"

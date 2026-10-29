@@ -51,6 +51,12 @@ highest non-empty tier.
 
 ### Tier 1 — Stability
 
+- [P51 feedback](P51_FEEDBACK.md) (owner OLED, preview.51; orchestrator defaults
+  pending confirmation), one PR per group. **PR 1 built 2026-10-29:** the battle
+  Items and technique lists had no selection marker because `ContinueDraw` was a
+  no-op since P3.3; it now draws the bar's table (patch 0189 log, replays
+  `us/eu-battle-list-bar`, OLED row D15). PR 2 (small UX fixes), PR 3 (map pack for
+  both regions) and PR 4 (Options background) follow.
 - [P5.5](#phase-5--playable-on-switch): stage sweep on hardware.
 - [#188](https://github.com/Larbaco/dw3-switch/issues/188) and
   [P4.3](P4.3_AUDIO.md): audio, underrun count (counters in the log since
