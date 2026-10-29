@@ -96,7 +96,7 @@ help.turbo.note.1 = In turbo the music keeps its normal speed (Options, Sound, T
 # -------------------------------------------------------------- options
 help.options.title = Options explained
 help.options.blurb = Every row, its values and its default.
-help.options.p.1 = Options is a list of groups: Display, Sound, Gameplay, Saves, Controls and Help. Up and Down choose, {btn:cross} or {btn:circle} opens a group or changes a row, {btn:triangle} goes back. A line under the list explains the focused row. Changes apply at once and are saved in port_options.cfg.
+help.options.p.1 = Options is a list of groups: Display, Sound, Gameplay, Saves, Controls, Help and Walkthrough. Up and Down choose, {btn:cross} or {btn:circle} opens a group or changes a row, {btn:triangle} goes back. A line under the list explains the focused row. Changes apply at once and are saved in port_options.cfg.
 help.options.p.2 = Open it from the title menu, from the OPTIONS row of the field menu, or in a battle with {btn:select}.
 help.options.h.1 = Display
 help.options.li.1 = Widescreen: ON or OFF, default ON. About 16:9 in the field, in battles and in several menus. The title and the movies stay 4:3.

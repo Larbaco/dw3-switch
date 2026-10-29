@@ -41,7 +41,7 @@ enum {
     DW3_HELP_LINE_PITCH = 30,
     DW3_HELP_PANEL_LINES = 13,
     DW3_HELP_BODY_W = DW3_HELP_PANEL_W - 2 * DW3_HELP_PAD_X,
-    DW3_HELP_MAX_HINTS = 3
+    DW3_HELP_MAX_HINTS = 4
 };
 
 typedef struct Dw3HelpConfig {
@@ -63,7 +63,8 @@ typedef struct Dw3HelpView {
     double open_ms;           /* CLOCK_MONOTONIC ms of the open (the first-frame timing) */
     int in_game;
     int lang;
-    char header[160];         /* page title (+ draft tag); "" on the list */
+    char header[160];         /* page title (+ draft tag); "" on the Help list, the group name on the walkthrough's */
+    char log_tag[24];         /* "dw3-help" (or "" = the same) / "dw3-walkthrough": prefix of the art's log lines */
     char strip[200];          /* message strip: blurb, or "Page 3 / 10" */
     char hint[DW3_HELP_MAX_HINTS][72];
     int hint_cap[DW3_HELP_MAX_HINTS]; /* 0 none, 1 confirm cap, 2 back cap */
@@ -88,6 +89,12 @@ int dw3_help_tick(unsigned keys);
 const Dw3HelpView *dw3_help_view(void);
 /* Pages the build lists, for the tests and the validator. */
 int dw3_help_page_count(void);
+
+/* The name of a PS button on `platform` (DW3_PAGES_SWITCH or DW3_PAGES_PC) under
+ * the button map in force: kind "btn" is the physical button, "ps" the PS1
+ * name. 0 and the name in out, or -1. */
+int dw3_help_button_name(int platform, const char *kind, const char *name,
+                         char *out, int outsz);
 
 /* Test hooks: replace the embedded text of a language (NULL restores it). */
 void dw3_help_test_set_text(int lang, const char *text);

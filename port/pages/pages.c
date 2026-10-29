@@ -30,7 +30,7 @@ static void plog(const char *fmt, ...) {
 /* --- kinds ---------------------------------------------------------------- */
 
 static const char *const k_kind_names[DW3_PAGES_KINDS] = {
-    "title", "blurb", "h", "p", "li", "row", "note", "warn", "q", "a", "str"};
+    "title", "blurb", "h", "p", "li", "row", "note", "warn", "q", "a", "goal", "help", "str"};
 
 int dw3_pages_kind_of(const char *name, int len) {
     int k;

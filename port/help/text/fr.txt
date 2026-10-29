@@ -83,7 +83,7 @@ help.turbo.note.1 = En turbo, la musique garde sa vitesse normale (Options, Son,
 # -------------------------------------------------------------- options
 help.options.title = Les Options
 help.options.blurb = Chaque ligne, ses valeurs et sa valeur par défaut.
-help.options.p.1 = Options est une liste de groupes : Affichage, Son, Jouabilité, Sauvegardes, Commandes et Aide. Haut et Bas choisissent, {btn:cross} ou {btn:circle} ouvre un groupe ou change une ligne, {btn:triangle} revient en arrière. Une ligne sous la liste explique la ligne choisie. Les changements s'appliquent aussitôt et sont enregistrés dans port_options.cfg.
+help.options.p.1 = Options est une liste de groupes : Affichage, Son, Jouabilité, Sauvegardes, Commandes, Aide et Pas à pas. Haut et Bas choisissent, {btn:cross} ou {btn:circle} ouvre un groupe ou change une ligne, {btn:triangle} revient en arrière. Une ligne sous la liste explique la ligne choisie. Les changements s'appliquent aussitôt et sont enregistrés dans port_options.cfg.
 help.options.p.2 = Ouvrez-les depuis le menu de l'écran titre, depuis la ligne OPTIONS du menu de la carte, ou en combat avec {btn:select}.
 help.options.h.1 = Affichage
 help.options.li.1 = Écran large : ON ou OFF, ON par défaut. Environ 16:9 sur la carte, en combat et dans plusieurs menus. L'écran titre et les vidéos restent en 4:3.

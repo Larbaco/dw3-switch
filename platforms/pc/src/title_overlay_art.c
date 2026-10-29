@@ -648,9 +648,10 @@ static void arrow(int cx,int y,int up) {
     {WORD(opt_grp_saves_##l),WORD(opt_grpdesc_saves_##l)}, \
     {WORD(opt_grp_cheats_##l),WORD(opt_grpdesc_cheats_##l)}, \
     {WORD(opt_grp_controls_##l),WORD(opt_grpdesc_controls_##l)}, \
-    {WORD(opt_grp_help_##l),WORD(opt_grpdesc_help_##l)}}
+    {WORD(opt_grp_help_##l),WORD(opt_grpdesc_help_##l)}, \
+    {WORD(opt_grp_walkthrough_##l),WORD(opt_grpdesc_walkthrough_##l)}}
 typedef struct GroupWords { Word name,desc; } GroupWords;
-enum { LISTED_GROUPS = 7 }; /* the groups with lettering: indexed by group id up to Help */
+enum { LISTED_GROUPS = 8 }; /* the groups with lettering: indexed by group id up to Walkthrough */
 static const GroupWords group_words[5][LISTED_GROUPS]={GROUP_WORDS(en),GROUP_WORDS(fr),GROUP_WORDS(de),
                                                        GROUP_WORDS(es),GROUP_WORDS(it)};
 #if defined(__SWITCH__)
@@ -1237,7 +1238,8 @@ static void help_draw(const Dw3HelpView *v) {
     options_plaque(L_GRP_X,L_HEAD_Y,L_GRP_W,0,0);
     if(on_list) {
         const int lang=v->lang>=DW3_TITLE_LANG_EN&&v->lang<=DW3_TITLE_LANG_IT?v->lang:DW3_TITLE_LANG_EN;
-        plaque_word(&group_words[lang][DW3_OPTGRP_HELP].name,480,L_HEAD_Y+9,255,198,98);
+        if(v->header[0])atlas_centered(DW3_ATLAS_TITLE,480,L_HEAD_Y+35,v->header,255,198,98); /* P6.35: the walkthrough's group name */
+        else plaque_word(&group_words[lang][DW3_OPTGRP_HELP].name,480,L_HEAD_Y+9,255,198,98);
     } else {
         atlas_centered(DW3_ATLAS_TITLE,480,L_HEAD_Y+35,v->header,255,198,98);
     }
@@ -1306,7 +1308,8 @@ const uint8_t *dw3_pc_help_render(unsigned *version) {
         ms=help_now_ms()-t0;
         if(help_view->open_serial!=help_shown_serial) {
             help_shown_serial=help_view->open_serial;
-            fprintf(stderr,"dw3-help: first frame composed %.1f ms after open\n",
+            fprintf(stderr,"%s: first frame composed %.1f ms after open\n",
+                    help_view->log_tag[0]?help_view->log_tag:"dw3-help",
                     help_now_ms()-help_view->open_ms);
         }
         if(composes<=2||ms>20.0)

@@ -173,13 +173,14 @@ int main(void) {
         int seen[14] = {0};
         int g, k;
 
-        if (dw3_optgroups_visible(0, ids) != 6 || ids[0] != DW3_OPTGRP_DISPLAY ||
+        if (dw3_optgroups_visible(0, ids) != 7 || ids[0] != DW3_OPTGRP_DISPLAY ||
             ids[3] != DW3_OPTGRP_SAVES || ids[4] != DW3_OPTGRP_CONTROLS ||
-            ids[5] != DW3_OPTGRP_HELP) {
+            ids[5] != DW3_OPTGRP_HELP || ids[6] != DW3_OPTGRP_WALKTHROUGH) {
             return fail("visible groups without cheats");
         }
-        if (dw3_optgroups_visible(1, ids) != 7 || ids[4] != DW3_OPTGRP_CHEATS ||
-            ids[5] != DW3_OPTGRP_CONTROLS || ids[6] != DW3_OPTGRP_HELP) {
+        if (dw3_optgroups_visible(1, ids) != 8 || ids[4] != DW3_OPTGRP_CHEATS ||
+            ids[5] != DW3_OPTGRP_CONTROLS || ids[6] != DW3_OPTGRP_HELP ||
+            ids[7] != DW3_OPTGRP_WALKTHROUGH) {
             return fail("Cheats group follows the master switch");
         }
         for (g = 0; g < DW3_OPTGRP_COUNT; g++) {

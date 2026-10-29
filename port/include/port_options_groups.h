@@ -19,7 +19,7 @@ enum {
     DW3_OPTGRP_CONTROLS = 5,    /* P9.8 Button layout, P6.12 Customize buttons and Reset */
     /* Not built yet: hidden until the feature lands, then flip `built`. */
     DW3_OPTGRP_HELP = 6,        /* P6.30 technical help (built: a screen of its own) */
-    DW3_OPTGRP_WALKTHROUGH = 7, /* P6.35 walkthrough help */
+    DW3_OPTGRP_WALKTHROUGH = 7, /* P6.35 walkthrough help (built: a screen of its own) */
     /* P6.12: the Customize buttons sub-screen of Controls. Never listed (built
      * = 0): Controls opens it. Its ten rows are the PS buttons in map order
      * (port_button_map.h), not registry rows; a row's value is its source. */
@@ -57,7 +57,7 @@ static const Dw3OptGroup dw3_optgroups[DW3_OPTGRP_COUNT] = {
     /* Cheats   */ {1, 10, {0, 1, 2, 3, 4, 5, 6, 7, 8, 9}},
     /* Controls */ {1, 3, {9, 11, 12}},
     /* Help     */ {1, 0, {0}}, /* P6.30: no rows, a screen (port/help/help.c) */
-    /* Walk     */ {0, 0, {0}},
+    /* Walk     */ {1, 0, {0}}, /* P6.35: no rows, a screen (port/walkthrough/walkthrough_screen.c) */
     /* Customize*/ {0, 10, {0, 1, 2, 3, 4, 5, 6, 7, 8, 9}},
 };
 

@@ -8,6 +8,7 @@
 #include "port_battle_menu.h"
 #include "port_button_map.h"
 #include "port_help.h"
+#include "port_walkthrough_ui.h"
 #include "port_options_cfg.h"
 #include "port_options_groups.h"
 #include "port_pacing.h"
@@ -1252,11 +1253,23 @@ static void po_custom_tick(void) {
 static int g_test_help_open;
 #endif
 
+#ifdef DW3_PORT_OPTIONS_TEST
+static int g_test_wt_open;
+#endif
+
+/* P6.35: the Walkthrough group's screen. It shows through the help's view and
+ * layer, so it has the pad the same way the Help does. */
+#ifndef DW3_PORT_OPTIONS_TEST
+static int po_wt_open_p(void) {
+    return dw3_wt_is_open();
+}
+#endif
+
 static int po_help_open_p(void) {
 #ifdef DW3_PORT_OPTIONS_TEST
-    return g_test_help_open;
+    return g_test_help_open || g_test_wt_open;
 #else
-    return dw3_help_is_open();
+    return dw3_help_is_open() || dw3_wt_is_open();
 #endif
 }
 
@@ -1290,7 +1303,8 @@ static const char *po_help_root(void) {
 /* Hand the help's view to the native overlay (or take it away). */
 static void po_help_present(void) {
 #if defined(DW3_TITLE_NATIVE_OVERLAY)
-    dw3_pc_help_set_view(dw3_help_is_open() ? dw3_help_view() : NULL);
+    dw3_pc_help_set_view(dw3_help_is_open() ? dw3_help_view()
+                         : dw3_wt_is_open() ? dw3_wt_view() : NULL);
 #endif
 }
 #endif
@@ -1337,12 +1351,52 @@ static void po_open_help(void) {
 #endif
 }
 
+static void po_open_walkthrough(void) {
+#ifdef DW3_PORT_OPTIONS_TEST
+    g_test_wt_open = 1;
+    fprintf(stderr, "dw3-port-options: group open walkthrough (test)\n");
+    po_sound(PO_SND_SELECT);
+#else
+    Dw3WtConfig c;
+
+    memset(&c, 0, sizeof(c));
+    c.from = !g_in_game ? DW3_HELP_FROM_TITLE
+             : strcmp(g_where, "field menu") == 0 ? DW3_HELP_FROM_FIELD
+                                                  : DW3_HELP_FROM_BATTLE;
+    c.in_game = g_in_game;
+#if VERSION_EU
+    c.region = DW3_PAGES_EU;
+#else
+    c.region = DW3_PAGES_US;
+#endif
+#ifdef __SWITCH__
+    c.platform = DW3_PAGES_SWITCH;
+#else
+    c.platform = DW3_PAGES_PC;
+#endif
+#if defined(DW3_TITLE_NATIVE_OVERLAY)
+    c.lang = dw3_pc_title_overlay_get_options_language();
+#endif
+    c.snapshot = dw3_walkthrough_snapshot;
+    if (dw3_wt_open(&c) != 0) {
+        PO_WARN("dw3-port-options: walkthrough cannot be opened (see dw3-walkthrough)");
+        return;
+    }
+    PO_INFO("dw3-port-options: group open walkthrough (%s)",
+            g_in_game ? "in game" : "title");
+    po_sound(PO_SND_SELECT);
+    po_help_present();
+#endif
+}
+
 static void po_help_shutdown(void) {
 #ifndef DW3_PORT_OPTIONS_TEST
     dw3_help_close();
+    dw3_wt_close();
     po_help_present();
 #else
     g_test_help_open = 0;
+    g_test_wt_open = 0;
 #endif
 }
 
@@ -1350,13 +1404,16 @@ static void po_help_shutdown(void) {
 static void po_help_tick(void) {
 #ifdef DW3_PORT_OPTIONS_TEST
     if (po_key_back()) {
+        fprintf(stderr, "dw3-port-options: group close %s (test)\n",
+                g_test_wt_open ? "walkthrough" : "help");
         g_test_help_open = 0;
+        g_test_wt_open = 0;
         po_sound(PO_SND_CANCEL);
-        fprintf(stderr, "dw3-port-options: group close help (test)\n");
     }
 #else
     unsigned k = 0;
     int snd;
+    const int po_was_wt = po_wt_open_p();
 
     if (po_key_up()) k |= DW3_HELP_KEY_UP;
     if (po_key_down()) k |= DW3_HELP_KEY_DOWN;
@@ -1366,7 +1423,7 @@ static void po_help_tick(void) {
     if (po_key_next()) k |= DW3_HELP_KEY_NEXT;
     if (po_key_back()) k |= DW3_HELP_KEY_BACK;
     if (po_key_confirm()) k |= DW3_HELP_KEY_CONFIRM;
-    snd = dw3_help_tick(k);
+    snd = po_wt_open_p() ? dw3_wt_tick(k) : dw3_help_tick(k);
     if (snd == DW3_HELP_SND_CURSOR) {
         po_sound(PO_SND_CURSOR);
     } else if (snd == DW3_HELP_SND_SELECT) {
@@ -1375,8 +1432,9 @@ static void po_help_tick(void) {
         po_sound(PO_SND_CANCEL);
     }
     po_help_present();
-    if (!dw3_help_is_open()) {
-        PO_INFO("dw3-port-options: group close help (back to the group list)");
+    if (!dw3_help_is_open() && !dw3_wt_is_open()) {
+        PO_INFO("dw3-port-options: group close %s (back to the group list)",
+                po_was_wt ? "walkthrough" : "help");
     }
 #endif
 }
@@ -1411,6 +1469,10 @@ static void po_group_open(int group) {
 #endif
     if (group == DW3_OPTGRP_HELP) {
         po_open_help();
+        return;
+    }
+    if (group == DW3_OPTGRP_WALKTHROUGH) {
+        po_open_walkthrough();
         return;
     }
     g_level = 1;
@@ -1587,7 +1649,7 @@ static void dw3_port_options_maybe_fb_dump(void) {
 #if !defined(DW3_PORT_OPTIONS_TEST) && !defined(DW3_TITLE_NATIVE_OVERLAY)
 /* P6.30: the help on a host without the native overlay (plain text panel). */
 static void po_help_draw_plain(short ox, short oy) {
-    const Dw3HelpView *v = dw3_help_view();
+    const Dw3HelpView *v = dw3_wt_is_open() ? dw3_wt_view() : dw3_help_view();
     char buf[14][60];
     const char *lines[14];
     int n = 0;
@@ -1645,7 +1707,7 @@ void dw3_port_options_draw(void) {
     GetDispEnv(&env);
     ox = env.disp.x;
     oy = env.disp.y;
-    if (dw3_help_is_open()) {
+    if (po_help_open_p()) {
         po_help_draw_plain(ox, oy);
         return;
     }

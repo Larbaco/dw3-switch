@@ -2673,6 +2673,108 @@ def help_lang(idx):
     return r
 
 
+# --- P6.35 phase 2: the walkthrough screen ----------------------------------
+# The Walkthrough group is the eighth plaque of the group list (Cheats is listed
+# in the PC build, greyed in game), right after Help. In game the screen opens
+# on the page of the current step; from the title it is a browse-only list.
+GRP_WALK = 7
+# (tag, name of the current page in the checkpoints, Downs from it to the next entry). The
+# game's own field menu opens from GAME.progress 4 (field.c openFieldMenu), so no earlier
+# story point can reach the Options screen in game; p6 is past the table ("more chapters").
+WT_FIELD_POINTS = (("p4", "s06", 1), ("p6", "more", 0))
+
+
+def _wt_reading(r, f, current, other_down):
+    """In the walkthrough, opened on the page of the current step (`current`
+    names it). A step: the page with its answer closed, Confirm (the question,
+    cursor on No), Down and Confirm (the answer), Back to the list (the cursor
+    on the step), `other_down` Downs and Confirm on the next entry, Confirm (its
+    question) and Back (cancelled), Back to the list and out. Past the end of
+    the table (`current` "more"): the "more chapters coming" page, Back to the
+    list, Up and Confirm on the last area (reached), its question, the answer.
+    Returns the frame after."""
+    r.shot(f + 40, f"{current}-page")
+    if current == "more":
+        f = _keys(r, f + 60, TRIANGLE)       # the step list, the cursor on "more"
+        r.shot(f + 20, "wt-list")
+        f = _keys(r, f + 40, UP, CROSS)      # the last area: everything is reached
+        r.shot(f + 20, "area-page")
+        f = _keys(r, f + 40, CROSS)
+        r.shot(f + 20, "area-ask")
+        f = _keys(r, f + 40, DOWN, CROSS)
+        r.shot(f + 20, "area-answer")
+        f = _keys(r, f + 40, TRIANGLE, TRIANGLE)   # list, out of the walkthrough
+    else:
+        f = _keys(r, f + 60, CROSS)
+        r.shot(f + 20, f"{current}-ask")
+        f = _keys(r, f + 40, DOWN, CROSS)
+        r.shot(f + 20, f"{current}-answer")
+        f = _keys(r, f + 40, TRIANGLE)       # the step list, the cursor on the step
+        r.shot(f + 20, "wt-list")
+        f = _keys(r, f + 40, *([DOWN] * other_down), CROSS)
+        r.shot(f + 20, "other-page")
+        f = _keys(r, f + 40, CROSS)
+        r.shot(f + 20, "other-ask")
+        f = _keys(r, f + 40, TRIANGLE, TRIANGLE)   # cancel, then the list
+        r.shot(f + 20, "wt-list-back")
+        f = _keys(r, f + 40, TRIANGLE)       # out of the walkthrough
+    r.shot(f + 20, "options-after")
+    return f + 40
+
+
+def walkthrough_field(version, current, ahead_down):
+    """P6.35 phase 2: the walkthrough from the field menu's OPTIONS row at a
+    forced story point (env in the manifest: DW3_START_MODE and DW3_PROGRESS, plus the
+    forced event battle of `field_options`, which gives the player a party: the field
+    menu does not open without one)."""
+    r = Rec(f"{version.upper()}: P6.35 walkthrough screen from the field menu, {current} (env in manifest)")
+    f = _field_options_open(r, shots=False, last="options-list")
+    f = _group(r, f, GRP_DISPLAY, GRP_WALK)
+    f = _wt_reading(r, f, current, ahead_down)
+    r.press(f, TRIANGLE)                     # close Options: back on the field menu
+    r.end(f + 80)
+    return r
+
+
+def walkthrough_title(version, lang_idx=0):
+    """P6.35 phase 2: title -> Options -> Walkthrough. No game state is read
+    there: the step list opens in browse mode, the first step is the only one
+    with a title. `lang_idx` > 0 (EU): the same in that language."""
+    lang = EU_LANGS[lang_idx]
+    r = Rec(f"{version.upper()}: P6.35 walkthrough screen from the title, browse mode, {lang}")
+    if lang_idx == 0:
+        m = _to_title_menu(r, version)
+    else:
+        f = 90
+        for _ in range(lang_idx):
+            r.press(f, DOWN)
+            f += 15
+        c = f + 20
+        r.press(c, START)                    # confirm the language
+        for k in (50, 80, 110):              # skip splash / FMV stages
+            r.press(c + k, START)
+        r.press(c + 170, START)              # PRESS START
+        m = c + 270
+    r.press(m, DOWN)                         # New Game -> Options
+    r.press(m + 20, CROSS)                   # open the Options screen
+    r.shot(m + 60, "options-list")
+    f = _keys(r, m + 70, *([DOWN] * GRP_WALK))   # the cursor on the Walkthrough plaque
+    r.shot(f + 20, "group-focus")            # its lettering and the message line under the list
+    f = _keys(r, f + 40, CROSS)              # open it
+    r.shot(f + 30, "wt-list")
+    f = _keys(r, f + 40, CROSS)              # the first step
+    r.shot(f + 20, "first-page")
+    f = _keys(r, f + 40, CROSS)              # the question
+    r.shot(f + 20, "first-ask")
+    f = _keys(r, f + 40, DOWN, CROSS)        # the answer
+    r.shot(f + 20, "first-answer")
+    f = _keys(r, f + 40, TRIANGLE, DOWN, CROSS)   # list, second step: not reached
+    r.shot(f + 20, "second-page")
+    f = _keys(r, f + 40, TRIANGLE, TRIANGLE, TRIANGLE)   # list, group list, close
+    r.end(f + 60)
+    return r
+
+
 def turbo_menu(version):
     """P6.4: menus run at 1.5x under turbo (env in the manifest: `field_options`
     env, turbo 4; no checkpoints, the proof is the `dw3-turbo:` log). Report ->
@@ -2940,6 +3042,10 @@ def main(out):
         (out / f"{v}-help-title.rec").write_text(help_title(v).text(True))
         (out / f"{v}-help-field.rec").write_text(help_field(v).text(True))
         (out / f"{v}-help-battle.rec").write_text(help_battle(v).text(True))
+        (out / f"{v}-walkthrough-screen-title.rec").write_text(walkthrough_title(v).text(True))
+        for _tag, _cur, _ahead in WT_FIELD_POINTS:
+            (out / f"{v}-walkthrough-screen-{_tag}.rec").write_text(
+                walkthrough_field(v, _cur, _ahead).text(True))
         (out / f"{v}-field-options-cheats.rec").write_text(
             field_options_cheats(v).text(True))
         (out / f"{v}-field-options-release.rec").write_text(
@@ -2952,6 +3058,8 @@ def main(out):
             (out / f"eu-title-quit-{lang}.rec").write_text(title_quit_lang(i).text(True))
             (out / f"eu-field-options-{lang}.rec").write_text(field_options_lang(i).text(True))
             (out / f"eu-help-{lang}.rec").write_text(help_lang(i).text(True))
+            if lang == "fr":   # one EU language is enough to prove the text is picked up
+                (out / f"eu-walkthrough-screen-title-{lang}.rec").write_text(walkthrough_title("eu", i).text(True))
     for v in ("us", "eu"):
         for name, fn in RESTART_RECS:
             (out / f"{v}-{name}.rec").write_text(fn(v).text(True))

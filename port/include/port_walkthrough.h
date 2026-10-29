@@ -90,6 +90,9 @@ int dw3_wt_format_line(char *buf, unsigned size, const DW3WtState *st, const DW3
 /* Game side (walkthrough_hook.c): reads GAME and FLAGS_00 once, resolves, logs
  * the line to stderr. `why` names the caller ("probe", "open"). Returns the status. */
 int dw3_walkthrough_log_state(const char *why);
+/* The state the walkthrough screen reads: GAME.progress, the field mode (-> half,
+ * area) and FLAGS_00.checkCondition as the check. Read-only. Returns 1. */
+int dw3_walkthrough_snapshot(DW3WtState *st, int *mode);
 /* Debug path: one call per game frame from the mode task (DW3_CHEATS builds);
  * logs only when DW3_WALKTHROUGH_PROBE is set and (progress, mode) changed. */
 void dw3_walkthrough_probe_tick(void);
