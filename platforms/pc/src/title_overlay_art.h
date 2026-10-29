@@ -135,6 +135,9 @@ enum { DW3_TITLE_OPTIONS_PAGE_OPTIONS = 0,
        DW3_TITLE_OPTIONS_PAGE_SUB_BASE = 1 };
 enum { DW3_TITLE_CHEAT_WARPS = 13 };
 void dw3_pc_title_overlay_set_options_page(int page, int cheats_on);
+/* P51 item 6: reads the game's menu background tile once (frame thread), before
+ * any Options layer is composed; logs `dw3-options: menu background tile ...`. */
+void dw3_pc_title_overlay_menu_tile_prepare(void);
 /* Layout of a page for the retained cache. kind: the rectangle of a plaque
  * (with its halo), of its value cell, or of the message strip; `slot` is the
  * plaque's place on screen (the strip ignores it). */

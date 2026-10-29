@@ -253,6 +253,7 @@ static int slot_compose_over_base(StaticSlot *s) {
 }
 
 int dw3_options_cache_update(Dw3OptionsDirty *out) {
+    dw3_pc_title_overlay_menu_tile_prepare(); /* P51 item 6: a no-op after the first */
     const size_t canvas_bytes = (size_t)DW3_OPTIONS_CANVAS_PITCH * DW3_OPTIONS_CANVAS_H;
     const unsigned art_generation = dw3_pc_title_overlay_generation();
     const int cursor = dw3_pc_title_overlay_options_cursor();
@@ -442,6 +443,7 @@ int dw3_options_cache_layers_ready(unsigned in_game_locked) {
 }
 
 int dw3_options_cache_prewarm_begin(unsigned in_game_locked) {
+    dw3_pc_title_overlay_menu_tile_prepare(); /* P51 item 6: once, before any layer */
     const unsigned art = dw3_pc_title_overlay_generation();
     const int cheats = dw3_pc_title_overlay_options_cheats_on();
     int need;

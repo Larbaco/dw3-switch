@@ -202,6 +202,7 @@ add_executable(dw3-switch
 target_sources(dw3-switch PRIVATE
   ${CMAKE_CURRENT_SOURCE_DIR}/../pc/src/title_overlay_art.c
   ${CMAKE_CURRENT_SOURCE_DIR}/../pc/src/title_options_cache.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/../pc/src/menu_bg_tile.c
   ${CMAKE_CURRENT_SOURCE_DIR}/../pc/src/title_logo_resample.c
   # P6.30 page engine and glyph atlas (the help's text, drawn by the art).
   ${CMAKE_CURRENT_SOURCE_DIR}/../../port/pages/pages.c
