@@ -26,22 +26,23 @@ You need:
 
 - A Switch running Atmosphere with hbmenu.
 - Your own disc, dumped as a Mode2 BIN and CUE pair.
-- The `.nro` that matches your disc.
+- `dw3-switch.nro`, the one file for US and EU.
 
 No game files ship with the port. A wrong-region disc is rejected.
 
 | Region | Disc | Build | Runtime folder |
 |---|---|---|---|
-| US | Digimon World 3 (`SLUS-01436`) | `dw3-switch.nro`, or `dw3-switch-both.nro` | `sdmc:/switch/dw3/us/` |
-| EU | Digimon World 2003 (`SLES-03936`) | `dw3-switch-eu.nro`, or `dw3-switch-both.nro` | `sdmc:/switch/dw3/eu/` |
+| US | Digimon World 3 (`SLUS-01436`) | `dw3-switch.nro` | `sdmc:/switch/dw3/us/` |
+| EU | Digimon World 2003 (`SLES-03936`) | `dw3-switch.nro` | `sdmc:/switch/dw3/eu/` |
 
 Disc dump: the docs describe a Mode2/2352 BIN with its CUE. They do not
 describe a plain ISO as supported, so use a BIN and CUE. If the CUE names a
 different BIN than the one you have, the port picks the only other `.bin` in
 that folder, if it is large enough ([RUNTIME_LAYOUT](RUNTIME_LAYOUT.md)).
 
-**One file for both regions (P6.24, preview.48).** `dw3-switch-both.nro` holds
-both games and chooses at launch:
+**One file for both regions (P6.24).** `dw3-switch.nro` holds both games and
+chooses at launch. From the release after preview.53 this is the only `.nro` a
+release carries (owner decision 2026-10-29):
 
 - Only one region's data is found: that game starts at once.
 - Both are found: a picker shows for 3 seconds and starts the last choice (US
@@ -51,31 +52,30 @@ both games and chooses at launch:
 - Hold Minus while you press A on the `.nro` in hbmenu to see the picker again.
 - Every decision is a `dw3-region:` line in `dw3.log`.
 
-The separate `dw3-switch.nro` (US) and `dw3-switch-eu.nro` (EU) are still
-published. The combined file has not yet been checked on a Switch OLED.
+**Coming from an older preview?** Earlier releases also had `dw3-switch-eu.nro`,
+`dw3-switch-both.nro` and the `-nxlink` files. Delete those from `sdmc:/switch/`
+(and any Sphaira or hbmenu forwarder that points at them), put the new
+`dw3-switch.nro` there and recreate the forwarder if you use one. Your saves and
+the `us/` and `eu/` folders do not change.
 
 **Launcher.** A separate launcher `dw3.nro` (a stop-gap, built by CI only) is
 **not in releases**. Use the `.nro` files above.
 
 Steps:
 
-1. Download a `.nro` from the
-   [latest release](https://github.com/Larbaco/dw3-switch/releases/latest):
-   `dw3-switch-both.nro`, or the one for your region. Each release says which
-   files it carries.
+1. Download `dw3-switch.nro` from the
+   [latest release](https://github.com/Larbaco/dw3-switch/releases/latest).
 2. Copy it to `sdmc:/switch/`.
 3. Copy your disc's BIN and CUE files:
-   - Separate builds: US into `sdmc:/switch/dw3/`, next to the `us/` folder; EU
-     into `sdmc:/switch/dw3/eu/`, for example `disc.bin` and `disc.cue`.
-   - Combined build: into `sdmc:/switch/dw3/` or into `sdmc:/switch/dw3/us/`
-     (or `eu/`). It finds a disc in either place and tells the region from the
+   Put them into `sdmc:/switch/dw3/` or into `sdmc:/switch/dw3/us/`
+   (or `eu/`). It finds a disc in either place and tells the region from the
      disc itself (its executable: `SLUS_014.36` is US, `SLES_039.36` is EU), not
      from the file name. You can leave a US and an EU disc side by side in
      `sdmc:/switch/dw3/`: both regions count as present and the picker appears.
 4. Launch from hbmenu. The first boot extracts the game data from the disc and
    draws a progress bar. Leave it running.
 
-The US card with a separate build then looks like this (EU uses `eu/`):
+The card then looks like this for a US disc (EU uses `eu/`):
 
 ```text
 sdmc:/switch/dw3-switch.nro
@@ -84,15 +84,7 @@ sdmc:/switch/dw3/Digimon World 3.bin
 sdmc:/switch/dw3/us/            created on first boot
 ```
 
-With the combined build the disc sits in the same place, or inside the region
-folder (`us/` or `eu/`); either works:
-
-```text
-sdmc:/switch/dw3-switch-both.nro
-sdmc:/switch/dw3/Digimon World 3.cue
-sdmc:/switch/dw3/Digimon World 3.bin
-sdmc:/switch/dw3/us/            created on first boot
-```
+The disc can also sit inside the region folder (`us/` or `eu/`); either works.
 
 Both regions from discs in the parent folder (the picker then asks which to
 start, and extracts the one you choose; the other is extracted the first time you
@@ -115,8 +107,10 @@ After the first boot:
   saves under `saves/` (see Saves below). Logs and crash reports go one level up, in
   `sdmc:/switch/dw3/`.
 
-The `-nxlink` build streams logs to a PC and is for development. You do not
-need it to play. The port does not overclock.
+The same file streams its log to a PC when you start it with `nxlink -a <ip> -s
+dw3-switch.nro` (development; the port checks at run time whether nxlink started
+it). Started from hbmenu or Sphaira it only writes `sdmc:/switch/dw3/dw3.log`.
+You do not need nxlink to play. The port does not overclock.
 
 ## Controls and hotkeys
 
@@ -153,7 +147,8 @@ Diagnostic chords (not for normal play):
 
 - Minus + ZL + ZR cycles the battle renderer: `soft`, `soft+bbox`, `gpu-solid`,
   `gpu-tex`. The game starts in `gpu-tex`. Field rendering is not affected.
-- Minus + L + R toggles the debug HUD in `-nxlink` builds.
+- Minus + L + R toggles the debug HUD in development builds with the HUD
+  (`tools/build_switch_game.sh --nxlink`; not in the released file).
 - The restart chord contains the HUD chord, so in a build with the HUD it can
   also toggle the HUD.
 

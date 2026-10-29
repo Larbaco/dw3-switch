@@ -20,10 +20,10 @@ so.
 
 | File | Use |
 |---|---|
-| `dw3-switch.nro` | US ordinary build |
-| `dw3-switch-eu.nro` | EU ordinary build (attached by hand) |
-| `dw3-switch-nxlink.nro` | US nxlink logging build |
-| EU nxlink build | **Not published in preview.35 or preview.36** (check the release assets). Build it: `./tools/build_switch_game.sh --nxlink --eu` ([P5.1](P5.1_MEMORY.md#owner-checklist-2-hour-oled--nxlink-session-p51-stays-unticked-until-done)) |
+| `dw3-switch.nro` | From the release after preview.53 (owner decision 2026-10-29): the only `.nro`, US + EU in one image; it also connects to nxlink when nxlink started it (G9.14). Before that this was the US ordinary build |
+| `dw3-switch-eu.nro` | **Superseded 2026-10-29** (retired; use `dw3-switch.nro`). EU ordinary build in older releases |
+| `dw3-switch-nxlink.nro` | **Superseded 2026-10-29.** US nxlink logging build in older releases; its HUD and sampled debug lines are now developer builds only (`tools/build_switch_game.sh --nxlink`) |
+| EU nxlink build (superseded 2026-10-29) | **Not published in preview.35 or preview.36** (check the release assets). Build it: `./tools/build_switch_game.sh --nxlink --eu` ([P5.1](P5.1_MEMORY.md#owner-checklist-2-hour-oled--nxlink-session-p51-stays-unticked-until-done)) |
 | `dw3-switch-elf.zip` | US unstripped ELFs, to symbolize a crash report |
 | Launcher `dw3.nro` | **Not in a release.** CI artifact `dw3-switch-launcher-nro`, or `tools/build_switch_launcher.sh` ([SINGLE_BUILD](SINGLE_BUILD.md#oled-checklist-launcher-owner)) |
 
@@ -388,9 +388,10 @@ picker text is readable at arm's length, handheld.
 
 **Status: built in PR B; first run on the OLED with preview.48 (2026-10-28, EU chosen): the rows below say which parts the log proves.** The combined `.nro` comes from
 `tools/build_switch_game.sh --both`, the CI artifact `dw3-switch-both-nro` or the
-release asset `dw3-switch-both.nro`. The
-separate US and EU `.nro` files keep shipping next to it until you have confirmed
-this one. Put `dw3-switch-both.nro` (or the nxlink variant, whose NACP name ends
+release asset `dw3-switch-both.nro` (preview.48 to 53; **from the next release it
+is named `dw3-switch.nro` and is the only file**, owner decision 2026-10-29, so
+every row below that mentions the separate US / EU `.nro` files or the `-nxlink`
+variant is superseded). Put the combined file (or a developer nxlink build, whose NACP name ends
 in "(nxlink)") in `sdmc:/switch/dw3/` and start it from hbmenu in applet mode.
 Data: `sdmc:/switch/dw3/us/` and `/eu/` as always, or a disc image directly in
 `sdmc:/switch/dw3/` (G9.11 to G9.13; see
@@ -461,6 +462,8 @@ it from Pending OLED checks.
 | E2 | `dw3-autosave: wrote autosave.bin ... in N ms (SD write M ms ...); option Auto-save=N` |
 | G8 | `dw3-options: file keys items_equip_from_items=N items_partner_switch=N map_screen=N` at boot, `dw3-items-menu: partner switch` |
 | G9.11 to G9.13 | `dw3-region: data found ... (us: disc image <path>, needs extraction)`, `dw3-region: <r> will be extracted from the disc image <path>`, `dw3-region: disc image ignored: <path> is neither a US nor an EU disc` (a stray BIN), then the usual `decision`, `picker`, `running` lines |
+| G9.14 | **nxlink detection (one file, 2026-10-29).** Start `dw3-switch.nro` with `nxlink -a <ip> -s dw3-switch.nro` (hbmenu Y first), then, in a second run, start the same file from hbmenu or Sphaira | The nxlink run prints on the PC and in `dw3.log` the line `dw3: nxlink host=<pc-ip> connected (fd=N)`; the plain run writes `dw3.log` only, with `dw3: no nxlink host (launched from <path>)`. Both play the same. Ryubing has no nxlink; only the second half is checked there | both logs | SINGLE_BUILD |
+| G9.15 | **Upgrade from the old files.** On a card that has `dw3-switch-eu.nro` or `-both.nro` plus forwarders: delete them, put the new `dw3-switch.nro`, recreate the forwarder | The title is Digimon World 3 NX; saves, `us/`, `eu/` and settings are as before | photo | RELEASES |
 | G10 | `dw3-sweep: stage sweep on (key stage_sweep=1, 238 stages ...`, per stage `dw3-sweep: stage WSTAGxxx (mode 0x..) begin` then `... ok in N ms (frames F, mem free M, load L ms)` or `... FAILED: <reason>`; after a crash the next run says `FAILED: crash or hang in the previous run`; the end is `dw3-sweep: done X/Y ok, failed: ...`. A finished sweep relaunched logs `the previous sweep is complete; not running again`. `dw3-autosave:` must not appear. Reasons: [P5.5_STAGE_SWEEP](P5.5_STAGE_SWEEP.md#log-lines) |
 
 Game-side `fprintf(stderr)` lines (`dw3-port-options`, `dw3-map`, `dw3: memcard`,

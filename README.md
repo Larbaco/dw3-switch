@@ -96,11 +96,12 @@ has the controls and the details.
 - **Cross-region save import.** A region with no save of its own imports the
   other region's save once, converted, and never changes the original
   ([CROSS_REGION_SAVES](docs/CROSS_REGION_SAVES.md)).
-- **One `.nro` for US and EU.** `dw3-switch-both.nro` holds both game copies and
+- **One `.nro` for US and EU.** `dw3-switch.nro` holds both game copies and
   picks the region at boot, with a boot picker when both discs are present
-  (P6.24, new in preview.48; the picker and region choice were checked on an OLED
-  with preview.48, the other cases are still open; the separate US and EU
-  `.nro` files keep shipping): [SINGLE_BUILD](docs/SINGLE_BUILD.md).
+  (P6.24; the picker and region choice were checked on an OLED with
+  preview.48). Owner decision 2026-10-29: a release carries only this one file;
+  the separate US, EU and nxlink `.nro` files are retired, and the same file
+  detects an nxlink launch at run time: [SINGLE_BUILD](docs/SINGLE_BUILD.md).
 - **Full-screen map view and a first mod loader.** Y on the Map screen opens a
   zoomable, pannable map with the game's balloon, cursor and name box
   ([P6.32](docs/P6.32_MAP_ZOOM.md)). Packs you generate from your own disc can
@@ -132,26 +133,23 @@ You need a Switch running Atmosphère with hbmenu, and your own disc dumped as
 a Mode2 BIN/CUE pair: Digimon World 3 (USA, SLUS-01436) or Digimon World 2003
 (Europe, SLES-03936). No game data ships with the port.
 
-1. Download a `.nro` from the
+1. Download `dw3-switch.nro` from the
    [latest release](https://github.com/Larbaco/dw3-switch/releases/latest) and
-   copy it to `sdmc:/switch/`:
-   - `dw3-switch-both.nro`: US and EU in one file (new in preview.48; the region
-     is chosen at boot), or
-   - `dw3-switch.nro` (US) or `dw3-switch-eu.nro` (EU): one region each.
-2. Copy your disc's BIN and CUE files:
-   - separate builds: US into `sdmc:/switch/dw3/`, EU into `sdmc:/switch/dw3/eu/`
-     (a disc in `sdmc:/switch/dw3/` is found by both separate builds);
-   - combined build: into `sdmc:/switch/dw3/` or into `us/` / `eu/` there. It
-     tells the region of a disc by its executable, so a US and an EU disc can
-     both sit in `sdmc:/switch/dw3/`. With both regions present (extracted or
-     as discs) it shows a picker at boot; with one it starts that region.
+   copy it to `sdmc:/switch/`. It is one file for US and EU. If you have the
+   older `dw3-switch-eu.nro`, `-both` or `-nxlink` files, delete them and
+   recreate any forwarder; saves and region folders do not change.
+2. Copy your disc's BIN and CUE files into `sdmc:/switch/dw3/` or into `us/` /
+   `eu/` there. It tells the region of a disc by its executable, so a US and an
+   EU disc can both sit in `sdmc:/switch/dw3/`. With both regions present
+   (extracted or as discs) it shows a picker at boot; with one it starts that
+   region.
 3. Launch from hbmenu. The first boot extracts the game data from the disc and
    shows a progress bar. Leave it running.
 
 ```text
-sdmc:/switch/dw3-switch.nro                 (or dw3-switch-both.nro)
-sdmc:/switch/dw3/Digimon World 3.cue        your disc, BIN/CUE (any build; the combined
-sdmc:/switch/dw3/Digimon World 3.bin        one also accepts it in us/ or eu/)
+sdmc:/switch/dw3-switch.nro
+sdmc:/switch/dw3/Digimon World 3.cue        your disc, BIN/CUE (also accepted in
+sdmc:/switch/dw3/Digimon World 3.bin        us/ or eu/)
 sdmc:/switch/dw3/us/                        created on first boot (eu/ for EU)
 sdmc:/switch/dw3/saves/<uid>/<us|eu>/memcard/   saves, per Switch profile
 sdmc:/switch/dw3/dw3.log                    logs; send them with a bug report
