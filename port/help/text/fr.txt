@@ -1,12 +1,188 @@
-# DW3NX technical help, French text (P6.30). TODO STUB.
-# The base game's languages need the help at launch (owner decision 2026-10-28,
-# docs/P6.30_HELP.md Q3). Until this file carries every key of en.txt, the help
-# falls back to English for fr and logs it. Translate the values only: keep the
-# keys, the qualifiers, and the {btn:..} {path:..} tokens as in en.txt.
-# tools/generate_help_assets.py --check warns while this file is a stub, and
-# --release fails.
+# DW3NX technical help, French text (P6.30).
+# MACHINE-DRAFTED, NEEDS NATIVE REVIEW. Written by an AI agent from en.txt; the
+# owner approved the English and cannot check the other languages
+# (docs/P6.30_HELP.md section 12). Terms follow the EU disc's own words (field
+# menu: OBJETS, TRIER, CARTE, TECHNIQUES, STATUT, OPTIONS, RETOUR TITRE) and the
+# port's own French lettering (tools/generate_pc_title_lettering.py). Screen words
+# the port only has in English (crash panel, BUILDING, MOD 4X, Nearest, Lanczos2,
+# FSR 1) stay in English between quotation marks, as the game shows them.
+# Keys, qualifiers and {btn:..} {path:..} tokens are exactly those of en.txt.
 
 @format = 1
 @book = help
 @lang = fr
-@status = todo stub, falls back to English
+@status = draft, machine-drafted, needs native review
+
+# --------------------------------------------------- the screen's own words
+help.ui.str.open = Ouvrir
+help.ui.str.back = Retour
+help.ui.str.scroll = Défiler
+help.ui.str.pages = Pages
+help.ui.str.page = Page
+help.ui.str.unverified = (non vérifié)
+help.ui.str.draft = (brouillon)
+
+# ---------------------------------------------------------------- setup
+help.setup.title = Installation
+help.setup.blurb = Ce qu'il faut et ce que fait le premier lancement.
+help.setup.p.1 = Il vous faut une Switch avec Atmosphere et hbmenu, le .nro du portage pour la région de votre disque, et votre propre disque copié en paire BIN et CUE. Aucun fichier du jeu n'est fourni avec le portage, et un disque d'une autre région est refusé.
+help.setup.li.1 @us = Disque US (SLUS-01436) : dw3-switch.nro. Dossier d'exécution {path:root}us/. Placez le BIN et le CUE dans {path:root}.
+help.setup.li.2 @eu = Disque EU (SLES-03936) : dw3-switch-eu.nro. Dossier d'exécution {path:root}eu/. Placez le BIN et le CUE dans {path:root}eu/.
+help.setup.p.2 = Le premier lancement lit le disque, extrait les données du jeu et affiche une barre de progression. Laissez-le terminer. Les lancements suivants vérifient les fichiers extraits et ne relisent pas le BIN.
+help.setup.warn.1 = Ne supprimez et ne déplacez jamais les fichiers de sauvegarde pour forcer une nouvelle extraction. Copiez le dossier memcard avant de supprimer le dossier d'une région.
+help.setup.note.1 = US et EU ont chacune leur dossier et leurs réglages.
+
+# ------------------------------------------------------------- controls
+help.controls.title = Commandes
+help.controls.blurb = Quel bouton fait quoi, dans le jeu et les menus.
+help.controls.p.1 = Le jeu pense en boutons PlayStation. Par défaut, le portage associe vos boutons selon leur position, donc les boutons de droite ne suivent pas l'ordre habituel de Nintendo. Avec Options, Commandes, Disposition boutons sur Nintendo, A valide et B annule. La colonne de droite indique le bouton qui produit chaque bouton PlayStation en ce moment, selon la disposition choisie.
+help.controls.row.1 = Se déplacer | {btn:dpad}
+help.controls.row.2 = Croix, valide | {btn:cross}
+help.controls.row.3 = Rond, valide aussi dans Options | {btn:circle}
+help.controls.row.4 = Triangle, retour dans Options | {btn:triangle}
+help.controls.row.5 = Carré | {btn:square}
+help.controls.row.6 = Start | {btn:start}
+help.controls.row.7 = Select | {btn:select}
+help.controls.row.8 = L1 et R1 | {btn:l1} et {btn:r1}
+help.controls.row.9 = L2 et R2 | {btn:l2} et {btn:r2}
+help.controls.row.10 = L3 et R3 | {btn:l3} et {btn:r3}
+help.controls.h.1 = Menus
+help.controls.li.1 = Sur l'écran titre, {btn:start} affiche les choix : Commencer, Options, Charger et Quitter. Haut et Bas déplacent le curseur, {btn:cross} valide.
+help.controls.li.2 = Sur la carte, {btn:start} ouvre le menu du jeu. Il comporte une ligne OPTIONS et, en dernier, une ligne RETOUR TITRE.
+help.controls.li.3 = Pendant une vidéo d'introduction, appuyez sur {btn:start} (ou maintenez-le) pour la passer.
+help.controls.li.4 @pc = PC seulement : F4 active ou quitte le plein écran, Échap ferme la fenêtre.
+help.controls.note.1 = Le rôle d'un bouton dépend de la scène où vous êtes. Les raccourcis du portage ont leur propre page.
+
+# -------------------------------------------------------------- hotkeys
+help.hotkeys.title = Raccourcis
+help.hotkeys.blurb = Les raccourcis que le portage ajoute au jeu.
+help.hotkeys.row.1 = Avance rapide, activée ou non | {btn:r3}
+help.hotkeys.row.2 = Redémarrer le jeu | {chord:restart}
+help.hotkeys.row.3 = Options depuis l'écran titre | {btn:select}
+help.hotkeys.row.4 = Options en combat | {btn:select}
+help.hotkeys.row.5 = Vue de la carte, sur l'écran Carte | {btn:square}
+help.hotkeys.row.6 = Changer de partenaire, panneau d'équipement | {btn:l2} et {btn:r2}
+help.hotkeys.h.1 = Redémarrage
+help.hotkeys.p.1 = La combinaison de redémarrage est inactive tant que vous n'activez pas Raccourci de reset dans Options. Maintenez les quatre boutons ensemble ; elle ne se déclenche qu'une fois par appui, relâchez donc les boutons avant de réessayer. Les emplacements de sauvegarde sont écrits d'abord, et si cela échoue, le redémarrage est annulé. La progression depuis votre dernière sauvegarde est perdue. La ligne RETOUR TITRE du menu de la carte effectue le même redémarrage après une question Oui ou Non.
+help.hotkeys.h.2 = Options
+help.hotkeys.p.2 = {btn:select} ouvre Options depuis l'écran titre seulement quand les choix sont affichés et qu'aucun bouton d'épaule ou de gâchette n'est maintenu. En combat, cela ne marche que lorsque le menu de commandes attend votre choix, jamais pendant les attaques ni dans les listes de techniques et d'objets. Le combat est entièrement figé tant qu'Options est ouvert.
+help.hotkeys.h.3 = Changement de partenaire
+help.hotkeys.p.3 = Dans Statut, panneau d'équipement, quand la liste des emplacements attend, {btn:l2} et {btn:r2} passent au partenaire précédent ou suivant. Il faut au moins deux partenaires.
+
+# ---------------------------------------------------------------- turbo
+help.turbo.title = Turbo
+help.turbo.blurb = Ce que l'avance rapide accélère, ou non.
+help.turbo.p.1 = Appuyez sur {btn:r3} pour activer ou couper le turbo. Le jeu démarre toujours à vitesse normale. Relâchez le stick avant d'appuyer de nouveau.
+help.turbo.p.2 = La vitesse choisie est la ligne Avance rapide d'Options : 2x, 3x, 4x ou OFF. 2x est la valeur par défaut. OFF désactive le bouton.
+help.turbo.h.1 = Où cela marche
+help.turbo.li.1 = Pleine vitesse : marche, textes, scènes, transitions et animations de combat sur la carte et en combat, ainsi que le rapport de combat.
+help.turbo.li.2 = Environ 1,5x quand le turbo est actif : les menus ouverts sur la carte ou en combat, comme la liste du menu de la carte, Options et le menu de commandes du combat.
+help.turbo.li.3 = Toujours vitesse normale : l'écran titre, les vidéos, les écrans de carte mémoire, le jeu de cartes, les écrans Statut, Objets et Carte du menu de la carte, et les boutiques.
+help.turbo.note.1 = La musique et les effets sonores sont accélérés aussi. La vitesse réelle dépend de ce que la console parvient à suivre.
+
+# -------------------------------------------------------------- options
+help.options.title = Options en détail
+help.options.blurb = Chaque ligne, ses valeurs et sa valeur par défaut.
+help.options.p.1 = Options est une liste de groupes : Affichage, Son, Jouabilité, Sauvegardes, Commandes et Aide. Haut et Bas choisissent, {btn:cross} ou {btn:circle} ouvre un groupe ou change une ligne, {btn:triangle} revient en arrière. Une ligne sous la liste explique la ligne choisie. Les changements s'appliquent aussitôt et sont enregistrés dans port_options.cfg.
+help.options.p.2 = Ouvrez-les depuis le menu de l'écran titre, depuis la ligne OPTIONS du menu de la carte, ou en combat avec {btn:select}.
+help.options.h.1 = Affichage
+help.options.li.1 = Écran large : ON ou OFF, ON par défaut. Environ 16:9 sur la carte, en combat et dans plusieurs menus. L'écran titre et les vidéos restent en 4:3.
+help.options.h.2 = Son
+help.options.li.2 = Volume musique et Volume effets : OFF, ou de 1 à 10, 10 par défaut, ce qui correspond au mixage d'origine. Gauche et Droite changent la valeur ; {btn:cross} l'augmente et repasse de 10 à 0. L'écran joue les sons de menu du jeu pour que vous entendiez le changement.
+help.options.h.3 = Jouabilité
+help.options.li.3 = Avance rapide : 2x, 3x, 4x ou OFF, 2x par défaut. La vitesse que {btn:r3} active.
+help.options.li.4 = Raccourci de reset : ON ou OFF, OFF par défaut. Active la combinaison de redémarrage.
+help.options.li.5 = Taux de combats : OFF, 0.5x, 1x, 1.5x ou 2x, 1x par défaut. Combats aléatoires seulement ; les combats de l'histoire ont toujours lieu.
+help.options.li.6 = Vitesse du texte : Normal, Rapide ou Instantané, Normal par défaut, c'est le réglage d'origine.
+help.options.li.7 = Curseur de combat : OFF, Commande ou Commande+Tech, OFF par défaut. Le menu de commandes du combat, et avec Commande+Tech la liste des techniques, s'ouvre sur votre dernier choix. Un changement s'applique dès le tour suivant.
+help.options.h.4 = Sauvegardes
+help.options.li.8 = Sauvegarde auto : OFF ou Chaque zone, OFF par défaut. Voir la page Sauvegardes.
+help.options.h.5 = Commandes
+help.options.li.9 = Disposition boutons : PlayStation ou Nintendo, PlayStation par défaut, c'est le réglage d'origine. Avec Nintendo, A valide et B revient en arrière ; le bouton secondaire (Rond) passe sur X. Start, Select, les gâchettes et les sticks ne changent pas. Le réglage s'applique aussitôt et est enregistré.
+help.options.note.1 = Sur la carte et en combat, Écran large est grisé et indique qu'il est verrouillé. La carte est mise en page au chargement d'une zone : changez ce réglage depuis l'écran titre.
+help.options.note.2 = Sur le disque EU, les lignes et les textes s'affichent dans la langue du jeu.
+
+# ---------------------------------------------------------------- saves
+help.saves.title = Sauvegardes
+help.saves.blurb = Emplacements, sauvegarde auto, profils et imports.
+help.saves.p.1 = La sauvegarde est manuelle, comme dans le jeu d'origine. Le portage écrit les emplacements modifiés à des moments sûrs et quand vous appuyez sur HOME ou mettez la console en veille. Il ne sauvegarde jamais à votre place, sauf si Sauvegarde auto est activée ; il écrit alors son propre fichier.
+help.saves.h.1 = Emplacements et fichiers
+help.saves.li.1 = Deux emplacements : save0.bin et save1.bin, plus autosave.bin une fois la sauvegarde auto exécutée.
+help.saves.li.2 = Ils se trouvent dans {path:memcard}
+help.saves.li.3 @switch !unv = Les sauvegardes appartiennent au profil Switch qui joue. Le profil vient du sélecteur du lanceur, sinon de l'unique utilisateur de la console, sinon du sélecteur système. Si vous annulez le sélecteur système, le jeu ne démarre pas.
+help.saves.li.4 @switch !unv = Les sauvegardes des anciennes préversions (le dossier memcard us ou eu sans profil) sont copiées dans le dossier de chaque profil au premier démarrage de ce profil. Les originaux restent en place. Les sauvegardes suivantes d'un profil n'apparaissent pas dans un autre.
+help.saves.li.5 = US et EU ont leurs propres sauvegardes et réglages.
+help.saves.li.6 = Les réglages sont dans port_options.cfg, dans le dossier de la région.
+help.saves.h.2 = Sauvegarde auto
+help.saves.p.2 = Avec Sauvegarde auto sur Chaque zone, le premier moment calme dans chaque nouvelle zone de la carte écrit la partie dans autosave.bin. Vos deux emplacements ne sont jamais touchés, et il n'y a qu'une seule sauvegarde auto : une nouvelle partie la remplace dès son premier changement de zone.
+help.saves.li.7 = Quand une sauvegarde auto existe, l'écran titre affiche Continuer, qui la charge aussitôt, et Charger, qui ouvre la liste des emplacements. Sans sauvegarde auto, il n'y a pas de Continuer.
+help.saves.li.8 = Elle ne s'exécute pas pendant les événements, les menus, les dialogues, les escalades, les bannières de zone, les fondus ou le début d'un combat, ni avant que l'histoire soit assez avancée pour ouvrir le menu de la carte, ni sur une carte que la liste des sauvegardes ne connaît pas. Un combat qui ramène dans la même zone ne compte pas.
+help.saves.li.9 = Une écriture ratée est consignée dans le journal et le jeu continue avec l'ancienne sauvegarde auto. Il n'y a pas encore de message à l'écran.
+help.saves.h.3 = Importer depuis l'autre région
+help.saves.p.3 !unv = Si une région n'a aucune sauvegarde, la version copie une fois la sauvegarde de l'autre région, convertie, dans son propre emplacement. L'original n'est jamais modifié, la copie n'a lieu que si la région n'a aucun fichier de sauvegarde, et elle ne recommence pas si vous supprimez la copie. Les sauvegardes faites ensuite restent dans leur région. Une sauvegarde du chapitre supplémentaire EU n'est pas importée vers US.
+help.saves.h.4 = Copies de secours
+help.saves.p.4 = Copiez le dossier memcard de la carte SD pour garder une copie de secours. Faites-le avant de supprimer le dossier d'une région.
+
+# --------------------------------------------------------- widescreen
+help.widescreen.title = Écran large
+help.widescreen.blurb = L'image large et là où elle s'applique.
+help.widescreen.p.1 = Écran large est sur ON par défaut. Les scènes prises en charge, la carte, les combats et plusieurs menus, utilisent de larges zones latérales pour environ 16:9. L'écran titre et les vidéos restent en 4:3. L'image de 240 lignes du disque EU suit la même règle de format.
+help.widescreen.p.2 = Ce réglage se change en direct dans Options, mais il est verrouillé pendant une partie, car les cartes sont mises en page au chargement d'une zone. Changez-le depuis l'écran titre.
+help.widescreen.note.1 = La vue de la carte exige Écran large sur ON.
+
+# ------------------------------------------------------------ map & mods
+help.map.title = Carte et mods
+help.map.blurb = La carte en plein écran et le pack de carte facultatif.
+help.map.h.1 = Vue de la carte
+help.map.p.1 !unv = Ouvrez le menu de la carte avec {btn:start}, choisissez Carte, puis appuyez sur {btn:square}. La carte remplit l'image large et montre les villes et zones découvertes. Écran large doit être sur ON.
+help.map.li.1 = {btn:dpad} déplace le curseur, qui démarre sur votre zone actuelle. Sur un lieu, la boîte de nom du jeu apparaît.
+help.map.li.2 = Le stick droit zoome en douceur ; {btn:l1} et {btn:r1} zooment par paliers.
+help.map.li.3 = {btn:l2} et {btn:r2} changent le filtre d'agrandissement. "Nearest" est la valeur par défaut. "Lanczos2" et "FSR 1" se calculent en arrière-plan, et l'écran affiche "BUILDING" pendant ce temps.
+help.map.li.4 = {btn:circle} masque le texte et la boîte de nom. {btn:triangle} ferme la vue. {btn:r3} ne fait rien ici.
+help.map.h.2 = Pack d'agrandissement de la carte
+help.map.p.2 !unv = Un pack remplace l'image de la carte par une version plus nette. Aucun n'est fourni avec le portage, car il est créé à partir de votre propre disque. Un outil PC du dépôt (tools/mods/extract_map_assets.py) extrait la carte de base, lance un agrandisseur que vous installez, et écrit un dossier à copier dans {path:root}mods/<pack>/ sur la carte SD.
+help.map.li.5 !unv = Il n'y a aucune ligne dans Options. Le pack est utilisé dès qu'un pack valide pour votre région se trouve dans le dossier mods. La vue affiche alors "MOD 4X".
+help.map.li.6 !unv = Un fichier de mauvaise taille ou un pack absent fait revenir la vue à la carte d'origine. Le jeu n'a jamais besoin d'un pack pour démarrer.
+help.map.li.7 !unv = Pour revenir à la carte d'origine, renommez ou supprimez le dossier du pack, ou mettez map_mod=0 dans port_options.cfg.
+help.map.li.8 !unv = Avec un pack, {btn:l2} et {btn:r2} ne changent que le filtre, net ou doux.
+
+# ---------------------------------------------------------- logs & bugs
+help.logs.title = Journaux et bogues
+help.logs.blurb = Où sont les journaux et quoi envoyer.
+help.logs.h.1 = Journaux
+help.logs.p.1 = Le portage écrit dw3.log dans {path:root}. Il garde les cinq derniers lancements : dw3.log est le plus récent, puis dw3.1.log jusqu'à dw3.4.log. Chaque lancement écrit une ligne dw3-log: rotated qui indique si l'ancien journal a été renommé, copié ou perdu.
+help.logs.p.2 = Les fonctions consignent leurs décisions, une fois par événement, avec un préfixe comme dw3-port-options: ou dw3-map:, si bien qu'un rapport accompagné des journaux montre en général ce qui s'est passé.
+help.logs.h.2 = Après un plantage
+help.logs.p.3 = Un plantage écrit crash_report.txt à côté des journaux. Au lancement suivant, un panneau affiche "The last run crashed." avec la version, la raison et le chemin du rapport. Il attend jusqu'à 60 secondes, ou que vous appuyiez sur A, B ou Plus, et n'apparaît qu'une fois par plantage. Le rapport est ensuite déplacé vers crash_report_prev.txt.
+help.logs.warn.1 = Un seul rapport précédent est conservé. Si le jeu replante, copiez d'abord crash_report.txt, crash_report_prev.txt et tous les dw3*.log depuis la carte SD.
+help.logs.h.3 = Signaler un bogue
+help.logs.li.1 = Ouvrez un ticket sur le suivi GitHub du projet (Larbaco/dw3-switch). Cherchez d'abord, et complétez un ticket existant s'il correspond.
+help.logs.li.2 = Indiquez la version ({build:version}), la région ({build:region}), la console et le mode, des étapes numérotées, ce que vous attendiez, ce qui s'est passé et à quelle fréquence.
+help.logs.li.3 = Joignez tous les journaux et tout rapport de plantage. Soyez précis : la carte, le menu, le Digimon, la technique.
+help.logs.warn.2 = Ne joignez jamais d'image de disque, de fichiers BIOS ni de données extraites du jeu.
+
+# ------------------------------------------------------------------ faq
+help.faq.title = FAQ
+help.faq.blurb = Réponses courtes aux questions fréquentes.
+help.faq.q.1 = Écran large est grisé dans le jeu.
+help.faq.a.1 = Il est verrouillé pendant une partie. Revenez à l'écran titre (menu de la carte, dernière ligne) et changez-le là.
+help.faq.q.2 = {btn:r3} n'accélère rien.
+help.faq.a.2 = Vérifiez que Avance rapide n'est pas sur OFF. Le turbo ne marche que sur la carte, en combat et sur le rapport de combat ; l'écran titre, les vidéos, le jeu de cartes et les écrans Statut, Objets et Carte restent à vitesse normale.
+help.faq.q.3 = La combinaison de redémarrage ne fait rien.
+help.faq.a.3 = Raccourci de reset est sur OFF par défaut. Activez-le dans Options, Jouabilité. Relâchez les boutons avant de réessayer.
+help.faq.q.4 = {btn:select} n'ouvre pas Options.
+help.faq.a.4 = Sur l'écran titre, les choix doivent être affichés, et en combat le menu de commandes doit attendre. Le bouton est ignoré tant qu'un bouton d'épaule ou de gâchette est maintenu.
+help.faq.q.5 = L'écran titre affiche Continuer et Charger.
+help.faq.a.5 = Continuer charge aussitôt la sauvegarde auto. Charger ouvre la liste des emplacements. L'écran titre n'affiche Continuer que lorsqu'une sauvegarde auto existe.
+help.faq.q.6 = La sauvegarde auto n'a rien écrit.
+help.faq.a.6 = Elle écrit au premier moment calme d'une nouvelle zone. Elle attend la fin des événements, des menus et des combats, ne s'exécute pas au début de l'histoire, et une écriture ratée est seulement consignée. Vérifiez Options, Sauvegardes.
+help.faq.q.7 = Mes sauvegardes de l'autre région sont absentes.
+help.faq.a.7 = Les deux régions ont des sauvegardes séparées. La seule copie est un import unique vers une région qui n'a aucune sauvegarde.
+help.faq.q.8 = Le jeu s'est fermé quand j'ai annulé le choix du profil.
+help.faq.a.8 @switch !unv = C'est voulu : le jeu ne démarre qu'avec un profil choisi.
+help.faq.q.9 = Quitter n'a pas quitté le jeu.
+help.faq.a.9 = Quitter écrit d'abord vos emplacements. Si cela échoue, la sortie est annulée pour ne perdre aucune progression. Réessayez, et envoyez le journal si cela se répète.
+help.faq.q.10 = Le portage overclocke-t-il la console ?
+help.faq.a.10 = Non. Il laisse les fréquences du CPU et du GPU là où la console les a réglées.
+help.faq.q.11 = Où sont les problèmes connus ?
+help.faq.a.11 = Ils changent à chaque préversion, ils ne sont donc pas recopiés ici. Lisez les notes de version et les tickets ouverts sur la page GitHub du projet.

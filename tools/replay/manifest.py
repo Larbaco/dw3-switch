@@ -1716,16 +1716,19 @@ for _v, _reg in (("us", "US"), ("eu", "EU")):
                   forbid_log=_HELP_FORBID,
                   note="technical help from the battle's Options (Select at the command menu): "
                        "the battle stays frozen and resumes after it (P6.30)"))
-# The base game's other languages: the files are stubs until the translations
-# land, so the pages are English and the log says so (one line).
-_add(Scenario("eu-help-fr", "eu", "full", timeout=300,
-              expect_log=((0, r"dw3-help: open \(from title, region EU, platform pc, language fr, 10 pages\)"),
-                          (0, r"dw3-pages: text fallback help \* \(fr\): the language file has no keys yet "
-                              r"\(stub\), English shown"),
-                          (0, r"dw3-help: page controls \(from list,")),
-              forbid_log=((0, r"unresolved"), (0, r"cannot be (opened|allocated|laid out)")),
-              note="technical help with the EU disc set to French: the stub falls back to English "
-                   "with a log line, the screen's own lettering is French (P6.30, Q3)"))
+# The base game's other languages (machine-drafted text, needs native review):
+# the help is in the language, with no English fallback line.
+for _lang in ("fr", "de", "it", "es"):
+    _add(Scenario(f"eu-help-{_lang}", "eu", "full", timeout=300,
+                  expect_log=((0, r"dw3-help: open \(from title, region EU, platform pc, language " + _lang +
+                                  r", 10 pages\)"),
+                              (0, r"dw3-pages: text help " + _lang + r" loaded \(\d+ keys, \d+ qualified, "
+                                  r"\d+ filtered out for EU/pc, \d+ bytes\)"),
+                              (0, r"dw3-help: page controls \(from list,(?s:.*)dw3-help: page options \(from list,")),
+                  forbid_log=((0, r"unresolved"), (0, r"dw3-pages: text fallback"),
+                              (0, r"cannot be (opened|allocated|laid out)")),
+                  note=f"technical help with the EU disc set to {_lang}: the machine-drafted translation "
+                       "(page list, Controls, Options explained), no English fallback (P6.30, Q3)"))
 
 # The Quit game plaque and the window in the other four EU languages (the
 # lettering is authored, docs/PORT_OPTIONS.md "Quit and return to title").

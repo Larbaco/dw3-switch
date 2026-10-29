@@ -1,12 +1,189 @@
-# DW3NX technical help, German text (P6.30). TODO STUB.
-# The base game's languages need the help at launch (owner decision 2026-10-28,
-# docs/P6.30_HELP.md Q3). Until this file carries every key of en.txt, the help
-# falls back to English for de and logs it. Translate the values only: keep the
-# keys, the qualifiers, and the {btn:..} {path:..} tokens as in en.txt.
-# tools/generate_help_assets.py --check warns while this file is a stub, and
-# --release fails.
+# DW3NX technical help, German text (P6.30).
+# MACHINE-DRAFTED, NEEDS NATIVE REVIEW. Written by an AI agent from en.txt; the
+# owner approved the English and cannot check the other languages
+# (docs/P6.30_HELP.md section 12). Terms follow the EU disc's own words (field
+# menu: ITEMS, SORTIEREN, KARTE, TECHNIK, STATUS, OPTIONEN, TITELBILD) and the
+# port's own German lettering (tools/generate_pc_title_lettering.py), which
+# addresses the player as "du". Screen words the port only has in English (crash
+# panel, BUILDING, MOD 4X, Nearest, Lanczos2, FSR 1) stay in English between
+# quotation marks, as the game shows them.
+# Keys, qualifiers and {btn:..} {path:..} tokens are exactly those of en.txt.
 
 @format = 1
 @book = help
 @lang = de
-@status = todo stub, falls back to English
+@status = draft, machine-drafted, needs native review
+
+# --------------------------------------------------- the screen's own words
+help.ui.str.open = Öffnen
+help.ui.str.back = Zurück
+help.ui.str.scroll = Scrollen
+help.ui.str.pages = Seiten
+help.ui.str.page = Seite
+help.ui.str.unverified = (ungeprüft)
+help.ui.str.draft = (Entwurf)
+
+# ---------------------------------------------------------------- setup
+help.setup.title = Einrichtung
+help.setup.blurb = Was du brauchst und was der erste Start macht.
+help.setup.p.1 = Du brauchst eine Switch mit Atmosphere und hbmenu, die .nro der Portierung für die Region deiner Disc und deine eigene Disc als BIN- und CUE-Paar. Zur Portierung gehören keine Spieldateien, und eine Disc der falschen Region wird abgelehnt.
+help.setup.li.1 @us = US-Disc (SLUS-01436): dw3-switch.nro. Laufzeitordner {path:root}us/. Lege BIN und CUE in {path:root}.
+help.setup.li.2 @eu = EU-Disc (SLES-03936): dw3-switch-eu.nro. Laufzeitordner {path:root}eu/. Lege BIN und CUE in {path:root}eu/.
+help.setup.p.2 = Beim ersten Start liest das Spiel die Disc, entpackt die Spieldaten und zeigt einen Fortschrittsbalken. Lass es durchlaufen. Spätere Starts prüfen die entpackten Dateien und lesen das BIN nicht noch einmal.
+help.setup.warn.1 = Lösche oder verschiebe niemals die Speicherdateien, um ein neues Entpacken zu erzwingen. Sichere den Ordner memcard, bevor du einen Regionsordner löschst.
+help.setup.note.1 = US und EU haben getrennte Ordner und getrennte Einstellungen.
+
+# ------------------------------------------------------------- controls
+help.controls.title = Steuerung
+help.controls.blurb = Welche Taste was macht, im Spiel und in den Menüs.
+help.controls.p.1 = Das Spiel denkt in PlayStation-Tasten. Standardmäßig ordnet die Portierung deine Tasten nach ihrer Position zu, daher folgen die Aktionstasten nicht der gewohnten Nintendo-Reihenfolge. Mit Optionen, Steuerung, Tastenbelegung auf Nintendo bestätigt A und B bricht ab. Die rechte Spalte zeigt die Taste, die gerade jede PlayStation-Taste erzeugt, in der gewählten Belegung.
+help.controls.row.1 = Bewegen | {btn:dpad}
+help.controls.row.2 = Kreuz, bestätigt | {btn:cross}
+help.controls.row.3 = Kreis, bestätigt auch in den Optionen | {btn:circle}
+help.controls.row.4 = Dreieck, zurück in den Optionen | {btn:triangle}
+help.controls.row.5 = Quadrat | {btn:square}
+help.controls.row.6 = Start | {btn:start}
+help.controls.row.7 = Select | {btn:select}
+help.controls.row.8 = L1 und R1 | {btn:l1} und {btn:r1}
+help.controls.row.9 = L2 und R2 | {btn:l2} und {btn:r2}
+help.controls.row.10 = L3 und R3 | {btn:l3} und {btn:r3}
+help.controls.h.1 = Menüs
+help.controls.li.1 = Im Titelbild zeigt {btn:start} die Auswahl: Start, Optionen, Laden und Beenden. Hoch und Runter bewegen den Cursor, {btn:cross} bestätigt.
+help.controls.li.2 = Im Feld öffnet {btn:start} das Spielmenü. Es hat eine Zeile OPTIONEN und als letzte eine Zeile TITELBILD.
+help.controls.li.3 = Während eines Introfilms überspringst du ihn, indem du {btn:start} drückst oder gedrückt hältst.
+help.controls.li.4 @pc = Nur PC: F4 schaltet den Vollbildmodus um, Esc schließt das Fenster.
+help.controls.note.1 = Was eine Taste macht, hängt von der aktuellen Szene ab. Die Kürzel der Portierung haben eine eigene Seite.
+
+# -------------------------------------------------------------- hotkeys
+help.hotkeys.title = Kürzel
+help.hotkeys.blurb = Tastenkürzel, die die Portierung dem Spiel hinzufügt.
+help.hotkeys.row.1 = Schnellvorlauf ein oder aus | {btn:r3}
+help.hotkeys.row.2 = Spiel neu starten | {chord:restart}
+help.hotkeys.row.3 = Optionen aus dem Titelbild | {btn:select}
+help.hotkeys.row.4 = Optionen im Kampf | {btn:select}
+help.hotkeys.row.5 = Kartenansicht, im Kartenbildschirm | {btn:square}
+help.hotkeys.row.6 = Partnerwechsel, Ausrüstungsfenster | {btn:l2} und {btn:r2}
+help.hotkeys.h.1 = Neustart
+help.hotkeys.p.1 = Die Neustart-Kombination ist aus, bis du Neustart-Kürzel in den Optionen einschaltest. Halte alle vier Tasten zusammen gedrückt; sie löst pro Druck nur einmal aus, lass die Tasten also los, bevor du es erneut versuchst. Zuerst werden die Speicherplätze geschrieben, und schlägt das fehl, wird der Neustart abgebrochen. Fortschritt seit deinem letzten Speichern geht verloren. Die Zeile TITELBILD im Feldmenü führt denselben Neustart nach einer Ja-Nein-Frage aus.
+help.hotkeys.h.2 = Optionen
+help.hotkeys.p.2 = {btn:select} öffnet die Optionen aus dem Titelbild nur, solange die Auswahl sichtbar ist und keine Schulter- oder Triggertaste gehalten wird. Im Kampf funktioniert es nur, solange das Befehlsmenü auf dich wartet, nie während Angriffen und nicht in den Technik- und Item-Listen. Der Kampf steht vollständig still, solange die Optionen offen sind.
+help.hotkeys.h.3 = Partnerwechsel
+help.hotkeys.p.3 = Im Status, im Ausrüstungsfenster, springen {btn:l2} und {btn:r2} zum vorherigen oder nächsten Teammitglied, solange die Platzliste wartet. Dafür brauchst du mindestens zwei Partner.
+
+# ---------------------------------------------------------------- turbo
+help.turbo.title = Turbo
+help.turbo.blurb = Schnellvorlauf: was er beschleunigt und was nicht.
+help.turbo.p.1 = Drücke {btn:r3}, um den Turbo ein- oder auszuschalten. Das Spiel startet immer mit normaler Geschwindigkeit. Lass den Stick los, bevor du erneut drückst.
+help.turbo.p.2 = Das Tempo ist die Zeile Schnellvorlauf in den Optionen: 2x, 3x, 4x oder OFF. 2x ist die Vorgabe. OFF deaktiviert die Taste.
+help.turbo.h.1 = Wo er wirkt
+help.turbo.li.1 = Volles Tempo: Laufen, Text, Zwischensequenzen, Übergänge und Kampfanimationen im Feld und im Kampf sowie der Kampfbericht.
+help.turbo.li.2 = Etwa 1,5x bei eingeschaltetem Turbo: die über dem Feld oder einem Kampf geöffneten Menüs, etwa die Liste des Feldmenüs, die Optionen und das Befehlsmenü im Kampf.
+help.turbo.li.3 = Immer normales Tempo: das Titelbild, Filme, die Memory-Card-Bildschirme, das Kartenspiel, die Bildschirme Status, Items und Karte des Feldmenüs sowie die Läden.
+help.turbo.note.1 = Auch Musik und Soundeffekte werden schneller. Wie viel schneller das Spiel wirklich läuft, hängt davon ab, wie gut die Konsole mithalten kann.
+
+# -------------------------------------------------------------- options
+help.options.title = Optionen erklärt
+help.options.blurb = Jede Zeile, ihre Werte und ihre Vorgabe.
+help.options.p.1 = Die Optionen sind eine Liste von Gruppen: Anzeige, Ton, Gameplay, Speichern, Steuerung und Hilfe. Hoch und Runter wählen, {btn:cross} oder {btn:circle} öffnet eine Gruppe oder ändert eine Zeile, {btn:triangle} geht zurück. Eine Zeile unter der Liste erklärt die gewählte Zeile. Änderungen gelten sofort und werden in port_options.cfg gespeichert.
+help.options.p.2 = Öffne sie im Titelmenü, über die Zeile OPTIONEN des Feldmenüs oder im Kampf mit {btn:select}.
+help.options.h.1 = Anzeige
+help.options.li.1 = Breitbild: ON oder OFF, Vorgabe ON. Etwa 16:9 im Feld, im Kampf und in mehreren Menüs. Das Titelbild und die Filme bleiben 4:3.
+help.options.h.2 = Ton
+help.options.li.2 = Musikvolumen und Effektvolumen: OFF oder 1 bis 10, Vorgabe 10, das ist der Originalmix. Links und Rechts ändern in Schritten; {btn:cross} erhöht und springt von 10 auf 0. Der Bildschirm spielt die Menütöne des Spiels ab, damit du die Änderung hörst.
+help.options.h.3 = Gameplay
+help.options.li.3 = Schnellvorlauf: 2x, 3x, 4x oder OFF, Vorgabe 2x. Das Tempo, auf das {btn:r3} umschaltet.
+help.options.li.4 = Neustart-Kürzel: ON oder OFF, Vorgabe OFF. Aktiviert die Neustart-Kombination.
+help.options.li.5 = Kampfhäufigkeit: OFF, 0.5x, 1x, 1.5x oder 2x, Vorgabe 1x. Nur Zufallskämpfe; Story-Kämpfe finden weiterhin statt.
+help.options.li.6 = Textgeschwindigkeit: Normal, Schnell oder Sofort, Vorgabe Normal, das ist das Original.
+help.options.li.7 = Kampfcursor: OFF, Befehl oder Befehl+Tech, Vorgabe OFF. Das Befehlsmenü im Kampf, und mit Befehl+Tech auch die Technikliste, öffnet bei deiner letzten Wahl. Eine Änderung gilt ab der nächsten Runde.
+help.options.h.4 = Speichern
+help.options.li.8 = Auto-Speichern: OFF oder Jedes Gebiet, Vorgabe OFF. Siehe die Seite Speichern.
+help.options.h.5 = Steuerung
+help.options.li.9 = Tastenbelegung: PlayStation oder Nintendo, Vorgabe PlayStation, das ist das Original. Mit Nintendo bestätigt A und B geht zurück; die zweite Taste (Kreis) wandert auf X. Start, Select, die Schultertasten und die Sticks bleiben, wo sie sind. Die Einstellung gilt sofort und wird gespeichert.
+help.options.note.1 = Im Feld und im Kampf ist Breitbild grau und als gesperrt gekennzeichnet. Die Karte wird beim Laden eines Gebiets aufgebaut, ändere es also im Titelbild.
+help.options.note.2 = Auf der EU-Disc erscheinen die Zeilen und Texte in der Sprache des Spiels.
+
+# ---------------------------------------------------------------- saves
+help.saves.title = Speichern
+help.saves.blurb = Plätze, Auto-Speichern, Profile und Importe.
+help.saves.p.1 = Gespeichert wird von Hand, wie im Originalspiel. Die Portierung schreibt geänderte Plätze an sicheren Stellen und wenn du HOME drückst oder die Konsole in den Ruhemodus versetzt. Sie speichert nie von selbst, außer Auto-Speichern ist an; dann schreibt sie eine eigene Datei.
+help.saves.h.1 = Plätze und Dateien
+help.saves.li.1 = Zwei Plätze: save0.bin und save1.bin, dazu autosave.bin, sobald Auto-Speichern gelaufen ist.
+help.saves.li.2 = Sie liegen in {path:memcard}
+help.saves.li.3 @switch !unv = Spielstände gehören zum Switch-Benutzerprofil, das gerade spielt. Das Profil kommt aus der Profilauswahl des Launchers, sonst vom einzigen Benutzer der Konsole, sonst aus der Systemauswahl. Brichst du die Systemauswahl ab, startet das Spiel nicht.
+help.saves.li.4 @switch !unv = Spielstände aus älteren Vorabversionen (der einfache memcard-Ordner us oder eu) werden beim ersten Start eines Profils in dessen Ordner kopiert. Die Originale bleiben. Spätere Spielstände eines Profils erscheinen in keinem anderen.
+help.saves.li.5 = US und EU haben eigene Spielstände und Einstellungen.
+help.saves.li.6 = Die Einstellungen stehen in port_options.cfg im Regionsordner.
+help.saves.h.2 = Auto-Speichern
+help.saves.p.2 = Ist Auto-Speichern auf Jedes Gebiet gestellt, schreibt der erste ruhige Moment in jedem neuen Feldgebiet das Spiel nach autosave.bin. Deine zwei Plätze bleiben unangetastet, und es gibt nur einen Auto-Speicherstand: Ein neues Spiel ersetzt ihn beim ersten Gebietswechsel.
+help.saves.li.7 = Gibt es einen Auto-Speicherstand, zeigt das Titelbild Weiter, das ihn sofort lädt, und Laden, das die Platzliste öffnet. Ohne ihn gibt es kein Weiter.
+help.saves.li.8 = Er läuft nicht bei Ereignissen, in Menüs, Gesprächen, Kletterpassagen, Gebietsbannern, Überblendungen oder wenn ein Kampf beginnt, nicht bevor die Story weit genug ist, dass sich das Feldmenü öffnen lässt, und nicht auf einer Karte, die die Speicherliste nicht kennt. Ein Kampf, der ins selbe Gebiet zurückführt, zählt nicht.
+help.saves.li.9 = Ein fehlgeschlagener Schreibvorgang wird im Log vermerkt, und das Spiel macht mit dem alten Auto-Speicherstand weiter. Eine Meldung auf dem Bildschirm gibt es noch nicht.
+help.saves.h.3 = Import aus der anderen Region
+help.saves.p.3 !unv = Hat eine Region keinen eigenen Spielstand, kopiert der Build den Spielstand der anderen Region einmal, umgewandelt, in einen eigenen Platz. Das Original wird nie verändert, der Import läuft nur, wenn die Region gar keine Speicherdatei hat, und er läuft nicht erneut, wenn du die Kopie löschst. Danach angelegte Spielstände bleiben in ihrer Region. Ein Spielstand aus dem zusätzlichen EU-Kapitel wird nicht nach US importiert.
+help.saves.h.4 = Sicherungen
+help.saves.p.4 = Kopiere den Ordner memcard von der SD-Karte, um eine Sicherung zu haben. Tu das, bevor du einen Regionsordner löschst.
+
+# --------------------------------------------------------- widescreen
+help.widescreen.title = Breitbild
+help.widescreen.blurb = Das breite Bild und wo es gilt.
+help.widescreen.p.1 = Breitbild ist standardmäßig ON. Unterstützte Szenen, das Feld, Kämpfe und mehrere Menüs, nutzen breite Seitenflächen für etwa 16:9. Das Titelbild und die Filme bleiben 4:3. Das 240-Zeilen-Bild der EU-Disc folgt derselben Seitenverhältnis-Regel.
+help.widescreen.p.2 = In den Optionen lässt es sich live umschalten, ist aber gesperrt, solange ein Spiel läuft, weil die Karten beim Laden eines Gebiets aufgebaut werden. Ändere es im Titelbild.
+help.widescreen.note.1 = Die Kartenansicht braucht Breitbild auf ON.
+
+# ------------------------------------------------------------ map & mods
+help.map.title = Karte und Mods
+help.map.blurb = Die Vollbildkarte und das optionale Kartenpaket.
+help.map.h.1 = Kartenansicht
+help.map.p.1 !unv = Öffne das Feldmenü mit {btn:start}, wähle Karte und drücke dann {btn:square}. Die Karte füllt das breite Bild und zeigt die Städte und Gebiete, die du aufgedeckt hast. Breitbild muss ON sein.
+help.map.li.1 = {btn:dpad} bewegt den Cursor, der auf deinem aktuellen Gebiet startet. Auf einem Ort erscheint das Namensfeld des Spiels.
+help.map.li.2 = Der rechte Stick zoomt stufenlos; {btn:l1} und {btn:r1} zoomen in Schritten.
+help.map.li.3 = {btn:l2} und {btn:r2} wechseln den Skalierer. "Nearest" ist die Vorgabe. "Lanczos2" und "FSR 1" werden im Hintergrund berechnet, und der Bildschirm zeigt währenddessen "BUILDING".
+help.map.li.4 = {btn:circle} blendet den Text und das Namensfeld aus. {btn:triangle} schließt die Ansicht. {btn:r3} tut hier nichts.
+help.map.h.2 = Kartenpaket mit Hochskalierung
+help.map.p.2 !unv = Ein Paket ersetzt das Kartenbild durch ein schärferes. Zur Portierung gehört keines, weil es aus deiner eigenen Disc erzeugt wird. Ein PC-Werkzeug im Repository (tools/mods/extract_map_assets.py) entpackt die Basiskarte, startet einen Upscaler, den du installierst, und schreibt einen Ordner, den du auf der SD-Karte nach {path:root}mods/<pack>/ kopierst.
+help.map.li.5 !unv = Es gibt keine Zeile in den Optionen. Das Paket wird benutzt, sobald ein gültiges Paket für deine Region im Ordner mods liegt. Die Ansicht zeigt dann "MOD 4X".
+help.map.li.6 !unv = Eine Datei mit falscher Größe oder ein fehlendes Paket lässt die Ansicht auf die Originalkarte zurückfallen. Das Spiel braucht nie ein Paket zum Starten.
+help.map.li.7 !unv = Um zur Originalkarte zurückzukehren, benenne den Paketordner um oder entferne ihn, oder setze map_mod=0 in port_options.cfg.
+help.map.li.8 !unv = Mit einem Paket ändern {btn:l2} und {btn:r2} nur den Filter, scharf oder weich.
+
+# ---------------------------------------------------------- logs & bugs
+help.logs.title = Logs und Fehler
+help.logs.blurb = Wo die Logs liegen und was du schicken sollst.
+help.logs.h.1 = Logs
+help.logs.p.1 = Die Portierung schreibt dw3.log nach {path:root}. Sie behält die letzten fünf Läufe: dw3.log ist der neueste, danach dw3.1.log bis dw3.4.log. Jeder Start schreibt eine Zeile dw3-log: rotated, die sagt, ob das ältere Log umbenannt, kopiert oder verloren wurde.
+help.logs.p.2 = Funktionen protokollieren ihre Entscheidungen, einmal pro Ereignis, mit einem Präfix wie dw3-port-options: oder dw3-map:, sodass ein Bericht mit den Logs meist zeigt, was passiert ist.
+help.logs.h.2 = Nach einem Absturz
+help.logs.p.3 = Ein Absturz schreibt crash_report.txt neben die Logs. Beim nächsten Start zeigt ein Fenster "The last run crashed." mit der Version, dem Grund und dem Pfad des Berichts. Es wartet bis zu 60 Sekunden oder bis du A, B oder Plus drückst und erscheint einmal pro Absturz. Danach wird der Bericht nach crash_report_prev.txt verschoben.
+help.logs.warn.1 = Es wird nur ein früherer Bericht behalten. Stürzt das Spiel erneut ab, kopiere zuerst crash_report.txt, crash_report_prev.txt und alle dw3*.log von der SD-Karte.
+help.logs.h.3 = Einen Fehler melden
+help.logs.li.1 = Eröffne ein Issue im GitHub-Tracker des Projekts (Larbaco/dw3-switch). Such zuerst nach einem passenden Issue und ergänze es, falls es passt.
+help.logs.li.2 = Nenne die Version ({build:version}), die Region ({build:region}), die Konsole und den Modus, nummerierte Schritte, was du erwartet hast, was passiert ist und wie oft.
+help.logs.li.3 = Hänge alle Logs und jeden Absturzbericht an. Sei genau: die Karte, das Menü, das Digimon, die Technik.
+help.logs.warn.2 = Hänge niemals ein Disc-Image, BIOS-Dateien oder entpackte Spieldaten an.
+
+# ------------------------------------------------------------------ faq
+help.faq.title = FAQ
+help.faq.blurb = Kurze Antworten auf häufige Fragen.
+help.faq.q.1 = Breitbild ist im Spiel grau.
+help.faq.a.1 = Es ist gesperrt, solange ein Spiel läuft. Geh zurück ins Titelbild (Feldmenü, letzte Zeile) und ändere es dort.
+help.faq.q.2 = {btn:r3} beschleunigt nichts.
+help.faq.a.2 = Prüfe, ob Schnellvorlauf nicht auf OFF steht. Der Turbo wirkt nur im Feld, im Kampf und im Kampfbericht; das Titelbild, Filme, das Kartenspiel und die Bildschirme Status, Items und Karte bleiben bei normalem Tempo.
+help.faq.q.3 = Die Neustart-Kombination tut nichts.
+help.faq.a.3 = Neustart-Kürzel ist standardmäßig OFF. Schalte es in den Optionen unter Gameplay ein. Lass die Tasten los, bevor du es erneut versuchst.
+help.faq.q.4 = {btn:select} öffnet die Optionen nicht.
+help.faq.a.4 = Im Titelbild muss die Auswahl sichtbar sein, und im Kampf muss das Befehlsmenü warten. Die Taste wird ignoriert, solange eine Schulter- oder Triggertaste gehalten wird.
+help.faq.q.5 = Das Titelbild zeigt Weiter und Laden.
+help.faq.a.5 = Weiter lädt den Auto-Speicherstand sofort. Laden öffnet die Platzliste. Das Titelbild zeigt Weiter nur, wenn ein Auto-Speicherstand existiert.
+help.faq.q.6 = Auto-Speichern hat nichts geschrieben.
+help.faq.a.6 = Es schreibt im ersten ruhigen Moment eines neuen Gebiets. Es wartet Ereignisse, Menüs und Kämpfe ab, läuft nicht früh in der Story, und ein fehlgeschlagener Schreibvorgang wird nur im Log vermerkt. Prüfe Optionen, Speichern.
+help.faq.q.7 = Meine Spielstände aus der anderen Region fehlen.
+help.faq.a.7 = Die beiden Regionen haben getrennte Spielstände. Die einzige Kopie ist ein einmaliger Import in eine Region, die gar keinen Spielstand hat.
+help.faq.q.8 = Das Spiel schloss sich, als ich die Profilauswahl abbrach.
+help.faq.a.8 @switch !unv = Das ist beabsichtigt: Das Spiel startet nur mit einem gewählten Profil.
+help.faq.q.9 = Beenden hat das Spiel nicht beendet.
+help.faq.a.9 = Beim Beenden werden zuerst deine Plätze geschrieben. Schlägt das fehl, wird das Beenden abgebrochen, damit kein Fortschritt verloren geht. Versuche es erneut und schick das Log, falls es sich wiederholt.
+help.faq.q.10 = Übertaktet die Portierung die Konsole?
+help.faq.a.10 = Nein. Sie lässt die CPU- und GPU-Takte so, wie die Konsole sie eingestellt hat.
+help.faq.q.11 = Wo stehen die bekannten Probleme?
+help.faq.a.11 = Sie ändern sich mit jeder Vorabversion und sind deshalb nicht hierher kopiert. Lies die Release-Notes und die offenen Issues auf der GitHub-Seite des Projekts.

@@ -1,12 +1,189 @@
-# DW3NX technical help, Italian text (P6.30). TODO STUB.
-# The base game's languages need the help at launch (owner decision 2026-10-28,
-# docs/P6.30_HELP.md Q3). Until this file carries every key of en.txt, the help
-# falls back to English for it and logs it. Translate the values only: keep the
-# keys, the qualifiers, and the {btn:..} {path:..} tokens as in en.txt.
-# tools/generate_help_assets.py --check warns while this file is a stub, and
-# --release fails.
+# DW3NX technical help, Italian text (P6.30).
+# MACHINE-DRAFTED, NEEDS NATIVE REVIEW. Written by an AI agent from en.txt; the
+# owner approved the English and cannot check the other languages
+# (docs/P6.30_HELP.md section 12). Terms follow the EU disc's own words (field
+# menu: OGGETTI, ORDINA, MAPPA, TECNICHE, STATO, OPZIONI, TORNA AL TITOLO) and the
+# port's own Italian lettering (tools/generate_pc_title_lettering.py), which
+# addresses the player as "tu". Screen words the port only has in English (crash
+# panel, BUILDING, MOD 4X, Nearest, Lanczos2, FSR 1) stay in English between
+# quotation marks, as the game shows them.
+# Keys, qualifiers and {btn:..} {path:..} tokens are exactly those of en.txt.
 
 @format = 1
 @book = help
 @lang = it
-@status = todo stub, falls back to English
+@status = draft, machine-drafted, needs native review
+
+# --------------------------------------------------- the screen's own words
+help.ui.str.open = Apri
+help.ui.str.back = Indietro
+help.ui.str.scroll = Scorri
+help.ui.str.pages = Pagine
+help.ui.str.page = Pagina
+help.ui.str.unverified = (non verificato)
+help.ui.str.draft = (bozza)
+
+# ---------------------------------------------------------------- setup
+help.setup.title = Installazione
+help.setup.blurb = Che cosa serve e che cosa fa il primo avvio.
+help.setup.p.1 = Ti servono una Switch con Atmosphere e hbmenu, il .nro del port per la regione del tuo disco e il tuo disco copiato come coppia BIN e CUE. Col port non arriva nessun file del gioco, e un disco della regione sbagliata viene rifiutato.
+help.setup.li.1 @us = Disco US (SLUS-01436): dw3-switch.nro. Cartella di esecuzione {path:root}us/. Metti BIN e CUE in {path:root}.
+help.setup.li.2 @eu = Disco EU (SLES-03936): dw3-switch-eu.nro. Cartella di esecuzione {path:root}eu/. Metti BIN e CUE in {path:root}eu/.
+help.setup.p.2 = Al primo avvio il gioco legge il disco, estrae i dati e mostra una barra di avanzamento. Lascialo finire. Gli avvii successivi controllano i file estratti e non rileggono il BIN.
+help.setup.warn.1 = Non cancellare né spostare mai i file di salvataggio per forzare una nuova estrazione. Fai una copia della cartella memcard prima di cancellare la cartella di una regione.
+help.setup.note.1 = US ed EU hanno cartelle e impostazioni separate.
+
+# ------------------------------------------------------------- controls
+help.controls.title = Comandi
+help.controls.blurb = Quale pulsante fa cosa, nel gioco e nei menu.
+help.controls.p.1 = Il gioco ragiona in pulsanti PlayStation. Di norma il port associa i tuoi pulsanti per posizione, quindi i pulsanti frontali non seguono l'ordine consueto di Nintendo. Con Opzioni, Comandi, Disposizione tasti su Nintendo, A conferma e B annulla. La colonna di destra mostra il pulsante che produce ogni pulsante PlayStation in questo momento, nella disposizione scelta.
+help.controls.row.1 = Movimento | {btn:dpad}
+help.controls.row.2 = Croce, conferma | {btn:cross}
+help.controls.row.3 = Cerchio, conferma anche nelle Opzioni | {btn:circle}
+help.controls.row.4 = Triangolo, indietro nelle Opzioni | {btn:triangle}
+help.controls.row.5 = Quadrato | {btn:square}
+help.controls.row.6 = Start | {btn:start}
+help.controls.row.7 = Select | {btn:select}
+help.controls.row.8 = L1 e R1 | {btn:l1} e {btn:r1}
+help.controls.row.9 = L2 e R2 | {btn:l2} e {btn:r2}
+help.controls.row.10 = L3 e R3 | {btn:l3} e {btn:r3}
+help.controls.h.1 = Menu
+help.controls.li.1 = Nella schermata del titolo, {btn:start} mostra le scelte: Inizia, Opzioni, Carica ed Esci. Su e Giù spostano il cursore, {btn:cross} conferma.
+help.controls.li.2 = Sul campo, {btn:start} apre il menu del gioco. Ha una riga OPZIONI e, per ultima, una riga TORNA AL TITOLO.
+help.controls.li.3 = Durante un filmato iniziale, premi o tieni premuto {btn:start} per saltarlo.
+help.controls.li.4 @pc = Solo PC: F4 attiva o disattiva lo schermo intero, Esc chiude la finestra.
+help.controls.note.1 = Ciò che fa un pulsante dipende dalla scena in cui ti trovi. Le scorciatoie del port hanno una pagina a parte.
+
+# -------------------------------------------------------------- hotkeys
+help.hotkeys.title = Scorciatoie
+help.hotkeys.blurb = Le scorciatoie che il port aggiunge al gioco.
+help.hotkeys.row.1 = Avanzamento rapido sì o no | {btn:r3}
+help.hotkeys.row.2 = Riavviare il gioco | {chord:restart}
+help.hotkeys.row.3 = Opzioni dalla schermata del titolo | {btn:select}
+help.hotkeys.row.4 = Opzioni in battaglia | {btn:select}
+help.hotkeys.row.5 = Vista mappa, nella schermata Mappa | {btn:square}
+help.hotkeys.row.6 = Cambio partner, pannello equipaggiamento | {btn:l2} e {btn:r2}
+help.hotkeys.h.1 = Riavvio
+help.hotkeys.p.1 = La combinazione di riavvio è disattivata finché non attivi Scorciatoia reset nelle Opzioni. Tieni premuti insieme i quattro pulsanti; scatta una sola volta per pressione, quindi rilasciali prima di riprovare. Prima vengono scritti gli slot di salvataggio, e se questo fallisce il riavvio viene annullato. I progressi dall'ultimo salvataggio vanno persi. La riga TORNA AL TITOLO del menu del campo fa lo stesso riavvio dopo una domanda Sì o No.
+help.hotkeys.h.2 = Opzioni
+help.hotkeys.p.2 = {btn:select} apre le Opzioni dalla schermata del titolo solo mentre le scelte sono visibili e nessun pulsante dorsale o grilletto è premuto. In battaglia funziona solo mentre il menu dei comandi aspetta te, mai durante gli attacchi né negli elenchi di tecniche e oggetti. La battaglia resta del tutto ferma finché le Opzioni sono aperte.
+help.hotkeys.h.3 = Cambio partner
+help.hotkeys.p.3 = In Stato, nel pannello equipaggiamento, mentre l'elenco degli slot è in attesa, {btn:l2} e {btn:r2} passano al membro della squadra precedente o successivo. Servono due o più partner.
+
+# ---------------------------------------------------------------- turbo
+help.turbo.title = Turbo
+help.turbo.blurb = Avanzamento rapido: cosa accelera e cosa no.
+help.turbo.p.1 = Premi {btn:r3} per attivare o disattivare il turbo. Il gioco parte sempre a velocità normale. Rilascia lo stick prima di premere di nuovo.
+help.turbo.p.2 = La velocità è la riga Avanzamento rapido delle Opzioni: 2x, 3x, 4x oppure OFF. 2x è il valore predefinito. OFF disattiva il pulsante.
+help.turbo.h.1 = Dove funziona
+help.turbo.li.1 = Piena velocità: camminata, testi, scene, transizioni e animazioni di battaglia sul campo e in battaglia, e il resoconto della battaglia.
+help.turbo.li.2 = Circa 1,5x a turbo attivo: i menu aperti sul campo o in battaglia, come l'elenco del menu del campo, le Opzioni e il menu dei comandi di battaglia.
+help.turbo.li.3 = Sempre velocità normale: la schermata del titolo, i filmati, le schermate della memory card, il gioco di carte, le schermate Stato, Oggetti e Mappa del menu del campo, e i negozi.
+help.turbo.note.1 = Accelerano anche la musica e gli effetti sonori. Quanto più veloce giri davvero il gioco dipende da quanto riesce a stare al passo la console.
+
+# -------------------------------------------------------------- options
+help.options.title = Le Opzioni spiegate
+help.options.blurb = Ogni riga, i suoi valori e il valore predefinito.
+help.options.p.1 = Le Opzioni sono un elenco di gruppi: Schermo, Audio, Gameplay, Salvataggi, Comandi e Aiuto. Su e Giù scelgono, {btn:cross} o {btn:circle} apre un gruppo o cambia una riga, {btn:triangle} torna indietro. Una riga sotto l'elenco spiega la riga selezionata. Le modifiche valgono subito e sono salvate in port_options.cfg.
+help.options.p.2 = Aprile dal menu del titolo, dalla riga OPZIONI del menu del campo, o in battaglia con {btn:select}.
+help.options.h.1 = Schermo
+help.options.li.1 = Schermo largo: ON oppure OFF, predefinito ON. Circa 16:9 sul campo, in battaglia e in vari menu. La schermata del titolo e i filmati restano in 4:3.
+help.options.h.2 = Audio
+help.options.li.2 = Volume musica e Volume effetti: OFF, oppure da 1 a 10, predefinito 10, cioè il mix originale. Sinistra e Destra cambiano il valore a passi; {btn:cross} lo aumenta e da 10 torna a 0. La schermata riproduce i suoni di menu del gioco, così senti la differenza.
+help.options.h.3 = Gameplay
+help.options.li.3 = Avanzamento rapido: 2x, 3x, 4x oppure OFF, predefinito 2x. La velocità a cui passa {btn:r3}.
+help.options.li.4 = Scorciatoia reset: ON oppure OFF, predefinito OFF. Attiva la combinazione di riavvio.
+help.options.li.5 = Frequenza scontri: OFF, 0.5x, 1x, 1.5x oppure 2x, predefinito 1x. Solo scontri casuali; le battaglie della storia avvengono comunque.
+help.options.li.6 = Velocità del testo: Normale, Veloce o Istantaneo, predefinito Normale, cioè l'originale.
+help.options.li.7 = Cursore battaglia: OFF, Comando o Comando+Tec., predefinito OFF. Il menu dei comandi di battaglia, e con Comando+Tec. anche l'elenco delle tecniche, si apre sull'ultima scelta. Una modifica vale dal turno successivo.
+help.options.h.4 = Salvataggi
+help.options.li.8 = Salvataggio auto: OFF oppure Ogni area, predefinito OFF. Vedi la pagina Salvataggi.
+help.options.h.5 = Comandi
+help.options.li.9 = Disposizione tasti: PlayStation o Nintendo, predefinito PlayStation, cioè l'originale. Con Nintendo, A conferma e B torna indietro; il pulsante secondario (Cerchio) passa su X. Start, Select, i dorsali e gli stick non si spostano. Vale subito ed è salvato.
+help.options.note.1 = Sul campo e in battaglia Schermo largo è grigio e indica che è bloccato. La mappa viene impaginata quando si carica un'area, quindi cambialo nella schermata del titolo.
+help.options.note.2 = Sul disco EU le righe e i testi compaiono nella lingua del gioco.
+
+# ---------------------------------------------------------------- saves
+help.saves.title = Salvataggi
+help.saves.blurb = Slot, salvataggio auto, profili e importazioni.
+help.saves.p.1 = Si salva a mano, come nel gioco originale. Il port scrive gli slot modificati in momenti sicuri e quando premi HOME o metti la console in sospensione. Non salva mai da solo, a meno che Salvataggio auto sia attivo; in quel caso scrive un file a parte.
+help.saves.h.1 = Slot e file
+help.saves.li.1 = Due slot: save0.bin e save1.bin, più autosave.bin dopo che il salvataggio auto è stato eseguito.
+help.saves.li.2 = Si trovano in {path:memcard}
+help.saves.li.3 @switch !unv = I salvataggi appartengono al profilo utente Switch che sta giocando. Il profilo viene dal selettore del launcher, altrimenti dall'unico utente della console, altrimenti dal selettore di sistema. Se annulli il selettore di sistema, il gioco non parte.
+help.saves.li.4 @switch !unv = I salvataggi delle vecchie anteprime (la cartella memcard semplice us o eu) vengono copiati nella cartella di ogni profilo al primo avvio di quel profilo. Gli originali restano. I salvataggi successivi di un profilo non compaiono in un altro.
+help.saves.li.5 = US ed EU tengono salvataggi e impostazioni propri.
+help.saves.li.6 = Le impostazioni sono in port_options.cfg, nella cartella della regione.
+help.saves.h.2 = Salvataggio auto
+help.saves.p.2 = Con Salvataggio auto su Ogni area, il primo momento tranquillo in ogni nuova area del campo scrive la partita in autosave.bin. Non tocca mai i tuoi due slot, e c'è un solo salvataggio auto: una nuova partita lo sostituisce al primo cambio di area.
+help.saves.li.7 = Con un salvataggio auto presente, la schermata del titolo mostra Continua, che lo carica subito, e Carica, che apre l'elenco degli slot. Senza, il titolo non ha Continua.
+help.saves.li.8 = Non scatta durante eventi, menu, dialoghi, scalate, striscioni delle aree, dissolvenze o quando inizia una battaglia, né finché la storia non è abbastanza avanti da aprire il menu del campo, né su una mappa che l'elenco dei salvataggi non conosce. Una battaglia che riporta nella stessa area non conta.
+help.saves.li.9 = Una scrittura fallita viene registrata nel log e il gioco prosegue con il vecchio salvataggio auto. Per ora non c'è nessun messaggio a schermo.
+help.saves.h.3 = Importare dall'altra regione
+help.saves.p.3 !unv = Se una regione non ha un salvataggio proprio, la build copia una volta il salvataggio dell'altra regione, convertito, in un suo slot. Non modifica mai l'originale, scatta solo se la regione non ha alcun file di salvataggio, e non si ripete se cancelli la copia. I salvataggi fatti dopo restano nella loro regione. Un salvataggio del capitolo extra EU non viene importato in US.
+help.saves.h.4 = Copie di sicurezza
+help.saves.p.4 = Copia la cartella memcard dalla scheda SD per avere una copia di sicurezza. Fallo prima di cancellare la cartella di una regione.
+
+# --------------------------------------------------------- widescreen
+help.widescreen.title = Schermo largo
+help.widescreen.blurb = L'immagine larga e dove si applica.
+help.widescreen.p.1 = Schermo largo è su ON per impostazione predefinita. Le scene supportate, il campo, le battaglie e vari menu, usano ampie aree laterali per circa 16:9. La schermata del titolo e i filmati restano in 4:3. L'immagine a 240 linee del disco EU segue la stessa regola di proporzioni.
+help.widescreen.p.2 = Si cambia dal vivo nelle Opzioni, ma è bloccato mentre una partita è in corso, perché le mappe vengono impaginate quando si carica un'area. Cambialo nella schermata del titolo.
+help.widescreen.note.1 = La vista mappa richiede Schermo largo su ON.
+
+# ------------------------------------------------------------ map & mods
+help.map.title = Mappa e mod
+help.map.blurb = La mappa a schermo intero e il pacchetto facoltativo.
+help.map.h.1 = Vista mappa
+help.map.p.1 !unv = Apri il menu del campo con {btn:start}, scegli Mappa, poi premi {btn:square}. La mappa riempie l'immagine larga e mostra le città e le aree che hai scoperto. Schermo largo deve essere su ON.
+help.map.li.1 = {btn:dpad} sposta il cursore, che parte dalla tua area attuale. Su un luogo compare il riquadro del nome del gioco.
+help.map.li.2 = Lo stick destro ingrandisce con continuità; {btn:l1} e {btn:r1} ingrandiscono a passi.
+help.map.li.3 = {btn:l2} e {btn:r2} cambiano il ridimensionatore. "Nearest" è il predefinito. "Lanczos2" e "FSR 1" si calcolano in secondo piano, e nel frattempo lo schermo mostra "BUILDING".
+help.map.li.4 = {btn:circle} nasconde il testo e il riquadro del nome. {btn:triangle} chiude la vista. {btn:r3} qui non fa nulla.
+help.map.h.2 = Pacchetto di ingrandimento della mappa
+help.map.p.2 !unv = Un pacchetto sostituisce l'immagine della mappa con una più nitida. Col port non ne arriva nessuno, perché è creato dal tuo disco. Uno strumento per PC nel repository (tools/mods/extract_map_assets.py) estrae la mappa di base, avvia un ingranditore che installi tu e scrive una cartella da copiare in {path:root}mods/<pack>/ sulla scheda SD.
+help.map.li.5 !unv = Non c'è nessuna riga nelle Opzioni. Il pacchetto viene usato ogni volta che nella cartella mods c'è un pacchetto valido per la tua regione. La vista mostra allora "MOD 4X".
+help.map.li.6 !unv = Un file della dimensione sbagliata, o un pacchetto mancante, fa tornare la vista alla mappa originale. Il gioco non ha mai bisogno di un pacchetto per partire.
+help.map.li.7 !unv = Per tornare alla mappa originale, rinomina o rimuovi la cartella del pacchetto, oppure metti map_mod=0 in port_options.cfg.
+help.map.li.8 !unv = Con un pacchetto, {btn:l2} e {btn:r2} cambiano solo il filtro, nitido o morbido.
+
+# ---------------------------------------------------------- logs & bugs
+help.logs.title = Log e segnalazioni
+help.logs.blurb = Dove sono i log e che cosa inviare.
+help.logs.h.1 = Log
+help.logs.p.1 = Il port scrive dw3.log in {path:root}. Conserva le ultime cinque esecuzioni: dw3.log è il più recente, poi da dw3.1.log a dw3.4.log. Ogni avvio scrive una riga dw3-log: rotated che dice se il log precedente è stato rinominato, copiato o perso.
+help.logs.p.2 = Le funzioni registrano le loro decisioni, una volta per evento, con un prefisso come dw3-port-options: o dw3-map:, così una segnalazione con i log di solito mostra che cosa è successo.
+help.logs.h.2 = Dopo un arresto anomalo
+help.logs.p.3 = Un arresto anomalo scrive crash_report.txt accanto ai log. Al successivo avvio un pannello mostra "The last run crashed." con la versione, il motivo e il percorso del rapporto. Aspetta fino a 60 secondi, o finché premi A, B o Plus, e compare una volta per arresto. Il rapporto viene poi spostato in crash_report_prev.txt.
+help.logs.warn.1 = Viene conservato un solo rapporto precedente. Se il gioco si ferma di nuovo, copia prima dalla scheda SD crash_report.txt, crash_report_prev.txt e tutti i dw3*.log.
+help.logs.h.3 = Segnalare un bug
+help.logs.li.1 = Apri una issue sul tracker GitHub del progetto (Larbaco/dw3-switch). Cerca prima, e aggiungi i tuoi dati a una issue esistente se coincide.
+help.logs.li.2 = Indica la versione ({build:version}), la regione ({build:region}), la console e la modalità, passaggi numerati, che cosa ti aspettavi, che cosa è successo e con che frequenza.
+help.logs.li.3 = Allega tutti i log e ogni rapporto di arresto anomalo. Sii preciso: la mappa, il menu, il Digimon, la tecnica.
+help.logs.warn.2 = Non allegare mai un'immagine del disco, file BIOS o dati estratti dal gioco.
+
+# ------------------------------------------------------------------ faq
+help.faq.title = FAQ
+help.faq.blurb = Risposte brevi alle domande più comuni.
+help.faq.q.1 = Schermo largo è grigio nel gioco.
+help.faq.a.1 = È bloccato mentre una partita è in corso. Torna alla schermata del titolo (menu del campo, ultima riga) e cambialo lì.
+help.faq.q.2 = {btn:r3} non accelera nulla.
+help.faq.a.2 = Controlla che Avanzamento rapido non sia su OFF. Il turbo funziona solo sul campo, in battaglia e nel resoconto della battaglia; la schermata del titolo, i filmati, il gioco di carte e le schermate Stato, Oggetti e Mappa restano a velocità normale.
+help.faq.q.3 = La combinazione di riavvio non fa nulla.
+help.faq.a.3 = Scorciatoia reset è su OFF per impostazione predefinita. Attivala in Opzioni, Gameplay. Rilascia i pulsanti prima di riprovare.
+help.faq.q.4 = {btn:select} non apre le Opzioni.
+help.faq.a.4 = Nella schermata del titolo le scelte devono essere visibili, e in battaglia il menu dei comandi deve essere in attesa. Il pulsante viene ignorato finché un dorsale o un grilletto è premuto.
+help.faq.q.5 = Il titolo mostra Continua e Carica.
+help.faq.a.5 = Continua carica subito il salvataggio auto. Carica apre l'elenco degli slot. Il titolo mostra Continua solo quando esiste un salvataggio auto.
+help.faq.q.6 = Il salvataggio auto non ha scritto nulla.
+help.faq.a.6 = Scrive al primo momento tranquillo di una nuova area. Aspetta la fine di eventi, menu e battaglie, non scatta all'inizio della storia, e una scrittura fallita viene solo registrata nel log. Controlla Opzioni, Salvataggi.
+help.faq.q.7 = I miei salvataggi dell'altra regione non ci sono.
+help.faq.a.7 = Le due regioni tengono salvataggi separati. L'unica copia è un'importazione una tantum in una regione che non ha alcun salvataggio.
+help.faq.q.8 = Il gioco si è chiuso quando ho annullato la scelta del profilo.
+help.faq.a.8 @switch !unv = È voluto: il gioco parte solo con un profilo scelto.
+help.faq.q.9 = Esci non ha chiuso il gioco.
+help.faq.a.9 = Esci scrive prima i tuoi slot. Se fallisce, l'uscita viene annullata per non perdere progressi. Riprova, e invia il log se si ripete.
+help.faq.q.10 = Il port fa l'overclock della console?
+help.faq.a.10 = No. Lascia le frequenze di CPU e GPU dove le ha impostate la console.
+help.faq.q.11 = Dove sono i problemi noti?
+help.faq.a.11 = Cambiano a ogni anteprima, quindi non sono copiati qui. Leggi le note di rilascio e le issue aperte sulla pagina GitHub del progetto.
