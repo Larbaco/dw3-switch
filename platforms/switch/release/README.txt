@@ -297,7 +297,8 @@ Known issues
   In-game Options: the first frame after the open is 27 to 28 ms on the
   Switch with preview.47 (it was 93 ms in preview.45); the owner accepts the
   feel (plan B15b). The map HUD strip covers the top of the map at 1.00x.
-  EU audio after many techs is still open (#188, plan D13).
+  EU audio after many techs passed on the OLED with preview.51 (#188, plan D13:
+  31 min, 0 underruns, 0 key-on failures).
 
 Carried forward
 

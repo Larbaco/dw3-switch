@@ -26,6 +26,15 @@ def test_parse_status_and_session():
     assert all(r["session"] == "Session A" for r in rows)
 
 
+def test_checklist_section_ignores_a_sentence_that_mentions_it():
+    notes = ("The OLED checklist at the end lists A5.\n\nOLED checklist\n  - A8 item\n\n"
+             "  After any crash, keep\n")
+    got = mod.checklist_section(notes)
+    assert got.startswith("OLED checklist\n")
+    assert "A5" not in got
+    assert "A8 item" in got
+
+
 def test_checklist_section_stops_before_crash_paragraph():
     notes = "intro\nOLED checklist\n  - A5 item\n\n  After any crash, keep\nend A1"
     assert mod.checklist_section(notes).strip() == "OLED checklist\n  - A5 item"

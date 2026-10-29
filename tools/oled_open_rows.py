@@ -54,10 +54,14 @@ def parse_plan(text: str) -> list[dict]:
 
 
 def checklist_section(notes: str) -> str:
-    """The text of the "OLED checklist" block of a release notes file."""
-    start = notes.find("OLED checklist")
-    if start < 0:
+    """The text of the "OLED checklist" block of a release notes file.
+
+    The block starts at the heading line only: a sentence that mentions the
+    checklist (the notes' intro) is not the heading."""
+    m = re.search(r"^OLED checklist[ \t]*$", notes, re.MULTILINE)
+    if not m:
         return ""
+    start = m.start()
     end = notes.find("After any crash", start)
     return notes[start:end if end > 0 else len(notes)]
 
