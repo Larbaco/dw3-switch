@@ -566,7 +566,11 @@ for _lang, _id in (("fr", 3), ("it", 4), ("de", 5), ("es", 6)):
 for _v in ("us", "eu"):
     _add(Scenario(f"{_v}-options-cheats-listed", _v, "full", timeout=300,
                   expect_log=((0, r"dw3-port-options: group list n=7 \(cheats listed, master off, "
-                                  r"locked in game 0\)(?s:.*)dw3-port-options: group open cheats \(group\)"),),
+                                  r"locked in game 0\)(?s:.*)dw3-port-options: group open cheats \(group\)"),
+                              # P51 item 6: the game's menu background under the Options screens
+                              (0, r"dw3-options: menu background tile 96x96 from the status sprites "
+                                  r"\(sprite 0x1D\) ready in \d+ us"),),
+                  forbid_log=((0, r"menu background tile not available"),),
                   note="the Cheats group is listed with the master switch off (P51 item 5)"))
 
 # P51 item 4: the Region at start row of the combined image (tier `both`: needs

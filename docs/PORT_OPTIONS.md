@@ -908,6 +908,29 @@ scrolled; `cheats-give`, the end of the list) now compare pictures.
 
 See [OLED_TEST_PLAN](OLED_TEST_PLAN.md) A5, A9 to A12 and their proof lines.
 
+## Menu background (P51 item 6)
+
+The title's Options, Cheats and Help screens draw the game's own field-menu background
+(sprite 0x1D of the status sprites: a 96 x 96 period of blue panels) under the plaques,
+dimmed (alpha 90 of 255), instead of the dimmed title picture. In game the near-opaque dim
+stays (the field menu behind must not read through). **Static, not scrolling:** the
+game scrolls it one pixel every other frame, but the Options layers are retained (the
+cache of #298 / #327 composes them once), and a scroll would recompose the layer, about 160 ms,
+every frame. A scrolling version needs a textured quad with a UV offset drawn under the canvas
+in both hosts (SDL3 GPU and the Switch GLES overlay); that is the follow-up, and the OLED
+row A18 asks whether the owner wants it.
+
+Code: `platforms/pc/src/menu_bg_tile.c` reads `STSTATCS.BIN` and `STSTATTM.BIN`
+(FILE_STATUS_SPRITES 0x3F4 US / 0x404 EU and the file after it) through cdfs, places entry 0
+(two TIMs at VRAM (0x280, 0x100) and (0x2C0, 0x100)), decodes the 4-bit parts of frame 0x1D
+that fall in one period with the game's sprite rules, and returns an RGBA tile; no game data
+is written anywhere. `dw3_pc_title_overlay_menu_tile_prepare()` runs it once, on the frame
+thread, before the first layer is composed (`dw3_options_cache_prewarm_begin` / `_update`),
+and logs `dw3-options: menu background tile 96x96 from the status sprites (sprite 0x1D) ready
+in N us` (4 to 6 ms in the PC runs) or `... not available (reason), using the title backdrop`.
+The 16:9 side strips use the canvas's top-left texel, so it holds the tile's average colour
+(dimmed): flat navy beside the tiled middle. Same art code on the Switch (the overlay is shared).
+
 ## Region at start row (P51 item 4)
 
 A sixth row of the Gameplay group, **only in the combined image** (`DW3_VERSION=both`;

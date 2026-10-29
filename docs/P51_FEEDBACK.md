@@ -571,3 +571,17 @@ All with the orchestrator defaults (pending the owner's confirmation). Items 1 (
 
 The Region row needs the new registry row to be in `dw3_optgroups[Gameplay]` only in the
 combined image, so the plain builds' Gameplay screens are unchanged.
+
+## 12. Built: PR 4, the Options background (2026-10-29)
+
+Orchestrator default 6, **static version**: "yes, dimmed; static (no scroll) if the scroll costs frame time".
+The scroll does: the retained STATIC layer would be recomposed (about 160 ms) every frame. What
+was built is described in [PORT_OPTIONS](PORT_OPTIONS.md#menu-background-p51-item-6): the game's tile
+(sprite 0x1D) decoded once from the disc files (4 to 6 ms, logged), baked into the retained layer, dimmed
+under the plaques; no per-frame cost, so there was nothing to measure beyond that one-time decode
+(`dw3-options: menu background tile ... ready in N us`). The size answers the doc's "about 96 px,
+unverified": the frame is a field of 48 x 48 parts repeating every 96 px. The scrolling follow-up needs a
+textured quad with a UV offset under the canvas in both hosts, to be built only if the owner wants it
+(OLED A18). The tile was checked in the PC replays (US and EU) and the Switch builds compile; the
+Switch overlay is the same art code and the same corner-texel trick, **not run on the console**.
+Every Options picture of the title changes; those references are refreshed after merge, not here.

@@ -64,6 +64,7 @@ if(PSYZ_RENDERER STREQUAL "sdl3_gpu")
     src/map_view_overlay.c
     src/title_overlay_art.c
     src/title_options_cache.c
+    src/menu_bg_tile.c
     src/title_logo_resample.c
   )
   foreach(_s IN LISTS _dw3_sfx ITEMS "")
