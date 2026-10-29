@@ -265,8 +265,8 @@ jobs:
           if-no-files-found: error
 
   # P6.24 PR B: the combined US + EU game .nro (DW3_VERSION=both), ordinary and
-  # nxlink. An artifact only; the release workflow publishes it as an extra
-  # asset next to the separate builds.
+  # nxlink. An artifact only; since 2026-10-29 the release workflow publishes the
+  # ordinary combined image as the one dw3-switch.nro (nxlink variant: dev only).
   switch-game-both:
     needs: changes
     if: ${{ !cancelled() && needs.changes.outputs.code != 'false' }}

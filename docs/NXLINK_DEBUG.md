@@ -3,12 +3,24 @@
 How to get useful live logs for P5.2 mesh / present work without flooding the
 nxlink TCP stream.
 
+## One file, run-time detection (2026-10-29)
+
+The released `dw3-switch.nro` is also the nxlink build: at start `main` reads
+libnx's `__nxlink_host` (set when the NetLoader launched the NRO and appended
+its host address to argv). If it is set, the build starts the default socket
+service and calls `nxlinkStdio()`; the log then has `dw3: nxlink host=a.b.c.d
+connected (fd=N)`. If not (hbmenu, Sphaira, a forwarder) nothing touches the
+network, stderr goes to `dw3.log` and the log has `dw3: no nxlink host (launched
+from <argv[0]>)`. Use `nxlink -a <ip> -s dw3-switch.nro`. The table below is the
+**developer** variant, which in addition compiles in the HUD and the sampled
+debug lines.
+
 ## Builds
 
 | Binary | Command | nxlink stdio | Mesh summary | Battle dump | Mem budget | Movie summary | On-screen HUD |
 |---|---|---|---|---|---|---|---|
-| Release / SD | `./tools/build_switch_game.sh` | off | off | off | off | off | off |
-| Dev (nxlink) | `./tools/build_switch_game.sh --nxlink` | on | **on** (default) | **on** (default) | **on** (default) | **on** (default) | **on** (default) |
+| Release / SD | `./tools/build_switch_game.sh --both` (the published file) | at run time, only when nxlink started it | off | off | off | off | off |
+| Dev (nxlink) | `./tools/build_switch_game.sh --nxlink` | at run time, as the release file | **on** (default) | **on** (default) | **on** (default) | **on** (default) | **on** (default) |
 
 The nxlink NRO lands at `build/switch-nxlink/dw3-switch-nxlink.nro`.
 
@@ -21,7 +33,7 @@ cmake -S platforms/switch -B build/switch-nxlink \
   -DDW3_NXLINK_STDIO=ON -DDW3_NX_DEBUG_MESH=OFF
 ```
 
-Standard `dw3-switch.nro` never calls `nxlinkStdio()` and does not define
+Standard `dw3-switch.nro` calls `nxlinkStdio()` only when nxlink launched it, and does not define
 `DW3_NX_DEBUG_MESH`, `DW3_NX_DUMP_VRAM`, `DW3_NX_DEBUG_MEM`,
 `DW3_NX_DEBUG_MOVIE`, or `DW3_NX_DEBUG_OVERLAY`.
 

@@ -39,7 +39,10 @@ else()
   set(_dw3_both OFF)
   set(_dw3_sfx "")
 endif()
-option(DW3_NXLINK_STDIO "Redirect game stdout/stderr through nxlink (development only)" OFF)
+# nxlink itself is detected at run time in every build (boot_main.c,
+# __nxlink_host). This option only selects the developer variant: debug
+# defaults below, the -nxlink file name and the "(nxlink)" title.
+option(DW3_NXLINK_STDIO "Developer nxlink variant: HUD/debug defaults, -nxlink name (not published)" OFF)
 # Default ON for a fresh --nxlink configure (separate build dir); OFF for the
 # standard release NRO. Override with -DDW3_NX_DEBUG_MESH=OFF|ON.
 if(DW3_NXLINK_STDIO)

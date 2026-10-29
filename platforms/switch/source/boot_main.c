@@ -14,9 +14,7 @@
  * yet (PSY-Z's Draw_* has no Switch implementation) — see docs/SWITCH_BACKEND.md
  * and docs/ROADMAP.md P4.7.
  */
-#ifdef DW3_NXLINK_STDIO
 #include <unistd.h>
-#endif
 
 #include <psyz.h>
 #include <psyz/log.h>
@@ -54,11 +52,10 @@
 #include <string.h>
 
 #include <switch.h>
+#include <netinet/in.h>
 
-#ifdef DW3_NXLINK_STDIO
 /* PSY-Z maps close() to psyz_close(), which has no Switch implementation. */
 #undef close
-#endif
 
 #if !(defined(DW3_BOTH) && DW3_BOTH)
 int dw3_game_main(void);
@@ -196,10 +193,17 @@ static void dw3_nx_service_applet_focus(void) {
     }
 }
 
-#ifdef DW3_NXLINK_STDIO
+/* nxlink is a run-time fact, not a build. libnx fills __nxlink_host (a
+ * struct in_addr) at startup when the NetLoader started this NRO and handed it
+ * the host address in the final argv token; it stays 0.0.0.0 when the NRO was
+ * started from hbmenu, Sphaira or a forwarder. Only then connect stdout and
+ * stderr to the host. Nothing here touches the network otherwise. */
 static int g_nxlink_socket_initialized;
 static Result g_nxlink_socket_result;
 static int g_nxlink_fd = -1;
+static int g_nxlink_host_set;
+static unsigned g_nxlink_host_be; /* network byte order */
+static char g_nxlink_launcher[256];
 
 static void dw3_nxlink_stdio_shutdown(void) {
     if (g_nxlink_fd >= 0) {
@@ -211,7 +215,47 @@ static void dw3_nxlink_stdio_shutdown(void) {
         g_nxlink_socket_initialized = 0;
     }
 }
-#endif
+
+static void dw3_nxlink_connect(int argc, char **argv) {
+    g_nxlink_launcher[0] = '\0';
+    if (argc > 0 && argv && argv[0]) {
+        snprintf(g_nxlink_launcher, sizeof(g_nxlink_launcher), "%s", argv[0]);
+    }
+    g_nxlink_host_be = (unsigned)__nxlink_host.s_addr;
+    g_nxlink_host_set = g_nxlink_host_be != 0;
+    if (!g_nxlink_host_set) {
+        return;
+    }
+    /* nxlinkConnectToHost uses the default socket service. */
+    g_nxlink_socket_result = socketInitializeDefault();
+    if (R_FAILED(g_nxlink_socket_result)) {
+        fprintf(stderr, "nxlink socketInitializeDefault failed (0x%08x)\n",
+                (unsigned)g_nxlink_socket_result);
+        return;
+    }
+    g_nxlink_socket_initialized = 1;
+    g_nxlink_fd = nxlinkStdio();
+    if (g_nxlink_fd < 0) {
+        fprintf(stderr, "nxlinkStdio failed (%d); continuing\n", g_nxlink_fd);
+    }
+}
+
+/* After dw3_nx_log_open, so the line lands in dw3.log as well as on the host. */
+static void dw3_nxlink_log_state(void) {
+    const unsigned char *b = (const unsigned char *)&g_nxlink_host_be;
+
+    if (g_nxlink_host_set && g_nxlink_fd >= 0) {
+        INFOF("dw3: nxlink host=%u.%u.%u.%u connected (fd=%d)", b[0], b[1],
+              b[2], b[3], g_nxlink_fd);
+    } else if (g_nxlink_host_set) {
+        INFOF("dw3: nxlink host=%u.%u.%u.%u NOT connected (socket init=0x%08x, "
+              "fd=%d); continuing with dw3.log only", b[0], b[1], b[2], b[3],
+              (unsigned)g_nxlink_socket_result, g_nxlink_fd);
+    } else {
+        INFOF("dw3: no nxlink host (launched from %s)",
+              g_nxlink_launcher[0] ? g_nxlink_launcher : "unknown");
+    }
+}
 
 /* Runs once per frame from PSY-Z's vsync hook, to service the CD/STR bridge
  * (StCdIntrFlag + Psyz_CdPumpStream), exactly as the PC host does, so streaming
@@ -745,31 +789,9 @@ static int apply_test_env(void) {
 int main(int argc, char **argv) {
     int test_env_count;
 
-    (void)argc;
-    (void)argv;
     test_env_count = apply_test_env();
 
-#ifdef DW3_NXLINK_STDIO
-    /* libnx nxlinkConnectToHost uses the default socket service. Initialize it
-     * before asking nxlink to open the callback connection to the host. */
-    g_nxlink_socket_result = socketInitializeDefault();
-    if (R_FAILED(g_nxlink_socket_result)) {
-        fprintf(stderr, "nxlink socketInitializeDefault failed (0x%08x)\n",
-                (unsigned)g_nxlink_socket_result);
-    } else {
-        g_nxlink_socket_initialized = 1;
-        g_nxlink_fd = nxlinkStdio();
-        if (g_nxlink_fd < 0) {
-            fprintf(stderr, "nxlinkStdio failed (%d); continuing\n",
-                    g_nxlink_fd);
-        } else {
-            fprintf(stderr, "nxlink stdio connected (fd=%d)\n", g_nxlink_fd);
-        }
-    }
-    /* hbmenu only shows NACP metadata for installed SD copies; nxlink loads
-     * still get the same label on the host log. */
-    fprintf(stderr, "dw3: version=%s\n", DW3_NRO_VERSION_STR);
-#endif
+    dw3_nxlink_connect(argc, argv);
 
     /* Order matters: the pad and the SD mount have to be up before anything
      * opens a runtime path, and the log file is opened as early as it can be so
@@ -790,9 +812,7 @@ int main(int argc, char **argv) {
     }
     dw3_nx_log_open();
 #ifndef DW3_NX_REPLAY
-#ifdef DW3_NXLINK_STDIO
     if (g_nxlink_fd < 0)
-#endif
     {
         /* Game-side fprintf(stderr) lines (dw3-port-options, memcard, ...)
          * otherwise reach no sink on an ordinary build. */
@@ -804,9 +824,7 @@ int main(int argc, char **argv) {
      * shot/end, ...) with fprintf(stderr), which is invisible under an
      * emulator. Route it to svcOutputDebugString unless nxlink already owns
      * stderr, so Ryubing's log carries them. */
-#ifdef DW3_NXLINK_STDIO
     if (g_nxlink_fd < 0)
-#endif
     {
         consoleDebugInit(debugDevice_SVC);
     }
@@ -820,10 +838,7 @@ int main(int argc, char **argv) {
         INFOF("dw3: DW3_NX_TEST_ENV applied %d vars: %s", test_env_count,
               DW3_NX_TEST_ENV_STR);
     }
-#ifdef DW3_NXLINK_STDIO
-    INFOF("nxlink socket init=0x%08x stdio fd=%d",
-          (unsigned)g_nxlink_socket_result, g_nxlink_fd);
-#endif
+    dw3_nxlink_log_state();
     /* P5.4: SD crash report sink. Does not touch memcard atexit / quit-flush. */
     dw3_nx_crash_install();
 
@@ -871,9 +886,7 @@ int main(int argc, char **argv) {
                 appletUnlockExit();
                 g_applet_exit_locked = 0;
             }
-#ifdef DW3_NXLINK_STDIO
             dw3_nxlink_stdio_shutdown();
-#endif
             if (rb.result == DW3_RB_RUN) {
                 return 1; /* the copy itself was refused (ABI mismatch): a real failure */
             }
@@ -900,9 +913,7 @@ int main(int argc, char **argv) {
             appletUnlockExit();
             g_applet_exit_locked = 0;
         }
-#ifdef DW3_NXLINK_STDIO
         dw3_nxlink_stdio_shutdown();
-#endif
         return 0;
     }
 
@@ -915,9 +926,7 @@ int main(int argc, char **argv) {
             appletUnlockExit();
             g_applet_exit_locked = 0;
         }
-#ifdef DW3_NXLINK_STDIO
         dw3_nxlink_stdio_shutdown();
-#endif
         return 1;
     }
     INFOF("EGL/GLES2 surface up");
@@ -936,9 +945,7 @@ int main(int argc, char **argv) {
             appletUnlockExit();
             g_applet_exit_locked = 0;
         }
-#ifdef DW3_NXLINK_STDIO
         dw3_nxlink_stdio_shutdown();
-#endif
         return 1;
     }
 
@@ -974,9 +981,7 @@ int main(int argc, char **argv) {
         dw3_nx_gpu_shutdown();
         INFOF("gpu closed; leaving main");
         dw3_switch_user_exit();
-#ifdef DW3_NXLINK_STDIO
         dw3_nxlink_stdio_shutdown();
-#endif
         if (g_applet_exit_locked) {
             appletUnlockExit();
             g_applet_exit_locked = 0;
