@@ -173,7 +173,7 @@ listed once, in [Pending OLED checks](#pending-oled-checks).
 | P6.33 | Items menu usability redesign | in progress (owner decisions recorded 2026-10-26; phase 1 partner cycle built: patch 0128, ZL / ZR, on by default; phases 2, 3 and 4 open; phase 1 cycle confirmed on the OLED 2026-10-27, preview.41; the `items_partner_switch=0` check open; phases 2–4 folded into P6.34) | [roadmap](#phase-6-goal-notes), [P6.33](P6.33_ITEMS_MENU.md), [P6.1](P6.1_WIDESCREEN.md) |
 | P6.34 | Redesign of the items / status / equipment menu flow | design written 2026-10-28 (5 phases, 10 owner questions open); **phase 1 built 2026-10-28** (equip from the Items menu, patch `0188`, key `items_equip_from_items`, default on = orchestrator default pending owner confirmation of Q1 to Q5 and Q10); **phase 2 built 2026-10-29** (equip in Status > Equipment returns to the slot list without the long fades, patch `0190`, key `items_equip_stays`, default on = orchestrator default pending owner confirmation of Q6; replay `us/eu-items-equip-stays[-off]`); phases 3 to 5 (patches 0191-0193 proposed) not built; PC replay US and EU passes, OLED items B19 (revised), B21 and B22 pending | [roadmap](#phase-6-goal-notes), [P6.34](P6.34_MENU_FLOW.md), [P6.33](P6.33_ITEMS_MENU.md) |
 | P6.35 | In-game walkthrough help: where to go next and what to do, by story progress (future goal) | future; **phase 1 data layer built** (step resolver, `ch01` table progress 0 to 4 confirmed by US and EU PC replays, English draft, FR/DE/IT/ES drafted 2026-10-29 (machine-drafted, needs native review), no UI yet; [As built](P6.35_WALKTHROUGH.md#as-built-phase-1-data-layer)) (owner 2026-10-28: at launch in every language the base game has, EN + FR/DE/IT/ES on the EU disc, pt-BR later with P6.7; design written 2026-10-28, owner decisions recorded) | [roadmap](#phase-6-goal-notes), [design](P6.35_WALKTHROUGH.md), [PLAYER_GUIDE](PLAYER_GUIDE.md) |
-| P6.36 | Music at normal speed while turbo is on (future goal) | future | [roadmap](#phase-6-goal-notes), [P6.4](P6.4_FAST_FORWARD.md), [P4.3](P4.3_AUDIO.md) |
+| P6.36 | Music at normal speed while turbo is on (future goal) | future | [roadmap](#phase-6-goal-notes), [P6.36](P6.36_TURBO_MUSIC.md), [P6.4](P6.4_FAST_FORWARD.md), [P4.3](P4.3_AUDIO.md) |
 | P7.1 | Inventory and boundaries | done | [COMMUNITY_QOL](COMMUNITY_QOL.md) |
 | P7.2 | Patched EU disc as data source | open | [COMMUNITY_QOL](COMMUNITY_QOL.md) |
 | P7.3 | Binary-patch limits | in progress | [COMMUNITY_QOL](COMMUNITY_QOL.md) |
@@ -2478,6 +2478,10 @@ Statuses are in the [table](#status-at-a-glance).
   the music plays at normal tempo, area changes and the battle start and end
   switch tracks at the right moment, and turning turbo off leaves the music in
   step; checked by replay and on the OLED.
+  **Design (2026-10-29):** [P6.36_TURBO_MUSIC](P6.36_TURBO_MUSIC.md). The tick
+  is `SsSeqCalledTbyT` in `vsyncCallback`; no game code waits on sequence
+  state; only tempo (not pitch) changes; four phases and the owner questions
+  are in that doc.
   Related: P6.4, P4.3, P6.22.
 
 ### Phase 7 goal notes
