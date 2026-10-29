@@ -435,67 +435,81 @@ Install / nxlink
 
 OLED checklist
 
-  New in this preview:
-  - Options groups (plan A5, A9 to A12): from the title, the field menu
-    (OPTIONS) and battle (Minus at the command menu), the four groups open
-    and go back as described above, the plaques look like the title menu's,
-    and the first open of a group is no black or garbage frame. Send the
-    `dw3-port-options:` and `dw3-title-overlay:` lines, and a photo of the
-    group list in handheld and docked.
-  - Log rotation (#296, #301): confirmed on the OLED with preview.45 (dw3.1.log
-    kept, rc=0x0). Keep sending the whole set of dw3*.log files.
-  - Options open timing (plan B15): the `dw3-port-options:` lines give the
-    prewarm, the first frame after the open request, the longest frame gap
-    and the time the window stayed open. Expected about 10 ms to open, with
-    no `rebuild` line (that was the old stutter).
-  - Return to title fade (plan E1): the field fades to black, then the
-    title or language select fades in, with no 4:3 picture ever on screen.
-  - Map reveal, stick zoom and scaler preference (plan B16): the revealed
-    towns and areas show on the Map, the right stick zooms, and the scaler
-    keeps its choice. Send the `dw3-map:` lines.
-  - Per-user saves (plan E5, E5.1 to E5.9): the profile selector, the
-    per-profile folders, the copy of legacy saves, cancelling the selector
-    and the crash report's profile line. Send dw3*.log and the folder listing
-    of sdmc:/switch/dw3/saves/.
-  - Logs (#290): each test item names the dw3*.log lines that prove it; send
-    the whole set of dw3*.log files after the run.
-  - Combined .nro (plan G9.1 to G9.6, P6.24): dw3-switch-both.nro with only
-    one region's data, with both (picker, 3 s default, Y, Minus) and the
-    stored choice. Send the `dw3-region:` lines.
-  - Map upscale mod (plan B17): with a locally made pack the map is the
-    upscaled picture; without it, or with map_mod=0, the original map. Send
-    the `dw3-map:` lines.
-  - Audio (plans D13 and D14, #188): the `dw3-audio:` health, underrun and
-    exit lines after many techs and in a 10 minute session.
-  - Save writes (plan G2, P10.2): the `dw3-save: write ... committed` and
-    `interrupted` lines after HOME during a save.
+  Still open for this preview. Rows the owner has passed (PASSED in
+  docs/OLED_TEST_PLAN.md) are not repeated. Send the whole dw3*.log set with
+  every test, and say handheld or docked and the EU language used.
 
-  From preview.42, still open:
-  - App name (#289): recreate the Sphaira forwarder (or re-add the .nro in
-    hbmenu); the title reads Digimon World 3 NX, and the nxlink build reads
-    Digimon World 3 NX (nxlink).
+  Technical help (P6.30, plans H1 to H8):
+  - H1 to H3: from the title, the field menu (OPTIONS) and battle Options,
+    open Help; read Controls and FAQ with Down / Up, hold Down, Left / Right
+    and L / R; X backs out. Check for stutter when opening and scrolling.
+    Send the `dw3-help:` lines and a photo; say if the scroll felt slow.
+  - H4 to H7: the Controls, Port hotkeys, Setup (US then EU), Saves, Map view
+    and mods and FAQ pages; open every page once. No `[?...]` text, no
+    cut-off line. Send the `dw3-pages:` lines.
+  - H8: EU, each of the five languages: the screen words in that language.
+    The pages are English for FR, DE, IT and ES (drafts; translations to come).
 
-  From preview.41, still open:
-  - Turbo menus at 1.5x (plan C7-C9): menus run slower than walking at 4x,
-    and Map, Items and shops stay at 1x. The `dw3-turbo` log lines show it.
-  - Title spacing and logo (#287, no separate plan): the plaques are evenly
-    spaced and the logo keeps its size when the menu appears.
+  Menus and map (plans E1.6c, A13, A10, B16 to B21):
+  - E1.6c: EU language select. Confirm with the confirm button (Switch B) on
+    one boot, and Plus (Start) on another. Log: `dw3-lang-select: language N
+    chosen by Cross (confirm)` and `... by Start`.
+  - A13: Cheats sub-screen, all ten rows, master off and on, Fill bag, Money,
+    Warp, Item id. Values and the master must not stutter (`dirty` in the log,
+    not `rebuild`, after the first open).
+  - A10: the first open of each Options group must not stutter (`group-over-base`,
+    compose under 10000 us). Passed for the old behaviour on preview.47; the
+    slice 3 re-check is pending.
+  - B16: full-screen map view (Y). Balloon and cursor are confirmed. Still
+    open: the zoom steps and the right stick, ZL / ZR through the scalers
+    (Lanczos2 and FSR 1 build without freezing), and R3 in the view.
+  - B17: map upscale mod. With a local pack in the mods folder the map is the
+    upscaled picture; with the folder renamed or `map_mod=0`, the original.
+    Log: `dw3-map: mod: pack ... loaded` or `original map`.
+  - B18: item shop at 16:9 (patch 0179): the BUY and SELL panels reach the
+    16:9 edges, nothing is cut at the old 4:3 edge. Photo of the shop and the
+    BUY list.
+  - B19: equip from the Items menu (patch 0188): Cross on a weapon, pick a
+    partner, check the result line, then Status > Equipment. Refused partner
+    and Triangle. Log: `equip-from-items open`, `done partner=P slot=N`,
+    `refused ... reason=partner-mask`, `cancelled at=partner`. Not confirmed.
+  - B20: the Map view closes with X (cancel button); Y inside the view does
+    nothing. Log: `dw3-map: close requested by the cancel button`. Not confirmed.
+  - B21: two hand slots full (the first weapon goes back to the bag, log
+    `rule=hand-replace`); `items_equip_from_items=0` makes Cross do nothing;
+    EU FR, DE, IT and ES equip lines are readable (drafts). Not confirmed.
 
-  Still open from preview.40:
-  - Equipment ZL / ZR partner cycle (plan G8): the partner changes on each
-    press, and nothing changes with items_partner_switch=0.
-  - Auto-save and Load Game (plan E2): Continue loads autosave.bin, and
-    Load Game opens your own slots.
-  - Full-screen map view (plan B16): Y opens it, B or Y closes it, and the
-    scaler names and cache folder are as described above.
+  Combined .nro (plan G9.x, P6.24, #322, #325):
+  - G9.1 and G9.2: only US data, then only EU data; no picker, the game
+    starts at once.
+  - G9.3 to G9.5: the picker and "Always start this one" passed by log on
+    preview.48. Still open: the 3 s countdown with no key pressed, and the
+    default from the last choice on a later start (region_default cleared).
+  - G9.6, G9.7: Minus asks again; + quits from the picker.
+  - G9.8, G9.9, G9.10: both regions play and save; the crash report's region
+    line; Joy-Cons and a Pro Controller give the same picker behaviour.
+  - G9.11 to G9.13: disc images placed directly in sdmc:/switch/dw3/ (one
+    disc, then both). Log: `data found ... disc image`.
 
-  From preview.39, still open:
-  - Quit game (plan A7): the exit must end with no Horizon error, and the
-    log must show `audio stopped` and `gpu closed; leaving main`.
-  - Field menu OPTIONS (plan B15): no black square when it opens.
+  Stability (plans D13, G2, G10):
+  - D13 (EU): 10 or more techs in a row across battles, then a battle, the
+    field and the menus. Music and sounds keep playing. Log: `dw3-audio: health`
+    and any `underruns`.
+  - G2: HOME during a save write, eight times, nxlink build, US then EU.
+    Log: `dw3-save: write ... committed` or `interrupted`.
+  - G10: stage sweep (`stage_sweep=1` in port_options.cfg), US then EU. Leave
+    the pad alone for 5 to 10 minutes. Log: `dw3-sweep: done X/Y ok`.
 
-  Everything else in this preview, and the items still open from earlier
-  previews, is in the ordered OLED test plan. Follow it:
+  Turbo (plans C1 to C3, C10):
+  - C1 to C3: New Game at 4x, then the Forest Inn top and bottom, on an nxlink
+    build. Send the `pace dbg:` and `defer dbg:` lines and the FPS you saw.
+    C1 is partly reported (turbo works in the intro; no frame lines yet).
+  - C10: a text-heavy scene at 4x, then the same with `DW3_NX_AUDIO_CORE=-2`
+    (A/B). Log: `nx_audio: mixer thread on core 1`; no crackle, no growing
+    underruns.
+
+  Every other open row, and the items still open from earlier previews, is in
+  the ordered OLED test plan. Follow it:
   https://github.com/Larbaco/dw3-switch/blob/main/docs/OLED_TEST_PLAN.md
 
   After any crash, keep crash_report.txt and the dw3*.log files (the last 5 runs are kept
