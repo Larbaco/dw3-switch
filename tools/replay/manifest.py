@@ -447,6 +447,46 @@ for _v in ("us", "eu"):
                               (0, r"music tick window frames=60 ticks=(?!1[456] |39 |40 |41 )\d+ ")),
                   note="turbo 4 battle won with Cross, Turbo music 1x: 15 ticks per 60 frames (40 in the battle menu), the win jingle (seq=1 tr=14) starts at the knock-out, the field music follows the report (P6.36)"))
 
+# P6.36 phase 3 (patch 0194): the win jingle is held for 4 s of music time, i.e.
+# 240 music ticks (EU-PAL 200) = 960 game frames at turbo 4, before the field
+# music request that follows the battle is played. The log must show the hold
+# start at the knock-out, the report returning, then the release after 4000 ms
+# (elapsed) and only then the field music (seq=2 tr=0). With Turbo music Fast
+# (the runner's pin for turbo recordings) there is no hold line at all and the
+# field music follows the report as before. two-battles: the second battle's
+# own music call ends the hold ("music request") and the request kept is dropped.
+_HOLD_RELEASE = r"jingle hold release after 4000 ms \(elapsed\)"
+for _v in ("us", "eu"):
+    _add(Scenario(f"{_v}-turbo-music-hold", _v, "full", turbo=4, timeout=600, log_only=True,
+                  phases=(f"{_v}-victory-music",),
+                  env=_VICTORY_ENV + _TM_ENV,
+                  expect_log=((0, r"jingle hold start \(4000 ms of music time = (?:240|200) ticks, game_rate=4x\)(?s:.*)"
+                                  r"STFGTREP_start(?s:.*)"
+                                  r"STFGTREP return(?s:.*)"
+                                  + _HOLD_RELEASE + r"(?s:.*)"
+                                  r"SEP loop count 127 seq=2 tr=0"),),
+                  forbid_log=((0, r"jingle hold start(?s:.*?)SEP loop count 127 seq=2 tr=0(?s:.*?)" + _HOLD_RELEASE),
+                              (0, r"jingle hold (?:superseded|release after \d+ ms \((?!elapsed))"),
+                              (0, r"SEP end-of-track seq=(?:1 tr=14|2 tr=0)")),
+                  note="turbo 4, Turbo music 1x: the win jingle plays 4 s of music time (960 game frames) before the field music, which waited for it (P6.36 phase 3)"))
+    _add(Scenario(f"{_v}-turbo-music-nohold", _v, "full", turbo=4, timeout=600, log_only=True,
+                  phases=(f"{_v}-victory-music",),
+                  env=_VICTORY_ENV + (("DW3_TURBO_MUSIC", "1"),),
+                  expect_log=((0, r"SEP loop count 127 seq=1 tr=14(?s:.*)"
+                                  r"STFGTREP return(?s:.*)"
+                                  r"SEP loop count 127 seq=2 tr=0"),),
+                  forbid_log=((0, r"jingle hold"), (0, r"music tick")),
+                  note="turbo 4, Turbo music Fast: no hold, the field music follows the report as before (P6.36 phase 3)"))
+    _add(Scenario(f"{_v}-turbo-music-hold-stopped", _v, "full", turbo=4, timeout=600,
+                  phases=(f"{_v}-two-battles",),
+                  env=(("DW3_START_MODE", "0x600"), ("DW3_FORCE_ENCOUNTER", "34"), ("DW3_FORCE_PARTY", "0"), ("DW3_AUTO_DOOR_MODE", "0x600"), ("DW3_AUTO_DOOR_FRAMES", "120")) + _TM_ENV,
+                  expect_log=((0, r"jingle hold start(?:(?!jingle hold release)(?s:.))*"
+                                  r"AUTO_DOOR requestMode=0x600(?:(?!jingle hold release)(?s:.))*"
+                                  r"jingle hold release after \d+ ms \((?:stopped|music request)\)"),),
+                  forbid_log=((0, r"jingle hold start(?:(?!jingle hold release)(?s:.))*"
+                                  r"jingle hold release after \d+ ms \(elapsed\)(?s:.*)AUTO_DOOR requestMode=0x600"),),
+                  note="turbo 4, Turbo music 1x: a second battle begins during the hold; its own music call ends it and the kept field request is dropped (P6.36 phase 3)"))
+
 # Two consecutive battles, a technique used in each (patch 0061): every battle
 # is a mode change (FIGHTSTG <- report/field), so WFIGHTMN is restored per
 # battle, as the PS1 reloads it. PC only (needs the env debug aids).

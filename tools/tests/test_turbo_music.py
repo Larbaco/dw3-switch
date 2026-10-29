@@ -59,3 +59,12 @@ def test_turbo_music_log_lines(tm_bin: Path):
     assert re.search(r"music tick debt dropped", after)
     assert "fade scaled 60 -> 15 ticks (game_rate=4x)" in after
     assert "fade scaled 60 -> 40 ticks (game_rate=1.5x)" in after
+    # Phase 3: the jingle hold's lines (a start, a kept request superseded by a
+    # later one, and the releases with their reasons).
+    assert re.search(r"jingle hold start \(4000 ms of music time = 240 ticks, game_rate=4x\)", after)
+    assert re.search(r"jingle hold start \(4000 ms of music time = 200 ticks, game_rate=4x\)", after)
+    assert re.search(r"jingle hold superseded \(play 0x60A40000 by stop 0x00000000\)", after)
+    assert re.search(r"jingle hold release after 4000 ms \(elapsed\)", after)
+    assert re.search(r"jingle hold release after 0 ms \(music request\), the kept request is dropped", after)
+    assert re.search(r"jingle hold release after 0 ms \(stopped\)", after)
+    assert re.search(r"jingle hold release after 0 ms \(turbo-off\)", after)

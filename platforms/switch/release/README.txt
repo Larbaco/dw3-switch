@@ -79,9 +79,10 @@ New in this preview
   the old behaviour, where the music speeds up with it. Fade-outs follow the
   same setting. Logs: `dw3-audio: music tick source=...` and `dw3-options:
   turbo_music=1x|fast` at boot. The default is pending the owner's
-  confirmation. Known issue: at 1x the field music cuts the win jingle after
-  about 1 second (T4). The owner's decision on that is pending. Phase 3 (wait
-  for the jingle to end) is not built.
+  confirmation. At 1x the field music used to cut the win jingle after about
+  1 second (T4); phase 3 (patch 0194, owner decision 2026-10-29) holds the
+  field music for 4 seconds of music time so the jingle plays. The game does
+  not wait. Logs: `dw3-audio: jingle hold start|release after N ms (reason)`.
 
   Technical help and walkthrough text in FR, DE, IT and ES (#349, P6.30 and
   P6.35). The help pages (152 keys each) are translated, and so is the
@@ -355,8 +356,9 @@ New in this preview
 
 Known issues
 
-  Turbo music at 1x: the field music cuts the win jingle after about 1 second
-  (T4). Owner decision pending.
+  Turbo music at 1x: the win jingle plays 4 seconds before the field music
+  (T4, phase 3). Not yet heard on a console; the 4 second figure is the
+  owner's decision.
 
   Help and walkthrough text in FR, DE, IT and ES is machine-drafted, not
   checked by a native reviewer, and not run on the console. The English help

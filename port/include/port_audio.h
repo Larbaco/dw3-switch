@@ -60,6 +60,25 @@ int dw3_port_audio_ticks_due(void);
  * time as at 1x (60 ticks -> 15 at 4x). */
 int dw3_port_audio_fade_ticks(int ticks);
 
+/* P6.36 phase 3 (patch 0194): hold the win jingle for 4 s of music time while
+ * turbo keeps the music at 1x. The field's music request that follows the
+ * battle is kept back (latest wins) and played at the release; the game does
+ * not wait. Any other music call ends the hold at once. Game thread only. See
+ * docs/P6.36_TURBO_MUSIC.md. */
+/* playSound, exclusive ids: `jingle` is the id of the win jingle; playing it
+ * starts the hold, any other music id ends it. playSound goes on either way. */
+void dw3_port_audio_music_request(int packed, int jingle);
+/* stopSound: stopping the jingle ends the hold. */
+void dw3_port_audio_music_stop_request(int packed);
+/* stopAllSounds: the jingle is gone, drop the hold. */
+void dw3_port_audio_jingle_stopped(void);
+/* The field's own music call: `packed` is the area's music, 0 = no music (the
+ * field stops the current one). 1 = kept back during a hold, skip the call. */
+int dw3_port_audio_field_music(int packed);
+/* Once per frame: 0 nothing, 1 = SOUND.playSound(*packed), 2 =
+ * SOUND.stopSound(*packed) (the request that was kept back). */
+int dw3_port_audio_jingle_poll(int *packed);
+
 #ifdef __cplusplus
 }
 #endif

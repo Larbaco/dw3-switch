@@ -1,0 +1,99 @@
+Upstream-bound: no
+Subject: [PORT_HOST] P6.36 phase 3: hold the win jingle for 4 s of music time while turbo keeps the music at 1x
+
+Design: docs/P6.36_TURBO_MUSIC.md, owner decision 2026-10-29. The win jingle
+(SOUND_WIN_JINGLE, a looping SEP track that never ends by itself) is cut about
+a second after the knock-out at turbo, when the field's music call that
+follows the battle arrives. With Turbo music on 1x and fast-forward running,
+playing the jingle starts a hold (dw3_port_audio_music_request,
+port/audio/turbo_music.c). The one music call of `FIELDSTG_updateField`
+(`field_mode/field.c`, the area's music or "none") asks
+`dw3_port_audio_field_music`: during the hold it is kept back (the latest one
+wins) and `updateSoundLoading` (`sound.c`), once per frame, plays or stops it
+after 4 s of music time (240 music ticks, 200 on EU-PAL). Any other music
+call ends the hold at once and goes through: an exclusive `playSound` (a
+battle's own track, an event's), a `stopSound` of the jingle, `stopAllSounds`
+(a new battle, a movie, the title, a restart); a request kept back is then
+dropped. The game does not wait: only the field's call is deferred. With Turbo
+music on Fast or turbo off no hold starts and every hook is a no-op: the
+original calls. Replay scenarios `us/eu-turbo-music-hold`, `-nohold`,
+`-hold-stopped`.
+
+--- a/src/engine/sound/sound.c
++++ b/src/engine/sound/sound.c
+@@ -230,6 +230,11 @@
+             SOUND.lastSlot = slot;
+         }
+         if (exclusive) {
++#if PORT_HOST
++            /* P6.36 phase 3: the win jingle starts a hold, any other music
++               ends it (the field's own call is kept back in field.c) */
++            dw3_port_audio_music_request(packed, SOUND_WIN_JINGLE);
++#endif
+             if (SOUND.music == packed) {
+                 return 0;
+             }
+@@ -299,6 +304,9 @@
+     }
+     SsUtAllKeyOff(0);
+     SOUND.music = 0;
++#if PORT_HOST
++    dw3_port_audio_jingle_stopped();
++#endif
+ }
+ 
+ /* Stops a sequence sound (key-on sounds are left alone) */
+@@ -309,6 +317,9 @@
+     s32 sep = SOUND_SEP(packed);
+     s32 slot = findSoundBank(id);
+ 
++#if PORT_HOST
++    dw3_port_audio_music_stop_request(packed);
++#endif
+     if (slot != -1 && !keyOn) {
+         SsSepStop(SOUND.banks[slot].seqs[seq], sep);
+         if (SOUND.music == packed) {
+@@ -401,6 +412,21 @@
+     s32 i;
+     s32 j;
+ 
++#if PORT_HOST
++    {
++        /* P6.36 phase 3: the field's music request that waited for the win
++           jingle is played when the jingle's time is up (once per frame, the
++           game thread) */
++        s32 held;
++        s32 heldKind = dw3_port_audio_jingle_poll(&held);
++
++        if (heldKind == 1) {
++            SOUND.playSound(held);
++        } else if (heldKind == 2) {
++            SOUND.stopSound(held);
++        }
++    }
++#endif
+     switch (loader->state) {
+     case SOUND_LOAD_IDLE:
+         break;
+--- a/src/field/field_mode/field.c
++++ b/src/field/field_mode/field.c
+@@ -6,6 +6,7 @@
+ 
+ #include "field/field_mode.h"
+ #if PORT_HOST
++#include "port_audio.h"
+ #include "port_widescreen.h"
+ #endif
+ #if PORT_HOST
+@@ -1038,6 +1039,11 @@
+                 /* fallthrough */
+             case 1:
+                 if (SOUND.isLoading() == 0) {
++#if PORT_HOST
++                    /* P6.36 phase 3: kept back while the win jingle is held */
++                    if (dw3_port_audio_field_music(FIELDSTG_state.music)) {
++                    } else
++#endif
+                     if (FIELDSTG_state.music != 0) {
+                         SOUND.playSound(FIELDSTG_state.music);
+                     } else {
