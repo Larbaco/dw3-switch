@@ -154,6 +154,9 @@ unsigned dw3_pc_title_overlay_options_lock_key(int page, unsigned locked);
 /* 1 when the labels of `page` are not in its static layer (drawn per row by
  * DW3_TITLE_OPTIONS_LABEL), and the cheats switch is not part of its layer key. */
 int dw3_pc_title_overlay_options_dynamic_labels(int page);
+/* 1 when the message line of the focused row depends on its value (P6.12: the
+ * Customize screen says "press a button" while a row waits for one). */
+int dw3_pc_title_overlay_options_desc_follows_value(int page);
 /* The page whose static layer `page` uses (the Cheats sub-screen: its offset 0). */
 int dw3_pc_title_overlay_options_static_page(int page);
 /* P6.30 technical help (port/help/help.c, docs/P6.30_HELP.md): the Help

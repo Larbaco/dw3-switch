@@ -12,7 +12,7 @@ usual A-to-confirm convention. **Options, Controls, Button layout** (P9.8, built
 table's first column and is bit-identical to the game before the option existed.
 **Nintendo** makes A confirm and B cancel (the game cancels with Triangle, so B
 produces Triangle, not Circle; see [CONTROLS_BUNDLE](CONTROLS_BUNDLE.md#22-the-confirm--cancel-layout-p98-is-a-preset-of-the-map)).
-The layout is stored per region in `port_options.cfg` (`button_layout=playstation|nintendo`),
+The layout is stored per region in `port_options.cfg` (`button_layout=playstation|nintendo|custom`),
 applies at once, and works the same on US, EU and the combined build. No new
 chord may use Cross or Circle, whichever physical button they are on. The PC columns
 describe the PSY-Z SDL3 keyboard map; PC gamepads use SDL's positional mapping;
@@ -36,6 +36,24 @@ shoulders, the triggers, the sticks, Plus and Minus stay. With Nintendo on a PC
 keyboard the key that produced Circle (D) confirms and the key that produced
 Cross (X) cancels: the map acts on the PS button each key produces, and the
 keyboard table itself is PSY-Z's.
+
+**Custom (P6.12, built 2026-10-29).** **Options, Controls, Customize buttons**
+lists the ten remappable PS buttons (Cross, Circle, Triangle, Square, L1, R1, L2,
+R2, L3, R3), each with the console button that produces it now. Confirm on a row
+waits for a press (Start or Select cancel, the d-pad is ignored, it gives up after
+five seconds; Left / Right pick a button without a press, for a keyboard); the PS
+button that had the new button gets the old one, so the map stays a permutation
+and no button is ever lost. Start, Select, the d-pad and both sticks (movement,
+map zoom) are not remappable, and neither are the Switch diagnostic chords. The
+press that assigns is ignored until it is released. **Reset to default** puts the
+PlayStation layout back at once (also in game); Customize itself is title only.
+The layout row then reads **Custom**; the map is stored as `button_layout=custom`
+and `button_map=` ten digits (docs/CONTROLS_BUNDLE.md section 2.4). A map that is
+not a permutation, or `custom` with no map, falls back to PlayStation with one log
+line; `DW3_BUTTON_MAP=default` forces the PlayStation layout for one run without
+touching the file. The hotkeys follow the custom map like the layouts: after
+swapping L3 and R3, fast-forward is on the button that now produces R3 (the Help
+pages and the `dw3-controls: hotkeys` line say which).
 
 **Which hotkeys follow the layout.** Port hotkeys are named in PS1 buttons and
 read the game's logical buttons, so they follow the map: fast-forward (R3), the

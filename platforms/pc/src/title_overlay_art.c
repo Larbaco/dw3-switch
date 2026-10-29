@@ -189,12 +189,17 @@ int dw3_pc_title_overlay_options_cursor(void) { return option_cursor; }
 int dw3_pc_title_overlay_options_value(int row) {
     return row>=0&&row<DW3_TITLE_OPTION_ROWS?option_values[row]:0;
 }
+enum { OPT_LOCK_ROWS = 13 }; /* registry rows 0..12: the lock mask's width */
 void dw3_pc_title_overlay_set_options_locked(unsigned mask) {
-    mask&=((1u<<DW3_TITLE_OPTION_ROWS)-1u)|DW3_TITLE_LOCK_CHEATS;
+    mask&=((1u<<OPT_LOCK_ROWS)-1u)|DW3_TITLE_LOCK_CHEATS;
     if(mask!=options_locked){options_locked=mask;options_layout++;options_generation++;}
 }
 unsigned dw3_pc_title_overlay_options_locked(void) { return options_locked; }
 unsigned dw3_pc_title_overlay_options_layout(void) { return options_layout; }
+int dw3_pc_title_overlay_options_desc_follows_value(int page) {
+    int group,scroll;
+    return dw3_optlist_decode(page,&group,&scroll)&&group==DW3_OPTGRP_CUSTOM;
+}
 int dw3_pc_title_overlay_options_dynamic_labels(int page) {
 #ifdef DW3_CHEATS
     int group,scroll;
@@ -295,12 +300,13 @@ enum { OPT_X0 = 84, OPT_Y0 = 60, OPT_W = 792, OPT_H = 600,
        CHT_ROW_STEP = 42, CHT_ROW_H = 38 };
 /* The rows' kinds: how a registry value is written. */
 enum { ROW_SWITCH, ROW_FAST_FORWARD, ROW_VOLUME, ROW_ENCOUNTER, ROW_TEXT,
-       ROW_BATTLE, ROW_AUTOSAVE, ROW_LAYOUT, ROW_REGION };
+       ROW_BATTLE, ROW_AUTOSAVE, ROW_LAYOUT, ROW_REGION, ROW_CUSTOMIZE, ROW_RESET };
 static int row_kind(int row) {
     return row == 1 ? ROW_FAST_FORWARD : row == 3 || row == 4 ? ROW_VOLUME :
            row == 5 ? ROW_ENCOUNTER : row == 6 ? ROW_TEXT :
            row == 7 ? ROW_BATTLE : row == 8 ? ROW_AUTOSAVE :
-           row == 9 ? ROW_LAYOUT : row == 10 ? ROW_REGION : ROW_SWITCH;
+           row == 9 ? ROW_LAYOUT : row == 10 ? ROW_REGION :
+           row == 11 ? ROW_CUSTOMIZE : row == 12 ? ROW_RESET : ROW_SWITCH;
 }
 /* P6.31: the Auto-save row's lettering, in the language of the disc (en, fr,
  * de, es, it: the DW3_TITLE_LANG_* order). OFF is the Options screen's word. */
@@ -320,6 +326,26 @@ static const LayoutWords layout_words[5]={LAYOUT_WORDS(en),LAYOUT_WORDS(fr),LAYO
 static const LayoutWords *layout_lang(void) {
     return &layout_words[options_lang>=DW3_TITLE_LANG_EN&&options_lang<=DW3_TITLE_LANG_IT?options_lang:0];
 }
+/* P6.12: the Customize buttons and Reset to default rows of Controls, the Custom
+ * value of Button layout and the prompt of the Customize screen, in the language
+ * of the disc. The PlayStation and Switch button names are the same everywhere. */
+#define CUSTOM_WORDS(l) {WORD(opt_row_cz_##l),WORD(opt_desc_cz_##l),WORD(opt_row_rs_##l),WORD(opt_desc_rs_##l), \
+    WORD(opt_val_cp_##l),WORD(opt_desc_cp_##l),WORD(opt_val_bl_cus_##l),WORD(opt_grp_custom_##l), \
+    WORD(opt_grpdesc_custom_##l)}
+typedef struct CustomWords { Word row,rowdesc,reset,resetdesc,prompt,promptdesc,custom,name,desc; } CustomWords;
+static const CustomWords custom_words[5]={CUSTOM_WORDS(en),CUSTOM_WORDS(fr),CUSTOM_WORDS(de),
+                                          CUSTOM_WORDS(es),CUSTOM_WORDS(it)};
+static const CustomWords *custom_lang(void) {
+    return &custom_words[options_lang>=DW3_TITLE_LANG_EN&&options_lang<=DW3_TITLE_LANG_IT?options_lang:0];
+}
+/* The Customize screen's rows (the PS buttons, map order) and their values (the
+ * Switch button that makes each one). */
+static const Word ps_words[10]={WORD(opt_row_ps_cross),WORD(opt_row_ps_circle),WORD(opt_row_ps_triangle),
+    WORD(opt_row_ps_square),WORD(opt_row_ps_l1),WORD(opt_row_ps_r1),WORD(opt_row_ps_l2),WORD(opt_row_ps_r2),
+    WORD(opt_row_ps_l3),WORD(opt_row_ps_r3)};
+static const Word btn_words[10]={WORD(opt_val_btn_b),WORD(opt_val_btn_a),WORD(opt_val_btn_x),WORD(opt_val_btn_y),
+    WORD(opt_val_btn_l),WORD(opt_val_btn_r),WORD(opt_val_btn_zl),WORD(opt_val_btn_zr),WORD(opt_val_btn_lstick),
+    WORD(opt_val_btn_rstick)};
 /* P51 item 4: the Region at start row (combined image): Ask in the language
  * of the disc, US and EU the same everywhere. */
 #define REGION_WORDS(l) {WORD(opt_row_rg_##l),WORD(opt_val_rg_ask_##l),WORD(opt_desc_rg_##l)}
@@ -625,7 +651,7 @@ static const GroupWords *group_lang(int group) {
  * locked in game (Display: Widescreen) greys its plaque. */
 static unsigned group_row_mask(int group) {
     unsigned m=0;
-    if(group==DW3_OPTGRP_CHEATS)return 0; /* cheat rows, not registry rows */
+    if(group==DW3_OPTGRP_CHEATS||group==DW3_OPTGRP_CUSTOM)return 0; /* not registry rows */
     for(int k=0;k<dw3_optgroups[group].nrows;k++)m|=1u<<dw3_optgroups[group].rows[k];
     return m;
 }
@@ -671,8 +697,10 @@ static const Word *list_value(const ListWords *t,int reg,int v,int *dim) {
         *dim=v==0;
         return v?&autosave_lang()->area:&v_onoff[0];
     case ROW_LAYOUT:
-        if(v>1)v=1;
-        return v?&layout_lang()->nintendo:&layout_lang()->ps;
+        if(v>2)v=2;
+        return v==2?&custom_lang()->custom:v?&layout_lang()->nintendo:&layout_lang()->ps;
+    case ROW_CUSTOMIZE:case ROW_RESET:
+        return NULL; /* an action: no value */
     case ROW_REGION:
         if(v>2)v=2;
         *dim=v==0;
@@ -694,6 +722,7 @@ static void options_list_screen(int group,int scroll) {
 #else
     const int cht=0;
 #endif
+    const int cus=group==DW3_OPTGRP_CUSTOM; /* P6.12 Customize: the PS buttons and their sources */
     int ids[DW3_OPTGRP_COUNT];
     const int n=on_groups?dw3_optgroups_visible(DW3_OPTGRP_CHEATS_LISTED,ids):dw3_optgroups[group].nrows;
     const unsigned locked=ELOCKED;
@@ -708,7 +737,7 @@ static void options_list_screen(int group,int scroll) {
         /* Header plaque: OPTIONS, or the name of the open group. */
         if(specific)options_plaque(L_GRP_X,L_HEAD_Y,L_GRP_W,0,0);
         if(specific){
-            const Word *name=on_groups?&t->title:&group_lang(group)->name;
+            const Word *name=on_groups?&t->title:cus?&custom_lang()->name:&group_lang(group)->name;
             plaque_word(name,480,L_HEAD_Y+(on_groups?8:9),255,198,98); /* one baseline for every word */
         }
         if(specific&&!cht&&scroll>0)arrow(480,L_ROW_Y0-10,1);
@@ -738,8 +767,11 @@ static void options_list_screen(int group,int scroll) {
         if(a>=n)break;
         if(!clip_hits(L_ROW_X,slot_y(s),L_ROW_W,L_ROW_PITCH))continue;
         reg=on_groups?-1:dw3_optgroups[group].rows[a];
-        lock=on_groups?group_locked(ids[a],locked):cht?0:(int)((locked>>reg)&1u);
+        lock=on_groups?group_locked(ids[a],locked):cht||cus?0:(int)((locked>>reg)&1u);
         label=on_groups?&group_lang(ids[a])->name
+              :cus?&ps_words[reg]
+              :row_kind(reg)==ROW_CUSTOMIZE?&custom_lang()->row
+              :row_kind(reg)==ROW_RESET?&custom_lang()->reset
               :row_kind(reg)==ROW_AUTOSAVE?&autosave_lang()->row
               :row_kind(reg)==ROW_LAYOUT?&layout_lang()->row
               :row_kind(reg)==ROW_REGION?&region_lang()->row:&t->row[reg];
@@ -773,11 +805,16 @@ static void options_list_screen(int group,int scroll) {
             if(cht)value=cheat_value(cheat_lang(),reg,option_values[a],&dim);
             else
 #endif
-            value=list_value(t,reg,option_values[a],&dim);
+            if(cus){
+                /* the source that makes this PS button, or 10: waiting for a press */
+                const int v=option_values[a];
+                dim=0;
+                value=v>=10?&custom_lang()->prompt:&btn_words[v<0?0:v];
+            }else value=list_value(t,reg,option_values[a],&dim);
             if(lock)dim=2; /* P9.7: greyer than an OFF value */
             if(value)wordsh(value,px+pw-58,py+9,1,dim==2?120:dim?150:255,dim==2?128:dim?158:255,dim==2?170:dim?196:255);
 #ifdef DW3_CHEATS
-            else number(option_values[a],px+pw-58,py+9,dim==2?120:255,dim==2?128:255,dim==2?170:255);
+            else if(cht)number(option_values[a],px+pw-58,py+9,dim==2?120:255,dim==2?128:255,dim==2?170:255);
 #endif
         }
     }
@@ -797,7 +834,10 @@ static void options_list_screen(int group,int scroll) {
             if(cht)d=&cheat_lang()->desc[reg];
             else
 #endif
-            d=(locked>>reg)&1u?lock_lang():row_kind(reg)==ROW_AUTOSAVE?&autosave_lang()->desc
+            d=cus?(option_values[cursor]>=10?&custom_lang()->promptdesc:&custom_lang()->desc)
+              :(locked>>reg)&1u?lock_lang():row_kind(reg)==ROW_CUSTOMIZE?&custom_lang()->rowdesc
+              :row_kind(reg)==ROW_RESET?&custom_lang()->resetdesc
+              :row_kind(reg)==ROW_AUTOSAVE?&autosave_lang()->desc
               :row_kind(reg)==ROW_LAYOUT?&layout_lang()->desc
               :row_kind(reg)==ROW_REGION?&region_lang()->desc:&t->desc[reg];
         }
