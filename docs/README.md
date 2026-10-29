@@ -88,6 +88,7 @@ Files are named by roadmap item id (`P6.4_...`) or by topic.
 - [P6.22_FIELD_CPU](P6.22_FIELD_CPU.md): where a field frame's CPU time goes.
 - [P6.33_ITEMS_MENU](P6.33_ITEMS_MENU.md): Items menu redesign proposal.
 - [P6.34_MENU_FLOW](P6.34_MENU_FLOW.md): items / status / equipment menu-flow redesign: equip from Items, phases, owner questions.
+- [P51_FEEDBACK](P51_FEEDBACK.md): preview.51 owner feedback, design for the fixes (battle Items cursor, map view, mods for both regions, region picker row, Cheats group, Options background, sweep key).
 - [P6.30_HELP](P6.30_HELP.md): technical help screen and the page engine it shares with the walkthrough: page model, text format, entry points, logs, plan.
 - [P6.35_WALKTHROUGH](P6.35_WALKTHROUGH.md): in-game walkthrough help: step mapping, data format, spoiler UX, phased plan.
 - [P6.32_MAP_ZOOM](P6.32_MAP_ZOOM.md): map zoom and full-screen map proposal.
