@@ -61,90 +61,64 @@ jobs:
         env:
           RELEASE_TAG: ${{ env.RELEASE_TAG }}
         run: |
-          bash tools/build_switch_game.sh
-          bash tools/build_switch_game.sh --nxlink
-          # P6.24: the combined US + EU image, published next to the separate
-          # builds (nothing above is replaced) until the owner confirms it.
+          # Owner decision 2026-10-29: a release ships ONE .nro, the combined
+          # US + EU image. The per-region and nxlink builds stay buildable
+          # (tools/build_switch_game.sh, CI switch-game) but are not published.
+          # nxlink is detected at run time by the one image.
           bash tools/build_switch_game.sh --both
-          bash tools/build_switch_game.sh --both --nxlink
 
       - name: Pack the release files
         run: |
           set -euo pipefail
           rm -rf dist
           mkdir dist
-          cp build/switch/dw3-switch.nro dist/dw3-switch.nro
-          cp build/switch-nxlink/dw3-switch-nxlink.nro dist/dw3-switch-nxlink.nro
-          cp build/switch-both/dw3-switch.nro dist/dw3-switch-both.nro
-          cp build/switch-both-nxlink/dw3-switch-nxlink.nro dist/dw3-switch-both-nxlink.nro
+          cp build/switch-both/dw3-switch.nro dist/dw3-switch.nro
           cp platforms/switch/release/README.txt dist/README.txt
-          # The unstripped .elf of each .nro, so tools/symbolize_crash.py works
+          # The unstripped .elf of the .nro, so tools/symbolize_crash.py works
           # on this release (a local rebuild has a different build id). The
-          # script fails if an .elf's build id is not the one in its .nro.
+          # script fails if the .elf's build id is not the one in the .nro.
           python3 tools/pack_release_elfs.py --out dist/dw3-switch-elf.zip \
             --tag "$RELEASE_TAG" \
-            --item dist/dw3-switch.nro build/switch/dw3-switch.elf dw3-switch-us.elf \
-            --item dist/dw3-switch-nxlink.nro build/switch-nxlink/dw3-switch.elf dw3-switch-us-nxlink.elf
-          python3 tools/pack_release_elfs.py --out dist/dw3-switch-both-elf.zip \
-            --tag "$RELEASE_TAG" \
-            --item dist/dw3-switch-both.nro build/switch-both/dw3-switch.elf dw3-switch-both.elf \
-            --item dist/dw3-switch-both-nxlink.nro build/switch-both-nxlink/dw3-switch.elf dw3-switch-both-nxlink.elf
+            --item dist/dw3-switch.nro build/switch-both/dw3-switch.elf dw3-switch.elf
           find dist -type f -printf '%f\n' | sort > /tmp/dist-got
-          printf 'README.txt\ndw3-switch-both-elf.zip\ndw3-switch-both-nxlink.nro\ndw3-switch-both.nro\ndw3-switch-elf.zip\ndw3-switch-nxlink.nro\ndw3-switch.nro\n' > /tmp/dist-want
+          printf 'README.txt\ndw3-switch-elf.zip\ndw3-switch.nro\n' > /tmp/dist-want
           diff -u /tmp/dist-want /tmp/dist-got
           if find dist -type f \( -name '*.bin' -o -name '*.cue' -o -name '*.iso' -o -name '*.img' \) | grep -q .; then
             echo "refusing to publish disc images" >&2
             exit 1
           fi
-          for nro in dist/dw3-switch.nro dist/dw3-switch-nxlink.nro; do
-            if grep -a -F -q 'sdmc:/switch/dw3/us' "$nro"; then
-              :
-            else
-              echo "$nro is not the game image" >&2
-              exit 1
-            fi
-          done
           # The combined image has no region path of its own: it holds the
           # base folder and both game copies' dispatch table.
-          for nro in dist/dw3-switch-both.nro dist/dw3-switch-both-nxlink.nro; do
-            if grep -a -F -q 'sdmc:/switch/dw3' "$nro" && grep -a -F -q 'dw3-region: picker shown' "$nro"; then
-              :
-            else
-              echo "$nro is not the combined game image" >&2
-              exit 1
-            fi
-          done
+          nro=dist/dw3-switch.nro
+          if grep -a -F -q 'sdmc:/switch/dw3' "$nro" && grep -a -F -q 'dw3-region: picker shown' "$nro"; then
+            :
+          else
+            echo "$nro is not the combined game image" >&2
+            exit 1
+          fi
           # Full label is compiled into boot_main for the nxlink / sdmc log.
-          for nro in dist/dw3-switch.nro dist/dw3-switch-nxlink.nro dist/dw3-switch-both.nro dist/dw3-switch-both-nxlink.nro; do
-            if grep -a -F -q "dw3: version=" "$nro"; then
+          if grep -a -F -q "dw3: version=" "$nro"; then
+            :
+          else
+            echo "$nro missing dw3: version= boot string" >&2
+            exit 1
+          fi
+          # Run-time nxlink detection must be in the one image.
+          for s in 'dw3: no nxlink host' 'nxlink host='; do
+            if grep -a -F -q "$s" "$nro"; then
               :
             else
-              echo "$nro missing dw3: version= boot string" >&2
+              echo "$nro lacks the run-time nxlink check ($s)" >&2
               exit 1
             fi
           done
           nacp_expect="$(RELEASE_TAG="$RELEASE_TAG" python3 tools/dw3_nro_version.py --github --format nacp)"
-          for nacp in build/switch/dw3-switch.nacp build/switch-nxlink/dw3-switch-nxlink.nacp build/switch-both/dw3-switch.nacp build/switch-both-nxlink/dw3-switch-nxlink.nacp; do
-            got="$(python3 -c "from pathlib import Path; import sys; d=Path(sys.argv[1]).read_bytes(); print(d[0x3060:0x3070].split(b'\\0',1)[0].decode())" "$nacp")"
-            if [ "$got" != "$nacp_expect" ]; then
-              echo "$nacp display_version=$got expected=$nacp_expect" >&2
-              exit 1
-            fi
-          done
-          for n in dist/dw3-switch-nxlink.nro dist/dw3-switch-both-nxlink.nro; do
-            if grep -a -F -q 'nxlink stdio connected' "$n"; then
-              :
-            else
-              echo "$n was not built with DW3_NXLINK_STDIO" >&2
-              exit 1
-            fi
-          done
-          for n in dist/dw3-switch.nro dist/dw3-switch-both.nro; do
-            if grep -a -F -q 'nxlink stdio connected' "$n"; then
-              echo "$n must not call nxlinkStdio" >&2
-              exit 1
-            fi
-          done
+          nacp=build/switch-both/dw3-switch.nacp
+          got="$(python3 -c "from pathlib import Path; import sys; d=Path(sys.argv[1]).read_bytes(); print(d[0x3060:0x3070].split(b'\\0',1)[0].decode())" "$nacp")"
+          if [ "$got" != "$nacp_expect" ]; then
+            echo "$nacp display_version=$got expected=$nacp_expect" >&2
+            exit 1
+          fi
 
       - name: Publish prerelease
         uses: softprops/action-gh-release@v2
@@ -159,9 +133,5 @@ jobs:
           fail_on_unmatched_files: true
           files: |
             dist/dw3-switch.nro
-            dist/dw3-switch-nxlink.nro
             dist/dw3-switch-elf.zip
-            dist/dw3-switch-both.nro
-            dist/dw3-switch-both-nxlink.nro
-            dist/dw3-switch-both-elf.zip
             dist/README.txt

@@ -273,7 +273,8 @@ def test_items_screen_scenarios_cover_both_discs_and_both_text_speeds():
     for v in ("us", "eu"):
         a, b = names[f"{v}-items-screen"], names[f"{v}-items-screen-normal"]
         assert a.phases == b.phases == (f"{v}-items-screen",)
-        assert dict(a.cfg) == {"text_speed": "2"} and dict(b.cfg) == {"text_speed": "0"}
+        assert dict(a.cfg) == {"text_speed": "2", "items_use_stays": "0"}
+        assert dict(b.cfg) == {"text_speed": "0", "items_use_stays": "0"}
         for sc in (a, b):
             assert sc.log_only and dict(sc.env)["DW3_FORCE_ITEMS"] and sc.expect_log, sc.name
             # the field menu's screens overlay is restored after the battle's

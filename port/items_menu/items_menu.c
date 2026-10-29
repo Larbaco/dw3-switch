@@ -515,3 +515,34 @@ void dw3_port_items_bag_moved(int item, int from, int from_slot, int to, int slo
     IM_LOG("dw3-items-menu: move item=%d from=%d from-slot=%d to=%d slot=%d bag=%d->%d worn=%d->%d", item, from,
            from_slot, to, slot, g_im_move_bag0, IM_ITEMS_TOTAL(), g_im_move_worn0, IM_EQUIPPED_TOTAL());
 }
+
+/* ---- P6.34 phase 4: "use item" stays on the partner step (patch 0193) ---- */
+
+static int g_use_stays_uses;
+
+int dw3_port_items_use_stays_enabled(void) {
+    return im_flag("DW3_ITEMS_USE_STAYS", DW3_ITEMS_USE_STAYS_KEY);
+}
+
+int dw3_port_items_use_stays_keeps(int count) {
+    return count > 1;
+}
+
+void dw3_port_items_use_done(int item, int partner, int member, int before, int after, int row, int stays) {
+    if (stays) {
+        g_use_stays_uses++;
+    }
+    IM_LOG("dw3-items-menu: use-stays item=%d partner=%d member=%d count=%d->%d effect=%s list=%s row=%d uses=%d",
+           item, partner, member, before, after, after < before ? "used" : "none", stays ? "stays" : "closes",
+           row, g_use_stays_uses);
+    if (!stays) {
+        g_use_stays_uses = 0;
+    }
+}
+
+void dw3_port_items_use_left(int item) {
+    if (g_use_stays_uses > 0) {
+        IM_LOG("dw3-items-menu: use-stays left item=%d uses=%d", item, g_use_stays_uses);
+        g_use_stays_uses = 0;
+    }
+}

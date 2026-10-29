@@ -38,3 +38,9 @@ def test_items_menu_policy(items_bin: Path):
     assert "Not a port regression" in r.stderr
     assert ("dw3-items-menu: Cross on item 40 (list 0): the original game does "
             "nothing here") in r.stderr
+    # patch 0193: a use that stays, one that closes, the leave line once
+    assert ("dw3-items-menu: use-stays item=5 partner=1 member=0 count=3->2 "
+            "effect=used list=stays row=4 uses=1") in r.stderr
+    assert "effect=none list=stays row=4 uses=2" in r.stderr
+    assert r.stderr.count("use-stays left item=5 uses=2") == 1
+    assert "count=1->0 effect=used list=closes row=4 uses=0" in r.stderr

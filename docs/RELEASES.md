@@ -1,6 +1,7 @@
 # Preview releases
 
-All releases are GitHub prereleases. Each ships `.nro` files (and, from the
+All releases are GitHub prereleases. Each ships ONE `.nro`, `dw3-switch.nro` (US + EU in one image; before the
+release after preview.53 there were six files, see the index), and (from the
 release after preview.30, `dw3-switch-elf.zip` with the matching `.elf`
 files for crash reports), never game data. Tags are named `v0.6.5-preview.N`; hbmenu shows the short form
 `0.6.5-p.N`. Pick the newest unless a note below says otherwise.
@@ -75,58 +76,33 @@ Previews 3 and 4 have no separate notes in this repository.
 ## Publishing a release
 
 A `v*` tag (or `workflow_dispatch` with a tag) runs
-`.github/workflows/switch-release.yml`, which builds the US and US nxlink
-NROs and publishes `dw3-switch.nro`, `dw3-switch-nxlink.nro`,
-`dw3-switch-elf.zip` and `README.txt`. The zip holds the unstripped
-`dw3-switch-us.elf` and `dw3-switch-us-nxlink.elf` plus `BUILD_IDS.txt`
-(GNU build id, `.elf` and `.nro` per line).
-`tools/pack_release_elfs.py` makes it and fails the job when an `.elf`'s
-build id is not the one in its `.nro` header. A local rebuild does not
-reproduce a CI binary (the build ids differ), so the CI `.elf` is the only
+`.github/workflows/switch-release.yml`, which builds the combined US + EU image
+(`tools/build_switch_game.sh --both`) and publishes exactly three files:
+`dw3-switch.nro`, `dw3-switch-elf.zip` and `README.txt`. The zip holds the
+unstripped `dw3-switch.elf` plus `BUILD_IDS.txt` (GNU build id, `.elf` and
+`.nro` per line). `tools/pack_release_elfs.py` makes it and fails the job when
+the `.elf`'s build id is not the one in the `.nro` header. A local rebuild does
+not reproduce a CI binary (the build ids differ), so the CI `.elf` is the only
 one that symbolizes a CI `.nro`.
+
+**One .nro only (owner decision 2026-10-29: "pq tanto nro? eu quero um
+unico").** Releases no longer carry `dw3-switch-eu.nro`, `dw3-switch-both.nro`
+or any `-nxlink` file. The per-region builds (`--eu`, default US) and the
+dev-only nxlink build (`--nxlink`, with the HUD and the sampled debug lines)
+still build locally and in CI, but are not published. The single file detects
+an nxlink launch at run time (`__nxlink_host`), see
+[SINGLE_BUILD](SINGLE_BUILD.md#one-release-file-2026-10-29). With one region's
+data on the SD it starts that game; with both it shows the picker. Crash
+reports are symbolized with `dw3-switch-elf.zip`; the report's `disc:` line
+says the region. Upgrade note for the release notes: delete the old
+`dw3-switch-eu.nro` / `-both` / `-nxlink` files, recreate any forwarder; saves
+and region folders are unchanged.
 
 To test the packing without a release, run the script on local builds
 (`tools/tests/test_pack_release_elfs.py` covers it in `pytest`). The
 workflow itself has no dry-run path: `workflow_dispatch` always publishes
-the tag it is given.
-
-**Combined US + EU build (P6.24).** From the first release made after the
-combined image landed, the workflow also builds `tools/build_switch_game.sh
---both` (ordinary and nxlink) and publishes, as extra assets next to the ones
-above (nothing is removed or renamed):
-
-```
-dw3-switch-both.nro          US + EU in one image, region chosen at boot (picker)
-dw3-switch-both-nxlink.nro   the same, nxlink logging build
-dw3-switch-both-elf.zip      unstripped ELFs of both, with BUILD_IDS.txt
-```
-
-The separate US and EU `.nro` files keep shipping until the owner has confirmed
-the combined one on the OLED. The combined image needs both runtimes under
-`sdmc:/switch/dw3/us` and `/eu` to show the picker; with one it starts that one
-(see [SINGLE_BUILD](SINGLE_BUILD.md#as-built-slice-4-the-combined-switch-nro)).
-Its crash reports are symbolized with `dw3-switch-both-elf.zip`, one `.elf` per
-`.nro`; the report's `disc:` line says the region. The release README must list
-`dw3-switch-both*` only in a release that really carries them.
-
-**EU is a manual step.** Build EU once, then upload the `.nro` and its
-`.elf` zip from that same build (the `.elf` must come from the build that
-made the `.nro`):
-
-```bash
-bash tools/build_switch_game.sh --eu
-bash tools/build_switch_game.sh --eu --nxlink     # only if it ships
-B=build/switch-eu
-python3 tools/pack_release_elfs.py --out /mnt/cabal/tmp/dw3-switch-eu-elf.zip --tag v0.6.5-preview.N \
-  --item $B/dw3-switch.nro $B/dw3-switch.elf dw3-switch-eu.elf
-cp $B/dw3-switch.nro /mnt/cabal/tmp/dw3-switch-eu.nro
-gh release upload v0.6.5-preview.N /mnt/cabal/tmp/dw3-switch-eu.nro /mnt/cabal/tmp/dw3-switch-eu-elf.zip
-```
-
-For an EU nxlink build add a second `--item
-build/switch-eu-nxlink/dw3-switch-nxlink.nro build/switch-eu-nxlink/dw3-switch.elf
-dw3-switch-eu-nxlink.elf` and upload that `.nro` too. The release README
-lists only the files actually published.
+the tag it is given. A hand-built release (as preview.53) follows the same
+rule: the three files above, nothing else.
 
 **Release notes PR checklist.** In the notes PR (the one that adds the index
 row above and updates `platforms/switch/release/README.txt`), also update the

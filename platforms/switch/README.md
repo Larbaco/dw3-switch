@@ -164,27 +164,33 @@ runs it from the tagged commit. Assets are that `.nro` and
 
 ### Development build with live nxlink logs
 
-The standard CMake build remains unchanged and does not require a network
-connection:
+Since 2026-10-29 every game build, including the released `dw3-switch.nro`,
+checks at run time whether nxlink started it (libnx `__nxlink_host`, set from
+the final argv token) and only then calls `nxlinkStdio()`. Started from hbmenu
+or Sphaira it needs no network and writes `dw3.log` only. The log says
+`dw3: nxlink host=... connected` or `dw3: no nxlink host (launched from ...)`.
+The standard CMake build:
 
 ```bash
 ./tools/build_switch_game.sh
 # build/switch/dw3-switch.nro
 ```
 
-For live stdout/stderr on the development host, opt in to a separate NRO and
-build directory:
+The separate `--nxlink` build below is now a developer variant: it adds the HUD
+and the sampled debug lines (compile-time, they cost per-frame work), and is not
+published:
 
 ```bash
 ./tools/build_switch_game.sh --nxlink
 # build/switch-nxlink/dw3-switch-nxlink.nro
 ```
 
-This option defines `DW3_NXLINK_STDIO` only for the CMake game image. The
-Makefile `host_hello` sample and standard/release NRO are unaffected. The
-nxlink NRO initializes libnx's default socket service before calling
-`nxlinkStdio()` and does so before input, SD mount and game logging. The socket
-result and stdio fd are recorded in `dw3.log`; connection failure is nonfatal.
+This option defines `DW3_NXLINK_STDIO` only for the CMake game image (the
+debug defaults, the file name and the "(nxlink)" title). The Makefile
+`host_hello` sample is unaffected. When nxlink started the NRO, it initializes
+libnx's default socket service before calling `nxlinkStdio()`, before input,
+SD mount and game logging. The host and stdio fd are recorded in `dw3.log`;
+connection failure is nonfatal.
 Logs continue going to `dw3.log` on SD and `svcOutputDebugString` as before.
 `--nxlink` also defaults `DW3_NX_DEBUG_MESH=ON`, `DW3_NX_DEBUG_MEM=ON`, and
 `DW3_NX_DEBUG_OVERLAY=ON`: sampled `mesh dbg:` / `mem dbg:` lines alongside
@@ -228,8 +234,9 @@ To launch and receive the log stream:
 
    If `nxlink` is installed on the host, the equivalent is
    `nxlink -a <Switch-IP> -s build/switch-nxlink/dw3-switch-nxlink.nro`.
-   The host firewall must allow the nxlink connection. The standard NRO does
-   not call `nxlinkStdio()` and remains the no-network fallback.
+   The host firewall must allow the nxlink connection. The released
+   `dw3-switch.nro` works the same way (`nxlink -a <ip> -s dw3-switch.nro`);
+   without an nxlink launch it never touches the network.
 
 Latest tagged preview Release:
 [v0.6.5-preview.10](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.10)

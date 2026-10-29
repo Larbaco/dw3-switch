@@ -8,6 +8,22 @@ https://github.com/Larbaco/dw3-switch/blob/main/docs/PLAYER_GUIDE.md
 
 New in this preview
 
+  ONE .nro (owner decision 2026-10-29). This release ships a single
+  dw3-switch.nro: the combined US + EU image, app title "Digimon World 3 NX".
+  The separate dw3-switch-eu.nro, dw3-switch-both.nro and the -nxlink files
+  are retired. With only one region's data on the SD it starts that game at
+  once; the picker shows only with both. The same file also does what the
+  nxlink build did: launched with `nxlink -a <ip> -s dw3-switch.nro` it
+  connects stdout/stderr to the PC, launched from hbmenu or Sphaira it only
+  writes sdmc:/switch/dw3/dw3.log. The log says which: `dw3: nxlink host=...
+  connected` or `dw3: no nxlink host (launched from <launcher>)`.
+  If you had the old files: delete dw3-switch-eu.nro, dw3-switch-both.nro and
+  the -nxlink files from sdmc:/switch/ and recreate any Sphaira or hbmenu
+  forwarder. Saves, us/ and eu/ folders and settings do not change. The
+  on-screen debug HUD and the sampled mesh/mem/movie log lines were only in
+  the old nxlink build; they are not in the release file (developers build
+  them with tools/build_switch_game.sh --nxlink).
+
   The owner's OLED checks are recorded in docs/OLED_TEST_PLAN.md (rows marked
   PASSED). Items that are not there yet are checked on PC and in the Ryubing
   emulator only, and are marked unverified. The OLED checklist at the end lists
@@ -221,15 +237,13 @@ New in this preview
   Walkthrough data layer (P6.35 phase 1, #328): the data and an English
   draft only. There is no screen yet, so nothing changes on the screen.
 
-  One .nro for US and EU (P6.24, #314, #316): dw3-switch-both.nro carries
-  both games. It looks for the data under sdmc:/switch/dw3/us/ and
+  One .nro for US and EU (P6.24, #314, #316): dw3-switch.nro carries
+  both games (called dw3-switch-both.nro in preview.48 to 53). It looks for the data under sdmc:/switch/dw3/us/ and
   sdmc:/switch/dw3/eu/. With only one of them present it starts that game at
   once. With both, a picker shows for 3 seconds and starts the last choice
   (the default). Press Y to stop asking (start that region every time); hold
   Minus while you press A on the .nro in hbmenu to ask again; + quits. Every
-  decision is a `dw3-region:` line in dw3.log. The separate US and EU .nro
-  files are still published until the owner confirms the combined one on the
-  OLED. The owner ran it on a Switch OLED with preview.48 (EU chosen): the
+  decision is a `dw3-region:` line in dw3.log. The owner ran it on a Switch OLED with preview.48 (EU chosen): the
   picker with both regions, the button choice and "always" work. The other
   G9 rows (only one region present, timeout, Minus, disc image in the parent
   folder) are still open in the OLED test plan.
@@ -504,16 +518,8 @@ Carried forward
 
 Bundle
 
-  dw3-switch.nro                 US ordinary build
-  dw3-switch-nxlink.nro          US nxlink logging build
-  dw3-switch-eu.nro              EU ordinary build (attached by hand)
-  dw3-switch-eu-nxlink.nro       EU nxlink logging build (attached by hand)
-  dw3-switch-elf.zip             US unstripped ELFs and BUILD_IDS.txt
-  dw3-switch-eu-elf.zip          EU unstripped ELF and BUILD_IDS.txt
-  dw3-switch-eu-nxlink-elf.zip   EU nxlink unstripped ELF and BUILD_IDS.txt
-  dw3-switch-both.nro            US + EU in one image (new; region chosen at boot)
-  dw3-switch-both-nxlink.nro     the same, nxlink logging build
-  dw3-switch-both-elf.zip        unstripped ELFs of both combined builds
+  dw3-switch.nro                 US + EU in one image, region chosen at boot
+  dw3-switch-elf.zip             unstripped ELF and BUILD_IDS.txt
   README.txt                     these notes
 
   This release's files were built locally and attached by hand; the release
@@ -523,15 +529,15 @@ Bundle
 
 Own-disc setup and extraction
 
-  Use Digimon World 3 US (SLUS-01436) with the US NRO, or Digimon World
-  2003 EU (SLES-03936) with the EU NRO. Region paths remain separate:
+  Use Digimon World 3 US (SLUS-01436) or Digimon World 2003 EU (SLES-03936)
+  with the same dw3-switch.nro. Region paths remain separate:
 
     US runtime: sdmc:/switch/dw3/us/
     EU runtime: sdmc:/switch/dw3/eu/
 
-  US: place the matching Mode2 BIN/CUE beside us/, in switch/dw3/.
-  EU: place the matching Mode2 BIN/CUE inside switch/dw3/eu/ (for
-  example disc.bin + disc.cue). The EU NRO extracts SLES_039.36,
+  Place the matching Mode2 BIN/CUE in switch/dw3/ (beside us/ and eu/) or
+  inside the region folder (for example switch/dw3/eu/disc.bin + disc.cue).
+  The region is read from the disc. For an EU disc it extracts SLES_039.36,
   boot_tim.bin, files_eu.json and mapped runtime files there.
 
   First boot draws an extraction progress bar. Leave it running.
@@ -552,15 +558,16 @@ Own-disc setup and extraction
 
 Install / nxlink
 
-  Copy the desired NRO to SD and launch it from your homebrew launcher.
+  Install: copy the one file, dw3-switch.nro, to sdmc:/switch/ and launch it
+  from your homebrew launcher. (Coming from older previews: delete the old
+  dw3-switch-eu.nro / -both / -nxlink files and recreate any forwarder.)
   For PC logs, open the launcher's nxlink receiver (Sphaira waiting
   for nxlink, or hbmenu Y NetLoader), on the same network, then:
 
-    nxlink -a <Switch-IP> -s dw3-switch-nxlink.nro
+    nxlink -a <Switch-IP> -s dw3-switch.nro
 
-  The US and EU nxlink builds are published (dw3-switch-eu-nxlink.nro is the
-  EU one); the combined dw3-switch-both-nxlink.nro is the same logging build
-  for either region. Do not probe TCP 28280
+  The same file detects at run time that nxlink started it; there is no
+  separate nxlink build. Do not probe TCP 28280
   first: an empty connection can break the receiver. A failed logging
   connection does not prevent boot; logs also go to
   sdmc:/switch/dw3/dw3.log. That folder keeps the last 5 runs (dw3.log is

@@ -17,6 +17,32 @@ come from `origin/main` at `3e2a9b7`, the decomp at
 `b9caa6c` (`vendor/dw3_decomp`), the PC objects of a US build, and the
 preview.31-rc1 Switch builds (US and EU, `.nro` and `.elf`).
 
+## One release file (2026-10-29)
+
+Owner decision, 2026-10-29 ("pq tanto nro? eu quero um unico"): a release ships
+**one `.nro`**, `dw3-switch.nro`, which is the combined US + EU image (app title
+"Digimon World 3 NX"). The separate `dw3-switch-eu.nro`, `dw3-switch-both.nro`
+and all `-nxlink` files are retired from releases; the per-region and nxlink
+builds still build for development and CI (`tools/build_switch_game.sh`,
+`--eu`, `--nxlink`) and are not published. The release is that file, the
+`dw3-switch-elf.zip` (unstripped ELF + `BUILD_IDS.txt`) and `README.txt`
+([RELEASES](RELEASES.md#publishing-a-release)). Where this note says that the
+separate files "keep shipping" it is superseded.
+
+nxlink is folded in at run time: `main` (platforms/switch/source/boot_main.c)
+reads libnx's `__nxlink_host`, which libnx fills when the NetLoader appended
+its host address to argv. If non-zero it initializes sockets and calls
+`nxlinkStdio()`; otherwise nothing touches the network and stderr goes to
+`sdmc:/switch/dw3/dw3.log` as in the ordinary build. The log line after the log
+opens is `dw3: nxlink host=a.b.c.d connected (fd=N)` or `dw3: no nxlink host
+(launched from <argv[0]>)`. What stays developer-only (compile-time, per-frame
+cost): the on-screen HUD and its Minus + L + R chord, the sampled `mesh dbg:` /
+`mem dbg:` / `movie dbg:` lines, the battle VRAM dumps and the menu timing
+lines. The code does not depend on the `.nro` file name (argv[0] is only
+logged); only the stop-gap launcher `dw3.nro` (CI artifact, not released)
+chains to `dw3-<region>.nro` names. Players with the old files delete them and
+recreate any forwarder; saves and region folders are unchanged.
+
 ## Owner decisions (2026-10-24)
 
 Final; they replace the matching open questions at the end of this note.
