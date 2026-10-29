@@ -92,6 +92,8 @@ static void dw3_replay_vsync(void);
 #include "dw3_game_api.h"
 #else
 extern void dw3_map_view_set_zoom_stick(int raw_up);
+/* port/options/button_map.c (P9.8): the raw pad word through the layout map. */
+extern unsigned dw3_button_map_apply(unsigned word);
 #endif
 /* Replay masks: bits above the 16 pad bits stand for the right stick (the
  * recording cannot hold an analog value): 0x10000 up, 0x20000 down. */
@@ -434,11 +436,50 @@ static void dw3_pad_publish_mask(unsigned mask) {
     Psyz_PadsSet(0, buf, DW3_PAD_BUF_LEN);
 }
 
+/* P9.8 / docs/CONTROLS_BUNDLE.md: port 1's raw word through the confirm /
+ * cancel layout, in place, after the platform's frame is copied and before the
+ * engine reads a bit. The platform keeps its positional table (Switch A is the
+ * Circle position); the map says which PS button each position produces.
+ *
+ * Not applied while a replay plays or DW3_AUTO_PAD injects: those masks already
+ * name the PS buttons the game must see, so the replay suite stays
+ * byte-identical (P6.15). DW3_REPLAY_SOURCE=1 (a dev variable of the layout
+ * scenarios) says the replay masks are positions, as a real pad reports them, so
+ * the map is exercised end to end. Recording stores the mapped word. */
+static int g_map_mode = -1; /* -1 untried, 0 normal, 1 never (auto pad) */
+static int g_map_replay_source = -1;
+
+static void dw3_pad_apply_map(unsigned char *buf) {
+    unsigned word;
+    unsigned mapped;
+
+    if (g_map_mode < 0) {
+        const char *ap = getenv("DW3_AUTO_PAD");
+        const char *rs = getenv("DW3_REPLAY_SOURCE");
+
+        g_map_mode = (ap != NULL && ap[0] != '\0') ? 1 : 0;
+        g_map_replay_source = (rs != NULL && rs[0] == '1') ? 1 : 0;
+    }
+    if (g_map_mode != 0 || (g_rp_state == 1 && !g_map_replay_source) ||
+        !buf_connected(buf)) {
+        return;
+    }
+    word = (unsigned)buf[2] | ((unsigned)buf[3] << 8);
+    mapped = dw3_button_map_apply(word);
+    if (mapped != word) {
+        buf[2] = (unsigned char)(mapped & 0xFFu);
+        buf[3] = (unsigned char)((mapped >> 8) & 0xFFu);
+    }
+}
+
 static void refresh_port(int idx) {
     if (idx < 0 || idx > 1 || g_pad_rx[idx] == NULL) {
         return;
     }
     Psyz_PadsGet(idx, (char *)g_pad_rx[idx], DW3_PAD_BUF_LEN);
+    if (idx == 0) {
+        dw3_pad_apply_map(g_pad_rx[0]);
+    }
 }
 
 static int buf_connected(const unsigned char *buf) {

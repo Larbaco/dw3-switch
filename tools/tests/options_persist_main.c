@@ -6,6 +6,7 @@
  *   volumes            print the Music / SFX volume steps
  *   pacing             print the Encounter rate / Text speed modes
  *   battle             print the Battle cursor mode (battle_menu_memory)
+ *   layout             print the Button layout (0 PlayStation, 1 Nintendo)
  *   open | close       open / close the Options screen
  *   row N              put the cursor on registry row N (opens its group, no keys)
  *   nav N              the same with the keys: Down / Confirm / Down ... as a
@@ -65,6 +66,10 @@ static void pacing(void) {
 
 static void battle(void) {
     printf("battle_menu_memory=%d\n", dw3_port_options_level(7));
+}
+
+static void layout(void) {
+    printf("button_layout=%d\n", dw3_port_options_level(9));
 }
 
 static void autosave(void) {
@@ -142,6 +147,8 @@ int main(int argc, char **argv) {
             battle();
         } else if (strcmp(argv[i], "autosave") == 0) {
             autosave();
+        } else if (strcmp(argv[i], "layout") == 0) {
+            layout();
         } else if (strcmp(argv[i], "open") == 0) {
             dw3_port_options_open();
         } else if (strcmp(argv[i], "close") == 0) {

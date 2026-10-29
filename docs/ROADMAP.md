@@ -178,7 +178,7 @@ listed once, in [Pending OLED checks](#pending-oled-checks).
 | P9.5 | Wire real features | in progress | [PORT_OPTIONS](PORT_OPTIONS.md) |
 | P9.6 | External save converter | open | — |
 | P9.7 | Port options reachable in game | in progress (slice 1, the field menu, and slice 2, battle: built, PC US and EU replays, Switch Ryubing nx scenarios; live Widescreen open; owner OLED checks open) | [PORT_OPTIONS](PORT_OPTIONS.md#options-in-game-p97), [roadmap](#phase-9--port-options-menu) |
-| P9.8 | Confirm / cancel layout option (PS positional or Nintendo A/B) (future goal; design written 2026-10-28) | future | [roadmap](#phase-9--port-options-menu), [CONTROLS_BUNDLE](CONTROLS_BUNDLE.md), [HOTKEYS](HOTKEYS.md) |
+| P9.8 | Confirm / cancel layout option (PS positional or Nintendo A/B). Phase 1 of the controls bundle built 2026-10-28: the mapper, the Controls group with the Button layout row, `dw3-controls:` logs, replay scenarios; OLED check open | built, OLED check open | [roadmap](#phase-9--port-options-menu), [CONTROLS_BUNDLE](CONTROLS_BUNDLE.md), [HOTKEYS](HOTKEYS.md) |
 | P9.9 | Options screen redesign in the title menu's style, room for more rows (slice 1 done 2026-10-27: groups and sub-screens; OLED pending; slice 2 done 2026-10-28: Cheats screen restyled as a scrolling sub-screen and value changes are dirty-row updates; Controls, Help, Walkthrough follow) | slices 1 and 2 in review | [roadmap](#phase-9--port-options-menu), [PORT_OPTIONS](PORT_OPTIONS.md) |
 | P10.1 | Switch features goal note | done | [SWITCH_FEATURES](SWITCH_FEATURES.md) |
 | P10.2 | Lifecycle hardening (has P5.3's leftover) | in progress (sleep and resume: owner confirmed on the OLED, 2026-10-24; HOME during a save write: atomic write, exit gate and `dw3-save:` log lines done, OLED check open) | [SWITCH_FEATURES](SWITCH_FEATURES.md) |
@@ -1338,7 +1338,20 @@ PS1 game, with vanilla-safe defaults and persistence on owner storage.
   Related: P6.17 / P6.18 rows, P9.2 (the title entry), P6.9 (the chord), P6.27
   (the row it sits above).
 
-- [ ] **P9.8 Confirm / cancel layout option (future goal).** Dated
+- [~] **P9.8 Confirm / cancel layout option (built 2026-10-28, phase 1 of the
+  controls bundle; OLED check open).** The text below is the original goal note;
+  what landed is in [CONTROLS_BUNDLE](CONTROLS_BUNDLE.md#phase-1-as-built-2026-10-28):
+  `port/options/button_map.[ch]`, the map in `refresh_port` of the shared pad host
+  (so the PC pad is covered too), `button_layout=playstation|nintendo` in
+  `port_options.cfg`, registry row 9 in the new Controls group, Game API ABI 4,
+  `dw3-controls:` log lines, `DW3_BUTTON_MAP=default`, unit tests, the
+  `us/eu-controls-layout` and seven `*-nintendo-*` replay scenarios (the default
+  is proved bit-identical by the plain replay suite), HOTKEYS.md, P4.4, the help
+  Controls page and the OLED rows L1 to L7. Decisions taken on the owner's behalf,
+  to confirm: Q1 Nintendo = A confirms, B cancels, X = Circle; Q2 hotkeys follow
+  the layout; Q3 glyphs later, files, Switch only, off by default. Open: the
+  Options hint row keeps the PlayStation letters until P10.6; the OLED check.
+  Original goal note: Dated
   2026-10-23, owner request after the preview.30-rc7 OLED test. Goal note
   only, nothing started. On a Switch the physical **A** sits where the PS1
   **Circle** is and **B** where **Cross** is, and the port follows the

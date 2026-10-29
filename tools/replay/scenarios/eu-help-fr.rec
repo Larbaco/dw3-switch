@@ -24,18 +24,20 @@ pad 505 0x0040
 pad 510 0x0000
 pad 525 0x0040
 pad 530 0x0000
-pad 545 0x4000
+pad 545 0x0040
 pad 550 0x0000
-shot 595 help-list
-pad 605 0x0040
-pad 610 0x0000
-pad 625 0x4000
+pad 565 0x4000
+pad 570 0x0000
+shot 615 help-list
+pad 625 0x0040
 pad 630 0x0000
-shot 675 controls-top
-pad 685 0x1000
-pad 690 0x0000
+pad 645 0x4000
+pad 650 0x0000
+shot 695 controls-top
 pad 705 0x1000
 pad 710 0x0000
 pad 725 0x1000
 pad 730 0x0000
-end 805
+pad 745 0x1000
+pad 750 0x0000
+end 825

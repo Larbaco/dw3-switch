@@ -58,6 +58,13 @@ RULES: list[tuple[str, object]] = [
     (r"^port/options/(widescreen|screen_fade)", ("*ws-*", "*iris*", "*title-intro*")),
     (r"^port/options/turbo", ("*turbo*",)),
     (r"^port/options/restart", ("*restart*",)),
+    # P9.8: the layout map. Replays bypass it (except the *nintendo* scenarios,
+    # which turn it on with DW3_REPLAY_SOURCE=1), so the default is identical by
+    # construction; the screens and the scenarios that read buttons are the check.
+    (r"^port/options/button_map", _OPTIONS + _TITLE + ("*nintendo*", "*controls*", "*help*", "*map-view*")),
+    (r"^port/psyz_missing/psyz_pad_host", _OPTIONS + _TITLE + ("*nintendo*", "*controls*", "*help*", "*map*",
+                                                                 "*menu*", "*items*", "*battle*", "*restart*",
+                                                                 "*quit*", "*card*", "*shop*", "*lab*", "*deck*")),
     (r"^port/options/title_", _TITLE),
     (r"^port/options/(field_options|battle_options)", ("*options*",)),
     (r"^port/options/(port_options|options_cfg|confirm)", _OPTIONS + _TITLE),

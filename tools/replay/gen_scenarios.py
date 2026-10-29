@@ -56,6 +56,7 @@ class Rec:
 # Saves; Cheats joins once its master switch is on); a group opens a sub-screen
 # with its rows and Triangle goes back to the list with the cursor kept.
 GRP_DISPLAY, GRP_SOUND, GRP_GAMEPLAY, GRP_SAVES = 0, 1, 2, 3
+GRP_CONTROLS = 4  # P9.8: the Button layout row (Cheats, when on, comes before it)
 
 
 def _keys(r, f, *masks, gap=20):
@@ -727,6 +728,82 @@ def options_persist(version, phase):
         f = _keys(r, f + 60, TRIANGLE, TRIANGLE)
         r.end(f + 40)
     return r
+
+
+def controls_layout(version, phase):
+    """P9.8: title -> Options -> Controls -> Button layout. Phase 1 shows the
+    group list (the Controls plaque), the row on PlayStation, then switches it
+    to Nintendo with Confirm and leaves; phase 2 is a fresh process on the same
+    config dir whose checkpoint shows the value read back from the file."""
+    r = Rec(f"{version.upper()}: P9.8 Button layout row, phase {phase}")
+    if version == "us":
+        r.press(20, START)           # skip the opening FMV
+        r.press(210, START)          # PRESS START
+        m = 320                      # title menu is up
+    else:
+        for f in (110, 160, 190, 220, 280):   # confirm English, skip splash/FMV, PRESS START
+            r.press(f, START)
+        m = 390
+    r.press(m, DOWN)                 # New Game -> Options
+    r.press(m + 20, CROSS)           # open the Options screen (the group list)
+    if phase == 1:
+        r.shot(m + 60, "options-list")
+        f = _group(r, m + 70, GRP_DISPLAY, GRP_CONTROLS)   # Controls
+        r.shot(f + 20, "controls-playstation")
+        r.press(f + 40, CROSS)       # PlayStation -> Nintendo
+        r.shot(f + 80, "controls-nintendo")
+        f = _keys(r, f + 100, TRIANGLE, TRIANGLE)          # list, then leave
+        r.end(f + 40)
+    else:
+        f = _group(r, m + 70, GRP_DISPLAY, GRP_CONTROLS)   # Controls
+        r.shot(f + 40, "controls-restored")
+        f = _keys(r, f + 60, TRIANGLE, TRIANGLE)
+        r.end(f + 40)
+    return r
+
+
+# P9.8 layout scenarios (docs/CONTROLS_BUNDLE.md, section 6). The replay hands the
+# game the PS buttons it must see, so the map is bypassed; with the dev variable
+# DW3_REPLAY_SOURCE=1 the masks are positions as a real pad reports them (Switch
+# A is the Circle position, B Cross, X Triangle, Y Square) and go through the map.
+# These recordings are the plain ones turned into positions under the Nintendo
+# layout: the game must see exactly the original input, so every checkpoint equals
+# the plain scenario's reference.
+NINTENDO_DIGITS = "1203456789"      # Cross<-A (Circle pos), Circle<-X, Triangle<-B
+_FACE_BITS = {"cross": 14, "circle": 13, "triangle": 12, "square": 15,
+              "l1": 10, "r1": 11, "l2": 8, "r2": 9, "l3": 1, "r3": 2}
+_FACE_ORDER = ("cross", "circle", "triangle", "square", "l1", "r1", "l2", "r2", "l3", "r3")
+
+
+def nintendo_source_mask(mask):
+    """The position word that produces `mask` (PS buttons) under Nintendo."""
+    out = mask & ~sum(1 << b for b in _FACE_BITS.values())
+    for ps, digit in enumerate(NINTENDO_DIGITS):
+        if mask & (1 << _FACE_BITS[_FACE_ORDER[ps]]):
+            out |= 1 << _FACE_BITS[_FACE_ORDER[int(digit)]]
+    return out
+
+
+def nintendo_source_rec(text, note):
+    lines = text.splitlines()
+    head = lines[0] if lines and lines[0].startswith("#") else "# recording"
+    out = [f"{head} ({note})"]
+    for line in lines[1:] if head == lines[0] else lines:
+        parts = line.split()
+        if parts and parts[0] == "pad":
+            mask = nintendo_source_mask(int(parts[2], 16))
+            out.append(f"pad {parts[1]} 0x{mask:04x}")
+        else:
+            out.append(line)
+    return "\n".join(out) + "\n"
+
+
+# (new recording, plain recording it is made from)
+NINTENDO_RECS = (
+    ("{v}-nintendo-menu", "{v}-field-options-p1"),
+    ("{v}-nintendo-map-view", "{v}-map-view"),
+    ("{v}-nintendo-title-quit", "{v}-title-quit"),
+)
 
 
 def volume_persist(version, phase):
@@ -2136,10 +2213,10 @@ def field_options(version, phase=1):
 
 
 # --- P6.30 technical help ---------------------------------------------------
-# The Help group is the fifth plaque of the group list (Display, Sound,
-# Gameplay, Saves, then Help; Cheats would sit before it once its master switch
-# is on). The L1 / R1 masks are the page keys of the book.
-GRP_HELP = 4
+# The Help group is the sixth plaque of the group list (Display, Sound,
+# Gameplay, Saves, Controls (P9.8), then Help; Cheats would sit before Controls
+# once its master switch is on). The L1 / R1 masks are the page keys of the book.
+GRP_HELP = 5
 
 
 def _help_reading(r, f):
@@ -2418,6 +2495,10 @@ def main(out):
                 options_persist(v, phase).text(True))
     for v in ("us", "eu"):
         for phase in (1, 2):
+            (out / f"{v}-controls-layout-p{phase}.rec").write_text(
+                controls_layout(v, phase).text(True))
+    for v in ("us", "eu"):
+        for phase in (1, 2):
             (out / f"{v}-volume-persist-p{phase}.rec").write_text(
                 volume_persist(v, phase).text(True))
     for v in ("us", "eu"):
@@ -2515,6 +2596,13 @@ def main(out):
         # Written unsorted, byte for byte as first committed with patch 0058.
         (out / f"{version}-bridge-partner-gate.rec").write_text(
             bridge_partner_gate(version).text())
+    # P9.8: made last, from the plain recordings written above (or committed).
+    note = "Nintendo layout: the masks are button positions, DW3_REPLAY_SOURCE=1"
+    pairs = [(n.format(v=v), b.format(v=v)) for v in ("us", "eu") for n, b in NINTENDO_RECS]
+    pairs.append(("eu-nintendo-lang-cross-fr", "eu-lang-cross-fr"))
+    for new, base in pairs:
+        (out / f"{new}.rec").write_text(
+            nintendo_source_rec((out / f"{base}.rec").read_text(), note))
     for version in ("us", "eu"):
         # P5.5: no input; the sweep ends the process by itself (the end line is
         # only a guard).

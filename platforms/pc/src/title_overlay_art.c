@@ -294,11 +294,12 @@ enum { OPT_X0 = 84, OPT_Y0 = 60, OPT_W = 792, OPT_H = 600,
        CHT_ROW_STEP = 42, CHT_ROW_H = 38 };
 /* The rows' kinds: how a registry value is written. */
 enum { ROW_SWITCH, ROW_FAST_FORWARD, ROW_VOLUME, ROW_ENCOUNTER, ROW_TEXT,
-       ROW_BATTLE, ROW_AUTOSAVE };
+       ROW_BATTLE, ROW_AUTOSAVE, ROW_LAYOUT };
 static int row_kind(int row) {
     return row == 1 ? ROW_FAST_FORWARD : row == 3 || row == 4 ? ROW_VOLUME :
            row == 5 ? ROW_ENCOUNTER : row == 6 ? ROW_TEXT :
-           row == 7 ? ROW_BATTLE : row == 8 ? ROW_AUTOSAVE : ROW_SWITCH;
+           row == 7 ? ROW_BATTLE : row == 8 ? ROW_AUTOSAVE :
+           row == 9 ? ROW_LAYOUT : ROW_SWITCH;
 }
 /* P6.31: the Auto-save row's lettering, in the language of the disc (en, fr,
  * de, es, it: the DW3_TITLE_LANG_* order). OFF is the Options screen's word. */
@@ -308,6 +309,15 @@ static const AutosaveWords autosave_words[5]={AUTOSAVE_WORDS(en),AUTOSAVE_WORDS(
                                               AUTOSAVE_WORDS(es),AUTOSAVE_WORDS(it)};
 static const AutosaveWords *autosave_lang(void) {
     return &autosave_words[options_lang>=DW3_TITLE_LANG_EN&&options_lang<=DW3_TITLE_LANG_IT?options_lang:0];
+}
+/* P9.8: the Button layout row's lettering, in the language of the disc. The two
+ * values are product names, the same in every language. */
+#define LAYOUT_WORDS(l) {WORD(opt_row_bl_##l),WORD(opt_val_bl_ps_##l),WORD(opt_val_bl_nin_##l),WORD(opt_desc_bl_##l)}
+typedef struct LayoutWords { Word row,ps,nintendo,desc; } LayoutWords;
+static const LayoutWords layout_words[5]={LAYOUT_WORDS(en),LAYOUT_WORDS(fr),LAYOUT_WORDS(de),
+                                          LAYOUT_WORDS(es),LAYOUT_WORDS(it)};
+static const LayoutWords *layout_lang(void) {
+    return &layout_words[options_lang>=DW3_TITLE_LANG_EN&&options_lang<=DW3_TITLE_LANG_IT?options_lang:0];
 }
 /* P9.7: the message line of a row that is locked in game, in the language of
  * the disc (en, fr, de, es, it: the DW3_TITLE_LANG_* order). */
@@ -507,7 +517,7 @@ static void arrow(int cx,int y,int up) {
     {WORD(opt_grp_gameplay_##l),WORD(opt_grpdesc_gameplay_##l)}, \
     {WORD(opt_grp_saves_##l),WORD(opt_grpdesc_saves_##l)}, \
     {WORD(opt_grp_cheats_##l),WORD(opt_grpdesc_cheats_##l)}, \
-    {{NULL,0,0,0},{NULL,0,0,0}}, /* Controls: not built */ \
+    {WORD(opt_grp_controls_##l),WORD(opt_grpdesc_controls_##l)}, \
     {WORD(opt_grp_help_##l),WORD(opt_grpdesc_help_##l)}}
 typedef struct GroupWords { Word name,desc; } GroupWords;
 enum { LISTED_GROUPS = 7 }; /* the groups with lettering: indexed by group id up to Help */
@@ -585,6 +595,9 @@ static const Word *list_value(const ListWords *t,int reg,int v,int *dim) {
         if(v>1)v=1;
         *dim=v==0;
         return v?&autosave_lang()->area:&v_onoff[0];
+    case ROW_LAYOUT:
+        if(v>1)v=1;
+        return v?&layout_lang()->nintendo:&layout_lang()->ps;
     default:
         if(v>1)v=1;
         *dim=v==0;
@@ -648,7 +661,8 @@ static void options_list_screen(int group,int scroll) {
         reg=on_groups?-1:dw3_optgroups[group].rows[a];
         lock=on_groups?group_locked(ids[a],locked):cht?0:(int)((locked>>reg)&1u);
         label=on_groups?&group_lang(ids[a])->name
-              :row_kind(reg)==ROW_AUTOSAVE?&autosave_lang()->row:&t->row[reg];
+              :row_kind(reg)==ROW_AUTOSAVE?&autosave_lang()->row
+              :row_kind(reg)==ROW_LAYOUT?&layout_lang()->row:&t->row[reg];
 #ifdef DW3_CHEATS
         if(cht){
             /* Rows 1..9 are inert (greyed) while the master switch is off. */
@@ -703,7 +717,8 @@ static void options_list_screen(int group,int scroll) {
             if(cht)d=&cheat_lang()->desc[reg];
             else
 #endif
-            d=(locked>>reg)&1u?lock_lang():row_kind(reg)==ROW_AUTOSAVE?&autosave_lang()->desc:&t->desc[reg];
+            d=(locked>>reg)&1u?lock_lang():row_kind(reg)==ROW_AUTOSAVE?&autosave_lang()->desc
+              :row_kind(reg)==ROW_LAYOUT?&layout_lang()->desc:&t->desc[reg];
         }
         wordsh(d,L_DESC_X+28,L_DESC_Y+14,0,255,255,255);
     }

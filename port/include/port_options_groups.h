@@ -16,8 +16,8 @@ enum {
     DW3_OPTGRP_GAMEPLAY = 2,
     DW3_OPTGRP_SAVES = 3,
     DW3_OPTGRP_CHEATS = 4,      /* P6.20 Cheats: a sub-screen of 10 rows (scrolls) */
+    DW3_OPTGRP_CONTROLS = 5,    /* P9.8 Button layout (built); P6.12 remap adds rows */
     /* Not built yet: hidden until the feature lands, then flip `built`. */
-    DW3_OPTGRP_CONTROLS = 5,    /* P6.12 button mapping */
     DW3_OPTGRP_HELP = 6,        /* P6.30 technical help (built: a screen of its own) */
     DW3_OPTGRP_WALKTHROUGH = 7, /* P6.35 walkthrough help */
     DW3_OPTGRP_COUNT = 8,
@@ -32,14 +32,15 @@ typedef struct Dw3OptGroup {
 
 /* Registry indexes: 0 Widescreen, 1 Fast-forward, 2 Restart hotkey, 3 Music
  * volume, 4 SFX volume, 5 Encounter rate, 6 Text speed, 7 Battle cursor,
- * 8 Auto-save. Restart hotkey sits in Gameplay until Controls (P6.12) exists. */
+ * 8 Auto-save, 9 Button layout. Restart hotkey sits in Gameplay until the
+ * Controls remap (P6.12, phase 2 of docs/CONTROLS_BUNDLE.md) moves it. */
 static const Dw3OptGroup dw3_optgroups[DW3_OPTGRP_COUNT] = {
     /* Display  */ {1, 1, {0}},
     /* Sound    */ {1, 2, {3, 4}},
     /* Gameplay */ {1, 5, {1, 2, 5, 6, 7}},
     /* Saves    */ {1, 1, {8}},
     /* Cheats   */ {1, 10, {0, 1, 2, 3, 4, 5, 6, 7, 8, 9}},
-    /* Controls */ {0, 0, {0}},
+    /* Controls */ {1, 1, {9}},
     /* Help     */ {1, 0, {0}}, /* P6.30: no rows, a screen (port/help/help.c) */
     /* Walk     */ {0, 0, {0}},
 };

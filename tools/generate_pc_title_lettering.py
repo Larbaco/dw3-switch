@@ -91,6 +91,13 @@ GROUP_TEXT = {
                         'Testmenü. Alles ist aus, bis du es einschaltest.',
                         'Menú de pruebas. Todo está apagado por defecto.',
                         'Menu di prova. Tutto è spento finché non lo attivi.')},
+    # P9.8 Controls: the Button layout row lives here (docs/CONTROLS_BUNDLE.md).
+    'controls': {'name': ('Controls', 'Commandes', 'Steuerung', 'Controles', 'Comandi'),
+                 'desc': ('Which button confirms and which cancels.',
+                          'Quel bouton valide et quel bouton annule.',
+                          'Welche Taste bestätigt und welche bricht ab.',
+                          'Qué botón confirma y cuál cancela.',
+                          'Quale pulsante conferma e quale annulla.')},
     # P6.30 Help: the group name and the message line under the group list.
     'help': {'name': ('Help', 'Aide', 'Hilfe', 'Ayuda', 'Aiuto'),
              'desc': ('Controls, hotkeys, saves and bug reports.',
@@ -244,6 +251,27 @@ AUTOSAVE_TEXT = {
     'it': {'row': 'Salvataggio auto', 'area': 'Ogni area',
            'desc': "Salva in un file a parte. Si carica con Continua."},
 }
+# P9.8 Button layout row of the Controls group (docs/CONTROLS_BUNDLE.md), in the
+# five languages of the EU disc (en is also the US disc's). The two values are
+# product names, the same in every language. Keep the label under 290 px, the
+# values under 236 px and the description under 690 px.
+LAYOUT_TEXT = {
+    'en': {'row': 'Button layout',
+           'desc': 'Nintendo: A confirms, B cancels. Applies now.'},
+    'fr': {'row': 'Disposition boutons',
+           'desc': 'Nintendo : A valide, B annule. Effet immédiat.'},
+    'de': {'row': 'Tastenbelegung',
+           'desc': 'Nintendo: A bestätigt, B bricht ab. Sofort aktiv.'},
+    'es': {'row': 'Botones',
+           'desc': 'Nintendo: A confirma, B cancela. Se aplica ya.'},
+    'it': {'row': 'Disposizione tasti',
+           'desc': 'Nintendo: A conferma, B annulla. Subito attivo.'},
+}
+for _lang, _t in LAYOUT_TEXT.items():
+    LETTERS.append(('opt_row_bl_' + _lang, _t['row'], 26, 'DejaVuSans.ttf'))
+    LETTERS.append(('opt_val_bl_ps_' + _lang, 'PlayStation', 26, 'DejaVuSans.ttf'))
+    LETTERS.append(('opt_val_bl_nin_' + _lang, 'Nintendo', 26, 'DejaVuSans.ttf'))
+    LETTERS.append(('opt_desc_bl_' + _lang, _t['desc'], 25, 'DejaVuSans.ttf'))
 # P6.31 follow-up: the title menu's Continue plaque (it loads the auto-save;
 # shown, with the game's own label moved to a Load Game row, only when an
 # auto-save file exists). Same bold condensed face as the Quit plaque; keep each

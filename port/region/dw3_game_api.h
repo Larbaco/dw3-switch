@@ -27,7 +27,7 @@ extern "C" {
 
 struct Dw3MapViewDraw;
 
-#define DW3_GAME_API_ABI 3
+#define DW3_GAME_API_ABI 4
 
 typedef struct Dw3GameApi {
     unsigned abi;       /* DW3_GAME_API_ABI */
@@ -66,6 +66,11 @@ typedef struct Dw3GameApi {
     int (*port_turbo_rate_x2)(void);
     void (*cheats_soak_arm)(const char *spec); /* NULL without DW3_CHEATS */
     void (*port_audio_health_exit)(void); /* P4.3 run-total line */
+
+    /* P9.8 confirm / cancel layout (port/options/button_map.c): the pad host
+     * passes port 1's raw pad word (16 bits, a bit clear while pressed) through
+     * the map of the running region's options. ABI 4 added it. */
+    unsigned (*button_map_apply)(unsigned word);
 
     /* data of the game image the host reads (runtime extraction, memory
      * sampler); pointers, because the arrays live in the localized copy */
@@ -119,6 +124,7 @@ const Dw3GameApi *dw3_game(void);
 #define dw3_port_turbo_rate_x2() DW3_API(port_turbo_rate_x2)()
 #define dw3_cheats_soak_arm(s) DW3_API(cheats_soak_arm)(s)
 #define dw3_port_audio_health_exit() DW3_API(port_audio_health_exit)()
+#define dw3_button_map_apply(w) DW3_API(button_map_apply)(w)
 #endif
 
 #ifdef __cplusplus
