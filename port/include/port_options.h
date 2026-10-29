@@ -54,7 +54,10 @@ enum {
     DW3_PORT_OPT_TEXT_SPEED = 6,
     DW3_PORT_OPT_BATTLE_MENU = 7,
     DW3_PORT_OPT_AUTOSAVE = 8, /* P6.31: 0 OFF, 1 On area change */
-    DW3_PORT_OPT_BUTTON_LAYOUT = 9 /* P9.8: 0 PlayStation, 1 Nintendo */
+    DW3_PORT_OPT_BUTTON_LAYOUT = 9, /* P9.8: 0 PlayStation, 1 Nintendo */
+    /* P51 item 4 (combined image only): 0 Ask, 1 US, 2 EU. Stored as
+     * region_default in the TOP-LEVEL port_options.cfg, not in the region's. */
+    DW3_PORT_OPT_REGION = 10
 };
 
 /* Registry; unavailable features remain safe no-op stubs. Values persist in

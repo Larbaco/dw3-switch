@@ -761,6 +761,8 @@ def main():
         if a.fail_fast and stop.is_set():
             return sc.name, [(sc.name, "-", "SKIP", "not started: --fail-fast after an earlier failure")]
         wait_for_memory(a.min_avail_mib, lambda m: say(f"[{sc.name}] {m}"))
+        if sc.tier == "both" and BOTH_BIN is None:
+            return sc.name, [(sc.name, "-", "SKIP", "needs the combined binary (--bin-both)")]
         if sc.launch and not (launcher and launcher.is_file()):
             return sc.name, [(sc.name, "-", "SKIP", "missing launcher binary (--launcher)")]
         for v in sorted(set(sc.phase_versions) | {sc.version} | set(sc.launch.split("+") if sc.launch else ())):

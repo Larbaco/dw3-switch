@@ -12,6 +12,9 @@
 #include "port_options_groups.h"
 #include "port_pacing.h"
 #include "port_turbo.h"
+#if DW3_OPT_REGION_ROW
+#include "dw3_region.h"
+#endif
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -53,7 +56,7 @@
  * port_options.h: port/pacing/pacing.c, port/battle_menu/battle_menu_memory.c
  * and port/autosave/autosave.c read them. */
 enum {
-    DW3_PORT_OPT_COUNT = 10,
+    DW3_PORT_OPT_COUNT = 11,
     DW3_PORT_OPT_WIDESCREEN = 0,
     DW3_PORT_OPT_FAST_FORWARD = 1,
     DW3_PORT_OPT_RESTART = 2,
@@ -67,7 +70,8 @@ _Static_assert(DW3_PORT_OPT_WIDESCREEN == 0 && DW3_PORT_OPT_FAST_FORWARD == 1 &&
                DW3_PORT_OPT_SFX_VOLUME == 4 && DW3_PORT_OPT_ENCOUNTER_RATE == 5 &&
                DW3_PORT_OPT_TEXT_SPEED == 6 && DW3_PORT_OPT_BATTLE_MENU == 7 &&
                DW3_PORT_OPT_AUTOSAVE == 8 &&
-               DW3_PORT_OPT_BUTTON_LAYOUT == 9 && DW3_PORT_OPT_COUNT == 10,
+               DW3_PORT_OPT_BUTTON_LAYOUT == 9 && DW3_PORT_OPT_REGION == 10 &&
+               DW3_PORT_OPT_COUNT == 11,
                "registry indexes changed: update port_options_groups.h");
 
 typedef struct Dw3PortOptStub {
@@ -131,6 +135,10 @@ static Dw3PortOptStub g_stubs[DW3_PORT_OPT_COUNT] = {
      * for a run. */
     {"Button layout", "button_layout", DW3_LAYOUT_PLAYSTATION,
      DW3_LAYOUT_PLAYSTATION, NULL},
+    /* P51 item 4: 0 = Ask, 1 = US, 2 = EU; the combined image only lists it.
+     * No key of this file: region_default lives in the top-level file next to
+     * the region folders (po_region_load / po_region_save). */
+    {"Region at start", NULL, 0, 0, NULL},
 };
 
 /* P9.4 persistence. The registry values above are what the game reads; this
@@ -203,7 +211,7 @@ static int po_cheats_on(void) {
 /* The group at item `item` of the group list. */
 static int po_group_at(int item) {
     int ids[DW3_OPTGRP_COUNT];
-    int n = dw3_optgroups_visible(po_cheats_on(), ids);
+    int n = dw3_optgroups_visible(DW3_OPTGRP_CHEATS_LISTED, ids);
 
     return item >= 0 && item < n ? ids[item] : -1;
 }
@@ -211,7 +219,7 @@ static int po_group_at(int item) {
 /* Keep the cursors inside their lists (the Cheats group can come and go with
  * its master switch) and the cursor's item on screen. */
 static void po_fit_cursors(void) {
-    int n = dw3_optlist_count(-1, po_cheats_on());
+    int n = dw3_optlist_count(-1, DW3_OPTGRP_CHEATS_LISTED);
 
     if (g_gcursor >= n) {
         g_gcursor = n - 1;
@@ -221,7 +229,7 @@ static void po_fit_cursors(void) {
     }
     g_gscroll = dw3_optlist_scroll_for(g_gscroll, g_gcursor, n);
     if (g_level) {
-        n = dw3_optlist_count(g_group, po_cheats_on());
+        n = dw3_optlist_count(g_group, DW3_OPTGRP_CHEATS_LISTED);
         if (g_cursor >= n) {
             g_cursor = n - 1;
         }
@@ -353,6 +361,17 @@ static void po_open(int in_game) {
     } else {
         fprintf(stderr, "dw3-port-options: open (stay MODE_TITLE)\n");
     }
+    {
+        /* P51 item 5: the Cheats group is always on the list; say what the
+         * owner should see, once per open. */
+        int ids[DW3_OPTGRP_COUNT];
+        int n = dw3_optgroups_visible(DW3_OPTGRP_CHEATS_LISTED, ids);
+
+        fprintf(stderr, "dw3-port-options: group list n=%d (cheats %s, master %s, "
+                        "locked in game %d)\n", n,
+                DW3_OPTGRP_CHEATS_LISTED ? "listed" : "not built",
+                po_cheats_on() ? "on" : "off", in_game ? 1 : 0);
+    }
     fflush(stderr);
 }
 
@@ -460,7 +479,8 @@ static int po_is_mode(int index) {
     return index == DW3_PORT_OPT_ENCOUNTER_RATE ||
            index == DW3_PORT_OPT_TEXT_SPEED ||
            index == DW3_PORT_OPT_BATTLE_MENU ||
-           index == DW3_PORT_OPT_BUTTON_LAYOUT;
+           index == DW3_PORT_OPT_BUTTON_LAYOUT ||
+           index == DW3_PORT_OPT_REGION;
 }
 
 /* Rows that Left / Right step and Confirm cycles: the volumes and the modes. */
@@ -474,6 +494,7 @@ static int po_value_max(int index) {
            : index == DW3_PORT_OPT_ENCOUNTER_RATE ? DW3_ENCOUNTER_MODE_MAX
            : index == DW3_PORT_OPT_BATTLE_MENU ? DW3_BATTLE_MENU_MEMORY_TECH
            : index == DW3_PORT_OPT_BUTTON_LAYOUT ? DW3_LAYOUT_COUNT - 1
+           : index == DW3_PORT_OPT_REGION ? 2
                                                    : DW3_PACING_MODE_MAX;
 }
 
@@ -588,6 +609,84 @@ void dw3_port_options_apply_env(int index, int level) {
     }
 }
 
+/* P51 item 4: the Region at start row (combined image). The key is
+ * region_default of the TOP-LEVEL port_options.cfg (`ask`, `us`, `eu`), the
+ * file the region boot reads (port/region/dw3_region.h); the region folder's
+ * own file is never touched by this row. The folder is the parent of the
+ * region's config dir (sdmc:/switch/dw3 beside us/ and eu/), or DW3_CONFIG_DIR
+ * when that is set (the PC replays keep both files in one folder). */
+#if DW3_OPT_REGION_ROW
+static char g_region_base[DW3_OPTCFG_PATH_MAX];
+
+static const char *po_region_base(void) {
+    const char *env = getenv("DW3_CONFIG_DIR");
+    char *slash;
+    size_t n;
+
+    if (env != NULL && env[0] != '\0' && strlen(env) < sizeof(g_region_base)) {
+        strcpy(g_region_base, env);
+        return g_region_base;
+    }
+    if (!g_persist_on || g_cfg_dir[0] == '\0') {
+        return NULL;
+    }
+    strcpy(g_region_base, g_cfg_dir);
+    n = strlen(g_region_base);
+    while (n > 1 && g_region_base[n - 1] == '/') {
+        g_region_base[--n] = '\0';
+    }
+    slash = strrchr(g_region_base, '/');
+    if (slash == NULL || slash == g_region_base) {
+        return NULL;
+    }
+    *slash = '\0';
+    return g_region_base;
+}
+
+static void po_region_load(void) {
+    const char *base = po_region_base();
+    Dw3Region pref = DW3_REGION_NONE;
+    Dw3Region last = DW3_REGION_NONE;
+
+    g_stubs[DW3_PORT_OPT_REGION].value = 0;
+    if (base == NULL) {
+        return;
+    }
+    dw3_region_cfg_read(base, &pref, &last);
+    g_stubs[DW3_PORT_OPT_REGION].value =
+        pref == DW3_REGION_US ? 1 : pref == DW3_REGION_EU ? 2 : 0;
+    PO_INFO("dw3-options: region_default %s read from %s/%s",
+            pref == DW3_REGION_NONE ? "ask" : dw3_region_name(pref), base,
+            DW3_OPTCFG_FILE);
+}
+
+static void po_region_save(int v) {
+    const char *base = po_region_base();
+    Dw3Region pref = v == 1 ? DW3_REGION_US : v == 2 ? DW3_REGION_EU
+                                                      : DW3_REGION_NONE;
+
+    if (base == NULL) {
+        PO_WARN("dw3-options: region_default not saved: no top-level folder "
+                "(options are session-only)");
+        return;
+    }
+    if (dw3_region_cfg_write(base, DW3_REGION_NONE, 1, pref) != 0) {
+        PO_WARN("dw3-options: region_default %s NOT saved to %s/%s "
+                "(cannot read or write it)",
+                pref == DW3_REGION_NONE ? "ask" : dw3_region_name(pref), base,
+                DW3_OPTCFG_FILE);
+        return;
+    }
+    PO_INFO("dw3-options: region_default %s saved to %s/%s (takes effect at "
+            "the next start)",
+            pref == DW3_REGION_NONE ? "ask" : dw3_region_name(pref), base,
+            DW3_OPTCFG_FILE);
+}
+#else
+static void po_region_load(void) {}
+static void po_region_save(int v) { (void)v; }
+#endif
+
 /* Write every option to the file. An option still forced by the environment
  * keeps the value the file had, so `DW3_WIDESCREEN=0 dw3-pc` for one run is
  * not saved as the user's choice by an unrelated toggle. */
@@ -601,6 +700,9 @@ static int po_save(void) {
     }
     for (i = 0; i < DW3_PORT_OPT_COUNT; i++) {
         out[i] = (g_env_pinned >> i) & 1u ? g_saved[i] : g_stubs[i].value;
+        if (g_stubs[i].key == NULL) {
+            continue; /* the Region at start row: the top-level file */
+        }
         if (i == DW3_PORT_OPT_BUTTON_LAYOUT) {
             snprintf(num, sizeof(num), "%s", dw3_button_layout_name(out[i]));
         } else {
@@ -701,6 +803,9 @@ int dw3_port_options_persist_init(const char *dir) {
                     g_cfg.skipped);
         }
         for (i = 0; i < DW3_PORT_OPT_COUNT; i++) {
+            if (g_stubs[i].key == NULL) {
+                continue;
+            }
             v = dw3_optcfg_get(&g_cfg, g_stubs[i].key);
             if (v == NULL) {
                 continue;
@@ -729,6 +834,7 @@ int dw3_port_options_persist_init(const char *dir) {
             g_stubs[i].value = n;
         }
     }
+    po_region_load();
     for (i = 0; i < DW3_PORT_OPT_COUNT; i++) {
         g_saved[i] = g_stubs[i].value;
     }
@@ -771,12 +877,14 @@ static const char *po_mode_name(int index, int v) {
                                           "command+technique"};
     static const char *const layout[DW3_LAYOUT_COUNT] = {"playstation",
                                                          "nintendo"};
+    static const char *const region[3] = {"ask", "us", "eu"};
 
     if (v < 0 || v > po_value_max(index)) {
         return "?";
     }
     return index == DW3_PORT_OPT_ENCOUNTER_RATE ? encounter[v]
            : index == DW3_PORT_OPT_BUTTON_LAYOUT ? layout[v]
+           : index == DW3_PORT_OPT_REGION ? region[v]
            : index == DW3_PORT_OPT_BATTLE_MENU ? battle[v] : text[v];
 }
 
@@ -859,6 +967,7 @@ static void po_step(int index, int delta) {
                 index == DW3_PORT_OPT_ENCOUNTER_RATE ? "encounter rate"
                 : index == DW3_PORT_OPT_BATTLE_MENU ? "battle cursor"
                 : index == DW3_PORT_OPT_BUTTON_LAYOUT ? "button layout"
+                : index == DW3_PORT_OPT_REGION ? "region at start"
                                                     : "text speed",
                 po_mode_name(index, v));
     }
@@ -871,7 +980,11 @@ static void po_step(int index, int delta) {
          * frame): the choice sound below is already played with it. */
         dw3_button_map_change(v, "screen");
     }
-    (void)po_save();
+    if (index == DW3_PORT_OPT_REGION) {
+        po_region_save(v);
+    } else {
+        (void)po_save();
+    }
     po_sound(PO_SND_SELECT);
 }
 
@@ -1200,7 +1313,7 @@ void dw3_port_options_tick(void) {
     }
     if (po_key_down() &&
         (g_level ? g_cursor : g_gcursor) <
-            dw3_optlist_count(g_level ? g_group : -1, po_cheats_on()) - 1) {
+            dw3_optlist_count(g_level ? g_group : -1, DW3_OPTGRP_CHEATS_LISTED) - 1) {
         if (g_level) {
             g_cursor++;
         } else {
@@ -1348,7 +1461,7 @@ void dw3_port_options_draw(void) {
     if (!g_level) {
         /* P9.9: the group list (PS1-primitive fallback, plain text). */
         int ids[DW3_OPTGRP_COUNT];
-        int count = dw3_optgroups_visible(po_cheats_on(), ids);
+        int count = dw3_optgroups_visible(DW3_OPTGRP_CHEATS_LISTED, ids);
 
         lines[n++] = "Port options";
         lines[n++] = "------------";

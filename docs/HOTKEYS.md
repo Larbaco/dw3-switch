@@ -62,7 +62,7 @@ port options:
   NRO returns to hbmenu, on PC the window closes. HOME still exits as before.
 - Port options is a list of groups (P9.9: Display, Sound, Gameplay, Saves, Controls (P9.8:
   the Button layout row; Confirm or Left / Right switch it), Help (P6.30), and
-  Cheats before Controls once its master switch is on). Up/Down moves the cursor; Cross **or
+  Cheats before Controls, always listed (P51), greyed in game). Up/Down moves the cursor; Cross **or
   Circle** (PC X or D; Switch B or A) opens a group. In a group Up/Down selects a
   setting and Cross **or Circle** toggles it. Triangle (PC S; Switch X) in a group
   goes back to the list with the cursor on that group; on the list it returns to
@@ -80,8 +80,8 @@ port options:
   Cheats screen is not described in the help. See [P6.30_HELP](P6.30_HELP.md).
 - On the Options screen (the list or any group), **Square** (PC **Z**, Switch
   **Y**) opens the Cheats screen (P6.20) and Triangle returns to Options. It is
-  the same screen as the Cheats group, which is listed only once the Cheats
-  master switch is on, so the key is how you reach it the first time; builds made with `--no-cheats` have no such screen. Inside
+  the same screen as the Cheats group, which is always on the list (P51: it was
+  listed only once the master switch was on), so the key is only a shortcut; builds made with `--no-cheats` have no such screen. Inside
   it Up/Down selects a row (Down from the last row of page 1, "Cheat saves",
   goes on to page 2), Cross / Circle change it. On page 2 (Money, Warp, Item
   id, Item count, Give item) Left / Right step the row's value, and L1 / R1
@@ -124,7 +124,7 @@ acceptance remains tracked separately in [P5.3_FLAT_SAVE.md](P5.3_FLAT_SAVE.md).
 | Options in battle | Select, while the command menu waits | Backspace | Minus | Port options over the held battle; no L1/R1/L2/R2 held; not during attacks or in the sub-menus; Widescreen and Cheats greyed; Triangle returns (P9.7 slice 2) |
 | Return to title from the field menu | Start, then the last row, Cross, Yes | Enter, ..., X | Plus, ..., B | Always there; the same reset as the chord, after a Yes / No question (P6.27) |
 | Quit game from the title menu | Last title row, Cross, Yes | ..., X | ..., B | Always on the native title; flushes the saves, then hbmenu (Switch) or closes the window (PC) (P6.28) |
-| Open the new full-screen map (P6.32 PoC) | Square on the game's Map screen | Z | Y (both layouts) | Widescreen on and `map_screen` not 0 (PoC default on). In it: **D-pad (or left stick) moves the cursor** like the game's (the view follows it when zoomed; the game's name box shows on a location), **the right stick zooms** (up in, down out, smooth, not in steps), L1 / R1 zoom in steps, **L2 / R2 (ZL / ZR) change the scaler** (Nearest is the default), Circle hides the text and the name box, the cancel button (PS1 Triangle: Switch X, or B with the Nintendo layout; PC S; it follows the layout and, later, the P6.12 remap) closes it, Square does not; R3 does nothing (no turbo). Free-button table for a future field hotkey: [P6.32 section 7.5](P6.32_MAP_ZOOM.md#75-free-buttons-in-the-field-for-a-future-field-hotkey) |
+| Open the new full-screen map (P6.32 PoC) | Square on the game's Map screen | Z | Y (both layouts) | Widescreen on and `map_screen` not 0 (PoC default on). It opens at **1.5x** on your area with the top and bottom bars hidden (P51); **Circle shows / hides the bars** (the name box stays). In it: **D-pad (or left stick) moves the cursor** like the game's (the view follows it when zoomed; the game's name box shows on a location), **the right stick zooms** (up in, down out, smooth, not in steps), L1 / R1 zoom in steps, **L2 / R2 (ZL / ZR) change the scaler** (Nearest is the default), Circle hides the text and the name box, the cancel button (PS1 Triangle: Switch X, or B with the Nintendo layout; PC S; it follows the layout and, later, the P6.12 remap) closes it, Square does not; R3 does nothing (no turbo). Free-button table for a future field hotkey: [P6.32 section 7.5](P6.32_MAP_ZOOM.md#75-free-buttons-in-the-field-for-a-future-field-hotkey) |
 | Change partner on the equip panel (P6.33) | L2 / R2 | W / E | ZL / ZR | Status, Equipment, while the slot list waits (not inside the item list); previous / next party member, wraps; the slot cursor stays. Needs 2 or more partners. On by default; `items_partner_switch=0` in `port_options.cfg` turns it off. No on-screen help line yet (the panel has no free line in the five EU languages) |
 
 Hold all four restart buttons together; one activation is allowed per chord
@@ -207,3 +207,9 @@ and must not be treated as proof of normal input or hardware acceptance.
   [restart policy](../port/options/restart.c)
 - [HUD polling](../platforms/switch/psyz_backend/nx_debug_overlay.c) and
   [battle-mode polling](../platforms/switch/psyz_backend/nx_battle_mode.c)
+
+## Combined image: asking for the region picker at launch (P51 item 4, a try)
+
+| Action | Switch | Notes |
+|---|---|---|
+| Show the US / EU picker although a region is stored | hold **Minus**, or **ZL and ZR together**, while the `.nro` starts | Only when both regions are present and `region_default` is us or eu. hbmenu or Sphaira may take either button before the game sees it (Sphaira shows a toast for Minus); the log says what was seen: `dw3-region: pick buttons seen minus=M zl=Z zr=R (12 frames)`. Unverified on the console. The supported way is Options > Gameplay > **Region at start** (Ask / US / EU) |

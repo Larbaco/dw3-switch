@@ -56,7 +56,8 @@ class Rec:
 # Saves; Cheats joins once its master switch is on); a group opens a sub-screen
 # with its rows and Triangle goes back to the list with the cursor kept.
 GRP_DISPLAY, GRP_SOUND, GRP_GAMEPLAY, GRP_SAVES = 0, 1, 2, 3
-GRP_CONTROLS = 4  # P9.8: the Button layout row (Cheats, when on, comes before it)
+GRP_CHEATS = 4    # P51 item 5: always on the list (greyed in game)
+GRP_CONTROLS = 5  # P9.8: the Button layout row (Cheats comes before it)
 
 
 def _keys(r, f, *masks, gap=20):
@@ -689,6 +690,63 @@ def p77_square(version):
     _pad(r, 600, SQUARE | 0x2000)    # Square + Circle
     _pad(r, 620, 0)
     r.end(700)
+    return r
+
+
+def _to_options(r, version):
+    """Title -> Options (the group list); returns the frame it is open at."""
+    if version == "us":
+        r.press(20, START)           # skip the opening FMV
+        r.press(210, START)          # PRESS START
+        m = 320                      # title menu is up
+    else:
+        for f in (110, 160, 190, 220, 280):   # confirm English, skip splash/FMV, PRESS START
+            r.press(f, START)
+        m = 390
+    r.press(m, DOWN)                 # New Game -> Options
+    r.press(m + 20, CROSS)           # open the Options screen (the group list)
+    return m
+
+
+def options_cheats_listed(version):
+    """P51 item 5: the Cheats group is on the title's group list with the master
+    switch off. The list (`cheats-listed`), Down to Cheats and Cross: the Cheats
+    screen opens on its master switch (`cheats-open`, master OFF), Triangle
+    back to the list with the cursor on Cheats (`cheats-back`), Triangle."""
+    r = Rec(f"{version.upper()}: P51 Cheats group listed with the master off")
+    m = _to_options(r, version)
+    r.shot(m + 60, "cheats-listed")
+    f = _group(r, m + 70, GRP_DISPLAY, GRP_CHEATS)
+    r.shot(f + 40, "cheats-open")
+    r.press(f + 60, TRIANGLE)        # back to the list
+    r.shot(f + 120, "cheats-back")
+    r.press(f + 140, TRIANGLE)       # leave
+    r.end(f + 200)
+    return r
+
+
+def options_region(version, phase):
+    """P51 item 4 (the combined image only, run with --bin-both): Options ->
+    Gameplay -> Down x5 to the Region at start row. Phase 1: Cross steps Ask ->
+    US -> EU (`region-ask`, `region-us`, `region-eu`), Triangle out. Phase 2 is a
+    new process on the same config folder: the row is read back (`region-back`)."""
+    r = Rec(f"{version.upper()}: P51 Region at start row, phase {phase}")
+    m = _to_options(r, version)
+    f = _group(r, m + 70, GRP_DISPLAY, GRP_GAMEPLAY)
+    f = _keys(r, f + 20, DOWN, DOWN, DOWN, DOWN, DOWN)       # Region at start
+    if phase == 1:
+        r.shot(f + 20, "region-ask")
+        r.press(f + 40, CROSS)       # Ask -> US
+        r.shot(f + 80, "region-us")
+        r.press(f + 100, CROSS)      # US -> EU
+        r.shot(f + 140, "region-eu")
+        f += 160
+    else:
+        r.shot(f + 20, "region-back")
+        f += 40
+    r.press(f, TRIANGLE)             # back to the list
+    r.press(f + 40, TRIANGLE)        # leave
+    r.end(f + 100)
     return r
 
 
@@ -1469,7 +1527,7 @@ def map_view(version):
     L1 step the zoom (1.25, 1.5, 2.0, 3.0, then back down to fit), the right
     stick zooms smoothly (`mv-stick-in`, `mv-stick-out`), R2 cycles the scaler (Lanczos2
     and FSR 1 are built on the CPU, with a log line each), R3 does nothing (no
-    turbo), Circle hides the help text, Triangle returns to the unchanged game
+    turbo), Circle shows the help bars (hidden at open; the view opens at 1.5x), Triangle returns to the unchanged game
     Map and a second Triangle closes it. With widescreen off (the `-43`
     scenario) Square is ignored and the screen never opens. The host draws the
     screen, so the references come from the PC build only."""
@@ -1504,6 +1562,12 @@ def map_view(version):
     _pad(r, 4240, 0)
     r.shot(4245, "mv-cursor-down")
     f = 4250
+    # P51 item 2: the view opens at 1.5x; two steps down is the 1.0 the zoom
+    # tour below starts from (it used to be the opening zoom)
+    r.press(f, L1_MAP)
+    r.press(f + 20, L1_MAP)
+    r.shot(f + 40, "mv-zoom-100-open")
+    f += 60
     for name, button in (("mv-zoom-125", R1_MAP), ("mv-zoom-150", R1_MAP),
                          ("mv-zoom-200", R1_MAP), ("mv-zoom-300", R1_MAP)):
         r.press(f, button)
@@ -1523,9 +1587,9 @@ def map_view(version):
         r.shot(f + 100, name)
         f += 120
     r.press(f, R3_MAP)               # turbo toggle: nothing
-    r.press(f + 30, CIRCLE_MAP)
-    r.shot(f + 60, "mv-no-hud")
-    r.press(f + 70, CIRCLE_MAP)
+    r.press(f + 30, CIRCLE_MAP)      # P51 item 2: the bars come on (off at open)
+    r.shot(f + 60, "mv-hud-on")
+    r.press(f + 70, CIRCLE_MAP)      # and go again
     # the right stick zooms smoothly (the owner's request): up 40 frames from
     # the 1.0 step, then down 40 frames; both end between the table steps
     _pad(r, f + 90, RSTICK_UP)
@@ -2216,7 +2280,7 @@ def field_options(version, phase=1):
 # The Help group is the sixth plaque of the group list (Display, Sound,
 # Gameplay, Saves, Controls (P9.8), then Help; Cheats would sit before Controls
 # once its master switch is on). The L1 / R1 masks are the page keys of the book.
-GRP_HELP = 5
+GRP_HELP = 6
 
 
 def _help_reading(r, f):
@@ -2559,6 +2623,10 @@ def main(out):
         (out / f"{v}-p79-menu.rec").write_text(p79_menu(v).text(True))
         (out / f"{v}-p79-menu-page2.rec").write_text(p79_menu(v, page2=True).text(True))
         (out / f"{v}-p79-two-battles.rec").write_text(p79_two_battles(v).text(True))
+        (out / f"{v}-options-cheats-listed.rec").write_text(options_cheats_listed(v).text(True))
+        for phase in (1, 2):
+            (out / f"{v}-options-region-p{phase}.rec").write_text(
+                options_region(v, phase).text(True))
         for phase in (1, 2):
             (out / f"{v}-cheats-screen-p{phase}.rec").write_text(
                 cheats_screen(v, phase).text(True))

@@ -155,6 +155,12 @@ int main(int argc, char **argv) {
         if (padGetButtons(&s_pad) & HidNpadButton_Minus) {
             in.minus_held = 1;
         }
+        /* P51 item 4: ZL + ZR held together asks as well (a try; the Options
+         * row "Region at start" is the supported way) */
+        if ((padGetButtons(&s_pad) & (HidNpadButton_ZL | HidNpadButton_ZR)) ==
+            (HidNpadButton_ZL | HidNpadButton_ZR)) {
+            in.minus_held = 1;
+        }
         consoleUpdate(NULL);
     }
     dw3_region_probe(DW3_LAUNCHER_BASE, &in.probe);

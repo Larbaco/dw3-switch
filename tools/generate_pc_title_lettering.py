@@ -272,6 +272,27 @@ for _lang, _t in LAYOUT_TEXT.items():
     LETTERS.append(('opt_val_bl_ps_' + _lang, 'PlayStation', 26, 'DejaVuSans.ttf'))
     LETTERS.append(('opt_val_bl_nin_' + _lang, 'Nintendo', 26, 'DejaVuSans.ttf'))
     LETTERS.append(('opt_desc_bl_' + _lang, _t['desc'], 25, 'DejaVuSans.ttf'))
+# P51 item 4: the Region at start row of the Gameplay group, shown only in the
+# combined build (docs/P51_FEEDBACK.md). Values: Ask (per language), US and EU
+# (the same in every language). Label under 290 px, description under 690 px.
+REGION_TEXT = {
+    'en': {'row': 'Region at start', 'ask': 'Ask',
+           'desc': 'Used at the next start. Ask = choose US or EU.'},
+    'fr': {'row': 'R\u00e9gion au d\u00e9marrage', 'ask': 'Demander',
+           'desc': 'Prochain d\u00e9marrage. Demander = choisir US ou EU.'},
+    'de': {'row': 'Region beim Start', 'ask': 'Fragen',
+           'desc': 'Beim n\u00e4chsten Start. Fragen = US oder EU w\u00e4hlen.'},
+    'es': {'row': 'Regi\u00f3n al iniciar', 'ask': 'Preguntar',
+           'desc': 'En el pr\u00f3ximo inicio. Preguntar = elegir US o EU.'},
+    'it': {'row': 'Regione all\'avvio', 'ask': 'Chiedere',
+           'desc': 'Al prossimo avvio. Chiedere = scegliere US o EU.'},
+}
+for _lang, _t in REGION_TEXT.items():
+    LETTERS.append(('opt_row_rg_' + _lang, _t['row'], 26, 'DejaVuSans.ttf'))
+    LETTERS.append(('opt_val_rg_ask_' + _lang, _t['ask'], 26, 'DejaVuSans.ttf'))
+    LETTERS.append(('opt_desc_rg_' + _lang, _t['desc'], 25, 'DejaVuSans.ttf'))
+LETTERS.append(('opt_val_rg_us', 'US', 26, 'DejaVuSans.ttf'))
+LETTERS.append(('opt_val_rg_eu', 'EU', 26, 'DejaVuSans.ttf'))
 # P6.31 follow-up: the title menu's Continue plaque (it loads the auto-save;
 # shown, with the game's own label moved to a Load Game row, only when an
 # auto-save file exists). Same bold condensed face as the Quit plaque; keep each

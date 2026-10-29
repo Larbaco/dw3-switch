@@ -512,3 +512,18 @@ preview.51, 2026-10-28), and the matching [ROADMAP](ROADMAP.md) rows updated:
 | 5 | Cheats listed always at the title, greyed in game? | yes |
 | 6 | Game menu background in Options, scrolling? | yes, dimmed; static if it costs frame time |
 | 7 | Take `stage_sweep` from the top-level file? | no, log and ignore |
+
+## 10. Built: PR 2, the small UX fixes (2026-10-29)
+
+All with the orchestrator defaults (pending the owner's confirmation). Items 1 (PR 1,
+#343), 3 (PR 3) and 6 (PR 4) are separate PRs.
+
+| Item | What was built | Log, replay, OLED |
+|---|---|---|
+| 5 Cheats group | `dw3_optgroups_visible()` takes `DW3_OPTGRP_CHEATS_LISTED` (the build has the Cheats feature) instead of the master switch: the group is on the title list with the master off and greyed in game. The strip text is the group's existing description (a new "master off" sentence would need new lettering in five languages; not done). The list is 7 plaques: Cheats sits before Controls and Help, so recordings that walk the list use `GRP_CONTROLS` 5 and `GRP_HELP` 6 | `dw3-port-options: group list n=7 (cheats listed, master off, locked in game 0)`; replay `us/eu-options-cheats-listed`; OLED A16 (A13 stays open until the owner opens it). Every Options replay that shows the group list has a new picture (one more plaque) |
+| 4 Region row | Registry row 10 "Region at start" (Ask / US / EU) in the Gameplay group, combined image only (`DW3_OPT_REGION_ROW`); stored as `region_default` of the top-level file through `dw3_region_cfg_write`; five-language lettering (`REGION_TEXT`); ZL + ZR held together as a second hold-to-pick, with `dw3-region: pick buttons seen minus=M zl=Z zr=R (12 frames)`. The ZL + ZR try is **unverified on the console** | `dw3-options: region_default us saved to ... (takes effect at the next start)`; replay `us/eu-options-region` (`--bin-both`); unit tests `test_options_persist.py::test_region_row_*`; OLED A17 |
+| 7 stage_sweep | `sw_note_stray_key()` in `port/sweep/stage_sweep.c`: with the sweep off, a `stage_sweep` set in the top-level file logs once and changes nothing (option A) | `dw3-sweep: stage_sweep found in <top-level file>, ignored; put it in <region file>`; `test_stage_sweep.py`; OLED G10 note, P5.5 doc |
+| 2 Map view | opens at 1.5x (`MAP_OPEN_STEP` 3) with the bars hidden; `show_hud` (the bars) split from `show_name` (the name box, always on); Circle shows / hides the bars | `dw3-map: open ... zoom=1.50 hud=off`, `dw3-map: HUD on|off (the bars; the name box stays)`; replay `us/eu-map-view` (checkpoints `mv-open`, `mv-zoom-100-open`, `mv-hud-on`); OLED B16; P6.32 section 12 |
+
+The Region row needs the new registry row to be in `dw3_optgroups[Gameplay]` only in the
+combined image, so the plain builds' Gameplay screens are unchanged.

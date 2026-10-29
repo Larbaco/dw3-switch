@@ -21,11 +21,13 @@ pad 500 0x0040
 pad 505 0x0000
 pad 520 0x0040
 pad 525 0x0000
-pad 540 0x4000
+pad 540 0x0040
 pad 545 0x0000
-shot 600 controls-restored
-pad 620 0x1000
-pad 625 0x0000
+pad 560 0x4000
+pad 565 0x0000
+shot 620 controls-restored
 pad 640 0x1000
 pad 645 0x0000
-end 700
+pad 660 0x1000
+pad 665 0x0000
+end 720

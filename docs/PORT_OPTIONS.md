@@ -713,7 +713,7 @@ hints (Open or Change, Back).
 | Gameplay | Fast-forward (1), Restart hotkey (2), Encounter rate (5), Text speed (6), Battle cursor (7) | Restart hotkey moves to Controls when P6.12 exists |
 | Saves | Auto-save (8) | |
 | Controls | Button layout (9) | P9.8, built: PlayStation (default) / Nintendo, see [Button layout row](#button-layout-row-p98). The remap (P6.12) adds rows here and moves Restart hotkey in |
-| Cheats | the ten P6.20 cheat rows (not registry rows), a scrolling sub-screen | Listed once the Cheats master switch is on; greyed in game, and title-only |
+| Cheats | the ten P6.20 cheat rows (not registry rows), a scrolling sub-screen | **Always listed** (P51 item 5; it used to appear only once the master switch was on, so nobody found it): the title opens the Cheats screen where the master switch is; greyed in game (title-only). `DW3_OPTGRP_CHEATS_LISTED` in `port_options_groups.h` (the build has the Cheats feature); `dw3-port-options: group list n=7 (cheats listed, master off, locked in game 0)` once per open |
 | Help | no rows, a screen of its own (P6.30, built) | Always listed (it is not secret), after Saves and Cheats. Confirm opens the technical help (`port/help/`, [P6.30_HELP](P6.30_HELP.md)): a list of ten pages and a scrolling text page, on its own full-canvas layer that the host draws instead of the Options layer (the Options cache is untouched). Up / Down scroll a page by line, Left / Right by screenful, L1 / R1 (L / R) change page, Back goes to the page list and out. Title, field menu and battle Options all reach it |
 | Walkthrough | not built | P6.35: hidden placeholder in `port_options_groups.h` (`built = 0`); flip the flag when the screen exists |
 
@@ -907,6 +907,39 @@ scrolled; `cheats-give`, the end of the list) now compare pictures.
 ### OLED checklist, groups and sub-screens (owner)
 
 See [OLED_TEST_PLAN](OLED_TEST_PLAN.md) A5, A9 to A12 and their proof lines.
+
+## Region at start row (P51 item 4)
+
+A sixth row of the Gameplay group, **only in the combined image** (`DW3_VERSION=both`;
+the plain US and EU images have no other region to start, `DW3_OPT_REGION_ROW` in
+`port_options_groups.h`). Registry row 10, **Region at start: Ask / US / EU**
+(Confirm cycles, Left / Right step). It is stored as `region_default` (`ask`, `us`,
+`eu`) in the **top-level** `sdmc:/switch/dw3/port_options.cfg`, the picker's file,
+through `dw3_region_cfg_write` (which refuses to overwrite a file it cannot read, keeps
+the other keys and writes `end=1` last); the region folder's own file never gets it.
+The folder is the parent of the region's config folder, or `DW3_CONFIG_DIR` when that
+is set (the replays keep both files in one folder). It takes effect at the next start;
+a change in game never changes the running region, and the row is not locked in game.
+Ask = the picker every start (3 s countdown), the fresh-install default.
+
+Logs: `dw3-options: region_default us read from <dir>/port_options.cfg` at boot and
+`dw3-options: region_default eu saved to <dir>/port_options.cfg (takes effect at the
+next start)` per change (`... NOT saved ...` when the file cannot be read or written);
+the boot picker's own `dw3-region: stored region_default=... minus_held=...` line
+follows. The lettering (Region at start, Ask in five languages, US, EU) is generated
+by `tools/generate_pc_title_lettering.py` (`REGION_TEXT`). Tests:
+`tools/tests/test_options_persist.py::test_region_row_*` (the registry built as the
+combined image's game copies are, `-DDW3_REGION_IMAGE=1`), replay `us/eu-options-region`
+(tier `both`: `tools/replay_tests.sh --only us-options-region --only eu-options-region
+--bin-both build/pc-both/dw3-pc`).
+
+**The hold-to-pick buttons** (a try, unverified on the console): at launch the combined
+image samples the pad for 12 frames; **Minus** (hbmenu or Sphaira may take it) or **ZL and
+ZR held together** ask for the picker, when both regions are present and a region is
+stored. The line `dw3-region: pick buttons seen minus=M zl=Z zr=R (12 frames)` says what
+the game saw, so one run settles whether the launcher passes ZL / ZR. The small launcher
+(`platforms/switch/launcher`) takes ZL + ZR the same way. The Options row is the supported
+way; `region_default=ask` needs no button.
 
 ## Auto-save row (P6.31)
 
