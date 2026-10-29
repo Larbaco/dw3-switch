@@ -136,6 +136,46 @@ how the original looks, so it is the fallback, not the first choice.
   turbo. Proof: the lines above. **B20b** the technique list and the partner
   switch list show it too.
 
+### 1a. Resolution (built 2026-10-29)
+
+**Root cause: suspect 1, the stubbed bar path.** `ContinueDraw()` was a no-op in
+`port/psyz_missing/psyz_missing.c` since P3.3, so `FIGHTSTG_drawCursorBar` built
+its ordering table every vsync and never sent it: on every build, in every mode,
+the Items and technique lists (`sprite` -1) had no selection marker. It is not a
+regression of 0176, of the gpu-tex renderer, of widescreen or of the battle menu
+memory. Evidence, all from the PC replay runner (new scenario `battle-list-bar`,
+a full bag through the new test hook `DW3_FORCE_BATTLE_BAG`, patch 0189):
+
+| Run | Result |
+|---|---|
+| main (8af7c95), PC, software raster, 1x, widescreen on, memory off | Items list and technique list: **no marker** on any line (checkpoints `items-line1`, `tech-line1`) |
+| the same with `ContinueDraw` drawing its table | the round marker is on the picked line, the line left is empty again, in both lists; US and EU |
+| `-t4` (turbo 4x), `-43` (widescreen off) | marker present; the turbo pictures equal the 1x ones (0 px differ) |
+| Switch build in Ryubing, `gpu-tex` (default) and `soft` (`DW3_MESH_SOFT=1`) | `mode=gpu-tex` / `mode=soft`, `bar=submitted`, marker visible in the screenshots (US both modes, EU `gpu-tex`) |
+
+Suspects 2 to 5 are cleared by the first row: the baseline has none of them (PC
+has no mesh FBO, no turbo, memory off) and still shows no marker; with the fix the
+marker shows under gpu-tex, soft, widescreen on and off and turbo. The old
+tech-list reference frames (check A) do not exist as pictures (the committed
+scenarios never checkpointed a technique list), so the owner question 1 gets its
+answer from the code: **the technique list never had a marker either; it was
+simply noticed in Items**, where the list is longer and the cursor matters more.
+
+The fix: `ContinueDraw(inst_ot, cont_ot)` runs in `VSync(0)` from `drawFrame`
+after the finished frame's `DrawSync` and before the flip (the vsync callback of
+patch 0016), so it calls `DrawOTag(inst_ot)` and `DrawSync(0)` on the main thread:
+the table's `DR_MOVE` copies of a 12 x 12 VRAM bar frame go through
+`Draw_MoveImage` (both display pages, as the game does), onto the frame about to
+be shown. On the Switch the same path flushes the mesh layer into VRAM first
+(`switch_gpu.c`), which is why gpu-tex shows it. No game state changes.
+
+Logs (patch 0189, once per list open and once per close):
+`dw3-battle-cursor: open list=items mode=gpu-tex widescreen=1 turbo=1` and
+`dw3-battle-cursor: close list=items count=7 sel=2 bar=submitted vsyncs=216`.
+`bar=dropped` would mean the list was open and no table reached the GPU. The
+design's "bar moves submitted N" is the `vsyncs=` count (one table per vsync).
+The OLED row is **D15** (B20 is taken by the map view).
+
 ### Owner questions
 
 1. Did the technique list show its bar on earlier previews (before preview.41)?
@@ -503,9 +543,13 @@ preview.51, 2026-10-28), and the matching [ROADMAP](ROADMAP.md) rows updated:
 
 ## Owner questions, with the recommended default
 
+**Orchestrator defaults, pending the owner's confirmation** (2026-10-29): the
+owner asked the orchestrator to proceed, so every default in the table below is
+what is being built. Each is cheap to change afterwards.
+
 | # | Question | Default |
 |---|---|---|
-| 1 | Did the technique list show its bar before preview.41? | unknown: run the A/B (item 1) |
+| 1 | Did the technique list show its bar before preview.41? | answered by the code and the PC A/B: it never had one (item 1, 1a) |
 | 2 | Keep Circle as the map's bars toggle, bars off at start, open at 1.5x? | yes |
 | 3 | One map pack for both regions, shared files, per-region only where different? | yes |
 | 4 | Region row (Ask / US / EU) plus ZL+ZR held as a try? | yes; fresh install stays Ask |

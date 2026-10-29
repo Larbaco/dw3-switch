@@ -22,6 +22,7 @@ from pathlib import Path
 
 START, DOWN, CROSS = 0x0008, 0x0040, 0x4000
 TRIANGLE = 0x1000
+CIRCLE = 0x2000
 L2, R2 = 0x0100, 0x0200
 UP, RIGHT, LEFT = 0x0010, 0x0020, 0x0080
 EU_LANGS = ["en", "fr", "de", "it", "es"]
@@ -654,6 +655,35 @@ def p79_menu(version, page2=False, evidence=False):
     for f in range(520, 1470, 30):
         r.press(f, CROSS)
     r.end(1500)
+    return r
+
+
+def battle_list_bar(version):
+    """P51 item 1: the bar of the battle's bar-only lists. One forced battle
+    (the p79 env: Kotemon vs an enemy with 2000 HP, extra techniques, a full
+    bag). Turn 1: Fight -> Tech -> Item, open the Items list and move Down
+    twice, back, up to Tech, open the technique list and move Down. A
+    checkpoint per cursor position: the highlighted bar must be in each."""
+    r = Rec(f"{version.upper()}: battle Items / technique list bar (env in manifest)")
+    for f in (350, 375, 400, 425):   # Fight -> Tech -> DV -> Tag -> Item
+        r.press(f, DOWN)
+    r.shot(450, "battle-cmd-items")
+    r.press(460, CROSS)              # open the Items list
+    r.shot(530, "items-line0")
+    r.press(540, DOWN)
+    r.shot(600, "items-line1")
+    r.press(610, DOWN)
+    r.shot(670, "items-line2")
+    r.press(680, TRIANGLE)           # back to the command menu
+    for f in (720, 745, 770, 795):   # Item -> Tag -> DV -> Tech -> Fight
+        r.press(f, UP)
+    r.press(820, DOWN)               # Fight -> Tech
+    r.press(850, CROSS)              # open the technique list
+    r.shot(920, "tech-line0")
+    r.press(930, DOWN)
+    r.shot(990, "tech-line1")
+    r.press(1000, TRIANGLE)          # close the list: the log line of its bar
+    r.end(1040)
     return r
 
 
@@ -2627,6 +2657,7 @@ def main(out):
         for phase in (1, 2):
             (out / f"{v}-options-region-p{phase}.rec").write_text(
                 options_region(v, phase).text(True))
+        (out / f"{v}-battle-list-bar.rec").write_text(battle_list_bar(v).text(True))
         for phase in (1, 2):
             (out / f"{v}-cheats-screen-p{phase}.rec").write_text(
                 cheats_screen(v, phase).text(True))
