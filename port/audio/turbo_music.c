@@ -63,6 +63,16 @@ static int64_t g_win_start_us;
 static unsigned g_dropped_logs;
 static unsigned long long g_total_ticks, g_total_frames;
 
+/* Jingle hold (phase 3): the win jingle plays this long, in music ticks (the
+ * ticks of a game that runs at 1x, so 4 s), before the field music request
+ * that follows the battle is let through. */
+enum { TM_HOLD_NONE = 0, TM_HOLD_PLAY = 1, TM_HOLD_STOP = 2, TM_HOLD_MS = 4000 };
+static int g_hold;               /* a hold is running */
+static int g_hold_jingle;        /* the packed id of the jingle */
+static unsigned g_hold_ticks;    /* music ticks since it started */
+static int g_hold_kind;          /* TM_HOLD_*: the latest request kept */
+static int g_hold_packed;
+
 #ifdef DW3_TURBO_MUSIC_TEST
 static int g_test_opt, g_test_rate = 2, g_test_ntsc = 1;
 static int64_t g_test_now_us;
@@ -86,6 +96,9 @@ void dw3_tm_test_reset(void) {
     g_win_frames = g_win_ticks = 0;
     g_dropped_logs = 0;
     g_total_ticks = g_total_frames = 0;
+    g_hold = 0;
+    g_hold_ticks = 0;
+    g_hold_kind = TM_HOLD_NONE;
 }
 static int tm_option(void) { return g_test_opt; }
 static int tm_rate_x2(void) { return g_test_rate; }
@@ -279,6 +292,9 @@ int dw3_port_audio_ticks_due(void) {
             g_acc_us = 0;
         }
     }
+    if (g_hold) {
+        g_hold_ticks += (unsigned)n;
+    }
     g_win_frames++;
     g_win_ticks += (unsigned)n;
     g_total_frames++;
@@ -306,4 +322,112 @@ int dw3_port_audio_fade_ticks(int ticks) {
     TM_LOG("dw3-audio: fade scaled %d -> %d ticks (game_rate=%s)", ticks,
            scaled, tm_rate_name(rate));
     return scaled;
+}
+
+/* ---- Phase 3: the win jingle is held for 4 s of music time ----
+ *
+ * The jingle (a looping SEP track that never ends by itself) is started at the
+ * knock-out and the field's playSound cuts it about a second later at turbo.
+ * While the gate is on, the field's music request that follows the battle (the
+ * one call site in FIELDSTG_updateField, patch 0194) is kept back until the
+ * jingle has played TM_HOLD_MS of music time, counted in the music ticks the
+ * gate hands out (240 at 60 Hz, 200 at 50 Hz): on the frame clock that is
+ * deterministic (960 game frames at 4x), on the wall clock it is 4 s of wall
+ * time. The game does not wait: only that request is deferred, the latest one
+ * wins, and updateSoundLoading plays it at the release. Anything else that
+ * touches the music (a battle's own track, an event's, a stopSound of the
+ * jingle, stopAllSounds) ends the hold at once and goes through untouched. */
+
+static unsigned tm_hold_ms(void) {
+    return g_hold_ticks * 1000u / (unsigned)tm_hz();
+}
+
+static void tm_hold_end(const char *why) {
+    TM_LOG("dw3-audio: jingle hold release after %u ms (%s)%s", tm_hold_ms(),
+           why, g_hold_kind != TM_HOLD_NONE ? ", the kept request is dropped"
+                                            : "");
+    g_hold = 0;
+    g_hold_kind = TM_HOLD_NONE;
+}
+
+/* From playSound for an exclusive (music) id. The jingle starts the hold (when
+ * the gate is on); any other music while it runs ends it. Always returns
+ * with playSound going on. */
+void dw3_port_audio_music_request(int packed, int jingle) {
+    int rate;
+
+    if (packed == jingle) {
+        g_hold = tm_gate_on(&rate);
+        if (g_hold) {
+            g_hold_jingle = jingle;
+            g_hold_ticks = 0;
+            g_hold_kind = TM_HOLD_NONE;
+            TM_LOG("dw3-audio: jingle hold start (%d ms of music time = %d "
+                   "ticks, game_rate=%s)",
+                   TM_HOLD_MS, TM_HOLD_MS * tm_hz() / 1000,
+                   tm_rate_name(rate));
+        }
+    } else if (g_hold) {
+        tm_hold_end("music request");
+    }
+}
+
+/* From stopSound: the jingle is stopped by something other than the release. */
+void dw3_port_audio_music_stop_request(int packed) {
+    if (g_hold && packed == g_hold_jingle) {
+        tm_hold_end("stopped");
+    }
+}
+
+/* From stopAllSounds (a new battle, a movie, the title, a restart). */
+void dw3_port_audio_jingle_stopped(void) {
+    if (g_hold) {
+        tm_hold_end("stopped");
+    }
+}
+
+/* From the field's music call (FIELDSTG_updateField): `packed` is the area's
+ * music, or 0 for "no music here" (the field stops the current music). 1 =
+ * kept back during a hold, the caller skips its call. */
+int dw3_port_audio_field_music(int packed) {
+    if (!g_hold) {
+        return 0;
+    }
+    if (g_hold_kind != TM_HOLD_NONE) {
+        TM_LOG("dw3-audio: jingle hold superseded (%s 0x%08X by %s 0x%08X)",
+               g_hold_kind == TM_HOLD_PLAY ? "play" : "stop",
+               (unsigned)g_hold_packed, packed ? "play" : "stop",
+               (unsigned)packed);
+    }
+    g_hold_kind = packed != 0 ? TM_HOLD_PLAY : TM_HOLD_STOP;
+    g_hold_packed = packed != 0 ? packed : g_hold_jingle;
+    return 1;
+}
+
+/* Once per frame (updateSoundLoading): ends the hold when the time is up or
+ * the gate went off (turbo off, Turbo music Fast). Returns 0, or 1 = play
+ * *packed, 2 = stop *packed (the request that was kept back). */
+int dw3_port_audio_jingle_poll(int *packed) {
+    int rate;
+    const char *why;
+    int kind;
+
+    if (!g_hold) {
+        return 0;
+    }
+    if (!tm_gate_on(&rate)) {
+        why = "turbo-off";
+    } else if (g_hold_ticks >=
+               (unsigned)(TM_HOLD_MS * tm_hz() / 1000)) {
+        why = "elapsed";
+    } else {
+        return 0;
+    }
+    kind = g_hold_kind;
+    *packed = g_hold_packed;
+    TM_LOG("dw3-audio: jingle hold release after %u ms (%s)%s", tm_hold_ms(),
+           why, kind == TM_HOLD_NONE ? ", no request waiting" : "");
+    g_hold = 0;
+    g_hold_kind = TM_HOLD_NONE;
+    return kind;
 }
