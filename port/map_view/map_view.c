@@ -382,6 +382,8 @@ static void mod_build(const uint16_t *vram, int sheet_file, const void *sheet1,
     const char *want = getenv("DW3_MOD_PACK");
     double t0 = now_ms();
     int scale = 0, i, ncache = 0, from_pack = 0, at_1x = 0, skipped = 0;
+    int shared_files = 0, region_files = 0;
+    char mapfile[48];
     uint32_t len = sheet_len(sheet_file);
 
     mod_free();
@@ -463,12 +465,27 @@ static void mod_build(const uint16_t *vram, int sheet_file, const void *sheet1,
     s.mod.reveal = s.base.reveal;
     s.mod_scale = scale;
     snprintf(s.mod_id, sizeof(s.mod_id), "%s", pack.man.id);
-    fprintf(stderr, "dw3-map: mod: pack \"%s\" %s loaded: map_%s_h%d@%dx.png "
+    /* P51 item 3: the map and each distinct sprite came from the pack's shared
+     * files (both regions) or from this region's own */
+    for (i = 0; i < ncache; ++i) {
+        if (!cache_1x[i]) {
+            if (cache_img[i].shared) ++shared_files;
+            else ++region_files;
+        }
+    }
+    if (map.shared) ++shared_files;
+    else ++region_files;
+    if (map.shared) {
+        snprintf(mapfile, sizeof(mapfile), "map_h%d@%dx.png", s.half, scale);
+    } else {
+        snprintf(mapfile, sizeof(mapfile), "map_%s_h%d@%dx.png", MV_REGION, s.half, scale);
+    }
+    fprintf(stderr, "dw3-map: mod: pack \"%s\" %s loaded: %s "
             "%dx%d, reveal %d pieces from the pack, %d at 1x nearest, %d "
-            "skipped, %d ms%s%s%s\n", pack.man.id, pack.man.version, MV_REGION,
-            s.half, scale, s.mod.w, s.mod.h, from_pack, at_1x, skipped,
+            "skipped, %d ms%s%s%s shared=%d region=%d\n", pack.man.id, pack.man.version, mapfile,
+            s.mod.w, s.mod.h, from_pack, at_1x, skipped,
             (int)(now_ms() - t0), first_bad[0] ? " (first sprite refused: " : "",
-            first_bad, first_bad[0] ? ")" : "");
+            first_bad, first_bad[0] ? ")" : "", shared_files, region_files);
 }
 
 /* The same map built from the disc files; used for the cross-check and by the
