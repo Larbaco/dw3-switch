@@ -401,3 +401,117 @@ void dw3_port_items_stays_list_open(int slot, int row, int cursor, int scroll, i
     IM_LOG("dw3-items-menu: equip-stays list-open slot=%d row=%d cursor=%d scroll=%d item=%d count=%d", slot, row,
            cursor, scroll, item, count);
 }
+
+/* ---- P6.34 phase 3: the whole bag in the equip list (patch 0192) --------- */
+
+int dw3_port_items_bag_view_enabled(void) {
+    return im_flag("DW3_ITEMS_BAG_VIEW", DW3_ITEMS_BAG_VIEW_KEY);
+}
+
+int dw3_port_items_bag_next(int filter) {
+    if (filter < 0 || filter >= DW3_BAG_FILTERS - 1) {
+        return 0;
+    }
+    return filter + 1;
+}
+
+int dw3_port_items_bag_fits(int slot, int kind) {
+    switch (slot) {
+    case 0:
+        return kind == DW3_EQUIP_HEAD;
+    case 1:
+        return kind == DW3_EQUIP_BODY;
+    case 2:
+    case 3:
+        return kind == DW3_EQUIP_RIGHT_HAND || kind == DW3_EQUIP_LEFT_HAND || kind == DW3_EQUIP_EITHER_HAND ||
+               kind == DW3_EQUIP_BOTH_HANDS;
+    case 4:
+    case 5:
+        return kind == DW3_EQUIP_ACCESSORY || kind == DW3_EQUIP_GROUP_ACCESSORY;
+    default:
+        return 0;
+    }
+}
+
+/* Drafts for FR, IT, DE, ES: native review needed before a non-preview release.
+ * Same glyph rules as k_words (letters, digits, spaces, the icons of
+ * docs/P6.34_MENU_FLOW.md section 12). */
+typedef struct ImBagWords {
+    const char *title[3]; /* weapons, armor and accessories, worn by others */
+    const char *worn_by;  /* "Worn by " */
+} ImBagWords;
+
+static const ImBagWords k_bag_words[5] = {
+    {{"All weapons", "Armor and gear", "Worn by others"}, "Worn by "},                              /* EN */
+    {{"Toutes les armes", "Armure et objets", "Port\303\251s ailleurs"}, "Port\303\251 par "},       /* FR */
+    {{"Tutte le armi", "Armature e altro", "Indossati altrove"}, "Indossato da "},                  /* IT */
+    {{"Alle Waffen", "Alle R\303\274stungen", "Bei anderen"}, "Getragen von "},                     /* DE */
+    {{"Todas las armas", "Armadura y extras", "Llevado por otros"}, "Equipado por "},               /* ES */
+};
+
+int dw3_port_items_bag_title(char *out, int cap, int language, int filter, int rows) {
+    const ImBagWords *w = &k_bag_words[language >= 3 && language <= 6 ? language - 2 : 0];
+    char dg[12];
+    ImOut o;
+    int n = 0;
+
+    if (cap < 1) {
+        return 0;
+    }
+    if (filter < 1 || filter > 3) {
+        out[0] = '\0';
+        return 0;
+    }
+    o.p = out;
+    o.end = out + cap - 1;
+    im_text(&o, w->title[filter - 1]);
+    im_text(&o, " ");
+    if (rows < 0) {
+        rows = 0;
+    }
+    do {
+        dg[n++] = (char)(rows % 10);
+        rows /= 10;
+    } while (rows > 0 && n < 10);
+    while (n > 0) {
+        im_put(&o, (char)(4 + dg[--n]));
+    }
+    *o.p = '\0';
+    return (int)(o.p - out);
+}
+
+int dw3_port_items_bag_note(char *out, int cap, int language, const char *wearer) {
+    const ImBagWords *w = &k_bag_words[language >= 3 && language <= 6 ? language - 2 : 0];
+    ImOut o;
+
+    if (cap < 1) {
+        return 0;
+    }
+    o.p = out;
+    o.end = out + cap - 1;
+    im_icon(&o, 1);
+    im_text(&o, w->worn_by);
+    im_name(&o, wearer);
+    *o.p = '\0';
+    return (int)(o.p - out);
+}
+
+static const char *const k_bag_names[DW3_BAG_FILTERS] = {"slot", "weapons", "gear", "worn-by-others"};
+
+void dw3_port_items_bag_viewed(int filter, int slot, int rows, int worn_elsewhere) {
+    IM_LOG("dw3-items-menu: bag-view filter=%s slot=%d rows=%d worn-elsewhere=%d",
+           k_bag_names[filter >= 0 && filter < DW3_BAG_FILTERS ? filter : 0], slot, rows, worn_elsewhere);
+}
+
+static int g_im_move_bag0;
+static int g_im_move_worn0;
+
+void dw3_port_items_bag_move_begin(void) {
+    g_im_move_bag0 = IM_ITEMS_TOTAL();
+    g_im_move_worn0 = IM_EQUIPPED_TOTAL();
+}
+
+void dw3_port_items_bag_moved(int item, int from, int from_slot, int to, int slot) {
+    IM_LOG("dw3-items-menu: move item=%d from=%d from-slot=%d to=%d slot=%d bag=%d->%d worn=%d->%d", item, from,
+           from_slot, to, slot, g_im_move_bag0, IM_ITEMS_TOTAL(), g_im_move_worn0, IM_EQUIPPED_TOTAL());
+}

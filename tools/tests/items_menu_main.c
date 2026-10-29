@@ -12,8 +12,12 @@ int dw3_test_equipped_total = 7;
 static int g_file = -1; /* -1: key absent */
 static int g_file_equip = -1;
 static int g_file_stays = -1;
+static int g_file_bag = -1;
 
 int dw3_port_options_file_int(const char *key, int def) {
+    if (strcmp(key, DW3_ITEMS_BAG_VIEW_KEY) == 0) {
+        return g_file_bag >= 0 ? g_file_bag : def;
+    }
     if (strcmp(key, DW3_ITEMS_EQUIP_STAYS_KEY) == 0) {
         return g_file_stays >= 0 ? g_file_stays : def;
     }
@@ -177,6 +181,56 @@ int main(void) {
     g_file_stays = 0;
     CHECK(dw3_port_items_equip_stays_enabled() == 1);
     unsetenv("DW3_ITEMS_EQUIP_STAYS");
+    /* P6.34 phase 3: bag view. Filter cycle, slot fit, key, texts */
+    CHECK(dw3_port_items_bag_next(0) == 1);
+    CHECK(dw3_port_items_bag_next(1) == 2);
+    CHECK(dw3_port_items_bag_next(2) == 3);
+    CHECK(dw3_port_items_bag_next(3) == 0);
+    CHECK(dw3_port_items_bag_next(-1) == 0);
+    CHECK(dw3_port_items_bag_next(9) == 0);
+    for (m = 1; m <= 8; m++) {
+        int slot;
+
+        for (slot = 0; slot < 6; slot++) {
+            int want = (slot == 0 && m == DW3_EQUIP_HEAD) || (slot == 1 && m == DW3_EQUIP_BODY) ||
+                       ((slot == 2 || slot == 3) && (m == 1 || m == 2 || m == 3 || m == 7)) ||
+                       ((slot == 4 || slot == 5) && (m == 6 || m == 8));
+            CHECK(dw3_port_items_bag_fits(slot, m) == want);
+        }
+    }
+    CHECK(dw3_port_items_bag_fits(6, 4) == 0);
+    CHECK(dw3_port_items_bag_fits(-1, 4) == 0);
+    unsetenv("DW3_ITEMS_BAG_VIEW");
+    g_file_bag = -1;
+    CHECK(dw3_port_items_bag_view_enabled() == 1);
+    g_file_bag = 0;
+    CHECK(dw3_port_items_bag_view_enabled() == 0);
+    setenv("DW3_ITEMS_BAG_VIEW", "1", 1);
+    CHECK(dw3_port_items_bag_view_enabled() == 1);
+    unsetenv("DW3_ITEMS_BAG_VIEW");
+    {
+        char buf[96];
+        int lang;
+        int f;
+
+        /* every language and filter fits a text window (about 30 glyphs) and has no stray byte */
+        for (lang = 2; lang <= 6; lang++) {
+            for (f = 1; f <= 3; f++) {
+                int n = dw3_port_items_bag_title(buf, sizeof(buf), lang, f, 12);
+
+                CHECK(n > 3 && n < 60);
+                CHECK(buf[n - 1] == 4 + 2 && buf[n - 2] == 4 + 1); /* "12" */
+            }
+            CHECK(dw3_port_items_bag_note(buf, sizeof(buf), lang, "AB") > 4);
+        }
+        CHECK(dw3_port_items_bag_title(buf, sizeof(buf), 2, 0, 3) == 0);
+        CHECK(dw3_port_items_bag_title(buf, sizeof(buf), 2, 1, 105) > 0);
+        CHECK(dw3_port_items_bag_title(buf, 1, 2, 1, 3) == 0);
+        CHECK(dw3_port_items_bag_title(buf, 6, 2, 1, 3) == 5); /* clipped, never past the cap */
+    }
+    dw3_port_items_bag_viewed(3, 2, 2, 2);
+    dw3_port_items_bag_move_begin();
+    dw3_port_items_bag_moved(77, 4, 2, 5, 2);
 
     if (g_failed) {
         return 1;

@@ -149,6 +149,49 @@ void dw3_port_items_stays_landed(int slot, int frames);
  * `scroll` (row = cursor + scroll, `item` the id there, -1 for none). */
 void dw3_port_items_stays_list_open(int slot, int row, int cursor, int scroll, int item, int count);
 
+/* ---- P6.34 phase 3: the whole bag in the equip list, move between Digimon
+ * (patch 0192) --------------------------------------------------------------
+ * Design: docs/P6.34_MENU_FLOW.md section 14 (P6.33 owner decisions 2 and 3,
+ * orchestrator defaults pending confirmation). In Status > Equipment's item
+ * list, Square cycles the filter: 0 this slot (the original list), 1 all
+ * weapons, 2 all armor and accessories, 3 worn by the other party members (the
+ * ones that fit the slot). A row of the last filter carries the wearer's name
+ * in the line under the help text; Cross on it takes the item from that
+ * Digimon (STSTATUS_equip with 0) and puts it on this one (STSTATUS_equip). */
+
+/* Key of port_options.cfg (file-only): 0 or 1, default 1. DW3_ITEMS_BAG_VIEW
+ * overrides the file for tests. With 0 Square does nothing and the list is the
+ * original game's. */
+#define DW3_ITEMS_BAG_VIEW_KEY "items_bag_view"
+int dw3_port_items_bag_view_enabled(void);
+
+enum { DW3_BAG_SLOT = 0, DW3_BAG_WEAPONS = 1, DW3_BAG_GEAR = 2, DW3_BAG_WORN = 3, DW3_BAG_FILTERS = 4 };
+
+/* The filter after `filter` (wraps 3 -> 0; anything unknown -> 0). Pure. */
+int dw3_port_items_bag_next(int filter);
+
+/* Whether an item of equip kind `kind` (EQUIP_KIND_*) goes in `slot` (0 head,
+ * 1 body, 2 / 3 hands, 4 / 5 accessories) at all. The partner mask and the
+ * left / right hand rule stay with STSTATUS_canEquip. Pure. */
+int dw3_port_items_bag_fits(int slot, int kind);
+
+/* Game-font text (the encoding of dw3_port_items_equip_message) for the list
+ * title of `filter` (1..3) followed by " <rows>", and for the wearer note
+ * "Worn by <wearer>" (`wearer` is a game-font name). `language` as above. */
+int dw3_port_items_bag_title(char *out, int cap, int language, int filter, int rows);
+int dw3_port_items_bag_note(char *out, int cap, int language, const char *wearer);
+
+/* The filter changed: logs `bag-view filter=.. rows=.. worn-elsewhere=..`
+ * (`rows` without the "none" row; `worn_elsewhere` the copies the other party
+ * members wear that fit this slot). */
+void dw3_port_items_bag_viewed(int filter, int slot, int rows, int worn_elsewhere);
+
+/* A move: snapshot the totals, then log `move item=.. from=.. to=.. slot=..
+ * bag=a->b worn=a->b` once the second STSTATUS_equip ran. `from_slot` is the
+ * slot of the previous wearer. */
+void dw3_port_items_bag_move_begin(void);
+void dw3_port_items_bag_moved(int item, int from, int from_slot, int to, int slot);
+
 #ifdef __cplusplus
 }
 #endif
