@@ -870,6 +870,41 @@ for _lang, _id in (("fr", 3), ("it", 4), ("de", 5), ("es", 6)):
                                   r"worn-elsewhere=1(?s:.*)move item=\d+ from=\d+ from-slot=4 to=\d+ slot=4"),),
                   note=f"the bag view's titles and wearer note in {_lang} (patch 0192)"))
 
+# P6.34 phase 4 (patch 0193): "use item" stays on the partner step, key on (the
+# default). `-off` is the same recording with items_use_stays=0: the original
+# round trip on every use (the key-off proof: its captures must equal a
+# pre-patch build's); `-43` is Widescreen off; the language runs are EU only.
+_USE_LOG = (r"file keys items_equip_from_items=1 items_equip_stays=1 items_bag_view=1 items_use_stays=1(?s:.*)"
+            r"use-stays item=(\d+) partner=\d+ member=1 count=3->2 effect=used list=stays row=8 uses=1(?s:.*)"
+            r"use-stays item=\1 partner=\d+ member=2 count=2->1 effect=used list=stays row=8 uses=2(?s:.*)"
+            r"use-stays item=\1 partner=\d+ member=0 count=1->0 effect=used list=closes row=8 uses=2")
+for _v, _ids in (("us", (0x159, 0x1FA, 0x1C2, 0x158, 0x1F9)),
+                 ("eu", (0x167, 0x208, 0x1D1, 0x166, 0x207))):
+    _fight, _menu, _report, _field, _status = _ids
+    for _suffix, _cfg in (("", (("encounter_rate", "2"),)),
+                          ("-43", (("encounter_rate", "2"), ("widescreen", "0")))):
+        _add(Scenario(f"{_v}-items-use-stays{_suffix}", _v, "full", turbo=4, timeout=500,
+                      phases=(f"{_v}-items-use-stays",), env=_ITEMS_ENV, cfg=_cfg,
+                      expect_restore=((_fight, M), (_menu, S), (_report, M), (_field, M), (_status, M)),
+                      expect_log=((0, _USE_LOG),),
+                      note="Use item on three Digimon without leaving the partner step; the last "
+                           "copy takes the original way back (patch 0193)"))
+    _add(Scenario(f"{_v}-items-use-stays-off", _v, "full", turbo=4, timeout=500,
+                  phases=(f"{_v}-items-use-stays",), env=_ITEMS_ENV,
+                  cfg=(("encounter_rate", "2"), ("items_use_stays", "0")),
+                  expect_restore=((_fight, M), (_menu, S), (_report, M), (_field, M), (_status, M)),
+                  expect_log=((0, r"file keys items_equip_from_items=1 items_equip_stays=1 items_bag_view=1 "
+                                  r"items_use_stays=0"),),
+                  forbid_log=((0, r"dw3-items-menu: use-stays"),),
+                  note="items_use_stays=0: the original use round trip, no use-stays line (patch 0193)"))
+for _lang, _id in (("fr", 3), ("it", 4), ("de", 5), ("es", 6)):
+    _add(Scenario(f"eu-items-use-stays-{_lang}", "eu", "full", turbo=4, timeout=500,
+                  phases=("eu-items-use-stays",),
+                  env=_ITEMS_ENV + (("DW3_LANGUAGE", str(_id)),), cfg=(("encounter_rate", "2"),),
+                  expect_log=((0, rf"LANGUAGE={_id} \(DW3_LANGUAGE\)(?s:.*)use-stays item=\d+ partner=\d+ member=1 "
+                                  r"count=3->2(?s:.*)use-stays left|list=closes"),),
+                  note=f"use item stays on the partner step in {_lang} (patch 0193)"))
+
 # P6.33 finding (patch 0180): Cross on equipment in the Items menu does nothing
 # in the original game. The log line says so; run with items_partner_switch on
 # (the default) and off (patch 0128's path out), the same line either way.
@@ -2008,3 +2043,14 @@ for _v in ("us", "eu"):
 _add(_nintendo("eu-lang-cross-fr", "eu-nintendo-lang-cross-fr", "eu-nintendo-lang-cross-fr",
                "Nintendo layout: the EU language select confirms with A, the logical Cross (patch "
                "0187, P9.8)"))
+
+# P6.34 phase 4 (patch 0193) turned "use item stays" on by default. Every
+# recording that walks the item screen's original use flow (Cross on a partner,
+# Cross to leave the result, back to the list) keeps that flow with
+# items_use_stays=0: their references are the PS1 frames, and the key-off proof.
+_USE_FLOW_RECS = ("items-screen", "menu-screens", "items-equip-switch", "items-equip-stays",
+                  "items-bag-view", "map-screen", "map-view")
+for _i, _s in enumerate(SCENARIOS):
+    if (any(r in p for p in _s.phases for r in _USE_FLOW_RECS)
+            and not any(k == "items_use_stays" for k, _ in _s.cfg)):
+        SCENARIOS[_i] = dataclasses.replace(_s, cfg=_s.cfg + (("items_use_stays", "0"),))
