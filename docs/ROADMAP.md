@@ -152,7 +152,7 @@ listed once, in [Pending OLED checks](#pending-oled-checks).
 | P6.9 | Restart-game hotkey | in progress (hotkey works on the OLED; PC replays pass for battle, save and Continue on US and EU; OLED retest open) | [P6.9](P6.9_RESTART.md) |
 | P6.10 | Hardware render outside battle | future | [P5.2](P5.2_BATTLE_GPU.md) |
 | P6.11 | Internal resolution scaling | future | [PC README](../platforms/pc/README.md) |
-| P6.12 | Button mapping (design written 2026-10-28) | future | [CONTROLS_BUNDLE](CONTROLS_BUNDLE.md), [goal note](#phase-6-goal-notes) |
+| P6.12 | Button mapping, phase 2 of the controls bundle (built 2026-10-29, PC replays pass; OLED open, plan A15 L9 to L16) | built, OLED open | [CONTROLS_BUNDLE](CONTROLS_BUNDLE.md#phase-2-as-built-2026-10-29), [goal note](#phase-6-goal-notes) |
 | P6.14, P6.16, P6.19, P6.21 | Backlog goal notes | future | [backlog](#backlog--future-goals) |
 | P6.13 | Mapping submenu, merged into P6.12 (owner, 2026-10-24) | merged | [CONTROLS_BUNDLE](CONTROLS_BUNDLE.md) |
 | P6.15 | Regression replay tests | in progress | [P6.15](P6.15_REPLAY_TESTS.md) |
@@ -201,7 +201,7 @@ listed once, in [Pending OLED checks](#pending-oled-checks).
 | P10.3 | Presentation modes | open | — |
 | P10.4 | Rumble polish (optional) | open | — |
 | P10.5 | Extra applets (optional) | open | — |
-| P10.6 | Switch-style button glyphs (future goal; design written 2026-10-28) | future | [roadmap](#phase-10--native-switch-features-residual), [CONTROLS_BUNDLE](CONTROLS_BUNDLE.md), [TEXTURE_PACKS](TEXTURE_PACKS.md) |
+| P10.6 | Switch-style button glyphs (future goal; design written 2026-10-28; step 0 investigation done 2026-10-29) | future | [roadmap](#phase-10--native-switch-features-residual), [P10.6_GLYPHS](P10.6_GLYPHS.md), [CONTROLS_BUNDLE](CONTROLS_BUNDLE.md), [TEXTURE_PACKS](TEXTURE_PACKS.md) |
 | P10.7 | NSP packaging: forwarder, full NSP or stay NRO | dropped | [NSP_PACKAGING](NSP_PACKAGING.md), [roadmap](#phase-10--native-switch-features-residual) |
 
 ## Pending OLED checks
@@ -1559,7 +1559,12 @@ rumble, saves, turbo, or widescreen here; those stay in their phases.
   ([TEXTURE_PACKS.md](TEXTURE_PACKS.md), P8.2/P8.3, a pack that is optional and
   falls back to the disc) or a host **overlay** drawn over the icon; the first
   keeps one path for US and EU, the second can follow the layout at runtime.
-  Not yet investigated: which sprites or font glyphs hold the icons in each
+  **Step 0 done (2026-10-29, [P10.6_GLYPHS](P10.6_GLYPHS.md)):** the icons
+  are font cells (`FONT_ICONS_1`, size 1 only; EU draws coloured discs, US plain
+  symbols; no shoulder or Start icons); dump tool `tools/dump_font_cells.py`;
+  plan: patch the cells at load, art as 12x12 PNG files; string census and a
+  port-UI fix for the Options hint row still to do. Originally "not yet
+  investigated": which sprites or font glyphs hold the icons in each
   disc, whether they sit inside text strings (so a width change touches the
   five EU languages), and where the game shows each one. The glyph for an
   action must follow the confirm/cancel layout of P9.8 (B confirms in
@@ -1642,7 +1647,7 @@ Statuses are in the [table](#status-at-a-glance).
 
 ### Phase 6 goal notes
 
-- [ ] **P6.12 Button mapping (future goal).** Let the owner remap the
+- [~] **P6.12 Button mapping (built 2026-10-29, OLED open).** Let the owner remap the
   PS1 pad buttons on the Switch and PC, in `port/` policy with the host input
   mapping kept in `platforms/`. The mapping lives in a submenu in Port options,
   with its own screen in the game's window style (the former P6.13, merged by
@@ -1656,6 +1661,16 @@ Statuses are in the [table](#status-at-a-glance).
   the raw pad word at the shared pad host, per PS button, global in
   `port_options.cfg` (`button_layout`, `button_map`), a Customize screen in the
   Controls group, Start / Select reserved, `dw3-controls:` log lines.
+  **Built (2026-10-29, phase 2):** `button_layout=custom` plus `button_map` (ten
+  digits), **Options, Controls, Customize buttons** (one row per PS button, Confirm
+  waits for a press, Left / Right pick a source, the press that assigned is
+  swallowed until it is released, title only), **Reset to default**, the
+  `assign` / `reset` / `map invalid` log lines, lettering in five languages
+  (FR / DE / IT / ES machine-drafted, needs native review), PC replays
+  `us/eu-controls-custom` and `-custom-invalid`. Not built: the Restart hotkey row
+  stays in Gameplay, and the Controls screen does not list the hotkeys with their
+  physical buttons (the Help pages and the `hotkeys` log line do). Still open:
+  the OLED plan A15 L9 to L16 on a console, and native review of the lettering.
 - **P6.13 Mapping submenu.** Merged into P6.12 (owner, 2026-10-24). Its goal
   and done-when are in P6.12; the id stays for references.
 - [ ] **P6.14 In-game load / new save menu (future goal).** A load or

@@ -58,9 +58,14 @@ enum {
     /* P51 item 4 (combined image only): 0 Ask, 1 US, 2 EU. Stored as
      * region_default in the TOP-LEVEL port_options.cfg, not in the region's. */
     DW3_PORT_OPT_REGION = 10,
+    /* P6.12 (Controls group): two action rows with no value of their own.
+     * Customize buttons opens the press-to-assign screen (title only), Reset
+     * to default puts the PlayStation layout back. */
+    DW3_PORT_OPT_CUSTOMIZE = 11,
+    DW3_PORT_OPT_RESET_MAP = 12,
     /* P6.36: 0 = 1x (the music keeps its tempo in turbo, the default), 1 = Fast
      * (the music speeds up with the game, as before). Key turbo_music. */
-    DW3_PORT_OPT_TURBO_MUSIC = 11
+    DW3_PORT_OPT_TURBO_MUSIC = 13
 };
 
 /* Registry; unavailable features remain safe no-op stubs. Values persist in
@@ -71,8 +76,8 @@ int dw3_port_options_value(int index);
 void dw3_port_options_set(int index, int value);
 /* Raw row value: 0/1, 0 (OFF) / 2..4 (speed) for Fast-forward, 0..10 for the
  * volumes, 0..4 for Encounter rate, 0..2 for Text speed and Battle cursor,
- * 0/1 for Auto-save and 0 PlayStation / 1 Nintendo for Button layout
- * (port_button_map.h). */
+ * 0/1 for Auto-save and 0 PlayStation / 1 Nintendo / 2 Custom for Button
+ * layout (port_button_map.h). */
 int dw3_port_options_level(int index);
 void dw3_port_options_set_level(int index, int level);
 

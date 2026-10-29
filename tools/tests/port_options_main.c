@@ -41,7 +41,7 @@ int main(void) {
         return fail("re-open");
     }
 
-    if (dw3_port_options_count() != 12) {
+    if (dw3_port_options_count() != 14) {
         return fail("option count");
     }
     if (dw3_port_options_level(DW3_PORT_OPT_BATTLE_MENU) != 0 ||
@@ -104,16 +104,16 @@ int main(void) {
         return fail("Down moves to Turbo music");
     }
     /* P6.36: the row holds 0 = 1x (default) and 1 = Fast; Confirm wraps. */
-    if (dw3_port_options_level(11) != 0) {
+    if (dw3_port_options_level(13) != 0) {
         return fail("Turbo music defaults to 1x");
     }
     dw3_port_options_test_set_pressed(1u << BIT_CROSS);
     dw3_port_options_tick();
-    if (dw3_port_options_level(11) != 1) {
+    if (dw3_port_options_level(13) != 1) {
         return fail("Confirm on Turbo music steps to Fast");
     }
     dw3_port_options_tick();
-    if (dw3_port_options_level(11) != 0) {
+    if (dw3_port_options_level(13) != 0) {
         return fail("Confirm on Turbo music wraps to 1x");
     }
     dw3_port_options_test_set_pressed(1u << BIT_DOWN);
@@ -170,7 +170,7 @@ int main(void) {
      * every registry row is in exactly one group, a long list scrolls. */
     {
         int ids[DW3_OPTGRP_COUNT];
-        int seen[12] = {0};
+        int seen[14] = {0};
         int g, k;
 
         if (dw3_optgroups_visible(0, ids) != 6 || ids[0] != DW3_OPTGRP_DISPLAY ||
@@ -183,13 +183,13 @@ int main(void) {
             return fail("Cheats group follows the master switch");
         }
         for (g = 0; g < DW3_OPTGRP_COUNT; g++) {
-            if (g == DW3_OPTGRP_CHEATS) continue; /* cheat rows, not registry rows */
+            if (g == DW3_OPTGRP_CHEATS || g == DW3_OPTGRP_CUSTOM) continue; /* not registry rows */
             for (k = 0; k < dw3_optgroups[g].nrows; k++) {
                 seen[dw3_optgroups[g].rows[k]]++;
             }
         }
-        for (k = 0; k < 12; k++) {
-            if (k == 10) continue; /* Region at start: the combined image only */
+        for (k = 0; k < 14; k++) {
+            if (k == DW3_PORT_OPT_REGION) continue; /* combined image only */
             if (seen[k] != 1) {
                 return fail("every registry row is in exactly one group");
             }

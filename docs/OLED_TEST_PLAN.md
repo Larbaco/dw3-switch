@@ -128,12 +128,14 @@ are not failures.
 | H7 | Open every page of the list once | No `[?...]` text anywhere, no cut-off line, no overlap with the arrows or the strip | photo of any problem | P6.30. Proof: **no** `dw3-pages: token ... unresolved` line, no `dw3-help: page ... cannot be laid out` line **Owner OLED 2026-10-28, preview.51: PASSED** in **English only**. FR, DE, IT and ES help text is not signed off: it needs native reviewers. |
 | H8 | EU disc: set each of the five languages (language select) and open Help | The group name and the screen words (Open, Back) in the language's lettering where authored; the pages are **English** for FR, DE, IT and ES (the translations are still to come) | `dw3.log` | P6.30 launch gap. Proof: `dw3-help: open (from title, region EU, platform switch, language fr\|de\|es\|it, 10 pages)` and `dw3-pages: text fallback help * (fr): the language file has no keys yet (stub), English shown` **Owner OLED 2026-10-28, preview.51: PASSED** for the English text only. The other four languages show English pages; their screen words and pages still need native reviewers. |
 
-### A15. Button layout (P9.8, Session A or B; the L items)
+### A15. Button layout (P9.8) and Customize buttons (P6.12), Session A or B; the L items
 
 Use a preview that carries P9.8, US and EU ordinary NROs. The layout lives in
 `port_options.cfg` of **each region**, so set it once per disc. Every row names
 the `dw3.log` line that proves it (AGENTS.md rule 12); the owner only reports
-how it feels. Known gap: the Options hint row still shows the letters **B** and
+how it feels. L9 to L16 are P6.12 (Customize buttons, Reset, the custom map): FR / DE /
+IT / ES text on the new rows is machine-drafted, so look at it on one EU language
+and report wording, not failures. Known gap: the Options hint row still shows the letters **B** and
 **X** in both layouts (the glyphs are phase 3, P10.6); with Nintendo the real
 confirm is A and the back button is B. Report it as a note, not a failure.
 
@@ -147,6 +149,14 @@ confirm is A and the back button is B. Report it as a note, not a failure.
 | L6 | Nintendo: Help (Options, Help), the **Controls** and **Port hotkeys** pages | Cross [A], Circle [X], Triangle [B], Square [Y], Start [+], and the restart chord `[L] + [R] + [+] + [-]`. With PlayStation they read [B], [A], [X], [Y]. Proof: `dw3-pages: token {btn:cross} -> "[A]"` (Nintendo) and `"[B]"` (PlayStation) | photo, `dw3.log` | P9.8, P6.30 |
 | L7 | nxlink build, both layouts: **Minus + L + R** (debug HUD) and **Minus + ZL + ZR** (renderer mode) | The chords are unchanged by the layout (they read the physical buttons). The region picker (A, Y, Plus), the launcher and the crash notice also keep their physical buttons | nxlink log | P9.8 (CONTROLS_BUNDLE section 1.4) |
 | L8 | Developer: nxlink build with `DW3_BUTTON_MAP=default` in `DW3_NX_TEST_ENV`, cfg set to Nintendo | The run plays with the PlayStation buttons and the file is not changed by an unrelated option change. Proof: `dw3-controls: map loaded layout=playstation source=env`; `port_options.cfg` still `button_layout=nintendo` | `dw3.log`, `port_options.cfg` | P9.8 |
+| L9 | Options, Controls: three rows (Button layout, Customize buttons, Reset to default). **Customize buttons**, then move down to **L1** and press **B** | Ten rows, PS name left and the console button right (Cross B, Circle A, Triangle X, Square Y, L1 L, R1 R, L2 ZL, R2 ZR, L3 L stick, R3 R stick); the L1 row says "Press a button" and the line says Start or Select cancels. Proof: `dw3-port-options: group open customize (10 row(s), title)`, `customize waiting for a button for L1` | `dw3.log`, photo | P6.12 |
+| L10 | In that prompt press **R** | L1 now says R and R1 says L (the swap is shown at once); the **R you pressed does not also act** (the screen stays, no L1 / R1 press reaches the menu). Proof: `dw3-controls: assign l1<-R (r1<-L swapped in) [custom]`, `map ... l1<-R r1<-L ...`, `dw3-options: saved ...` | `dw3.log`, photo | P6.12 |
+| L11 | Back to Controls: Button layout. Then Options, Help, Controls page: press **L**, then **R** | The layout row says **Custom**. On the Help page **L** now turns the page forward and **R** back (the pages turn accordingly); the page's buttons read `[R]` for L1 and `[L]` for R1. Proof: the `map` line above, `dw3-pages: token {btn:l1} -> "[R]"` | `dw3.log`, photo | P6.12, P6.30 |
+| L12 | Quit and relaunch (US, then EU; set the swap on each disc): Controls | Layout still **Custom** and L / R still swapped. Proof: `dw3-controls: map loaded layout=custom source=cfg`, `port_options.cfg` has `button_layout=custom` and `button_map=0123546789` | `dw3.log` of both runs, `port_options.cfg` | P6.12 |
+| L13 | Customize, **Cross** row: press **Plus**; then again and wait 6 seconds; then once and press the **D-pad** | The prompt is cancelled by Plus (and Minus), by the 5 second timeout, and the d-pad does nothing; the map does not change. Proof: `customize Cross cancelled (Start / Select)`, `customize Cross cancelled (timeout)`, no `assign` line | `dw3.log` | P6.12 |
+| L14 | Customize, **Triangle** row: **Left** and **Right** with no press | Each step picks the next console button (the PS button that had it takes the old one), the layout row reads Custom. Proof: one `assign triangle<-... [custom]` line per step | `dw3.log` | P6.12 |
+| L15 | **Reset to default** (also from the field menu's Options in game); in game the **Customize buttons** row is grey | PlayStation again at once, the held B is ignored until released, `button_map` is gone from the file; in game Customize says it is changed at the title. Proof: `dw3-controls: reset to default (layout=playstation) (screen)`, the map line `cross<-B circle<-A ...`, `port_options.cfg` has no `button_map` | `dw3.log`, `port_options.cfg` | P6.12 |
+| L16 | Developer: put `button_layout=custom` and `button_map=0123456780` in `port_options.cfg`, relaunch; then `DW3_BUTTON_MAP=default` (nxlink) with a good custom map | The first plays with the PlayStation buttons and one log line; the second plays PlayStation for the run and the file keeps the custom map. Proof: `dw3-controls: map invalid (button_map is not a permutation of 0-9), using default`, `map loaded layout=playstation source=default`; `source=env` | `dw3.log`, `port_options.cfg` | P6.12 |
 
 ## Session B: field and 16:9 screens tour
 

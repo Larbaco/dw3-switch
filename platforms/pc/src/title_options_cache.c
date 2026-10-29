@@ -365,6 +365,10 @@ int dw3_options_cache_update(Dw3OptionsDirty *out) {
             for (int j = 0; j < dirty.count; ++j)
                 if (intersect(dirty.rects[j], value_rect(i), NULL)) covered = 1;
             if (!covered) dirty.rects[dirty.count++] = value_rect(i);
+            /* P6.12: the Customize screen's message line follows the focused
+             * row's value (waiting for a press). */
+            if (i == cursor && dw3_pc_title_overlay_options_desc_follows_value(g_page))
+                dirty.rects[dirty.count++] = description_rect();
         }
     }
     for (int i = 0; i < dirty.count; ++i) {

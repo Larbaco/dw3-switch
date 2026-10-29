@@ -98,6 +98,15 @@ GROUP_TEXT = {
                           'Welche Taste bestätigt und welche bricht ab.',
                           'Qué botón confirma y cuál cancela.',
                           'Quale pulsante conferma e quale annulla.')},
+    # P6.12 Customize buttons: the header of the sub-screen and the message
+    # line of its rows. FR / DE / IT / ES are machine-drafted, needs native
+    # review.
+    'custom': {'name': ('Customize', 'Personnaliser', 'Anpassen', 'Personalizar', 'Personalizza'),
+               'desc': ('Confirm, then press a button. Left / Right picks one.',
+                        'Valider, puis appuyer. Gauche / Droite choisit.',
+                        'Bestätigen, dann Taste drücken. Links / Rechts wählt.',
+                        'Confirma y pulsa un botón. Izquierda / Derecha elige.',
+                        'Conferma, poi premi un tasto. Sinistra / Destra sceglie.')},
     # P6.30 Help: the group name and the message line under the group list.
     'help': {'name': ('Help', 'Aide', 'Hilfe', 'Ayuda', 'Aiuto'),
              'desc': ('Controls, hotkeys, saves and bug reports.',
@@ -291,6 +300,48 @@ TURBO_MUSIC_TEXT = {
 for _lang, _t in TURBO_MUSIC_TEXT.items():
     LETTERS.append(('opt_row_tm_' + _lang, _t['row'], 26, 'DejaVuSans.ttf'))
     LETTERS.append(('opt_desc_tm_' + _lang, _t['desc'], 25, 'DejaVuSans.ttf'))
+# P6.12 Controls group, phase 2 (docs/CONTROLS_BUNDLE.md): the Customize buttons
+# and Reset to default rows, the Custom value of Button layout, the prompt of the
+# Customize screen. FR / DE / IT / ES are machine-drafted, needs native review.
+# The PlayStation button names and the Switch button names are the same in every
+# language. Keep labels under 290 px, values under 236 px, descriptions under 690.
+CUSTOM_TEXT = {
+    'en': {'row': 'Customize buttons', 'rowdesc': 'Pick which button makes each PlayStation button.',
+           'reset': 'Reset to default', 'resetdesc': 'Back to the PlayStation layout. Applies now.',
+           'prompt': 'Press a button', 'promptdesc': 'Press the new button. Start or Select cancels.',
+           'custom': 'Custom'},
+    'fr': {'row': 'Personnaliser', 'rowdesc': 'Choisir le bouton de chaque touche PlayStation.',
+           'reset': 'Réinitialiser', 'resetdesc': 'Retour à la disposition PlayStation. Effet immédiat.',
+           'prompt': 'Appuyez', 'promptdesc': 'Appuyez sur le nouveau bouton. Start/Select annule.',
+           'custom': 'Perso'},
+    'de': {'row': 'Tasten anpassen', 'rowdesc': 'Wähle, welche Taste jede PlayStation-Taste auslöst.',
+           'reset': 'Zurücksetzen', 'resetdesc': 'Zurück zur PlayStation-Belegung. Sofort aktiv.',
+           'prompt': 'Taste drücken', 'promptdesc': 'Neue Taste drücken. Start oder Select bricht ab.',
+           'custom': 'Eigene'},
+    'es': {'row': 'Personalizar botones', 'rowdesc': 'Elige qué botón hace cada botón de PlayStation.',
+           'reset': 'Restablecer', 'resetdesc': 'Vuelve a la disposición PlayStation. Se aplica ya.',
+           'prompt': 'Pulsa un botón', 'promptdesc': 'Pulsa el botón nuevo. Start o Select cancela.',
+           'custom': 'Otra'},
+    'it': {'row': 'Personalizza tasti', 'rowdesc': 'Scegli quale tasto fa ogni tasto PlayStation.',
+           'reset': 'Ripristina', 'resetdesc': 'Torna alla disposizione PlayStation. Subito attivo.',
+           'prompt': 'Premi un tasto', 'promptdesc': 'Premi il nuovo tasto. Start o Select annulla.',
+           'custom': 'Personale'},
+}
+for _lang, _t in CUSTOM_TEXT.items():
+    LETTERS.append(('opt_row_cz_' + _lang, _t['row'], 26, 'DejaVuSans.ttf'))
+    LETTERS.append(('opt_desc_cz_' + _lang, _t['rowdesc'], 25, 'DejaVuSans.ttf'))
+    LETTERS.append(('opt_row_rs_' + _lang, _t['reset'], 26, 'DejaVuSans.ttf'))
+    LETTERS.append(('opt_desc_rs_' + _lang, _t['resetdesc'], 25, 'DejaVuSans.ttf'))
+    LETTERS.append(('opt_val_cp_' + _lang, _t['prompt'], 26, 'DejaVuSans.ttf'))
+    LETTERS.append(('opt_desc_cp_' + _lang, _t['promptdesc'], 25, 'DejaVuSans.ttf'))
+    LETTERS.append(('opt_val_bl_cus_' + _lang, _t['custom'], 26, 'DejaVuSans.ttf'))
+# The rows of the Customize screen: the ten PS buttons (map order) and the Switch
+# button that can make each one (port/options/button_map.c, g_src_label).
+for _name in ('Cross', 'Circle', 'Triangle', 'Square', 'L1', 'R1', 'L2', 'R2', 'L3', 'R3'):
+    LETTERS.append(('opt_row_ps_' + _name.lower(), _name, 26, 'DejaVuSans.ttf'))
+for _key, _name in (('b', 'B'), ('a', 'A'), ('x', 'X'), ('y', 'Y'), ('l', 'L'), ('r', 'R'),
+                    ('zl', 'ZL'), ('zr', 'ZR'), ('lstick', 'L stick'), ('rstick', 'R stick')):
+    LETTERS.append(('opt_val_btn_' + _key, _name, 26, 'DejaVuSans.ttf'))
 # P51 item 4: the Region at start row of the Gameplay group, shown only in the
 # combined build (docs/P51_FEEDBACK.md). Values: Ask (per language), US and EU
 # (the same in every language). Label under 290 px, description under 690 px.

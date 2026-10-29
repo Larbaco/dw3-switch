@@ -38,6 +38,10 @@ class Scenario:
     # phase's log (PC stderr / Ryubing guest output). Used by the P9.4
     # persistence scenario, where the proof is a value read back from disk.
     expect_log: tuple[tuple[int, str], ...] = ()
+    # P6.51: expect_log used instead when the run is on the combined
+    # (--bin-both) binary, for rows that differ there (the Region row of the
+    # Gameplay group). Empty = expect_log.
+    expect_log_both: tuple[tuple[int, str], ...] = ()
     # The same, but the regex must NOT match anywhere in that phase's log
     # (P6.18: "no FIGHTSTG_start while Encounter rate is Off").
     forbid_log: tuple[tuple[int, str], ...] = ()
@@ -1876,12 +1880,29 @@ _NIN_LOG = (r"dw3-controls: map loaded layout=nintendo source=cfg(?s:.*)"
             r"dw3-controls: first press source=A -> logical cross",)
 
 
+_GP_ROWS_PLAIN = r"gameplay \(5 row\(s\), in game\)"
+_GP_ROWS_BOTH = r"gameplay \(6 row\(s\), in game\)"
+
+
+def _both_expect(expect):
+    """The combined (--bin-both) build has the Region row in the Gameplay group,
+    so that group logs 6 rows there, not 5 (P6.51)."""
+    return tuple((p, r.replace(_GP_ROWS_PLAIN, _GP_ROWS_BOTH)) for p, r in expect)
+
+
+for _v in ("us", "eu"):
+    _fo = by_name()[f"{_v}-field-options"]
+    SCENARIOS[SCENARIOS.index(_fo)] = dataclasses.replace(
+        _fo, expect_log_both=_both_expect(_fo.expect_log))
+
+
 def _nintendo(base_name, name, phase, note):
     b = by_name()[base_name]
     logs = tuple(e for e in b.expect_log if e[0] == 0)
+    full = logs + tuple((0, r) for r in _NIN_LOG)
     return dataclasses.replace(
         b, name=name, phases=(phase,), cfg=b.cfg + _NIN_CFG, env=b.env + _NIN_ENV,
-        expect_log=logs + tuple((0, r) for r in _NIN_LOG),
+        expect_log=full, expect_log_both=_both_expect(full),
         forbid_log=tuple(e for e in b.forbid_log if e[0] == 0)
         + ((0, r"dw3-controls: map invalid"),),
         ref_from=base_name, note=note)
@@ -1901,14 +1922,48 @@ for _v in ("us", "eu"):
         Scenario(f"{_v}-controls-layout", _v, "full", timeout=300,
                  phases=(f"{_v}-controls-layout-p1", f"{_v}-controls-layout-p2"),
                  expect_log=((0, r"dw3-controls: map loaded layout=playstation source=default(?s:.*)"
-                                 r"dw3-port-options: group open controls \(1 row\(s\), title\)(?s:.*)"
+                                 r"dw3-port-options: group open controls \(3 row\(s\), title\)(?s:.*)"
                                  r"dw3-controls: layout changed playstation -> nintendo \(screen\)(?s:.*)"
                                  r"dw3-controls: map cross<-A circle<-X triangle<-B square<-Y"),
                              (1, r"dw3-controls: map loaded layout=nintendo source=cfg"),
-                             (1, r"dw3-port-options: group open controls \(1 row\(s\), title\)")),
+                             (1, r"dw3-port-options: group open controls \(3 row\(s\), title\)")),
                  forbid_log=((0, r"dw3-controls: map invalid"), (1, r"dw3-controls: map invalid")),
                  note="Controls group: the Button layout row switches to Nintendo and is read back "
                       "from port_options.cfg by the next process (P9.8)"),
+    )
+
+# --- P6.12 custom remap (docs/CONTROLS_BUNDLE.md, phase 2) -----------------------
+# The Customize buttons screen. DW3_REPLAY_SOURCE=1: the recording's masks are button
+# positions, so the assignments go through the map; the references are their own
+# (the pictures of the new screens), kept outside git.
+for _v in ("us", "eu"):
+    _add(
+        Scenario(f"{_v}-controls-custom", _v, "full", timeout=400,
+                 phases=(f"{_v}-controls-custom-p1", f"{_v}-controls-custom-p2"),
+                 env=_NIN_ENV,
+                 expect_log=((0, r"dw3-controls: map loaded layout=playstation source=default(?s:.*)"
+                                 r"dw3-port-options: group open customize \(10 row\(s\), title\)(?s:.*)"
+                                 r"dw3-port-options: customize waiting for a button for L1(?s:.*)"
+                                 r"dw3-controls: assign l1<-R \(r1<-L swapped in\) \[custom\](?s:.*)"
+                                 r"dw3-controls: map cross<-B circle<-A triangle<-X square<-Y "
+                                 r"l1<-R r1<-L l2<-ZL r2<-ZR l3<-StickL r3<-StickR(?s:.*)"
+                                 r"dw3-port-options: group open help"),
+                             (0, r"dw3-options: saved \S+ \(.*\)"),
+                             (1, r"dw3-controls: map loaded layout=custom source=cfg(?s:.*)"
+                                 r"dw3-controls: map cross<-B circle<-A triangle<-X square<-Y "
+                                 r"l1<-R r1<-L(?s:.*)"
+                                 r"dw3-controls: reset to default \(layout=playstation\)")),
+                 forbid_log=((0, r"dw3-controls: map invalid"), (1, r"dw3-controls: map invalid")),
+                 note="Customize buttons: swap L1 and R1, the Help pages turn accordingly, the map "
+                      "is read back from port_options.cfg, Reset restores (P6.12)"),
+        Scenario(f"{_v}-controls-custom-invalid", _v, "full", timeout=200,
+                 env=_NIN_ENV,
+                 cfg=(("button_layout", "custom"), ("button_map", "0123456780")),
+                 expect_log=((0, r"dw3-controls: map invalid \(button_map is not a permutation of 0-9\), "
+                                 r"using default(?s:.*)"
+                                 r"dw3-controls: map loaded layout=playstation source=default"),),
+                 note="button_layout=custom with a button_map that is not a permutation: default + "
+                      "one log line (P6.12)"),
     )
 _add(_nintendo("eu-lang-cross-fr", "eu-nintendo-lang-cross-fr", "eu-nintendo-lang-cross-fr",
                "Nintendo layout: the EU language select confirms with A, the logical Cross (patch "

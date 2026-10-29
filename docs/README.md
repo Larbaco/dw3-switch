@@ -9,6 +9,7 @@ Files are named by roadmap item id (`P6.4_...`) or by topic.
 - [PLAYER_GUIDE](PLAYER_GUIDE.md): setup, controls, menus, saves, crash reports.
 - [HOTKEYS](HOTKEYS.md): controls, port hotkeys and diagnostic chords.
 - [CONTROLS_BUNDLE](CONTROLS_BUNDLE.md): design of the controls bundle (P6.12 button remap, P9.8 confirm layout, P10.6 Switch glyphs).
+- [P10.6_GLYPHS](P10.6_GLYPHS.md): P10.6 step 0: where the game draws the PS button icons, the dump tool, the glyph art and patch plan.
 - [PORT_OPTIONS](PORT_OPTIONS.md): the Options screen, the Cheats screen, Quit and Return to title.
 - [DISC_SETUP](DISC_SETUP.md): from your disc image to the extracted tree and file map.
 - [RUNTIME_LAYOUT](RUNTIME_LAYOUT.md): the runtime folder on PC and on the SD card.
