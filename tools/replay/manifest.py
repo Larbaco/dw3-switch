@@ -671,7 +671,7 @@ for _v in ("us", "eu"):
 _ITEMS_ENV = (("DW3_START_MODE", "0x233"), ("DW3_PROGRESS", "6"),
               ("DW3_FORCE_NPC_ACTION", "0x7400"), ("DW3_FORCE_ENCOUNTER", "34"),
               ("DW3_FORCE_PARTY", "0"), ("DW3_FORCE_WIN", "1"),
-              ("DW3_FORCE_BATTLE_BAG", "1-402"))
+              ("DW3_FORCE_ITEMS", "1-402"))
 for _v, _ids in (("us", (0x159, 0x1FA, 0x1C2, 0x158, 0x1F9)),
                  ("eu", (0x167, 0x208, 0x1D1, 0x166, 0x207))):
     _fight, _menu, _report, _field, _status = _ids
