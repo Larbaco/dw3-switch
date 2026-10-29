@@ -560,6 +560,30 @@ for _lang, _id in (("fr", 3), ("it", 4), ("de", 5), ("es", 6)):
                                   r"battle HUD partner name of the Digimon \(Digimon id 386, [0-9]+ px\)"),),
                   note=f"the Digimon's name is read from the {_lang} text file (patch 0065)"))
 
+# P51 item 5: the Cheats group is on the title's group list with the master
+# switch OFF (it used to appear only once the master was on). Opens the Cheats
+# screen from the list and returns with the cursor on Cheats.
+for _v in ("us", "eu"):
+    _add(Scenario(f"{_v}-options-cheats-listed", _v, "full", timeout=300,
+                  expect_log=((0, r"dw3-port-options: group list n=7 \(cheats listed, master off, "
+                                  r"locked in game 0\)(?s:.*)dw3-port-options: group open cheats \(group\)"),),
+                  note="the Cheats group is listed with the master switch off (P51 item 5)"))
+
+# P51 item 4: the Region at start row of the combined image (tier `both`: needs
+# `--bin-both`, the one binary of both game copies; a plain US or EU build has no
+# such row). Two phases on one config folder, which is also the top-level folder
+# here (DW3_CONFIG_DIR), so the row writes region_default into the file the
+# picker reads.
+for _v in ("us", "eu"):
+    _add(Scenario(f"{_v}-options-region", _v, "both", timeout=300,
+                  phases=(f"{_v}-options-region-p1", f"{_v}-options-region-p2"),
+                  expect_log=((0, r"dw3-options: region_default us saved to \S+port_options\.cfg "
+                                  r"\(takes effect at the next start\)(?s:.*)"
+                                  r"dw3-options: region_default eu saved to \S+port_options\.cfg"),
+                              (1, r"dw3-options: region_default eu read from \S+port_options\.cfg")),
+                  forbid_log=((0, r"NOT saved"), (1, r"NOT saved")),
+                  note="Options > Gameplay > Region at start: Ask, US, EU, read back (P51 item 4, --bin-both)"))
+
 # P7.9 battle menu memory (patch 0067, port/battle_menu): the file-only key
 # `battle_menu_memory` in port_options.cfg (Scenario.cfg) turns it on. The same
 # forced battle (`<v>-p79-menu`, an enemy with 2000 HP so there is a second turn,
@@ -842,7 +866,7 @@ for _v, _ids in (("us", (0x159, 0x1FA, 0x1C2, 0x158, 0x1F9)),
                                   r"\(\d+ towns \+ \d+ visited areas drawn\), [1-9]\d* drawn, "
                                   r"hash [0-9a-f]{8}\n"
                                   r"(?s:.*)dw3-map: open half=0 image=392x352 source=\w+ in \d+ ms "
-                                  r"markers=\d+ home=\d+,\d+ turbo=1"
+                                  r"markers=\d+ home=\d+,\d+ turbo=1 zoom=1\.50 hud=off"
                                   r"(?s:.*)dw3-map: zoom source=button step"
                                   r"(?s:.*)scaler LANCZOS2 (?:built in \d+ ms \(1176x1056, reveal hash [0-9a-f]{8}\)"
                                   r"|loaded from cache in \d+ ms \(1176x1056, cache hit \S+, reveal hash [0-9a-f]{8}\))"
@@ -865,8 +889,8 @@ for _v, _ids in (("us", (0x159, 0x1FA, 0x1C2, 0x158, 0x1F9)),
                                   r"(?s:.*)dw3-map: cursor left location id=\1, free at \d+,\d+"
                                   r"(?s:.*)dw3-map: name box hidden \(cursor on no location\)"
                                   r"(?s:.*)dw3-map: cursor at rest at \d+,\d+, location id=\1 name id=\1"
-                                  r"(?s:.*)dw3-map: HUD off \(name box hidden\)"
-                                  r"(?s:.*)dw3-map: HUD on \(name box allowed\)"),
+                                  r"(?s:.*)dw3-map: HUD on \(the bars; the name box stays\)"
+                                  r"(?s:.*)dw3-map: HUD off \(the bars; the name box stays\)"),
                               # owner, preview.48: the cursor and the balloon keep one size
                               (0, r"dw3-map: sprites at fixed size \(scale 1/Z, Z = zoom, "
                                   r"reference zoom 1\.0 = [\d.]+ px per source px; the reveal layer"),),

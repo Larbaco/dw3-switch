@@ -63,6 +63,11 @@ highest non-empty tier.
   2026-10-28; D13 **PASSED** on the OLED (owner, preview.51 EU, 2026-10-28: 31 min with warps and techs, underruns 0, key-on 5422 ok 0 failed, voices peaked 24/24 with no failure); D14 still open).
 - [P10.2](SWITCH_FEATURES.md): HOME during a save write (`dw3-save:` log lines
   added 2026-10-28; waiting for the OLED check, item G2).
+- [P51 feedback](P51_FEEDBACK.md), **PR 2 built 2026-10-29** (small UX fixes, orchestrator
+  defaults pending confirmation): Cheats always on the Options list (OLED A16); Region at
+  start row in the combined image and ZL + ZR as a hold-to-pick try, unverified on the
+  console (A17; `port/options`, `nx_region_boot.c`, no decomp patch); a `stage_sweep` key in
+  the wrong file is logged (G10); the map view opens at 1.5x with the bars hidden (B16).
 - [P6.1](P6.1_WIDESCREEN.md): 16:9 batch 2. Stopped by the owner; resumes only
   when the owner allows.
 
@@ -130,7 +135,7 @@ listed once, in [Pending OLED checks](#pending-oled-checks).
 | P5.2 | Performance pass | done (partner portrait fix #229, OLED pending) | [P5.2](P5.2_BATTLE_GPU.md) |
 | P5.3 | Save handling | done | [P5.3](P5.3_FLAT_SAVE.md) |
 | P5.4 | Error reporting | in progress (done-when met on the OLED; boot notice 60 s, #231; PR 2 OLED check open) | [P5.4](P5.4_CRASH.md) |
-| P5.5 | Stage sweep on hardware | in progress (opt-in sweep built, #320: PC 237/237 US and EU; OLED G10: **EU PASSED** (owner, preview.51, 2026-10-28: 237/237 ok, WSTAG460 skipped as a weak stub); **US still open**) | [P5.5](P5.5_STAGE_SWEEP.md) |
+| P5.5 | Stage sweep on hardware | in progress (opt-in sweep built, #320: PC 237/237 US and EU; OLED G10: **EU PASSED** (owner, preview.51, 2026-10-28) and **US PASSED** (2026-10-29): 237/237 ok, WSTAG460 skipped as a weak stub, about 1.67 s per stage; **done**) | [P5.5](P5.5_STAGE_SWEEP.md) |
 | P6.1 | Scaling / widescreen | in progress (map, results, save, title, caption, registration, Items menu at 16:9 in preview.31; card album, deck editor, card shop, gym and Lab at 16:9 in the next preview (0100-0104, OLED pending); iris and grid cover at 16:9 in the next preview (0115, OLED pending); encounter swirl at 16:9 in the next preview (0175, OLED pending); card battle still 4:3; intro news caption bar at 16:9 confirmed on the OLED 2026-10-27, preview.41; EU language select at 16:9 (0177, in preview.47, OLED pending) | [P6.1](P6.1_WIDESCREEN.md) |
 | P6.2 | PAL/NTSC, EU/US, language at boot | in progress | [P3_EU_BUILD](P3_EU_BUILD.md) |
 | P6.3 | PGXP-style vertex precision | open | — |
@@ -206,7 +211,7 @@ its done-when. The ordered session plan (written for preview.36) is
 - **Owner preview.47 US log (2026-10-28): PASSED** A5, A7, A9-A12, C7, E1.3, E2.1, E2.2, G8 (the `items_partner_switch=0` sub-check of G8 not done) and B15b; marks and log evidence are in [OLED_TEST_PLAN](OLED_TEST_PLAN.md). Owner confirmed on the OLED (2026-10-28, preview.47/48): app name #289 shows "Digimon World 3 NX" (**PASSED**); B16 map view icons, balloon and cursor work (**PASSED**), except the name box jumping while zooming with the right stick, fixed in the branch `fix/map-namebox-stick-zoom` (the placement is latched when the cursor gets on a location, as the game does; retest B16 with the stick on a location). **Owner preview.48 EU OLED log (2026-10-28):** E1.6b EU language select 16:9 **PASSED by log** (`dw3-widescreen: gutter 53 px per side (was -1; 16:9) mode file 0x165 frame 1`; no 4:3 seen). G9 combined `.nro`: the both-present picker, the button choice and the "always" save **PASSED by log** (`data found us=1 eu=1`, `picker shown (default entry us, timeout 3000 ms)`, `picker result eu by button A after 19473 ms always=1`, `saved last_region=eu region_default=eu`, `running eu`); the 3 s timeout did not fire because the owner moved the cursor first, which cancels the countdown by design (`dw3_picker_step`), so G9.3's timeout, the only-US, only-EU, Minus and disc-in-parent rows stay open. B16: the name-box jitter was not reproduced on preview.48 (fix #326 ships in preview.49 anyway). Not tested in that session: D13 #188 (one Techniques command only; the audio health line was healthy, 0 underruns, 0 key-on failed, voices max 23 of 24), B17 map mod (no mods folder on the SD), G2 save + HOME (no `dw3-save` line). **Owner feedback fixed in `fix/p48-feedback`:** the EU language select also confirms with the confirm button (patch 0187, E1.6c) and the full-screen map keeps the cursor and the balloon at one on-screen size while zooming ([P6.32 section 11](P6.32_MAP_ZOOM.md#11-fixed-size-overlay-sprites-owner-preview48-oled); retest B16). Still open: D13 #188.
 - **P5 gate:** start → first boss on hardware, US and EU. The Phase 5 gate is
   not met yet (owner, 2026-10-24); see [Phase 5](#phase-5--playable-on-switch).
-- **P5.5:** the stage sweep on the OLED, EU done (preview.51), US open: `stage_sweep=1` in
+- **P5.5 (done, G10 passed US and EU):** the stage sweep on the OLED; to repeat it, `stage_sweep=1` in
   `port_options.cfg`, start the game, wait for `dw3-sweep: done`, send
   `dw3.log` ([P5.5_STAGE_SWEEP](P5.5_STAGE_SWEEP.md), OLED_TEST_PLAN G10).
 - **P6.1:** **Item shop (B18, patch 0179):** the owner saw it still in 4:3 on preview.47 (panels had stayed in the middle 320 columns); panels now hang from the 16:9 edges, and the log says which gutter the shop ran with (`dw3-widescreen: screen STITSHOP ...`). **B18 PASSED** (owner OLED, preview.51, 2026-10-28). 16:9 for the map screen, results header, save slot picker, title
@@ -783,7 +788,7 @@ speed.
   Kernel-path analysis: [P5.4_ERROR_REPORT.md](P5.4_ERROR_REPORT.md). The P5.2
   nxlink HUD (`DW3_NX_DEBUG_OVERLAY`) is not a substitute for this task.
   Dated history: [P5.4_CRASH.md](P5.4_CRASH.md#history-moved-from-roadmapmd-2026-10-24).
-- [ ] **P5.5 Stage sweep on hardware.** P3.8 again on the console.
+- [x] **P5.5 Stage sweep on hardware.** **Done 2026-10-29** (G10 passed on the OLED, US and EU, preview.51; the EU extra chapter's stages are not in the set, a separate item). P3.8 again on the console.
   Done when (proposed, from P3.8): the P3.8 loadable stage set loads and
   returns on hardware, US and EU. P6.20's warp menu would help.
   **Known crash fixed (2026-10-22):** the new-game walk to the Digital
@@ -824,9 +829,8 @@ speed.
   after a crash or hang report that stage and continue. PC: **237/237 ok on
   US and on EU**, replay scenarios `us/eu-stage-sweep`, patch `0185`. Design,
   keys and every log line: [P5.5_STAGE_SWEEP.md](P5.5_STAGE_SWEEP.md). **Open:**
-  the OLED run, US and EU ([OLED_TEST_PLAN](OLED_TEST_PLAN.md) G10); the EU
-  extra chapter's stages are not in the set yet. P5.5 is ticked when that run
-  loads and returns the set on the console.
+  the EU extra chapter's stages are not in the set yet. The OLED run (G10) **passed on US and EU**
+  (preview.51, 2026-10-28 / 29), so P5.5 is ticked.
 
 Gate: start → first boss on hardware, both versions.
 

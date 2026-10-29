@@ -378,6 +378,7 @@ if(DEFINED DW3_REGION_BUILD)
 endif()
 add_dependencies(dw3_port_options${_S} dw3_decomp_patched)
 target_include_directories(dw3_port_options${_S} PRIVATE ${_DW3_GAME_INCLUDES}
+  "${CMAKE_CURRENT_SOURCE_DIR}/region"
   "${CMAKE_CURRENT_SOURCE_DIR}/map_view"
   "${CMAKE_CURRENT_SOURCE_DIR}/mods")
 target_compile_definitions(dw3_port_options${_S} PRIVATE ${_DW3_GAME_DEFS})

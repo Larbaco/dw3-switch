@@ -7,6 +7,7 @@
  *   pacing             print the Encounter rate / Text speed modes
  *   battle             print the Battle cursor mode (battle_menu_memory)
  *   layout             print the Button layout (0 PlayStation, 1 Nintendo)
+ *   region             print the Region at start row (0 Ask, 1 US, 2 EU; DW3_REGION_IMAGE build)
  *   open | close       open / close the Options screen
  *   row N              put the cursor on registry row N (opens its group, no keys)
  *   nav N              the same with the keys: Down / Confirm / Down ... as a
@@ -70,6 +71,10 @@ static void battle(void) {
 
 static void layout(void) {
     printf("button_layout=%d\n", dw3_port_options_level(9));
+}
+
+static void region(void) {
+    printf("region_row=%d\n", dw3_port_options_level(10));
 }
 
 static void autosave(void) {
@@ -147,6 +152,8 @@ int main(int argc, char **argv) {
             battle();
         } else if (strcmp(argv[i], "autosave") == 0) {
             autosave();
+        } else if (strcmp(argv[i], "region") == 0) {
+            region();
         } else if (strcmp(argv[i], "layout") == 0) {
             layout();
         } else if (strcmp(argv[i], "open") == 0) {

@@ -294,12 +294,12 @@ enum { OPT_X0 = 84, OPT_Y0 = 60, OPT_W = 792, OPT_H = 600,
        CHT_ROW_STEP = 42, CHT_ROW_H = 38 };
 /* The rows' kinds: how a registry value is written. */
 enum { ROW_SWITCH, ROW_FAST_FORWARD, ROW_VOLUME, ROW_ENCOUNTER, ROW_TEXT,
-       ROW_BATTLE, ROW_AUTOSAVE, ROW_LAYOUT };
+       ROW_BATTLE, ROW_AUTOSAVE, ROW_LAYOUT, ROW_REGION };
 static int row_kind(int row) {
     return row == 1 ? ROW_FAST_FORWARD : row == 3 || row == 4 ? ROW_VOLUME :
            row == 5 ? ROW_ENCOUNTER : row == 6 ? ROW_TEXT :
            row == 7 ? ROW_BATTLE : row == 8 ? ROW_AUTOSAVE :
-           row == 9 ? ROW_LAYOUT : ROW_SWITCH;
+           row == 9 ? ROW_LAYOUT : row == 10 ? ROW_REGION : ROW_SWITCH;
 }
 /* P6.31: the Auto-save row's lettering, in the language of the disc (en, fr,
  * de, es, it: the DW3_TITLE_LANG_* order). OFF is the Options screen's word. */
@@ -318,6 +318,16 @@ static const LayoutWords layout_words[5]={LAYOUT_WORDS(en),LAYOUT_WORDS(fr),LAYO
                                           LAYOUT_WORDS(es),LAYOUT_WORDS(it)};
 static const LayoutWords *layout_lang(void) {
     return &layout_words[options_lang>=DW3_TITLE_LANG_EN&&options_lang<=DW3_TITLE_LANG_IT?options_lang:0];
+}
+/* P51 item 4: the Region at start row (combined image): Ask in the language
+ * of the disc, US and EU the same everywhere. */
+#define REGION_WORDS(l) {WORD(opt_row_rg_##l),WORD(opt_val_rg_ask_##l),WORD(opt_desc_rg_##l)}
+typedef struct RegionWords { Word row,ask,desc; } RegionWords;
+static const RegionWords region_words[5]={REGION_WORDS(en),REGION_WORDS(fr),REGION_WORDS(de),
+                                          REGION_WORDS(es),REGION_WORDS(it)};
+static const Word v_region_us=WORD(opt_val_rg_us),v_region_eu=WORD(opt_val_rg_eu);
+static const RegionWords *region_lang(void) {
+    return &region_words[options_lang>=DW3_TITLE_LANG_EN&&options_lang<=DW3_TITLE_LANG_IT?options_lang:0];
 }
 /* P9.7: the message line of a row that is locked in game, in the language of
  * the disc (en, fr, de, es, it: the DW3_TITLE_LANG_* order). */
@@ -598,6 +608,10 @@ static const Word *list_value(const ListWords *t,int reg,int v,int *dim) {
     case ROW_LAYOUT:
         if(v>1)v=1;
         return v?&layout_lang()->nintendo:&layout_lang()->ps;
+    case ROW_REGION:
+        if(v>2)v=2;
+        *dim=v==0;
+        return v==0?&region_lang()->ask:v==1?&v_region_us:&v_region_eu;
     default:
         if(v>1)v=1;
         *dim=v==0;
@@ -616,7 +630,7 @@ static void options_list_screen(int group,int scroll) {
     const int cht=0;
 #endif
     int ids[DW3_OPTGRP_COUNT];
-    const int n=on_groups?dw3_optgroups_visible(ECHEATS,ids):dw3_optgroups[group].nrows;
+    const int n=on_groups?dw3_optgroups_visible(DW3_OPTGRP_CHEATS_LISTED,ids):dw3_optgroups[group].nrows;
     const unsigned locked=ELOCKED;
     const int cursor=options_layer==OPTIONS_LAYER_STATIC?-1:option_cursor;
     const int shared=static_part!=2,specific=static_part!=1;
@@ -662,7 +676,8 @@ static void options_list_screen(int group,int scroll) {
         lock=on_groups?group_locked(ids[a],locked):cht?0:(int)((locked>>reg)&1u);
         label=on_groups?&group_lang(ids[a])->name
               :row_kind(reg)==ROW_AUTOSAVE?&autosave_lang()->row
-              :row_kind(reg)==ROW_LAYOUT?&layout_lang()->row:&t->row[reg];
+              :row_kind(reg)==ROW_LAYOUT?&layout_lang()->row
+              :row_kind(reg)==ROW_REGION?&region_lang()->row:&t->row[reg];
 #ifdef DW3_CHEATS
         if(cht){
             /* Rows 1..9 are inert (greyed) while the master switch is off. */
@@ -718,7 +733,8 @@ static void options_list_screen(int group,int scroll) {
             else
 #endif
             d=(locked>>reg)&1u?lock_lang():row_kind(reg)==ROW_AUTOSAVE?&autosave_lang()->desc
-              :row_kind(reg)==ROW_LAYOUT?&layout_lang()->desc:&t->desc[reg];
+              :row_kind(reg)==ROW_LAYOUT?&layout_lang()->desc
+              :row_kind(reg)==ROW_REGION?&region_lang()->desc:&t->desc[reg];
         }
         wordsh(d,L_DESC_X+28,L_DESC_Y+14,0,255,255,255);
     }
@@ -942,7 +958,8 @@ void dw3_pc_title_overlay_options_page_info(int page,int cheats_on,int *scroll,i
     int group,sc;
     if(!dw3_optlist_decode(page,&group,&sc)){group=-1;sc=0;}
     *scroll=sc;
-    *items=dw3_optlist_count(group,cheats_on);
+    *items=dw3_optlist_count(group,DW3_OPTGRP_CHEATS_LISTED);
+    (void)cheats_on; /* P51: the group list no longer follows the master switch */
     *slots=DW3_OPTLIST_VISIBLE;
 }
 void dw3_pc_title_overlay_options_rect(int page,int kind,int slot,int *x,int *y,int *w,int *h) {

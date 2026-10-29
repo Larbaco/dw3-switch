@@ -24,6 +24,15 @@ enum {
     DW3_OPTGRP_MAX_ROWS = 10
 };
 
+/* P51 item 4: the Region at start row (registry row 10) exists in the combined
+ * image only: the host (DW3_BOTH) and each game copy (DW3_REGION_IMAGE) see it. A
+ * plain US or EU image has no other region to start. */
+#if (defined(DW3_BOTH) && DW3_BOTH) || (defined(DW3_REGION_IMAGE) && DW3_REGION_IMAGE)
+#define DW3_OPT_REGION_ROW 1
+#else
+#define DW3_OPT_REGION_ROW 0
+#endif
+
 typedef struct Dw3OptGroup {
     int built;                       /* 0 = a placeholder, never listed */
     int nrows;                       /* Cheats: 10 cheat rows (port_cheats.h), not registry rows */
@@ -32,12 +41,12 @@ typedef struct Dw3OptGroup {
 
 /* Registry indexes: 0 Widescreen, 1 Fast-forward, 2 Restart hotkey, 3 Music
  * volume, 4 SFX volume, 5 Encounter rate, 6 Text speed, 7 Battle cursor,
- * 8 Auto-save, 9 Button layout. Restart hotkey sits in Gameplay until the
+ * 8 Auto-save, 9 Button layout, 10 Region at start (combined image only). Restart hotkey sits in Gameplay until the
  * Controls remap (P6.12, phase 2 of docs/CONTROLS_BUNDLE.md) moves it. */
 static const Dw3OptGroup dw3_optgroups[DW3_OPTGRP_COUNT] = {
     /* Display  */ {1, 1, {0}},
     /* Sound    */ {1, 2, {3, 4}},
-    /* Gameplay */ {1, 5, {1, 2, 5, 6, 7}},
+    /* Gameplay */ {1, 5 + DW3_OPT_REGION_ROW, {1, 2, 5, 6, 7, 10}},
     /* Saves    */ {1, 1, {8}},
     /* Cheats   */ {1, 10, {0, 1, 2, 3, 4, 5, 6, 7, 8, 9}},
     /* Controls */ {1, 1, {9}},
@@ -48,10 +57,21 @@ static const Dw3OptGroup dw3_optgroups[DW3_OPTGRP_COUNT] = {
 /* Visible rows of a list screen; longer lists scroll. */
 enum { DW3_OPTLIST_VISIBLE = 6 };
 
+/* Whether the Cheats group is on the list: whenever the feature is built in
+ * (DW3_CHEATS), whatever the master switch says (P51 item 5: with the group
+ * hidden until the switch was on, the only way in was the Square / Y shortcut,
+ * which the list did not show). At the title it opens the Cheats screen where
+ * the master switch is; in game it is greyed (DW3_PORT_OPTIONS_LOCK_CHEATS). */
+#ifdef DW3_CHEATS
+#define DW3_OPTGRP_CHEATS_LISTED 1
+#else
+#define DW3_OPTGRP_CHEATS_LISTED 0
+#endif
+
 /* The groups listed now, in order (placeholders are skipped; Cheats is listed
- * once the cheats master switch is on, like the Square / Y shortcut's hint
- * was). Returns the count, `out` holds DW3_OPTGRP_COUNT entries at most. */
-static inline int dw3_optgroups_visible(int cheats_on, int *out) {
+ * when `cheats_listed`: pass DW3_OPTGRP_CHEATS_LISTED, not the master switch).
+ * Returns the count, `out` holds DW3_OPTGRP_COUNT entries at most. */
+static inline int dw3_optgroups_visible(int cheats_listed, int *out) {
     int n = 0;
     int g;
 
@@ -59,7 +79,7 @@ static inline int dw3_optgroups_visible(int cheats_on, int *out) {
         if (!dw3_optgroups[g].built) {
             continue;
         }
-        if (g == DW3_OPTGRP_CHEATS && !cheats_on) {
+        if (g == DW3_OPTGRP_CHEATS && !cheats_listed) {
             continue;
         }
         out[n++] = g;
@@ -68,10 +88,10 @@ static inline int dw3_optgroups_visible(int cheats_on, int *out) {
 }
 
 /* Items of a list screen: the visible groups (group < 0) or the rows of one. */
-static inline int dw3_optlist_count(int group, int cheats_on) {
+static inline int dw3_optlist_count(int group, int cheats_listed) {
     int tmp[DW3_OPTGRP_COUNT];
 
-    return group < 0 ? dw3_optgroups_visible(cheats_on, tmp)
+    return group < 0 ? dw3_optgroups_visible(cheats_listed, tmp)
                      : dw3_optgroups[group].nrows;
 }
 
