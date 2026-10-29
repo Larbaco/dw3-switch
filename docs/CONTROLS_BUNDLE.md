@@ -534,10 +534,11 @@ changed on the screen), and recovers a bad map without touching the file.
 
 **Known gaps of phase 1 (phase 3 closes them).**
 
-- The Options hint row still draws the PlayStation marks on PC and the letters
+- (**Closed 2026-10-29 by the P10.6 fix-now, [P10.6_GLYPHS](P10.6_GLYPHS.md#4-fix-now-the-phase-1-gap-port-ui-only).**)
+  The Options hint row drew the PlayStation marks on PC and the letters
   B and X on the Switch (`title_overlay_art.c`, `button()`), whatever the layout.
-  With Nintendo the Switch hint therefore says B Change / X Back while A and B do
-  it. Phase 3 makes the hint a function of the map.
+  The Switch cap now follows the map (A / B with Nintendo); the PC keeps the PS
+  marks.
 - The title's hint `Select/Backspace: Port options` and the in-game screens that
   name buttons by PS1 word are not changed.
 - Port 2 and a second controller are not supported by the port at all.

@@ -135,9 +135,10 @@ Use a preview that carries P9.8, US and EU ordinary NROs. The layout lives in
 the `dw3.log` line that proves it (AGENTS.md rule 12); the owner only reports
 how it feels. L9 to L16 are P6.12 (Customize buttons, Reset, the custom map): FR / DE /
 IT / ES text on the new rows is machine-drafted, so look at it on one EU language
-and report wording, not failures. Known gap: the Options hint row still shows the letters **B** and
-**X** in both layouts (the glyphs are phase 3, P10.6); with Nintendo the real
-confirm is A and the back button is B. Report it as a note, not a failure.
+and report wording, not failures. L17 to L20 are the P10.6 fix-now: the hint caps and the map view footer
+name the button that really does the job under the map in force. The original
+icons inside the game's own text are still PlayStation icons (the glyph patch is
+the later part of P10.6); report that as a note, not a failure.
 
 | # | Action | Expect | If it fails, send | Ticks |
 |---|---|---|---|---|
@@ -157,6 +158,10 @@ confirm is A and the back button is B. Report it as a note, not a failure.
 | L14 | Customize, **Triangle** row: **Left** and **Right** with no press | Each step picks the next console button (the PS button that had it takes the old one), the layout row reads Custom. Proof: one `assign triangle<-... [custom]` line per step | `dw3.log` | P6.12 |
 | L15 | **Reset to default** (also from the field menu's Options in game); in game the **Customize buttons** row is grey | PlayStation again at once, the held B is ignored until released, `button_map` is gone from the file; in game Customize says it is changed at the title. Proof: `dw3-controls: reset to default (layout=playstation) (screen)`, the map line `cross<-B circle<-A ...`, `port_options.cfg` has no `button_map` | `dw3.log`, `port_options.cfg` | P6.12 |
 | L16 | Developer: put `button_layout=custom` and `button_map=0123456780` in `port_options.cfg`, relaunch; then `DW3_BUTTON_MAP=default` (nxlink) with a good custom map | The first plays with the PlayStation buttons and one log line; the second plays PlayStation for the run and the file keeps the custom map. Proof: `dw3-controls: map invalid (button_map is not a permutation of 0-9), using default`, `map loaded layout=playstation source=default`; `source=env` | `dw3.log`, `port_options.cfg` | P6.12 |
+| L17 | Options (title), the hint row at the bottom right of the message strip, with **Button layout** on each value in turn (PlayStation, Nintendo) | The two round caps read **B** Change and **X** Back with PlayStation, **A** Change and **B** Back with Nintendo, at once when the row changes. The caps are the buttons that really confirm and go back | `dw3-controls: hint caps confirm=B back=X (cross, triangle)` for PlayStation and `confirm=A back=B` for Nintendo, one line per change (and one at boot) | P10.6 fix-now |
+| L18 | Customize buttons: set **Cross** to **ZL** and **Triangle** to **R** (one press each), go back to Options and look at the hint row; then **Reset to default** | The caps read **ZL** and **R** (two letters fit the disc) while the map is custom, and **B** / **X** after the reset | `dw3-controls: hint caps confirm=ZL back=R (cross, triangle)` after the second assignment (and after the first: `confirm=ZL back=X`), `confirm=B back=X` after the reset | P10.6 fix-now, P6.12 |
+| L19 | Nintendo: Options, Help (the list and a page): the hint row there; Options, Cheats if it is on | The same caps as L17 (A / B) on the Help list, the Help pages and the Cheats pages | The `hint caps` line of L17 (one source of truth) | P10.6 fix-now |
+| L20 | Nintendo then PlayStation: the full-screen map view (Plus, Map, **Y**), read the footer line at the bottom | The footer names the Switch buttons: `R-STICK/L/R ZOOM  ZL/ZR SCALER  X HUD  B BACK` with Nintendo, with the cursor, zoom, scaler, HUD and back buttons of that layout (PlayStation: `... ZL/ZR SCALER  A HUD  X BACK`), no PlayStation words | `dw3-controls: hint caps ...` (the same names as L17) | P10.6 fix-now |
 
 ## Session B: field and 16:9 screens tour
 

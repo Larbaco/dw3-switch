@@ -13,6 +13,7 @@
 #include "map_view.h"
 #include "map_view_core.h"
 #include "mod_pack.h"
+#include "port_button_map.h"
 #include "port_options.h"
 #include "port_turbo.h"
 #include "port_widescreen.h"
@@ -853,9 +854,26 @@ static void hud_build(void) {
     }
     hud_text(6, 16, line, 0xFFE070FFu);
     hud_rect(0, DW3_MV_HUD_H - 16, DW3_MV_HUD_W, DW3_MV_HUD_H, 0x000000B0u);
-    hud_text(6, DW3_MV_HUD_H - 12,
-             "PAD/L-STICK CURSOR  R-STICK/L1/R1 ZOOM  L2/R2 SCALER  CIRCLE HUD  TRI BACK",
-             0xC0FFC0FFu);
+    {
+        char foot[160];
+
+#if defined(__SWITCH__)
+        /* P10.6 fix-now: the Switch names of the buttons that produce each PS
+         * button under the map in force; the PC keeps the PS words. */
+        snprintf(foot, sizeof(foot),
+                 "PAD/L-STICK CURSOR  R-STICK/%s/%s ZOOM  %s/%s SCALER  %s HUD  %s BACK",
+                 dw3_button_cap_label(dw3_button_map_current(), DW3_BTN_L1),
+                 dw3_button_cap_label(dw3_button_map_current(), DW3_BTN_R1),
+                 dw3_button_cap_label(dw3_button_map_current(), DW3_BTN_L2),
+                 dw3_button_cap_label(dw3_button_map_current(), DW3_BTN_R2),
+                 dw3_button_cap_label(dw3_button_map_current(), DW3_BTN_CIRCLE),
+                 dw3_button_cap_label(dw3_button_map_current(), DW3_BTN_TRIANGLE));
+#else
+        snprintf(foot, sizeof(foot), "%s",
+                 "PAD/L-STICK CURSOR  R-STICK/L1/R1 ZOOM  L2/R2 SCALER  CIRCLE HUD  TRI BACK");
+#endif
+        hud_text(6, DW3_MV_HUD_H - 12, foot, 0xC0FFC0FFu);
+    }
 }
 
 static void hud_touch(void) {

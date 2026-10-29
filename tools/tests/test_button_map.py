@@ -47,6 +47,8 @@ def test_button_map_log_lines(bm_bin: Path):
             "nintendo or custom), using default") in err
     assert ("dw3-controls: assign l1<-R (r1<-L swapped in) [custom]") in err
     assert "dw3-controls: reset to default (layout=playstation)" in err
+    assert "dw3-controls: hint caps confirm=B back=X (cross, triangle)" in err
+    assert "dw3-controls: hint caps confirm=A back=B (cross, triangle)" in err
     assert "dw3-controls: map loaded layout=custom source=cfg" in err
     assert ("dw3-controls: map invalid (button_map is not a permutation), "
             "using default") in err

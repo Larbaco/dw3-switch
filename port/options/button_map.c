@@ -4,7 +4,14 @@
  * C90: this file is built as gnu89 with the rest of port/. */
 #include "port_button_map.h"
 
+#include <stdio.h>
 #include <string.h>
+
+#if defined(__SWITCH__) && defined(DW3_TITLE_NATIVE_OVERLAY) && \
+    !defined(DW3_BUTTON_MAP_TEST) && !defined(DW3_PORT_OPTIONS_TEST)
+#include "title_overlay_art.h"
+#define BM_PUBLISH_CAPS 1
+#endif
 
 #ifdef DW3_BUTTON_MAP_TEST
 #include <stdio.h>
@@ -169,6 +176,32 @@ const char *dw3_button_source_label(int s) {
     return s >= 0 && s < DW3_BTN_COUNT ? g_src_label[s] : "?";
 }
 
+const char *dw3_button_cap_label(const unsigned char map[DW3_BTN_COUNT],
+                                 int button) {
+    static const char *const cap[DW3_BTN_COUNT] = {
+        "B", "A", "X", "Y", "L", "R", "ZL", "ZR", "L3", "R3"};
+
+    if (map == NULL || button < 0 || button >= DW3_BTN_COUNT ||
+        map[button] >= DW3_BTN_COUNT) {
+        return "?";
+    }
+    return cap[map[button]];
+}
+
+const char *dw3_button_hint_name_for(const unsigned char map[DW3_BTN_COUNT],
+                                     int switch_names, int button,
+                                     const char *pc_text, char *out,
+                                     unsigned n) {
+    const char *s = switch_names ? dw3_button_cap_label(map, button)
+                                 : (pc_text != NULL ? pc_text : "?");
+
+    if (out == NULL || n == 0) {
+        return s;
+    }
+    snprintf(out, n, "%s", s);
+    return out;
+}
+
 /* --- state ------------------------------------------------------------- */
 
 static unsigned char g_map[DW3_BTN_COUNT] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
@@ -241,6 +274,24 @@ static void bm_log_map(void) {
     strcat(hot, dw3_button_source_name(g_map[DW3_BTN_R1]));
     strcat(hot, "+Plus+Minus)");
     BM_LOG("dw3-controls: hotkeys %s", hot);
+    /* P10.6 fix-now: the caps the hint rows draw on a Switch build. */
+    BM_LOG("dw3-controls: hint caps confirm=%s back=%s (cross, triangle)",
+           dw3_button_cap_label(g_map, DW3_BTN_CROSS),
+           dw3_button_cap_label(g_map, DW3_BTN_TRIANGLE));
+#ifdef BM_PUBLISH_CAPS
+    dw3_pc_title_overlay_set_hint_caps(g_map[DW3_BTN_CROSS],
+                                       g_map[DW3_BTN_TRIANGLE]);
+#endif
+}
+
+const char *dw3_button_hint_name(int button, const char *pc_text, char *out,
+                                 unsigned n) {
+#if defined(__SWITCH__)
+    const int sw = 1;
+#else
+    const int sw = 0;
+#endif
+    return dw3_button_hint_name_for(g_map, sw, button, pc_text, out, n);
 }
 
 void dw3_button_map_load(int layout, const char *source) {
