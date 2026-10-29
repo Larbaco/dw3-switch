@@ -51,6 +51,17 @@ LETTERS = [
     ('opt_n10', '10', 26, 'DejaVuSans.ttf'),
     ('opt_key_b', 'B', 19, 'DejaVuSans-Bold.ttf'),
     ('opt_key_x', 'X', 19, 'DejaVuSans-Bold.ttf'),
+    # Button caps of the hint row (title_overlay_art.c button()): one per
+    # physical Switch button a PS button can come from (P10.6 fix-now, the cap
+    # follows the button map). Not under DW3_CHEATS: every hint row uses them.
+    ('opt_key_a', 'A', 19, 'DejaVuSans-Bold.ttf'),
+    ('opt_key_y', 'Y', 19, 'DejaVuSans-Bold.ttf'),
+    ('opt_key_l', 'L', 19, 'DejaVuSans-Bold.ttf'),
+    ('opt_key_r', 'R', 19, 'DejaVuSans-Bold.ttf'),
+    ('opt_key_zl', 'ZL', 15, 'DejaVuSans-Bold.ttf'),
+    ('opt_key_zr', 'ZR', 15, 'DejaVuSans-Bold.ttf'),
+    ('opt_key_l3', 'L3', 15, 'DejaVuSans-Bold.ttf'),
+    ('opt_key_r3', 'R3', 15, 'DejaVuSans-Bold.ttf'),
 ]
 # P9.9 Options screen: groups and sub-screens (docs/PORT_OPTIONS.md "Groups and
 # sub-screens"), in the five languages of the EU disc (en is also the US disc's).
@@ -281,6 +292,25 @@ for _lang, _t in LAYOUT_TEXT.items():
     LETTERS.append(('opt_val_bl_ps_' + _lang, 'PlayStation', 26, 'DejaVuSans.ttf'))
     LETTERS.append(('opt_val_bl_nin_' + _lang, 'Nintendo', 26, 'DejaVuSans.ttf'))
     LETTERS.append(('opt_desc_bl_' + _lang, _t['desc'], 25, 'DejaVuSans.ttf'))
+# P6.36 Turbo music row of the Sound group (docs/P6.36_TURBO_MUSIC.md), in the
+# five languages of the EU disc (en is also the US disc's). The values are the
+# Options screen's "1x" and "Fast" words. Label under 290 px, description under
+# 690 px.
+TURBO_MUSIC_TEXT = {
+    'en': {'row': 'Turbo music',
+           'desc': 'Music keeps its speed in turbo. Fast = as before.'},
+    'fr': {'row': 'Musique turbo',
+           'desc': 'Musique normale en turbo. Rapide = comme avant.'},
+    'de': {'row': 'Turbo-Musik',
+           'desc': 'Musik bleibt im Turbo normal. Schnell = wie bisher.'},
+    'es': {'row': 'Música turbo',
+           'desc': 'Música normal en turbo. Rápido = como antes.'},
+    'it': {'row': 'Musica turbo',
+           'desc': 'Musica normale in turbo. Veloce = come prima.'},
+}
+for _lang, _t in TURBO_MUSIC_TEXT.items():
+    LETTERS.append(('opt_row_tm_' + _lang, _t['row'], 26, 'DejaVuSans.ttf'))
+    LETTERS.append(('opt_desc_tm_' + _lang, _t['desc'], 25, 'DejaVuSans.ttf'))
 # P6.12 Controls group, phase 2 (docs/CONTROLS_BUNDLE.md): the Customize buttons
 # and Reset to default rows, the Custom value of Button layout, the prompt of the
 # Customize screen. FR / DE / IT / ES are machine-drafted, needs native review.
@@ -443,7 +473,7 @@ CHEAT_TEXT = {
 CHEAT_PAGE2 = {'en': {'rows2': ['Money', 'Warp', 'Item id', 'Item count', 'Give item'], 'desc2': ['In the field: adds the amount, or MAX. Saving keeps it.', 'In the field: goes to this area, at its first start point.', 'Left / Right: item id (L / R: 10 at a time).', 'Left / Right: how many (L / R: 10 at a time).', 'In the field: adds the item to the bag. Saving keeps it.'], 'warp': ['Asuka City', 'Digimon Lab', 'Digimon Arena', 'Central Park', 'Wire Forest', 'Tyranno Valley', 'Chinlong City', 'Bulk Swamp', 'Suzaku City', 'Noise Desert', 'Byakko City', 'Snow Mountain', 'Genbu City']}, 'fr': {'rows2': ['Argent', 'Téléportation', "Id de l'objet", 'Quantité', "Donner l'objet"], 'desc2': ['Sur la carte : ajoute la somme, ou MAX. Sauvegardé.', 'Sur la carte : va dans cette zone, au point de départ.', "Gauche / Droite : id de l'objet (L / R : par 10).", 'Gauche / Droite : quantité (L / R : par 10).', "Sur la carte : ajoute l'objet au sac. Sauvegardé."], 'warp': ['Asuka City', 'Labo Digimon', 'Arène Digimon', 'Parc central', 'Forêt Wire', 'Vallée Tyranno', 'Chinlong City', 'Marais Bulk', 'Suzaku City', 'Désert Noise', 'Byakko City', 'Mont Snow', 'Genbu City']}, 'de': {'rows2': ['Geld', 'Teleport', 'Item-ID', 'Anzahl', 'Item geben'], 'desc2': ['Auf der Karte: addiert Betrag oder MAX (gespeichert).', 'Auf der Karte: springt ins Gebiet, zum Startpunkt.', 'Links / Rechts: Item-ID (L / R: je 10).', 'Links / Rechts: Anzahl (L / R: je 10).', 'Auf der Karte: Item in die Tasche (gespeichert).'], 'warp': ['Asuka City', 'Digimon-Labor', 'Digimon-Arena', 'Zentralpark', 'Wire-Wald', 'Tyranno-Tal', 'Chinlong City', 'Bulk-Sumpf', 'Suzaku City', 'Noise-Wüste', 'Byakko City', 'Schneeberg', 'Genbu City']}, 'es': {'rows2': ['Dinero', 'Teletransporte', 'ID de objeto', 'Cantidad', 'Dar objeto'], 'desc2': ['En el mapa: suma la cantidad o MAX (se guarda).', 'En el mapa: va a esta zona, a su punto de inicio.', 'Izq. / Der.: ID del objeto (L / R: de 10 en 10).', 'Izq. / Der.: cantidad (L / R: de 10 en 10).', 'En el mapa: añade el objeto a la bolsa (se guarda).'], 'warp': ['Asuka City', 'Lab. Digimon', 'Arena Digimon', 'Parque Central', 'Bosque Wire', 'Valle Tyranno', 'Chinlong City', 'Pantano Bulk', 'Suzaku City', 'Desierto Noise', 'Byakko City', 'Monte Snow', 'Genbu City']}, 'it': {'rows2': ['Denaro', 'Teletrasporto', 'ID oggetto', 'Quantità', 'Dai oggetto'], 'desc2': ['Sulla mappa: aggiunge la somma o MAX (si salva).', 'Sulla mappa: va in questa zona, al punto di partenza.', 'Sinistra / Destra: ID oggetto (L / R: di 10 in 10).', 'Sinistra / Destra: quantità (L / R: di 10 in 10).', "Sulla mappa: aggiunge l'oggetto alla borsa (si salva)."], 'warp': ['Asuka City', 'Lab Digimon', 'Arena Digimon', 'Parco centrale', 'Foresta Wire', 'Valle Tyranno', 'Chinlong City', 'Palude Bulk', 'Suzaku City', 'Deserto Noise', 'Byakko City', 'Monte Snow', 'Genbu City']}}
 for _lang, _extra in CHEAT_PAGE2.items():
     CHEAT_TEXT[_lang].update(_extra)
-CHEAT_LETTERS = [('opt_key_y', 'Y', 19, 'DejaVuSans-Bold.ttf')]
+CHEAT_LETTERS = []
 # Money values (the same in every language) and the digits of the two numbers
 # of the Give item rows: a fixed advance (the 5th field), so that a number is
 # the digits side by side (title_overlay_art.c, number()).

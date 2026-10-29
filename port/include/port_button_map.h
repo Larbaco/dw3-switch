@@ -71,6 +71,22 @@ const char *dw3_button_source_name(int source);
 const char *dw3_button_ps_label(int button);
 const char *dw3_button_source_label(int source);
 
+/* P10.6 fix-now: what a hint names for PS button `button`.
+ * dw3_button_cap_label: the cap text of the Switch button that produces it
+ * under `map` ("A" "B" "X" "Y" "L" "R" "ZL" "ZR" "L3" "R3"); "?" for a bad
+ * argument. dw3_button_hint_name_for fills `out` with that on a Switch build
+ * (`switch_names` = 1), else with `pc_text` (the PS word and key the hint
+ * always showed, for example "Triangle (S)"); returns `out`. */
+const char *dw3_button_cap_label(const unsigned char map[DW3_BTN_COUNT],
+                                 int button);
+const char *dw3_button_hint_name_for(const unsigned char map[DW3_BTN_COUNT],
+                                     int switch_names, int button,
+                                     const char *pc_text, char *out,
+                                     unsigned n);
+/* The same under the map in force; switch_names is 1 in a Switch build. */
+const char *dw3_button_hint_name(int button, const char *pc_text, char *out,
+                                 unsigned n);
+
 /* --- state (one map per process; the pad host reads it every frame) --- */
 
 /* Set the layout at boot (`source`: "cfg", "default" or "env") or from the

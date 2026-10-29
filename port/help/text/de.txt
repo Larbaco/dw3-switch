@@ -79,7 +79,7 @@ help.turbo.h.1 = Wo er wirkt
 help.turbo.li.1 = Volles Tempo: Laufen, Text, Zwischensequenzen, Übergänge und Kampfanimationen im Feld und im Kampf sowie der Kampfbericht.
 help.turbo.li.2 = Etwa 1,5x bei eingeschaltetem Turbo: die über dem Feld oder einem Kampf geöffneten Menüs, etwa die Liste des Feldmenüs, die Optionen und das Befehlsmenü im Kampf.
 help.turbo.li.3 = Immer normales Tempo: das Titelbild, Filme, die Memory-Card-Bildschirme, das Kartenspiel, die Bildschirme Status, Items und Karte des Feldmenüs sowie die Läden.
-help.turbo.note.1 = Auch Musik und Soundeffekte werden schneller. Wie viel schneller das Spiel wirklich läuft, hängt davon ab, wie gut die Konsole mithalten kann.
+help.turbo.note.1 = Im Turbo behält die Musik ihr normales Tempo (Optionen, Ton, Turbo-Musik: 1x, Vorgabe). Mit Schnell wird die Musik mit dem Spiel schneller. Soundeffekte, die die Aktion auslöst, kommen weiterhin schneller. Wie viel schneller das Spiel wirklich läuft, hängt davon ab, wie gut die Konsole mithalten kann.
 
 # -------------------------------------------------------------- options
 help.options.title = Optionen erklärt
@@ -89,7 +89,7 @@ help.options.p.2 = Öffne sie im Titelmenü, über die Zeile OPTIONEN des Feldme
 help.options.h.1 = Anzeige
 help.options.li.1 = Breitbild: ON oder OFF, Vorgabe ON. Etwa 16:9 im Feld, im Kampf und in mehreren Menüs. Das Titelbild und die Filme bleiben 4:3.
 help.options.h.2 = Ton
-help.options.li.2 = Musikvolumen und Effektvolumen: OFF oder 1 bis 10, Vorgabe 10, das ist der Originalmix. Links und Rechts ändern in Schritten; {btn:cross} erhöht und springt von 10 auf 0. Der Bildschirm spielt die Menütöne des Spiels ab, damit du die Änderung hörst.
+help.options.li.2 = Musikvolumen und Effektvolumen: OFF oder 1 bis 10, Vorgabe 10, das ist der Originalmix. Links und Rechts ändern in Schritten; {btn:cross} erhöht und springt von 10 auf 0. Der Bildschirm spielt die Menütöne des Spiels ab, damit du die Änderung hörst. Turbo-Musik: 1x oder Schnell, Vorgabe 1x. Mit 1x behält die Musik beim Schnellvorlauf ihr normales Tempo; Schnell macht sie mit dem Spiel schneller.
 help.options.h.3 = Gameplay
 help.options.li.3 = Schnellvorlauf: 2x, 3x, 4x oder OFF, Vorgabe 2x. Das Tempo, auf das {btn:r3} umschaltet.
 help.options.li.4 = Neustart-Kürzel: ON oder OFF, Vorgabe OFF. Aktiviert die Neustart-Kombination.

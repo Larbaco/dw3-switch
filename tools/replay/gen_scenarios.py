@@ -1160,6 +1160,14 @@ def music_loop(version):
     return r
 
 
+def turbo_music_field(version):
+    """P6.36: the field music alone for 700 game frames with turbo 4 (env in
+    manifest); the tick window lines show the gate's cadence."""
+    r = Rec(f"{version.upper()}: field music idle at turbo 4, the music tick gate counts (env in manifest)")
+    r.end(700)
+    return r
+
+
 WALKTHROUGH_END = 600
 
 
@@ -2844,6 +2852,7 @@ def main(out):
         (out / f"{v}-lab-digivolve.rec").write_text(lab_digivolve(v).text(True))
         (out / f"{v}-victory-music.rec").write_text(victory_music(v).text(True))
         (out / f"{v}-music-loop.rec").write_text(music_loop(v).text(True))
+        (out / f"{v}-turbo-music-field.rec").write_text(turbo_music_field(v).text(True))
         (out / f"{v}-walkthrough.rec").write_text(walkthrough(v).text(True))
         (out / f"{v}-underground-exit.rec").write_text(underground_exit(v).text(True))
         (out / f"{v}-ws-door-iris.rec").write_text(ws_door_iris(v).text(True))

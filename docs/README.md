@@ -9,6 +9,7 @@ Files are named by roadmap item id (`P6.4_...`) or by topic.
 - [PLAYER_GUIDE](PLAYER_GUIDE.md): setup, controls, menus, saves, crash reports.
 - [HOTKEYS](HOTKEYS.md): controls, port hotkeys and diagnostic chords.
 - [CONTROLS_BUNDLE](CONTROLS_BUNDLE.md): design of the controls bundle (P6.12 button remap, P9.8 confirm layout, P10.6 Switch glyphs).
+- [P10.6_GLYPHS](P10.6_GLYPHS.md): P10.6 step 0: where the game draws the PS button icons, the dump tool, the glyph art and patch plan.
 - [PORT_OPTIONS](PORT_OPTIONS.md): the Options screen, the Cheats screen, Quit and Return to title.
 - [DISC_SETUP](DISC_SETUP.md): from your disc image to the extracted tree and file map.
 - [RUNTIME_LAYOUT](RUNTIME_LAYOUT.md): the runtime folder on PC and on the SD card.
@@ -79,7 +80,7 @@ Files are named by roadmap item id (`P6.4_...`) or by topic.
 - [P6.1_WIDESCREEN](P6.1_WIDESCREEN.md): widescreen in field and battle.
 - [P6.1_WIDESCREEN_MENU_AUDIT](P6.1_WIDESCREEN_MENU_AUDIT.md): widescreen menu and transition audit.
 - [P6.4_FAST_FORWARD](P6.4_FAST_FORWARD.md): fast-forward (turbo).
-- [P6.36_TURBO_MUSIC](P6.36_TURBO_MUSIC.md): design for music at normal speed in turbo.
+- [P6.36_TURBO_MUSIC](P6.36_TURBO_MUSIC.md): music at normal speed in turbo (design; phases 1 and 2 built).
 - [P6.5_NRO_FORMAT](P6.5_NRO_FORMAT.md): NRO format notes.
 - [P6.5_PACKAGING](P6.5_PACKAGING.md): release packaging.
 - [P6.9_RESTART](P6.9_RESTART.md): in-process game restart.

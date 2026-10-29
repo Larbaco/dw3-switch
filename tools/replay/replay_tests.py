@@ -297,7 +297,7 @@ def run_phase(rec: Path, version, binary, runtime, display, outdir: Path, memdir
                DW3_REPLAY=str(rec),
                DW3_REPLAY_OUT=str(outdir), DW3_REPLAY_XSHOT="1")
     for k in ("DW3_AUTO_PAD", "DW3_REPLAY_SOURCE", "DW3_BUTTON_MAP", "DW3_REPLAY_RECORD", "DW3_PC_INTERNAL_RES", "DW3_TURBO",
-              "DW3_CONFIG_DIR", "DW3_WIDESCREEN", "DW3_MUSIC_VOLUME", "DW3_SFX_VOLUME",
+              "DW3_TURBO_MUSIC", "DW3_TURBO_MUSIC_CLOCK", "DW3_CONFIG_DIR", "DW3_WIDESCREEN", "DW3_MUSIC_VOLUME", "DW3_SFX_VOLUME",
               "DW3_ENCOUNTER_RATE", "DW3_TEXT_SPEED", "DW3_START_MODE", "DW3_PROGRESS",
               "DW3_FORCE_NPC_ACTION", "DW3_OVERLAY_STRICT", "DW3_FORCE_ENCOUNTER",
               "DW3_FORCE_PARTY", "DW3_FORCE_WIN", "DW3_AUTO_DOOR_MODE",
@@ -318,6 +318,10 @@ def run_phase(rec: Path, version, binary, runtime, display, outdir: Path, memdir
         env["DW3_CONFIG_DIR"] = str(cfgdir)
     if turbo:
         env["DW3_TURBO"] = str(turbo)
+        # P6.36: the recordings that run in turbo were made with the music
+        # ticking once per game frame (Turbo music = Fast); the scenarios of the
+        # new gate set DW3_TURBO_MUSIC=0 in their own env.
+        env["DW3_TURBO_MUSIC"] = "1"
     env.update(dict(extra_env))  # manifest Scenario.env (debug aids)
     log = outdir / f"{stamp}-{label}.log"  # rule 9: timestamped logs kept
     t0 = time.time()

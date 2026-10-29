@@ -14,6 +14,7 @@
  * They are one-shots too, armed at the title and applied by the field at its
  * first idle frame (patches 0118, 0119, 0120); the picks of the item id and
  * count are not kept between runs. */
+#include "port_button_map.h"
 #include "port_cheats.h"
 #include "port_options.h"
 #include "port_options_groups.h"
@@ -474,6 +475,7 @@ void dw3_cheats_draw_panel(void) {
     static const char *const money[DW3_CHEAT_MONEY_MODES] = {
         "OFF", "+10000", "+100000", "MAX"};
     char buf[DW3_CHEAT_PAGE_ROWS][40];
+    char back_buf[40];
     const char *lines[DW3_CHEAT_PAGE_ROWS + 3];
     DISPENV env;
     int page = g_cursor / DW3_CHEAT_PAGE_ROWS;
@@ -506,7 +508,13 @@ void dw3_cheats_draw_panel(void) {
         }
         lines[n++] = buf[i];
     }
-    lines[n++] = "Triangle (S): Back";
+    {
+        char name[24];
+
+        dw3_button_hint_name(DW3_BTN_TRIANGLE, "Triangle (S)", name, sizeof(name));
+        snprintf(back_buf, sizeof(back_buf), "%s: Back", name);
+        lines[n++] = back_buf;
+    }
     dw3_port_text_draw_panel((int)env.disp.x + 32, (int)env.disp.y + 32, 256,
                              128, lines, n);
 #endif

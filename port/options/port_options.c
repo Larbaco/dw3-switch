@@ -56,7 +56,7 @@
  * port_options.h: port/pacing/pacing.c, port/battle_menu/battle_menu_memory.c
  * and port/autosave/autosave.c read them. */
 enum {
-    DW3_PORT_OPT_COUNT = 13,
+    DW3_PORT_OPT_COUNT = 14,
     DW3_PORT_OPT_WIDESCREEN = 0,
     DW3_PORT_OPT_FAST_FORWARD = 1,
     DW3_PORT_OPT_RESTART = 2,
@@ -72,7 +72,8 @@ _Static_assert(DW3_PORT_OPT_WIDESCREEN == 0 && DW3_PORT_OPT_FAST_FORWARD == 1 &&
                DW3_PORT_OPT_AUTOSAVE == 8 &&
                DW3_PORT_OPT_BUTTON_LAYOUT == 9 && DW3_PORT_OPT_REGION == 10 &&
                DW3_PORT_OPT_CUSTOMIZE == 11 && DW3_PORT_OPT_RESET_MAP == 12 &&
-               DW3_PORT_OPT_COUNT == 13,
+               DW3_PORT_OPT_TURBO_MUSIC == 13 &&
+               DW3_PORT_OPT_COUNT == 14,
                "registry indexes changed: update port_options_groups.h");
 
 typedef struct Dw3PortOptStub {
@@ -143,6 +144,9 @@ static Dw3PortOptStub g_stubs[DW3_PORT_OPT_COUNT] = {
     /* P6.12: action rows, no value and no key. */
     {"Customize buttons", NULL, 0, 0, NULL},
     {"Reset to default", NULL, 0, 0, NULL},
+    /* P6.36: 0 = 1x (the music keeps its tempo in turbo), 1 = Fast (today).
+     * DW3_TURBO_MUSIC pins it for a run (stored values). */
+    {"Turbo music", "turbo_music", 0, 0, "DW3_TURBO_MUSIC"},
 };
 
 /* P9.4 persistence. The registry values above are what the game reads; this
@@ -503,7 +507,8 @@ static int po_is_mode(int index) {
            index == DW3_PORT_OPT_TEXT_SPEED ||
            index == DW3_PORT_OPT_BATTLE_MENU ||
            index == DW3_PORT_OPT_BUTTON_LAYOUT ||
-           index == DW3_PORT_OPT_REGION;
+           index == DW3_PORT_OPT_REGION ||
+           index == DW3_PORT_OPT_TURBO_MUSIC;
 }
 
 /* Rows that Left / Right step and Confirm cycles: the volumes and the modes. */
@@ -518,6 +523,7 @@ static int po_value_max(int index) {
            : index == DW3_PORT_OPT_BATTLE_MENU ? DW3_BATTLE_MENU_MEMORY_TECH
            : index == DW3_PORT_OPT_BUTTON_LAYOUT ? DW3_LAYOUT_COUNT - 1
            : index == DW3_PORT_OPT_REGION ? 2
+           : index == DW3_PORT_OPT_TURBO_MUSIC ? 1
                                                    : DW3_PACING_MODE_MAX;
 }
 
@@ -928,6 +934,9 @@ int dw3_port_options_persist_init(const char *dir) {
     /* DW3_MUSIC_VOLUME / DW3_SFX_VOLUME force a value for this run only. */
     po_stepped_env();
     po_audio_apply();
+    PO_INFO("dw3-options: turbo_music=%s%s (docs/P6.36_TURBO_MUSIC.md)",
+            g_stubs[DW3_PORT_OPT_TURBO_MUSIC].value ? "fast" : "1x",
+            (g_env_pinned >> DW3_PORT_OPT_TURBO_MUSIC) & 1u ? " [env]" : "");
     po_layout_boot(layout_from_cfg);
     return rc == DW3_OPTCFG_LOAD_ERROR ? -1 : 0;
 }
@@ -942,6 +951,7 @@ static const char *po_mode_name(int index, int v) {
     static const char *const layout[DW3_LAYOUT_COUNT] = {"playstation",
                                                          "nintendo", "custom"};
     static const char *const region[3] = {"ask", "us", "eu"};
+    static const char *const tmusic[2] = {"1x", "fast"};
 
     if (v < 0 || v > po_value_max(index)) {
         return "?";
@@ -949,6 +959,7 @@ static const char *po_mode_name(int index, int v) {
     return index == DW3_PORT_OPT_ENCOUNTER_RATE ? encounter[v]
            : index == DW3_PORT_OPT_BUTTON_LAYOUT ? layout[v]
            : index == DW3_PORT_OPT_REGION ? region[v]
+           : index == DW3_PORT_OPT_TURBO_MUSIC ? tmusic[v]
            : index == DW3_PORT_OPT_BATTLE_MENU ? battle[v] : text[v];
 }
 
@@ -1032,6 +1043,7 @@ static void po_step(int index, int delta) {
                 : index == DW3_PORT_OPT_BATTLE_MENU ? "battle cursor"
                 : index == DW3_PORT_OPT_BUTTON_LAYOUT ? "button layout"
                 : index == DW3_PORT_OPT_REGION ? "region at start"
+                : index == DW3_PORT_OPT_TURBO_MUSIC ? "turbo music"
                                                     : "text speed",
                 po_mode_name(index, v));
     }
@@ -1680,7 +1692,12 @@ void dw3_port_options_draw(void) {
             lines[n++] = buf;
         }
     }
-    snprintf(back_line, sizeof(back_line), "Triangle (S): Back");
+    {
+        char name[24];
+
+        dw3_button_hint_name(DW3_BTN_TRIANGLE, "Triangle (S)", name, sizeof(name));
+        snprintf(back_line, sizeof(back_line), "%s: Back", name);
+    }
     lines[n++] = back_line;
 
     dw3_port_text_draw_panel((int)ox + 32, (int)oy + 32, 256, 128, lines, n);

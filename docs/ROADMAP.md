@@ -173,7 +173,7 @@ listed once, in [Pending OLED checks](#pending-oled-checks).
 | P6.33 | Items menu usability redesign | in progress (owner decisions recorded 2026-10-26; phase 1 partner cycle built: patch 0128, ZL / ZR, on by default; phases 2, 3 and 4 open; phase 1 cycle confirmed on the OLED 2026-10-27, preview.41; the `items_partner_switch=0` check open; phases 2–4 folded into P6.34) | [roadmap](#phase-6-goal-notes), [P6.33](P6.33_ITEMS_MENU.md), [P6.1](P6.1_WIDESCREEN.md) |
 | P6.34 | Redesign of the items / status / equipment menu flow | design written 2026-10-28 (5 phases, 10 owner questions open); **phase 1 built 2026-10-28** (equip from the Items menu, patch `0188`, key `items_equip_from_items`, default on = orchestrator default pending owner confirmation of Q1 to Q5 and Q10); **phase 2 built 2026-10-29** (equip in Status > Equipment returns to the slot list without the long fades, patch `0190`, key `items_equip_stays`, default on = orchestrator default pending owner confirmation of Q6; replay `us/eu-items-equip-stays[-off]`); **phase 3 built 2026-10-29** (Square in the equip list cycles this slot / all weapons / all armor and gear / worn by others; Cross on a worn-by-others row moves the item between party members, patch `0192`, key `items_bag_view`, default on = orchestrator default pending owner confirmation of P6.33 decisions 2 and 3 as built; replay `us/eu-items-bag-view[-43][-off]` and `eu-items-bag-view-fr|it|de|es`; left: a count line, a help hint for Square, moving from non-party Digimon, swap); phases 4 and 5 (patches 0193-0194 proposed) not built; PC replay US and EU passes, OLED items B19 (revised), B21, B22 and B23 pending | [roadmap](#phase-6-goal-notes), [P6.34](P6.34_MENU_FLOW.md), [P6.33](P6.33_ITEMS_MENU.md) |
 | P6.35 | In-game walkthrough help: where to go next and what to do, by story progress (future goal) | future; **phase 1 data layer built** (step resolver, `ch01` table progress 0 to 4 confirmed by US and EU PC replays, English draft, FR/DE/IT/ES drafted 2026-10-29 (machine-drafted, needs native review), no UI yet; [As built](P6.35_WALKTHROUGH.md#as-built-phase-1-data-layer)) (owner 2026-10-28: at launch in every language the base game has, EN + FR/DE/IT/ES on the EU disc, pt-BR later with P6.7; design written 2026-10-28, owner decisions recorded) | [roadmap](#phase-6-goal-notes), [design](P6.35_WALKTHROUGH.md), [PLAYER_GUIDE](PLAYER_GUIDE.md) |
-| P6.36 | Music at normal speed while turbo is on (future goal) | future | [roadmap](#phase-6-goal-notes), [P6.36](P6.36_TURBO_MUSIC.md), [P6.4](P6.4_FAST_FORWARD.md), [P4.3](P4.3_AUDIO.md) |
+| P6.36 | Music at normal speed while turbo is on | phases 1 and 2 built (PR open); phase 3 jingle handoff and 4 SFX split open | [roadmap](#phase-6-goal-notes), [P6.36](P6.36_TURBO_MUSIC.md), [P6.4](P6.4_FAST_FORWARD.md), [P4.3](P4.3_AUDIO.md) |
 | P7.1 | Inventory and boundaries | done | [COMMUNITY_QOL](COMMUNITY_QOL.md) |
 | P7.2 | Patched EU disc as data source | open | [COMMUNITY_QOL](COMMUNITY_QOL.md) |
 | P7.3 | Binary-patch limits | in progress | [COMMUNITY_QOL](COMMUNITY_QOL.md) |
@@ -201,7 +201,7 @@ listed once, in [Pending OLED checks](#pending-oled-checks).
 | P10.3 | Presentation modes | open | — |
 | P10.4 | Rumble polish (optional) | open | — |
 | P10.5 | Extra applets (optional) | open | — |
-| P10.6 | Switch-style button glyphs (future goal; design written 2026-10-28) | future | [roadmap](#phase-10--native-switch-features-residual), [CONTROLS_BUNDLE](CONTROLS_BUNDLE.md), [TEXTURE_PACKS](TEXTURE_PACKS.md) |
+| P10.6 | Switch-style button glyphs (future goal; design written 2026-10-28; step 0 investigation done 2026-10-29) | future | [roadmap](#phase-10--native-switch-features-residual), [P10.6_GLYPHS](P10.6_GLYPHS.md), [CONTROLS_BUNDLE](CONTROLS_BUNDLE.md), [TEXTURE_PACKS](TEXTURE_PACKS.md) |
 | P10.7 | NSP packaging: forwarder, full NSP or stay NRO | dropped | [NSP_PACKAGING](NSP_PACKAGING.md), [roadmap](#phase-10--native-switch-features-residual) |
 
 ## Pending OLED checks
@@ -1559,7 +1559,15 @@ rumble, saves, turbo, or widescreen here; those stay in their phases.
   ([TEXTURE_PACKS.md](TEXTURE_PACKS.md), P8.2/P8.3, a pack that is optional and
   falls back to the disc) or a host **overlay** drawn over the icon; the first
   keeps one path for US and EU, the second can follow the layout at runtime.
-  Not yet investigated: which sprites or font glyphs hold the icons in each
+  **Step 0 done (2026-10-29, [P10.6_GLYPHS](P10.6_GLYPHS.md)):** the icons
+  are font cells (`FONT_ICONS_1`, size 1 only; EU draws coloured discs, US plain
+  symbols; no shoulder or Start icons); dump tool `tools/dump_font_cells.py`;
+  plan: patch the cells at load, art as 12x12 PNG files; string census still to
+  do. **Fix-now built (2026-10-29, PR open, OLED L17 to L20 pending):** the
+  Switch hint caps (Options, Cheats, Help) and the map view footer name the
+  button that really confirms / goes back under the map (A / B with Nintendo, a
+  custom map's own sources); log `dw3-controls: hint caps ...`. Originally "not yet
+  investigated": which sprites or font glyphs hold the icons in each
   disc, whether they sit inside text strings (so a width change touches the
   five EU languages), and where the game shows each one. The glyph for an
   action must follow the confirm/cancel layout of P9.8 (B confirms in
@@ -2463,10 +2471,10 @@ Statuses are in the [table](#status-at-a-glance).
   English; a long page scrolls; nothing is copied from outside sources.
   Related: P6.30, P9.9, P6.23, P6.7.
 
-- [ ] **P6.36 Music at normal speed while turbo is on (future goal).** Dated
+- [~] **P6.36 Music at normal speed while turbo is on.** Dated
   2026-10-28, owner request (Portuguese: "a musica não acelerar quando em
-  turbo", the music should not speed up in turbo). Goal note only, nothing
-  started.
+  turbo", the music should not speed up in turbo). Goal note first, then
+  designed, then phases 1 and 2 built (below).
   **What exists (cited):** with fast-forward on (P6.4), music and sound effects
   play faster too, because the sequencer ticks once per game frame, as on the
   PS1 ([P6.4_FAST_FORWARD](P6.4_FAST_FORWARD.md)). The battle music and the win
@@ -2492,6 +2500,20 @@ Statuses are in the [table](#status-at-a-glance).
   is `SsSeqCalledTbyT` in `vsyncCallback`; no game code waits on sequence
   state; only tempo (not pitch) changes; four phases and the owner questions
   are in that doc.
+  **Built 2026-10-29 (phases 1 and 2, patch `0191`, PR `feat/p636-turbo-music-1x`,
+  not merged):** the tick gate and the `Turbo music` Options row (Sound group,
+  `1x` default / `Fast` = today, key `turbo_music`, `DW3_TURBO_MUSIC`), the
+  `frames` clock (replays, deterministic) and the `wall` clock (Switch and PC
+  outside replays), fade scaling, `dw3-audio: music tick ...` log lines, unit
+  test and replay `us/eu-turbo-music-field`, `-battle`, `-menu`; OLED rows T1
+  to T6 in [OLED_TEST_PLAN](OLED_TEST_PLAN.md); help text (five languages,
+  machine-drafted ones need native review). The five owner questions were
+  answered with the design's recommended defaults by the orchestrator, pending
+  the owner ([P6.36_TURBO_MUSIC](P6.36_TURBO_MUSIC.md#as-built-phases-1-and-2-2026-10-29)).
+  **Open:** phase 3 (the win jingle is a 16.8 s looping theme that the field
+  music cuts after about 1 s at 1x; a wait "until it ends" has no end, so the
+  hold needs a rule from the owner), phase 4 (SEP SFX split, `Larbaco/psyz`
+  pin), OLED T1 to T6.
   Related: P6.4, P4.3, P6.22.
 
 ### Phase 7 goal notes

@@ -46,11 +46,12 @@ typedef struct Dw3OptGroup {
 /* Registry indexes: 0 Widescreen, 1 Fast-forward, 2 Restart hotkey, 3 Music
  * volume, 4 SFX volume, 5 Encounter rate, 6 Text speed, 7 Battle cursor,
  * 8 Auto-save, 9 Button layout, 10 Region at start (combined image only),
- * 11 Customize buttons, 12 Reset to default (P6.12). Restart hotkey stays in
+ * 11 Customize buttons, 12 Reset to default (P6.12), 13 Turbo music (P6.36,
+ * Sound group). Restart hotkey stays in
  * Gameplay (moving it would change every Gameplay reference for no gain). */
 static const Dw3OptGroup dw3_optgroups[DW3_OPTGRP_COUNT] = {
     /* Display  */ {1, 1, {0}},
-    /* Sound    */ {1, 2, {3, 4}},
+    /* Sound    */ {1, 3, {3, 4, 13}},
     /* Gameplay */ {1, 5 + DW3_OPT_REGION_ROW, {1, 2, 5, 6, 7, 10}},
     /* Saves    */ {1, 1, {8}},
     /* Cheats   */ {1, 10, {0, 1, 2, 3, 4, 5, 6, 7, 8, 9}},

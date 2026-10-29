@@ -326,6 +326,7 @@ target_compile_options(dw3_title${_S} PRIVATE ${_DW3_GAME_OPTS})
 add_library(dw3_port_options${_S} OBJECT
   "${CMAKE_CURRENT_SOURCE_DIR}/audio/audio_bus.c"
   "${CMAKE_CURRENT_SOURCE_DIR}/audio/audio_health.c"
+  "${CMAKE_CURRENT_SOURCE_DIR}/audio/turbo_music.c"
   "${CMAKE_CURRENT_SOURCE_DIR}/audio/volume.c"
   "${CMAKE_CURRENT_SOURCE_DIR}/autosave/autosave.c"
   "${CMAKE_CURRENT_SOURCE_DIR}/autosave/autosave_areas.c"

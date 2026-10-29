@@ -88,6 +88,12 @@ void dw3_pc_title_overlay_set_options_view(int cursor, const int *values,
  * Square / Y "Cheats" hint. 0 on the title. A change rebuilds the retained
  * static layer (dw3_pc_title_overlay_options_layout). */
 enum { DW3_TITLE_LOCK_CHEATS = 1u << 16 };
+/* P10.6 fix-now: the source positions (0..9 of port_button_map.h: 0 B, 1 A,
+ * 2 X, 3 Y, 4 L, 5 R, 6 ZL, 7 ZR, 8 L3, 9 R3) of the buttons that produce the
+ * PS Cross (confirm) and Triangle (back) under the button map. The Switch hint
+ * caps show their letters; a change rebuilds the retained layer. The PC keeps
+ * its drawn PS marks. */
+void dw3_pc_title_overlay_set_hint_caps(int confirm_src, int back_src);
 void dw3_pc_title_overlay_set_options_locked(unsigned mask);
 unsigned dw3_pc_title_overlay_options_locked(void);
 /* Bumped when the page, the cheats switch or the locked rows change: the
