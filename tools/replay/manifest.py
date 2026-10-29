@@ -767,6 +767,32 @@ for _v, _ids in (("us", (0x159, 0x1FA, 0x1C2, 0x158, 0x1F9)),
                                       r"(?s:.*)partner switch member 2 -> 0 .*bag=\1 worn=\2"),),
                       note="R2 / L2 change the partner on the equip slot list, counts unchanged (patch 0128)"))
 
+# P6.34 phase 2 (patch 0190): equip in Status > Equipment and return to the slot
+# list without the long fade round trip, key on (the default). `-off` is the
+# same recording with items_equip_stays=0: the original flow, no equip-stays line.
+for _v, _ids in (("us", (0x159, 0x1FA, 0x1C2, 0x158, 0x1F9)),
+                 ("eu", (0x167, 0x208, 0x1D1, 0x166, 0x207))):
+    _fight, _menu, _report, _field, _status = _ids
+    _add(Scenario(f"{_v}-items-equip-stays", _v, "full", turbo=4, timeout=400,
+                  phases=(f"{_v}-items-equip-stays",), env=_ITEMS_ENV,
+                  cfg=(("encounter_rate", "2"),),
+                  expect_restore=((_fight, M), (_menu, S), (_report, M), (_field, M), (_status, M)),
+                  expect_log=((0, r"file keys items_equip_from_items=1 items_equip_stays=1(?s:.*)"
+                                  r"equip-stays begin partner=\d+ slot=2 item=\d+ bag=(\d+) worn=(\d+)(?s:.*)"
+                                  r"equip-stays slot=2 after=equip frames=\d{1,2} bag=\d+ worn=\d+(?s:.*)"
+                                  r"equip-stays list-open slot=2 row=[1-9]\d* cursor=\d+ scroll=\d+ item=\d+ count=\d+(?s:.*)"
+                                  r"equip-stays begin partner=\d+ slot=2(?s:.*)"
+                                  r"equip-stays slot=2 after=equip frames=\d{1,2} "),),
+                  note="equip in Status > Equipment returns to the slot list at once, "
+                       "the list opens on the worn item (patch 0190)"))
+    _add(Scenario(f"{_v}-items-equip-stays-off", _v, "full", turbo=4, timeout=400,
+                  phases=(f"{_v}-items-equip-stays",), env=_ITEMS_ENV,
+                  cfg=(("encounter_rate", "2"), ("items_equip_stays", "0")),
+                  expect_restore=((_fight, M), (_menu, S), (_report, M), (_field, M), (_status, M)),
+                  expect_log=((0, r"file keys items_equip_from_items=1 items_equip_stays=0"),),
+                  forbid_log=((0, r"equip-stays (?:begin|slot=|list-open)"),),
+                  note="items_equip_stays=0: the original equip round trip, no equip-stays line (patch 0190)"))
+
 # P6.33 finding (patch 0180): Cross on equipment in the Items menu does nothing
 # in the original game. The log line says so; run with items_partner_switch on
 # (the default) and off (patch 0128's path out), the same line either way.

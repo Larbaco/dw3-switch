@@ -353,3 +353,51 @@ int dw3_port_items_equip_message(char *out, int cap, int language, int which, co
     *o.p = '\0';
     return (int)(o.p - out);
 }
+
+/* ---- P6.34 phase 2: equip without the long round trip (patch 0190) ------- */
+
+int dw3_port_items_equip_stays_enabled(void) {
+    return im_flag("DW3_ITEMS_EQUIP_STAYS", DW3_ITEMS_EQUIP_STAYS_KEY);
+}
+
+int dw3_port_items_stays_row(const short *items, int count, int worn) {
+    int i;
+
+    if (worn <= 0 || items == NULL) {
+        return 0;
+    }
+    for (i = 1; i < count; i++) {
+        if (items[i] == worn) {
+            return i;
+        }
+    }
+    return 0;
+}
+
+int dw3_port_items_stays_scroll(int row, int count) {
+    int scroll;
+
+    if (count <= 8 || row < 8) {
+        return 0;
+    }
+    scroll = row - 3;
+    if (scroll > count - 8) {
+        scroll = count - 8;
+    }
+    return scroll;
+}
+
+void dw3_port_items_stays_begin(int partner, int slot, int item) {
+    IM_LOG("dw3-items-menu: equip-stays begin partner=%d slot=%d item=%d bag=%d worn=%d", partner, slot, item,
+           IM_ITEMS_TOTAL(), IM_EQUIPPED_TOTAL());
+}
+
+void dw3_port_items_stays_landed(int slot, int frames) {
+    IM_LOG("dw3-items-menu: equip-stays slot=%d after=equip frames=%d bag=%d worn=%d", slot, frames,
+           IM_ITEMS_TOTAL(), IM_EQUIPPED_TOTAL());
+}
+
+void dw3_port_items_stays_list_open(int slot, int row, int cursor, int scroll, int item, int count) {
+    IM_LOG("dw3-items-menu: equip-stays list-open slot=%d row=%d cursor=%d scroll=%d item=%d count=%d", slot, row,
+           cursor, scroll, item, count);
+}

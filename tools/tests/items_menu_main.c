@@ -11,8 +11,12 @@ int dw3_test_items_total = 120;
 int dw3_test_equipped_total = 7;
 static int g_file = -1; /* -1: key absent */
 static int g_file_equip = -1;
+static int g_file_stays = -1;
 
 int dw3_port_options_file_int(const char *key, int def) {
+    if (strcmp(key, DW3_ITEMS_EQUIP_STAYS_KEY) == 0) {
+        return g_file_stays >= 0 ? g_file_stays : def;
+    }
     if (strcmp(key, DW3_ITEMS_EQUIP_FROM_ITEMS_KEY) == 0) {
         return g_file_equip >= 0 ? g_file_equip : def;
     }
@@ -142,6 +146,38 @@ int main(void) {
     dw3_port_items_partner_switched(1, 2, 4);
     dw3_port_items_menu_selected(1, 12, 1, 3);
     dw3_port_items_menu_selected(0, 40, 0, 0);
+    /* P6.34 phase 2: equip stays. Row of the worn item, page of the list, key */
+    {
+        short items[12] = {-1, 5, 9, 12, 20, 21, 22, 23, 24, 25, 26, 27};
+
+        CHECK(dw3_port_items_stays_row(items, 12, 12) == 3);
+        CHECK(dw3_port_items_stays_row(items, 12, 27) == 11);
+        CHECK(dw3_port_items_stays_row(items, 12, 99) == 0); /* no spare copy */
+        CHECK(dw3_port_items_stays_row(items, 12, 0) == 0);  /* nothing worn */
+        CHECK(dw3_port_items_stays_row(items, 12, -1) == 0);
+        CHECK(dw3_port_items_stays_row(items, 1, 5) == 0);   /* only "none" */
+        CHECK(dw3_port_items_stays_row(NULL, 12, 5) == 0);
+    }
+    CHECK(dw3_port_items_stays_scroll(1, 20) == 0);
+    CHECK(dw3_port_items_stays_scroll(7, 20) == 0);
+    CHECK(dw3_port_items_stays_scroll(8, 20) == 5);
+    CHECK(dw3_port_items_stays_scroll(18, 20) == 12); /* last page: 20 - 8 */
+    CHECK(dw3_port_items_stays_scroll(19, 20) == 12);
+    CHECK(dw3_port_items_stays_scroll(5, 8) == 0);
+    CHECK(dw3_port_items_stays_scroll(9, 9) == 1);
+    unsetenv("DW3_ITEMS_EQUIP_STAYS");
+    g_file_stays = -1;
+    CHECK(dw3_port_items_equip_stays_enabled() == 1);
+    g_file_stays = 0;
+    CHECK(dw3_port_items_equip_stays_enabled() == 0);
+    g_file_stays = 1;
+    setenv("DW3_ITEMS_EQUIP_STAYS", "0", 1);
+    CHECK(dw3_port_items_equip_stays_enabled() == 0);
+    setenv("DW3_ITEMS_EQUIP_STAYS", "1", 1);
+    g_file_stays = 0;
+    CHECK(dw3_port_items_equip_stays_enabled() == 1);
+    unsetenv("DW3_ITEMS_EQUIP_STAYS");
+
     if (g_failed) {
         return 1;
     }
