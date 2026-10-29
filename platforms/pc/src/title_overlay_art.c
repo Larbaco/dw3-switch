@@ -275,12 +275,30 @@ static void pointer(int x,int y) {
     for(int j=0;j<26;j++){int span=(j<13?j:25-j)*20/13;
         for(int i=0;i<=span;i++)pixel(x+i,y+j,i<4?190:255,i<4?190:255,i<4?198:255,255);}
 }
+/* The source positions (0..9, port_button_map.h) the confirm and back caps
+ * name; the button map sets them (dw3_pc_title_overlay_set_hint_caps). */
+static int cap_confirm_src=0,cap_back_src=2;
+void dw3_pc_title_overlay_set_hint_caps(int confirm_src,int back_src) {
+    if(confirm_src<0||confirm_src>9||back_src<0||back_src>9)return;
+    if(confirm_src==cap_confirm_src&&back_src==cap_back_src)return;
+    cap_confirm_src=confirm_src;cap_back_src=back_src;
+#if defined(__SWITCH__)
+    options_layout++;options_generation++; /* the retained static layer draws the caps */
+#endif
+}
 /* A button cap: Switch letters, or the PlayStation Cross / Triangle marks. */
 static void button(int cx,int cy,int back) {
     disc(cx,cy,14,214,222,240);
 #if defined(__SWITCH__)
-    const Word b_key=WORD(opt_key_b),x_key=WORD(opt_key_x);
-    const Word *k=back?&x_key:&b_key;
+    /* P10.6 fix-now: the cap is the Switch button that produces the confirm
+     * (Cross) or back (Triangle) PS button under the button map in force, so
+     * Nintendo reads A / B and a custom map reads its own sources. Indexed by
+     * source position: Cross B, Circle A, Triangle X, Square Y, L1 L, R1 R,
+     * L2 ZL, R2 ZR, L3, R3. */
+    const Word keys[10]={WORD(opt_key_b),WORD(opt_key_a),WORD(opt_key_x),WORD(opt_key_y),
+                                    WORD(opt_key_l),WORD(opt_key_r),WORD(opt_key_zl),WORD(opt_key_zr),
+                                    WORD(opt_key_l3),WORD(opt_key_r3)};
+    const Word *k=&keys[back?cap_back_src:cap_confirm_src];
     word(k,cx-k->w/2,cy-k->top-k->h/2,0,0,0,49);
 #else
     if(back){segment(cx,cy-8,cx-8,cy+6,1.4f,0,0,49);segment(cx-8,cy+6,cx+8,cy+6,1.4f,0,0,49);

@@ -1679,7 +1679,12 @@ void dw3_port_options_draw(void) {
             lines[n++] = buf;
         }
     }
-    snprintf(back_line, sizeof(back_line), "Triangle (S): Back");
+    {
+        char name[24];
+
+        dw3_button_hint_name(DW3_BTN_TRIANGLE, "Triangle (S)", name, sizeof(name));
+        snprintf(back_line, sizeof(back_line), "%s: Back", name);
+    }
     lines[n++] = back_line;
 
     dw3_port_text_draw_panel((int)ox + 32, (int)oy + 32, 256, 128, lines, n);

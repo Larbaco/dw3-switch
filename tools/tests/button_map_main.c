@@ -146,6 +146,37 @@ static void test_names(void) {
           "R3 label");
 }
 
+/* P10.6 fix-now: the hint caps and names follow the map. */
+static void test_hint_names(void) {
+    unsigned char m[DW3_BTN_COUNT];
+    char out[24];
+
+    dw3_button_map_preset(DW3_LAYOUT_PLAYSTATION, m);
+    CHECK(strcmp(dw3_button_cap_label(m, DW3_BTN_CROSS), "B") == 0, "ps cross B");
+    CHECK(strcmp(dw3_button_cap_label(m, DW3_BTN_TRIANGLE), "X") == 0, "ps tri X");
+    dw3_button_map_preset(DW3_LAYOUT_NINTENDO, m);
+    CHECK(strcmp(dw3_button_cap_label(m, DW3_BTN_CROSS), "A") == 0, "nin cross A");
+    CHECK(strcmp(dw3_button_cap_label(m, DW3_BTN_TRIANGLE), "B") == 0, "nin tri B");
+    CHECK(strcmp(dw3_button_cap_label(m, DW3_BTN_CIRCLE), "X") == 0, "nin circle X");
+    /* custom: Cross from ZL, ZL's PS button (L2) takes Cross's old source B */
+    dw3_button_map_preset(DW3_LAYOUT_PLAYSTATION, m);
+    m[DW3_BTN_CROSS] = 6;
+    m[DW3_BTN_L2] = 0;
+    CHECK(strcmp(dw3_button_cap_label(m, DW3_BTN_CROSS), "ZL") == 0, "custom ZL");
+    m[DW3_BTN_TRIANGLE] = 8;
+    CHECK(strcmp(dw3_button_cap_label(m, DW3_BTN_TRIANGLE), "L3") == 0, "L3 cap");
+    CHECK(strcmp(dw3_button_cap_label(m, 99), "?") == 0, "bad button");
+    CHECK(strcmp(dw3_button_cap_label(NULL, 0), "?") == 0, "null map");
+    /* the text helper: Switch names on a Switch build, the PC text otherwise */
+    dw3_button_map_preset(DW3_LAYOUT_NINTENDO, m);
+    CHECK(strcmp(dw3_button_hint_name_for(m, 1, DW3_BTN_CROSS, "Cross (X)", out,
+                                          sizeof(out)), "A") == 0, "switch name");
+    CHECK(strcmp(dw3_button_hint_name_for(m, 0, DW3_BTN_CROSS, "Cross (X)", out,
+                                          sizeof(out)), "Cross (X)") == 0, "pc text");
+    CHECK(strcmp(dw3_button_hint_name_for(m, 0, DW3_BTN_CROSS, "Cross (X)", out, 4),
+                 "Cro") == 0, "truncated, still terminated");
+}
+
 /* The state: default identity, the load / change lines, the first press. */
 static void test_state(void) {
     int cross[1] = {DW3_BTN_CROSS};
@@ -277,6 +308,7 @@ int main(void) {
     test_validate_and_parse();
     test_permute();
     test_names();
+    test_hint_names();
     test_state();
     if (g_fail) {
         return 1;
