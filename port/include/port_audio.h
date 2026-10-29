@@ -48,6 +48,18 @@ void dw3_port_audio_note_keyon(int voice);
 /* The run-total audio health line; also runs at exit. Safe to call twice. */
 void dw3_port_audio_health_exit(void);
 
+/* P6.36 (docs/P6.36_TURBO_MUSIC.md, port/audio/turbo_music.c): music at normal
+ * speed while turbo is on. vsyncCallback (patch 0191) calls the sequencer tick
+ * this many times in a game frame: always 1 with the Turbo music row on Fast
+ * or with turbo off (the original, bit for bit), otherwise 0, 1 or 2 so that
+ * the music gets the ticks of a 1x game. Game thread only. */
+int dw3_port_audio_ticks_due(void);
+
+/* fadeOutSound (patch 0191): the tick count of a music fade. Unchanged unless
+ * the gate is on, then scaled by the game rate so the fade spans the same game
+ * time as at 1x (60 ticks -> 15 at 4x). */
+int dw3_port_audio_fade_ticks(int ticks);
+
 #ifdef __cplusplus
 }
 #endif

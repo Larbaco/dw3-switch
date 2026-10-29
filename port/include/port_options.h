@@ -57,7 +57,10 @@ enum {
     DW3_PORT_OPT_BUTTON_LAYOUT = 9, /* P9.8: 0 PlayStation, 1 Nintendo */
     /* P51 item 4 (combined image only): 0 Ask, 1 US, 2 EU. Stored as
      * region_default in the TOP-LEVEL port_options.cfg, not in the region's. */
-    DW3_PORT_OPT_REGION = 10
+    DW3_PORT_OPT_REGION = 10,
+    /* P6.36: 0 = 1x (the music keeps its tempo in turbo, the default), 1 = Fast
+     * (the music speeds up with the game, as before). Key turbo_music. */
+    DW3_PORT_OPT_TURBO_MUSIC = 11
 };
 
 /* Registry; unavailable features remain safe no-op stubs. Values persist in

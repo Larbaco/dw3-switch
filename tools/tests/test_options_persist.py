@@ -345,7 +345,7 @@ def test_volume_keys_are_in_the_written_file_order(persist_bin: Path, tmp_path: 
             if "=" in l and not l.startswith("#")]
     assert keys == ["version", "widescreen", "fast_forward", "restart_hotkey",
                     "music_volume", "sfx_volume", "encounter_rate", "text_speed",
-                    "battle_menu_memory", "autosave", "button_layout", "end"]
+                    "battle_menu_memory", "autosave", "button_layout", "turbo_music", "end"]
 
 
 # --- P6.18 Encounter rate / Text speed rows ---------------------------------
@@ -565,7 +565,7 @@ def test_back_from_a_group_returns_to_the_list_with_the_cursor_kept(
     # second Back closes the screen. P9.9.
     _, err = session(persist_bin, tmp_path, "open", "down", "press", "back")
     assert sounds(err) == ["cursor 10", "select 10", "cancel 10"]
-    assert "dw3-port-options: group open sound (2 row(s), title)" in err
+    assert "dw3-port-options: group open sound (3 row(s), title)" in err
     assert "dw3-port-options: group close sound (back to the group list)" in err
     assert "dw3-port-options: close" not in err.replace("group close", "")
     out, err = session(persist_bin, tmp_path, "open", "down", "press", "back", "back")

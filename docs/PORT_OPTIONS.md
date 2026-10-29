@@ -45,7 +45,7 @@ explicitly marked N/A in this note.
 | Localization | Active language pack (if port-selected) | Phase 6 |
 | Community QoL parity | Share EXP, quest log HUD, NPC bubbles, Fast Start, … | Phase 7 |
 | Texture packs | Enable overlay / select pack name | Phase 8 |
-| Audio | **Music volume** and **SFX volume**, 0..10 steps, default 10 = the original mix ([P6.17](P6.17_VOLUME.md)) | Phase 6 |
+| Audio | **Music volume** and **SFX volume**, 0..10 steps, default 10 = the original mix ([P6.17](P6.17_VOLUME.md)); **Turbo music** (1x / Fast), default 1x: the music keeps its tempo while fast-forward runs ([P6.36](P6.36_TURBO_MUSIC.md), built 2026-10-29, row 11, key `turbo_music`) | Phase 6 |
 | Original-game fixes | **None are toggles.** P7.7's HUD Digivolution name (patch `0065`) and Claw steal on the killing blow (`0066`) are always on; reasoning in [P7.7_BUG_FIXES.md](P7.7_BUG_FIXES.md) | Phase 7 |
 | Pacing | **Encounter rate** (OFF / 0.5x / 1x / 1.5x / 2x) and **Text speed** (Normal / Fast / Instant), both default to the original game ([P6.18](P6.18_PACING.md)). Instant shows every dialogue page, report line and (since 2026-10-24) the area name banner's names whole; Normal and Fast leave the banner as the game types it | Phase 6 |
 | Battle menu memory | **Battle cursor** (OFF / Command / Command+Tech): the battle command menu and technique list open on your last pick; key `battle_menu_memory` 0 / 1 / 2, off by default (a row since P7.9's follow-up, it was file-only) ([P7.9](P7.9_BATTLE_MENU_MEMORY.md)) | Phase 7 |
@@ -113,6 +113,7 @@ text_speed=0
 battle_menu_memory=0
 autosave=0
 button_layout=playstation
+turbo_music=0
 end=1
 ```
 
@@ -710,7 +711,7 @@ hints (Open or Change, Back).
 | Group | Rows (registry index, unchanged) | Notes |
 |---|---|---|
 | Display | Widescreen (0) | Locked in game, as before: the plaque and the row are greyed |
-| Sound | Music volume (3), SFX volume (4) | |
+| Sound | Music volume (3), SFX volume (4), Turbo music (11) | Turbo music (P6.36): `1x` (stored 0, default) keeps the music at its normal tempo while fast-forward runs, `Fast` (stored 1) is the old sound; `DW3_TURBO_MUSIC=0\|1` pins it for a run. No effect with Fast-forward OFF or turbo not running. Not locked in game. Left / Right / Confirm cycle it. Label and message line in five languages (`opt_row_tm_*`, `opt_desc_tm_*`); logs `dw3-options: turbo_music=1x\|fast`, `dw3-port-options: turbo music 1x\|fast`, and the `dw3-audio: music tick ...` lines of [P6.36](P6.36_TURBO_MUSIC.md#as-built-phases-1-and-2-2026-10-29) |
 | Gameplay | Fast-forward (1), Restart hotkey (2), Encounter rate (5), Text speed (6), Battle cursor (7) | Restart hotkey moves to Controls when P6.12 exists |
 | Saves | Auto-save (8) | |
 | Controls | Button layout (9) | P9.8, built: PlayStation (default) / Nintendo, see [Button layout row](#button-layout-row-p98). The remap (P6.12) adds rows here and moves Restart hotkey in |

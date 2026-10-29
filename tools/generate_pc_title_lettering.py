@@ -272,6 +272,25 @@ for _lang, _t in LAYOUT_TEXT.items():
     LETTERS.append(('opt_val_bl_ps_' + _lang, 'PlayStation', 26, 'DejaVuSans.ttf'))
     LETTERS.append(('opt_val_bl_nin_' + _lang, 'Nintendo', 26, 'DejaVuSans.ttf'))
     LETTERS.append(('opt_desc_bl_' + _lang, _t['desc'], 25, 'DejaVuSans.ttf'))
+# P6.36 Turbo music row of the Sound group (docs/P6.36_TURBO_MUSIC.md), in the
+# five languages of the EU disc (en is also the US disc's). The values are the
+# Options screen's "1x" and "Fast" words. Label under 290 px, description under
+# 690 px.
+TURBO_MUSIC_TEXT = {
+    'en': {'row': 'Turbo music',
+           'desc': 'Music keeps its speed in turbo. Fast = as before.'},
+    'fr': {'row': 'Musique turbo',
+           'desc': 'Musique normale en turbo. Rapide = comme avant.'},
+    'de': {'row': 'Turbo-Musik',
+           'desc': 'Musik bleibt im Turbo normal. Schnell = wie bisher.'},
+    'es': {'row': 'Música turbo',
+           'desc': 'Música normal en turbo. Rápido = como antes.'},
+    'it': {'row': 'Musica turbo',
+           'desc': 'Musica normale in turbo. Veloce = come prima.'},
+}
+for _lang, _t in TURBO_MUSIC_TEXT.items():
+    LETTERS.append(('opt_row_tm_' + _lang, _t['row'], 26, 'DejaVuSans.ttf'))
+    LETTERS.append(('opt_desc_tm_' + _lang, _t['desc'], 25, 'DejaVuSans.ttf'))
 # P51 item 4: the Region at start row of the Gameplay group, shown only in the
 # combined build (docs/P51_FEEDBACK.md). Values: Ask (per language), US and EU
 # (the same in every language). Label under 290 px, description under 690 px.

@@ -91,7 +91,7 @@ help.turbo.h.1 = Where it works
 help.turbo.li.1 = Full speed: walking, text, cutscenes, transitions and battle animation in the field and in battles, and the battle report.
 help.turbo.li.2 = About 1.5x while turbo is on: the menus opened over the field or a battle, such as the field menu list, Options and the battle command menu.
 help.turbo.li.3 = Normal speed always: the title, movies, memory card screens, the card game, the Status, Items and Map screens of the field menu, and shops.
-help.turbo.note.1 = Music and sound effects speed up too. How much faster the game really runs depends on how much the console can keep up with.
+help.turbo.note.1 = In turbo the music keeps its normal speed (Options, Sound, Turbo music: 1x, the default). Set it to Fast and the music speeds up with the game. Sound effects that the action triggers still come faster. How much faster the game really runs depends on how much the console can keep up with.
 
 # -------------------------------------------------------------- options
 help.options.title = Options explained
@@ -101,7 +101,7 @@ help.options.p.2 = Open it from the title menu, from the OPTIONS row of the fiel
 help.options.h.1 = Display
 help.options.li.1 = Widescreen: ON or OFF, default ON. About 16:9 in the field, in battles and in several menus. The title and the movies stay 4:3.
 help.options.h.2 = Sound
-help.options.li.2 = Music volume and SFX volume: OFF, or 1 to 10, default 10, which is the original mix. Left and Right step; {btn:cross} steps up and wraps from 10 to 0. The screen plays the game's menu sounds so you can hear the change.
+help.options.li.2 = Music volume and SFX volume: OFF, or 1 to 10, default 10, which is the original mix. Left and Right step; {btn:cross} steps up and wraps from 10 to 0. The screen plays the game's menu sounds so you can hear the change. Turbo music: 1x or Fast, default 1x. With 1x the music keeps its normal speed while fast-forward runs; Fast makes it speed up with the game.
 help.options.h.3 = Gameplay
 help.options.li.3 = Fast-forward: 2x, 3x, 4x or OFF, default 2x. The speed {btn:r3} switches to.
 help.options.li.4 = Restart hotkey: ON or OFF, default OFF. Enables the restart chord.
