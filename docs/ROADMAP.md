@@ -157,6 +157,7 @@ listed once, in [Pending OLED checks](#pending-oled-checks).
 | P6.33 | Items menu usability redesign | in progress (owner decisions recorded 2026-10-26; phase 1 partner cycle built: patch 0128, ZL / ZR, on by default; phases 2, 3 and 4 open; phase 1 cycle confirmed on the OLED 2026-10-27, preview.41; the `items_partner_switch=0` check open; phases 2–4 folded into P6.34) | [roadmap](#phase-6-goal-notes), [P6.33](P6.33_ITEMS_MENU.md), [P6.1](P6.1_WIDESCREEN.md) |
 | P6.34 | Redesign of the items / status / equipment menu flow | design written 2026-10-28 (5 phases, patches 0188-0192 proposed, 10 owner questions open); no code | [roadmap](#phase-6-goal-notes), [P6.34](P6.34_MENU_FLOW.md), [P6.33](P6.33_ITEMS_MENU.md) |
 | P6.35 | In-game walkthrough help: where to go next and what to do, by story progress (future goal) | future; **phase 1 data layer built** (step resolver, `ch01` table progress 0 to 4 confirmed by US and EU PC replays, English draft, FR/DE/IT/ES stubs, no UI yet; [As built](P6.35_WALKTHROUGH.md#as-built-phase-1-data-layer)) (owner 2026-10-28: at launch in every language the base game has, EN + FR/DE/IT/ES on the EU disc, pt-BR later with P6.7; design written 2026-10-28, owner decisions recorded) | [roadmap](#phase-6-goal-notes), [design](P6.35_WALKTHROUGH.md), [PLAYER_GUIDE](PLAYER_GUIDE.md) |
+| P6.36 | Music at normal speed while turbo is on (future goal) | future | [roadmap](#phase-6-goal-notes), [P6.4](P6.4_FAST_FORWARD.md), [P4.3](P4.3_AUDIO.md) |
 | P7.1 | Inventory and boundaries | done | [COMMUNITY_QOL](COMMUNITY_QOL.md) |
 | P7.2 | Patched EU disc as data source | open | [COMMUNITY_QOL](COMMUNITY_QOL.md) |
 | P7.3 | Binary-patch limits | in progress | [COMMUNITY_QOL](COMMUNITY_QOL.md) |
@@ -2420,6 +2421,33 @@ Statuses are in the [table](#status-at-a-glance).
   full answer on request; every text is in the five EU languages and US
   English; a long page scrolls; nothing is copied from outside sources.
   Related: P6.30, P9.9, P6.23, P6.7.
+
+- [ ] **P6.36 Music at normal speed while turbo is on (future goal).** Dated
+  2026-10-28, owner request (Portuguese: "a musica não acelerar quando em
+  turbo", the music should not speed up in turbo). Goal note only, nothing
+  started.
+  **What exists (cited):** with fast-forward on (P6.4), music and sound effects
+  play faster too, because the sequencer ticks once per game frame, as on the
+  PS1 ([P6.4_FAST_FORWARD](P6.4_FAST_FORWARD.md)). The battle music and the win
+  jingle already follow the turbo speed on purpose (same doc, battle report).
+  **Scope:** at 2x, 3x and 4x the music keeps its normal tempo and pitch. Open
+  for the design: whether sound effects stay fast (they belong to the sped-up
+  action) or also play at 1x, and what happens at the battle report, which
+  waits for the jingle today.
+  **Proposal (no code):** tick the music sequencer from wall-clock time (60
+  ticks a second) instead of from game frames while turbo is on; the game
+  logic still runs at the turbo rate. To check in the decomp and in PSY-Z
+  libsnd: where the tick is called, whether game code waits on music state
+  (track end, fades between areas) and would desync, and whether sound effects
+  use the same ticker. Option key in `port_options.cfg`, on by default if the
+  owner agrees.
+  **Logs (AGENTS.md rule 12):** a `dw3-audio:` line with the music tick source
+  (`game` or `wall`) and ticks per second while turbo is on.
+  **Done when:** with turbo at 4x in the field and in a battle, on US and EU,
+  the music plays at normal tempo, area changes and the battle start and end
+  switch tracks at the right moment, and turning turbo off leaves the music in
+  step; checked by replay and on the OLED.
+  Related: P6.4, P4.3, P6.22.
 
 ### Phase 7 goal notes
 
