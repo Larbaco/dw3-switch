@@ -41,7 +41,7 @@ int main(void) {
         return fail("re-open");
     }
 
-    if (dw3_port_options_count() != 11) {
+    if (dw3_port_options_count() != 13) {
         return fail("option count");
     }
     if (dw3_port_options_level(DW3_PORT_OPT_BATTLE_MENU) != 0 ||
@@ -152,7 +152,7 @@ int main(void) {
      * every registry row is in exactly one group, a long list scrolls. */
     {
         int ids[DW3_OPTGRP_COUNT];
-        int seen[10] = {0};
+        int seen[13] = {0};
         int g, k;
 
         if (dw3_optgroups_visible(0, ids) != 6 || ids[0] != DW3_OPTGRP_DISPLAY ||
@@ -165,12 +165,13 @@ int main(void) {
             return fail("Cheats group follows the master switch");
         }
         for (g = 0; g < DW3_OPTGRP_COUNT; g++) {
-            if (g == DW3_OPTGRP_CHEATS) continue; /* cheat rows, not registry rows */
+            if (g == DW3_OPTGRP_CHEATS || g == DW3_OPTGRP_CUSTOM) continue; /* not registry rows */
             for (k = 0; k < dw3_optgroups[g].nrows; k++) {
                 seen[dw3_optgroups[g].rows[k]]++;
             }
         }
-        for (k = 0; k < 10; k++) {
+        for (k = 0; k < 13; k++) {
+            if (k == DW3_PORT_OPT_REGION) continue; /* combined image only */
             if (seen[k] != 1) {
                 return fail("every registry row is in exactly one group");
             }

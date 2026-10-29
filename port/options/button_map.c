@@ -52,6 +52,10 @@ static const char *const g_src_label[DW3_BTN_COUNT] = {
 static const unsigned char g_nintendo[DW3_BTN_COUNT] = {1, 2, 0, 3, 4, 5, 6, 7, 8, 9};
 static const unsigned char g_identity[DW3_BTN_COUNT] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
 
+/* Raw bits of Select and Start: reserved, never remapped (docs/CONTROLS_BUNDLE.md
+ * 2.3). In the prompt of the Customize screen they cancel it. */
+enum { RAW_SELECT = 0, RAW_START = 3 };
+
 int dw3_button_map_preset(int layout, unsigned char out[DW3_BTN_COUNT]) {
     if (layout == DW3_LAYOUT_PLAYSTATION) {
         memcpy(out, g_identity, DW3_BTN_COUNT);
@@ -132,7 +136,8 @@ unsigned dw3_button_map_permute(const unsigned char m[DW3_BTN_COUNT],
 }
 
 const char *dw3_button_layout_name(int layout) {
-    return layout == DW3_LAYOUT_NINTENDO ? "nintendo" : "playstation";
+    return layout == DW3_LAYOUT_NINTENDO ? "nintendo"
+           : layout == DW3_LAYOUT_CUSTOM ? "custom" : "playstation";
 }
 
 int dw3_button_layout_parse(const char *text) {
@@ -144,6 +149,9 @@ int dw3_button_layout_parse(const char *text) {
     }
     if (strcmp(text, "nintendo") == 0) {
         return DW3_LAYOUT_NINTENDO;
+    }
+    if (strcmp(text, "custom") == 0) {
+        return DW3_LAYOUT_CUSTOM;
     }
     return -1;
 }
@@ -182,8 +190,14 @@ const unsigned char *dw3_button_map_current(void) {
     return g_map;
 }
 
+static unsigned g_last_raw = 0xFFFFu; /* the word of the last frame, before the map */
+static unsigned g_cap_ignore;          /* raw bits held since the prompt opened */
+
+/* Make `layout` the one in force. A custom layout keeps the map as it is. */
 static void bm_set(int layout) {
-    if (dw3_button_map_preset(layout, g_map) != 0) {
+    if (layout == DW3_LAYOUT_CUSTOM) {
+        /* the map stays: a custom map is whatever is in g_map */
+    } else if (dw3_button_map_preset(layout, g_map) != 0) {
         layout = DW3_LAYOUT_PLAYSTATION;
         dw3_button_map_preset(layout, g_map);
     }
@@ -236,6 +250,20 @@ void dw3_button_map_load(int layout, const char *source) {
     bm_log_map();
 }
 
+void dw3_button_map_load_custom(const unsigned char m[DW3_BTN_COUNT],
+                                const char *source) {
+    if (m == NULL || !dw3_button_map_valid(m)) {
+        dw3_button_map_log_invalid("button_map is not a permutation");
+        dw3_button_map_load(DW3_LAYOUT_PLAYSTATION, "default");
+        return;
+    }
+    memcpy(g_map, m, DW3_BTN_COUNT);
+    bm_set(DW3_LAYOUT_CUSTOM);
+    BM_LOG("dw3-controls: map loaded layout=custom source=%s",
+           source != NULL ? source : "cfg");
+    bm_log_map();
+}
+
 void dw3_button_map_change(int layout, const char *how) {
     int old = g_layout;
 
@@ -252,9 +280,96 @@ void dw3_button_map_log_invalid(const char *reason) {
            reason != NULL ? reason : "?");
 }
 
+int dw3_button_map_assign(int button, int source) {
+    int swapped;
+    unsigned char old;
+    char digits[DW3_BTN_COUNT + 1];
+
+    if (button < 0 || button >= DW3_BTN_COUNT || source < 0 ||
+        source >= DW3_BTN_COUNT) {
+        return -1;
+    }
+    if (g_map[button] == source) {
+        BM_LOG("dw3-controls: assign %s<-%s (unchanged) [%s]",
+               dw3_button_ps_name(button), dw3_button_source_name(source),
+               dw3_button_layout_name(g_layout));
+        return button;
+    }
+    old = g_map[button];
+    for (swapped = 0; swapped < DW3_BTN_COUNT; swapped++) {
+        if (g_map[swapped] == source) {
+            break;
+        }
+    }
+    g_map[swapped] = old;
+    g_map[button] = (unsigned char)source;
+    dw3_button_map_format(g_map, digits);
+    g_layout = DW3_LAYOUT_CUSTOM;
+    g_identity_map = memcmp(g_map, g_identity, DW3_BTN_COUNT) == 0;
+    g_first_logged = 0;
+    g_swallow = 1;
+    BM_LOG("dw3-controls: assign %s<-%s (%s<-%s swapped in) [custom]",
+           dw3_button_ps_name(button), dw3_button_source_name(source),
+           dw3_button_ps_name(swapped), dw3_button_source_name(old));
+    BM_LOG("dw3-controls: map digits %s", digits);
+    bm_log_map();
+    return swapped;
+}
+
+void dw3_button_map_reset(const char *how) {
+    bm_set(DW3_LAYOUT_PLAYSTATION);
+    g_swallow = 1;
+    BM_LOG("dw3-controls: reset to default (layout=playstation) (%s)",
+           how != NULL ? how : "screen");
+    bm_log_map();
+}
+
+unsigned dw3_button_map_source_word(void) {
+    return g_last_raw;
+}
+
+int dw3_button_map_capture_step(unsigned raw_word, unsigned *ignore) {
+    unsigned down = 0;
+    unsigned fresh;
+    int i;
+
+    for (i = 0; i < DW3_BTN_COUNT; i++) {
+        if (((raw_word >> g_raw_bit[i]) & 1u) == 0) {
+            down |= 1u << g_raw_bit[i];
+        }
+    }
+    if (((raw_word >> RAW_SELECT) & 1u) == 0) {
+        down |= 1u << RAW_SELECT;
+    }
+    if (((raw_word >> RAW_START) & 1u) == 0) {
+        down |= 1u << RAW_START;
+    }
+    *ignore &= down; /* released since the prompt opened: counts again */
+    fresh = down & ~*ignore;
+    if (fresh & ((1u << RAW_SELECT) | (1u << RAW_START))) {
+        return DW3_CAPTURE_CANCEL;
+    }
+    for (i = 0; i < DW3_BTN_COUNT; i++) {
+        if ((fresh >> g_raw_bit[i]) & 1u) {
+            return i;
+        }
+    }
+    return DW3_CAPTURE_NONE;
+}
+
+void dw3_button_map_capture_begin(void) {
+    /* Everything down now (a clear bit) is "held": ignored until let go. */
+    g_cap_ignore = ~g_last_raw & 0xFFFFu;
+}
+
+int dw3_button_map_capture_poll(void) {
+    return dw3_button_map_capture_step(g_last_raw, &g_cap_ignore);
+}
+
 unsigned dw3_button_map_apply(unsigned word) {
     unsigned out;
 
+    g_last_raw = word & 0xFFFFu;
     if (g_swallow) {
         unsigned held = 0;
         int i;

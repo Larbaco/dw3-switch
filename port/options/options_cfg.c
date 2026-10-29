@@ -108,6 +108,21 @@ int dw3_optcfg_set(Dw3OptCfg *cfg, const char *key, const char *val) {
     return 0;
 }
 
+int dw3_optcfg_remove(Dw3OptCfg *cfg, const char *key) {
+    int i;
+
+    for (i = 0; i < cfg->count; i++) {
+        if (strcmp(cfg->entry[i].key, key) == 0) {
+            for (; i + 1 < cfg->count; i++) {
+                cfg->entry[i] = cfg->entry[i + 1];
+            }
+            cfg->count--;
+            return 1;
+        }
+    }
+    return 0;
+}
+
 static void parse_line(Dw3OptCfg *cfg, const char *s, size_t n) {
     char key[DW3_OPTCFG_KEY_MAX];
     char val[DW3_OPTCFG_VAL_MAX];

@@ -19,9 +19,13 @@
  *   gains              print the Q15 gains last handed to the mixer
  *   env I L            apply_env(I, L) (DW3_WIDESCREEN / DW3_TURBO stand-in)
  *   fileint KEY DEF    print dw3_port_options_file_int(KEY, DEF) (file-only keys)
+ *   raw HEX            hand the pad host's raw word (a clear bit = pressed) to the map
+ *   tick               one Options tick with nothing pressed
+ *   map                print the map in force (ten digits) and its layout
  *   noinit             skip persist_init (session-only)
  */
 #include "port_audio.h"
+#include "port_button_map.h"
 #include "port_options.h"
 #include "port_options_groups.h"
 
@@ -176,6 +180,15 @@ int main(int argc, char **argv) {
             press(BIT_UP);
         } else if (strcmp(argv[i], "down") == 0) {
             press(BIT_DOWN);
+        } else if (strcmp(argv[i], "raw") == 0 && i + 1 < argc) {
+            (void)dw3_button_map_apply((unsigned)strtoul(argv[++i], NULL, 16));
+        } else if (strcmp(argv[i], "tick") == 0) {
+            dw3_port_options_tick();
+        } else if (strcmp(argv[i], "map") == 0) {
+            char digits[DW3_BTN_COUNT + 1];
+
+            dw3_button_map_format(dw3_button_map_current(), digits);
+            printf("map=%s layout=%d\n", digits, dw3_button_map_layout());
         } else if (strcmp(argv[i], "gains") == 0) {
             gains();
         } else if (strcmp(argv[i], "fileint") == 0 && i + 2 < argc) {

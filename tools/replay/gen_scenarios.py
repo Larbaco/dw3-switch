@@ -894,6 +894,85 @@ NINTENDO_RECS = (
 )
 
 
+def _controls_open(r, version):
+    """Boot to the title, open Options and the Controls group (Button layout row
+    focused). Returns the frame after."""
+    m = _to_title_menu(r, version)
+    r.press(m, DOWN)                 # New Game -> Options
+    r.press(m + 20, CROSS)           # open the Options screen (the group list)
+    return _group(r, m + 70, GRP_DISPLAY, GRP_CONTROLS)
+
+
+def _help_controls_page(r, f):
+    """From the group list with the cursor on Controls: down to Help, open it, the
+    page list's second row (Controls), open the page. Returns the frame after."""
+    return _keys(r, f, DOWN, CROSS, DOWN, CROSS)
+
+
+def controls_custom(version, phase):
+    """P6.12: Controls -> Customize buttons. The masks are button positions
+    (DW3_REPLAY_SOURCE=1 in the manifest). Phase 1: the Controls rows, the Customize
+    list, Left / Right is not used; the L1 row waits for a press (shot), R (the R1
+    position) is pressed, so L1 <- R and R1 <- L (shot), back to Controls (Button
+    layout reads Custom), then the Help: on its Controls page the L1 position now
+    turns the page FORWARD and the R1 position back (the pages turn accordingly).
+    Phase 2 is a fresh process on the same config dir: the custom map is read back
+    (shots, the L1 position still turns forward), then Reset to default and the R1
+    position turns forward again."""
+    r = Rec(f"{version.upper()}: P6.12 Customize buttons, phase {phase}")
+    f = _controls_open(r, version)
+    if phase == 1:
+        r.shot(f + 20, "controls-rows")
+        f = _keys(r, f + 40, DOWN, CROSS)                  # Customize buttons
+        r.shot(f + 20, "customize-list")
+        f = _keys(r, f + 40, DOWN, DOWN, DOWN, DOWN, CROSS)  # the L1 row waits
+        r.shot(f + 20, "customize-prompt")
+        r.press(f + 40, R1)                                # the R position: L1 <- R, R1 <- L
+        r.shot(f + 80, "customize-swapped")
+        f = _keys(r, f + 100, TRIANGLE)                    # back to Controls
+        r.shot(f + 20, "controls-custom")
+        f = _keys(r, f + 40, TRIANGLE)                     # the group list
+        f = _help_controls_page(r, f + 20)
+        r.shot(f + 30, "help-controls")
+        r.press(f + 50, L1)                                # the L position is R1 now: next page
+        r.shot(f + 90, "help-turned-forward")
+        r.press(f + 110, R1)                               # the R position is L1 now: back
+        r.shot(f + 150, "help-turned-back")
+        f = _keys(r, f + 170, TRIANGLE, TRIANGLE, TRIANGLE)  # page list, group list, close
+        r.end(f + 40)
+    else:
+        r.shot(f + 20, "controls-restored")
+        f = _keys(r, f + 40, DOWN, CROSS)                  # Customize buttons
+        r.shot(f + 20, "customize-restored")
+        f = _keys(r, f + 40, TRIANGLE, TRIANGLE)           # Controls, the group list
+        f = _help_controls_page(r, f + 20)
+        r.press(f + 30, L1)                                # still R1 (the map was read back)
+        r.shot(f + 70, "help-turned-restored")
+        f = _keys(r, f + 90, TRIANGLE, TRIANGLE)           # page list, group list
+        f = _keys(r, f + 20, UP, CROSS)                    # Controls again
+        f = _keys(r, f + 20, DOWN, DOWN, CROSS)            # Reset to default
+        r.shot(f + 40, "controls-reset")
+        f = _keys(r, f + 60, TRIANGLE)                     # the group list
+        f = _help_controls_page(r, f + 20)
+        r.press(f + 30, R1)                                # the identity again: R1 is next
+        r.shot(f + 70, "help-turned-reset")
+        f = _keys(r, f + 90, TRIANGLE, TRIANGLE, TRIANGLE)
+        r.end(f + 40)
+    return r
+
+
+def controls_custom_invalid(version):
+    """P6.12: port_options.cfg holds button_layout=custom with a button_map that is
+    not a permutation (manifest cfg): the default applies, with one log line, and
+    the Controls row reads PlayStation."""
+    r = Rec(f"{version.upper()}: P6.12 invalid button_map in the cfg")
+    f = _controls_open(r, version)
+    r.shot(f + 30, "controls-invalid-default")
+    f = _keys(r, f + 50, TRIANGLE, TRIANGLE)
+    r.end(f + 40)
+    return r
+
+
 def volume_persist(version, phase):
     """P6.17: title -> Options -> Music volume 10 -> 7 (Left x3) and SFX volume
     10 -> 3 (Left x7), then leave. Phase 2 is a fresh process on the same
@@ -2645,6 +2724,12 @@ def main(out):
         for phase in (1, 2):
             (out / f"{v}-controls-layout-p{phase}.rec").write_text(
                 controls_layout(v, phase).text(True))
+    for v in ("us", "eu"):
+        for phase in (1, 2):
+            (out / f"{v}-controls-custom-p{phase}.rec").write_text(
+                controls_custom(v, phase).text(True))
+        (out / f"{v}-controls-custom-invalid.rec").write_text(
+            controls_custom_invalid(v).text(True))
     for v in ("us", "eu"):
         for phase in (1, 2):
             (out / f"{v}-volume-persist-p{phase}.rec").write_text(

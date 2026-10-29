@@ -172,10 +172,14 @@ keep their text, which the replay scenarios match). With it on the boot logs one
 line, `dw3-options: autosave=1 (...)`. A file from before the row has no key and reads
 as OFF; an invalid value (`2`, `on`, ...) is logged and reads as OFF.
 
-`button_layout` (P9.8) is the one key that holds a **word**, `playstation` or
-`nintendo` (default `playstation`), not an integer: it names a layout, and the
-custom map of P6.12 will add a third word and a `button_map` key
-([CONTROLS_BUNDLE](CONTROLS_BUNDLE.md)). Another value is logged
+`button_layout` (P9.8) is the one key that holds a **word**, `playstation`,
+`nintendo` or `custom` (default `playstation`), not an integer: it names a layout.
+`custom` (P6.12) needs a second key, `button_map`: ten digits that are a
+permutation of 0 to 9 (one per PS button, in the order Cross, Circle, Triangle,
+Square, L1, R1, L2, R2, L3, R3; each digit names the source position that makes
+it, `0123456789` is the identity). The key is only written while the layout is
+custom (it is removed otherwise) and a `button_map` beside another layout is
+ignored ([CONTROLS_BUNDLE](CONTROLS_BUNDLE.md)). Another value is logged
 (`dw3-options: button_layout=<v> is not valid` and `dw3-controls: map invalid
 (...), using default`) and reads as PlayStation. It is not part of the
 `dw3-options:` boot and `saved` log lines (their text is matched by the replay
@@ -713,7 +717,7 @@ hints (Open or Change, Back).
 | Sound | Music volume (3), SFX volume (4) | |
 | Gameplay | Fast-forward (1), Restart hotkey (2), Encounter rate (5), Text speed (6), Battle cursor (7) | Restart hotkey moves to Controls when P6.12 exists |
 | Saves | Auto-save (8) | |
-| Controls | Button layout (9) | P9.8, built: PlayStation (default) / Nintendo, see [Button layout row](#button-layout-row-p98). The remap (P6.12) adds rows here and moves Restart hotkey in |
+| Controls | Button layout (9), Customize buttons (11), Reset to default (12) | P9.8: PlayStation (default) / Nintendo, P6.12: Custom, the Customize buttons screen and Reset, see [Button layout row](#button-layout-row-p98) and [Customize buttons](#customize-buttons-p612). Restart hotkey stays in Gameplay |
 | Cheats | the ten P6.20 cheat rows (not registry rows), a scrolling sub-screen | **Always listed** (P51 item 5; it used to appear only once the master switch was on, so nobody found it): the title opens the Cheats screen where the master switch is; greyed in game (title-only). `DW3_OPTGRP_CHEATS_LISTED` in `port_options_groups.h` (the build has the Cheats feature); `dw3-port-options: group list n=7 (cheats listed, master off, locked in game 0)` once per open |
 | Help | no rows, a screen of its own (P6.30, built) | Always listed (it is not secret), after Saves and Cheats. Confirm opens the technical help (`port/help/`, [P6.30_HELP](P6.30_HELP.md)): a list of ten pages and a scrolling text page, on its own full-canvas layer that the host draws instead of the Options layer (the Options cache is untouched). Up / Down scroll a page by line, Left / Right by screenful, L1 / R1 (L / R) change page, Back goes to the page list and out. Title, field menu and battle Options all reach it |
 | Walkthrough | not built | P6.35: hidden placeholder in `port_options_groups.h` (`built = 0`); flip the flag when the screen exists |
@@ -1020,6 +1024,35 @@ nintendo` and `dw3-options: saved ...`. Unit tests: `test_button_map.py`,
 scenarios ([P6.15](P6.15_REPLAY_TESTS.md)). The Options hint row keeps the
 PlayStation marks (PC) or the letters B and X (Switch) in both layouts until
 phase 3 (P10.6) makes them follow the map.
+
+## Customize buttons (P6.12)
+
+**Thirteen registry rows.** Rows 11 **Customize buttons** and 12 **Reset to default**
+are actions with no value and no cfg key, listed in the Controls group after Button
+layout (`DW3_PORT_OPT_CUSTOMIZE`, `DW3_PORT_OPT_RESET_MAP`). Button layout gets a third
+value, **Custom**, that Confirm and Left / Right reach in the cycle: it keeps the map
+in force and only names it custom (choosing PlayStation or Nintendo again replaces the
+map). Confirm on Customize buttons opens a sub-screen (`DW3_OPTGRP_CUSTOM`, never on
+the group list) of ten rows, a PS button on the left and the console button that
+produces it on the right, scrolling six at a time. The Customize row is title only
+(greyed in game with the usual "Locked in game" line, registry bit 11 of the locked
+mask); Reset works everywhere. The prompt: the row reads "Press a button" and the
+message line says Start or Select cancels; the screen reads the raw word before the
+map (`dw3_button_map_source_word`), ignores what was held when the prompt opened until
+it is released, and times out after 300 ticks. Lettering (EN, FR, DE, IT, ES; FR / DE /
+IT / ES are machine-drafted, needs native review): `opt_row_cz_`, `opt_desc_cz_`,
+`opt_row_rs_`, `opt_desc_rs_`, `opt_val_cp_`, `opt_desc_cp_`, `opt_val_bl_cus_`,
+`opt_grp_custom_`, `opt_grpdesc_custom_`, and the language-free `opt_row_ps_*` and
+`opt_val_btn_*`.
+
+Logs (`dw3.log`): `dw3-port-options: group open customize (10 row(s), title)`,
+`customize waiting for a button for L1`, `dw3-controls: assign l1<-R (r1<-L swapped in)
+[custom]`, the `map digits` and `map ...` lines, `customize L1 cancelled (Start /
+Select | timeout)`, `dw3-controls: reset to default (layout=playstation) (screen)`, and
+at boot `map loaded layout=custom source=cfg`. Unit tests: `test_button_map.py`,
+`test_options_persist.py` (the `test_customize_*` and `test_custom_layout_*` cases),
+`test_field_options.py` (the lock mask). Replay: `us/eu-controls-custom` (two phases),
+`us/eu-controls-custom-invalid`.
 
 ## Cheats (P6.20)
 

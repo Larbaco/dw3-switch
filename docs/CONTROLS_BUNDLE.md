@@ -1,8 +1,10 @@
 # Controls bundle: button remap, confirm layout, Switch glyphs (design)
 
-Status: **phase 1 built** (2026-10-28, P9.8: the Nintendo / PlayStation layout,
-the mapper and the log; see [Phase 1 as built](#phase-1-as-built-2026-10-28)).
-Phases 2 (custom remap, P6.12) and 3 (glyphs, P10.6) are design only. The owner
+Status: **phases 1 and 2 built** (2026-10-28 P9.8: the Nintendo / PlayStation
+layout, the mapper and the log; see [Phase 1 as built](#phase-1-as-built-2026-10-28);
+2026-10-29 P6.12: the custom map and the Customize screen, see
+[Phase 2 as built](#phase-2-as-built-2026-10-29)). Phase 3 (glyphs, P10.6) is
+design only. The owner
 questions of section 7 are answered by **orchestrator defaults** pending the
 owner's confirmation. It is
 ROADMAP "Priority work order", Tier 2 item 2: the goal notes
@@ -574,3 +576,87 @@ build. Not run on a console.
   `tools/replay_tests.sh --update --only <name> ...` for that list (look at the
   pictures first).
 - Unit tests: `tools/tests` 478 pass, 2 skipped.
+
+## Phase 2 as built (2026-10-29)
+
+Scope: P6.12, the custom map. `button_layout=custom` and `button_map`, the
+Customize buttons screen, Reset to default, the `assign` / `reset` / invalid map
+log lines, lettering in five languages, the replay scenarios and the docs. No
+glyphs (phase 3).
+
+**Files.**
+
+| File | What |
+|---|---|
+| `port/options/button_map.c`, `port/include/port_button_map.h` | `DW3_LAYOUT_CUSTOM` (the layout words are `playstation`, `nintendo`, `custom`; a custom layout has no preset and keeps the map in force), `dw3_button_map_load_custom`, `_assign` (swap, custom, swallow), `_reset`, the pre-map word (`_source_word`) and the press-to-assign capture (`_capture_begin`, `_capture_poll`, and the pure `_capture_step`). The ABI is unchanged (the state lives in each game copy next to the options) |
+| `port/options/port_options.c`, `port_options.h`, `port_options_groups.h` | Registry rows 11 Customize buttons and 12 Reset to default (actions: no value, no cfg key), the hidden group `DW3_OPTGRP_CUSTOM` (ten virtual rows = the PS buttons in map order), the prompt (`g_assign_btn`, 300 ticks), saving and loading `button_map`, the Customize lock in game |
+| `port/options/options_cfg.c` | `dw3_optcfg_remove` (the `button_map` key only exists while the layout is custom) |
+| `platforms/pc/src/title_overlay_art.c`, `title_options_cache.c`, `tools/generate_pc_title_lettering.py` | The Customize screen in the Options look (`cus` branch of the list screen), the Custom value, the two Controls rows, the prompt value and message line (a value change of the focused row redraws the message line: `options_desc_follows_value`), the lock mask now 13 bits wide |
+| `tools/replay/gen_scenarios.py`, `manifest.py`; `tools/tests/` | Scenarios `us/eu-controls-custom` (two phases) and `us/eu-controls-custom-invalid`; unit tests (`button_map_main.c`, `options_persist_main.c` steps `raw` / `tick` / `map`, `test_options_persist.py`) |
+
+**Deviations from the design (section 2.5).**
+
+- The prompt is cancelled by **Start or Select** and by the 5 second timeout, not
+  by Back: Back is a mapped button, so it would make the button that currently
+  means Back impossible to assign. Start and Select are reserved, so they are
+  always free to mean "cancel".
+- The swap that the assignment causes is not previewed in the message strip
+  before it is committed: it is committed on the press and shown at once in the
+  two rows (the Left / Right pick works the same way).
+- **Restart hotkey stays in Gameplay.** Moving it would change the Gameplay
+  group's references for no behaviour gain. The Controls screen does not list the
+  hotkeys with their physical buttons; the Help pages ("Controls", "Port hotkeys")
+  and the `dw3-controls: hotkeys` line already follow the map.
+- Left / Right on a row step the source one position (with the PS button that had
+  it taking the old one), 10 positions in a ring.
+- Picking **Custom** in the Button layout row keeps the map in force (it only names
+  it custom); picking PlayStation or Nintendo replaces the map.
+- The Help Controls page text is unchanged: it already says the right column shows
+  the button that produces each PlayStation button "in the layout you chose".
+
+**Logs.** `dw3-port-options: group open customize (10 row(s), title)`, `customize
+waiting for a button for L1`, `dw3-controls: assign l1<-R (r1<-L swapped in)
+[custom]` followed by `map digits 0123546789`, the `map ...` and `hotkeys ...`
+lines, `customize L1 cancelled (Start / Select | timeout)`, `dw3-controls: reset to
+default (layout=playstation) (screen)`, `map loaded layout=custom source=cfg`,
+`map invalid (button_map is not a permutation of 0-9), using default` (and `button_layout is custom but button_map is missing`).
+
+**Replays.** `us/eu-controls-custom` runs with `DW3_REPLAY_SOURCE=1` (the masks are
+positions): the Controls rows, the Customize list, the prompt, the swap, Custom in
+the layout row, then the Help Controls page where the L position turns the page
+forward and the R position back, a second process reads the map back (the L position
+still turns forward), Reset to default, and the R position turns forward again.
+`us/eu-controls-custom-invalid` seeds `button_layout=custom` and a `button_map` that is
+not a permutation. References are their own (new screens).
+
+
+### Phase 2 test results (2026-10-29)
+
+Built and run on the PC host, `nice -n 10`, 2 jobs, Xvfb, a private copy of the
+references (`DW3_REPLAY_REFS`), US and EU per-region images; the combined image
+(`DW3_VERSION=both`) for the new scenarios; the Switch images (`build_switch_game.sh`,
+US, `--eu`, `--both`) build. Not run on a console.
+
+- **The default is bit-identical.** The input-touching set was run by name (25
+  scenarios, 560 checks: title, title Quit, EU language select with Cross, field
+  and battle Options, options persistence, Help from the title, the full-screen map
+  view, the Nintendo-layout scenarios (against the plain scenarios' references) and
+  the Controls layout scenario) with the binary of this branch against references
+  written by a binary built from `main` (13c696f) the same hour: **0 px differ in
+  all of them except `us/eu-controls-layout`**, whose three Controls captures differ
+  by 5.0 % because the group now has two more plaques (expected; their references
+  are stale until refreshed). The shared references (`~/.cache/dw3-switch/replay-refs`)
+  were not used for this comparison: they were being refreshed (the Options and
+  title tile background of #346) and differed by 56 to 66 % on every Options screen
+  for that reason alone.
+- **New scenarios**, US and EU, own references: `us/eu-controls-custom` (two
+  phases) and `us/eu-controls-custom-invalid`: 100 checks, 0 failed, and the same
+  captures on a second compare run. The combined image gives the same captures and
+  log lines for them (125 checks of which the 3 that fail are
+  `eu-nintendo-menu`, where the combined image's Gameplay group lists the Region at
+  start row, which is not from this change).
+- Unit tests: `tools/tests` 492 pass, 2 skipped (the button map capture and
+  custom cases, the persistence cases for assign / reset / cancel / timeout / bad
+  maps / `DW3_BUTTON_MAP=default`, the lock mask).
+- The lettering of the four other languages fits its limits (the generator fails
+  otherwise) but no capture was taken in FR, DE, IT or ES.

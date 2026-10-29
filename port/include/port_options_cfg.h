@@ -69,6 +69,10 @@ const char *dw3_optcfg_get(const Dw3OptCfg *cfg, const char *key);
  * the table is full. Replacing keeps the entry's position. */
 int dw3_optcfg_set(Dw3OptCfg *cfg, const char *key, const char *val);
 
+/* Drop `key` (P6.12: button_map only exists while the layout is custom).
+ * Returns 1 when it was there, 0 when not. */
+int dw3_optcfg_remove(Dw3OptCfg *cfg, const char *key);
+
 /* Strict decimal integer ("-3", "12"); no spaces, no suffix, fits an int.
  * Returns 0 and sets *out, or -1. */
 int dw3_optcfg_parse_int(const char *val, int *out);

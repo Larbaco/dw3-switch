@@ -46,7 +46,9 @@ static void test_presets(void) {
     CHECK(dw3_button_layout_parse("nintendo") == DW3_LAYOUT_NINTENDO, "parse n");
     CHECK(dw3_button_layout_parse("playstation") == DW3_LAYOUT_PLAYSTATION,
           "parse p");
-    CHECK(dw3_button_layout_parse("custom") == -1, "custom is phase 2");
+    CHECK(dw3_button_layout_parse("custom") == DW3_LAYOUT_CUSTOM, "parse custom");
+    CHECK(dw3_button_map_preset(DW3_LAYOUT_CUSTOM, m) == -1, "custom has no preset");
+    CHECK(strcmp(dw3_button_layout_name(DW3_LAYOUT_CUSTOM), "custom") == 0, "name");
     CHECK(dw3_button_layout_parse("Nintendo") == -1, "case matters");
     CHECK(dw3_button_layout_parse(NULL) == -1, "NULL");
 }
@@ -163,7 +165,8 @@ static void test_state(void) {
     dw3_button_map_change(DW3_LAYOUT_PLAYSTATION, "screen");
     CHECK(dw3_button_map_apply(0xFFFFu) == 0xFFFFu, "nothing held after the change");
     CHECK(dw3_button_map_apply(b) == b, "back to playstation");
-    dw3_button_map_log_invalid("button_layout is not playstation or nintendo");
+    dw3_button_map_log_invalid("button_layout is not playstation, nintendo or "
+                               "custom");
 }
 
 /* The press that changes the layout must not be read in the new map. */
@@ -196,8 +199,80 @@ static void test_swallow(void) {
     dw3_button_map_load(DW3_LAYOUT_PLAYSTATION, "default");
 }
 
+/* P6.12: assign swaps, stays a permutation, reads as released until let go;
+ * reset; the capture of a press; the custom boot. */
+static void test_custom(void) {
+    int l1[1] = {DW3_BTN_L1};
+    int r1[1] = {DW3_BTN_R1};
+    unsigned wl = word_with(l1, 1);
+    unsigned wr = word_with(r1, 1);
+    unsigned idle = 0xFFFFu;
+    unsigned ignore;
+    char text[DW3_BTN_COUNT + 1];
+    unsigned char m[DW3_BTN_COUNT];
+
+    dw3_button_map_load(DW3_LAYOUT_PLAYSTATION, "default");
+    CHECK(dw3_button_map_assign(DW3_BTN_L1, DW3_BTN_R1) == DW3_BTN_R1,
+          "L1 <- R swaps R1 in");
+    CHECK(dw3_button_map_layout() == DW3_LAYOUT_CUSTOM, "now custom");
+    dw3_button_map_format(dw3_button_map_current(), text);
+    CHECK(strcmp(text, "0123546789") == 0, "L1/R1 swapped: %s", text);
+    CHECK(dw3_button_map_valid(dw3_button_map_current()), "still a permutation");
+    /* the press that assigned (R held) is swallowed */
+    CHECK(dw3_button_map_apply(wr) == idle, "assigning press swallowed");
+    CHECK(dw3_button_map_apply(idle) == idle, "released");
+    CHECK(dw3_button_map_apply(wr) == wl, "R position now produces L1");
+    CHECK(dw3_button_map_apply(wl) == wr, "L position now produces R1");
+    CHECK(dw3_button_map_assign(DW3_BTN_L1, DW3_BTN_R1) == DW3_BTN_L1,
+          "same source: unchanged");
+    CHECK(dw3_button_map_assign(-1, 2) == -1 && dw3_button_map_assign(0, 10) == -1,
+          "bad arguments");
+    /* Reset */
+    dw3_button_map_reset("screen");
+    CHECK(dw3_button_map_layout() == DW3_LAYOUT_PLAYSTATION, "reset: playstation");
+    CHECK(dw3_button_map_apply(idle) == idle, "reset: released");
+    CHECK(dw3_button_map_apply(wl) == wl, "reset: identity");
+    /* Custom boot, a preset replaces it, custom keeps the map */
+    CHECK(dw3_button_map_parse("0213456789", m) == 0, "digits");
+    dw3_button_map_load_custom(m, "cfg");
+    CHECK(dw3_button_map_layout() == DW3_LAYOUT_CUSTOM, "custom boot");
+    dw3_button_map_change(DW3_LAYOUT_NINTENDO, "screen");
+    dw3_button_map_format(dw3_button_map_current(), text);
+    CHECK(strcmp(text, "1203456789") == 0, "preset replaces the custom map");
+    dw3_button_map_change(DW3_LAYOUT_CUSTOM, "screen");
+    dw3_button_map_format(dw3_button_map_current(), text);
+    CHECK(strcmp(text, "1203456789") == 0 &&
+              dw3_button_map_layout() == DW3_LAYOUT_CUSTOM,
+          "custom keeps the map in force");
+    m[0] = 1; /* not a permutation */
+    dw3_button_map_load_custom(m, "cfg");
+    CHECK(dw3_button_map_layout() == DW3_LAYOUT_PLAYSTATION, "bad map: default");
+    /* Capture: the press that opened the prompt is ignored until let go */
+    dw3_button_map_load(DW3_LAYOUT_PLAYSTATION, "default");
+    (void)dw3_button_map_apply(wl);        /* L held when the prompt opens */
+    dw3_button_map_capture_begin();
+    (void)dw3_button_map_apply(wl);
+    CHECK(dw3_button_map_capture_poll() == DW3_CAPTURE_NONE, "held L is ignored");
+    (void)dw3_button_map_apply(idle);
+    CHECK(dw3_button_map_capture_poll() == DW3_CAPTURE_NONE, "released");
+    (void)dw3_button_map_apply(wr);
+    CHECK(dw3_button_map_capture_poll() == DW3_BTN_R1, "R is taken");
+    (void)dw3_button_map_apply(idle);
+    ignore = 0;
+    CHECK(dw3_button_map_capture_step(0xFFFFu & ~(1u << 3), &ignore) ==
+              DW3_CAPTURE_CANCEL, "Start cancels");
+    ignore = 0;
+    CHECK(dw3_button_map_capture_step(0xFFFFu & ~(1u << 0), &ignore) ==
+              DW3_CAPTURE_CANCEL, "Select cancels");
+    ignore = 0;
+    CHECK(dw3_button_map_capture_step(0xFFFFu & ~(1u << 4), &ignore) ==
+              DW3_CAPTURE_NONE, "the d-pad is ignored");
+    dw3_button_map_load(DW3_LAYOUT_PLAYSTATION, "default");
+}
+
 int main(void) {
     test_swallow();
+    test_custom();
     test_presets();
     test_validate_and_parse();
     test_permute();

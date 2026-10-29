@@ -782,7 +782,7 @@ def test_button_layout_confirm_toggles_and_is_saved_as_a_word(persist_bin: Path,
 
 
 def test_button_layout_bad_values_fall_back_to_playstation(persist_bin: Path, tmp_path: Path):
-    for bad in ("custom", "1", "Nintendo", ""):
+    for bad in ("custom", "1", "Nintendo", ""):   # custom without a button_map is bad too
         (tmp_path / CFG).write_text(f"version=1\nbutton_layout={bad}\nend=1\n")
         out, err = session(persist_bin, tmp_path, "layout")
         assert out == ["button_layout=0"], bad
@@ -808,6 +808,89 @@ def test_dw3_button_map_default_forces_playstation_for_one_run(persist_bin: Path
     assert "button_layout=nintendo\n" in (tmp_path / CFG).read_text()
     out, err = session(persist_bin, tmp_path, "layout")
     assert out == ["button_layout=1"]
+
+
+# --- P6.12 Customize buttons (docs/CONTROLS_BUNDLE.md) ------------------------
+
+# raw words, a clear bit = pressed: Circle position (A) bit 13, R1 bit 11, Start bit 3
+IDLE, SRC_A, SRC_R1, START = "FFFF", "DFFF", "F7FF", "FFF7"
+
+
+def test_customize_assign_is_saved_as_custom_with_the_map(persist_bin: Path, tmp_path: Path):
+    out, err = session(persist_bin, tmp_path, "open", "row", "11", "raw", IDLE, "press",   # opens Customize
+                       "press",                                                          # row Cross waits
+                       "raw", SRC_A, "tick", "map", "layout")
+    assert out == ["map=1023456789 layout=2", "button_layout=2"]
+    assert "dw3-port-options: group open customize (10 row(s), title)" in err
+    assert "dw3-port-options: customize waiting for a button for Cross" in err
+    assert "dw3-controls: assign cross<-A (circle<-B swapped in) [custom]" in err
+    text = (tmp_path / CFG).read_text()
+    assert "button_layout=custom\n" in text and "button_map=1023456789\n" in text
+    out, err = session(persist_bin, tmp_path, "map", "layout")
+    assert out == ["map=1023456789 layout=2", "button_layout=2"]
+    assert "dw3-controls: map loaded layout=custom source=cfg" in err
+    assert "dw3-controls: map cross<-A circle<-B triangle<-X square<-Y" in err
+
+
+def test_customize_reset_restores_the_default_and_drops_the_map(persist_bin: Path, tmp_path: Path):
+    (tmp_path / CFG).write_text("version=1\nbutton_layout=custom\nbutton_map=0123546789\nend=1\n")
+    out, err = session(persist_bin, tmp_path, "map", "open", "row", "12", "press", "map", "layout")
+    assert out == ["map=0123546789 layout=2", "map=0123456789 layout=0", "button_layout=0"]
+    assert "dw3-controls: reset to default (layout=playstation)" in err
+    text = (tmp_path / CFG).read_text()
+    assert "button_layout=playstation\n" in text and "button_map" not in text
+
+
+def test_customize_prompt_cancels_with_start_and_the_timeout(persist_bin: Path, tmp_path: Path):
+    out, err = session(persist_bin, tmp_path, "open", "row", "11", "raw", IDLE, "press", "press",
+                       "raw", START, "tick", "map")
+    assert out == ["map=0123456789 layout=0"]
+    assert "customize Cross cancelled (Start / Select)" in err
+    assert not (tmp_path / CFG).exists()
+    out, err = session(persist_bin, tmp_path, "open", "row", "11", "raw", IDLE, "press", "press",
+                       *(["tick"] * 305), "map")
+    assert out == ["map=0123456789 layout=0"]
+    assert "customize Cross cancelled (timeout)" in err
+
+
+def test_customize_ignores_the_press_that_opened_the_prompt(persist_bin: Path, tmp_path: Path):
+    # A is still down when the prompt opens (the Confirm press): it is not taken
+    # until it has been let go. R1 then goes to the Cross row.
+    out, err = session(persist_bin, tmp_path, "open", "row", "11", "raw", SRC_A, "press", "press",
+                       "raw", SRC_A, "tick", "map", "raw", IDLE, "tick", "raw", SRC_R1, "tick", "map")
+    assert out == ["map=0123456789 layout=0", "map=5123406789 layout=2"]
+    assert "assign cross<-R (r1<-B swapped in) [custom]" in err
+
+
+def test_customize_left_right_cycle_the_sources(persist_bin: Path, tmp_path: Path):
+    out, err = session(persist_bin, tmp_path, "open", "row", "11", "press", "right", "map")
+    assert out == ["map=1023456789 layout=2"]
+    assert "dw3-controls: assign cross<-A (circle<-B swapped in) [custom]" in err
+    assert "button_map=1023456789\n" in (tmp_path / CFG).read_text()
+
+
+def test_custom_layout_cfg_must_carry_a_valid_map(persist_bin: Path, tmp_path: Path):
+    for text in ("button_layout=custom\n", "button_layout=custom\nbutton_map=0123456780\n",
+                 "button_layout=custom\nbutton_map=abc\n", "button_layout=custom\nbutton_map=012345678\n"):
+        (tmp_path / CFG).write_text("version=1\n" + text + "end=1\n")
+        out, err = session(persist_bin, tmp_path, "map", "layout")
+        assert out == ["map=0123456789 layout=0", "button_layout=0"], text
+        assert "dw3-controls: map invalid (" in err and "using default" in err, text
+    # a stale map beside a preset is ignored
+    (tmp_path / CFG).write_text("version=1\nbutton_layout=nintendo\nbutton_map=0123546789\nend=1\n")
+    out, _ = session(persist_bin, tmp_path, "map")
+    assert out == ["map=1203456789 layout=1"]
+
+
+def test_dw3_button_map_default_keeps_the_custom_map_in_the_file(persist_bin: Path, tmp_path: Path):
+    (tmp_path / CFG).write_text("version=1\nbutton_layout=custom\nbutton_map=0123546789\nend=1\n")
+    env = dict(os.environ, DW3_BUTTON_MAP="default")
+    r = subprocess.run([str(persist_bin), str(tmp_path), "map", "open", "row", "0", "press", "close"],
+                       capture_output=True, text=True, env=env)
+    assert r.returncode == 0, r.stderr
+    assert r.stdout.split()[0] == "map=0123456789"
+    text = (tmp_path / CFG).read_text()
+    assert "button_layout=custom\n" in text and "button_map=0123546789\n" in text
 
 
 def region_tree(tmp_path: Path, top: str = "") -> tuple[Path, Path]:

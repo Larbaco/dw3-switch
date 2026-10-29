@@ -43,8 +43,13 @@ def test_button_map_log_lines(bm_bin: Path):
     assert "dw3-controls: layout changed nintendo -> playstation (screen)" in err
     assert ("dw3-controls: hotkeys fast-forward=R3 (Right stick click) "
             "restart=L1+R1+Start+Select (L+R+Plus+Minus)") in err
-    assert ("dw3-controls: map invalid (button_layout is not playstation or "
-            "nintendo), using default") in err
+    assert ("dw3-controls: map invalid (button_layout is not playstation, "
+            "nintendo or custom), using default") in err
+    assert ("dw3-controls: assign l1<-R (r1<-L swapped in) [custom]") in err
+    assert "dw3-controls: reset to default (layout=playstation)" in err
+    assert "dw3-controls: map loaded layout=custom source=cfg" in err
+    assert ("dw3-controls: map invalid (button_map is not a permutation), "
+            "using default") in err
     # once after boot, re-armed by every load or layout change
     assert err.count("first press source=B -> logical cross") >= 3
     assert err.count("first press source=A -> logical cross") >= 1
