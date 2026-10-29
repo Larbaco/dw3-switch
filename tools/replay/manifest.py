@@ -38,6 +38,10 @@ class Scenario:
     # phase's log (PC stderr / Ryubing guest output). Used by the P9.4
     # persistence scenario, where the proof is a value read back from disk.
     expect_log: tuple[tuple[int, str], ...] = ()
+    # P6.51: expect_log used instead when the run is on the combined
+    # (--bin-both) binary, for rows that differ there (the Region row of the
+    # Gameplay group). Empty = expect_log.
+    expect_log_both: tuple[tuple[int, str], ...] = ()
     # The same, but the regex must NOT match anywhere in that phase's log
     # (P6.18: "no FIGHTSTG_start while Encounter rate is Off").
     forbid_log: tuple[tuple[int, str], ...] = ()
@@ -1831,12 +1835,29 @@ _NIN_LOG = (r"dw3-controls: map loaded layout=nintendo source=cfg(?s:.*)"
             r"dw3-controls: first press source=A -> logical cross",)
 
 
+_GP_ROWS_PLAIN = r"gameplay \(5 row\(s\), in game\)"
+_GP_ROWS_BOTH = r"gameplay \(6 row\(s\), in game\)"
+
+
+def _both_expect(expect):
+    """The combined (--bin-both) build has the Region row in the Gameplay group,
+    so that group logs 6 rows there, not 5 (P6.51)."""
+    return tuple((p, r.replace(_GP_ROWS_PLAIN, _GP_ROWS_BOTH)) for p, r in expect)
+
+
+for _v in ("us", "eu"):
+    _fo = by_name()[f"{_v}-field-options"]
+    SCENARIOS[SCENARIOS.index(_fo)] = dataclasses.replace(
+        _fo, expect_log_both=_both_expect(_fo.expect_log))
+
+
 def _nintendo(base_name, name, phase, note):
     b = by_name()[base_name]
     logs = tuple(e for e in b.expect_log if e[0] == 0)
+    full = logs + tuple((0, r) for r in _NIN_LOG)
     return dataclasses.replace(
         b, name=name, phases=(phase,), cfg=b.cfg + _NIN_CFG, env=b.env + _NIN_ENV,
-        expect_log=logs + tuple((0, r) for r in _NIN_LOG),
+        expect_log=full, expect_log_both=_both_expect(full),
         forbid_log=tuple(e for e in b.forbid_log if e[0] == 0)
         + ((0, r"dw3-controls: map invalid"),),
         ref_from=base_name, note=note)

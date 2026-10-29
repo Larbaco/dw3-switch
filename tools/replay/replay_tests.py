@@ -464,6 +464,7 @@ def run_scenario(sc, binary, runtime, out: Path, stamp, label, stall, timeout_sc
         import make_synthetic_pack
         make_synthetic_pack.make_pack(cfgdir / "mods", (sc.version,))
     elif sc.mod_pack == "synthetic-shared":  # P51 item 3: one shared map, both regions listed
+        sys.path.insert(0, str(ROOT / "tools" / "mods"))
         import make_synthetic_pack
         make_synthetic_pack.make_pack(cfgdir / "mods", ("us", "eu"), shared=True)
     elif os.environ.get("DW3_REPLAY_MODS"):  # a local aid: look at a real pack
@@ -512,11 +513,26 @@ def run_scenario(sc, binary, runtime, out: Path, stamp, label, stall, timeout_sc
     return results, sdir
 
 
-def judge_scenario(sc, results, sdir, refs: Path, checkpoints, update, labelname=None):
+def reference_path(refs: Path, name: str, ref_from: str, shot: str, ext: str,
+                   update: bool, both: bool) -> Path:
+    """Reference file of one checkpoint. On the combined (--bin-both) binary a
+    `<refs>/<name>/both/` capture overrides the plain one (P6.51: the Region row
+    of the Gameplay group exists only there); `--update` on that binary writes
+    there, so the plain references are never touched by a both run."""
+    if both:
+        own = refs / name / "both" / f"{shot}.{ext}"
+        if update or own.is_file():
+            return own
+    return refs / (name if update else (ref_from or name)) / f"{shot}.{ext}"
+
+
+def judge_scenario(sc, results, sdir, refs: Path, checkpoints, update, labelname=None,
+                   both: bool = False):
     """Rows (scenario, checkpoint, result, detail) for one finished scenario."""
     name = sc.name
     rows = []
     bad_proc = False
+    expect_log = sc.expect_log_both if (both and sc.expect_log_both) else sc.expect_log
     for r in results:
         ph = f" {r['phase']}" if len(results) > 1 else ""
         if r["verdict"] != "OK":
@@ -531,13 +547,13 @@ def judge_scenario(sc, results, sdir, refs: Path, checkpoints, update, labelname
         rows.append((name, "(markers)", "FAIL", p))
     log_probs = 0
     for i, r in enumerate(results):
-        for p in check_log_expect(sc.expect_log, i, r["log"].read_text(errors="replace"),
+        for p in check_log_expect(expect_log, i, r["log"].read_text(errors="replace"),
                                   sc.forbid_log):
             log_probs += 1
             rows.append((name, f"(log p{i + 1})", "FAIL", p))
-    if (sc.expect_log or sc.forbid_log) and not log_probs and len(results) == len(sc.phases):
+    if (expect_log or sc.forbid_log) and not log_probs and len(results) == len(sc.phases):
         rows.append((name, "(log)", "PASS",
-                     f"{len(sc.expect_log)} expected log line(s) found, "
+                     f"{len(expect_log)} expected log line(s) found, "
                      f"{len(sc.forbid_log)} forbidden line(s) absent"))
     if not probs and (sc.expect_restore or results):
         rows.append((name, "(markers)", "PASS",
@@ -553,7 +569,7 @@ def judge_scenario(sc, results, sdir, refs: Path, checkpoints, update, labelname
     for shot in checkpoints:
         for ext in ARTIFACTS:
             got = sdir / f"{shot}.{ext}"
-            ref = refs / (name if update else (sc.ref_from or name)) / f"{shot}.{ext}"
+            ref = reference_path(refs, name, sc.ref_from, shot, ext, update, both)
             label = f"{shot}.{ext}"
             # P9.7: a checkpoint compared with another scenario's capture (the
             # excursion run must equal the plain run, shifted), never its own.
@@ -784,7 +800,8 @@ def main():
                 print(f"[{label}] done in {sum(r['secs'] for r in results):.0f}s "
                       f"{'ok' if ok else results[-1]['verdict'] + ' ' + results[-1]['detail']}", flush=True)
         # Run `a` is the run judged against the references (or written by --update).
-        rows += judge_scenario(sc, runs[0][0], runs[0][1], refs, checkpoints[sc.name], a.update)
+        rows += judge_scenario(sc, runs[0][0], runs[0][1], refs, checkpoints[sc.name], a.update,
+                               both=bool(a.bin_both))
         if a.twice:
             if all(r["verdict"] == "OK" for res, _ in runs for r in res):
                 rows += determinism_rows(sc, runs[0][1], runs[1][1], checkpoints[sc.name])
