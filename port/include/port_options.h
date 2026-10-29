@@ -62,7 +62,10 @@ enum {
      * Customize buttons opens the press-to-assign screen (title only), Reset
      * to default puts the PlayStation layout back. */
     DW3_PORT_OPT_CUSTOMIZE = 11,
-    DW3_PORT_OPT_RESET_MAP = 12
+    DW3_PORT_OPT_RESET_MAP = 12,
+    /* P6.36: 0 = 1x (the music keeps its tempo in turbo, the default), 1 = Fast
+     * (the music speeds up with the game, as before). Key turbo_music. */
+    DW3_PORT_OPT_TURBO_MUSIC = 13
 };
 
 /* Registry; unavailable features remain safe no-op stubs. Values persist in

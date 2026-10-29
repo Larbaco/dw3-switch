@@ -41,7 +41,7 @@ int main(void) {
         return fail("re-open");
     }
 
-    if (dw3_port_options_count() != 13) {
+    if (dw3_port_options_count() != 14) {
         return fail("option count");
     }
     if (dw3_port_options_level(DW3_PORT_OPT_BATTLE_MENU) != 0 ||
@@ -100,7 +100,25 @@ int main(void) {
     }
     dw3_port_options_test_set_pressed(1u << BIT_DOWN);
     dw3_port_options_tick();
-    if (dw3_port_options_cursor() != 1) {
+    if (dw3_port_options_cursor() != 2) {
+        return fail("Down moves to Turbo music");
+    }
+    /* P6.36: the row holds 0 = 1x (default) and 1 = Fast; Confirm wraps. */
+    if (dw3_port_options_level(13) != 0) {
+        return fail("Turbo music defaults to 1x");
+    }
+    dw3_port_options_test_set_pressed(1u << BIT_CROSS);
+    dw3_port_options_tick();
+    if (dw3_port_options_level(13) != 1) {
+        return fail("Confirm on Turbo music steps to Fast");
+    }
+    dw3_port_options_tick();
+    if (dw3_port_options_level(13) != 0) {
+        return fail("Confirm on Turbo music wraps to 1x");
+    }
+    dw3_port_options_test_set_pressed(1u << BIT_DOWN);
+    dw3_port_options_tick();
+    if (dw3_port_options_cursor() != 2) {
         return fail("Down stops on the last row");
     }
     dw3_port_options_test_set_pressed(1u << BIT_TRIANGLE);
@@ -152,7 +170,7 @@ int main(void) {
      * every registry row is in exactly one group, a long list scrolls. */
     {
         int ids[DW3_OPTGRP_COUNT];
-        int seen[13] = {0};
+        int seen[14] = {0};
         int g, k;
 
         if (dw3_optgroups_visible(0, ids) != 6 || ids[0] != DW3_OPTGRP_DISPLAY ||
@@ -170,7 +188,7 @@ int main(void) {
                 seen[dw3_optgroups[g].rows[k]]++;
             }
         }
-        for (k = 0; k < 13; k++) {
+        for (k = 0; k < 14; k++) {
             if (k == DW3_PORT_OPT_REGION) continue; /* combined image only */
             if (seen[k] != 1) {
                 return fail("every registry row is in exactly one group");

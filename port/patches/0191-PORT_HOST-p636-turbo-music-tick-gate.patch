@@ -1,0 +1,74 @@
+Upstream-bound: no
+Subject: [PORT_HOST] P6.36 music at normal speed while turbo is on: tick gate and fade scaling
+
+Design: docs/P6.36_TURBO_MUSIC.md. The game ticks libsnd once per game frame
+(`vsyncCallback`, `SsSeqCalledTbyT` after the display flip), so fast-forward
+plays the music faster. On the host the call now asks
+`dw3_port_audio_ticks_due()` (port/audio/turbo_music.c) how many ticks this
+frame owes: always 1 with the Turbo music row on Fast or with fast-forward off
+(the original call, bit for bit), otherwise 0, 1 or 2 so that the music gets
+the ticks of a game that runs at 1x. The call stays in the same place on the
+same thread (libsnd is not thread-safe).
+
+`fadeOutSound` (`engine/sound/sound.c`) takes the tick count of its
+`SsSepSetDecrescendo` from `dw3_port_audio_fade_ticks()`, which scales it by the
+game rate while the gate is on (60 -> 15 ticks at 4x), so a fade spans the same
+game time as at 1x. Unchanged otherwise. Replay scenarios
+`us/eu-turbo-music-field`, `-battle`, `-menu`.
+
+--- a/src/engine/gfx/display.c
++++ b/src/engine/gfx/display.c
+@@ -3,6 +3,9 @@
+ #include <libetc.h>
+ #include <libsnd.h>
+ #include <stddef.h>
++#if PORT_HOST
++#include "port_audio.h"
++#endif
+ 
+ /* Small variables, addressed through $gp (see the Makefile) */
+ static s32 GFX_STARTED = 0;
+@@ -35,7 +38,19 @@
+         GFX.dispBuffer = !GFX.dispBuffer;
+         PutDispEnv(&GFX.disp[GFX.dispBuffer]);
+     }
++#if PORT_HOST
++    {
++        /* P6.36: ticks the music owes this frame (always 1 unless turbo runs
++           with Turbo music on 1x); same place, same thread. */
++        s32 ticks;
++
++        for (ticks = dw3_port_audio_ticks_due(); ticks > 0; ticks--) {
++            SsSeqCalledTbyT();
++        }
++    }
++#else
+     SsSeqCalledTbyT();
++#endif
+     FLIP_PENDING = 0;
+ }
+ 
+--- a/src/engine/sound/sound.c
++++ b/src/engine/sound/sound.c
+@@ -327,11 +327,21 @@
+ 
+     if (slot != -1 && !keyOn) {
+ #if VERSION_US
++#if PORT_HOST
++        /* P6.36: scaled by the game rate while turbo keeps the music at 1x */
++        SsSepSetDecrescendo(SOUND.banks[slot].seqs[seq], sep, 0x80, dw3_port_audio_fade_ticks(0x3C));
++#else
+         SsSepSetDecrescendo(SOUND.banks[slot].seqs[seq], sep, 0x80, 0x3C);
++#endif
+ #elif VERSION_EU
+         /* one second, in frames */
++#if PORT_HOST
++        SsSepSetDecrescendo(SOUND.banks[slot].seqs[seq], sep, 0x80,
++                            dw3_port_audio_fade_ticks(NTSC_MODE ? 0x3C : 0x32));
++#else
+         SsSepSetDecrescendo(SOUND.banks[slot].seqs[seq], sep, 0x80, NTSC_MODE ? 0x3C : 0x32);
+ #endif
++#endif
+         if (SOUND.music == packed) {
+             SOUND.music = 0;
+         }

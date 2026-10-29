@@ -318,13 +318,15 @@ enum { OPT_X0 = 84, OPT_Y0 = 60, OPT_W = 792, OPT_H = 600,
        CHT_ROW_STEP = 42, CHT_ROW_H = 38 };
 /* The rows' kinds: how a registry value is written. */
 enum { ROW_SWITCH, ROW_FAST_FORWARD, ROW_VOLUME, ROW_ENCOUNTER, ROW_TEXT,
-       ROW_BATTLE, ROW_AUTOSAVE, ROW_LAYOUT, ROW_REGION, ROW_CUSTOMIZE, ROW_RESET };
+       ROW_BATTLE, ROW_AUTOSAVE, ROW_LAYOUT, ROW_REGION, ROW_CUSTOMIZE, ROW_RESET,
+       ROW_TURBO_MUSIC };
 static int row_kind(int row) {
     return row == 1 ? ROW_FAST_FORWARD : row == 3 || row == 4 ? ROW_VOLUME :
            row == 5 ? ROW_ENCOUNTER : row == 6 ? ROW_TEXT :
            row == 7 ? ROW_BATTLE : row == 8 ? ROW_AUTOSAVE :
            row == 9 ? ROW_LAYOUT : row == 10 ? ROW_REGION :
-           row == 11 ? ROW_CUSTOMIZE : row == 12 ? ROW_RESET : ROW_SWITCH;
+           row == 11 ? ROW_CUSTOMIZE : row == 12 ? ROW_RESET :
+           row == 13 ? ROW_TURBO_MUSIC : ROW_SWITCH;
 }
 /* P6.31: the Auto-save row's lettering, in the language of the disc (en, fr,
  * de, es, it: the DW3_TITLE_LANG_* order). OFF is the Options screen's word. */
@@ -373,6 +375,15 @@ static const RegionWords region_words[5]={REGION_WORDS(en),REGION_WORDS(fr),REGI
 static const Word v_region_us=WORD(opt_val_rg_us),v_region_eu=WORD(opt_val_rg_eu);
 static const RegionWords *region_lang(void) {
     return &region_words[options_lang>=DW3_TITLE_LANG_EN&&options_lang<=DW3_TITLE_LANG_IT?options_lang:0];
+}
+/* P6.36: the Turbo music row (Sound group): label and message line in the
+ * language of the disc; the values are the Options screen's 1x and Fast. */
+#define TMUSIC_WORDS(l) {WORD(opt_row_tm_##l),WORD(opt_desc_tm_##l)}
+typedef struct TmusicWords { Word row,desc; } TmusicWords;
+static const TmusicWords tmusic_words[5]={TMUSIC_WORDS(en),TMUSIC_WORDS(fr),TMUSIC_WORDS(de),
+                                          TMUSIC_WORDS(es),TMUSIC_WORDS(it)};
+static const TmusicWords *tmusic_lang(void) {
+    return &tmusic_words[options_lang>=DW3_TITLE_LANG_EN&&options_lang<=DW3_TITLE_LANG_IT?options_lang:0];
 }
 /* P9.7: the message line of a row that is locked in game, in the language of
  * the disc (en, fr, de, es, it: the DW3_TITLE_LANG_* order). */
@@ -685,6 +696,7 @@ static const Word v_steps[]={WORD(opt_n1),WORD(opt_n2),WORD(opt_n3),WORD(opt_n4)
                              WORD(opt_n6),WORD(opt_n7),WORD(opt_n8),WORD(opt_n9),WORD(opt_n10)};
 /* P6.18: Encounter rate, indexed by the stored value (0 1x, 1 0.5x, 2 OFF,
  * 3 1.5x, 4 2x; the screen steps them OFF, 0.5x, 1x, 1.5x, 2x). */
+static const Word v_1x=WORD(opt_1x);
 static const Word v_encounter[]={WORD(opt_1x),WORD(opt_05x),WORD(opt_off),WORD(opt_15x),WORD(opt_2x)};
 /* The word of registry row `reg` holding `v`; *dim = 1 for an OFF-like value. */
 static const Word *list_value(const ListWords *t,int reg,int v,int *dim) {
@@ -717,6 +729,9 @@ static const Word *list_value(const ListWords *t,int reg,int v,int *dim) {
     case ROW_LAYOUT:
         if(v>2)v=2;
         return v==2?&custom_lang()->custom:v?&layout_lang()->nintendo:&layout_lang()->ps;
+    case ROW_TURBO_MUSIC:
+        if(v>1)v=1;
+        return v?&t->value[1]:&v_1x;
     case ROW_CUSTOMIZE:case ROW_RESET:
         return NULL; /* an action: no value */
     case ROW_REGION:
@@ -792,6 +807,7 @@ static void options_list_screen(int group,int scroll) {
               :row_kind(reg)==ROW_RESET?&custom_lang()->reset
               :row_kind(reg)==ROW_AUTOSAVE?&autosave_lang()->row
               :row_kind(reg)==ROW_LAYOUT?&layout_lang()->row
+              :row_kind(reg)==ROW_TURBO_MUSIC?&tmusic_lang()->row
               :row_kind(reg)==ROW_REGION?&region_lang()->row:&t->row[reg];
 #ifdef DW3_CHEATS
         if(cht){
@@ -857,6 +873,7 @@ static void options_list_screen(int group,int scroll) {
               :row_kind(reg)==ROW_RESET?&custom_lang()->resetdesc
               :row_kind(reg)==ROW_AUTOSAVE?&autosave_lang()->desc
               :row_kind(reg)==ROW_LAYOUT?&layout_lang()->desc
+              :row_kind(reg)==ROW_TURBO_MUSIC?&tmusic_lang()->desc
               :row_kind(reg)==ROW_REGION?&region_lang()->desc:&t->desc[reg];
         }
         wordsh(d,L_DESC_X+28,L_DESC_Y+14,0,255,255,255);

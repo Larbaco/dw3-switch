@@ -198,7 +198,7 @@ for _v in ("us", "eu"):
 # P6.17: Music volume 10 -> 7 and SFX volume 10 -> 3 in phase 1 (Left on the
 # volume rows), read back by phase 2 from the same config dir.
 _VOL_P1 = (r"dw3-options: no \S*port_options\.cfg; defaults",
-           r"dw3-port-options: group open sound \(2 row\(s\), title\)",
+           r"dw3-port-options: group open sound \(3 row\(s\), title\)",
            r"dw3-options: saved \S*port_options\.cfg \(widescreen=1 fast_forward=2 restart_hotkey=0 "
            r"music_volume=7 sfx_volume=3 encounter_rate=0 text_speed=0 battle_menu_memory=0\)")
 _VOL_P2 = (r"dw3-options: \S*port_options\.cfg \(widescreen=1 fast_forward=2 restart_hotkey=0 "
@@ -413,6 +413,39 @@ for _v, _ids in (("us", (0x158, 0x159, 0x1FA, 0x1C2)), ("eu", (0x166, 0x167, 0x2
                                   r"SEP loop end -> loop start \(count infinite\) seq=2 tr=0"),),
                   forbid_log=((0, r"STFGTREP return(?s:.*)SEP end-of-track seq=2 tr=0"),),
                   note="won battle: the win jingle (track 30 = entry (1, 14)) plays in the report and the field music loops again after it"))
+
+# P6.36 music at normal speed while turbo is on (docs/P6.36_TURBO_MUSIC.md,
+# patch 0191, port/audio/turbo_music.c). The runner pins Turbo music = Fast for
+# every turbo scenario above (their recordings were made with the music ticking
+# once per game frame); these set it to 1x with the frame clock (a replay never
+# uses the wall clock) and judge by the `dw3-audio: music tick` lines, since a
+# replay cannot listen. `rate=` is the ticks per 60 (EU: 50) game frames on the
+# frame clock: 15 (EU 12.5) at 4x, 40 (EU 33.3) at the menu's 1.5x.
+_TM_ENV = (("DW3_TURBO_MUSIC", "0"), ("DW3_TURBO_MUSIC_CLOCK", "frames"))
+_TM_WIN = r"music tick window frames=60 ticks=15 "
+for _v in ("us", "eu"):
+    _add(Scenario(f"{_v}-turbo-music-field", _v, "full", turbo=4, timeout=300, log_only=True,
+                  env=_ENC_ENV + _TM_ENV, cfg=(("encounter_rate", "2"),),
+                  expect_log=((0, r"music tick source=frames rate=(?:15|12\.5)/s game_rate=4x(?s:.*)"
+                                  + _TM_WIN + r"(?s:.*)" + _TM_WIN + r"(?s:.*)" + _TM_WIN),),
+                  forbid_log=((0, r"music tick window frames=60 ticks=(?!1[456] )\d+ "),
+                              (0, r"SEP end-of-track")),
+                  note="turbo 4, Turbo music 1x: 15 ticks per 60 game frames (a quarter of today's 60), the field music never ends (P6.36)"))
+    _add(Scenario(f"{_v}-turbo-music-battle", _v, "full", turbo=4, timeout=600, log_only=True,
+                  phases=(f"{_v}-victory-music",),
+                  env=_VICTORY_ENV + _TM_ENV,
+                  expect_log=((0, r"music tick source=frames rate=(?:15|12\.5)/s game_rate=4x(?s:.*)"
+                                  r"FIGHTSTG_start(?s:.*)"
+                                  r"music tick source=frames rate=(?:40|33\.3)/s game_rate=1\.5x(?s:.*)"
+                                  r"SEP NRPN VAB attr \d+=\d+ \(msb 16\) ignored seq=1 tr=14(?s:.*)"
+                                  r"WFIGHTMN_endBattle result=1(?s:.*)"
+                                  r"STFGTREP_start(?s:.*)"
+                                  r"STFGTREP return(?s:.*)"
+                                  r"SEP loop count 127 seq=2 tr=0"),
+                              (0, _TM_WIN)),
+                  forbid_log=((0, r"STFGTREP return(?s:.*)SEP end-of-track seq=2 tr=0"),
+                              (0, r"music tick window frames=60 ticks=(?!1[456] |39 |40 |41 )\d+ ")),
+                  note="turbo 4 battle won with Cross, Turbo music 1x: 15 ticks per 60 frames (40 in the battle menu), the win jingle (seq=1 tr=14) starts at the knock-out, the field music follows the report (P6.36)"))
 
 # Two consecutive battles, a technique used in each (patch 0061): every battle
 # is a mode change (FIGHTSTG <- report/field), so WFIGHTMN is restored per
@@ -1533,7 +1566,7 @@ for _v, _title in (("us", 0x1C1), ("eu", 0x1D0)):
 _FO_P1 = (r"dw3-port-options: open in game(?s:.*)"
           r"dw3-port-options: group open display \(1 row\(s\), in game\)(?s:.*)"
           r"dw3-port-options: Widescreen is locked in game \(change it at the title\)(?s:.*)"
-          r"dw3-port-options: group open sound \(2 row\(s\), in game\)(?s:.*)"
+          r"dw3-port-options: group open sound \(3 row\(s\), in game\)(?s:.*)"
           r"dw3-port-options: music volume 7(?s:.*)"
           r"dw3-port-options: group open gameplay \(5 row\(s\), in game\)(?s:.*)"
           r"dw3-port-options: encounter rate off(?s:.*)"
@@ -1592,6 +1625,18 @@ for _v in ("us", "eu"):
                                   r"STFGTREP_start"),),
                   forbid_log=((0, r"dw3-turbo: menu 1\.5x(?:(?!dw3-turbo: menu off)(?s:.))*?dw3-turbo: speed"),),
                   note="turbo on: the battle command menu and technique list run at 1.5x, the battle itself at 4x (P6.4)"))
+# P6.36: the same recording with Turbo music on 1x (see the field and battle scenarios
+# above): the music cadence follows the game rate, 1x in real time.
+for _v in ("us", "eu"):
+    _add(Scenario(f"{_v}-turbo-music-menu", _v, "full", turbo=4, timeout=600, log_only=True,
+                  phases=(f"{_v}-turbo-menu",),
+                  env=_RT_ENV + _TM_ENV,
+                  expect_log=((0, r"music tick source=frames rate=(?:15|12\.5)/s game_rate=4x(?s:.*)"
+                                  r"music tick source=frames rate=(?:40|33\.3)/s game_rate=1\.5x(?s:.*)"
+                                  r"dw3-turbo: menu 1\.5x \(speed 4x\)(?s:.*)"
+                                  r"dw3-turbo: menu off \(frames=\d+\)(?s:.*)"
+                                  r"music tick source=frames rate=(?:15|12\.5)/s game_rate=4x"),),
+                  note="turbo 4, field menu at 1.5x: the music cadence follows the game rate (ticks per 60 frames 15 -> 40 -> 15), i.e. 1x in real time (P6.36)"))
 # The same on the Switch build in Ryubing (tier "nx": only with --only; the NRO
 # has no environment, so the replay NRO is built with DW3_NX_TEST_ENV holding
 # _RT_ENV, see docs/P6.15_REPLAY_TESTS.md). P9.7 after #268's release of the
@@ -1645,7 +1690,7 @@ for _v, _ids in (("us", (0x159, 0x1FA, 0x1C2, 0x158)), ("eu", (0x167, 0x208, 0x1
                                   r"dw3-port-options: open in game \(battle command menu; (?s:.*)"
                                   r"dw3-battle-options: held, battle state: " + _BO_STATE +
                                   r"(?s:.*)dw3-port-options: Widescreen is locked in game \(change it at the title\)(?s:.*)"
-                                  r"dw3-port-options: group open sound \(2 row\(s\), in game\)(?s:.*)"
+                                  r"dw3-port-options: group open sound \(3 row\(s\), in game\)(?s:.*)"
                                   r"dw3-port-options: music volume 7(?s:.*)"
                                   r"dw3-port-options: close in game \(back to the battle\)(?s:.*)"
                                   r"dw3-battle-options: resume after 300 held frame\(s\); the vsync clock ran on [1-9]\d* during the hold and is put back\n"
@@ -1671,7 +1716,7 @@ for _v, _ids in (("us", (0x159, 0x1FA, 0x1C2, 0x158)), ("eu", (0x167, 0x208, 0x1
                                   r"dw3-port-options: open in game \(battle command menu; (?s:.*)"
                                   r"dw3-battle-options: held, battle state: " + _BO_STATE +
                                   r"(?s:.*)dw3-port-options: Widescreen is locked in game \(change it at the title\)(?s:.*)"
-                                  r"dw3-port-options: group open sound \(2 row\(s\), in game\)(?s:.*)"
+                                  r"dw3-port-options: group open sound \(3 row\(s\), in game\)(?s:.*)"
                                   r"dw3-port-options: music volume 7(?s:.*)"
                                   r"dw3-port-options: close in game \(back to the battle\)(?s:.*)"
                                   r"dw3-battle-options: resume after 300 held frame\(s\); the vsync clock ran on [1-9]\d* during the hold and is put back(?s:.*)"

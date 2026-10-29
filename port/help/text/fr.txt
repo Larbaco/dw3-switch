@@ -78,7 +78,7 @@ help.turbo.h.1 = Où cela marche
 help.turbo.li.1 = Pleine vitesse : marche, textes, scènes, transitions et animations de combat sur la carte et en combat, ainsi que le rapport de combat.
 help.turbo.li.2 = Environ 1,5x quand le turbo est actif : les menus ouverts sur la carte ou en combat, comme la liste du menu de la carte, Options et le menu de commandes du combat.
 help.turbo.li.3 = Toujours vitesse normale : l'écran titre, les vidéos, les écrans de carte mémoire, le jeu de cartes, les écrans Statut, Objets et Carte du menu de la carte, et les boutiques.
-help.turbo.note.1 = La musique et les effets sonores sont accélérés aussi. La vitesse réelle dépend de ce que la console parvient à suivre.
+help.turbo.note.1 = En turbo, la musique garde sa vitesse normale (Options, Son, Musique turbo : 1x, par défaut). Avec Rapide, la musique s'accélère avec le jeu. Les effets sonores déclenchés par l'action arrivent toujours plus vite. La vitesse réelle dépend de ce que la console parvient à suivre.
 
 # -------------------------------------------------------------- options
 help.options.title = Les Options
@@ -88,7 +88,7 @@ help.options.p.2 = Ouvrez-les depuis le menu de l'écran titre, depuis la ligne 
 help.options.h.1 = Affichage
 help.options.li.1 = Écran large : ON ou OFF, ON par défaut. Environ 16:9 sur la carte, en combat et dans plusieurs menus. L'écran titre et les vidéos restent en 4:3.
 help.options.h.2 = Son
-help.options.li.2 = Volume musique et Volume effets : OFF, ou de 1 à 10, 10 par défaut, ce qui correspond au mixage d'origine. Gauche et Droite changent la valeur ; {btn:cross} l'augmente et repasse de 10 à 0. L'écran joue les sons de menu du jeu pour que vous entendiez le changement.
+help.options.li.2 = Volume musique et Volume effets : OFF, ou de 1 à 10, 10 par défaut, ce qui correspond au mixage d'origine. Gauche et Droite changent la valeur ; {btn:cross} l'augmente et repasse de 10 à 0. L'écran joue les sons de menu du jeu pour que vous entendiez le changement. Musique turbo : 1x ou Rapide, 1x par défaut. Avec 1x, la musique garde sa vitesse normale pendant l'avance rapide ; Rapide l'accélère avec le jeu.
 help.options.h.3 = Jouabilité
 help.options.li.3 = Avance rapide : 2x, 3x, 4x ou OFF, 2x par défaut. La vitesse que {btn:r3} active.
 help.options.li.4 = Raccourci de reset : ON ou OFF, OFF par défaut. Active la combinaison de redémarrage.
