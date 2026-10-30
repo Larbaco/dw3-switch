@@ -3083,6 +3083,59 @@ def walkthrough_field(version, current, ahead_down):
     return r
 
 
+# P6.35 slice 4: the side content. (tag, downs from the current step to the first optional row).
+# Shown: the walkthrough opens at the first value of a chapter that has an optional block (ch04 at
+# 0xF, ch08 at 0x1E, and on EU ch12 at 0x2D), the steps list shows the block and its two rows are
+# read. Hidden: one value before the chapter (0xE, 0x1D, EU 0x2B) the chapter list marks the next
+# chapter as not reached and its steps list has no optional row.
+WT_SIDE_SHOWN = (("pf", 3), ("p1e", 7), ("p2d", 3))
+WT_SIDE_HIDDEN = ("pe", "p1d", "p2b")
+
+
+def walkthrough_side_shown(version, tag, downs):
+    """In game, the chapter's first value: Back to the steps (the block is listed), the first optional row
+    (page, question, answer), then the second (page), and out."""
+    r = Rec(f"{version.upper()}: P6.35 walkthrough optional rows listed at {tag} (env in manifest)")
+    f = _field_options_open(r, shots=False, last="options-list")
+    f = _group(r, f, GRP_DISPLAY, GRP_WALK)
+    r.shot(f + 40, "cur-page")
+    f = _keys(r, f + 60, TRIANGLE)           # the chapter's steps, the cursor on the current step
+    r.shot(f + 20, "steps-with-optional")
+    f = _keys(r, f + 40, *([DOWN] * downs), CROSS)   # the first optional row
+    r.shot(f + 20, "side1-page")
+    f = _keys(r, f + 40, CROSS)              # the question, cursor on No
+    r.shot(f + 20, "side1-ask")
+    f = _keys(r, f + 40, DOWN, CROSS)        # the answer
+    r.shot(f + 20, "side1-answer")
+    f = _keys(r, f + 40, TRIANGLE, DOWN, CROSS)    # the steps, the second optional row
+    r.shot(f + 20, "side2-page")
+    f = _keys(r, f + 40, TRIANGLE, TRIANGLE, TRIANGLE)   # steps, chapters, out of the walkthrough
+    r.shot(f + 20, "options-after")
+    r.press(f + 60, TRIANGLE)                # close Options: back on the field menu
+    r.end(f + 140)
+    return r
+
+
+def walkthrough_side_hidden(version, tag):
+    """In game, one value before the chapter: Back twice (the chapter list), Down to the next chapter (not
+    reached yet), its steps: no optional row. Then out."""
+    r = Rec(f"{version.upper()}: P6.35 walkthrough optional rows hidden before their chapter, {tag} (env in manifest)")
+    f = _field_options_open(r, shots=False, last="options-list")
+    f = _group(r, f, GRP_DISPLAY, GRP_WALK)
+    r.shot(f + 40, "cur-page")
+    f = _keys(r, f + 60, TRIANGLE, TRIANGLE)     # the steps, the chapter list
+    r.shot(f + 20, "wt-chapters")
+    f = _keys(r, f + 40, DOWN)                   # the next chapter: not reached yet
+    r.shot(f + 20, "chapter-ahead")
+    f = _keys(r, f + 40, CROSS)                  # its steps: titles hidden, no optional row
+    r.shot(f + 20, "ahead-steps")
+    f = _keys(r, f + 40, TRIANGLE, TRIANGLE)     # chapters, out of the walkthrough
+    r.shot(f + 20, "options-after")
+    r.press(f + 60, TRIANGLE)                    # close Options: back on the field menu
+    r.end(f + 140)
+    return r
+
+
 def walkthrough_title(version, lang_idx=0):
     """P6.35 phase 2: title -> Options -> Walkthrough. No game state is read
     there: the step list opens in browse mode, the first step is the only one
@@ -3404,6 +3457,14 @@ def main(out):
         for _tag, _cur, _ahead in WT_FIELD_POINTS:
             (out / f"{v}-walkthrough-screen-{_tag}.rec").write_text(
                 walkthrough_field(v, "gate" if (v == "us" and _tag == "p2d") else _cur, _ahead).text(True))
+        for _tag, _downs in WT_SIDE_SHOWN:
+            if _tag != "p2d" or v == "eu":       # the extra chapter's rows exist on the EU disc only
+                (out / f"{v}-walkthrough-screen-side-{_tag}.rec").write_text(
+                    walkthrough_side_shown(v, _tag, _downs).text(True))
+        for _tag in WT_SIDE_HIDDEN:
+            if _tag != "p2b" or v == "eu":
+                (out / f"{v}-walkthrough-screen-side-{_tag}.rec").write_text(
+                    walkthrough_side_hidden(v, _tag).text(True))
         (out / f"{v}-field-options-cheats.rec").write_text(
             field_options_cheats(v).text(True))
         (out / f"{v}-field-options-release.rec").write_text(

@@ -394,8 +394,8 @@ WT_CHAPTER_POINTS = (
     ("pa", "0x240", 10, 0, 41, "ch02", "ch02.s10", "progress"),
     ("pb", "0x204", 11, 0, 19, "ch03", "ch03.s01", "progress"),
     ("pc", "0x20B", 12, 0, 19, "ch03", "ch03.s02", "progress"),
-    ("pe", "0x236", 14, 0, 37, "ch03", "ch03.s05", "progress"),   # the Reliability Spot (WSTAG460); it had no overlay table entry until patch 0197
-    ("pf", "0x260", 15, 0, 33, "ch04", "ch04.s01", "progress"),
+    ("pe", "0x207", 14, 0, 19, "ch03", "ch03.s05", "progress"),   # the Reliability Spot (WSTAG460); it had no overlay table entry until patch 0197
+    ("pf", "0x207", 15, 0, 19, "ch04", "ch04.s01", "progress"),
     ("p10", "0x25C", 16, 0, 38, "ch04", "ch04.s02", "progress"),
     ("p11", "0x252", 17, 0, 7, "ch04", "ch04.s03", "progress"),
     ("p12", "0x254", 18, 0, 7, "ch05", "ch05.s01", "progress"),
@@ -406,8 +406,8 @@ WT_CHAPTER_POINTS = (
     ("p1a", "0x246", 26, 0, 35, "ch06", "ch06.s03", "progress"),
     ("p1b", "0x29C", 27, 1, 14, "ch07", "ch07.s01", "progress"),
     ("p1c", "0x2AD", 28, 1, 41, "ch07", "ch07.s02", "progress"),
-    ("p1d", "0x2AE", 29, 1, 41, "ch07", "ch07.s03", "progress"),
-    ("p1e", "0x26E", 30, 0, 5, "ch08", "ch08.s01", "progress"),
+    ("p1d", "0x207", 29, 0, 19, "ch07", "ch07.s03", "progress"),
+    ("p1e", "0x207", 30, 0, 19, "ch08", "ch08.s01", "progress"),
     ("p20", "0x26D", 32, 0, 8, "ch08", "ch08.s03", "progress+flag"),
     ("p21", "0x218", 33, 0, 19, "ch08", "ch08.s05", "progress+flag"),
     ("p22", "0x2C7", 34, 1, 33, "ch09", "ch09.s01", "progress"),
@@ -2616,6 +2616,69 @@ _add(Scenario("us-walkthrough-screen-p2d", "us", "full", turbo=4, timeout=300,
                                        (0, r"browse mode"),),
               note="P6.35 slice 3: region gating on screen, progress 0x2D on US is past its table: the "
                    "chapter list (11 chapters, no extra chapter) with the 'not recognised' notice"))
+
+# P6.35 slice 4 (docs/P6.35_WALKTHROUGH.md "As built, slice 4"): the optional rows. (tag, start
+# mode, progress, half, area, chapter, current step, rule, optional rows). Shown = the chapter's first
+# value: the steps list has the block (`optional rows listed 2 of 2`) and its rows are read. Hidden =
+# one value before the chapter: the next chapter is `Not reached yet`, its steps list has no optional
+# row (`listed 0 of 2`) and no SIDE page is ever opened. ch04 and ch08 are on both discs; ch12 (the
+# extra chapter) on EU only: US at progress 0x2D is the existing `us-walkthrough-screen-p2d`. The
+# first two chapters boot in the Login Room (0x207): the stages of the chapters' own steps (the
+# Underground Cave, the Battle Gate) write the next progress value as soon as they start.
+_WT_SIDE_SHOWN = (
+    ("pf", "0x207", 15, 0, 19, "ch04", "ch04.s01", "progress", ("ch04.x01", "ch04.x02"), "both"),
+    ("p1e", "0x207", 30, 0, 19, "ch08", "ch08.s01", "progress", ("ch08.x01", "ch08.x02"), "both"),
+    ("p2d", "0x29C", 45, 1, 14, "ch12", "ch12.s01", r"progress\+flag", ("ch12.x01", "ch12.x02"), "eu"),
+)
+# (tag, start mode, progress, half, area, chapter now, step now, the chapter ahead, its main steps)
+_WT_SIDE_HIDDEN = (
+    ("pe", "0x207", 14, 0, 19, "ch03", "ch03.s05", "ch04", 3, "both"),
+    ("p1d", "0x207", 29, 0, 19, "ch07", "ch07.s03", "ch08", 7, "both"),
+    ("p2b", "0x2DF", 43, -1, -1, "ch11", "ch11.s01", "ch12", 3, "eu"),
+)
+for _v, _reg in (("us", "US"), ("eu", "EU")):
+    _open = (r"dw3-port-options: open in game(?s:.*)dw3-walkthrough: open \(from field, region " + _reg +
+             rf", platform pc, language en, {_WT_COUNT[_reg][0]} chapters, {_WT_COUNT[_reg][1]} steps\)(?s:.*)")
+    for _tag, _mode, _prog, _half, _area, _ch, _step, _rule, _ids, _who in _WT_SIDE_SHOWN:
+        if _who == "eu" and _v == "us":
+            continue
+        _add(Scenario(f"{_v}-walkthrough-screen-side-{_tag}", _v, "full", turbo=4, timeout=300,
+                      env=(("DW3_START_MODE", _mode), ("DW3_PROGRESS", str(_prog))) + _RT_BATTLE_ENV,
+                      expect_log=((0, _open +
+                                      rf"dw3-walkthrough: progress {_prog} half {_half} area {_area} -> chapter {_ch} "
+                                      rf"step {re.escape(_step)} \(rule {_rule}\) \[open mode {_mode.lower()}\](?s:.*)"
+                                      rf"dw3-walkthrough: chapter {_ch} optional rows listed 2 of 2(?s:.*)"
+                                      rf"dw3-walkthrough: page {re.escape(_ids[0])} \(kind SIDE, from list, reached y, current n, \d+ lines(?s:.*)"
+                                      rf"dw3-walkthrough: spoiler {re.escape(_ids[0])} closed \(answer available\)(?s:.*)"
+                                      rf"dw3-walkthrough: spoiler {re.escape(_ids[0])} asked(?s:.*)"
+                                      rf"dw3-walkthrough: spoiler {re.escape(_ids[0])} shown(?s:.*)"
+                                      rf"dw3-walkthrough: page {re.escape(_ids[0])} closed after \d+ ms \(spoiler shown y\)(?s:.*)"
+                                      rf"dw3-walkthrough: page {re.escape(_ids[1])} \(kind SIDE, from list, reached y, current n, \d+ lines(?s:.*)"
+                                      rf"dw3-walkthrough: page {re.escape(_ids[1])} closed after \d+ ms \(spoiler shown n\)(?s:.*)"
+                                      r"dw3-walkthrough: closed after \d+ ms \(pages opened 3, spoilers shown 1\)(?s:.*)"
+                                      + _WT_CLOSE + r"(?s:.*)dw3-port-options: close in game \(back to the field menu\)"),),
+                      forbid_log=_WT_FORBID + ((0, r"widescreen (enabled|disabled)"),
+                                               (0, r"step not recognised|browse mode"),
+                                               (0, r"chapter ch(04|08|12) optional rows listed [01] of")),
+                      note=f"P6.35 slice 4: at progress {_prog} ({_ch} starts) the steps list shows the chapter's "
+                           f"optional block; both rows open as SIDE pages with the answer behind the two actions"))
+    for _tag, _mode, _prog, _half, _area, _ch, _step, _ahead, _nmain, _who in _WT_SIDE_HIDDEN:
+        if _who == "eu" and _v == "us":
+            continue
+        _add(Scenario(f"{_v}-walkthrough-screen-side-{_tag}", _v, "full", turbo=4, timeout=300,
+                      env=(("DW3_START_MODE", _mode), ("DW3_PROGRESS", str(_prog))) + _RT_BATTLE_ENV,
+                      expect_log=((0, _open +
+                                      rf"dw3-walkthrough: progress {_prog} half {_half} area {_area} -> chapter {_ch} "
+                                      rf"step {re.escape(_step)} \(rule progress\) \[open mode {_mode.lower()}\](?s:.*)"
+                                      rf"dw3-walkthrough: chapter {_ahead} optional rows listed 0 of 2(?s:.*)"
+                                      rf"dw3-walkthrough: chapter {_ahead} opened \(reached n, current n, {_nmain} steps\)(?s:.*)"
+                                      r"dw3-walkthrough: closed after \d+ ms \(pages opened 1, spoilers shown 0\)(?s:.*)"
+                                      + _WT_CLOSE + r"(?s:.*)dw3-port-options: close in game \(back to the field menu\)"),),
+                      forbid_log=_WT_FORBID + ((0, r"widescreen (enabled|disabled)"),
+                                               (0, r"step not recognised|browse mode"),
+                                               (0, r"kind SIDE"), (0, r"chapter ch(04|08|12) optional rows listed [12] of")),
+                      note=f"P6.35 slice 4: one value before {_ahead} (progress {_prog}) the chapter is not reached yet, "
+                           f"its steps list has no optional row and no SIDE page is opened"))
 
 # The Quit game plaque and the window in the other four EU languages (the
 # lettering is authored, docs/PORT_OPTIONS.md "Quit and return to title").
