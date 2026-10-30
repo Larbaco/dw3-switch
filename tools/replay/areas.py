@@ -119,6 +119,12 @@ RULES: list[tuple[str, object]] = [
     (r"^port/patches/\d+-PORT_HOST-p620-cheats", ("*cheat*",)),
     (r"^port/patches/\d+-PORT_HOST-p631-", ("*autosave*", "*title-continue*")),
     (r"^port/patches/\d+-PORT_HOST-p632-map", ("*map*",)),
+    # P6.32 phase 6: the field hotkey's poll sits in the field task's main state (every field
+    # scenario runs it, and does nothing unless the key goes down) and shares the function with
+    # the Start menu, the cheats and the autosave hooks
+    (r"^port/patches/\d+-PORT_HOST-p632-field", _STAGES + ("*map*", "*turbo*", "*encounter*", "*autosave*",
+                                                          "*cheat*", "*menu-screens*", "*items*", "*options*",
+                                                          "*restart*", "*walkthrough*")),
     (r"^port/patches/\d+-PORT_HOST-p63[34]-", ("*items*", "*menu-screens*")),
     (r"^port/patches/\d+-PORT_HOST-p77-", ("*p77*",)),
     (r"^port/patches/\d+-PORT_HOST-p79-", ("*p79*",)),

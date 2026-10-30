@@ -735,6 +735,15 @@ action, Options > Controls says which console button makes that PS button.
 | `map_view_centre` | centre on the current area | `select` | same |
 | `map_view_scaler_prev` | previous scaler | `l2` | same |
 | `map_view_scaler_next` | next scaler | `r2` | same |
+| `map_view_field_open` | **phase 6:** opens the view straight from the walking field (read in the field, not in the view) | `select` | `select square l1 r1 l2 r2 l3` (**not** `cross`: the field's talk / confirm) |
+
+The seventh key, `map_view_field_open` (phase 6, patch `0148`), is read in the walking field
+and not in the view, so it is **not** in the "six different buttons" rule: its default, `select`,
+is also the view's "centre" button and that is fine (different place). It is refused instead when
+it names a button the field keeps (`cross circle triangle r3 start` and the d-pad): `BINDING
+PROBLEM (bad field key, at its default)` and Select stays. It does something only with the option
+ON and widescreen ON, otherwise the log says why (`dw3-map: field hotkey ignored: ...`).
+[HOTKEYS](HOTKEYS.md#field-hotkey-p632-phase-6), [P6.32 section 18](P6.32_MAP_ZOOM.md#18-phase-6-field-hotkey-as-built-2026-10-30).
 
 Not bindable, because the view uses them itself: `triangle` (the game's cancel: it closes the
 view and the Map screen), `circle` (the bars), `r3` (the fast-forward key, ignored in the view),

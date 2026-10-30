@@ -1,0 +1,269 @@
+Upstream-bound: no
+Subject: [PORT_HOST] P6.32 phase 6: the full-screen map straight from the walking field (field hotkey)
+
+P6.32 phase 6 (docs/P6.32_MAP_ZOOM.md section 18). A key in the walking field, the seventh
+binding of the view's table (map_view_field_open, a PS button after the P6.12 / P9.8 map,
+default Select), opens the full-screen map without the field menu. The field must stand
+still while it is open and come back exactly as it was, so this does not take the status
+mode's route (a mode change reloads the stage and rerolls its state): the field is held in
+place.
+
+- src/field/field_mode/field.c: in the field task's main state, next to the Start check,
+  portFieldMap hands the logical pad and a probe of the field (menuOpen, busy, acting,
+  progress, battleSteps, the player's place, the children) to the port. When the port says
+  yes (the key went down, map_screen is on, widescreen is on, no other shoulder held, the
+  field idle) the field's children are paused with the engine's own task pause (Task.paused:
+  a task in TASK_RUN that is paused skips its update and its children, so no actor, event,
+  tile stream, script or encounter step runs; the vsync callback and the sequencer go on, so
+  the music plays), the Map screen's root is put in children->menu, the slot the Start menu
+  uses (the field task already waits in substate 1 until it is NULL and then clears
+  menuOpen and busy), and the field task goes to that substate. When the slot is NULL again
+  portFieldMapResume unpauses the children and the port gives back what the hold ran on: the
+  clocks, the roll sequence, the field's VRAM (the Map screen's images overwrite pages the
+  field uses) and the layer scroll.
+- src/menus/field_menu/map_screen.c: STSTATUS_createFieldMapRoot, a small root task that
+  loads only what the Map screen needs (the sprite sheets and images of the game half, and
+  the status sprites the name box frame comes from, to the VRAM places the status mode uses)
+  and creates the game's own Map screen, so the cursor, markers, the name box and its text
+  are the game's, in whatever language the disc has; the status mode's main task is not used
+  (it loads the menu's strings and would show the field menu again at the end). The Map
+  screen draws into the field's layer (FIELD_LAYER_MAP) while the session runs, because
+  SCREEN_LAYER does not exist in the field. The view opens on that screen by itself; when it
+  closes mapViewFrame ends the screen with it, so Triangle returns to the field, not to a
+  Map screen.
+
+With the key unbound by an absent option or with map_screen off, widescreen off, a shoulder
+button held, the field busy or progress below 4, the poll logs why and nothing else runs:
+the field is the one of patch 0140 and the map of 0146 / 0147.
+
+--- a/src/field/field_mode/field.c
++++ b/src/field/field_mode/field.c
+@@ -12,6 +12,7 @@
+ #include <stdio.h>
+ #include "overlay_host.h"
+ #include "port_autosave.h"
++#include "port_map_view.h"
+ char *getenv(const char *name);
+ long strtol(const char *nptr, char **endptr, int base);
+ #ifdef DW3_CHEATS
+@@ -607,6 +608,95 @@
+ }
+ #endif
+ 
++#if PORT_HOST
++/* Patch 0148 (P6.32 phase 6): the full-screen map straight from the walking field. The key
++   (map_view_field_open, default Select, a PS button after the P6.12 / P9.8 map) goes down in
++   the field's main state, next to the Start check. The field is held with the engine's own
++   task pause (Task.paused: a task in TASK_RUN that is paused skips its update and its
++   children), the game's Map screen is created in the field menu's slot (children->menu: the
++   field task waits in substate 1 until it is NULL, as for the Start menu) under a small root
++   (STSTATUS_createFieldMapRoot), and the view opens on it by itself. When the screen goes
++   the field task is back in substate 1: the children run again and the port gives back the
++   clocks, the roll sequence and the VRAM the Map screen used. Policy and logs:
++   port/map_view/map_view.c. Nothing happens unless the key goes down (the poll reads the pad
++   and a probe of the field's children and returns). */
++Task *STSTATUS_createFieldMapRoot(void);
++
++static void portFieldMapProbe(FieldTask *task, FieldChildren *children, Dw3FieldMapProbe *probe) {
++    Task **kids = (Task **)task->children;
++    s32 i;
++
++    probe->menu_open = FIELDSTG_state.menuOpen;
++    probe->busy = FIELDSTG_state.busy;
++    probe->acting = FIELDSTG_state.acting;
++    probe->progress = GAME.progress;
++    probe->battle_steps = GAME.battleSteps;
++    probe->player_x = children->actors[0] != NULL ? children->actors[0]->pos.x : 0;
++    probe->player_y = children->actors[0] != NULL ? children->actors[0]->pos.y : 0;
++    probe->children = 0;
++    probe->held = 0;
++    probe->running = 0;
++    for (i = 0; i < task->childCount; i++) {
++        if (kids[i] != NULL) {
++            probe->children++;
++            if (kids[i]->paused != 0) {
++                probe->held++;
++            }
++            if (kids[i]->state == TASK_RUN) {
++                probe->running++;
++            }
++        }
++    }
++}
++
++static void portFieldMap(FieldTask *task, FieldChildren *children) {
++    Dw3FieldMapProbe probe;
++    Task **kids = (Task **)task->children;
++    unsigned held = 0;
++    unsigned pressed = 0;
++    s32 i;
++
++    for (i = 0; i < 16; i++) {
++        held |= (unsigned)(PAD_HELD(i) & 1) << i;
++        pressed |= (unsigned)(PAD_PRESSED(i) & 1) << i;
++    }
++    portFieldMapProbe(task, children, &probe);
++    if (!dw3_port_map_view_field_poll(held, pressed, &probe)) {
++        return;
++    }
++    if (!dw3_port_map_view_field_begin(&probe)) {
++        return;
++    }
++    FIELDSTG_state.menuOpen = 1;
++    FIELDSTG_state.busy = 1;
++    for (i = 0; i < task->childCount; i++) {
++        if (kids[i] != NULL) {
++            kids[i]->paused = 1;
++        }
++    }
++    children->menu = (FieldMenu *)STSTATUS_createFieldMapRoot();
++    task->nextSubstate(task);
++}
++
++static void portFieldMapResume(FieldTask *task, FieldChildren *children) {
++    Dw3FieldMapProbe probe;
++    Task **kids = (Task **)task->children;
++    s32 i;
++
++    if (!dw3_port_map_view_field_active()) {
++        return;
++    }
++    for (i = 0; i < task->childCount; i++) {
++        if (kids[i] != NULL) {
++            kids[i]->paused = 0;
++        }
++    }
++    portFieldMapProbe(task, children, &probe);
++    probe.held = probe.running;
++    dw3_port_map_view_field_end(&probe);
++}
++#endif
++
+ static inline void openFieldMenu(FieldTask *task, FieldChildren *children) {
+     if (FIELDSTG_state.menuOpen != 1 && FIELDSTG_state.busy == 0 && FIELDSTG_state.acting == 0) {
+         do {
+@@ -1028,9 +1118,17 @@
+         case 0:
+         default:
+             openFieldMenu(task, children);
++#if PORT_HOST
++            if (task->substate == 0 && children->menu == NULL) {
++                portFieldMap(task, children);
++            }
++#endif
+             break;
+         case 1:
+             if (children->menu == NULL) {
++#if PORT_HOST
++                portFieldMapResume(task, children);
++#endif
+                 FIELDSTG_state.menuOpen = 0;
+                 FIELDSTG_state.busy = 0;
+                 task->setSubstate(task, 0);
+--- a/src/menus/field_menu/map_screen.c
++++ b/src/menus/field_menu/map_screen.c
+@@ -597,6 +597,12 @@
+         screen->scrollY = saved[3];
+         savedFor = 0;
+     }
++    if (!active && dw3_port_map_view_field_closed()) {
++        /* patch 0148: the view was opened from the walking field and has just closed: the
++           Map screen goes with it (its root ends, and the field task resumes the field) */
++        screen->setState(screen, TASK_KILL);
++        return 1;
++    }
+     return active;
+ }
+ #endif
+@@ -660,7 +666,13 @@
+ Task *STSTATUS_createMapScreen(FieldMenuScreen *menu, s32 extra) {
+     StatusMapScreen *screen = createTask(STSTATUS_updateMapScreen, sizeof(StatusMapScreen), sizeof(Task *));
+ 
++#if PORT_HOST
++    /* patch 0148: opened from the walking field, the Map screen draws into the field's layer
++       (SCREEN_LAYER does not exist there) */
++    screen->layer = dw3_port_map_view_field_layer(SCREEN_LAYER);
++#else
+     screen->layer = SCREEN_LAYER;
++#endif
+     screen->depth = 5;
+     screen->menu = menu;
+     screen->gameHalf = STSTATUS_areaFuncs.getGameHalf();
+@@ -682,3 +694,77 @@
+     screen->top = 0x10;
+     return (Task *)screen;
+ }
++
++#if PORT_HOST
++/* Patch 0148 (P6.32 phase 6): the root of a Map screen that opens from the walking field. The
++   status mode's own main task (STSTATUS_updateMenu) loads the menu's strings and shows the
++   field menu again when the screen ends; here only what the Map screen needs is loaded (its
++   sprite sheets and images, and the status sprites the name box frame comes from), the screen
++   is created, and the root ends with it. The images go to the same VRAM places as the
++   status mode puts them (the port gives the field's VRAM back at the close). */
++static void fieldMapRootUpdate(Task *task, Task **children) {
++    TimLoader loader;
++    s32 half;
++
++    switch (task->state) {
++    case TASK_INIT:
++    default:
++        switch (task->substate) {
++        case 0:
++        default:
++            half = STSTATUS_areaFuncs.getGameHalf();
++            task->key1 = half;
++            FILE_CACHE.request(FILE_STATUS_SPRITES);
++            FILE_CACHE.request(FILE_STATUS_SPRITES + 1);
++            FILE_CACHE.request(FILE_STATUS_BG + 2 * half);
++            FILE_CACHE.request(FILE_STATUS_BG + 1 + 2 * half);
++            task->nextSubstate(task);
++            break;
++        case 1:
++            half = task->key1;
++            if (task->counter++ > 600) {
++                /* the files did not come: give the field back rather than hold it for ever */
++                fprintf(stderr, "dw3-map: field hotkey: the Map screen's files did not load in 600 frames; "
++                        "back to the field\n");
++                task->setState(task, TASK_KILL);
++                break;
++            }
++            if (FILE_CACHE.isLoading(FILE_STATUS_SPRITES) != 0 || FILE_CACHE.isLoading(FILE_STATUS_SPRITES + 1) != 0 ||
++                FILE_CACHE.isLoading(FILE_STATUS_BG + 2 * half) != 0 ||
++                FILE_CACHE.isLoading(FILE_STATUS_BG + 1 + 2 * half) != 0) {
++                break;
++            }
++            initTimLoader(&loader);
++            loader.setImagePos(0x280, 0x100);
++            loader.loadArchive(FILE_CACHE.getEntry((FILE_STATUS_SPRITES + 1) << 16));
++            loader.setImagePos(0x380, 0x100);
++            loader.loadArchive(FILE_CACHE.getEntry(((FILE_STATUS_BG + 1 + 2 * half) << 16) + 1));
++            loader.setImagePos(0x300, 0x100);
++            loader.loadArchive(FILE_CACHE.getEntry(((FILE_STATUS_BG + 1 + 2 * half) << 16) + 2));
++            loader.setImagePos(0x280, 0);
++            loader.setClutPos(0x140, 0x100);
++            loader.loadArchive(FILE_CACHE.getEntry((FILE_STATUS_BG + 1 + 2 * half) << 16));
++            children[0] = STSTATUS_createMapScreen(NULL, 0);
++            task->nextState(task);
++            break;
++        }
++        break;
++    case TASK_RUN:
++        if (children[0] == NULL) {
++            task->setState(task, TASK_KILL);
++        } else if (children[0]->state == TASK_INIT && task->counter++ > 600) {
++            fprintf(stderr, "dw3-map: field hotkey: the Map screen did not start in 600 frames; "
++                    "back to the field\n");
++            children[0]->setState(children[0], TASK_KILL);
++        }
++        break;
++    case TASK_DONE:
++    case TASK_KILL:
++        break;
++    }
++}
++
++Task *STSTATUS_createFieldMapRoot(void) {
++    return createTask(fieldMapRootUpdate, sizeof(Task), sizeof(Task *));
++}
++#endif

@@ -342,6 +342,7 @@ add_library(dw3_port_options${_S} OBJECT
   "${CMAKE_CURRENT_SOURCE_DIR}/help/help.c"
   "${CMAKE_CURRENT_SOURCE_DIR}/items_menu/items_menu.c"
   "${CMAKE_CURRENT_SOURCE_DIR}/map_view/map_view.c"
+  "${CMAKE_CURRENT_SOURCE_DIR}/map_view/field_map.c"
   "${CMAKE_CURRENT_SOURCE_DIR}/map_view/map_view_core.c"
   "${CMAKE_CURRENT_SOURCE_DIR}/map_view/map_view_help.c"
   "${CMAKE_CURRENT_SOURCE_DIR}/mods/mod_pack.c"

@@ -60,7 +60,7 @@ read the game's logical buttons, so they follow the map: fast-forward (R3), the
 restart chord (L1 + R1 + Start + Select), Select (Options from the title and in
 a battle), the map view (its open, zoom, centre and scaler buttons are PS buttons named by
 the `map_view_*` keys, Square, L1, R1, Select, L2 and R2 by default; the cancel button
-closes it: B in the Nintendo layout), the Options, Cheats and Yes / No screens (Cross **or** Circle
+closes it: B in the Nintendo layout), its field key (`map_view_field_open`, Select by default), the Options, Cheats and Yes / No screens (Cross **or** Circle
 confirms, Triangle goes back: A or X confirms and B goes back in Nintendo) and
 the EU language select (Cross or Start). The Switch diagnostic chords (Minus +
 L + R debug HUD, Minus + ZL + ZR renderer mode) read the physical buttons and
@@ -144,6 +144,7 @@ acceptance remains tracked separately in [P5.3_FLAT_SAVE.md](P5.3_FLAT_SAVE.md).
 | Return to title from the field menu | Start, then the last row, Cross, Yes | Enter, ..., X | Plus, ..., B | Always there; the same reset as the chord, after a Yes / No question (P6.27) |
 | Quit game from the title menu | Last title row, Cross, Yes | ..., X | ..., B | Always on the native title; flushes the saves, then hbmenu (Switch) or closes the window (PC) (P6.28) |
 | Open the new full-screen map (P6.32) | **`map_view_open`, default Square**, on the game's Map screen | Z | Y (both layouts) | Widescreen on and **Options > Display > Full-screen map ON** (`map_screen=1`; **default off**; P6.32 phase 4 made it a row, it was a file-only key). It opens at **1.5x** on your area with the top and bottom bars hidden (P51); **Circle shows / hides the bars** (the name box stays). In it: **D-pad (or left stick) moves the cursor** like the game's (the view follows it when zoomed; the game's name box shows on a location; the left stick is analog, a half-tilted stick moves it slower, and a d-pad or stick held for more than a second accelerates), **the right stick zooms** (up in, down out, smooth), **`map_view_zoom_out` / `map_view_zoom_in` (default L1 / R1)** zoom in steps (about the cursor, which stays where it is on the picture), **`map_view_centre` (default Select: PC Backspace, Switch Minus)** centres the view on your current area and puts the cursor back on it, **`map_view_scaler_prev` / `_next` (default L2 / R2: ZL / ZR)** change the scaler (Nearest is the default), the cancel button (PS1 Triangle: Switch X, or B with the Nintendo layout; PC S; follows the layout and the custom map; not rebindable here) closes it, the open button does not; R3 does nothing (no turbo, and it does not flip the fast-forward state either). **The six buttons are file-only keys naming PS buttons** ([PORT_OPTIONS](PORT_OPTIONS.md#full-screen-map-row-and-the-map-views-buttons-p632-phase-4)): the P6.12 / P9.8 map is applied first, so a custom map moves the console button that makes each of them, and the log and the bars name it. Free-button table for a future field hotkey: [P6.32 section 7.5](P6.32_MAP_ZOOM.md#75-free-buttons-in-the-field-for-a-future-field-hotkey) |
+| Open the full-screen map straight from the field (P6.32 phase 6) | **`map_view_field_open`, default Select**, in the walking field | Backspace | Minus | The field must be idle (the same moments Start opens the field menu, from story point 4 on), no L1/R1/L2/R2 and no Start held, **Options > Display > Full-screen map ON** and widescreen ON; otherwise the key does nothing and the log says why. The field is **held** while the view is open (no timers, encounter steps, actors, rolls; turbo forced to 1x, R3 does nothing) and comes back exactly as it was; Triangle (the cancel button) closes the view and returns to the field, not to a field menu. File-only key, follows the layout and the custom map; see "Field hotkey" below |
 | Change partner on the equip panel (P6.33) | L2 / R2 | W / E | ZL / ZR | Status, Equipment, while the slot list waits (not inside the item list); previous / next party member, wraps; the slot cursor stays. Needs 2 or more partners. On by default; `items_partner_switch=0` in `port_options.cfg` turns it off. No on-screen help line yet (the panel has no free line in the five EU languages) |
 | Equip list: next bag filter (P6.34 phase 3) | Square | Z | Y | Status, Equipment, inside the item list (after Cross on a slot): this slot, all weapons, all armor and gear, worn by others (wraps); Cross on a worn-by-others row moves that item from its wearer to this Digimon. On by default; `items_bag_view=0` in `port_options.cfg` turns it off. No on-screen hint yet |
 | Use another copy on another Digimon (P6.34 phase 4) | Cross on a Digimon in the Items menu | X | B | Items, a usable item, the partner step ("Choose Digimon"): after a use the screen stays, Up / Down choose another Digimon and Cross uses the next copy; Triangle (Switch X, or B with the Nintendo layout) goes back to the list, and so does the use of the last copy. On by default; `items_use_stays=0` in `port_options.cfg` turns it off |
@@ -206,6 +207,38 @@ layout and map in force: Switch glyphs or cap text on the Switch, the PS word of
 ([P6.32 section 17](P6.32_MAP_ZOOM.md#17-phase-7-glyphs-as-built-2026-10-30)). There is no clash with another entry of this file: each port hotkey above
 is read in another mode or screen than the Map screen, and the Switch diagnostic chords read the
 physical buttons, which the bindings never touch.
+
+## Field hotkey (P6.32 phase 6)
+
+`map_view_field_open` (default Select, file-only, the seventh entry of the map view's binding
+table) opens the full-screen map straight from the walking field. It is read **only in the field**,
+by a poll next to the field's own Start check, so what it can collide with is what the field and
+the port read in that state. Checked against every other hotkey and entry of this file:
+
+| Other use | Where it is read | Button(s) | Conflict with the field key |
+|---|---|---|---|
+| Restart (P6.9) | every mode | L1 + R1 + Start + Select, opt-in | **Guarded**: the key is ignored while any of L1/R1/L2/R2 or Start is held (`field hotkey ignored: a shoulder button is held`), so the chord never opens the map. Pressing Select **first** and the rest after still opens it (the same limit the title's Select shortcut has: "Chord overlap" below); the restart then works from the view (the chord is read by the main loop) |
+| Fast-forward (P6.4) | field, battle, report | R3 | **None, and not bindable** (`r3` is refused for the field key). While the view is open R3 does nothing: the turbo poll ignores it from the key press on and the speed is forced to 1x, so the toggle is not flipped (`dw3-turbo: speed 1x`, then `speed 4x` on return) |
+| Field menu (Start) and its Options row (P9.7 slice 1), Return to title (P6.27) | the field task, substate 0 | Start; inside the menu Up/Down, Cross, Triangle | **None**: Start is not bindable and is checked first (a Start press opens the menu; the field key is polled only when it did not), and the menu's own list does not read Select. The two share the field task's "menu slot", so they cannot be open together |
+| Options in battle (P9.7 slice 2) | the battle's command menu | Select | **None**: another mode. A battle never starts while the view is open (the field is held) |
+| Options from the title | the title's choices | Select | None: another mode |
+| Map view centre (phase 3, `map_view_centre`) | inside the view | Select by default | **Allowed overlap**: different place and different time. In the field Select opens, in the view Select centres; the press that opens does not centre (the view opens several frames later, long after the edge) |
+| Switch diagnostic chords | the Switch host, raw buttons | Minus + L + R (HUD), Minus + ZL + ZR (battle renderer) | Same as restart: shoulders held block the key; Minus first then the shoulders can open the map |
+| Talking, examining, running, the d-pad | the field's actors | Cross, Triangle, d-pad; Circle and Square only inside text windows | **None**: Cross, Circle, Triangle and the d-pad are not bindable for the key; Square (a bindable value) is free while walking, and a text window that waits for Square or Circle makes the field *not idle*, so the key is ignored then (`the field is not idle (menu_open=0 busy=1 ...)`) |
+
+The set of values the key accepts is `select square l1 r1 l2 r2 l3`; anything else (`cross`,
+`circle`, `triangle`, `r3`, `start`, a direction, a typo) is refused with a `BINDING PROBLEM` line
+and Select stays. The key follows `button_layout` and the custom map like the six in-view bindings
+(a PS button, Select aside, so a custom map moves the console button; Select is Minus whatever the
+map). The key works only at the moments the field accepts Start (from story point 4 on, nothing
+acting); at any other moment it logs `dw3-map: field hotkey ignored: the field is not idle ...` or
+`... opens from story point 4 on`.
+
+Logs (AGENTS.md rule 12): `dw3-map: field hotkey open: key Select(Minus) went down in the walking field;
+field held: frame F time T progress P battle_steps N play H:MM:SS.x rand R player X,Y, K field task(s)
+paused ...; turbo forced to 1x (was Nx), R3 ignored` at the open and `dw3-map: field hotkey return: ...
+at the open -> now: frame F -> F, ... : unchanged` on return (`CHANGED` would mean the hold failed),
+and the reason in `dw3-map: field hotkey ignored: <why> (key Select = map_view_field_open)`.
 
 ## Diagnostic controls
 

@@ -2205,6 +2205,98 @@ def map_rebind(version):
     return r
 
 
+# P6.32 phase 6: the field hotkey (patch 0148). The path of `map_view` to the idle field (the
+# forced battle, its report, Cross to the field), then the key goes down on the walking field.
+# FH_OPEN is the frame the key goes down, FH_CLOSE the frame Triangle closes the view. The field
+# is held from FH_OPEN to the frame it runs again (FH_OPEN + FH_D replay frames later), so every
+# field frame after it happens FH_D frames later than in the control run, which never opened the
+# view: the checkpoints after the return are taken FH_D frames later than the control's.
+FH_OPEN = 1300
+FH_CLOSE = 1700
+FH_D = 405   # frames the field was held (measured, see docs/P6.32_MAP_ZOOM.md 18.4)
+FH_AFTER = ((20, "fk-after-return"), (120, "fk-after-120"), (260, "fk-walk"), (420, "fk-end"))
+
+
+def _to_field(r):
+    for f in range(300, 1200, 30):
+        r.press(f, CROSS)            # battle report -> field
+    r.shot(FH_OPEN - 20, "fk-before")
+
+
+def field_map_ctl(version):
+    """P6.32 phase 6, the control run: the idle field, no key, the same walk. The session
+    run must reproduce these pictures FH_D frames later, pixel for pixel."""
+    r = Rec(f"{version.upper()}: P6.32 phase 6 field hotkey control run, no key (env in manifest)")
+    _to_field(r)
+    r.shot(FH_OPEN + 60, "fk-off-60")  # the option-off run's checkpoints (the field never stopped there)
+    r.shot(FH_OPEN + 160, "fk-off-160")
+    base = FH_CLOSE + 12 - FH_D        # the control frame the session run's return corresponds to
+    for off, name in FH_AFTER:
+        if name == "fk-walk":
+            _pad(r, base + 180, RIGHT)
+            _pad(r, base + 230, 0)
+        r.shot(base + off, name)
+    r.end(base + 520)
+    return r
+
+
+def field_map(version, key=SELECT_MAP, old_key=None):
+    """P6.32 phase 6: `key` goes down in the idle field (default Select): the field is held and
+    the game's Map screen comes up in the field menu's slot with the view open on it
+    (`fk-open`, 1.5x on your area, bars hidden). R3 is pressed (it does nothing: turbo is off
+    in the view and the fast-forward state is kept), the cursor moves (`fk-cursor`), and the view
+    stays open for hundreds of frames (`fk-late`: the same picture, the field behind it has
+    not moved). Triangle closes it; the field runs again from the same frame: the control run's
+    pictures, FH_D frames later, are reproduced (manifest ref_map), a walk included."""
+    r = Rec(f"{version.upper()}: P6.32 phase 6 field hotkey, view open {FH_CLOSE - FH_OPEN} frames "
+            "(env and cfg in manifest)")
+    _to_field(r)
+    if old_key is not None:
+        r.press(FH_OPEN - 60, old_key)  # the old key after a rebind: nothing opens, nothing is logged
+    r.press(FH_OPEN, key)
+    r.shot(FH_OPEN + 120, "fk-open")
+    r.press(FH_OPEN + 140, R3_MAP)      # nothing: no turbo here, and the toggle is not flipped
+    _pad(r, FH_OPEN + 160, RIGHT)       # the view's cursor moves
+    _pad(r, FH_OPEN + 190, 0)
+    r.shot(FH_OPEN + 210, "fk-cursor")
+    r.shot(FH_CLOSE - 20, "fk-late")
+    r.press(FH_CLOSE, TRIANGLE)         # the cancel button closes the view, and the Map screen with it
+    base = FH_CLOSE + 12                # the field runs again from about here
+    for off, name in FH_AFTER:
+        if name == "fk-walk":
+            _pad(r, base + 180, RIGHT)
+            _pad(r, base + 230, 0)
+        r.shot(base + off, name)
+    r.end(base + 520)
+    return r
+
+
+def field_map_43(version):
+    """P6.32 phase 6, widescreen off (DW3_WIDESCREEN=0 in the manifest, the option on): the key
+    does nothing and the log says why. Log only: the 4:3 picture has no control run here."""
+    r = Rec(f"{version.upper()}: P6.32 phase 6 field hotkey with widescreen off (env in manifest)")
+    for f in range(300, 1200, 30):
+        r.press(f, CROSS)            # battle report -> field
+    r.press(FH_OPEN, SELECT_MAP)
+    r.press(FH_OPEN + 100, SELECT_MAP)
+    r.end(FH_OPEN + 260)
+    return r
+
+
+def field_map_off(version):
+    """P6.32 phase 6, the option off (the default): the key goes down and nothing happens
+    except the log line that says why; every picture is the control run's at the same frame
+    (the field never stopped)."""
+    r = Rec(f"{version.upper()}: P6.32 phase 6 field hotkey with map_screen off (env in manifest)")
+    _to_field(r)
+    r.press(FH_OPEN, SELECT_MAP)
+    r.shot(FH_OPEN + 60, "fk-off-60")
+    r.press(FH_OPEN + 100, SELECT_MAP)  # and once more: one line each
+    r.shot(FH_OPEN + 160, "fk-off-160")
+    r.end(FH_OPEN + 260)
+    return r
+
+
 def map_rebind_relaunch_p1(version):
     """P6.32 phase 4, process 1 of the relaunch test: the title's Options, the Display
     group, its second row (Full-screen map) from OFF to ON; the file the screen writes
@@ -3408,6 +3500,11 @@ def main(out):
         (out / f"{v}-map-zoom.rec").write_text(map_zoom(v).text(True))
         (out / f"{v}-map-help.rec").write_text(map_help(v).text(True))
         (out / f"{v}-map-rebind.rec").write_text(map_rebind(v).text(True))
+        (out / f"{v}-field-map.rec").write_text(field_map(v).text(True))
+        (out / f"{v}-field-map-ctl.rec").write_text(field_map_ctl(v).text(True))
+        (out / f"{v}-field-map-off.rec").write_text(field_map_off(v).text(True))
+        (out / f"{v}-field-map-43.rec").write_text(field_map_43(v).text(True))
+        (out / f"{v}-field-map-square.rec").write_text(field_map(v, key=SQUARE_MAP, old_key=SELECT_MAP).text(True))
         (out / f"{v}-map-rebind-relaunch-p1.rec").write_text(map_rebind_relaunch_p1(v).text(True))
         (out / f"{v}-map-rebind-relaunch-p2.rec").write_text(map_rebind_relaunch_p2(v).text(True))
         (out / f"{v}-items-equip-switch.rec").write_text(items_equip_switch(v).text(True))
