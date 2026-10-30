@@ -103,7 +103,8 @@ has the controls and the details.
   the separate US, EU and nxlink `.nro` files are retired, and the same file
   detects an nxlink launch at run time: [SINGLE_BUILD](docs/SINGLE_BUILD.md).
 - **Full-screen map view and a first mod loader.** Y on the Map screen opens a
-  zoomable, pannable map with the game's balloon, cursor and name box
+  zoomable map with the game's balloon, cursor and name box; off by default,
+  turn it on with `map_screen=1` in `port_options.cfg`
   ([P6.32](docs/P6.32_MAP_ZOOM.md)). Packs you generate from your own disc can
   replace the map with an upscaled one (folder `sdmc:/switch/dw3/mods/`,
   `map_mod=0` turns it off); no pack ships with the port
