@@ -13,6 +13,7 @@
 #include "map_view.h"
 #include "map_view_core.h"
 #include "mod_pack.h"
+#include "engine/pad.h"
 #include "port_button_map.h"
 #include "port_options.h"
 #include "port_turbo.h"
@@ -63,6 +64,24 @@ typedef struct MapViewState {
     unsigned tex_gen;
     int tex_linear;
     MvView view;
+    /* phase 3: zoom about the cursor, pan limits, cursor speed, the backdrop */
+    int pan_flags;              /* MV_PAN_* the last clamp reported (logged on change) */
+    int pan_acc;                /* MV_PAN_* the clamps of this frame have reported so far */
+    float pan_wx, pan_wy;       /* the centre the clamp that held the view had asked for */
+    const char *pan_why;        /* and what asked */
+    int cover_full;             /* the map rectangle covered the whole picture at the last check, -1 unknown */
+    uint8_t backdrop[DW3_MV_BACKDROP_W * DW3_MV_BACKDROP_H * 4];
+    unsigned backdrop_gen;
+    int backdrop_ok;
+    float acc_x, acc_y;         /* sub-pixel cursor movement carried between frames */
+    int pan_src;                /* 0 idle, 1 d-pad, 2 left stick */
+    int pan_frames;             /* frames the cursor has been moving in this go */
+    int pan_level;              /* floor(speed) last logged */
+    float pan_peak;
+    int pan_from_x, pan_from_y;
+    unsigned pan_goes;          /* cursor goes this open */
+    unsigned centre_presses;
+    unsigned zoom_events;
     unsigned hud_gen;
     uint8_t *hud;
     int home_x, home_y;  /* image pixels */
@@ -112,6 +131,9 @@ typedef struct MapViewState {
 } MapViewState;
 
 static MapViewState s;
+static void log_pan(int flags, float want_cx, float want_cy, const char *why);
+static void pan_note(int flags, float want_cx, float want_cy, const char *why);
+static void pan_flush(void);
 static char g_cache_dir[480];
 /* <config dir>/mods on the PC, sdmc:/switch/dw3/mods on the Switch */
 static char g_mods_dir[480];
@@ -193,6 +215,63 @@ void dw3_map_view_set_zoom_stick(int raw_up) {
     else {
         a = (a - MV_STICK_DEADZONE) * 127 / (127 - MV_STICK_DEADZONE);
         g_zoom_stick = raw_up < 0 ? -a : a;
+    }
+}
+
+/* The left stick's raw axes for the cursor (phase 3: analog pan speed), -127..127, x
+ * right and y down positive, 0 centred or on a digital pad (then the game's own d-pad
+ * bits move the cursor at the fixed speeds). Read from the game's own receive buffer
+ * of pad 1 (PadData.analog[2], [3] of an analog pad, which is what the game's
+ * readPadButtons reads, 0x80 centred), so no host hook is needed; the Switch and the
+ * PC fill it the same way. The replays have a digital pad: DW3_MAP_LSTICK=<script> (PC
+ * only, scrubbed by the runner) stands in for the stick, see lstick_script. */
+static int lstick_script(unsigned frame, int *x, int *y) {
+    static const char *spec;
+    static int parsed;
+    static struct { unsigned f; int x, y; } key[64];
+    static int nkey;
+    int i;
+
+    if (!parsed) {
+        const char *p = getenv("DW3_MAP_LSTICK");
+
+        parsed = 1;
+        spec = p && p[0] ? p : NULL;
+        /* "frame:x:y,frame:x:y,...": from view frame `frame` on, the stick is at x, y */
+        while (p && *p && nkey < 64) {
+            unsigned f = 0;
+            int xx = 0, yy = 0, n = 0;
+
+            if (sscanf(p, "%u:%d:%d%n", &f, &xx, &yy, &n) < 3) break;
+            key[nkey].f = f;
+            key[nkey].x = xx;
+            key[nkey].y = yy;
+            ++nkey;
+            p += n;
+            if (*p == ',') ++p;
+        }
+        if (spec) {
+            fprintf(stderr, "dw3-map: DW3_MAP_LSTICK test aid: %d keyframes (the left stick "
+                    "of an analog pad is read from the game's pad buffer)\n", nkey);
+        }
+    }
+    if (!spec) return 0;
+    *x = *y = 0;
+    for (i = 0; i < nkey && key[i].f <= frame; ++i) {
+        *x = key[i].x;
+        *y = key[i].y;
+    }
+    return 1;
+}
+
+static void lstick_read(int *x, int *y) {
+    const PadData *d = &PAD.buf[0].pad;
+
+    *x = *y = 0;
+    if (lstick_script(s.frame, x, y)) return;
+    if (d->status == 0 && (d->id >> 4) == PAD_ID_ANALOG) {
+        *x = (int)d->analog[2] - 0x80;
+        *y = (int)d->analog[3] - 0x80;
     }
 }
 
@@ -782,7 +861,8 @@ static void build_texture(int scaler) {
         mod_free();
         out.rgba = NULL;
     }
-    if (scaler == MV_SCALER_NEAREST || scaler == MV_SCALER_SHARP) {
+    if (scaler == MV_SCALER_NEAREST || scaler == MV_SCALER_SHARP ||
+        scaler == MV_SCALER_BILINEAR) {
         /* a copy, or a 5 ms integer prescale: not worth an SD cache file */
         if (dw3_mv_scale(scaler, &s.base, &out, &ms) != 0 || !out.rgba) {
             fprintf(stderr, "dw3-map: scaler %s FAILED (no image built, the "
@@ -900,26 +980,30 @@ static void hud_build(void) {
                  MV_SCALER_COUNT, dw3_mv_scaler_name(s.scaler));
     }
     hud_text(6, 16, line, 0xFFE070FFu);
-    hud_rect(0, DW3_MV_HUD_H - 16, DW3_MV_HUD_W, DW3_MV_HUD_H, 0x000000B0u);
+    hud_rect(0, DW3_MV_HUD_H - 28, DW3_MV_HUD_W, DW3_MV_HUD_H, 0x000000B0u);
     {
-        char foot[160];
+        char foot[160], foot2[160];
 
 #if defined(__SWITCH__)
         /* P10.6 fix-now: the Switch names of the buttons that produce each PS
          * button under the map in force; the PC keeps the PS words. */
         snprintf(foot, sizeof(foot),
-                 "PAD/L-STICK CURSOR  R-STICK/%s/%s ZOOM  %s/%s SCALER  %s HUD  %s BACK",
+                 "PAD/L-STICK CURSOR  R-STICK/%s/%s ZOOM  %s/%s SCALER",
                  dw3_button_cap_label(dw3_button_map_current(), DW3_BTN_L1),
                  dw3_button_cap_label(dw3_button_map_current(), DW3_BTN_R1),
                  dw3_button_cap_label(dw3_button_map_current(), DW3_BTN_L2),
-                 dw3_button_cap_label(dw3_button_map_current(), DW3_BTN_R2),
+                 dw3_button_cap_label(dw3_button_map_current(), DW3_BTN_R2));
+        snprintf(foot2, sizeof(foot2), "MINUS CENTRE ON YOUR AREA  %s HUD  %s BACK",
                  dw3_button_cap_label(dw3_button_map_current(), DW3_BTN_CIRCLE),
                  dw3_button_cap_label(dw3_button_map_current(), DW3_BTN_TRIANGLE));
 #else
         snprintf(foot, sizeof(foot), "%s",
-                 "PAD/L-STICK CURSOR  R-STICK/L1/R1 ZOOM  L2/R2 SCALER  CIRCLE HUD  TRI BACK");
+                 "PAD/L-STICK CURSOR  R-STICK/L1/R1 ZOOM  L2/R2 SCALER");
+        snprintf(foot2, sizeof(foot2), "%s",
+                 "SELECT CENTRE ON YOUR AREA  CIRCLE HUD  TRI BACK");
 #endif
-        hud_text(6, DW3_MV_HUD_H - 12, foot, 0xC0FFC0FFu);
+        hud_text(6, DW3_MV_HUD_H - 26, foot, 0xC0FFC0FFu);
+        hud_text(6, DW3_MV_HUD_H - 13, foot2, 0xC0FFC0FFu);
     }
 }
 
@@ -952,6 +1036,9 @@ static void close_view(void) {
             s.zoom_stick_frames, s.zoom_button_presses,
             s.zoom_src == 1 ? "stick" : s.zoom_src == 2 ? "button" : "none",
             (unsigned)s.base_reveal_last);
+    fprintf(stderr, "dw3-map: view session: %u zoom changes (%u button, %u stick frames), "
+            "%u centre-on-area presses, %u cursor goes\n", s.zoom_events,
+            s.zoom_button_presses, s.zoom_stick_frames, s.centre_presses, s.pan_goes);
     fprintf(stderr, "dw3-map: area names this open: %u shown by the game's name "
             "window, %u bad\n", s.names_shown, s.name_bad);
     fprintf(stderr, "dw3-map: pad held by the view for %u frames (the game's Map "
@@ -961,19 +1048,40 @@ static void close_view(void) {
 }
 
 /* Phase 1 done-when: no black strips. The view's map rectangle against the whole
- * 16:9 picture at the opening zoom; anything it leaves open is the black
- * backdrop (only when the player zooms out to FIT, the map is 392:352). */
-static void log_coverage(void) {
+ * 16:9 picture. What it leaves open (FIT: the map is 392:352, not 16:9; or below
+ * 1.0 on a tall window) is not black since phase 3: the backdrop of the map's own
+ * colours. Logged at the open and every time the rectangle starts or stops
+ * covering the picture. */
+static void log_coverage(int force) {
     float x0, y0, x1, y1;
-    int full;
+    int full, bucket;
+    float l, r, t, b;
 
     dw3_mv_view_rect(&s.view, s.base.w, s.base.h, VW, VH, &x0, &y0, &x1, &y1);
     full = x0 <= 0.5f && y0 <= 0.5f && x1 >= (float)VW - 0.5f &&
            y1 >= (float)VH - 0.5f;
-    fprintf(stderr, "dw3-map: picture coverage %s: map rect %.0f,%.0f-%.0f,%.0f of "
-            "%dx%d (black strips: %s)\n", full ? "full" : "partial", (double)x0,
-            (double)y0, (double)x1, (double)y1, VW, VH,
-            full ? "none" : "backdrop beside the map");
+    /* the bars beside the map in viewport pixels */
+    l = x0 > 0.0f ? x0 : 0.0f;
+    r = x1 < (float)VW ? (float)VW - x1 : 0.0f;
+    t = y0 > 0.0f ? y0 : 0.0f;
+    b = y1 < (float)VH ? (float)VH - y1 : 0.0f;
+    /* logged when the map starts or stops covering the picture, and while it does not,
+     * every 120 px of bars (all four sides added) the bars grow or shrink: 1.0, then FIT */
+    bucket = full ? -1 : (int)((l + r + t + b) / 120.0f);
+    if (!force && bucket == s.cover_full) return;
+    s.cover_full = bucket;
+    if (full) {
+        fprintf(stderr, "dw3-map: picture coverage full: map rect %.0f,%.0f-%.0f,%.0f of "
+                "%dx%d (black strips: none)\n", (double)x0, (double)y0, (double)x1,
+                (double)y1, VW, VH);
+    } else {
+        fprintf(stderr, "dw3-map: picture coverage partial: map rect %.0f,%.0f-%.0f,%.0f "
+                "of %dx%d (black strips: none; the backdrop of the map's own colours "
+                "(%s) fills left %.0f right %.0f top %.0f bottom %.0f px of %dx%d)\n",
+                (double)x0, (double)y0, (double)x1, (double)y1, VW, VH,
+                s.backdrop_ok ? "32x18 cells, dimmed to 50%, linear filter" :
+                "NOT BUILT: black", (double)l, (double)r, (double)t, (double)b, VW, VH);
+    }
 }
 
 /* --- phase 2: the marker list, the strips and the tour --------------------*/
@@ -1264,18 +1372,54 @@ static void open_view(const void *sheet, int sheet_file, int half, int home_x,
     s.resume_wait = 0;
     s.hud = (uint8_t *)calloc((size_t)DW3_MV_HUD_W * DW3_MV_HUD_H, 4);
     s.view.step = MAP_OPEN_STEP;  /* P51 item 2: 1.5x (the table's step 3) */
+    s.view.top = s.mod.rgba ? MV_ZOOM_STEPS - 1 : MV_ZOOM_TOP_PLAIN; /* 4.0 only with a hi-res pack */
     s.view.zoom = 0.0f;
+    s.pan_flags = 0;
+    s.pan_acc = 0;
+    s.pan_why = NULL;
+    s.pan_src = 0;
+    s.pan_frames = 0;
+    s.acc_x = s.acc_y = 0.0f;
+    s.pan_goes = s.centre_presses = s.zoom_events = 0;
+    s.backdrop_ok = dw3_mv_backdrop(&s.base, s.backdrop, 50) == 0;
+    ++s.backdrop_gen;
     s.view.cx = (float)s.home_x;
     s.view.cy = (float)s.home_y;
-    dw3_mv_view_clamp(&s.view, s.base.w, s.base.h, VW, VH);
-    s.active = 1;
+    {
+        float wx, wy;
+        const int fl = dw3_mv_view_clamp_ex(&s.view, s.base.w, s.base.h, VW, VH, &wx, &wy);
+
+        s.active = 1;
+        log_pan(fl, wx, wy, "the open, centred on the current area");
+    }
     fprintf(stderr, "dw3-map: open half=%d image=%dx%d source=%s in %d ms "
             "markers=%d home=%d,%d turbo=%d zoom=%.2f hud=%s\n", half, s.base.w,
             s.base.h, s.source == 1 ? "cache" : "vram", (int)(now_ms() - t0),
             s.nspots, s.home_x, s.home_y, dw3_port_turbo_speed(),
             (double)dw3_mv_view_cur_zoom(&s.view, s.base.w, s.base.h, VW, VH),
             s.show_hud ? "on" : "off");
-    log_coverage();
+    s.cover_full = -1;
+    log_coverage(1);
+    {
+        char ladder[160];
+        size_t o = 0;
+        int i;
+
+        for (i = 1; i <= (s.view.top ? s.view.top : MV_ZOOM_TOP_PLAIN) && o + 8 < sizeof(ladder); ++i)
+            o += (size_t)snprintf(ladder + o, sizeof(ladder) - o, "%s%.2f", i > 1 ? " " : "",
+                                  (double)MV_ZOOM_TABLE[i]);
+        fprintf(stderr, "dw3-map: zoom limits: FIT %.3f, steps %s, top %.2fx (%s); pan limit "
+                "= the image box %dx%d at every zoom (no margin, centred where the whole "
+                "map fits); the cursor reaches the whole image, the strips the PS1 cursor "
+                "cannot reach included (x < %d, x > %d, y < %d, y > %d); Select centres on "
+                "the current area; backdrop beside the map: %s\n",
+                (double)(dw3_mv_view_scale(0, s.base.w, s.base.h, VW, VH) * 240.0f / (float)VH),
+                ladder, (double)dw3_mv_view_top_zoom(&s.view),
+                s.mod.rgba ? "4.0 because a higher-resolution pack is loaded" :
+                "3.0: the source cannot show more, 4.0 needs a higher-resolution source",
+                s.base.w, s.base.h, MV_PS1_X0, MV_PS1_X1, MV_PS1_Y0, MV_PS1_Y1,
+                s.backdrop_ok ? "the map's own colours (32x18 cells, dim 50%)" : "black (not built)");
+    }
     fprintf(stderr, "dw3-map: sprites at %s (scale 1/Z, Z = zoom, reference zoom "
             "1.0 = %.2f px per source px; the reveal layer, the lit towns and "
             "visited areas, scales with the map; the name box is the game's own "
@@ -1330,12 +1474,6 @@ static void cursor_draw_pos(int *x, int *y) {
     }
 }
 
-static int axis_speed(int held_frames) {
-    /* the game's: 2 px a frame when the pad goes down, 3 and then 4 while it
-     * is held (screen->speedX / speedY) */
-    return held_frames <= 10 ? 2 : held_frames <= 20 ? 3 : 4;
-}
-
 static void update_hover(void) {
     int now = spot_under(s.cur_x, s.cur_y);
 
@@ -1365,19 +1503,89 @@ static void clamp_cursor(void) {
     if (s.cur_y > s.box.y0 + s.base.h - down) s.cur_y = s.box.y0 + s.base.h - down;
 }
 
-/* The view follows the cursor: it stays inside the middle of the picture. */
-static void follow_cursor(void) {
-    float vx, vy, scale, mx = (float)VW * 0.30f, my = (float)VH * 0.30f;
+/* The cursor's map pixel (the image's own pixels) as the view maths take it. */
+static void cursor_map_pos(float *mx, float *my) {
     int x, y;
 
     cursor_draw_pos(&x, &y);
-    sprite_to_view(x, y, &vx, &vy);
-    scale = dw3_mv_view_cur_scale(&s.view, s.base.w, s.base.h, VW, VH);
-    if (vx < mx) s.view.cx -= (mx - vx) / scale;
-    if (vx > (float)VW - mx) s.view.cx += (vx - ((float)VW - mx)) / scale;
-    if (vy < my) s.view.cy -= (my - vy) / scale;
-    if (vy > (float)VH - my) s.view.cy += (vy - ((float)VH - my)) / scale;
-    dw3_mv_view_clamp(&s.view, s.base.w, s.base.h, VW, VH);
+    *mx = (float)(x - s.box.x0);
+    *my = (float)(y - s.box.y0);
+}
+
+/* Pan limits (phase 3, 4.2g): the view never shows past the image at any zoom; where
+ * it would, it is held at the edge (left, right, top, bottom). The stages of a frame
+ * (zoom about the cursor, centre on the area, the view following the cursor) each
+ * report what their clamp did with pan_note; at the end of the frame pan_flush says it
+ * ONCE when the set changed, so a zoom that the follow then pushes against the same
+ * edge every frame is one line, not one per frame. FIT and the small zooms centre the
+ * axis the whole map fits on. */
+static void pan_names(int flags, char *edges, size_t ecap, char *fits, size_t fcap) {
+    const char *e[4] = {"left", "right", "top", "bottom"};
+    int i;
+    size_t o = 0;
+
+    edges[0] = 0;
+    for (i = 0; i < 4; ++i) {
+        if (flags & (1 << i))
+            o += (size_t)snprintf(edges + o, ecap - o, "%s%s", o ? "+" : "", e[i]);
+    }
+    if (!o) snprintf(edges, ecap, "none");
+    snprintf(fits, fcap, "%s", (flags & MV_PAN_CENTRED_X) && (flags & MV_PAN_CENTRED_Y) ? "x+y" :
+             (flags & MV_PAN_CENTRED_X) ? "x" : (flags & MV_PAN_CENTRED_Y) ? "y" : "neither axis");
+}
+
+static void log_pan(int flags, float want_cx, float want_cy, const char *why) {
+    char edges[40], fits[16];
+    const float sc = dw3_mv_view_cur_scale(&s.view, s.base.w, s.base.h, VW, VH);
+    const int mask = MV_PAN_LEFT | MV_PAN_RIGHT | MV_PAN_TOP | MV_PAN_BOTTOM |
+                     MV_PAN_CENTRED_X | MV_PAN_CENTRED_Y;
+
+    if ((flags & mask) == (s.pan_flags & mask)) return;
+    pan_names(flags, edges, sizeof(edges), fits, sizeof(fits));
+    fprintf(stderr, "dw3-map: pan clamp %s: view at the image edge: %s, whole map fits on %s (%s; zoom "
+            "%.3f, view centre %.1f,%.1f wanted %.1f,%.1f, map %dx%d, view covers x "
+            "%.1f..%.1f y %.1f..%.1f of the image, never past it)\n",
+            (flags & (MV_PAN_LEFT | MV_PAN_RIGHT | MV_PAN_TOP | MV_PAN_BOTTOM)) ? "holds" : "free",
+            edges, fits, why,
+            (double)dw3_mv_view_cur_zoom(&s.view, s.base.w, s.base.h, VW, VH),
+            (double)s.view.cx, (double)s.view.cy, (double)want_cx, (double)want_cy,
+            s.base.w, s.base.h, (double)(s.view.cx - 0.5f * (float)VW / sc),
+            (double)(s.view.cx + 0.5f * (float)VW / sc),
+            (double)(s.view.cy - 0.5f * (float)VH / sc),
+            (double)(s.view.cy + 0.5f * (float)VH / sc));
+    s.pan_flags = flags & mask;
+}
+
+static void pan_note(int flags, float want_cx, float want_cy, const char *why) {
+    const int edges = MV_PAN_LEFT | MV_PAN_RIGHT | MV_PAN_TOP | MV_PAN_BOTTOM;
+
+    if ((flags & edges) && !(s.pan_acc & edges)) {
+        s.pan_wx = want_cx;
+        s.pan_wy = want_cy;
+        s.pan_why = why;
+    } else if (!(s.pan_acc & edges) && !s.pan_why) {
+        s.pan_wx = want_cx;
+        s.pan_wy = want_cy;
+        s.pan_why = why;
+    }
+    s.pan_acc |= flags;
+}
+
+static void pan_flush(void) {
+    if (s.pan_why) log_pan(s.pan_acc, s.pan_wx, s.pan_wy, s.pan_why);
+    s.pan_acc = 0;
+    s.pan_why = NULL;
+}
+
+/* The view follows the cursor: it stays inside the middle of the picture. */
+static void follow_cursor(void) {
+    float mx, my, wx, wy;
+    int flags;
+
+    cursor_map_pos(&mx, &my);
+    flags = dw3_mv_view_follow(&s.view, mx, my, (float)VW * 0.30f,
+                               (float)VH * 0.30f, s.base.w, s.base.h, VW, VH, &wx, &wy);
+    pan_note(flags, wx, wy, "the view follows the cursor");
 }
 
 static void fill_io(Dw3MapViewIo *io) {
@@ -1557,13 +1765,188 @@ void dw3_port_map_view_name(const Dw3MapViewName *n) {
     s.name_hash = hash;
 }
 
+/* --- zoom about the cursor, centre on the area, cursor speed (phase 3) -------*/
+
+typedef struct ZoomRec {
+    float z0, z1;           /* the logical zoom before and after */
+    int step0, step1;
+    float mx, my;           /* the anchor: the cursor, in map pixels */
+    float px0, py0, px1, py1; /* the anchor on the 1280x720 viewport before / after */
+    float cx0, cy0;         /* the view centre before */
+    float wx, wy;           /* the centre the anchor asked for, before the clamp */
+    int flags;
+} ZoomRec;
+
+/* Zoom with the cursor as the fixed point (the PoC zoomed about the view centre):
+ * the cursor stays on the spot of the picture it was on, unless the image's edge
+ * (the pan limit) does not allow it, and then the log says so. `dir` steps the
+ * ladder (L1 / R1), else the smooth zoom multiplies by `factor` (the right stick). */
+static void zoom_about_cursor(ZoomRec *z, int dir, float factor) {
+    memset(z, 0, sizeof(*z));
+    z->z0 = dw3_mv_view_cur_zoom(&s.view, s.base.w, s.base.h, VW, VH);
+    z->step0 = s.view.step;
+    z->cx0 = s.view.cx;
+    z->cy0 = s.view.cy;
+    cursor_map_pos(&z->mx, &z->my);
+    dw3_mv_view_point(&s.view, s.base.w, s.base.h, VW, VH, z->mx, z->my, &z->px0,
+                      &z->py0);
+    if (dir) dw3_mv_view_zoom(&s.view, dir, s.base.w, s.base.h, VW, VH);
+    else dw3_mv_view_zoom_by(&s.view, factor, s.base.w, s.base.h, VW, VH);
+    z->flags = dw3_mv_view_anchor(&s.view, z->mx, z->my, z->px0, z->py0, s.base.w,
+                                  s.base.h, VW, VH, &z->wx, &z->wy);
+    dw3_mv_view_point(&s.view, s.base.w, s.base.h, VW, VH, z->mx, z->my, &z->px1,
+                      &z->py1);
+    z->z1 = dw3_mv_view_cur_zoom(&s.view, s.base.w, s.base.h, VW, VH);
+    z->step1 = s.view.step;
+    ++s.zoom_events;
+}
+
+/* "anchor=cursor ..." for the zoom lines: where the cursor was and is on the
+ * picture, how far the zoom moved it, the view centre before and after. */
+static void zoom_text(char *out, size_t cap, const ZoomRec *z) {
+    const float dxp = z->px1 - z->px0, dyp = z->py1 - z->py0;
+    const float moved = sqrtf(dxp * dxp + dyp * dyp);
+    /* the pan limit is named only when it displaced the anchor */
+    const int g = moved > 0.05f ? (int)(z->flags & (MV_PAN_LEFT | MV_PAN_RIGHT | MV_PAN_TOP | MV_PAN_BOTTOM)) : 0;
+    const int fit = (int)(z->flags & (MV_PAN_CENTRED_X | MV_PAN_CENTRED_Y));
+    int sx, sy;
+
+    cursor_draw_pos(&sx, &sy);
+    snprintf(out, cap, "anchor=cursor map %d,%d (sprite %d,%d) on the picture %.0f,%.0f "
+             "-> %.0f,%.0f (moved %.1f px%s%s%s%s%s%s) view centre %.1f,%.1f -> "
+             "%.1f,%.1f", (int)z->mx, (int)z->my, sx, sy, (double)z->px0,
+             (double)z->py0, (double)z->px1, (double)z->py1, (double)moved,
+             g || fit ? ", pan limit:" : "",
+             g & MV_PAN_LEFT ? " left" : "", g & MV_PAN_RIGHT ? " right" : "",
+             g & MV_PAN_TOP ? " top" : "", g & MV_PAN_BOTTOM ? " bottom" : "",
+             fit ? " map fits, centred" : "", (double)z->cx0, (double)z->cy0,
+             (double)s.view.cx, (double)s.view.cy);
+}
+
+/* The "centre on the current area" button (Select): the cursor goes back to the
+ * game's current-area mark, like the cursor at the open, and the view centres on it
+ * (held by the pan limits near the image edge). The zoom stays. */
+static void centre_on_home(void) {
+    float wx, wy, mx, my;
+    float cx0 = s.view.cx, cy0 = s.view.cy;
+    int bx = s.cur_x, by = s.cur_y, flags;
+
+    ++s.centre_presses;
+    s.cur_x = s.home_sx;
+    s.cur_y = s.home_sy;
+    s.acc_x = s.acc_y = 0.0f;
+    s.hold_x = s.hold_y = 0;
+    update_hover();
+    update_strip();
+    cursor_map_pos(&mx, &my);
+    s.view.cx = mx;
+    s.view.cy = my;
+    flags = dw3_mv_view_clamp_ex(&s.view, s.base.w, s.base.h, VW, VH, &wx, &wy);
+    {
+        /* the pan limit is named only when it displaced the centre */
+        const int held = fabsf(wx - s.view.cx) > 0.05f || fabsf(wy - s.view.cy) > 0.05f ?
+                         (flags & (MV_PAN_LEFT | MV_PAN_RIGHT | MV_PAN_TOP | MV_PAN_BOTTOM)) : 0;
+
+        fprintf(stderr, "dw3-map: centre on the current area: location id=%d (area %d), "
+                "home mark at sprite %d,%d, cursor %d,%d -> %d,%d, view centre %.1f,%.1f "
+                "-> %.1f,%.1f wanted %.1f,%.1f%s%s%s%s%s zoom %.3f\n", s.home_spot,
+                g_data_ok ? g_data.area : -1, s.home_sx, s.home_sy, bx, by, s.cur_x,
+                s.cur_y, (double)cx0, (double)cy0, (double)s.view.cx, (double)s.view.cy,
+                (double)wx, (double)wy, held ? ", pan limit:" : ", free",
+                held & MV_PAN_LEFT ? " left" : "", held & MV_PAN_RIGHT ? " right" : "",
+                held & MV_PAN_TOP ? " top" : "", held & MV_PAN_BOTTOM ? " bottom" : "",
+                (double)dw3_mv_view_cur_zoom(&s.view, s.base.w, s.base.h, VW, VH));
+    }
+    pan_note(flags, wx, wy, "centre on the current area");
+}
+
+/* The cursor's movement for this frame: the d-pad at the game's speeds, the left
+ * stick scaled by how far it is tilted (an analog axis wins over the d-pad bits
+ * the game derives from the same stick), both accelerating after a long hold. The
+ * cursor is a whole sprite-space pixel (the game's hit test is integer), the rest
+ * of a step carries over. Returns 1 while a direction is held. */
+static int pan_cursor(unsigned held, int *moved) {
+    const float zoom = dw3_mv_view_cur_zoom(&s.view, s.base.w, s.base.h, VW, VH);
+    int lx, ly;
+    float ux, uy;
+    int dxd = 0, dyd = 0, dir_x, dir_y;
+    float fx, fy, rx = 0.0f, ry = 0.0f, ex, ey;
+    int stepx, stepy, src;
+
+    lstick_read(&lx, &ly);
+    ux = dw3_mv_stick_unit(lx);
+    uy = dw3_mv_stick_unit(ly);
+
+#define BITP(b) (1u << (b))
+    if (held & BITP(DW3_MV_PAD_LEFT)) dxd -= 1;
+    if (held & BITP(DW3_MV_PAD_RIGHT)) dxd += 1;
+    if (held & BITP(DW3_MV_PAD_UP)) dyd -= 1;
+    if (held & BITP(DW3_MV_PAD_DOWN)) dyd += 1;
+#undef BITP
+    dir_x = ux != 0.0f ? (ux < 0.0f ? -1 : 1) : dxd;
+    dir_y = uy != 0.0f ? (uy < 0.0f ? -1 : 1) : dyd;
+    fx = ux != 0.0f ? fabsf(ux) : 1.0f;
+    fy = uy != 0.0f ? fabsf(uy) : 1.0f;
+    src = (ux != 0.0f || uy != 0.0f) ? 2 : 1;
+    s.hold_x = dir_x ? s.hold_x + 1 : 0;
+    s.hold_y = dir_y ? s.hold_y + 1 : 0;
+    if (!dir_x) s.acc_x = 0.0f;
+    if (!dir_y) s.acc_y = 0.0f;
+    if (!dir_x && !dir_y) {
+        if (s.pan_src) {
+            fprintf(stderr, "dw3-map: pan end source=%s after %d frames, peak ramp %.2f "
+                    "px/frame, cursor %d,%d -> %d,%d (moved %d,%d), zoom %.3f\n",
+                    s.pan_src == 2 ? "left stick" : "d-pad", s.pan_frames,
+                    (double)s.pan_peak, s.pan_from_x, s.pan_from_y, s.cur_x, s.cur_y,
+                    s.cur_x - s.pan_from_x, s.cur_y - s.pan_from_y, (double)zoom);
+        }
+        s.pan_src = 0;
+        return 0;
+    }
+    if (dir_x) rx = dw3_mv_pan_speed(s.hold_x, zoom);
+    if (dir_y) ry = dw3_mv_pan_speed(s.hold_y, zoom);
+    ex = (float)dir_x * fx * rx;
+    ey = (float)dir_y * fy * ry;
+    if (!s.pan_src) {
+        s.pan_src = src;
+        s.pan_frames = 0;
+        s.pan_level = 0;
+        s.pan_peak = 0.0f;
+        s.pan_from_x = s.cur_x;
+        s.pan_from_y = s.cur_y;
+        ++s.pan_goes;
+    }
+    ++s.pan_frames;
+    if ((rx > ry ? rx : ry) > s.pan_peak) s.pan_peak = rx > ry ? rx : ry;
+    if ((int)(rx > ry ? rx : ry) != s.pan_level) {
+        s.pan_level = (int)(rx > ry ? rx : ry);
+        fprintf(stderr, "dw3-map: pan speed source=%s frame %d: ramp %.2f px/frame "
+                "(zoom %.3f, cap %.2f) x tilt %.2f/%.2f = %.2f/%.2f px/frame\n",
+                src == 2 ? "left stick" : "d-pad", s.pan_frames, (double)(rx > ry ? rx : ry),
+                (double)zoom, (double)dw3_mv_pan_speed(100000, zoom),
+                (double)(dir_x ? fx : 0.0f), (double)(dir_y ? fy : 0.0f), (double)ex,
+                (double)ey);
+    }
+    s.acc_x += ex;
+    s.acc_y += ey;
+    stepx = (int)s.acc_x;
+    stepy = (int)s.acc_y;
+    s.acc_x -= (float)stepx;
+    s.acc_y -= (float)stepy;
+    s.cur_x += stepx;
+    s.cur_y += stepy;
+    clamp_cursor();
+    *moved = 1;
+    return 1;
+}
+
 int dw3_port_map_view_frame(const void *sheet, int sheet_file, int half,
                             int home_x, int home_y, const int *visited,
                             const int *spot_x, const int *spot_y,
                             unsigned held, unsigned pressed, const void *sheet1,
                             const void *sheet2, const int *pieces,
                             int npieces, Dw3MapViewIo *io) {
-    int moved = 0, zoomed = 0, dx = 0, dy = 0;
+    int moved = 0, moving = 0, k;
 
 #define BIT(b) (1u << (b))
     if (!s.active) {
@@ -1641,45 +2024,57 @@ int dw3_port_map_view_frame(const void *sheet, int sheet_file, int half,
         fprintf(stderr, "dw3-map: Square ignored in the view (it opens the view; "
                 "close with the cancel button, PS-side bit %d)\n", MV_CANCEL_BIT);
     }
-    if (pressed & BIT(DW3_MV_PAD_L1)) {
-        dw3_mv_view_zoom(&s.view, -1, s.base.w, s.base.h, VW, VH);
-        moved = zoomed = 1;
-    }
-    if (pressed & BIT(DW3_MV_PAD_R1)) {
-        dw3_mv_view_zoom(&s.view, 1, s.base.w, s.base.h, VW, VH);
-        moved = zoomed = 1;
-    }
-    if (zoomed) {
+    for (k = 0; k < 2; ++k) {
+        /* L1 steps the ladder down, R1 up; both in one frame do both */
+        const int dir = k ? 1 : -1;
+        ZoomRec z;
+        char at[320];
+        float rx0, ry0, rx1, ry1;
+
+        if (!(pressed & BIT(k ? DW3_MV_PAD_R1 : DW3_MV_PAD_L1))) continue;
+        zoom_about_cursor(&z, dir, 1.0f);
+        moved = 1;
         ++s.zoom_button_presses;
         s.zoom_src = 2;
+        zoom_text(at, sizeof(at), &z);
+        dw3_mv_view_rect(&s.view, s.base.w, s.base.h, VW, VH, &rx0, &ry0, &rx1,
+                         &ry1);
+        fprintf(stderr, "dw3-map: zoom source=button step %d (%s) %.2fx -> %.2fx "
+                "%s; ladder top %.2fx; centre %.1f,%.1f draw rect %.0f,%.0f-%.0f,%.0f "
+                "of %dx%d\n", s.view.step, s.view.step == 0 ? "fit" : "x",
+                (double)z.z0, (double)z.z1, at,
+                (double)dw3_mv_view_top_zoom(&s.view), (double)s.view.cx,
+                (double)s.view.cy, (double)rx0, (double)ry0, (double)rx1,
+                (double)ry1, VW, VH);
+        pan_note(z.flags, z.wx, z.wy, "zoom");
+        log_coverage(0);
     }
     if (g_zoom_stick != 0) {
         /* the right stick: up zooms in, down zooms out, smoothly (no steps) */
         float f = powf(2.0f, (float)g_zoom_stick / 127.0f *
                        MV_STICK_OCTAVES_PER_S / 60.0f);
+        ZoomRec z;
 
-        dw3_mv_view_zoom_by(&s.view, f, s.base.w, s.base.h, VW, VH);
+        zoom_about_cursor(&z, 0, f);
         if (s.zoom_src != 1 || (s.zoom_stick_frames % 30u) == 0u) {
-            fprintf(stderr, "dw3-map: zoom source=stick (axis %d) zoom %.3f "
-                    "centre %.1f,%.1f\n", g_zoom_stick,
-                    (double)dw3_mv_view_cur_zoom(&s.view, s.base.w, s.base.h,
-                                                 VW, VH),
-                    (double)s.view.cx, (double)s.view.cy);
+            char at[320];
+
+            zoom_text(at, sizeof(at), &z);
+            fprintf(stderr, "dw3-map: zoom source=stick (axis %d) zoom %.3f (from %.3f) "
+                    "%s; ladder top %.2fx; centre %.1f,%.1f\n", g_zoom_stick,
+                    (double)z.z1, (double)z.z0, at,
+                    (double)dw3_mv_view_top_zoom(&s.view), (double)s.view.cx,
+                    (double)s.view.cy);
         }
+        pan_note(z.flags, z.wx, z.wy, "zoom");
+        log_coverage(0);
         s.zoom_src = 1;
         ++s.zoom_stick_frames;
-        moved = zoomed = 1;
+        moved = 1;
     }
-    if (pressed & (BIT(DW3_MV_PAD_L1) | BIT(DW3_MV_PAD_R1))) {
-        float rx0, ry0, rx1, ry1;
-
-        dw3_mv_view_rect(&s.view, s.base.w, s.base.h, VW, VH, &rx0, &ry0, &rx1,
-                         &ry1);
-        fprintf(stderr, "dw3-map: zoom source=button step %d (%s) centre "
-                "%.1f,%.1f draw rect %.0f,%.0f-%.0f,%.0f of %dx%d\n",
-                s.view.step, s.view.step == 0 ? "fit" : "x", (double)s.view.cx,
-                (double)s.view.cy, (double)rx0, (double)ry0, (double)rx1,
-                (double)ry1, VW, VH);
+    if (pressed & BIT(DW3_MV_PAD_SELECT)) {
+        centre_on_home();
+        moved = 1;
     }
     if (pressed & (BIT(DW3_MV_PAD_R2) | BIT(DW3_MV_PAD_L2))) {
         int dir = (pressed & BIT(DW3_MV_PAD_R2)) ? 1 : -1;
@@ -1694,20 +2089,9 @@ int dw3_port_map_view_frame(const void *sheet, int sheet_file, int half,
                 s.show_hud ? "on" : "off");
         moved = 1;
     }
-    /* the cursor: the pad and the left stick (the game's pad bits), at the
-     * game's speeds, over the whole map */
-    if (held & BIT(DW3_MV_PAD_LEFT)) dx -= 1;
-    if (held & BIT(DW3_MV_PAD_RIGHT)) dx += 1;
-    if (held & BIT(DW3_MV_PAD_UP)) dy -= 1;
-    if (held & BIT(DW3_MV_PAD_DOWN)) dy += 1;
-    s.hold_x = dx ? s.hold_x + 1 : 0;
-    s.hold_y = dy ? s.hold_y + 1 : 0;
-    if (dx || dy) {
-        s.cur_x += dx * axis_speed(s.hold_x);
-        s.cur_y += dy * axis_speed(s.hold_y);
-        clamp_cursor();
-        moved = 1;
-    }
+    /* the cursor: the pad and the left stick, over the whole map (phase 3: the stick
+     * is analog, and a long hold accelerates) */
+    moving = pan_cursor(held, &moved);
     tour_step(&moved);
     if (moved) dw3_mv_view_clamp(&s.view, s.base.w, s.base.h, VW, VH);
     update_hover();
@@ -1715,8 +2099,9 @@ int dw3_port_map_view_frame(const void *sheet, int sheet_file, int half,
     follow_cursor();
     update_balloon();
     update_name_box();
-    if ((dx || dy) != s.was_moving) {
-        s.was_moving = dx || dy;
+    pan_flush();
+    if (moving != s.was_moving) {
+        s.was_moving = moving;
         if (!s.was_moving) {
             fprintf(stderr, "dw3-map: cursor at rest at %d,%d, location "
                     "id=%d name id=%d (view centre %.1f,%.1f)\n", s.cur_x,
@@ -1763,6 +2148,8 @@ void dw3_map_view_get_draw(Dw3MapViewDraw *d) {
     d->linear = s.tex_linear;
     d->hud_gen = s.hud_gen;
     d->hud_rgba = s.hud;
+    d->backdrop_gen = s.backdrop_gen;
+    d->backdrop_rgba = s.active && s.backdrop_ok ? s.backdrop : NULL;
     d->bank_gen = s.bank_gen;
     for (i = 0; i < DW3_MV_BANK_N; ++i) {
         d->bank[i].rgba = s.bank[i].rgba;
@@ -1823,8 +2210,9 @@ void dw3_map_view_precompute_run(void) {
         for (sc = 0; sc < MV_SCALER_COUNT; ++sc) {
             FILE *f;
 
-            if (sc == MV_SCALER_SHARP) continue; /* the sharp prescale is a
-                                                  * 5 ms copy: not worth 4 MB of SD */
+            if (sc == MV_SCALER_SHARP || sc == MV_SCALER_BILINEAR)
+                continue; /* the sharp prescale is a 5 ms copy and bilinear is
+                           * the base itself: not worth 4 MB of SD */
             cache_path(path, sizeof(path), half, sc);
             f = fopen(path, "rb");
             if (f) fclose(f);
@@ -1837,7 +2225,7 @@ void dw3_map_view_precompute_run(void) {
         }
         cache_path(path, sizeof(path), half, MV_SCALER_NEAREST);
         dw3_mv_cache_write(path, &base);
-        for (sc = MV_SCALER_LANCZOS2; sc < MV_SCALER_COUNT; ++sc) {
+        for (sc = MV_SCALER_LANCZOS2; sc <= MV_SCALER_FSR; ++sc) {
             MvImage out;
             double ms;
             FILE *f;

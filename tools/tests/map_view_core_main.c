@@ -142,6 +142,7 @@ static void test_smooth_zoom(void) {
     float z, fit;
     int i;
 
+    memset(&v, 0, sizeof(v));
     v.step = 1; v.zoom = 0.0f; v.cx = 196; v.cy = 176;
     fit = dw3_mv_view_scale(0, 392, 352, 1280, 720) * 240.0f / 720.0f;
     z = dw3_mv_view_cur_zoom(&v, 392, 352, 1280, 720);
@@ -178,6 +179,7 @@ static void test_namebox_stick_zoom(void) {
     float cur_sy = 176.0f; /* the cursor, a source pixel row (map middle) */
 
     memset(&nb, 0, sizeof(nb));
+    memset(&v, 0, sizeof(v));
     v.step = 0; v.zoom = 0.0f; v.cx = 196; v.cy = 176;
     for (pass = 0; pass < 2; ++pass) {
         for (i = 0; i < 400; ++i) {
@@ -359,8 +361,9 @@ static void test_scalers(void) {
 
     make_image(&src, 64, 48, 0);
     for (s = 0; s < MV_SCALER_COUNT; ++s) {
-        int want_w = s == MV_SCALER_NEAREST ? 64 : 64 * MV_SCALE;
-        int want_h = s == MV_SCALER_NEAREST ? 48 : 48 * MV_SCALE;
+        int copy = s == MV_SCALER_NEAREST || s == MV_SCALER_BILINEAR;
+        int want_w = copy ? 64 : 64 * MV_SCALE;
+        int want_h = copy ? 48 : 48 * MV_SCALE;
 
         CHECK(dw3_mv_scale(s, &src, &dst, &ms) == 0, "scale %d", s);
         CHECK(dst.w == want_w && dst.h == want_h, "scaler %d size %dx%d", s, dst.w, dst.h);
@@ -395,6 +398,7 @@ static void test_view(void) {
     MvView v;
     float x0, y0, x1, y1, s;
 
+    memset(&v, 0, sizeof(v));
     v.step = 0; v.cx = 0; v.cy = 0;
     dw3_mv_view_clamp(&v, 392, 320, 1280, 720);
     s = dw3_mv_view_scale(0, 392, 320, 1280, 720);
@@ -416,12 +420,15 @@ static void test_view(void) {
     CHECK(fabsf(x0 - 52.0f) < 0.01f && fabsf(x1 - 1228.0f) < 0.01f &&
           y0 <= 0.01f && y1 >= 719.99f,
           "map at 1.0: 52 px bars, fills the height: %f %f %f %f", x0, y0, x1, y1);
-    for (s = 0; s < 6; ++s) dw3_mv_view_zoom(&v, 1, 392, 320, 1280, 720);
-    CHECK(v.step == MV_ZOOM_STEPS - 1, "zoom capped at %d", v.step);
+    for (s = 0; s < 8; ++s) dw3_mv_view_zoom(&v, 1, 392, 320, 1280, 720);
+    CHECK(v.step == MV_ZOOM_TOP_PLAIN, "zoom capped at %d (3.0)", v.step);
     dw3_mv_view_zoom(&v, -1, 392, 320, 1280, 720);
-    CHECK(v.step == MV_ZOOM_STEPS - 2, "zoom out");
-    CHECK(dw3_mv_scaler_step(MV_SCALER_FSR, 1) == MV_SCALER_NEAREST, "wrap up");
-    CHECK(dw3_mv_scaler_step(MV_SCALER_NEAREST, -1) == MV_SCALER_FSR, "wrap down");
+    CHECK(v.step == MV_ZOOM_TOP_PLAIN - 1, "zoom out");
+    CHECK(dw3_mv_scaler_step(MV_SCALER_BILINEAR, 1) == MV_SCALER_NEAREST, "wrap up");
+    CHECK(dw3_mv_scaler_step(MV_SCALER_NEAREST, -1) == MV_SCALER_BILINEAR, "wrap down");
+    CHECK(dw3_mv_scaler_step(MV_SCALER_FSR, 1) == MV_SCALER_BILINEAR, "bilinear follows FSR 1");
+    CHECK(dw3_mv_scaler_linear(MV_SCALER_BILINEAR) && !dw3_mv_scaler_linear(MV_SCALER_NEAREST),
+          "bilinear filters, nearest does not");
 }
 
 static void test_cache(const char *dir) {
@@ -498,6 +505,230 @@ static int disc_mode(const char *sheet_path, const char *img_path, const char *o
     return 0;
 }
 
+
+/* --- P6.32 phase 3 ------------------------------------------------------------ */
+
+static const int PW = 392, PH = 352, PVW = 1280, PVH = 720;
+
+/* Zoom about the cursor: with the cursor away from the image's edges the cursor
+ * stays on the same picture pixel through every step of the ladder, up and down
+ * (the PoC zoomed about the view centre); near an edge the pan limit wins and says
+ * so; the view never shows past the image. */
+static void test_zoom_anchor(void) {
+    MvView v;
+    float mx = 150.0f, my = 140.0f, px0, py0, px1, py1, wx, wy;
+    int step, flags, k;
+
+    memset(&v, 0, sizeof(v));
+    v.step = 3; v.cx = 196.0f; v.cy = 176.0f;
+    /* the cursor sits left of the middle: the view centre is not on it */
+    dw3_mv_view_point(&v, PW, PH, PVW, PVH, mx, my, &px0, &py0);
+    CHECK(px0 < PVW * 0.5f, "cursor left of the picture middle (%f)", px0);
+    for (k = 0; k < 2; ++k) {
+        for (step = 0; step < 4; ++step) {
+            dw3_mv_view_point(&v, PW, PH, PVW, PVH, mx, my, &px0, &py0);
+            dw3_mv_view_zoom(&v, k ? -1 : 1, PW, PH, PVW, PVH);
+            flags = dw3_mv_view_anchor(&v, mx, my, px0, py0, PW, PH, PVW, PVH, &wx, &wy);
+            dw3_mv_view_point(&v, PW, PH, PVW, PVH, mx, my, &px1, &py1);
+            /* where the whole map fits an axis (1.0 is 1176 px wide in a 1280 picture)
+             * the view is centred and the cursor must move: the pan limit wins */
+            if (!(flags & (MV_PAN_CENTRED_X | MV_PAN_LEFT | MV_PAN_RIGHT)))
+                CHECK(fabsf(px1 - px0) < 0.01f, "zoom %s step %d: cursor x moved %f -> %f (flags %d)",
+                      k ? "out" : "in", v.step, px0, px1, flags);
+            if (!(flags & (MV_PAN_CENTRED_Y | MV_PAN_TOP | MV_PAN_BOTTOM)))
+                CHECK(fabsf(py1 - py0) < 0.01f, "zoom %s step %d: cursor y moved %f -> %f (flags %d)",
+                      k ? "out" : "in", v.step, py0, py1, flags);
+        }
+    }
+    /* near the left edge at 3.0: the anchor cannot hold, the clamp does */
+    memset(&v, 0, sizeof(v));
+    v.step = 3; v.cx = 196.0f; v.cy = 176.0f;
+    mx = 12.0f; my = 100.0f;
+    dw3_mv_view_point(&v, PW, PH, PVW, PVH, mx, my, &px0, &py0);
+    v.cx = 70.0f; /* the view is as far left as it can go at 1.5 (hx = 142 -> clamp) */
+    dw3_mv_view_clamp(&v, PW, PH, PVW, PVH);
+    dw3_mv_view_point(&v, PW, PH, PVW, PVH, mx, my, &px0, &py0);
+    dw3_mv_view_zoom(&v, 1, PW, PH, PVW, PVH);
+    dw3_mv_view_zoom(&v, 1, PW, PH, PVW, PVH);
+    flags = dw3_mv_view_anchor(&v, mx, my, px0, py0, PW, PH, PVW, PVH, &wx, &wy);
+    dw3_mv_view_point(&v, PW, PH, PVW, PVH, mx, my, &px1, &py1);
+    CHECK(px1 >= 0.0f && px1 <= (float)PVW, "cursor stays on the picture at the edge (%f)", px1);
+    {
+        float x0, y0, x1, y1;
+
+        dw3_mv_view_rect(&v, PW, PH, PVW, PVH, &x0, &y0, &x1, &y1);
+        CHECK(x0 <= 0.01f && x1 >= PVW - 0.01f && y0 <= 0.01f && y1 >= PVH - 0.01f,
+              "the image covers the picture after the zoom (%f %f %f %f)", x0, y0, x1, y1);
+    }
+    (void)flags;
+    /* zooming out to FIT: the map fits, the view centres, the cursor moves on screen */
+    for (k = 0; k < 8; ++k) {
+        dw3_mv_view_point(&v, PW, PH, PVW, PVH, mx, my, &px0, &py0);
+        dw3_mv_view_zoom(&v, -1, PW, PH, PVW, PVH);
+        flags = dw3_mv_view_anchor(&v, mx, my, px0, py0, PW, PH, PVW, PVH, &wx, &wy);
+    }
+    CHECK(v.step == 0, "FIT reached");
+    CHECK((flags & MV_PAN_CENTRED_X) != 0, "at FIT the map is narrower than the picture: centred x (flags %d)", flags);
+    CHECK(fabsf(v.cx - PW * 0.5f) < 0.01f, "FIT centre x %f", v.cx);
+}
+
+/* 4.2g: at every zoom, from FIT to the top, the view never shows past the image,
+ * wherever the cursor is (strips included), and the flags name what held it. */
+static void test_pan_limits(void) {
+    int step, ix, iy;
+    MvView v;
+
+    for (step = 0; step <= MV_ZOOM_TOP_PLAIN; ++step) {
+        for (ix = -2; ix <= 6; ++ix) {
+            for (iy = -2; iy <= 6; ++iy) {
+                float x0, y0, x1, y1, s, wx, wy;
+                int flags;
+
+                memset(&v, 0, sizeof(v));
+                v.step = step;
+                v.cx = (float)ix * 100.0f - 50.0f;
+                v.cy = (float)iy * 100.0f - 50.0f;
+                flags = dw3_mv_view_clamp_ex(&v, PW, PH, PVW, PVH, &wx, &wy);
+                s = dw3_mv_view_cur_scale(&v, PW, PH, PVW, PVH);
+                dw3_mv_view_rect(&v, PW, PH, PVW, PVH, &x0, &y0, &x1, &y1);
+                if (!(flags & MV_PAN_CENTRED_X))
+                    CHECK(x0 <= 0.01f && x1 >= PVW - 0.01f, "step %d x: rect %f..%f", step, x0, x1);
+                else
+                    CHECK(x0 >= -0.01f && x1 <= PVW + 0.01f && fabsf((x0 + x1) * 0.5f - PVW * 0.5f) < 0.01f,
+                          "step %d x centred: rect %f..%f", step, x0, x1);
+                if (!(flags & MV_PAN_CENTRED_Y))
+                    CHECK(y0 <= 0.01f && y1 >= PVH - 0.01f, "step %d y: rect %f..%f", step, y0, y1);
+                else
+                    CHECK(y0 >= -0.01f && y1 <= PVH + 0.01f && fabsf((y0 + y1) * 0.5f - PVH * 0.5f) < 0.01f,
+                          "step %d y centred: rect %f..%f", step, y0, y1);
+                /* a flag names an edge the view rests on: the view's edge is the image's */
+                if (flags & MV_PAN_LEFT) CHECK(fabsf(x0) < 0.01f, "left flag but the rect starts at %f", x0);
+                if (flags & MV_PAN_RIGHT) CHECK(fabsf(x1 - PVW) < 0.01f || x1 >= PVW, "right flag but rect ends %f", x1);
+                if (flags & MV_PAN_TOP) CHECK(fabsf(y0) < 0.01f, "top flag but the rect starts at %f", y0);
+                if (flags & MV_PAN_BOTTOM) CHECK(y1 >= PVH - 0.01f, "bottom flag but rect ends %f", y1);
+                /* and one the view was pushed against when it wanted to go past */
+                if (wx < v.cx - 0.001f) CHECK(flags & (MV_PAN_LEFT | MV_PAN_CENTRED_X), "pushed left, no flag (%f -> %f)", wx, v.cx);
+                if (wx > v.cx + 0.001f) CHECK(flags & (MV_PAN_RIGHT | MV_PAN_CENTRED_X), "pushed right, no flag (%f -> %f)", wx, v.cx);
+                if (wy < v.cy - 0.001f) CHECK(flags & (MV_PAN_TOP | MV_PAN_CENTRED_Y), "pushed up, no flag (%f -> %f)", wy, v.cy);
+                if (wy > v.cy + 0.001f) CHECK(flags & (MV_PAN_BOTTOM | MV_PAN_CENTRED_Y), "pushed down, no flag (%f -> %f)", wy, v.cy);
+                (void)s;
+            }
+        }
+    }
+    /* FIT: the map is 392x352, the picture 16:9: bars at the sides, none above or below */
+    memset(&v, 0, sizeof(v));
+    v.cx = 0; v.cy = 0;
+    {
+        int f = dw3_mv_view_clamp_ex(&v, PW, PH, PVW, PVH, NULL, NULL);
+
+        CHECK((f & MV_PAN_CENTRED_X) && (f & MV_PAN_CENTRED_Y),
+              "FIT: the whole map fits both axes (bars at the sides; flags %d)", f);
+    }
+    /* a cursor in the strips: at the top zoom the follow keeps it on the picture and
+     * the image's edge stops the view */
+    memset(&v, 0, sizeof(v));
+    v.step = MV_ZOOM_TOP_PLAIN; v.cx = 196; v.cy = 176;
+    for (ix = 0; ix < 4; ++ix) {
+        static const float pts[4][2] = {{2, 2}, {390, 2}, {2, 350}, {390, 350}};
+        float px, py;
+
+        v.cx = 196; v.cy = 176;
+        dw3_mv_view_follow(&v, pts[ix][0], pts[ix][1], PVW * 0.3f, PVH * 0.3f, PW, PH, PVW, PVH, NULL, NULL);
+        dw3_mv_view_point(&v, PW, PH, PVW, PVH, pts[ix][0], pts[ix][1], &px, &py);
+        CHECK(px >= 0 && px <= PVW && py >= 0 && py <= PVH,
+              "cursor in the strip corner %d is on the picture (%f,%f)", ix, px, py);
+    }
+}
+
+/* 4.4: 4.0 only with a higher-resolution source. */
+static void test_zoom_top(void) {
+    MvView v;
+    int i;
+
+    memset(&v, 0, sizeof(v));
+    v.step = 1; v.cx = 196; v.cy = 176;
+    for (i = 0; i < 12; ++i) dw3_mv_view_zoom(&v, 1, PW, PH, PVW, PVH);
+    CHECK(fabsf(dw3_mv_view_cur_zoom(&v, PW, PH, PVW, PVH) - 3.0f) < 1e-4f && v.step == MV_ZOOM_TOP_PLAIN,
+          "no pack: the ladder stops at 3.0 (step %d)", v.step);
+    CHECK(fabsf(dw3_mv_view_top_zoom(&v) - 3.0f) < 1e-4f, "top zoom 3.0");
+    for (i = 0; i < 100; ++i) dw3_mv_view_zoom_by(&v, 1.2f, PW, PH, PVW, PVH);
+    CHECK(fabsf(dw3_mv_view_cur_zoom(&v, PW, PH, PVW, PVH) - 3.0f) < 1e-4f, "stick zoom capped at 3.0");
+    memset(&v, 0, sizeof(v));
+    v.step = 1; v.cx = 196; v.cy = 176; v.top = MV_ZOOM_STEPS - 1;
+    for (i = 0; i < 12; ++i) dw3_mv_view_zoom(&v, 1, PW, PH, PVW, PVH);
+    CHECK(fabsf(dw3_mv_view_cur_zoom(&v, PW, PH, PVW, PVH) - 4.0f) < 1e-4f && v.step == MV_ZOOM_STEPS - 1,
+          "with a pack: the ladder goes to 4.0 (step %d)", v.step);
+    for (i = 0; i < 100; ++i) dw3_mv_view_zoom_by(&v, 1.2f, PW, PH, PVW, PVH);
+    CHECK(fabsf(dw3_mv_view_cur_zoom(&v, PW, PH, PVW, PVH) - 4.0f) < 1e-4f, "stick zoom capped at 4.0 with a pack");
+    dw3_mv_view_zoom(&v, -1, PW, PH, PVW, PVH);
+    CHECK(v.step == MV_ZOOM_STEPS - 2 || v.zoom == 0.0f, "button steps down from 4.0");
+}
+
+static void test_pan_speed(void) {
+    int hold;
+    float prev = 0.0f, v;
+
+    CHECK(dw3_mv_pan_speed(0, 1.5f) == 0.0f, "no speed without a hold");
+    CHECK(dw3_mv_pan_speed(1, 1.5f) == 2.0f && dw3_mv_pan_speed(10, 1.5f) == 2.0f, "the game's 2 px a frame first");
+    CHECK(dw3_mv_pan_speed(11, 1.5f) == 3.0f && dw3_mv_pan_speed(20, 1.5f) == 3.0f, "then 3");
+    CHECK(dw3_mv_pan_speed(21, 1.5f) == 4.0f && dw3_mv_pan_speed(MV_PAN_ACCEL_AFTER, 1.5f) == 4.0f,
+          "then 4 up to the acceleration (the game's three speeds are unchanged)");
+    for (hold = 1; hold < 400; ++hold) {
+        v = dw3_mv_pan_speed(hold, 1.0f);
+        CHECK(v >= prev, "speed never drops while held (%d: %f < %f)", hold, v, prev);
+        prev = v;
+    }
+    CHECK(fabsf(dw3_mv_pan_speed(400, 1.0f) - 10.0f) < 1e-4f, "cap at zoom 1.0 is 10 px/frame");
+    CHECK(fabsf(dw3_mv_pan_speed(400, 0.5f) - 20.0f) < 1e-4f, "cap at zoom 0.5 is 20 px/frame");
+    CHECK(dw3_mv_pan_speed(400, 3.0f) == 4.0f, "no acceleration where 4 px is already 12 screen px");
+    CHECK(dw3_mv_pan_speed(MV_PAN_ACCEL_AFTER + 15, 1.0f) == 5.0f, "+1 px a frame every 15 frames after the ramp");
+    /* the left stick */
+    CHECK(dw3_mv_stick_unit(0) == 0.0f && dw3_mv_stick_unit(MV_STICK_MOVE_DEADZONE) == 0.0f &&
+          dw3_mv_stick_unit(-MV_STICK_MOVE_DEADZONE) == 0.0f, "dead zone");
+    CHECK(fabsf(dw3_mv_stick_unit(127) - 1.0f) < 1e-5f && fabsf(dw3_mv_stick_unit(-127) + 1.0f) < 1e-5f,
+          "full tilt is 1");
+    CHECK(dw3_mv_stick_unit(MV_STICK_MOVE_DEADZONE + 1) >= 0.02f, "a barely moved stick still moves the cursor");
+    prev = 0.0f;
+    for (hold = MV_STICK_MOVE_DEADZONE + 1; hold <= 127; ++hold) {
+        v = dw3_mv_stick_unit(hold);
+        CHECK(v >= prev && v <= 1.0f, "the stick curve rises to 1 (%d: %f)", hold, v);
+        CHECK(fabsf(dw3_mv_stick_unit(-hold) + v) < 1e-6f, "symmetric");
+        prev = v;
+    }
+    v = dw3_mv_stick_unit(64);
+    CHECK(v > 0.2f && v < 0.5f, "half tilt moves slower than half of full (%f)", v);
+}
+
+static void test_backdrop(void) {
+    MvImage src;
+    uint8_t out[MV_BACKDROP_W * MV_BACKDROP_H * 4];
+    int i, bad = 0;
+
+    make_image(&src, 64, 48, 0); /* flat 120, 70, 135 */
+    CHECK(dw3_mv_backdrop(&src, out, 50) == 0, "backdrop built");
+    for (i = 0; i < MV_BACKDROP_W * MV_BACKDROP_H; ++i) {
+        const uint8_t *p = out + i * 4;
+        if (abs(p[0] - 60) > 1 || abs(p[1] - 35) > 1 || abs(p[2] - 67) > 1 || p[3] != 255) ++bad;
+    }
+    CHECK(bad == 0, "a flat map gives a flat backdrop at half brightness (%d cells off)", bad);
+    CHECK(dw3_mv_backdrop(&src, out, 100) == 0 && abs(out[0] - 120) <= 1, "dim 100 keeps the colour");
+    CHECK(dw3_mv_backdrop(&src, out, 0) == 0 && out[0] == 0 && out[3] == 255, "dim 0 is black but opaque");
+    /* left half red, right half blue: the backdrop keeps the layout */
+    for (i = 0; i < src.w * src.h; ++i) {
+        uint8_t *p = src.rgba + (size_t)i * 4;
+        int x = i % src.w;
+
+        p[0] = x < src.w / 2 ? 200 : 0;
+        p[1] = 0;
+        p[2] = x < src.w / 2 ? 0 : 200;
+    }
+    CHECK(dw3_mv_backdrop(&src, out, 100) == 0, "backdrop 2");
+    CHECK(out[0] > 150 && out[2] < 20, "left cell red (%d,%d)", out[0], out[2]);
+    CHECK(out[(MV_BACKDROP_W - 1) * 4] < 20 && out[(MV_BACKDROP_W - 1) * 4 + 2] > 150, "right cell blue");
+    dw3_mv_image_free(&src);
+    CHECK(dw3_mv_backdrop(NULL, out, 50) == -1, "no source, no backdrop");
+}
+
 int main(int argc, char **argv) {
     if (argc >= 3 && strcmp(argv[1], "reach") == 0) return reach_mode(argv[2]);
     if (argc >= 5 && strcmp(argv[1], "disc") == 0) return disc_mode(argv[2], argv[3], argv[4]);
@@ -511,6 +742,11 @@ int main(int argc, char **argv) {
     test_namebox_stick_zoom();
     test_fixed_sprites();
     test_reach_and_text();
+    test_zoom_anchor();
+    test_pan_limits();
+    test_zoom_top();
+    test_pan_speed();
+    test_backdrop();
     test_cache(argc > 1 ? argv[1] : "/mnt/cabal/tmp");
     if (!g_fail) printf("OK: map view core\n");
     return g_fail;

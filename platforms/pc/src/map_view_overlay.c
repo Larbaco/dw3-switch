@@ -1,6 +1,7 @@
 /* P6.32 phase 0: the full-screen map screen on the PC SDL3 GPU present.
  *
- * Draws over the whole 16:9 picture: a black backdrop, the map texture (the
+ * Draws over the whole 16:9 picture: a backdrop (the map's own colours, dimmed,
+ * from a 32 x 18 texture the linear filter stretches; black when there is none), the map texture (the
  * captured map, or a CPU-scaled copy of it) placed and zoomed by a viewport
  * larger than the window with a scissor to the picture, then the HUD canvas.
  * It reuses the title overlay's pipeline and quad buffer
@@ -24,12 +25,12 @@ typedef struct Dw3PcOverlayGpu {
 } Dw3PcOverlayGpu;
 extern int dw3_pc_overlay_gpu_ctx(Dw3PcOverlayGpu *ctx);
 
-static SDL_GPUTexture *g_map_tex, *g_hud_tex, *g_black_tex;
+static SDL_GPUTexture *g_map_tex, *g_hud_tex, *g_black_tex, *g_backdrop_tex;
 static SDL_GPUTexture *g_bank_tex[DW3_MV_BANK_N]; /* the game's cursor and balloon */
 static unsigned g_bank_gen = ~0u;
 static SDL_GPUSampler *g_linear, *g_nearest;
 static SDL_GPUDevice *g_dev;
-static unsigned g_map_gen = ~0u, g_hud_gen = ~0u;
+static unsigned g_map_gen = ~0u, g_hud_gen = ~0u, g_backdrop_gen = ~0u;
 static int g_map_w, g_map_h, g_idle, g_logged_draw;
 
 static void release_all(void) {
@@ -37,6 +38,7 @@ static void release_all(void) {
     if (g_map_tex) SDL_ReleaseGPUTexture(g_dev, g_map_tex);
     if (g_hud_tex) SDL_ReleaseGPUTexture(g_dev, g_hud_tex);
     if (g_black_tex) SDL_ReleaseGPUTexture(g_dev, g_black_tex);
+    if (g_backdrop_tex) SDL_ReleaseGPUTexture(g_dev, g_backdrop_tex);
     if (g_linear) SDL_ReleaseGPUSampler(g_dev, g_linear);
     if (g_nearest) SDL_ReleaseGPUSampler(g_dev, g_nearest);
     {
@@ -48,7 +50,8 @@ static void release_all(void) {
         }
         g_bank_gen = ~0u;
     }
-    g_map_tex = g_hud_tex = g_black_tex = NULL;
+    g_map_tex = g_hud_tex = g_black_tex = g_backdrop_tex = NULL;
+    g_backdrop_gen = ~0u;
     g_linear = g_nearest = NULL;
     g_map_gen = g_hud_gen = ~0u;
     g_map_w = g_map_h = 0;
@@ -186,6 +189,20 @@ void dw3_pc_map_view_prepare(void) {
         g_bank_gen = d.bank_gen;
         fprintf(stderr, "dw3-map: pc sprite bank uploaded (gen %u)\n", d.bank_gen);
     }
+    if (d.backdrop_gen != g_backdrop_gen) {
+        /* the backdrop of the map's own colours (none: black stays) */
+        if (d.backdrop_rgba) {
+            if (!g_backdrop_tex)
+                g_backdrop_tex = make_texture(g_dev, DW3_MV_BACKDROP_W, DW3_MV_BACKDROP_H);
+            if (g_backdrop_tex &&
+                upload(g_dev, g_backdrop_tex, d.backdrop_rgba, DW3_MV_BACKDROP_W,
+                       DW3_MV_BACKDROP_H) == 0) {
+                fprintf(stderr, "dw3-map: pc backdrop %dx%d uploaded (gen %u, linear)\n",
+                        DW3_MV_BACKDROP_W, DW3_MV_BACKDROP_H, d.backdrop_gen);
+            }
+        }
+        g_backdrop_gen = d.backdrop_gen;
+    }
     if (d.hud_gen != g_hud_gen && d.hud_rgba && g_hud_tex &&
         upload(g_dev, g_hud_tex, d.hud_rgba, DW3_MV_HUD_W, DW3_MV_HUD_H) == 0) {
         g_hud_gen = d.hud_gen;
@@ -194,7 +211,8 @@ void dw3_pc_map_view_prepare(void) {
 
 void dw3_pc_map_view_destroy(void) { release_all(); }
 
-/* One pass over the picture, clipped to `clip` (window pixels): the backdrop,
+/* One pass over the picture, clipped to `clip` (window pixels): the backdrop
+ * (the map's own colours at FIT, else hidden behind the map),
  * the map, the game's sprites on it (map space), the HUD canvas. */
 static void draw_layers(SDL_GPURenderPass *pass, const Dw3PcOverlayGpu *ctx,
                         const Dw3MapViewDraw *d, const SDL_Rect *clip) {
@@ -211,7 +229,11 @@ static void draw_layers(SDL_GPURenderPass *pass, const Dw3PcOverlayGpu *ctx,
     /* backdrop */
     vp.x = ctx->pic_x; vp.y = ctx->pic_y; vp.w = ctx->pic_w; vp.h = ctx->pic_h;
     SDL_SetGPUViewport(pass, &vp);
-    tb.texture = g_black_tex; tb.sampler = g_nearest;
+    if (d->backdrop_rgba && g_backdrop_tex) {
+        tb.texture = g_backdrop_tex; tb.sampler = g_linear;
+    } else {
+        tb.texture = g_black_tex; tb.sampler = g_nearest;
+    }
     SDL_BindGPUFragmentSamplers(pass, 0, &tb, 1);
     SDL_DrawGPUPrimitives(pass, 6, 1, ctx->quad_first, 0);
 

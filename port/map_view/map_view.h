@@ -37,9 +37,11 @@ int dw3_map_view_async_start(void (*fn)(void *), void *arg);
  * analog byte distance from the centre, raw). Hosts call it every frame; the
  * dead zone and the scaling are done here. 0 when no stick. */
 void dw3_map_view_set_zoom_stick(int raw_up);
-
 /* --- host overlays ---------------------------------------------------------*/
 enum { DW3_MV_HUD_W = 640, DW3_MV_HUD_H = 360 };
+/* The backdrop behind the map (phase 3): the map's own colours, 32 x 18 cells,
+ * stretched over the whole picture with a linear filter. */
+enum { DW3_MV_BACKDROP_W = 32, DW3_MV_BACKDROP_H = 18 };
 /* The game's own sprites that sit on the map (the cursor, the balloon of the
  * current area): composed from the VRAM into small RGBA images when the view
  * opens (the bank), drawn by the host as quads in map space. */
@@ -62,6 +64,8 @@ typedef struct Dw3MapViewDraw {
     float x0, y0, x1, y1;      /* the map's rectangle, fractions of the picture */
     unsigned hud_gen;
     const uint8_t *hud_rgba;   /* DW3_MV_HUD_W x DW3_MV_HUD_H, straight alpha */
+    unsigned backdrop_gen;     /* changes when the backdrop must be sent */
+    const uint8_t *backdrop_rgba; /* DW3_MV_BACKDROP_W x _H, opaque; NULL = black */
     unsigned bank_gen;         /* changes when the bank images must be sent */
     Dw3MapViewBankImg bank[DW3_MV_BANK_N];
     int nspr;                  /* sprites to draw, in order (map, then these) */
