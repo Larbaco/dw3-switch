@@ -1032,9 +1032,10 @@ the plain US and EU images have no other region to start, `DW3_OPT_REGION_ROW` i
 through `dw3_region_cfg_write` (which refuses to overwrite a file it cannot read, keeps
 the other keys and writes `end=1` last); the region folder's own file never gets it.
 The folder is the parent of the region's config folder, or `DW3_CONFIG_DIR` when that
-is set (the replays keep both files in one folder). It takes effect at the next start;
-a change in game never changes the running region, and the row is not locked in game.
-Ask = the picker every start (3 s countdown), the fresh-install default.
+is set (the replays keep both files in one folder). It takes effect at the next start
+**unless the player answers Yes to the restart question** ([below](#restart-into-the-chosen-region-p638));
+a change in game never changes the running region by itself, and the row is not locked in
+game. Ask = the picker every start (3 s countdown), the fresh-install default.
 
 Logs: `dw3-options: region_default us read from <dir>/port_options.cfg` at boot and
 `dw3-options: region_default eu saved to <dir>/port_options.cfg (takes effect at the
@@ -1054,6 +1055,83 @@ stored. The line `dw3-region: pick buttons seen minus=M zl=Z zr=R (12 frames)` s
 the game saw, so one run settles whether the launcher passes ZL / ZR. The small launcher
 (`platforms/switch/launcher`) takes ZL + ZR the same way. The Options row is the supported
 way; `region_default=ask` needs no button.
+
+### Restart into the chosen region (P6.38)
+
+Owner request 2026-10-30: after switching US to EU (or back) the game should reload into the
+right version, with a warning. Combined image only, like the row.
+
+**When it asks.** The player changes the row to the **other** region than the one running,
+then leaves the row (Up / Down, or Back to the group list). A window in the port's own style
+(the Quit game / Return to title window, `port/options/confirm.c`, drawn by the native
+overlay) opens with the cursor on **No**:
+
+| Where | Title | Question | Warning line |
+|---|---|---|---|
+| Title screen | `RESTART` | `Restart in EU now?` | none (nothing to lose) |
+| In game (field menu or battle Options) | `RESTART` | `Restart in EU now?` | `Progress since your last save will be lost.` |
+
+It is asked once per change: walking the cursor over a row that was left on the other
+region (an earlier No) asks nothing. **Ask never asks**, and setting the row back to the
+running region never asks. The five languages of the EU disc come from
+`tools/generate_pc_title_lettering.py` (`RESTART_TEXT`; the FR / DE / IT / ES lines are machine
+drafts like the rest of the port's text, native review open).
+
+**No / Triangle / Circle.** Nothing changes: the choice stays saved and takes effect at the next
+start, exactly as before. Log: `dw3-region: relaunch declined; eu takes effect at the next start`
+(`... declined (cancelled) ...` for Triangle / Circle).
+
+**Yes.** In this order:
+1. `dw3-region: relaunch to eu requested`;
+2. the saves are flushed, as the restart hotkey does (a save being written, or a flush that
+   fails, cancels it: `dw3-region: relaunch to eu failed: ...`);
+3. `last_region` and `region_default` are written to the top-level `port_options.cfg`
+   (`dw3-region: saved last_region=eu region_default=eu before the relaunch`);
+4. the host is asked to relaunch and the game quits the way Quit game does (the loop ends,
+   audio and saves close, the log is flushed): `dw3-region: relaunch to eu: leaving the game
+   now (<how>)`;
+5. the new process starts with `--relaunch-region eu` (`port/region/dw3_region_relaunch.h`),
+   which beats `region_default`, a held Minus (no picker), and on the PC also `--region`,
+   `DW3_REGION` and `DW3_RUNTIME`. It logs `dw3-region: started by relaunch (eu)`, then the usual
+   `dw3-region: running eu (...)`. If that region has no data on the card it boots the one that
+   is there and the log says so.
+
+**How each host relaunches, and why.**
+
+| Host | Mechanism | Notes |
+|---|---|---|
+| Switch | `envSetNextLoad(argv[0], "<path> --relaunch-region eu")`, then the normal quit path (`dw3_nx_set_quit_requested`): `main()` returns through the same shutdown as Quit game and hbloader starts the queued NRO | the NRO path is `argv[0]`, as hbmenu passes it (quoted when it has a space). `envHasNextLoad()` is false when the NRO was not started by hbloader (a forwarder or a title launcher): then nothing is queued |
+| PC | `execv("/proc/self/exe", argv')` from the **last exit handler** | PSY-Z ends the process from its event pump (`QuitPlatform(); exit(0)`) after the quit event, so the game loop never returns on the PC; an `atexit` handler registered first in `main()` runs after the saves and the options are closed and after SDL is torn down. `argv'` is the old one without `--region` / `--runtime`, plus the override. `execv` keeps the process id and the environment (`DW3_CONFIG_DIR`, `DW3_RUNTIME_BASE`, `DW3_MEMCARD_DIR`), so the new process reads the same files |
+
+**Why not an in-process swap.** `dw3_region_select()` refuses a second region on purpose: the two
+game copies of the combined image keep separate statics, overlay tables and writable overlay
+sections, and the GPU, audio and file-cache state is set up for the first one. P6.9's
+Return to title (`port/options/restart.c`) resets the game's task state in the same process but
+leaves all of that alone, so it cannot change region cleanly. A new process is the one robust way,
+and on both hosts it reuses the existing quit path.
+
+**When it cannot relaunch.**
+- The host cannot start another process (`envHasNextLoad()` false): no question is asked; the
+  one-button notice **Restart the game to apply.** (OK) opens, and the choice takes effect at the next
+  start as before. Log: `dw3-region: relaunch to eu not available: <why>; takes effect at the next start`.
+- The Yes failed after the question (save flush, `envSetNextLoad` error, `execv` error): the same
+  notice, and `dw3-region: relaunch to eu failed: <why>; takes effect at the next start`.
+- The other region has no data under the base folder (a complete tree or a disc image): no window,
+  `dw3-region: no restart prompt for eu: no eu game data under <base>; takes effect at the next start`.
+  Starting the other region needs its data, so the question would restart into the same one.
+
+**Limits.** Started from `nxlink -s` the new process has no nxlink connection (hbloader gives it no
+host address); `dw3.log` on the card still has the whole sequence. The hold-Minus picker is not
+involved: a relaunched start never shows it.
+
+**No decomp patch** (the window and the policy are port code; the Options screen ticks the window,
+so the title and field menus' own tick ignores it, `dw3_port_confirm_tick_owned`). Tests:
+`tools/tests/test_region_relaunch.py` (the helpers and the window end to end on the host),
+`tools/tests/test_region.py` (the boot with a relaunch override), `tools/tests/test_confirm.py`
+(the artwork in five languages), and the replays `us/eu-region-relaunch-no|yes|exec|game`
+(tier `both`; `yes` stops short of the exec with `DW3_RELAUNCH_TEST=1` and exits 0; `exec` really
+re-executes the binary and checks the second process boots the other region and finishes its
+recording).
 
 ## Auto-save row (P6.31)
 

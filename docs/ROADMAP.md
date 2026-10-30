@@ -174,6 +174,7 @@ listed once, in [Pending OLED checks](#pending-oled-checks).
 | P6.34 | Redesign of the items / status / equipment menu flow | design written 2026-10-28 (5 phases, 10 owner questions open); **phase 1 built 2026-10-28, merged #339** (equip from the Items menu, patch `0188`, key `items_equip_from_items`, default on = orchestrator default pending owner confirmation of Q1 to Q5 and Q10); **phase 2 built 2026-10-29, merged #348** (equip in Status > Equipment returns to the slot list without the long fades, patch `0190`, key `items_equip_stays`, default on = orchestrator default pending owner confirmation of Q6; replay `us/eu-items-equip-stays[-off]`); **phase 3 built 2026-10-29, merged #357** (Square in the equip list cycles this slot / all weapons / all armor and gear / worn by others; Cross on a worn-by-others row moves the item between party members, patch `0192`, key `items_bag_view`, default on = orchestrator default pending owner confirmation of P6.33 decisions 2 and 3 as built; replay `us/eu-items-bag-view[-43][-off]` and `eu-items-bag-view-fr|it|de|es`; left: a count line, a help hint for Square, moving from non-party Digimon, swap); **phase 4 built 2026-10-29, merged #360** ("use item" stays on the partner step: the item panel and the pages stay, Up / Down + Cross use the next copy, the last copy and Triangle take the original way back; patch `0193`, key `items_use_stays`, default on = orchestrator default pending owner confirmation of P6.33 decision 6 as built and of Q9 (the "Items to Equipment" jump is dropped); replay `us/eu-items-use-stays[-43][-off]` and `eu-items-use-stays-fr|it|de|es`; the recordings that walk the old use flow now run with `items_use_stays=0`; left: ZL / ZR in the partner step, a hint); phase 5 (order change, only if the owner asks; patch 0194 is P6.36's now, so it needs a new number) not built; PC replay US and EU passes, OLED items B19 (revised), B21, B22, B23 and B24 pending | [roadmap](#phase-6-goal-notes), [P6.34](P6.34_MENU_FLOW.md), [P6.33](P6.33_ITEMS_MENU.md) |
 | P6.35 | In-game walkthrough help: where to go next and what to do, by story progress (future goal) | in progress; **phase 1 data layer built** (#328; step resolver, `ch01` table progress 0 to 4 confirmed by US and EU PC replays, English draft, FR/DE/IT/ES drafted 2026-10-29 (machine-drafted, needs native review); [As built](P6.35_WALKTHROUGH.md#as-built-phase-1-data-layer)); **phase 2 the screen built 2026-10-29** (merged as #363): the Walkthrough group of Options (title, field menu, battle), current step page, step list, area spoiler pages, two-action reveal, nothing shown beyond the player's progress, `ch01` only and a `More chapters coming` page; PC replays US and EU `*-walkthrough-screen-*` pass; the game's field menu opens only from progress 4, so in game it is reachable from `ch01.s06`; **slice 2 built 2026-10-30 (PR open): the main steps of the first half, `GAME.progress` 5 to 0x29, ten chapters and the chapter list on the screen, FR/DE/IT/ES machine drafts, replay points for the start, middle and end of every chapter on US and EU ([As built, slice 2](P6.35_WALKTHROUGH.md#as-built-slice-2-the-first-half)); **slice 3 built 2026-10-30 (PR open): the last battle (`ch11`, progress 0x2B) and the EU extra chapter (`ch12`, 0x2D, `region = EU`, three steps), so the whole main story is in the table (56 rows on US, 59 on EU); the `More chapters coming` placeholder is removed ([As built, slice 3](P6.35_WALKTHROUGH.md#as-built-slice-3-the-last-battle-and-the-eu-extra-chapter)); **slice 4 built 2026-10-30 (PR open): the side content, six optional rows gated at their chapter's first value (the Seabed and its forge from chapter 4, the Circuit Board and the Black Kingz' den from chapter 8, and on EU the five weapons `SPECIAL(0x96)` asks for and the extra chapter's partner fighters from chapter 12), each checked against the decomp; Duel Island, the base-game recruits and the other optional fights stay unshipped with their reasons ([As built, slice 4](P6.35_WALKTHROUGH.md#as-built-slice-4-the-side-content)); left: OLED W1 to W11, native review, the release validator, the "done" mark on optional rows** ([As built, phase 2](P6.35_WALKTHROUGH.md#as-built-phase-2-the-screen)) (owner 2026-10-28: at launch in every language the base game has, EN + FR/DE/IT/ES on the EU disc, pt-BR later with P6.7; design written 2026-10-28, owner decisions recorded) | [roadmap](#phase-6-goal-notes), [design](P6.35_WALKTHROUGH.md), [PLAYER_GUIDE](PLAYER_GUIDE.md) |
 | P6.36 | Music at normal speed while turbo is on | phases 1 and 2 built (#356), phase 3 jingle hold (4 s, owner decision) built (merged as #361); phase 4 SFX split open | [roadmap](#phase-6-goal-notes), [P6.36](P6.36_TURBO_MUSIC.md), [P6.4](P6.4_FAST_FORWARD.md), [P4.3](P4.3_AUDIO.md) |
+| P6.38 | Restart into the chosen region: after switching US to EU or EU to US in Options > Region at start, the game offers to relaunch into it (owner request 2026-10-30; combined image only) | **built 2026-10-30 (PR open)**: leaving the row after a change to the other region asks `Restart in EU now?` (in game with `Progress since your last save will be lost.`, cursor on No); Yes saves, flushes and relaunches (Switch `envSetNextLoad` + `--relaunch-region`, PC `execv` from the last exit handler), No keeps "takes effect at the next start"; Ask and the running region never ask; a host that cannot relaunch shows `Restart the game to apply.`; **no decomp patch**; PC replays `us/eu-region-relaunch-no|yes|exec|game` (tier `both`); OLED A17.1 to A17.4 pending | [roadmap](#phase-6-goal-notes), [PORT_OPTIONS](PORT_OPTIONS.md#restart-into-the-chosen-region-p638), [P51 item 4](P51_FEEDBACK.md) |
 | P7.1 | Inventory and boundaries | done | [COMMUNITY_QOL](COMMUNITY_QOL.md) |
 | P7.2 | Patched EU disc as data source | open | [COMMUNITY_QOL](COMMUNITY_QOL.md) |
 | P7.3 | Binary-patch limits | in progress | [COMMUNITY_QOL](COMMUNITY_QOL.md) |
@@ -2699,6 +2700,42 @@ Statuses are in the [table](#status-at-a-glance).
   ([P6.36_TURBO_MUSIC](P6.36_TURBO_MUSIC.md#as-built-phase-3-the-jingle-hold-2026-10-29)).
   **Open:** phase 4 (SEP SFX split, `Larbaco/psyz` pin), OLED T1 to T6.
   Related: P6.4, P4.3, P6.22.
+- [~] **P6.38 Restart into the chosen region.** Dated 2026-10-30, owner request:
+  after switching US to EU or EU to US the game should reload into the right
+  version, with a warning (before this, Options > Region at start only took
+  effect at the next launch, P51 item 4). Combined image only; the plain US and
+  EU images have no row.
+  **Design (orchestrator, 2026-10-30):** on leaving the row (or closing Options)
+  with a region other than the running one, a Yes / No window in the port's own
+  style: title screen `Restart in EU now?`, in game the same plus `Progress since
+  your last save will be lost.`, cursor on No; Ask never asks and the running
+  region never asks. Yes writes the choice and relaunches the binary into that
+  region whatever `region_default` says; No keeps today's behaviour.
+  **Built 2026-10-30 (PR open, no decomp patch):** the window is the Quit game /
+  Return to title window with new kinds (`confirm.c`, `title_overlay_art.c`,
+  lettering in five languages, FR / DE / IT / ES machine-drafted); the policy
+  and its log lines are `port/options/region_relaunch.c`; the platform
+  independent part (the `--relaunch-region` override, the argument string and
+  argv, "is the data on the card") is `port/region/dw3_region_relaunch.c`.
+  Mechanism, chosen after reading the boot code: **a new process on both hosts**,
+  because `dw3_region_select` refuses a second region and the two game copies,
+  the GPU and the audio cannot be swapped under a running game (P6.9's in-process
+  Return to title does not change region). Switch: libnx `envSetNextLoad` with
+  `argv[0]` and `--relaunch-region <r>`, then the normal quit path. PC: `execv`
+  from the last `atexit` handler, because PSY-Z exits from its event pump and the
+  game loop never returns there. Fallback when `envHasNextLoad()` is false or the
+  relaunch fails: the one-button notice `Restart the game to apply.` and the old
+  next-start behaviour. Logs `dw3-region: relaunch to eu requested`, `... declined`,
+  `... started by relaunch (eu)`, `... relaunch to eu failed: <why>`. Tests: host
+  `tools/tests/test_region_relaunch.py`, `test_region.py`, `test_confirm.py`;
+  replays `us/eu-region-relaunch-no`, `-yes` (test hook `DW3_RELAUNCH_TEST`
+  stops short of the exec), `-exec` (a real exec, the second process boots the
+  other region and finishes the recording), `-game` (in game). Details in
+  [PORT_OPTIONS](PORT_OPTIONS.md#restart-into-the-chosen-region-p638).
+  **Open:** OLED A17.1 to A17.4 (the Switch relaunch itself is hardware-unverified:
+  `envSetNextLoad` from a game NRO is the launcher's proven path, but this NRO
+  also queues itself); native review of the FR / DE / IT / ES lines.
+  Related: P51 item 4, P6.24, P6.9, P6.27, P6.28, P9.7.
 
 ### Phase 7 goal notes
 
