@@ -1058,7 +1058,10 @@ button icons (`FONT_ICONS_1`, size 1, the only size that has them) with 12x12
 glyphs of the physical button that produces that PS button under the current
 map (A / B / X / Y, L / R / ZL / ZR for a custom map; the stick clicks have no
 glyph and keep the icon). It follows the layout row and the Customize screen at
-once. Details, the cells, the palettes and the census: [P10.6_GLYPHS](P10.6_GLYPHS.md).
+once. The page-turn prompt (`L1` / `R1` at the bottom of the item shop and of the field menu's item
+list) is drawn as the glyph of the button that produces L1 / R1 (patch 0196, [section
+8](P10.6_GLYPHS.md#8-page-turn-prompt-follow-up-2026-10-30)); the blinking wedge beside it stays. Details,
+the cells, the palettes and the census: [P10.6_GLYPHS](P10.6_GLYPHS.md).
 Art: `assets/glyphs/` (CC0, drawn for the project). Your own art: PNGs of the
 same names and the five role colours in `sdmc:/switch/dw3/glyphs/`.
 
@@ -1070,7 +1073,8 @@ screen's OFF / ON.
 Logs (`dw3.log`): `dw3-options: switch_glyphs=on|off`, one `dw3-glyphs: on|off,
 map=<layout>, patched N cells (us|eu, n=47:A ...) [font load|map|option]` line
 per font load (boot, after a movie) and per change, `dw3-glyphs: N glyph(s)
-read from <dir>` or a one-line reason when an own PNG is refused,
+read from <dir>`, `dw3-glyphs: page-turn L1=L R1=R (cells n=115 n=116) [..]` and once per scene
+`dw3-glyphs: page-turn prompt R1 drawn as glyph R (scene=..)`, or a one-line reason when an own PNG is refused,
 `dw3-port-options: switch glyphs enabled|disabled`. Unit tests:
 `test_switch_glyphs.py`, `test_port_options.py` (both builds). Replay:
 `us/eu-glyphs-*` ([P6.15](P6.15_REPLAY_TESTS.md)).

@@ -214,6 +214,55 @@ static void test_plan(void) {
     CHECK(strlen(text) < 10, "short buffer");
 }
 
+/* The page-turn prompt: the exact strings L1 / R1, the glyph per map. */
+static void test_pageturn(void) {
+    unsigned char ps[DW3_BTN_COUNT];
+    unsigned char nin[DW3_BTN_COUNT];
+    unsigned char custom[DW3_BTN_COUNT];
+    int plan[DW3_PAGETURN_COUNT];
+    const char *s;
+
+    /* L1 is 19 05, R1 is 1F 05, nothing else (not L2, not a longer string). */
+    CHECK(dw3_glyph_pageturn_match("\x19\x05") == 0, "L1");
+    CHECK(dw3_glyph_pageturn_match("\x1f\x05") == 1, "R1");
+    CHECK(dw3_glyph_pageturn_match("\x19\x06") == -1, "L2 is not a page turn");
+    CHECK(dw3_glyph_pageturn_match("\x1f\x05\x01") == -1, "R1 followed by text");
+    CHECK(dw3_glyph_pageturn_match("\x05\x05") == -1, "other letters");
+    CHECK(dw3_glyph_pageturn_match("\x19") == -1, "one letter");
+    CHECK(dw3_glyph_pageturn_match("") == -1, "empty");
+    CHECK(dw3_glyph_pageturn_match(NULL) == -1, "NULL");
+
+    /* The icon string: 01 n, then the terminator. */
+    s = dw3_glyph_pageturn_string(0);
+    CHECK(s != NULL && s[0] == 1 && (unsigned char)s[1] == DW3_PAGETURN_N0 &&
+              s[2] == 0 && s[3] == 0, "L1 string");
+    s = dw3_glyph_pageturn_string(1);
+    CHECK(s != NULL && s[0] == 1 && (unsigned char)s[1] == DW3_PAGETURN_N0 + 1 &&
+              s[2] == 0, "R1 string");
+    CHECK(dw3_glyph_pageturn_string(2) == NULL && dw3_glyph_pageturn_string(-1) == NULL,
+          "string out of range");
+    CHECK(DW3_PAGETURN_N0 == 115 && DW3_PAGETURN_U % 4 == 0 &&
+              DW3_PAGETURN_V0 + 2 * DW3_PAGETURN_V_STEP <= 256,
+          "cells are whole halfwords on the page");
+
+    dw3_button_map_preset(DW3_LAYOUT_PLAYSTATION, ps);
+    dw3_button_map_preset(DW3_LAYOUT_NINTENDO, nin);
+    CHECK(dw3_glyph_pageturn_plan(ps, plan) == 2 && plan[0] == DW3_GLYPH_L &&
+              plan[1] == DW3_GLYPH_R, "playstation: L1 -> L, R1 -> R");
+    CHECK(dw3_glyph_pageturn_plan(nin, plan) == 2 && plan[0] == DW3_GLYPH_L &&
+              plan[1] == DW3_GLYPH_R, "nintendo: shoulders stay L and R");
+
+    /* Custom: L1 on ZL, R1 on the right stick click (no glyph: keeps the text). */
+    memcpy(custom, ps, sizeof(custom));
+    custom[DW3_BTN_L1] = DW3_BTN_L2;
+    custom[DW3_BTN_R1] = DW3_BTN_R3;
+    custom[DW3_BTN_L2] = DW3_BTN_L1;
+    custom[DW3_BTN_R3] = DW3_BTN_R1;
+    CHECK(dw3_button_map_valid(custom), "custom map is a permutation");
+    CHECK(dw3_glyph_pageturn_plan(custom, plan) == 1 && plan[0] == DW3_GLYPH_ZL &&
+              plan[1] == DW3_GLYPH_NONE, "custom: L1 -> ZL, R1 keeps the text");
+}
+
 /* argv: png <dir>: every <dir>/<name>.png equals the compiled-in art. */
 static int check_png_dir(const char *dir) {
     int g;
@@ -280,6 +329,7 @@ int main(int argc, char **argv) {
     test_pack();
     test_rgba();
     test_plan();
+    test_pageturn();
     if (g_fail) {
         return 1;
     }

@@ -207,6 +207,39 @@ void dw3_glyph_plan_text(const Dw3GlyphCell cells[DW3_GLYPH_CELLS], char *out,
     }
 }
 
+/* The page-turn prompt: the font codes of the letters L, R and the digit 1 (the
+ * same bytes in US and EU: "L1" is 19 05, "R1" is 1F 05). */
+static const unsigned char g_pt_button[DW3_PAGETURN_COUNT] = {DW3_BTN_L1,
+                                                              DW3_BTN_R1};
+static const char g_pt_string[DW3_PAGETURN_COUNT][4] = {
+    {1, DW3_PAGETURN_N0, 0, 0}, {1, DW3_PAGETURN_N0 + 1, 0, 0}};
+
+int dw3_glyph_pageturn_match(const char *str) {
+    if (str == NULL || (unsigned char)str[1] != 0x05 || str[2] != 0) {
+        return -1;
+    }
+    if ((unsigned char)str[0] == 0x19) {
+        return 0;
+    }
+    return (unsigned char)str[0] == 0x1F ? 1 : -1;
+}
+
+int dw3_glyph_pageturn_plan(const unsigned char map[DW3_BTN_COUNT],
+                            int out[DW3_PAGETURN_COUNT]) {
+    int i;
+    int patched = 0;
+
+    for (i = 0; i < DW3_PAGETURN_COUNT; i++) {
+        out[i] = dw3_glyph_from_cap(dw3_button_cap_label(map, g_pt_button[i]));
+        patched += out[i] != DW3_GLYPH_NONE;
+    }
+    return patched;
+}
+
+const char *dw3_glyph_pageturn_string(int side) {
+    return side >= 0 && side < DW3_PAGETURN_COUNT ? g_pt_string[side] : NULL;
+}
+
 /* --- host part: the FONT.load wrapper, the VRAM upload, the census ------- */
 
 #ifndef DW3_GLYPHS_TEST
@@ -237,6 +270,19 @@ static int g_logged_off;           /* the off line was logged once */
 static int g_cur[DW3_GLYPH_CELLS]; /* glyph in VRAM per cell, NONE = original */
 static int g_have_orig[DW3_GLYPH_CELLS];
 static unsigned char g_orig[DW3_GLYPH_CELLS][DW3_GLYPH_PACKED];
+/* Page-turn prompt (L1 / R1): the size-1 icon table is replaced by a copy with
+ * two more cells while the option is on, the originals come back when it is off. */
+static Glyph g_pt_icons[114 + DW3_PAGETURN_COUNT];
+static Glyph *g_pt_orig_icons;     /* the disc's table, NULL = not installed */
+static s16 g_pt_orig_count;
+static int g_pt_cur[DW3_PAGETURN_COUNT]; /* glyph in VRAM per side */
+static struct {
+    int side;
+    int glyph;
+    int32_t mode;
+} g_pt_seen[16];                   /* (side, glyph, scene) of the use lines logged */
+static int g_pt_seen_n;
+static int g_pt_warned;
 static int g_art_ready;
 static unsigned char g_art[DW3_GLYPH_COUNT][DW3_GLYPH_PIXELS];
 static int g_art_file[DW3_GLYPH_COUNT]; /* 1 = read from the override folder */
@@ -367,6 +413,140 @@ static int gl_set_cell(int i, int n, int want, int eu) {
     return 1;
 }
 
+/* --- page-turn prompt: the table, the two cells, the string hook ---------- */
+
+/* The size-1 icon table with two more cells, or the disc's own. 1 = the extended
+ * table is in use. The new cells copy the metrics of the Triangle icon (n = 52,
+ * a 12x12 button cell of both regions: same palette rows, baseline and advance)
+ * and point at blank font-page texels (docs/P10.6_GLYPHS.md). */
+static int gl_pt_table(int on) {
+    TextStyle *st = &FONT.styles[GL_STYLE];
+    int side;
+
+    if (!on) {
+        if (g_pt_orig_icons != NULL) {
+            st->icons = g_pt_orig_icons;
+            st->iconCount = g_pt_orig_count;
+            g_pt_orig_icons = NULL;
+        }
+        return 0;
+    }
+    if (g_pt_orig_icons != NULL) {
+        return 1;
+    }
+    if (st->icons == NULL || st->iconCount != 114) {
+        if (!g_pt_warned) {
+            GL_WARN("dw3-glyphs: size-1 icon table has %d icons, not 114; "
+                    "page-turn prompt left as text", st->iconCount);
+            g_pt_warned = 1;
+        }
+        return 0;
+    }
+    memcpy(g_pt_icons, st->icons, 114 * sizeof(Glyph));
+    for (side = 0; side < DW3_PAGETURN_COUNT; side++) {
+        Glyph *g = &g_pt_icons[114 + side];
+
+        *g = st->icons[52 - 1];
+        g->page = 0;
+        g->u = DW3_PAGETURN_U;
+        g->v = (u8)(DW3_PAGETURN_V0 + side * DW3_PAGETURN_V_STEP);
+        g->w = DW3_GLYPH_W;
+        g->h = DW3_GLYPH_H;
+    }
+    g_pt_orig_icons = st->icons;
+    g_pt_orig_count = st->iconCount;
+    st->icons = g_pt_icons;
+    st->iconCount = 114 + DW3_PAGETURN_COUNT;
+    return 1;
+}
+
+/* Draw glyph `want` (or none) into the spare cell of `side`. 1 = changed. */
+static int gl_pt_set(int side, int want, int eu) {
+    RECT r;
+    unsigned char packed[DW3_GLYPH_PACKED];
+
+    if (g_pt_cur[side] == want) {
+        return 0;
+    }
+    if (want != DW3_GLYPH_NONE) {
+        if (dw3_glyph_pack(g_art[want], dw3_glyph_index_map(eu), packed) != 0) {
+            return 0;
+        }
+        r.x = (short)(GL_FONT_X + DW3_PAGETURN_U / 4);
+        r.y = (short)(DW3_PAGETURN_V0 + side * DW3_PAGETURN_V_STEP);
+        r.w = DW3_GLYPH_W / 4;
+        r.h = DW3_GLYPH_H;
+        gl_upload(&r, packed);
+    }
+    g_pt_cur[side] = want;
+    return 1;
+}
+
+const char *dw3_port_text_override(const void *style, const char *str) {
+    int side;
+    int32_t mode;
+    int i;
+
+    if (g_pt_orig_icons == NULL || str == NULL ||
+        style != (const void *)&FONT.styles[GL_STYLE]) {
+        return str;
+    }
+    side = dw3_glyph_pageturn_match(str);
+    if (side < 0 || g_pt_cur[side] == DW3_GLYPH_NONE) {
+        return str;
+    }
+    mode = dw3_overlay_current_mode_file();
+    for (i = 0; i < g_pt_seen_n; i++) {
+        if (g_pt_seen[i].side == side && g_pt_seen[i].glyph == g_pt_cur[side] &&
+            g_pt_seen[i].mode == mode) {
+            return dw3_glyph_pageturn_string(side);
+        }
+    }
+    if (g_pt_seen_n < 16) {
+        const char *name = dw3_overlay_file_name(mode);
+
+        g_pt_seen[g_pt_seen_n].side = side;
+        g_pt_seen[g_pt_seen_n].glyph = g_pt_cur[side];
+        g_pt_seen[g_pt_seen_n].mode = mode;
+        g_pt_seen_n++;
+        GL_LOG("dw3-glyphs: page-turn prompt %s drawn as glyph %s "
+               "(scene=%s 0x%X)", side ? "R1" : "L1",
+               dw3_glyph_name(g_pt_cur[side]), name != NULL ? name : "?",
+               (unsigned)mode);
+    }
+    return dw3_glyph_pageturn_string(side);
+}
+
+static void gl_pt_refresh(int want_on, const unsigned char *map,
+                          const char *why) {
+    int plan[DW3_PAGETURN_COUNT];
+    int changed = 0;
+    int side;
+
+    dw3_glyph_pageturn_plan(map, plan);
+    if (want_on && gl_pt_table(1)) {
+        for (side = 0; side < DW3_PAGETURN_COUNT; side++) {
+            changed += gl_pt_set(side, plan[side], GL_EU);
+        }
+    } else {
+        gl_pt_table(0);
+        for (side = 0; side < DW3_PAGETURN_COUNT; side++) {
+            changed += gl_pt_set(side, DW3_GLYPH_NONE, GL_EU);
+        }
+    }
+    if (changed) {
+        g_pt_seen_n = 0; /* the next use of each prompt is logged again */
+    }
+    if (want_on && (changed || (why != NULL && strcmp(why, "font load") == 0))) {
+        GL_LOG("dw3-glyphs: page-turn L1=%s R1=%s (cells n=%d n=%d) [%s]",
+               g_pt_cur[0] == DW3_GLYPH_NONE ? "text" : dw3_glyph_name(g_pt_cur[0]),
+               g_pt_cur[1] == DW3_GLYPH_NONE ? "text" : dw3_glyph_name(g_pt_cur[1]),
+               DW3_PAGETURN_N0, DW3_PAGETURN_N0 + 1, why != NULL ? why : "?");
+    } else if (!want_on && changed) {
+        GL_LOG("dw3-glyphs: page-turn off [%s]", why != NULL ? why : "?");
+    }
+}
+
 void dw3_glyphs_refresh(const char *why) {
     const int want_on =
         dw3_port_options_level(DW3_PORT_OPT_SWITCH_GLYPHS) != 0;
@@ -384,6 +564,7 @@ void dw3_glyphs_refresh(const char *why) {
     if (want_on) {
         gl_art_load();
     }
+    gl_pt_refresh(want_on, map, why);
     for (i = 0; i < DW3_GLYPH_CELLS; i++) {
         changed += gl_set_cell(i, cells[i].n,
                                want_on ? cells[i].glyph : DW3_GLYPH_NONE,
@@ -415,6 +596,9 @@ static void gl_font_load(void) {
     for (i = 0; i < DW3_GLYPH_CELLS; i++) {
         g_cur[i] = DW3_GLYPH_NONE;
         g_have_orig[i] = 0;
+    }
+    for (i = 0; i < DW3_PAGETURN_COUNT; i++) {
+        g_pt_cur[i] = DW3_GLYPH_NONE; /* the spare cells are blank again */
     }
     dw3_glyphs_refresh("font load");
 }
