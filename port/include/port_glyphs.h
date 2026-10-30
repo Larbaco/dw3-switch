@@ -99,6 +99,29 @@ int dw3_glyph_plan(const unsigned char map[DW3_BTN_COUNT], int eu,
 void dw3_glyph_plan_text(const Dw3GlyphCell cells[DW3_GLYPH_CELLS], char *out,
                          unsigned cap);
 
+/* The page-turn prompt (docs/P10.6_GLYPHS.md "Page-turn prompt"): the item shop,
+ * the field menu's item list and a few other menus print `L1` / `R1` as the plain
+ * letters of the string (bytes 19 05 / 1F 05) next to a wedge sprite. With the
+ * glyphs on, the port hands those windows an icon string (`01 n`) for one of two
+ * spare 12x12 cells it adds to the size-1 icon table (n = 115 for L1, 116 for
+ * R1), drawn with the glyph of the Switch button that produces L1 / R1. */
+enum {
+    DW3_PAGETURN_COUNT = 2, /* L1, R1 */
+    DW3_PAGETURN_N0 = 115,  /* icon number of the L1 cell; R1 is the next */
+    DW3_PAGETURN_U = 232,   /* the cells: font page 0, u, v (blank in US and EU) */
+    DW3_PAGETURN_V0 = 224,
+    DW3_PAGETURN_V_STEP = 12
+};
+
+/* 0 for the string `L1`, 1 for `R1` (exactly those two letters), else -1. */
+int dw3_glyph_pageturn_match(const char *str);
+/* The glyph for L1 and R1 under `map` (DW3_GLYPH_NONE = keep the text). Returns
+ * how many got a glyph. */
+int dw3_glyph_pageturn_plan(const unsigned char map[DW3_BTN_COUNT],
+                            int out[DW3_PAGETURN_COUNT]);
+/* The icon string of a side: the bytes 01 n 00 00. */
+const char *dw3_glyph_pageturn_string(int side);
+
 /* --- host part --------------------------------------------------------- */
 
 /* The unit tests of the options and the button map link no font. */
@@ -116,6 +139,10 @@ void dw3_glyphs_refresh(const char *why);
  * scene. Called from processTextChar (patch 0195); costs a flag test when off. */
 void dw3_port_icon_census(int n, int style, const unsigned char *data, int pos,
                           int sjis);
+/* Patch 0196, textWindowSetSubString: the string a text window of `style` (a
+ * TextStyle *) shows for table string `str`. Returns `str` unless it is a size-1
+ * window's exact `L1` / `R1` and the glyph option gives that button a glyph. */
+const char *dw3_port_text_override(const void *style, const char *str);
 #endif
 
 #ifdef __cplusplus

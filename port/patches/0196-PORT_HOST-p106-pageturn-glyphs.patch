@@ -1,0 +1,32 @@
+Upstream-bound: no
+Subject: [PORT_HOST] P10.6 follow-up: the page-turn prompt "L1" / "R1" follows switch_glyphs
+
+Design: docs/P10.6_GLYPHS.md ("Page-turn prompt"). The item shop, the field
+menu's item list and a few other menus (card shop, Digimon Lab, battle menu,
+name entry, training) print the page-turn prompt as the plain letters of the
+string `L1` / `R1` (bytes 19 05 / 1F 05) in a size-1 text window, next to a
+blinking wedge sprite; it is font text, not one of the 114 icons, so the cell
+patch of port/options/switch_glyphs.c never touched it.
+
+`textWindowSetSubString` (the one place `setString` resolves a table string)
+hands the string to `dw3_port_text_override` with the window's style. The port
+returns the string unchanged unless the window is a size-1 window, the string is
+exactly `L1` or `R1`, `switch_glyphs` is on and the button map gives that PS
+button a Switch glyph; then it returns a two-byte icon string (`01 n`) that
+draws the glyph from two spare 12x12 cells the port adds to the size-1 icon
+table. With the option off the call returns its argument at once: the text, the
+table and the picture are those of main. The wedge sprite is not touched.
+
+--- a/src/engine/text/text_window.c
++++ b/src/engine/text/text_window.c
+@@ -148,6 +148,10 @@
+         if (str == NULL) {
+             return;
+         }
++#if PORT_HOST
++        /* P10.6: a page-turn prompt ("L1" / "R1") becomes the Switch glyph's icon string */
++        str = (char *)dw3_port_text_override(obj->style, str);
++#endif
+         setTextBuffer(obj, &obj->text[index], str);
+     } else {
+         setTextBuffer(obj, &obj->text[index], text);

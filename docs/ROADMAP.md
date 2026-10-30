@@ -201,7 +201,7 @@ listed once, in [Pending OLED checks](#pending-oled-checks).
 | P10.3 | Presentation modes | open | — |
 | P10.4 | Rumble polish (optional) | open | — |
 | P10.5 | Extra applets (optional) | open | — |
-| P10.6 | Switch-style button glyphs (design written 2026-10-28; step 0 #354 and the fix-now hint caps #355 merged; census, art and the glyph patch built 2026-10-29, PR #367) | in progress (OLED L17 to L26 pending; the page-turn `R1` art outside the font is open) | [roadmap](#phase-10--native-switch-features-residual), [P10.6_GLYPHS](P10.6_GLYPHS.md), [CONTROLS_BUNDLE](CONTROLS_BUNDLE.md), [TEXTURE_PACKS](TEXTURE_PACKS.md) |
+| P10.6 | Switch-style button glyphs (design written 2026-10-28; step 0 #354 and the fix-now hint caps #355 merged; census, art and the glyph patch built 2026-10-29, PR #367) | in progress (OLED L17 to L27 pending; the page-turn `R1` / `L1` prompt built 2026-10-30, patch 0196, PR open) | [roadmap](#phase-10--native-switch-features-residual), [P10.6_GLYPHS](P10.6_GLYPHS.md), [CONTROLS_BUNDLE](CONTROLS_BUNDLE.md), [TEXTURE_PACKS](TEXTURE_PACKS.md) |
 | P10.7 | NSP packaging: forwarder, full NSP or stay NRO | dropped | [NSP_PACKAGING](NSP_PACKAGING.md), [roadmap](#phase-10--native-switch-features-residual) |
 
 ## Pending OLED checks
@@ -1583,13 +1583,23 @@ rumble, saves, turbo, or widescreen here; those stay in their phases.
   [P10.6_GLYPHS](P10.6_GLYPHS.md). Census (patch 0195, `DW3_ICON_CENSUS=1`): the four PS
   icons are font icons used in text (shops, Lab, gym, save screen, field menu pages), US n = 27 is
   a multiplication sign (left alone), EU n = 27 is the Cross disc, Square never appeared, no icon in
-  battle; the page-turn art `R1` is outside the font (needs a draw hook, left open). Art:
+  battle; the page-turn prompt `R1` / `L1` is outside the icon cells (done below). Art:
   `assets/glyphs/` (CC0, drawn by `tools/generate_switch_glyphs.py`, `tools/check_switch_glyphs.py`).
   Patch: `port/options/switch_glyphs.c` wraps `FONT.load` and replaces the cells in VRAM with the
   glyph of the button that produces each PS button under the map; row 14 `switch_glyphs` in the
   Controls group on the Switch only, default off; own PNGs in `sdmc:/switch/dw3/glyphs/`; log
-  `dw3-glyphs: on|off, map=..., patched N cells (...)`. Open: draw hook for `R1` / `L1` art, a look on the
-  OLED (legibility, the EU steel tint). The Options help page lists the row.
+  `dw3-glyphs: on|off, map=..., patched N cells (...)`. Open: a look on the OLED (legibility, the EU steel
+  tint). The Options help page lists the row.
+  **Page-turn prompt built (2026-10-30, PR open, OLED L27 pending):** the `R1` / `L1` at the bottom of the
+  item shop and the field menu's item list is not art: it is the font text `L1` / `R1` next to a blinking
+  wedge sprite (`FILE_SHOP_SPRITES` 0x10 / 0x11, `FILE_STATUS_SPRITES` 0x34 / 0x35), see
+  [P10.6_GLYPHS section 8](P10.6_GLYPHS.md#8-page-turn-prompt-follow-up-2026-10-30). Patch **0196**
+  hands the exact strings `L1` / `R1` of a size-1 window to the port, which returns an icon string for two
+  spare 12x12 cells (n = 115 / 116, font page 0 u 232, v 224 / 236) drawn as the glyph of the button that
+  produces L1 / R1 under the map (L / R, ZL for a custom map; stick clicks keep the text). Option off:
+  bit-identical. Log `dw3-glyphs: page-turn prompt R1 drawn as glyph R (scene=..)`. Open: the card shop,
+  Lab, battle menu, name entry and training carry the same strings and follow the hook but have no replay
+  case of their own; a look on the OLED.
   Done when: with the option on, the icons shown in the field, battle, menus
   and shops are Switch glyphs on the US and EU discs, they match the layout
   chosen in P9.8, and the option off restores the original icons.
