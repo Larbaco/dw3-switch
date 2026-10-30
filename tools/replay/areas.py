@@ -7,6 +7,10 @@ full tier. The map is deliberately conservative:
 
 * a file with no rule that is part of the game or the PC host (port/, patches,
   platforms/pc, vendor/, CMake, the runner) selects EVERYTHING (the full tier);
+* a CMake file under port/ or platforms/pc/ is read through its diff: if every
+  changed line is a source-file entry (or a comment/blank), the selection comes
+  from those sources through the rules below; any other change (flags,
+  definitions, targets, conditions) or a missing diff selects the full tier;
 * docs, tests, other tools and the Switch-only host select nothing by themselves;
 * the quick tier and a few smoke scenarios always run.
 
@@ -16,10 +20,12 @@ matching rule wins for that file. Globs are fnmatch patterns on scenario names.
 from __future__ import annotations
 
 import fnmatch
+import posixpath
 import re
 from dataclasses import dataclass, field
 
 ALL = "ALL"      # sentinel: run the full tier
+BUILD = "BUILD"  # sentinel: a CMake file, selected through the sources its diff adds or removes
 NONE: tuple = ()
 
 # Always run with a --changed selection: one boot-to-field and one battle on
@@ -50,12 +56,14 @@ RULES: list[tuple[str, object]] = [
     # the native Options art and its baked lettering: every screen of the Options shell
     (r"^platforms/pc/src/title_overlay_(art|lettering)", _OPTIONS + _TITLE + ("*help*", "*walkthrough*", "*controls*")),
     (r"^port/pages/", ("*help*", "*walkthrough*", "*options*")),
+    # --- build files: only the source-list entries of the diff count -----------
+    (r"^(port|platforms/pc)/(.*/)?(CMakeLists\.txt|[^/]+\.cmake)$", BUILD),
     # --- areas by directory ------------------------------------------------
     (r"^port/walkthrough/", ("*walkthrough*",)),
     (r"^port/autosave/", ("*autosave*", "*title-continue*")),
     (r"^port/battle_menu/", ("*p79*", "*battle-options*", "*battle-list-bar*")),
     (r"^port/(items_menu/|include/port_items_menu\.h)", ("*items*", "*menu-screens*")),
-    (r"^port/map_view/", ("*map*",)),
+    (r"^port/(map_view/|include/port_map_view\.h$)", ("*map*",)),
     (r"^port/saves/|^port/memcard/", ("*save*", "xr-*", "*continue*", "*restart*", "*autosave*")),
     (r"^port/pacing/", ("*text-*", "*encounter*", "*pacing*", "*turbo*")),
     (r"^port/region/", ("*lang*", "xr-*", "*title*")),
@@ -133,8 +141,47 @@ def _phase_owners(scenarios):
     return out
 
 
-def select(files, scenarios) -> Selection:
+_SRC_EXT = r"(?:c|h|cc|cpp|S|inc)"
+_SRC_LINE = re.compile(
+    r'^"?(?:\$\{(?P<var>[A-Za-z0-9_]+)\}/)?(?P<path>[\w./+-]+\.' + _SRC_EXT + r')"?\s*(?:#.*)?$')
+_CMAKE_ROOTS = {"CMAKE_CURRENT_SOURCE_DIR": None, "CMAKE_SOURCE_DIR": "platforms/pc", "DW3_ROOT": ""}
+
+
+def build_file_sources(path, diff_text):
+    """Sources added or removed by a CMake file's diff (zero-context unified diff).
+
+    Returns the repo-relative source paths when EVERY changed line is a source
+    entry (`"${CMAKE_CURRENT_SOURCE_DIR}/x/y.c"`, `src/y.c`, ...), a comment or
+    blank; None when anything else changed or an entry cannot be resolved, which
+    the caller treats as "unknown: full tier"."""
+    here = path.rsplit("/", 1)[0] if "/" in path else ""
+    out = []
+    for line in diff_text.splitlines():
+        if line.startswith(("+++", "---", "@@", "diff ", "index ", "\\")):
+            continue
+        if not line.startswith(("+", "-")):
+            return None   # context lines are not expected with -U0
+        body = line[1:].strip()
+        if not body or body.startswith("#"):
+            continue
+        m = _SRC_LINE.match(body)
+        if not m:
+            return None
+        var, rel = m.group("var"), m.group("path")
+        if var is not None and var not in _CMAKE_ROOTS:
+            return None
+        base = here if var in (None, "CMAKE_CURRENT_SOURCE_DIR") else _CMAKE_ROOTS[var]
+        full = posixpath.normpath(posixpath.join(base, rel))
+        if full.startswith(("..", "/")):
+            return None
+        out.append(full)
+    return sorted(set(out))
+
+
+def select(files, scenarios, diff_for=None) -> Selection:
     """files: repo-relative paths. scenarios: manifest.Scenario list.
+    diff_for(path) -> zero-context diff text of a CMake file (or None): lets a
+    build file select through the sources it adds or removes.
     Returns the names to run on top of the always-on quick tier + SMOKE."""
     sel = Selection()
     full_tier = {s.name for s in scenarios if s.tier in ("quick", "full")}
@@ -146,6 +193,19 @@ def select(files, scenarios) -> Selection:
             if what is ALL:
                 sel.everything = True
                 sel.reasons.append((path, "pin/engine-wide: full tier"))
+            elif what is BUILD:
+                diff = diff_for(path) if diff_for else None
+                srcs = None if diff is None else build_file_sources(path, diff)
+                if srcs is None:
+                    sel.everything = True
+                    sel.reasons.append((path, "build file changed beyond its source lists "
+                                              "(or no diff): full tier"))
+                else:
+                    sub = select(srcs, scenarios)
+                    sel.names |= sub.names
+                    sel.everything |= sub.everything
+                    sel.unmapped_globs += sub.unmapped_globs
+                    sel.reasons.append((path, "source list only: " + (", ".join(srcs) or "comments")))
             elif what == "scenario-recording":
                 phase = path.rsplit("/", 1)[-1].removesuffix(".rec")
                 got = owners.get(phase, set()) & full_tier  # nx and both scenarios run elsewhere
@@ -175,3 +235,30 @@ def select(files, scenarios) -> Selection:
     sel.names |= {s.name for s in scenarios if s.tier == "quick"}
     sel.names |= {n for n in SMOKE if n in {s.name for s in scenarios}}
     return sel
+
+
+
+def scenario_area(name):
+    """The area of a scenario: the regex of the first RULES entry whose globs
+    match its name (rules with no globs are skipped); a scenario no rule matches
+    is its own area."""
+    for rx, what in RULES:
+        if isinstance(what, tuple) and what and any(fnmatch.fnmatchcase(name, g) for g in what):
+            return rx
+    return "own:" + name
+
+
+def both_subset(scenarios, override_names=()):
+    """The both-binary subset (docs/P6.15_REPLAY_TESTS.md): one PC scenario per
+    (area, region), plus every scenario with a `both/` refs override.
+
+    Pool: tiers quick, full and both (not nx, single or soak). The representative
+    prefers tier `both`, then `quick`, then the name order."""
+    pool = [s for s in scenarios if s.tier in ("quick", "full", "both")]
+    groups: dict = {}
+    for s in pool:
+        groups.setdefault((scenario_area(s.name), s.version), []).append(s)
+    chosen = {min(m, key=lambda s: (s.tier != "both", s.tier != "quick", s.name)).name
+              for m in groups.values()}
+    chosen |= set(override_names) & {s.name for s in pool}
+    return sorted(chosen)

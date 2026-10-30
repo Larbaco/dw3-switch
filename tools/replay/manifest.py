@@ -1037,7 +1037,7 @@ for _v, _ids in (("us", (0x159, 0x1FA, 0x1C2, 0x158, 0x1F9)),
     # logs the cross-check of the captured map against the disc-built one.
     _add(Scenario(f"{_v}-map-view", _v, "full", turbo=4, timeout=600,
                   phases=(f"{_v}-map-view",), env=_ITEMS_ENV + (("DW3_MAP_VERIFY", "1"), ("DW3_MAP_SYNC", "1")),
-                  cfg=(("encounter_rate", "2"),),
+                  cfg=(("encounter_rate", "2"), ("map_screen", "1")),
                   expect_restore=((_fight, M), (_menu, S), (_report, M), (_field, M),
                                   (_status, M)),
                   # the reveal layer (the towns of the progress list and the visited
@@ -1075,8 +1075,26 @@ for _v, _ids in (("us", (0x159, 0x1FA, 0x1C2, 0x158, 0x1F9)),
                                   r"(?s:.*)dw3-map: HUD off \(the bars; the name box stays\)"),
                               # owner, preview.48: the cursor and the balloon keep one size
                               (0, r"dw3-map: sprites at fixed size \(scale 1/Z, Z = zoom, "
-                                  r"reference zoom 1\.0 = [\d.]+ px per source px; the reveal layer"),),
-                  forbid_log=((0, r"dw3-map: capture failed|NOTHING DRAWN|not drawn|MISSING"),),
+                                  r"reference zoom 1\.0 = [\d.]+ px per source px; the reveal layer"),
+                  # P6.32 phase 1 done-when, one line each: no black strip at the open
+                  # (the map rectangle covers the whole 16:9 picture), the game's pad is
+                  # held for the whole time (and Triangle closes only the view), R3 is
+                  # ignored and turbo stays at 1 although DW3_TURBO=4 is set, and the
+                  # game's Map screen comes back with the cursor and scroll it was
+                  # frozen with
+                              (0, r"dw3-map: open half=\d image=392x352 .* turbo=1 zoom=1\.50 hud=off\n"
+                                  r"dw3-map: picture coverage full: map rect -?\d+,-?\d+-\d+,\d+ of 1280x720 "
+                                  r"\(black strips: none\)"),
+                              (0, r"dw3-map: game Map screen frozen underneath: cursor -?\d+,-?\d+ scroll -?\d+,-?\d+"),
+                              (0, r"dw3-map: R3 pressed in the view: ignored \(no fast-forward here; turbo=1\)"),
+                              (0, r"dw3-map: close requested by the cancel button"
+                                  r"(?s:.*)dw3-map: pad held by the view for [1-9]\d* frames \(the game's Map screen "
+                                  r"read none of them\), R3 presses ignored 1, turbo=1"
+                                  r"(?s:.*)dw3-map: game Map screen back after the close: cursor "
+                                  r"(-?\d+),(-?\d+) scroll (-?\d+),(-?\d+) \(at the open \1,\2 / \3,\4\): unchanged"),),
+                  # R3 inside the view must not flip the fast-forward state
+                  forbid_log=((0, r"dw3-map: capture failed|NOTHING DRAWN|not drawn|MISSING|"
+                                  r"dw3-turbo: (?:on|off)\n|\): CHANGED"),),
                   note="Square opens the new full-screen map: balloon, cursor, name box, zoom, scaler cycle, back (patch 0146)"))
     # MOD map upscale: the same recording with a synthetic pack in the config
     # folder. The pack replaces the map picture (1568x1408 texture, same
@@ -1084,7 +1102,7 @@ for _v, _ids in (("us", (0x159, 0x1FA, 0x1C2, 0x158, 0x1F9)),
     # log says so; references are this scenario's own (run with --update).
     _add(Scenario(f"{_v}-map-view-mod", _v, "full", turbo=4, timeout=600,
                   phases=(f"{_v}-map-view",), env=_ITEMS_ENV + (("DW3_MAP_SYNC", "1"),),
-                  cfg=(("encounter_rate", "2"),), mod_pack="synthetic",
+                  cfg=(("encounter_rate", "2"), ("map_screen", "1")), mod_pack="synthetic",
                   expect_restore=((_fight, M), (_menu, S), (_report, M), (_field, M),
                                   (_status, M)),
                   expect_log=((0, r"dw3-map: mod: pack \"synthetic-test\" 0\.0\.1 loaded: "
@@ -1100,7 +1118,7 @@ for _v, _ids in (("us", (0x159, 0x1FA, 0x1C2, 0x158, 0x1F9)),
     # pictures are the per-region synthetic pack's (same gradients): ref_map.
     _add(Scenario(f"{_v}-map-view-mod-shared", _v, "full", turbo=4, timeout=600,
                   phases=(f"{_v}-map-view",), env=_ITEMS_ENV + (("DW3_MAP_SYNC", "1"),),
-                  cfg=(("encounter_rate", "2"),), mod_pack="synthetic-shared",
+                  cfg=(("encounter_rate", "2"), ("map_screen", "1")), mod_pack="synthetic-shared",
                   expect_restore=((_fight, M), (_menu, S), (_report, M), (_field, M),
                                   (_status, M)),
                   expect_log=((0, r"dw3-map: mod: pack \"synthetic-test\" 0\.0\.1 loaded: "
@@ -1110,11 +1128,32 @@ for _v, _ids in (("us", (0x159, 0x1FA, 0x1C2, 0x158, 0x1F9)),
                   note="one shared map pack serves this region (P51 item 3)"))
     _add(Scenario(f"{_v}-map-view-43", _v, "full", turbo=4, timeout=600,
                   phases=(f"{_v}-map-view",), env=_ITEMS_ENV,
-                  cfg=(("encounter_rate", "2"), ("widescreen", "0")),
+                  cfg=(("encounter_rate", "2"), ("map_screen", "1"), ("widescreen", "0")),
                   expect_restore=((_fight, M), (_menu, S), (_report, M), (_field, M),
                                   (_status, M)),
+                  expect_log=((0, r"dw3-map: Square pressed, view not available "
+                                  r"\(host=1 map_screen=1 widescreen shift=0\)"),),
                   forbid_log=((0, r"dw3-map: open"),),
                   note="widescreen off: Square does nothing, the new screen never opens (owner decision 8)"))
+    # P6.32 phase 1: the option OFF, which is the default (no map_screen key in the
+    # file). The recording presses Square on the Map and everything the view
+    # would take; nothing opens, nothing is built, no cache folder, no precompute.
+    # The key-off proof for the pictures is us/eu-map-screen (0 differing pixels
+    # against main); this one proves the new code is inert.
+    _add(Scenario(f"{_v}-map-view-off", _v, "full", turbo=4, timeout=500,
+                  phases=(f"{_v}-map-view-off",), env=_ITEMS_ENV,
+                  cfg=(("encounter_rate", "2"),),
+                  expect_restore=((_fight, M), (_menu, S), (_report, M), (_field, M),
+                                  (_status, M)),
+                  expect_log=((0, r"dw3-options: file keys .* map_screen=0 "
+                                  r"(?s:.*)dw3-map: option map_screen=0 \(the default\): the "
+                                  r"full-screen map is off, no cache folder, no precompute"
+                                  r"(?s:.*)dw3-map: Square pressed, view not available "
+                                  r"\(host=1 map_screen=0 widescreen shift=\d+\)"),),
+                  forbid_log=((0, r"dw3-map: open|dw3-map: precompute|dw3-map: cache folder|"
+                                  r"dw3-map: close|dw3-map: R3 pressed"),),
+                  note="the map_screen option off (default): Square on the Map does nothing, the "
+                       "game's Map screen is the one of patch 0080 (P6.32 phase 1)"))
     _add(Scenario(f"{_v}-battle-results", _v, "full", turbo=4, timeout=300,
                   env=_P77_ENV_REPORT,
                   expect_restore=((_fight, M), (_menu, S), (_report, M), (_field, M)),

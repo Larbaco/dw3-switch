@@ -148,6 +148,26 @@ def changed_files(base: str | None) -> list[str]:
     return sorted(files)
 
 
+def build_file_diff(base: str | None, path: str) -> str | None:
+    """Zero-context diff of one tracked build file: BASE...HEAD plus the working
+    tree. None for an untracked file or when git fails (the caller then selects
+    the full tier)."""
+    if not base:
+        base = next((b for b in ("origin/main", "main")
+                     if subprocess.run(["git", "-C", str(ROOT), "rev-parse", "--verify", "-q", b],
+                                       capture_output=True).returncode == 0), "HEAD")
+    out = []
+    for rng in (f"{base}...HEAD", "HEAD"):
+        r = subprocess.run(["git", "-C", str(ROOT), "diff", "-U0", "--no-renames", rng, "--", path],
+                           capture_output=True, text=True)
+        if r.returncode != 0:
+            return None
+        out.append(r.stdout)
+    tracked = subprocess.run(["git", "-C", str(ROOT), "ls-files", "--error-unmatch", path],
+                             capture_output=True).returncode == 0
+    return "".join(out) if tracked else None
+
+
 def find_runtime(version: str, arg: str | None) -> Path | None:
     cands = []
     if arg:
@@ -665,6 +685,10 @@ def main():
                          "tier. CI and release checks run the full tier, not this")
     ap.add_argument("--changed-files", nargs="+", metavar="PATH",
                     help="like --changed with an explicit file list (no git)")
+    ap.add_argument("--both-subset", action="store_true",
+                    help="run the both-binary subset: one PC scenario per areas.py area and "
+                         "region, plus every scenario with a <refs>/<name>/both/ override "
+                         "(with --dry-run: print it). Use with --bin-both")
     ap.add_argument("--stall", type=int, default=DEFAULT_STALL,
                     help=f"seconds without game-frame progress before HANG (default {DEFAULT_STALL})")
     ap.add_argument("--timeout-scale", type=float, default=1.0)
@@ -705,16 +729,21 @@ def main():
         selected = set(a.only)
     elif a.changed is not None or a.changed_files:
         files = a.changed_files if a.changed_files else changed_files(a.changed or None)
-        sel = areas.select(files, SCENARIOS)
+        diff_for = None if a.changed_files else (lambda p: build_file_diff(a.changed or None, p))
+        sel = areas.select(files, SCENARIOS, diff_for)
         selected = sel.names
         print(f"--changed: {len(files)} changed file(s) -> {len(selected)} scenario(s)"
-              f"{' (full tier: ' + 'an unmapped or engine-wide file' + ')' if sel.everything else ''}")
+              f"{' (full tier: ' + 'an unmapped or engine-wide file, or a build file changed beyond its source lists' + ')' if sel.everything else ''}")
         for path, why in sel.reasons[:40]:
             print(f"  {path}: {why}")
         if len(sel.reasons) > 40:
             print(f"  ... {len(sel.reasons) - 40} more")
         for g in sorted(set(sel.unmapped_globs)):
             print(f"  note: rule pattern {g!r} matches no scenario (areas.py is stale?)")
+    elif a.both_subset:
+        refs = Path(a.refs).expanduser()
+        overrides = [p.parent.name for p in refs.glob("*/both") if p.is_dir()]
+        selected = set(areas.both_subset(SCENARIOS, overrides))
     elif a.single:
         selected = {sc.name for sc in SCENARIOS if sc.tier == "single"}
     elif a.quick:

@@ -45,18 +45,18 @@ highest non-empty tier.
   `dw3-pc`), Switch in #316 (detection of the game data on the SD card, the
   boot picker, the CI job and the release asset). What is left is the OLED
   check ([OLED_TEST_PLAN G9](OLED_TEST_PLAN.md#g9-combined-p624-one-nro-for-both-regions-pr-b)).
-  Separate US / EU `.nro` files keep shipping until the owner confirms the
-  combined one on the OLED. Defaults taken for the open questions are in
+  Releases ship that one file now (owner decision 2026-10-29, #359); the OLED
+  check is still open. Defaults taken for the open questions are in
   [SINGLE_BUILD](SINGLE_BUILD.md#owner-priority-2026-10-28-and-orchestrator-defaults).
 
 ### Tier 1 — Stability
 
 - [P51 feedback](P51_FEEDBACK.md) (owner OLED, preview.51; orchestrator defaults
-  pending confirmation), one PR per group. **PR 1 built 2026-10-29:** the battle
+  pending confirmation), one PR per group. **PR 1 merged as #343, built 2026-10-29:** the battle
   Items and technique lists had no selection marker because `ContinueDraw` was a
   no-op since P3.3; it now draws the bar's table (patch 0189 log, replays
   `us/eu-battle-list-bar`, OLED row D15). PR 2 (small UX fixes), PR 3 (map pack for
-  both regions) and PR 4 (Options background) follow.
+  both regions) and PR 4 (Options background) are merged too (#344 to #346).
 - [P5.5](#phase-5--playable-on-switch): stage sweep on hardware.
 - [#188](https://github.com/Larbaco/dw3-switch/issues/188) and
   [P4.3](P4.3_AUDIO.md): audio, underrun count (counters in the log since
@@ -79,25 +79,25 @@ highest non-empty tier.
 ### Tier 2 — UI base (in this order)
 
 1. [P9.9](PORT_OPTIONS.md): the Cheats screen restyle is done (slice 2, 2026-10-28,
-   PR open, OLED pending); the remaining sub-screens (Controls, Help, Walkthrough)
-   come with their features.
+   merged as #327; slice 1 merged as #303; OLED pending); the Controls, Help and
+   Walkthrough groups came with their features (#338, #333, #363).
 2. Controls bundle, done together because they touch the same menus:
    [P6.12](#phase-6-goal-notes) remapping, [P9.8](HOTKEYS.md) A/B layout and
    [P10.6](TEXTURE_PACKS.md) Switch glyphs. Design: [CONTROLS_BUNDLE](CONTROLS_BUNDLE.md).
 3. [P6.30](#phase-6-goal-notes): technical help. Design: [P6.30_HELP](P6.30_HELP.md).
-   **Phases 1 to 4 built (2026-10-28, PR open, OLED pending):** page engine, glyph
+   **Phases 1 to 4 built and merged as #333 (2026-10-28); English OLED checks H1 to H8 passed (preview.51):** page engine, glyph
    atlas, the Help group with its ten English pages; FR / DE / IT / ES are drafted
    (2026-10-29, machine-drafted, **needs native review**).
 4. [P6.34](#phase-6-goal-notes): menu-flow redesign. It absorbs
    [P6.33](P6.33_ITEMS_MENU.md) phases 2–4, so the items menu is redesigned once.
-5. [P6.32](P6.32_MAP_ZOOM.md): map phase 1.
+5. [P6.32](P6.32_MAP_ZOOM.md): map phase 1 done (2026-10-29, PR open, OLED pending: B25); next is phase 2 (area names in every EU language, the strips the PS1 cursor cannot reach), then 3 (zoom polish, FIT backdrop) and 4 (Options row, remap).
 
 ### Tier 3 — Content and QoL
 
-- [P6.35](PLAYER_GUIDE.md): walkthrough. It lives in the new Options sub-screens,
+- [P6.35](PLAYER_GUIDE.md): walkthrough. Phases 1 and 2 are merged (#328, #363). It lives in the new Options sub-screens,
   so it comes after Tier 2.
 - [P6.20](PORT_OPTIONS.md#cheats-p620): cheats PR 2
-  ([#248](https://github.com/Larbaco/dw3-switch/pull/248)).
+  ([#248](https://github.com/Larbaco/dw3-switch/pull/248)), merged 2026-10-25.
 - [P6.18](P6.18_PACING.md): pacing.
 - [P6.22](P6.22_FIELD_CPU.md): turbo in scripted scenes.
 - [P6.25](CROSS_REGION_SAVES.md): cross-region saves (P6.24, the single build,
@@ -158,22 +158,22 @@ listed once, in [Pending OLED checks](#pending-oled-checks).
 | P6.15 | Regression replay tests | in progress | [P6.15](P6.15_REPLAY_TESTS.md) |
 | P6.17 | Music / SFX volume | done (owner confirmed on the OLED, 2026-10-24) | [P6.17](P6.17_VOLUME.md) |
 | P6.18 | Pacing options | in progress (Instant text works; Instant banner and report speed #223; rest of the check open) | [P6.18](P6.18_PACING.md) |
-| P6.20 | Port debug / cheat menu in the Options screen | in progress (PR 1 merged, #236: Cheats screen; PR 2, #248: money, give item and warp on page 2, in review; 2026-10-28: the screen is now a scrolling sub-screen of the P9.9 list, same rows and behaviour; OLED checks open) | [roadmap](#phase-6-goal-notes), [PORT_OPTIONS](PORT_OPTIONS.md) |
-| P6.22 | Turbo speed in scripted scenes | in progress (CPU rasterizer is ~97 % of a field frame; pixel-identical rasterizer 4-5x faster, #220; pass 2 #263 skips drawing frames that won't be shown; pass 3 built 2026-10-28, PR open: textured triangles ~1.6x faster, mixer thread on core 1, `pace dbg:` line; turbo in the intro confirmed on the OLED 2026-10-27, preview.41; Forest Inn and the frame lines still open) | [P6.22](P6.22_FIELD_CPU.md), [roadmap](#phase-6-goal-notes), [P6.4](P6.4_FAST_FORWARD.md) |
-| P6.23 | Documentation: player guide, docs index, contributor and modder docs (future goal) | in progress (slice 1 done: player guide and docs index; slice 2: `CONTRIBUTING.md` and a pytest for all doc links, PR open; modder docs open) | [PLAYER_GUIDE](PLAYER_GUIDE.md), [docs index](README.md), [roadmap](#phase-6-goal-notes) |
+| P6.20 | Port debug / cheat menu in the Options screen | in progress (PR 1 merged, #236: Cheats screen; PR 2, #248: money, give item and warp on page 2, merged 2026-10-25; 2026-10-28: the screen is now a scrolling sub-screen of the P9.9 list, same rows and behaviour; OLED checks open) | [roadmap](#phase-6-goal-notes), [PORT_OPTIONS](PORT_OPTIONS.md) |
+| P6.22 | Turbo speed in scripted scenes | in progress (CPU rasterizer is ~97 % of a field frame; pixel-identical rasterizer 4-5x faster, #220; pass 2 #263 skips drawing frames that won't be shown; pass 3 merged as #331 (2026-10-28): textured triangles ~1.6x faster, mixer thread on core 1, `pace dbg:` line; turbo in the intro confirmed on the OLED 2026-10-27, preview.41; Forest Inn and the frame lines still open) | [P6.22](P6.22_FIELD_CPU.md), [roadmap](#phase-6-goal-notes), [P6.4](P6.4_FAST_FORWARD.md) |
+| P6.23 | Documentation: player guide, docs index, contributor and modder docs (future goal) | in progress (slice 1 done: player guide and docs index; slice 2 merged as #256: `CONTRIBUTING.md` and a pytest for all doc links; modder docs open) | [PLAYER_GUIDE](PLAYER_GUIDE.md), [docs index](README.md), [roadmap](#phase-6-goal-notes) |
 | P6.24 | One build for US and EU: one `.nro` and one PC binary, region found at boot, a boot picker with both discs (**owner priority 2026-10-28, Tier 0**; P6.25 and P6.26 are built) | built and shipped in preview.48 (`dw3-switch-both.nro`, #316 Switch; `dw3-pc` with both game copies, #314 PC); OLED check G9.x open; **owner decision 2026-10-29: releases ship one `dw3-switch.nro` = this combined image, nxlink detected at run time; separate US / EU / nxlink `.nro` retired** (G9.14, G9.15); the Switch stop-gap launcher `dw3.nro` is a CI artifact only (slice 2) | [SINGLE_BUILD](SINGLE_BUILD.md#as-built-slice-1), [slice 2](SINGLE_BUILD.md#as-built-slice-2-the-switch-launcher), [slice 3](SINGLE_BUILD.md#as-built-slice-3-the-dual-image-link-pc), [roadmap](#phase-6-goal-notes) |
 | P6.25 | Cross-region saves: a US save loads in EU and the reverse, one canonical save container (future goal) | in progress (slice 1 built: converter and one-way import on load, PC replays US to EU and EU to US; container and store open; OLED check open) | [CROSS_REGION_SAVES](CROSS_REGION_SAVES.md), [roadmap](#phase-6-goal-notes) |
 | P6.26 | Per-user saves: saves bound to the Switch user profile chosen in the Switch profile selector, global options (future goal) | in progress (slice 1 built: user-resolution seam, Switch account + profile selector, saves per profile with a safe legacy copy; owner OLED, preview.43/44 (2026-10-27/28): each profile has its own Continue, cancelling the profile selector returns to the Switch HOME; E5.1, E5.2 and the logs not reported; import prompt, canonical store and global options open) | [PER_USER_SAVES](PER_USER_SAVES.md), [roadmap](#phase-6-goal-notes) |
 | P6.27 | Return to title from the pause (field) menu | in progress (built, PC US and EU replays; owner OLED, 2026-10-27, preview.41: Return to title works and Continue after it works; the Yes / No window, fade and card checks not reported) | [PORT_OPTIONS](PORT_OPTIONS.md#quit-and-return-to-title-p627-p628), [roadmap](#phase-6-goal-notes) |
 | P6.28 | Quit game on the title menu, back to hbmenu | in progress (built, PC US and EU replays; owner OLED, 2026-10-27, preview.41: Quit through the Sphaira forwarder works and returns to hbmenu; the full-app Sphaira launch shows errors, the forwarder is fine; card files, flush line and the US / EU split not reported) | [PORT_OPTIONS](PORT_OPTIONS.md#quit-and-return-to-title-p627-p628), [roadmap](#phase-6-goal-notes) |
 | P6.29 | Save editor: external tool on the owner's own saves, builds on P6.25 (future goal) | future | [roadmap](#phase-6-goal-notes), [CROSS_REGION_SAVES](CROSS_REGION_SAVES.md) |
-| P6.30 | Help, FAQ and tips from the pause menu and the title menu (owner answers recorded 2026-10-27; after P9.9) | **phases 1 to 4 built 2026-10-28 (PR open; PC replays US and EU pass; OLED H1 to H8 **PASSED in English only** (owner, preview.51, 2026-10-28); FR/DE/IT/ES need native reviewers; English text still draft, owner review pending)**; the page engine is shared with P6.35; **owner 2026-10-28: at launch in every language the base game has, EN + FR/DE/IT/ES on the EU disc, pt-BR later with P6.7**: FR/DE/IT/ES **drafted 2026-10-29, machine-drafted, needs native review** ([section 12](P6.30_HELP.md#12-translations-machine-drafted)); a stub still falls back to English with a log line | [roadmap](#phase-6-goal-notes), [design](P6.30_HELP.md), [draft text](../port/help/text/en.txt) |
+| P6.30 | Help, FAQ and tips from the pause menu and the title menu (owner answers recorded 2026-10-27; after P9.9) | **phases 1 to 4 built 2026-10-28 (merged as #333; PC replays US and EU pass; OLED H1 to H8 **PASSED in English only** (owner, preview.51, 2026-10-28); FR/DE/IT/ES need native reviewers; English text still draft, owner review pending)**; the page engine is shared with P6.35; **owner 2026-10-28: at launch in every language the base game has, EN + FR/DE/IT/ES on the EU disc, pt-BR later with P6.7**: FR/DE/IT/ES **drafted 2026-10-29, machine-drafted, needs native review** ([section 12](P6.30_HELP.md#12-translations-machine-drafted)); a stub still falls back to English with a log line | [roadmap](#phase-6-goal-notes), [design](P6.30_HELP.md), [draft text](../port/help/text/en.txt) |
 | P6.31 | Auto-save, off by default | in progress (built: Options row, area-change write to its own file `autosave.bin`, title Continue loads it and the old Continue is Load; PC US and EU replays; owner OLED, 2026-10-27, preview.41: title plaque spacing (#287) confirmed; the write is on an area change only (code, 2026-10-28; the owner's "and on HOME close" note is not in the code, to re-check, E2.1); the save-file, Continue and Load Game checks not reported) | [P6.31_AUTOSAVE](P6.31_AUTOSAVE.md), [roadmap](#phase-6-goal-notes), [P5.3](P5.3_FLAT_SAVE.md) |
-| P6.32 | Map zoom and full-screen map (future goal) | phase 0 PoC built (PR `feat/p6.32-map-poc`); owner OLED, preview.45 (2026-10-28): the map shows and Nearest is the preferred scaler; balloon, cursor and name box pending preview.47; mod pack loader for an upscaled map built (`feat/mod-map-upscale`, OLED item B17 pending) | [roadmap](#phase-6-goal-notes), [P6.32](P6.32_MAP_ZOOM.md), [P6.1](P6.1_WIDESCREEN.md), [map upscale mod](MOD_MAP_UPSCALE.md) |
-| P6.33 | Items menu usability redesign | in progress (owner decisions recorded 2026-10-26; phase 1 partner cycle built: patch 0128, ZL / ZR, on by default; phases 2, 3 and 4 open; phase 1 cycle confirmed on the OLED 2026-10-27, preview.41; the `items_partner_switch=0` check open; phases 2–4 folded into P6.34) | [roadmap](#phase-6-goal-notes), [P6.33](P6.33_ITEMS_MENU.md), [P6.1](P6.1_WIDESCREEN.md) |
-| P6.34 | Redesign of the items / status / equipment menu flow | design written 2026-10-28 (5 phases, 10 owner questions open); **phase 1 built 2026-10-28** (equip from the Items menu, patch `0188`, key `items_equip_from_items`, default on = orchestrator default pending owner confirmation of Q1 to Q5 and Q10); **phase 2 built 2026-10-29** (equip in Status > Equipment returns to the slot list without the long fades, patch `0190`, key `items_equip_stays`, default on = orchestrator default pending owner confirmation of Q6; replay `us/eu-items-equip-stays[-off]`); **phase 3 built 2026-10-29** (Square in the equip list cycles this slot / all weapons / all armor and gear / worn by others; Cross on a worn-by-others row moves the item between party members, patch `0192`, key `items_bag_view`, default on = orchestrator default pending owner confirmation of P6.33 decisions 2 and 3 as built; replay `us/eu-items-bag-view[-43][-off]` and `eu-items-bag-view-fr|it|de|es`; left: a count line, a help hint for Square, moving from non-party Digimon, swap); **phase 4 built 2026-10-29** ("use item" stays on the partner step: the item panel and the pages stay, Up / Down + Cross use the next copy, the last copy and Triangle take the original way back; patch `0193`, key `items_use_stays`, default on = orchestrator default pending owner confirmation of P6.33 decision 6 as built and of Q9 (the "Items to Equipment" jump is dropped); replay `us/eu-items-use-stays[-43][-off]` and `eu-items-use-stays-fr|it|de|es`; the recordings that walk the old use flow now run with `items_use_stays=0`; left: ZL / ZR in the partner step, a hint); phase 5 (patch 0194 proposed, only if the owner asks for the order change) not built; PC replay US and EU passes, OLED items B19 (revised), B21, B22, B23 and B24 pending | [roadmap](#phase-6-goal-notes), [P6.34](P6.34_MENU_FLOW.md), [P6.33](P6.33_ITEMS_MENU.md) |
-| P6.35 | In-game walkthrough help: where to go next and what to do, by story progress (future goal) | future; **phase 1 data layer built** (step resolver, `ch01` table progress 0 to 4 confirmed by US and EU PC replays, English draft, FR/DE/IT/ES drafted 2026-10-29 (machine-drafted, needs native review); [As built](P6.35_WALKTHROUGH.md#as-built-phase-1-data-layer)); **phase 2 the screen built 2026-10-29** (PR open): the Walkthrough group of Options (title, field menu, battle), current step page, step list, area spoiler pages, two-action reveal, nothing shown beyond the player's progress, `ch01` only and a `More chapters coming` page; PC replays US and EU `*-walkthrough-screen-*` pass; the game's field menu opens only from progress 4, so in game it is reachable from `ch01.s06`; **left: OLED W1 to W7, chapters after `ch01`, native review, the release validator** ([As built, phase 2](P6.35_WALKTHROUGH.md#as-built-phase-2-the-screen)) (owner 2026-10-28: at launch in every language the base game has, EN + FR/DE/IT/ES on the EU disc, pt-BR later with P6.7; design written 2026-10-28, owner decisions recorded) | [roadmap](#phase-6-goal-notes), [design](P6.35_WALKTHROUGH.md), [PLAYER_GUIDE](PLAYER_GUIDE.md) |
-| P6.36 | Music at normal speed while turbo is on | phases 1 and 2 built (#356), phase 3 jingle hold (4 s, owner decision) built (PR open); phase 4 SFX split open | [roadmap](#phase-6-goal-notes), [P6.36](P6.36_TURBO_MUSIC.md), [P6.4](P6.4_FAST_FORWARD.md), [P4.3](P4.3_AUDIO.md) |
+| P6.32 | Map zoom and full-screen map (future goal) | **phase 1 "Static view" built 2026-10-29** (PR open): option `map_screen` now **off by default**, R3 no longer flips fast-forward in the view, option-off cost removed, replay `us/eu-map-view-off`, [P6.32 section 13](P6.32_MAP_ZOOM.md#13-phase-1-static-view-audit-and-close-2026-10-29); phase 0 PoC merged (#284); owner OLED, preview.45 (2026-10-28): the map shows and Nearest is the preferred scaler; balloon, cursor and name box pending preview.47; mod pack loader for an upscaled map merged (#313, OLED item B17 pending) | [roadmap](#phase-6-goal-notes), [P6.32](P6.32_MAP_ZOOM.md), [P6.1](P6.1_WIDESCREEN.md), [map upscale mod](MOD_MAP_UPSCALE.md) |
+| P6.33 | Items menu usability redesign | in progress (owner decisions recorded 2026-10-26; phase 1 partner cycle built: patch 0128, ZL / ZR, on by default; phases 2 to 4 built as P6.34 phases 2 to 4 (#348, #357, #360); phase 1 cycle confirmed on the OLED 2026-10-27, preview.41; the `items_partner_switch=0` check open; phases 2–4 folded into P6.34) | [roadmap](#phase-6-goal-notes), [P6.33](P6.33_ITEMS_MENU.md), [P6.1](P6.1_WIDESCREEN.md) |
+| P6.34 | Redesign of the items / status / equipment menu flow | design written 2026-10-28 (5 phases, 10 owner questions open); **phase 1 built 2026-10-28, merged #339** (equip from the Items menu, patch `0188`, key `items_equip_from_items`, default on = orchestrator default pending owner confirmation of Q1 to Q5 and Q10); **phase 2 built 2026-10-29, merged #348** (equip in Status > Equipment returns to the slot list without the long fades, patch `0190`, key `items_equip_stays`, default on = orchestrator default pending owner confirmation of Q6; replay `us/eu-items-equip-stays[-off]`); **phase 3 built 2026-10-29, merged #357** (Square in the equip list cycles this slot / all weapons / all armor and gear / worn by others; Cross on a worn-by-others row moves the item between party members, patch `0192`, key `items_bag_view`, default on = orchestrator default pending owner confirmation of P6.33 decisions 2 and 3 as built; replay `us/eu-items-bag-view[-43][-off]` and `eu-items-bag-view-fr|it|de|es`; left: a count line, a help hint for Square, moving from non-party Digimon, swap); **phase 4 built 2026-10-29, merged #360** ("use item" stays on the partner step: the item panel and the pages stay, Up / Down + Cross use the next copy, the last copy and Triangle take the original way back; patch `0193`, key `items_use_stays`, default on = orchestrator default pending owner confirmation of P6.33 decision 6 as built and of Q9 (the "Items to Equipment" jump is dropped); replay `us/eu-items-use-stays[-43][-off]` and `eu-items-use-stays-fr|it|de|es`; the recordings that walk the old use flow now run with `items_use_stays=0`; left: ZL / ZR in the partner step, a hint); phase 5 (order change, only if the owner asks; patch 0194 is P6.36's now, so it needs a new number) not built; PC replay US and EU passes, OLED items B19 (revised), B21, B22, B23 and B24 pending | [roadmap](#phase-6-goal-notes), [P6.34](P6.34_MENU_FLOW.md), [P6.33](P6.33_ITEMS_MENU.md) |
+| P6.35 | In-game walkthrough help: where to go next and what to do, by story progress (future goal) | in progress; **phase 1 data layer built** (#328; step resolver, `ch01` table progress 0 to 4 confirmed by US and EU PC replays, English draft, FR/DE/IT/ES drafted 2026-10-29 (machine-drafted, needs native review); [As built](P6.35_WALKTHROUGH.md#as-built-phase-1-data-layer)); **phase 2 the screen built 2026-10-29** (merged as #363): the Walkthrough group of Options (title, field menu, battle), current step page, step list, area spoiler pages, two-action reveal, nothing shown beyond the player's progress, `ch01` only and a `More chapters coming` page; PC replays US and EU `*-walkthrough-screen-*` pass; the game's field menu opens only from progress 4, so in game it is reachable from `ch01.s06`; **left: OLED W1 to W7, chapters after `ch01`, native review, the release validator** ([As built, phase 2](P6.35_WALKTHROUGH.md#as-built-phase-2-the-screen)) (owner 2026-10-28: at launch in every language the base game has, EN + FR/DE/IT/ES on the EU disc, pt-BR later with P6.7; design written 2026-10-28, owner decisions recorded) | [roadmap](#phase-6-goal-notes), [design](P6.35_WALKTHROUGH.md), [PLAYER_GUIDE](PLAYER_GUIDE.md) |
+| P6.36 | Music at normal speed while turbo is on | phases 1 and 2 built (#356), phase 3 jingle hold (4 s, owner decision) built (merged as #361); phase 4 SFX split open | [roadmap](#phase-6-goal-notes), [P6.36](P6.36_TURBO_MUSIC.md), [P6.4](P6.4_FAST_FORWARD.md), [P4.3](P4.3_AUDIO.md) |
 | P7.1 | Inventory and boundaries | done | [COMMUNITY_QOL](COMMUNITY_QOL.md) |
 | P7.2 | Patched EU disc as data source | open | [COMMUNITY_QOL](COMMUNITY_QOL.md) |
 | P7.3 | Binary-patch limits | in progress | [COMMUNITY_QOL](COMMUNITY_QOL.md) |
@@ -195,13 +195,13 @@ listed once, in [Pending OLED checks](#pending-oled-checks).
 | P9.6 | External save converter | open | — |
 | P9.7 | Port options reachable in game | in progress (slice 1, the field menu, and slice 2, battle: built, PC US and EU replays, Switch Ryubing nx scenarios; live Widescreen open; owner OLED checks open) | [PORT_OPTIONS](PORT_OPTIONS.md#options-in-game-p97), [roadmap](#phase-9--port-options-menu) |
 | P9.8 | Confirm / cancel layout option (PS positional or Nintendo A/B). Phase 1 of the controls bundle built 2026-10-28: the mapper, the Controls group with the Button layout row, `dw3-controls:` logs, replay scenarios; OLED check open | built, OLED check open | [roadmap](#phase-9--port-options-menu), [CONTROLS_BUNDLE](CONTROLS_BUNDLE.md), [HOTKEYS](HOTKEYS.md) |
-| P9.9 | Options screen redesign in the title menu's style, room for more rows (slice 1 done 2026-10-27: groups and sub-screens; OLED pending; slice 2 done 2026-10-28: Cheats screen restyled as a scrolling sub-screen and value changes are dirty-row updates; Controls, Help, Walkthrough follow) | slices 1 and 2 in review | [roadmap](#phase-9--port-options-menu), [PORT_OPTIONS](PORT_OPTIONS.md) |
+| P9.9 | Options screen redesign in the title menu's style, room for more rows (slice 1 done 2026-10-27: groups and sub-screens; OLED pending; slice 2 done 2026-10-28: Cheats screen restyled as a scrolling sub-screen and value changes are dirty-row updates; the Controls, Help and Walkthrough groups came with their features, #338, #333, #363) | slices 1 and 2 merged (#303, #327) | [roadmap](#phase-9--port-options-menu), [PORT_OPTIONS](PORT_OPTIONS.md) |
 | P10.1 | Switch features goal note | done | [SWITCH_FEATURES](SWITCH_FEATURES.md) |
 | P10.2 | Lifecycle hardening (has P5.3's leftover) | in progress (sleep and resume: owner confirmed on the OLED, 2026-10-24; HOME during a save write: atomic write, exit gate and `dw3-save:` log lines done, OLED check open) | [SWITCH_FEATURES](SWITCH_FEATURES.md) |
 | P10.3 | Presentation modes | open | — |
 | P10.4 | Rumble polish (optional) | open | — |
 | P10.5 | Extra applets (optional) | open | — |
-| P10.6 | Switch-style button glyphs (design 2026-10-28; step 0 and the fix-now done 2026-10-29; census, art and patch built 2026-10-29, PR open, OLED pending; page-turn `R1` art open) | built, OLED pending | [roadmap](#phase-10--native-switch-features-residual), [P10.6_GLYPHS](P10.6_GLYPHS.md), [CONTROLS_BUNDLE](CONTROLS_BUNDLE.md), [TEXTURE_PACKS](TEXTURE_PACKS.md) |
+| P10.6 | Switch-style button glyphs (design written 2026-10-28; step 0 #354 and the fix-now hint caps #355 merged; census, art and the glyph patch built 2026-10-29, PR #367) | in progress (OLED L17 to L26 pending; the page-turn `R1` art outside the font is open) | [roadmap](#phase-10--native-switch-features-residual), [P10.6_GLYPHS](P10.6_GLYPHS.md), [CONTROLS_BUNDLE](CONTROLS_BUNDLE.md), [TEXTURE_PACKS](TEXTURE_PACKS.md) |
 | P10.7 | NSP packaging: forwarder, full NSP or stay NRO | dropped | [NSP_PACKAGING](NSP_PACKAGING.md), [roadmap](#phase-10--native-switch-features-residual) |
 
 ## Pending OLED checks
@@ -297,7 +297,7 @@ its done-when. The ordered session plan (written for preview.36) is
   (preview.43/44): each Switch profile has its own Continue, and cancelling the
   profile selector returns to the Switch HOME (E5.3 to E5.5; logs not sent).
   Still open: E5.1, E5.2 and E5.6 to E5.9 ([OLED_TEST_PLAN E5](OLED_TEST_PLAN.md#e5-per-user-saves-p626)).
-- **P6.32 (map view, phase 0):** the map shows and Nearest is the preferred
+- **P6.32 (map view, phase 1):** the option is off by default since 2026-10-29: add `map_screen=1` to `port_options.cfg` before B16, B17, B20, L5; new row B25. **Phase 0 notes:** the map shows and Nearest is the preferred
   scaler (owner, 2026-10-28, preview.45). Pending preview.47: the balloon, the
   cursor and the name box (OLED_TEST_PLAN B16; right-stick zoom PASSED, owner preview.51, 2026-10-28).
 - **P6.33 (phase 1, partner cycle):** the ZL / ZR cycle in Equipment works
@@ -2355,7 +2355,7 @@ Statuses are in the [table](#status-at-a-glance).
   PoC (patch `0146`, `port/map_view/`, a PC and a Switch overlay): Square opens
   it from the Map screen, pan, zoom fit / 1.0 / 1.25 / 1.5 / 2.0 / 3.0 on L1 / R1,
   **L2 / R2 cycle the scaler live** (nearest, sharp bilinear, Lanczos2, AMD FSR 1,
-  CPU, timings in the log), no turbo, option key `map_screen` (PoC default on).
+  CPU, timings in the log), no turbo, option key `map_screen` (PoC default on; **off since phase 1**).
   The map is **392 x 352**; it can be **read from the disc files** (identical to
   the VRAM capture on US and EU, 0 bytes differ) and is **precomputed on a spare
   core / low-priority thread** and cached under `sdmc:/switch/dw3/cache/` (PC:
@@ -2375,6 +2375,15 @@ Statuses are in the [table](#status-at-a-glance).
   **Owner OLED (preview.45, 2026-10-28):** the map shows and Nearest is the preferred scaler. Not confirmed, pending preview.47: the balloon, the cursor and the name box.
   Open: OLED look (left-stick feel, core-2 worker), the other EU languages.
   **Owner OLED (preview.48, 2026-10-28):** icons, balloon and cursor were giant at the top zoom; they now keep the size they have at zoom 1.0 while their positions follow the map, the reveal layer still scales with it ([P6.32 section 11](P6.32_MAP_ZOOM.md#11-fixed-size-overlay-sprites-owner-preview48-oled), log `dw3-map: sprites at fixed size`). Pending OLED (B16).
+  **Phase 1 "Static view" (2026-10-29, PR `feat/p6.32-phase1`):** audit of `main` against the
+  phase 1 done-when and the gap list are in [P6.32 section 13](P6.32_MAP_ZOOM.md#13-phase-1-static-view-audit-and-close-2026-10-29):
+  **the option `map_screen` is now off by default** (it was on when absent; add
+  `map_screen=1` to `port_options.cfg`; the key keeps its name), off costs nothing (no
+  precompute, no cache folder), R3 in the view no longer flips the fast-forward state,
+  and the done-when items have log lines (`picture coverage`, `pad held by the view`,
+  `game Map screen back after the close ... unchanged`). Replay: `us/eu-map-view` (on),
+  `-43`, new `-off`; `us/eu-map-screen` 0 px. Patch `0146` only (0147-0159 unused).
+  OLED B25 pending. Still open: phase 2 (EU languages, strips), FIT backdrop, phases 3 to 7.
   Done when (proposed): the new map screen opens from the Map screen on US and
   EU on PC and the Switch, zooms and pans over the full image, shows the
   game's area names, the default is bit-identical, and the P6.15 map replay

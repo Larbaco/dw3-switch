@@ -1889,6 +1889,44 @@ def map_view(version):
     return r
 
 
+def map_view_off(version):
+    """P6.32 phase 1: the `map_screen` option off (the default). Same path as
+    `map_screen` up to the open Map; then everything the new screen would take is
+    pressed on the game's own Map: Square (it must not open), the cursor, R3, L1 /
+    R1 / R2 / Circle, which the game's screen does not read. The game's Map screen
+    keeps working (the cursor moves, `off-cursor`) and Triangle leaves it for the
+    field menu (`off-closed`). Checkpoints: the Map before and after Square (the
+    only difference may be the cursor animation)."""
+    r = Rec(f"{version.upper()}: P6.32 map_screen option off: Square does nothing (env and cfg in manifest)")
+    for f in range(300, 1200, 30):
+        r.press(f, CROSS)            # battle report -> field
+    r.press(1250, START)             # field menu, over the field
+    r.press(1420, CROSS)             # Items: the dissolve, then STSTATUS
+    f = 1640
+    for name, button, wait in MENU_SCREENS_STEPS:
+        if name == "map":
+            break
+        if button:
+            r.press(f, button)
+        f += wait
+    assert f == 4000, f
+    r.shot(3997, "off-map")
+    r.press(4000, SQUARE_MAP)        # the option is off: nothing opens
+    r.shot(4040, "off-square")
+    r.press(4060, R3_MAP)
+    r.press(4070, L1_MAP)
+    r.press(4080, R1_MAP)
+    r.press(4090, R2_MAP)
+    r.press(4100, CIRCLE_MAP)
+    _pad(r, 4120, RIGHT)             # the game's own cursor still moves
+    _pad(r, 4180, 0)
+    r.shot(4200, "off-cursor")
+    r.press(4220, TRIANGLE)          # the game's Triangle closes the Map
+    r.shot(4300, "off-closed")
+    r.end(4400)
+    return r
+
+
 # The battle report's checkpoints (patch 0081): the header bar opens from the
 # left edge, then holds the partner's exp, then the fade. The EU report comes
 # ~120 frames before the US one (measured, DW3_TURBO=4).
@@ -2978,6 +3016,7 @@ def main(out):
         (out / f"{v}-menu-screens.rec").write_text(menu_screens(v).text(True))
         (out / f"{v}-map-screen.rec").write_text(map_screen(v).text(True))
         (out / f"{v}-map-view.rec").write_text(map_view(v).text(True))
+        (out / f"{v}-map-view-off.rec").write_text(map_view_off(v).text(True))
         (out / f"{v}-items-equip-switch.rec").write_text(items_equip_switch(v).text(True))
         (out / f"{v}-items-equip-stays.rec").write_text(items_equip_stays(v).text(True))
         (out / f"{v}-items-bag-view.rec").write_text(items_bag_view(v).text(True))
