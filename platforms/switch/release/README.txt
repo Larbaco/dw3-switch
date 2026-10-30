@@ -1,12 +1,60 @@
 Digimon World 3 / 2003, Switch homebrew preview
 
-Release notes for v0.6.5-preview.54. The release tag and boot version
+Release notes for v0.6.5-preview.55. The release tag and boot version
 identify the actual source revision.
 
 Player guide (setup, controls, Options, saves, crash reports):
 https://github.com/Larbaco/dw3-switch/blob/main/docs/PLAYER_GUIDE.md
 
 New in this preview
+
+  Full-screen map view is OFF by default (#366, P6.32 phase 1, patch 0146).
+  This is a change from preview.54. Y on the Map screen does nothing until you
+  add the line `map_screen=1` to `sdmc:/switch/dw3/us/port_options.cfg` (or
+  `eu/`, for the region you play). With the key off there is no cache folder
+  and no precompute. Inside the view R3 is ignored: it no longer toggles the
+  fast-forward state. Logs: `dw3-options: file keys ... map_screen=0|1` at boot,
+  `dw3-map: option map_screen=0 (the default)` with the key off, and
+  `dw3-map: R3 pressed in the view: ignored` with it on.
+
+  Walkthrough screen in Options (#363, P6.35 phase 2). Options has a
+  Walkthrough group, the plaque after Help. It shows one page per step of the
+  game, with a short goal. A step's answer is hidden: B on Answer asks
+  `Show the answer?` and the answer shows only on Yes. Area pages ask before
+  they show anything. A save at or past Seiryu City opens on the step you are
+  on. From a battle, Minus at the command menu opens it and the battle stays
+  held. L and R move between entries. The step text is in the game's language;
+  FR, DE, IT and ES are machine-drafted (see Known issues), and town and NPC
+  names stay in English. Logs: `dw3-port-options: group open walkthrough`, and
+  `dw3-walkthrough: open (from title|field|battle, ...)`.
+
+  Switch button glyphs (#367, P10.6, patch 0195). Controls has a new last row,
+  Switch glyphs, for Switch only. It is OFF by default. With it ON, the button
+  prompts in the game (the item shop and the Save screen first) show the Switch
+  glyph of the button that sends each PlayStation button under the button
+  layout in use and under your custom map. With the PlayStation layout the
+  circle prompt is an A and the triangle an X. Your own art goes in
+  `sdmc:/switch/dw3/glyphs/` as a.png ... zr.png, 12x12; a file of another size
+  falls back to the bundled glyph, and the log names it. Logs: `dw3-glyphs:
+  on|off, map=...` and `dw3-options: switch_glyphs=...` at boot. The R1 / L1
+  page-turn art is not covered yet.
+
+  Test tooling and docs only, no change to the game: replay --changed reads
+  CMake diffs and the runner has --both-subset (#364); the roadmap Priority and
+  status table is reconciled with the merged PRs (#365).
+
+  The owner's OLED checks are recorded in docs/OLED_TEST_PLAN.md (rows marked
+  PASSED). Items that are not there yet are checked on PC and in the Ryubing
+  emulator only, and are marked unverified. The OLED checklist at the end lists
+  every row of that plan without a PASSED mark.
+
+  Built and published by the release workflow (.github/workflows/switch-release.yml)
+  from this tag: the three files are the workflow's own output, with no local
+  rebuild attached. A local build does not reproduce the CI binary (the build
+  ids differ), so the dw3-switch-elf.zip in this release is the one that
+  symbolizes this dw3-switch.nro.
+
+  From preview.54:
 
   ONE .nro (owner decision 2026-10-29). This release ships a single
   dw3-switch.nro: the combined US + EU image, app title "Digimon World 3 NX".
@@ -23,17 +71,6 @@ New in this preview
   on-screen debug HUD and the sampled mesh/mem/movie log lines were only in
   the old nxlink build; they are not in the release file (developers build
   them with tools/build_switch_game.sh --nxlink).
-
-  The owner's OLED checks are recorded in docs/OLED_TEST_PLAN.md (rows marked
-  PASSED). Items that are not there yet are checked on PC and in the Ryubing
-  emulator only, and are marked unverified. The OLED checklist at the end lists
-  every row of that plan without a PASSED mark.
-
-  Built and published by the release workflow (.github/workflows/switch-release.yml)
-  from this tag: the three files are the workflow's own output, with no local
-  rebuild attached. A local build does not reproduce the CI binary (the build
-  ids differ), so the dw3-switch-elf.zip in this release is the one that
-  symbolizes this dw3-switch.nro.
 
   Use item stays on the partner step (#360, P6.34 phase 4, patch 0193; plan
   B24). In the Items menu, Cross on a Digimon uses a consumable as before, but
@@ -379,6 +416,16 @@ Known issues
   (T4, phase 3). Not yet heard on a console; the 4 second figure is the
   owner's decision.
 
+  Full-screen map view (P6.32 phase 1): off unless map_screen=1 is set (see
+  New in this preview). Not yet confirmed on a console: OLED rows B16, B20 and
+  B25.
+
+  Walkthrough screen (P6.35 phase 2): not yet confirmed on a console (OLED
+  rows W1 to W7).
+
+  Switch glyphs (P10.6): not yet confirmed on a console (OLED rows L21 to L26).
+  The R1 / L1 page-turn art is not covered.
+
   Help and walkthrough text in FR, DE, IT and ES is machine-drafted, not
   checked by a native reviewer, and not run on the console. The English help
   pages passed on the OLED (plans H1 to H8, English only); the four other
@@ -387,7 +434,7 @@ Known issues
   Defaults taken for now and pending the owner's confirmation:
   items_equip_stays (on), items_bag_view (on) with its filter order, items_use_stays
   (on), turbo music (1x), the win jingle hold (4 seconds), and the remap's hotkeys
-  following the map.
+  following the map. Also taken for now: switch_glyphs (off) and map_screen (off).
 
   If the map stays silent after a battle (no field music once you are
   back), please send a --nxlink log. This was reported on rc8 (US) but
@@ -418,8 +465,8 @@ Carried forward
   Widescreen starts ON; Port options can turn it OFF. Battle defaults
   to gpu-tex; Minus + ZL + ZR cycles rendering modes. Field rendering
   stays software. Gameplay starts at 1x; R3 toggles the configured 2x/3x/4x
-  turbo, or OFF disables it. Movies, title and standalone menus stay
-  at 1x; gameplay audio accelerates with turbo.
+  turbo, or OFF disables it. In the map view R3 does nothing. Movies, title and
+  standalone menus stay at 1x; gameplay audio accelerates with turbo.
 
   Native title choices New Game / Options / Load Game, with EU labels
   from the current game language; Options opens its group list (#303).
@@ -600,12 +647,17 @@ Install / nxlink
 
 OLED checklist
 
-  Still open on the OLED: 174 rows of docs/OLED_TEST_PLAN.md without a clean PASSED mark (158 distinct row IDs; the proof-line table repeats some IDs). The list is built from those rows only, with tools/oled_open_rows.py (178 rows; 4 proof-line rows of rows that already passed are left out). The checklist below gives each one.
+  Still open on the OLED: 189 rows of docs/OLED_TEST_PLAN.md without a clean
+  PASSED mark (172 distinct row IDs; the proof-line table repeats some IDs). The
+  list is built from those rows only, with tools/oled_open_rows.py (193 rows
+  there). The four rows that already passed, whose proof-line rows the tool
+  still reports as open, are left out. The checklist below gives each one.
   A: A1, A2, A3, A4, A6, A7, A8, A13, A18, A16, A17
+  W: W1, W2, W3, W4, W5, W6, W7
   L: L1, L2, L3, L4, L5, L6, L7, L8, L9, L10, L11, L12, L13, L14, L15, L16, L17,
-    L18, L19, L20
+    L18, L19, L20, L21, L22, L23, L24, L25, L26
   B: B1, B2, B3, B4, B5, B6, B7, B8, B9, B10, B12, B13, B14, B15, B16, B17, B19,
-    B21, B22, B23, B24, B20
+    B21, B22, B23, B24, B20, B25
   C: C1, C2, C3, C4, C10, C5, C6, C8, C9
   T: T1, T2, T3, T4, T5, T6
   D: D1, D2, D3, D4, D5, D6, D7, D8, D9, D10, D11, D12, D14, D15
@@ -635,6 +687,13 @@ OLED checklist
   - A18 Options background (P51 item 6). Title, Options, then Gameplay, Cheats and Help
   - A16 Cheats is on the Options list with the master OFF (P51 item 5). Title, Options (a fresh ...
   - A17 Region at start row (combined .nro only, P51 item 4). Options, Gameplay, the sixth row ...
+  - W1 Title, Options, Down to Walkthrough (the last plaque), B. Down over the list, B on the first step, X
+  - W2 Save at progress 4 or more (past Seiryu City): field menu, OPTIONS, Walkthrough. It opens on the step you are on
+  - W3 Step page: B on Answer, then No; again B on Answer, Down, B on Yes; X; open it again
+  - W4 List: the current step has an arrow and Current step in the strip. Open the optional row and Area: Asuka City
+  - W5 In a step page press L and R; hold Down on a long answer
+  - W6 Battle: Minus at the command menu, Walkthrough; Back out. The battle stays held and resumes
+  - W7 EU disc: for each of the five languages open Walkthrough, a step page and its answer
   - L1 Fresh launch (no button_layout key), US then EU. Title: Plus, Down, B on Options, B on ...
   - L2 Options, Controls, Button layout: press B (it says Nintendo), X twice back to the title ...
   - L3 Nintendo, in the field and in a battle: open the field menu with Plus, A on a row, B to ...
@@ -654,7 +713,13 @@ OLED checklist
   - L17 Options (title), the hint row at the bottom right of the message strip, with Button ...
   - L18 Customize buttons: set Cross to ZL and Triangle to R (one press each), go back to Options ...
   - L19 Nintendo: Options, Help (the list and a page): the hint row there; Options, Cheats if it ...
-  - L20 Nintendo then PlayStation: the full-screen map view (Plus, Map, Y), read the footer line ...
+  - L20 Nintendo then PlayStation: the full-screen map view (map_screen=1 first; Plus, Map, Y), read the footer line ...
+  - L21 Options, Controls: the last row is Switch glyphs (OFF). Leave it OFF, open the item shop and the Save screen ...
+  - L22 Switch glyphs ON, PlayStation layout: item shop Buy list, Digimon Lab, Gym, a field menu hint line, Save screen ...
+  - L23 With Switch glyphs ON change Button layout to Nintendo and back, then look at a shop prompt ...
+  - L24 Customize buttons: Circle on ZL, Triangle on L3; look at the shop and Save prompts; then Reset to default ...
+  - L25 Switch glyphs OFF, then ON, then quit and relaunch (US, then EU in two languages) ...
+  - L26 Developer: your own a.png ... zr.png (12x12) in sdmc:/switch/dw3/glyphs/, one of them wrong (13x12) ...
 
   Session B: field and 16:9 screens tour:
   - B1 Title menu, intro news caption bar, registration screen (New Game)
@@ -671,14 +736,15 @@ OLED checklist
   - B13 In a battle, a technique's magic circle
   - B14 nxlink build: a door and then a battle
   - B15 Options from the field (#270, P9.7). In the field press Plus; the list ends with OPTIONS ...
-  - B16 Full-screen map view (P6.32 PoC, #284). Widescreen ON. Field menu (Plus), Map, then Y ...
+  - B16 Full-screen map view, OFF by default: add map_screen=1 first (P6.32, #284). Widescreen ON. Field menu (Plus), Map, then Y ...
   - B17 Map upscale mod (P8.5 first mod, P6.32). Needs the mod folder on the SD card: build it on ...
   - B19 Equip from the Items menu (P6.34 phase 1, patch 0188; replaces the preview.47 finding). ...
   - B21 Equip from the Items menu, both hand slots full, key off, and the EU languages. (a) Put ...
   - B22 Equip in Status > Equipment returns to the slot list at once (P6.34 phase 2, patch 0190 ...
   - B23 The whole bag and moving an item between Digimon (P6.34 phase 3, patch 0192; P6.33 ...
   - B24 Use item stays on the partner step (P6.34 phase 4, patch 0193; P6.33 decision 6, details ...
-  - B20 Map view closes with the cancel button (owner decision 2026-10-28). As B16: open the view ...
+  - B20 Map view closes with the cancel button (owner decision 2026-10-28). As B16 (map_screen=1 first): open the view ...
+  - B25 Map view option off by default (P6.32 phase 1). With no map_screen line Y does nothing; with map_screen=1 R3 in the view does nothing ...
 
   Session C: turbo speed:
   - C1 New Game opening at 4x. Compare with preview.34 at 4x if you remember
@@ -808,6 +874,9 @@ OLED checklist
   - D15 dw3-battle-cursor: open list=items/tech/switch mode=<gpu-tex, soft or pc> widescreen=W ...
   - E1 dw3-port-restart: fading to black before the reset, screen is black after N frames ...
   - E2 dw3-autosave: wrote autosave.bin ... in N ms (SD write M ms ...); option Auto-save=N
+  - W1 to W7 dw3-walkthrough: open (from title|field|battle, region, platform, language, N items), page <id> (kind, from, reached, N lines), spoiler <id> asked|shown|cancelled, closed after N ms; problems: text fallback, title too wide
+  - L21 to L26 dw3-glyphs: on|off, map=playstation|nintendo, patched N cells (us|eu, ...) [option|map|font load]; dw3-glyphs: N glyph(s) read from sdmc:/switch/dw3/glyphs
+  - B25 boot: dw3-options: file keys ... map_screen=0|1; with 0: dw3-map: option map_screen=0 (the default); with 1: dw3-map: open ..., dw3-map: R3 pressed in the view: ignored
   - G8 dw3-options: file keys items_equip_from_items=N items_partner_switch=N map_screen=N at ...
   - G9.14 nxlink detection (one file, 2026-10-29). Start dw3-switch.nro with nxlink -a <ip> -s ...
   - G9.15 Upgrade from the old files. On a card that has dw3-switch-eu.nro or -both.nro plus ...
