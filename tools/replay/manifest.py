@@ -2538,7 +2538,7 @@ _HELP_READ = (r"dw3-help: panel canvas allocated, 2764800 bytes \(960x720 RGBA\)
               r"dw3-help: page controls \(from list, \d+ lines, panel 13 lines, unverified blocks 0\)(?s:.*)"
               r"dw3-help: page controls end reached \(line \d+ of \d+\)(?s:.*)"
               r"dw3-help: page controls closed after \d+ ms \(read to line \d+ of \d+\)(?s:.*)"
-              r"dw3-help: page hotkeys \(from next, \d+ lines, panel 13 lines, unverified blocks 0\)(?s:.*)"
+              r"dw3-help: page hotkeys \(from next, \d+ lines, panel 13 lines, unverified blocks 1\)(?s:.*)"
               r"dw3-help: page turbo \(from next,(?s:.*)"
               r"dw3-help: page hotkeys \(from prev,(?s:.*)"
               r"dw3-help: page controls \(from prev,(?s:.*)"
