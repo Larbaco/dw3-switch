@@ -179,7 +179,17 @@ wins, rules are regexes on the path with scenario-name globs.
 * Option screens, cheats, autosave, walkthrough, items, map, pacing, sweep,
   file cache: the scenarios named for that area. Decomp patches map by topic
   (`p77` to `*p77*`, `p620-cheats` to `*cheat*`, and so on).
-* **A file under `port/`, `platforms/pc/`, `vendor/`, CMake or the runner with no
+* **A CMake file** (`CMakeLists.txt` or `*.cmake` under `port/` or
+  `platforms/pc/`) is read through its diff (`git diff -U0`, branch plus working
+  tree). If every changed line is a source-file entry (`"${CMAKE_CURRENT_SOURCE_DIR}/x/y.c"`,
+  `${CMAKE_SOURCE_DIR}/../../port/x.c`, `src/y.c`, `${DW3_ROOT}/...`), a comment or
+  blank, the selection is the union of those sources through the rules below (a
+  source with no rule still selects the full tier). Anything else in the file
+  (flags, definitions, targets, `if()` blocks, a variable the rule does not know,
+  a new untracked build file) or `--changed-files` (no git, so no diff) selects
+  the full tier. A PR that only adds one `.c` to a target (like #363) therefore
+  no longer pays for all 336 scenarios.
+* **A file under `port/`, `platforms/pc/`, `vendor/` or the runner with no
   rule selects the full tier** (the safe default), as does a new decomp pin.
   So does any patch without a topic rule (`match-neutral-*`, the early
   `PORT_HOST-*` engine fixes). `port/options/cheats.c` alone selects 43 of 273 scenarios; a

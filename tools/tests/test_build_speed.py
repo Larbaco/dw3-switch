@@ -142,3 +142,148 @@ def test_apply_patches_is_incremental(tmp_path):
     assert r.returncode == 0 and "Copying" in r.stdout
     assert victim.read_bytes() == clean
     assert keep.stat().st_mtime_ns == keep_mtime
+
+
+# --- CMake area rule ------------------------------------------------------
+
+_PORT_CMAKE = "port/CMakeLists.txt"
+_ADD_SOURCE = """\
+--- a/port/CMakeLists.txt
++++ b/port/CMakeLists.txt
+@@ -361,0 +362 @@ add_library(dw3_port_options${_S} OBJECT
++  "${CMAKE_CURRENT_SOURCE_DIR}/walkthrough/walkthrough_screen.c"
+"""
+
+
+def test_cmake_source_added_selects_its_area_not_everything(areas, scenarios):
+    sel = areas.select([_PORT_CMAKE], scenarios, lambda p: _ADD_SOURCE)
+    assert not sel.everything
+    assert "us-walkthrough-p0" in sel.names
+    assert "us-cheats-screen" not in sel.names
+    assert len(sel.names) < 0.7 * len({s.name for s in scenarios if s.tier in ("quick", "full")})
+
+
+def test_cmake_source_removed_is_the_same(areas, scenarios):
+    diff = _ADD_SOURCE.replace("\n+  ", "\n-  ")
+    sel = areas.select([_PORT_CMAKE], scenarios, lambda p: diff)
+    assert not sel.everything and "us-walkthrough-p0" in sel.names
+
+
+def test_cmake_source_with_no_rule_still_selects_everything(areas, scenarios):
+    diff = _ADD_SOURCE.replace("walkthrough/walkthrough_screen.c", "never_seen/x.c")
+    assert areas.select([_PORT_CMAKE], scenarios, lambda p: diff).everything
+
+
+@pytest.mark.parametrize("line", [
+    "target_compile_definitions(dw3_port PRIVATE DW3_CHEATS=1)",     # definition
+    "add_library(dw3_new OBJECT",                                    # target
+    "if(DW3_CHEATS)",                                                # condition
+    "-O2",                                                           # flag
+    '"${DECOMP_SRC}/src/menus/title/scene.c"',                       # variable not mapped
+    '"${CMAKE_CURRENT_SOURCE_DIR}/../../outside.c"',                 # leaves the repo
+])
+def test_cmake_other_changes_select_everything(areas, scenarios, line):
+    diff = _ADD_SOURCE + f"+  {line}\n"
+    assert areas.select([_PORT_CMAKE], scenarios, lambda p: diff).everything
+
+
+def test_cmake_without_a_diff_selects_everything(areas, scenarios):
+    assert areas.select([_PORT_CMAKE], scenarios).everything               # --changed-files
+    assert areas.select([_PORT_CMAKE], scenarios, lambda p: None).everything  # untracked
+
+
+def test_cmake_comment_only_change_selects_no_extra_scenarios(areas, scenarios):
+    diff = "@@ -1 +1 @@\n-# old note\n+# new note\n+\n"
+    sel = areas.select([_PORT_CMAKE], scenarios, lambda p: diff)
+    assert not sel.everything
+    assert len(sel.names) < 20
+
+
+def test_build_file_sources_resolves_each_path_form(areas):
+    diff = ("+  src/a.c\n"
+            '+  "${CMAKE_CURRENT_SOURCE_DIR}/sub/b.c"\n'
+            "+  ${CMAKE_SOURCE_DIR}/../../port/pages/pages.c\n"
+            '+  "${DW3_ROOT}/port/saves/c.c"  # note\n')
+    assert areas.build_file_sources("platforms/pc/CMakeLists.txt", diff) == [
+        "platforms/pc/src/a.c", "platforms/pc/sub/b.c", "port/pages/pages.c", "port/saves/c.c"]
+
+
+def test_cmake_files_outside_port_and_pc_keep_their_old_rules(areas, scenarios):
+    assert not areas.select(["platforms/switch/CMakeLists.txt"], scenarios).everything
+    assert areas.select(["CMakeLists.txt"], scenarios).everything
+
+
+def test_runner_reads_a_real_git_diff_of_the_build_file(tmp_path):
+    """build_file_diff() against a throwaway repo: tracked edit, untracked file."""
+    pytest.importorskip("PIL")
+    spec = importlib.util.spec_from_file_location("replay_tests_diff", REPLAY / "replay_tests.py")
+    sys.path.insert(0, str(REPLAY))
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    git = lambda *a: subprocess.run(["git", "-C", str(tmp_path), "-c", "user.name=t",
+                                     "-c", "user.email=t@t", *a], check=True, capture_output=True)
+    git("init", "-q", "-b", "main")
+    (tmp_path / "port").mkdir()
+    cm = tmp_path / "port" / "CMakeLists.txt"
+    cm.write_text('add_library(x\n  "${CMAKE_CURRENT_SOURCE_DIR}/a.c"\n)\n')
+    git("add", "."), git("commit", "-q", "-m", "base")
+    cm.write_text('add_library(x\n  "${CMAKE_CURRENT_SOURCE_DIR}/a.c"\n'
+                  '  "${CMAKE_CURRENT_SOURCE_DIR}/walkthrough/b.c"\n)\n')
+    (tmp_path / "port" / "new.cmake").write_text("x\n")
+    old_root = mod.ROOT
+    mod.ROOT = tmp_path
+    try:
+        diff = mod.build_file_diff("main", "port/CMakeLists.txt")
+        assert mod.build_file_diff("main", "port/new.cmake") is None
+    finally:
+        mod.ROOT = old_root
+    sys.path.insert(0, str(REPLAY))
+    areas_mod = sys.modules.get("areas") or _load("areas")
+    assert areas_mod.build_file_sources("port/CMakeLists.txt", diff) == ["port/walkthrough/b.c"]
+
+
+# --- both-binary subset ----------------------------------------------------
+
+def test_both_subset_has_one_scenario_per_area_and_region(areas, scenarios):
+    names = areas.both_subset(scenarios)
+    assert names == sorted(names) and len(names) == len(set(names))
+    by = {s.name: s for s in scenarios}
+    assert all(by[n].tier in ("quick", "full", "both") for n in names)
+    assert {by[n].version for n in names} == {"us", "eu"}
+    # every (area, region) of the pool has exactly one representative
+    pool = [s for s in scenarios if s.tier in ("quick", "full", "both")]
+    for key in {(areas.scenario_area(s.name), s.version) for s in pool}:
+        assert sum((areas.scenario_area(n), by[n].version) == key for n in names) == 1, key
+
+
+def test_both_subset_adds_overrides_and_ignores_unknown_names(areas, scenarios):
+    base = set(areas.both_subset(scenarios))
+    extra = next(s.name for s in scenarios if s.tier == "full" and s.name not in base)
+    got = set(areas.both_subset(scenarios, [extra, "no-such-scenario"]))
+    assert got == base | {extra}
+
+
+def test_both_subset_representative_prefers_both_then_quick_then_name(areas):
+    from types import SimpleNamespace as NS
+    mk = lambda n, t: NS(name=n, tier=t, version="us", phases=())
+    pool = [mk("us-options-a", "full"), mk("us-options-b", "quick"), mk("us-options-c", "full")]
+    assert areas.both_subset(pool) == ["us-options-b"]
+    pool.append(mk("us-options-z", "both"))
+    assert areas.both_subset(pool) == ["us-options-z"]
+    pool = [mk("us-options-b", "full"), mk("us-options-a", "full"), mk("us-solo-x", "full"),
+            mk("us-soak-y", "soak"), mk("us-nx-z", "nx")]
+    assert areas.both_subset(pool) == ["us-options-a", "us-solo-x"]   # own area; soak and nx are out
+
+
+def test_both_subset_runner_option_matches_the_function(areas, scenarios, tmp_path):
+    """--both-subset --dry-run lists areas.both_subset() plus the refs overrides."""
+    pytest.importorskip("PIL")
+    refs = tmp_path / "refs"
+    extra = next(s.name for s in scenarios if s.tier == "full"
+                 and s.name not in areas.both_subset(scenarios))
+    (refs / extra / "both").mkdir(parents=True)
+    r = subprocess.run([sys.executable, str(REPLAY / "replay_tests.py"), "--both-subset",
+                        "--dry-run", "--refs", str(refs)], capture_output=True, text=True)
+    assert r.returncode == 0, r.stderr
+    listed = {l.strip() for l in r.stdout.splitlines()[1:]}
+    assert listed == set(areas.both_subset(scenarios, [extra]))
