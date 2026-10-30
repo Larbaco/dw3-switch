@@ -31,6 +31,10 @@ _TITLE = ("*title*", "*lang*", "*return-title*")
 _OPTIONS = ("*options*", "*persist*", "*text-*", "*encounter*", "*pacing*",
             "*volume*", "*cheat*", "*autosave*", "*turbo*")
 
+# P10.6: the screens that draw a font button icon (shops, the lab, the gym, the
+# field menu's pages, the save screen) and the glyph scenarios themselves.
+_ICONS = ("*glyphs*", "*shop*", "*save*", "*lab*", "*gym*", "*menu-screens*", "*items*")
+
 # (regex, globs). Order matters. Patch rules key on the patch's topic name.
 RULES: list[tuple[str, object]] = [
     # --- nothing to replay -------------------------------------------------
@@ -69,6 +73,11 @@ RULES: list[tuple[str, object]] = [
     (r"^port/psyz_missing/psyz_pad_host", _OPTIONS + _TITLE + ("*nintendo*", "*controls*", "*help*", "*map*",
                                                                  "*menu*", "*items*", "*battle*", "*restart*",
                                                                  "*quit*", "*card*", "*shop*", "*lab*", "*deck*")),
+    # P10.6: with the option off the FONT.load wrapper does nothing and the text hook is a
+    # flag test, so the icon screens, the Options shell and the glyph scenarios are the check.
+    (r"^port/options/switch_glyph|^port/include/port_glyphs\.h$",
+     _OPTIONS + _TITLE + _ICONS + ("*controls*", "*nintendo*")),
+    (r"^port/patches/\d+-PORT_HOST-p106-", _ICONS + ("*text-*",)),
     (r"^port/options/title_", _TITLE),
     (r"^port/options/(field_options|battle_options)", ("*options*",)),
     (r"^port/options/(port_options|options_cfg|confirm)", _OPTIONS + _TITLE),

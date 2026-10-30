@@ -345,7 +345,7 @@ def test_volume_keys_are_in_the_written_file_order(persist_bin: Path, tmp_path: 
             if "=" in l and not l.startswith("#")]
     assert keys == ["version", "widescreen", "fast_forward", "restart_hotkey",
                     "music_volume", "sfx_volume", "encounter_rate", "text_speed",
-                    "battle_menu_memory", "autosave", "button_layout", "turbo_music", "end"]
+                    "battle_menu_memory", "autosave", "button_layout", "turbo_music", "switch_glyphs", "end"]
 
 
 # --- P6.18 Encounter rate / Text speed rows ---------------------------------

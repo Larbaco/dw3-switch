@@ -10,9 +10,12 @@ import pytest
 ROOT = Path(__file__).resolve().parents[2]
 
 
-@pytest.fixture(scope="module")
-def port_options_bin(tmp_path_factory) -> Path:
+@pytest.fixture(scope="module", params=["pc", "switch_glyphs_row"])
+def port_options_bin(tmp_path_factory, request) -> Path:
+    """The PC build (three Controls rows) and the build that lists the Switch
+    glyphs row (P10.6, what a Switch build has)."""
     out = tmp_path_factory.mktemp("port_options") / "port_options_test"
+    extra = ["-DDW3_FORCE_GLYPHS_ROW"] if request.param == "switch_glyphs_row" else []
     cmd = [
         "gcc",
         "-std=c11",
@@ -21,6 +24,7 @@ def port_options_bin(tmp_path_factory) -> Path:
         "-Werror",
         "-O2",
         "-DDW3_PORT_OPTIONS_TEST", "-DDW3_BUTTON_MAP_TEST",
+        *extra,
         "-o",
         str(out),
         str(ROOT / "tools" / "tests" / "port_options_main.c"),

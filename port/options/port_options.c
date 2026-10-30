@@ -7,6 +7,7 @@
 #include "port_autosave.h"
 #include "port_battle_menu.h"
 #include "port_button_map.h"
+#include "port_glyphs.h"
 #include "port_help.h"
 #include "port_walkthrough_ui.h"
 #include "port_options_cfg.h"
@@ -57,7 +58,7 @@
  * port_options.h: port/pacing/pacing.c, port/battle_menu/battle_menu_memory.c
  * and port/autosave/autosave.c read them. */
 enum {
-    DW3_PORT_OPT_COUNT = 14,
+    DW3_PORT_OPT_COUNT = 15,
     DW3_PORT_OPT_WIDESCREEN = 0,
     DW3_PORT_OPT_FAST_FORWARD = 1,
     DW3_PORT_OPT_RESTART = 2,
@@ -74,7 +75,8 @@ _Static_assert(DW3_PORT_OPT_WIDESCREEN == 0 && DW3_PORT_OPT_FAST_FORWARD == 1 &&
                DW3_PORT_OPT_BUTTON_LAYOUT == 9 && DW3_PORT_OPT_REGION == 10 &&
                DW3_PORT_OPT_CUSTOMIZE == 11 && DW3_PORT_OPT_RESET_MAP == 12 &&
                DW3_PORT_OPT_TURBO_MUSIC == 13 &&
-               DW3_PORT_OPT_COUNT == 14,
+               DW3_PORT_OPT_SWITCH_GLYPHS == 14 &&
+               DW3_PORT_OPT_COUNT == 15,
                "registry indexes changed: update port_options_groups.h");
 
 typedef struct Dw3PortOptStub {
@@ -148,6 +150,9 @@ static Dw3PortOptStub g_stubs[DW3_PORT_OPT_COUNT] = {
     /* P6.36: 0 = 1x (the music keeps its tempo in turbo), 1 = Fast (today).
      * DW3_TURBO_MUSIC pins it for a run (stored values). */
     {"Turbo music", "turbo_music", 0, 0, "DW3_TURBO_MUSIC"},
+    /* P10.6: 0 = the game's button icons, 1 = Switch glyphs (a switch row;
+     * Confirm toggles). DW3_SWITCH_GLYPHS pins it for a run. */
+    {"Switch glyphs", "switch_glyphs", 0, 0, "DW3_SWITCH_GLYPHS"},
 };
 
 /* P9.4 persistence. The registry values above are what the game reads; this
@@ -470,6 +475,7 @@ static int po_is_volume(int index);
 static void po_audio_apply(void);
 static int po_valid_layout(int v);
 static void po_layout_boot(int from_cfg);
+static void po_glyphs_boot(void);
 
 static int po_valid_layout(int v) {
     return v >= 0 && v < DW3_LAYOUT_COUNT;
@@ -630,6 +636,15 @@ static void po_layout_boot(int from_cfg) {
     }
     dw3_button_map_load(g_stubs[DW3_PORT_OPT_BUTTON_LAYOUT].value,
                         from_cfg ? "cfg" : "default");
+}
+
+/* P10.6: wrap FONT.load now that the option is known, and say which way this
+ * run goes (the font itself loads a little later, dw3-glyphs: lines). */
+static void po_glyphs_boot(void) {
+    PO_INFO("dw3-options: switch_glyphs=%s%s (docs/P10.6_GLYPHS.md)",
+            g_stubs[DW3_PORT_OPT_SWITCH_GLYPHS].value ? "on" : "off",
+            (g_env_pinned >> DW3_PORT_OPT_SWITCH_GLYPHS) & 1u ? " [env]" : "");
+    dw3_glyphs_init();
 }
 
 void dw3_port_options_apply_env(int index, int level) {
@@ -820,6 +835,7 @@ int dw3_port_options_persist_init(const char *dir) {
         po_stepped_env();
         po_audio_apply();
         po_layout_boot(0);
+        po_glyphs_boot();
         return -1;
     }
     strcpy(g_cfg_dir, dir);
@@ -940,6 +956,7 @@ int dw3_port_options_persist_init(const char *dir) {
             g_stubs[DW3_PORT_OPT_TURBO_MUSIC].value ? "fast" : "1x",
             (g_env_pinned >> DW3_PORT_OPT_TURBO_MUSIC) & 1u ? " [env]" : "");
     po_layout_boot(layout_from_cfg);
+    po_glyphs_boot();
     return rc == DW3_OPTCFG_LOAD_ERROR ? -1 : 0;
 }
 
@@ -1197,10 +1214,15 @@ static void po_toggle(int index) {
     g_env_pinned &= ~(1u << index);
     fprintf(stderr, "dw3-port-options: %s %s\n",
             index == DW3_PORT_OPT_RESTART ? "restart hotkey"
-            : index == DW3_PORT_OPT_AUTOSAVE ? "auto-save" : "widescreen",
+            : index == DW3_PORT_OPT_AUTOSAVE ? "auto-save"
+            : index == DW3_PORT_OPT_SWITCH_GLYPHS ? "switch glyphs"
+                                                   : "widescreen",
             v ? "enabled" : "disabled");
     fflush(stderr);
     (void)po_save();
+    if (index == DW3_PORT_OPT_SWITCH_GLYPHS) {
+        dw3_glyphs_refresh("option");
+    }
     po_sound(PO_SND_SELECT);
 }
 

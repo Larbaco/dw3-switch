@@ -1,0 +1,37 @@
+Upstream-bound: no
+Subject: [PORT_HOST] P10.6 step 1: icon census hook in processTextChar (DW3_ICON_CENSUS=1)
+
+Design: docs/P10.6_GLYPHS.md ("Census"). `processTextChar` case 1 (a font icon,
+the bytes `01 n` or a Shift-JIS symbol found in FONT_ICON_MAP) calls
+`dw3_port_icon_census` (port/options/switch_glyphs.c) with the icon number, the
+text style (index in FONT.styles), the string and the position of the icon.
+With the environment variable DW3_ICON_CENSUS=1 the port logs one line per
+distinct (icon, style, string) with the scene (mode overlay) and the bytes
+around the icon, in hex, so a scripted walk says which strings use which icon
+(`dw3-icon-census:` lines). Without the variable the call is a flag test: no
+log, no change to the text or to the picture. The Switch has no environment,
+so it never logs there. The patch does not change what is drawn; the Switch
+glyph patch itself (port/options/switch_glyphs.c) wraps FONT.load and needs no
+edit of the decomp.
+
+--- a/src/engine/text/text_window.c
++++ b/src/engine/text/text_window.c
+@@ -1,6 +1,7 @@
+ #include "engine/game.h"
+ 
+ #if PORT_HOST
++#include "port_glyphs.h"
+ #include "port_pacing.h"
+ #endif
+ 
+@@ -616,6 +617,10 @@
+     case 1:
+         style = obj->style;
+         n = (u8)draw->code;
++#if PORT_HOST
++        /* P10.6 census (DW3_ICON_CENSUS=1): which icon, in which style, from which string */
++        dw3_port_icon_census(n, (s32)(style - FONT.styles), text->data, *pos, text->sjis);
++#endif
+         if (n <= style->iconCount && n > 0) {
+             draw->glyph = &style->icons[n - 1];
+         } else {

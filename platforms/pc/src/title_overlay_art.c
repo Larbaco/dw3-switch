@@ -319,14 +319,14 @@ enum { OPT_X0 = 84, OPT_Y0 = 60, OPT_W = 792, OPT_H = 600,
 /* The rows' kinds: how a registry value is written. */
 enum { ROW_SWITCH, ROW_FAST_FORWARD, ROW_VOLUME, ROW_ENCOUNTER, ROW_TEXT,
        ROW_BATTLE, ROW_AUTOSAVE, ROW_LAYOUT, ROW_REGION, ROW_CUSTOMIZE, ROW_RESET,
-       ROW_TURBO_MUSIC };
+       ROW_TURBO_MUSIC, ROW_GLYPHS };
 static int row_kind(int row) {
     return row == 1 ? ROW_FAST_FORWARD : row == 3 || row == 4 ? ROW_VOLUME :
            row == 5 ? ROW_ENCOUNTER : row == 6 ? ROW_TEXT :
            row == 7 ? ROW_BATTLE : row == 8 ? ROW_AUTOSAVE :
            row == 9 ? ROW_LAYOUT : row == 10 ? ROW_REGION :
            row == 11 ? ROW_CUSTOMIZE : row == 12 ? ROW_RESET :
-           row == 13 ? ROW_TURBO_MUSIC : ROW_SWITCH;
+           row == 13 ? ROW_TURBO_MUSIC : row == 14 ? ROW_GLYPHS : ROW_SWITCH;
 }
 /* P6.31: the Auto-save row's lettering, in the language of the disc (en, fr,
  * de, es, it: the DW3_TITLE_LANG_* order). OFF is the Options screen's word. */
@@ -384,6 +384,15 @@ static const TmusicWords tmusic_words[5]={TMUSIC_WORDS(en),TMUSIC_WORDS(fr),TMUS
                                           TMUSIC_WORDS(es),TMUSIC_WORDS(it)};
 static const TmusicWords *tmusic_lang(void) {
     return &tmusic_words[options_lang>=DW3_TITLE_LANG_EN&&options_lang<=DW3_TITLE_LANG_IT?options_lang:0];
+}
+/* P10.6: the Switch glyphs row (Controls group, Switch only): label and message
+ * line in the language of the disc; the values are the Options screen's OFF / ON. */
+#define GLYPHS_WORDS(l) {WORD(opt_row_sg_##l),WORD(opt_desc_sg_##l)}
+typedef struct GlyphsWords { Word row,desc; } GlyphsWords;
+static const GlyphsWords glyphs_words[5]={GLYPHS_WORDS(en),GLYPHS_WORDS(fr),GLYPHS_WORDS(de),
+                                          GLYPHS_WORDS(es),GLYPHS_WORDS(it)};
+static const GlyphsWords *glyphs_lang(void) {
+    return &glyphs_words[options_lang>=DW3_TITLE_LANG_EN&&options_lang<=DW3_TITLE_LANG_IT?options_lang:0];
 }
 /* P9.7: the message line of a row that is locked in game, in the language of
  * the disc (en, fr, de, es, it: the DW3_TITLE_LANG_* order). */
@@ -809,6 +818,7 @@ static void options_list_screen(int group,int scroll) {
               :row_kind(reg)==ROW_AUTOSAVE?&autosave_lang()->row
               :row_kind(reg)==ROW_LAYOUT?&layout_lang()->row
               :row_kind(reg)==ROW_TURBO_MUSIC?&tmusic_lang()->row
+              :row_kind(reg)==ROW_GLYPHS?&glyphs_lang()->row
               :row_kind(reg)==ROW_REGION?&region_lang()->row:&t->row[reg];
 #ifdef DW3_CHEATS
         if(cht){
@@ -875,6 +885,7 @@ static void options_list_screen(int group,int scroll) {
               :row_kind(reg)==ROW_AUTOSAVE?&autosave_lang()->desc
               :row_kind(reg)==ROW_LAYOUT?&layout_lang()->desc
               :row_kind(reg)==ROW_TURBO_MUSIC?&tmusic_lang()->desc
+              :row_kind(reg)==ROW_GLYPHS?&glyphs_lang()->desc
               :row_kind(reg)==ROW_REGION?&region_lang()->desc:&t->desc[reg];
         }
         wordsh(d,L_DESC_X+28,L_DESC_Y+14,0,255,255,255);

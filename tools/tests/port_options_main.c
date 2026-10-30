@@ -41,7 +41,7 @@ int main(void) {
         return fail("re-open");
     }
 
-    if (dw3_port_options_count() != 14) {
+    if (dw3_port_options_count() != 15) {
         return fail("option count");
     }
     if (dw3_port_options_level(DW3_PORT_OPT_BATTLE_MENU) != 0 ||
@@ -170,7 +170,7 @@ int main(void) {
      * every registry row is in exactly one group, a long list scrolls. */
     {
         int ids[DW3_OPTGRP_COUNT];
-        int seen[14] = {0};
+        int seen[15] = {0};
         int g, k;
 
         if (dw3_optgroups_visible(0, ids) != 7 || ids[0] != DW3_OPTGRP_DISPLAY ||
@@ -189,8 +189,9 @@ int main(void) {
                 seen[dw3_optgroups[g].rows[k]]++;
             }
         }
-        for (k = 0; k < 14; k++) {
+        for (k = 0; k < 15; k++) {
             if (k == DW3_PORT_OPT_REGION) continue; /* combined image only */
+            if (k == DW3_PORT_OPT_SWITCH_GLYPHS && !DW3_OPT_GLYPHS_ROW) continue; /* Switch only */
             if (seen[k] != 1) {
                 return fail("every registry row is in exactly one group");
             }
@@ -213,6 +214,57 @@ int main(void) {
             }
         }
     }
+
+    /* P10.6: the Switch glyphs row is the last row of the Controls group on the
+     * Switch only (here: the build that forces it); the PC keeps three rows. */
+    if (dw3_optgroups[DW3_OPTGRP_CONTROLS].nrows != 3 + DW3_OPT_GLYPHS_ROW) {
+        return fail("Controls row count follows DW3_OPT_GLYPHS_ROW");
+    }
+    if (dw3_port_options_level(DW3_PORT_OPT_SWITCH_GLYPHS) != 0 ||
+        dw3_port_options_label(DW3_PORT_OPT_SWITCH_GLYPHS) == NULL ||
+        strstr(dw3_port_options_label(DW3_PORT_OPT_SWITCH_GLYPHS),
+               "Switch glyphs") == NULL) {
+        return fail("Switch glyphs row defaults to off");
+    }
+#if DW3_OPT_GLYPHS_ROW
+    dw3_port_options_open();
+    {
+        int i;
+
+        for (i = 0; i < 4; i++) { /* the list: Display, Sound, Gameplay, Saves, Controls */
+            dw3_port_options_test_set_pressed(1u << BIT_DOWN);
+            dw3_port_options_tick();
+        }
+        dw3_port_options_test_set_pressed(1u << BIT_CROSS);
+        dw3_port_options_tick();
+        if (dw3_port_options_group() != DW3_OPTGRP_CONTROLS) {
+            return fail("Confirm opens the Controls group");
+        }
+        for (i = 0; i < 5; i++) {
+            dw3_port_options_test_set_pressed(1u << BIT_DOWN);
+            dw3_port_options_tick();
+        }
+        if (dw3_port_options_cursor() != 3) {
+            return fail("Controls ends on the Switch glyphs row");
+        }
+        dw3_port_options_test_set_pressed(1u << BIT_CROSS);
+        dw3_port_options_tick();
+        if (dw3_port_options_level(DW3_PORT_OPT_SWITCH_GLYPHS) != 1) {
+            return fail("Confirm turns Switch glyphs on");
+        }
+        dw3_port_options_tick();
+        if (dw3_port_options_level(DW3_PORT_OPT_SWITCH_GLYPHS) != 0) {
+            return fail("Confirm turns Switch glyphs off");
+        }
+        dw3_port_options_test_set_pressed(1u << BIT_TRIANGLE);
+        dw3_port_options_tick();
+        dw3_port_options_test_set_pressed(1u << BIT_TRIANGLE);
+        dw3_port_options_tick();
+        if (dw3_port_options_is_open()) {
+            return fail("Back twice closes");
+        }
+    }
+#endif
 
     /* P6.30: the Help group is a screen of its own (a host test only tracks that
      * it is open): Cross on it keeps the Options screen open on the list, and

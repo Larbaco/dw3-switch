@@ -37,6 +37,15 @@ enum {
 #define DW3_OPT_REGION_ROW 0
 #endif
 
+/* P10.6: the Switch glyphs row (registry row 14) is listed on the Switch only
+ * (DW3_FORCE_GLYPHS_ROW lists it in a host test). The PC keeps PS marks, so its
+ * Controls screen has the three rows it had. */
+#if defined(__SWITCH__) || defined(DW3_FORCE_GLYPHS_ROW)
+#define DW3_OPT_GLYPHS_ROW 1
+#else
+#define DW3_OPT_GLYPHS_ROW 0
+#endif
+
 typedef struct Dw3OptGroup {
     int built;                       /* 0 = a placeholder, never listed */
     int nrows;                       /* Cheats: 10 cheat rows (port_cheats.h), not registry rows */
@@ -47,15 +56,15 @@ typedef struct Dw3OptGroup {
  * volume, 4 SFX volume, 5 Encounter rate, 6 Text speed, 7 Battle cursor,
  * 8 Auto-save, 9 Button layout, 10 Region at start (combined image only),
  * 11 Customize buttons, 12 Reset to default (P6.12), 13 Turbo music (P6.36,
- * Sound group). Restart hotkey stays in
- * Gameplay (moving it would change every Gameplay reference for no gain). */
+ * Sound group), 14 Switch glyphs (P10.6, Controls group, Switch only). Restart
+ * hotkey stays in Gameplay (moving it would change every Gameplay reference for no gain). */
 static const Dw3OptGroup dw3_optgroups[DW3_OPTGRP_COUNT] = {
     /* Display  */ {1, 1, {0}},
     /* Sound    */ {1, 3, {3, 4, 13}},
     /* Gameplay */ {1, 5 + DW3_OPT_REGION_ROW, {1, 2, 5, 6, 7, 10}},
     /* Saves    */ {1, 1, {8}},
     /* Cheats   */ {1, 10, {0, 1, 2, 3, 4, 5, 6, 7, 8, 9}},
-    /* Controls */ {1, 3, {9, 11, 12}},
+    /* Controls */ {1, 3 + DW3_OPT_GLYPHS_ROW, {9, 11, 12, 14}},
     /* Help     */ {1, 0, {0}}, /* P6.30: no rows, a screen (port/help/help.c) */
     /* Walk     */ {1, 0, {0}}, /* P6.35: no rows, a screen (port/walkthrough/walkthrough_screen.c) */
     /* Customize*/ {0, 10, {0, 1, 2, 3, 4, 5, 6, 7, 8, 9}},

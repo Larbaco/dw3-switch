@@ -65,7 +65,12 @@ enum {
     DW3_PORT_OPT_RESET_MAP = 12,
     /* P6.36: 0 = 1x (the music keeps its tempo in turbo, the default), 1 = Fast
      * (the music speeds up with the game, as before). Key turbo_music. */
-    DW3_PORT_OPT_TURBO_MUSIC = 13
+    DW3_PORT_OPT_TURBO_MUSIC = 13,
+    /* P10.6: 0 = the game's own button icons (default), 1 = Switch glyphs that
+     * follow the button map. A Controls row on the Switch only (the PC has no
+     * row; the key switch_glyphs / DW3_SWITCH_GLYPHS turn it on for the replay
+     * tests). Key switch_glyphs. */
+    DW3_PORT_OPT_SWITCH_GLYPHS = 14
 };
 
 /* Registry; unavailable features remain safe no-op stubs. Values persist in
