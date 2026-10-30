@@ -62,7 +62,8 @@ help.hotkeys.row.2 = Riavviare il gioco | {chord:restart}
 help.hotkeys.row.3 = Opzioni dalla schermata del titolo | {btn:select}
 help.hotkeys.row.4 = Opzioni in battaglia | {btn:select}
 help.hotkeys.row.5 = Vista mappa, nella schermata Mappa | {btn:square}
-help.hotkeys.row.6 = Cambio partner, pannello equipaggiamento | {btn:l2} e {btn:r2}
+help.hotkeys.row.6 !unv = Vista mappa direttamente dal campo | {btn:select}
+help.hotkeys.row.7 = Cambio partner, pannello equipaggiamento | {btn:l2} e {btn:r2}
 help.hotkeys.h.1 = Riavvio
 help.hotkeys.p.1 = La combinazione di riavvio è disattivata finché non attivi Scorciatoia reset nelle Opzioni. Tieni premuti insieme i quattro pulsanti; scatta una sola volta per pressione, quindi rilasciali prima di riprovare. Prima vengono scritti gli slot di salvataggio, e se questo fallisce il riavvio viene annullato. I progressi dall'ultimo salvataggio vanno persi. La riga TORNA AL TITOLO del menu del campo fa lo stesso riavvio dopo una domanda Sì o No.
 help.hotkeys.h.2 = Opzioni
@@ -141,12 +142,13 @@ help.map.li.1 = {btn:dpad} sposta il cursore, che parte dalla tua area attuale. 
 help.map.li.2 = Lo stick destro ingrandisce con continuità; {btn:l1} e {btn:r1} ingrandiscono a passi.
 help.map.li.3 = {btn:l2} e {btn:r2} cambiano il ridimensionatore. "Nearest" è il predefinito. "Lanczos2" e "FSR 1" si calcolano in secondo piano, e nel frattempo lo schermo mostra "BUILDING".
 help.map.li.4 = {btn:circle} nasconde il testo e il riquadro del nome. {btn:triangle} chiude la vista. {btn:r3} qui non fa nulla.
+help.map.li.5 !unv = Nel campo, {btn:select} apre subito questa vista e ferma il campo, dal punto di storia 4 in poi. Schermo largo e Mappa a schermo devono essere su ON. {btn:triangle} chiude la vista e torna al campo.
 help.map.h.2 = Pacchetto di ingrandimento della mappa
 help.map.p.2 !unv = Un pacchetto sostituisce l'immagine della mappa con una più nitida. Col port non ne arriva nessuno, perché è creato dal tuo disco. Uno strumento per PC nel repository (tools/mods/extract_map_assets.py) estrae la mappa di base, avvia un ingranditore che installi tu e scrive una cartella da copiare in {path:root}mods/<pack>/ sulla scheda SD.
-help.map.li.5 !unv = Non c'è nessuna riga nelle Opzioni. Il pacchetto viene usato ogni volta che nella cartella mods c'è un pacchetto valido per la tua regione. La vista mostra allora "MOD 4X".
-help.map.li.6 !unv = Un file della dimensione sbagliata, o un pacchetto mancante, fa tornare la vista alla mappa originale. Il gioco non ha mai bisogno di un pacchetto per partire.
-help.map.li.7 !unv = Per tornare alla mappa originale, rinomina o rimuovi la cartella del pacchetto, oppure metti map_mod=0 in port_options.cfg.
-help.map.li.8 !unv = Con un pacchetto, {btn:l2} e {btn:r2} cambiano solo il filtro, nitido o morbido.
+help.map.li.6 !unv = Non c'è nessuna riga nelle Opzioni. Il pacchetto viene usato ogni volta che nella cartella mods c'è un pacchetto valido per la tua regione. La vista mostra allora "MOD 4X".
+help.map.li.7 !unv = Un file della dimensione sbagliata, o un pacchetto mancante, fa tornare la vista alla mappa originale. Il gioco non ha mai bisogno di un pacchetto per partire.
+help.map.li.8 !unv = Per tornare alla mappa originale, rinomina o rimuovi la cartella del pacchetto, oppure metti map_mod=0 in port_options.cfg.
+help.map.li.9 !unv = Con un pacchetto, {btn:l2} e {btn:r2} cambiano solo il filtro, nitido o morbido.
 
 # ---------------------------------------------------------- logs & bugs
 help.logs.title = Log e segnalazioni
