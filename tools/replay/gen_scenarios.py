@@ -2897,43 +2897,49 @@ def help_lang(idx):
 GRP_WALK = 7
 # (tag, name of the current page in the checkpoints, Downs from it to the next entry). The
 # game's own field menu opens from GAME.progress 4 (field.c openFieldMenu), so no earlier
-# story point can reach the Options screen in game; p6 is past the table ("more chapters").
-WT_FIELD_POINTS = (("p4", "s06", 1), ("p6", "more", 0))
+# story point can reach the Options screen in game: p4 closes chapter 1, p14 (progress 0x14) is
+# the middle of chapter 5, p2a (progress 0x2A) is past the table ("more chapters").
+WT_FIELD_POINTS = (("p4", "s06", 1), ("p14", "s03", 1), ("p2a", "more", 0))
 
 
 def _wt_reading(r, f, current, other_down):
     """In the walkthrough, opened on the page of the current step (`current`
     names it). A step: the page with its answer closed, Confirm (the question,
-    cursor on No), Down and Confirm (the answer), Back to the list (the cursor
-    on the step), `other_down` Downs and Confirm on the next entry, Confirm (its
-    question) and Back (cancelled), Back to the list and out. Past the end of
-    the table (`current` "more"): the "more chapters coming" page, Back to the
-    list, Up and Confirm on the last area (reached), its question, the answer.
-    Returns the frame after."""
+    cursor on No), Down and Confirm (the answer), Back to the chapter's steps (the
+    cursor on the step), `other_down` Downs and Confirm on the next entry, Confirm
+    (its question) and Back (cancelled), Back to the steps, Back to the chapters, and
+    out. Past the end of the table (`current` "more"): the "more chapters coming"
+    page, Back to the chapter list (the cursor on "more"), Up and Confirm on the last
+    chapter (everything is reached), nine Downs and Confirm on its last entry (the
+    area), its question, the answer. Returns the frame after."""
     r.shot(f + 40, f"{current}-page")
     if current == "more":
-        f = _keys(r, f + 60, TRIANGLE)       # the step list, the cursor on "more"
+        f = _keys(r, f + 60, TRIANGLE)       # the chapter list, the cursor on "more"
         r.shot(f + 20, "wt-list")
-        f = _keys(r, f + 40, UP, CROSS)      # the last area: everything is reached
+        f = _keys(r, f + 40, UP, CROSS)      # the last chapter: everything is reached
+        r.shot(f + 20, "chapter-steps")
+        f = _keys(r, f + 40, *([DOWN] * 9), CROSS)   # its last entry: an area
         r.shot(f + 20, "area-page")
         f = _keys(r, f + 40, CROSS)
         r.shot(f + 20, "area-ask")
         f = _keys(r, f + 40, DOWN, CROSS)
         r.shot(f + 20, "area-answer")
-        f = _keys(r, f + 40, TRIANGLE, TRIANGLE)   # list, out of the walkthrough
+        f = _keys(r, f + 40, TRIANGLE, TRIANGLE, TRIANGLE)   # steps, chapters, out of the walkthrough
     else:
         f = _keys(r, f + 60, CROSS)
         r.shot(f + 20, f"{current}-ask")
         f = _keys(r, f + 40, DOWN, CROSS)
         r.shot(f + 20, f"{current}-answer")
-        f = _keys(r, f + 40, TRIANGLE)       # the step list, the cursor on the step
+        f = _keys(r, f + 40, TRIANGLE)       # the chapter's steps, the cursor on the step
         r.shot(f + 20, "wt-list")
         f = _keys(r, f + 40, *([DOWN] * other_down), CROSS)
         r.shot(f + 20, "other-page")
         f = _keys(r, f + 40, CROSS)
         r.shot(f + 20, "other-ask")
-        f = _keys(r, f + 40, TRIANGLE, TRIANGLE)   # cancel, then the list
+        f = _keys(r, f + 40, TRIANGLE, TRIANGLE)   # cancel, then the steps
         r.shot(f + 20, "wt-list-back")
+        f = _keys(r, f + 40, TRIANGLE)       # the chapter list
+        r.shot(f + 20, "wt-chapters")
         f = _keys(r, f + 40, TRIANGLE)       # out of the walkthrough
     r.shot(f + 20, "options-after")
     return f + 40
@@ -2977,17 +2983,19 @@ def walkthrough_title(version, lang_idx=0):
     r.shot(m + 60, "options-list")
     f = _keys(r, m + 70, *([DOWN] * GRP_WALK))   # the cursor on the Walkthrough plaque
     r.shot(f + 20, "group-focus")            # its lettering and the message line under the list
-    f = _keys(r, f + 40, CROSS)              # open it
+    f = _keys(r, f + 40, CROSS)              # open it: the chapter list
     r.shot(f + 30, "wt-list")
+    f = _keys(r, f + 40, CROSS)              # chapter 1: its steps
+    r.shot(f + 20, "wt-steps")
     f = _keys(r, f + 40, CROSS)              # the first step
     r.shot(f + 20, "first-page")
     f = _keys(r, f + 40, CROSS)              # the question
     r.shot(f + 20, "first-ask")
     f = _keys(r, f + 40, DOWN, CROSS)        # the answer
     r.shot(f + 20, "first-answer")
-    f = _keys(r, f + 40, TRIANGLE, DOWN, CROSS)   # list, second step: not reached
+    f = _keys(r, f + 40, TRIANGLE, DOWN, CROSS)   # steps, second step: not reached
     r.shot(f + 20, "second-page")
-    f = _keys(r, f + 40, TRIANGLE, TRIANGLE, TRIANGLE)   # list, group list, close
+    f = _keys(r, f + 40, TRIANGLE, TRIANGLE, TRIANGLE, TRIANGLE)   # steps, chapters, group list, close
     r.end(f + 60)
     return r
 

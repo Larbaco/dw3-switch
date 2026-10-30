@@ -117,7 +117,10 @@ pad 2245 0x0000
 shot 2280 wt-list-back
 pad 2300 0x1000
 pad 2305 0x0000
-shot 2340 options-after
+shot 2340 wt-chapters
 pad 2360 0x1000
 pad 2365 0x0000
-end 2440
+shot 2400 options-after
+pad 2420 0x1000
+pad 2425 0x0000
+end 2500

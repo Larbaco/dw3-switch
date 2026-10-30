@@ -77,8 +77,8 @@ void dw3_wt_test_set_text(int lang, const char *text) {
 
 /* --- state ----------------------------------------------------------------- */
 
-enum { IT_STEP = 0, IT_AREA, IT_MORE, MAX_ITEMS = 24 };
-enum { SCR_LIST = 0, SCR_PAGE };
+enum { IT_STEP = 0, IT_AREA, IT_MORE, MAX_ITEMS = 24, MAX_CHAPTERS = 16 };
+enum { SCR_CHAPTERS = 0, SCR_LIST, SCR_PAGE };
 enum { PM_CLOSED = 0, PM_ASK, PM_SHOWN };
 
 typedef struct Item {
@@ -91,9 +91,21 @@ typedef struct Item {
     char id[24];         /* "ch01.s03", "area.asuka", "more" (the log) */
     char page[24];       /* text key page: "ch01_s03", "area_asuka" */
     const char *chapter; /* chapter id of the step ("ch01"), or NULL */
+    int chapter_no;      /* 1-based index of the chapter */
     char title[96];      /* the list line */
     char real_title[96]; /* the page header once the player may read it */
 } Item;
+
+/* A chapter of the step table (the rows that share a chapter id), one line of the chapter list. */
+typedef struct Chapter {
+    const char *id;       /* "ch02" */
+    int nmain;            /* MAIN steps of the chapter that apply to this region */
+    int reached;          /* the player has reached one of them */
+    int current;          /* the current step is one of them */
+    char name[96];        /* wt.chNN.title: the chapter's name */
+    char title[96];       /* the list line: "2. Name", the arrow on the current chapter */
+    char real_title[96];  /* "2. Name": the step list's header once the player may read it */
+} Chapter;
 
 static int g_open;
 static Dw3WtConfig g_cfg;
@@ -102,7 +114,11 @@ static int g_have_lang;
 static Dw3HelpView g_view;
 static Item g_items[MAX_ITEMS];
 static int g_nitems;
-static int g_nmain;
+static int g_nmain;                /* MAIN steps of the open chapter */
+static Chapter g_chaps[MAX_CHAPTERS];
+static int g_nchaps;
+static int g_chap;                 /* the chapter whose steps the list shows; -1 the "more" page */
+static int g_ccursor, g_cscroll;   /* the chapter list: cursor and first visible line */
 static DW3WtResult g_res;
 static DW3WtState g_st;
 static int g_have_state;
@@ -113,6 +129,8 @@ static int g_mode;       /* PM_* */
 static int g_ask_yes;    /* ASK: the cursor is on Yes */
 static int g_notice;     /* the list strip shows the opening notice until the cursor moves */
 static char g_notice_text[200];
+static char g_more_title[96];
+static char g_strip_tmp[200];     /* a composed strip line */     /* the last line of the chapter list */
 static Dw3PagesLayout g_layout;
 static Dw3PagesScroll g_scroll;
 static double g_t_open, g_t_page;
@@ -289,20 +307,88 @@ static void set_real_title(Item *it) {
     snprintf(it->real_title, sizeof(it->real_title), "%s", s != NULL ? s : it->id);
 }
 
-static void items_build(void) {
+/* The chapters of the table, in order: the rows that share a chapter id and apply to this
+ * region. A chapter is reached when one of its MAIN steps is (step_reached). */
+static void chapters_build(void) {
     const DW3WtStep *t;
+    int n;
+    int i;
+
+    t = dw3_wt_steps(&n);
+    g_nchaps = 0;
+    for (i = 0; i < n; i++) {
+        Chapter *c;
+
+        if (t[i].kind != WT_MAIN || !row_applies(&t[i])) {
+            continue;
+        }
+        c = g_nchaps > 0 ? &g_chaps[g_nchaps - 1] : NULL;
+        if (c == NULL || strcmp(c->id, t[i].chapter) != 0) {
+            if (g_nchaps >= MAX_CHAPTERS) {
+                break;
+            }
+            c = &g_chaps[g_nchaps++];
+            memset(c, 0, sizeof(*c));
+            c->id = t[i].chapter;
+        }
+        c->nmain++;
+        if (step_reached(t, n, i)) {
+            c->reached = 1;
+        }
+        if (g_have_state && g_res.status == WT_OK && g_res.index == i) {
+            c->current = 1;
+        }
+    }
+    for (i = 0; i < g_nchaps; i++) {
+        Chapter *c = &g_chaps[i];
+        const char *s = txt2(c->id, "title");
+        char name[64];
+
+        snprintf(name, sizeof(name), "%s", s != NULL ? s : c->id);
+        snprintf(c->name, sizeof(c->name), "%s", name);
+        snprintf(c->real_title, sizeof(c->real_title), "%d. %s", i + 1, name);
+        if (c->reached) {
+            char shown[80];
+
+            snprintf(shown, sizeof(shown), "%d. %s", i + 1, name);
+            snprintf(c->title, sizeof(c->title), "%s%s", c->current ? "\xE2\x86\x92 " : "", shown);
+        } else {
+            snprintf(c->title, sizeof(c->title), "%d. %s", i + 1, ui("notreached", "Not reached yet"));
+        }
+        fit_title(c->title);
+        fit_title(c->real_title);
+    }
+}
+
+static int chapter_of(const char *id) {
+    int i;
+
+    for (i = 0; i < g_nchaps; i++) {
+        if (strcmp(g_chaps[i].id, id) == 0) {
+            return i;
+        }
+    }
+    return -1;
+}
+
+/* The items of one chapter: its MAIN steps, its optional rows, one spoiler entry per area
+ * (chapter -1: only the "more chapters" page). */
+static void items_build(int chapter) {
+    const DW3WtStep *t;
+    const char *cid = chapter >= 0 ? g_chaps[chapter].id : NULL;
     int n;
     int i;
     int a;
 
     t = dw3_wt_steps(&n);
+    g_chap = chapter;
     g_nitems = 0;
     g_nmain = 0;
     /* main steps, in table order */
-    for (i = 0; i < n && g_nitems < MAX_ITEMS - 3; i++) {
+    for (i = 0; cid != NULL && i < n && g_nitems < MAX_ITEMS - 3; i++) {
         Item *it;
 
-        if (t[i].kind != WT_MAIN || !row_applies(&t[i])) {
+        if (t[i].kind != WT_MAIN || !row_applies(&t[i]) || strcmp(t[i].chapter, cid) != 0) {
             continue;
         }
         it = &g_items[g_nitems++];
@@ -310,6 +396,7 @@ static void items_build(void) {
         it->type = IT_STEP;
         it->table_idx = i;
         it->chapter = t[i].chapter;
+        it->chapter_no = chapter + 1;
         it->main_no = ++g_nmain;
         snprintf(it->id, sizeof(it->id), "%s", t[i].id);
         id_to_page(t[i].id, it->page, sizeof(it->page));
@@ -317,10 +404,10 @@ static void items_build(void) {
         it->current = g_have_state && g_res.status == WT_OK && g_res.index == i;
     }
     /* optional rows: listed only once the player can have met them */
-    for (i = 0; i < n && g_nitems < MAX_ITEMS - 3; i++) {
+    for (i = 0; cid != NULL && i < n && g_nitems < MAX_ITEMS - 3; i++) {
         Item *it;
 
-        if (t[i].kind != WT_SIDE || !row_applies(&t[i]) ||
+        if (t[i].kind != WT_SIDE || !row_applies(&t[i]) || strcmp(t[i].chapter, cid) != 0 ||
             !step_reached(t, n, i)) {
             continue;
         }
@@ -334,13 +421,13 @@ static void items_build(void) {
         snprintf(it->id, sizeof(it->id), "%s", t[i].id);
         id_to_page(t[i].id, it->page, sizeof(it->page));
     }
-    /* the spoiler sub-area of each area */
-    for (i = 0; i < n && g_nitems < MAX_ITEMS - 1; i++) {
+    /* the spoiler sub-area of each area of the chapter */
+    for (i = 0; cid != NULL && i < n && g_nitems < MAX_ITEMS - 1; i++) {
         Item *it;
         int seen = 0;
         int j;
 
-        if (t[i].kind != WT_MAIN || !row_applies(&t[i])) {
+        if (t[i].kind != WT_MAIN || !row_applies(&t[i]) || strcmp(t[i].chapter, cid) != 0) {
             continue;
         }
         for (j = 0; j < g_nitems; j++) {
@@ -367,7 +454,7 @@ static void items_build(void) {
             }
         }
     }
-    {
+    if (chapter < 0) {
         Item *it = &g_items[g_nitems++];
 
         memset(it, 0, sizeof(*it));
@@ -467,7 +554,45 @@ static const char *item_strip_status(const Item *it) {
     if (it->current) {
         return ui("current", "Current step");
     }
-    return txt2(it->chapter != NULL ? it->chapter : "ch01", "title");
+    snprintf(g_strip_tmp, sizeof(g_strip_tmp), "%s %d - %s", ui("chapter", "Chapter"),
+             it->chapter_no, txt2(it->chapter != NULL ? it->chapter : "ch01", "title"));
+    return g_strip_tmp;
+}
+
+static void view_chapters(void) {
+    int i;
+    const char *strip;
+
+    g_view.screen = DW3_HELP_SCREEN_LIST;
+    snprintf(g_view.header, sizeof(g_view.header), "%s", ui("title", "Walkthrough"));
+    fit_title(g_view.header);
+    g_view.npages = g_nchaps + 1;
+    g_view.cursor = g_ccursor;
+    g_cscroll = dw3_optlist_scroll_for(g_cscroll, g_ccursor, g_nchaps + 1);
+    g_view.scroll = g_cscroll;
+    for (i = 0; i < g_nchaps; i++) {
+        g_view.titles[i] = g_chaps[i].title;
+    }
+    g_view.titles[g_nchaps] = g_more_title;
+    if (g_notice) {
+        strip = g_notice_text;
+    } else if (g_ccursor >= g_nchaps) {
+        strip = ui("more", "More chapters coming");
+    } else if (!g_chaps[g_ccursor].reached) {
+        strip = ui("ahead_strip", "Not reached yet.");
+    } else if (g_chaps[g_ccursor].current) {
+        strip = ui("curchap", "Current chapter");
+    } else {
+        strip = ui("pick", "Pick a chapter to read.");
+    }
+    snprintf(g_view.strip, sizeof(g_view.strip), "%s", strip);
+    g_view.nhints = 2;
+    set_hint(0, "", ui("open", "Open"), 1);
+    set_hint(1, "", ui("back", "Back"), 2);
+    g_view.lines = NULL;
+    g_view.nlines = g_view.top = g_view.panel = 0;
+    g_view.arrow_up = g_view.arrow_down = 0;
+    view_common();
 }
 
 static void view_list(void) {
@@ -475,7 +600,9 @@ static void view_list(void) {
     const Item *cur = &g_items[g_cursor];
 
     g_view.screen = DW3_HELP_SCREEN_LIST;
-    snprintf(g_view.header, sizeof(g_view.header), "%s", ui("title", "Walkthrough"));
+    snprintf(g_view.header, sizeof(g_view.header), "%s",
+             g_chap >= 0 && g_chaps[g_chap].reached ? g_chaps[g_chap].real_title
+                                                    : ui("title", "Walkthrough"));
     fit_title(g_view.header);
     g_view.npages = g_nitems;
     g_view.cursor = g_cursor;
@@ -484,8 +611,7 @@ static void view_list(void) {
     for (i = 0; i < g_nitems; i++) {
         g_view.titles[i] = g_items[i].title;
     }
-    snprintf(g_view.strip, sizeof(g_view.strip), "%s",
-             g_notice ? g_notice_text : item_strip_status(cur));
+    snprintf(g_view.strip, sizeof(g_view.strip), "%s", item_strip_status(cur));
     g_view.nhints = 2;
     set_hint(0, "", ui("open", "Open"), 1);
     set_hint(1, "", ui("back", "Back"), 2);
@@ -684,8 +810,15 @@ const Dw3HelpView *dw3_wt_view(void) {
     return &g_view;
 }
 
+int dw3_wt_level(void) {
+    return g_open ? g_screen : DW3_WT_LEVEL_CLOSED;
+}
+
 int dw3_wt_item_count(void) {
-    return g_open ? g_nitems : 0;
+    if (!g_open) {
+        return 0;
+    }
+    return g_screen == SCR_CHAPTERS ? g_nchaps + 1 : g_nitems;
 }
 
 static void log_flags_read(void) {
@@ -693,9 +826,9 @@ static void log_flags_read(void) {
     int n;
     int i;
     int j;
-    unsigned seen[8];
+    unsigned seen[32];
     int nseen = 0;
-    char line[200];
+    char line[512];
     size_t len;
 
     t = dw3_wt_steps(&n);
@@ -714,7 +847,7 @@ static void log_flags_read(void) {
             for (k = 0; k < nseen; k++) {
                 dup |= seen[k] == c->code;
             }
-            if (dup || nseen >= 8) {
+            if (dup || nseen >= 32) {
                 continue;
             }
             seen[nseen++] = c->code;
@@ -742,7 +875,6 @@ static void atlas_report(void) {
 int dw3_wt_open(const Dw3WtConfig *cfg) {
     char err[160];
     const char *src;
-    const char *how;
     int env;
     int lang;
     int mode = -1;
@@ -806,13 +938,23 @@ int dw3_wt_open(const Dw3WtConfig *cfg) {
     g_view.open_ms = g_t_open;
     g_pages_opened = g_spoilers_shown = 0;
     dw3_pages_layout_init(&g_layout);
-    items_build();
-    wlog("dw3-walkthrough: open (from %s, region %s, platform %s, language %s, %d items)",
-         g_cfg.from == DW3_HELP_FROM_BATTLE ? "battle"
-         : g_cfg.from == DW3_HELP_FROM_FIELD ? "field" : "title",
-         g_cfg.region == DW3_PAGES_EU ? "EU" : "US",
-         g_cfg.platform == DW3_PAGES_SWITCH ? "switch" : "pc", k_lang_codes[lang],
-         g_nitems);
+    chapters_build();
+    snprintf(g_more_title, sizeof(g_more_title), "%s", ui("more", "More chapters coming"));
+    {
+        int nsteps = 0;
+        int c;
+
+        for (c = 0; c < g_nchaps; c++) {
+            nsteps += g_chaps[c].nmain;
+        }
+        wlog("dw3-walkthrough: open (from %s, region %s, platform %s, language %s, %d chapters, "
+             "%d steps)",
+             g_cfg.from == DW3_HELP_FROM_BATTLE ? "battle"
+             : g_cfg.from == DW3_HELP_FROM_FIELD ? "field" : "title",
+             g_cfg.region == DW3_PAGES_EU ? "EU" : "US",
+             g_cfg.platform == DW3_PAGES_SWITCH ? "switch" : "pc", k_lang_codes[lang],
+             g_nchaps, nsteps);
+    }
     wlog("dw3-walkthrough: text %s status \"%s\", %d key(s) loaded, draft tag %s",
          k_lang_codes[lang], g_en.status, g_en.n, g_draft ? "on" : "off");
     g_notice = 0;
@@ -831,33 +973,43 @@ int dw3_wt_open(const Dw3WtConfig *cfg) {
     } else {
         wlog("dw3-walkthrough: browse mode (%s)",
              g_cfg.in_game ? "game state unavailable" : "no game state");
-        snprintf(g_notice_text, sizeof(g_notice_text), "%s", ui("browse", "Pick a step to read."));
+        snprintf(g_notice_text, sizeof(g_notice_text), "%s", ui("browse", "Pick a chapter to read."));
         g_notice = 1;
     }
-    g_screen = SCR_LIST;
+    g_screen = SCR_CHAPTERS;
+    g_ccursor = g_cscroll = 0;
     g_cursor = g_lscroll = 0;
-    how = "list";
+    g_chap = 0;
+    items_build(0);
     if (g_have_state && g_res.status == WT_OK) {
+        int c = chapter_of(g_res.step->chapter);
         int i;
 
-        for (i = 0; i < g_nitems; i++) {
-            if (g_items[i].current) {
-                g_cursor = i;
+        if (c >= 0) {
+            items_build(c);
+            g_ccursor = c;
+            for (i = 0; i < g_nitems; i++) {
+                if (g_items[i].current) {
+                    g_cursor = i;
+                }
+            }
+            g_item = g_cursor;
+            /* in game: the page of the step comes first, the lists are Back away */
+            if (page_open(g_cursor, "open") != 0) {
+                g_screen = SCR_LIST;
             }
         }
-        how = "current";
     } else if (g_have_state && g_res.status == WT_ABOVE) {
-        g_cursor = g_nitems - 1;
-        how = "more";
-    }
-    g_item = g_cursor;
-    if (strcmp(how, "list") != 0) {
-        /* in game: the page of the step comes first, the list is one Back away */
-        if (page_open(g_cursor, "open") != 0) {
-            g_screen = SCR_LIST;
+        g_ccursor = g_nchaps;
+        items_build(-1);
+        g_cursor = g_item = 0;
+        if (page_open(0, "open") != 0) {
+            g_screen = SCR_CHAPTERS;
         }
     }
-    if (g_screen == SCR_LIST) {
+    if (g_screen == SCR_CHAPTERS) {
+        view_chapters();
+    } else if (g_screen == SCR_LIST) {
         view_list();
     }
     return 0;
@@ -883,15 +1035,109 @@ void dw3_wt_close(void) {
 
 /* --- tick ------------------------------------------------------------------ */
 
+/* Opens the chapter's step list; the cursor goes on its current step, else the first line. */
+static void chapter_open(int chapter) {
+    int i;
+
+    items_build(chapter);
+    g_cursor = g_lscroll = 0;
+    for (i = 0; i < g_nitems; i++) {
+        if (g_items[i].current) {
+            g_cursor = i;
+        }
+    }
+    g_screen = SCR_LIST;
+    wlog("dw3-walkthrough: chapter %s opened (reached %s, current %s, %d steps)",
+         g_chaps[chapter].id, g_chaps[chapter].reached ? "y" : "n",
+         g_chaps[chapter].current ? "y" : "n", g_chaps[chapter].nmain);
+    view_list();
+}
+
+/* L1 / R1 from a page: the neighbour entry of the chapter's list, and across the chapter's
+ * edge the last line of the previous chapter, the first of the next one, then "more". */
+static int page_step(int dir) {
+    int chap = g_chap;
+    int item = g_item;
+
+    if (dir < 0) {
+        if (g_item > 0) {
+            item = g_item - 1;
+        } else if (g_chap < 0 && g_nchaps > 0) {
+            chap = g_nchaps - 1;
+            item = -1;
+        } else if (g_chap > 0) {
+            chap = g_chap - 1;
+            item = -1;
+        } else {
+            return 0;
+        }
+    } else if (g_item < g_nitems - 1) {
+        item = g_item + 1;
+    } else if (g_chap >= 0 && g_chap < g_nchaps - 1) {
+        chap = g_chap + 1;
+        item = 0;
+    } else if (g_chap >= 0) {
+        chap = -1;
+        item = 0;
+    } else {
+        return 0;
+    }
+    page_close_log();
+    if (chap != g_chap) {
+        items_build(chap);
+        if (item < 0) {
+            item = g_nitems - 1;
+        }
+    }
+    if (page_open(item, dir < 0 ? "prev" : "next") != 0) {
+        return 0;
+    }
+    return 1;
+}
+
 int dw3_wt_tick(unsigned keys) {
     int snd = DW3_HELP_SND_NONE;
 
     if (!g_open) {
         return snd;
     }
-    if (g_screen == SCR_LIST) {
+    if (g_screen == SCR_CHAPTERS) {
         if (keys & DW3_HELP_KEY_BACK) {
             dw3_wt_close();
+            return DW3_HELP_SND_CANCEL;
+        }
+        if ((keys & DW3_HELP_KEY_UP) && g_ccursor > 0) {
+            g_ccursor--;
+            snd = DW3_HELP_SND_CURSOR;
+        }
+        if ((keys & DW3_HELP_KEY_DOWN) && g_ccursor < g_nchaps) {
+            g_ccursor++;
+            snd = DW3_HELP_SND_CURSOR;
+        }
+        if (keys & DW3_HELP_KEY_CONFIRM) {
+            g_notice = 0;
+            if (g_ccursor >= g_nchaps) {
+                items_build(-1);
+                g_item = g_cursor = 0;
+                if (page_open(0, "list") == 0) {
+                    return DW3_HELP_SND_SELECT;
+                }
+            } else {
+                chapter_open(g_ccursor);
+                return DW3_HELP_SND_SELECT;
+            }
+        }
+        if (snd != DW3_HELP_SND_NONE) {
+            g_notice = 0;
+            view_chapters();
+        }
+        return snd;
+    }
+    if (g_screen == SCR_LIST) {
+        if (keys & DW3_HELP_KEY_BACK) {
+            g_screen = SCR_CHAPTERS;
+            g_ccursor = g_chap >= 0 ? g_chap : g_nchaps;
+            view_chapters();
             return DW3_HELP_SND_CANCEL;
         }
         if ((keys & DW3_HELP_KEY_UP) && g_cursor > 0) {
@@ -903,13 +1149,11 @@ int dw3_wt_tick(unsigned keys) {
             snd = DW3_HELP_SND_CURSOR;
         }
         if (keys & DW3_HELP_KEY_CONFIRM) {
-            g_notice = 0;
             if (page_open(g_cursor, "list") == 0) {
                 return DW3_HELP_SND_SELECT;
             }
         }
         if (snd != DW3_HELP_SND_NONE) {
-            g_notice = 0;
             view_list();
         }
         return snd;
@@ -945,24 +1189,19 @@ int dw3_wt_tick(unsigned keys) {
     }
     if (keys & DW3_HELP_KEY_BACK) {
         page_close_log();
-        g_screen = SCR_LIST;
-        g_cursor = g_item;
-        view_list();
+        if (g_chap < 0) {
+            g_screen = SCR_CHAPTERS;
+            g_ccursor = g_nchaps;
+            view_chapters();
+        } else {
+            g_screen = SCR_LIST;
+            g_cursor = g_item;
+            view_list();
+        }
         return DW3_HELP_SND_CANCEL;
     }
-    if ((keys & DW3_HELP_KEY_PREV) && g_item > 0) {
-        page_close_log();
-        if (page_open(g_item - 1, "prev") == 0) {
-            return DW3_HELP_SND_SELECT;
-        }
-        return snd;
-    }
-    if ((keys & DW3_HELP_KEY_NEXT) && g_item < g_nitems - 1) {
-        page_close_log();
-        if (page_open(g_item + 1, "next") == 0) {
-            return DW3_HELP_SND_SELECT;
-        }
-        return snd;
+    if (keys & (DW3_HELP_KEY_PREV | DW3_HELP_KEY_NEXT)) {
+        return page_step((keys & DW3_HELP_KEY_PREV) ? -1 : 1) ? DW3_HELP_SND_SELECT : snd;
     }
     if ((keys & DW3_HELP_KEY_CONFIRM) && g_mode == PM_CLOSED && has_answer(&g_items[g_item])) {
         g_mode = PM_ASK;
