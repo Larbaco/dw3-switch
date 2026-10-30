@@ -1,4 +1,4 @@
-# DW3NX walkthrough, German text, the whole main story and the EU extra chapter (P6.35).
+# DW3NX walkthrough, German text, the whole main story, the EU extra chapter and the optional rows (P6.35).
 # MACHINE-DRAFTED, NEEDS NATIVE REVIEW. Written by an AI agent from en.txt; the
 # owner approved the English and cannot check the other languages
 # (docs/P6.35_WALKTHROUGH.md, section 7). Same keys, same budgets as en.txt
@@ -154,6 +154,14 @@ wt.ch04_s02.help = Das Gespräch führt in einen Kampf. Gewinne ihn, um das Byak
 wt.ch04_s03.title = Kampf: HiAndromon
 wt.ch04_s03.goal = Geh zum Operation Room im West Sector und sprich mit HiAndromon. Danach folgt ein Kampf.
 wt.ch04_s03.help = Gewinne den Kampf gegen HiAndromon, um das Rusty Rifle zu bekommen. Danach geht die Geschichte weiter.
+
+wt.ch04_x01.title = Der Seabed
+wt.ch04_x01.goal = Optional. Ab diesem Kapitel führt der UG Lake im South Sector hinunter in den Seabed, ein Netz unterirdischer Tunnel.
+wt.ch04_x01.help = Die Tunnel verlaufen unter den Sewers, Duel Island, Kicking Forest und dem UG Lake; unter den Brücken; unter Divermon's Lake und dem South und West Sector; unter Shell Beach, Plug Cape, South Cape und dem Lake of Ice; und unter Central Park, Bulk Bridge und Phoenix Bay. Ein Verbindungstunnel führt zu den meisten. Eine Sackgasse birgt zwei Truhen.
+
+wt.ch04_x02.title = Die Schmiede im Seabed
+wt.ch04_x02.goal = Optional. Im Seabed ist eine Waffenschmiede versteckt. Sie verbessert Waffen für alle, die die richtigen Teile mitbringen.
+wt.ch04_x02.help = Die Schmiede liegt in einem Tunnel, den nur die anderen Seabed-Tunnel erreichen; dort arbeiten Seehomon und Depthmon. Sprich einmal mit einem Schmied, dann noch einmal mit dem passenden benutzbaren Gegenstand im Beutel: Du bekommst eine stärkere Waffe, und der Gegenstand (und die Waffe eine Stufe darunter, falls du sie trägst) wird abgenommen. Es gibt zwei Verbesserungen.
 # ---------------------------------------------------------------- chapter 5
 wt.ch05.title = Die Rebellen
 
@@ -246,6 +254,14 @@ wt.ch08_s06.help = Die Szenen im Prison Tower müssen laufen, bevor die Szene im
 wt.ch08_s07.title = Wieder Master Room
 wt.ch08_s07.goal = Geh zurück zum Master Room in Asuka City.
 wt.ch08_s07.help = Die letzte Szene dort, mit Lisa, Nick, Keith und Teddy, bringt die Geschichte weiter.
+
+wt.ch08_x01.title = Das Circuit Board
+wt.ch08_x01.goal = Optional. Ab diesem Kapitel haben Karten in mehreren Sectors einen Eingang zum Circuit Board, einem zweiten Netz unterirdischer Tunnel.
+wt.ch08_x01.help = Die Eingangstunnel führen zu tieferen: einem Tunnel mit Black Kingz und Numemon, dem Versteck der Black Kingz und zwei letzten Tunneln mit Führern zu den Ausgängen beider Server. Drinnen warten Duelle und Kämpfe.
+
+wt.ch08_x02.title = Black-Kingz-Versteck
+wt.ch08_x02.goal = Optional. Die Black Kingz haben im Circuit Board ein Versteck. Ihre Mitglieder fordern dich zu Kartenduellen heraus.
+wt.ch08_x02.help = Das Versteck erreichst du über die tieferen Tunnel. Acht Black Kingz nehmen ein Kartenduell an. Ein Duell wird angeboten, bis du es gewonnen hast; danach spricht der Sieger nur noch. Sechs von ihnen geben für den ersten Sieg eine Karte, ein weiterer einen Schlüsselgegenstand.
 # ---------------------------------------------------------------- chapter 9
 wt.ch09.title = Zwei weitere ID-Pässe
 
@@ -312,6 +328,14 @@ wt.ch12_s02.help = Sie bieten nur dann einen Kampf an, wenn du einen bestimmten 
 wt.ch12_s03.title = Kurt in der Arena
 wt.ch12_s03.goal = Die vier sind besiegt. Geh zum Arena Front Desk in Amaterasu City. Kurt wartet in der Digimon Arena, und ein Kampf folgt.
 wt.ch12_s03.help = Sprich mit dem Angestellten am Schalter. Kurts Szene spielt, wenn du die Digimon Arena betrittst, und der Kampf folgt gleich danach. Ihn zu gewinnen ist der letzte Schritt des Extrakapitels, dem diese Komplettlösung folgt.
+
+wt.ch12_x01.title = Fünf Waffen
+wt.ch12_x01.goal = Fünf Waffen lassen sich im North Sector herstellen.
+wt.ch12_x01.help = Kulon Weapons im North Sector hat fünf Schmiede. Sprich einmal mit einem Schmied, dann noch einmal mit dem passenden benutzbaren Gegenstand im Beutel: Du bekommst eine der fünf Waffen, und der Gegenstand (und die Waffe eine Stufe darunter, falls du sie trägst) wird abgenommen. Diese fünf sind der Satz, den die vier Herausforderer verlangen. Halte alle fünf, im Beutel oder angelegt.
+
+wt.ch12_x02.title = Partner zurückgewinnen
+wt.ch12_x02.goal = Optional. Partner, die du noch nicht angeworben hast, können dir in den Circuit-Board-Tunneln dieses Kapitels noch beitreten.
+wt.ch12_x02.help = Zwei tiefe Tunnel des Circuit Board bergen für jeden der acht Partner einen Kämpfer. Ein Kämpfer steht nur dort, solange sein Partner noch nicht deiner ist, und erst, wenn alle deine Partner Level 45 oder höher haben. Wo er steht, hängt vom benutzten Eingang ab. Sprich ihn zweimal an: Ein Kampf beginnt, und nach deinem Sieg schließt sich der Partner dir an und du erhältst einen Schlüsselgegenstand.
 
 # ---------------------------------------------------------------- areas
 wt.area_kusanagi.title = Kusanagi City

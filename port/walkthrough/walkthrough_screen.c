@@ -370,6 +370,29 @@ static int chapter_of(const char *id) {
     return -1;
 }
 
+/* The optional rows of a chapter that apply to this disc, and how many of them are listed
+ * (those the player's progress has reached): the log line that shows a side block appearing. */
+static void optional_log(int chapter) {
+    const DW3WtStep *t;
+    int n;
+    int i;
+    int total = 0;
+    int listed = 0;
+
+    t = dw3_wt_steps(&n);
+    for (i = 0; i < n; i++) {
+        if (t[i].kind == WT_SIDE && row_applies(&t[i]) && strcmp(t[i].chapter, g_chaps[chapter].id) == 0) {
+            total++;
+        }
+    }
+    for (i = 0; i < g_nitems; i++) {
+        listed += g_items[i].side;
+    }
+    if (total > 0) {
+        wlog("dw3-walkthrough: chapter %s optional rows listed %d of %d", g_chaps[chapter].id, listed, total);
+    }
+}
+
 /* The items of one chapter: its MAIN steps, its optional rows, one spoiler entry per area
  */
 static void items_build(int chapter) {
@@ -477,6 +500,7 @@ static void items_build(int chapter) {
         fit_title(it->title);
         fit_title(it->real_title);
     }
+    optional_log(chapter);
 }
 
 /* --- view ------------------------------------------------------------------ */
