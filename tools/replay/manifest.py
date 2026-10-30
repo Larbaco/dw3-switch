@@ -394,7 +394,7 @@ WT_CHAPTER_POINTS = (
     ("pa", "0x240", 10, 0, 41, "ch02", "ch02.s10", "progress"),
     ("pb", "0x204", 11, 0, 19, "ch03", "ch03.s01", "progress"),
     ("pc", "0x20B", 12, 0, 19, "ch03", "ch03.s02", "progress"),
-    ("pe", "0x204", 14, 0, 19, "ch03", "ch03.s05", "progress"),   # 0x236 (the step's own stage, wstag460) is not in the PC host's overlay table: strict restore aborts
+    ("pe", "0x236", 14, 0, 37, "ch03", "ch03.s05", "progress"),   # the Reliability Spot (WSTAG460); it had no overlay table entry until patch 0197
     ("pf", "0x260", 15, 0, 33, "ch04", "ch04.s01", "progress"),
     ("p10", "0x25C", 16, 0, 38, "ch04", "ch04.s02", "progress"),
     ("p11", "0x252", 17, 0, 7, "ch04", "ch04.s03", "progress"),
@@ -1968,6 +1968,37 @@ for _v in ("us", "eu"):
                                   r"dw3-tile: tile 12 depth 0 counts 6 sprites"),),
                   forbid_log=((0, r"corrupt sprite count"),),
                   note="Underground Path exit: the canal water is drawn (patches 0110, 0111)"))
+
+# Stage 0x236 (WSTAG460, the Reliability Spot) had no entry in the host's
+# overlay table (US file 0x355, EU 0x364) and its fourth wanderer wrote through
+# a NULL tile (patch 0197): entering it aborted (replay) or crashed. Boot in the
+# stage before it (0x235, WSTAG455) at progress 14 and leave for 0x236 as event
+# 360 does (DW3_FORCE_EXIT, patch 0110), no input.
+for _v in ("us", "eu"):
+    _add(Scenario(f"{_v}-stage-0x236", _v, "full", timeout=300,
+                  cfg=(("widescreen", "1"),),
+                  env=(("DW3_START_MODE", "0x235"), ("DW3_PROGRESS", "14"),
+                       ("DW3_FORCE_EXIT", "0x236:214:132:1:100"),
+                       ("DW3_WALKTHROUGH_PROBE", "1")),
+                  expect_log=((0, r"DW3_FORCE_EXIT leaveField mode=0x236 x=214 y=132 dir=1(?s:.*)"
+                                  r"FIELDSTG_pickStage mode=0x236 stageFile=(?:853|868)"),),
+                  forbid_log=((0, r"overlay restore failed|FATAL"),),
+                  note="the Reliability Spot loads from the stage before it (overlay table entry, patch 0197)"))
+
+# The EU extra chapter's 55 stages (FIELDSTG_extraStages, WSTAG920 to WSTAG974,
+# picked while GAME.progress is 0x2D, FIELD_PROGRESS_EXTRA) had no overlay table
+# entry either. Boot four of them (the first, the Digimon Lab whose colour
+# lives in wstag924_head.c, one in the middle, the last) at progress 0x2D and
+# idle: strict restore, the stage file the extra table names, 600 frames. All
+# 55 were booted by hand the same way (docs/P5.5_STAGE_SWEEP.md). EU only.
+for _num, _mode, _file in ((920, 0x270, 1851), (924, 0x275, 2221), (949, 0x295, 2246), (974, 0x2EE, 2271)):
+    _add(Scenario(f"eu-extra-stage-{_num}", "eu", "full", turbo=4, timeout=120, log_only=True,
+                  phases=("eu-walkthrough",),
+                  env=(("DW3_START_MODE", f"0x{_mode:X}"), ("DW3_PROGRESS", "45")),
+                  expect_log=((0, rf"FIELDSTG_pickStage mode=0x{_mode:x} stageFile={_file}(?s:.*)"
+                                  rf"overlay restore file=0x{_file:x} kind=sub"),),
+                  forbid_log=((0, r"overlay restore failed|FATAL"),),
+                  note=f"EU extra chapter: WSTAG{_num} (mode 0x{_mode:X}) loads at progress 0x2D"))
 
 # P6.1 area-change iris and grid cover (patch 0115) and the encounter spiral, in
 # 16:9. Door: boot in the Underground Path, DW3_FORCE_EXIT leaves it; checkpoints

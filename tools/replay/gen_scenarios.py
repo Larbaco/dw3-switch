@@ -1219,6 +1219,26 @@ def underground_exit(version):
     return r
 
 
+STAGE236_END = 800
+
+
+def stage_0x236(version):
+    """Walking into the Reliability Spot (WSTAG460, mode 0x236): the manifest's
+    env boots in the stage before it (mode 0x235, WSTAG455) at progress 14 and
+    DW3_FORCE_EXIT (patch 0110) leaves for 0x236 where event 360 does
+    (SCRIPT_LEAVE(0x236, 0xD6, 0x84, 1)) after 100 idle frames. Checkpoints
+    while the stage loads (the area banner), once it is up, and after Down held
+    for 100 frames (the hero has control and the wanderers' tasks run)."""
+    r = Rec(f"{version.upper()}: into the Reliability Spot (mode 0x236) from the stage before it, then Down (env in manifest)")
+    r.shot(300, "spot-load")
+    r.shot(450, "spot-arrive")
+    _pad(r, 460, DOWN)
+    _pad(r, 560, 0)
+    r.shot(700, "spot-walked")
+    r.end(STAGE236_END)
+    return r
+
+
 IRIS_SHOTS = (207, 216, 225, 234, 243, 252)
 # 4:3 iris: in widescreen off the iris closes in 32 frames from ~205 and the
 # grid in 20 more, so the late checkpoints are where the map must stay hidden.
@@ -3352,6 +3372,7 @@ def main(out):
         (out / f"{v}-turbo-music-field.rec").write_text(turbo_music_field(v).text(True))
         (out / f"{v}-walkthrough.rec").write_text(walkthrough(v).text(True))
         (out / f"{v}-underground-exit.rec").write_text(underground_exit(v).text(True))
+        (out / f"{v}-stage-0x236.rec").write_text(stage_0x236(v).text(True))
         (out / f"{v}-ws-door-iris.rec").write_text(ws_door_iris(v).text(True))
         (out / f"{v}-door-iris43.rec").write_text(door_iris43(v).text(True))
         (out / f"{v}-ws-battle-spiral.rec").write_text(ws_battle_spiral(v).text(True))

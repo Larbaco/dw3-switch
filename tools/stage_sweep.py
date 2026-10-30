@@ -107,10 +107,11 @@ LINKED = {
     "WSTAG445",
     "WSTAG450",
     "WSTAG455",
+    "WSTAG460",
     "WSTAG475",
     "WSTAG465",
     "WSTAG470",
-    # P3.8 batch 4 — South/Suzaku/Network + West/Byakko/North (skip WSTAG460)
+    # P3.8 batch 4 — South/Suzaku/Network + West/Byakko/North
     "WSTAG480",
     "WSTAG485",
     "WSTAG490",
@@ -165,7 +166,7 @@ LINKED = {
     "WSTAG750",
     "WSTAG755",
     "WSTAG760",
-    # P3.8 batch 5 — Amaterasu twins Central/East/South/West/North (skip WSTAG460)
+    # P3.8 batch 5 — Amaterasu twins Central/East/South/West/North
     "WSTAG331",
     "WSTAG336",
     "WSTAG341",
@@ -351,6 +352,7 @@ LIVE_DEFAULT = (
     "0x233",
     "0x234",
     "0x235",
+    "0x236",
     "0x239",
     "0x237",
     "0x238",

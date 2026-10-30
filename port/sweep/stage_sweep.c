@@ -155,12 +155,12 @@ static int sw_index(int mode) {
     return -1;
 }
 
-/* Modes the sweep leaves out, with the reason it logs. */
+/* Modes the sweep leaves out, with the reason it logs. None now: WSTAG460
+ * (mode 0x236) was the only one, a weak stub until it was linked (patch 0197),
+ * and every stage of the table is visited. The mechanism stays for a stage
+ * that cannot be loaded without its progress. */
 static const char *sw_skip_reason(int mode) {
-    if (mode == 0x236) {
-        return "WSTAG460 is a weak stub in every build (P3.8: updateWanderer "
-               "SEGV when linked)";
-    }
+    (void)mode;
     return NULL;
 }
 

@@ -1,0 +1,7 @@
+# US: into the Reliability Spot (mode 0x236) from the stage before it, then Down (env in manifest)
+shot 300 spot-load
+shot 450 spot-arrive
+pad 460 0x0040
+pad 560 0x0000
+shot 700 spot-walked
+end 800

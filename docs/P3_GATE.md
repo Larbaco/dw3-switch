@@ -106,7 +106,7 @@ Observed (`build/p3-gate/lobby_tamer_genji.log`): same `0x203` → `0x204` →
 |---|---|
 | P3.1–P3.5 | `docs/P3.1_64BIT_AUDIT.md` … `docs/P3.5_CARDGAME.md` |
 | P3.6 / P3.7 | `docs/P3.6_AUDIO.md`, `docs/P3.7_MOVIES.md` |
-| P3.8 | 237/237 live PASS; `WSTAG460` stubbed (`docs/P3.8_STAGES.md`) |
+| P3.8 | 237/237 live PASS; `WSTAG460` stubbed (`docs/P3.8_STAGES.md`); linked 2026-10-30, 238/238 |
 | Forced random encounter (not Genji) | `docs/P3.3_BATTLE.md` |
 
 ## EU build attempt (2026-10-10)
@@ -147,7 +147,7 @@ for the Phase 3 gate.
 | Free-pad Lobby → event 9 | Aid substitutes for walking up to Digimon Center NPC |
 | EU `dw3-pc` runtime + playthrough | Link scaffold in `docs/P3_EU_BUILD.md`; owner `runtime/eu`; CNTY_SEL linked in P6.2 |
 | P3.9 Harness | Owner DuckStation oracle + capture fill (side track) |
-| `WSTAG460` | Host `updateWanderer` SEGV; weak stub only |
+| `WSTAG460` | Host `updateWanderer` SEGV; weak stub only (closed 2026-10-30, patch `0197`) |
 
 ## Honesty rule
 
@@ -186,7 +186,7 @@ skip remains `MODE_TITLE` (`0010`).
 **P3.8 Done-when met** (`READY_FOR_MAIN_ROADMAP_SYNC: P3.8`,
 `docs/P3.8_STAGES.md`): `STAGSLCT` + batches 1–6 link 238/239 US stage
 objs; live PASS 237/237; only `WSTAG460` left stubbed (host
-`updateWanderer` SEGV). **Phase 3 gate met** (`docs/P3_GATE.md`): US
+`updateWanderer` SEGV; linked 2026-10-30, patch `0197`). **Phase 3 gate met** (`docs/P3_GATE.md`): US
 continuous start→movie→Lobby→Tamer→Genji→field @ `a5ae93a` (Lobby
 `0x9004@0x203` / patch `0036`); `DW3_FORCE_WIN` accepted for gate (P3.3
 class; pad KO follow-up); EU playthrough not required. **EU `dw3-pc` link

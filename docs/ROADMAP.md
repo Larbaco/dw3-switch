@@ -140,7 +140,7 @@ listed once, in [Pending OLED checks](#pending-oled-checks).
 | P5.2 | Performance pass | done (partner portrait fix #229, OLED pending) | [P5.2](P5.2_BATTLE_GPU.md) |
 | P5.3 | Save handling | done | [P5.3](P5.3_FLAT_SAVE.md) |
 | P5.4 | Error reporting | in progress (done-when met on the OLED; boot notice 60 s, #231; PR 2 OLED check open) | [P5.4](P5.4_CRASH.md) |
-| P5.5 | Stage sweep on hardware | in progress (opt-in sweep built, #320: PC 237/237 US and EU; OLED G10: **EU PASSED** (owner, preview.51, 2026-10-28) and **US PASSED** (2026-10-29): 237/237 ok, WSTAG460 skipped as a weak stub, about 1.67 s per stage; **done**) | [P5.5](P5.5_STAGE_SWEEP.md) |
+| P5.5 | Stage sweep on hardware | in progress (opt-in sweep built, #320: PC 238/238 US and EU since 2026-10-30, was 237/237 with `WSTAG460` skipped; OLED G10: **EU PASSED** (owner, preview.51, 2026-10-28) and **US PASSED** (2026-10-29): 237/237 ok, WSTAG460 skipped as a weak stub, about 1.67 s per stage; **done**) | [P5.5](P5.5_STAGE_SWEEP.md) |
 | P6.1 | Scaling / widescreen | in progress (map, results, save, title, caption, registration, Items menu at 16:9 in preview.31; card album, deck editor, card shop, gym and Lab at 16:9 in the next preview (0100-0104, OLED pending); iris and grid cover at 16:9 in the next preview (0115, OLED pending); encounter swirl at 16:9 in the next preview (0175, OLED pending); card battle still 4:3; intro news caption bar at 16:9 confirmed on the OLED 2026-10-27, preview.41; EU language select at 16:9 (0177, in preview.47, OLED pending) | [P6.1](P6.1_WIDESCREEN.md) |
 | P6.2 | PAL/NTSC, EU/US, language at boot | in progress | [P3_EU_BUILD](P3_EU_BUILD.md) |
 | P6.3 | PGXP-style vertex precision | open | — |
@@ -595,10 +595,10 @@ audio, movies.
   `0030` + `tools/stage_sweep.py`. **Done-when evidence**
   (`docs/P3.8_STAGES.md`, `READY_FOR_MAIN_ROADMAP_SYNC: P3.8`): batches
   1–6 link 238/239 US stage objs; live STAGSLCT round-trip PASS 237/237
-  in `build/p38-sweep/results.tsv`. **`WSTAG460` intentionally excluded**
-  (weak stub; host `updateWanderer` SEGV — see `docs/P3.8_STAGES.md`).
-  Done when: all **loadable** stages load and return to the select
-  screen (`WSTAG460` known-bad, not in the 237 PASS set).
+  in `build/p38-sweep/results.tsv`. **`WSTAG460` was excluded** (weak stub;
+  host `updateWanderer` SEGV — see `docs/P3.8_STAGES.md`); **linked on
+  2026-10-30** (patch `0197`, PR `fix/stage-0x236-overlay`): 238/238.
+  Done when: all stages load and return to the select screen.
 - [x] **P3.9 Reference comparison harness.** Script that boots the same
   save in DuckStation and the PC build and captures screenshots for
   side-by-side review (PS1 output is the oracle).
@@ -831,14 +831,15 @@ speed.
   whether it loads and returns, so the owner's `dw3.log` is the whole report.
   Set `stage_sweep=1` in the region's `port_options.cfg` (builds with the
   Cheats screen; off by default; it never writes a save) and start the game:
-  it goes `STAGSLCT` → stage → `STAGSLCT` through the 237 loadable stages
-  (`WSTAG460` is skipped, it is a stub), logs `dw3-sweep: stage WSTAGxxx ok in
+  it goes `STAGSLCT` → stage → `STAGSLCT` through the stages (237 loadable
+  ones; `WSTAG460` was skipped as a stub until 2026-10-30, now 238), logs `dw3-sweep: stage WSTAGxxx ok in
   N ms (frames F, mem free M)` or the failure, ends with `dw3-sweep: done X/Y
   ok, failed: ...`, and a progress file (`stage_sweep.txt`) lets a relaunch
   after a crash or hang report that stage and continue. PC: **237/237 ok on
-  US and on EU**, replay scenarios `us/eu-stage-sweep`, patch `0185`. Design,
+  US and on EU** (238/238 since 2026-10-30), replay scenarios `us/eu-stage-sweep`, patch `0185`. Design,
   keys and every log line: [P5.5_STAGE_SWEEP.md](P5.5_STAGE_SWEEP.md). **Open:**
-  the EU extra chapter's stages are not in the set yet. The OLED run (G10) **passed on US and EU**
+  the EU extra chapter's stages are not in the sweep's set yet (they are linked
+  and replayed since 2026-10-30, below). The OLED run (G10) **passed on US and EU**
   (preview.51, 2026-10-28 / 29), so P5.5 is ticked.
 
 Gate: start → first boss on hardware, both versions.
@@ -2688,6 +2689,20 @@ Statuses are in the [table](#status-at-a-glance).
   agent is investigating it on branch `fix/underground-water-texture`; this
   entry claims no fix. Owner OLED, 2026-10-27 (preview.41): the water is right at once (test B11), so the fix is confirmed. Details:
   [P7.7_BUG_FIXES.md](P7.7_BUG_FIXES.md#underground-path-water-texture-2026-10-24).
+  **New bug, fixed on the PC (2026-10-30, PR `fix/stage-0x236-overlay`):** the
+  Reliability Spot (`WSTAG460`, mode `0x236`) had no row in the host's overlay
+  tables and was a NULL-start weak stub, so the story step at progress `0xE`
+  (event 360 in `WSTAG455` leaves for it; event 370 there gives the Digi-Egg of
+  Sincerity and sets progress `0xF`) loaded a stage that does not exist: strict
+  replay aborted, non-strict faulted on the first frame, and the Switch build
+  runs the same tables. P5.5's sweep and its OLED run (G10, 237/237) skipped the
+  stage on purpose, so they never saw it. The EU extra chapter's 55 stages
+  (`WSTAG920` to `974`) were missing the same way and are linked now (EU only).
+  Patch `0197` (a wanderer with no map object, `WSTAG924`'s head file),
+  `tools/tests/test_overlay_table_stages.py`, replay `*-stage-0x236`,
+  `eu-extra-stage-*`. **Open:** the OLED check of the Reliability Spot and of one
+  extra-chapter stage (test G11 of the OLED plan), and the extra chapter in the sweep itself. Details:
+  [P5.5_STAGE_SWEEP.md](P5.5_STAGE_SWEEP.md#the-wstag460-gap-2026-10-30).
 - [ ] **P7.8 Battle info HUD (future goal).** Optional enemy HP, always-on
   partner MP, technique attribute / power / MP cost colours, DV stats and
   EXP to next level after battle. Done when the toggle works on US and EU

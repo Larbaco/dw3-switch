@@ -57,7 +57,7 @@ def test_all_stages_ok(sweep_bin, tmp_path):
     err = run(sweep_bin, tmp_path, "ok")
     assert "dw3-sweep: stage WSTAG200 ok in " in err
     assert "(frames 30, mem free 12345, load " in err
-    assert "dw3-sweep: done 237/237 ok, failed: none; skipped: WSTAG460" in err
+    assert "dw3-sweep: done 238/238 ok, failed: none" in err
     assert (tmp_path / "stage_sweep.txt").read_text().rstrip().endswith("done")
 
 
@@ -65,14 +65,14 @@ def test_finished_sweep_is_not_run_again(sweep_bin, tmp_path):
     run(sweep_bin, tmp_path, "ok")
     err = run(sweep_bin, tmp_path, "ok")
     assert "the previous sweep is complete; not running again" in err
-    assert "previous sweep, done 237/237 ok" in err
+    assert "previous sweep, done 238/238 ok" in err
     assert "begin" not in err
 
 
 def test_stuck_stage_times_out(sweep_bin, tmp_path):
     err = run(sweep_bin, tmp_path, "stuck", "0x206")
     assert f"stage {num(0x206)} FAILED: timeout: mode 0x206 not reached in 20 s" in err
-    assert f"done 236/237 ok, failed: {num(0x206)} (timeout" in err
+    assert f"done 237/238 ok, failed: {num(0x206)} (timeout" in err
 
 
 def test_stage_that_does_not_return(sweep_bin, tmp_path):
@@ -97,7 +97,7 @@ def test_crash_is_reported_and_the_run_resumes(sweep_bin, tmp_path):
     assert f"stage {num(0x209)} FAILED: crash or hang in the previous run" in err
     assert "resuming:" in err
     assert f"stage {num(0x200)} ok" not in err   # done before the crash
-    assert f"done 236/237 ok, failed: {num(0x209)} (crash or hang" in err
+    assert f"done 237/238 ok, failed: {num(0x209)} (crash or hang" in err
 
 
 def test_hang_is_caught_by_the_watchdog_and_resumes(sweep_bin, tmp_path):
@@ -108,7 +108,7 @@ def test_hang_is_caught_by_the_watchdog_and_resumes(sweep_bin, tmp_path):
     assert f"fail 0x209 hang" in prog
     err = run(sweep_bin, tmp_path, "ok")
     assert "crash or hang in the previous run" not in err   # already recorded
-    assert f"done 236/237 ok, failed: {num(0x209)} (hang" in err
+    assert f"done 237/238 ok, failed: {num(0x209)} (hang" in err
 
 
 def test_only_limits_the_set(sweep_bin, tmp_path):

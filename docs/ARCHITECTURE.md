@@ -68,7 +68,8 @@ See [SURVEY.md](SURVEY.md) for the evidence behind each point.
   `ld -r`** to prefix stage globals and rename `.data`/`.bss` into
   per-overlay sections (`dw3data_*` / `dw3bss_*`); `overlay_sections.c`
   snapshots them for restore. Weak stubs remain only for intentionally
-  unlinked overlays (e.g. `WSTAG460`).
+  unlinked overlays (the debug ones: `WFIGHTTS`, `SOUNDTST`, `SHOCKTST`; every field stage is linked and
+  registered, `tools/tests/test_overlay_table_stages.py`).
 
 The P9.2 title entry is game-layer `PORT_HOST` patch glue in
 `port/patches/0044*` / `0045*`, with the shared shell and resident-font

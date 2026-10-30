@@ -44,6 +44,14 @@ _OPTIONS = ("*options*", "*persist*", "*text-*", "*encounter*", "*pacing*",
 # field menu's pages, the save screen) and the glyph scenarios themselves.
 _ICONS = ("*glyphs*", "*shop*", "*save*", "*lab*", "*gym*", "*menu-screens*", "*items*")
 
+# The field stages and what registers them (port/overlays tables and sections,
+# the stage patches): the scenarios that boot or cross a stage. A mistake in one
+# table row loads as "file id not in the overlay table", which strict replay
+# turns into an abort; tools/tests/test_overlay_table_stages.py checks the
+# registry itself against the decomp.
+_STAGES = ("*stage*", "*walkthrough-p*", "*newgame*", "*field-walk*", "*underground*",
+           "*door*", "*bridge*", "*two-battles*", "*encounter-1x*", "*cheat-warp*")
+
 # (regex, globs). Order matters. Patch rules key on the patch's topic name.
 RULES: list[tuple[str, object]] = [
     # --- nothing to replay -------------------------------------------------
@@ -82,6 +90,8 @@ RULES: list[tuple[str, object]] = [
     (r"^port/pacing/", ("*text-*", "*encounter*", "*pacing*", "*turbo*")),
     (r"^port/region/", ("*lang*", "xr-*", "*title*")),
     (r"^port/sweep/", ("*stage-sweep*",)),
+    (r"^port/overlays/overlay_(table_(us|eu)|sections(_eu_extra)?)\.c$", _STAGES),
+    (r"^port/patches/\d+-PORT_HOST-wstag", _STAGES),
     (r"^port/file_cache/", ("*file-cache*",)),
     (r"^port/options/cheat", ("*cheat*",)),
     (r"^port/options/lang_select", ("*lang*", "*title*")),
