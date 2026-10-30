@@ -18,6 +18,7 @@
  *   picker quit by + after <N> ms
  *   saved last_region=<r> [region_default=<r>]   |   could not store the choice
  *   forced <r> by <source>: no probe, no picker, nothing written
+ *   started by relaunch (<r>)   (P6.38: the region the previous process asked for)
  * The caller's dw3_region_select() adds `running <r> (<source>)`. */
 #ifndef DW3_REGION_BOOT_H
 #define DW3_REGION_BOOT_H
@@ -48,6 +49,10 @@ typedef struct Dw3RegionBootIn {
     const char *base;     /* folder holding us/ and eu/ */
     Dw3Region forced;     /* NONE unless forced (replay build, DW3_REGION, DW3_RUNTIME) */
     const char *forced_by;/* for the log */
+    Dw3Region relaunch;   /* P6.38: NONE unless the process was started by a relaunch
+                             (--relaunch-region): this region wins over region_default
+                             and the picker for this run, but data still decides (one
+                             region on the card boots that one) */
 } Dw3RegionBootIn;
 
 typedef enum Dw3RegionBootResult {

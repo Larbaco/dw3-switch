@@ -102,7 +102,8 @@ static void path_in(const char *dir, const char *name, char *out, size_t n) {
     snprintf(out, n, "%s/%s", dir, name);
 }
 
-static Dw3RegionBootOut run(const char *base, Fake *f, Dw3Region forced) {
+static Dw3RegionBootOut run_relaunch(const char *base, Fake *f, Dw3Region forced,
+                                     Dw3Region relaunch) {
     Dw3RegionBootIO io;
     Dw3RegionBootIn in;
     Dw3RegionBootOut out;
@@ -113,13 +114,19 @@ static Dw3RegionBootOut run(const char *base, Fake *f, Dw3Region forced) {
     io.sample_minus = fk_minus;
     io.run_picker = fk_picker;
     io.show_no_data = fk_no_data;
+    memset(&in, 0, sizeof(in));
     in.base = base;
     in.forced = forced;
     in.forced_by = "test";
+    in.relaunch = relaunch;
     f->log[0] = '\0';
     f->minus_calls = f->picker_calls = f->no_data_calls = 0;
     dw3_region_boot(&in, &io, &out);
     return out;
+}
+
+static Dw3RegionBootOut run(const char *base, Fake *f, Dw3Region forced) {
+    return run_relaunch(base, f, forced, DW3_REGION_NONE);
 }
 
 static void cfg(const char *base, Dw3Region *pref, Dw3Region *last) {
@@ -256,6 +263,32 @@ int main(int argc, char **argv) {
     cfg(base, &pref, &last);
     CHECK(pref == DW3_REGION_NONE && last == DW3_REGION_NONE);
 
+    /* 9b. P6.38: started by a relaunch. The asked region wins over region_default
+     * and over Minus (no sample, no picker), the stored value is still what the
+     * log shows, and last_region follows. */
+    clean(base);
+    make_tree(base, "us");
+    make_tree(base, "eu");
+    CHECK(dw3_region_cfg_write(base, DW3_REGION_NONE, 1, DW3_REGION_US) == 0);
+    f.minus = 1;
+    o = run_relaunch(base, &f, DW3_REGION_NONE, DW3_REGION_EU);
+    CHECK(o.result == DW3_RB_RUN && o.region == DW3_REGION_EU);
+    CHECK(f.picker_calls == 0 && f.minus_calls == 0);
+    CHECK(strstr(f.log, "dw3-region: started by relaunch (eu)") != NULL);
+    CHECK(strstr(f.log, "stored region_default=us last_region=none minus_held=n/a") != NULL);
+    CHECK(strstr(f.log, "decision boot region=eu: region_default") != NULL);
+    CHECK(strstr(f.log, "saved last_region=eu") != NULL);
+    cfg(base, &pref, &last);
+    CHECK(pref == DW3_REGION_US && last == DW3_REGION_EU); /* the stored default is left alone */
+    f.minus = 0;
+    /* the asked region has no data: the one that is there boots, the line still says so */
+    clean(base);
+    make_tree(base, "us");
+    o = run_relaunch(base, &f, DW3_REGION_NONE, DW3_REGION_EU);
+    CHECK(o.result == DW3_RB_RUN && o.region == DW3_REGION_US);
+    CHECK(strstr(f.log, "started by relaunch (eu)") != NULL);
+    CHECK(strstr(f.log, "decision boot region=us: only the US data is present") != NULL);
+
     /* 10. a disc image waiting in a region folder makes that region present */
     clean(base);
     make_tree(base, "eu");
@@ -367,6 +400,7 @@ int main(int argc, char **argv) {
         make_tree(base, "us");
         make_tree(base, "eu");
         memset(&io, 0, sizeof(io));
+        memset(&in, 0, sizeof(in));
         io.ud = &f;
         io.log = fk_log;
         in.base = base;

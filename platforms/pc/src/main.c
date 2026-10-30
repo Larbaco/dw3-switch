@@ -30,6 +30,7 @@
 #include "str_stream.h"
 #include "dw3_disc.h"
 #include "dw3_region_rt.h"
+#include "dw3_region_relaunch.h"
 #include "str_disc.h"
 #include "dw3_game_api.h" /* last: in a `both` image it redirects the game calls */
 
@@ -269,6 +270,18 @@ static int dw3_pc_pick_region(int argc, char **argv, const char *root_explicit,
         }
     }
 #if defined(DW3_BOTH) && DW3_BOTH
+    {
+        /* P6.38: started by a relaunch ("Restart in EU now?"): the asked region
+         * wins over --region, DW3_REGION and a runtime folder given to the first
+         * process, which named the other region. */
+        const Dw3Region relaunch = dw3_relaunch_arg_region(argc, argv);
+
+        if (relaunch != DW3_REGION_NONE) {
+            flag = dw3_region_name(relaunch);
+            root_explicit = NULL;
+            fprintf(stderr, "dw3-region: started by relaunch (%s)\n", flag);
+        }
+    }
     {
         Dw3RegionRequest req;
         Dw3RegionChoice choice;
@@ -559,9 +572,103 @@ void dw3_host_request_quit(void) {
     SDL_PushEvent(&event);
 }
 
+#if defined(DW3_BOTH) && DW3_BOTH
+/* P6.38: restart into the chosen region (docs/PORT_OPTIONS.md). The Options
+ * screen asks (port/options/region_relaunch.c); on Yes the game is asked to quit
+ * like the title menu's Quit game (SDL quit event), the normal exit path runs
+ * (saves, options, audio, window), and the last exit handler starts this same
+ * program again with execv and `--relaunch-region <r>`
+ * (port/region/dw3_region_relaunch.h). execv keeps the process id and the
+ * environment (DW3_CONFIG_DIR, DW3_RUNTIME_BASE, DW3_MEMCARD_DIR ...), so the new
+ * process reads the same files. DW3_RELAUNCH_TEST=1 stops short of the exec (a
+ * replay run cannot follow it): the same lines are logged and the process exits 0. */
+static int g_main_argc;
+static char **g_main_argv;
+static Dw3Region g_relaunch_target = DW3_REGION_NONE;
+
+static int pc_self_exe(char *out, size_t cap) {
+    ssize_t n = readlink("/proc/self/exe", out, cap - 1);
+
+    if (n <= 0) {
+        return -1;
+    }
+    out[n] = '\0';
+    return 0;
+}
+
+int dw3_host_relaunch_check(Dw3Region target, char *why, size_t cap) {
+    const char *base = env_or("DW3_RUNTIME_BASE", "runtime");
+    char exe[1024];
+
+    if (!dw3_relaunch_target_present(base, target)) {
+        snprintf(why, cap, "no %s game data under %s", dw3_region_name(target), base);
+        return DW3_RELAUNCH_NO_DATA;
+    }
+    if (pc_self_exe(exe, sizeof(exe)) != 0 || access(exe, X_OK) != 0) {
+        snprintf(why, cap, "this program cannot be found to start it again");
+        return DW3_RELAUNCH_NO_HOST;
+    }
+    snprintf(why, cap, "execv %s with %s %s", exe, DW3_RELAUNCH_ARG, dw3_region_name(target));
+    return DW3_RELAUNCH_OK;
+}
+
+int dw3_host_relaunch_request(Dw3Region target, char *why, size_t cap) {
+    if (dw3_host_relaunch_check(target, why, cap) != DW3_RELAUNCH_OK) {
+        return -1;
+    }
+    g_relaunch_target = target;
+    dw3_host_request_quit();
+    return 0;
+}
+
+/* Runs last at exit (registered first in main(), so after the saves and the
+ * options are closed). PSY-Z ends the process from its event pump when a quit
+ * is requested (QuitPlatform(): SDL is already torn down, then exit(0)), so the
+ * game loop never returns on the PC and the exec has to come from here. Does not
+ * return when the new process starts; with DW3_RELAUNCH_TEST it only logs. */
+static void dw3_pc_relaunch_atexit(void) {
+    const char *name = dw3_region_name(g_relaunch_target);
+    char exe[1024];
+    char **args;
+
+    if (g_relaunch_target == DW3_REGION_NONE) {
+        return;
+    }
+    if (getenv("DW3_RELAUNCH_TEST") != NULL) {
+        fprintf(stderr, "dw3-region: relaunch to %s: DW3_RELAUNCH_TEST set, not starting the "
+                        "new process; exiting\n", name);
+        fflush(NULL);
+        return;
+    }
+    if (pc_self_exe(exe, sizeof(exe)) != 0) {
+        fprintf(stderr, "dw3-region: relaunch to %s failed: cannot find this program\n", name);
+        fflush(NULL);
+        _exit(1);
+    }
+    args = dw3_relaunch_pc_argv(g_main_argc, g_main_argv, g_relaunch_target);
+    if (args == NULL) {
+        fprintf(stderr, "dw3-region: relaunch to %s failed: out of memory\n", name);
+        fflush(NULL);
+        _exit(1);
+    }
+    fprintf(stderr, "dw3-region: relaunch to %s: starting %s again\n", name, exe);
+    fflush(NULL);
+    execv(exe, args);
+    fprintf(stderr, "dw3-region: relaunch to %s failed: execv %s: %s\n", name, exe,
+            strerror(errno));
+    fflush(NULL);
+    _exit(1);
+}
+#endif
+
 int main(int argc, char **argv) {
     const char *internal_res = getenv("DW3_PC_INTERNAL_RES");
 
+#if defined(DW3_BOTH) && DW3_BOTH
+    g_main_argc = argc;
+    g_main_argv = argv;
+    atexit(dw3_pc_relaunch_atexit); /* first registered = runs last */
+#endif
     if (init_paths(argc, argv) != 0) {
         return 1;
     }

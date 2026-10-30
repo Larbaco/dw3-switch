@@ -41,6 +41,7 @@
 #include "../psyz_backend/nx_movie_debug.h"
 #if defined(DW3_BOTH) && DW3_BOTH
 #include "../psyz_backend/nx_region_boot.h"
+#include "dw3_region_relaunch.h"
 #endif
 #if DW3_NX_DEBUG_OVERLAY
 #include "debug_overlay_text.h"
@@ -569,6 +570,59 @@ static const char *env_or(const char *key, const char *fallback) {
     return (v != NULL && v[0] != '\0') ? v : fallback;
 }
 
+#if defined(DW3_BOTH) && DW3_BOTH
+/* P6.38: restart into the chosen region (docs/PORT_OPTIONS.md). The Options
+ * screen asks (port/options/region_relaunch.c); on Yes the NRO queues itself
+ * with libnx envSetNextLoad, argument `--relaunch-region <r>`, and the game
+ * loop is asked to end like the title menu's Quit game: main() returns through
+ * the normal shutdown (audio, GPU, saves, log) and hbloader then starts the
+ * queued NRO, which boots the asked region whatever region_default says. The
+ * NRO path is argv[0], as hbmenu passes it. No relaunch when envHasNextLoad()
+ * is false (the NRO was not started by hbloader: a forwarder, a title launcher):
+ * the player then gets "Restart the game to apply." and the choice takes
+ * effect at the next start, as before. */
+static char g_nro_path[512];
+static Dw3Region g_relaunch_target = DW3_REGION_NONE;
+
+int dw3_host_relaunch_check(Dw3Region target, char *why, size_t cap) {
+    const char *base = env_or("DW3_RUNTIME_BASE", DW3_NX_BASE);
+    char args[640];
+
+    if (!dw3_relaunch_target_present(base, target)) {
+        snprintf(why, cap, "no %s game data under %s", dw3_region_name(target), base);
+        return DW3_RELAUNCH_NO_DATA;
+    }
+    if (!envHasNextLoad()) {
+        snprintf(why, cap, "envHasNextLoad is false (not started through hbloader)");
+        return DW3_RELAUNCH_NO_HOST;
+    }
+    if (dw3_relaunch_nx_args(g_nro_path, target, args, sizeof(args)) < 0) {
+        snprintf(why, cap, "no usable NRO path in argv[0] ('%s')", g_nro_path);
+        return DW3_RELAUNCH_NO_HOST;
+    }
+    snprintf(why, cap, "envSetNextLoad %s", args);
+    return DW3_RELAUNCH_OK;
+}
+
+int dw3_host_relaunch_request(Dw3Region target, char *why, size_t cap) {
+    char args[640];
+    Result rc;
+
+    if (dw3_host_relaunch_check(target, why, cap) != DW3_RELAUNCH_OK) {
+        return -1;
+    }
+    (void)dw3_relaunch_nx_args(g_nro_path, target, args, sizeof(args));
+    rc = envSetNextLoad(g_nro_path, args);
+    if (R_FAILED(rc)) {
+        snprintf(why, cap, "envSetNextLoad failed (0x%08x)", (unsigned)rc);
+        return -1;
+    }
+    g_relaunch_target = target;
+    dw3_nx_set_quit_requested();
+    return 0;
+}
+#endif
+
 /* P6.32: the map view's cache is prepared from the runtime tree on a
  * low-priority thread on core 2 (the game and audio threads run on the default
  * core) while the title plays; it frees what it allocated when it is done
@@ -799,6 +853,11 @@ int main(int argc, char **argv) {
     test_env_count = apply_test_env();
 
     dw3_nxlink_connect(argc, argv);
+#if defined(DW3_BOTH) && DW3_BOTH
+    if (argc > 0 && argv && argv[0]) {
+        snprintf(g_nro_path, sizeof(g_nro_path), "%s", argv[0]);
+    }
+#endif
 
     /* Order matters: the pad and the SD mount have to be up before anything
      * opens a runtime path, and the log file is opened as early as it can be so
@@ -869,6 +928,16 @@ int main(int argc, char **argv) {
         const char *base = env_or("DW3_RUNTIME_BASE", DW3_NX_BASE);
         const char *explicit_root = env_or("DW3_RUNTIME", NULL);
         const char *forced_by = "DW3_REGION";
+        /* P6.38: started by a relaunch: the asked region is not "forced" (the
+         * data on the card still decides, the log says so) but it does beat a
+         * DW3_REGION / DW3_RUNTIME of the test environment, which named the
+         * region that was running. */
+        const Dw3Region relaunch = dw3_relaunch_arg_region(argc, argv);
+
+        if (relaunch != DW3_REGION_NONE) {
+            forced = DW3_REGION_NONE;
+            explicit_root = NULL;
+        }
 
         if (forced == DW3_REGION_NONE && explicit_root != NULL) {
             /* a runtime folder given by hand: judged by what it holds */
@@ -883,7 +952,7 @@ int main(int argc, char **argv) {
                 forced_by = "DW3_RUNTIME";
             }
         }
-        dw3_nx_region_boot(base, forced, forced_by, &rb);
+        dw3_nx_region_boot(base, forced, forced_by, relaunch, &rb);
         if (rb.result != DW3_RB_RUN || dw3_region_select(rb.region, rb.source) != 0) {
             INFOF("region: %s: leaving without starting the game",
                   rb.result == DW3_RB_NO_DATA ? "no game data" :
@@ -976,7 +1045,11 @@ int main(int argc, char **argv) {
         int game_result = dw3_game_main();
         INFOF("dw3_game_main returned %d; shutting down (quit path: %s)",
               game_result,
-              g_exit_pending ? "HOME / applet exit" : "title Quit game");
+              g_exit_pending ? "HOME / applet exit"
+#if defined(DW3_BOTH) && DW3_BOTH
+              : g_relaunch_target != DW3_REGION_NONE ? "relaunch into the other region"
+#endif
+              : "title Quit game");
         memcard_host_shutdown();
         /* P38: leave the way the P4 sample does, services closed in reverse
          * order of their opening, before libnx tears the rest down. Quit game

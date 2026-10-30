@@ -85,6 +85,12 @@ class Scenario:
     # launcher's choice decides which binary and runtime run. `version` is the
     # region that must come out. PC only.
     launch: str = ""
+    # P6.38 Restart into the chosen region: the same idea for the combined
+    # (--bin-both) binary running one scenario: a runtime base folder holding
+    # symlinks to the runtimes listed here ("us+eu") is given to every phase as
+    # DW3_RUNTIME_BASE, so the Region at start row finds the other region's data
+    # on the "card". DW3_RUNTIME still names the run's own region. PC only.
+    base: str = ""
     # Compare the captures with the references of this other scenario instead
     # of the scenario's own (the launcher run must be bit-identical to the
     # plain per-region run, so no reference of its own is needed).
@@ -2320,6 +2326,66 @@ for _v in ("us", "eu"):
                                   r"dw3-port-options: close in game"),),
                   forbid_log=((0, r"dw3-cheats: open"),),
                   note="the Cheats entry and the Cheats group are greyed in game: Square (Y) and Cross do nothing (P9.7, P9.9)"))
+# P6.38 restart into the chosen region (docs/PORT_OPTIONS.md, port/options/
+# region_relaunch.c). Combined binary only (tier `both`); `base` puts both regions'
+# data on the "card" so the other region counts as present. no: the window shows
+# (title: no progress warning), No keeps "takes effect at the next start", Ask and the
+# running region never ask. yes: Yes writes the choice and asks the host to relaunch;
+# the PC host's test hook (DW3_RELAUNCH_TEST) logs it and exits 0 instead of
+# exec'ing, because the replay harness cannot follow an exec. exec: the same without
+# the hook: the process execs itself into the other region and the second run (the
+# same recording from frame 0, written to be harmless there) must end normally.
+# game: from the field menu's Options row, with the progress warning.
+for _v in ("us", "eu"):
+    _o, _O = ("eu", "EU") if _v == "us" else ("us", "US")
+    _no_logs = ((0, rf"dw3-region: restart prompt for {_o} \(title\)(?s:.*)"
+                    rf"dw3-port-confirm: open restart in {_O} \(title, cursor on No\)(?s:.*)"
+                    rf"dw3-port-confirm: No \(restart in region\); nothing changed(?s:.*)"
+                    rf"dw3-region: relaunch declined; {_o} takes effect at the next start"),
+                (0, r"dw3-region: region_default ask: no restart prompt"),
+                (0, rf"dw3-region: region_default {_v} is the running region: no restart prompt"),
+                (0, rf"dw3-options: region_default {_o} saved to \S+port_options\.cfg"))
+    _add(Scenario(f"{_v}-region-relaunch-no", _v, "both", timeout=300, base="us+eu",
+                  expect_log=_no_logs,
+                  forbid_log=((0, r"relaunch to \w+ requested"), (0, r"NOT saved"),
+                              (0, r"dw3-region: no restart prompt for")),
+                  note="Region at start: the restart window after a change to the other region; No keeps the next-start behaviour; Ask and the running region never ask (P6.38, --bin-both)"),
+         Scenario(f"{_v}-region-relaunch-yes", _v, "both", timeout=300, base="us+eu", quits=True,
+                  env=(("DW3_RELAUNCH_TEST", "1"),),
+                  expect_log=((0, rf"dw3-port-confirm: cursor on Yes(?s:.*)"
+                                  rf"dw3-port-confirm: Yes \(restart in region\)(?s:.*)"
+                                  rf"dw3-region: relaunch to {_o} requested(?s:.*)"
+                                  rf"dw3-region: relaunch to {_o}: leaving the game now \(execv \S+ with --relaunch-region {_o}\)(?s:.*)"
+                                  rf"dw3-region: relaunch to {_o}: DW3_RELAUNCH_TEST set, not starting the new process; exiting"),
+                              (0, rf"dw3-options: region_default {_o} saved to \S+port_options\.cfg")),
+                  forbid_log=((0, r"relaunch to \w+ failed"), (0, r"save flush failed")),
+                  note="Region at start: Yes saves, flushes and asks the host to relaunch; the test hook stops short of the exec and exits 0 (P6.38, --bin-both)"),
+         Scenario(f"{_v}-region-relaunch-exec", _v, "both", timeout=300, base="us+eu", log_only=True,
+                  cfg=(("region_default", _v),),
+                  expect_log=((0, rf"dw3-region: restart prompt for {_o} \(title\)(?s:.*)"
+                                  rf"dw3-region: relaunch to {_o} requested(?s:.*)"
+                                  rf"dw3-region: relaunch to {_o}: starting \S+ again(?s:.*)"
+                                  rf"dw3-region: started by relaunch \({_o}\)(?s:.*)"
+                                  rf"dw3-region: running {_o} \(flag\)(?s:.*)"
+                                  rf"dw3-pc: region={_o}(?s:.*)"
+                                  rf"dw3-replay: end at frame"),),
+                  forbid_log=((0, r"relaunch to \w+ failed"), (0, r"DW3_RELAUNCH_TEST"),
+                              (0, rf"dw3-region: running {_o} \(env\)")),
+                  note="Region at start: Yes execs the program again, the new process boots the other region (flag, not DW3_REGION) and finishes the recording (P6.38, --bin-both, real exec)"))
+
+# P6.38 in game: the same window from the field menu's Options row; the title's has no
+# progress warning, this one has it (the env is the field-options scenario's).
+for _v in ("us", "eu"):
+    _o, _O = ("eu", "EU") if _v == "us" else ("us", "US")
+    _add(Scenario(f"{_v}-region-relaunch-game", _v, "both", turbo=4, timeout=600, base="us+eu",
+                  env=_RT_ENV,
+                  expect_log=((0, rf"dw3-port-options: open in game(?s:.*)"
+                                  rf"dw3-region: restart prompt for {_o} \(in game\)(?s:.*)"
+                                  rf"dw3-port-confirm: open restart in {_O} \(in game, cursor on No\)(?s:.*)"
+                                  rf"dw3-region: relaunch declined; {_o} takes effect at the next start"),),
+                  forbid_log=((0, r"relaunch to \w+ requested"), (0, r"save flush failed")),
+                  note="Region at start in game: the restart window carries the progress warning; No goes on (P6.38, --bin-both)"))
+
 # P6.4 turbo menus (patch 0176, port/options/turbo.c). With turbo on, menus
 # opened inside the field run at 1.5x: the field menu list, the Options screen
 # over it and the Return to title Yes / No window. The log has `speed 4x` (the

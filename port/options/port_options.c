@@ -16,6 +16,8 @@
 #include "port_turbo.h"
 #if DW3_OPT_REGION_ROW
 #include "dw3_region.h"
+#include "port_confirm.h"
+#include "port_region_relaunch.h"
 #endif
 
 #include <stdio.h>
@@ -393,6 +395,9 @@ static void po_open(int in_game) {
     g_assign_btn = -1;
     g_open_frames = 0;
     g_logged_open = 0;
+#if DW3_OPT_REGION_ROW
+    dw3_port_region_relaunch_reset();
+#endif
     po_push_view();
     if (in_game) {
         fprintf(stderr, "dw3-port-options: open in game (%s; "
@@ -698,6 +703,13 @@ static const char *po_region_base(void) {
     return g_region_base;
 }
 
+/* The folder holding the top-level port_options.cfg (the region boot's file),
+ * or NULL when options are session-only. P6.38: the restart writes the choice
+ * there before it relaunches. */
+const char *dw3_port_options_region_base(void) {
+    return po_region_base();
+}
+
 static void po_region_load(void) {
     const char *base = po_region_base();
     Dw3Region pref = DW3_REGION_NONE;
@@ -738,6 +750,7 @@ static void po_region_save(int v) {
             DW3_OPTCFG_FILE);
 }
 #else
+const char *dw3_port_options_region_base(void) { return NULL; }
 static void po_region_load(void) {}
 static void po_region_save(int v) { (void)v; }
 #endif
@@ -1087,6 +1100,9 @@ static void po_step(int index, int delta) {
     }
     if (index == DW3_PORT_OPT_REGION) {
         po_region_save(v);
+#if DW3_OPT_REGION_ROW
+        dw3_port_region_relaunch_note_step(); /* P6.38: asked about when the row is left */
+#endif
     } else {
         (void)po_save();
     }
@@ -1526,7 +1542,7 @@ static void po_group_back(void) {
     g_level = 0;
 }
 
-void dw3_port_options_tick(void) {
+static void po_tick_inner(void) {
     if (!g_open) {
         return;
     }
@@ -1628,6 +1644,43 @@ void dw3_port_options_tick(void) {
         }
     }
     po_push_view();
+}
+
+#if DW3_OPT_REGION_ROW
+/* P6.38: 1 while the cursor is on the Region at start row. */
+static int po_on_region_row(void) {
+    return g_level && g_group != DW3_OPTGRP_CUSTOM &&
+           g_cursor >= 0 && g_cursor < dw3_optgroups[g_group].nrows &&
+           dw3_optgroups[g_group].rows[g_cursor] == DW3_PORT_OPT_REGION;
+}
+#endif
+
+void dw3_port_options_tick(void) {
+#if DW3_OPT_REGION_ROW
+    int was_on_region_row;
+
+    if (!g_open) {
+        return;
+    }
+    /* P6.38: the restart window ("Restart in EU now?") has the pad while it is
+     * up; it is ticked here because the title and the field menu both leave
+     * it to this screen. */
+    if (dw3_port_confirm_owned_is_open()) {
+        dw3_port_confirm_tick_owned();
+        po_push_view();
+        return;
+    }
+    was_on_region_row = po_on_region_row();
+    po_tick_inner();
+    /* Leaving the row (Up / Down, or Back to the group list) after a change
+     * asks about the restart. */
+    if (g_open && was_on_region_row && !po_on_region_row()) {
+        (void)dw3_port_region_relaunch_leave(g_stubs[DW3_PORT_OPT_REGION].value,
+                                             g_in_game);
+    }
+#else
+    po_tick_inner();
+#endif
 }
 
 #if !defined(DW3_PORT_OPTIONS_TEST) && defined(DW3_PC_HOST) && \

@@ -7,6 +7,8 @@
 
 #include "memcard_host.h"
 #include "port_options.h"
+#include "port_options_groups.h"
+#include "port_region_relaunch.h"
 #include "port_restart.h"
 
 #include <stdio.h>
@@ -55,16 +57,38 @@ static int g_open;
 static int g_kind;
 static int g_focus; /* 0 = No (the default), 1 = Yes */
 static int g_just_opened;
+static int g_region_target; /* P6.38: 1 US / 2 EU, for DW3_CONFIRM_REGION */
+static int g_region_in_game;
+
+static int kind_owned(int kind) {
+    return kind == DW3_CONFIRM_REGION || kind == DW3_CONFIRM_NOTICE;
+}
 
 static const char *kind_name(int kind) {
-    return kind == DW3_CONFIRM_RETURN ? "return to title" : "quit";
+    return kind == DW3_CONFIRM_RETURN ? "return to title"
+           : kind == DW3_CONFIRM_REGION ? "restart in region"
+           : kind == DW3_CONFIRM_NOTICE ? "restart notice" : "quit";
 }
+
+#if CF_NATIVE
+static int dialog_art_kind(void) {
+    switch (g_kind) {
+    case DW3_CONFIRM_RETURN:
+        return DW3_DIALOG_RETURN;
+    case DW3_CONFIRM_REGION:
+        return DW3_DIALOG_RESTART_US + (g_region_target == 2 ? 1 : 0) +
+               (g_region_in_game ? 2 : 0);
+    case DW3_CONFIRM_NOTICE:
+        return DW3_DIALOG_NOTICE;
+    default:
+        return DW3_DIALOG_QUIT;
+    }
+}
+#endif
 
 static void push_view(void) {
 #if CF_NATIVE
-    dw3_pc_dialog_set(g_open, g_kind == DW3_CONFIRM_RETURN ? DW3_DIALOG_RETURN
-                                                           : DW3_DIALOG_QUIT,
-                      g_focus);
+    dw3_pc_dialog_set(g_open, dialog_art_kind(), g_focus);
 #endif
 }
 
@@ -94,6 +118,45 @@ void dw3_port_confirm_open(int kind) {
 
 int dw3_port_confirm_is_open(void) {
     return g_open != 0;
+}
+
+#if DW3_OPT_REGION_ROW
+void dw3_port_confirm_open_region(int target, int in_game) {
+    if (g_open || !dw3_port_confirm_available()) {
+        return;
+    }
+    g_open = 1;
+    g_kind = DW3_CONFIRM_REGION;
+    g_region_target = target == 2 ? 2 : 1;
+    g_region_in_game = in_game != 0;
+    g_focus = 0;
+    g_just_opened = 1;
+    push_view();
+    CF_INFO("dw3-port-confirm: open restart in %s (%s, cursor on No)",
+            g_region_target == 2 ? "EU" : "US", in_game ? "in game" : "title");
+}
+
+void dw3_port_confirm_open_notice(void) {
+    if (g_open || !dw3_port_confirm_available()) {
+        return;
+    }
+    g_open = 1;
+    g_kind = DW3_CONFIRM_NOTICE;
+    g_focus = 1; /* the one button, OK, is lit */
+    g_just_opened = 1;
+    push_view();
+    CF_INFO("dw3-port-confirm: open restart notice (OK)");
+}
+#else
+void dw3_port_confirm_open_region(int target, int in_game) {
+    (void)target;
+    (void)in_game;
+}
+void dw3_port_confirm_open_notice(void) {}
+#endif
+
+int dw3_port_confirm_owned_is_open(void) {
+    return g_open && kind_owned(g_kind);
 }
 
 void dw3_port_confirm_close(void) {
@@ -128,13 +191,23 @@ static void accept_return(void) {
     dw3_port_confirm_close();
 }
 
-void dw3_port_confirm_tick(void) {
+static void confirm_tick(void) {
     if (!g_open) {
         return;
     }
     if (g_just_opened) {
         /* The press that opened the window must not also answer it. */
         g_just_opened = 0;
+        return;
+    }
+    if (g_kind == DW3_CONFIRM_NOTICE) {
+        /* One button: any answer closes it. */
+        if (cf_pressed(CF_CROSS) || cf_pressed(CF_TRIANGLE) || cf_pressed(CF_CIRCLE)) {
+            cf_sound(cf_pressed(CF_CROSS) ? CF_SND_SELECT : CF_SND_CANCEL);
+            CF_INFO("dw3-port-confirm: OK (restart notice)");
+            dw3_port_confirm_close();
+            dw3_port_region_relaunch_notice_done();
+        }
         return;
     }
     if (cf_pressed(CF_UP) || cf_pressed(CF_DOWN) || cf_pressed(CF_LEFT) ||
@@ -147,7 +220,13 @@ void dw3_port_confirm_tick(void) {
         cf_sound(CF_SND_SELECT);
         if (g_focus) {
             CF_INFO("dw3-port-confirm: Yes (%s)", kind_name(g_kind));
-            if (g_kind == DW3_CONFIRM_RETURN) {
+            if (g_kind == DW3_CONFIRM_REGION) {
+                /* Close first: a failed relaunch opens the notice in its place. */
+                const int target = g_region_target;
+
+                dw3_port_confirm_close();
+                dw3_port_region_relaunch_yes(target);
+            } else if (g_kind == DW3_CONFIRM_RETURN) {
                 accept_return();
             } else {
                 accept_quit();
@@ -155,11 +234,30 @@ void dw3_port_confirm_tick(void) {
         } else {
             CF_INFO("dw3-port-confirm: No (%s); nothing changed", kind_name(g_kind));
             dw3_port_confirm_close();
+            if (g_kind == DW3_CONFIRM_REGION) {
+                dw3_port_region_relaunch_no(g_region_target, 0);
+            }
         }
     } else if (cf_pressed(CF_TRIANGLE) || cf_pressed(CF_CIRCLE)) {
         cf_sound(CF_SND_CANCEL);
         CF_INFO("dw3-port-confirm: cancelled (%s); nothing changed", kind_name(g_kind));
         dw3_port_confirm_close();
+        if (g_kind == DW3_CONFIRM_REGION) {
+            dw3_port_region_relaunch_no(g_region_target, 1);
+        }
+    }
+}
+
+void dw3_port_confirm_tick(void) {
+    if (g_open && kind_owned(g_kind)) {
+        return; /* the Options screen ticks these (dw3_port_confirm_tick_owned) */
+    }
+    confirm_tick();
+}
+
+void dw3_port_confirm_tick_owned(void) {
+    if (g_open && kind_owned(g_kind)) {
+        confirm_tick();
     }
 }
 

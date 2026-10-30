@@ -1,6 +1,8 @@
 /* Host test of the P6.27 / P6.28 artwork (platforms/pc/src/title_overlay_art.c):
  * the Yes / No window in the five languages, both questions and both cursor
- * positions, and the title menu's fourth plaque.
+ * positions, and the title menu's fourth plaque. P6.38 adds the restart
+ * question of the Region at start row (title / in game, US / EU) and the
+ * one-button notice.
  *
  * argv[1], when given, is a directory that receives every rendered window and
  * title state as a PPM (the evidence of the PR; never committed). */
@@ -62,6 +64,24 @@ static int plaque_tops(const uint8_t *rgba, int pitch, int x, int *tops, int max
             tops[n++] = y;
         }
         prev = solid;
+    }
+    return n;
+}
+
+/* Pixels of the warning line's colour (255, 224, 140) in rows y0..y1 of the window. */
+static long warn_pixels(const uint8_t *rgba, int pitch, int y0, int y1) {
+    long n = 0;
+    int x;
+    int y;
+
+    for (y = y0; y < y1; y++) {
+        for (x = 0; x < DW3_DIALOG_W; x++) {
+            const uint8_t *p = rgba + (size_t)y * pitch + x * 4;
+
+            if (p[3] == 255 && p[0] > 200 && p[1] > 150 && p[1] < 235 && p[2] > 80 && p[2] < 170) {
+                n++;
+            }
+        }
     }
     return n;
 }
@@ -139,6 +159,80 @@ int main(int argc, char **argv) {
                          kind == DW3_DIALOG_QUIT ? "quit" : "return");
                 write_ppm(dir, name, b, DW3_DIALOG_W, DW3_DIALOG_H, pitch);
             }
+        }
+        /* P6.38: the restart question. Title kinds have no warning line, in-game kinds
+         * have it; US and EU differ in the question line only; the cursor moves
+         * between the two rows; the notice has one row and ignores the focus. */
+        {
+            static const char *const rname[4] = {"title-us", "title-eu", "game-us", "game-eu"};
+            uint8_t *c = (uint8_t *)malloc((size_t)pitch * DW3_DIALOG_H);
+            int r;
+
+            if (!c) {
+                return 2;
+            }
+            for (r = 0; r < 4; r++) {
+                char name[64];
+                int differ = 0;
+                long solid;
+
+                memset(a, 0xAA, (size_t)pitch * DW3_DIALOG_H);
+                dw3_pc_dialog_art(a, pitch, DW3_DIALOG_RESTART_US + r, 0);
+                memset(b, 0x55, (size_t)pitch * DW3_DIALOG_H);
+                dw3_pc_dialog_art(b, pitch, DW3_DIALOG_RESTART_US + r, 1);
+                solid = opaque_pixels(a, DW3_DIALOG_W, DW3_DIALOG_H, pitch, 0, 0,
+                                      DW3_DIALOG_W, DW3_DIALOG_H);
+                CHECK(solid > (long)DW3_DIALOG_W * DW3_DIALOG_H * 9 / 10);
+                if (r >= 2) {
+                    CHECK(warn_pixels(a, pitch, 126, 160) > 400);
+                } else {
+                    CHECK(warn_pixels(a, pitch, 126, 160) == 0);
+                }
+                for (y = 0; y < DW3_DIALOG_H; y++) {
+                    for (x = 0; x < DW3_DIALOG_W; x++) {
+                        if (memcmp(a + (size_t)y * pitch + x * 4, b + (size_t)y * pitch + x * 4, 4) != 0) {
+                            differ++;
+                            CHECK(y >= 150 && y < 270);
+                        }
+                    }
+                }
+                CHECK(differ > 400);
+                if (r < 2) { /* US and EU: same window, only the question line differs */
+                    memset(c, 0x33, (size_t)pitch * DW3_DIALOG_H);
+                    dw3_pc_dialog_art(c, pitch, DW3_DIALOG_RESTART_US + (1 - r), 0);
+                    differ = 0;
+                    for (y = 0; y < DW3_DIALOG_H; y++) {
+                        for (x = 0; x < DW3_DIALOG_W; x++) {
+                            if (memcmp(a + (size_t)y * pitch + x * 4, c + (size_t)y * pitch + x * 4, 4) != 0) {
+                                differ++;
+                                CHECK(y >= 90 && y < 130);
+                            }
+                        }
+                    }
+                    CHECK(differ > 20);
+                }
+                if (dir) {
+                    snprintf(name, sizeof(name), "dialog-%s-restart-%s-no", lang_name[lang], rname[r]);
+                    write_ppm(dir, name, a, DW3_DIALOG_W, DW3_DIALOG_H, pitch);
+                    snprintf(name, sizeof(name), "dialog-%s-restart-%s-yes", lang_name[lang], rname[r]);
+                    write_ppm(dir, name, b, DW3_DIALOG_W, DW3_DIALOG_H, pitch);
+                }
+            }
+            memset(a, 0xAA, (size_t)pitch * DW3_DIALOG_H);
+            dw3_pc_dialog_art(a, pitch, DW3_DIALOG_NOTICE, 0);
+            memset(b, 0x55, (size_t)pitch * DW3_DIALOG_H);
+            dw3_pc_dialog_art(b, pitch, DW3_DIALOG_NOTICE, 1);
+            CHECK(memcmp(a, b, (size_t)pitch * DW3_DIALOG_H) == 0); /* one lit button, any focus */
+            CHECK(warn_pixels(a, pitch, 126, 160) == 0);
+            CHECK(opaque_pixels(a, DW3_DIALOG_W, DW3_DIALOG_H, pitch, 0, 0, DW3_DIALOG_W,
+                                DW3_DIALOG_H) > (long)DW3_DIALOG_W * DW3_DIALOG_H * 9 / 10);
+            if (dir) {
+                char name[64];
+
+                snprintf(name, sizeof(name), "dialog-%s-restart-notice", lang_name[lang]);
+                write_ppm(dir, name, a, DW3_DIALOG_W, DW3_DIALOG_H, pitch);
+            }
+            free(c);
         }
         /* The title's four plaques (no auto-save file): the Quit game one (y 540..588) is drawn in the focus
          * state and not in the others; the footer (y 610..669) is intact. */

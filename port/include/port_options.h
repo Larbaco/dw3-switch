@@ -32,6 +32,11 @@ unsigned dw3_port_options_locked_mask(void);
 unsigned dw3_port_options_locked_mask_for(int in_game);
 enum { DW3_PORT_OPTIONS_LOCK_CHEATS = 1u << 16 };
 void dw3_port_options_close(void);
+
+/* P6.38 (combined image): the folder holding the top-level port_options.cfg
+ * (region_default / last_region), or NULL when options are session-only or the
+ * build has no Region at start row. */
+const char *dw3_port_options_region_base(void);
 int dw3_port_options_is_open(void);
 
 /* Pad + stub registry while open. Does not set title menu choice. The screen

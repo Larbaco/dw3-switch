@@ -38,7 +38,7 @@ def region_bin(tmp_path_factory) -> Path:
     return build(tmp_path_factory.mktemp("optregion") / "options_region_test",
                  TESTS / "options_persist_main.c", OPTIONS / "port_options.c", OPTIONS / "button_map.c",
                  OPTIONS / "options_cfg.c", ROOT / "port" / "audio" / "volume.c",
-                 ROOT / "port" / "region" / "dw3_region.c",
+                 ROOT / "port" / "region" / "dw3_region.c", TESTS / "region_row_stubs.c",
                  defs=["-DDW3_PORT_OPTIONS_TEST", "-DDW3_BUTTON_MAP_TEST", "-DDW3_REGION_IMAGE=1",
                        f"-I{ROOT / 'port' / 'region'}"])
 

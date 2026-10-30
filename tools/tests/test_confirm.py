@@ -22,6 +22,7 @@ def confirm_bin(tmp_path_factory) -> Path:
         "gcc", "-std=c11", "-Wall", "-Wextra", "-Werror", "-O2",
         "-DDW3_PORT_CONFIRM_TEST", "-o", str(out),
         str(TESTS / "confirm_main.c"), str(ROOT / "port" / "options" / "confirm.c"),
+        str(ROOT / "port" / "options" / "region_relaunch.c"),
         f"-I{ROOT / 'port' / 'include'}", f"-I{ROOT / 'port' / 'memcard'}",
         f"-I{SRC}",
     ]
@@ -67,8 +68,9 @@ def test_dialog_art_writes_evidence(dialog_art_bin: Path, tmp_path: Path):
     assert r.returncode == 0, r.stderr + r.stdout
     names = {p.name for p in tmp_path.glob("*.ppm")}
     assert "dialog-fr-return-yes.ppm" in names
+    assert "dialog-de-restart-game-eu-yes.ppm" in names and "dialog-it-restart-notice.ppm" in names
     assert "title-es-3.ppm" in names
-    assert len(names) == 5 * (4 + 4 + 5)
+    assert len(names) == 5 * (4 + 9 + 4 + 5)
 
 
 def test_options_art_selector_moved_to_five():

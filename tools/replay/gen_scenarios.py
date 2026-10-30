@@ -789,6 +789,69 @@ def options_region(version, phase):
     return r
 
 
+def region_relaunch(version, mode):
+    """P6.38 (the combined image only, --bin-both): Options -> Gameplay -> Region at
+    start, stepped to the OTHER region (US run: Cross twice, Ask -> US -> EU; EU run:
+    once, Ask -> US), then Up off the row: the window "Restart in <other> now?" opens.
+      no    the window (`dialog`), No (`declined`); then the row stepped on to Ask and to
+            the running region, each left with Up: no window (`ask-no-window`,
+            `same-no-window`); Triangle out
+      yes   the window with the cursor moved to Yes (`dialog-yes`), Cross: the relaunch
+            (the manifest sets DW3_RELAUNCH_TEST, so the run logs it and exits 0)
+      exec  the same Yes with the real exec (no hook): the cfg is seeded with the running
+            region, Left / Right move to the other one, and the recording is written so the
+            relaunched process, which replays it from frame 0 in the other region, ends it
+            without a window (its first step is a no-op or leads to Ask)
+      game  from the field menu's Options row (the env of `field_options`): the window
+            carries the progress warning (`dialog-game`), No (`declined`)."""
+    r = Rec(f"{version.upper()}: P6.38 restart into the chosen region ({mode})")
+    steps = 2 if version == "us" else 1
+    if mode == "game":
+        f = _field_options_open(r, shots=False, last="options-open", shot_last=False)
+        f = _group(r, f, GRP_DISPLAY, GRP_GAMEPLAY)
+        f = _keys(r, f + 20, DOWN, DOWN, DOWN, DOWN, DOWN)
+    else:
+        m = _to_options(r, version)
+        f = _group(r, m + 70, GRP_DISPLAY, GRP_GAMEPLAY)
+        f = _keys(r, f + 20, DOWN, DOWN, DOWN, DOWN, DOWN)       # Region at start
+    if mode == "exec":
+        f = _keys(r, f, RIGHT if version == "us" else LEFT)
+    else:
+        f = _keys(r, f, *([CROSS] * steps))
+        if mode != "game":
+            r.shot(f + 20, "region-other")
+            f += 40
+    f = _keys(r, f + 20, UP)                                      # off the row: the window
+    if mode == "exec":
+        f = _keys(r, f + 40, DOWN, CROSS)                         # Yes
+        r.end(f + 200)
+        return r
+    r.shot(f + 40, "dialog-game" if mode == "game" else "dialog")
+    if mode == "yes":
+        f = _keys(r, f + 60, DOWN)
+        r.shot(f + 40, "dialog-yes")
+        f = _keys(r, f + 60, CROSS)
+        r.end(f + 300)
+        return r
+    f = _keys(r, f + 60, CROSS)                                   # No
+    r.shot(f + 40, "declined")
+    if mode == "game":
+        f = _keys(r, f + 60, TRIANGLE, TRIANGLE)
+        r.end(f + 100)
+        return r
+    # Ask never asks, and neither does the region that is running: US run: EU -> Ask
+    # -> US, EU run: US -> EU -> Ask.
+    f = _keys(r, f + 60, DOWN, CROSS)
+    f = _keys(r, f + 20, UP)
+    r.shot(f + 40, "ask-no-window" if version == "us" else "same-no-window")
+    f = _keys(r, f + 60, DOWN, CROSS)
+    f = _keys(r, f + 20, UP)
+    r.shot(f + 40, "same-no-window" if version == "us" else "ask-no-window")
+    f = _keys(r, f + 60, TRIANGLE, TRIANGLE)
+    r.end(f + 100)
+    return r
+
+
 def options_persist(version, phase):
     """P9.4: title -> Options. Phase 1 turns Widescreen OFF, Fast-forward
     2x -> 3x and the Restart hotkey ON, then leaves with Triangle; phase 2 is a
@@ -3557,6 +3620,9 @@ def main(out):
         for phase in (1, 2):
             (out / f"{v}-options-region-p{phase}.rec").write_text(
                 options_region(v, phase).text(True))
+        for mode in ("no", "yes", "exec", "game"):
+            (out / f"{v}-region-relaunch-{mode}.rec").write_text(
+                region_relaunch(v, mode).text(True))
         (out / f"{v}-battle-list-bar.rec").write_text(battle_list_bar(v).text(True))
         for phase in (1, 2):
             (out / f"{v}-cheats-screen-p{phase}.rec").write_text(
