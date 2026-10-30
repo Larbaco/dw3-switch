@@ -102,3 +102,54 @@ def test_format_from_github_pr_uses_short_sha(monkeypatch):
     monkeypatch.setenv("GITHUB_REF_NAME", "99/merge")
     monkeypatch.setenv("GITHUB_SHA", "a0e4973deadbeef")
     assert format_from_github() == "a0e4973"
+
+
+# --- P6.37: the in-game label and the generated header ---------------------
+
+display_label = mod.display_label
+header_text = mod.header_text
+write_if_changed = mod.write_if_changed
+
+
+@pytest.mark.parametrize(
+    "raw,sha,expected",
+    [
+        ("0.6.5-preview.57", "962462d", "v0.6.5-preview.57 (962462d)"),
+        ("v0.6.5-preview.57", "962462d", "v0.6.5-preview.57 (962462d)"),
+        ("0.6.5-preview.57-dirty", "962462d", "v0.6.5-preview.57-dirty (962462d)"),
+        ("0.6.5-preview.57", "", "v0.6.5-preview.57"),
+        ("v0.6.5-preview.56-12-g8574e58", "8574e58", "v0.6.5-preview.56-12-g8574e58"),
+        ("0.6.5-preview.56-12-g8574e58-dirty", "8574e58", "v0.6.5-preview.56-12-g8574e58-dirty"),
+        ("8574e58", "8574e58", "8574e58"),
+        ("8574e58-dirty", "8574e58", "8574e58-dirty"),
+        ("unknown", "", "unknown"),
+        ("", "", "unknown"),
+    ],
+)
+def test_display_label(raw, sha, expected):
+    assert display_label(raw, sha) == expected
+
+
+def test_header_text_defines_and_escapes():
+    text = header_text('1.0 "x"', "abc1234", "2026-10-30")
+    assert '#define DW3_VERSION_RAW "1.0 \\"x\\""' in text
+    assert '#define DW3_VERSION_SHA "abc1234"' in text
+    assert '#define DW3_VERSION_BUILD_DATE "2026-10-30"' in text
+    assert "#define DW3_VERSION_LABEL" in text
+
+
+def test_write_header_only_when_changed(tmp_path):
+    path = tmp_path / "gen" / "dw3_version_gen.h"
+    assert write_if_changed(path, "a\n") is True
+    mtime = path.stat().st_mtime_ns
+    assert write_if_changed(path, "a\n") is False
+    assert path.stat().st_mtime_ns == mtime
+    assert write_if_changed(path, "b\n") is True
+
+
+def test_cli_label_release_tag(monkeypatch, capsys):
+    monkeypatch.setenv("RELEASE_TAG", "v0.6.5-preview.57")
+    monkeypatch.setenv("GITHUB_SHA", "962462dabcdef")
+    monkeypatch.delenv("DW3_NRO_VERSION", raising=False)
+    assert mod.main(["--auto", "--format", "label"]) == 0
+    assert capsys.readouterr().out.strip() == "dw3-switch v0.6.5-preview.57 (962462d)"
