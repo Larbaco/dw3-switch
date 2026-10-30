@@ -21,6 +21,7 @@ SRC = [
     ROOT / "tools" / "tests" / "save_interrupt_main.c",
     ROOT / "port" / "memcard" / "memcard_host.c",
     ROOT / "port" / "memcard" / "save_convert.c",
+    ROOT / "port" / "memcard" / "save_store.c",
 ]
 OLD, NEW = 0xAA, 0xBB
 

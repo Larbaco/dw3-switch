@@ -325,7 +325,7 @@ def run_phase(rec: Path, version, binary, runtime, display, outdir: Path, memdir
               "DW3_FORCE_TECH", "DW3_FORCE_HIT", "DW3_FORCE_STEAL", "DW3_FORCE_ENEMY_ITEM",
               "DW3_FORCE_ENEMY_HP", "DW3_EXTRA_TECHS", "DW3_FORCE_ITEMS", "DW3_FORCE_BATTLE_BAG", "DW3_MAP_VERIFY", "DW3_MAP_PRECOMPUTE", "DW3_MAP_SYNC", "DW3_FORCE_CARDS", "DW3_PACING_TRACKED",
               "DW3_FILE_CACHE_SLOTS", "DW3_MODS_DIR", "DW3_MOD_PACK", "DW3_FORCE_MENU", "DW3_CHEATS_ARM", "DW3_STAGE_SWEEP", "DW3_STAGE_SWEEP_EXIT", "DW3_STAGE_SWEEP_FRAMES", "DW3_STAGE_SWEEP_ONLY", "DW3_STAGE_SWEEP_DIR", "DW3_STAGE_SWEEP_HANG_MS", "DW3_FORCE_EXIT", "DW3_START_MODE_EVERY", "DW3_WALKTHROUGH_PROBE",
-              "DW3_MEMCARD_IMPORT_DIR", "DW3_CROSS_IMPORT", "DW3_REGION", "DW3_REGION_PICK",
+              "DW3_MEMCARD_IMPORT_DIR", "DW3_CROSS_IMPORT", "DW3_SAVE_STORE", "DW3_SAVE_STORE_DIR", "DW3_REGION", "DW3_REGION_PICK",
               "DW3_REGION_PICK_KEYS", "DW3_SAVE_PROFILE", "DW3_RUNTIME_BASE", "DW3_PC_BIN_US", "DW3_PC_BIN_EU"):
         env.pop(k, None)
     if BOTH_BIN is not None and launch is None and Path(binary).resolve() == BOTH_BIN:
@@ -461,6 +461,34 @@ def mutate_save(path: Path, version: str, spec: str):
     path.write_bytes(bytes(data))
 
 
+def mutate_store_card(path: Path, spec: str):
+    """P6.25 slice 2: the same edit as mutate_save, on the canonical card of the
+    store (card0.dw3s: 0x40 byte header, then the card image with the data
+    slots in the EU layout; the payload CRC32 at offset 0xC is redone). Raises
+    if the card is not there or is not a version-1 container."""
+    import zlib
+    data = bytearray(path.read_bytes())
+    if data[0:4] != b"DW3S" or int.from_bytes(data[4:6], "little") != 1:
+        raise ValueError(f"{path} is not a DW3S v1 card")
+    hdr = int.from_bytes(data[6:8], "little")
+    base = hdr + 0x300
+    size = 0x26C4
+    kind, _, arg = spec.partition(":")
+    if kind == "progress":
+        data[base + 0x263C:base + 0x2640] = int(arg, 0).to_bytes(4, "little")
+        x = 0
+        for b in data[base + 4:base + size]:
+            x ^= b
+        data[base] = x
+        data[0x14 + 2] |= 1 if int(arg, 0) >= 0x2D else 0   # slot 0 metadata: needs the extra chapter
+    elif kind == "badsum":
+        data[base] ^= 0xA5
+    else:
+        raise ValueError(f"unknown save mutation {spec!r}")
+    data[0xC:0x10] = zlib.crc32(bytes(data[hdr:hdr + 0x8000])).to_bytes(4, "little")
+    path.write_bytes(bytes(data))
+
+
 def make_launch_base(sc, by_version, launcher) -> tuple[Path, dict]:
     """P6.24: a runtime base folder holding symlinks to the runtimes in
     `sc.launch` ("us", "eu", "us+eu"), and the launcher's view of the binaries."""
@@ -511,6 +539,9 @@ def run_scenario(sc, binary, runtime, out: Path, stamp, label, stall, timeout_sc
                 pmem.mkdir(exist_ok=True)
                 other.mkdir(exist_ok=True)
                 penv += (("DW3_MEMCARD_IMPORT_DIR", str(other)),)
+            if sc.store:  # P6.25 slice 2: one store folder both regions share
+                (memdir / "store").mkdir(exist_ok=True)
+                penv += (("DW3_SAVE_STORE_DIR", str(memdir / "store")),)
             if sc.phase_env:
                 penv += tuple(sc.phase_env[i])
             r = run_phase(SCEN_DIR / f"{phase}.rec", pv, pbin, prt, display,
@@ -521,7 +552,10 @@ def run_scenario(sc, binary, runtime, out: Path, stamp, label, stall, timeout_sc
             r["phase"] = phase
             results.append(r)
             if sc.phase_mutate and sc.phase_mutate[i] and r["verdict"] == "OK":
-                mutate_save(pmem / "save0.bin", pv, sc.phase_mutate[i])
+                if sc.store:
+                    mutate_store_card(memdir / "store" / "card0.dw3s", sc.phase_mutate[i])
+                else:
+                    mutate_save(pmem / "save0.bin", pv, sc.phase_mutate[i])
             if r["verdict"] != "OK":
                 break  # later phases depend on this one
     finally:

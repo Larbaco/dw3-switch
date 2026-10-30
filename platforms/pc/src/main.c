@@ -396,6 +396,7 @@ static int init_paths(int argc, char **argv) {
     const char *memdir = env_or("DW3_MEMCARD_DIR", NULL);
     const char *cfgdir = env_or("DW3_CONFIG_DIR", NULL);
     char memcard_buf[512];
+    char profile_buf[640] = "";
     int memdir_explicit;
     char boot_path[512];
     int i;
@@ -470,6 +471,10 @@ static int init_paths(int argc, char **argv) {
                 dw3_user_saves_dir(memcard_buf, sizeof(memcard_buf), base, ur.key, region) == 0) {
                 Dw3UserPrep prep2;
 
+                if (dw3_user_saves_profile_dir(profile_buf, sizeof(profile_buf), base,
+                                               ur.key) != 0) {
+                    profile_buf[0] = '\0';
+                }
                 fprintf(stderr, "dw3-pc: user: profile=%s reason=%s\n", ur.key,
                         dw3_user_reason_name(ur.reason));
                 if (prep.created) {
@@ -503,6 +508,13 @@ static int init_paths(int argc, char **argv) {
                                               ? SAVE_REGION_EU
                                               : SAVE_REGION_US,
                                           memdir_explicit);
+    /* P6.25 slice 2: opt-in shared store (save_store=1 in port_options.cfg),
+     * inside the profile folder (DW3_SAVE_STORE_DIR names one for tests). */
+    (void)memcard_host_setup_store(cfgdir != NULL ? cfgdir : root,
+                                   profile_buf[0] != '\0' ? profile_buf : NULL,
+                                   dw3_region() == DW3_REGION_EU
+                                       ? SAVE_REGION_EU
+                                       : SAVE_REGION_US);
     if (memcard_host_ensure(0) != 0 || memcard_host_ensure(1) != 0) {
         fprintf(stderr, "dw3-pc: memcard ensure failed under %s\n", memdir);
         return -1;

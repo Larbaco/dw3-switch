@@ -30,7 +30,7 @@ def autosave_bin(tmp_path_factory) -> Path:
     cmd = ["gcc", "-std=gnu11", "-Wall", "-Wextra", "-Werror", "-O2", "-DDW3_AUTOSAVE_TEST",
            "-I", str(ROOT / "port" / "include"), "-I", str(ROOT / "port" / "memcard"),
            "-o", str(out), str(TEST_C), str(AUTOSAVE_C), str(AREAS_C), str(HOST_C),
-           str(CONVERT_C)]
+           str(CONVERT_C), str(CONVERT_C.with_name("save_store.c"))]
     r = subprocess.run(cmd, capture_output=True, text=True)
     assert r.returncode == 0, r.stderr + r.stdout
     return out

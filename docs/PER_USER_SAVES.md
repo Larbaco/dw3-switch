@@ -5,7 +5,7 @@ Owner decision (2026-10-24, recorded in [SINGLE_BUILD.md](SINGLE_BUILD.md)):
 design behind the [ROADMAP P6.26 entry](ROADMAP.md#phase-6-goal-notes).
 Slice 1 is built, see [As built](#as-built-slice-1-2026-10-27); the rest below is the
 design. It builds on [P6.25](CROSS_REGION_SAVES.md) (the canonical save container,
-not done yet) and P6.24 (one build) depends on it.
+built as an opt-in store in slice 2) and P6.24 (one build) depends on it.
 
 ## Owner decision: the Switch profile selector (2026-10-24)
 
@@ -259,8 +259,13 @@ logs its facts (below) so the first run answers the open "check" items.
   ```
 
   Everything `memcard_host` and `port/autosave` write follows
-  `memcard_host_set_dir`, so no other code changed. When P6.25 lands the
-  `memcard/` folder is replaced by `card0.dw3s` and the import prompt below.
+  `memcard_host_set_dir`, so no other code changed. **P6.25 slice 2 (2026-10-30)**
+  adds the `card0.dw3s` / `card1.dw3s` store **inside the profile folder**
+  (`saves/<uid>/card0.dw3s`, `imported.txt`, `*.bak`), opt-in with `save_store=1`;
+  the `<region>/memcard/` folders stay (they are the migration sources, read only,
+  and the saves of a build with the option off), so the layout above is unchanged
+  ([CROSS_REGION_SAVES](CROSS_REGION_SAVES.md#as-built-slice-2)). The import prompt
+  below is still future work.
 - **Legacy copy (interim, safe).** When a profile's region folder does not exist
   yet, the legacy files of `sdmc:/switch/dw3/<region>/memcard/` (`save0.bin`,
   `save1.bin`, `autosave.bin` and their `.cheats` files) are **copied** (never

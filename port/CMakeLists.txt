@@ -180,6 +180,7 @@ target_include_directories(dw3_cdfs PRIVATE
 add_library(dw3_memcard OBJECT
   "${CMAKE_CURRENT_SOURCE_DIR}/memcard/memcard_host.c"
   "${CMAKE_CURRENT_SOURCE_DIR}/memcard/save_convert.c"
+  "${CMAKE_CURRENT_SOURCE_DIR}/memcard/save_store.c"
   "${CMAKE_CURRENT_SOURCE_DIR}/memcard/memcard_libmcrd.c"
   "${CMAKE_CURRENT_SOURCE_DIR}/memcard/psyz_card_wrap.c"
   "${CMAKE_CURRENT_SOURCE_DIR}/saves/user_saves.c"
