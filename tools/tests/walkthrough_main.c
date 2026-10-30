@@ -263,11 +263,38 @@ static void test_builtin(void) {
     expect_status(-1, WT_REGION_US, WT_UNKNOWN);
     expect_status(0x8000, WT_REGION_US, WT_UNKNOWN);
     expect_status(WT_PROGRESS_MAX + 1, WT_REGION_EU, WT_UNKNOWN);
-    /* SIDE rows never decide the current step */
-    for (i = 0; i < n; ++i) {
-        if (t[i].kind == WT_SIDE) {
-            CHECK(strcmp(t[i].id, "ch01.x01") == 0, "unexpected side row %s", t[i].id);
+    /* SIDE rows never decide the current step, are named, have a category, and are gated by the
+     * chapter: never earlier than the chapter's first MAIN row (the optional rows of slice 4
+     * open exactly there; ch01.x01 opens at progress 4). Their regions follow their chapter. */
+    {
+        static const char *const known[] = {"ch01.x01", "ch04.x01", "ch04.x02", "ch08.x01",
+                                            "ch08.x02", "ch12.x01", "ch12.x02"};
+        int nside = 0;
+
+        for (i = 0; i < n; ++i) {
+            int k, ok = 0, start = -1;
+
+            if (t[i].kind != WT_SIDE) continue;
+            ++nside;
+            for (k = 0; k < (int)(sizeof(known) / sizeof(known[0])); ++k) ok |= strcmp(t[i].id, known[k]) == 0;
+            CHECK(ok, "unexpected side row %s", t[i].id);
+            CHECK(t[i].category != WT_CAT_NONE, "side row %s has no category", t[i].id);
+            CHECK(t[i].to_progress < 0, "side row %s has an upper bound", t[i].id);
+            for (k = 0; k < n; ++k) {
+                if (t[k].kind == WT_MAIN && strcmp(t[k].chapter, t[i].chapter) == 0 &&
+                    (start < 0 || t[k].from_progress < start)) {
+                    start = t[k].from_progress;
+                }
+            }
+            CHECK(start >= 0 && t[i].from_progress >= start, "side row %s opens before its chapter", t[i].id);
+            if (strcmp(t[i].id, "ch01.x01") != 0) {
+                CHECK(t[i].from_progress == start, "side row %s: from %d, chapter starts at %d", t[i].id,
+                      t[i].from_progress, start);
+            }
+            CHECK((strncmp(t[i].id, "ch12", 4) == 0) == (t[i].region == WT_REGION_EU),
+                  "side row %s: region %d", t[i].id, t[i].region);
         }
+        CHECK(nside == (int)(sizeof(known) / sizeof(known[0])), "%d side rows", nside);
     }
     /* table checks: unique ids, ordered, MAIN ranges ordered */
     for (i = 0; i < n; ++i) {

@@ -1,4 +1,4 @@
-# DW3NX walkthrough, English master text, the whole main story and the EU extra chapter (P6.35).
+# DW3NX walkthrough, English master text, the whole main story, the EU extra chapter and the optional rows (P6.35).
 # DRAFT, OWNER REVIEW PENDING. Nothing in this file may ship before the owner
 # approves it (docs/P6.35_WALKTHROUGH.md, section 7). Original writing from the
 # decomp's stage scripts and flags (progress values and flags checked against
@@ -164,6 +164,14 @@ wt.ch04_s02.help = The talk leads into a battle. Win it to get the Byakko Badge;
 wt.ch04_s03.title = Fight HiAndromon
 wt.ch04_s03.goal = Go to the Operation Room in the West Sector and speak to HiAndromon. A battle follows.
 wt.ch04_s03.help = Win the battle with HiAndromon to get the Rusty Rifle. The story moves on afterwards.
+
+wt.ch04_x01.title = The Seabed
+wt.ch04_x01.goal = Optional. From this chapter on, the UG Lake in the South Sector has a way down into the Seabed, a web of underground tunnels.
+wt.ch04_x01.help = The tunnels run under the Sewers, Duel Island, Kicking Forest and the UG Lake; under the bridges; under Divermon's Lake and the South and West Sectors; under Shell Beach, Plug Cape, South Cape and the Lake of Ice; and under Central Park, Bulk Bridge and Phoenix Bay. A junction tunnel links most of them. One dead end holds two chests.
+
+wt.ch04_x02.title = The Seabed forge
+wt.ch04_x02.goal = Optional. A weapon forge is hidden in the Seabed. It upgrades weapons for those who bring the right parts.
+wt.ch04_x02.help = The forge is in a tunnel that only the other Seabed tunnels reach, where Seehomon and Depthmon work. Speak to a smith once, then again with the right usable item in your pack: you get a stronger weapon, and the item (and the weapon one grade below, if you carry it) is taken. Two upgrades are offered.
 # ---------------------------------------------------------------- chapter 5
 wt.ch05.title = West Sector rebels
 
@@ -256,6 +264,14 @@ wt.ch08_s06.help = The scenes in the Prison Tower have to play before the Master
 wt.ch08_s07.title = Master Room again
 wt.ch08_s07.goal = Return to the Master Room in Asuka City.
 wt.ch08_s07.help = The last scene there, with Lisa, Nick, Keith and Teddy, moves the story on.
+
+wt.ch08_x01.title = The Circuit Board
+wt.ch08_x01.goal = Optional. From this chapter on, maps in several sectors have an entrance to the Circuit Board, a second web of underground tunnels.
+wt.ch08_x01.help = The entrance tunnels lead on to deeper ones: a tunnel with Black Kingz and Numemon, the Black Kingz' den, and two last tunnels with guides to the exits of both servers. Duels and fights wait inside.
+
+wt.ch08_x02.title = The Black Kingz' den
+wt.ch08_x02.goal = Optional. The Black Kingz keep a den in the Circuit Board. Its members challenge you to card duels.
+wt.ch08_x02.help = The den is reached from the deeper tunnels. Eight Black Kingz accept a card duel. A duel is offered until you win it; after that the winner only talks. Six of them hand over a card for the first win, and one more gives a key item.
 # ---------------------------------------------------------------- chapter 9
 wt.ch09.title = Two more ID passes
 
@@ -322,6 +338,14 @@ wt.ch12_s02.help = They offer a fight only if you hold a certain set of five ite
 wt.ch12_s03.title = Kurt at the Arena
 wt.ch12_s03.goal = The four are beaten. Go to the Arena Front Desk in Amaterasu City. Kurt waits in the Digimon Arena, and a battle follows.
 wt.ch12_s03.help = Speak to the clerk at the desk. Kurt's scene plays when you enter the Digimon Arena, and the battle comes right after it. Winning it is the last step of the extra chapter that this walkthrough follows.
+
+wt.ch12_x01.title = A set of five weapons
+wt.ch12_x01.goal = Five weapons can be made in the North Sector.
+wt.ch12_x01.help = Kulon Weapons in the North Sector has five smiths. Speak to a smith once, then again with the right usable item in your pack: you get one of the five weapons, and the item (and the weapon one grade below, if you carry it) is taken. These five are the set the four challengers ask for. Hold all five, in your pack or equipped.
+
+wt.ch12_x02.title = Partners to win back
+wt.ch12_x02.goal = Optional. Partners you have not recruited yet can still join you in the Circuit Board tunnels of this chapter.
+wt.ch12_x02.help = Two deep Circuit Board tunnels hold a fighter for each of the eight partners. A fighter stands there only while its partner is not yet yours, and only once every partner you have is level 45 or more. Where it stands depends on the way you came in. Talk to it twice: a fight starts, and after you win the partner joins you and you get a key item.
 
 # ---------------------------------------------------------------- areas
 wt.area_kusanagi.title = Kusanagi City

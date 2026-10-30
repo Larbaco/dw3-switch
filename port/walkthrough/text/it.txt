@@ -1,4 +1,4 @@
-# DW3NX walkthrough, Italian text, the whole main story and the EU extra chapter (P6.35).
+# DW3NX walkthrough, Italian text, the whole main story, the EU extra chapter and the optional rows (P6.35).
 # MACHINE-DRAFTED, NEEDS NATIVE REVIEW. Written by an AI agent from en.txt; the
 # owner approved the English and cannot check the other languages
 # (docs/P6.35_WALKTHROUGH.md, section 7). Same keys, same budgets as en.txt
@@ -154,6 +154,14 @@ wt.ch04_s02.help = La conversazione porta a una battaglia. Vincila per ottenere 
 wt.ch04_s03.title = Sfida HiAndromon
 wt.ch04_s03.goal = Vai all'Operation Room, nel West Sector, e parla con HiAndromon. Segue una battaglia.
 wt.ch04_s03.help = Vinci la battaglia con HiAndromon per ottenere il Rusty Rifle. Poi la storia prosegue.
+
+wt.ch04_x01.title = Il Seabed
+wt.ch04_x01.goal = Facoltativo. Da questo capitolo, l'UG Lake del South Sector offre una discesa nel Seabed, una rete di tunnel sotterranei.
+wt.ch04_x01.help = I tunnel corrono sotto le Sewers, Duel Island, Kicking Forest e l'UG Lake; sotto i ponti; sotto Divermon's Lake e i South e West Sector; sotto Shell Beach, Plug Cape, South Cape e il Lake of Ice; e sotto Central Park, Bulk Bridge e Phoenix Bay. Un tunnel di raccordo ne collega la maggior parte. Un vicolo cieco contiene due bauli.
+
+wt.ch04_x02.title = La forgia del Seabed
+wt.ch04_x02.goal = Facoltativo. Nel Seabed è nascosta una forgia di armi. Potenzia le armi di chi porta i pezzi giusti.
+wt.ch04_x02.help = La forgia è in un tunnel raggiungibile solo dagli altri tunnel del Seabed, dove lavorano Seehomon e Depthmon. Parla una volta con un fabbro, poi di nuovo con l'oggetto utilizzabile giusto nello zaino: ricevi un'arma più forte, e l'oggetto (e l'arma di un livello inferiore, se la porti con te) viene preso. Sono offerti due potenziamenti.
 # ---------------------------------------------------------------- chapter 5
 wt.ch05.title = I ribelli
 
@@ -246,6 +254,14 @@ wt.ch08_s06.help = Le scene della Prison Tower devono avvenire prima che la scen
 wt.ch08_s07.title = Ancora Master Room
 wt.ch08_s07.goal = Torna alla Master Room di Asuka City.
 wt.ch08_s07.help = L'ultima scena lì, con Lisa, Nick, Keith e Teddy, fa proseguire la storia.
+
+wt.ch08_x01.title = Il Circuit Board
+wt.ch08_x01.goal = Facoltativo. Da questo capitolo, le mappe di diversi settori hanno un ingresso al Circuit Board, una seconda rete di tunnel sotterranei.
+wt.ch08_x01.help = I tunnel d'ingresso portano a tunnel più profondi: un tunnel con Black Kingz e Numemon, la tana dei Black Kingz e due ultimi tunnel con guide verso le uscite di entrambi i server. All'interno aspettano duelli e scontri.
+
+wt.ch08_x02.title = La tana dei Black Kingz
+wt.ch08_x02.goal = Facoltativo. I Black Kingz hanno una tana nel Circuit Board. I suoi membri ti sfidano a duelli di carte.
+wt.ch08_x02.help = Si raggiunge la tana dai tunnel più profondi. Otto Black Kingz accettano un duello di carte. Un duello è offerto finché non lo vinci; dopo, il vincitore si limita a parlare. Sei di loro danno una carta per la prima vittoria, e uno in più dà un oggetto chiave.
 # ---------------------------------------------------------------- chapter 9
 wt.ch09.title = Altri due ID Pass
 
@@ -312,6 +328,14 @@ wt.ch12_s02.help = Offrono uno scontro solo se hai un certo set di cinque oggett
 wt.ch12_s03.title = Kurt all'Arena
 wt.ch12_s03.goal = I quattro sono sconfitti. Vai all'Arena Front Desk di Amaterasu City. Kurt aspetta nella Digimon Arena, e segue una battaglia.
 wt.ch12_s03.help = Parla con l'impiegato allo sportello. La scena di Kurt si svolge quando entri nella Digimon Arena, e la battaglia segue subito dopo. Vincerla è l'ultimo passo del capitolo extra che questa soluzione segue.
+
+wt.ch12_x01.title = Un set di cinque armi
+wt.ch12_x01.goal = Cinque armi si possono forgiare nel North Sector.
+wt.ch12_x01.help = Kulon Weapons, nel North Sector, ha cinque fabbri. Parla una volta con un fabbro, poi di nuovo con l'oggetto utilizzabile giusto nello zaino: ricevi una delle cinque armi, e l'oggetto (e l'arma di un livello inferiore, se la porti con te) viene preso. Queste cinque sono il set richiesto dai quattro sfidanti. Tienile tutte e cinque, nello zaino o equipaggiate.
+
+wt.ch12_x02.title = Partner da riconquistare
+wt.ch12_x02.goal = Facoltativo. I partner che non hai ancora reclutato possono ancora unirsi a te nei tunnel del Circuit Board di questo capitolo.
+wt.ch12_x02.help = Due tunnel profondi del Circuit Board ospitano un combattente per ciascuno degli otto partner. Un combattente c'è solo finché il suo partner non è ancora tuo, e solo quando tutti i partner che hai sono al livello 45 o più. Dove si trova dipende dall'ingresso usato. Parlagli due volte: inizia uno scontro e, dopo la vittoria, il partner si unisce a te e ricevi un oggetto chiave.
 
 # ---------------------------------------------------------------- areas
 wt.area_kusanagi.title = Kusanagi City

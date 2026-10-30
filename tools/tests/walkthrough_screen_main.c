@@ -426,6 +426,143 @@ static void test_neighbours(void) {
     dw3_wt_close();
 }
 
+
+/* Moves the cursor of the open list to the entry whose title is `title`; 1 when it got there. */
+static int goto_entry(const char *title) {
+    int i;
+    int n = dw3_wt_view()->npages;
+
+    for (i = 0; i < n; i++) {
+        keys(DW3_HELP_KEY_UP);
+    }
+    for (i = 0; i < n; i++) {
+        if (strcmp(dw3_wt_view()->titles[dw3_wt_view()->cursor], title) == 0) {
+            return 1;
+        }
+        keys(DW3_HELP_KEY_DOWN);
+    }
+    return 0;
+}
+
+/* From the open page of the current step to the step list of the next chapter (the player has
+ * not reached it): the entries of an unreached chapter. Returns the entry count. */
+static int next_chapter_count(void) {
+    keys(DW3_HELP_KEY_BACK);                          /* the chapter's steps */
+    keys(DW3_HELP_KEY_BACK);                          /* the chapters */
+    keys(DW3_HELP_KEY_DOWN);
+    keys(DW3_HELP_KEY_CONFIRM);
+    return dw3_wt_view()->npages;
+}
+
+/* The two-action reveal on the page that is open: the help text is absent until Yes. */
+static void reveal(const char *help_word, const char *goal_word) {
+    CHECK(page_has(goal_word) && !page_has(help_word));
+    keys(DW3_HELP_KEY_CONFIRM);
+    CHECK(strcmp(dw3_wt_view()->header, "Show the answer?") == 0 && !page_has(help_word));
+    keys(DW3_HELP_KEY_DOWN);
+    keys(DW3_HELP_KEY_CONFIRM);
+    CHECK(page_has(help_word));
+}
+
+/* Slice 4, the side content: a chapter's optional rows are listed once the chapter is reached and
+ * not a progress value before; the goal is visible, the help sits behind the two actions; the
+ * extra chapter's rows exist on EU only. */
+static void test_side_content(void) {
+    static const struct {
+        int region;
+        int before;                                   /* progress one value before the chapter */
+        int at;                                       /* the chapter's first value */
+        const char *rows[2];
+        const char *goal_word[2];
+        const char *help_word[2];
+    } cases[] = {
+        {DW3_PAGES_US, 0xE, 0xF, {"The Seabed", "The Seabed forge"}, {"UG Lake", "weapon forge"},
+         {"Divermon", "Seehomon"}},
+        {DW3_PAGES_EU, 0xE, 0xF, {"The Seabed", "The Seabed forge"}, {"UG Lake", "weapon forge"},
+         {"Divermon", "Seehomon"}},
+        {DW3_PAGES_US, 0x1D, 0x1E, {"The Circuit Board", "The Black Kingz' den"}, {"several sectors", "card duels"},
+         {"Numemon", "Eight Black"}},
+        {DW3_PAGES_EU, 0x1D, 0x1E, {"The Circuit Board", "The Black Kingz' den"}, {"several sectors", "card duels"},
+         {"Numemon", "Eight Black"}},
+        {DW3_PAGES_EU, 0x2B, 0x2D, {"A set of five weapons", "Partners to win back"}, {"North Sector", "recruited"},
+         {"Kulon Weapons", "level 45"}},
+    };
+    int k;
+
+    for (k = 0; k < (int)(sizeof(cases) / sizeof(cases[0])); k++) {
+        Dw3WtConfig c = cfg(cases[k].region, 0, 1);
+        const Dw3HelpView *v;
+        int hidden;
+        int shown;
+        int r;
+
+        /* one value before the chapter: its step list has no optional row, and says so */
+        state(cases[k].before, 0);
+        CHECK(dw3_wt_open(&c) == 0);
+        hidden = next_chapter_count();
+        CHECK(!list_has(cases[k].rows[0]) && !list_has(cases[k].rows[1]));
+        dw3_wt_close();
+        /* the chapter's first value: both rows are listed, as Optional, after the main steps */
+        state(cases[k].at, 0);
+        CHECK(dw3_wt_open(&c) == 0);
+        keys(DW3_HELP_KEY_BACK);
+        v = dw3_wt_view();
+        shown = v->npages;
+        CHECK(shown == hidden + 2);
+        for (r = 0; r < 2; r++) {
+            CHECK(goto_entry(cases[k].rows[r]));
+            CHECK(strstr(dw3_wt_view()->strip, "Optional") != NULL);
+            keys(DW3_HELP_KEY_CONFIRM);
+            CHECK(dw3_wt_view()->screen == DW3_HELP_SCREEN_PAGE &&
+                  strcmp(dw3_wt_view()->header, cases[k].rows[r]) == 0);
+            CHECK(strstr(dw3_wt_view()->strip, "Optional") != NULL);
+            reveal(cases[k].help_word[r], cases[k].goal_word[r]);
+            keys(DW3_HELP_KEY_BACK);                  /* the steps; the answer closes again */
+            CHECK(dw3_wt_level() == DW3_WT_LEVEL_STEPS);
+            keys(DW3_HELP_KEY_CONFIRM);
+            CHECK(!page_has(cases[k].help_word[r]));
+            keys(DW3_HELP_KEY_BACK);
+        }
+        dw3_wt_close();
+    }
+    /* the extra chapter's rows are not on US: the value 0x2D is past its table, so the chapter
+     * list opens with all 11 chapters reached, and chapters 4 and 8 list their optional rows */
+    {
+        Dw3WtConfig us = cfg(DW3_PAGES_US, 0, 1);
+        int i;
+
+        state(0x2D, 0);
+        g_asked_eu = 0;
+        CHECK(dw3_wt_open(&us) == 0);
+        CHECK(g_asked_eu == 0 && dw3_wt_level() == DW3_WT_LEVEL_CHAPTERS && dw3_wt_view()->npages == 11);
+        for (i = 0; i < 11; i++) {
+            CHECK(strstr(dw3_wt_view()->titles[i], "Not reached") == NULL);
+        }
+        for (i = 0; i < 3; i++) {
+            keys(DW3_HELP_KEY_DOWN);                  /* chapter 4 */
+        }
+        keys(DW3_HELP_KEY_CONFIRM);
+        CHECK(list_has("The Seabed") && !list_has("Circuit Board") && !list_has("weapons"));
+        keys(DW3_HELP_KEY_BACK);
+        for (i = 0; i < 4; i++) {
+            keys(DW3_HELP_KEY_DOWN);                  /* chapter 8 */
+        }
+        keys(DW3_HELP_KEY_CONFIRM);
+        CHECK(list_has("The Circuit Board") && list_has("Black Kingz") && !list_has("Seabed"));
+        dw3_wt_close();
+    }
+    /* French on EU: the rows are translated, no English fallback line */
+    {
+        Dw3WtConfig fr = cfg(DW3_PAGES_EU, 1, 1);
+
+        state(0x2D, 0);
+        CHECK(dw3_wt_open(&fr) == 0);
+        keys(DW3_HELP_KEY_BACK);
+        CHECK(list_has("Cinq armes") && list_has("Partenaires"));
+        dw3_wt_close();
+    }
+}
+
 /* The EU extra chapter: region EU only, three steps that go by flags. */
 static void test_extra_chapter(void) {
     Dw3WtConfig eu = cfg(DW3_PAGES_EU, 0, 1);
@@ -619,6 +756,7 @@ int main(void) {
     test_other_points();
     test_neighbours();
     test_extra_chapter();
+    test_side_content();
     test_region_and_language();
     test_fit();
     if (g_fail != 0) {

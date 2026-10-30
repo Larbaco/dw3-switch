@@ -526,3 +526,241 @@ def test_hook_region_is_the_build_not_a_defined_macro():
     discs: the probe resolved the EU-only extra chapter on US. The region test must read the value."""
     src = (WT / "walkthrough_hook.c").read_text()
     assert "#if defined(VERSION_EU) && VERSION_EU\n#define WT_THIS_REGION WT_REGION_EU" in src
+
+
+# --------------------------------------------------------------- slice 4: the side content
+
+def decomp() -> Path:
+    need_decomp()
+    return ROOT / "vendor" / "dw3_decomp"
+
+
+def special_table(region: str) -> dict[int, tuple[int, int]]:
+    """SPECIAL_CONDITIONS of the US or the EU build: id -> (check, arg)."""
+    ev = (decomp() / "src" / "engine" / "game" / "events.c").read_text()
+    a = ev.index("SpecialCondition SPECIAL_CONDITIONS[] = {")
+    cut = ev[a:ev.index("};", a)]
+    if region == "US":
+        body = cut[cut.index("#if VERSION_US"):cut.index("#elif VERSION_EU")]
+    else:
+        body = cut[cut.index("#elif VERSION_EU"):]
+    return {int(i, 16): (int(c, 16), int(g, 16))
+            for i, c, g in re.findall(r"\{ (0x[0-9A-F]{2}), (0x[0-9A-F]{2}), (0x[0-9A-F]{2}) \}", body)}
+
+
+def progress_ranges() -> list[tuple[int, int]]:
+    ev = (decomp() / "src" / "engine" / "game" / "events.c").read_text()
+    a = ev.index("u8 PROGRESS_RANGES[][2] = {")
+    return [(int(x, 16), int(y, 16)) for x, y in re.findall(r"\{ (0x[0-9A-F]{2}), (0x[0-9A-F]{2}) \}",
+                                                           ev[a:ev.index("};", a)])]
+
+
+def chapter_start(rows: list[dict], chapter: str) -> int:
+    return min(r["frm"] for r in rows if r["kind"] == 0 and r["chapter"] == chapter)
+
+
+def test_side_rows_table_shape(wt_bin: Path):
+    """The slice-4 rows: six SIDE rows, each in the chapter whose first value is its gate, in the
+    area the text file knows, EU only in the extra chapter, and with all five languages' text."""
+    rows = table_rows(wt_bin)
+    side = {r["id"]: r for r in rows if r["kind"] == 1}
+    assert list(side) == ["ch01.x01", "ch04.x01", "ch04.x02", "ch08.x01", "ch08.x02", "ch12.x01", "ch12.x02"]
+    for sid, r in side.items():
+        if sid != "ch01.x01":
+            assert r["frm"] == chapter_start(rows, r["chapter"]), sid        # shown from the chapter on
+        assert r["to"] == -1
+        assert r["region"] == (2 if r["chapter"] == "ch12" else 0), sid
+    # the table is ordered by progress and its `order` grows over the whole table
+    assert [r["frm"] for r in rows] == sorted(r["frm"] for r in rows)
+    assert [r["order"] for r in rows] == sorted(r["order"] for r in rows)
+    assert len({r["order"] for r in rows}) == len(rows)
+    # the map area is that of the row's main place: the Underground (825 to 895, 970, 971) has none, Kulon
+    # Weapons (731) is in the North Sector
+    src = (decomp() / "src" / "field" / "field_mode" / "data" / "fieldstg.c").read_text()
+    t = src[src.index("StageEntry FIELDSTG_stages[] = {"):]
+    mode = {int(m.group(2)): int(m.group(1)) for m in re.finditer(r"\{(\d+), \d+, WSTAG(\d+)_startStage\}", t[:t.index("};")])}
+    ex = src[src.index("StageEntry FIELDSTG_extraStages[] = {"):]
+    emode = {int(m.group(2)): int(m.group(1)) for m in re.finditer(r"\{(\d+), \d+, WSTAG(\d+)_startStage\}", ex[:ex.index("};")])}
+    mine = re.search(r"k_map_areas\[\d+\] = \{(.*?)\};", (WT / "walkthrough_areas.c").read_text(), re.S)
+    areas = [int(x, 16) for x in re.findall(r"0x[0-9A-Fa-f]+", mine.group(1))]
+
+    def area(m: int) -> int:
+        v = areas[m & 0xFF]
+        return -1 if v == 0xFF else v & 0x7F
+    assert side["ch12.x01"]["map_area"] == area(mode[731]) == 8
+    for sid, stage in (("ch04.x01", 825), ("ch04.x02", 845), ("ch08.x01", 865), ("ch08.x02", 875)):
+        assert side[sid]["map_area"] == area(mode[stage]) == -1, sid
+    assert side["ch12.x02"]["map_area"] == area(emode[970]) == area(emode[971]) == -1
+    for lang in LANGS:
+        _, keys = parse_text(WT / "text" / f"{lang}.txt")
+        for sid in list(side)[1:]:
+            for layer in ("title", "goal", "help"):
+                assert keys[f"wt.{sid.replace('.', '_')}.{layer}"], (lang, sid, layer)
+        # a goal never carries the answer: it must not name the places the help names
+        assert "Seehomon" not in keys["wt.ch04_x02.goal"] and "Kulon" not in keys["wt.ch12_x01.goal"]
+
+
+def test_seabed_and_circuit_board_gates_match_decomp(wt_bin: Path):
+    """ch04.x01 / x02: the UG Lakes (525, 526) and Duel Island (385) warp to mode 0x2E0 (WSTAG825) behind
+    SPECIAL(0x93), which is PROGRESS_RANGES[0xC] = 0x0F..0x63 on both discs; ch08.x01 / x02: the sector
+    maps warp to 0x2E8 / 0x2E9 (WSTAG865 / 870) behind SPECIAL(0x94) = PROGRESS_RANGES[0xD] = 0x1E..0x63."""
+    d = decomp()
+    rows = table_rows(wt_bin)
+    ranges = progress_ranges()
+    for region in ("US", "EU"):
+        sp = special_table(region)
+        assert sp[0x93] == (0x30, 0x0C) and sp[0x94] == (0x30, 0x0D), region
+    assert ranges[0xC] == (0x0F, 0x63) and ranges[0xD] == (0x1E, 0x63)
+    assert chapter_start(rows, "ch04") == ranges[0xC][0] and chapter_start(rows, "ch08") == ranges[0xD][0]
+    ev = (d / "src" / "engine" / "game" / "events.c").read_text()
+    chk = ev[ev.index("s32 checkProgressRange("):]
+    assert "int min" not in chk and "value >= min" in chk and "max >= value" in chk
+    for stage in (525, 526, 385):
+        assert re.search(r"\{ \{ \{ SPECIAL\(0x93\), 1 \}, \{ CODES_END, 0 \} \}, SLOT_WARP0, 0x2E0,", stage_text(stage)), stage
+    for stage in (395, 480, 481, 490, 491, 690, 706):
+        assert re.search(r"SPECIAL\(0x94\), 1 \}, \{ CODES_END, 0 \} \}, SLOT_WARP1, 0x2E[89],", stage_text(stage)), stage
+    stg = (d / "src" / "field" / "field_mode" / "data" / "fieldstg.c").read_text()
+    for mode, stage in ((736, 825), (744, 865), (745, 870), (746, 875)):
+        assert f"{{{mode}, " in stg and re.search(r"\{%d, \d+, WSTAG%d_startStage\}" % (mode, stage), stg), (mode, stage)
+    assert 0x2E0 == 736 and 0x2E8 == 744 and 0x2E9 == 745
+    # the stage headers the help text summarises
+    h = {n: stage_text(n)[:600] for n in (825, 830, 835, 840, 845, 850, 855, 860, 865, 875, 885, 890, 895)}
+    assert "below the Sewers, Duel Island, Kicking Forest" in h[825] and "UG Lake" in h[825]
+    assert "below the bridges" in h[830]
+    assert "Divermon's Lake" in h[835] and "South and West" in h[835]
+    assert "Shell Beach, Plug Cape, South Cape and" in h[840] and "Lake of Ice" in h[840]
+    assert "Central Park, Bulk Bridge and Phoenix Bay" in h[850]
+    assert "junction" in h[855] and "Seehomon" in h[845] and "Depthmon" in h[845]
+    assert "chests" in h[860]
+    assert "Central, East, South, West and North Sector" in h[865]
+    assert "Black Kingz" in h[875] and "Black Kingz and" in h[885] and "Numemon" in h[885]
+    assert "guides to both servers" in h[890] and "guides to both servers" in h[895]
+
+
+def test_seabed_forge_and_chests_match_decomp():
+    """ch04.x02: Seehomon's and Depthmon's forge (WSTAG845): after a first talk (temporary flag 0), a second
+    with the usable item swaps it (and the weapon one grade below) for the stronger weapon; two upgrades.
+    ch04.x01 help: the dead end WSTAG860 has two chests that each give an item once."""
+    s = stage_text(845)
+    assert len(re.findall(r"Talk1Actions\[\] = \{ FLAG\(0, 0\), 1, CODES_END \}", s)) == 4
+    recipes = re.findall(r"Talk3Actions\[\] = \{ ITEM\(3, (0x[0-9A-F]+)\), 1, ITEM\(3, (0x[0-9A-F]+)\), 0, "
+                         r"ITEM\(2, (0x[0-9A-F]+)\), 0, CODES_END \}", s)
+    assert sorted(recipes) == sorted([("0x76", "0x75", "0x72"), ("0x9B", "0x9A", "0x97"),
+                                      ("0x9B", "0x9A", "0x97"), ("0x9B", "0x9A", "0x97")])
+    assert len({r[0] for r in recipes}) == 2                                   # "two upgrades"
+    for out, prev, _ in recipes:                                              # one grade below: the id minus one
+        assert int(out, 16) - int(prev, 16) == 1
+    # the talk that swaps needs the usable item, the temporary flag and that the result is not owned yet
+    assert re.search(r"actor0Talk3Conditions\[\] = \{ ITEM\(3, 0x76\), 0, FLAG\(0, 0\), 1, ITEM\(2, 0x72\), 1, CODES_END \}", s)
+    c = stage_text(860)
+    assert re.search(r"actor0Talk0Actions\[\] = \{ FLAG\(2, 0x2C\), 1, ITEM\(1, 0x36\), 1, CODES_END \}", c)
+    assert re.search(r"actor1Talk0Actions\[\] = \{ FLAG\(2, 0x55\), 1, ITEM\(1, 0x40\), 1, CODES_END \}", c)
+    assert "actor0Conditions[] = { WARP_ARG(5), 1, WARP_ARG(0x1E), 1, FLAG(2, 0x2C), 0," in c
+    gs = (decomp() / "include" / "engine" / "game_state.h").read_text()
+    assert "#define ITEM_KIND_USABLE 2" in gs and "#define ITEM_KIND_WEAPON 3" in gs
+
+
+def test_black_kingz_den_matches_decomp():
+    """ch08.x02 (WSTAG875): eight Black Kingz offer a card duel until it is won; six give a card on the first
+    win (the duel is offered only while the card is not owned), one gives a key item (ITEM(0, 0x18D))."""
+    s = stage_text(875)
+    battles = re.findall(r"actor(\d+)Talk0Actions\[\] = \{ CARD_BATTLE\((0x[0-9A-F]+), 0\), 1, CODES_END \}", s)
+    assert [int(a) for a, _ in battles] == list(range(2, 10))                  # eight opponents, actors 2 to 9
+    assert len(set(o for _, o in battles)) == 8
+    cards = re.findall(r"actor(\d+)Talk3Actions\[\] = \{ FLAG\(0, 0x11\), 0, FLAG\(0, 0x10\), 0, CARD\((0x[0-9A-F]+)\), 1, CODES_END \}", s)
+    assert [int(a) for a, _ in cards] == list(range(4, 10))                    # six give a card
+    for a, card in cards:                                                      # offered only while it is not owned
+        assert re.search(r"actor%sTalk0Conditions\[\] = \{[^}]*CARD\(%s\), 0" % (a, card), s), a
+        assert re.search(r"actor%sTalk1Conditions\[\] = \{[^}]*CARD\(%s\), 1" % (a, card), s), a
+    assert re.search(r"actor3Talk3Actions\[\] = \{\s*FLAG\(0, 0x11\), 0,\s*FLAG\(0, 0x10\), 0,\s*FLAG\(0x1C, 0x40\), 1,\s*ITEM\(0, 0x18D\), 1,", s)
+    assert re.search(r"actor3Talk0Conditions\[\] = \{ FLAG\(0x1C, 0x40\), 0,", s)
+    assert re.search(r"actor2Talk3Actions\[\] = \{[^}]*FLAG\(0x1C, 0x3F\), 1", s)    # the other one only sets a flag
+    ev = (decomp() / "src" / "engine" / "game" / "events.c").read_text()
+    assert "pendingFlag10" in ev and "applyAction(0x10, 1)" in ev                     # flag (0, 0x10) = won the duel
+    assert "GAME.funcs.getPrevMode() == MODE_CARD_GAME" in ev
+
+
+def test_five_weapons_match_decomp():
+    """ch12.x01: the five weapons SPECIAL(0x96) asks for (items 0x69, 0x77, 0x83, 0x90, 0x9C) are what the five
+    smiths of Kulon Weapons (WSTAG731, the Amaterasu twin of 730) hand out: each swaps one usable item (and the
+    weapon one grade below, if carried) after a first talk."""
+    s = stage_text(731)
+    assert "Kulon Weapons" in s[:200] and "Amaterasu" in s[:200]
+    want = [("0x9C", "0x9B", "0x98"), ("0x90", "0x8F", "0x8C"), ("0x77", "0x76", "0x73"),
+            ("0x83", "0x82", "0x7F"), ("0x69", "0x68", "0x65")]
+    got = re.findall(r"Talk3Actions\[\] = \{\s*ITEM\(3, (0x[0-9A-F]+)\), 1,\s*ITEM\(3, (0x[0-9A-F]+)\), 0,\s*"
+                     r"ITEM\(2, (0x[0-9A-F]+)\), 0,\s*SPECIAL\(0x13\), 1,", s)
+    assert got == want
+    for out, prev, mat in want:
+        assert int(out, 16) - int(prev, 16) == 1
+        assert re.search(r"Talk3Conditions\[\] = \{ ITEM\(3, %s\), 0, FLAG\(0, \d\), 1, ITEM\(2, %s\), 1, CODES_END \}"
+                         % (out, mat), s)
+        assert re.search(r"Talk1Actions\[\] = \{ FLAG\(0, \d\), 1, CODES_END \}", s)
+    ev = (decomp() / "src" / "engine" / "game" / "events.c").read_text()
+    items = ev[ev.index("s32 checkItemSet(s32 op, s32 arg) {"):]
+    case1 = items[items.index("case 1:"):items.index("break;", items.index("case 1:"))]
+    assert re.findall(r"GAME\.items\[(0x[0-9A-F]+)\]", case1) == ["0x69", "0x77", "0x83", "0x90", "0x9C"]
+    assert special_table("EU")[0x96] == (0x01, 0x00)                           # check 0x01 = item set, op 1
+    gs = (decomp() / "include" / "engine" / "game_state.h").read_text()
+    assert "#define ITEM_KIND_USABLE 2" in gs and "#define ITEM_KIND_WEAPON 3" in gs
+
+
+def test_tunnel_partners_match_decomp():
+    """ch12.x02: WSTAG970 and 971 (the extra chapter's Circuit Board) hold a fighter for each of the eight
+    partners. Each stands only while its partner is not unlocked (SPECIAL ... == 0) and SPECIAL(0x95) holds
+    (every unlocked partner is level 0x2D = 45 or more); a first talk sets a temporary flag, a second starts the
+    event battle once (flag 0xA:x), and the win unlocks the partner and gives a key item."""
+    d = decomp()
+    eu = special_table("EU")
+    assert eu[0x95] == (0x17, 0x00)                         # check 0x17: partner op 7 (EU)
+    ev = (d / "src" / "engine" / "game" / "events.c").read_text()
+    case7 = ev[ev.index("    case 7:\n        result = 1;"):ev.index("    case 8:\n")]
+    assert "STAT_LEVEL] < 0x2D" in case7 and "result = 0" in case7
+    assert "case 0x10" not in case7
+    unlock_of = {i: g for i, (c, g) in eu.items() if c == 0x13}                # SPECIAL(id) unlocks partner arg
+    owned_of = {i: g for i, (c, g) in eu.items() if c == 0x11}                 # SPECIAL(id): partner arg is unlocked
+    assert sorted(unlock_of.values()) == list(range(8)) and sorted(owned_of.values()) == list(range(8))
+    unlocked = set()
+    for stage in (970, 971):
+        s = stage_text(stage)
+        assert len(re.findall(r"EVENT_BATTLE\(\d\), 1", s)) == 4
+        for m in re.finditer(r"u16 actor(\d+)Conditions\[\] = \{(.*?)CODES_END", s, re.S):
+            if "SPECIAL(0x95), 1" not in m.group(2):
+                continue
+            a = m.group(1)
+            if not re.search(r"actor%sTalk0Actions\[\] = \{ SPECIAL\(0x[0-9A-F]+\), 1, CODES_END" % a, s):
+                continue                                                          # a guide, not a fighter
+            owned = [int(x, 16) for x in re.findall(r"SPECIAL\((0x[0-9A-F]+)\), 0", m.group(2))]
+            talk0 = re.search(r"actor%sTalk0Actions\[\] = \{ SPECIAL\((0x[0-9A-F]+)\), 1" % a, s)
+            partner = unlock_of[int(talk0.group(1), 16)]
+            assert [owned_of[o] for o in owned] == [partner], (stage, a)       # appears while that partner is not unlocked
+            assert re.search(r"actor%sTalk1Actions\[\] = \{ FLAG\(0, 0\), 1, CODES_END \}" % a, s), (stage, a)
+            assert re.search(r"actor%sTalk2Actions\[\] = \{ EVENT_BATTLE\(\d\), 1, FLAG\(0xA, 0x[0-9A-F]+\), 1, CODES_END \}" % a, s)
+            sp, it = talk0.group(1), r"ITEM\(0, (?:0x)?[0-9A-F]+\), 1"
+            assert re.search(r"actor%sTalk3Actions\[\] = \{ (?:SPECIAL\(%s\), 1, %s|%s, SPECIAL\(%s\), 1), CODES_END \}"
+                             % (a, sp, it, it, sp), s), (stage, a)
+            unlocked.add(partner)
+    assert unlocked == set(range(8))
+    stg = (d / "src" / "field" / "field_mode" / "data" / "fieldstg.c").read_text()
+    ex = stg[stg.index("StageEntry FIELDSTG_extraStages[] = {"):]
+    assert "{746, 2267, WSTAG970_startStage}" in ex and "{747, 2268, WSTAG971_startStage}" in ex
+    assert "Black Kingz' den" in stage_text(970)[:300] and "reached only from the other tunnels" in stage_text(971)[:300]
+    # the fighters' spots depend on how the player arrived (WARP_ARG), which the help says
+    assert "WARP_ARG(4), 1" in stage_text(970)
+
+
+def test_duel_island_has_no_confirmed_entry():
+    """Left unshipped (P6.35 slice 4): nothing in the stages leads into Duel Island (modes 552 / 0x228 and 663 /
+    0x297) from a field map: the only exits to those modes are the island's own and the Seabed's return exit,
+    which exists only after arriving from the island. A row would send the player to a place the decomp does
+    not show a way to. If this test fails, a way in was found: write the rows."""
+    stages = ROOT / "vendor" / "dw3_decomp" / "src" / "field" / "stages"
+    need_decomp()
+    hits = []
+    for p in sorted(stages.glob("*/wstag*.c")):
+        for line in p.read_text().splitlines():
+            if re.search(r"SLOT_(EXIT|WARP[01]|LAUNCH_OUT),\s*(0x228|0x297|552|663),", line):
+                hits.append((p.name, line.strip()))
+            if re.search(r"SCRIPT_LEAVE\((0x228|0x297|552|663),", line):
+                hits.append((p.name, line.strip()))
+    assert {h[0] for h in hits} <= {"wstag385.c", "wstag386.c"}, hits   # the island's own reset after an event
