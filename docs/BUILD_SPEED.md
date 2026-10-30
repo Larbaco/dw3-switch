@@ -194,6 +194,15 @@ wins, rules are regexes on the path with scenario-name globs.
   So does any patch without a topic rule (`match-neutral-*`, the early
   `PORT_HOST-*` engine fixes). `port/options/cheats.c` alone selects 43 of 273 scenarios; a
   `port/ui/` change 128.
+* **`platforms/pc/src/main.c` selects the full tier, on purpose.** It is the PC
+  host entry: `main()`, the boot and region pick, the frame hooks (pad, turbo
+  pace, vsync) and the options flush. Those run in every scenario, and no area
+  rule can say which scenarios a boot-path edit reaches, so a narrower map could
+  miss a regression. The `--changed` output names the reason on that file's line
+  (`PC host entry (main(), boot, frame loop, options wiring): full tier`), so it
+  is not mistaken for the generic "no rule" fallback. The `#if` / `DW3_*` blocks
+  in it (replay shot, XSHOT, map precompute) are not split out: a sweep on a
+  main.c change is slow, but it never misses one.
 
 `--changed` is a heuristic for the pre-PR loop. It is not a substitute for the
 full tier, which CI-grade checks, previews and releases still run.
