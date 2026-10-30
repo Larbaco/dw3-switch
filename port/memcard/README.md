@@ -68,11 +68,27 @@ source is only read. Saving stays native. See
 `tools/save_convert_tool.c` is the CLI used by the tests (`convert` never
 overwrites its output or its input).
 
+### Shared store (P6.25 slice 2, opt-in)
+
+`save_store=1` in `port_options.cfg` (default 0; `DW3_SAVE_STORE=0|1` overrides
+one run) serves ports 0 and 1 from `card0.dw3s` / `card1.dw3s` in the profile
+folder (`saves/<uid>/` on the Switch, `runtime/saves/<profile>/` on the PC)
+instead of `saveN.bin`. `save_store.c` is the pure part (container with CRC32 and
+per-slot origin metadata, canonical EU layout, canonical <-> native per region,
+first-fit import of the legacy cards); `memcard_host.c` does the I/O: open
+(`save_store_to_native`), flush (`save_store_from_native`, only the slots the game
+wrote), migration (`imported.txt`), a timestamped backup next to the card before
+its first overwrite of a session, and `dw3-store:` log lines for every decision.
+`saveN.bin`, `saveN.name`, `saveN.import` and `.mcr` files are only read.
+`autosave.bin` is not part of it. Off (the default) is byte for byte slice 1. See
+[docs/CROSS_REGION_SAVES.md](../../docs/CROSS_REGION_SAVES.md#as-built-slice-2).
+
 ## API surface
 
 | Layer | Role |
 |---|---|
-| `memcard_host_*` | Flat RAM image, flush, migration; legacy `.mcr` sector helpers for fixtures |
+| `memcard_host_*` | Flat RAM image, flush, migration; legacy `.mcr` sector helpers for fixtures; the opt-in shared store (`memcard_host_setup_store`) |
+| `save_convert.c`, `save_store.c` | Pure functions: US <-> EU slot conversion; the `.dw3s` container, canonical <-> native, first-fit import |
 | `psyz_card_wrap.c` | `-Wl,--wrap=_card_read/_card_write` → legacy `.mcr` only (STGMCARD uses `MemCard*`) |
 | `memcard_libmcrd.c` | Host `MemCard*` on the flat RAM image |
 
@@ -92,13 +108,13 @@ tracks flat sector pacing; see [docs/P5.3_FLAT_SAVE.md](../../docs/P5.3_FLAT_SAV
 ```bash
 mkdir -p build
 gcc -std=c11 -Wall -Wextra -O2 \
-  -o build/memcard_rw tools/memcard_rw.c port/memcard/memcard_host.c port/memcard/save_convert.c \
+  -o build/memcard_rw tools/memcard_rw.c port/memcard/memcard_host.c port/memcard/save_convert.c port/memcard/save_store.c \
   -Iport/memcard
 
 gcc -std=c11 -Wall -Wextra -O2 \
   -o build/memcard_flat_test tools/memcard_flat_test.c \
   port/memcard/memcard_libmcrd.c port/memcard/memcard_host.c port/memcard/save_convert.c \
-  -Iport/memcard
+  port/memcard/save_store.c -Iport/memcard
 ```
 
 `tools/tests/test_memcard.py` builds those CLIs and checks flat

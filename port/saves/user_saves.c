@@ -161,6 +161,12 @@ int dw3_user_saves_dir(char *out, size_t n, const char *base, const char *key,
     return (w < 0 || (size_t)w >= n) ? -1 : 0;
 }
 
+int dw3_user_saves_profile_dir(char *out, size_t n, const char *base, const char *key) {
+    int w = snprintf(out, n, "%s/saves/%s", base, key);
+
+    return (w < 0 || (size_t)w >= n) ? -1 : 0;
+}
+
 int dw3_user_saves_base_from_root(const char *root, char *out, size_t n) {
     size_t len = strlen(root);
     size_t i;

@@ -12,6 +12,8 @@ int dw3_switch_user_boot(const char *root, const char *region);
 
 /* Save folder for the chosen user, or NULL when skipped / not resolved. */
 const char *dw3_switch_user_memdir(void);
+/* P6.25 store: the profile folder (parent of the region folders), or NULL. */
+const char *dw3_switch_user_profile_dir(void);
 
 /* accountExit when the service was opened; safe to call always. */
 void dw3_switch_user_exit(void);

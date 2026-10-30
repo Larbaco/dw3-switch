@@ -17,6 +17,7 @@
 static int g_account_open;
 static char g_memdir[512];
 static int g_memdir_set;
+static char g_profile_dir[512];
 static char g_nickname[0x21];
 
 static const char *applet_type_name(AppletType t) {
@@ -145,6 +146,7 @@ int dw3_switch_user_boot(const char *root, const char *region) {
     AppletType at;
 
     g_memdir_set = 0;
+    g_profile_dir[0] = '\0';
     at = appletGetAppletType();
     INFOF("user: applet type=%s (%d)", applet_type_name(at), (int)at);
 
@@ -206,6 +208,9 @@ int dw3_switch_user_boot(const char *root, const char *region) {
     }
     memcpy(g_memdir, dir, strlen(dir) + 1);
     g_memdir_set = 1;
+    if (dw3_user_saves_profile_dir(g_profile_dir, sizeof(g_profile_dir), base, r.key) != 0) {
+        g_profile_dir[0] = '\0'; /* no profile folder: the store stays off */
+    }
     /* memcard_host_setup_cross_import reads this when the user did not set it. */
     setenv("DW3_MEMCARD_IMPORT_DIR", other_dir, 0);
     INFOF("user: save dir=%s", g_memdir);
@@ -214,6 +219,9 @@ int dw3_switch_user_boot(const char *root, const char *region) {
 }
 
 const char *dw3_switch_user_memdir(void) { return g_memdir_set ? g_memdir : NULL; }
+const char *dw3_switch_user_profile_dir(void) {
+    return g_memdir_set && g_profile_dir[0] != '\0' ? g_profile_dir : NULL;
+}
 
 void dw3_switch_user_exit(void) {
     if (g_account_open) {

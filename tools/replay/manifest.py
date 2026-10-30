@@ -70,6 +70,12 @@ class Scenario:
     # refusal cases. "progress:0x2D" sets GameState.progress (the EU extra
     # chapter) and "badsum" flips the slot checksum. Nothing is committed.
     phase_mutate: tuple[str, ...] = ()
+    # P6.25 slice 2: run with the shared store (`save_store=1` in the seeded
+    # cfg, or per phase through phase_env DW3_SAVE_STORE) and DW3_SAVE_STORE_DIR
+    # = a folder the regions share, so a save made on one disc is read from the
+    # store by the other. With it, phase_mutate edits the store's card0.dw3s
+    # (canonical layout, container CRC redone) instead of save0.bin.
+    store: bool = False
     # P6.24 single build: run the phases through the region launcher instead
     # of a per-region binary. `launch` lists the region trees the launcher finds
     # under its runtime base ("us", "eu" or "us+eu"; symlinks to the runtimes);
@@ -1214,6 +1220,113 @@ for _name, _a, _b, _mut, _why in (
                   forbid_log=((1, r"cross-import slot=\d from="), (1, r"STGMCARD_loadSave ok"),
                               (1, r"overlay restore file=0x%x kind=mode" % _XR_FIELD[_b])),
                   note=f"P6.25: {_why} is not imported into the other card (no crash)"))
+
+# P6.25 slice 2: the same game saves, but through the shared per-profile store
+# (`save_store=1` in the seeded cfg; DW3_SAVE_STORE_DIR is the folder both
+# regions share). The write, the container and the open on the other disc are
+# the verdicts: `dw3-store:` lines, the load that follows and the field reached.
+# No cross-import line (slice 1 is not used while the store serves the port) and
+# no flat saveN.bin written. Log verdicts only; PC only (env).
+_ST_CFG = (("save_store", "1"),)
+_ST_WRITE = (0, r"dw3-store: write card0 by %s slots_changed=100 header=1")
+_ST_COMMIT = (0, r"dw3-save: write card0\.dw3s committed")
+_ST_BAD = ((1, r"STGMCARD_loadSave (?:checksum|version|read) fail"),
+           (0, r"dw3-store: (?:REFUSED|.*FAILED|card\d\.dw3s refused)"),
+           (1, r"dw3-store: (?:REFUSED|.*FAILED|card\d\.dw3s refused)"),
+           (0, r"cross-import slot"), (1, r"cross-import slot"),
+           (0, r"write save0\.bin committed"), (1, r"write save0\.bin committed"))
+for _a, _b in (("us", "eu"), ("eu", "us")):
+    _add(Scenario(f"xr-store-{_a}-to-{_b}", _a, "full", timeout=600, log_only=True,
+                  phases=(f"{_a}-xr-save", f"{_b}-xr-load"), phase_versions=(_a, _b),
+                  phase_env=(_SAVE_ENV, ()), cfg=_ST_CFG, store=True,
+                  expect_restore=((_XR_FIELD[_a], M), (_XR_MCARD[_a], M),
+                                  (_XR_MCARD[_b], M), (_XR_FIELD[_b], M)),
+                  expect_log=((_ST_WRITE[0], _ST_WRITE[1] % _a), _ST_COMMIT,
+                              (1, r"dw3-store: open card0 as %s results=%d,0,0"
+                                  % (_b, 1 if _b == "eu" else 2)),
+                              (1, r"STGMCARD_loadSave ok port=0 slot=0 money=\d+ progress=6"
+                                  r"(?s:.*)FIELDSTG_pickStage mode=0x233")),
+                  forbid_log=_ST_BAD,
+                  note=f"P6.25 slice 2: saved on the {_a.upper()} disc into the shared store, "
+                       f"opened and loaded on the {_b.upper()} disc (no cross-import, no saveN.bin)"))
+# Two-way: the other region opens the store and the first one reads it again,
+# so a session that only opens a card changes nothing the first region needs.
+for _a, _b in (("us", "eu"), ("eu", "us")):
+    _add(Scenario(f"xr-store-{_a}-{_b}-{_a}", _a, "full", timeout=900, log_only=True,
+                  phases=(f"{_a}-xr-save", f"{_b}-xr-load", f"{_a}-xr-load"),
+                  phase_versions=(_a, _b, _a),
+                  phase_env=(_SAVE_ENV, (), ()), cfg=_ST_CFG, store=True,
+                  expect_restore=((_XR_FIELD[_a], M), (_XR_MCARD[_a], M),
+                                  (_XR_MCARD[_b], M), (_XR_FIELD[_b], M)),
+                  expect_log=((_ST_WRITE[0], _ST_WRITE[1] % _a), _ST_COMMIT,
+                              (1, r"STGMCARD_loadSave ok port=0 slot=0 money=\d+ progress=6"),
+                              (2, r"dw3-store: open card0 as %s results=%d,0,0" % (_a, 1 if _a == "eu" else 2)),
+                              (2, r"STGMCARD_loadSave ok port=0 slot=0 money=\d+ progress=6"
+                                  r"(?s:.*)FIELDSTG_pickStage mode=0x233")),
+                  forbid_log=_ST_BAD + ((2, r"STGMCARD_loadSave (?:checksum|version|read) fail"),
+                                        (2, r"dw3-store: (?:REFUSED|.*FAILED)"),
+                                        (1, r"dw3-store: write card0"), (2, r"dw3-store: write card0")),
+                  note=f"P6.25 slice 2: {_a.upper()} saves, {_b.upper()} loads from the store, {_a.upper()} loads it "
+                       f"again (opening never writes the card)"))
+# The opt-in works against a legacy flat save: phase 0 saves with the store off
+# (DW3_SAVE_STORE=0 beats the seeded cfg), so the card is the flat save0.bin;
+# phase 1 runs the other disc with the store on: the first start copies it in
+# (migration, the original is only read) and loads it from the store.
+for _a, _b in (("us", "eu"), ("eu", "us")):
+    _add(Scenario(f"xr-store-migrate-{_a}-{_b}", _a, "full", timeout=600, log_only=True,
+                  phases=(f"{_a}-xr-save", f"{_b}-xr-load"), phase_versions=(_a, _b),
+                  phase_env=(_SAVE_ENV + (("DW3_SAVE_STORE", "0"),), ()),
+                  cfg=_ST_CFG, store=True,
+                  expect_restore=((_XR_FIELD[_a], M), (_XR_MCARD[_a], M),
+                                  (_XR_MCARD[_b], M), (_XR_FIELD[_b], M)),
+                  expect_log=(_XR_WRITE,
+                              (1, r"dw3-store: migrate \S+save0\.bin slot=0 \(%s, name \w+\.\.\.\): imported -> card0 slot 0" % _a),
+                              (1, r"dw3-store: migration done imported=1 duplicate=0 refused=0 left_in_legacy=0"),
+                              (1, r"dw3-store: open card0 as %s results=%d,0,0"
+                                  % (_b, 1 if _b == "eu" else 2)),
+                              (1, r"STGMCARD_loadSave ok port=0 slot=0 money=\d+ progress=6"
+                                  r"(?s:.*)FIELDSTG_pickStage mode=0x233")),
+                  forbid_log=((0, r"dw3-store"), (1, r"STGMCARD_loadSave (?:checksum|version|read) fail"),
+                              (1, r"dw3-store: (?:REFUSED|.*FAILED)"), (1, r"cross-import slot"),
+                              (1, r"write save0\.bin committed")),
+                  note=f"P6.25 slice 2: a flat save made on the {_a.upper()} disc with the store off is copied into "
+                       f"the store on the first start with it on, and loads on the {_b.upper()} disc"))
+# Refusals through the store, made from the game's own save by a run-time edit of the
+# canonical card (phase_mutate; the container CRC is redone): an EU save past the base game
+# (progress 0x2D) is shown to the US build with its bytes kept, so the US game shows its
+# own error 8 and never loads it, and the EU disc still plays it afterwards; a slot with a
+# wrong checksum is not loaded on either disc. No crash. (After the US disc the EU disc
+# only opens the cards, xr-open: its game cannot play a synthetic progress-0x2D save out of
+# the extra chapter's story, it hangs in the field; the unit test checks the slot byte for
+# byte and the open line shows the card is whole.)
+_add(Scenario("xr-store-eu-extra-us", "eu", "full", timeout=900, log_only=True,
+              phases=("eu-xr-save", "us-xr-load", "eu-xr-open"), phase_versions=("eu", "us", "eu"),
+              phase_env=(_SAVE_ENV, (), ()), phase_mutate=("progress:0x2D", "", ""),
+              cfg=_ST_CFG, store=True,
+              expect_restore=((_XR_MCARD["eu"], M), (_XR_MCARD["us"], M)),
+              expect_log=((0, r"dw3-store: write card0 by eu slots_changed=100 header=1"),
+                          (1, r"dw3-store: open card0 as us results=3,0,0"),
+                          (1, r"dw3-store: card0 slot 0 needs the EU extra chapter"),
+                          (1, r"STGMCARD_loadSave version fail got=4"),
+                          (2, r"dw3-store: open card0 as eu results=1,0,0")),
+              forbid_log=((1, r"STGMCARD_loadSave ok"), (1, r"overlay restore file=0x%x kind=mode" % _XR_FIELD["us"]),
+                          (1, r"dw3-store: write card0"), (2, r"dw3-store: write card0"),
+                          (1, r"dw3-store: (?:REFUSED|.*FAILED)"), (2, r"dw3-store: (?:REFUSED|.*FAILED)"),
+                          (2, r"STGMCARD_loadSave (?:checksum|version|read) fail")),
+              note="P6.25 slice 2: an EU extra-chapter save is the game's own error 8 on the US disc (not loaded, "
+                   "not written); the EU disc opens the same card whole"))
+_add(Scenario("xr-store-us-badsum-eu", "us", "full", timeout=600, log_only=True,
+              phases=("us-xr-save", "eu-xr-load"), phase_versions=("us", "eu"),
+              phase_env=(_SAVE_ENV, ()), phase_mutate=("badsum", ""),
+              cfg=_ST_CFG, store=True,
+              expect_restore=((_XR_MCARD["us"], M), (_XR_MCARD["eu"], M)),
+              expect_log=((0, r"dw3-store: write card0 by us slots_changed=100 header=1"),
+                          (1, r"dw3-store: open card0 as eu results=4,0,0"),
+                          (1, r"STGMCARD_loadSave checksum fail")),
+              forbid_log=((1, r"STGMCARD_loadSave ok"), (1, r"overlay restore file=0x%x kind=mode" % _XR_FIELD["eu"]),
+                          (1, r"dw3-store: write card0"), (1, r"dw3-store: (?:REFUSED|.*FAILED)")),
+              note="P6.25 slice 2: a store slot with a wrong checksum is not loaded (the game's own error), "
+                   "nothing is rewritten"))
 
 
 # P6.31 auto-save (docs/P6.31_AUTOSAVE.md, patches 0140-0142): the game itself

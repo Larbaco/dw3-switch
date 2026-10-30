@@ -56,6 +56,24 @@ int memcard_host_set_cross_import_sibling(const char *runtime_root,
 int memcard_host_setup_cross_import(const char *runtime_root, int own_region,
                                     int memdir_is_explicit);
 
+/* P6.25 slice 2: the shared per-profile store (docs/CROSS_REGION_SAVES.md).
+ * Opt-in: `save_store=1` in port_options.cfg (DW3_SAVE_STORE=0|1 overrides
+ * for one run), default 0, and with 0 nothing below does anything.
+ * memcard_host_setup_store: call after memcard_host_set_dir and
+ * memcard_host_setup_cross_import, before the first memcard_host_ensure.
+ * `cfgdir` is where port_options.cfg lives; `profile_dir` is the profile
+ * folder that holds card0.dw3s / card1.dw3s / imported.txt (NULL when the host
+ * has no profile folder: the store then stays off, logged);
+ * DW3_SAVE_STORE_DIR overrides it (tests, replays). The legacy saveN.bin of
+ * both regions (this build's folder and the cross-import folder) are only READ,
+ * once, to fill the store. Returns 0 when the store is on. */
+int memcard_host_setup_store(const char *cfgdir, const char *profile_dir,
+                             int own_region);
+/* 1 when the option is on for this run (environment, then the cfg file). */
+int memcard_host_store_requested(const char *cfgdir);
+/* 1 when port `slot` (0 or 1) is served from the store this session. */
+int memcard_host_store_active(int slot);
+
 /* Flat save filenames for slot 0 / 1. */
 const char *memcard_host_slot_name(int slot);
 

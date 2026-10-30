@@ -520,6 +520,15 @@ def xr_load(version):
 
 XR_LOAD_FRAMES = 1400
 
+
+def xr_open(version):
+    """P6.25 slice 2: start the build, let it open the cards, leave. No input, no
+    checkpoints; the verdict is the `dw3-store:` open line in the log. Used to
+    show that a card the other region only looked at is still whole."""
+    r = Rec(f"{version.upper()}: P6.25 slice 2 start, open the cards and leave (log only)")
+    r.end(120)
+    return r
+
 # P6.31 auto-save: the load half of xr_load, then more frames in the field so a
 # forced exit (DW3_FORCE_EXIT, the manifest's env) and the area change it makes
 # can be waited out. AS_LOAD_FRAMES is measured on the PC build.
@@ -3029,6 +3038,8 @@ def main(out):
         (out / f"{v}-save-screen.rec").write_text(save_screen(v).text(True))
         (out / f"{v}-xr-save.rec").write_text(xr_save(v).text(True))
         (out / f"{v}-xr-load.rec").write_text(xr_load(v).text(True))
+        if v == "eu":  # only the EU disc re-opens a card the US build refused
+            (out / f"{v}-xr-open.rec").write_text(xr_open(v).text(True))
         (out / f"{v}-as-load.rec").write_text(as_load(v).text(True))
         (out / f"{v}-as-walk.rec").write_text(as_walk(v).text(True))
         (out / f"{v}-as-continue.rec").write_text(as_continue(v).text(True))
