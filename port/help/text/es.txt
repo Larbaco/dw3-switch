@@ -100,6 +100,7 @@ help.options.h.4 = Partidas
 help.options.li.8 = Autoguardado: OFF o Cada zona, predeterminado OFF. Consulta la página Partidas.
 help.options.h.5 = Controles
 help.options.li.9 = Botones: PlayStation o Nintendo, predeterminado PlayStation, que es el original. Con Nintendo, A confirma y B vuelve atrás; el botón secundario (Círculo) pasa a X. Start, Select, los dorsales y los sticks no se mueven. Se aplica al instante y se guarda.
+help.options.li.10 = Símbolos Switch (solo Switch): OFF u ON, predeterminado OFF, que mantiene los iconos originales. ON dibuja el botón Switch, A, B, X o Y, que de verdad produce cada aviso, y sigue la disposición y la personalización de los botones. Se aplica al instante y se guarda.
 help.options.note.1 = En el mapa y en combate, Pantalla ancha aparece en gris y dice que está bloqueada. El mapa se organiza al cargar una zona, así que cámbiala en la pantalla de título.
 help.options.note.2 = En el disco EU las filas y los textos aparecen en el idioma del juego.
 

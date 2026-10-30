@@ -201,7 +201,7 @@ listed once, in [Pending OLED checks](#pending-oled-checks).
 | P10.3 | Presentation modes | open | — |
 | P10.4 | Rumble polish (optional) | open | — |
 | P10.5 | Extra applets (optional) | open | — |
-| P10.6 | Switch-style button glyphs (future goal; design written 2026-10-28; step 0 investigation done 2026-10-29) | in progress (step 0 #354 and the fix-now hint caps #355 merged; the glyph patch is not built; OLED L17 to L20 pending) | [roadmap](#phase-10--native-switch-features-residual), [P10.6_GLYPHS](P10.6_GLYPHS.md), [CONTROLS_BUNDLE](CONTROLS_BUNDLE.md), [TEXTURE_PACKS](TEXTURE_PACKS.md) |
+| P10.6 | Switch-style button glyphs (design written 2026-10-28; step 0 #354 and the fix-now hint caps #355 merged; census, art and the glyph patch built 2026-10-29, PR #367) | in progress (OLED L17 to L26 pending; the page-turn `R1` art outside the font is open) | [roadmap](#phase-10--native-switch-features-residual), [P10.6_GLYPHS](P10.6_GLYPHS.md), [CONTROLS_BUNDLE](CONTROLS_BUNDLE.md), [TEXTURE_PACKS](TEXTURE_PACKS.md) |
 | P10.7 | NSP packaging: forwarder, full NSP or stay NRO | dropped | [NSP_PACKAGING](NSP_PACKAGING.md), [roadmap](#phase-10--native-switch-features-residual) |
 
 ## Pending OLED checks
@@ -1575,6 +1575,17 @@ rumble, saves, turbo, or widescreen here; those stay in their phases.
   after P9.8; it needs a Port option to turn it off (the default is the
   original icons). Original art is never added to the repo; Switch glyphs must be
   drawn for the project or be under a licence that allows it.
+  **Built (2026-10-29, PR open, OLED L21 to L26 pending):** steps 1, 3 and 4 of
+  [P10.6_GLYPHS](P10.6_GLYPHS.md). Census (patch 0195, `DW3_ICON_CENSUS=1`): the four PS
+  icons are font icons used in text (shops, Lab, gym, save screen, field menu pages), US n = 27 is
+  a multiplication sign (left alone), EU n = 27 is the Cross disc, Square never appeared, no icon in
+  battle; the page-turn art `R1` is outside the font (needs a draw hook, left open). Art:
+  `assets/glyphs/` (CC0, drawn by `tools/generate_switch_glyphs.py`, `tools/check_switch_glyphs.py`).
+  Patch: `port/options/switch_glyphs.c` wraps `FONT.load` and replaces the cells in VRAM with the
+  glyph of the button that produces each PS button under the map; row 14 `switch_glyphs` in the
+  Controls group on the Switch only, default off; own PNGs in `sdmc:/switch/dw3/glyphs/`; log
+  `dw3-glyphs: on|off, map=..., patched N cells (...)`. Open: draw hook for `R1` / `L1` art, a look on the
+  OLED (legibility, the EU steel tint). The Options help page lists the row.
   Done when: with the option on, the icons shown in the field, battle, menus
   and shops are Switch glyphs on the US and EU discs, they match the layout
   chosen in P9.8, and the option off restores the original icons.

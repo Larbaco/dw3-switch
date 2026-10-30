@@ -382,7 +382,7 @@ dw3-controls: assign cross<-A (circle<-B swapped in) [custom]
 dw3-controls: reset to default (layout=playstation)
 dw3-controls: map invalid (<reason>), using default
 dw3-controls: hotkeys fast-forward=R3 (Left stick click) restart=L1+R1+Start+Select (L+R+Plus+Minus)
-dw3-controls: glyphs on|off, patched N cells (sizes 1,2,3, us|eu)
+dw3-glyphs: on|off, map=<layout>, patched N cells (us|eu, n=47:A ...)  [built; prefix dw3-glyphs, size 1 only]
 dw3-controls: first press source=A -> logical cross
 ```
 
@@ -418,7 +418,7 @@ unharmed.
 | C5 | Customize: swap L1 and R1, pages turn accordingly; Reset restores | `assign ...`, `reset to default` |
 | C6 | After swapping L3 and R3, fast-forward is on the new R3 button and listed right | `hotkeys fast-forward=R3 (...)` and the `dw3-turbo:` toggle line |
 | C7 | Debug chords (nxlink) unchanged by any map | HUD toggles with Minus+L+R |
-| C8 | Phase 3: glyphs on, prompts and Options hints show A / B per layout; off restores the icons; US and EU, two EU languages | `glyphs on, patched N cells (...)`; the owner reports how it looks |
+| C8 | Phase 3: glyphs on, prompts and Options hints show A / B per layout; off restores the icons; US and EU, two EU languages | `dw3-glyphs: on, map=..., patched N cells (us\|eu, n=47:A ...)` (built 2026-10-29 as rows L21 to L26 of OLED_TEST_PLAN, [P10.6_GLYPHS](P10.6_GLYPHS.md#7-as-built-steps-1-3-and-4-2026-10-29)); the owner reports how it looks |
 
 ## 7. Open questions for the owner
 

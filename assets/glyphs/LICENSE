@@ -1,0 +1,13 @@
+CC0 1.0 Universal (Public Domain Dedication)
+
+To the extent possible under law, the dw3-switch contributors have waived all
+copyright and related or neighboring rights to the Switch button glyphs in this
+folder (assets/glyphs/*.png) and to the script that draws them
+(tools/generate_switch_glyphs.py).
+
+You can copy, modify, distribute and use the work, even for commercial
+purposes, all without asking permission.
+
+The work is provided "as is", without warranty of any kind.
+
+Full legal text: https://creativecommons.org/publicdomain/zero/1.0/legalcode

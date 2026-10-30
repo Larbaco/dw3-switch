@@ -112,6 +112,7 @@ help.options.h.4 = Saves
 help.options.li.8 = Auto-save: OFF or Each area, default OFF. See the Saves page.
 help.options.h.5 = Controls
 help.options.li.9 = Button layout: PlayStation or Nintendo, default PlayStation, which is the original. With Nintendo, A confirms and B goes back; the secondary button (Circle) moves to X. Start, Select, the shoulders and the sticks do not move. It applies at once and is saved.
+help.options.li.10 = Switch glyphs (Switch only): OFF or ON, default OFF, which keeps the game's own button icons. ON draws the Switch button, A, B, X or Y, that really produces each prompt, and follows Button layout and Customize buttons. It applies at once and is saved.
 help.options.note.1 = In the field and in battles Widescreen is greyed and says it is locked. The map is laid out when an area loads, so change it at the title.
 help.options.note.2 = On the EU disc the rows and lines appear in the language of the game.
 

@@ -144,6 +144,14 @@ def test_apply_patches_is_incremental(tmp_path):
     assert keep.stat().st_mtime_ns == keep_mtime
 
 
+def test_glyph_files_select_the_icon_screens(areas, scenarios):
+    sel = areas.select(["port/options/switch_glyphs.c", "port/patches/0195-PORT_HOST-p106-icon-census.patch"],
+                       scenarios)
+    assert not sel.everything
+    assert {"us-glyphs-on-shop", "eu-glyphs-off", "us-item-shop", "eu-save-screen"} <= sel.names
+    assert "us-soak" not in sel.names
+
+
 # --- CMake area rule ------------------------------------------------------
 
 _PORT_CMAKE = "port/CMakeLists.txt"

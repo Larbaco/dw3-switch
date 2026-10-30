@@ -319,6 +319,26 @@ TURBO_MUSIC_TEXT = {
 for _lang, _t in TURBO_MUSIC_TEXT.items():
     LETTERS.append(('opt_row_tm_' + _lang, _t['row'], 26, 'DejaVuSans.ttf'))
     LETTERS.append(('opt_desc_tm_' + _lang, _t['desc'], 25, 'DejaVuSans.ttf'))
+# P10.6 Switch glyphs row of the Controls group (docs/P10.6_GLYPHS.md), Switch
+# only, in the five languages of the EU disc (en is also the US disc's). The
+# values are the Options screen's OFF / ON words. Label under 290 px,
+# description under 690 px. FR / DE / IT / ES are machine-drafted, needs native
+# review.
+SWITCH_GLYPHS_TEXT = {
+    'en': {'row': 'Switch glyphs',
+           'desc': 'Switch buttons in game text. OFF = original icons.'},
+    'fr': {'row': 'Symboles Switch',
+           'desc': "Boutons Switch dans les textes. OFF = d'origine."},
+    'de': {'row': 'Switch-Symbole',
+           'desc': 'Switch-Tasten im Spieltext. OFF = Originalsymbole.'},
+    'es': {'row': 'Símbolos Switch',
+           'desc': 'Botones Switch en el texto. OFF = iconos originales.'},
+    'it': {'row': 'Simboli Switch',
+           'desc': 'Pulsanti Switch nei testi di gioco. OFF = icone originali.'},
+}
+for _lang, _t in SWITCH_GLYPHS_TEXT.items():
+    LETTERS.append(('opt_row_sg_' + _lang, _t['row'], 26, 'DejaVuSans.ttf'))
+    LETTERS.append(('opt_desc_sg_' + _lang, _t['desc'], 25, 'DejaVuSans.ttf'))
 # P6.12 Controls group, phase 2 (docs/CONTROLS_BUNDLE.md): the Customize buttons
 # and Reset to default rows, the Custom value of Button layout, the prompt of the
 # Customize screen. FR / DE / IT / ES are machine-drafted, needs native review.

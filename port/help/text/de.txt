@@ -100,6 +100,7 @@ help.options.h.4 = Speichern
 help.options.li.8 = Auto-Speichern: OFF oder Jedes Gebiet, Vorgabe OFF. Siehe die Seite Speichern.
 help.options.h.5 = Steuerung
 help.options.li.9 = Tastenbelegung: PlayStation oder Nintendo, Vorgabe PlayStation, das ist das Original. Mit Nintendo bestätigt A und B geht zurück; die zweite Taste (Kreis) wandert auf X. Start, Select, die Schultertasten und die Sticks bleiben, wo sie sind. Die Einstellung gilt sofort und wird gespeichert.
+help.options.li.10 = Switch-Symbole (nur Switch): OFF oder ON, Vorgabe OFF, das behält die Original-Tastensymbole. ON zeigt die Switch-Taste, A, B, X oder Y, die jede Abfrage wirklich auslöst, und folgt der Tastenbelegung und dem Anpassen der Tasten. Die Einstellung gilt sofort und wird gespeichert.
 help.options.note.1 = Im Feld und im Kampf ist Breitbild grau und als gesperrt gekennzeichnet. Die Karte wird beim Laden eines Gebiets aufgebaut, ändere es also im Titelbild.
 help.options.note.2 = Auf der EU-Disc erscheinen die Zeilen und Texte in der Sprache des Spiels.
 

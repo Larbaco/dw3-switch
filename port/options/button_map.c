@@ -3,6 +3,7 @@
  * a raw pad word), then the one map the pad host reads. docs/CONTROLS_BUNDLE.md.
  * C90: this file is built as gnu89 with the rest of port/. */
 #include "port_button_map.h"
+#include "port_glyphs.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -282,6 +283,8 @@ static void bm_log_map(void) {
     dw3_pc_title_overlay_set_hint_caps(g_map[DW3_BTN_CROSS],
                                        g_map[DW3_BTN_TRIANGLE]);
 #endif
+    /* P10.6: the glyph of an action is the button that produces it. */
+    dw3_glyphs_refresh("map");
 }
 
 const char *dw3_button_hint_name(int button, const char *pc_text, char *out,
