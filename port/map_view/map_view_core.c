@@ -54,6 +54,7 @@ const char *dw3_mv_scaler_name(int scaler) {
     case MV_SCALER_SHARP: return "SHARP BILINEAR";
     case MV_SCALER_LANCZOS2: return "LANCZOS2";
     case MV_SCALER_FSR: return "AMD FSR 1";
+    case MV_SCALER_BILINEAR: return "BILINEAR";
     default: return "?";
     }
 }
@@ -697,7 +698,15 @@ int dw3_mv_scale(int scaler, const MvImage *src, MvImage *dst, double *ms) {
 
 /* --- view maths ----------------------------------------------------------*/
 
-const float MV_ZOOM_TABLE[MV_ZOOM_STEPS] = {0.0f, 1.0f, 1.25f, 1.5f, 2.0f, 3.0f};
+const float MV_ZOOM_TABLE[MV_ZOOM_STEPS] = {0.0f, 1.0f, 1.25f, 1.5f, 2.0f, 3.0f, 4.0f};
+
+/* The highest step the view may use: 3.0 (the source cannot show more), 4.0 when a
+ * higher-resolution picture (a mod pack) is loaded (P6.32 section 4.4). */
+static int view_top(const MvView *v) {
+    return v->top == MV_ZOOM_STEPS - 1 ? MV_ZOOM_STEPS - 1 : MV_ZOOM_TOP_PLAIN;
+}
+
+float dw3_mv_view_top_zoom(const MvView *v) { return MV_ZOOM_TABLE[view_top(v)]; }
 
 float dw3_mv_view_scale(int step, int map_w, int map_h, int vw, int vh) {
     float sw, sh;
@@ -721,18 +730,40 @@ float dw3_mv_view_cur_zoom(const MvView *v, int map_w, int map_h, int vw,
     return dw3_mv_view_cur_scale(v, map_w, map_h, vw, vh) * 240.0f / (float)vh;
 }
 
-void dw3_mv_view_clamp(MvView *v, int map_w, int map_h, int vw, int vh) {
+int dw3_mv_view_clamp_ex(MvView *v, int map_w, int map_h, int vw, int vh,
+                         float *want_cx, float *want_cy) {
     float s = dw3_mv_view_cur_scale(v, map_w, map_h, vw, vh);
     float hx = (float)vw * 0.5f / s, hy = (float)vh * 0.5f / s;
+    float wx = v->cx, wy = v->cy;
+    int flags = 0;
 
-    if ((float)map_w <= 2.0f * hx) v->cx = (float)map_w * 0.5f;
-    else v->cx = fclampf(v->cx, hx, (float)map_w - hx);
-    if ((float)map_h <= 2.0f * hy) v->cy = (float)map_h * 0.5f;
-    else v->cy = fclampf(v->cy, hy, (float)map_h - hy);
+    if ((float)map_w <= 2.0f * hx) {
+        v->cx = (float)map_w * 0.5f;
+        flags |= MV_PAN_CENTRED_X;
+    } else {
+        v->cx = fclampf(v->cx, hx, (float)map_w - hx);
+        if (v->cx - hx <= 0.001f) flags |= MV_PAN_LEFT;
+        if (v->cx + hx >= (float)map_w - 0.001f) flags |= MV_PAN_RIGHT;
+    }
+    if ((float)map_h <= 2.0f * hy) {
+        v->cy = (float)map_h * 0.5f;
+        flags |= MV_PAN_CENTRED_Y;
+    } else {
+        v->cy = fclampf(v->cy, hy, (float)map_h - hy);
+        if (v->cy - hy <= 0.001f) flags |= MV_PAN_TOP;
+        if (v->cy + hy >= (float)map_h - 0.001f) flags |= MV_PAN_BOTTOM;
+    }
+    if (want_cx) *want_cx = wx;
+    if (want_cy) *want_cy = wy;
+    return flags;
+}
+
+void dw3_mv_view_clamp(MvView *v, int map_w, int map_h, int vw, int vh) {
+    dw3_mv_view_clamp_ex(v, map_w, map_h, vw, vh, NULL, NULL);
 }
 
 void dw3_mv_view_zoom(MvView *v, int dir, int map_w, int map_h, int vw, int vh) {
-    int step;
+    int step, top = view_top(v);
 
     if (v->zoom > 0.0f) {
         /* off the table (the stick): the next table zoom in that direction */
@@ -741,13 +772,13 @@ void dw3_mv_view_zoom(MvView *v, int dir, int map_w, int map_h, int vw, int vh) 
                     (float)vh;
         int i;
 
-        step = dir < 0 ? 0 : MV_ZOOM_STEPS - 1;
+        step = dir < 0 ? 0 : top;
         if (dir < 0) {
-            for (i = MV_ZOOM_STEPS - 1; i >= 1; --i)
+            for (i = top; i >= 1; --i)
                 if (MV_ZOOM_TABLE[i] < cur - 0.001f &&
                     MV_ZOOM_TABLE[i] > fit + 0.001f) { step = i; break; }
         } else {
-            for (i = 1; i < MV_ZOOM_STEPS; ++i)
+            for (i = 1; i <= top; ++i)
                 if (MV_ZOOM_TABLE[i] > cur + 0.001f) { step = i; break; }
         }
         v->zoom = 0.0f;
@@ -755,7 +786,7 @@ void dw3_mv_view_zoom(MvView *v, int dir, int map_w, int map_h, int vw, int vh) 
         step = v->step + (dir < 0 ? -1 : 1);
     }
     if (step < 0) step = 0;
-    if (step >= MV_ZOOM_STEPS) step = MV_ZOOM_STEPS - 1;
+    if (step > top) step = top;
     v->step = step;
     dw3_mv_view_clamp(v, map_w, map_h, vw, vh);
 }
@@ -764,15 +795,16 @@ void dw3_mv_view_zoom_by(MvView *v, float factor, int map_w, int map_h, int vw,
                          int vh) {
     float fit = dw3_mv_view_scale(0, map_w, map_h, vw, vh) * 240.0f / (float)vh;
     float z = dw3_mv_view_cur_zoom(v, map_w, map_h, vw, vh) * factor;
+    float top = MV_ZOOM_TABLE[view_top(v)];
     int i, best = 1;
 
-    if (z > MV_ZOOM_TABLE[MV_ZOOM_STEPS - 1]) z = MV_ZOOM_TABLE[MV_ZOOM_STEPS - 1];
+    if (z > top) z = top;
     if (z <= fit + 0.0005f) {
         v->step = 0;
         v->zoom = 0.0f;
     } else {
         v->zoom = z;
-        for (i = 1; i < MV_ZOOM_STEPS; ++i)
+        for (i = 1; i <= view_top(v); ++i)
             if (fabsf(MV_ZOOM_TABLE[i] - z) < fabsf(MV_ZOOM_TABLE[best] - z))
                 best = i;
         v->step = best;
@@ -788,6 +820,100 @@ void dw3_mv_view_rect(const MvView *v, int map_w, int map_h, int vw, int vh,
     *y0 = (float)vh * 0.5f - v->cy * s;
     *x1 = *x0 + (float)map_w * s;
     *y1 = *y0 + (float)map_h * s;
+}
+
+void dw3_mv_view_point(const MvView *v, int map_w, int map_h, int vw, int vh,
+                       float mx, float my, float *px, float *py) {
+    float s = dw3_mv_view_cur_scale(v, map_w, map_h, vw, vh);
+
+    *px = (float)vw * 0.5f + (mx - v->cx) * s;
+    *py = (float)vh * 0.5f + (my - v->cy) * s;
+}
+
+int dw3_mv_view_anchor(MvView *v, float mx, float my, float px, float py,
+                       int map_w, int map_h, int vw, int vh, float *want_cx,
+                       float *want_cy) {
+    float s = dw3_mv_view_cur_scale(v, map_w, map_h, vw, vh);
+
+    v->cx = mx - (px - (float)vw * 0.5f) / s;
+    v->cy = my - (py - (float)vh * 0.5f) / s;
+    return dw3_mv_view_clamp_ex(v, map_w, map_h, vw, vh, want_cx, want_cy);
+}
+
+int dw3_mv_view_follow(MvView *v, float mx, float my, float margin_x,
+                       float margin_y, int map_w, int map_h, int vw, int vh,
+                       float *want_cx, float *want_cy) {
+    float px, py, s = dw3_mv_view_cur_scale(v, map_w, map_h, vw, vh);
+
+    dw3_mv_view_point(v, map_w, map_h, vw, vh, mx, my, &px, &py);
+    if (px < margin_x) v->cx -= (margin_x - px) / s;
+    if (px > (float)vw - margin_x) v->cx += (px - ((float)vw - margin_x)) / s;
+    if (py < margin_y) v->cy -= (margin_y - py) / s;
+    if (py > (float)vh - margin_y) v->cy += (py - ((float)vh - margin_y)) / s;
+    return dw3_mv_view_clamp_ex(v, map_w, map_h, vw, vh, want_cx, want_cy);
+}
+
+float dw3_mv_pan_speed(int hold, float zoom) {
+    float cap;
+
+    if (hold <= 0) return 0.0f;
+    if (hold <= 10) return 2.0f;
+    if (hold <= 20) return 3.0f;
+    if (hold <= MV_PAN_ACCEL_AFTER) return 4.0f;
+    cap = 10.0f / (zoom > 0.1f ? zoom : 0.1f);
+    if (cap < 4.0f) cap = 4.0f;
+    {
+        float v = 4.0f + (float)(hold - MV_PAN_ACCEL_AFTER) * (1.0f / 15.0f);
+
+        return v > cap ? cap : v;
+    }
+}
+
+float dw3_mv_stick_unit(int raw) {
+    int a = raw < 0 ? -raw : raw;
+    float d, f;
+
+    if (a > 127) a = 127;
+    if (a <= MV_STICK_MOVE_DEADZONE) return 0.0f;
+    d = (float)(a - MV_STICK_MOVE_DEADZONE) / (float)(127 - MV_STICK_MOVE_DEADZONE);
+    f = d * d * (3.0f - 2.0f * d); /* smoothstep: fine control near the centre */
+    if (f < 0.02f) f = 0.02f;
+    return raw < 0 ? -f : f;
+}
+
+int dw3_mv_backdrop(const MvImage *src, uint8_t *rgba, int dim_percent) {
+    int cx, cy;
+
+    if (!src || !src->rgba || src->w <= 0 || src->h <= 0 || !rgba) return -1;
+    if (dim_percent < 0) dim_percent = 0;
+    if (dim_percent > 100) dim_percent = 100;
+    for (cy = 0; cy < MV_BACKDROP_H; ++cy) {
+        for (cx = 0; cx < MV_BACKDROP_W; ++cx) {
+            int x0 = cx * src->w / MV_BACKDROP_W, x1 = (cx + 1) * src->w / MV_BACKDROP_W;
+            int y0 = cy * src->h / MV_BACKDROP_H, y1 = (cy + 1) * src->h / MV_BACKDROP_H;
+            unsigned long sum[3] = {0, 0, 0};
+            unsigned long n = 0;
+            int x, y, k;
+            uint8_t *o = rgba + ((size_t)cy * MV_BACKDROP_W + (size_t)cx) * 4;
+
+            if (x1 <= x0) x1 = x0 + 1;
+            if (y1 <= y0) y1 = y0 + 1;
+            for (y = y0; y < y1 && y < src->h; ++y) {
+                for (x = x0; x < x1 && x < src->w; ++x) {
+                    const uint8_t *p = src->rgba + ((size_t)y * src->w + (size_t)x) * 4;
+
+                    sum[0] += p[0];
+                    sum[1] += p[1];
+                    sum[2] += p[2];
+                    ++n;
+                }
+            }
+            for (k = 0; k < 3; ++k)
+                o[k] = (uint8_t)(n ? sum[k] / n * (unsigned long)dim_percent / 100u : 0);
+            o[3] = 255;
+        }
+    }
+    return 0;
 }
 
 float dw3_mv_sprite_factor(const MvView *v, int map_w, int map_h, int vw, int vh) {

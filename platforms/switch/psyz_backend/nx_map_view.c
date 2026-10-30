@@ -1,7 +1,9 @@
 /* P6.32 phase 0: the full-screen map screen on the Switch GLES present.
  *
  * The same picture as the PC SDL3 GPU overlay (platforms/pc/src/
- * map_view_overlay.c): a black backdrop over the whole 16:9 picture, the map
+ * map_view_overlay.c): a backdrop over the whole 16:9 picture (the map's own
+ * colours, dimmed, from a 32 x 18 texture the linear filter stretches; black
+ * when there is none), the map
  * texture (the captured map, or a CPU-scaled copy) placed and zoomed by the
  * quad's own rectangle with a scissor to the picture, then the HUD canvas.
  * State, scalers and the pad are in port/map_view/. Drawn after the game
@@ -25,11 +27,11 @@ void psyz_log(unsigned int level, const char *file, unsigned int line,
               const char *func, const char *fmt, ...);
 #define MV_LOG(...) psyz_log(1, "nx_map_view.c", __LINE__, __func__, __VA_ARGS__)
 
-static GLuint s_prog, s_vbo, s_map_tex, s_hud_tex;
+static GLuint s_prog, s_vbo, s_map_tex, s_hud_tex, s_backdrop_tex;
 static GLuint s_bank_tex[DW3_MV_BANK_N]; /* the game's cursor and balloon */
 static unsigned s_bank_gen = ~0u;
 static GLint s_attr_pos = -1, s_attr_t = -1, s_uni_tex = -1;
-static unsigned s_map_gen = ~0u, s_hud_gen = ~0u;
+static unsigned s_map_gen = ~0u, s_hud_gen = ~0u, s_backdrop_gen = ~0u;
 static int s_map_w, s_map_h, s_idle, s_failed, s_linear = -1, s_logged;
 static GLenum s_last_draw_err;
 static int s_skip_logged; /* "waiting for the map texture" once per open */
@@ -125,6 +127,9 @@ static void release_textures(void) {
 
     if (s_map_tex) glDeleteTextures(1, &s_map_tex);
     if (s_hud_tex) glDeleteTextures(1, &s_hud_tex);
+    if (s_backdrop_tex) glDeleteTextures(1, &s_backdrop_tex);
+    s_backdrop_tex = 0;
+    s_backdrop_gen = ~0u;
     for (i = 0; i < DW3_MV_BANK_N; ++i) {
         if (s_bank_tex[i]) glDeleteTextures(1, &s_bank_tex[i]);
         s_bank_tex[i] = 0;
@@ -140,7 +145,8 @@ void dw3_nx_map_view_invalidate_gl(void) {
     /* A recreated context left every name dangling; just forget them. */
     memset(s_bank_tex, 0, sizeof(s_bank_tex));
     s_bank_gen = ~0u;
-    s_prog = s_vbo = s_map_tex = s_hud_tex = 0;
+    s_prog = s_vbo = s_map_tex = s_hud_tex = s_backdrop_tex = 0;
+    s_backdrop_gen = ~0u;
     s_map_gen = s_hud_gen = ~0u;
     s_map_w = s_map_h = 0;
     s_linear = -1;
@@ -179,6 +185,8 @@ static void draw_layers(const Dw3MapViewDraw *d, int sx, int sy, int sw, int sh)
     glDisable(GL_BLEND);
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT);
+    if (d->backdrop_rgba && s_backdrop_tex)
+        draw_quad(s_backdrop_tex, 0.0f, 0.0f, 1.0f, 1.0f); /* linear, the whole picture */
     draw_quad(s_map_tex, d->x0, d->y0, d->x1, d->y1);
     glEnable(GL_BLEND);
     for (i = 0; i < d->nspr; ++i) {
@@ -263,6 +271,21 @@ void dw3_nx_map_view_draw(int vx, int vy, int vw, int vh) {
         glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, DW3_MV_HUD_W, DW3_MV_HUD_H,
                         GL_RGBA, GL_UNSIGNED_BYTE, d.hud_rgba);
         s_hud_gen = d.hud_gen;
+    }
+    if (d.backdrop_gen != s_backdrop_gen) {
+        if (d.backdrop_rgba) {
+            if (!s_backdrop_tex)
+                s_backdrop_tex = make_texture(DW3_MV_BACKDROP_W, DW3_MV_BACKDROP_H, GL_LINEAR);
+            glBindTexture(GL_TEXTURE_2D, s_backdrop_tex);
+            glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
+            glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, DW3_MV_BACKDROP_W,
+                            DW3_MV_BACKDROP_H, GL_RGBA, GL_UNSIGNED_BYTE,
+                            d.backdrop_rgba);
+            MV_LOG("dw3-map: switch backdrop %dx%d uploaded (gen %u, linear, GL "
+                   "error 0x%x)", DW3_MV_BACKDROP_W, DW3_MV_BACKDROP_H,
+                   d.backdrop_gen, (unsigned)glGetError());
+        }
+        s_backdrop_gen = d.backdrop_gen;
     }
     if (d.bank_gen != s_bank_gen) {
         int i;

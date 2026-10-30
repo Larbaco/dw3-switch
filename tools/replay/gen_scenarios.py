@@ -1875,10 +1875,17 @@ def map_view(version):
     r.press(f, R1_MAP)               # back to 1.0 for the scalers
     r.shot(f + 20, "mv-zoom-100")
     f += 40
-    for name in ("mv-sharp", "mv-lanczos2", "mv-fsr", "mv-nearest"):  # starts on nearest
+    for name in ("mv-sharp", "mv-lanczos2", "mv-fsr"):  # starts on nearest
         r.press(f, R2_MAP)           # the CPU builds stall the game thread, not the frame count
         r.shot(f + 100, name)
         f += 120
+    # P6.32 phase 3: Bilinear follows FSR 1 in the cycle (five scalers); the next press
+    # wraps to nearest, in the same 120-frame window the last scaler always had
+    r.press(f, R2_MAP)               # bilinear
+    r.shot(f + 30, "mv-bilinear")
+    r.press(f + 50, R2_MAP)          # nearest again
+    r.shot(f + 100, "mv-nearest")
+    f += 120
     r.press(f, R3_MAP)               # turbo toggle: nothing
     r.press(f + 30, CIRCLE_MAP)      # P51 item 2: the bars come on (off at open)
     r.shot(f + 60, "mv-hud-on")
@@ -1895,6 +1902,110 @@ def map_view(version):
     r.shot(f + 290, "mv-closed")
     r.press(f + 330, TRIANGLE)       # the game's Triangle closes the Map
     r.end(f + 530)
+    return r
+
+
+SELECT_MAP = 0x0001
+
+
+def map_zoom(version):
+    """P6.32 phase 3 (no patch): zoom about the cursor, the step ladder, the pan
+    limits, the centre-on-your-area button (Select), the cursor's acceleration and
+    analog speed (left stick), the FIT backdrop and the bilinear scaler. Same path as
+    `map_view` up to the open Map; Square opens the new screen at 1.5x on the current
+    area; the cursor leaves the view centre, then L1 / R1 walk the ladder (the log
+    line of every step says the cursor stayed where it was, and where the pan limit
+    or the map fitting the picture made it move), the right stick zooms smoothly, a
+    long hold at 1.0 accelerates, holds at 3.0 push the view to every corner, Select
+    centres on the current area, the left stick (the host test aid DW3_MAP_LSTICK, the
+    replay pad is digital) moves the cursor at half and full tilt, L2 selects bilinear. The host draws the screen: references from the PC build."""
+    r = Rec(f"{version.upper()}: P6.32 phase 3 zoom about the cursor, pan limits, centre, cursor speed, backdrop (env and cfg in manifest)")
+    for f in range(300, 1200, 30):
+        r.press(f, CROSS)            # battle report -> field
+    r.press(1250, START)             # field menu, over the field
+    r.press(1420, CROSS)             # Items: the dissolve, then STSTATUS
+    f = 1640
+    for name, button, wait in MENU_SCREENS_STEPS:
+        if name == "map":
+            break
+        if button:
+            r.press(f, button)
+        f += wait
+    assert f == 4000, f
+    r.press(4000, SQUARE_MAP)        # the new screen, 1.5x on the current area
+    r.shot(4040, "zm-open")
+    # the cursor leaves the middle of the picture (left and up, into the middle of the
+    # map: the zoom steps below are then free of the image's edge); the view follows
+    _pad(r, 4050, LEFT | UP)
+    _pad(r, 4090, LEFT)
+    _pad(r, 4100, 0)
+    r.shot(4120, "zm-cursor-off-centre")
+    # zoom in about the cursor: 1.5 -> 2.0 -> 3.0 (-> 3.0: the top of the ladder)
+    r.press(4130, R1_MAP)
+    r.shot(4150, "zm-in-200")
+    r.press(4160, R1_MAP)
+    r.shot(4180, "zm-in-300")
+    r.press(4190, R1_MAP)
+    # and out again: 3.0 -> 2.0 -> 1.5 -> 1.25 -> 1.0 -> FIT
+    r.press(4210, L1_MAP)
+    r.press(4230, L1_MAP)
+    r.shot(4250, "zm-out-150")
+    r.press(4260, L1_MAP)
+    r.press(4280, L1_MAP)
+    r.shot(4300, "zm-out-100")       # 1.0: the map (1176 px) is narrower than the picture
+    r.press(4310, L1_MAP)
+    r.shot(4330, "zm-fit")           # FIT: bars at the sides, the backdrop of the map's colours
+    # back up to 1.5 with the cursor still where it was
+    r.press(4340, R1_MAP)
+    r.press(4360, R1_MAP)
+    r.press(4380, R1_MAP)
+    r.press(4400, R1_MAP)
+    r.shot(4420, "zm-back-150")
+    # the right stick zooms smoothly, about the cursor too
+    _pad(r, 4430, RSTICK_UP)
+    _pad(r, 4470, 0)
+    r.shot(4480, "zm-stick-in")
+    _pad(r, 4490, RSTICK_DOWN)
+    _pad(r, 4560, 0)
+    r.shot(4570, "zm-stick-out")
+    # a long hold at 1.0 accelerates (the game's 2, 3, 4 px a frame, then +1 every
+    # 15 frames) and takes the cursor into the left strip the PS1 cursor cannot reach
+    for k in range(5):
+        r.press(4580 + 15 * k, L1_MAP)   # down to FIT, whatever the smooth zoom was
+    r.press(4660, R1_MAP)                # FIT -> 1.0
+    _pad(r, 4690, LEFT)
+    _pad(r, 4850, 0)
+    r.shot(4860, "zm-accel-left")
+    # holds at 3.0 push the view into every corner: the pan limit is the image box
+    for k in range(4):
+        r.press(4870 + 20 * k, R1_MAP)   # 1.0 -> 1.25 -> 1.5 -> 2.0 -> 3.0
+    r.shot(4960, "zm-300-left-strip")
+    _pad(r, 4970, UP | LEFT)
+    _pad(r, 5130, 0)
+    r.shot(5140, "zm-corner-top-left")
+    _pad(r, 5150, DOWN | RIGHT)
+    _pad(r, 5390, 0)
+    r.shot(5400, "zm-corner-bottom-right")
+    # Select: back to the current area, the view centred on it
+    r.press(5410, SELECT_MAP)
+    r.shot(5440, "zm-centre")
+    # the left stick: half tilt is slow, full tilt is the d-pad's speed. A digital replay
+    # pad has no stick: the host test aid DW3_MAP_LSTICK (manifest env) moves it, half tilt
+    # left from game frame 5510 to 5570, full tilt left from 5590 to 5620
+    r.press(5450, L1_MAP)
+    r.press(5470, L1_MAP)
+    r.press(5490, L1_MAP)
+    r.shot(5580, "zm-stick-half")
+    r.shot(5630, "zm-stick-full")
+    # the bilinear scaler (L2 from nearest wraps to it), then back
+    r.press(5640, L2_MAP)
+    r.shot(5670, "zm-bilinear")
+    r.press(5680, R2_MAP)
+    r.shot(5710, "zm-nearest")
+    r.press(5730, TRIANGLE)          # back to the game's Map
+    r.shot(5790, "zm-closed")
+    r.press(5830, TRIANGLE)          # the game's Triangle closes the Map
+    r.end(5930)
     return r
 
 
@@ -3086,6 +3197,7 @@ def main(out):
         (out / f"{v}-map-view.rec").write_text(map_view(v).text(True))
         (out / f"{v}-map-view-off.rec").write_text(map_view_off(v).text(True))
         (out / f"{v}-map-names.rec").write_text(map_names(v).text(True))
+        (out / f"{v}-map-zoom.rec").write_text(map_zoom(v).text(True))
         (out / f"{v}-items-equip-switch.rec").write_text(items_equip_switch(v).text(True))
         (out / f"{v}-items-equip-stays.rec").write_text(items_equip_stays(v).text(True))
         (out / f"{v}-items-bag-view.rec").write_text(items_bag_view(v).text(True))

@@ -37,7 +37,9 @@ enum {
     MV_SCALER_SHARP = 1,   /* 3x integer nearest prescale, GPU bilinear */
     MV_SCALER_LANCZOS2 = 2,/* CPU Lanczos2 to 3x (title_logo_resample.c) */
     MV_SCALER_FSR = 3,     /* CPU AMD FSR 1: EASU to 3x, then RCAS */
-    MV_SCALER_COUNT = 4
+    MV_SCALER_BILINEAR = 4,/* phase 3: GPU bilinear on the captured map itself
+                            * (no CPU work, no shader: the sampler's filter) */
+    MV_SCALER_COUNT = 5
 };
 enum { MV_SCALE = 3 };
 
@@ -104,10 +106,14 @@ void dw3_mv_fsr_rcas(MvImage *img, float attenuation);
  * the 320x240 menu picture (so the 392 x ~320 map is bigger than the picture,
  * as on the PS1); FIT is the largest zoom that shows the whole map. The
  * viewport (vw x vh) is the whole 16:9 picture in host pixels. */
-enum { MV_ZOOM_STEPS = 6 };
-extern const float MV_ZOOM_TABLE[MV_ZOOM_STEPS]; /* 0 = FIT, then 1.0 ... 3.0 */
+enum { MV_ZOOM_STEPS = 7, MV_ZOOM_TOP_PLAIN = 5 };
+/* 0 = FIT, then 1.0 1.25 1.5 2.0 3.0 and 4.0. P6.32 section 4.4: 4.0 only when a
+ * higher-resolution source (a mod pack) is loaded, else the top is 3.0 (the
+ * source cannot show more). */
+extern const float MV_ZOOM_TABLE[MV_ZOOM_STEPS];
 typedef struct MvView {
     int step;     /* index into MV_ZOOM_TABLE (the nearest one when zoom > 0) */
+    int top;      /* MV_ZOOM_STEPS - 1 allows 4.0, anything else tops at 3.0 */
     float zoom;   /* > 0: a smooth zoom between the steps (the right stick),
                    * logical, same units as the table; 0: the step rules */
     float cx, cy; /* source pixel at the middle of the viewport */
@@ -125,6 +131,53 @@ void dw3_mv_view_zoom_by(MvView *v, float factor, int map_w, int map_h, int vw,
                          int vh);
 /* Keep the view on the map: centre when the map is smaller than the view. */
 void dw3_mv_view_clamp(MvView *v, int map_w, int map_h, int vw, int vh);
+/* The same, saying where the view rests (P6.32 phase 3, the 4.2g limits): the pan
+ * limit is the image box at every zoom, so the view never shows past the picture.
+ * Returns the edges the view is held at (its edge is the image's edge: it cannot go
+ * further that way) and the axes on which the whole map fits (the view is centred
+ * and does not pan). *want_c get the centre the view had before the clamp, so a
+ * caller can say how far it wanted to go past. */
+enum { MV_PAN_LEFT = 1, MV_PAN_RIGHT = 2, MV_PAN_TOP = 4, MV_PAN_BOTTOM = 8,
+       MV_PAN_CENTRED_X = 16, MV_PAN_CENTRED_Y = 32 };
+int dw3_mv_view_clamp_ex(MvView *v, int map_w, int map_h, int vw, int vh,
+                         float *want_cx, float *want_cy);
+/* The top zoom of this view (3.0, or 4.0 with a higher-resolution source). */
+float dw3_mv_view_top_zoom(const MvView *v);
+/* A map point (map pixels) in viewport pixels. */
+void dw3_mv_view_point(const MvView *v, int map_w, int map_h, int vw, int vh,
+                       float mx, float my, float *px, float *py);
+/* Zoom about an anchor: put the map point (mx, my) on viewport pixel (px, py)
+ * (call it after the zoom change, with the point's viewport pixel from before), then
+ * clamp. Returns the clamp flags; with the map point away from the edges the
+ * anchor does not move on screen, else the clamp wins and the log says so. */
+int dw3_mv_view_anchor(MvView *v, float mx, float my, float px, float py,
+                       int map_w, int map_h, int vw, int vh, float *want_cx,
+                       float *want_cy);
+/* The view follows a map point: pans only while the point is closer than
+ * (margin_x, margin_y) viewport pixels to an edge. Returns the clamp flags. */
+int dw3_mv_view_follow(MvView *v, float mx, float my, float margin_x,
+                       float margin_y, int map_w, int map_h, int vw, int vh,
+                       float *want_cx, float *want_cy);
+
+/* --- cursor speed (phase 3) ----------------------------------------------
+ * Source pixels a frame the cursor moves while a direction has been held for
+ * `hold` frames: the game's ramp (2 for 10 frames, 3 for 10, then 4) up to
+ * MV_PAN_ACCEL_AFTER frames, then +1 every 15 frames up to a cap that is 10 screen
+ * pixels of the 240-line picture (10 / zoom source pixels, never below 4). */
+enum { MV_PAN_ACCEL_AFTER = 60, MV_STICK_MOVE_DEADZONE = 16 };
+float dw3_mv_pan_speed(int hold, float zoom);
+/* The left stick's raw axis (-127..127) as a signed factor on that speed: 0 inside
+ * the dead zone, then a smoothstep to +-1 at full tilt (never below 0.02 so a
+ * barely-moved stick still moves the cursor). */
+float dw3_mv_stick_unit(int raw);
+
+/* --- the FIT backdrop (phase 3) -------------------------------------------
+ * Beside the map at FIT (and below 1.0 on a tall window) the host shows the map's
+ * own colours instead of black: the map averaged to MV_BACKDROP_W x MV_BACKDROP_H
+ * cells, dimmed (`dim_percent` of the brightness), stretched over the whole picture
+ * by the GPU's linear filter. `rgba` is MV_BACKDROP_W * MV_BACKDROP_H * 4 bytes. */
+enum { MV_BACKDROP_W = 32, MV_BACKDROP_H = 18 };
+int dw3_mv_backdrop(const MvImage *src, uint8_t *rgba, int dim_percent);
 /* Button step: the next table step in that direction (from a smooth zoom, the
  * next table zoom above or below it). Change the step keeping the source point under the viewport centre. */
 void dw3_mv_view_zoom(MvView *v, int dir, int map_w, int map_h, int vw, int vh);
