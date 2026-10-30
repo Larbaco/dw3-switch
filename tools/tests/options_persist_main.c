@@ -19,6 +19,8 @@
  *   gains              print the Q15 gains last handed to the mixer
  *   env I L            apply_env(I, L) (DW3_WIDESCREEN / DW3_TURBO stand-in)
  *   fileint KEY DEF    print dw3_port_options_file_int(KEY, DEF) (file-only keys)
+ *   fileval KEY        print dw3_port_options_file_str(KEY) or (none)
+ *   level IDX          print dw3_port_options_level(IDX)
  *   raw HEX            hand the pad host's raw word (a clear bit = pressed) to the map
  *   tick               one Options tick with nothing pressed
  *   map                print the map in force (ten digits) and its layout
@@ -195,6 +197,15 @@ int main(int argc, char **argv) {
             printf("%s=%d\n", argv[i + 1],
                    dw3_port_options_file_int(argv[i + 1], atoi(argv[i + 2])));
             i += 2;
+        } else if (strcmp(argv[i], "fileval") == 0 && i + 1 < argc) {
+            const char *v = dw3_port_options_file_str(argv[i + 1]);
+
+            printf("%s=%s\n", argv[i + 1], v ? v : "(none)");
+            i += 1;
+        } else if (strcmp(argv[i], "level") == 0 && i + 1 < argc) {
+            printf("level%d=%d\n", atoi(argv[i + 1]),
+                   dw3_port_options_level(atoi(argv[i + 1])));
+            i += 1;
         } else if (strcmp(argv[i], "env") == 0 && i + 2 < argc) {
             dw3_port_options_apply_env(atoi(argv[i + 1]), atoi(argv[i + 2]));
             i += 2;

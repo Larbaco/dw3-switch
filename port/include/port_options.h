@@ -70,7 +70,12 @@ enum {
      * follow the button map. A Controls row on the Switch only (the PC has no
      * row; the key switch_glyphs / DW3_SWITCH_GLYPHS turn it on for the replay
      * tests). Key switch_glyphs. */
-    DW3_PORT_OPT_SWITCH_GLYPHS = 14
+    DW3_PORT_OPT_SWITCH_GLYPHS = 14,
+    /* P6.32 phase 4: the full-screen map view, 0 = off (default), 1 = on. A
+     * Display row (a switch row; Confirm toggles), read at every Square on the
+     * game's Map screen, so it works at once and in game. Key map_screen, the
+     * one the preview builds already used. */
+    DW3_PORT_OPT_MAP_SCREEN = 15
 };
 
 /* Registry; unavailable features remain safe no-op stubs. Values persist in
@@ -110,6 +115,10 @@ void dw3_port_options_apply_env(int index, int level);
  * absent, not a number, or no file was loaded. The key is kept when the
  * Options screen rewrites the file. */
 int dw3_port_options_file_int(const char *key, int def);
+/* A file-only text key (P6.32 phase 4: the map view's button bindings): its
+ * value as loaded at boot, or NULL when absent or no file was loaded. The
+ * pointer is valid until the next call that rewrites the file; copy it. */
+const char *dw3_port_options_file_str(const char *key);
 
 /* The directory port_options.cfg lives in (the dir given to _persist_init),
  * or "" when the options are session-only. Small files of the port's own

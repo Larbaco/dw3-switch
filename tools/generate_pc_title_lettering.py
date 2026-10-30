@@ -339,6 +339,25 @@ SWITCH_GLYPHS_TEXT = {
 for _lang, _t in SWITCH_GLYPHS_TEXT.items():
     LETTERS.append(('opt_row_sg_' + _lang, _t['row'], 26, 'DejaVuSans.ttf'))
     LETTERS.append(('opt_desc_sg_' + _lang, _t['desc'], 25, 'DejaVuSans.ttf'))
+# P6.32 phase 4 Full-screen map row of the Display group (docs/P6.32_MAP_ZOOM.md,
+# section 16), in the five languages of the EU disc (en is also the US disc's). The
+# values are the Options screen's OFF / ON words. Label under 290 px, description
+# under 690 px. FR / DE / IT / ES are machine-drafted, needs native review.
+MAP_SCREEN_TEXT = {
+    'en': {'row': 'Full-screen map',
+           'desc': 'Opens a full-screen map from the Map screen.'},
+    'fr': {'row': 'Carte plein écran',
+           'desc': 'Ouvre une carte plein écran depuis la Carte.'},
+    'de': {'row': 'Vollbildkarte',
+           'desc': 'Öffnet eine Vollbildkarte aus der Karte.'},
+    'es': {'row': 'Mapa completo',
+           'desc': 'Abre un mapa a pantalla completa desde el Mapa.'},
+    'it': {'row': 'Mappa a schermo',
+           'desc': 'Apre una mappa a schermo intero dalla Mappa.'},
+}
+for _lang, _t in MAP_SCREEN_TEXT.items():
+    LETTERS.append(('opt_row_ms_' + _lang, _t['row'], 26, 'DejaVuSans.ttf'))
+    LETTERS.append(('opt_desc_ms_' + _lang, _t['desc'], 25, 'DejaVuSans.ttf'))
 # P6.12 Controls group, phase 2 (docs/CONTROLS_BUNDLE.md): the Customize buttons
 # and Reset to default rows, the Custom value of Button layout, the prompt of the
 # Customize screen. FR / DE / IT / ES are machine-drafted, needs native review.
