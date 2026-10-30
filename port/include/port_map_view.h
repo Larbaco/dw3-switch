@@ -96,6 +96,40 @@ int dw3_port_map_view_wants(void);
 void dw3_port_map_view_data(const Dw3MapViewData *d);
 void dw3_port_map_view_name(const Dw3MapViewName *n);
 
+/* Patch 0148 (phase 6): the field hotkey. The key (`map_view_field_open`, default Select)
+ * opens the view straight from the walking field: the field is held (its tasks paused, the
+ * clocks, the roll sequence and VRAM given back at the close), the game's own Map screen runs
+ * in the field menu's slot and the view opens on it by itself. */
+typedef struct Dw3FieldMapProbe {
+    int menu_open, busy, acting;        /* FIELDSTG_state: why the field is not idle */
+    int progress;                       /* GAME.progress (the field menu needs 4 or more) */
+    int battle_steps;                   /* GAME.battleSteps: the encounter countdown */
+    int player_x, player_y;             /* the player's actor position */
+    int children, held, running;        /* field children; how many are paused; how many are in TASK_RUN */
+} Dw3FieldMapProbe;
+
+/* Every frame the field is in its main state (before Start is looked at). `held` and
+ * `pressed` are the logical pad. Returns 1 when the session must start this frame: the key
+ * went down, the option and widescreen are on, no other shoulder button is held and the
+ * field is idle. A key that goes down and is refused logs why, once. */
+int dw3_port_map_view_field_poll(unsigned held, unsigned pressed, const Dw3FieldMapProbe *p);
+/* The patch paused the field and created the Map screen's root: snapshot (VRAM, clocks, roll
+ * sequence) and log `dw3-map: field hotkey open`. */
+/* Returns 0 (and logs why) when it cannot hold the field: nothing was changed. */
+int dw3_port_map_view_field_begin(const Dw3FieldMapProbe *p);
+/* The Map screen's root is gone (the view closed, or the screen did): give everything back
+ * and log the return with the comparison against the open. */
+void dw3_port_map_view_field_end(const Dw3FieldMapProbe *p);
+/* 1 from `begin` to `end`. The turbo poll reads it: speed 1, R3 ignored. */
+int dw3_port_map_view_field_active(void);
+/* The view closed during a session: the patch kills the game's Map screen. 1 once. */
+int dw3_port_map_view_field_closed(void);
+/* The layer the Map screen and its text window draw into: the field's (SCREEN_LAYER does not
+ * exist in the field) while a session runs, else `screen_layer`. */
+int dw3_port_map_view_field_layer(int screen_layer);
+/* A restart (P6.9) while a session runs: forget it. */
+void dw3_port_map_view_field_reset(void);
+
 #ifdef __cplusplus
 }
 #endif

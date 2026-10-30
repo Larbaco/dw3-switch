@@ -19,6 +19,9 @@
 #include "port_battle_options.h"
 
 #include "port_field_options.h"
+#ifndef DW3_BATTLE_OPTIONS_TEST
+#include "port_map_view.h"
+#endif
 #include "port_options.h"
 
 #include <stdio.h>
@@ -137,6 +140,10 @@ int dw3_port_battle_options_hold_frame(void) {
 }
 
 void dw3_port_battle_options_reset(void) {
+#ifndef DW3_BATTLE_OPTIONS_TEST
+    /* P6.32 phase 6: a restart also ends a field hotkey session (the view held the field) */
+    dw3_port_map_view_field_reset();
+#endif
     if (!g_holding) {
         return;
     }
