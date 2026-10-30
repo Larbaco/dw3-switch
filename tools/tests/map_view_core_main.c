@@ -699,6 +699,99 @@ static void test_pan_speed(void) {
     CHECK(v > 0.2f && v < 0.5f, "half tilt moves slower than half of full (%f)", v);
 }
 
+/* Phase 4: the button bindings. */
+static void test_bindings(void) {
+    MvBindings b;
+    const char *v[MV_ACT_COUNT];
+    char why[400];
+    int a, bit, rc;
+    const int want_default[MV_ACT_COUNT] = {15, 10, 11, 0, 8, 9};
+
+    /* the defaults are the PoC's buttons: Square opens, L1 / R1 zoom, Select
+     * centres, L2 / R2 change the scaler */
+    dw3_mv_bindings_default(&b);
+    for (a = 0; a < MV_ACT_COUNT; ++a) {
+        CHECK(b.bit[a] == want_default[a] && b.bit[a] == dw3_mv_bind_default_bit(a),
+              "default %d is bit %d", a, b.bit[a]);
+        CHECK(!b.from_file[a], "default %d is not from the file", a);
+    }
+    CHECK(strcmp(dw3_mv_act_key(MV_ACT_OPEN), "map_view_open") == 0, "key open");
+    CHECK(strcmp(dw3_mv_act_key(MV_ACT_SCALER_NEXT), "map_view_scaler_next") == 0, "key next");
+    CHECK(strcmp(dw3_mv_act_name(MV_ACT_ZOOM_OUT), "zoom_out") == 0, "name zoom_out");
+
+    /* parsing: any case, spaces trimmed; reserved words say so */
+    CHECK(dw3_mv_bind_parse("square") == 15 && dw3_mv_bind_parse("  SQUARE\r") == 15, "square");
+    CHECK(dw3_mv_bind_parse("Cross") == 13 && dw3_mv_bind_parse("l1") == 10 &&
+          dw3_mv_bind_parse("R1") == 11 && dw3_mv_bind_parse("l2") == 8 &&
+          dw3_mv_bind_parse("r2") == 9 && dw3_mv_bind_parse("l3") == 1 &&
+          dw3_mv_bind_parse("select") == 0, "the eight words");
+    CHECK(dw3_mv_bind_parse("triangle") == -2 && dw3_mv_bind_parse("circle") == -2 &&
+          dw3_mv_bind_parse("r3") == -2 && dw3_mv_bind_parse("start") == -2 &&
+          dw3_mv_bind_parse("up") == -2, "reserved");
+    CHECK(dw3_mv_bind_parse("y") == -1 && dw3_mv_bind_parse("") == -1 &&
+          dw3_mv_bind_parse(NULL) == -1 && dw3_mv_bind_parse("square2") == -1, "unknown");
+    for (bit = 0; bit < 16; ++bit) {
+        const char *n = dw3_mv_bind_bit_name(bit);
+        int back = dw3_mv_bind_parse(n);
+
+        if (strcmp(n, "?") == 0) {
+            CHECK(bit == 2 || bit == 3 || bit == 4 || bit == 5 || bit == 6 || bit == 7 ||
+                  bit == 12 || bit == 14, "bit %d has no name but is bindable", bit);
+        } else {
+            CHECK(back == bit, "bit %d name %s parses back to %d", bit, n, back);
+        }
+    }
+    CHECK(dw3_mv_bind_ps_button(15) == 3 && dw3_mv_bind_ps_button(10) == 4 &&
+          dw3_mv_bind_ps_button(13) == 0 && dw3_mv_bind_ps_button(1) == 8 &&
+          dw3_mv_bind_ps_button(0) == -1, "ps button of a bit");
+
+    /* no keys: the defaults, no complaint */
+    for (a = 0; a < MV_ACT_COUNT; ++a) v[a] = NULL;
+    rc = dw3_mv_bindings_resolve(&b, v, why, sizeof(why));
+    CHECK(rc == 0 && why[0] == 0, "no keys: rc %d why '%s'", rc, why);
+    for (a = 0; a < MV_ACT_COUNT; ++a) CHECK(b.bit[a] == want_default[a], "no keys %d", a);
+
+    /* a full rebind, each action on a button of its own */
+    v[MV_ACT_OPEN] = "r2"; v[MV_ACT_ZOOM_OUT] = "square"; v[MV_ACT_ZOOM_IN] = "cross";
+    v[MV_ACT_CENTRE] = "l3"; v[MV_ACT_SCALER_PREV] = "l1"; v[MV_ACT_SCALER_NEXT] = "r1";
+    rc = dw3_mv_bindings_resolve(&b, v, why, sizeof(why));
+    CHECK(rc == 0 && why[0] == 0, "rebind: rc %d why '%s'", rc, why);
+    CHECK(b.bit[MV_ACT_OPEN] == 9 && b.bit[MV_ACT_ZOOM_OUT] == 15 && b.bit[MV_ACT_ZOOM_IN] == 13 &&
+          b.bit[MV_ACT_CENTRE] == 1 && b.bit[MV_ACT_SCALER_PREV] == 10 &&
+          b.bit[MV_ACT_SCALER_NEXT] == 11, "rebind bits");
+    for (a = 0; a < MV_ACT_COUNT; ++a) CHECK(b.from_file[a] == 1, "from file %d", a);
+    CHECK(dw3_mv_bindings_action(&b, 9) == MV_ACT_OPEN && dw3_mv_bindings_action(&b, 13) == MV_ACT_ZOOM_IN &&
+          dw3_mv_bindings_action(&b, 0) == -1 && dw3_mv_bindings_action(&b, 14) == -1, "action of a bit");
+
+    /* swapping two defaults is fine (a permutation of the table) */
+    for (a = 0; a < MV_ACT_COUNT; ++a) v[a] = NULL;
+    v[MV_ACT_ZOOM_OUT] = "r1"; v[MV_ACT_ZOOM_IN] = "l1";
+    rc = dw3_mv_bindings_resolve(&b, v, why, sizeof(why));
+    CHECK(rc == 0 && b.bit[MV_ACT_ZOOM_OUT] == 11 && b.bit[MV_ACT_ZOOM_IN] == 10, "swap L1 / R1: rc %d", rc);
+
+    /* a value that cannot be bound: that action alone takes its default, the rest stand */
+    for (a = 0; a < MV_ACT_COUNT; ++a) v[a] = NULL;
+    v[MV_ACT_OPEN] = "triangle"; v[MV_ACT_ZOOM_IN] = "cross"; v[MV_ACT_ZOOM_OUT] = "banana";
+    rc = dw3_mv_bindings_resolve(&b, v, why, sizeof(why));
+    CHECK(rc == 1, "bad values: rc %d", rc);
+    CHECK(b.bit[MV_ACT_OPEN] == 15 && !b.from_file[MV_ACT_OPEN], "triangle falls back to square");
+    CHECK(b.bit[MV_ACT_ZOOM_OUT] == 10, "banana falls back to l1");
+    CHECK(strstr(why, "map_view_open=triangle ignored (the view keeps that button for itself") != NULL &&
+          strstr(why, "map_view_zoom_out=banana ignored (not a bindable button), using L1") != NULL, "why: %s", why);
+
+    /* two actions on one button (a default included): everything back to the defaults */
+    for (a = 0; a < MV_ACT_COUNT; ++a) v[a] = NULL;
+    v[MV_ACT_OPEN] = "l1";
+    rc = dw3_mv_bindings_resolve(&b, v, why, sizeof(why));
+    CHECK(rc == 2, "open on L1 clashes with zoom_out's default: rc %d", rc);
+    for (a = 0; a < MV_ACT_COUNT; ++a)
+        CHECK(b.bit[a] == want_default[a] && !b.from_file[a], "conflict resets %d", a);
+    CHECK(strstr(why, "map_view_open and map_view_zoom_out are both L1") != NULL, "why: %s", why);
+    for (a = 0; a < MV_ACT_COUNT; ++a) v[a] = "cross";
+    rc = dw3_mv_bindings_resolve(&b, v, why, 24);   /* a short buffer never overruns */
+    CHECK(rc == 2 && strlen(why) < 24, "short buffer: rc %d len %d", rc, (int)strlen(why));
+}
+
 static void test_backdrop(void) {
     MvImage src;
     uint8_t out[MV_BACKDROP_W * MV_BACKDROP_H * 4];
@@ -747,6 +840,7 @@ int main(int argc, char **argv) {
     test_zoom_top();
     test_pan_speed();
     test_backdrop();
+    test_bindings();
     test_cache(argc > 1 ? argv[1] : "/mnt/cabal/tmp");
     if (!g_fail) printf("OK: map view core\n");
     return g_fail;

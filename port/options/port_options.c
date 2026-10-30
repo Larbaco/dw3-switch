@@ -58,7 +58,7 @@
  * port_options.h: port/pacing/pacing.c, port/battle_menu/battle_menu_memory.c
  * and port/autosave/autosave.c read them. */
 enum {
-    DW3_PORT_OPT_COUNT = 15,
+    DW3_PORT_OPT_COUNT = 16,
     DW3_PORT_OPT_WIDESCREEN = 0,
     DW3_PORT_OPT_FAST_FORWARD = 1,
     DW3_PORT_OPT_RESTART = 2,
@@ -76,7 +76,8 @@ _Static_assert(DW3_PORT_OPT_WIDESCREEN == 0 && DW3_PORT_OPT_FAST_FORWARD == 1 &&
                DW3_PORT_OPT_CUSTOMIZE == 11 && DW3_PORT_OPT_RESET_MAP == 12 &&
                DW3_PORT_OPT_TURBO_MUSIC == 13 &&
                DW3_PORT_OPT_SWITCH_GLYPHS == 14 &&
-               DW3_PORT_OPT_COUNT == 15,
+               DW3_PORT_OPT_MAP_SCREEN == 15 &&
+               DW3_PORT_OPT_COUNT == 16,
                "registry indexes changed: update port_options_groups.h");
 
 typedef struct Dw3PortOptStub {
@@ -153,6 +154,11 @@ static Dw3PortOptStub g_stubs[DW3_PORT_OPT_COUNT] = {
     /* P10.6: 0 = the game's button icons, 1 = Switch glyphs (a switch row;
      * Confirm toggles). DW3_SWITCH_GLYPHS pins it for a run. */
     {"Switch glyphs", "switch_glyphs", 0, 0, "DW3_SWITCH_GLYPHS"},
+    /* P6.32 phase 4: 0 = off (the game's own Map screen only), 1 = Square on
+     * it opens the full-screen view. A switch row; the key is the file-only one
+     * of the preview builds. No environment variable: the replays seed it in the
+     * file. */
+    {"Map screen", "map_screen", 0, 0, NULL},
 };
 
 /* P9.4 persistence. The registry values above are what the game reads; this
@@ -798,6 +804,10 @@ static int po_save(void) {
     return 0;
 }
 
+const char *dw3_port_options_file_str(const char *key) {
+    return g_persist_on ? dw3_optcfg_get(&g_cfg, key) : NULL;
+}
+
 int dw3_port_options_file_int(const char *key, int def) {
     const char *v = g_persist_on ? dw3_optcfg_get(&g_cfg, key) : NULL;
     int n;
@@ -1216,6 +1226,7 @@ static void po_toggle(int index) {
             index == DW3_PORT_OPT_RESTART ? "restart hotkey"
             : index == DW3_PORT_OPT_AUTOSAVE ? "auto-save"
             : index == DW3_PORT_OPT_SWITCH_GLYPHS ? "switch glyphs"
+            : index == DW3_PORT_OPT_MAP_SCREEN ? "map screen (full-screen map view)"
                                                    : "widescreen",
             v ? "enabled" : "disabled");
     fflush(stderr);

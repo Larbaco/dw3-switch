@@ -41,7 +41,7 @@ int main(void) {
         return fail("re-open");
     }
 
-    if (dw3_port_options_count() != 15) {
+    if (dw3_port_options_count() != 16) {
         return fail("option count");
     }
     if (dw3_port_options_level(DW3_PORT_OPT_BATTLE_MENU) != 0 ||
@@ -170,7 +170,7 @@ int main(void) {
      * every registry row is in exactly one group, a long list scrolls. */
     {
         int ids[DW3_OPTGRP_COUNT];
-        int seen[15] = {0};
+        int seen[16] = {0};
         int g, k;
 
         if (dw3_optgroups_visible(0, ids) != 7 || ids[0] != DW3_OPTGRP_DISPLAY ||
@@ -189,7 +189,7 @@ int main(void) {
                 seen[dw3_optgroups[g].rows[k]]++;
             }
         }
-        for (k = 0; k < 15; k++) {
+        for (k = 0; k < 16; k++) {
             if (k == DW3_PORT_OPT_REGION) continue; /* combined image only */
             if (k == DW3_PORT_OPT_SWITCH_GLYPHS && !DW3_OPT_GLYPHS_ROW) continue; /* Switch only */
             if (seen[k] != 1) {
@@ -212,6 +212,48 @@ int main(void) {
                 grp != 2 || sc != 3 || dw3_optlist_decode(1, &grp, &sc)) {
                 return fail("page decode");
             }
+        }
+    }
+
+    /* P6.32 phase 4: the Full-screen map row is the second row of the Display
+     * group, off by default, a plain switch (Confirm toggles), not locked in game. */
+    if (dw3_optgroups[DW3_OPTGRP_DISPLAY].nrows != 2 ||
+        dw3_optgroups[DW3_OPTGRP_DISPLAY].rows[0] != 0 /* Widescreen */ ||
+        dw3_optgroups[DW3_OPTGRP_DISPLAY].rows[1] != DW3_PORT_OPT_MAP_SCREEN) {
+        return fail("Display group is Widescreen, then Map screen");
+    }
+    if (dw3_port_options_level(DW3_PORT_OPT_MAP_SCREEN) != 0 ||
+        dw3_port_options_label(DW3_PORT_OPT_MAP_SCREEN) == NULL ||
+        strstr(dw3_port_options_label(DW3_PORT_OPT_MAP_SCREEN), "Map screen") == NULL) {
+        return fail("Map screen row defaults to off");
+    }
+    dw3_port_options_open();
+    {
+        dw3_port_options_test_set_pressed(1u << BIT_CROSS);
+        dw3_port_options_tick();         /* the Display group */
+        if (dw3_port_options_group() != DW3_OPTGRP_DISPLAY) {
+            return fail("Confirm opens the Display group");
+        }
+        dw3_port_options_test_set_pressed(1u << BIT_DOWN);
+        dw3_port_options_tick();
+        if (dw3_port_options_cursor() != 1) {
+            return fail("Display ends on the Map screen row");
+        }
+        dw3_port_options_test_set_pressed(1u << BIT_CROSS);
+        dw3_port_options_tick();
+        if (dw3_port_options_level(DW3_PORT_OPT_MAP_SCREEN) != 1) {
+            return fail("Confirm turns Map screen on");
+        }
+        dw3_port_options_tick();
+        if (dw3_port_options_level(DW3_PORT_OPT_MAP_SCREEN) != 0) {
+            return fail("Confirm turns Map screen off");
+        }
+        dw3_port_options_test_set_pressed(1u << BIT_TRIANGLE);
+        dw3_port_options_tick();
+        dw3_port_options_test_set_pressed(1u << BIT_TRIANGLE);
+        dw3_port_options_tick();
+        if (dw3_port_options_is_open()) {
+            return fail("Back twice closes");
         }
     }
 

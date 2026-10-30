@@ -61,6 +61,146 @@ const char *dw3_mv_scaler_name(int scaler) {
 
 int dw3_mv_scaler_linear(int scaler) { return scaler != MV_SCALER_NEAREST; }
 
+/* --- button bindings (phase 4) ------------------------------------------- */
+
+typedef struct MvBindWord {
+    const char *word;   /* cfg value, lower case */
+    const char *shown;  /* as logged and drawn */
+    int bit;            /* pad bit (port_map_view.h) */
+    int ps;             /* port_button_map.h index, -1 for select */
+} MvBindWord;
+
+static const MvBindWord mv_bindable[] = {
+    {"cross", "Cross", 13, 0}, {"square", "Square", 15, 3}, {"l1", "L1", 10, 4},
+    {"r1", "R1", 11, 5}, {"l2", "L2", 8, 6}, {"r2", "R2", 9, 7},
+    {"l3", "L3", 1, 8}, {"select", "Select", 0, -1},
+};
+/* Words the view uses itself: named in the log so a wrong value says why. */
+static const char *const mv_reserved[] = {
+    "triangle", "circle", "r3", "start", "up", "down", "left", "right"};
+
+static const struct { const char *key, *name; int def; } mv_acts[MV_ACT_COUNT] = {
+    {"map_view_open", "open", 15},
+    {"map_view_zoom_out", "zoom_out", 10},
+    {"map_view_zoom_in", "zoom_in", 11},
+    {"map_view_centre", "centre", 0},
+    {"map_view_scaler_prev", "scaler_prev", 8},
+    {"map_view_scaler_next", "scaler_next", 9},
+};
+
+const char *dw3_mv_act_key(int act) {
+    return act >= 0 && act < MV_ACT_COUNT ? mv_acts[act].key : "?";
+}
+const char *dw3_mv_act_name(int act) {
+    return act >= 0 && act < MV_ACT_COUNT ? mv_acts[act].name : "?";
+}
+int dw3_mv_bind_default_bit(int act) {
+    return act >= 0 && act < MV_ACT_COUNT ? mv_acts[act].def : -1;
+}
+const char *dw3_mv_bind_bit_name(int bit) {
+    size_t i;
+
+    for (i = 0; i < sizeof(mv_bindable) / sizeof(mv_bindable[0]); ++i) {
+        if (mv_bindable[i].bit == bit) return mv_bindable[i].shown;
+    }
+    return "?";
+}
+int dw3_mv_bind_ps_button(int bit) {
+    size_t i;
+
+    for (i = 0; i < sizeof(mv_bindable) / sizeof(mv_bindable[0]); ++i) {
+        if (mv_bindable[i].bit == bit) return mv_bindable[i].ps;
+    }
+    return -1;
+}
+
+static int mv_word_eq(const char *text, size_t n, const char *word) {
+    size_t i;
+
+    if (strlen(word) != n) return 0;
+    for (i = 0; i < n; ++i) {
+        char c = text[i];
+
+        if (c >= 'A' && c <= 'Z') c = (char)(c - 'A' + 'a');
+        if (c != word[i]) return 0;
+    }
+    return 1;
+}
+
+int dw3_mv_bind_parse(const char *text) {
+    size_t n, i;
+
+    if (!text) return -1;
+    while (*text == ' ' || *text == '\t') ++text;
+    n = strlen(text);
+    while (n > 0 && (text[n - 1] == ' ' || text[n - 1] == '\t' ||
+                     text[n - 1] == '\r' || text[n - 1] == '\n')) --n;
+    for (i = 0; i < sizeof(mv_bindable) / sizeof(mv_bindable[0]); ++i) {
+        if (mv_word_eq(text, n, mv_bindable[i].word)) return mv_bindable[i].bit;
+    }
+    for (i = 0; i < sizeof(mv_reserved) / sizeof(mv_reserved[0]); ++i) {
+        if (mv_word_eq(text, n, mv_reserved[i])) return -2;
+    }
+    return -1;
+}
+
+void dw3_mv_bindings_default(MvBindings *b) {
+    int a;
+
+    for (a = 0; a < MV_ACT_COUNT; ++a) {
+        b->bit[a] = mv_acts[a].def;
+        b->from_file[a] = 0;
+    }
+}
+
+int dw3_mv_bindings_resolve(MvBindings *b, const char *const vals[MV_ACT_COUNT],
+                            char *why, size_t cap) {
+    int a, c, rc = 0;
+    size_t n = 0;
+
+    dw3_mv_bindings_default(b);
+    if (why && cap) why[0] = 0;
+#define MV_WHY(...) do { if (why && n + 1 < cap) { \
+        int w_ = snprintf(why + n, cap - n, __VA_ARGS__); \
+        if (w_ > 0) n += (size_t)w_ < cap - n ? (size_t)w_ : cap - n - 1; } } while (0)
+    for (a = 0; a < MV_ACT_COUNT; ++a) {
+        int bit;
+
+        if (!vals || !vals[a]) continue;
+        bit = dw3_mv_bind_parse(vals[a]);
+        if (bit >= 0) {
+            b->bit[a] = bit;
+            b->from_file[a] = 1;
+            continue;
+        }
+        rc = 1;
+        MV_WHY("%s=%s ignored (%s), using %s; ", mv_acts[a].key, vals[a],
+               bit == -2 ? "the view keeps that button for itself: close, bars, "
+                           "fast-forward key, start, d-pad" : "not a bindable button",
+               dw3_mv_bind_bit_name(mv_acts[a].def));
+    }
+    for (a = 0; a < MV_ACT_COUNT; ++a) {
+        for (c = a + 1; c < MV_ACT_COUNT; ++c) {
+            if (b->bit[a] != b->bit[c]) continue;
+            MV_WHY("%s and %s are both %s: every binding back to its default; ",
+                   mv_acts[a].key, mv_acts[c].key, dw3_mv_bind_bit_name(b->bit[a]));
+            dw3_mv_bindings_default(b);
+            return 2;
+        }
+    }
+#undef MV_WHY
+    return rc;
+}
+
+int dw3_mv_bindings_action(const MvBindings *b, int bit) {
+    int a;
+
+    for (a = 0; a < MV_ACT_COUNT; ++a) {
+        if (b->bit[a] == bit) return a;
+    }
+    return -1;
+}
+
 int dw3_mv_scaler_step(int scaler, int dir) {
     int n = scaler + (dir < 0 ? -1 : 1);
 

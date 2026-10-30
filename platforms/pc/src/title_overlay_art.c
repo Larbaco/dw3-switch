@@ -319,14 +319,15 @@ enum { OPT_X0 = 84, OPT_Y0 = 60, OPT_W = 792, OPT_H = 600,
 /* The rows' kinds: how a registry value is written. */
 enum { ROW_SWITCH, ROW_FAST_FORWARD, ROW_VOLUME, ROW_ENCOUNTER, ROW_TEXT,
        ROW_BATTLE, ROW_AUTOSAVE, ROW_LAYOUT, ROW_REGION, ROW_CUSTOMIZE, ROW_RESET,
-       ROW_TURBO_MUSIC, ROW_GLYPHS };
+       ROW_TURBO_MUSIC, ROW_GLYPHS, ROW_MAP_SCREEN };
 static int row_kind(int row) {
     return row == 1 ? ROW_FAST_FORWARD : row == 3 || row == 4 ? ROW_VOLUME :
            row == 5 ? ROW_ENCOUNTER : row == 6 ? ROW_TEXT :
            row == 7 ? ROW_BATTLE : row == 8 ? ROW_AUTOSAVE :
            row == 9 ? ROW_LAYOUT : row == 10 ? ROW_REGION :
            row == 11 ? ROW_CUSTOMIZE : row == 12 ? ROW_RESET :
-           row == 13 ? ROW_TURBO_MUSIC : row == 14 ? ROW_GLYPHS : ROW_SWITCH;
+           row == 13 ? ROW_TURBO_MUSIC : row == 14 ? ROW_GLYPHS :
+           row == 15 ? ROW_MAP_SCREEN : ROW_SWITCH;
 }
 /* P6.31: the Auto-save row's lettering, in the language of the disc (en, fr,
  * de, es, it: the DW3_TITLE_LANG_* order). OFF is the Options screen's word. */
@@ -393,6 +394,15 @@ static const GlyphsWords glyphs_words[5]={GLYPHS_WORDS(en),GLYPHS_WORDS(fr),GLYP
                                           GLYPHS_WORDS(es),GLYPHS_WORDS(it)};
 static const GlyphsWords *glyphs_lang(void) {
     return &glyphs_words[options_lang>=DW3_TITLE_LANG_EN&&options_lang<=DW3_TITLE_LANG_IT?options_lang:0];
+}
+/* P6.32 phase 4: the Full-screen map row (Display group): label and message
+ * line in the language of the disc; the values are the Options screen's OFF / ON. */
+#define MAPSCR_WORDS(l) {WORD(opt_row_ms_##l),WORD(opt_desc_ms_##l)}
+typedef struct MapscrWords { Word row,desc; } MapscrWords;
+static const MapscrWords mapscr_words[5]={MAPSCR_WORDS(en),MAPSCR_WORDS(fr),MAPSCR_WORDS(de),
+                                          MAPSCR_WORDS(es),MAPSCR_WORDS(it)};
+static const MapscrWords *mapscr_lang(void) {
+    return &mapscr_words[options_lang>=DW3_TITLE_LANG_EN&&options_lang<=DW3_TITLE_LANG_IT?options_lang:0];
 }
 /* P9.7: the message line of a row that is locked in game, in the language of
  * the disc (en, fr, de, es, it: the DW3_TITLE_LANG_* order). */
@@ -819,6 +829,7 @@ static void options_list_screen(int group,int scroll) {
               :row_kind(reg)==ROW_LAYOUT?&layout_lang()->row
               :row_kind(reg)==ROW_TURBO_MUSIC?&tmusic_lang()->row
               :row_kind(reg)==ROW_GLYPHS?&glyphs_lang()->row
+              :row_kind(reg)==ROW_MAP_SCREEN?&mapscr_lang()->row
               :row_kind(reg)==ROW_REGION?&region_lang()->row:&t->row[reg];
 #ifdef DW3_CHEATS
         if(cht){
@@ -886,6 +897,7 @@ static void options_list_screen(int group,int scroll) {
               :row_kind(reg)==ROW_LAYOUT?&layout_lang()->desc
               :row_kind(reg)==ROW_TURBO_MUSIC?&tmusic_lang()->desc
               :row_kind(reg)==ROW_GLYPHS?&glyphs_lang()->desc
+              :row_kind(reg)==ROW_MAP_SCREEN?&mapscr_lang()->desc
               :row_kind(reg)==ROW_REGION?&region_lang()->desc:&t->desc[reg];
         }
         wordsh(d,L_DESC_X+28,L_DESC_Y+14,0,255,255,255);

@@ -58,8 +58,9 @@ pages and the `dw3-controls: hotkeys` line say which).
 **Which hotkeys follow the layout.** Port hotkeys are named in PS1 buttons and
 read the game's logical buttons, so they follow the map: fast-forward (R3), the
 restart chord (L1 + R1 + Start + Select), Select (Options from the title and in
-a battle), the map view (Square opens it, the cancel button closes it: B in the
-Nintendo layout), the Options, Cheats and Yes / No screens (Cross **or** Circle
+a battle), the map view (its open, zoom, centre and scaler buttons are PS buttons named by
+the `map_view_*` keys, Square, L1, R1, Select, L2 and R2 by default; the cancel button
+closes it: B in the Nintendo layout), the Options, Cheats and Yes / No screens (Cross **or** Circle
 confirms, Triangle goes back: A or X confirms and B goes back in Nintendo) and
 the EU language select (Cross or Start). The Switch diagnostic chords (Minus +
 L + R debug HUD, Minus + ZL + ZR renderer mode) read the physical buttons and
@@ -142,7 +143,7 @@ acceptance remains tracked separately in [P5.3_FLAT_SAVE.md](P5.3_FLAT_SAVE.md).
 | Options in battle | Select, while the command menu waits | Backspace | Minus | Port options over the held battle; no L1/R1/L2/R2 held; not during attacks or in the sub-menus; Widescreen and Cheats greyed; Triangle returns (P9.7 slice 2) |
 | Return to title from the field menu | Start, then the last row, Cross, Yes | Enter, ..., X | Plus, ..., B | Always there; the same reset as the chord, after a Yes / No question (P6.27) |
 | Quit game from the title menu | Last title row, Cross, Yes | ..., X | ..., B | Always on the native title; flushes the saves, then hbmenu (Switch) or closes the window (PC) (P6.28) |
-| Open the new full-screen map (P6.32) | Square on the game's Map screen | Z | Y (both layouts) | Widescreen on and `map_screen=1` in `port_options.cfg` (**default off since phase 1**; the PoC builds had it on). It opens at **1.5x** on your area with the top and bottom bars hidden (P51); **Circle shows / hides the bars** (the name box stays). In it: **D-pad (or left stick) moves the cursor** like the game's (the view follows it when zoomed; the game's name box shows on a location; **P6.32 phase 3: the left stick is analog, a half-tilted stick moves it slower, and a d-pad or stick held for more than a second accelerates**), **the right stick zooms** (up in, down out, smooth, not in steps), L1 / R1 zoom in steps (**about the cursor, which stays where it is on the picture**), **Select (PC Backspace, Switch Minus) centres the view on your current area and puts the cursor back on it** (not remappable), **L2 / R2 (ZL / ZR) change the scaler** (Nearest is the default; Bilinear joined the cycle in phase 3), Circle hides the text and the name box, the cancel button (PS1 Triangle: Switch X, or B with the Nintendo layout; PC S; it follows the layout and, later, the P6.12 remap) closes it, Square does not; R3 does nothing (no turbo, and it does not flip the fast-forward state either). Free-button table for a future field hotkey: [P6.32 section 7.5](P6.32_MAP_ZOOM.md#75-free-buttons-in-the-field-for-a-future-field-hotkey) |
+| Open the new full-screen map (P6.32) | **`map_view_open`, default Square**, on the game's Map screen | Z | Y (both layouts) | Widescreen on and **Options > Display > Full-screen map ON** (`map_screen=1`; **default off**; P6.32 phase 4 made it a row, it was a file-only key). It opens at **1.5x** on your area with the top and bottom bars hidden (P51); **Circle shows / hides the bars** (the name box stays). In it: **D-pad (or left stick) moves the cursor** like the game's (the view follows it when zoomed; the game's name box shows on a location; the left stick is analog, a half-tilted stick moves it slower, and a d-pad or stick held for more than a second accelerates), **the right stick zooms** (up in, down out, smooth), **`map_view_zoom_out` / `map_view_zoom_in` (default L1 / R1)** zoom in steps (about the cursor, which stays where it is on the picture), **`map_view_centre` (default Select: PC Backspace, Switch Minus)** centres the view on your current area and puts the cursor back on it, **`map_view_scaler_prev` / `_next` (default L2 / R2: ZL / ZR)** change the scaler (Nearest is the default), the cancel button (PS1 Triangle: Switch X, or B with the Nintendo layout; PC S; follows the layout and the custom map; not rebindable here) closes it, the open button does not; R3 does nothing (no turbo, and it does not flip the fast-forward state either). **The six buttons are file-only keys naming PS buttons** ([PORT_OPTIONS](PORT_OPTIONS.md#full-screen-map-row-and-the-map-views-buttons-p632-phase-4)): the P6.12 / P9.8 map is applied first, so a custom map moves the console button that makes each of them, and the log and the bars name it. Free-button table for a future field hotkey: [P6.32 section 7.5](P6.32_MAP_ZOOM.md#75-free-buttons-in-the-field-for-a-future-field-hotkey) |
 | Change partner on the equip panel (P6.33) | L2 / R2 | W / E | ZL / ZR | Status, Equipment, while the slot list waits (not inside the item list); previous / next party member, wraps; the slot cursor stays. Needs 2 or more partners. On by default; `items_partner_switch=0` in `port_options.cfg` turns it off. No on-screen help line yet (the panel has no free line in the five EU languages) |
 | Equip list: next bag filter (P6.34 phase 3) | Square | Z | Y | Status, Equipment, inside the item list (after Cross on a slot): this slot, all weapons, all armor and gear, worn by others (wraps); Cross on a worn-by-others row moves that item from its wearer to this Digimon. On by default; `items_bag_view=0` in `port_options.cfg` turns it off. No on-screen hint yet |
 | Use another copy on another Digimon (P6.34 phase 4) | Cross on a Digimon in the Items menu | X | B | Items, a usable item, the partner step ("Choose Digimon"): after a use the screen stays, Up / Down choose another Digimon and Cross uses the next copy; Triangle (Switch X, or B with the Nintendo layout) goes back to the list, and so does the use of the last copy. On by default; `items_use_stays=0` in `port_options.cfg` turns it off |
@@ -178,6 +179,31 @@ default on current `main` (#132). Supported scenes use 53-pixel gutters (about
 aspect rule. See
 
 [PORT_OPTIONS.md](PORT_OPTIONS.md) and [P6.1_WIDESCREEN.md](P6.1_WIDESCREEN.md).
+
+## Map view buttons and conflicts (P6.32 phase 4)
+
+The full-screen map has its own pad while it is open (the game's Map screen reads none of it), and
+the same pad word is what the rest of the port reads. Where each PS button goes there, with the
+default bindings (the six `map_view_*` keys of [PORT_OPTIONS](PORT_OPTIONS.md#full-screen-map-row-and-the-map-views-buttons-p632-phase-4)
+can move the first six rows among Cross, Square, L1, R1, L2, R2, L3 and Select):
+
+| PS button | On the game's Map screen | In the view | Other port use | Conflict |
+|---|---|---|---|---|
+| Square | opens the view (`map_view_open`) | ignored (logged) | Options and the Cheats shortcut; equip bag filter | none: other screens |
+| L1 / R1 | nothing | zoom out / in (`map_view_zoom_out`, `_in`) | Help page turns; Cheats page 2 steps; restart chord | none: the restart chord (L1 + R1 + Start + Select, only if enabled) still restarts from the view as from any screen; the view also takes the L1 / R1 presses as zoom steps, which the restart discards |
+| L2 / R2 | nothing | scaler previous / next | equip panel partner switch (another screen) | none |
+| Select | nothing | centre on your area (`map_view_centre`) | Options from the title and in battle (other modes) | none: not read in the Map screen |
+| Cross, L3 | nothing | not bound by default (a binding may take them); the log says so when pressed | Cross confirms elsewhere | none |
+| Circle | nothing | bars on / off (fixed) | confirm on port screens | none |
+| Triangle | closes the Map screen | closes the view (fixed: the game's own cancel) | back everywhere | none |
+| R3 | nothing | ignored (no turbo, fast-forward state kept) | fast-forward toggle in the field and battle | none, and the turbo poll ignores it while the view is open |
+| Start | nothing | nothing | movie skip, field menu | none |
+
+The six actions take six different buttons: a rebind that puts two actions on one button, or one of
+the buttons above that the view keeps, is refused and logged (`BINDING PROBLEM`), so no key ever
+does two things in the view. There is no clash with another entry of this file: each port hotkey above
+is read in another mode or screen than the Map screen, and the Switch diagnostic chords read the
+physical buttons, which the bindings never touch.
 
 ## Diagnostic controls
 

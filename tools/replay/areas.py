@@ -56,6 +56,11 @@ RULES: list[tuple[str, object]] = [
     (r"^port/help/", ("*help*", "*options*", "*walkthrough*")),
     (r"^port/include/port_(help|pages|walkthrough|walkthrough_ui)\.h$", ("*help*", "*walkthrough*", "*options*")),
     (r"^port/include/port_options_groups\.h$", _OPTIONS + _TITLE + ("*help*", "*walkthrough*", "*controls*")),
+    # the options registry's header (the enum of the rows and the accessors): an additive change
+    # (a row, a getter) alters no behaviour by itself, so it selects what reads the registry and
+    # draws its screens, not the full tier (P6.32 phase 4: the Full-screen map row, a text getter)
+    (r"^port/include/port_options\.h$", _OPTIONS + _TITLE + ("*help*", "*walkthrough*", "*controls*",
+                                                            "*nintendo*", "*map*", "*glyphs*", "*p79*", "*ws-*")),
     # the native Options art and its baked lettering: every screen of the Options shell
     (r"^platforms/pc/src/title_overlay_(art|lettering)", _OPTIONS + _TITLE + ("*help*", "*walkthrough*", "*controls*")),
     (r"^port/pages/", ("*help*", "*walkthrough*", "*options*")),

@@ -186,7 +186,7 @@ _add(
 # start of the scenario). Phase 1 switches Widescreen OFF, Fast-forward
 # 2x -> 3x and the Restart hotkey ON; phase 2 only opens the screen again.
 _OPT_P1 = (r"dw3-options: no \S*port_options\.cfg; defaults",
-           r"dw3-port-options: group open display \(1 row\(s\), title\)(?s:.*)"
+           r"dw3-port-options: group open display \(2 row\(s\), title\)(?s:.*)"
            r"dw3-port-options: group close display \(back to the group list\)(?s:.*)"
            r"dw3-port-options: group open gameplay \(5 row\(s\), title\)(?s:.*)"
            r"dw3-port-options: group close gameplay \(back to the group list\)(?s:.*)"
@@ -1379,6 +1379,113 @@ for _v, _ids in (("us", (0x159, 0x1FA, 0x1C2, 0x158, 0x1F9)),
                        "zoom, Select centres on the current area, cursor acceleration and analog speed, "
                        "the FIT backdrop, the bilinear scaler (P6.32 phase 3)"))
 
+# P6.32 phase 4 (no patch): the map view's buttons are a binding table (open, zoom out,
+# zoom in, centre, scaler previous / next), file-only keys of port_options.cfg, on top
+# of the P6.12 / P9.8 button map. The recording uses logical buttons; the Nintendo and
+# custom-map variants press positions (DW3_REPLAY_SOURCE=1) and must give the same
+# pictures. The `map_screen` row of the Display group is switched on in one process and
+# read back, with the binding keys, by the next.
+_BIND_CFG = (("map_view_open", "r2"), ("map_view_zoom_out", "square"), ("map_view_zoom_in", "cross"),
+             ("map_view_centre", "l3"), ("map_view_scaler_prev", "l1"), ("map_view_scaler_next", "r1"))
+_BIND_FILE = (r"dw3-map: bindings read from port_options.cfg: map_view_open=R2 \(file\) "
+              r"map_view_zoom_out=Square \(file\) map_view_zoom_in=Cross \(file\) map_view_centre=L3 \(file\) "
+              r"map_view_scaler_prev=L1 \(file\) map_view_scaler_next=R1 \(file\)")
+
+
+def _bind_in_effect(layout, digits, open_, zout, zin, cent, sprev, snext, close, bars):
+    return (r"dw3-map: bindings in effect \(at the open\): open=R2\(" + open_ + r"\) zoom_out=Square\(" + zout
+            + r"\) zoom_in=Cross\(" + zin + r"\) centre=L3\(" + cent + r"\) scaler_prev=L1\(" + sprev
+            + r"\) scaler_next=R1\(" + snext + r"\); fixed: close=Triangle\(" + close
+            + r", the game's cancel\) bars=Circle\(" + bars + r"\) R3=ignored; PS button \(console button\) "
+            r"under button layout " + layout + r", map " + digits)
+
+
+_BIND_ANY = _bind_in_effect(r"\w+", r"\d{10}", r"\w+", r"\w+", r"\w+", r"\w+", r"\w+", r"\w+", r"\w+", r"\w+")
+
+
+def _rebind_expect(bind_line):
+    return (
+        (0, _BIND_FILE),
+        (0, _BIND_ANY),
+        # Square (the old open key) opened nothing: the first and only open is R2's
+        (0, r"dw3-map: open half=\d image=392x352 .* turbo=1 zoom=1\.50 hud=off"),
+        (0, r"dw3-map: L2 pressed in the view: not bound to an action \(zoom out Square, zoom in Cross, "
+            r"centre L3, scaler L1/R1, open R2\)"),
+        (0, r"dw3-map: Select pressed in the view: not bound to an action \(zoom out Square, zoom in Cross, "
+            r"centre L3, scaler L1/R1, open R2\)"),
+        # L3 centres; the old centre key (Select) did not, and nothing else did
+        (0, r"dw3-map: Select pressed in the view: not bound(?s:.*)dw3-map: centre on the current area: location id="),
+        # Square zooms out (1.5 -> 1.25), Cross zooms in (1.25 -> 1.5 -> 2.0), about the cursor
+        (0, r"dw3-map: zoom source=button step 2 \(x\) 1\.50x -> 1\.25x anchor=cursor(?s:.*)"
+            r"dw3-map: zoom source=button step 3 \(x\) 1\.25x -> 1\.50x anchor=cursor(?s:.*)"
+            r"dw3-map: zoom source=button step 4 \(x\) 1\.50x -> 2\.00x anchor=cursor"),
+        # L1 is the previous scaler (nearest wraps to bilinear), R1 the next (back to nearest)
+        (0, r"dw3-map: scaler BILINEAR built in \d+ ms \(no cache, 392x352\)(?s:.*)dw3-map: scaler NEAREST"),
+        (0, r"dw3-map: R2 ignored in the view \(it opens the view; close with the cancel button, PS-side bit 14\)"),
+        (0, r"dw3-map: close requested by the cancel button"),
+        (0, r"dw3-map: game Map screen back after the close: .*: unchanged"),
+        (0, bind_line),
+    )
+
+
+_REBIND_FORBID = ((0, r"dw3-map: BINDING PROBLEM|dw3-map: capture failed|NOTHING DRAWN|\): CHANGED|"
+                      r"dw3-map: Square pressed, view not available|"
+                      # one open, one centre: the old keys (Square, Select) opened and centred nothing
+                      r"dw3-map: open half=\d(?s:.*)dw3-map: open half=\d|"
+                      r"dw3-map: centre on the current area(?s:.*)dw3-map: centre on the current area|"
+                      r"dw3-map: L1 pressed in the view: not bound|dw3-map: R1 pressed in the view: not bound|"
+                      r"dw3-map: Cross pressed in the view: not bound|dw3-map: Square pressed in the view"),)
+for _v, _ids in (("us", (0x159, 0x1FA, 0x1C2, 0x158, 0x1F9)),
+                 ("eu", (0x167, 0x208, 0x1D1, 0x166, 0x207))):
+    _fight, _menu, _report, _field, _status = _ids
+    _add(Scenario(f"{_v}-map-rebind", _v, "full", turbo=4, timeout=600,
+                  phases=(f"{_v}-map-rebind",), env=_ITEMS_ENV + (("DW3_MAP_SYNC", "1"),),
+                  cfg=(("encounter_rate", "2"), ("map_screen", "1")) + _BIND_CFG,
+                  expect_restore=((_fight, M), (_menu, S), (_report, M), (_field, M), (_status, M)),
+                  expect_log=_rebind_expect(_bind_in_effect(
+                      "playstation", "0123456789", "ZR", "Y", "B", "StickL", "L", "R", "X", "A")),
+                  forbid_log=_REBIND_FORBID,
+                  note="the map view with rebound buttons (open R2, zoom out Square, zoom in Cross, centre L3, "
+                       "scaler L1 / R1): the old keys do nothing and say so (P6.32 phase 4)"))
+    # the file-only keys and the Display row survive a relaunch: process 1 (the title's Options)
+    # turns the Full-screen map row on, process 2 (a fresh start, the Map screen) finds the option
+    # on and the bindings still in the file the screen rewrote
+    _add(Scenario(f"{_v}-map-rebind-relaunch", _v, "full", turbo=4, timeout=600,
+                  phases=(f"{_v}-map-rebind-relaunch-p1", f"{_v}-map-rebind-relaunch-p2"),
+                  phase_env=((), _ITEMS_ENV + (("DW3_MAP_SYNC", "1"),)),
+                  cfg=(("encounter_rate", "2"),) + _BIND_CFG,
+                  expect_log=(
+                      (0, r"dw3-port-options: group open display \(2 row\(s\), title\)"),
+                      (0, r"dw3-port-options: map screen \(full-screen map view\) enabled"),
+                      (0, r"dw3-options: saved \S+ \(.*\)"),
+                      (1, r"dw3-options: file keys .* map_screen=1 "),
+                      (1, _BIND_FILE),
+                      (1, _bind_in_effect("playstation", "0123456789", "ZR", "Y", "B", "StickL", "L", "R", "X", "A")),
+                      (1, r"dw3-map: open half=\d image=392x352 .* turbo=1 zoom=1\.50 hud=off"),
+                      (1, r"dw3-map: zoom source=button step 2 \(x\) 1\.50x -> 1\.25x anchor=cursor"),
+                      (1, r"dw3-map: close requested by the cancel button"),
+                      (1, r"dw3-map: game Map screen back after the close: .*: unchanged")),
+                  forbid_log=((0, r"dw3-port-options: map screen \(full-screen map view\) disabled"),
+                              (1, r"dw3-map: BINDING PROBLEM|dw3-map: capture failed|\): CHANGED|"
+                                  r"dw3-map: option map_screen=0|dw3-map: Square pressed, view not available")),
+                  note="Options > Display > Full-screen map ON in one process; the next start opens the view "
+                       "with the rebound keys read back from the same file (P6.32 phase 4)"))
+    # the P6.12 hook-up: a custom button map (the Square and R2 positions swapped); the masks are
+    # positions. The bindings are logical, so the view behaves as in `map-rebind`, and the log names
+    # the console buttons that now make them (open = R2 = the Y position, zoom out = Square = ZR)
+    _add(Scenario(f"{_v}-custom-map-rebind", _v, "full", turbo=4, timeout=600,
+                  phases=(f"{_v}-custom-map-rebind",), env=_ITEMS_ENV + (("DW3_MAP_SYNC", "1"),) + (("DW3_REPLAY_SOURCE", "1"),),
+                  cfg=(("encounter_rate", "2"), ("map_screen", "1"), ("button_layout", "custom"),
+                       ("button_map", "0127456389")) + _BIND_CFG,
+                  expect_restore=((_fight, M), (_menu, S), (_report, M), (_field, M), (_status, M)),
+                  expect_log=_rebind_expect(_bind_in_effect(
+                      "custom", "0127456389", "Y", "ZR", "B", "StickL", "L", "R", "X", "A"))
+                  + ((0, r"dw3-controls: map loaded layout=custom source=cfg"),),
+                  forbid_log=_REBIND_FORBID + ((0, r"dw3-controls: map invalid"),),
+                  ref_from=f"{_v}-map-rebind",
+                  note="the rebound view buttons through a custom button map (P6.12): the positions "
+                       "change, the logical bindings and the pictures do not (P6.32 phase 4)"))
+
 _SAVE_ENV = (("DW3_START_MODE", "0x233"), ("DW3_PROGRESS", "6"),
              ("DW3_FORCE_MENU", "0xC00:0x80000000"))
 for _v, _ids in (("us", (0x158, 0x1E3)), ("eu", (0x166, 0x1EE))):
@@ -2045,7 +2152,7 @@ for _v, _title in (("us", 0x1C1), ("eu", 0x1D0)):
 # apply at once and are saved, the screen closes and the menu and the field go
 # on; phase 2 (a new process on the same config dir) shows the values read back.
 _FO_P1 = (r"dw3-port-options: open in game(?s:.*)"
-          r"dw3-port-options: group open display \(1 row\(s\), in game\)(?s:.*)"
+          r"dw3-port-options: group open display \(2 row\(s\), in game\)(?s:.*)"
           r"dw3-port-options: Widescreen is locked in game \(change it at the title\)(?s:.*)"
           r"dw3-port-options: group open sound \(3 row\(s\), in game\)(?s:.*)"
           r"dw3-port-options: music volume 7(?s:.*)"
@@ -2519,6 +2626,19 @@ def _nintendo(base_name, name, phase, note):
         ref_from=base_name, note=note)
 
 
+def _nintendo_rebind(v):
+    """The rebound view buttons under the Nintendo layout: the plain run's checks, with the
+    console buttons of the bindings line (open R2 = ZR is the same, zoom out Square = Y, zoom in
+    Cross = A, close Triangle = B, bars Circle = X)."""
+    sc = _nintendo(f"{v}-map-rebind", f"{v}-nintendo-map-rebind", f"{v}-nintendo-map-rebind",
+                   "Nintendo layout: the rebound view buttons (open R2, zoom out Square, zoom in Cross, ...) "
+                   "go through the map; same pictures as the plain run (P6.32 phase 4)")
+    ps = _bind_in_effect("playstation", "0123456789", "ZR", "Y", "B", "StickL", "L", "R", "X", "A")
+    nin = _bind_in_effect("nintendo", "1203456789", "ZR", "Y", "A", "StickL", "L", "R", "B", "X")
+    fix = lambda es: tuple((i, nin if r == ps else r) for i, r in es)
+    return dataclasses.replace(sc, expect_log=fix(sc.expect_log), expect_log_both=fix(sc.expect_log_both))
+
+
 for _v in ("us", "eu"):
     _add(
         _nintendo(f"{_v}-field-options", f"{_v}-nintendo-menu", f"{_v}-nintendo-menu",
@@ -2527,6 +2647,7 @@ for _v in ("us", "eu"):
         _nintendo(f"{_v}-map-view", f"{_v}-nintendo-map-view", f"{_v}-nintendo-map-view",
                   "Nintendo layout: the full-screen map opens with Square (Y) and closes with the "
                   "logical cancel bit, B (P9.8, P6.32)"),
+        _nintendo_rebind(_v),
         _nintendo(f"{_v}-title-quit", f"{_v}-nintendo-title-quit", f"{_v}-nintendo-title-quit",
                   "Nintendo layout: the title menu and the Quit Yes / No window confirm with A "
                   "and cancel with B (P9.8)"),
@@ -2585,7 +2706,7 @@ _add(_nintendo("eu-lang-cross-fr", "eu-nintendo-lang-cross-fr", "eu-nintendo-lan
 # Cross to leave the result, back to the list) keeps that flow with
 # items_use_stays=0: their references are the PS1 frames, and the key-off proof.
 _USE_FLOW_RECS = ("items-screen", "menu-screens", "items-equip-switch", "items-equip-stays",
-                  "items-bag-view", "map-screen", "map-view", "map-names", "map-zoom")
+                  "items-bag-view", "map-screen", "map-view", "map-names", "map-zoom", "map-rebind")
 for _i, _s in enumerate(SCENARIOS):
     if (any(r in p for p in _s.phases for r in _USE_FLOW_RECS)
             and not any(k == "items_use_stays" for k, _ in _s.cfg)):

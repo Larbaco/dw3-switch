@@ -345,7 +345,7 @@ def test_volume_keys_are_in_the_written_file_order(persist_bin: Path, tmp_path: 
             if "=" in l and not l.startswith("#")]
     assert keys == ["version", "widescreen", "fast_forward", "restart_hotkey",
                     "music_volume", "sfx_volume", "encounter_rate", "text_speed",
-                    "battle_menu_memory", "autosave", "button_layout", "turbo_music", "switch_glyphs", "end"]
+                    "battle_menu_memory", "autosave", "button_layout", "turbo_music", "switch_glyphs", "map_screen", "end"]
 
 
 # --- P6.18 Encounter rate / Text speed rows ---------------------------------
@@ -619,6 +619,53 @@ def test_file_only_int_key(persist_bin: Path, tmp_path: Path):
     assert out == ["battle_menu_memory=2"]
     out, _ = session(persist_bin, tmp_path, "noinit", "fileint", "battle_menu_memory", "0")
     assert out == ["battle_menu_memory=0"]  # no config dir: the default
+
+
+# --- P6.32 phase 4: the Full-screen map row (key map_screen, row 15) and the map view's
+# file-only binding keys ------------------------------------------------------
+
+def test_map_screen_row_default_toggle_and_relaunch(persist_bin: Path, tmp_path: Path):
+    out, _ = session(persist_bin, tmp_path, "level", "15")
+    assert out == ["level15=0"]                       # off with no file
+    toggle(persist_bin, tmp_path, 15)                 # Display, second row: on
+    assert "map_screen=1\n" in (tmp_path / CFG).read_text()
+    out, _ = session(persist_bin, tmp_path, "level", "15", "fileint", "map_screen", "0")
+    assert out == ["level15=1", "map_screen=1"]       # a new process reads it back
+    toggle(persist_bin, tmp_path, 15)                 # and off again
+    out, _ = session(persist_bin, tmp_path, "level", "15")
+    assert out == ["level15=0"]
+    assert "map_screen=0\n" in (tmp_path / CFG).read_text()
+
+
+def test_map_screen_key_of_the_preview_builds_is_read_and_a_bad_value_falls_back(
+        persist_bin: Path, tmp_path: Path):
+    (tmp_path / CFG).write_text("version=1\nmap_screen=1\nend=1\n")
+    out, _ = session(persist_bin, tmp_path, "level", "15")
+    assert out == ["level15=1"]                       # the file-only key of the previews
+    (tmp_path / CFG).write_text("version=1\nmap_screen=2\nend=1\n")
+    out, err = session(persist_bin, tmp_path, "level", "15")
+    assert out == ["level15=0"]
+    assert "map_screen=2 is not valid; using default 0" in err
+
+
+def test_map_view_binding_keys_survive_the_options_screen(persist_bin: Path, tmp_path: Path):
+    """The six binding keys have no row: they are read as text and kept when the
+    Options screen (the map_screen row included) rewrites the file."""
+    keys = ("map_view_open=r2\nmap_view_zoom_out=square\nmap_view_zoom_in=cross\n"
+            "map_view_centre=l3\nmap_view_scaler_prev=l1\nmap_view_scaler_next=r1\n")
+    (tmp_path / CFG).write_text("version=1\n" + keys + "end=1\n")
+    out, _ = session(persist_bin, tmp_path, "fileval", "map_view_open", "fileval", "map_view_centre",
+                     "fileval", "map_view_nothing")
+    assert out == ["map_view_open=r2", "map_view_centre=l3", "map_view_nothing=(none)"]
+    toggle(persist_bin, tmp_path, 15)                 # the screen rewrites the file
+    text = (tmp_path / CFG).read_text()
+    for line in keys.splitlines():
+        assert line + "\n" in text, line
+    assert "map_screen=1\n" in text
+    out, _ = session(persist_bin, tmp_path, "fileval", "map_view_zoom_in", "level", "15")
+    assert out == ["map_view_zoom_in=cross", "level15=1"]   # a relaunch: both are back
+    out, _ = session(persist_bin, tmp_path, "noinit", "fileval", "map_view_open")
+    assert out == ["map_view_open=(none)"]            # no config dir: no file keys
 
 
 # --- P7.9 Battle cursor row (was the file-only key battle_menu_memory) -------------

@@ -56,10 +56,11 @@ typedef struct Dw3OptGroup {
  * volume, 4 SFX volume, 5 Encounter rate, 6 Text speed, 7 Battle cursor,
  * 8 Auto-save, 9 Button layout, 10 Region at start (combined image only),
  * 11 Customize buttons, 12 Reset to default (P6.12), 13 Turbo music (P6.36,
- * Sound group), 14 Switch glyphs (P10.6, Controls group, Switch only). Restart
+ * Sound group), 14 Switch glyphs (P10.6, Controls group, Switch only), 15 Map
+ * screen (P6.32 phase 4, Display group). Restart
  * hotkey stays in Gameplay (moving it would change every Gameplay reference for no gain). */
 static const Dw3OptGroup dw3_optgroups[DW3_OPTGRP_COUNT] = {
-    /* Display  */ {1, 1, {0}},
+    /* Display  */ {1, 2, {0, 15}},
     /* Sound    */ {1, 3, {3, 4, 13}},
     /* Gameplay */ {1, 5 + DW3_OPT_REGION_ROW, {1, 2, 5, 6, 7, 10}},
     /* Saves    */ {1, 1, {8}},
