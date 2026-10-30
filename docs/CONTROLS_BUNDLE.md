@@ -99,7 +99,7 @@ and before the engine reads a bit.** The map belongs there (section 2.1).
 | Fast-forward (R3) | `port/options/turbo.c:65` | `PAD_HELD(PAD_R3)` | follows |
 | Restart chord L1+R1+Start+Select | `port/options/restart.c:18-19` | logical | follows |
 | Select in battle, shoulders held | `port/options/battle_options.c:50-53` | `PAD_SELECT`, L1/R1/L2/R2 | follows |
-| Full-screen map view close (P6.32, `port/map_view/map_view.c`, patch `0146`) | `MV_CANCEL_BIT` = PS-side Triangle bit of the logical pad that the game's `PAD_PRESSED` reads | logical cancel (owner decision 2026-10-28: the view closes with the game's cancel button; Square, which opens it, does not close it) | follows the map automatically, and the P9.8 layout too: no code change when P6.12 lands. The game's Map screen closes with the same bit, so the two always agree. Opening stays on PS-side Square, which the remap moves with its function (the open key is the P6.32 phase 4 binding) |
+| Full-screen map view close (P6.32, `port/map_view/map_view.c`, patch `0146`) | `MV_CANCEL_BIT` = PS-side Triangle bit of the logical pad that the game's `PAD_PRESSED` reads | logical cancel (owner decision 2026-10-28: the view closes with the game's cancel button; Square, which opens it, does not close it) | follows the map automatically, and the P9.8 layout too: no code change when P6.12 lands. The game's Map screen closes with the same bit, so the two always agree. Opening is the P6.32 phase 4 binding `map_view_open` (default PS-side Square), and so are zoom out / in, centre and the scaler buttons: file-only keys naming **PS buttons**, applied after this map (the remap moves the console button that makes each; the log names it) |
 | Movie skip | patch `0034` | Start | Start is reserved |
 | Debug HUD Minus+L+R, renderer Minus+ZL+ZR | `nx_debug_overlay.c:34,280`, `nx_battle_mode.c:16,76` | **physical** hid bits from `dw3_nx_input_buttons_raw()` | does not follow |
 | PC F4 / F6 / Escape | PSY-Z `sdl3_common.h:898-904` | host keys | not pad |
@@ -631,6 +631,22 @@ still turns forward), Reset to default, and the R position turns forward again.
 `us/eu-controls-custom-invalid` seeds `button_layout=custom` and a `button_map` that is
 not a permutation. References are their own (new screens).
 
+
+### Phase 2 follow-up: the map view's buttons (P6.32 phase 4, 2026-10-30)
+
+The full-screen map view (P6.32) reads its buttons from the same logical pad word, so it
+follows `button_layout` and a custom map with no code in this file's mapper. Phase 4 of
+P6.32 turned its hard-coded buttons into a **binding table** (`map_view_open`, `_zoom_out`,
+`_zoom_in`, `_centre`, `_scaler_prev`, `_scaler_next`, file-only keys of `port_options.cfg`
+holding a PS button name; [PORT_OPTIONS](PORT_OPTIONS.md#full-screen-map-row-and-the-map-views-buttons-p632-phase-4)).
+The two layers are independent and compose: the Customize screen answers "which console button
+makes the PS button L1", the binding says "L1 zooms the map out". What the Controls screen does
+**not** do: list those six actions or edit them (the group has no room and the keys are a
+power-user setting; the log line `dw3-map: bindings in effect` names, for each action, the PS
+button and the console button that makes it under the map in force, and it is logged again when
+the map changes). Tested with the Nintendo layout and with a custom map
+(`us/eu-nintendo-map-rebind`, `us/eu-custom-map-rebind`: the recording's masks are button
+positions, so the physical presses go through the map, and the pictures equal the plain run's).
 
 ### Phase 2 test results (2026-10-29)
 

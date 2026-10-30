@@ -8,6 +8,18 @@ https://github.com/Larbaco/dw3-switch/blob/main/docs/PLAYER_GUIDE.md
 
 New in this preview
 
+  Full-screen map: now a row on the Options screen (P6.32 phase 4). Options,
+  Display, Full-screen map (OFF by default). It applies at once, also from the
+  field menu, and is saved; a `map_screen=1` you added to port_options.cfg is
+  read by the row. The buttons of the view can be changed with six lines in
+  port_options.cfg (map_view_open, map_view_zoom_out, map_view_zoom_in,
+  map_view_centre, map_view_scaler_prev, map_view_scaler_next, each one of
+  cross square l1 r1 l2 r2 l3 select; defaults square l1 r1 select l2 r2). They
+  name PlayStation buttons, so they follow Options, Controls (the layout and
+  Customize buttons). Logs: `dw3-map: bindings in effect (...)` at every open,
+  `dw3-map: BINDING PROBLEM` for a bad value. Not yet run on a console: OLED
+  row B28.
+
   Full-screen map view is OFF by default (#366, P6.32 phase 1, patch 0146).
   This is a change from preview.54. Y on the Map screen does nothing until you
   add the line `map_screen=1` to `sdmc:/switch/dw3/us/port_options.cfg` (or

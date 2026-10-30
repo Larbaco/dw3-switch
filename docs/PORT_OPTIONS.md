@@ -59,7 +59,7 @@ explicitly marked N/A in this note.
 | Items menu | **Whole bag and move between Digimon** (key `items_bag_view`, 0 or 1, **default 1**, file-only until the Menus group of P6.34 phase 5; `DW3_ITEMS_BAG_VIEW=0` forces it off for a run): in Status > Equipment, in the item list, Square cycles this slot / all weapons / all armor and gear / worn by others; Cross on a row worn by another party member moves it to this Digimon ([P6.34](P6.34_MENU_FLOW.md#14-phase-3-built-2026-10-29-the-whole-bag-and-moving-an-item-between-digimon), patch `0192`). With 0 Square does nothing and the list is the original game's. **On by default is an orchestrator default pending the owner's answer** | Phase 6 |
 | Items menu | **Use item stays on the partner step** (key `items_use_stays`, 0 or 1, **default 1**, file-only until the Menus group of P6.34 phase 5; `DW3_ITEMS_USE_STAYS=0` forces it off for a run): in the Items menu, Cross on a Digimon uses a consumable and the item panel and the partner pages stay, so the next copy goes to another Digimon with Up / Down and Cross; the last copy and Triangle go back to the list as in the original ([P6.34](P6.34_MENU_FLOW.md#15-phase-4-built-2026-10-29-use-item-stays-on-the-partner-step), patch `0193`). With 0 every use closes the pages and reopens the list as in the original game. **On by default is an orchestrator default pending the owner's answer** | Phase 6 |
 | Items menu | **Partner switch on the equip panel** (key `items_partner_switch`, 0 or 1, **default 1**, file-only: the Options window is full at nine rows, so there is no row): ZL / ZR change the party member on the Status screen's Equipment slot list without leaving ([P6.33](P6.33_ITEMS_MENU.md), patch `0128`, `DW3_ITEMS_PARTNER_SWITCH=0` forces it off for a run). A documented exception to "off by default": the owner decided on (2026-10-26) | Phase 6 |
-| Map screen (P6.32) | **New full-screen map** (key `map_screen`, 0 or 1, **default 0 = off since phase 1, 2026-10-29** (the PoC builds had it on when the key was absent: add `map_screen=1` to `port_options.cfg` to keep it), file-only, no row yet): Square on the game's Map screen opens a host-drawn full-screen map with cursor, zoom and a live scaler switch; widescreen only. With the key off the Map screen is the PS1's (replay `us/eu-map-screen` 0 differing pixels), the view's code is inert, and the boot builds no cache and starts no precompute. The Options row comes in phase 4 ([P6.32 section 13](P6.32_MAP_ZOOM.md#13-phase-1-static-view-audit-and-close-2026-10-29), patch `0146`) | Phase 6 |
+| Map screen (P6.32) | **Full-screen map** (key `map_screen`, 0 or 1, **default 0 = off**; **phase 4, 2026-10-30: row 15, second row of the Display group**, switch row, applies at once, also in game, no environment pin; a file written for the earlier builds with `map_screen=1` is read by the row): Square on the game's Map screen opens a host-drawn full-screen map with cursor, zoom and a live scaler switch; widescreen only. With the key off the Map screen is the PS1's (replay `us/eu-map-screen` 0 differing pixels), the view's code is inert, and the boot builds no cache and starts no precompute. The view's **buttons are six file-only keys** (`map_view_open`, `map_view_zoom_out`, `map_view_zoom_in`, `map_view_centre`, `map_view_scaler_prev`, `map_view_scaler_next`, [below](#full-screen-map-row-and-the-map-views-buttons-p632-phase-4)); they sit on top of the P6.12 button map ([P6.32 section 13](P6.32_MAP_ZOOM.md#13-phase-1-static-view-audit-and-close-2026-10-29), [section 16](P6.32_MAP_ZOOM.md#16-phase-4-remap-as-built-2026-10-30), patch `0146`) | Phase 6 |
 | Auto-save | **Auto-save** (OFF / Each area; key `autosave`, row 9): the first idle frame of a new field area writes the game to its own file, `autosave.bin`; the title's Continue loads it. Off by default; with it off the game is as before ([P6.31](P6.31_AUTOSAVE.md)) | Phase 6 (P6.31) |
 
 Defaults: **off** or equivalent to stock PS1 behaviour unless a feature is
@@ -128,11 +128,14 @@ them and keeps them (unknown keys).
 
 File-only keys (a setting with no row on the Options screen) are written by
 hand into the same file, before `end=1`; the game reads them through
-`dw3_port_options_file_int` and the Options screen keeps them when it
-rewrites the file. There is none today: `battle_menu_memory=0|1|2` (P7.9, the
-battle command menu and technique list open on the last pick) was the first and
-became the **Battle cursor** row, with the same key and values, so a file written
-by hand for P7.9 is read by the row and written back by it.
+`dw3_port_options_file_int` (numbers) or `dw3_port_options_file_str` (words) and
+the Options screen keeps them when it rewrites the file. Today: the `items_*`
+keys of P6.33 / P6.34, and the six `map_view_*` button bindings of P6.32 phase 4
+([below](#full-screen-map-row-and-the-map-views-buttons-p632-phase-4)).
+`battle_menu_memory=0|1|2` (P7.9) was the first and became the **Battle cursor**
+row, with the same key and values, and `map_screen` (P6.32) became the **Full-screen
+map** row the same way, so a file written by hand for either is read by the row and
+written back by it.
 
 Plain `key=value` lines, no JSON. `#` and `;` start a comment line, blank
 lines are ignored, keys are `[A-Za-z0-9_.-]`, values are single-line text
@@ -704,6 +707,63 @@ sound logs `dw3-port-options: sound <cursor|select|cancel> (sfx volume N, voice 
 (`voice` is the SPU voice of the key-on) and a missing bank would log
 `sound ... not played: bank N is not loaded`. Evidence: [P6.17](P6.17_VOLUME.md#sound-feedback-on-the-options-screen).
 
+## Full-screen map row and the map view's buttons (P6.32 phase 4)
+
+*Built 2026-10-30. Design and evidence: [P6.32 section 16](P6.32_MAP_ZOOM.md#16-phase-4-remap-as-built-2026-10-30).*
+
+**The row.** Options > **Display** > **Full-screen map** (registry row 15, key
+`map_screen`, OFF by default). A switch row: Confirm toggles it, the value is saved at once,
+and the view reads it at every press of the open button, so it takes effect without a
+restart and also from the field menu's OPTIONS row (it is not locked in game). The key is the
+file-only key the preview builds used, so a `map_screen=1` written by hand is the row's ON.
+If the row is turned on after the game started, the boot's precompute did not run: the log
+says so once (`dw3-map: option map_screen turned on after the start of this run ...`) and the
+CPU scalers build when first chosen. The help text is on the Options page of the Help screen
+(Display) and on the Map view page, in English and, machine-drafted, in French, German, Italian
+and Spanish.
+
+**The buttons.** Six file-only keys, each holding the name of a **logical (PS-side)
+button**, which is what the game and every other port screen reads, i.e. the pad **after**
+the P6.12 / P9.8 button map. So the two compose: the key says which PS button does the
+action, Options > Controls says which console button makes that PS button.
+
+| Key | Action | Default | Allowed values |
+|---|---|---|---|
+| `map_view_open` | on the game's Map screen, opens the view | `square` | `cross square l1 r1 l2 r2 l3 select` |
+| `map_view_zoom_out` | one step down the ladder, about the cursor | `l1` | same |
+| `map_view_zoom_in` | one step up | `r1` | same |
+| `map_view_centre` | centre on the current area | `select` | same |
+| `map_view_scaler_prev` | previous scaler | `l2` | same |
+| `map_view_scaler_next` | next scaler | `r2` | same |
+
+Not bindable, because the view uses them itself: `triangle` (the game's cancel: it closes the
+view and the Map screen), `circle` (the bars), `r3` (the fast-forward key, ignored in the view),
+`start`, the d-pad and the sticks. A value that is not one of the eight names (or is one of
+those) is ignored with a `BINDING PROBLEM` log line and that action keeps its default. Two
+actions on the same button (a default counts) put **every** binding back to its default, with a
+line naming the pair. Names are not case sensitive. A swap works: `map_view_zoom_out=r1` and
+`map_view_zoom_in=l1`. Example, to open the view with ZR and zoom with Y and B on the Switch
+(PlayStation layout):
+
+```
+map_screen=1
+map_view_open=r2
+map_view_zoom_out=square
+map_view_zoom_in=cross
+map_view_centre=l3
+map_view_scaler_prev=l1
+map_view_scaler_next=r1
+```
+
+The bars' help text names the buttons that now do each action (on the Switch the console
+button under the map in force, on the PC the PS word). There is no screen to edit the six keys:
+the Options window has no room for six more rows and a bad value is recoverable by editing the
+file or deleting the keys; a Customize-style screen is not part of this phase. Logs:
+`dw3-map: bindings read from port_options.cfg: ...` (once), `dw3-map: bindings in effect (at the
+open): open=R2(ZR) ...` at every open and again when the button map changed since
+(`the button map changed A -> B`), and `<button> pressed in the view: not bound to an action`
+for an old key that does nothing now. Evidence and the replays: P6.32 section 16.
+
 ## Groups and sub-screens (P9.9)
 
 *Slice 1, 2026-10-27. This section is the current Options screen; the section
@@ -730,7 +790,7 @@ hints (Open or Change, Back).
 
 | Group | Rows (registry index, unchanged) | Notes |
 |---|---|---|
-| Display | Widescreen (0) | Locked in game, as before: the plaque and the row are greyed |
+| Display | Widescreen (0), Full-screen map (15) | Widescreen is locked in game, as before (its row is greyed). **Full-screen map** (P6.32 phase 4, key `map_screen`, OFF by default) is not locked, so in game the Display plaque is no longer greyed: the row works at once. Label and message line in five languages |
 | Sound | Music volume (3), SFX volume (4), Turbo music (13) | Turbo music (P6.36): `1x` (stored 0, default) keeps the music at its normal tempo while fast-forward runs, `Fast` (stored 1) is the old sound; `DW3_TURBO_MUSIC=0\|1` pins it for a run. No effect with Fast-forward OFF or turbo not running. Not locked in game. Left / Right / Confirm cycle it. Label and message line in five languages (`opt_row_tm_*`, `opt_desc_tm_*`); logs `dw3-options: turbo_music=1x\|fast`, `dw3-port-options: turbo music 1x\|fast`, and the `dw3-audio: music tick ...` lines of [P6.36](P6.36_TURBO_MUSIC.md#as-built-phases-1-and-2-2026-10-29) |
 | Gameplay | Fast-forward (1), Restart hotkey (2), Encounter rate (5), Text speed (6), Battle cursor (7) | Restart hotkey moves to Controls when P6.12 exists |
 | Saves | Auto-save (8) | |
