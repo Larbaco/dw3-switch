@@ -895,3 +895,94 @@ int dw3_mv_namebox_bottom(MvNameBox *nb, int hover, float scr_y) {
     nb->hover = hover > 0 ? hover : 0;
     return nb->bottom;
 }
+
+int dw3_mv_hitbox_reach(int sx, int sy) {
+    int x0 = sx + 7, x1 = sx + 0x12, y0 = sy + 7, y1 = sy + 0x12;
+    int inside = x0 >= MV_PS1_X0 && x1 <= MV_PS1_X1 && y0 >= MV_PS1_Y0 &&
+                 y1 <= MV_PS1_Y1;
+    int apart = x1 < MV_PS1_X0 || x0 > MV_PS1_X1 || y1 < MV_PS1_Y0 ||
+                y0 > MV_PS1_Y1;
+
+    return inside ? 0 : apart ? 2 : 1;
+}
+
+int dw3_mv_point_strip(int x, int y) {
+    return (x < MV_PS1_X0 ? 1 : 0) | (x > MV_PS1_X1 ? 2 : 0) |
+           (y < MV_PS1_Y0 ? 4 : 0) | (y > MV_PS1_Y1 ? 8 : 0);
+}
+
+/* The font's icons (kind 1 codes) that the area names use, as text for the log.
+ * Found by reading the five EU languages' names: 1 is the space, 5 the full stop
+ * of the abbreviations ("Pos. Bos."), 19 the apostrophe, 26 the hyphen of the
+ * compound names, the rest the accented letters (UTF-8). Any other icon is left
+ * as <iN>. */
+static const char *icon_text(unsigned n) {
+    switch (n) {
+    case 1: return " ";
+    case 5: return ".";
+    case 19: return "'";
+    case 26: return "-";
+    case 65: return "\xC3\x84";   /* A diaeresis */
+    case 71: return "\xC3\x96";   /* O diaeresis */
+    case 75: return "\xC3\xA0";   /* a grave */
+    case 78: return "\xC3\xA4";   /* a diaeresis */
+    case 81: return "\xC3\xA9";   /* e acute */
+    case 82: return "\xC3\xAA";   /* e circumflex */
+    case 87: return "\xC3\xB1";   /* n tilde */
+    case 91: return "\xC3\xB6";   /* o diaeresis */
+    case 94: return "\xC3\xBC";   /* u diaeresis */
+    case 95: return "\xC3\xA1";   /* a acute */
+    case 96: return "\xC3\xAD";   /* i acute */
+    case 97: return "\xC3\xB3";   /* o acute */
+    case 105: return "\xC3\x89";  /* E acute */
+    default: return NULL;
+    }
+}
+
+int dw3_mv_name_text(const unsigned short *chars, int n, char *out, size_t cap) {
+    size_t o = 0;
+    int i, odd = 0;
+
+    if (cap == 0) return 0;
+    for (i = 0; i < n; ++i) {
+        unsigned c = chars[i];
+        char tmp[16];
+        const char *s = tmp;
+
+        tmp[1] = 0;
+        if (c == 0x0A) {
+            s = " / ";
+        } else if (c >= 0x824F && c <= 0x8258) {
+            tmp[0] = (char)('0' + (c - 0x824F));
+        } else if (c >= 0x8260 && c <= 0x8279) {
+            tmp[0] = (char)('A' + (c - 0x8260));
+        } else if (c >= 0x8281 && c <= 0x829A) {
+            tmp[0] = (char)('a' + (c - 0x8281));
+        } else if (c == 0x8140) {
+            tmp[0] = ' ';
+        } else if (c == 0x8143) {
+            tmp[0] = ',';
+        } else if (c == 0x8144) {
+            tmp[0] = '.';
+        } else if (c == 0x8148) {
+            tmp[0] = '?';
+        } else if (c == 0x8149) {
+            tmp[0] = '!';
+        } else if (c == 0x815D || c == 0x817C) {
+            tmp[0] = '-';
+        } else if (c == 0x8166) {
+            tmp[0] = '\'';
+        } else if (c & 0x8000 && c < 0x8100 && icon_text(c & 0xFF)) {
+            s = icon_text(c & 0xFF);
+        } else if (c & 0x8000 && c < 0x8100) {
+            snprintf(tmp, sizeof(tmp), "<i%u>", c & 0xFF);
+            ++odd;
+        } else {
+            snprintf(tmp, sizeof(tmp), "<%04X>", c);
+            ++odd;
+        }
+        while (*s && o + 1 < cap) out[o++] = *s++;
+    }
+    out[o] = 0;
+    return odd;
+}

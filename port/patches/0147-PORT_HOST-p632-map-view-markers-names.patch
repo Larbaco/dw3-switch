@@ -1,0 +1,215 @@
+Upstream-bound: no
+Subject: [PORT_HOST] P6.32 phase 2: marker list, area-name readback and a test aid for the new full-screen map
+
+P6.32 phase 2 (docs/P6.32_MAP_ZOOM.md section 14). Patch 0146 gives the new screen
+the spots' positions, the visited flags and the reveal pieces; this one adds the rest
+of what the screen needs, all read from the game's own tables and never written back:
+
+- mapViewData (every frame while the screen is available): the marker list (every
+  spot's frame, x and y; every town's x and y and whether the list for the game's
+  progress shows it), the current area (STSTATUS_areaFuncs.getArea(), its spot is
+  area + 1), and the area names' file and the language (the EU disc has one copy of
+  each text file per language: TEXT_FILE() carries it).
+- mapViewName (every frame while the screen is open, right after the game's own
+  STSTATUS_showMapArea ran on the view's cursor): reads back what the name window
+  holds (the table's string for the spot under the cursor, as font codes and as
+  Shift-JIS codes through the game's glyph map, a line break as 0x0A), the width the
+  game measures for it, the window's place, and whether the window's text is the
+  table's string for that spot. The host logs one line per name shown with this.
+- mapViewForceAreas: test aid, PC only, like DW3_FORCE_CARDS of patch 0100.
+  DW3_FORCE_MAP_AREAS=all (or <first>-<last>, spot ids 1..46) marks those areas
+  visited so a replay can put the cursor on every named location. Unset (every release,
+  and the Switch) it does nothing.
+
+With the option file key map_screen off (the default) or widescreen off nothing here
+runs: dw3_port_map_view_wants() is 0 and the Map screen is the one of patch 0080.
+
+--- a/src/menus/field_menu/map_screen.c
++++ b/src/menus/field_menu/map_screen.c
+@@ -3,7 +3,10 @@
+ 
+ #include "menus/field_menu.h"
+ #if PORT_HOST
++#include <stdio.h>
+ #include "port_map_view.h"
++char *getenv(const char *name);
++int strcmp(const char *a, const char *b);
+ #endif
+ 
+ /* Finds the area under the cursor and shows its name */
+@@ -352,6 +355,156 @@
+ }
+ 
+ #if PORT_HOST
++/* Patch 0147 (P6.32 phase 2): what the new screen needs to know about the markers
++   and the area names, read from the game's own tables.
++   mapViewData is the marker list: every spot (sprite frame, x, y: STSTATUS_data.spots),
++   every town (x, y, and whether the list for the game's progress shows it), the
++   current area (STSTATUS_areaFuncs.getArea(); its spot is area + 1), and the area
++   names' file (screen->textFile: TEXT_FILE(TEXT_ASUKA_MAP) or the Amaterasu one, so the
++   language of the EU disc is in the number) with the language. The visited flags are
++   screen->visited and go with the frame call of patch 0146.
++   mapViewName is the area-name box: after the game's own STSTATUS_showMapArea ran on the
++   view's cursor it reads back what the name window holds (the string of the table for
++   the spot under the cursor, its font codes turned into Shift-JIS codes with the game's
++   own glyph map, a line break as 0x0A and an icon as 0x8000 | its index), how wide the
++   game measures it, where the window is, and whether the window's text is the table's
++   string for that spot. Nothing is written to the screen or the window. */
++static void mapViewData(StatusMapScreen *screen) {
++    Dw3MapViewData d;
++    s32 *towns;
++    s32 i;
++
++    d.text_file = screen->textFile;
++#if VERSION_EU
++    d.language = LANGUAGE;
++#else
++    d.language = 1;
++#endif
++    d.area = STSTATUS_areaFuncs.getArea();
++    for (i = 0; i < 47; i++) {
++        d.spot_sprite[i] = STSTATUS_data.spots[i].sprite;
++        d.spot_x[i] = STSTATUS_data.spots[i].x;
++        d.spot_y[i] = STSTATUS_data.spots[i].y;
++    }
++    d.ntowns = 22;
++    for (i = 0; i < 23; i++) {
++        d.town_x[i] = STSTATUS_data.towns[i].x;
++        d.town_y[i] = STSTATUS_data.towns[i].y;
++        d.town_listed[i] = 0;
++    }
++    towns = STSTATUS_data.funcs.getList(screen->gameHalf, screen->progress);
++    for (i = 0; towns[i] != 0; i++) {
++        d.town_listed[towns[i]] = 1;
++    }
++    dw3_port_map_view_data(&d);
++}
++
++static void mapViewName(StatusMapScreen *screen, TextWindow **windows) {
++    Dw3MapViewName n;
++    TextTools tools;
++    TextBuffer *text = &windows[0]->text[0];
++    char *str;
++    s32 pos = 0;
++    s32 c;
++    s32 j;
++
++    n.hovering = screen->hovering;
++    n.spot = screen->spot;
++    n.text_file = screen->textFile;
++#if VERSION_EU
++    n.language = LANGUAGE;
++#else
++    n.language = 1;
++#endif
++    n.win_visible = windows[0]->visible;
++    n.win_x = windows[0]->x;
++    n.win_y = windows[0]->y;
++    n.win_lines = windows[0]->lines;
++    n.width = 0;
++    n.len = 0;
++    n.nchars = 0;
++    n.in_table = 0;
++    initTextTools(&tools);
++    str = tools.getString(FILE_CACHE.load(screen->textFile), screen->spot);
++    if (text->data != NULL) {
++        n.width = tools.measure(text, windows[0]->style, windows[0]->spacingX);
++        n.len = text->len < 96 ? text->len : 96;
++        memcpy(n.codes, text->data, n.len);
++        if (str != NULL && strlen(str) == text->len) {
++            n.in_table = 1;
++            for (j = 0; j < text->len; j++) {
++                if ((u8)str[j] != text->data[j]) {
++                    n.in_table = 0;
++                    break;
++                }
++            }
++        }
++        while (pos < text->len && n.nchars < 64) {
++            c = ((s32(*)())FONT.decode)(text->data + pos, (u8)text->sjis, windows[0]->style);
++            switch (((u32)c >> 8) & 0xFF) {
++            case 0:
++                for (j = 4; FONT_GLYPH_MAP[j].code != 0xFFFF; j++) {
++                    if (FONT_GLYPH_MAP[j].index == text->data[pos]) {
++                        n.chars[n.nchars++] = FONT_GLYPH_MAP[j].code;
++                        break;
++                    }
++                }
++                pos += 1;
++                break;
++            case 1:
++                n.chars[n.nchars++] = 0x8000 | text->data[pos + 1];
++                pos += 2;
++                break;
++            case 2:
++                if (text->data[pos + 1] == 1) {
++                    n.chars[n.nchars++] = 0x0A;
++                }
++                pos += FONT.codeLengths[text->data[pos + 1]];
++                break;
++            case 4:
++                pos = text->len;
++                break;
++            default:
++                pos += 1;
++                break;
++            }
++        }
++    }
++    dw3_port_map_view_name(&n);
++}
++
++/* Test aid, PC only (like DW3_FORCE_CARDS of patch 0100): DW3_FORCE_MAP_AREAS=all or
++   =<first>-<last> (spot ids 1..46) marks those areas visited, so a replay can walk the
++   cursor over every named location without playing to them. Does nothing when unset
++   (every release, and the Switch, which has no environment). Logged once. */
++static void mapViewForceAreas(StatusMapScreen *screen) {
++    static s32 logged;
++    const char *spec = getenv("DW3_FORCE_MAP_AREAS");
++    s32 first = 1;
++    s32 last = 46;
++    s32 i;
++
++    if (spec == NULL || spec[0] == 0) {
++        return;
++    }
++    if (strcmp(spec, "all") != 0 && sscanf(spec, "%d-%d", &first, &last) < 2) {
++        return;
++    }
++    if (first < 1) {
++        first = 1;
++    }
++    if (last > 46) {
++        last = 46;
++    }
++    for (i = first; i <= last; i++) {
++        screen->visited[i - 1] = 1;
++    }
++    if (!logged) {
++        logged = 1;
++        fprintf(stderr, "dw3: DW3_FORCE_MAP_AREAS spots %d..%d visited\n", (int)first, (int)last);
++    }
++}
++
+ /* Patch 0146: the new full-screen map screen (P6.32). Square opens it over this
+    screen, which stays as it is (frozen: no pad, no area lookup, still drawn).
+    Returns 1 while the new screen has the pad. The reveal layer is what
+@@ -380,6 +533,10 @@
+     unsigned pressed = 0;
+     s32 i;
+ 
++    if (dw3_port_map_view_wants()) {
++        mapViewForceAreas(screen);
++        mapViewData(screen);
++    }
+     for (i = 0; i < 47; i++) {
+         spotX[i] = STSTATUS_data.spots[i].x;
+         spotY[i] = STSTATUS_data.spots[i].y;
+@@ -432,6 +589,7 @@
+         screen->scrollX = io.scr_x - io.cur_x;
+         screen->scrollY = io.scr_y - io.cur_y;
+         STSTATUS_showMapArea(screen, windows);
++        mapViewName(screen, windows);
+     } else if (savedFor == screen) {
+         screen->cursorX = saved[0];
+         screen->cursorY = saved[1];

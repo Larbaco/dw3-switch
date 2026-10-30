@@ -249,6 +249,56 @@ static void test_fixed_sprites(void) {
     CHECK(fabsf((x1 - x0) - w1) < 1e-2f, "size at FIT equals size at 1.0");
 }
 
+/* P6.32 phase 2: the PS1 cursor's reach and the area-name text for the log. */
+static void test_reach_and_text(void) {
+    /* "Bulk Swamp", a line break, "42" */
+    unsigned short n1[] = { 0x8261, 0x8295, 0x828C, 0x828B, 0x8140, 0x8272, 0x8297, 0x8281,
+                            0x828D, 0x8290, 0x0A, 0x8253, 0x8251 };
+    unsigned short n2[] = { 0x8261, 0x8001, 0x8260, 0x8005, 0x8013, 0x8051, 0x80C8, 0x1234 };
+    char out[64];
+    int odd;
+
+    /* a hit box (x + 7..x + 18, y + 7..y + 18) in x 22..370 and y 15..290 */
+    CHECK(dw3_mv_hitbox_reach(35, 100) == 0, "spot 35,100 inside");
+    CHECK(dw3_mv_hitbox_reach(340, 105) == 0, "the rightmost real spot inside");
+    CHECK(dw3_mv_hitbox_reach(15, 100) == 0, "box starts at x 22: inside");
+    CHECK(dw3_mv_hitbox_reach(14, 100) == 1, "box x 21..32 starts in the strip: partly");
+    CHECK(dw3_mv_hitbox_reach(-30, 100) == 2, "box ends before x 22: outside");
+    CHECK(dw3_mv_hitbox_reach(363, 100) == 1, "box x 370..381: partly");
+    CHECK(dw3_mv_hitbox_reach(364, 100) == 2, "box starts at x 371: outside");
+    CHECK(dw3_mv_hitbox_reach(100, -12) == 2, "box y -5..6 above y 15: outside");
+    CHECK(dw3_mv_hitbox_reach(100, 5) == 1, "box y 12..23 crosses y 15: partly");
+    CHECK(dw3_mv_hitbox_reach(100, 272) == 0, "box ends at y 290: inside");
+    CHECK(dw3_mv_hitbox_reach(100, 283) == 1, "box y 290..301: partly");
+    CHECK(dw3_mv_point_strip(22, 15) == 0 && dw3_mv_point_strip(370, 290) == 0, "reach corners");
+    CHECK(dw3_mv_point_strip(21, 100) == 1 && dw3_mv_point_strip(371, 100) == 2, "x strips");
+    CHECK(dw3_mv_point_strip(100, 14) == 4 && dw3_mv_point_strip(100, 291) == 8, "y strips");
+    CHECK(dw3_mv_point_strip(0, 0) == 5 && dw3_mv_point_strip(391, 351) == 10, "corners");
+    odd = dw3_mv_name_text(n1, (int)(sizeof(n1) / sizeof(n1[0])), out, sizeof(out));
+    CHECK(odd == 0 && strcmp(out, "Bulk Swamp / 42") == 0, "decoded text: %s (%d)", out, odd);
+    odd = dw3_mv_name_text(n2, 8, out, sizeof(out));
+    CHECK(odd == 2 && strcmp(out, "B A.'\xC3\xA9<i200><1234>") == 0, "icons and unknown codes: %s (%d)", out, odd);
+    dw3_mv_name_text(n1, (int)(sizeof(n1) / sizeof(n1[0])), out, 4);
+    CHECK(strlen(out) <= 3, "output is bounded");
+}
+
+/* tools/tests/test_map_names.py: `reach FILE` classifies the "x y" lines of FILE */
+static int reach_mode(const char *file) {
+    FILE *f = fopen(file, "r");
+    int x, y, n[3] = { 0, 0, 0 };
+
+    if (!f) return 2;
+    while (fscanf(f, "%d %d", &x, &y) == 2) {
+        int r = dw3_mv_hitbox_reach(x, y);
+
+        ++n[r];
+        if (r) printf("spot %d,%d reach %d\n", x, y, r);
+    }
+    fclose(f);
+    printf("inside %d partly %d outside %d\n", n[0], n[1], n[2]);
+    return 0;
+}
+
 static void test_disc(void) {
     static uint8_t file[4096];
     uint16_t *vram = (uint16_t *)calloc((size_t)MV_VRAM_W * MV_VRAM_H, 2);
@@ -449,6 +499,7 @@ static int disc_mode(const char *sheet_path, const char *img_path, const char *o
 }
 
 int main(int argc, char **argv) {
+    if (argc >= 3 && strcmp(argv[1], "reach") == 0) return reach_mode(argv[2]);
     if (argc >= 5 && strcmp(argv[1], "disc") == 0) return disc_mode(argv[2], argv[3], argv[4]);
     test_compose();
     test_disc();
@@ -459,6 +510,7 @@ int main(int argc, char **argv) {
     test_smooth_zoom();
     test_namebox_stick_zoom();
     test_fixed_sprites();
+    test_reach_and_text();
     test_cache(argc > 1 ? argv[1] : "/mnt/cabal/tmp");
     if (!g_fail) printf("OK: map view core\n");
     return g_fail;

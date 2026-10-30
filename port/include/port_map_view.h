@@ -63,6 +63,39 @@ int dw3_port_map_view_frame(const void *sheet, int sheet_file, int half,
                             int npieces, Dw3MapViewIo *io);
 int dw3_port_map_view_active(void);
 
+/* Patch 0147 (phase 2): the marker list and the area names, read from the game's
+ * own tables; nothing is written back. */
+typedef struct Dw3MapViewData {
+    /* the area names' file (TEXT_FILE(TEXT_ASUKA_MAP) or the Amaterasu one: on the
+     * EU disc the language is in the number) and the language: 1 = the US text,
+     * else LANGUAGE (EU: 2 English, 3 French, 4 Italian, 5 German, 6 Spanish) */
+    int text_file, language;
+    int area;                           /* STSTATUS_areaFuncs.getArea(); its spot is area + 1 */
+    int spot_sprite[47], spot_x[47], spot_y[47]; /* STSTATUS_data.spots, 1..46 (0 unused) */
+    int ntowns;                         /* STSTATUS_towns 1..ntowns */
+    int town_x[23], town_y[23], town_listed[23]; /* listed: the list for the progress shows it */
+} Dw3MapViewData;
+
+/* What the area-name window holds after the game's own STSTATUS_showMapArea ran on
+ * the view's cursor. */
+typedef struct Dw3MapViewName {
+    int hovering, spot;                 /* the game's own hit test: screen->hovering, ->spot */
+    int text_file, language;
+    int win_visible, win_x, win_y, win_lines;
+    int width;                          /* the widest line, px, as the game measures it */
+    int len;                            /* font-code bytes in codes[] */
+    unsigned char codes[96];
+    int nchars;
+    unsigned short chars[64];           /* the game's glyph map: Shift-JIS, 0x0A break, 0x8000 | icon */
+    int in_table;                       /* the window's text is the table's string for `spot` */
+} Dw3MapViewName;
+
+/* 1 while the data and name calls are wanted (the option is on and widescreen is
+ * on, or the screen is open). */
+int dw3_port_map_view_wants(void);
+void dw3_port_map_view_data(const Dw3MapViewData *d);
+void dw3_port_map_view_name(const Dw3MapViewName *n);
+
 #ifdef __cplusplus
 }
 #endif

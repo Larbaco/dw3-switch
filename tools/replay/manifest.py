@@ -1165,6 +1165,62 @@ for _v, _ids in (("us", (0x159, 0x1FA, 0x1C2, 0x158, 0x1F9)),
                   expect_restore=((_fight, M), (_menu, S), (_report, M), (_field, M)),
                   expect_log=((0, r"WFIGHTMN_endBattle result=1"),),
                   note="the battle results' header bar hangs from the 16:9 left edge (patch 0081)"))
+# P6.32 phase 2 (patches 0146, 0147): the area name under the new cursor for EVERY
+# visited location, in every disc language. The test aids (PC only): the whole map is
+# marked visited (DW3_FORCE_MAP_AREAS=all) and the host's tour (DW3_MAP_TOUR=8) puts the
+# cursor on each target in turn: probes at the image edge in the strips the PS1 cursor
+# cannot reach, then the 46 locations. The game's own name window answers; the host
+# logs one `area name shown` line each, with the source (the game's window, the text
+# file and language, the string of the table), the text and whether it fits the box.
+# References are the PC host overlay's pictures, from the patched build only.
+_NAMES_ENV = _ITEMS_ENV + (("DW3_FORCE_MAP_AREAS", "all"), ("DW3_MAP_TOUR", "8"), ("DW3_MAP_SYNC", "1"))
+# (scenario suffix, DW3_LANGUAGE or None for the US text, log name, text file number)
+_NAMES_LANGS = {"us": ((None, None, r"en \(US text\)", "9", "en US"),),
+                "eu": (("", 2, "en", "a", "en"), ("-fr", 3, "fr", "b", "fr"), ("-it", 4, "it", "c", "it"),
+                       ("-de", 5, "de", "d", "de"), ("-es", 6, "es", "e", "es"))}
+
+
+def _names_expect(lang, tfile):
+    one = (r"dw3-map: area name shown: location id=%d source=game name window \(text file 0x" + tfile
+           + r" language " + lang + r"(?: \(\d\))?, string %d of the table, \d+ font codes, hash [0-9a-f]{8}, "
+           r"window text is the table's string\) text=\"[^\"]+\" \(0 undecoded\) width \d+ of \d+ px "
+           r"at window 16,\d+ \d lines: fits")
+    return (
+        (0, r"dw3: DW3_FORCE_MAP_AREAS spots 1\.\.46 visited"),
+        (0, r"dw3-map: marker list: 46 locations \(46 visited\), 22 towns \(\d+ listed for this progress\), "
+            r"current area \d+ = location id=[1-9]\d*; area names: text file 0x" + tfile + r", language "
+            + lang + r" \(\d\); PS1 cursor reach x 22\.\.370 y 15\.\.290: locations partly out of it 0, wholly out 0"),
+        (0, r"dw3-map: town id=13 at 21,242 art .* touches the strip\(s\) the PS1 cursor cannot reach \((?:left )?bottom\)"),
+        (0, r"dw3-map: tour armed \(DW3_MAP_TOUR=8\): \d+ targets"),
+        # the cursor goes through every strip (left, right, top, bottom) and comes back
+        (0, r"dw3-map: cursor in the strip the PS1 cursor cannot reach \(left \) at -?\d+,-?\d+, location id=0"),
+        (0, r"dw3-map: cursor in the strip the PS1 cursor cannot reach \(right \) at -?\d+,-?\d+, location id=0"),
+        (0, r"dw3-map: cursor in the strip the PS1 cursor cannot reach \(top \) at -?\d+,-?\d+, location id=0"),
+        (0, r"dw3-map: cursor in the strip the PS1 cursor cannot reach \(bottom\) at -?\d+,-?\d+, location id=0"),
+        (0, r"dw3-map: cursor back inside the PS1 cursor's reach at -?\d+,-?\d+, location id=[1-9]\d*"),
+    ) + tuple((0, one % (i, i)) for i in range(1, 47)) + (
+        (0, r"dw3-map: tour done: 46 of 46 visited locations named by the game's own name window, 0 bad"),
+        (0, r"dw3-map: area names this open: [1-9]\d* shown by the game's name window, 0 bad"),
+    )
+
+
+_NAMES_FORBID = ((0, r"dw3-map: area name MISMATCH|: BAD \(|IS NOT the table|dw3-map: capture failed|NOTHING DRAWN|"
+                     r"dw3-map: current area \d+ gives location"),)
+for _v, _ids in (("us", (0x159, 0x1FA, 0x1C2, 0x158, 0x1F9)),
+                 ("eu", (0x167, 0x208, 0x1D1, 0x166, 0x207))):
+    _fight, _menu, _report, _field, _status = _ids
+    for _suffix, _lang_id, _lang, _tfile, _label in _NAMES_LANGS[_v]:
+        _env = _NAMES_ENV + ((("DW3_LANGUAGE", str(_lang_id)),) if _lang_id else ())
+        _add(Scenario(f"{_v}-map-names{_suffix or ''}", _v, "full", turbo=4, timeout=600,
+                      phases=(f"{_v}-map-names",), env=_env,
+                      cfg=(("encounter_rate", "2"), ("map_screen", "1")),
+                      expect_restore=((_fight, M), (_menu, S), (_report, M), (_field, M), (_status, M)),
+                      expect_log=_names_expect(_lang, _tfile),
+                      forbid_log=_NAMES_FORBID,
+                      note=f"the new full-screen map names every visited location with the game's own name "
+                           f"window (language {_label}), through the strips the PS1 cursor cannot "
+                           f"reach (P6.32 phase 2, patch 0147)"))
+
 _SAVE_ENV = (("DW3_START_MODE", "0x233"), ("DW3_PROGRESS", "6"),
              ("DW3_FORCE_MENU", "0xC00:0x80000000"))
 for _v, _ids in (("us", (0x158, 0x1E3)), ("eu", (0x166, 0x1EE))):
@@ -2339,7 +2395,7 @@ _add(_nintendo("eu-lang-cross-fr", "eu-nintendo-lang-cross-fr", "eu-nintendo-lan
 # Cross to leave the result, back to the list) keeps that flow with
 # items_use_stays=0: their references are the PS1 frames, and the key-off proof.
 _USE_FLOW_RECS = ("items-screen", "menu-screens", "items-equip-switch", "items-equip-stays",
-                  "items-bag-view", "map-screen", "map-view")
+                  "items-bag-view", "map-screen", "map-view", "map-names")
 for _i, _s in enumerate(SCENARIOS):
     if (any(r in p for p in _s.phases for r in _USE_FLOW_RECS)
             and not any(k == "items_use_stays" for k, _ in _s.cfg)):

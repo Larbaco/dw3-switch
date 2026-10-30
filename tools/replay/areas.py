@@ -127,7 +127,7 @@ RULES: list[tuple[str, object]] = [
     (r"^port/patches/DECOMP_PIN$", ALL),
     # --- the replay infrastructure itself: quick + smoke is the sanity check -
     (r"^tools/replay/scenarios/", "scenario-recording"),
-    (r"^tools/replay/(manifest|gen_scenarios|ryubing|areas)\.py$", NONE),
+    (r"^tools/replay/(manifest|gen_scenarios|ryubing|areas|map_names_check)\.py$", NONE),
     (r"^tools/(replay_tests\.sh|replay/replay_tests\.py)$", NONE),
 ]
 

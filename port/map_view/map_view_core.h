@@ -163,6 +163,28 @@ typedef struct MvNameBox {
 /* `scr_y` is the cursor's row in the 240-line picture now; returns bottom. */
 int dw3_mv_namebox_bottom(MvNameBox *nb, int hover, float scr_y);
 
+/* --- the PS1 cursor's reach, and the area-name text (phase 2) ------------
+ * The game's own cursor moves in a box (STSTATUS_moveMapCursor): x from 0x16 on
+ * the screen to 0x12A, y from 0xF to height - top - 0x1E = 194, plus the scroll
+ * (x 0 to -0x48, y 0 to -0x60), so in map space it reaches x 22..370 and y 15..290.
+ * What lies outside is the strip the PS1 cursor cannot get to. The new screen's
+ * cursor covers the whole image. A location is hit from (x + 6, x + 0x12] and
+ * (y + 6, y + 0x12] (STSTATUS_showMapArea). */
+enum { MV_PS1_X0 = 22, MV_PS1_X1 = 370, MV_PS1_Y0 = 15, MV_PS1_Y1 = 290 };
+/* The spot at (sx, sy): 0 = its whole hit box is inside the PS1 cursor's reach,
+ * 1 = partly, 2 = none of it. */
+int dw3_mv_hitbox_reach(int sx, int sy);
+/* The cursor point (x, y) in map space: 0 inside the reach, else the strips it is
+ * in, as bits: 1 left, 2 right, 4 top, 8 bottom. */
+int dw3_mv_point_strip(int x, int y);
+/* The name window's text (patch 0147: Shift-JIS codes of the game's glyph map,
+ * 0x0A a line break, 0x8000 | n an icon) as readable ASCII for the log: the
+ * full-width Latin letters and digits and the common signs as themselves, a line
+ * break as " / ", the icons the names use as their text (space, full stop, apostrophe,
+ * hyphen, the accented letters as UTF-8), any other icon as <iN>, anything else as
+ * <XXXX>. Returns the number of codes it could not turn into text (<iN>, <XXXX>). */
+int dw3_mv_name_text(const unsigned short *chars, int n, char *out, size_t cap);
+
 /* --- cache ---------------------------------------------------------------
  * <dir>/<name>: "DW3M", version, w, h, ox, oy, reveal hash, then w * h * 4
  * RGBA bytes. The base (scaler 0) is always the bare map (reveal 0); a scaled
