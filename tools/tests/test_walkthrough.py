@@ -519,3 +519,10 @@ def test_ui_strings_in_every_language():
     for lang in LANGS[1:]:
         _, keys = parse_text(WT / "text" / f"{lang}.txt")
         assert ui <= set(keys), f"{lang}: missing {sorted(ui - set(keys))}"
+
+
+def test_hook_region_is_the_build_not_a_defined_macro():
+    """The decomp headers define VERSION_EU as 0 on US, so `defined(VERSION_EU)` alone is true on both
+    discs: the probe resolved the EU-only extra chapter on US. The region test must read the value."""
+    src = (WT / "walkthrough_hook.c").read_text()
+    assert "#if defined(VERSION_EU) && VERSION_EU\n#define WT_THIS_REGION WT_REGION_EU" in src

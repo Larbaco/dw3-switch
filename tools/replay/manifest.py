@@ -439,7 +439,7 @@ for _v in ("us", "eu"):
                            ("DW3_WALKTHROUGH_PROBE", "1")),
                       expect_log=((0, r"dw3-walkthrough: " + _line),),
                       forbid_log=((0, r"step not recognised|chapter - step -"),),
-                      note=f"P6.35 slice 2: progress {_prog} in mode {_mode} resolves to {_step}"))
+                      note=f"P6.35 slice {3 if _ch == 'ch11' else 2}: progress {_prog} in mode {_mode} resolves to {_step}"))
 for _tag, _mode, _half, _area in WT_EXTRA_POINTS:
     _add(Scenario(f"eu-walkthrough-{_tag}", "eu", "full", turbo=4, timeout=120, log_only=True,
                   phases=("eu-walkthrough",),
@@ -2582,12 +2582,12 @@ _add(Scenario("eu-walkthrough-screen-title-fr", "eu", "full", timeout=300,
               note="P6.35 phase 2: the walkthrough from the title in EU French (machine-drafted text, "
                    "needs native review), no English fallback"))
 _add(Scenario("eu-walkthrough-screen-p2d", "eu", "full", turbo=4, timeout=300,
-              env=(("DW3_START_MODE", "0x276"), ("DW3_PROGRESS", "45")) + _RT_BATTLE_ENV,
+              env=(("DW3_START_MODE", "0x29C"), ("DW3_PROGRESS", "45")) + _RT_BATTLE_ENV,
               expect_log=((0, r"dw3-port-options: open in game(?s:.*)"
                               r"dw3-walkthrough: open \(from field, region EU"
                               rf", platform pc, language en, {_WT_COUNT['EU'][0]} chapters, {_WT_COUNT['EU'][1]} steps\)(?s:.*)"
-                              r"dw3-walkthrough: progress 45 half 1 area 19 -> chapter ch12 step ch12\.s01 "
-                              r"\(rule progress\+flag\) \[open mode 0x276\](?s:.*)"
+                              r"dw3-walkthrough: progress 45 half 1 area 14 -> chapter ch12 step ch12\.s01 "
+                              r"\(rule progress\+flag\) \[open mode 0x29c\](?s:.*)"
                               r"dw3-walkthrough: page ch12\.s01 \(kind MAIN, from open, reached y, current y, "
                               r"\d+ lines(?s:.*)"
                               r"dw3-walkthrough: spoiler ch12\.s01 asked(?s:.*)"
@@ -2599,15 +2599,16 @@ _add(Scenario("eu-walkthrough-screen-p2d", "eu", "full", turbo=4, timeout=300,
                               + _WT_CLOSE + r"(?s:.*)dw3-port-options: close in game \(back to the field menu\)"),),
               forbid_log=_WT_FORBID + ((0, r"widescreen (enabled|disabled)"),
                                        (0, r"step not recognised|browse mode"),),
-              note="P6.35 slice 3: the EU extra chapter's Login Room at progress 0x2D: the walkthrough opens "
+              note="P6.35 slice 3: the EU extra chapter's Qing Long City at progress 0x2D (the Login Room's Tour Leader scene "
+                   "blocks the field menu): the walkthrough opens "
                    "on ch12.s01, the next step is not reached yet (title hidden, the reveal says it may spoil)"))
 _add(Scenario("us-walkthrough-screen-p2d", "us", "full", turbo=4, timeout=300,
-              env=(("DW3_START_MODE", "0x276"), ("DW3_PROGRESS", "45")) + _RT_BATTLE_ENV,
+              env=(("DW3_START_MODE", "0x29C"), ("DW3_PROGRESS", "45")) + _RT_BATTLE_ENV,
               expect_log=((0, r"dw3-port-options: open in game(?s:.*)"
                               r"dw3-walkthrough: open \(from field, region US"
                               rf", platform pc, language en, {_WT_COUNT['US'][0]} chapters, {_WT_COUNT['US'][1]} steps\)(?s:.*)"
-                              r"dw3-walkthrough: progress 45 half 1 area 19 -> chapter - step - "
-                              r"\(rule above-table\) \[open mode 0x276\](?s:.*)"
+                              r"dw3-walkthrough: progress 45 half 1 area 14 -> chapter - step - "
+                              r"\(rule above-table\) \[open mode 0x29c\](?s:.*)"
                               r"dw3-walkthrough: step not recognised \(progress 45\)(?s:.*)"
                               r"dw3-walkthrough: closed after \d+ ms \(pages opened 0, spoilers shown 0\)(?s:.*)"
                               + _WT_CLOSE + r"(?s:.*)dw3-port-options: close in game \(back to the field menu\)"),),
