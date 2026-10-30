@@ -157,6 +157,9 @@ pad 4955 0x0000
 shot 5050 mv-fsr
 pad 5070 0x0200
 pad 5075 0x0000
+shot 5100 mv-bilinear
+pad 5120 0x0200
+pad 5125 0x0000
 shot 5170 mv-nearest
 pad 5190 0x0004
 pad 5195 0x0000

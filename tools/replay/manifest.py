@@ -1059,6 +1059,7 @@ for _v, _ids in (("us", (0x159, 0x1FA, 0x1C2, 0x158, 0x1F9)),
                                   r"(?s:.*)scaler LANCZOS2 (?:built in \d+ ms \(1176x1056, reveal hash [0-9a-f]{8}\)"
                                   r"|loaded from cache in \d+ ms \(1176x1056, cache hit \S+, reveal hash [0-9a-f]{8}\))"
                                   r"(?s:.*)scaler AMD FSR 1 (?:built in|loaded from cache in) \d+ ms"
+                                  r"(?s:.*)dw3-map: scaler BILINEAR built in \d+ ms \(no cache, 392x352\)"
                                   r"(?s:.*)dw3-map: zoom source=stick \(axis 127\) zoom"
                                   r"(?s:.*)dw3-map: zoom source=stick \(axis -127\) zoom"
                                   r"(?s:.*)dw3-map: close after \d+ frames \(zoom: [1-9]\d* stick frames, "
@@ -1220,6 +1221,115 @@ for _v, _ids in (("us", (0x159, 0x1FA, 0x1C2, 0x158, 0x1F9)),
                       note=f"the new full-screen map names every visited location with the game's own name "
                            f"window (language {_label}), through the strips the PS1 cursor cannot "
                            f"reach (P6.32 phase 2, patch 0147)"))
+
+# P6.32 phase 3 (no patch): zoom about the cursor, the step ladder, the pan limits,
+# the centre-on-your-area button (Select), the cursor's acceleration and analog speed
+# (the left stick), the FIT backdrop and the bilinear scaler. The proof is in the log
+# lines (rule 12); the references are the PC host overlay's pictures. One recording
+# for US and EU.
+_ZOOM_NUM = r"-?\d+(?:\.\d+)?"
+for _v, _ids in (("us", (0x159, 0x1FA, 0x1C2, 0x158, 0x1F9)),
+                 ("eu", (0x167, 0x208, 0x1D1, 0x166, 0x207))):
+    _fight, _menu, _report, _field, _status = _ids
+    _add(Scenario(f"{_v}-map-zoom", _v, "full", turbo=4, timeout=700,
+                  phases=(f"{_v}-map-zoom",),
+                  # DW3_MAP_LSTICK: the left stick's keyframes (view frame:x:y, raw -127..127) for the
+                  # analog speed (a digital replay pad has no stick): half tilt left for 60 frames, then
+                  # full tilt left for 30 (the view opens at game frame 4001, so view frame k is game
+                  # frame 4001 + k: the recording's Select, L1 presses and shots are around it)
+                  env=_ITEMS_ENV + (("DW3_MAP_SYNC", "1"), ("DW3_MAP_LSTICK", "1509:-64:0,1569:0:0,1589:-127:0,1619:0:0")),
+                  cfg=(("encounter_rate", "2"), ("map_screen", "1")),
+                  expect_restore=((_fight, M), (_menu, S), (_report, M), (_field, M),
+                                  (_status, M)),
+                  expect_log=(
+                      # the limits of 4.2g and the ladder of 4.4 at the open; the view opens
+                      # on the current area and the backdrop is built
+                      (0, r"dw3-map: zoom limits: FIT 0\.\d+, steps 1\.00 1\.25 1\.50 2\.00 3\.00, top "
+                          r"3\.00x \(3\.0: the source cannot show more, 4\.0 needs a higher-resolution "
+                          r"source\); pan limit = the image box 392x352 at every zoom \(no margin, "
+                          r"centred where the whole map fits\); the cursor reaches the whole image, the "
+                          r"strips the PS1 cursor cannot reach included \(x < 22, x > 370, y < 15, y > 290\); "
+                          r"Select centres on the current area; backdrop beside the map: the map's own "
+                          r"colours \(32x18 cells, dim 50%\)"),
+                      # zoom about the cursor: the cursor does not move on the picture in a
+                      # step the pan limit allows (in 1.5 -> 2.0 -> 3.0 and out again)
+                      (0, r"dw3-map: zoom source=button step 4 \(x\) 1\.50x -> 2\.00x anchor=cursor map "
+                          r"\d+,\d+ \(sprite \d+,\d+\) on the picture " + _ZOOM_NUM + r"," + _ZOOM_NUM
+                          + r" -> " + _ZOOM_NUM + r"," + _ZOOM_NUM + r" \(moved 0\.0 px\) view centre"),
+                      (0, r"dw3-map: zoom source=button step 5 \(x\) 2\.00x -> 3\.00x anchor=cursor map "
+                          r"\d+,\d+ \(sprite \d+,\d+\) on the picture " + _ZOOM_NUM + r"," + _ZOOM_NUM
+                          + r" -> " + _ZOOM_NUM + r"," + _ZOOM_NUM + r" \(moved 0\.0 px\) view centre"),
+                      (0, r"dw3-map: zoom source=button step 5 \(x\) 3\.00x -> 3\.00x anchor=cursor .* ladder top 3\.00x"),
+                      (0, r"dw3-map: zoom source=button step 3 \(x\) 2\.00x -> 1\.50x anchor=cursor"),
+                      # 1.0: the 392 px map is 1176 px of the 1280 picture: centred, the cursor
+                      # moves because the pan limit wins; FIT too, with the backdrop beside it
+                      (0, r"dw3-map: zoom source=button step 1 \(x\) 1\.25x -> 1\.00x anchor=cursor .*pan limit: map fits, centred"),
+                      (0, r"dw3-map: zoom source=button step 0 \(fit\) 1\.00x -> 0\.\d+x anchor=cursor .*pan limit: map fits, centred"),
+                      (0, r"dw3-map: pan clamp free: view at the image edge: none, whole map fits on x\+y \(zoom;"),
+                      (0, r"dw3-map: picture coverage partial: map rect 52,-?\d+-1228,\d+ of 1280x720 \(black strips: none; "
+                          r"the backdrop of the map's own colours \(32x18 cells, dimmed to 50%, linear filter\) fills "
+                          r"left 52 right 52 top 0 bottom 0 px of 1280x720\)"),
+                      (0, r"dw3-map: picture coverage partial: map rect 239,0-1041,720 of 1280x720 \(black strips: none; "
+                          r"the backdrop of the map's own colours \(32x18 cells, dimmed to 50%, linear filter\) fills "
+                          r"left 239 right 239 top 0 bottom 0 px of 1280x720\)"),
+                      (0, r"dw3-map: pc backdrop 32x18 uploaded \(gen \d+, linear\)"),
+                      (0, r"dw3-map: picture coverage full: map rect -?\d+,-?\d+-\d+,\d+ of 1280x720 \(black strips: none\)"
+                          r"(?s:.*)dw3-map: picture coverage partial(?s:.*)dw3-map: picture coverage full"),
+                      # the right stick: smooth, about the cursor
+                      (0, r"dw3-map: zoom source=stick \(axis 127\) zoom " + _ZOOM_NUM + r" \(from " + _ZOOM_NUM
+                          + r"\) anchor=cursor map \d+,\d+ .*\(moved 0\.0 px\)"),
+                      # a zoom the image's edge does not allow: the pan limit wins and the line says so
+                      (0, r"dw3-map: zoom source=button step \d \(x\) [\d.]+x -> [\d.]+x anchor=cursor map 2,\d+ .*"
+                          r"\(moved [1-9][\d.]* px, pan limit: left\)"),
+                      (0, r"dw3-map: zoom source=button step \d \(x\) [\d.]+x -> [\d.]+x anchor=cursor map \d+,\d+ .*"
+                          r"\(moved [1-9][\d.]* px, pan limit: right\)"),
+                      # the pan limit holds the view at the image's edges at 3.0, in the corners:
+                      # the view's edge is the image's, never past it
+                      (0, r"dw3-map: pan clamp holds: view at the image edge: left\+top, whole map fits on neither axis "
+                          r"\(the view follows the cursor; zoom 3\.000, view centre " + _ZOOM_NUM + r"," + _ZOOM_NUM
+                          + r" wanted " + _ZOOM_NUM + r"," + _ZOOM_NUM + r", map 392x352, view covers x 0\.0\.\.[\d.]+ y 0\.0\.\.[\d.]+ "
+                          r"of the image, never past it\)"),
+                      (0, r"dw3-map: pan clamp holds: view at the image edge: [a-z+]*right[a-z+]*, whole map fits on neither axis .*zoom 3\.000"),
+                      (0, r"dw3-map: pan clamp holds: view at the image edge: [a-z+]*bottom, whole map fits on neither axis .*zoom 3\.000"
+                          r".*view covers x [\d.]+\.\.392\.0 y [\d.]+\.\.352\.0 of the image"),
+                      (0, r"dw3-map: pan clamp free: view at the image edge: none, whole map fits on neither axis \(the view follows"),
+                      (0, r"dw3-map: cursor in the strip the PS1 cursor cannot reach \([a-z ]*left [a-z ]*\) at -?\d+,-?\d+"),
+                      (0, r"dw3-map: cursor in the strip the PS1 cursor cannot reach \([a-z ]*top [a-z ]*\) at -?\d+,-?\d+"),
+                      (0, r"dw3-map: cursor in the strip the PS1 cursor cannot reach \([a-z ]*right[a-z ]*\) at -?\d+,-?\d+"),
+                      (0, r"dw3-map: cursor in the strip the PS1 cursor cannot reach \([a-z ]*bottom\) at -?\d+,-?\d+"),
+                      # acceleration: the game's 2, 3, 4 px a frame, then +1 px every 15 frames up to the
+                      # cap (10 screen px: 10 source px at zoom 1.0)
+                      (0, r"dw3-map: pan speed source=d-pad frame 1: ramp 2\.00 px/frame \(zoom 1\.000, cap 10\.00\)"),
+                      (0, r"dw3-map: pan speed source=d-pad frame 11: ramp 3\.00 px/frame \(zoom 1\.000, cap 10\.00\)"),
+                      (0, r"dw3-map: pan speed source=d-pad frame 21: ramp 4\.00 px/frame \(zoom 1\.000, cap 10\.00\)"),
+                      (0, r"dw3-map: pan speed source=d-pad frame 7\d: ramp 5\.00 px/frame \(zoom 1\.000, cap 10\.00\)"),
+                      (0, r"dw3-map: pan speed source=d-pad frame 1[45]\d: ramp 10\.00 px/frame \(zoom 1\.000, cap 10\.00\)"),
+                      (0, r"dw3-map: pan end source=d-pad after \d+ frames, peak ramp 10\.00 px/frame, cursor \d+,\d+ -> -?\d+,-?\d+"),
+                      # no acceleration where 4 source px is already 12 screen px (3.0)
+                      (0, r"dw3-map: pan end source=d-pad after 160 frames, peak ramp 4\.00 px/frame, cursor .* zoom 3\.000"),
+                      # Select: the cursor goes back to the current area, the view centres on it
+                      (0, r"dw3-map: centre on the current area: location id=[1-9]\d* \(area \d+\), home mark at "
+                          r"sprite \d+,\d+, cursor -?\d+,-?\d+ -> \d+,\d+, view centre"),
+                      # the left stick: analog speed, half tilt slower than full
+                      (0, r"dw3-map: pan speed source=left stick frame 1: ramp 2\.00 px/frame \(zoom 1\.250, cap 8\.00\) "
+                          r"x tilt 0\.[34]\d/0\.00 = -0\.[89]\d/0\.00 px/frame"),
+                      (0, r"dw3-map: pan end source=left stick after 60 frames, peak ramp 4\.00 px/frame, "
+                          r"cursor 309,227 -> 2\d\d,227 \(moved -[5-9]\d,0\)"),
+                      (0, r"dw3-map: pan speed source=left stick frame 1: ramp 2\.00 px/frame \(zoom 1\.250, cap 8\.00\) "
+                          r"x tilt 1\.00/0\.00 = -2\.00/0\.00 px/frame"),
+                      (0, r"dw3-map: pan end source=left stick after 30 frames, peak ramp 4\.00 px/frame"),
+                      # the bilinear scaler (L2 from nearest wraps to it): a GPU filter on the map itself
+                      (0, r"dw3-map: scaler BILINEAR built in \d+ ms \(no cache, 392x352\)"),
+                      (0, r"dw3-map: texture 392x352 queued for the GPU \(gen \d+, scaler BILINEAR, linear\)"),
+                      (0, r"dw3-map: view session: [1-9]\d* zoom changes \([1-9]\d* button, [1-9]\d* stick frames\), "
+                          r"1 centre-on-area presses, [1-9]\d* cursor goes"),
+                      (0, r"dw3-map: game Map screen back after the close: .*: unchanged"),),
+                  forbid_log=((0, r"dw3-map: capture failed|NOTHING DRAWN|area name MISMATCH|"
+                                  r"NOT BUILT|\): CHANGED|dw3-turbo: (?:on|off)\n|"
+                                  r"dw3-map: cursor on location id=0"),),
+                  note="the new full-screen map: zoom about the cursor, the 4.4 ladder, pan limits at every "
+                       "zoom, Select centres on the current area, cursor acceleration and analog speed, "
+                       "the FIT backdrop, the bilinear scaler (P6.32 phase 3)"))
 
 _SAVE_ENV = (("DW3_START_MODE", "0x233"), ("DW3_PROGRESS", "6"),
              ("DW3_FORCE_MENU", "0xC00:0x80000000"))
@@ -2395,7 +2505,7 @@ _add(_nintendo("eu-lang-cross-fr", "eu-nintendo-lang-cross-fr", "eu-nintendo-lan
 # Cross to leave the result, back to the list) keeps that flow with
 # items_use_stays=0: their references are the PS1 frames, and the key-off proof.
 _USE_FLOW_RECS = ("items-screen", "menu-screens", "items-equip-switch", "items-equip-stays",
-                  "items-bag-view", "map-screen", "map-view", "map-names")
+                  "items-bag-view", "map-screen", "map-view", "map-names", "map-zoom")
 for _i, _s in enumerate(SCENARIOS):
     if (any(r in p for p in _s.phases for r in _USE_FLOW_RECS)
             and not any(k == "items_use_stays" for k, _ in _s.cfg)):
