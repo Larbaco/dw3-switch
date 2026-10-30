@@ -1,12 +1,43 @@
 Digimon World 3 / 2003, Switch homebrew preview
 
-Release notes for v0.6.5-preview.55. The release tag and boot version
+Release notes for v0.6.5-preview.56. The release tag and boot version
 identify the actual source revision.
 
 Player guide (setup, controls, Options, saves, crash reports):
 https://github.com/Larbaco/dw3-switch/blob/main/docs/PLAYER_GUIDE.md
 
 New in this preview
+
+  Story path crash fixed: the Reliability Spot (#378, patch 0197). Players
+  stuck there should update. At progress 0xE (chapter 3, step 5), going to the
+  Reliability Spot for the Digi-Egg of Sincerity aborted or crashed, on PC and
+  on the Switch. The stage had no overlay entry, and one of its wanderers wrote
+  through a NULL tile. The stage is linked now, and patch 0197 gives that
+  wanderer a spare tile that nothing draws. The EU extra chapter's 55 stages
+  (WSTAG920 to WSTAG974, reached at progress 0x2D) had the same gap and are
+  linked now. The stage sweep visits all 238 stages, not 237. Not yet run on a
+  console (OLED G11).
+
+  Cheaper present on the Switch (#375, P6.22 pass 4). The present uploads the
+  game's 16-bit VRAM and a shader expands it, instead of the CPU packing 4 bytes
+  a pixel on every shown frame. The picture is the same, pixel for pixel in the
+  emulator and shader tests, and each shown frame costs less CPU (about 0.6 to
+  1.3 ms less in Ryubing). If the driver refuses the new path, the game falls
+  back to the old one and logs `present path:` with the reason. Testers: please
+  check OLED row C11. The A/B itself needs two developer nxlink builds, since
+  `DW3_PRESENT_16=0` is built only into those; on the release file, check the
+  picture. A wrong picture should be reported with dw3.log.
+
+  Map view, phase 2 (#372, P6.32, patch 0147): the name of each visited area
+  shows under the cursor, in the game's own text: US English, and FR, DE, IT
+  and ES on the EU disc (OLED B26).
+
+  Map view, phase 3 (#374): the zoom keeps the spot under the cursor, the view
+  stays on the map, and Select centres it on your area. Zoom steps are FIT,
+  1.0, 1.25, 1.5, 2.0 and 3.0; 4.0 needs a higher-resolution pack. Panning speeds
+  up after 60 frames held. A Bilinear scaler joins the cycle; Nearest is still
+  the default. At FIT the space beside the picture shows the map's own colours,
+  not black. The cursor speed numbers are a first guess (OLED B27).
 
   Full-screen map: now a row on the Options screen (P6.32 phase 4). Options,
   Display, Full-screen map (OFF by default). It applies at once, also from the
@@ -19,6 +50,44 @@ New in this preview
   Customize buttons). Logs: `dw3-map: bindings in effect (...)` at every open,
   `dw3-map: BINDING PROBLEM` for a bad value. Not yet run on a console: OLED
   row B28.
+
+  Walkthrough, chapters 2 to 10 (#376, P6.35 slice 2). The walkthrough now has
+  the main steps of the first half of the game (progress 5 to 0x29) and a
+  chapter list: pick a chapter, then its steps. Back goes up one level. From
+  progress 0x2A it says "More chapters coming". FR, DE, IT and ES are machine
+  drafts that need a native review (see Known issues). Rows W1 to W7 cover the
+  screen.
+
+  Switch glyphs on the page-turn prompt (#373, P10.6, patch 0196). With
+  switch_glyphs on, the L1 / R1 page-turn prompt in the item shop and in the
+  field menu's Items list shows the Switch glyph of the button that sends each
+  one (OLED L27).
+
+  Cross-region saves: EXPERIMENTAL (#370, P6.25 slice 2). Off by default. With
+  `save_store=1` in port_options.cfg of BOTH regions (us/ and eu/), a save made
+  in one region can be seen in the other, through one shared card per profile
+  (card0.dw3s and card1.dw3s, in the profile's folder). The old saves are only
+  read. Nothing is deleted, and a timestamped backup is made before the first
+  overwrite of a session. Each import, export, migration, backup and refusal is
+  a `dw3-store:` line in dw3.log. Try it on a copy of your saves first (OLED
+  E3.7 to E3.16).
+
+  Test tooling and docs only, no change to the game: the options-persist replay
+  expects the Region row on --bin-both (#369), and replay --changed selects the
+  full tier for main.c (#371).
+
+  The owner's OLED checks are recorded in docs/OLED_TEST_PLAN.md (rows marked
+  PASSED). Items that are not there yet are checked on PC and in the Ryubing
+  emulator only, and are marked unverified. The OLED checklist at the end lists
+  every row of that plan without a PASSED mark.
+
+  Built and published by the release workflow (.github/workflows/switch-release.yml)
+  from this tag: the three files are the workflow's own output, with no local
+  rebuild attached. A local build does not reproduce the CI binary (the build
+  ids differ), so the dw3-switch-elf.zip in this release is the one that
+  symbolizes this dw3-switch.nro.
+
+  From preview.55:
 
   Full-screen map view is OFF by default (#366, P6.32 phase 1, patch 0146).
   This is a change from preview.54. Y on the Map screen does nothing until you
@@ -54,17 +123,6 @@ New in this preview
   Test tooling and docs only, no change to the game: replay --changed reads
   CMake diffs and the runner has --both-subset (#364); the roadmap Priority and
   status table is reconciled with the merged PRs (#365).
-
-  The owner's OLED checks are recorded in docs/OLED_TEST_PLAN.md (rows marked
-  PASSED). Items that are not there yet are checked on PC and in the Ryubing
-  emulator only, and are marked unverified. The OLED checklist at the end lists
-  every row of that plan without a PASSED mark.
-
-  Built and published by the release workflow (.github/workflows/switch-release.yml)
-  from this tag: the three files are the workflow's own output, with no local
-  rebuild attached. A local build does not reproduce the CI binary (the build
-  ids differ), so the dw3-switch-elf.zip in this release is the one that
-  symbolizes this dw3-switch.nro.
 
   From preview.54:
 
@@ -428,25 +486,40 @@ Known issues
   (T4, phase 3). Not yet heard on a console; the 4 second figure is the
   owner's decision.
 
-  Full-screen map view (P6.32 phase 1): off unless map_screen=1 is set (see
-  New in this preview). Not yet confirmed on a console: OLED rows B16, B20 and
-  B25.
+  Full-screen map view (P6.32): off unless the Options row or map_screen=1 is
+  set (see New in this preview). Not yet confirmed on a console: OLED rows B16,
+  B20, B25, and B26 to B28.
 
-  Walkthrough screen (P6.35 phase 2): not yet confirmed on a console (OLED
-  rows W1 to W7).
+  Walkthrough screen (P6.35): chapters 2 to 10 are in; progress 0x2A and up are
+  not yet. Not yet confirmed on a console (OLED rows W1 to W7).
 
-  Switch glyphs (P10.6): not yet confirmed on a console (OLED rows L21 to L26).
-  The R1 / L1 page-turn art is not covered.
+  Switch glyphs (P10.6): not yet confirmed on a console (OLED rows L21 to L27).
+  The page-turn prompt follows the glyphs in the item shop and the Items list
+  only; the card shop, Digimon Lab, battle menu, name entry and training prompts
+  use the same hook but are not replay-checked.
 
-  Help and walkthrough text in FR, DE, IT and ES is machine-drafted, not
+  Cheaper present (P6.22 pass 4): not yet confirmed on a console (OLED row C11).
+  Its cost on the Maxwell GPU and the best upload mode there are unknown.
+
+  Cross-region saves (P6.25 slice 2): experimental and not yet confirmed on a
+  console (OLED rows E3.7 to E3.16). Keep a copy of your saves first.
+
+  Reliability Spot and the extra chapter (P5.5): not yet confirmed on a console
+  (OLED row G11).
+
+  Help, walkthrough and map text in FR, DE, IT and ES is machine-drafted, not
   checked by a native reviewer, and not run on the console. The English help
   pages passed on the OLED (plans H1 to H8, English only); the four other
-  languages show the new text, not the English fallback that H8 describes.
+  languages show the new text, not the English fallback that H8 describes. The
+  walkthrough steps of chapters 2 to 10 and the map's new Display row are
+  machine drafts too.
 
   Defaults taken for now and pending the owner's confirmation:
   items_equip_stays (on), items_bag_view (on) with its filter order, items_use_stays
   (on), turbo music (1x), the win jingle hold (4 seconds), and the remap's hotkeys
-  following the map. Also taken for now: switch_glyphs (off) and map_screen (off).
+  following the map. Also taken for now: switch_glyphs (off), map_screen (off),
+  the map view's six button keys and their defaults, and where Bilinear sits in
+  the scaler cycle.
 
   If the map stays silent after a battle (no field music once you are
   back), please send a --nxlink log. This was reported on rc8 (US) but
@@ -659,28 +732,29 @@ Install / nxlink
 
 OLED checklist
 
-  Still open on the OLED: 189 rows of docs/OLED_TEST_PLAN.md without a clean
-  PASSED mark (172 distinct row IDs; the proof-line table repeats some IDs). The
-  list is built from those rows only, with tools/oled_open_rows.py (193 rows
+  Still open on the OLED: 213 rows of docs/OLED_TEST_PLAN.md without a clean
+  PASSED mark (192 distinct row IDs; the proof-line table repeats some IDs). The
+  list is built from those rows only, with tools/oled_open_rows.py (234 rows
   there). The four rows that already passed, whose proof-line rows the tool
   still reports as open, are left out. The checklist below gives each one.
   A: A1, A2, A3, A4, A6, A7, A8, A13, A18, A16, A17
   W: W1, W2, W3, W4, W5, W6, W7
   L: L1, L2, L3, L4, L5, L6, L7, L8, L9, L10, L11, L12, L13, L14, L15, L16, L17,
-    L18, L19, L20, L21, L22, L23, L24, L25, L26
-  B: B1, B2, B3, B4, B5, B6, B7, B8, B9, B10, B12, B13, B14, B15, B16, B17, B19,
-    B21, B22, B23, B24, B20, B25
-  C: C1, C2, C3, C4, C10, C5, C6, C8, C9
+    L18, L19, L20, L21, L22, L23, L24, L25, L26, L27
+  B:B1, B2, B3, B4, B5, B6, B7, B8, B9, B10, B12, B13, B14, B15, B16, B17, B19,
+    B21, B22, B23, B24, B20, B25, B26, B27, B28
+  C: C1, C2, C3, C4, C10, C5, C6, C8, C9, C11
   T: T1, T2, T3, T4, T5, T6
   D: D1, D2, D3, D4, D5, D6, D7, D8, D9, D10, D11, D12, D14, D15
   E: E1.1, E1.2, E1.3, E1.4, E1.5, E1.6, E2.0, E2.1, E2.2, E2.3, E2.4, E2.4b,
-    E2.5, E2.6, E3.1, E3.2, E3.3, E3.4, E3.5, E3.6, E4.1, E4.2, E4.3, E4.4,
+    E2.5, E2.6, E3.1, E3.2, E3.3, E3.4, E3.5, E3.6, E3.7, E3.8, E3.9, E3.10,
+    E3.11, E3.12, E3.13, E3.14, E3.15, E3.16, E4.1, E4.2, E4.3, E4.4,
     E4.5, E4.6, E4.7, E4.8, E4.9, E5.1, E5.2, E5.3, E5.4, E5.6, E5.7, E5.8,
     E5.9, E1, E2
   F: F1, F2, F3, F4, F5, F6, F7
   G: G1, G2, G3, G4, G5, G6, G8, G7.1, G7.2, G7.3, G7.4, G7.5, G7.6, G7.7, G9.1,
     G9.2, G9.3, G9.4, G9.5, G9.6, G9.7, G9.8, G9.9, G9.10, G9.11, G9.12, G9.13,
-    G9.14, G9.15
+    G9.14, G9.15, G11
   Other: Item
 
   Button names: Cross = Switch B, Circle = Switch A, Triangle = Switch X,
@@ -732,6 +806,7 @@ OLED checklist
   - L24 Customize buttons: Circle on ZL, Triangle on L3; look at the shop and Save prompts; then Reset to default ...
   - L25 Switch glyphs OFF, then ON, then quit and relaunch (US, then EU in two languages) ...
   - L26 Developer: your own a.png ... zr.png (12x12) in sdmc:/switch/dw3/glyphs/, one of them wrong (13x12) ...
+  - L27 Switch glyphs ON: the item shop and the field menu's Items list show the page-turn prompt as a glyph (L1 / R1); with more than 14 (shop) or 16 (Items) entries, turn pages with L and R. Then Customize buttons: put L1 on ZL and look again; then Reset
 
   Session B: field and 16:9 screens tour:
   - B1 Title menu, intro news caption bar, registration screen (New Game)
@@ -757,6 +832,9 @@ OLED checklist
   - B24 Use item stays on the partner step (P6.34 phase 4, patch 0193; P6.33 decision 6, details ...
   - B20 Map view closes with the cancel button (owner decision 2026-10-28). As B16 (map_screen=1 first): open the view ...
   - B25 Map view option off by default (P6.32 phase 1). With no map_screen line Y does nothing; with map_screen=1 R3 in the view does nothing ...
+  - B26 Map view: area names under the cursor, in each language (P6.32 phase 2, patch 0147). map_screen=1 first, widescreen ON, a save with several areas visited. Y in the Map screen; move the cursor onto visited locations, and read the name shown under it
+  - B27 Map view: zoom and pan (P6.32 phase 3). map_screen=1 first, widescreen ON. Move the cursor well off the middle, then R: the spot stays under the cursor. Pan with the d-pad and then the left stick; Select centres on your area
+  - B28 Full-screen map row and rebound buttons (P6.32 phase 4). Options, Display: the Full-screen map row is OFF; turn it ON, back out, open the view with Y. Turn it OFF again in the game, then quit and start: the row is still as you left it. Then, with the game closed, add the six map_view_* keys (examples in the row's OLED steps) and check that ZR opens the view and that the bars show the new buttons
 
   Session C: turbo speed:
   - C1 New Game opening at 4x. Compare with preview.34 at 4x if you remember
@@ -768,6 +846,7 @@ OLED checklist
   - C6 Watch the field picture at 4x
   - C8 Same turbo, battle: at the command menu move the cursor, open Tech and move in the list ...
   - C9 Turbo on: open the field menu Map, Items and a shop, then walk
+  - C11 Cheaper present, A/B (P6.22 pass 4). Two developer nxlink builds of the same commit, one with DW3_PRESENT_16=0 in DW3_NX_TEST_ENV; the same scene in both for about a minute (New Game opening at 4x, then the Forest Inn top). The release file has no switch, so testers check the picture
   - T1 Turbo music ([P6.36](P6.36_TURBO_MUSIC.md); Options > Sound > Turbo music = 1x, the ...
   - T2 Change areas at 4x (a door, a stage switch)
   - T3 Random battle at 4x: entrance, fight, win
@@ -812,6 +891,16 @@ OLED checklist
   - E3.4 A save in both folders
   - E3.5 If you have one, an EU extra-chapter save going to US
   - E3.6 Start the same build again
+  - E3.7 With the save_store key absent or 0 in both regions, start US and EU, save in one. There must be no card0.dw3s and no dw3-store: line
+  - E3.8 save_store=1 in both regions: a US save in us/memcard/ and none in eu/memcard/; start US, quit
+  - E3.9 Start EU, Title, Continue, slot 1
+  - E3.10 In EU save into slot 2 (another place), leave with HOME, start US, Continue
+  - E3.11 Save twice more in one session
+  - E3.12 A save made on the store only: look at us/memcard/ and eu/memcard/
+  - E3.13 If you have an EU extra-chapter save in the store (or copy one in), start US, Continue
+  - E3.14 Start again with save_store still 1
+  - E3.15 EU only: save with language English, restart, pick French, Continue
+  - E3.16 In the Title or Load screen, format card slot 1 (if the game offers it), then restart
   - E4.1 Options: Y with the master OFF
   - E4.2 Y opens the Cheats screen: title and rows in the game language (EU: all five); X returns. ...
   - E4.3 Fill bag Ready, then field menu Items
@@ -867,6 +956,7 @@ OLED checklist
   - G9.11 Disc in the parent folder, one region ...
   - G9.12 Both discs in the parent folder: US and EU BIN/CUE both directly in sdmc:/switch/dw3/ ...
   - G9.13 One disc in the parent, the other region already extracted: keep an extracted eu/ tree ...
+  - G11 Reliability Spot (WSTAG460, stage 0x236) and the sweep's 238th stage, US then EU. (a) Run the stage sweep again (stage_sweep=2 to start over). (b) Story path: with a save at progress 14 (chapter 3, step 5), go to the Reliability Spot for the Digi-Egg of Sincerity and let it return. (c) EU only, optional: with an extra-chapter save (progress 0x2D), walk into the Digimon Lab of Asuka City (WSTAG924). Send dw3.log
 
   Proof lines by item (send the log lines of the rows above):
   - Item Lines in dw3*.log
@@ -889,7 +979,14 @@ OLED checklist
   - W1 to W7 dw3-walkthrough: open (from title|field|battle, region, platform, language, N items), page <id> (kind, from, reached, N lines), spoiler <id> asked|shown|cancelled, closed after N ms; problems: text fallback, title too wide
   - L21 to L26 dw3-glyphs: on|off, map=playstation|nintendo, patched N cells (us|eu, ...) [option|map|font load]; dw3-glyphs: N glyph(s) read from sdmc:/switch/dw3/glyphs
   - B25 boot: dw3-options: file keys ... map_screen=0|1; with 0: dw3-map: option map_screen=0 (the default); with 1: dw3-map: open ..., dw3-map: R3 pressed in the view: ignored
+  - B26 dw3-map: marker list: N locations (V visited) at the open; dw3-map: area name shown: location id=I source=game name window (text file ..., language L) ... fits, once per name; area name gone; cursor in the strip the PS1 cursor cannot reach (left|right|top|bottom)
+  - B27 dw3-map: zoom limits at the open; zoom source=button ... anchor=cursor ...; pan clamp holds|free: ...; centre on the current area; pan speed source=d-pad|left stick: ramp R px/frame; pan end; picture coverage partial: ... backdrop
+  - B28 dw3-port-options: group open display (2 row(s), title); dw3-port-options: map screen (full-screen map view) enabled|disabled; after a restart dw3-options: file keys ... map_screen=1; dw3-map: bindings in effect (at the open): open=... zoom_out=...; dw3-map: BINDING PROBLEM for a bad value
+  - L27 dw3-glyphs: page-turn L1=L R1=R (cells n=115 n=116) [font load|map|option]; dw3-glyphs: page-turn prompt R1 drawn as glyph R (scene=STITSHOP 0x205)
   - G8 dw3-options: file keys items_equip_from_items=N items_partner_switch=N map_screen=N at ...
+  - C11 present path: 16-bit upload (R16UI, rows copied tight), ... (default), or present path: RGBA8888 pack on the CPU (DW3_PRESENT_16=0) in the A/B build; pace dbg: p16=, pack_us=, upload_us=; a fallback reason, if any, is on the present path line
+  - E3.7 to E3.16 dw3-store: lines for each import, export, migration, backup and refusal; card0.dw3s, card1.dw3s and imported.txt in the profile folder (the table is in docs/CROSS_REGION_SAVES.md)
+  - G11 dw3-sweep: done 238/238 ok, failed: none; dw3: FIELDSTG_pickStage mode=0x236 stageFile=853 (US) or 868 (EU); dw3: overlay restore file=0x355 / 0x364 kind=sub; (c) file=0x73b kind=sub (WSTAG924); null-guard hit: wstag460.wanderer-no-object, if it appears
   - G9.14 nxlink detection (one file, 2026-10-29). Start dw3-switch.nro with nxlink -a <ip> -s ...
   - G9.15 Upgrade from the old files. On a card that has dw3-switch-eu.nro or -both.nro plus ...
 
