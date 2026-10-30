@@ -50,7 +50,7 @@ explicitly marked N/A in this note.
 | Pacing | **Encounter rate** (OFF / 0.5x / 1x / 1.5x / 2x) and **Text speed** (Normal / Fast / Instant), both default to the original game ([P6.18](P6.18_PACING.md)). Instant shows every dialogue page, report line and (since 2026-10-24) the area name banner's names whole; Normal and Fast leave the banner as the game types it | Phase 6 |
 | Battle menu memory | **Battle cursor** (OFF / Command / Command+Tech): the battle command menu and technique list open on your last pick; key `battle_menu_memory` 0 / 1 / 2, off by default (a row since P7.9's follow-up, it was file-only) ([P7.9](P7.9_BATTLE_MENU_MEMORY.md)) | Phase 7 |
 | Button layout | **Button layout** (PlayStation positional, default / Nintendo A confirms, B cancels), ROADMAP P9.8, **built 2026-10-28**: row 9, in the Controls group, key `button_layout`, see [Button layout row](#button-layout-row-p98) | Phase 9 (P9.8) |
-| Switch button glyphs | **Switch button glyphs** on/off, ROADMAP P10.6. Future goal (2026-10-23); the glyphs follow the layout | Phase 10 |
+| Switch button glyphs | **Switch glyphs** (off = the game's own button icons, default / on = Switch glyphs that follow the button map), ROADMAP P10.6, **built 2026-10-29**: row 14, last row of the Controls group, **Switch only** (the PC has no row), key `switch_glyphs`, `DW3_SWITCH_GLYPHS=0\|1` pins it for a run, see [Switch glyphs row](#switch-glyphs-row-p106) | Phase 10 (P10.6) |
 | Cheats (test aid) | A **Cheats** sub-screen for hardware testing, reached with Square / Y on the Options screen: master switch, Fill bag, Instant win, Battle now and a count of saves flagged "cheat used" (a sidecar file, never the save). A second page (PR 2) has Money, Warp (13 areas), Item id, Item count and Give item. Off by default, keys `cheat_enabled` and `cheat_instant_win` in `port_options.cfg`; built in by default, removed by `DW3_CHEATS=OFF` / `--no-cheats`. Later HP / MP. See [Cheats](#cheats-p620) and ROADMAP P6.20 | Phase 6 (P6.20) |
 | Switch host | Rumble on/intensity, confirm A/B layout, `swkbd` name, CRT/sharp, system-language hint | Phase 10 (+ P4.4 / P5.3 always-on lifecycle) |
 | Restart game | Optional L1 + R1 + Start + Select in the shared PS1 pad map; OFF by default | Phase 6.9 |
@@ -720,7 +720,7 @@ hints (Open or Change, Back).
 | Sound | Music volume (3), SFX volume (4), Turbo music (13) | Turbo music (P6.36): `1x` (stored 0, default) keeps the music at its normal tempo while fast-forward runs, `Fast` (stored 1) is the old sound; `DW3_TURBO_MUSIC=0\|1` pins it for a run. No effect with Fast-forward OFF or turbo not running. Not locked in game. Left / Right / Confirm cycle it. Label and message line in five languages (`opt_row_tm_*`, `opt_desc_tm_*`); logs `dw3-options: turbo_music=1x\|fast`, `dw3-port-options: turbo music 1x\|fast`, and the `dw3-audio: music tick ...` lines of [P6.36](P6.36_TURBO_MUSIC.md#as-built-phases-1-and-2-2026-10-29) |
 | Gameplay | Fast-forward (1), Restart hotkey (2), Encounter rate (5), Text speed (6), Battle cursor (7) | Restart hotkey moves to Controls when P6.12 exists |
 | Saves | Auto-save (8) | |
-| Controls | Button layout (9), Customize buttons (11), Reset to default (12) | P9.8: PlayStation (default) / Nintendo, P6.12: Custom, the Customize buttons screen and Reset, see [Button layout row](#button-layout-row-p98) and [Customize buttons](#customize-buttons-p612). Restart hotkey stays in Gameplay |
+| Controls | Button layout (9), Customize buttons (11), Reset to default (12), Switch glyphs (14, Switch only) | P10.6: the Switch glyphs toggle, last row, listed on the Switch build only ([row](#switch-glyphs-row-p106)). P9.8: PlayStation (default) / Nintendo, P6.12: Custom, the Customize buttons screen and Reset, see [Button layout row](#button-layout-row-p98) and [Customize buttons](#customize-buttons-p612). Restart hotkey stays in Gameplay |
 | Cheats | the ten P6.20 cheat rows (not registry rows), a scrolling sub-screen | **Always listed** (P51 item 5; it used to appear only once the master switch was on, so nobody found it): the title opens the Cheats screen where the master switch is; greyed in game (title-only). `DW3_OPTGRP_CHEATS_LISTED` in `port_options_groups.h` (the build has the Cheats feature); `dw3-port-options: group list n=8 (cheats listed, master off, locked in game 0)` once per open |
 | Help | no rows, a screen of its own (P6.30, built) | Always listed (it is not secret), after Saves and Cheats. Confirm opens the technical help (`port/help/`, [P6.30_HELP](P6.30_HELP.md)): a list of ten pages and a scrolling text page, on its own full-canvas layer that the host draws instead of the Options layer (the Options cache is untouched). Up / Down scroll a page by line, Left / Right by screenful, L1 / R1 (L / R) change page, Back goes to the page list and out. Title, field menu and battle Options all reach it |
 | Walkthrough | no rows, a screen of its own (P6.35 phase 2, built) | Always listed, after Help (`built = 1`). Confirm opens the walkthrough (`port/walkthrough/walkthrough_screen.c`, [P6.35](P6.35_WALKTHROUGH.md#as-built-phase-2-the-screen)): in game the page of the current step, at the title a browse-only step list; the answer is behind two actions and nothing beyond the player's progress shows. Same layer, keys and hints as the Help (L1 / R1 change the entry). Title, field menu and battle Options reach it. The group list is now eight long with Cheats (`group list n=8`) |
@@ -1024,9 +1024,42 @@ source=A -> logical cross`; the screen's own `dw3-port-options: button layout
 nintendo` and `dw3-options: saved ...`. Unit tests: `test_button_map.py`,
 `test_options_persist.py` (the layout cases), `test_pad_host.py`. Replay:
 `us/eu-controls-layout` (new references) and the seven `*-nintendo-*`
-scenarios ([P6.15](P6.15_REPLAY_TESTS.md)). The Options hint row keeps the
-PlayStation marks (PC) or the letters B and X (Switch) in both layouts until
-phase 3 (P10.6) makes them follow the map.
+scenarios ([P6.15](P6.15_REPLAY_TESTS.md)). The Options hint caps follow the map since the P10.6 fix-now, and the game's own icons follow it
+with the Switch glyphs row ([below](#switch-glyphs-row-p106)).
+
+## Switch glyphs row (P10.6)
+
+**Row 14, Controls group, Switch only.** `DW3_PORT_OPT_SWITCH_GLYPHS`, key
+`switch_glyphs` (0 default, 1), a switch row: Confirm toggles it, the file is
+written at once and the font cells change before the next frame. The row is
+listed only when `__SWITCH__` is defined (`DW3_OPT_GLYPHS_ROW` in
+`port_options_groups.h`), so the PC's Controls screen keeps its three rows and
+its references. The code is shared: on the PC the key or `DW3_SWITCH_GLYPHS=1`
+turns the patch on (the replay scenarios use the key); only the row is missing.
+With the row off nothing changes: no VRAM write, no log beyond one `off` line
+per run, pictures bit-identical to the build without the feature.
+
+What it does: with the row on, the port replaces the font cells of the four PS
+button icons (`FONT_ICONS_1`, size 1, the only size that has them) with 12x12
+glyphs of the physical button that produces that PS button under the current
+map (A / B / X / Y, L / R / ZL / ZR for a custom map; the stick clicks have no
+glyph and keep the icon). It follows the layout row and the Customize screen at
+once. Details, the cells, the palettes and the census: [P10.6_GLYPHS](P10.6_GLYPHS.md).
+Art: `assets/glyphs/` (CC0, drawn for the project). Your own art: PNGs of the
+same names and the five role colours in `sdmc:/switch/dw3/glyphs/`.
+
+Lettering (label, message line `Switch buttons in game text. OFF = original
+icons.`) in the five languages of the EU disc: `opt_row_sg_`, `opt_desc_sg_`
+(FR / DE / IT / ES machine-drafted, needs native review); the values are the
+screen's OFF / ON.
+
+Logs (`dw3.log`): `dw3-options: switch_glyphs=on|off`, one `dw3-glyphs: on|off,
+map=<layout>, patched N cells (us|eu, n=47:A ...) [font load|map|option]` line
+per font load (boot, after a movie) and per change, `dw3-glyphs: N glyph(s)
+read from <dir>` or a one-line reason when an own PNG is refused,
+`dw3-port-options: switch glyphs enabled|disabled`. Unit tests:
+`test_switch_glyphs.py`, `test_port_options.py` (both builds). Replay:
+`us/eu-glyphs-*` ([P6.15](P6.15_REPLAY_TESTS.md)).
 
 ## Customize buttons (P6.12)
 

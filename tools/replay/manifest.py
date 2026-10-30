@@ -2184,3 +2184,61 @@ for _i, _s in enumerate(SCENARIOS):
     if (any(r in p for p in _s.phases for r in _USE_FLOW_RECS)
             and not any(k == "items_use_stays" for k, _ in _s.cfg)):
         SCENARIOS[_i] = dataclasses.replace(_s, cfg=_s.cfg + (("items_use_stays", "0"),))
+
+
+# P10.6 Switch glyphs (docs/P10.6_GLYPHS.md, port/options/switch_glyphs.c). The
+# census found the button icons in the item shop (circle, triangle, the US cross is
+# a multiplication sign there) and the save screen (the EU Cross disc and the
+# triangle), so these two forced menus are replayed with `switch_glyphs=1` in the
+# seeded port_options.cfg (the PC has no row: the key is the switch). The input
+# bypasses the button map, so the layout only changes the glyph letters.
+#  glyphs-off     the key written as 0: bit-identical to the plain scenario (its
+#                 references, ref_from) and no `dw3-glyphs: on` line
+#  glyphs-on-*    the PlayStation layout (B Cross, A Circle, Y Square, X Triangle)
+#  glyphs-nintendo-shop  button_layout=nintendo (A, X, Y, B)
+#  eu ... -fr/-de the same shop with the EU text in two other languages
+# The references are new (the glyphs are different pictures); run with --update.
+_GLY_CELLS = {
+    ("us", "playstation"): r"patched 3 cells \(us, n=27:orig n=47:A n=50:Y n=52:X\)",
+    ("us", "nintendo"): r"patched 3 cells \(us, n=27:orig n=47:X n=50:Y n=52:B\)",
+    ("eu", "playstation"): r"patched 4 cells \(eu, n=27:B n=47:A n=50:Y n=52:X\)",
+    ("eu", "nintendo"): r"patched 4 cells \(eu, n=27:A n=47:X n=50:Y n=52:B\)",
+}
+
+
+def _glyphs(base_name, name, layout="playstation", env=(), note=""):
+    b = by_name()[base_name]
+    v = b.version
+    cfg = b.cfg + (("switch_glyphs", "1"),) + ((("button_layout", "nintendo"),)
+                                                if layout == "nintendo" else ())
+    return dataclasses.replace(
+        b, name=name, cfg=cfg, env=b.env + env,
+        expect_log=tuple(e for e in b.expect_log if e[0] == 0)
+        + ((0, rf"dw3-options: switch_glyphs=on(?s:.*)dw3-glyphs: on, map={layout}, "
+               + _GLY_CELLS[(v, layout)] + r" \[font load\]"),),
+        forbid_log=((0, r"dw3-glyphs: .*(cell is not a 12x12|not a role colour)"),),
+        note=note)
+
+
+for _v in ("us", "eu"):
+    _b = by_name()[f"{_v}-item-shop"]
+    _add(
+        dataclasses.replace(
+            _b, name=f"{_v}-glyphs-off",
+            cfg=_b.cfg + (("switch_glyphs", "0"),), ref_from=f"{_v}-item-shop",
+            forbid_log=((0, r"dw3-glyphs: on"),),
+            expect_log=tuple(e for e in _b.expect_log if e[0] == 0)
+            + ((0, r"dw3-options: switch_glyphs=off(?s:.*)dw3-glyphs: off, map=playstation, patched 0 cells"),),
+            note="switch_glyphs=0: the item shop is bit-identical to the plain run (P10.6)"),
+        _glyphs(f"{_v}-item-shop", f"{_v}-glyphs-on-shop",
+                note="Switch glyphs on, PlayStation layout: the item shop's Circle prompt is an A "
+                     "glyph (US also keeps its multiplication sign) (P10.6)"),
+        _glyphs(f"{_v}-item-shop", f"{_v}-glyphs-nintendo-shop", layout="nintendo",
+                note="Switch glyphs on, Nintendo layout: the Circle prompt is an X glyph (P10.6)"),
+        _glyphs(f"{_v}-save-screen", f"{_v}-glyphs-on-save",
+                note="Switch glyphs on: the save screen's Back prompt is an X glyph, and on EU "
+                     "the Save prompt (the Cross disc) a B glyph (P10.6)"),
+    )
+for _lang, _id in (("fr", 3), ("de", 5)):
+    _add(_glyphs("eu-item-shop", f"eu-glyphs-on-shop-{_lang}", env=(("DW3_LANGUAGE", str(_id)),),
+                 note=f"Switch glyphs on, the EU item shop in {_lang} (P10.6)"))
