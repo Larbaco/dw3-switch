@@ -866,33 +866,44 @@ def controls_layout(version, phase):
 # These recordings are the plain ones turned into positions under the Nintendo
 # layout: the game must see exactly the original input, so every checkpoint equals
 # the plain scenario's reference.
+CUSTOM_MAP_DIGITS = "0127456389"     # P6.32 phase 4: Square<-ZR position, R2<-Y position
 NINTENDO_DIGITS = "1203456789"      # Cross<-A (Circle pos), Circle<-X, Triangle<-B
 _FACE_BITS = {"cross": 14, "circle": 13, "triangle": 12, "square": 15,
               "l1": 10, "r1": 11, "l2": 8, "r2": 9, "l3": 1, "r3": 2}
 _FACE_ORDER = ("cross", "circle", "triangle", "square", "l1", "r1", "l2", "r2", "l3", "r3")
 
 
-def nintendo_source_mask(mask):
-    """The position word that produces `mask` (PS buttons) under Nintendo."""
+def source_mask(mask, digits):
+    """The position word that produces `mask` (PS buttons) under the button map
+    `digits` (port_button_map.h: digit i is the position that makes PS button i)."""
     out = mask & ~sum(1 << b for b in _FACE_BITS.values())
-    for ps, digit in enumerate(NINTENDO_DIGITS):
+    for ps, digit in enumerate(digits):
         if mask & (1 << _FACE_BITS[_FACE_ORDER[ps]]):
             out |= 1 << _FACE_BITS[_FACE_ORDER[int(digit)]]
     return out
 
 
-def nintendo_source_rec(text, note):
+def nintendo_source_mask(mask):
+    """The position word that produces `mask` (PS buttons) under Nintendo."""
+    return source_mask(mask, NINTENDO_DIGITS)
+
+
+def source_rec(text, note, digits=NINTENDO_DIGITS):
     lines = text.splitlines()
     head = lines[0] if lines and lines[0].startswith("#") else "# recording"
     out = [f"{head} ({note})"]
     for line in lines[1:] if head == lines[0] else lines:
         parts = line.split()
         if parts and parts[0] == "pad":
-            mask = nintendo_source_mask(int(parts[2], 16))
+            mask = source_mask(int(parts[2], 16), digits)
             out.append(f"pad {parts[1]} 0x{mask:04x}")
         else:
             out.append(line)
     return "\n".join(out) + "\n"
+
+
+def nintendo_source_rec(text, note):
+    return source_rec(text, note, NINTENDO_DIGITS)
 
 
 # (new recording, plain recording it is made from)
@@ -900,6 +911,7 @@ NINTENDO_RECS = (
     ("{v}-nintendo-menu", "{v}-field-options-p1"),
     ("{v}-nintendo-map-view", "{v}-map-view"),
     ("{v}-nintendo-title-quit", "{v}-title-quit"),
+    ("{v}-nintendo-map-rebind", "{v}-map-rebind"),   # P6.32 phase 4
 )
 
 
@@ -2106,6 +2118,106 @@ def map_view_off(version):
     return r
 
 
+L3_MAP, SELECT_MAP_BIT = 0x0002, 0x0001
+
+
+def _to_map_screen(r):
+    """The path of `map_view` to the open Map screen; returns the frame (4000)."""
+    for f in range(300, 1200, 30):
+        r.press(f, CROSS)            # battle report -> field
+    r.press(1250, START)             # field menu, over the field
+    r.press(1420, CROSS)             # Items: the dissolve, then STSTATUS
+    f = 1640
+    for name, button, wait in MENU_SCREENS_STEPS:
+        if name == "map":
+            break
+        if button:
+            r.press(f, button)
+        f += wait
+    assert f == 4000, f
+    return f
+
+
+def map_rebind(version):
+    """P6.32 phase 4: the view's buttons from the file-only keys of port_options.cfg
+    (manifest: open=r2 zoom_out=square zoom_in=cross centre=l3 scaler_prev=l1
+    scaler_next=r1; map_screen=1). Same path as `map_view` up to the open Map.
+    Square, the old open key, opens nothing; R2 opens the view; in it the old keys
+    (L2, Select) say they are not bound and do nothing; L3 centres, Square steps the
+    zoom down and Cross up (about the cursor), L1 / R1 move the scaler (bilinear,
+    then nearest again), R2 is only logged as the open key, Triangle closes. The
+    masks are logical buttons, so the Nintendo and custom-map variants (button
+    positions, DW3_REPLAY_SOURCE=1) must give the same pictures and log."""
+    r = Rec(f"{version.upper()}: P6.32 phase 4 rebound map view buttons (env and cfg in manifest)")
+    f = _to_map_screen(r)
+    r.shot(f - 3, "rb-game-map")
+    r.press(f, SQUARE_MAP)           # the old open key: the game's Map screen ignores it
+    r.shot(f + 40, "rb-square-nothing")
+    r.press(f + 60, R2_MAP)          # the bound open key
+    r.shot(f + 110, "rb-open")
+    _pad(r, f + 120, LEFT | UP)      # the cursor leaves the area
+    _pad(r, f + 170, 0)
+    r.shot(f + 190, "rb-cursor-off")
+    r.press(f + 200, L2_MAP)         # old scaler key: not bound any more
+    r.press(f + 215, SELECT_MAP_BIT) # old centre key: not bound any more
+    r.shot(f + 240, "rb-old-keys")
+    r.press(f + 250, L3_MAP)         # centre on the current area
+    r.shot(f + 270, "rb-centre")
+    r.press(f + 280, SQUARE_MAP)     # zoom out one step: 1.5 -> 1.25
+    r.shot(f + 300, "rb-zoom-out")
+    r.press(f + 310, CROSS)          # zoom in: back to 1.5
+    r.press(f + 330, CROSS)          # and on to 2.0
+    r.shot(f + 350, "rb-zoom-in")
+    r.press(f + 360, L1_MAP)         # previous scaler: nearest wraps to bilinear
+    r.shot(f + 390, "rb-bilinear")
+    r.press(f + 400, R1_MAP)         # next scaler: nearest again
+    r.shot(f + 430, "rb-nearest")
+    r.press(f + 440, R2_MAP)         # the open key inside the view: only logged
+    r.press(f + 460, CIRCLE_MAP)     # the bars (fixed): they list the new buttons
+    r.shot(f + 490, "rb-hud")
+    r.press(f + 500, CIRCLE_MAP)
+    r.press(f + 520, TRIANGLE)       # the cancel button closes the view
+    r.shot(f + 580, "rb-closed")
+    r.press(f + 620, TRIANGLE)       # and the game's Map screen
+    r.end(f + 800)
+    return r
+
+
+def map_rebind_relaunch_p1(version):
+    """P6.32 phase 4, process 1 of the relaunch test: the title's Options, the Display
+    group, its second row (Full-screen map) from OFF to ON; the file the screen writes
+    keeps the binding keys the manifest seeded. Back out."""
+    r = Rec(f"{version.upper()}: P6.32 phase 4 Full-screen map row, phase 1")
+    m = _to_options(r, version)
+    f = _group(r, m + 70, GRP_DISPLAY, GRP_DISPLAY)    # Display
+    f = _keys(r, f + 20, DOWN)                         # Widescreen -> Full-screen map
+    r.shot(f + 20, "fm-off")
+    r.press(f + 40, CROSS)                             # OFF -> ON
+    r.shot(f + 80, "fm-on")
+    f = _keys(r, f + 100, TRIANGLE, TRIANGLE)          # list, then leave
+    r.end(f + 40)
+    return r
+
+
+def map_rebind_relaunch_p2(version):
+    """Process 2 (a fresh start on the same config folder, in the Map screen's forced
+    state): the option and the bindings come back from the file process 1 rewrote.
+    Square does nothing, R2 opens the view, Square zooms out, Triangle closes."""
+    r = Rec(f"{version.upper()}: P6.32 phase 4 rebound map view buttons, phase 2 (relaunch)")
+    f = _to_map_screen(r)
+    r.shot(f - 3, "rr-game-map")
+    r.press(f, SQUARE_MAP)           # not the open key any more
+    r.press(f + 60, R2_MAP)          # the bound open key, read back from the file
+    r.shot(f + 110, "rr-open")
+    r.press(f + 120, SQUARE_MAP)     # zoom out, the rebound key
+    r.shot(f + 150, "rr-zoom-out")
+    r.press(f + 170, TRIANGLE)
+    r.shot(f + 230, "rr-closed")
+    r.press(f + 270, TRIANGLE)
+    r.end(f + 450)
+    return r
+
+
 # The battle report's checkpoints (patch 0081): the header bar opens from the
 # left edge, then holds the partner's exp, then the fade. The EU report comes
 # ~120 frames before the US one (measured, DW3_TURBO=4).
@@ -3198,6 +3310,9 @@ def main(out):
         (out / f"{v}-map-view-off.rec").write_text(map_view_off(v).text(True))
         (out / f"{v}-map-names.rec").write_text(map_names(v).text(True))
         (out / f"{v}-map-zoom.rec").write_text(map_zoom(v).text(True))
+        (out / f"{v}-map-rebind.rec").write_text(map_rebind(v).text(True))
+        (out / f"{v}-map-rebind-relaunch-p1.rec").write_text(map_rebind_relaunch_p1(v).text(True))
+        (out / f"{v}-map-rebind-relaunch-p2.rec").write_text(map_rebind_relaunch_p2(v).text(True))
         (out / f"{v}-items-equip-switch.rec").write_text(items_equip_switch(v).text(True))
         (out / f"{v}-items-equip-stays.rec").write_text(items_equip_stays(v).text(True))
         (out / f"{v}-items-bag-view.rec").write_text(items_bag_view(v).text(True))
@@ -3294,6 +3409,11 @@ def main(out):
     note = "Nintendo layout: the masks are button positions, DW3_REPLAY_SOURCE=1"
     pairs = [(n.format(v=v), b.format(v=v)) for v in ("us", "eu") for n, b in NINTENDO_RECS]
     pairs.append(("eu-nintendo-lang-cross-fr", "eu-lang-cross-fr"))
+    for v in ("us", "eu"):   # P6.32 phase 4: a custom map (Square and R2 positions swapped)
+        (out / f"{v}-custom-map-rebind.rec").write_text(
+            source_rec((out / f"{v}-map-rebind.rec").read_text(),
+                       "custom map " + CUSTOM_MAP_DIGITS + ": the masks are button positions, "
+                       "DW3_REPLAY_SOURCE=1", CUSTOM_MAP_DIGITS))
     for new, base in pairs:
         (out / f"{new}.rec").write_text(
             nintendo_source_rec((out / f"{base}.rec").read_text(), note))
