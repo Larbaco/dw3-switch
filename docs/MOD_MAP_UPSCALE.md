@@ -220,8 +220,8 @@ keys are ignored; a `format` above 1 refuses the pack.
 - Which pack: the first folder (by name) under the mods folder whose manifest is
   valid and lists the running region. `DW3_MOD_PACK=<folder>` picks one (PC,
   tests); `DW3_MODS_DIR` moves the mods folder (tests). Off switch:
-  `map_mod=0` in `port_options.cfg` (a file-only key, default 1, like
-  `map_screen`). No pack, an unreadable one, a wrong size: the original path
+  `map_mod=0` in `port_options.cfg` (a file-only key, default 1; it only matters
+  when the view itself is on: `map_screen=1`, default 0 since P6.32 phase 1). No pack, an unreadable one, a wrong size: the original path
   runs, unchanged and bit-identical (the replays prove it).
 - The picture: the pack's map, then every reveal piece the game sends (the
   towns of the progress list, the visited areas) blended on top at N x: the

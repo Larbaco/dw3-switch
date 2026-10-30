@@ -1,4 +1,4 @@
-/* P6.32 phase 0 spike: the new full-screen map screen. See map_view.h. */
+/* P6.32: the new full-screen map screen. See map_view.h. */
 #include "engine/gfx.h"
 
 #include <math.h>
@@ -94,6 +94,10 @@ typedef struct MapViewState {
     struct MvJob *job;
     int pending_scaler;         /* -1, or the scaler to start when the job ends */
     unsigned job_id;
+    /* the game's own Map screen underneath (phase 1: "returns unchanged") */
+    int game_cx, game_cy, game_sx, game_sy; /* its cursor and scroll at the open */
+    int resume_wait;            /* inactive frames to see after the close, 0 = none */
+    unsigned r3_ignored;        /* R3 presses swallowed while open */
 } MapViewState;
 
 static MapViewState s;
@@ -135,9 +139,19 @@ static double now_ms(void) {
 #define MV_HOST_OK 0
 #endif
 
+/* The port option: one file-only key (owner decision 7; the Options window has
+ * no free row). Off by default since P6.32 phase 1: the PoC default was on so
+ * the owner could try it without editing a file; the feature rule is off. */
+#define MV_OPTION_KEY "map_screen"
+#define MV_OPTION_DEFAULT 0
+
+static int map_view_option(void) {
+    return dw3_port_options_file_int(MV_OPTION_KEY, MV_OPTION_DEFAULT);
+}
+
 static int map_view_available(void) {
     if (!MV_HOST_OK) return 0;
-    if (dw3_port_options_file_int("map_screen", 1) == 0) return 0;
+    if (map_view_option() == 0) return 0;
     /* owner decision 8: widescreen only (4:3 has no new screen) */
     return dw3_port_widescreen_menu_shift() > 0;
 }
@@ -181,6 +195,12 @@ void dw3_map_view_init(const char *config_dir) {
     fprintf(stderr, "dw3-map: mods folder %s\n",
             g_mods_dir[0] ? g_mods_dir : "(none)");
     if (!g_cache_dir[0]) return;
+    if (!map_view_option()) {
+        /* default: the feature costs nothing (no folder, no precompute) */
+        fprintf(stderr, "dw3-map: option %s=0 (the default): the full-screen map "
+                "is off, no cache folder, no precompute\n", MV_OPTION_KEY);
+        return;
+    }
     mkdir(g_cache_dir, 0777);
     fprintf(stderr, "dw3-map: cache folder %s\n", g_cache_dir);
 }
@@ -905,6 +925,26 @@ static void close_view(void) {
             s.zoom_stick_frames, s.zoom_button_presses,
             s.zoom_src == 1 ? "stick" : s.zoom_src == 2 ? "button" : "none",
             (unsigned)s.base_reveal_last);
+    fprintf(stderr, "dw3-map: pad held by the view for %u frames (the game's Map "
+            "screen read none of them), R3 presses ignored %u, turbo=%d\n",
+            s.frame, s.r3_ignored, dw3_port_turbo_speed());
+    s.resume_wait = 2;
+}
+
+/* Phase 1 done-when: no black strips. The view's map rectangle against the whole
+ * 16:9 picture at the opening zoom; anything it leaves open is the black
+ * backdrop (only when the player zooms out to FIT, the map is 392:352). */
+static void log_coverage(void) {
+    float x0, y0, x1, y1;
+    int full;
+
+    dw3_mv_view_rect(&s.view, s.base.w, s.base.h, VW, VH, &x0, &y0, &x1, &y1);
+    full = x0 <= 0.5f && y0 <= 0.5f && x1 >= (float)VW - 0.5f &&
+           y1 >= (float)VH - 0.5f;
+    fprintf(stderr, "dw3-map: picture coverage %s: map rect %.0f,%.0f-%.0f,%.0f of "
+            "%dx%d (black strips: %s)\n", full ? "full" : "partial", (double)x0,
+            (double)y0, (double)x1, (double)y1, VW, VH,
+            full ? "none" : "backdrop beside the map");
 }
 
 static void open_view(const void *sheet, int sheet_file, int half, int home_x,
@@ -1073,6 +1113,8 @@ static void open_view(const void *sheet, int sheet_file, int half, int home_x,
     s.show_hud = 0;      /* P51 item 2: the picture fills the screen; Circle brings the bars */
     s.show_name = 1;
     s.frame = 0;
+    s.r3_ignored = 0;
+    s.resume_wait = 0;
     s.hud = (uint8_t *)calloc((size_t)DW3_MV_HUD_W * DW3_MV_HUD_H, 4);
     s.view.step = MAP_OPEN_STEP;  /* P51 item 2: 1.5x (the table's step 3) */
     s.view.zoom = 0.0f;
@@ -1086,6 +1128,7 @@ static void open_view(const void *sheet, int sheet_file, int half, int home_x,
             s.nspots, s.home_x, s.home_y, dw3_port_turbo_speed(),
             (double)dw3_mv_view_cur_zoom(&s.view, s.base.w, s.base.h, VW, VH),
             s.show_hud ? "on" : "off");
+    log_coverage();
     fprintf(stderr, "dw3-map: sprites at %s (scale 1/Z, Z = zoom, reference zoom "
             "1.0 = %.2f px per source px; the reveal layer, the lit towns and "
             "visited areas, scales with the map; the name box is the game's own "
@@ -1261,16 +1304,35 @@ int dw3_port_map_view_frame(const void *sheet, int sheet_file, int half,
 
 #define BIT(b) (1u << (b))
     if (!s.active) {
+        if (s.resume_wait > 0 && io && --s.resume_wait == 0) {
+            /* the patch restores the game's cursor and scroll after the first
+             * inactive call, so this one (the second) sees them back */
+            fprintf(stderr, "dw3-map: game Map screen back after the close: "
+                    "cursor %d,%d scroll %d,%d (at the open %d,%d / %d,%d): %s\n",
+                    io->game_cx, io->game_cy, io->game_sx, io->game_sy, s.game_cx,
+                    s.game_cy, s.game_sx, s.game_sy,
+                    io->game_cx == s.game_cx && io->game_cy == s.game_cy &&
+                    io->game_sx == s.game_sx && io->game_sy == s.game_sy ?
+                    "unchanged" : "CHANGED");
+        }
         if (!(pressed & BIT(DW3_MV_PAD_SQUARE))) return 0;
         if (!map_view_available()) {
             fprintf(stderr, "dw3-map: Square pressed, view not available "
                     "(host=%d map_screen=%d widescreen shift=%d)\n", MV_HOST_OK,
-                    dw3_port_options_file_int("map_screen", 1),
-                    dw3_port_widescreen_menu_shift());
+                    map_view_option(), dw3_port_widescreen_menu_shift());
             return 0;
         }
         open_view(sheet, sheet_file, half, home_x, home_y, visited, spot_x,
                   spot_y, sheet1, sheet2, pieces, npieces);
+        if (io) {
+            s.game_cx = io->game_cx;
+            s.game_cy = io->game_cy;
+            s.game_sx = io->game_sx;
+            s.game_sy = io->game_sy;
+            fprintf(stderr, "dw3-map: game Map screen frozen underneath: cursor "
+                    "%d,%d scroll %d,%d\n", s.game_cx, s.game_cy, s.game_sx,
+                    s.game_sy);
+        }
         if (s.active && io) {
             s.name_x0 = io->name_x0;
             s.name_y0 = io->name_y0;
@@ -1306,6 +1368,11 @@ int dw3_port_map_view_frame(const void *sheet, int sheet_file, int half,
         fill_io(io);
         close_view();
         return 1; /* this frame's cancel must not close the game's screen */
+    }
+    if (pressed & BIT(DW3_MV_PAD_R3)) {
+        ++s.r3_ignored;
+        fprintf(stderr, "dw3-map: R3 pressed in the view: ignored (no fast-forward "
+                "here; turbo=%d)\n", dw3_port_turbo_speed());
     }
     if (pressed & BIT(DW3_MV_PAD_SQUARE)) {
         fprintf(stderr, "dw3-map: Square ignored in the view (it opens the view; "
@@ -1480,7 +1547,7 @@ void dw3_map_view_precompute_run(void) {
     double t_all = now_ms();
     int built = 0;
 
-    if (!g_cache_dir[0]) return;
+    if (!g_cache_dir[0] || !map_view_option()) return;
     for (half = 0; half < 2; ++half) {
         MvImage base;
         MvBox box;

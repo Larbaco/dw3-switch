@@ -10,6 +10,7 @@
 
 #ifndef DW3_PORT_TURBO_TEST
 #include "port_battle_options.h"
+#include "port_map_view.h"
 #include "engine/pad.h"
 #include "overlay_host.h"
 
@@ -201,6 +202,14 @@ void dw3_port_turbo_poll(void) {
 
     turbo_read_env();
     g_poll_frames++;
+#ifndef DW3_PORT_TURBO_TEST
+    /* P6.32: the full-screen map swallows the pad, R3 included: a press in it
+     * must not flip the fast-forward state behind the player's back. A press
+     * held when the screen closes does not count as a new one. */
+    if (turbo_r3_held() && dw3_port_map_view_active()) {
+        g_latched = 1;
+    } else
+#endif
     if (!turbo_r3_held()) {
         g_latched = 0;
     } else if (!g_latched) {

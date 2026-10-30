@@ -1,4 +1,4 @@
-/* P6.32 phase 0: the game side of the new full-screen map screen (patch 0146).
+/* P6.32: the game side of the new full-screen map screen (patch 0146).
  * The rest (state, scalers, host overlays) is port/map_view/map_view.h. */
 #ifndef DW3_PORT_MAP_VIEW_H
 #define DW3_PORT_MAP_VIEW_H
@@ -34,6 +34,10 @@ typedef struct Dw3MapViewIo {
      * cursor - scroll = map position, so its area lookup and its name window
      * work on the view's cursor. */
     int cur_x, cur_y, scr_x, scr_y;
+    /* in: the game's own cursor and scroll as they are when the call is made
+     * (screen->cursorX/Y, scrollX/Y); the host logs that the Map screen comes
+     * back with the same values it was frozen with. */
+    int game_cx, game_cy, game_sx, game_sy;
 } Dw3MapViewIo;
 
 /* Called every frame of the game's Map screen from STSTATUS_updateMapScreen.
@@ -48,8 +52,8 @@ typedef struct Dw3MapViewIo {
  * order. The host composes them into the picture it shows. Returns 1
  * while the new screen has the pad (the game then skips its own pad read and
  * the area lookup and only draws its frozen screen), 0 otherwise. Square opens
- * it (widescreen on, option file key `map_screen` not 0); Triangle or Square
- * close it. While it is open the pad (D-pad and left stick) moves its cursor
+ * it (widescreen on, option file key `map_screen` = 1; the default is off); the
+ * game's cancel button (PS-side Triangle bit) closes it, Square does not. While it is open the pad (D-pad and left stick) moves its cursor
  * and `io` carries the cursor back to the game (see Dw3MapViewIo). */
 int dw3_port_map_view_frame(const void *sheet, int sheet_file, int half,
                             int home_x, int home_y, const int *visited,

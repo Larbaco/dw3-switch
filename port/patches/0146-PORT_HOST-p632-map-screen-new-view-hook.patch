@@ -1,30 +1,34 @@
 Upstream-bound: no
-Subject: [PORT_HOST] P6.32 phase 0: the new full-screen map screen opens from the Map screen (Square)
+Subject: [PORT_HOST] P6.32 phase 1: the new full-screen map screen opens from the Map screen (Square)
 
-P6.32 phase 0 spike (docs/P6.32_MAP_ZOOM.md, option D). STSTATUS_updateMapScreen,
-in TASK_RUN, calls mapViewFrame, which gathers what the port screen needs and
-hands it to dw3_port_map_view_frame (port/map_view/map_view.c): the map's
-sprite sheet, the file and game half, the home mark, the visited flags, the 47
-spot positions and the logical pad (held and pressed masks). Square opens the
-new host-drawn screen, Triangle or Square close it. While it is open the
-function returns 1: the game's screen skips its own pad read (so the Triangle
-that closes the new screen does not also close the Map), its area lookup and
-sound, and only draws its frozen frame underneath. Nothing is written to GAME
-or to the task. With the option file key map_screen=0, widescreen off, or
-without the native overlay the function returns 0 and nothing changes: the Map
-screen is the one of patch 0080.
+P6.32 (docs/P6.32_MAP_ZOOM.md, option D). STSTATUS_updateMapScreen, in TASK_RUN,
+calls mapViewFrame, which gathers what the port screen needs and hands it to
+dw3_port_map_view_frame (port/map_view/map_view.c): the map's sprite sheet, the
+file and game half, the home mark, the visited flags, the 47 spot positions, the
+reveal-layer pieces, the logical pad (held and pressed masks) and the game's own
+cursor and scroll. Square opens the new host-drawn screen; the cancel button
+(the PS-side Triangle bit, so it follows a button remap) closes it, Square does
+not. While it is open the function returns 1: the game's screen skips its own
+pad read (so the Triangle that closes the new screen does not also close the
+Map), and only draws its frozen frame underneath. Nothing is written to GAME or
+to the task except the cursor and scroll below, which are put back when the new
+screen closes. With the option file key map_screen off (the default since phase
+1), widescreen off, or without the native overlay the function returns 0 and
+nothing changes: the Map screen is the one of patch 0080 (0 differing pixels,
+replay us/eu-map-screen).
 
-P6.32 HUD elements (owner, after preview.45): the full-screen view now shows the
-game's own balloon, cursor and name box. While it is open the pad (and the left
-stick) moves the view's cursor over the whole map; mapViewFrame sets the game's
-cursor and scroll to it every frame (cursorX/Y = its place on the 320x240 menu
-picture, the scroll so that cursor - scroll is the map position) and runs
+HUD elements (owner, after preview.45): the full-screen view shows the game's own
+balloon, cursor and name box. While it is open the pad (and the left stick)
+moves the view's cursor over the whole map; mapViewFrame sets the game's cursor
+and scroll to it every frame (cursorX/Y = its place on the 320x240 menu picture,
+the scroll so that cursor - scroll is the map position) and runs
 STSTATUS_showMapArea on it, so the area lookup, the confirm sound, the name
 window and its text are the game's, drawn into the frozen game picture; the host
 leaves the name box's rectangle to those pixels. The animation frames of the
 cursor and of the home mark, and the bounds of the name box frame, go to the
 host through Dw3MapViewIo. The game's cursor and scroll are put back when the
-new screen closes.
+new screen closes; phase 1 also hands them to the host at every call, so the log
+can say the Map screen came back unchanged.
 
 --- a/src/menus/field_menu/map_screen.c
 +++ b/src/menus/field_menu/map_screen.c
@@ -38,7 +42,7 @@ new screen closes.
  
  /* Finds the area under the cursor and shows its name */
  void STSTATUS_showMapArea(StatusMapScreen *screen, TextWindow **windows) {
-@@ -348,6 +351,94 @@
+@@ -348,6 +351,98 @@
  #endif
  }
  
@@ -102,6 +106,10 @@ new screen closes.
 +    dw3_port_sprite_frame_bounds(FILE_CACHE.getEntry(FILE_STATUS_SPRITES << 16), 0x3B, &io.name_x0, &io.name_y0,
 +                                 &io.name_x1, &io.name_y1);
 +    io.cur_x = io.cur_y = io.scr_x = io.scr_y = 0;
++    io.game_cx = screen->cursorX;
++    io.game_cy = screen->cursorY;
++    io.game_sx = screen->scrollX;
++    io.game_sy = screen->scrollY;
 +    active = dw3_port_map_view_frame(FILE_CACHE.getEntry(screen->archive), screen->file, screen->gameHalf,
 +                                     screen->homeX, screen->homeY, screen->visited, spotX, spotY, held, pressed,
 +                                     FILE_CACHE.getEntry(screen->archive1), FILE_CACHE.getEntry(screen->archive2),
