@@ -62,3 +62,16 @@ def test_nintendo_menu_inherits_both_expectation():
     nm = manifest.by_name()["us-nintendo-menu"]
     assert any("(6 row" in r for p, r in nm.expect_log_both)
     assert not any("(5 row" in r for p, r in nm.expect_log_both if "gameplay" in r)
+
+
+def test_options_persist_region_row_expected_on_both_binary_at_title():
+    # P6.51: options-persist opens Gameplay at the title, where the Region row
+    # is the sixth row too; the plain binary keeps 5 rows.
+    for v in ("us", "eu"):
+        op = manifest.by_name()[f"{v}-options-persist"]
+        plain = [r for p, r in op.expect_log if "gameplay" in r]
+        both = [r for p, r in op.expect_log_both if "gameplay" in r]
+        assert plain and all("(5 row" in r for r in plain)
+        assert both and all("(6 row" in r for r in both)
+        assert [r for p, r in op.expect_log if "gameplay" not in r] == \
+               [r for p, r in op.expect_log_both if "gameplay" not in r]
