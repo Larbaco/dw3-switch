@@ -125,6 +125,14 @@ GROUP_TEXT = {
                       'Steuerung, Kürzel, Speichern und Fehlerberichte.',
                       'Controles, atajos, partidas e informes de errores.',
                       'Comandi, scorciatoie, salvataggi e segnalazioni.')},
+    # P6.35 Walkthrough: the group name and the message line under the group
+    # list. FR / DE / IT / ES are machine-drafted, needs native review.
+    'walkthrough': {'name': ('Walkthrough', 'Pas à pas', 'Komplettlösung', 'Guía', 'Soluzione'),
+                    'desc': ('Where to go next. Hints first, answers on request.',
+                             "Où aller ensuite. Indices d'abord, solution après.",
+                             'Nächstes Ziel. Hinweise zuerst, Lösung auf Wunsch.',
+                             'Adónde ir ahora. Pistas primero, solución si la pides.',
+                             'Dove andare ora. Prima indizi, soluzioni a richiesta.')},
 }
 OPEN_TEXT = ('Open', 'Ouvrir', 'Öffnen', 'Abrir', 'Apri')
 CHANGE_TEXT = ('Change', 'Changer', 'Ändern', 'Cambiar', 'Cambia')

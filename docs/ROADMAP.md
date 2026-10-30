@@ -172,7 +172,7 @@ listed once, in [Pending OLED checks](#pending-oled-checks).
 | P6.32 | Map zoom and full-screen map (future goal) | phase 0 PoC built (PR `feat/p6.32-map-poc`); owner OLED, preview.45 (2026-10-28): the map shows and Nearest is the preferred scaler; balloon, cursor and name box pending preview.47; mod pack loader for an upscaled map built (`feat/mod-map-upscale`, OLED item B17 pending) | [roadmap](#phase-6-goal-notes), [P6.32](P6.32_MAP_ZOOM.md), [P6.1](P6.1_WIDESCREEN.md), [map upscale mod](MOD_MAP_UPSCALE.md) |
 | P6.33 | Items menu usability redesign | in progress (owner decisions recorded 2026-10-26; phase 1 partner cycle built: patch 0128, ZL / ZR, on by default; phases 2, 3 and 4 open; phase 1 cycle confirmed on the OLED 2026-10-27, preview.41; the `items_partner_switch=0` check open; phases 2–4 folded into P6.34) | [roadmap](#phase-6-goal-notes), [P6.33](P6.33_ITEMS_MENU.md), [P6.1](P6.1_WIDESCREEN.md) |
 | P6.34 | Redesign of the items / status / equipment menu flow | design written 2026-10-28 (5 phases, 10 owner questions open); **phase 1 built 2026-10-28** (equip from the Items menu, patch `0188`, key `items_equip_from_items`, default on = orchestrator default pending owner confirmation of Q1 to Q5 and Q10); **phase 2 built 2026-10-29** (equip in Status > Equipment returns to the slot list without the long fades, patch `0190`, key `items_equip_stays`, default on = orchestrator default pending owner confirmation of Q6; replay `us/eu-items-equip-stays[-off]`); **phase 3 built 2026-10-29** (Square in the equip list cycles this slot / all weapons / all armor and gear / worn by others; Cross on a worn-by-others row moves the item between party members, patch `0192`, key `items_bag_view`, default on = orchestrator default pending owner confirmation of P6.33 decisions 2 and 3 as built; replay `us/eu-items-bag-view[-43][-off]` and `eu-items-bag-view-fr|it|de|es`; left: a count line, a help hint for Square, moving from non-party Digimon, swap); **phase 4 built 2026-10-29** ("use item" stays on the partner step: the item panel and the pages stay, Up / Down + Cross use the next copy, the last copy and Triangle take the original way back; patch `0193`, key `items_use_stays`, default on = orchestrator default pending owner confirmation of P6.33 decision 6 as built and of Q9 (the "Items to Equipment" jump is dropped); replay `us/eu-items-use-stays[-43][-off]` and `eu-items-use-stays-fr|it|de|es`; the recordings that walk the old use flow now run with `items_use_stays=0`; left: ZL / ZR in the partner step, a hint); phase 5 (patch 0194 proposed, only if the owner asks for the order change) not built; PC replay US and EU passes, OLED items B19 (revised), B21, B22, B23 and B24 pending | [roadmap](#phase-6-goal-notes), [P6.34](P6.34_MENU_FLOW.md), [P6.33](P6.33_ITEMS_MENU.md) |
-| P6.35 | In-game walkthrough help: where to go next and what to do, by story progress (future goal) | future; **phase 1 data layer built** (step resolver, `ch01` table progress 0 to 4 confirmed by US and EU PC replays, English draft, FR/DE/IT/ES drafted 2026-10-29 (machine-drafted, needs native review), no UI yet; [As built](P6.35_WALKTHROUGH.md#as-built-phase-1-data-layer)) (owner 2026-10-28: at launch in every language the base game has, EN + FR/DE/IT/ES on the EU disc, pt-BR later with P6.7; design written 2026-10-28, owner decisions recorded) | [roadmap](#phase-6-goal-notes), [design](P6.35_WALKTHROUGH.md), [PLAYER_GUIDE](PLAYER_GUIDE.md) |
+| P6.35 | In-game walkthrough help: where to go next and what to do, by story progress (future goal) | future; **phase 1 data layer built** (step resolver, `ch01` table progress 0 to 4 confirmed by US and EU PC replays, English draft, FR/DE/IT/ES drafted 2026-10-29 (machine-drafted, needs native review); [As built](P6.35_WALKTHROUGH.md#as-built-phase-1-data-layer)); **phase 2 the screen built 2026-10-29** (PR open): the Walkthrough group of Options (title, field menu, battle), current step page, step list, area spoiler pages, two-action reveal, nothing shown beyond the player's progress, `ch01` only and a `More chapters coming` page; PC replays US and EU `*-walkthrough-screen-*` pass; the game's field menu opens only from progress 4, so in game it is reachable from `ch01.s06`; **left: OLED W1 to W7, chapters after `ch01`, native review, the release validator** ([As built, phase 2](P6.35_WALKTHROUGH.md#as-built-phase-2-the-screen)) (owner 2026-10-28: at launch in every language the base game has, EN + FR/DE/IT/ES on the EU disc, pt-BR later with P6.7; design written 2026-10-28, owner decisions recorded) | [roadmap](#phase-6-goal-notes), [design](P6.35_WALKTHROUGH.md), [PLAYER_GUIDE](PLAYER_GUIDE.md) |
 | P6.36 | Music at normal speed while turbo is on | phases 1 and 2 built (#356), phase 3 jingle hold (4 s, owner decision) built (PR open); phase 4 SFX split open | [roadmap](#phase-6-goal-notes), [P6.36](P6.36_TURBO_MUSIC.md), [P6.4](P6.4_FAST_FORWARD.md), [P4.3](P4.3_AUDIO.md) |
 | P7.1 | Inventory and boundaries | done | [COMMUNITY_QOL](COMMUNITY_QOL.md) |
 | P7.2 | Patched EU disc as data source | open | [COMMUNITY_QOL](COMMUNITY_QOL.md) |
@@ -2410,7 +2410,7 @@ Statuses are in the [table](#status-at-a-glance).
   Port option, on by default only once approved; no save change. Until then
   the port logs `dw3-items-menu: Cross on weapon N ...` (patch `0180`).
 
-- [ ] **P6.35 In-game walkthrough help (future goal).** Dated 2026-10-27,
+- [~] **P6.35 In-game walkthrough help.** Dated 2026-10-27,
   owner request (Portuguese: "um menu de ajuda mais no sentido do walkthrough,
   pra ajudar o jogador no jogo", a help menu closer to a walkthrough, to help
   the player in the game). The owner also said "quero os 2" (I want both): this
@@ -2463,7 +2463,18 @@ Statuses are in the [table](#status-at-a-glance).
   `ch01`, hook and debug probe, patch `0186`), `port/walkthrough/text/en.txt`
   (draft, owner review pending) and FR/DE/IT/ES drafted 2026-10-29 (machine-drafted,
   **needs native review**, [P6.35_WALKTHROUGH](P6.35_WALKTHROUGH.md#text-status-and-the-owners-language-rule)), host tests and the replay checks
-  `*-walkthrough-p0/p2/p3`. Next: the screen, with the P6.30 page engine.
+  `*-walkthrough-p0/p2/p3`. 
+  **Phase 2 the screen (built 2026-10-29, PR open):** `port/walkthrough/walkthrough_screen.c`,
+  the eighth group of Options (Walkthrough) at the title, in the field menu and
+  in battle, on the P6.30 page engine: the current step page, the step list, the
+  area spoiler pages, the two-action reveal, nothing shown beyond the player's
+  progress, `ch01` only plus a `More chapters coming` page. The game's field menu
+  opens only from `GAME.progress` 4, so in game the screen is reachable from
+  `ch01.s06`. The eighth plaque makes the Options list scroll, so every Options-list
+  reference was refreshed. PC replays `us/eu-walkthrough-screen-*` pass; host tests
+  `tools/tests/test_walkthrough.py`. **Left:** OLED W1 to W7 ([A19](OLED_TEST_PLAN.md)),
+  chapters after `ch01`, native review of FR/DE/IT/ES, the release validator
+  ([As built, phase 2](P6.35_WALKTHROUGH.md#as-built-phase-2-the-screen)).
   Done when (proposed; the hint-then-answer wording is superseded by decision 1):
   at a given story point, a tester opens the help from the
   pause menu on US and EU and sees only the next step, the hint first and the

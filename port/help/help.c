@@ -166,21 +166,34 @@ static const char *restart_chord(char *buf, size_t n) {
     return buf;
 }
 
+/* The name {btn:..} / {ps:..} gives on `platform`; also used by the
+ * walkthrough screen's hint row (port_help.h). */
+int dw3_help_button_name(int platform, const char *kind, const char *name,
+                         char *out, int outsz) {
+    const BtnName *b;
+    const char *s = NULL;
+
+    /* {ps:..} is the PS1 name; {btn:..} is the physical button now. */
+    b = kind[0] == 'p' ? btn_by_name(name) : btn_physical(name);
+    if (b != NULL) {
+        s = kind[0] == 'p' ? b->ps
+                           : (platform == DW3_PAGES_SWITCH ? b->nx : b->pc);
+    }
+    if (s == NULL || (int)strlen(s) >= outsz) {
+        return -1;
+    }
+    strcpy(out, s);
+    return 0;
+}
+
 static int token_fn(void *ud, const char *kind, const char *name, char *out,
                     int outsz) {
-    const BtnName *b;
     char chord[64];
     const char *s = NULL;
 
     (void)ud;
     if (strcmp(kind, "btn") == 0 || strcmp(kind, "ps") == 0) {
-        /* {ps:..} is the PS1 name; {btn:..} is the physical button now. */
-        b = kind[0] == 'p' ? btn_by_name(name) : btn_physical(name);
-        if (b != NULL) {
-            s = kind[0] == 'p'
-                    ? b->ps
-                    : (g_cfg.platform == DW3_PAGES_SWITCH ? b->nx : b->pc);
-        }
+        return dw3_help_button_name(g_cfg.platform, kind, name, out, outsz);
     } else if (strcmp(kind, "chord") == 0 && strcmp(name, "restart") == 0) {
         s = restart_chord(chord, sizeof(chord));
     } else if (strcmp(kind, "path") == 0) {

@@ -40,7 +40,11 @@ RULES: list[tuple[str, object]] = [
     (r"^tools/(mods|guide|memaudit|compare_harness|testdata|audio_|menu_art|docker)", NONE),
     (r"^tools/[^/]*\.(sh|py|c)$", NONE),        # build/dev helpers (not tools/replay/)
     (r"^platforms/switch/", NONE),              # Switch host: Ryubing, not the PC replay
-    (r"^port/help/", ("*help*", "*options*")),
+    (r"^port/help/", ("*help*", "*options*", "*walkthrough*")),
+    (r"^port/include/port_(help|pages|walkthrough|walkthrough_ui)\.h$", ("*help*", "*walkthrough*", "*options*")),
+    (r"^port/include/port_options_groups\.h$", _OPTIONS + _TITLE + ("*help*", "*walkthrough*", "*controls*")),
+    # the native Options art and its baked lettering: every screen of the Options shell
+    (r"^platforms/pc/src/title_overlay_(art|lettering)", _OPTIONS + _TITLE + ("*help*", "*walkthrough*", "*controls*")),
     (r"^port/pages/", ("*help*", "*walkthrough*", "*options*")),
     # --- areas by directory ------------------------------------------------
     (r"^port/walkthrough/", ("*walkthrough*",)),

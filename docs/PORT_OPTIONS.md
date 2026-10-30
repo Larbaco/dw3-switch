@@ -721,9 +721,9 @@ hints (Open or Change, Back).
 | Gameplay | Fast-forward (1), Restart hotkey (2), Encounter rate (5), Text speed (6), Battle cursor (7) | Restart hotkey moves to Controls when P6.12 exists |
 | Saves | Auto-save (8) | |
 | Controls | Button layout (9), Customize buttons (11), Reset to default (12) | P9.8: PlayStation (default) / Nintendo, P6.12: Custom, the Customize buttons screen and Reset, see [Button layout row](#button-layout-row-p98) and [Customize buttons](#customize-buttons-p612). Restart hotkey stays in Gameplay |
-| Cheats | the ten P6.20 cheat rows (not registry rows), a scrolling sub-screen | **Always listed** (P51 item 5; it used to appear only once the master switch was on, so nobody found it): the title opens the Cheats screen where the master switch is; greyed in game (title-only). `DW3_OPTGRP_CHEATS_LISTED` in `port_options_groups.h` (the build has the Cheats feature); `dw3-port-options: group list n=7 (cheats listed, master off, locked in game 0)` once per open |
+| Cheats | the ten P6.20 cheat rows (not registry rows), a scrolling sub-screen | **Always listed** (P51 item 5; it used to appear only once the master switch was on, so nobody found it): the title opens the Cheats screen where the master switch is; greyed in game (title-only). `DW3_OPTGRP_CHEATS_LISTED` in `port_options_groups.h` (the build has the Cheats feature); `dw3-port-options: group list n=8 (cheats listed, master off, locked in game 0)` once per open |
 | Help | no rows, a screen of its own (P6.30, built) | Always listed (it is not secret), after Saves and Cheats. Confirm opens the technical help (`port/help/`, [P6.30_HELP](P6.30_HELP.md)): a list of ten pages and a scrolling text page, on its own full-canvas layer that the host draws instead of the Options layer (the Options cache is untouched). Up / Down scroll a page by line, Left / Right by screenful, L1 / R1 (L / R) change page, Back goes to the page list and out. Title, field menu and battle Options all reach it |
-| Walkthrough | not built | P6.35: hidden placeholder in `port_options_groups.h` (`built = 0`); flip the flag when the screen exists |
+| Walkthrough | no rows, a screen of its own (P6.35 phase 2, built) | Always listed, after Help (`built = 1`). Confirm opens the walkthrough (`port/walkthrough/walkthrough_screen.c`, [P6.35](P6.35_WALKTHROUGH.md#as-built-phase-2-the-screen)): in game the page of the current step, at the title a browse-only step list; the answer is behind two actions and nothing beyond the player's progress shows. Same layer, keys and hints as the Help (L1 / R1 change the entry). Title, field menu and battle Options reach it. The group list is now eight long with Cheats (`group list n=8`) |
 
 Keys: Up / Down move the cursor; **Confirm** (Cross, Circle) opens the group;
 **Back** (Triangle, X on the Switch) in a group returns to the list with the
@@ -822,7 +822,7 @@ include the group lines.
 
 - (Done in slice 2: the Cheats screen is a sub-screen in the same style.)
 - The PS1-primitive fallback (SDL3 GL path) lists the groups as plain text.
-- Controls, Help and Walkthrough (hidden placeholders).
+- (Controls, Help and Walkthrough are built since.)
 - OLED validation (below).
 
 ### Cheats sub-screen (P9.9 slice 2)

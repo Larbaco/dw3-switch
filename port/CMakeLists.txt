@@ -359,6 +359,7 @@ add_library(dw3_port_options${_S} OBJECT
   "${CMAKE_CURRENT_SOURCE_DIR}/walkthrough/walkthrough_areas.c"
   "${CMAKE_CURRENT_SOURCE_DIR}/walkthrough/walkthrough_core.c"
   "${CMAKE_CURRENT_SOURCE_DIR}/walkthrough/walkthrough_hook.c"
+  "${CMAKE_CURRENT_SOURCE_DIR}/walkthrough/walkthrough_screen.c"
   "${CMAKE_CURRENT_SOURCE_DIR}/walkthrough/walkthrough_steps.c"
 )
 # P6.20 Cheats screen and save mark; DW3_CHEATS is set by the platform

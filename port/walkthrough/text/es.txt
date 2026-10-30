@@ -13,40 +13,72 @@
 @lang = es
 @status = draft, machine-drafted, needs native review
 
+# ---------------------------------------------------------------- the screen's own words
+# (wt.ui.str.<name>; whole sentences; only the status words are joined by " - " on the strip)
+wt.ui.str.title = Guía
+wt.ui.str.open = Abrir
+wt.ui.str.back = Volver
+wt.ui.str.scroll = Desplazar
+wt.ui.str.steps = Pasos
+wt.ui.str.answer = Solución
+wt.ui.str.choose = Elegir
+wt.ui.str.draft = (borrador)
+wt.ui.str.unverified = (sin verificar)
+wt.ui.str.step = Paso
+wt.ui.str.current = Paso actual
+wt.ui.str.optional = Opcional
+wt.ui.str.notreached = Aún sin alcanzar
+wt.ui.str.area = Zona
+wt.ui.str.more = Más capítulos pronto
+wt.ui.str.pick = Elige un paso para leer.
+wt.ui.str.unrecognised = Paso no reconocido. Elige uno para leer.
+wt.ui.str.browse = Ninguna partida cargada. Elige un paso para leer.
+wt.ui.str.closed = La solución está oculta. Si estás atascado, usa el botón Solución de abajo.
+wt.ui.str.ahead = Aún no has llegado a este paso. Leer por adelantado puede estropear la historia.
+wt.ui.str.ask = Esto muestra cómo continuar. ¿Mostrarlo?
+wt.ui.str.ask_ahead = Este paso queda más adelante y puede estropear la historia. ¿Mostrarlo igualmente?
+wt.ui.str.yes = Sí
+wt.ui.str.no = No
+wt.ui.str.answer_hdr = La solución
+wt.ui.str.ask_hdr = ¿Mostrar la solución?
+wt.ui.str.more_body = La guía cubre por ahora el primer capítulo. Habrá más capítulos en versiones posteriores.
+wt.ui.str.area_strip = Spoiler: toda la zona
+wt.ui.str.ahead_strip = Aún sin alcanzar: spoiler
+
 # ---------------------------------------------------------------- chapter 1
 wt.ch01.title = Capítulo 1: Los comienzos
 
-wt.ch01.s01.title = Visita el Online Center
-wt.ch01.s01.goal = Junior está en Kusanagi City, el mundo real, con sus amigos. Ve al Online Center para registrarte en el juego.
-wt.ch01.s01.help = El Online Center está cerca de la esquina donde empieza la historia. Entra y habla con el Account Clerk. Esa escena completa el registro y hace avanzar la historia.
+wt.ch01_s01.title = Visita el Online Center
+wt.ch01_s01.goal = Junior está en Kusanagi City, el mundo real, con sus amigos. Ve al Online Center para registrarte en el juego.
+wt.ch01_s01.help = El Online Center está cerca de la esquina donde empieza la historia. Entra y habla con el Account Clerk. Esa escena completa el registro y hace avanzar la historia.
 
-wt.ch01.s02.title = Inicia sesión en Asuka City
-wt.ch01.s02.goal = Ya estás registrado. Entra en el mundo del juego y preséntate en la Login Room de Asuka City.
-wt.ch01.s02.help = Después del Online Center, la Chamber Room lleva a Junior al juego. En la Login Room de Asuka City, habla con el Account Clerk para terminar de iniciar sesión. TODO(verify): el camino desde la Chamber Room.
+wt.ch01_s02.title = Entra en Asuka City
+wt.ch01_s02.goal = Ya estás registrado. Entra en el mundo del juego y preséntate en la Login Room de Asuka City.
+wt.ch01_s02.help = Después del Online Center, la Chamber Room lleva a Junior al juego. En la Login Room de Asuka City, habla con el Account Clerk para terminar de iniciar sesión. TODO(verify): el camino desde la Chamber Room.
 
-wt.ch01.s03.title = Consigue tu primer compañero
-wt.ch01.s03.goal = Ve al Main Lobby de Asuka City y busca el Tamer Service. Te entrega tu primer compañero.
-wt.ch01.s03.help = El Tamer Service ofrece tres paquetes iniciales, llamados A, B y C, y descarga el que elijas. Elige cualquiera: la historia sigue igual con todos.
+wt.ch01_s03.title = Tu primer compañero
+wt.ch01_s03.goal = Ve al Main Lobby de Asuka City y busca el Tamer Service. Te entrega tu primer compañero.
+wt.ch01_s03.help = El Tamer Service ofrece tres paquetes iniciales, llamados A, B y C, y descarga el que elijas. Elige cualquiera: la historia sigue igual con todos.
 
-wt.ch01.s04.title = Conoce al domador Genji
-wt.ch01.s04.goal = Un domador llamado Genji te espera en el Central Sector de Asuka City. Búscalo en las calles cercanas al puente.
-wt.ch01.s04.help = Habla con Genji donde el Central Sector se une con el puente. Después de hablar, empieza un combate.
+wt.ch01_s04.title = Conoce al domador Genji
+wt.ch01_s04.goal = Un domador llamado Genji te espera en el Central Sector de Asuka City. Búscalo en las calles cercanas al puente.
+wt.ch01_s04.help = Habla con Genji donde el Central Sector se une con el puente. Después de hablar, empieza un combate.
 
-wt.ch01.s05.title = Termina con Genji
-wt.ch01.s05.goal = El combate con Genji ha terminado, pero aún no has acabado con él. La conversación continúa en la misma calle.
-wt.ch01.s05.help = La escena siguiente se reproduce cuando el Central Sector se vuelve a cargar tras el combate. Si no pasa nada, sal de la calle y vuelve a entrar. Esto lleva la historia al siguiente paso. TODO(verify): el desencadenante exacto.
+wt.ch01_s05.title = Termina con Genji
+wt.ch01_s05.goal = El combate con Genji ha terminado, pero aún no has acabado con él. La conversación continúa en la misma calle.
+wt.ch01_s05.help = La escena siguiente se reproduce cuando el Central Sector se vuelve a cargar tras el combate. Si no pasa nada, sal de la calle y vuelve a entrar. Esto lleva la historia al siguiente paso. TODO(verify): el desencadenante exacto.
 
-wt.ch01.s06.title = Viaja a Seiryu City
-wt.ch01.s06.goal = Asuka City ya está abierta. Cuando estés listo, toma la East Station hasta el East Sector y habla con el Seiryu Leader en Seiryu City.
-wt.ch01.s06.help = El Seiryu Leader te pone a prueba en un combate y luego te da un Silver ID y la Seiryu Badge.
+wt.ch01_s06.title = Viaja a Seiryu City
+wt.ch01_s06.goal = Asuka City ya está abierta. Cuando estés listo, toma la East Station hasta el East Sector y habla con el Seiryu Leader en Seiryu City.
+wt.ch01_s06.help = El Seiryu Leader te pone a prueba en un combate y luego te da un Silver ID y la Seiryu Badge.
 
-wt.ch01.x01.title = Caras nuevas en Asuka
-wt.ch01.x01.goal = Opcional. A partir de este paso, varios edificios de Asuka City tienen gente nueva dentro.
-wt.ch01.x01.help = Echa un vistazo al Digimon Lab, al Inn (las dos plantas), al Junk Shop, a Lamb Chop y a El Dorado. TODO(verify): qué ofrece cada persona.
+wt.ch01_x01.title = Caras nuevas en Asuka
+wt.ch01_x01.goal = Opcional. A partir de este paso, varios edificios de Asuka City tienen gente nueva dentro.
+wt.ch01_x01.help = Echa un vistazo al Digimon Lab, al Inn (las dos plantas), al Junk Shop, a Lamb Chop y a El Dorado. TODO(verify): qué ofrece cada persona.
 
 # ---------------------------------------------------------------- areas
-wt.area.kusanagi.title = Kusanagi City
-wt.area.kusanagi.help = Kusanagi City es el mundo real, donde empieza la historia. Aquí solo importan dos lugares: la esquina de la calle y el Online Center.
+wt.area_kusanagi.title = Kusanagi City
+wt.area_kusanagi.help = Kusanagi City es el mundo real, donde empieza la historia. Aquí solo importan dos lugares: la esquina de la calle y el Online Center.
 
-wt.area.asuka.title = Asuka City
-wt.area.asuka.help = Asuka City es la primera ciudad. En orden: la Login Room, el Main Lobby (compañero inicial), y luego el Central Sector, donde espera Genji. Cuando termines con Genji, las tiendas y los edificios se llenan y se abre el camino hacia la East Station.
+wt.area_asuka.title = Asuka City
+wt.area_asuka.help = Asuka City es la primera ciudad. En orden: la Login Room, el Main Lobby (compañero inicial), y luego el Central Sector, donde espera Genji. Cuando termines con Genji, las tiendas y los edificios se llenan y se abre el camino hacia la East Station.

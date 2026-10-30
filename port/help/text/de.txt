@@ -84,7 +84,7 @@ help.turbo.note.1 = Im Turbo behält die Musik ihr normales Tempo (Optionen, Ton
 # -------------------------------------------------------------- options
 help.options.title = Optionen erklärt
 help.options.blurb = Jede Zeile, ihre Werte und ihre Vorgabe.
-help.options.p.1 = Die Optionen sind eine Liste von Gruppen: Anzeige, Ton, Gameplay, Speichern, Steuerung und Hilfe. Hoch und Runter wählen, {btn:cross} oder {btn:circle} öffnet eine Gruppe oder ändert eine Zeile, {btn:triangle} geht zurück. Eine Zeile unter der Liste erklärt die gewählte Zeile. Änderungen gelten sofort und werden in port_options.cfg gespeichert.
+help.options.p.1 = Die Optionen sind eine Liste von Gruppen: Anzeige, Ton, Gameplay, Speichern, Steuerung, Hilfe und Komplettlösung. Hoch und Runter wählen, {btn:cross} oder {btn:circle} öffnet eine Gruppe oder ändert eine Zeile, {btn:triangle} geht zurück. Eine Zeile unter der Liste erklärt die gewählte Zeile. Änderungen gelten sofort und werden in port_options.cfg gespeichert.
 help.options.p.2 = Öffne sie im Titelmenü, über die Zeile OPTIONEN des Feldmenüs oder im Kampf mit {btn:select}.
 help.options.h.1 = Anzeige
 help.options.li.1 = Breitbild: ON oder OFF, Vorgabe ON. Etwa 16:9 im Feld, im Kampf und in mehreren Menüs. Das Titelbild und die Filme bleiben 4:3.

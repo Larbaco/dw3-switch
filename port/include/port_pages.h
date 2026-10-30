@@ -40,6 +40,8 @@ enum {
     DW3_PAGES_WARN,
     DW3_PAGES_Q,
     DW3_PAGES_A,
+    DW3_PAGES_GOAL,  /* P6.35 walkthrough: where to go (safe, always shown) */
+    DW3_PAGES_HELP,  /* P6.35 walkthrough: the answer (spoiler, behind the reveal) */
     DW3_PAGES_STR,
     DW3_PAGES_KINDS
 };

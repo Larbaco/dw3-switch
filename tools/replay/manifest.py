@@ -642,7 +642,7 @@ for _lang, _id in (("fr", 3), ("it", 4), ("de", 5), ("es", 6)):
 # screen from the list and returns with the cursor on Cheats.
 for _v in ("us", "eu"):
     _add(Scenario(f"{_v}-options-cheats-listed", _v, "full", timeout=300,
-                  expect_log=((0, r"dw3-port-options: group list n=7 \(cheats listed, master off, "
+                  expect_log=((0, r"dw3-port-options: group list n=8 \(cheats listed, master off, "
                                   r"locked in game 0\)(?s:.*)dw3-port-options: group open cheats \(group\)"),
                               # P51 item 6: the game's menu background under the Options screens
                               (0, r"dw3-options: menu background tile 96x96 from the status sprites "
@@ -1919,6 +1919,96 @@ for _lang in ("fr", "de", "it", "es"):
                               (0, r"cannot be (opened|allocated|laid out)")),
                   note=f"technical help with the EU disc set to {_lang}: the machine-drafted translation "
                        "(page list, Controls, Options explained), no English fallback (P6.30, Q3)"))
+
+_RT_BATTLE_ENV = _RT_ENV[2:]   # the forced event battle: NPC action, encounter, party, win (no mode, no progress)
+# P6.35 phase 2 (docs/P6.35_WALKTHROUGH.md "As built, phase 2"): the Walkthrough
+# group of the Options screen. In game it opens on the page of the current step,
+# read from the real game state at a forced story point (env DW3_START_MODE /
+# DW3_PROGRESS plus the forced event battle that gives the player a party); from
+# the title it is a browse-only list. The game's own field menu opens from
+# progress 4 (field.c openFieldMenu), so the in-game points are 4 (Seiryu City,
+# step ch01.s06) and 6 (past the table: "more chapters coming"). The proof is
+# the `dw3-walkthrough:` lines (AGENTS.md rule 12) and the pictures.
+_WT_FORBID = ((0, r"unresolved"), (0, r"dw3-walkthrough: text fallback"),
+              (0, r"title too wide|cannot be (opened|laid out|loaded)"),
+              (0, r"save flush failed"), (0, r"sound \w+ not played"))
+_WT_CLOSE = r"dw3-port-options: group close walkthrough \(back to the group list\)"
+
+
+def _wt_title(lang, reg, items=9):
+    """expect_log of the browse-only run from the title (first step shown, second hidden)."""
+    return ((0, r"dw3-walkthrough: open \(from title, region " + reg + r", platform pc, language " + lang +
+                rf", {items} items\)(?s:.*)"
+                r"dw3-walkthrough: browse mode \(no game state\)(?s:.*)"
+                r"dw3-port-options: group open walkthrough \(title\)(?s:.*)"
+                r"dw3-walkthrough: first frame composed [\d.]+ ms after open(?s:.*)"
+                r"dw3-walkthrough: page ch01\.s01 \(kind MAIN, from list, reached y, current n, \d+ lines(?s:.*)"
+                r"dw3-walkthrough: spoiler ch01\.s01 closed \(answer available\)(?s:.*)"
+                r"dw3-walkthrough: spoiler ch01\.s01 asked(?s:.*)"
+                r"dw3-walkthrough: spoiler ch01\.s01 shown(?s:.*)"
+                r"dw3-walkthrough: page ch01\.s01 closed after \d+ ms \(spoiler shown y\)(?s:.*)"
+                r"dw3-walkthrough: page ch01\.s02 \(kind MAIN, from list, reached n, current n, \d+ lines(?s:.*)"
+                r"dw3-walkthrough: page ch01\.s02 closed after \d+ ms \(spoiler shown n\)(?s:.*)"
+                r"dw3-walkthrough: closed after \d+ ms \(pages opened 2, spoilers shown 1\)(?s:.*)" + _WT_CLOSE),
+            (0, r"dw3-port-options: close \(resume runOptions\)"))
+
+
+for _v, _reg in (("us", "US"), ("eu", "EU")):
+    _add(Scenario(f"{_v}-walkthrough-screen-p4", _v, "full", turbo=4, timeout=300,
+                  env=(("DW3_START_MODE", "0x22E"), ("DW3_PROGRESS", "4")) + _RT_BATTLE_ENV,
+                  expect_log=((0, r"dw3-port-options: open in game(?s:.*)"
+                                  r"dw3-walkthrough: open \(from field, region " + _reg +
+                                  r", platform pc, language en, 10 items\)(?s:.*)"
+                                  r"dw3-walkthrough: progress 4 half 0 area 14 -> chapter ch01 step ch01\.s06 "
+                                  r"\(rule progress\) \[open mode 0x22e\](?s:.*)"
+                                  r"dw3-walkthrough: flags read 0x400d=0(?s:.*)"
+                                  r"dw3-walkthrough: page ch01\.s06 \(kind MAIN, from open, reached y, current y, "
+                                  r"\d+ lines(?s:.*)"
+                                  r"dw3-walkthrough: spoiler ch01\.s06 closed \(answer available\)(?s:.*)"
+                                  r"dw3-port-options: group open walkthrough \(in game\)(?s:.*)"
+                                  r"dw3-walkthrough: first frame composed [\d.]+ ms after open(?s:.*)"
+                                  r"dw3-walkthrough: spoiler ch01\.s06 asked(?s:.*)"
+                                  r"dw3-walkthrough: spoiler ch01\.s06 shown(?s:.*)"
+                                  r"dw3-walkthrough: page ch01\.s06 closed after \d+ ms \(spoiler shown y\)(?s:.*)"
+                                  r"dw3-walkthrough: page ch01\.x01 \(kind SIDE, from list, reached y, current n(?s:.*)"
+                                  r"dw3-walkthrough: spoiler ch01\.x01 asked(?s:.*)"
+                                  r"dw3-walkthrough: spoiler ch01\.x01 cancelled(?s:.*)"
+                                  r"dw3-walkthrough: page ch01\.x01 closed after \d+ ms \(spoiler shown n\)(?s:.*)"
+                                  r"dw3-walkthrough: closed after \d+ ms \(pages opened 2, spoilers shown 1\)(?s:.*)"
+                                  + _WT_CLOSE + r"(?s:.*)dw3-port-options: close in game \(back to the field menu\)"),),
+                  forbid_log=_WT_FORBID + ((0, r"widescreen (enabled|disabled)"),
+                                           (0, r"step not recognised|browse mode"),),
+                  note="P6.35 phase 2: the walkthrough from the field menu at progress 4 opens on the "
+                       "current step (ch01.s06), the answer needs two actions, the next entry is the "
+                       "optional row"))
+    _add(Scenario(f"{_v}-walkthrough-screen-p6", _v, "full", turbo=4, timeout=300,
+                  env=(("DW3_START_MODE", "0x233"), ("DW3_PROGRESS", "6")) + _RT_BATTLE_ENV,
+                  expect_log=((0, r"dw3-port-options: open in game(?s:.*)"
+                                  r"dw3-walkthrough: open \(from field, region " + _reg +
+                                  r", platform pc, language en, 10 items\)(?s:.*)"
+                                  r"dw3-walkthrough: progress 6 half 0 area 42 -> chapter - step - "
+                                  r"\(rule above-table\) \[open mode 0x233\](?s:.*)"
+                                  r"dw3-walkthrough: page more \(kind MORE, from open, reached y, current n, "
+                                  r"\d+ lines(?s:.*)"
+                                  r"dw3-walkthrough: spoiler more closed \(answer none\)(?s:.*)"
+                                  r"dw3-walkthrough: page area\.asuka \(kind AREA, from list, reached y, "
+                                  r"current n(?s:.*)"
+                                  r"dw3-walkthrough: spoiler area\.asuka asked(?s:.*)"
+                                  r"dw3-walkthrough: spoiler area\.asuka shown(?s:.*)"
+                                  r"dw3-walkthrough: closed after \d+ ms \(pages opened 2, spoilers shown 1\)(?s:.*)"
+                                  + _WT_CLOSE + r"(?s:.*)dw3-port-options: close in game \(back to the field menu\)"),),
+                  forbid_log=_WT_FORBID + ((0, r"widescreen (enabled|disabled)"),
+                                           (0, r"step not recognised|browse mode"),),
+                  note="P6.35 phase 2: past the end of the table (progress 6) the walkthrough opens on "
+                       "'more chapters coming'; every area is reached, so its spoiler page can be asked"))
+    _add(Scenario(f"{_v}-walkthrough-screen-title", _v, "full", timeout=300,
+                  expect_log=_wt_title("en", _reg), forbid_log=_WT_FORBID + ((0, r"step not recognised"),),
+                  note="P6.35 phase 2: the walkthrough from the title is browse-only: the first step "
+                       "has its text, the second keeps its title hidden"))
+_add(Scenario("eu-walkthrough-screen-title-fr", "eu", "full", timeout=300,
+              expect_log=_wt_title("fr", "EU"), forbid_log=_WT_FORBID + ((0, r"step not recognised"),),
+              note="P6.35 phase 2: the walkthrough from the title in EU French (machine-drafted text, "
+                   "needs native review), no English fallback"))
 
 # The Quit game plaque and the window in the other four EU languages (the
 # lettering is authored, docs/PORT_OPTIONS.md "Quit and return to title").

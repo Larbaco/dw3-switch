@@ -32,6 +32,20 @@ static int field_mode_now(void) {
     return (int)GAME.fieldMode;
 }
 
+/* One read of the game state for the walkthrough screen. Read-only. */
+int dw3_walkthrough_snapshot(DW3WtState *st, int *mode) {
+    int m = field_mode_now();
+
+    st->progress = (int)GAME.progress;
+    st->half = dw3_wt_half_of_mode(m);
+    st->area = dw3_wt_area_of_mode(m);
+    st->region = WT_THIS_REGION;
+    st->check = game_check;
+    st->ctx = NULL;
+    if (mode) *mode = m;
+    return 1;
+}
+
 int dw3_walkthrough_log_state(const char *why) {
     int mode = field_mode_now();
 
