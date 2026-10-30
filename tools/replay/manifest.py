@@ -2124,20 +2124,28 @@ _NIN_LOG = (r"dw3-controls: map loaded layout=nintendo source=cfg(?s:.*)"
             r"dw3-controls: first press source=A -> logical cross",)
 
 
-_GP_ROWS_PLAIN = r"gameplay \(5 row\(s\), in game\)"
-_GP_ROWS_BOTH = r"gameplay \(6 row\(s\), in game\)"
+_GP_ROWS = (
+    (r"gameplay \(5 row\(s\), in game\)", r"gameplay \(6 row\(s\), in game\)"),
+    (r"gameplay \(5 row\(s\), title\)", r"gameplay \(6 row\(s\), title\)"),
+)
 
 
 def _both_expect(expect):
     """The combined (--bin-both) build has the Region row in the Gameplay group,
-    so that group logs 6 rows there, not 5 (P6.51)."""
-    return tuple((p, r.replace(_GP_ROWS_PLAIN, _GP_ROWS_BOTH)) for p, r in expect)
+    so that group logs 6 rows there, not 5, in game and at the title (P6.51)."""
+    out = []
+    for p, r in expect:
+        for plain, both in _GP_ROWS:
+            r = r.replace(plain, both)
+        out.append((p, r))
+    return tuple(out)
 
 
 for _v in ("us", "eu"):
-    _fo = by_name()[f"{_v}-field-options"]
-    SCENARIOS[SCENARIOS.index(_fo)] = dataclasses.replace(
-        _fo, expect_log_both=_both_expect(_fo.expect_log))
+    for _name in (f"{_v}-field-options", f"{_v}-options-persist"):
+        _sc = by_name()[_name]
+        SCENARIOS[SCENARIOS.index(_sc)] = dataclasses.replace(
+            _sc, expect_log_both=_both_expect(_sc.expect_log))
 
 
 def _nintendo(base_name, name, phase, note):
