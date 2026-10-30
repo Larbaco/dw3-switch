@@ -61,7 +61,8 @@ help.hotkeys.row.2 = Redémarrer le jeu | {chord:restart}
 help.hotkeys.row.3 = Options depuis l'écran titre | {btn:select}
 help.hotkeys.row.4 = Options en combat | {btn:select}
 help.hotkeys.row.5 = Vue de la carte, sur l'écran Carte | {btn:square}
-help.hotkeys.row.6 = Changer de partenaire, panneau d'équipement | {btn:l2} et {btn:r2}
+help.hotkeys.row.6 !unv = Vue de la carte, depuis la marche | {btn:select}
+help.hotkeys.row.7 = Changer de partenaire, panneau d'équipement | {btn:l2} et {btn:r2}
 help.hotkeys.h.1 = Redémarrage
 help.hotkeys.p.1 = La combinaison de redémarrage est inactive tant que vous n'activez pas Raccourci de reset dans Options. Maintenez les quatre boutons ensemble ; elle ne se déclenche qu'une fois par appui, relâchez donc les boutons avant de réessayer. Les emplacements de sauvegarde sont écrits d'abord, et si cela échoue, le redémarrage est annulé. La progression depuis votre dernière sauvegarde est perdue. La ligne RETOUR TITRE du menu de la carte effectue le même redémarrage après une question Oui ou Non.
 help.hotkeys.h.2 = Options
@@ -140,12 +141,13 @@ help.map.li.1 = {btn:dpad} déplace le curseur, qui démarre sur votre zone actu
 help.map.li.2 = Le stick droit zoome en douceur ; {btn:l1} et {btn:r1} zooment par paliers.
 help.map.li.3 = {btn:l2} et {btn:r2} changent le filtre d'agrandissement. "Nearest" est la valeur par défaut. "Lanczos2" et "FSR 1" se calculent en arrière-plan, et l'écran affiche "BUILDING" pendant ce temps.
 help.map.li.4 = {btn:circle} masque le texte et la boîte de nom. {btn:triangle} ferme la vue. {btn:r3} ne fait rien ici.
+help.map.li.5 !unv = Sur la carte, {btn:select} ouvre cette vue aussitôt et fige la carte, à partir du point 4 de l'histoire. Écran large et Carte plein écran doivent être sur ON. Triangle ferme la vue et vous rend la carte.
 help.map.h.2 = Pack d'agrandissement de la carte
 help.map.p.2 !unv = Un pack remplace l'image de la carte par une version plus nette. Aucun n'est fourni avec le portage, car il est créé à partir de votre propre disque. Un outil PC du dépôt (tools/mods/extract_map_assets.py) extrait la carte de base, lance un agrandisseur que vous installez, et écrit un dossier à copier dans {path:root}mods/<pack>/ sur la carte SD.
-help.map.li.5 !unv = Il n'y a aucune ligne dans Options. Le pack est utilisé dès qu'un pack valide pour votre région se trouve dans le dossier mods. La vue affiche alors "MOD 4X".
-help.map.li.6 !unv = Un fichier de mauvaise taille ou un pack absent fait revenir la vue à la carte d'origine. Le jeu n'a jamais besoin d'un pack pour démarrer.
-help.map.li.7 !unv = Pour revenir à la carte d'origine, renommez ou supprimez le dossier du pack, ou mettez map_mod=0 dans port_options.cfg.
-help.map.li.8 !unv = Avec un pack, {btn:l2} et {btn:r2} ne changent que le filtre, net ou doux.
+help.map.li.6 !unv = Il n'y a aucune ligne dans Options. Le pack est utilisé dès qu'un pack valide pour votre région se trouve dans le dossier mods. La vue affiche alors "MOD 4X".
+help.map.li.7 !unv = Un fichier de mauvaise taille ou un pack absent fait revenir la vue à la carte d'origine. Le jeu n'a jamais besoin d'un pack pour démarrer.
+help.map.li.8 !unv = Pour revenir à la carte d'origine, renommez ou supprimez le dossier du pack, ou mettez map_mod=0 dans port_options.cfg.
+help.map.li.9 !unv = Avec un pack, {btn:l2} et {btn:r2} ne changent que le filtre, net ou doux.
 
 # ---------------------------------------------------------- logs & bugs
 help.logs.title = Journaux, bugs

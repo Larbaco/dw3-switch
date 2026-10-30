@@ -62,7 +62,8 @@ help.hotkeys.row.2 = Reiniciar el juego | {chord:restart}
 help.hotkeys.row.3 = Opciones desde la pantalla de título | {btn:select}
 help.hotkeys.row.4 = Opciones en un combate | {btn:select}
 help.hotkeys.row.5 = Vista del mapa, en la pantalla Mapa | {btn:square}
-help.hotkeys.row.6 = Cambio de compañero, panel de equipo | {btn:l2} y {btn:r2}
+help.hotkeys.row.6 !unv = Vista del mapa directamente desde el campo | {btn:select}
+help.hotkeys.row.7 = Cambio de compañero, panel de equipo | {btn:l2} y {btn:r2}
 help.hotkeys.h.1 = Reinicio
 help.hotkeys.p.1 = La combinación de reinicio está desactivada hasta que actives Atajo de reinicio en Opciones. Mantén los cuatro botones a la vez; se dispara una sola vez por pulsación, así que suéltalos antes de intentarlo de nuevo. Primero se escriben las ranuras de guardado, y si eso falla, el reinicio se cancela. Se pierde el progreso desde tu último guardado. La fila VOLVER AL INICIO del menú del mapa hace el mismo reinicio tras una pregunta Sí o No.
 help.hotkeys.h.2 = Opciones
@@ -141,12 +142,13 @@ help.map.li.1 = {btn:dpad} mueve el cursor, que empieza en tu zona actual. Sobre
 help.map.li.2 = El stick derecho amplía de forma continua; {btn:l1} y {btn:r1} amplían por pasos.
 help.map.li.3 = {btn:l2} y {btn:r2} cambian el escalador. "Nearest" es el predeterminado. "Lanczos2" y "FSR 1" se calculan en segundo plano, y mientras tanto la pantalla muestra "BUILDING".
 help.map.li.4 = {btn:circle} oculta el texto y el cuadro de nombre. {btn:triangle} cierra la vista. {btn:r3} no hace nada aquí.
+help.map.li.5 !unv = En el campo, {btn:select} abre esta vista al momento y detiene el campo, desde el punto 4 de la historia. Pantalla ancha y Mapa completo deben estar en ON. {btn:triangle} cierra la vista y vuelves al campo.
 help.map.h.2 = Paquete de ampliación del mapa
 help.map.p.2 !unv = Un paquete sustituye la imagen del mapa por una más nítida. La adaptación no incluye ninguno, porque se crea a partir de tu propio disco. Una herramienta de PC del repositorio (tools/mods/extract_map_assets.py) extrae el mapa base, ejecuta un ampliador que instalas tú y escribe una carpeta que copias en {path:root}mods/<pack>/ de la tarjeta SD.
-help.map.li.5 !unv = No hay ninguna fila en Opciones. El paquete se usa siempre que haya un paquete válido para tu región en la carpeta mods. La vista muestra entonces "MOD 4X".
-help.map.li.6 !unv = Un archivo de tamaño incorrecto, o un paquete que falta, hace que la vista vuelva al mapa original. El juego nunca necesita un paquete para arrancar.
-help.map.li.7 !unv = Para volver al mapa original, cambia el nombre de la carpeta del paquete o bórrala, o pon map_mod=0 en port_options.cfg.
-help.map.li.8 !unv = Con un paquete, {btn:l2} y {btn:r2} solo cambian el filtro, nítido o suave.
+help.map.li.6 !unv = No hay ninguna fila en Opciones. El paquete se usa siempre que haya un paquete válido para tu región en la carpeta mods. La vista muestra entonces "MOD 4X".
+help.map.li.7 !unv = Un archivo de tamaño incorrecto, o un paquete que falta, hace que la vista vuelva al mapa original. El juego nunca necesita un paquete para arrancar.
+help.map.li.8 !unv = Para volver al mapa original, cambia el nombre de la carpeta del paquete o bórrala, o pon map_mod=0 en port_options.cfg.
+help.map.li.9 !unv = Con un paquete, {btn:l2} y {btn:r2} solo cambian el filtro, nítido o suave.
 
 # ---------------------------------------------------------- logs & bugs
 help.logs.title = Registros, bugs

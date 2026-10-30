@@ -74,7 +74,8 @@ help.hotkeys.row.2 = Restart the game | {chord:restart}
 help.hotkeys.row.3 = Options from the title | {btn:select}
 help.hotkeys.row.4 = Options in a battle | {btn:select}
 help.hotkeys.row.5 = Map view, on the Map screen | {btn:square}
-help.hotkeys.row.6 = Partner change, Equipment panel | {btn:l2} and {btn:r2}
+help.hotkeys.row.6 !unv = Map view, from the walking field | {btn:select}
+help.hotkeys.row.7 = Partner change, Equipment panel | {btn:l2} and {btn:r2}
 help.hotkeys.h.1 = Restart
 help.hotkeys.p.1 = The restart chord is off until you turn on Restart hotkey in Options. Hold all four buttons together; it fires once per press, so release them before you try again. Save slots are written first, and if that fails the restart is cancelled. Progress since your last save is lost. The TITLE SCREEN row of the field menu does the same restart after a Yes or No question.
 help.hotkeys.h.2 = Options
@@ -153,12 +154,13 @@ help.map.li.1 = {btn:dpad} moves the cursor, which starts on your current area. 
 help.map.li.2 = The right stick zooms smoothly; {btn:l1} and {btn:r1} zoom in steps.
 help.map.li.3 = {btn:l2} and {btn:r2} change the scaler. Nearest is the default. Lanczos2 and FSR 1 build in the background, and the screen says BUILDING meanwhile.
 help.map.li.4 = {btn:circle} hides the text and the name box. {btn:triangle} closes the view. {btn:r3} does nothing here.
+help.map.li.5 !unv = In the walking field, {btn:select} opens this view at once and holds the field still, from story point 4 on. Widescreen and Full-screen map must be ON. Triangle returns to the field.
 help.map.h.2 = Map upscale pack
 help.map.p.2 !unv = A pack replaces the map picture with a sharper one. None comes with the port, because it is made from your own disc. A PC tool in the repository (tools/mods/extract_map_assets.py) extracts the base map, runs an upscaler you install, and writes a folder you copy to {path:root}mods/<pack>/ on the SD card.
-help.map.li.5 !unv = There is no Options row. The pack is used whenever a valid pack for your region is in the mods folder. The view then shows MOD 4X.
-help.map.li.6 !unv = A file of the wrong size, or a missing pack, makes the view fall back to the original map. The game never needs a pack to start.
-help.map.li.7 !unv = To go back to the original map, rename or remove the pack folder, or put map_mod=0 in port_options.cfg.
-help.map.li.8 !unv = With a pack, {btn:l2} and {btn:r2} only change the filter, sharp or smooth.
+help.map.li.6 !unv = There is no Options row. The pack is used whenever a valid pack for your region is in the mods folder. The view then shows MOD 4X.
+help.map.li.7 !unv = A file of the wrong size, or a missing pack, makes the view fall back to the original map. The game never needs a pack to start.
+help.map.li.8 !unv = To go back to the original map, rename or remove the pack folder, or put map_mod=0 in port_options.cfg.
+help.map.li.9 !unv = With a pack, {btn:l2} and {btn:r2} only change the filter, sharp or smooth.
 
 # ---------------------------------------------------------- logs & bugs
 help.logs.title = Logs and bug reports
