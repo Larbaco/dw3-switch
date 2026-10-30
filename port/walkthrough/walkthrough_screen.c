@@ -801,6 +801,9 @@ static void log_flags_read(void) {
     snprintf(line, sizeof(line), "dw3-walkthrough: flags read");
     len = strlen(line);
     for (i = 0; i < n; i++) {
+        if (!row_applies(&t[i])) {
+            continue; /* the other disc's rows (the EU extra chapter): its flags may not exist here */
+        }
         for (j = 0; j < t[i].nunlock + t[i].ndone; j++) {
             const DW3WtCond *c = j < t[i].nunlock ? &t[i].unlock[j]
                                                   : &t[i].done[j - t[i].nunlock];

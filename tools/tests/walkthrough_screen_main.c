@@ -18,7 +18,7 @@ static int g_fail;
         }                                                                      \
     } while (0)
 
-static int g_progress, g_flag, g_snap_calls, g_unknown;
+static int g_progress, g_flag, g_snap_calls, g_unknown, g_asked_eu;
 static unsigned g_codes[8];   /* more flags / items that are set */
 static int g_ncodes;
 
@@ -26,6 +26,9 @@ static int fake_check(void *ctx, unsigned code, unsigned value) {
     int i;
 
     (void)ctx;
+    if (code == WT_FLAG(0x40, 0xCD) || code == WT_SPECIAL(0x54) || code == WT_FLAG(0x10, 0x0C)) {
+        g_asked_eu++;                                 /* the EU extra chapter's codes */
+    }
     if (code == WT_FLAG(0x40, 0x0D)) {
         return value == (unsigned)g_flag;
     }
@@ -429,8 +432,10 @@ static void test_extra_chapter(void) {
     Dw3WtConfig us = cfg(DW3_PAGES_US, 0, 1);
     const Dw3HelpView *v;
 
+    g_asked_eu = 0;
     state(0x2D, 0);
     CHECK(dw3_wt_open(&eu) == 0);
+    CHECK(g_asked_eu > 0);                            /* EU reads the extra chapter's codes */
     v = dw3_wt_view();
     CHECK(dw3_wt_level() == DW3_WT_LEVEL_PAGE && strcmp(v->header, "Login Room tour") == 0);
     CHECK(strstr(v->strip, "Step 1 / 3") != NULL && strstr(v->strip, "Current step") != NULL);
@@ -456,7 +461,9 @@ static void test_extra_chapter(void) {
     dw3_wt_close();
     /* the same value on US: the extra chapter does not exist */
     state_codes(0x2D, WT_FLAG(0x40, 0xCD), WT_SPECIAL(0x54));
+    g_asked_eu = 0;
     CHECK(dw3_wt_open(&us) == 0);
+    CHECK(g_asked_eu == 0);                           /* US never asks the game about EU-only flags */
     v = dw3_wt_view();
     CHECK(dw3_wt_level() == DW3_WT_LEVEL_CHAPTERS && v->npages == 11 && !list_has("Extra chapter"));
     dw3_wt_close();
