@@ -16,6 +16,10 @@
  *   4. the display between its gutters (the wide texture, uploaded in three
  *      pieces) against dw3_nx_pack_rgb555_wide.
  *
+ * Everything runs for both 16-bit upload modes of nx_gpu.c (DW3_PRESENT_16=1,
+ * rows straight from VRAM; 2, rows copied tight first). `--bench` also times a
+ * present of each.
+ *
  * Exit 0 = all equal, 1 = a difference, 77 = no usable GL ES 3 context (the
  * pytest wrapper skips). Build: see tools/tests/test_present16_gpu.py.
  */
@@ -180,6 +184,27 @@ static uint8_t *readback(int w, int h) {
 
 static int g_fail;
 
+/* DW3_PRESENT_16 modes of nx_gpu.c: 1 = rows straight from VRAM with
+ * GL_UNPACK_ROW_LENGTH, 2 = rows copied tight first. */
+static int g_mode = 1;
+static uint16_t s_tight[DW3_NX_VRAM_W * DW3_NX_VRAM_H];
+
+static void upload16(int px, int py, int pw, int ph, int wide, int gutter,
+                     int dx, int dy, int dw) {
+    if (g_mode == 2) {
+        if (wide) {
+            dw3_nx_copy16_wide(s_vram, s_left, s_right, STRIDE, gutter, dx, dy,
+                               dw, ph, s_tight);
+        } else {
+            dw3_nx_copy16_rect(s_vram, px, py, pw, ph, s_tight);
+        }
+        dw3_nx_p16_upload_tight(s_tight, px, py, pw, ph);
+    } else {
+        dw3_nx_p16_upload(s_vram, s_left, s_right, STRIDE, px, py, pw, ph,
+                          wide, gutter, dx, dy, dw);
+    }
+}
+
 static void note_diff(const char *what, size_t px, const uint8_t *a,
                       const uint8_t *b) {
     if (g_fail++ < 10) {
@@ -244,8 +269,7 @@ static void test_all_values(const Prog *q32, const Prog *u32, const Prog *q16,
     }
     upload32(t32, s_pack, 0, 0, W, H);
     glBindTexture(GL_TEXTURE_2D, t16);
-    dw3_nx_p16_upload(s_vram, s_left, s_right, STRIDE, 0, 0, W, H, 0, 0, 0, 0,
-                      0);
+    upload16(0, 0, W, H, 0, 0, 0, 0, 0);
 
     /* 1: the opaque program, against the pack itself and the old shader. */
     clear_sentinel();
@@ -343,8 +367,7 @@ static void test_scaled(const Prog *q32, const Prog *u32, const Prog *q16,
     }
     upload32(t32, s_pack, ox, oy, ow, oh);
     glBindTexture(GL_TEXTURE_2D, t16);
-    dw3_nx_p16_upload(s_vram, s_left, s_right, STRIDE, ox, oy, ow, oh, 0, 0,
-                      dx, dy, dw);
+    upload16(ox, oy, ow, oh, 0, 0, dx, dy, dw);
 
     for (s = 0; s < (int)(sizeof(sizes) / sizeof(sizes[0])); s++) {
         int w = sizes[s][0];
@@ -407,8 +430,7 @@ static void test_wide(const Prog *q32, const Prog *u32, const Prog *q16,
     }
     upload32(w32, s_pack, 0, 0, pw, dh);
     glBindTexture(GL_TEXTURE_2D, w16);
-    dw3_nx_p16_upload(s_vram, s_left, s_right, STRIDE, 0, 0, pw, dh, 1, gutter,
-                      dx, dy, dw);
+    upload16(0, 0, pw, dh, 1, gutter, dx, dy, dw);
 
     for (pass = 0; pass < 2; pass++) {
         const Prog *p16 = pass ? u16 : q16;
@@ -532,8 +554,7 @@ static void bench(const Prog *q32, const Prog *q16, GLuint t32, GLuint t16,
                 /* new */
                 t0 = now_us();
                 glBindTexture(GL_TEXTURE_2D, wide ? w16 : t16);
-                dw3_nx_p16_upload(s_vram, s_left, s_right, STRIDE, 0, 0,
-                                  wide ? pw : dw, dh, wide, gutter, dx, dy, dw);
+                upload16(0, 0, wide ? pw : dw, dh, wide, gutter, dx, dy, dw);
                 t1 = now_us();
                 draw(q16, wide ? w16 : t16, vw, vh, uv0, uv1, NULL);
                 glFinish();
@@ -635,9 +656,14 @@ int main(int argc, char **argv) {
         return 1;
     }
 
-    test_all_values(&q32, &u32, &q16, &u16, t32, t16);
-    test_scaled(&q32, &u32, &q16, &u16, t32, t16);
-    test_wide(&q32, &u32, &q16, &u16, w32, w16);
+    for (g_mode = 1; g_mode <= 2; g_mode++) {
+        printf("-- DW3_PRESENT_16=%d (%s)\n", g_mode,
+               g_mode == 2 ? "rows copied tight" : "rows straight from VRAM");
+        s_rng = 0x12345678u;
+        test_all_values(&q32, &u32, &q16, &u16, t32, t16);
+        test_scaled(&q32, &u32, &q16, &u16, t32, t16);
+        test_wide(&q32, &u32, &q16, &u16, w32, w16);
+    }
 
     if (glGetError() != GL_NO_ERROR) {
         fprintf(stderr, "GL error during the run\n");
@@ -649,7 +675,10 @@ int main(int argc, char **argv) {
     }
     printf("OK: 16-bit present is pixel-identical to the RGBA8888 pack\n");
     if (argc > 1 && strcmp(argv[1], "--bench") == 0) {
-        bench(&q32, &q16, t32, t16, w32, w16);
+        for (g_mode = 1; g_mode <= 2; g_mode++) {
+            printf("== bench, DW3_PRESENT_16=%d\n", g_mode);
+            bench(&q32, &q16, t32, t16, w32, w16);
+        }
     }
     return 0;
 }

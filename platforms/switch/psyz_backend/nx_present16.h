@@ -155,4 +155,14 @@ static inline void dw3_nx_p16_upload(const uint16_t *vram,
     glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
 }
 
+/* DW3_PRESENT_16=2: the halfwords were copied tight (dw3_nx_copy16_rect /
+ * _wide); one contiguous upload of (px, py, pw, ph). */
+static inline void dw3_nx_p16_upload_tight(const uint16_t *tight, int px,
+                                           int py, int pw, int ph) {
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 2);
+    glTexSubImage2D(GL_TEXTURE_2D, 0, px, py, pw, ph, GL_RED_INTEGER,
+                    GL_UNSIGNED_SHORT, tight);
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
+}
+
 #endif

@@ -164,3 +164,41 @@ size_t dw3_nx_pack_rgb555_wide(const uint16_t *src, const uint16_t *left,
     }
     return (size_t)(dw + 2 * gutter) * (size_t)dh;
 }
+
+size_t dw3_nx_copy16_rect(const uint16_t *src, int x, int y, int w, int h,
+                          uint16_t *dst) {
+    int row;
+
+    if (!src || !dst || w <= 0 || h <= 0 || x < 0 || y < 0 ||
+        (int64_t)x + w > DW3_NX_VRAM_W || (int64_t)y + h > DW3_NX_VRAM_H) {
+        return 0;
+    }
+    for (row = 0; row < h; row++) {
+        memcpy(dst + (size_t)row * (size_t)w,
+               src + (size_t)(y + row) * DW3_NX_VRAM_W + (size_t)x,
+               (size_t)w * sizeof(uint16_t));
+    }
+    return (size_t)w * (size_t)h;
+}
+
+size_t dw3_nx_copy16_wide(const uint16_t *src, const uint16_t *left,
+                          const uint16_t *right, int stride, int gutter,
+                          int dx, int dy, int dw, int dh, uint16_t *dst) {
+    int row;
+
+    if (!src || !left || !right || !dst ||
+        !dw3_nx_wide_rect_ok(stride, gutter, dx, dy, dw, dh)) {
+        return 0;
+    }
+    for (row = 0; row < dh; row++) {
+        size_t y = (size_t)(dy + row);
+
+        memcpy(dst, left + y * (size_t)stride, (size_t)gutter * 2u);
+        dst += gutter;
+        memcpy(dst, src + y * DW3_NX_VRAM_W + (size_t)dx, (size_t)dw * 2u);
+        dst += dw;
+        memcpy(dst, right + y * (size_t)stride, (size_t)gutter * 2u);
+        dst += gutter;
+    }
+    return (size_t)(dw + 2 * gutter) * (size_t)dh;
+}

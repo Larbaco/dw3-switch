@@ -183,6 +183,72 @@ static int check_clamp_helpers(void) {
     return failed;
 }
 
+/* P6.22 pass 4 (DW3_PRESENT_16=2): the tight halfword copies hold exactly the
+ * source halfwords in the layout of the RGBA8888 packs. */
+static int check_copy16(void) {
+    static uint16_t vram[DW3_NX_VRAM_W * DW3_NX_VRAM_H];
+    static uint16_t left[DW3_NX_VRAM_H * 64];
+    static uint16_t right[DW3_NX_VRAM_H * 64];
+    static uint16_t tight[DW3_NX_VRAM_W * DW3_NX_VRAM_H];
+    static uint8_t packed[DW3_NX_VRAM_W * DW3_NX_VRAM_H * 4];
+    static uint8_t from_tight[DW3_NX_VRAM_W * DW3_NX_VRAM_H * 4];
+    unsigned int i;
+    int failed = 0;
+    size_t n;
+    size_t k;
+
+    for (i = 0; i < DW3_NX_VRAM_W * DW3_NX_VRAM_H; i++) {
+        vram[i] = (uint16_t)(i * 2654435761u >> 11);
+    }
+    for (i = 0; i < DW3_NX_VRAM_H * 64; i++) {
+        left[i] = (uint16_t)(i * 40503u + 7u);
+        right[i] = (uint16_t)(i * 9973u + 3u);
+    }
+    /* rect: expand the tight copy through the pack of a VRAM that holds it. */
+    n = dw3_nx_copy16_rect(vram, 17, 9, 320, 240, tight);
+    if (n != 320u * 240u) {
+        fprintf(stderr, "copy16_rect returned %zu\n", n);
+        failed = 1;
+    }
+    for (i = 0; i < 240; i++) {
+        if (memcmp(tight + (size_t)i * 320,
+                   vram + (size_t)(9 + i) * DW3_NX_VRAM_W + 17, 320 * 2) != 0) {
+            fprintf(stderr, "copy16_rect row %u differs\n", i);
+            failed = 1;
+            break;
+        }
+    }
+    if (dw3_nx_copy16_rect(vram, 1000, 500, 50, 40, tight) != 0 ||
+        dw3_nx_copy16_rect(vram, -1, 0, 8, 8, tight) != 0 ||
+        dw3_nx_copy16_rect(vram, 0, 0, 0, 8, tight) != 0) {
+        fprintf(stderr, "copy16_rect accepted an unclamped rectangle\n");
+        failed = 1;
+    }
+    /* wide: a pack of the copy equals the wide pack, pixel by pixel. */
+    n = dw3_nx_copy16_wide(vram, left, right, 64, 37, 3, 5, 320, 240, tight);
+    if (n != (320u + 74u) * 240u ||
+        dw3_nx_pack_rgb555_wide(vram, left, right, 64, 37, 3, 5, 320, 240,
+                                packed) != n) {
+        fprintf(stderr, "copy16_wide returned %zu\n", n);
+        failed = 1;
+    }
+    for (k = 0; k < n; k++) {
+        uint16_t one = tight[k];
+        int a, b, c, d;
+
+        /* one pixel through the rect pack: place it at VRAM (0, 0). */
+        vram[0] = one;
+        dw3_nx_pack_rgb555_rect(vram, 0, 0, 1, 1, from_tight, &a, &b, &c, &d);
+        if (memcmp(from_tight, packed + k * 4, 4) != 0) {
+            fprintf(stderr, "copy16_wide pixel %zu differs from the pack\n",
+                    k);
+            failed = 1;
+            break;
+        }
+    }
+    return failed;
+}
+
 int main(void) {
     size_t pixels = (size_t)DW3_NX_VRAM_W * (size_t)DW3_NX_VRAM_H;
     uint16_t *vram = calloc(pixels, sizeof(uint16_t));
@@ -276,6 +342,7 @@ int main(void) {
 
     failed |= check_wide(vram, full);
     failed |= check_clamp_helpers();
+    failed |= check_copy16();
 
     free(vram);
     free(full);
@@ -286,5 +353,6 @@ int main(void) {
     printf("OK: rgb555 rect pack matches full-buffer expand\n");
     printf("OK: rgb555 wide pack puts the gutters beside the display\n");
     printf("OK: clamp helpers of the 16-bit present agree with the pack\n");
+    printf("OK: tight halfword copies match the packs' layouts\n");
     return 0;
 }
