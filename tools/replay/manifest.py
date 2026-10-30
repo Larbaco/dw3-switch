@@ -185,7 +185,7 @@ _add(
 # start of the scenario). Phase 1 switches Widescreen OFF, Fast-forward
 # 2x -> 3x and the Restart hotkey ON; phase 2 only opens the screen again.
 _OPT_P1 = (r"dw3-options: no \S*port_options\.cfg; defaults",
-           r"dw3-port-options: group open display \(1 row\(s\), title\)(?s:.*)"
+           r"dw3-port-options: group open display \(2 row\(s\), title\)(?s:.*)"
            r"dw3-port-options: group close display \(back to the group list\)(?s:.*)"
            r"dw3-port-options: group open gameplay \(5 row\(s\), title\)(?s:.*)"
            r"dw3-port-options: group close gameplay \(back to the group list\)(?s:.*)"
@@ -2104,7 +2104,7 @@ for _v, _title in (("us", 0x1C1), ("eu", 0x1D0)):
 # apply at once and are saved, the screen closes and the menu and the field go
 # on; phase 2 (a new process on the same config dir) shows the values read back.
 _FO_P1 = (r"dw3-port-options: open in game(?s:.*)"
-          r"dw3-port-options: group open display \(1 row\(s\), in game\)(?s:.*)"
+          r"dw3-port-options: group open display \(2 row\(s\), in game\)(?s:.*)"
           r"dw3-port-options: Widescreen is locked in game \(change it at the title\)(?s:.*)"
           r"dw3-port-options: group open sound \(3 row\(s\), in game\)(?s:.*)"
           r"dw3-port-options: music volume 7(?s:.*)"
