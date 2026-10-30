@@ -19,11 +19,20 @@ static int g_fail;
     } while (0)
 
 static int g_progress, g_flag, g_snap_calls, g_unknown;
+static unsigned g_codes[8];   /* more flags / items that are set */
+static int g_ncodes;
 
 static int fake_check(void *ctx, unsigned code, unsigned value) {
+    int i;
+
     (void)ctx;
     if (code == WT_FLAG(0x40, 0x0D)) {
         return value == (unsigned)g_flag;
+    }
+    for (i = 0; i < g_ncodes; i++) {
+        if (g_codes[i] == code) {
+            return value == 1;
+        }
     }
     return value == 0;
 }
@@ -119,6 +128,22 @@ static void state(int progress, int flag) {
     g_flag = flag;
     g_unknown = 0;
     g_snap_calls = 0;
+    g_ncodes = 0;
+}
+
+/* The same with up to two more flags / items set. */
+static void state_codes(int progress, unsigned c0, unsigned c1) {
+    state(progress, 0);
+    if (c0) {
+        g_codes[g_ncodes++] = c0;
+    }
+    if (c1) {
+        g_codes[g_ncodes++] = c1;
+    }
+}
+
+static int starts_with(const char *s, const char *prefix) {
+    return strncmp(s, prefix, strlen(prefix)) == 0;
 }
 
 static void test_current_step_and_reveal(void) {
@@ -129,7 +154,7 @@ static void test_current_step_and_reveal(void) {
     CHECK(dw3_wt_open(&c) == 0 && dw3_wt_is_open());
     CHECK(g_snap_calls == 1); /* one read of the game */
     v = dw3_wt_view();
-    CHECK(v->screen == DW3_HELP_SCREEN_PAGE);
+    CHECK(v->screen == DW3_HELP_SCREEN_PAGE && dw3_wt_level() == DW3_WT_LEVEL_PAGE);
     CHECK(strcmp(v->header, "Get your first partner") == 0);
     CHECK(strcmp(v->log_tag, "dw3-walkthrough") == 0);
     CHECK(strstr(v->strip, "Step 3 / 6") != NULL && strstr(v->strip, "Current step") != NULL);
@@ -153,10 +178,13 @@ static void test_current_step_and_reveal(void) {
     keys(DW3_HELP_KEY_CONFIRM);                       /* shown */
     CHECK(page_has("three starter packs") && page_has("The answer"));
     CHECK(strcmp(dw3_wt_view()->header, "Get your first partner") == 0);
-    /* Back goes up one level (the list, the cursor on the step), and the answer is closed again */
+    /* Back goes up one level (the chapter's steps, the cursor on the step), and the answer is
+     * closed again */
     keys(DW3_HELP_KEY_BACK);
     v = dw3_wt_view();
-    CHECK(v->screen == DW3_HELP_SCREEN_LIST && v->cursor == 2);
+    CHECK(v->screen == DW3_HELP_SCREEN_LIST && dw3_wt_level() == DW3_WT_LEVEL_STEPS &&
+          v->cursor == 2);
+    CHECK(strcmp(v->header, "1. Getting started") == 0);
     keys(DW3_HELP_KEY_CONFIRM);
     CHECK(!page_has("three starter packs"));
     /* L1 / R1 browse the steps */
@@ -166,9 +194,11 @@ static void test_current_step_and_reveal(void) {
     keys(DW3_HELP_KEY_PREV);
     keys(DW3_HELP_KEY_PREV);
     CHECK(strcmp(dw3_wt_view()->header, "Log in to Asuka City") == 0);
-    keys(DW3_HELP_KEY_BACK);
-    keys(DW3_HELP_KEY_BACK);                          /* the list closes the screen */
-    CHECK(!dw3_wt_is_open());
+    keys(DW3_HELP_KEY_BACK);                          /* the steps */
+    keys(DW3_HELP_KEY_BACK);                          /* the chapters */
+    CHECK(dw3_wt_level() == DW3_WT_LEVEL_CHAPTERS && dw3_wt_is_open());
+    keys(DW3_HELP_KEY_BACK);                          /* the chapter list closes the screen */
+    CHECK(!dw3_wt_is_open() && dw3_wt_level() == DW3_WT_LEVEL_CLOSED);
 }
 
 static void test_never_ahead(void) {
@@ -178,12 +208,12 @@ static void test_never_ahead(void) {
 
     state(2, 0);
     CHECK(dw3_wt_open(&c) == 0);
-    keys(DW3_HELP_KEY_BACK); /* to the list */
+    keys(DW3_HELP_KEY_BACK); /* to the steps of chapter 1 */
     v = dw3_wt_view();
     CHECK(v->screen == DW3_HELP_SCREEN_LIST);
     CHECK(list_has("Get your first partner"));
     CHECK(!list_has("Seiryu") && !list_has("Genji") && !list_has("New faces"));
-    CHECK(v->npages == 9); /* 6 steps, 2 areas, more; the optional row is not met yet */
+    CHECK(v->npages == 8); /* 6 steps and 2 areas; the optional row is not met yet */
     for (i = 0; i < v->npages; i++) {
         CHECK(strstr(v->titles[i], "Seiryu") == NULL);
     }
@@ -200,7 +230,34 @@ static void test_never_ahead(void) {
     CHECK(page_has("Genji") && strcmp(dw3_wt_view()->header, "Meet Tamer Genji") == 0);
     keys(DW3_HELP_KEY_BACK);
     keys(DW3_HELP_KEY_BACK);
+    keys(DW3_HELP_KEY_BACK);
     CHECK(!dw3_wt_is_open());
+    /* a chapter ahead: its title and its steps stay hidden, the page needs the same reveal */
+    state(2, 0);
+    CHECK(dw3_wt_open(&c) == 0);
+    keys(DW3_HELP_KEY_BACK);
+    keys(DW3_HELP_KEY_BACK);                          /* the chapters */
+    v = dw3_wt_view();
+    CHECK(v->npages == 11 && v->cursor == 0);
+    CHECK(starts_with(v->titles[0], "\xE2\x86\x92 1. Getting started"));
+    CHECK(strcmp(v->titles[1], "2. Not reached yet") == 0);
+    CHECK(strcmp(v->titles[9], "10. Not reached yet") == 0);
+    CHECK(strcmp(v->titles[10], "More chapters coming") == 0);
+    CHECK(!list_has("southern road") && !list_has("Spy Satellite"));
+    keys(DW3_HELP_KEY_DOWN);
+    CHECK(strstr(dw3_wt_view()->strip, "Not reached yet") != NULL);
+    keys(DW3_HELP_KEY_CONFIRM);                       /* chapter 2: nothing reached */
+    v = dw3_wt_view();
+    CHECK(v->screen == DW3_HELP_SCREEN_LIST && strcmp(v->header, "Walkthrough") == 0);
+    CHECK(!list_has("East Station") && !list_has("Zanbamon") && !list_has("Area: South") &&
+          list_has("Area: Asuka City")); /* Asuka City was seen in chapter 1 */
+    keys(DW3_HELP_KEY_CONFIRM);
+    CHECK(strcmp(dw3_wt_view()->header, "Not reached yet") == 0 && !page_has("East Station"));
+    keys(DW3_HELP_KEY_CONFIRM);
+    keys(DW3_HELP_KEY_DOWN);
+    keys(DW3_HELP_KEY_CONFIRM);
+    CHECK(strcmp(dw3_wt_view()->header, "East Station") == 0 && page_has("Seiryu City"));
+    dw3_wt_close();
 }
 
 static void test_other_points(void) {
@@ -217,39 +274,118 @@ static void test_other_points(void) {
     CHECK(dw3_wt_open(&c) == 0);
     CHECK(strcmp(dw3_wt_view()->header, "Travel to Seiryu City") == 0);
     keys(DW3_HELP_KEY_BACK);
-    CHECK(list_has("New faces around Asuka") && dw3_wt_view()->npages == 10);
+    CHECK(list_has("New faces around Asuka") && dw3_wt_view()->npages == 9);
     dw3_wt_close();
-    /* progress 7: past the table, the "more chapters" page */
-    state(7, 0);
+    /* progress 0x14: the third step of chapter 5, the chapter list marks the chapter */
+    state(0x14, 0);
+    CHECK(dw3_wt_open(&c) == 0);
+    v = dw3_wt_view();
+    CHECK(strcmp(v->header, "Suzaku UG Lake") == 0);
+    CHECK(strstr(v->strip, "Step 3 / 8") != NULL && strstr(v->strip, "Current step") != NULL);
+    CHECK(page_has("Secret Room") && !page_has("flag"));
+    keys(DW3_HELP_KEY_BACK);
+    v = dw3_wt_view();
+    CHECK(v->screen == DW3_HELP_SCREEN_LIST && v->cursor == 2 &&
+          strcmp(v->header, "5. West Sector rebels") == 0);
+    CHECK(starts_with(v->titles[2], "\xE2\x86\x92 ") && list_has("Secret Room again") == 0);
+    CHECK(v->npages == 10); /* 8 steps and the 2 areas of the chapter: West Sector, Asuka City */
+    keys(DW3_HELP_KEY_BACK);
+    v = dw3_wt_view();
+    CHECK(v->cursor == 4 && starts_with(v->titles[4], "\xE2\x86\x92 5. ") &&
+          strcmp(v->titles[5], "6. Not reached yet") == 0);
+    CHECK(strstr(v->strip, "Current chapter") != NULL);
+    CHECK(strcmp(v->titles[3], "4. Byakko City") == 0); /* reached, past */
+    dw3_wt_close();
+    /* the same point with the flag set (the lake scene is done): the next step */
+    state_codes(0x14, WT_FLAG(0x40, 0x03), 0);
+    CHECK(dw3_wt_open(&c) == 0);
+    CHECK(strcmp(dw3_wt_view()->header, "Secret Room again") == 0);
+    dw3_wt_close();
+    /* an item as the done condition: progress 9 */
+    state_codes(9, WT_FLAG(0x1A, 0x1B), 0);
+    CHECK(dw3_wt_open(&c) == 0);
+    CHECK(strcmp(dw3_wt_view()->header, "Item from the Sewers") == 0);
+    dw3_wt_close();
+    state_codes(9, WT_FLAG(0x1A, 0x1B), WT_ITEM(0, 0x15));
+    CHECK(dw3_wt_open(&c) == 0);
+    CHECK(strcmp(dw3_wt_view()->header, "Shaman House again") == 0);
+    dw3_wt_close();
+    /* the last step of the first half */
+    state_codes(0x29, WT_FLAG(0x40, 0x74), 0);
+    CHECK(dw3_wt_open(&c) == 0);
+    CHECK(strcmp(dw3_wt_view()->header, "Snatchmon") == 0);
+    CHECK(strstr(dw3_wt_view()->strip, "Step 7 / 7") != NULL);
+    dw3_wt_close();
+    /* past the table (0x2A): the "more chapters" page, every chapter is behind the player */
+    state(0x2A, 0);
     CHECK(dw3_wt_open(&c) == 0);
     v = dw3_wt_view();
     CHECK(v->screen == DW3_HELP_SCREEN_PAGE && strcmp(v->header, "More chapters coming") == 0);
-    CHECK(page_has("first chapter"));
+    CHECK(page_has("first half"));
     keys(DW3_HELP_KEY_CONFIRM); /* nothing to reveal here */
     CHECK(strcmp(dw3_wt_view()->header, "More chapters coming") == 0);
     keys(DW3_HELP_KEY_BACK);
-    CHECK(dw3_wt_view()->screen == DW3_HELP_SCREEN_LIST && list_has("Seiryu"));
+    v = dw3_wt_view();
+    CHECK(v->screen == DW3_HELP_SCREEN_LIST && dw3_wt_level() == DW3_WT_LEVEL_CHAPTERS &&
+          v->cursor == 10 && list_has("10. Spy Satellite") && !list_has("Not reached"));
+    keys(DW3_HELP_KEY_UP);
+    keys(DW3_HELP_KEY_CONFIRM);                       /* chapter 10: all of it is readable */
+    keys(DW3_HELP_KEY_CONFIRM);
+    CHECK(strcmp(dw3_wt_view()->header, "A.o.A HQ scenes") == 0);
     dw3_wt_close();
-    /* the debug value: not recognised, a list with the notice, the first step only */
+    /* the debug value: not recognised, the chapter list with the notice, the first chapter only */
     state(0, 0);
     g_unknown = 1;
     CHECK(dw3_wt_open(&c) == 0);
     v = dw3_wt_view();
     CHECK(v->screen == DW3_HELP_SCREEN_LIST && strstr(v->strip, "not recognised") != NULL);
+    CHECK(strcmp(v->titles[0], "1. Getting started") == 0 &&
+          strcmp(v->titles[1], "2. Not reached yet") == 0);
+    keys(DW3_HELP_KEY_CONFIRM);
     CHECK(list_has("Visit the Online Center") && !list_has("Log in to Asuka City"));
+    keys(DW3_HELP_KEY_BACK);
     keys(DW3_HELP_KEY_DOWN);
     CHECK(strstr(dw3_wt_view()->strip, "not recognised") == NULL);
     dw3_wt_close();
     g_unknown = 0;
     /* the title: no game state is read at all */
     c = cfg(DW3_PAGES_US, 0, 0);
-    state(7, 0);
+    state(0x14, 0);
     CHECK(dw3_wt_open(&c) == 0);
     CHECK(g_snap_calls == 0);
     v = dw3_wt_view();
     CHECK(v->screen == DW3_HELP_SCREEN_LIST && strstr(v->strip, "No game loaded") != NULL);
+    CHECK(strcmp(v->titles[0], "1. Getting started") == 0 &&
+          strcmp(v->titles[4], "5. Not reached yet") == 0);
+    keys(DW3_HELP_KEY_CONFIRM);
     CHECK(list_has("Visit the Online Center") && !list_has("Seiryu"));
     CHECK(v->in_game == 0);
+    dw3_wt_close();
+}
+
+/* L1 / R1 cross from one chapter to the next, and the last step leads to "more". */
+static void test_neighbours(void) {
+    Dw3WtConfig c = cfg(DW3_PAGES_US, 0, 1);
+    int i;
+
+    state(0xB, 0);
+    CHECK(dw3_wt_open(&c) == 0);
+    CHECK(strcmp(dw3_wt_view()->header, "Back to Main Lobby") == 0);
+    keys(DW3_HELP_KEY_PREV);                          /* the last line of chapter 2 */
+    CHECK(starts_with(dw3_wt_view()->header, "Area: "));
+    keys(DW3_HELP_KEY_NEXT);
+    CHECK(strcmp(dw3_wt_view()->header, "Back to Main Lobby") == 0);
+    dw3_wt_close();
+    state_codes(0x29, WT_FLAG(0x40, 0x74), 0);
+    CHECK(dw3_wt_open(&c) == 0);
+    for (i = 0; i < 12 && strcmp(dw3_wt_view()->header, "More chapters coming") != 0; i++) {
+        keys(DW3_HELP_KEY_NEXT);
+    }
+    CHECK(strcmp(dw3_wt_view()->header, "More chapters coming") == 0);
+    keys(DW3_HELP_KEY_NEXT);                          /* nothing after "more" */
+    CHECK(strcmp(dw3_wt_view()->header, "More chapters coming") == 0);
+    keys(DW3_HELP_KEY_PREV);                          /* back into chapter 10 */
+    CHECK(starts_with(dw3_wt_view()->header, "Area: "));
     dw3_wt_close();
 }
 
@@ -262,6 +398,14 @@ static void test_region_and_language(void) {
     CHECK(strcmp(dw3_wt_view()->header, "Votre premier partenaire") == 0);
     CHECK(strstr(dw3_wt_view()->strip, "\xC3\x89tape 3 / 6") != NULL);
     dw3_wt_close();
+    state(0x14, 0);
+    CHECK(dw3_wt_open(&c) == 0);
+    CHECK(strstr(dw3_wt_view()->strip, "\xC3\x89tape 3 / 8") != NULL);
+    keys(DW3_HELP_KEY_BACK);
+    CHECK(strncmp(dw3_wt_view()->header, "5. ", 3) == 0);
+    keys(DW3_HELP_KEY_BACK);
+    CHECK(strncmp(dw3_wt_view()->titles[5], "6. ", 3) == 0);
+    dw3_wt_close();
     /* a language whose file is missing keys falls back to English, once */
     {
         static const char part[] =
@@ -270,6 +414,7 @@ static void test_region_and_language(void) {
 
         dw3_wt_test_set_text(2, part);
         c = cfg(DW3_PAGES_EU, 2, 1);
+        state(2, 0);
         CHECK(dw3_wt_open(&c) == 0);
         CHECK(strcmp(dw3_wt_view()->header, "Nur der Titel") == 0);
         CHECK(page_has("Main Lobby")); /* the goal came from English */
@@ -278,68 +423,107 @@ static void test_region_and_language(void) {
     }
 }
 
+/* One view fits: header and each line of a list in the title face, the strip and the hint row. */
+static void fit_view(void) {
+    const Dw3HelpView *v = dw3_wt_view();
+    int hint_w = 0;
+    int h;
+    int k;
+
+    CHECK(fits(DW3_ATLAS_TITLE, v->header, 410));
+    CHECK(fits(DW3_ATLAS_BODY, v->strip, 664));
+    if (v->screen == DW3_HELP_SCREEN_LIST) {
+        for (k = 0; k < v->npages; k++) {
+            CHECK(fits(DW3_ATLAS_TITLE, v->titles[k], 410));
+        }
+    }
+    for (h = 0; h < v->nhints; h++) {
+        hint_w += dw3_atlas_measure(DW3_ATLAS_BODY, v->hint[h], (int)strlen(v->hint[h])) +
+                  (v->hint_cap[h] ? 36 : 0) + 44;
+    }
+    CHECK(hint_w <= 740);
+}
+
+/* The three modes of the page on screen: closed, the question, the answer. */
+static void fit_page_modes(void) {
+    int s;
+
+    for (s = 0; s < 3; s++) {
+        fit_view();
+        if (s == 0) {
+            keys(DW3_HELP_KEY_CONFIRM); /* ask */
+        } else if (s == 1) {
+            keys(DW3_HELP_KEY_DOWN);
+            keys(DW3_HELP_KEY_CONFIRM); /* shown */
+        }
+    }
+}
+
+/* Everything of one state: the chapter list, every chapter's list and each page in its three
+ * modes. The screen is walked with the keys, Back from a page returns to the list on the item. */
+static void fit_state(int lang, int in_game, int progress, int unknown) {
+    Dw3WtConfig c = cfg(DW3_PAGES_EU, lang, in_game);
+    int nch;
+    int ch;
+
+    state(progress, progress == 5);
+    g_unknown = unknown;
+    CHECK(dw3_wt_open(&c) == 0);
+    while (dw3_wt_level() == DW3_WT_LEVEL_PAGE || dw3_wt_level() == DW3_WT_LEVEL_STEPS) {
+        keys(DW3_HELP_KEY_BACK);
+    }
+    CHECK(dw3_wt_level() == DW3_WT_LEVEL_CHAPTERS);
+    nch = dw3_wt_view()->npages - 1;
+    CHECK(nch >= 10);
+    for (ch = 0; ch <= nch; ch++) {
+        keys(DW3_HELP_KEY_UP);
+    }
+    fit_view();
+    for (ch = 0; ch <= nch; ch++) {
+        int i;
+        int n;
+
+        keys(DW3_HELP_KEY_CONFIRM);
+        if (ch == nch) {
+            CHECK(dw3_wt_level() == DW3_WT_LEVEL_PAGE);
+            fit_page_modes();
+            keys(DW3_HELP_KEY_BACK);
+            continue;
+        }
+        CHECK(dw3_wt_level() == DW3_WT_LEVEL_STEPS);
+        n = dw3_wt_view()->npages;
+        fit_view();
+        for (i = 0; i < n; i++) {
+            keys(DW3_HELP_KEY_UP);
+        }
+        for (i = 0; i < n; i++) {
+            keys(DW3_HELP_KEY_CONFIRM);
+            CHECK(dw3_wt_level() == DW3_WT_LEVEL_PAGE);
+            fit_page_modes();
+            keys(DW3_HELP_KEY_BACK);
+            CHECK(dw3_wt_level() == DW3_WT_LEVEL_STEPS);
+            keys(DW3_HELP_KEY_DOWN);
+        }
+        keys(DW3_HELP_KEY_BACK);
+        CHECK(dw3_wt_level() == DW3_WT_LEVEL_CHAPTERS);
+        keys(DW3_HELP_KEY_DOWN);
+    }
+    dw3_wt_close();
+    g_unknown = 0;
+}
+
 /* Everything that must fit does fit, in every language and state. */
 static void test_fit(void) {
+    static const int points[] = {0, 2, 4, 5, 0x10, 0x14, 0x20, 0x29, 0x2A};
     int lang;
     int p;
 
     for (lang = 0; lang < 5; lang++) {
-        for (p = 0; p < 9; p++) {
-            Dw3WtConfig c = cfg(DW3_PAGES_EU, lang, p != 8);
-            const Dw3HelpView *v;
-            int i;
-            int hint_w;
-
-            state(p == 8 ? 0 : p, p == 5);
-            CHECK(dw3_wt_open(&c) == 0);
-            for (i = 0; i < dw3_wt_item_count(); i++) {
-                int s;
-
-                /* the list, then each item's page in its three modes */
-                dw3_wt_close();
-                CHECK(dw3_wt_open(&c) == 0);
-                if (dw3_wt_view()->screen == DW3_HELP_SCREEN_PAGE) {
-                    keys(DW3_HELP_KEY_BACK);
-                }
-                v = dw3_wt_view();
-                CHECK(fits(DW3_ATLAS_TITLE, v->header, 410));
-                CHECK(fits(DW3_ATLAS_BODY, v->strip, 664));
-                {
-                    int k;
-
-                    for (k = 0; k < v->npages; k++) {
-                        CHECK(fits(DW3_ATLAS_TITLE, v->titles[k], 410));
-                    }
-                }
-                for (s = 0; s < i; s++) {
-                    keys(DW3_HELP_KEY_DOWN);
-                }
-                keys(DW3_HELP_KEY_CONFIRM);
-                for (s = 0; s < 3; s++) {
-                    v = dw3_wt_view();
-                    CHECK(fits(DW3_ATLAS_TITLE, v->header, 410));
-                    CHECK(fits(DW3_ATLAS_BODY, v->strip, 664));
-                    hint_w = 0;
-                    {
-                        int h;
-
-                        for (h = 0; h < v->nhints; h++) {
-                            hint_w += dw3_atlas_measure(DW3_ATLAS_BODY, v->hint[h],
-                                                        (int)strlen(v->hint[h])) +
-                                      (v->hint_cap[h] ? 36 : 0) + 44;
-                        }
-                    }
-                    CHECK(hint_w <= 740);
-                    if (s == 0) {
-                        keys(DW3_HELP_KEY_CONFIRM); /* ask */
-                    } else if (s == 1) {
-                        keys(DW3_HELP_KEY_DOWN);
-                        keys(DW3_HELP_KEY_CONFIRM); /* shown */
-                    }
-                }
-            }
-            dw3_wt_close();
+        for (p = 0; p < (int)(sizeof(points) / sizeof(points[0])); p++) {
+            fit_state(lang, 1, points[p], 0);
         }
+        fit_state(lang, 1, 0, 1);   /* not recognised */
+        fit_state(lang, 0, 0, 0);   /* the title: browse mode */
     }
 }
 
@@ -347,6 +531,7 @@ int main(void) {
     test_current_step_and_reveal();
     test_never_ahead();
     test_other_points();
+    test_neighbours();
     test_region_and_language();
     test_fit();
     if (g_fail != 0) {

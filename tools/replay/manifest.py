@@ -18,6 +18,7 @@ Tiers:
 """
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 
 EU_LANGS = ["en", "fr", "de", "it", "es"]
@@ -360,13 +361,16 @@ for _v in ("us", "eu"):
                   forbid_log=((0, r"SEP end-of-track"),),
                   note="field music jumps back at its loop end at least twice (US 3, EU 4 times in 3000 frames) and never reaches end-of-track"))
 
-# P6.35 walkthrough, phase 1 (docs/P6.35_WALKTHROUGH.md): the step resolver on
-# the real game state. The debug probe (patch 0186, DW3_WALKTHROUGH_PROBE) logs
+# P6.35 walkthrough (docs/P6.35_WALKTHROUGH.md): the step resolver on the real game
+# state. The debug probe (patch 0186, DW3_WALKTHROUGH_PROBE) logs
 # `dw3-walkthrough: progress P half H area A -> chapter C step S (rule R)` when
-# the progress, the map or the flag changes. Three points of the first chapter:
-# progress 0 in Kusanagi City's street corner (the real world, no map area),
-# progress 2 in the Login Room, progress 3 in the Central Sector (Genji's flag
-# 0x400D is clear: the step has a sub-condition, rule progress+flag).
+# the progress, the map or the flag changes. Phase 1: three points of the first
+# chapter: progress 0 in Kusanagi City's street corner (the real world, no map
+# area), progress 2 in the Login Room, progress 3 in the Central Sector (Genji's
+# flag 0x400D is clear: the step has a sub-condition, rule progress+flag).
+# Slice 2: the start, the middle and the end of every other chapter of the first
+# half, booted in the stage of the step (progress 4 closes chapter 1). The
+# `rule progress+flag` points are values whose first row waits for a flag.
 for _v in ("us", "eu"):
     for _tag, _mode, _prog, _line in (
         ("p0", "0x2D7", "0", r"progress 0 half -1 area -1 -> chapter ch01 step ch01\.s01 \(rule progress\)"),
@@ -380,6 +384,50 @@ for _v in ("us", "eu"):
                       expect_log=((0, r"dw3-walkthrough: " + _line),),
                       forbid_log=((0, r"step not recognised|chapter - step -"),),
                       note="P6.35 phase 1: the resolver logs the step for this progress value"))
+
+# (tag, DW3_START_MODE, progress, half, area, chapter, step, rule): start, middle and end of
+# chapters 2 to 10, and the end of chapter 1 (progress 4). The mode is the stage of the step.
+WT_CHAPTER_POINTS = (
+    ("p4", "0x200", 4, 0, 19, "ch01", "ch01.s06", "progress"),
+    ("p5", "0x22C", 5, 0, 30, "ch02", "ch02.s01", "progress"),
+    ("p8", "0x239", 8, 0, 36, "ch02", "ch02.s04", "progress+flag"),
+    ("pa", "0x240", 10, 0, 41, "ch02", "ch02.s10", "progress"),
+    ("pb", "0x204", 11, 0, 19, "ch03", "ch03.s01", "progress"),
+    ("pc", "0x20B", 12, 0, 19, "ch03", "ch03.s02", "progress"),
+    ("pe", "0x204", 14, 0, 19, "ch03", "ch03.s05", "progress"),   # 0x236 (the step's own stage, wstag460) is not in the PC host's overlay table: strict restore aborts
+    ("pf", "0x260", 15, 0, 33, "ch04", "ch04.s01", "progress"),
+    ("p10", "0x25C", 16, 0, 38, "ch04", "ch04.s02", "progress"),
+    ("p11", "0x252", 17, 0, 7, "ch04", "ch04.s03", "progress"),
+    ("p12", "0x254", 18, 0, 7, "ch05", "ch05.s01", "progress"),
+    ("p14", "0x255", 20, 0, 7, "ch05", "ch05.s03", "progress+flag"),
+    ("p17", "0x219", 23, 0, 19, "ch05", "ch05.s07", "progress+flag"),
+    ("p18", "0x260", 24, 0, 33, "ch06", "ch06.s01", "progress"),
+    ("p19", "0x240", 25, 0, 41, "ch06", "ch06.s02", "progress"),
+    ("p1a", "0x246", 26, 0, 35, "ch06", "ch06.s03", "progress"),
+    ("p1b", "0x29C", 27, 1, 14, "ch07", "ch07.s01", "progress"),
+    ("p1c", "0x2AD", 28, 1, 41, "ch07", "ch07.s02", "progress"),
+    ("p1d", "0x2AE", 29, 1, 41, "ch07", "ch07.s03", "progress"),
+    ("p1e", "0x26E", 30, 0, 5, "ch08", "ch08.s01", "progress"),
+    ("p20", "0x26D", 32, 0, 8, "ch08", "ch08.s03", "progress+flag"),
+    ("p21", "0x218", 33, 0, 19, "ch08", "ch08.s05", "progress+flag"),
+    ("p22", "0x2C7", 34, 1, 33, "ch09", "ch09.s01", "progress"),
+    ("p23", "0x2D5", 35, 1, 5, "ch09", "ch09.s02", "progress"),
+    ("p24", "0x272", 36, 1, 19, "ch09", "ch09.s03", "progress"),
+    ("p25", "0x288", 37, 1, 19, "ch10", "ch10.s01", "progress+flag"),
+    ("p27", "0x288", 39, 1, 19, "ch10", "ch10.s04", "progress"),
+    ("p29", "0x2DF", 41, -1, -1, "ch10", "ch10.s06", "progress+flag"),
+)
+for _v in ("us", "eu"):
+    for _tag, _mode, _prog, _half, _area, _ch, _step, _rule in WT_CHAPTER_POINTS:
+        _line = (rf"progress {_prog} half {_half} area {_area} -> chapter {_ch} step "
+                 + re.escape(_step) + r" \(rule " + re.escape(_rule) + r"\)")
+        _add(Scenario(f"{_v}-walkthrough-{_tag}", _v, "full", turbo=4, timeout=120, log_only=True,
+                      phases=(f"{_v}-walkthrough",),
+                      env=(("DW3_START_MODE", _mode), ("DW3_PROGRESS", str(_prog)),
+                           ("DW3_WALKTHROUGH_PROBE", "1")),
+                      expect_log=((0, r"dw3-walkthrough: " + _line),),
+                      forbid_log=((0, r"step not recognised|chapter - step -"),),
+                      note=f"P6.35 slice 2: progress {_prog} in mode {_mode} resolves to {_step}"))
 
 # The battle theme is the same bug: a long song (bank 2 on the US disc) whose
 # NRPN loop never repeated, so a battle was silent after one pass. The walk is
@@ -2253,13 +2301,15 @@ _WT_FORBID = ((0, r"unresolved"), (0, r"dw3-walkthrough: text fallback"),
 _WT_CLOSE = r"dw3-port-options: group close walkthrough \(back to the group list\)"
 
 
-def _wt_title(lang, reg, items=9):
-    """expect_log of the browse-only run from the title (first step shown, second hidden)."""
+def _wt_title(lang, reg, chapters=10, steps=55):
+    """expect_log of the browse-only run from the title (chapter 1 opened, first step shown,
+    second hidden)."""
     return ((0, r"dw3-walkthrough: open \(from title, region " + reg + r", platform pc, language " + lang +
-                rf", {items} items\)(?s:.*)"
+                rf", {chapters} chapters, {steps} steps\)(?s:.*)"
                 r"dw3-walkthrough: browse mode \(no game state\)(?s:.*)"
                 r"dw3-port-options: group open walkthrough \(title\)(?s:.*)"
                 r"dw3-walkthrough: first frame composed [\d.]+ ms after open(?s:.*)"
+                r"dw3-walkthrough: chapter ch01 opened \(reached y, current n, 6 steps\)(?s:.*)"
                 r"dw3-walkthrough: page ch01\.s01 \(kind MAIN, from list, reached y, current n, \d+ lines(?s:.*)"
                 r"dw3-walkthrough: spoiler ch01\.s01 closed \(answer available\)(?s:.*)"
                 r"dw3-walkthrough: spoiler ch01\.s01 asked(?s:.*)"
@@ -2276,7 +2326,7 @@ for _v, _reg in (("us", "US"), ("eu", "EU")):
                   env=(("DW3_START_MODE", "0x22E"), ("DW3_PROGRESS", "4")) + _RT_BATTLE_ENV,
                   expect_log=((0, r"dw3-port-options: open in game(?s:.*)"
                                   r"dw3-walkthrough: open \(from field, region " + _reg +
-                                  r", platform pc, language en, 10 items\)(?s:.*)"
+                                  r", platform pc, language en, 10 chapters, 55 steps\)(?s:.*)"
                                   r"dw3-walkthrough: progress 4 half 0 area 14 -> chapter ch01 step ch01\.s06 "
                                   r"\(rule progress\) \[open mode 0x22e\](?s:.*)"
                                   r"dw3-walkthrough: flags read 0x400d=0(?s:.*)"
@@ -2298,27 +2348,57 @@ for _v, _reg in (("us", "US"), ("eu", "EU")):
                                            (0, r"step not recognised|browse mode"),),
                   note="P6.35 phase 2: the walkthrough from the field menu at progress 4 opens on the "
                        "current step (ch01.s06), the answer needs two actions, the next entry is the "
-                       "optional row"))
-    _add(Scenario(f"{_v}-walkthrough-screen-p6", _v, "full", turbo=4, timeout=300,
-                  env=(("DW3_START_MODE", "0x233"), ("DW3_PROGRESS", "6")) + _RT_BATTLE_ENV,
+                       "optional row, Back goes up through the chapter's steps and the chapter list"))
+    _add(Scenario(f"{_v}-walkthrough-screen-p14", _v, "full", turbo=4, timeout=300,
+                  env=(("DW3_START_MODE", "0x255"), ("DW3_PROGRESS", "20")) + _RT_BATTLE_ENV,
                   expect_log=((0, r"dw3-port-options: open in game(?s:.*)"
                                   r"dw3-walkthrough: open \(from field, region " + _reg +
-                                  r", platform pc, language en, 10 items\)(?s:.*)"
-                                  r"dw3-walkthrough: progress 6 half 0 area 42 -> chapter - step - "
-                                  r"\(rule above-table\) \[open mode 0x233\](?s:.*)"
-                                  r"dw3-walkthrough: page more \(kind MORE, from open, reached y, current n, "
+                                  r", platform pc, language en, 10 chapters, 55 steps\)(?s:.*)"
+                                  r"dw3-walkthrough: progress 20 half 0 area 7 -> chapter ch05 step ch05\.s03 "
+                                  r"\(rule progress\+flag\) \[open mode 0x255\](?s:.*)"
+                                  r"dw3-walkthrough: flags read 0x400d=0(?s:.*)"
+                                  r"dw3-walkthrough: page ch05\.s03 \(kind MAIN, from open, reached y, current y, "
                                   r"\d+ lines(?s:.*)"
-                                  r"dw3-walkthrough: spoiler more closed \(answer none\)(?s:.*)"
-                                  r"dw3-walkthrough: page area\.asuka \(kind AREA, from list, reached y, "
-                                  r"current n(?s:.*)"
-                                  r"dw3-walkthrough: spoiler area\.asuka asked(?s:.*)"
-                                  r"dw3-walkthrough: spoiler area\.asuka shown(?s:.*)"
+                                  r"dw3-walkthrough: spoiler ch05\.s03 closed \(answer available\)(?s:.*)"
+                                  r"dw3-port-options: group open walkthrough \(in game\)(?s:.*)"
+                                  r"dw3-walkthrough: first frame composed [\d.]+ ms after open(?s:.*)"
+                                  r"dw3-walkthrough: spoiler ch05\.s03 asked(?s:.*)"
+                                  r"dw3-walkthrough: spoiler ch05\.s03 shown(?s:.*)"
+                                  r"dw3-walkthrough: page ch05\.s03 closed after \d+ ms \(spoiler shown y\)(?s:.*)"
+                                  r"dw3-walkthrough: page ch05\.s04 \(kind MAIN, from list, reached n, current n(?s:.*)"
+                                  r"dw3-walkthrough: spoiler ch05\.s04 asked(?s:.*)"
+                                  r"dw3-walkthrough: spoiler ch05\.s04 cancelled(?s:.*)"
+                                  r"dw3-walkthrough: page ch05\.s04 closed after \d+ ms \(spoiler shown n\)(?s:.*)"
                                   r"dw3-walkthrough: closed after \d+ ms \(pages opened 2, spoilers shown 1\)(?s:.*)"
                                   + _WT_CLOSE + r"(?s:.*)dw3-port-options: close in game \(back to the field menu\)"),),
                   forbid_log=_WT_FORBID + ((0, r"widescreen (enabled|disabled)"),
                                            (0, r"step not recognised|browse mode"),),
-                  note="P6.35 phase 2: past the end of the table (progress 6) the walkthrough opens on "
-                       "'more chapters coming'; every area is reached, so its spoiler page can be asked"))
+                  note="P6.35 slice 2: the walkthrough in the middle of the first half (progress 0x14, "
+                       "chapter 5) opens on the third step of its chapter; the next step is not reached "
+                       "yet, so its title is hidden and the reveal says it may spoil; Back shows the "
+                       "chapter list with the arrow on chapter 5"))
+    _add(Scenario(f"{_v}-walkthrough-screen-p2a", _v, "full", turbo=4, timeout=300,
+                  env=(("DW3_START_MODE", "0x233"), ("DW3_PROGRESS", "42")) + _RT_BATTLE_ENV,
+                  expect_log=((0, r"dw3-port-options: open in game(?s:.*)"
+                                  r"dw3-walkthrough: open \(from field, region " + _reg +
+                                  r", platform pc, language en, 10 chapters, 55 steps\)(?s:.*)"
+                                  r"dw3-walkthrough: progress 42 half 0 area 42 -> chapter - step - "
+                                  r"\(rule above-table\) \[open mode 0x233\](?s:.*)"
+                                  r"dw3-walkthrough: page more \(kind MORE, from open, reached y, current n, "
+                                  r"\d+ lines(?s:.*)"
+                                  r"dw3-walkthrough: spoiler more closed \(answer none\)(?s:.*)"
+                                  r"dw3-walkthrough: chapter ch10 opened \(reached y, current n, 7 steps\)(?s:.*)"
+                                  r"dw3-walkthrough: page area\.network \(kind AREA, from list, reached y, "
+                                  r"current n(?s:.*)"
+                                  r"dw3-walkthrough: spoiler area\.network asked(?s:.*)"
+                                  r"dw3-walkthrough: spoiler area\.network shown(?s:.*)"
+                                  r"dw3-walkthrough: closed after \d+ ms \(pages opened 2, spoilers shown 1\)(?s:.*)"
+                                  + _WT_CLOSE + r"(?s:.*)dw3-port-options: close in game \(back to the field menu\)"),),
+                  forbid_log=_WT_FORBID + ((0, r"widescreen (enabled|disabled)"),
+                                           (0, r"step not recognised|browse mode"),),
+                  note="P6.35 slice 2: past the end of the table (progress 0x2A) the walkthrough opens on "
+                       "'more chapters coming'; every chapter and area is reached, so the last area's "
+                       "spoiler page can be asked"))
     _add(Scenario(f"{_v}-walkthrough-screen-title", _v, "full", timeout=300,
                   expect_log=_wt_title("en", _reg), forbid_log=_WT_FORBID + ((0, r"step not recognised"),),
                   note="P6.35 phase 2: the walkthrough from the title is browse-only: the first step "

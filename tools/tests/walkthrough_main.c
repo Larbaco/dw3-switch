@@ -18,7 +18,7 @@ static int g_fail;
     } while (0)
 
 /* a fake FLAGS_00: a few set (code, value) pairs */
-typedef struct Fake { unsigned codes[8]; int n; int calls; } Fake;
+typedef struct Fake { unsigned codes[40]; int n; int calls; } Fake;
 
 static int fake_check(void *ctx, unsigned code, unsigned value) {
     Fake *f = (Fake *)ctx;
@@ -57,6 +57,27 @@ static void expect_step(int progress, int region, int flag_0d, const char *id) {
     CHECK(r.status == WT_OK && strcmp(id_of(&r), id) == 0,
           "progress %d flag %d region %d: got status %d step %s, want %s", progress, flag_0d,
           region, r.status, id_of(&r), id);
+}
+
+/* The current step at `progress` with the game's flags / items `c0..c2` set (0 = unused). */
+static void expect_with(int progress, unsigned c0, unsigned c1, unsigned c2, const char *id) {
+    int region;
+
+    for (region = WT_REGION_US; region <= WT_REGION_EU; ++region) {
+        Fake f;
+        DW3WtState st;
+        DW3WtResult r;
+
+        memset(&f, 0, sizeof(f));
+        if (c0) f.codes[f.n++] = c0;
+        if (c1) f.codes[f.n++] = c1;
+        if (c2) f.codes[f.n++] = c2;
+        st = mk(progress, region, &f);
+        dw3_wt_resolve(&st, &r);
+        CHECK(r.status == WT_OK && strcmp(id_of(&r), id) == 0,
+              "progress 0x%x flags %x %x %x region %d: got status %d step %s, want %s", progress,
+              c0, c1, c2, region, r.status, id_of(&r), id);
+    }
 }
 
 static void expect_status(int progress, int region, int want) {
@@ -108,13 +129,98 @@ static void test_builtin(void) {
     expect_step(3, WT_REGION_US, 1, "ch01.s05"); /* flag 0x400D set: after event 50 */
     expect_step(4, WT_REGION_US, 0, "ch01.s06");
     expect_step(4, WT_REGION_US, 1, "ch01.s06");
-    /* EU resolves the same rows (no EU-only rows in phase 1) */
+    /* EU resolves the same rows (no EU-only rows before the extra chapter) */
     expect_step(0, WT_REGION_EU, 0, "ch01.s01");
     expect_step(3, WT_REGION_EU, 1, "ch01.s05");
     expect_step(4, WT_REGION_EU, 0, "ch01.s06");
-    /* beyond phase 1: valid progress values the table does not cover */
-    expect_status(5, WT_REGION_US, WT_ABOVE);
-    expect_status(0x29, WT_REGION_US, WT_ABOVE);
+    /* the rest of the first half, on both regions: one row per progress value, and the rows
+     * that share a value move on when the game's flag or item says so */
+    expect_with(5, 0, 0, 0, "ch02.s01");
+    expect_with(6, 0, 0, 0, "ch02.s02");
+    expect_with(7, 0, 0, 0, "ch02.s03");
+    expect_with(8, 0, 0, 0, "ch02.s04");
+    expect_with(8, WT_FLAG(0x1A, 0x17), 0, 0, "ch02.s05");
+    expect_with(8, WT_FLAG(0x1A, 0x17), WT_FLAG(0x1A, 0x18), WT_FLAG(0x1A, 0x19), "ch02.s05");
+    expect_with(8, WT_FLAG(0x1A, 0x17), WT_FLAG(0x1A, 0x1A), 0, "ch02.s06");
+    expect_with(9, 0, 0, 0, "ch02.s07");
+    expect_with(9, WT_ITEM(0, 0x15), 0, 0, "ch02.s07"); /* the item alone does not skip the talk */
+    expect_with(9, WT_FLAG(0x1A, 0x1B), 0, 0, "ch02.s08");
+    expect_with(9, WT_FLAG(0x1A, 0x1B), WT_ITEM(0, 0x15), 0, "ch02.s09");
+    expect_with(0xA, 0, 0, 0, "ch02.s10");
+    expect_with(0xB, 0, 0, 0, "ch03.s01");
+    expect_with(0xC, 0, 0, 0, "ch03.s02");
+    expect_with(0xD, 0, 0, 0, "ch03.s03");
+    expect_with(0xD, WT_FLAG(0x1C, 0x0D), 0, 0, "ch03.s04");
+    expect_with(0xE, 0, 0, 0, "ch03.s05");
+    expect_with(0xF, 0, 0, 0, "ch04.s01");
+    expect_with(0x10, 0, 0, 0, "ch04.s02");
+    expect_with(0x11, 0, 0, 0, "ch04.s03");
+    expect_with(0x12, 0, 0, 0, "ch05.s01");
+    expect_with(0x13, 0, 0, 0, "ch05.s02");
+    expect_with(0x14, 0, 0, 0, "ch05.s03");
+    expect_with(0x14, WT_FLAG(0x40, 0x03), 0, 0, "ch05.s04");
+    expect_with(0x15, 0, 0, 0, "ch05.s05");
+    expect_with(0x16, 0, 0, 0, "ch05.s06");
+    expect_with(0x17, 0, 0, 0, "ch05.s07");
+    expect_with(0x17, WT_FLAG(0x40, 0x50), 0, 0, "ch05.s08");
+    expect_with(0x18, 0, 0, 0, "ch06.s01");
+    expect_with(0x19, 0, 0, 0, "ch06.s02");
+    expect_with(0x1A, 0, 0, 0, "ch06.s03");
+    expect_with(0x1B, 0, 0, 0, "ch07.s01");
+    expect_with(0x1C, 0, 0, 0, "ch07.s02");
+    expect_with(0x1D, 0, 0, 0, "ch07.s03");
+    expect_with(0x1E, 0, 0, 0, "ch08.s01");
+    expect_with(0x1F, 0, 0, 0, "ch08.s02");
+    expect_with(0x20, 0, 0, 0, "ch08.s03");
+    expect_with(0x20, WT_FLAG(0x40, 0x66), 0, 0, "ch08.s04");
+    expect_with(0x21, 0, 0, 0, "ch08.s05");
+    expect_with(0x21, WT_FLAG(0x40, 0x57), 0, 0, "ch08.s06");
+    expect_with(0x21, WT_FLAG(0x40, 0x57), WT_FLAG(0x40, 0x59), 0, "ch08.s07");
+    expect_with(0x22, 0, 0, 0, "ch09.s01");
+    expect_with(0x23, 0, 0, 0, "ch09.s02");
+    expect_with(0x24, 0, 0, 0, "ch09.s03");
+    expect_with(0x25, 0, 0, 0, "ch10.s01");
+    expect_with(0x25, WT_FLAG(0x40, 0x60), 0, 0, "ch10.s02");
+    expect_with(0x26, 0, 0, 0, "ch10.s03");
+    expect_with(0x27, 0, 0, 0, "ch10.s04");
+    expect_with(0x28, 0, 0, 0, "ch10.s05");
+    expect_with(0x29, 0, 0, 0, "ch10.s06");
+    expect_with(0x29, WT_FLAG(0x40, 0x74), 0, 0, "ch10.s07");
+    /* every value of the first half resolves, with no flag set and with all of them set
+     * (all rows done: the last offered one) */
+    {
+        int p, i, n;
+        const DW3WtStep *t = dw3_wt_steps(&n);
+
+        for (p = 0; p <= 0x29; ++p) {
+            int region;
+
+            for (region = WT_REGION_US; region <= WT_REGION_EU; ++region) {
+                Fake f;
+                DW3WtState st;
+                DW3WtResult r;
+                int k;
+
+                memset(&f, 0, sizeof(f));
+                st = mk(p, region, &f);
+                dw3_wt_resolve(&st, &r);
+                CHECK(r.status == WT_OK, "progress 0x%x, no flags: status %d", p, r.status);
+                memset(&f, 0, sizeof(f));
+                for (i = 0; i < n; ++i) {
+                    for (k = 0; k < t[i].ndone && f.n < 40; ++k) f.codes[f.n++] = t[i].done[k].code;
+                    for (k = 0; k < t[i].nunlock && f.n < 40; ++k) f.codes[f.n++] = t[i].unlock[k].code;
+                }
+                st = mk(p, region, &f);
+                dw3_wt_resolve(&st, &r);
+                CHECK(r.status == WT_OK && r.step != NULL && r.step->from_progress <= p &&
+                      (r.step->to_progress < 0 || p <= r.step->to_progress),
+                      "progress 0x%x, all flags: status %d", p, r.status);
+            }
+        }
+    }
+    /* beyond the first half: valid progress values the table does not cover */
+    expect_status(0x2A, WT_REGION_US, WT_ABOVE);
+    expect_status(0x2B, WT_REGION_EU, WT_ABOVE);
     expect_status(WT_PROGRESS_MAX, WT_REGION_US, WT_ABOVE);
     /* EU extra chapter value on US must say "not recognised", not crash */
     expect_status(0x2D, WT_REGION_US, WT_ABOVE);
@@ -230,9 +336,12 @@ int main(int argc, char **argv) {
         int n, i;
         const DW3WtStep *t = dw3_wt_steps(&n);
 
+        /* ID id chapter area kind region map_area from to order ndone done0 nunlock unlock0 */
         for (i = 0; i < n; ++i) {
-            printf("ID %s %s %s %d %d\n", t[i].id, t[i].chapter, t[i].area, t[i].kind,
-                   t[i].region);
+            printf("ID %s %s %s %d %d %d %d %d %d %d %u %d %u\n", t[i].id, t[i].chapter, t[i].area,
+                   t[i].kind, t[i].region, t[i].map_area, t[i].from_progress, t[i].to_progress,
+                   t[i].order, t[i].ndone, t[i].ndone ? (unsigned)t[i].done[0].code : 0u,
+                   t[i].nunlock, t[i].nunlock ? (unsigned)t[i].unlock[0].code : 0u);
         }
         return 0;
     }

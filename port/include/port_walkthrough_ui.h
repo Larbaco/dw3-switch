@@ -1,7 +1,7 @@
 /* P6.35 phase 2: the walkthrough screen, the Walkthrough group's sub-screen of
- * the Options screen (docs/P6.35_WALKTHROUGH.md). A step list and a scrolling
- * step page, on the page engine (port_pages.h) and the glyph atlas. It shows
- * through the Help screen's view (Dw3HelpView, port_help.h): the same art draws
+ * the Options screen (docs/P6.35_WALKTHROUGH.md). A chapter list, the step list of
+ * a chapter and a scrolling step page, on the page engine (port_pages.h) and the
+ * glyph atlas. It shows through the Help screen's view (Dw3HelpView, port_help.h): the same art draws
  * both, so the PC and Switch hosts need nothing more.
  *
  * Read-only on the game: the state is read once, by the snapshot callback,
@@ -36,11 +36,16 @@ int dw3_wt_open(const Dw3WtConfig *cfg);
 void dw3_wt_close(void);
 int dw3_wt_is_open(void);
 /* One frame: the keys pressed (DW3_HELP_KEY_*). Returns a DW3_HELP_SND_*. Back
- * on the step list closes the screen (dw3_wt_is_open() then answers 0). */
+ * goes up one level: page, step list of a chapter, chapter list; Back on the
+ * chapter list closes the screen (dw3_wt_is_open() then answers 0). */
 int dw3_wt_tick(unsigned keys);
 const Dw3HelpView *dw3_wt_view(void);
 
 /* For the tests. */
+enum { DW3_WT_LEVEL_CLOSED = -1, DW3_WT_LEVEL_CHAPTERS = 0, DW3_WT_LEVEL_STEPS = 1,
+       DW3_WT_LEVEL_PAGE = 2 };
+int dw3_wt_level(void);
+/* The lines of the list on screen (the chapters and "more", or the chapter's items). */
 int dw3_wt_item_count(void);
 /* Test hook: replace the embedded text of a language (NULL restores it). */
 void dw3_wt_test_set_text(int lang, const char *text);

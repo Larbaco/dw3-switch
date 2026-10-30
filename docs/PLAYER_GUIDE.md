@@ -9,7 +9,7 @@ PC and in an emulator but not yet on a Switch OLED; the release notes say which.
 
 Contents: [Setup](#setup), [Controls and hotkeys](#controls-and-hotkeys),
 [Title menu](#title-menu), [Options screen](#options-screen),
-[Help](#help), [Cheats screen](#cheats-screen), [Options in the field](#options-in-the-field),
+[Help](#help), [Walkthrough](#walkthrough), [Cheats screen](#cheats-screen), [Options in the field](#options-in-the-field),
 [Options in battle](#options-in-battle),
 [Return to title](#return-to-title),
 [Saves](#saves), [Crashes and reports](#crashes-and-reports),
@@ -178,7 +178,7 @@ P6.18_PACING.md, P6.31_AUTOSAVE.md, P7.9_BATTLE_MENU_MEMORY.md; row names and
 defaults from port/options/port_options.c -->
 
 Options holds the features the port adds. It is a list of groups, drawn like
-the title menu: **Display**, **Sound**, **Gameplay**, **Saves**, **Help** (and **Cheats**,
+the title menu: **Display**, **Sound**, **Gameplay**, **Saves**, **Help**, **Walkthrough** (and **Cheats**,
 before Help, once you have turned the master switch on, see [Cheats screen](#cheats-screen)).
 Up and Down choose a group, B or A opens it. Inside, Up and Down choose a row and
 B or A changes it. X goes back: from a group to the list (the cursor stays on that
@@ -227,6 +227,29 @@ changes nothing in the game.
   the English page and writes a line in `dw3.log`. Brazilian Portuguese arrives with the
   game's own pt-BR language.
 - The Cheats screen is not described in the help.
+
+## Walkthrough
+
+<!-- Sources: P6.35_WALKTHROUGH.md, port/walkthrough/text/en.txt -->
+
+**Walkthrough** is the group after Help. It tells you where to go next and what to do, for
+the first half of the main story (Kusanagi City up to the Spy Satellite); later chapters say
+**More chapters coming**. It only reads your progress: nothing is written to the game or the
+save, and it needs no network.
+
+- From the field menu (or a battle) it opens on the page of **your current step**. The field
+  menu itself only opens once you have reached Seiryu City (story progress 4), so earlier
+  steps can be read from the title.
+- X goes up one level: step page, the steps of the chapter, the chapter list, out. On the
+  chapter list the arrow marks your chapter. **L** and **R** on a page go to the previous and next
+  entry, also into the next chapter.
+- A step page shows a short goal. The answer is hidden: **Answer**, then **Yes** (the cursor starts on
+  **No**). Nothing you have not reached yet is shown unless you ask: its title says **Not reached
+  yet**, and asking warns that it may spoil the story. An **Area** entry is the whole-area answer.
+- At the title there is no game to read, so only the chapter list is shown.
+- The text is a draft written from the game's scripts, not from play: tell us if a step sends you
+  to the wrong place. On the EU disc it is in all five languages; French, German, Italian and
+  Spanish are machine drafts that still need native review.
 
 ## Cheats screen
 

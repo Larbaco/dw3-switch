@@ -1,4 +1,4 @@
-# DW3NX walkthrough, Spanish text, phase 1 (P6.35).
+# DW3NX walkthrough, Spanish text, first half of the main story (P6.35).
 # MACHINE-DRAFTED, NEEDS NATIVE REVIEW. Written by an AI agent from en.txt; the
 # owner approved the English and cannot check the other languages
 # (docs/P6.35_WALKTHROUGH.md, section 7). Same keys, same budgets as en.txt
@@ -30,9 +30,9 @@ wt.ui.str.optional = Opcional
 wt.ui.str.notreached = Aún sin alcanzar
 wt.ui.str.area = Zona
 wt.ui.str.more = Más capítulos pronto
-wt.ui.str.pick = Elige un paso para leer.
-wt.ui.str.unrecognised = Paso no reconocido. Elige uno para leer.
-wt.ui.str.browse = Ninguna partida cargada. Elige un paso para leer.
+wt.ui.str.pick = Elige un capítulo para leer.
+wt.ui.str.unrecognised = Paso no reconocido. Elige un capítulo para leer.
+wt.ui.str.browse = No hay partida cargada. Elige un capítulo para leer.
 wt.ui.str.closed = La solución está oculta. Si estás atascado, usa el botón Solución de abajo.
 wt.ui.str.ahead = Aún no has llegado a este paso. Leer por adelantado puede estropear la historia.
 wt.ui.str.ask = Esto muestra cómo continuar. ¿Mostrarlo?
@@ -41,12 +41,14 @@ wt.ui.str.yes = Sí
 wt.ui.str.no = No
 wt.ui.str.answer_hdr = La solución
 wt.ui.str.ask_hdr = ¿Mostrar la solución?
-wt.ui.str.more_body = La guía cubre por ahora el primer capítulo. Habrá más capítulos en versiones posteriores.
+wt.ui.str.more_body = Por ahora la guía cubre la primera mitad del juego. Llegarán más capítulos en versiones posteriores.
+wt.ui.str.chapter = Capítulo
+wt.ui.str.curchap = Capítulo actual
 wt.ui.str.area_strip = Spoiler: toda la zona
 wt.ui.str.ahead_strip = Aún sin alcanzar: spoiler
 
 # ---------------------------------------------------------------- chapter 1
-wt.ch01.title = Capítulo 1: Los comienzos
+wt.ch01.title = Los comienzos
 
 wt.ch01_s01.title = Visita el Online Center
 wt.ch01_s01.goal = Junior está en Kusanagi City, el mundo real, con sus amigos. Ve al Online Center para registrarte en el juego.
@@ -54,7 +56,7 @@ wt.ch01_s01.help = El Online Center está cerca de la esquina donde empieza la h
 
 wt.ch01_s02.title = Entra en Asuka City
 wt.ch01_s02.goal = Ya estás registrado. Entra en el mundo del juego y preséntate en la Login Room de Asuka City.
-wt.ch01_s02.help = Después del Online Center, la Chamber Room lleva a Junior al juego. En la Login Room de Asuka City, habla con el Account Clerk para terminar de iniciar sesión. TODO(verify): el camino desde la Chamber Room.
+wt.ch01_s02.help = Después del Online Center, la Chamber Room lleva a Junior al juego. En la Login Room de Asuka City, habla con el Account Clerk para terminar de iniciar sesión.
 
 wt.ch01_s03.title = Tu primer compañero
 wt.ch01_s03.goal = Ve al Main Lobby de Asuka City y busca el Tamer Service. Te entrega tu primer compañero.
@@ -66,7 +68,7 @@ wt.ch01_s04.help = Habla con Genji donde el Central Sector se une con el puente.
 
 wt.ch01_s05.title = Termina con Genji
 wt.ch01_s05.goal = El combate con Genji ha terminado, pero aún no has acabado con él. La conversación continúa en la misma calle.
-wt.ch01_s05.help = La escena siguiente se reproduce cuando el Central Sector se vuelve a cargar tras el combate. Si no pasa nada, sal de la calle y vuelve a entrar. Esto lleva la historia al siguiente paso. TODO(verify): el desencadenante exacto.
+wt.ch01_s05.help = La escena siguiente se reproduce cuando el Central Sector se vuelve a cargar tras el combate. Si no pasa nada, sal de la calle y vuelve a entrar. Esto lleva la historia al siguiente paso.
 
 wt.ch01_s06.title = Viaja a Seiryu City
 wt.ch01_s06.goal = Asuka City ya está abierta. Cuando estés listo, toma la East Station hasta el East Sector y habla con el Seiryu Leader en Seiryu City.
@@ -74,11 +76,247 @@ wt.ch01_s06.help = El Seiryu Leader te pone a prueba en un combate y luego te da
 
 wt.ch01_x01.title = Caras nuevas en Asuka
 wt.ch01_x01.goal = Opcional. A partir de este paso, varios edificios de Asuka City tienen gente nueva dentro.
-wt.ch01_x01.help = Echa un vistazo al Digimon Lab, al Inn (las dos plantas), al Junk Shop, a Lamb Chop y a El Dorado. TODO(verify): qué ofrece cada persona.
+wt.ch01_x01.help = Echa un vistazo al Digimon Lab, al Inn (las dos plantas), al Junk Shop, a Lamb Chop y a El Dorado.
+
+# ---------------------------------------------------------------- chapter 2
+wt.ch02.title = El camino del sur
+
+wt.ch02_s01.title = East Station
+wt.ch02_s01.goal = Seiryu City ya queda atrás. Ve a la East Station, en el East Sector: allí hay una escena.
+wt.ch02_s01.help = La escena de la East Station es todo el paso. Al terminar, la historia avanza y te envía a la South Station.
+
+wt.ch02_s02.title = South Station
+wt.ch02_s02.goal = La siguiente parada es la South Station, en el South Sector. Al llegar hay una escena corta.
+wt.ch02_s02.help = La escena es todo el paso. Lleva la historia hasta la Jungle Grave.
+
+wt.ch02_s03.title = Contra Zanbamon
+wt.ch02_s03.goal = Ve a la Jungle Grave, en el South Sector, y habla con Zanbamon. Después hay un combate.
+wt.ch02_s03.help = La charla con Zanbamon lleva a un combate. Tras ganar, se reproduce una segunda escena con Zanbamon que hace avanzar la historia.
+
+wt.ch02_s04.title = Shaman House
+wt.ch02_s04.goal = Busca el Swamp Inn y la Shaman House en el South Sector. Voice y Sepikmon están en la Shaman House.
+wt.ch02_s04.help = Habla primero con la persona del Swamp Inn. Solo después se reproduce en la Shaman House la escena con Voice y Sepikmon.
+
+wt.ch02_s05.title = Pasar la voz
+wt.ch02_s05.goal = Tienes que hablar por turnos con varias personas del East Sector y de Asuka City. Empieza en las Protocol Ruins, en el East Sector.
+wt.ch02_s05.help = El orden es: las Protocol Ruins, luego el Asuka Bridge y después las calles junto a la Cargo Tower, en el Central Sector. Cada persona te habla solo después de la anterior. La última charla permite que empiece la escena del Divermon's Lake.
+
+wt.ch02_s06.title = Divermon's Lake
+wt.ch02_s06.goal = Ve al Divermon's Lake, en el East Sector. Allí te espera una escena con Man y Nick.
+wt.ch02_s06.help = Habla con la persona que ahora está junto al lago para iniciar la escena con Man y Nick. Hace avanzar la historia.
+
+wt.ch02_s07.title = Habla en Central Sector
+wt.ch02_s07.goal = De vuelta en Asuka City, habla con la persona de las calles del Central Sector, junto a la Cargo Tower.
+wt.ch02_s07.help = Esta persona solo aparece ahora. Hay que hablar con ella antes de que las Asuka Sewers te den lo que necesitas.
+
+wt.ch02_s08.title = Objeto de las Sewers
+wt.ch02_s08.goal = Alguien en las Asuka Sewers tiene un objeto para ti. Ve a recogerlo.
+wt.ch02_s08.help = Cuando termines la charla del Central Sector, habla con el personaje de las Asuka Sewers que te da el objeto. Lo necesitas para la Shaman House.
+
+wt.ch02_s09.title = Otra vez Shaman House
+wt.ch02_s09.goal = Con el objeto, vuelve a la Shaman House, en el South Sector, y habla con Sepikmon.
+wt.ch02_s09.help = La escena con Sepikmon te da la Smelly Herb y hace avanzar la historia. Solo empieza cuando tienes el objeto de las Sewers.
+
+wt.ch02_s10.title = El Suzaku Leader
+wt.ch02_s10.goal = Ve a la Suzaku Hall de Suzaku City y habla con el Suzaku Leader. Después hay un combate.
+wt.ch02_s10.help = La charla lleva a un combate contra el Suzaku Leader. Gánalo para conseguir la Suzaku Badge; una segunda escena hace avanzar la historia.
+# ---------------------------------------------------------------- chapter 3
+wt.ch03.title = De nuevo Asuka
+
+wt.ch03_s01.title = De vuelta al Main Lobby
+wt.ch03_s01.goal = Vuelve al Main Lobby de Asuka City. Kail y mucha otra gente están allí.
+wt.ch03_s01.help = Se reproduce una larga escena de grupo y después una con Kail. Juntas hacen avanzar la historia.
+
+wt.ch03_s02.title = Underground Path
+wt.ch03_s02.goal = Kail te espera en el Underground Path de Asuka City.
+wt.ch03_s02.help = Al Underground Path se llega desde las calles del Central Sector. La escena con Kail hace avanzar la historia.
+
+wt.ch03_s03.title = Master Room
+wt.ch03_s03.goal = Ve a la Master Room de Asuka City. Kail, el Game Master y el DO Guard están allí.
+wt.ch03_s03.help = Juega primero esta escena. La escena con Kail en el Main Lobby solo hace avanzar la historia cuando ya has visto esta.
+
+wt.ch03_s04.title = Kail en Main Lobby
+wt.ch03_s04.goal = Vuelve al Main Lobby de Asuka City y habla con Kail.
+wt.ch03_s04.help = La escena con Kail hace avanzar la historia. Antes tiene que haber ocurrido la escena de la Master Room.
+
+wt.ch03_s05.title = Qing Long Chief
+wt.ch03_s05.goal = Ve al Reliability Spot, en el South Sector, donde te recibe el Qing Long Chief.
+wt.ch03_s05.help = La escena de ese lugar es todo el paso. Recibes la DE Sincerity y la historia avanza.
+# ---------------------------------------------------------------- chapter 4
+wt.ch04.title = Byakko City
+
+wt.ch04_s01.title = Underground Cave
+wt.ch04_s01.goal = Ve a la Underground Cave de Byakko City. Al llegar se reproduce una escena.
+wt.ch04_s01.help = La escena es todo el paso. Lleva la historia hasta el Byakko Leader.
+
+wt.ch04_s02.title = El Byakko Leader
+wt.ch04_s02.goal = Ve a la Mirage Room, en el West Sector, y habla con el Byakko Leader. Después hay un combate.
+wt.ch04_s02.help = La charla lleva a un combate. Gánalo para conseguir la Byakko Badge; una segunda escena hace avanzar la historia.
+
+wt.ch04_s03.title = Lucha: HiAndromon
+wt.ch04_s03.goal = Ve a la Operation Room, en el West Sector, y habla con HiAndromon. Después hay un combate.
+wt.ch04_s03.help = Gana el combate contra HiAndromon para conseguir el Rusty Rifle. Después la historia avanza.
+# ---------------------------------------------------------------- chapter 5
+wt.ch05.title = Los rebeldes
+
+wt.ch05_s01.title = En las Sewers
+wt.ch05_s01.goal = Ve a las Sewers del West Sector. WaruMonzaemon y Lisa están allí, y después hay un combate.
+wt.ch05_s01.help = La primera escena lleva a un combate. Tras ganar, una escena corta con Lisa, Numemon y Lucky Mouse hace avanzar la historia.
+
+wt.ch05_s02.title = La Secret Room
+wt.ch05_s02.goal = La Secret Room es un escondite junto a las Sewers del West Sector. Ve allí: hay un combate.
+wt.ch05_s02.help = Una escena con Lucky Mouse, Lisa, Kail, General y Attacker lleva a un combate. Después, una escena con Attacker, Lisa, Kail y Kurt hace avanzar la historia.
+
+wt.ch05_s03.title = Suzaku UG Lake
+wt.ch05_s03.goal = Vuelve a la Secret Room. La escena de allí te envía al Suzaku UG Lake, en el South Sector.
+wt.ch05_s03.help = Tras la escena con Kail, Kurt y Lisa en la Secret Room, te espera una escena en el Suzaku UG Lake. Visita el lago y vuelve a la Secret Room.
+
+wt.ch05_s04.title = Otra vez Secret Room
+wt.ch05_s04.goal = Vuelve a la Secret Room, en el West Sector.
+wt.ch05_s04.help = Lisa, Keith, Nick y Kail están allí. La escena hace avanzar la historia.
+
+wt.ch05_s05.title = Contra Datamon
+wt.ch05_s05.goal = Ve a la Control Room de Asuka City y habla con Datamon. Hay un combate.
+wt.ch05_s05.help = Datamon lucha contra ti; después te da el Rusty Glove. Otra escena con Datamon hace avanzar la historia.
+
+wt.ch05_s06.title = Otra vez Master Room
+wt.ch05_s06.goal = Ve a la Master Room de Asuka City. Allí se reproducen dos escenas.
+wt.ch05_s06.help = Las dos escenas se reproducen una tras otra. La segunda hace avanzar la historia.
+
+wt.ch05_s07.title = A.o.A HQ
+wt.ch05_s07.goal = Ve al A.o.A Headquarters de Asuka City. Unos guardias te cierran el paso y hay dos combates.
+wt.ch05_s07.help = Primero vienen Guard A, Guard B y Guard C, y luego el Game Master. Tras ganar ambos combates, la historia puede seguir en el Main Lobby.
+
+wt.ch05_s08.title = Habla con Teddy
+wt.ch05_s08.goal = Vuelve al Main Lobby de Asuka City y habla con Teddy.
+wt.ch05_s08.help = La escena con Teddy hace avanzar la historia.
+# ---------------------------------------------------------------- chapter 6
+wt.ch06.title = Byakko y Suzaku
+
+wt.ch06_s01.title = El General
+wt.ch06_s01.goal = Vuelve a la Underground Cave de Byakko City. El General te espera allí.
+wt.ch06_s01.help = La escena con el General es todo el paso. Hace avanzar la historia.
+
+wt.ch06_s02.title = Habla con Patamon
+wt.ch06_s02.goal = Ve a la Suzaku Hall de Suzaku City y conoce a Patamon.
+wt.ch06_s02.help = La escena con Patamon es todo el paso. Hace avanzar la historia.
+
+wt.ch06_s03.title = Bug Maze Pit
+wt.ch06_s03.goal = Ve a la Bug Maze Pit, en el Network Break. Allí hay un combate.
+wt.ch06_s03.help = En el foso empieza un combate. Tras ganar, se reproduce una última escena y la historia pasa al servidor Amaterasu.
+# ---------------------------------------------------------------- chapter 7
+wt.ch07.title = Servidor Amaterasu
+
+wt.ch07_s01.title = Qing Long Chief
+wt.ch07_s01.goal = Ve a Qing Long City, en el East Sector, ahora en el servidor Amaterasu. El Qing Long Chief está allí y después hay un combate.
+wt.ch07_s01.help = Gana el combate para conseguir el Blue ID Pass. Una última escena hace avanzar la historia.
+
+wt.ch07_s02.title = Zhu Que Hall
+wt.ch07_s02.goal = Ve a la Zhu Que Hall de Zhu Que City. Allí hay un combate.
+wt.ch07_s02.help = Una escena lleva a un combate. Tras ganar, una última escena te da el Red ID Pass y hace avanzar la historia.
+
+wt.ch07_s03.title = Zhu Que UG Lake
+wt.ch07_s03.goal = Ve al Zhu Que UG Lake, en el South Sector. Allí se reproduce una escena.
+wt.ch07_s03.help = La escena es todo el paso. Consigues la DE Knowledge y la historia avanza.
+# ---------------------------------------------------------------- chapter 8
+wt.ch08.title = North Sector
+
+wt.ch08_s01.title = El Genbu Leader
+wt.ch08_s01.goal = Ve a la Battle Gate, en el North Sector, y habla con el Genbu Leader. Después hay un combate.
+wt.ch08_s01.help = Gana el combate para conseguir la Genbu Badge. Una segunda escena hace avanzar la historia.
+
+wt.ch08_s02.title = Chamber Room
+wt.ch08_s02.goal = Ve a la Chamber Room, en el North Sector, y habla con el Chamber Officer.
+wt.ch08_s02.help = La escena con el Chamber Officer hace avanzar la historia.
+
+wt.ch08_s03.title = Puerta al mundo real
+wt.ch08_s03.goal = La Chamber Room tiene puertas a otros lugares. Usa la del mundo real y ve a Kusanagi City.
+wt.ch08_s03.help = El viaje al mundo real forma parte de este paso. Una escena en Kusanagi City debe ocurrir antes de que la de la Chamber Room termine el paso. La otra puerta lleva a la Ice Dungeon.
+
+wt.ch08_s04.title = Otra vez Chamber Room
+wt.ch08_s04.goal = Vuelve a la Chamber Room, en el North Sector.
+wt.ch08_s04.help = Una última escena en la Chamber Room hace avanzar la historia.
+
+wt.ch08_s05.title = Master Room
+wt.ch08_s05.goal = Ve a la Master Room de Asuka City. Lisa, Teddy, Keith y Nick están allí.
+wt.ch08_s05.help = La primera escena de allí fija el siguiente encargo: la Prison Tower.
+
+wt.ch08_s06.title = Prison Tower
+wt.ch08_s06.goal = Ve a la Prison Tower de Asuka City. Lisa, el Game Master y Teddy están implicados.
+wt.ch08_s06.help = Las escenas de la Prison Tower deben ocurrir antes de que la de la Master Room pueda hacer avanzar la historia.
+
+wt.ch08_s07.title = Otra vez Master Room
+wt.ch08_s07.goal = Vuelve a la Master Room de Asuka City.
+wt.ch08_s07.help = La última escena de allí, con Lisa, Nick, Keith y Teddy, hace avanzar la historia.
+# ---------------------------------------------------------------- chapter 9
+wt.ch09.title = Dos pases ID más
+
+wt.ch09_s01.title = White ID Pass
+wt.ch09_s01.goal = Ve al Bai Hu Dome de Bai Hu City. Allí hay un combate.
+wt.ch09_s01.help = Una escena lleva a un combate. Tras ganar, una última escena te da el White ID Pass y hace avanzar la historia.
+
+wt.ch09_s02.title = Black ID Pass
+wt.ch09_s02.goal = Ve a la Battle Gate, en el North Sector, en el servidor Amaterasu. Allí hay un combate.
+wt.ch09_s02.help = Una escena lleva a un combate. Tras ganar, una última escena te da el Black ID Pass y hace avanzar la historia.
+
+wt.ch09_s03.title = Amaterasu Bridge
+wt.ch09_s03.goal = Ve al Amaterasu Bridge, en el Central Sector. Lisa, Teddy y Nick están implicados.
+wt.ch09_s03.help = Primero se reproduce una escena con la Resistance. Una segunda escena con Teddy y Nick hace avanzar la historia.
+# ---------------------------------------------------------------- chapter 10
+wt.ch10.title = Spy Satellite
+
+wt.ch10_s01.title = Escenas en A.o.A HQ
+wt.ch10_s01.goal = Ve al A.o.A Headquarters de Amaterasu City. Allí se reproducen varias escenas seguidas.
+wt.ch10_s01.help = Entre las escenas hay un combate contra el Chief Officer. Cuando se ha reproducido la última, la siguiente parada es la Login Room.
+
+wt.ch10_s02.title = Login Room
+wt.ch10_s02.goal = Ve a la Login Room de Amaterasu City. Teddy, Kail y Kurt están allí.
+wt.ch10_s02.help = La escena con Teddy, Kail y Kurt hace avanzar la historia.
+
+wt.ch10_s03.title = Otra vez A.o.A HQ
+wt.ch10_s03.goal = Ve al A.o.A Headquarters de Asuka City.
+wt.ch10_s03.help = Al llegar se reproduce una escena. Hace avanzar la historia.
+
+wt.ch10_s04.title = A.o.A HQ otra vez
+wt.ch10_s04.goal = Ve al A.o.A Headquarters de Amaterasu City.
+wt.ch10_s04.help = Allí se reproducen dos escenas, una tras otra. La segunda hace avanzar la historia.
+
+wt.ch10_s05.title = Spy Satellite
+wt.ch10_s05.goal = Al Spy Satellite se llega desde el A.o.A Headquarters de Amaterasu City. Ve a su primera planta, el Gunslinger 1F.
+wt.ch10_s05.help = Los bloques de esta planta se abren con paneles. Una escena en la planta hace avanzar la historia.
+
+wt.ch10_s06.title = Lord Megadeath
+wt.ch10_s06.goal = Ve a la Control Room del Spy Satellite. Allí te espera un combate contra Lord Megadeath.
+wt.ch10_s06.help = Una escena lleva al combate. Tras ganar, la siguiente escena de la misma sala inicia el último combate de esta parte.
+
+wt.ch10_s07.title = Snatchmon
+wt.ch10_s07.goal = Lord Megadeath está vencido. Snatchmon espera en la misma Control Room.
+wt.ch10_s07.help = La escena con Snatchmon lleva a un combate y hace pasar la historia a la segunda mitad del juego.
 
 # ---------------------------------------------------------------- areas
 wt.area_kusanagi.title = Kusanagi City
-wt.area_kusanagi.help = Kusanagi City es el mundo real, donde empieza la historia. Aquí solo importan dos lugares: la esquina de la calle y el Online Center.
+wt.area_kusanagi.help = Kusanagi City es el mundo real, donde empieza la historia. Aquí solo importan dos lugares: la esquina de la calle y el Online Center. Más adelante la historia vuelve aquí una vez, por una puerta de la Chamber Room.
 
 wt.area_asuka.title = Asuka City
-wt.area_asuka.help = Asuka City es la primera ciudad. En orden: la Login Room, el Main Lobby (compañero inicial), y luego el Central Sector, donde espera Genji. Cuando termines con Genji, las tiendas y los edificios se llenan y se abre el camino hacia la East Station.
+wt.area_asuka.help = Asuka City es la primera ciudad y la historia vuelve a ella una y otra vez. Al principio: la Login Room, el Main Lobby (compañero inicial) y luego el Central Sector, donde espera Genji. Las escenas posteriores usan el Underground Path, las Asuka Sewers, la Master Room, la Control Room, la Prison Tower y el A.o.A Headquarters.
+
+wt.area_east.title = East Sector
+wt.area_east.help = El East Sector incluye Seiryu City, la East Station, las Protocol Ruins y el Divermon's Lake. En el servidor Amaterasu incluye también Qing Long City, donde te combate el Qing Long Chief.
+
+wt.area_south.title = South Sector
+wt.area_south.help = El South Sector incluye la South Station, la Jungle Grave, el Swamp Inn, la Shaman House y el Reliability Spot, donde te recibe el Qing Long Chief. Aquí están también el Suzaku UG Lake y, en el servidor Amaterasu, el Zhu Que UG Lake.
+
+wt.area_suzaku.title = Suzaku y Zhu Que
+wt.area_suzaku.help = Suzaku City, llamada Zhu Que City en el servidor Amaterasu, tiene la Suzaku Hall (allí Zhu Que Hall). En el primer servidor espera allí el Suzaku Leader y Patamon aparece más tarde. En el servidor Amaterasu la Zhu Que Hall es el escenario de un combate que da el Red ID Pass.
+
+wt.area_west.title = West Sector
+wt.area_west.help = Byakko City y el West Sector van en este orden: la Underground Cave, la Mirage Room (Byakko Leader), la Operation Room (HiAndromon), luego las Sewers y la Secret Room, el escondite de los rebeldes junto a las Sewers. La Underground Cave se vuelve a visitar más tarde.
+
+wt.area_north.title = North Sector
+wt.area_north.help = El North Sector tiene la Battle Gate, donde espera el Genbu Leader, y la Chamber Room, cuyas puertas llevan al mundo real y a la Ice Dungeon. El servidor Amaterasu tiene su propia Battle Gate, donde se gana el Black ID Pass.
+
+wt.area_amaterasu.title = Servidor Amaterasu
+wt.area_amaterasu.help = El servidor Amaterasu repite muchos lugares del primero. Aquí la guía usa el Bai Hu Dome, el Amaterasu Bridge, la Login Room y el A.o.A Headquarters de Amaterasu City. Los demás lugares de Amaterasu aparecen bajo su propio sector.
+
+wt.area_network.title = Network Break
+wt.area_network.help = El Network Break tiene la Bug Maze Pit. Al Spy Satellite se llega desde el A.o.A Headquarters de Amaterasu City: primero el Gunslinger 1F, cuyos bloques se abren con paneles, y luego la Control Room, donde esperan Lord Megadeath y Snatchmon. Así termina la primera mitad.

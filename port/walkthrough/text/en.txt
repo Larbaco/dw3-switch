@@ -1,8 +1,10 @@
-# DW3NX walkthrough, English master text, phase 1 (P6.35).
+# DW3NX walkthrough, English master text, first half of the main story (P6.35).
 # DRAFT, OWNER REVIEW PENDING. Nothing in this file may ship before the owner
 # approves it (docs/P6.35_WALKTHROUGH.md, section 7). Original writing from the
-# decomp's stage scripts (progress values confirmed by PC replay); not taken
-# from any external guide. Lines marked TODO(verify) are not yet played through.
+# decomp's stage scripts and flags (progress values and flags checked against
+# the decomp by tools/tests/test_walkthrough.py, resolver lines confirmed by PC
+# replay); not taken from any external guide. A claim that cannot be confirmed
+# from the decomp is marked TODO(verify) and the row is not shipped; none is.
 #
 # Format (shared with docs/P6.30_HELP.md section 4):
 #   key = value      one entry per line, UTF-8, '#' starts a comment
@@ -38,9 +40,9 @@ wt.ui.str.optional = Optional
 wt.ui.str.notreached = Not reached yet
 wt.ui.str.area = Area
 wt.ui.str.more = More chapters coming
-wt.ui.str.pick = Pick a step to read.
-wt.ui.str.unrecognised = Step not recognised. Pick one to read.
-wt.ui.str.browse = No game loaded. Pick a step to read.
+wt.ui.str.pick = Pick a chapter to read.
+wt.ui.str.unrecognised = Step not recognised. Pick a chapter to read.
+wt.ui.str.browse = No game loaded. Pick a chapter to read.
 wt.ui.str.closed = The answer is hidden. If you are stuck, use the Answer button below.
 wt.ui.str.ahead = You have not reached this step yet. Reading ahead can spoil the story.
 wt.ui.str.ask = This shows how to continue. Show it?
@@ -49,12 +51,14 @@ wt.ui.str.yes = Yes
 wt.ui.str.no = No
 wt.ui.str.answer_hdr = The answer
 wt.ui.str.ask_hdr = Show the answer?
-wt.ui.str.more_body = The walkthrough covers the first chapter for now. More chapters will come in later versions.
+wt.ui.str.more_body = The walkthrough covers the first half of the game for now. More chapters will come in later versions.
+wt.ui.str.chapter = Chapter
+wt.ui.str.curchap = Current chapter
 wt.ui.str.area_strip = Spoiler: the whole area
 wt.ui.str.ahead_strip = Not reached yet: may spoil
 
 # ---------------------------------------------------------------- chapter 1
-wt.ch01.title = Chapter 1: Getting started
+wt.ch01.title = Getting started
 
 wt.ch01_s01.title = Visit the Online Center
 wt.ch01_s01.goal = Junior is in Kusanagi City, the real world, with his friends. Head for the Online Center to sign up for the game.
@@ -62,7 +66,7 @@ wt.ch01_s01.help = The Online Center is close to the street corner where the sto
 
 wt.ch01_s02.title = Log in to Asuka City
 wt.ch01_s02.goal = You are signed up. Enter the game world and report to the Login Room in Asuka City.
-wt.ch01_s02.help = After the Online Center, the Chamber Room takes Junior into the game. In the Login Room of Asuka City, talk to the Account Clerk to finish logging in. TODO(verify): the walk from the Chamber Room.
+wt.ch01_s02.help = After the Online Center, the Chamber Room takes Junior into the game. In the Login Room of Asuka City, talk to the Account Clerk to finish logging in.
 
 wt.ch01_s03.title = Get your first partner
 wt.ch01_s03.goal = Go to the Main Lobby in Asuka City and find the Tamer Service. It hands out your first partner.
@@ -74,7 +78,7 @@ wt.ch01_s04.help = Speak to Genji where the Central Sector meets the bridge. Aft
 
 wt.ch01_s05.title = Finish up with Genji
 wt.ch01_s05.goal = Genji's battle is over, but your business with him is not. The talk goes on in the same street.
-wt.ch01_s05.help = The follow-up scene plays when the Central Sector loads again after the battle. If nothing happens, step out of the street and come back in. This moves the story on to the next step. TODO(verify): the exact trigger.
+wt.ch01_s05.help = The follow-up scene plays when the Central Sector loads again after the battle. If nothing happens, step out of the street and come back in. This moves the story on to the next step.
 
 wt.ch01_s06.title = Travel to Seiryu City
 wt.ch01_s06.goal = Asuka City is open now. When you are ready, take the East Station to the East Sector and speak to the Seiryu Leader in Seiryu City.
@@ -82,11 +86,247 @@ wt.ch01_s06.help = The Seiryu Leader tests you in a battle, then gives you a Sil
 
 wt.ch01_x01.title = New faces around Asuka
 wt.ch01_x01.goal = Optional. From this step on, several buildings in Asuka City have new people inside.
-wt.ch01_x01.help = Look into the Digimon Lab, the Inn (both floors), the Junk Shop, Lamb Chop and El Dorado. TODO(verify): what each person offers.
+wt.ch01_x01.help = Look into the Digimon Lab, the Inn (both floors), the Junk Shop, Lamb Chop and El Dorado.
+
+# ---------------------------------------------------------------- chapter 2
+wt.ch02.title = The southern road
+
+wt.ch02_s01.title = East Station
+wt.ch02_s01.goal = Seiryu City is behind you. Go to the East Station in the East Sector; a scene plays there.
+wt.ch02_s01.help = The scene at the East Station is the whole step. When it ends, the story moves on and sends you to the South Station.
+
+wt.ch02_s02.title = South Station
+wt.ch02_s02.goal = Next stop is the South Station in the South Sector. A short scene plays when you arrive.
+wt.ch02_s02.help = The scene is the whole step. It moves the story on to the Jungle Grave.
+
+wt.ch02_s03.title = Face Zanbamon
+wt.ch02_s03.goal = Go to the Jungle Grave in the South Sector and speak to Zanbamon. A battle follows.
+wt.ch02_s03.help = The talk with Zanbamon leads into a battle. After you win, a second scene with Zanbamon plays and moves the story on.
+
+wt.ch02_s04.title = Shaman House
+wt.ch02_s04.goal = Look for the Swamp Inn and the Shaman House in the South Sector. Voice and Sepikmon are at the Shaman House.
+wt.ch02_s04.help = Talk to the person at the Swamp Inn first. Only after that does the scene with Voice and Sepikmon play at the Shaman House.
+
+wt.ch02_s05.title = Pass the word along
+wt.ch02_s05.goal = Several people in the East Sector and in Asuka City have to be spoken to in turn. Start at the Protocol Ruins in the East Sector.
+wt.ch02_s05.help = The order is: the Protocol Ruins, then the Asuka Bridge, then the streets by the Cargo Tower in the Central Sector. Each person talks to you only after the one before. The last talk lets the scene at Divermon's Lake start.
+
+wt.ch02_s06.title = Divermon's Lake
+wt.ch02_s06.goal = Go to Divermon's Lake in the East Sector. A scene with Man and Nick waits there.
+wt.ch02_s06.help = Talk to the person who now stands by the lake to start the scene with Man and Nick. It moves the story on.
+
+wt.ch02_s07.title = Talk in Central Sector
+wt.ch02_s07.goal = Back in Asuka City, speak to the person in the streets of the Central Sector by the Cargo Tower.
+wt.ch02_s07.help = This person only appears now. The talk is needed before the Asuka Sewers give you what you need.
+
+wt.ch02_s08.title = Item from the Sewers
+wt.ch02_s08.goal = Someone in the Asuka Sewers has an item for you. Go and get it.
+wt.ch02_s08.help = Once the Central Sector talk is done, talk to the character in the Asuka Sewers who gives you the item. You need it for the Shaman House.
+
+wt.ch02_s09.title = Shaman House again
+wt.ch02_s09.goal = With the item, go back to the Shaman House in the South Sector and speak to Sepikmon.
+wt.ch02_s09.help = The scene with Sepikmon gives you the Smelly Herb and moves the story on. It only starts once you hold the item from the Sewers.
+
+wt.ch02_s10.title = The Suzaku Leader
+wt.ch02_s10.goal = Go to Suzaku Hall in Suzaku City and speak to the Suzaku Leader. A battle follows.
+wt.ch02_s10.help = The talk leads into a battle with the Suzaku Leader. Win it to get the Suzaku Badge; a second scene then moves the story on.
+# ---------------------------------------------------------------- chapter 3
+wt.ch03.title = Asuka City again
+
+wt.ch03_s01.title = Back to Main Lobby
+wt.ch03_s01.goal = Return to the Main Lobby in Asuka City. Kail and many other people are there.
+wt.ch03_s01.help = A long group scene plays, and a scene with Kail follows it. Together they move the story on.
+
+wt.ch03_s02.title = Underground Path
+wt.ch03_s02.goal = Kail waits for you in the Underground Path in Asuka City.
+wt.ch03_s02.help = The Underground Path is reached from the streets of the Central Sector. The scene with Kail moves the story on.
+
+wt.ch03_s03.title = Master Room
+wt.ch03_s03.goal = Go to the Master Room in Asuka City. Kail, the Game Master and the DO Guard are there.
+wt.ch03_s03.help = Play this scene first. The scene with Kail in the Main Lobby only moves the story on once this one has been seen.
+
+wt.ch03_s04.title = Kail in Main Lobby
+wt.ch03_s04.goal = Go back to the Main Lobby in Asuka City and speak to Kail.
+wt.ch03_s04.help = The scene with Kail moves the story on. It needs the Master Room scene to have happened first.
+
+wt.ch03_s05.title = Qing Long Chief
+wt.ch03_s05.goal = Go to the Reliability Spot in the South Sector, where the Qing Long Chief welcomes you.
+wt.ch03_s05.help = The scene there is the whole step. You get the DE Sincerity, and the story moves on.
+# ---------------------------------------------------------------- chapter 4
+wt.ch04.title = Byakko City
+
+wt.ch04_s01.title = Underground Cave
+wt.ch04_s01.goal = Go to the Underground Cave in Byakko City. A scene plays when you arrive.
+wt.ch04_s01.help = The scene is the whole step. It moves the story on to the Byakko Leader.
+
+wt.ch04_s02.title = The Byakko Leader
+wt.ch04_s02.goal = Go to the Mirage Room in the West Sector and speak to the Byakko Leader. A battle follows.
+wt.ch04_s02.help = The talk leads into a battle. Win it to get the Byakko Badge; a second scene then moves the story on.
+
+wt.ch04_s03.title = Fight HiAndromon
+wt.ch04_s03.goal = Go to the Operation Room in the West Sector and speak to HiAndromon. A battle follows.
+wt.ch04_s03.help = Win the battle with HiAndromon to get the Rusty Rifle. The story moves on afterwards.
+# ---------------------------------------------------------------- chapter 5
+wt.ch05.title = West Sector rebels
+
+wt.ch05_s01.title = Down in the Sewers
+wt.ch05_s01.goal = Go to the Sewers in the West Sector. WaruMonzaemon and Lisa are there, and a battle follows.
+wt.ch05_s01.help = The first scene leads into a battle. After you win, a short scene with Lisa, Numemon and Lucky Mouse moves the story on.
+
+wt.ch05_s02.title = Find Secret Room
+wt.ch05_s02.goal = The Secret Room is a hideout off the Sewers in the West Sector. Go there; a battle takes place.
+wt.ch05_s02.help = A scene with Lucky Mouse, Lisa, Kail, General and Attacker leads into a battle. Afterwards a scene with Attacker, Lisa, Kail and Kurt moves the story on.
+
+wt.ch05_s03.title = Suzaku UG Lake
+wt.ch05_s03.goal = Go to the Secret Room again. The scene there points you to the Suzaku UG Lake in the South Sector.
+wt.ch05_s03.help = After the scene with Kail, Kurt and Lisa in the Secret Room, a scene is waiting at the Suzaku UG Lake. Visit the lake, then return to the Secret Room.
+
+wt.ch05_s04.title = Secret Room again
+wt.ch05_s04.goal = Go back to the Secret Room in the West Sector.
+wt.ch05_s04.help = Lisa, Keith, Nick and Kail are there. The scene moves the story on.
+
+wt.ch05_s05.title = Face Datamon
+wt.ch05_s05.goal = Go to the Control Room in Asuka City and speak to Datamon. A battle takes place.
+wt.ch05_s05.help = Datamon fights you; afterwards he gives you the Rusty Glove. Another scene with Datamon moves the story on.
+
+wt.ch05_s06.title = Master Room again
+wt.ch05_s06.goal = Go to the Master Room in Asuka City. Two scenes play there.
+wt.ch05_s06.help = The two scenes play one after the other. The second one moves the story on.
+
+wt.ch05_s07.title = A.o.A HQ
+wt.ch05_s07.goal = Go to the A.o.A Headquarters in Asuka City. Guards stand in the way, and two battles follow.
+wt.ch05_s07.help = Guard A, Guard B and Guard C come first, then the Game Master. When both battles are won, the story can go on in the Main Lobby.
+
+wt.ch05_s08.title = Talk with Teddy
+wt.ch05_s08.goal = Return to the Main Lobby in Asuka City and speak to Teddy.
+wt.ch05_s08.help = The scene with Teddy moves the story on.
+# ---------------------------------------------------------------- chapter 6
+wt.ch06.title = Byakko and Suzaku
+
+wt.ch06_s01.title = See the General
+wt.ch06_s01.goal = Go back to the Underground Cave in Byakko City. The General is waiting there.
+wt.ch06_s01.help = The scene with the General is the whole step. It moves the story on.
+
+wt.ch06_s02.title = Talk with Patamon
+wt.ch06_s02.goal = Go to Suzaku Hall in Suzaku City and meet Patamon.
+wt.ch06_s02.help = The scene with Patamon is the whole step. It moves the story on.
+
+wt.ch06_s03.title = Bug Maze Pit
+wt.ch06_s03.goal = Go to the Bug Maze Pit in the Network Break. A battle takes place there.
+wt.ch06_s03.help = A battle starts in the pit. After you win, a last scene plays and the story moves on to the Amaterasu server.
+# ---------------------------------------------------------------- chapter 7
+wt.ch07.title = Amaterasu server
+
+wt.ch07_s01.title = Qing Long Chief
+wt.ch07_s01.goal = Go to Qing Long City in the East Sector, now on the Amaterasu server. The Qing Long Chief is there, and a battle follows.
+wt.ch07_s01.help = Win the battle to get the Blue ID Pass. A last scene then moves the story on.
+
+wt.ch07_s02.title = Zhu Que Hall
+wt.ch07_s02.goal = Go to Zhu Que Hall in Zhu Que City. A battle takes place there.
+wt.ch07_s02.help = A scene leads into a battle. After you win, a last scene gives you the Red ID Pass and moves the story on.
+
+wt.ch07_s03.title = Zhu Que UG Lake
+wt.ch07_s03.goal = Go to the Zhu Que UG Lake in the South Sector. A scene plays there.
+wt.ch07_s03.help = The scene is the whole step. You get the DE Knowledge, and the story moves on.
+# ---------------------------------------------------------------- chapter 8
+wt.ch08.title = North Sector
+
+wt.ch08_s01.title = The Genbu Leader
+wt.ch08_s01.goal = Go to the Battle Gate in the North Sector and speak to the Genbu Leader. A battle follows.
+wt.ch08_s01.help = Win the battle to get the Genbu Badge. A second scene then moves the story on.
+
+wt.ch08_s02.title = Chamber Room
+wt.ch08_s02.goal = Go to the Chamber Room in the North Sector and speak to the Chamber Officer.
+wt.ch08_s02.help = The scene with the Chamber Officer moves the story on.
+
+wt.ch08_s03.title = Gate to the real world
+wt.ch08_s03.goal = The Chamber Room has gates to other places. Use the one to the real world and go to Kusanagi City.
+wt.ch08_s03.help = The trip to the real world is part of this step. A scene in Kusanagi City has to play before the Chamber Room scene can finish the step. The other gate leads to the Ice Dungeon.
+
+wt.ch08_s04.title = Chamber Room again
+wt.ch08_s04.goal = Return to the Chamber Room in the North Sector.
+wt.ch08_s04.help = A last scene in the Chamber Room moves the story on.
+
+wt.ch08_s05.title = Master Room
+wt.ch08_s05.goal = Go to the Master Room in Asuka City. Lisa, Teddy, Keith and Nick are there.
+wt.ch08_s05.help = The first scene there sets the next errand: the Prison Tower.
+
+wt.ch08_s06.title = Prison Tower
+wt.ch08_s06.goal = Go to the Prison Tower in Asuka City. Lisa, the Game Master and Teddy are involved.
+wt.ch08_s06.help = The scenes in the Prison Tower have to play before the Master Room scene can move the story on.
+
+wt.ch08_s07.title = Master Room again
+wt.ch08_s07.goal = Return to the Master Room in Asuka City.
+wt.ch08_s07.help = The last scene there, with Lisa, Nick, Keith and Teddy, moves the story on.
+# ---------------------------------------------------------------- chapter 9
+wt.ch09.title = Two more ID passes
+
+wt.ch09_s01.title = White ID Pass
+wt.ch09_s01.goal = Go to the Bai Hu Dome in Bai Hu City. A battle takes place there.
+wt.ch09_s01.help = A scene leads into a battle. After you win, a last scene gives you the White ID Pass and moves the story on.
+
+wt.ch09_s02.title = Black ID Pass
+wt.ch09_s02.goal = Go to the Battle Gate in the North Sector, on the Amaterasu server. A battle takes place there.
+wt.ch09_s02.help = A scene leads into a battle. After you win, a last scene gives you the Black ID Pass and moves the story on.
+
+wt.ch09_s03.title = Amaterasu Bridge
+wt.ch09_s03.goal = Go to the Amaterasu Bridge in the Central Sector. Lisa, Teddy and Nick are involved.
+wt.ch09_s03.help = A scene with the Resistance plays first. A second scene with Teddy and Nick moves the story on.
+# ---------------------------------------------------------------- chapter 10
+wt.ch10.title = Spy Satellite
+
+wt.ch10_s01.title = A.o.A HQ scenes
+wt.ch10_s01.goal = Go to the A.o.A Headquarters in Amaterasu City. Several scenes play there in turn.
+wt.ch10_s01.help = The scenes include a battle with the Chief Officer. When the last of them has played, the next stop is the Login Room.
+
+wt.ch10_s02.title = Login Room
+wt.ch10_s02.goal = Go to the Login Room in Amaterasu City. Teddy, Kail and Kurt are there.
+wt.ch10_s02.help = The scene with Teddy, Kail and Kurt moves the story on.
+
+wt.ch10_s03.title = A.o.A HQ again
+wt.ch10_s03.goal = Go to the A.o.A Headquarters in Asuka City.
+wt.ch10_s03.help = A scene plays when you arrive. It moves the story on.
+
+wt.ch10_s04.title = A.o.A HQ once more
+wt.ch10_s04.goal = Go to the A.o.A Headquarters in Amaterasu City.
+wt.ch10_s04.help = Two scenes play there, one after the other. The second one moves the story on.
+
+wt.ch10_s05.title = Spy Satellite
+wt.ch10_s05.goal = The Spy Satellite is reached from the A.o.A Headquarters in Amaterasu City. Go to its first floor, the Gunslinger 1F.
+wt.ch10_s05.help = The blocks on this floor open from panels. A scene on the floor moves the story on.
+
+wt.ch10_s06.title = Lord Megadeath
+wt.ch10_s06.goal = Go to the Control Room in the Spy Satellite. A battle with Lord Megadeath waits there.
+wt.ch10_s06.help = A scene leads into the battle. When you win, the next scene in the same room starts the last fight of this part.
+
+wt.ch10_s07.title = Snatchmon
+wt.ch10_s07.goal = Lord Megadeath is beaten. Snatchmon waits in the same Control Room.
+wt.ch10_s07.help = The scene with Snatchmon leads into a battle and moves the story on to the second half of the game.
 
 # ---------------------------------------------------------------- areas
 wt.area_kusanagi.title = Kusanagi City
-wt.area_kusanagi.help = Kusanagi City is the real world, where the story starts. Only two places matter here: the street corner and the Online Center.
+wt.area_kusanagi.help = Kusanagi City is the real world, where the story starts. Only two places matter here: the street corner and the Online Center. The story comes back here once more, later, through a Chamber Room gate.
 
 wt.area_asuka.title = Asuka City
-wt.area_asuka.help = Asuka City is the first town. In order: the Login Room, the Main Lobby (starter partner), then the Central Sector, where Genji waits. Once Genji is done, the shops and buildings fill up, and the way to the East Station opens.
+wt.area_asuka.help = Asuka City is the first town and the story keeps coming back to it. At the start: the Login Room, the Main Lobby (starter partner), then the Central Sector, where Genji waits. Later scenes use the Underground Path, the Asuka Sewers, the Master Room, the Control Room, the Prison Tower and A.o.A Headquarters.
+
+wt.area_east.title = East Sector
+wt.area_east.help = The East Sector holds Seiryu City, the East Station, the Protocol Ruins and Divermon's Lake. On the Amaterasu server it also holds Qing Long City, where the Qing Long Chief fights you.
+
+wt.area_south.title = South Sector
+wt.area_south.help = The South Sector holds the South Station, the Jungle Grave, the Swamp Inn, the Shaman House and the Reliability Spot, where the Qing Long Chief welcomes you. The Suzaku UG Lake and, on the Amaterasu server, the Zhu Que UG Lake are here too.
+
+wt.area_suzaku.title = Suzaku and Zhu Que
+wt.area_suzaku.help = Suzaku City, called Zhu Que City on the Amaterasu server, has Suzaku Hall (Zhu Que Hall there). On the first server the Suzaku Leader waits there and Patamon turns up later. On the Amaterasu server Zhu Que Hall is the setting of a battle that gives the Red ID Pass.
+
+wt.area_west.title = West Sector
+wt.area_west.help = Byakko City and the West Sector come in this order: the Underground Cave, the Mirage Room (Byakko Leader), the Operation Room (HiAndromon), then the Sewers and the Secret Room, the rebels' hideout off the Sewers. The Underground Cave is visited again later.
+
+wt.area_north.title = North Sector
+wt.area_north.help = The North Sector has the Battle Gate, where the Genbu Leader waits, and the Chamber Room, whose gates lead to the real world and the Ice Dungeon. The Amaterasu server has its own Battle Gate, where the Black ID Pass is won.
+
+wt.area_amaterasu.title = Amaterasu server
+wt.area_amaterasu.help = The Amaterasu server repeats many places of the first server. Here the walkthrough uses the Bai Hu Dome, the Amaterasu Bridge, the Login Room and the A.o.A Headquarters of Amaterasu City. Other Amaterasu places are listed under their own sector.
+
+wt.area_network.title = Network Break
+wt.area_network.help = The Network Break has the Bug Maze Pit. The Spy Satellite is reached from the A.o.A Headquarters in Amaterasu City: first the Gunslinger 1F, whose blocks open from panels, then the Control Room, where Lord Megadeath and Snatchmon wait. That ends the first half.
