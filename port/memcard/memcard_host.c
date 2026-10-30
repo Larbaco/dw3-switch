@@ -1002,11 +1002,12 @@ static int read_whole(const char *path, uint8_t *buf, size_t cap, size_t *len) {
 }
 
 /* DW3_SAVE_STORE=0|1 wins; else `save_store=0|1` in <cfgdir>/port_options.cfg
- * (the last valid line wins; anything else is off). */
+ * (the last such line wins; a value that is not 0 or 1 reads as off and is
+ * logged). */
 int memcard_host_store_requested(const char *cfgdir) {
     const char *env = getenv("DW3_SAVE_STORE");
     char path[MEMCARD_PATH_MAX];
-    char text[4096];
+    char text[4200];
     size_t len = 0;
     size_t i = 0;
     int val = 0;
@@ -1028,11 +1029,19 @@ int memcard_host_store_requested(const char *cfgdir) {
 
         i += ll + 1;
         line[ll] = '\0';
-        if (ll > 0 && line[ll - 1] == '\r') {
-            line[ll - 1] = '\0';
+        while (ll > 0 && (line[ll - 1] == '\r' || line[ll - 1] == ' ' ||
+                          line[ll - 1] == '\t')) {
+            line[--ll] = '\0';
         }
         if (strncmp(line, "save_store=", 11) == 0) {
-            val = (line[11] == '1' && line[12] == '\0');
+            if ((line[11] == '0' || line[11] == '1') && line[12] == '\0') {
+                val = line[11] == '1';
+            } else {
+                val = 0;
+                fprintf(stderr,
+                        "dw3-store: save_store=%s is not valid (0 or 1): the store "
+                        "stays off\n", line + 11);
+            }
         }
     }
     return val;

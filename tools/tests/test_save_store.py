@@ -508,7 +508,10 @@ def test_option_in_the_cfg_file(env, tmp_path):
     r = env.run("us", "ensure:0", store=None, cfg=str(cfg))
     assert "store setup=0" in r.stdout and "dw3-store: on dir=" in r.stderr
     (cfg / "port_options.cfg").write_text("version=1\nsave_store=2\nend=1\n")  # invalid: off
-    assert "store setup=-1" in env.run("us", "ensure:0", store=None, cfg=str(cfg)).stdout
+    r = env.run("us", "ensure:0", store=None, cfg=str(cfg))
+    assert "store setup=-1" in r.stdout and "save_store=2 is not valid" in r.stderr
+    (cfg / "port_options.cfg").write_text("save_store=1 \r\n")                 # trailing blanks are fine
+    assert "store setup=0" in env.run("us", "ensure:0", store=None, cfg=str(cfg)).stdout
     (cfg / "port_options.cfg").write_text("save_store=1\nsave_store=0\n")       # last wins
     assert "store setup=-1" in env.run("us", "ensure:0", store=None, cfg=str(cfg)).stdout
     (cfg / "port_options.cfg").write_text("save_store=1\n")                    # env beats the file
