@@ -46,7 +46,7 @@ the field is the one of patch 0140 and the map of 0146 / 0147.
  char *getenv(const char *name);
  long strtol(const char *nptr, char **endptr, int base);
  #ifdef DW3_CHEATS
-@@ -607,6 +608,94 @@
+@@ -607,6 +608,95 @@
  }
  #endif
  
@@ -60,7 +60,8 @@ the field is the one of patch 0140 and the map of 0146 / 0147.
 +   (STSTATUS_createFieldMapRoot), and the view opens on it by itself. When the screen goes
 +   the field task is back in substate 1: the children run again and the port gives back the
 +   clocks, the roll sequence and the VRAM the Map screen used. Policy and logs:
-+   port/map_view/map_view.c. Nothing here runs unless the key goes down. */
++   port/map_view/map_view.c. Nothing happens unless the key goes down (the poll reads the pad
++   and a probe of the field's children and returns). */
 +Task *STSTATUS_createFieldMapRoot(void);
 +
 +static void portFieldMapProbe(FieldTask *task, FieldChildren *children, Dw3FieldMapProbe *probe) {
@@ -141,7 +142,7 @@ the field is the one of patch 0140 and the map of 0146 / 0147.
  static inline void openFieldMenu(FieldTask *task, FieldChildren *children) {
      if (FIELDSTG_state.menuOpen != 1 && FIELDSTG_state.busy == 0 && FIELDSTG_state.acting == 0) {
          do {
-@@ -1028,9 +1117,17 @@
+@@ -1028,9 +1118,17 @@
          case 0:
          default:
              openFieldMenu(task, children);
