@@ -94,6 +94,10 @@ class Scenario:
     # battle's excursion run takes the plain run's pictures a few frames later
     # and must match them; run the plain scenario with --update first.
     ref_map: tuple[tuple[str, str, str], ...] = ()
+    # P6.32 phase 7: with ref_from, these checkpoints still have a reference of this
+    # scenario's own (a picture that differs on purpose from the other scenario's, such
+    # as the map view's help line under another button layout); --update writes only them.
+    own_refs: tuple[str, ...] = ()
     # MOD map upscale: "synthetic" makes the runner write the synthetic map pack
     # (tools/mods/make_synthetic_pack.py, gradients, no game art) into the run's
     # config folder (`mods/`) before the first phase. PC only.
@@ -2866,12 +2870,196 @@ _add(_nintendo("eu-lang-cross-fr", "eu-nintendo-lang-cross-fr", "eu-nintendo-lan
                "Nintendo layout: the EU language select confirms with A, the logical Cross (patch "
                "0187, P9.8)"))
 
+# P6.32 phase 7 (no patch): the help line of the full-screen map view names the buttons the
+# way the player sees them (port/map_view/map_view_help.c). The footer follows the button
+# layout, a custom map and the phase 4 bindings: the PC prints the PS word of the position
+# that makes the button, the Switch the cap text or, with switch_glyphs=1, the glyph; the
+# words around them are in the language of the game's text. The PC never draws glyphs, so
+# `switch_glyphs=1` there still prints labels (`glyphs-pc`: bit-identical to the plain run);
+# the test aid DW3_MAP_HELP_SWITCH=1 (PC only, scrubbed) draws the line as the Switch does,
+# so a picture of the Switch's text and glyphs exists (`sw`, `sw-glyphs`). `mh-open` has no
+# bars and is the same in every variant (ref_from); `mh-help`, `mh-help-zoom` differ by design.
+#  map-help            PlayStation layout (the new references)
+#  nintendo-map-help   button_layout=nintendo: Circle is made by the Triangle position, Triangle by Cross
+#  custom-map-help     a custom map with L1 on ZL, R1 on ZR, L2 on L, R2 on R
+#  map-help-glyphs-pc  switch_glyphs=1 on the PC: the same labels, 0 px against map-help
+#  map-help-sw*        the Switch's line on the PC (aid): Nintendo text; Nintendo glyphs; custom glyphs
+#  eu-map-help-fr/de/it/es  the five-language words (fr, de also with glyphs under the aid)
+_HELP_HUD = ("mh-help", "mh-help-zoom")
+_HELP_PS = "0123456789"
+_HELP_NIN = "1203456789"
+_HELP_CUSTOM = "0123674589"
+_HELP_GL_PC = r"off \(switch_glyphs=on, but a PC build draws labels\)"
+
+
+def _hl(text1, text2, layout, digits, glyphs, lang, names):
+    """Both help lines of a configuration, as the `dw3-map: help line` log writes them."""
+    nm = {"pc": "PS words of the position", "sw": "Switch buttons"}[names]
+    out = []
+    for i, t in ((1, text1), (2, text2)):
+        out.append((0, r'dw3-map: help line %d "%s" \(layout=%s, map=%s, glyphs=%s, lang=%s, names=%s, '
+                       r'\d+ of 628 px: fits\)' % (i, re.escape(t), layout, digits, glyphs, lang, nm)))
+    return tuple(out)
+
+
+_EN1 = "PAD/L-STICK CURSOR  R-STICK/%s ZOOM  %s SCALER"
+_HELP_TEXT = {
+    # (lang, kind): (line 1, line 2); kind = the button map and who names the buttons
+    ("en", "ps-pc"): (_EN1 % ("L1/R1", "L2/R2"), "SELECT CENTRE ON YOUR AREA  CIRCLE HUD  TRI BACK"),
+    ("en", "nin-pc"): (_EN1 % ("L1/R1", "L2/R2"), "SELECT CENTRE ON YOUR AREA  TRI HUD  CROSS BACK"),
+    ("en", "custom-pc"): (_EN1 % ("L2/R2", "L1/R1"), "SELECT CENTRE ON YOUR AREA  CIRCLE HUD  TRI BACK"),
+    ("en", "nin-sw"): (_EN1 % ("L/R", "ZL/ZR"), "MINUS CENTRE ON YOUR AREA  X HUD  B BACK"),
+    ("en", "nin-glyph"): (_EN1 % ("[L]/[R]", "[ZL]/[ZR]"), "MINUS CENTRE ON YOUR AREA  [X] HUD  [B] BACK"),
+    ("en", "custom-glyph"): (_EN1 % ("[ZL]/[ZR]", "[L]/[R]"), "MINUS CENTRE ON YOUR AREA  [A] HUD  [X] BACK"),
+    ("fr", "ps-pc"): ("PAD/STICK G. CURSEUR  STICK D./L1/R1 ZOOM  L2/R2 FILTRE",
+                      "SELECT CENTRER SUR VOTRE ZONE  CIRCLE HUD  TRI RETOUR"),
+    ("fr", "nin-glyph"): ("PAD/STICK G. CURSEUR  STICK D./[L]/[R] ZOOM  [ZL]/[ZR] FILTRE",
+                          "MINUS CENTRER SUR VOTRE ZONE  [X] HUD  [B] RETOUR"),
+    ("de", "nin-pc"): ("PAD/L-STICK CURSOR  R-STICK/L1/R1 ZOOM  L2/R2 SKALIERER",
+                       "SELECT AUF DEINEM GEBIET ZENTRIEREN  TRI HUD  CROSS ZURUECK"),
+    ("de", "custom-glyph"): ("PAD/L-STICK CURSOR  R-STICK/[ZL]/[ZR] ZOOM  [L]/[R] SKALIERER",
+                             "MINUS AUF DEINEM GEBIET ZENTRIEREN  [A] HUD  [X] ZURUECK"),
+    ("it", "ps-pc"): ("PAD/STICK SIN. CURSORE  STICK DES./L1/R1 ZOOM  L2/R2 RIDIMENS.",
+                      "SELECT CENTRA SULLA TUA AREA  CIRCLE HUD  TRI INDIETRO"),
+    ("es", "ps-pc"): ("PAD/STICK IZQ. CURSOR  STICK DER./L1/R1 ZOOM  L2/R2 ESCALADOR",
+                      "SELECT CENTRAR EN TU ZONA  CIRCLE HUD  TRI VOLVER"),
+}
+_HELP_KIND = {  # kind -> (layout, digits, glyphs field)
+    "ps-pc": ("playstation", _HELP_PS, "off"), "nin-pc": ("nintendo", _HELP_NIN, "off"),
+    "custom-pc": ("custom", _HELP_CUSTOM, "off"), "nin-sw": ("nintendo", _HELP_NIN, "off"),
+    "nin-glyph": ("nintendo", _HELP_NIN, "on"), "custom-glyph": ("custom", _HELP_CUSTOM, "on"),
+}
+
+
+def _help_expect(lang, kind, glyphs=None):
+    layout, digits, gl = _HELP_KIND[kind]
+    t1, t2 = _HELP_TEXT[(lang, kind)]
+    return _hl(t1, t2, layout, digits, glyphs or gl, lang, "sw" if kind.endswith(("-sw", "-glyph")) else "pc")
+
+
+_HELP_FORBID = ((0, r"dw3-map: help line \d [^\n]*(?:OVERFLOWS|DOES NOT FIT)|HELP LINE \d DOES NOT FIT|"
+                    r"dw3-map: capture failed|NOTHING DRAWN|\): CHANGED|dw3-map: BINDING PROBLEM|"
+                    # one open, one build of each line: a zoom step with the bars on does not log it again
+                    r'dw3-map: help line 1 [^\n]*\n(?s:.*)dw3-map: help line 1 '),)
+
+
+for _v, _ids in (("us", (0x159, 0x1FA, 0x1C2, 0x158, 0x1F9)),
+                 ("eu", (0x167, 0x208, 0x1D1, 0x166, 0x207))):
+    _fight, _menu, _report, _field, _status = _ids
+
+    def _help(name, phase, expect, note, ref_from="", own=(), cfg=(), env=(), lang_ref=None):
+        return Scenario(
+            name, _v, "full", turbo=4, timeout=600, phases=(phase,),
+            env=_ITEMS_ENV + (("DW3_MAP_SYNC", "1"),) + env,
+            cfg=(("encounter_rate", "2"), ("map_screen", "1")) + cfg,
+            expect_restore=((_fight, M), (_menu, S), (_report, M), (_field, M), (_status, M)),
+            expect_log=(
+                (0, r"dw3-map: open half=\d image=392x352 .* turbo=1 zoom=1\.50 hud=off"),
+                (0, r"dw3-map: HUD on \(the bars; the name box stays\)(?s:.*)dw3-map: help line 1 "),
+                (0, r"dw3-map: close requested by the cancel button"),
+                (0, r"dw3-map: game Map screen back after the close: .*: unchanged"),
+            ) + expect,
+            forbid_log=_HELP_FORBID, ref_from=ref_from, own_refs=own, note=note)
+
+    _pl = _help(f"{_v}-map-help", f"{_v}-map-help", _help_expect("en", "ps-pc"),
+                "the map view's help line, PlayStation layout, PC labels (P6.32 phase 7)")
+    _nin = _help(f"{_v}-nintendo-map-help", f"{_v}-nintendo-map-help",
+                 _help_expect("en", "nin-pc") + ((0, _NIN_LOG[0]),),
+                 "Nintendo layout: the help line says TRI HUD and CROSS BACK (P6.32 phase 7)",
+                 ref_from=f"{_v}-map-help", own=_HELP_HUD, cfg=_NIN_CFG, env=_NIN_ENV)
+    _cus = _help(f"{_v}-custom-map-help", f"{_v}-custom-map-help",
+                 _help_expect("en", "custom-pc") + ((0, r"dw3-controls: map loaded layout=custom source=cfg"),),
+                 "a custom map (L1 on L2's position ...): the help line names the positions (P6.32 phase 7)",
+                 ref_from=f"{_v}-map-help", own=_HELP_HUD, env=_NIN_ENV,
+                 cfg=(("button_layout", "custom"), ("button_map", _HELP_CUSTOM)))
+    _gpc = _help(f"{_v}-map-help-glyphs-pc", f"{_v}-map-help",
+                 _help_expect("en", "ps-pc", glyphs=_HELP_GL_PC) + ((0, r"dw3-options: switch_glyphs=on"),),
+                 "switch_glyphs=1 on the PC still prints labels: bit-identical to the plain run (P6.32 phase 7)",
+                 ref_from=f"{_v}-map-help", cfg=(("switch_glyphs", "1"),))
+    _sw = _help(f"{_v}-map-help-sw", f"{_v}-nintendo-map-help",
+                _help_expect("en", "nin-sw") + ((0, r"DW3_MAP_HELP_SWITCH test aid"),),
+                "the Switch's help line on the PC (aid): cap text, Nintendo layout: X HUD, B BACK (P6.32 phase 7)",
+                ref_from=f"{_v}-map-help", own=_HELP_HUD, cfg=_NIN_CFG,
+                env=_NIN_ENV + (("DW3_MAP_HELP_SWITCH", "1"),))
+    _swg = _help(f"{_v}-map-help-sw-glyphs", f"{_v}-nintendo-map-help",
+                 _help_expect("en", "nin-glyph") + ((0, r"dw3-options: switch_glyphs=on"),),
+                 "the Switch's help line with glyphs (aid), Nintendo layout: L R ZL ZR X B glyphs (P6.32 phase 7)",
+                 ref_from=f"{_v}-map-help", own=_HELP_HUD, cfg=_NIN_CFG + (("switch_glyphs", "1"),),
+                 env=_NIN_ENV + (("DW3_MAP_HELP_SWITCH", "1"),))
+    _swc = _help(f"{_v}-map-help-sw-glyphs-custom", f"{_v}-custom-map-help",
+                 _help_expect("en", "custom-glyph") + ((0, r"dw3-options: switch_glyphs=on"),),
+                 "the Switch's help line with glyphs (aid), custom map: ZL ZR in the zoom pair (P6.32 phase 7)",
+                 ref_from=f"{_v}-map-help", own=_HELP_HUD,
+                 cfg=(("button_layout", "custom"), ("button_map", _HELP_CUSTOM), ("switch_glyphs", "1")),
+                 env=_NIN_ENV + (("DW3_MAP_HELP_SWITCH", "1"),))
+    for _sc in (_pl, _nin, _cus, _gpc, _sw, _swg, _swc):
+        _add(_sc)
+
+# EU: the words of the four other languages (the text file and language of the map view are
+# the game's: DW3_LANGUAGE 3 fr, 4 it, 5 de, 6 es). Own references: the area name box is in the
+# language too. fr and de also with the glyphs (aid), as variants of their own plain run.
+for _lang, _id, _kind, _gkind in (("fr", 3, "ps-pc", "nin-glyph"), ("de", 5, "nin-pc", "custom-glyph"),
+                                  ("it", 4, "ps-pc", None), ("es", 6, "ps-pc", None)):
+    _e = (("DW3_LANGUAGE", str(_id)),)
+    _lay = _HELP_KIND[_kind][0]
+    _base = _help(f"eu-map-help-{_lang}", "eu-nintendo-map-help" if _kind == "nin-pc" else "eu-map-help",
+                  _help_expect(_lang, _kind),
+                  f"the map view's help line in {_lang}, {_lay} layout, PC labels: the five-language words "
+                  f"(machine draft, P6.32 phase 7)", env=_e + (_NIN_ENV if _kind == "nin-pc" else ()),
+                  cfg=_NIN_CFG if _kind == "nin-pc" else ())
+    _add(_base)
+    if _gkind:
+        _c = {"nin-glyph": _NIN_CFG, "custom-glyph": (("button_layout", "custom"), ("button_map", _HELP_CUSTOM))}[_gkind]
+        _ph = "eu-nintendo-map-help" if _gkind == "nin-glyph" else "eu-custom-map-help"
+        _add(_help(f"eu-map-help-{_lang}-glyphs", _ph, _help_expect(_lang, _gkind),
+                   f"the Switch's help line with glyphs (aid) in {_lang} (P6.32 phase 7)",
+                   ref_from=f"eu-map-help-{_lang}", own=_HELP_HUD, env=_e + _NIN_ENV + (("DW3_MAP_HELP_SWITCH", "1"),),
+                   cfg=_c + (("switch_glyphs", "1"),)))
+
+
+# The scenarios that were bit-identical to a plain run by ref_from now show another help
+# line when the bars are on, by design (the footer names the buttons of the layout in force):
+# only that checkpoint has a reference of its own (own_refs), every other picture is still
+# the plain run's, and the log line says what the footer reads.
+def _help_amend(name, own, extra):
+    for _i, _sc in enumerate(SCENARIOS):
+        if _sc.name == name:
+            SCENARIOS[_i] = dataclasses.replace(
+                _sc, own_refs=own, expect_log=_sc.expect_log + extra,
+                expect_log_both=_sc.expect_log_both + extra if _sc.expect_log_both else ())
+            return
+    raise KeyError(name)
+
+
+_REB_L1 = "PAD/L-STICK CURSOR  R-STICK/%s ZOOM  L1/R1 SCALER"
+for _v in ("us", "eu"):
+    # the plain scenario has no help-line check of its own yet: the PlayStation layout, the
+    # six phase 4 bindings (zoom Square / Cross, centre L3): the footer lists them
+    _pl = by_name()[f"{_v}-map-rebind"]
+    _help_amend(f"{_v}-map-rebind", (), _hl(_REB_L1 % "SQUARE/CROSS", "L3 CENTRE ON YOUR AREA  CIRCLE HUD  TRI BACK",
+                                              "playstation", _HELP_PS, "off", "en", "pc"))
+    # Nintendo: Cross is made by the Circle position and Triangle by the Cross position, so the
+    # footer names CIRCLE for zoom in, TRI for the bars and CROSS for back
+    _help_amend(f"{_v}-nintendo-map-rebind", ("rb-hud",),
+                _hl(_REB_L1 % "SQUARE/CIRCLE", "L3 CENTRE ON YOUR AREA  TRI HUD  CROSS BACK",
+                    "nintendo", _HELP_NIN, "off", "en", "pc"))
+    # custom 0127456389 (the Square and R2 positions swapped): zoom out Square is made by R2
+    _help_amend(f"{_v}-custom-map-rebind", ("rb-hud",),
+                _hl(_REB_L1 % "R2/CROSS", "L3 CENTRE ON YOUR AREA  CIRCLE HUD  TRI BACK",
+                    "custom", "0127456389", "off", "en", "pc"))
+    # the Nintendo map view: the bars checkpoint (default bindings)
+    _help_amend(f"{_v}-nintendo-map-view", ("mv-hud-on",),
+                _hl(_EN1 % ("L1/R1", "L2/R2"), "SELECT CENTRE ON YOUR AREA  TRI HUD  CROSS BACK",
+                    "nintendo", _HELP_NIN, "off", "en", "pc"))
+
+
 # P6.34 phase 4 (patch 0193) turned "use item stays" on by default. Every
 # recording that walks the item screen's original use flow (Cross on a partner,
 # Cross to leave the result, back to the list) keeps that flow with
 # items_use_stays=0: their references are the PS1 frames, and the key-off proof.
 _USE_FLOW_RECS = ("items-screen", "menu-screens", "items-equip-switch", "items-equip-stays",
-                  "items-bag-view", "map-screen", "map-view", "map-names", "map-zoom", "map-rebind")
+                  "items-bag-view", "map-screen", "map-view", "map-names", "map-zoom", "map-rebind",
+                  "map-help")
 for _i, _s in enumerate(SCENARIOS):
     if (any(r in p for p in _s.phases for r in _USE_FLOW_RECS)
             and not any(k == "items_use_stays" for k, _ in _s.cfg)):

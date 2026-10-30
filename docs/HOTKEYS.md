@@ -201,7 +201,9 @@ can move the first six rows among Cross, Square, L1, R1, L2, R2, L3 and Select):
 
 The six actions take six different buttons: a rebind that puts two actions on one button, or one of
 the buttons above that the view keeps, is refused and logged (`BINDING PROBLEM`), so no key ever
-does two things in the view. There is no clash with another entry of this file: each port hotkey above
+does two things in the view. The green footer of the bars (Circle) names the button the player presses for each row above under the
+layout and map in force: Switch glyphs or cap text on the Switch, the PS word of the position on the PC, in the game's text language
+([P6.32 section 17](P6.32_MAP_ZOOM.md#17-phase-7-glyphs-as-built-2026-10-30)). There is no clash with another entry of this file: each port hotkey above
 is read in another mode or screen than the Map screen, and the Switch diagnostic chords read the
 physical buttons, which the bindings never touch.
 

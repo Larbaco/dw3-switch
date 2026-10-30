@@ -866,6 +866,7 @@ def controls_layout(version, phase):
 # These recordings are the plain ones turned into positions under the Nintendo
 # layout: the game must see exactly the original input, so every checkpoint equals
 # the plain scenario's reference.
+HELP_CUSTOM_DIGITS = "0123674589"    # P6.32 phase 7: L1<-ZL, R1<-ZR, L2<-L, R2<-R (two-letter glyphs)
 CUSTOM_MAP_DIGITS = "0127456389"     # P6.32 phase 4: Square<-ZR position, R2<-Y position
 NINTENDO_DIGITS = "1203456789"      # Cross<-A (Circle pos), Circle<-X, Triangle<-B
 _FACE_BITS = {"cross": 14, "circle": 13, "triangle": 12, "square": 15,
@@ -912,6 +913,7 @@ NINTENDO_RECS = (
     ("{v}-nintendo-map-view", "{v}-map-view"),
     ("{v}-nintendo-title-quit", "{v}-title-quit"),
     ("{v}-nintendo-map-rebind", "{v}-map-rebind"),   # P6.32 phase 4
+    ("{v}-nintendo-map-help", "{v}-map-help"),       # P6.32 phase 7
 )
 
 
@@ -2238,6 +2240,27 @@ def map_rebind_relaunch_p2(version):
     return r
 
 
+def map_help(version):
+    """P6.32 phase 7: the help line of the full-screen map view. Same path as `map_view` to
+    the open Map; Square opens the view (default bindings), Circle shows the bars (the help
+    line is the green footer), Circle hides them, Triangle closes. The masks are logical
+    buttons, so the Nintendo and custom-map variants (button positions, DW3_REPLAY_SOURCE=1)
+    are the same walk; what differs is the text of the footer, which is the point."""
+    r = Rec(f"{version.upper()}: P6.32 phase 7 map view help line (env and cfg in manifest)")
+    f = _to_map_screen(r)
+    r.press(f, SQUARE_MAP)           # opens at 1.5x on the current area
+    r.shot(f + 50, "mh-open")        # no bars: the picture fills the screen
+    r.press(f + 60, CIRCLE_MAP)      # the bars come on
+    r.shot(f + 100, "mh-help")
+    r.press(f + 110, R1_MAP)         # a zoom step: the bars stay, the help line is built again
+    r.shot(f + 140, "mh-help-zoom")
+    r.press(f + 150, CIRCLE_MAP)     # and go
+    r.press(f + 170, TRIANGLE)       # the view closes, the game's Map comes back
+    r.press(f + 230, TRIANGLE)       # and the Map screen
+    r.end(f + 400)
+    return r
+
+
 # The battle report's checkpoints (patch 0081): the header bar opens from the
 # left edge, then holds the partner's exp, then the fade. The EU report comes
 # ~120 frames before the US one (measured, DW3_TURBO=4).
@@ -3383,6 +3406,7 @@ def main(out):
         (out / f"{v}-map-view-off.rec").write_text(map_view_off(v).text(True))
         (out / f"{v}-map-names.rec").write_text(map_names(v).text(True))
         (out / f"{v}-map-zoom.rec").write_text(map_zoom(v).text(True))
+        (out / f"{v}-map-help.rec").write_text(map_help(v).text(True))
         (out / f"{v}-map-rebind.rec").write_text(map_rebind(v).text(True))
         (out / f"{v}-map-rebind-relaunch-p1.rec").write_text(map_rebind_relaunch_p1(v).text(True))
         (out / f"{v}-map-rebind-relaunch-p2.rec").write_text(map_rebind_relaunch_p2(v).text(True))
@@ -3496,6 +3520,11 @@ def main(out):
             source_rec((out / f"{v}-map-rebind.rec").read_text(),
                        "custom map " + CUSTOM_MAP_DIGITS + ": the masks are button positions, "
                        "DW3_REPLAY_SOURCE=1", CUSTOM_MAP_DIGITS))
+    for v in ("us", "eu"):   # P6.32 phase 7: the help line under a custom map (L1 on ZL, R1 on ZR)
+        (out / f"{v}-custom-map-help.rec").write_text(
+            source_rec((out / f"{v}-map-help.rec").read_text(),
+                       "custom map " + HELP_CUSTOM_DIGITS + ": the masks are button positions, "
+                       "DW3_REPLAY_SOURCE=1", HELP_CUSTOM_DIGITS))
     for new, base in pairs:
         (out / f"{new}.rec").write_text(
             nintendo_source_rec((out / f"{base}.rec").read_text(), note))

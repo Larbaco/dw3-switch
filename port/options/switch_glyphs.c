@@ -547,6 +547,14 @@ static void gl_pt_refresh(int want_on, const unsigned char *map,
     }
 }
 
+const unsigned char *dw3_glyphs_hud_art(int glyph) {
+    if (glyph < 0 || glyph >= DW3_GLYPH_COUNT) {
+        return NULL;
+    }
+    gl_art_load();
+    return g_art[glyph];
+}
+
 void dw3_glyphs_refresh(const char *why) {
     const int want_on =
         dw3_port_options_level(DW3_PORT_OPT_SWITCH_GLYPHS) != 0;
