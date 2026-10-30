@@ -18,7 +18,7 @@ static int g_fail;
         }                                                                      \
     } while (0)
 
-static int g_progress, g_flag, g_snap_calls, g_unknown;
+static int g_progress, g_flag, g_snap_calls, g_unknown, g_asked_eu;
 static unsigned g_codes[8];   /* more flags / items that are set */
 static int g_ncodes;
 
@@ -26,6 +26,9 @@ static int fake_check(void *ctx, unsigned code, unsigned value) {
     int i;
 
     (void)ctx;
+    if (code == WT_FLAG(0x40, 0xCD) || code == WT_SPECIAL(0x54) || code == WT_FLAG(0x10, 0x0C)) {
+        g_asked_eu++;                                 /* the EU extra chapter's codes */
+    }
     if (code == WT_FLAG(0x40, 0x0D)) {
         return value == (unsigned)g_flag;
     }
@@ -242,7 +245,7 @@ static void test_never_ahead(void) {
     CHECK(starts_with(v->titles[0], "\xE2\x86\x92 1. Getting started"));
     CHECK(strcmp(v->titles[1], "2. Not reached yet") == 0);
     CHECK(strcmp(v->titles[9], "10. Not reached yet") == 0);
-    CHECK(strcmp(v->titles[10], "More chapters coming") == 0);
+    CHECK(strcmp(v->titles[10], "11. Not reached yet") == 0);
     CHECK(!list_has("southern road") && !list_has("Spy Satellite"));
     keys(DW3_HELP_KEY_DOWN);
     CHECK(strstr(dw3_wt_view()->strip, "Not reached yet") != NULL);
@@ -316,22 +319,47 @@ static void test_other_points(void) {
     CHECK(strcmp(dw3_wt_view()->header, "Snatchmon") == 0);
     CHECK(strstr(dw3_wt_view()->strip, "Step 7 / 7") != NULL);
     dw3_wt_close();
-    /* past the table (0x2A): the "more chapters" page, every chapter is behind the player */
+    /* 0x2A is written by no script: a gap, so "not recognised" with the chapter list, and no
+     * "more chapters" page any more */
     state(0x2A, 0);
     CHECK(dw3_wt_open(&c) == 0);
     v = dw3_wt_view();
-    CHECK(v->screen == DW3_HELP_SCREEN_PAGE && strcmp(v->header, "More chapters coming") == 0);
-    CHECK(page_has("first half"));
-    keys(DW3_HELP_KEY_CONFIRM); /* nothing to reveal here */
-    CHECK(strcmp(dw3_wt_view()->header, "More chapters coming") == 0);
+    CHECK(v->screen == DW3_HELP_SCREEN_LIST && dw3_wt_level() == DW3_WT_LEVEL_CHAPTERS &&
+          strstr(v->strip, "not recognised") != NULL && v->npages == 11);
+    CHECK(!list_has("More chapters") && strcmp(v->titles[1], "2. Not reached yet") == 0);
+    dw3_wt_close();
+    /* a value past the end of the table (0x2D on US): everything is behind the player and the
+     * notice says the step is not recognised */
+    state(0x2D, 0);
+    CHECK(dw3_wt_open(&c) == 0);
+    v = dw3_wt_view();
+    CHECK(dw3_wt_level() == DW3_WT_LEVEL_CHAPTERS && v->npages == 11 &&
+          strstr(v->strip, "not recognised") != NULL);
+    CHECK(list_has("10. Spy Satellite") && list_has("11. The last battle") && !list_has("Not reached"));
+    keys(DW3_HELP_KEY_DOWN);
+    keys(DW3_HELP_KEY_CONFIRM);                       /* the whole table is readable */
+    keys(DW3_HELP_KEY_CONFIRM);
+    CHECK(strcmp(dw3_wt_view()->header, "A.o.A HQ scenes") == 0 || dw3_wt_level() == DW3_WT_LEVEL_PAGE);
+    dw3_wt_close();
+    /* the last battle (0x2B, both discs): the page of the only step of chapter 11 */
+    state(0x2B, 0);
+    CHECK(dw3_wt_open(&c) == 0);
+    v = dw3_wt_view();
+    CHECK(dw3_wt_level() == DW3_WT_LEVEL_PAGE && strcmp(v->header, "The final battle") == 0);
+    CHECK(strstr(v->strip, "Step 1 / 1") != NULL && strstr(v->strip, "Current step") != NULL);
+    CHECK(page_has("opponents") && !page_has("Kusanagi"));        /* the ending is the answer */
+    keys(DW3_HELP_KEY_CONFIRM);
+    keys(DW3_HELP_KEY_DOWN);
+    keys(DW3_HELP_KEY_CONFIRM);
+    CHECK(page_has("Kusanagi City") && page_has("European disc"));
     keys(DW3_HELP_KEY_BACK);
     v = dw3_wt_view();
-    CHECK(v->screen == DW3_HELP_SCREEN_LIST && dw3_wt_level() == DW3_WT_LEVEL_CHAPTERS &&
-          v->cursor == 10 && list_has("10. Spy Satellite") && !list_has("Not reached"));
-    keys(DW3_HELP_KEY_UP);
-    keys(DW3_HELP_KEY_CONFIRM);                       /* chapter 10: all of it is readable */
-    keys(DW3_HELP_KEY_CONFIRM);
-    CHECK(strcmp(dw3_wt_view()->header, "A.o.A HQ scenes") == 0);
+    CHECK(v->screen == DW3_HELP_SCREEN_LIST && strcmp(v->header, "11. The last battle") == 0);
+    keys(DW3_HELP_KEY_BACK);
+    v = dw3_wt_view();
+    CHECK(v->cursor == 10 && starts_with(v->titles[10], "\xE2\x86\x92 11. The last battle") &&
+          strstr(v->strip, "Current chapter") != NULL);
+    CHECK(!list_has("Extra chapter"));                                  /* US has no extra chapter */
     dw3_wt_close();
     /* the debug value: not recognised, the chapter list with the notice, the first chapter only */
     state(0, 0);
@@ -363,7 +391,7 @@ static void test_other_points(void) {
     dw3_wt_close();
 }
 
-/* L1 / R1 cross from one chapter to the next, and the last step leads to "more". */
+/* L1 / R1 cross from one chapter to the next; there is nothing after the last chapter. */
 static void test_neighbours(void) {
     Dw3WtConfig c = cfg(DW3_PAGES_US, 0, 1);
     int i;
@@ -378,14 +406,74 @@ static void test_neighbours(void) {
     dw3_wt_close();
     state_codes(0x29, WT_FLAG(0x40, 0x74), 0);
     CHECK(dw3_wt_open(&c) == 0);
-    for (i = 0; i < 12 && strcmp(dw3_wt_view()->header, "More chapters coming") != 0; i++) {
+    for (i = 0; i < 12 && strcmp(dw3_wt_view()->header, "Not reached yet") != 0; i++) {
+        keys(DW3_HELP_KEY_NEXT);                      /* across the edge into chapter 11 */
+    }
+    CHECK(strcmp(dw3_wt_view()->header, "Not reached yet") == 0);
+    keys(DW3_HELP_KEY_PREV);
+    CHECK(starts_with(dw3_wt_view()->header, "Area: "));
+    dw3_wt_close();
+    /* US: chapter 11 is the last one; Next stops at its last line */
+    state(0x2B, 0);
+    CHECK(dw3_wt_open(&c) == 0);
+    CHECK(strcmp(dw3_wt_view()->header, "The final battle") == 0);
+    for (i = 0; i < 4; i++) {
         keys(DW3_HELP_KEY_NEXT);
     }
-    CHECK(strcmp(dw3_wt_view()->header, "More chapters coming") == 0);
-    keys(DW3_HELP_KEY_NEXT);                          /* nothing after "more" */
-    CHECK(strcmp(dw3_wt_view()->header, "More chapters coming") == 0);
-    keys(DW3_HELP_KEY_PREV);                          /* back into chapter 10 */
-    CHECK(starts_with(dw3_wt_view()->header, "Area: "));
+    CHECK(starts_with(dw3_wt_view()->header, "Area: ") && dw3_wt_level() == DW3_WT_LEVEL_PAGE);
+    keys(DW3_HELP_KEY_PREV);
+    CHECK(strcmp(dw3_wt_view()->header, "The final battle") == 0);
+    dw3_wt_close();
+}
+
+/* The EU extra chapter: region EU only, three steps that go by flags. */
+static void test_extra_chapter(void) {
+    Dw3WtConfig eu = cfg(DW3_PAGES_EU, 0, 1);
+    Dw3WtConfig us = cfg(DW3_PAGES_US, 0, 1);
+    const Dw3HelpView *v;
+
+    g_asked_eu = 0;
+    state(0x2D, 0);
+    CHECK(dw3_wt_open(&eu) == 0);
+    CHECK(g_asked_eu > 0);                            /* EU reads the extra chapter's codes */
+    v = dw3_wt_view();
+    CHECK(dw3_wt_level() == DW3_WT_LEVEL_PAGE && strcmp(v->header, "Login Room tour") == 0);
+    CHECK(strstr(v->strip, "Step 1 / 3") != NULL && strstr(v->strip, "Current step") != NULL);
+    keys(DW3_HELP_KEY_BACK);
+    keys(DW3_HELP_KEY_BACK);
+    v = dw3_wt_view();
+    CHECK(v->npages == 12 && v->cursor == 11 && starts_with(v->titles[11], "\xE2\x86\x92 12. Extra chapter"));
+    CHECK(strcmp(v->titles[10], "11. The last battle") == 0);
+    dw3_wt_close();
+    state_codes(0x2D, WT_FLAG(0x40, 0xCD), 0);
+    CHECK(dw3_wt_open(&eu) == 0);
+    CHECK(strcmp(dw3_wt_view()->header, "Four challengers") == 0);
+    dw3_wt_close();
+    state_codes(0x2D, WT_FLAG(0x40, 0xCD), WT_SPECIAL(0x54));
+    CHECK(dw3_wt_open(&eu) == 0);
+    CHECK(strcmp(dw3_wt_view()->header, "Kurt at the Arena") == 0);
+    CHECK(strstr(dw3_wt_view()->strip, "Step 3 / 3") != NULL);
+    keys(DW3_HELP_KEY_NEXT);                          /* the last chapter: nothing after its area */
+    keys(DW3_HELP_KEY_NEXT);
+    keys(DW3_HELP_KEY_NEXT);
+    keys(DW3_HELP_KEY_NEXT);
+    CHECK(dw3_wt_is_open());
+    dw3_wt_close();
+    /* the same value on US: the extra chapter does not exist */
+    state_codes(0x2D, WT_FLAG(0x40, 0xCD), WT_SPECIAL(0x54));
+    g_asked_eu = 0;
+    CHECK(dw3_wt_open(&us) == 0);
+    CHECK(g_asked_eu == 0);                           /* US never asks the game about EU-only flags */
+    v = dw3_wt_view();
+    CHECK(dw3_wt_level() == DW3_WT_LEVEL_CHAPTERS && v->npages == 11 && !list_has("Extra chapter"));
+    dw3_wt_close();
+    /* EU at the last battle: chapter 12 is still ahead of the player */
+    state(0x2B, 0);
+    CHECK(dw3_wt_open(&eu) == 0);
+    keys(DW3_HELP_KEY_BACK);
+    keys(DW3_HELP_KEY_BACK);
+    v = dw3_wt_view();
+    CHECK(v->npages == 12 && strcmp(v->titles[11], "12. Not reached yet") == 0);
     dw3_wt_close();
 }
 
@@ -466,30 +554,28 @@ static void fit_state(int lang, int in_game, int progress, int unknown) {
     int nch;
     int ch;
 
-    state(progress, progress == 5);
+    if (progress == 0x2D) {                           /* the extra chapter, up to its last step */
+        state_codes(progress, WT_FLAG(0x40, 0xCD), WT_SPECIAL(0x54));
+    } else {
+        state(progress, progress == 5);
+    }
     g_unknown = unknown;
     CHECK(dw3_wt_open(&c) == 0);
     while (dw3_wt_level() == DW3_WT_LEVEL_PAGE || dw3_wt_level() == DW3_WT_LEVEL_STEPS) {
         keys(DW3_HELP_KEY_BACK);
     }
     CHECK(dw3_wt_level() == DW3_WT_LEVEL_CHAPTERS);
-    nch = dw3_wt_view()->npages - 1;
-    CHECK(nch >= 10);
-    for (ch = 0; ch <= nch; ch++) {
+    nch = dw3_wt_view()->npages;
+    CHECK(nch == 12);                                 /* EU: the story and the extra chapter */
+    for (ch = 0; ch < nch; ch++) {
         keys(DW3_HELP_KEY_UP);
     }
     fit_view();
-    for (ch = 0; ch <= nch; ch++) {
+    for (ch = 0; ch < nch; ch++) {
         int i;
         int n;
 
         keys(DW3_HELP_KEY_CONFIRM);
-        if (ch == nch) {
-            CHECK(dw3_wt_level() == DW3_WT_LEVEL_PAGE);
-            fit_page_modes();
-            keys(DW3_HELP_KEY_BACK);
-            continue;
-        }
         CHECK(dw3_wt_level() == DW3_WT_LEVEL_STEPS);
         n = dw3_wt_view()->npages;
         fit_view();
@@ -514,7 +600,7 @@ static void fit_state(int lang, int in_game, int progress, int unknown) {
 
 /* Everything that must fit does fit, in every language and state. */
 static void test_fit(void) {
-    static const int points[] = {0, 2, 4, 5, 0x10, 0x14, 0x20, 0x29, 0x2A};
+    static const int points[] = {0, 2, 4, 5, 0x10, 0x14, 0x20, 0x29, 0x2A, 0x2B, 0x2D};
     int lang;
     int p;
 
@@ -532,6 +618,7 @@ int main(void) {
     test_never_ahead();
     test_other_points();
     test_neighbours();
+    test_extra_chapter();
     test_region_and_language();
     test_fit();
     if (g_fail != 0) {

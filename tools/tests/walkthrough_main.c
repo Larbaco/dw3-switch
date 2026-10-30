@@ -80,6 +80,26 @@ static void expect_with(int progress, unsigned c0, unsigned c1, unsigned c2, con
     }
 }
 
+/* EU only: the extra chapter's rows are not offered on US */
+static void expect_eu(int progress, unsigned c0, unsigned c1, unsigned c2, const char *id) {
+    Fake f;
+    DW3WtState st;
+    DW3WtResult r;
+
+    memset(&f, 0, sizeof(f));
+    if (c0) f.codes[f.n++] = c0;
+    if (c1) f.codes[f.n++] = c1;
+    if (c2) f.codes[f.n++] = c2;
+    st = mk(progress, WT_REGION_EU, &f);
+    dw3_wt_resolve(&st, &r);
+    CHECK(r.status == WT_OK && strcmp(id_of(&r), id) == 0,
+          "EU progress 0x%x flags %x %x %x: got status %d step %s, want %s", progress, c0, c1, c2,
+          r.status, id_of(&r), id);
+    st = mk(progress, WT_REGION_US, &f);
+    dw3_wt_resolve(&st, &r);
+    CHECK(r.status != WT_OK, "US progress 0x%x must not resolve (step %s)", progress, id_of(&r));
+}
+
 static void expect_status(int progress, int region, int want) {
     Fake f;
     DW3WtState st;
@@ -186,16 +206,18 @@ static void test_builtin(void) {
     expect_with(0x28, 0, 0, 0, "ch10.s05");
     expect_with(0x29, 0, 0, 0, "ch10.s06");
     expect_with(0x29, WT_FLAG(0x40, 0x74), 0, 0, "ch10.s07");
-    /* every value of the first half resolves, with no flag set and with all of them set
+    /* every value of the story resolves, with no flag set and with all of them set
      * (all rows done: the last offered one) */
     {
         int p, i, n;
         const DW3WtStep *t = dw3_wt_steps(&n);
 
-        for (p = 0; p <= 0x29; ++p) {
+        for (p = 0; p <= 0x2D; ++p) {
             int region;
 
+            if (p == 0x2A || p == 0x2C) continue; /* no script writes them: a gap, tested below */
             for (region = WT_REGION_US; region <= WT_REGION_EU; ++region) {
+                if (p == 0x2D && region == WT_REGION_US) continue; /* the EU extra chapter */
                 Fake f;
                 DW3WtState st;
                 DW3WtResult r;
@@ -218,13 +240,25 @@ static void test_builtin(void) {
             }
         }
     }
-    /* beyond the first half: valid progress values the table does not cover */
-    expect_status(0x2A, WT_REGION_US, WT_ABOVE);
-    expect_status(0x2B, WT_REGION_EU, WT_ABOVE);
-    expect_status(WT_PROGRESS_MAX, WT_REGION_US, WT_ABOVE);
-    /* EU extra chapter value on US must say "not recognised", not crash */
+    /* the last battle (ch11) and the EU extra chapter (ch12) */
+    expect_with(0x2B, 0, 0, 0, "ch11.s01");
+    expect_with(0x2B, WT_SPECIAL(0x54), WT_FLAG(0x40, 0xCD), 0, "ch11.s01"); /* flags of 0x2D change nothing */
+    expect_eu(0x2D, 0, 0, 0, "ch12.s01");
+    expect_eu(0x2D, WT_SPECIAL(0x54), 0, 0, "ch12.s01");                    /* the tour comes first */
+    expect_eu(0x2D, WT_FLAG(0x40, 0xCD), 0, 0, "ch12.s02");
+    expect_eu(0x2D, WT_FLAG(0x40, 0xCD), WT_SPECIAL(0x54), 0, "ch12.s03");
+    expect_eu(0x2D, WT_FLAG(0x40, 0xCD), WT_SPECIAL(0x54), WT_FLAG(0x10, 0x0C), "ch12.s03"); /* all done */
+    /* 0x2A and 0x2C are never written by a script: a gap, not a guess */
+    expect_status(0x2A, WT_REGION_US, WT_NO_MATCH);
+    expect_status(0x2A, WT_REGION_EU, WT_NO_MATCH);
+    expect_status(0x2C, WT_REGION_US, WT_ABOVE);
+    expect_status(0x2C, WT_REGION_EU, WT_NO_MATCH);
+    /* the EU extra chapter value on US says "not recognised", not a crash */
     expect_status(0x2D, WT_REGION_US, WT_ABOVE);
-    expect_status(0x2D, WT_REGION_EU, WT_ABOVE);
+    /* past the end of the table */
+    expect_status(0x2E, WT_REGION_EU, WT_ABOVE);
+    expect_status(WT_PROGRESS_MAX, WT_REGION_US, WT_ABOVE);
+    expect_status(WT_PROGRESS_MAX, WT_REGION_EU, WT_ABOVE);
     /* unknown values */
     expect_status(-1, WT_REGION_US, WT_UNKNOWN);
     expect_status(0x8000, WT_REGION_US, WT_UNKNOWN);

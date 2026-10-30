@@ -17,6 +17,7 @@ extern "C" {
  * the table needs no game header */
 #define WT_FLAG(group, id) (((group) << 8) | (id))
 #define WT_PROGRESS(n) (0x6000 | (n))
+#define WT_SPECIAL(id) (0x7000 | (id))
 #define WT_ITEM(kind, id) (0x8000 | ((kind) << 9) | (id))
 #define WT_CARD(id) (0x9200 | (id))
 

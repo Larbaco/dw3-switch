@@ -10,7 +10,7 @@
 #include <psyz/log.h>
 char *getenv(const char *name); /* stdlib.h clashes with engine/game.h */
 
-#if defined(VERSION_EU)
+#if defined(VERSION_EU) && VERSION_EU
 #define WT_THIS_REGION WT_REGION_EU
 #else
 #define WT_THIS_REGION WT_REGION_US

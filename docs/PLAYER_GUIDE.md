@@ -233,8 +233,8 @@ changes nothing in the game.
 <!-- Sources: P6.35_WALKTHROUGH.md, port/walkthrough/text/en.txt -->
 
 **Walkthrough** is the group after Help. It tells you where to go next and what to do, for
-the first half of the main story (Kusanagi City up to the Spy Satellite); later chapters say
-**More chapters coming**. It only reads your progress: nothing is written to the game or the
+the whole main story (Kusanagi City up to the last battle) and, on the EU disc, the extra
+chapter that opens after the ending. It only reads your progress: nothing is written to the game or the
 save, and it needs no network.
 
 - From the field menu (or a battle) it opens on the page of **your current step**. The field
@@ -246,7 +246,9 @@ save, and it needs no network.
 - A step page shows a short goal. The answer is hidden: **Answer**, then **Yes** (the cursor starts on
   **No**). Nothing you have not reached yet is shown unless you ask: its title says **Not reached
   yet**, and asking warns that it may spoil the story. An **Area** entry is the whole-area answer.
-- At the title there is no game to read, so only the chapter list is shown.
+- At the title there is no game to read, so only the chapter list is shown. If your progress is
+  not one the walkthrough knows, it opens the chapter list and says **Step not recognised**.
+- The side content (optional quests, recruits, items) is not in it yet.
 - The text is a draft written from the game's scripts, not from play: tell us if a step sends you
   to the wrong place. On the EU disc it is in all five languages; French, German, Italian and
   Spanish are machine drafts that still need native review.
