@@ -7,6 +7,8 @@ full tier. The map is deliberately conservative:
 
 * a file with no rule that is part of the game or the PC host (port/, patches,
   platforms/pc, vendor/, CMake, the runner) selects EVERYTHING (the full tier);
+* `platforms/pc/src/main.c` is the PC host entry (main(), boot, the frame hooks)
+  and selects EVERYTHING with its own reason, not a generic fallback;
 * a CMake file under port/ or platforms/pc/ is read through its diff: if every
   changed line is a source-file entry (or a comment/blank), the selection comes
   from those sources through the rules below; any other change (flags,
@@ -26,6 +28,7 @@ from dataclasses import dataclass, field
 
 ALL = "ALL"      # sentinel: run the full tier
 BUILD = "BUILD"  # sentinel: a CMake file, selected through the sources its diff adds or removes
+HOST = "HOST"    # sentinel: the PC host entry, full tier with a reason that says so
 NONE: tuple = ()
 
 # Always run with a --changed selection: one boot-to-field and one battle on
@@ -58,6 +61,10 @@ RULES: list[tuple[str, object]] = [
     (r"^port/pages/", ("*help*", "*walkthrough*", "*options*")),
     # --- build files: only the source-list entries of the diff count -----------
     (r"^(port|platforms/pc)/(.*/)?(CMakeLists\.txt|[^/]+\.cmake)$", BUILD),
+    # main() and the frame hooks (boot, region pick, pad, turbo pace, vsync, options
+    # flush) run for every scenario, and a change there is not confined to one block
+    # (no area rule can say which scenarios a boot-path edit reaches), so: full tier.
+    (r"^platforms/pc/src/main\.c$", HOST),
     # --- areas by directory ------------------------------------------------
     (r"^port/walkthrough/", ("*walkthrough*",)),
     (r"^port/autosave/", ("*autosave*", "*title-continue*")),
@@ -193,6 +200,10 @@ def select(files, scenarios, diff_for=None) -> Selection:
             if what is ALL:
                 sel.everything = True
                 sel.reasons.append((path, "pin/engine-wide: full tier"))
+            elif what is HOST:
+                sel.everything = True
+                sel.reasons.append((path, "PC host entry (main(), boot, frame loop, options "
+                                          "wiring): full tier"))
             elif what is BUILD:
                 diff = diff_for(path) if diff_for else None
                 srcs = None if diff is None else build_file_sources(path, diff)

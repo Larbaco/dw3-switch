@@ -79,6 +79,10 @@ void dw3_uid_short_id(const Dw3Uid *u, char *out);
 int dw3_user_saves_dir(char *out, size_t n, const char *base, const char *key,
                        const char *region);
 
+/* "<base>/saves/<key>": the profile folder, where the P6.25 store
+ * (card0.dw3s, card1.dw3s, imported.txt) lives. 0 on success, -1 when out is short. */
+int dw3_user_saves_profile_dir(char *out, size_t n, const char *base, const char *key);
+
 /* Parent of a runtime root (".../dw3/us" -> ".../dw3"); -1 if there is none. */
 int dw3_user_saves_base_from_root(const char *root, char *out, size_t n);
 

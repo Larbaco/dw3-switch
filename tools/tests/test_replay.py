@@ -366,17 +366,106 @@ def test_p77_claw_expectation_needs_the_steal_before_the_end_of_the_battle(tmp_p
 def test_cross_region_scenarios_are_consistent():
     rt = _load("replay_tests")
     xr = [sc for sc in rt.SCENARIOS if sc.phase_versions]
-    assert {sc.name for sc in xr} == {"xr-us-to-eu", "xr-eu-to-us", "xr-eu-extra-us",
-                                      "xr-us-badsum-eu"}
+    assert {sc.name for sc in xr if not sc.store} == {
+        "xr-us-to-eu", "xr-eu-to-us", "xr-eu-extra-us", "xr-us-badsum-eu"}
     for sc in xr:
-        assert len(sc.phase_versions) == len(sc.phases) == 2, sc.name
+        assert len(sc.phase_versions) == len(sc.phases), sc.name
+        if not sc.store:
+            assert len(sc.phases) == 2, sc.name
         assert set(sc.phase_versions) == {"us", "eu"}, sc.name
         assert sc.version == sc.phase_versions[0] and sc.log_only, sc.name
-        assert len(sc.phase_env) == 2 and (not sc.phase_mutate or len(sc.phase_mutate) == 2)
+        assert len(sc.phase_env) == len(sc.phases)
+        assert not sc.phase_mutate or len(sc.phase_mutate) == len(sc.phases)
         for phase, v in zip(sc.phases, sc.phase_versions):
             assert phase.startswith(v + "-xr-"), (sc.name, phase)
     # the Ryubing runner cannot run them (one card folder per region): it must skip them
     assert "phase_versions" in (REPLAY / "ryubing.py").read_text()
+
+
+def test_store_scenarios_turn_the_option_on_through_the_cfg_file():
+    rt = _load("replay_tests")
+    st = [sc for sc in rt.SCENARIOS if sc.store]
+    assert {sc.name for sc in st} == {
+        "xr-store-us-to-eu", "xr-store-eu-to-us", "xr-store-us-eu-us", "xr-store-eu-us-eu",
+        "xr-store-migrate-us-eu", "xr-store-migrate-eu-us", "xr-store-eu-extra-us",
+        "xr-store-us-badsum-eu"}
+    for sc in st:
+        assert dict(sc.cfg).get("save_store") == "1", sc.name   # the option reader is under test
+        assert sc.phase_versions and sc.log_only, sc.name
+    # save_store=0 scenarios are the untouched slice-1 ones: none of them has the store
+    assert all(not sc.store for sc in rt.SCENARIOS if sc.name in
+               ("xr-us-to-eu", "xr-eu-to-us", "xr-eu-extra-us", "xr-us-badsum-eu"))
+    # the migration scenarios save flat first (env beats the cfg), then open with the store on
+    for sc in st:
+        if "migrate" in sc.name:
+            assert dict(sc.phase_env[0]).get("DW3_SAVE_STORE") == "0", sc.name
+
+
+def test_store_scenarios_share_one_store_folder_and_mutate_the_card(tmp_path, monkeypatch):
+    rt = _load("replay_tests")
+    man = _load("manifest")
+    monkeypatch.setenv("STUB_MODE", "memcard")
+    (tmp_path / "p1.rec").write_text("end 9\n")
+    (tmp_path / "p2.rec").write_text("end 9\n")
+    monkeypatch.setattr(rt, "SCEN_DIR", tmp_path)
+    sc = man.Scenario("fake", "us", "full", phases=("p1", "p2"), log_only=True, store=True,
+                      phase_versions=("us", "eu"), phase_env=((), ()), phase_mutate=("badsum", ""))
+    monkeypatch.setattr(rt, "start_xvfb",
+                        lambda work: (type("P", (), {"terminate": lambda s: None,
+                                                      "wait": lambda s, t=None: 0})(), ":99"))
+    seen, mutated = [], []
+    orig = rt.run_phase
+
+    def spy(*a, **k):
+        seen.append(dict(k["extra_env"]))
+        monkeypatch.setenv("STUB_PHASE", str(len(seen)))
+        if len(seen) == 1:  # the game's first phase writes the card
+            Path(seen[0]["DW3_SAVE_STORE_DIR"], "card0.dw3s").write_bytes(b"x")
+        return orig(*a, **k)
+
+    monkeypatch.setattr(rt, "run_phase", spy)
+    monkeypatch.setattr(rt, "mutate_store_card", lambda path, spec: mutated.append((path.name, spec)))
+    stub = _stub(tmp_path)
+    rt.run_scenario(sc, stub, tmp_path, tmp_path / "o", "s", "fake", 60,
+                    by_version={"us": (stub, tmp_path), "eu": (stub, tmp_path)})
+    assert seen[0]["DW3_SAVE_STORE_DIR"] == seen[1]["DW3_SAVE_STORE_DIR"]
+    assert seen[0]["DW3_SAVE_STORE_DIR"].endswith("/store")
+    assert mutated == [("card0.dw3s", "badsum")]
+
+
+def test_mutate_store_card(tmp_path):
+    import zlib
+    rt = _load("replay_tests")
+    payload = bytearray(0x8000)
+    for i in range(0x300, 0x300 + 0x26C4):
+        payload[i] = (i * 7) & 0xFF
+    head = bytearray(0x40)
+    head[0:4] = b"DW3S"
+    head[4:6] = (1).to_bytes(2, "little")
+    head[6:8] = (0x40).to_bytes(2, "little")
+    head[8:12] = (0x8000).to_bytes(4, "little")
+    p = tmp_path / "card0.dw3s"
+
+    def write():
+        head[12:16] = zlib.crc32(bytes(payload)).to_bytes(4, "little")
+        p.write_bytes(bytes(head) + bytes(payload))
+
+    write()
+    rt.mutate_store_card(p, "progress:0x2D")
+    d = p.read_bytes()
+    assert int.from_bytes(d[0x40 + 0x300 + 0x263C:0x40 + 0x300 + 0x2640], "little") == 0x2D
+    x = 0
+    for b in d[0x40 + 0x300 + 4:0x40 + 0x300 + 0x26C4]:
+        x ^= b
+    assert d[0x40 + 0x300] == x and d[0x14 + 2] & 1            # checksum redone, metadata flagged
+    assert int.from_bytes(d[12:16], "little") == zlib.crc32(d[0x40:])  # container CRC redone
+    before = d[0x40 + 0x300]
+    rt.mutate_store_card(p, "badsum")
+    d = p.read_bytes()
+    assert d[0x40 + 0x300] != before and int.from_bytes(d[12:16], "little") == zlib.crc32(d[0x40:])
+    p.write_bytes(b"NOPE" + d[4:])
+    with pytest.raises(ValueError):
+        rt.mutate_store_card(p, "badsum")
 
 
 def test_cross_region_phases_get_their_own_card_folder_and_import_dir(tmp_path, monkeypatch):

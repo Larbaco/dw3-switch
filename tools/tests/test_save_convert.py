@@ -20,6 +20,7 @@ import pytest
 ROOT = Path(__file__).resolve().parents[2]
 CONVERT_C = ROOT / "port" / "memcard" / "save_convert.c"
 HOST_C = ROOT / "port" / "memcard" / "memcard_host.c"
+STORE_C = ROOT / "port" / "memcard" / "save_store.c"
 TOOL_C = ROOT / "tools" / "save_convert_tool.c"
 IMPORT_C = ROOT / "tools" / "tests" / "cross_import_main.c"
 GAME_STATE_H = ROOT / "vendor" / "dw3_decomp" / "include" / "engine" / "game_state.h"
@@ -93,7 +94,7 @@ def tool(tmp_path_factory) -> Path:
 @pytest.fixture(scope="module")
 def importer(tmp_path_factory) -> Path:
     out = tmp_path_factory.mktemp("saveconv_import") / "cross_import_main"
-    gcc(out, IMPORT_C, HOST_C, CONVERT_C)
+    gcc(out, IMPORT_C, HOST_C, CONVERT_C, STORE_C)
     return out
 
 

@@ -295,3 +295,31 @@ def test_both_subset_runner_option_matches_the_function(areas, scenarios, tmp_pa
     assert r.returncode == 0, r.stderr
     listed = {l.strip() for l in r.stdout.splitlines()[1:]}
     assert listed == set(areas.both_subset(scenarios, [extra]))
+
+
+_MAIN_C = "platforms/pc/src/main.c"
+
+
+def test_pc_main_c_selects_the_full_tier_with_its_own_reason(areas, scenarios):
+    """main.c is the PC host entry (main(), boot, frame hooks): full tier, and the
+    printed reason says why, not the generic 'no rule' fallback."""
+    sel = areas.select([_MAIN_C], scenarios)
+    assert sel.everything
+    assert sel.names == {s.name for s in scenarios if s.tier in ("quick", "full")}
+    (path, why), = [r for r in sel.reasons if r[0] == _MAIN_C]
+    assert "PC host entry" in why and "full tier" in why
+    assert "no rule" not in why
+
+
+def test_pc_main_c_is_full_tier_even_with_a_cmake_diff(areas, scenarios):
+    """The diff callback is not used for main.c: only BUILD rules read a diff."""
+    sel = areas.select([_MAIN_C], scenarios, lambda p: "+ \"${CMAKE_CURRENT_SOURCE_DIR}/x.c\"\n")
+    assert sel.everything
+
+
+def test_other_pc_host_files_keep_the_generic_full_tier(areas, scenarios):
+    """Only main.c has the explicit rule; the rest of platforms/pc/ still falls back."""
+    sel = areas.select(["platforms/pc/src/never_seen.c"], scenarios)
+    assert sel.everything
+    assert any("no rule" in why for _p, why in sel.reasons)
+

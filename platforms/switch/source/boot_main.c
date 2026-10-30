@@ -714,6 +714,13 @@ static int init_paths(void) {
                                               ? SAVE_REGION_EU
                                               : SAVE_REGION_US,
                                           memdir_explicit);
+    /* P6.25 slice 2: opt-in shared store (save_store=1 in port_options.cfg),
+     * inside the profile folder; off for the legacy folder and replays. */
+    (void)memcard_host_setup_store(cfgdir != NULL ? cfgdir : root,
+                                   dw3_switch_user_profile_dir(),
+                                   dw3_region() == DW3_REGION_EU
+                                       ? SAVE_REGION_EU
+                                       : SAVE_REGION_US);
     if (memcard_host_ensure(0) != 0 || memcard_host_ensure(1) != 0) {
         ERRORF("memcard ensure failed under %s", memdir);
         return -1;

@@ -14,7 +14,7 @@ Files are named by roadmap item id (`P6.4_...`) or by topic.
 - [DISC_SETUP](DISC_SETUP.md): from your disc image to the extracted tree and file map.
 - [RUNTIME_LAYOUT](RUNTIME_LAYOUT.md): the runtime folder on PC and on the SD card.
 - [STATIC_SD_LOAD](STATIC_SD_LOAD.md): static files on the SD card.
-- [CROSS_REGION_SAVES](CROSS_REGION_SAVES.md): US and EU saves, and the import as built.
+- [CROSS_REGION_SAVES](CROSS_REGION_SAVES.md): US and EU saves, the import (slice 1) and the shared per-profile `.dw3s` store (slice 2, opt-in) as built.
 - [REPORTING_ISSUES](REPORTING_ISSUES.md): how testers report bugs.
 - [RELEASES](RELEASES.md): preview index, builds to avoid.
 - [RELEASE_PREVIEW20](RELEASE_PREVIEW20.md), [21](RELEASE_PREVIEW21.md), [22](RELEASE_PREVIEW22.md), [25](RELEASE_PREVIEW25.md), [26](RELEASE_PREVIEW26.md): release checkpoints of those previews.

@@ -194,6 +194,20 @@ the file's value alone.
 read by `dw3_port_items_partner_switch_enabled`, kept when the Options screen rewrites the file, not part of
 the `dw3-options:` log lines. A missing or invalid value reads as 1 (on).
 
+`save_store` (P6.25 slice 2, 0 or 1, default 0) is a file-only key with no row on the
+Options screen: it is read **before** the memory cards are opened, straight from this file
+(`port/memcard/memcard_host.c`, `memcard_host_store_requested`), so it needs a restart, and it
+is kept when the Options screen rewrites the file. `1` serves the two memory-card ports from
+the shared per-profile store (`card0.dw3s`, `card1.dw3s` in `saves/<uid>/`) so a save made in
+the US game is seen by the EU game and the reverse; `0` or no key is the game as before
+(`saveN.bin` per region, byte for byte). The last valid line wins; anything but `0` or `1`
+reads as `0`. `DW3_SAVE_STORE=0|1` (PC) beats the file for one run. With `1` and no profile
+folder (the Switch fell back to the legacy folder, or `DW3_MEMCARD_DIR` forced a folder) the
+store stays off and `dw3-store: save_store=1 but there is no profile folder` is logged.
+`port_options.cfg` is still per region (`us/` and `eu/` folders; the global file is P6.26
+future work), so the key must be set in both to share saves from both builds. Design,
+migration, backups and logs: [CROSS_REGION_SAVES](CROSS_REGION_SAVES.md#as-built-slice-2).
+
 `stage_sweep` (P5.5, 0, 1 or 2, default 0) and `stage_sweep_frames` (30 to 3600, default 90) are file-only
 keys of the opt-in stage sweep: read by `port/sweep/stage_sweep.c` (builds with the Cheats screen), kept when
 the Options screen rewrites the file, not part of the `dw3-options:` log lines. `1` runs or resumes the sweep,

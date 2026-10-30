@@ -44,6 +44,7 @@ def memcard_rw(tmp_path_factory) -> Path:
         str(RW_C),
         str(HOST_C),
         str(ROOT / "port" / "memcard" / "save_convert.c"),
+        str(ROOT / "port" / "memcard" / "save_store.c"),
         f"-I{ROOT / 'port' / 'memcard'}",
     ]
     r = subprocess.run(cmd, capture_output=True, text=True)
@@ -71,6 +72,7 @@ def memcard_flat_test(tmp_path_factory) -> Path:
         str(LIB_C),
         str(HOST_C),
         str(ROOT / "port" / "memcard" / "save_convert.c"),
+        str(ROOT / "port" / "memcard" / "save_store.c"),
         f"-I{ROOT / 'port' / 'memcard'}",
     ]
     r = subprocess.run(cmd, capture_output=True, text=True)

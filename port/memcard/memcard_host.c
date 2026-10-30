@@ -2,12 +2,14 @@
 
 #include "memcard_host.h"
 #include "save_convert.h"
+#include "save_store.h"
 
 #include <errno.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
 #include <time.h>
 #ifdef _WIN32
 #include <io.h>
@@ -927,6 +929,643 @@ static void cross_import(int slot) {
     }
 }
 
+/* ---- P6.25 slice 2: the shared per-profile store (opt-in, save_store=1) ----
+ *
+ * `cardN.dw3s` in the profile folder holds card N in the canonical layout
+ * (save_store.h). While it is on, ports 0 and 1 are served from it: the game
+ * sees the card in this build's own layout and the flush folds the slots it
+ * wrote back. saveN.bin, saveN.name, saveN.import and the .mcr files are only
+ * ever read (migration), never written, renamed or deleted. autosave.bin
+ * (port 2) is not part of the store. Anything doubtful turns the store off for
+ * the session (the flat files then work exactly as in slice 1) and leaves the
+ * files alone. Every decision logs one `dw3-store:` line. */
+
+#define STORE_READ_MAX 0x100000u
+
+typedef struct StoreCardState {
+    int exists;     /* cardN.dw3s is on disk (read, or written this session) */
+    int content;    /* the card holds a canonical image */
+    int formatted;  /* the game formatted the port: the file stays until the next save */
+    int deferred_said; /* "not settled yet" was logged for this wait */
+    SaveStoreCard card;
+    uint8_t *base;  /* the native image shown to the game (SAVE_IMAGE_SIZE) */
+} StoreCardState;
+
+static struct {
+    int requested;   /* memcard_host_setup_store accepted it */
+    char dir[MEMCARD_DIR_MAX];
+    int own_region;
+    int opened;
+    int usable;
+    int backed_up[SAVE_STORE_CARDS];
+    StoreCardState c[SAVE_STORE_CARDS];
+} g_store;
+
+static int store_slot(int slot) {
+    return g_store.requested && g_store.usable && slot >= 0 &&
+           slot < SAVE_STORE_CARDS;
+}
+
+int memcard_host_store_active(int slot) {
+    return store_slot(slot);
+}
+
+static int store_path(const char *leaf, char *out, size_t outlen) {
+    int n = snprintf(out, outlen, "%s/%s", g_store.dir, leaf);
+
+    return (n < 0 || (size_t)n >= outlen) ? -1 : 0;
+}
+
+static int store_card_path(int n, char *out, size_t outlen) {
+    char leaf[24];
+
+    snprintf(leaf, sizeof(leaf), "card%d.dw3s", n);
+    return store_path(leaf, out, outlen);
+}
+
+/* 1 = read (len set), 0 = absent, -1 = unreadable or over `cap`. */
+static int read_whole(const char *path, uint8_t *buf, size_t cap, size_t *len) {
+    FILE *fp = fopen(path, "rb");
+    size_t n;
+
+    if (fp == NULL) {
+        return errno == ENOENT ? 0 : -1;
+    }
+    n = fread(buf, 1, cap, fp);
+    if (ferror(fp) || n >= cap) {
+        fclose(fp);
+        return -1;
+    }
+    fclose(fp);
+    *len = n;
+    return 1;
+}
+
+/* DW3_SAVE_STORE=0|1 wins; else `save_store=0|1` in <cfgdir>/port_options.cfg
+ * (the last such line wins; a value that is not 0 or 1 reads as off and is
+ * logged). */
+int memcard_host_store_requested(const char *cfgdir) {
+    const char *env = getenv("DW3_SAVE_STORE");
+    char path[MEMCARD_PATH_MAX];
+    char text[4200];
+    size_t len = 0;
+    size_t i = 0;
+    int val = 0;
+
+    if (env != NULL && env[0] != '\0') {
+        return env[0] == '1' && env[1] == '\0';
+    }
+    if (cfgdir == NULL || cfgdir[0] == '\0' ||
+        snprintf(path, sizeof(path), "%s/port_options.cfg", cfgdir) >=
+            (int)sizeof(path) ||
+        read_whole(path, (uint8_t *)text, sizeof(text) - 1, &len) != 1) {
+        return 0;
+    }
+    text[len] = '\0';
+    while (i < len) {
+        char *line = text + i;
+        char *nl = memchr(line, '\n', len - i);
+        size_t ll = nl != NULL ? (size_t)(nl - line) : len - i;
+
+        i += ll + 1;
+        line[ll] = '\0';
+        while (ll > 0 && (line[ll - 1] == '\r' || line[ll - 1] == ' ' ||
+                          line[ll - 1] == '\t')) {
+            line[--ll] = '\0';
+        }
+        if (strncmp(line, "save_store=", 11) == 0) {
+            if ((line[11] == '0' || line[11] == '1') && line[12] == '\0') {
+                val = line[11] == '1';
+            } else {
+                val = 0;
+                fprintf(stderr,
+                        "dw3-store: save_store=%s is not valid (0 or 1): the store "
+                        "stays off\n", line + 11);
+            }
+        }
+    }
+    return val;
+}
+
+int memcard_host_setup_store(const char *cfgdir, const char *profile_dir,
+                             int own_region) {
+    const char *env_dir = getenv("DW3_SAVE_STORE_DIR");
+    const char *dir = (env_dir != NULL && env_dir[0] != '\0') ? env_dir : profile_dir;
+    size_t n;
+
+    memset(g_store.dir, 0, sizeof(g_store.dir));
+    g_store.requested = 0;
+    g_store.opened = 0;
+    g_store.usable = 0;
+    if (!memcard_host_store_requested(cfgdir)) {
+        return -1;
+    }
+    if (dir == NULL || dir[0] == '\0' ||
+        (own_region != SAVE_REGION_US && own_region != SAVE_REGION_EU)) {
+        fprintf(stderr,
+                "dw3-store: save_store=1 but there is no profile folder (legacy "
+                "or explicit memory card folder): the store stays off\n");
+        return -1;
+    }
+    n = strlen(dir);
+    if (n >= MEMCARD_DIR_MAX) {
+        return -1;
+    }
+    memcpy(g_store.dir, dir, n + 1);
+    while (n > 1 && (g_store.dir[n - 1] == '/' || g_store.dir[n - 1] == '\\')) {
+        g_store.dir[--n] = '\0';
+    }
+    g_store.own_region = own_region;
+    g_store.requested = 1;
+    fprintf(stderr, "dw3-store: on dir=%s own=%s\n", g_store.dir,
+            region_name(own_region));
+    return 0;
+}
+
+static void store_hex_name(const uint8_t *image, int s, char *out, size_t cap) {
+    /* The summary's name is Shift-JIS: print it as hex, never as text. */
+    const uint8_t *nm = image + SAVE_INFO_OFFSET + 8 + s * SAVE_SUMMARY_SIZE;
+    size_t i;
+
+    out[0] = '\0';
+    for (i = 0; i < 4 && i * 2 + 3 < cap; i++) {
+        snprintf(out + i * 2, cap - i * 2, "%02x", nm[i]);
+    }
+}
+
+static int store_write_card(int n, const SaveStoreCard *card) {
+    char path[MEMCARD_PATH_MAX];
+    uint8_t *buf;
+    int rc;
+
+    if (store_card_path(n, path, sizeof(path)) != 0) {
+        return -1;
+    }
+    buf = (uint8_t *)malloc(SAVE_STORE_FILE_SIZE);
+    if (buf == NULL) {
+        return -1;
+    }
+    save_store_serialize(card, buf);
+    rc = atomic_write_file(path, buf, SAVE_STORE_FILE_SIZE);
+    free(buf);
+    return rc;
+}
+
+/* A copy of the card file as it is on disk, next to it, before the first
+ * overwrite of the session. Never rotated or deleted. */
+static int store_backup(int n) {
+    char path[MEMCARD_PATH_MAX];
+    char bak[MEMCARD_PATH_MAX + 40];
+    char stamp[32];
+    uint8_t *buf;
+    uint8_t *chk;
+    size_t len = 0;
+    size_t clen = 0;
+    time_t t;
+    struct tm tmv;
+    int rc = -1;
+    int k;
+
+    if (g_store.backed_up[n]) {
+        return 0;
+    }
+    if (store_card_path(n, path, sizeof(path)) != 0) {
+        return -1;
+    }
+    buf = (uint8_t *)malloc(STORE_READ_MAX);
+    chk = (uint8_t *)malloc(STORE_READ_MAX);
+    if (buf == NULL || chk == NULL) {
+        goto done;
+    }
+    if (read_whole(path, buf, STORE_READ_MAX, &len) != 1) {
+        goto done;
+    }
+    t = time(NULL);
+    if (gmtime_r(&t, &tmv) == NULL ||
+        strftime(stamp, sizeof(stamp), "%Y%m%d-%H%M%S", &tmv) == 0) {
+        snprintf(stamp, sizeof(stamp), "t%lld", (long long)t);
+    }
+    for (k = 0; k < 100; k++) {
+        int w = k == 0 ? snprintf(bak, sizeof(bak), "%s.%s.bak", path, stamp)
+                       : snprintf(bak, sizeof(bak), "%s.%s-%d.bak", path, stamp, k);
+
+        if (w < 0 || (size_t)w >= sizeof(bak)) {
+            goto done;
+        }
+        if (!file_exists(bak)) {
+            break;
+        }
+    }
+    if (k == 100 || atomic_write_file(bak, buf, len) != 0) {
+        goto done;
+    }
+    if (read_whole(bak, chk, STORE_READ_MAX, &clen) != 1 || clen != len ||
+        memcmp(buf, chk, len) != 0) {
+        fprintf(stderr, "dw3-store: backup %s did not read back the same\n",
+                path_base(bak));
+        goto done;
+    }
+    fprintf(stderr, "dw3-store: backup card%d.dw3s -> %s (%zu bytes)\n", n,
+            path_base(bak), len);
+    g_store.backed_up[n] = 1;
+    rc = 0;
+done:
+    free(buf);
+    free(chk);
+    return rc;
+}
+
+/* Source folder of a legacy region's saveN.bin (NULL: none known). */
+static const char *store_source_dir(int region) {
+    if (region == g_store.own_region) {
+        return g_dir[0] != '\0' ? g_dir : NULL;
+    }
+    return g_import_dir[0] != '\0' ? g_import_dir : NULL;
+}
+
+static const char *import_outcome_name(int o) {
+    switch (o) {
+    case SAVE_IMPORT_IMPORTED: return "imported";
+    case SAVE_IMPORT_DUPLICATE: return "duplicate of one already imported";
+    case SAVE_IMPORT_INVALID: return "refused: wrong version or checksum";
+    case SAVE_IMPORT_LEFTOVER: return "left in the legacy folder: all 6 slots taken";
+    case SAVE_IMPORT_SOURCE_BAD: return "refused: not a DW3 card";
+    default: return "empty";
+    }
+}
+
+/* First start with the store on and no imported.txt: copy the legacy flat
+ * saves in (the originals are only read) and write imported.txt last. */
+static void store_migrate(void) {
+    static const int order[SAVE_IMPORT_MAX_SOURCES][2] = {
+        {SAVE_REGION_US, 0}, {SAVE_REGION_EU, 0},
+        {SAVE_REGION_US, 1}, {SAVE_REGION_EU, 1}};
+    char marker[MEMCARD_PATH_MAX];
+    char spath[SAVE_IMPORT_MAX_SOURCES][MEMCARD_PATH_MAX];
+    uint8_t *img[SAVE_IMPORT_MAX_SOURCES] = {NULL, NULL, NULL, NULL};
+    SaveImportSource src[SAVE_IMPORT_MAX_SOURCES];
+    SaveImportReport rep;
+    SaveStoreCard *cards;
+    char text[2048];
+    size_t tl = 0;
+    int i;
+    int s;
+    int n;
+    int failed = 0;
+
+    if (store_path("imported.txt", marker, sizeof(marker)) != 0) {
+        g_store.usable = 0;
+        return;
+    }
+    cards = (SaveStoreCard *)malloc(sizeof(SaveStoreCard) * SAVE_STORE_CARDS);
+    if (cards == NULL) {
+        g_store.usable = 0;
+        return;
+    }
+    for (i = 0; i < SAVE_IMPORT_MAX_SOURCES; i++) {
+        const char *d = store_source_dir(order[i][0]);
+        size_t len = 0;
+
+        src[i].image = NULL;
+        spath[i][0] = '\0';
+        if (d == NULL ||
+            snprintf(spath[i], sizeof(spath[i]), "%s/%s", d,
+                     memcard_host_slot_name(order[i][1])) >= (int)sizeof(spath[i])) {
+            spath[i][0] = '\0';
+            continue;
+        }
+        img[i] = (uint8_t *)malloc(MEMCARD_FLAT_SIZE + 1);
+        if (img[i] == NULL) {
+            failed = 1;
+            continue;
+        }
+        if (read_whole(spath[i], img[i], MEMCARD_FLAT_SIZE + 1, &len) != 1 ||
+            len != MEMCARD_FLAT_SIZE) {
+            if (file_exists(spath[i])) {
+                fprintf(stderr,
+                        "dw3-store: migrate skipped %s: not a 32 KiB save (%zu bytes)\n",
+                        spath[i], len);
+            }
+            free(img[i]);
+            img[i] = NULL;
+            continue;
+        }
+        src[i].image = img[i];
+    }
+    if (failed) {
+        g_store.usable = 0;
+        goto out;
+    }
+    (void)save_store_import(cards, src, SAVE_IMPORT_MAX_SOURCES, &rep);
+    for (i = 0; i < SAVE_IMPORT_MAX_SOURCES; i++) {
+        for (s = 0; s < SAVE_SLOT_COUNT; s++) {
+            int o = rep.outcome[i][s];
+            char nm[16];
+
+            if (o == SAVE_IMPORT_EMPTY || src[i].image == NULL) {
+                continue;
+            }
+            store_hex_name(src[i].image, s, nm, sizeof(nm));
+            fprintf(stderr,
+                    "dw3-store: migrate %s slot=%d (%s, name %s...): %s",
+                    spath[i], s,
+                    rep.src_region[i][s] != 0 ? region_name(rep.src_region[i][s]) : "?",
+                    nm, import_outcome_name(o));
+            if (rep.target[i][s] >= 0) {
+                fprintf(stderr, " -> card%d slot %d", rep.target[i][s] / SAVE_SLOT_COUNT,
+                        rep.target[i][s] % SAVE_SLOT_COUNT);
+            }
+            fprintf(stderr, "\n");
+            tl += (size_t)snprintf(text + tl, sizeof(text) - tl,
+                                   "source=%s slot=%d result=%s\n", spath[i], s,
+                                   import_outcome_name(o));
+            if (tl >= sizeof(text)) {
+                tl = sizeof(text) - 1;
+            }
+        }
+    }
+    for (n = 0; n < SAVE_STORE_CARDS; n++) {
+        if (!rep.card_used[n]) {
+            continue;
+        }
+        if (g_store.c[n].exists) {
+            fprintf(stderr,
+                    "dw3-store: migrate: card%d.dw3s already exists, kept as it is\n", n);
+            continue;
+        }
+        if (store_write_card(n, &cards[n]) != 0) {
+            fprintf(stderr,
+                    "dw3-store: migrate FAILED to write card%d.dw3s: the store is "
+                    "off this session, imported.txt not written\n", n);
+            g_store.usable = 0;
+            goto out;
+        }
+        g_store.c[n].card = cards[n];
+        g_store.c[n].exists = 1;
+        g_store.c[n].content = 1;
+    }
+    fprintf(stderr,
+            "dw3-store: migration done imported=%d duplicate=%d refused=%d "
+            "left_in_legacy=%d (originals untouched)\n",
+            rep.imported, rep.duplicates, rep.invalid, rep.leftover);
+    if (rep.leftover > 0) {
+        fprintf(stderr,
+                "dw3-store: migration: %d save(s) did not fit in the 6 slots and "
+                "stay in the legacy folder (see imported.txt)\n", rep.leftover);
+    }
+    {
+        char head[256];
+        int hl = snprintf(head, sizeof(head),
+                          "dw3-store-import 1\nconverter=%d\nimported=%d\nduplicate=%d\n"
+                          "refused=%d\nleft_in_legacy=%d\n", SAVE_CONVERT_VERSION,
+                          rep.imported, rep.duplicates, rep.invalid, rep.leftover);
+        char full[sizeof(head) + sizeof(text)];
+
+        memcpy(full, head, (size_t)hl);
+        memcpy(full + hl, text, tl);
+        if (atomic_write_file(marker, (const uint8_t *)full, (size_t)hl + tl) != 0) {
+            fprintf(stderr,
+                    "dw3-store: migrate: could not write imported.txt (the import "
+                    "runs again next start; existing cards are kept)\n");
+        }
+    }
+out:
+    for (i = 0; i < SAVE_IMPORT_MAX_SOURCES; i++) {
+        free(img[i]);
+    }
+    free(cards);
+}
+
+/* Once per process: read both cards, migrate on the very first start. 0 = the
+ * store serves ports 0 and 1; -1 = it is off for this session. */
+static int store_open_once(void) {
+    char marker[MEMCARD_PATH_MAX];
+    uint8_t *buf;
+    int n;
+
+    if (g_store.opened) {
+        return g_store.usable ? 0 : -1;
+    }
+    g_store.opened = 1;
+    g_store.usable = 1;
+    (void)mkdir(g_store.dir, 0777);
+    buf = (uint8_t *)malloc(STORE_READ_MAX);
+    if (buf == NULL) {
+        g_store.usable = 0;
+        return -1;
+    }
+    for (n = 0; n < SAVE_STORE_CARDS && g_store.usable; n++) {
+        char path[MEMCARD_PATH_MAX];
+        size_t len = 0;
+        int rc;
+        int st;
+
+        if (store_card_path(n, path, sizeof(path)) != 0) {
+            g_store.usable = 0;
+            break;
+        }
+        recover_tmp(path, (long)SAVE_STORE_FILE_SIZE);
+        rc = read_whole(path, buf, STORE_READ_MAX, &len);
+        if (rc == 0) {
+            continue;
+        }
+        st = rc < 0 ? SAVE_STORE_SHORT : save_store_parse(buf, len, &g_store.c[n].card);
+        if (st != SAVE_STORE_OK) {
+            fprintf(stderr,
+                    "dw3-store: card%d.dw3s refused: %s (file left untouched); the "
+                    "store is off this session and the flat saves are used\n", n,
+                    rc < 0 ? "unreadable" : save_store_status_name(st));
+            g_store.usable = 0;
+            break;
+        }
+        g_store.c[n].exists = 1;
+        g_store.c[n].content = 1;
+        fprintf(stderr, "dw3-store: read card%d.dw3s crc ok last_writer=%s\n", n,
+                g_store.c[n].card.last_region == SAVE_REGION_US
+                    ? "us"
+                    : (g_store.c[n].card.last_region == SAVE_REGION_EU ? "eu" : "?"));
+    }
+    free(buf);
+    if (g_store.usable && store_path("imported.txt", marker, sizeof(marker)) == 0 &&
+        !file_exists(marker)) {
+        store_migrate();
+    }
+    if (!g_store.usable) {
+        return -1;
+    }
+    return 0;
+}
+
+/* Serve port `slot` from the store. 0 = served (the port may be empty);
+ * 1 = the store is off, take the flat path. */
+static int store_ensure(int slot) {
+    StoreCardState *sc;
+    MemSlot *ms = &g_slots[slot];
+    SaveConvertReport rep;
+
+    if (store_open_once() != 0) {
+        return 1;
+    }
+    sc = &g_store.c[slot];
+    if (sc->formatted || !sc->content) {
+        return 0; /* empty port: the game creates its save */
+    }
+    if (slot_alloc(slot) != 0) {
+        return 1;
+    }
+    if (save_store_to_native(&sc->card, g_store.own_region, ms->data, &rep) != 0) {
+        fprintf(stderr, "dw3-store: card%d.dw3s has no usable info section: the "
+                "store is off this session\n", slot);
+        slot_clear_ram(slot);
+        g_store.usable = 0;
+        return 1;
+    }
+    if (sc->base == NULL) {
+        sc->base = (uint8_t *)malloc(SAVE_IMAGE_SIZE);
+    }
+    if (sc->base == NULL) {
+        slot_clear_ram(slot);
+        g_store.usable = 0;
+        return 1;
+    }
+    memcpy(sc->base, ms->data, SAVE_IMAGE_SIZE);
+    ms->name[0] = '\0'; /* any DW3 product name matches (design: name binding) */
+    ms->dirty = 0;
+    fprintf(stderr,
+            "dw3-store: open card%d as %s results=%d,%d,%d (0 empty 1 native "
+            "2 converted 3 refused: the game shows error 8) usable=%d\n",
+            slot, region_name(g_store.own_region), rep.result[0], rep.result[1],
+            rep.result[2], rep.usable);
+    for (int k = 0; k < SAVE_SLOT_COUNT; k++) {
+        if (rep.result[k] == SAVE_SLOT_REFUSED) {
+            fprintf(stderr,
+                    "dw3-store: card%d slot %d needs the EU extra chapter: the %s "
+                    "build cannot load it (error 8), the bytes stay untouched in "
+                    "the store\n", slot, k, region_name(g_store.own_region));
+        }
+        if (rep.warn[k] != 0) {
+            fprintf(stderr,
+                    "dw3-store: card%d slot %d warning: set flag bytes with no "
+                    "place in the %s layout are not shown (kept in the store)\n",
+                    slot, k, region_name(g_store.own_region));
+        }
+    }
+    return 0;
+}
+
+static int g_store_final; /* the process is ending: the last flush decides */
+
+static int store_flush(int slot) {
+    StoreCardState *sc = &g_store.c[slot];
+    MemSlot *ms = &g_slots[slot];
+    SaveStoreWriteReport rep;
+    SaveStoreCard *work;
+    char path[MEMCARD_PATH_MAX];
+    int rc = -1;
+    int frc;
+
+    work = (SaveStoreCard *)malloc(sizeof(SaveStoreCard));
+    if (work == NULL) {
+        ms->flush_failed = 1;
+        return -1;
+    }
+    *work = sc->card;
+    frc = save_store_from_native(work, g_store.own_region, ms->data,
+                                 sc->formatted ? NULL : sc->base, SAVE_STORE_LANG_NONE,
+                                 g_store_final, &rep);
+    if (frc > 0 && !g_store_final) {
+        /* Between two bursts of one game save (header, info, slot): wait for
+         * the rest, nothing is written, the port stays dirty. Said once. */
+        if (!sc->deferred_said) {
+            fprintf(stderr, "dw3-store: card%d not settled yet (%s): waiting\n", slot,
+                    rep.reason);
+            sc->deferred_said = 1;
+        }
+        ms->flush_failed = 0;
+        rc = 0;
+        goto out;
+    }
+    if (frc != 0) {
+        fprintf(stderr,
+                "dw3-store: REFUSED to write card%d: %s (nothing written)\n", slot,
+                rep.reason);
+        ms->flush_failed = 1;
+        goto out;
+    }
+    sc->deferred_said = 0;
+    if (rep.changed == 0 && !rep.header_changed) {
+        ms->dirty = 0;
+        ms->flush_failed = 0;
+        rc = 0;
+        goto out;
+    }
+    if (!sc->exists && !sc->formatted &&
+        work->image[SAVE_INFO_OFFSET + 8] == 0 &&
+        work->image[SAVE_INFO_OFFSET + 8 + SAVE_SUMMARY_SIZE] == 0 &&
+        work->image[SAVE_INFO_OFFSET + 8 + 2 * SAVE_SUMMARY_SIZE] == 0) {
+        /* A new card with no save in it (the game formats the file before the
+         * first save): nothing worth a file yet. The RAM image stays. */
+        ms->dirty = 0;
+        ms->flush_failed = 0;
+        rc = 0;
+        goto out;
+    }
+    if (sc->formatted) {
+        /* The formatted port starts a fresh card: slots the game did not write
+         * are empty, so nothing of the old card is carried into the new one
+         * (the old file is backed up before it is replaced). */
+        memset(work->meta, 0, sizeof(work->meta));
+    }
+    if (sc->exists && store_backup(slot) != 0) {
+        fprintf(stderr,
+                "dw3-store: backup of card%d.dw3s FAILED: not writing (the old file "
+                "is untouched)\n", slot);
+        ms->flush_failed = 1;
+        goto out;
+    }
+    if (store_write_card(slot, work) != 0) {
+        if (store_card_path(slot, path, sizeof(path)) != 0) {
+            path[0] = '\0';
+        }
+        fprintf(stderr, "dw3-store: write card%d.dw3s FAILED (%s)\n", slot,
+                strerror(errno));
+        ms->flush_failed = 1;
+        goto out;
+    }
+    sc->card = *work;
+    sc->exists = 1;
+    sc->content = 1;
+    sc->formatted = 0;
+    if (sc->base == NULL) {
+        sc->base = (uint8_t *)malloc(SAVE_IMAGE_SIZE);
+    }
+    if (sc->base != NULL) {
+        memcpy(sc->base, ms->data, SAVE_IMAGE_SIZE);
+    }
+    ms->dirty = 0;
+    ms->flush_failed = 0;
+    ms->flush_count++;
+    fprintf(stderr,
+            "dw3-store: write card%d by %s slots_changed=%u%u%u header=%d "
+            "(canonical EU layout, crc32 %08x)\n", slot,
+            region_name(g_store.own_region), (rep.changed >> 0) & 1u,
+            (rep.changed >> 1) & 1u, (rep.changed >> 2) & 1u, rep.header_changed,
+            (unsigned)save_crc32(sc->card.image, SAVE_IMAGE_SIZE));
+    rc = 0;
+out:
+    free(work);
+    return rc;
+}
+
+static void store_reset(void) {
+    int n;
+
+    for (n = 0; n < SAVE_STORE_CARDS; n++) {
+        free(g_store.c[n].base);
+    }
+    memset(&g_store, 0, sizeof(g_store));
+}
+
 int memcard_host_set_dir(const char *dir) {
     size_t n;
 
@@ -965,7 +1604,9 @@ int memcard_host_create_file(int slot, const char *name) {
     if (slot_alloc(slot) != 0) {
         return -1;
     }
-    store_name(slot, name);
+    if (!store_slot(slot)) {
+        store_name(slot, name); /* the store accepts any DW3 name: stays "naked" */
+    }
     g_slots[slot].dirty = 1;
     return 0;
 }
@@ -978,6 +1619,16 @@ int memcard_host_format_slot(int slot) {
         return -1;
     }
     slot_clear_ram(slot);
+    if (store_slot(slot)) {
+        /* Never delete: the card file stays; the next save replaces it (after
+         * a backup). Until then this port reads as an empty card. */
+        g_store.c[slot].formatted = 1;
+        fprintf(stderr,
+                "dw3-store: card%d formatted by the game: the port is empty, "
+                "card%d.dw3s stays on disk until the next save (then a backup "
+                "is kept)\n", slot, slot);
+        return 0;
+    }
     if (flat_path(slot, path, sizeof(path)) == 0) {
         remove(path);
     }
@@ -1050,6 +1701,9 @@ int memcard_host_flush(int slot) {
         fprintf(stderr, "dw3: memcard flush FAILED slot=%d (test)\n", slot);
         return -1;
     }
+    if (store_slot(slot)) {
+        return store_flush(slot);
+    }
     if (flat_path(slot, path, sizeof(path)) != 0) {
         g_slots[slot].flush_failed = 1;
         fprintf(stderr, "dw3: memcard flush FAILED slot=%d (bad path)\n", slot);
@@ -1120,6 +1774,9 @@ int memcard_host_ensure(int slot) {
     }
     if (flat_path(slot, path, sizeof(path)) != 0) {
         return -1;
+    }
+    if (g_store.requested && slot != MEMCARD_HOST_AUTO && store_ensure(slot) == 0) {
+        return 0;
     }
     recover_slot_tmp(slot);
     /* One open via load_flat_from_disk (no probe fopen). Missing file falls
@@ -1227,7 +1884,9 @@ void memcard_host_shutdown(void) {
     /* A section still open here ended its burst without a later MemCard call
      * (the game loop returned): the RAM image is the finished save, flush it.
      * A section the exit gate gave up on was already dropped (dirty = 0). */
+    g_store_final = 1;
     (void)memcard_host_flush_all();
+    g_store_final = 0;
     for (slot = 0; slot < MEMCARD_HOST_ALL; slot++) {
         slot_clear_ram(slot);
         g_slots[slot].flush_count = 0;
@@ -1236,6 +1895,7 @@ void memcard_host_shutdown(void) {
     g_dir[0] = '\0';
     g_import_dir[0] = '\0';
     g_own_region = 0;
+    store_reset();
 }
 
 /* ---- Legacy 128 KiB helpers (fixtures / wrap) ---- */

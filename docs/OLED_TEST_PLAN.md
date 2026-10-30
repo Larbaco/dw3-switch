@@ -75,7 +75,7 @@ lines are still wanted as proof.
 | B. Field and 16:9 tour | US + EU ordinary | P6.1, P7.7 water, P9.7 field Options |
 | C. Turbo speed | US + EU nxlink | P6.22 pass 2 |
 | D. Battles | US + EU ordinary | P5.2, P6.18, P6.20 battle rows, P7.7, P9.7 battle Options |
-| E. Saves | US + EU ordinary | P6.27, P6.9, P6.25, P6.31, P6.20 save mark, title textures after Return to title |
+| E. Saves | US + EU ordinary | P6.27, P6.9, P6.25 (import E3, shared store E3b), P6.31, P6.20 save mark, title textures after Return to title |
 | F. 2 h memory run | US then EU nxlink | **[P5.1]**, **[GATE]**, P5.4 notice |
 | G. Everything else | mixed | P5.4 forced crash, P10.2, P4.3, **P5.5 stage sweep (G10)**, **[LAUNCHER]**, **[COMBINED]** (G9) |
 
@@ -318,6 +318,28 @@ Both builds on one SD card.
 | E3.4 | A save in both folders | Nothing imported | `dw3.log` | P6.25 |
 | E3.5 | If you have one, an EU extra-chapter save going to US | No save listed (or error 8 if the card also has an importable one); no crash | `dw3.log` | P6.25 |
 | E3.6 | Start the same build again | The import does not run a second time | `dw3.log` | P6.25 ([README](../platforms/switch/release/README.txt)) |
+
+### E3b. Shared store (P6.25 slice 2)
+
+Opt-in. Back up `sdmc:/switch/dw3/` first. Put `save_store=1` before `end=1` in **both**
+`sdmc:/switch/dw3/us/port_options.cfg` and `.../eu/port_options.cfg` (they are separate files),
+then start a build. Save folder: `sdmc:/switch/dw3/saves/<uid>/` (`card0.dw3s`, `card1.dw3s`,
+`imported.txt`, `cardN.dw3s.<stamp>.bak`, next to the `us/` and `eu/` folders). The combined
+`.nro` and the separate ones behave the same. Source:
+[CROSS_REGION_SAVES](CROSS_REGION_SAVES.md#as-built-slice-2).
+
+| # | Action | Expect | If it fails, send | Ticks |
+|---|---|---|---|---|
+| E3.7 | With the key **absent or 0**, start US and EU, save in one | No `card0.dw3s` anywhere, no `dw3-store:` line, saves in `us/memcard/` or `eu/memcard/` as before | `dw3.log`, folder listing | P6.25 slice 2 (off is the old game) |
+| E3.8 | Key 1 in both, a US save in `us/memcard/` and none in `eu/memcard/`. Start the **US** build, quit | `dw3.log`: `dw3-store: on dir=.../saves/<uid> own=us`, `dw3-store: migrate .../us/memcard/save0.bin slot=K (us, name ...): imported -> card0 slot Y`, `dw3-store: migration done imported=N ... (originals untouched)`; `card0.dw3s` and `imported.txt` appear; `us/memcard/save0.bin` has the same size and time stamp as before | `dw3.log`, folder listing | P6.25 slice 2 |
+| E3.9 | Start the **EU** build, Title, Continue, slot 1 | The US save is listed (name, area, money, play time) and loads in the field at the saved place. `dw3.log`: `dw3-store: read card0.dw3s crc ok last_writer=us`, `dw3-store: open card0 as eu results=1,...`, `STGMCARD_loadSave ok`; **no** `migrate` line, **no** `cross-import` line | photo, `dw3.log` | P6.25 slice 2 |
+| E3.10 | In EU save into slot 2 (another place), leave with HOME, start **US**, Continue | Both saves are listed in the US build; the old one is unchanged; the new one loads. `dw3.log` (EU run): `dw3-store: write card0 by eu slots_changed=010 header=1`, `dw3-store: backup card0.dw3s -> card0.dw3s.<stamp>.bak`; (US run): `dw3-store: open card0 as us results=2,2,0`. The `.bak` file is the card as it was before | photo, `dw3.log`, folder listing | P6.25 slice 2 (two-way) |
+| E3.11 | Save twice more in one session | One `backup` line per session, not per save; `dw3-store: write card0 by ...` each time, no `REFUSED`; older `.bak` files are still there | `dw3.log`, folder listing | P6.25 slice 2 |
+| E3.12 | A save made on the store only: look at `us/memcard/` and `eu/memcard/` | No `save0.bin` was written or changed by the store builds | folder listing | P6.25 slice 2 |
+| E3.13 | If you have an EU extra-chapter save in the store (or copy one in), start **US**, Continue | The slot is listed; choosing it shows the game's own error 8 (other save version), no crash. `dw3.log`: `dw3-store: open card0 as us results=3,...` and `dw3-store: card0 slot K needs the EU extra chapter ...`; then start EU: it loads normally. Saving another slot in US leaves that slot byte for byte (compare `card0.dw3s` slot bytes if you can) | photo, `dw3.log` | P6.25 slice 2 (**not tested: needs an extra-chapter save**) |
+| E3.14 | Start again with the key still 1 | No second migration: no `migrate` line, `imported.txt` unchanged; a card you deleted by hand does not come back | `dw3.log` | P6.25 slice 2 |
+| E3.15 | Language switch (EU only): save with language English, restart, pick French, Continue | The save is still listed and loads (the store ignores the PS1 product name, which differs by language) | photo, `dw3.log` | P6.25 slice 2 (hard case 6) |
+| E3.16 | In the Title/Load screen format card slot 1 (if the game offers it), then restart | `dw3-store: card0 formatted by the game ...`; `card0.dw3s` is **still on disk** until you save again; after a new save the old card is in a `.bak` | `dw3.log`, folder listing | P6.25 slice 2 |
 
 ### E4. Cheats screen and the cheat mark
 

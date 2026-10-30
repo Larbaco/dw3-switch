@@ -6,9 +6,12 @@ region loads in the other. This note is the survey of how the two save images
 differ, taken field by field from the decomp, and the design that follows. It
 is the base of the [ROADMAP P6.25 entry](ROADMAP.md#phase-6-goal-notes).
 **Slice 1 is built (2026-10-25, see [As built](#as-built-slice-1)):** the
-converter and a one-way import on load. The `.dw3s` container, the shared
-store and the write-back are **not** built yet. P6.24 (one build) and
-[P6.26](PER_USER_SAVES.md) (per-user saves) depend on the rest.
+converter and a one-way import on load. **Slice 2 is built (2026-10-30, see
+[As built (slice 2)](#as-built-slice-2)):** the `.dw3s` container and the shared
+per-profile store with two-way flow, **opt-in** (`save_store=1`, default 0; off
+is slice 1 byte for byte). OLED check, a real EU save, the Options row and
+turning it on by default are open. P6.24 (one build) and
+[P6.26](PER_USER_SAVES.md) (per-user saves) are built and unchanged by it.
 
 Sources: `vendor/dw3_decomp` at `b9caa6c`, `origin/main` at `545ede2`, and one
 real US save of the owner read on the PC (offsets and checksum below were
@@ -125,6 +128,195 @@ in `sdmc:/switch/dw3/eu/memcard/`:
 4. With a save in both folders: nothing is imported (each build keeps its own).
 5. An EU save from the extra chapter (if available): the US build shows no
    save (or error 8 if the card also has an importable one) and does not crash.
+
+## As built (slice 2)
+
+Date 2026-10-30, branch `feat/p6.25-slice2-store`. Design "Order" step 2: the
+`.dw3s` container, the store behind `memcard_host`, the first-fit import, backups
+and host tests; step 3 (turn it on in a preview) is **not** done: the store is
+**opt-in**. No decomp patch was needed (0195 and up stay free; 0147-0159 stay
+reserved for P6.32).
+
+**Safety rules this slice was built under** (they override the design below where
+they differ, see [Design points changed](#design-points-changed-in-slice-2)):
+
+- `save_store=0|1`, **default 0**. With 0 (or no key) nothing in the store code runs and
+  the game is slice 1 byte for byte (`saveN.bin`, the slice 1 import); the replays of
+  the old `xr-*` scenarios and the whole `--changed` sweep check that.
+- A `saveN.bin`, `saveN.name`, `saveN.import`, `memcardN.mcr(.bak)` is never deleted,
+  truncated, renamed or overwritten by the store. Migration **copies** into the store
+  and only reads them. Before the store overwrites a file that exists, it keeps a
+  timestamped backup next to it. Every checksum or layout doubt fails closed: nothing is
+  written and nothing is repaired; the slice 1 rule 9 (exact XOR checksum of a foreign
+  slot and of the info section) is unchanged.
+- The path layout of [P6.26](PER_USER_SAVES.md) is unchanged
+  (`saves/<uid>/<us|eu>/memcard/`); the store sits in the profile folder next to the
+  region folders.
+
+**What it is.**
+
+- `port/memcard/save_store.{c,h}`: pure functions (no I/O). The container
+  (`save_store_parse`, `save_store_serialize`), canonical to native for a region
+  (`save_store_to_native`), native to canonical for the slots the game wrote
+  (`save_store_from_native`) and the first-fit import (`save_store_import`).
+- `port/memcard/memcard_host.c`: the I/O. `memcard_host_setup_store(cfgdir,
+  profile_dir, own_region)` is called by the PC and the Switch host after the cross-import
+  setup and before the first `memcard_host_ensure`. Ports 0 and 1 are then served from
+  `card0.dw3s` / `card1.dw3s`; port 2 (`autosave.bin`, P6.31) is **not** part of the store.
+- Where: the profile folder, `sdmc:/switch/dw3/saves/<uid>/` on the Switch and
+  `runtime/saves/<profile>/` on the PC, so `card0.dw3s`, `card1.dw3s`, `imported.txt`
+  and the backups sit next to `profile.txt` and the `us/` and `eu/` folders. With no
+  profile folder (the Switch fell back to the legacy folder, or `DW3_MEMCARD_DIR` /
+  `--memcard-dir` forced a folder) the store stays **off**, logged. `DW3_SAVE_STORE_DIR`
+  (PC, tests, replays) names the store folder directly.
+- The option is read from `port_options.cfg` (`save_store=1`, a file-only key, see
+  [PORT_OPTIONS](PORT_OPTIONS.md)) before the cards open, so it takes effect at the
+  next start; `DW3_SAVE_STORE=0|1` beats it for one PC run. That file is still per region
+  (`us/port_options.cfg`, `eu/port_options.cfg`), so set the key in both to share saves.
+
+**Container** (as the design, little endian): `"DW3S"`, u16 format 1, u16 header size
+`0x40`, u32 payload size `0x8000`, u32 CRC32 of the payload, u8 last writer region, u8 last
+writer language (`0xFF` = not known), then per slot 5 bytes at `0x14`
+`{origin region, origin language, flags, us_tail[2]}` (flag bit 0 = needs the EU extra
+chapter, bit 1 = `us_tail` holds the US flags40 bytes `0x1A`-`0x1B`), then the 32 KiB
+card image at `0x40`, data slots in the EU layout (version 4, EU checksum). A larger header
+size and trailing bytes are ignored. Unreadable or doubtful files (short, wrong magic, format 0,
+a payload size that is not `0x8000`, CRC mismatch, an info section that is not a DW3 one, a
+newer format version) are **never touched**: the store is off for that session and the flat
+saves serve the ports exactly as in slice 1.
+
+**Open** (`memcard_host_ensure`): read both cards once, then `save_store_to_native`. Sections
+`0x000-0x2FF` verbatim, every named slot converted to this build's layout (EU is the identity;
+US as in slice 1, plus the US flags40 tail put back from the metadata and the checksum redone).
+The game sees a card in its own region's format and the name is not checked (any DW3
+product name matches; the language-switch limit of hard case 6 is gone for the store). A slot
+that cannot be loaded here (EU extra chapter in the US build) keeps its EU bytes, so the US game
+shows its own error 8 (`STGMCARD_loadSave version fail got=4`, seen in the replay).
+
+**Flush** (`save_store_from_native`): only the slots whose bytes differ from the image shown at
+open are converted back (origin region, language and flags rewritten for them); every other slot
+is copied unchanged, including a refused one and its metadata. The game saves in three bursts
+(header, info section, slot data) with a flush call between them, so the store waits until the
+image is **settled** (info valid, every named slot a valid save of this region, no info-only change
+while the slot data is still to come) and writes once; the wait is logged once. A brand new card
+with no save in it is not written. `memcard_host_shutdown` is the last flush: a state that is still
+not whole there is refused and logged, never written.
+
+**Migration** (first start with the store on and no `imported.txt`): the sources are this build's
+`saveN.bin` and the other region's (the P6.26 folders, via the cross-import setup), read in the
+design's order, US card A, EU card A, US card B, EU card B. Every named slot with a valid version and
+**exact** checksum is converted to canonical and placed first fit into card 0 slots 0-2, then card 1
+slots 0-2, with its info summary; the first save to land in a card brings its header and icon
+sectors. A save whose canonical bytes equal one already placed is a **duplicate** and not
+imported (the converted copy slice 1 left in the other region's folder). A wrong-version or
+wrong-checksum slot is refused, never repaired. A seventh save stays in its legacy folder (logged,
+and listed in `imported.txt`). `imported.txt` is written last; after an interrupted migration (a
+card written, no `imported.txt`) the next start writes only the card files that are missing and
+keeps the others. A deleted card does not come back (`imported.txt` is the "done" flag, as
+`saveN.import` is in slice 1).
+
+**Backups.** Before the first overwrite of a card file in a session the file is copied to
+`cardN.dw3s.<UTC yyyymmdd-hhmmss>.bak` (a `-N` suffix on a clash), the copy is read back and compared,
+and only then is the card replaced; a backup that fails refuses the write (the old file is
+untouched, the game sees a card error). One backup per card per session, not per save, and they are
+never rotated or deleted (a session adds 32 KiB). Writes are the same fsync + rename-atomic ones
+as the flat saves, and a crash between the tmp file and the rename is recovered on the next start
+(a complete `.tmp` is promoted when the card is missing, any other `.tmp` is dropped).
+
+**The game formats a card** (`MemCardFormat`): the port reads as empty at once, but the file is
+**not** deleted; the next save replaces it (after a backup) with a card that holds only what the
+game then wrote.
+
+**Log lines** (`dw3.log`; `dw3-pc` prints the same to stderr). `N` is the port:
+
+| Event | Line |
+|---|---|
+| On (once) | `dw3-store: on dir=<profile> own=<us|eu>`; off with no profile folder: `dw3-store: save_store=1 but there is no profile folder ...: the store stays off` |
+| Card read | `dw3-store: read cardN.dw3s crc ok last_writer=<us|eu>` |
+| Import to the game (open) | `dw3-store: open cardN as <us|eu> results=a,b,c (0 empty 1 native 2 converted 3 refused ...) usable=U`; per refused slot `dw3-store: cardN slot K needs the EU extra chapter: the us build cannot load it (error 8), the bytes stay untouched in the store`; dropped flag bytes: `dw3-store: cardN slot K warning: ...` |
+| Export to the store (flush) | `dw3-store: write cardN by <us|eu> slots_changed=xyz header=0|1 (canonical EU layout, crc32 ...)` after `dw3-save: write cardN.dw3s committed (...)` |
+| Waiting between bursts | `dw3-store: cardN not settled yet (<reason>): waiting` (once per wait) |
+| Migration | `dw3-store: migrate <path>/saveN.bin slot=K (<us|eu>, name <hex>...): imported -> cardX slot Y` (or `duplicate of one already imported`, `refused: wrong version or checksum`, `refused: not a DW3 card`, `left in the legacy folder: all 6 slots taken`), `dw3-store: migration done imported=I duplicate=D refused=R left_in_legacy=L (originals untouched)`, `dw3-save: write imported.txt committed ...` |
+| Backup | `dw3-store: backup cardN.dw3s -> cardN.dw3s.<stamp>.bak (<bytes> bytes)` |
+| Refusal | `dw3-store: cardN.dw3s refused: <why> (file left untouched); the store is off this session and the flat saves are used`; `dw3-store: REFUSED to write cardN: <why> (nothing written)`; `dw3-store: backup of cardN.dw3s FAILED: not writing (the old file is untouched)`; `dw3-store: write cardN.dw3s FAILED (<errno>)`; `dw3-store: migrate FAILED to write cardN.dw3s: the store is off this session, imported.txt not written` |
+| Format | `dw3-store: cardN formatted by the game: the port is empty, cardN.dw3s stays on disk until the next save (then a backup is kept)` |
+| Interrupted write | the P10.2 lines `dw3: memcard: recovered ... from an interrupted write` / `removed stale ...` |
+
+### Design points changed in slice 2
+
+Each with the reason:
+
+1. **Timestamped backups, one per card per session, never rotated**, not the design's rotating
+   `card0.dw3s.bak1..3`: a rotation deletes the oldest copy, and the owner's rule for this slice is
+   that nothing is deleted.
+2. **A newer format version is not read read-only.** The design says to read it and never rewrite
+   it, but then a save the player makes this session has nowhere safe to go. The store is off for
+   that session instead (the file is untouched, the flat saves serve the ports, logged).
+3. **An unreadable or doubtful card turns the store off for the session** rather than refusing to
+   run the port: the player keeps a working card, and the store file stays for a later build. A
+   single bad slot inside a good card is not a reason to hide the others: it is shown as it is (the
+   game's own error 8) and never rewritten.
+4. **A slot the running region cannot load keeps its EU bytes (version 4)** instead of "version
+   byte 0xFF": same effect (error 8), and it is the slice 1 behaviour and test.
+5. **The flush waits for a settled image** (the design converts "only the slots the game wrote"; the
+   game writes in bursts and the host flushes between them), and an empty new card is not written.
+6. **`MemCardFormat` does not delete the card file** (flat mode removes `saveN.bin`).
+7. **Migration also skips a duplicate** (same canonical bytes) so the converted copy slice 1 made in
+   the other region's folder does not take a second slot; `imported.txt` is written even when
+   nothing was imported, so a save that appears in a legacy folder later is never pulled in behind
+   the player's back. After an interrupted migration only the missing cards are written.
+8. **Origin language is always `0xFF`**: the host does not see `LANGUAGE`. The design keeps the field for
+   a later "language changed" message.
+9. **No Options row**: a row would move every Options screen reference (and a change needs a restart
+   anyway). The key is file-only for now.
+10. **`autosave.bin` and the P6.20 `.cheats` marks stay per region** in the region folder. A
+    cheat mark made in one region is not shown by the other.
+
+**Tests.** `tools/tests/test_save_store.py` (38 tests, synthetic saves from the helpers of
+`test_save_convert.py`, nothing from a game): CRC32 check value, the container layout against the
+design, parse refusals (short, magic, format 0, newer, payload size, CRC, info layout, wider header and
+trailing bytes), EU view = canonical, US native -> canonical -> native identity over `GAME_SAVE_SIZE`
+with the checksum, US flags40 tail US -> EU -> US, extra chapter shown as error 8 and untouched by a
+US save (bytes and metadata), only written slots converted, origin language and extra-chapter flag,
+fail-closed and waiting states, first-fit import of 0, 1, 6 and 7 saves, order, duplicates, refusals
+and a source that is not a card, sources never written. Host tests through
+`tools/tests/save_store_main.c` over `memcard_host.c`: off by default and from the cfg file
+(last line wins, invalid reads as off, env beats the file), no profile folder, migration keeps the
+originals (hash and mtime of every source file and of an existing `save0.import`), no repeat and no
+resurrection of a deleted card, the slice 1 copy as a duplicate, two-way flow US -> EU -> US with the
+backup, one backup per session and none deleted, the extra chapter, a card that cannot be trusted
+(CRC, truncated, magic, newer, layout) left untouched, a crash after the old file was removed and one
+half way, a failed backup refusing the write, a badly written slot never stored, a save in bursts
+written once, a new empty card not written, format, and the store never writing or deleting a flat
+save. Replay scenarios ([P6.15](P6.15_REPLAY_TESTS.md)), `save_store=1`, game-driven:
+`xr-store-us-to-eu`, `xr-store-eu-to-us`, `xr-store-us-eu-us`, `xr-store-eu-us-eu` (two-way: the other
+region only opens the card, the first one loads it again), `xr-store-migrate-us-eu`,
+`xr-store-migrate-eu-us` (a flat save made with the store off is copied in on the first start with it
+on), `xr-store-eu-extra-us` (error 8 on the US disc, the card open and whole on the EU disc),
+`xr-store-us-badsum-eu`. All eight pass on the plain US and EU builds and on the combined
+(`--bin-both`) binary, and so do the four slice 1 scenarios (`save_store=0`, unchanged).
+**Validation (2026-10-30, `origin/main` at `f83a51a`).** `tools/replay_tests.sh --changed origin/main
+--jobs 2`: `platforms/pc/src/main.c` has no area rule, so the selection is the full tier, **346
+scenarios** (US 150, EU 184, cross-region 12), 4194 checks on the plain US and EU builds: no process,
+log or picture difference. 120 checks report only `no reference`, all in the ten `*-items-use-stays*`
+scenarios (P6.34, #360), whose references exist only under `<refs>/<name>/both/`; they pass on the
+combined binary. `--bin-both` on the combined binary: **91 scenarios** (the 40 of the memory-card
+area, `xr-*` included, and the 53 of `--both-subset`, 2 in both), 1134 checks, 0 failed. Unit tests
+(`tools/tests`): 569 passed, 2 skipped. Switch game for US, EU and the combined image built clean.
+No picture reference was added or changed (the `xr-store-*` scenarios are log-only).
+
+**Not done in slice 2** (open): the OLED check (E3.7 to E3.16 of the
+[OLED plan](OLED_TEST_PLAN.md#e3b-shared-store-p625-slice-2)); a real EU save (the EU layout still
+comes from the decomp, and the EU build's own game-written saves, in the replays); an Options row and
+turning the store on by default (design step 3); a global `port_options.cfg` so the key is set once;
+the origin language; sharing the P6.20 cheat marks and `autosave.bin`; `tools/import_saves.py` for the
+saves left in a legacy folder; the save editor (P6.29) on `.dw3s`; P9.6 on `.dw3s`. **Downgrade:** a
+build without the store keeps reading the legacy folders, which stop getting new saves once the
+store is on (the store copies, it does not move); say it in the release notes before it is on by
+default.
+
+**OLED checklist (owner).** [E3b in the OLED test plan](OLED_TEST_PLAN.md#e3b-shared-store-p625-slice-2):
+each row names the `dw3.log` lines that answer it, so the report can be feel and looks only.
 
 ## What a save is today
 

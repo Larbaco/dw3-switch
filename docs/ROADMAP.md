@@ -162,7 +162,7 @@ listed once, in [Pending OLED checks](#pending-oled-checks).
 | P6.22 | Turbo speed in scripted scenes | in progress (CPU rasterizer is ~97 % of a field frame; pixel-identical rasterizer 4-5x faster, #220; pass 2 #263 skips drawing frames that won't be shown; pass 3 merged as #331 (2026-10-28): textured triangles ~1.6x faster, mixer thread on core 1, `pace dbg:` line; turbo in the intro confirmed on the OLED 2026-10-27, preview.41; Forest Inn and the frame lines still open) | [P6.22](P6.22_FIELD_CPU.md), [roadmap](#phase-6-goal-notes), [P6.4](P6.4_FAST_FORWARD.md) |
 | P6.23 | Documentation: player guide, docs index, contributor and modder docs (future goal) | in progress (slice 1 done: player guide and docs index; slice 2 merged as #256: `CONTRIBUTING.md` and a pytest for all doc links; modder docs open) | [PLAYER_GUIDE](PLAYER_GUIDE.md), [docs index](README.md), [roadmap](#phase-6-goal-notes) |
 | P6.24 | One build for US and EU: one `.nro` and one PC binary, region found at boot, a boot picker with both discs (**owner priority 2026-10-28, Tier 0**; P6.25 and P6.26 are built) | built and shipped in preview.48 (`dw3-switch-both.nro`, #316 Switch; `dw3-pc` with both game copies, #314 PC); OLED check G9.x open; **owner decision 2026-10-29: releases ship one `dw3-switch.nro` = this combined image, nxlink detected at run time; separate US / EU / nxlink `.nro` retired** (G9.14, G9.15); the Switch stop-gap launcher `dw3.nro` is a CI artifact only (slice 2) | [SINGLE_BUILD](SINGLE_BUILD.md#as-built-slice-1), [slice 2](SINGLE_BUILD.md#as-built-slice-2-the-switch-launcher), [slice 3](SINGLE_BUILD.md#as-built-slice-3-the-dual-image-link-pc), [roadmap](#phase-6-goal-notes) |
-| P6.25 | Cross-region saves: a US save loads in EU and the reverse, one canonical save container (future goal) | in progress (slice 1 built: converter and one-way import on load, PC replays US to EU and EU to US; container and store open; OLED check open) | [CROSS_REGION_SAVES](CROSS_REGION_SAVES.md), [roadmap](#phase-6-goal-notes) |
+| P6.25 | Cross-region saves: a US save loads in EU and the reverse, one canonical save container (future goal) | in progress (slice 1 built: converter and one-way import on load; **slice 2 built (2026-10-30): the `.dw3s` container and the shared per-profile store, two-way flow, opt-in `save_store=1`, default off**; PC replays and unit tests pass on US, EU and the combined binary; OLED check, Options row and default-on open) | [CROSS_REGION_SAVES](CROSS_REGION_SAVES.md), [roadmap](#phase-6-goal-notes) |
 | P6.26 | Per-user saves: saves bound to the Switch user profile chosen in the Switch profile selector, global options (future goal) | in progress (slice 1 built: user-resolution seam, Switch account + profile selector, saves per profile with a safe legacy copy; owner OLED, preview.43/44 (2026-10-27/28): each profile has its own Continue, cancelling the profile selector returns to the Switch HOME; E5.1, E5.2 and the logs not reported; import prompt, canonical store and global options open) | [PER_USER_SAVES](PER_USER_SAVES.md), [roadmap](#phase-6-goal-notes) |
 | P6.27 | Return to title from the pause (field) menu | in progress (built, PC US and EU replays; owner OLED, 2026-10-27, preview.41: Return to title works and Continue after it works; the Yes / No window, fade and card checks not reported) | [PORT_OPTIONS](PORT_OPTIONS.md#quit-and-return-to-title-p627-p628), [roadmap](#phase-6-goal-notes) |
 | P6.28 | Quit game on the title menu, back to hbmenu | in progress (built, PC US and EU replays; owner OLED, 2026-10-27, preview.41: Quit through the Sphaira forwarder works and returns to hbmenu; the full-app Sphaira launch shows errors, the forwarder is fine; card files, flush line and the US / EU split not reported) | [PORT_OPTIONS](PORT_OPTIONS.md#quit-and-return-to-title-p627-p628), [roadmap](#phase-6-goal-notes) |
@@ -248,6 +248,10 @@ its done-when. The ordered session plan (written for preview.36) is
   the EU build lists it under Continue and loads it; and the reverse; with a
   save in both folders nothing is imported. Checklist:
   [CROSS_REGION_SAVES.md](CROSS_REGION_SAVES.md#as-built-slice-1).
+- **P6.25 (slice 2):** `save_store=1` in both regions' `port_options.cfg`: a save
+  made in the US build is listed and loads in the EU build and the other way, the
+  legacy saves are copied in once, and `dw3.log` has the `dw3-store:` lines.
+  Checklist: [OLED_TEST_PLAN E3b](OLED_TEST_PLAN.md#e3b-shared-store-p625-slice-2).
 - **P6.9:** restart on the OLED, US and EU, with Restart hotkey ON: the chord
   in the field, inside a battle, after a won battle and right after saving at
   a save point; each must reach the title (EU: the language select) with no
@@ -2075,6 +2079,22 @@ Statuses are in the [table](#status-at-a-glance).
   ([P3_EU_BUILD.md](P3_EU_BUILD.md)).
 - [ ] **P6.25 Cross-region saves (future goal).** Dated 2026-10-24, owner
   decision: a save made in the US game loads in the EU game and the reverse.
+  **Slice 2 built 2026-10-30** (PR open, not merged): the `.dw3s` canonical
+  container (`port/memcard/save_store.c`) and the shared per-profile store behind
+  `memcard_host`: two-way flow (a save made in either region is seen by the other),
+  first-fit migration of up to six legacy slots (originals only read, duplicates
+  skipped), extra-chapter slot shown to the US build as the game's own error 8 and
+  kept untouched, timestamped backup before the first overwrite of a session, a
+  `dw3-store:` log line for every import, export, migration, backup and refusal.
+  **Opt-in**: `save_store=1` in `port_options.cfg` (file-only key, default 0); off is
+  slice 1 byte for byte. The store lives in the profile folder (P6.26 paths
+  unchanged). Tests: 38 unit and host tests (`test_save_store.py`) and eight PC
+  replay scenarios `xr-store-*` (US, EU and `--bin-both`). No decomp patch. Open:
+  OLED check ([E3b](OLED_TEST_PLAN.md#e3b-shared-store-p625-slice-2)), a real EU save,
+  an Options row and turning it on by default, a global options file, origin language,
+  sharing the cheat marks and `autosave.bin`, `tools/import_saves.py`. As built, the
+  design points that changed and why:
+  [CROSS_REGION_SAVES](CROSS_REGION_SAVES.md#as-built-slice-2).
   **Slice 1 built 2026-10-25** (PR open, not merged): the converter
   (`port/memcard/save_convert.c`) and a one-way import on load: a port with no
   save of its own takes the other region's `saveN.bin` as a converted copy
@@ -2117,7 +2137,8 @@ Statuses are in the [table](#status-at-a-glance).
   (**not** `card0.dw3s`: P6.25 is not done); `profile.txt`; legacy saves
   **copied** into a new profile's region folder (`imported.txt`); PC profile
   `default` / `DW3_SAVE_PROFILE`; the uid hash in the log and the crash report.
-  **Still open:** the interactive import prompt, the P6.25 canonical store,
+  **Still open:** the interactive import prompt, the P6.25 canonical store as the
+  default (built 2026-10-30 as the opt-in `save_store=1`, inside the profile folder),
   global options (`port_options.cfg` stays per region), the applet-mode
   fallback if `psel` cannot launch there. As built:
   [PER_USER_SAVES.md](PER_USER_SAVES.md#as-built-slice-1-2026-10-27); OLED

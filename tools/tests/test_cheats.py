@@ -26,6 +26,7 @@ def cheats_bin(tmp_path_factory) -> Path:
            str(OPTIONS / "cheat_saves.c"), str(ROOT / "port" / "audio" / "volume.c"),
            str(ROOT / "port" / "memcard" / "memcard_host.c"),
            str(ROOT / "port" / "memcard" / "save_convert.c"),
+           str(ROOT / "port" / "memcard" / "save_store.c"),
            f"-I{ROOT / 'port' / 'include'}", f"-I{ROOT / 'port' / 'memcard'}",
            f"-I{OPTIONS}"]
     r = subprocess.run(cmd, capture_output=True, text=True)
