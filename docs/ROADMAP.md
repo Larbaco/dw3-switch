@@ -159,7 +159,7 @@ listed once, in [Pending OLED checks](#pending-oled-checks).
 | P6.17 | Music / SFX volume | done (owner confirmed on the OLED, 2026-10-24) | [P6.17](P6.17_VOLUME.md) |
 | P6.18 | Pacing options | in progress (Instant text works; Instant banner and report speed #223; rest of the check open) | [P6.18](P6.18_PACING.md) |
 | P6.20 | Port debug / cheat menu in the Options screen | in progress (PR 1 merged, #236: Cheats screen; PR 2, #248: money, give item and warp on page 2, merged 2026-10-25; 2026-10-28: the screen is now a scrolling sub-screen of the P9.9 list, same rows and behaviour; OLED checks open) | [roadmap](#phase-6-goal-notes), [PORT_OPTIONS](PORT_OPTIONS.md) |
-| P6.22 | Turbo speed in scripted scenes | in progress (CPU rasterizer is ~97 % of a field frame; pixel-identical rasterizer 4-5x faster, #220; pass 2 #263 skips drawing frames that won't be shown; pass 3 merged as #331 (2026-10-28): textured triangles ~1.6x faster, mixer thread on core 1, `pace dbg:` line; turbo in the intro confirmed on the OLED 2026-10-27, preview.41; Forest Inn and the frame lines still open) | [P6.22](P6.22_FIELD_CPU.md), [roadmap](#phase-6-goal-notes), [P6.4](P6.4_FAST_FORWARD.md) |
+| P6.22 | Turbo speed in scripted scenes | in progress (CPU rasterizer is ~97 % of a field frame; pixel-identical rasterizer 4-5x faster, #220; pass 2 #263 skips drawing frames that won't be shown; pass 3 merged as #331 (2026-10-28): textured triangles ~1.6x faster, mixer thread on core 1, `pace dbg:` line; pass 4 (2026-10-30, PR open): the present uploads 16-bit VRAM and the shader expands it, `DW3_PRESENT_16=0` for the A/B; turbo in the intro confirmed on the OLED 2026-10-27, preview.41; Forest Inn, the frame lines and the pass 4 A/B (C11) still open) | [P6.22](P6.22_FIELD_CPU.md), [roadmap](#phase-6-goal-notes), [P6.4](P6.4_FAST_FORWARD.md) |
 | P6.23 | Documentation: player guide, docs index, contributor and modder docs (future goal) | in progress (slice 1 done: player guide and docs index; slice 2 merged as #256: `CONTRIBUTING.md` and a pytest for all doc links; modder docs open) | [PLAYER_GUIDE](PLAYER_GUIDE.md), [docs index](README.md), [roadmap](#phase-6-goal-notes) |
 | P6.24 | One build for US and EU: one `.nro` and one PC binary, region found at boot, a boot picker with both discs (**owner priority 2026-10-28, Tier 0**; P6.25 and P6.26 are built) | built and shipped in preview.48 (`dw3-switch-both.nro`, #316 Switch; `dw3-pc` with both game copies, #314 PC); OLED check G9.x open; **owner decision 2026-10-29: releases ship one `dw3-switch.nro` = this combined image, nxlink detected at run time; separate US / EU / nxlink `.nro` retired** (G9.14, G9.15); the Switch stop-gap launcher `dw3.nro` is a CI artifact only (slice 2) | [SINGLE_BUILD](SINGLE_BUILD.md#as-built-slice-1), [slice 2](SINGLE_BUILD.md#as-built-slice-2-the-switch-launcher), [slice 3](SINGLE_BUILD.md#as-built-slice-3-the-dual-image-link-pc), [roadmap](#phase-6-goal-notes) |
 | P6.25 | Cross-region saves: a US save loads in EU and the reverse, one canonical save container (future goal) | in progress (slice 1 built: converter and one-way import on load; **slice 2 built (2026-10-30): the `.dw3s` container and the shared per-profile store, two-way flow, opt-in `save_store=1`, default off**; PC replays and unit tests pass on US, EU and the combined binary; OLED check, Options row and default-on open) | [CROSS_REGION_SAVES](CROSS_REGION_SAVES.md), [roadmap](#phase-6-goal-notes) |
@@ -267,7 +267,7 @@ its done-when. The ordered session plan (written for preview.36) is
   forced-assert check in [P5.4_CRASH.md](P5.4_CRASH.md#pr-2-owner-oled-check).
 - **P5.2:** partner view portrait in `gpu-tex` (#229): Kotemon, the first
   Kuwagamon fight, later battles.
-- **P6.22:** field turbo with the faster pixel-identical rasterizer (#220) and pass 2 (frames turbo does not show are not drawn, cheaper present): US and EU, 4x, the Forest Inn top and bottom (the opening: turbo confirmed on the OLED 2026-10-27, preview.41, frame lines not sent); read `frame dt us=`, `pace dbg:` and `defer dbg:` in `dw3.log` ([P6.22_FIELD_CPU.md](P6.22_FIELD_CPU.md#pass-2-2026-10-25-frames-turbo-does-not-show-are-not-drawn)).
+- **P6.22:** field turbo with the faster pixel-identical rasterizer (#220) and pass 2 (frames turbo does not show are not drawn, cheaper present): US and EU, 4x, the Forest Inn top and bottom (the opening: turbo confirmed on the OLED 2026-10-27, preview.41, frame lines not sent); read `frame dt us=`, `pace dbg:` and `defer dbg:` in `dw3.log` ([P6.22_FIELD_CPU.md](P6.22_FIELD_CPU.md#pass-2-2026-10-25-frames-turbo-does-not-show-are-not-drawn)). Pass 4 adds C11, the A/B of the cheaper present (`DW3_PRESENT_16=0` against the default; `p16`, `pack_us`, `upload_us`, `present_us` in `pace dbg:`; [P6.22 pass 4](P6.22_FIELD_CPU.md#pass-4-2026-10-30-the-present-uploads-16-bit-vram)).
 - **P6.27 / P6.28:** Quit game on the title menu (the window, No, Yes: back to
   hbmenu with the flush line in `dw3.log` and the card files intact; HOME still
   exits) and Return to title in the field menu (six and seven
@@ -1904,7 +1904,16 @@ Statuses are in the [table](#status-at-a-glance).
   presents, present, wait for the display, the rest, mixer CPU) so the OLED
   answers where the rest goes. The next step depends on that line: if
   `swap_us` is large the cap is reached, if not `present_us`, `sync_us` or
-  `other_us` names the next target. The candidates, the
+  `other_us` names the next target. **Pass 4 (2026-10-30, PR open):** the
+  largest fixed cost left, the present (option 3), now uploads the VRAM
+  halfwords in an `R16UI` texture and expands RGB555 in the fragment shader
+  instead of packing RGBA8888 on the CPU; pixel-identical (all 65 536 values and
+  five scales on Mesa, 11 274 shown frames byte-compared in Ryubing, US and EU),
+  `DW3_PRESENT_16=0` keeps the old path, and `pace dbg:` gains `p16`, `pack_us`
+  and `upload_us`. In Ryubing the CPU side of a shown frame drops from 1.5-2.2 ms
+  to 0.86-0.90 ms (0.15-0.33 ms per game frame at 4x, a low-end result against
+  the 0.3-0.5 estimate); the OLED A/B is C11 and nothing is known of the Maxwell
+  GPU's side of it. The candidates, the
   measure-first steps (a)-(c) and the A/B for the inn are in
   [P6.22_FIELD_CPU.md](P6.22_FIELD_CPU.md#history-moved-from-roadmapmd-2026-10-24). The port does not
   overclock (AGENTS.md, directive 7): the work is on the present path, the
