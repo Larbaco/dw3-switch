@@ -1122,6 +1122,8 @@ once. The page-turn prompt (`L1` / `R1` at the bottom of the item shop and of th
 list) is drawn as the glyph of the button that produces L1 / R1 (patch 0196, [section
 8](P10.6_GLYPHS.md#8-page-turn-prompt-follow-up-2026-10-30)); the blinking wedge beside it stays. Details,
 the cells, the palettes and the census: [P10.6_GLYPHS](P10.6_GLYPHS.md).
+The full-screen map's help line (the green footer of its bars) draws the same glyphs with the row on (P6.32 phase 7, [section
+9](P10.6_GLYPHS.md#9-the-map-views-help-line-p632-phase-7-2026-10-30)); the PC still prints labels.
 Art: `assets/glyphs/` (CC0, drawn for the project). Your own art: PNGs of the
 same names and the five role colours in `sdmc:/switch/dw3/glyphs/`.
 

@@ -648,6 +648,17 @@ the map changes). Tested with the Nintendo layout and with a custom map
 (`us/eu-nintendo-map-rebind`, `us/eu-custom-map-rebind`: the recording's masks are button
 positions, so the physical presses go through the map, and the pictures equal the plain run's).
 
+### Phase 3 follow-up: the map view's help line (P6.32 phase 7, 2026-10-30)
+
+The map view's footer names the console button of each action by the rule of phase 3,
+`glyph(ps_button) = name(source[ps_button])`: with `switch_glyphs=1` on the Switch it draws the
+glyph, with the option off the cap text (`ZL`, `X`, `MINUS`), and on the PC the PS word of the
+position (so a layout is followed there too). The six bindings of the follow-up above, Circle (the
+bars) and Triangle (the game's cancel) are the eight buttons it can name. It is in the language of
+the game's text (EN, FR, DE, IT, ES; machine drafts). See
+[P6.32 section 17](P6.32_MAP_ZOOM.md#17-phase-7-glyphs-as-built-2026-10-30) and
+[P10.6 section 9](P10.6_GLYPHS.md#9-the-map-views-help-line-p632-phase-7-2026-10-30).
+
 ### Phase 2 test results (2026-10-29)
 
 Built and run on the PC host, `nice -n 10`, 2 jobs, Xvfb, a private copy of the

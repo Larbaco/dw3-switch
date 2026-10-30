@@ -323,7 +323,7 @@ def run_phase(rec: Path, version, binary, runtime, display, outdir: Path, memdir
               "DW3_FORCE_PARTY", "DW3_FORCE_WIN", "DW3_AUTO_DOOR_MODE",
               "DW3_AUTO_DOOR_FRAMES", "DW3_LANGUAGE", "DW3_FORCE_FORM", "DW3_FORCE_NICKNAME",
               "DW3_FORCE_TECH", "DW3_FORCE_HIT", "DW3_FORCE_STEAL", "DW3_FORCE_ENEMY_ITEM",
-              "DW3_FORCE_ENEMY_HP", "DW3_EXTRA_TECHS", "DW3_FORCE_ITEMS", "DW3_FORCE_BATTLE_BAG", "DW3_MAP_VERIFY", "DW3_MAP_PRECOMPUTE", "DW3_MAP_SYNC", "DW3_MAP_TOUR", "DW3_MAP_LSTICK", "DW3_MAP_NAME_CODES", "DW3_FORCE_MAP_AREAS", "DW3_FORCE_CARDS", "DW3_PACING_TRACKED",
+              "DW3_FORCE_ENEMY_HP", "DW3_EXTRA_TECHS", "DW3_FORCE_ITEMS", "DW3_FORCE_BATTLE_BAG", "DW3_MAP_VERIFY", "DW3_MAP_PRECOMPUTE", "DW3_MAP_SYNC", "DW3_MAP_TOUR", "DW3_MAP_LSTICK", "DW3_MAP_HELP_SWITCH", "DW3_MAP_NAME_CODES", "DW3_FORCE_MAP_AREAS", "DW3_FORCE_CARDS", "DW3_PACING_TRACKED",
               "DW3_FILE_CACHE_SLOTS", "DW3_MODS_DIR", "DW3_MOD_PACK", "DW3_FORCE_MENU", "DW3_CHEATS_ARM", "DW3_STAGE_SWEEP", "DW3_STAGE_SWEEP_EXIT", "DW3_STAGE_SWEEP_FRAMES", "DW3_STAGE_SWEEP_ONLY", "DW3_STAGE_SWEEP_DIR", "DW3_STAGE_SWEEP_HANG_MS", "DW3_FORCE_EXIT", "DW3_START_MODE_EVERY", "DW3_WALKTHROUGH_PROBE",
               "DW3_MEMCARD_IMPORT_DIR", "DW3_CROSS_IMPORT", "DW3_SAVE_STORE", "DW3_SAVE_STORE_DIR", "DW3_REGION", "DW3_REGION_PICK",
               "DW3_REGION_PICK_KEYS", "DW3_SAVE_PROFILE", "DW3_RUNTIME_BASE", "DW3_PC_BIN_US", "DW3_PC_BIN_EU"):
@@ -572,7 +572,7 @@ def run_scenario(sc, binary, runtime, out: Path, stamp, label, stall, timeout_sc
 
 
 def reference_path(refs: Path, name: str, ref_from: str, shot: str, ext: str,
-                   update: bool, both: bool) -> Path:
+                   update: bool, both: bool, own_refs: tuple = ()) -> Path:
     """Reference file of one checkpoint. On the combined (--bin-both) binary a
     `<refs>/<name>/both/` capture overrides the plain one (P6.51: the Region row
     of the Gameplay group exists only there); `--update` on that binary writes
@@ -581,6 +581,8 @@ def reference_path(refs: Path, name: str, ref_from: str, shot: str, ext: str,
         own = refs / name / "both" / f"{shot}.{ext}"
         if update or own.is_file():
             return own
+    if shot in own_refs:   # P6.32 phase 7: this checkpoint has a reference of its own
+        ref_from = ""
     return refs / (name if update else (ref_from or name)) / f"{shot}.{ext}"
 
 
@@ -627,8 +629,13 @@ def judge_scenario(sc, results, sdir, refs: Path, checkpoints, update, labelname
     for shot in checkpoints:
         for ext in ARTIFACTS:
             got = sdir / f"{shot}.{ext}"
-            ref = reference_path(refs, name, sc.ref_from, shot, ext, update, both)
+            ref = reference_path(refs, name, sc.ref_from, shot, ext, update, both, sc.own_refs)
             label = f"{shot}.{ext}"
+            if update and sc.own_refs and sc.ref_from and shot not in sc.own_refs:
+                rows.append((name, label, "REF",
+                             f"no own reference: compared with {sc.ref_from}'s "
+                             f"(own: {', '.join(sc.own_refs)})"))
+                continue
             # P9.7: a checkpoint compared with another scenario's capture (the
             # excursion run must equal the plain run, shifted), never its own.
             mapped = next((m for m in sc.ref_map if m[0] == shot), None)

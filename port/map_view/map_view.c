@@ -12,9 +12,11 @@
 #include "cdfs.h"
 #include "map_view.h"
 #include "map_view_core.h"
+#include "map_view_help.h"
 #include "mod_pack.h"
 #include "engine/pad.h"
 #include "port_button_map.h"
+#include "port_glyphs.h"
 #include "port_options.h"
 #include "port_turbo.h"
 #include "port_widescreen.h"
@@ -1005,21 +1007,50 @@ static void hud_rect(int x0, int y0, int x1, int y1, unsigned rgba) {
         for (x = x0; x < x1; ++x) hud_px(x, y, rgba);
 }
 
+/* A Switch glyph of the help line (P6.32 phase 7): the art of assets/glyphs (or the
+ * owner's own PNG) in the colours of the line, an open ring like the US font's icon:
+ * the rim and the letter in the text colour, the shade in black, the body left to
+ * the bar behind. */
+static void hud_glyph(int x, int y, int glyph, unsigned rgba) {
+    const unsigned char *art = dw3_glyphs_hud_art(glyph);
+    int gx, gy;
+
+    if (!art) return;
+    for (gy = 0; gy < DW3_GLYPH_H; ++gy) {
+        for (gx = 0; gx < DW3_GLYPH_W; ++gx) {
+            switch (art[gy * DW3_GLYPH_W + gx]) {
+            case DW3_ROLE_OUTLINE:
+            case DW3_ROLE_LETTER: hud_px(x + gx, y + gy, rgba); break;
+            case DW3_ROLE_SHADE: hud_px(x + gx, y + gy, 0x000000FFu); break;
+            default: break;
+            }
+        }
+    }
+}
+
+/* Text in the 8x8 font; a byte from MV_HELP_GLYPH0 on is a glyph (the help line),
+ * 12 x 12 and centred on the text row. */
 static void hud_text(int x, int y, const char *str, unsigned rgba) {
-    for (; *str; ++str, x += 8) {
+    for (; *str; ++str) {
         int c = (unsigned char)*str, gy, gx;
         const uint8_t *g;
 
+        if (c >= MV_HELP_GLYPH0) {
+            hud_glyph(x, y - 2, c - MV_HELP_GLYPH0, rgba);
+            x += MV_HELP_GLYPH_ADV;
+            continue;
+        }
+        x += MV_HELP_CHAR_W;
         if (c < 32 || c > 126) continue;
         g = dw3_port_font8x8[c - 32];
         for (gy = 0; gy < 8; ++gy)
             for (gx = 0; gx < 8; ++gx)
                 if (g[gy] & (1u << gx)) {
-                    hud_px(x + gx + 1, y + gy + 1, 0x000000FFu);
+                    hud_px(x - MV_HELP_CHAR_W + gx + 1, y + gy + 1, 0x000000FFu);
                 }
         for (gy = 0; gy < 8; ++gy)
             for (gx = 0; gx < 8; ++gx)
-                if (g[gy] & (1u << gx)) hud_px(x + gx, y + gy, rgba);
+                if (g[gy] & (1u << gx)) hud_px(x - MV_HELP_CHAR_W + gx, y + gy, rgba);
     }
 }
 
@@ -1031,24 +1062,82 @@ static void to_hud(float ix, float iy, int *hx, int *hy) {
     *hy = (int)((y0 + (y1 - y0) * iy / (float)s.base.h) * 0.5f);
 }
 
-/* The name a footer shows for the button of action `act`: on the Switch the
- * console button that makes it under the map in force ("L", "ZR", "MINUS"), on
- * the PC the PS word in capitals ("L1", "SELECT"). */
-static void hud_bind_label(int act, char *out, size_t cap) {
-    const int bit = BIND(act);
+/* --- the help line (phase 7) ------------------------------------------------
+ * The two green lines of the bars name the buttons the way the player sees them:
+ * the game's button of each action (the bindings) through the button map in force,
+ * as a Switch glyph (switch_glyphs=1, Switch builds only), the Switch's cap text,
+ * or on the PC the PS word of the position; the words around them in the language
+ * of the game's text. See map_view_help.h. */
+
+/* PC test aid, scrubbed by the replay runner: draw the line as the Switch does
+ * (the Switch's cap text, and the glyphs when switch_glyphs is on), so a replay
+ * can look at what the console shows. The Switch and every release have no
+ * environment. */
+static void help_mode(MvHelpMode *m) {
 #if defined(__SWITCH__)
-    const int ps = dw3_mv_bind_ps_button(bit);
-
-    snprintf(out, cap, "%s", ps < 0 ? "MINUS" : dw3_button_cap_label(dw3_button_map_current(), ps));
+    m->switch_names = 1;
 #else
-    const char *n = dw3_mv_bind_bit_name(bit);
-    size_t i;
+    static int aid = -1;
 
-    for (i = 0; n[i] && i + 1 < cap; ++i) {
-        out[i] = (n[i] >= 'a' && n[i] <= 'z') ? (char)(n[i] - 'a' + 'A') : n[i];
+    if (aid < 0) {
+        const char *v = getenv("DW3_MAP_HELP_SWITCH");
+
+        aid = (v && v[0] && v[0] != '0') ? 1 : 0;
+        if (aid) {
+            fprintf(stderr, "dw3-map: DW3_MAP_HELP_SWITCH test aid: the help line is drawn as "
+                    "the Switch draws it (Switch button names, glyphs with switch_glyphs=1)\n");
+        }
     }
-    out[i] = 0;
+    m->switch_names = aid;
 #endif
+    m->glyphs = m->switch_names && dw3_port_options_level(DW3_PORT_OPT_SWITCH_GLYPHS) != 0;
+}
+
+static char g_help_logged[MV_HELP_LINES][MV_HELP_LINE_CAP];
+
+/* The OLED check (AGENTS.md rule 12): one line per help line, when it is first
+ * built in an open and whenever the text changes (a layout, a Customize change, a
+ * rebind cannot happen inside the view, but the log is keyed on the text anyway). */
+static void help_log(int lang, const MvHelpMode *mode, char lines[MV_HELP_LINES][MV_HELP_LINE_CAP]) {
+    char digits[DW3_BTN_COUNT + 1];
+    char shown[MV_HELP_LINE_CAP + 40];
+    int i;
+
+    for (i = 0; i < MV_HELP_LINES; ++i)
+        if (strcmp(lines[i], g_help_logged[i]) != 0) break;
+    if (i == MV_HELP_LINES) return;
+    bind_map_text(digits);
+    for (i = 0; i < MV_HELP_LINES; ++i) {
+        const int w = dw3_mv_help_width(lines[i]);
+
+        fprintf(stderr, "dw3-map: help line %d \"%s\" (layout=%s, map=%s, glyphs=%s, lang=%s, "
+                "names=%s, %d of %d px: %s)\n", i + 1,
+                dw3_mv_help_log_text(lines[i], shown, sizeof(shown)),
+                dw3_button_layout_name(dw3_button_map_layout()), digits,
+                mode->glyphs ? "on" : dw3_port_options_level(DW3_PORT_OPT_SWITCH_GLYPHS)
+                    ? "off (switch_glyphs=on, but a PC build draws labels)" : "off",
+                dw3_mv_help_lang_name(lang),
+                mode->switch_names ? "Switch buttons" : "PS words of the position", w,
+                MV_HELP_MAX_W, w <= MV_HELP_MAX_W ? "fits" : "OVERFLOWS the bar");
+        snprintf(g_help_logged[i], MV_HELP_LINE_CAP, "%s", lines[i]);
+    }
+}
+
+static void help_build(char lines[MV_HELP_LINES][MV_HELP_LINE_CAP]) {
+    MvHelpMode mode;
+    char names[MV_HS_COUNT][MV_HELP_NAME_CAP];
+    const int lang = dw3_mv_help_lang(g_data_ok ? g_data.language : 0);
+    int i;
+
+    bind_load();
+    help_mode(&mode);
+    dw3_mv_help_names(dw3_button_map_current(), &g_bind, &mode, names);
+    for (i = 0; i < MV_HELP_LINES; ++i) {
+        if (dw3_mv_help_line(lang, i, names, lines[i], MV_HELP_LINE_CAP) < 0) {
+            snprintf(lines[i], MV_HELP_LINE_CAP, "HELP LINE %d DOES NOT FIT", i + 1);
+        }
+    }
+    help_log(lang, &mode, lines);
 }
 
 static void hud_build(void) {
@@ -1100,31 +1189,11 @@ static void hud_build(void) {
     hud_text(6, 16, line, 0xFFE070FFu);
     hud_rect(0, DW3_MV_HUD_H - 28, DW3_MV_HUD_W, DW3_MV_HUD_H, 0x000000B0u);
     {
-        char foot[160], foot2[160];
-        char zo[12], zi[12], sp[12], sn[12], ce[12];
+        char foot[MV_HELP_LINES][MV_HELP_LINE_CAP];
 
-        bind_load();
-        hud_bind_label(MV_ACT_ZOOM_OUT, zo, sizeof(zo));
-        hud_bind_label(MV_ACT_ZOOM_IN, zi, sizeof(zi));
-        hud_bind_label(MV_ACT_SCALER_PREV, sp, sizeof(sp));
-        hud_bind_label(MV_ACT_SCALER_NEXT, sn, sizeof(sn));
-        hud_bind_label(MV_ACT_CENTRE, ce, sizeof(ce));
-#if defined(__SWITCH__)
-        /* P10.6 fix-now: the Switch names of the buttons that produce each PS
-         * button under the map in force; the PC keeps the PS words. Phase 4: the
-         * buttons are the bindings (L1 / R1 / L2 / R2 / Select by default). */
-        snprintf(foot, sizeof(foot),
-                 "PAD/L-STICK CURSOR  R-STICK/%s/%s ZOOM  %s/%s SCALER", zo, zi, sp, sn);
-        snprintf(foot2, sizeof(foot2), "%s CENTRE ON YOUR AREA  %s HUD  %s BACK", ce,
-                 dw3_button_cap_label(dw3_button_map_current(), DW3_BTN_CIRCLE),
-                 dw3_button_cap_label(dw3_button_map_current(), DW3_BTN_TRIANGLE));
-#else
-        snprintf(foot, sizeof(foot),
-                 "PAD/L-STICK CURSOR  R-STICK/%s/%s ZOOM  %s/%s SCALER", zo, zi, sp, sn);
-        snprintf(foot2, sizeof(foot2), "%s CENTRE ON YOUR AREA  CIRCLE HUD  TRI BACK", ce);
-#endif
-        hud_text(6, DW3_MV_HUD_H - 26, foot, 0xC0FFC0FFu);
-        hud_text(6, DW3_MV_HUD_H - 13, foot2, 0xC0FFC0FFu);
+        help_build(foot);
+        hud_text(6, DW3_MV_HUD_H - 26, foot[0], 0xC0FFC0FFu);
+        hud_text(6, DW3_MV_HUD_H - 13, foot[1], 0xC0FFC0FFu);
     }
 }
 
@@ -1487,6 +1556,7 @@ static void open_view(const void *sheet, int sheet_file, int half, int home_x,
     log_markers(visited, sheet1, sheet_file);
     tour_build(visited);
     s.show_hud = 0;      /* P51 item 2: the picture fills the screen; Circle brings the bars */
+    memset(g_help_logged, 0, sizeof(g_help_logged)); /* phase 7: the help line is logged again per open */
     s.show_name = 1;
     s.frame = 0;
     s.r3_ignored = 0;

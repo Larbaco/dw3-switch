@@ -143,6 +143,10 @@ void dw3_port_icon_census(int n, int style, const unsigned char *data, int pos,
  * TextStyle *) shows for table string `str`. Returns `str` unless it is a size-1
  * window's exact `L1` / `R1` and the glyph option gives that button a glyph. */
 const char *dw3_port_text_override(const void *style, const char *str);
+/* P6.32 phase 7: the art the map view's help line draws for a glyph (12 x 12 role
+ * bytes): the owner's PNG when there is one in the glyphs folder, else the bundled
+ * art. NULL for an unknown glyph. */
+const unsigned char *dw3_glyphs_hud_art(int glyph);
 #endif
 
 #ifdef __cplusplus
