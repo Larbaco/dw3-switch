@@ -51,7 +51,7 @@ RULES: list[tuple[str, object]] = [
     (r"^port/autosave/", ("*autosave*", "*title-continue*")),
     (r"^port/battle_menu/", ("*p79*", "*battle-options*", "*battle-list-bar*")),
     (r"^port/(items_menu/|include/port_items_menu\.h)", ("*items*", "*menu-screens*")),
-    (r"^port/map_view/", ("*map*",)),
+    (r"^port/(map_view/|include/port_map_view\.h$)", ("*map*",)),
     (r"^port/saves/|^port/memcard/", ("*save*", "xr-*", "*continue*", "*restart*", "*autosave*")),
     (r"^port/pacing/", ("*text-*", "*encounter*", "*pacing*", "*turbo*")),
     (r"^port/region/", ("*lang*", "xr-*", "*title*")),

@@ -931,7 +931,7 @@ int dw3_port_options_persist_init(const char *dir) {
             dw3_port_options_file_int("items_bag_view", 1),
             dw3_port_options_file_int("items_use_stays", 1),
             dw3_port_options_file_int("items_partner_switch", 1),
-            dw3_port_options_file_int("map_screen", 1),
+            dw3_port_options_file_int("map_screen", 0), /* off by default (P6.32 phase 1) */
             g_saved[DW3_PORT_OPT_BATTLE_MENU]);
     /* DW3_MUSIC_VOLUME / DW3_SFX_VOLUME force a value for this run only. */
     po_stepped_env();

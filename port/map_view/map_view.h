@@ -1,8 +1,8 @@
-/* P6.32 phase 0 spike: the new full-screen map screen (option D), glue between
+/* P6.32: the new full-screen map screen (option D), glue between
  * the game's Map screen (patch 0146), the shared core (map_view_core.h) and
  * the two host overlays (PC SDL3 GPU, Switch GLES). Design and results:
- * docs/P6.32_MAP_ZOOM.md. Port option: file key `map_screen` (1 = on, the
- * PoC default). */
+ * docs/P6.32_MAP_ZOOM.md. Port option: file key `map_screen` (1 = on; off by
+ * default since phase 1). */
 #ifndef DW3_MAP_VIEW_H
 #define DW3_MAP_VIEW_H
 
