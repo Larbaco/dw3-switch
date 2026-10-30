@@ -736,6 +736,22 @@ for _v in ("us", "eu"):
                   forbid_log=((0, r"menu background tile not available"),),
                   note="the Cheats group is listed with the master switch off (P51 item 5)"))
 
+# P6.37: `show_version=0` (a file-only key, seeded here) takes the port version out of
+# the title's corner (title / menu pictures) while the Options footer stays (always
+# shown). The runner pins the text to "replay" (DW3_VERSION_OVERRIDE), so the other
+# title and Options pictures keep one reference across commits. Recordings are the
+# existing title and Options ones; the references are this scenario's own.
+for _v, _rec in (("us", "us-title"), ("eu", "eu-lang-en")):
+    _add(Scenario(f"{_v}-title-noversion", _v, "full", phases=(_rec,), timeout=300,
+                  cfg=(("show_version", "0"),),
+                  expect_log=((0, r"dw3-options: file keys .* show_version=0"),),
+                  note="show_version=0: the title's corner is clear (P6.37)"))
+    _add(Scenario(f"{_v}-options-noversion", _v, "full", phases=(f"{_v}-options-cheats-listed",),
+                  timeout=300, cfg=(("show_version", "0"),),
+                  expect_log=((0, r"dw3-options: file keys .* show_version=0(?s:.*)"
+                                  r"dw3-port-options: group open cheats \(group\)"),),
+                  note="show_version=0: the Options footer stays (P6.37)"))
+
 # P51 item 4: the Region at start row of the combined image (tier `both`: needs
 # `--bin-both`, the one binary of both game copies; a plain US or EU build has no
 # such row). Two phases on one config folder, which is also the top-level folder
