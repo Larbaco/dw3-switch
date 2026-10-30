@@ -49,6 +49,56 @@ int dw3_mv_scaler_linear(int scaler);
 /* The next / previous scaler, wrapping. */
 int dw3_mv_scaler_step(int scaler, int dir);
 
+/* --- button bindings (phase 4) --------------------------------------------
+ * Which logical (PS-side) pad button does each action of the view. The pad the
+ * view reads is the one the game reads, after the P6.12 / P9.8 button map, so a
+ * binding names a PS button and the map decides which console button makes it:
+ * rebinding here and remapping there compose. The bindings are file-only keys
+ * of port_options.cfg (map_view_open, map_view_zoom_out, map_view_zoom_in,
+ * map_view_centre, map_view_scaler_prev, map_view_scaler_next) holding one of
+ * cross square l1 r1 l2 r2 l3 select. Not bindable, because the view uses them
+ * itself: triangle (the game's cancel, closes the view), circle (the bars), r3
+ * (the fast-forward key, ignored in the view), start, the d-pad. The six
+ * actions must use six different buttons: a value that is not bindable falls
+ * back to its default alone; two actions on the same button put the whole table
+ * back to the defaults. Bit numbers are the pad's (port_map_view.h). */
+enum {
+    MV_ACT_OPEN = 0,        /* on the game's Map screen: opens the view */
+    MV_ACT_ZOOM_OUT = 1,    /* a step down the ladder */
+    MV_ACT_ZOOM_IN = 2,     /* a step up the ladder */
+    MV_ACT_CENTRE = 3,      /* centre on the current area */
+    MV_ACT_SCALER_PREV = 4,
+    MV_ACT_SCALER_NEXT = 5,
+    MV_ACT_COUNT = 6
+};
+typedef struct MvBindings {
+    int bit[MV_ACT_COUNT];  /* the pad bit that does the action */
+    int from_file[MV_ACT_COUNT]; /* 1 where the file named it (and it was taken) */
+} MvBindings;
+
+/* The cfg key ("map_view_open") and the word of the action ("open"). */
+const char *dw3_mv_act_key(int act);
+const char *dw3_mv_act_name(int act);
+/* The default pad bit of an action: square, l1, r1, select, l2, r2. */
+int dw3_mv_bind_default_bit(int act);
+/* The shown name of a bindable pad bit ("Square", "L1", "Select"), "?" if none. */
+const char *dw3_mv_bind_bit_name(int bit);
+/* A cfg value (any case, spaces trimmed) to its pad bit; -1 unknown, -2 a button
+ * the view keeps for itself (triangle, circle, r3, start, the d-pad). */
+int dw3_mv_bind_parse(const char *text);
+/* The PS button index of port_button_map.h (0 cross, 1 circle, 2 triangle,
+ * 3 square, 4 l1 ... 9 r3) of a pad bit, or -1 for select (not remappable). */
+int dw3_mv_bind_ps_button(int bit);
+void dw3_mv_bindings_default(MvBindings *b);
+/* Resolve the six file values (NULL = the key is absent). Returns 0 when all is
+ * well, 1 when some value was not bindable (that action takes its default),
+ * 2 when two actions meant the same button (every action takes its default).
+ * `why` gets one line per problem (may be NULL). */
+int dw3_mv_bindings_resolve(MvBindings *b, const char *const vals[MV_ACT_COUNT],
+                            char *why, size_t cap);
+/* The action bound to pad bit `bit`, or -1. */
+int dw3_mv_bindings_action(const MvBindings *b, int bit);
+
 /* --- compose -------------------------------------------------------------
  * Draw frame `frame` of the sprite sheet `sheet` (the game's SpriteDrawer
  * layout: s32 offsets to the parts and the frame ids, then each frame's part

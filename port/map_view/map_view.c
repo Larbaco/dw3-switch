@@ -188,14 +188,16 @@ static double now_ms(void) {
 #define MV_HOST_OK 0
 #endif
 
-/* The port option: one file-only key (owner decision 7; the Options window has
- * no free row). Off by default since P6.32 phase 1: the PoC default was on so
- * the owner could try it without editing a file; the feature rule is off. */
+/* The port option: the `map_screen` row of the Options screen's Display group
+ * (registry row DW3_PORT_OPT_MAP_SCREEN, key `map_screen` in port_options.cfg,
+ * which the preview builds already used as a file-only key). Off by default since
+ * P6.32 phase 1. It is read where it is used, so the row works at once, also in
+ * game. */
 #define MV_OPTION_KEY "map_screen"
 #define MV_OPTION_DEFAULT 0
 
 static int map_view_option(void) {
-    return dw3_port_options_file_int(MV_OPTION_KEY, MV_OPTION_DEFAULT);
+    return dw3_port_options_level(DW3_PORT_OPT_MAP_SCREEN) != 0;
 }
 
 static int map_view_available(void) {
@@ -203,6 +205,101 @@ static int map_view_available(void) {
     if (map_view_option() == 0) return 0;
     /* owner decision 8: widescreen only (4:3 has no new screen) */
     return dw3_port_widescreen_menu_shift() > 0;
+}
+
+/* --- button bindings (phase 4) ---------------------------------------------
+ * The table of map_view_core.h, read from the file-only keys of port_options.cfg
+ * the first time the view is asked for anything (the file is loaded by then). A
+ * binding names a logical PS button; what the console button is comes from the
+ * P6.12 / P9.8 map in force, which the log line of each open (and of each change
+ * of the map) says, so "which physical button opens the map" is in dw3.log. */
+static MvBindings g_bind;
+static int g_bind_loaded;
+static char g_bind_map[DW3_BTN_COUNT + 1];  /* the map the last line was logged for */
+static int g_bind_logged;
+static int g_option_at_boot = -1;           /* map_screen when dw3_map_view_init ran */
+static int g_option_late_logged;
+
+#define BIND(act) (g_bind.bit[act])
+
+static void bind_load(void) {
+    const char *vals[MV_ACT_COUNT];
+    char why[512];
+    int a, rc;
+
+    if (g_bind_loaded) return;
+    g_bind_loaded = 1;
+    for (a = 0; a < MV_ACT_COUNT; ++a) vals[a] = dw3_port_options_file_str(dw3_mv_act_key(a));
+    rc = dw3_mv_bindings_resolve(&g_bind, vals, why, sizeof(why));
+    if (rc != 0) {
+        fprintf(stderr, "dw3-map: BINDING PROBLEM (%s): %s\n",
+                rc == 2 ? "conflict, all defaults" : "bad value, that one at its default", why);
+    }
+    fprintf(stderr, "dw3-map: bindings read from port_options.cfg:");
+    for (a = 0; a < MV_ACT_COUNT; ++a) {
+        fprintf(stderr, " %s=%s (%s)", dw3_mv_act_key(a), dw3_mv_bind_bit_name(g_bind.bit[a]),
+                g_bind.from_file[a] ? "file" : "default");
+    }
+    fprintf(stderr, "\n");
+}
+
+/* The console button that makes PS bit `bit` under the map in force: the Switch
+ * button's name ("Y"), "Minus" for Select, for the log (the PC's key is the same
+ * PS button's key, docs/HOTKEYS.md). */
+static const char *bind_source(int bit) {
+    int ps = dw3_mv_bind_ps_button(bit);
+
+    if (ps < 0) return "Minus";
+    return dw3_button_source_name(dw3_button_map_current()[ps]);
+}
+
+static void bind_map_text(char *out) {
+    dw3_button_map_format(dw3_button_map_current(), out);
+}
+
+static void bind_log(const char *why) {
+    char line[640];
+    size_t n = 0;
+    int a;
+    char digits[DW3_BTN_COUNT + 1];
+
+    bind_load();
+    bind_map_text(digits);
+    line[0] = 0;
+    for (a = 0; a < MV_ACT_COUNT && n + 40 < sizeof(line); ++a) {
+        n += (size_t)snprintf(line + n, sizeof(line) - n, "%s%s=%s(%s)", a ? " " : "",
+                              dw3_mv_act_name(a), dw3_mv_bind_bit_name(BIND(a)),
+                              bind_source(BIND(a)));
+    }
+    fprintf(stderr, "dw3-map: bindings in effect (%s): %s; fixed: close=%s(%s, the game's "
+            "cancel) bars=Circle(%s) R3=ignored; PS button (console button) under button "
+            "layout %s, map %s\n", why, line, "Triangle",
+            dw3_button_source_name(dw3_button_map_current()[DW3_BTN_TRIANGLE]),
+            dw3_button_source_name(dw3_button_map_current()[DW3_BTN_CIRCLE]),
+            dw3_button_layout_name(dw3_button_map_layout()), digits);
+    memcpy(g_bind_map, digits, sizeof(g_bind_map));
+    g_bind_logged = 1;
+}
+
+/* Called every frame of the game's Map screen (cheap): when the button map was
+ * changed (Options, Controls: layout, Customize, Reset) since the line was last
+ * logged, the physical buttons of the bindings are not the ones it said. */
+static void bind_note_map(void) {
+    char digits[DW3_BTN_COUNT + 1];
+
+    if (!g_bind_logged) return;
+    bind_map_text(digits);
+    if (memcmp(digits, g_bind_map, sizeof(digits)) != 0) {
+        char was[DW3_BTN_COUNT + 1];
+
+        memcpy(was, g_bind_map, sizeof(was));
+        {
+            char why[96];
+
+            snprintf(why, sizeof(why), "the button map changed %s -> %s", was, digits);
+            bind_log(why);
+        }
+    }
 }
 
 /* --- cache ---------------------------------------------------------------*/
@@ -300,6 +397,7 @@ void dw3_map_view_init(const char *config_dir) {
     }
     fprintf(stderr, "dw3-map: mods folder %s\n",
             g_mods_dir[0] ? g_mods_dir : "(none)");
+    g_option_at_boot = map_view_option();
     if (!g_cache_dir[0]) return;
     if (!map_view_option()) {
         /* default: the feature costs nothing (no folder, no precompute) */
@@ -933,6 +1031,26 @@ static void to_hud(float ix, float iy, int *hx, int *hy) {
     *hy = (int)((y0 + (y1 - y0) * iy / (float)s.base.h) * 0.5f);
 }
 
+/* The name a footer shows for the button of action `act`: on the Switch the
+ * console button that makes it under the map in force ("L", "ZR", "MINUS"), on
+ * the PC the PS word in capitals ("L1", "SELECT"). */
+static void hud_bind_label(int act, char *out, size_t cap) {
+    const int bit = BIND(act);
+#if defined(__SWITCH__)
+    const int ps = dw3_mv_bind_ps_button(bit);
+
+    snprintf(out, cap, "%s", ps < 0 ? "MINUS" : dw3_button_cap_label(dw3_button_map_current(), ps));
+#else
+    const char *n = dw3_mv_bind_bit_name(bit);
+    size_t i;
+
+    for (i = 0; n[i] && i + 1 < cap; ++i) {
+        out[i] = (n[i] >= 'a' && n[i] <= 'z') ? (char)(n[i] - 'a' + 'A') : n[i];
+    }
+    out[i] = 0;
+#endif
+}
+
 static void hud_build(void) {
     char line[96];
     int i, hx, hy;
@@ -983,24 +1101,27 @@ static void hud_build(void) {
     hud_rect(0, DW3_MV_HUD_H - 28, DW3_MV_HUD_W, DW3_MV_HUD_H, 0x000000B0u);
     {
         char foot[160], foot2[160];
+        char zo[12], zi[12], sp[12], sn[12], ce[12];
 
+        bind_load();
+        hud_bind_label(MV_ACT_ZOOM_OUT, zo, sizeof(zo));
+        hud_bind_label(MV_ACT_ZOOM_IN, zi, sizeof(zi));
+        hud_bind_label(MV_ACT_SCALER_PREV, sp, sizeof(sp));
+        hud_bind_label(MV_ACT_SCALER_NEXT, sn, sizeof(sn));
+        hud_bind_label(MV_ACT_CENTRE, ce, sizeof(ce));
 #if defined(__SWITCH__)
         /* P10.6 fix-now: the Switch names of the buttons that produce each PS
-         * button under the map in force; the PC keeps the PS words. */
+         * button under the map in force; the PC keeps the PS words. Phase 4: the
+         * buttons are the bindings (L1 / R1 / L2 / R2 / Select by default). */
         snprintf(foot, sizeof(foot),
-                 "PAD/L-STICK CURSOR  R-STICK/%s/%s ZOOM  %s/%s SCALER",
-                 dw3_button_cap_label(dw3_button_map_current(), DW3_BTN_L1),
-                 dw3_button_cap_label(dw3_button_map_current(), DW3_BTN_R1),
-                 dw3_button_cap_label(dw3_button_map_current(), DW3_BTN_L2),
-                 dw3_button_cap_label(dw3_button_map_current(), DW3_BTN_R2));
-        snprintf(foot2, sizeof(foot2), "MINUS CENTRE ON YOUR AREA  %s HUD  %s BACK",
+                 "PAD/L-STICK CURSOR  R-STICK/%s/%s ZOOM  %s/%s SCALER", zo, zi, sp, sn);
+        snprintf(foot2, sizeof(foot2), "%s CENTRE ON YOUR AREA  %s HUD  %s BACK", ce,
                  dw3_button_cap_label(dw3_button_map_current(), DW3_BTN_CIRCLE),
                  dw3_button_cap_label(dw3_button_map_current(), DW3_BTN_TRIANGLE));
 #else
-        snprintf(foot, sizeof(foot), "%s",
-                 "PAD/L-STICK CURSOR  R-STICK/L1/R1 ZOOM  L2/R2 SCALER");
-        snprintf(foot2, sizeof(foot2), "%s",
-                 "SELECT CENTRE ON YOUR AREA  CIRCLE HUD  TRI BACK");
+        snprintf(foot, sizeof(foot),
+                 "PAD/L-STICK CURSOR  R-STICK/%s/%s ZOOM  %s/%s SCALER", zo, zi, sp, sn);
+        snprintf(foot2, sizeof(foot2), "%s CENTRE ON YOUR AREA  CIRCLE HUD  TRI BACK", ce);
 #endif
         hud_text(6, DW3_MV_HUD_H - 26, foot, 0xC0FFC0FFu);
         hud_text(6, DW3_MV_HUD_H - 13, foot2, 0xC0FFC0FFu);
@@ -1961,13 +2082,27 @@ int dw3_port_map_view_frame(const void *sheet, int sheet_file, int half,
                     io->game_sx == s.game_sx && io->game_sy == s.game_sy ?
                     "unchanged" : "CHANGED");
         }
-        if (!(pressed & BIT(DW3_MV_PAD_SQUARE))) return 0;
+        bind_load();
+        bind_note_map();
+        if (!(pressed & BIT(BIND(MV_ACT_OPEN)))) return 0;
         if (!map_view_available()) {
-            fprintf(stderr, "dw3-map: Square pressed, view not available "
-                    "(host=%d map_screen=%d widescreen shift=%d)\n", MV_HOST_OK,
+            fprintf(stderr, "dw3-map: %s pressed, view not available "
+                    "(host=%d map_screen=%d widescreen shift=%d)\n",
+                    dw3_mv_bind_bit_name(BIND(MV_ACT_OPEN)), MV_HOST_OK,
                     map_view_option(), dw3_port_widescreen_menu_shift());
             return 0;
         }
+        if (g_option_at_boot == 0 && !g_option_late_logged) {
+            /* turned on from the Options screen after this run started: the boot
+             * built no cache folder and ran no precompute */
+            g_option_late_logged = 1;
+            if (g_cache_dir[0]) mkdir(g_cache_dir, 0777);
+            fprintf(stderr, "dw3-map: option %s turned on after the start of this run: "
+                    "cache folder %s ensured, no precompute this run (the CPU scalers "
+                    "are built when first selected)\n", MV_OPTION_KEY,
+                    g_cache_dir[0] ? g_cache_dir : "(none)");
+        }
+        bind_log("at the open");
         open_view(sheet, sheet_file, half, home_x, home_y, visited, spot_x,
                   spot_y, sheet1, sheet2, pieces, npieces);
         if (io) {
@@ -2020,18 +2155,40 @@ int dw3_port_map_view_frame(const void *sheet, int sheet_file, int half,
         fprintf(stderr, "dw3-map: R3 pressed in the view: ignored (no fast-forward "
                 "here; turbo=%d)\n", dw3_port_turbo_speed());
     }
-    if (pressed & BIT(DW3_MV_PAD_SQUARE)) {
-        fprintf(stderr, "dw3-map: Square ignored in the view (it opens the view; "
-                "close with the cancel button, PS-side bit %d)\n", MV_CANCEL_BIT);
+    {
+        /* a bindable button nothing is bound to (the old key after a rebind): say so,
+         * once per press, so "the key does nothing" has its reason in the log */
+        static const int cand[] = {13, 15, 10, 11, 8, 9, 1, 0};
+        unsigned i;
+
+        for (i = 0; i < sizeof(cand) / sizeof(cand[0]); ++i) {
+            if (!(pressed & BIT(cand[i])) || dw3_mv_bindings_action(&g_bind, cand[i]) >= 0) {
+                continue;
+            }
+            fprintf(stderr, "dw3-map: %s pressed in the view: not bound to an action "
+                    "(zoom out %s, zoom in %s, centre %s, scaler %s/%s, open %s)\n",
+                    dw3_mv_bind_bit_name(cand[i]),
+                    dw3_mv_bind_bit_name(BIND(MV_ACT_ZOOM_OUT)),
+                    dw3_mv_bind_bit_name(BIND(MV_ACT_ZOOM_IN)),
+                    dw3_mv_bind_bit_name(BIND(MV_ACT_CENTRE)),
+                    dw3_mv_bind_bit_name(BIND(MV_ACT_SCALER_PREV)),
+                    dw3_mv_bind_bit_name(BIND(MV_ACT_SCALER_NEXT)),
+                    dw3_mv_bind_bit_name(BIND(MV_ACT_OPEN)));
+        }
+    }
+    if (pressed & BIT(BIND(MV_ACT_OPEN))) {
+        fprintf(stderr, "dw3-map: %s ignored in the view (it opens the view; "
+                "close with the cancel button, PS-side bit %d)\n",
+                dw3_mv_bind_bit_name(BIND(MV_ACT_OPEN)), MV_CANCEL_BIT);
     }
     for (k = 0; k < 2; ++k) {
-        /* L1 steps the ladder down, R1 up; both in one frame do both */
+        /* zoom out steps the ladder down, zoom in up; both in one frame do both */
         const int dir = k ? 1 : -1;
         ZoomRec z;
         char at[320];
         float rx0, ry0, rx1, ry1;
 
-        if (!(pressed & BIT(k ? DW3_MV_PAD_R1 : DW3_MV_PAD_L1))) continue;
+        if (!(pressed & BIT(BIND(k ? MV_ACT_ZOOM_IN : MV_ACT_ZOOM_OUT)))) continue;
         zoom_about_cursor(&z, dir, 1.0f);
         moved = 1;
         ++s.zoom_button_presses;
@@ -2072,12 +2229,12 @@ int dw3_port_map_view_frame(const void *sheet, int sheet_file, int half,
         ++s.zoom_stick_frames;
         moved = 1;
     }
-    if (pressed & BIT(DW3_MV_PAD_SELECT)) {
+    if (pressed & BIT(BIND(MV_ACT_CENTRE))) {
         centre_on_home();
         moved = 1;
     }
-    if (pressed & (BIT(DW3_MV_PAD_R2) | BIT(DW3_MV_PAD_L2))) {
-        int dir = (pressed & BIT(DW3_MV_PAD_R2)) ? 1 : -1;
+    if (pressed & (BIT(BIND(MV_ACT_SCALER_NEXT)) | BIT(BIND(MV_ACT_SCALER_PREV)))) {
+        int dir = (pressed & BIT(BIND(MV_ACT_SCALER_NEXT))) ? 1 : -1;
 
         build_texture(dw3_mv_scaler_step(s.req_scaler, dir));
         moved = 1;
