@@ -3621,7 +3621,7 @@ def main(out):
             (out / f"{v}-options-region-p{phase}.rec").write_text(
                 options_region(v, phase).text(True))
         for mode in ("no", "yes", "exec", "game"):
-            (out / f"{v}-region-relaunch-{mode}.rec").write_text(
+            (out / f"{v}-options-region-relaunch-{mode}.rec").write_text(
                 region_relaunch(v, mode).text(True))
         (out / f"{v}-battle-list-bar.rec").write_text(battle_list_bar(v).text(True))
         for phase in (1, 2):

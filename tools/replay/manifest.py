@@ -2345,12 +2345,12 @@ for _v in ("us", "eu"):
                 (0, r"dw3-region: region_default ask: no restart prompt"),
                 (0, rf"dw3-region: region_default {_v} is the running region: no restart prompt"),
                 (0, rf"dw3-options: region_default {_o} saved to \S+port_options\.cfg"))
-    _add(Scenario(f"{_v}-region-relaunch-no", _v, "both", timeout=300, base="us+eu",
+    _add(Scenario(f"{_v}-options-region-relaunch-no", _v, "both", timeout=300, base="us+eu",
                   expect_log=_no_logs,
                   forbid_log=((0, r"relaunch to \w+ requested"), (0, r"NOT saved"),
                               (0, r"dw3-region: no restart prompt for")),
                   note="Region at start: the restart window after a change to the other region; No keeps the next-start behaviour; Ask and the running region never ask (P6.38, --bin-both)"),
-         Scenario(f"{_v}-region-relaunch-yes", _v, "both", timeout=300, base="us+eu", quits=True,
+         Scenario(f"{_v}-options-region-relaunch-yes", _v, "both", timeout=300, base="us+eu", quits=True,
                   env=(("DW3_RELAUNCH_TEST", "1"),),
                   expect_log=((0, rf"dw3-port-confirm: cursor on Yes(?s:.*)"
                                   rf"dw3-port-confirm: Yes \(restart in region\)(?s:.*)"
@@ -2360,7 +2360,7 @@ for _v in ("us", "eu"):
                               (0, rf"dw3-options: region_default {_o} saved to \S+port_options\.cfg")),
                   forbid_log=((0, r"relaunch to \w+ failed"), (0, r"save flush failed")),
                   note="Region at start: Yes saves, flushes and asks the host to relaunch; the test hook stops short of the exec and exits 0 (P6.38, --bin-both)"),
-         Scenario(f"{_v}-region-relaunch-exec", _v, "both", timeout=300, base="us+eu", log_only=True,
+         Scenario(f"{_v}-options-region-relaunch-exec", _v, "both", timeout=300, base="us+eu", log_only=True,
                   cfg=(("region_default", _v),),
                   expect_log=((0, rf"dw3-region: restart prompt for {_o} \(title\)(?s:.*)"
                                   rf"dw3-region: relaunch to {_o} requested(?s:.*)"
@@ -2377,7 +2377,7 @@ for _v in ("us", "eu"):
 # progress warning, this one has it (the env is the field-options scenario's).
 for _v in ("us", "eu"):
     _o, _O = ("eu", "EU") if _v == "us" else ("us", "US")
-    _add(Scenario(f"{_v}-region-relaunch-game", _v, "both", turbo=4, timeout=600, base="us+eu",
+    _add(Scenario(f"{_v}-options-region-relaunch-game", _v, "both", turbo=4, timeout=600, base="us+eu",
                   env=_RT_ENV,
                   expect_log=((0, rf"dw3-port-options: open in game(?s:.*)"
                                   rf"dw3-region: restart prompt for {_o} \(in game\)(?s:.*)"

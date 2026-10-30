@@ -1128,7 +1128,7 @@ involved: a relaunched start never shows it.
 so the title and field menus' own tick ignores it, `dw3_port_confirm_tick_owned`). Tests:
 `tools/tests/test_region_relaunch.py` (the helpers and the window end to end on the host),
 `tools/tests/test_region.py` (the boot with a relaunch override), `tools/tests/test_confirm.py`
-(the artwork in five languages), and the replays `us/eu-region-relaunch-no|yes|exec|game`
+(the artwork in five languages), and the replays `us/eu-options-region-relaunch-no|yes|exec|game`
 (tier `both`; `yes` stops short of the exec with `DW3_RELAUNCH_TEST=1` and exits 0; `exec` really
 re-executes the binary and checks the second process boots the other region and finishes its
 recording).
