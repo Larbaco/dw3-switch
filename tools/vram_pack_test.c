@@ -124,6 +124,131 @@ static int check_wide(const uint16_t *vram, const uint8_t *full) {
     return 0;
 }
 
+/* P6.22 pass 4: the 16-bit present clamps with dw3_nx_clamp_rect and checks the
+ * wide layout with dw3_nx_wide_rect_ok instead of calling the pack, so they must
+ * say what the pack says for rectangles inside, across and outside VRAM. */
+static int check_clamp_helpers(void) {
+    static const int rects[][4] = {
+        {0, 0, 320, 240},   {17, 9, 320, 240},   {704, 0, 320, 240},
+        {1000, 500, 50, 40}, {-10, -4, 40, 20},   {-50, 0, 40, 20},
+        {0, -30, 40, 20},   {1024, 0, 16, 16},   {0, 512, 16, 16},
+        {0, 0, 0, 16},      {0, 0, 16, -4},      {-5, -5, 2000, 2000},
+        {2147483000, 0, 2147483000, 16},
+    };
+    static uint16_t vram[DW3_NX_VRAM_W * DW3_NX_VRAM_H];
+    static uint8_t packed[DW3_NX_VRAM_W * DW3_NX_VRAM_H * 4];
+    unsigned int i;
+    int failed = 0;
+
+    for (i = 0; i < sizeof(rects) / sizeof(rects[0]); i++) {
+        int ox, oy, ow, oh;
+        int cx = -1, cy = -1, cw = -1, ch = -1;
+        size_t n = dw3_nx_pack_rgb555_rect(vram, rects[i][0], rects[i][1],
+                                           rects[i][2], rects[i][3], packed,
+                                           &ox, &oy, &ow, &oh);
+        int ok = dw3_nx_clamp_rect(rects[i][0], rects[i][1], rects[i][2],
+                                   rects[i][3], &cx, &cy, &cw, &ch);
+
+        if ((n != 0) != (ok != 0) ||
+            (ok && (cx != ox || cy != oy || cw != ow || ch != oh)) ||
+            (!ok && (cw != 0 || ch != 0))) {
+            fprintf(stderr, "clamp helper differs from the pack for %d,%d "
+                    "%dx%d\n", rects[i][0], rects[i][1], rects[i][2],
+                    rects[i][3]);
+            failed = 1;
+        }
+    }
+    /* The wide conditions: what the pack accepts the helper accepts. */
+    for (i = 0; i < sizeof(rects) / sizeof(rects[0]); i++) {
+        static uint16_t left[DW3_NX_VRAM_H * 64];
+        static uint16_t right[DW3_NX_VRAM_H * 64];
+        int g;
+
+        for (g = -1; g <= 65; g += 16) {
+            size_t n = dw3_nx_pack_rgb555_wide(vram, left, right, 64, g,
+                                               rects[i][0], rects[i][1],
+                                               rects[i][2], rects[i][3],
+                                               packed);
+            int ok = dw3_nx_wide_rect_ok(64, g, rects[i][0], rects[i][1],
+                                         rects[i][2], rects[i][3]);
+
+            if ((n != 0) != (ok != 0)) {
+                fprintf(stderr, "wide helper differs from the pack for "
+                        "%d,%d %dx%d gutter %d\n", rects[i][0], rects[i][1],
+                        rects[i][2], rects[i][3], g);
+                failed = 1;
+            }
+        }
+    }
+    return failed;
+}
+
+/* P6.22 pass 4 (DW3_PRESENT_16=2): the tight halfword copies hold exactly the
+ * source halfwords in the layout of the RGBA8888 packs. */
+static int check_copy16(void) {
+    static uint16_t vram[DW3_NX_VRAM_W * DW3_NX_VRAM_H];
+    static uint16_t left[DW3_NX_VRAM_H * 64];
+    static uint16_t right[DW3_NX_VRAM_H * 64];
+    static uint16_t tight[DW3_NX_VRAM_W * DW3_NX_VRAM_H];
+    static uint8_t packed[DW3_NX_VRAM_W * DW3_NX_VRAM_H * 4];
+    static uint8_t from_tight[DW3_NX_VRAM_W * DW3_NX_VRAM_H * 4];
+    unsigned int i;
+    int failed = 0;
+    size_t n;
+    size_t k;
+
+    for (i = 0; i < DW3_NX_VRAM_W * DW3_NX_VRAM_H; i++) {
+        vram[i] = (uint16_t)(i * 2654435761u >> 11);
+    }
+    for (i = 0; i < DW3_NX_VRAM_H * 64; i++) {
+        left[i] = (uint16_t)(i * 40503u + 7u);
+        right[i] = (uint16_t)(i * 9973u + 3u);
+    }
+    /* rect: expand the tight copy through the pack of a VRAM that holds it. */
+    n = dw3_nx_copy16_rect(vram, 17, 9, 320, 240, tight);
+    if (n != 320u * 240u) {
+        fprintf(stderr, "copy16_rect returned %zu\n", n);
+        failed = 1;
+    }
+    for (i = 0; i < 240; i++) {
+        if (memcmp(tight + (size_t)i * 320,
+                   vram + (size_t)(9 + i) * DW3_NX_VRAM_W + 17, 320 * 2) != 0) {
+            fprintf(stderr, "copy16_rect row %u differs\n", i);
+            failed = 1;
+            break;
+        }
+    }
+    if (dw3_nx_copy16_rect(vram, 1000, 500, 50, 40, tight) != 0 ||
+        dw3_nx_copy16_rect(vram, -1, 0, 8, 8, tight) != 0 ||
+        dw3_nx_copy16_rect(vram, 0, 0, 0, 8, tight) != 0) {
+        fprintf(stderr, "copy16_rect accepted an unclamped rectangle\n");
+        failed = 1;
+    }
+    /* wide: a pack of the copy equals the wide pack, pixel by pixel. */
+    n = dw3_nx_copy16_wide(vram, left, right, 64, 37, 3, 5, 320, 240, tight);
+    if (n != (320u + 74u) * 240u ||
+        dw3_nx_pack_rgb555_wide(vram, left, right, 64, 37, 3, 5, 320, 240,
+                                packed) != n) {
+        fprintf(stderr, "copy16_wide returned %zu\n", n);
+        failed = 1;
+    }
+    for (k = 0; k < n; k++) {
+        uint16_t one = tight[k];
+        int a, b, c, d;
+
+        /* one pixel through the rect pack: place it at VRAM (0, 0). */
+        vram[0] = one;
+        dw3_nx_pack_rgb555_rect(vram, 0, 0, 1, 1, from_tight, &a, &b, &c, &d);
+        if (memcmp(from_tight, packed + k * 4, 4) != 0) {
+            fprintf(stderr, "copy16_wide pixel %zu differs from the pack\n",
+                    k);
+            failed = 1;
+            break;
+        }
+    }
+    return failed;
+}
+
 int main(void) {
     size_t pixels = (size_t)DW3_NX_VRAM_W * (size_t)DW3_NX_VRAM_H;
     uint16_t *vram = calloc(pixels, sizeof(uint16_t));
@@ -216,6 +341,8 @@ int main(void) {
     }
 
     failed |= check_wide(vram, full);
+    failed |= check_clamp_helpers();
+    failed |= check_copy16();
 
     free(vram);
     free(full);
@@ -225,5 +352,7 @@ int main(void) {
     }
     printf("OK: rgb555 rect pack matches full-buffer expand\n");
     printf("OK: rgb555 wide pack puts the gutters beside the display\n");
+    printf("OK: clamp helpers of the 16-bit present agree with the pack\n");
+    printf("OK: tight halfword copies match the packs' layouts\n");
     return 0;
 }

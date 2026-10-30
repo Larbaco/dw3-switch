@@ -17,6 +17,8 @@
 #include <EGL/egl.h>
 #include <GLES3/gl3.h>
 
+#include "nx_present16.h"
+
 #ifdef DW3_NX_GAME_IMAGE
 #include "port_turbo.h"
 #endif
@@ -36,7 +38,11 @@ static struct {
     unsigned long long sync_us;    /* drawing the queued primitives of the shown frame */
     unsigned long long present_us; /* pack, upload and draw of the shown frame */
     unsigned long long swap_us;    /* inside eglSwapBuffers: the wait for the display */
+    unsigned long long pack_us;    /* of present_us: RGB555 -> RGBA8888 on the CPU (0 on the 16-bit path) */
+    unsigned long long upload_us;  /* of present_us: the glTexSubImage2D calls */
 } s_pace;
+static int s_pace_p16; /* the present path of the last present: 1 or 2 = 16-bit upload */
+static unsigned long long s_frames_total; /* every Psyz_VideoVSync(0) call */
 #endif
 
 int dw3_nx_backend_sketch_version(void) {
@@ -51,6 +57,7 @@ static uint32_t s_width;
 static uint32_t s_height;
 static bool s_docked;
 static bool s_ready;
+static bool s_es3; /* the context is OpenGL ES 3 (the 16-bit present needs it) */
 
 static void resolution_for_mode(bool docked, uint32_t *w, uint32_t *h) {
     if (docked) {
@@ -82,6 +89,7 @@ static void deinit_egl(void) {
         s_display = EGL_NO_DISPLAY;
     }
     s_ready = false;
+    s_es3 = false;
 }
 
 static bool init_egl(NWindow *win) {
@@ -168,6 +176,7 @@ static bool init_egl(NWindow *win) {
 
     glViewport(0, 0, (GLsizei)s_width, (GLsizei)s_height);
     s_ready = true;
+    s_es3 = use_es3 != 0;
     if (use_es3) {
         if (!dw3_nx_mesh_init()) {
             fprintf(stderr, "nx_gpu: mesh init failed; software triangles only\n");
@@ -384,6 +393,7 @@ int Psyz_VideoVSync(int mode) {
         int speed = dw3_port_turbo_speed();
 
         s_pace.frames++;
+        s_frames_total++;
         /* P6.22: the frames turbo does not show are queued, not drawn. */
         dw3_nx_switch_gpu_set_defer(speed > 1);
         if (speed > 1 && !dw3_port_turbo_present_due()) {
@@ -467,6 +477,17 @@ int Psyz_VideoVSync(int mode) {
  *   busy_pct   100 * (dt - swap) / dt: how much of the window the game thread
  *              worked. Near 100 with game_fps under the cap = CPU bound.
  *   mix_us     the SPU mixer thread's CPU in the window (its own thread)
+ *   p16        the present path (P6.22 pass 4): 1 = the VRAM halfwords are
+ *              uploaded as they are and the shader expands them, 2 = the same
+ *              after a tight row copy, 0 = the CPU packs RGBA8888 first
+ *              (DW3_PRESENT_16=0, or an ES 2 context)
+ *   pack_us    of present_us, the CPU pack to RGBA8888 (p16=0) or the tight
+ *              row copy (p16=2); 0 when p16=1
+ *   upload_us  of present_us, the glTexSubImage2D calls (the CPU side of the
+ *              upload; what the GPU still has to do shows up in swap_us)
+ *
+ * What the pass 4 A/B reads: present_us (and pack_us + upload_us inside it)
+ * with p16=1 against p16=0 on the same scene and speed.
  */
 void dw3_nx_gpu_pace_log(unsigned long long dt_us) {
     unsigned frames = s_pace.frames;
@@ -483,14 +504,15 @@ void dw3_nx_gpu_pace_log(unsigned long long dt_us) {
     psyz_log(1, "nx_gpu.c", __LINE__, __func__,
              "pace dbg: speed=%dx game_fps=%llu.%llu frames=%u presented=%u "
              "skipped=%u sync_us=%llu present_us=%llu swap_us=%llu "
-             "other_us=%llu busy_pct=%llu mix_us=%llu",
+             "other_us=%llu busy_pct=%llu mix_us=%llu p16=%d pack_us=%llu "
+             "upload_us=%llu",
              dw3_port_turbo_speed(), frames * 1000000ULL / dt_us,
              frames * 10000000ULL / dt_us % 10, frames, s_pace.presents,
              frames - s_pace.presents, s_pace.sync_us, s_pace.present_us,
              s_pace.swap_us, other,
              100ULL * (dt_us > s_pace.swap_us ? dt_us - s_pace.swap_us : 0) /
                  dt_us,
-             mix_us);
+             mix_us, s_pace_p16, s_pace.pack_us, s_pace.upload_us);
     memset(&s_pace, 0, sizeof(s_pace));
 }
 #endif
@@ -516,48 +538,15 @@ static GLint s_ui_uv0 = -1;
 static GLint s_ui_uv1 = -1;
 static GLint s_ui_tex = -1;
 static GLint s_ui_keep = -1;
+/* P6.22 pass 4: 1 when the present textures are R16UI and the programs expand
+ * RGB555 themselves (nx_present16_shader.h); 0 for the RGBA8888 pack. */
+static int s_p16;
 
 /* Scratch for one tight rectangle. A full 1024×512 frame still fits; present
  * only fills and uploads the sampled (dw × dh) region. */
 static uint8_t s_vram_rgba[DW3_NX_VRAM_W * DW3_NX_VRAM_H * 4];
-
-static const char *QUAD_VS =
-    "attribute vec2 a_pos;\n"
-    "attribute vec2 a_t;\n"
-    "varying vec2 v_t;\n"
-    "void main() { v_t = a_t; gl_Position = vec4(a_pos, 0.0, 1.0); }\n";
-
-static const char *QUAD_FS =
-    "precision mediump float;\n"
-    "varying vec2 v_t;\n"
-    "uniform vec2 u_uv0;\n"
-    "uniform vec2 u_uv1;\n"
-    "uniform sampler2D u_tex;\n"
-    "void main() {\n"
-    "  gl_FragColor = vec4(texture2D(u_tex, u_uv0 + v_t * (u_uv1 - u_uv0)).rgb, 1.0);\n"
-    "}\n";
-
-/* Overlay CPU VRAM (sprites/UI). Drop cleared black so the mesh FBO shows.
- * Inside u_keep (x0, y0, x1, y1 in quad units; the partner view, drawn on the
- * software path, with the mask bit on so every pixel it writes has bit 15)
- * black with bit 15 (alpha, see nx_vram_pack.c) is a drawn pixel, such as a
- * dark mask texel or a pupil, and stays. */
-static const char *UI_FS =
-    "precision mediump float;\n"
-    "varying vec2 v_t;\n"
-    "uniform vec2 u_uv0;\n"
-    "uniform vec2 u_uv1;\n"
-    "uniform vec4 u_keep;\n"
-    "uniform sampler2D u_tex;\n"
-    "void main() {\n"
-    "  vec4 c = texture2D(u_tex, u_uv0 + v_t * (u_uv1 - u_uv0));\n"
-    "  if (c.r + c.g + c.b < 0.002) {\n"
-    "    bool keep = c.a > 0.5 && v_t.x >= u_keep.x && v_t.y >= u_keep.y &&\n"
-    "                v_t.x < u_keep.z && v_t.y < u_keep.w;\n"
-    "    if (!keep) discard;\n"
-    "  }\n"
-    "  gl_FragColor = vec4(c.rgb, 1.0);\n"
-    "}\n";
+/* DW3_PRESENT_16=2: the same rectangle as tight halfwords. */
+static uint16_t s_vram16[DW3_NX_VRAM_W * DW3_NX_VRAM_H];
 
 static GLuint compile_shader(GLenum type, const char *src) {
     GLuint sh = glCreateShader(type);
@@ -600,25 +589,82 @@ static GLuint link_simple(GLuint vs, const char *fs_src) {
     return prog;
 }
 
-static bool present_init(void) {
-    /* The quad spans clip space; a_t runs 0..1 with 0 at the top-left so the
-     * fragment shader can map it onto a VRAM sub-rectangle. */
-    static const float quad[] = {
-        /* a_pos      a_t      */
-        -1.0f, -1.0f, 0.0f, 1.0f, /* bottom-left  */
-        1.0f,  -1.0f, 1.0f, 1.0f, /* bottom-right */
-        -1.0f, 1.0f,  0.0f, 0.0f, /* top-left     */
-        1.0f,  1.0f,  1.0f, 0.0f, /* top-right    */
-    };
-    GLuint vs = compile_shader(GL_VERTEX_SHADER, QUAD_VS);
+/* DW3_PRESENT_16 (DW3_NX_TEST_ENV on an nxlink build), for the A/B on the
+ * console: 0 = the CPU pack and the RGBA8888 upload (the path before pass 4),
+ * 1 = upload the halfwords straight from VRAM with GL_UNPACK_ROW_LENGTH,
+ * 2 = copy the rows tight first, then upload them in one piece (the default:
+ * in Ryubing the driver's per-row work with a row length cost more than the
+ * copy, docs/P6.22_FIELD_CPU.md pass 4). */
+#define DW3_NX_P16_DEFAULT 2
+static int present16_wanted(void) {
+    static int env = -1;
 
+    if (env < 0) {
+        const char *v = getenv("DW3_PRESENT_16");
+
+        env = v && v[0] ? (v[0] == '0' ? 0 : v[0] == '2' ? 2 : 1)
+                        : DW3_NX_P16_DEFAULT;
+    }
+    return env;
+}
+
+static void present_release(void) {
+    if (s_quad_prog) {
+        glDeleteProgram(s_quad_prog);
+    }
+    if (s_ui_prog) {
+        glDeleteProgram(s_ui_prog);
+    }
+    if (s_vram_tex) {
+        glDeleteTextures(1, &s_vram_tex);
+    }
+    if (s_wide_tex) {
+        glDeleteTextures(1, &s_wide_tex);
+    }
+    s_quad_prog = 0;
+    s_ui_prog = 0;
+    s_vram_tex = 0;
+    s_wide_tex = 0;
+}
+
+static void present_make_texture(GLuint *tex, int w, int h, int p16) {
+    glGenTextures(1, tex);
+    glBindTexture(GL_TEXTURE_2D, *tex);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    if (p16) {
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_R16UI, w, h, 0, GL_RED_INTEGER,
+                     GL_UNSIGNED_SHORT, NULL);
+    } else {
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, w, h, 0, GL_RGBA,
+                     GL_UNSIGNED_BYTE, NULL);
+    }
+}
+
+/* Programs, uniform locations and textures for one present path. On failure
+ * nothing is left behind. */
+static bool present_build(int p16) {
+    GLuint vs;
+
+    /* Names left from a context that was torn down (a dock change) are not
+     * ours to delete in this one. */
+    s_quad_prog = 0;
+    s_ui_prog = 0;
+    s_vram_tex = 0;
+    s_wide_tex = 0;
+    vs = compile_shader(GL_VERTEX_SHADER,
+                        p16 ? DW3_NX_P16_VS : DW3_NX_P32_VS);
     if (!vs) {
         return false;
     }
-    s_quad_prog = link_simple(vs, QUAD_FS);
-    s_ui_prog = link_simple(vs, UI_FS);
+    s_quad_prog = link_simple(
+        vs, p16 ? DW3_NX_P16_QUAD_FS : DW3_NX_P32_QUAD_FS);
+    s_ui_prog = link_simple(vs, p16 ? DW3_NX_P16_UI_FS : DW3_NX_P32_UI_FS);
     glDeleteShader(vs);
     if (!s_quad_prog || !s_ui_prog) {
+        present_release();
         return false;
     }
 
@@ -634,27 +680,56 @@ static bool present_init(void) {
     s_ui_tex = glGetUniformLocation(s_ui_prog, "u_tex");
     s_ui_keep = glGetUniformLocation(s_ui_prog, "u_keep");
 
+    while (glGetError() != GL_NO_ERROR) {
+    }
+    present_make_texture(&s_vram_tex, DW3_NX_VRAM_W, DW3_NX_VRAM_H, p16);
+    present_make_texture(&s_wide_tex, DW3_NX_WIDE_TEX_W, DW3_NX_WIDE_TEX_H,
+                         p16);
+    if (glGetError() != GL_NO_ERROR) {
+        present_release();
+        return false;
+    }
+    return true;
+}
+
+static bool present_init(void) {
+    /* The quad spans clip space; a_t runs 0..1 with 0 at the top-left so the
+     * fragment shader can map it onto a VRAM sub-rectangle. */
+    static const float quad[] = {
+        /* a_pos      a_t      */
+        -1.0f, -1.0f, 0.0f, 1.0f, /* bottom-left  */
+        1.0f,  -1.0f, 1.0f, 1.0f, /* bottom-right */
+        -1.0f, 1.0f,  0.0f, 0.0f, /* top-left     */
+        1.0f,  1.0f,  1.0f, 0.0f, /* top-right    */
+    };
+    const char *why = "DW3_PRESENT_16=0";
+
+    s_p16 = 0;
+    if (!s_es3) {
+        why = "ES 2 context";
+    } else if (present16_wanted()) {
+        if (present_build(1)) {
+            s_p16 = present16_wanted();
+        } else {
+            why = "the 16-bit shaders or R16UI textures failed on this driver";
+        }
+    }
+    if (!s_p16 && !present_build(0)) {
+        return false;
+    }
+    if (s_p16) {
+        psyz_log(1, "nx_gpu.c", __LINE__, __func__,
+                 "present path: 16-bit upload (R16UI, %s), RGB555 expanded in "
+                 "the shader (DW3_PRESENT_16=0 for the CPU pack)",
+                 s_p16 == 2 ? "rows copied tight" : "straight from VRAM");
+    } else {
+        psyz_log(1, "nx_gpu.c", __LINE__, __func__,
+                 "present path: RGBA8888 pack on the CPU (%s)", why);
+    }
+
     glGenBuffers(1, &s_quad_vbo);
     glBindBuffer(GL_ARRAY_BUFFER, s_quad_vbo);
     glBufferData(GL_ARRAY_BUFFER, sizeof(quad), quad, GL_STATIC_DRAW);
-
-    glGenTextures(1, &s_vram_tex);
-    glBindTexture(GL_TEXTURE_2D, s_vram_tex);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, DW3_NX_VRAM_W, DW3_NX_VRAM_H, 0,
-                 GL_RGBA, GL_UNSIGNED_BYTE, NULL);
-
-    glGenTextures(1, &s_wide_tex);
-    glBindTexture(GL_TEXTURE_2D, s_wide_tex);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, DW3_NX_WIDE_TEX_W,
-                 DW3_NX_WIDE_TEX_H, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
     return true;
 }
 
@@ -686,6 +761,51 @@ static void dw3_nx_gpu_skip_present(const uint16_t *vram) {
 }
 #endif
 
+#ifdef DW3_NX_GAME_IMAGE
+/* DW3_NX_OUT_HASH=1 (DW3_NX_TEST_ENV, development): log a hash of the picture
+ * the present just drew (the viewport, before the debug HUD), one line per
+ * presented frame, so two runs of one replay (DW3_PRESENT_16=0 against 2, or a
+ * driver change) can be compared on the console's own driver, byte for byte.
+ * Reads the framebuffer back every present: slow, never on by default. */
+static void present_out_hash(int vx, int vy, int vw, int vh) {
+    static int on = -1;
+    static uint8_t *buf;
+    static size_t cap;
+    static unsigned n;
+    size_t bytes = (size_t)vw * (size_t)vh * 4u;
+    uint64_t h = 1469598103934665603ull;
+    const uint64_t *w;
+    size_t i;
+
+    if (on < 0) {
+        const char *v = getenv("DW3_NX_OUT_HASH");
+
+        on = v && v[0] && v[0] != '0';
+    }
+    if (!on || vw <= 0 || vh <= 0) {
+        return;
+    }
+    if (bytes > cap) {
+        free(buf);
+        buf = malloc(bytes);
+        cap = buf ? bytes : 0;
+        if (!buf) {
+            return;
+        }
+    }
+    glPixelStorei(GL_PACK_ALIGNMENT, 4);
+    glReadPixels(vx, vy, vw, vh, GL_RGBA, GL_UNSIGNED_BYTE, buf);
+    w = (const uint64_t *)(const void *)buf;
+    for (i = 0; i < bytes / 8u; i++) {
+        h = (h ^ w[i]) * 1099511628211ull;
+    }
+    psyz_log(1, "nx_gpu.c", __LINE__, __func__,
+             "out hash: present=%u frame=%llu %dx%d %016llx", ++n,
+             (unsigned long long)s_frames_total, vw, vh,
+             (unsigned long long)h);
+}
+#endif
+
 void dw3_nx_gpu_present(const uint16_t *vram, int dx, int dy, int dw, int dh,
                         float src_aspect, int gutter) {
     float dst_aspect;
@@ -707,6 +827,8 @@ void dw3_nx_gpu_present(const uint16_t *vram, int dx, int dy, int dw, int dh,
     int keep_y;
     int keep_w;
     int keep_h;
+    int wide16 = 0;
+    uint64_t t_pack = 0;
 #if DW3_NX_DEBUG_MESH
     uint64_t present_t0 = 0;
 #endif
@@ -733,30 +855,42 @@ void dw3_nx_gpu_present(const uint16_t *vram, int dx, int dy, int dw, int dh,
 
     /* Shader samples (dx, dy, dw, dh). Upload that rectangle into the
      * texture created in present_init. A rect that clamps to nothing skips
-     * the frame the same way a zero size does. */
+     * the frame the same way a zero size does. On the 16-bit path (s_p16) this
+     * only decides the rectangle; the halfwords are uploaded below. */
+    t_pack = gpu_now_us();
     if (gutter > 0 && dw + 2 * gutter <= DW3_NX_WIDE_TEX_W &&
         dh <= DW3_NX_WIDE_TEX_H &&
-        dw3_nx_pack_rgb555_wide(vram, dw3_nx_switch_gpu_gutter_plane(0),
-                                dw3_nx_switch_gpu_gutter_plane(1),
-                                DW3_NX_GUTTER_STRIDE, gutter, dx, dy, dw, dh,
-                                s_vram_rgba) != 0) {
+        (s_p16
+             ? dw3_nx_wide_rect_ok(DW3_NX_GUTTER_STRIDE, gutter, dx, dy, dw,
+                                   dh) &&
+                   dw3_nx_switch_gpu_gutter_plane(0) != NULL &&
+                   dw3_nx_switch_gpu_gutter_plane(1) != NULL
+             : dw3_nx_pack_rgb555_wide(vram, dw3_nx_switch_gpu_gutter_plane(0),
+                                       dw3_nx_switch_gpu_gutter_plane(1),
+                                       DW3_NX_GUTTER_STRIDE, gutter, dx, dy,
+                                       dw, dh, s_vram_rgba) != 0)) {
         /* P6.1: the display between its gutters, in its own texture. */
+        wide16 = 1;
         pw = dw + 2 * gutter;
         ph = dh;
+        px = 0;
+        py = 0;
         ui_tex = s_wide_tex;
         uv0[0] = 0.0f;
         uv0[1] = 0.0f;
         uv1[0] = (float)pw / (float)DW3_NX_WIDE_TEX_W;
         uv1[1] = (float)ph / (float)DW3_NX_WIDE_TEX_H;
-        px = 0;
-        py = 0;
         if (src_aspect <= 0.0f) {
             src_aspect = 4.0f / 3.0f;
         }
         src_aspect *= (float)pw / (float)dw;
     } else {
-        if (dw3_nx_pack_rgb555_rect(vram, dx, dy, dw, dh, s_vram_rgba, &px,
-                                    &py, &pw, &ph) == 0) {
+        if (s_p16) {
+            if (!dw3_nx_clamp_rect(dx, dy, dw, dh, &px, &py, &pw, &ph)) {
+                return;
+            }
+        } else if (dw3_nx_pack_rgb555_rect(vram, dx, dy, dw, dh, s_vram_rgba,
+                                           &px, &py, &pw, &ph) == 0) {
             return;
         }
         ui_tex = s_vram_tex;
@@ -765,6 +899,21 @@ void dw3_nx_gpu_present(const uint16_t *vram, int dx, int dy, int dw, int dh,
         uv1[0] = (float)(dx + dw) / (float)DW3_NX_VRAM_W;
         uv1[1] = (float)(dy + dh) / (float)DW3_NX_VRAM_H;
     }
+    if (s_p16 == 2) {
+        if (wide16) {
+            dw3_nx_copy16_wide(vram, dw3_nx_switch_gpu_gutter_plane(0),
+                               dw3_nx_switch_gpu_gutter_plane(1),
+                               DW3_NX_GUTTER_STRIDE, gutter, dx, dy, dw, dh,
+                               s_vram16);
+        } else {
+            dw3_nx_copy16_rect(vram, px, py, pw, ph, s_vram16);
+        }
+    }
+#ifdef DW3_NX_GAME_IMAGE
+    s_pace.pack_us += s_p16 == 1 ? 0 : gpu_now_us() - t_pack;
+    s_pace_p16 = s_p16;
+#endif
+    (void)t_pack;
 
     glDisable(GL_SCISSOR_TEST);
     glDisable(GL_BLEND);
@@ -773,8 +922,21 @@ void dw3_nx_gpu_present(const uint16_t *vram, int dx, int dy, int dw, int dh,
 
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, ui_tex);
-    glTexSubImage2D(GL_TEXTURE_2D, 0, px, py, pw, ph, GL_RGBA, GL_UNSIGNED_BYTE,
-                    s_vram_rgba);
+    t_pack = gpu_now_us();
+    if (s_p16 == 2) {
+        dw3_nx_p16_upload_tight(s_vram16, px, py, pw, ph);
+    } else if (s_p16) {
+        dw3_nx_p16_upload(vram, dw3_nx_switch_gpu_gutter_plane(0),
+                          dw3_nx_switch_gpu_gutter_plane(1),
+                          DW3_NX_GUTTER_STRIDE, px, py, pw, ph, wide16, gutter,
+                          dx, dy, dw);
+    } else {
+        glTexSubImage2D(GL_TEXTURE_2D, 0, px, py, pw, ph, GL_RGBA,
+                        GL_UNSIGNED_BYTE, s_vram_rgba);
+    }
+#ifdef DW3_NX_GAME_IMAGE
+    s_pace.upload_us += gpu_now_us() - t_pack;
+#endif
 
     /* Fit the display aspect into the framebuffer. Full height, side bars
      * on 16:9. Do not crop, and do not use the VRAM pixel ratio: dw/dh for
@@ -899,6 +1061,9 @@ void dw3_nx_gpu_present(const uint16_t *vram, int dx, int dy, int dw, int dh,
     dw3_nx_title_overlay_draw(vx, vy, vw, vh);
     /* P6.32: the full-screen map screen, over the whole picture. */
     dw3_nx_map_view_draw(vx, vy, vw, vh);
+#ifdef DW3_NX_GAME_IMAGE
+    present_out_hash(vx, vy, vw, vh);
+#endif
     /* HUD after game blit; does not own the framebuffer (see DEBUG_OVERLAY.md). */
     dw3_nx_debug_overlay_note_present(use_mesh);
     dw3_nx_debug_overlay_draw(s_width, s_height);

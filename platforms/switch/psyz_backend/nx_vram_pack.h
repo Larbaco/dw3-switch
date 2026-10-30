@@ -26,6 +26,18 @@ size_t dw3_nx_pack_rgb555_rect(const uint16_t *src, int dx, int dy, int dw,
                                int dh, uint8_t *dst, int *out_x, int *out_y,
                                int *out_w, int *out_h);
 
+/* Clamp the rectangle to 1024x512 as the pack above does. Returns 1 and the
+ * clamped origin and size, or 0 (out_w = out_h = 0) when nothing is left. The
+ * 16-bit present (P6.22 pass 4) uses it to upload the same pixels straight from
+ * VRAM. */
+int dw3_nx_clamp_rect(int dx, int dy, int dw, int dh, int *out_x, int *out_y,
+                      int *out_w, int *out_h);
+
+/* 1 when (dx, dy, dw, dh) lies inside VRAM and 0 <= gutter <= stride, the
+ * conditions dw3_nx_pack_rgb555_wide needs for the display with gutters. */
+int dw3_nx_wide_rect_ok(int stride, int gutter, int dx, int dy, int dw,
+                        int dh);
+
 /* P6.1: the display rectangle with its side gutters, (dw + 2 * gutter) × dh
  * pixels tightly packed: `gutter` columns of `left`, the VRAM rectangle,
  * `gutter` columns of `right`. The planes hold one row per VRAM row with a
@@ -34,5 +46,17 @@ size_t dw3_nx_pack_rgb555_rect(const uint16_t *src, int dx, int dy, int dw,
 size_t dw3_nx_pack_rgb555_wide(const uint16_t *src, const uint16_t *left,
                                const uint16_t *right, int stride, int gutter,
                                int dx, int dy, int dw, int dh, uint8_t *dst);
+
+/* P6.22 pass 4 (DW3_PRESENT_16=2): the same two layouts as the RGBA8888 packs
+ * above, as tightly packed RGB555 halfwords (no expansion): the rectangle
+ * (x, y, w, h), which must already be clamped into VRAM (dw3_nx_clamp_rect),
+ * and the display between its gutters (dw3_nx_wide_rect_ok must hold). Each
+ * returns the pixel count. A row copy per row, so the driver sees one
+ * contiguous upload. */
+size_t dw3_nx_copy16_rect(const uint16_t *src, int x, int y, int w, int h,
+                          uint16_t *dst);
+size_t dw3_nx_copy16_wide(const uint16_t *src, const uint16_t *left,
+                          const uint16_t *right, int stride, int gutter,
+                          int dx, int dy, int dw, int dh, uint16_t *dst);
 
 #endif
