@@ -295,7 +295,15 @@ region only opens the card, the first one loads it again), `xr-store-migrate-us-
 on), `xr-store-eu-extra-us` (error 8 on the US disc, the card open and whole on the EU disc),
 `xr-store-us-badsum-eu`. All eight pass on the plain US and EU builds and on the combined
 (`--bin-both`) binary, and so do the four slice 1 scenarios (`save_store=0`, unchanged).
-SWEEP_NUMBERS
+**Validation (2026-10-30, `origin/main` at `f83a51a`).** `tools/replay_tests.sh --changed origin/main
+--jobs 2`: `platforms/pc/src/main.c` has no area rule, so the selection is the full tier, **346
+scenarios** (US 150, EU 184, cross-region 12), 4194 checks on the plain US and EU builds: no process,
+log or picture difference. 120 checks report only `no reference`, all in the ten `*-items-use-stays*`
+scenarios (P6.34, #360), whose references exist only under `<refs>/<name>/both/`; they pass on the
+combined binary. `--bin-both` on the combined binary: **91 scenarios** (the 40 of the memory-card
+area, `xr-*` included, and the 53 of `--both-subset`, 2 in both), 1134 checks, 0 failed. Unit tests
+(`tools/tests`): 569 passed, 2 skipped. Switch game for US, EU and the combined image built clean.
+No picture reference was added or changed (the `xr-store-*` scenarios are log-only).
 
 **Not done in slice 2** (open): the OLED check (E3.7 to E3.16 of the
 [OLED plan](OLED_TEST_PLAN.md#e3b-shared-store-p625-slice-2)); a real EU save (the EU layout still
