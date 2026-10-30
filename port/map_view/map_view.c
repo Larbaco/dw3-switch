@@ -98,6 +98,17 @@ typedef struct MapViewState {
     int game_cx, game_cy, game_sx, game_sy; /* its cursor and scroll at the open */
     int resume_wait;            /* inactive frames to see after the close, 0 = none */
     unsigned r3_ignored;        /* R3 presses swallowed while open */
+    /* phase 2: the area names and the strips the PS1 cursor cannot reach */
+    int name_key;               /* the location the last name line was for, 0 = none */
+    uint32_t name_hash;         /* and the hash of the text it showed */
+    int strip;                  /* strip bits the cursor is in (dw3_mv_point_strip) */
+    unsigned names_shown;       /* name lines logged this open */
+    unsigned name_bad;          /* mismatch with the view's hit test, text not the table's, overflow */
+    unsigned char named[47];    /* location i has been named by the game's own window */
+    /* the test tour (DW3_MAP_TOUR=<frames per step>, PC only) */
+    int tour_period, tour_n;
+    unsigned tour_start;
+    struct { int x, y, id, kind; } tour[160]; /* kind 1 location, 2 strip probe */
 } MapViewState;
 
 static MapViewState s;
@@ -107,6 +118,22 @@ static char g_mods_dir[480];
 /* The scaler the next open starts with: nearest (the owner's choice after the
  * OLED look of preview.45), then whatever the player left it on. */
 static int g_scaler = MV_SCALER_NEAREST;
+/* patch 0147: the marker list and the area names' file, as the game last gave them */
+static Dw3MapViewData g_data;
+static int g_data_ok;
+
+/* EU LANGUAGE values (the disc's text copies), the US text is language 1 */
+static const char *language_name(int language) {
+    switch (language) {
+    case 1: return "en (US text)";
+    case 2: return "en";
+    case 3: return "fr";
+    case 4: return "it";
+    case 5: return "de";
+    case 6: return "es";
+    default: return "?";
+    }
+}
 
 /* 1: the cursor and the balloon keep the size they have at zoom 1.0 while the
  * map zooms (positions follow the map). DW3_MAP_SPRITES_FIXED=0 gives the old
@@ -925,6 +952,8 @@ static void close_view(void) {
             s.zoom_stick_frames, s.zoom_button_presses,
             s.zoom_src == 1 ? "stick" : s.zoom_src == 2 ? "button" : "none",
             (unsigned)s.base_reveal_last);
+    fprintf(stderr, "dw3-map: area names this open: %u shown by the game's name "
+            "window, %u bad\n", s.names_shown, s.name_bad);
     fprintf(stderr, "dw3-map: pad held by the view for %u frames (the game's Map "
             "screen read none of them), R3 presses ignored %u, turbo=%d\n",
             s.frame, s.r3_ignored, dw3_port_turbo_speed());
@@ -945,6 +974,108 @@ static void log_coverage(void) {
             "%dx%d (black strips: %s)\n", full ? "full" : "partial", (double)x0,
             (double)y0, (double)x1, (double)y1, VW, VH,
             full ? "none" : "backdrop beside the map");
+}
+
+/* --- phase 2: the marker list, the strips and the tour --------------------*/
+
+/* One line for the marker list the game gave (patch 0147) and one per location or
+ * town that lies in, or touches, a strip the PS1 cursor cannot reach. The towns
+ * are the lit art of the reveal layer: their box is the frame's, at the town's
+ * position. */
+static void log_markers(const int *visited, const void *sheet1, int sheet_file) {
+    int i, nvis = 0, partly = 0, outside = 0, listed = 0, strips = 0;
+    uint32_t len = sheet_len(sheet_file);
+
+    for (i = 1; i < 47; ++i) {
+        int r = dw3_mv_hitbox_reach(s.all_x[i], s.all_y[i]);
+
+        if (visited[i - 1]) ++nvis;
+        if (r == 1) ++partly;
+        if (r == 2) ++outside;
+    }
+    if (g_data_ok) {
+        for (i = 1; i <= g_data.ntowns; ++i) listed += g_data.town_listed[i] != 0;
+    }
+    fprintf(stderr, "dw3-map: marker list: 46 locations (%d visited), %d towns "
+            "(%d listed for this progress), current area %d = location id=%d; "
+            "area names: text file 0x%x, language %s (%d); PS1 cursor reach "
+            "x %d..%d y %d..%d: locations partly out of it %d, wholly out %d\n",
+            nvis, g_data_ok ? g_data.ntowns : 0, listed, g_data_ok ? g_data.area : -1,
+            s.home_spot, g_data_ok ? g_data.text_file : 0,
+            language_name(g_data_ok ? g_data.language : 0),
+            g_data_ok ? g_data.language : 0, MV_PS1_X0, MV_PS1_X1, MV_PS1_Y0,
+            MV_PS1_Y1, partly, outside);
+    for (i = 1; i < 47; ++i) {
+        int r = dw3_mv_hitbox_reach(s.all_x[i], s.all_y[i]);
+
+        if (r == 0) continue;
+        fprintf(stderr, "dw3-map: location id=%d at %d,%d: PS1 cursor reach %s\n", i,
+                s.all_x[i], s.all_y[i], r == 1 ? "partly" : "none");
+    }
+    if (!g_data_ok || !sheet1) return;
+    for (i = 1; i <= g_data.ntowns; ++i) {
+        MvBox box;
+        int x0, y0, x1, y1, strip;
+
+        if (dw3_mv_sheet_frame_box((const int32_t *)sheet1, len, i - 1, &box) != 0) continue;
+        x0 = g_data.town_x[i] + box.x0;
+        y0 = g_data.town_y[i] + box.y0;
+        x1 = g_data.town_x[i] + box.x1 - 1;
+        y1 = g_data.town_y[i] + box.y1 - 1;
+        strip = dw3_mv_point_strip(x0, y0) | dw3_mv_point_strip(x1, y1);
+        if (!strip) continue;
+        ++strips;
+        fprintf(stderr, "dw3-map: town id=%d at %d,%d art %d..%d,%d..%d touches the "
+                "strip(s) the PS1 cursor cannot reach (%s%s%s%s), %s; towns have no "
+                "name box in the game\n", i, g_data.town_x[i], g_data.town_y[i], x0,
+                x1, y0, y1, strip & 1 ? "left " : "", strip & 2 ? "right " : "",
+                strip & 4 ? "top " : "", strip & 8 ? "bottom" : "",
+                g_data.town_listed[i] ? "listed" : "not listed yet");
+    }
+    fprintf(stderr, "dw3-map: towns touching a strip: %d; locations (the only things "
+            "with a name) wholly or partly out of the PS1 reach: %d\n", strips,
+            partly + outside);
+}
+
+/* The test tour: every visited location in id order, with a probe at the image
+ * edge in front of each location that lies near an edge (so the cursor goes
+ * through the strip the PS1 cursor cannot reach before it gets there), and one
+ * probe at each town whose art touches a strip. */
+static void tour_add(int x, int y, int id, int kind) {
+    if (s.tour_n >= (int)(sizeof(s.tour) / sizeof(s.tour[0]))) return;
+    s.tour[s.tour_n].x = x;
+    s.tour[s.tour_n].y = y;
+    s.tour[s.tour_n].id = id;
+    s.tour[s.tour_n].kind = kind;
+    ++s.tour_n;
+}
+
+static void tour_build(const int *visited) {
+    const char *v = getenv("DW3_MAP_TOUR");
+    int i, w = s.base.w, h = s.base.h;
+
+    s.tour_period = 0;
+    s.tour_n = 0;
+    if (!v || atoi(v) <= 0) return;
+    s.tour_period = atoi(v);
+    s.tour_start = 10;
+    for (i = 1; i <= (g_data_ok ? g_data.ntowns : 0); ++i) {
+        if (dw3_mv_point_strip(g_data.town_x[i], g_data.town_y[i]))
+            tour_add(g_data.town_x[i], g_data.town_y[i] + 8, i, 3);
+    }
+    for (i = 1; i < 47; ++i) {
+        int cx = s.all_x[i] + 12, cy = s.all_y[i] + 12;
+
+        if (!visited[i - 1]) continue;
+        if (cx - s.box.x0 < 60) tour_add(s.box.x0, cy, i, 2);
+        if (s.box.x0 + w - cx < 60) tour_add(s.box.x0 + w, cy, i, 2);
+        if (cy - s.box.y0 < 70) tour_add(cx, s.box.y0, i, 2);
+        if (s.box.y0 + h - cy < 100) tour_add(cx, s.box.y0 + h, i, 2);
+        tour_add(cx, cy, i, 1);
+    }
+    fprintf(stderr, "dw3-map: tour armed (DW3_MAP_TOUR=%d): %d targets, the first at "
+            "frame %u, then one every %d frames\n", s.tour_period, s.tour_n,
+            s.tour_start, s.tour_period);
 }
 
 static void open_view(const void *sheet, int sheet_file, int half, int home_x,
@@ -1100,6 +1231,15 @@ static void open_view(const void *sheet, int sheet_file, int half, int home_x,
             break;
         }
     }
+    if (g_data_ok) {
+        /* patch 0147: the game's own current area (its spot is area + 1) */
+        if (g_data.area + 1 != s.home_spot) {
+            fprintf(stderr, "dw3-map: current area %d gives location id=%d, the "
+                    "home mark's position gave id=%d: using the game's\n",
+                    g_data.area, g_data.area + 1, s.home_spot);
+        }
+        s.home_spot = g_data.area + 1;
+    }
     /* the cursor starts on the current area, as the game's does */
     s.cur_x = home_x;
     s.cur_y = home_y;
@@ -1110,6 +1250,13 @@ static void open_view(const void *sheet, int sheet_file, int half, int home_x,
     s.name_bottom = -1;
     memset(&s.name_nb, 0, sizeof(s.name_nb));
     s.hole = 0;
+    s.name_key = 0;
+    s.name_hash = 0;
+    s.names_shown = s.name_bad = 0;
+    memset(s.named, 0, sizeof(s.named));
+    s.strip = dw3_mv_point_strip(s.cur_x, s.cur_y);
+    log_markers(visited, sheet1, sheet_file);
+    tour_build(visited);
     s.show_hud = 0;      /* P51 item 2: the picture fills the screen; Circle brings the bars */
     s.show_name = 1;
     s.frame = 0;
@@ -1140,6 +1287,13 @@ static void open_view(const void *sheet, int sheet_file, int half, int home_x,
 }
 
 int dw3_port_map_view_active(void) { return s.active; }
+
+int dw3_port_map_view_wants(void) { return s.active || map_view_available(); }
+
+void dw3_port_map_view_data(const Dw3MapViewData *d) {
+    g_data = *d;
+    g_data_ok = 1;
+}
 
 /* --- the cursor ------------------------------------------------------------*/
 
@@ -1294,6 +1448,115 @@ static void update_balloon(void) {
     }
 }
 
+/* The cursor goes through the strips the PS1 cursor cannot reach: one line per
+ * entry and exit (the new cursor covers the whole image). */
+static void update_strip(void) {
+    int b = dw3_mv_point_strip(s.cur_x, s.cur_y);
+
+    if (b == s.strip) return;
+    if (b) {
+        fprintf(stderr, "dw3-map: cursor in the strip the PS1 cursor cannot reach "
+                "(%s%s%s%s) at %d,%d, location id=%d\n", b & 1 ? "left " : "",
+                b & 2 ? "right " : "", b & 4 ? "top " : "", b & 8 ? "bottom" : "",
+                s.cur_x, s.cur_y, s.hover);
+    } else {
+        fprintf(stderr, "dw3-map: cursor back inside the PS1 cursor's reach at "
+                "%d,%d, location id=%d\n", s.cur_x, s.cur_y, s.hover);
+    }
+    s.strip = b;
+}
+
+/* The test tour (DW3_MAP_TOUR): the cursor jumps to the next target every
+ * tour_period frames; what the name window shows is logged by
+ * dw3_port_map_view_name, and the end counts them. */
+static void tour_step(int *moved) {
+    unsigned k;
+
+    if (s.tour_period <= 0 || s.frame < s.tour_start) return;
+    k = s.frame - s.tour_start;
+    if (k % (unsigned)s.tour_period) return;
+    k /= (unsigned)s.tour_period;
+    if (k < (unsigned)s.tour_n) {
+        s.cur_x = s.tour[k].x;
+        s.cur_y = s.tour[k].y;
+        clamp_cursor();
+        *moved = 1;
+        fprintf(stderr, "dw3-map: tour step %u of %d: %s id=%d, cursor to %d,%d\n",
+                k + 1, s.tour_n, s.tour[k].kind == 1 ? "location" :
+                s.tour[k].kind == 2 ? "edge probe before location" :
+                "strip probe at town", s.tour[k].id, s.cur_x, s.cur_y);
+    } else if (k == (unsigned)s.tour_n) {
+        int i, visited = 0, named = 0;
+        char missing[256];
+        size_t o = 0;
+
+        missing[0] = 0;
+        for (i = 1; i < 47; ++i) {
+            if (!s.vis[i]) continue;
+            ++visited;
+            if (s.named[i]) ++named;
+            else if (o + 8 < sizeof(missing)) o += (size_t)snprintf(missing + o, sizeof(missing) - o, " %d", i);
+        }
+        fprintf(stderr, "dw3-map: tour done: %d of %d visited locations named by the "
+                "game's own name window, %u bad (not the table's string, not the "
+                "view's location, or wider than the box)%s%s\n", named, visited,
+                s.name_bad, missing[0] ? ", not named:" : "", missing);
+    }
+}
+
+/* patch 0147: what the game's name window holds after STSTATUS_showMapArea ran
+ * on the view's cursor. One line per name shown (the location, the source, the
+ * text, whether it fits the box) and one when it goes away. The window must hold
+ * the table's string of the location the view's own hit test found. */
+void dw3_port_map_view_name(const Dw3MapViewName *n) {
+    int key, bad = 0;
+    uint32_t hash;
+    char text[160];
+    int odd = 0, room;
+
+    if (!s.active || !n) return;
+    key = n->hovering ? n->spot : 0;
+    hash = key ? dw3_mv_hash(n->codes, (size_t)n->len, 0) : 0;
+    if (key != s.hover) {
+        fprintf(stderr, "dw3-map: area name MISMATCH: the game's own hit test says "
+                "location id=%d, the view's says id=%d at %d,%d\n", key, s.hover,
+                s.cur_x, s.cur_y);
+        ++s.name_bad;
+    }
+    if (key == s.name_key && hash == s.name_hash) return;
+    if (key) {
+        odd = dw3_mv_name_text(n->chars, n->nchars, text, sizeof(text));
+        room = s.name_x1 - n->win_x - 8;
+        if (!n->in_table) bad = 1;
+        if (n->width > room || n->width <= 0) bad = 1;
+        if (!n->win_visible) bad = 1;
+        fprintf(stderr, "dw3-map: area name shown: location id=%d source=game name "
+                "window (text file 0x%x language %s, string %d of the table, %d font "
+                "codes, hash %08x, window text %s the table's string) text=\"%s\" "
+                "(%d undecoded) width %d of %d px at window %d,%d %d lines%s\n", key,
+                n->text_file, language_name(n->language), key, n->len, (unsigned)hash,
+                n->in_table ? "is" : "IS NOT", text, odd, n->width, room, n->win_x,
+                n->win_y, n->win_lines, bad ? ": BAD (window hidden, text not the "
+                "table's or wider than the box)" : ": fits");
+        if (getenv("DW3_MAP_NAME_CODES")) { /* a debugging aid: the raw font codes */
+            char hex[3 * 96 + 1];
+            int k;
+
+            for (k = 0; k < n->len; ++k) snprintf(hex + 3 * k, 4, "%02x ", n->codes[k]);
+            hex[3 * n->len] = 0;
+            fprintf(stderr, "dw3-map: area name codes id=%d: %s\n", key, hex);
+        }
+        ++s.names_shown;
+        if (bad) ++s.name_bad;
+        else if (key < 47) s.named[key] = 1;
+    } else if (s.name_key) {
+        fprintf(stderr, "dw3-map: area name gone (cursor left location id=%d)\n",
+                s.name_key);
+    }
+    s.name_key = key;
+    s.name_hash = hash;
+}
+
 int dw3_port_map_view_frame(const void *sheet, int sheet_file, int half,
                             int home_x, int home_y, const int *visited,
                             const int *spot_x, const int *spot_y,
@@ -1445,8 +1708,10 @@ int dw3_port_map_view_frame(const void *sheet, int sheet_file, int half,
         clamp_cursor();
         moved = 1;
     }
+    tour_step(&moved);
     if (moved) dw3_mv_view_clamp(&s.view, s.base.w, s.base.h, VW, VH);
     update_hover();
+    update_strip();
     follow_cursor();
     update_balloon();
     update_name_box();

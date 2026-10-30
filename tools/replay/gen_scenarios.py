@@ -1889,6 +1889,65 @@ def map_view(version):
     return r
 
 
+# P6.32 phase 2: the tour. The view opens at frame 4000 and the host test aid
+# DW3_MAP_TOUR=8 (manifest env) puts the cursor on the next target every 8 frames,
+# starting at view frame 10: first the edge and town probes, then every visited
+# location in id order (DW3_FORCE_MAP_AREAS=all marks the 46 visited). The game's own
+# name window answers each one and the host logs a `dw3-map: area name shown` line.
+# MAP_NAMES_SHOTS are (target index from 0, name): the frame is the step's own plus 3,
+# once the name box has been drawn.
+MAP_TOUR_PERIOD, MAP_TOUR_START, MAP_TOUR_OPEN = 8, 10, 4001
+MAP_NAMES_SHOTS = (
+    (0, "names-strip-left-town"),   # the cursor in the left strip, beside town 13: no name
+    (6, "names-strip-top"),         # top strip, on the way to the topmost location
+    (7, "names-spot06-top"),        # location 6, the topmost
+    (15, "names-spot14-2lines"),    # location 14, two lines
+    (17, "names-strip-right"),
+    (18, "names-spot16-right"),     # location 16, the rightmost
+    (24, "names-spot22-widest"),    # location 22, the widest name in four languages
+    (32, "names-spot29"),           # location 29, the widest in German
+    (45, "names-strip-left-spot39"),
+    (47, "names-spot39-left"),      # location 39, the leftmost
+    (58, "names-spot45-bottom"),
+    (59, "names-strip-bottom"),
+)
+MAP_NAMES_END = 4560
+
+
+def map_names(version):
+    """P6.32 phase 2 (patches 0146, 0147): the area name under the new cursor for
+    every visited location. Same path as `map_view` up to the open Map; Square opens
+    the new screen, then the host's tour (env, see MAP_TOUR_PERIOD) walks the cursor
+    over every location with the whole map marked visited, so each of the 46 names
+    comes from the game's own name window; the log has a line per name. The shots
+    are the name box at the edges of the map (left, right, top, bottom), a strip probe
+    and the widest names. One recording for the six disc languages (the EU scenarios
+    differ in DW3_LANGUAGE)."""
+    r = Rec(f"{version.upper()}: P6.32 area names under the new cursor, every location (env and cfg in manifest)")
+    for f in range(300, 1200, 30):
+        r.press(f, CROSS)            # battle report -> field
+    r.press(1250, START)             # field menu, over the field
+    r.press(1420, CROSS)             # Items: the dissolve, then STSTATUS
+    f = 1640
+    for name, button, wait in MENU_SCREENS_STEPS:
+        if name == "map":
+            break
+        if button:
+            r.press(f, button)
+        f += wait
+    assert f == 4000, f
+    r.shot(3997, "game-map")
+    r.press(4000, SQUARE_MAP)        # the new screen
+    r.shot(4008, "names-open")       # the opening name box (the current area), before the tour starts
+    for k, name in MAP_NAMES_SHOTS:
+        r.shot(MAP_TOUR_OPEN + MAP_TOUR_START + MAP_TOUR_PERIOD * k + 3, name)
+    r.press(MAP_NAMES_END, TRIANGLE)  # back to the game's Map
+    r.shot(MAP_NAMES_END + 60, "names-closed")
+    r.press(MAP_NAMES_END + 100, TRIANGLE)
+    r.end(MAP_NAMES_END + 300)
+    return r
+
+
 def map_view_off(version):
     """P6.32 phase 1: the `map_screen` option off (the default). Same path as
     `map_screen` up to the open Map; then everything the new screen would take is
@@ -3017,6 +3076,7 @@ def main(out):
         (out / f"{v}-map-screen.rec").write_text(map_screen(v).text(True))
         (out / f"{v}-map-view.rec").write_text(map_view(v).text(True))
         (out / f"{v}-map-view-off.rec").write_text(map_view_off(v).text(True))
+        (out / f"{v}-map-names.rec").write_text(map_names(v).text(True))
         (out / f"{v}-items-equip-switch.rec").write_text(items_equip_switch(v).text(True))
         (out / f"{v}-items-equip-stays.rec").write_text(items_equip_stays(v).text(True))
         (out / f"{v}-items-bag-view.rec").write_text(items_bag_view(v).text(True))
