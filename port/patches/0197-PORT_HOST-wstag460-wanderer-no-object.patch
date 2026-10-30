@@ -1,0 +1,89 @@
+Upstream-bound: no
+Subject: [PORT_HOST] WSTAG460 (Reliability Spot): a wanderer with no map object draws into a spare tile
+
+Stage 0x236 (WSTAG460, US file 0x355, EU file 0x364) was the only stage of
+FIELDSTG_stages that the host did not link (P3.8 skipped it: "host SEGV in
+updateWanderer"). The fault is this one. updateStage creates the stage's
+command task before progress 0xF, which creates seven wanderers with
+createWandererTask(1..7, ...); updateWanderer finds its map object by
+StageTile.anim == tileAnim, and the stage's object table has the animations
+1, 2, 3, 5, 6, 7, 8, 9 and 10 but no 4. The fourth wanderer
+(createWandererTask(4, 1, 0)) therefore keeps tile NULL (createTask zeroes
+the task) and writes tile->visible, ->clutRow, ->x and ->y every frame. The
+PS1 writes those bytes to its low RAM, which is harmless; a 64-bit host
+faults at the first TASK_RUN frame.
+
+Under PORT_HOST the wanderer then uses a spare StageTile of the overlay (not
+in the map object table, so nothing draws it). The state machine, the timers
+and the random numbers run exactly as on the PS1, so the six wanderers that
+do have an object move as before. The guard reports through
+DW3_NULL_GUARD_HIT("wstag460.wanderer-no-object") (port_null_guard.h), once
+per run. Non-PORT_HOST code is unchanged. With this and the overlay table
+entry (port/overlays/overlay_table_{us,eu}.c) the stage loads. See
+docs/P5.5_STAGE_SWEEP.md.
+
+The same patch lets the EU extra chapter's stages link (WSTAG920-974, 55
+stages the host table did not have either): wstag924.c uses stageColor, which
+the decomp keeps in wstag924_head.c so that GCC lays the jump tables out as the
+PS1 build does. The host packs one object per stage, so under PORT_HOST
+wstag924.c includes the head file.
+
+diff -ruN a/src/field/stages/amaterasu_city/wstag924.c b/src/field/stages/amaterasu_city/wstag924.c
+--- a/src/field/stages/amaterasu_city/wstag924.c
++++ b/src/field/stages/amaterasu_city/wstag924.c
+@@ -7,6 +7,12 @@
+ #include "common.h"
+ #define STAGE_TWEEN /* stageFuncs is a StageFuncs (stage.h) */
+ #include "field/stage.h"
++#if PORT_HOST
++/* stageColor starts the stage's data in a file of its own (wstag924_head.c,
++   linked first on the PS1 so GCC does not align it after the jump tables).
++   The host packs one object per stage, so take the file in here. */
++#include "wstag924_head.c"
++#endif
+ /* Defined below, after the code that uses them */
+ extern s32 event1602WindowFrames[];
+ extern s32 event1604WindowFrames[];
+diff -ruN a/src/field/stages/south_sector/wstag460.c b/src/field/stages/south_sector/wstag460.c
+--- a/src/field/stages/south_sector/wstag460.c
++++ b/src/field/stages/south_sector/wstag460.c
+@@ -5,6 +5,9 @@
+ 
+ #include "common.h"
+ #include "field/stage.h"
++#if PORT_HOST
++#include "port_null_guard.h"
++#endif
+ /* Defined below, after the code that uses them */
+ extern AnimFrame updateWandererFrames0[];
+ extern AnimFrame updateWandererFrames1[];
+@@ -299,6 +302,11 @@
+     task->posY = task->y >> 8;
+ }
+ 
++#if PORT_HOST
++/* Where a wanderer without a map object draws (see updateWanderer) */
++static StageTile wandererNoObject;
++#endif
++
+ /* Wanders; when done, plays the animation of updateWandererFrames1 once and hides */
+ void updateWanderer(StageWanderer *task) {
+     StageTile *tile;
+@@ -321,6 +329,17 @@
+                 task->y = object->y << 8;
+             }
+         }
++#if PORT_HOST
++        /* createWandererTask(4, 1, 0) names an animation (4) that none of
++           the stage's map objects has, so the search leaves tile NULL. The
++           PS1 then writes the tile's fields (visible, clutRow, x, y) to its
++           low RAM, which nothing reads; a 64-bit host faults. Point the
++           wanderer at a tile nobody draws: the task runs as on the PS1. */
++        if (task->tile.tile == NULL) {
++            DW3_NULL_GUARD_HIT("wstag460.wanderer-no-object");
++            task->tile.tile = &wandererNoObject;
++        }
++#endif
+         task->period = 0x28;
+         task->timer = task->start;
+         task->speed = wandererSpeeds[task->speedIndex];

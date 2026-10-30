@@ -372,6 +372,10 @@ extern char __start_dw3data_wstag455[];
 extern char __stop_dw3data_wstag455[];
 extern char __start_dw3bss_wstag455[];
 extern char __stop_dw3bss_wstag455[];
+extern char __start_dw3data_wstag460[];
+extern char __stop_dw3data_wstag460[];
+extern char __start_dw3bss_wstag460[];
+extern char __stop_dw3bss_wstag460[];
 extern char __start_dw3data_wstag475[];
 extern char __stop_dw3data_wstag475[];
 extern char __start_dw3bss_wstag475[];
@@ -602,7 +606,7 @@ extern char __stop_dw3data_wstag760[];
 extern char __start_dw3bss_wstag760[];
 extern char __stop_dw3bss_wstag760[];
 
-/* P3.8 batch 5 — Amaterasu twins Central→North (skip WSTAG460) */
+/* P3.8 batch 5 — Amaterasu twins Central→North */
 extern char __start_dw3data_wstag331[];
 extern char __stop_dw3data_wstag331[];
 extern char __start_dw3bss_wstag331[];
@@ -1101,6 +1105,12 @@ static void bind_section(Dw3OverlayDesc *desc, char *data, char *data_end, char 
             (unsigned)desc->file_id, data_size, bss_size, init);
 }
 
+/* For overlay_sections_eu_extra.c, which the US game does not compile */
+void dw3_overlay_bind_section(Dw3OverlayDesc *desc, char *data, char *data_end, char *bss,
+                              char *bss_end) {
+    bind_section(desc, data, data_end, bss, bss_end);
+}
+
 void dw3_overlay_bind_field_sections(Dw3OverlayDesc *fieldstg, Dw3OverlayDesc *stplnmet,
                                      Dw3OverlayDesc *wstag260, Dw3OverlayDesc *wstag780,
                                      Dw3OverlayDesc *wstag785, Dw3OverlayDesc *wstag790) {
@@ -1356,6 +1366,7 @@ void dw3_overlay_bind_p38_batch3c_sections(
     Dw3OverlayDesc *wstag445,
     Dw3OverlayDesc *wstag450,
     Dw3OverlayDesc *wstag455,
+    Dw3OverlayDesc *wstag460,
     Dw3OverlayDesc *wstag475,
     Dw3OverlayDesc *wstag465,
     Dw3OverlayDesc *wstag470) {
@@ -1373,6 +1384,8 @@ void dw3_overlay_bind_p38_batch3c_sections(
                  __start_dw3bss_wstag450, __stop_dw3bss_wstag450);
     bind_section(wstag455, __start_dw3data_wstag455, __stop_dw3data_wstag455,
                  __start_dw3bss_wstag455, __stop_dw3bss_wstag455);
+    bind_section(wstag460, __start_dw3data_wstag460, __stop_dw3data_wstag460,
+                 __start_dw3bss_wstag460, __stop_dw3bss_wstag460);
     bind_section(wstag475, __start_dw3data_wstag475, __stop_dw3data_wstag475,
                  __start_dw3bss_wstag475, __stop_dw3bss_wstag475);
     bind_section(wstag465, __start_dw3data_wstag465, __stop_dw3data_wstag465,

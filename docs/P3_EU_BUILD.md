@@ -155,7 +155,8 @@ full EU playthrough and save/relaunch validation remain open.
   unreachable on the disc too), then `MODE_OPENING_2` (or `MODE_OPENING`
   for `LANGUAGE` 0) and the title. `DW3_START_MODE=0xE00` skips it. Owner
   Ryubing/OLED check of the screen and of each language is still open.
-- EU-only stages WSTAG920–974 still weak-stubbed for link (not in P3.8 batches).
+- EU-only stages WSTAG920–974 (the extra chapter): linked and registered 2026-10-30 (patch `0197`,
+  `port/overlays/overlay_sections_eu_extra.c`; [P5.5](P5.5_STAGE_SWEEP.md#the-wstag460-gap-2026-10-30)).
 - EU playthrough / “both versions play” not claimed (Phase 6 / P7.2 class).
 - OLED EU extraction and early gameplay are evidenced above; natural movie
   completion, EU audio/image acceptance, and first-save/relaunch remain open.

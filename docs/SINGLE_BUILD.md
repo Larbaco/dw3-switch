@@ -159,7 +159,8 @@ What the 731 decomp blocks contain:
   run time already, inside the EU build.
 - The other 4 blocks mix `#define`s and code, or pick an `#include`.
 - **EU-only stages.** EU has 55 more stages (WSTAG920-974,
-  `config/eu/stages.txt`); the port weak-stubs them today.
+  `config/eu/stages.txt`); they are linked into the EU copy only (2026-10-30; the US copy does not
+  compile them, they use `LANGUAGE`).
 
 ### PAL and NTSC
 

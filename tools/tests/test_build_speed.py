@@ -64,6 +64,16 @@ def test_patch_topic_maps_to_its_scenarios(areas, scenarios):
     assert "us-cheats-screen" not in sel.names
 
 
+def test_overlay_table_and_stage_patch_select_the_stage_scenarios(areas, scenarios):
+    sel = areas.select(["port/overlays/overlay_table_eu.c", "port/overlays/overlay_sections_eu_extra.c",
+                        "port/patches/0197-PORT_HOST-wstag460-wanderer-no-object.patch"], scenarios)
+    assert not sel.everything
+    for name in ("us-stage-0x236", "eu-stage-0x236", "eu-extra-stage-974", "us-walkthrough-pe",
+                 "eu-underground-exit", "us-stage-sweep"):
+        assert name in sel.names, name
+    assert "us-cheats-screen" not in sel.names
+
+
 def test_unknown_game_file_selects_the_full_tier(areas, scenarios):
     sel = areas.select(["port/never_seen/x.c"], scenarios)
     assert sel.everything

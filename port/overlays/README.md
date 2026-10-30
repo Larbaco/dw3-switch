@@ -30,7 +30,7 @@ it after a `memcpy`; that keeps the static model deterministic.
 The loaders call `dw3_overlay_load_mode` / `dw3_overlay_load_sub`, which
 hold the rule above and handle a file id that is not in the host table (an
 overlay that is not linked, such as `WFIGHTTS`, `SOUNDTST`, `SHOCKTST`, or
-the skipped `WSTAG460`):
+`WSTAG460` was one until patch `0197`):
 
 | What | Behaviour |
 |---|---|
@@ -93,7 +93,8 @@ Unlinked stages get weak stubs from `tools/gen_stage_stubs.py`.
 | `WSTAG780` | `474` / `0x1DA` | Kusanagi street (new-game start) |
 | `WSTAG785` | `475` / `0x1DB` | Online Center (door target) |
 | `WSTAG790` | `476` / `0x1DC` | Chamber Room (post-name) |
-| `WSTAG200`…`895` + Amaterasu twins (batch1–6; skip `WSTAG460`) | see `docs/P3.8_STAGES.md` | All US stages except known-bad `WSTAG460` |
+| `WSTAG200`…`895` + Amaterasu twins (batch1–6, with `WSTAG460`) | see `docs/P3.8_STAGES.md` | All US stages |
+| `WSTAG920`…`974` (EU only; the extra chapter) | `overlay_sections_eu_extra.c` | The 55 `FIELDSTG_extraStages`, picked at progress `0x2D` |
 | `FIGHTSTG` | `0x159` | Battle mode (P3.3) |
 | `WFIGHTMN` | `0x1FA` | Normal battle sub-overlay (P3.3) |
 | `STFGTREP` | `0x1C2` | Battle report / XP apply (P3.3) |

@@ -6,8 +6,8 @@
  * P3.8 batch1 WSTAG200/201/206/210/212/220/225/230/235/240/245/250/255,
  * P3.8 batch2 remaining early Central/Asuka + Amaterasu twins,
  * P3.8 batch3 Amaterasu 270-325 twins + Central/East/Seiryu/South,
- * P3.8 batch4 South/Suzaku/Network + West/Byakko/North (skip WSTAG460),
- * P3.8 batch5 Amaterasu twins Central→North (skip WSTAG460),
+ * P3.8 batch4 South/Suzaku/Network + West/Byakko/North (+ WSTAG460, patch 0197),
+ * P3.8 batch5 Amaterasu twins Central→North,
  * P3.8 batch6 undersea / spy-satellite / underground,
  * FIGHTSTG, WFIGHTMN, STFGTREP, STSTATUS, STITSHOP, STGTRAIN, STGDGLAB,
  * STGMCARD, STDGNAME, CARDGAME, STCRDDEK, STCRDSHP, STCRDABM, STAGSLCT,
@@ -111,6 +111,7 @@
 #define DW3_FILE_WSTAG445 0x502 /* 1282 */
 #define DW3_FILE_WSTAG450 0x38a /* 906 */
 #define DW3_FILE_WSTAG455 0x382 /* 898 */
+#define DW3_FILE_WSTAG460 0x355 /* 853 */
 #define DW3_FILE_WSTAG475 0x1e2 /* 482 */
 #define DW3_FILE_WSTAG465 0x1d9 /* 473 */
 #define DW3_FILE_WSTAG470 0x206 /* 518 */
@@ -380,6 +381,7 @@ void dw3_overlay_bind_p38_batch3c_sections(
     Dw3OverlayDesc *wstag445,
     Dw3OverlayDesc *wstag450,
     Dw3OverlayDesc *wstag455,
+    Dw3OverlayDesc *wstag460,
     Dw3OverlayDesc *wstag475,
     Dw3OverlayDesc *wstag465,
     Dw3OverlayDesc *wstag470);
@@ -658,6 +660,7 @@ enum {
     OVL_WSTAG445,
     OVL_WSTAG450,
     OVL_WSTAG455,
+    OVL_WSTAG460,
     OVL_WSTAG475,
     OVL_WSTAG465,
     OVL_WSTAG470,
@@ -919,6 +922,7 @@ static const char *const g_us_overlay_names[OVL_COUNT] = {
     [OVL_WSTAG445] = "WSTAG445",
     [OVL_WSTAG450] = "WSTAG450",
     [OVL_WSTAG455] = "WSTAG455",
+    [OVL_WSTAG460] = "WSTAG460",
     [OVL_WSTAG475] = "WSTAG475",
     [OVL_WSTAG465] = "WSTAG465",
     [OVL_WSTAG470] = "WSTAG470",
@@ -1178,6 +1182,7 @@ static Dw3OverlayDesc g_us_overlays[OVL_COUNT] = {
     {DW3_FILE_WSTAG445, NULL, NULL, NULL, 0, NULL, 0},
     {DW3_FILE_WSTAG450, NULL, NULL, NULL, 0, NULL, 0},
     {DW3_FILE_WSTAG455, NULL, NULL, NULL, 0, NULL, 0},
+    {DW3_FILE_WSTAG460, NULL, NULL, NULL, 0, NULL, 0},
     {DW3_FILE_WSTAG475, NULL, NULL, NULL, 0, NULL, 0},
     {DW3_FILE_WSTAG465, NULL, NULL, NULL, 0, NULL, 0},
     {DW3_FILE_WSTAG470, NULL, NULL, NULL, 0, NULL, 0},
@@ -1438,6 +1443,7 @@ void dw3_overlay_register_us_title(void) {
     g_us_overlays[OVL_WSTAG445].entry = NULL;
     g_us_overlays[OVL_WSTAG450].entry = NULL;
     g_us_overlays[OVL_WSTAG455].entry = NULL;
+    g_us_overlays[OVL_WSTAG460].entry = NULL;
     g_us_overlays[OVL_WSTAG475].entry = NULL;
     g_us_overlays[OVL_WSTAG465].entry = NULL;
     g_us_overlays[OVL_WSTAG470].entry = NULL;
@@ -1654,6 +1660,7 @@ void dw3_overlay_register_us_title(void) {
         &g_us_overlays[OVL_WSTAG445],
         &g_us_overlays[OVL_WSTAG450],
         &g_us_overlays[OVL_WSTAG455],
+        &g_us_overlays[OVL_WSTAG460],
         &g_us_overlays[OVL_WSTAG475],
         &g_us_overlays[OVL_WSTAG465],
         &g_us_overlays[OVL_WSTAG470]);
