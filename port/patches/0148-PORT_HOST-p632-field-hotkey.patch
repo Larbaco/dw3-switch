@@ -188,7 +188,7 @@ the field is the one of patch 0140 and the map of 0146 / 0147.
      screen->depth = 5;
      screen->menu = menu;
      screen->gameHalf = STSTATUS_areaFuncs.getGameHalf();
-@@ -682,3 +694,66 @@
+@@ -682,3 +694,77 @@
      screen->top = 0x10;
      return (Task *)screen;
  }
@@ -220,6 +220,13 @@ the field is the one of patch 0140 and the map of 0146 / 0147.
 +            break;
 +        case 1:
 +            half = task->key1;
++            if (task->counter++ > 600) {
++                /* the files did not come: give the field back rather than hold it for ever */
++                fprintf(stderr, "dw3-map: field hotkey: the Map screen's files did not load in 600 frames; "
++                        "back to the field\n");
++                task->setState(task, TASK_KILL);
++                break;
++            }
 +            if (FILE_CACHE.isLoading(FILE_STATUS_SPRITES) != 0 || FILE_CACHE.isLoading(FILE_STATUS_SPRITES + 1) != 0 ||
 +                FILE_CACHE.isLoading(FILE_STATUS_BG + 2 * half) != 0 ||
 +                FILE_CACHE.isLoading(FILE_STATUS_BG + 1 + 2 * half) != 0) {
@@ -243,6 +250,10 @@ the field is the one of patch 0140 and the map of 0146 / 0147.
 +    case TASK_RUN:
 +        if (children[0] == NULL) {
 +            task->setState(task, TASK_KILL);
++        } else if (children[0]->state == TASK_INIT && task->counter++ > 600) {
++            fprintf(stderr, "dw3-map: field hotkey: the Map screen did not start in 600 frames; "
++                    "back to the field\n");
++            children[0]->setState(children[0], TASK_KILL);
 +        }
 +        break;
 +    case TASK_DONE:

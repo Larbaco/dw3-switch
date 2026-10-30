@@ -1712,14 +1712,15 @@ int dw3_port_map_view_field_begin(const Dw3FieldMapProbe *p) {
     bind_map_text(digits);
     fprintf(stderr, "dw3-map: field hotkey open: key %s(%s) went down in the walking field; "
             "field held: frame %d time %d progress %d battle_steps %d play %d:%02d:%02d.%d "
-            "rand %d player %d,%d, %d field task(s) paused (the engine's task pause: no actor, "
-            "event, timer or encounter step runs); turbo forced to 1x (was %dx), R3 ignored; "
+            "rand %d player %d,%d, %d field task(s) paused (%d in TASK_RUN: the engine's task pause "
+            "holds those, so no actor, event, timer or encounter step runs); turbo forced to 1x "
+            "(was %dx), R3 ignored; "
             "layout %s, map %s; the game's Map screen runs in the field menu's slot (session %u)\n",
             dw3_mv_bind_bit_name(fh_key()), bind_source(fh_key()), g_fh_clocks.frame,
             g_fh_clocks.time, g_fh_clocks.progress, g_fh_clocks.battle_steps,
             g_fh_clocks.play_h, g_fh_clocks.play_m, g_fh_clocks.play_s,
             g_fh_clocks.play_frames, g_fh_clocks.rand_index, p->player_x, p->player_y,
-            p->children, g_fh_turbo_was, dw3_button_layout_name(dw3_button_map_layout()), digits,
+            p->children, p->running, g_fh_turbo_was, dw3_button_layout_name(dw3_button_map_layout()), digits,
             g_fh_sessions);
     return 1;
 }
