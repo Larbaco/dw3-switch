@@ -100,6 +100,7 @@ help.options.h.4 = Salvataggi
 help.options.li.8 = Salvataggio auto: OFF oppure Ogni area, predefinito OFF. Vedi la pagina Salvataggi.
 help.options.h.5 = Comandi
 help.options.li.9 = Disposizione tasti: PlayStation o Nintendo, predefinito PlayStation, cioè l'originale. Con Nintendo, A conferma e B torna indietro; il pulsante secondario (Cerchio) passa su X. Start, Select, i dorsali e gli stick non si spostano. Vale subito ed è salvato.
+help.options.li.10 = Simboli Switch (solo Switch): OFF o ON, predefinito OFF, che mantiene le icone originali. ON mostra il pulsante Switch, A, B, X o Y, che produce davvero ogni richiesta, e segue la disposizione e la personalizzazione dei tasti. Vale subito ed è salvato.
 help.options.note.1 = Sul campo e in battaglia Schermo largo è grigio e indica che è bloccato. La mappa viene impaginata quando si carica un'area, quindi cambialo nella schermata del titolo.
 help.options.note.2 = Sul disco EU le righe e i testi compaiono nella lingua del gioco.
 

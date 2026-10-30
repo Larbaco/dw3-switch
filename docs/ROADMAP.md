@@ -1584,8 +1584,8 @@ rumble, saves, turbo, or widescreen here; those stay in their phases.
   Patch: `port/options/switch_glyphs.c` wraps `FONT.load` and replaces the cells in VRAM with the
   glyph of the button that produces each PS button under the map; row 14 `switch_glyphs` in the
   Controls group on the Switch only, default off; own PNGs in `sdmc:/switch/dw3/glyphs/`; log
-  `dw3-glyphs: on|off, map=..., patched N cells (...)`. Open: draw hook for `R1` / `L1` art, help text
-  for the row, a look on the OLED (legibility, the EU steel tint).
+  `dw3-glyphs: on|off, map=..., patched N cells (...)`. Open: draw hook for `R1` / `L1` art, a look on the
+  OLED (legibility, the EU steel tint). The Options help page lists the row.
   Done when: with the option on, the icons shown in the field, battle, menus
   and shops are Switch glyphs on the US and EU discs, they match the layout
   chosen in P9.8, and the option off restores the original icons.

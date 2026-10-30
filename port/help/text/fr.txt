@@ -99,6 +99,7 @@ help.options.h.4 = Sauvegardes
 help.options.li.8 = Sauvegarde auto : OFF ou Chaque zone, OFF par défaut. Voir la page Sauvegardes.
 help.options.h.5 = Commandes
 help.options.li.9 = Disposition boutons : PlayStation ou Nintendo, PlayStation par défaut, c'est le réglage d'origine. Avec Nintendo, A valide et B revient en arrière ; le bouton secondaire (Rond) passe sur X. Start, Select, les gâchettes et les sticks ne changent pas. Le réglage s'applique aussitôt et est enregistré.
+help.options.li.10 = Symboles Switch (Switch seulement) : OFF ou ON, OFF par défaut, ce qui garde les icônes d'origine. ON dessine le bouton Switch, A, B, X ou Y, qui produit vraiment chaque invite, et suit la disposition et la personnalisation des boutons. Le réglage s'applique aussitôt et est enregistré.
 help.options.note.1 = Sur la carte et en combat, Écran large est grisé et indique qu'il est verrouillé. La carte est mise en page au chargement d'une zone : changez ce réglage depuis l'écran titre.
 help.options.note.2 = Sur le disque EU, les lignes et les textes s'affichent dans la langue du jeu.
 
