@@ -79,23 +79,24 @@ static const MvBindWord mv_bindable[] = {
 static const char *const mv_reserved[] = {
     "triangle", "circle", "r3", "start", "up", "down", "left", "right"};
 
-static const struct { const char *key, *name; int def; } mv_acts[MV_ACT_COUNT] = {
+static const struct { const char *key, *name; int def; } mv_acts[MV_ACT_TOTAL] = {
     {"map_view_open", "open", 15},
     {"map_view_zoom_out", "zoom_out", 10},
     {"map_view_zoom_in", "zoom_in", 11},
     {"map_view_centre", "centre", 0},
     {"map_view_scaler_prev", "scaler_prev", 8},
     {"map_view_scaler_next", "scaler_next", 9},
+    {"map_view_field_open", "field_open", 0},
 };
 
 const char *dw3_mv_act_key(int act) {
-    return act >= 0 && act < MV_ACT_COUNT ? mv_acts[act].key : "?";
+    return act >= 0 && act < MV_ACT_TOTAL ? mv_acts[act].key : "?";
 }
 const char *dw3_mv_act_name(int act) {
-    return act >= 0 && act < MV_ACT_COUNT ? mv_acts[act].name : "?";
+    return act >= 0 && act < MV_ACT_TOTAL ? mv_acts[act].name : "?";
 }
 int dw3_mv_bind_default_bit(int act) {
-    return act >= 0 && act < MV_ACT_COUNT ? mv_acts[act].def : -1;
+    return act >= 0 && act < MV_ACT_TOTAL ? mv_acts[act].def : -1;
 }
 const char *dw3_mv_bind_bit_name(int bit) {
     size_t i;
@@ -147,7 +148,7 @@ int dw3_mv_bind_parse(const char *text) {
 void dw3_mv_bindings_default(MvBindings *b) {
     int a;
 
-    for (a = 0; a < MV_ACT_COUNT; ++a) {
+    for (a = 0; a < MV_ACT_TOTAL; ++a) {
         b->bit[a] = mv_acts[a].def;
         b->from_file[a] = 0;
     }
@@ -190,6 +191,36 @@ int dw3_mv_bindings_resolve(MvBindings *b, const char *const vals[MV_ACT_COUNT],
     }
 #undef MV_WHY
     return rc;
+}
+
+int dw3_mv_field_bind_ok(int bit) {
+    return bit == 0 || bit == 15 || bit == 10 || bit == 11 || bit == 8 || bit == 9 ||
+           bit == 1;
+}
+
+int dw3_mv_field_bind_resolve(MvBindings *b, const char *val, char *why, size_t cap) {
+    int bit;
+
+    if (why && cap) why[0] = 0;
+    b->bit[MV_ACT_FIELD_OPEN] = mv_acts[MV_ACT_FIELD_OPEN].def;
+    b->from_file[MV_ACT_FIELD_OPEN] = 0;
+    if (!val) return 0;
+    bit = dw3_mv_bind_parse(val);
+    if (bit >= 0 && dw3_mv_field_bind_ok(bit)) {
+        b->bit[MV_ACT_FIELD_OPEN] = bit;
+        b->from_file[MV_ACT_FIELD_OPEN] = 1;
+        return 0;
+    }
+    if (why && cap) {
+        snprintf(why, cap, "%s=%s ignored (%s), using %s; ",
+                 mv_acts[MV_ACT_FIELD_OPEN].key, val,
+                 bit == -1 ? "not a bindable button" :
+                 bit == -2 ? "the field keeps that button: Triangle runs, Circle talks, R3 is "
+                             "fast-forward, Start opens the menu, the d-pad walks" :
+                             "the field keeps Cross for talking and confirming",
+                 dw3_mv_bind_bit_name(mv_acts[MV_ACT_FIELD_OPEN].def));
+    }
+    return 1;
 }
 
 int dw3_mv_bindings_action(const MvBindings *b, int bit) {

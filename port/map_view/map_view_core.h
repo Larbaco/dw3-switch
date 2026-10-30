@@ -69,17 +69,23 @@ enum {
     MV_ACT_CENTRE = 3,      /* centre on the current area */
     MV_ACT_SCALER_PREV = 4,
     MV_ACT_SCALER_NEXT = 5,
-    MV_ACT_COUNT = 6
+    MV_ACT_COUNT = 6,       /* the six actions of the view itself (and of the Map screen's open) */
+    /* P6.32 phase 6: the seventh binding, read in the FIELD (patch 0148), not in the view:
+     * opens the view straight from the field. It is not one of the six, so it may share a
+     * button with one of them (Select is also "centre" in the view: different place), but
+     * it may only use a button the field leaves free (dw3_mv_field_bind_ok). */
+    MV_ACT_FIELD_OPEN = 6,
+    MV_ACT_TOTAL = 7
 };
 typedef struct MvBindings {
-    int bit[MV_ACT_COUNT];  /* the pad bit that does the action */
-    int from_file[MV_ACT_COUNT]; /* 1 where the file named it (and it was taken) */
+    int bit[MV_ACT_TOTAL];  /* the pad bit that does the action */
+    int from_file[MV_ACT_TOTAL]; /* 1 where the file named it (and it was taken) */
 } MvBindings;
 
 /* The cfg key ("map_view_open") and the word of the action ("open"). */
 const char *dw3_mv_act_key(int act);
 const char *dw3_mv_act_name(int act);
-/* The default pad bit of an action: square, l1, r1, select, l2, r2. */
+/* The default pad bit of an action: square, l1, r1, select, l2, r2, and select for the field key. */
 int dw3_mv_bind_default_bit(int act);
 /* The shown name of a bindable pad bit ("Square", "L1", "Select"), "?" if none. */
 const char *dw3_mv_bind_bit_name(int bit);
@@ -96,6 +102,14 @@ void dw3_mv_bindings_default(MvBindings *b);
  * `why` gets one line per problem (may be NULL). */
 int dw3_mv_bindings_resolve(MvBindings *b, const char *const vals[MV_ACT_COUNT],
                             char *why, size_t cap);
+/* The seventh binding (map_view_field_open) on top of a table resolve filled: `val` is the
+ * file value (NULL = absent). The field keeps Cross (talk, confirm), Circle, Triangle (run),
+ * Start (the menu), R3 (fast-forward) and the d-pad for itself, so only select square l1 r1
+ * l2 r2 l3 may open the view. Returns 0 well, 1 when the value is not allowed (it takes the
+ * default, Select; `why` says so). */
+int dw3_mv_field_bind_resolve(MvBindings *b, const char *val, char *why, size_t cap);
+/* 1 for a pad bit the field leaves free for the hotkey. */
+int dw3_mv_field_bind_ok(int bit);
 /* The action bound to pad bit `bit`, or -1. */
 int dw3_mv_bindings_action(const MvBindings *b, int bit);
 

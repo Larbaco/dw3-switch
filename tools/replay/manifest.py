@@ -1518,6 +1518,82 @@ for _v, _ids in (("us", (0x159, 0x1FA, 0x1C2, 0x158, 0x1F9)),
                   note="the rebound view buttons through a custom button map (P6.12): the positions "
                        "change, the logical bindings and the pictures do not (P6.32 phase 4)"))
 
+# P6.32 phase 6: the full-screen map straight from the walking field (patch 0148). The path of
+# `map-rebind` to the idle field; the key goes down there. `field-map-ctl` is the control run
+# (no key); `field-map` holds the field for 400 frames under the view and must reproduce the
+# control's pictures after the return (ref_map, FH_D frames later), a walk included;
+# `field-map-off` has the option off (default): nothing opens and every picture is the control's
+# at the same frame; `field-map-square` rebinds the key (map_view_field_open=square): Select does
+# nothing, Square opens it, and the pictures are `field-map`'s.
+_FH_ENV = _ITEMS_ENV + (("DW3_MAP_SYNC", "1"),)
+_FH_AFTER = ("fk-after-return", "fk-after-120", "fk-walk", "fk-end")
+_FH_BAD = (r"dw3-map: BINDING PROBLEM|: CHANGED|dw3-turbo: off|dw3-map: capture failed|NOTHING DRAWN|"
+           r"dw3-map: field hotkey: the view could not open|overlay restore file=0x(?:1f9|207) ")
+_FH_SESSION = (
+    (0, r"dw3-map: field hotkey open: key (?:Select\(Minus\)|Square\(Y\)) went down in the walking field; "
+        r"field held: frame (\d+) time (\d+) progress 6 battle_steps (-?\d+) play (\d+:\d\d:\d\d\.\d+) rand (\d+) "
+        r"player (-?\d+),(-?\d+), (\d+) field task\(s\) paused .*turbo forced to 1x \(was 4x\), R3 ignored"),
+    (0, r"dw3-map: field hotkey: the game's Map screen is up in the field menu's slot; the view opens on it"),
+    (0, r"dw3-map: open half=0 image=392x352 .* turbo=1 zoom=1\.50 hud=off"),
+    (0, r"dw3-turbo: speed 1x(?s:.*)dw3-turbo: speed 4x"),
+    (0, r"dw3-map: R3 pressed in the view: ignored"),
+    (0, r"dw3-map: close requested by the cancel button"),
+    (0, r"dw3-map: field hotkey: the view closed; the game's Map screen is closed with it and the field comes back"),
+    # frame, time, progress, battle steps, play time, roll sequence and the player's place are the
+    # open's again at the return (the line ends in `unchanged`, never `CHANGED`)
+    (0, r"dw3-map: field hotkey return: the field resumes \(session 1\); during the hold the vsync clock ran on "
+        r"[1-9]\d*, the frame counter [1-9]\d* and the main loop took [1-9]\d* roll\(s\), all put back, "
+        r"[1-9]\d* bytes of VRAM given back; [1-9]\d* field task\(s\) running again; at the open -> now: .*: unchanged"),
+)
+for _v, _ids in (("us", (0x159, 0x1FA, 0x1C2, 0x158, 0x1F9)),
+                 ("eu", (0x167, 0x208, 0x1D1, 0x166, 0x207))):
+    _fight, _menu, _report, _field, _status = _ids
+    _fh_restore = ((_fight, M), (_menu, S), (_report, M), (_field, M))
+    _fh_cfg = (("encounter_rate", "2"),)
+    _add(Scenario(f"{_v}-field-map-ctl", _v, "full", turbo=4, timeout=600,
+                  env=_FH_ENV, cfg=_fh_cfg + (("map_screen", "1"),), expect_restore=_fh_restore,
+                  forbid_log=((0, r"dw3-map: field hotkey|dw3-map: open half"),),
+                  note="control run of the field hotkey: the idle field, no key, the same walk (P6.32 phase 6)"),
+         Scenario(f"{_v}-field-map", _v, "full", turbo=4, timeout=600,
+                  env=_FH_ENV, cfg=_fh_cfg + (("map_screen", "1"),), expect_restore=_fh_restore,
+                  ref_map=tuple((n, f"{_v}-field-map-ctl", n) for n in ("fk-before",) + _FH_AFTER),
+                  own_refs=("fk-open", "fk-cursor", "fk-late"),
+                  expect_log=_FH_SESSION + (
+                      (0, r"dw3-map: field hotkey binding \(at the open, field hotkey\): field_open=Select\(Minus\)"),),
+                  forbid_log=((0, _FH_BAD + r"|dw3-map: field hotkey ignored"),),
+                  note="Select in the idle field opens the full-screen map, the field held under it (timers, "
+                       "encounter steps, actors, rolls), R3 does nothing, Triangle returns to the exact field "
+                       "(P6.32 phase 6)"),
+         Scenario(f"{_v}-field-map-off", _v, "full", turbo=4, timeout=600,
+                  env=_FH_ENV, cfg=_fh_cfg, expect_restore=_fh_restore,
+                  ref_map=tuple((n, f"{_v}-field-map-ctl", n) for n in ("fk-before", "fk-off-60", "fk-off-160")),
+                  expect_log=((0, r"dw3-map: field hotkey ignored: Options > Display > Full-screen map is OFF "
+                                  r"\(map_screen=0\) \(key Select = map_view_field_open\)(?s:.*)"
+                                  r"dw3-map: field hotkey ignored: Options > Display > Full-screen map is OFF"),),
+                  forbid_log=((0, r"dw3-map: field hotkey open|dw3-map: open half|dw3-map: BINDING PROBLEM"),),
+                  note="the option off (the default): the key does nothing and the log says why, twice (P6.32 phase 6)"),
+         Scenario(f"{_v}-field-map-43", _v, "full", turbo=4, timeout=600, log_only=True,
+                  env=_FH_ENV + (("DW3_WIDESCREEN", "0"),), cfg=_fh_cfg + (("map_screen", "1"),),
+                  expect_restore=_fh_restore,
+                  expect_log=((0, r"dw3-map: field hotkey ignored: widescreen is off \(the view needs the 16:9 picture, "
+                                  r"shift=0\) \(key Select = map_view_field_open\)(?s:.*)"
+                                  r"dw3-map: field hotkey ignored: widescreen is off"),),
+                  forbid_log=((0, r"dw3-map: field hotkey open|dw3-map: open half|dw3-map: BINDING PROBLEM"),),
+                  note="widescreen off: the key does nothing and the log says why, twice (P6.32 phase 6)"),
+         Scenario(f"{_v}-field-map-square", _v, "full", turbo=4, timeout=600,
+                  env=_FH_ENV, cfg=_fh_cfg + (("map_screen", "1"), ("map_view_field_open", "square")),
+                  expect_restore=_fh_restore,
+                  ref_from=f"{_v}-field-map",
+                  ref_map=tuple((n, f"{_v}-field-map-ctl", n) for n in ("fk-before",) + _FH_AFTER),
+                  expect_log=_FH_SESSION + (
+                      (0, r"dw3-map: bindings read from port_options.cfg:.* map_view_field_open=Square \(file\)"),
+                      (0, r"dw3-map: field hotkey binding \(at the open, field hotkey\): field_open=Square\(Y\)")),
+                  forbid_log=((0, _FH_BAD + r"|dw3-map: field hotkey ignored|"
+                                  # one open: Select, the old key, pressed before it opened nothing
+                                  r"dw3-map: field hotkey open(?s:.*)dw3-map: field hotkey open"),),
+                  note="map_view_field_open=square: Square opens the view from the field, with the same pictures "
+                       "as Select (P6.32 phase 6)"))
+
 _SAVE_ENV = (("DW3_START_MODE", "0x233"), ("DW3_PROGRESS", "6"),
              ("DW3_FORCE_MENU", "0xC00:0x80000000"))
 for _v, _ids in (("us", (0x158, 0x1E3)), ("eu", (0x166, 0x1EE))):

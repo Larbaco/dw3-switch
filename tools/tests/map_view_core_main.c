@@ -792,6 +792,51 @@ static void test_bindings(void) {
     CHECK(rc == 2 && strlen(why) < 24, "short buffer: rc %d len %d", rc, (int)strlen(why));
 }
 
+/* P6.32 phase 6: the seventh binding, the field key (map_view_field_open) */
+static void test_field_binding(void) {
+    MvBindings b;
+    char why[256];
+    int rc, a;
+    const char *ok[] = {"select", "SQUARE", " l1", "r1", "L2", "r2", "l3"};
+    const int ok_bit[] = {0, 15, 10, 11, 8, 9, 1};
+    const char *no[] = {"cross", "circle", "triangle", "r3", "start", "up", "bogus", ""};
+
+    dw3_mv_bindings_default(&b);
+    CHECK(MV_ACT_TOTAL == MV_ACT_COUNT + 1 && MV_ACT_FIELD_OPEN == MV_ACT_COUNT, "the seventh follows the six");
+    CHECK(b.bit[MV_ACT_FIELD_OPEN] == 0 && !b.from_file[MV_ACT_FIELD_OPEN], "default is Select");
+    CHECK(strcmp(dw3_mv_act_key(MV_ACT_FIELD_OPEN), "map_view_field_open") == 0, "key name");
+    CHECK(strcmp(dw3_mv_act_name(MV_ACT_FIELD_OPEN), "field_open") == 0, "act name");
+    CHECK(dw3_mv_bind_default_bit(MV_ACT_FIELD_OPEN) == 0, "default bit");
+    rc = dw3_mv_field_bind_resolve(&b, NULL, why, sizeof(why));
+    CHECK(rc == 0 && b.bit[MV_ACT_FIELD_OPEN] == 0 && why[0] == 0, "absent key: Select, silent");
+    for (a = 0; a < (int)(sizeof(ok) / sizeof(ok[0])); ++a) {
+        rc = dw3_mv_field_bind_resolve(&b, ok[a], why, sizeof(why));
+        CHECK(rc == 0 && b.bit[MV_ACT_FIELD_OPEN] == ok_bit[a] && b.from_file[MV_ACT_FIELD_OPEN] == 1,
+              "field key %s -> bit %d (rc %d)", ok[a], b.bit[MV_ACT_FIELD_OPEN], rc);
+    }
+    for (a = 0; a < (int)(sizeof(no) / sizeof(no[0])); ++a) {
+        rc = dw3_mv_field_bind_resolve(&b, no[a], why, sizeof(why));
+        CHECK(rc == 1 && b.bit[MV_ACT_FIELD_OPEN] == 0 && !b.from_file[MV_ACT_FIELD_OPEN] &&
+              strstr(why, "map_view_field_open=") != NULL && strstr(why, "using Select") != NULL,
+              "field key '%s' refused, Select kept (rc %d): %s", no[a], rc, why);
+    }
+    /* it does not disturb the six, and the six do not see it */
+    {
+        const char *v[MV_ACT_COUNT] = {"r2", "square", "cross", "l3", "l1", "r1"};
+
+        rc = dw3_mv_bindings_resolve(&b, v, why, sizeof(why));
+        CHECK(rc == 0 && b.bit[MV_ACT_FIELD_OPEN] == 0, "the table resolve leaves the seventh at Select");
+        rc = dw3_mv_field_bind_resolve(&b, "l3", why, sizeof(why));
+        CHECK(rc == 0 && b.bit[MV_ACT_CENTRE] == 1 && b.bit[MV_ACT_FIELD_OPEN] == 1,
+              "the field key may share a button with an in-view action (different place)");
+        CHECK(dw3_mv_bindings_action(&b, 1) == MV_ACT_CENTRE, "in the view L3 is still 'centre'");
+        CHECK(dw3_mv_bindings_action(&b, 0) == -1, "in the view Select is bound to nothing here");
+    }
+    CHECK(dw3_mv_field_bind_ok(0) && dw3_mv_field_bind_ok(15) && !dw3_mv_field_bind_ok(13) &&
+          !dw3_mv_field_bind_ok(12) && !dw3_mv_field_bind_ok(14) && !dw3_mv_field_bind_ok(2) &&
+          !dw3_mv_field_bind_ok(3), "bits the field leaves free");
+}
+
 static void test_backdrop(void) {
     MvImage src;
     uint8_t out[MV_BACKDROP_W * MV_BACKDROP_H * 4];
@@ -841,6 +886,7 @@ int main(int argc, char **argv) {
     test_pan_speed();
     test_backdrop();
     test_bindings();
+    test_field_binding();
     test_cache(argc > 1 ? argv[1] : "/mnt/cabal/tmp");
     if (!g_fail) printf("OK: map view core\n");
     return g_fail;

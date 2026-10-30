@@ -648,6 +648,20 @@ the map changes). Tested with the Nintendo layout and with a custom map
 (`us/eu-nintendo-map-rebind`, `us/eu-custom-map-rebind`: the recording's masks are button
 positions, so the physical presses go through the map, and the pictures equal the plain run's).
 
+### Phase 4 follow-up: the field hotkey, a seventh binding (P6.32 phase 6, 2026-10-30)
+
+`map_view_field_open` (file-only key, default `select`) is the seventh entry of the same binding
+table and follows the map the same way: it names a **PS button**, so `button_layout` and a custom
+map decide which console button makes it (the log line `dw3-map: field hotkey binding ...:
+field_open=Select(Minus)` names it at every open, and the open line names it again). It is read in
+the walking field, not in the view, so it may share a button with an in-view action (Select is also
+"centre on your area" there). What the field keeps for itself cannot be bound: Cross (talk, confirm),
+Circle, Triangle (run), Start (the field menu), R3 (fast-forward) and the d-pad; the allowed set is
+`select square l1 r1 l2 r2 l3`. Select is not remappable by the map (it is not in the ten buttons),
+so with the default binding the console button is Minus under every layout and custom map; a
+binding on Square, L1 ... follows the map. See [HOTKEYS](HOTKEYS.md#field-hotkey-p632-phase-6) for
+the conflict check and [P6.32 section 18](P6.32_MAP_ZOOM.md#18-phase-6-field-hotkey-as-built-2026-10-30).
+
 ### Phase 3 follow-up: the map view's help line (P6.32 phase 7, 2026-10-30)
 
 The map view's footer names the console button of each action by the rule of phase 3,

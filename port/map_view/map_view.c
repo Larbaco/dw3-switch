@@ -10,6 +10,7 @@
 #include <time.h>
 
 #include "cdfs.h"
+#include "field_map.h"
 #include "map_view.h"
 #include "map_view_core.h"
 #include "map_view_help.h"
@@ -221,6 +222,15 @@ static char g_bind_map[DW3_BTN_COUNT + 1];  /* the map the last line was logged 
 static int g_bind_logged;
 static int g_option_at_boot = -1;           /* map_screen when dw3_map_view_init ran */
 static int g_option_late_logged;
+/* The field hotkey (phase 6, patch 0148) */
+static int g_fh_active;       /* a session: from begin to end */
+static int g_fh_pending;      /* the view opens by itself on the Map screen's first run frame */
+static int g_fh_closed;       /* the view closed during the session: the patch kills the Map screen */
+static unsigned g_fh_sessions;
+static unsigned g_fh_frame0;  /* the view's frame counter is per open; this is the main loop's */
+static Dw3FieldMapClocks g_fh_clocks;
+static Dw3FieldMapProbe g_fh_probe;
+static int g_fh_turbo_was;
 
 #define BIND(act) (g_bind.bit[act])
 
@@ -237,8 +247,15 @@ static void bind_load(void) {
         fprintf(stderr, "dw3-map: BINDING PROBLEM (%s): %s\n",
                 rc == 2 ? "conflict, all defaults" : "bad value, that one at its default", why);
     }
+    /* phase 6: the seventh binding, read in the field (its own set of buttons, no clash with
+     * the six: they are read in the view) */
+    why[0] = 0;
+    if (dw3_mv_field_bind_resolve(&g_bind, dw3_port_options_file_str(dw3_mv_act_key(MV_ACT_FIELD_OPEN)),
+                                  why, sizeof(why)) != 0) {
+        fprintf(stderr, "dw3-map: BINDING PROBLEM (bad field key, at its default): %s\n", why);
+    }
     fprintf(stderr, "dw3-map: bindings read from port_options.cfg:");
-    for (a = 0; a < MV_ACT_COUNT; ++a) {
+    for (a = 0; a < MV_ACT_TOTAL; ++a) {
         fprintf(stderr, " %s=%s (%s)", dw3_mv_act_key(a), dw3_mv_bind_bit_name(g_bind.bit[a]),
                 g_bind.from_file[a] ? "file" : "default");
     }
@@ -278,6 +295,10 @@ static void bind_log(const char *why) {
             "layout %s, map %s\n", why, line, "Triangle",
             dw3_button_source_name(dw3_button_map_current()[DW3_BTN_TRIANGLE]),
             dw3_button_source_name(dw3_button_map_current()[DW3_BTN_CIRCLE]),
+            dw3_button_layout_name(dw3_button_map_layout()), digits);
+    fprintf(stderr, "dw3-map: field hotkey binding (%s): field_open=%s(%s), read in the walking "
+            "field, not in the view; PS button (console button) under button layout %s, map %s\n",
+            why, dw3_mv_bind_bit_name(BIND(MV_ACT_FIELD_OPEN)), bind_source(BIND(MV_ACT_FIELD_OPEN)),
             dw3_button_layout_name(dw3_button_map_layout()), digits);
     memcpy(g_bind_map, digits, sizeof(g_bind_map));
     g_bind_logged = 1;
@@ -1235,6 +1256,11 @@ static void close_view(void) {
             "screen read none of them), R3 presses ignored %u, turbo=%d\n",
             s.frame, s.r3_ignored, dw3_port_turbo_speed());
     s.resume_wait = 2;
+    if (g_fh_active) {
+        g_fh_closed = 1;
+        fprintf(stderr, "dw3-map: field hotkey: the view closed; the game's Map screen is closed "
+                "with it and the field comes back (no field menu in between)\n");
+    }
 }
 
 /* Phase 1 done-when: no black strips. The view's map rectangle against the whole
@@ -1624,6 +1650,131 @@ static void open_view(const void *sheet, int sheet_file, int half, int home_x,
 int dw3_port_map_view_active(void) { return s.active; }
 
 int dw3_port_map_view_wants(void) { return s.active || map_view_available(); }
+
+/* --- the field hotkey (phase 6, patch 0148) ---------------------------------
+ * Policy and logs. The key is the seventh binding (map_view_field_open, default Select), a
+ * PS button after the P6.12 / P9.8 map like the other six. It is read in the walking field
+ * (the patch calls the poll from the field task's main state, next to the Start check), so it
+ * can never be a button the field uses: Cross, Circle, Triangle, Start, R3 and the d-pad are
+ * refused at load (dw3_mv_field_bind_ok). Every refusal at the press says why. */
+static int fh_key(void) { return BIND(MV_ACT_FIELD_OPEN); }
+
+int dw3_port_map_view_field_poll(unsigned held, unsigned pressed, const Dw3FieldMapProbe *p) {
+    char why[240];
+    const unsigned shoulders = (1u << DW3_MV_PAD_L1) | (1u << DW3_MV_PAD_R1) |
+                               (1u << DW3_MV_PAD_L2) | (1u << DW3_MV_PAD_R2);
+
+    bind_load();
+    if (g_fh_active || !(pressed & (1u << fh_key()))) return 0;
+    why[0] = 0;
+    if (!MV_HOST_OK) {
+        snprintf(why, sizeof(why), "this host has no native overlay to draw the view");
+    } else if (map_view_option() == 0) {
+        snprintf(why, sizeof(why), "Options > Display > Full-screen map is OFF (map_screen=0)");
+    } else if (dw3_port_widescreen_menu_shift() <= 0) {
+        snprintf(why, sizeof(why), "widescreen is off (the view needs the 16:9 picture, shift=%d)",
+                 dw3_port_widescreen_menu_shift());
+    } else if ((held & shoulders & ~(1u << fh_key())) != 0) {
+        snprintf(why, sizeof(why), "a shoulder button is held (L1/R1/L2/R2 are the restart and "
+                 "debug chords' buttons: held=0x%04x)", held & shoulders);
+    } else if (held & (1u << DW3_MV_PAD_START)) {
+        snprintf(why, sizeof(why), "Start is held (it opens the field menu)");
+    } else if (p->menu_open || p->busy || p->acting) {
+        snprintf(why, sizeof(why), "the field is not idle (menu_open=%d busy=%d acting=%d: a "
+                 "message, event, menu or the player is acting)", p->menu_open, p->busy, p->acting);
+    } else if (p->progress < 4) {
+        snprintf(why, sizeof(why), "the field menu, and so its Map, opens from story point 4 on "
+                 "(progress %d)", p->progress);
+    }
+    if (why[0]) {
+        fprintf(stderr, "dw3-map: field hotkey ignored: %s (key %s = map_view_field_open)\n",
+                why, dw3_mv_bind_bit_name(fh_key()));
+        return 0;
+    }
+    return 1;
+}
+
+int dw3_port_map_view_field_begin(const Dw3FieldMapProbe *p) {
+    char digits[DW3_BTN_COUNT + 1];
+
+    if (!dw3_field_map_snapshot()) {
+        fprintf(stderr, "dw3-map: field hotkey ignored: out of memory for the VRAM snapshot "
+                "(key %s)\n", dw3_mv_bind_bit_name(fh_key()));
+        return 0;
+    }
+    dw3_field_map_clocks(&g_fh_clocks);
+    g_fh_probe = *p;
+    g_fh_turbo_was = dw3_port_turbo_speed();
+    g_fh_active = 1;
+    g_fh_pending = 1;
+    g_fh_closed = 0;
+    ++g_fh_sessions;
+    bind_map_text(digits);
+    fprintf(stderr, "dw3-map: field hotkey open: key %s(%s) went down in the walking field; "
+            "field held: frame %d time %d progress %d battle_steps %d play %d:%02d:%02d.%d "
+            "rand %d player %d,%d, %d field task(s) paused (the engine's task pause: no actor, "
+            "event, timer or encounter step runs); turbo forced to 1x (was %dx), R3 ignored; "
+            "layout %s, map %s; the game's Map screen runs in the field menu's slot (session %u)\n",
+            dw3_mv_bind_bit_name(fh_key()), bind_source(fh_key()), g_fh_clocks.frame,
+            g_fh_clocks.time, g_fh_clocks.progress, g_fh_clocks.battle_steps,
+            g_fh_clocks.play_h, g_fh_clocks.play_m, g_fh_clocks.play_s,
+            g_fh_clocks.play_frames, g_fh_clocks.rand_index, p->player_x, p->player_y,
+            p->children, g_fh_turbo_was, dw3_button_layout_name(dw3_button_map_layout()), digits,
+            g_fh_sessions);
+    return 1;
+}
+
+void dw3_port_map_view_field_end(const Dw3FieldMapProbe *p) {
+    Dw3FieldMapGiven g;
+    Dw3FieldMapClocks c;
+    int same;
+
+    if (!g_fh_active) return;
+    dw3_field_map_restore(&g);
+    dw3_field_map_clocks(&c);
+    same = c.frame == g_fh_clocks.frame && c.time == g_fh_clocks.time &&
+           c.play_frames == g_fh_clocks.play_frames && c.play_h == g_fh_clocks.play_h &&
+           c.play_m == g_fh_clocks.play_m && c.play_s == g_fh_clocks.play_s &&
+           c.rand_index == g_fh_clocks.rand_index && c.progress == g_fh_clocks.progress &&
+           c.battle_steps == g_fh_clocks.battle_steps && p->player_x == g_fh_probe.player_x &&
+           p->player_y == g_fh_probe.player_y;
+    fprintf(stderr, "dw3-map: field hotkey return: the field resumes (session %u); during the hold "
+            "the vsync clock ran on %d, the frame counter %d and the main loop took %d roll(s), "
+            "all put back, %d bytes of VRAM given back; %d field task(s) running again; "
+            "at the open -> now: frame %d -> %d, time %d -> %d, progress %d -> %d, battle_steps "
+            "%d -> %d, play %d:%02d:%02d.%d -> %d:%02d:%02d.%d, rand %d -> %d, player %d,%d -> "
+            "%d,%d: %s\n", g_fh_sessions, g.time_ran, g.frames_ran, g.rolls, g.vram_bytes,
+            p->held, g_fh_clocks.frame, c.frame, g_fh_clocks.time, c.time, g_fh_clocks.progress,
+            c.progress, g_fh_clocks.battle_steps, c.battle_steps, g_fh_clocks.play_h,
+            g_fh_clocks.play_m, g_fh_clocks.play_s, g_fh_clocks.play_frames, c.play_h, c.play_m,
+            c.play_s, c.play_frames, g_fh_clocks.rand_index, c.rand_index, g_fh_probe.player_x,
+            g_fh_probe.player_y, p->player_x, p->player_y, same ? "unchanged" : "CHANGED");
+    g_fh_active = 0;
+    g_fh_pending = 0;
+    g_fh_closed = 0;
+}
+
+int dw3_port_map_view_field_active(void) { return g_fh_active; }
+
+int dw3_port_map_view_field_closed(void) {
+    int c = g_fh_closed;
+
+    g_fh_closed = 0;
+    return c;
+}
+
+int dw3_port_map_view_field_layer(int screen_layer) {
+    return g_fh_active ? 0x1002 /* FIELD_LAYER_MAP */ : screen_layer;
+}
+
+void dw3_port_map_view_field_reset(void) {
+    Dw3FieldMapGiven g;
+
+    if (!g_fh_active) return;
+    dw3_field_map_restore(&g);
+    g_fh_active = g_fh_pending = g_fh_closed = 0;
+    fprintf(stderr, "dw3-map: field hotkey: reset while a session ran (restart)\n");
+}
 
 void dw3_port_map_view_data(const Dw3MapViewData *d) {
     g_data = *d;
@@ -2137,7 +2288,7 @@ int dw3_port_map_view_frame(const void *sheet, int sheet_file, int half,
                             unsigned held, unsigned pressed, const void *sheet1,
                             const void *sheet2, const int *pieces,
                             int npieces, Dw3MapViewIo *io) {
-    int moved = 0, moving = 0, k;
+    int moved = 0, moving = 0, k, fh_auto = 0;
 
 #define BIT(b) (1u << (b))
     if (!s.active) {
@@ -2154,7 +2305,15 @@ int dw3_port_map_view_frame(const void *sheet, int sheet_file, int half,
         }
         bind_load();
         bind_note_map();
-        if (!(pressed & BIT(BIND(MV_ACT_OPEN)))) return 0;
+        if (g_fh_pending) {
+            /* phase 6: the field hotkey made this Map screen; the view opens on it by itself */
+            g_fh_pending = 0;
+            fh_auto = 1;
+            fprintf(stderr, "dw3-map: field hotkey: the game's Map screen is up in the field "
+                    "menu's slot; the view opens on it\n");
+        } else if (!(pressed & BIT(BIND(MV_ACT_OPEN)))) {
+            return 0;
+        }
         if (!map_view_available()) {
             fprintf(stderr, "dw3-map: %s pressed, view not available "
                     "(host=%d map_screen=%d widescreen shift=%d)\n",
@@ -2172,9 +2331,13 @@ int dw3_port_map_view_frame(const void *sheet, int sheet_file, int half,
                     "are built when first selected)\n", MV_OPTION_KEY,
                     g_cache_dir[0] ? g_cache_dir : "(none)");
         }
-        bind_log("at the open");
+        bind_log(fh_auto ? "at the open, field hotkey" : "at the open");
         open_view(sheet, sheet_file, half, home_x, home_y, visited, spot_x,
                   spot_y, sheet1, sheet2, pieces, npieces);
+        if (fh_auto && !s.active) {
+            fprintf(stderr, "dw3-map: field hotkey: the view could not open; the game's own "
+                    "Map screen is shown instead (Triangle closes it and the field comes back)\n");
+        }
         if (io) {
             s.game_cx = io->game_cx;
             s.game_cy = io->game_cy;

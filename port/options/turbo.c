@@ -112,6 +112,11 @@ int dw3_port_turbo_speed(void) {
     if (dw3_port_battle_options_holding()) {
         return 1;
     }
+    /* P6.32 phase 6: the field hotkey's view runs at 1x, whatever the field was on. The
+     * toggle itself is left as it was; the speed comes back with the field. */
+    if (dw3_port_map_view_field_active()) {
+        return 1;
+    }
 #endif
     mode_file = turbo_mode_file();
     if (mode_file != DW3_TURBO_FIELDSTG && mode_file != DW3_TURBO_FIGHTSTG &&
@@ -206,7 +211,7 @@ void dw3_port_turbo_poll(void) {
     /* P6.32: the full-screen map swallows the pad, R3 included: a press in it
      * must not flip the fast-forward state behind the player's back. A press
      * held when the screen closes does not count as a new one. */
-    if (turbo_r3_held() && dw3_port_map_view_active()) {
+    if (turbo_r3_held() && (dw3_port_map_view_active() || dw3_port_map_view_field_active())) {
         g_latched = 1;
     } else
 #endif
