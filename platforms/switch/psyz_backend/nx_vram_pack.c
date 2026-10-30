@@ -71,6 +71,24 @@ static int clamp_axis(int origin, int size, int limit, int *out_origin,
     return 1;
 }
 
+int dw3_nx_clamp_rect(int dx, int dy, int dw, int dh, int *out_x, int *out_y,
+                      int *out_w, int *out_h) {
+    if (!clamp_axis(dx, dw, DW3_NX_VRAM_W, out_x, out_w) ||
+        !clamp_axis(dy, dh, DW3_NX_VRAM_H, out_y, out_h)) {
+        *out_w = 0;
+        *out_h = 0;
+        return 0;
+    }
+    return 1;
+}
+
+int dw3_nx_wide_rect_ok(int stride, int gutter, int dx, int dy, int dw,
+                        int dh) {
+    return gutter >= 0 && gutter <= stride && dw > 0 && dh > 0 && dx >= 0 &&
+           dy >= 0 && (int64_t)dx + dw <= DW3_NX_VRAM_W &&
+           (int64_t)dy + dh <= DW3_NX_VRAM_H;
+}
+
 size_t dw3_nx_pack_rgb555_rect(const uint16_t *src, int dx, int dy, int dw,
                                int dh, uint8_t *dst, int *out_x, int *out_y,
                                int *out_w, int *out_h) {
@@ -93,8 +111,7 @@ size_t dw3_nx_pack_rgb555_rect(const uint16_t *src, int dx, int dy, int dw,
     if (!s_lut_ready) {
         lut_init();
     }
-    if (!clamp_axis(dx, dw, DW3_NX_VRAM_W, &x, &w) ||
-        !clamp_axis(dy, dh, DW3_NX_VRAM_H, &y, &h)) {
+    if (!dw3_nx_clamp_rect(dx, dy, dw, dh, &x, &y, &w, &h)) {
         return 0;
     }
 
@@ -131,9 +148,8 @@ size_t dw3_nx_pack_rgb555_wide(const uint16_t *src, const uint16_t *left,
                                int dx, int dy, int dw, int dh, uint8_t *dst) {
     int row;
 
-    if (!src || !left || !right || !dst || gutter < 0 || gutter > stride ||
-        dw <= 0 || dh <= 0 || dx < 0 || dy < 0 || dx + dw > DW3_NX_VRAM_W ||
-        dy + dh > DW3_NX_VRAM_H) {
+    if (!src || !left || !right || !dst ||
+        !dw3_nx_wide_rect_ok(stride, gutter, dx, dy, dw, dh)) {
         return 0;
     }
     if (!s_lut_ready) {

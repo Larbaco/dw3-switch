@@ -124,6 +124,65 @@ static int check_wide(const uint16_t *vram, const uint8_t *full) {
     return 0;
 }
 
+/* P6.22 pass 4: the 16-bit present clamps with dw3_nx_clamp_rect and checks the
+ * wide layout with dw3_nx_wide_rect_ok instead of calling the pack, so they must
+ * say what the pack says for rectangles inside, across and outside VRAM. */
+static int check_clamp_helpers(void) {
+    static const int rects[][4] = {
+        {0, 0, 320, 240},   {17, 9, 320, 240},   {704, 0, 320, 240},
+        {1000, 500, 50, 40}, {-10, -4, 40, 20},   {-50, 0, 40, 20},
+        {0, -30, 40, 20},   {1024, 0, 16, 16},   {0, 512, 16, 16},
+        {0, 0, 0, 16},      {0, 0, 16, -4},      {-5, -5, 2000, 2000},
+        {2147483000, 0, 2147483000, 16},
+    };
+    static uint16_t vram[DW3_NX_VRAM_W * DW3_NX_VRAM_H];
+    static uint8_t packed[DW3_NX_VRAM_W * DW3_NX_VRAM_H * 4];
+    unsigned int i;
+    int failed = 0;
+
+    for (i = 0; i < sizeof(rects) / sizeof(rects[0]); i++) {
+        int ox, oy, ow, oh;
+        int cx = -1, cy = -1, cw = -1, ch = -1;
+        size_t n = dw3_nx_pack_rgb555_rect(vram, rects[i][0], rects[i][1],
+                                           rects[i][2], rects[i][3], packed,
+                                           &ox, &oy, &ow, &oh);
+        int ok = dw3_nx_clamp_rect(rects[i][0], rects[i][1], rects[i][2],
+                                   rects[i][3], &cx, &cy, &cw, &ch);
+
+        if ((n != 0) != (ok != 0) ||
+            (ok && (cx != ox || cy != oy || cw != ow || ch != oh)) ||
+            (!ok && (cw != 0 || ch != 0))) {
+            fprintf(stderr, "clamp helper differs from the pack for %d,%d "
+                    "%dx%d\n", rects[i][0], rects[i][1], rects[i][2],
+                    rects[i][3]);
+            failed = 1;
+        }
+    }
+    /* The wide conditions: what the pack accepts the helper accepts. */
+    for (i = 0; i < sizeof(rects) / sizeof(rects[0]); i++) {
+        static uint16_t left[DW3_NX_VRAM_H * 64];
+        static uint16_t right[DW3_NX_VRAM_H * 64];
+        int g;
+
+        for (g = -1; g <= 65; g += 16) {
+            size_t n = dw3_nx_pack_rgb555_wide(vram, left, right, 64, g,
+                                               rects[i][0], rects[i][1],
+                                               rects[i][2], rects[i][3],
+                                               packed);
+            int ok = dw3_nx_wide_rect_ok(64, g, rects[i][0], rects[i][1],
+                                         rects[i][2], rects[i][3]);
+
+            if ((n != 0) != (ok != 0)) {
+                fprintf(stderr, "wide helper differs from the pack for "
+                        "%d,%d %dx%d gutter %d\n", rects[i][0], rects[i][1],
+                        rects[i][2], rects[i][3], g);
+                failed = 1;
+            }
+        }
+    }
+    return failed;
+}
+
 int main(void) {
     size_t pixels = (size_t)DW3_NX_VRAM_W * (size_t)DW3_NX_VRAM_H;
     uint16_t *vram = calloc(pixels, sizeof(uint16_t));
@@ -216,6 +275,7 @@ int main(void) {
     }
 
     failed |= check_wide(vram, full);
+    failed |= check_clamp_helpers();
 
     free(vram);
     free(full);
@@ -225,5 +285,6 @@ int main(void) {
     }
     printf("OK: rgb555 rect pack matches full-buffer expand\n");
     printf("OK: rgb555 wide pack puts the gutters beside the display\n");
+    printf("OK: clamp helpers of the 16-bit present agree with the pack\n");
     return 0;
 }
