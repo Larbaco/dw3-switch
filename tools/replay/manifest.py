@@ -416,6 +416,18 @@ WT_CHAPTER_POINTS = (
     ("p25", "0x288", 37, 1, 19, "ch10", "ch10.s01", "progress+flag"),
     ("p27", "0x288", 39, 1, 19, "ch10", "ch10.s04", "progress"),
     ("p29", "0x2DF", 41, -1, -1, "ch10", "ch10.s06", "progress+flag"),
+    # slice 3: the last battle (progress 0x2B, both discs), in the Control Room that starts it
+    ("p2b", "0x2DF", 43, -1, -1, "ch11", "ch11.s01", "progress"),
+)
+# The EU extra chapter (progress 0x2D): the start (the Login Room, WSTAG925), the middle (Qing Long
+# City, WSTAG956, where a challenger waits) and the end (the Digimon Arena, WSTAG927). Every row of
+# the chapter waits for a flag, and flags cannot be set from the environment, so all three points
+# resolve to the first row; they prove that the extra stages boot at 0x2D and that the resolver runs
+# in them. The same three boots on US must not show the chapter: US has no row at 0x2D.
+WT_EXTRA_POINTS = (
+    ("p2d", "0x276", 1, 19),
+    ("p2d-mid", "0x29C", 1, 14),
+    ("p2d-end", "0x278", 1, 19),
 )
 for _v in ("us", "eu"):
     for _tag, _mode, _prog, _half, _area, _ch, _step, _rule in WT_CHAPTER_POINTS:
@@ -428,6 +440,22 @@ for _v in ("us", "eu"):
                       expect_log=((0, r"dw3-walkthrough: " + _line),),
                       forbid_log=((0, r"step not recognised|chapter - step -"),),
                       note=f"P6.35 slice 2: progress {_prog} in mode {_mode} resolves to {_step}"))
+for _tag, _mode, _half, _area in WT_EXTRA_POINTS:
+    _add(Scenario(f"eu-walkthrough-{_tag}", "eu", "full", turbo=4, timeout=120, log_only=True,
+                  phases=("eu-walkthrough",),
+                  env=(("DW3_START_MODE", _mode), ("DW3_PROGRESS", "45"), ("DW3_WALKTHROUGH_PROBE", "1")),
+                  expect_log=((0, rf"dw3-walkthrough: progress 45 half {_half} area {_area} -> chapter ch12 "
+                                  r"step ch12\.s01 \(rule progress\+flag\)"),),
+                  forbid_log=((0, r"step not recognised|chapter - step -"),),
+                  note=f"P6.35 slice 3: the EU extra chapter's stage {_mode} at progress 0x2D resolves to its first row"))
+    _add(Scenario(f"us-walkthrough-{_tag}", "us", "full", turbo=4, timeout=120, log_only=True,
+                  phases=("us-walkthrough",),
+                  env=(("DW3_START_MODE", _mode), ("DW3_PROGRESS", "45"), ("DW3_WALKTHROUGH_PROBE", "1")),
+                  expect_log=((0, rf"dw3-walkthrough: progress 45 half {_half} area {_area} -> chapter - "
+                                  r"step - \(rule above-table\)"),),
+                  forbid_log=((0, r"ch12"),),
+                  note=f"P6.35 slice 3: region gating, the US build never shows the extra chapter "
+                       f"(progress 0x2D in mode {_mode} is past its table)"))
 
 # The battle theme is the same bug: a long song (bank 2 on the US disc) whose
 # NRPN loop never repeated, so a battle was silent after one pass. The walk is
@@ -2439,9 +2467,14 @@ _WT_FORBID = ((0, r"unresolved"), (0, r"dw3-walkthrough: text fallback"),
 _WT_CLOSE = r"dw3-port-options: group close walkthrough \(back to the group list\)"
 
 
-def _wt_title(lang, reg, chapters=10, steps=55):
+# chapters and steps per disc (the EU extra chapter has 3 rows more and a chapter of its own)
+_WT_COUNT = {"US": (11, 56), "EU": (12, 59)}
+
+
+def _wt_title(lang, reg):
     """expect_log of the browse-only run from the title (chapter 1 opened, first step shown,
     second hidden)."""
+    chapters, steps = _WT_COUNT[reg]
     return ((0, r"dw3-walkthrough: open \(from title, region " + reg + r", platform pc, language " + lang +
                 rf", {chapters} chapters, {steps} steps\)(?s:.*)"
                 r"dw3-walkthrough: browse mode \(no game state\)(?s:.*)"
@@ -2464,7 +2497,7 @@ for _v, _reg in (("us", "US"), ("eu", "EU")):
                   env=(("DW3_START_MODE", "0x22E"), ("DW3_PROGRESS", "4")) + _RT_BATTLE_ENV,
                   expect_log=((0, r"dw3-port-options: open in game(?s:.*)"
                                   r"dw3-walkthrough: open \(from field, region " + _reg +
-                                  r", platform pc, language en, 10 chapters, 55 steps\)(?s:.*)"
+                                  rf", platform pc, language en, {_WT_COUNT[_reg][0]} chapters, {_WT_COUNT[_reg][1]} steps\)(?s:.*)"
                                   r"dw3-walkthrough: progress 4 half 0 area 14 -> chapter ch01 step ch01\.s06 "
                                   r"\(rule progress\) \[open mode 0x22e\](?s:.*)"
                                   r"dw3-walkthrough: flags read 0x400d=0(?s:.*)"
@@ -2491,7 +2524,7 @@ for _v, _reg in (("us", "US"), ("eu", "EU")):
                   env=(("DW3_START_MODE", "0x255"), ("DW3_PROGRESS", "20")) + _RT_BATTLE_ENV,
                   expect_log=((0, r"dw3-port-options: open in game(?s:.*)"
                                   r"dw3-walkthrough: open \(from field, region " + _reg +
-                                  r", platform pc, language en, 10 chapters, 55 steps\)(?s:.*)"
+                                  rf", platform pc, language en, {_WT_COUNT[_reg][0]} chapters, {_WT_COUNT[_reg][1]} steps\)(?s:.*)"
                                   r"dw3-walkthrough: progress 20 half 0 area 7 -> chapter ch05 step ch05\.s03 "
                                   r"\(rule progress\+flag\) \[open mode 0x255\](?s:.*)"
                                   r"dw3-walkthrough: flags read 0x400d=0(?s:.*)"
@@ -2515,28 +2548,31 @@ for _v, _reg in (("us", "US"), ("eu", "EU")):
                        "chapter 5) opens on the third step of its chapter; the next step is not reached "
                        "yet, so its title is hidden and the reveal says it may spoil; Back shows the "
                        "chapter list with the arrow on chapter 5"))
-    _add(Scenario(f"{_v}-walkthrough-screen-p2a", _v, "full", turbo=4, timeout=300,
-                  env=(("DW3_START_MODE", "0x233"), ("DW3_PROGRESS", "42")) + _RT_BATTLE_ENV,
+    _add(Scenario(f"{_v}-walkthrough-screen-p2b", _v, "full", turbo=4, timeout=300,
+                  env=(("DW3_START_MODE", "0x2DF"), ("DW3_PROGRESS", "43")) + _RT_BATTLE_ENV,
                   expect_log=((0, r"dw3-port-options: open in game(?s:.*)"
                                   r"dw3-walkthrough: open \(from field, region " + _reg +
-                                  r", platform pc, language en, 10 chapters, 55 steps\)(?s:.*)"
-                                  r"dw3-walkthrough: progress 42 half 0 area 42 -> chapter - step - "
-                                  r"\(rule above-table\) \[open mode 0x233\](?s:.*)"
-                                  r"dw3-walkthrough: page more \(kind MORE, from open, reached y, current n, "
+                                  rf", platform pc, language en, {_WT_COUNT[_reg][0]} chapters, {_WT_COUNT[_reg][1]} steps\)(?s:.*)"
+                                  r"dw3-walkthrough: progress 43 half -1 area -1 -> chapter ch11 step ch11\.s01 "
+                                  r"\(rule progress\) \[open mode 0x2df\](?s:.*)"
+                                  r"dw3-walkthrough: page ch11\.s01 \(kind MAIN, from open, reached y, current y, "
                                   r"\d+ lines(?s:.*)"
-                                  r"dw3-walkthrough: spoiler more closed \(answer none\)(?s:.*)"
-                                  r"dw3-walkthrough: chapter ch10 opened \(reached y, current n, 7 steps\)(?s:.*)"
+                                  r"dw3-walkthrough: spoiler ch11\.s01 closed \(answer available\)(?s:.*)"
+                                  r"dw3-port-options: group open walkthrough \(in game\)(?s:.*)"
+                                  r"dw3-walkthrough: spoiler ch11\.s01 asked(?s:.*)"
+                                  r"dw3-walkthrough: spoiler ch11\.s01 shown(?s:.*)"
+                                  r"dw3-walkthrough: page ch11\.s01 closed after \d+ ms \(spoiler shown y\)(?s:.*)"
                                   r"dw3-walkthrough: page area\.network \(kind AREA, from list, reached y, "
                                   r"current n(?s:.*)"
                                   r"dw3-walkthrough: spoiler area\.network asked(?s:.*)"
-                                  r"dw3-walkthrough: spoiler area\.network shown(?s:.*)"
+                                  r"dw3-walkthrough: spoiler area\.network cancelled(?s:.*)"
                                   r"dw3-walkthrough: closed after \d+ ms \(pages opened 2, spoilers shown 1\)(?s:.*)"
                                   + _WT_CLOSE + r"(?s:.*)dw3-port-options: close in game \(back to the field menu\)"),),
                   forbid_log=_WT_FORBID + ((0, r"widescreen (enabled|disabled)"),
                                            (0, r"step not recognised|browse mode"),),
-                  note="P6.35 slice 2: past the end of the table (progress 0x2A) the walkthrough opens on "
-                       "'more chapters coming'; every chapter and area is reached, so the last area's "
-                       "spoiler page can be asked"))
+                  note="P6.35 slice 3: the walkthrough at the last battle (progress 0x2B, both discs) opens "
+                       "on the only step of chapter 11; the chapter list marks it, and on EU chapter 12 is "
+                       "not reached yet"))
     _add(Scenario(f"{_v}-walkthrough-screen-title", _v, "full", timeout=300,
                   expect_log=_wt_title("en", _reg), forbid_log=_WT_FORBID + ((0, r"step not recognised"),),
                   note="P6.35 phase 2: the walkthrough from the title is browse-only: the first step "
@@ -2545,6 +2581,40 @@ _add(Scenario("eu-walkthrough-screen-title-fr", "eu", "full", timeout=300,
               expect_log=_wt_title("fr", "EU"), forbid_log=_WT_FORBID + ((0, r"step not recognised"),),
               note="P6.35 phase 2: the walkthrough from the title in EU French (machine-drafted text, "
                    "needs native review), no English fallback"))
+_add(Scenario("eu-walkthrough-screen-p2d", "eu", "full", turbo=4, timeout=300,
+              env=(("DW3_START_MODE", "0x276"), ("DW3_PROGRESS", "45")) + _RT_BATTLE_ENV,
+              expect_log=((0, r"dw3-port-options: open in game(?s:.*)"
+                              r"dw3-walkthrough: open \(from field, region EU"
+                              rf", platform pc, language en, {_WT_COUNT['EU'][0]} chapters, {_WT_COUNT['EU'][1]} steps\)(?s:.*)"
+                              r"dw3-walkthrough: progress 45 half 1 area 19 -> chapter ch12 step ch12\.s01 "
+                              r"\(rule progress\+flag\) \[open mode 0x276\](?s:.*)"
+                              r"dw3-walkthrough: page ch12\.s01 \(kind MAIN, from open, reached y, current y, "
+                              r"\d+ lines(?s:.*)"
+                              r"dw3-walkthrough: spoiler ch12\.s01 asked(?s:.*)"
+                              r"dw3-walkthrough: spoiler ch12\.s01 shown(?s:.*)"
+                              r"dw3-walkthrough: page ch12\.s02 \(kind MAIN, from list, reached n, current n(?s:.*)"
+                              r"dw3-walkthrough: spoiler ch12\.s02 asked(?s:.*)"
+                              r"dw3-walkthrough: spoiler ch12\.s02 cancelled(?s:.*)"
+                              r"dw3-walkthrough: closed after \d+ ms \(pages opened 2, spoilers shown 1\)(?s:.*)"
+                              + _WT_CLOSE + r"(?s:.*)dw3-port-options: close in game \(back to the field menu\)"),),
+              forbid_log=_WT_FORBID + ((0, r"widescreen (enabled|disabled)"),
+                                       (0, r"step not recognised|browse mode"),),
+              note="P6.35 slice 3: the EU extra chapter's Login Room at progress 0x2D: the walkthrough opens "
+                   "on ch12.s01, the next step is not reached yet (title hidden, the reveal says it may spoil)"))
+_add(Scenario("us-walkthrough-screen-p2d", "us", "full", turbo=4, timeout=300,
+              env=(("DW3_START_MODE", "0x276"), ("DW3_PROGRESS", "45")) + _RT_BATTLE_ENV,
+              expect_log=((0, r"dw3-port-options: open in game(?s:.*)"
+                              r"dw3-walkthrough: open \(from field, region US"
+                              rf", platform pc, language en, {_WT_COUNT['US'][0]} chapters, {_WT_COUNT['US'][1]} steps\)(?s:.*)"
+                              r"dw3-walkthrough: progress 45 half 1 area 19 -> chapter - step - "
+                              r"\(rule above-table\) \[open mode 0x276\](?s:.*)"
+                              r"dw3-walkthrough: step not recognised \(progress 45\)(?s:.*)"
+                              r"dw3-walkthrough: closed after \d+ ms \(pages opened 0, spoilers shown 0\)(?s:.*)"
+                              + _WT_CLOSE + r"(?s:.*)dw3-port-options: close in game \(back to the field menu\)"),),
+              forbid_log=_WT_FORBID + ((0, r"widescreen (enabled|disabled)"), (0, r"ch12"),
+                                       (0, r"browse mode"),),
+              note="P6.35 slice 3: region gating on screen, progress 0x2D on US is past its table: the "
+                   "chapter list (11 chapters, no extra chapter) with the 'not recognised' notice"))
 
 # The Quit game plaque and the window in the other four EU languages (the
 # lettering is authored, docs/PORT_OPTIONS.md "Quit and return to title").

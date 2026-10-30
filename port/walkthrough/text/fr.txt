@@ -1,4 +1,4 @@
-# DW3NX walkthrough, French text, first half of the main story (P6.35).
+# DW3NX walkthrough, French text, the whole main story and the EU extra chapter (P6.35).
 # MACHINE-DRAFTED, NEEDS NATIVE REVIEW. Written by an AI agent from en.txt; the
 # owner approved the English and cannot check the other languages
 # (docs/P6.35_WALKTHROUGH.md, section 7). Same keys, same budgets as en.txt
@@ -29,7 +29,6 @@ wt.ui.str.current = Étape actuelle
 wt.ui.str.optional = Facultatif
 wt.ui.str.notreached = Pas encore atteinte
 wt.ui.str.area = Zone
-wt.ui.str.more = D'autres chapitres bientôt
 wt.ui.str.pick = Choisissez un chapitre à lire.
 wt.ui.str.unrecognised = Étape non reconnue. Choisissez un chapitre à lire.
 wt.ui.str.browse = Aucune partie chargée. Choisissez un chapitre à lire.
@@ -41,7 +40,6 @@ wt.ui.str.yes = Oui
 wt.ui.str.no = Non
 wt.ui.str.answer_hdr = La solution
 wt.ui.str.ask_hdr = Afficher la solution ?
-wt.ui.str.more_body = Le pas à pas couvre pour l'instant la première moitié du jeu. D'autres chapitres arriveront dans les versions suivantes.
 wt.ui.str.chapter = Chapitre
 wt.ui.str.curchap = Chapitre actuel
 wt.ui.str.area_strip = Spoiler : toute la zone
@@ -291,7 +289,29 @@ wt.ch10_s06.help = Une scène mène au combat. Après la victoire, la scène sui
 
 wt.ch10_s07.title = Snatchmon
 wt.ch10_s07.goal = Lord Megadeath est vaincu. Snatchmon attend dans la même Control Room.
-wt.ch10_s07.help = La scène avec Snatchmon mène à un combat et fait passer l'histoire à la seconde moitié du jeu.
+wt.ch10_s07.help = La scène avec Snatchmon mène directement au dernier combat de l'histoire. Préparez-vous avant qu'il commence.
+
+# ---------------------------------------------------------------- chapter 11
+wt.ch11.title = Le dernier combat
+
+wt.ch11_s01.title = Le combat final
+wt.ch11_s01.goal = La scène avec Snatchmon se termine par le dernier combat de l'histoire, dans la Control Room du Spy Satellite. Il compte trois adversaires. Gagnez-le et la fin se lance.
+wt.ch11_s01.help = Soignez-vous et faites des provisions avant la scène avec Snatchmon : le combat commence dès qu'elle se termine. Après la fin, vous revenez à Kusanagi City, le monde réel, où une dernière scène se déroule. Sur le disque européen, cette scène ouvre le chapitre bonus.
+
+# ---------------------------------------------------------------- chapter 12 (EU only)
+wt.ch12.title = Chapitre bonus
+
+wt.ch12_s01.title = Visite de la Login Room
+wt.ch12_s01.goal = Après la dernière scène à Kusanagi City, reconnectez-vous depuis la Chamber Room. Vous arrivez dans la Login Room d'Amaterasu City, où le Tour Leader vous attend.
+wt.ch12_s01.help = La scène avec le Tour Leader se joue à votre arrivée, une seule fois.
+
+wt.ch12_s02.title = Quatre challengers
+wt.ch12_s02.goal = Quatre Digimon attendent un combat : un à Qing Long City, deux aux Protocol Ruins et un à Tyranno Valley. Tous sont dans l'East Sector. Battez-les tous les quatre.
+wt.ch12_s02.help = Ils ne proposent un combat que si vous possédez un certain ensemble de cinq objets, dans votre sac ou équipés. Sans cet ensemble, pas de combat. Vous pouvez les affronter dans n'importe quel ordre. Quand les quatre sont battus, l'employé de l'Arena Front Desk réagit.
+
+wt.ch12_s03.title = Kurt à l'Arena
+wt.ch12_s03.goal = Les quatre sont battus. Rendez-vous à l'Arena Front Desk d'Amaterasu City. Kurt attend dans la Digimon Arena, et un combat suit.
+wt.ch12_s03.help = Parlez à l'employé du guichet. La scène de Kurt se joue quand vous entrez dans la Digimon Arena, et le combat suit aussitôt. Le gagner est la dernière étape du chapitre bonus que ce pas à pas suit.
 
 # ---------------------------------------------------------------- areas
 wt.area_kusanagi.title = Kusanagi City
@@ -301,7 +321,7 @@ wt.area_asuka.title = Asuka City
 wt.area_asuka.help = Asuka City est la première ville et l'histoire y revient sans cesse. Au début : la Login Room, le Main Lobby (partenaire de départ), puis le Central Sector, où attend Genji. Plus tard, les scènes se jouent à l'Underground Path, aux Asuka Sewers, à la Master Room, à la Control Room, à la Prison Tower et à l'A.o.A Headquarters.
 
 wt.area_east.title = East Sector
-wt.area_east.help = L'East Sector abrite Seiryu City, l'East Station, les Protocol Ruins et le Divermon's Lake. Sur le serveur Amaterasu, il abrite aussi Qing Long City, où le Qing Long Chief vous affronte.
+wt.area_east.help = L'East Sector abrite Seiryu City, l'East Station, les Protocol Ruins et le Divermon's Lake. Sur le serveur Amaterasu, il abrite aussi Qing Long City, où le Qing Long Chief vous affronte. Le chapitre bonus européen vous envoie à Qing Long City, aux Protocol Ruins et à Tyranno Valley.
 
 wt.area_south.title = South Sector
 wt.area_south.help = Le South Sector abrite la South Station, la Jungle Grave, le Swamp Inn, la Shaman House et le Reliability Spot, où le Qing Long Chief vous accueille. Le Suzaku UG Lake et, sur le serveur Amaterasu, le Zhu Que UG Lake s'y trouvent aussi.
@@ -316,7 +336,7 @@ wt.area_north.title = North Sector
 wt.area_north.help = Le North Sector comprend la Battle Gate, où attend le Genbu Leader, et la Chamber Room, dont les portes mènent au monde réel et à l'Ice Dungeon. Le serveur Amaterasu a sa propre Battle Gate, où l'on gagne le Black ID Pass.
 
 wt.area_amaterasu.title = Serveur Amaterasu
-wt.area_amaterasu.help = Le serveur Amaterasu reprend de nombreux lieux du premier serveur. Ici, le pas à pas utilise le Bai Hu Dome, l'Amaterasu Bridge, la Login Room et l'A.o.A Headquarters d'Amaterasu City. Les autres lieux d'Amaterasu sont classés sous leur propre secteur.
+wt.area_amaterasu.help = Le serveur Amaterasu reprend de nombreux lieux du premier serveur. Ici, le pas à pas utilise le Bai Hu Dome, l'Amaterasu Bridge, la Login Room et l'A.o.A Headquarters d'Amaterasu City. Les autres lieux d'Amaterasu sont classés sous leur propre secteur. Sur le disque européen, le chapitre bonus commence ici, dans la Login Room, et se termine à la Digimon Arena.
 
 wt.area_network.title = Network Break
-wt.area_network.help = Le Network Break abrite la Bug Maze Pit. On accède au Spy Satellite depuis l'A.o.A Headquarters d'Amaterasu City : d'abord le Gunslinger 1F, dont les blocs s'ouvrent avec des panneaux, puis la Control Room, où attendent Lord Megadeath et Snatchmon. Cela clôt la première moitié.
+wt.area_network.help = Le Network Break abrite la Bug Maze Pit. On accède au Spy Satellite depuis l'A.o.A Headquarters d'Amaterasu City : d'abord le Gunslinger 1F, dont les blocs s'ouvrent avec des panneaux, puis la Control Room, où attendent Lord Megadeath et Snatchmon. Le dernier combat suit Snatchmon.

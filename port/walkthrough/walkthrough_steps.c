@@ -9,7 +9,7 @@
  * and every map area against the decomp). Progress values the first half
  * assigns: 0 to 0x29; the next one, 0x2B (FIELD_PROGRESS_MOVIE_BATTLES), is
  * written by the Control Room of the Spy Satellite (wstag820) and starts the
- * second half (slice 3).
+ * last battle (ch11); the EU disc goes on to the extra chapter at 0x2D (ch12, region EU).
  *
  * Rows are ordered by from_progress, then order (the order field grows over
  * the whole table). Several rows may share one progress value when the writer
@@ -47,6 +47,11 @@
  *  ch10  0x25..0x29 311 A.o.A Headquarters Amaterasu (flag 0x4060, 981/982),
  *                226 Login Room (935), 310 A.o.A Headquarters (961), 810
  *                Gunslinger 1F (1035), 820 Control Room (1060, 1080)
+ *  ch11  0x2B    820 Control Room (endEvent1080 starts the last battle); 780 Kusanagi
+ *                City (event 1500) follows the ending
+ *  ch12  0x2D    EU only: 925 Login Room (event 1600, flag 0x40CD), 956 Qing Long City,
+ *                949 Protocol Ruins, 954 Tyranno Valley (flags 0x100D to 0x1010),
+ *                926 Arena Front Desk and 927 Digimon Arena (event 1608, flag 0x100C)
  */
 #include "port_walkthrough.h"
 
@@ -61,6 +66,13 @@
     {id, ch, area, map, WT_MAIN, WT_CAT_NONE, WT_REGION_ALL, p, p, ord, 0, NO_CONDS, 0, NO_CONDS}
 #define WT_ROW_DONE(id, ch, area, map, p, ord, code) \
     {id, ch, area, map, WT_MAIN, WT_CAT_NONE, WT_REGION_ALL, p, p, ord, 0, NO_CONDS, 1, {{code, 1}, {0, 0}}}
+/* The same on the EU disc only (the extra chapter): a `done` condition, and an `unlock` and a
+ * `done` condition. */
+#define WT_ROW_EU_DONE(id, ch, area, map, p, ord, code) \
+    {id, ch, area, map, WT_MAIN, WT_CAT_NONE, WT_REGION_EU, p, p, ord, 0, NO_CONDS, 1, {{code, 1}, {0, 0}}}
+#define WT_ROW_EU_UNLOCK_DONE(id, ch, area, map, p, ord, ucode, dcode) \
+    {id, ch, area, map, WT_MAIN, WT_CAT_NONE, WT_REGION_EU, p, p, ord, 1, {{ucode, 1}, {0, 0}}, 1, \
+     {{dcode, 1}, {0, 0}}}
 
 static const DW3WtStep k_steps[] = {
     /* id, chapter, area, map_area, kind, category, region, from, to, order,
@@ -154,6 +166,22 @@ static const DW3WtStep k_steps[] = {
     WT_ROW("ch10.s05", "ch10", "network", AREA_KUSANAGI, 0x28, 54), /* 810 Gunslinger 1F: slot event, PROGRESS(0x28) */
     WT_ROW_DONE("ch10.s06", "ch10", "network", AREA_KUSANAGI, 0x29, 55, WT_FLAG(0x40, 0x74)), /* 820: 1060 */
     WT_ROW("ch10.s07", "ch10", "network", AREA_KUSANAGI, 0x29, 56), /* 820 Control Room: 1070, then 1080 */
+
+    /* ---- ch11: progress 0x2B, the last battle ------------------------------------
+       No script writes 0x2A or 0x2C, so the table has no row for them (the resolver says "gap").
+       endEvent1080 of 820 sets 0x2B and starts the last battle (battle 0x144); the ending
+       leads back to Kusanagi City (MODE_NEW_GAME), where event 1500 plays at 0x2B */
+    WT_ROW("ch11.s01", "ch11", "network", AREA_KUSANAGI, 0x2B, 57),
+
+    /* ---- ch12: progress 0x2D, the EU extra chapter (region EU) --------------------
+       endEvent1500 of 780 (EU only) sets 0x2D; the Chamber Room's movie then lands in the
+       extra chapter's Login Room (WSTAG925, mode 0x276). Nothing writes progress inside the
+       chapter, so the steps go by flags */
+    WT_ROW_EU_DONE("ch12.s01", "ch12", "amaterasu", 0x13, 0x2D, 58, WT_FLAG(0x40, 0xCD)), /* 925: event 1600 */
+    /* 956 (0x100D), 949 (0x100E, 0x100F), 954 (0x1010); SPECIAL(0x54) is "those four are set" */
+    WT_ROW_EU_DONE("ch12.s02", "ch12", "east", 0x0E, 0x2D, 59, WT_SPECIAL(0x54)),
+    WT_ROW_EU_UNLOCK_DONE("ch12.s03", "ch12", "amaterasu", 0x13, 0x2D, 60, WT_SPECIAL(0x54),
+                          WT_FLAG(0x10, 0x0C)),                     /* 926 desk, 927: Kurt, event 1608 */
 };
 
 const DW3WtStep *dw3_wt_steps(int *count) {

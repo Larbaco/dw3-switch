@@ -3030,8 +3030,10 @@ GRP_WALK = 7
 # (tag, name of the current page in the checkpoints, Downs from it to the next entry). The
 # game's own field menu opens from GAME.progress 4 (field.c openFieldMenu), so no earlier
 # story point can reach the Options screen in game: p4 closes chapter 1, p14 (progress 0x14) is
-# the middle of chapter 5, p2a (progress 0x2A) is past the table ("more chapters").
-WT_FIELD_POINTS = (("p4", "s06", 1), ("p14", "s03", 1), ("p2a", "more", 0))
+# the middle of chapter 5, p2b (progress 0x2B) is the last battle (chapter 11) and p2d (progress
+# 0x2D) is the EU extra chapter's first step; on US p2d is past the table (region gating: the
+# chapter list with the "not recognised" notice, no extra chapter).
+WT_FIELD_POINTS = (("p4", "s06", 1), ("p14", "s03", 1), ("p2b", "s01", 1), ("p2d", "s01", 1))
 
 
 def _wt_reading(r, f, current, other_down):
@@ -3040,23 +3042,13 @@ def _wt_reading(r, f, current, other_down):
     cursor on No), Down and Confirm (the answer), Back to the chapter's steps (the
     cursor on the step), `other_down` Downs and Confirm on the next entry, Confirm
     (its question) and Back (cancelled), Back to the steps, Back to the chapters, and
-    out. Past the end of the table (`current` "more"): the "more chapters coming"
-    page, Back to the chapter list (the cursor on "more"), Up and Confirm on the last
-    chapter (everything is reached), nine Downs and Confirm on its last entry (the
-    area), its question, the answer. Returns the frame after."""
+    out. `current` "gate" (US at progress 0x2D, past its table): the chapter list with the notice,
+    then out. Returns the frame after."""
     r.shot(f + 40, f"{current}-page")
-    if current == "more":
-        f = _keys(r, f + 60, TRIANGLE)       # the chapter list, the cursor on "more"
+    if current == "gate":
+        f += 60
         r.shot(f + 20, "wt-list")
-        f = _keys(r, f + 40, UP, CROSS)      # the last chapter: everything is reached
-        r.shot(f + 20, "chapter-steps")
-        f = _keys(r, f + 40, *([DOWN] * 9), CROSS)   # its last entry: an area
-        r.shot(f + 20, "area-page")
-        f = _keys(r, f + 40, CROSS)
-        r.shot(f + 20, "area-ask")
-        f = _keys(r, f + 40, DOWN, CROSS)
-        r.shot(f + 20, "area-answer")
-        f = _keys(r, f + 40, TRIANGLE, TRIANGLE, TRIANGLE)   # steps, chapters, out of the walkthrough
+        f = _keys(r, f + 40, TRIANGLE)       # out of the walkthrough
     else:
         f = _keys(r, f + 60, CROSS)
         r.shot(f + 20, f"{current}-ask")
@@ -3411,7 +3403,7 @@ def main(out):
         (out / f"{v}-walkthrough-screen-title.rec").write_text(walkthrough_title(v).text(True))
         for _tag, _cur, _ahead in WT_FIELD_POINTS:
             (out / f"{v}-walkthrough-screen-{_tag}.rec").write_text(
-                walkthrough_field(v, _cur, _ahead).text(True))
+                walkthrough_field(v, "gate" if (v == "us" and _tag == "p2d") else _cur, _ahead).text(True))
         (out / f"{v}-field-options-cheats.rec").write_text(
             field_options_cheats(v).text(True))
         (out / f"{v}-field-options-release.rec").write_text(
