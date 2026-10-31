@@ -649,6 +649,7 @@ static int dw3_nx_start_worker(Thread *t, void (*fn)(void *), void *arg,
 }
 /* BUG-1: set once the exit path has joined the workers; no thread starts after. */
 static int s_workers_closed;
+static int g_workers_still; /* worker threads still running after the budget */
 
 static void map_view_precompute_entry(void *arg) {
     (void)arg;
@@ -759,6 +760,7 @@ static void dw3_nx_workers_shutdown(void) {
     still += dw3_nx_os_threads_shutdown();
     dw3_nx_exit_log("worker threads closed in %u ms, %d still running",
                     (unsigned)dw3_nx_exit_elapsed_ms(), still);
+    g_workers_still = still;
 }
 
 /* atexit() takes an address, which the `both` redirect (a macro) cannot give. */
@@ -922,12 +924,28 @@ static int g_exit_result;
  * heap probe is what the loader's next read sees; the next run's log and the
  * absence of an Atmosphère report answer the rest. */
 static void dw3_nx_exit_final(void) {
+    int dirty = 0;
+
     if (g_exit_trace) {
-        dw3_nx_exit_heap_probe("final, after the exit handlers");
+        dirty = dw3_nx_exit_heap_probe("final, after the exit handlers");
         dw3_nx_exit_log("leaving to the loader: return %d, envHasNextLoad=%d, "
                         "%u ms since the game loop ended",
                         g_exit_result, envHasNextLoad() ? 1 : 0,
                         (unsigned)dw3_nx_exit_elapsed_ms());
+        dirty += g_workers_still;
+        if (dirty > 0 && envHasHeapOverride()) {
+            /* A borrowed heap page (or a thread still running) makes the
+             * loader's read of the next NRO fail with 0xD401 and svcBreak (an
+             * Atmosphere report, BUG-1). Ending the process is the clean way
+             * out: the saves and the cfg are written, a relaunch simply does
+             * not happen and the next start by hand opens the chosen region. */
+            dw3_nx_exit_log("SAFETY: %d borrowed region(s) / running thread(s) "
+                            "left; not returning to the loader (its read of "
+                            "the next NRO would fail, BUG-1). Ending the "
+                            "process; start the game again by hand", dirty);
+            dw3_nx_log_close();
+            svcExitProcess();
+        }
     }
     dw3_nx_log_close();
 }

@@ -40,8 +40,11 @@ int dw3_nx_exit_join(Thread *t, const char *name);
 /* Walk the heap the loader gave us (svcQueryMemory) and log every region that
  * is not plain read/write heap with no borrow, IPC or device reference. This is
  * the state hbl's next read needs; `when` names the point ("before cleanup",
- * "final"). */
-void dw3_nx_exit_heap_probe(const char *when);
+ * "final"). Returns how many regions are borrowed / unreadable (Perm_None or
+ * MemAttr_IsBorrowed: the signature of an unclosed thread stack), the only
+ * kind that makes the loader's read fail; other odd regions are logged but
+ * not counted. */
+int dw3_nx_exit_heap_probe(const char *when);
 
 /* Milliseconds since dw3_nx_exit_begin. */
 uint32_t dw3_nx_exit_elapsed_ms(void);

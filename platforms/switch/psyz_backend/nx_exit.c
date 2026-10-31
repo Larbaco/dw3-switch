@@ -82,13 +82,13 @@ int dw3_nx_exit_join(Thread *t, const char *name) {
     return 0;
 }
 
-void dw3_nx_exit_heap_probe(const char *when) {
+int dw3_nx_exit_heap_probe(const char *when) {
     u64 start, end, addr;
-    int regions = 0, bad = 0;
+    int regions = 0, bad = 0, borrowed = 0;
 
     if (!envHasHeapOverride()) {
         dw3_nx_exit_log("heap probe (%s): no heap override, nothing to walk", when);
-        return;
+        return 0;
     }
     start = (u64)envGetHeapOverrideAddr();
     end = start + envGetHeapOverrideSize();
@@ -106,6 +106,9 @@ void dw3_nx_exit_heap_probe(const char *when) {
         if (mi.type != MemType_Heap || mi.perm != Perm_Rw || mi.attr != 0 ||
             mi.ipc_refcount != 0 || mi.device_refcount != 0) {
             ++bad;
+            if (mi.perm == Perm_None || (mi.attr & MemAttr_IsBorrowed)) {
+                ++borrowed;
+            }
             if (bad <= 16) {
                 dw3_nx_exit_log("heap probe (%s): ABNORMAL 0x%llx +0x%llx "
                                 "type=0x%x perm=%u attr=0x%x ipc=%u device=%u",
@@ -119,10 +122,12 @@ void dw3_nx_exit_heap_probe(const char *when) {
         addr = mi.addr + mi.size;
     }
     dw3_nx_exit_log("heap probe (%s): %d region(s) in 0x%llx +%llu MiB, %d "
-                    "abnormal (%s)", when, regions, (unsigned long long)start,
-                    (unsigned long long)((end - start) >> 20), bad,
+                    "abnormal, %d borrowed or unreadable (%s)", when, regions,
+                    (unsigned long long)start,
+                    (unsigned long long)((end - start) >> 20), bad, borrowed,
                     bad == 0 ? "plain read/write heap all through"
                              : "borrowed, IPC- or device-mapped or not "
                                "read/write; only the final probe matters "
                                "to the loader");
+    return borrowed;
 }

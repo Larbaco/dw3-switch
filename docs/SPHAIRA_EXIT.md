@@ -54,6 +54,66 @@ equals `g_defaultNroPath` after the exit, so `loadNro()` takes `selfExit()`
 why the forwarder is fine and the full-app launch is not, and why the crash is
 after `main`.
 
+## Second sighting: the relaunch from a forwarder (p57, A17.2, 2026-10-31)
+
+Evidence: `tmp/evidence/20261031-0355-p57-crash1/` and `20261031-0409-p57-run2/`
+(Atmosphere `.log`/`.jpg` and `dw3.log`), `tmp/handoff/P57_OLED_RESULTS.md`
+(BUG-p57-1). Started from an NSP **forwarder** (program ID
+`05debca6bee2d000`), Options > Region at start > **Yes** to the restart question:
+
+- `dw3-region: relaunch to us: leaving the game now (envSetNextLoad
+  sdmc:/switch/dw3-switch.nro --relaunch-region us)`, then `dw3_game_main
+  returned 0 (quit path: relaunch into the other region)`, `audio stopped`,
+  `gpu closed; leaving main`; the cfg was saved and the next start was in the
+  right region.
+- Then the **same** report: `0xD401` (2001-0106), User Break, `hbl + 0x4044`,
+  LR `hbl + 0x3c7c`, `Number of Threads: 01`, module `hbl` 0x6000 bytes. Same
+  site as the p56 Sphaira full-app exit, in a different title ID.
+
+What it tells us:
+
+- `envHasNextLoad()` is true in a forwarder (hbl passes the entry), as the
+  source said, and `envSetNextLoad` returned success: the queued load was
+  accepted.
+- A plain Quit from the forwarder does not crash because `g_nextArgv` still
+  holds hbl's exit marker and `g_nextNroPath` equals its default path, so
+  `selfExit()` runs and **no heap read happens**. A queued NextLoad changes
+  `g_nextArgv`, so `loadNro()` goes on to unmap us and **read the next NRO over
+  the heap**, the step that fails. So the failing step is hbl's load of the
+  next NRO after our exit, whatever started us. That fits the heap theory below
+  (the crash is not about Sphaira's UI, it is about what we leave in the heap),
+  and it is the same step as the full-app exit.
+- The path and argv are not the problem. What we pass is
+  `envSetNextLoad("sdmc:/switch/dw3-switch.nro", "sdmc:/switch/dw3-switch.nro
+  --relaunch-region us")`: the absolute `sdmc:/` path of the running NRO
+  (`argv[0]`, the form hbmenu and Sphaira hand out; hbl strips the `sdmc:`
+  with `fix_nro_path`), an argv string of 53 characters (far under the 2048 of
+  hbl's `g_nextArgv` and the 769 of the path), no space so no quotes, `argv[0]`
+  first as libnx and hbmenu expect (`dw3_relaunch_nx_args`,
+  `port/region/dw3_region_relaunch.c`). Nothing malformed to fix there.
+- The relaunch leaves through the **same** `main()` tail as Quit game and HOME
+  (`dw3_nx_set_quit_requested`, then `dw3_game_main` returns, then
+  `dw3_nx_workers_shutdown()` and the rest), so the thread cleanup runs on this
+  path too; the p57 log shows the same precompute thread started and finished
+  before the exit (`dw3-map: precompute thread finished`).
+
+### Safety net
+
+Because the hypothesis is unproven, the last exit handler no longer trusts it.
+If the **final heap probe** finds a borrowed or unreadable region
+(`Perm_None` / `MemAttr_IsBorrowed`, the signature of an unclosed thread
+stack) or a worker thread is still running after the budget, the process
+**ends itself** (`svcExitProcess`) instead of returning to the loader, with
+`dw3-exit: SAFETY: ... not returning to the loader` in the log. That turns the
+Atmosphere error screen into a clean end (the game closes, back to the HOME
+menu; the cfg and saves are already written, so a relaunch just does not
+happen and the next start by hand opens the chosen region). With the
+cleanup working the probe is clean and the process returns to the loader as
+before. A loader-based fallback to "Restart the game to apply." was not added:
+the loader notice reads the same (`sphaira <version>`) for the full app and
+for a forwarder, so a forwarder cannot be told apart by it, and NextLoad itself
+is fine (above).
+
 ## Most likely cause
 
 **Worker threads that finished but were never `threadClose()`d.** libnx
@@ -76,10 +136,12 @@ finished by then, which matches "1 thread" in the report):
 | PSY-Z IRQ thread | `nx_os.c` (`Psyz_OsThreadStart`) | never; it loops forever, so it would still be alive. Not started in the p56 logs (no `thread started` line), but possible whenever the kernel bells exist |
 | audio mixer (core 1) | `nx_audio.c` | joined and closed (P38) |
 
-Why "only Sphaira": nothing else reads the heap after us. A forwarder ends the
-process (below). The stock hbmenu path also reloads a menu NRO over the heap,
-so it may be affected too: the p56 repro line says "opened from hbmenu" and the
-owner's later decision says only Sphaira, and the report cannot tell. The
+Why the full-app and the relaunch crash but a plain forwarder Quit does not:
+only a path that goes on to **load another NRO** reads the heap; a forwarder
+Quit ends the process (`selfExit`). The p57 forwarder relaunch (above) shows
+the failing step is the next-NRO load, not Sphaira's UI. The stock hbmenu path
+also reloads a menu NRO, so it may be affected too: the p56 repro line says
+"opened from hbmenu" and the owner's later decision says only Sphaira. The
 `dw3-exit: loader: info=` line and the final heap probe say which loader ran
 and whether the heap was clean.
 
@@ -176,18 +238,19 @@ dw3-exit: loader: heap override=1 addr=0x... size=N MiB (the next NRO is read ov
   and the "Restart the game to apply." notice shows (A17.4); when it is true,
   `hbl` will load what we queue. The new `dw3-exit: loader:` line logs the
   answer for every start, so the claim is checked on the console.
-- The documents said a **forwarder** has no NextLoad ("A17.4"): from
-  Sphaira's source that is **not so for a Sphaira forwarder** (its loader is
-  the same `hbl`), only for a forwarder that is not hbl-based. Unverified on
-  the console: row G13 asks for the line.
-- With a Sphaira forwarder for the NRO, a queued relaunch works in `hbl`: it
+- The documents said a **forwarder** has no NextLoad ("A17.4"): that is
+  **not so**. Confirmed on the console at p57: a forwarder (`05debca6bee2d000`)
+  has `envHasNextLoad() == true` and `envSetNextLoad` succeeds; it then hit
+  the same `hbl + 0x4044` break (see "Second sighting").
+- With a forwarder for the NRO, a queued relaunch is meant to work in `hbl`: it
   sees a changed `g_nextArgv`, loads the queued path (the NRO again, with
   `--relaunch-region`), and when that run ends `g_nextNroPath` equals
-  `g_defaultNroPath`, so `selfExit()`.
+  `g_defaultNroPath`, so `selfExit()`. On p57 it failed in the load step (the
+  heap read), before this change.
 - A relaunch goes through the same unmap and read-the-whole-heap step as the
-  crash above, so **before this change a Sphaira relaunch very likely hit
-  BUG-1 too**; the hardening covers it. A17.2 should be re-checked from
-  Sphaira (row G13, step 4).
+  crash above: **before this change it hit BUG-1 on the console** (p57, from a
+  forwarder; twice). The hardening covers it; A17.2 and G13 step 4 re-check it
+  from the forwarder and from Sphaira.
 
 ## Ryubing
 
