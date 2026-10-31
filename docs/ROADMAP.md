@@ -21,6 +21,28 @@ behind the tasks are in [SURVEY.md](SURVEY.md); layering is in
 the [Priority](#priority) section is the work order, and agents pick work from
 the highest non-empty tier.
 
+## Release criteria
+
+Tags are SemVer (owner decision 2026-10-31); naming and the history of the old
+`0.6.5` series are in [RELEASES](RELEASES.md#naming). Before 1.0 the builds are
+previews, `v0.9.0-preview.N`; the gates below are what turns them into releases.
+
+- **0.9, the public beta (`v0.9.0`, the first non-preview).** Both must hold:
+  1. Plan p57 passes on the OLED with no blockers (the owner's results and the
+     `dw3.log` lines are recorded in [OLED_TEST_PLAN](OLED_TEST_PLAN.md)).
+  2. Decisions D1 to D5 of the options work are on `main`
+     ([OPTIONS_REORG](OPTIONS_REORG.md): D1 reorganized tree and a row for every
+     change, D2 `defaults_gen`, D3 `options_global`, D4 the scrolling
+     background, D5 Map scaler).
+- **1.0 (`v1.0.0`).** All three must hold, with `v1.0.0-rc.N` release
+  candidates before it:
+  1. A full playthrough to the ending on the OLED, at least one region, played
+     by the owner.
+  2. No known crash: BUG-1 (leaving through Sphaira, US; the Atmosphère
+     report after `dw3_game_main returned 0`) is fixed or proven gone, along
+     with every other open crash in the OLED plan.
+  3. The Phase 5 gate is ticked in [Phase 5](#phase-5--playable-on-switch).
+
 ## Priority
 
 Work order, approved by the owner on 2026-10-28. Agents pick work from the

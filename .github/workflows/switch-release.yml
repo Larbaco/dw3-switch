@@ -1,4 +1,8 @@
-# Deliberate preview of the CMake game image.
+# Deliberate release of the CMake game image. Tags are SemVer (owner decision
+# 2026-10-31, docs/RELEASES.md):
+#   v0.9.0-preview.N, v1.0.0-rc.N  -> GitHub prerelease, not "latest"
+#   v0.9.0, v1.0.0                 -> normal release, marked "latest"
+#   v0.6.5-preview.N               -> the old series (1 to 57), still accepted
 # CI job `switch` in ci.yml still builds the Makefile host_hello sample.
 # CI job `switch-game` builds this same game .nro on pull requests and
 # does not create a Release.
@@ -8,12 +12,14 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: "Release tag (must match v*, for example v0.6.5-preview.1)"
+        description: "Release tag: vX.Y.Z, vX.Y.Z-preview.N or vX.Y.Z-rc.N (for example v0.9.0-preview.1)"
         required: true
         type: string
   push:
     tags:
-      - "v*"
+      # A glob, not a regex: the step below checks the exact shape with
+      # tools/dw3_nro_version.py --release-kind and fails on anything else.
+      - "v[0-9]*.[0-9]*.[0-9]*"
 
 permissions:
   contents: write
@@ -39,15 +45,14 @@ jobs:
             tag="$REF_NAME"
           fi
           case "$tag" in
-            v?* ) ;;
-            *) echo "tag must look like v0.6.5-preview.1, got: $tag" >&2; exit 1 ;;
-          esac
-          case "$tag" in
             *[!A-Za-z0-9._-]*)
               echo "tag has characters outside A-Za-z0-9._-" >&2
               exit 1
               ;;
           esac
+          # Exactly vX.Y.Z, vX.Y.Z-preview.N or vX.Y.Z-rc.N; prints
+          # RELEASE_KIND / RELEASE_PRERELEASE / RELEASE_LATEST / RELEASE_TITLE.
+          python3 tools/dw3_nro_version.py --release-kind "$tag" >> "$GITHUB_ENV"
           echo "RELEASE_TAG=$tag" >> "$GITHUB_ENV"
 
       - name: Init game submodules
@@ -57,7 +62,7 @@ jobs:
 
       - name: Build the CMake game .nro
         # RELEASE_TAG (set above) becomes the NACP/hbmenu version via
-        # tools/dw3_nro_version.py --github (e.g. v0.6.5-preview.18 → 0.6.5-p.18).
+        # tools/dw3_nro_version.py --github (e.g. v0.9.0-preview.12 → 0.9.0-p.12, v1.0.0-rc.1 → 1.0.0-rc.1, v1.0.0 → 1.0.0).
         env:
           RELEASE_TAG: ${{ env.RELEASE_TAG }}
         run: |
@@ -120,14 +125,16 @@ jobs:
             exit 1
           fi
 
-      - name: Publish prerelease
+      - name: Publish the release
+        # A prerelease tag (-preview.N, -rc.N) is a GitHub prerelease and never
+        # "latest"; a plain vX.Y.Z is a normal release and is marked latest.
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ env.RELEASE_TAG }}
           target_commitish: ${{ github.sha }}
-          name: dw3-switch ${{ env.RELEASE_TAG }} preview
-          prerelease: true
-          make_latest: false
+          name: ${{ env.RELEASE_TITLE }}
+          prerelease: ${{ env.RELEASE_PRERELEASE == 'true' }}
+          make_latest: ${{ env.RELEASE_LATEST }}
           generate_release_notes: false
           body_path: platforms/switch/release/README.txt
           fail_on_unmatched_files: true
