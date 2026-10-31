@@ -205,7 +205,7 @@ listed once, in [Pending OLED checks](#pending-oled-checks).
 | P9.6 | External save converter | open | — |
 | P9.7 | Port options reachable in game | in progress (slice 1, the field menu, and slice 2, battle: built, PC US and EU replays, Switch Ryubing nx scenarios; live Widescreen open; owner OLED checks open) | [PORT_OPTIONS](PORT_OPTIONS.md#options-in-game-p97), [roadmap](#phase-9--port-options-menu) |
 | P9.8 | Confirm / cancel layout option (PS positional or Nintendo A/B). Phase 1 of the controls bundle built 2026-10-28: the mapper, the Controls group with the Button layout row, `dw3-controls:` logs, replay scenarios; OLED check open | built, OLED check open | [roadmap](#phase-9--port-options-menu), [CONTROLS_BUNDLE](CONTROLS_BUNDLE.md), [HOTKEYS](HOTKEYS.md) |
-| P9.9 | Options screen redesign in the title menu's style, room for more rows (slice 1 done 2026-10-27: groups and sub-screens; OLED pending; slice 2 done 2026-10-28: Cheats screen restyled as a scrolling sub-screen and value changes are dirty-row updates; the Controls, Help and Walkthrough groups came with their features, #338, #333, #363) | slices 1 and 2 merged (#303, #327) | [roadmap](#phase-9--port-options-menu), [PORT_OPTIONS](PORT_OPTIONS.md) |
+| P9.9 | Options screen redesign in the title menu's style, room for more rows (slice 1 done 2026-10-27: groups and sub-screens; OLED pending; slice 2 done 2026-10-28: Cheats screen restyled as a scrolling sub-screen and value changes are dirty-row updates; the Controls, Help and Walkthrough groups came with their features, #338, #333, #363; **D1 step 1, 2026-10-31: the ten-group tree, Menus, Advanced, Map buttons and a row for every file-only key**) | slices 1 and 2 merged (#303, #327); D1 step 1 in review | [roadmap](#phase-9--port-options-menu), [PORT_OPTIONS](PORT_OPTIONS.md) |
 | P10.1 | Switch features goal note | done | [SWITCH_FEATURES](SWITCH_FEATURES.md) |
 | P10.2 | Lifecycle hardening (has P5.3's leftover) | in progress (sleep and resume: owner confirmed on the OLED, 2026-10-24; HOME during a save write: atomic write, exit gate and `dw3-save:` log lines done, OLED check open) | [SWITCH_FEATURES](SWITCH_FEATURES.md) |
 | P10.3 | Presentation modes | open | — |
@@ -1444,7 +1444,18 @@ PS1 game, with vanilla-safe defaults and persistence on owner storage.
   has the audit and the approved ten-group tree (new Menus and Advanced groups, a Map
   buttons sub-page, rows for `show_version`, `map_mod`, `save_store`, `stage_sweep`,
   the `items_*` keys), the D2 `defaults_gen` migration and the build order (reorg and new
-  rows, D2 + D5, D3, D4). Not built yet.
+  rows, D2 + D5, D3, D4).
+  **D1 step 1 built (2026-10-31, branch `feat/d1-options-reorg`):** the group order (Display, Sound,
+  Gameplay, Menus, Controls, Saves, Cheats, Advanced, Help, Walkthrough: `dw3_optgroup_order[]`), the new
+  **Menus** group (the five `items_*` switches), **Advanced** (Stage sweep, Frames per stage; the sweep's
+  Start over now rewrites its key 2 -> 1 once it began, so it no longer clears its progress on every boot),
+  the **Map buttons** sub-screen of Controls (the seven `map_view_*` bindings, a swap on conflict, Reset),
+  Display rows Map mod pack and Version label, the Saves row Shared saves (exp.) (title only, a Yes / No
+  window when turned on), Restart hotkey moved to Controls and Region at start to Saves; registry rows 16 to
+  26 appended, no cfg key changed; Help text, the OLED rows, the cfg key-budget test (38 of 48 entries) and the
+  replay families regenerated once. **Not in this PR:** D2 + D5 (Controls defaults, the `defaults_gen`
+  migration, the Map scaler row and FSR 1), D3 (one global file), D4 (the scrolling background). Details:
+  [PORT_OPTIONS](PORT_OPTIONS.md#options-reorganization-d1). OLED rows D1.1 to D1.8 open.
   **Still open:** OLED validation (OLED_TEST_PLAN A5, A9 to A13); Controls (P6.12) and Walkthrough (P6.35) are hidden
   placeholders in `port_options_groups.h` (Help, P6.30, is built since 2026-10-28); the open questions below are answered
   by defaults (Cheats group listed only with the master switch on; the plain dim of

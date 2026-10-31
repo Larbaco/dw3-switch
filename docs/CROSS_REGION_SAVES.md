@@ -169,8 +169,8 @@ they differ, see [Design points changed](#design-points-changed-in-slice-2)):
   profile folder (the Switch fell back to the legacy folder, or `DW3_MEMCARD_DIR` /
   `--memcard-dir` forced a folder) the store stays **off**, logged. `DW3_SAVE_STORE_DIR`
   (PC, tests, replays) names the store folder directly.
-- The option is read from `port_options.cfg` (`save_store=1`, a file-only key, see
-  [PORT_OPTIONS](PORT_OPTIONS.md)) before the cards open, so it takes effect at the
+- The option is read from `port_options.cfg` (`save_store=1`, the **Shared saves (exp.)** row of Options > Saves since D1: title only, a Yes / No
+  window when it is turned on, see [PORT_OPTIONS](PORT_OPTIONS.md#options-reorganization-d1)) before the cards open, so it takes effect at the
   next start; `DW3_SAVE_STORE=0|1` beats it for one PC run. That file is still per region
   (`us/port_options.cfg`, `eu/port_options.cfg`), so set the key in both to share saves.
 
@@ -267,8 +267,8 @@ Each with the reason:
    the player's back. After an interrupted migration only the missing cards are written.
 8. **Origin language is always `0xFF`**: the host does not see `LANGUAGE`. The design keeps the field for
    a later "language changed" message.
-9. **No Options row**: a row would move every Options screen reference (and a change needs a restart
-   anyway). The key is file-only for now.
+9. **No Options row** (slice 2). Superseded by D1 (2026-10-31): the row exists, Options > Saves > Shared
+   saves (exp.), title only (a change needs a restart), with a Yes / No window and the cursor on No.
 10. **`autosave.bin` and the P6.20 `.cheats` marks stay per region** in the region folder. A
     cheat mark made in one region is not shown by the other.
 

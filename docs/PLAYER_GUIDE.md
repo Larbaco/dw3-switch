@@ -178,8 +178,9 @@ P6.18_PACING.md, P6.31_AUTOSAVE.md, P7.9_BATTLE_MENU_MEMORY.md; row names and
 defaults from port/options/port_options.c -->
 
 Options holds the features the port adds. It is a list of groups, drawn like
-the title menu: **Display**, **Sound**, **Gameplay**, **Saves**, **Help**, **Walkthrough** (and **Cheats**,
-before Help, once you have turned the master switch on, see [Cheats screen](#cheats-screen)).
+the title menu: **Display**, **Sound**, **Gameplay**, **Menus**, **Controls**, **Saves**, **Cheats** and
+**Advanced** (both test aids, see [Cheats screen](#cheats-screen)), **Help**, **Walkthrough**. Every change the
+port makes to the original game has a row, and OFF is the original behaviour.
 Up and Down choose a group, B or A opens it. Inside, Up and Down choose a row and
 B or A changes it. X goes back: from a group to the list (the cursor stays on that
 group), from the list to the title, or to the field menu when opened there, see
@@ -192,13 +193,22 @@ game, except Widescreen.
 |---|---|---|---|---|
 | Display | Widescreen | ON / OFF | ON | 16:9 in the field, the 3D battle and most menus: the title menu, the intro's news caption bar, the EU language select, the player name screen, the map, results and save screens, the Items menu, and the card album, deck editor, card shop, gym and Digimon Lab (a few Lab panels are still 4:3). Movies, the still screen and the card battle stay 4:3. Which screens are confirmed on the OLED: [P6.1](P6.1_WIDESCREEN.md). |
 | Gameplay | Fast-forward | 2x / 3x / 4x / OFF | 2x | The speed R3 switches to. The game still starts at 1x. OFF disables R3. Music and sound effects speed up too. [P6.4](P6.4_FAST_FORWARD.md) |
-| Gameplay | Restart hotkey | ON / OFF | OFF | Enables the L + R + Plus + Minus restart chord. [P6.9](P6.9_RESTART.md) |
 | Sound | Music volume | OFF, 1 to 10 | 10 | 10 is the original mix. Left and Right step; B steps up and wraps 10 to 0. [P6.17](P6.17_VOLUME.md) |
 | Sound | SFX volume | OFF, 1 to 10 | 10 | Same keys. The screen plays the game's menu sounds, so you hear the change. |
 | Gameplay | Encounter rate | OFF / 0.5x / 1x / 1.5x / 2x | 1x | Random battles only. Story battles stay. [P6.18](P6.18_PACING.md) |
 | Gameplay | Text speed | Normal / Fast / Instant | Normal | How fast dialogue is typed out. Normal is the original. |
 | Gameplay | Battle cursor | OFF / Command / Command+Tech | OFF | The battle command menu (and with Command+Tech the technique list) opens on your last pick. [P7.9](P7.9_BATTLE_MENU_MEMORY.md) |
+| Display | Full-screen map | OFF / ON | OFF | ON lets Square (Y) on the Map screen open a full-screen map. |
+| Display | Map mod pack | ON / OFF | ON | Uses an installed map-upscale pack for the full-screen map; OFF shows the original map. |
+| Display | Version label | ON / OFF | ON | Shows the port version in the corner of the title screen. |
+| Menus | Equip from Items, Equip stays on list, Whole bag, Use item stays, Partner switch | ON / OFF | ON | The Items-menu shortcuts of this port. OFF gives the original Items menu for that shortcut. |
+| Controls | Button layout, Customize buttons, Reset to default, Switch glyphs (Switch) | | | The button mapping, see [Controls and hotkeys](#controls-and-hotkeys). |
+| Controls | Map buttons | a screen | | The buttons of the full-screen map: open, zoom, centre, scaler, open from the field. A button another action already has is swapped; Reset map buttons puts the defaults back. |
+| Controls | Restart hotkey | ON / OFF | OFF | Enables the L + R + Plus + Minus restart chord. [P6.9](P6.9_RESTART.md) |
 | Saves | Auto-save | OFF / Each area | OFF | With Each area: at each new field area the game saves to its own file, `autosave.bin`, never over your slots. On the title, **Continue** loads it. See [Saves](#saves). [P6.31](P6.31_AUTOSAVE.md) |
+| Saves | Region at start (the combined build) | Ask / US / EU | Ask | Which game starts. |
+| Saves | Shared saves (exp.) | OFF / ON | OFF | Experimental: US and EU share one save store. Title only, takes effect at the next start; turning it on asks first (back up your saves). [CROSS_REGION_SAVES](CROSS_REGION_SAVES.md) |
+| Advanced | Stage sweep, Frames per stage | OFF / Run / Start over; 30 to 3600 | OFF; 90 | A test aid: the next start walks every stage by itself. Title only. [P5.5](P5.5_STAGE_SWEEP.md) |
 
 The groups, rows, values and lines on the screen are in the language of the
 disc (English on the US disc; English, French, German, Spanish or Italian on the
