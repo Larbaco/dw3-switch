@@ -13,7 +13,8 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-IMAGE="${DW3_DK_IMAGE:-devkitpro/devkita64:latest}"
+# Pinned by digest (= tag 20260219, devkitA64 r29.2, gcc 15.2); see docs/DEPENDENCIES.md.
+IMAGE="${DW3_DK_IMAGE:-devkitpro/devkita64@sha256:1fc388c3a0d34bd2045a6dadcb1020e069d5f876a187fd705de14b4440c00282}"
 HOST_UID="$(id -u)"
 HOST_GID="$(id -g)"
 
