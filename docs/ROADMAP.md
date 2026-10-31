@@ -213,7 +213,7 @@ listed once, in [Pending OLED checks](#pending-oled-checks).
 | P6.8 | Extra locales | open | — |
 | P6.9 | Restart-game hotkey | in progress (hotkey works on the OLED; PC replays pass for battle, save and Continue on US and EU; OLED retest open) | [P6.9](P6.9_RESTART.md) |
 | P6.10 | Hardware render outside battle | future | [P5.2](P5.2_BATTLE_GPU.md) |
-| P6.11 | Internal resolution scaling | future | [PC README](../platforms/pc/README.md) |
+| P6.11 | Internal resolution scaling | future (step 1 feasibility and design done 2026-10-31; build queued after D1-D5) | [P6.11](P6.11_INTERNAL_RES.md), [PC README](../platforms/pc/README.md) |
 | P6.12 | Button mapping, phase 2 of the controls bundle (built 2026-10-29, PC replays pass; OLED open, plan A15 L9 to L16) | built, OLED open | [CONTROLS_BUNDLE](CONTROLS_BUNDLE.md#phase-2-as-built-2026-10-29), [goal note](#phase-6-goal-notes) |
 | P6.14, P6.16, P6.19, P6.21 | Backlog goal notes | future | [backlog](#backlog--future-goals) |
 | P6.13 | Mapping submenu, merged into P6.12 (owner, 2026-10-24) | merged | [CONTROLS_BUNDLE](CONTROLS_BUNDLE.md) |
@@ -1148,6 +1148,14 @@ gate, which stays open.
   of the Phase 5 gate. Done when a scale setting is in the Port options, the
   GTE/3D path renders above native on PC and Switch with US and EU discs, and
   the 2D/UI layers and widescreen patches still match soft rendering.
+  **Step 1 (feasibility and design, 2026-10-31):** [P6.11_INTERNAL_RES](P6.11_INTERNAL_RES.md).
+  On the Switch only the battle mesh (GLES) can be scaled; the field and menus are CPU
+  rasterizer sprites at 1x and gain nothing. Estimated feasible at 2x and 3x (GPU
+  1 to 6 ms handheld, 3 to 11 MiB), not yet measured on the OLED. Design: Options rows
+  "Internal resolution" (1x/2x/3x) and "Native res while turbo" (default on, logs
+  `dw3-res: turbo on -> 1x` / `turbo off -> Nx`), replays pinned at 1x plus a small 2x
+  family, six build phases of about 12 to 16 worker days. Step 2 (the build) starts with
+  an OLED measurement build and waits for D1 to D5. Owner questions are in the doc.
 
 - **P6.12–P6.35** (except P6.15, P6.17, P6.18, P6.20 and P6.22, which have their own entries) are goal notes, kept with their ids in
   [Backlog / future goals](#backlog--future-goals).
