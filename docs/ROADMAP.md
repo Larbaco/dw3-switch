@@ -1437,6 +1437,14 @@ PS1 game, with vanilla-safe defaults and persistence on owner storage.
   `cheats-screen`/`cheats-screen2` US and EU now compare pictures; the stage
   sweep (P5.5) has no row on that screen, it is a config key. Details:
   [PORT_OPTIONS](PORT_OPTIONS.md#cheats-sub-screen-p99-slice-2).
+  **D1 design (2026-10-31, docs only, owner approved the same day):** new port-wide rule
+  (AGENTS.md directive 8): every change versus the original is switchable from the
+  Options menu; the only exemptions are crash/64-bit fixes, host plumbing, the port's own
+  screens and the always-on original-bug fixes (P7.7). [OPTIONS_REORG](OPTIONS_REORG.md)
+  has the audit and the approved ten-group tree (new Menus and Advanced groups, a Map
+  buttons sub-page, rows for `show_version`, `map_mod`, `save_store`, `stage_sweep`,
+  the `items_*` keys), the D2 `defaults_gen` migration and the build order (reorg and new
+  rows, D2 + D5, D3, D4). Not built yet.
   **Still open:** OLED validation (OLED_TEST_PLAN A5, A9 to A13); Controls (P6.12) and Walkthrough (P6.35) are hidden
   placeholders in `port_options_groups.h` (Help, P6.30, is built since 2026-10-28); the open questions below are answered
   by defaults (Cheats group listed only with the master switch on; the plain dim of
