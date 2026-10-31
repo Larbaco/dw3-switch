@@ -6,6 +6,7 @@
  * stubs supply a 440 Hz tone so audio_hello can exercise the path.
  */
 #include "nx.h"
+#include "nx_exit.h"
 
 #include <malloc.h>
 #include <math.h>
@@ -518,6 +519,7 @@ void Psyz_AudioDestroy(void) {
         threadWaitForExit(&s_thread);
         threadClose(&s_thread);
         s_thread_started = 0;
+        dw3_nx_exit_log("thread audio mixer joined and closed");
     }
 
     if (s_driver_inited) {
@@ -528,6 +530,7 @@ void Psyz_AudioDestroy(void) {
     if (s_audren_inited) {
         audrenExit();
         s_audren_inited = 0;
+        dw3_nx_exit_log("audren closed");
     }
     if (s_mempool) {
         free(s_mempool);

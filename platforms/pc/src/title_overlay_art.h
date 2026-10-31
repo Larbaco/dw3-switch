@@ -42,7 +42,9 @@ void dw3_pc_title_overlay_options_component(uint8_t *rgba, int pitch,
 enum { DW3_DIALOG_QUIT = 0, DW3_DIALOG_RETURN = 1,
        DW3_DIALOG_RESTART_US = 2, DW3_DIALOG_RESTART_EU = 3,
        DW3_DIALOG_RESTART_US_GAME = 4, DW3_DIALOG_RESTART_EU_GAME = 5,
-       DW3_DIALOG_NOTICE = 6 };
+       DW3_DIALOG_NOTICE = 6,
+       /* D1: "Turn it on?" for Saves > Shared saves and Advanced > Stage sweep. */
+       DW3_DIALOG_SHARED_SAVES = 7, DW3_DIALOG_SWEEP = 8 };
 enum { DW3_DIALOG_W = 768, DW3_DIALOG_H = 348, DW3_DIALOG_X = 96, DW3_DIALOG_Y = 186 };
 void dw3_pc_dialog_art(uint8_t *rgba, int pitch, int kind, int focus);
 /* Host hook (title_menu_overlay.c, nx_title_overlay.c): show (active) or hide
@@ -113,7 +115,9 @@ void dw3_pc_title_overlay_set_options_view(int cursor, const int *values,
  * message line says it is changed at the title), DW3_TITLE_LOCK_CHEATS = the
  * Square / Y "Cheats" hint. 0 on the title. A change rebuilds the retained
  * static layer (dw3_pc_title_overlay_options_layout). */
-enum { DW3_TITLE_LOCK_CHEATS = 1u << 16 };
+/* D1: the registry now has 27 rows (bits 0..26), so the Cheats entry's bit moved
+ * from 16 to 30; bit 31 stays the overlay's in-game mark (lock_key). */
+enum { DW3_TITLE_LOCK_CHEATS = 1u << 30 };
 /* P10.6 fix-now: the source positions (0..9 of port_button_map.h: 0 B, 1 A,
  * 2 X, 3 Y, 4 L, 5 R, 6 ZL, 7 ZR, 8 L3, 9 R3) of the buttons that produce the
  * PS Cross (confirm) and Triangle (back) under the button map. The Switch hint

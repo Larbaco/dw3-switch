@@ -41,7 +41,7 @@ int main(void) {
         return fail("re-open");
     }
 
-    if (dw3_port_options_count() != 16) {
+    if (dw3_port_options_count() != 27) {
         return fail("option count");
     }
     if (dw3_port_options_level(DW3_PORT_OPT_BATTLE_MENU) != 0 ||
@@ -170,26 +170,31 @@ int main(void) {
      * every registry row is in exactly one group, a long list scrolls. */
     {
         int ids[DW3_OPTGRP_COUNT];
-        int seen[16] = {0};
+        int seen[27] = {0};
         int g, k;
 
-        if (dw3_optgroups_visible(0, ids) != 7 || ids[0] != DW3_OPTGRP_DISPLAY ||
-            ids[3] != DW3_OPTGRP_SAVES || ids[4] != DW3_OPTGRP_CONTROLS ||
-            ids[5] != DW3_OPTGRP_HELP || ids[6] != DW3_OPTGRP_WALKTHROUGH) {
+        /* D1: Display, Sound, Gameplay, Menus, Controls, Saves, Cheats, Advanced,
+         * Help, Walkthrough; Cheats and Advanced are listed together. */
+        if (dw3_optgroups_visible(0, ids) != 8 || ids[0] != DW3_OPTGRP_DISPLAY ||
+            ids[1] != DW3_OPTGRP_SOUND || ids[2] != DW3_OPTGRP_GAMEPLAY ||
+            ids[3] != DW3_OPTGRP_MENUS || ids[4] != DW3_OPTGRP_CONTROLS ||
+            ids[5] != DW3_OPTGRP_SAVES || ids[6] != DW3_OPTGRP_HELP ||
+            ids[7] != DW3_OPTGRP_WALKTHROUGH) {
             return fail("visible groups without cheats");
         }
-        if (dw3_optgroups_visible(1, ids) != 8 || ids[4] != DW3_OPTGRP_CHEATS ||
-            ids[5] != DW3_OPTGRP_CONTROLS || ids[6] != DW3_OPTGRP_HELP ||
-            ids[7] != DW3_OPTGRP_WALKTHROUGH) {
-            return fail("Cheats group follows the master switch");
+        if (dw3_optgroups_visible(1, ids) != 10 || ids[5] != DW3_OPTGRP_SAVES ||
+            ids[6] != DW3_OPTGRP_CHEATS || ids[7] != DW3_OPTGRP_ADVANCED ||
+            ids[8] != DW3_OPTGRP_HELP || ids[9] != DW3_OPTGRP_WALKTHROUGH) {
+            return fail("Cheats and Advanced follow the cheats build");
         }
         for (g = 0; g < DW3_OPTGRP_COUNT; g++) {
-            if (g == DW3_OPTGRP_CHEATS || g == DW3_OPTGRP_CUSTOM) continue; /* not registry rows */
+            if (g == DW3_OPTGRP_CHEATS || g == DW3_OPTGRP_CUSTOM ||
+                g == DW3_OPTGRP_MAPBTN) continue; /* not registry rows */
             for (k = 0; k < dw3_optgroups[g].nrows; k++) {
                 seen[dw3_optgroups[g].rows[k]]++;
             }
         }
-        for (k = 0; k < 16; k++) {
+        for (k = 0; k < 27; k++) {
             if (k == DW3_PORT_OPT_REGION) continue; /* combined image only */
             if (k == DW3_PORT_OPT_SWITCH_GLYPHS && !DW3_OPT_GLYPHS_ROW) continue; /* Switch only */
             if (seen[k] != 1) {
@@ -216,11 +221,18 @@ int main(void) {
     }
 
     /* P6.32 phase 4: the Full-screen map row is the second row of the Display
-     * group, off by default, a plain switch (Confirm toggles), not locked in game. */
-    if (dw3_optgroups[DW3_OPTGRP_DISPLAY].nrows != 2 ||
+     * group, off by default, a plain switch (Confirm toggles), not locked in game.
+     * D1 adds Map mod pack and Version label after it (both default ON). */
+    if (dw3_optgroups[DW3_OPTGRP_DISPLAY].nrows != 4 ||
         dw3_optgroups[DW3_OPTGRP_DISPLAY].rows[0] != 0 /* Widescreen */ ||
-        dw3_optgroups[DW3_OPTGRP_DISPLAY].rows[1] != DW3_PORT_OPT_MAP_SCREEN) {
-        return fail("Display group is Widescreen, then Map screen");
+        dw3_optgroups[DW3_OPTGRP_DISPLAY].rows[1] != DW3_PORT_OPT_MAP_SCREEN ||
+        dw3_optgroups[DW3_OPTGRP_DISPLAY].rows[2] != DW3_PORT_OPT_MAP_MOD ||
+        dw3_optgroups[DW3_OPTGRP_DISPLAY].rows[3] != DW3_PORT_OPT_SHOW_VERSION) {
+        return fail("Display group is Widescreen, Map screen, Map mod pack, Version label");
+    }
+    if (dw3_port_options_level(DW3_PORT_OPT_MAP_MOD) != 1 ||
+        dw3_port_options_level(DW3_PORT_OPT_SHOW_VERSION) != 1) {
+        return fail("Map mod pack and Version label default ON");
     }
     if (dw3_port_options_level(DW3_PORT_OPT_MAP_SCREEN) != 0 ||
         dw3_port_options_label(DW3_PORT_OPT_MAP_SCREEN) == NULL ||
@@ -259,7 +271,11 @@ int main(void) {
 
     /* P10.6: the Switch glyphs row is the last row of the Controls group on the
      * Switch only (here: the build that forces it); the PC keeps three rows. */
-    if (dw3_optgroups[DW3_OPTGRP_CONTROLS].nrows != 3 + DW3_OPT_GLYPHS_ROW) {
+    if (dw3_optgroups[DW3_OPTGRP_CONTROLS].nrows != 5 + DW3_OPT_GLYPHS_ROW ||
+        dw3_optgroups[DW3_OPTGRP_CONTROLS].rows[0] != DW3_PORT_OPT_BUTTON_LAYOUT ||
+        dw3_optgroups[DW3_OPTGRP_CONTROLS].rows[2] != DW3_PORT_OPT_MAP_BUTTONS ||
+        dw3_optgroups[DW3_OPTGRP_CONTROLS].rows[3] != DW3_PORT_OPT_RESET_MAP ||
+        dw3_optgroups[DW3_OPTGRP_CONTROLS].rows[DW3_OPT_GLYPHS_ROW + 4] != 2 /* Restart hotkey, last */) {
         return fail("Controls row count follows DW3_OPT_GLYPHS_ROW");
     }
     if (dw3_port_options_level(DW3_PORT_OPT_SWITCH_GLYPHS) != 0 ||
@@ -282,12 +298,12 @@ int main(void) {
         if (dw3_port_options_group() != DW3_OPTGRP_CONTROLS) {
             return fail("Confirm opens the Controls group");
         }
-        for (i = 0; i < 5; i++) {
+        for (i = 0; i < 4; i++) {
             dw3_port_options_test_set_pressed(1u << BIT_DOWN);
             dw3_port_options_tick();
         }
-        if (dw3_port_options_cursor() != 3) {
-            return fail("Controls ends on the Switch glyphs row");
+        if (dw3_port_options_cursor() != 4) {
+            return fail("Switch glyphs is the fifth Controls row, Restart hotkey after it");
         }
         dw3_port_options_test_set_pressed(1u << BIT_CROSS);
         dw3_port_options_tick();
@@ -315,7 +331,7 @@ int main(void) {
     {
         int i;
 
-        for (i = 0; i < 5; i++) {
+        for (i = 0; i < 6; i++) { /* Display .. Controls, Saves, then Help */
             dw3_port_options_test_set_pressed(1u << BIT_DOWN);
             dw3_port_options_tick();
         }

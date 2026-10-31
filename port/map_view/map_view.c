@@ -218,6 +218,7 @@ static int map_view_available(void) {
  * of the map) says, so "which physical button opens the map" is in dw3.log. */
 static MvBindings g_bind;
 static int g_bind_loaded;
+static unsigned g_bind_gen;                 /* dw3_port_options_keys_generation() at the load */
 static char g_bind_map[DW3_BTN_COUNT + 1];  /* the map the last line was logged for */
 static int g_bind_logged;
 static int g_option_at_boot = -1;           /* map_screen when dw3_map_view_init ran */
@@ -239,8 +240,11 @@ static void bind_load(void) {
     char why[512];
     int a, rc;
 
-    if (g_bind_loaded) return;
+    /* D1: the Map buttons screen (Options > Controls) rewrites the keys; read them
+     * again when it did (at the next open of the view the log line says so). */
+    if (g_bind_loaded && g_bind_gen == dw3_port_options_keys_generation()) return;
     g_bind_loaded = 1;
+    g_bind_gen = dw3_port_options_keys_generation();
     for (a = 0; a < MV_ACT_COUNT; ++a) vals[a] = dw3_port_options_file_str(dw3_mv_act_key(a));
     rc = dw3_mv_bindings_resolve(&g_bind, vals, why, sizeof(why));
     if (rc != 0) {
@@ -2585,6 +2589,16 @@ void dw3_map_view_tex_taken(unsigned gen) {
 
 /* --- background precompute ----------------------------------------------------*/
 
+static int s_precompute_cancel;
+
+void dw3_map_view_precompute_cancel(void) {
+    __atomic_store_n(&s_precompute_cancel, 1, __ATOMIC_RELEASE);
+}
+
+static int precompute_cancelled(void) {
+    return __atomic_load_n(&s_precompute_cancel, __ATOMIC_ACQUIRE);
+}
+
 void dw3_map_view_precompute_run(void) {
     int half, sc;
     double t_all = now_ms();
@@ -2597,6 +2611,7 @@ void dw3_map_view_precompute_run(void) {
         char path[600];
         int missing = 0;
 
+        if (precompute_cancelled()) break;
         memset(&base, 0, sizeof(base));
         for (sc = 0; sc < MV_SCALER_COUNT; ++sc) {
             FILE *f;
@@ -2621,6 +2636,7 @@ void dw3_map_view_precompute_run(void) {
             double ms;
             FILE *f;
 
+            if (precompute_cancelled()) break;
             cache_path(path, sizeof(path), half, sc);
             f = fopen(path, "rb");
             if (f) { fclose(f); continue; }
@@ -2634,6 +2650,7 @@ void dw3_map_view_precompute_run(void) {
         }
         dw3_mv_image_free(&base);
     }
-    fprintf(stderr, "dw3-map: precompute done (%d images, %d ms, RAM freed)\n",
+    fprintf(stderr, "dw3-map: precompute %s (%d images, %d ms, RAM freed)\n",
+            precompute_cancelled() ? "stopped (the game is leaving)" : "done",
             built, (int)(now_ms() - t_all));
 }

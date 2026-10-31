@@ -21,13 +21,11 @@ pad 500 0x0040
 pad 505 0x0000
 pad 520 0x0040
 pad 525 0x0000
-pad 540 0x0040
+pad 540 0x4000
 pad 545 0x0000
-pad 560 0x4000
-pad 565 0x0000
-shot 610 controls-invalid-default
+shot 590 controls-invalid-default
+pad 610 0x1000
+pad 615 0x0000
 pad 630 0x1000
 pad 635 0x0000
-pad 650 0x1000
-pad 655 0x0000
-end 710
+end 690

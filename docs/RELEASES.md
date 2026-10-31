@@ -1,16 +1,16 @@
 # Releases
 
-Each release ships ONE `.nro`, `dw3-switch.nro` (US + EU in one image; before the
-release after preview.53 there were six files, see the index), and (from the
-release after preview.30, `dw3-switch-elf.zip` with the matching `.elf`
-files for crash reports), never game data. Pick the newest unless a note below
-says otherwise. Every release up to now is a GitHub prerelease; the first
-normal release will be `v0.9.0` (the public beta, see
+Each release ships ONE `.nro`, `dw3-switch.nro` (US + EU in one image), plus
+`dw3-switch-elf.zip` (the matching `.elf` for crash reports) and `README.txt`
+(the release notes). Never game data. Earlier previews shipped more files; each
+release page lists what it carries. **Pick the newest unless it is in "Do not
+install" below.** Every release so far is a GitHub prerelease; the first normal
+release will be `v0.9.0` (the public beta, see
 [Release criteria](ROADMAP.md#release-criteria)).
 
 ## Naming
 
-Tags follow SemVer (owner decision 2026-10-31):
+Tags follow SemVer (owner decision 2026-10-31, #394). New previews are `v0.9.0-preview.N`, not `v0.6.5-preview.N`:
 
 | Tag | What it is | GitHub | hbmenu shows (15 characters at most) |
 |---|---|---|---|
@@ -42,8 +42,8 @@ for the new series is written `0.9.0-preview.N`. The next tag is
 
 All releases are on the
 [releases page](https://github.com/Larbaco/dw3-switch/releases). Install
-steps are in the [README](../README.md#play-it-on-switch). Preview numbers
-that have no tag (11 to 17) were never published.
+steps are in the [README](../README.md#play-it-on-switch) and the
+[player guide](PLAYER_GUIDE.md).
 
 ## Do not install
 
@@ -56,61 +56,130 @@ that have no tag (11 to 17) were never published.
 
 ## Index
 
-Newest first. The old series is `preview.N` (tags `v0.6.5-preview.N`); the new
-series starts at `0.9.0-preview.1` and its rows go above `preview.57`.
+Newest first. One short line per release; the full text of each is on its release page. The old series
+is `preview.N` (tags `v0.6.5-preview.N`); rows for the new series (`0.9.0-preview.N`) go above `preview.57`.
+Preview numbers 11 to 17 were never published.
 
-| Tag | What it was for |
+| Release | What it was for |
 |---|---|
-| [preview.57](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.57) | Digivolve in battle no longer crashes (BUG-6, patch 0198, #387). Restart into the chosen region from Options > Gameplay > Region at start, combined image only (P6.38, #385). Port version in the title corner, the Options footer and the log (P6.37, #386). Field map key: Select opens the full-screen map from the walking field (P6.32 phase 6, patch 0148, #383; help text #384); the map view's help line names the buttons of the layout (phase 7, #382). Walkthrough: the last battle and the EU extra chapter (P6.35 slice 3, #380) and six optional rows (slice 4, #381). Built and published by the release workflow (`switch-release.yml`) from the tag, with the three files only. Notes: [`platforms/switch/release/README.txt`](../platforms/switch/release/README.txt). |
-| [preview.56](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.56) | Story path fix: the Reliability Spot (WSTAG460, mode `0x236`, Digi-Egg of Sincerity) no longer aborts or crashes, and the EU extra chapter's 55 stages are linked (patch 0197, #378). The present uploads 16-bit VRAM and a shader expands it, same picture; it falls back with a `present path:` line (P6.22 pass 4, #375). Map view: area names under the cursor (P6.32 phase 2, #372), zoom about the cursor, pan limits, Select centres, Bilinear scaler (phase 3, #374), and the Full-screen map row in Options > Display with six `map_view_*` keys for the buttons (phase 4, #377). Walkthrough chapters 2 to 10 and a chapter list (P6.35 slice 2, #376). Switch glyphs on the L1 / R1 page-turn prompt (P10.6, patch 0196, #373). Cross-region saves with `save_store=1` in both regions, experimental (P6.25 slice 2, #370). Test tooling only: #369 and #371. Built and published by the release workflow (`switch-release.yml`) from the tag, with the three files only. Notes: [`platforms/switch/release/README.txt`](../platforms/switch/release/README.txt). |
-| [preview.55](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.55) | Full-screen map view is off by default: add `map_screen=1` to `port_options.cfg` to use it, and R3 does nothing in the view (P6.32 phase 1, #366). Walkthrough screen in Options (P6.35 phase 2, #363). Switch button glyphs: `switch_glyphs` in Controls, Switch only and off by default, with own art in `sdmc:/switch/dw3/glyphs/` (P10.6, patch 0195, #367). Test tooling and docs only: replay `--changed` reads CMake diffs and `--both-subset` (#364); roadmap table reconciled (#365). Built and published by the release workflow (`switch-release.yml`) from the tag, with the three files only. Notes: [`platforms/switch/release/README.txt`](../platforms/switch/release/README.txt). |
-| [preview.54](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.54) | One release file, `dw3-switch.nro`, for US and EU, with nxlink detected at run time (P6.24, #359; owner decision 2026-10-29): the `-eu`, `-both` and `-nxlink` files are no longer published. Items menu: using an item stays on the partner step for the next copy (P6.34 phase 4, #360, plan B24). Win jingle held 4 s at 1x turbo music (P6.36 phase 3, #361, plan T4). Built and published by the release workflow (`switch-release.yml`) from the tag, with the three files only. Notes: [`platforms/switch/release/README.txt`](../platforms/switch/release/README.txt). |
-| [preview.53](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.53) | Equipment: the slot list returns at once (P6.34 phase 2, #348), and the whole bag with Square filters and moving a worn item between Digimon (phase 3, #357). Custom button remap in Controls > Customize buttons, with Reset to default (P6.12 phase 2, #351). Hint letters and the map footer follow the button layout on Switch (P10.6, #355). Turbo music: music at normal speed while turbo is on, Options > Sound > Turbo music (P6.36 phases 1 and 2, #356); the win jingle is cut after about 1 s at 1x (owner decision pending). Help and walkthrough text in FR, DE, IT and ES, machine-drafted and needing native review (#349). Test tooling and docs only: P6.36 design (#350), P10.6 glyph investigation (#354), replay refs and OLED tools (#341, #352, #353). Built locally with the ccache flow and attached by hand. Notes: [`platforms/switch/release/README.txt`](../platforms/switch/release/README.txt). |
-| [preview.52](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.52) | Button layout (P9.8, #338): PlayStation (default) or Nintendo, in a new Controls group. Equip from the Items menu (P6.34, #339). Battle Items and technique lists draw their selection bar again (#343). Cheats always listed and Region at start (#344). Map view opens at 1.5x. One map mod pack for US and EU (#345). Options background at the title (#346). Built locally and attached by hand; the tag's workflow run was cancelled. Docs: P6.34 design, docs CI check, P6.36 goal, P51 feedback design. |
-| [preview.51](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.51) | Technical help (P6.30, #333): Options has a Help group, the last row of the list, with 10 pages in English (Setup, Controls, Port hotkeys, Turbo, Options explained, Saves, Widescreen, Map view and mods, Logs and bug reports, FAQ). FR, DE, IT and ES show the English pages for now. Build and test speed (#334, `docs/BUILD_SPEED.md`): ccache, incremental decomp patches, faster replay selection; no change to the game. Carried from preview.50: EU language select confirm button (E1.6c), map sprites at fixed size, faster turbo in scenes (P6.22 pass 3, #331). Still open on the OLED: the help (H1 to H8) and the rows listed in the notes. US, US nxlink, both, both nxlink, the elf zips, EU and EU nxlink were built locally with the ccache flow and attached by hand, with dw3-switch-eu.nro, dw3-switch-eu-nxlink.nro, dw3-switch-eu-elf.zip and dw3-switch-eu-nxlink-elf.zip. Notes: [`platforms/switch/release/README.txt`](../platforms/switch/release/README.txt). |
-| [preview.50](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.50) | EU language select takes the confirm button (Cross = Switch B) as well as Start (#330, patch 0187, plan E1.6c). Map view: cursor and balloon keep their zoom-1.0 size at any zoom and follow the map; revealed areas still scale; `DW3_MAP_SPRITES_FIXED=0` restores the old look (#330). Faster turbo in scenes (P6.22 pass 3, #331): textured triangle fast path in PSY-Z (same pixels, about 30% less raster in dialogue and 10% in the field on PC), audio mixer thread on core 1, new `pace dbg:` line. OLED, confirmed by the owner from the preview.48 log (2026-10-28): EU language select 16:9 (E1.6b), the combined .nro picker with both regions, the button choice and "always" (G9.3 to G9.5, partly). Still open: the combined .nro with one region, timeout, Minus and disc-in-parent (G9), #188 D13, map mod B17, save with HOME (G2), and the preview.49 items (A13, A10, B18, B19, B20, name box, G10) and the new ones (E1.6c, sprites at fixed size). US, US nxlink, both, both nxlink and the elf zips come from the workflow; EU attached by hand, with dw3-switch-eu.nro, dw3-switch-eu-nxlink.nro, dw3-switch-eu-elf.zip and dw3-switch-eu-nxlink-elf.zip. Notes: [`platforms/switch/release/README.txt`](../platforms/switch/release/README.txt). |
-| [preview.49](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.49) | Stage sweep (P5.5, #320): opt-in with `stage_sweep=1` in the region's `port_options.cfg` (builds with the Cheats screen). It visits all 237 loadable stages, logs `dw3-sweep:` per stage and a summary, resumes after a crash and never writes saves (plan G10). Item shop at 16:9 (#323, patch 0179) with its widescreen log (B18). Items menu: selecting equipment does nothing, as in the original game, now logged (B19). Map view closes with the cancel button (Switch X); Y inside the view does nothing (B20). Combined .nro finds a disc image placed directly in `sdmc:/switch/dw3/` (#325, fixes #322), region read from the image's executable (G9.11 to G9.13). Map name box no longer jumps during right-stick zoom (#326, B16). Options: Cheats is a scrolling sub-screen in the title menu's style (P9.9 slice 2, #327, A13), and opening a group no longer rebuilds (A10). Walkthrough data layer, no UI (P6.35 phase 1, #328). OLED, confirmed by the owner 2026-10-28: app name (#289), map view balloon and cursor (B16), Options open without a hitch (B15b). Still open: EU language select 16:9 (E1.6b), #188 audio (D13), combined .nro (G9), map mod (B17), save with HOME (G2), and the new items above. US, US nxlink, both, both nxlink and the elf zips come from the workflow; EU attached by hand, with dw3-switch-eu-elf.zip and dw3-switch-eu-nxlink-elf.zip. Notes: [`platforms/switch/release/README.txt`](../platforms/switch/release/README.txt). |
-| [preview.48](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.48) | One .nro for US and EU (P6.24, #314, #316): `dw3-switch-both.nro` starts the only region whose data is on the SD, or shows a 3 s picker when both are there (Y = don't ask again, Minus at launch = ask again, every decision a `dw3-region:` line). First mod: map upscale loader (#313, plan B17): packs in `sdmc:/switch/dw3/mods/`, `map_mod=0` turns it off, the pack is not shipped. Audio health and the #188 leak signature (P4.3, #315, plans D13, D14) and `dw3-save: write ... committed` lines (P10.2, plan G2). Docs: roadmap Priority (#310), walkthrough design (#311), controls design (#317), technical help design and draft (#318), OLED bookkeeping (#312). US, EU and nxlink builds are attached as usual; the combined build is only on the release workflow. Notes: [`platforms/switch/release/README.txt`](../platforms/switch/release/README.txt). |
-| [preview.47](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.47) | Map view has the game's balloon, cursor and location name box (#306): D-pad or left stick moves the cursor and the view follows it, right stick and L / R zoom, ZL / ZR the scaler, Circle hides the HUD; Nearest is the default and Lanczos2 / FSR 1 build on a worker thread. In-game Options has its own 960x720 texture, so it no longer builds the title atlas (#308). EU language select is 16:9, EU plaques share one lettering, and the title verbs are New Game / Options / Load Game / Quit game, or Continue + Load Game with an autosave. Still open: the map HUD strip covers the top of the map at 1.00x, and #188 EU audio. OLED-unverified: plans B15b, B16, E1.6b, E2.0 and E2.2. EU attached by hand, with dw3-switch-eu-elf.zip. Notes: [`platforms/switch/release/README.txt`](../platforms/switch/release/README.txt). |
-| [preview.46](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.46) | Options is a list of groups in the title menu's style (P9.9 slice 1, #303): Display, Sound, Gameplay and Saves, plus Cheats when its master switch is on. B opens a group, X goes back with the cursor kept. The same groups show from the title, the field menu and battle. Keys and saved settings unchanged; EU labels in all five languages. Preview.45's `dw3.log` rotation (#296, #301) is confirmed on the OLED (dw3.1.log kept, rc=0x0). Still open: Options first frame about 93 ms on Switch, EU language select still 4:3, EU title plaque lettering shading, map view balloon, cursor and location name. OLED-unverified: plan A5 and A9 to A12. EU attached by hand, with dw3-switch-eu-elf.zip. Notes: [`platforms/switch/release/README.txt`](../platforms/switch/release/README.txt). |
-| [preview.45](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.45) | `dw3.log` rotation fixed for the Switch file service (#301): the rotation paths are sized to FS_MAX_PATH, which fixes the Ryubing replay crash from #290 and may be why `dw3.1.log` never appeared on hardware. After two launches expect `dw3.log` and `dw3.1.log`, and the `dw3-log: rotated` line shows rc=0x0. Everything else is the preview.44 set, still OLED-unverified: Options stutter (B15), return-to-title fade (E1), map reveal and zoom (B16), per-user saves (E5). EU attached by hand, with dw3-switch-eu-elf.zip. Notes: [`platforms/switch/release/README.txt`](../platforms/switch/release/README.txt). |
-| [preview.44](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.44) | Options opens without the stutter (#298) and return to title fades through black, with no 4:3 frame (plan B15, E1). Map view draws the revealed towns and areas, right stick zooms (P6.32, #299, plan B16). `dw3.log` rotation fixed (#296): after two launches expect `dw3.log` and `dw3.1.log`. Profile id in the log is a real hash (#294). README refresh (#295) and roadmap P6.30 and P6.35 (#297). Everything here is OLED-unverified; per-user saves (E5) and #188 audio (D13) are still open. EU attached by hand, with dw3-switch-eu-elf.zip. Notes: [`platforms/switch/release/README.txt`](../platforms/switch/release/README.txt). |
-| [preview.43](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.43) | Per-user saves (P6.26, #292): saves per Switch user profile in `sdmc:/switch/dw3/saves/<profile>/<us\|eu>/memcard/`; legacy saves are copied into each profile on its first launch; cancelling the profile selector exits without starting. OLED-unverified (test plan E5). Logs (#290): `dw3.log` keeps the last 5 runs (`dw3.1.log` ... `dw3.4.log`), game messages reach the log, proof lines per OLED test item. EU attached by hand, with dw3-switch-eu-elf.zip. Notes: [`platforms/switch/release/README.txt`](../platforms/switch/release/README.txt). |
-| [preview.42](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.42) | App name in hbmenu and Sphaira is now Digimon World 3 NX (#289); the nxlink build is Digimon World 3 NX (nxlink). .nro file names unchanged; recreate the Sphaira forwarder to see the new name. Otherwise the same as preview.41 (turbo menus at 1.5x #286, title plaques and logo #287). EU attached by hand, with dw3-switch-eu-elf.zip. Notes: [`platforms/switch/release/README.txt`](../platforms/switch/release/README.txt). |
-| [preview.41](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.41) | Turbo menus at 1.5x (P6.4, #286): menus in the field and battle menus run at 1.5x under turbo; walking, text, cutscenes and battle animations stay at full turbo; Map, Items and shops stay at 1x. Title plaques evenly spaced and the logo keeps its size when the menu appears (#287). Integration check of main before #287: 2395 replay checks, 0 failed; soak RSS flat. Still open from preview.40: G8, E2, B16. EU attached by hand. Notes: [`platforms/switch/release/README.txt`](../platforms/switch/release/README.txt). |
-| [preview.40](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.40) | Equipment screen: ZL / ZR change the partner without leaving (P6.33 phase 1, #282; on by default, key `items_partner_switch`). Auto-save in its own file `autosave.bin` (P6.31, #283): Continue loads it, Load Game is its own row. Full-screen map view, proof of concept (P6.32, #284): Y on the Map screen, pan, zoom, scaler cycle; widescreen only. Quit game and field OPTIONS fixes (#280) still need OLED confirmation. EU attached by hand. Notes: [`platforms/switch/release/README.txt`](../platforms/switch/release/README.txt). |
-| [preview.39](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.39) | Quit game no longer ends with a system error (#280): audio stops and the GPU closes before the NRO leaves. Field menu OPTIONS no longer shows a black square (#280). Docs: map screen design (#277), turbo audit (#278), AGENTS.md fan-art rule (#279). Encounter swirl (#275) carried from preview.38. EU attached by hand. Notes: [`platforms/switch/release/README.txt`](../platforms/switch/release/README.txt). |
-| [preview.38](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.38) | Encounter swirl covers the 16:9 picture (P6.1, #275): at the battle start the gutters no longer go black and the tiles slide off across the full width. Checked on PC and Ryubing at turbo off, 2x, 3x and 4x; widescreen off unchanged. Options in battle (#272) and save write safety (#273) carried from preview.37. EU attached by hand. Notes: [`platforms/switch/release/README.txt`](../platforms/switch/release/README.txt). |
-| [preview.37](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.37) | Options in battle (P9.7 slice 2, #272): Minus at the command menu opens Options over the frozen battle; Triangle closes it. Save write safety (P10.2, #273): interrupted writes recover at boot, HOME and restart wait up to 8 s for the save burst. Options from the field menu (#270), title textures freed outside the title (#268) and memory work (#266, #267) carried from preview.36. EU attached by hand. Notes: [`platforms/switch/release/README.txt`](../platforms/switch/release/README.txt). |
-| [preview.36](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.36) | Options from the field menu (P9.7 slice 1, #270): an OPTIONS row above TITLE SCREEN; Widescreen and Cheats stay title-only; battle not covered yet. Title screen textures freed outside the title on Switch and rebuilt on return (#268). PC soak and Ryubing memory check (#266, #267). OLED test plan (#269). Turbo (P6.22 pass 2, #263) and the player guide (#262) carried from preview.35. EU attached by hand. Notes: [`platforms/switch/release/README.txt`](../platforms/switch/release/README.txt). |
-| [preview.35](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.35) | Faster turbo outside battle (P6.22 pass 2, #263): the Switch no longer draws frames it will not show, same picture; the field and opening at 4x should gain, not measured on Switch yet. Player guide covers Auto-save and the region launcher (#262). Auto-save (P6.31, #260), Quit game, Return to title and cross-region import carried from preview.33 and 34. EU attached by hand. Notes: [`platforms/switch/release/README.txt`](../platforms/switch/release/README.txt). |
-| [preview.34](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.34) | Auto-save, off by default (P6.31, #260): a ninth Options row, OFF or Each area. When on, the first idle field frame of each new area saves to the last-used slot, overwriting it; the first time the card is kept as `save<N>.bin.pre-auto`. Player guide (#255), CONTRIBUTING.md and a doc-link test (#256), P6.32 map zoom proposal (#257). Region launcher in progress, not in this release (P6.24, #258, #259). Quit game, Return to title and cross-region import carried from preview.33. EU attached by hand. Notes: [`platforms/switch/release/README.txt`](../platforms/switch/release/README.txt). |
-| [preview.33](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.33) | Quit game on the title menu (P6.28, flushes saves, back to hbmenu), Return to title in the field menu (P6.27, same reset as the restart hotkey). Title plaques 48 px so four fit. Cross-region save import, slice 1 (P6.25, #252): a region with no save of its own imports the other region's save once, one-way. Restart hotkey validated on PC, US and EU (P6.9, #251). PC door iris map-over fix in PSY-Z (#253). EU attached by hand. Notes: [`platforms/switch/release/README.txt`](../platforms/switch/release/README.txt). |
-| [preview.32](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.32) | Canal water in the Cargo Tower streets after the Underground Path, fixed (patch 0111, #242). 16:9 for the card album, deck editor, card shop, gym and Digimon Lab (#245; Lab chart, entry and skill still 4:3 at the edges). 16:9 door iris and grid cover (#247). Cheats screen page 2: Money, Warp to 13 areas, Give item (#248). EU attached by hand. Notes: [`platforms/switch/release/README.txt`](../platforms/switch/release/README.txt). |
-| [preview.31](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.31) | Field rasterizer 4 to 5 times faster (P6.22), 16:9 for the field menu, Items/Sort/Techniques/Status/Card folders, title menu, intro caption bar and registration screen. Post-battle report at turbo speed and the banner whole at Instant. Partner portrait in gpu-tex, file cache overflow fix (long sessions), crash notice for 60 s with software aborts, `dw3-switch-elf.zip` for crash symbolization. 16:9 for the map, battle results header and save screen (#240), Cheats screen in Options (P6.20, #236). EU attached by hand. Notes: [`platforms/switch/release/README.txt`](../platforms/switch/release/README.txt). |
-| [preview.30](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.30) | Music loops again (#209), widescreen area banner, technique backdrops and results screen, EU native title credits, Items screen crash fix, Port options saved to `port_options.cfg`, Music/SFX volume, Encounter rate, Text speed and Battle cursor rows, crash-report backtrace. Win jingle and menu/battle sounds that never played now do (#215). EU attached by hand. Notes: [`platforms/switch/release/README.txt`](../platforms/switch/release/README.txt). |
-| [preview.29](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.29) | Fixes the crash at the new-game bridge "need my partner" event (patch 0058), faster Port options (dirty-region cache), crash-report rotation, rumble, HOME/sleep save flush. EU attached by hand. Notes: [`platforms/switch/release/README.txt`](../platforms/switch/release/README.txt). |
-| [preview.28](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.28) | EU restart returns to the language selection (#162); carries the preview.26/27 changes. EU attached by hand. |
-| [preview.27](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.27) | Field streaming fix for the 16:9 crash (inferred from the preview.26 crash records, not yet reproduced). Adds the 4C DW3NX artwork. Hardware acceptance pending. |
-| [preview.26](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.26) | EU language selection at boot, battle camera and portrait fixes, Port options on its own screen. Notes: [RELEASE_PREVIEW26](RELEASE_PREVIEW26.md). Crashes: [PREVIEW26_CRASH_RECORDS](PREVIEW26_CRASH_RECORDS.md). |
-| [preview.25](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.25) | Widescreen on by default, battle defaults to `gpu-tex`, field and battle fast-forward, EU builds added. Notes: [RELEASE_PREVIEW25](RELEASE_PREVIEW25.md). |
-| [preview.24](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.24) | Native title menu on Switch (New Game / Options / Load Game), EU runtime extraction. US only. |
-| [preview.23](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.23) | Same play as preview.22 on Switch. PC title menu and docs only. |
-| [preview.22](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.22) | Widescreen option, GPU battle background fix, opt-in restart hotkey. Notes: [RELEASE_PREVIEW22](RELEASE_PREVIEW22.md). |
-| [preview.21](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.21) | Opening-movie read-race fix; movie pacing improved from 6.75 to about 15 fps. Notes: [RELEASE_PREVIEW21](RELEASE_PREVIEW21.md). |
-| [preview.20](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.20) | Title Port options shell (switches were stubs), empty `StGetNext` scan cache. Notes: [RELEASE_PREVIEW20](RELEASE_PREVIEW20.md). |
-| [preview.19](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.19) | GPU diagnostic cut. See the table above. |
-| [preview.18](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.18) | Battle mesh gated to FIGHTSTG; `Minus + ZL + ZR` cycles battle render modes; software battle default. |
-| [preview.10](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.10) | Battle mesh limited to FIGHTSTG, field back on the software blit, sampled `mesh dbg:` log lines. |
-| [preview.9](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.9) | See the table above. |
+| [preview.57](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.57) | Digivolve in battle no longer crashes; restart in the chosen region; Minus (Select) opens the map from the field; more walkthrough. |
+| [preview.56](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.56) | Fixes the Reliability Spot crash; map view area names and zoom; walkthrough chapters 2 to 10; experimental cross-region saves. |
+| [preview.55](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.55) | Walkthrough screen in Options and Switch button glyphs; the full-screen map is off by default. |
+| [preview.54](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.54) | One release file, dw3-switch.nro, for US and EU. Using an item stays on the partner step. |
+| [preview.53](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.53) | Custom button remap, turbo music, a bigger equipment screen, and FR/DE/IT/ES help text (machine-drafted). |
+| [preview.52](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.52) | PlayStation or Nintendo button layout; equip from the Items menu; battle list selection bar fixed. |
+| [preview.51](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.51) | Options > Help with ten pages; faster builds for contributors. |
+| [preview.50](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.50) | EU language select takes the confirm button; map sprites keep their size; faster turbo in scenes. |
+| [preview.49](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.49) | Item shop in 16:9, scrolling Cheats screen, stage sweep, and a combined .nro that finds your disc image. |
+| [preview.48](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.48) | One .nro for US and EU with a region picker; first map mod loader. |
+| [preview.47](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.47) | Map view gets the game's cursor and location name; EU language select in 16:9. |
+| [preview.46](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.46) | Options becomes a list of groups (Display, Sound, Gameplay, Saves) in the title menu's style. |
+| [preview.45](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.45) | Fixes dw3.log rotation on the Switch file service. |
+| [preview.44](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.44) | Options opens without the stutter; map view shows revealed areas; log rotation fix. |
+| [preview.43](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.43) | Saves per Switch user profile; dw3.log keeps the last five runs. |
+| [preview.42](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.42) | App name is now Digimon World 3 NX in hbmenu and Sphaira. |
+| [preview.41](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.41) | Turbo menus at 1.5x; evenly spaced title plaques. |
+| [preview.40](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.40) | Change partner in the equipment screen, auto-save in its own file, map view prototype. |
+| [preview.39](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.39) | Quit game no longer ends with a system error; field menu OPTIONS no longer shows a black square. |
+| [preview.38](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.38) | The battle-start swirl covers the whole 16:9 picture. |
+| [preview.37](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.37) | Options in battle (Minus at the command menu); safer save writes. |
+| [preview.36](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.36) | Options reachable from the field menu; title textures freed outside the title. |
+| [preview.35](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.35) | Faster turbo outside battle; player guide covers Auto-save. |
+| [preview.34](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.34) | Auto-save, off by default. |
+| [preview.33](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.33) | Quit game, Return to title, and a one-time cross-region save import. |
+| [preview.32](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.32) | Canal water fix; 16:9 for card game, Digimon Lab and door transitions; Cheats page 2. |
+| [preview.31](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.31) | Field drawing 4 to 5 times faster; many menus in 16:9; Cheats screen; ELF zip for crash reports. |
+| [preview.30](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.30) | Music loops again; Options saved to a file; volume, encounter rate and text speed rows; many widescreen and crash fixes. |
+| [preview.29](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.29) | Fixes the new-game "need my partner" crash; much quicker Options screen; HOME/sleep save flush. |
+| [preview.28](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.28) | EU restart returns to a clean language select; carries the preview.26 and 27 changes. |
+| [preview.27](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.27) | Field streaming fix for the 16:9 crash seen in preview.26; DW3NX artwork. US only. |
+| [preview.26](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.26) | EU language select at boot, battle camera and portrait fixes, Options on its own screen. |
+| [preview.25](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.25) | Widescreen on by default, fast-forward on R3, battle defaults to gpu-tex, first EU builds. |
+| [preview.24](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.24) | Native title menu on Switch; EU runtime extraction. US only. |
+| [preview.23](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.23) | Same play as preview.22 on Switch; PC title menu and docs only. |
+| [preview.22](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.22) | Widescreen option, restart hotkey, GPU battle background fix. |
+| [preview.21](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.21) | Opening-movie read-race fix; movie pace from 6.75 to about 15 fps. |
+| [preview.20](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.20) | Port options entry on the title menu (switches were stubs); cheaper movie polling. |
+| [preview.19](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.19) | GPU diagnostic cut for the OLED battle investigation. Not playable; do not install. |
+| [preview.18](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.18) | Selectable battle render modes, flat saves, debug HUD. Preview numbers 11 to 17 were never published. |
+| [preview.10](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.10) | Battle mesh limited to the fight stage; field back on the software blit. |
+| [preview.9](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.9) | Battle mesh triangles on GLES3. It broke the field picture; do not install. |
 | [preview.8](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.8) | Holds one field map in RAM so later tiles copy from that buffer. |
-| [preview.7](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.7) | Uploads only the sampled VRAM rectangle and loads one field tile per frame. First build to reach field and battle on an OLED. |
-| [preview.6](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.6) | See the table above. |
-| [preview.5](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.5) | Hardware test of the copy progress bar, left-stick input and the US BIN extraction. |
+| [preview.7](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.7) | Uploads only the sampled VRAM rectangle, one field tile per frame. First build to reach field and battle on an OLED. |
+| [preview.6](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.6) | Present-path and tile-loading speedups, plus a 1785 MHz CPU boost removed in preview.7. Do not install. |
+| [preview.5](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.5) | Copy progress bar, left-stick input and US extraction from the disc image. |
+| [preview.4](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.4) | Movie test with the disc-image lookup fixed. |
+| [preview.3](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.3) | Hardware test of the opening movie (paced CD, restored STR files). |
 | [preview.2](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.2) | Picture fix: display-mode title width and the full-height movie. |
-| [preview.1](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.1) | See the table above. |
+| [preview.1](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.1) | First preview: boots to the title in Ryubing. Crops the title and freezes the movie; do not install. |
 
-Previews 3 and 4 have no separate notes in this repository.
+## Release notes style
+
+Owner decision 2026-10-31: the notes were far too long (the preview.57 body ran
+to 1100 lines). Every release now follows the usual changelog style (Keep a
+Changelog, GitHub release notes, well-run homebrew projects). The same text is
+the GitHub release body and the `README.txt` asset
+(`platforms/switch/release/README.txt`, the template), so it stays plain text of
+**about 60 lines at most**. A release body has these parts, in this order:
+
+1. **Title line and a 1 to 2 line summary.** If the preview must not be used,
+   a `WARNING - Do not install this preview: ...` line comes first.
+2. **Highlights**: 3 to 6 bullets, player-facing, one line each.
+3. **Fixed**: one line each.
+4. **Changed**: defaults and options that moved, if any.
+5. **Known issues**: short, only what a player would notice.
+6. **Install / update**: two or three lines and a link to the
+   [player guide](PLAYER_GUIDE.md). No setup walkthrough.
+7. **Downloads**: the files actually published, one line each.
+8. **Full changes**: the compare link `vPREV...vNEW` and the PR numbers, then
+   the short own-disc / not-affiliated line.
+
+Leave out of the notes (they live in the PRs, `ROADMAP.md`, `OLED_TEST_PLAN.md`
+and the other docs): patch numbers, OLED row ids and checklists, replay and
+test counts, log lines, "built by the workflow" lines, test-tooling-only PRs,
+and the history of earlier previews ("From preview.N" blocks). One bullet per
+user-visible change, not per PR.
+
+Skeleton (copy it, fill it, keep each bullet to one line):
+
+```
+Digimon World 3 / 2003 for Switch (homebrew) - v0.9.0-preview.N
+
+<One or two lines: what this preview is for.>
+
+## Highlights
+- <player-facing change>
+
+## Fixed
+- <what was broken, now works>
+
+## Changed
+- <default or option that moved>
+
+## Known issues
+- <what a player may hit>
+
+## Install / update
+Copy dw3-switch.nro to sdmc:/switch/ and start it from your launcher. ...
+Setup, controls, saves and crash reports: <player guide link>
+
+## Downloads
+- dw3-switch.nro        US + EU in one file; the region is chosen at boot
+- dw3-switch-elf.zip    symbols to read crash reports (matches this .nro only)
+- README.txt            these notes
+
+## Full changes
+https://github.com/Larbaco/dw3-switch/compare/<prev tag>...<this tag>
+PRs: #a #b #c
+
+No game files are included: bring your own disc. Unofficial fan project, not
+affiliated with Bandai Namco or Nintendo. Digimon is a trademark of its owners.
+```
+
+Past releases (preview.1 to preview.57) were rewritten to this style on
+2026-10-31; the long original bodies are kept in
+`tmp/release-bodies-backup-2026-10-31/` on the maintainer's machine, and each
+release's `README.txt` asset still holds the original long-form text.
 
 ## Publishing a release
 
@@ -160,20 +229,22 @@ workflow itself has no dry-run path: `workflow_dispatch` always publishes
 the tag it is given. A hand-built release (as preview.53) follows the same
 rule: the three files above, nothing else.
 
-**Release notes PR checklist.** In the notes PR (the one that adds the index
-row above and updates `platforms/switch/release/README.txt`), also update the
-[README](../README.md) "Latest preview" link and its Status rows, so the front
-page does not go stale.
+**Release notes PR checklist.** The notes PR (merge it first, then tag the
+notes commit; the workflow publishes `README.txt` from the tag) does three
+things:
 
-Before a release, prune the "still open" lists in the notes against the
-PASSED marks in [OLED_TEST_PLAN.md](OLED_TEST_PLAN.md) and the owner's latest
-logs: list only items that are really still open. Run
-`python3 tools/oled_open_rows.py --notes platforms/switch/release/README.txt`
-first: it lists the plan rows without a clean PASSED mark, and warns about
-PASSED rows that the OLED checklist still names. A warning is a prompt, not a
-failure: a row can be PASSED for an old behaviour and still need a re-check
-(then say so in the notes). The checklist is rebuilt from that list, not from
-the previous release's text.
+1. Rewrites [`platforms/switch/release/README.txt`](../platforms/switch/release/README.txt)
+   for the new tag, following "Release notes style" below.
+2. Adds one row to the index above (at most 25 words, a link to the release).
+3. Updates the [README](../README.md) "Latest preview" link and its Status
+   rows, so the front page does not go stale.
+
+Before writing "Known issues", prune the list against the PASSED marks in
+[OLED_TEST_PLAN.md](OLED_TEST_PLAN.md) and the owner's latest logs: list only
+items that are really still open, and only the ones a player would notice. Run
+`python3 tools/oled_open_rows.py` for the plan rows that have no clean PASSED
+mark. Row ids, the full OLED checklist and test-method detail belong in the
+plan and in the PRs, not in the notes.
 
 Since preview.18, [`platforms/switch/release/README.txt`](../platforms/switch/release/README.txt)
 holds the notes shipped with each release.

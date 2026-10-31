@@ -27,7 +27,7 @@ extern "C" {
 
 struct Dw3MapViewDraw;
 
-#define DW3_GAME_API_ABI 4
+#define DW3_GAME_API_ABI 5
 
 typedef struct Dw3GameApi {
     unsigned abi;       /* DW3_GAME_API_ABI */
@@ -47,6 +47,7 @@ typedef struct Dw3GameApi {
     /* P6.32 map view */
     void (*map_view_init)(const char *config_dir);
     void (*map_view_precompute_run)(void);
+    void (*map_view_precompute_cancel)(void); /* ABI 5: BUG-1, stop it on the way out */
     void (*map_view_set_zoom_stick)(int raw_up);
     void (*map_view_get_draw)(struct Dw3MapViewDraw *d);
     void (*map_view_tex_taken)(unsigned gen);
@@ -102,6 +103,7 @@ const Dw3GameApi *dw3_game(void);
 #define dw3_host_load_boot_tim(path) DW3_API(host_load_boot_tim)(path)
 #define dw3_map_view_init(dir) DW3_API(map_view_init)(dir)
 #define dw3_map_view_precompute_run() DW3_API(map_view_precompute_run)()
+#define dw3_map_view_precompute_cancel() DW3_API(map_view_precompute_cancel)()
 #define dw3_map_view_set_zoom_stick(v) DW3_API(map_view_set_zoom_stick)(v)
 #define dw3_map_view_get_draw(d) DW3_API(map_view_get_draw)(d)
 #define dw3_map_view_tex_taken(g) DW3_API(map_view_tex_taken)(g)

@@ -2,6 +2,7 @@
  * state machine with stubs for the pad, the sound, the save flush, the P6.9
  * restart request and the host's quit. Built with -DDW3_PORT_CONFIRM_TEST. */
 #include "port_confirm.h"
+#include "title_overlay_art.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -30,6 +31,15 @@ int dw3_port_options_restart_enabled(void) { return g_restart_enabled; }
 void dw3_port_restart_request(void) { g_restart_requests++; }
 void dw3_host_request_quit(void) { g_quit_requests++; }
 void dw3_port_confirm_test_sound(int kind) { g_sound[kind]++; }
+/* D1: the answer of the Shared saves / Stage sweep windows. */
+static int g_ask_calls;
+static int g_ask_what;
+static int g_ask_yes = -1;
+void dw3_port_options_ask_answer(int what, int yes) {
+    g_ask_calls++;
+    g_ask_what = what;
+    g_ask_yes = yes;
+}
 void dw3_pc_dialog_set(int active, int kind, int focus) {
     g_view_active = active;
     g_view_kind = kind;
@@ -49,6 +59,12 @@ static int g_fail;
 static void press(int bit) {
     dw3_port_confirm_test_set_pressed(1u << bit);
     dw3_port_confirm_tick();
+    dw3_port_confirm_test_set_pressed(0);
+}
+
+static void press_owned(int bit) {
+    dw3_port_confirm_test_set_pressed(1u << bit);
+    dw3_port_confirm_tick_owned();
     dw3_port_confirm_test_set_pressed(0);
 }
 
@@ -191,6 +207,38 @@ int main(void) {
             }
         }
     }
+
+    /* D1: the Yes / No window of Shared saves and Stage sweep. It is owned by the
+     * Options screen: the title and field menus' own tick leaves it alone; it
+     * opens on No; the press that opened it does not answer it; Yes answers 1,
+     * No and a cancel answer 0, once each. */
+    reset();
+    g_ask_calls = 0;
+    CHECK(dw3_port_confirm_open_ask(DW3_PORT_ASK_SHARED_SAVES) == 1);
+    CHECK(dw3_port_confirm_is_open() && dw3_port_confirm_owned_is_open());
+    CHECK(g_view_active == 1 && g_view_kind == DW3_DIALOG_SHARED_SAVES && g_view_focus == 0);
+    CHECK(dw3_port_confirm_open_ask(DW3_PORT_ASK_STAGE_SWEEP) == 0); /* one window at a time */
+    press(CROSS);                                   /* the title's own tick: ignored */
+    CHECK(dw3_port_confirm_is_open() && g_ask_calls == 0);
+    press_owned(CROSS);                             /* the opening frame */
+    CHECK(dw3_port_confirm_is_open() && g_ask_calls == 0);
+    press_owned(DOWN);                              /* to Yes */
+    CHECK(g_view_focus == 1);
+    press_owned(CROSS);
+    CHECK(!dw3_port_confirm_is_open() && g_view_active == 0);
+    CHECK(g_ask_calls == 1 && g_ask_what == DW3_PORT_ASK_SHARED_SAVES && g_ask_yes == 1);
+    CHECK(g_quit_requests == 0 && g_restart_requests == 0 && g_flush_calls == 0);
+    CHECK(dw3_port_confirm_open_ask(DW3_PORT_ASK_STAGE_SWEEP) == 1);
+    CHECK(g_view_kind == DW3_DIALOG_SWEEP);
+    press_owned(CROSS);                             /* the opening frame */
+    press_owned(CROSS);                             /* Cross on No */
+    CHECK(!dw3_port_confirm_is_open());
+    CHECK(g_ask_calls == 2 && g_ask_what == DW3_PORT_ASK_STAGE_SWEEP && g_ask_yes == 0);
+    CHECK(dw3_port_confirm_open_ask(DW3_PORT_ASK_SHARED_SAVES) == 1);
+    press_owned(CROSS);
+    press_owned(TRIANGLE);                          /* a cancel is a No */
+    CHECK(!dw3_port_confirm_is_open());
+    CHECK(g_ask_calls == 3 && g_ask_yes == 0);
 
     if (g_fail) {
         return 1;

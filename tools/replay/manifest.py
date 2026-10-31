@@ -211,14 +211,19 @@ _add(
 # start of the scenario). Phase 1 switches Widescreen OFF, Fast-forward
 # 2x -> 3x and the Restart hotkey ON; phase 2 only opens the screen again.
 _OPT_P1 = (r"dw3-options: no \S*port_options\.cfg; defaults",
-           r"dw3-port-options: group open display \(2 row\(s\), title\)(?s:.*)"
+           r"dw3-port-options: group open display \(4 row\(s\), title\)(?s:.*)"
            r"dw3-port-options: group close display \(back to the group list\)(?s:.*)"
-           r"dw3-port-options: group open gameplay \(5 row\(s\), title\)(?s:.*)"
+           r"dw3-port-options: group open gameplay \(4 row\(s\), title\)(?s:.*)"
            r"dw3-port-options: group close gameplay \(back to the group list\)(?s:.*)"
+           # D1: the Restart hotkey is the last row of Controls now
+           r"dw3-port-options: group open controls \(5 row\(s\), title\)(?s:.*)"
+           r"dw3-port-options: restart hotkey enabled(?s:.*)"
+           r"dw3-port-options: group close controls \(back to the group list\)(?s:.*)"
            r"dw3-port-options: close \(resume runOptions\)",
            r"dw3-options: saved \S*port_options\.cfg \(widescreen=0 fast_forward=3 restart_hotkey=1 music_volume=10 sfx_volume=10 "
            r"encounter_rate=0 text_speed=0 battle_menu_memory=0\)")
-_OPT_P2 = (r"dw3-port-options: group open gameplay \(5 row\(s\), title\)",
+_OPT_P2 = (r"dw3-port-options: group open gameplay \(4 row\(s\), title\)(?s:.*)"
+           r"dw3-port-options: group open controls \(5 row\(s\), title\)",
            r"dw3-options: \S*port_options\.cfg \(widescreen=0 fast_forward=3 restart_hotkey=1 "
            r"music_volume=10 sfx_volume=10 encounter_rate=0 text_speed=0 battle_menu_memory=0\)",)
 for _v in ("us", "eu"):
@@ -776,7 +781,7 @@ for _lang, _id in (("fr", 3), ("it", 4), ("de", 5), ("es", 6)):
 # screen from the list and returns with the cursor on Cheats.
 for _v in ("us", "eu"):
     _add(Scenario(f"{_v}-options-cheats-listed", _v, "full", timeout=300,
-                  expect_log=((0, r"dw3-port-options: group list n=8 \(cheats listed, master off, "
+                  expect_log=((0, r"dw3-port-options: group list n=10 \(cheats listed, master off, "
                                   r"locked in game 0\)(?s:.*)dw3-port-options: group open cheats \(group\)"),
                               # P51 item 6: the game's menu background under the Options screens
                               (0, r"dw3-options: menu background tile 96x96 from the status sprites "
@@ -809,7 +814,8 @@ for _v, _rec in (("us", "us-title"), ("eu", "eu-lang-en")):
 for _v in ("us", "eu"):
     _add(Scenario(f"{_v}-options-region", _v, "both", timeout=300,
                   phases=(f"{_v}-options-region-p1", f"{_v}-options-region-p2"),
-                  expect_log=((0, r"dw3-options: region_default us saved to \S+port_options\.cfg "
+                  expect_log=((0, r"dw3-port-options: group open saves \(3 row\(s\), title\)(?s:.*)"
+                                  r"dw3-options: region_default us saved to \S+port_options\.cfg "
                                   r"\(takes effect at the next start\)(?s:.*)"
                                   r"dw3-options: region_default eu saved to \S+port_options\.cfg"),
                               (1, r"dw3-options: region_default eu read from \S+port_options\.cfg")),
@@ -1552,7 +1558,7 @@ for _v, _ids in (("us", (0x159, 0x1FA, 0x1C2, 0x158, 0x1F9)),
                   phase_env=((), _ITEMS_ENV + (("DW3_MAP_SYNC", "1"),)),
                   cfg=(("encounter_rate", "2"),) + _BIND_CFG,
                   expect_log=(
-                      (0, r"dw3-port-options: group open display \(2 row\(s\), title\)"),
+                      (0, r"dw3-port-options: group open display \(4 row\(s\), title\)"),
                       (0, r"dw3-port-options: map screen \(full-screen map view\) enabled"),
                       (0, r"dw3-options: saved \S+ \(.*\)"),
                       (1, r"dw3-options: file keys .* map_screen=1 "),
@@ -2362,11 +2368,11 @@ for _v in ("us", "eu"):
 # apply at once and are saved, the screen closes and the menu and the field go
 # on; phase 2 (a new process on the same config dir) shows the values read back.
 _FO_P1 = (r"dw3-port-options: open in game(?s:.*)"
-          r"dw3-port-options: group open display \(2 row\(s\), in game\)(?s:.*)"
+          r"dw3-port-options: group open display \(4 row\(s\), in game\)(?s:.*)"
           r"dw3-port-options: Widescreen is locked in game \(change it at the title\)(?s:.*)"
           r"dw3-port-options: group open sound \(3 row\(s\), in game\)(?s:.*)"
           r"dw3-port-options: music volume 7(?s:.*)"
-          r"dw3-port-options: group open gameplay \(5 row\(s\), in game\)(?s:.*)"
+          r"dw3-port-options: group open gameplay \(4 row\(s\), in game\)(?s:.*)"
           r"dw3-port-options: encounter rate off(?s:.*)"
           r"dw3-port-options: close in game(?s:.*)"
           r"dw3: field menu Triangle cancel \(stay field\)",
@@ -2970,15 +2976,17 @@ _NIN_LOG = (r"dw3-controls: map loaded layout=nintendo source=cfg(?s:.*)"
             r"dw3-controls: first press source=A -> logical cross",)
 
 
+# D1: Region at start moved from Gameplay (4 rows everywhere now) to Saves, which has one
+# row more in the combined build.
 _GP_ROWS = (
-    (r"gameplay \(5 row\(s\), in game\)", r"gameplay \(6 row\(s\), in game\)"),
-    (r"gameplay \(5 row\(s\), title\)", r"gameplay \(6 row\(s\), title\)"),
+    (r"saves \(2 row\(s\), in game\)", r"saves \(3 row\(s\), in game\)"),
+    (r"saves \(2 row\(s\), title\)", r"saves \(3 row\(s\), title\)"),
 )
 
 
 def _both_expect(expect):
-    """The combined (--bin-both) build has the Region row in the Gameplay group,
-    so that group logs 6 rows there, not 5, in game and at the title (P6.51)."""
+    """The combined (--bin-both) build has the Region row in the Saves group (D1; it
+    was in Gameplay), so that group logs 3 rows there, not 2 (P6.51)."""
     out = []
     for p, r in expect:
         for plain, both in _GP_ROWS:
@@ -2987,11 +2995,73 @@ def _both_expect(expect):
     return tuple(out)
 
 
+# D1: field-options and options-persist no longer differ on the combined binary in their log
+# (Gameplay has four rows everywhere); only scenarios that open Saves do (below).
+
+
+# D1 (docs/OPTIONS_REORG.md): the Menus group, the rows that were file-only keys, the
+# Shared saves and Stage sweep windows, the Map buttons screen. Recordings:
+# tools/replay/gen_scenarios.py options_menus .. options_mapbtn.
+_NO_BAD = ((0, r"is not valid"), (0, r"BINDING PROBLEM"))
 for _v in ("us", "eu"):
-    for _name in (f"{_v}-field-options", f"{_v}-options-persist"):
-        _sc = by_name()[_name]
-        SCENARIOS[SCENARIOS.index(_sc)] = dataclasses.replace(
-            _sc, expect_log_both=_both_expect(_sc.expect_log))
+    _add(Scenario(f"{_v}-options-menus", _v, "full", timeout=300,
+                  phases=(f"{_v}-options-menus-p1", f"{_v}-options-menus-p2"),
+                  expect_log=((0, r"dw3-port-options: group open menus \(5 row\(s\), title\)(?s:.*)"
+                                  r"dw3-port-options: equip from items disabled(?s:.*)"
+                                  r"dw3-port-options: equip stays on list disabled(?s:.*)"
+                                  r"dw3-port-options: whole bag disabled(?s:.*)"
+                                  r"dw3-port-options: use item stays disabled(?s:.*)"
+                                  r"dw3-port-options: partner switch disabled(?s:.*)"
+                                  r"dw3-port-options: group close menus \(back to the group list\)"),
+                              (1, r"dw3-options: file keys items_equip_from_items=0 items_equip_stays=0 "
+                                  r"items_bag_view=0 items_use_stays=0 items_partner_switch=0")),
+                  forbid_log=_NO_BAD + ((1, r"is not valid"),),
+                  note="Options > Menus: the five Items-menu switches turned OFF are read back by the next process (D1)"),
+         Scenario(f"{_v}-options-display", _v, "full", timeout=300,
+                  phases=(f"{_v}-options-display-p1", f"{_v}-options-display-p2"),
+                  expect_log=((0, r"dw3-port-options: group open display \(4 row\(s\), title\)(?s:.*)"
+                                  r"dw3-port-options: map mod pack disabled(?s:.*)"
+                                  r"dw3-port-options: version label disabled"),
+                              (1, r"dw3-options: file keys .* show_version=0 map_mod=0 ")),
+                  forbid_log=_NO_BAD + ((1, r"is not valid"),),
+                  note="Options > Display: Map mod pack and Version label turned OFF are read back by the next process (D1)"),
+         Scenario(f"{_v}-options-saves", _v, "full", timeout=300,
+                  expect_log=((0, r"dw3-port-options: group open saves \(2 row\(s\), title\)(?s:.*)"
+                                  r"dw3-port-confirm: open shared saves \(cursor on No\)(?s:.*)"
+                                  r"dw3-port-confirm: No \(shared saves\); nothing changed(?s:.*)"
+                                  r"dw3-options: save_store 0->1 declined(?s:.*)"
+                                  r"dw3-port-confirm: open shared saves \(cursor on No\)(?s:.*)"
+                                  r"dw3-port-confirm: cursor on Yes(?s:.*)"
+                                  r"dw3-port-confirm: Yes \(shared saves\)(?s:.*)"
+                                  r"dw3-options: save_store 0->1 \(confirmed, next start\)(?s:.*)"
+                                  r"dw3-port-options: shared saves disabled"),),
+                  forbid_log=_NO_BAD,
+                  note="Options > Saves > Shared saves: ON asks first (cursor on No); No keeps it OFF, Yes turns it on, Confirm turns it off with no window (D1)"),
+         Scenario(f"{_v}-options-advanced", _v, "full", timeout=300,
+                  expect_log=((0, r"dw3-port-options: group open advanced \(2 row\(s\), title\)(?s:.*)"
+                                  r"dw3-port-confirm: open stage sweep \(cursor on No\)(?s:.*)"
+                                  r"dw3-port-confirm: No \(stage sweep\); nothing changed(?s:.*)"
+                                  r"dw3-options: stage_sweep 0->1 declined(?s:.*)"
+                                  r"dw3-port-options: sweep frames 120 \(next start\)(?s:.*)"
+                                  r"dw3-port-options: sweep frames 150 \(next start\)(?s:.*)"
+                                  r"dw3-port-options: sweep frames 450 \(next start\)(?s:.*)"
+                                  r"dw3-options: saved \S+ \(.*\)"),),
+                  forbid_log=_NO_BAD + ((0, r"dw3-sweep:"),),
+                  note="Options > Advanced: the Stage sweep window (No keeps it OFF) and Sweep frames by 30 and 300 (D1)"),
+         Scenario(f"{_v}-options-mapbtn", _v, "full", timeout=300,
+                  expect_log=((0, r"dw3-port-options: group open mapbtn \(8 row\(s\), title\)(?s:.*)"
+                                  r"dw3-options: map button map_view_zoom_out l1->r1 "
+                                  r"\(swapped: map_view_zoom_in r1->l1\)(?s:.*)"
+                                  r"dw3-options: map buttons reset to the defaults \(open=square zoom_out=l1 "
+                                  r"zoom_in=r1 centre=select scaler_prev=l2 scaler_next=r2 field_open=select\)(?s:.*)"
+                                  r"dw3-port-options: group close mapbtn \(back to controls\)"),),
+                  forbid_log=_NO_BAD,
+                  note="Options > Controls > Map buttons: a button another action has is swapped; Reset puts the seven defaults back (D1)"),
+         )
+for _v in ("us", "eu"):
+    _sc = by_name()[f"{_v}-options-saves"]
+    SCENARIOS[SCENARIOS.index(_sc)] = dataclasses.replace(
+        _sc, expect_log_both=_both_expect(_sc.expect_log))
 
 
 def _nintendo(base_name, name, phase, note):
@@ -3034,11 +3104,11 @@ for _v in ("us", "eu"):
         Scenario(f"{_v}-controls-layout", _v, "full", timeout=300,
                  phases=(f"{_v}-controls-layout-p1", f"{_v}-controls-layout-p2"),
                  expect_log=((0, r"dw3-controls: map loaded layout=playstation source=default(?s:.*)"
-                                 r"dw3-port-options: group open controls \(3 row\(s\), title\)(?s:.*)"
+                                 r"dw3-port-options: group open controls \(5 row\(s\), title\)(?s:.*)"
                                  r"dw3-controls: layout changed playstation -> nintendo \(screen\)(?s:.*)"
                                  r"dw3-controls: map cross<-A circle<-X triangle<-B square<-Y"),
                              (1, r"dw3-controls: map loaded layout=nintendo source=cfg"),
-                             (1, r"dw3-port-options: group open controls \(3 row\(s\), title\)")),
+                             (1, r"dw3-port-options: group open controls \(5 row\(s\), title\)")),
                  forbid_log=((0, r"dw3-controls: map invalid"), (1, r"dw3-controls: map invalid")),
                  note="Controls group: the Button layout row switches to Nintendo and is read back "
                       "from port_options.cfg by the next process (P9.8)"),

@@ -87,9 +87,13 @@ pad 1780 0x0040
 pad 1785 0x0000
 pad 1800 0x0040
 pad 1805 0x0000
-pad 1820 0x4000
+pad 1820 0x0040
 pad 1825 0x0000
-shot 1880 cheats-group-locked
-pad 1900 0x1000
-pad 1905 0x0000
-end 1960
+pad 1840 0x0040
+pad 1845 0x0000
+pad 1860 0x4000
+pad 1865 0x0000
+shot 1920 cheats-group-locked
+pad 1940 0x1000
+pad 1945 0x0000
+end 2000

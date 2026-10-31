@@ -41,7 +41,13 @@ previews, `v0.9.0-preview.N`; the gates below are what turns them into releases.
   2. No known crash: BUG-1 (leaving through Sphaira, US; the Atmosphère
      report after `dw3_game_main returned 0`) is fixed or proven gone, along
      with every other open crash in the OLED plan.
+     BUG-1 status: hardened (every worker thread joined and closed before
+     `main` returns, `dw3-exit:` proof lines and a heap probe;
+     [SPHAIRA_EXIT](SPHAIRA_EXIT.md)); **not proven on the console yet**, OLED
+     row G13 closes it.
   3. The Phase 5 gate is ticked in [Phase 5](#phase-5--playable-on-switch).
+     Status 2026-10-31: met on the OLED for US (preview.56) and EU (preview.57),
+     pending owner confirmation; not ticked ([evidence](#phase-5-gate-evidence)).
 
 ## Priority
 
@@ -86,6 +92,16 @@ highest non-empty tier.
   [TITLE_MENU_DESIGN](TITLE_MENU_DESIGN.md#press-start-readiness-patch-0199). Open: the
   OLED check, [OLED_TEST_PLAN A21](OLED_TEST_PLAN.md), which also answers whether a
   console-only hitch (`dw3-title: slow frame`) adds to it.
+- **BUG-1 (p56 OLED, blocks v1.0.0): crash on exit when started from Sphaira.**
+  The crash is in Sphaira's own `hbl` after our `main` returns (it re-reads the
+  next NRO over the whole heap; `0xD401`). Hardened on the PC/Switch build, no
+  decomp patch: every worker thread (map precompute, map scalers, options
+  prewarm, PSY-Z) is joined and `threadClose()`d before `main` returns (a
+  finished, unclosed thread leaves its stack pages borrowed in that heap), and
+  each step logs `dw3-exit:` lines plus a heap probe. The cause is a strong
+  hypothesis, **not proven on the console**. Reasoning and the P6.38 NextLoad
+  answer: [SPHAIRA_EXIT](SPHAIRA_EXIT.md). Open: the OLED check,
+  [OLED_TEST_PLAN G13](OLED_TEST_PLAN.md).
 
 ### Tier 1 — Stability
 
@@ -235,7 +251,7 @@ listed once, in [Pending OLED checks](#pending-oled-checks).
 | P9.6 | External save converter | open | — |
 | P9.7 | Port options reachable in game | in progress (slice 1, the field menu, and slice 2, battle: built, PC US and EU replays, Switch Ryubing nx scenarios; live Widescreen open; owner OLED checks open) | [PORT_OPTIONS](PORT_OPTIONS.md#options-in-game-p97), [roadmap](#phase-9--port-options-menu) |
 | P9.8 | Confirm / cancel layout option (PS positional or Nintendo A/B). Phase 1 of the controls bundle built 2026-10-28: the mapper, the Controls group with the Button layout row, `dw3-controls:` logs, replay scenarios; OLED check open | built, OLED check open | [roadmap](#phase-9--port-options-menu), [CONTROLS_BUNDLE](CONTROLS_BUNDLE.md), [HOTKEYS](HOTKEYS.md) |
-| P9.9 | Options screen redesign in the title menu's style, room for more rows (slice 1 done 2026-10-27: groups and sub-screens; OLED pending; slice 2 done 2026-10-28: Cheats screen restyled as a scrolling sub-screen and value changes are dirty-row updates; the Controls, Help and Walkthrough groups came with their features, #338, #333, #363) | slices 1 and 2 merged (#303, #327) | [roadmap](#phase-9--port-options-menu), [PORT_OPTIONS](PORT_OPTIONS.md) |
+| P9.9 | Options screen redesign in the title menu's style, room for more rows (slice 1 done 2026-10-27: groups and sub-screens; OLED pending; slice 2 done 2026-10-28: Cheats screen restyled as a scrolling sub-screen and value changes are dirty-row updates; the Controls, Help and Walkthrough groups came with their features, #338, #333, #363; **D1 step 1, 2026-10-31: the ten-group tree, Menus, Advanced, Map buttons and a row for every file-only key**) | slices 1 and 2 merged (#303, #327); D1 step 1 in review | [roadmap](#phase-9--port-options-menu), [PORT_OPTIONS](PORT_OPTIONS.md) |
 | P10.1 | Switch features goal note | done | [SWITCH_FEATURES](SWITCH_FEATURES.md) |
 | P10.2 | Lifecycle hardening (has P5.3's leftover) | in progress (sleep and resume: owner confirmed on the OLED, 2026-10-24; HOME during a save write: atomic write, exit gate and `dw3-save:` log lines done, OLED check open) | [SWITCH_FEATURES](SWITCH_FEATURES.md) |
 | P10.3 | Presentation modes | open | — |
@@ -254,8 +270,10 @@ its done-when. The ordered session plan (written for preview.36) is
 [OLED_TEST_PLAN](OLED_TEST_PLAN.md).
 
 - **Owner preview.47 US log (2026-10-28): PASSED** A5, A7, A9-A12, C7, E1.3, E2.1, E2.2, G8 (the `items_partner_switch=0` sub-check of G8 not done) and B15b; marks and log evidence are in [OLED_TEST_PLAN](OLED_TEST_PLAN.md). Owner confirmed on the OLED (2026-10-28, preview.47/48): app name #289 shows "Digimon World 3 NX" (**PASSED**); B16 map view icons, balloon and cursor work (**PASSED**), except the name box jumping while zooming with the right stick, fixed in the branch `fix/map-namebox-stick-zoom` (the placement is latched when the cursor gets on a location, as the game does; retest B16 with the stick on a location). **Owner preview.48 EU OLED log (2026-10-28):** E1.6b EU language select 16:9 **PASSED by log** (`dw3-widescreen: gutter 53 px per side (was -1; 16:9) mode file 0x165 frame 1`; no 4:3 seen). G9 combined `.nro`: the both-present picker, the button choice and the "always" save **PASSED by log** (`data found us=1 eu=1`, `picker shown (default entry us, timeout 3000 ms)`, `picker result eu by button A after 19473 ms always=1`, `saved last_region=eu region_default=eu`, `running eu`); the 3 s timeout did not fire because the owner moved the cursor first, which cancels the countdown by design (`dw3_picker_step`), so G9.3's timeout, the only-US, only-EU, Minus and disc-in-parent rows stay open. B16: the name-box jitter was not reproduced on preview.48 (fix #326 ships in preview.49 anyway). Not tested in that session: D13 #188 (one Techniques command only; the audio health line was healthy, 0 underruns, 0 key-on failed, voices max 23 of 24), B17 map mod (no mods folder on the SD), G2 save + HOME (no `dw3-save` line). **Owner feedback fixed in `fix/p48-feedback`:** the EU language select also confirms with the confirm button (patch 0187, E1.6c) and the full-screen map keeps the cursor and the balloon at one on-screen size while zooming ([P6.32 section 11](P6.32_MAP_ZOOM.md#11-fixed-size-overlay-sprites-owner-preview48-oled); retest B16). Still open: D13 #188.
-- **P5 gate:** start → first boss on hardware, US and EU. The Phase 5 gate is
-  not met yet (owner, 2026-10-24); see [Phase 5](#phase-5--playable-on-switch).
+- **P5 gate: met on the OLED, US (2026-10-30, preview.56) and EU (2026-10-31,
+  preview.57), pending owner confirmation.** Start → first boss (Tamer Genji, progress 3)
+  is in the logs for both regions; the proof lines are in
+  [Phase 5 gate evidence](#phase-5-gate-evidence).
 - **P5.5 (done, G10 passed US and EU):** the stage sweep on the OLED; to repeat it, `stage_sweep=1` in
   `port_options.cfg`, start the game, wait for `dw3-sweep: done`, send
   `dw3.log` ([P5.5_STAGE_SWEEP](P5.5_STAGE_SWEEP.md), OLED_TEST_PLAN G10).
@@ -884,9 +902,40 @@ speed.
 
 Gate: start → first boss on hardware, both versions.
 
-**Gate status (owner, 2026-10-24): not met.** The owner has not yet tested
-start → first boss on hardware, so the gate stays open. The check is in
-[Pending OLED checks](#pending-oled-checks).
+**Gate status (2026-10-31): met on both regions, pending owner confirmation.**
+The US proof is preview.56 (2026-10-30); the EU proof is preview.57 (2026-10-31),
+both on the OLED. The owner ticks the gate. See [Pending OLED checks](#pending-oled-checks)
+and the table below.
+
+### Phase 5 gate evidence
+
+**The first boss.** Tamer Genji, the first story boss (the same fight as the
+[P3 gate](P3_GATE.md#first-story-boss-us)). The story step is `GAME.progress == 3`
+in the Asuka Central Sector (`WSTAG200`, field mode `0x200`, stage file 451 on US;
+`src/field/stages/central_sector/wstag200.c`): `endEvent50` starts event battle 1
+(`EVENT_BATTLE(1)`), and `endEvent52` sets `GAME.progress = 4`. The walkthrough
+row is `ch01.s04` ("Speak to Genji ... a battle starts", progress 3 to 4). The
+script is the same file in both regions; the `#if VERSION_` lines are not in
+`endEvent50` or `endEvent52`. The boss is proven in the log by the event battle
+`FIGHTSTG_start` in mode `0x200`, its win (`WFIGHTMN_endBattle result=1`), and
+`STFGTREP report battle=200` followed by `STFGTREP return fieldMode=0x200`.
+Progress is not logged by the game, so "start" means a New Game (no
+`STGMCARD_loadSave` line in the run), and the log proves the battle, not the
+progress value.
+
+| Region | Evidence | Log line(s) | Date | Preview | Verdict |
+|---|---|---|---|---|---|
+| US | New Game (no `loadSave`), Start-skip on the opening movie, Tamer Service, Central Sector (`0x200`), Genji battle won, back in the field, then Asuka (`0x206`), a second battle (`battle=34`), and a clean quit by title Quit game. Switch in handheld mode (`EGL/GLES2 ready 1280x720 (handheld)`), US disc picked by the owner (`picker result us by button A`) | `tmp/evidence/20261030-1613-p56-crash/OLD/dw3.log.latest` (same file as `tmp/oled-p56/logs/OLD/dw3.log.latest`): `version=0.6.5-preview.56` l.2; handheld l.13; `running us` l.16; title plaques l.378; `pickStage mode=0x2d7` l.1048; `dw3-movie: Start-skip` l.3334; `pickStage mode=0x203` l.3506; `pickStage mode=0x204` l.4249; `pickStage mode=0x200 stageFile=451` l.4541; `FIGHTSTG_start` l.4620; `WFIGHTMN_endBattle result=1 requestMode=0x1400 fieldMode=0x200` l.4867; `STFGTREP report battle=200` l.4873; `STFGTREP return fieldMode=0x200` l.4912; `pickStage mode=0x206 stageFile=454` l.5022; `dw3_game_main returned 0 ... title Quit game` l.7182 | 2026-10-30 (file time 15:57, UTC-3) | v0.6.5-preview.56 | **MET** (pending owner confirmation) |
+| EU | New Game (no `loadSave`), Start-skip on the opening movie, Chamber, Lobby, Tamer Service, Central Sector (`0x200`, EU stage 466), Genji battle won, back in the field (`0x200`), then `0x206` (stage 469), autosave written at `0x206`, quit by title Quit game. Console in handheld mode (`EGL/GLES2 ready 1280x720 (handheld)`), EU picked by the stored `region_default=eu` | `tmp/evidence/20261031-ftp-console-logs/dw3.log` (copy of the console's `dw3.log`, preview.57, `running eu`): version l.3; `running eu` l.14; handheld l.24; title plaques l.554; `pickStage mode=0x2d7` l.593; `Start-skip` l.1851; `pickStage mode=0x203` l.2005; `pickStage mode=0x204` l.2870; `pickStage mode=0x200 stageFile=466` l.3193; `FIGHTSTG_start` l.3266; `WFIGHTMN_endBattle result=1 requestMode=0x1400 fieldMode=0x200` l.3386; `STFGTREP report battle=200` l.3392; `STFGTREP return fieldMode=0x200` l.3417; `pickStage mode=0x206 stageFile=469` l.3523; `dw3_game_main returned 0 ... title Quit game` l.4024 | 2026-10-31 (preview.57 session) | v0.6.5-preview.57 | **MET** (pending owner confirmation) |
+
+**EU closed (2026-10-31).** The EU row is the same sequence as the US row, from the
+console log copied over FTP after the earlier audit. The EU Genji stage is
+`stageFile=466` (US 451). Test row F6-EU in [OLED_TEST_PLAN](OLED_TEST_PLAN.md) is
+filled with this result.
+
+**Status.** Both rows are one owner run each, from a New Game on the OLED. The
+gate line says "pending owner confirmation": the owner checks both rows against the
+logs and ticks the gate, as with the other gates.
 
 ## Phase 6 — Polish and options
 
@@ -1474,7 +1523,18 @@ PS1 game, with vanilla-safe defaults and persistence on owner storage.
   has the audit and the approved ten-group tree (new Menus and Advanced groups, a Map
   buttons sub-page, rows for `show_version`, `map_mod`, `save_store`, `stage_sweep`,
   the `items_*` keys), the D2 `defaults_gen` migration and the build order (reorg and new
-  rows, D2 + D5, D3, D4). Not built yet.
+  rows, D2 + D5, D3, D4).
+  **D1 step 1 built (2026-10-31, branch `feat/d1-options-reorg`):** the group order (Display, Sound,
+  Gameplay, Menus, Controls, Saves, Cheats, Advanced, Help, Walkthrough: `dw3_optgroup_order[]`), the new
+  **Menus** group (the five `items_*` switches), **Advanced** (Stage sweep, Frames per stage; the sweep's
+  Start over now rewrites its key 2 -> 1 once it began, so it no longer clears its progress on every boot),
+  the **Map buttons** sub-screen of Controls (the seven `map_view_*` bindings, a swap on conflict, Reset),
+  Display rows Map mod pack and Version label, the Saves row Shared saves (exp.) (title only, a Yes / No
+  window when turned on), Restart hotkey moved to Controls and Region at start to Saves; registry rows 16 to
+  26 appended, no cfg key changed; Help text, the OLED rows, the cfg key-budget test (38 of 48 entries) and the
+  replay families regenerated once. **Not in this PR:** D2 + D5 (Controls defaults, the `defaults_gen`
+  migration, the Map scaler row and FSR 1), D3 (one global file), D4 (the scrolling background). Details:
+  [PORT_OPTIONS](PORT_OPTIONS.md#options-reorganization-d1). OLED rows D1.1 to D1.8 open.
   **Still open:** OLED validation (OLED_TEST_PLAN A5, A9 to A13); Controls (P6.12) and Walkthrough (P6.35) are hidden
   placeholders in `port_options_groups.h` (Help, P6.30, is built since 2026-10-28); the open questions below are answered
   by defaults (Cheats group listed only with the master switch on; the plain dim of

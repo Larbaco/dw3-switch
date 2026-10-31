@@ -181,7 +181,8 @@ field and to battle, on a US or EU disc. On a Switch OLED the title, field,
 battles, movies, audio and saves work (US is the most tested; EU came later).
 
 Expect bugs, rough visuals in some scenes and the occasional crash. A full run
-on real hardware from the start to the first boss is not confirmed yet, and
+on real hardware from the start to the first boss is confirmed on the OLED for US
+(2026-10-30) and EU (2026-10-31), pending the owner's check, and
 many new features are checked on PC and in the Ryubing emulator before they
 reach a console; each release's notes say which. Known open items include EU
 audio after many techs

@@ -25,6 +25,15 @@
  *   tick               one Options tick with nothing pressed
  *   map                print the map in force (ten digits) and its layout
  *   noinit             skip persist_init (session-only)
+ *   l1 | r1            the L1 / R1 buttons (Sweep frames steps by 300)
+ *   keys               print every registry key, one per line (key-budget test)
+ *   storestr K V       dw3_port_options_store_str(K, V); prints rc
+ *   sweepstarted       dw3_port_options_sweep_started() (the sweep began a Start over)
+ *   gen                print dw3_port_options_keys_generation()
+ * Built with -DDW3_ASK_FAKE the Yes / No window of Shared saves and Stage sweep is
+ * a fake the harness answers (port/options/confirm.c has its own test):
+ *   askstate           print window=open|closed and what it asks about
+ *   askyes | askno     answer the window
  */
 #include "port_audio.h"
 #include "port_button_map.h"
@@ -37,6 +46,19 @@
 
 void dw3_port_options_test_set_pressed(unsigned mask);
 void dw3_port_options_test_goto_row(int reg);
+
+#ifdef DW3_ASK_FAKE
+#include "port_confirm.h"
+static int g_fake_open;
+static int g_fake_what;
+int dw3_port_confirm_open_ask(int what) {
+    g_fake_open = 1;
+    g_fake_what = what;
+    return 1;
+}
+int dw3_port_confirm_owned_is_open(void) { return g_fake_open; }
+void dw3_port_confirm_tick_owned(void) {}
+#endif
 
 enum { BIT_UP = 4, BIT_RIGHT = 5, BIT_DOWN = 6, BIT_LEFT = 7, BIT_CROSS = 13,
        BIT_TRIANGLE = 14 };
@@ -206,6 +228,32 @@ int main(int argc, char **argv) {
             printf("level%d=%d\n", atoi(argv[i + 1]),
                    dw3_port_options_level(atoi(argv[i + 1])));
             i += 1;
+        } else if (strcmp(argv[i], "l1") == 0) {
+            press(10);
+        } else if (strcmp(argv[i], "r1") == 0) {
+            press(11);
+        } else if (strcmp(argv[i], "keys") == 0) {
+            int k;
+
+            for (k = 0; k < dw3_port_options_count(); k++) {
+                if (dw3_port_options_key(k) != NULL) {
+                    printf("%s\n", dw3_port_options_key(k));
+                }
+            }
+        } else if (strcmp(argv[i], "storestr") == 0 && i + 2 < argc) {
+            printf("storestr rc=%d\n", dw3_port_options_store_str(argv[i + 1], argv[i + 2]));
+            i += 2;
+        } else if (strcmp(argv[i], "sweepstarted") == 0) {
+            dw3_port_options_sweep_started();
+#ifdef DW3_ASK_FAKE
+        } else if (strcmp(argv[i], "askstate") == 0) {
+            printf("window=%s what=%d\n", g_fake_open ? "open" : "closed", g_fake_what);
+        } else if (strcmp(argv[i], "askyes") == 0 || strcmp(argv[i], "askno") == 0) {
+            g_fake_open = 0;
+            dw3_port_options_ask_answer(g_fake_what, strcmp(argv[i], "askyes") == 0);
+#endif
+        } else if (strcmp(argv[i], "gen") == 0) {
+            printf("gen=%u\n", dw3_port_options_keys_generation());
         } else if (strcmp(argv[i], "env") == 0 && i + 2 < argc) {
             dw3_port_options_apply_env(atoi(argv[i + 1]), atoi(argv[i + 2]));
             i += 2;

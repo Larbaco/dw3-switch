@@ -16,12 +16,16 @@ pad 430 0x0040
 pad 435 0x0000
 pad 450 0x0040
 pad 455 0x0000
-pad 470 0x4000
+pad 470 0x0040
 pad 475 0x0000
-shot 530 cheats-open
-pad 550 0x1000
-pad 555 0x0000
-shot 610 cheats-back
-pad 630 0x1000
-pad 635 0x0000
-end 690
+pad 490 0x0040
+pad 495 0x0000
+pad 510 0x4000
+pad 515 0x0000
+shot 570 cheats-open
+pad 590 0x1000
+pad 595 0x0000
+shot 650 cheats-back
+pad 670 0x1000
+pad 675 0x0000
+end 730

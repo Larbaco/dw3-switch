@@ -30,6 +30,7 @@
  * ensure_gl (restart, Return to title, EU language select), the Yes / No one
  * by the draw. */
 #include "nx_title_overlay.h"
+#include "nx_exit.h"
 #include "nx_title_fade.h"
 
 #include "../../pc/src/title_options_cache.h"
@@ -148,6 +149,23 @@ static Thread s_prewarm_thread;
 static void options_prewarm_entry(void *arg) {
     (void)arg;
     dw3_options_cache_prewarm_worker();
+}
+
+/* BUG-1: the last prewarm thread is joined and closed here. Without this it
+ * finished but was never threadClose()d, which leaves its stack pages
+ * svcMapMemory-borrowed (Perm_None) in the heap the loader reads the next NRO
+ * over (docs/SPHAIRA_EXIT.md). No new thread starts afterwards. */
+int dw3_nx_title_overlay_shutdown(void) {
+    int still = 0;
+
+    s_prewarm_failed = 1; /* the draw path starts no more workers */
+    if (s_prewarm_thread_live) {
+        still = dw3_nx_exit_join(&s_prewarm_thread, "options prewarm");
+        s_prewarm_thread_live = 0;
+    } else {
+        dw3_nx_exit_log("thread options prewarm: none live (nothing to close)");
+    }
+    return still;
 }
 /* Port options screen opacity, 0..255. */
 static int s_options_alpha;
@@ -637,9 +655,14 @@ static void draw_layers(int vx, int vy, int vw, int vh) {
                 threadClose(&s_prewarm_thread);
                 s_prewarm_thread_live = 0;
             }
-            if (R_FAILED(threadCreate(&s_prewarm_thread, options_prewarm_entry,
-                                      NULL, NULL, 0x20000, 0x3B, 2)) ||
-                R_FAILED(threadStart(&s_prewarm_thread))) {
+            Result rc = threadCreate(&s_prewarm_thread, options_prewarm_entry,
+                                     NULL, NULL, 0x20000, 0x3B, 2);
+
+            if (R_SUCCEEDED(rc) && R_FAILED(threadStart(&s_prewarm_thread))) {
+                threadClose(&s_prewarm_thread); /* created: its stack is borrowed */
+                rc = MAKERESULT(Module_Libnx, LibnxError_BadInput);
+            }
+            if (R_FAILED(rc)) {
                 TITLE_LOG("dw3-title-overlay: options prewarm thread not "
                           "started; opens compose on the frame thread");
                 dw3_options_cache_prewarm_cancel();

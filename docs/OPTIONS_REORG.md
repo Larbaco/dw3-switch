@@ -1,9 +1,14 @@
 # Options reorganization (D1 design)
 
 Status: **design approved by the owner on 2026-10-31** (answers to the five questions are
-recorded in [section 7](#7-owner-decisions-2026-10-31)). Docs only: no game code, no
-registry change and no replay reference change has been made. The build is a series of
-separate PRs ([order](#8-build-order)).
+recorded in [section 7](#7-owner-decisions-2026-10-31)). The build is a series of
+separate PRs ([order](#8-build-order)). **Step 1 (reorganization and new rows) is built**
+(branch `feat/d1-options-reorg`, 2026-10-31; as built: [PORT_OPTIONS](PORT_OPTIONS.md#options-reorganization-d1)).
+Steps 2 to 4 (D2 + D5, D3, D4) are not. Differences of step 1 from the text below: the Map
+scaler row is not in it (it comes with D5, which owns the scaler default), so Display has four rows
+(Widescreen, Full-screen map, Map mod pack, Version label); the label "Shared saves (exp.)"
+and "Frames per stage" are shorter than the design's (the generator's 290 px limit); the message
+line of Shared saves is "Experimental: US and EU share saves. Next start." (690 px).
 
 Source: the owner's decisions of 2026-10-31, item 2 (A and A cont.): *every
 improvement or change versus the original must be switchable on/off from the Options

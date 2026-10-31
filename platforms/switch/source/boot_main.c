@@ -35,6 +35,8 @@
 #include "../psyz_backend/nx.h"
 #include "../psyz_backend/nx_crash.h"
 #include "../psyz_backend/nx_crash_notice.h"
+#include "../psyz_backend/nx_exit.h"
+#include "../psyz_backend/nx_title_overlay.h"
 #include "../psyz_backend/nx_debug_overlay.h"
 #include "../psyz_backend/nx_mem_budget.h"
 #include "../psyz_backend/nx_mesh_debug.h"
@@ -629,6 +631,25 @@ int dw3_host_relaunch_request(Dw3Region target, char *why, size_t cap) {
  * core) while the title plays; it frees what it allocated when it is done
  * (port/map_view/map_view.c). */
 static Thread s_map_thread;
+static int s_map_thread_live;
+
+/* A low-priority worker on core 2 (the game and audio threads run on the
+ * default core). Returns 0 when it runs. A thread whose threadStart failed is
+ * threadClose()d here: it was created, so its stack is borrowed until then. */
+static int dw3_nx_start_worker(Thread *t, void (*fn)(void *), void *arg,
+                               size_t stack) {
+    if (R_FAILED(threadCreate(t, fn, arg, NULL, stack, 0x3B, 2))) {
+        return -1;
+    }
+    if (R_FAILED(threadStart(t))) {
+        threadClose(t);
+        return -1;
+    }
+    return 0;
+}
+/* BUG-1: set once the exit path has joined the workers; no thread starts after. */
+static int s_workers_closed;
+static int g_workers_still; /* worker threads still running after the budget */
 
 static void map_view_precompute_entry(void *arg) {
     (void)arg;
@@ -661,6 +682,9 @@ static void map_view_job_entry(void *p) {
 int dw3_map_view_async_start(void (*fn)(void *), void *arg) {
     int i;
 
+    if (s_workers_closed) {
+        return -1; /* leaving: the caller builds on its own thread */
+    }
     for (i = 0; i < 2; ++i) {
         MapViewSlot *slot = &s_map_slots[i];
         int st = __atomic_load_n(&slot->state, __ATOMIC_ACQUIRE);
@@ -674,9 +698,7 @@ int dw3_map_view_async_start(void (*fn)(void *), void *arg) {
         slot->fn = fn;
         slot->arg = arg;
         slot->state = 1;
-        if (R_FAILED(threadCreate(&slot->thread, map_view_job_entry, slot, NULL,
-                                  0x40000, 0x3B, 2)) ||
-            R_FAILED(threadStart(&slot->thread))) {
+        if (dw3_nx_start_worker(&slot->thread, map_view_job_entry, slot, 0x40000)) {
             INFOF("dw3-map: scaler worker thread not started (slot %d)", i);
             slot->state = 0;
             return -1;
@@ -689,11 +711,56 @@ int dw3_map_view_async_start(void (*fn)(void *), void *arg) {
 
 static void map_view_precompute_start(const char *config_dir) {
     dw3_map_view_init(config_dir);
-    if (R_FAILED(threadCreate(&s_map_thread, map_view_precompute_entry, NULL,
-                              NULL, 0x40000, 0x3B, 2)) ||
-        R_FAILED(threadStart(&s_map_thread))) {
+    if (dw3_nx_start_worker(&s_map_thread, map_view_precompute_entry, NULL, 0x40000)) {
         INFOF("map view precompute thread not started");
+    } else {
+        s_map_thread_live = 1;
     }
+}
+
+/* BUG-1 (docs/SPHAIRA_EXIT.md): every worker thread this file and the
+ * title overlay started is joined and threadClose()d here, before main()
+ * returns. A libnx thread that finished but was never closed keeps its stack
+ * svcMapMemory-borrowed (Perm_None) in the heap; Sphaira's hbl then fails the
+ * read of the next NRO over that heap with 0xD401 and svcBreaks. The forwarder
+ * path never reaches that read (hbl exits the process), which is why only the
+ * Sphaira launch crashed. One `dw3-exit:` line per thread. */
+static void dw3_nx_workers_shutdown(void) {
+    int i, still = 0;
+
+    if (s_workers_closed) {
+        return;
+    }
+    s_workers_closed = 1;
+    dw3_map_view_precompute_cancel();
+    if (s_map_thread_live) {
+        still += dw3_nx_exit_join(&s_map_thread, "map precompute");
+        s_map_thread_live = 0;
+    } else {
+        dw3_nx_exit_log("thread map precompute: not started (nothing to close)");
+    }
+    for (i = 0; i < 2; ++i) {
+        MapViewSlot *slot = &s_map_slots[i];
+        int st = __atomic_load_n(&slot->state, __ATOMIC_ACQUIRE);
+        char name[32];
+
+        if (st == 0) {
+            continue; /* never used, or closed already */
+        }
+        snprintf(name, sizeof(name), "map scaler slot %d", i);
+        /* st 1 is a build still running: join waits for it (a Lanczos2 build
+         * is about 6 s) within the exit budget. st 2 is finished, not closed. */
+        if (dw3_nx_exit_join(&slot->thread, name) == 0) {
+            slot->state = 0;
+        } else {
+            ++still;
+        }
+    }
+    still += dw3_nx_title_overlay_shutdown();
+    still += dw3_nx_os_threads_shutdown();
+    dw3_nx_exit_log("worker threads closed in %u ms, %d still running",
+                    (unsigned)dw3_nx_exit_elapsed_ms(), still);
+    g_workers_still = still;
 }
 
 /* atexit() takes an address, which the `both` redirect (a macro) cannot give. */
@@ -848,9 +915,45 @@ static int apply_test_env(void) {
     return n;
 }
 
+/* BUG-1: set when the game loop has ended and the exit path is running. */
+static int g_exit_trace;
+static int g_exit_result;
+
+/* Registered first, so it runs last: after the memcard, option and audio
+ * handlers, the last point at which dw3.log can still be written. The final
+ * heap probe is what the loader's next read sees; the next run's log and the
+ * absence of an Atmosphère report answer the rest. */
+static void dw3_nx_exit_final(void) {
+    int dirty = 0;
+
+    if (g_exit_trace) {
+        dirty = dw3_nx_exit_heap_probe("final, after the exit handlers");
+        dw3_nx_exit_log("leaving to the loader: return %d, envHasNextLoad=%d, "
+                        "%u ms since the game loop ended",
+                        g_exit_result, envHasNextLoad() ? 1 : 0,
+                        (unsigned)dw3_nx_exit_elapsed_ms());
+        dirty += g_workers_still;
+        if (dirty > 0 && envHasHeapOverride()) {
+            /* A borrowed heap page (or a thread still running) makes the
+             * loader's read of the next NRO fail with 0xD401 and svcBreak (an
+             * Atmosphere report, BUG-1). Ending the process is the clean way
+             * out: the saves and the cfg are written, a relaunch simply does
+             * not happen and the next start by hand opens the chosen region. */
+            dw3_nx_exit_log("SAFETY: %d borrowed region(s) / running thread(s) "
+                            "left; not returning to the loader (its read of "
+                            "the next NRO would fail, BUG-1). Ending the "
+                            "process; start the game again by hand", dirty);
+            dw3_nx_log_close();
+            svcExitProcess();
+        }
+    }
+    dw3_nx_log_close();
+}
+
 int main(int argc, char **argv) {
     int test_env_count;
 
+    atexit(dw3_nx_exit_final);
     test_env_count = apply_test_env();
 
     dw3_nxlink_connect(argc, argv);
@@ -909,6 +1012,7 @@ int main(int argc, char **argv) {
               DW3_NX_TEST_ENV_STR);
     }
     dw3_nxlink_log_state();
+    dw3_nx_exit_loader_report(); /* BUG-1: who launched us, what the loader gave */
     /* P5.4: SD crash report sink. Does not touch memcard atexit / quit-flush. */
     dw3_nx_crash_install();
 
@@ -1021,6 +1125,15 @@ int main(int argc, char **argv) {
         /* Logged setup failure (runtime, audio, memcard, boot TIM), not a
          * crash: exit(1) stays a plain exit. */
         dw3_nx_crash_allow_exit();
+        /* BUG-1: the threads and services init_paths opened before it failed
+         * are closed too, so the loader gets a clean heap back. */
+        dw3_nx_exit_begin();
+        g_exit_trace = 1;
+        g_exit_result = 1;
+        dw3_nx_exit_log("setup failed; closing what init_paths opened");
+        dw3_nx_workers_shutdown();
+        dw3_nx_audio_shutdown();
+        dw3_nx_gpu_shutdown();
         dw3_switch_user_exit();
         if (g_applet_exit_locked) {
             appletUnlockExit();
@@ -1055,7 +1168,15 @@ int main(int argc, char **argv) {
               : g_relaunch_target != DW3_REGION_NONE ? "relaunch into the other region"
 #endif
               : "title Quit game");
+        dw3_nx_exit_begin();
+        g_exit_trace = 1;
+        dw3_nx_exit_log("game loop ended (return %d); closing in reverse order",
+                        game_result);
+        dw3_nx_exit_heap_probe("before cleanup");
         memcard_host_shutdown();
+        dw3_nx_exit_log("memcard flushed");
+        /* BUG-1: every worker thread is joined and closed first. */
+        dw3_nx_workers_shutdown();
         /* P38: leave the way the P4 sample does, services closed in reverse
          * order of their opening, before libnx tears the rest down. Quit game
          * (P6.28) was the first return from main that was not a HOME kill, and
@@ -1065,13 +1186,24 @@ int main(int argc, char **argv) {
         INFOF("audio stopped");
         dw3_nx_gpu_shutdown();
         INFOF("gpu closed; leaving main");
+        dw3_nx_exit_log("gpu closed (EGL terminated), user service closed next");
         dw3_switch_user_exit();
-        dw3_nxlink_stdio_shutdown();
+        {
+            const int had_socket = g_nxlink_socket_initialized;
+
+            dw3_nxlink_stdio_shutdown();
+            dw3_nx_exit_log("nxlink: %s",
+                            had_socket ? "socket service closed"
+                                       : "socket service never opened (no nxlink host)");
+        }
         if (g_applet_exit_locked) {
             appletUnlockExit();
             g_applet_exit_locked = 0;
+            dw3_nx_exit_log("appletUnlockExit done");
         }
-        dw3_nx_log_close();
+        dw3_nx_exit_heap_probe("after cleanup");
+        g_exit_result = game_result;
+        /* dw3.log is closed by dw3_nx_exit_final, the last atexit handler. */
         return game_result;
     }
 }
