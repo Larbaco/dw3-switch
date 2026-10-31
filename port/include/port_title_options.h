@@ -36,4 +36,14 @@ void dw3_port_title_options_draw(int layer_id, int x, int y, int selected);
 /* Hide the native title overlay (menu plaques, logo, fade); used by restart. */
 void dw3_port_title_overlay_reset(void);
 
+/* PRESS START only when the game is ready to answer it (patch 0199,
+ * port/options/title_ready.c). `begin`: the title menu task starts. `frame`:
+ * one tick on PRESS START before the original reads the pad; returns 1 when
+ * the prompt may be drawn: this tick reads Start (and, EU, the logo has been
+ * composed or 30 frames passed). `drawn`: the menu is about
+ * to draw PRESS START (the frame the proof line reports). */
+void dw3_port_title_prompt_begin(void);
+int dw3_port_title_prompt_frame(int substate, int start_pressed);
+void dw3_port_title_prompt_drawn(void);
+
 #endif
