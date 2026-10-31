@@ -220,7 +220,7 @@ keys are ignored; a `format` above 1 refuses the pack.
 - Which pack: the first folder (by name) under the mods folder whose manifest is
   valid and lists the running region. `DW3_MOD_PACK=<folder>` picks one (PC,
   tests); `DW3_MODS_DIR` moves the mods folder (tests). Off switch:
-  `map_mod=0` in `port_options.cfg` (a file-only key, default 1; it only matters
+  Options > Display > **Map mod pack** OFF (D1; `map_mod=0` in `port_options.cfg`, default 1; it only matters
   when the view itself is on: `map_screen=1`, default 0 since P6.32 phase 1). No pack, an unreadable one, a wrong size: the original path
   runs, unchanged and bit-identical (the replays prove it).
 - The picture: the pack's map, then every reveal piece the game sends (the
@@ -279,7 +279,7 @@ their 4-bit palettes are the last rows of the page.
    `sdmc:/switch/dw3/`), so that `sdmc:/switch/dw3/mods/<pack>/mod.json` exists.
 3. Start the game, open the Map (Plus, Map), press **Y**. `dw3.log` has the
    `dw3-map: mod: pack ... loaded` line. To go back to the original map, delete
-   the folder or set `map_mod=0`.
+   the folder, or turn Options > Display > Map mod pack OFF (`map_mod=0`).
 4. On the PC the same folder goes under `<config dir>/mods/` (next to
    `port_options.cfg`).
 

@@ -24,8 +24,28 @@ enum {
      * = 0): Controls opens it. Its ten rows are the PS buttons in map order
      * (port_button_map.h), not registry rows; a row's value is its source. */
     DW3_OPTGRP_CUSTOM = 8,
-    DW3_OPTGRP_COUNT = 9,
+    /* D1 (docs/OPTIONS_REORG.md): the five Items-menu switches. */
+    DW3_OPTGRP_MENUS = 9,
+    /* D1: the stage sweep's two rows (test aid; listed with Cheats). */
+    DW3_OPTGRP_ADVANCED = 10,
+    /* D1: the Map buttons sub-screen of Controls. Never listed (built = 0):
+     * Controls opens it. Its eight rows are the seven map_view_* bindings and
+     * the Reset map buttons action (port/options/map_buttons.c), not registry
+     * rows, like Customize. */
+    DW3_OPTGRP_MAPBTN = 11,
+    DW3_OPTGRP_COUNT = 12,
     DW3_OPTGRP_MAX_ROWS = 10
+};
+
+/* D1: the order of the group list. The ids above never change (the overlay's
+ * lettering and the page codes are keyed by them), so the list walks this table
+ * instead of the enum: settings first, the test aids and the two help screens
+ * last. Customize and Map buttons are sub-screens and are not in it. */
+enum { DW3_OPTGROUP_ORDER_COUNT = 10 };
+static const int dw3_optgroup_order[DW3_OPTGROUP_ORDER_COUNT] = {
+    DW3_OPTGRP_DISPLAY, DW3_OPTGRP_SOUND, DW3_OPTGRP_GAMEPLAY, DW3_OPTGRP_MENUS,
+    DW3_OPTGRP_CONTROLS, DW3_OPTGRP_SAVES, DW3_OPTGRP_CHEATS, DW3_OPTGRP_ADVANCED,
+    DW3_OPTGRP_HELP, DW3_OPTGRP_WALKTHROUGH
 };
 
 /* P51 item 4: the Region at start row (registry row 10) exists in the combined
@@ -57,18 +77,34 @@ typedef struct Dw3OptGroup {
  * 8 Auto-save, 9 Button layout, 10 Region at start (combined image only),
  * 11 Customize buttons, 12 Reset to default (P6.12), 13 Turbo music (P6.36,
  * Sound group), 14 Switch glyphs (P10.6, Controls group, Switch only), 15 Map
- * screen (P6.32 phase 4, Display group). Restart
- * hotkey stays in Gameplay (moving it would change every Gameplay reference for no gain). */
+ * screen (P6.32 phase 4, Display group). D1 appends 16 Equip from Items,
+ * 17 Equip stays on list, 18 Whole bag, 19 Use item stays, 20 Partner switch
+ * (Menus), 21 Version label, 22 Map mod pack (Display), 23 Shared saves
+ * (Saves), 24 Stage sweep, 25 Sweep frames (Advanced), 26 Map buttons (the
+ * action row of Controls). Restart hotkey (2) moved to Controls and Region at
+ * start (10) to Saves; their numbers and cfg keys did not change.
+ * The rows are listed here in screen order. */
 static const Dw3OptGroup dw3_optgroups[DW3_OPTGRP_COUNT] = {
-    /* Display  */ {1, 2, {0, 15}},
+    /* Display  */ {1, 4, {0, 15, 22, 21}},
     /* Sound    */ {1, 3, {3, 4, 13}},
-    /* Gameplay */ {1, 5 + DW3_OPT_REGION_ROW, {1, 2, 5, 6, 7, 10}},
-    /* Saves    */ {1, 1, {8}},
+    /* Gameplay */ {1, 4, {1, 5, 6, 7}},
+#if DW3_OPT_REGION_ROW
+    /* Saves    */ {1, 3, {8, 10, 23}},
+#else
+    /* Saves    */ {1, 2, {8, 23}},
+#endif
     /* Cheats   */ {1, 10, {0, 1, 2, 3, 4, 5, 6, 7, 8, 9}},
-    /* Controls */ {1, 3 + DW3_OPT_GLYPHS_ROW, {9, 11, 12, 14}},
+#if DW3_OPT_GLYPHS_ROW
+    /* Controls */ {1, 6, {9, 11, 26, 12, 14, 2}},
+#else
+    /* Controls */ {1, 5, {9, 11, 26, 12, 2}},
+#endif
     /* Help     */ {1, 0, {0}}, /* P6.30: no rows, a screen (port/help/help.c) */
     /* Walk     */ {1, 0, {0}}, /* P6.35: no rows, a screen (port/walkthrough/walkthrough_screen.c) */
     /* Customize*/ {0, 10, {0, 1, 2, 3, 4, 5, 6, 7, 8, 9}},
+    /* Menus    */ {1, 5, {16, 17, 18, 19, 20}},
+    /* Advanced */ {1, 2, {24, 25}},
+    /* Map btns */ {0, 8, {0, 1, 2, 3, 4, 5, 6, 7}},
 };
 
 /* Visible rows of a list screen; longer lists scroll. */
@@ -85,18 +121,21 @@ enum { DW3_OPTLIST_VISIBLE = 6 };
 #define DW3_OPTGRP_CHEATS_LISTED 0
 #endif
 
-/* The groups listed now, in order (placeholders are skipped; Cheats is listed
- * when `cheats_listed`: pass DW3_OPTGRP_CHEATS_LISTED, not the master switch).
- * Returns the count, `out` holds DW3_OPTGRP_COUNT entries at most. */
+/* The groups listed now, in the order of dw3_optgroup_order (placeholders are
+ * skipped; Cheats and Advanced are listed when `cheats_listed`: pass
+ * DW3_OPTGRP_CHEATS_LISTED, not the master switch). Returns the count, `out`
+ * holds DW3_OPTGRP_COUNT entries at most. */
 static inline int dw3_optgroups_visible(int cheats_listed, int *out) {
     int n = 0;
-    int g;
+    int i;
 
-    for (g = 0; g < DW3_OPTGRP_COUNT; g++) {
+    for (i = 0; i < DW3_OPTGROUP_ORDER_COUNT; i++) {
+        const int g = dw3_optgroup_order[i];
+
         if (!dw3_optgroups[g].built) {
             continue;
         }
-        if (g == DW3_OPTGRP_CHEATS && !cheats_listed) {
+        if ((g == DW3_OPTGRP_CHEATS || g == DW3_OPTGRP_ADVANCED) && !cheats_listed) {
             continue;
         }
         out[n++] = g;

@@ -88,13 +88,17 @@ pad 1760 0x0040
 pad 1765 0x0000
 pad 1780 0x0040
 pad 1785 0x0000
-pad 1800 0x4000
+pad 1800 0x0040
 pad 1805 0x0000
-shot 1860 gate-page
-shot 1900 wt-list
-pad 1920 0x1000
-pad 1925 0x0000
-shot 1960 options-after
-pad 1980 0x1000
-pad 1985 0x0000
-end 2060
+pad 1820 0x0040
+pad 1825 0x0000
+pad 1840 0x4000
+pad 1845 0x0000
+shot 1900 gate-page
+shot 1940 wt-list
+pad 1960 0x1000
+pad 1965 0x0000
+shot 2000 options-after
+pad 2020 0x1000
+pad 2025 0x0000
+end 2100

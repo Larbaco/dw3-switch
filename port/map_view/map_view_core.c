@@ -106,6 +106,20 @@ const char *dw3_mv_bind_bit_name(int bit) {
     }
     return "?";
 }
+int dw3_mv_bindable_count(void) {
+    return (int)(sizeof(mv_bindable) / sizeof(mv_bindable[0]));
+}
+int dw3_mv_bindable_bit(int i) {
+    return i >= 0 && i < dw3_mv_bindable_count() ? mv_bindable[i].bit : -1;
+}
+const char *dw3_mv_bind_word(int bit) {
+    size_t i;
+
+    for (i = 0; i < sizeof(mv_bindable) / sizeof(mv_bindable[0]); ++i) {
+        if (mv_bindable[i].bit == bit) return mv_bindable[i].word;
+    }
+    return "";
+}
 int dw3_mv_bind_ps_button(int bit) {
     size_t i;
 

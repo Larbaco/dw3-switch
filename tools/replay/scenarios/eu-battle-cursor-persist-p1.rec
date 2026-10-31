@@ -25,17 +25,15 @@ pad 540 0x0040
 pad 545 0x0000
 pad 560 0x0040
 pad 565 0x0000
-pad 580 0x0040
-pad 585 0x0000
-shot 620 battle-cursor-off
-pad 640 0x0020
-pad 645 0x0000
-shot 680 battle-cursor-command
-pad 700 0x0020
-pad 705 0x0000
-shot 740 battle-cursor-command-tech
+shot 600 battle-cursor-off
+pad 620 0x0020
+pad 625 0x0000
+shot 660 battle-cursor-command
+pad 680 0x0020
+pad 685 0x0000
+shot 720 battle-cursor-command-tech
+pad 740 0x1000
+pad 745 0x0000
 pad 760 0x1000
 pad 765 0x0000
-pad 780 0x1000
-pad 785 0x0000
-end 840
+end 820

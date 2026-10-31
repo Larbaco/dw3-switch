@@ -637,7 +637,7 @@ not a permutation. References are their own (new screens).
 The full-screen map view (P6.32) reads its buttons from the same logical pad word, so it
 follows `button_layout` and a custom map with no code in this file's mapper. Phase 4 of
 P6.32 turned its hard-coded buttons into a **binding table** (`map_view_open`, `_zoom_out`,
-`_zoom_in`, `_centre`, `_scaler_prev`, `_scaler_next`, file-only keys of `port_options.cfg`
+`_zoom_in`, `_centre`, `_scaler_prev`, `_scaler_next`, keys of `port_options.cfg` (rows of Options > Controls > Map buttons since D1)
 holding a PS button name; [PORT_OPTIONS](PORT_OPTIONS.md#full-screen-map-row-and-the-map-views-buttons-p632-phase-4)).
 The two layers are independent and compose: the Customize screen answers "which console button
 makes the PS button L1", the binding says "L1 zooms the map out". What the Controls screen does
