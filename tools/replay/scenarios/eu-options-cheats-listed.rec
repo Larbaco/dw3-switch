@@ -22,12 +22,16 @@ pad 500 0x0040
 pad 505 0x0000
 pad 520 0x0040
 pad 525 0x0000
-pad 540 0x4000
+pad 540 0x0040
 pad 545 0x0000
-shot 600 cheats-open
-pad 620 0x1000
-pad 625 0x0000
-shot 680 cheats-back
-pad 700 0x1000
-pad 705 0x0000
-end 760
+pad 560 0x0040
+pad 565 0x0000
+pad 580 0x4000
+pad 585 0x0000
+shot 640 cheats-open
+pad 660 0x1000
+pad 665 0x0000
+shot 720 cheats-back
+pad 740 0x1000
+pad 745 0x0000
+end 800

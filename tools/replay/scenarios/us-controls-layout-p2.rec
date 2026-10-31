@@ -15,13 +15,11 @@ pad 430 0x0040
 pad 435 0x0000
 pad 450 0x0040
 pad 455 0x0000
-pad 470 0x0040
+pad 470 0x4000
 pad 475 0x0000
-pad 490 0x4000
-pad 495 0x0000
-shot 550 controls-restored
+shot 530 controls-restored
+pad 550 0x1000
+pad 555 0x0000
 pad 570 0x1000
 pad 575 0x0000
-pad 590 0x1000
-pad 595 0x0000
-end 650
+end 630

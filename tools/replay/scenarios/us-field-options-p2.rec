@@ -87,7 +87,5 @@ pad 1800 0x4000
 pad 1805 0x0000
 pad 1820 0x0040
 pad 1825 0x0000
-pad 1840 0x0040
-pad 1845 0x0000
-shot 1900 options-restored-gameplay
-end 1960
+shot 1880 options-restored-gameplay
+end 1940
