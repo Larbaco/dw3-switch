@@ -6,19 +6,22 @@ The Switch Makefile `host_hello` sample has different controls and is not covere
 
 ## Normal pad controls
 
-By default the Switch face buttons follow physical PS1 positions, not Nintendo's
-usual A-to-confirm convention. **Options, Controls, Button layout** (P9.8, built
-2026-10-28) chooses between two layouts; the default, **PlayStation**, is the
-table's first column and is bit-identical to the game before the option existed.
-**Nintendo** makes A confirm and B cancel (the game cancels with Triangle, so B
-produces Triangle, not Circle; see [CONTROLS_BUNDLE](CONTROLS_BUNDLE.md#22-the-confirm--cancel-layout-p98-is-a-preset-of-the-map)).
+By default (since D2, owner 2026-10-31) **A confirms and B cancels**, on the Switch and on the PC.
+**Options, Controls, Button layout** (P9.8, built 2026-10-28) chooses between two layouts; the default,
+**Nintendo**, is the table's last column. **PlayStation** (the first column) keeps the face buttons on their
+physical PS1 positions and is bit-identical to the game before the option existed. Nintendo makes A confirm and B
+cancel (the game cancels with Triangle, so B produces Triangle, not Circle; see
+[CONTROLS_BUNDLE](CONTROLS_BUNDLE.md#22-the-confirm--cancel-layout-p98-is-a-preset-of-the-map)). A settings
+file written by an older build was switched to Nintendo once (`defaults_gen`, see
+[PORT_OPTIONS](PORT_OPTIONS.md#defaults-generation-and-the-map-scaler-d2--d5)); change it back in Options and it
+stays.
 The layout is stored per region in `port_options.cfg` (`button_layout=playstation|nintendo|custom`),
 applies at once, and works the same on US, EU and the combined build. No new
 chord may use Cross or Circle, whichever physical button they are on. The PC columns
 describe the PSY-Z SDL3 keyboard map; PC gamepads use SDL's positional mapping;
 controller labels and SDL device mappings may vary.
 
-| PS1 logical button | PC keyboard (PlayStation / Nintendo) | Switch, PlayStation layout (default) | Switch, Nintendo layout |
+| PS1 logical button | PC keyboard (PlayStation / Nintendo) | Switch, PlayStation layout | Switch, Nintendo layout (default) |
 |---|---|---|---|
 | D-pad | Arrow keys | D-pad (left stick also supplies movement) | same |
 | Cross (confirm) | X / D | B | **A** |
@@ -46,10 +49,10 @@ button that had the new button gets the old one, so the map stays a permutation
 and no button is ever lost. Start, Select, the d-pad and both sticks (movement,
 map zoom) are not remappable, and neither are the Switch diagnostic chords. The
 press that assigns is ignored until it is released. **Reset to default** puts the
-PlayStation layout back at once (also in game); Customize itself is title only.
+**Nintendo** layout (the default since D2) back at once (also in game); Customize itself is title only.
 The layout row then reads **Custom**; the map is stored as `button_layout=custom`
 and `button_map=` ten digits (docs/CONTROLS_BUNDLE.md section 2.4). A map that is
-not a permutation, or `custom` with no map, falls back to PlayStation with one log
+not a permutation, or `custom` with no map, falls back to the default layout (Nintendo) with one log
 line; `DW3_BUTTON_MAP=default` forces the PlayStation layout for one run without
 touching the file. The hotkeys follow the custom map like the layouts: after
 swapping L3 and R3, fast-forward is on the button that now produces R3 (the Help
@@ -144,7 +147,7 @@ acceptance remains tracked separately in [P5.3_FLAT_SAVE.md](P5.3_FLAT_SAVE.md).
 | Options in battle | Select, while the command menu waits | Backspace | Minus | Port options over the held battle; no L1/R1/L2/R2 held; not during attacks or in the sub-menus; Widescreen and Cheats greyed; Triangle returns (P9.7 slice 2) |
 | Return to title from the field menu | Start, then the last row, Cross, Yes | Enter, ..., X | Plus, ..., B | Always there; the same reset as the chord, after a Yes / No question (P6.27) |
 | Quit game from the title menu | Last title row, Cross, Yes | ..., X | ..., B | Always on the native title; flushes the saves, then hbmenu (Switch) or closes the window (PC) (P6.28) |
-| Open the new full-screen map (P6.32) | **`map_view_open`, default Square**, on the game's Map screen | Z | Y (both layouts) | Widescreen on and **Options > Display > Full-screen map ON** (`map_screen=1`; **default off**; P6.32 phase 4 made it a row, it was a file-only key). The seven buttons of the map are set in **Options > Controls > Map buttons** (D1; they were file-only keys). It opens at **1.5x** on your area with the top and bottom bars hidden (P51); **Circle shows / hides the bars** (the name box stays). In it: **D-pad (or left stick) moves the cursor** like the game's (the view follows it when zoomed; the game's name box shows on a location; the left stick is analog, a half-tilted stick moves it slower, and a d-pad or stick held for more than a second accelerates), **the right stick zooms** (up in, down out, smooth), **`map_view_zoom_out` / `map_view_zoom_in` (default L1 / R1)** zoom in steps (about the cursor, which stays where it is on the picture), **`map_view_centre` (default Select: PC Backspace, Switch Minus)** centres the view on your current area and puts the cursor back on it, **`map_view_scaler_prev` / `_next` (default L2 / R2: ZL / ZR)** change the scaler (Nearest is the default), the cancel button (PS1 Triangle: Switch X, or B with the Nintendo layout; PC S; follows the layout and the custom map; not rebindable here) closes it, the open button does not; R3 does nothing (no turbo, and it does not flip the fast-forward state either). **The six buttons are keys naming PS buttons** (rows of Options > Controls > Map buttons since D1; a button another action has is swapped) ([PORT_OPTIONS](PORT_OPTIONS.md#full-screen-map-row-and-the-map-views-buttons-p632-phase-4)): the P6.12 / P9.8 map is applied first, so a custom map moves the console button that makes each of them, and the log and the bars name it. Free-button table for a future field hotkey: [P6.32 section 7.5](P6.32_MAP_ZOOM.md#75-free-buttons-in-the-field-for-a-future-field-hotkey) |
+| Open the new full-screen map (P6.32) | **`map_view_open`, default Square**, on the game's Map screen | Z | Y (both layouts) | Widescreen on and **Options > Display > Full-screen map ON** (`map_screen=1`; **default off**; P6.32 phase 4 made it a row, it was a file-only key). The seven buttons of the map are set in **Options > Controls > Map buttons** (D1; they were file-only keys). It opens at **1.5x** on your area with the top and bottom bars hidden (P51); **Circle shows / hides the bars** (the name box stays). In it: **D-pad (or left stick) moves the cursor** like the game's (the view follows it when zoomed; the game's name box shows on a location; the left stick is analog, a half-tilted stick moves it slower, and a d-pad or stick held for more than a second accelerates), **the right stick zooms** (up in, down out, smooth), **`map_view_zoom_out` / `map_view_zoom_in` (default L1 / R1)** zoom in steps (about the cursor, which stays where it is on the picture), **`map_view_centre` (default Select: PC Backspace, Switch Minus)** centres the view on your current area and puts the cursor back on it, **`map_view_scaler_prev` / `_next` (default L2 / R2: ZL / ZR)** change the scaler for the session (**FSR 1 is the default since D5**, set by **Options > Display > Map scaler**, read at each open; the view opens on Nearest for a moment while FSR 1 builds), the cancel button (PS1 Triangle: Switch X, or B with the Nintendo layout; PC S; follows the layout and the custom map; not rebindable here) closes it, the open button does not; R3 does nothing (no turbo, and it does not flip the fast-forward state either). **The six buttons are keys naming PS buttons** (rows of Options > Controls > Map buttons since D1; a button another action has is swapped) ([PORT_OPTIONS](PORT_OPTIONS.md#full-screen-map-row-and-the-map-views-buttons-p632-phase-4)): the P6.12 / P9.8 map is applied first, so a custom map moves the console button that makes each of them, and the log and the bars name it. Free-button table for a future field hotkey: [P6.32 section 7.5](P6.32_MAP_ZOOM.md#75-free-buttons-in-the-field-for-a-future-field-hotkey) |
 | Open the full-screen map straight from the field (P6.32 phase 6) | **`map_view_field_open`, default Select**, in the walking field | Backspace | Minus | The field must be idle (the same moments Start opens the field menu, from story point 4 on), no L1/R1/L2/R2 and no Start held, **Options > Display > Full-screen map ON** and widescreen ON; otherwise the key does nothing and the log says why. The field is **held** while the view is open (no timers, encounter steps, actors, rolls; turbo forced to 1x, R3 does nothing) and comes back exactly as it was; Triangle (the cancel button) closes the view and returns to the field, not to a field menu. Set in Options > Controls > Map buttons (D1), follows the layout and the custom map; see "Field hotkey" below |
 | Change partner on the equip panel (P6.33) | L2 / R2 | W / E | ZL / ZR | Status, Equipment, while the slot list waits (not inside the item list); previous / next party member, wraps; the slot cursor stays. Needs 2 or more partners. On by default; Options > Menus > Partner switch (D1; key `items_partner_switch`) turns it off. No on-screen help line yet (the panel has no free line in the five EU languages) |
 | Equip list: next bag filter (P6.34 phase 3) | Square | Z | Y | Status, Equipment, inside the item list (after Cross on a slot): this slot, all weapons, all armor and gear, worn by others (wraps); Cross on a worn-by-others row moves that item from its wearer to this Digimon. On by default; `items_bag_view=0` in `port_options.cfg` turns it off. No on-screen hint yet |
@@ -193,7 +196,7 @@ can move the first six rows among Cross, Square, L1, R1, L2, R2, L3 and Select):
 |---|---|---|---|---|
 | Square | opens the view (`map_view_open`) | ignored (logged) | Options and the Cheats shortcut; equip bag filter | none: other screens |
 | L1 / R1 | nothing | zoom out / in (`map_view_zoom_out`, `_in`) | Help page turns; Cheats page 2 steps; restart chord | none: the restart chord (L1 + R1 + Start + Select, only if enabled) still restarts from the view as from any screen; the view also takes the L1 / R1 presses as zoom steps, which the restart discards |
-| L2 / R2 | nothing | scaler previous / next | equip panel partner switch (another screen) | none |
+| L2 / R2 | nothing | scaler previous / next (the session only; the start value is the Display > Map scaler row, D5) | equip panel partner switch (another screen) | none |
 | Select | nothing | centre on your area (`map_view_centre`) | Options from the title and in battle (other modes) | none: not read in the Map screen |
 | Cross, L3 | nothing | not bound by default (a binding may take them); the log says so when pressed | Cross confirms elsewhere | none |
 | Circle | nothing | bars on / off (fixed) | confirm on port screens | none |

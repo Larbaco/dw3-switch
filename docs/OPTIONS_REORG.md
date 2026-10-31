@@ -4,9 +4,10 @@ Status: **design approved by the owner on 2026-10-31** (answers to the five ques
 recorded in [section 7](#7-owner-decisions-2026-10-31)). The build is a series of
 separate PRs ([order](#8-build-order)). **Step 1 (reorganization and new rows) is built**
 (branch `feat/d1-options-reorg`, 2026-10-31; as built: [PORT_OPTIONS](PORT_OPTIONS.md#options-reorganization-d1)).
-Steps 2 to 4 (D2 + D5, D3, D4) are not. Differences of step 1 from the text below: the Map
-scaler row is not in it (it comes with D5, which owns the scaler default), so Display has four rows
-(Widescreen, Full-screen map, Map mod pack, Version label); the label "Shared saves (exp.)"
+**Step 2 (D2 + D5) is built** (branch `feat/d2-d5-defaults-fsr`, 2026-10-31; as built:
+[section 8.1](#81-step-2-as-built-d2--d5)). Steps 3 and 4 (D3, D4) are not. Differences of step 1 from
+the text below: the Map scaler row is not in it (it came with D5, step 2), so Display had four rows
+(Widescreen, Full-screen map, Map mod pack, Version label) until then; the label "Shared saves (exp.)"
 and "Frames per stage" are shorter than the design's (the generator's 290 px limit); the message
 line of Shared saves is "Experimental: US and EU share saves. Next start." (690 px).
 
@@ -78,7 +79,7 @@ Item count, Give item) are one-shot actions, not stored keys.
 | `save_store` | 0 | all; needs a profile folder; read before the cards open, so a restart | US and EU share one per-profile store (`card0.dw3s`) | **Saves > Shared saves (experimental)**, title only, with a warning ([3.7](#37-saves)) |
 | `stage_sweep`, `stage_sweep_frames` | 0 / 90 | build with `DW3_CHEATS`; PC + Switch; read at boot | The opt-in stage sweep walks every stage | **Advanced > Stage sweep, Sweep frames** (new group, [3.9](#39-advanced-new)) |
 | `map_view_open`, `_zoom_out`, `_zoom_in`, `_centre`, `_scaler_prev`, `_scaler_next`, `_field_open` | square, l1, r1, select, l2, r2, select | all | Which PS button does each action of the full-screen map | **Controls > Map buttons** sub-page ([3.10](#310-map-buttons-sub-page-under-controls)) |
-| (no key yet) `map_scaler` | `fsr1` (owner 7a) | all | The full-screen map's picture scaler | **Display > Map scaler** (D5) |
+| `map_scaler` (a word; new in D5) | `fsr1` (owner 7a) | all | The full-screen map's picture scaler | **Display > Map scaler** (D5, built) |
 
 Internal state, not options and never a row: `last_region` (top-level file), `button_map`
 (companion of `custom`), `version`, `end`, and the two migration markers
@@ -669,3 +670,71 @@ the log lines and the edge cases are in [6.1](#61-d2-migration-marker-owner-2026
    references are stable.
 
 The Options references are regenerated three times (after 1, 2 and 4) instead of five.
+
+### 8.1 Step 2 as built (D2 + D5)
+
+Built on top of step 1 (#404), one PR (2026-10-31). Registry row **27 Map scaler** is the only new row
+(`DW3_PORT_OPT_COUNT` 28); rows 0 to 26 and every cfg key keep their numbers and names.
+
+**D2 (owner decisions 2026-10-31).**
+
+- `DW3_LAYOUT_DEFAULT` (`port_button_map.h`) is **Nintendo**: the registry default of Button layout, the
+  layout of **Reset to default** (log `dw3-controls: reset to default (layout=nintendo) (screen)`), and the
+  fallback of a bad value or an invalid custom map. A confirms and B cancels on the Switch and on the PC.
+  `DW3_BUTTON_MAP=default` stays the PlayStation pin for tests and is never saved.
+- **Switch glyphs** defaults to **ON** (registry default 1); the row stays Switch-only. The glyph patch of
+  the game's font cells acts on the PC too (the replays prove it), and the PC has **no row**: a PC player turns
+  it off with `switch_glyphs=0` in the file. The map view's help line still prints labels on the PC.
+  Flagged to the owner in the PR (the design text of 6.1 says "the setting only acts on the Switch").
+- **The migration** is `po_defaults_migrate()` in `port/options/port_options.c`, as in 6.1, with these details:
+  - It runs in `dw3_port_options_persist_init` only when the file **exists** (also a recovered `.tmp`) and
+    `defaults_gen` is below `DW3_DEFAULTS_GEN` (2): a missing key counts as 1, so does a value that is not a
+    number (one `defaults_gen=... is not valid; treating the file as generation 1` line). A number above 2 (a
+    newer build) is kept and written back unchanged.
+  - It edits the loaded text before the rows read it: `button_layout=playstation` becomes `nintendo`,
+    `switch_glyphs=0` becomes `1`. `custom` (with its `button_map`), an explicit `nintendo`, `switch_glyphs=1`
+    and a missing key are left alone.
+  - The **write happens at the end of the boot**, after the button map is in force and the environment pins are
+    applied, so a custom `button_map` is written back as it was read and a row pinned by `DW3_BUTTON_MAP` or
+    `DW3_SWITCH_GLYPHS` keeps the file's (migrated) value, never the pin. `po_save` stages `defaults_gen` on
+    every save.
+  - A failed write keeps the new values in memory for the run, logs the reason and is retried by the next
+    save and by the next boot (the file is untouched, so the migration runs again).
+  - A fresh install (no file) logs `dw3-options: defaults_gen=2 (new file)`, is not migrated, and its first
+    save writes `defaults_gen=2`.
+  - Log lines (exactly): `dw3-options: migrate defaults_gen 1->2 button_layout playstation->nintendo
+    switch_glyphs 0->1 (kept: none)`; with a keeper, `... switch_glyphs 0->1 (kept: button_layout=custom)`;
+    nothing to flip: `dw3-options: defaults_gen 1->2 nothing to flip`; failed write:
+    `dw3-options: migrate defaults_gen NOT saved (<strerror>), will retry`.
+- Texts: the **Reset to default** message line ("Back to the Nintendo layout. Applies now.") and the Help
+  pages **Controls**, **Options explained** and **Map view** are rewritten in EN and in the FR / DE / IT / ES
+  machine drafts.
+- Replay runner: `write_seed_cfg` adds `defaults_gen=2` to every seeded cfg; `Scenario.legacy_cfg` seeds a
+  file as an old build wrote it (no marker) for the `*-defaults-migrate` scenarios. A scenario that needs the
+  PlayStation layout pins `button_layout=playstation` in its own cfg (the marker comes with it).
+
+**D5 (owner decisions 2026-10-31).**
+
+- The default map scaler is **FSR 1 for the captured map and for the mod pack** (it was Nearest). With a pack
+  there is no CPU scaler (its map is already upscaled): the scaler only picks the GPU filter, so FSR 1
+  (any scaler but Nearest) shows the pack's map with the linear filter; Nearest from the row, or ZL / ZR in the
+  view, gives the sharp pixels.
+- **Display > Map scaler** (third row, after Full-screen map): Nearest, Sharp bilinear, Lanczos2, FSR 1,
+  Bilinear (the five scalers the view has, in the view's own ZL / ZR order, so the stored value is
+  `MV_SCALER_*`), key `map_scaler` written as a word (`nearest sharp lanczos2 fsr1 bilinear`; an unknown word
+  falls back to `fsr1` with the usual `is not valid` line). Left / Right and Confirm step and wrap. It is not
+  locked in game. The design's mock listed FSR 1 first; the order built is the view's cycle order.
+- **The row applies at the next open of the map.** What ZL / ZR change in the view stays for the session (not
+  written): the next open keeps it until the row changes, then the row wins
+  (`dw3-map: scaler for this open: ... (Options > Display > Map scaler, map_scaler=...)`).
+- **No hitch at the open.** FSR 1 and Lanczos2 build on the worker thread as before (P6.32). An open that
+  starts on a CPU scaler installs the captured map as **Nearest** at once (a copy, about 5 ms) and the worker
+  swaps the wanted scaler in when it is done: `dw3-map: opens on NEAREST while AMD FSR 1 builds on the worker
+  thread (no hitch)`, then the existing `scaler AMD FSR 1 built in N ms` / `loaded from cache` line. The
+  wanted scaler is remembered if the view closes first. The HUD says `BUILDING, NEAREST STAYS` meanwhile.
+  A second open with the same exploration state is a cache hit. No prewarm was added: the precompute thread
+  already writes the bare-map FSR image, but the reveal layer makes the first open of a playthrough a miss.
+- **No decomp patch** (0199 is #403's, 0200 stays free).
+
+Replay references that changed, and why, are in [P6.15_REPLAY_TESTS](P6.15_REPLAY_TESTS.md#d2--d5-reference-refresh);
+the OLED rows are P1 to P8 of [OLED_TEST_PLAN](OLED_TEST_PLAN.md#session-p-defaults-generation-d2-and-map-scaler-d5).

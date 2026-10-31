@@ -194,8 +194,8 @@ produces.
 
 | Preset | A | B | X | Y | Notes |
 |---|---|---|---|---|---|
-| **PlayStation** (default) | Circle | Cross | Triangle | Square | identity, bit-identical to today |
-| **Nintendo** (recommended meaning) | Cross (confirm) | Triangle (cancel) | Circle | Square | A confirms, B cancels, Y unchanged, X takes the secondary Circle |
+| **PlayStation** (the original) | Circle | Cross | Triangle | Square | identity, bit-identical to today |
+| **Nintendo** (**default since D2**, owner 2026-10-31) | Cross (confirm) | Triangle (cancel) | Circle | Square | A confirms, B cancels, Y unchanged, X takes the secondary Circle |
 
 Why not a plain A/B swap (A = Cross, B = Circle): the game cancels with
 **Triangle** (1.3), so after a pure swap B would be the secondary button and the
@@ -253,7 +253,7 @@ keys are kept (`port/options/options_cfg.c`). Two keys, so the 48-entry cap is
 not eaten:
 
 ```
-button_layout=playstation     # playstation | nintendo | custom (default playstation)
+button_layout=nintendo        # playstation | nintendo | custom (default nintendo since D2)
 button_map=1203456789         # only when custom
 ```
 
@@ -263,7 +263,10 @@ names the source (same numbering) that produces it. The identity is
 `0123456789`; the Nintendo preset is `1203456789` (Cross from the Circle
 position = A, Circle from Triangle = X, Triangle from Cross = B). A value that
 is not a permutation of ten digits falls back to the identity with one log line.
-Phase 3 adds `switch_glyphs=0|1` (default 0).
+Phase 3 adds `switch_glyphs=0|1` (default 0; **1 since D2**). D2 also adds the internal marker `defaults_gen=2`: a file
+that exists without it (or below 2) is migrated once at load, `button_layout=playstation` to `nintendo` and
+`switch_glyphs=0` to `1` (a custom layout is kept), and written at once; a fresh install is born on the new defaults
+([PORT_OPTIONS](PORT_OPTIONS.md#defaults-generation-and-the-map-scaler-d2--d5)).
 
 ### 2.5 Options UI
 
@@ -344,7 +347,7 @@ upscaling) was used, as for the map fan art
 bitmaps, so they can also be C arrays in `port/` with the same statement in
 `PROVENANCE.md`.
 
-**Option.** `switch_glyphs` (0 default = original icons, 1 = Switch glyphs).
+**Option.** `switch_glyphs` (0 = original icons, 1 = Switch glyphs, **default 1 since D2**).
 Switch only at first; the code is shared, so PC pads can get it later. On PC the
 keyboard keeps the PS names.
 
@@ -379,7 +382,7 @@ dw3-controls: map loaded layout=nintendo source=cfg
 dw3-controls: map cross<-A circle<-X triangle<-B square<-Y l1<-L r1<-R l2<-ZL r2<-ZR l3<-StickL r3<-StickR
 dw3-controls: layout changed playstation -> nintendo (screen)
 dw3-controls: assign cross<-A (circle<-B swapped in) [custom]
-dw3-controls: reset to default (layout=playstation)
+dw3-controls: reset to default (layout=nintendo)     [D2: the default layout; it was playstation]
 dw3-controls: map invalid (<reason>), using default
 dw3-controls: hotkeys fast-forward=R3 (Left stick click) restart=L1+R1+Start+Select (L+R+Plus+Minus)
 dw3-glyphs: on|off, map=<layout>, patched N cells (us|eu, n=47:A ...)  [built; prefix dw3-glyphs, size 1 only]
@@ -411,11 +414,11 @@ unharmed.
 
 | # | Check | Proof |
 |---|---|---|
-| C1 | Default launch behaves as before (B confirms, A secondary, X back) | `map loaded layout=playstation source=default`, then `first press source=B -> logical cross` |
+| C1 | Default launch (D2: Nintendo, A confirms, B backs out; until D2 it was the game as before, B confirms) | `map loaded layout=nintendo source=default`, then `first press source=A -> logical cross`; with `button_layout=playstation` in the file, `map loaded layout=playstation source=cfg` and `first press source=B -> logical cross` |
 | C2 | Options, Controls, Button layout Nintendo: in the title menu A confirms, B backs out | `layout changed playstation -> nintendo`, `first press source=A -> logical cross` |
 | C3 | Nintendo in field and battle: A confirms, B cancels a menu, the shop's secondary action is on X | the `map ...` line shows `triangle<-B circle<-X` |
 | C4 | Quit and relaunch keeps the layout, on US and EU | `map loaded layout=nintendo source=cfg` on both |
-| C5 | Customize: swap L1 and R1, pages turn accordingly; Reset restores | `assign ...`, `reset to default` |
+| C5 | Customize: swap L1 and R1, pages turn accordingly; Reset restores (the **Nintendo** layout since D2) | `assign ...`, `reset to default (layout=nintendo)` |
 | C6 | After swapping L3 and R3, fast-forward is on the new R3 button and listed right | `hotkeys fast-forward=R3 (...)` and the `dw3-turbo:` toggle line |
 | C7 | Debug chords (nxlink) unchanged by any map | HUD toggles with Minus+L+R |
 | C8 | Phase 3: glyphs on, prompts and Options hints show A / B per layout; off restores the icons; US and EU, two EU languages | `dw3-glyphs: on, map=..., patched N cells (us\|eu, n=47:A ...)` (built 2026-10-29 as rows L21 to L26 of OLED_TEST_PLAN, [P10.6_GLYPHS](P10.6_GLYPHS.md#7-as-built-steps-1-3-and-4-2026-10-29)); the owner reports how it looks |
@@ -703,3 +706,17 @@ US, `--eu`, `--both`) build. Not run on a console.
   maps / `DW3_BUTTON_MAP=default`, the lock mask).
 - The lettering of the four other languages fits its limits (the generator fails
   otherwise) but no capture was taken in FR, DE, IT or ES.
+
+## D2: the defaults changed (2026-10-31)
+
+Owner decision (OPTIONS_REORG step 2): the default `button_layout` is **Nintendo** (A confirms, B cancels, on the
+Switch and on the PC) and the default `switch_glyphs` is **ON** (the row stays Switch-only). **Reset to default**
+puts Nintendo back. Existing `port_options.cfg` files are migrated once with the marker `defaults_gen` (a missing key
+counts as 1, D2 writes 2): `playstation` becomes `nintendo`, glyphs 0 becomes 1, `custom` and an explicit `nintendo`
+are kept, the file is written at once; a fresh install is not migrated. Log lines, edge cases and tests are in
+[PORT_OPTIONS](PORT_OPTIONS.md#defaults-generation-and-the-map-scaler-d2--d5) and
+[OPTIONS_REORG 8.1](OPTIONS_REORG.md#81-step-2-as-built-d2--d5). `DW3_BUTTON_MAP=default` is still the PlayStation pin
+for tests. The sections above describe P9.8 as built; read "default PlayStation" there as "default until D2".
+The replay runner seeds every cfg with `defaults_gen=2`; a scenario that needs the PlayStation layout pins
+`button_layout=playstation` itself.
+

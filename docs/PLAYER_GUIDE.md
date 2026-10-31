@@ -117,21 +117,24 @@ You do not need nxlink to play. The port does not overclock.
 <!-- Sources: HOTKEYS.md, P4.4_INPUT_STATUS.md, P6.4_FAST_FORWARD.md,
 P6.9_RESTART.md -->
 
-Switch face buttons follow the PS1 positions, not the Nintendo layout. B is
-Cross and confirms. A is Circle.
+**A confirms and B cancels** (the Nintendo layout, the default since D2). The game itself cancels with the PS1
+Triangle, so B is Triangle and X is Circle (the secondary button of the shop and the card picks). Choose
+**Options, Controls, Button layout, PlayStation** to put the face buttons back on their PS1 positions (B is
+Cross and confirms, A is Circle, X is Triangle). A settings file saved by an older version was switched to
+Nintendo once; if you changed it back, it stays. Where this guide says "A", read "B" with the PlayStation layout.
 
-| PS1 | Switch |
-|---|---|
-| D-pad | D-pad or left stick |
-| Cross | B |
-| Circle | A |
-| Triangle | X |
-| Square | Y |
-| Start | Plus |
-| Select | Minus |
-| L1 / R1 | L / R |
-| L2 / R2 | ZL / ZR |
-| L3 / R3 | Left / right stick click |
+| PS1 | Switch, Nintendo (default) | Switch, PlayStation |
+|---|---|---|
+| D-pad | D-pad or left stick | same |
+| Cross | A | B |
+| Circle | X | A |
+| Triangle | B | X |
+| Square | Y | Y |
+| Start | Plus | Plus |
+| Select | Minus | Minus |
+| L1 / R1 | L / R | L / R |
+| L2 / R2 | ZL / ZR | ZL / ZR |
+| L3 / R3 | Left / right stick click | Left / right stick click |
 
 Port hotkeys (full table and PC keys: [HOTKEYS](HOTKEYS.md)):
 
@@ -157,7 +160,7 @@ Diagnostic chords (not for normal play):
 <!-- Sources: HOTKEYS.md, PORT_OPTIONS.md (Quit and return to title),
 platforms/switch/release/README.txt -->
 
-Press Plus at the title to show the choices. Up and Down move, B confirms.
+Press Plus at the title to show the choices. Up and Down move, A confirms (B with the PlayStation layout).
 
 - **New Game**
 - **Options** opens the [Options screen](#options-screen).
@@ -181,13 +184,13 @@ Options holds the features the port adds. It is a list of groups, drawn like
 the title menu: **Display**, **Sound**, **Gameplay**, **Menus**, **Controls**, **Saves**, **Cheats** and
 **Advanced** (both test aids, see [Cheats screen](#cheats-screen)), **Help**, **Walkthrough**. Every change the
 port makes to the original game has a row, and OFF is the original behaviour.
-Up and Down choose a group, B or A opens it. Inside, Up and Down choose a row and
-B or A changes it. X goes back: from a group to the list (the cursor stays on that
+Up and Down choose a group, A or B opens it (Options accepts both face buttons). Inside, Up and Down choose a row and
+A or B changes it. B goes back (X with the PlayStation layout): from a group to the list (the cursor stays on that
 group), from the list to the title, or to the field menu when opened there, see
 [Options in the field](#options-in-the-field). A line under the list explains the
 focused item. The words are in the language of the disc. Changes are saved at once in `port_options.cfg`
 ([PORT_OPTIONS](PORT_OPTIONS.md#persistence)). Defaults keep the original
-game, except Widescreen.
+game, except Widescreen, the Nintendo button layout, the Switch glyphs and the map scaler (FSR 1).
 
 | Group | Row | Values | Default | What it does |
 |---|---|---|---|---|
@@ -199,10 +202,11 @@ game, except Widescreen.
 | Gameplay | Text speed | Normal / Fast / Instant | Normal | How fast dialogue is typed out. Normal is the original. |
 | Gameplay | Battle cursor | OFF / Command / Command+Tech | OFF | The battle command menu (and with Command+Tech the technique list) opens on your last pick. [P7.9](P7.9_BATTLE_MENU_MEMORY.md) |
 | Display | Full-screen map | OFF / ON | OFF | ON lets Square (Y) on the Map screen open a full-screen map. |
+| Display | Map scaler | Nearest / Sharp bilinear / Lanczos2 / FSR 1 / Bilinear | FSR 1 | The picture filter of the full-screen map, used the next time the map opens. The map shows as Nearest for a moment while FSR 1 or Lanczos2 is built in the background. ZL / ZR in the map change it until you close the game. |
 | Display | Map mod pack | ON / OFF | ON | Uses an installed map-upscale pack for the full-screen map; OFF shows the original map. |
 | Display | Version label | ON / OFF | ON | Shows the port version in the corner of the title screen. |
 | Menus | Equip from Items, Equip stays on list, Whole bag, Use item stays, Partner switch | ON / OFF | ON | The Items-menu shortcuts of this port. OFF gives the original Items menu for that shortcut. |
-| Controls | Button layout, Customize buttons, Reset to default, Switch glyphs (Switch) | | | The button mapping, see [Controls and hotkeys](#controls-and-hotkeys). |
+| Controls | Button layout, Customize buttons, Reset to default, Switch glyphs (Switch) | Nintendo / PlayStation / Custom; ON / OFF | Nintendo; ON | The button mapping, see [Controls and hotkeys](#controls-and-hotkeys). Reset to default puts the Nintendo layout back. Switch glyphs draws the Switch buttons in the game's prompts. Files saved by an older version were switched once to Nintendo and glyphs ON. |
 | Controls | Map buttons | a screen | | The buttons of the full-screen map: open, zoom, centre, scaler, open from the field. A button another action already has is swapped; Reset map buttons puts the defaults back. |
 | Controls | Restart hotkey | ON / OFF | OFF | Enables the L + R + Plus + Minus restart chord. [P6.9](P6.9_RESTART.md) |
 | Saves | Auto-save | OFF / Each area | OFF | With Each area: at each new field area the game saves to its own file, `autosave.bin`, never over your slots. On the title, **Continue** loads it. See [Saves](#saves). [P6.31](P6.31_AUTOSAVE.md) |
@@ -224,7 +228,7 @@ without leaving the game: Setup, Controls, Port hotkeys, Turbo, Options explaine
 Widescreen, Map view and mods, Logs and bug reports, and a FAQ. It needs no network and
 changes nothing in the game.
 
-- Up and Down choose a page, B or A opens it, X goes back.
+- Up and Down choose a page, A or B opens it, B goes back (X with the PlayStation layout).
 - On a page, Up and Down scroll one line, Left and Right a screenful. Amber arrows above or
   below the text show that there is more. **L** and **R** go to the previous and next page. X
   returns to the page list; X on the list returns to the Options list.
@@ -300,8 +304,8 @@ cheat changes the game in progress, and the game's own save keeps that change.
 <!-- Sources: PORT_OPTIONS.md#options-in-game-p97, HOTKEYS.md -->
 
 In the field, open the menu with Plus. The row above the last is **OPTIONS**
-(on EU: OPTIONS, OPZIONI, OPTIONEN, OPCIONES). B opens the same Options screen as
-the title, over the field, and X closes it back to the menu. The game waits
+(on EU: OPTIONS, OPZIONI, OPTIONEN, OPCIONES). A opens the same Options screen as
+the title, over the field, and B closes it back to the menu (B and X with the PlayStation layout). The game waits
 behind it, as it does in the menu, and the music keeps playing.
 
 Every row changes the game at once: volumes, Fast-forward, the Restart hotkey,

@@ -6,7 +6,8 @@ how to install the mod on the SD card. Sections 1 to 6 are the design as
 written in phase 1 and are kept for the reasons behind it. Owner request (2026-10-28,
 translated): "generate some AI-upscaled images for me to use later; this will
 be the first MOD, upscaling some assets, starting with the map". The owner's
-preferred in-game scaler on the map view is Nearest (pixel look). Related:
+preferred in-game scaler on the map view was Nearest (pixel look); since D5 (2026-10-31) the default scaler is
+FSR 1 and **Options > Display > Map scaler** (or ZL / ZR in the view) chooses it. Related:
 [P6.32_MAP_ZOOM.md](P6.32_MAP_ZOOM.md) (map view, cache, scalers),
 [TEXTURE_PACKS.md](TEXTURE_PACKS.md) (P8.2 pack layout, P8.5 modding API),
 [ROADMAP.md](ROADMAP.md).
@@ -93,7 +94,9 @@ With a pack:
    RGBA buffer of `392*N x 352*N` and use it as the base at scale N instead of
    the captured image. The built-in scaler stage is skipped for the base (it is
    already upscaled); with `filter: nearest` the GPU samples it with nearest,
-   which the owner prefers.
+   which the owner preferred. **Since D5 the player's scaler decides the filter, and its default is FSR 1:** with a
+   pack, FSR 1 (and every scaler but Nearest) samples the pack's map with the linear filter, Nearest from
+   Options > Display > Map scaler (or ZL / ZR in the view) gives the sharp pixels. No CPU scaler runs for a pack.
 2. **Reveal.** In order of preference:
    - **A (phase 2 default): composite at 1x, scale only the overlay.** Keep
      `compose_reveal` as is, but into a separate 392 x 352 RGBA layer with
