@@ -181,6 +181,16 @@ static void dw3_pc_xa_evidence_drain(void) {
     }
 }
 
+/* docs/REPLAY_POLICY.md: a replay (DW3_REPLAY) runs unpaced unless
+ * DW3_REPLAY_PACED=1: no frame limiter and no turbo sleep. The runner leaves
+ * the variable unset, so every scenario is uncapped; DW3_REPLAY_PACED=1 is the
+ * switch back for a look at the real speed. */
+static int dw3_pc_replay_uncapped(void) {
+    const char *r = getenv("DW3_REPLAY");
+    const char *p = getenv("DW3_REPLAY_PACED");
+    return r != NULL && r[0] != '\0' && (p == NULL || p[0] == '\0' || p[0] == '0');
+}
+
 /* P6.4 fast-forward. PSY-Z paces one frame per vsync with driver VSync or
  * its own limiter; while fast-forward runs, switch that off and pace here at
  * `speed` times the base rate (50 or 59.94 Hz, from the PSY-Z stats). */
@@ -211,6 +221,9 @@ static void dw3_pc_turbo_pace(void) {
     }
     if (Psyz_VideoStats(&stats) == 0 && stats.target_frame_time_us > 1000.0) {
         base_us = stats.target_frame_time_us;
+    }
+    if (dw3_pc_replay_uncapped()) {
+        return;   /* LIMITLESS is already set: no sleep to pace at speed x */
     }
     period_ns = (Uint64)(base_us * 2000.0 / (double)rate_x2);
     next_ns += period_ns;
@@ -692,6 +705,13 @@ int main(int argc, char **argv) {
         /* P5.1 soak: under Xvfb the driver VSync does not block, so a run
          * would go at 2x or more; the PSY-Z frame limiter paces it at 1x. */
         (void)Psyz_VideoSetVsyncMode(PSYZ_VSYNC_OFF);
+    } else if (dw3_pc_replay_uncapped()) {
+        /* docs/REPLAY_POLICY.md: a replay is keyed by the game frame, so its
+         * speed changes nothing in the captures. Under Xvfb the US build already
+         * runs flat out (the driver VSync never blocks); the EU build targets 50 Hz
+         * and so used the frame limiter (about 50 frames/s, 2x slower than US).
+         * Run both the same. */
+        (void)Psyz_VideoSetVsyncMode(PSYZ_VSYNC_LIMITLESS);
     }
 #if defined(DW3_PC_SDL3_GPU)
     dw3_pc_title_menu_overlay_register();

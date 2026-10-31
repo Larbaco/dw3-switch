@@ -18,6 +18,24 @@ full tier. The map is deliberately conservative:
 
 Rules are (regex on the repo-relative path, scenario-name globs). The first
 matching rule wins for that file. Globs are fnmatch patterns on scenario names.
+
+Region policy (docs/REPLAY_POLICY.md). The rules above say WHICH scenarios a file
+can affect; `region_class` says on WHICH REGIONS they have to run:
+
+* default: one region, EU (the superset: five languages, the 0x2D chapter and its
+  55 stages, the 50 Hz path). No evidence in the history that a region-agnostic
+  change broke only US;
+* `us` / `eu`: the file only exists in one region's data (overlay_table_us.c);
+* `both`: the file mentions the region (VERSION_EU, dw3_region, saves, boot): the
+  affected scenarios run on US and EU;
+* `langs`: text, fonts, help, pages, walkthrough: both regions AND the
+  language copies (`eu-...-fr/de/it/es`);
+* an engine-wide file (full tier) runs the area sweep (one scenario per area and
+  region) instead of every scenario; `--escalate full` keeps the old behaviour.
+
+A small CANARY set always runs with `--changed`: it is the cross-region check the
+single-region default gives up (boot of both regions, the EU extra chapter, a
+language page, cross-region saves, the region relaunch, the combined binary).
 """
 from __future__ import annotations
 
@@ -167,12 +185,111 @@ RULES: list[tuple[str, object]] = [
 ]
 
 
+# --- region policy ------------------------------------------------------------
+
+DEFAULT_REGION = "eu"   # docs/REPLAY_POLICY.md: the superset region
+
+# Always run with --changed (and alone with --canary). Cheap (about 6 min of
+# process time on two jobs) and the only thing that touches both regions when
+# the changed files are region-agnostic. Names must exist (a unit test checks it).
+CANARY = (
+    "us-title",                  # US boots to the title menu
+    "us-newgame-field",          # US: new game, the opening, control in the lobby
+    "us-stage-0x236",            # US stage registry (a missing row aborts the strict restore)
+    "eu-stage-0x236",
+    "eu-lang-fr",                # EU: the language page and a localized menu
+    "eu-extra-stage-920",        # EU: the 0x2D chapter, first and last stage of the 55
+    "eu-extra-stage-974",
+    "xr-us-to-eu",               # cross-region saves, both directions + the store
+    "xr-eu-to-us",
+    "xr-eu-extra-us",
+    "xr-store-us-to-eu",
+    "xr-store-eu-to-us",
+)
+# Added when the combined binary / the launcher is given (the runner skips these
+# tiers without them, and a skip fails the run):
+CANARY_TIERS_WITH_BIN_BOTH = ("both",)    # Region at start row + relaunch
+CANARY_TIERS_WITH_LAUNCHER = ("single",)
+
+# A language copy: the same path as an English scenario, recorded again under
+# another EU language. Only text/font/language changes can break one alone.
+LANG_COPY = re.compile(r"^eu-.*-(fr|de|it|es)(-glyphs)?$")
+
+# Path -> where the affected scenarios have to run. First match wins; the content
+# mark below catches the rest.
+REGION_CLASS_RULES: list[tuple[str, str]] = [
+    (r"^port/overlays/overlay_table_us\.c$", "us"),
+    (r"^port/overlays/overlay_(table_eu|sections_eu_extra)\.c$", "eu"),
+    (r"^port/overlays/overlay_sections\.c$", "both"),
+    (r"^port/(region|memcard|saves|autosave|cdfs)/", "both"),
+    (r"^port/include/port_(region|memcard|save|autosave)", "both"),
+    (r"^port/options/(lang_select|region)", "langs"),
+    (r"^port/(help|pages|walkthrough)/", "langs"),
+    (r"^port/include/port_(help|pages|walkthrough|text|font)", "langs"),
+    (r"^platforms/pc/src/title_overlay_(art|lettering)", "langs"),
+    (r"^port/patches/\d+-PORT_HOST-.*(language|eu-country|-eu\b|p635|p92-)", "langs"),
+    (r"^port/patches/\d+-PORT_HOST-.*wstag", "both"),
+    (r"^port/patches/DECOMP_PIN$", "both"),
+    (r"^(vendor/|CMake)", "both"),
+]
+# A source file or patch that names the region is region-sensitive whatever its path.
+REGION_MARK = re.compile(r"VERSION_(?:EU|US)\b|TITLE_(?:EU|US)\b|DW3_BOTH\b|DW3_REGION|\bdw3_region")
+_MARK_PATHS = re.compile(r"^(port|platforms/pc)/.*\.(c|h|patch)$")
+
+
+def region_class(path, read_text=None) -> str:
+    """'default' | 'us' | 'eu' | 'both' | 'langs' for one changed file.
+    read_text(path) -> str | None supplies the file content for the region mark
+    (the runner reads the working tree)."""
+    for rx, cls in REGION_CLASS_RULES:
+        if re.search(rx, path):
+            return cls
+    if _MARK_PATHS.match(path) and read_text is not None:
+        text = read_text(path)
+        if text and REGION_MARK.search(text):
+            return "both"
+    return "default"
+
+
+def scenario_region(sc) -> str:
+    """'us' | 'eu' | 'cross': a scenario that runs a phase, a launcher or a card
+    folder of the other region belongs to neither side."""
+    if sc.phase_versions and len(set(sc.phase_versions)) > 1:
+        return "cross"
+    if sc.launch and "+" in sc.launch:
+        return "cross"
+    if sc.base and "+" in sc.base:
+        return "cross"
+    return sc.version
+
+
 @dataclass
 class Selection:
     names: set = field(default_factory=set)
     everything: bool = False
     reasons: list = field(default_factory=list)   # (file, why)
     unmapped_globs: list = field(default_factory=list)
+    # region policy: names by the class of the file that selected them, and the
+    # class of the engine-wide file (if any) that made it `everything`
+    classes: dict = field(default_factory=dict)   # class -> set of names
+    everything_class: str = "default"
+
+    def add_class(self, cls, names):
+        self.classes.setdefault(cls, set()).update(names)
+
+
+_CLASS_ORDER = ("default", "eu", "us", "both", "langs")
+
+
+def _wider(a, b):
+    """The class that covers both (us + eu -> both; anything + langs -> langs)."""
+    if a == b:
+        return a
+    if "langs" in (a, b):
+        return "langs"
+    if "default" in (a, b):
+        return b if a == "default" else a
+    return "both"
 
 
 def _phase_owners(scenarios):
@@ -227,7 +344,7 @@ def build_file_sources(path, diff_text):
     return sorted(set(out))
 
 
-def select(files, scenarios, diff_for=None) -> Selection:
+def select(files, scenarios, diff_for=None, read_text=None) -> Selection:
     """files: repo-relative paths. scenarios: manifest.Scenario list.
     diff_for(path) -> zero-context diff text of a CMake file (or None): lets a
     build file select through the sources it adds or removes.
@@ -236,9 +353,12 @@ def select(files, scenarios, diff_for=None) -> Selection:
     full_tier = {s.name for s in scenarios if s.tier in ("quick", "full")}
     owners = _phase_owners(scenarios)
     for path in files:
+        cls = region_class(path, read_text)
         for rx, what in RULES:
             if not re.search(rx, path):
                 continue
+            if what is ALL or what is HOST:
+                sel.everything_class = _wider(sel.everything_class, cls)
             if what is ALL:
                 sel.everything = True
                 sel.reasons.append((path, "pin/engine-wide: full tier"))
@@ -251,11 +371,16 @@ def select(files, scenarios, diff_for=None) -> Selection:
                 srcs = None if diff is None else build_file_sources(path, diff)
                 if srcs is None:
                     sel.everything = True
+                    sel.everything_class = _wider(sel.everything_class, "both")  # flags can differ per region
                     sel.reasons.append((path, "build file changed beyond its source lists "
                                               "(or no diff): full tier"))
                 else:
-                    sub = select(srcs, scenarios)
+                    sub = select(srcs, scenarios, None, read_text)
                     sel.names |= sub.names
+                    for c, ns in sub.classes.items():
+                        sel.add_class(c, ns)
+                    if sub.everything:
+                        sel.everything_class = _wider(sel.everything_class, sub.everything_class)
                     sel.everything |= sub.everything
                     sel.unmapped_globs += sub.unmapped_globs
                     sel.reasons.append((path, "source list only: " + (", ".join(srcs) or "comments")))
@@ -263,6 +388,7 @@ def select(files, scenarios, diff_for=None) -> Selection:
                 phase = path.rsplit("/", 1)[-1].removesuffix(".rec")
                 got = owners.get(phase, set()) & full_tier  # nx and both scenarios run elsewhere
                 sel.names |= got
+                sel.add_class("exact", got)   # a changed recording: its own scenarios, whatever the region
                 sel.reasons.append((path, "recording of " + (", ".join(sorted(got)) or "no scenario")))
             elif what:
                 hit = set()
@@ -272,7 +398,8 @@ def select(files, scenarios, diff_for=None) -> Selection:
                         sel.unmapped_globs.append(g)
                     hit |= m
                 sel.names |= hit
-                sel.reasons.append((path, f"{len(hit)} scenario(s)"))
+                sel.add_class(cls, hit)
+                sel.reasons.append((path, f"{len(hit)} scenario(s)" + ("" if cls == "default" else f", region class {cls}")))
             else:
                 sel.reasons.append((path, "no replay impact"))
             break
@@ -280,6 +407,7 @@ def select(files, scenarios, diff_for=None) -> Selection:
             # Unknown file: if it can reach the PC game, be safe.
             if re.match(r"^(port/|platforms/pc/|platforms/switch/launcher/|vendor/|CMake|tools/replay/)", path):
                 sel.everything = True
+                sel.everything_class = _wider(sel.everything_class, cls)
                 sel.reasons.append((path, "no rule: full tier"))
             else:
                 sel.reasons.append((path, "outside the game: no replay impact"))
@@ -301,6 +429,23 @@ def scenario_area(name):
     return "own:" + name
 
 
+def area_sweep(scenarios, regions=("us", "eu"), tiers=("quick", "full", "both"), override_names=(), cost=None):
+    """One scenario per (area, region) of `regions`: the representative prefers
+    tier `both`, then `quick`, then the name order (the both-binary subset is this
+    with both regions and tier `both`). A scenario that runs both regions
+    (cross-region saves) is not a representative; the canary covers those."""
+    pool = [s for s in scenarios if s.tier in tiers and scenario_region(s) in regions]
+    groups: dict = {}
+    for s in pool:
+        groups.setdefault((scenario_area(s.name), s.version), []).append(s)
+    cost = cost or {}
+    chosen = {min(m, key=lambda s: (s.tier != "both", s.tier != "quick",
+                                    cost.get(s.name, 60.0), s.name)).name
+              for m in groups.values()}
+    chosen |= set(override_names) & {s.name for s in pool}
+    return sorted(chosen)
+
+
 def both_subset(scenarios, override_names=()):
     """The both-binary subset (docs/P6.15_REPLAY_TESTS.md): one PC scenario per
     (area, region), plus every scenario with a `both/` refs override.
@@ -315,3 +460,82 @@ def both_subset(scenarios, override_names=()):
               for m in groups.values()}
     chosen |= set(override_names) & {s.name for s in pool}
     return sorted(chosen)
+
+
+# What `--changed` always adds in the single-region default, on top of the quick
+# tier: the boot-to-field, a battle and a save round trip on the default region
+# (the canary does the same for US).
+SMOKE_AUTO = ("eu-field-walk", "eu-two-battles", "eu-restart-save-continue")
+
+
+def canary_names(scenarios, bin_both=False, launcher=False):
+    """The cross-region canary that exists in `scenarios`, plus the `both` tier
+    scenarios when a combined binary is given and the `single` tier when a launcher is."""
+    have = {s.name for s in scenarios}
+    tiers = ((CANARY_TIERS_WITH_BIN_BOTH if bin_both else ()) +
+             (CANARY_TIERS_WITH_LAUNCHER if launcher else ()))
+    return ({n for n in CANARY if n in have} |
+            {s.name for s in scenarios if s.tier in tiers})
+
+
+def _wanted(cls, name, region, default):
+    """Does a scenario selected by a file of class `cls` run in this plan?"""
+    if cls == "exact":
+        return True
+    lang = bool(LANG_COPY.match(name))
+    if lang and cls != "langs":
+        return False
+    if region == "cross":
+        return True            # cheap (about 1 min), and the point of the cross-region tests
+    if cls in ("both", "langs"):
+        return True
+    return region == {"default": default, "eu": "eu", "us": "us"}[cls]
+
+
+@dataclass
+class Plan:
+    names: set = field(default_factory=set)
+    notes: list = field(default_factory=list)
+
+
+def plan(sel, scenarios, region="auto", escalate="sweep", bin_both=False, launcher=False,
+         default_region=DEFAULT_REGION, cost=None) -> Plan:
+    """The scenarios `--changed` runs once areas.select() has said what the files affect.
+
+    region 'both' is the old behaviour: every affected scenario of both regions, the full
+    tier for an engine-wide file. 'us' / 'eu' keeps one region's scenarios. 'auto' is the
+    policy of docs/REPLAY_POLICY.md: the default region only, except where the file's
+    region class says otherwise, an engine-wide file runs the area sweep unless
+    `escalate` is 'full', and the canary always runs."""
+    by = {s.name: s for s in scenarios}
+    out = Plan()
+    if region == "both":
+        out.names = set(sel.names)
+        out.notes.append("region both: every affected scenario of both regions"
+                         + (" (full tier)" if sel.everything else ""))
+        return out
+    if region in ("us", "eu"):
+        out.names = {n for n in sel.names if scenario_region(by[n]) == region}
+        out.notes.append(f"region {region}: {len(out.names)} of {len(sel.names)} selected scenario(s)")
+        return out
+    names = set()
+    for cls, ns in sel.classes.items():
+        names |= {n for n in ns if n in by and _wanted(cls, n, scenario_region(by[n]), default_region)}
+    if sel.everything:
+        if escalate == "full":
+            names |= {s.name for s in scenarios if s.tier in ("quick", "full")}
+            out.notes.append("engine-wide file: the full tier, both regions (--escalate full)")
+        else:
+            regs = ("us", "eu") if sel.everything_class in ("both", "langs") else (default_region,)
+            sweep = area_sweep(scenarios, regs, tiers=("quick", "full"), cost=cost)
+            names |= set(sweep)
+            out.notes.append(f"engine-wide file: area sweep on {'+'.join(regs)} "
+                             f"({len(sweep)} scenarios); the full tier is the release gate")
+    names |= {s.name for s in scenarios if s.tier == "quick"}
+    names |= {n for n in SMOKE_AUTO if n in by}
+    names |= canary_names(scenarios, bin_both, launcher)
+    classes = sorted(c for c, ns in sel.classes.items() if ns)
+    out.notes.append(f"region policy: default {default_region}; file classes {classes or ['none']}; "
+                     f"canary {len(canary_names(scenarios, bin_both, launcher))}")
+    out.names = names
+    return out

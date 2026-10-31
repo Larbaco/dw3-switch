@@ -57,7 +57,9 @@ bash tools/build_switch_game.sh           # build/switch/dw3-switch.nro
 bash tools/build_switch_game.sh --eu      # EU build
 ```
 
-Every change is tested on both discs, US and EU. The EU PC build uses its own
+A PR's replay tests run on EU by default and on both discs where the change
+is region-sensitive; releases run both in full (AGENTS.md rule 5,
+[docs/REPLAY_POLICY.md](docs/REPLAY_POLICY.md)). The EU PC build uses its own
 tree, see [docs/P3_EU_BUILD.md](docs/P3_EU_BUILD.md). Build trees and
 temporary files go under `/mnt/cabal/tmp` on the owner's machine. Do not
 overclock the console (AGENTS.md, technical directive 7).

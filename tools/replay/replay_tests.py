@@ -46,6 +46,8 @@ SCEN_DIR = Path(__file__).resolve().parent / "scenarios"
 # picks the region of each phase with DW3_REGION; nothing else changes, so the
 # captures are compared with the references of the plain builds.
 BOTH_BIN = None
+# --paced: keep the real frame pacing (DW3_REPLAY_PACED=1) instead of the unpaced replay.
+PACED = False
 
 # Per-channel tolerance (0-255) below which two pixels count as equal, and the
 # fraction of differing pixels a checkpoint may have. Same-machine runs are
@@ -59,6 +61,22 @@ MAX_DIFF_RATIO = 0.001
 MAX_REPLAY_FRAME = (1 << (8 * ctypes.sizeof(ctypes.c_uint))) - 1
 
 SCENARIOS = manifest.SCENARIOS
+# Measured process seconds per scenario (docs/REPLAY_POLICY.md; one box, --jobs 2):
+# orders the pool (longest first) and gives --dry-run an estimate. No game data.
+TIMINGS_FILE = Path(__file__).resolve().parent / "timings.json"
+
+
+def load_timings() -> dict:
+    try:
+        return {k: float(v) for k, v in json.loads(TIMINGS_FILE.read_text()).items() if not k.startswith("_")}
+    except (OSError, ValueError):
+        return {}
+
+
+def estimate_seconds(names, timings, scenarios=None):
+    """(sum of known seconds, number of names without a measurement)."""
+    known = [timings[n] for n in names if n in timings]
+    return sum(known), len(list(names)) - len(known)
 ARTIFACTS = ("png", "ppm")  # window grab (with host overlays), PS1 display frame
 
 
@@ -146,6 +164,15 @@ def changed_files(base: str | None) -> list[str]:
     files |= set(git("diff", "--name-only", "--no-renames", "HEAD"))
     files |= set(git("ls-files", "--others", "--exclude-standard"))
     return sorted(files)
+
+
+def read_repo_text(path: str) -> str | None:
+    """Working-tree text of a changed file (for the region mark in areas.region_class);
+    None when it is gone or not text."""
+    try:
+        return (ROOT / path).read_text(errors="replace")
+    except OSError:
+        return None
 
 
 def build_file_diff(base: str | None, path: str) -> str | None:
@@ -330,8 +357,10 @@ def run_phase(rec: Path, version, binary, runtime, display, outdir: Path, memdir
               "DW3_FILE_CACHE_SLOTS", "DW3_MODS_DIR", "DW3_MOD_PACK", "DW3_FORCE_MENU", "DW3_CHEATS_ARM", "DW3_STAGE_SWEEP", "DW3_STAGE_SWEEP_EXIT", "DW3_STAGE_SWEEP_FRAMES", "DW3_STAGE_SWEEP_ONLY", "DW3_STAGE_SWEEP_DIR", "DW3_STAGE_SWEEP_HANG_MS", "DW3_FORCE_EXIT", "DW3_START_MODE_EVERY", "DW3_WALKTHROUGH_PROBE",
               "DW3_MEMCARD_IMPORT_DIR", "DW3_CROSS_IMPORT", "DW3_SAVE_STORE", "DW3_SAVE_STORE_DIR", "DW3_REGION", "DW3_REGION_PICK",
               "DW3_REGION_PICK_KEYS", "DW3_SAVE_PROFILE", "DW3_RUNTIME_BASE", "DW3_PC_BIN_US", "DW3_PC_BIN_EU",
-              "DW3_RELAUNCH_TEST"):
+              "DW3_RELAUNCH_TEST", "DW3_REPLAY_PACED"):
         env.pop(k, None)
+    if PACED:
+        env["DW3_REPLAY_PACED"] = "1"
     if BOTH_BIN is not None and launch is None and Path(binary).resolve() == BOTH_BIN:
         env["DW3_REGION"] = version  # P6.24: the one binary, told which game copy to run
     if launch is not None:  # P6.24: the launcher picks the runtime and the binary
@@ -738,6 +767,26 @@ def main():
                          "tier. CI and release checks run the full tier, not this")
     ap.add_argument("--changed-files", nargs="+", metavar="PATH",
                     help="like --changed with an explicit file list (no git)")
+    ap.add_argument("--region", choices=("auto", "us", "eu", "both"), default=None,
+                    help="which region's scenarios run (docs/REPLAY_POLICY.md). Default: 'auto' with "
+                         "--changed (EU only, US/EU where the changed files are region-sensitive, "
+                         "plus the canary), 'both' otherwise (today's behaviour, the release gate). "
+                         "'us' / 'eu' keep that region's scenarios only")
+    ap.add_argument("--canary", action="store_true",
+                    help="run only the cross-region canary (boot of both regions, the EU extra "
+                         "chapter, a language page, cross-region saves; with --bin-both also the "
+                         "Region row and relaunch scenarios, with --launcher the launcher ones). "
+                         "--changed always adds it")
+    ap.add_argument("--sweep", action="store_true",
+                    help="run the area sweep: one scenario per areas.py area and --region "
+                         "(default eu), plus the canary")
+    ap.add_argument("--escalate", choices=("sweep", "full"), default="sweep",
+                    help="what --changed runs for an engine-wide file (main.c, the decomp pin, a "
+                         "build file): 'sweep' (default) = the area sweep on the default region "
+                         "(both when the file is region-sensitive); 'full' = the whole full tier")
+    ap.add_argument("--paced", action="store_true",
+                    help="keep the real frame pacing (DW3_REPLAY_PACED=1): the runner otherwise "
+                         "lets the replay run unpaced, EU included")
     ap.add_argument("--both-subset", action="store_true",
                     help="run the both-binary subset: one PC scenario per areas.py area and "
                          "region, plus every scenario with a <refs>/<name>/both/ override "
@@ -775,6 +824,7 @@ def main():
             print(f"{sc.name:<22} {sc.version} {sc.tier:<5} phases={len(sc.phases)} {sc.note}")
         return 0
     names = {sc.name for sc in SCENARIOS}
+    by_name = {sc.name: sc for sc in SCENARIOS}
     if a.only:
         unknown = sorted(set(a.only) - names)
         if unknown:
@@ -783,16 +833,28 @@ def main():
     elif a.changed is not None or a.changed_files:
         files = a.changed_files if a.changed_files else changed_files(a.changed or None)
         diff_for = None if a.changed_files else (lambda p: build_file_diff(a.changed or None, p))
-        sel = areas.select(files, SCENARIOS, diff_for)
-        selected = sel.names
-        print(f"--changed: {len(files)} changed file(s) -> {len(selected)} scenario(s)"
-              f"{' (full tier: ' + 'an unmapped or engine-wide file, or a build file changed beyond its source lists' + ')' if sel.everything else ''}")
+        sel = areas.select(files, SCENARIOS, diff_for, read_repo_text)
+        pl = areas.plan(sel, SCENARIOS, a.region or "auto", a.escalate,
+                        bin_both=bool(a.bin_both), launcher=bool(a.launcher), cost=load_timings())
+        selected = pl.names
+        full_note = (' (engine-wide: an unmapped file, or a build file changed beyond its source lists)'
+                     if sel.everything else '')
+        print(f"--changed: {len(files)} changed file(s) -> {len(selected)} scenario(s){full_note}")
+        for note in pl.notes:
+            print(f"  policy: {note}")
         for path, why in sel.reasons[:40]:
             print(f"  {path}: {why}")
         if len(sel.reasons) > 40:
             print(f"  ... {len(sel.reasons) - 40} more")
         for g in sorted(set(sel.unmapped_globs)):
             print(f"  note: rule pattern {g!r} matches no scenario (areas.py is stale?)")
+    elif a.canary and not a.sweep:
+        selected = areas.canary_names(SCENARIOS, bool(a.bin_both), bool(a.launcher))
+    elif a.sweep:
+        regs = {"us": ("us",), "eu": ("eu",), "both": ("us", "eu")}.get(a.region or "eu", ("eu",))
+        selected = set(areas.area_sweep(SCENARIOS, regs, tiers=("quick", "full") + (("both",) if a.bin_both else ()),
+                                        cost=load_timings()))
+        selected |= areas.canary_names(SCENARIOS, bool(a.bin_both), bool(a.launcher))
     elif a.both_subset:
         refs = Path(a.refs).expanduser()
         overrides = [p.parent.name for p in refs.glob("*/both") if p.is_dir()]
@@ -804,11 +866,22 @@ def main():
     else:
         tiers = {"quick", "full"} | ({"soak"} if a.soak else set())
         selected = {sc.name for sc in SCENARIOS if sc.tier in tiers}
+    if a.region in ("us", "eu") and not (a.changed is not None or a.changed_files):
+        selected = {n for n in selected if areas.scenario_region(by_name[n]) == a.region}
     if not selected:
         ap.error("no scenarios selected")
     if a.dry_run:
         print(f"{len(selected)} of {len(SCENARIOS)} scenarios selected:")
         print("\n".join(f"  {sc.name}" for sc in SCENARIOS if sc.name in selected))
+        by_reg = {}
+        for n in selected:
+            r = areas.scenario_region(by_name[n])
+            by_reg[r] = by_reg.get(r, 0) + 1
+        print("by region: " + ", ".join(f"{r} {c}" for r, c in sorted(by_reg.items())), file=sys.stderr)
+        secs, unknown = estimate_seconds(selected, load_timings())
+        jobs = 2 if str(a.jobs).lower() == "auto" else max(1, int(a.jobs))
+        print(f"estimate: {secs / 60:.0f} min of process time, about {secs / 60 / jobs:.0f} min "
+              f"with --jobs {jobs} (timings.json; {unknown} scenario(s) not measured)", file=sys.stderr)
         return 0
     try:
         checkpoints = {n: shot_names(n) for n in selected}
@@ -831,7 +904,8 @@ def main():
     out.mkdir(parents=True, exist_ok=True)
     refs.mkdir(parents=True, exist_ok=True)
 
-    global BOTH_BIN
+    global BOTH_BIN, PACED
+    PACED = a.paced
     if a.bin_both:
         BOTH_BIN = Path(a.bin_both).expanduser().resolve()
         a.bin_us = a.bin_eu = str(BOTH_BIN)
@@ -850,7 +924,8 @@ def main():
     launcher = Path(a.launcher).expanduser().resolve() if a.launcher else None
     todo = [sc for sc in SCENARIOS if sc.name in selected]
     # Long scenarios first so the parallel pool finishes earlier.
-    order = sorted(todo, key=lambda sc: -sc.timeout * len(sc.phases))
+    timings = load_timings()
+    order = sorted(todo, key=lambda sc: -(timings.get(sc.name) or sc.timeout * len(sc.phases) / 4))
     lock = threading.Lock()
     rows_by = {}
     stop = threading.Event()    # --fail-fast: set by the first failing scenario

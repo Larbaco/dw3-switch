@@ -7,8 +7,10 @@
 #   tools/replay_tests.sh --soak       + the 15-20 min soak scenarios
 #   tools/replay_tests.sh --update     (re)generate references from this run
 #   tools/replay_tests.sh --twice      run each scenario twice, require identical captures
-#   tools/replay_tests.sh --changed --jobs 2 --fail-fast   pre-PR: changed-area selection
-#                                      (docs/BUILD_SPEED.md); CI/release run the full tier
+#   tools/replay_tests.sh --changed --jobs 2 --fail-fast   pre-PR: changed-area selection, EU by
+#                                      default + a cross-region canary (docs/REPLAY_POLICY.md);
+#                                      the release gate is the full tier on both regions
+#   tools/replay_tests.sh --region us|eu|both | --canary | --sweep | --paced
 # The Switch build in Ryubing: tools/replay_ryubing.sh
 set -euo pipefail
 exec python3 "$(dirname "$0")/replay/replay_tests.py" "$@"
