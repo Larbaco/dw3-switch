@@ -107,6 +107,10 @@ RULES: list[tuple[str, object]] = [
     (r"^port/autosave/", ("*autosave*", "*title-continue*")),
     (r"^port/battle_menu/", ("*p79*", "*battle-options*", "*battle-list-bar*")),
     (r"^port/(items_menu/|include/port_items_menu\.h)", ("*items*", "*menu-screens*")),
+    # Instant menu exit (patch 0200): every scenario that leaves the field menu's screens for
+    # the field (Items, Map, Status, ... then Triangle) skips the dissolve with the key on.
+    (r"^port/(menu_exit/|include/port_menu_exit\.h$)|^port/patches/\d+-PORT_HOST-menu-instant-exit",
+     ("*items*", "*menu*", "*map*", "*cheat-item*")),
     (r"^port/(map_view/|include/port_map_view\.h$)", ("*map*",)),
     # the PC overlay of that screen (P6.32 phase 3 touches it for the FIT backdrop)
     (r"^platforms/pc/src/map_view_overlay\.c$", ("*map*",)),

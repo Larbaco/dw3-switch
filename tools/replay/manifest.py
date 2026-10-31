@@ -955,8 +955,11 @@ for _v, _ids in (("us", (0x159, 0x1FA, 0x1C2, 0x158, 0x1F9)),
 for _v, _ids in (("us", (0x159, 0x1FA, 0x1C2, 0x158, 0x1F9)),
                  ("eu", (0x167, 0x208, 0x1D1, 0x166, 0x207))):
     _fight, _menu, _report, _field, _status = _ids
+    # menu_instant_exit=0: the recording checks the dissolve back to the field, which the
+    # instant exit (patch 0200, default on) skips
     _add(Scenario(f"{_v}-items-menu", _v, "full", turbo=4, timeout=300,
-                  phases=(f"{_v}-items-menu",), env=_ITEMS_ENV, cfg=(("encounter_rate", "2"),),
+                  phases=(f"{_v}-items-menu",), env=_ITEMS_ENV,
+                  cfg=(("encounter_rate", "2"), ("menu_instant_exit", "0")),
                   expect_restore=((_fight, M), (_menu, S), (_report, M), (_field, M),
                                   (_status, M), (_field, M)),
                   forbid_log=((0, r"overlay restore file=0x%x kind=mode(?:(?!overlay restore)(?s:.))*?"
@@ -971,8 +974,11 @@ for _v, _ids in (("us", (0x159, 0x1FA, 0x1C2, 0x158, 0x1F9)),
 for _v, _ids in (("us", (0x159, 0x1FA, 0x1C2, 0x158, 0x1F9)),
                  ("eu", (0x167, 0x208, 0x1D1, 0x166, 0x207))):
     _fight, _menu, _report, _field, _status = _ids
+    # menu_instant_exit=0: its last checkpoint is taken after the dissolve back to the field
+    # (patch 0200 skips it by default; the glyphs-*-items scenarios inherit the pin)
     _add(Scenario(f"{_v}-menu-screens", _v, "full", turbo=4, timeout=400,
-                  phases=(f"{_v}-menu-screens",), env=_ITEMS_ENV, cfg=(("encounter_rate", "2"),),
+                  phases=(f"{_v}-menu-screens",), env=_ITEMS_ENV,
+                  cfg=(("encounter_rate", "2"), ("menu_instant_exit", "0")),
                   expect_restore=((_fight, M), (_menu, S), (_report, M), (_field, M),
                                   (_status, M), (_field, M)),
                   forbid_log=((0, r"overlay restore file=0x%x kind=mode(?:(?!overlay restore)(?s:.))*?"
@@ -1000,6 +1006,37 @@ for _v, _ids in (("us", (0x159, 0x1FA, 0x1C2, 0x158, 0x1F9)),
                                       r"(?s:.*)partner switch member 0 -> 2 .*bag=\1 worn=\2"
                                       r"(?s:.*)partner switch member 2 -> 0 .*bag=\1 worn=\2"),),
                       note="R2 / L2 change the partner on the equip slot list, counts unchanged (patch 0128)"))
+
+# Instant menu exit (patch 0200, Options > Menus > Instant menu exit, key
+# menu_instant_exit, default on): leaving the field menu's screens for the field
+# skips the block dissolve and keeps the game state. One recording, three exits
+# (the field menu closed over the field, Items and Map left for the field); the
+# env and cfg of items-menu. `-off` is the same recording with the key at 0:
+# the original dissolve, whose log line carries the same clocks and RNG as the
+# instant one (compared by hand in the PR; the dissolve takes 96 frames on US and
+# 80 on EU, the instant exit says how many it skipped).
+for _v, _ids, _skip in (("us", (0x159, 0x1FA, 0x1C2, 0x158, 0x1F9), r"9\d"),
+                        ("eu", (0x167, 0x208, 0x1D1, 0x166, 0x207), r"[78]\d")):
+    _fight, _menu, _report, _field, _status = _ids
+    _restore = ((_fight, M), (_menu, S), (_report, M), (_field, M), (_status, M), (_field, M),
+                (_status, M), (_field, M))
+    _add(Scenario(f"{_v}-menu-instant-exit", _v, "full", turbo=4, timeout=400,
+                  phases=(f"{_v}-menu-instant-exit",), env=_ITEMS_ENV,
+                  cfg=(("encounter_rate", "2"),), expect_restore=_restore,
+                  expect_log=((0, r"menu_instant_exit=1(?s:.*)"
+                                  r"dw3-menu: exit to field instant \(skipped %s transition frames, from items\)(?s:.*)"
+                                  r"dw3-menu: exit to field instant \(skipped %s transition frames, from map\)" % (_skip, _skip)),),
+                  forbid_log=((0, r"exit to field with the original transition"),),
+                  note="Items and Map left for the field without the dissolve; the field menu closed "
+                       "over the field logs nothing (patch 0200)"))
+    _add(Scenario(f"{_v}-menu-instant-exit-off", _v, "full", turbo=4, timeout=400,
+                  phases=(f"{_v}-menu-instant-exit",), env=_ITEMS_ENV,
+                  cfg=(("encounter_rate", "2"), ("menu_instant_exit", "0")), expect_restore=_restore,
+                  expect_log=((0, r"menu_instant_exit=0(?s:.*)"
+                                  r"dw3-menu: exit to field with the original transition \(instant exit off, from items\)(?s:.*)"
+                                  r"dw3-menu: exit to field with the original transition \(instant exit off, from map\)"),),
+                  forbid_log=((0, r"exit to field instant"),),
+                  note="menu_instant_exit=0: the original dissolve on both exits (patch 0200)"))
 
 # P6.34 phase 2 (patch 0190): equip in Status > Equipment and return to the slot
 # list without the long fade round trip, key on (the default). `-off` is the
@@ -3012,17 +3049,18 @@ _NO_BAD = ((0, r"is not valid"), (0, r"BINDING PROBLEM"))
 for _v in ("us", "eu"):
     _add(Scenario(f"{_v}-options-menus", _v, "full", timeout=300,
                   phases=(f"{_v}-options-menus-p1", f"{_v}-options-menus-p2"),
-                  expect_log=((0, r"dw3-port-options: group open menus \(5 row\(s\), title\)(?s:.*)"
+                  expect_log=((0, r"dw3-port-options: group open menus \(6 row\(s\), title\)(?s:.*)"
                                   r"dw3-port-options: equip from items disabled(?s:.*)"
                                   r"dw3-port-options: equip stays on list disabled(?s:.*)"
                                   r"dw3-port-options: whole bag disabled(?s:.*)"
                                   r"dw3-port-options: use item stays disabled(?s:.*)"
                                   r"dw3-port-options: partner switch disabled(?s:.*)"
+                                  r"dw3-port-options: instant menu exit disabled(?s:.*)"
                                   r"dw3-port-options: group close menus \(back to the group list\)"),
                               (1, r"dw3-options: file keys items_equip_from_items=0 items_equip_stays=0 "
-                                  r"items_bag_view=0 items_use_stays=0 items_partner_switch=0")),
+                                  r"items_bag_view=0 items_use_stays=0 items_partner_switch=0(?s:.*)menu_instant_exit=0")),
                   forbid_log=_NO_BAD + ((1, r"is not valid"),),
-                  note="Options > Menus: the five Items-menu switches turned OFF are read back by the next process (D1)"),
+                  note="Options > Menus: the six switches (the five Items-menu ones and Instant menu exit) turned OFF are read back by the next process (D1, patch 0200)"),
          Scenario(f"{_v}-options-display", _v, "full", timeout=300,
                   phases=(f"{_v}-options-display-p1", f"{_v}-options-display-p2"),
                   expect_log=((0, r"dw3-port-options: group open display \(4 row\(s\), title\)(?s:.*)"

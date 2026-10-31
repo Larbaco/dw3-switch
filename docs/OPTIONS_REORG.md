@@ -73,6 +73,7 @@ Item count, Give item) are one-shot actions, not stored keys.
 | `items_bag_view` | 1 | all | Square cycles the whole bag in the equip list; move an item between Digimon (patch 0192) | **Menus > Whole bag** |
 | `items_use_stays` | 1 | all | Using a consumable keeps the partner step open for the next copy (patch 0193) | **Menus > Use item stays** |
 | `items_partner_switch` | 1 | all | ZL / ZR change the partner on the equip panel (patch 0128) | **Menus > Partner switch** |
+| `menu_instant_exit` | 1 | all | Leaving the field menu's screens for the field skips the block dissolve; clocks, play time and RNG advance as in the original (patch 0200). Added after D1 step 1, registry 27, last row of Menus | **Menus > Instant menu exit** |
 | `map_mod` | 1 | all; needs a pack in the mods folder | Uses an installed map-upscale pack for the full-screen map ([MOD_MAP_UPSCALE](MOD_MAP_UPSCALE.md)) | **Display > Map mod pack** |
 | `show_version` | 1 | all | The title's bottom-right corner shows `dw3-switch v... (sha) US`. The Options footer always shows it (class C, exempt) | **Display > Version label** |
 | `save_store` | 0 | all; needs a profile folder; read before the cards open, so a restart | US and EU share one per-profile store (`card0.dw3s`) | **Saves > Shared saves (experimental)**, title only, with a warning ([3.7](#37-saves)) |
@@ -132,7 +133,7 @@ Order of the group list (ten plaques; six fit, so it scrolls by up to four):
 | 1 | Display | Display | Affichage | Anzeige | Pantalla | Schermo | Widescreen (0), Full-screen map (15), **Map scaler**, **Map mod pack**, **Version label** (all new) |
 | 2 | Sound | Sound | Son | Ton | Sonido | Audio | Music volume (3), SFX volume (4), Turbo music (13) |
 | 3 | Gameplay | Gameplay | Jouabilité | Gameplay | Jugabilidad | Gameplay | Fast-forward (1), Encounter rate (5), Text speed (6), Battle cursor (7) |
-| 4 | **Menus** (new) | Menus | Menus | Menüs | Menús | Menu | **Equip from Items**, **Equip stays on list**, **Whole bag**, **Use item stays**, **Partner switch** (the five `items_*` keys) |
+| 4 | **Menus** (new) | Menus | Menus | Menüs | Menús | Menu | **Equip from Items**, **Equip stays on list**, **Whole bag**, **Use item stays**, **Partner switch** (the five `items_*` keys), **Instant menu exit** (`menu_instant_exit`, patch 0200, added after step 1) |
 | 5 | Controls | Controls | Commandes | Steuerung | Controles | Comandi | Button layout (9), Customize buttons (11), **Map buttons** (new sub-page), Reset to default (12), Switch glyphs (14, Switch), **Restart hotkey (2, moved from Gameplay)** |
 | 6 | Saves | Saves | Sauvegardes | Speichern | Partidas | Salvataggi | Auto-save (8), **Region at start (10, moved from Gameplay; combined image only)**, **Shared saves (experimental)** (new) |
 | 7 | Cheats | Cheats | Triches | Cheats | Trucos | Trucchi | the ten Cheats rows (unchanged; title only, greyed in game) |
