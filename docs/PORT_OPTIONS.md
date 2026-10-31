@@ -18,19 +18,28 @@ A file-only key is not enough: a new behaviour ships with a registry row, its
 `port_options.cfg` key, a default, and a label and message line in the five languages
 (EN, FR, DE, ES, IT), in the same change.
 
-**Exceptions** (only these; each one is flagged to the owner in the PR, never added
-silently):
+**Exempt, with no row** (owner, 2026-10-31; only these, anything else needs a row and a
+doubtful change is flagged to the owner in the PR):
 
-| Exception | Today |
+| Class | What |
 |---|---|
-| Test, dev and experimental keys | `save_store` (experimental), `stage_sweep` and `stage_sweep_frames` (dev), `show_version` (test label), the seven `map_view_*` button bindings (advanced). `DW3_*` environment variables are test aids, not options. Each is under review in [OPTIONS_REORG](OPTIONS_REORG.md#12-file-only-keys-no-row-the-gap-the-new-rule-closes) |
-| Anything else the owner explicitly allows | none yet. The audit of always-on changes with no key (crash and 64-bit fixes, host plumbing, the port's own screens, the original bugs fixed) is proposed in [OPTIONS_REORG section 1.3](OPTIONS_REORG.md#13-changes-versus-the-original-with-no-key-at-all-found-by-the-audit); not decided |
+| A. Crash and 64-bit fixes | the PS1 read or wrote kernel RAM, or the host heap behaves differently: patches `0057`, `0058`, `0059`, `0069`, `0096`, `0111`, `0197`, `0198` |
+| B. Host plumbing | focus-loss pause, delta clamp, rotating `.mcr` backups, write-through, docked/handheld re-present, vsync wait, `0043` save/load panel pace, `0041` / `0042` field-tile preload, per-profile saves (P6.26), the cross-region import (P6.25 slice 1) |
+| C. The port's own screens | the Options entry (title row, field-menu row, battle Select), Return to title, Quit game, Help, Walkthrough, the version footer line, the Options menu background |
+| D. Original bugs fixed, always on | `0065` HUD form name, `0066` Claw steal on the killing blow, the area-name banner fix, `0187` EU language select Cross, `0129` title logo scale |
 
-State on 2026-10-31: five keys still have no row and the owner ordered one for each:
+Test, dev and experimental keys are **not** exempt: the owner decided on 2026-10-31 that
+`show_version`, `map_mod`, `save_store` (labelled experimental, title only, with a warning
+window when turned on), `stage_sweep` with `stage_sweep_frames`, and the seven `map_view_*`
+bindings all get a row. `DW3_*` environment variables are test aids, not options, and do not.
+
+State on 2026-10-31: these keys still have no row and the rows are designed, not built:
 `items_equip_from_items`, `items_equip_stays`, `items_bag_view`, `items_use_stays`,
-`items_partner_switch` (all default 1). `map_mod` has no row either and is proposed one.
-The group tree that will hold them is designed in [OPTIONS_REORG](OPTIONS_REORG.md);
-the tables and the "file-only" notes below describe the screen **as built** and change
+`items_partner_switch` (all default 1), `map_mod`, `show_version`, `save_store`,
+`stage_sweep`, `stage_sweep_frames`, and `map_view_*`. The group tree that will hold them
+(ten groups, new Menus and Advanced, a Map buttons sub-page) is approved and written in
+[OPTIONS_REORG](OPTIONS_REORG.md); the tables and the "file-only" notes below describe the
+screen **as built** and change with the build PRs, not with the design.
 with the build PR, not with the design.
 
 ## Scope
