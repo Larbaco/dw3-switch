@@ -74,6 +74,7 @@ Item count, Give item) are one-shot actions, not stored keys.
 | `items_bag_view` | 1 | all | Square cycles the whole bag in the equip list; move an item between Digimon (patch 0192) | **Menus > Whole bag** |
 | `items_use_stays` | 1 | all | Using a consumable keeps the partner step open for the next copy (patch 0193) | **Menus > Use item stays** |
 | `items_partner_switch` | 1 | all | ZL / ZR change the partner on the equip panel (patch 0128) | **Menus > Partner switch** |
+| `menu_instant_exit` | 1 | all | Leaving the field menu's screens for the field skips the block dissolve; clocks, play time and RNG advance as in the original (patch 0200). Added after D1 step 1, registry 27, last row of Menus | **Menus > Instant menu exit** |
 | `map_mod` | 1 | all; needs a pack in the mods folder | Uses an installed map-upscale pack for the full-screen map ([MOD_MAP_UPSCALE](MOD_MAP_UPSCALE.md)) | **Display > Map mod pack** |
 | `show_version` | 1 | all | The title's bottom-right corner shows `dw3-switch v... (sha) US`. The Options footer always shows it (class C, exempt) | **Display > Version label** |
 | `save_store` | 0 | all; needs a profile folder; read before the cards open, so a restart | US and EU share one per-profile store (`card0.dw3s`) | **Saves > Shared saves (experimental)**, title only, with a warning ([3.7](#37-saves)) |
@@ -107,7 +108,7 @@ A change not in this list needs a row.
 | **A. Crash and 64-bit fixes** (the PS1 read or wrote kernel RAM, or the 8 MiB host heap behaves differently) | `0057` stream busy guard, `0058` / `0059` NULL guards, `0069` items-screen icon, `0096` file-cache evict, `0111` tile sprite count, `0197` WSTAG460 wanderer, `0198` BUG-6 wireframe tag |
 | **B. Host plumbing** | focus-loss pause, delta clamp, rotating `.mcr` backups, write-through, docked/handheld re-present, vsync wait ([SWITCH_FEATURES](SWITCH_FEATURES.md)); `0043` flat save/load panel pace (100 frames), `0041`/`0042` field-tile preload; per-profile saves (P6.26 slice 1) and the cross-region import (P6.25 slice 1) |
 | **C. The port's own screens** | the Options entry (title row, field-menu row, battle Select), Return to title (P6.27), Quit game (P6.28), the Help and Walkthrough screens, the version footer line of the Options screens, the Options menu background |
-| **D. Original bugs fixed, always on** | `0065` HUD shows the Digimon the partner fights as, `0066` Claw steal on the killing blow ([P7.7](P7.7_BUG_FIXES.md)), the area-name banner fix, `0187` EU language select accepts Cross, `0129` title logo scale |
+| **D. Original bugs fixed, always on** | `0065` HUD shows the Digimon the partner fights as, `0066` Claw steal on the killing blow ([P7.7](P7.7_BUG_FIXES.md)), the area-name banner fix, `0187` EU language select accepts Cross, `0129` title logo scale, `0199` PRESS START drawn only when Start is read (proposed 2026-10-31, owner to confirm) |
 | **(not exempt) E. Sub-features behind a row** | the 16:9 patches `0047`-`0115`, `0175`, `0177`, `0179` (Widescreen); the menus at 1.5x (`0176`, Fast-forward); the instant-scroll hold (`0068`, Text speed); the jingle hold (`0194`) and tick gate (`0191`, Turbo music); `0140`-`0142` Continue row for the auto-save (Auto-save). They already have a switch |
 
 ## 2. The reorganized tree
@@ -133,7 +134,7 @@ Order of the group list (ten plaques; six fit, so it scrolls by up to four):
 | 1 | Display | Display | Affichage | Anzeige | Pantalla | Schermo | Widescreen (0), Full-screen map (15), **Map scaler**, **Map mod pack**, **Version label** (all new) |
 | 2 | Sound | Sound | Son | Ton | Sonido | Audio | Music volume (3), SFX volume (4), Turbo music (13) |
 | 3 | Gameplay | Gameplay | Jouabilité | Gameplay | Jugabilidad | Gameplay | Fast-forward (1), Encounter rate (5), Text speed (6), Battle cursor (7) |
-| 4 | **Menus** (new) | Menus | Menus | Menüs | Menús | Menu | **Equip from Items**, **Equip stays on list**, **Whole bag**, **Use item stays**, **Partner switch** (the five `items_*` keys) |
+| 4 | **Menus** (new) | Menus | Menus | Menüs | Menús | Menu | **Equip from Items**, **Equip stays on list**, **Whole bag**, **Use item stays**, **Partner switch** (the five `items_*` keys), **Instant menu exit** (`menu_instant_exit`, patch 0200, added after step 1) |
 | 5 | Controls | Controls | Commandes | Steuerung | Controles | Comandi | Button layout (9), Customize buttons (11), **Map buttons** (new sub-page), Reset to default (12), Switch glyphs (14, Switch), **Restart hotkey (2, moved from Gameplay)** |
 | 6 | Saves | Saves | Sauvegardes | Speichern | Partidas | Salvataggi | Auto-save (8), **Region at start (10, moved from Gameplay; combined image only)**, **Shared saves (experimental)** (new) |
 | 7 | Cheats | Cheats | Triches | Cheats | Trucos | Trucchi | the ten Cheats rows (unchanged; title only, greyed in game) |
@@ -674,9 +675,8 @@ The Options references are regenerated three times (after 1, 2 and 4) instead of
 ### 8.1 Step 2 as built (D2 + D5)
 
 Built on top of step 1 (#404), one PR (2026-10-31). Registry row **28 Map scaler** is the only new row
-(`DW3_PORT_OPT_COUNT` 29); rows 0 to 26 and every cfg key keep their numbers and names. **Slot 27 is held for #406**
-(Menus > Instant menu exit, `menu_instant_exit`): until that PR lands it is an inert placeholder (`DW3_PORT_OPT_RESERVED_27`:
-no key, in no group, never saved); the PR that lands second drops it.
+(`DW3_PORT_OPT_COUNT` 29); rows 0 to 26 and every cfg key keep their numbers and names, and row 27 is #406's **Instant menu exit**
+(`menu_instant_exit`, Menus), already on `main` when this step merged.
 
 **D2 (owner decisions 2026-10-31).**
 

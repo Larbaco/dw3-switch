@@ -101,13 +101,13 @@ enum {
     DW3_PORT_OPT_STAGE_SWEEP = 24,   /* stage_sweep: 0 OFF, 1 Run, 2 Start over */
     DW3_PORT_OPT_SWEEP_FRAMES = 25,  /* stage_sweep_frames: 30..3600 */
     DW3_PORT_OPT_MAP_BUTTONS = 26,   /* action row: opens the Map buttons screen */
+    /* Menus: leaving the field menu's screens for the field skips the block
+     * dissolve (patch 0200, port/menu_exit); default ON, key menu_instant_exit. */
+    DW3_PORT_OPT_MENU_EXIT = 27,
     /* D5 (docs/OPTIONS_REORG.md section 6): the full-screen map's picture scaler,
      * a Display row (Nearest / Sharp bilinear / Lanczos2 / FSR 1 / Bilinear).
      * Stored as a DW3_MAPSCALER_* (the order of map_view_core.h MV_SCALER_*),
      * written as a word: map_scaler=fsr1. Default FSR 1. */
-    /* 27 is #406's (Menus > Instant menu exit, `menu_instant_exit`): until that PR is
-     * merged it is an inert placeholder in the registry (no key, no group, never saved). */
-    DW3_PORT_OPT_RESERVED_27 = 27,
     DW3_PORT_OPT_MAP_SCALER = 28
 };
 

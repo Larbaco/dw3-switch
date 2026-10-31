@@ -549,12 +549,20 @@ int dw3_port_title_logo_ready(void) {
     }
     return g_logo_ready;
 }
+
+/* 1 while the logo has still to be composed: that first readiness check costs a
+ * frame of some hundred ms (0.24 s measured on PC), which the title prompt must
+ * not stand on (title_ready.c). */
+int dw3_port_title_logo_pending(void) {
+    return g_pending_sheet != NULL;
+}
 #else
 int dw3_port_title_logo_capture(const s32 *sheet) {
     return capture_logo(sheet);
 }
 
 int dw3_port_title_logo_ready(void) { return g_logo_ready; }
+int dw3_port_title_logo_pending(void) { return 0; }
 #endif
 int dw3_port_title_logo_active(void) { return g_logo_active; }
 
@@ -571,6 +579,7 @@ void dw3_port_title_logo_set_active(int active) {
 #else
 int dw3_port_title_logo_capture(const s32 *sheet) { (void)sheet; return 0; }
 int dw3_port_title_logo_ready(void) { return 0; }
+int dw3_port_title_logo_pending(void) { return 0; }
 int dw3_port_title_logo_active(void) { return 0; }
 void dw3_port_title_logo_set_active(int active) { (void)active; }
 #endif

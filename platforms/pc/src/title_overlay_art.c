@@ -179,7 +179,7 @@ void dw3_pc_title_overlay_set_footer(int show) {
 int dw3_pc_title_overlay_footer_shown(void) { return footer_shown; }
 void dw3_pc_title_overlay_set_version(int show) {
     show=show?1:0;
-    if(show!=version_shown){version_shown=show;art_generation++;}
+    version_shown=show; /* read by the hosts when they draw the label */
 }
 void dw3_pc_title_overlay_set_load_row(int on) {
     on=on?1:0;
@@ -198,7 +198,7 @@ int dw3_pc_title_overlay_options_cursor(void) { return option_cursor; }
 int dw3_pc_title_overlay_options_value(int row) {
     return row>=0&&row<DW3_TITLE_OPTION_ROWS?option_values[row]:0;
 }
-enum { OPT_LOCK_ROWS = 29 }; /* registry rows 0..28: the lock mask's width (D1, D5) */
+enum { OPT_LOCK_ROWS = 29 }; /* registry rows 0..28: the lock mask's width (D1, patch 0200, D5) */
 void dw3_pc_title_overlay_set_options_locked(unsigned mask) {
     mask&=((1u<<OPT_LOCK_ROWS)-1u)|DW3_TITLE_LOCK_CHEATS;
     if(mask!=options_locked){options_locked=mask;options_layout++;options_generation++;}
@@ -414,20 +414,19 @@ static const MapscrWords mapscr_words[5]={MAPSCR_WORDS(en),MAPSCR_WORDS(fr),MAPS
 static const MapscrWords *mapscr_lang(void) {
     return &mapscr_words[options_lang>=DW3_TITLE_LANG_EN&&options_lang<=DW3_TITLE_LANG_IT?options_lang:0];
 }
-/* Registry 27 is held for #406: its slot repeats the Map buttons words and is never drawn (no group lists it).
- * D1: the rows that were file-only keys (registry 16..26: the five Menus switches,
+/* D1: the rows that were file-only keys (registry 16..28: the five Menus switches,
  * Version label, Map mod pack, Shared saves, Stage sweep, Sweep frames, Map
  * buttons), their Stage sweep values, and the Map buttons screen (eight rows,
  * three message lines, the Select / Minus values). */
 #define XW(k,l) {WORD(opt_row_x_##k##_##l),WORD(opt_desc_x_##k##_##l)}
 #define EXTRA_WORDS(l) {{XW(eq,l),XW(st,l),XW(bg,l),XW(us,l),XW(ps,l),XW(vr,l),XW(mm,l),XW(ss,l), \
-    XW(sw,l),XW(sf,l),XW(mb,l),XW(mb,l),XW(sc,l)}, WORD(opt_val_sw_run_##l),WORD(opt_val_sw_over_##l), \
+    XW(sw,l),XW(sf,l),XW(mb,l),XW(mx,l),XW(sc,l)}, WORD(opt_val_sw_run_##l),WORD(opt_val_sw_over_##l), \
     {WORD(opt_row_mb0_##l),WORD(opt_row_mb1_##l),WORD(opt_row_mb2_##l),WORD(opt_row_mb3_##l), \
      WORD(opt_row_mb4_##l),WORD(opt_row_mb5_##l),WORD(opt_row_mb6_##l),WORD(opt_row_mb7_##l)}, \
     {WORD(opt_desc_mb_bind_##l),WORD(opt_desc_mb_field_##l),WORD(opt_desc_mb_reset_##l)}}
 typedef struct ExtraWords { Word row,desc; } ExtraWords;
 typedef struct ExtraSet {
-    ExtraWords reg[13];       /* registry rows 16..28 (27 = held for #406, 28 = D5 Map scaler) */
+    ExtraWords reg[13];       /* registry rows 16..28 (27 = Instant menu exit, 28 = D5 Map scaler) */
     Word sweep_run,sweep_over;
     Word mb_row[8];
     Word mb_desc[3];          /* bind, field, reset */
@@ -1071,9 +1070,9 @@ static void title_screen(void) {
     /* The original game logo is retained and framed by the PC integrator.
      * This layer owns only the native menu and discreet legal footer. */
     box(390,375,180,1,79,120,151,140);
-    /* P6.37: bottom right, in the band under the credits (they end at 669),
-     * clear of the logo, the plaques and PRESS START. */
-    if(version_shown)version_line(944,1,L_VERSION_BASE);
+    /* P6.37: the port version is not in this canvas any more (owner OLED p57,
+     * A20): it is a label of its own at the real right edge of the picture,
+     * drawn by the hosts (dw3_pc_title_version_art). */
     if(!footer_shown)return;
     plaque(252,610,456,59,8,5,16,30,5,16,30,145);
     lettering(480,619,title_credit1,title_credit1_width,title_credit1_height,3,0,0);
@@ -1320,6 +1319,33 @@ static void atlas_shadow(int face,int x,int base,const char *s,int r,int g,int b
 }
 static void atlas_centered(int face,int cx,int base,const char *s,int r,int g,int b) {
     atlas_shadow(face,cx-atlas_width(face,s)/2,base,s,r,g,b);
+}
+int dw3_pc_title_overlay_version_shown(void) { return version_shown; }
+/* The title's version label: a DW3_TITLE_VERSION_W x DW3_TITLE_VERSION_H RGBA of
+ * its own, the short text right-aligned in it, the same small dim line as the
+ * Options footer. The hosts place it with its right edge DW3_TITLE_VERSION_MARGIN
+ * canvas pixels inside the right edge of the picture, so that in widescreen it
+ * sits at the 16:9 edge and in 4:3 at the canvas corner. */
+static void version_short(char *text,size_t cap) {
+    dw3_version_short_text(text,cap);
+}
+unsigned dw3_pc_title_version_generation(void) {
+    char text[160];
+    unsigned h=5381u;
+    version_short(text,sizeof(text));
+    for(const char *c=text;*c;c++)h=h*33u+(unsigned char)*c;
+    return h|1u;
+}
+void dw3_pc_title_version_art(uint8_t *rgba,int pitch) {
+    char text[160];
+    uint8_t *sc=canvas;const int ss=stride,cx0=clip_x0,cy0=clip_y0,cx1=clip_x1,cy1=clip_y1;
+    canvas=rgba;stride=pitch;clip_x0=clip_y0=0;clip_x1=DW3_TITLE_VERSION_W;clip_y1=DW3_TITLE_VERSION_H;
+    for(int j=0;j<DW3_TITLE_VERSION_H;j++)memset(rgba+(size_t)j*pitch,0,(size_t)DW3_TITLE_VERSION_W*4);
+    version_short(text,sizeof(text));
+    fprintf(stderr,"dw3-title-overlay: version label \"%s\" (short form, at the right edge of the picture; the Options footer and dw3-version keep the full text)\n",text);
+    atlas_shadow(DW3_ATLAS_BODY,DW3_TITLE_VERSION_W-4-atlas_width(DW3_ATLAS_BODY,text),
+                 DW3_TITLE_VERSION_BASE,text,143,168,199);
+    canvas=sc;stride=ss;clip_x0=cx0;clip_y0=cy0;clip_x1=cx1;clip_y1=cy1;
 }
 
 /* A text plaque: bevel, shadow, navy body with a vertical ramp, amber rail. */

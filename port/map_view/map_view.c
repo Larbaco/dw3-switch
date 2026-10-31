@@ -29,9 +29,11 @@ extern const uint8_t dw3_port_font8x8[95][8];
 #if defined(VERSION_EU) && VERSION_EU
 #define MV_REGION "eu"
 #define MV_FILE_BASE 0x799 /* FILE_STATUS_BG: sheets; +1 images; +2, +3 second half */
+#define MV_STATUS_SPRITES 0x404 /* FILE_STATUS_SPRITES: the name box's frame 0x3B */
 #else
 #define MV_REGION "us"
 #define MV_FILE_BASE 0x78A
+#define MV_STATUS_SPRITES 0x3F4
 #endif
 
 /* All view maths runs in a virtual 16:9 viewport; the hosts map the result onto
@@ -111,6 +113,11 @@ typedef struct MapViewState {
     MvNameBox name_nb;          /* the latched placement (core) */
     int name_bottom;            /* the box is at the bottom (cursor in the top half) */
     int hole;                   /* the game's name box is shown */
+    /* OBS-3: the name box's plate (bank 12) and the flat inside of it the game's
+     * text is left in, in the frame's own coordinates (like name_x0..); the
+     * inside is empty (ix1 <= ix0) when the plate was not built */
+    int plate_ok;
+    int plate_ix0, plate_iy0, plate_ix1, plate_iy1;
     /* the CPU scalers on a worker thread */
     int req_scaler;             /* the scaler asked for (shown on the HUD) */
     struct MvJob *job;
@@ -523,8 +530,8 @@ static int compose_reveal(const uint16_t *vram, int sheet_file,
  * area and, on the EU version, 0x3B + it the same balloon turned the other
  * way (when the cursor is on the home mark's right). Composed once per open
  * from the live VRAM into small images, VRAM colour 0 transparent. */
-enum { BK_CURSOR = 0, BK_HOVER = 3, BK_HOME = 6, BK_HOME_ALT = 9 };
-static const int k_bank_frame[DW3_MV_BANK_N] = {
+enum { BK_CURSOR = 0, BK_HOVER = 3, BK_HOME = 6, BK_HOME_ALT = 9, BK_PLATE = 12 };
+static const int k_bank_frame[BK_PLATE] = {
     0x32, 0x33, 0x34, 0x38, 0x39, 0x3A, 0x35, 0x36, 0x37, 0x3B, 0x3C, 0x3D,
 };
 
@@ -533,6 +540,7 @@ static void bank_free(void) {
 
     for (i = 0; i < DW3_MV_BANK_N; ++i) dw3_mv_image_free(&s.bank[i]);
     s.bank_ok = 0;
+    s.plate_ok = 0;
 }
 
 static int bank_build(const uint16_t *vram, int sheet_file, const void *sheet2) {
@@ -541,7 +549,7 @@ static int bank_build(const uint16_t *vram, int sheet_file, const void *sheet2) 
 
     bank_free();
     if (!vram || !sheet2) return 0;
-    for (i = 0; i < DW3_MV_BANK_N; ++i) {
+    for (i = 0; i < BK_PLATE; ++i) {
         MvBox box;
         MvImage *img = &s.bank[i];
 
@@ -573,11 +581,98 @@ static int bank_build(const uint16_t *vram, int sheet_file, const void *sheet2) 
     ++s.bank_gen;
     fprintf(stderr, "dw3-map: sprite bank: %d of %d frames built (cursor %s, "
             "hover cursor %s, balloon %s, balloon turned %s)\n", built,
-            DW3_MV_BANK_N, s.bank[BK_CURSOR].rgba ? "ok" : "MISSING",
+            (int)BK_PLATE, s.bank[BK_CURSOR].rgba ? "ok" : "MISSING",
             s.bank[BK_HOVER].rgba ? "ok" : "MISSING",
             s.bank[BK_HOME].rgba ? "ok" : "MISSING",
             s.bank[BK_HOME_ALT].rgba ? "ok" : "no (US)");
     return built;
+}
+
+/* OBS-3: the name box is the game's own frame sprite (FILE_STATUS_SPRITES frame
+ * 0x3B: a plate with a 3 px border and a shadow, texture colour 0 transparent)
+ * with the text window on top. The host used to leave the frame's whole
+ * rectangle to the game's pixels, and at the border they did not match the
+ * view's picture: the transparent texels of the shadow's stepped corners and
+ * margins showed the game's own background (dark and teal blocks), and the
+ * game's picture is placed on a whole-pixel rectangle while the host's picture
+ * is not, so the hole's top and bottom rows were one screen pixel off (a thin
+ * line of the game's map under the box, the frame's top row cut). Now the host
+ * draws the plate itself, from the same texels (this image, bank 12, over the
+ * map like the balloon), and only the flat inside of it is the game's: the text
+ * window. A one pixel error at that inside edge falls in the plate's flat
+ * colour on both sides, so it cannot be seen. */
+static int plate_build(const uint16_t *vram) {
+    uint32_t id = (uint32_t)MV_STATUS_SPRITES, n = cdfs_file_size(id);
+    uint8_t *file = NULL;
+    MvBox box;
+    MvImage *m = &s.bank[BK_PLATE];
+    int32_t off;
+    int w, h, x, y, rc = -1;
+    int fx0 = 0x7fff, fy0 = 0x7fff, fx1 = -1, fy1 = -1, transparent = 0;
+    enum { INSET = 4 }; /* the 3 px border and one more: flat colour on both sides */
+
+    s.plate_ok = 0;
+    s.plate_ix0 = s.plate_iy0 = s.plate_ix1 = s.plate_iy1 = 0;
+    if (!vram || n == (uint32_t)-1 || n > 0x100000) return -1;
+    file = (uint8_t *)malloc(n);
+    if (!file || cdfs_read(id, file, n) != (int)n) goto out;
+    off = ((const int32_t *)file)[0];
+    if (off <= 0 || (uint32_t)off >= n) goto out;
+    if (dw3_mv_sheet_frame_box((const int32_t *)(file + off), n - (uint32_t)off,
+                               0x3B, &box) != 0) goto out;
+    w = box.x1 - box.x0;
+    h = box.y1 - box.y0;
+    if (w <= 0 || h <= 0 || w > 512 || h > 128) goto out;
+    dw3_mv_image_free(m);
+    m->w = w;
+    m->h = h;
+    m->ox = box.x0;
+    m->oy = box.y0;
+    m->rgba = (uint8_t *)calloc((size_t)w * h, 4);
+    if (!m->rgba) { m->w = m->h = 0; goto out; }
+    /* the texture and CLUT origin STSTATUS_drawMapScreen sets for it:
+     * sprite.setTexture(0x280, 0x100); texels of colour 0 stay transparent */
+    if (dw3_mv_blit_frame(vram, (const int32_t *)(file + off), n - (uint32_t)off,
+                          0x3B, 0x280, 0x100, 0x140, 0x100, m, -box.x0,
+                          -box.y0) != 0) {
+        dw3_mv_image_free(m);
+        goto out;
+    }
+    /* the plate proper = the opaque texels that are not the shadow's black
+     * (0,0,8); its bounding box is where the border lies */
+    for (y = 0; y < h; ++y) {
+        for (x = 0; x < w; ++x) {
+            const uint8_t *p = m->rgba + ((size_t)y * w + x) * 4;
+
+            if (p[3] == 0) { ++transparent; continue; }
+            if (p[0] == 0 && p[1] == 0 && p[2] == 8) continue;
+            if (x < fx0) fx0 = x;
+            if (x > fx1) fx1 = x;
+            if (y < fy0) fy0 = y;
+            if (y > fy1) fy1 = y;
+        }
+    }
+    if (fx1 - fx0 < 4 * INSET || fy1 - fy0 < 4 * INSET) {
+        dw3_mv_image_free(m);
+        goto out;
+    }
+    s.plate_ix0 = box.x0 + fx0 + INSET;
+    s.plate_iy0 = box.y0 + fy0 + INSET;
+    s.plate_ix1 = box.x0 + fx1 + 1 - INSET;
+    s.plate_iy1 = box.y0 + fy1 + 1 - INSET;
+    s.plate_ok = 1;
+    ++s.bank_gen;
+    fprintf(stderr, "dw3-map: name box plate (frame 0x3B of FILE_STATUS_SPRITES): "
+            "%dx%d texels at %d,%d, %d transparent, border box x %d..%d y %d..%d, "
+            "the game's text is left in x %d..%d y %d..%d (the plate is drawn by "
+            "the view, the hole has no border pixel)\n", w, h, box.x0, box.y0,
+            transparent, box.x0 + fx0, box.x0 + fx1 + 1, box.y0 + fy0,
+            box.y0 + fy1 + 1, s.plate_ix0, s.plate_ix1, s.plate_iy0,
+            s.plate_iy1);
+    rc = 0;
+out:
+    free(file);
+    return rc;
 }
 
 /* --- mod pack (docs/MOD_MAP_UPSCALE.md) ---------------------------------------*/
@@ -1562,6 +1657,10 @@ static void open_view(const void *sheet, int sheet_file, int half, int home_x,
     s.pieces_drawn = compose_reveal(vram, sheet_file, sheet1, sheet2, pieces,
                                     npieces);
     bank_build(vram, sheet_file, sheet2);
+    if (plate_build(vram) != 0)
+        fprintf(stderr, "dw3-map: name box plate NOT BUILT: the frame's whole "
+                "rectangle stays the game's pixels (a thin line may show at its "
+                "border)\n");
     mod_build(vram, sheet_file, sheet1, sheet2, pieces, npieces);
     free(vram);
     fprintf(stderr, "dw3-map: reveal layer: %d pieces from the game (%d towns "
@@ -2630,11 +2729,26 @@ void dw3_map_view_get_draw(Dw3MapViewDraw *d) {
             const int oy = s.name_bottom ? 0xB4 : 0x14;
             const float w = (float)(320 + 2 * g);
 
+            int hx0 = s.name_x0, hx1 = s.name_x1, hy0 = s.name_y0, hy1 = s.name_y1;
+
+            if (s.plate_ok && s.bank[BK_PLATE].rgba && d->nspr < DW3_MV_SPRITES) {
+                /* the plate over the map, the game's text in its inside */
+                d->spr[d->nspr].bank = BK_PLATE;
+                d->spr[d->nspr].x0 = (float)(hx0 + g) / w;
+                d->spr[d->nspr].x1 = (float)(hx1 + g) / w;
+                d->spr[d->nspr].y0 = (float)(hy0 + oy) / 240.0f;
+                d->spr[d->nspr].y1 = (float)(hy1 + oy) / 240.0f;
+                ++d->nspr;
+                hx0 = s.plate_ix0;
+                hx1 = s.plate_ix1;
+                hy0 = s.plate_iy0;
+                hy1 = s.plate_iy1;
+            }
             d->hole = 1;
-            d->hx0 = (float)(s.name_x0 + g) / w;
-            d->hx1 = (float)(s.name_x1 + g) / w;
-            d->hy0 = (float)(s.name_y0 + oy) / 240.0f;
-            d->hy1 = (float)(s.name_y1 + oy) / 240.0f;
+            d->hx0 = (float)(hx0 + g) / w;
+            d->hx1 = (float)(hx1 + g) / w;
+            d->hy0 = (float)(hy0 + oy) / 240.0f;
+            d->hy1 = (float)(hy1 + oy) / 240.0f;
         }
     }
 }

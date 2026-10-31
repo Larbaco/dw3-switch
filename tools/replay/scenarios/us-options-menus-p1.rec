@@ -34,9 +34,13 @@ pad 650 0x0040
 pad 655 0x0000
 pad 670 0x4000
 pad 675 0x0000
-shot 730 menus-off
-pad 750 0x1000
-pad 755 0x0000
-pad 770 0x1000
-pad 775 0x0000
-end 830
+pad 690 0x0040
+pad 695 0x0000
+pad 710 0x4000
+pad 715 0x0000
+shot 770 menus-off
+pad 790 0x1000
+pad 795 0x0000
+pad 810 0x1000
+pad 815 0x0000
+end 870

@@ -132,6 +132,18 @@ EU_OPENING = ((0x165, M), (0x1D0, M), (0x166, M), (0x1E9, S), (0x1EA, S), (0x206
 US_DOOR = ((0x1C7, S), (0x1C5, S)) * 2     # two more door round trips
 EU_DOOR = ((0x1D6, S), (0x1D4, S)) * 2
 
+# Patch 0199: PRESS START is drawn only on the frames the pad is read. The log
+# line names the frame the prompt is drawn (N) and the frame Start starts to be
+# read (M); the game prints `cause none` only when M <= N and `cause dead window`
+# when the prompt came first (the original drew it seven frames before it read
+# Start). `title-ready` presses Start every other frame from the first frame of
+# the boot, so the first press the title can take is accepted at M or one frame
+# later; the return to title (`-return-title` below) is the same check after the
+# field menu's Return to title.
+_READY = r"dw3-title: press start shown at frame \d+, input ready at frame \d+ \(cause none: "
+_READY_ACC = r"dw3-title: first Start accepted at frame \d+ \(\+[01] after input opened\)"
+_READY_BAD = r"dw3-title: press start shown at frame \d+, input ready at frame \d+ \(cause dead window"
+
 SCENARIOS: list[Scenario] = []
 
 
@@ -141,14 +153,17 @@ def _add(*s: Scenario) -> None:
 
 _add(Scenario("us-title", "us", "quick", expect_restore=((0x1C1, M),),
               expect_log=((0, r"dw3-title-menu: no autosave\.bin: plaques New Game, Options, "
-                              r"Load Game \(slot list\), Quit game"),)))
+                              r"Load Game \(slot list\), Quit game"),
+                          # the title's short version label (replays pin the text)
+                          (0, r'dw3-title-overlay: version label "replay US" \(short form')),))
 for _lang in EU_LANGS:
     # P6.1 (patch 0177): the language select takes the 16:9 gutter; the
     # title that follows still has the four plaques (no auto-save file).
     _add(Scenario(f"eu-lang-{_lang}", "eu", "quick",
                   expect_log=((0, r"dw3-widescreen: gutter 53 px per side \(was -?\d+; 16:9\) mode file 0x165"
                                   r"(?s:.*)dw3-title-menu: no autosave\.bin: plaques New Game, Options, "
-                                  r"Load Game \(slot list\), Quit game"),)))
+                                  r"Load Game \(slot list\), Quit game"),
+                              (0, r'dw3-title-overlay: version label "replay EU" \(short form')),))
 
 # Patch 0187: Cross (the confirm button) picks the language as well as Start;
 # the log names the button and the title follows.
@@ -787,7 +802,8 @@ for _v, _rec in (("us", "us-title"), ("eu", "eu-lang-en")):
     _add(Scenario(f"{_v}-title-noversion", _v, "full", phases=(_rec,), timeout=300,
                   cfg=(("show_version", "0"),),
                   expect_log=((0, r"dw3-options: file keys .* show_version=0"),),
-                  note="show_version=0: the title's corner is clear (P6.37)"))
+                  forbid_log=((0, r"dw3-title-overlay: version label"),),
+                  note="show_version=0: the title's corner is clear, no label is rendered (P6.37)"))
     _add(Scenario(f"{_v}-options-noversion", _v, "full", phases=(f"{_v}-options-cheats-listed",),
                   timeout=300, cfg=(("show_version", "0"),),
                   expect_log=((0, r"dw3-options: file keys .* show_version=0(?s:.*)"
@@ -943,8 +959,11 @@ for _v, _ids in (("us", (0x159, 0x1FA, 0x1C2, 0x158, 0x1F9)),
 for _v, _ids in (("us", (0x159, 0x1FA, 0x1C2, 0x158, 0x1F9)),
                  ("eu", (0x167, 0x208, 0x1D1, 0x166, 0x207))):
     _fight, _menu, _report, _field, _status = _ids
+    # menu_instant_exit=0: the recording checks the dissolve back to the field, which the
+    # instant exit (patch 0200, default on) skips
     _add(Scenario(f"{_v}-items-menu", _v, "full", turbo=4, timeout=300,
-                  phases=(f"{_v}-items-menu",), env=_ITEMS_ENV, cfg=(("encounter_rate", "2"),),
+                  phases=(f"{_v}-items-menu",), env=_ITEMS_ENV,
+                  cfg=(("encounter_rate", "2"), ("menu_instant_exit", "0")),
                   expect_restore=((_fight, M), (_menu, S), (_report, M), (_field, M),
                                   (_status, M), (_field, M)),
                   forbid_log=((0, r"overlay restore file=0x%x kind=mode(?:(?!overlay restore)(?s:.))*?"
@@ -959,8 +978,11 @@ for _v, _ids in (("us", (0x159, 0x1FA, 0x1C2, 0x158, 0x1F9)),
 for _v, _ids in (("us", (0x159, 0x1FA, 0x1C2, 0x158, 0x1F9)),
                  ("eu", (0x167, 0x208, 0x1D1, 0x166, 0x207))):
     _fight, _menu, _report, _field, _status = _ids
+    # menu_instant_exit=0: its last checkpoint is taken after the dissolve back to the field
+    # (patch 0200 skips it by default; the glyphs-*-items scenarios inherit the pin)
     _add(Scenario(f"{_v}-menu-screens", _v, "full", turbo=4, timeout=400,
-                  phases=(f"{_v}-menu-screens",), env=_ITEMS_ENV, cfg=(("encounter_rate", "2"),),
+                  phases=(f"{_v}-menu-screens",), env=_ITEMS_ENV,
+                  cfg=(("encounter_rate", "2"), ("menu_instant_exit", "0")),
                   expect_restore=((_fight, M), (_menu, S), (_report, M), (_field, M),
                                   (_status, M), (_field, M)),
                   forbid_log=((0, r"overlay restore file=0x%x kind=mode(?:(?!overlay restore)(?s:.))*?"
@@ -988,6 +1010,37 @@ for _v, _ids in (("us", (0x159, 0x1FA, 0x1C2, 0x158, 0x1F9)),
                                       r"(?s:.*)partner switch member 0 -> 2 .*bag=\1 worn=\2"
                                       r"(?s:.*)partner switch member 2 -> 0 .*bag=\1 worn=\2"),),
                       note="R2 / L2 change the partner on the equip slot list, counts unchanged (patch 0128)"))
+
+# Instant menu exit (patch 0200, Options > Menus > Instant menu exit, key
+# menu_instant_exit, default on): leaving the field menu's screens for the field
+# skips the block dissolve and keeps the game state. One recording, three exits
+# (the field menu closed over the field, Items and Map left for the field); the
+# env and cfg of items-menu. `-off` is the same recording with the key at 0:
+# the original dissolve, whose log line carries the same clocks and RNG as the
+# instant one (compared by hand in the PR; the dissolve takes 96 frames on US and
+# 80 on EU, the instant exit says how many it skipped).
+for _v, _ids, _skip in (("us", (0x159, 0x1FA, 0x1C2, 0x158, 0x1F9), r"9\d"),
+                        ("eu", (0x167, 0x208, 0x1D1, 0x166, 0x207), r"[78]\d")):
+    _fight, _menu, _report, _field, _status = _ids
+    _restore = ((_fight, M), (_menu, S), (_report, M), (_field, M), (_status, M), (_field, M),
+                (_status, M), (_field, M))
+    _add(Scenario(f"{_v}-menu-instant-exit", _v, "full", turbo=4, timeout=400,
+                  phases=(f"{_v}-menu-instant-exit",), env=_ITEMS_ENV,
+                  cfg=(("encounter_rate", "2"),), expect_restore=_restore,
+                  expect_log=((0, r"menu_instant_exit=1(?s:.*)"
+                                  r"dw3-menu: exit to field instant \(skipped %s transition frames, from items\)(?s:.*)"
+                                  r"dw3-menu: exit to field instant \(skipped %s transition frames, from map\)" % (_skip, _skip)),),
+                  forbid_log=((0, r"exit to field with the original transition"),),
+                  note="Items and Map left for the field without the dissolve; the field menu closed "
+                       "over the field logs nothing (patch 0200)"))
+    _add(Scenario(f"{_v}-menu-instant-exit-off", _v, "full", turbo=4, timeout=400,
+                  phases=(f"{_v}-menu-instant-exit",), env=_ITEMS_ENV,
+                  cfg=(("encounter_rate", "2"), ("menu_instant_exit", "0")), expect_restore=_restore,
+                  expect_log=((0, r"menu_instant_exit=0(?s:.*)"
+                                  r"dw3-menu: exit to field with the original transition \(instant exit off, from items\)(?s:.*)"
+                                  r"dw3-menu: exit to field with the original transition \(instant exit off, from map\)"),),
+                  forbid_log=((0, r"exit to field instant"),),
+                  note="menu_instant_exit=0: the original dissolve on both exits (patch 0200)"))
 
 # P6.34 phase 2 (patch 0190): equip in Status > Equipment and return to the slot
 # list without the long fade round trip, key on (the default). `-off` is the
@@ -1219,6 +1272,11 @@ for _v, _ids in (("us", (0x159, 0x1FA, 0x1C2, 0x158, 0x1F9)),
                                   r"(?s:.*)dw3-map: cursor at rest at \d+,\d+, location id=\1 name id=\1"
                                   r"(?s:.*)dw3-map: HUD on \(the bars; the name box stays\)"
                                   r"(?s:.*)dw3-map: HUD off \(the bars; the name box stays\)"),
+                              # OBS-3 (p56): the name box's plate is drawn by the view from the
+                              # game's own texels, so no pixel of the game lands on its border
+                              (0, r"dw3-map: name box plate \(frame 0x3B of FILE_STATUS_SPRITES\): "
+                                  r"\d+x\d+ texels at \d+,\d+, \d+ transparent, border box x \d+\.\.\d+ y "
+                                  r"\d+\.\.\d+, the game's text is left in x \d+\.\.\d+ y \d+\.\.\d+"),
                               # owner, preview.48: the cursor and the balloon keep one size
                               (0, r"dw3-map: sprites at fixed size \(scale 1/Z, Z = zoom, "
                                   r"reference zoom 1\.0 = [\d.]+ px per source px; the reveal layer"),
@@ -1240,7 +1298,7 @@ for _v, _ids in (("us", (0x159, 0x1FA, 0x1C2, 0x158, 0x1F9)),
                                   r"(-?\d+),(-?\d+) scroll (-?\d+),(-?\d+) \(at the open \1,\2 / \3,\4\): unchanged"),),
                   # R3 inside the view must not flip the fast-forward state
                   forbid_log=((0, r"dw3-map: capture failed|NOTHING DRAWN|not drawn|MISSING|"
-                                  r"dw3-turbo: (?:on|off)\n|\): CHANGED"),),
+                                  r"dw3-turbo: (?:on|off)\n|\): CHANGED|dw3-map: name box plate NOT BUILT"),),
                   note="Square opens the new full-screen map: balloon, cursor, name box, zoom, scaler cycle, back (patch 0146)"))
     # MOD map upscale: the same recording with a synthetic pack in the config
     # folder. The pack replaces the map picture (1568x1408 texture, same
@@ -1345,7 +1403,8 @@ def _names_expect(lang, tfile):
 
 
 _NAMES_FORBID = ((0, r"dw3-map: area name MISMATCH|: BAD \(|IS NOT the table|dw3-map: capture failed|NOTHING DRAWN|"
-                     r"dw3-map: current area \d+ gives location"),)
+                     r"dw3-map: current area \d+ gives location|"
+                     r"dw3-map: name box plate NOT BUILT"),)
 for _v, _ids in (("us", (0x159, 0x1FA, 0x1C2, 0x158, 0x1F9)),
                  ("eu", (0x167, 0x208, 0x1D1, 0x166, 0x207))):
     _fight, _menu, _report, _field, _status = _ids
@@ -2334,8 +2393,8 @@ for _v, _title in (("us", 0x1C1), ("eu", 0x1D0)):
                                   + (r"dw3-widescreen: gutter 0 px per side \(was 53; 4:3 picture\)(?s:.*)"
                                      if _v == "us" else "") +
                                   r"dw3-port-restart: new screen ready after \d+ black frames; fading in(?s:.*)"
-                                  r"dw3-port-restart: fade finished"),),
-                  forbid_log=((0, r"save flush failed"),),
+                                  r"dw3-port-restart: fade finished"), (0, _READY)),
+                  forbid_log=((0, r"save flush failed"), (0, _READY_BAD)),
                   note="field menu Return to title: No keeps the menu, Yes fades to black, runs the P6.9 reset on black and fades the title in (P6.27); the 4:3 gutter switch falls inside the black (US; EU stays 16:9 since patch 0177)"),
          Scenario(f"{_v}-return-title-rows7", _v, "full", turbo=4, timeout=600,
                   env=_ITEMS_ENV, cfg=_RT_CFG,
@@ -2343,6 +2402,12 @@ for _v, _title in (("us", 0x1C1), ("eu", 0x1D0)):
                                   r"dw3-port-confirm: cancelled \(return to title\); nothing changed"),),
                   forbid_log=((0, r"dw3-port-restart"),),
                   note="the field menu with the card folders row and Return to title: seven rows, cancelled (P6.27)"))
+
+for _v in ("us", "eu"):
+    _add(Scenario(f"{_v}-title-ready", _v, "full", timeout=300, log_only=True,
+                  expect_log=((0, _READY), (0, _READY_ACC)),
+                  forbid_log=((0, _READY_BAD),),
+                  note="PRESS START is drawn on the frame the pad is read, never before (patch 0199); Start pressed every other frame from boot"))
 
 # P9.7 slice 1: the port Options screen from the field menu's Options row
 # (patch 0160, port/options/field_options.c). Phase 1: Widescreen refuses a
@@ -2988,17 +3053,18 @@ _NO_BAD = ((0, r"is not valid"), (0, r"BINDING PROBLEM"))
 for _v in ("us", "eu"):
     _add(Scenario(f"{_v}-options-menus", _v, "full", timeout=300,
                   phases=(f"{_v}-options-menus-p1", f"{_v}-options-menus-p2"),
-                  expect_log=((0, r"dw3-port-options: group open menus \(5 row\(s\), title\)(?s:.*)"
+                  expect_log=((0, r"dw3-port-options: group open menus \(6 row\(s\), title\)(?s:.*)"
                                   r"dw3-port-options: equip from items disabled(?s:.*)"
                                   r"dw3-port-options: equip stays on list disabled(?s:.*)"
                                   r"dw3-port-options: whole bag disabled(?s:.*)"
                                   r"dw3-port-options: use item stays disabled(?s:.*)"
                                   r"dw3-port-options: partner switch disabled(?s:.*)"
+                                  r"dw3-port-options: instant menu exit disabled(?s:.*)"
                                   r"dw3-port-options: group close menus \(back to the group list\)"),
                               (1, r"dw3-options: file keys items_equip_from_items=0 items_equip_stays=0 "
-                                  r"items_bag_view=0 items_use_stays=0 items_partner_switch=0")),
+                                  r"items_bag_view=0 items_use_stays=0 items_partner_switch=0(?s:.*)menu_instant_exit=0")),
                   forbid_log=_NO_BAD + ((1, r"is not valid"),),
-                  note="Options > Menus: the five Items-menu switches turned OFF are read back by the next process (D1)"),
+                  note="Options > Menus: the six switches (the five Items-menu ones and Instant menu exit) turned OFF are read back by the next process (D1, patch 0200)"),
          Scenario(f"{_v}-options-display", _v, "full", timeout=300,
                   phases=(f"{_v}-options-display-p1", f"{_v}-options-display-p2"),
                   expect_log=((0, r"dw3-port-options: group open display \(5 row\(s\), title\)(?s:.*)"

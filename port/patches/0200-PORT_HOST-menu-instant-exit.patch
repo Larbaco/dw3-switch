@@ -1,0 +1,74 @@
+Upstream-bound: no
+Subject: [PORT_HOST] menus: instant exit from the field menu's screens to the field
+
+Owner feedback (preview p57, FEEDBACK-p57-1): "when I leave the items screen or
+the map (the pause menu in general) the transition animation plays. I don't want
+that animation." Leaving the field menu's screens for the walking field is the
+field menu in the status mode (STSTATUS) closing with Triangle: its three
+panels fold (about 15 frames, kept), then updateFieldMenu state 2 plays the
+block dissolve (stepFieldMenuFade / drawFieldMenuFade: six 64-pixel block
+sprites through darker CLUT rows, two vsyncs a row, 96 frames at 60 Hz) and
+state 2's substate 6 requests GAME.fieldMode.
+
+With the key menu_instant_exit on (Options > Menus > Instant menu exit, default
+on; DW3_MENU_INSTANT_EXIT=0 forces it off for a run), state 2 in the status mode
+steps stepFieldMenuFade's state machine to its end in the same update and draws
+nothing. Each skipped frame calls dw3_port_menu_exit_frame (port/menu_exit),
+which adds what a frame adds in the original loop: the vsync, frame and play
+time counters, the play time clock (updatePlayTime) and one RANDOM.next(). The
+mode request, GAME.fieldMode, the position and the argument are exactly the
+original's, reached with the clocks and the RNG where the animation would have
+left them. Skipped on purpose: the pad, the file cache, the sound loader and the
+music ticks of those frames, which only serve the screen being left.
+
+Only the exit to the field changes. Going into a screen from the field (state 2
+outside the status mode), the other modes' exits and the battle transition are
+the original's. One log line per exit: `dw3-menu: exit to field instant (skipped
+N transition frames, from <screen>)`, or `... with the original transition
+(instant exit off, from <screen>)` with the key off.
+
+--- a/src/engine/menu/field_menu.c
++++ b/src/engine/menu/field_menu.c
+@@ -7,6 +7,7 @@
+ #include "port_confirm.h"
+ #include "port_field_options.h"
+ #include "port_turbo.h"
++#include "port_menu_exit.h"
+ /* P6.27: language of the Return to title row (the EU disc's LANGUAGE; the US
+    disc is English). */
+ #if VERSION_EU
+@@ -627,6 +628,34 @@
+         }
+         break;
+     case 2:
++#if PORT_HOST
++        /* Instant menu exit (docs/P6.34_MENU_FLOW.md section 16): leaving the
++           status mode for the field, the fade's frames are run in one go (each
++           with the counters, the play time and the RNG step a frame adds) and
++           nothing of it is drawn. Going into a screen from the field keeps the
++           dissolve. */
++        if (GAME.funcs.getMode() == MODE_STATUS && task->substate < 7) {
++            if (dw3_port_menu_instant_exit_enabled()) {
++                s32 skipped = 0;
++
++                /* the fade lasts under 100 frames; the bound only keeps a stuck
++                   clock from hanging the loop (the next frame goes on) */
++                while (skipped < 600) {
++                    stepFieldMenuFade(task);
++                    if (task->substate >= 7) {
++                        dw3_port_menu_exit_report(1, skipped, FIELD_MENU_CHOICE.option, FIELD_MENU_CHOICE.extra);
++                        break;
++                    }
++                    dw3_port_menu_exit_frame();
++                    skipped++;
++                }
++                break;
++            }
++            if (task->substate == 6) {
++                dw3_port_menu_exit_report(0, 0, FIELD_MENU_CHOICE.option, FIELD_MENU_CHOICE.extra);
++            }
++        }
++#endif
+         stepFieldMenuFade(task);
+         drawFieldMenuFade(task);
+         break;

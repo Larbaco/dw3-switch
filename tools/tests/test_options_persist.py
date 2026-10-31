@@ -352,8 +352,8 @@ def test_volume_keys_are_in_the_written_file_order(persist_bin: Path, tmp_path: 
                     "battle_menu_memory", "autosave", "button_layout", "turbo_music", "switch_glyphs", "map_screen",
                     "items_equip_from_items", "items_equip_stays", "items_bag_view",
                     "items_use_stays", "items_partner_switch", "show_version", "map_mod",
-                    "save_store", "stage_sweep", "stage_sweep_frames", "map_scaler",
-                    "defaults_gen", "end"]
+                    "save_store", "stage_sweep", "stage_sweep_frames", "menu_instant_exit",
+                    "map_scaler", "defaults_gen", "end"]
 
 
 # --- P6.18 Encounter rate / Text speed rows ---------------------------------

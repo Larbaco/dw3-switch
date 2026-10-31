@@ -26,7 +26,7 @@ doubtful change is flagged to the owner in the PR):
 | A. Crash and 64-bit fixes | the PS1 read or wrote kernel RAM, or the host heap behaves differently: patches `0057`, `0058`, `0059`, `0069`, `0096`, `0111`, `0197`, `0198` |
 | B. Host plumbing | focus-loss pause, delta clamp, rotating `.mcr` backups, write-through, docked/handheld re-present, vsync wait, `0043` save/load panel pace, `0041` / `0042` field-tile preload, per-profile saves (P6.26), the cross-region import (P6.25 slice 1) |
 | C. The port's own screens | the Options entry (title row, field-menu row, battle Select), Return to title, Quit game, Help, Walkthrough, the version footer line, the Options menu background |
-| D. Original bugs fixed, always on | `0065` HUD form name, `0066` Claw steal on the killing blow, the area-name banner fix, `0187` EU language select Cross, `0129` title logo scale |
+| D. Original bugs fixed, always on | `0065` HUD form name, `0066` Claw steal on the killing blow, the area-name banner fix, `0187` EU language select Cross, `0129` title logo scale, `0199` PRESS START drawn only when Start is read (proposed 2026-10-31, **owner to confirm**: it moves the prompt 7 frames later and changes no input) |
 
 Test, dev and experimental keys are **not** exempt: the owner decided on 2026-10-31 that
 `show_version`, `map_mod`, `save_store` (labelled experimental, title only, with a warning
@@ -91,6 +91,7 @@ explicitly marked N/A in this note.
 | Items menu | **Whole bag and move between Digimon** (key `items_bag_view`, 0 or 1, **default 1**, a row of the **Menus** group since D1 (registry 18, switch row, applies at once); `DW3_ITEMS_BAG_VIEW=0` forces it off for a run): in Status > Equipment, in the item list, Square cycles this slot / all weapons / all armor and gear / worn by others; Cross on a row worn by another party member moves it to this Digimon ([P6.34](P6.34_MENU_FLOW.md#14-phase-3-built-2026-10-29-the-whole-bag-and-moving-an-item-between-digimon), patch `0192`). With 0 Square does nothing and the list is the original game's. **On by default is an orchestrator default pending the owner's answer** | Phase 6 |
 | Items menu | **Use item stays on the partner step** (key `items_use_stays`, 0 or 1, **default 1**, a row of the **Menus** group since D1 (registry 19, switch row, applies at once); `DW3_ITEMS_USE_STAYS=0` forces it off for a run): in the Items menu, Cross on a Digimon uses a consumable and the item panel and the partner pages stay, so the next copy goes to another Digimon with Up / Down and Cross; the last copy and Triangle go back to the list as in the original ([P6.34](P6.34_MENU_FLOW.md#15-phase-4-built-2026-10-29-use-item-stays-on-the-partner-step), patch `0193`). With 0 every use closes the pages and reopens the list as in the original game. **On by default is an orchestrator default pending the owner's answer** | Phase 6 |
 | Items menu | **Partner switch on the equip panel** (key `items_partner_switch`, 0 or 1, **default 1**, a row of the **Menus** group since D1, registry 20, switch row, applies at once): ZL / ZR change the party member on the Status screen's Equipment slot list without leaving ([P6.33](P6.33_ITEMS_MENU.md), patch `0128`, `DW3_ITEMS_PARTNER_SWITCH=0` forces it off for a run). A documented exception to "off by default": the owner decided on (2026-10-26) | Phase 6 |
+| Menus | **Instant menu exit** (key `menu_instant_exit`, 0 or 1, **default 1** by owner request 2026-10-31, a row of the **Menus** group, registry 27, applies at once; `DW3_MENU_INSTANT_EXIT=0` forces it off for a run): leaving the field menu's screens for the field skips the block dissolve; the clocks, the play time and the RNG advance as the fade would have advanced them. Off plays the original dissolve ([P6.34 section 16](P6.34_MENU_FLOW.md#16-instant-menu-exit-what-the-exits-play-and-what-the-port-skips-patch-0200), patch `0200`) | Owner feedback p57 |
 | Port version (P6.37) | **Show version on the title** (key `show_version`, 0 or 1, **default 1**, the **Version label** row of Display since D1, registry 21, switch row, applies at once): the title's bottom right corner shows `dw3-switch v0.6.5-preview.57 (962462d) US` while the title screen is up; `0` hides it. The Options footer line is always drawn and has no key ([P6.37](P6.37_VERSION.md)) | Phase 6 |
 | Map screen (P6.32) | **Full-screen map** (key `map_screen`, 0 or 1, **default 0 = off**; **phase 4, 2026-10-30: row 15, second row of the Display group**, switch row, applies at once, also in game, no environment pin; a file written for the earlier builds with `map_screen=1` is read by the row): Square on the game's Map screen opens a host-drawn full-screen map with cursor, zoom and a live scaler switch; widescreen only. With the key off the Map screen is the PS1's (replay `us/eu-map-screen` 0 differing pixels), the view's code is inert, and the boot builds no cache and starts no precompute. The view's **buttons are seven keys, set on the Map buttons screen since D1** (`map_view_open`, `map_view_zoom_out`, `map_view_zoom_in`, `map_view_centre`, `map_view_scaler_prev`, `map_view_scaler_next`, [below](#full-screen-map-row-and-the-map-views-buttons-p632-phase-4)); they sit on top of the P6.12 button map ([P6.32 section 13](P6.32_MAP_ZOOM.md#13-phase-1-static-view-audit-and-close-2026-10-29), [section 16](P6.32_MAP_ZOOM.md#16-phase-4-remap-as-built-2026-10-30), patch `0146`) | Phase 6 |
 | Auto-save | **Auto-save** (OFF / Each area; key `autosave`, row 9): the first idle frame of a new field area writes the game to its own file, `autosave.bin`; the title's Continue loads it. Off by default; with it off the game is as before ([P6.31](P6.31_AUTOSAVE.md)) | Phase 6 (P6.31) |
@@ -240,6 +241,15 @@ and migrates a file below 2 once at load (below). `map_scaler` (D5) is the secon
 `items_partner_switch` (P6.33, 0 or 1, default 1) is the **Partner switch** row of the Menus group (D1):
 read by `dw3_port_items_partner_switch_enabled`, saved with every other row. A missing
 or invalid value reads as 1 (on).
+
+`menu_instant_exit` (patch 0200, 0 or 1, **default 1**, owner request 2026-10-31) is the **Instant menu exit**
+row of the Menus group (registry 27, a switch row, applies at once, not locked in game): read by
+`dw3_port_menu_instant_exit_enabled` (`port/menu_exit`), `DW3_MENU_INSTANT_EXIT=0|1` pins it for one run.
+On, leaving the field menu's screens (Items, Map, Status...) for the walking field skips the block dissolve;
+the frames it would have taken still advance the clocks, the play time and the RNG, so the game is where the
+original fade would have left it ([P6.34 section 16](P6.34_MENU_FLOW.md#16-instant-menu-exit-what-the-exits-play-and-what-the-port-skips-patch-0200)).
+Off is the original dissolve. Going into a screen, the fold of the menu's panels and the other modes' exits do not change.
+The boot line `dw3-options: file keys ...` ends with `menu_instant_exit=N`.
 
 `show_version` (P6.37, 0 or 1, default 1) is the **Version label** row of Display (D1): read at boot by the
 registry (the `dw3-options: file keys ... show_version=N` line) and applied at once (the row calls
@@ -857,7 +867,7 @@ hints (Open or Change, Back).
 | Display | Widescreen (0), Full-screen map (15), Map mod pack (22), Version label (21) | Widescreen is locked in game, as before (its row is greyed). **Full-screen map** (P6.32 phase 4, key `map_screen`, OFF by default) is not locked, so in game the Display plaque is not greyed: the row works at once. D1: **Map mod pack** (`map_mod`, default ON; the map reads it at each open) and **Version label** (`show_version`, default ON; at once on the title). Label and message line in five languages |
 | Sound | Music volume (3), SFX volume (4), Turbo music (13) | Turbo music (P6.36): `1x` (stored 0, default) keeps the music at its normal tempo while fast-forward runs, `Fast` (stored 1) is the old sound; `DW3_TURBO_MUSIC=0\|1` pins it for a run. No effect with Fast-forward OFF or turbo not running. Not locked in game. Left / Right / Confirm cycle it. Label and message line in five languages (`opt_row_tm_*`, `opt_desc_tm_*`); logs `dw3-options: turbo_music=1x\|fast`, `dw3-port-options: turbo music 1x\|fast`, and the `dw3-audio: music tick ...` lines of [P6.36](P6.36_TURBO_MUSIC.md#as-built-phases-1-and-2-2026-10-29) |
 | Gameplay | Fast-forward (1), Encounter rate (5), Text speed (6), Battle cursor (7) | D1: four rows (Restart hotkey moved to Controls, Region at start to Saves), so Gameplay no longer scrolls |
-| Menus | Equip from Items (16), Equip stays on list (17), Whole bag (18), Use item stays (19), Partner switch (20) | D1, new group: the five Items-menu switches, default ON, each saying what OFF does (the original). Switch rows (Confirm toggles; Left / Right do nothing); not locked in game |
+| Menus | Equip from Items (16), Equip stays on list (17), Whole bag (18), Use item stays (19), Partner switch (20), **Instant menu exit (27)** | D1, new group: the five Items-menu switches, then Instant menu exit (patch 0200: leaving the field menu's screens for the field skips the block dissolve; the clocks and the RNG still advance as in the original), default ON, each saying what OFF does (the original). Switch rows (Confirm toggles; Left / Right do nothing); not locked in game |
 | Controls | Button layout (9), Customize buttons (11), **Map buttons (26)**, Reset to default (12), Switch glyphs (14, Switch only), **Restart hotkey (2, moved here)** | P10.6: the Switch glyphs toggle, listed on the Switch build only ([row](#switch-glyphs-row-p106)), so Controls has six rows there and five on the PC (the window shows six). P9.8: PlayStation (default) / Nintendo, P6.12: Custom, the Customize buttons screen and Reset, see [Button layout row](#button-layout-row-p98) and [Customize buttons](#customize-buttons-p612). D1: **Map buttons** opens a sub-screen of eight rows ([below](#options-reorganization-d1)); Restart hotkey is the last row so Switch glyphs keeps its place |
 | Saves | Auto-save (8), Region at start (10, combined image only), Shared saves (23) | D1: Region at start moved here from Gameplay ([row](#region-at-start-row-p51-item-4)); **Shared saves (exp.)** is title only (greyed in game) and asks first when it is turned on |
 | Cheats | the ten P6.20 cheat rows (not registry rows), a scrolling sub-screen | **Always listed** (P51 item 5; it used to appear only once the master switch was on, so nobody found it): the title opens the Cheats screen where the master switch is; greyed in game (title-only). `DW3_OPTGRP_CHEATS_LISTED` in `port_options_groups.h` (the build has the Cheats feature); `dw3-port-options: group list n=10 (cheats listed, master off, locked in game 0)` once per open (D1: ten plaques with Cheats and Advanced, eight in a build without them) |
@@ -2144,7 +2154,7 @@ overlay's page codes did not change, so the order table is the only thing that m
 | 1 | Display | Widescreen (0), Full-screen map (15), **Map scaler (28, D5)**, Map mod pack (22), Version label (21) | 5 / 5 |
 | 2 | Sound | Music volume (3), SFX volume (4), Turbo music (13) | 3 / 3 |
 | 3 | Gameplay | Fast-forward (1), Encounter rate (5), Text speed (6), Battle cursor (7) | 4 / 4 |
-| 4 | Menus | Equip from Items (16), Equip stays on list (17), Whole bag (18), Use item stays (19), Partner switch (20) | 5 / 5 |
+| 4 | Menus | Equip from Items (16), Equip stays on list (17), Whole bag (18), Use item stays (19), Partner switch (20), Instant menu exit (27) | 6 / 6 |
 | 5 | Controls | Button layout (9), Customize buttons (11), Map buttons (26), Reset to default (12), Switch glyphs (14, Switch only), Restart hotkey (2) | 5 / 6 |
 | 6 | Saves | Auto-save (8), Region at start (10, combined image only), Shared saves (23) | 2 / 3 |
 | 7 | Cheats | the ten cheat rows (unchanged) | 10 / 10 |
@@ -2172,7 +2182,7 @@ except the sub-screens that scroll (Cheats, Customize, Map buttons). The cfg tab
 | Shared saves (exp.) | **title only** (greyed in game: the cards are opened before it is read) | next start; Yes / No window when turned on |
 | Stage sweep, Frames per stage | **title only** (greyed in game), builds with the Cheats feature | next start; Yes / No window for Run and Start over |
 
-The lock mask of the overlay (`dw3_port_options_locked_mask`) is now 29 bits wide (registry rows 0 to 28, D5; 27 is held for #406); the
+The lock mask of the overlay (`dw3_port_options_locked_mask`) is now 29 bits wide (registry rows 0 to 28, D5; 27 is Instant menu exit, patch 0200); the
 Cheats entry's bit moved from 16 to 30 (`DW3_PORT_OPTIONS_LOCK_CHEATS`, `DW3_TITLE_LOCK_CHEATS`).
 
 ### Map buttons (Controls > Map buttons)
@@ -2268,7 +2278,7 @@ them back in Options > Controls and they stay.* (A later default change raises `
 mechanism.) Tests: `test_options_persist.py` (`test_an_old_file_is_migrated_once...` and the other migration cases),
 replays `us/eu-defaults-migrate`, `-defaults-migrate-custom`, `-defaults-migrate-fresh`.
 
-**D5: Display > Map scaler.** Registry row 28 (27 is held for #406), third row of Display, key `map_scaler`, a word:
+**D5: Display > Map scaler.** Registry row 28 (27 is Instant menu exit), third row of Display, key `map_scaler`, a word:
 `nearest`, `sharp` (Sharp bilinear), `lanczos2`, `fsr1`, `bilinear`; **default `fsr1`** for the captured map and for
 the mod pack (it was Nearest). Left / Right and Confirm step in the order of the view's ZL / ZR cycle (Nearest,
 Sharp bilinear, Lanczos2, FSR 1, Bilinear) and wrap; the row is not locked in game and applies **at the next open of

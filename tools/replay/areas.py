@@ -107,6 +107,10 @@ RULES: list[tuple[str, object]] = [
     (r"^port/autosave/", ("*autosave*", "*title-continue*")),
     (r"^port/battle_menu/", ("*p79*", "*battle-options*", "*battle-list-bar*")),
     (r"^port/(items_menu/|include/port_items_menu\.h)", ("*items*", "*menu-screens*")),
+    # Instant menu exit (patch 0200): every scenario that leaves the field menu's screens for
+    # the field (Items, Map, Status, ... then Triangle) skips the dissolve with the key on.
+    (r"^port/(menu_exit/|include/port_menu_exit\.h$)|^port/patches/\d+-PORT_HOST-menu-instant-exit",
+     ("*items*", "*menu*", "*map*", "*cheat-item*")),
     (r"^port/(map_view/|include/port_map_view\.h$)", ("*map*",)),
     # the PC overlay of that screen (P6.32 phase 3 touches it for the FIT backdrop)
     (r"^platforms/pc/src/map_view_overlay\.c$", ("*map*",)),
@@ -177,6 +181,7 @@ RULES: list[tuple[str, object]] = [
     (r"^port/patches/\d+-PORT_HOST-p617-", ("*volume*", "*music*", "*options-sound*")),
     (r"^port/patches/\d+-PORT_HOST-p618-", ("*text-*", "*encounter*", "*banner*", "*persist*")),
     (r"^port/patches/\d+-PORT_HOST-p627-", ("*title-quit*", "*return-title*")),
+    (r"^port/patches/\d+-PORT_HOST-title-press-start-ready", _TITLE),
     (r"^port/patches/\d+-PORT_HOST-p69-restart", ("*restart*",)),
     (r"^port/patches/\d+-PORT_HOST-p64-", ("*turbo*",)),
     (r"^port/patches/\d+-PORT_HOST-(p38|p55)-stage-sweep", ("*stage-sweep*",)),

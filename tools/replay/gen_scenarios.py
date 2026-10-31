@@ -866,16 +866,17 @@ def options_region(version, phase):
 # Shared saves and Stage sweep windows and the Map buttons screen -------------------
 
 def options_menus(version, phase):
-    """D1: title -> Options -> Menus (the fourth plaque). Phase 1: the five switches
-    at their defaults (all ON, `menus-defaults`), Confirm on each (Down between them)
-    turns all five OFF (`menus-off`); phase 2 is a fresh process on the same config dir:
-    the page shows the five values read back (`menus-restored`)."""
+    """D1: title -> Options -> Menus (the fourth plaque). Phase 1: the six switches
+    (the five Items-menu ones and Instant menu exit, patch 0200) at their defaults
+    (all ON, `menus-defaults`), Confirm on each (Down between them) turns all six OFF
+    (`menus-off`); phase 2 is a fresh process on the same config dir: the page shows
+    the six values read back (`menus-restored`)."""
     r = Rec(f"{version.upper()}: D1 Menus group, phase {phase}")
     m = _to_options(r, version)
     f = _group(r, m + 70, GRP_DISPLAY, GRP_MENUS)
     if phase == 1:
         r.shot(f + 20, "menus-defaults")
-        f = _keys(r, f + 40, CROSS, DOWN, CROSS, DOWN, CROSS, DOWN, CROSS, DOWN, CROSS)
+        f = _keys(r, f + 40, CROSS, DOWN, CROSS, DOWN, CROSS, DOWN, CROSS, DOWN, CROSS, DOWN, CROSS)
         r.shot(f + 40, "menus-off")
     else:
         r.shot(f + 40, "menus-restored")
@@ -1819,6 +1820,51 @@ def items_menu(version):
     r.press(2450, TRIANGLE)          # leave: the dissolve back to the field
     r.shot(2488, "dissolve-out")
     r.end(2660)                      # the field is restored by ~2600 (US)
+    return r
+
+
+def menu_instant_exit(version):
+    """Instant menu exit (patch 0200): the exits from the field menu's screens to
+    the walking field, three of them in one run. The env and cfg of `items_menu`
+    (the party from a forced event battle; Cross walks the report back to the
+    field). 1) Start opens the field menu over the field and Triangle closes it
+    again: no mode change, no dissolve, so no exit line. 2) Start, Items, its
+    list, Triangle twice (back to the field menu inside STSTATUS), Triangle: the
+    exit to the field, `from items`. 3) Start, Down twice, Cross (Map), Triangle
+    (back to the field menu), Triangle: the exit, `from map`. Checkpoints 60
+    frames into each exit (with the key on the field is loading or loaded, with
+    it off the dissolve is running) and well after, with the field live again.
+    The same recording runs with the key on and off; the waits cover the longer
+    original fade (about 150 frames to the field)."""
+    r = Rec(f"{version.upper()}: instant menu exit, three exits (env and cfg in manifest)")
+    for f in range(300, 1200, 30):
+        r.press(f, CROSS)            # battle report -> field
+    r.press(1250, START)             # field menu, over the field
+    r.shot(1400, "field-menu")
+    r.press(1420, TRIANGLE)          # close it: stays in the field
+    r.shot(1560, "field-menu-closed")
+    r.press(1600, START)
+    r.press(1780, CROSS)             # Items: the dissolve, then STSTATUS
+    r.shot(2000, "item-options")
+    r.press(2010, CROSS)             # the Items list
+    r.shot(2160, "item-list")
+    r.press(2200, TRIANGLE)          # close the list
+    r.press(2400, TRIANGLE)          # back to the field menu inside STSTATUS
+    r.shot(2540, "status-menu")
+    r.press(2560, TRIANGLE)          # exit 1, from items
+    r.shot(2620, "exit-items-60")
+    r.shot(3000, "field-after-items")
+    r.press(3050, START)             # the field answers: menu again
+    r.press(3250, DOWN)
+    r.press(3300, DOWN)              # Map
+    r.press(3350, CROSS)             # the dissolve, then STSTATUS and the Map screen
+    r.shot(3700, "map")
+    r.press(3720, TRIANGLE)          # close the Map: field menu inside STSTATUS
+    r.shot(3940, "status-menu-2")
+    r.press(3960, TRIANGLE)          # exit 2, from map
+    r.shot(4020, "exit-map-60")
+    r.shot(4400, "field-after-map")
+    r.end(4450)
     return r
 
 
@@ -3116,6 +3162,20 @@ RESTART_RECS = (("restart-after-battle", restart_after_battle),
                 ("restart-save-continue", restart_save_continue))
 
 
+def title_ready(version):
+    """PRESS START only when the game is ready to answer it (patch 0199): Start
+    is pressed on every other frame from the first frame of the boot (a press
+    is the odd frames, a release the even ones, since the game sees an edge),
+    through the EU language select and the movie skip, until the title takes
+    it. The log carries the proof: the frame the prompt is drawn, the frame
+    the pad starts to be read for it, and the first press accepted."""
+    r = Rec(f"{version.upper()}: Start pressed every other frame from boot (title readiness)")
+    for f in range(1, 700):
+        r.press(f, START if f % 2 else 0)
+    r.end(700)
+    return r
+
+
 def title_quit(version):
     """P6.28: the title menu's Quit game. Down to the fourth row (checkpoint
     `quit-focus`), Cross opens the Yes / No window with the cursor on No
@@ -3792,6 +3852,7 @@ def main(out):
         (out / f"{v}-field-map-square.rec").write_text(field_map(v, key=SQUARE_MAP, old_key=SELECT_MAP).text(True))
         (out / f"{v}-map-rebind-relaunch-p1.rec").write_text(map_rebind_relaunch_p1(v).text(True))
         (out / f"{v}-map-rebind-relaunch-p2.rec").write_text(map_rebind_relaunch_p2(v).text(True))
+        (out / f"{v}-menu-instant-exit.rec").write_text(menu_instant_exit(v).text(True))
         (out / f"{v}-items-equip-switch.rec").write_text(items_equip_switch(v).text(True))
         (out / f"{v}-items-equip-stays.rec").write_text(items_equip_stays(v).text(True))
         (out / f"{v}-items-bag-view.rec").write_text(items_bag_view(v).text(True))
@@ -3864,6 +3925,7 @@ def main(out):
         (out / f"{v}-cheat-fill-bag.rec").write_text(cheat_fill_bag(v).text(True))
         (out / f"{v}-cheats-screen2.rec").write_text(cheats_screen2(v).text(True))
         (out / f"{v}-title-quit.rec").write_text(title_quit(v).text(True))
+        (out / f"{v}-title-ready.rec").write_text(title_ready(v).text(True))
         (out / f"{v}-return-title.rec").write_text(return_title(v).text(True))
         (out / f"{v}-return-title-rows7.rec").write_text(
             return_title(v, rows7=True).text(True))
