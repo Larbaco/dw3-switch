@@ -784,6 +784,10 @@ def main():
                     help="what --changed runs for an engine-wide file (main.c, the decomp pin, a "
                          "build file): 'sweep' (default) = the area sweep on the default region "
                          "(both when the file is region-sensitive); 'full' = the whole full tier")
+    ap.add_argument("--thorough", action="store_true",
+                    help="with --changed: keep every scenario of a broad rule (shared code such as "
+                         "the options registry or the title overlay) instead of the cheapest two "
+                         "per area and region")
     ap.add_argument("--paced", action="store_true",
                     help="keep the real frame pacing (DW3_REPLAY_PACED=1): the runner otherwise "
                          "lets the replay run unpaced, EU included")
@@ -835,7 +839,8 @@ def main():
         diff_for = None if a.changed_files else (lambda p: build_file_diff(a.changed or None, p))
         sel = areas.select(files, SCENARIOS, diff_for, read_repo_text)
         pl = areas.plan(sel, SCENARIOS, a.region or "auto", a.escalate,
-                        bin_both=bool(a.bin_both), launcher=bool(a.launcher), cost=load_timings())
+                        bin_both=bool(a.bin_both), launcher=bool(a.launcher), cost=load_timings(),
+                        thorough=a.thorough)
         selected = pl.names
         full_note = (' (engine-wide: an unmapped file, or a build file changed beyond its source lists)'
                      if sel.everything else '')

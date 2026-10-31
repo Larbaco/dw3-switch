@@ -140,7 +140,8 @@ def test_region_agnostic_change_runs_the_default_region_plus_the_canary(areas, s
 def test_language_copies_need_a_text_change(areas, scenarios):
     # help text: the French/German/... copies run, on both regions
     sel, pl = _plan(areas, scenarios, ["port/help/help_text.c"])
-    assert {"eu-help-fr", "eu-help-de", "us-help-title", "eu-help-title"} <= pl.names
+    assert {"eu-help-fr", "eu-help-de", "eu-help-it", "eu-help-es"} <= pl.names
+    assert any(n.startswith("us-help-") for n in pl.names) and any(n.startswith("eu-help-") for n in pl.names)
     # an options change selects eu-help-* by glob too but does not need the language copies
     sel, pl = _plan(areas, scenarios, ["port/options/field_options.c"])
     copies = {n for n in pl.names if areas.LANG_COPY.match(n)}
@@ -274,3 +275,24 @@ def test_timings_file_names_real_scenarios(scenarios):
     stale = [k for k in t if not k.startswith("_") and k not in have]
     assert not stale, stale
     assert all(isinstance(v, (int, float)) and v >= 0 for k, v in t.items() if not k.startswith("_"))
+
+
+def test_broad_rule_is_thinned_unless_thorough(areas, scenarios):
+    files = ["platforms/pc/src/title_overlay_art.c"]       # 285 scenarios: shared infrastructure
+    sel = areas.select(files, scenarios)
+    thin = areas.plan(sel, scenarios, "auto").names
+    full = areas.plan(sel, scenarios, "auto", thorough=True).names
+    assert len(sel.classes["langs"]) > areas.BROAD
+    assert len(thin) < len(full) / 2
+    assert thin <= full
+    # at most REPS_PER_AREA per (area, family, region) from the broad set, the language copies excepted
+    by = {s.name: s for s in scenarios}
+    from collections import Counter
+    c = Counter((areas.scenario_area(n), n.split("-", 2)[1], areas.scenario_region(by[n]))
+                for n in thin & sel.classes["langs"] if not areas.LANG_COPY.match(n))
+    assert max(c.values()) <= areas.REPS_PER_AREA + 1      # +1: the quick tier / smoke can add one
+    # a narrow rule (<= BROAD scenarios) is not thinned
+    sel = areas.select(["port/options/cheats.c"], scenarios)
+    assert len(sel.classes["default"]) <= areas.BROAD
+    p = areas.plan(sel, scenarios, "auto")
+    assert {n for n in sel.classes["default"] if n.startswith("eu-")} <= p.names

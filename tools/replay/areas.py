@@ -492,6 +492,31 @@ def _wanted(cls, name, region, default):
     return region == {"default": default, "eu": "eu", "us": "us"}[cls]
 
 
+# A file whose rule selects more scenarios than this is shared infrastructure (the
+# options registry, the title overlay, the pad host): the PR default keeps the
+# cheapest REPS_PER_AREA scenarios of each (area, family, region) of that set, the way the
+# sweep does, instead of every scenario. `--thorough` keeps them all.
+BROAD = 100
+REPS_PER_AREA = 2
+
+
+def thin(names, by, cost=None, k=REPS_PER_AREA):
+    """The cheapest `k` scenarios (tier quick first, then cost, then name) of each
+    (area, family, region) in `names`."""
+    cost = cost or {}
+    groups: dict = {}
+    for n in names:
+        # the family is the first word after the region (help, options, walkthrough, cheat, ...):
+        # the area alone is coarse (one rule covers help, options and walkthrough)
+        fam = re.sub(r"^(us|eu)-", "", n).split("-", 1)[0]
+        groups.setdefault((scenario_area(n), fam, scenario_region(by[n])), []).append(n)
+    keep = set()
+    for m in groups.values():
+        m.sort(key=lambda n: (by[n].tier != "quick", cost.get(n, 60.0), n))
+        keep.update(m[:k])
+    return keep
+
+
 @dataclass
 class Plan:
     names: set = field(default_factory=set)
@@ -499,7 +524,7 @@ class Plan:
 
 
 def plan(sel, scenarios, region="auto", escalate="sweep", bin_both=False, launcher=False,
-         default_region=DEFAULT_REGION, cost=None) -> Plan:
+         default_region=DEFAULT_REGION, cost=None, thorough=False) -> Plan:
     """The scenarios `--changed` runs once areas.select() has said what the files affect.
 
     region 'both' is the old behaviour: every affected scenario of both regions, the full
@@ -519,8 +544,19 @@ def plan(sel, scenarios, region="auto", escalate="sweep", bin_both=False, launch
         out.notes.append(f"region {region}: {len(out.names)} of {len(sel.names)} selected scenario(s)")
         return out
     names = set()
+    thinned = 0
     for cls, ns in sel.classes.items():
-        names |= {n for n in ns if n in by and _wanted(cls, n, scenario_region(by[n]), default_region)}
+        want = {n for n in ns if n in by and _wanted(cls, n, scenario_region(by[n]), default_region)}
+        if not thorough and cls != "exact" and len(ns) > BROAD:
+            kept = thin(want, by, cost)
+            if cls == "langs":   # the copies are the point of a text/font/language change
+                kept |= {n for n in want if LANG_COPY.match(n)}
+            thinned += len(want) - len(kept)
+            want = kept
+        names |= want
+    if thinned:
+        out.notes.append(f"broad rules (over {BROAD} scenarios): {thinned} sibling scenario(s) left "
+                         f"for --thorough ({REPS_PER_AREA} per family, area and region kept)")
     if sel.everything:
         if escalate == "full":
             names |= {s.name for s in scenarios if s.tier in ("quick", "full")}

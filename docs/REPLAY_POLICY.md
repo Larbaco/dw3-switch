@@ -64,25 +64,38 @@ threshold:
 | Real regression | 0 | |
 | Region-only drift (EU shows it, US does not) | 0 | |
 
-Last 100 merged PRs (`gh pr list`, #286 to #386, 2026-10-27 to 2026-10-31), fix PRs
-whose cause is region-related:
+Last 100 merged PRs (`gh pr list`, #286 to #386, 2026-10-27 to 2026-10-31), read
+for fixes whose cause is region-related (titles and bodies of every `fix(...)`
+PR, plus a keyword search of all 100 bodies for "only on EU/US", "EU/US only",
+"fails on", "drift", "stale ref"):
 
 | PR | Bug | Region | Would a single EU run have caught it? |
 |---|---|---|---|
-| #378 | `WSTAG460` and the extra chapter's 55 stages missing from the overlay tables | US and EU (the 55 stages EU only) | Yes (EU has the superset of stages) |
+| #378 | `WSTAG460` and the extra chapter's 55 stages missing from the overlay tables | US and EU (the 55 stages EU only) | Yes: EU has the superset of stages |
 | #330 | EU language select did not confirm with the confirm button | EU only (US has no language select) | Yes; a US-only run could not |
 | #308 | EU language select not 16:9 | EU only | Yes |
 | #343 | Battle Items list had no selection bar (`ContinueDraw` stub) | both | Yes |
 | #323 | Item shop 16:9 panels | both | Yes |
-| #325 | Combined build finds the disc in the parent folder | region boot | Needs the canary and the `both` tier |
-| #385, #316 | Region relaunch / combined `.nro` picker | combined binary | Needs the canary and the `both` tier |
+| #325 | Combined `.nro` finds a disc image in the parent folder (region boot) | combined binary | Only the `both`/`single` tiers and the canary |
 
-Count: of 7 region-related fixes, **5 are visible to an EU run, 2 only to the
-combined-binary scenarios**; none was visible to US alone and not to EU. No fix
-in the last 100 PRs was a US-only failure. (Bodies and comments of #286 to #386
-record the failing region for these seven; the others are region-neutral:
-the Ryubing memory checks #264/#266, the log rotation #296/#301, GPU paths
-#229/#253, and so on.)
+Result: of 6 region-related fixes, **4 are visible to an EU run**, 2 only to the
+combined-binary scenarios, and none was visible to US alone and not to EU.
+No fix in those 100 PRs was a US-only failure. This is a reading of PR text, not
+a replay re-run of every commit; a failing-on-US-only bug would have to be in
+the US overlay table, the US text, or US-only `#if VERSION_US` code (the
+rule `overlay_table_us.c -> us` and the content mark cover those).
+
+How often the policy has to run both regions: the same 100 PRs, classified by
+`areas.region_class` on the files they changed (current tree for the content mark):
+**44 touched nothing a replay can see** (docs, tests, tools, Switch host), **56**
+touched replay-visible files, and **all 56 included at least one region-sensitive
+file** (30 `both`, 26 `langs`: `port_options.c` and `map_view.c` branch on
+`VERSION_EU`, `turbo.c` and `widescreen.c` on the PAL rate, `main.c` on the region,
+the title overlay and the help/walkthrough text on the language). Zero were
+purely region-agnostic. So the saving does not come from "most PRs run one
+region"; it comes from (a) scoping the second region to the affected areas, (b)
+not running the full tier for an engine-wide file, (c) the unpaced EU replay and
+(d) cheap, ordered scheduling (section 5).
 
 What this does *not* show: the health run is one point in time; before #343 the
 suite had stale references that nobody noticed on either region, because the
