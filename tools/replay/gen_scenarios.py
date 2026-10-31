@@ -939,6 +939,19 @@ def defaults_view(version):
     return r
 
 
+def options_global_view(version):
+    """D3 (docs/OPTIONS_REORG.md 6.2): Options -> Controls and back, no picture. The
+    `*-options-global-migrate*` scenarios seed the per-region files an older build wrote
+    (or none, or a blocked write) and read the proof in the log: the one global
+    port_options.cfg, the merged values at boot, the lines of the migration."""
+    r = Rec(f"{version.upper()}: D3 one global options file")
+    m = _to_options(r, version)
+    f = _group(r, m + 70, GRP_DISPLAY, GRP_CONTROLS)       # Controls
+    f = _keys(r, f + 60, TRIANGLE, TRIANGLE)
+    r.end(f + 40)
+    return r
+
+
 def options_saves(version):
     """D1: Options -> Saves -> Shared saves (experimental). Cross turns it ON: the
     Yes / No window opens with the cursor on No (`store-ask`); Cross answers No
@@ -3912,6 +3925,7 @@ def main(out):
             (out / f"{v}-defaults-migrate-p{phase}.rec").write_text(
                 defaults_migrate(v, phase).text(True))
         (out / f"{v}-defaults-view.rec").write_text(defaults_view(v).text(True))
+        (out / f"{v}-options-global-view.rec").write_text(options_global_view(v).text(True))
         (out / f"{v}-options-saves.rec").write_text(options_saves(v).text(True))
         (out / f"{v}-options-advanced.rec").write_text(options_advanced(v).text(True))
         (out / f"{v}-options-mapbtn.rec").write_text(options_mapbtn(v).text(True))

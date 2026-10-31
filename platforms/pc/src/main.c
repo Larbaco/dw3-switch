@@ -24,6 +24,7 @@
 #include <unistd.h>
 #endif
 #include "port_options.h"
+#include "port_options_cfg.h"
 #include "port_user_saves.h"
 #include "port_turbo.h"
 #include "runtime_extract.h"
@@ -422,6 +423,7 @@ static int init_paths(int argc, char **argv) {
     const char *memdir = env_or("DW3_MEMCARD_DIR", NULL);
     const char *cfgdir = env_or("DW3_CONFIG_DIR", NULL);
     char memcard_buf[512];
+    char gdir[DW3_OPTCFG_PATH_MAX]; /* D3: folder of the global port_options.cfg */
     char profile_buf[640] = "";
     int memdir_explicit;
     char boot_path[512];
@@ -534,9 +536,17 @@ static int init_paths(int argc, char **argv) {
                                               ? SAVE_REGION_EU
                                               : SAVE_REGION_US,
                                           memdir_explicit);
+    /* P9.4 + D3: the ONE global port_options.cfg (the top-level file beside the
+     * region folders, DW3_CONFIG_DIR when set), loaded before anything reads
+     * widescreen / fast-forward / restart. It comes before the saves store: the
+     * first start after D3 folds the old us/ and eu/ files into it, and the store
+     * key must be the merged one. */
+    (void)dw3_optcfg_global_dir(cfgdir, root, gdir, sizeof(gdir));
+    (void)dw3_port_options_persist_init(gdir);
+    atexit(dw3_pc_flush_options);
     /* P6.25 slice 2: opt-in shared store (save_store=1 in port_options.cfg),
      * inside the profile folder (DW3_SAVE_STORE_DIR names one for tests). */
-    (void)memcard_host_setup_store(cfgdir != NULL ? cfgdir : root,
+    (void)memcard_host_setup_store(gdir,
                                    profile_buf[0] != '\0' ? profile_buf : NULL,
                                    dw3_region() == DW3_REGION_EU
                                        ? SAVE_REGION_EU
@@ -550,10 +560,6 @@ static int init_paths(int argc, char **argv) {
     atexit(memcard_host_shutdown);
     fprintf(stderr, "dw3-pc: memcard dir=%s\n", memdir);
 
-    /* P9.4: port_options.cfg lives in the runtime root unless redirected, and
-     * is loaded before anything reads widescreen / fast-forward / restart. */
-    (void)dw3_port_options_persist_init(cfgdir != NULL ? cfgdir : root);
-    atexit(dw3_pc_flush_options);
     dw3_pc_map_view_precompute_start(cfgdir != NULL ? cfgdir : root);
 
     snprintf(boot_path, sizeof(boot_path), "%s/boot_tim.bin", root);

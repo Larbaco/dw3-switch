@@ -423,6 +423,23 @@ def write_seed_cfg(cfgdir: Path, cfg, legacy: bool = False):
     (cfgdir / "port_options.cfg").write_text("\n".join(lines) + "\n")
 
 
+def seed_global_cfg(cfgdir: Path, sc):
+    """D3 (docs/OPTIONS_REORG.md 6.2): seed the ONE global port_options.cfg of a scenario in
+    `cfgdir` (the PC: DW3_CONFIG_DIR; Ryubing: sdmc:/switch/dw3). Only the
+    `*-options-global-migrate*` scenarios also seed the per-region files an older build wrote
+    (`us/`, `eu/` under it), and then the top-level file is seeded as the old pickers wrote it
+    (no marker); `block_global_write` puts a directory where the migration needs its temp file."""
+    old_style = bool(sc.cfg_us or sc.cfg_eu)
+    if sc.cfg:
+        write_seed_cfg(cfgdir, sc.cfg, legacy=sc.legacy_cfg or old_style)
+    for reg, kv in (("us", sc.cfg_us), ("eu", sc.cfg_eu)):
+        if kv:
+            (cfgdir / reg).mkdir(exist_ok=True)
+            write_seed_cfg(cfgdir / reg, kv, legacy=True)
+    if sc.block_global_write:
+        (cfgdir / "port_options.cfg.tmp").mkdir(exist_ok=True)
+
+
 def run_phase(rec: Path, version, binary, runtime, display, outdir: Path, memdir: Path,
               stamp, label, timeout, stall, turbo, sample_rss=True, cfgdir: Path | None = None,
               extra_env=(), allow_early_exit=False, launch=None, run_base=None):
@@ -640,8 +657,7 @@ def run_scenario(sc, binary, runtime, out: Path, stamp, label, stall, timeout_sc
     sdir.mkdir(parents=True, exist_ok=True)
     memdir = Path(tempfile.mkdtemp(prefix="dw3-replay-mc-"))
     cfgdir = Path(tempfile.mkdtemp(prefix="dw3-replay-cfg-"))   # shared by the phases
-    if sc.cfg:
-        write_seed_cfg(cfgdir, sc.cfg, legacy=sc.legacy_cfg)
+    seed_global_cfg(cfgdir, sc)
     if sc.mod_pack == "synthetic":  # MOD map upscale: gradients, no game art
         sys.path.insert(0, str(ROOT / "tools" / "mods"))
         import make_synthetic_pack

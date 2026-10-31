@@ -1,10 +1,19 @@
 /* P6.24: the boot flow of the combined image; see dw3_region_boot.h. */
 #include "dw3_region_boot.h"
 
+#include "port_options_cfg.h"
+
 #include <stdio.h>
 #include <string.h>
 
 static const char *pref_name(Dw3Region r) { return r == DW3_REGION_NONE ? "ask" : dw3_region_name(r); }
+
+static void migrate_log(void *ud, int warn, const char *line) {
+    const Dw3RegionBootIO *io = (const Dw3RegionBootIO *)ud;
+
+    (void)warn;
+    io->log(io->ud, line);
+}
 
 void dw3_region_boot(const Dw3RegionBootIn *in, const Dw3RegionBootIO *io,
                      Dw3RegionBootOut *out) {
@@ -73,6 +82,10 @@ void dw3_region_boot(const Dw3RegionBootIn *in, const Dw3RegionBootIO *io,
         io->log(io->ud, line);
     }
 
+    /* D3: fold the old us/ and eu/ port_options.cfg into the global one NOW, before
+     * the choice below overwrites last_region: the migration lets the region last
+     * played win a conflict. Once; the game's own options load finds it done. */
+    (void)dw3_optcfg_migrate_global(in->base, migrate_log, (void *)io);
     dw3_region_cfg_read(in->base, &ri.pref, &ri.last);
     stored_pref = ri.pref;
     if (in->relaunch != DW3_REGION_NONE) {

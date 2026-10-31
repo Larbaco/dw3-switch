@@ -442,11 +442,18 @@ def main():
         memdir = root / "sdcard/switch/dw3" / sc.version / "memcard"
         shutil.rmtree(memdir, ignore_errors=True)   # fresh card per scenario
         memdir.mkdir(parents=True)
-        # P9.4: and fresh options (the phases of one scenario share the file)
-        for stale in ("port_options.cfg", "port_options.cfg.tmp"):
-            (memdir.parent / stale).unlink(missing_ok=True)
-        if sc.cfg:  # P6.18: seed the pacing rows through the option file
-            rt.write_seed_cfg(memdir.parent, sc.cfg, legacy=sc.legacy_cfg)
+        # P9.4 + D3: and fresh options (the phases of one scenario share the ONE global
+        # file, sdmc:/switch/dw3/port_options.cfg; no per-region file is left to be migrated)
+        cfg_root = memdir.parent.parent
+        if (cfg_root / "port_options.cfg.tmp").is_dir():   # D3 failed-write scenario's blocker
+            (cfg_root / "port_options.cfg.tmp").rmdir()
+        for stale in ["port_options.cfg", "port_options.cfg.tmp"] + \
+                [b.name for b in cfg_root.glob("port_options.cfg.*.bak*")]:
+            (cfg_root / stale).unlink(missing_ok=True)
+        for reg in ("us", "eu"):
+            for stale in ("port_options.cfg", "port_options.cfg.tmp"):
+                (cfg_root / reg / stale).unlink(missing_ok=True)
+        rt.seed_global_cfg(cfg_root, sc)  # P6.18 pacing rows; D3 migration scenarios
         xvfb, display = rt.start_xvfb(out)
         try:
             for i in range(len(sc.phases)):
