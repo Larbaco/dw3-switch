@@ -10,6 +10,29 @@ Anything this port adds that **did not exist on the original PS1 game**
 reachable from a **port options** entry on the title / main menu, with
 per-feature toggles and defaults that preserve original behaviour.
 
+## Port-wide rule: every change is switchable
+
+*Owner rule, 2026-10-31 (also AGENTS.md, technical directive 8).* Every improvement or
+change versus the original game must be switchable on and off **from the Options menu**.
+A file-only key is not enough: a new behaviour ships with a registry row, its
+`port_options.cfg` key, a default, and a label and message line in the five languages
+(EN, FR, DE, ES, IT), in the same change.
+
+**Exceptions** (only these; each one is flagged to the owner in the PR, never added
+silently):
+
+| Exception | Today |
+|---|---|
+| Test, dev and experimental keys | `save_store` (experimental), `stage_sweep` and `stage_sweep_frames` (dev), `show_version` (test label), the seven `map_view_*` button bindings (advanced). `DW3_*` environment variables are test aids, not options. Each is under review in [OPTIONS_REORG](OPTIONS_REORG.md#12-file-only-keys-no-row-the-gap-the-new-rule-closes) |
+| Anything else the owner explicitly allows | none yet. The audit of always-on changes with no key (crash and 64-bit fixes, host plumbing, the port's own screens, the original bugs fixed) is proposed in [OPTIONS_REORG section 1.3](OPTIONS_REORG.md#13-changes-versus-the-original-with-no-key-at-all-found-by-the-audit); not decided |
+
+State on 2026-10-31: five keys still have no row and the owner ordered one for each:
+`items_equip_from_items`, `items_equip_stays`, `items_bag_view`, `items_use_stays`,
+`items_partner_switch` (all default 1). `map_mod` has no row either and is proposed one.
+The group tree that will hold them is designed in [OPTIONS_REORG](OPTIONS_REORG.md);
+the tables and the "file-only" notes below describe the screen **as built** and change
+with the build PR, not with the design.
+
 ## Scope
 
 | In scope | Out of scope |

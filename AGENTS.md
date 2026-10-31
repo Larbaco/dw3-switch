@@ -93,6 +93,19 @@ Rules:
    set them. Do not call `clkrstSetClockRate` or `appletSetCpuBoostMode`.
    Performance work stays on the present path, the field-tile pace, and
    the raster.
+8. **Every change versus the original game is switchable from the Options
+   menu** (owner rule, 2026-10-31). An improvement, quality-of-life change or
+   other behaviour difference from the original PS1 game gets an Options row
+   (registry row in `port/options/`, `port_options.cfg` key, default, label and
+   message line in the five languages), not a file-only key; a feature without
+   its row is not done. Exceptions are only: test, dev and experimental keys
+   (today `save_store`, `stage_sweep` / `stage_sweep_frames`, `show_version`,
+   the `map_view_*` bindings; `DW3_*` environment test aids are not options),
+   and anything else the owner explicitly allows. Flag every such exception
+   to the owner in the PR; never add a file-only behaviour change silently.
+   Crash and 64-bit fixes, host plumbing and the port's own screens are
+   classified in `docs/PORT_OPTIONS.md` ("Port-wide rule") and
+   `docs/OPTIONS_REORG.md` section 1.3, pending the owner's answer.
 
 ## Git and safety
 
