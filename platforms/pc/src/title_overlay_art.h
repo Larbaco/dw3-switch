@@ -35,7 +35,14 @@ void dw3_pc_title_overlay_options_component(uint8_t *rgba, int pitch,
  * fits to the 4:3 middle of its picture. focus: 0 = No (the default), 1 =
  * Yes. The words are in the language of the Options lettering
  * (dw3_pc_title_overlay_set_options_language). */
-enum { DW3_DIALOG_QUIT = 0, DW3_DIALOG_RETURN = 1 };
+/* P6.38 (Region at start row, combined image): "Restart in <US|EU> now?" on the
+ * title screen (RESTART_US / RESTART_EU) and in game (the _GAME pair, with the
+ * progress warning line), and the one-button notice "Restart the game to
+ * apply." (NOTICE; focus is ignored, OK is always lit). */
+enum { DW3_DIALOG_QUIT = 0, DW3_DIALOG_RETURN = 1,
+       DW3_DIALOG_RESTART_US = 2, DW3_DIALOG_RESTART_EU = 3,
+       DW3_DIALOG_RESTART_US_GAME = 4, DW3_DIALOG_RESTART_EU_GAME = 5,
+       DW3_DIALOG_NOTICE = 6 };
 enum { DW3_DIALOG_W = 768, DW3_DIALOG_H = 348, DW3_DIALOG_X = 96, DW3_DIALOG_Y = 186 };
 void dw3_pc_dialog_art(uint8_t *rgba, int pitch, int kind, int focus);
 /* Host hook (title_menu_overlay.c, nx_title_overlay.c): show (active) or hide

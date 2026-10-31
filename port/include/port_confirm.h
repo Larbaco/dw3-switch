@@ -11,7 +11,11 @@ extern "C" {
 
 enum {
     DW3_CONFIRM_QUIT = 0,   /* title menu: flush the saves, leave the game */
-    DW3_CONFIRM_RETURN = 1  /* field menu: the P6.9 restart path */
+    DW3_CONFIRM_RETURN = 1, /* field menu: the P6.9 restart path */
+    /* P6.38, owned by the Options screen (Region at start row): "Restart in EU
+     * now?", and the one-button notice "Restart the game to apply." */
+    DW3_CONFIRM_REGION = 2,
+    DW3_CONFIRM_NOTICE = 3
 };
 
 /* 1 when this build has the native overlay that draws the window (PC SDL3 GPU
@@ -44,6 +48,20 @@ void dw3_port_confirm_tick(void);
 
 /* Hide the window without a choice (restart, mode change). */
 void dw3_port_confirm_close(void);
+
+/* P6.38: the Region at start row's windows. The Options screen opens them,
+ * ticks them (dw3_port_confirm_tick_owned, every frame it is open) and waits
+ * for them; the title and field menus' own dw3_port_confirm_tick() leaves
+ * them alone, so a window is never answered twice in one frame.
+ *   open_region: "Restart in <target> now?" (target 1 US / 2 EU), plus
+ *                "Progress since your last save will be lost." when in_game;
+ *                the cursor starts on No;
+ *   open_notice: "Restart the game to apply.", one OK button. */
+void dw3_port_confirm_open_region(int target, int in_game);
+void dw3_port_confirm_open_notice(void);
+/* 1 while a window opened by the two calls above is up. */
+int dw3_port_confirm_owned_is_open(void);
+void dw3_port_confirm_tick_owned(void);
 
 #ifdef __cplusplus
 }

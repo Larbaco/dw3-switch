@@ -936,17 +936,29 @@ static void options_screen(void) {
  * and pointer of a chosen row, the two button hints) in its own small texture.
  * Local coordinates: the window is DW3_DIALOG_W-8 x DW3_DIALOG_H-8 at (0, 0),
  * its shadow 6 px right and 8 px down. Rows: Yes above No, like the game's own
- * questions; focus 0 puts the pointer on No. */
+ * questions; focus 0 puts the pointer on No.
+ * P6.38 adds the restart question of the Region at start row (title / in game,
+ * US / EU) and a one-button notice, in the same window. */
 #define DLG_WORDS(l) {{WORD(opt_dlg_quit_title_##l),WORD(opt_dlg_ret_title_##l)}, \
     {WORD(opt_dlg_quit_q_##l),WORD(opt_dlg_ret_q_##l)},WORD(opt_dlg_warn_##l), \
-    WORD(opt_dlg_yes_##l),WORD(opt_dlg_no_##l),WORD(opt_dlg_select_##l),WORD(opt_dlg_cancel_##l)}
-typedef struct DialogWords { Word title[2],question[2],warn,yes,no,select,cancel; } DialogWords;
+    WORD(opt_dlg_yes_##l),WORD(opt_dlg_no_##l),WORD(opt_dlg_select_##l),WORD(opt_dlg_cancel_##l), \
+    WORD(opt_dlg_rst_title_##l),{WORD(opt_dlg_rst_q_us_##l),WORD(opt_dlg_rst_q_eu_##l)}, \
+    WORD(opt_dlg_rst_note_##l)}
+typedef struct DialogWords { Word title[2],question[2],warn,yes,no,select,cancel,rst_title,rst_q[2],rst_note; } DialogWords;
 static const DialogWords dialog_words[5]={DLG_WORDS(en),DLG_WORDS(fr),DLG_WORDS(de),
                                           DLG_WORDS(es),DLG_WORDS(it)};
+static const Word dialog_ok=WORD(opt_dlg_ok);
 void dw3_pc_dialog_art(uint8_t *rgba,int pitch,int kind,int focus) {
     const DialogWords *t=&dialog_words[options_lang>=DW3_TITLE_LANG_EN&&options_lang<=DW3_TITLE_LANG_IT?options_lang:0];
     const int w=DW3_DIALOG_W-8,h=DW3_DIALOG_H-8,x1=w,y1=h;
+    const int restart=kind>=DW3_DIALOG_RESTART_US&&kind<=DW3_DIALOG_RESTART_EU_GAME;
+    const int notice=kind==DW3_DIALOG_NOTICE;
     const int k=kind==DW3_DIALOG_RETURN?1:0;
+    const Word *title=restart||notice?&t->rst_title:&t->title[k];
+    const Word *question=restart?&t->rst_q[(kind-DW3_DIALOG_RESTART_US)&1]:notice?&t->rst_note:&t->question[k];
+    /* The progress warning: the two question windows of the first slice always had it;
+     * the restart question has it in game only (on the title there is nothing to lose). */
+    const int warn=restart?kind>=DW3_DIALOG_RESTART_US_GAME:!notice;
     canvas=rgba;stride=pitch;clip_x0=clip_y0=0;clip_x1=DW3_DIALOG_W;clip_y1=DW3_DIALOG_H;
     for(int j=0;j<DW3_DIALOG_H;j++)memset(rgba+(size_t)j*pitch,0,(size_t)DW3_DIALOG_W*4);
     box(6,8,w,h,0,0,8,150);
@@ -956,13 +968,13 @@ void dw3_pc_dialog_art(uint8_t *rgba,int pitch,int kind,int focus) {
     box(15,15,w-30,h-30,58,58,148,255);
     box(18,18,w-36,h-36,0,0,49,255);
     /* Title, then the stepped rule of the Options window under it. */
-    word(&t->title[k],40,34-t->title[k].top,0,255,255,255);
+    word(title,40,34-title->top,0,255,255,255);
     box(30,74,w-60,3,0,66,156,255);box(30,80,w-60,3,0,66,156,255);
-    word(&t->question[k],48,94,0,255,255,255);
-    word(&t->warn,48,130,0,255,224,140);
-    for(int i=0;i<2;i++) {
-        const int ry=176+i*42,choice_focus=i==(focus?0:1);
-        const Word *label=i==0?&t->yes:&t->no;
+    word(question,48,94,0,255,255,255);
+    if(warn)word(&t->warn,48,130,0,255,224,140);
+    for(int i=0;i<(notice?1:2);i++) {
+        const int ry=176+i*42,choice_focus=notice||i==(focus?0:1);
+        const Word *label=notice?&dialog_ok:i==0?&t->yes:&t->no;
         if(choice_focus){
             box(48,ry-6,w-96,CHT_ROW_H,16,74,156,255);
             box(51,ry-3,w-102,CHT_ROW_H-6,0,8,74,255);

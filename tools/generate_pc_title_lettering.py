@@ -262,6 +262,27 @@ for _lang, _t in DIALOG_TEXT.items():
     for _key, _size in (('quit_title', 30), ('ret_title', 30), ('quit_q', 26), ('ret_q', 26),
                         ('warn', 24), ('yes', 26), ('no', 26), ('select', 24), ('cancel', 24)):
         LETTERS.append(('opt_dlg_%s_%s' % (_key, _lang), _t[_key], _size, 'DejaVuSans.ttf'))
+# P6.38 restart into the chosen region (docs/PORT_OPTIONS.md "Restart into the chosen
+# region"): the same window with "Restart in EU now?" (US and EU are product names, the
+# same in every language), its title, and the one-button notice for a host that cannot
+# relaunch. The progress warning line is DIALOG_TEXT's `warn`. Keep each line under 650 px.
+RESTART_TEXT = {
+    'en': {'title': 'RESTART', 'q': 'Restart in %s now?', 'note': 'Restart the game to apply.'},
+    'fr': {'title': 'RED\u00c9MARRER', 'q': 'Red\u00e9marrer en %s maintenant ?',
+           'note': 'Red\u00e9marrez le jeu pour appliquer.'},
+    'de': {'title': 'NEUSTART', 'q': 'Jetzt in %s neu starten?',
+           'note': 'Spiel neu starten, um es zu \u00fcbernehmen.'},
+    'es': {'title': 'REINICIAR', 'q': '\u00bfReiniciar en %s ahora?',
+           'note': 'Reinicia el juego para aplicar.'},
+    'it': {'title': 'RIAVVIA', 'q': 'Riavviare in %s ora?',
+           'note': 'Riavvia il gioco per applicare.'},
+}
+for _lang, _t in RESTART_TEXT.items():
+    LETTERS.append(('opt_dlg_rst_title_' + _lang, _t['title'], 30, 'DejaVuSans.ttf'))
+    LETTERS.append(('opt_dlg_rst_q_us_' + _lang, _t['q'] % 'US', 26, 'DejaVuSans.ttf'))
+    LETTERS.append(('opt_dlg_rst_q_eu_' + _lang, _t['q'] % 'EU', 26, 'DejaVuSans.ttf'))
+    LETTERS.append(('opt_dlg_rst_note_' + _lang, _t['note'], 26, 'DejaVuSans.ttf'))
+LETTERS.append(('opt_dlg_ok', 'OK', 26, 'DejaVuSans.ttf'))
 # P6.31 Auto-save row of the Options screen (docs/PORT_OPTIONS.md "Auto-save",
 # docs/P6.31_AUTOSAVE.md), in the five languages of the EU disc (en is also the
 # US disc's). OFF is the Options screen's word. Keep the label under 360 px, the

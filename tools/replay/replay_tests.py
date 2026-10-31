@@ -306,7 +306,7 @@ def write_seed_cfg(cfgdir: Path, cfg):
 
 def run_phase(rec: Path, version, binary, runtime, display, outdir: Path, memdir: Path,
               stamp, label, timeout, stall, turbo, sample_rss=True, cfgdir: Path | None = None,
-              extra_env=(), allow_early_exit=False, launch=None):
+              extra_env=(), allow_early_exit=False, launch=None, run_base=None):
     """One process run. Returns a dict with rc/verdict/seconds/frames/rss/log."""
     outdir.mkdir(parents=True, exist_ok=True)
     xdg = Path(tempfile.mkdtemp(prefix="dw3-replay-xdg-"))
@@ -329,7 +329,8 @@ def run_phase(rec: Path, version, binary, runtime, display, outdir: Path, memdir
               "DW3_FORCE_ENEMY_HP", "DW3_EXTRA_TECHS", "DW3_FORCE_ITEMS", "DW3_FORCE_BATTLE_BAG", "DW3_MAP_VERIFY", "DW3_MAP_PRECOMPUTE", "DW3_MAP_SYNC", "DW3_MAP_TOUR", "DW3_MAP_LSTICK", "DW3_MAP_HELP_SWITCH", "DW3_MAP_NAME_CODES", "DW3_FORCE_MAP_AREAS", "DW3_FORCE_CARDS", "DW3_PACING_TRACKED",
               "DW3_FILE_CACHE_SLOTS", "DW3_MODS_DIR", "DW3_MOD_PACK", "DW3_FORCE_MENU", "DW3_CHEATS_ARM", "DW3_STAGE_SWEEP", "DW3_STAGE_SWEEP_EXIT", "DW3_STAGE_SWEEP_FRAMES", "DW3_STAGE_SWEEP_ONLY", "DW3_STAGE_SWEEP_DIR", "DW3_STAGE_SWEEP_HANG_MS", "DW3_FORCE_EXIT", "DW3_START_MODE_EVERY", "DW3_WALKTHROUGH_PROBE",
               "DW3_MEMCARD_IMPORT_DIR", "DW3_CROSS_IMPORT", "DW3_SAVE_STORE", "DW3_SAVE_STORE_DIR", "DW3_REGION", "DW3_REGION_PICK",
-              "DW3_REGION_PICK_KEYS", "DW3_SAVE_PROFILE", "DW3_RUNTIME_BASE", "DW3_PC_BIN_US", "DW3_PC_BIN_EU"):
+              "DW3_REGION_PICK_KEYS", "DW3_SAVE_PROFILE", "DW3_RUNTIME_BASE", "DW3_PC_BIN_US", "DW3_PC_BIN_EU",
+              "DW3_RELAUNCH_TEST"):
         env.pop(k, None)
     if BOTH_BIN is not None and launch is None and Path(binary).resolve() == BOTH_BIN:
         env["DW3_REGION"] = version  # P6.24: the one binary, told which game copy to run
@@ -337,6 +338,8 @@ def run_phase(rec: Path, version, binary, runtime, display, outdir: Path, memdir
         env.pop("DW3_RUNTIME", None)
         env.update(DW3_RUNTIME_BASE=str(launch["base"]),
                    DW3_PC_BIN_US=str(launch["us"]), DW3_PC_BIN_EU=str(launch["eu"]))
+    if run_base is not None:  # P6.38: both regions' data on the "card" (the combined binary only)
+        env["DW3_RUNTIME_BASE"] = str(run_base)
     if cfgdir is not None:  # P9.4: never read or write the owner's port_options.cfg
         env["DW3_CONFIG_DIR"] = str(cfgdir)
     if turbo:
@@ -526,10 +529,14 @@ def run_scenario(sc, binary, runtime, out: Path, stamp, label, stall, timeout_sc
         (cfgdir / "mods").symlink_to(Path(os.environ["DW3_REPLAY_MODS"]).resolve())
     xvfb, display = start_xvfb(sdir)
     results = []
-    launch, base = None, None
+    launch, base, run_base = None, None, None
     if sc.launch:
         base, launch = make_launch_base(sc, by_version, launcher)
         binary = launcher
+    elif sc.base:  # P6.38: a card folder with the runtimes of sc.base ("us+eu")
+        run_base = Path(tempfile.mkdtemp(prefix="dw3-replay-base-"))
+        for v in sc.base.split("+"):
+            (run_base / v).symlink_to(by_version[v][1])
     try:
         for i, phase in enumerate(sc.phases):
             pv, pbin, prt, pmem = sc.version, binary, runtime, memdir
@@ -551,7 +558,7 @@ def run_scenario(sc, binary, runtime, out: Path, stamp, label, stall, timeout_sc
                           sdir, pmem, stamp, f"{sc.name}-p{i + 1}" if len(sc.phases) > 1 else sc.name,
                           int(sc.timeout * timeout_scale), stall, 0 if no_turbo else sc.turbo,
                           sample_rss=True, cfgdir=cfgdir, extra_env=penv,
-                          allow_early_exit=sc.quits, launch=launch)
+                          allow_early_exit=sc.quits, launch=launch, run_base=run_base)
             r["phase"] = phase
             results.append(r)
             if sc.phase_mutate and sc.phase_mutate[i] and r["verdict"] == "OK":
@@ -571,6 +578,8 @@ def run_scenario(sc, binary, runtime, out: Path, stamp, label, stall, timeout_sc
         shutil.rmtree(cfgdir, ignore_errors=True)
         if base is not None:
             shutil.rmtree(base, ignore_errors=True)
+        if run_base is not None:
+            shutil.rmtree(run_base, ignore_errors=True)
     return results, sdir
 
 
@@ -861,7 +870,7 @@ def main():
             return sc.name, [(sc.name, "-", "SKIP", "needs the combined binary (--bin-both)")]
         if sc.launch and not (launcher and launcher.is_file()):
             return sc.name, [(sc.name, "-", "SKIP", "missing launcher binary (--launcher)")]
-        for v in sorted(set(sc.phase_versions) | {sc.version} | set(sc.launch.split("+") if sc.launch else ())):
+        for v in sorted(set(sc.phase_versions) | {sc.version} | set(sc.launch.split("+") if sc.launch else ()) | set(sc.base.split("+") if sc.base else ())):
             if not bins[v] or not bins[v].is_file() or runtimes[v] is None:
                 return sc.name, [(sc.name, "-", "SKIP", f"missing {'binary' if not bins[v] else 'runtime'} for {v}")]
         rows = []

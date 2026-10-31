@@ -323,7 +323,7 @@ static void io_show_no_data(void *ud, const char *base) {
 }
 
 void dw3_nx_region_boot(const char *base, Dw3Region forced, const char *forced_by,
-                        Dw3RegionBootOut *out) {
+                        Dw3Region relaunch, Dw3RegionBootOut *out) {
     Dw3RegionBootIO io;
     Dw3RegionBootIn in;
 
@@ -332,9 +332,11 @@ void dw3_nx_region_boot(const char *base, Dw3Region forced, const char *forced_b
     io.sample_minus = io_sample_minus;
     io.run_picker = io_run_picker;
     io.show_no_data = io_show_no_data;
+    memset(&in, 0, sizeof(in));
     in.base = base;
     in.forced = forced;
     in.forced_by = forced_by;
+    in.relaunch = relaunch;
     dw3_region_boot(&in, &io, out);
     /* A disc image found in the parent folder: the extraction reads this one
      * (the separate builds find it by walking up from their runtime folder). */

@@ -94,6 +94,10 @@ RULES: list[tuple[str, object]] = [
     (r"^platforms/pc/src/map_view_overlay\.c$", ("*map*",)),
     (r"^port/saves/|^port/memcard/", ("*save*", "xr-*", "*continue*", "*restart*", "*autosave*")),
     (r"^port/pacing/", ("*text-*", "*encounter*", "*pacing*", "*turbo*")),
+    # P6.38: restart into the chosen region: the Region at start row and its window
+    (r"^port/(options/region_relaunch\.c|include/port_region_relaunch\.h|region/dw3_region_relaunch\.[ch])$",
+     ("*options*", "*title-quit*", "*return-title*")),
+    (r"^port/include/port_confirm\.h$", ("*options*", "*quit*", "*return-title*")),
     (r"^port/region/", ("*lang*", "xr-*", "*title*")),
     (r"^port/sweep/", ("*stage-sweep*",)),
     (r"^port/overlays/overlay_(table_(us|eu)|sections(_eu_extra)?)\.c$", _STAGES),

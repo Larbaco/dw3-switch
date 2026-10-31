@@ -77,7 +77,7 @@ owner may change any of them:**
 | Question | Default taken |
 |---|---|
 | Look and languages of the picker | A simple host screen in English. Title-menu style comes later, with the P9.9 work |
-| Hold-to-ask button | **Minus**, held while the `.nro` starts. P51: **ZL + ZR held together** also asks (a try, logged as `dw3-region: pick buttons seen ...`), and the Options row **Region at start** (Ask / US / EU) writes `region_default` ([PORT_OPTIONS](PORT_OPTIONS.md#region-at-start-row-p51-item-4)); the launcher consumed Minus on the owner's OLED (preview.51) |
+| Hold-to-ask button | **Minus**, held while the `.nro` starts. P51: **ZL + ZR held together** also asks (a try, logged as `dw3-region: pick buttons seen ...`), and the Options row **Region at start** (Ask / US / EU) writes `region_default` ([PORT_OPTIONS](PORT_OPTIONS.md#region-at-start-row-p51-item-4)); P6.38: a change to the other region asks `Restart in EU now?` and Yes relaunches the binary with `--relaunch-region eu`, which wins over `region_default` and the picker for that start (`dw3-region: started by relaunch (eu)`, [PORT_OPTIONS](PORT_OPTIONS.md#restart-into-the-chosen-region-p638)); the launcher consumed Minus on the owner's OLED (preview.51) |
 | Size | About 12 MB for the combined `.nro` is fine |
 | Separate US / EU `.nro` files | Keep shipping them next to the combined one until the owner has confirmed the combined one on the OLED |
 | Switching region without quitting | Out of scope; changing region means quitting |

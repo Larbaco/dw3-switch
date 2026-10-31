@@ -17,6 +17,7 @@ void dw3_region_boot(const Dw3RegionBootIn *in, const Dw3RegionBootIO *io,
     Dw3DiscScan scan;
     int i;
     Dw3Region region;
+    Dw3Region stored_pref;
     const char *how;
     int always = 0;
 
@@ -73,17 +74,27 @@ void dw3_region_boot(const Dw3RegionBootIn *in, const Dw3RegionBootIO *io,
     }
 
     dw3_region_cfg_read(in->base, &ri.pref, &ri.last);
+    stored_pref = ri.pref;
+    if (in->relaunch != DW3_REGION_NONE) {
+        /* P6.38: the previous process asked for this region ("Restart in EU
+         * now?"): it stands in for region_default, and nobody is holding Minus
+         * on purpose, so no picker. */
+        ri.pref = in->relaunch;
+        snprintf(line, sizeof(line), "dw3-region: started by relaunch (%s)",
+                 dw3_region_name(in->relaunch));
+        io->log(io->ud, line);
+    }
     /* The hold-Minus sample costs about 200 ms, so take it only when it can
      * change the answer: both present and a region stored (without one the
      * picker appears anyway). */
     if (ri.probe.has_us && ri.probe.has_eu && ri.pref != DW3_REGION_NONE &&
-        io->sample_minus != NULL) {
+        in->relaunch == DW3_REGION_NONE && io->sample_minus != NULL) {
         ri.minus_held = io->sample_minus(io->ud) ? 1 : 0;
         minus_txt = ri.minus_held ? "1" : "0";
     }
     snprintf(line, sizeof(line),
              "dw3-region: stored region_default=%s last_region=%s minus_held=%s",
-             pref_name(ri.pref),
+             pref_name(stored_pref),
              ri.last == DW3_REGION_NONE ? "none" : dw3_region_name(ri.last), minus_txt);
     io->log(io->ud, line);
 
