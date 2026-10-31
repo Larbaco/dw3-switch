@@ -1,6 +1,39 @@
 # `KernelInit: cannot create the kernel synchronisation objects`
 
-Status: **open defect, hypothesis documented (2026-10-16)**. Logged once
+Status: **fixed in the code (2026-10-31, OBS-7), to be confirmed on the console
+with OLED row A21.** The rest of this file is the history and the reasoning.
+
+## Resolution (OBS-7, 2026-10-31)
+
+What the p56 logs proved (`run2` to `run13`, every boot): two
+`OsBellCreate: eventCreate failed rc=0x10801` lines and the `KernelInit`
+aggregate. `0x10801` is module 1 (kernel), description 0x84 = 132,
+`LimitReached`: hypothesis 1 below was right. The process starts with its kernel
+event budget used up, so `svcCreateEvent` fails for both bells (the two locks
+are plain `malloc` and never failed). `KernelInit` runs once and never retries,
+so `bell_events` and `bell_irq` stayed NULL for the whole run.
+
+Was it harmless? **Not by construction, but it was inert in the game.** With
+NULL bells `Psyz_OsBellWait` returns at once, so a PSY-Z wait that needed the
+bell (`WaitEvent`, or the IRQ thread) would spin instead of sleeping. The same
+logs show that nothing waited: no `bell wait #N` line (the first eight waits are
+logged) and no `thread started: psyz_irq` line in any boot log, so the game never
+asked PSY-Z for a wait or started its IRQ thread. Still a real failure, only a
+latent one, so it is fixed and not downgraded.
+
+Fix (`platforms/switch/psyz_backend/nx_os.c`): a bell is now a flag under a
+libnx `Mutex` plus a `CondVar` (`svcWaitProcessWideKeyAtomic`), which needs no
+kernel event. The contract is the same (a ring wakes one waiter, or the next one
+to wait; the wait takes a microsecond timeout or forever; the stop request
+rings every bell, so BUG-1's thread join still wakes a sleeping thread). One
+`[I]` line says the bells are built that way, once per run. The failure paths
+(`malloc`) stay `[E]`: a real error is still an error.
+
+Expected boot log on the OLED (row A21): no `[E]` line after
+`entering dw3_game_main()`. PC logs have none of this (PC does not use
+`nx_os.c`; the PC replay logs hold no `[E]` line at boot).
+
+ Logged once
 during PSY-Z init on the preview.7 OLED boot (see the preview.7 section in
 [STATIC_SD_LOAD.md](STATIC_SD_LOAD.md) and `docs/RELEASES.md`); the game
 continued and it is listed as an open P5.2 follow-up. The failed object

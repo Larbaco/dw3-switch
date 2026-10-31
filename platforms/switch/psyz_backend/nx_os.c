@@ -6,7 +6,9 @@
  *   clock   -> armGetSystemTick() / armTicksToNs
  *   threads -> threadCreate / threadStart
  *   lock    -> Mutex
- *   bell    -> auto-reset Event (eventCreate(.., autoclear = true))
+ *   bell    -> auto-reset signal on a Mutex + CondVar (no kernel event: the
+ *              process event limit is already used up when PSY-Z starts,
+ *              OBS-7, so svcCreateEvent failed with rc 0x10801 on the OLED)
  */
 #include "nx.h"
 #include "nx_exit.h"
@@ -36,6 +38,19 @@
 static uint64_t s_bell_waits;
 static uint64_t s_bell_rings;
 
+/* A PSY-Z bell: an auto-reset signal ("a ring wakes one waiter, or the next
+ * one to wait"). It is a flag under a mutex plus a condition variable, which
+ * libnx implements with svcWaitProcessWideKeyAtomic and which needs no kernel
+ * event object: svcCreateEvent reserves from the process event limit, and on
+ * the OLED (hbloader, p56 logs run2 to run13) that limit was already used up
+ * when KernelInit ran, so both eventCreate calls failed with 0x10801
+ * (kernel LimitReached) and PSY-Z ran with NULL bells (OBS-7). */
+typedef struct Bell {
+    Mutex lock;
+    CondVar cv;
+    int signaled;
+} Bell;
+
 /* BUG-1: the threads PSY-Z starts (its IRQ loop) never return by themselves.
  * They are recorded so the exit path can ask them to leave, join them and
  * threadClose() them: a finished-but-unclosed libnx thread keeps its stack
@@ -46,7 +61,7 @@ static uint64_t s_bell_rings;
 static Thread *s_os_threads[DW3_NX_OS_MAX_THREADS];
 static const char *s_os_names[DW3_NX_OS_MAX_THREADS];
 static int s_os_thread_count;
-static Event *s_os_bells[DW3_NX_OS_MAX_BELLS];
+static struct Bell *s_os_bells[DW3_NX_OS_MAX_BELLS];
 static int s_os_bell_count;
 static volatile int s_os_stop;
 
@@ -110,36 +125,39 @@ void Psyz_OsUnlock(void *lock) {
 }
 
 void *Psyz_OsBellCreate(void) {
-    Event *ev = malloc(sizeof(*ev));
-    Result rc;
+    static int logged;
+    Bell *b = malloc(sizeof(*b));
 
-    if (!ev) {
+    if (!b) {
         DW3_NX_ERROR("OsBellCreate: malloc failed (bell_events/bell_irq)");
         return NULL;
     }
-    /* autoclear gives exactly the documented "auto-reset signal: a ring wakes
-     * one waiter, or the next one to wait". */
-    rc = eventCreate(ev, true);
-    if (R_FAILED(rc)) {
-        /* KernelInit's aggregate warning hides the failing object and the rc;
-         * svcCreateEvent reserves from the process event resource limit, so a
-         * limit/OUT-OF-RESOURCE code here is the probable cause of
-         * "cannot create the kernel synchronisation objects". See
-         * docs/NX_KERNEL_SYNC_OBJECTS.md. */
-        DW3_NX_ERROR("OsBellCreate: eventCreate failed rc=0x%x", rc);
-        free(ev);
-        return NULL;
+    mutexInit(&b->lock);
+    condvarInit(&b->cv);
+    b->signaled = 0;
+    if (!logged) {
+        logged = 1;
+        DW3_NX_INFO("OsBellCreate: bells are a mutex + condvar signal (no "
+                    "kernel event, so the process event limit does not matter)");
     }
     if (s_os_bell_count < DW3_NX_OS_MAX_BELLS) {
-        s_os_bells[s_os_bell_count++] = ev;
+        s_os_bells[s_os_bell_count++] = b;
     }
-    return ev;
+    return b;
+}
+
+/* Sets the signal and wakes one waiter. */
+static void bell_ring(Bell *b) {
+    mutexLock(&b->lock);
+    b->signaled = 1;
+    condvarWakeOne(&b->cv);
+    mutexUnlock(&b->lock);
 }
 
 void Psyz_OsBellRing(void *bell) {
     s_bell_rings++;
     if (bell) {
-        eventFire((Event *)bell);
+        bell_ring((Bell *)bell);
     }
 }
 
@@ -153,7 +171,9 @@ void Psyz_OsBellWait(void *bell, uint32_t timeout_us) {
      * instead of flooding — every line here is a file write. Remove once the
      * boot is understood. */
     uint64_t n = ++s_bell_waits;
-    uint64_t ns;
+    Bell *b = (Bell *)bell;
+    uint64_t deadline = 0;
+    int forever = (timeout_us == DW3_NX_OS_FOREVER);
 
     if (n <= 8 || (n & (n - 1)) == 0) {
         DW3_NX_INFO("bell wait #%llu timeout_us=%u rings=%llu",
@@ -162,14 +182,34 @@ void Psyz_OsBellWait(void *bell, uint32_t timeout_us) {
     }
 
     os_thread_leave_if_stopping();
-    if (!bell) {
+    if (!b) {
         return;
     }
     /* UINT32_MAX microseconds is both the documented "forever" and the point
      * where the 32-bit microsecond clock wraps. */
-    ns = (timeout_us == DW3_NX_OS_FOREVER) ? UINT64_MAX
-                                          : (uint64_t)timeout_us * 1000ULL;
-    eventWait((Event *)bell, ns);
+    if (!forever) {
+        deadline = armTicksToNs(armGetSystemTick()) +
+                   (uint64_t)timeout_us * 1000ULL;
+    }
+    mutexLock(&b->lock);
+    while (!b->signaled) {
+        if (forever) {
+            condvarWait(&b->cv, &b->lock);
+        } else {
+            uint64_t now = armTicksToNs(armGetSystemTick());
+
+            if (now >= deadline) {
+                break;
+            }
+            condvarWaitTimeout(&b->cv, &b->lock, deadline - now);
+        }
+        /* a stop request rings every bell: do not go back to sleep on it */
+        if (s_os_stop) {
+            break;
+        }
+    }
+    b->signaled = 0; /* auto-reset: the ring (or the timeout) is consumed */
+    mutexUnlock(&b->lock);
     os_thread_leave_if_stopping();
 }
 
@@ -248,7 +288,7 @@ int dw3_nx_os_threads_shutdown(void) {
     }
     s_os_stop = 1;
     for (i = 0; i < s_os_bell_count; i++) {
-        eventFire(s_os_bells[i]);
+        bell_ring(s_os_bells[i]);
     }
     for (i = 0; i < s_os_thread_count; i++) {
         still += dw3_nx_exit_join(s_os_threads[i], s_os_names[i]);
