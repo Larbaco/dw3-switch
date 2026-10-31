@@ -15,7 +15,6 @@
 
 #include <stdint.h>
 
-#ifdef __SWITCH__
 #include <switch.h>
 
 /* Total time the exit path may spend waiting for worker threads, in ms. HOME
@@ -46,6 +45,5 @@ void dw3_nx_exit_heap_probe(const char *when);
 
 /* Milliseconds since dw3_nx_exit_begin. */
 uint32_t dw3_nx_exit_elapsed_ms(void);
-#endif
 
 #endif /* DW3_SWITCH_NX_EXIT_H */
