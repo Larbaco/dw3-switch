@@ -18,7 +18,7 @@ Contents: [Setup](#setup), [Controls and hotkeys](#controls-and-hotkeys),
 ## Setup
 
 <!-- Sources: README.md (Play it on Switch), DISC_SETUP.md, RUNTIME_LAYOUT.md,
-platforms/switch/release/README.txt (Own-disc setup and extraction),
+platforms/switch/release/README.txt (up to preview.57: Own-disc setup and extraction),
 SINGLE_BUILD.md#as-built-slice-1 (PC launcher),
 SINGLE_BUILD.md#as-built-slice-2-the-switch-launcher (Switch launcher) -->
 

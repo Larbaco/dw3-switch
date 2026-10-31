@@ -287,8 +287,9 @@ an Actions artifact. A GitHub Release is only
 and it is a prerelease. `workflow_dispatch` is listed only once that file
 is on `main`. Tag `v0.6.5-preview.1` is the first preview
 (8927429-byte game `.nro` plus `README.txt`). It still crops the title
-and freezes the movie. The upcoming tag is `v0.6.5-preview.31`; the tags
-already published, with their notes, are listed in `docs/RELEASES.md`.
+and freezes the movie. New previews use SemVer tags, `v0.9.0-preview.N`
+(#394), and follow the "Release notes style" in `docs/RELEASES.md`; the tags
+already published are listed there too.
 Earlier checkpoints:
 `docs/RELEASE_PREVIEW21.md` (STR read-race fix, OLED movie validation) and
 `docs/RELEASE_PREVIEW20.md`. The picture baseline remains
