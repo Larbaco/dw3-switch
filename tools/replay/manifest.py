@@ -3121,8 +3121,9 @@ for _v in ("us", "eu"):
                  forbid_log=((0, r"dw3-controls: map invalid"), (1, r"dw3-controls: map invalid")),
                  note="Customize buttons: swap L1 and R1, the Help pages turn accordingly, the map "
                       "is read back from port_options.cfg, Reset restores (P6.12)"),
+        # D2: no DW3_REPLAY_SOURCE here: the fallback layout is Nintendo now, and the recording's
+        # masks name PS buttons (positions through the Nintendo map would not reach the Controls page).
         Scenario(f"{_v}-controls-custom-invalid", _v, "full", timeout=200,
-                 env=_NIN_ENV,
                  cfg=(("button_layout", "custom"), ("button_map", "0123456780")),
                  expect_log=((0, r"dw3-controls: map invalid \(button_map is not a permutation of 0-9\), "
                                  r"using default(?s:.*)"
@@ -3150,8 +3151,8 @@ for _v in ("us", "eu"):
         Scenario(f"{_v}-defaults-migrate", _v, "full", timeout=300,
                  phases=(f"{_v}-defaults-migrate-p1", f"{_v}-defaults-migrate-p2"),
                  cfg=(("button_layout", "playstation"), ("switch_glyphs", "0")), legacy_cfg=True,
-                 expect_log=((0, _MIG_ALL + r"(?s:.*)dw3-controls: map loaded layout=nintendo source=cfg(?s:.*)"
-                                 r"dw3-options: switch_glyphs=on(?s:.*)"
+                 expect_log=((0, r"dw3-controls: map loaded layout=nintendo source=cfg(?s:.*)"
+                                 r"dw3-options: switch_glyphs=on(?s:.*)" + _MIG_ALL + r"(?s:.*)"
                                  r"dw3-port-options: group open controls \(5 row\(s\), title\)(?s:.*)"
                                  r"dw3-controls: layout changed nintendo -> playstation \(screen\)"),
                              (1, r"dw3-controls: map loaded layout=playstation source=cfg"),
@@ -3165,19 +3166,19 @@ for _v in ("us", "eu"):
                  phases=(f"{_v}-defaults-view",),
                  cfg=(("button_layout", "custom"), ("button_map", "0123546789"), ("switch_glyphs", "0")),
                  legacy_cfg=True,
-                 expect_log=((0, r"dw3-options: migrate defaults_gen 1->2 switch_glyphs 0->1 "
-                                 r"\(kept: button_layout=custom\)(?s:.*)"
-                                 r"dw3-controls: map loaded layout=custom source=cfg(?s:.*)"
-                                 r"dw3-controls: map cross<-B circle<-A triangle<-X square<-Y l1<-R r1<-L"),
-                             (0, r"dw3-options: switch_glyphs=on")),
+                 expect_log=((0, r"dw3-controls: map loaded layout=custom source=cfg(?s:.*)"
+                                 r"dw3-controls: map cross<-B circle<-A triangle<-X square<-Y l1<-R r1<-L(?s:.*)"
+                                 r"dw3-options: switch_glyphs=on(?s:.*)"
+                                 r"dw3-options: migrate defaults_gen 1->2 switch_glyphs 0->1 "
+                                 r"\(kept: button_layout=custom\)"),),
                  forbid_log=_MIG_BAD + ((0, r"button_layout playstation->nintendo"),),
                  note="A custom layout is not touched by the migration: only the glyphs flip (D2)"),
         Scenario(f"{_v}-defaults-migrate-fresh", _v, "full", timeout=200,
                  phases=(f"{_v}-defaults-view",),
                  expect_log=((0, r"dw3-options: defaults_gen=2 \(new file\)(?s:.*)"
-                                 r"dw3-options: switch_glyphs=on(?s:.*)"
                                  r"dw3-controls: map loaded layout=nintendo source=default(?s:.*)"
-                                 r"dw3-controls: map cross<-A circle<-X triangle<-B square<-Y"),),
+                                 r"dw3-controls: map cross<-A circle<-X triangle<-B square<-Y(?s:.*)"
+                                 r"dw3-options: switch_glyphs=on"),),
                  forbid_log=_MIG_BAD + ((0, r"migrate defaults_gen"), (0, r"nothing to flip")),
                  note="A fresh install is born on the new defaults (Nintendo, glyphs ON) and is not migrated (D2)"),
     )
@@ -3596,6 +3597,11 @@ for _i, _s in enumerate(SCENARIOS):
     if (_PS_NAME.match(_s.name) or _ps_log) and not _s.legacy_cfg and "button_layout" not in _plain \
             and "-defaults-migrate" not in _s.name:
         _pins += (("button_layout", "playstation"),)
+    # D2: the map view's help line logs `glyphs=off` on the PC with the key off; with the default
+    # ON it says `glyphs=off (switch_glyphs=on, but a PC build draws labels)`, so the scenarios
+    # that assert the plain form keep the key off (map-help-glyphs-pc covers the default).
+    if any("glyphs=off, " in r for _, r in _s.expect_log + _s.expect_log_both):
+        _pins += (("switch_glyphs", "0"),)
     if _pins:
         SCENARIOS[_i] = _pin_cfg(_s, *_pins)
 
