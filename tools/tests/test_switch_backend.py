@@ -28,6 +28,7 @@ def results(tmp_path_factory) -> dict[str, str]:
         "-Wextra",
         "-Werror",
         "-O2",
+        "-pthread",
         "-o",
         str(out),
         str(STUB / "harness.c"),
@@ -86,3 +87,19 @@ def test_exit_path_closes_started_os_threads(results):
     assert results.get("os_shutdown_close_count") == "1"
     assert results.get("os_shutdown_handle_live") == "0"
     assert results.get("os_shutdown_again_close_count") == "1"
+
+
+def test_bells_need_no_kernel_event_and_keep_the_auto_reset_contract(results):
+    """OBS-7: on the OLED the process's kernel event limit was used up at boot, so
+    eventCreate failed (rc 0x10801) and PSY-Z ran with NULL bells. A bell is a
+    mutex + condvar now: it is created without any kernel event, a ring before
+    the wait is kept, the ring is consumed by one wait (auto-reset), a wait ends
+    at its timeout (zero does not wait), and a ring from another thread wakes a
+    waiter that has no timeout."""
+    assert results.get("bell_created") == "1"
+    assert results.get("bell_kernel_events") == "0"
+    assert results.get("bell_ring_then_wait_fast") == "1"
+    assert results.get("bell_autoreset_waits_timeout") == "1"
+    assert results.get("bell_zero_timeout_returns") == "1"
+    assert results.get("bell_timeout_elapsed") == "1"
+    assert results.get("bell_ring_wakes_waiter") == "1"

@@ -7,6 +7,7 @@
 #ifndef DW3_TEST_SWITCH_STUB_H
 #define DW3_TEST_SWITCH_STUB_H
 
+#include <pthread.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -31,7 +32,9 @@ uint64_t armTicksToNs(uint64_t ticks);
 typedef void (*ThreadFunc)(void *arg);
 typedef uint32_t Handle; /* libnx: u32 */
 typedef struct Thread { Handle handle; } Thread;
-typedef struct Mutex { int locked; } Mutex;
+/* a real mutex and condition variable: the bell test (OBS-7) waits across threads */
+typedef struct Mutex { pthread_mutex_t m; } Mutex;
+typedef struct CondVar { pthread_cond_t c; } CondVar;
 typedef struct Event { int fired; } Event;
 
 Result threadCreate(Thread *t, ThreadFunc entry, void *arg, void *stack_mem,
@@ -44,6 +47,11 @@ void threadExit(void) __attribute__((noreturn));
 void mutexInit(Mutex *m);
 void mutexLock(Mutex *m);
 void mutexUnlock(Mutex *m);
+
+void condvarInit(CondVar *c);
+Result condvarWait(CondVar *c, Mutex *m);
+Result condvarWaitTimeout(CondVar *c, Mutex *m, uint64_t timeout_ns);
+Result condvarWakeOne(CondVar *c);
 
 Result eventCreate(Event *e, bool autoclear);
 void eventFire(Event *e);
@@ -58,5 +66,6 @@ void stub_set_thread_start_result(Result rc);
 int stub_thread_close_count(void);
 int stub_thread_create_count(void);
 int stub_is_handle_live(void); /* a created handle that was never closed */
+int stub_event_create_count(void); /* kernel events created (the bells must not need any) */
 
 #endif /* DW3_TEST_SWITCH_STUB_H */

@@ -133,7 +133,7 @@ finished by then, which matches "1 thread" in the report):
 | map-view precompute (core 2) | `boot_main.c` `s_map_thread` | never |
 | options prewarm (core 2) | `nx_title_overlay.c` `s_prewarm_thread` | only when the next one was created, so the last one was never closed |
 | map scaler workers (core 2, 2 slots) | `boot_main.c` `s_map_slots` | only on the next start of that slot |
-| PSY-Z IRQ thread | `nx_os.c` (`Psyz_OsThreadStart`) | never; it loops forever, so it would still be alive. Not started in the p56 logs (no `thread started` line), but possible whenever the kernel bells exist |
+| PSY-Z IRQ thread | `nx_os.c` (`Psyz_OsThreadStart`) | never; it loops forever, so it would still be alive. Not started in the p56 logs (no `thread started` line), but possible whenever the game asks PSY-Z for an IRQ callback; since OBS-7 the bells always exist (mutex + condvar), so the thread would now sleep in its wait and the stop flag plus a ring on every bell still wakes it |
 | audio mixer (core 1) | `nx_audio.c` | joined and closed (P38) |
 
 Why the full-app and the relaunch crash but a plain forwarder Quit does not:
@@ -158,7 +158,7 @@ exact set at p41 was not checked. The logs of the next run decide.
 | Transfer memory (socket, other) | None allocated in that run. |
 | `__nx_applet_exit_mode`, `appletSetFocusHandlingMode` | Not set (`appletLockExit`/`appletUnlockExit` are paired). |
 | Heap size / `__nx_heap_size` override | No override; libnx uses the loader's heap override. |
-| The kernel event limit (`OsBellCreate: eventCreate failed rc=0x10801`, OBS-7) | `0x10801` is the kernel "limit reached" result for `svcCreateEvent`; it shows the process starts with its event budget used up, which is a Sphaira-side fact. It is a different result from `0xD401`; it may point at kernel objects that outlive an NRO, which the new `dw3-exit:` lines do not measure. Noted, not acted on. |
+| The kernel event limit (`OsBellCreate: eventCreate failed rc=0x10801`, OBS-7) | `0x10801` is the kernel "limit reached" result for `svcCreateEvent`; it shows the process starts with its event budget used up, which is a Sphaira-side fact. It is a different result from `0xD401`; it may point at kernel objects that outlive an NRO, which the new `dw3-exit:` lines do not measure. Noted. Since OBS-7 (2026-10-31) the port's own bells no longer take a kernel event at all ([NX_KERNEL_SYNC_OBJECTS](NX_KERNEL_SYNC_OBJECTS.md)), so the error line is gone from the log; the budget being used up before the game starts is still a Sphaira-side fact. |
 | romfs / fs not unmounted | `fsdev` is the libnx default (`__appExit`); the SD log is closed (now at the very end). |
 
 ## What changed

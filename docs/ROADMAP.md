@@ -84,6 +84,14 @@ highest non-empty tier.
   `GPU_Enqueue`. Reproduced on the PC (SIGSEGV, same stack) and proved by the replays
   `us/eu-battle-digivolve-command` (up, back to the base form, up again). Open: the
   OLED check, [OLED_TEST_PLAN G12](OLED_TEST_PLAN.md).
+- **OBS-3 and OBS-7 (p56 OLED): fixed in the code, to be checked on the console.**
+  OBS-3, the artefact on the border of the map view's area-name box: the hole left
+  for the game's frame sprite included its transparent texels and was one screen
+  pixel off; the view now draws the plate itself and leaves only the flat inside to
+  the game ([P6.32 section 19](P6.32_MAP_ZOOM.md#19-the-name-box-border-obs-3-2026-10-31),
+  OLED row B26). OBS-7, the `[E]` lines at boot: the kernel event limit was used up
+  at start, so PSY-Z's two bells were NULL; they are a mutex and a condition
+  variable now ([NX_KERNEL_SYNC_OBJECTS](NX_KERNEL_SYNC_OBJECTS.md), OLED row A22).
 - **PRESS START shown before the game answers it (owner, 2026-10-31).** Cause found on
   the PC: the original draws the prompt seven frames (117 ms; EU 140 ms) before it
   reads Start, on both regions and every path to the title. Fixed by patch `0199`
