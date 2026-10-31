@@ -62,7 +62,7 @@ Preview numbers 11 to 17 were never published.
 
 | Release | What it was for |
 |---|---|
-| [preview.57](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.57) | Digivolve in battle no longer crashes; restart in the chosen region; Select opens the map from the field; more walkthrough. |
+| [preview.57](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.57) | Digivolve in battle no longer crashes; restart in the chosen region; Minus (Select) opens the map from the field; more walkthrough. |
 | [preview.56](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.56) | Fixes the Reliability Spot crash; map view area names and zoom; walkthrough chapters 2 to 10; experimental cross-region saves. |
 | [preview.55](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.55) | Walkthrough screen in Options and Switch button glyphs; the full-screen map is off by default. |
 | [preview.54](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.54) | One release file, dw3-switch.nro, for US and EU. Using an item stays on the partner step. |

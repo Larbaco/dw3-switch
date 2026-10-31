@@ -8,7 +8,7 @@ Preview: unfinished, and not every new item has been run on a console yet.
 
 - Digivolving in battle no longer crashes (US and EU).
 - Options > Gameplay > Region at start can restart the game in the region you picked.
-- Select opens the full-screen map straight from the walking field.
+- Minus (Select) opens the full-screen map straight from the walking field.
 - Walkthrough: new last-battle chapter, the EU extra chapter and six optional rows.
 - The build label (version, commit, region) shows in the title corner and Options.
 
@@ -18,7 +18,7 @@ Preview: unfinished, and not every new item has been run on a console yet.
 
 ## Changed
 
-- Select-to-map needs Full-screen map ON (Options > Display) and widescreen.
+- Minus-to-map needs Full-screen map ON (Options > Display) and widescreen.
 - Add show_version=0 to port_options.cfg to hide the label on the title.
 
 ## Known issues
