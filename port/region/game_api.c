@@ -64,6 +64,7 @@ const Dw3GameApi dw3_game_api = {
     dw3_overlay_set_strict,
     dw3_map_view_init,
     dw3_map_view_precompute_run,
+    dw3_map_view_precompute_cancel,
     dw3_map_view_set_zoom_stick,
     dw3_map_view_get_draw,
     dw3_map_view_tex_taken,
