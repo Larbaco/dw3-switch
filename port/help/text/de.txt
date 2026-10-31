@@ -62,7 +62,8 @@ help.hotkeys.row.2 = Spiel neu starten | {chord:restart}
 help.hotkeys.row.3 = Optionen aus dem Titelbild | {btn:select}
 help.hotkeys.row.4 = Optionen im Kampf | {btn:select}
 help.hotkeys.row.5 = Kartenansicht, im Kartenbildschirm | {btn:square}
-help.hotkeys.row.6 = Partnerwechsel, Ausrüstungsfenster | {btn:l2} und {btn:r2}
+help.hotkeys.row.6 !unv = Kartenansicht direkt aus dem Feld | {btn:select}
+help.hotkeys.row.7 = Partnerwechsel, Ausrüstungsfenster | {btn:l2} und {btn:r2}
 help.hotkeys.h.1 = Neustart
 help.hotkeys.p.1 = Die Neustart-Kombination ist aus, bis du Neustart-Kürzel in den Optionen einschaltest. Halte alle vier Tasten zusammen gedrückt; sie löst pro Druck nur einmal aus, lass die Tasten also los, bevor du es erneut versuchst. Zuerst werden die Speicherplätze geschrieben, und schlägt das fehl, wird der Neustart abgebrochen. Fortschritt seit deinem letzten Speichern geht verloren. Die Zeile TITELBILD im Feldmenü führt denselben Neustart nach einer Ja-Nein-Frage aus.
 help.hotkeys.h.2 = Optionen
@@ -141,12 +142,13 @@ help.map.li.1 = {btn:dpad} bewegt den Cursor, der auf deinem aktuellen Gebiet st
 help.map.li.2 = Der rechte Stick zoomt stufenlos; {btn:l1} und {btn:r1} zoomen in Schritten.
 help.map.li.3 = {btn:l2} und {btn:r2} wechseln den Skalierer. "Nearest" ist die Vorgabe. "Lanczos2" und "FSR 1" werden im Hintergrund berechnet, und der Bildschirm zeigt währenddessen "BUILDING".
 help.map.li.4 = {btn:circle} blendet den Text und das Namensfeld aus. {btn:triangle} schließt die Ansicht. {btn:r3} tut hier nichts.
+help.map.li.5 !unv = Im Feld öffnet {btn:select} diese Ansicht sofort und friert das Feld ein, ab Story-Punkt 4. Breitbild und Vollbildkarte müssen ON sein. {btn:triangle} schließt die Ansicht, und das Feld läuft weiter.
 help.map.h.2 = Kartenpaket mit Hochskalierung
 help.map.p.2 !unv = Ein Paket ersetzt das Kartenbild durch ein schärferes. Zur Portierung gehört keines, weil es aus deiner eigenen Disc erzeugt wird. Ein PC-Werkzeug im Repository (tools/mods/extract_map_assets.py) entpackt die Basiskarte, startet einen Upscaler, den du installierst, und schreibt einen Ordner, den du auf der SD-Karte nach {path:root}mods/<pack>/ kopierst.
-help.map.li.5 !unv = Es gibt keine Zeile in den Optionen. Das Paket wird benutzt, sobald ein gültiges Paket für deine Region im Ordner mods liegt. Die Ansicht zeigt dann "MOD 4X".
-help.map.li.6 !unv = Eine Datei mit falscher Größe oder ein fehlendes Paket lässt die Ansicht auf die Originalkarte zurückfallen. Das Spiel braucht nie ein Paket zum Starten.
-help.map.li.7 !unv = Um zur Originalkarte zurückzukehren, benenne den Paketordner um oder entferne ihn, oder setze map_mod=0 in port_options.cfg.
-help.map.li.8 !unv = Mit einem Paket ändern {btn:l2} und {btn:r2} nur den Filter, scharf oder weich.
+help.map.li.6 !unv = Es gibt keine Zeile in den Optionen. Das Paket wird benutzt, sobald ein gültiges Paket für deine Region im Ordner mods liegt. Die Ansicht zeigt dann "MOD 4X".
+help.map.li.7 !unv = Eine Datei mit falscher Größe oder ein fehlendes Paket lässt die Ansicht auf die Originalkarte zurückfallen. Das Spiel braucht nie ein Paket zum Starten.
+help.map.li.8 !unv = Um zur Originalkarte zurückzukehren, benenne den Paketordner um oder entferne ihn, oder setze map_mod=0 in port_options.cfg.
+help.map.li.9 !unv = Mit einem Paket ändern {btn:l2} und {btn:r2} nur den Filter, scharf oder weich.
 
 # ---------------------------------------------------------- logs & bugs
 help.logs.title = Logs und Fehler
