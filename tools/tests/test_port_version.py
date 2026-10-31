@@ -18,6 +18,17 @@ SCRIPT = ROOT / "tools" / "dw3_nro_version.py"
 VERSION = "v0.9.0-preview.1"
 
 
+# Version inputs the header script reads from the environment. CI sets some of
+# them (GITHUB_SHA, GITHUB_REF, ...), and they would add a sha to the label or
+# override the tag the test passes.
+_VERSION_ENV = ("GITHUB_SHA", "GITHUB_REF", "GITHUB_REF_NAME", "RELEASE_TAG",
+                "DW3_RELEASE_TAG", "DW3_NRO_VERSION", "SOURCE_DATE_EPOCH")
+
+
+def hermetic_env() -> dict[str, str]:
+    return {k: v for k, v in os.environ.items() if k not in _VERSION_ENV}
+
+
 def build(tmp: Path, *defs: str, version: str | None = None) -> Path:
     if not (PSYZ_INC / "psyz.h").exists():
         pytest.skip("vendor/psyz is not checked out")
@@ -26,7 +37,7 @@ def build(tmp: Path, *defs: str, version: str | None = None) -> Path:
     subprocess.run(
         [sys.executable, str(SCRIPT), "--version", version or VERSION, "--repo", str(tmp),
          "--write-header", str(gen / "dw3_version_gen.h"), "--format", "full"],
-        check=True, capture_output=True, text=True)
+        check=True, capture_output=True, text=True, env=hermetic_env())
     out = tmp / ("pv" + "".join(d.replace("=", "") for d in defs))
     cmd = ["gcc", "-std=gnu11", "-Wall", "-Wextra", "-Werror", "-O1", "-o", str(out),
            str(MAIN), str(SRC), *defs, f"-I{ROOT / 'port' / 'include'}",
