@@ -30,7 +30,10 @@ the 50 Hz path), and nothing runs on US that cannot also run on EU except the
 US overlay table and the US text.
 
 Time: the full run (both regions) stays at about 2 h 18 min on `--jobs 2` and
-becomes the release gate. The PR default drops to **TIMING_PLACEHOLDER**.
+becomes the release gate. A measured PR-default run of the worst realistic case (this branch: `main.c`, an
+engine-wide file that mentions the region, so both regions are swept) took **13 min**
+(`--jobs 2`), against about 2 h 18 min for what `--changed` selected before (the full
+tier). Over the last 100 PRs the projected median is 35 to 40 min (section 5).
 
 ## 1. What still differs between US and EU
 
@@ -116,12 +119,12 @@ is the same number: the runner adds almost nothing).
 
 **EU takes 2.1 times as long as US for the same scenario** (191 paired
 scenarios: US 78 min, EU 151 min; the recordings have the same number of frames,
-499 136 vs 502 736). The cause is pacing, not the game: under Xvfb the driver
+499 136 vs 502 736). The cause is mostly pacing, not the game (in the menus and 1x scenes; see section 5 for the field scenarios): under Xvfb the driver
 VSync never blocks, so the US build runs flat out, while the EU build targets
 50 Hz, cannot use the 60 Hz driver VSync, and PSY-Z's frame limiter holds it to
 about 50 frames per second (`items-bag-view`: 9900 frames in 60 s on US =
 165 fps, 183 s on EU = 54 fps). A replay is keyed by the game frame, so its speed
-changes nothing in the captures. The runner now lets a replay run unpaced on
+changes nothing in the captures. The PC host now lets a replay run unpaced on
 both regions (`DW3_REPLAY_PACED=1` or `--paced` restores the old pacing).
 
 Where the rest goes (p56, process minutes): `items-bag-view` family 16 (6
@@ -204,7 +207,69 @@ measured scenario first.
 
 ## 5. Measurement
 
-MEASUREMENT_PLACEHOLDER
+### The PR-default run
+
+`tools/replay_tests.sh --changed --jobs 2 --fail-fast` on this branch (changed:
+`platforms/pc/src/main.c`, `tools/replay/*`, docs, tests). Before this change the
+selector answered "`main.c` is engine-wide: the full tier", 442 scenarios, 2 h 18 min
+on `--jobs 2` (p56). Now it answers: area sweep on US and EU (31 scenarios) + quick
+tier + EU smoke + canary = 47 scenarios.
+
+| | Before | After (measured) |
+|---|---|---|
+| Scenarios | 442 (full tier) | 47 |
+| Checks | 5370 | 459, 0 failed, 270 captures at exactly 0 px against the shared references |
+| Wall time, `--jobs 2`, `nice -n 10`, Xvfb per scenario | 138 min (p56) | **13.2 min** |
+| Process time | 4.58 h | 26.2 min (the p56 timings give 27.8 min for the same 47) |
+
+Run on 2026-10-31 with `DW3_REPLAY_REFS` a private copy of the shared references,
+binaries built from this branch under `/mnt/cabal/tmp/replay-policy` (US, EU; the
+combined binary and the launcher were not built, so the `both`/`single` canary tiers
+did not run), a machine that was idle at the start. Logs and reports:
+`/mnt/cabal/tmp/replay-policy/pr-default.log`, `out-prdefault/`.
+
+### Unpaced replay (what it bought, and what it did not)
+
+The EU build was held to 50 frames/s by the PSY-Z limiter. Unpaced, the menu
+scenarios gain a lot (`eu-items-bag-view`: 183 s in p56, 108 s unpaced against 191 s
+paced in a back-to-back comparison). The field scenarios do not: they run turbo 4x and
+are bound by the software renderer (`eu-field-walk` 9900 frames in 181 s, 55 frames/s;
+p56 had 177 s). In the PR-default run EU took 11.1 min of process time against
+13.4 min in p56 for the same scenarios, so the saving is about 17%, not the 2x the
+paired US/EU numbers suggest. The comparison above was taken while other agents'
+replays were also running on the machine (more than the two-instance limit, see the
+note below), so treat the 108 s / 191 s as indicative, and the 13 min as the clean
+number. The captures are identical either way: every checkpoint of the unpaced runs
+(459 checks) matched the references, and the A/B runs matched too (96 checks, 0 failed).
+
+### Projection over the last 100 PRs
+
+`areas.select` and `areas.plan` applied to the files of PRs #286 to #386 (44 had no replay
+impact; 56 did), estimated with the p56 per-scenario timings, two jobs:
+
+| | Before (`--changed`, old selector) | After (PR default) | After with `--thorough` |
+|---|---|---|---|
+| Median PR | 166 min (the full tier, 38 of 56 were engine-wide) | **40 min** (35 min if EU gains 20%) | 70 min |
+| 75th percentile | 166 | 43 (39) | |
+| Longest | 166 | 68 (59) | 141 |
+| PRs over 40 min | 47 of 56 | 27 of 56 (12) | |
+
+The thinning that does most of this: a rule that selects more than `BROAD` = 100
+scenarios (the options registry, the title overlay, the pad host, the help text) is
+shared code, so the PR default keeps the cheapest two scenarios of each (area, family,
+region) of that set (language copies excepted for text changes) and leaves the rest to
+`--thorough` and the gate. A narrow rule (cheats, map view, items menu, saves) keeps
+every scenario.
+
+### Note on the measurement
+
+Twice during this work a dw3-pc of mine ran while other workers' replays were active
+(the health worktree started a `--both-subset` phase right after its full run; two
+other workers had replays going): briefly four instances instead of the limit of two.
+The numbers marked above as contended come from those moments; the 13 min run was
+started on an idle machine. After the second time the wait guard was fixed to refuse
+when busy.
+
 
 ## 6. What moved to the release gate
 
