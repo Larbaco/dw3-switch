@@ -91,7 +91,7 @@ highest non-empty tier.
   the game ([P6.32 section 19](P6.32_MAP_ZOOM.md#19-the-name-box-border-obs-3-2026-10-31),
   OLED row B26). OBS-7, the `[E]` lines at boot: the kernel event limit was used up
   at start, so PSY-Z's two bells were NULL; they are a mutex and a condition
-  variable now ([NX_KERNEL_SYNC_OBJECTS](NX_KERNEL_SYNC_OBJECTS.md), OLED row A21).
+  variable now ([NX_KERNEL_SYNC_OBJECTS](NX_KERNEL_SYNC_OBJECTS.md), OLED row A22).
 - **BUG-1 (p56 OLED, blocks v1.0.0): crash on exit when started from Sphaira.**
   The crash is in Sphaira's own `hbl` after our `main` returns (it re-reads the
   next NRO over the whole heap; `0xD401`). Hardened on the PC/Switch build, no

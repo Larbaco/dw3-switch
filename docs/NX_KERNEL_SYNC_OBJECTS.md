@@ -1,7 +1,7 @@
 # `KernelInit: cannot create the kernel synchronisation objects`
 
 Status: **fixed in the code (2026-10-31, OBS-7), to be confirmed on the console
-with OLED row A21.** The rest of this file is the history and the reasoning.
+with OLED row A22.** The rest of this file is the history and the reasoning.
 
 ## Resolution (OBS-7, 2026-10-31)
 
@@ -29,7 +29,7 @@ rings every bell, so BUG-1's thread join still wakes a sleeping thread). One
 `[I]` line says the bells are built that way, once per run. The failure paths
 (`malloc`) stay `[E]`: a real error is still an error.
 
-Expected boot log on the OLED (row A21): no `[E]` line after
+Expected boot log on the OLED (row A22): no `[E]` line after
 `entering dw3_game_main()`. PC logs have none of this (PC does not use
 `nx_os.c`; the PC replay logs hold no `[E]` line at boot).
 
