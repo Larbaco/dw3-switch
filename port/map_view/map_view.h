@@ -49,7 +49,10 @@ enum { DW3_MV_BACKDROP_W = 32, DW3_MV_BACKDROP_H = 18 };
 /* The game's own sprites that sit on the map (the cursor, the balloon of the
  * current area): composed from the VRAM into small RGBA images when the view
  * opens (the bank), drawn by the host as quads in map space. */
-enum { DW3_MV_BANK_N = 12, DW3_MV_SPRITES = 4 };
+/* Bank 12 is the name box's plate (OBS-3): the game's frame sprite 0x3B with its
+ * shadow, drawn by the host over the map; the game's own pixels are used only
+ * for the text inside it. */
+enum { DW3_MV_BANK_N = 13, DW3_MV_SPRITES = 4 };
 typedef struct Dw3MapViewBankImg {
     const uint8_t *rgba; /* straight alpha, NULL when the frame was not built */
     int w, h;
@@ -74,9 +77,11 @@ typedef struct Dw3MapViewDraw {
     Dw3MapViewBankImg bank[DW3_MV_BANK_N];
     int nspr;                  /* sprites to draw, in order (map, then these) */
     Dw3MapViewSprite spr[DW3_MV_SPRITES];
-    /* The name box: the game draws it itself (its frame and text window), so
-     * the host leaves this rectangle of the picture to the game's own pixels
-     * (fractions of the picture); hole = 0 when there is none. */
+    /* The name box: the game draws its text window itself, so the host leaves
+     * this rectangle of the picture to the game's own pixels (fractions of the
+     * picture); hole = 0 when there is none. With the plate built (bank 12,
+     * drawn as a sprite) the rectangle is the plate's flat inside, a few pixels
+     * from its border, so no pixel of the game lands on the border. */
     int hole;
     float hx0, hy0, hx1, hy1;
 } Dw3MapViewDraw;

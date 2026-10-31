@@ -1209,6 +1209,11 @@ for _v, _ids in (("us", (0x159, 0x1FA, 0x1C2, 0x158, 0x1F9)),
                                   r"(?s:.*)dw3-map: cursor at rest at \d+,\d+, location id=\1 name id=\1"
                                   r"(?s:.*)dw3-map: HUD on \(the bars; the name box stays\)"
                                   r"(?s:.*)dw3-map: HUD off \(the bars; the name box stays\)"),
+                              # OBS-3 (p56): the name box's plate is drawn by the view from the
+                              # game's own texels, so no pixel of the game lands on its border
+                              (0, r"dw3-map: name box plate \(frame 0x3B of FILE_STATUS_SPRITES\): "
+                                  r"\d+x\d+ texels at \d+,\d+, \d+ transparent, border box x \d+\.\.\d+ y "
+                                  r"\d+\.\.\d+, the game's text is left in x \d+\.\.\d+ y \d+\.\.\d+"),
                               # owner, preview.48: the cursor and the balloon keep one size
                               (0, r"dw3-map: sprites at fixed size \(scale 1/Z, Z = zoom, "
                                   r"reference zoom 1\.0 = [\d.]+ px per source px; the reveal layer"),
@@ -1230,7 +1235,7 @@ for _v, _ids in (("us", (0x159, 0x1FA, 0x1C2, 0x158, 0x1F9)),
                                   r"(-?\d+),(-?\d+) scroll (-?\d+),(-?\d+) \(at the open \1,\2 / \3,\4\): unchanged"),),
                   # R3 inside the view must not flip the fast-forward state
                   forbid_log=((0, r"dw3-map: capture failed|NOTHING DRAWN|not drawn|MISSING|"
-                                  r"dw3-turbo: (?:on|off)\n|\): CHANGED"),),
+                                  r"dw3-turbo: (?:on|off)\n|\): CHANGED|dw3-map: name box plate NOT BUILT"),),
                   note="Square opens the new full-screen map: balloon, cursor, name box, zoom, scaler cycle, back (patch 0146)"))
     # MOD map upscale: the same recording with a synthetic pack in the config
     # folder. The pack replaces the map picture (1568x1408 texture, same
@@ -1335,7 +1340,8 @@ def _names_expect(lang, tfile):
 
 
 _NAMES_FORBID = ((0, r"dw3-map: area name MISMATCH|: BAD \(|IS NOT the table|dw3-map: capture failed|NOTHING DRAWN|"
-                     r"dw3-map: current area \d+ gives location"),)
+                     r"dw3-map: current area \d+ gives location|"
+                     r"dw3-map: name box plate NOT BUILT"),)
 for _v, _ids in (("us", (0x159, 0x1FA, 0x1C2, 0x158, 0x1F9)),
                  ("eu", (0x167, 0x208, 0x1D1, 0x166, 0x207))):
     _fight, _menu, _report, _field, _status = _ids
