@@ -215,7 +215,7 @@ jobs:
           docker run --rm \
             -e DEVKITPRO=/opt/devkitpro \
             -v "$PWD:/dw3-switch" -w /dw3-switch \
-            devkitpro/devkita64:latest \
+            devkitpro/devkita64@sha256:1fc388c3a0d34bd2045a6dadcb1020e069d5f876a187fd705de14b4440c00282 \
             make -C platforms/switch
           test -f platforms/switch/dw3-switch.nro
 
