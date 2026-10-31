@@ -71,8 +71,13 @@ def test_text_keys_cover_the_table(wt_bin: Path):
     for _, sid, chapter, area, _kind, _region, *_rest in rows:
         chapters.add(chapter)
         areas.add(area)
+        page = _rest[-1]
+        # a condensed page is named and titled by its first step: the other steps carry no title
         for layer in ("title", "goal", "help"):
             key = f"wt.{sid.replace('.', '_')}.{layer}"
+            if layer == "title" and page != sid:
+                assert key not in keys, f"{key}: step {sid} is on page {page}, it has no title of its own"
+                continue
             assert key in keys and keys[key], f"missing en text {key}"
             assert len(keys[key]) <= BUDGET[layer], f"{key} over budget ({len(keys[key])})"
     for c in chapters:
@@ -213,7 +218,8 @@ def table_rows(wt_bin: Path) -> list[dict]:
         f = l.split()
         rows.append(dict(id=f[1], chapter=f[2], area=f[3], kind=int(f[4]), region=int(f[5]),
                          map_area=int(f[6]), frm=int(f[7]), to=int(f[8]), order=int(f[9]),
-                         ndone=int(f[10]), done=int(f[11]), nunlock=int(f[12]), unlock=int(f[13])))
+                         ndone=int(f[10]), done=int(f[11]), nunlock=int(f[12]), unlock=int(f[13]),
+                         page=f[14]))
     return rows
 
 
@@ -482,18 +488,20 @@ def test_screen_flow(screen_bin: Path):
     assert "OK: walkthrough screen" in r.stdout
     log = r.stderr
     # AGENTS.md rule 12: the log lines that answer the OLED questions
-    assert "dw3-walkthrough: open (from field, region EU, platform pc, language en, 12 chapters, 59 steps)" in log
-    assert "dw3-walkthrough: open (from title, region EU, platform pc, language en, 12 chapters, 59 steps)" in log
+    assert "dw3-walkthrough: open (from field, region EU, platform pc, language en, 12 chapters, 33 pages, 59 steps)" in log
+    assert "dw3-walkthrough: open (from title, region EU, platform pc, language en, 12 chapters, 33 pages, 59 steps)" in log
     assert re.search(r"dw3-walkthrough: progress 2 half 0 area 19 -> chapter ch01 step ch01\.s03 "
                      r"\(rule progress\) \[open mode 0x200\]", log)
     assert "dw3-walkthrough: flags read 0x400d=1" in log
-    assert re.search(r"dw3-walkthrough: page ch01\.s03 \(kind MAIN, from open, reached y, current y, "
+    # progress 2 is step ch01.s03, on the condensed page named by its first step, ch01.s02
+    assert re.search(r"dw3-walkthrough: page ch01\.s02 \(kind MAIN, from open, reached y, current y, "
                      r"\d+ lines, \d+ us\)", log)
-    assert "dw3-walkthrough: spoiler ch01.s03 closed (answer available)" in log
-    assert "dw3-walkthrough: spoiler ch01.s03 asked" in log
-    assert "dw3-walkthrough: spoiler ch01.s03 cancelled" in log
-    assert "dw3-walkthrough: spoiler ch01.s03 shown" in log
-    assert "dw3-walkthrough: page ch01.s03 closed after" in log and "(spoiler shown y)" in log
+    assert "dw3-walkthrough: page ch01.s02 holds 2 step(s) ch01.s02 ch01.s03, 2 shown, current step ch01.s03" in log
+    assert "dw3-walkthrough: spoiler ch01.s02 closed (answer available)" in log
+    assert "dw3-walkthrough: spoiler ch01.s02 asked" in log
+    assert "dw3-walkthrough: spoiler ch01.s02 cancelled" in log
+    assert "dw3-walkthrough: spoiler ch01.s02 shown" in log
+    assert "dw3-walkthrough: page ch01.s02 closed after" in log and "(spoiler shown y)" in log
     assert "(spoiler shown n)" in log
     assert re.search(r"dw3-walkthrough: page ch01\.s04 \(kind MAIN, from list, reached n, current n", log)
     assert "dw3-walkthrough: step not recognised (progress 32768)" in log
@@ -503,6 +511,57 @@ def test_screen_flow(screen_bin: Path):
     # nothing overflows a plaque and no token was left open
     assert "title too wide" not in log, "a title is wider than its plaque: shorten the text"
     assert "unresolved" not in log
+
+
+@pytest.fixture(scope="module")
+def pages_bin(tmp_path_factory) -> Path:
+    out = tmp_path_factory.mktemp("walkthrough_pages") / "walkthrough_pages_test"
+    cmd = ["gcc", "-std=gnu11", "-Wall", "-Wextra", "-Werror", "-O1",
+           "-DDW3_PORT_OPTIONS_TEST", "-DDW3_BUTTON_MAP_TEST",
+           f"-I{ROOT / 'port' / 'include'}", f"-I{WT}", f"-I{PAGES}", f"-I{HELP}",
+           "-o", str(out), str(TESTS / "walkthrough_pages_main.c"),
+           str(WT / "walkthrough_screen.c"), *map(str, SOURCES), str(HELP / "help.c"),
+           str(PAGES / "pages.c"), str(PAGES / "glyph_atlas.c"),
+           str(ROOT / "port" / "options" / "button_map.c")]
+    r = subprocess.run(cmd, capture_output=True, text=True)
+    assert r.returncode == 0, r.stderr + r.stdout
+    return out
+
+
+def test_condensed_pages_follow_the_rules(wt_bin: Path):
+    """FEEDBACK-5 (option B): a page holds consecutive MAIN steps of one chapter and one area (and one
+    region), named by the first of them; the step ids and the table do not change."""
+    rows = [r for r in table_rows(wt_bin) if r["kind"] == 0]
+    by_page: dict[str, list[dict]] = {}
+    for r in rows:
+        by_page.setdefault(r["page"], []).append(r)
+    for page, members in by_page.items():
+        assert members[0]["id"] == page, f"page {page} is not named by its first step"
+        assert len(members) <= 6, f"page {page} holds {len(members)} steps"
+        for a, b in zip(members, members[1:]):
+            assert rows.index(b) == rows.index(a) + 1, f"page {page}: {a['id']} and {b['id']} are not consecutive"
+            assert (a["chapter"], a["area"], a["region"]) == (b["chapter"], b["area"], b["region"]), \
+                f"page {page}: {a['id']} and {b['id']} differ in chapter, area or region"
+    assert sum(len(m) for m in by_page.values()) == len(rows)
+    first_half = [p for p in by_page if int(p[2:4]) <= 10]
+    assert len(first_half) == 29, "the first half (55 steps) is read on 29 pages"
+    us = [p for p, m in by_page.items() if m[0]["region"] in (0, 1)]
+    assert len(us) == 30 and len(by_page) == 33
+
+
+def test_condensed_pages_fit_the_panel(pages_bin: Path):
+    """The page the player sees first (the goals of every step of the page, with the player past the
+    whole table, and the 'answer is hidden' note) is at most 12 lines, one panel (13 lines), in every
+    language and both regions: no scrolling to read what to do."""
+    r = subprocess.run([str(pages_bin)], capture_output=True, text=True, timeout=120)
+    assert r.returncode == 0, r.stderr
+    log = r.stdout + r.stderr
+    assert "title too wide" not in log, "a page title is wider than its plaque: shorten it"
+    assert "text fallback" not in log, "a language has no text for a page"
+    pages = [l.split() for l in r.stdout.splitlines() if l.startswith("PAGE ")]
+    assert len(pages) >= 5 * (30 + 33)   # the pages, plus the optional rows and the area entries
+    worst = max(int(p[5]) for p in pages)
+    assert worst <= 12, f"a page takes {worst} lines: {[p for p in pages if int(p[5]) > 12][:5]}"
 
 
 def test_embedded_text_is_current():

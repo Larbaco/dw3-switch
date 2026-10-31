@@ -85,6 +85,14 @@ void dw3_wt_resolve_table(const DW3WtStep *table, int count, const DW3WtState *s
 void dw3_wt_resolve(const DW3WtState *st, DW3WtResult *out);
 const DW3WtStep *dw3_wt_steps(int *count);
 
+/* The page a MAIN step is read on (condensed pages, P6.35 "As built, condensing"): consecutive
+ * short steps of one chapter and one area share a page, named by the first of them. Returns the id
+ * of that first step (the step's own id when it has a page of its own). The step ids and the
+ * resolver do not change: the resolver still names a step, the screen opens the page that holds it.
+ * WT_PAGE_MAX_STEPS bounds how many steps one page may hold. */
+const char *dw3_wt_page_of(const char *step_id);
+#define WT_PAGE_MAX_STEPS 6
+
 /* "dw3-walkthrough: progress P half H area A -> chapter C step S (rule R)" */
 int dw3_wt_format_line(char *buf, unsigned size, const DW3WtState *st, const DW3WtResult *r);
 
