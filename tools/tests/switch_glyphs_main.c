@@ -263,6 +263,80 @@ static void test_pageturn(void) {
               plan[1] == DW3_GLYPH_NONE, "custom: L1 -> ZL, R1 keeps the text");
 }
 
+/* The US Cross prompt (bug 4): the letter X of "X Button" in the memory card strings. */
+static void test_uscross(void) {
+    unsigned char ps[DW3_BTN_COUNT];
+    unsigned char nin[DW3_BTN_COUNT];
+    unsigned char custom[DW3_BTN_COUNT];
+    char out[192];
+    /* US "Load which block?": ... ? <newline> X Button : Execute <spaces> <triangle> Button : Back */
+    static const char load[] =
+        "\x19\x36\x28\x2b\x01\x01\xe6\x02\x01\x25\x01\x01\x0f\x3c\x3b\x3b\x36\x35"
+        "\x01\x07\x01\x01\x12\x3f\x2c\x2a\x3c\x3b\x2c\x01\x01\x01\x34\x01\x01"
+        "\x0f\x3c\x3b\x3b\x36\x35\x01\x07\x01\x01\x0f\x28\x2a\x32";
+    int n;
+
+    dw3_button_map_preset(DW3_LAYOUT_PLAYSTATION, ps);
+    dw3_button_map_preset(DW3_LAYOUT_NINTENDO, nin);
+    CHECK(dw3_glyph_uscross_plan(ps) == DW3_GLYPH_B, "playstation: Cross -> B");
+    CHECK(dw3_glyph_uscross_plan(nin) == DW3_GLYPH_A, "nintendo: Cross -> A");
+    memcpy(custom, ps, sizeof(custom));
+    custom[DW3_BTN_CROSS] = DW3_BTN_L3;
+    custom[DW3_BTN_L3] = DW3_BTN_CROSS;
+    CHECK(dw3_button_map_valid(custom), "custom map is a permutation");
+    CHECK(dw3_glyph_uscross_plan(custom) == DW3_GLYPH_NONE, "custom: Cross on L3 keeps the X");
+
+    /* The census cell stays plan-skipped: the US n = 27 is the multiplication sign. */
+    {
+        Dw3GlyphCell cells[DW3_GLYPH_CELLS];
+
+        dw3_glyph_plan(nin, 0, cells);
+        CHECK(cells[0].n == 27 && cells[0].glyph == DW3_GLYPH_NONE, "us n=27 keeps the original icon");
+    }
+
+    n = dw3_glyph_uscross_rewrite(load, out, sizeof(out));
+    CHECK(n == 1, "load string: one prompt, got %d", n);
+    CHECK(strlen(out) == sizeof(load) - 1 + 1, "one byte longer (X -> 01 n)");
+    CHECK(memcmp(out, load, 9) == 0 && out[9] == 1 && (unsigned char)out[10] == DW3_USCROSS_N &&
+              memcmp(out + 11, load + 10, sizeof(load) - 10) == 0,
+          "only the letter X is swapped for the icon string");
+    CHECK(DW3_USCROSS_N == 117 && DW3_USCROSS_U % 4 == 0 && DW3_USCROSS_U + 12 <= 256 &&
+              DW3_USCROSS_V + 12 <= 256 && DW3_USCROSS_SLOT == DW3_SPARE_COUNT - 1,
+          "the cell is whole halfwords on the page");
+    /* No spare cell is on the EU icon palette rows (224..231 at texels 192..255). */
+    CHECK(DW3_PAGETURN_V0 >= 232 && DW3_USCROSS_V >= 232 &&
+              DW3_PAGETURN_U >= 220 && DW3_USCROSS_U >= 220,
+          "the spare cells stay out of the EU palette rows");
+    /* The cell does not overlap the L1 / R1 cells. */
+    CHECK(DW3_USCROSS_U + 12 <= DW3_PAGETURN_U || DW3_USCROSS_U >= DW3_PAGETURN_U + 12,
+          "the cell does not overlap the page-turn cells");
+
+    /* Not a prompt: the letter alone, a letter inside a word, an icon argument, no "Button". */
+    CHECK(dw3_glyph_uscross_rewrite("\x25\x01\x01\x0f\x3c\x3b\x3b\x36\x35", out, sizeof(out)) == 1,
+          "a string that is the prompt itself");
+    CHECK(dw3_glyph_uscross_rewrite("\x25", out, sizeof(out)) == 0, "the letter X alone");
+    CHECK(dw3_glyph_uscross_rewrite("\x28\x25\x01\x01\x0f\x3c\x3b\x3b\x36\x35", out, sizeof(out)) == 0,
+          "X at the end of a word (xX Button)");
+    CHECK(dw3_glyph_uscross_rewrite("\x01\x25\x01\x01\x0f\x3c\x3b\x3b\x36\x35", out, sizeof(out)) == 0,
+          "an icon argument 0x25 is not a letter");
+    CHECK(dw3_glyph_uscross_rewrite("\x25\x01\x01\x0f\x3c\x3b", out, sizeof(out)) == 0,
+          "X without the word Button");
+    CHECK(dw3_glyph_uscross_rewrite("", out, sizeof(out)) == 0 &&
+              dw3_glyph_uscross_rewrite(NULL, out, sizeof(out)) == 0, "empty and NULL");
+    /* A code cut by the terminator does not read past it. */
+    CHECK(dw3_glyph_uscross_rewrite("\x28\x01", out, sizeof(out)) == 0, "a cut icon code");
+    /* Two prompts in one string, and a buffer too small. */
+    {
+        static const char two[] = "\x25\x01\x01\x0f\x3c\x3b\x3b\x36\x35\x02\x01"
+                                  "\x25\x01\x01\x0f\x3c\x3b\x3b\x36\x35";
+        char small[16];
+
+        CHECK(dw3_glyph_uscross_rewrite(two, out, sizeof(out)) == 2, "two prompts");
+        CHECK(strlen(out) == sizeof(two) - 1 + 2, "two bytes longer");
+        CHECK(dw3_glyph_uscross_rewrite(two, small, sizeof(small)) == -1, "too small a buffer");
+    }
+}
+
 /* argv: png <dir>: every <dir>/<name>.png equals the compiled-in art. */
 static int check_png_dir(const char *dir) {
     int g;
@@ -330,6 +404,7 @@ int main(int argc, char **argv) {
     test_rgba();
     test_plan();
     test_pageturn();
+    test_uscross();
     if (g_fail) {
         return 1;
     }

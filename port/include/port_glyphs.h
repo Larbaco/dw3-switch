@@ -109,9 +109,39 @@ enum {
     DW3_PAGETURN_COUNT = 2, /* L1, R1 */
     DW3_PAGETURN_N0 = 115,  /* icon number of the L1 cell; R1 is the next */
     DW3_PAGETURN_U = 232,   /* the cells: font page 0, u, v (blank in US and EU) */
-    DW3_PAGETURN_V0 = 224,
+    DW3_PAGETURN_V0 = 232,  /* was 224 up to p56: rows 224..231 are EU palette rows */
     DW3_PAGETURN_V_STEP = 12
 };
+
+/* The US Cross prompt (bug 4, docs/P10.6_GLYPHS.md section 10). The US memory card
+ * screens (Load Game, Save) spell the confirm button as the plain letter X of the
+ * string ("X Button: Execute", bytes 25 01 01 "Button"), not as a font icon: the US
+ * cross icon n = 27 is the multiplication sign of item counts and stays as it is.
+ * With the glyphs on, the port rewrites that letter into an icon string for a third
+ * spare cell (n = 117), drawn with the glyph of the Switch button that produces
+ * the Cross. EU draws the prompt with the n = 27 disc, which the cell patch covers.
+ * The cell sits on font page 0 at u = 220, v = 232. The only 12 x 12 texels of the
+ * page that no glyph or icon cell of either region references and that are blank in
+ * both discs are in the font page's palette strip (halfwords 48..63 of the rows
+ * 232..255 hold the text colour ramps, which use indices 0..6 and 15 only), so the
+ * cell overwrites ramp entries 7..9 that nothing reads; the L1 / R1 cells above are in
+ * the same strip (u = 232), which is why they start at row 232: rows 224..231 are the
+ * EU icon palette (13 colours, indices 10..12 are real) and must not be written. */
+enum {
+    DW3_SPARE_COUNT = DW3_PAGETURN_COUNT + 1, /* L1, R1, US Cross */
+    DW3_USCROSS_SLOT = 2,                     /* index of the US Cross cell */
+    DW3_USCROSS_N = 117,                      /* its icon number */
+    DW3_USCROSS_U = 220,
+    DW3_USCROSS_V = 232
+};
+/* The glyph for the US Cross prompt under `map` (DW3_GLYPH_NONE = keep the X). */
+int dw3_glyph_uscross_plan(const unsigned char map[DW3_BTN_COUNT]);
+/* Rewrites every "X Button" prompt of `str` (a letter X at the start of the string
+ * or after a space, a new line or an icon, then a space and the word "Button") so
+ * the X is the icon string 01 n of the US Cross cell. Returns how many were
+ * rewritten (0 = `out` not written, use `str`), or -1 when the result does not fit
+ * in `cap` bytes. `out` ends with a NUL. */
+int dw3_glyph_uscross_rewrite(const char *str, char *out, unsigned cap);
 
 /* 0 for the string `L1`, 1 for `R1` (exactly those two letters), else -1. */
 int dw3_glyph_pageturn_match(const char *str);
@@ -141,7 +171,8 @@ void dw3_port_icon_census(int n, int style, const unsigned char *data, int pos,
                           int sjis);
 /* Patch 0196, textWindowSetSubString: the string a text window of `style` (a
  * TextStyle *) shows for table string `str`. Returns `str` unless it is a size-1
- * window's exact `L1` / `R1` and the glyph option gives that button a glyph. */
+ * window's exact `L1` / `R1`, or (US) a string with an "X Button" prompt, and the
+ * glyph option gives that button a glyph. */
 const char *dw3_port_text_override(const void *style, const char *str);
 /* P6.32 phase 7: the art the map view's help line draws for a glyph (12 x 12 role
  * bytes): the owner's PNG when there is one in the glyphs folder, else the bundled

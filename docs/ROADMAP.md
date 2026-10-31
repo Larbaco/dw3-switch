@@ -233,7 +233,7 @@ listed once, in [Pending OLED checks](#pending-oled-checks).
 | P10.3 | Presentation modes | open | — |
 | P10.4 | Rumble polish (optional) | open | — |
 | P10.5 | Extra applets (optional) | open | — |
-| P10.6 | Switch-style button glyphs (design written 2026-10-28; step 0 #354 and the fix-now hint caps #355 merged; census, art and the glyph patch built 2026-10-29, PR #367) | in progress (OLED L17 to L27 pending; the page-turn `R1` / `L1` prompt built 2026-10-30, patch 0196, PR open) | [roadmap](#phase-10--native-switch-features-residual), [P10.6_GLYPHS](P10.6_GLYPHS.md), [CONTROLS_BUNDLE](CONTROLS_BUNDLE.md), [TEXTURE_PACKS](TEXTURE_PACKS.md) |
+| P10.6 | Switch-style button glyphs (design written 2026-10-28; step 0 #354 and the fix-now hint caps #355 merged; census, art and the glyph patch built 2026-10-29, PR #367) | in progress (OLED L17 to L27 and L29 pending; the page-turn `R1` / `L1` prompt built 2026-10-30, patch 0196, PR open; the US Cross prompt of the Load / Save screens, bug 4, 2026-10-31) | [roadmap](#phase-10--native-switch-features-residual), [P10.6_GLYPHS](P10.6_GLYPHS.md), [CONTROLS_BUNDLE](CONTROLS_BUNDLE.md), [TEXTURE_PACKS](TEXTURE_PACKS.md) |
 | P10.7 | NSP packaging: forwarder, full NSP or stay NRO | dropped | [NSP_PACKAGING](NSP_PACKAGING.md), [roadmap](#phase-10--native-switch-features-residual) |
 
 ## Pending OLED checks
@@ -1641,6 +1641,12 @@ rumble, saves, turbo, or widescreen here; those stay in their phases.
   bit-identical. Log `dw3-glyphs: page-turn prompt R1 drawn as glyph R (scene=..)`. Open: the card shop,
   Lab, battle menu, name entry and training carry the same strings and follow the hook but have no replay
   case of their own; a look on the OLED.
+  **US Cross prompt built (2026-10-31, bug 4 of the p56 OLED test, PR open, OLED L29 pending):** the US Load Game
+  and Save screens spell the confirm as the plain letter X of the text ("X Button: Execute"), not as an icon, so the
+  cell patch (US n = 27 is the item-count multiplication sign and stays) never touched it. The text hook of patch
+  0196 now swaps that letter for a third spare cell (n = 117) drawn as the glyph of the Cross (A in the Nintendo
+  layout); no new patch. The spare cells moved to font page 0 rows 232..255 (rows 224..231 are the EU palette). See
+  [P10.6_GLYPHS section 10](P10.6_GLYPHS.md#10-the-us-cross-prompt-of-the-memory-card-screens-bug-4-2026-10-31).
   Done when: with the option on, the icons shown in the field, battle, menus
   and shops are Switch glyphs on the US and EU discs, they match the layout
   chosen in P9.8, and the option off restores the original icons.
