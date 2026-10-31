@@ -53,12 +53,25 @@ class Rec:
         return "\n".join(lines) + "\n"
 
 
-# P9.9: the Options screen is a list of groups (Display, Sound, Gameplay,
-# Saves; Cheats joins once its master switch is on); a group opens a sub-screen
+# P9.9: the Options screen is a list of groups; a group opens a sub-screen
 # with its rows and Triangle goes back to the list with the cursor kept.
-GRP_DISPLAY, GRP_SOUND, GRP_GAMEPLAY, GRP_SAVES = 0, 1, 2, 3
-GRP_CHEATS = 4    # P51 item 5: always on the list (greyed in game)
-GRP_CONTROLS = 5  # P9.8: the Button layout row (Cheats comes before it)
+# D1 (docs/OPTIONS_REORG.md): the list is Display, Sound, Gameplay, Menus,
+# Controls, Saves, Cheats, Advanced, Help, Walkthrough (the default build; a
+# --no-cheats build has no Cheats and no Advanced). These are the positions in it.
+GRP_DISPLAY, GRP_SOUND, GRP_GAMEPLAY, GRP_MENUS = 0, 1, 2, 3
+GRP_CONTROLS = 4  # P9.8: the Button layout row (D1: before Saves)
+GRP_SAVES = 5
+GRP_CHEATS = 6    # P51 item 5: always on the list (greyed in game)
+GRP_ADVANCED = 7  # D1: the stage sweep (listed with Cheats)
+GRP_HELP = 8
+GRP_WALK = 9
+# Rows inside a group (D1). Gameplay: Fast-forward, Encounter rate, Text speed, Battle
+# cursor (Restart hotkey moved to Controls, Region at start to Saves). Controls: Button
+# layout, Customize buttons, Map buttons, Reset to default, [Switch glyphs on the Switch],
+# Restart hotkey. Saves: Auto-save, [Region at start in the combined image], Shared saves.
+ROW_GP_ENCOUNTER, ROW_GP_TEXT, ROW_GP_BATTLE = 1, 2, 3
+ROW_CT_CUSTOMIZE, ROW_CT_MAPBTN, ROW_CT_RESET, ROW_CT_RESTART = 1, 2, 3, 4
+ROW_SV_REGION = 1
 
 
 def _keys(r, f, *masks, gap=20):
@@ -826,13 +839,13 @@ def options_cheats_listed(version):
 
 def options_region(version, phase):
     """P51 item 4 (the combined image only, run with --bin-both): Options ->
-    Gameplay -> Down x5 to the Region at start row. Phase 1: Cross steps Ask ->
+    Saves -> Down to the Region at start row (D1: it moved here from Gameplay). Phase 1: Cross steps Ask ->
     US -> EU (`region-ask`, `region-us`, `region-eu`), Triangle out. Phase 2 is a
     new process on the same config folder: the row is read back (`region-back`)."""
     r = Rec(f"{version.upper()}: P51 Region at start row, phase {phase}")
     m = _to_options(r, version)
-    f = _group(r, m + 70, GRP_DISPLAY, GRP_GAMEPLAY)
-    f = _keys(r, f + 20, DOWN, DOWN, DOWN, DOWN, DOWN)       # Region at start
+    f = _group(r, m + 70, GRP_DISPLAY, GRP_SAVES)
+    f = _keys(r, f + 20, *([DOWN] * ROW_SV_REGION))          # Region at start
     if phase == 1:
         r.shot(f + 20, "region-ask")
         r.press(f + 40, CROSS)       # Ask -> US
@@ -849,8 +862,115 @@ def options_region(version, phase):
     return r
 
 
+# --- D1 (docs/OPTIONS_REORG.md): the Menus group, the rows that were file-only keys, the
+# Shared saves and Stage sweep windows and the Map buttons screen -------------------
+
+def options_menus(version, phase):
+    """D1: title -> Options -> Menus (the fourth plaque). Phase 1: the five switches
+    at their defaults (all ON, `menus-defaults`), Confirm on each (Down between them)
+    turns all five OFF (`menus-off`); phase 2 is a fresh process on the same config dir:
+    the page shows the five values read back (`menus-restored`)."""
+    r = Rec(f"{version.upper()}: D1 Menus group, phase {phase}")
+    m = _to_options(r, version)
+    f = _group(r, m + 70, GRP_DISPLAY, GRP_MENUS)
+    if phase == 1:
+        r.shot(f + 20, "menus-defaults")
+        f = _keys(r, f + 40, CROSS, DOWN, CROSS, DOWN, CROSS, DOWN, CROSS, DOWN, CROSS)
+        r.shot(f + 40, "menus-off")
+    else:
+        r.shot(f + 40, "menus-restored")
+    f = _keys(r, f + 60, TRIANGLE, TRIANGLE)           # list, then leave
+    r.end(f + 40)
+    return r
+
+
+def options_display(version, phase):
+    """D1: Display has four rows now. Phase 1: Down x2 to Map mod pack and Confirm
+    (OFF), Down to Version label and Confirm (OFF) (`display-off`); phase 2 reads them
+    back from the file (`display-restored`)."""
+    r = Rec(f"{version.upper()}: D1 Display rows Map mod pack and Version label, phase {phase}")
+    m = _to_options(r, version)
+    f = _group(r, m + 70, GRP_DISPLAY, GRP_DISPLAY)
+    if phase == 1:
+        r.shot(f + 20, "display-rows")
+        f = _keys(r, f + 40, DOWN, DOWN, CROSS, DOWN, CROSS)
+        r.shot(f + 40, "display-off")
+    else:
+        f = _keys(r, f + 20, DOWN, DOWN, DOWN)
+        r.shot(f + 40, "display-restored")
+    f = _keys(r, f + 60, TRIANGLE, TRIANGLE)
+    r.end(f + 40)
+    return r
+
+
+def options_saves(version):
+    """D1: Options -> Saves -> Shared saves (experimental). Cross turns it ON: the
+    Yes / No window opens with the cursor on No (`store-ask`); Cross answers No
+    (`store-declined`, still OFF); again, Down to Yes and Cross (`store-on`); a Cross
+    turns it OFF with no window (`store-off`)."""
+    r = Rec(f"{version.upper()}: D1 Saves group, Shared saves window")
+    m = _to_options(r, version)
+    f = _group(r, m + 70, GRP_DISPLAY, GRP_SAVES)
+    r.shot(f + 20, "saves-rows")
+    f = _keys(r, f + 40, DOWN, DOWN, CROSS)            # Shared saves (the last row in both builds) ON: the window
+    r.shot(f + 40, "store-ask")
+    f = _keys(r, f + 60, CROSS)                        # No
+    r.shot(f + 40, "store-declined")
+    f = _keys(r, f + 60, CROSS)                        # the window again
+    f = _keys(r, f + 40, DOWN)                         # the cursor on Yes
+    r.shot(f + 40, "store-ask-yes")
+    f = _keys(r, f + 60, CROSS)                        # Yes
+    r.shot(f + 40, "store-on")
+    f = _keys(r, f + 60, CROSS)                        # OFF again: no window
+    r.shot(f + 40, "store-off")
+    f = _keys(r, f + 60, TRIANGLE, TRIANGLE)
+    r.end(f + 40)
+    return r
+
+
+def options_advanced(version):
+    """D1: Options -> Advanced (listed with Cheats): Stage sweep OFF -> Run opens the
+    window (`sweep-ask`), No (`sweep-declined`, still OFF); Down to Sweep frames,
+    Right x2 (90 -> 150) and R1 (+300: 450) (`frames-changed`)."""
+    r = Rec(f"{version.upper()}: D1 Advanced group, Stage sweep window and Sweep frames")
+    m = _to_options(r, version)
+    f = _group(r, m + 70, GRP_DISPLAY, GRP_ADVANCED)
+    r.shot(f + 20, "advanced-rows")
+    f = _keys(r, f + 40, CROSS)                        # Stage sweep -> Run: the window
+    r.shot(f + 40, "sweep-ask")
+    f = _keys(r, f + 60, CROSS)                        # No
+    r.shot(f + 40, "sweep-declined")
+    f = _keys(r, f + 60, DOWN, RIGHT, RIGHT, R1)  # Sweep frames 90 -> 120 -> 150 -> 450
+    r.shot(f + 40, "frames-changed")
+    f = _keys(r, f + 60, TRIANGLE, TRIANGLE)
+    r.end(f + 40)
+    return r
+
+
+def options_mapbtn(version):
+    """D1: Options -> Controls -> Map buttons (the third row). The seven bindings at
+    their defaults (`mapbtn-defaults`); Zoom out Right: l1 -> r1, which Zoom in had, so
+    the two swap (`mapbtn-swapped`); Down to the Reset row (the list scrolls to offset
+    2, `mapbtn-scrolled`), Cross puts the defaults back (`mapbtn-reset`)."""
+    r = Rec(f"{version.upper()}: D1 Map buttons screen")
+    m = _to_options(r, version)
+    f = _group(r, m + 70, GRP_DISPLAY, GRP_CONTROLS)
+    r.shot(f + 20, "controls-rows")
+    f = _keys(r, f + 40, *([DOWN] * ROW_CT_MAPBTN), CROSS)
+    r.shot(f + 40, "mapbtn-defaults")
+    f = _keys(r, f + 60, DOWN, RIGHT)                  # Zoom out: l1 -> r1 (swapped with Zoom in)
+    r.shot(f + 40, "mapbtn-swapped")
+    f = _keys(r, f + 60, *([DOWN] * 6))                # the Reset row
+    r.shot(f + 40, "mapbtn-scrolled")
+    f = _keys(r, f + 60, CROSS)                        # Reset map buttons
+    r.shot(f + 40, "mapbtn-reset")
+    f = _keys(r, f + 60, TRIANGLE, TRIANGLE, TRIANGLE)   # Controls, the list, leave
+    r.end(f + 40)
+    return r
+
+
 def region_relaunch(version, mode):
-    """P6.38 (the combined image only, --bin-both): Options -> Gameplay -> Region at
+    """P6.38 (the combined image only, --bin-both): Options -> Saves -> Region at
     start, stepped to the OTHER region (US run: Cross twice, Ask -> US -> EU; EU run:
     once, Ask -> US), then Up off the row: the window "Restart in <other> now?" opens.
       no    the window (`dialog`), No (`declined`); then the row stepped on to Ask and to
@@ -868,12 +988,12 @@ def region_relaunch(version, mode):
     steps = 2 if version == "us" else 1
     if mode == "game":
         f = _field_options_open(r, shots=False, last="options-open", shot_last=False)
-        f = _group(r, f, GRP_DISPLAY, GRP_GAMEPLAY)
-        f = _keys(r, f + 20, DOWN, DOWN, DOWN, DOWN, DOWN)
+        f = _group(r, f, GRP_DISPLAY, GRP_SAVES)
+        f = _keys(r, f + 20, *([DOWN] * ROW_SV_REGION))
     else:
         m = _to_options(r, version)
-        f = _group(r, m + 70, GRP_DISPLAY, GRP_GAMEPLAY)
-        f = _keys(r, f + 20, DOWN, DOWN, DOWN, DOWN, DOWN)       # Region at start
+        f = _group(r, m + 70, GRP_DISPLAY, GRP_SAVES)
+        f = _keys(r, f + 20, *([DOWN] * ROW_SV_REGION))          # Region at start
     if mode == "exec":
         f = _keys(r, f, RIGHT if version == "us" else LEFT)
     else:
@@ -914,9 +1034,10 @@ def region_relaunch(version, mode):
 
 def options_persist(version, phase):
     """P9.4: title -> Options. Phase 1 turns Widescreen OFF, Fast-forward
-    2x -> 3x and the Restart hotkey ON, then leaves with Triangle; phase 2 is a
-    fresh process on the same config dir that only opens the screen, so its
-    checkpoint shows the values read back from port_options.cfg."""
+    2x -> 3x and the Restart hotkey ON (D1: it is the last row of Controls now),
+    then leaves with Triangle; phase 2 is a fresh process on the same config dir that
+    only opens the screen, so its checkpoints show the values read back from
+    port_options.cfg."""
     r = Rec(f"{version.upper()}: Options persistence, phase {phase}")
     if version == "us":
         r.press(20, START)           # skip the opening FMV
@@ -936,8 +1057,11 @@ def options_persist(version, phase):
         f = _keys(r, f + 60, TRIANGLE)                     # back to the list
         f = _group(r, f, GRP_DISPLAY, GRP_GAMEPLAY)        # Gameplay
         r.press(f, CROSS)            # Fast-forward 2x -> 3x
-        f = _keys(r, f + 20, DOWN, CROSS)                  # Restart hotkey OFF -> ON
         r.shot(f + 40, "options-changed")
+        f = _keys(r, f + 60, TRIANGLE)                     # back to the list
+        f = _group(r, f, GRP_GAMEPLAY, GRP_CONTROLS)       # Controls
+        f = _keys(r, f + 20, *([DOWN] * ROW_CT_RESTART), CROSS)   # Restart hotkey OFF -> ON
+        r.shot(f + 40, "restart-changed")
         f = _keys(r, f + 60, TRIANGLE, TRIANGLE)           # list, then leave
         r.end(f + 40)
     else:
@@ -945,6 +1069,10 @@ def options_persist(version, phase):
         r.shot(f + 40, "options-restored")
         f = _keys(r, f + 60, TRIANGLE, UP, UP, CROSS)      # Display again
         r.shot(f + 40, "display-restored")
+        f = _keys(r, f + 60, TRIANGLE)
+        f = _group(r, f, GRP_DISPLAY, GRP_CONTROLS)        # Controls
+        f = _keys(r, f + 20, *([DOWN] * ROW_CT_RESTART))
+        r.shot(f + 40, "restart-restored")
         f = _keys(r, f + 60, TRIANGLE, TRIANGLE)
         r.end(f + 40)
     return r
@@ -1052,7 +1180,7 @@ def _controls_open(r, version):
 def _help_controls_page(r, f):
     """From the group list with the cursor on Controls: down to Help, open it, the
     page list's second row (Controls), open the page. Returns the frame after."""
-    return _keys(r, f, DOWN, CROSS, DOWN, CROSS)
+    return _keys(r, f, *([DOWN] * (GRP_HELP - GRP_CONTROLS)), CROSS, DOWN, CROSS)
 
 
 def controls_custom(version, phase):
@@ -1095,8 +1223,8 @@ def controls_custom(version, phase):
         r.press(f + 30, L1)                                # still R1 (the map was read back)
         r.shot(f + 70, "help-turned-restored")
         f = _keys(r, f + 90, TRIANGLE, TRIANGLE)           # page list, group list
-        f = _keys(r, f + 20, UP, CROSS)                    # Controls again
-        f = _keys(r, f + 20, DOWN, DOWN, CROSS)            # Reset to default
+        f = _keys(r, f + 20, *([UP] * (GRP_HELP - GRP_CONTROLS)), CROSS)   # Controls again
+        f = _keys(r, f + 20, *([DOWN] * ROW_CT_RESET), CROSS)              # Reset to default
         r.shot(f + 40, "controls-reset")
         f = _keys(r, f + 60, TRIANGLE)                     # the group list
         f = _help_controls_page(r, f + 20)
@@ -1175,7 +1303,7 @@ def pacing_persist(version, phase):
     r.press(m + 20, CROSS)           # open the Options screen
     if phase == 1:
         f = _group(r, m + 70, GRP_DISPLAY, GRP_GAMEPLAY)   # Gameplay
-        f = _keys(r, f, DOWN, DOWN)  # Fast-forward -> Restart hotkey -> Encounter rate
+        f = _keys(r, f, *([DOWN] * ROW_GP_ENCOUNTER))  # Fast-forward -> Encounter rate
         f = _keys(r, f, LEFT)        # 1x -> 0.5x (the screen steps OFF, 0.5x, 1x, 1.5x, 2x)
         f = _keys(r, f, DOWN)        # Text speed
         f = _keys(r, f, RIGHT, RIGHT)  # Normal -> Fast -> Instant
@@ -1197,7 +1325,7 @@ def battle_cursor_persist(version, phase):
     r.press(m, DOWN)                 # New Game -> Options
     r.press(m + 20, CROSS)           # open the Options screen
     f = _group(r, m + 70, GRP_DISPLAY, GRP_GAMEPLAY)       # Gameplay
-    f = _keys(r, f, *([DOWN] * 4))   # Fast-forward -> ... -> Battle cursor
+    f = _keys(r, f, *([DOWN] * ROW_GP_BATTLE))   # Fast-forward -> ... -> Battle cursor
     if phase == 1:
         r.shot(f + 20, "battle-cursor-off")
         r.press(f + 40, RIGHT)       # Off -> Command
@@ -1229,7 +1357,7 @@ def options_sound(version):
     f = _keys(r, f, LEFT, LEFT)      # SFX volume 10 -> 9 -> 8
     f = _keys(r, f, TRIANGLE)        # back to the list (the cancel sound)
     f = _group(r, f, GRP_SOUND, GRP_GAMEPLAY)              # Gameplay
-    f = _keys(r, f, DOWN, DOWN)      # Encounter rate
+    f = _keys(r, f, *([DOWN] * ROW_GP_ENCOUNTER))   # Encounter rate
     f = _keys(r, f, RIGHT)           # 1x -> 1.5x
     f = _keys(r, f + 10, TRIANGLE, TRIANGLE)               # list, then leave
     r.end(f + 60)
@@ -2953,6 +3081,20 @@ RESTART_RECS = (("restart-after-battle", restart_after_battle),
                 ("restart-save-continue", restart_save_continue))
 
 
+def title_ready(version):
+    """PRESS START only when the game is ready to answer it (patch 0199): Start
+    is pressed on every other frame from the first frame of the boot (a press
+    is the odd frames, a release the even ones, since the game sees an edge),
+    through the EU language select and the movie skip, until the title takes
+    it. The log carries the proof: the frame the prompt is drawn, the frame
+    the pad starts to be read for it, and the first press accepted."""
+    r = Rec(f"{version.upper()}: Start pressed every other frame from boot (title readiness)")
+    for f in range(1, 700):
+        r.press(f, START if f % 2 else 0)
+    r.end(700)
+    return r
+
+
 def title_quit(version):
     """P6.28: the title menu's Quit game. Down to the fourth row (checkpoint
     `quit-focus`), Cross opens the Yes / No window with the cursor on No
@@ -3103,7 +3245,7 @@ def field_options(version, phase=1):
     Phase 1: the screen opens on the group list (`options-open`); Cross opens
     Display (`display-open`), Cross on Widescreen changes nothing (it is locked
     in game: `widescreen-locked`); Triangle, Down, Cross: Sound, Left x3 (Music
-    10 -> 7, `music-changed`); Triangle, Down, Cross: Gameplay, Down x2 to
+    10 -> 7, `music-changed`); Triangle, Down, Cross: Gameplay, Down to
     Encounter rate, Left x2 (1x -> 0.5x -> OFF, `encounter-off`); Triangle back to the
     list and Triangle again close the screen back to the field menu
     (`options-closed`); the menu still takes input (Down to Return to title,
@@ -3118,7 +3260,7 @@ def field_options(version, phase=1):
         r.shot(f + 40, "options-restored")
         f = _keys(r, f + 60, TRIANGLE)
         f = _group(r, f, GRP_SOUND, GRP_GAMEPLAY)          # Gameplay: Encounter OFF
-        f = _keys(r, f, DOWN, DOWN)
+        f = _keys(r, f, *([DOWN] * ROW_GP_ENCOUNTER))
         r.shot(f + 40, "options-restored-gameplay")
         r.end(f + 100)
         return r
@@ -3133,7 +3275,7 @@ def field_options(version, phase=1):
     r.shot(f + 40, "music-changed")
     f = _keys(r, f + 60, TRIANGLE)
     f = _group(r, f, GRP_SOUND, GRP_GAMEPLAY)              # Gameplay
-    f = _keys(r, f, DOWN, DOWN)      # Fast-forward, Restart hotkey, Encounter rate
+    f = _keys(r, f, *([DOWN] * ROW_GP_ENCOUNTER))   # Fast-forward, Encounter rate
     f = _keys(r, f, LEFT, LEFT)      # 1x -> 0.5x -> OFF
     r.shot(f + 40, "encounter-off")
     f = _keys(r, f + 60, TRIANGLE)   # back to the list
@@ -3148,10 +3290,8 @@ def field_options(version, phase=1):
 
 
 # --- P6.30 technical help ---------------------------------------------------
-# The Help group is the sixth plaque of the group list (Display, Sound,
-# Gameplay, Saves, Controls (P9.8), then Help; Cheats would sit before Controls
-# once its master switch is on). The L1 / R1 masks are the page keys of the book.
-GRP_HELP = 6
+# The Help group is the ninth plaque of the group list (D1: Display, Sound,
+# Gameplay, Menus, Controls, Saves, Cheats, Advanced, then Help). The L1 / R1 masks are the page keys of the book.
 
 
 def _help_reading(r, f):
@@ -3261,10 +3401,9 @@ def help_lang(idx):
 
 
 # --- P6.35 phase 2: the walkthrough screen ----------------------------------
-# The Walkthrough group is the eighth plaque of the group list (Cheats is listed
+# The Walkthrough group is the tenth plaque of the group list (Cheats is listed
 # in the PC build, greyed in game), right after Help. In game the screen opens
 # on the page of the current step; from the title it is a browse-only list.
-GRP_WALK = 7
 # (tag, name of the current page in the checkpoints, Downs from it to the next entry). The
 # game's own field menu opens from GAME.progress 4 (field.c openFieldMenu), so no earlier
 # story point can reach the Options screen in game: p4 closes chapter 1, p14 (progress 0x14) is
@@ -3561,7 +3700,7 @@ def field_options_cheats(version):
     f = _field_options_open(r)
     r.press(f, SQUARE_MASK)          # the shortcut: refused
     r.shot(f + 60, "cheats-locked")
-    f = _keys(r, f + 80, DOWN, DOWN, DOWN, DOWN, CROSS)    # the greyed Cheats group
+    f = _keys(r, f + 80, *([DOWN] * GRP_CHEATS), CROSS)    # the greyed Cheats group
     r.shot(f + 40, "cheats-group-locked")
     r.press(f + 60, TRIANGLE)
     r.end(f + 120)
@@ -3683,6 +3822,13 @@ def main(out):
         for phase in (1, 2):
             (out / f"{v}-options-region-p{phase}.rec").write_text(
                 options_region(v, phase).text(True))
+            (out / f"{v}-options-menus-p{phase}.rec").write_text(
+                options_menus(v, phase).text(True))
+            (out / f"{v}-options-display-p{phase}.rec").write_text(
+                options_display(v, phase).text(True))
+        (out / f"{v}-options-saves.rec").write_text(options_saves(v).text(True))
+        (out / f"{v}-options-advanced.rec").write_text(options_advanced(v).text(True))
+        (out / f"{v}-options-mapbtn.rec").write_text(options_mapbtn(v).text(True))
         for mode in ("no", "yes", "exec", "game"):
             (out / f"{v}-options-region-relaunch-{mode}.rec").write_text(
                 region_relaunch(v, mode).text(True))
@@ -3693,6 +3839,7 @@ def main(out):
         (out / f"{v}-cheat-fill-bag.rec").write_text(cheat_fill_bag(v).text(True))
         (out / f"{v}-cheats-screen2.rec").write_text(cheats_screen2(v).text(True))
         (out / f"{v}-title-quit.rec").write_text(title_quit(v).text(True))
+        (out / f"{v}-title-ready.rec").write_text(title_ready(v).text(True))
         (out / f"{v}-return-title.rec").write_text(return_title(v).text(True))
         (out / f"{v}-return-title-rows7.rec").write_text(
             return_title(v, rows7=True).text(True))

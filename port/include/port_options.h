@@ -30,7 +30,9 @@ unsigned dw3_port_options_locked_mask(void);
 /* The mask the screen opens with at the title (0) or in game: lets the
  * native overlay draw that layout before the screen is opened. */
 unsigned dw3_port_options_locked_mask_for(int in_game);
-enum { DW3_PORT_OPTIONS_LOCK_CHEATS = 1u << 16 };
+/* D1: registry rows now run to 26, so the Cheats entry moved from bit 16 to
+ * bit 30 (bit 31 is the in-game mark of the overlay's layer key). */
+enum { DW3_PORT_OPTIONS_LOCK_CHEATS = 1u << 30 };
 void dw3_port_options_close(void);
 
 /* P6.38 (combined image): the folder holding the top-level port_options.cfg
@@ -80,13 +82,44 @@ enum {
      * Display row (a switch row; Confirm toggles), read at every Square on the
      * game's Map screen, so it works at once and in game. Key map_screen, the
      * one the preview builds already used. */
-    DW3_PORT_OPT_MAP_SCREEN = 15
+    DW3_PORT_OPT_MAP_SCREEN = 15,
+    /* D1 (docs/OPTIONS_REORG.md): every file-only key that changes the game
+     * versus the original now has a row. The five Menus switches (default ON;
+     * the patches 0188, 0190, 0192, 0193 and 0128 read them where they act), two
+     * Display switches (the title's version label and the map-upscale pack), the
+     * Saves row for the shared store (title only, default OFF, a Yes / No window
+     * when it is turned on), the Advanced pair for the stage sweep (title only)
+     * and the Controls action row that opens the Map buttons sub-screen. */
+    DW3_PORT_OPT_ITEMS_EQUIP = 16,   /* items_equip_from_items */
+    DW3_PORT_OPT_ITEMS_STAYS = 17,   /* items_equip_stays */
+    DW3_PORT_OPT_ITEMS_BAG = 18,     /* items_bag_view */
+    DW3_PORT_OPT_ITEMS_USE = 19,     /* items_use_stays */
+    DW3_PORT_OPT_ITEMS_PARTNER = 20, /* items_partner_switch */
+    DW3_PORT_OPT_SHOW_VERSION = 21,  /* show_version */
+    DW3_PORT_OPT_MAP_MOD = 22,       /* map_mod */
+    DW3_PORT_OPT_SAVE_STORE = 23,    /* save_store, read before the cards open */
+    DW3_PORT_OPT_STAGE_SWEEP = 24,   /* stage_sweep: 0 OFF, 1 Run, 2 Start over */
+    DW3_PORT_OPT_SWEEP_FRAMES = 25,  /* stage_sweep_frames: 30..3600 */
+    DW3_PORT_OPT_MAP_BUTTONS = 26    /* action row: opens the Map buttons screen */
+};
+
+/* Sweep frames: the range and the steps of the Advanced row (the sweep itself
+ * clamps the same range, port/sweep/stage_sweep.c). */
+enum {
+    DW3_SWEEP_FRAMES_MIN = 30,
+    DW3_SWEEP_FRAMES_MAX = 3600,
+    DW3_SWEEP_FRAMES_DEFAULT = 90,
+    DW3_SWEEP_FRAMES_STEP = 30,
+    DW3_SWEEP_FRAMES_BIG_STEP = 300
 };
 
 /* Registry; unavailable features remain safe no-op stubs. Values persist in
  * <config dir>/port_options.cfg (P9.4, docs/PORT_OPTIONS.md). */
 int dw3_port_options_count(void);
 const char *dw3_port_options_label(int index);
+/* The cfg key of a row (NULL for a row with none: Region at start, which lives
+ * in the top-level file, and the action rows). The key-budget test lists them. */
+const char *dw3_port_options_key(int index);
 int dw3_port_options_value(int index);
 void dw3_port_options_set(int index, int value);
 /* Raw row value: 0/1, 0 (OFF) / 2..4 (speed) for Fast-forward, 0..10 for the
@@ -114,16 +147,36 @@ int dw3_port_options_persist_init(const char *dir);
  * an unrelated change; toggling that row on the Options screen releases it. */
 void dw3_port_options_apply_env(int index, int level);
 
-/* A file-only integer key of port_options.cfg (a setting with no row on the
- * Options screen; there is none today, P7.9's battle_menu_memory became the
- * Battle cursor row): its value as loaded at boot, or `def` when the key is
- * absent, not a number, or no file was loaded. The key is kept when the
- * Options screen rewrites the file. */
+/* An integer key of port_options.cfg: its value as loaded at boot, or `def`
+ * when the key is absent, not a number, or no file was loaded. A key that has
+ * a registry row (all of the port's behaviour keys since D1) answers with the
+ * row's value, so a change on the Options screen is seen at once, and also in a
+ * session-only run. Other keys are kept when the Options screen rewrites the
+ * file. */
 int dw3_port_options_file_int(const char *key, int def);
 /* A file-only text key (P6.32 phase 4: the map view's button bindings): its
  * value as loaded at boot, or NULL when absent or no file was loaded. The
  * pointer is valid until the next call that rewrites the file; copy it. */
 const char *dw3_port_options_file_str(const char *key);
+
+/* D1: set a text key of port_options.cfg and write the file now (the Map
+ * buttons screen's seven map_view_* keys). Returns 0, or -1 when the key could
+ * not be staged or written (retried by dw3_port_options_flush). A session-only
+ * run keeps the value in memory and returns -1. */
+int dw3_port_options_store_str(const char *key, const char *value);
+/* Bumped by every change of a key behind the Map buttons screen (and by a
+ * successful store_str): lets the full-screen map read its bindings again at the
+ * next open instead of once per run. */
+unsigned dw3_port_options_keys_generation(void);
+
+/* D1: the sweep has started a "Start over" (stage_sweep=2): the file goes back
+ * to 1 ("Run") so that the next start continues the sweep instead of clearing
+ * its progress again. A no-op unless the row holds 2. Logs the rewrite. */
+void dw3_port_options_sweep_started(void);
+
+/* D1: the answer of a Yes / No window the Options screen asked for
+ * (port/options/confirm.c). `what` is a DW3_PORT_ASK_* of port_confirm.h. */
+void dw3_port_options_ask_answer(int what, int yes);
 
 /* The directory port_options.cfg lives in (the dir given to _persist_init),
  * or "" when the options are session-only. Small files of the port's own

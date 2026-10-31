@@ -22,9 +22,11 @@ Dw3Region dw3_region(void) { return g_region; }
 #endif
 
 int main(void) {
-    char text[160], line[256];
+    char text[160], line[256], shorter[64];
 
     dw3_version_text(text, sizeof(text));
+    dw3_version_short_text(shorter, sizeof(shorter));
+    printf("short=%s\n", shorter);
     dw3_version_log_line(line, sizeof(line));
     printf("text=%s\nline=%s\n", text, line);
     dw3_version_announce();

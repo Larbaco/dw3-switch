@@ -345,7 +345,10 @@ def test_volume_keys_are_in_the_written_file_order(persist_bin: Path, tmp_path: 
             if "=" in l and not l.startswith("#")]
     assert keys == ["version", "widescreen", "fast_forward", "restart_hotkey",
                     "music_volume", "sfx_volume", "encounter_rate", "text_speed",
-                    "battle_menu_memory", "autosave", "button_layout", "turbo_music", "switch_glyphs", "map_screen", "end"]
+                    "battle_menu_memory", "autosave", "button_layout", "turbo_music", "switch_glyphs", "map_screen",
+                    "items_equip_from_items", "items_equip_stays", "items_bag_view",
+                    "items_use_stays", "items_partner_switch", "show_version", "map_mod",
+                    "save_store", "stage_sweep", "stage_sweep_frames", "end"]
 
 
 # --- P6.18 Encounter rate / Text speed rows ---------------------------------
@@ -523,9 +526,10 @@ def test_sound_on_value_change_confirm_and_left_right(persist_bin: Path, tmp_pat
     assert sounds(err) == ["select 10", "select 10"]
     _, err = session(persist_bin, tmp_path, "open", "down", "press")
     assert sounds(err) == ["cursor 10", "select 10"]
-    # Encounter rate: two groups down, open Gameplay, two rows down, Confirm.
+    # Encounter rate: two groups down, open Gameplay, one row down, Confirm (D1: Restart
+    # hotkey left Gameplay, so Encounter rate is its second row).
     _, err = session(persist_bin, tmp_path, "open", "nav", "5", "press")
-    assert sounds(err)[-1] == "select 10" and sounds(err).count("cursor 10") == 4
+    assert sounds(err)[-1] == "select 10" and sounds(err).count("cursor 10") == 3
     # Left / Right on a stepped row change the value, so they play it too.
     _, err = session(persist_bin, tmp_path, "open", "row", "6", "right", "left")
     assert sounds(err)[-2:] == ["select 10", "select 10"]
@@ -542,11 +546,11 @@ def test_no_sound_when_nothing_changes(persist_bin: Path, tmp_path: Path):
     _, err = session(persist_bin, tmp_path, "open", "nav", "3", "right")
     assert sounds(err) == [cur, sel]                 # Music volume is already at 10
     _, err = session(persist_bin, tmp_path, "open", "nav", "6", "left")
-    assert sounds(err) == [cur] * 2 + [sel] + [cur] * 3   # Text speed is already Normal
+    assert sounds(err) == [cur] * 2 + [sel] + [cur] * 2   # Text speed is already Normal
     _, err = session(persist_bin, tmp_path, "open", "nav", "7", "left")
-    assert sounds(err) == [cur] * 2 + [sel] + [cur] * 4   # Battle cursor is already Off
-    _, err = session(persist_bin, tmp_path, "open", "nav", "8", "down")
-    assert sounds(err) == [cur] * 3 + [sel]          # the only row of Saves
+    assert sounds(err) == [cur] * 2 + [sel] + [cur] * 3   # Battle cursor is already Off
+    _, err = session(persist_bin, tmp_path, "open", "nav", "23", "down")
+    assert sounds(err) == [cur] * 5 + [sel] + [cur]  # Shared saves, the last row of Saves
     # The plain open and close calls make no sound; the screen plays Select
     # for the opening from the title menu (decomp patch 0044), not here.
     _, err = session(persist_bin, tmp_path, "open", "close")

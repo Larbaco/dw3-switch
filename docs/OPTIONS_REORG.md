@@ -1,9 +1,14 @@
 # Options reorganization (D1 design)
 
 Status: **design approved by the owner on 2026-10-31** (answers to the five questions are
-recorded in [section 7](#7-owner-decisions-2026-10-31)). Docs only: no game code, no
-registry change and no replay reference change has been made. The build is a series of
-separate PRs ([order](#8-build-order)).
+recorded in [section 7](#7-owner-decisions-2026-10-31)). The build is a series of
+separate PRs ([order](#8-build-order)). **Step 1 (reorganization and new rows) is built**
+(branch `feat/d1-options-reorg`, 2026-10-31; as built: [PORT_OPTIONS](PORT_OPTIONS.md#options-reorganization-d1)).
+Steps 2 to 4 (D2 + D5, D3, D4) are not. Differences of step 1 from the text below: the Map
+scaler row is not in it (it comes with D5, which owns the scaler default), so Display has four rows
+(Widescreen, Full-screen map, Map mod pack, Version label); the label "Shared saves (exp.)"
+and "Frames per stage" are shorter than the design's (the generator's 290 px limit); the message
+line of Shared saves is "Experimental: US and EU share saves. Next start." (690 px).
 
 Source: the owner's decisions of 2026-10-31, item 2 (A and A cont.): *every
 improvement or change versus the original must be switchable on/off from the Options
@@ -101,7 +106,7 @@ A change not in this list needs a row.
 | **A. Crash and 64-bit fixes** (the PS1 read or wrote kernel RAM, or the 8 MiB host heap behaves differently) | `0057` stream busy guard, `0058` / `0059` NULL guards, `0069` items-screen icon, `0096` file-cache evict, `0111` tile sprite count, `0197` WSTAG460 wanderer, `0198` BUG-6 wireframe tag |
 | **B. Host plumbing** | focus-loss pause, delta clamp, rotating `.mcr` backups, write-through, docked/handheld re-present, vsync wait ([SWITCH_FEATURES](SWITCH_FEATURES.md)); `0043` flat save/load panel pace (100 frames), `0041`/`0042` field-tile preload; per-profile saves (P6.26 slice 1) and the cross-region import (P6.25 slice 1) |
 | **C. The port's own screens** | the Options entry (title row, field-menu row, battle Select), Return to title (P6.27), Quit game (P6.28), the Help and Walkthrough screens, the version footer line of the Options screens, the Options menu background |
-| **D. Original bugs fixed, always on** | `0065` HUD shows the Digimon the partner fights as, `0066` Claw steal on the killing blow ([P7.7](P7.7_BUG_FIXES.md)), the area-name banner fix, `0187` EU language select accepts Cross, `0129` title logo scale |
+| **D. Original bugs fixed, always on** | `0065` HUD shows the Digimon the partner fights as, `0066` Claw steal on the killing blow ([P7.7](P7.7_BUG_FIXES.md)), the area-name banner fix, `0187` EU language select accepts Cross, `0129` title logo scale, `0199` PRESS START drawn only when Start is read (proposed 2026-10-31, owner to confirm) |
 | **(not exempt) E. Sub-features behind a row** | the 16:9 patches `0047`-`0115`, `0175`, `0177`, `0179` (Widescreen); the menus at 1.5x (`0176`, Fast-forward); the instant-scroll hold (`0068`, Text speed); the jingle hold (`0194`) and tick gate (`0191`, Turbo music); `0140`-`0142` Continue row for the auto-save (Auto-save). They already have a switch |
 
 ## 2. The reorganized tree

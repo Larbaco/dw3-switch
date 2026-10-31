@@ -66,6 +66,15 @@ def test_us_label_region_and_log_line(tmp_path):
     assert "dw3-pc - dw3-switch v0.9.0-preview.1" in out["logged"]
 
 
+def test_short_text_for_the_title(tmp_path):
+    out = run(build(tmp_path, "-DVERSION_US=1"))
+    assert out["short"] == "v0.9.0-p.1 US"
+    out = run(build(tmp_path, "-DVERSION_EU=1", version="0.6.5-preview.57"))
+    assert out["short"] == "v0.6.5-p.57 EU"
+    out = run(build(tmp_path, "-DVERSION_US=1"), DW3_VERSION_OVERRIDE="replay")
+    assert out["short"] == "replay US"
+
+
 def test_eu_region_tag(tmp_path):
     out = run(build(tmp_path, "-DVERSION_EU=1"))
     assert out["text"].endswith(" EU")

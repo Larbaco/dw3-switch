@@ -46,32 +46,18 @@ def test_ref_from_is_still_honoured_on_plain_runs(tmp_path):
     assert p == tmp_path / "us-field-options" / "options-open.png"
 
 
-def test_gameplay_region_row_expected_on_both_binary_only():
+def test_gameplay_has_four_rows_on_both_binaries():
+    # D1: Region at start moved from Gameplay to Saves, so Gameplay is the same everywhere
     fo = manifest.by_name()["us-field-options"]
-    plain = [r for p, r in fo.expect_log if "gameplay" in r]
-    both = [r for p, r in fo.expect_log_both if "gameplay" in r]
-    assert any("(5 row" in r for r in plain)
-    assert not any("(5 row" in r for r in both)
-    assert any("(6 row" in r for r in both)
-    # every other line is unchanged
-    assert [r for p, r in fo.expect_log if "gameplay" not in r] == \
-           [r for p, r in fo.expect_log_both if "gameplay" not in r]
+    assert any(r"gameplay \(4 row" in r for p, r in fo.expect_log)
+    assert not fo.expect_log_both
 
 
-def test_nintendo_menu_inherits_both_expectation():
-    nm = manifest.by_name()["us-nintendo-menu"]
-    assert any("(6 row" in r for p, r in nm.expect_log_both)
-    assert not any("(5 row" in r for p, r in nm.expect_log_both if "gameplay" in r)
-
-
-def test_options_persist_region_row_expected_on_both_binary_at_title():
-    # P6.51: options-persist opens Gameplay at the title, where the Region row
-    # is the sixth row too; the plain binary keeps 5 rows.
+def test_saves_region_row_expected_on_both_binary_only():
     for v in ("us", "eu"):
-        op = manifest.by_name()[f"{v}-options-persist"]
-        plain = [r for p, r in op.expect_log if "gameplay" in r]
-        both = [r for p, r in op.expect_log_both if "gameplay" in r]
-        assert plain and all("(5 row" in r for r in plain)
-        assert both and all("(6 row" in r for r in both)
-        assert [r for p, r in op.expect_log if "gameplay" not in r] == \
-               [r for p, r in op.expect_log_both if "gameplay" not in r]
+        sv = manifest.by_name()[f"{v}-options-saves"]
+        assert any(r"saves \(2 row" in r for p, r in sv.expect_log)
+        assert sv.expect_log_both
+        assert all(r"saves \(3 row" in r for p, r in sv.expect_log_both if "saves" in r and "row" in r)
+        assert [r.replace(r"saves \(2 row", r"saves \(3 row") for p, r in sv.expect_log] == \
+               [r for p, r in sv.expect_log_both]

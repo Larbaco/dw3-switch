@@ -506,6 +506,15 @@ static void sw_start(int level) {
         if (path[0] != '\0') {
             remove(path);
         }
+#ifndef DW3_SWEEP_TEST
+        /* D1: "Start over" is done once the progress is forgotten. The key goes
+         * back to 1 (Run), otherwise every start would clear the progress again
+         * and the sweep would never get past its first stage after a crash. A
+         * level the environment asked for is not in the file: nothing to undo. */
+        if (getenv("DW3_STAGE_SWEEP") == NULL) {
+            dw3_port_options_sweep_started();
+        }
+#endif
     }
     pending = sw_load_file();
     SW_INFO("dw3-sweep: stage sweep on (key %s=%d, %d stages in the table, %d "

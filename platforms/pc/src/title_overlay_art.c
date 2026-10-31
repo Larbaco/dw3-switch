@@ -2,6 +2,7 @@
 #include "title_overlay_art.h"
 #include "menu_bg_tile.h"
 #include "port_options_groups.h"
+#include "port_map_buttons.h"
 #include "port_atlas.h"
 #include "port_help.h"
 #include "port_pages.h"
@@ -178,7 +179,7 @@ void dw3_pc_title_overlay_set_footer(int show) {
 int dw3_pc_title_overlay_footer_shown(void) { return footer_shown; }
 void dw3_pc_title_overlay_set_version(int show) {
     show=show?1:0;
-    if(show!=version_shown){version_shown=show;art_generation++;}
+    version_shown=show; /* read by the hosts when they draw the label */
 }
 void dw3_pc_title_overlay_set_load_row(int on) {
     on=on?1:0;
@@ -197,7 +198,7 @@ int dw3_pc_title_overlay_options_cursor(void) { return option_cursor; }
 int dw3_pc_title_overlay_options_value(int row) {
     return row>=0&&row<DW3_TITLE_OPTION_ROWS?option_values[row]:0;
 }
-enum { OPT_LOCK_ROWS = 13 }; /* registry rows 0..12: the lock mask's width */
+enum { OPT_LOCK_ROWS = 27 }; /* registry rows 0..26: the lock mask's width (D1) */
 void dw3_pc_title_overlay_set_options_locked(unsigned mask) {
     mask&=((1u<<OPT_LOCK_ROWS)-1u)|DW3_TITLE_LOCK_CHEATS;
     if(mask!=options_locked){options_locked=mask;options_layout++;options_generation++;}
@@ -327,7 +328,8 @@ enum { OPT_X0 = 84, OPT_Y0 = 60, OPT_W = 792, OPT_H = 600,
 /* The rows' kinds: how a registry value is written. */
 enum { ROW_SWITCH, ROW_FAST_FORWARD, ROW_VOLUME, ROW_ENCOUNTER, ROW_TEXT,
        ROW_BATTLE, ROW_AUTOSAVE, ROW_LAYOUT, ROW_REGION, ROW_CUSTOMIZE, ROW_RESET,
-       ROW_TURBO_MUSIC, ROW_GLYPHS, ROW_MAP_SCREEN };
+       ROW_TURBO_MUSIC, ROW_GLYPHS, ROW_MAP_SCREEN,
+       ROW_EXTRA /* D1: registry rows 16..26, words in extra_words */ };
 static int row_kind(int row) {
     return row == 1 ? ROW_FAST_FORWARD : row == 3 || row == 4 ? ROW_VOLUME :
            row == 5 ? ROW_ENCOUNTER : row == 6 ? ROW_TEXT :
@@ -335,7 +337,7 @@ static int row_kind(int row) {
            row == 9 ? ROW_LAYOUT : row == 10 ? ROW_REGION :
            row == 11 ? ROW_CUSTOMIZE : row == 12 ? ROW_RESET :
            row == 13 ? ROW_TURBO_MUSIC : row == 14 ? ROW_GLYPHS :
-           row == 15 ? ROW_MAP_SCREEN : ROW_SWITCH;
+           row == 15 ? ROW_MAP_SCREEN : row >= 16 && row <= 26 ? ROW_EXTRA : ROW_SWITCH;
 }
 /* P6.31: the Auto-save row's lettering, in the language of the disc (en, fr,
  * de, es, it: the DW3_TITLE_LANG_* order). OFF is the Options screen's word. */
@@ -412,6 +414,33 @@ static const MapscrWords mapscr_words[5]={MAPSCR_WORDS(en),MAPSCR_WORDS(fr),MAPS
 static const MapscrWords *mapscr_lang(void) {
     return &mapscr_words[options_lang>=DW3_TITLE_LANG_EN&&options_lang<=DW3_TITLE_LANG_IT?options_lang:0];
 }
+/* D1: the rows that were file-only keys (registry 16..26: the five Menus switches,
+ * Version label, Map mod pack, Shared saves, Stage sweep, Sweep frames, Map
+ * buttons), their Stage sweep values, and the Map buttons screen (eight rows,
+ * three message lines, the Select / Minus values). */
+#define XW(k,l) {WORD(opt_row_x_##k##_##l),WORD(opt_desc_x_##k##_##l)}
+#define EXTRA_WORDS(l) {{XW(eq,l),XW(st,l),XW(bg,l),XW(us,l),XW(ps,l),XW(vr,l),XW(mm,l),XW(ss,l), \
+    XW(sw,l),XW(sf,l),XW(mb,l)}, WORD(opt_val_sw_run_##l),WORD(opt_val_sw_over_##l), \
+    {WORD(opt_row_mb0_##l),WORD(opt_row_mb1_##l),WORD(opt_row_mb2_##l),WORD(opt_row_mb3_##l), \
+     WORD(opt_row_mb4_##l),WORD(opt_row_mb5_##l),WORD(opt_row_mb6_##l),WORD(opt_row_mb7_##l)}, \
+    {WORD(opt_desc_mb_bind_##l),WORD(opt_desc_mb_field_##l),WORD(opt_desc_mb_reset_##l)}}
+typedef struct ExtraWords { Word row,desc; } ExtraWords;
+typedef struct ExtraSet {
+    ExtraWords reg[11];       /* registry rows 16..26 */
+    Word sweep_run,sweep_over;
+    Word mb_row[8];
+    Word mb_desc[3];          /* bind, field, reset */
+} ExtraSet;
+static const ExtraSet extra_words[5]={EXTRA_WORDS(en),EXTRA_WORDS(fr),EXTRA_WORDS(de),
+                                      EXTRA_WORDS(es),EXTRA_WORDS(it)};
+static const ExtraSet *extra_lang(void) {
+    return &extra_words[options_lang>=DW3_TITLE_LANG_EN&&options_lang<=DW3_TITLE_LANG_IT?options_lang:0];
+}
+#if defined(__SWITCH__)
+static const Word v_btn_minus=WORD(opt_val_btn_minus);
+#else
+static const Word v_btn_select=WORD(opt_val_btn_select);
+#endif
 /* P9.7: the message line of a row that is locked in game, in the language of
  * the disc (en, fr, de, es, it: the DW3_TITLE_LANG_* order). */
 static const Word lock_words[5]={WORD(opt_lock_en),WORD(opt_lock_fr),WORD(opt_lock_de),
@@ -449,9 +478,9 @@ static void number_plain(int v,int x,int y,int r,int g,int b) {
     static const Word digits[10]={WORD(opt_cht_d0),WORD(opt_cht_d1),WORD(opt_cht_d2),WORD(opt_cht_d3),
                                   WORD(opt_cht_d4),WORD(opt_cht_d5),WORD(opt_cht_d6),WORD(opt_cht_d7),
                                   WORD(opt_cht_d8),WORD(opt_cht_d9)};
-    int n=v>=100?3:v>=10?2:1,adv=digits[0].w;
+    int n=v>=1000?4:v>=100?3:v>=10?2:1,adv=digits[0].w;
     if(v<0)v=0;
-    for(int k=0,div=n==3?100:n==2?10:1;k<n;k++,div/=10)
+    for(int k=0,div=n==4?1000:n==3?100:n==2?10:1;k<n;k++,div/=10)
         word(&digits[(v/div)%10],x-(n-k)*adv,y,0,r,g,b);
 }
 /* The same with the title menu's one pixel dark shadow. */
@@ -678,9 +707,13 @@ static void arrow(int cx,int y,int up) {
     {WORD(opt_grp_cheats_##l),WORD(opt_grpdesc_cheats_##l)}, \
     {WORD(opt_grp_controls_##l),WORD(opt_grpdesc_controls_##l)}, \
     {WORD(opt_grp_help_##l),WORD(opt_grpdesc_help_##l)}, \
-    {WORD(opt_grp_walkthrough_##l),WORD(opt_grpdesc_walkthrough_##l)}}
+    {WORD(opt_grp_walkthrough_##l),WORD(opt_grpdesc_walkthrough_##l)}, \
+    {WORD(opt_grp_custom_##l),WORD(opt_grpdesc_custom_##l)}, \
+    {WORD(opt_grp_menus_##l),WORD(opt_grpdesc_menus_##l)}, \
+    {WORD(opt_grp_advanced_##l),WORD(opt_grpdesc_advanced_##l)}, \
+    {WORD(opt_grp_mapbtn_##l),WORD(opt_grpdesc_mapbtn_##l)}}
 typedef struct GroupWords { Word name,desc; } GroupWords;
-enum { LISTED_GROUPS = 8 }; /* the groups with lettering: indexed by group id up to Walkthrough */
+enum { LISTED_GROUPS = 12 }; /* the groups with lettering: indexed by group id (D1: up to Map buttons) */
 static const GroupWords group_words[5][LISTED_GROUPS]={GROUP_WORDS(en),GROUP_WORDS(fr),GROUP_WORDS(de),
                                                        GROUP_WORDS(es),GROUP_WORDS(it)};
 #if defined(__SWITCH__)
@@ -710,13 +743,14 @@ static const GroupWords *group_lang(int group) {
  * locked in game (Display: Widescreen) greys its plaque. */
 static unsigned group_row_mask(int group) {
     unsigned m=0;
-    if(group==DW3_OPTGRP_CHEATS||group==DW3_OPTGRP_CUSTOM)return 0; /* not registry rows */
+    if(group==DW3_OPTGRP_CHEATS||group==DW3_OPTGRP_CUSTOM||group==DW3_OPTGRP_MAPBTN)return 0; /* not registry rows */
     for(int k=0;k<dw3_optgroups[group].nrows;k++)m|=1u<<dw3_optgroups[group].rows[k];
     return m;
 }
 static int group_locked(int group,unsigned locked) {
     if(group==DW3_OPTGRP_CHEATS)return (locked&DW3_TITLE_LOCK_CHEATS)!=0;
-    return dw3_optgroups[group].nrows>0&&(locked&group_row_mask(group))==group_row_mask(group);
+    return dw3_optgroups[group].nrows>0&&group_row_mask(group)!=0&&
+           (locked&group_row_mask(group))==group_row_mask(group);
 }
 /* The geometry of slot s (0 = the first visible plaque). */
 static int slot_y(int s) { return L_ROW_Y0+s*L_ROW_PITCH; }
@@ -764,6 +798,16 @@ static const Word *list_value(const ListWords *t,int reg,int v,int *dim) {
         return v?&t->value[1]:&v_1x;
     case ROW_CUSTOMIZE:case ROW_RESET:
         return NULL; /* an action: no value */
+    case ROW_EXTRA:
+        if(reg==24) {       /* Stage sweep: OFF, Run, Start over */
+            if(v>2)v=2;
+            *dim=v==0;
+            return v==0?&v_onoff[0]:v==1?&extra_lang()->sweep_run:&extra_lang()->sweep_over;
+        }
+        if(reg==25||reg==26)return NULL; /* Sweep frames: a number; Map buttons: an action */
+        if(v>1)v=1;
+        *dim=v==0;
+        return &v_onoff[v];
     case ROW_REGION:
         if(v>2)v=2;
         *dim=v==0;
@@ -797,6 +841,7 @@ static void options_list_screen(int group,int scroll) {
     const int cht=0;
 #endif
     const int cus=group==DW3_OPTGRP_CUSTOM; /* P6.12 Customize: the PS buttons and their sources */
+    const int mbt=group==DW3_OPTGRP_MAPBTN; /* D1 Map buttons: the seven bindings and Reset */
     int ids[DW3_OPTGRP_COUNT];
     const int n=on_groups?dw3_optgroups_visible(DW3_OPTGRP_CHEATS_LISTED,ids):dw3_optgroups[group].nrows;
     const unsigned locked=ELOCKED;
@@ -843,9 +888,11 @@ static void options_list_screen(int group,int scroll) {
         if(a>=n)break;
         if(!clip_hits(L_ROW_X,slot_y(s),L_ROW_W,L_ROW_PITCH))continue;
         reg=on_groups?-1:dw3_optgroups[group].rows[a];
-        lock=on_groups?group_locked(ids[a],locked):cht||cus?0:(int)((locked>>reg)&1u);
+        lock=on_groups?group_locked(ids[a],locked):cht||cus||mbt?0:(int)((locked>>reg)&1u);
         label=on_groups?&group_lang(ids[a])->name
               :cus?&ps_words[reg]
+              :mbt?&extra_lang()->mb_row[reg]
+              :row_kind(reg)==ROW_EXTRA?&extra_lang()->reg[reg-16].row
               :row_kind(reg)==ROW_CUSTOMIZE?&custom_lang()->row
               :row_kind(reg)==ROW_RESET?&custom_lang()->reset
               :row_kind(reg)==ROW_AUTOSAVE?&autosave_lang()->row
@@ -889,11 +936,25 @@ static void options_list_screen(int group,int scroll) {
                 const int v=option_values[a];
                 dim=0;
                 value=v>=10?&custom_lang()->prompt:&btn_words[v<0?0:v];
+            }else if(mbt){
+                /* D1: PS button in the low four bits (10 = Select), the source of the
+                 * button that makes it (+1) above. The Switch names its own button,
+                 * the PC the PS one. */
+                const int v=option_values[a],ps=v&15;
+                dim=0;
+                if(reg==DW3_MAPBTN_RESET)value=NULL;
+#if defined(__SWITCH__)
+                else {const int src=(v>>4)-1;value=ps>=10||src<0||src>9?&v_btn_minus:&btn_words[src];}
+#else
+                else value=ps>=10?&v_btn_select:&ps_words[ps>9?9:ps];
+#endif
             }else value=list_value(t,reg,option_values[a],&dim);
+            if(!on_groups&&!cus&&!cht&&!mbt&&reg==25)dim=option_values[0]==0; /* Sweep frames: grey while the sweep is OFF */
             if(lock)dim=2; /* P9.7: greyer than an OFF value */
             if(value)wordsh(value,px+pw-58,py+9,1,dim==2?120:dim?150:255,dim==2?128:dim?158:255,dim==2?170:dim?196:255);
 #ifdef DW3_CHEATS
             else if(cht)number(option_values[a],px+pw-58,py+9,dim==2?120:255,dim==2?128:255,dim==2?170:255);
+            else if(!cus&&!mbt&&reg==25)number(option_values[a],px+pw-58,py+9,dim==2?120:dim?150:255,dim==2?128:dim?158:255,dim==2?170:dim?196:255);
 #endif
         }
     }
@@ -914,7 +975,9 @@ static void options_list_screen(int group,int scroll) {
             else
 #endif
             d=cus?(option_values[cursor]>=10?&custom_lang()->promptdesc:&custom_lang()->desc)
-              :(locked>>reg)&1u?lock_lang():row_kind(reg)==ROW_CUSTOMIZE?&custom_lang()->rowdesc
+              :mbt?&extra_lang()->mb_desc[reg==DW3_MAPBTN_RESET?2:reg==6?1:0]
+              :(locked>>reg)&1u?lock_lang():row_kind(reg)==ROW_EXTRA?&extra_lang()->reg[reg-16].desc
+              :row_kind(reg)==ROW_CUSTOMIZE?&custom_lang()->rowdesc
               :row_kind(reg)==ROW_RESET?&custom_lang()->resetdesc
               :row_kind(reg)==ROW_AUTOSAVE?&autosave_lang()->desc
               :row_kind(reg)==ROW_LAYOUT?&layout_lang()->desc
@@ -943,8 +1006,12 @@ static void options_screen(void) {
     {WORD(opt_dlg_quit_q_##l),WORD(opt_dlg_ret_q_##l)},WORD(opt_dlg_warn_##l), \
     WORD(opt_dlg_yes_##l),WORD(opt_dlg_no_##l),WORD(opt_dlg_select_##l),WORD(opt_dlg_cancel_##l), \
     WORD(opt_dlg_rst_title_##l),{WORD(opt_dlg_rst_q_us_##l),WORD(opt_dlg_rst_q_eu_##l)}, \
-    WORD(opt_dlg_rst_note_##l)}
-typedef struct DialogWords { Word title[2],question[2],warn,yes,no,select,cancel,rst_title,rst_q[2],rst_note; } DialogWords;
+    WORD(opt_dlg_rst_note_##l), \
+    {WORD(opt_dlg_ask_title_ss_##l),WORD(opt_dlg_ask_title_sw_##l)}, \
+    {WORD(opt_dlg_ask_q_ss_##l),WORD(opt_dlg_ask_q_sw_##l)}, \
+    {WORD(opt_dlg_ask_warn_ss_##l),WORD(opt_dlg_ask_warn_sw_##l)}}
+typedef struct DialogWords { Word title[2],question[2],warn,yes,no,select,cancel,rst_title,rst_q[2],rst_note,
+                             ask_title[2],ask_q[2],ask_warn[2]; } DialogWords;
 static const DialogWords dialog_words[5]={DLG_WORDS(en),DLG_WORDS(fr),DLG_WORDS(de),
                                           DLG_WORDS(es),DLG_WORDS(it)};
 static const Word dialog_ok=WORD(opt_dlg_ok);
@@ -953,12 +1020,14 @@ void dw3_pc_dialog_art(uint8_t *rgba,int pitch,int kind,int focus) {
     const int w=DW3_DIALOG_W-8,h=DW3_DIALOG_H-8,x1=w,y1=h;
     const int restart=kind>=DW3_DIALOG_RESTART_US&&kind<=DW3_DIALOG_RESTART_EU_GAME;
     const int notice=kind==DW3_DIALOG_NOTICE;
+    const int ask=kind==DW3_DIALOG_SHARED_SAVES||kind==DW3_DIALOG_SWEEP; /* D1 */
+    const int ak=kind==DW3_DIALOG_SWEEP?1:0;
     const int k=kind==DW3_DIALOG_RETURN?1:0;
-    const Word *title=restart||notice?&t->rst_title:&t->title[k];
-    const Word *question=restart?&t->rst_q[(kind-DW3_DIALOG_RESTART_US)&1]:notice?&t->rst_note:&t->question[k];
+    const Word *title=ask?&t->ask_title[ak]:restart||notice?&t->rst_title:&t->title[k];
+    const Word *question=ask?&t->ask_q[ak]:restart?&t->rst_q[(kind-DW3_DIALOG_RESTART_US)&1]:notice?&t->rst_note:&t->question[k];
     /* The progress warning: the two question windows of the first slice always had it;
      * the restart question has it in game only (on the title there is nothing to lose). */
-    const int warn=restart?kind>=DW3_DIALOG_RESTART_US_GAME:!notice;
+    const int warn=ask?1:restart?kind>=DW3_DIALOG_RESTART_US_GAME:!notice;
     canvas=rgba;stride=pitch;clip_x0=clip_y0=0;clip_x1=DW3_DIALOG_W;clip_y1=DW3_DIALOG_H;
     for(int j=0;j<DW3_DIALOG_H;j++)memset(rgba+(size_t)j*pitch,0,(size_t)DW3_DIALOG_W*4);
     box(6,8,w,h,0,0,8,150);
@@ -971,7 +1040,7 @@ void dw3_pc_dialog_art(uint8_t *rgba,int pitch,int kind,int focus) {
     word(title,40,34-title->top,0,255,255,255);
     box(30,74,w-60,3,0,66,156,255);box(30,80,w-60,3,0,66,156,255);
     word(question,48,94,0,255,255,255);
-    if(warn)word(&t->warn,48,130,0,255,224,140);
+    if(warn)word(ask?&t->ask_warn[ak]:&t->warn,48,130,0,255,224,140);
     for(int i=0;i<(notice?1:2);i++) {
         const int ry=176+i*42,choice_focus=notice||i==(focus?0:1);
         const Word *label=notice?&dialog_ok:i==0?&t->yes:&t->no;
@@ -995,9 +1064,9 @@ static void title_screen(void) {
     /* The original game logo is retained and framed by the PC integrator.
      * This layer owns only the native menu and discreet legal footer. */
     box(390,375,180,1,79,120,151,140);
-    /* P6.37: bottom right, in the band under the credits (they end at 669),
-     * clear of the logo, the plaques and PRESS START. */
-    if(version_shown)version_line(944,1,L_VERSION_BASE);
+    /* P6.37: the port version is not in this canvas any more (owner OLED p57,
+     * A20): it is a label of its own at the real right edge of the picture,
+     * drawn by the hosts (dw3_pc_title_version_art). */
     if(!footer_shown)return;
     plaque(252,610,456,59,8,5,16,30,5,16,30,145);
     lettering(480,619,title_credit1,title_credit1_width,title_credit1_height,3,0,0);
@@ -1185,7 +1254,8 @@ unsigned dw3_pc_title_overlay_options_lock_key(int page,unsigned locked) {
     if(!dw3_optlist_decode(page,&group,&sc))return 0;
     if(group<0)return in_game|(locked&(DW3_TITLE_LOCK_CHEATS|group_row_mask(DW3_OPTGRP_DISPLAY)|
                                        group_row_mask(DW3_OPTGRP_SOUND)|group_row_mask(DW3_OPTGRP_GAMEPLAY)|
-                                       group_row_mask(DW3_OPTGRP_SAVES)));
+                                       group_row_mask(DW3_OPTGRP_MENUS)|group_row_mask(DW3_OPTGRP_CONTROLS)|
+                                       group_row_mask(DW3_OPTGRP_SAVES)|group_row_mask(DW3_OPTGRP_ADVANCED)));
     return in_game|(locked&group_row_mask(group));
 }
 
@@ -1243,6 +1313,33 @@ static void atlas_shadow(int face,int x,int base,const char *s,int r,int g,int b
 }
 static void atlas_centered(int face,int cx,int base,const char *s,int r,int g,int b) {
     atlas_shadow(face,cx-atlas_width(face,s)/2,base,s,r,g,b);
+}
+int dw3_pc_title_overlay_version_shown(void) { return version_shown; }
+/* The title's version label: a DW3_TITLE_VERSION_W x DW3_TITLE_VERSION_H RGBA of
+ * its own, the short text right-aligned in it, the same small dim line as the
+ * Options footer. The hosts place it with its right edge DW3_TITLE_VERSION_MARGIN
+ * canvas pixels inside the right edge of the picture, so that in widescreen it
+ * sits at the 16:9 edge and in 4:3 at the canvas corner. */
+static void version_short(char *text,size_t cap) {
+    dw3_version_short_text(text,cap);
+}
+unsigned dw3_pc_title_version_generation(void) {
+    char text[160];
+    unsigned h=5381u;
+    version_short(text,sizeof(text));
+    for(const char *c=text;*c;c++)h=h*33u+(unsigned char)*c;
+    return h|1u;
+}
+void dw3_pc_title_version_art(uint8_t *rgba,int pitch) {
+    char text[160];
+    uint8_t *sc=canvas;const int ss=stride,cx0=clip_x0,cy0=clip_y0,cx1=clip_x1,cy1=clip_y1;
+    canvas=rgba;stride=pitch;clip_x0=clip_y0=0;clip_x1=DW3_TITLE_VERSION_W;clip_y1=DW3_TITLE_VERSION_H;
+    for(int j=0;j<DW3_TITLE_VERSION_H;j++)memset(rgba+(size_t)j*pitch,0,(size_t)DW3_TITLE_VERSION_W*4);
+    version_short(text,sizeof(text));
+    fprintf(stderr,"dw3-title-overlay: version label \"%s\" (short form, at the right edge of the picture; the Options footer and dw3-version keep the full text)\n",text);
+    atlas_shadow(DW3_ATLAS_BODY,DW3_TITLE_VERSION_W-4-atlas_width(DW3_ATLAS_BODY,text),
+                 DW3_TITLE_VERSION_BASE,text,143,168,199);
+    canvas=sc;stride=ss;clip_x0=cx0;clip_y0=cy0;clip_x1=cx1;clip_y1=cy1;
 }
 
 /* A text plaque: bevel, shadow, navy body with a vertical ramp, amber rail. */

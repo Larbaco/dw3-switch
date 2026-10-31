@@ -103,22 +103,20 @@ pad 2020 0x4000
 pad 2025 0x0000
 pad 2040 0x0040
 pad 2045 0x0000
-pad 2060 0x0040
+pad 2060 0x0080
 pad 2065 0x0000
 pad 2080 0x0080
 pad 2085 0x0000
-pad 2100 0x0080
-pad 2105 0x0000
-shot 2160 encounter-off
+shot 2140 encounter-off
+pad 2160 0x1000
+pad 2165 0x0000
 pad 2180 0x1000
 pad 2185 0x0000
-pad 2200 0x1000
-pad 2205 0x0000
-shot 2260 options-closed
-pad 2280 0x0040
-pad 2285 0x0000
-shot 2340 menu-alive
-pad 2360 0x1000
-pad 2365 0x0000
-shot 2560 field-after
-end 2620
+shot 2240 options-closed
+pad 2260 0x0040
+pad 2265 0x0000
+shot 2320 menu-alive
+pad 2340 0x1000
+pad 2345 0x0000
+shot 2540 field-after
+end 2600

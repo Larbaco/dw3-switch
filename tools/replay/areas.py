@@ -143,6 +143,8 @@ RULES: list[tuple[str, object]] = [
     (r"^port/(version/|include/port_version\.h$)", _OPTIONS + _TITLE + _SCREENS),
     (r"^port/options/(field_options|battle_options)", ("*options*",)),
     (r"^port/options/(port_options|options_cfg|confirm)", _OPTIONS + _TITLE),
+    # D1: the Map buttons screen's logic (it writes the keys the map view reads)
+    (r"^port/options/map_buttons\.c$|^port/include/port_map_buttons\.h$", _OPTIONS + _TITLE + ("*map*",)),
     (r"^port/ui/", _OPTIONS + _TITLE + ("*items*", "*menu-screens*")),
     # --- decomp patches, by topic -------------------------------------------
     (r"^port/patches/\d+-PORT_HOST-p635-walkthrough", ("*walkthrough*",)),
@@ -175,6 +177,7 @@ RULES: list[tuple[str, object]] = [
     (r"^port/patches/\d+-PORT_HOST-p617-", ("*volume*", "*music*", "*options-sound*")),
     (r"^port/patches/\d+-PORT_HOST-p618-", ("*text-*", "*encounter*", "*banner*", "*persist*")),
     (r"^port/patches/\d+-PORT_HOST-p627-", ("*title-quit*", "*return-title*")),
+    (r"^port/patches/\d+-PORT_HOST-title-press-start-ready", _TITLE),
     (r"^port/patches/\d+-PORT_HOST-p69-restart", ("*restart*",)),
     (r"^port/patches/\d+-PORT_HOST-p64-", ("*turbo*",)),
     (r"^port/patches/\d+-PORT_HOST-(p38|p55)-stage-sweep", ("*stage-sweep*",)),

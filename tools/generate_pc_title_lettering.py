@@ -133,6 +133,28 @@ GROUP_TEXT = {
                              'Nächstes Ziel. Hinweise zuerst, Lösung auf Wunsch.',
                              'Adónde ir ahora. Pistas primero, solución si la pides.',
                              'Dove andare ora. Prima indizi, soluzioni a richiesta.')},
+    # D1 (docs/OPTIONS_REORG.md): the Menus group (the five Items-menu switches),
+    # the Advanced group (the stage sweep, a test aid) and the Map buttons
+    # sub-screen of Controls. FR / DE / IT / ES are machine-drafted, needs native
+    # review.
+    'menus': {'name': ('Menus', 'Menus', 'Menüs', 'Menús', 'Menu'),
+              'desc': ('The Items menu and its equipment shortcuts.',
+                       "Le menu Objets et ses raccourcis d'équipement.",
+                       'Das Itemmenü und seine Ausrüstungs-Kürzel.',
+                       'El menú de objetos y sus atajos de equipo.',
+                       'Il menu oggetti e le scorciatoie di equipaggiamento.')},
+    'advanced': {'name': ('Advanced', 'Avancé', 'Erweitert', 'Avanzado', 'Avanzate'),
+                 'desc': ('Test aids for developers.',
+                          'Outils de test pour les développeurs.',
+                          'Testhilfen für Entwickler.',
+                          'Ayudas de prueba para desarrolladores.',
+                          'Strumenti di prova per sviluppatori.')},
+    'mapbtn': {'name': ('Map buttons', 'Boutons carte', 'Kartentasten', 'Botones del mapa', 'Tasti mappa'),
+               'desc': ('Used by the full-screen map. Left / Right pick a button.',
+                        'Pour la carte plein écran. Gauche / Droite choisit.',
+                        'Für die Vollbildkarte. Links / Rechts wählt.',
+                        'Para el mapa completo. Izquierda / Derecha elige.',
+                        'Per la mappa a schermo. Sinistra / Destra sceglie.')},
 }
 OPEN_TEXT = ('Open', 'Ouvrir', 'Öffnen', 'Abrir', 'Apri')
 CHANGE_TEXT = ('Change', 'Changer', 'Ändern', 'Cambiar', 'Cambia')
@@ -210,7 +232,7 @@ VALUE_TEXT = {
     'command': ('Command', 'Commande', 'Befehl', 'Comando', 'Comando'),
     'command_tech': ('Command+Tech', 'Commande+Tech', 'Befehl+Tech', 'Comando+Téc.', 'Comando+Tec.'),
 }
-LIMITS = {'grp': 330, 'row': 290, 'val': 236, 'desc': 690}
+LIMITS = {'grp': 330, 'row': 290, 'val': 236, 'desc': 690, 'dlg': 650}
 for _i, _lang in enumerate(LANGS):
     for _key, _t in GROUP_TEXT.items():
         LETTERS.append(('opt_grp_%s_%s' % (_key, _lang), _t['name'][_i], 29, 'DejaVuSansCondensed-Bold.ttf'))
@@ -228,6 +250,173 @@ for _i, _lang in enumerate(LANGS):
         LETTERS.append(('opt_desc2_%s_%s' % (_plat, _lang), DESC2[_plat][_i], 25, 'DejaVuSans.ttf'))
     for _key, _t in VALUE_TEXT.items():
         LETTERS.append(('opt_val_%s_%s' % (_key, _lang), _t[_i], 26, 'DejaVuSans.ttf'))
+# D1 (docs/OPTIONS_REORG.md section 3): the rows that were file-only keys and the
+# Map buttons screen. Keys are the short names the code reads as
+# title_opt_row_x_<key>_<lang> / title_opt_desc_x_<key>_<lang>. FR / DE / IT / ES
+# are machine-drafted, needs native review. Row labels under 290 px, values
+# under 236 px, message lines under 690 px (the generator fails when wider).
+# Button-neutral wording: the PlayStation and the Switch names differ.
+EXTRA_ROWS = {
+    'eq': {'row': ('Equip from Items', 'Équiper depuis Objets', 'Aus Items ausrüsten',
+                   'Equipar desde Ítems', 'Equipaggia da menu'),
+           'desc': ('Equips gear from the Items menu. OFF = original.',
+                    'Équipe depuis le menu Objets. OFF = original.',
+                    'Ausrüsten aus dem Itemmenü. OFF = Original.',
+                    'Equipar desde el menú Objetos. OFF = original.',
+                    'Equipaggia dal menu Oggetti. OFF = originale.')},
+    'st': {'row': ('Equip stays on list', 'Rester sur la liste', 'Auf der Liste bleiben',
+                   'Seguir en la lista', 'Restare nella lista'),
+           'desc': ('Equipping returns to the slot list. OFF = the long fades.',
+                    'Équiper revient à la liste. OFF = longs fondus.',
+                    'Ausrüsten bleibt in der Liste. OFF = lange Blenden.',
+                    'Equipar vuelve a la lista. OFF = fundidos largos.',
+                    'Equipaggiare resta nella lista. OFF = dissolvenze.')},
+    'bg': {'row': ('Whole bag', 'Tout le sac', 'Ganze Tasche', 'Bolsa entera', 'Intera borsa'),
+           'desc': ('The whole bag in the equip list. OFF = original.',
+                    'Tout le sac dans la liste. OFF = original.',
+                    'Ganze Tasche in der Liste. OFF = Original.',
+                    'Toda la bolsa en la lista. OFF = original.',
+                    'Tutta la borsa nella lista. OFF = originale.')},
+    'us': {'row': ('Use item stays', 'Rester après usage', 'Nach Benutzen offen',
+                   'Seguir tras usar', "Restare dopo l'uso"),
+           'desc': ('A use keeps the partner step open. OFF = original.',
+                    'Après usage, le partenaire reste. OFF = original.',
+                    'Nach Benutzen bleibt die Partnerwahl. OFF = Original.',
+                    'Tras usarlo sigue la elección. OFF = original.',
+                    "Dopo l'uso resta la scelta. OFF = originale.")},
+    'ps': {'row': ('Partner switch', 'Autre partenaire', 'Partnerwechsel',
+                   'Cambiar compañero', 'Cambio compagno'),
+           'desc': ('ZL / ZR switch the Digimon in Equip. OFF = original.',
+                    'ZL / ZR changent de Digimon. OFF = original.',
+                    'ZL / ZR wechseln das Digimon. OFF = Original.',
+                    'ZL / ZR cambian de Digimon. OFF = original.',
+                    'ZL / ZR cambiano Digimon. OFF = originale.')},
+    'vr': {'row': ('Version label', 'Étiquette de version', 'Versionsanzeige',
+                   'Etiqueta de versión', 'Etichetta versione'),
+           'desc': ('Port version on the title screen. OFF hides it.',
+                    "Version du port sur l'écran titre. OFF = masquée.",
+                    'Port-Version im Titelbild. OFF = versteckt.',
+                    'Versión del port en el título. OFF = oculta.',
+                    'Versione del port nel titolo. OFF = nascosta.')},
+    'mm': {'row': ('Map mod pack', 'Pack de mod carte', 'Karten-Modpaket',
+                   'Pack de mod mapa', 'Pacchetto mappa'),
+           'desc': ('Uses a map-upscale pack. OFF = the original map.',
+                    "Utilise un pack de carte. OFF = carte d'origine.",
+                    'Nutzt ein Karten-Paket. OFF = Originalkarte.',
+                    'Usa un pack de mapa. OFF = mapa original.',
+                    'Usa un pacchetto mappa. OFF = mappa originale.')},
+    'ss': {'row': ('Shared saves (exp.)', 'Saves partagées', 'Gem. Speicher (exp.)',
+                   'Partidas comp. (exp.)', 'Salvat. cond. (exp.)'),
+           'desc': ('Experimental: US and EU share saves. Next start.',
+                    'Expérimental : US et EU partagent. Au redémarrage.',
+                    'Experimentell: US und EU teilen. Beim Neustart.',
+                    'Experimental: US y EU comparten. Al reiniciar.',
+                    'Sperimentale: US ed EU condividono. Al riavvio.')},
+    'sw': {'row': ('Stage sweep', 'Balayage des zones', 'Stufen-Durchlauf',
+                   'Barrido de etapas', 'Scansione stage'),
+           'desc': ('Test aid. Walks every stage after the next start.',
+                    'Outil de test. Parcourt les stages au redémarrage.',
+                    'Testhilfe. Geht nach dem nächsten Start jede Stufe ab.',
+                    'Prueba. Recorre todas las etapas en el próximo inicio.',
+                    'Prova. Percorre ogni stage al prossimo avvio.')},
+    'sf': {'row': ('Frames per stage', 'Frames par stage', 'Frames pro Stufe',
+                   'Fotogramas por etapa', 'Frame per stage'),
+           'desc': ('Frames spent in each stage. Left / Right: 30. L / R: 300.',
+                    'Images par stage. Gauche / Droite : 30. L / R : 300.',
+                    'Frames pro Stufe. Links / Rechts: 30. L / R: 300.',
+                    'Fotogramas por etapa. Izq. / Der.: 30. L / R: 300.',
+                    'Frame per stage. Sinistra / Destra: 30. L / R: 300.')},
+    'mb': {'row': ('Map buttons', 'Boutons carte', 'Kartentasten', 'Botones del mapa', 'Tasti mappa'),
+           'desc': ('Which buttons drive the full-screen map.',
+                    'Quels boutons pilotent la carte plein écran.',
+                    'Welche Tasten die Vollbildkarte steuern.',
+                    'Qué botones manejan el mapa completo.',
+                    'Quali tasti guidano la mappa a schermo.')},
+}
+# The Stage sweep values besides OFF (the Options screen's word).
+SWEEP_VALUES = {
+    'run': ('Run', 'Lancer', 'Starten', 'Ejecutar', 'Avvia'),
+    'over': ('Start over', 'Recommencer', 'Neu beginnen', 'Reiniciar', 'Ricomincia'),
+}
+# Map buttons screen (Controls): the row of each of the seven bindings (map_view_core.h
+# MV_ACT_* order), the Reset action, and the three message lines.
+MAPBTN_ROWS = (
+    ('Open the map', 'Ouvrir la carte', 'Karte öffnen', 'Abrir el mapa', 'Apri la mappa'),
+    ('Zoom out', 'Zoom arrière', 'Verkleinern', 'Alejar', 'Riduci'),
+    ('Zoom in', 'Zoom avant', 'Vergrößern', 'Acercar', 'Ingrandisci'),
+    ('Centre on my area', 'Centrer sur ma zone', 'Auf mich zentrieren',
+     'Centrar en mi zona', 'Centra sulla mia area'),
+    ('Previous scaler', 'Filtre précédent', 'Voriger Skalierer', 'Escalador anterior',
+     'Scaler precedente'),
+    ('Next scaler', 'Filtre suivant', 'Nächster Skalierer', 'Escalador siguiente',
+     'Scaler successivo'),
+    ('Open from the field', 'Ouvrir du terrain', 'Aus dem Feld öffnen',
+     'Abrir desde el campo', 'Apri dal campo'),
+    ('Reset map buttons', 'Réinit. boutons carte', 'Tasten zurücksetzen',
+     'Restablecer botones', 'Ripristina tasti mappa'),
+)
+MAPBTN_DESC = {
+    'bind': ('Used by the full-screen map. Left / Right pick a button.',
+             'Pour la carte plein écran. Gauche / Droite choisit.',
+             'Für die Vollbildkarte. Links / Rechts wählt.',
+             'Para el mapa completo. Izquierda / Derecha elige.',
+             'Per la mappa a schermo. Sinistra / Destra sceglie.'),
+    'field': ('Opens the map in the field. Left / Right pick.',
+              'Ouvre la carte hors combat. Gauche / Droite choisit.',
+              'Karte im Feld öffnen. Links / Rechts wählt.',
+              'Mapa desde el campo. Izq. / Der. elige.',
+              'Apre la mappa dal campo. Sinistra / Destra sceglie.'),
+    'reset': ('Puts the seven default buttons back. Applies now.',
+              'Remet les sept boutons par défaut. Effet immédiat.',
+              'Setzt die sieben Standardtasten zurück. Sofort aktiv.',
+              'Restablece los siete botones. Se aplica ya.',
+              'Ripristina i sette tasti predefiniti. Subito attivo.'),
+}
+# Select (PC) / Minus (Switch): the eighth bindable button, not a PS button of the map.
+MAPBTN_SELECT = {'select': 'Select', 'minus': 'Minus'}
+# The Yes / No windows of Shared saves and Stage sweep (port/options/confirm.c,
+# kinds DW3_DIALOG_SHARED_SAVES and DW3_DIALOG_SWEEP): a title, the question and
+# one amber warning line. Each line under 650 px (the window body).
+ASK_TEXT = {
+    'ss': {'title': ('SHARED SAVES', 'SAUVEGARDES COMMUNES', 'GEMEINSAMER SPEICHER',
+                     'PARTIDAS COMPARTIDAS', 'SALVATAGGI CONDIVISI'),
+           'q': ('Share one save store between US and EU?',
+                 'Partager un seul stock entre US et EU ?',
+                 'Einen Speicher für US und EU teilen?',
+                 '¿Compartir un almacén entre US y EU?',
+                 'Condividere un archivio tra US ed EU?'),
+           'warn': ('Experimental. Back up your saves first.',
+                    'Expérimental. Sauvegardez vos données avant.',
+                    'Experimentell. Vorher Sicherung anlegen.',
+                    'Experimental. Haz una copia antes.',
+                    'Sperimentale. Fai prima un backup.')},
+    'sw': {'title': ('STAGE SWEEP', 'BALAYAGE DES ZONES', 'STUFEN-DURCHLAUF',
+                     'BARRIDO DE ETAPAS', 'SCANSIONE STAGE'),
+           'q': ('Turn on the stage sweep?', 'Activer le balayage des zones ?',
+                 'Stufen-Durchlauf einschalten?', '¿Activar el barrido de etapas?',
+                 'Attivare la scansione degli stage?'),
+           'warn': ('The next start walks every stage by itself.',
+                    'Au prochain démarrage, le jeu parcourt tout seul.',
+                    'Beim nächsten Start läuft das Spiel allein durch.',
+                    'Al reiniciar, el juego recorre todo solo.',
+                    'Al prossimo avvio il gioco percorre tutto da solo.')},
+}
+for _i, _lang in enumerate(LANGS):
+    for _key, _t in EXTRA_ROWS.items():
+        LETTERS.append(('opt_row_x_%s_%s' % (_key, _lang), _t['row'][_i], 26, 'DejaVuSans.ttf'))
+        LETTERS.append(('opt_desc_x_%s_%s' % (_key, _lang), _t['desc'][_i], 25, 'DejaVuSans.ttf'))
+    for _key, _t in SWEEP_VALUES.items():
+        LETTERS.append(('opt_val_sw_%s_%s' % (_key, _lang), _t[_i], 26, 'DejaVuSans.ttf'))
+    for _r, _row in enumerate(MAPBTN_ROWS):
+        LETTERS.append(('opt_row_mb%d_%s' % (_r, _lang), _row[_i], 26, 'DejaVuSans.ttf'))
+    for _key, _t in MAPBTN_DESC.items():
+        LETTERS.append(('opt_desc_mb_%s_%s' % (_key, _lang), _t[_i], 25, 'DejaVuSans.ttf'))
+    for _key, _t in ASK_TEXT.items():
+        LETTERS.append(('opt_dlg_ask_title_%s_%s' % (_key, _lang), _t['title'][_i], 30, 'DejaVuSans.ttf'))
+        LETTERS.append(('opt_dlg_ask_q_%s_%s' % (_key, _lang), _t['q'][_i], 26, 'DejaVuSans.ttf'))
+        LETTERS.append(('opt_dlg_ask_warn_%s_%s' % (_key, _lang), _t['warn'][_i], 24, 'DejaVuSans.ttf'))
+for _key, _name in MAPBTN_SELECT.items():
+    LETTERS.append(('opt_val_btn_' + _key, _name, 26, 'DejaVuSans.ttf'))
 # P6.27 / P6.28 title Quit plaque and the Yes / No confirmation (docs/PORT_OPTIONS.md
 # "Quit and return to title"), in the five languages of the EU disc (en is also
 # the US disc's). The plaque word is bold like the other plaques; the window
@@ -583,7 +772,8 @@ for index, (entry, cheat) in enumerate(ENTRIES):
         # Fixed advance: the glyph keeps its own side bearing.
         image = Image.new('L', (advance, bounds[3]-bounds[1]))
         ImageDraw.Draw(image).text((0, -bounds[1]), text, font=font, fill=255)
-    limit = (LIMITS['grp'] if name.startswith('opt_grp_') else LIMITS['row'] if name.startswith(('opt_row', 'opt_cht_row')) else
+    limit = (LIMITS['dlg'] if name.startswith(('opt_dlg_ask_q', 'opt_dlg_ask_warn')) else
+             LIMITS['grp'] if name.startswith('opt_grp_') else LIMITS['row'] if name.startswith(('opt_row', 'opt_cht_row')) else
              LIMITS['val'] if name.startswith(('opt_val_', 'opt_cht_warp', 'opt_cht_ready', 'opt_cht_none',
                                                'opt_cht_m10k', 'opt_cht_m100k', 'opt_cht_mmax')) else
              LIMITS['desc'] if name.startswith(('opt_desc', 'opt_grpdesc', 'opt_lock', 'opt_cht_desc')) else None)

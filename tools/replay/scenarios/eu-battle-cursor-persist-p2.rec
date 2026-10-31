@@ -25,11 +25,9 @@ pad 540 0x0040
 pad 545 0x0000
 pad 560 0x0040
 pad 565 0x0000
-pad 580 0x0040
-pad 585 0x0000
-shot 620 battle-cursor-restored
+shot 600 battle-cursor-restored
+pad 620 0x1000
+pad 625 0x0000
 pad 640 0x1000
 pad 645 0x0000
-pad 660 0x1000
-pad 665 0x0000
-end 720
+end 700

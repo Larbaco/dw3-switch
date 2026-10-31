@@ -225,6 +225,7 @@ static int map_view_available(void) {
  * of the map) says, so "which physical button opens the map" is in dw3.log. */
 static MvBindings g_bind;
 static int g_bind_loaded;
+static unsigned g_bind_gen;                 /* dw3_port_options_keys_generation() at the load */
 static char g_bind_map[DW3_BTN_COUNT + 1];  /* the map the last line was logged for */
 static int g_bind_logged;
 static int g_option_at_boot = -1;           /* map_screen when dw3_map_view_init ran */
@@ -246,8 +247,11 @@ static void bind_load(void) {
     char why[512];
     int a, rc;
 
-    if (g_bind_loaded) return;
+    /* D1: the Map buttons screen (Options > Controls) rewrites the keys; read them
+     * again when it did (at the next open of the view the log line says so). */
+    if (g_bind_loaded && g_bind_gen == dw3_port_options_keys_generation()) return;
     g_bind_loaded = 1;
+    g_bind_gen = dw3_port_options_keys_generation();
     for (a = 0; a < MV_ACT_COUNT; ++a) vals[a] = dw3_port_options_file_str(dw3_mv_act_key(a));
     rc = dw3_mv_bindings_resolve(&g_bind, vals, why, sizeof(why));
     if (rc != 0) {

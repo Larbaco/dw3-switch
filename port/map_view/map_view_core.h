@@ -89,6 +89,12 @@ const char *dw3_mv_act_name(int act);
 int dw3_mv_bind_default_bit(int act);
 /* The shown name of a bindable pad bit ("Square", "L1", "Select"), "?" if none. */
 const char *dw3_mv_bind_bit_name(int bit);
+/* D1 (the Map buttons screen): the bindable buttons in the order the screen
+ * cycles them (cross square l1 r1 l2 r2 l3 select), their pad bits and the cfg
+ * word of a bit ("square"), "" for a bit that is not bindable. */
+int dw3_mv_bindable_count(void);
+int dw3_mv_bindable_bit(int i);
+const char *dw3_mv_bind_word(int bit);
 /* A cfg value (any case, spaces trimmed) to its pad bit; -1 unknown, -2 a button
  * the view keeps for itself (triangle, circle, r3, start, the d-pad). */
 int dw3_mv_bind_parse(const char *text);
