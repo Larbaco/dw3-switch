@@ -139,6 +139,9 @@ RULES: list[tuple[str, object]] = [
                                                           "*restart*", "*walkthrough*")),
     (r"^port/patches/\d+-PORT_HOST-p63[34]-", ("*items*", "*menu-screens*")),
     (r"^port/patches/\d+-PORT_HOST-p77-", ("*p77*",)),
+    # patch 0198: the Digimon change's wireframe (only the Digivolve command's animation draws it),
+    # its log lines and the DW3_FORCE_DIGI_SLOTS hook; the forced battles are the neighbours
+    (r"^port/patches/\d+-PORT_HOST-battle-wireframe", ("*battle-digivolve*", "*p77*", "*two-battles*", "*battle-report*")),
     (r"^port/patches/\d+-PORT_HOST-p79-", ("*p79*",)),
     (r"^port/patches/\d+-PORT_HOST-p51-battle", ("*battle-list-bar*", "*p79*", "*p77*", "*two-battles*", "*battle-options*")),
     (r"^port/patches/\d+-PORT_HOST-p61-widescreen-battle-spiral", ("*spiral*",)),

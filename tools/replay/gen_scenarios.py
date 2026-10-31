@@ -439,6 +439,48 @@ def p77_battle(version):
     return r
 
 
+# Patch 0198: the battle's Digivolve command three times in one forced battle (the
+# env of the manifest: Kotemon vs Kunemon, DW3_FORCE_DIGI_SLOTS=386 gives Kotemon
+# Dinohumon to digivolve into, DW3_FORCE_ENEMY_HP keeps the fight going): up
+# (Kotemon -> Dinohumon, the list's second line), back to the base form (the
+# list's first line, the path of the BUG-6 crash) and up again. Between them
+# Cross is mashed through the Digimon change's message and the enemy's two attacks
+# until the command menu is open again (measured on the PC build, DW3_TURBO=4: the
+# menu waits for input, so a Cross after it opens would pick Fight). Per disc:
+# (mash 1 from, to; menu 2 at; mash 2 from, to; menu 3 at; end).
+DIGIVOLVE_COMMAND = {
+    "us": (1500, 1850, 1950, 3070, 3420, 3520, 5200),
+    "eu": (1500, 1800, 1900, 3020, 3320, 3420, 5000),
+}
+
+
+def battle_digivolve_command(version):
+    m1a, m1b, c2, m2a, m2b, c3, end = DIGIVOLVE_COMMAND[version]
+    r = Rec(f"{version.upper()}: forced battle, the Digivolve command up, back to the base form, up again (env in manifest)")
+
+    def digivolve(t, below):
+        r.press(t, DOWN)             # Fight -> Tech
+        r.press(t + 30, DOWN)        # Tech -> DV
+        r.press(t + 60, CROSS)       # open the Digimon list
+        if below:                    # the list starts on its first line: the form below the base
+            r.press(t + 120, DOWN)
+            r.press(t + 150, CROSS)
+        else:
+            r.press(t + 120, CROSS)
+
+    def mash(a, b):
+        for f in range(a, b + 1, 50):
+            r.press(f, CROSS)
+
+    digivolve(350, True)
+    mash(m1a, m1b)
+    digivolve(c2, False)
+    mash(m2a, m2b)
+    digivolve(c3, True)
+    r.end(end)
+    return r
+
+
 def battle_report(version):
     """P6.1 (patch 0074): one forced battle (the env of the manifest), a
     technique, Cross to the win and the battle report; checkpoints on the
@@ -3609,6 +3651,7 @@ def main(out):
         (out / f"{v}-battle-music.rec").write_text(battle_music(v).text(True))
         (out / f"{v}-two-battles.rec").write_text(two_battles(v).text(True))
         (out / f"{v}-battle-report.rec").write_text(battle_report(v).text(True))
+        (out / f"{v}-battle-digivolve-command.rec").write_text(battle_digivolve_command(v).text(True))
         (out / f"{v}-ws-title-intro.rec").write_text(ws_title_intro(v).text(True))
         (out / f"{v}-p77-battle.rec").write_text(p77_battle(v).text(True))
         (out / f"{v}-p77-square.rec").write_text(p77_square(v).text(True))

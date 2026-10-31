@@ -48,6 +48,14 @@ highest non-empty tier.
   Releases ship that one file now (owner decision 2026-10-29, #359); the OLED
   check is still open. Defaults taken for the open questions are in
   [SINGLE_BUILD](SINGLE_BUILD.md#owner-priority-2026-10-28-and-orchestrator-defaults).
+- **BUG-6 (p56 OLED, blocker for the next preview): crash in battle on the Digivolve
+  command.** Root cause found and fixed on the PC (branch
+  `fix/bug6-battle-digivolve-crash`, patch `0198`): the Digimon change's wireframe
+  (`FIGHTSTG_drawMeshWireframe`) linked its lines into the layer's OT with a 24-bit
+  PS1 address, so the OT held half a 64-bit pointer and `DrawOTag` faulted in
+  `GPU_Enqueue`. Reproduced on the PC (SIGSEGV, same stack) and proved by the replays
+  `us/eu-battle-digivolve-command` (up, back to the base form, up again). Open: the
+  OLED check, [OLED_TEST_PLAN G12](OLED_TEST_PLAN.md).
 
 ### Tier 1 — Stability
 

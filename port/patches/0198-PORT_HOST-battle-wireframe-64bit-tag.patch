@@ -1,0 +1,163 @@
+Upstream-bound: no
+Subject: [PORT_HOST] battle Digimon change: the wireframe links its lines with the 64-bit pointer
+
+FIGHTSTG_drawMeshWireframe (battle_mode/model_mesh.c) draws the old Digimon as
+a green wireframe while a Digimon change plays (FIGHTSTG_updateDigimonChange,
+the animation of the battle's Digivolve command: startChange turns the model's
+second layer on as BATTLE_LAYER_WIREFRAME). Each line is linked into the layer's
+OT by hand, with linkTag(tag, addr), which keeps the top byte of the old tag
+word and puts a 24-bit PS1 address under it
+(`(u_long)state.prim.ptr & 0xFFFFFF`). Under PSY-Z the tag word is the whole
+next-primitive pointer (P_TAG is {u_long addr; u_long len}), so the OT entry
+and every line's tag got the low 32 bits of a pointer with its top byte mixed
+in, e.g. 0x56ff5b20 for the primitive at 0x555556ff5b20. DrawOTag then walked
+into that address when it drew the layer: GPU_Enqueue (libgpu.c:171) read
+env->len of a wild pointer, "CRASH user exception ... data abort, translation
+fault" on the Switch and a SIGSEGV on the PC host, a few frames after the
+Digimon change starts (the Digimon change is the only user of the wireframe
+layer; the Rookie/Champion automatic digivolution of the story uses another
+task). 0039 made drawMesh index the OT with the OT_TYPE stride; this was the
+one mesh routine that was never ported.
+
+Under PORT_HOST linkTag returns the address it is given and the lines link the
+full primitive pointer (WIRE_PRIM_ADDR); the PS1 build keeps the 24-bit
+expression the match needs.
+
+Test hook (same hunk group as DW3_FORCE_FORM / DW3_FORCE_NICKNAME of 0064, PC
+only, an environment variable, nothing happens when unset):
+DW3_FORCE_DIGI_SLOTS=<id>[,<id>[,<id>]] gives the first partner those Digimon
+as entries and battle slots, so the battle's Digivolve command lists them
+without playing up to a digivolution. Used by the replay scenarios
+`us|eu-battle-digivolve-command` (docs/P6.15_REPLAY_TESTS.md).
+
+Two log lines, once per Digimon change, tell an OLED / replay run that the
+wireframe layer was drawn and the change finished (`digimon_change.c`, both
+under PORT_HOST):
+`dw3-battle: digimon change wireframe starts (to Digimon id N, digivolve command|blast)`
+`dw3-battle: digimon change done, back to the battle (Digimon id N)`
+
+--- a/src/battle/battle_mode/model_mesh.c
++++ b/src/battle/battle_mode/model_mesh.c
+@@ -913,11 +913,24 @@
+    expression, sched1 moves the tag's mask after the address's, which swaps
+    their registers. */
+ static inline u_long linkTag(u_long tag, u_long addr) {
++#if PORT_HOST
++    /* PSY-Z's tag word is the whole next-primitive pointer (P_TAG.addr is a
++       u_long), not a 24-bit PS1 address under a top byte of its own */
++    (void)tag;
++    return addr;
++#else
+     u_long word = tag & 0xFF000000;
+     word |= addr;
+     return word;
++#endif
+ }
+ 
++#if PORT_HOST
++#define WIRE_PRIM_ADDR(p) ((u_long)(p))
++#else
++#define WIRE_PRIM_ADDR(p) ((u_long)(p) & 0xFFFFFF)
++#endif
++
+ /* Draws a Mesh as wireframe: each polygon of its command runs as a green
+    LINE_F4 through its screen points, with a LINE_F2 to close a quad. Each
+    addPrim is written out with linkTag. */
+@@ -1004,7 +1017,7 @@
+                     tag = *state.prim.tag;
+                     *state.prim.tag = linkTag(tag, getaddr(state.ot));
+                     tag = *state.ot;
+-                    *state.ot = linkTag(tag, (u_long)state.prim.ptr & 0xFFFFFF);
++                    *state.ot = linkTag(tag, WIRE_PRIM_ADDR(state.prim.ptr));
+                     state.prim.lineF4++;
+                     if (state.quad) {
+                         setLineF2(state.prim.lineF2);
+@@ -1014,7 +1027,7 @@
+                         tag = *state.prim.tag;
+                         *state.prim.tag = linkTag(tag, getaddr(state.ot));
+                         tag = *state.ot;
+-                        *state.ot = linkTag(tag, (u_long)state.prim.ptr & 0xFFFFFF);
++                        *state.ot = linkTag(tag, WIRE_PRIM_ADDR(state.prim.ptr));
+                         state.prim.lineF2++;
+                     }
+                     n = state.quad + 3;
+--- a/src/battle/normal_battle/menu.c
++++ b/src/battle/normal_battle/menu.c
+@@ -78,6 +78,44 @@
+             name[n] = 0;
+             fprintf(stderr, "dw3: DW3_FORCE_NICKNAME partner %d is called %s\n", (int)partner, form);
+         }
++        /* DW3_FORCE_DIGI_SLOTS=<id>[,<id>[,<id>]] gives the first partner those
++         * Digimon to digivolve into (entries and slots, what the Lab sets), so
++         * the battle's Digivolve command lists them without playing up to it */
++        form = getenv("DW3_FORCE_DIGI_SLOTS");
++        if (form != NULL && form[0] != '\0') {
++            PartnerStats *own = &GAME.partners[partner].info;
++            const char *cur = form;
++            s32 n = 0;
++
++            while (*cur != '\0' && n < 3) {
++                char *end;
++                s32 id = (s32)strtol(cur, &end, 0);
++                s32 k;
++
++                if (end == cur) {
++                    break;
++                }
++                for (k = 0; k < PARTNER_ENTRY_COUNT; k++) {
++                    if (own->entries[k].id == id) {
++                        break;
++                    }
++                }
++                if (k == PARTNER_ENTRY_COUNT) {
++                    for (k = 0; k < PARTNER_ENTRY_COUNT && own->entries[k].id >= FIRST_ENTRY_ID; k++) {
++                    }
++                }
++                if (k < PARTNER_ENTRY_COUNT) {
++                    own->entries[k].id = id;
++                    own->entries[k].level = 1;
++                    own->slots[n++] = id;
++                    fprintf(stderr, "dw3: DW3_FORCE_DIGI_SLOTS partner %d slot %d is Digimon id %d\n", (int)partner, (int)(n - 1), (int)id);
++                }
++                cur = end;
++                if (*cur == ',') {
++                    cur++;
++                }
++            }
++        }
+     }
+ #endif
+     children->models->add(children->models, 0, digimon, 1);
+--- a/src/battle/battle_mode/digimon_change.c
++++ b/src/battle/battle_mode/digimon_change.c
+@@ -1,6 +1,9 @@
+ /* FIGHTSTG's Digimon change: the effect of a digivolution, or of a blast's. */
+ 
+ #include "battle/battle_mode.h"
++#if PORT_HOST
++#include <stdio.h>
++#endif
+ 
+ /* where FIGHTSTG_updateDigimonChange's effects are: the first (1000, 1001
+    or 1007) when the old Digimon starts being wiped away, the second (1002)
+@@ -80,6 +83,10 @@
+         control->motion = 13;
+     }
+     models->get(models, 0x10)->layers[0].enabled = 0;
++#if PORT_HOST
++    fprintf(stderr, "dw3-battle: digimon change wireframe starts (to Digimon id %d, %s)\n", (int)task->key1,
++            task->key2 != 0 ? "blast" : "digivolve command");
++#endif
+     if (task->key2 == 0) {
+         children->effects[0] = FIGHTSTG_startSpriteEffect(1000, &FIGHTSTG_changeStartPos);
+         children->effects[1] = FIGHTSTG_startSpriteEffect(1001, &FIGHTSTG_changeStartPos);
+@@ -172,6 +179,9 @@
+     switch (task->step) {
+     case 0:
+     default:
++#if PORT_HOST
++        fprintf(stderr, "dw3-battle: digimon change done, back to the battle (Digimon id %d)\n", (int)task->key1);
++#endif
+         models->get(models, 0x10)->layers[0].enabled = 1;
+         models->get(models, 0)->motion = task->key2 != 0 || task->idleMotion == 0 ? 1 : 2;
+         camera->fade(camera, NULL, camera->getEnemyView(camera), 60);
