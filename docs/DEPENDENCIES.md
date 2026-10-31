@@ -185,7 +185,7 @@ commit per dependency either way.
 * SDL bump check (this PR): PC US, EU and both built; Switch combined `.nro`
   built with the digest-pinned image; `tools/replay_tests.sh --changed
   --jobs 1 --fail-fast` (47 scenarios, `vendor/psyz` has no rule so it ran the
-  engine-wide area sweep plus canary). Result below once finished.
+  engine-wide area sweep plus canary): **459 checks, 0 failed, 0 skipped** (2026-10-31, EU default plus US canary; logs in `/mnt/cabal/tmp/dw3-deps-bump/replay-out`).
 * Actions bumps are only exercised by this PR's CI run; `switch-release.yml`
   (action-gh-release v3) can only be proven by a real tag, inputs were checked
   against v3's `action.yml`.
