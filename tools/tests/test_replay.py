@@ -229,7 +229,12 @@ def test_log_expectations_and_seeded_option_file(tmp_path):
     # the seeded port_options.cfg is the P9.4 format and ends with end=1
     rt.write_seed_cfg(tmp_path, (("encounter_rate", "2"), ("text_speed", "1")))
     lines = (tmp_path / "port_options.cfg").read_text().splitlines()
-    assert lines[1:] == ["version=1", "encounter_rate=2", "text_speed=1", "end=1"]
+    # D2: every seeded file carries the defaults marker, so the one-shot migration never runs on it
+    assert lines[1:] == ["version=1", "defaults_gen=2", "encounter_rate=2", "text_speed=1", "end=1"]
+    # ... except a legacy file (the `*-defaults-migrate` scenarios), written as an older build did
+    rt.write_seed_cfg(tmp_path, (("button_layout", "playstation"),), legacy=True)
+    assert (tmp_path / "port_options.cfg").read_text().splitlines()[1:] == \
+        ["version=1", "button_layout=playstation", "end=1"]
 
 
 def test_pacing_scenarios_are_defined_for_both_discs():

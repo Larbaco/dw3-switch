@@ -51,6 +51,16 @@ def persist_bin(tmp_path_factory) -> Path:
                  defs=["-DDW3_PORT_OPTIONS_TEST", "-DDW3_BUTTON_MAP_TEST"])
 
 
+@pytest.fixture(scope="module")
+def glyph_bin(tmp_path_factory) -> Path:
+    """The registry as the Switch build compiles it: the Switch glyphs row exists
+    (DW3_OPT_GLYPHS_ROW), so the D2 default is ON and the migration flips it."""
+    return build(tmp_path_factory.mktemp("optglyph") / "options_glyph_test",
+                 TESTS / "options_persist_main.c", OPTIONS / "port_options.c", OPTIONS / "button_map.c",
+                 OPTIONS / "options_cfg.c", ROOT / "port" / "audio" / "volume.c",
+                 defs=["-DDW3_PORT_OPTIONS_TEST", "-DDW3_BUTTON_MAP_TEST", "-DDW3_FORCE_GLYPHS_ROW"])
+
+
 def session(binary: Path, cfgdir: Path, *steps: str):
     """One process; returns (stdout lines, stderr)."""
     r = subprocess.run([str(binary), str(cfgdir), *steps],
@@ -173,6 +183,10 @@ def test_recovery_from_an_interrupted_save(persist_bin: Path, tmp_path: Path):
     out, err = session(persist_bin, tmp_path, "show")
     assert out == ["widescreen=0 fast_forward=3 restart_hotkey=1"]
     assert "recovered" in err
+    # D2: the recovered file has no defaults_gen, so it is migrated and written
+    # back at once: the real file exists again.
+    assert (tmp_path / CFG).exists()
+    (tmp_path / CFG).unlink()
     # A torn temp file is not trusted.
     (tmp_path / (CFG + ".tmp")).write_text("version=1\nwidescreen=0\nfast_")
     assert values(persist_bin, tmp_path) == \
@@ -348,7 +362,8 @@ def test_volume_keys_are_in_the_written_file_order(persist_bin: Path, tmp_path: 
                     "battle_menu_memory", "autosave", "button_layout", "turbo_music", "switch_glyphs", "map_screen",
                     "items_equip_from_items", "items_equip_stays", "items_bag_view",
                     "items_use_stays", "items_partner_switch", "show_version", "map_mod",
-                    "save_store", "stage_sweep", "stage_sweep_frames", "menu_instant_exit", "end"]
+                    "save_store", "stage_sweep", "stage_sweep_frames", "menu_instant_exit",
+                    "map_scaler", "defaults_gen", "end"]
 
 
 # --- P6.18 Encounter rate / Text speed rows ---------------------------------
@@ -810,15 +825,35 @@ def test_autosave_plays_the_choice_sound(persist_bin: Path, tmp_path: Path):
 # --- P9.8 Button layout (docs/CONTROLS_BUNDLE.md) ---------------------------
 
 
-def test_button_layout_defaults_to_playstation_and_logs_the_map(persist_bin: Path, tmp_path: Path):
+def seed_ps(tmp_path: Path, extra: str = "") -> str:
+    """A current-generation file holding the PlayStation layout (D2: the default is
+    Nintendo, so the tests of the PlayStation flows say so in the file)."""
+    text = f"version=1\ndefaults_gen=2\nbutton_layout=playstation\n{extra}end=1\n"
+    (tmp_path / CFG).write_text(text)
+    return text
+
+
+def test_button_layout_defaults_to_nintendo_and_logs_the_map(persist_bin: Path, tmp_path: Path):
+    # D2 (owner 2026-10-31): A confirms and B cancels by default.
     out, err = session(persist_bin, tmp_path, "layout")
-    assert out == ["button_layout=0"]
-    assert "dw3-controls: map loaded layout=playstation source=default" in err
-    assert "dw3-controls: map cross<-B circle<-A triangle<-X square<-Y" in err
+    assert out == ["button_layout=1"]
+    assert "dw3-controls: map loaded layout=nintendo source=default" in err
+    assert "dw3-controls: map cross<-A circle<-X triangle<-B square<-Y" in err
+    assert "dw3-options: defaults_gen=2 (new file)" in err
     assert not (tmp_path / CFG).exists()          # reading alone writes nothing
 
 
+def test_button_layout_playstation_stays_when_the_file_says_so(persist_bin: Path, tmp_path: Path):
+    seed_ps(tmp_path)
+    out, err = session(persist_bin, tmp_path, "layout")
+    assert out == ["button_layout=0"]
+    assert "dw3-controls: map loaded layout=playstation source=cfg" in err
+    assert "dw3-controls: map cross<-B circle<-A triangle<-X square<-Y" in err
+    assert "migrate defaults_gen" not in err
+
+
 def test_button_layout_confirm_toggles_and_is_saved_as_a_word(persist_bin: Path, tmp_path: Path):
+    seed_ps(tmp_path)
     out, err = session(persist_bin, tmp_path, "open", "row", "9", "press", "layout")
     assert out == ["button_layout=1"]
     assert "button_layout=nintendo\n" in (tmp_path / CFG).read_text()
@@ -832,19 +867,19 @@ def test_button_layout_confirm_toggles_and_is_saved_as_a_word(persist_bin: Path,
     assert "button_layout=playstation\n" in (tmp_path / CFG).read_text()
 
 
-def test_button_layout_bad_values_fall_back_to_playstation(persist_bin: Path, tmp_path: Path):
+def test_button_layout_bad_values_fall_back_to_the_default(persist_bin: Path, tmp_path: Path):
     for bad in ("custom", "1", "Nintendo", ""):   # custom without a button_map is bad too
-        (tmp_path / CFG).write_text(f"version=1\nbutton_layout={bad}\nend=1\n")
+        (tmp_path / CFG).write_text(f"version=1\ndefaults_gen=2\nbutton_layout={bad}\nend=1\n")
         out, err = session(persist_bin, tmp_path, "layout")
-        assert out == ["button_layout=0"], bad
+        assert out == ["button_layout=1"], bad    # D2: the default is Nintendo
         assert "dw3-controls: map invalid (" in err and "using default" in err, bad
-        assert "dw3-controls: map loaded layout=playstation source=default" in err, bad
+        assert "dw3-controls: map loaded layout=nintendo source=default" in err, bad
 
 
 def test_button_layout_keeps_the_other_rows_and_old_files(persist_bin: Path, tmp_path: Path):
     (tmp_path / CFG).write_text("version=1\nwidescreen=0\nend=1\n")
     out, _ = session(persist_bin, tmp_path, "layout", "show")
-    assert out == ["button_layout=0", "widescreen=0 fast_forward=2 restart_hotkey=0"]
+    assert out == ["button_layout=1", "widescreen=0 fast_forward=2 restart_hotkey=0"]
 
 
 def test_dw3_button_map_default_forces_playstation_for_one_run(persist_bin: Path, tmp_path: Path):
@@ -868,6 +903,7 @@ IDLE, SRC_A, SRC_R1, START = "FFFF", "DFFF", "F7FF", "FFF7"
 
 
 def test_customize_assign_is_saved_as_custom_with_the_map(persist_bin: Path, tmp_path: Path):
+    seed_ps(tmp_path)
     out, err = session(persist_bin, tmp_path, "open", "row", "11", "raw", IDLE, "press",   # opens Customize
                        "press",                                                          # row Cross waits
                        "raw", SRC_A, "tick", "map", "layout")
@@ -884,20 +920,22 @@ def test_customize_assign_is_saved_as_custom_with_the_map(persist_bin: Path, tmp
 
 
 def test_customize_reset_restores_the_default_and_drops_the_map(persist_bin: Path, tmp_path: Path):
-    (tmp_path / CFG).write_text("version=1\nbutton_layout=custom\nbutton_map=0123546789\nend=1\n")
+    (tmp_path / CFG).write_text("version=1\ndefaults_gen=2\nbutton_layout=custom\nbutton_map=0123546789\nend=1\n")
     out, err = session(persist_bin, tmp_path, "map", "open", "row", "12", "press", "map", "layout")
-    assert out == ["map=0123546789 layout=2", "map=0123456789 layout=0", "button_layout=0"]
-    assert "dw3-controls: reset to default (layout=playstation)" in err
+    # D2: Reset to default puts the Nintendo layout back
+    assert out == ["map=0123546789 layout=2", "map=1203456789 layout=1", "button_layout=1"]
+    assert "dw3-controls: reset to default (layout=nintendo)" in err
     text = (tmp_path / CFG).read_text()
-    assert "button_layout=playstation\n" in text and "button_map" not in text
+    assert "button_layout=nintendo\n" in text and "button_map" not in text
 
 
 def test_customize_prompt_cancels_with_start_and_the_timeout(persist_bin: Path, tmp_path: Path):
+    seed = seed_ps(tmp_path)
     out, err = session(persist_bin, tmp_path, "open", "row", "11", "raw", IDLE, "press", "press",
                        "raw", START, "tick", "map")
     assert out == ["map=0123456789 layout=0"]
     assert "customize Cross cancelled (Start / Select)" in err
-    assert not (tmp_path / CFG).exists()
+    assert (tmp_path / CFG).read_text() == seed   # a cancel writes nothing
     out, err = session(persist_bin, tmp_path, "open", "row", "11", "raw", IDLE, "press", "press",
                        *(["tick"] * 305), "map")
     assert out == ["map=0123456789 layout=0"]
@@ -907,6 +945,7 @@ def test_customize_prompt_cancels_with_start_and_the_timeout(persist_bin: Path, 
 def test_customize_ignores_the_press_that_opened_the_prompt(persist_bin: Path, tmp_path: Path):
     # A is still down when the prompt opens (the Confirm press): it is not taken
     # until it has been let go. R1 then goes to the Cross row.
+    seed_ps(tmp_path)
     out, err = session(persist_bin, tmp_path, "open", "row", "11", "raw", SRC_A, "press", "press",
                        "raw", SRC_A, "tick", "map", "raw", IDLE, "tick", "raw", SRC_R1, "tick", "map")
     assert out == ["map=0123456789 layout=0", "map=5123406789 layout=2"]
@@ -914,6 +953,7 @@ def test_customize_ignores_the_press_that_opened_the_prompt(persist_bin: Path, t
 
 
 def test_customize_left_right_cycle_the_sources(persist_bin: Path, tmp_path: Path):
+    seed_ps(tmp_path)
     out, err = session(persist_bin, tmp_path, "open", "row", "11", "press", "right", "map")
     assert out == ["map=1023456789 layout=2"]
     assert "dw3-controls: assign cross<-A (circle<-B swapped in) [custom]" in err
@@ -923,9 +963,9 @@ def test_customize_left_right_cycle_the_sources(persist_bin: Path, tmp_path: Pat
 def test_custom_layout_cfg_must_carry_a_valid_map(persist_bin: Path, tmp_path: Path):
     for text in ("button_layout=custom\n", "button_layout=custom\nbutton_map=0123456780\n",
                  "button_layout=custom\nbutton_map=abc\n", "button_layout=custom\nbutton_map=012345678\n"):
-        (tmp_path / CFG).write_text("version=1\n" + text + "end=1\n")
+        (tmp_path / CFG).write_text("version=1\ndefaults_gen=2\n" + text + "end=1\n")
         out, err = session(persist_bin, tmp_path, "map", "layout")
-        assert out == ["map=0123456789 layout=0", "button_layout=0"], text
+        assert out == ["map=1203456789 layout=1", "button_layout=1"], text   # D2: Nintendo
         assert "dw3-controls: map invalid (" in err and "using default" in err, text
     # a stale map beside a preset is ignored
     (tmp_path / CFG).write_text("version=1\nbutton_layout=nintendo\nbutton_map=0123546789\nend=1\n")
@@ -998,3 +1038,211 @@ def test_region_row_never_overwrites_a_top_level_file_it_cannot_read(region_bin:
     finally:
         os.chmod(base / CFG, stat.S_IRUSR | stat.S_IWUSR)
     assert (base / CFG).read_text() == "region_default=eu\nend=1\n"
+
+
+# --- D2: defaults_gen, the one-shot migration of the defaults (docs/OPTIONS_REORG.md 6.1) ---
+# These run on the Switch build of the registry (glyph_bin: the glyphs row exists, default ON). The PC
+# build (persist_bin, no row, default OFF, glyphs never flipped) is tested at the end of the section.
+
+GLYPHS = "14"   # registry row of Switch glyphs
+OLD_FILE = ("version=1\nwidescreen=0\nbutton_layout=playstation\nswitch_glyphs=0\n"
+            "music_volume=7\nend=1\n")
+
+
+def keys_of(text: str) -> dict:
+    return dict(l.split("=", 1) for l in text.splitlines() if "=" in l and not l.startswith("#"))
+
+
+def test_an_old_file_is_migrated_once_and_written_at_once(glyph_bin: Path, tmp_path: Path):
+    (tmp_path / CFG).write_text(OLD_FILE)
+    out, err = session(glyph_bin, tmp_path, "layout", "level", GLYPHS)
+    assert out == ["button_layout=1", f"level{GLYPHS}=1"]
+    assert ("dw3-options: migrate defaults_gen 1->2 button_layout playstation->nintendo "
+            "switch_glyphs 0->1 (kept: none)") in err
+    assert "NOT saved" not in err
+    kv = keys_of((tmp_path / CFG).read_text())          # written before anything was changed
+    assert (kv["button_layout"], kv["switch_glyphs"], kv["defaults_gen"]) == ("nintendo", "1", "2")
+    assert kv["widescreen"] == "0" and kv["music_volume"] == "7"   # nothing else touched
+    # the second start does not migrate again ...
+    out, err = session(glyph_bin, tmp_path, "layout")
+    assert out == ["button_layout=1"] and "migrate defaults_gen" not in err and "nothing to flip" not in err
+    # ... so a player who puts PlayStation back keeps it (it is a deliberate choice now)
+    session(glyph_bin, tmp_path, "open", "row", "9", "left")
+    out, err = session(glyph_bin, tmp_path, "layout")
+    assert out == ["button_layout=0"] and "migrate defaults_gen" not in err
+    assert keys_of((tmp_path / CFG).read_text())["button_layout"] == "playstation"
+
+
+def test_a_custom_layout_is_kept_by_the_migration(glyph_bin: Path, tmp_path: Path):
+    (tmp_path / CFG).write_text(
+        "version=1\nbutton_layout=custom\nbutton_map=0123546789\nswitch_glyphs=0\nend=1\n")
+    out, err = session(glyph_bin, tmp_path, "map", "level", GLYPHS)
+    assert out == ["map=0123546789 layout=2", f"level{GLYPHS}=1"]
+    assert ("dw3-options: migrate defaults_gen 1->2 switch_glyphs 0->1 "
+            "(kept: button_layout=custom)") in err
+    kv = keys_of((tmp_path / CFG).read_text())
+    assert (kv["button_layout"], kv["button_map"], kv["defaults_gen"]) == ("custom", "0123546789", "2")
+
+
+def test_an_explicit_nintendo_and_glyphs_on_are_kept(glyph_bin: Path, tmp_path: Path):
+    (tmp_path / CFG).write_text("version=1\nbutton_layout=nintendo\nswitch_glyphs=1\nend=1\n")
+    out, err = session(glyph_bin, tmp_path, "layout", "level", GLYPHS)
+    assert out == ["button_layout=1", f"level{GLYPHS}=1"]
+    assert "dw3-options: defaults_gen 1->2 nothing to flip" in err
+    assert "migrate defaults_gen 1->2 button_layout" not in err
+    assert keys_of((tmp_path / CFG).read_text())["defaults_gen"] == "2"   # the marker is stamped
+
+
+def test_an_explicit_nintendo_with_glyphs_off_flips_only_the_glyphs(glyph_bin: Path, tmp_path: Path):
+    (tmp_path / CFG).write_text("version=1\nbutton_layout=nintendo\nswitch_glyphs=0\nend=1\n")
+    out, err = session(glyph_bin, tmp_path, "layout", "level", GLYPHS)
+    assert out == ["button_layout=1", f"level{GLYPHS}=1"]
+    assert ("dw3-options: migrate defaults_gen 1->2 switch_glyphs 0->1 "
+            "(kept: button_layout=nintendo)") in err
+
+
+def test_a_missing_key_takes_the_new_default_without_a_flip(glyph_bin: Path, tmp_path: Path):
+    (tmp_path / CFG).write_text("version=1\nwidescreen=0\nend=1\n")
+    out, err = session(glyph_bin, tmp_path, "layout", "level", GLYPHS)
+    assert out == ["button_layout=1", f"level{GLYPHS}=1"]
+    assert "dw3-options: defaults_gen 1->2 nothing to flip" in err
+    assert keys_of((tmp_path / CFG).read_text())["defaults_gen"] == "2"
+
+
+def test_a_fresh_install_is_not_migrated_and_gets_the_marker_on_its_first_save(glyph_bin: Path, tmp_path: Path):
+    out, err = session(glyph_bin, tmp_path, "layout", "level", GLYPHS)
+    assert out == ["button_layout=1", f"level{GLYPHS}=1"]
+    assert "dw3-options: defaults_gen=2 (new file)" in err
+    assert "migrate defaults_gen" not in err
+    assert not (tmp_path / CFG).exists()                # reading alone writes nothing
+    session(glyph_bin, tmp_path, "open", "row", "0", "press")
+    kv = keys_of((tmp_path / CFG).read_text())
+    assert (kv["defaults_gen"], kv["button_layout"], kv["switch_glyphs"]) == ("2", "nintendo", "1")
+
+
+def test_a_current_file_is_never_touched(glyph_bin: Path, tmp_path: Path):
+    text = seed_ps(tmp_path, "switch_glyphs=0\n")
+    out, err = session(glyph_bin, tmp_path, "layout", "level", GLYPHS)
+    assert out == ["button_layout=0", f"level{GLYPHS}=0"]
+    assert "migrate defaults_gen" not in err and "nothing to flip" not in err
+    assert (tmp_path / CFG).read_text() == text
+
+
+def test_a_newer_generation_is_kept(glyph_bin: Path, tmp_path: Path):
+    (tmp_path / CFG).write_text("version=1\ndefaults_gen=3\nbutton_layout=playstation\nend=1\n")
+    out, err = session(glyph_bin, tmp_path, "layout", "open", "row", "0", "press")
+    assert out == ["button_layout=0"] and "migrate defaults_gen" not in err
+    assert keys_of((tmp_path / CFG).read_text())["defaults_gen"] == "3"   # not lowered
+
+
+def test_a_bad_marker_counts_as_generation_one(glyph_bin: Path, tmp_path: Path):
+    (tmp_path / CFG).write_text("version=1\ndefaults_gen=soon\nbutton_layout=playstation\nend=1\n")
+    out, err = session(glyph_bin, tmp_path, "layout")
+    assert out == ["button_layout=1"]
+    assert "defaults_gen=soon is not valid" in err and "migrate defaults_gen 1->2" in err
+
+
+@pytest.mark.skipif(os.geteuid() == 0, reason="root ignores directory permissions")
+def test_a_failed_migration_write_is_logged_and_retried_at_the_next_start(glyph_bin: Path, tmp_path: Path):
+    (tmp_path / CFG).write_text(OLD_FILE)
+    tmp_path.chmod(stat.S_IRUSR | stat.S_IXUSR)          # the temp file cannot be created
+    try:
+        out, err = session(glyph_bin, tmp_path, "layout", "level", GLYPHS)
+    finally:
+        tmp_path.chmod(stat.S_IRWXU)
+    assert out == ["button_layout=1", f"level{GLYPHS}=1"]  # in force for the run, in memory
+    assert "dw3-options: migrate defaults_gen NOT saved (" in err and "will retry" in err
+    assert (tmp_path / CFG).read_text() == OLD_FILE        # the file is untouched
+    out, err = session(glyph_bin, tmp_path, "layout")    # the next start tries again
+    assert out == ["button_layout=1"] and "NOT saved" not in err
+    assert keys_of((tmp_path / CFG).read_text())["defaults_gen"] == "2"
+
+
+def test_the_environment_pins_are_applied_after_the_migration_and_never_saved(glyph_bin: Path, tmp_path: Path):
+    (tmp_path / CFG).write_text(OLD_FILE)
+    env = dict(os.environ, DW3_BUTTON_MAP="default", DW3_SWITCH_GLYPHS="0")
+    r = subprocess.run([str(glyph_bin), str(tmp_path), "layout", "level", GLYPHS],
+                       capture_output=True, text=True, env=env)
+    assert r.returncode == 0, r.stderr
+    assert r.stdout.split() == ["button_layout=0", f"level{GLYPHS}=0"]     # the run is pinned
+    kv = keys_of((tmp_path / CFG).read_text())
+    assert (kv["button_layout"], kv["switch_glyphs"]) == ("nintendo", "1")  # the file is migrated
+
+
+# The PC build: no Switch glyphs row, so the default is OFF, the migration never flips the key and says so
+# (owner via orchestrator, 2026-10-31: glyphs on a keyboard or an Xbox pad make no sense; rule 8).
+
+def test_pc_default_for_glyphs_stays_off_and_the_migration_leaves_the_key(persist_bin: Path, tmp_path: Path):
+    (tmp_path / CFG).write_text(OLD_FILE)
+    out, err = session(persist_bin, tmp_path, "layout", "level", GLYPHS)
+    assert out == ["button_layout=1", f"level{GLYPHS}=0"]            # layout flips, glyphs stay 0
+    assert ("dw3-options: migrate defaults_gen 1->2 button_layout playstation->nintendo "
+            "(kept: switch_glyphs (pc))") in err
+    kv = keys_of((tmp_path / CFG).read_text())
+    assert (kv["button_layout"], kv["switch_glyphs"], kv["defaults_gen"]) == ("nintendo", "0", "2")
+    out, err = session(persist_bin, tmp_path, "layout")               # and it runs once
+    assert "migrate defaults_gen" not in err
+
+
+def test_pc_fresh_install_has_glyphs_off(persist_bin: Path, tmp_path: Path):
+    out, err = session(persist_bin, tmp_path, "layout", "level", GLYPHS)
+    assert out == ["button_layout=1", f"level{GLYPHS}=0"]
+    assert "dw3-options: defaults_gen=2 (new file)" in err and "migrate defaults_gen" not in err
+    session(persist_bin, tmp_path, "open", "row", "0", "press")
+    assert keys_of((tmp_path / CFG).read_text())["switch_glyphs"] == "0"
+
+
+def test_pc_glyphs_forced_on_by_the_file_stay_on(persist_bin: Path, tmp_path: Path):
+    # `switch_glyphs=1` still turns it on for a test run; the migration does not touch it either way
+    (tmp_path / CFG).write_text("version=1\nbutton_layout=nintendo\nswitch_glyphs=1\nend=1\n")
+    out, err = session(persist_bin, tmp_path, "layout", "level", GLYPHS)
+    assert out == ["button_layout=1", f"level{GLYPHS}=1"]
+    assert "dw3-options: defaults_gen 1->2 nothing to flip" in err
+    (tmp_path / CFG).write_text("version=1\nbutton_layout=nintendo\nswitch_glyphs=0\nend=1\n")
+    out, _ = session(persist_bin, tmp_path, "level", GLYPHS)
+    assert out == [f"level{GLYPHS}=0"]                                # not flipped to 1 on the PC
+
+
+def test_pc_glyphs_env_pin_forces_it_on(persist_bin: Path, tmp_path: Path):
+    env = dict(os.environ, DW3_SWITCH_GLYPHS="1")
+    r = subprocess.run([str(persist_bin), str(tmp_path), "level", GLYPHS], capture_output=True, text=True, env=env)
+    assert r.returncode == 0 and r.stdout.split() == [f"level{GLYPHS}=1"]
+    assert not (tmp_path / CFG).exists()
+
+
+# --- D5: the Map scaler row (registry row 28, key map_scaler, FSR 1 by default) -------------
+
+SCALER = "28"
+
+
+def test_map_scaler_defaults_to_fsr1_and_is_a_word_in_the_file(persist_bin: Path, tmp_path: Path):
+    out, _ = session(persist_bin, tmp_path, "level", SCALER)
+    assert out == [f"level{SCALER}=3"]                                  # FSR 1
+    session(persist_bin, tmp_path, "open", "row", SCALER, "press")      # 3 -> 4 (Bilinear)
+    assert keys_of((tmp_path / CFG).read_text())["map_scaler"] == "bilinear"
+
+
+def test_map_scaler_steps_through_the_five_values_and_wraps(persist_bin: Path, tmp_path: Path):
+    words = []
+    for _ in range(6):
+        session(persist_bin, tmp_path, "open", "row", SCALER, "press")
+        words.append(keys_of((tmp_path / CFG).read_text())["map_scaler"])
+    assert words == ["bilinear", "nearest", "sharp", "lanczos2", "fsr1", "bilinear"]
+    session(persist_bin, tmp_path, "open", "row", SCALER, "left")
+    assert keys_of((tmp_path / CFG).read_text())["map_scaler"] == "fsr1"
+
+
+@pytest.mark.parametrize("word,value", [("nearest", 0), ("sharp", 1), ("lanczos2", 2),
+                                         ("fsr1", 3), ("bilinear", 4)])
+def test_map_scaler_loads_each_word(persist_bin: Path, tmp_path: Path, word, value):
+    (tmp_path / CFG).write_text(f"version=1\ndefaults_gen=2\nmap_scaler={word}\nend=1\n")
+    out, _ = session(persist_bin, tmp_path, "level", SCALER)
+    assert out == [f"level{SCALER}={value}"]
+
+
+def test_map_scaler_bad_values_fall_back_to_fsr1(persist_bin: Path, tmp_path: Path):
+    for bad in ("3", "FSR1", "fsr 1", ""):
+        (tmp_path / CFG).write_text(f"version=1\ndefaults_gen=2\nmap_scaler={bad}\nend=1\n")
+        out, err = session(persist_bin, tmp_path, "level", SCALER)
+        assert out == [f"level{SCALER}=3"], bad
+        assert f"map_scaler={bad} is not valid; using default fsr1" in err, bad

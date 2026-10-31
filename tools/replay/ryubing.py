@@ -446,7 +446,7 @@ def main():
         for stale in ("port_options.cfg", "port_options.cfg.tmp"):
             (memdir.parent / stale).unlink(missing_ok=True)
         if sc.cfg:  # P6.18: seed the pacing rows through the option file
-            rt.write_seed_cfg(memdir.parent, sc.cfg)
+            rt.write_seed_cfg(memdir.parent, sc.cfg, legacy=sc.legacy_cfg)
         xvfb, display = rt.start_xvfb(out)
         try:
             for i in range(len(sc.phases)):

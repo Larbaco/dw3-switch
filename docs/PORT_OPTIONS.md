@@ -81,8 +81,8 @@ explicitly marked N/A in this note.
 | Original-game fixes | **None are toggles.** P7.7's HUD Digivolution name (patch `0065`) and Claw steal on the killing blow (`0066`) are always on; reasoning in [P7.7_BUG_FIXES.md](P7.7_BUG_FIXES.md) | Phase 7 |
 | Pacing | **Encounter rate** (OFF / 0.5x / 1x / 1.5x / 2x) and **Text speed** (Normal / Fast / Instant), both default to the original game ([P6.18](P6.18_PACING.md)). Instant shows every dialogue page, report line and (since 2026-10-24) the area name banner's names whole; Normal and Fast leave the banner as the game types it | Phase 6 |
 | Battle menu memory | **Battle cursor** (OFF / Command / Command+Tech): the battle command menu and technique list open on your last pick; key `battle_menu_memory` 0 / 1 / 2, off by default (a row since P7.9's follow-up, it was file-only) ([P7.9](P7.9_BATTLE_MENU_MEMORY.md)) | Phase 7 |
-| Button layout | **Button layout** (PlayStation positional, default / Nintendo A confirms, B cancels), ROADMAP P9.8, **built 2026-10-28**: row 9, in the Controls group, key `button_layout`, see [Button layout row](#button-layout-row-p98) | Phase 9 (P9.8) |
-| Switch button glyphs | **Switch glyphs** (off = the game's own button icons, default / on = Switch glyphs that follow the button map), ROADMAP P10.6, **built 2026-10-29**: row 14, last row of the Controls group, **Switch only** (the PC has no row), key `switch_glyphs`, `DW3_SWITCH_GLYPHS=0\|1` pins it for a run, see [Switch glyphs row](#switch-glyphs-row-p106) | Phase 10 (P10.6) |
+| Button layout | **Button layout** (Nintendo A confirms, B cancels, **default since D2** / PlayStation positional, the original), ROADMAP P9.8, **built 2026-10-28**: row 9, in the Controls group, key `button_layout`, see [Button layout row](#button-layout-row-p98) | Phase 9 (P9.8) |
+| Switch button glyphs | **Switch glyphs** (on = Switch glyphs that follow the button map, **default ON on the Switch since D2**, OFF on the PC / off = the game's own button icons), ROADMAP P10.6, **built 2026-10-29**: row 14, last row of the Controls group, **Switch only** (the PC has no row), key `switch_glyphs`, `DW3_SWITCH_GLYPHS=0\|1` pins it for a run, see [Switch glyphs row](#switch-glyphs-row-p106) | Phase 10 (P10.6) |
 | Cheats (test aid) | A **Cheats** sub-screen for hardware testing, reached with Square / Y on the Options screen: master switch, Fill bag, Instant win, Battle now and a count of saves flagged "cheat used" (a sidecar file, never the save). A second page (PR 2) has Money, Warp (13 areas), Item id, Item count and Give item. Off by default, keys `cheat_enabled` and `cheat_instant_win` in `port_options.cfg`; built in by default, removed by `DW3_CHEATS=OFF` / `--no-cheats`. Later HP / MP. See [Cheats](#cheats-p620) and ROADMAP P6.20 | Phase 6 (P6.20) |
 | Switch host | Rumble on/intensity, confirm A/B layout, `swkbd` name, CRT/sharp, system-language hint | Phase 10 (+ P4.4 / P5.3 always-on lifecycle) |
 | Restart game | Optional L1 + R1 + Start + Select in the shared PS1 pad map; OFF by default | Phase 6.9 |
@@ -148,8 +148,9 @@ encounter_rate=0
 text_speed=0
 battle_menu_memory=0
 autosave=0
-button_layout=playstation
+button_layout=nintendo
 turbo_music=0
+defaults_gen=2
 end=1
 ```
 
@@ -181,7 +182,8 @@ Rules, implemented in `port/options/options_cfg.c` and `port/options/port_option
 
 | Case | Behaviour |
 |---|---|
-| No file | Defaults (Widescreen ON, Fast-forward 2x armed, Restart hotkey OFF, Music volume 10, SFX volume 10, Encounter rate 1x, Text speed Normal, Battle cursor OFF). The file is first written on the first change, not at boot. |
+| No file | Defaults (Widescreen ON, Fast-forward 2x armed, Restart hotkey OFF, Music volume 10, SFX volume 10, Encounter rate 1x, Text speed Normal, Battle cursor OFF, Button layout Nintendo, Switch glyphs ON on the Switch and OFF on the PC, Map scaler FSR 1). The file is first written on the first change, not at boot; it is born with `defaults_gen=2` and is never migrated. |
+| `defaults_gen` below 2 or missing, in a file that exists (D2) | One-shot migration at load: `button_layout=playstation` becomes `nintendo`, `switch_glyphs=0` becomes `1` **on the Switch only** (the PC has no row: the key is left, the log says `kept: switch_glyphs (pc)`); `custom`, `nintendo`, `switch_glyphs=1` and missing keys are left. The file is written at once with `defaults_gen=2`. |
 | Missing key | That option keeps its default. |
 | Invalid value (not an integer, or out of range: Fast-forward must be 0 or 2..4, the volumes 0..10, `encounter_rate` 0..4, `text_speed` 0..2, `battle_menu_memory` 0..2, the others (`autosave` too) 0 or 1) | That option falls back to its default and a `dw3-options: <key>=<v> is not valid` line is logged. The bad line is replaced on the next save. |
 | Malformed line, over-long key or value, junk | Skipped and counted (`ignored N malformed line(s)` in the log). |
@@ -215,8 +217,8 @@ keep their text, which the replay scenarios match). With it on the boot logs one
 line, `dw3-options: autosave=1 (...)`. A file from before the row has no key and reads
 as OFF; an invalid value (`2`, `on`, ...) is logged and reads as OFF.
 
-`button_layout` (P9.8) is the one key that holds a **word**, `playstation`,
-`nintendo` or `custom` (default `playstation`), not an integer: it names a layout.
+`button_layout` (P9.8) is one of two keys that hold a **word**, `playstation`,
+`nintendo` or `custom` (default **`nintendo`** since D2), not an integer: it names a layout.
 `custom` (P6.12) needs a second key, `button_map`: ten digits that are a
 permutation of 0 to 9 (one per PS button, in the order Cross, Circle, Triangle,
 Square, L1, R1, L2, R2, L3, R3; each digit names the source position that makes
@@ -224,11 +226,17 @@ it, `0123456789` is the identity). The key is only written while the layout is
 custom (it is removed otherwise) and a `button_map` beside another layout is
 ignored ([CONTROLS_BUNDLE](CONTROLS_BUNDLE.md)). Another value is logged
 (`dw3-options: button_layout=<v> is not valid` and `dw3-controls: map invalid
-(...), using default`) and reads as PlayStation. It is not part of the
+(...), using default`) and reads as the default, Nintendo. It is not part of the
 `dw3-options:` boot and `saved` log lines (their text is matched by the replay
 scenarios); the boot line is `dw3-controls: map loaded layout=... source=cfg|default|env`.
 `DW3_BUTTON_MAP=default` forces PlayStation for one run, is not saved and leaves
 the file's value alone.
+
+`defaults_gen` (D2, an integer, internal: no row) is the generation of the defaults the file was written
+under. A file with no such key counts as 1, the generation before D2; this build writes **2** on every save
+and migrates a file below 2 once at load (below). `map_scaler` (D5) is the second **word** key,
+`nearest`, `sharp`, `lanczos2`, `fsr1` or `bilinear` (default `fsr1`): the **Map scaler** row of Display
+([below](#defaults-generation-and-the-map-scaler-d2--d5)).
 
 `items_partner_switch` (P6.33, 0 or 1, default 1) is the **Partner switch** row of the Menus group (D1):
 read by `dw3_port_items_partner_switch_enabled`, saved with every other row. A missing
@@ -1250,12 +1258,16 @@ with the Switch glyphs row ([below](#switch-glyphs-row-p106)).
 ## Switch glyphs row (P10.6)
 
 **Row 14, Controls group, Switch only.** `DW3_PORT_OPT_SWITCH_GLYPHS`, key
-`switch_glyphs` (0 default, 1), a switch row: Confirm toggles it, the file is
+`switch_glyphs` (0 or 1, **default 1 on the Switch since D2, 0 on the PC**), a switch row: Confirm toggles it, the file is
 written at once and the font cells change before the next frame. The row is
 listed only when `__SWITCH__` is defined (`DW3_OPT_GLYPHS_ROW` in
 `port_options_groups.h`), so the PC's Controls screen keeps its three rows and
 its references. The code is shared: on the PC the key or `DW3_SWITCH_GLYPHS=1`
-turns the patch on (the replay scenarios use the key); only the row is missing.
+turns the patch on (the replay scenarios use the key); only the row is missing. Since D2 the
+default is ON where the row exists (the Switch: `DW3_OPT_GLYPHS_ROW` is the registry default) and
+**OFF on the PC**: Switch button glyphs on a keyboard or an Xbox pad make no sense, and a default with
+no row to turn it off would break rule 8. `switch_glyphs=1` in the file or `DW3_SWITCH_GLYPHS=1` still
+forces them on for a PC test run, and the migration never flips the key on the PC.
 With the row off nothing changes: no VRAM write, no log beyond one `off` line
 per run, pictures bit-identical to the build without the feature.
 
@@ -1296,7 +1308,8 @@ value, **Custom**, that Confirm and Left / Right reach in the cycle: it keeps th
 in force and only names it custom (choosing PlayStation or Nintendo again replaces the
 map). Confirm on Customize buttons opens a sub-screen (`DW3_OPTGRP_CUSTOM`, never on
 the group list) of ten rows, a PS button on the left and the console button that
-produces it on the right, scrolling six at a time. The Customize row is title only
+produces it on the right, scrolling six at a time. **Reset to default** puts the **Nintendo**
+layout back since D2 (the message line and the Help pages say so). The Customize row is title only
 (greyed in game with the usual "Locked in game" line, registry bit 11 of the locked
 mask); Reset works everywhere. The prompt: the row reads "Press a button" and the
 message line says Start or Select cancels; the screen reads the raw word before the
@@ -1310,7 +1323,8 @@ IT / ES are machine-drafted, needs native review): `opt_row_cz_`, `opt_desc_cz_`
 Logs (`dw3.log`): `dw3-port-options: group open customize (10 row(s), title)`,
 `customize waiting for a button for L1`, `dw3-controls: assign l1<-R (r1<-L swapped in)
 [custom]`, the `map digits` and `map ...` lines, `customize L1 cancelled (Start /
-Select | timeout)`, `dw3-controls: reset to default (layout=playstation) (screen)`, and
+Select | timeout)`, `dw3-controls: reset to default (layout=nintendo) (screen)` (D2: the default layout; it was
+`playstation`), and
 at boot `map loaded layout=custom source=cfg`. Unit tests: `test_button_map.py`,
 `test_options_persist.py` (the `test_customize_*` and `test_custom_layout_*` cases),
 `test_field_options.py` (the lock mask). Replay: `us/eu-controls-custom` (two phases),
@@ -2139,7 +2153,7 @@ overlay's page codes did not change, so the order table is the only thing that m
 
 | # | Group | Rows (registry index) | Rows on screen: PC US plain / Switch combined |
 |---|---|---|---|
-| 1 | Display | Widescreen (0), Full-screen map (15), Map mod pack (22), Version label (21) | 4 / 4 |
+| 1 | Display | Widescreen (0), Full-screen map (15), **Map scaler (28, D5)**, Map mod pack (22), Version label (21) | 5 / 5 |
 | 2 | Sound | Music volume (3), SFX volume (4), Turbo music (13) | 3 / 3 |
 | 3 | Gameplay | Fast-forward (1), Encounter rate (5), Text speed (6), Battle cursor (7) | 4 / 4 |
 | 4 | Menus | Equip from Items (16), Equip stays on list (17), Whole bag (18), Use item stays (19), Partner switch (20), Instant menu exit (27) | 6 / 6 |
@@ -2170,7 +2184,7 @@ except the sub-screens that scroll (Cheats, Customize, Map buttons). The cfg tab
 | Shared saves (exp.) | **title only** (greyed in game: the cards are opened before it is read) | next start; Yes / No window when turned on |
 | Stage sweep, Frames per stage | **title only** (greyed in game), builds with the Cheats feature | next start; Yes / No window for Run and Start over |
 
-The lock mask of the overlay (`dw3_port_options_locked_mask`) is now 27 bits wide (registry rows 0 to 26); the
+The lock mask of the overlay (`dw3_port_options_locked_mask`) is now 29 bits wide (registry rows 0 to 28, D5; 27 is Instant menu exit, patch 0200); the
 Cheats entry's bit moved from 16 to 30 (`DW3_PORT_OPTIONS_LOCK_CHEATS`, `DW3_TITLE_LOCK_CHEATS`).
 
 ### Map buttons (Controls > Map buttons)
@@ -2212,10 +2226,10 @@ Map view pages name the new places (Options > Controls > Restart hotkey, Options
 
 ### Key budget
 
-The cfg holds at most 48 entries and 4096 bytes. With every key in one file the port keeps 23 registry keys,
-`button_map`, the 7 `map_view_*` keys, `cheat_enabled`, `cheat_instant_win` and the two future markers
-`defaults_gen` and `options_global`, plus `region_default` and `last_region` once D3 merges them: **38 of 48**,
-10 spare (`version` and `end` are not entries). `tools/tests/test_options_d1.py::test_the_cfg_holds_every_key_within_the_budget`
+The cfg holds at most 48 entries and 4096 bytes. With every key in one file the port keeps 24 registry keys
+(D5 added `map_scaler`), `button_map`, the 7 `map_view_*` keys, `cheat_enabled`, `cheat_instant_win` and the two
+markers `defaults_gen` (written since D2) and `options_global` (D3), plus `region_default` and `last_region` once D3
+merges them: **38 of 48**, 10 spare (`version` and `end` are not entries). `tools/tests/test_options_d1.py::test_the_cfg_holds_every_key_within_the_budget`
 writes a file with every key through the real registry and reads it back, and fails when fewer than six entries
 would be left.
 
@@ -2238,6 +2252,47 @@ would be left.
 Rows D1.1 to D1.8 of [OLED_TEST_PLAN](OLED_TEST_PLAN.md) (new tree, Menus, Display rows, Shared saves window,
 Advanced, Map buttons, Restart hotkey and Region at start in their new places); every row names the `dw3.log` line
 that proves it.
+
+## Defaults generation and the Map scaler (D2 + D5)
+
+Step 2 of the [build order](OPTIONS_REORG.md#8-build-order), owner decisions of 2026-10-31; as built:
+[OPTIONS_REORG 8.1](OPTIONS_REORG.md#81-step-2-as-built-d2--d5).
+
+**D2: new defaults, migrated once.**
+
+| Key | New default | Was | Notes |
+|---|---|---|---|
+| `button_layout` | `nintendo` (A confirms, B cancels), Switch and PC | `playstation` | **Reset to default** goes to Nintendo too (`DW3_LAYOUT_DEFAULT`). `DW3_BUTTON_MAP=default` is still the PlayStation pin for tests. |
+| `switch_glyphs` | `1` (ON) **on the Switch**; `0` on the PC | `0` | The row stays Switch-only. The PC has no row, so its default stays OFF (Switch glyphs on a keyboard or an Xbox pad make no sense; rule 8); the key or `DW3_SWITCH_GLYPHS=1` still turns it on there for tests. |
+| `defaults_gen` | written as `2` | absent (counts as 1) | Internal marker, no row. |
+
+A fresh install (no file) is born on these defaults and is not migrated. A file that **exists** with
+`defaults_gen` below 2 is migrated once at load and written at once: `button_layout=playstation` becomes
+`nintendo` and, on the Switch, `switch_glyphs=0` becomes `1` (the PC has no glyphs row, so it leaves the key alone);
+a `custom` layout (with its `button_map`), an explicit `nintendo`, a glyphs value already 1 and a missing key are kept. The write runs after the map and the environment pins are in
+force, so a custom map survives it and a pinned row never reaches the file. A failed write is retried by the next
+save and the next boot. Log lines (proof for OLED row P1): `dw3-options: migrate defaults_gen 1->2 button_layout
+playstation->nintendo switch_glyphs 0->1 (kept: none)` (Switch), with a keeper `... switch_glyphs 0->1 (kept: button_layout=custom)`,
+on the PC `... playstation->nintendo (kept: switch_glyphs (pc))`,
+`dw3-options: defaults_gen 1->2 nothing to flip`, `dw3-options: migrate defaults_gen NOT saved (<reason>), will
+retry`, and for a fresh install `dw3-options: defaults_gen=2 (new file)`. **Release-note sentence:** *Existing
+settings files are migrated once: Button layout becomes Nintendo (A confirms) and, on the Switch, Switch glyphs becomes ON; change
+them back in Options > Controls and they stay.* (A later default change raises `DW3_DEFAULTS_GEN` and reuses the
+mechanism.) Tests: `test_options_persist.py` (`test_an_old_file_is_migrated_once...` and the other migration cases),
+replays `us/eu-defaults-migrate`, `-defaults-migrate-custom`, `-defaults-migrate-fresh`.
+
+**D5: Display > Map scaler.** Registry row 28 (27 is Instant menu exit), third row of Display, key `map_scaler`, a word:
+`nearest`, `sharp` (Sharp bilinear), `lanczos2`, `fsr1`, `bilinear`; **default `fsr1`** for the captured map and for
+the mod pack (it was Nearest). Left / Right and Confirm step in the order of the view's ZL / ZR cycle (Nearest,
+Sharp bilinear, Lanczos2, FSR 1, Bilinear) and wrap; the row is not locked in game and applies **at the next open of
+the map** (`dw3-map: scaler for this open: ...`). ZL / ZR in the view still cycle the scaler for the session only
+(not written); the next open keeps that until the row changes. A pack's map is already upscaled, so there the
+scaler only chooses the GPU filter (Nearest = sharp pixels, anything else linear). To avoid a hitch the view opens
+on Nearest at once when the wanted scaler is a CPU one (FSR 1, Lanczos2) and the worker thread swaps it in
+(`dw3-map: opens on NEAREST while AMD FSR 1 builds on the worker thread (no hitch)`); see
+[P6.32](P6.32_MAP_ZOOM.md#d5-fsr-1-is-the-default-scaler-and-a-row-for-it). A bad word falls back to `fsr1` with
+`dw3-options: map_scaler=<v> is not valid; using default fsr1`. Lettering in the five languages
+(`EXTRA_ROWS['sc']`, `SCALER_VALUES`): the five values are algorithm names, the same in every language.
 
 ## History moved from ROADMAP.md (2026-10-24)
 

@@ -405,9 +405,19 @@ def check_log_expect(expect, phase_idx: int, text: str, forbid=()):
              if idx == phase_idx and re.search(rx, text)])
 
 
-def write_seed_cfg(cfgdir: Path, cfg):
-    """Seed port_options.cfg (P9.4 format) with the manifest's keys."""
+def write_seed_cfg(cfgdir: Path, cfg, legacy: bool = False):
+    """Seed port_options.cfg (P9.4 format) with the manifest's keys.
+
+    D2 (docs/OPTIONS_REORG.md section 6.1): every seeded file carries
+    `defaults_gen=2`, the marker of the current defaults, so the one-shot
+    migration of old files (button_layout playstation -> nintendo, switch_glyphs
+    0 -> 1) does not touch it; a scenario that needs the PlayStation layout pins
+    `button_layout=playstation` in its own cfg together with the marker. Only the
+    `*-defaults-migrate` scenarios (Scenario.legacy_cfg) seed a file as an old
+    build wrote it, with no marker, to prove the migration."""
     lines = ["# seeded by the replay runner", "version=1"]
+    if not legacy and not any(k == "defaults_gen" for k, _ in cfg):
+        lines.append("defaults_gen=2")
     lines += [f"{k}={v}" for k, v in cfg]
     lines.append("end=1")
     (cfgdir / "port_options.cfg").write_text("\n".join(lines) + "\n")
@@ -631,7 +641,7 @@ def run_scenario(sc, binary, runtime, out: Path, stamp, label, stall, timeout_sc
     memdir = Path(tempfile.mkdtemp(prefix="dw3-replay-mc-"))
     cfgdir = Path(tempfile.mkdtemp(prefix="dw3-replay-cfg-"))   # shared by the phases
     if sc.cfg:
-        write_seed_cfg(cfgdir, sc.cfg)
+        write_seed_cfg(cfgdir, sc.cfg, legacy=sc.legacy_cfg)
     if sc.mod_pack == "synthetic":  # MOD map upscale: gradients, no game art
         sys.path.insert(0, str(ROOT / "tools" / "mods"))
         import make_synthetic_pack

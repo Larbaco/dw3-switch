@@ -30,7 +30,7 @@ unsigned dw3_port_options_locked_mask(void);
 /* The mask the screen opens with at the title (0) or in game: lets the
  * native overlay draw that layout before the screen is opened. */
 unsigned dw3_port_options_locked_mask_for(int in_game);
-/* D1: registry rows now run to 26, so the Cheats entry moved from bit 16 to
+/* D1: registry rows now run to 28 (D5 added one), so the Cheats entry moved from bit 16 to
  * bit 30 (bit 31 is the in-game mark of the overlay's layer key). */
 enum { DW3_PORT_OPTIONS_LOCK_CHEATS = 1u << 30 };
 void dw3_port_options_close(void);
@@ -73,8 +73,9 @@ enum {
     /* P6.36: 0 = 1x (the music keeps its tempo in turbo, the default), 1 = Fast
      * (the music speeds up with the game, as before). Key turbo_music. */
     DW3_PORT_OPT_TURBO_MUSIC = 13,
-    /* P10.6: 0 = the game's own button icons (default), 1 = Switch glyphs that
-     * follow the button map. A Controls row on the Switch only (the PC has no
+    /* P10.6: 0 = the game's own button icons, 1 = Switch glyphs that
+     * follow the button map. D2: the default is 1 on the Switch (where the row is)
+     * and 0 on the PC (no row). A Controls row on the Switch only (the PC has no
      * row; the key switch_glyphs / DW3_SWITCH_GLYPHS turn it on for the replay
      * tests). Key switch_glyphs. */
     DW3_PORT_OPT_SWITCH_GLYPHS = 14,
@@ -103,8 +104,31 @@ enum {
     DW3_PORT_OPT_MAP_BUTTONS = 26,   /* action row: opens the Map buttons screen */
     /* Menus: leaving the field menu's screens for the field skips the block
      * dissolve (patch 0200, port/menu_exit); default ON, key menu_instant_exit. */
-    DW3_PORT_OPT_MENU_EXIT = 27
+    DW3_PORT_OPT_MENU_EXIT = 27,
+    /* D5 (docs/OPTIONS_REORG.md section 6): the full-screen map's picture scaler,
+     * a Display row (Nearest / Sharp bilinear / Lanczos2 / FSR 1 / Bilinear).
+     * Stored as a DW3_MAPSCALER_* (the order of map_view_core.h MV_SCALER_*),
+     * written as a word: map_scaler=fsr1. Default FSR 1. */
+    DW3_PORT_OPT_MAP_SCALER = 28
 };
+
+/* D5: the values of the Map scaler row, in the order of map_view_core.h's
+ * MV_SCALER_* (map_view.c asserts they agree). */
+enum {
+    DW3_MAPSCALER_NEAREST = 0,
+    DW3_MAPSCALER_SHARP = 1,
+    DW3_MAPSCALER_LANCZOS2 = 2,
+    DW3_MAPSCALER_FSR1 = 3,
+    DW3_MAPSCALER_BILINEAR = 4,
+    DW3_MAPSCALER_COUNT = 5,
+    DW3_MAPSCALER_DEFAULT = DW3_MAPSCALER_FSR1 /* owner 2026-10-31 */
+};
+
+/* D2 (docs/OPTIONS_REORG.md section 6.1): the generation of the defaults. A
+ * port_options.cfg without `defaults_gen` counts as 1 (every file written before
+ * D2); D2 sets 2 and migrates a file below it once (button_layout playstation ->
+ * nintendo, switch_glyphs 0 -> 1). A later default change raises this number. */
+enum { DW3_DEFAULTS_GEN = 2 };
 
 /* Sweep frames: the range and the steps of the Advanced row (the sweep itself
  * clamps the same range, port/sweep/stage_sweep.c). */

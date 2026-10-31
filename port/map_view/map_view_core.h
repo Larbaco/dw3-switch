@@ -44,6 +44,8 @@ enum {
 enum { MV_SCALE = 3 };
 
 const char *dw3_mv_scaler_name(int scaler);
+/* D5: the cfg word of a scaler (map_scaler=nearest|sharp|lanczos2|fsr1|bilinear). */
+const char *dw3_mv_scaler_word(int scaler);
 /* 1 when the GPU must filter the texture bilinearly (every scaler but nearest) */
 int dw3_mv_scaler_linear(int scaler);
 /* The next / previous scaler, wrapping. */

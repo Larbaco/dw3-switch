@@ -49,6 +49,10 @@ class Scenario:
     # port_options.cfg keys written before the first phase (P6.18 seeds the
     # pacing rows this way, so the option file reader is part of the test).
     cfg: tuple[tuple[str, str], ...] = ()
+    # D2: the seeded file is written as a build before D2 wrote it, with no
+    # `defaults_gen` marker (the runner adds `defaults_gen=2` to every other seeded
+    # cfg), so the one-shot migration of the defaults runs on it.
+    legacy_cfg: bool = False
     # Extra environment for the PC run (debug aids such as DW3_START_MODE).
     # The Switch build has no environment, so the Ryubing runner skips these.
     env: tuple[tuple[str, str], ...] = ()
@@ -3063,12 +3067,13 @@ for _v in ("us", "eu"):
                   note="Options > Menus: the six switches (the five Items-menu ones and Instant menu exit) turned OFF are read back by the next process (D1, patch 0200)"),
          Scenario(f"{_v}-options-display", _v, "full", timeout=300,
                   phases=(f"{_v}-options-display-p1", f"{_v}-options-display-p2"),
-                  expect_log=((0, r"dw3-port-options: group open display \(4 row\(s\), title\)(?s:.*)"
+                  expect_log=((0, r"dw3-port-options: group open display \(5 row\(s\), title\)(?s:.*)"
+                                  r"dw3-port-options: map scaler lanczos2(?s:.*)"
                                   r"dw3-port-options: map mod pack disabled(?s:.*)"
                                   r"dw3-port-options: version label disabled"),
-                              (1, r"dw3-options: file keys .* show_version=0 map_mod=0 ")),
+                              (1, r"dw3-options: file keys .* show_version=0 map_mod=0 .*map_scaler=lanczos2")),
                   forbid_log=_NO_BAD + ((1, r"is not valid"),),
-                  note="Options > Display: Map mod pack and Version label turned OFF are read back by the next process (D1)"),
+                  note="Options > Display: Map scaler (FSR 1 to Lanczos2, D5), Map mod pack and Version label turned OFF are read back by the next process (D1)"),
          Scenario(f"{_v}-options-saves", _v, "full", timeout=300,
                   expect_log=((0, r"dw3-port-options: group open saves \(2 row\(s\), title\)(?s:.*)"
                                   r"dw3-port-confirm: open shared saves \(cursor on No\)(?s:.*)"
@@ -3182,8 +3187,9 @@ for _v in ("us", "eu"):
                  forbid_log=((0, r"dw3-controls: map invalid"), (1, r"dw3-controls: map invalid")),
                  note="Customize buttons: swap L1 and R1, the Help pages turn accordingly, the map "
                       "is read back from port_options.cfg, Reset restores (P6.12)"),
+        # D2: no DW3_REPLAY_SOURCE here: the fallback layout is Nintendo now, and the recording's
+        # masks name PS buttons (positions through the Nintendo map would not reach the Controls page).
         Scenario(f"{_v}-controls-custom-invalid", _v, "full", timeout=200,
-                 env=_NIN_ENV,
                  cfg=(("button_layout", "custom"), ("button_map", "0123456780")),
                  expect_log=((0, r"dw3-controls: map invalid \(button_map is not a permutation of 0-9\), "
                                  r"using default(?s:.*)"
@@ -3194,6 +3200,57 @@ for _v in ("us", "eu"):
 _add(_nintendo("eu-lang-cross-fr", "eu-nintendo-lang-cross-fr", "eu-nintendo-lang-cross-fr",
                "Nintendo layout: the EU language select confirms with A, the logical Cross (patch "
                "0187, P9.8)"))
+
+# --- D2: defaults_gen and the one-shot migration (docs/OPTIONS_REORG.md section 6.1) ------
+# The runner seeds every cfg with `defaults_gen=2`; these scenarios are the exception. A
+# `legacy_cfg` scenario seeds the file as a build before D2 wrote it, with no marker.
+#  defaults-migrate         old file (button_layout=playstation, switch_glyphs=0): the layout flips at boot and
+#                           the file is written at once; the player puts PlayStation back; the second process
+#                           must not migrate again and keeps PlayStation
+#  defaults-migrate-custom  a custom layout is kept (and the PC leaves the glyphs alone: nothing to flip)
+#  defaults-migrate-fresh   no file: not migrated, born on the new defaults (Nintendo; glyphs OFF on the PC)
+# The PC has no Switch glyphs row: switch_glyphs is never flipped there and the line says so (the Switch flip,
+# `switch_glyphs 0->1`, is a unit test, test_options_persist.py with the row forced).
+_MIG_ALL = (r"dw3-options: migrate defaults_gen 1->2 button_layout playstation->nintendo "
+            r"\(kept: switch_glyphs \(pc\)\)")
+_MIG_BAD = ((0, r"NOT saved"), (0, r"dw3-controls: map invalid"), (1, r"dw3-controls: map invalid"))
+for _v in ("us", "eu"):
+    _add(
+        Scenario(f"{_v}-defaults-migrate", _v, "full", timeout=300,
+                 phases=(f"{_v}-defaults-migrate-p1", f"{_v}-defaults-migrate-p2"),
+                 cfg=(("button_layout", "playstation"), ("switch_glyphs", "0")), legacy_cfg=True,
+                 expect_log=((0, r"dw3-controls: map loaded layout=nintendo source=cfg(?s:.*)"
+                                 r"dw3-options: switch_glyphs=off(?s:.*)" + _MIG_ALL + r"(?s:.*)"
+                                 r"dw3-port-options: group open controls \(5 row\(s\), title\)(?s:.*)"
+                                 r"dw3-controls: layout changed nintendo -> playstation \(screen\)"),
+                             (1, r"dw3-controls: map loaded layout=playstation source=cfg"),
+                             (1, r"dw3-options: switch_glyphs=off")),
+                 forbid_log=_MIG_BAD + ((1, r"migrate defaults_gen"), (1, r"nothing to flip"),
+                                        (1, r"defaults_gen=2 \(new file\)")),
+                 note="An old port_options.cfg (PlayStation, glyphs 0, no defaults_gen) is migrated once at boot: "
+                      "Nintendo, glyphs left alone on the PC, written at once; PlayStation put back by the player "
+                      "is kept by the next process (D2)"),
+        Scenario(f"{_v}-defaults-migrate-custom", _v, "full", timeout=200,
+                 phases=(f"{_v}-defaults-view",),
+                 cfg=(("button_layout", "custom"), ("button_map", "0123546789"), ("switch_glyphs", "0")),
+                 legacy_cfg=True,
+                 expect_log=((0, r"dw3-controls: map loaded layout=custom source=cfg(?s:.*)"
+                                 r"dw3-controls: map cross<-B circle<-A triangle<-X square<-Y l1<-R r1<-L(?s:.*)"
+                                 r"dw3-options: switch_glyphs=off(?s:.*)"
+                                 r"dw3-options: defaults_gen 1->2 nothing to flip"),),
+                 forbid_log=_MIG_BAD + ((0, r"button_layout playstation->nintendo"),),
+                 note="A custom layout is not touched by the migration; on the PC the glyphs are not either, "
+                      "so there is nothing to flip (D2)"),
+        Scenario(f"{_v}-defaults-migrate-fresh", _v, "full", timeout=200,
+                 phases=(f"{_v}-defaults-view",),
+                 expect_log=((0, r"dw3-options: defaults_gen=2 \(new file\)(?s:.*)"
+                                 r"dw3-controls: map loaded layout=nintendo source=default(?s:.*)"
+                                 r"dw3-controls: map cross<-A circle<-X triangle<-B square<-Y(?s:.*)"
+                                 r"dw3-options: switch_glyphs=off"),),
+                 forbid_log=_MIG_BAD + ((0, r"migrate defaults_gen"), (0, r"nothing to flip")),
+                 note="A fresh install is born on the new defaults (Nintendo; glyphs OFF on the PC, ON on the "
+                      "Switch) and is not migrated (D2)"),
+    )
 
 # P6.32 phase 7 (no patch): the help line of the full-screen map view names the buttons the
 # way the player sees them (port/map_view/map_view_help.c). The footer follows the button
@@ -3545,3 +3602,84 @@ for _v in ("us", "eu"):
 for _lang, _id in (("fr", 3), ("de", 5)):
     _add(_glyphs("eu-item-shop", f"eu-glyphs-on-shop-{_lang}", env=(("DW3_LANGUAGE", str(_id)),),
                  note=f"Switch glyphs on, the EU item shop in {_lang} (P10.6)"))
+
+
+# --- D2 + D5: what the new defaults mean for the older scenarios ----------------------
+# (docs/P6.15_REPLAY_TESTS.md, "D2 + D5 reference refresh")
+#
+# D5, new scenarios first (they copy the older ones before the pins below):
+#  map-scaler-default   the map view with the default scaler (FSR 1): opens on NEAREST at once and the
+#                       worker thread (DW3_MAP_SYNC: the same call) swaps AMD FSR 1 in
+#  map-scaler-lanczos2  `map_scaler=lanczos2` in the file is the scaler of the open (the Display row's key)
+#  map-view-mod-fsr     with a map pack the default scaler (FSR 1) picks the linear GPU filter, no CPU build
+# They run the recordings of map-help / map-view and have references of their own.
+_FSR_NAMES = set()
+for _v in ("us", "eu"):
+    _h = by_name()[f"{_v}-map-help"]
+    _m = by_name()[f"{_v}-map-view-mod"]
+    _open = (r"dw3-map: scaler for this open: %s \(Options > Display > Map scaler, map_scaler=%s, first open\)")
+    for _sc in (
+        dataclasses.replace(
+            _h, name=f"{_v}-map-scaler-default", cfg=tuple(c for c in _h.cfg),
+            expect_log=((0, _open % (r"AMD FSR 1", "fsr1") + r"(?s:.*)"
+                            r"dw3-map: opens on NEAREST while AMD FSR 1 builds on the worker thread \(no hitch\)(?s:.*)"
+                            r"dw3-map: scaler AMD FSR 1 built in \d+ ms"),),
+            forbid_log=((0, r"dw3-map: scaler \S+ FAILED"),), ref_from="", own_refs=(),
+            note="Map scaler default (D5): the view opens on Nearest and FSR 1 replaces it"),
+        dataclasses.replace(
+            _h, name=f"{_v}-map-scaler-lanczos2", cfg=_h.cfg + (("map_scaler", "lanczos2"),),
+            expect_log=((0, _open % (r"LANCZOS2", "lanczos2") + r"(?s:.*)"
+                            r"dw3-map: opens on NEAREST while LANCZOS2 builds on the worker thread(?s:.*)"
+                            r"dw3-map: scaler LANCZOS2 built in \d+ ms"),),
+            forbid_log=((0, r"dw3-map: scaler \S+ FAILED"),), ref_from="", own_refs=(),
+            note="map_scaler=lanczos2 (the Display > Map scaler row's key) is the scaler of the open (D5)"),
+        dataclasses.replace(
+            _m, name=f"{_v}-map-view-mod-fsr",
+            expect_log=_m.expect_log[:1] + (
+                (0, r"dw3-map: texture \d+x\d+ queued for the GPU \(gen \d+, scaler AMD FSR 1, linear\)"),),
+            forbid_log=_m.forbid_log + ((0, r"dw3-map: scaler AMD FSR 1 requested"),), ref_from="", own_refs=(),
+            note="Map mod pack with the default scaler (D5): FSR 1 means the linear GPU filter, no CPU build"),
+    ):
+        _add(_sc)
+        _FSR_NAMES.add(_sc.name)
+
+_PS_NAME = re.compile(r"^(us|eu)-(help-(title|field|battle|fr|de|it|es)|map-help(-glyphs-pc|-fr|-it|-es)?|"
+                      r"map-rebind(-relaunch)?|controls-layout|controls-custom)$")
+
+
+def _pin_cfg(sc, *pairs):
+    have = {k for k, _ in sc.cfg}
+    return dataclasses.replace(sc, cfg=sc.cfg + tuple(p for p in pairs if p[0] not in have))
+
+
+for _i, _s in enumerate(SCENARIOS):
+    _plain = dict(_s.cfg)
+    _ps_log = any("layout playstation" in r or "layout=playstation" in r
+                  for _, r in _s.expect_log + _s.expect_log_both)
+    _pins = ()
+    # D5: the older map scenarios are about the view's mechanics (bindings, help line, zoom, the
+    # scaler cycle starting on Nearest), so they keep Nearest as their scaler.
+    if _plain.get("map_screen") == "1" and _s.name not in _FSR_NAMES:
+        _pins += (("map_scaler", "nearest"),)
+    # D2: the scenarios about the PlayStation layout (its help tokens, its map-help line, the
+    # Button layout flow that starts on PlayStation) say so in their file; the marker comes with it.
+    if (_PS_NAME.match(_s.name) or _ps_log) and not _s.legacy_cfg and "button_layout" not in _plain \
+            and "-defaults-migrate" not in _s.name:
+        _pins += (("button_layout", "playstation"),)
+    if _pins:
+        SCENARIOS[_i] = _pin_cfg(_s, *_pins)
+
+# The Display group has five rows since D5 (Map scaler), and the layout flows start from the file now.
+for _i, _s in enumerate(SCENARIOS):
+    _rep = lambda es: tuple((p, r.replace(r"group open display \(4 row\(s\)", r"group open display \(5 row\(s\)"))
+                            for p, r in es)
+    _new = dataclasses.replace(_s, expect_log=_rep(_s.expect_log), expect_log_both=_rep(_s.expect_log_both))
+    if _new.name.endswith(("-controls-layout", "-controls-custom")):
+        _fix = lambda es: tuple((p, r.replace("source=default", "source=cfg").replace(
+            r"reset to default \(layout=playstation\)", r"reset to default \(layout=nintendo\)")) for p, r in es)
+        _new = dataclasses.replace(_new, expect_log=_fix(_new.expect_log), expect_log_both=_fix(_new.expect_log_both))
+    if _new.name.endswith("-controls-custom-invalid"):
+        _fix = lambda es: tuple((p, r.replace("layout=playstation source=default", "layout=nintendo source=default"))
+                                for p, r in es)
+        _new = dataclasses.replace(_new, expect_log=_fix(_new.expect_log), expect_log_both=_fix(_new.expect_log_both))
+    SCENARIOS[_i] = _new

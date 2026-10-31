@@ -1540,9 +1540,21 @@ PS1 game, with vanilla-safe defaults and persistence on owner storage.
   Display rows Map mod pack and Version label, the Saves row Shared saves (exp.) (title only, a Yes / No
   window when turned on), Restart hotkey moved to Controls and Region at start to Saves; registry rows 16 to
   26 appended, no cfg key changed; Help text, the OLED rows, the cfg key-budget test (38 of 48 entries) and the
-  replay families regenerated once. **Not in this PR:** D2 + D5 (Controls defaults, the `defaults_gen`
-  migration, the Map scaler row and FSR 1), D3 (one global file), D4 (the scrolling background). Details:
-  [PORT_OPTIONS](PORT_OPTIONS.md#options-reorganization-d1). OLED rows D1.1 to D1.8 open.
+  replay families regenerated once. **Not in this PR:** D2 + D5 (below), D3 (one global file), D4 (the
+  scrolling background). Details: [PORT_OPTIONS](PORT_OPTIONS.md#options-reorganization-d1). OLED rows O1 to O8 open.
+  **D2 + D5 built (2026-10-31, branch `feat/d2-d5-defaults-fsr`, PR open, no decomp patch):** the default
+  Button layout is **Nintendo** (A confirms, B cancels; Switch and PC) and **Reset to default** goes there;
+  Switch glyphs defaults to **ON on the Switch and OFF on the PC** (the row stays Switch-only; the PC has no row, so
+  its default stays 0 and the migration leaves the key there; `switch_glyphs=1` still forces it on for PC tests); existing `port_options.cfg` files are **migrated once** with the marker
+  `defaults_gen` (missing = 1, now 2: `playstation` to `nintendo`, glyphs 0 to 1 on the Switch, a custom layout kept, written
+  at once, logged; a fresh install is not migrated); the default map scaler is **FSR 1** for the captured map and
+  the mod pack, with a new **Display > Map scaler** row (registry 28, key `map_scaler`; Nearest, Sharp bilinear,
+  Lanczos2, FSR 1, Bilinear) and an open with no hitch (it shows Nearest until the worker thread has FSR 1). Help
+  pages and the Reset text updated in five languages; replay runner seeds `defaults_gen=2`; new replays
+  `us/eu-defaults-migrate`, `-defaults-migrate-custom`, `-defaults-migrate-fresh`. Details:
+  [OPTIONS_REORG 8.1](OPTIONS_REORG.md#81-step-2-as-built-d2--d5),
+  [PORT_OPTIONS](PORT_OPTIONS.md#defaults-generation-and-the-map-scaler-d2--d5). OLED rows P1 to P8 open.
+  Next: D3 (one global file), then D4 (the scrolling background, last).
   **Still open:** OLED validation (OLED_TEST_PLAN A5, A9 to A13); Controls (P6.12) and Walkthrough (P6.35) are hidden
   placeholders in `port_options_groups.h` (Help, P6.30, is built since 2026-10-28); the open questions below are answered
   by defaults (Cheats group listed only with the master switch on; the plain dim of
