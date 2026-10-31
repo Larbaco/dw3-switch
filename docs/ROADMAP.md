@@ -42,6 +42,8 @@ previews, `v0.9.0-preview.N`; the gates below are what turns them into releases.
      report after `dw3_game_main returned 0`) is fixed or proven gone, along
      with every other open crash in the OLED plan.
   3. The Phase 5 gate is ticked in [Phase 5](#phase-5--playable-on-switch).
+     Status 2026-10-31: US met (OLED, preview.56, pending owner confirmation),
+     EU open; not ticked ([evidence](#phase-5-gate-evidence)).
 
 ## Priority
 
@@ -246,8 +248,10 @@ its done-when. The ordered session plan (written for preview.36) is
 [OLED_TEST_PLAN](OLED_TEST_PLAN.md).
 
 - **Owner preview.47 US log (2026-10-28): PASSED** A5, A7, A9-A12, C7, E1.3, E2.1, E2.2, G8 (the `items_partner_switch=0` sub-check of G8 not done) and B15b; marks and log evidence are in [OLED_TEST_PLAN](OLED_TEST_PLAN.md). Owner confirmed on the OLED (2026-10-28, preview.47/48): app name #289 shows "Digimon World 3 NX" (**PASSED**); B16 map view icons, balloon and cursor work (**PASSED**), except the name box jumping while zooming with the right stick, fixed in the branch `fix/map-namebox-stick-zoom` (the placement is latched when the cursor gets on a location, as the game does; retest B16 with the stick on a location). **Owner preview.48 EU OLED log (2026-10-28):** E1.6b EU language select 16:9 **PASSED by log** (`dw3-widescreen: gutter 53 px per side (was -1; 16:9) mode file 0x165 frame 1`; no 4:3 seen). G9 combined `.nro`: the both-present picker, the button choice and the "always" save **PASSED by log** (`data found us=1 eu=1`, `picker shown (default entry us, timeout 3000 ms)`, `picker result eu by button A after 19473 ms always=1`, `saved last_region=eu region_default=eu`, `running eu`); the 3 s timeout did not fire because the owner moved the cursor first, which cancels the countdown by design (`dw3_picker_step`), so G9.3's timeout, the only-US, only-EU, Minus and disc-in-parent rows stay open. B16: the name-box jitter was not reproduced on preview.48 (fix #326 ships in preview.49 anyway). Not tested in that session: D13 #188 (one Techniques command only; the audio health line was healthy, 0 underruns, 0 key-on failed, voices max 23 of 24), B17 map mod (no mods folder on the SD), G2 save + HOME (no `dw3-save` line). **Owner feedback fixed in `fix/p48-feedback`:** the EU language select also confirms with the confirm button (patch 0187, E1.6c) and the full-screen map keeps the cursor and the balloon at one on-screen size while zooming ([P6.32 section 11](P6.32_MAP_ZOOM.md#11-fixed-size-overlay-sprites-owner-preview48-oled); retest B16). Still open: D13 #188.
-- **P5 gate:** start → first boss on hardware, US and EU. The Phase 5 gate is
-  not met yet (owner, 2026-10-24); see [Phase 5](#phase-5--playable-on-switch).
+- **P5 gate:** start → first boss on hardware, US and EU. **US: met on the OLED
+  (2026-10-30, preview.56), pending owner confirmation. EU: not met yet** (no EU
+  OLED run in the logs reaches the first boss). The gate stays open; the evidence
+  and the EU test row are in [Phase 5 gate evidence](#phase-5-gate-evidence).
 - **P5.5 (done, G10 passed US and EU):** the stage sweep on the OLED; to repeat it, `stage_sweep=1` in
   `port_options.cfg`, start the game, wait for `dw3-sweep: done`, send
   `dw3.log` ([P5.5_STAGE_SWEEP](P5.5_STAGE_SWEEP.md), OLED_TEST_PLAN G10).
@@ -876,9 +880,41 @@ speed.
 
 Gate: start → first boss on hardware, both versions.
 
-**Gate status (owner, 2026-10-24): not met.** The owner has not yet tested
-start → first boss on hardware, so the gate stays open. The check is in
-[Pending OLED checks](#pending-oled-checks).
+**Gate status (audit 2026-10-31): US met, EU not met, so the gate stays open.**
+The US proof is on the OLED (preview.56, 2026-10-30) and waits for the owner's
+confirmation; the EU check is open. The check is in
+[Pending OLED checks](#pending-oled-checks) and the table is below.
+
+### Phase 5 gate evidence
+
+**The first boss.** Tamer Genji, the first story boss (the same fight as the
+[P3 gate](P3_GATE.md#first-story-boss-us)). The story step is `GAME.progress == 3`
+in the Asuka Central Sector (`WSTAG200`, field mode `0x200`, stage file 451 on US;
+`src/field/stages/central_sector/wstag200.c`): `endEvent50` starts event battle 1
+(`EVENT_BATTLE(1)`), and `endEvent52` sets `GAME.progress = 4`. The walkthrough
+row is `ch01.s04` ("Speak to Genji ... a battle starts", progress 3 to 4). The
+script is the same file in both regions; the `#if VERSION_` lines are not in
+`endEvent50` or `endEvent52`. The boss is proven in the log by the event battle
+`FIGHTSTG_start` in mode `0x200`, its win (`WFIGHTMN_endBattle result=1`), and
+`STFGTREP report battle=200` followed by `STFGTREP return fieldMode=0x200`.
+Progress is not logged by the game, so "start" means a New Game (no
+`STGMCARD_loadSave` line in the run), and the log proves the battle, not the
+progress value.
+
+| Region | Evidence | Log line(s) | Date | Preview | Verdict |
+|---|---|---|---|---|---|
+| US | New Game (no `loadSave`), Start-skip on the opening movie, Tamer Service, Central Sector (`0x200`), Genji battle won, back in the field, then Asuka (`0x206`), a second battle (`battle=34`), and a clean quit by title Quit game. Switch in handheld mode (`EGL/GLES2 ready 1280x720 (handheld)`), US disc picked by the owner (`picker result us by button A`) | `tmp/evidence/20261030-1613-p56-crash/OLD/dw3.log.latest` (same file as `tmp/oled-p56/logs/OLD/dw3.log.latest`): `version=0.6.5-preview.56` l.2; handheld l.13; `running us` l.16; title plaques l.378; `pickStage mode=0x2d7` l.1048; `dw3-movie: Start-skip` l.3334; `pickStage mode=0x203` l.3506; `pickStage mode=0x204` l.4249; `pickStage mode=0x200 stageFile=451` l.4541; `FIGHTSTG_start` l.4620; `WFIGHTMN_endBattle result=1 requestMode=0x1400 fieldMode=0x200` l.4867; `STFGTREP report battle=200` l.4873; `STFGTREP return fieldMode=0x200` l.4912; `pickStage mode=0x206 stageFile=454` l.5022; `dw3_game_main returned 0 ... title Quit game` l.7182 | 2026-10-30 (file time 15:57, UTC-3) | v0.6.5-preview.56 | **MET** (pending owner confirmation) |
+| EU | None. No EU OLED log in the repo has `battle=200`, or a New Game that reaches `pickStage mode=0x200` | The closest EU runs, each checked: `tmp/evidence/20261030-1613-p56-crash/OLD/dw3.3.log` (preview.54, EU, New Game from title, `pickStage mode=0x2d7` l.6825, name entry `mode=0x500` l.7445, quit by HOME l.7482; no field past Kusanagi's start); `tmp/evidence/20261024-rc1-owner-run2/dw3.log` and `tmp/evidence/20261024-rc1-battle-crash/owner-0940/dw3.log` (EU, 69 min and a longer session, four random battles, but preview.31-rc1 logs no stage or mode ids, so Genji cannot be identified, see `TRIAGE.md`); `tmp/evidence/20261030-1820-p56-crash2/dw3.1.log` (EU, starts from a progress 4 save, `loadSave ... progress=4` l.720, so past the boss) | 2026-10-24 (owner runs); 2026-10-30 (the other runs) | preview.31-rc1, preview.54, preview.56 | **NOT MET** |
+
+**What is missing for EU.** One EU OLED run from New Game to Genji with the same
+log sequence as the US row (the test row is **F6-EU** in
+[OLED_TEST_PLAN](OLED_TEST_PLAN.md)). Use the current preview, EU
+disc, and Auto-save OFF for the run so it writes no save. When it is in the log,
+tick the gate for both regions (the owner ticks it).
+
+**Status of the US row.** The evidence is one owner run from a New Game on the
+OLED. The gate line says "pending owner confirmation": the owner checks the
+row against the log and ticks it, as with the other gates.
 
 ## Phase 6 — Polish and options
 
