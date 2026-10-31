@@ -168,8 +168,9 @@ is new, so it rebuilds. Tests: `tools/tests/test_build_speed.py`.
 * `--fail-fast`: after the first failing scenario nothing new starts; the rest
   are reported as `SKIP`. Scenarios already running finish.
 * `--changed [BASE]` (or `--changed-files PATH...`): runs the scenarios the
-  changed files can affect, plus the quick tier and a smoke set (US and EU new
-  game to field, two battles, a save round trip). BASE defaults to `origin/main`;
+  changed files can affect (on EU, or on both where the file is region-sensitive),
+  plus the quick tier, an EU smoke set (field walk, two battles, a save round
+  trip) and the cross-region canary. BASE defaults to `origin/main`;
   uncommitted and untracked files count. `--dry-run` prints the selection.
 
 `tools/replay/areas.py` is the map from files to scenarios: first matching rule
@@ -190,11 +191,13 @@ wins, rules are regexes on the path with scenario-name globs.
   the full tier. A PR that only adds one `.c` to a target (like #363) therefore
   no longer pays for all 336 scenarios.
 * **A file under `port/`, `platforms/pc/`, `vendor/` or the runner with no
-  rule selects the full tier** (the safe default), as does a new decomp pin.
+  rule is engine-wide** (the safe default), as is a new decomp pin; under the
+  region policy that runs the area sweep (one scenario per area), not every
+  scenario (`--escalate full` restores the full tier).
   So does any patch without a topic rule (`match-neutral-*`, the early
   `PORT_HOST-*` engine fixes). `port/options/cheats.c` alone selects 43 of 273 scenarios; a
   `port/ui/` change 128.
-* **`platforms/pc/src/main.c` selects the full tier, on purpose.** It is the PC
+* **`platforms/pc/src/main.c` is engine-wide, on purpose.** It is the PC
   host entry: `main()`, the boot and region pick, the frame hooks (pad, turbo
   pace, vsync) and the options flush. Those run in every scenario, and no area
   rule can say which scenarios a boot-path edit reaches, so a narrower map could
@@ -205,7 +208,13 @@ wins, rules are regexes on the path with scenario-name globs.
   main.c change is slow, but it never misses one.
 
 `--changed` is a heuristic for the pre-PR loop. It is not a substitute for the
-full tier, which CI-grade checks, previews and releases still run.
+full tier, which previews and releases still run on both regions.
+
+**Region policy (docs/REPLAY_POLICY.md).** `--changed` runs one region (EU) unless
+a changed file is region-sensitive, always adds the cross-region canary, and runs
+the area sweep for an engine-wide file. `--region us|eu|both`, `--canary`,
+`--sweep`, `--escalate full` and `--paced` change that. The replay runs unpaced on
+both regions (the EU build used to be held to 50 frames per second).
 
 ### Cleanup helper
 
@@ -295,8 +304,9 @@ code PR, so the saving is small.
 3. Pre-PR: `tools/replay_tests.sh --changed --jobs 2 --fail-fast`. Read the
    printed selection; if it says "full tier", that is the area map telling you the
    change is engine-wide.
-4. Run the full tier (`tools/replay_tests.sh --jobs 2`, about 3 h) for an
-   engine-wide change, before a preview, or when asked. `--soak` only for
+4. Run the full tier (`tools/replay_tests.sh --jobs 2`, about 2 h) before a
+   preview, or when asked; `--changed --escalate full` for an engine-wide change
+   you want proven on both regions (`--changed` itself runs the area sweep). `--soak` only for
    memory work.
 5. `DW3_NO_CCACHE=1` for a build whose bytes matter (preview/release candidates
    built by hand).

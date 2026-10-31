@@ -86,6 +86,7 @@ Files are named by roadmap item id (`P6.4_...`) or by topic.
 - [P6.5_PACKAGING](P6.5_PACKAGING.md): release packaging.
 - [P6.9_RESTART](P6.9_RESTART.md): in-process game restart.
 - [P6.15_REPLAY_TESTS](P6.15_REPLAY_TESTS.md): regression replay tests.
+- [REPLAY_POLICY](REPLAY_POLICY.md): one region by default, both at the release gate (evidence, timing, flags).
 - [P6.17_VOLUME](P6.17_VOLUME.md): music and SFX volume.
 - [P6.18_PACING](P6.18_PACING.md): encounter rate and text speed.
 - [P6.22_FIELD_CPU](P6.22_FIELD_CPU.md): where a field frame's CPU time goes.
