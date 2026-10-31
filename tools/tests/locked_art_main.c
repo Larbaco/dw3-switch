@@ -145,15 +145,20 @@ int main(int argc, char **argv) {
               diff_in(open_ref, other, 200, 204, 760, 236) == 0); /* the two rows */
         CHECK(diff_in(open_ref, other, 150, 540, 800, 585) == 0); /* message strip */
         CHECK(diff_in(open_ref, other, 0, 0, 100, 100) > 0);      /* the backdrop is deeper */
-        /* The group list greys the Display plaque (all its rows are locked)
-         * and the Cheats plaque. */
-        dw3_pc_title_overlay_set_options_page(DW3_TITLE_OPTIONS_PAGE_OPTIONS, 1);
+        /* D1: the group list (scrolled to show items 2..7) greys the Advanced plaque
+         * (both its rows are locked in game) and the Cheats plaque, and nothing
+         * else: Display has other rows, so Widescreen alone does not grey it. */
+        dw3_pc_title_overlay_set_options_page(dw3_optlist_page(-1, 2), 1);
         render(open_ref);
-        dw3_pc_title_overlay_set_options_locked(1u | DW3_TITLE_LOCK_CHEATS);
+        dw3_pc_title_overlay_set_options_locked((1u << 24) | (1u << 25) | DW3_TITLE_LOCK_CHEATS);
         render(locked);
-        CHECK(diff_in(open_ref, locked, 230, 124, 730, 174) > 100);      /* Display */
-        CHECK(diff_in(open_ref, locked, 260, 140 + 66, 700, 170 + 66) == 0); /* Sound */
+        CHECK(diff_in(open_ref, locked, 260, 140 + 66, 700, 170 + 66) == 0); /* Menus */
+        CHECK(diff_in(open_ref, locked, 260, 140 + 66 * 3, 700, 170 + 66 * 3) == 0); /* Saves */
         CHECK(diff_in(open_ref, locked, 230, 124 + 66 * 4, 730, 174 + 66 * 4) > 100); /* Cheats */
+        CHECK(diff_in(open_ref, locked, 230, 124 + 66 * 5, 730, 174 + 66 * 5) > 100); /* Advanced */
+        dw3_pc_title_overlay_set_options_locked(1u);
+        render(locked);
+        CHECK(diff_in(open_ref, locked, 260, 140, 700, 170) == 0);       /* Widescreen alone: Gameplay */
         dw3_pc_title_overlay_set_options_locked(0);
     }
 
@@ -185,7 +190,7 @@ int main(int argc, char **argv) {
     /* Out-of-range lock bits are ignored. */
     dw3_pc_title_overlay_set_options_locked(0xFFFFFFFFu);
     CHECK(dw3_pc_title_overlay_options_locked() ==
-          (((1u << 13) - 1u) | DW3_TITLE_LOCK_CHEATS));
+          (((1u << 27) - 1u) | DW3_TITLE_LOCK_CHEATS));
     dw3_pc_title_overlay_set_options_locked(0);
 
     free(open_ref);
