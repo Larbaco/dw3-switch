@@ -212,6 +212,43 @@ static const DW3WtStep k_steps[] = {
     WT_SIDE_ROW("ch12.x02", "ch12", "north", WT_AREA_NONE, WT_CAT_RECRUIT, WT_REGION_EU, 0x2D, 66),
 };
 
+/* Condensed pages (owner decision 2026-10-31, FEEDBACK-5 option B): consecutive MAIN steps of one
+ * chapter and one area share one page. The first step of a page names it; the others are listed
+ * here with the page they belong to. A step that is not listed has a page of its own. Rules
+ * (tools/tests/test_walkthrough.py): same chapter, same area, same region, consecutive in the
+ * table, at most WT_PAGE_MAX_STEPS steps per page; the line budget is checked on the real layout
+ * in every language (tools/tests/walkthrough_pages_main.c). */
+static const struct { const char *step; const char *page; } k_pages[] = {
+    {"ch01.s03", "ch01.s02"},
+    {"ch01.s05", "ch01.s04"},
+    {"ch02.s03", "ch02.s02"}, {"ch02.s04", "ch02.s02"},
+    {"ch02.s06", "ch02.s05"},
+    {"ch02.s08", "ch02.s07"},
+    {"ch03.s02", "ch03.s01"}, {"ch03.s03", "ch03.s01"}, {"ch03.s04", "ch03.s01"},
+    {"ch04.s02", "ch04.s01"}, {"ch04.s03", "ch04.s01"},
+    {"ch05.s02", "ch05.s01"}, {"ch05.s03", "ch05.s01"}, {"ch05.s04", "ch05.s01"},
+    {"ch05.s06", "ch05.s05"}, {"ch05.s07", "ch05.s05"}, {"ch05.s08", "ch05.s05"},
+    {"ch07.s03", "ch07.s02"},
+    {"ch08.s02", "ch08.s01"}, {"ch08.s03", "ch08.s01"}, {"ch08.s04", "ch08.s01"},
+    {"ch08.s06", "ch08.s05"}, {"ch08.s07", "ch08.s05"},
+    {"ch10.s02", "ch10.s01"},
+    {"ch10.s06", "ch10.s05"}, {"ch10.s07", "ch10.s05"},
+};
+
+const char *dw3_wt_page_of(const char *step_id) {
+    unsigned i;
+
+    if (!step_id) return step_id;
+    for (i = 0; i < sizeof(k_pages) / sizeof(k_pages[0]); ++i) {
+        const char *a = k_pages[i].step;
+        const char *b = step_id;
+
+        while (*a && *a == *b) { ++a; ++b; }
+        if (*a == '\0' && *b == '\0') return k_pages[i].page;
+    }
+    return step_id;
+}
+
 const DW3WtStep *dw3_wt_steps(int *count) {
     if (count) *count = (int)(sizeof(k_steps) / sizeof(k_steps[0]));
     return k_steps;

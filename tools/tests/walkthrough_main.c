@@ -397,12 +397,13 @@ int main(int argc, char **argv) {
         int n, i;
         const DW3WtStep *t = dw3_wt_steps(&n);
 
-        /* ID id chapter area kind region map_area from to order ndone done0 nunlock unlock0 */
+        /* ID id chapter area kind region map_area from to order ndone done0 nunlock unlock0 page */
         for (i = 0; i < n; ++i) {
-            printf("ID %s %s %s %d %d %d %d %d %d %d %u %d %u\n", t[i].id, t[i].chapter, t[i].area,
+            printf("ID %s %s %s %d %d %d %d %d %d %d %u %d %u %s\n", t[i].id, t[i].chapter, t[i].area,
                    t[i].kind, t[i].region, t[i].map_area, t[i].from_progress, t[i].to_progress,
                    t[i].order, t[i].ndone, t[i].ndone ? (unsigned)t[i].done[0].code : 0u,
-                   t[i].nunlock, t[i].nunlock ? (unsigned)t[i].unlock[0].code : 0u);
+                   t[i].nunlock, t[i].nunlock ? (unsigned)t[i].unlock[0].code : 0u,
+                   dw3_wt_page_of(t[i].id));
         }
         return 0;
     }

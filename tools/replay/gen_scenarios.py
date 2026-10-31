@@ -3252,8 +3252,9 @@ GRP_WALK = 7
 # story point can reach the Options screen in game: p4 closes chapter 1, p14 (progress 0x14) is
 # the middle of chapter 5, p2b (progress 0x2B) is the last battle (chapter 11) and p2d (progress
 # 0x2D) is the EU extra chapter's first step; on US p2d is past the table (region gating: the
-# chapter list with the "not recognised" notice, no extra chapter).
-WT_FIELD_POINTS = (("p4", "s06", 1), ("p14", "s03", 1), ("p2b", "s01", 1), ("p2d", "s01", 1))
+# chapter list with the "not recognised" notice, no extra chapter). Since the condensing (FEEDBACK-5)
+# the current step is read on the page that holds it: p14 (step ch05.s03) opens the page ch05.s01.
+WT_FIELD_POINTS = (("p4", "s06", 1), ("p14", "s01", 1), ("p2b", "s01", 1), ("p2d", "s01", 1))
 
 
 def _wt_reading(r, f, current, other_down):
@@ -3308,7 +3309,7 @@ def walkthrough_field(version, current, ahead_down):
 # 0xF, ch08 at 0x1E, and on EU ch12 at 0x2D), the steps list shows the block and its two rows are
 # read. Hidden: one value before the chapter (0xE, 0x1D, EU 0x2B) the chapter list marks the next
 # chapter as not reached and its steps list has no optional row.
-WT_SIDE_SHOWN = (("pf", 3), ("p1e", 7), ("p2d", 3))
+WT_SIDE_SHOWN = (("pf", 1), ("p1e", 2), ("p2d", 3))   # Downs from the current page to the first optional row
 WT_SIDE_HIDDEN = ("pe", "p1d", "p2b")
 
 

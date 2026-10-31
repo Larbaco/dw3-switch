@@ -237,10 +237,13 @@ the whole main story (Kusanagi City up to the last battle) and, on the EU disc, 
 chapter that opens after the ending. It only reads your progress: nothing is written to the game or the
 save, and it needs no network.
 
-- From the field menu (or a battle) it opens on the page of **your current step**. The field
+- From the field menu (or a battle) it opens on the page that holds **your current step**. A page
+  gathers the short steps that come one after the other in the same area (up to about a dozen
+  lines), one bullet per step, and marks your current step with an arrow; the steps further on
+  appear on the page only as you reach them. The field
   menu itself only opens once you have reached Seiryu City (story progress 4), so earlier
   steps can be read from the title.
-- X goes up one level: step page, the steps of the chapter, the chapter list, out. On the
+- X goes up one level: page, the pages of the chapter, the chapter list, out. On the
   chapter list the arrow marks your chapter. **L** and **R** on a page go to the previous and next
   entry, also into the next chapter.
 - A step page shows a short goal. The answer is hidden: **Answer**, then **Yes** (the cursor starts on

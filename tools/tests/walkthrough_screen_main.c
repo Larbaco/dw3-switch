@@ -158,9 +158,12 @@ static void test_current_step_and_reveal(void) {
     CHECK(g_snap_calls == 1); /* one read of the game */
     v = dw3_wt_view();
     CHECK(v->screen == DW3_HELP_SCREEN_PAGE && dw3_wt_level() == DW3_WT_LEVEL_PAGE);
-    CHECK(strcmp(v->header, "Get your first partner") == 0);
+    /* progress 2 is step ch01.s03, which shares the page ch01.s02 with the log-in step */
+    CHECK(strcmp(v->header, "Log in, first partner") == 0);
     CHECK(strcmp(v->log_tag, "dw3-walkthrough") == 0);
-    CHECK(strstr(v->strip, "Step 3 / 6") != NULL && strstr(v->strip, "Current step") != NULL);
+    CHECK(strstr(v->strip, "Page 2 / 4") != NULL && strstr(v->strip, "Current step") != NULL);
+    CHECK(page_has("Login Room"));                    /* the goal of the step before it */
+    CHECK(page_has("\xE2\x86\x92 Go to the Main Lobby"));  /* the current step is marked */
     CHECK(page_has("Main Lobby"));                    /* the goal */
     CHECK(!page_has("three starter packs"));          /* the answer is closed */
     CHECK(page_has("The answer is hidden"));
@@ -180,13 +183,14 @@ static void test_current_step_and_reveal(void) {
     CHECK(page_has("\xE2\x86\x92 Yes"));
     keys(DW3_HELP_KEY_CONFIRM);                       /* shown */
     CHECK(page_has("three starter packs") && page_has("The answer"));
-    CHECK(strcmp(dw3_wt_view()->header, "Get your first partner") == 0);
+    CHECK(page_has("Chamber Room"));                  /* and the answer of the step before it */
+    CHECK(strcmp(dw3_wt_view()->header, "Log in, first partner") == 0);
     /* Back goes up one level (the chapter's steps, the cursor on the step), and the answer is
      * closed again */
     keys(DW3_HELP_KEY_BACK);
     v = dw3_wt_view();
     CHECK(v->screen == DW3_HELP_SCREEN_LIST && dw3_wt_level() == DW3_WT_LEVEL_STEPS &&
-          v->cursor == 2);
+          v->cursor == 1);
     CHECK(strcmp(v->header, "1. Getting started") == 0);
     keys(DW3_HELP_KEY_CONFIRM);
     CHECK(!page_has("three starter packs"));
@@ -196,7 +200,7 @@ static void test_current_step_and_reveal(void) {
           strcmp(dw3_wt_view()->header, "Not reached yet") == 0);
     keys(DW3_HELP_KEY_PREV);
     keys(DW3_HELP_KEY_PREV);
-    CHECK(strcmp(dw3_wt_view()->header, "Log in to Asuka City") == 0);
+    CHECK(strcmp(dw3_wt_view()->header, "Visit the Online Center") == 0);
     keys(DW3_HELP_KEY_BACK);                          /* the steps */
     keys(DW3_HELP_KEY_BACK);                          /* the chapters */
     CHECK(dw3_wt_level() == DW3_WT_LEVEL_CHAPTERS && dw3_wt_is_open());
@@ -214,14 +218,14 @@ static void test_never_ahead(void) {
     keys(DW3_HELP_KEY_BACK); /* to the steps of chapter 1 */
     v = dw3_wt_view();
     CHECK(v->screen == DW3_HELP_SCREEN_LIST);
-    CHECK(list_has("Get your first partner"));
+    CHECK(list_has("Log in, first partner"));
     CHECK(!list_has("Seiryu") && !list_has("Genji") && !list_has("New faces"));
-    CHECK(v->npages == 8); /* 6 steps and 2 areas; the optional row is not met yet */
+    CHECK(v->npages == 6); /* 4 pages and 2 areas; the optional row is not met yet */
     for (i = 0; i < v->npages; i++) {
         CHECK(strstr(v->titles[i], "Seiryu") == NULL);
     }
     /* a step ahead: the title stays hidden, the page needs the reveal */
-    keys(DW3_HELP_KEY_DOWN); /* the cursor was on s03; s04 is the next one */
+    keys(DW3_HELP_KEY_DOWN); /* the cursor was on the page of s03; the page of s04 is the next one */
     keys(DW3_HELP_KEY_CONFIRM);
     v = dw3_wt_view();
     CHECK(v->screen == DW3_HELP_SCREEN_PAGE && strcmp(v->header, "Not reached yet") == 0);
@@ -270,28 +274,29 @@ static void test_other_points(void) {
     /* progress 3 with Genji's flag set: s05 */
     state(3, 1);
     CHECK(dw3_wt_open(&c) == 0);
-    CHECK(strcmp(dw3_wt_view()->header, "Finish up with Genji") == 0);
+    CHECK(strcmp(dw3_wt_view()->header, "Meet Tamer Genji") == 0);      /* s05 is on the page of s04 */
+    CHECK(page_has("\xE2\x86\x92 Genji's battle"));                     /* and is the marked step */
     dw3_wt_close();
     /* progress 4: s06 and the optional row is on the list */
     state(4, 0);
     CHECK(dw3_wt_open(&c) == 0);
     CHECK(strcmp(dw3_wt_view()->header, "Travel to Seiryu City") == 0);
     keys(DW3_HELP_KEY_BACK);
-    CHECK(list_has("New faces around Asuka") && dw3_wt_view()->npages == 9);
+    CHECK(list_has("New faces around Asuka") && dw3_wt_view()->npages == 7);
     dw3_wt_close();
     /* progress 0x14: the third step of chapter 5, the chapter list marks the chapter */
     state(0x14, 0);
     CHECK(dw3_wt_open(&c) == 0);
     v = dw3_wt_view();
-    CHECK(strcmp(v->header, "Suzaku UG Lake") == 0);
-    CHECK(strstr(v->strip, "Step 3 / 8") != NULL && strstr(v->strip, "Current step") != NULL);
+    CHECK(strcmp(v->header, "Sewers, Secret Room") == 0);       /* s03 is on the page of s01 */
+    CHECK(strstr(v->strip, "Page 1 / 2") != NULL && strstr(v->strip, "Current step") != NULL);
     CHECK(page_has("Secret Room") && !page_has("flag"));
     keys(DW3_HELP_KEY_BACK);
     v = dw3_wt_view();
-    CHECK(v->screen == DW3_HELP_SCREEN_LIST && v->cursor == 2 &&
+    CHECK(v->screen == DW3_HELP_SCREEN_LIST && v->cursor == 0 &&
           strcmp(v->header, "5. West Sector rebels") == 0);
-    CHECK(starts_with(v->titles[2], "\xE2\x86\x92 ") && list_has("Secret Room again") == 0);
-    CHECK(v->npages == 10); /* 8 steps and the 2 areas of the chapter: West Sector, Asuka City */
+    CHECK(starts_with(v->titles[0], "\xE2\x86\x92 ") && list_has("Datamon") == 0);
+    CHECK(v->npages == 4); /* 2 pages (8 steps) and the 2 areas of the chapter: West Sector, Asuka City */
     keys(DW3_HELP_KEY_BACK);
     v = dw3_wt_view();
     CHECK(v->cursor == 4 && starts_with(v->titles[4], "\xE2\x86\x92 5. ") &&
@@ -302,12 +307,12 @@ static void test_other_points(void) {
     /* the same point with the flag set (the lake scene is done): the next step */
     state_codes(0x14, WT_FLAG(0x40, 0x03), 0);
     CHECK(dw3_wt_open(&c) == 0);
-    CHECK(strcmp(dw3_wt_view()->header, "Secret Room again") == 0);
+    CHECK(strcmp(dw3_wt_view()->header, "Sewers, Secret Room") == 0);   /* s04, same page */
     dw3_wt_close();
     /* an item as the done condition: progress 9 */
     state_codes(9, WT_FLAG(0x1A, 0x1B), 0);
     CHECK(dw3_wt_open(&c) == 0);
-    CHECK(strcmp(dw3_wt_view()->header, "Item from the Sewers") == 0);
+    CHECK(strcmp(dw3_wt_view()->header, "Central Sector, Sewers") == 0);
     dw3_wt_close();
     state_codes(9, WT_FLAG(0x1A, 0x1B), WT_ITEM(0, 0x15));
     CHECK(dw3_wt_open(&c) == 0);
@@ -316,8 +321,8 @@ static void test_other_points(void) {
     /* the last step of the first half */
     state_codes(0x29, WT_FLAG(0x40, 0x74), 0);
     CHECK(dw3_wt_open(&c) == 0);
-    CHECK(strcmp(dw3_wt_view()->header, "Snatchmon") == 0);
-    CHECK(strstr(dw3_wt_view()->strip, "Step 7 / 7") != NULL);
+    CHECK(strcmp(dw3_wt_view()->header, "Satellite to Snatchmon") == 0);
+    CHECK(strstr(dw3_wt_view()->strip, "Page 4 / 4") != NULL);
     dw3_wt_close();
     /* 0x2A is written by no script: a gap, so "not recognised" with the chapter list, and no
      * "more chapters" page any more */
@@ -339,14 +344,14 @@ static void test_other_points(void) {
     keys(DW3_HELP_KEY_DOWN);
     keys(DW3_HELP_KEY_CONFIRM);                       /* the whole table is readable */
     keys(DW3_HELP_KEY_CONFIRM);
-    CHECK(strcmp(dw3_wt_view()->header, "A.o.A HQ scenes") == 0 || dw3_wt_level() == DW3_WT_LEVEL_PAGE);
+    CHECK(strcmp(dw3_wt_view()->header, "A.o.A HQ, Login Room") == 0 || dw3_wt_level() == DW3_WT_LEVEL_PAGE);
     dw3_wt_close();
     /* the last battle (0x2B, both discs): the page of the only step of chapter 11 */
     state(0x2B, 0);
     CHECK(dw3_wt_open(&c) == 0);
     v = dw3_wt_view();
     CHECK(dw3_wt_level() == DW3_WT_LEVEL_PAGE && strcmp(v->header, "The final battle") == 0);
-    CHECK(strstr(v->strip, "Step 1 / 1") != NULL && strstr(v->strip, "Current step") != NULL);
+    CHECK(strstr(v->strip, "Page 1 / 1") != NULL && strstr(v->strip, "Current step") != NULL);
     CHECK(page_has("opponents") && !page_has("Kusanagi"));        /* the ending is the answer */
     keys(DW3_HELP_KEY_CONFIRM);
     keys(DW3_HELP_KEY_DOWN);
@@ -370,7 +375,7 @@ static void test_other_points(void) {
     CHECK(strcmp(v->titles[0], "1. Getting started") == 0 &&
           strcmp(v->titles[1], "2. Not reached yet") == 0);
     keys(DW3_HELP_KEY_CONFIRM);
-    CHECK(list_has("Visit the Online Center") && !list_has("Log in to Asuka City"));
+    CHECK(list_has("Visit the Online Center") && !list_has("Log in, first partner"));
     keys(DW3_HELP_KEY_BACK);
     keys(DW3_HELP_KEY_DOWN);
     CHECK(strstr(dw3_wt_view()->strip, "not recognised") == NULL);
@@ -398,11 +403,11 @@ static void test_neighbours(void) {
 
     state(0xB, 0);
     CHECK(dw3_wt_open(&c) == 0);
-    CHECK(strcmp(dw3_wt_view()->header, "Back to Main Lobby") == 0);
+    CHECK(strcmp(dw3_wt_view()->header, "Kail in Asuka City") == 0);
     keys(DW3_HELP_KEY_PREV);                          /* the last line of chapter 2 */
     CHECK(starts_with(dw3_wt_view()->header, "Area: "));
     keys(DW3_HELP_KEY_NEXT);
-    CHECK(strcmp(dw3_wt_view()->header, "Back to Main Lobby") == 0);
+    CHECK(strcmp(dw3_wt_view()->header, "Kail in Asuka City") == 0);
     dw3_wt_close();
     state_codes(0x29, WT_FLAG(0x40, 0x74), 0);
     CHECK(dw3_wt_open(&c) == 0);
@@ -575,7 +580,7 @@ static void test_extra_chapter(void) {
     CHECK(g_asked_eu > 0);                            /* EU reads the extra chapter's codes */
     v = dw3_wt_view();
     CHECK(dw3_wt_level() == DW3_WT_LEVEL_PAGE && strcmp(v->header, "Login Room tour") == 0);
-    CHECK(strstr(v->strip, "Step 1 / 3") != NULL && strstr(v->strip, "Current step") != NULL);
+    CHECK(strstr(v->strip, "Page 1 / 3") != NULL && strstr(v->strip, "Current step") != NULL);
     keys(DW3_HELP_KEY_BACK);
     keys(DW3_HELP_KEY_BACK);
     v = dw3_wt_view();
@@ -589,7 +594,7 @@ static void test_extra_chapter(void) {
     state_codes(0x2D, WT_FLAG(0x40, 0xCD), WT_SPECIAL(0x54));
     CHECK(dw3_wt_open(&eu) == 0);
     CHECK(strcmp(dw3_wt_view()->header, "Kurt at the Arena") == 0);
-    CHECK(strstr(dw3_wt_view()->strip, "Step 3 / 3") != NULL);
+    CHECK(strstr(dw3_wt_view()->strip, "Page 3 / 3") != NULL);
     keys(DW3_HELP_KEY_NEXT);                          /* the last chapter: nothing after its area */
     keys(DW3_HELP_KEY_NEXT);
     keys(DW3_HELP_KEY_NEXT);
@@ -620,12 +625,12 @@ static void test_region_and_language(void) {
     /* EU, French: the translated text, no English fallback */
     state(2, 0);
     CHECK(dw3_wt_open(&c) == 0);
-    CHECK(strcmp(dw3_wt_view()->header, "Votre premier partenaire") == 0);
-    CHECK(strstr(dw3_wt_view()->strip, "\xC3\x89tape 3 / 6") != NULL);
+    CHECK(strcmp(dw3_wt_view()->header, "Connexion, partenaire") == 0);
+    CHECK(strstr(dw3_wt_view()->strip, "Page 2 / 4") != NULL);
     dw3_wt_close();
     state(0x14, 0);
     CHECK(dw3_wt_open(&c) == 0);
-    CHECK(strstr(dw3_wt_view()->strip, "\xC3\x89tape 3 / 8") != NULL);
+    CHECK(strstr(dw3_wt_view()->strip, "Page 1 / 2") != NULL);
     keys(DW3_HELP_KEY_BACK);
     CHECK(strncmp(dw3_wt_view()->header, "5. ", 3) == 0);
     keys(DW3_HELP_KEY_BACK);
@@ -635,7 +640,7 @@ static void test_region_and_language(void) {
     {
         static const char part[] =
             "@format = 1\n@book = walkthrough\n@lang = de\n@status = draft\n"
-            "wt.ch01_s03.title = Nur der Titel\n";
+            "wt.ch01_s02.title = Nur der Titel\n";
 
         dw3_wt_test_set_text(2, part);
         c = cfg(DW3_PAGES_EU, 2, 1);
