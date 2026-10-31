@@ -1,5 +1,6 @@
 """The replay runner leaves no Xvfb behind: normal stop, SIGTERM/SIGINT of the
-runner, and SIGKILL of the runner (PR_SET_PDEATHSIG). Needs Xvfb and PIL; no game data."""
+runner, and SIGKILL of the runner (PR_SET_PDEATHSIG). Needs Xvfb (skipped without it);
+Pillow is not needed (replay_tests imports it lazily); no game data."""
 from __future__ import annotations
 
 import os
@@ -42,7 +43,6 @@ def _gone(pid, secs=10.0):
 
 def _runner(tmp_path, body):
     """A child python that starts an Xvfb through replay_tests, prints its pid and runs `body`."""
-    pytest.importorskip("PIL")
     script = tmp_path / "child.py"
     script.write_text(textwrap.dedent(f"""
         import sys, time
@@ -54,13 +54,14 @@ def _runner(tmp_path, body):
         {body}
     """))
     proc = subprocess.Popen([sys.executable, "-I", str(script)], stdout=subprocess.PIPE, text=True)
-    xpid = int(proc.stdout.readline())
+    line = proc.stdout.readline()
+    assert line.strip().isdigit(), f"child runner failed: {proc.wait(10)} {line!r}"
+    xpid = int(line)
     assert _alive(xpid)
     return proc, xpid
 
 
 def test_stop_xvfb_removes_it(tmp_path):
-    pytest.importorskip("PIL")
     sys.path.insert(0, str(REPLAY))
     import replay_tests as rt
     p, disp = rt.start_xvfb(tmp_path)

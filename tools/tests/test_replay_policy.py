@@ -232,7 +232,6 @@ def test_sweep_has_no_cross_region_scenarios(areas, scenarios):
 # --- the runner ----------------------------------------------------------------
 
 def _dry(*args):
-    pytest.importorskip("PIL")
     r = subprocess.run([sys.executable, str(REPLAY / "replay_tests.py"), "--dry-run", *args],
                        capture_output=True, text=True)
     assert r.returncode == 0, r.stderr

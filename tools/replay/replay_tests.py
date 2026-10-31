@@ -35,8 +35,6 @@ import time
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
-from PIL import Image, ImageChops
-
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import manifest  # noqa: E402
 import areas  # noqa: E402
@@ -83,6 +81,7 @@ ARTIFACTS = ("png", "ppm")  # window grab (with host overlays), PS1 display fram
 
 def compare_images(ref: Path, got: Path, diff_out: Path | None):
     """Return (differing_pixels, total_pixels, error). Writes a diff image."""
+    from PIL import Image, ImageChops   # lazy: only the picture compare needs Pillow
     a = Image.open(ref).convert("RGB")
     b = Image.open(got).convert("RGB")
     if a.size != b.size:
