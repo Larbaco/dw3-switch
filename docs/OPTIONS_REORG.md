@@ -59,7 +59,7 @@ global file (see [section 6](#6-where-d2-to-d5-land)).
 | `button_layout` (+ `button_map` while `custom`) | Controls, 9 | `playstation` (**D2: `nintendo`**) | all | Face-button layout: A confirms / B cancels with Nintendo |
 | (action row, no key) | Controls, 11 Customize buttons | n/a | all; locked in game | Per-button remap, stored as `button_layout=custom` + `button_map` |
 | (action row, no key) | Controls, 12 Reset to default | n/a | all | Puts the default layout back (**D2: Nintendo**) |
-| `switch_glyphs` | Controls, 14 | 0 (OFF) (**D2: ON**) | **Switch only** (`DW3_OPT_GLYPHS_ROW`) | The game's button icons become the Switch's buttons |
+| `switch_glyphs` | Controls, 14 | 0 (OFF) (**D2: ON on the Switch, OFF on the PC**) | **Switch only** (`DW3_OPT_GLYPHS_ROW`) | The game's button icons become the Switch's buttons |
 | `cheat_enabled`, `cheat_instant_win` | Cheats group (its ten rows) | 0 / 0 | build with `DW3_CHEATS` (default); title only | Test aid: master switch, Fill bag, Instant win, Battle now, Money, Warp, Give item. Off = no effect |
 
 The Cheats screen's other rows (Fill bag, Battle now, Cheat saves, Money, Warp, Item id,
@@ -684,18 +684,22 @@ Built on top of step 1 (#404), one PR (2026-10-31). Registry row **28 Map scaler
   layout of **Reset to default** (log `dw3-controls: reset to default (layout=nintendo) (screen)`), and the
   fallback of a bad value or an invalid custom map. A confirms and B cancels on the Switch and on the PC.
   `DW3_BUTTON_MAP=default` stays the PlayStation pin for tests and is never saved.
-- **Switch glyphs** defaults to **ON** (registry default 1); the row stays Switch-only. The glyph patch of
-  the game's font cells acts on the PC too (the replays prove it), and the PC has **no row**: a PC player turns
-  it off with `switch_glyphs=0` in the file. The map view's help line still prints labels on the PC.
-  Flagged to the owner in the PR (the design text of 6.1 says "the setting only acts on the Switch").
+- **Switch glyphs** defaults to **ON on the Switch and OFF on the PC** (the registry default is
+  `DW3_OPT_GLYPHS_ROW`); the row stays Switch-only. The glyph patch of the game's font cells runs on the PC too,
+  and the PC has **no row**, so an ON default there would break rule 8 and put Switch glyphs on a keyboard or an
+  Xbox pad. Orchestrator decision of 2026-10-31 (the owner's D2 answer was "default ON, row still Switch-only"):
+  the PC default stays 0, the migration does not flip the key on the PC, and `switch_glyphs=1` in the file or
+  `DW3_SWITCH_GLYPHS=1` still forces it on for a PC test run (the `glyphs-*` replays do). The map view's help line
+  prints labels on the PC either way.
 - **The migration** is `po_defaults_migrate()` in `port/options/port_options.c`, as in 6.1, with these details:
   - It runs in `dw3_port_options_persist_init` only when the file **exists** (also a recovered `.tmp`) and
     `defaults_gen` is below `DW3_DEFAULTS_GEN` (2): a missing key counts as 1, so does a value that is not a
     number (one `defaults_gen=... is not valid; treating the file as generation 1` line). A number above 2 (a
     newer build) is kept and written back unchanged.
   - It edits the loaded text before the rows read it: `button_layout=playstation` becomes `nintendo`,
-    `switch_glyphs=0` becomes `1`. `custom` (with its `button_map`), an explicit `nintendo`, `switch_glyphs=1`
-    and a missing key are left alone.
+    and **on the Switch** `switch_glyphs=0` becomes `1`. `custom` (with its `button_map`), an explicit `nintendo`,
+    `switch_glyphs=1` and a missing key are left alone. **On the PC** (no glyphs row) a present `switch_glyphs`
+    is never touched and goes into the kept list as `switch_glyphs (pc)`.
   - The **write happens at the end of the boot**, after the button map is in force and the environment pins are
     applied, so a custom `button_map` is written back as it was read and a row pinned by `DW3_BUTTON_MAP` or
     `DW3_SWITCH_GLYPHS` keeps the file's (migrated) value, never the pin. `po_save` stages `defaults_gen` on
@@ -705,8 +709,8 @@ Built on top of step 1 (#404), one PR (2026-10-31). Registry row **28 Map scaler
   - A fresh install (no file) logs `dw3-options: defaults_gen=2 (new file)`, is not migrated, and its first
     save writes `defaults_gen=2`.
   - Log lines (exactly): `dw3-options: migrate defaults_gen 1->2 button_layout playstation->nintendo
-    switch_glyphs 0->1 (kept: none)`; with a keeper, `... switch_glyphs 0->1 (kept: button_layout=custom)`;
-    nothing to flip: `dw3-options: defaults_gen 1->2 nothing to flip`; failed write:
+    switch_glyphs 0->1 (kept: none)` (Switch); with a keeper, `... switch_glyphs 0->1 (kept: button_layout=custom)`;
+    on the PC `... button_layout playstation->nintendo (kept: switch_glyphs (pc))`; nothing to flip: `dw3-options: defaults_gen 1->2 nothing to flip`; failed write:
     `dw3-options: migrate defaults_gen NOT saved (<strerror>), will retry`.
 - Texts: the **Reset to default** message line ("Back to the Nintendo layout. Applies now.") and the Help
   pages **Controls**, **Options explained** and **Map view** are rewritten in EN and in the FR / DE / IT / ES

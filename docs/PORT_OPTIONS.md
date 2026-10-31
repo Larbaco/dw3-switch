@@ -82,7 +82,7 @@ explicitly marked N/A in this note.
 | Pacing | **Encounter rate** (OFF / 0.5x / 1x / 1.5x / 2x) and **Text speed** (Normal / Fast / Instant), both default to the original game ([P6.18](P6.18_PACING.md)). Instant shows every dialogue page, report line and (since 2026-10-24) the area name banner's names whole; Normal and Fast leave the banner as the game types it | Phase 6 |
 | Battle menu memory | **Battle cursor** (OFF / Command / Command+Tech): the battle command menu and technique list open on your last pick; key `battle_menu_memory` 0 / 1 / 2, off by default (a row since P7.9's follow-up, it was file-only) ([P7.9](P7.9_BATTLE_MENU_MEMORY.md)) | Phase 7 |
 | Button layout | **Button layout** (Nintendo A confirms, B cancels, **default since D2** / PlayStation positional, the original), ROADMAP P9.8, **built 2026-10-28**: row 9, in the Controls group, key `button_layout`, see [Button layout row](#button-layout-row-p98) | Phase 9 (P9.8) |
-| Switch button glyphs | **Switch glyphs** (on = Switch glyphs that follow the button map, **default since D2** / off = the game's own button icons), ROADMAP P10.6, **built 2026-10-29**: row 14, last row of the Controls group, **Switch only** (the PC has no row), key `switch_glyphs`, `DW3_SWITCH_GLYPHS=0\|1` pins it for a run, see [Switch glyphs row](#switch-glyphs-row-p106) | Phase 10 (P10.6) |
+| Switch button glyphs | **Switch glyphs** (on = Switch glyphs that follow the button map, **default ON on the Switch since D2**, OFF on the PC / off = the game's own button icons), ROADMAP P10.6, **built 2026-10-29**: row 14, last row of the Controls group, **Switch only** (the PC has no row), key `switch_glyphs`, `DW3_SWITCH_GLYPHS=0\|1` pins it for a run, see [Switch glyphs row](#switch-glyphs-row-p106) | Phase 10 (P10.6) |
 | Cheats (test aid) | A **Cheats** sub-screen for hardware testing, reached with Square / Y on the Options screen: master switch, Fill bag, Instant win, Battle now and a count of saves flagged "cheat used" (a sidecar file, never the save). A second page (PR 2) has Money, Warp (13 areas), Item id, Item count and Give item. Off by default, keys `cheat_enabled` and `cheat_instant_win` in `port_options.cfg`; built in by default, removed by `DW3_CHEATS=OFF` / `--no-cheats`. Later HP / MP. See [Cheats](#cheats-p620) and ROADMAP P6.20 | Phase 6 (P6.20) |
 | Switch host | Rumble on/intensity, confirm A/B layout, `swkbd` name, CRT/sharp, system-language hint | Phase 10 (+ P4.4 / P5.3 always-on lifecycle) |
 | Restart game | Optional L1 + R1 + Start + Select in the shared PS1 pad map; OFF by default | Phase 6.9 |
@@ -182,8 +182,8 @@ Rules, implemented in `port/options/options_cfg.c` and `port/options/port_option
 
 | Case | Behaviour |
 |---|---|
-| No file | Defaults (Widescreen ON, Fast-forward 2x armed, Restart hotkey OFF, Music volume 10, SFX volume 10, Encounter rate 1x, Text speed Normal, Battle cursor OFF, Button layout Nintendo, Switch glyphs ON, Map scaler FSR 1). The file is first written on the first change, not at boot; it is born with `defaults_gen=2` and is never migrated. |
-| `defaults_gen` below 2 or missing, in a file that exists (D2) | One-shot migration at load: `button_layout=playstation` becomes `nintendo`, `switch_glyphs=0` becomes `1`; `custom`, `nintendo`, `switch_glyphs=1` and missing keys are left. The file is written at once with `defaults_gen=2`. |
+| No file | Defaults (Widescreen ON, Fast-forward 2x armed, Restart hotkey OFF, Music volume 10, SFX volume 10, Encounter rate 1x, Text speed Normal, Battle cursor OFF, Button layout Nintendo, Switch glyphs ON on the Switch and OFF on the PC, Map scaler FSR 1). The file is first written on the first change, not at boot; it is born with `defaults_gen=2` and is never migrated. |
+| `defaults_gen` below 2 or missing, in a file that exists (D2) | One-shot migration at load: `button_layout=playstation` becomes `nintendo`, `switch_glyphs=0` becomes `1` **on the Switch only** (the PC has no row: the key is left, the log says `kept: switch_glyphs (pc)`); `custom`, `nintendo`, `switch_glyphs=1` and missing keys are left. The file is written at once with `defaults_gen=2`. |
 | Missing key | That option keeps its default. |
 | Invalid value (not an integer, or out of range: Fast-forward must be 0 or 2..4, the volumes 0..10, `encounter_rate` 0..4, `text_speed` 0..2, `battle_menu_memory` 0..2, the others (`autosave` too) 0 or 1) | That option falls back to its default and a `dw3-options: <key>=<v> is not valid` line is logged. The bad line is replaced on the next save. |
 | Malformed line, over-long key or value, junk | Skipped and counted (`ignored N malformed line(s)` in the log). |
@@ -1258,14 +1258,16 @@ with the Switch glyphs row ([below](#switch-glyphs-row-p106)).
 ## Switch glyphs row (P10.6)
 
 **Row 14, Controls group, Switch only.** `DW3_PORT_OPT_SWITCH_GLYPHS`, key
-`switch_glyphs` (0 or 1, **default 1 since D2**), a switch row: Confirm toggles it, the file is
+`switch_glyphs` (0 or 1, **default 1 on the Switch since D2, 0 on the PC**), a switch row: Confirm toggles it, the file is
 written at once and the font cells change before the next frame. The row is
 listed only when `__SWITCH__` is defined (`DW3_OPT_GLYPHS_ROW` in
 `port_options_groups.h`), so the PC's Controls screen keeps its three rows and
 its references. The code is shared: on the PC the key or `DW3_SWITCH_GLYPHS=1`
 turns the patch on (the replay scenarios use the key); only the row is missing. Since D2 the
-default is ON everywhere, so a PC run with no file draws the Switch glyphs too (the PC has
-no row: `switch_glyphs=0` in the file, or `DW3_SWITCH_GLYPHS=0`, keeps the game's icons).
+default is ON where the row exists (the Switch: `DW3_OPT_GLYPHS_ROW` is the registry default) and
+**OFF on the PC**: Switch button glyphs on a keyboard or an Xbox pad make no sense, and a default with
+no row to turn it off would break rule 8. `switch_glyphs=1` in the file or `DW3_SWITCH_GLYPHS=1` still
+forces them on for a PC test run, and the migration never flips the key on the PC.
 With the row off nothing changes: no VRAM write, no log beyond one `off` line
 per run, pictures bit-identical to the build without the feature.
 
@@ -2261,19 +2263,20 @@ Step 2 of the [build order](OPTIONS_REORG.md#8-build-order), owner decisions of 
 | Key | New default | Was | Notes |
 |---|---|---|---|
 | `button_layout` | `nintendo` (A confirms, B cancels), Switch and PC | `playstation` | **Reset to default** goes to Nintendo too (`DW3_LAYOUT_DEFAULT`). `DW3_BUTTON_MAP=default` is still the PlayStation pin for tests. |
-| `switch_glyphs` | `1` (ON) | `0` | The row stays Switch-only; the glyph patch acts on the PC too, which has no row. |
+| `switch_glyphs` | `1` (ON) **on the Switch**; `0` on the PC | `0` | The row stays Switch-only. The PC has no row, so its default stays OFF (Switch glyphs on a keyboard or an Xbox pad make no sense; rule 8); the key or `DW3_SWITCH_GLYPHS=1` still turns it on there for tests. |
 | `defaults_gen` | written as `2` | absent (counts as 1) | Internal marker, no row. |
 
 A fresh install (no file) is born on these defaults and is not migrated. A file that **exists** with
 `defaults_gen` below 2 is migrated once at load and written at once: `button_layout=playstation` becomes
-`nintendo` and `switch_glyphs=0` becomes `1`; a `custom` layout (with its `button_map`), an explicit `nintendo`, a
-glyphs value already 1 and a missing key are kept. The write runs after the map and the environment pins are in
+`nintendo` and, on the Switch, `switch_glyphs=0` becomes `1` (the PC has no glyphs row, so it leaves the key alone);
+a `custom` layout (with its `button_map`), an explicit `nintendo`, a glyphs value already 1 and a missing key are kept. The write runs after the map and the environment pins are in
 force, so a custom map survives it and a pinned row never reaches the file. A failed write is retried by the next
 save and the next boot. Log lines (proof for OLED row P1): `dw3-options: migrate defaults_gen 1->2 button_layout
-playstation->nintendo switch_glyphs 0->1 (kept: none)`, with a keeper `... (kept: button_layout=custom)`,
+playstation->nintendo switch_glyphs 0->1 (kept: none)` (Switch), with a keeper `... switch_glyphs 0->1 (kept: button_layout=custom)`,
+on the PC `... playstation->nintendo (kept: switch_glyphs (pc))`,
 `dw3-options: defaults_gen 1->2 nothing to flip`, `dw3-options: migrate defaults_gen NOT saved (<reason>), will
 retry`, and for a fresh install `dw3-options: defaults_gen=2 (new file)`. **Release-note sentence:** *Existing
-settings files are migrated once: Button layout becomes Nintendo (A confirms) and Switch glyphs becomes ON; change
+settings files are migrated once: Button layout becomes Nintendo (A confirms) and, on the Switch, Switch glyphs becomes ON; change
 them back in Options > Controls and they stay.* (A later default change raises `DW3_DEFAULTS_GEN` and reuses the
 mechanism.) Tests: `test_options_persist.py` (`test_an_old_file_is_migrated_once...` and the other migration cases),
 replays `us/eu-defaults-migrate`, `-defaults-migrate-custom`, `-defaults-migrate-fresh`.

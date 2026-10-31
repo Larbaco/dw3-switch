@@ -263,9 +263,9 @@ names the source (same numbering) that produces it. The identity is
 `0123456789`; the Nintendo preset is `1203456789` (Cross from the Circle
 position = A, Circle from Triangle = X, Triangle from Cross = B). A value that
 is not a permutation of ten digits falls back to the identity with one log line.
-Phase 3 adds `switch_glyphs=0|1` (default 0; **1 since D2**). D2 also adds the internal marker `defaults_gen=2`: a file
+Phase 3 adds `switch_glyphs=0|1` (default 0; **1 on the Switch since D2**, 0 on the PC). D2 also adds the internal marker `defaults_gen=2`: a file
 that exists without it (or below 2) is migrated once at load, `button_layout=playstation` to `nintendo` and
-`switch_glyphs=0` to `1` (a custom layout is kept), and written at once; a fresh install is born on the new defaults
+`switch_glyphs=0` to `1` on the Switch (the PC leaves it; a custom layout is kept), and written at once; a fresh install is born on the new defaults
 ([PORT_OPTIONS](PORT_OPTIONS.md#defaults-generation-and-the-map-scaler-d2--d5)).
 
 ### 2.5 Options UI
@@ -347,7 +347,7 @@ upscaling) was used, as for the map fan art
 bitmaps, so they can also be C arrays in `port/` with the same statement in
 `PROVENANCE.md`.
 
-**Option.** `switch_glyphs` (0 = original icons, 1 = Switch glyphs, **default 1 since D2**).
+**Option.** `switch_glyphs` (0 = original icons, 1 = Switch glyphs, **default 1 on the Switch since D2**, 0 on the PC).
 Switch only at first; the code is shared, so PC pads can get it later. On PC the
 keyboard keeps the PS names.
 
@@ -710,9 +710,9 @@ US, `--eu`, `--both`) build. Not run on a console.
 ## D2: the defaults changed (2026-10-31)
 
 Owner decision (OPTIONS_REORG step 2): the default `button_layout` is **Nintendo** (A confirms, B cancels, on the
-Switch and on the PC) and the default `switch_glyphs` is **ON** (the row stays Switch-only). **Reset to default**
+Switch and on the PC) and the default `switch_glyphs` is **ON on the Switch** and OFF on the PC (the row stays Switch-only; the PC has no row, and Switch glyphs on a keyboard or an Xbox pad make no sense; `switch_glyphs=1` still forces it on there for tests). **Reset to default**
 puts Nintendo back. Existing `port_options.cfg` files are migrated once with the marker `defaults_gen` (a missing key
-counts as 1, D2 writes 2): `playstation` becomes `nintendo`, glyphs 0 becomes 1, `custom` and an explicit `nintendo`
+counts as 1, D2 writes 2): `playstation` becomes `nintendo`, glyphs 0 becomes 1 (on the Switch only), `custom` and an explicit `nintendo`
 are kept, the file is written at once; a fresh install is not migrated. Log lines, edge cases and tests are in
 [PORT_OPTIONS](PORT_OPTIONS.md#defaults-generation-and-the-map-scaler-d2--d5) and
 [OPTIONS_REORG 8.1](OPTIONS_REORG.md#81-step-2-as-built-d2--d5). `DW3_BUTTON_MAP=default` is still the PlayStation pin

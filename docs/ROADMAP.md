@@ -1544,9 +1544,9 @@ PS1 game, with vanilla-safe defaults and persistence on owner storage.
   scrolling background). Details: [PORT_OPTIONS](PORT_OPTIONS.md#options-reorganization-d1). OLED rows O1 to O8 open.
   **D2 + D5 built (2026-10-31, branch `feat/d2-d5-defaults-fsr`, PR open, no decomp patch):** the default
   Button layout is **Nintendo** (A confirms, B cancels; Switch and PC) and **Reset to default** goes there;
-  Switch glyphs defaults to **ON** (the row stays Switch-only; the glyph patch acts on the PC too, which has no
-  row, flagged to the owner); existing `port_options.cfg` files are **migrated once** with the marker
-  `defaults_gen` (missing = 1, now 2: `playstation` to `nintendo`, glyphs 0 to 1, a custom layout kept, written
+  Switch glyphs defaults to **ON on the Switch and OFF on the PC** (the row stays Switch-only; the PC has no row, so
+  its default stays 0 and the migration leaves the key there; `switch_glyphs=1` still forces it on for PC tests); existing `port_options.cfg` files are **migrated once** with the marker
+  `defaults_gen` (missing = 1, now 2: `playstation` to `nintendo`, glyphs 0 to 1 on the Switch, a custom layout kept, written
   at once, logged; a fresh install is not migrated); the default map scaler is **FSR 1** for the captured map and
   the mod pack, with a new **Display > Map scaler** row (registry 28, key `map_scaler`; Nearest, Sharp bilinear,
   Lanczos2, FSR 1, Bilinear) and an open with no hitch (it shows Nearest until the worker thread has FSR 1). Help

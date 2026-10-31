@@ -238,10 +238,12 @@ int main(void) {
         strcmp(dw3_port_options_key(DW3_PORT_OPT_MAP_SCALER), "map_scaler") != 0) {
         return fail("Map scaler defaults to FSR 1, key map_scaler");
     }
-    /* D2: the layout defaults to Nintendo and Switch glyphs to ON. */
+    /* D2: the layout defaults to Nintendo everywhere; Switch glyphs default to ON where
+     * the row exists (the Switch, or a test that forces the row) and OFF on the PC, which
+     * has no row to turn it off (owner via orchestrator, 2026-10-31). */
     if (dw3_port_options_level(DW3_PORT_OPT_BUTTON_LAYOUT) != DW3_LAYOUT_NINTENDO ||
-        dw3_port_options_level(DW3_PORT_OPT_SWITCH_GLYPHS) != 1) {
-        return fail("D2 defaults: Nintendo layout, Switch glyphs ON");
+        dw3_port_options_level(DW3_PORT_OPT_SWITCH_GLYPHS) != DW3_OPT_GLYPHS_ROW) {
+        return fail("D2 defaults: Nintendo layout, Switch glyphs ON on the Switch and OFF on the PC");
     }
     if (dw3_port_options_level(DW3_PORT_OPT_MAP_MOD) != 1 ||
         dw3_port_options_level(DW3_PORT_OPT_SHOW_VERSION) != 1) {
@@ -291,11 +293,11 @@ int main(void) {
         dw3_optgroups[DW3_OPTGRP_CONTROLS].rows[DW3_OPT_GLYPHS_ROW + 4] != 2 /* Restart hotkey, last */) {
         return fail("Controls row count follows DW3_OPT_GLYPHS_ROW");
     }
-    if (dw3_port_options_level(DW3_PORT_OPT_SWITCH_GLYPHS) != 1 ||
+    if (dw3_port_options_level(DW3_PORT_OPT_SWITCH_GLYPHS) != DW3_OPT_GLYPHS_ROW ||
         dw3_port_options_label(DW3_PORT_OPT_SWITCH_GLYPHS) == NULL ||
         strstr(dw3_port_options_label(DW3_PORT_OPT_SWITCH_GLYPHS),
                "Switch glyphs") == NULL) {
-        return fail("Switch glyphs row defaults to on (D2)");
+        return fail("Switch glyphs defaults to on where the row exists (D2), off on the PC");
     }
 #if DW3_OPT_GLYPHS_ROW
     dw3_port_options_open();

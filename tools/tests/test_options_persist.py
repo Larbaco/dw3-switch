@@ -51,6 +51,16 @@ def persist_bin(tmp_path_factory) -> Path:
                  defs=["-DDW3_PORT_OPTIONS_TEST", "-DDW3_BUTTON_MAP_TEST"])
 
 
+@pytest.fixture(scope="module")
+def glyph_bin(tmp_path_factory) -> Path:
+    """The registry as the Switch build compiles it: the Switch glyphs row exists
+    (DW3_OPT_GLYPHS_ROW), so the D2 default is ON and the migration flips it."""
+    return build(tmp_path_factory.mktemp("optglyph") / "options_glyph_test",
+                 TESTS / "options_persist_main.c", OPTIONS / "port_options.c", OPTIONS / "button_map.c",
+                 OPTIONS / "options_cfg.c", ROOT / "port" / "audio" / "volume.c",
+                 defs=["-DDW3_PORT_OPTIONS_TEST", "-DDW3_BUTTON_MAP_TEST", "-DDW3_FORCE_GLYPHS_ROW"])
+
+
 def session(binary: Path, cfgdir: Path, *steps: str):
     """One process; returns (stdout lines, stderr)."""
     r = subprocess.run([str(binary), str(cfgdir), *steps],
@@ -1031,6 +1041,8 @@ def test_region_row_never_overwrites_a_top_level_file_it_cannot_read(region_bin:
 
 
 # --- D2: defaults_gen, the one-shot migration of the defaults (docs/OPTIONS_REORG.md 6.1) ---
+# These run on the Switch build of the registry (glyph_bin: the glyphs row exists, default ON). The PC
+# build (persist_bin, no row, default OFF, glyphs never flipped) is tested at the end of the section.
 
 GLYPHS = "14"   # registry row of Switch glyphs
 OLD_FILE = ("version=1\nwidescreen=0\nbutton_layout=playstation\nswitch_glyphs=0\n"
@@ -1041,9 +1053,9 @@ def keys_of(text: str) -> dict:
     return dict(l.split("=", 1) for l in text.splitlines() if "=" in l and not l.startswith("#"))
 
 
-def test_an_old_file_is_migrated_once_and_written_at_once(persist_bin: Path, tmp_path: Path):
+def test_an_old_file_is_migrated_once_and_written_at_once(glyph_bin: Path, tmp_path: Path):
     (tmp_path / CFG).write_text(OLD_FILE)
-    out, err = session(persist_bin, tmp_path, "layout", "level", GLYPHS)
+    out, err = session(glyph_bin, tmp_path, "layout", "level", GLYPHS)
     assert out == ["button_layout=1", f"level{GLYPHS}=1"]
     assert ("dw3-options: migrate defaults_gen 1->2 button_layout playstation->nintendo "
             "switch_glyphs 0->1 (kept: none)") in err
@@ -1052,19 +1064,19 @@ def test_an_old_file_is_migrated_once_and_written_at_once(persist_bin: Path, tmp
     assert (kv["button_layout"], kv["switch_glyphs"], kv["defaults_gen"]) == ("nintendo", "1", "2")
     assert kv["widescreen"] == "0" and kv["music_volume"] == "7"   # nothing else touched
     # the second start does not migrate again ...
-    out, err = session(persist_bin, tmp_path, "layout")
+    out, err = session(glyph_bin, tmp_path, "layout")
     assert out == ["button_layout=1"] and "migrate defaults_gen" not in err and "nothing to flip" not in err
     # ... so a player who puts PlayStation back keeps it (it is a deliberate choice now)
-    session(persist_bin, tmp_path, "open", "row", "9", "left")
-    out, err = session(persist_bin, tmp_path, "layout")
+    session(glyph_bin, tmp_path, "open", "row", "9", "left")
+    out, err = session(glyph_bin, tmp_path, "layout")
     assert out == ["button_layout=0"] and "migrate defaults_gen" not in err
     assert keys_of((tmp_path / CFG).read_text())["button_layout"] == "playstation"
 
 
-def test_a_custom_layout_is_kept_by_the_migration(persist_bin: Path, tmp_path: Path):
+def test_a_custom_layout_is_kept_by_the_migration(glyph_bin: Path, tmp_path: Path):
     (tmp_path / CFG).write_text(
         "version=1\nbutton_layout=custom\nbutton_map=0123546789\nswitch_glyphs=0\nend=1\n")
-    out, err = session(persist_bin, tmp_path, "map", "level", GLYPHS)
+    out, err = session(glyph_bin, tmp_path, "map", "level", GLYPHS)
     assert out == ["map=0123546789 layout=2", f"level{GLYPHS}=1"]
     assert ("dw3-options: migrate defaults_gen 1->2 switch_glyphs 0->1 "
             "(kept: button_layout=custom)") in err
@@ -1072,89 +1084,130 @@ def test_a_custom_layout_is_kept_by_the_migration(persist_bin: Path, tmp_path: P
     assert (kv["button_layout"], kv["button_map"], kv["defaults_gen"]) == ("custom", "0123546789", "2")
 
 
-def test_an_explicit_nintendo_and_glyphs_on_are_kept(persist_bin: Path, tmp_path: Path):
+def test_an_explicit_nintendo_and_glyphs_on_are_kept(glyph_bin: Path, tmp_path: Path):
     (tmp_path / CFG).write_text("version=1\nbutton_layout=nintendo\nswitch_glyphs=1\nend=1\n")
-    out, err = session(persist_bin, tmp_path, "layout", "level", GLYPHS)
+    out, err = session(glyph_bin, tmp_path, "layout", "level", GLYPHS)
     assert out == ["button_layout=1", f"level{GLYPHS}=1"]
     assert "dw3-options: defaults_gen 1->2 nothing to flip" in err
     assert "migrate defaults_gen 1->2 button_layout" not in err
     assert keys_of((tmp_path / CFG).read_text())["defaults_gen"] == "2"   # the marker is stamped
 
 
-def test_an_explicit_nintendo_with_glyphs_off_flips_only_the_glyphs(persist_bin: Path, tmp_path: Path):
+def test_an_explicit_nintendo_with_glyphs_off_flips_only_the_glyphs(glyph_bin: Path, tmp_path: Path):
     (tmp_path / CFG).write_text("version=1\nbutton_layout=nintendo\nswitch_glyphs=0\nend=1\n")
-    out, err = session(persist_bin, tmp_path, "layout", "level", GLYPHS)
+    out, err = session(glyph_bin, tmp_path, "layout", "level", GLYPHS)
     assert out == ["button_layout=1", f"level{GLYPHS}=1"]
     assert ("dw3-options: migrate defaults_gen 1->2 switch_glyphs 0->1 "
             "(kept: button_layout=nintendo)") in err
 
 
-def test_a_missing_key_takes_the_new_default_without_a_flip(persist_bin: Path, tmp_path: Path):
+def test_a_missing_key_takes_the_new_default_without_a_flip(glyph_bin: Path, tmp_path: Path):
     (tmp_path / CFG).write_text("version=1\nwidescreen=0\nend=1\n")
-    out, err = session(persist_bin, tmp_path, "layout", "level", GLYPHS)
+    out, err = session(glyph_bin, tmp_path, "layout", "level", GLYPHS)
     assert out == ["button_layout=1", f"level{GLYPHS}=1"]
     assert "dw3-options: defaults_gen 1->2 nothing to flip" in err
     assert keys_of((tmp_path / CFG).read_text())["defaults_gen"] == "2"
 
 
-def test_a_fresh_install_is_not_migrated_and_gets_the_marker_on_its_first_save(persist_bin: Path, tmp_path: Path):
-    out, err = session(persist_bin, tmp_path, "layout", "level", GLYPHS)
+def test_a_fresh_install_is_not_migrated_and_gets_the_marker_on_its_first_save(glyph_bin: Path, tmp_path: Path):
+    out, err = session(glyph_bin, tmp_path, "layout", "level", GLYPHS)
     assert out == ["button_layout=1", f"level{GLYPHS}=1"]
     assert "dw3-options: defaults_gen=2 (new file)" in err
     assert "migrate defaults_gen" not in err
     assert not (tmp_path / CFG).exists()                # reading alone writes nothing
-    session(persist_bin, tmp_path, "open", "row", "0", "press")
+    session(glyph_bin, tmp_path, "open", "row", "0", "press")
     kv = keys_of((tmp_path / CFG).read_text())
     assert (kv["defaults_gen"], kv["button_layout"], kv["switch_glyphs"]) == ("2", "nintendo", "1")
 
 
-def test_a_current_file_is_never_touched(persist_bin: Path, tmp_path: Path):
+def test_a_current_file_is_never_touched(glyph_bin: Path, tmp_path: Path):
     text = seed_ps(tmp_path, "switch_glyphs=0\n")
-    out, err = session(persist_bin, tmp_path, "layout", "level", GLYPHS)
+    out, err = session(glyph_bin, tmp_path, "layout", "level", GLYPHS)
     assert out == ["button_layout=0", f"level{GLYPHS}=0"]
     assert "migrate defaults_gen" not in err and "nothing to flip" not in err
     assert (tmp_path / CFG).read_text() == text
 
 
-def test_a_newer_generation_is_kept(persist_bin: Path, tmp_path: Path):
+def test_a_newer_generation_is_kept(glyph_bin: Path, tmp_path: Path):
     (tmp_path / CFG).write_text("version=1\ndefaults_gen=3\nbutton_layout=playstation\nend=1\n")
-    out, err = session(persist_bin, tmp_path, "layout", "open", "row", "0", "press")
+    out, err = session(glyph_bin, tmp_path, "layout", "open", "row", "0", "press")
     assert out == ["button_layout=0"] and "migrate defaults_gen" not in err
     assert keys_of((tmp_path / CFG).read_text())["defaults_gen"] == "3"   # not lowered
 
 
-def test_a_bad_marker_counts_as_generation_one(persist_bin: Path, tmp_path: Path):
+def test_a_bad_marker_counts_as_generation_one(glyph_bin: Path, tmp_path: Path):
     (tmp_path / CFG).write_text("version=1\ndefaults_gen=soon\nbutton_layout=playstation\nend=1\n")
-    out, err = session(persist_bin, tmp_path, "layout")
+    out, err = session(glyph_bin, tmp_path, "layout")
     assert out == ["button_layout=1"]
     assert "defaults_gen=soon is not valid" in err and "migrate defaults_gen 1->2" in err
 
 
 @pytest.mark.skipif(os.geteuid() == 0, reason="root ignores directory permissions")
-def test_a_failed_migration_write_is_logged_and_retried_at_the_next_start(persist_bin: Path, tmp_path: Path):
+def test_a_failed_migration_write_is_logged_and_retried_at_the_next_start(glyph_bin: Path, tmp_path: Path):
     (tmp_path / CFG).write_text(OLD_FILE)
     tmp_path.chmod(stat.S_IRUSR | stat.S_IXUSR)          # the temp file cannot be created
     try:
-        out, err = session(persist_bin, tmp_path, "layout", "level", GLYPHS)
+        out, err = session(glyph_bin, tmp_path, "layout", "level", GLYPHS)
     finally:
         tmp_path.chmod(stat.S_IRWXU)
     assert out == ["button_layout=1", f"level{GLYPHS}=1"]  # in force for the run, in memory
     assert "dw3-options: migrate defaults_gen NOT saved (" in err and "will retry" in err
     assert (tmp_path / CFG).read_text() == OLD_FILE        # the file is untouched
-    out, err = session(persist_bin, tmp_path, "layout")    # the next start tries again
+    out, err = session(glyph_bin, tmp_path, "layout")    # the next start tries again
     assert out == ["button_layout=1"] and "NOT saved" not in err
     assert keys_of((tmp_path / CFG).read_text())["defaults_gen"] == "2"
 
 
-def test_the_environment_pins_are_applied_after_the_migration_and_never_saved(persist_bin: Path, tmp_path: Path):
+def test_the_environment_pins_are_applied_after_the_migration_and_never_saved(glyph_bin: Path, tmp_path: Path):
     (tmp_path / CFG).write_text(OLD_FILE)
     env = dict(os.environ, DW3_BUTTON_MAP="default", DW3_SWITCH_GLYPHS="0")
-    r = subprocess.run([str(persist_bin), str(tmp_path), "layout", "level", GLYPHS],
+    r = subprocess.run([str(glyph_bin), str(tmp_path), "layout", "level", GLYPHS],
                        capture_output=True, text=True, env=env)
     assert r.returncode == 0, r.stderr
     assert r.stdout.split() == ["button_layout=0", f"level{GLYPHS}=0"]     # the run is pinned
     kv = keys_of((tmp_path / CFG).read_text())
     assert (kv["button_layout"], kv["switch_glyphs"]) == ("nintendo", "1")  # the file is migrated
+
+
+# The PC build: no Switch glyphs row, so the default is OFF, the migration never flips the key and says so
+# (owner via orchestrator, 2026-10-31: glyphs on a keyboard or an Xbox pad make no sense; rule 8).
+
+def test_pc_default_for_glyphs_stays_off_and_the_migration_leaves_the_key(persist_bin: Path, tmp_path: Path):
+    (tmp_path / CFG).write_text(OLD_FILE)
+    out, err = session(persist_bin, tmp_path, "layout", "level", GLYPHS)
+    assert out == ["button_layout=1", f"level{GLYPHS}=0"]            # layout flips, glyphs stay 0
+    assert ("dw3-options: migrate defaults_gen 1->2 button_layout playstation->nintendo "
+            "(kept: switch_glyphs (pc))") in err
+    kv = keys_of((tmp_path / CFG).read_text())
+    assert (kv["button_layout"], kv["switch_glyphs"], kv["defaults_gen"]) == ("nintendo", "0", "2")
+    out, err = session(persist_bin, tmp_path, "layout")               # and it runs once
+    assert "migrate defaults_gen" not in err
+
+
+def test_pc_fresh_install_has_glyphs_off(persist_bin: Path, tmp_path: Path):
+    out, err = session(persist_bin, tmp_path, "layout", "level", GLYPHS)
+    assert out == ["button_layout=1", f"level{GLYPHS}=0"]
+    assert "dw3-options: defaults_gen=2 (new file)" in err and "migrate defaults_gen" not in err
+    session(persist_bin, tmp_path, "open", "row", "0", "press")
+    assert keys_of((tmp_path / CFG).read_text())["switch_glyphs"] == "0"
+
+
+def test_pc_glyphs_forced_on_by_the_file_stay_on(persist_bin: Path, tmp_path: Path):
+    # `switch_glyphs=1` still turns it on for a test run; the migration does not touch it either way
+    (tmp_path / CFG).write_text("version=1\nbutton_layout=nintendo\nswitch_glyphs=1\nend=1\n")
+    out, err = session(persist_bin, tmp_path, "layout", "level", GLYPHS)
+    assert out == ["button_layout=1", f"level{GLYPHS}=1"]
+    assert "dw3-options: defaults_gen 1->2 nothing to flip" in err
+    (tmp_path / CFG).write_text("version=1\nbutton_layout=nintendo\nswitch_glyphs=0\nend=1\n")
+    out, _ = session(persist_bin, tmp_path, "level", GLYPHS)
+    assert out == [f"level{GLYPHS}=0"]                                # not flipped to 1 on the PC
+
+
+def test_pc_glyphs_env_pin_forces_it_on(persist_bin: Path, tmp_path: Path):
+    env = dict(os.environ, DW3_SWITCH_GLYPHS="1")
+    r = subprocess.run([str(persist_bin), str(tmp_path), "level", GLYPHS], capture_output=True, text=True, env=env)
+    assert r.returncode == 0 and r.stdout.split() == [f"level{GLYPHS}=1"]
+    assert not (tmp_path / CFG).exists()
 
 
 # --- D5: the Map scaler row (registry row 28, key map_scaler, FSR 1 by default) -------------

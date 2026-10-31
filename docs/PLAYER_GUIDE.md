@@ -190,7 +190,7 @@ group), from the list to the title, or to the field menu when opened there, see
 [Options in the field](#options-in-the-field). A line under the list explains the
 focused item. The words are in the language of the disc. Changes are saved at once in `port_options.cfg`
 ([PORT_OPTIONS](PORT_OPTIONS.md#persistence)). Defaults keep the original
-game, except Widescreen, the Nintendo button layout, the Switch glyphs and the map scaler (FSR 1).
+game, except Widescreen, the Nintendo button layout, the Switch glyphs (on the Switch) and the map scaler (FSR 1).
 
 | Group | Row | Values | Default | What it does |
 |---|---|---|---|---|
@@ -207,7 +207,7 @@ game, except Widescreen, the Nintendo button layout, the Switch glyphs and the m
 | Display | Version label | ON / OFF | ON | Shows the port version in the corner of the title screen. |
 | Menus | Equip from Items, Equip stays on list, Whole bag, Use item stays, Partner switch | ON / OFF | ON | The Items-menu shortcuts of this port. OFF gives the original Items menu for that shortcut. |
 | Menus | Instant menu exit | ON / OFF | ON | Leaving the field menu's screens (Items, Map, Status...) for the field skips the block dissolve and returns at once. The game runs on as if the fade had played. OFF plays the original fade. |
-| Controls | Button layout, Customize buttons, Reset to default, Switch glyphs (Switch) | Nintendo / PlayStation / Custom; ON / OFF | Nintendo; ON | The button mapping, see [Controls and hotkeys](#controls-and-hotkeys). Reset to default puts the Nintendo layout back. Switch glyphs draws the Switch buttons in the game's prompts. Files saved by an older version were switched once to Nintendo and glyphs ON. |
+| Controls | Button layout, Customize buttons, Reset to default, Switch glyphs (Switch) | Nintendo / PlayStation / Custom; ON / OFF | Nintendo; ON (Switch) | The button mapping, see [Controls and hotkeys](#controls-and-hotkeys). Reset to default puts the Nintendo layout back. Switch glyphs draws the Switch buttons in the game's prompts. Files saved by an older version were switched once to Nintendo and glyphs ON. |
 | Controls | Map buttons | a screen | | The buttons of the full-screen map: open, zoom, centre, scaler, open from the field. A button another action already has is swapped; Reset map buttons puts the defaults back. |
 | Controls | Restart hotkey | ON / OFF | OFF | Enables the L + R + Plus + Minus restart chord. [P6.9](P6.9_RESTART.md) |
 | Saves | Auto-save | OFF / Each area | OFF | With Each area: at each new field area the game saves to its own file, `autosave.bin`, never over your slots. On the title, **Continue** loads it. See [Saves](#saves). [P6.31](P6.31_AUTOSAVE.md) |

@@ -164,8 +164,13 @@ static Dw3PortOptStub g_stubs[DW3_PORT_OPT_COUNT] = {
      * DW3_TURBO_MUSIC pins it for a run (stored values). */
     {"Turbo music", "turbo_music", 0, 0, "DW3_TURBO_MUSIC"},
     /* P10.6: 0 = the game's button icons, 1 = Switch glyphs (a switch row;
-     * Confirm toggles). DW3_SWITCH_GLYPHS pins it for a run. D2: default ON. */
-    {"Switch glyphs", "switch_glyphs", 1, 1, "DW3_SWITCH_GLYPHS"},
+     * Confirm toggles). DW3_SWITCH_GLYPHS pins it for a run. D2: default ON where
+     * the row exists (the Switch: DW3_OPT_GLYPHS_ROW); the PC has no row, so its
+     * default stays OFF (Switch button glyphs on a keyboard or an Xbox pad make no
+     * sense, and a default with no row would break rule 8). `switch_glyphs=1` in the
+     * file or DW3_SWITCH_GLYPHS=1 still forces it on the PC for testing. */
+    {"Switch glyphs", "switch_glyphs", DW3_OPT_GLYPHS_ROW, DW3_OPT_GLYPHS_ROW,
+     "DW3_SWITCH_GLYPHS"},
     /* P6.32 phase 4: 0 = off (the game's own Map screen only), 1 = Square on
      * it opens the full-screen view. A switch row; the key is the file-only one
      * of the preview builds. No environment variable: the replays seed it in the
@@ -998,7 +1003,9 @@ const char *dw3_port_options_cfg_dir(void) {
  * migrated once, in the loaded text before the rows read it: button_layout
  * playstation -> nintendo and switch_glyphs 0 -> 1. A custom layout (with its
  * button_map), an explicit nintendo, a glyphs 1 and any missing key are left as
- * they are (a missing key simply takes the new default). `defaults_gen` itself
+ * they are (a missing key simply takes the new default). Where the Switch glyphs
+ * row does not exist (the PC) switch_glyphs is not touched at all and the log says
+ * `kept: switch_glyphs (pc)`. `defaults_gen` itself
  * is written by po_save. Returns 1 when the file was below the generation (the
  * caller writes it at once), else 0. The message is built here and logged by the
  * caller once the write has been tried. */
@@ -1034,6 +1041,12 @@ static int po_defaults_migrate(char *msg, size_t cap) {
                  "%sbutton_layout=%s", kept[0] ? ", " : "", lv);
     }
     gv = dw3_optcfg_get(&g_cfg, "switch_glyphs");
+#if !DW3_OPT_GLYPHS_ROW
+    if (gv != NULL) { /* the PC has no row: the key is a test aid there, never flipped */
+        snprintf(kept + strlen(kept), sizeof(kept) - strlen(kept),
+                 "%sswitch_glyphs (pc)", kept[0] ? ", " : "");
+    }
+#else
     if (gv != NULL && strcmp(gv, "0") == 0) {
         (void)dw3_optcfg_set(&g_cfg, "switch_glyphs", "1");
         snprintf(flips + strlen(flips), sizeof(flips) - strlen(flips),
@@ -1042,6 +1055,7 @@ static int po_defaults_migrate(char *msg, size_t cap) {
         snprintf(kept + strlen(kept), sizeof(kept) - strlen(kept),
                  "%sswitch_glyphs=%s", kept[0] ? ", " : "", gv);
     }
+#endif
     if (flips[0] == '\0') {
         snprintf(msg, cap, "dw3-options: defaults_gen %d->%d nothing to flip",
                  gen, DW3_DEFAULTS_GEN);
