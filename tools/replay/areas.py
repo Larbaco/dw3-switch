@@ -37,6 +37,8 @@ SMOKE = ("us-newgame-field", "eu-newgame-field", "us-two-battles",
          "us-field-walk", "us-restart-save-continue")
 
 _TITLE = ("*title*", "*lang*", "*return-title*")
+# P6.37: other scenarios whose pictures include the title or an Options screen
+_SCREENS = ("*restart*", "*load-menu*", "*nintendo*", "*map-rebind*")
 _OPTIONS = ("*options*", "*persist*", "*text-*", "*encounter*", "*pacing*",
             "*volume*", "*cheat*", "*autosave*", "*turbo*")
 
@@ -70,10 +72,12 @@ RULES: list[tuple[str, object]] = [
     (r"^port/include/port_options\.h$", _OPTIONS + _TITLE + ("*help*", "*walkthrough*", "*controls*",
                                                             "*nintendo*", "*map*", "*glyphs*", "*p79*", "*ws-*")),
     # the native Options art and its baked lettering: every screen of the Options shell
-    (r"^platforms/pc/src/title_overlay_(art|lettering)", _OPTIONS + _TITLE + ("*help*", "*walkthrough*", "*controls*")),
+    # P6.37: the version line is in every picture of the title and Options, so it also
+    # reaches the scenarios that pass them (restart, the load menu, the Nintendo layout)
+    (r"^platforms/pc/src/title_overlay_(art|lettering)", _OPTIONS + _TITLE + _SCREENS + ("*help*", "*walkthrough*", "*controls*")),
     (r"^port/pages/", ("*help*", "*walkthrough*", "*options*")),
     # P6.37: the module that writes the version header (before the build-file rule)
-    (r"^port/version/version\.cmake$", _OPTIONS + _TITLE),
+    (r"^port/version/version\.cmake$", _OPTIONS + _TITLE + _SCREENS),
     # --- build files: only the source-list entries of the diff count -----------
     (r"^(port|platforms/pc)/(.*/)?(CMakeLists\.txt|[^/]+\.cmake)$", BUILD),
     # main() and the frame hooks (boot, region pick, pad, turbo pace, vsync, options
@@ -114,7 +118,7 @@ RULES: list[tuple[str, object]] = [
     (r"^port/patches/\d+-PORT_HOST-p106-", _ICONS + ("*text-*",)),
     (r"^port/options/title_", _TITLE),
     # P6.37: the port version text (Options footer, title corner); replays pin it to "replay"
-    (r"^port/(version/|include/port_version\.h$)", _OPTIONS + _TITLE),
+    (r"^port/(version/|include/port_version\.h$)", _OPTIONS + _TITLE + _SCREENS),
     (r"^port/options/(field_options|battle_options)", ("*options*",)),
     (r"^port/options/(port_options|options_cfg|confirm)", _OPTIONS + _TITLE),
     (r"^port/ui/", _OPTIONS + _TITLE + ("*items*", "*menu-screens*")),
