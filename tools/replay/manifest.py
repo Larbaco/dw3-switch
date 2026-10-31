@@ -3343,7 +3343,7 @@ for _v, _ids in (("us", (0x158, 0x1E3, 0x1C1)), ("eu", (0x166, 0x1EE, 0x1D0))):
     _lf, _lm, _lt = _ids
     _add(Scenario(f"{_v}-load-saved", _v, "full", timeout=600,
                   phases=(f"{_v}-xr-save", f"{_v}-load-view"),
-                  phase_versions=(_v, _v), phase_env=(_SAVE_ENV, ()),
+                  phase_env=(_SAVE_ENV, ()),
                   expect_log=(_XR_WRITE,),
                   forbid_log=_XR_BAD,
                   note="the Load Game screen with a saved game: the slot list and its "
