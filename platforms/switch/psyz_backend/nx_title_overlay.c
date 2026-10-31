@@ -647,9 +647,14 @@ static void draw_layers(int vx, int vy, int vw, int vh) {
                 threadClose(&s_prewarm_thread);
                 s_prewarm_thread_live = 0;
             }
-            if (R_FAILED(threadCreate(&s_prewarm_thread, options_prewarm_entry,
-                                      NULL, NULL, 0x20000, 0x3B, 2)) ||
-                R_FAILED(threadStart(&s_prewarm_thread))) {
+            Result rc = threadCreate(&s_prewarm_thread, options_prewarm_entry,
+                                     NULL, NULL, 0x20000, 0x3B, 2);
+
+            if (R_SUCCEEDED(rc) && R_FAILED(threadStart(&s_prewarm_thread))) {
+                threadClose(&s_prewarm_thread); /* created: its stack is borrowed */
+                rc = MAKERESULT(Module_Libnx, LibnxError_BadInput);
+            }
+            if (R_FAILED(rc)) {
                 TITLE_LOG("dw3-title-overlay: options prewarm thread not "
                           "started; opens compose on the frame thread");
                 dw3_options_cache_prewarm_cancel();

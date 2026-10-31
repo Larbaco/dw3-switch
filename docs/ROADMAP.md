@@ -41,6 +41,10 @@ previews, `v0.9.0-preview.N`; the gates below are what turns them into releases.
   2. No known crash: BUG-1 (leaving through Sphaira, US; the Atmosphère
      report after `dw3_game_main returned 0`) is fixed or proven gone, along
      with every other open crash in the OLED plan.
+     BUG-1 status: hardened (every worker thread joined and closed before
+     `main` returns, `dw3-exit:` proof lines and a heap probe;
+     [SPHAIRA_EXIT](SPHAIRA_EXIT.md)); **not proven on the console yet**, OLED
+     row G13 closes it.
   3. The Phase 5 gate is ticked in [Phase 5](#phase-5--playable-on-switch).
 
 ## Priority
@@ -78,6 +82,16 @@ highest non-empty tier.
   `GPU_Enqueue`. Reproduced on the PC (SIGSEGV, same stack) and proved by the replays
   `us/eu-battle-digivolve-command` (up, back to the base form, up again). Open: the
   OLED check, [OLED_TEST_PLAN G12](OLED_TEST_PLAN.md).
+- **BUG-1 (p56 OLED, blocks v1.0.0): crash on exit when started from Sphaira.**
+  The crash is in Sphaira's own `hbl` after our `main` returns (it re-reads the
+  next NRO over the whole heap; `0xD401`). Hardened on the PC/Switch build, no
+  decomp patch: every worker thread (map precompute, map scalers, options
+  prewarm, PSY-Z) is joined and `threadClose()`d before `main` returns (a
+  finished, unclosed thread leaves its stack pages borrowed in that heap), and
+  each step logs `dw3-exit:` lines plus a heap probe. The cause is a strong
+  hypothesis, **not proven on the console**. Reasoning and the P6.38 NextLoad
+  answer: [SPHAIRA_EXIT](SPHAIRA_EXIT.md). Open: the OLED check,
+  [OLED_TEST_PLAN G13](OLED_TEST_PLAN.md).
 
 ### Tier 1 — Stability
 

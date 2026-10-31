@@ -632,6 +632,21 @@ int dw3_host_relaunch_request(Dw3Region target, char *why, size_t cap) {
  * (port/map_view/map_view.c). */
 static Thread s_map_thread;
 static int s_map_thread_live;
+
+/* A low-priority worker on core 2 (the game and audio threads run on the
+ * default core). Returns 0 when it runs. A thread whose threadStart failed is
+ * threadClose()d here: it was created, so its stack is borrowed until then. */
+static int dw3_nx_start_worker(Thread *t, void (*fn)(void *), void *arg,
+                               size_t stack) {
+    if (R_FAILED(threadCreate(t, fn, arg, NULL, stack, 0x3B, 2))) {
+        return -1;
+    }
+    if (R_FAILED(threadStart(t))) {
+        threadClose(t);
+        return -1;
+    }
+    return 0;
+}
 /* BUG-1: set once the exit path has joined the workers; no thread starts after. */
 static int s_workers_closed;
 
@@ -682,9 +697,7 @@ int dw3_map_view_async_start(void (*fn)(void *), void *arg) {
         slot->fn = fn;
         slot->arg = arg;
         slot->state = 1;
-        if (R_FAILED(threadCreate(&slot->thread, map_view_job_entry, slot, NULL,
-                                  0x40000, 0x3B, 2)) ||
-            R_FAILED(threadStart(&slot->thread))) {
+        if (dw3_nx_start_worker(&slot->thread, map_view_job_entry, slot, 0x40000)) {
             INFOF("dw3-map: scaler worker thread not started (slot %d)", i);
             slot->state = 0;
             return -1;
@@ -697,9 +710,7 @@ int dw3_map_view_async_start(void (*fn)(void *), void *arg) {
 
 static void map_view_precompute_start(const char *config_dir) {
     dw3_map_view_init(config_dir);
-    if (R_FAILED(threadCreate(&s_map_thread, map_view_precompute_entry, NULL,
-                              NULL, 0x40000, 0x3B, 2)) ||
-        R_FAILED(threadStart(&s_map_thread))) {
+    if (dw3_nx_start_worker(&s_map_thread, map_view_precompute_entry, NULL, 0x40000)) {
         INFOF("map view precompute thread not started");
     } else {
         s_map_thread_live = 1;
