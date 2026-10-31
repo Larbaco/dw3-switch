@@ -123,16 +123,26 @@ def make_rec(version, frames, path, shot_every=0):
     path.write_text("\n".join(lines) + "\n")
 
 
+def _die_with_parent():
+    """Linux PR_SET_PDEATHSIG: Xvfb dies with the soak runner, even on SIGKILL."""
+    try:
+        import ctypes, signal
+        ctypes.CDLL(None).prctl(1, int(signal.SIGKILL))
+    except (OSError, AttributeError):
+        pass
+
+
 def start_xvfb(work):
     r, w = os.pipe()
     proc = subprocess.Popen(["Xvfb", "-displayfd", str(w), "-screen", "0", "1280x960x24",
                              "-nolisten", "tcp"], pass_fds=(w,), stdout=subprocess.DEVNULL,
-                            stderr=open(work / "xvfb.log", "w"))
+                            stderr=open(work / "xvfb.log", "w"), preexec_fn=_die_with_parent)
     os.close(w)
     buf = b""
     while not buf.endswith(b"\n"):
         c = os.read(r, 16)
         if not c:
+            proc.kill()
             raise RuntimeError("Xvfb did not report a display")
         buf += c
     os.close(r)

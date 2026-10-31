@@ -18,6 +18,7 @@ Only PIL is needed (python3-pil). Xvfb and ImageMagick `import` must be on PATH.
 from __future__ import annotations
 
 import argparse
+import atexit
 import ctypes
 import datetime as dt
 import json
@@ -222,26 +223,108 @@ def build_host(version: str, work: Path) -> Path:
     return bdir / "dw3-pc"
 
 
+# --- child process hygiene ---------------------------------------------------
+# Every Xvfb and dw3-pc this runner starts is registered, so that nothing outlives
+# it: stop_xvfb() in the normal path, reap_all() on exit, on SIGTERM/SIGINT/SIGHUP
+# (install_cleanup) and, if the runner is SIGKILLed (a timeout), the kernel
+# (PR_SET_PDEATHSIG in _die_with_parent). Orphan Xvfb processes of old runs used to
+# pile up for days, holding deleted output directories.
+_LIVE_LOCK = threading.Lock()
+_LIVE_XVFB: set = set()      # Popen objects
+_LIVE_PGIDS: set = set()     # process groups of game processes
+
+
+def _die_with_parent():
+    """preexec_fn: the child gets SIGKILL when the thread that started it dies
+    (Linux PR_SET_PDEATHSIG). The runner's pool threads live until the pool shuts
+    down, so this fires when the runner itself is gone."""
+    try:
+        ctypes.CDLL(None).prctl(1, int(signal.SIGKILL))
+    except (OSError, AttributeError):
+        pass
+
+
+def reap_all():
+    """Kill every game process group and Xvfb still registered (idempotent)."""
+    with _LIVE_LOCK:
+        pgids, xvfbs = list(_LIVE_PGIDS), list(_LIVE_XVFB)
+        _LIVE_PGIDS.clear()
+        _LIVE_XVFB.clear()
+    for pg in pgids:
+        try:
+            os.killpg(pg, signal.SIGKILL)
+        except (ProcessLookupError, PermissionError):
+            pass
+    for p in xvfbs:
+        try:
+            p.kill()
+            p.wait(5)
+        except (OSError, subprocess.TimeoutExpired):
+            pass
+
+
+def install_cleanup():
+    """atexit + SIGTERM/SIGINT/SIGHUP: reap the children, then exit at once (the
+    pool threads are blocked on processes that were just killed)."""
+    atexit.register(reap_all)
+
+    def handler(signum, _frame):
+        reap_all()
+        os._exit(128 + signum)
+    for sig in (signal.SIGTERM, signal.SIGINT, signal.SIGHUP):
+        try:
+            signal.signal(sig, handler)
+        except ValueError:      # not the main thread
+            pass
+
+
 def start_xvfb(work: Path):
-    """Own Xvfb on a server-chosen free display (never an existing one)."""
+    """Own Xvfb on a server-chosen free display (never an existing one). It is
+    registered for reap_all(); stop it with stop_xvfb()."""
     r, w = os.pipe()
-    p = subprocess.Popen(
-        ["Xvfb", "-displayfd", str(w), "-screen", "0", "1280x960x24", "-nolisten", "tcp"],
-        pass_fds=(w,), stdout=subprocess.DEVNULL,
-        stderr=open(work / "xvfb.log", "w"))
-    os.close(w)
-    buf = b""
-    while not buf.endswith(b"\n"):  # Xvfb writes the number and "\n" separately
-        chunk = os.read(r, 32)
-        if not chunk:
-            break
-        buf += chunk
-    disp = buf.decode().strip()
-    os.close(r)
+    log = open(work / "xvfb.log", "w")
+    try:
+        p = subprocess.Popen(
+            ["Xvfb", "-displayfd", str(w), "-screen", "0", "1280x960x24", "-nolisten", "tcp"],
+            pass_fds=(w,), stdout=subprocess.DEVNULL, stderr=log, preexec_fn=_die_with_parent)
+    finally:
+        os.close(w)
+        log.close()
+    with _LIVE_LOCK:
+        _LIVE_XVFB.add(p)
+    try:
+        buf = b""
+        while not buf.endswith(b"\n"):  # Xvfb writes the number and "\n" separately
+            chunk = os.read(r, 32)
+            if not chunk:
+                break
+            buf += chunk
+        disp = buf.decode().strip()
+    except BaseException:
+        stop_xvfb(p)
+        raise
+    finally:
+        os.close(r)
     if not disp:
-        p.kill()
+        stop_xvfb(p)
         raise RuntimeError("Xvfb did not report a display")
     return p, ":" + disp
+
+
+def stop_xvfb(p):
+    """Terminate an Xvfb from start_xvfb and forget it (kill after 5 s)."""
+    try:
+        p.terminate()
+        try:
+            p.wait(5)
+        except subprocess.TimeoutExpired:
+            p.kill()
+            p.wait(5)
+    except (OSError, subprocess.TimeoutExpired):
+        pass
+    finally:
+        with _LIVE_LOCK:
+            _LIVE_XVFB.discard(p)
 
 
 # --- process verdicts -------------------------------------------------------
@@ -384,7 +467,9 @@ def run_phase(rec: Path, version, binary, runtime, display, outdir: Path, memdir
     rss, verdict, detail = [], "OK", ""
     with open(log, "wb") as lf:
         proc = subprocess.Popen([str(binary)], env=env, stdout=lf, stderr=subprocess.STDOUT,
-                                cwd=outdir, start_new_session=True)
+                                cwd=outdir, start_new_session=True, preexec_fn=_die_with_parent)
+        with _LIVE_LOCK:
+            _LIVE_PGIDS.add(proc.pid)
         pos, next_rss = 0, t0
         while True:
             try:
@@ -433,6 +518,8 @@ def run_phase(rec: Path, version, binary, runtime, display, outdir: Path, memdir
             verdict, detail = "EXIT", f"exit status {rc} (last frame {last_frame})"
         elif b"dw3-replay: end at frame" not in text and not allow_early_exit:
             verdict, detail = "NOEND", f"exited 0 before the recording's end (last frame {last_frame})"
+    with _LIVE_LOCK:
+        _LIVE_PGIDS.discard(proc.pid)
     shutil.rmtree(xdg, ignore_errors=True)
     return dict(rc=rc, verdict=verdict, detail=detail, secs=time.time() - t0,
                 frame=last_frame, rss=rss, log=log)
@@ -598,11 +685,7 @@ def run_scenario(sc, binary, runtime, out: Path, stamp, label, stall, timeout_sc
             if r["verdict"] != "OK":
                 break  # later phases depend on this one
     finally:
-        xvfb.terminate()
-        try:
-            xvfb.wait(5)
-        except subprocess.TimeoutExpired:
-            xvfb.kill()
+        stop_xvfb(xvfb)
         shutil.rmtree(memdir, ignore_errors=True)
         shutil.rmtree(cfgdir, ignore_errors=True)
         if base is not None:
@@ -820,6 +903,7 @@ def main():
                     help="override every scenario's per-phase timeout (seconds)")
     a = ap.parse_args()
 
+    install_cleanup()
     global SCEN_DIR
     if a.scen_dir:
         SCEN_DIR = Path(a.scen_dir).expanduser().resolve()

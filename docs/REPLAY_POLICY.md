@@ -285,7 +285,28 @@ when busy.
   machine. The `--twice` determinism check, soaks and the Ryubing runner are
   unchanged.
 
-## 7. Open points (owner)
+## 7. No leftover Xvfb
+
+Orphan `Xvfb -displayfd N -screen 0 1280x960x24` processes of old runs (one to three days
+old, holding deleted output directories) used to pile up. The runner started one Xvfb per
+scenario and stopped it in a `finally`, which does not run when the runner gets SIGTERM
+or SIGKILL (a timeout), or when it dies between starting Xvfb and reading its display.
+Now (`tools/replay/replay_tests.py`, also used by `ryubing.py`):
+
+* every Xvfb and every game process group is registered; `stop_xvfb()` is the one way
+  to stop an Xvfb, and `start_xvfb()` kills it if reading the display fails;
+* `atexit` and SIGTERM/SIGINT/SIGHUP handlers kill what is registered (exit status
+  128+signal);
+* the children are started with `PR_SET_PDEATHSIG` (SIGKILL), so even a `kill -9` of the
+  runner takes its Xvfb and dw3-pc with it;
+* `tools/memaudit/soak.py` got the same parent-death signal.
+
+`tools/tests/test_replay_cleanup.py` checks normal stop, normal exit, an exception,
+SIGTERM/SIGINT/SIGHUP and SIGKILL of the runner (7 tests, needs Xvfb, no game data).
+Orphans from before this change still have to be killed by hand (by pid, never
+`pkill -f dw3`).
+
+## 8. Open points (owner)
 
 * The duplicate candidates in section 3 (`newgame-field` under `field-walk`, the
   items-menu family). Deleting a scenario means deleting its `.rec`, its
