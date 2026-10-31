@@ -94,6 +94,11 @@ static GLuint s_logo_tex;
 /* P6.27 / P6.28 Yes / No window: its own small texture, rendered on the CPU
  * when its kind, focus or language changes and uploaded on the next draw. */
 static GLuint s_dialog_tex;
+/* The title's version label (title_overlay_art.c dw3_pc_title_version_art): a
+ * small texture drawn at the real right edge of the picture, rebuilt when its
+ * text changes (a combined image picks its region after the first draw). */
+static GLuint s_version_tex;
+static unsigned s_version_generation;
 /* P6.30 technical help: its own 960x720 layer (title_overlay_art.c
  * dw3_pc_help_render), drawn instead of the Options layer while it is open and
  * released when it closes. */
@@ -381,8 +386,11 @@ static void release_title_textures(void) {
     s_opt_tex = 0;
     if (s_art_tex) glDeleteTextures(1, &s_art_tex);
     if (s_logo_tex) glDeleteTextures(1, &s_logo_tex);
+    if (s_version_tex) glDeleteTextures(1, &s_version_tex);
     s_art_tex = 0;
     s_logo_tex = 0;
+    s_version_tex = 0;
+    s_version_generation = 0;
     /* A rebuilt atlas and logo texture are empty: send them again. */
     s_logo_dirty = s_logo_rgba != NULL;
     dw3_options_cache_invalidate();
@@ -732,6 +740,47 @@ static void draw_layers(int vx, int vy, int vw, int vh) {
         draw_quad(s_art_tex, 0.0f, 0.0f, CANVAS_W, CANVAS_H,
                   0.0f, v0, 1.0f, v1);
     }
+    if (s_overlay_active && !options_open && dw3_pc_title_overlay_version_shown()) {
+        /* The version label belongs to the picture, not to the 4:3 middle: its
+         * right edge is DW3_TITLE_VERSION_MARGIN canvas pixels inside the
+         * picture's right edge (the 16:9 edge with gutters, the canvas corner
+         * in 4:3), scaled like the canvas. GL's y runs up from the bottom. */
+        const unsigned generation = dw3_pc_title_version_generation();
+
+        if (!glIsTexture(s_version_tex)) {
+            s_version_tex = make_texture(DW3_TITLE_VERSION_W,
+                                         DW3_TITLE_VERSION_H, NULL);
+            s_version_generation = 0;
+        }
+        if (s_version_tex && generation != s_version_generation) {
+            uint8_t *pixels = (uint8_t *)malloc((size_t)DW3_TITLE_VERSION_W *
+                                                DW3_TITLE_VERSION_H * 4);
+            if (pixels) {
+                dw3_pc_title_version_art(pixels, DW3_TITLE_VERSION_W * 4);
+                glBindTexture(GL_TEXTURE_2D, s_version_tex);
+                glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
+                glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, DW3_TITLE_VERSION_W,
+                                DW3_TITLE_VERSION_H, GL_RGBA, GL_UNSIGNED_BYTE,
+                                pixels);
+                free(pixels);
+                s_version_generation = generation;
+            }
+        }
+        if (s_version_tex && s_version_generation == generation) {
+            const float scale = (float)vh / (float)CANVAS_H;
+
+            glViewport(wide_x + wide_w -
+                           (int)((float)(DW3_TITLE_VERSION_W +
+                                         DW3_TITLE_VERSION_MARGIN) * scale + 0.5f),
+                       vy + (int)((float)(CANVAS_H - DW3_TITLE_VERSION_Y -
+                                          DW3_TITLE_VERSION_H) * scale + 0.5f),
+                       (int)((float)DW3_TITLE_VERSION_W * scale + 0.5f),
+                       (int)((float)DW3_TITLE_VERSION_H * scale + 0.5f));
+            draw_quad(s_version_tex, 0.0f, 0.0f, CANVAS_W, CANVAS_H,
+                      0.0f, 0.0f, 1.0f, 1.0f);
+            glViewport(vx, vy, vw, vh);
+        }
+    }
     if (s_options_alpha) {
         GLuint shown = s_opt_tex;
 
@@ -857,6 +906,9 @@ void dw3_nx_title_overlay_invalidate_gl(void) {
     if (s_opt_tex) glDeleteTextures(1, &s_opt_tex);
     if (s_logo_tex) glDeleteTextures(1, &s_logo_tex);
     if (s_dialog_tex) glDeleteTextures(1, &s_dialog_tex);
+    if (s_version_tex) glDeleteTextures(1, &s_version_tex);
+    s_version_tex = 0;
+    s_version_generation = 0;
     if (s_help_tex) glDeleteTextures(1, &s_help_tex);
     s_help_tex = 0;
     s_help_uploaded = 0;

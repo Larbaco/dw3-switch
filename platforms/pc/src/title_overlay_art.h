@@ -83,6 +83,21 @@ void dw3_pc_title_overlay_set_footer(int show);
  * (show_version=0 in port_options.cfg); on by default. The Options footer
  * does not follow it. */
 void dw3_pc_title_overlay_set_version(int show);
+/* P6.37 follow-up (owner OLED p57, A20): on the title the version is a label of
+ * its own, not part of the canvas, so that it can sit at the real right edge of
+ * the picture (the 16:9 edge in widescreen, the canvas corner in 4:3) and be
+ * short ("v0.9.0-p.1 US"). The art is DW3_TITLE_VERSION_W x DW3_TITLE_VERSION_H
+ * RGBA, the text right-aligned; the hosts draw it with its right edge
+ * DW3_TITLE_VERSION_MARGIN canvas pixels (of 960) inside the picture's right
+ * edge and its top DW3_TITLE_VERSION_Y canvas pixels (of 720) from the top,
+ * scaled like the canvas, only while the title menu (not the Options screen) is
+ * up and dw3_pc_title_overlay_version_shown(). The generation changes with the
+ * text (a combined image picks its region after the first draw). */
+enum { DW3_TITLE_VERSION_W = 360, DW3_TITLE_VERSION_H = 36, DW3_TITLE_VERSION_BASE = 28,
+       DW3_TITLE_VERSION_MARGIN = 12, DW3_TITLE_VERSION_Y = 674 };
+void dw3_pc_title_version_art(uint8_t *rgba, int pitch);
+unsigned dw3_pc_title_version_generation(void);
+int dw3_pc_title_overlay_version_shown(void);
 /* 1 while the credits are part of the canvas (the setting above). */
 int dw3_pc_title_overlay_footer_shown(void);
 /* The Port options screen: focused row and the rows' values in registry order

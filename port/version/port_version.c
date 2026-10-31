@@ -44,6 +44,24 @@ void dw3_version_text(char *buf, size_t cap) {
     snprintf(buf, cap, "%s %s %s", DW3_VERSION_NAME, label_text(), region_tag());
 }
 
+/* The short version part: the generated one, or the replay placeholder. */
+static const char *short_text(void) {
+#if defined(DW3_NX_REPLAY)
+    return "replay";
+#else
+    const char *o = getenv("DW3_VERSION_OVERRIDE");
+
+    return (o != NULL && o[0] != '\0') ? o : DW3_VERSION_SHORT;
+#endif
+}
+
+void dw3_version_short_text(char *buf, size_t cap) {
+    if (cap == 0) {
+        return;
+    }
+    snprintf(buf, cap, "%s %s", short_text(), region_tag());
+}
+
 const char *dw3_version_build_date(void) {
     return DW3_VERSION_BUILD_DATE;
 }

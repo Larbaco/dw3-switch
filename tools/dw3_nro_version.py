@@ -271,6 +271,20 @@ def build_date(raw: str, repo: Path | None = None) -> str:
     return time.strftime("%Y-%m-%d", time.gmtime())
 
 
+def short_label(raw: str) -> str:
+    """The short form the title shows (P6.37 follow-up, owner OLED p57, A20):
+    the NACP display version of the build with the preview token compressed
+    (`-preview.N` -> `-p.N`, even when the NACP would fit it whole), and the `v`
+    of the full label back on a tag-like version: `v0.9.0-p.1`, `v0.6.5-p.57`,
+    `v0.6.5-p.57+f99f` past a tag; a bare commit id stays as is. The region is
+    added by the game (`v0.9.0-p.1 US`)."""
+    raw = strip_v_prefix(raw.strip()) or "unknown"
+    if _HEX_SHA_RE.match(raw):
+        return nacp_version(raw)
+    short = nacp_version(compress_preview(raw))
+    return "v" + short if _TAGLIKE_RE.match(short) else short
+
+
 def _c_escape(s: str) -> str:
     return s.replace("\\", "\\\\").replace('"', '\\"')
 
@@ -284,6 +298,7 @@ def header_text(full: str, sha: str, date: str) -> str:
         "#define DW3_VERSION_GEN_H\n"
         f'#define DW3_VERSION_RAW "{_c_escape(full)}"\n'
         f'#define DW3_VERSION_LABEL "{_c_escape(label)}"\n'
+        f'#define DW3_VERSION_SHORT "{_c_escape(short_label(full))}"\n'
         f'#define DW3_VERSION_SHA "{_c_escape(sha)}"\n'
         f'#define DW3_VERSION_BUILD_DATE "{_c_escape(date)}"\n'
         "#endif\n"

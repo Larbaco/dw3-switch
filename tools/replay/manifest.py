@@ -149,14 +149,17 @@ def _add(*s: Scenario) -> None:
 
 _add(Scenario("us-title", "us", "quick", expect_restore=((0x1C1, M),),
               expect_log=((0, r"dw3-title-menu: no autosave\.bin: plaques New Game, Options, "
-                              r"Load Game \(slot list\), Quit game"),)))
+                              r"Load Game \(slot list\), Quit game"),
+                          # the title's short version label (replays pin the text)
+                          (0, r'dw3-title-overlay: version label "replay US" \(short form')),))
 for _lang in EU_LANGS:
     # P6.1 (patch 0177): the language select takes the 16:9 gutter; the
     # title that follows still has the four plaques (no auto-save file).
     _add(Scenario(f"eu-lang-{_lang}", "eu", "quick",
                   expect_log=((0, r"dw3-widescreen: gutter 53 px per side \(was -?\d+; 16:9\) mode file 0x165"
                                   r"(?s:.*)dw3-title-menu: no autosave\.bin: plaques New Game, Options, "
-                                  r"Load Game \(slot list\), Quit game"),)))
+                                  r"Load Game \(slot list\), Quit game"),
+                              (0, r'dw3-title-overlay: version label "replay EU" \(short form')),))
 
 # Patch 0187: Cross (the confirm button) picks the language as well as Start;
 # the log names the button and the title follows.
@@ -790,7 +793,8 @@ for _v, _rec in (("us", "us-title"), ("eu", "eu-lang-en")):
     _add(Scenario(f"{_v}-title-noversion", _v, "full", phases=(_rec,), timeout=300,
                   cfg=(("show_version", "0"),),
                   expect_log=((0, r"dw3-options: file keys .* show_version=0"),),
-                  note="show_version=0: the title's corner is clear (P6.37)"))
+                  forbid_log=((0, r"dw3-title-overlay: version label"),),
+                  note="show_version=0: the title's corner is clear, no label is rendered (P6.37)"))
     _add(Scenario(f"{_v}-options-noversion", _v, "full", phases=(f"{_v}-options-cheats-listed",),
                   timeout=300, cfg=(("show_version", "0"),),
                   expect_log=((0, r"dw3-options: file keys .* show_version=0(?s:.*)"
