@@ -93,6 +93,24 @@ Rules:
    set them. Do not call `clkrstSetClockRate` or `appletSetCpuBoostMode`.
    Performance work stays on the present path, the field-tile pace, and
    the raster.
+8. **Every change versus the original game is switchable from the Options
+   menu** (owner rule, 2026-10-31). An improvement, quality-of-life change or
+   other behaviour difference from the original PS1 game gets an Options row
+   (registry row in `port/options/`, `port_options.cfg` key, default, label and
+   message line in the five languages), not a file-only key; a feature without
+   its row is not done. This includes test, dev and experimental keys: the
+   owner decided on 2026-10-31 that `show_version`, `save_store`
+   (experimental, with a warning), `stage_sweep`, `map_mod` and the `map_view_*`
+   bindings all get a row. **Exempt, with no row (owner, 2026-10-31):**
+   (A) crash and 64-bit fixes; (B) host plumbing (pause on focus loss, save
+   write-through and backups, per-profile saves, the cross-region import,
+   display pacing); (C) the port's own screens (the Options entry, Return to
+   title, Quit game, Help, Walkthrough, the version footer, the menu
+   background); (D) the original bugs fixed and always on (P7.7 patches `0065`
+   and `0066`, the area-name banner, `0187`, `0129`). `DW3_*` environment test
+   aids are not options. The exact list is in `docs/PORT_OPTIONS.md` ("Port-wide
+   rule") and `docs/OPTIONS_REORG.md` section 1.3; anything not on it needs a
+   row, and a change you are unsure about is flagged to the owner in the PR.
 
 ## Git and safety
 
@@ -138,6 +156,9 @@ These hold for any agent working on the owner's desktop, whatever the tool
    `xvfb-run -s "-screen 0 1920x1080x24"`), never the owner's desktop
    session, so tests do not get in the way of the owner's work. This
    includes the PC build and Ryubing.
+   Ryubing may run with the frame limit off (`tools/replay/ryubing.py --fast`,
+   owner 2026-10-31) except timing, pacing and turbo tests and frame-time or
+   `ms` proofs; see `docs/REPLAY_POLICY.md` section 7b.
 5. **Tests run on one region by default and on both at the gate**
    (`docs/REPLAY_POLICY.md`). The EU build (five languages) comes from
    `tools/build_switch_game.sh --eu`. A PR runs `tools/replay_tests.sh
@@ -185,6 +206,13 @@ These hold for any agent working on the owner's desktop, whatever the tool
     for the occasional engine-wide change you want proven. CI has no game data and
     runs no replay. `tools/cleanup_tmp.py` lists stale
     scratch dirs (dry run; the owner decides what to delete).
+14. **Destructive test steps** (owner rule, 2026-10-31). No test step for the
+    owner may destroy or overwrite saves, cfgs, the shared store or other user
+    data without (a) a verified backup, (b) a guard log line proving the safe
+    path is active, and (c) a restore step. Such steps are marked
+    **⚠ DESTRUCTIVE** and are optional; they are listed in
+    `docs/OLED_TEST_PLAN.md` ("Destructive steps"). A step that cannot meet all
+    three is written without the destructive action, or is not run.
 
 ## Working style
 

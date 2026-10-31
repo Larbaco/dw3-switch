@@ -21,6 +21,28 @@ behind the tasks are in [SURVEY.md](SURVEY.md); layering is in
 the [Priority](#priority) section is the work order, and agents pick work from
 the highest non-empty tier.
 
+## Release criteria
+
+Tags are SemVer (owner decision 2026-10-31); naming and the history of the old
+`0.6.5` series are in [RELEASES](RELEASES.md#naming). Before 1.0 the builds are
+previews, `v0.9.0-preview.N`; the gates below are what turns them into releases.
+
+- **0.9, the public beta (`v0.9.0`, the first non-preview).** Both must hold:
+  1. Plan p57 passes on the OLED with no blockers (the owner's results and the
+     `dw3.log` lines are recorded in [OLED_TEST_PLAN](OLED_TEST_PLAN.md)).
+  2. Decisions D1 to D5 of the options work are on `main`
+     ([OPTIONS_REORG](OPTIONS_REORG.md): D1 reorganized tree and a row for every
+     change, D2 `defaults_gen`, D3 `options_global`, D4 the scrolling
+     background, D5 Map scaler).
+- **1.0 (`v1.0.0`).** All three must hold, with `v1.0.0-rc.N` release
+  candidates before it:
+  1. A full playthrough to the ending on the OLED, at least one region, played
+     by the owner.
+  2. No known crash: BUG-1 (leaving through Sphaira, US; the Atmosphère
+     report after `dw3_game_main returned 0`) is fixed or proven gone, along
+     with every other open crash in the OLED plan.
+  3. The Phase 5 gate is ticked in [Phase 5](#phase-5--playable-on-switch).
+
 ## Priority
 
 Work order, approved by the owner on 2026-10-28. Agents pick work from the
@@ -211,7 +233,7 @@ listed once, in [Pending OLED checks](#pending-oled-checks).
 | P10.3 | Presentation modes | open | — |
 | P10.4 | Rumble polish (optional) | open | — |
 | P10.5 | Extra applets (optional) | open | — |
-| P10.6 | Switch-style button glyphs (design written 2026-10-28; step 0 #354 and the fix-now hint caps #355 merged; census, art and the glyph patch built 2026-10-29, PR #367) | in progress (OLED L17 to L27 pending; the page-turn `R1` / `L1` prompt built 2026-10-30, patch 0196, PR open) | [roadmap](#phase-10--native-switch-features-residual), [P10.6_GLYPHS](P10.6_GLYPHS.md), [CONTROLS_BUNDLE](CONTROLS_BUNDLE.md), [TEXTURE_PACKS](TEXTURE_PACKS.md) |
+| P10.6 | Switch-style button glyphs (design written 2026-10-28; step 0 #354 and the fix-now hint caps #355 merged; census, art and the glyph patch built 2026-10-29, PR #367) | in progress (OLED L17 to L27 and L29 pending; the page-turn `R1` / `L1` prompt built 2026-10-30, patch 0196, PR open; the US Cross prompt of the Load / Save screens, bug 4, 2026-10-31) | [roadmap](#phase-10--native-switch-features-residual), [P10.6_GLYPHS](P10.6_GLYPHS.md), [CONTROLS_BUNDLE](CONTROLS_BUNDLE.md), [TEXTURE_PACKS](TEXTURE_PACKS.md) |
 | P10.7 | NSP packaging: forwarder, full NSP or stay NRO | dropped | [NSP_PACKAGING](NSP_PACKAGING.md), [roadmap](#phase-10--native-switch-features-residual) |
 
 ## Pending OLED checks
@@ -1437,6 +1459,14 @@ PS1 game, with vanilla-safe defaults and persistence on owner storage.
   `cheats-screen`/`cheats-screen2` US and EU now compare pictures; the stage
   sweep (P5.5) has no row on that screen, it is a config key. Details:
   [PORT_OPTIONS](PORT_OPTIONS.md#cheats-sub-screen-p99-slice-2).
+  **D1 design (2026-10-31, docs only, owner approved the same day):** new port-wide rule
+  (AGENTS.md directive 8): every change versus the original is switchable from the
+  Options menu; the only exemptions are crash/64-bit fixes, host plumbing, the port's own
+  screens and the always-on original-bug fixes (P7.7). [OPTIONS_REORG](OPTIONS_REORG.md)
+  has the audit and the approved ten-group tree (new Menus and Advanced groups, a Map
+  buttons sub-page, rows for `show_version`, `map_mod`, `save_store`, `stage_sweep`,
+  the `items_*` keys), the D2 `defaults_gen` migration and the build order (reorg and new
+  rows, D2 + D5, D3, D4). Not built yet.
   **Still open:** OLED validation (OLED_TEST_PLAN A5, A9 to A13); Controls (P6.12) and Walkthrough (P6.35) are hidden
   placeholders in `port_options_groups.h` (Help, P6.30, is built since 2026-10-28); the open questions below are answered
   by defaults (Cheats group listed only with the master switch on; the plain dim of
@@ -1611,6 +1641,12 @@ rumble, saves, turbo, or widescreen here; those stay in their phases.
   bit-identical. Log `dw3-glyphs: page-turn prompt R1 drawn as glyph R (scene=..)`. Open: the card shop,
   Lab, battle menu, name entry and training carry the same strings and follow the hook but have no replay
   case of their own; a look on the OLED.
+  **US Cross prompt built (2026-10-31, bug 4 of the p56 OLED test, PR open, OLED L29 pending):** the US Load Game
+  and Save screens spell the confirm as the plain letter X of the text ("X Button: Execute"), not as an icon, so the
+  cell patch (US n = 27 is the item-count multiplication sign and stays) never touched it. The text hook of patch
+  0196 now swaps that letter for a third spare cell (n = 117) drawn as the glyph of the Cross (A in the Nintendo
+  layout); no new patch. The spare cells moved to font page 0 rows 232..255 (rows 224..231 are the EU palette). See
+  [P10.6_GLYPHS section 10](P10.6_GLYPHS.md#10-the-us-cross-prompt-of-the-memory-card-screens-bug-4-2026-10-31).
   Done when: with the option on, the icons shown in the field, battle, menus
   and shops are Switch glyphs on the US and EU discs, they match the layout
   chosen in P9.8, and the option off restores the original icons.

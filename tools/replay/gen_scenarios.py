@@ -563,6 +563,24 @@ def xr_load(version):
 XR_LOAD_FRAMES = 1400
 
 
+def load_view(version):
+    """Bug 4 (p56 OLED): the Load Game screen with a saved game on the card.
+    Title -> Load Game / Continue -> slot 1 on a card that holds the save made
+    by the xr-save phase (same disc) -> the save list with its footer prompts
+    (confirm / back). Checkpoints: the slot choice and the list. Nothing is
+    loaded (no final Cross): the shots are the verdict, plus the log."""
+    r = Rec(f"{version.upper()}: Load Game screen with a save on the card (footer prompts)")
+    m = _to_title_menu(r, version)
+    r.press(m + 10, DOWN)
+    r.press(m + 30, DOWN)            # third entry: Load Game / Continue
+    r.press(m + 70, CROSS)
+    r.shot(m + 400, "slot-choice")
+    r.press(m + 420, CROSS)          # memory card slot 1 (port A)
+    r.shot(m + 700, "save-list")
+    r.end(m + 720)
+    return r
+
+
 def xr_open(version):
     """P6.25 slice 2: start the build, let it open the cards, leave. No input, no
     checkpoints; the verdict is the `dw3-store:` open line in the log. Used to
@@ -3564,6 +3582,7 @@ def main(out):
         (out / f"{v}-banner-walk.rec").write_text(banner_walk(v).text(True))
     for v in ("us", "eu"):
         (out / f"{v}-load-menu.rec").write_text(load_menu(v).text(True))
+        (out / f"{v}-load-view.rec").write_text(load_view(v).text(True))
     for v in ("us", "eu"):
         for phase in (1, 2):
             (out / f"{v}-options-persist-p{phase}.rec").write_text(

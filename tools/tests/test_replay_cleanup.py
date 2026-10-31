@@ -41,8 +41,28 @@ def _gone(pid, secs=10.0):
     return False
 
 
+# A body that holds the child. Short sleeps, not one long sleep(60): CPython only
+# runs a signal handler when the main thread next checks for signals, and a signal
+# that lands just before a long sleep starts is not interrupting it, so the handler
+# would wait out the whole sleep (the flaky SIGTERM/SIGINT/SIGHUP timeouts).
+HOLD = "while True: time.sleep(0.05)"
+
+
+def _wait_alive(pid, secs=10.0):
+    """True once the pid is alive (polls: a busy runner may take a moment)."""
+    end = time.time() + secs
+    while time.time() < end:
+        if _alive(pid):
+            return True
+        time.sleep(0.05)
+    return False
+
+
 def _runner(tmp_path, body):
-    """A child python that starts an Xvfb through replay_tests, prints its pid and runs `body`."""
+    """A child python that starts an Xvfb through replay_tests, prints its pid, then
+    waits for the parent's "go" line and runs `body`. The child is parked while the
+    parent checks the Xvfb, so a body that exits at once (`pass`) cannot race the
+    check: the child's exit reaps the Xvfb (PDEATHSIG, atexit)."""
     script = tmp_path / "child.py"
     script.write_text(textwrap.dedent(f"""
         import sys, time
@@ -50,14 +70,18 @@ def _runner(tmp_path, body):
         import replay_tests as rt
         rt.install_cleanup()
         p, disp = rt.start_xvfb(__import__("pathlib").Path({str(tmp_path)!r}))
-        print(p.pid, flush=True)
+        print(p.pid, flush=True)       # start_xvfb returned: Xvfb reported its display
+        sys.stdin.readline()           # parked until the parent has checked the Xvfb
         {body}
     """))
-    proc = subprocess.Popen([sys.executable, "-I", str(script)], stdout=subprocess.PIPE, text=True)
+    proc = subprocess.Popen([sys.executable, "-I", str(script)],
+                            stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True)
     line = proc.stdout.readline()
     assert line.strip().isdigit(), f"child runner failed: {proc.wait(10)} {line!r}"
     xpid = int(line)
-    assert _alive(xpid)
+    assert _wait_alive(xpid), "Xvfb not alive after start_xvfb returned"
+    proc.stdin.write("go\n")
+    proc.stdin.flush()
     return proc, xpid
 
 
@@ -72,7 +96,7 @@ def test_stop_xvfb_removes_it(tmp_path):
 
 @pytest.mark.parametrize("sig", [signal.SIGTERM, signal.SIGINT, signal.SIGHUP])
 def test_signal_to_the_runner_reaps_xvfb(tmp_path, sig):
-    proc, xpid = _runner(tmp_path, "time.sleep(60)")
+    proc, xpid = _runner(tmp_path, HOLD)
     try:
         proc.send_signal(sig)
         proc.wait(10)
@@ -96,7 +120,7 @@ def test_exception_reaps_xvfb(tmp_path):
 
 
 def test_sigkill_of_the_runner_reaps_xvfb(tmp_path):
-    proc, xpid = _runner(tmp_path, "time.sleep(60)")
+    proc, xpid = _runner(tmp_path, HOLD)
     try:
         proc.kill()      # what a timeout does: no handler, no atexit
         proc.wait(10)

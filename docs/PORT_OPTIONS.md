@@ -10,6 +10,38 @@ Anything this port adds that **did not exist on the original PS1 game**
 reachable from a **port options** entry on the title / main menu, with
 per-feature toggles and defaults that preserve original behaviour.
 
+## Port-wide rule: every change is switchable
+
+*Owner rule, 2026-10-31 (also AGENTS.md, technical directive 8).* Every improvement or
+change versus the original game must be switchable on and off **from the Options menu**.
+A file-only key is not enough: a new behaviour ships with a registry row, its
+`port_options.cfg` key, a default, and a label and message line in the five languages
+(EN, FR, DE, ES, IT), in the same change.
+
+**Exempt, with no row** (owner, 2026-10-31; only these, anything else needs a row and a
+doubtful change is flagged to the owner in the PR):
+
+| Class | What |
+|---|---|
+| A. Crash and 64-bit fixes | the PS1 read or wrote kernel RAM, or the host heap behaves differently: patches `0057`, `0058`, `0059`, `0069`, `0096`, `0111`, `0197`, `0198` |
+| B. Host plumbing | focus-loss pause, delta clamp, rotating `.mcr` backups, write-through, docked/handheld re-present, vsync wait, `0043` save/load panel pace, `0041` / `0042` field-tile preload, per-profile saves (P6.26), the cross-region import (P6.25 slice 1) |
+| C. The port's own screens | the Options entry (title row, field-menu row, battle Select), Return to title, Quit game, Help, Walkthrough, the version footer line, the Options menu background |
+| D. Original bugs fixed, always on | `0065` HUD form name, `0066` Claw steal on the killing blow, the area-name banner fix, `0187` EU language select Cross, `0129` title logo scale |
+
+Test, dev and experimental keys are **not** exempt: the owner decided on 2026-10-31 that
+`show_version`, `map_mod`, `save_store` (labelled experimental, title only, with a warning
+window when turned on), `stage_sweep` with `stage_sweep_frames`, and the seven `map_view_*`
+bindings all get a row. `DW3_*` environment variables are test aids, not options, and do not.
+
+State on 2026-10-31: these keys still have no row and the rows are designed, not built:
+`items_equip_from_items`, `items_equip_stays`, `items_bag_view`, `items_use_stays`,
+`items_partner_switch` (all default 1), `map_mod`, `show_version`, `save_store`,
+`stage_sweep`, `stage_sweep_frames`, and `map_view_*`. The group tree that will hold them
+(ten groups, new Menus and Advanced, a Map buttons sub-page) is approved and written in
+[OPTIONS_REORG](OPTIONS_REORG.md); the tables and the "file-only" notes below describe the
+screen **as built** and change with the build PRs, not with the design.
+with the build PR, not with the design.
+
 ## Scope
 
 | In scope | Out of scope |

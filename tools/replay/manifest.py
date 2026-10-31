@@ -3329,9 +3329,68 @@ for _v in ("us", "eu"):
                 note="Switch glyphs on, custom map with L1 on ZL and R1 on ZR: the page-turn "
                      "prompt is a ZR glyph (P10.6 page-turn)"),
         _glyphs(f"{_v}-save-screen", f"{_v}-glyphs-on-save",
-                note="Switch glyphs on: the save screen's Back prompt is an X glyph, and on EU "
-                     "the Save prompt (the Cross disc) a B glyph (P10.6)"),
+                note="Switch glyphs on: the save screen's Back prompt is an X glyph and its "
+                     "Save prompt (the Cross: the EU disc, the US letter X since bug 4) a B glyph "
+                     "(P10.6)"),
+        _glyphs(f"{_v}-save-screen", f"{_v}-glyphs-nintendo-save", layout="nintendo",
+                note="Switch glyphs on, Nintendo layout: the save screen's Save prompt is an A "
+                     "glyph, its Back prompt a B glyph, on both discs (bug 4)"),
     )
+# Bug 4 (p56 OLED): the Load Game screen with a save on the card. The game saves from
+# the forced save screen (phase 0, as xr-save), then the title's Load Game opens the slot
+# list with the footer prompts (phase 1: the slot choice and the list are the checkpoints).
+#  load-saved             the plain screen (the references of the glyph cases below)
+#  glyphs-off-load        switch_glyphs=0: bit-identical to load-saved
+#  glyphs-on-load         glyphs on, PlayStation layout
+#  glyphs-nintendo-load   glyphs on, button_layout=nintendo (the case of the bug)
+for _v, _ids in (("us", (0x158, 0x1E3, 0x1C1)), ("eu", (0x166, 0x1EE, 0x1D0))):
+    _lf, _lm, _lt = _ids
+    _add(Scenario(f"{_v}-load-saved", _v, "full", timeout=600,
+                  phases=(f"{_v}-xr-save", f"{_v}-load-view"),
+                  phase_env=(_SAVE_ENV, ()),
+                  expect_log=(_XR_WRITE,),
+                  forbid_log=_XR_BAD,
+                  note="the Load Game screen with a saved game: the slot list and its "
+                       "confirm / back prompts (bug 4)"))
+
+
+def _glyphs_load(v, name, layout, glyphs, note, env=()):
+    b = by_name()[f"{v}-load-saved"]
+    cfg = b.cfg + (("switch_glyphs", "1" if glyphs else "0"),)
+    if layout == "nintendo":
+        cfg += (("button_layout", "nintendo"),)
+    if glyphs:
+        expect = ((1, rf"dw3-options: switch_glyphs=on(?s:.*)dw3-glyphs: on, map={layout}, "
+                      + _GLY_CELLS[(v, layout)] + r" \[font load\]"),)
+        forbid = ((1, r"dw3-glyphs: .*(cell is not a 12x12|not a role colour|size-1 icon table has)"),)
+    else:
+        expect = ((1, r"dw3-options: switch_glyphs=off(?s:.*)dw3-glyphs: off, map=playstation, "
+                      r"patched 0 cells"),)
+        forbid = ((1, r"dw3-glyphs: (on|page-turn)"),)
+    return dataclasses.replace(b, name=name, cfg=cfg, env=b.env + env,
+                               expect_log=b.expect_log + expect,
+                               forbid_log=b.forbid_log + forbid,
+                               ref_from=f"{v}-load-saved" if not glyphs else "", note=note)
+
+
+for _v in ("us", "eu"):
+    _add(
+        _glyphs_load(_v, f"{_v}-glyphs-off-load", "playstation", False,
+                     "switch_glyphs=0: the Load Game screen is bit-identical to the plain run (bug 4)"),
+        _glyphs_load(_v, f"{_v}-glyphs-on-load", "playstation", True,
+                     "Switch glyphs on, PlayStation layout: the Load Game screen's confirm prompt "
+                     "is a B glyph, its back prompt an X glyph (bug 4)"),
+        _glyphs_load(_v, f"{_v}-glyphs-nintendo-load", "nintendo", True,
+                     "Switch glyphs on, Nintendo layout: the Load Game screen's confirm prompt is "
+                     "an A glyph, its back prompt a B glyph (bug 4)"),
+    )
+# The EU disc draws the Load prompts with the n = 27 icon, the same cell in the five
+# languages: the Nintendo layout case in the four other languages (DW3_LANGUAGE).
+for _lang, _id in (("fr", 3), ("it", 4), ("de", 5), ("es", 6)):
+    _add(_glyphs_load("eu", f"eu-glyphs-nintendo-load-{_lang}", "nintendo", True,
+                      f"Switch glyphs on, Nintendo layout, EU {_lang}: the Load Game screen's "
+                      "confirm prompt is an A glyph, its back prompt a B glyph (bug 4)",
+                      env=(("DW3_LANGUAGE", str(_id)),)))
 # The field menu's item list (menu-screens: page 1, then page 2 with both prompts). The
 # base has no log expectation of its own (log_only is off, it is a picture scenario).
 for _v in ("us", "eu"):

@@ -2,8 +2,18 @@
 """Compute Switch NRO / NACP version strings for hbmenu and boot logs.
 
 libnx NacpStruct.display_version is char[0x10] (15 printable chars + NUL).
-nacptool truncates longer strings, so a naive `0.6.5-preview.18` becomes
-`0.6.5-preview.1` and loses the preview number. This helper compresses first.
+nacptool truncates longer strings, so a naive `0.9.0-preview.12` becomes
+`0.9.0-preview.1` and loses the preview number. This helper compresses first.
+
+Release tags (SemVer, owner decision 2026-10-31; see docs/RELEASES.md):
+
+  v0.9.0-preview.N   previews of the 0.9 public beta        (NACP 0.9.0-p.N)
+  v1.0.0-rc.N        release candidates of 1.0              (NACP 1.0.0-rc.N)
+  v0.9.0, v1.0.0     normal releases (not prereleases)      (NACP 0.9.0)
+  v0.6.5-preview.N   the old series (1 to 57), kept for history
+
+`--release-kind TAG` validates a tag and tells the release workflow whether
+it publishes a prerelease.
 """
 
 from __future__ import annotations
@@ -19,6 +29,13 @@ from pathlib import Path
 # display_version[0x10] in libnx nacp.h — leave room for the NUL.
 NACP_VERSION_MAX = 15
 
+# A release tag: vMAJOR.MINOR.PATCH with an optional -preview.N or -rc.N.
+# `v0.6.5-preview.N` is the old series and matches the same pattern.
+_RELEASE_TAG_RE = re.compile(
+    r"^v(?P<major>0|[1-9]\d*)\.(?P<minor>0|[1-9]\d*)\.(?P<patch>0|[1-9]\d*)"
+    r"(?:-(?P<kind>preview|rc)\.(?P<n>[1-9]\d*))?$"
+)
+
 _GIT_DESCRIBE_RE = re.compile(
     r"^(?P<tag>.+?)-(?P<n>\d+)-g(?P<sha>[0-9a-f]+)(?P<dirty>-dirty)?$"
 )
@@ -31,8 +48,40 @@ def strip_v_prefix(s: str) -> str:
 
 
 def compress_preview(label: str) -> str:
-    """Shorten preview tags so the preview number survives the 15-char cap."""
+    """Shorten preview tags so the preview number survives the 15-char cap.
+
+    `-rc.N` is already short and stays as is.
+    """
     return label.replace("-preview.", "-p.")
+
+
+def release_info(tag: str) -> dict[str, str] | None:
+    """Classify a release tag, or None when it is not one.
+
+    kind        `preview`, `rc` or `release`
+    prerelease  `true` for previews and release candidates, `false` for a
+                plain vX.Y.Z (a normal release, marked latest)
+    latest      the opposite of prerelease (the workflow's make_latest)
+    title       the GitHub release title
+    """
+    m = _RELEASE_TAG_RE.match(tag.strip())
+    if not m:
+        return None
+    kind = m.group("kind") or "release"
+    if kind == "release":
+        # 0.x.y is the beta line (v0.9.0 is the public beta).
+        title = f"dw3-switch {tag}" + (" public beta" if m.group("major") == "0" else "")
+    elif kind == "rc":
+        title = f"dw3-switch {tag} release candidate"
+    else:
+        title = f"dw3-switch {tag} preview"
+    pre = kind != "release"
+    return {
+        "kind": kind,
+        "prerelease": "true" if pre else "false",
+        "latest": "false" if pre else "true",
+        "title": title,
+    }
 
 
 def nacp_version(full: str, max_len: int = NACP_VERSION_MAX) -> str:
@@ -69,10 +118,8 @@ def nacp_version(full: str, max_len: int = NACP_VERSION_MAX) -> str:
             candidate = f"{base}+{sha[:sha_len]}"
             if len(candidate) <= max_len:
                 return finish(candidate)
-        # Drop the 0.6.5- prefix; keep preview token + sha.
-        short_base = base
-        if short_base.startswith("0.6.5-"):
-            short_base = short_base[len("0.6.5-") :]
+        # Drop the MAJOR.MINOR.PATCH- prefix; keep preview token + sha.
+        short_base = re.sub(r"^\d+\.\d+\.\d+-", "", base)
         for sha_len in range(min(7, len(sha)), 3, -1):
             candidate = f"{short_base}+{sha[:sha_len]}"
             if len(candidate) <= max_len:
@@ -194,8 +241,10 @@ def commit_sha(repo: Path | None = None) -> str:
 def display_label(raw: str, sha: str = "") -> str:
     """The human label for a raw version (after strip_v_prefix).
 
-    - release tag (`0.6.5-preview.57`, maybe `-dirty`): `v0.6.5-preview.57 (962462d)`
-    - describe past a tag (`0.6.5-preview.56-12-g8574e58`): `v0.6.5-preview.56-12-g8574e58`
+    - release tag (`0.9.0-preview.1`, `1.0.0-rc.2`, `0.9.0`, maybe `-dirty`):
+      `v0.9.0-preview.1 (962462d)`
+    - describe past a tag (`0.9.0-preview.1-12-g8574e58`):
+      `v0.9.0-preview.1-12-g8574e58`
     - bare commit id (`8574e58`, `8574e58-dirty`): as is
     - anything else (`unknown`, a hand-set string): as is
     """
@@ -279,6 +328,14 @@ def main(argv: list[str] | None = None) -> int:
         "in-game label, or the C header (P6.37)",
     )
     parser.add_argument(
+        "--release-kind",
+        default=None,
+        metavar="TAG",
+        help="validate a release tag and print KEY=value lines for the release "
+        "workflow (RELEASE_KIND, RELEASE_PRERELEASE, RELEASE_LATEST, "
+        "RELEASE_TITLE); exit 1 when it is not vMAJOR.MINOR.PATCH[-preview.N|-rc.N]",
+    )
+    parser.add_argument(
         "--auto",
         action="store_true",
         help="like --github when RELEASE_TAG / DW3_RELEASE_TAG / GITHUB_SHA "
@@ -292,6 +349,19 @@ def main(argv: list[str] | None = None) -> int:
         help="write the C header (dw3_version_gen.h) when its text changed",
     )
     args = parser.parse_args(argv)
+
+    if args.release_kind is not None:
+        info = release_info(args.release_kind)
+        if info is None:
+            print(
+                "tag must look like v0.9.0-preview.1, v1.0.0-rc.1 or v0.9.0, "
+                f"got: {args.release_kind}",
+                file=sys.stderr,
+            )
+            return 1
+        for key, value in info.items():
+            print(f"RELEASE_{key.upper()}={value}")
+        return 0
 
     if args.auto and not args.github and not args.version:
         if (

@@ -3,36 +3,221 @@
        alt="DW3NX: pixel-art crystal and orbital emblem on a dark background">
 </p>
 
-# DW3NX
-
-A native port of Digimon World 3 (Digimon World 2003 in Europe) to the
-Nintendo Switch and to the PC, built from the matching PlayStation
-decompilation. It shows as "Digimon World 3 NX" in hbmenu and Sphaira.
-
-Latest preview: [v0.6.5-preview.57](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.57)
-([release history](docs/RELEASES.md)). New to the port? Read the
-[player guide](docs/PLAYER_GUIDE.md). To try it, see
-[Play it on Switch](#play-it-on-switch). All docs are listed in the
-[docs index](docs/README.md). To contribute, see
-[CONTRIBUTING.md](CONTRIBUTING.md).
+<h1 align="center">Digimon World 3 NX</h1>
 
 <p align="center">
-  <img src="docs/assets/screenshots/title-menu.png" width="400"
-       alt="Title menu with five plaques: New Game, Options, Continue, Load Game and Quit game">
+  <b>Digimon World 3 / Digimon World 2003, running natively on the Nintendo Switch and the PC.</b><br>
+  Widescreen, fast-forward, auto-save, an in-game walkthrough and the controls your way.
+</p>
+
+<p align="center">
+  <a href="https://github.com/Larbaco/dw3-switch/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/Larbaco/dw3-switch?include_prereleases&label=latest%20release&color=8a2be2"></a>
+  <a href="https://github.com/Larbaco/dw3-switch/releases"><img alt="Downloads" src="https://img.shields.io/github/downloads/Larbaco/dw3-switch/total?color=2ea44f"></a>
+  <img alt="Platforms: Switch and PC" src="https://img.shields.io/badge/platform-Switch%20%7C%20PC-e60012">
+  <img alt="Regions: US and EU" src="https://img.shields.io/badge/region-US%20%7C%20EU-1e90ff">
+  <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-lightgrey"></a>
+</p>
+
+<p align="center">
+  <a href="https://github.com/Larbaco/dw3-switch/releases/latest"><b>Download</b></a> ·
+  <a href="#play-it-on-switch"><b>Install in 3 steps</b></a> ·
+  <a href="docs/PLAYER_GUIDE.md"><b>Player guide</b></a> ·
+  <a href="docs/REPORTING_ISSUES.md"><b>Report a bug</b></a>
+</p>
+
+<p align="center">
+  <img src="docs/assets/screenshots/battle-widescreen.png" width="400"
+       alt="Battle at 16:9 on a grassy plain with the Fight, Tech, DV, Tag, Item and Run command menu and HP bars">
   <img src="docs/assets/screenshots/field.png" width="400"
        alt="Field at 16:9: the player and partner Digimon on a sandy patch with wooden planks">
   <br>
-  <img src="docs/assets/screenshots/battle-widescreen.png" width="400"
-       alt="Battle at 16:9 on a grassy plain with the Fight, Tech, DV, Tag, Item and Run command menu and HP bars">
-  <img src="docs/assets/screenshots/options-screen.png" width="400"
+  <img src="docs/assets/screenshots/title-menu.png" width="266"
+       alt="Title menu with five plaques: New Game, Options, Continue, Load Game and Quit game">
+  <img src="docs/assets/screenshots/options-screen.png" width="266"
        alt="Options screen, Gameplay group: Fast-forward, Restart hotkey, Encounter rate, Text speed and Battle cursor">
-  <br>
-  <img src="docs/assets/screenshots/map-view.png" width="400"
+  <img src="docs/assets/screenshots/map-view.png" width="266"
        alt="Full-screen map view with the game's balloon on the current area, the cursor and the control hints">
 </p>
 <p align="center"><sub>Captured from the PC build at 16:9 (Widescreen on).</sub></p>
 
-## What this is
+## The 2002 PS1 classic, rebuilt for the Switch
+
+DW3NX is not an emulator. It is the game's own code, rebuilt from the
+PlayStation decompilation to run natively on the Switch (and on the PC). That
+lets it do things an emulator cannot: draw the field and battles in 16:9, add
+new menus inside the game, fix old bugs and speed up the slow parts. You keep
+the original story, music and Digimon, from your own disc.
+
+## What's new compared to the original
+
+Everything below is optional. With the options off you get the original game
+(widescreen is the one change that is on by default).
+
+### Looks
+
+- **Widescreen 16:9** in the field, in 3D battles and in most menus. Movies and
+  the card battle stay 4:3.
+- **Full-screen map.** A zoomable, pannable map with your area marked and the
+  area names in the game's own text. Open it from the Map screen or straight
+  from the field with Select (turn on **Full-screen map** in Options, Display).
+- **Upscaled map packs.** Generate one from your own disc and drop it in
+  `sdmc:/switch/dw3/mods/` ([how](docs/MOD_MAP_UPSCALE.md)).
+
+### Speed
+
+- **Fast-forward** with R3: 2x, 3x or 4x in the field, in battle and on the
+  results screen. The music can keep its normal speed while you rush.
+- **Text speed**: Normal, Fast or Instant.
+- **Encounter rate**: off, 0.5x, 1x, 1.5x or 2x for random battles. Story
+  battles always stay.
+- **Battle cursor memory**: the command menu (and the tech list) opens on your
+  last pick.
+
+### Saves
+
+- **Auto-save** on each new area, in its own file, never over your slots.
+  **Continue** on the title picks it up.
+- **One save folder per Switch user.**
+- **US and EU saves carry over**: a region with no save of its own imports the
+  other region's save, without changing the original.
+- **Quit game**, **Return to title** and an opt-in **restart** chord, so you
+  never have to close the app to start over.
+
+### Controls
+
+- **PlayStation or Nintendo layout.** Keep the PS1 positions (B confirms) or
+  switch to Nintendo style (A confirms, B cancels).
+- **Remap any button** in Options, Controls, Customize buttons.
+- **Switch button glyphs** in the game's prompts, if you want them.
+
+### Help inside the game
+
+- **Walkthrough** for the whole main story, and the EU extra chapter, that
+  opens on your current step. Answers stay hidden until you ask, so nothing
+  ahead of you gets spoiled.
+- **Help** pages: setup, controls, fast-forward, saves, the map and a FAQ.
+- **Options anywhere**: from the title, from the field menu, and in the middle
+  of a battle with Minus (the battle waits while you change things).
+
+### Fixes and extras
+
+- **Bug fixes**, such as the Digivolve command crash in battle, the
+  Reliability Spot crash and the Underground Path canal water
+  ([P7.7](docs/P7.7_BUG_FIXES.md)).
+- **One file for US and EU**: `dw3-switch.nro` picks your region at boot, with
+  a picker when you have both discs.
+- **Five languages** on the EU disc (English, French, German, Spanish and
+  Italian), port menus included.
+- **Crash reports**: if the game crashes, it writes a report you can attach to
+  a bug, and tells you about it at the next launch.
+- A **Cheats** screen for testing (money, warp, items), hidden behind a master
+  switch.
+
+Every option and its default: [player guide](docs/PLAYER_GUIDE.md#options-screen).
+What's coming next (language packs such as Brazilian Portuguese, texture packs
+and more): [ROADMAP](docs/ROADMAP.md).
+
+## Play it on Switch
+
+**You need:** a Switch running Atmosphère with hbmenu, and your own disc dumped
+as a Mode2 BIN/CUE pair:
+
+- Digimon World 3 (USA, SLUS-01436), or
+- Digimon World 2003 (Europe, SLES-03936).
+
+No game data ships with the port.
+
+1. **Download** `dw3-switch.nro` from the
+   [latest release](https://github.com/Larbaco/dw3-switch/releases/latest) and
+   copy it to `sdmc:/switch/`. It is one file for both regions.
+2. **Copy your disc** (the BIN and the CUE) into `sdmc:/switch/dw3/`. A US and
+   an EU disc can sit there side by side; the game tells them apart.
+3. **Launch it** from hbmenu. The first boot extracts the game data from your
+   disc and shows a progress bar. Let it finish, and you are in.
+
+```text
+sdmc:/switch/dw3-switch.nro
+sdmc:/switch/dw3/Digimon World 3.cue        your disc (also accepted in us/ or eu/)
+sdmc:/switch/dw3/Digimon World 3.bin
+sdmc:/switch/dw3/us/                        created on first boot (eu/ for EU)
+sdmc:/switch/dw3/saves/<uid>/<us|eu>/memcard/   your saves, per Switch user
+sdmc:/switch/dw3/dw3.log                    the log; attach it to a bug report
+```
+
+**Tips**
+
+- A forwarder (for example Sphaira) is the best way to launch it, and the way
+  to pick your Switch user.
+- The port does not overclock.
+- Back up `saves/` before you delete a region folder.
+- Coming from an older preview? Delete any `dw3-switch-eu.nro`, `-both` or
+  `-nxlink` files and recreate your forwarder. Saves and region folders do not
+  change.
+
+Setup details and troubleshooting: [PLAYER_GUIDE](docs/PLAYER_GUIDE.md).
+Release history and builds to avoid: [RELEASES](docs/RELEASES.md).
+
+## Controls
+
+By default the face buttons follow the PS1 positions. Prefer A to confirm?
+Pick the **Nintendo** layout in Options, Controls.
+
+| Action | Switch (default layout) |
+|---|---|
+| Confirm / back | B / X |
+| Show the title menu | Plus |
+| Fast-forward on or off | R3 (click the right stick) |
+| Options (title and battle) | Minus |
+| Full-screen map from the field | Select (Minus), with Full-screen map on |
+| Skip an opening movie | Plus |
+
+Full table, PC keys and every hotkey: [HOTKEYS](docs/HOTKEYS.md) and the
+[player guide](docs/PLAYER_GUIDE.md#controls-and-hotkeys).
+
+## Status
+
+**Early preview, playable.** Tags are `v0.9.0-preview.N` until the 0.9 public beta (`v0.9.0`), then `v1.0.0-rc.N` and `v1.0.0`; see [RELEASES](docs/RELEASES.md#naming). On the PC the game plays from the title to the
+field and to battle, on a US or EU disc. On a Switch OLED the title, field,
+battles, movies, audio and saves work (US is the most tested; EU came later).
+
+Expect bugs, rough visuals in some scenes and the occasional crash. A full run
+on real hardware from the start to the first boss is not confirmed yet, and
+many new features are checked on PC and in the Ryubing emulator before they
+reach a console; each release's notes say which. Known open items include EU
+audio after many techs
+([#188](https://github.com/Larbaco/dw3-switch/issues/188)) and the opening
+movie, which runs at about 15 fps.
+
+Found a bug? Open an [issue](https://github.com/Larbaco/dw3-switch/issues) with
+your `dw3.log` (and `crash_report.txt` if there is one). How:
+[REPORTING_ISSUES](docs/REPORTING_ISSUES.md). Never attach disc images or game
+files.
+
+## FAQ
+
+**Is this an emulator?** No. The `.nro` has no PS1 core. The game's C code,
+from the decompilation, is compiled for the Switch. That is why it can do
+widescreen and new menus.
+
+**Do I need the game?** Yes. You need your own US or EU disc. The port ships
+no game data.
+
+**Which versions work?** Digimon World 3 (USA, SLUS-01436) and Digimon World
+2003 (Europe, SLES-03936). Other regions are not supported.
+
+**Can I play on PC?** Yes, by building it yourself; see
+[Build the PC version](#build-the-pc-version).
+
+**Where are my saves?** In `sdmc:/switch/dw3/saves/`, one folder per Switch
+user and per region. See [Saves](docs/PLAYER_GUIDE.md#saves).
+
+**Which version am I running?** A dim line under the Options screens and in
+the title's bottom right corner, such as `dw3-switch v0.9.0-preview.1
+(962462d) US`. It is also the first line of `dw3.log`.
+
+## For developers
+
+### How it works
 
 The game logic is the C code of the matching PS1 decompilation,
 [ReGame-Labs/dw3_decomp](https://github.com/ReGame-Labs/dw3_decomp). Console
@@ -45,129 +230,14 @@ decomp C  ->  PSY-Z  ->  SDL3 backend (PC)
                      ->  libnx backend (Switch)
 ```
 
-This is a source port, not an emulator wrapper (the `.nro` has no PS1 core),
-not a static recompilation and not a remake with a new engine. You supply
-your own disc; see [Legal](#legal). How the layers fit:
+This is a source port, not an emulator wrapper, not a static recompilation and
+not a remake with a new engine. How the layers fit:
 [ARCHITECTURE](docs/ARCHITECTURE.md), [PSYZ](docs/PSYZ.md),
-[SWITCH_BACKEND](docs/SWITCH_BACKEND.md), [PATCHES](docs/PATCHES.md).
-
-## Status
-
-An early preview series. Expect bugs, rough visuals in some scenes and the
-occasional crash. Many features are checked on PC and in the Ryubing emulator
-but not yet on a Switch OLED; each release's notes say which. Report problems
-on the [issue tracker](https://github.com/Larbaco/dw3-switch/issues)
-([REPORTING_ISSUES](docs/REPORTING_ISSUES.md)).
-
-- PC: the game plays from title to field and battle on your own US or EU disc.
-- Switch: the title, field, battle, movies, audio and saves work on an OLED
-  (US most tested; EU is earlier). The Phase 5 gate (a full run from the start
-  to the first boss on hardware, US and EU) is not met yet, and the stage
-  sweep on hardware is open.
-- Known open items include EU audio after many techs
-  ([#188](https://github.com/Larbaco/dw3-switch/issues/188)) and the opening
-  movie, which runs at about 15 fps.
-
-Work order: [ROADMAP Priority](docs/ROADMAP.md#priority). Per-item state:
+[SWITCH_BACKEND](docs/SWITCH_BACKEND.md), [PATCHES](docs/PATCHES.md). Work
+order: [ROADMAP Priority](docs/ROADMAP.md#priority). Per-item state:
 [ROADMAP Status at a glance](docs/ROADMAP.md#status-at-a-glance).
 
-## Features
-
-What the port adds to the original game. The [player guide](docs/PLAYER_GUIDE.md)
-has the controls and the details.
-
-- **Widescreen.** About 16:9 in the field, in battle and in many menus; on by
-  default, switchable in Options. Movies and the card battle stay 4:3
-  ([P6.1](docs/P6.1_WIDESCREEN.md)).
-- **Fast-forward.** R3 toggles 2x, 3x or 4x in the field, in battle and on the
-  results screen. Under turbo the field and battle menus run at 1.5x
-  ([P6.4](docs/P6.4_FAST_FORWARD.md)).
-- **Options screen.** A list of groups in the title menu's style: Display,
-  Sound, Gameplay and Saves (plus Cheats). It opens from the title, from the
-  field menu and with Minus in battle, and is saved in `port_options.cfg`.
-  Rows include Widescreen, Fast-forward, Music and SFX volume, Encounter rate,
-  Text speed, Battle cursor, Restart hotkey and Auto-save
-  ([PORT_OPTIONS](docs/PORT_OPTIONS.md)).
-- **Auto-save.** Off by default. When on, it writes its own `autosave.bin` on
-  each new field area, never over your slots; the title then shows Continue
-  next to Load Game ([P6.31](docs/P6.31_AUTOSAVE.md)).
-- **Per-user saves.** Saves follow the Switch user profile chosen in the
-  forwarder or the system selector ([PER_USER_SAVES](docs/PER_USER_SAVES.md)).
-- **Cross-region save import.** A region with no save of its own imports the
-  other region's save once, converted, and never changes the original
-  ([CROSS_REGION_SAVES](docs/CROSS_REGION_SAVES.md)).
-- **One `.nro` for US and EU.** `dw3-switch.nro` holds both game copies and
-  picks the region at boot, with a boot picker when both discs are present
-  (P6.24; the picker and region choice were checked on an OLED with
-  preview.48). Owner decision 2026-10-29: a release carries only this one file;
-  the separate US, EU and nxlink `.nro` files are retired, and the same file
-  detects an nxlink launch at run time: [SINGLE_BUILD](docs/SINGLE_BUILD.md).
-- **Full-screen map view and a first mod loader.** Y on the Map screen opens a
-  zoomable map with the game's balloon, cursor and name box; off by default,
-  turn it on with `map_screen=1` in `port_options.cfg`
-  ([P6.32](docs/P6.32_MAP_ZOOM.md)). Packs you generate from your own disc can
-  replace the map with an upscaled one (folder `sdmc:/switch/dw3/mods/`,
-  `map_mod=0` turns it off); no pack ships with the port
-  ([MOD_MAP_UPSCALE](docs/MOD_MAP_UPSCALE.md)).
-- **Cheats screen.** A test aid, off behind a master switch: money, warp, give
-  item and more ([PORT_OPTIONS](docs/PORT_OPTIONS.md#cheats-p620)).
-- **Quit, restart and return to title.** Quit game on the title menu returns
-  to hbmenu or the forwarder; the field menu can return to the title; an
-  opt-in chord restarts the game without leaving the `.nro`
-  ([P6.9](docs/P6.9_RESTART.md)).
-- **Equipment partner cycle.** ZL / ZR change the partner on the Equipment
-  screen ([P6.33](docs/P6.33_ITEMS_MENU.md)).
-- **Bug fixes.** For example the Underground Path canal water and the battle
-  HUD form name ([P7.7](docs/P7.7_BUG_FIXES.md)).
-- **Port version in game.** A dim line such as `dw3-switch v0.6.5-preview.57
-  (962462d) US` under the Options screens and in the title's bottom right
-  corner, and as the first line of `dw3.log` (`dw3-version:`), so reports name
-  the build; `show_version=0` in `port_options.cfg` hides the title corner
-  ([P6.37](docs/P6.37_VERSION.md)).
-- **Logs and crash reports.** `dw3.log` keeps the last five runs
-  (`dw3.1.log` to `dw3.4.log`); a crash writes `crash_report.txt` and the next
-  launch shows a notice ([NXLINK_DEBUG](docs/NXLINK_DEBUG.md),
-  [P5.4_CRASH](docs/P5.4_CRASH.md)).
-
-Planned work (button remapping, a technical help screen, a menu-flow redesign,
-language packs, texture packs and more) is in the
-[ROADMAP](docs/ROADMAP.md).
-
-## Play it on Switch
-
-You need a Switch running Atmosphère with hbmenu, and your own disc dumped as
-a Mode2 BIN/CUE pair: Digimon World 3 (USA, SLUS-01436) or Digimon World 2003
-(Europe, SLES-03936). No game data ships with the port.
-
-1. Download `dw3-switch.nro` from the
-   [latest release](https://github.com/Larbaco/dw3-switch/releases/latest) and
-   copy it to `sdmc:/switch/`. It is one file for US and EU. If you have the
-   older `dw3-switch-eu.nro`, `-both` or `-nxlink` files, delete them and
-   recreate any forwarder; saves and region folders do not change.
-2. Copy your disc's BIN and CUE files into `sdmc:/switch/dw3/` or into `us/` /
-   `eu/` there. It tells the region of a disc by its executable, so a US and an
-   EU disc can both sit in `sdmc:/switch/dw3/`. With both regions present
-   (extracted or as discs) it shows a picker at boot; with one it starts that
-   region.
-3. Launch from hbmenu. The first boot extracts the game data from the disc and
-   shows a progress bar. Leave it running.
-
-```text
-sdmc:/switch/dw3-switch.nro
-sdmc:/switch/dw3/Digimon World 3.cue        your disc, BIN/CUE (also accepted in
-sdmc:/switch/dw3/Digimon World 3.bin        us/ or eu/)
-sdmc:/switch/dw3/us/                        created on first boot (eu/ for EU)
-sdmc:/switch/dw3/saves/<uid>/<us|eu>/memcard/   saves, per Switch profile
-sdmc:/switch/dw3/dw3.log                    logs; send them with a bug report
-```
-
-A forwarder (for example Sphaira) is the recommended way to launch it, and the
-way to pick the Switch user. The port does not overclock. Back up `saves/`
-before deleting a region folder. Details, controls and troubleshooting:
-[PLAYER_GUIDE](docs/PLAYER_GUIDE.md). Release history and builds to avoid:
-[RELEASES](docs/RELEASES.md).
-
-## Build the PC version
+### Build the PC version
 
 You need your own US or EU disc. No disc is needed to run the tests.
 
@@ -196,22 +266,15 @@ replay tests: [CONTRIBUTING.md](CONTRIBUTING.md),
 tests (`tools/build_pc.sh`, ccache, `--changed` replay selection):
 [BUILD_SPEED](docs/BUILD_SPEED.md).
 
-## Controls
-
-Switch face buttons follow the PS1 positions: B is Cross and confirms, A is
-Circle. Press Plus at the title to show the menu. R3 toggles fast-forward;
-Minus opens Options at the title and in battle. The full table, the PC keys
-and the port hotkeys are in [HOTKEYS](docs/HOTKEYS.md) and the
-[player guide](docs/PLAYER_GUIDE.md#controls-and-hotkeys).
-
-## Documentation
+### Documentation
 
 | Doc | Contents |
 |---|---|
 | [PLAYER_GUIDE](docs/PLAYER_GUIDE.md) | Setup, controls, menus, saves and crash reports for players. |
 | [Docs index](docs/README.md) | One line per doc in `docs/`. |
 | [ROADMAP](docs/ROADMAP.md) | Priority, status and phases. |
-| [RELEASES](docs/RELEASES.md) | Preview index, builds to avoid. |
+| [RELEASES](docs/RELEASES.md) | Release naming, index, builds to avoid. |
+| [PORT_OPTIONS](docs/PORT_OPTIONS.md) | Every option, its key in `port_options.cfg` and its design note. |
 | [CONTRIBUTING](CONTRIBUTING.md) and [AGENTS.md](AGENTS.md) | Rules, build and test commands for contributors and AI agents. |
 | [REPORTING_ISSUES](docs/REPORTING_ISSUES.md) | How to report a bug. Never attach disc images or game files. |
 
