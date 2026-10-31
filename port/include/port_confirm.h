@@ -15,7 +15,16 @@ enum {
     /* P6.38, owned by the Options screen (Region at start row): "Restart in EU
      * now?", and the one-button notice "Restart the game to apply." */
     DW3_CONFIRM_REGION = 2,
-    DW3_CONFIRM_NOTICE = 3
+    DW3_CONFIRM_NOTICE = 3,
+    /* D1, owned by the Options screen too: "Turn it on?" for the rows that
+     * need a warning (Shared saves, Stage sweep). */
+    DW3_CONFIRM_ASK = 4
+};
+
+/* D1: what the DW3_CONFIRM_ASK window asks about (dw3_port_confirm_open_ask). */
+enum {
+    DW3_PORT_ASK_SHARED_SAVES = 1, /* Saves > Shared saves (experimental) */
+    DW3_PORT_ASK_STAGE_SWEEP = 2   /* Advanced > Stage sweep: Run / Start over */
 };
 
 /* 1 when this build has the native overlay that draws the window (PC SDL3 GPU
@@ -59,7 +68,12 @@ void dw3_port_confirm_close(void);
  *   open_notice: "Restart the game to apply.", one OK button. */
 void dw3_port_confirm_open_region(int target, int in_game);
 void dw3_port_confirm_open_notice(void);
-/* 1 while a window opened by the two calls above is up. */
+/* D1: the Yes / No window of a row that warns before it turns on (cursor on
+ * No). Returns 1 when the window is up; the answer arrives at
+ * dw3_port_options_ask_answer(what, yes). Returns 0, without a window, when
+ * this build has no native overlay (the caller then applies the change). */
+int dw3_port_confirm_open_ask(int what);
+/* 1 while a window opened by the calls above is up. */
 int dw3_port_confirm_owned_is_open(void);
 void dw3_port_confirm_tick_owned(void);
 

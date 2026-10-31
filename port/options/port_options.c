@@ -4,6 +4,8 @@
 /* P9.2 port options shell — stays on MODE_TITLE; never sets menu choice. */
 #include "port_options.h"
 #include "port_audio.h"
+#include "port_confirm.h"
+#include "port_map_buttons.h"
 #include "port_autosave.h"
 #include "port_battle_menu.h"
 #include "port_button_map.h"
@@ -17,7 +19,6 @@
 #include "port_version.h"
 #if DW3_OPT_REGION_ROW
 #include "dw3_region.h"
-#include "port_confirm.h"
 #include "port_region_relaunch.h"
 #endif
 
@@ -61,7 +62,7 @@
  * port_options.h: port/pacing/pacing.c, port/battle_menu/battle_menu_memory.c
  * and port/autosave/autosave.c read them. */
 enum {
-    DW3_PORT_OPT_COUNT = 16,
+    DW3_PORT_OPT_COUNT = 27,
     DW3_PORT_OPT_WIDESCREEN = 0,
     DW3_PORT_OPT_FAST_FORWARD = 1,
     DW3_PORT_OPT_RESTART = 2,
@@ -80,7 +81,13 @@ _Static_assert(DW3_PORT_OPT_WIDESCREEN == 0 && DW3_PORT_OPT_FAST_FORWARD == 1 &&
                DW3_PORT_OPT_TURBO_MUSIC == 13 &&
                DW3_PORT_OPT_SWITCH_GLYPHS == 14 &&
                DW3_PORT_OPT_MAP_SCREEN == 15 &&
-               DW3_PORT_OPT_COUNT == 16,
+               DW3_PORT_OPT_ITEMS_EQUIP == 16 && DW3_PORT_OPT_ITEMS_STAYS == 17 &&
+               DW3_PORT_OPT_ITEMS_BAG == 18 && DW3_PORT_OPT_ITEMS_USE == 19 &&
+               DW3_PORT_OPT_ITEMS_PARTNER == 20 && DW3_PORT_OPT_SHOW_VERSION == 21 &&
+               DW3_PORT_OPT_MAP_MOD == 22 && DW3_PORT_OPT_SAVE_STORE == 23 &&
+               DW3_PORT_OPT_STAGE_SWEEP == 24 && DW3_PORT_OPT_SWEEP_FRAMES == 25 &&
+               DW3_PORT_OPT_MAP_BUTTONS == 26 &&
+               DW3_PORT_OPT_COUNT == 27,
                "registry indexes changed: update port_options_groups.h");
 
 typedef struct Dw3PortOptStub {
@@ -96,6 +103,7 @@ typedef struct Dw3PortOptStub {
 
 static int g_open;
 static void po_help_shutdown(void);
+static int po_ask_first(int index, int v);
 /* P9.7: 1 while the screen was opened from the field menu (not the title):
  * the rows that cannot change safely in game are locked (row_locked). */
 static int g_in_game;
@@ -162,6 +170,30 @@ static Dw3PortOptStub g_stubs[DW3_PORT_OPT_COUNT] = {
      * of the preview builds. No environment variable: the replays seed it in the
      * file. */
     {"Map screen", "map_screen", 0, 0, NULL},
+    /* D1: the five Menus switches (Items menu patches 0188, 0190, 0192, 0193,
+     * 0128), default ON like the file-only keys they replace. The DW3_ITEMS_*
+     * variables of the replays pin them for one run. */
+    {"Equip from Items", "items_equip_from_items", 1, 1, "DW3_ITEMS_EQUIP_FROM_ITEMS"},
+    {"Equip stays on list", "items_equip_stays", 1, 1, "DW3_ITEMS_EQUIP_STAYS"},
+    {"Whole bag", "items_bag_view", 1, 1, "DW3_ITEMS_BAG_VIEW"},
+    {"Use item stays", "items_use_stays", 1, 1, "DW3_ITEMS_USE_STAYS"},
+    {"Partner switch", "items_partner_switch", 1, 1, "DW3_ITEMS_PARTNER_SWITCH"},
+    /* D1 Display: the title's version label (P6.37) and the map-upscale pack
+     * (P6.32). Both default ON. */
+    {"Version label", "show_version", 1, 1, NULL},
+    {"Map mod pack", "map_mod", 1, 1, NULL},
+    /* D1 Saves: the shared per-profile store (P6.25 slice 2). Default OFF; read
+     * before the memory cards open, so a change is for the next start; title
+     * only. DW3_SAVE_STORE pins it for one run. */
+    {"Shared saves", "save_store", 0, 0, "DW3_SAVE_STORE"},
+    /* D1 Advanced: the stage sweep (P5.5): 0 OFF, 1 Run, 2 Start over; and the
+     * frames it waits in each stage. Read at boot, so title only. */
+    {"Stage sweep", "stage_sweep", 0, 0, "DW3_STAGE_SWEEP"},
+    {"Sweep frames", "stage_sweep_frames", DW3_SWEEP_FRAMES_DEFAULT,
+     DW3_SWEEP_FRAMES_DEFAULT, "DW3_STAGE_SWEEP_FRAMES"},
+    /* D1 Controls: an action row (no value, no key); Confirm opens the Map
+     * buttons screen. */
+    {"Map buttons", NULL, 0, 0, NULL},
 };
 
 /* P9.4 persistence. The registry values above are what the game reads; this
@@ -209,7 +241,8 @@ void dw3_port_options_test_goto_row(int reg) {
 
     for (g = 0; g < DW3_OPTGRP_COUNT; g++) {
         for (k = 0; k < dw3_optgroups[g].nrows; k++) {
-            if (g != DW3_OPTGRP_CHEATS && dw3_optgroups[g].rows[k] == reg) {
+            if (g != DW3_OPTGRP_CHEATS && g != DW3_OPTGRP_CUSTOM &&
+                g != DW3_OPTGRP_MAPBTN && dw3_optgroups[g].rows[k] == reg) {
                 g_level = 1;
                 g_group = g;
                 g_cursor = k;
@@ -228,7 +261,7 @@ static int po_pressed(int bit) {
 /* The groups' words, for the log. */
 static const char *const g_group_names[DW3_OPTGRP_COUNT] = {
     "display", "sound", "gameplay", "saves", "cheats", "controls", "help",
-    "walkthrough", "customize"};
+    "walkthrough", "customize", "menus", "advanced", "mapbtn"};
 
 static int po_cheats_on(void) {
 #ifdef DW3_CHEATS
@@ -295,6 +328,12 @@ static void po_push_view(void) {
         if (g_assign_btn >= 0) {
             values[g_assign_btn] = 10;
         }
+    } else if (g_level && g_group == DW3_OPTGRP_MAPBTN) {
+        /* D1: a row's value is the code of the button bound to it
+         * (port_map_buttons.h); the last row is the Reset action. */
+        for (i = 0; i < DW3_MAPBTN_ROWS && i < DW3_TITLE_OPTION_ROWS; i++) {
+            values[i] = dw3_mapbtn_value(i);
+        }
     } else if (g_level) {
         for (i = 0; i < dw3_optgroups[g_group].nrows; i++) {
             values[i] = g_stubs[dw3_optgroups[g_group].rows[i]].value;
@@ -316,7 +355,10 @@ static void po_push_view(void) {
  * its value where it is used (docs/PORT_OPTIONS.md "Options in game"). */
 int dw3_port_options_row_locked(int index) {
     return g_in_game && (index == DW3_PORT_OPT_WIDESCREEN ||
-                         index == DW3_PORT_OPT_CUSTOMIZE);
+                         index == DW3_PORT_OPT_CUSTOMIZE ||
+                         index == DW3_PORT_OPT_SAVE_STORE ||
+                         index == DW3_PORT_OPT_STAGE_SWEEP ||
+                         index == DW3_PORT_OPT_SWEEP_FRAMES);
 }
 
 /* Bit i = row i is locked; DW3_PORT_OPTIONS_LOCK_CHEATS = the Cheats entry
@@ -327,7 +369,8 @@ unsigned dw3_port_options_locked_mask_for(int in_game) {
     }
     /* The same rows dw3_port_options_row_locked() reports in game. */
     return (1u << DW3_PORT_OPT_WIDESCREEN) | (1u << DW3_PORT_OPT_CUSTOMIZE) |
-           DW3_PORT_OPTIONS_LOCK_CHEATS;
+           (1u << DW3_PORT_OPT_SAVE_STORE) | (1u << DW3_PORT_OPT_STAGE_SWEEP) |
+           (1u << DW3_PORT_OPT_SWEEP_FRAMES) | DW3_PORT_OPTIONS_LOCK_CHEATS;
 }
 
 unsigned dw3_port_options_locked_mask(void) {
@@ -469,6 +512,13 @@ const char *dw3_port_options_label(int index) {
     return g_stubs[index].label;
 }
 
+const char *dw3_port_options_key(int index) {
+    if (index < 0 || index >= DW3_PORT_OPT_COUNT) {
+        return NULL;
+    }
+    return g_stubs[index].key;
+}
+
 int dw3_port_options_value(int index) {
     if (index < 0 || index >= DW3_PORT_OPT_COUNT) {
         return 0;
@@ -527,7 +577,8 @@ static int po_is_mode(int index) {
            index == DW3_PORT_OPT_BATTLE_MENU ||
            index == DW3_PORT_OPT_BUTTON_LAYOUT ||
            index == DW3_PORT_OPT_REGION ||
-           index == DW3_PORT_OPT_TURBO_MUSIC;
+           index == DW3_PORT_OPT_TURBO_MUSIC ||
+           index == DW3_PORT_OPT_STAGE_SWEEP;
 }
 
 /* Rows that Left / Right step and Confirm cycles: the volumes and the modes. */
@@ -543,6 +594,7 @@ static int po_value_max(int index) {
            : index == DW3_PORT_OPT_BUTTON_LAYOUT ? DW3_LAYOUT_COUNT - 1
            : index == DW3_PORT_OPT_REGION ? 2
            : index == DW3_PORT_OPT_TURBO_MUSIC ? 1
+           : index == DW3_PORT_OPT_STAGE_SWEEP ? 2
                                                    : DW3_PACING_MODE_MAX;
 }
 
@@ -585,6 +637,9 @@ static int po_valid(int index, int v) {
     if (index == DW3_PORT_OPT_FAST_FORWARD) {
         return v == 0 || (v >= DW3_TURBO_SPEED_MIN && v <= DW3_TURBO_SPEED_MAX);
     }
+    if (index == DW3_PORT_OPT_SWEEP_FRAMES) {
+        return v >= DW3_SWEEP_FRAMES_MIN && v <= DW3_SWEEP_FRAMES_MAX;
+    }
     if (po_is_stepped(index)) {
         return v >= 0 && v <= po_value_max(index);
     }
@@ -597,6 +652,30 @@ __attribute__((weak)) void dw3_port_audio_apply(int music_step, int sfx_step) {
     (void)music_step;
     (void)sfx_step;
 }
+#endif
+
+#ifdef DW3_PORT_OPTIONS_TEST
+/* D1: host tests that do not link the Yes / No window or the Map buttons screen
+ * get these (a test that wants them links the real ones, which win). With no
+ * window a row that warns applies at once. */
+__attribute__((weak)) int dw3_port_confirm_open_ask(int what) {
+    (void)what;
+    return 0;
+}
+__attribute__((weak)) int dw3_port_confirm_owned_is_open(void) {
+    return 0;
+}
+__attribute__((weak)) void dw3_port_confirm_tick_owned(void) {}
+__attribute__((weak)) int dw3_mapbtn_value(int row) {
+    (void)row;
+    return 0;
+}
+__attribute__((weak)) int dw3_mapbtn_step(int row, int dir) {
+    (void)row;
+    (void)dir;
+    return 0;
+}
+__attribute__((weak)) void dw3_mapbtn_reset(void) {}
 #endif
 
 /* Hand the two volume steps to the mixer (port/audio/audio_bus.c). */
@@ -822,10 +901,40 @@ const char *dw3_port_options_file_str(const char *key) {
     return g_persist_on ? dw3_optcfg_get(&g_cfg, key) : NULL;
 }
 
-int dw3_port_options_file_int(const char *key, int def) {
-    const char *v = g_persist_on ? dw3_optcfg_get(&g_cfg, key) : NULL;
-    int n;
+static unsigned g_keys_gen;
 
+unsigned dw3_port_options_keys_generation(void) {
+    return g_keys_gen;
+}
+
+/* D1: a text key set from a screen of its own (the Map buttons) and written at
+ * once, like a row. */
+int dw3_port_options_store_str(const char *key, const char *value) {
+    g_keys_gen++;
+    if (!g_persist_on) {
+        return -1; /* session-only options: nothing to write */
+    }
+    if (dw3_optcfg_set(&g_cfg, key, value) != 0) {
+        PO_WARN("dw3-options: cannot stage %s", key);
+        return -1;
+    }
+    return po_save();
+}
+
+int dw3_port_options_file_int(const char *key, int def) {
+    const char *v;
+    int n;
+    int i;
+
+    /* D1: a key with a row answers with the row (valid, env pin included), so a
+     * change on the screen is seen at once, with or without a file. */
+    for (i = 0; i < DW3_PORT_OPT_COUNT; i++) {
+        if (g_stubs[i].key != NULL && i != DW3_PORT_OPT_BUTTON_LAYOUT &&
+            strcmp(g_stubs[i].key, key) == 0) {
+            return g_stubs[i].value;
+        }
+    }
+    v = g_persist_on ? dw3_optcfg_get(&g_cfg, key) : NULL;
     if (v == NULL || dw3_optcfg_parse_int(v, &n) != 0) {
         return def;
     }
@@ -965,7 +1074,8 @@ int dw3_port_options_persist_init(const char *dir) {
     /* File-only keys (not rows): their values at boot, so a log says which
      * way the test ran. */
     PO_INFO("dw3-options: file keys items_equip_from_items=%d items_equip_stays=%d items_bag_view=%d items_use_stays=%d items_partner_switch=%d "
-            "map_screen=%d battle_menu_memory=%d show_version=%d",
+            "map_screen=%d battle_menu_memory=%d show_version=%d map_mod=%d save_store=%d "
+            "stage_sweep=%d stage_sweep_frames=%d",
             dw3_port_options_file_int("items_equip_from_items", 1),
             dw3_port_options_file_int("items_equip_stays", 1),
             dw3_port_options_file_int("items_bag_view", 1),
@@ -973,7 +1083,11 @@ int dw3_port_options_persist_init(const char *dir) {
             dw3_port_options_file_int("items_partner_switch", 1),
             dw3_port_options_file_int("map_screen", 0), /* off by default (P6.32 phase 1) */
             g_saved[DW3_PORT_OPT_BATTLE_MENU],
-            dw3_port_options_file_int("show_version", 1));
+            dw3_port_options_file_int("show_version", 1),
+            g_stubs[DW3_PORT_OPT_MAP_MOD].value,
+            g_stubs[DW3_PORT_OPT_SAVE_STORE].value,
+            g_stubs[DW3_PORT_OPT_STAGE_SWEEP].value,
+            g_stubs[DW3_PORT_OPT_SWEEP_FRAMES].value);
 #if defined(DW3_TITLE_NATIVE_OVERLAY)
     /* P6.37: the port version in the title's corner (docs/P6.37_VERSION.md). */
     dw3_pc_title_overlay_set_version(dw3_port_options_file_int("show_version", 1) != 0);
@@ -1001,11 +1115,13 @@ static const char *po_mode_name(int index, int v) {
                                                          "nintendo", "custom"};
     static const char *const region[3] = {"ask", "us", "eu"};
     static const char *const tmusic[2] = {"1x", "fast"};
+    static const char *const sweep[3] = {"off", "run", "start over"};
 
     if (v < 0 || v > po_value_max(index)) {
         return "?";
     }
-    return index == DW3_PORT_OPT_ENCOUNTER_RATE ? encounter[v]
+    return index == DW3_PORT_OPT_STAGE_SWEEP ? sweep[v]
+           : index == DW3_PORT_OPT_ENCOUNTER_RATE ? encounter[v]
            : index == DW3_PORT_OPT_BUTTON_LAYOUT ? layout[v]
            : index == DW3_PORT_OPT_REGION ? region[v]
            : index == DW3_PORT_OPT_TURBO_MUSIC ? tmusic[v]
@@ -1080,6 +1196,9 @@ static void po_step(int index, int delta) {
     if (v == g_stubs[index].value && !((g_env_pinned >> index) & 1u)) {
         return;
     }
+    if (index == DW3_PORT_OPT_STAGE_SWEEP && v != 0 && po_ask_first(index, v)) {
+        return; /* the window answers (dw3_port_options_ask_answer) */
+    }
     g_stubs[index].value = v;
     g_env_pinned &= ~(1u << index);
     if (po_is_volume(index)) {
@@ -1093,6 +1212,7 @@ static void po_step(int index, int delta) {
                 : index == DW3_PORT_OPT_BUTTON_LAYOUT ? "button layout"
                 : index == DW3_PORT_OPT_REGION ? "region at start"
                 : index == DW3_PORT_OPT_TURBO_MUSIC ? "turbo music"
+                : index == DW3_PORT_OPT_STAGE_SWEEP ? "stage sweep"
                                                     : "text speed",
                 po_mode_name(index, v));
     }
@@ -1199,6 +1319,141 @@ static void po_reset_map(void) {
     po_sound(PO_SND_SELECT);
 }
 
+/* --- D1: rows that warn first (Shared saves, Stage sweep) ---------------------
+ * Turning one on opens the Yes / No window with the cursor on No
+ * (port/options/confirm.c); the value changes only on Yes, and the answer is
+ * logged either way. A build with no native overlay has no window: the change
+ * is applied at once and the log says so. */
+static int g_ask_index = -1;
+static int g_ask_value;
+
+static void po_apply_asked(int index, int v, const char *how) {
+    const int old = g_stubs[index].value;
+
+    g_stubs[index].value = v;
+    g_env_pinned &= ~(1u << index);
+    PO_INFO("dw3-options: %s %d->%d (%s, next start)", g_stubs[index].key, old, v, how);
+    (void)po_save();
+}
+
+/* 1 when the window is up and the change waits for its answer. */
+static int po_ask_first(int index, int v) {
+    const int what = index == DW3_PORT_OPT_SAVE_STORE ? DW3_PORT_ASK_SHARED_SAVES
+                                                      : DW3_PORT_ASK_STAGE_SWEEP;
+
+    if (dw3_port_confirm_open_ask(what) == 0) {
+        po_apply_asked(index, v, "no window in this build, applied");
+        po_sound(PO_SND_SELECT);
+        return 1;
+    }
+    g_ask_index = index;
+    g_ask_value = v;
+    return 1;
+}
+
+void dw3_port_options_ask_answer(int what, int yes) {
+    const int index = g_ask_index;
+    const int v = g_ask_value;
+
+    (void)what;
+    g_ask_index = -1;
+    if (index < 0) {
+        return;
+    }
+    if (yes) {
+        po_apply_asked(index, v, "confirmed");
+        po_sound(PO_SND_SELECT);
+    } else {
+        PO_INFO("dw3-options: %s %d->%d declined", g_stubs[index].key,
+                g_stubs[index].value, v);
+        po_sound(PO_SND_CANCEL);
+    }
+}
+
+void dw3_port_options_sweep_started(void) {
+    if (g_stubs[DW3_PORT_OPT_STAGE_SWEEP].value != 2 ||
+        ((g_env_pinned >> DW3_PORT_OPT_STAGE_SWEEP) & 1u)) {
+        return;
+    }
+    g_stubs[DW3_PORT_OPT_STAGE_SWEEP].value = 1;
+    PO_INFO("dw3-options: stage_sweep 2->1 (Start over began; the next start continues the sweep)");
+    (void)po_save();
+}
+
+/* Sweep frames: Left / Right by 30, L1 / R1 by 300, Confirm 300 up and round. */
+static void po_frames_set(int v) {
+    int old = g_stubs[DW3_PORT_OPT_SWEEP_FRAMES].value;
+
+    if (po_refuse_locked(DW3_PORT_OPT_SWEEP_FRAMES)) {
+        return;
+    }
+    if (v < DW3_SWEEP_FRAMES_MIN) {
+        v = DW3_SWEEP_FRAMES_MIN;
+    }
+    if (v > DW3_SWEEP_FRAMES_MAX) {
+        v = DW3_SWEEP_FRAMES_MAX;
+    }
+    if (v == old && !((g_env_pinned >> DW3_PORT_OPT_SWEEP_FRAMES) & 1u)) {
+        return;
+    }
+    g_stubs[DW3_PORT_OPT_SWEEP_FRAMES].value = v;
+    g_env_pinned &= ~(1u << DW3_PORT_OPT_SWEEP_FRAMES);
+    fprintf(stderr, "dw3-port-options: sweep frames %d (next start)\n", v);
+    fflush(stderr);
+    (void)po_save();
+    po_sound(PO_SND_SELECT);
+}
+
+/* --- D1: the Map buttons screen (Controls > Map buttons) --------------------
+ * Seven bindings and a Reset action, opened like Customize. The logic is
+ * port/options/map_buttons.c; this is the screen around it. */
+static void po_mapbtn_open(void) {
+    g_level = 1;
+    g_group = DW3_OPTGRP_MAPBTN;
+    g_cursor = g_scroll = 0;
+    fprintf(stderr, "dw3-port-options: group open mapbtn (%d row(s), %s)\n",
+            dw3_optgroups[DW3_OPTGRP_MAPBTN].nrows,
+            g_in_game ? "in game" : "title");
+    fflush(stderr);
+    po_sound(PO_SND_SELECT);
+}
+
+static void po_mapbtn_back(void) {
+    fprintf(stderr, "dw3-port-options: group close mapbtn (back to controls)\n");
+    fflush(stderr);
+    g_group = DW3_OPTGRP_CONTROLS;
+    g_cursor = 2; /* the Map buttons row */
+    g_scroll = 0;
+}
+
+/* The words of a switch row, for the log. */
+static const char *po_switch_name(int index) {
+    return index == DW3_PORT_OPT_RESTART ? "restart hotkey"
+           : index == DW3_PORT_OPT_AUTOSAVE ? "auto-save"
+           : index == DW3_PORT_OPT_SWITCH_GLYPHS ? "switch glyphs"
+           : index == DW3_PORT_OPT_MAP_SCREEN ? "map screen (full-screen map view)"
+           : index == DW3_PORT_OPT_ITEMS_EQUIP ? "equip from items"
+           : index == DW3_PORT_OPT_ITEMS_STAYS ? "equip stays on list"
+           : index == DW3_PORT_OPT_ITEMS_BAG ? "whole bag"
+           : index == DW3_PORT_OPT_ITEMS_USE ? "use item stays"
+           : index == DW3_PORT_OPT_ITEMS_PARTNER ? "partner switch"
+           : index == DW3_PORT_OPT_SHOW_VERSION ? "version label"
+           : index == DW3_PORT_OPT_MAP_MOD ? "map mod pack"
+           : index == DW3_PORT_OPT_SAVE_STORE ? "shared saves"
+                                              : "widescreen";
+}
+
+/* A change that reaches into the screen at once. */
+static void po_row_applied(int index) {
+#if !defined(DW3_PORT_OPTIONS_TEST) && defined(DW3_TITLE_NATIVE_OVERLAY)
+    if (index == DW3_PORT_OPT_SHOW_VERSION) {
+        dw3_pc_title_overlay_set_version(g_stubs[index].value != 0);
+    }
+#else
+    (void)index;
+#endif
+}
+
 /* Confirm on a row: ON/OFF, OFF -> 2x -> 3x -> 4x -> OFF for Fast-forward, or
  * the next step of a volume / pacing row (wraps to the first after the last:
  * Encounter rate 2x -> OFF). */
@@ -1214,6 +1469,10 @@ static void po_toggle(int index) {
     }
     if (index == DW3_PORT_OPT_RESET_MAP) {
         po_reset_map();
+        return;
+    }
+    if (index == DW3_PORT_OPT_MAP_BUTTONS) {
+        po_mapbtn_open();
         return;
     }
 
@@ -1243,17 +1502,16 @@ static void po_toggle(int index) {
         return;
     }
     v = g_stubs[index].value ? 0 : 1;
+    if (index == DW3_PORT_OPT_SAVE_STORE && v == 1 && po_ask_first(index, v)) {
+        return; /* the window answers (dw3_port_options_ask_answer) */
+    }
     g_stubs[index].value = v;
     g_env_pinned &= ~(1u << index);
-    fprintf(stderr, "dw3-port-options: %s %s\n",
-            index == DW3_PORT_OPT_RESTART ? "restart hotkey"
-            : index == DW3_PORT_OPT_AUTOSAVE ? "auto-save"
-            : index == DW3_PORT_OPT_SWITCH_GLYPHS ? "switch glyphs"
-            : index == DW3_PORT_OPT_MAP_SCREEN ? "map screen (full-screen map view)"
-                                                   : "widescreen",
+    fprintf(stderr, "dw3-port-options: %s %s\n", po_switch_name(index),
             v ? "enabled" : "disabled");
     fflush(stderr);
     (void)po_save();
+    po_row_applied(index);
     if (index == DW3_PORT_OPT_SWITCH_GLYPHS) {
         dw3_glyphs_refresh("option");
     }
@@ -1297,6 +1555,45 @@ static void po_custom_tick(void) {
     }
     if (po_key_confirm()) {
         po_assign_begin(btn);
+    }
+}
+
+static void po_frames_tick(void) {
+    const int v = g_stubs[DW3_PORT_OPT_SWEEP_FRAMES].value;
+
+    if (po_key_left()) {
+        po_frames_set(v - DW3_SWEEP_FRAMES_STEP);
+    } else if (po_key_right()) {
+        po_frames_set(v + DW3_SWEEP_FRAMES_STEP);
+    } else if (po_key_prev()) {
+        po_frames_set(v - DW3_SWEEP_FRAMES_BIG_STEP);
+    } else if (po_key_next()) {
+        po_frames_set(v + DW3_SWEEP_FRAMES_BIG_STEP);
+    } else if (po_key_confirm()) {
+        po_frames_set(v + DW3_SWEEP_FRAMES_BIG_STEP > DW3_SWEEP_FRAMES_MAX
+                          ? DW3_SWEEP_FRAMES_MIN
+                          : v + DW3_SWEEP_FRAMES_BIG_STEP);
+    }
+}
+
+static void po_mapbtn_tick(void) {
+    const int row = g_cursor;
+    int dir = 0;
+
+    if (row == DW3_MAPBTN_RESET) {
+        if (po_key_confirm()) {
+            dw3_mapbtn_reset();
+            po_sound(PO_SND_SELECT);
+        }
+        return;
+    }
+    if (po_key_left()) {
+        dir = -1;
+    } else if (po_key_right() || po_key_confirm()) {
+        dir = 1;
+    }
+    if (dir != 0 && dw3_mapbtn_step(row, dir)) {
+        po_sound(PO_SND_SELECT);
     }
 }
 
@@ -1604,6 +1901,8 @@ static void po_tick_inner(void) {
         po_sound(PO_SND_CANCEL);
         if (g_level && g_group == DW3_OPTGRP_CUSTOM) {
             po_custom_back();
+        } else if (g_level && g_group == DW3_OPTGRP_MAPBTN) {
+            po_mapbtn_back();
         } else if (g_level) {
             po_group_back();
         } else {
@@ -1635,6 +1934,10 @@ static void po_tick_inner(void) {
         }
     } else if (g_group == DW3_OPTGRP_CUSTOM) {
         po_custom_tick();
+    } else if (g_group == DW3_OPTGRP_MAPBTN) {
+        po_mapbtn_tick();
+    } else if (po_cursor_row() == DW3_PORT_OPT_SWEEP_FRAMES) {
+        po_frames_tick();
     } else {
         const int row = po_cursor_row();
 
@@ -1656,7 +1959,7 @@ static void po_tick_inner(void) {
 #if DW3_OPT_REGION_ROW
 /* P6.38: 1 while the cursor is on the Region at start row. */
 static int po_on_region_row(void) {
-    return g_level && g_group != DW3_OPTGRP_CUSTOM &&
+    return g_level && g_group != DW3_OPTGRP_CUSTOM && g_group != DW3_OPTGRP_MAPBTN &&
            g_cursor >= 0 && g_cursor < dw3_optgroups[g_group].nrows &&
            dw3_optgroups[g_group].rows[g_cursor] == DW3_PORT_OPT_REGION;
 }
@@ -1671,7 +1974,7 @@ void dw3_port_options_tick(void) {
     }
     /* P6.38: the restart window ("Restart in EU now?") has the pad while it is
      * up; it is ticked here because the title and the field menu both leave
-     * it to this screen. */
+     * it to this screen. D1: so are the Shared saves and Stage sweep windows. */
     if (dw3_port_confirm_owned_is_open()) {
         dw3_port_confirm_tick_owned();
         po_push_view();
@@ -1686,6 +1989,14 @@ void dw3_port_options_tick(void) {
                                              g_in_game);
     }
 #else
+    if (!g_open) {
+        return;
+    }
+    if (dw3_port_confirm_owned_is_open()) {
+        dw3_port_confirm_tick_owned();
+        po_push_view();
+        return;
+    }
     po_tick_inner();
 #endif
 }
