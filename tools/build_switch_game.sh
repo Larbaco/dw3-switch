@@ -179,6 +179,13 @@ if [[ -z "${DW3_NRO_VERSION}" || -z "${DW3_NACP_VERSION}" ]]; then
   exit 1
 fi
 echo "NRO version full=${DW3_NRO_VERSION} nacp=${DW3_NACP_VERSION}"
+# P6.37: the in-game label (Options footer, title corner, dw3-version: log
+# line), written here with the same arguments so the devkitPro container needs
+# no Python. The script rewrites the header only when its text changed.
+DW3_VERSION_GEN_DIR="${BUILD_DIR}/dw3_version_gen"
+mkdir -p "${DW3_VERSION_GEN_DIR}"
+python3 "${ROOT}/tools/dw3_nro_version.py" "${VERSION_ARGS[@]}" --format label \
+  --write-header "${DW3_VERSION_GEN_DIR}/dw3_version_gen.h"
 
 # Worktrees store their common gitdir outside the checkout. Mount it at the
 # same absolute path so submodule gitlinks and apply_patches.sh still resolve.
@@ -232,6 +239,7 @@ docker run --rm \
   -e DW3_NX_TEST_ENV="${DW3_NX_TEST_ENV}" \
   -e DW3_NRO_VERSION="${DW3_NRO_VERSION}" \
   -e DW3_NACP_VERSION="${DW3_NACP_VERSION}" \
+  -e DW3_VERSION_GEN_DIR="${DW3_VERSION_GEN_DIR}" \
   -e GIT_CONFIG_COUNT=1 \
   -e GIT_CONFIG_KEY_0=safe.directory \
   -e GIT_CONFIG_VALUE_0='*' \
@@ -253,7 +261,8 @@ docker run --rm \
     -DDW3_CHEATS="$DW3_CHEATS" \
     -DDW3_NX_TEST_ENV="$DW3_NX_TEST_ENV" \
     -DDW3_NRO_VERSION="$DW3_NRO_VERSION" \
-    -DDW3_NACP_VERSION="$DW3_NACP_VERSION" && \
+    -DDW3_NACP_VERSION="$DW3_NACP_VERSION" \
+    -DDW3_VERSION_GEN_DIR="$DW3_VERSION_GEN_DIR" && \
     cmake --build "$DW3_SWITCH_BUILD_DIR" -j"${DW3_BUILD_JOBS:-$(nproc)}" && \
     { command -v ccache >/dev/null && ccache -s | sed -n "1,6p"; true; }'
 
@@ -298,6 +307,17 @@ fi
 if [[ "${DW3_VERSION}" == "both" && "${bytes}" -lt 10500000 ]]; then
   echo "combined .nro is ${bytes} bytes; two game copies should make it about 12MB" >&2
   exit 1
+fi
+
+# P6.37: the in-game label (header written above) must be inside the image; the
+# replay build shows the fixed text "replay" instead.
+if [[ "${DW3_NX_REPLAY}" != "ON" ]]; then
+  ver_label="$(sed -n 's/^#define DW3_VERSION_LABEL "\(.*\)"$/\1/p' "${DW3_VERSION_GEN_DIR}/dw3_version_gen.h")"
+  if [[ -z "${ver_label}" ]] || ! grep -a -F -q "${ver_label}" "${NRO}"; then
+    echo "${NRO} does not contain the port version label '${ver_label}' (P6.37)" >&2
+    exit 1
+  fi
+  echo "port version label in the image: dw3-switch ${ver_label}"
 fi
 
 if [[ ! -f "${NACP}" ]]; then

@@ -79,6 +79,10 @@ void dw3_pc_title_overlay_set_options_language(int lang);
 /* 0 drops the three-line credits drawn at the foot of the title canvas (the
  * game then draws its own sprites); on by default, US and EU alike. */
 void dw3_pc_title_overlay_set_footer(int show);
+/* P6.37: 0 drops the port version from the corner of the title canvas
+ * (show_version=0 in port_options.cfg); on by default. The Options footer
+ * does not follow it. */
+void dw3_pc_title_overlay_set_version(int show);
 /* 1 while the credits are part of the canvas (the setting above). */
 int dw3_pc_title_overlay_footer_shown(void);
 /* The Port options screen: focused row and the rows' values in registry order

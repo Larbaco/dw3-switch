@@ -111,6 +111,9 @@ if(PSYZ_RENDERER STREQUAL "sdl3_gpu")
   )
 endif()
 target_include_directories(dw3-pc PRIVATE ${CMAKE_SOURCE_DIR}/../../port/region)
+# P6.37: the port version label (Options footer, title corner, log line, window title).
+include(${CMAKE_SOURCE_DIR}/../../port/version/version.cmake)
+dw3_version_setup(dw3-pc)
 if(_dw3_both)
   # P6.24: no region at compile time; dw3_region() / dw3_game() decide.
   target_compile_definitions(dw3-pc PRIVATE DW3_BOTH=1)

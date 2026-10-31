@@ -205,6 +205,25 @@ def test_cmake_other_changes_select_everything(areas, scenarios, line):
     assert areas.select([_PORT_CMAKE], scenarios, lambda p: diff).everything
 
 
+def test_version_wiring_in_the_pc_cmake_selects_the_title_and_options_scenarios(areas, scenarios):
+    # P6.37: include() of the version module + dw3_version_setup() add port_version.c
+    diff = """\
+--- a/platforms/pc/CMakeLists.txt
++++ b/platforms/pc/CMakeLists.txt
+@@ -113,0 +114,3 @@ x
++# P6.37: the port version label
++include(${CMAKE_SOURCE_DIR}/../../port/version/version.cmake)
++dw3_version_setup(dw3-pc)
+"""
+    sel = areas.select(["platforms/pc/CMakeLists.txt"], scenarios, lambda p: diff)
+    assert not sel.everything
+    assert "us-title-noversion" in sel.names and "us-options-cheats-listed" in sel.names
+    assert "us-walkthrough-p0" not in sel.names
+    other = diff + "+target_compile_definitions(dw3-pc PRIVATE X=1)\n"
+    assert areas.select(["platforms/pc/CMakeLists.txt"], scenarios, lambda p: other).everything
+    assert not areas.select(["port/version/version.cmake"], scenarios).everything
+
+
 def test_cmake_without_a_diff_selects_everything(areas, scenarios):
     assert areas.select([_PORT_CMAKE], scenarios).everything               # --changed-files
     assert areas.select([_PORT_CMAKE], scenarios, lambda p: None).everything  # untracked

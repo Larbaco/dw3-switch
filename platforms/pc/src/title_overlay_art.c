@@ -5,6 +5,7 @@
 #include "port_atlas.h"
 #include "port_help.h"
 #include "port_pages.h"
+#include "port_version.h"
 #include <stdio.h>
 #include <time.h>
 #include <math.h>
@@ -22,6 +23,9 @@ static uint8_t *label_mask[DW3_TITLE_LABEL_COUNT];
 static int label_w[DW3_TITLE_LABEL_COUNT], label_h[DW3_TITLE_LABEL_COUNT];
 static int options_lang = DW3_TITLE_LANG_EN;
 static int footer_shown = 1;
+/* P6.37: the port version in a corner of the title canvas (show_version=0 in
+ * port_options.cfg hides it; the Options footer is always drawn). */
+static int version_shown = 1;
 /* P6.31: the title menu has the extra Load row (an auto-save file exists). */
 static int load_row;
 static unsigned art_generation;
@@ -172,6 +176,10 @@ void dw3_pc_title_overlay_set_footer(int show) {
     if(show!=footer_shown){footer_shown=show;art_generation++;}
 }
 int dw3_pc_title_overlay_footer_shown(void) { return footer_shown; }
+void dw3_pc_title_overlay_set_version(int show) {
+    show=show?1:0;
+    if(show!=version_shown){version_shown=show;art_generation++;}
+}
 void dw3_pc_title_overlay_set_load_row(int on) {
     on=on?1:0;
     if(on!=load_row){load_row=on;art_generation++;}
@@ -553,7 +561,9 @@ enum { L_ROW_X = 152, L_ROW_W = 656, L_ROW_Y0 = 116, L_ROW_PITCH = 66,
        L_PLQ_H = 50, L_PLQ_DY = 8, L_GRP_X = 230, L_GRP_W = 500,
        L_ROWPLQ_X = 160, L_ROWPLQ_W = 640, L_VAL_X = 500, L_VAL_W = 260,
        L_DESC_X = 120, L_DESC_Y = 532, L_DESC_W = 720, L_DESC_H = 60,
-       L_HEAD_Y = 40 };
+       L_HEAD_Y = 40,
+       /* P6.37: baseline of the version line, under the strip (ends at 669) */
+       L_VERSION_BASE = 702 };
 /* Does the clipped area touch this rectangle? (a draw skips work it would clip) */
 static int clip_hits(int x,int y,int w,int h) {
     return x<clip_x1&&x+w>clip_x0&&y<clip_y1&&y+h>clip_y0;
@@ -765,6 +775,17 @@ static const Word *list_value(const ListWords *t,int reg,int v,int *dim) {
     }
 }
 /* Items of a list: the visible groups (ids[]) or the rows of `group`. */
+static int atlas_width(int face,const char *s);
+static void atlas_shadow(int face,int x,int base,const char *s,int r,int g,int b);
+/* P6.37: the port version, one small dim line (the help atlas, 24 px) in the
+ * free band below the plaques. align: -1 left, 0 centred, 1 right of `x`. */
+static void version_line(int x,int align,int base) {
+    char text[160];
+    int w;
+    dw3_version_text(text,sizeof(text));
+    w=atlas_width(DW3_ATLAS_BODY,text);
+    atlas_shadow(DW3_ATLAS_BODY,align<0?x:align>0?x-w:x-w/2,base,text,143,168,199);
+}
 static void options_list_screen(int group,int scroll) {
     const ListWords *t=list_lang();
     const int full=options_layer==OPTIONS_LAYER_FULL;
@@ -808,6 +829,8 @@ static void options_list_screen(int group,int scroll) {
             button(bx-22,hy+12,1);wordsh(&t->back,bx,hy,0,255,255,255);
             box(L_DESC_X,666,L_DESC_W,3,0,66,156,255);
         }
+        /* P6.37: the footer, centred under the strip; always shown. */
+        version_line(480,0,L_VERSION_BASE);
         }
     }
     for(int s=0;s<DW3_OPTLIST_VISIBLE;s++) {
@@ -972,6 +995,9 @@ static void title_screen(void) {
     /* The original game logo is retained and framed by the PC integrator.
      * This layer owns only the native menu and discreet legal footer. */
     box(390,375,180,1,79,120,151,140);
+    /* P6.37: bottom right, in the band under the credits (they end at 669),
+     * clear of the logo, the plaques and PRESS START. */
+    if(version_shown)version_line(944,1,L_VERSION_BASE);
     if(!footer_shown)return;
     plaque(252,610,456,59,8,5,16,30,5,16,30,145);
     lettering(480,619,title_credit1,title_credit1_width,title_credit1_height,3,0,0);

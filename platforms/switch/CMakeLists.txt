@@ -211,6 +211,11 @@ target_sources(dw3-switch PRIVATE
   ${CMAKE_CURRENT_SOURCE_DIR}/../../port/pages/pages.c
   ${CMAKE_CURRENT_SOURCE_DIR}/../../port/pages/glyph_atlas.c
 )
+# P6.37: the port version label (Options footer, title corner, log line). The
+# header comes from tools/build_switch_game.sh (-DDW3_VERSION_GEN_DIR), written
+# on the host from the same script as the NACP version.
+include(${CMAKE_CURRENT_SOURCE_DIR}/../../port/version/version.cmake)
+dw3_version_setup(dw3-switch)
 foreach(_s IN LISTS _dw3_sfx ITEMS "")
   if(_dw3_both AND _s STREQUAL "")
     continue()

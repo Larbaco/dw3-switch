@@ -76,6 +76,9 @@ field in 16 bytes (15 printable chars + NUL); the helper compresses
 hbmenu shows the NACP version for copies installed on the SD card. An
 `nxlink` load may not refresh that metadata; the same full label is logged
 once at boot as `dw3: version=…` (stderr on nxlink, and `sdmc:/switch/dw3/dw3.log`).
+The first line of the log is `dw3-version: dw3-switch <label> <US|EU> build=<date>`
+(P6.37, [docs](../../docs/P6.37_VERSION.md)); the same text is on the Options
+screens and in the title's corner.
 Each boot rotates the log: `dw3.log` is the current run, `dw3.1.log` the one
 before, up to `dw3.4.log` (5 runs kept). The `dw3-run:` line dates the run.
 `tools/build_switch_game.sh` checks the generated `.nacp` after each build.

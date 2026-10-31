@@ -119,6 +119,11 @@ has the controls and the details.
   screen ([P6.33](docs/P6.33_ITEMS_MENU.md)).
 - **Bug fixes.** For example the Underground Path canal water and the battle
   HUD form name ([P7.7](docs/P7.7_BUG_FIXES.md)).
+- **Port version in game.** A dim line such as `dw3-switch v0.6.5-preview.57
+  (962462d) US` under the Options screens and in the title's bottom right
+  corner, and as the first line of `dw3.log` (`dw3-version:`), so reports name
+  the build; `show_version=0` in `port_options.cfg` hides the title corner
+  ([P6.37](docs/P6.37_VERSION.md)).
 - **Logs and crash reports.** `dw3.log` keeps the last five runs
   (`dw3.1.log` to `dw3.4.log`); a crash writes `crash_report.txt` and the next
   launch shows a notice ([NXLINK_DEBUG](docs/NXLINK_DEBUG.md),

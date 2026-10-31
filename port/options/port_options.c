@@ -14,6 +14,7 @@
 #include "port_options_groups.h"
 #include "port_pacing.h"
 #include "port_turbo.h"
+#include "port_version.h"
 #if DW3_OPT_REGION_ROW
 #include "dw3_region.h"
 #include "port_confirm.h"
@@ -964,14 +965,20 @@ int dw3_port_options_persist_init(const char *dir) {
     /* File-only keys (not rows): their values at boot, so a log says which
      * way the test ran. */
     PO_INFO("dw3-options: file keys items_equip_from_items=%d items_equip_stays=%d items_bag_view=%d items_use_stays=%d items_partner_switch=%d "
-            "map_screen=%d battle_menu_memory=%d",
+            "map_screen=%d battle_menu_memory=%d show_version=%d",
             dw3_port_options_file_int("items_equip_from_items", 1),
             dw3_port_options_file_int("items_equip_stays", 1),
             dw3_port_options_file_int("items_bag_view", 1),
             dw3_port_options_file_int("items_use_stays", 1),
             dw3_port_options_file_int("items_partner_switch", 1),
             dw3_port_options_file_int("map_screen", 0), /* off by default (P6.32 phase 1) */
-            g_saved[DW3_PORT_OPT_BATTLE_MENU]);
+            g_saved[DW3_PORT_OPT_BATTLE_MENU],
+            dw3_port_options_file_int("show_version", 1));
+#if defined(DW3_TITLE_NATIVE_OVERLAY)
+    /* P6.37: the port version in the title's corner (docs/P6.37_VERSION.md). */
+    dw3_pc_title_overlay_set_version(dw3_port_options_file_int("show_version", 1) != 0);
+    dw3_version_announce(); /* a combined image: the line again, now with its region */
+#endif
     /* DW3_MUSIC_VOLUME / DW3_SFX_VOLUME force a value for this run only. */
     po_stepped_env();
     po_audio_apply();

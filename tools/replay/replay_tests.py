@@ -315,7 +315,10 @@ def run_phase(rec: Path, version, binary, runtime, display, outdir: Path, memdir
                SDL_AUDIODRIVER="dummy", DW3_RUNTIME=str(runtime),
                DW3_MEMCARD_DIR=str(memdir),
                DW3_REPLAY=str(rec),
-               DW3_REPLAY_OUT=str(outdir), DW3_REPLAY_XSHOT="1")
+               DW3_REPLAY_OUT=str(outdir), DW3_REPLAY_XSHOT="1",
+               # P6.37: the title corner and the Options footer show the port version;
+               # a fixed placeholder keeps the references from drifting every commit.
+               DW3_VERSION_OVERRIDE="replay")
     for k in ("DW3_AUTO_PAD", "DW3_REPLAY_SOURCE", "DW3_BUTTON_MAP", "DW3_REPLAY_RECORD", "DW3_PC_INTERNAL_RES", "DW3_TURBO",
               "DW3_TURBO_MUSIC", "DW3_TURBO_MUSIC_CLOCK", "DW3_CONFIG_DIR", "DW3_WIDESCREEN", "DW3_MUSIC_VOLUME", "DW3_SFX_VOLUME",
               "DW3_ENCOUNTER_RATE", "DW3_TEXT_SPEED", "DW3_START_MODE", "DW3_PROGRESS",
