@@ -1,5 +1,21 @@
 # Dependencies: pins, upstream changes, bump plan
 
+## Decisions (owner, 2026-10-31)
+
+* **Done in this PR (safe part):** SDL 3.4.16 to 3.4.18 (own commit; the pin
+  lives in the fork, Larbaco/psyz#2), GitHub Actions majors (own commit), and
+  the devkitA64 Docker image pinned by digest `sha256:1fc388c3...` (= tag
+  `20260219`, devkitA64 r29.2, gcc 15.2; **not upgraded**).
+* **Deferred: decomp + PSY-Z merge.** They go in **after D1 to D5 have landed
+  and before v0.9.0**, each with the full replay tier on both regions
+  (`tools/replay_tests.sh --jobs 2`) plus `--bin-both --both-subset`. Plan and
+  patch list: sections 2 and 3 below.
+* **Not now:** nugget, devkitA64 r30 / gcc 16.
+* **SPU choice for the PSY-Z merge:** keep OUR mixer buses (P6.36) and the
+  #188 voice-leak fix. Do **not** adopt upstream #203 (hardware-accurate SPU)
+  wholesale. Take only the parts of #203 that fix a concrete bug, ported on
+  top of our code, each with an OLED audio check.
+
 Survey of 2026-10-31 (owner request: what changed upstream since about
 2026-10-01, does it affect us, then bump). **Phase A only: nothing was bumped,
 built or replayed.** "Impact" below comes from reading commit titles, file
@@ -17,7 +33,7 @@ has run the game on the new code).
 | psyz `nugget` | `020793e`, 2026-09-27 | `eb6cac5` (main) | 599 commits | We build only `nugget/bsdec` (movies). bsdec changed (`463ad72`, 2026-10-14, new lookup tables). **Risky for movies**, no benefit besides speed |
 | psyz `external/cimgui` | `d3f0c2f`, 2026-04-06 | `2a6a93f` | 48 commits | Debug UI only. Not reviewed; skip |
 | psyz `decomp/tools/maspsx`, `asm-differ` | psyz pins | not checked | n/a | PS1 matching toolchain. Not used by PC/Switch builds |
-| devkitPro image `devkitpro/devkita64:latest` (`tools/dk.sh`, `build_switch_game.sh`, CI) | Local image created 2026-02-19: devkitA64 r29.2-1, gcc 15.2.0-7, binutils 2.45.1-2, libnx 4.12.0-1, switch-cmake 1.5.2-1 | Docker tag unchanged (2026-02-19); pacman repo has devkitA64 r30-1, **gcc 16.1.0-1**, binutils 2.46.0-1; libnx has no update | one toolchain release | **Risky**: first gcc major bump since the port started; not pinned (`:latest`), so CI/a pulled image can move under us. Defer |
+| devkitPro image `devkitpro/devkita64:latest` (`tools/dk.sh`, `build_switch_game.sh`, CI) | Local image created 2026-02-19: devkitA64 r29.2-1, gcc 15.2.0-7, binutils 2.45.1-2, libnx 4.12.0-1, switch-cmake 1.5.2-1 | Docker tag unchanged (2026-02-19); **pinned by digest in this PR**; pacman repo has devkitA64 r30-1, **gcc 16.1.0-1**, binutils 2.46.0-1; libnx has no update | one toolchain release | **Risky**: first gcc major bump since the port started; not pinned (`:latest`), so CI/a pulled image can move under us. Defer |
 | CMake minimum | 3.21 in 4 files; local 3.30.5 | n/a | n/a | None. Leave |
 | Python (CI) | `pip install pytest pytest-xdist pillow` unpinned (ci.yml:199); local venv pytest 9.2.0, Pillow 13.0.0 | same (pip index) | 0 | None |
 | GitHub Actions | `checkout@v4`, `cache/{save,restore}@v4`, `upload-artifact@v4`, `softprops/action-gh-release@v2` | checkout v7.0.1, cache v6.1.0, upload-artifact v7.0.2, action-gh-release v3.0.3 | 1 to 3 majors | CI only. Safe in a docs/CI-only PR; v4 still works. Runners are `ubuntu-24.04` |
@@ -116,6 +132,8 @@ it is not a security fix and nothing in the port needs it.
 
 ## 3. Recommended bump set and order
 
+0. Order below is the plan; items 1 and 2 (and the digest pin) are done in
+   this PR, items 3 and 4 wait for D1 to D5 and land before v0.9.0.
 1. **SDL 3.4.18** (psyz submodule `external/SDL`): trivial, own commit; PC
    build only, no engine impact. Needs the fork PR because the pin lives in the
    fork.
@@ -146,16 +164,28 @@ commit per dependency either way.
 * **maspsx / asm-differ**: unused by the port.
 * **CMake minimum, Python packages**: nothing to gain.
 
-## 5. Open questions for the owner
+## 5. Questions answered (owner, 2026-10-31)
 
-* Take psyz #203 (hardware-accurate SPU) as is, or keep our mixer buses and
-  port the upstream fix on top? This decides the amount of merge work.
-* Pin `devkitpro/devkita64` by digest in CI and scripts (small, safe)?
+* psyz #203: keep our mixer buses and the #188 voice-leak fix; port only
+  concrete bug fixes from #203 on top, with an OLED audio check. The psyz
+  merge conflicts in `psyz_spu.c`, `spu_voice.h` and `test_libspu.c` are
+  therefore resolved in favour of our side first.
+* The devkitpro image is pinned by digest (`tools/dk.sh`,
+  `tools/build_switch_game.sh`, `tools/build_switch_launcher.sh`,
+  `tools/symbolize_crash.py`, CI job `switch`). `DW3_DK_IMAGE` overrides it.
+  To upgrade later: pull, test, replace the digest in those five places.
 
 ## 6. Method and limits
 
 * Fetched `origin/main` of the decomp and `upstream/main` of psyz in this
   worktree; scratch clones for the trial rebase/merge in
   `/mnt/cabal/tmp/dw3-deps-survey` (not committed).
-* Not done: reading the psyz diffs listed in 2.2, building anything, running
-  replays, checking Ryubing/ccache versions, `docs/BUILD*.md` pins.
+* Not done: reading the psyz diffs listed in 2.2, checking Ryubing/ccache
+  versions, `docs/BUILD*.md` pins.
+* SDL bump check (this PR): PC US, EU and both built; Switch combined `.nro`
+  built with the digest-pinned image; `tools/replay_tests.sh --changed
+  --jobs 1 --fail-fast` (47 scenarios, `vendor/psyz` has no rule so it ran the
+  engine-wide area sweep plus canary). Result below once finished.
+* Actions bumps are only exercised by this PR's CI run; `switch-release.yml`
+  (action-gh-release v3) can only be proven by a real tag, inputs were checked
+  against v3's `action.yml`.
