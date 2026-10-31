@@ -240,6 +240,73 @@ const char *dw3_glyph_pageturn_string(int side) {
     return side >= 0 && side < DW3_PAGETURN_COUNT ? g_pt_string[side] : NULL;
 }
 
+int dw3_glyph_uscross_plan(const unsigned char map[DW3_BTN_COUNT]) {
+    return dw3_glyph_from_cap(dw3_button_cap_label(map, DW3_BTN_CROSS));
+}
+
+/* The prompt "X Button" in font codes: the letter X (0x25), a space (the icon
+ * 01 01), then B u t t o n. */
+static const unsigned char g_uc_tail[] = {0x25, 0x01, 0x01, 0x0F, 0x3C,
+                                          0x3B, 0x3B, 0x36, 0x35};
+
+int dw3_glyph_uscross_rewrite(const char *str, char *out, unsigned cap) {
+    const unsigned char *s = (const unsigned char *)str;
+    unsigned n = 0;
+    unsigned i = 0;
+    unsigned prev = 0; /* first byte of the previous token, 0 = start */
+    int found = 0;
+
+    if (str == NULL) {
+        return 0;
+    }
+    /* The text is read token by token: a byte below 4 (icon, control code) takes
+     * its argument with it, so an icon number or an argument never reads as a
+     * letter. Not found = nothing is written. */
+    while (s[i] != 0) {
+        unsigned len = s[i] < 4 ? 2 : 1;
+
+        if (s[i] == g_uc_tail[0] && (prev == 0 || prev == 1 || prev == 2) &&
+            memcmp(s + i, g_uc_tail, sizeof(g_uc_tail)) == 0) {
+            found++;
+        }
+        if (s[i + 1] == 0 && len == 2) {
+            break; /* a code cut by the terminator */
+        }
+        prev = s[i];
+        i += len;
+    }
+    if (!found) {
+        return 0;
+    }
+    /* Second pass: the same walk, copying and swapping the letter. */
+    i = 0;
+    prev = 0;
+    while (s[i] != 0) {
+        unsigned len = s[i] < 4 ? 2 : 1;
+        int hit = s[i] == g_uc_tail[0] && (prev == 0 || prev == 1 || prev == 2) &&
+                  memcmp(s + i, g_uc_tail, sizeof(g_uc_tail)) == 0;
+        unsigned put = hit ? 2 : len;
+
+        if (n + put + 1 > cap) {
+            return -1;
+        }
+        if (hit) {
+            out[n++] = 1;
+            out[n++] = (char)DW3_USCROSS_N;
+        } else {
+            memcpy(out + n, s + i, len);
+            n += len;
+        }
+        if (s[i + 1] == 0 && len == 2) {
+            break;
+        }
+        prev = s[i];
+        i += len;
+    }
+    out[n] = '\0';
+    return found;
+}
+
 /* --- host part: the FONT.load wrapper, the VRAM upload, the census ------- */
 
 #ifndef DW3_GLYPHS_TEST
@@ -270,12 +337,12 @@ static int g_logged_off;           /* the off line was logged once */
 static int g_cur[DW3_GLYPH_CELLS]; /* glyph in VRAM per cell, NONE = original */
 static int g_have_orig[DW3_GLYPH_CELLS];
 static unsigned char g_orig[DW3_GLYPH_CELLS][DW3_GLYPH_PACKED];
-/* Page-turn prompt (L1 / R1): the size-1 icon table is replaced by a copy with
- * two more cells while the option is on, the originals come back when it is off. */
-static Glyph g_pt_icons[114 + DW3_PAGETURN_COUNT];
+/* Page-turn prompt (L1 / R1) and the US Cross prompt: the size-1 icon table is
+ * replaced by a copy with three more cells while the option is on, the originals come back when it is off. */
+static Glyph g_pt_icons[114 + DW3_SPARE_COUNT];
 static Glyph *g_pt_orig_icons;     /* the disc's table, NULL = not installed */
 static s16 g_pt_orig_count;
-static int g_pt_cur[DW3_PAGETURN_COUNT]; /* glyph in VRAM per side */
+static int g_pt_cur[DW3_SPARE_COUNT]; /* glyph in VRAM per spare cell (L1, R1, US Cross) */
 static struct {
     int side;
     int glyph;
@@ -415,7 +482,19 @@ static int gl_set_cell(int i, int n, int want, int eu) {
 
 /* --- page-turn prompt: the table, the two cells, the string hook ---------- */
 
-/* The size-1 icon table with two more cells, or the disc's own. 1 = the extended
+/* The VRAM rectangle of spare cell `slot` (0 L1, 1 R1, 2 US Cross). */
+static void gl_spare_rect(int slot, RECT *r) {
+    int u = slot == DW3_USCROSS_SLOT ? DW3_USCROSS_U : DW3_PAGETURN_U;
+    int v = slot == DW3_USCROSS_SLOT ? DW3_USCROSS_V
+                                     : DW3_PAGETURN_V0 + slot * DW3_PAGETURN_V_STEP;
+
+    r->x = (short)(GL_FONT_X + u / 4);
+    r->y = (short)v;
+    r->w = DW3_GLYPH_W / 4;
+    r->h = DW3_GLYPH_H;
+}
+
+/* The size-1 icon table with three more cells, or the disc's own. 1 = the extended
  * table is in use. The new cells copy the metrics of the Triangle icon (n = 52,
  * a 12x12 button cell of both regions: same palette rows, baseline and advance)
  * and point at blank font-page texels (docs/P10.6_GLYPHS.md). */
@@ -443,24 +522,26 @@ static int gl_pt_table(int on) {
         return 0;
     }
     memcpy(g_pt_icons, st->icons, 114 * sizeof(Glyph));
-    for (side = 0; side < DW3_PAGETURN_COUNT; side++) {
+    for (side = 0; side < DW3_SPARE_COUNT; side++) {
         Glyph *g = &g_pt_icons[114 + side];
+        RECT r;
 
+        gl_spare_rect(side, &r);
         *g = st->icons[52 - 1];
         g->page = 0;
-        g->u = DW3_PAGETURN_U;
-        g->v = (u8)(DW3_PAGETURN_V0 + side * DW3_PAGETURN_V_STEP);
+        g->u = (u8)((r.x - GL_FONT_X) * 4);
+        g->v = (u8)r.y;
         g->w = DW3_GLYPH_W;
         g->h = DW3_GLYPH_H;
     }
     g_pt_orig_icons = st->icons;
     g_pt_orig_count = st->iconCount;
     st->icons = g_pt_icons;
-    st->iconCount = 114 + DW3_PAGETURN_COUNT;
+    st->iconCount = 114 + DW3_SPARE_COUNT;
     return 1;
 }
 
-/* Draw glyph `want` (or none) into the spare cell of `side`. 1 = changed. */
+/* Draw glyph `want` (or none) into spare cell `side`. 1 = changed. */
 static int gl_pt_set(int side, int want, int eu) {
     RECT r;
     unsigned char packed[DW3_GLYPH_PACKED];
@@ -472,10 +553,7 @@ static int gl_pt_set(int side, int want, int eu) {
         if (dw3_glyph_pack(g_art[want], dw3_glyph_index_map(eu), packed) != 0) {
             return 0;
         }
-        r.x = (short)(GL_FONT_X + DW3_PAGETURN_U / 4);
-        r.y = (short)(DW3_PAGETURN_V0 + side * DW3_PAGETURN_V_STEP);
-        r.w = DW3_GLYPH_W / 4;
-        r.h = DW3_GLYPH_H;
+        gl_spare_rect(side, &r);
         gl_upload(&r, packed);
     }
     g_pt_cur[side] = want;
@@ -483,6 +561,8 @@ static int gl_pt_set(int side, int want, int eu) {
 }
 
 const char *dw3_port_text_override(const void *style, const char *str) {
+    static char rewritten[192]; /* setTextBuffer copies it, one buffer is enough */
+    const char *ret;
     int side;
     int32_t mode;
     int i;
@@ -492,14 +572,26 @@ const char *dw3_port_text_override(const void *style, const char *str) {
         return str;
     }
     side = dw3_glyph_pageturn_match(str);
-    if (side < 0 || g_pt_cur[side] == DW3_GLYPH_NONE) {
-        return str;
+    if (side >= 0) {
+        if (g_pt_cur[side] == DW3_GLYPH_NONE) {
+            return str;
+        }
+        ret = dw3_glyph_pageturn_string(side);
+    } else {
+        /* US: the Cross prompt of the memory card screens is the letter X of the
+         * string, not an icon (the n = 27 cell is the multiplication sign). */
+        if (GL_EU || g_pt_cur[DW3_USCROSS_SLOT] == DW3_GLYPH_NONE ||
+            dw3_glyph_uscross_rewrite(str, rewritten, sizeof(rewritten)) <= 0) {
+            return str;
+        }
+        side = DW3_USCROSS_SLOT;
+        ret = rewritten;
     }
     mode = dw3_overlay_current_mode_file();
     for (i = 0; i < g_pt_seen_n; i++) {
         if (g_pt_seen[i].side == side && g_pt_seen[i].glyph == g_pt_cur[side] &&
             g_pt_seen[i].mode == mode) {
-            return dw3_glyph_pageturn_string(side);
+            return ret;
         }
     }
     if (g_pt_seen_n < 16) {
@@ -509,32 +601,45 @@ const char *dw3_port_text_override(const void *style, const char *str) {
         g_pt_seen[g_pt_seen_n].glyph = g_pt_cur[side];
         g_pt_seen[g_pt_seen_n].mode = mode;
         g_pt_seen_n++;
-        GL_LOG("dw3-glyphs: page-turn prompt %s drawn as glyph %s "
-               "(scene=%s 0x%X)", side ? "R1" : "L1",
-               dw3_glyph_name(g_pt_cur[side]), name != NULL ? name : "?",
-               (unsigned)mode);
+        if (side == DW3_USCROSS_SLOT) {
+            GL_LOG("dw3-glyphs: us cross prompt (X Button) drawn as glyph %s "
+                   "(scene=%s 0x%X)", dw3_glyph_name(g_pt_cur[side]),
+                   name != NULL ? name : "?", (unsigned)mode);
+        } else {
+            GL_LOG("dw3-glyphs: page-turn prompt %s drawn as glyph %s "
+                   "(scene=%s 0x%X)", side ? "R1" : "L1",
+                   dw3_glyph_name(g_pt_cur[side]), name != NULL ? name : "?",
+                   (unsigned)mode);
+        }
     }
-    return dw3_glyph_pageturn_string(side);
+    return ret;
 }
 
 static void gl_pt_refresh(int want_on, const unsigned char *map,
                           const char *why) {
     int plan[DW3_PAGETURN_COUNT];
+    int uc_want = DW3_GLYPH_NONE;
     int changed = 0;
+    int uc_changed = 0;
     int side;
 
     dw3_glyph_pageturn_plan(map, plan);
+    if (!GL_EU) {
+        uc_want = dw3_glyph_uscross_plan(map);
+    }
     if (want_on && gl_pt_table(1)) {
         for (side = 0; side < DW3_PAGETURN_COUNT; side++) {
             changed += gl_pt_set(side, plan[side], GL_EU);
         }
+        uc_changed = gl_pt_set(DW3_USCROSS_SLOT, uc_want, GL_EU);
     } else {
         gl_pt_table(0);
         for (side = 0; side < DW3_PAGETURN_COUNT; side++) {
             changed += gl_pt_set(side, DW3_GLYPH_NONE, GL_EU);
         }
+        uc_changed = gl_pt_set(DW3_USCROSS_SLOT, DW3_GLYPH_NONE, GL_EU);
     }
-    if (changed) {
+    if (changed || uc_changed) {
         g_pt_seen_n = 0; /* the next use of each prompt is logged again */
     }
     if (want_on && (changed || (why != NULL && strcmp(why, "font load") == 0))) {
@@ -544,6 +649,18 @@ static void gl_pt_refresh(int want_on, const unsigned char *map,
                DW3_PAGETURN_N0, DW3_PAGETURN_N0 + 1, why != NULL ? why : "?");
     } else if (!want_on && changed) {
         GL_LOG("dw3-glyphs: page-turn off [%s]", why != NULL ? why : "?");
+    }
+    /* US only: the Cross prompt of the memory card screens (the EU disc draws it
+     * with the n = 27 icon, a cell of the plan line above). */
+    if (!GL_EU) {
+        if (want_on && (uc_changed || (why != NULL && strcmp(why, "font load") == 0))) {
+            GL_LOG("dw3-glyphs: us cross prompt X=%s (cell n=%d) [%s]",
+                   g_pt_cur[DW3_USCROSS_SLOT] == DW3_GLYPH_NONE
+                       ? "text" : dw3_glyph_name(g_pt_cur[DW3_USCROSS_SLOT]),
+                   DW3_USCROSS_N, why != NULL ? why : "?");
+        } else if (!want_on && uc_changed) {
+            GL_LOG("dw3-glyphs: us cross prompt off [%s]", why != NULL ? why : "?");
+        }
     }
 }
 
@@ -605,7 +722,7 @@ static void gl_font_load(void) {
         g_cur[i] = DW3_GLYPH_NONE;
         g_have_orig[i] = 0;
     }
-    for (i = 0; i < DW3_PAGETURN_COUNT; i++) {
+    for (i = 0; i < DW3_SPARE_COUNT; i++) {
         g_pt_cur[i] = DW3_GLYPH_NONE; /* the spare cells are blank again */
     }
     dw3_glyphs_refresh("font load");
