@@ -1,0 +1,25 @@
+# US: D2 Controls page after the defaults change
+pad 20 0x0008
+pad 25 0x0000
+pad 210 0x0008
+pad 215 0x0000
+pad 320 0x0040
+pad 325 0x0000
+pad 340 0x4000
+pad 345 0x0000
+pad 390 0x0040
+pad 395 0x0000
+pad 410 0x0040
+pad 415 0x0000
+pad 430 0x0040
+pad 435 0x0000
+pad 450 0x0040
+pad 455 0x0000
+pad 470 0x4000
+pad 475 0x0000
+shot 530 controls-view
+pad 550 0x1000
+pad 555 0x0000
+pad 570 0x1000
+pad 575 0x0000
+end 630

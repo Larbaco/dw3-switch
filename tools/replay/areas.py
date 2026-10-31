@@ -129,7 +129,7 @@ RULES: list[tuple[str, object]] = [
     # P9.8: the layout map. Replays bypass it (except the *nintendo* scenarios,
     # which turn it on with DW3_REPLAY_SOURCE=1), so the default is identical by
     # construction; the screens and the scenarios that read buttons are the check.
-    (r"^port/options/button_map", _OPTIONS + _TITLE + ("*nintendo*", "*controls*", "*help*", "*map-view*")),
+    (r"^port/options/button_map|^port/include/port_button_map\.h$", _OPTIONS + _TITLE + ("*nintendo*", "*controls*", "*help*", "*map-view*")),
     (r"^port/psyz_missing/psyz_pad_host", _OPTIONS + _TITLE + ("*nintendo*", "*controls*", "*help*", "*map*",
                                                                  "*menu*", "*items*", "*battle*", "*restart*",
                                                                  "*quit*", "*card*", "*shop*", "*lab*", "*deck*")),

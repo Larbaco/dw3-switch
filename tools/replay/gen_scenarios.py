@@ -885,19 +885,54 @@ def options_menus(version, phase):
 
 
 def options_display(version, phase):
-    """D1: Display has four rows now. Phase 1: Down x2 to Map mod pack and Confirm
-    (OFF), Down to Version label and Confirm (OFF) (`display-off`); phase 2 reads them
-    back from the file (`display-restored`)."""
-    r = Rec(f"{version.upper()}: D1 Display rows Map mod pack and Version label, phase {phase}")
+    """D1 + D5: Display has five rows. Phase 1: Down x2 to Map scaler and Left (FSR 1 ->
+    Lanczos2, `scaler-changed`), Down to Map mod pack and Confirm (OFF), Down to Version
+    label and Confirm (OFF) (`display-off`); phase 2 reads them back from the file
+    (`display-restored`)."""
+    r = Rec(f"{version.upper()}: D1 / D5 Display rows Map scaler, Map mod pack and Version label, phase {phase}")
     m = _to_options(r, version)
     f = _group(r, m + 70, GRP_DISPLAY, GRP_DISPLAY)
     if phase == 1:
         r.shot(f + 20, "display-rows")
-        f = _keys(r, f + 40, DOWN, DOWN, CROSS, DOWN, CROSS)
+        f = _keys(r, f + 40, DOWN, DOWN, LEFT)
+        r.shot(f + 40, "scaler-changed")
+        f = _keys(r, f + 60, DOWN, CROSS, DOWN, CROSS)
         r.shot(f + 40, "display-off")
     else:
-        f = _keys(r, f + 20, DOWN, DOWN, DOWN)
+        f = _keys(r, f + 20, DOWN, DOWN, DOWN, DOWN)
         r.shot(f + 40, "display-restored")
+    f = _keys(r, f + 60, TRIANGLE, TRIANGLE)
+    r.end(f + 40)
+    return r
+
+
+def defaults_migrate(version, phase):
+    """D2 (docs/OPTIONS_REORG.md 6.1): the seeded file is one an older build wrote
+    (button_layout=playstation, switch_glyphs=0, no defaults_gen), so the boot migrates it.
+    Phase 1: Options -> Controls, the Button layout row reads Nintendo (`migrated-controls`),
+    Left puts PlayStation back (`back-to-playstation`). Phase 2 is a fresh process on the same
+    config dir: the migration must not run again and PlayStation stays (`kept-playstation`)."""
+    r = Rec(f"{version.upper()}: D2 defaults migration, phase {phase}")
+    m = _to_options(r, version)
+    f = _group(r, m + 70, GRP_DISPLAY, GRP_CONTROLS)       # Controls
+    if phase == 1:
+        r.shot(f + 20, "migrated-controls")
+        f = _keys(r, f + 40, LEFT)                         # Nintendo -> PlayStation
+        r.shot(f + 40, "back-to-playstation")
+    else:
+        r.shot(f + 40, "kept-playstation")
+    f = _keys(r, f + 60, TRIANGLE, TRIANGLE)
+    r.end(f + 40)
+    return r
+
+
+def defaults_view(version):
+    """D2: Options -> Controls on a file the migration keeps (a custom layout) or on a
+    fresh install: one picture of the Button layout row (`controls-view`)."""
+    r = Rec(f"{version.upper()}: D2 Controls page after the defaults change")
+    m = _to_options(r, version)
+    f = _group(r, m + 70, GRP_DISPLAY, GRP_CONTROLS)       # Controls
+    r.shot(f + 40, "controls-view")
     f = _keys(r, f + 60, TRIANGLE, TRIANGLE)
     r.end(f + 40)
     return r
@@ -3812,6 +3847,10 @@ def main(out):
                 options_menus(v, phase).text(True))
             (out / f"{v}-options-display-p{phase}.rec").write_text(
                 options_display(v, phase).text(True))
+        for phase in (1, 2):
+            (out / f"{v}-defaults-migrate-p{phase}.rec").write_text(
+                defaults_migrate(v, phase).text(True))
+        (out / f"{v}-defaults-view.rec").write_text(defaults_view(v).text(True))
         (out / f"{v}-options-saves.rec").write_text(options_saves(v).text(True))
         (out / f"{v}-options-advanced.rec").write_text(options_advanced(v).text(True))
         (out / f"{v}-options-mapbtn.rec").write_text(options_mapbtn(v).text(True))

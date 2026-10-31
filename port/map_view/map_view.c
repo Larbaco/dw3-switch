@@ -1038,6 +1038,10 @@ static void scaler_for_open(void) {
                 g_scaler < 0 ? ", first open" : ", the row changed");
         g_scaler = row;
         g_scaler_row_seen = row;
+    } else if (g_scaler == row) {
+        fprintf(stderr, "dw3-map: scaler for this open: %s (Options > Display > "
+                "Map scaler, map_scaler=%s)\n", dw3_mv_scaler_name(row),
+                dw3_mv_scaler_word(row));
     } else {
         fprintf(stderr, "dw3-map: scaler for this open: %s (the one the view was "
                 "left on; the row says %s)\n", dw3_mv_scaler_name(g_scaler),
