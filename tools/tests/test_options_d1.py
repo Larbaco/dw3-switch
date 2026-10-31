@@ -15,7 +15,7 @@ CFG = "port_options.cfg"
 
 # registry row -> (cfg key, default)
 MENUS = {16: "items_equip_from_items", 17: "items_equip_stays", 18: "items_bag_view",
-         19: "items_use_stays", 20: "items_partner_switch"}
+         19: "items_use_stays", 20: "items_partner_switch", 27: "menu_instant_exit"}
 SHOW_VERSION, MAP_MOD, SAVE_STORE, SWEEP, FRAMES, MAP_BUTTONS = 21, 22, 23, 24, 25, 26
 
 
@@ -73,7 +73,7 @@ def test_new_rows_default_to_the_values_of_the_file_only_keys(plain_bin, tmp_pat
     for row in (*MENUS, SHOW_VERSION, MAP_MOD, SAVE_STORE, SWEEP, FRAMES):
         steps += ["level", str(row)]
     out, _ = session(plain_bin, tmp_path, *steps)
-    assert out == ["level16=1", "level17=1", "level18=1", "level19=1", "level20=1",
+    assert out == ["level16=1", "level17=1", "level18=1", "level19=1", "level20=1", "level27=1",
                    "level21=1", "level22=1", "level23=0", "level24=0", "level25=90"]
 
 

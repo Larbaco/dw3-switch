@@ -202,6 +202,7 @@ game, except Widescreen.
 | Display | Map mod pack | ON / OFF | ON | Uses an installed map-upscale pack for the full-screen map; OFF shows the original map. |
 | Display | Version label | ON / OFF | ON | Shows the port version in the corner of the title screen. |
 | Menus | Equip from Items, Equip stays on list, Whole bag, Use item stays, Partner switch | ON / OFF | ON | The Items-menu shortcuts of this port. OFF gives the original Items menu for that shortcut. |
+| Menus | Instant menu exit | ON / OFF | ON | Leaving the field menu's screens (Items, Map, Status...) for the field skips the block dissolve and returns at once. The game runs on as if the fade had played. OFF plays the original fade. |
 | Controls | Button layout, Customize buttons, Reset to default, Switch glyphs (Switch) | | | The button mapping, see [Controls and hotkeys](#controls-and-hotkeys). |
 | Controls | Map buttons | a screen | | The buttons of the full-screen map: open, zoom, centre, scaler, open from the field. A button another action already has is swapped; Reset map buttons puts the defaults back. |
 | Controls | Restart hotkey | ON / OFF | OFF | Enables the L + R + Plus + Minus restart chord. [P6.9](P6.9_RESTART.md) |

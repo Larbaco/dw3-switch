@@ -190,7 +190,7 @@ int main(int argc, char **argv) {
     /* Out-of-range lock bits are ignored. */
     dw3_pc_title_overlay_set_options_locked(0xFFFFFFFFu);
     CHECK(dw3_pc_title_overlay_options_locked() ==
-          (((1u << 27) - 1u) | DW3_TITLE_LOCK_CHEATS));
+          (((1u << 28) - 1u) | DW3_TITLE_LOCK_CHEATS));
     dw3_pc_title_overlay_set_options_locked(0);
 
     free(open_ref);

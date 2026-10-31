@@ -62,7 +62,7 @@
  * port_options.h: port/pacing/pacing.c, port/battle_menu/battle_menu_memory.c
  * and port/autosave/autosave.c read them. */
 enum {
-    DW3_PORT_OPT_COUNT = 27,
+    DW3_PORT_OPT_COUNT = 28,
     DW3_PORT_OPT_WIDESCREEN = 0,
     DW3_PORT_OPT_FAST_FORWARD = 1,
     DW3_PORT_OPT_RESTART = 2,
@@ -86,8 +86,8 @@ _Static_assert(DW3_PORT_OPT_WIDESCREEN == 0 && DW3_PORT_OPT_FAST_FORWARD == 1 &&
                DW3_PORT_OPT_ITEMS_PARTNER == 20 && DW3_PORT_OPT_SHOW_VERSION == 21 &&
                DW3_PORT_OPT_MAP_MOD == 22 && DW3_PORT_OPT_SAVE_STORE == 23 &&
                DW3_PORT_OPT_STAGE_SWEEP == 24 && DW3_PORT_OPT_SWEEP_FRAMES == 25 &&
-               DW3_PORT_OPT_MAP_BUTTONS == 26 &&
-               DW3_PORT_OPT_COUNT == 27,
+               DW3_PORT_OPT_MAP_BUTTONS == 26 && DW3_PORT_OPT_MENU_EXIT == 27 &&
+               DW3_PORT_OPT_COUNT == 28,
                "registry indexes changed: update port_options_groups.h");
 
 typedef struct Dw3PortOptStub {
@@ -194,6 +194,10 @@ static Dw3PortOptStub g_stubs[DW3_PORT_OPT_COUNT] = {
     /* D1 Controls: an action row (no value, no key); Confirm opens the Map
      * buttons screen. */
     {"Map buttons", NULL, 0, 0, NULL},
+    /* Menus: leaving the field menu's screens for the field skips the block
+     * dissolve (patch 0200). Default ON (owner request, 2026-10-31); 0 plays
+     * the original fade. DW3_MENU_INSTANT_EXIT pins it for one run. */
+    {"Instant menu exit", "menu_instant_exit", 1, 1, "DW3_MENU_INSTANT_EXIT"},
 };
 
 /* P9.4 persistence. The registry values above are what the game reads; this
@@ -1075,7 +1079,7 @@ int dw3_port_options_persist_init(const char *dir) {
      * way the test ran. */
     PO_INFO("dw3-options: file keys items_equip_from_items=%d items_equip_stays=%d items_bag_view=%d items_use_stays=%d items_partner_switch=%d "
             "map_screen=%d battle_menu_memory=%d show_version=%d map_mod=%d save_store=%d "
-            "stage_sweep=%d stage_sweep_frames=%d",
+            "stage_sweep=%d stage_sweep_frames=%d menu_instant_exit=%d",
             dw3_port_options_file_int("items_equip_from_items", 1),
             dw3_port_options_file_int("items_equip_stays", 1),
             dw3_port_options_file_int("items_bag_view", 1),
@@ -1087,7 +1091,8 @@ int dw3_port_options_persist_init(const char *dir) {
             g_stubs[DW3_PORT_OPT_MAP_MOD].value,
             g_stubs[DW3_PORT_OPT_SAVE_STORE].value,
             g_stubs[DW3_PORT_OPT_STAGE_SWEEP].value,
-            g_stubs[DW3_PORT_OPT_SWEEP_FRAMES].value);
+            g_stubs[DW3_PORT_OPT_SWEEP_FRAMES].value,
+            g_stubs[DW3_PORT_OPT_MENU_EXIT].value);
 #if defined(DW3_TITLE_NATIVE_OVERLAY)
     /* P6.37: the port version in the title's corner (docs/P6.37_VERSION.md). */
     dw3_pc_title_overlay_set_version(dw3_port_options_file_int("show_version", 1) != 0);
@@ -1440,6 +1445,7 @@ static const char *po_switch_name(int index) {
            : index == DW3_PORT_OPT_SHOW_VERSION ? "version label"
            : index == DW3_PORT_OPT_MAP_MOD ? "map mod pack"
            : index == DW3_PORT_OPT_SAVE_STORE ? "shared saves"
+           : index == DW3_PORT_OPT_MENU_EXIT ? "instant menu exit"
                                               : "widescreen";
 }
 
