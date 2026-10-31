@@ -171,8 +171,9 @@ they differ, see [Design points changed](#design-points-changed-in-slice-2)):
   (PC, tests, replays) names the store folder directly.
 - The option is read from `port_options.cfg` (`save_store=1`, the **Shared saves (exp.)** row of Options > Saves since D1: title only, a Yes / No
   window when it is turned on, see [PORT_OPTIONS](PORT_OPTIONS.md#options-reorganization-d1)) before the cards open, so it takes effect at the
-  next start; `DW3_SAVE_STORE=0|1` beats it for one PC run. That file is still per region
-  (`us/port_options.cfg`, `eu/port_options.cfg`), so set the key in both to share saves.
+  next start; `DW3_SAVE_STORE=0|1` beats it for one PC run. Since D3 that file is the one global
+  `port_options.cfg` (not per region), so the key is set once for both regions; an old
+  `save_store=1` in `us/` and `eu/` is carried by the one-time merge, which runs before the cards open.
 
 **Container** (as the design, little endian): `"DW3S"`, u16 format 1, u16 header size
 `0x40`, u32 payload size `0x8000`, u32 CRC32 of the payload, u8 last writer region, u8 last

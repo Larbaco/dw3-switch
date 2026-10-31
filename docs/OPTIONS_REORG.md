@@ -5,7 +5,9 @@ recorded in [section 7](#7-owner-decisions-2026-10-31)). The build is a series o
 separate PRs ([order](#8-build-order)). **Step 1 (reorganization and new rows) is built**
 (branch `feat/d1-options-reorg`, 2026-10-31; as built: [PORT_OPTIONS](PORT_OPTIONS.md#options-reorganization-d1)).
 **Step 2 (D2 + D5) is built** (branch `feat/d2-d5-defaults-fsr`, 2026-10-31; as built:
-[section 8.1](#81-step-2-as-built-d2--d5)). Steps 3 and 4 (D3, D4) are not. Differences of step 1 from
+[section 8.1](#81-step-2-as-built-d2--d5)). **Step 3 (D3, one global options file) is built**
+(branch `feat/d3-global-options`, 2026-10-31; as built: [section 6.2](#62-d3-one-global-options-file-as-built)).
+Step 4 (D4) is not. Differences of step 1 from
 the text below: the Map scaler row is not in it (it came with D5, step 2), so Display had four rows
 (Widescreen, Full-screen map, Map mod pack, Version label) until then; the label "Shared saves (exp.)"
 and "Frames per stage" are shorter than the design's (the generator's 290 px limit); the message
@@ -543,7 +545,7 @@ Display values). The build order below keeps the regenerations to three.
 | Item | Lands in | What changes in this tree |
 |---|---|---|
 | **D2** `button_layout` default `nintendo`, `switch_glyphs` default ON, **one-shot migration of existing files** | Controls (rows 1 and 5) | no placement change. Values on the page and the Help text change. **"Reset to default" goes to Nintendo**, so its message and the Help text say so. Migration: the marker key below. `DW3_BUTTON_MAP=default` stays the PlayStation pin for tests (a test aid, not an option) |
-| **D3** one global options file | no page change | `sdmc:/switch/dw3/port_options.cfg` holds every key, including `save_store` and `stage_sweep`. The rows read and write the global file. Region at start already lives there. The Shared saves row is no longer "set it in both regions" |
+| **D3** one global options file (built, [6.2](#62-d3-one-global-options-file-as-built)) | no page change | `sdmc:/switch/dw3/port_options.cfg` holds every key, including `save_store` and `stage_sweep`. The rows read and write the global file. Region at start already lives there. The Shared saves row is no longer "set it in both regions" |
 | **D4** A18 scrolling background | the look of all pages | the scroll is under the retained canvas, so no row or group is affected; the side strips of 16:9 are tiled by the quad. Plaques, strip and hints do not move. All Options refs change again, so D4 comes last |
 | **D5** FSR 1 map scaler, default always | Display, row 3 **Map scaler** | the row set by 7a. FSR 1 is the default, the map cache builds off the game thread as today; the GPU FSR form (P6.32 7.8 item 2) removes the first-open build |
 
@@ -590,6 +592,49 @@ defaults would never reach it. The owner decided to **migrate once**.
   then sees `defaults_gen=2` in both and applies its own rule (`last_region` wins per key).
   If a file still has no marker when D3 merges, D3 copies the key into the global file and
   the migration runs on the merged file.
+
+### 6.2 D3, one global options file (as built)
+
+Owner decisions of 2026-10-31, item 3 (a1, b2, c1, d2); built on #404 and #408, one PR, **no decomp patch**, no
+registry row and no picture change (the Options references do not move). Reference for the rules and the log lines:
+[PORT_OPTIONS, One global file](PORT_OPTIONS.md#one-global-file-d3).
+
+- **a1.** One file: `sdmc:/switch/dw3/port_options.cfg` on the Switch, the top-level file beside `runtime/us/` and
+  `runtime/eu/` on the PC, for every Switch profile. `dw3_optcfg_global_dir(DW3_CONFIG_DIR, runtime root)` finds the
+  folder (the parent of a `us/` / `eu/` root); both hosts call `dw3_port_options_persist_init` with it **before** the
+  saves store reads `save_store`, so the first start after the update already has the merged value.
+- **b2.** Nothing stays per region. The Region at start row now reads and writes `region_default` as a key of the loaded
+  file (it saved a second file before); `last_region` is the region boot's key in the same file. The stage sweep keys are
+  global; its **progress file stays per region** (`stage_sweep_us.txt`, `stage_sweep_eu.txt` in the same folder; the stage
+  lists differ), the old "stage_sweep found in the top-level file, ignored" note is gone, and every `dw3-sweep:` log line
+  ends with `region=us|eu`. The PC's glyph override folder (`<options folder>/glyphs`) now sits beside the global file (the Switch's was
+  `sdmc:/switch/dw3/glyphs` already); the PC's map mods and cache folders stay under the region's runtime folder.
+- **c1.** `dw3_optcfg_migrate_global` (`port/options/options_cfg.c`): per key the file of the `last_region` region
+  wins, a key in one file is taken, every conflict is logged; no valid `last_region` means US. The combined image's
+  `dw3_region_boot` runs it **before** it stores the new `last_region`, so the region last played (not the one
+  being started) decides; a start without the picker (plain images, the PC, replays) runs it in `persist_init`. The
+  marker is `options_global=1`, staged by every save of the file. `defaults_gen` (D2) takes the older of the two
+  generations (a missing key is 1), so the D2 migration still flips `button_layout` / `switch_glyphs` of an old file after
+  the merge; the other order in [6.1](#61-d2-migration-marker-owner-2026-10-31-question-4) holds.
+- **d2.** The old `us/port_options.cfg` and `eu/port_options.cfg` are deleted only after the new file is written
+  and read back OK, each after a verified copy `port_options.cfg.us.bak` / `.eu.bak` next to the new file (a different
+  earlier backup is never overwritten: `.bak.1` ...). A failed write, a failed read-back, an unreadable old file or a merge
+  of more than 48 entries deletes **nothing**, puts the previous global file back, logs
+  `migration NOT done (<reason>), old files kept`, keeps `options_global` out of the file, and retries at the next start.
+  The `.tmp` of an interrupted write is migrated from (and deleted) like the file.
+- **Key budget.** The merge refuses to exceed 48 entries (`too many keys`); the test
+  `test_the_cfg_holds_every_key_within_the_budget` already counts `options_global`, `region_default` and `last_region`
+  (about 40 of 48).
+- **Tests.** `tools/tests/test_options_global.py` (24 + 4 cases: the folder rule, conflict, `last_region` missing or invalid,
+  single file, fresh install, marker, failed write, unreadable file, too many keys, backups, `defaults_gen`, strays, `.tmp`
+  recovery, the registry on top), `region_boot_main.c` case 19 (the boot migrates before `last_region` is stored).
+  Replays: `us|eu-options-global-migrate` (conflict, two phases), `-single`, `-fresh` and `-failed` (the global file's
+  temp name is blocked by a directory, so the write fails and the second process retries); the replay runner seeds the global
+  file only (`Scenario.cfg_us`, `cfg_eu` and `block_global_write` seed the old files for those scenarios), and the Ryubing
+  runner uses `sdcard/switch/dw3/port_options.cfg`.
+- **Release note.** "All settings now live in one file for both regions and every profile. The first start merges your
+  old US and EU settings (the region you played last wins a clash), saves a copy of each old file next to it as
+  `port_options.cfg.us.bak` / `.eu.bak`, and then deletes the old files."
 
 ## 7. Owner decisions (2026-10-31)
 
@@ -666,7 +711,7 @@ the log lines and the edge cases are in [6.1](#61-d2-migration-marker-owner-2026
 2. **D2 + D5 together**: the Controls defaults and the `defaults_gen` migration (6.1), the
    FSR 1 default and the GPU FSR form; only the values on the Controls and Display pages
    change.
-3. **D3**: one global options file (no picture changes).
+3. **D3**: one global options file (no picture changes; built, [6.2](#62-d3-one-global-options-file-as-built)).
 4. **D4**: the scrolling background, last; the replays pin the scroll offset to 0 so its
    references are stable.
 

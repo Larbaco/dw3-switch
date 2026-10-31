@@ -8,7 +8,8 @@
  * environment variable DW3_STAGE_SWEEP=1 instead). It never writes a save: the
  * auto-save is held off while it is on, and the sweep never opens the memory
  * card screen. Its own files are two small text files beside port_options.cfg
- * (sdmc:/switch/dw3/stage_sweep.txt, the progress).
+ * (sdmc:/switch/dw3/stage_sweep_us.txt or _eu.txt, the progress per region;
+ * D3: the keys are global and every log line ends with region=us|eu).
  *
  * The game side is one hook (patch 0178) in updateModeTask, which calls
  * dw3_sweep_tick() once per game frame with the current game mode and

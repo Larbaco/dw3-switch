@@ -26,6 +26,7 @@
 
 #include "dw3_launcher.h"
 #include "dw3_region.h"
+#include "port_options_cfg.h"
 
 #define MINUS_SAMPLE_FRAMES 12 /* about 200 ms: the pad reports a moment late */
 
@@ -164,6 +165,9 @@ int main(int argc, char **argv) {
         consoleUpdate(NULL);
     }
     dw3_region_probe(DW3_LAUNCHER_BASE, &in.probe);
+    /* D3: fold the old us/ and eu/ port_options.cfg into the global one before the choice
+     * below overwrites last_region (the lines go to stderr; the game logs the rest). */
+    (void)dw3_optcfg_migrate_global(DW3_LAUNCHER_BASE, NULL, NULL);
     dw3_region_cfg_read(DW3_LAUNCHER_BASE, &in.pref, &in.last);
     d = dw3_region_decide(&in);
 

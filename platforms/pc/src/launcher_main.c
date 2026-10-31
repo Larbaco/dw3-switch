@@ -28,6 +28,7 @@
  * base), DW3_PC_BIN_US / DW3_PC_BIN_EU (binaries). */
 #define _POSIX_C_SOURCE 200809L
 #include "dw3_region.h"
+#include "port_options_cfg.h"
 
 #include <errno.h>
 #include <poll.h>
@@ -210,6 +211,11 @@ int main(int argc, char **argv) {
     cfgdir = env_or("DW3_CONFIG_DIR", base);
 
     dw3_region_probe(base, &in.probe);
+    if (in.forced == DW3_REGION_NONE) {
+        /* D3: fold the old us/ and eu/ port_options.cfg into the global one before the
+         * choice below overwrites last_region (a forced region touches no file). */
+        (void)dw3_optcfg_migrate_global(cfgdir, NULL, NULL);
+    }
     dw3_region_cfg_read(cfgdir, &in.pref, &in.last);
     in.minus_held = force_pick;
     d = dw3_region_decide(&in);

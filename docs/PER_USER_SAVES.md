@@ -36,10 +36,14 @@ not on a cancel.
   (`memdir`, ~line 486 and 531) and `platforms/pc/src/main.c` (~231 and 282);
   `DW3_MEMCARD_DIR` overrides both. Code: `port/memcard/memcard_host.c`
   (`memcard_host_set_dir`), format in [P5.3](P5.3_FLAT_SAVE.md).
-- Options: `port_options.cfg` in the runtime root, i.e. per region, via
-  `dw3_port_options_persist_init(cfgdir ? cfgdir : root)` (`boot_main.c:550`),
-  `DW3_CONFIG_DIR` overrides. Store: `port/options/options_cfg.c`; rules in
-  [PORT_OPTIONS.md](PORT_OPTIONS.md#persistence).
+- Options: **one global** `port_options.cfg` (D3 / P6.26, owner 2026-10-31): `sdmc:/switch/dw3/port_options.cfg`
+  on the Switch and the top-level file beside the region folders on the PC, shared by both regions and
+  **every profile** (options are not per profile). `dw3_port_options_persist_init(gdir)` with
+  `gdir = dw3_optcfg_global_dir(DW3_CONFIG_DIR, root)` (the parent of the `us/` / `eu/` runtime root;
+  `DW3_CONFIG_DIR` overrides). The old `us/` and `eu/` files are merged into it once, backed up as
+  `port_options.cfg.us.bak` / `.eu.bak` and deleted. Store: `port/options/options_cfg.c`; rules, log lines and
+  the migration in [PORT_OPTIONS.md](PORT_OPTIONS.md#one-global-file-d3) and
+  [OPTIONS_REORG 6.2](OPTIONS_REORG.md#62-d3-one-global-options-file-as-built).
 - The Switch host has **no account or applet-type code**: `platforms/switch`
   has no `account*`, `appletGetAppletType` or `psel*` call. Everyone who uses
   the console shares one save folder.

@@ -102,10 +102,14 @@ After the first boot:
 - Keep `us/`, `eu/` and `saves/`. Never delete or move `save0.bin`,
   `save1.bin` or `.mcr.bak` to force an extraction. Back up `saves/` (and the old
   `memcard/` folders, if you have them) before deleting a region folder.
-- US and EU keep separate folders and settings.
-- The port writes `port_options.cfg` (settings) in the region folder and the
-  saves under `saves/` (see Saves below). Logs and crash reports go one level up, in
-  `sdmc:/switch/dw3/`.
+- US and EU keep separate folders and saves, but **one settings file**.
+- The port writes `port_options.cfg` (settings, one file for both regions and every
+  profile) in `sdmc:/switch/dw3/` and the saves under `saves/` (see Saves below). Logs and
+  crash reports go in `sdmc:/switch/dw3/` too. The first start after the update merges your
+  old `us/port_options.cfg` and `eu/port_options.cfg` into it (the region you played last wins a
+  clash), saves a copy of each as `port_options.cfg.us.bak` / `.eu.bak` next to it and then
+  deletes the old files. To go back to an older version, copy a `.bak` into the region folder
+  as `port_options.cfg`.
 
 The same file streams its log to a PC when you start it with `nxlink -a <ip> -s
 dw3-switch.nro` (development; the port checks at run time whether nxlink started
