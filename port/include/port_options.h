@@ -100,7 +100,10 @@ enum {
     DW3_PORT_OPT_SAVE_STORE = 23,    /* save_store, read before the cards open */
     DW3_PORT_OPT_STAGE_SWEEP = 24,   /* stage_sweep: 0 OFF, 1 Run, 2 Start over */
     DW3_PORT_OPT_SWEEP_FRAMES = 25,  /* stage_sweep_frames: 30..3600 */
-    DW3_PORT_OPT_MAP_BUTTONS = 26    /* action row: opens the Map buttons screen */
+    DW3_PORT_OPT_MAP_BUTTONS = 26,   /* action row: opens the Map buttons screen */
+    /* Menus: leaving the field menu's screens for the field skips the block
+     * dissolve (patch 0200, port/menu_exit); default ON, key menu_instant_exit. */
+    DW3_PORT_OPT_MENU_EXIT = 27
 };
 
 /* Sweep frames: the range and the steps of the Advanced row (the sweep itself

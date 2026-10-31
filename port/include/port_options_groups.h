@@ -24,7 +24,7 @@ enum {
      * = 0): Controls opens it. Its ten rows are the PS buttons in map order
      * (port_button_map.h), not registry rows; a row's value is its source. */
     DW3_OPTGRP_CUSTOM = 8,
-    /* D1 (docs/OPTIONS_REORG.md): the five Items-menu switches. */
+    /* D1 (docs/OPTIONS_REORG.md): the five Items-menu switches, then Instant menu exit. */
     DW3_OPTGRP_MENUS = 9,
     /* D1: the stage sweep's two rows (test aid; listed with Cheats). */
     DW3_OPTGRP_ADVANCED = 10,
@@ -81,7 +81,8 @@ typedef struct Dw3OptGroup {
  * 17 Equip stays on list, 18 Whole bag, 19 Use item stays, 20 Partner switch
  * (Menus), 21 Version label, 22 Map mod pack (Display), 23 Shared saves
  * (Saves), 24 Stage sweep, 25 Sweep frames (Advanced), 26 Map buttons (the
- * action row of Controls). Restart hotkey (2) moved to Controls and Region at
+ * action row of Controls). Instant menu exit (27, Menus, patch 0200) comes after
+ * them. Restart hotkey (2) moved to Controls and Region at
  * start (10) to Saves; their numbers and cfg keys did not change.
  * The rows are listed here in screen order. */
 static const Dw3OptGroup dw3_optgroups[DW3_OPTGRP_COUNT] = {
@@ -102,7 +103,7 @@ static const Dw3OptGroup dw3_optgroups[DW3_OPTGRP_COUNT] = {
     /* Help     */ {1, 0, {0}}, /* P6.30: no rows, a screen (port/help/help.c) */
     /* Walk     */ {1, 0, {0}}, /* P6.35: no rows, a screen (port/walkthrough/walkthrough_screen.c) */
     /* Customize*/ {0, 10, {0, 1, 2, 3, 4, 5, 6, 7, 8, 9}},
-    /* Menus    */ {1, 5, {16, 17, 18, 19, 20}},
+    /* Menus    */ {1, 6, {16, 17, 18, 19, 20, 27}},
     /* Advanced */ {1, 2, {24, 25}},
     /* Map btns */ {0, 8, {0, 1, 2, 3, 4, 5, 6, 7}},
 };

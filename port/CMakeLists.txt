@@ -345,6 +345,7 @@ add_library(dw3_port_options${_S} OBJECT
   "${CMAKE_CURRENT_SOURCE_DIR}/map_view/field_map.c"
   "${CMAKE_CURRENT_SOURCE_DIR}/map_view/map_view_core.c"
   "${CMAKE_CURRENT_SOURCE_DIR}/map_view/map_view_help.c"
+  "${CMAKE_CURRENT_SOURCE_DIR}/menu_exit/menu_exit.c"
   "${CMAKE_CURRENT_SOURCE_DIR}/mods/mod_pack.c"
   "${CMAKE_CURRENT_SOURCE_DIR}/mods/png_stb.c"
   "${CMAKE_CURRENT_SOURCE_DIR}/options/battle_options.c"
