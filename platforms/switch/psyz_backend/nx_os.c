@@ -9,6 +9,7 @@
  *   bell    -> auto-reset Event (eventCreate(.., autoclear = true))
  */
 #include "nx.h"
+#include "nx_exit.h"
 
 #include <stdlib.h>
 
@@ -34,6 +35,35 @@
 /* See Psyz_OsBellWait: boot-hang instrumentation, remove once understood. */
 static uint64_t s_bell_waits;
 static uint64_t s_bell_rings;
+
+/* BUG-1: the threads PSY-Z starts (its IRQ loop) never return by themselves.
+ * They are recorded so the exit path can ask them to leave, join them and
+ * threadClose() them: a finished-but-unclosed libnx thread keeps its stack
+ * pages borrowed (Perm_None) in the heap the loader reads the next NRO over.
+ * The bells are recorded to wake a thread parked in an infinite wait. */
+#define DW3_NX_OS_MAX_THREADS 4
+#define DW3_NX_OS_MAX_BELLS 8
+static Thread *s_os_threads[DW3_NX_OS_MAX_THREADS];
+static const char *s_os_names[DW3_NX_OS_MAX_THREADS];
+static int s_os_thread_count;
+static Event *s_os_bells[DW3_NX_OS_MAX_BELLS];
+static int s_os_bell_count;
+static volatile int s_os_stop;
+
+/* An OS thread that finds the stop flag set leaves instead of waiting again. */
+static void os_thread_leave_if_stopping(void) {
+    int i;
+
+    if (!s_os_stop) {
+        return;
+    }
+    for (i = 0; i < s_os_thread_count; i++) {
+        if (s_os_threads[i] != NULL &&
+            s_os_threads[i]->handle == threadGetCurHandle()) {
+            threadExit();
+        }
+    }
+}
 
 uint32_t Psyz_OsNowUs(void) {
     /* One-shot: is the emulated clock being used at all before the hang? */
@@ -100,6 +130,9 @@ void *Psyz_OsBellCreate(void) {
         free(ev);
         return NULL;
     }
+    if (s_os_bell_count < DW3_NX_OS_MAX_BELLS) {
+        s_os_bells[s_os_bell_count++] = ev;
+    }
     return ev;
 }
 
@@ -128,6 +161,7 @@ void Psyz_OsBellWait(void *bell, uint32_t timeout_us) {
               (unsigned long long)s_bell_rings);
     }
 
+    os_thread_leave_if_stopping();
     if (!bell) {
         return;
     }
@@ -136,6 +170,7 @@ void Psyz_OsBellWait(void *bell, uint32_t timeout_us) {
     ns = (timeout_us == DW3_NX_OS_FOREVER) ? UINT64_MAX
                                           : (uint64_t)timeout_us * 1000ULL;
     eventWait((Event *)bell, ns);
+    os_thread_leave_if_stopping();
 }
 
 static void thread_trampoline(void *arg) {
@@ -195,5 +230,29 @@ int Psyz_OsThreadStart(void (*fn)(void), const char *name) {
      * it here separates "the poll loop spins" from "the IRQ thread never
      * signals". */
     DW3_NX_INFO("thread started: %s", name);
+    if (s_os_thread_count < DW3_NX_OS_MAX_THREADS) {
+        s_os_names[s_os_thread_count] = name;
+        s_os_threads[s_os_thread_count++] = t;
+    }
     return 0;
+}
+
+/* BUG-1: ask every thread PSY-Z started to leave, wake it, join and close it.
+ * Returns how many were still running after the exit budget. */
+int dw3_nx_os_threads_shutdown(void) {
+    int i, still = 0;
+
+    if (s_os_thread_count == 0) {
+        dw3_nx_exit_log("thread psyz os: none started (nothing to close)");
+        return 0;
+    }
+    s_os_stop = 1;
+    for (i = 0; i < s_os_bell_count; i++) {
+        eventFire(s_os_bells[i]);
+    }
+    for (i = 0; i < s_os_thread_count; i++) {
+        still += dw3_nx_exit_join(s_os_threads[i], s_os_names[i]);
+    }
+    s_os_thread_count = 0;
+    return still;
 }

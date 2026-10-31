@@ -2,6 +2,8 @@
 #include "switch.h"
 
 #include <stdarg.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include <stdint.h>
 
 static Result s_mount_result = 0;
@@ -57,7 +59,25 @@ Result threadClose(Thread *t) {
     return 0;
 }
 
-uintptr_t threadGetCurHandle(void) { return 1; }
+Handle threadGetCurHandle(void) { return 1; }
+
+void threadExit(void) { exit(0); }
+
+/* nx_exit.c is not compiled in this harness; nx_os.c only needs these two. */
+void dw3_nx_exit_log(const char *fmt, ...) {
+    va_list ap;
+
+    va_start(ap, fmt);
+    vprintf(fmt, ap);
+    va_end(ap);
+    printf("\n");
+}
+
+int dw3_nx_exit_join(Thread *t, const char *name) {
+    (void)name;
+    threadClose(t);
+    return 0;
+}
 
 void mutexInit(Mutex *m) { m->locked = 0; }
 void mutexLock(Mutex *m) { m->locked = 1; }

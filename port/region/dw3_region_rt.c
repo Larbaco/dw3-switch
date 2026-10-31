@@ -41,6 +41,7 @@ static const Dw3GameApi g_no_game = {
     .overlay_set_strict = none_void_i,
     .map_view_init = none_void_s,
     .map_view_precompute_run = none_void,
+    .map_view_precompute_cancel = none_void,
     .map_view_set_zoom_stick = none_void_i,
     .map_view_get_draw = none_draw,
     .map_view_tex_taken = none_void_u,

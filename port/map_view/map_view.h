@@ -24,6 +24,10 @@ void dw3_map_view_init(const char *config_dir);
  * (cdfs), builds the captured map and the CPU scalers for both halves and
  * writes them to the cache. Frees everything it allocated before returning. */
 void dw3_map_view_precompute_run(void);
+/* BUG-1: ask the precompute to stop at the next safe point (between two images,
+ * so at most one scaler build, 2 to 6 s on the Switch, after the call). The host
+ * calls it on the way out, then joins its thread. Safe to call at any time. */
+void dw3_map_view_precompute_cancel(void);
 
 /* The host's thread starter for the CPU scalers (Lanczos2, FSR 1), so the game
  * keeps taking input while they build. Run fn(arg) on a low-priority thread
