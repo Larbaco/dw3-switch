@@ -63,7 +63,7 @@
  * port_options.h: port/pacing/pacing.c, port/battle_menu/battle_menu_memory.c
  * and port/autosave/autosave.c read them. */
 enum {
-    DW3_PORT_OPT_COUNT = 28,
+    DW3_PORT_OPT_COUNT = 29,
     DW3_PORT_OPT_WIDESCREEN = 0,
     DW3_PORT_OPT_FAST_FORWARD = 1,
     DW3_PORT_OPT_RESTART = 2,
@@ -87,8 +87,8 @@ _Static_assert(DW3_PORT_OPT_WIDESCREEN == 0 && DW3_PORT_OPT_FAST_FORWARD == 1 &&
                DW3_PORT_OPT_ITEMS_PARTNER == 20 && DW3_PORT_OPT_SHOW_VERSION == 21 &&
                DW3_PORT_OPT_MAP_MOD == 22 && DW3_PORT_OPT_SAVE_STORE == 23 &&
                DW3_PORT_OPT_STAGE_SWEEP == 24 && DW3_PORT_OPT_SWEEP_FRAMES == 25 &&
-               DW3_PORT_OPT_MAP_BUTTONS == 26 && DW3_PORT_OPT_MAP_SCALER == 27 &&
-               DW3_PORT_OPT_COUNT == 28,
+               DW3_PORT_OPT_MAP_BUTTONS == 26 && DW3_PORT_OPT_MAP_SCALER == 28 &&
+               DW3_PORT_OPT_COUNT == 29,
                "registry indexes changed: update port_options_groups.h");
 
 typedef struct Dw3PortOptStub {
@@ -195,6 +195,8 @@ static Dw3PortOptStub g_stubs[DW3_PORT_OPT_COUNT] = {
     /* D1 Controls: an action row (no value, no key); Confirm opens the Map
      * buttons screen. */
     {"Map buttons", NULL, 0, 0, NULL},
+    /* 27: held for #406 (Menus > Instant menu exit). Inert: no key, in no group. */
+    {"(reserved)", NULL, 0, 0, NULL},
     /* D5 Display: the full-screen map's picture scaler. The file holds a word
      * (map_scaler=nearest|sharp|lanczos2|fsr1|bilinear); the stored value is a
      * DW3_MAPSCALER_*. Default FSR 1. Read at each open of the map view. */

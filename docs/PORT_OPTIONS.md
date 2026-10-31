@@ -2141,7 +2141,7 @@ overlay's page codes did not change, so the order table is the only thing that m
 
 | # | Group | Rows (registry index) | Rows on screen: PC US plain / Switch combined |
 |---|---|---|---|
-| 1 | Display | Widescreen (0), Full-screen map (15), **Map scaler (27, D5)**, Map mod pack (22), Version label (21) | 5 / 5 |
+| 1 | Display | Widescreen (0), Full-screen map (15), **Map scaler (28, D5)**, Map mod pack (22), Version label (21) | 5 / 5 |
 | 2 | Sound | Music volume (3), SFX volume (4), Turbo music (13) | 3 / 3 |
 | 3 | Gameplay | Fast-forward (1), Encounter rate (5), Text speed (6), Battle cursor (7) | 4 / 4 |
 | 4 | Menus | Equip from Items (16), Equip stays on list (17), Whole bag (18), Use item stays (19), Partner switch (20) | 5 / 5 |
@@ -2172,7 +2172,7 @@ except the sub-screens that scroll (Cheats, Customize, Map buttons). The cfg tab
 | Shared saves (exp.) | **title only** (greyed in game: the cards are opened before it is read) | next start; Yes / No window when turned on |
 | Stage sweep, Frames per stage | **title only** (greyed in game), builds with the Cheats feature | next start; Yes / No window for Run and Start over |
 
-The lock mask of the overlay (`dw3_port_options_locked_mask`) is now 28 bits wide (registry rows 0 to 27, D5); the
+The lock mask of the overlay (`dw3_port_options_locked_mask`) is now 29 bits wide (registry rows 0 to 28, D5; 27 is held for #406); the
 Cheats entry's bit moved from 16 to 30 (`DW3_PORT_OPTIONS_LOCK_CHEATS`, `DW3_TITLE_LOCK_CHEATS`).
 
 ### Map buttons (Controls > Map buttons)
@@ -2268,7 +2268,7 @@ them back in Options > Controls and they stay.* (A later default change raises `
 mechanism.) Tests: `test_options_persist.py` (`test_an_old_file_is_migrated_once...` and the other migration cases),
 replays `us/eu-defaults-migrate`, `-defaults-migrate-custom`, `-defaults-migrate-fresh`.
 
-**D5: Display > Map scaler.** Registry row 27, third row of Display, key `map_scaler`, a word:
+**D5: Display > Map scaler.** Registry row 28 (27 is held for #406), third row of Display, key `map_scaler`, a word:
 `nearest`, `sharp` (Sharp bilinear), `lanczos2`, `fsr1`, `bilinear`; **default `fsr1`** for the captured map and for
 the mod pack (it was Nearest). Left / Right and Confirm step in the order of the view's ZL / ZR cycle (Nearest,
 Sharp bilinear, Lanczos2, FSR 1, Bilinear) and wrap; the row is not locked in game and applies **at the next open of

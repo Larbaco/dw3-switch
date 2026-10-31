@@ -198,7 +198,7 @@ int dw3_pc_title_overlay_options_cursor(void) { return option_cursor; }
 int dw3_pc_title_overlay_options_value(int row) {
     return row>=0&&row<DW3_TITLE_OPTION_ROWS?option_values[row]:0;
 }
-enum { OPT_LOCK_ROWS = 28 }; /* registry rows 0..27: the lock mask's width (D1, D5) */
+enum { OPT_LOCK_ROWS = 29 }; /* registry rows 0..28: the lock mask's width (D1, D5) */
 void dw3_pc_title_overlay_set_options_locked(unsigned mask) {
     mask&=((1u<<OPT_LOCK_ROWS)-1u)|DW3_TITLE_LOCK_CHEATS;
     if(mask!=options_locked){options_locked=mask;options_layout++;options_generation++;}
@@ -329,7 +329,7 @@ enum { OPT_X0 = 84, OPT_Y0 = 60, OPT_W = 792, OPT_H = 600,
 enum { ROW_SWITCH, ROW_FAST_FORWARD, ROW_VOLUME, ROW_ENCOUNTER, ROW_TEXT,
        ROW_BATTLE, ROW_AUTOSAVE, ROW_LAYOUT, ROW_REGION, ROW_CUSTOMIZE, ROW_RESET,
        ROW_TURBO_MUSIC, ROW_GLYPHS, ROW_MAP_SCREEN,
-       ROW_EXTRA /* D1: registry rows 16..27, words in extra_words */ };
+       ROW_EXTRA /* D1: registry rows 16..28, words in extra_words */ };
 static int row_kind(int row) {
     return row == 1 ? ROW_FAST_FORWARD : row == 3 || row == 4 ? ROW_VOLUME :
            row == 5 ? ROW_ENCOUNTER : row == 6 ? ROW_TEXT :
@@ -337,7 +337,7 @@ static int row_kind(int row) {
            row == 9 ? ROW_LAYOUT : row == 10 ? ROW_REGION :
            row == 11 ? ROW_CUSTOMIZE : row == 12 ? ROW_RESET :
            row == 13 ? ROW_TURBO_MUSIC : row == 14 ? ROW_GLYPHS :
-           row == 15 ? ROW_MAP_SCREEN : row >= 16 && row <= 27 ? ROW_EXTRA : ROW_SWITCH;
+           row == 15 ? ROW_MAP_SCREEN : row >= 16 && row <= 28 ? ROW_EXTRA : ROW_SWITCH;
 }
 /* P6.31: the Auto-save row's lettering, in the language of the disc (en, fr,
  * de, es, it: the DW3_TITLE_LANG_* order). OFF is the Options screen's word. */
@@ -414,19 +414,20 @@ static const MapscrWords mapscr_words[5]={MAPSCR_WORDS(en),MAPSCR_WORDS(fr),MAPS
 static const MapscrWords *mapscr_lang(void) {
     return &mapscr_words[options_lang>=DW3_TITLE_LANG_EN&&options_lang<=DW3_TITLE_LANG_IT?options_lang:0];
 }
-/* D1: the rows that were file-only keys (registry 16..26: the five Menus switches,
+/* Registry 27 is held for #406: its slot repeats the Map buttons words and is never drawn (no group lists it).
+ * D1: the rows that were file-only keys (registry 16..26: the five Menus switches,
  * Version label, Map mod pack, Shared saves, Stage sweep, Sweep frames, Map
  * buttons), their Stage sweep values, and the Map buttons screen (eight rows,
  * three message lines, the Select / Minus values). */
 #define XW(k,l) {WORD(opt_row_x_##k##_##l),WORD(opt_desc_x_##k##_##l)}
 #define EXTRA_WORDS(l) {{XW(eq,l),XW(st,l),XW(bg,l),XW(us,l),XW(ps,l),XW(vr,l),XW(mm,l),XW(ss,l), \
-    XW(sw,l),XW(sf,l),XW(mb,l),XW(sc,l)}, WORD(opt_val_sw_run_##l),WORD(opt_val_sw_over_##l), \
+    XW(sw,l),XW(sf,l),XW(mb,l),XW(mb,l),XW(sc,l)}, WORD(opt_val_sw_run_##l),WORD(opt_val_sw_over_##l), \
     {WORD(opt_row_mb0_##l),WORD(opt_row_mb1_##l),WORD(opt_row_mb2_##l),WORD(opt_row_mb3_##l), \
      WORD(opt_row_mb4_##l),WORD(opt_row_mb5_##l),WORD(opt_row_mb6_##l),WORD(opt_row_mb7_##l)}, \
     {WORD(opt_desc_mb_bind_##l),WORD(opt_desc_mb_field_##l),WORD(opt_desc_mb_reset_##l)}}
 typedef struct ExtraWords { Word row,desc; } ExtraWords;
 typedef struct ExtraSet {
-    ExtraWords reg[12];       /* registry rows 16..27 (27 = D5 Map scaler) */
+    ExtraWords reg[13];       /* registry rows 16..28 (27 = held for #406, 28 = D5 Map scaler) */
     Word sweep_run,sweep_over;
     Word mb_row[8];
     Word mb_desc[3];          /* bind, field, reset */
@@ -805,7 +806,7 @@ static const Word *list_value(const ListWords *t,int reg,int v,int *dim) {
             return v==0?&v_onoff[0]:v==1?&extra_lang()->sweep_run:&extra_lang()->sweep_over;
         }
         if(reg==25||reg==26)return NULL; /* Sweep frames: a number; Map buttons: an action */
-        if(reg==27) {       /* D5 Map scaler: Nearest, Sharp bilinear, Lanczos2, FSR 1, Bilinear (product names, the same in every language) */
+        if(reg==28) {       /* D5 Map scaler: Nearest, Sharp bilinear, Lanczos2, FSR 1, Bilinear (product names, the same in every language) */
             static const Word v_scaler[]={WORD(opt_val_sc_nearest),WORD(opt_val_sc_sharp),WORD(opt_val_sc_lanczos2),
                                           WORD(opt_val_sc_fsr1),WORD(opt_val_sc_bilinear)};
             if(v>4)v=4;

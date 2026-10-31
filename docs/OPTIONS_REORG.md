@@ -673,8 +673,10 @@ The Options references are regenerated three times (after 1, 2 and 4) instead of
 
 ### 8.1 Step 2 as built (D2 + D5)
 
-Built on top of step 1 (#404), one PR (2026-10-31). Registry row **27 Map scaler** is the only new row
-(`DW3_PORT_OPT_COUNT` 28); rows 0 to 26 and every cfg key keep their numbers and names.
+Built on top of step 1 (#404), one PR (2026-10-31). Registry row **28 Map scaler** is the only new row
+(`DW3_PORT_OPT_COUNT` 29); rows 0 to 26 and every cfg key keep their numbers and names. **Slot 27 is held for #406**
+(Menus > Instant menu exit, `menu_instant_exit`): until that PR lands it is an inert placeholder (`DW3_PORT_OPT_RESERVED_27`:
+no key, in no group, never saved); the PR that lands second drops it.
 
 **D2 (owner decisions 2026-10-31).**
 

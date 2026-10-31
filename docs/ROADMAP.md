@@ -1532,7 +1532,7 @@ PS1 game, with vanilla-safe defaults and persistence on owner storage.
   row, flagged to the owner); existing `port_options.cfg` files are **migrated once** with the marker
   `defaults_gen` (missing = 1, now 2: `playstation` to `nintendo`, glyphs 0 to 1, a custom layout kept, written
   at once, logged; a fresh install is not migrated); the default map scaler is **FSR 1** for the captured map and
-  the mod pack, with a new **Display > Map scaler** row (registry 27, key `map_scaler`; Nearest, Sharp bilinear,
+  the mod pack, with a new **Display > Map scaler** row (registry 28, key `map_scaler`; 27 is held for #406; Nearest, Sharp bilinear,
   Lanczos2, FSR 1, Bilinear) and an open with no hitch (it shows Nearest until the worker thread has FSR 1). Help
   pages and the Reset text updated in five languages; replay runner seeds `defaults_gen=2`; new replays
   `us/eu-defaults-migrate`, `-defaults-migrate-custom`, `-defaults-migrate-fresh`. Details:

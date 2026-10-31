@@ -1157,9 +1157,9 @@ def test_the_environment_pins_are_applied_after_the_migration_and_never_saved(pe
     assert (kv["button_layout"], kv["switch_glyphs"]) == ("nintendo", "1")  # the file is migrated
 
 
-# --- D5: the Map scaler row (registry row 27, key map_scaler, FSR 1 by default) -------------
+# --- D5: the Map scaler row (registry row 28, key map_scaler, FSR 1 by default) -------------
 
-SCALER = "27"
+SCALER = "28"
 
 
 def test_map_scaler_defaults_to_fsr1_and_is_a_word_in_the_file(persist_bin: Path, tmp_path: Path):
