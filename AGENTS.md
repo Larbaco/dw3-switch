@@ -156,6 +156,9 @@ These hold for any agent working on the owner's desktop, whatever the tool
    `xvfb-run -s "-screen 0 1920x1080x24"`), never the owner's desktop
    session, so tests do not get in the way of the owner's work. This
    includes the PC build and Ryubing.
+   Ryubing may run with the frame limit off (`tools/replay/ryubing.py --fast`,
+   owner 2026-10-31) except timing, pacing and turbo tests and frame-time or
+   `ms` proofs; see `docs/REPLAY_POLICY.md` section 7b.
 5. **Tests run on one region by default and on both at the gate**
    (`docs/REPLAY_POLICY.md`). The EU build (five languages) comes from
    `tools/build_switch_game.sh --eu`. A PR runs `tools/replay_tests.sh

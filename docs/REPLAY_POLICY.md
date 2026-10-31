@@ -306,6 +306,32 @@ SIGTERM/SIGINT/SIGHUP and SIGKILL of the runner (7 tests, needs Xvfb, no game da
 Orphans from before this change still have to be killed by hand (by pid, never
 `pkill -f dw3`).
 
+## 7b. Ryubing: frame limit off (`--fast`, owner decision 2026-10-31)
+
+When a test really needs Ryubing (the Switch build in the emulator), it **may** run
+with the emulator's frame limit off (`enable_vsync` false in the run's own
+`Config.json`) to save time. `tools/replay/ryubing.py --fast` does that, and the
+report says which scenarios ran fast.
+
+Exempt: they stay at normal speed (vsync on, no turbo):
+
+* timing and pacing tests: P6.18 pacing (encounter rate, text scroll, banner speed),
+  frame times, audio and music sync, P6.36 turbo music;
+* tests of the turbo feature itself;
+* any scenario whose proof is a frame-time or `ms` log line.
+
+The runner decides by name (`pacing`, `turbo`, `music`) and by the scenario's log
+proof (`ms`, frame time or gap, `pacing`, `music tick`, `tempo`). It is conservative:
+when unsure, it keeps the scenario at normal speed, and it prints the reason for
+each one.
+
+Turbo (fast-forward) is **not** turned on by the runner. The guest reads `DW3_TURBO`
+only from the NRO's baked test env (`tools/build_switch_game.sh`), so a turbo run
+needs that build. The `--fast` flag is the frame-limit part only.
+
+If `Config.json` has no `enable_vsync` key (another Ryubing build), `--fast` stops
+with an error; it does not run at the wrong speed silently.
+
 ## 8. Open points (owner)
 
 * The duplicate candidates in section 3 (`newgame-field` under `field-walk`, the
