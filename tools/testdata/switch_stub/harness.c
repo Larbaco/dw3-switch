@@ -62,5 +62,15 @@ int main(void) {
     printf("thread_close_count=%d\n", stub_thread_close_count());
     printf("thread_handle_live=%d\n", stub_is_handle_live());
 
+    /* E (BUG-1): a started PSY-Z thread is joined and closed by the exit path;
+     * a second call has nothing left to close. */
+    stub_reset();
+    printf("os_start_rc=%d\n", Psyz_OsThreadStart(thread_body, "test"));
+    printf("os_shutdown_still_running=%d\n", dw3_nx_os_threads_shutdown());
+    printf("os_shutdown_close_count=%d\n", stub_thread_close_count());
+    printf("os_shutdown_handle_live=%d\n", stub_is_handle_live());
+    printf("os_shutdown_again_close_count=%d\n",
+           dw3_nx_os_threads_shutdown() + stub_thread_close_count());
+
     return 0;
 }

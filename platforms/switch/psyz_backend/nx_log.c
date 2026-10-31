@@ -188,9 +188,18 @@ void dw3_nx_log_run_header(void) {
     TimeCalendarTime cal;
     TimeCalendarAdditionalInfo info;
 
-    if (R_SUCCEEDED(timeInitialize()) &&
+    /* BUG-1: every service opened is closed again (time is reference counted,
+     * so the libnx default session is untouched). */
+    const int time_open = R_SUCCEEDED(timeInitialize());
+    const int have_time =
+        time_open &&
         R_SUCCEEDED(timeGetCurrentTime(TimeType_UserSystemClock, &now)) &&
-        R_SUCCEEDED(timeToCalendarTimeWithMyRule(now, &cal, &info))) {
+        R_SUCCEEDED(timeToCalendarTimeWithMyRule(now, &cal, &info));
+
+    if (time_open) {
+        timeExit();
+    }
+    if (have_time) {
         psyz_log(1, __FILE__, __LINE__, __func__,
                  "dw3-run: started %04d-%02d-%02d %02d:%02d:%02d (console "
                  "clock, epoch=%llu); previous runs are dw3.1.log ... "
