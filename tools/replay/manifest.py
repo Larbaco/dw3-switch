@@ -645,6 +645,33 @@ for _v, _ids in (("us", (0x159, 0x1FA, 0x1C2, 0x158)), ("eu", (0x167, 0x208, 0x1
                   note="no turbo, Normal: the report and the banner at the game's own pacing"))
 
 
+# Patch 0198 (BUG-6 of the p56 OLED run): the battle's Digivolve command crashed in
+# GPU_Enqueue a few frames after the pick that goes back to a lower form. The Digimon
+# change draws the old Digimon as a wireframe (FIGHTSTG_drawMeshWireframe), and that
+# routine linked its lines with a 24-bit PS1 address, so the layer's OT held a 32-bit
+# piece of a 64-bit pointer and DrawOTag followed it. The forced battle of p77 with
+# DW3_FORCE_DIGI_SLOTS=386 (Kotemon may digivolve into Dinohumon) and an enemy that
+# lasts: the command up, back to the base form, up again. The log must show all
+# three changes starting and ending (the HUD name follows 383 -> 386 -> 383 -> 386)
+# and no crash (the runner's own verdict); before 0198 the second change segfaulted
+# on the PC (SIGSEGV in GPU_Enqueue, the Switch's `CRASH user exception`). Log only.
+for _v in ("us", "eu"):
+    _add(Scenario(f"{_v}-battle-digivolve-command", _v, "full", turbo=4, timeout=600, log_only=True,
+                  phases=(f"{_v}-battle-digivolve-command",),
+                  env=_P77_ENV_REPORT + (("DW3_FORCE_DIGI_SLOTS", "386"), ("DW3_FORCE_ENEMY_HP", "9999")),
+                  expect_log=((0, r"DW3_FORCE_DIGI_SLOTS partner 0 slot 0 is Digimon id 386(?s:.*)"
+                                  r"close list=digivolve count=2 sel=1(?s:.*)"
+                                  r"digimon change wireframe starts \(to Digimon id 386, digivolve command\)(?s:.*)"
+                                  r"digimon change done, back to the battle \(Digimon id 386\)(?s:.*)"
+                                  r"close list=digivolve count=2 sel=0(?s:.*)"
+                                  r"digimon change wireframe starts \(to Digimon id 383, digivolve command\)(?s:.*)"
+                                  r"digimon change done, back to the battle \(Digimon id 383\)(?s:.*)"
+                                  r"close list=digivolve count=2 sel=1(?s:.*)"
+                                  r"digimon change wireframe starts \(to Digimon id 386, digivolve command\)(?s:.*)"
+                                  r"digimon change done, back to the battle \(Digimon id 386\)"),),
+                  forbid_log=((0, r"CRASH|Segmentation fault"),),
+                  note="the Digivolve command up, back to the base form (the BUG-6 crash) and up again: the wireframe's lines link with the full pointer (patch 0198)"))
+
 # The file cache runs out of slots (patches 0095 hook, 0096 fix). The preview.31-rc1
 # OLED crash: after about two hours of play all 64 slots of the file cache were
 # taken (the host heap is 8 MiB, so nothing evicted, unlike the PS1's 1.33 MB)

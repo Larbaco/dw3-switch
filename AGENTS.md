@@ -138,9 +138,17 @@ These hold for any agent working on the owner's desktop, whatever the tool
    `xvfb-run -s "-screen 0 1920x1080x24"`), never the owner's desktop
    session, so tests do not get in the way of the owner's work. This
    includes the PC build and Ryubing.
-5. **Every change is tested on both ISOs, US and EU.** The EU build (five
-   languages) comes from `tools/build_switch_game.sh --eu`. A change that only
-   works on US is not done.
+5. **Tests run on one region by default and on both at the gate**
+   (`docs/REPLAY_POLICY.md`). The EU build (five languages) comes from
+   `tools/build_switch_game.sh --eu`. A PR runs `tools/replay_tests.sh
+   --changed`: the affected scenarios on **EU** (the superset: languages, the
+   extra chapter, 50 Hz), plus a small US+EU canary (boots, stage registries,
+   cross-region saves), and **both regions** where the changed files are
+   region-sensitive (saves, boot, region, overlays, text, fonts, anything that
+   mentions `VERSION_EU/US` or `dw3_region`; the runner decides and prints why).
+   Both ISOs still apply to the build (US and EU must compile), to the
+   release/preview gate (the full tier on both, `tools/replay_tests.sh --jobs 2`)
+   and to anything the owner asks. A change that only works on US is not done.
 6. **Merge with squash by default, then delete the branch.** If the cloud
    harness cannot delete it, do it from the owner's terminal. Keep `release/*`
    branches as history; never delete them.
@@ -164,15 +172,18 @@ These hold for any agent working on the owner's desktop, whatever the tool
     owner only has to report feel, looks and preferences. Keep the last runs in
     the log folder (the Switch build rotates `dw3.log` to `dw3.1.log` ...
     `dw3.4.log`, 5 runs); never rely on the owner copying a log between runs.
-13. **Build and test speed** (`docs/BUILD_SPEED.md`). Build with
+13. **Build and test speed** (`docs/BUILD_SPEED.md`, `docs/REPLAY_POLICY.md`). Build with
     `tools/build_pc.sh` and `tools/build_switch_game.sh`: both use the shared
     ccache when there is one (`tools/get_ccache.sh` installs it; worktrees hit
     each other's objects when `build/` is a real directory in
     `/mnt/cabal/tmp/dw3-<topic>`; `DW3_NO_CCACHE=1` for a byte-exact release
     build). Before a PR run `tools/replay_tests.sh --changed --jobs 2
-    --fail-fast`; the full tier only for engine-wide changes (`--changed`
-    selects it by itself when a file has no area rule), before a preview, or
-    when asked. CI always runs everything. `tools/cleanup_tmp.py` lists stale
+    --fail-fast` (one region, the canary, both regions only for
+    region-sensitive files; an engine-wide file such as `main.c` runs the area
+    sweep). The full tier on both regions (`--changed --escalate full` or
+    `tools/replay_tests.sh --jobs 2`) is for a preview or release, when asked, and
+    for the occasional engine-wide change you want proven. CI has no game data and
+    runs no replay. `tools/cleanup_tmp.py` lists stale
     scratch dirs (dry run; the owner decides what to delete).
 
 ## Working style

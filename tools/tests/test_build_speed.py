@@ -64,6 +64,14 @@ def test_patch_topic_maps_to_its_scenarios(areas, scenarios):
     assert "us-cheats-screen" not in sel.names
 
 
+def test_wireframe_patch_selects_the_digivolve_command_scenarios(areas, scenarios):
+    sel = areas.select(["port/patches/0198-PORT_HOST-battle-wireframe-64bit-tag.patch"], scenarios)
+    assert not sel.everything
+    for name in ("us-battle-digivolve-command", "eu-battle-digivolve-command", "us-p77-hud-form"):
+        assert name in sel.names, name
+    assert "us-cheats-screen" not in sel.names
+
+
 def test_overlay_table_and_stage_patch_select_the_stage_scenarios(areas, scenarios):
     sel = areas.select(["port/overlays/overlay_table_eu.c", "port/overlays/overlay_sections_eu_extra.c",
                         "port/patches/0197-PORT_HOST-wstag460-wanderer-no-object.patch"], scenarios)

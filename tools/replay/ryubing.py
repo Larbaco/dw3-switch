@@ -215,7 +215,9 @@ def run_phase(sc, idx, root, nro, display, outdir, ryujinx, stall, timeout, labe
     with open(log, "wb") as lf:
         proc = subprocess.Popen([ryujinx, "-r", str(root), "--use-main-config", str(nro)],
                                 env=env, stdout=lf, stderr=subprocess.STDOUT,
-                                start_new_session=True)
+                                start_new_session=True, preexec_fn=rt._die_with_parent)
+        with rt._LIVE_LOCK:
+            rt._LIVE_PGIDS.add(proc.pid)
         pos = 0
         while True:
             time.sleep(1.0)
@@ -266,6 +268,8 @@ def run_phase(sc, idx, root, nro, display, outdir, ryujinx, stall, timeout, labe
                 break
             except subprocess.TimeoutExpired:
                 continue
+    with rt._LIVE_LOCK:
+        rt._LIVE_PGIDS.discard(proc.pid)
     full = log.read_text(errors="replace")
     lines = guest_lines(full)
     rows = []
@@ -312,6 +316,7 @@ def run_phase(sc, idx, root, nro, display, outdir, ryujinx, stall, timeout, labe
 
 
 def main():
+    rt.install_cleanup()
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--version", choices=("us", "eu", "both"), default="both")
     ap.add_argument("--only", action="append", help="scenario name (repeatable)")
@@ -413,11 +418,7 @@ def main():
                 if v != "OK":
                     break
         finally:
-            xvfb.terminate()
-            try:
-                xvfb.wait(5)
-            except subprocess.TimeoutExpired:
-                xvfb.kill()
+            rt.stop_xvfb(xvfb)
     w = max(len(r[0]) for r in rows)
     lines = [f"{'scenario':<{w}}  {'check':<22} result   detail"]
     for r in rows:
