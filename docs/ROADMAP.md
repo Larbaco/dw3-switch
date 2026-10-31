@@ -78,6 +78,14 @@ highest non-empty tier.
   `GPU_Enqueue`. Reproduced on the PC (SIGSEGV, same stack) and proved by the replays
   `us/eu-battle-digivolve-command` (up, back to the base form, up again). Open: the
   OLED check, [OLED_TEST_PLAN G12](OLED_TEST_PLAN.md).
+- **PRESS START shown before the game answers it (owner, 2026-10-31).** Cause found on
+  the PC: the original draws the prompt seven frames (117 ms; EU 140 ms) before it
+  reads Start, on both regions and every path to the title. Fixed by patch `0199`
+  (the prompt waits for the pad read; always on, rule-8 class D proposed, owner to
+  confirm). Proof lines and measurements:
+  [TITLE_MENU_DESIGN](TITLE_MENU_DESIGN.md#press-start-readiness-patch-0199). Open: the
+  OLED check, [OLED_TEST_PLAN A21](OLED_TEST_PLAN.md), which also answers whether a
+  console-only hitch (`dw3-title: slow frame`) adds to it.
 
 ### Tier 1 — Stability
 
