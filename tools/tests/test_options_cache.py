@@ -23,7 +23,7 @@ def options_cache_test(request, tmp_path_factory) -> Path:
         "gcc", "-std=gnu11", "-Wall", "-Wextra", "-Werror", "-O2", *defs,
         "-o", str(out),
         str(TEST_C), str(SRC / "title_options_cache.c"),
-        str(SRC / "title_overlay_art.c"),
+        str(SRC / "title_overlay_art.c"), str(ROOT / "tools" / "tests" / "port_version_stub.c"),
         str(ROOT / "port" / "pages" / "pages.c"), str(ROOT / "port" / "pages" / "glyph_atlas.c"),
         f"-I{ROOT / 'port' / 'include'}", "-pthread", "-lm",
     ]

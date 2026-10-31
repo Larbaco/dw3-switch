@@ -46,6 +46,7 @@
 #include "debug_overlay_text.h"
 #endif
 #include "frame_dt.h"
+#include "port_version.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -839,6 +840,9 @@ int main(int argc, char **argv) {
     /* A failed overlay restore aborts the replay run instead of logging on. */
     dw3_overlay_set_strict(1);
 #endif
+    /* P6.37: the first line of the log names the build (region: US+EU until a
+     * combined image has picked one; it is announced again then). */
+    dw3_version_announce();
     INFOF("dw3: version=%s", DW3_NRO_VERSION_STR);
     dw3_nx_log_run_header();
     if (test_env_count > 0) {
@@ -907,6 +911,7 @@ int main(int argc, char **argv) {
             snprintf(g_runtime_root, sizeof(g_runtime_root), "%s/%s", base,
                      dw3_region_name(rb.region));
         }
+        dw3_version_announce(); /* now with the region */
     }
 #endif
 

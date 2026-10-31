@@ -81,6 +81,7 @@ Files are named by roadmap item id (`P6.4_...`) or by topic.
 - [P6.1_WIDESCREEN_MENU_AUDIT](P6.1_WIDESCREEN_MENU_AUDIT.md): widescreen menu and transition audit.
 - [P6.4_FAST_FORWARD](P6.4_FAST_FORWARD.md): fast-forward (turbo).
 - [P6.36_TURBO_MUSIC](P6.36_TURBO_MUSIC.md): music at normal speed in turbo (design; phases 1 and 2 built).
+- [P6.37_VERSION](P6.37_VERSION.md): the port version shown in game (Options footer, title corner), logged and in the PC window title.
 - [P6.5_NRO_FORMAT](P6.5_NRO_FORMAT.md): NRO format notes.
 - [P6.5_PACKAGING](P6.5_PACKAGING.md): release packaging.
 - [P6.9_RESTART](P6.9_RESTART.md): in-process game restart.
