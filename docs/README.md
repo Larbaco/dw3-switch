@@ -35,6 +35,7 @@ Files are named by roadmap item id (`P6.4_...`) or by topic.
 - [SWITCH_BACKEND](SWITCH_BACKEND.md): the Switch PSY-Z backend.
 - [CI_SUBMODULES](CI_SUBMODULES.md): CI submodule initialization.
 - [BUILD_SPEED](BUILD_SPEED.md): ccache, incremental decomp patches, replay selection, CI timings, scratch-dir cleanup.
+- [DEPENDENCIES](DEPENDENCIES.md): pins, upstream changes since 2026-10-01, impact and bump plan (decomp, psyz, SDL, devkitPro, Actions).
 - [CDFS_NOTES](CDFS_NOTES.md): CD and file serving notes.
 - [SINGLE_BUILD](SINGLE_BUILD.md): one build for US and EU (P6.24).
 - [PER_USER_SAVES](PER_USER_SAVES.md): per-user saves design (P6.26).
