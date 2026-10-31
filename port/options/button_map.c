@@ -308,7 +308,7 @@ void dw3_button_map_load_custom(const unsigned char m[DW3_BTN_COUNT],
                                 const char *source) {
     if (m == NULL || !dw3_button_map_valid(m)) {
         dw3_button_map_log_invalid("button_map is not a permutation");
-        dw3_button_map_load(DW3_LAYOUT_PLAYSTATION, "default");
+        dw3_button_map_load(DW3_LAYOUT_DEFAULT, "default");
         return;
     }
     memcpy(g_map, m, DW3_BTN_COUNT);
@@ -371,9 +371,10 @@ int dw3_button_map_assign(int button, int source) {
 }
 
 void dw3_button_map_reset(const char *how) {
-    bm_set(DW3_LAYOUT_PLAYSTATION);
+    bm_set(DW3_LAYOUT_DEFAULT);
     g_swallow = 1;
-    BM_LOG("dw3-controls: reset to default (layout=playstation) (%s)",
+    BM_LOG("dw3-controls: reset to default (layout=%s) (%s)",
+           dw3_button_layout_name(DW3_LAYOUT_DEFAULT),
            how != NULL ? how : "screen");
     bm_log_map();
 }

@@ -260,7 +260,7 @@ static void test_custom(void) {
           "bad arguments");
     /* Reset */
     dw3_button_map_reset("screen");
-    CHECK(dw3_button_map_layout() == DW3_LAYOUT_PLAYSTATION, "reset: playstation");
+    CHECK(dw3_button_map_layout() == DW3_LAYOUT_NINTENDO, "reset: the default, Nintendo (D2)");
     CHECK(dw3_button_map_apply(idle) == idle, "reset: released");
     CHECK(dw3_button_map_apply(wl) == wl, "reset: identity");
     /* Custom boot, a preset replaces it, custom keeps the map */
@@ -277,7 +277,7 @@ static void test_custom(void) {
           "custom keeps the map in force");
     m[0] = 1; /* not a permutation */
     dw3_button_map_load_custom(m, "cfg");
-    CHECK(dw3_button_map_layout() == DW3_LAYOUT_PLAYSTATION, "bad map: default");
+    CHECK(dw3_button_map_layout() == DW3_LAYOUT_DEFAULT, "bad map: default (Nintendo, D2)");
     /* Capture: the press that opened the prompt is ignored until let go */
     dw3_button_map_load(DW3_LAYOUT_PLAYSTATION, "default");
     (void)dw3_button_map_apply(wl);        /* L held when the prompt opens */

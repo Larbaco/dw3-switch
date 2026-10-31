@@ -81,11 +81,12 @@ typedef struct Dw3OptGroup {
  * 17 Equip stays on list, 18 Whole bag, 19 Use item stays, 20 Partner switch
  * (Menus), 21 Version label, 22 Map mod pack (Display), 23 Shared saves
  * (Saves), 24 Stage sweep, 25 Sweep frames (Advanced), 26 Map buttons (the
- * action row of Controls). Restart hotkey (2) moved to Controls and Region at
- * start (10) to Saves; their numbers and cfg keys did not change.
+ * action row of Controls). D5 appends 27 Map scaler (Display, third row).
+ * Restart hotkey (2) moved to Controls and Region at start (10) to Saves; their
+ * numbers and cfg keys did not change.
  * The rows are listed here in screen order. */
 static const Dw3OptGroup dw3_optgroups[DW3_OPTGRP_COUNT] = {
-    /* Display  */ {1, 4, {0, 15, 22, 21}},
+    /* Display  */ {1, 5, {0, 15, 27, 22, 21}},
     /* Sound    */ {1, 3, {3, 4, 13}},
     /* Gameplay */ {1, 4, {1, 5, 6, 7}},
 #if DW3_OPT_REGION_ROW

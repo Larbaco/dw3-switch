@@ -425,6 +425,14 @@ static void test_view(void) {
     dw3_mv_view_zoom(&v, -1, 392, 320, 1280, 720);
     CHECK(v.step == MV_ZOOM_TOP_PLAIN - 1, "zoom out");
     CHECK(dw3_mv_scaler_step(MV_SCALER_BILINEAR, 1) == MV_SCALER_NEAREST, "wrap up");
+    /* D5: the cfg words of the Display > Map scaler row, by scaler (port_options.c
+     * g_mapscaler_word repeats them in the same order) */
+    CHECK(strcmp(dw3_mv_scaler_word(MV_SCALER_NEAREST), "nearest") == 0 &&
+          strcmp(dw3_mv_scaler_word(MV_SCALER_SHARP), "sharp") == 0 &&
+          strcmp(dw3_mv_scaler_word(MV_SCALER_LANCZOS2), "lanczos2") == 0 &&
+          strcmp(dw3_mv_scaler_word(MV_SCALER_FSR), "fsr1") == 0 &&
+          strcmp(dw3_mv_scaler_word(MV_SCALER_BILINEAR), "bilinear") == 0,
+          "scaler words of map_scaler");
     CHECK(dw3_mv_scaler_step(MV_SCALER_NEAREST, -1) == MV_SCALER_BILINEAR, "wrap down");
     CHECK(dw3_mv_scaler_step(MV_SCALER_FSR, 1) == MV_SCALER_BILINEAR, "bilinear follows FSR 1");
     CHECK(dw3_mv_scaler_linear(MV_SCALER_BILINEAR) && !dw3_mv_scaler_linear(MV_SCALER_NEAREST),

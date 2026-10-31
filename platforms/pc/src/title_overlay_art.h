@@ -100,7 +100,7 @@ void dw3_pc_title_overlay_set_options_view(int cursor, const int *values,
  * message line says it is changed at the title), DW3_TITLE_LOCK_CHEATS = the
  * Square / Y "Cheats" hint. 0 on the title. A change rebuilds the retained
  * static layer (dw3_pc_title_overlay_options_layout). */
-/* D1: the registry now has 27 rows (bits 0..26), so the Cheats entry's bit moved
+/* D1: the registry now has 28 rows (bits 0..27), so the Cheats entry's bit moved
  * from 16 to 30; bit 31 stays the overlay's in-game mark (lock_key). */
 enum { DW3_TITLE_LOCK_CHEATS = 1u << 30 };
 /* P10.6 fix-now: the source positions (0..9 of port_button_map.h: 0 B, 1 A,

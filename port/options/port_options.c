@@ -22,6 +22,7 @@
 #include "port_region_relaunch.h"
 #endif
 
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -62,7 +63,7 @@
  * port_options.h: port/pacing/pacing.c, port/battle_menu/battle_menu_memory.c
  * and port/autosave/autosave.c read them. */
 enum {
-    DW3_PORT_OPT_COUNT = 27,
+    DW3_PORT_OPT_COUNT = 28,
     DW3_PORT_OPT_WIDESCREEN = 0,
     DW3_PORT_OPT_FAST_FORWARD = 1,
     DW3_PORT_OPT_RESTART = 2,
@@ -86,8 +87,8 @@ _Static_assert(DW3_PORT_OPT_WIDESCREEN == 0 && DW3_PORT_OPT_FAST_FORWARD == 1 &&
                DW3_PORT_OPT_ITEMS_PARTNER == 20 && DW3_PORT_OPT_SHOW_VERSION == 21 &&
                DW3_PORT_OPT_MAP_MOD == 22 && DW3_PORT_OPT_SAVE_STORE == 23 &&
                DW3_PORT_OPT_STAGE_SWEEP == 24 && DW3_PORT_OPT_SWEEP_FRAMES == 25 &&
-               DW3_PORT_OPT_MAP_BUTTONS == 26 &&
-               DW3_PORT_OPT_COUNT == 27,
+               DW3_PORT_OPT_MAP_BUTTONS == 26 && DW3_PORT_OPT_MAP_SCALER == 27 &&
+               DW3_PORT_OPT_COUNT == 28,
                "registry indexes changed: update port_options_groups.h");
 
 typedef struct Dw3PortOptStub {
@@ -149,9 +150,9 @@ static Dw3PortOptStub g_stubs[DW3_PORT_OPT_COUNT] = {
     /* P9.8: 0 = PlayStation (the original buttons), 1 = Nintendo (A confirms,
      * B cancels). The file holds the words, button_layout=playstation|nintendo
      * (docs/CONTROLS_BUNDLE.md); DW3_BUTTON_MAP=default forces the first one
-     * for a run. */
-    {"Button layout", "button_layout", DW3_LAYOUT_PLAYSTATION,
-     DW3_LAYOUT_PLAYSTATION, NULL},
+     * for a run. D2: the default is Nintendo (DW3_LAYOUT_DEFAULT). */
+    {"Button layout", "button_layout", DW3_LAYOUT_DEFAULT,
+     DW3_LAYOUT_DEFAULT, NULL},
     /* P51 item 4: 0 = Ask, 1 = US, 2 = EU; the combined image only lists it.
      * No key of this file: region_default lives in the top-level file next to
      * the region folders (po_region_load / po_region_save). */
@@ -163,8 +164,8 @@ static Dw3PortOptStub g_stubs[DW3_PORT_OPT_COUNT] = {
      * DW3_TURBO_MUSIC pins it for a run (stored values). */
     {"Turbo music", "turbo_music", 0, 0, "DW3_TURBO_MUSIC"},
     /* P10.6: 0 = the game's button icons, 1 = Switch glyphs (a switch row;
-     * Confirm toggles). DW3_SWITCH_GLYPHS pins it for a run. */
-    {"Switch glyphs", "switch_glyphs", 0, 0, "DW3_SWITCH_GLYPHS"},
+     * Confirm toggles). DW3_SWITCH_GLYPHS pins it for a run. D2: default ON. */
+    {"Switch glyphs", "switch_glyphs", 1, 1, "DW3_SWITCH_GLYPHS"},
     /* P6.32 phase 4: 0 = off (the game's own Map screen only), 1 = Square on
      * it opens the full-screen view. A switch row; the key is the file-only one
      * of the preview builds. No environment variable: the replays seed it in the
@@ -194,7 +195,32 @@ static Dw3PortOptStub g_stubs[DW3_PORT_OPT_COUNT] = {
     /* D1 Controls: an action row (no value, no key); Confirm opens the Map
      * buttons screen. */
     {"Map buttons", NULL, 0, 0, NULL},
+    /* D5 Display: the full-screen map's picture scaler. The file holds a word
+     * (map_scaler=nearest|sharp|lanczos2|fsr1|bilinear); the stored value is a
+     * DW3_MAPSCALER_*. Default FSR 1. Read at each open of the map view. */
+    {"Map scaler", "map_scaler", DW3_MAPSCALER_DEFAULT, DW3_MAPSCALER_DEFAULT, NULL},
 };
+
+/* D5: the words of the Map scaler row in port_options.cfg, by stored value. */
+static const char *const g_mapscaler_word[DW3_MAPSCALER_COUNT] = {
+    "nearest", "sharp", "lanczos2", "fsr1", "bilinear"};
+
+static int po_mapscaler_parse(const char *v) {
+    int i;
+
+    for (i = 0; i < DW3_MAPSCALER_COUNT; i++) {
+        if (v != NULL && strcmp(v, g_mapscaler_word[i]) == 0) {
+            return i;
+        }
+    }
+    return -1;
+}
+
+/* D2: the generation of the defaults the loaded file was written under (see
+ * DW3_DEFAULTS_GEN). A file newer than this build keeps its number. */
+static int g_defaults_gen = DW3_DEFAULTS_GEN;
+/* errno of the last failed cfg write, for the migration's log line. */
+static int g_save_errno;
 
 /* P9.4 persistence. The registry values above are what the game reads; this
  * is the option file behind them. dw3_port_options_persist_init() fills the
@@ -578,7 +604,8 @@ static int po_is_mode(int index) {
            index == DW3_PORT_OPT_BUTTON_LAYOUT ||
            index == DW3_PORT_OPT_REGION ||
            index == DW3_PORT_OPT_TURBO_MUSIC ||
-           index == DW3_PORT_OPT_STAGE_SWEEP;
+           index == DW3_PORT_OPT_STAGE_SWEEP ||
+           index == DW3_PORT_OPT_MAP_SCALER;
 }
 
 /* Rows that Left / Right step and Confirm cycles: the volumes and the modes. */
@@ -595,6 +622,7 @@ static int po_value_max(int index) {
            : index == DW3_PORT_OPT_REGION ? 2
            : index == DW3_PORT_OPT_TURBO_MUSIC ? 1
            : index == DW3_PORT_OPT_STAGE_SWEEP ? 2
+           : index == DW3_PORT_OPT_MAP_SCALER ? DW3_MAPSCALER_COUNT - 1
                                                    : DW3_PACING_MODE_MAX;
 }
 
@@ -853,12 +881,21 @@ static int po_save(void) {
         }
         if (i == DW3_PORT_OPT_BUTTON_LAYOUT) {
             snprintf(num, sizeof(num), "%s", dw3_button_layout_name(out[i]));
+        } else if (i == DW3_PORT_OPT_MAP_SCALER) {
+            snprintf(num, sizeof(num), "%s",
+                     g_mapscaler_word[out[i] >= 0 && out[i] < DW3_MAPSCALER_COUNT
+                                          ? out[i] : DW3_MAPSCALER_DEFAULT]);
         } else {
             snprintf(num, sizeof(num), "%d", out[i]);
         }
         if (dw3_optcfg_set(&g_cfg, g_stubs[i].key, num) != 0) {
             PO_WARN("dw3-options: cannot stage %s", g_stubs[i].key);
         }
+    }
+    /* D2: the generation of the defaults this file is written under. */
+    snprintf(num, sizeof(num), "%d", g_defaults_gen);
+    if (dw3_optcfg_set(&g_cfg, "defaults_gen", num) != 0) {
+        PO_WARN("dw3-options: cannot stage defaults_gen");
     }
     /* P6.12: button_map only exists while the layout is custom. A layout the
      * environment pinned leaves the file's map alone. */
@@ -875,6 +912,7 @@ static int po_save(void) {
         }
     }
     if (dw3_optcfg_save(&g_cfg, g_cfg_dir) != 0) {
+        g_save_errno = errno;
         g_dirty = 1;
         PO_WARN("dw3-options: save to %s failed (will retry on close/exit)",
                 g_cfg_dir);
@@ -930,7 +968,7 @@ int dw3_port_options_file_int(const char *key, int def) {
      * change on the screen is seen at once, with or without a file. */
     for (i = 0; i < DW3_PORT_OPT_COUNT; i++) {
         if (g_stubs[i].key != NULL && i != DW3_PORT_OPT_BUTTON_LAYOUT &&
-            strcmp(g_stubs[i].key, key) == 0) {
+            i != DW3_PORT_OPT_MAP_SCALER && strcmp(g_stubs[i].key, key) == 0) {
             return g_stubs[i].value;
         }
     }
@@ -951,16 +989,79 @@ const char *dw3_port_options_cfg_dir(void) {
     return g_persist_on ? g_cfg_dir : "";
 }
 
+/* D2 (docs/OPTIONS_REORG.md section 6.1): a file that exists and is below the
+ * current defaults generation (no `defaults_gen`, or a number under 2) is
+ * migrated once, in the loaded text before the rows read it: button_layout
+ * playstation -> nintendo and switch_glyphs 0 -> 1. A custom layout (with its
+ * button_map), an explicit nintendo, a glyphs 1 and any missing key are left as
+ * they are (a missing key simply takes the new default). `defaults_gen` itself
+ * is written by po_save. Returns 1 when the file was below the generation (the
+ * caller writes it at once), else 0. The message is built here and logged by the
+ * caller once the write has been tried. */
+static int po_defaults_migrate(char *msg, size_t cap) {
+    const char *mv = dw3_optcfg_get(&g_cfg, "defaults_gen");
+    const char *lv;
+    const char *gv;
+    char flips[160];
+    char kept[160];
+    int gen = 1;
+    int n;
+
+    if (mv != NULL) {
+        if (dw3_optcfg_parse_int(mv, &n) != 0 || n < 1) {
+            PO_WARN("dw3-options: defaults_gen=%s is not valid; treating the "
+                    "file as generation 1", mv);
+        } else {
+            gen = n;
+        }
+    }
+    if (gen >= DW3_DEFAULTS_GEN) {
+        g_defaults_gen = gen; /* a newer build's number is kept */
+        return 0;
+    }
+    flips[0] = kept[0] = '\0';
+    lv = dw3_optcfg_get(&g_cfg, "button_layout");
+    if (lv != NULL && strcmp(lv, "playstation") == 0) {
+        (void)dw3_optcfg_set(&g_cfg, "button_layout", "nintendo");
+        snprintf(flips + strlen(flips), sizeof(flips) - strlen(flips),
+                 " button_layout playstation->nintendo");
+    } else if (lv != NULL) {
+        snprintf(kept + strlen(kept), sizeof(kept) - strlen(kept),
+                 "%sbutton_layout=%s", kept[0] ? ", " : "", lv);
+    }
+    gv = dw3_optcfg_get(&g_cfg, "switch_glyphs");
+    if (gv != NULL && strcmp(gv, "0") == 0) {
+        (void)dw3_optcfg_set(&g_cfg, "switch_glyphs", "1");
+        snprintf(flips + strlen(flips), sizeof(flips) - strlen(flips),
+                 " switch_glyphs 0->1");
+    } else if (gv != NULL) {
+        snprintf(kept + strlen(kept), sizeof(kept) - strlen(kept),
+                 "%sswitch_glyphs=%s", kept[0] ? ", " : "", gv);
+    }
+    if (flips[0] == '\0') {
+        snprintf(msg, cap, "dw3-options: defaults_gen %d->%d nothing to flip",
+                 gen, DW3_DEFAULTS_GEN);
+    } else {
+        snprintf(msg, cap, "dw3-options: migrate defaults_gen %d->%d%s (kept: %s)",
+                 gen, DW3_DEFAULTS_GEN, flips, kept[0] ? kept : "none");
+    }
+    return 1;
+}
+
 int dw3_port_options_persist_init(const char *dir) {
     char path[DW3_OPTCFG_PATH_MAX];
+    char migrate_msg[320];
     int rc;
     int i;
     int bad = 0;
     int layout_from_cfg = 0;
+    int migrate = 0;
 
     g_persist_on = 0;
     g_dirty = 0;
     g_env_pinned = 0;
+    g_defaults_gen = DW3_DEFAULTS_GEN;
+    migrate_msg[0] = '\0';
     if (dir == NULL || dir[0] == '\0' ||
         strlen(dir) >= sizeof(g_cfg_dir) ||
         dw3_optcfg_path(dir, "", path, sizeof(path)) != 0) {
@@ -982,6 +1083,8 @@ int dw3_port_options_persist_init(const char *dir) {
                 "change will replace it", path);
     } else if (rc == DW3_OPTCFG_LOAD_MISSING) {
         PO_INFO("dw3-options: no %s; defaults", path);
+        /* a fresh install is born on the current defaults: nothing to migrate */
+        PO_INFO("dw3-options: defaults_gen=%d (new file)", DW3_DEFAULTS_GEN);
     } else {
         const char *v;
         int n;
@@ -999,6 +1102,7 @@ int dw3_port_options_persist_init(const char *dir) {
             PO_WARN("dw3-options: %s: ignored %d malformed line(s)", path,
                     g_cfg.skipped);
         }
+        migrate = po_defaults_migrate(migrate_msg, sizeof(migrate_msg));
         for (i = 0; i < DW3_PORT_OPT_COUNT; i++) {
             if (g_stubs[i].key == NULL) {
                 continue;
@@ -1043,6 +1147,18 @@ int dw3_port_options_persist_init(const char *dir) {
                 layout_from_cfg = 1;
                 continue;
             }
+            if (i == DW3_PORT_OPT_MAP_SCALER) {
+                n = po_mapscaler_parse(v);
+                if (n < 0) {
+                    PO_WARN("dw3-options: %s=%s is not valid; using default %s",
+                            g_stubs[i].key, v,
+                            g_mapscaler_word[g_stubs[i].def]);
+                    bad++;
+                    continue;
+                }
+                g_stubs[i].value = n;
+                continue;
+            }
             if (dw3_optcfg_parse_int(v, &n) != 0 || !po_valid(i, n)) {
                 PO_WARN("dw3-options: %s=%s is not valid; using default %d",
                         g_stubs[i].key, v, g_stubs[i].def);
@@ -1075,7 +1191,7 @@ int dw3_port_options_persist_init(const char *dir) {
      * way the test ran. */
     PO_INFO("dw3-options: file keys items_equip_from_items=%d items_equip_stays=%d items_bag_view=%d items_use_stays=%d items_partner_switch=%d "
             "map_screen=%d battle_menu_memory=%d show_version=%d map_mod=%d save_store=%d "
-            "stage_sweep=%d stage_sweep_frames=%d",
+            "stage_sweep=%d stage_sweep_frames=%d map_scaler=%s",
             dw3_port_options_file_int("items_equip_from_items", 1),
             dw3_port_options_file_int("items_equip_stays", 1),
             dw3_port_options_file_int("items_bag_view", 1),
@@ -1087,7 +1203,8 @@ int dw3_port_options_persist_init(const char *dir) {
             g_stubs[DW3_PORT_OPT_MAP_MOD].value,
             g_stubs[DW3_PORT_OPT_SAVE_STORE].value,
             g_stubs[DW3_PORT_OPT_STAGE_SWEEP].value,
-            g_stubs[DW3_PORT_OPT_SWEEP_FRAMES].value);
+            g_stubs[DW3_PORT_OPT_SWEEP_FRAMES].value,
+            g_mapscaler_word[g_stubs[DW3_PORT_OPT_MAP_SCALER].value]);
 #if defined(DW3_TITLE_NATIVE_OVERLAY)
     /* P6.37: the port version in the title's corner (docs/P6.37_VERSION.md). */
     dw3_pc_title_overlay_set_version(dw3_port_options_file_int("show_version", 1) != 0);
@@ -1101,6 +1218,18 @@ int dw3_port_options_persist_init(const char *dir) {
             (g_env_pinned >> DW3_PORT_OPT_TURBO_MUSIC) & 1u ? " [env]" : "");
     po_layout_boot(layout_from_cfg);
     po_glyphs_boot();
+    if (migrate) {
+        /* D2: write the migrated file at once so it runs once; a failed write is
+         * kept in memory and retried by the next save and the next boot. This is
+         * after the map and the environment pins are in force, so a custom
+         * button_map is written back as it was read and a pinned row keeps the
+         * file's value (po_save). */
+        PO_INFO("%s", migrate_msg);
+        if (po_save() != 0) {
+            PO_WARN("dw3-options: migrate defaults_gen NOT saved (%s), will "
+                    "retry", strerror(g_save_errno));
+        }
+    }
     return rc == DW3_OPTCFG_LOAD_ERROR ? -1 : 0;
 }
 
@@ -1116,11 +1245,14 @@ static const char *po_mode_name(int index, int v) {
     static const char *const region[3] = {"ask", "us", "eu"};
     static const char *const tmusic[2] = {"1x", "fast"};
     static const char *const sweep[3] = {"off", "run", "start over"};
+    static const char *const scaler[DW3_MAPSCALER_COUNT] = {
+        "nearest", "sharp bilinear", "lanczos2", "fsr 1", "bilinear"};
 
     if (v < 0 || v > po_value_max(index)) {
         return "?";
     }
     return index == DW3_PORT_OPT_STAGE_SWEEP ? sweep[v]
+           : index == DW3_PORT_OPT_MAP_SCALER ? scaler[v]
            : index == DW3_PORT_OPT_ENCOUNTER_RATE ? encounter[v]
            : index == DW3_PORT_OPT_BUTTON_LAYOUT ? layout[v]
            : index == DW3_PORT_OPT_REGION ? region[v]
@@ -1213,6 +1345,7 @@ static void po_step(int index, int delta) {
                 : index == DW3_PORT_OPT_REGION ? "region at start"
                 : index == DW3_PORT_OPT_TURBO_MUSIC ? "turbo music"
                 : index == DW3_PORT_OPT_STAGE_SWEEP ? "stage sweep"
+                : index == DW3_PORT_OPT_MAP_SCALER ? "map scaler"
                                                     : "text speed",
                 po_mode_name(index, v));
     }
@@ -1266,7 +1399,7 @@ static void po_custom_back(void) {
 }
 
 /* The map changed from this screen: the Button layout row reads Custom (or
- * PlayStation after a reset) and the file is written. */
+ * Nintendo after a reset, D2) and the file is written. */
 static void po_map_changed(int layout) {
     g_stubs[DW3_PORT_OPT_BUTTON_LAYOUT].value = layout;
     g_env_pinned &= ~(1u << DW3_PORT_OPT_BUTTON_LAYOUT);
@@ -1315,7 +1448,7 @@ static void po_assign_tick(void) {
 
 static void po_reset_map(void) {
     dw3_button_map_reset("screen");
-    po_map_changed(DW3_LAYOUT_PLAYSTATION);
+    po_map_changed(DW3_LAYOUT_DEFAULT); /* D2: Nintendo */
     po_sound(PO_SND_SELECT);
 }
 

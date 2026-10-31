@@ -140,9 +140,21 @@ static void pan_flush(void);
 static char g_cache_dir[480];
 /* <config dir>/mods on the PC, sdmc:/switch/dw3/mods on the Switch */
 static char g_mods_dir[480];
-/* The scaler the next open starts with: nearest (the owner's choice after the
- * OLED look of preview.45), then whatever the player left it on. */
-static int g_scaler = MV_SCALER_NEAREST;
+/* The scaler the next open starts with. D5 (owner 2026-10-31): the Options row
+ * Display > Map scaler (key map_scaler), FSR 1 by default (it was Nearest from the
+ * OLED look of preview.45 to D5). A change of the row is taken at the next open;
+ * ZL / ZR in the view change the scaler for the session only (not written), and
+ * the next open keeps it until the row changes. -1 = not read yet. */
+static int g_scaler = -1;
+static int g_scaler_row_seen = -1; /* the row's value at the last open */
+
+_Static_assert(DW3_MAPSCALER_NEAREST == MV_SCALER_NEAREST &&
+               DW3_MAPSCALER_SHARP == MV_SCALER_SHARP &&
+               DW3_MAPSCALER_LANCZOS2 == MV_SCALER_LANCZOS2 &&
+               DW3_MAPSCALER_FSR1 == MV_SCALER_FSR &&
+               DW3_MAPSCALER_BILINEAR == MV_SCALER_BILINEAR &&
+               DW3_MAPSCALER_COUNT == MV_SCALER_COUNT,
+               "port_options.h DW3_MAPSCALER_* must match map_view_core.h MV_SCALER_*");
 /* patch 0147: the marker list and the area names' file, as the game last gave them */
 static Dw3MapViewData g_data;
 static int g_data_ok;
@@ -970,7 +982,8 @@ static void build_texture(int scaler) {
     s.built_ms = 0;
     if (s.mod.rgba) {
         /* the mod pack's map is already upscaled: no CPU scaler, only the GPU
-         * filter follows the player's scaler (nearest unless he cycles it) */
+         * filter follows the player's scaler (D5: FSR 1 by default, so linear;
+         * Nearest from the row or ZL / ZR gives the sharp pixels) */
         size_t n = (size_t)s.mod.w * (size_t)s.mod.h * 4;
 
         job_abandon();
@@ -1010,6 +1023,44 @@ static void build_texture(int scaler) {
         return;
     }
     job_start(scaler);
+}
+
+/* D5: the scaler this open starts with. The Display > Map scaler row decides at
+ * each open; what the player cycled to in the view stays until the row changes. */
+static void scaler_for_open(void) {
+    int row = dw3_port_options_level(DW3_PORT_OPT_MAP_SCALER);
+
+    if (row < 0 || row >= MV_SCALER_COUNT) row = DW3_MAPSCALER_DEFAULT;
+    if (g_scaler < 0 || row != g_scaler_row_seen) {
+        fprintf(stderr, "dw3-map: scaler for this open: %s (Options > Display > "
+                "Map scaler, map_scaler=%s%s)\n", dw3_mv_scaler_name(row),
+                dw3_mv_scaler_word(row),
+                g_scaler < 0 ? ", first open" : ", the row changed");
+        g_scaler = row;
+        g_scaler_row_seen = row;
+    } else {
+        fprintf(stderr, "dw3-map: scaler for this open: %s (the one the view was "
+                "left on; the row says %s)\n", dw3_mv_scaler_name(g_scaler),
+                dw3_mv_scaler_name(row));
+    }
+}
+
+/* D5: opening on a CPU scaler (Lanczos2, FSR 1) must not hitch or show an empty
+ * map while it builds (2 to 6 s on the Switch; a cache hit is instant but the
+ * reveal layer makes a first open a miss): the captured map is shown at once as
+ * Nearest (a copy, about 5 ms) and the worker thread swaps the wanted scaler in
+ * when it is done. The wanted scaler is remembered for the next open even when
+ * the view closes first. With the mod pack there is no CPU scaler (its map is
+ * already upscaled): the scaler only chooses the GPU filter. */
+static void build_texture_open(int want) {
+    if (!s.mod.rgba && (want == MV_SCALER_LANCZOS2 || want == MV_SCALER_FSR)) {
+        fprintf(stderr, "dw3-map: opens on %s while %s builds on the worker thread "
+                "(no hitch)\n", dw3_mv_scaler_name(MV_SCALER_NEAREST),
+                dw3_mv_scaler_name(want));
+        build_texture(MV_SCALER_NEAREST);
+        g_scaler = want;
+    }
+    build_texture(want);
 }
 
 /* --- HUD ---------------------------------------------------------------------*/
@@ -1647,7 +1698,8 @@ static void open_view(const void *sheet, int sheet_file, int half, int home_x,
             "window)\n", sprites_fixed() ? "fixed size" : "map scale (fixed size "
             "off: DW3_MAP_SPRITES_FIXED=0)",
             (double)dw3_mv_view_scale(1, s.base.w, s.base.h, VW, VH));
-    build_texture(g_scaler);
+    scaler_for_open();
+    build_texture_open(g_scaler);
     hud_touch();
 }
 

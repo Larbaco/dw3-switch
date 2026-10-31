@@ -1,5 +1,6 @@
 /* Headless P9.2 port-options state machine (no disc / GPU). */
 #include "port_audio.h"
+#include "port_button_map.h"
 #include "port_options.h"
 #include "port_options_groups.h"
 
@@ -41,7 +42,7 @@ int main(void) {
         return fail("re-open");
     }
 
-    if (dw3_port_options_count() != 27) {
+    if (dw3_port_options_count() != 28) {
         return fail("option count");
     }
     if (dw3_port_options_level(DW3_PORT_OPT_BATTLE_MENU) != 0 ||
@@ -170,7 +171,7 @@ int main(void) {
      * every registry row is in exactly one group, a long list scrolls. */
     {
         int ids[DW3_OPTGRP_COUNT];
-        int seen[27] = {0};
+        int seen[28] = {0};
         int g, k;
 
         /* D1: Display, Sound, Gameplay, Menus, Controls, Saves, Cheats, Advanced,
@@ -194,7 +195,7 @@ int main(void) {
                 seen[dw3_optgroups[g].rows[k]]++;
             }
         }
-        for (k = 0; k < 27; k++) {
+        for (k = 0; k < 28; k++) {
             if (k == DW3_PORT_OPT_REGION) continue; /* combined image only */
             if (k == DW3_PORT_OPT_SWITCH_GLYPHS && !DW3_OPT_GLYPHS_ROW) continue; /* Switch only */
             if (seen[k] != 1) {
@@ -223,12 +224,24 @@ int main(void) {
     /* P6.32 phase 4: the Full-screen map row is the second row of the Display
      * group, off by default, a plain switch (Confirm toggles), not locked in game.
      * D1 adds Map mod pack and Version label after it (both default ON). */
-    if (dw3_optgroups[DW3_OPTGRP_DISPLAY].nrows != 4 ||
+    if (dw3_optgroups[DW3_OPTGRP_DISPLAY].nrows != 5 ||
         dw3_optgroups[DW3_OPTGRP_DISPLAY].rows[0] != 0 /* Widescreen */ ||
         dw3_optgroups[DW3_OPTGRP_DISPLAY].rows[1] != DW3_PORT_OPT_MAP_SCREEN ||
-        dw3_optgroups[DW3_OPTGRP_DISPLAY].rows[2] != DW3_PORT_OPT_MAP_MOD ||
-        dw3_optgroups[DW3_OPTGRP_DISPLAY].rows[3] != DW3_PORT_OPT_SHOW_VERSION) {
-        return fail("Display group is Widescreen, Map screen, Map mod pack, Version label");
+        dw3_optgroups[DW3_OPTGRP_DISPLAY].rows[2] != DW3_PORT_OPT_MAP_SCALER ||
+        dw3_optgroups[DW3_OPTGRP_DISPLAY].rows[3] != DW3_PORT_OPT_MAP_MOD ||
+        dw3_optgroups[DW3_OPTGRP_DISPLAY].rows[4] != DW3_PORT_OPT_SHOW_VERSION) {
+        return fail("Display group is Widescreen, Map screen, Map scaler, Map mod pack, Version label");
+    }
+    /* D5: the Map scaler row is the third of Display, FSR 1 by default (owner
+     * 2026-10-31), a stepped row of five values that is not locked in game. */
+    if (dw3_port_options_level(DW3_PORT_OPT_MAP_SCALER) != DW3_MAPSCALER_FSR1 ||
+        strcmp(dw3_port_options_key(DW3_PORT_OPT_MAP_SCALER), "map_scaler") != 0) {
+        return fail("Map scaler defaults to FSR 1, key map_scaler");
+    }
+    /* D2: the layout defaults to Nintendo and Switch glyphs to ON. */
+    if (dw3_port_options_level(DW3_PORT_OPT_BUTTON_LAYOUT) != DW3_LAYOUT_NINTENDO ||
+        dw3_port_options_level(DW3_PORT_OPT_SWITCH_GLYPHS) != 1) {
+        return fail("D2 defaults: Nintendo layout, Switch glyphs ON");
     }
     if (dw3_port_options_level(DW3_PORT_OPT_MAP_MOD) != 1 ||
         dw3_port_options_level(DW3_PORT_OPT_SHOW_VERSION) != 1) {
@@ -278,11 +291,11 @@ int main(void) {
         dw3_optgroups[DW3_OPTGRP_CONTROLS].rows[DW3_OPT_GLYPHS_ROW + 4] != 2 /* Restart hotkey, last */) {
         return fail("Controls row count follows DW3_OPT_GLYPHS_ROW");
     }
-    if (dw3_port_options_level(DW3_PORT_OPT_SWITCH_GLYPHS) != 0 ||
+    if (dw3_port_options_level(DW3_PORT_OPT_SWITCH_GLYPHS) != 1 ||
         dw3_port_options_label(DW3_PORT_OPT_SWITCH_GLYPHS) == NULL ||
         strstr(dw3_port_options_label(DW3_PORT_OPT_SWITCH_GLYPHS),
                "Switch glyphs") == NULL) {
-        return fail("Switch glyphs row defaults to off");
+        return fail("Switch glyphs row defaults to on (D2)");
     }
 #if DW3_OPT_GLYPHS_ROW
     dw3_port_options_open();
@@ -307,12 +320,12 @@ int main(void) {
         }
         dw3_port_options_test_set_pressed(1u << BIT_CROSS);
         dw3_port_options_tick();
-        if (dw3_port_options_level(DW3_PORT_OPT_SWITCH_GLYPHS) != 1) {
-            return fail("Confirm turns Switch glyphs on");
+        if (dw3_port_options_level(DW3_PORT_OPT_SWITCH_GLYPHS) != 0) {
+            return fail("Confirm turns Switch glyphs off (it starts ON since D2)");
         }
         dw3_port_options_tick();
-        if (dw3_port_options_level(DW3_PORT_OPT_SWITCH_GLYPHS) != 0) {
-            return fail("Confirm turns Switch glyphs off");
+        if (dw3_port_options_level(DW3_PORT_OPT_SWITCH_GLYPHS) != 1) {
+            return fail("Confirm turns Switch glyphs on");
         }
         dw3_port_options_test_set_pressed(1u << BIT_TRIANGLE);
         dw3_port_options_tick();

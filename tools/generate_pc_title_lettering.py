@@ -332,7 +332,20 @@ EXTRA_ROWS = {
                     'Welche Tasten die Vollbildkarte steuern.',
                     'Qué botones manejan el mapa completo.',
                     'Quali tasti guidano la mappa a schermo.')},
+    # D5 (registry row 27, Display): the full-screen map's picture scaler. The values
+    # are algorithm names, the same in every language (SCALER_VALUES below).
+    'sc': {'row': ('Map scaler', 'Filtre de carte', 'Karten-Skalierer', 'Escalado del mapa',
+                   'Scaler mappa'),
+           'desc': ('Picture filter of the full-screen map. Next time it opens.',
+                    'Filtre de la carte plein écran. À la prochaine ouverture.',
+                    'Skalierung der Vollbildkarte. Beim nächsten Öffnen.',
+                    'Escalado del mapa completo. Al abrirlo otra vez.',
+                    'Scaler della mappa a schermo. Alla prossima apertura.')},
 }
+# D5: the words of the Map scaler row (the stored order: nearest, sharp, lanczos2,
+# fsr1, bilinear), product names the same in every language.
+SCALER_VALUES = (('nearest', 'Nearest'), ('sharp', 'Sharp bilinear'),
+                 ('lanczos2', 'Lanczos2'), ('fsr1', 'FSR 1'), ('bilinear', 'Bilinear'))
 # The Stage sweep values besides OFF (the Options screen's word).
 SWEEP_VALUES = {
     'run': ('Run', 'Lancer', 'Starten', 'Ejecutar', 'Avvia'),
@@ -417,6 +430,8 @@ for _i, _lang in enumerate(LANGS):
         LETTERS.append(('opt_dlg_ask_warn_%s_%s' % (_key, _lang), _t['warn'][_i], 24, 'DejaVuSans.ttf'))
 for _key, _name in MAPBTN_SELECT.items():
     LETTERS.append(('opt_val_btn_' + _key, _name, 26, 'DejaVuSans.ttf'))
+for _key, _name in SCALER_VALUES:
+    LETTERS.append(('opt_val_sc_' + _key, _name, 26, 'DejaVuSans.ttf'))
 # P6.27 / P6.28 title Quit plaque and the Yes / No confirmation (docs/PORT_OPTIONS.md
 # "Quit and return to title"), in the five languages of the EU disc (en is also
 # the US disc's). The plaque word is bold like the other plaques; the window
@@ -575,23 +590,23 @@ for _lang, _t in MAP_SCREEN_TEXT.items():
 # language. Keep labels under 290 px, values under 236 px, descriptions under 690.
 CUSTOM_TEXT = {
     'en': {'row': 'Customize buttons', 'rowdesc': 'Pick which button makes each PlayStation button.',
-           'reset': 'Reset to default', 'resetdesc': 'Back to the PlayStation layout. Applies now.',
+           'reset': 'Reset to default', 'resetdesc': 'Back to the Nintendo layout. Applies now.',
            'prompt': 'Press a button', 'promptdesc': 'Press the new button. Start or Select cancels.',
            'custom': 'Custom'},
     'fr': {'row': 'Personnaliser', 'rowdesc': 'Choisir le bouton de chaque touche PlayStation.',
-           'reset': 'Réinitialiser', 'resetdesc': 'Retour à la disposition PlayStation. Effet immédiat.',
+           'reset': 'Réinitialiser', 'resetdesc': 'Retour à la disposition Nintendo. Effet immédiat.',
            'prompt': 'Appuyez', 'promptdesc': 'Appuyez sur le nouveau bouton. Start/Select annule.',
            'custom': 'Perso'},
     'de': {'row': 'Tasten anpassen', 'rowdesc': 'Wähle, welche Taste jede PlayStation-Taste auslöst.',
-           'reset': 'Zurücksetzen', 'resetdesc': 'Zurück zur PlayStation-Belegung. Sofort aktiv.',
+           'reset': 'Zurücksetzen', 'resetdesc': 'Zurück zur Nintendo-Belegung. Sofort aktiv.',
            'prompt': 'Taste drücken', 'promptdesc': 'Neue Taste drücken. Start oder Select bricht ab.',
            'custom': 'Eigene'},
     'es': {'row': 'Personalizar botones', 'rowdesc': 'Elige qué botón hace cada botón de PlayStation.',
-           'reset': 'Restablecer', 'resetdesc': 'Vuelve a la disposición PlayStation. Se aplica ya.',
+           'reset': 'Restablecer', 'resetdesc': 'Vuelve a la disposición Nintendo. Se aplica ya.',
            'prompt': 'Pulsa un botón', 'promptdesc': 'Pulsa el botón nuevo. Start o Select cancela.',
            'custom': 'Otra'},
     'it': {'row': 'Personalizza tasti', 'rowdesc': 'Scegli quale tasto fa ogni tasto PlayStation.',
-           'reset': 'Ripristina', 'resetdesc': 'Torna alla disposizione PlayStation. Subito attivo.',
+           'reset': 'Ripristina', 'resetdesc': 'Torna alla disposizione Nintendo. Subito attivo.',
            'prompt': 'Premi un tasto', 'promptdesc': 'Premi il nuovo tasto. Start o Select annulla.',
            'custom': 'Personale'},
 }

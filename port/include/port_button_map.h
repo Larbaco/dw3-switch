@@ -36,7 +36,12 @@ enum {
     DW3_LAYOUT_PLAYSTATION = 0,
     DW3_LAYOUT_NINTENDO = 1,
     DW3_LAYOUT_CUSTOM = 2,   /* P6.12: whatever map the Customize screen made */
-    DW3_LAYOUT_COUNT = 3
+    DW3_LAYOUT_COUNT = 3,
+    /* D2 (docs/OPTIONS_REORG.md section 6.1, owner 2026-10-31): the layout of a
+     * fresh install and of "Reset to default" is Nintendo (A confirms, B
+     * cancels), on the Switch and on the PC. DW3_BUTTON_MAP=default is still the
+     * PlayStation pin for tests. */
+    DW3_LAYOUT_DEFAULT = DW3_LAYOUT_NINTENDO
 };
 
 /* --- pure policy (no state; unit tested) ------------------------------- */

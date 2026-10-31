@@ -61,6 +61,18 @@ const char *dw3_mv_scaler_name(int scaler) {
 
 int dw3_mv_scaler_linear(int scaler) { return scaler != MV_SCALER_NEAREST; }
 
+/* The cfg word of a scaler (map_scaler=, port_options.c g_mapscaler_word). */
+const char *dw3_mv_scaler_word(int scaler) {
+    switch (scaler) {
+    case MV_SCALER_NEAREST: return "nearest";
+    case MV_SCALER_SHARP: return "sharp";
+    case MV_SCALER_LANCZOS2: return "lanczos2";
+    case MV_SCALER_FSR: return "fsr1";
+    case MV_SCALER_BILINEAR: return "bilinear";
+    default: return "?";
+    }
+}
+
 /* --- button bindings (phase 4) ------------------------------------------- */
 
 typedef struct MvBindWord {
