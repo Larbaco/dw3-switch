@@ -203,6 +203,13 @@ These hold for any agent working on the owner's desktop, whatever the tool
     for the occasional engine-wide change you want proven. CI has no game data and
     runs no replay. `tools/cleanup_tmp.py` lists stale
     scratch dirs (dry run; the owner decides what to delete).
+14. **Destructive test steps** (owner rule, 2026-10-31). No test step for the
+    owner may destroy or overwrite saves, cfgs, the shared store or other user
+    data without (a) a verified backup, (b) a guard log line proving the safe
+    path is active, and (c) a restore step. Such steps are marked
+    **⚠ DESTRUCTIVE** and are optional; they are listed in
+    `docs/OLED_TEST_PLAN.md` ("Destructive steps"). A step that cannot meet all
+    three is written without the destructive action, or is not run.
 
 ## Working style
 
