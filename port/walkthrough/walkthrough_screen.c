@@ -87,8 +87,10 @@ typedef struct Item {
     int reached;
     int current;
     int side;            /* IT_STEP: an optional row */
-    int main_no;         /* IT_STEP, main: 1-based order among the main steps */
-    char id[24];         /* "ch01.s03", "area.asuka" (the log) */
+    int main_no;         /* IT_STEP, main: 1-based order among the main pages */
+    int nseg;            /* IT_STEP, main: the steps this (condensed) page holds */
+    int seg[WT_PAGE_MAX_STEPS]; /* their rows of the step table, in order */
+    char id[24];         /* "ch01.s03" (a page: its first step), "area.asuka" (the log) */
     char page[24];       /* text key page: "ch01_s03", "area_asuka" */
     const char *chapter; /* chapter id of the step ("ch01"), or NULL */
     int chapter_no;      /* 1-based index of the chapter */
@@ -100,6 +102,7 @@ typedef struct Item {
 typedef struct Chapter {
     const char *id;       /* "ch02" */
     int nmain;            /* MAIN steps of the chapter that apply to this region */
+    int npages;           /* the pages those steps are read on (condensed) */
     int reached;          /* the player has reached one of them */
     int current;          /* the current step is one of them */
     char name[96];        /* wt.chNN.title: the chapter's name */
@@ -114,7 +117,7 @@ static int g_have_lang;
 static Dw3HelpView g_view;
 static Item g_items[MAX_ITEMS];
 static int g_nitems;
-static int g_nmain;                /* MAIN steps of the open chapter */
+static int g_nmain;                /* MAIN pages of the open chapter */
 static Chapter g_chaps[MAX_CHAPTERS];
 static int g_nchaps;
 static int g_chap;                 /* the chapter whose steps the list shows */
@@ -317,6 +320,7 @@ static void chapters_build(void) {
     g_nchaps = 0;
     for (i = 0; i < n; i++) {
         Chapter *c;
+        const char *lead;
 
         if (t[i].kind != WT_MAIN || !row_applies(&t[i])) {
             continue;
@@ -331,6 +335,10 @@ static void chapters_build(void) {
             c->id = t[i].chapter;
         }
         c->nmain++;
+        lead = dw3_wt_page_of(t[i].id);
+        if (lead == t[i].id || strcmp(lead, t[i].id) == 0) {
+            c->npages++; /* the first step of a page */
+        }
         if (step_reached(t, n, i)) {
             c->reached = 1;
         }
@@ -413,6 +421,15 @@ static void items_build(int chapter) {
         if (t[i].kind != WT_MAIN || !row_applies(&t[i]) || strcmp(t[i].chapter, cid) != 0) {
             continue;
         }
+        if (g_nitems > 0 && g_items[g_nitems - 1].type == IT_STEP && !g_items[g_nitems - 1].side &&
+            strcmp(g_items[g_nitems - 1].id, dw3_wt_page_of(t[i].id)) == 0 &&
+            g_items[g_nitems - 1].nseg < WT_PAGE_MAX_STEPS) {
+            /* another step of the same (condensed) page */
+            it = &g_items[g_nitems - 1];
+            it->seg[it->nseg++] = i;
+            it->current |= g_have_state && g_res.status == WT_OK && g_res.index == i;
+            continue;
+        }
         it = &g_items[g_nitems++];
         memset(it, 0, sizeof(*it));
         it->type = IT_STEP;
@@ -420,6 +437,7 @@ static void items_build(int chapter) {
         it->chapter = t[i].chapter;
         it->chapter_no = chapter + 1;
         it->main_no = ++g_nmain;
+        it->seg[it->nseg++] = i;
         snprintf(it->id, sizeof(it->id), "%s", t[i].id);
         id_to_page(t[i].id, it->page, sizeof(it->page));
         it->reached = step_reached(t, n, i);
@@ -438,6 +456,8 @@ static void items_build(int chapter) {
         it->type = IT_STEP;
         it->table_idx = i;
         it->side = 1;
+        it->nseg = 1;
+        it->seg[0] = i;
         it->reached = 1;
         it->chapter = t[i].chapter;
         snprintf(it->id, sizeof(it->id), "%s", t[i].id);
@@ -639,7 +659,7 @@ static void view_page(void) {
     if (it->type == IT_STEP && !it->side && !hidden) {
         char step[64];
 
-        snprintf(step, sizeof(step), "%s %d / %d", ui("step", "Step"), it->main_no, g_nmain);
+        snprintf(step, sizeof(step), "%s %d / %d", ui("page", "Page"), it->main_no, g_nmain);
         strip_set(step, it->current ? ui("current", "Current step") : NULL);
     } else if (it->type == IT_STEP && it->side) {
         strip_set(ui("optional", "Optional"), NULL);
@@ -700,23 +720,84 @@ static void blk_add(int kind, const char *value, int unv) {
     g_book.pages[0].nblocks++;
 }
 
+/* The steps of a condensed page that the page shows: a page the player has reached shows the steps
+ * up to the current one (nothing beyond the player's progress); a page read ahead (the player
+ * chose to) shows all of its steps. Fills `out` with indices into it->seg; returns the count. */
+static int page_shown_segs(const Item *it, int *out) {
+    const DW3WtStep *t;
+    int n;
+    int k;
+    int shown = 0;
+
+    t = dw3_wt_steps(&n);
+    for (k = 0; k < it->nseg; k++) {
+        if (it->type != IT_STEP || it->side || !it->reached || step_reached(t, n, it->seg[k])) {
+            out[shown++] = k;
+        }
+    }
+    if (shown == 0 && it->nseg > 0) {
+        out[shown++] = 0;
+    }
+    return shown;
+}
+
+#define ARROW "\xE2\x86\x92 "
+
+/* One text layer (goal or help) of the shown steps of a page: one paragraph for a page of one step
+ * (as before), a bullet per step for a condensed page, the page's current step marked with an
+ * arrow. */
+static void blk_layer(const Item *it, const char *layer, char (*buf)[700], const int *seg, int nshown,
+                      int mark_current) {
+    const DW3WtStep *t;
+    int n;
+    int k;
+
+    t = dw3_wt_steps(&n);
+    for (k = 0; k < nshown; k++) {
+        const DW3WtStep *row = &t[it->seg[seg[k]]];
+        char page[24];
+        char *dst = buf[k];
+        size_t room = sizeof(buf[0]);
+        const char *src;
+        int unv = 0;
+        int mark = mark_current && nshown > 1 && g_have_state && g_res.status == WT_OK &&
+                   &t[g_res.index] == row;
+
+        id_to_page(row->id, page, sizeof(page));
+        src = txt2(page, layer);
+        if (mark) {
+            memcpy(dst, ARROW, sizeof(ARROW));
+            dst += sizeof(ARROW) - 1;
+            room -= sizeof(ARROW) - 1;
+        }
+        cook(src, dst, room, &unv);
+        if (dst[0] != '\0') {
+            blk_add(nshown > 1 ? DW3_PAGES_LI : DW3_PAGES_P, buf[k], unv);
+        }
+    }
+}
+
+static char g_seg_goal[WT_PAGE_MAX_STEPS][700];
+static char g_seg_help[WT_PAGE_MAX_STEPS][700];
+
 /* Lay the page out for the item and mode. Returns the line count, -1 on failure. */
 static int page_layout(void) {
     const Item *it = &g_items[g_item];
     Dw3PagesLayoutOpts o;
-    int unv_g = 0;
     int unv_h = 0;
-    const char *goal = "";
     const char *help = "";
     char ask_a[120];
     char ask_b[120];
+    int seg[WT_PAGE_MAX_STEPS];
+    int nshown = 0;
 
     memset(&g_book, 0, sizeof(g_book));
     g_book.npages = 1;
     if (it->type == IT_STEP) {
-        goal = cook(txt2(it->page, "goal"), g_cook[0], sizeof(g_cook[0]), &unv_g);
+        nshown = page_shown_segs(it, seg);
+    } else {
+        help = cook(txt2(it->page, "help"), g_cook[1], sizeof(g_cook[1]), &unv_h);
     }
-    help = cook(txt2(it->page, "help"), g_cook[1], sizeof(g_cook[1]), &unv_h);
     if (g_mode == PM_ASK) {
         blk_add(DW3_PAGES_P, it->reached ? ui("ask", "Show it?") : ui("ask_ahead", "Show it anyway?"), 0);
         snprintf(ask_a, sizeof(ask_a), "%s%s", g_ask_yes ? "\xE2\x86\x92 " : "", ui("yes", "Yes"));
@@ -724,16 +805,20 @@ static int page_layout(void) {
         blk_add(g_ask_yes ? DW3_PAGES_H : DW3_PAGES_P, ask_a, 0);
         blk_add(g_ask_yes ? DW3_PAGES_P : DW3_PAGES_H, ask_b, 0);
     } else if (g_mode == PM_SHOWN) {
-        if (goal[0] != '\0') {
-            blk_add(DW3_PAGES_P, goal, unv_g);
+        if (it->type == IT_STEP) {
+            blk_layer(it, "goal", g_seg_goal, seg, nshown, 1);
         }
         blk_add(DW3_PAGES_H, ui("answer_hdr", "The answer"), 0);
-        blk_add(DW3_PAGES_P, help, unv_h);
+        if (it->type == IT_STEP) {
+            blk_layer(it, "help", g_seg_help, seg, nshown, 1);
+        } else {
+            blk_add(DW3_PAGES_P, help, unv_h);
+        }
     } else if (!it->reached) {
         blk_add(DW3_PAGES_NOTE, ui("ahead", "Not reached yet."), 0);
     } else {
-        if (goal[0] != '\0') {
-            blk_add(DW3_PAGES_P, goal, unv_g);
+        if (it->type == IT_STEP) {
+            blk_layer(it, "goal", g_seg_goal, seg, nshown, 1);
         }
         blk_add(DW3_PAGES_NOTE, ui("closed", "The answer is hidden."), 0);
     }
@@ -772,6 +857,25 @@ static int page_open(int item, const char *how) {
     wlog("dw3-walkthrough: page %s (kind %s, from %s, reached %s, current %s, %d lines, "
          "%.0f us)", it->id, kind_name(it), how, it->reached ? "y" : "n",
          it->current ? "y" : "n", n, (g_t_page - t0) * 1000.0);
+    if (it->type == IT_STEP && !it->side) {
+        const DW3WtStep *t;
+        int tn;
+        int seg[WT_PAGE_MAX_STEPS];
+        int nshown = page_shown_segs(it, seg);
+        char ids[96];
+        size_t len = 0;
+        int k;
+
+        t = dw3_wt_steps(&tn);
+        ids[0] = '\0';
+        for (k = 0; k < it->nseg && len + 12 < sizeof(ids); k++) {
+            len += (size_t)snprintf(ids + len, sizeof(ids) - len, "%s%s", k ? " " : "",
+                                    t[it->seg[k]].id);
+        }
+        wlog("dw3-walkthrough: page %s holds %d step(s) %s, %d shown%s%s", it->id, it->nseg, ids, nshown,
+             it->current ? ", current step " : "",
+             it->current && g_have_state && g_res.step != NULL ? g_res.step->id : "");
+    }
     wlog("dw3-walkthrough: spoiler %s closed (answer available)", it->id);
     view_page();
     return 0;
@@ -934,18 +1038,20 @@ int dw3_wt_open(const Dw3WtConfig *cfg) {
     chapters_build();
     {
         int nsteps = 0;
+        int npages = 0;
         int c;
 
         for (c = 0; c < g_nchaps; c++) {
             nsteps += g_chaps[c].nmain;
+            npages += g_chaps[c].npages;
         }
         wlog("dw3-walkthrough: open (from %s, region %s, platform %s, language %s, %d chapters, "
-             "%d steps)",
+             "%d pages, %d steps)",
              g_cfg.from == DW3_HELP_FROM_BATTLE ? "battle"
              : g_cfg.from == DW3_HELP_FROM_FIELD ? "field" : "title",
              g_cfg.region == DW3_PAGES_EU ? "EU" : "US",
              g_cfg.platform == DW3_PAGES_SWITCH ? "switch" : "pc", k_lang_codes[lang],
-             g_nchaps, nsteps);
+             g_nchaps, npages, nsteps);
     }
     wlog("dw3-walkthrough: text %s status \"%s\", %d key(s) loaded, draft tag %s",
          k_lang_codes[lang], g_en.status, g_en.n, g_draft ? "on" : "off");
@@ -1032,9 +1138,9 @@ static void chapter_open(int chapter) {
         }
     }
     g_screen = SCR_LIST;
-    wlog("dw3-walkthrough: chapter %s opened (reached %s, current %s, %d steps)",
+    wlog("dw3-walkthrough: chapter %s opened (reached %s, current %s, %d pages, %d steps)",
          g_chaps[chapter].id, g_chaps[chapter].reached ? "y" : "n",
-         g_chaps[chapter].current ? "y" : "n", g_chaps[chapter].nmain);
+         g_chaps[chapter].current ? "y" : "n", g_chaps[chapter].npages, g_chaps[chapter].nmain);
     view_list();
 }
 

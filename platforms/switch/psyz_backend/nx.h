@@ -190,6 +190,9 @@ void *Psyz_OsBellCreate(void);
 void Psyz_OsBellRing(void *bell);
 void Psyz_OsBellWait(void *bell, uint32_t timeout_us);
 int Psyz_OsThreadStart(void (*fn)(void), const char *name);
+/* BUG-1: stop, join and close every thread Psyz_OsThreadStart made; returns
+ * how many were still running after the exit budget (nx_os.c). */
+int dw3_nx_os_threads_shutdown(void);
 void MyPadInit(int mode);
 void Psyz_PadsPoll(void);
 int Psyz_VideoVSync(int mode);

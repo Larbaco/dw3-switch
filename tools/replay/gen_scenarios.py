@@ -576,6 +576,24 @@ def xr_load(version):
 XR_LOAD_FRAMES = 1400
 
 
+def load_view(version):
+    """Bug 4 (p56 OLED): the Load Game screen with a saved game on the card.
+    Title -> Load Game / Continue -> slot 1 on a card that holds the save made
+    by the xr-save phase (same disc) -> the save list with its footer prompts
+    (confirm / back). Checkpoints: the slot choice and the list. Nothing is
+    loaded (no final Cross): the shots are the verdict, plus the log."""
+    r = Rec(f"{version.upper()}: Load Game screen with a save on the card (footer prompts)")
+    m = _to_title_menu(r, version)
+    r.press(m + 10, DOWN)
+    r.press(m + 30, DOWN)            # third entry: Load Game / Continue
+    r.press(m + 70, CROSS)
+    r.shot(m + 400, "slot-choice")
+    r.press(m + 420, CROSS)          # memory card slot 1 (port A)
+    r.shot(m + 700, "save-list")
+    r.end(m + 720)
+    return r
+
+
 def xr_open(version):
     """P6.25 slice 2: start the build, let it open the cards, leave. No input, no
     checkpoints; the verdict is the `dw3-store:` open line in the log. Used to
@@ -3377,8 +3395,9 @@ def help_lang(idx):
 # story point can reach the Options screen in game: p4 closes chapter 1, p14 (progress 0x14) is
 # the middle of chapter 5, p2b (progress 0x2B) is the last battle (chapter 11) and p2d (progress
 # 0x2D) is the EU extra chapter's first step; on US p2d is past the table (region gating: the
-# chapter list with the "not recognised" notice, no extra chapter).
-WT_FIELD_POINTS = (("p4", "s06", 1), ("p14", "s03", 1), ("p2b", "s01", 1), ("p2d", "s01", 1))
+# chapter list with the "not recognised" notice, no extra chapter). Since the condensing (FEEDBACK-5)
+# the current step is read on the page that holds it: p14 (step ch05.s03) opens the page ch05.s01.
+WT_FIELD_POINTS = (("p4", "s06", 1), ("p14", "s01", 1), ("p2b", "s01", 1), ("p2d", "s01", 1))
 
 
 def _wt_reading(r, f, current, other_down):
@@ -3433,7 +3452,7 @@ def walkthrough_field(version, current, ahead_down):
 # 0xF, ch08 at 0x1E, and on EU ch12 at 0x2D), the steps list shows the block and its two rows are
 # read. Hidden: one value before the chapter (0xE, 0x1D, EU 0x2B) the chapter list marks the next
 # chapter as not reached and its steps list has no optional row.
-WT_SIDE_SHOWN = (("pf", 3), ("p1e", 7), ("p2d", 3))
+WT_SIDE_SHOWN = (("pf", 1), ("p1e", 2), ("p2d", 3))   # Downs from the current page to the first optional row
 WT_SIDE_HIDDEN = ("pe", "p1d", "p2b")
 
 
@@ -3688,6 +3707,7 @@ def main(out):
         (out / f"{v}-banner-walk.rec").write_text(banner_walk(v).text(True))
     for v in ("us", "eu"):
         (out / f"{v}-load-menu.rec").write_text(load_menu(v).text(True))
+        (out / f"{v}-load-view.rec").write_text(load_view(v).text(True))
     for v in ("us", "eu"):
         for phase in (1, 2):
             (out / f"{v}-options-persist-p{phase}.rec").write_text(

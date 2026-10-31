@@ -74,3 +74,15 @@ def test_thread_start_failure_closes_live_handle(results):
     assert results.get("thread_create_count") == "1"
     assert results.get("thread_close_count") == "1"
     assert results.get("thread_handle_live") == "0"
+
+
+def test_exit_path_closes_started_os_threads(results):
+    """BUG-1: a thread PSY-Z started is joined and threadClose()d before main
+    returns (a finished, unclosed libnx thread leaves its stack pages borrowed
+    in the heap the loader reads the next NRO over); calling it again closes
+    nothing more."""
+    assert results.get("os_start_rc") == "0"
+    assert results.get("os_shutdown_still_running") == "0"
+    assert results.get("os_shutdown_close_count") == "1"
+    assert results.get("os_shutdown_handle_live") == "0"
+    assert results.get("os_shutdown_again_close_count") == "1"

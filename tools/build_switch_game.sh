@@ -26,7 +26,8 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 # shellcheck source=tools/dw3_ccache_env.sh
 source "${ROOT}/tools/dw3_ccache_env.sh"
-IMAGE="${DW3_DK_IMAGE:-devkitpro/devkita64:latest}"
+# Pinned by digest (= tag 20260219, devkitA64 r29.2, gcc 15.2); see docs/DEPENDENCIES.md.
+IMAGE="${DW3_DK_IMAGE:-devkitpro/devkita64@sha256:1fc388c3a0d34bd2045a6dadcb1020e069d5f876a187fd705de14b4440c00282}"
 NXLINK_STDIO=OFF
 DW3_NX_FORCE_CRASH=OFF
 DW3_NX_REPLAY=OFF

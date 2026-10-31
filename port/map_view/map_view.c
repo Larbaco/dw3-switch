@@ -2589,6 +2589,16 @@ void dw3_map_view_tex_taken(unsigned gen) {
 
 /* --- background precompute ----------------------------------------------------*/
 
+static int s_precompute_cancel;
+
+void dw3_map_view_precompute_cancel(void) {
+    __atomic_store_n(&s_precompute_cancel, 1, __ATOMIC_RELEASE);
+}
+
+static int precompute_cancelled(void) {
+    return __atomic_load_n(&s_precompute_cancel, __ATOMIC_ACQUIRE);
+}
+
 void dw3_map_view_precompute_run(void) {
     int half, sc;
     double t_all = now_ms();
@@ -2601,6 +2611,7 @@ void dw3_map_view_precompute_run(void) {
         char path[600];
         int missing = 0;
 
+        if (precompute_cancelled()) break;
         memset(&base, 0, sizeof(base));
         for (sc = 0; sc < MV_SCALER_COUNT; ++sc) {
             FILE *f;
@@ -2625,6 +2636,7 @@ void dw3_map_view_precompute_run(void) {
             double ms;
             FILE *f;
 
+            if (precompute_cancelled()) break;
             cache_path(path, sizeof(path), half, sc);
             f = fopen(path, "rb");
             if (f) { fclose(f); continue; }
@@ -2638,6 +2650,7 @@ void dw3_map_view_precompute_run(void) {
         }
         dw3_mv_image_free(&base);
     }
-    fprintf(stderr, "dw3-map: precompute done (%d images, %d ms, RAM freed)\n",
+    fprintf(stderr, "dw3-map: precompute %s (%d images, %d ms, RAM freed)\n",
+            precompute_cancelled() ? "stopped (the game is leaving)" : "done",
             built, (int)(now_ms() - t_all));
 }

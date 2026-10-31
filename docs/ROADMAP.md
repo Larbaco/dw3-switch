@@ -21,6 +21,34 @@ behind the tasks are in [SURVEY.md](SURVEY.md); layering is in
 the [Priority](#priority) section is the work order, and agents pick work from
 the highest non-empty tier.
 
+## Release criteria
+
+Tags are SemVer (owner decision 2026-10-31); naming and the history of the old
+`0.6.5` series are in [RELEASES](RELEASES.md#naming). Before 1.0 the builds are
+previews, `v0.9.0-preview.N`; the gates below are what turns them into releases.
+
+- **0.9, the public beta (`v0.9.0`, the first non-preview).** Both must hold:
+  1. Plan p57 passes on the OLED with no blockers (the owner's results and the
+     `dw3.log` lines are recorded in [OLED_TEST_PLAN](OLED_TEST_PLAN.md)).
+  2. Decisions D1 to D5 of the options work are on `main`
+     ([OPTIONS_REORG](OPTIONS_REORG.md): D1 reorganized tree and a row for every
+     change, D2 `defaults_gen`, D3 `options_global`, D4 the scrolling
+     background, D5 Map scaler).
+- **1.0 (`v1.0.0`).** All three must hold, with `v1.0.0-rc.N` release
+  candidates before it:
+  1. A full playthrough to the ending on the OLED, at least one region, played
+     by the owner.
+  2. No known crash: BUG-1 (leaving through Sphaira, US; the Atmosphère
+     report after `dw3_game_main returned 0`) is fixed or proven gone, along
+     with every other open crash in the OLED plan.
+     BUG-1 status: hardened (every worker thread joined and closed before
+     `main` returns, `dw3-exit:` proof lines and a heap probe;
+     [SPHAIRA_EXIT](SPHAIRA_EXIT.md)); **not proven on the console yet**, OLED
+     row G13 closes it.
+  3. The Phase 5 gate is ticked in [Phase 5](#phase-5--playable-on-switch).
+     Status 2026-10-31: met on the OLED for US (preview.56) and EU (preview.57),
+     pending owner confirmation; not ticked ([evidence](#phase-5-gate-evidence)).
+
 ## Priority
 
 Work order, approved by the owner on 2026-10-28. Agents pick work from the
@@ -56,6 +84,16 @@ highest non-empty tier.
   `GPU_Enqueue`. Reproduced on the PC (SIGSEGV, same stack) and proved by the replays
   `us/eu-battle-digivolve-command` (up, back to the base form, up again). Open: the
   OLED check, [OLED_TEST_PLAN G12](OLED_TEST_PLAN.md).
+- **BUG-1 (p56 OLED, blocks v1.0.0): crash on exit when started from Sphaira.**
+  The crash is in Sphaira's own `hbl` after our `main` returns (it re-reads the
+  next NRO over the whole heap; `0xD401`). Hardened on the PC/Switch build, no
+  decomp patch: every worker thread (map precompute, map scalers, options
+  prewarm, PSY-Z) is joined and `threadClose()`d before `main` returns (a
+  finished, unclosed thread leaves its stack pages borrowed in that heap), and
+  each step logs `dw3-exit:` lines plus a heap probe. The cause is a strong
+  hypothesis, **not proven on the console**. Reasoning and the P6.38 NextLoad
+  answer: [SPHAIRA_EXIT](SPHAIRA_EXIT.md). Open: the OLED check,
+  [OLED_TEST_PLAN G13](OLED_TEST_PLAN.md).
 
 ### Tier 1 — Stability
 
@@ -180,7 +218,7 @@ listed once, in [Pending OLED checks](#pending-oled-checks).
 | P6.32 | Map zoom and full-screen map (future goal) | **phase 6 "Field hotkey" built 2026-10-30** (PR open, **patch `0148`**): Select (the seventh binding `map_view_field_open`) in the idle field opens the full-screen map, the field held in place (task pause, nothing reloaded), turbo forced off, R3 nothing, Triangle returns to the exact field (0 px against a control run after a 405-frame hold, US and EU), log `dw3-map: field hotkey open ... / return ... : unchanged / ignored: <why>`, replays `us/eu-field-map-*`, [P6.32 section 18](P6.32_MAP_ZOOM.md#18-phase-6-field-hotkey-as-built-2026-10-30), OLED B29 pending; **phase 7 "Glyphs" built 2026-10-30** (PR open, **no patch**): the help line (the green footer of the bars) names the buttons the way the player sees them: the `map_view_*` bindings and the bars' Circle and Triangle through `button_layout` and the custom map, as the Switch glyph art with `switch_glyphs=1` (Switch only) or as the Switch's cap text, and on the PC as the PS word of the position; the words in the game's text language (EN, FR, DE, IT, ES: FR / DE / IT / ES machine drafts, ASCII capitals because the HUD font has no accents, the widest line 624 of 628 px), log `dw3-map: help line N "..." (layout=..., glyphs=on\|off, lang=...)`, replays `us/eu-map-help` (+ `-nintendo-`, `-custom-`, `-glyphs-pc`, `-sw*`, and `eu-map-help-fr/-de/-it/-es`), [P6.32 section 17](P6.32_MAP_ZOOM.md#17-phase-7-glyphs-as-built-2026-10-30), OLED L28 pending; **phase 4 "Remap" built 2026-10-30** (PR open, **no patch**): the **Full-screen map** row on Options > Display (key `map_screen`, off by default, applies at once also in game), six file-only keys `map_view_open`, `_zoom_out`, `_zoom_in`, `_centre`, `_scaler_prev`, `_scaler_next` naming PS buttons (defaults Square, L1, R1, Select, L2, R2) on top of the P6.12 / P9.8 button map, bars and `dw3-map: bindings in effect` log name the console buttons, replays `us/eu-map-rebind`, `-map-rebind-relaunch`, `-nintendo-map-rebind`, `-custom-map-rebind`, [P6.32 section 16](P6.32_MAP_ZOOM.md#16-phase-4-remap-as-built-2026-10-30), OLED B28 pending; **phase 3 "Zoom and pan" built 2026-10-30** (PR open, **no patch**): zoom about the cursor, the 4.4 ladder (4.0 only with a hi-res pack), pan limits at every zoom, **Select** centres on the current area, cursor acceleration and analog left-stick speed, the FIT backdrop of the map's own colours, a **Bilinear** scaler (the sharp-bilinear shader forms wait for the owner's OLED look), replay `us/eu-map-zoom`, [P6.32 section 15](P6.32_MAP_ZOOM.md#15-phase-3-zoom-and-pan-as-built-2026-10-30), OLED B27 pending; **phase 2 "Data: cursor, markers, names" built 2026-10-30**: patch `0147` (marker list, name-window readback, `DW3_FORCE_MAP_AREAS` test aid), a `dw3-map: area name shown` log line per name, replay `us/eu-map-names` (+ `-fr -it -de -es`), [P6.32 section 14](P6.32_MAP_ZOOM.md#14-phase-2-data-cursor-markers-names-as-built-2026-10-30), OLED B26 pending; **phase 1 "Static view" built 2026-10-29**: option `map_screen` now **off by default**, R3 no longer flips fast-forward in the view, option-off cost removed, replay `us/eu-map-view-off`, [P6.32 section 13](P6.32_MAP_ZOOM.md#13-phase-1-static-view-audit-and-close-2026-10-29); phase 0 PoC merged (#284); owner OLED, preview.45 (2026-10-28): the map shows and Nearest is the preferred scaler; balloon, cursor and name box pending preview.47; mod pack loader for an upscaled map merged (#313, OLED item B17 pending) | [roadmap](#phase-6-goal-notes), [P6.32](P6.32_MAP_ZOOM.md), [P6.1](P6.1_WIDESCREEN.md), [map upscale mod](MOD_MAP_UPSCALE.md) |
 | P6.33 | Items menu usability redesign | in progress (owner decisions recorded 2026-10-26; phase 1 partner cycle built: patch 0128, ZL / ZR, on by default; phases 2 to 4 built as P6.34 phases 2 to 4 (#348, #357, #360); phase 1 cycle confirmed on the OLED 2026-10-27, preview.41; the `items_partner_switch=0` check open; phases 2–4 folded into P6.34) | [roadmap](#phase-6-goal-notes), [P6.33](P6.33_ITEMS_MENU.md), [P6.1](P6.1_WIDESCREEN.md) |
 | P6.34 | Redesign of the items / status / equipment menu flow | design written 2026-10-28 (5 phases, 10 owner questions open); **phase 1 built 2026-10-28, merged #339** (equip from the Items menu, patch `0188`, key `items_equip_from_items`, default on = orchestrator default pending owner confirmation of Q1 to Q5 and Q10); **phase 2 built 2026-10-29, merged #348** (equip in Status > Equipment returns to the slot list without the long fades, patch `0190`, key `items_equip_stays`, default on = orchestrator default pending owner confirmation of Q6; replay `us/eu-items-equip-stays[-off]`); **phase 3 built 2026-10-29, merged #357** (Square in the equip list cycles this slot / all weapons / all armor and gear / worn by others; Cross on a worn-by-others row moves the item between party members, patch `0192`, key `items_bag_view`, default on = orchestrator default pending owner confirmation of P6.33 decisions 2 and 3 as built; replay `us/eu-items-bag-view[-43][-off]` and `eu-items-bag-view-fr|it|de|es`; left: a count line, a help hint for Square, moving from non-party Digimon, swap); **phase 4 built 2026-10-29, merged #360** ("use item" stays on the partner step: the item panel and the pages stay, Up / Down + Cross use the next copy, the last copy and Triangle take the original way back; patch `0193`, key `items_use_stays`, default on = orchestrator default pending owner confirmation of P6.33 decision 6 as built and of Q9 (the "Items to Equipment" jump is dropped); replay `us/eu-items-use-stays[-43][-off]` and `eu-items-use-stays-fr|it|de|es`; the recordings that walk the old use flow now run with `items_use_stays=0`; left: ZL / ZR in the partner step, a hint); phase 5 (order change, only if the owner asks; patch 0194 is P6.36's now, so it needs a new number) not built; PC replay US and EU passes, OLED items B19 (revised), B21, B22, B23 and B24 pending | [roadmap](#phase-6-goal-notes), [P6.34](P6.34_MENU_FLOW.md), [P6.33](P6.33_ITEMS_MENU.md) |
-| P6.35 | In-game walkthrough help: where to go next and what to do, by story progress (future goal) | in progress; **phase 1 data layer built** (#328; step resolver, `ch01` table progress 0 to 4 confirmed by US and EU PC replays, English draft, FR/DE/IT/ES drafted 2026-10-29 (machine-drafted, needs native review); [As built](P6.35_WALKTHROUGH.md#as-built-phase-1-data-layer)); **phase 2 the screen built 2026-10-29** (merged as #363): the Walkthrough group of Options (title, field menu, battle), current step page, step list, area spoiler pages, two-action reveal, nothing shown beyond the player's progress, `ch01` only and a `More chapters coming` page; PC replays US and EU `*-walkthrough-screen-*` pass; the game's field menu opens only from progress 4, so in game it is reachable from `ch01.s06`; **slice 2 built 2026-10-30 (PR open): the main steps of the first half, `GAME.progress` 5 to 0x29, ten chapters and the chapter list on the screen, FR/DE/IT/ES machine drafts, replay points for the start, middle and end of every chapter on US and EU ([As built, slice 2](P6.35_WALKTHROUGH.md#as-built-slice-2-the-first-half)); **slice 3 built 2026-10-30 (PR open): the last battle (`ch11`, progress 0x2B) and the EU extra chapter (`ch12`, 0x2D, `region = EU`, three steps), so the whole main story is in the table (56 rows on US, 59 on EU); the `More chapters coming` placeholder is removed ([As built, slice 3](P6.35_WALKTHROUGH.md#as-built-slice-3-the-last-battle-and-the-eu-extra-chapter)); **slice 4 built 2026-10-30 (PR open): the side content, six optional rows gated at their chapter's first value (the Seabed and its forge from chapter 4, the Circuit Board and the Black Kingz' den from chapter 8, and on EU the five weapons `SPECIAL(0x96)` asks for and the extra chapter's partner fighters from chapter 12), each checked against the decomp; Duel Island, the base-game recruits and the other optional fights stay unshipped with their reasons ([As built, slice 4](P6.35_WALKTHROUGH.md#as-built-slice-4-the-side-content)); left: OLED W1 to W11, native review, the release validator, the "done" mark on optional rows** ([As built, phase 2](P6.35_WALKTHROUGH.md#as-built-phase-2-the-screen)) (owner 2026-10-28: at launch in every language the base game has, EN + FR/DE/IT/ES on the EU disc, pt-BR later with P6.7; design written 2026-10-28, owner decisions recorded) | [roadmap](#phase-6-goal-notes), [design](P6.35_WALKTHROUGH.md), [PLAYER_GUIDE](PLAYER_GUIDE.md) |
+| P6.35 | In-game walkthrough help: where to go next and what to do, by story progress (future goal) | in progress; **phase 1 data layer built** (#328; step resolver, `ch01` table progress 0 to 4 confirmed by US and EU PC replays, English draft, FR/DE/IT/ES drafted 2026-10-29 (machine-drafted, needs native review); [As built](P6.35_WALKTHROUGH.md#as-built-phase-1-data-layer)); **phase 2 the screen built 2026-10-29** (merged as #363): the Walkthrough group of Options (title, field menu, battle), current step page, step list, area spoiler pages, two-action reveal, nothing shown beyond the player's progress, `ch01` only and a `More chapters coming` page; PC replays US and EU `*-walkthrough-screen-*` pass; the game's field menu opens only from progress 4, so in game it is reachable from `ch01.s06`; **slice 2 built 2026-10-30 (PR open): the main steps of the first half, `GAME.progress` 5 to 0x29, ten chapters and the chapter list on the screen, FR/DE/IT/ES machine drafts, replay points for the start, middle and end of every chapter on US and EU ([As built, slice 2](P6.35_WALKTHROUGH.md#as-built-slice-2-the-first-half)); **slice 3 built 2026-10-30 (PR open): the last battle (`ch11`, progress 0x2B) and the EU extra chapter (`ch12`, 0x2D, `region = EU`, three steps), so the whole main story is in the table (56 rows on US, 59 on EU); the `More chapters coming` placeholder is removed ([As built, slice 3](P6.35_WALKTHROUGH.md#as-built-slice-3-the-last-battle-and-the-eu-extra-chapter)); **slice 4 built 2026-10-30 (PR open): the side content, six optional rows gated at their chapter's first value (the Seabed and its forge from chapter 4, the Circuit Board and the Black Kingz' den from chapter 8, and on EU the five weapons `SPECIAL(0x96)` asks for and the extra chapter's partner fighters from chapter 12), each checked against the decomp; Duel Island, the base-game recruits and the other optional fights stay unshipped with their reasons ([As built, slice 4](P6.35_WALKTHROUGH.md#as-built-slice-4-the-side-content)); **condensed 2026-10-31 (PR open): consecutive short steps of one chapter and one area are read on one page (55 steps of the first half are 29 pages; US 56 -> 30, EU 59 -> 33; the step ids and the resolver are unchanged), plus the BUG-2 (`ch04.s01`, the Digi-Egg) and BUG-5 (`ch01.s06`, where the East Station is) text fixes from the decomp, FR/DE/IT/ES machine drafts regenerated ([As built, condensing](P6.35_WALKTHROUGH.md#as-built-condensing-feedback-5-option-b-and-the-bug-2--bug-5-texts))**; left: OLED W1 to W11, native review, the release validator, the "done" mark on optional rows** ([As built, phase 2](P6.35_WALKTHROUGH.md#as-built-phase-2-the-screen)) (owner 2026-10-28: at launch in every language the base game has, EN + FR/DE/IT/ES on the EU disc, pt-BR later with P6.7; design written 2026-10-28, owner decisions recorded) | [roadmap](#phase-6-goal-notes), [design](P6.35_WALKTHROUGH.md), [PLAYER_GUIDE](PLAYER_GUIDE.md) |
 | P6.36 | Music at normal speed while turbo is on | phases 1 and 2 built (#356), phase 3 jingle hold (4 s, owner decision) built (merged as #361); phase 4 SFX split open | [roadmap](#phase-6-goal-notes), [P6.36](P6.36_TURBO_MUSIC.md), [P6.4](P6.4_FAST_FORWARD.md), [P4.3](P4.3_AUDIO.md) |
 | P6.37 | Port version visible in game | owner request 2026-10-30; **built 2026-10-30** (PR open, not merged): one label `dw3-switch v0.6.5-preview.57 (962462d) US` from `tools/dw3_nro_version.py` (the NACP source) in a dim footer line on every Options screen, in the title's bottom right corner (file-only key `show_version`, 1 default, 0 hides it), as the first log line `dw3-version:` and in the PC window title; replays pin the text with `DW3_VERSION_OVERRIDE=replay`; replay `us/eu-title-noversion`, `us/eu-options-noversion`; OLED A20 | [roadmap](#phase-6-goal-notes), [P6.37](P6.37_VERSION.md), [P6.5](P6.5_NRO_FORMAT.md) |
 | P6.38 | Restart into the chosen region: after switching US to EU or EU to US in Options > Region at start, the game offers to relaunch into it (owner request 2026-10-30; combined image only) | **built 2026-10-30 (PR open)**: leaving the row after a change to the other region asks `Restart in EU now?` (in game with `Progress since your last save will be lost.`, cursor on No); Yes saves, flushes and relaunches (Switch `envSetNextLoad` + `--relaunch-region`, PC `execv` from the last exit handler), No keeps "takes effect at the next start"; Ask and the running region never ask; a host that cannot relaunch shows `Restart the game to apply.`; **no decomp patch**; PC replays `us/eu-options-region-relaunch-no|yes|exec|game` (tier `both`); OLED A17.1 to A17.4 pending | [roadmap](#phase-6-goal-notes), [PORT_OPTIONS](PORT_OPTIONS.md#restart-into-the-chosen-region-p638), [P51 item 4](P51_FEEDBACK.md) |
@@ -211,7 +249,7 @@ listed once, in [Pending OLED checks](#pending-oled-checks).
 | P10.3 | Presentation modes | open | — |
 | P10.4 | Rumble polish (optional) | open | — |
 | P10.5 | Extra applets (optional) | open | — |
-| P10.6 | Switch-style button glyphs (design written 2026-10-28; step 0 #354 and the fix-now hint caps #355 merged; census, art and the glyph patch built 2026-10-29, PR #367) | in progress (OLED L17 to L27 pending; the page-turn `R1` / `L1` prompt built 2026-10-30, patch 0196, PR open) | [roadmap](#phase-10--native-switch-features-residual), [P10.6_GLYPHS](P10.6_GLYPHS.md), [CONTROLS_BUNDLE](CONTROLS_BUNDLE.md), [TEXTURE_PACKS](TEXTURE_PACKS.md) |
+| P10.6 | Switch-style button glyphs (design written 2026-10-28; step 0 #354 and the fix-now hint caps #355 merged; census, art and the glyph patch built 2026-10-29, PR #367) | in progress (OLED L17 to L27 and L29 pending; the page-turn `R1` / `L1` prompt built 2026-10-30, patch 0196, PR open; the US Cross prompt of the Load / Save screens, bug 4, 2026-10-31) | [roadmap](#phase-10--native-switch-features-residual), [P10.6_GLYPHS](P10.6_GLYPHS.md), [CONTROLS_BUNDLE](CONTROLS_BUNDLE.md), [TEXTURE_PACKS](TEXTURE_PACKS.md) |
 | P10.7 | NSP packaging: forwarder, full NSP or stay NRO | dropped | [NSP_PACKAGING](NSP_PACKAGING.md), [roadmap](#phase-10--native-switch-features-residual) |
 
 ## Pending OLED checks
@@ -224,8 +262,10 @@ its done-when. The ordered session plan (written for preview.36) is
 [OLED_TEST_PLAN](OLED_TEST_PLAN.md).
 
 - **Owner preview.47 US log (2026-10-28): PASSED** A5, A7, A9-A12, C7, E1.3, E2.1, E2.2, G8 (the `items_partner_switch=0` sub-check of G8 not done) and B15b; marks and log evidence are in [OLED_TEST_PLAN](OLED_TEST_PLAN.md). Owner confirmed on the OLED (2026-10-28, preview.47/48): app name #289 shows "Digimon World 3 NX" (**PASSED**); B16 map view icons, balloon and cursor work (**PASSED**), except the name box jumping while zooming with the right stick, fixed in the branch `fix/map-namebox-stick-zoom` (the placement is latched when the cursor gets on a location, as the game does; retest B16 with the stick on a location). **Owner preview.48 EU OLED log (2026-10-28):** E1.6b EU language select 16:9 **PASSED by log** (`dw3-widescreen: gutter 53 px per side (was -1; 16:9) mode file 0x165 frame 1`; no 4:3 seen). G9 combined `.nro`: the both-present picker, the button choice and the "always" save **PASSED by log** (`data found us=1 eu=1`, `picker shown (default entry us, timeout 3000 ms)`, `picker result eu by button A after 19473 ms always=1`, `saved last_region=eu region_default=eu`, `running eu`); the 3 s timeout did not fire because the owner moved the cursor first, which cancels the countdown by design (`dw3_picker_step`), so G9.3's timeout, the only-US, only-EU, Minus and disc-in-parent rows stay open. B16: the name-box jitter was not reproduced on preview.48 (fix #326 ships in preview.49 anyway). Not tested in that session: D13 #188 (one Techniques command only; the audio health line was healthy, 0 underruns, 0 key-on failed, voices max 23 of 24), B17 map mod (no mods folder on the SD), G2 save + HOME (no `dw3-save` line). **Owner feedback fixed in `fix/p48-feedback`:** the EU language select also confirms with the confirm button (patch 0187, E1.6c) and the full-screen map keeps the cursor and the balloon at one on-screen size while zooming ([P6.32 section 11](P6.32_MAP_ZOOM.md#11-fixed-size-overlay-sprites-owner-preview48-oled); retest B16). Still open: D13 #188.
-- **P5 gate:** start → first boss on hardware, US and EU. The Phase 5 gate is
-  not met yet (owner, 2026-10-24); see [Phase 5](#phase-5--playable-on-switch).
+- **P5 gate: met on the OLED, US (2026-10-30, preview.56) and EU (2026-10-31,
+  preview.57), pending owner confirmation.** Start → first boss (Tamer Genji, progress 3)
+  is in the logs for both regions; the proof lines are in
+  [Phase 5 gate evidence](#phase-5-gate-evidence).
 - **P5.5 (done, G10 passed US and EU):** the stage sweep on the OLED; to repeat it, `stage_sweep=1` in
   `port_options.cfg`, start the game, wait for `dw3-sweep: done`, send
   `dw3.log` ([P5.5_STAGE_SWEEP](P5.5_STAGE_SWEEP.md), OLED_TEST_PLAN G10).
@@ -854,9 +894,40 @@ speed.
 
 Gate: start → first boss on hardware, both versions.
 
-**Gate status (owner, 2026-10-24): not met.** The owner has not yet tested
-start → first boss on hardware, so the gate stays open. The check is in
-[Pending OLED checks](#pending-oled-checks).
+**Gate status (2026-10-31): met on both regions, pending owner confirmation.**
+The US proof is preview.56 (2026-10-30); the EU proof is preview.57 (2026-10-31),
+both on the OLED. The owner ticks the gate. See [Pending OLED checks](#pending-oled-checks)
+and the table below.
+
+### Phase 5 gate evidence
+
+**The first boss.** Tamer Genji, the first story boss (the same fight as the
+[P3 gate](P3_GATE.md#first-story-boss-us)). The story step is `GAME.progress == 3`
+in the Asuka Central Sector (`WSTAG200`, field mode `0x200`, stage file 451 on US;
+`src/field/stages/central_sector/wstag200.c`): `endEvent50` starts event battle 1
+(`EVENT_BATTLE(1)`), and `endEvent52` sets `GAME.progress = 4`. The walkthrough
+row is `ch01.s04` ("Speak to Genji ... a battle starts", progress 3 to 4). The
+script is the same file in both regions; the `#if VERSION_` lines are not in
+`endEvent50` or `endEvent52`. The boss is proven in the log by the event battle
+`FIGHTSTG_start` in mode `0x200`, its win (`WFIGHTMN_endBattle result=1`), and
+`STFGTREP report battle=200` followed by `STFGTREP return fieldMode=0x200`.
+Progress is not logged by the game, so "start" means a New Game (no
+`STGMCARD_loadSave` line in the run), and the log proves the battle, not the
+progress value.
+
+| Region | Evidence | Log line(s) | Date | Preview | Verdict |
+|---|---|---|---|---|---|
+| US | New Game (no `loadSave`), Start-skip on the opening movie, Tamer Service, Central Sector (`0x200`), Genji battle won, back in the field, then Asuka (`0x206`), a second battle (`battle=34`), and a clean quit by title Quit game. Switch in handheld mode (`EGL/GLES2 ready 1280x720 (handheld)`), US disc picked by the owner (`picker result us by button A`) | `tmp/evidence/20261030-1613-p56-crash/OLD/dw3.log.latest` (same file as `tmp/oled-p56/logs/OLD/dw3.log.latest`): `version=0.6.5-preview.56` l.2; handheld l.13; `running us` l.16; title plaques l.378; `pickStage mode=0x2d7` l.1048; `dw3-movie: Start-skip` l.3334; `pickStage mode=0x203` l.3506; `pickStage mode=0x204` l.4249; `pickStage mode=0x200 stageFile=451` l.4541; `FIGHTSTG_start` l.4620; `WFIGHTMN_endBattle result=1 requestMode=0x1400 fieldMode=0x200` l.4867; `STFGTREP report battle=200` l.4873; `STFGTREP return fieldMode=0x200` l.4912; `pickStage mode=0x206 stageFile=454` l.5022; `dw3_game_main returned 0 ... title Quit game` l.7182 | 2026-10-30 (file time 15:57, UTC-3) | v0.6.5-preview.56 | **MET** (pending owner confirmation) |
+| EU | New Game (no `loadSave`), Start-skip on the opening movie, Chamber, Lobby, Tamer Service, Central Sector (`0x200`, EU stage 466), Genji battle won, back in the field (`0x200`), then `0x206` (stage 469), autosave written at `0x206`, quit by title Quit game. Console in handheld mode (`EGL/GLES2 ready 1280x720 (handheld)`), EU picked by the stored `region_default=eu` | `tmp/evidence/20261031-ftp-console-logs/dw3.log` (copy of the console's `dw3.log`, preview.57, `running eu`): version l.3; `running eu` l.14; handheld l.24; title plaques l.554; `pickStage mode=0x2d7` l.593; `Start-skip` l.1851; `pickStage mode=0x203` l.2005; `pickStage mode=0x204` l.2870; `pickStage mode=0x200 stageFile=466` l.3193; `FIGHTSTG_start` l.3266; `WFIGHTMN_endBattle result=1 requestMode=0x1400 fieldMode=0x200` l.3386; `STFGTREP report battle=200` l.3392; `STFGTREP return fieldMode=0x200` l.3417; `pickStage mode=0x206 stageFile=469` l.3523; `dw3_game_main returned 0 ... title Quit game` l.4024 | 2026-10-31 (preview.57 session) | v0.6.5-preview.57 | **MET** (pending owner confirmation) |
+
+**EU closed (2026-10-31).** The EU row is the same sequence as the US row, from the
+console log copied over FTP after the earlier audit. The EU Genji stage is
+`stageFile=466` (US 451). Test row F6-EU in [OLED_TEST_PLAN](OLED_TEST_PLAN.md) is
+filled with this result.
+
+**Status.** Both rows are one owner run each, from a New Game on the OLED. The
+gate line says "pending owner confirmation": the owner checks both rows against the
+logs and ticks the gate, as with the other gates.
 
 ## Phase 6 — Polish and options
 
@@ -1630,6 +1701,12 @@ rumble, saves, turbo, or widescreen here; those stay in their phases.
   bit-identical. Log `dw3-glyphs: page-turn prompt R1 drawn as glyph R (scene=..)`. Open: the card shop,
   Lab, battle menu, name entry and training carry the same strings and follow the hook but have no replay
   case of their own; a look on the OLED.
+  **US Cross prompt built (2026-10-31, bug 4 of the p56 OLED test, PR open, OLED L29 pending):** the US Load Game
+  and Save screens spell the confirm as the plain letter X of the text ("X Button: Execute"), not as an icon, so the
+  cell patch (US n = 27 is the item-count multiplication sign and stays) never touched it. The text hook of patch
+  0196 now swaps that letter for a third spare cell (n = 117) drawn as the glyph of the Cross (A in the Nintendo
+  layout); no new patch. The spare cells moved to font page 0 rows 232..255 (rows 224..231 are the EU palette). See
+  [P10.6_GLYPHS section 10](P10.6_GLYPHS.md#10-the-us-cross-prompt-of-the-memory-card-screens-bug-4-2026-10-31).
   Done when: with the option on, the icons shown in the field, battle, menus
   and shops are Switch glyphs on the US and EU discs, they match the layout
   chosen in P9.8, and the option off restores the original icons.
@@ -2666,6 +2743,14 @@ Statuses are in the [table](#status-at-a-glance).
   `test_tunnel_partners_match_decomp`, ...); PC replays `*-walkthrough-screen-side-*` (rows listed
   at the chapter's first value, hidden one value before, EU only in chapter 12). New log line
   `dw3-walkthrough: chapter chNN optional rows listed L of T`.
+  **Condensing (2026-10-31, owner decision 7b of 2026-10-31, FEEDBACK-5 option B):** consecutive short
+  MAIN steps of one chapter and one area are read on one page of at most 11 lines (the 55 steps of the
+  first half are 29 pages, US 56 -> 30, EU 59 -> 33; the step ids, the table and the resolver are
+  unchanged, the screen opens the page that holds the current step). Same change: the `ch04.s01` text
+  (BUG-2, the DE Sincerity) and the `ch01.s06` text (BUG-5, the route to Seiryu City and the East
+  Station) were rewritten from the stage scripts and exits; FR/DE/IT/ES machine drafts regenerated.
+  New log lines: `open (..., N pages, N steps)`, `page <first step> holds N step(s) <ids>, ...`
+  ([As built, condensing](P6.35_WALKTHROUGH.md#as-built-condensing-feedback-5-option-b-and-the-bug-2--bug-5-texts)).
   **Left:** OLED W1 to W11 ([A19](OLED_TEST_PLAN.md)), native review, the release validator, the
   drawn "done" mark on optional rows.
   Done when (proposed; the hint-then-answer wording is superseded by decision 1):

@@ -29,7 +29,8 @@ uint64_t armTicksToNs(uint64_t ticks);
 /* --- threads (nx_os.c) ------------------------------------------------- */
 
 typedef void (*ThreadFunc)(void *arg);
-typedef struct Thread { int handle; } Thread;
+typedef uint32_t Handle; /* libnx: u32 */
+typedef struct Thread { Handle handle; } Thread;
 typedef struct Mutex { int locked; } Mutex;
 typedef struct Event { int fired; } Event;
 
@@ -37,7 +38,8 @@ Result threadCreate(Thread *t, ThreadFunc entry, void *arg, void *stack_mem,
                     size_t stack_sz, int prio, int cpuid);
 Result threadStart(Thread *t);
 Result threadClose(Thread *t);
-uintptr_t threadGetCurHandle(void);
+Handle threadGetCurHandle(void);
+void threadExit(void) __attribute__((noreturn));
 
 void mutexInit(Mutex *m);
 void mutexLock(Mutex *m);

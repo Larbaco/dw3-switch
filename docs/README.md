@@ -35,6 +35,7 @@ Files are named by roadmap item id (`P6.4_...`) or by topic.
 - [SWITCH_BACKEND](SWITCH_BACKEND.md): the Switch PSY-Z backend.
 - [CI_SUBMODULES](CI_SUBMODULES.md): CI submodule initialization.
 - [BUILD_SPEED](BUILD_SPEED.md): ccache, incremental decomp patches, replay selection, CI timings, scratch-dir cleanup.
+- [DEPENDENCIES](DEPENDENCIES.md): pins, upstream changes since 2026-10-01, impact and bump plan (decomp, psyz, SDL, devkitPro, Actions).
 - [CDFS_NOTES](CDFS_NOTES.md): CD and file serving notes.
 - [SINGLE_BUILD](SINGLE_BUILD.md): one build for US and EU (P6.24).
 - [PER_USER_SAVES](PER_USER_SAVES.md): per-user saves design (P6.26).
@@ -114,4 +115,5 @@ Files are named by roadmap item id (`P6.4_...`) or by topic.
 - [BALLOON_NULL_ACTOR](BALLOON_NULL_ACTOR.md): NULL reads the PS1 tolerated.
 - [FIELD_TILE_SPRITES](FIELD_TILE_SPRITES.md): field tiles with more than 5 sprites.
 - [NX_KERNEL_SYNC_OBJECTS](NX_KERNEL_SYNC_OBJECTS.md): the `KernelInit` sync objects error.
+- [SPHAIRA_EXIT](SPHAIRA_EXIT.md): BUG-1, the crash on exit when started from Sphaira (hbl re-reads the heap; every worker thread is joined and closed; the `dw3-exit:` proof lines).
 - [PREVIEW26_CRASH_RECORDS](PREVIEW26_CRASH_RECORDS.md): preview.26 OLED crash records.

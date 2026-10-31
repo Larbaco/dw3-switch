@@ -1,0 +1,16 @@
+# US: Load Game screen with a save on the card (footer prompts)
+pad 20 0x0008
+pad 25 0x0000
+pad 210 0x0008
+pad 215 0x0000
+pad 330 0x0040
+pad 335 0x0000
+pad 350 0x0040
+pad 355 0x0000
+pad 390 0x4000
+pad 395 0x0000
+shot 720 slot-choice
+pad 740 0x4000
+pad 745 0x0000
+shot 1020 save-list
+end 1040

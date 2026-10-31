@@ -132,6 +132,39 @@ def prepare_root(base: Path, version: str, seed: Path):
     return root
 
 
+# --fast (owner, 2026-10-31): the emulator's frame limiter (Config.json
+# `enable_vsync`) is off, so a run finishes sooner. Not for a run whose proof is
+# timing: a scenario is kept at normal speed when its name or its log proof
+# says pacing, turbo, music, or a frame time / "ms" value (docs/REPLAY_POLICY.md).
+FAST_EXEMPT_NAME = re.compile(r"pacing|turbo|music")
+FAST_EXEMPT_PROOF = re.compile(r"\bms\b|\bframe (time|gap)|\bpac(e|ing)\b|\bmusic tick|\btempo\b")
+
+
+def fast_ok(sc):
+    """(True, "") if this scenario may run with the frame limit off, else (False, reason)."""
+    if FAST_EXEMPT_NAME.search(sc.name):
+        return False, "timing/turbo by name"
+    proof = [rx for _, rx in tuple(sc.expect_log) + tuple(sc.expect_log_both) + tuple(sc.forbid_log)]
+    if any(FAST_EXEMPT_PROOF.search(rx) for rx in proof):
+        return False, "timing in the log proof"
+    return True, ""
+
+
+def set_vsync(root: Path, on: bool):
+    """Set the frame limiter in the run's own Config.json (never the seed or the user's).
+    Turning it OFF needs the key to exist, so a renamed key fails loudly, not silently."""
+    import json
+    cfg = root / "Config.json"
+    data = json.loads(cfg.read_text(encoding="utf-8"))
+    if "enable_vsync" not in data:
+        if on:
+            return
+        raise SystemExit(f"{cfg} has no enable_vsync key: check the key name for this Ryubing build")
+    if data["enable_vsync"] != on:
+        data["enable_vsync"] = on
+        cfg.write_text(json.dumps(data, indent=2), encoding="utf-8")
+
+
 def phase_expectations(sc, phase_idx):
     """(shots, end_frame) of one phase recording: [(frame, name)]."""
     shots, end = [], 0
@@ -323,6 +356,9 @@ def main():
     ap.add_argument("--quick", action="store_true", help="title-menu scenarios only")
     ap.add_argument("--soak", action="store_true", help="include the soak scenarios")
     ap.add_argument("--list", action="store_true")
+    ap.add_argument("--fast", action="store_true",
+                    help="frame limit off (Config.json enable_vsync=false) for scenarios whose proof "
+                         "is not timing; the others run at normal speed (docs/REPLAY_POLICY.md)")
     ap.add_argument("--build", action="store_true",
                     help="build the replay NRO with tools/build_switch_game.sh --replay first")
     ap.add_argument("--no-nxlink", action="store_true",
@@ -395,8 +431,14 @@ def main():
         roots[v] = prepare_root(base, v, Path(a.seed_root))
 
     rows = []
+    fast_runs, normal_runs = [], []
     for sc in todo:
         root, nro = roots[sc.version], nros[sc.version]
+        fast, why = fast_ok(sc) if a.fast else (False, "")
+        if a.fast:
+            (fast_runs if fast else normal_runs).append(sc.name)
+            print(f"[{sc.name}] frame limit {'OFF (--fast)' if fast else 'on (normal speed' + (f': {why})' if why else ')')}", flush=True)
+        set_vsync(root, not fast)
         memdir = root / "sdcard/switch/dw3" / sc.version / "memcard"
         shutil.rmtree(memdir, ignore_errors=True)   # fresh card per scenario
         memdir.mkdir(parents=True)
@@ -419,12 +461,18 @@ def main():
                     break
         finally:
             rt.stop_xvfb(xvfb)
+    if a.fast:
+        lines_fast = (f"--fast: frame limit off for {len(fast_runs)} scenario(s), normal speed for "
+                      f"{len(normal_runs)} ({', '.join(normal_runs) or 'none'}); turbo is not set by this runner")
+        print(lines_fast)
     w = max(len(r[0]) for r in rows)
     lines = [f"{'scenario':<{w}}  {'check':<22} result   detail"]
     for r in rows:
         lines.append(f"{r[0]:<{w}}  {r[1]:<22} {r[2]:<8} {r[3]}")
     bad = [r for r in rows if r[2] not in ("PASS", "INFO")]
     lines.append(f"\n{len(rows)} checks, {len(bad)} failed; evidence in {out}")
+    if a.fast:
+        lines.insert(0, lines_fast)
     text = "\n".join(lines)
     print(text)
     (out / "report.txt").write_text(text + "\n")

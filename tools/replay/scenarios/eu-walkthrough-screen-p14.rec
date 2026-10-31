@@ -1,4 +1,4 @@
-# EU: P6.35 walkthrough screen from the field menu, s03 (env in manifest)
+# EU: P6.35 walkthrough screen from the field menu, s01 (env in manifest)
 pad 300 0x4000
 pad 305 0x0000
 pad 330 0x4000
@@ -94,15 +94,15 @@ pad 1820 0x0040
 pad 1825 0x0000
 pad 1840 0x4000
 pad 1845 0x0000
-shot 1900 s03-page
+shot 1900 s01-page
 pad 1920 0x4000
 pad 1925 0x0000
-shot 1960 s03-ask
+shot 1960 s01-ask
 pad 1980 0x0040
 pad 1985 0x0000
 pad 2000 0x4000
 pad 2005 0x0000
-shot 2040 s03-answer
+shot 2040 s01-answer
 pad 2060 0x1000
 pad 2065 0x0000
 shot 2100 wt-list

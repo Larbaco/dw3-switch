@@ -2662,20 +2662,28 @@ _WT_FORBID = ((0, r"unresolved"), (0, r"dw3-walkthrough: text fallback"),
 _WT_CLOSE = r"dw3-port-options: group close walkthrough \(back to the group list\)"
 
 
-# chapters and steps per disc (the EU extra chapter has 3 rows more and a chapter of its own)
-_WT_COUNT = {"US": (11, 56), "EU": (12, 59)}
+# chapters, pages and steps per disc (the EU extra chapter has 3 steps more, each on a page of its own,
+# and a chapter of its own). Since the condensing (FEEDBACK-5) consecutive short steps of one area share
+# a page: 56 steps are 30 pages, the EU disc's 59 are 33.
+_WT_COUNT = {"US": (11, 30, 56), "EU": (12, 33, 59)}
+
+
+def _wt_open_re(reg):
+    """The `open (...)` log line's tail: language en, chapters, pages and steps of the disc."""
+    chapters, pages, steps = _WT_COUNT[reg]
+    return rf", platform pc, language en, {chapters} chapters, {pages} pages, {steps} steps\)(?s:.*)"
 
 
 def _wt_title(lang, reg):
     """expect_log of the browse-only run from the title (chapter 1 opened, first step shown,
     second hidden)."""
-    chapters, steps = _WT_COUNT[reg]
+    chapters, pages, steps = _WT_COUNT[reg]
     return ((0, r"dw3-walkthrough: open \(from title, region " + reg + r", platform pc, language " + lang +
-                rf", {chapters} chapters, {steps} steps\)(?s:.*)"
+                rf", {chapters} chapters, {pages} pages, {steps} steps\)(?s:.*)"
                 r"dw3-walkthrough: browse mode \(no game state\)(?s:.*)"
                 r"dw3-port-options: group open walkthrough \(title\)(?s:.*)"
                 r"dw3-walkthrough: first frame composed [\d.]+ ms after open(?s:.*)"
-                r"dw3-walkthrough: chapter ch01 opened \(reached y, current n, 6 steps\)(?s:.*)"
+                r"dw3-walkthrough: chapter ch01 opened \(reached y, current n, 4 pages, 6 steps\)(?s:.*)"
                 r"dw3-walkthrough: page ch01\.s01 \(kind MAIN, from list, reached y, current n, \d+ lines(?s:.*)"
                 r"dw3-walkthrough: spoiler ch01\.s01 closed \(answer available\)(?s:.*)"
                 r"dw3-walkthrough: spoiler ch01\.s01 asked(?s:.*)"
@@ -2691,8 +2699,7 @@ for _v, _reg in (("us", "US"), ("eu", "EU")):
     _add(Scenario(f"{_v}-walkthrough-screen-p4", _v, "full", turbo=4, timeout=300,
                   env=(("DW3_START_MODE", "0x22E"), ("DW3_PROGRESS", "4")) + _RT_BATTLE_ENV,
                   expect_log=((0, r"dw3-port-options: open in game(?s:.*)"
-                                  r"dw3-walkthrough: open \(from field, region " + _reg +
-                                  rf", platform pc, language en, {_WT_COUNT[_reg][0]} chapters, {_WT_COUNT[_reg][1]} steps\)(?s:.*)"
+                                  r"dw3-walkthrough: open \(from field, region " + _reg + _wt_open_re(_reg) +
                                   r"dw3-walkthrough: progress 4 half 0 area 14 -> chapter ch01 step ch01\.s06 "
                                   r"\(rule progress\) \[open mode 0x22e\](?s:.*)"
                                   r"dw3-walkthrough: flags read 0x400d=0(?s:.*)"
@@ -2718,36 +2725,35 @@ for _v, _reg in (("us", "US"), ("eu", "EU")):
     _add(Scenario(f"{_v}-walkthrough-screen-p14", _v, "full", turbo=4, timeout=300,
                   env=(("DW3_START_MODE", "0x255"), ("DW3_PROGRESS", "20")) + _RT_BATTLE_ENV,
                   expect_log=((0, r"dw3-port-options: open in game(?s:.*)"
-                                  r"dw3-walkthrough: open \(from field, region " + _reg +
-                                  rf", platform pc, language en, {_WT_COUNT[_reg][0]} chapters, {_WT_COUNT[_reg][1]} steps\)(?s:.*)"
+                                  r"dw3-walkthrough: open \(from field, region " + _reg + _wt_open_re(_reg) +
                                   r"dw3-walkthrough: progress 20 half 0 area 7 -> chapter ch05 step ch05\.s03 "
                                   r"\(rule progress\+flag\) \[open mode 0x255\](?s:.*)"
                                   r"dw3-walkthrough: flags read 0x400d=0(?s:.*)"
-                                  r"dw3-walkthrough: page ch05\.s03 \(kind MAIN, from open, reached y, current y, "
+                                  r"dw3-walkthrough: page ch05\.s01 \(kind MAIN, from open, reached y, current y, "
                                   r"\d+ lines(?s:.*)"
-                                  r"dw3-walkthrough: spoiler ch05\.s03 closed \(answer available\)(?s:.*)"
+                                  r"dw3-walkthrough: spoiler ch05\.s01 closed \(answer available\)(?s:.*)"
                                   r"dw3-port-options: group open walkthrough \(in game\)(?s:.*)"
                                   r"dw3-walkthrough: first frame composed [\d.]+ ms after open(?s:.*)"
-                                  r"dw3-walkthrough: spoiler ch05\.s03 asked(?s:.*)"
-                                  r"dw3-walkthrough: spoiler ch05\.s03 shown(?s:.*)"
-                                  r"dw3-walkthrough: page ch05\.s03 closed after \d+ ms \(spoiler shown y\)(?s:.*)"
-                                  r"dw3-walkthrough: page ch05\.s04 \(kind MAIN, from list, reached n, current n(?s:.*)"
-                                  r"dw3-walkthrough: spoiler ch05\.s04 asked(?s:.*)"
-                                  r"dw3-walkthrough: spoiler ch05\.s04 cancelled(?s:.*)"
-                                  r"dw3-walkthrough: page ch05\.s04 closed after \d+ ms \(spoiler shown n\)(?s:.*)"
+                                  r"dw3-walkthrough: spoiler ch05\.s01 asked(?s:.*)"
+                                  r"dw3-walkthrough: spoiler ch05\.s01 shown(?s:.*)"
+                                  r"dw3-walkthrough: page ch05\.s01 closed after \d+ ms \(spoiler shown y\)(?s:.*)"
+                                  r"dw3-walkthrough: page ch05\.s05 \(kind MAIN, from list, reached n, current n(?s:.*)"
+                                  r"dw3-walkthrough: spoiler ch05\.s05 asked(?s:.*)"
+                                  r"dw3-walkthrough: spoiler ch05\.s05 cancelled(?s:.*)"
+                                  r"dw3-walkthrough: page ch05\.s05 closed after \d+ ms \(spoiler shown n\)(?s:.*)"
                                   r"dw3-walkthrough: closed after \d+ ms \(pages opened 2, spoilers shown 1\)(?s:.*)"
                                   + _WT_CLOSE + r"(?s:.*)dw3-port-options: close in game \(back to the field menu\)"),),
                   forbid_log=_WT_FORBID + ((0, r"widescreen (enabled|disabled)"),
                                            (0, r"step not recognised|browse mode"),),
                   note="P6.35 slice 2: the walkthrough in the middle of the first half (progress 0x14, "
-                       "chapter 5) opens on the third step of its chapter; the next step is not reached "
+                       "chapter 5) opens on the page of its chapter that holds the current step (ch05.s03 is on the page "
+                       "ch05.s01); the next page is not reached "
                        "yet, so its title is hidden and the reveal says it may spoil; Back shows the "
                        "chapter list with the arrow on chapter 5"))
     _add(Scenario(f"{_v}-walkthrough-screen-p2b", _v, "full", turbo=4, timeout=300,
                   env=(("DW3_START_MODE", "0x2DF"), ("DW3_PROGRESS", "43")) + _RT_BATTLE_ENV,
                   expect_log=((0, r"dw3-port-options: open in game(?s:.*)"
-                                  r"dw3-walkthrough: open \(from field, region " + _reg +
-                                  rf", platform pc, language en, {_WT_COUNT[_reg][0]} chapters, {_WT_COUNT[_reg][1]} steps\)(?s:.*)"
+                                  r"dw3-walkthrough: open \(from field, region " + _reg + _wt_open_re(_reg) +
                                   r"dw3-walkthrough: progress 43 half -1 area -1 -> chapter ch11 step ch11\.s01 "
                                   r"\(rule progress\) \[open mode 0x2df\](?s:.*)"
                                   r"dw3-walkthrough: page ch11\.s01 \(kind MAIN, from open, reached y, current y, "
@@ -2779,8 +2785,7 @@ _add(Scenario("eu-walkthrough-screen-title-fr", "eu", "full", timeout=300,
 _add(Scenario("eu-walkthrough-screen-p2d", "eu", "full", turbo=4, timeout=300,
               env=(("DW3_START_MODE", "0x29C"), ("DW3_PROGRESS", "45")) + _RT_BATTLE_ENV,
               expect_log=((0, r"dw3-port-options: open in game(?s:.*)"
-                              r"dw3-walkthrough: open \(from field, region EU"
-                              rf", platform pc, language en, {_WT_COUNT['EU'][0]} chapters, {_WT_COUNT['EU'][1]} steps\)(?s:.*)"
+                              r"dw3-walkthrough: open \(from field, region EU" + _wt_open_re("EU") +
                               r"dw3-walkthrough: progress 45 half 1 area 14 -> chapter ch12 step ch12\.s01 "
                               r"\(rule progress\+flag\) \[open mode 0x29c\](?s:.*)"
                               r"dw3-walkthrough: page ch12\.s01 \(kind MAIN, from open, reached y, current y, "
@@ -2800,8 +2805,7 @@ _add(Scenario("eu-walkthrough-screen-p2d", "eu", "full", turbo=4, timeout=300,
 _add(Scenario("us-walkthrough-screen-p2d", "us", "full", turbo=4, timeout=300,
               env=(("DW3_START_MODE", "0x29C"), ("DW3_PROGRESS", "45")) + _RT_BATTLE_ENV,
               expect_log=((0, r"dw3-port-options: open in game(?s:.*)"
-                              r"dw3-walkthrough: open \(from field, region US"
-                              rf", platform pc, language en, {_WT_COUNT['US'][0]} chapters, {_WT_COUNT['US'][1]} steps\)(?s:.*)"
+                              r"dw3-walkthrough: open \(from field, region US" + _wt_open_re("US") +
                               r"dw3-walkthrough: progress 45 half 1 area 14 -> chapter - step - "
                               r"\(rule above-table\) \[open mode 0x29c\](?s:.*)"
                               r"dw3-walkthrough: step not recognised \(progress 45\)(?s:.*)"
@@ -2825,15 +2829,15 @@ _WT_SIDE_SHOWN = (
     ("p1e", "0x207", 30, 0, 19, "ch08", "ch08.s01", "progress", ("ch08.x01", "ch08.x02"), "both"),
     ("p2d", "0x29C", 45, 1, 14, "ch12", "ch12.s01", r"progress\+flag", ("ch12.x01", "ch12.x02"), "eu"),
 )
-# (tag, start mode, progress, half, area, chapter now, step now, the chapter ahead, its main steps)
+# (tag, start mode, progress, half, area, chapter now, step now, the chapter ahead, its pages, its main steps)
 _WT_SIDE_HIDDEN = (
-    ("pe", "0x207", 14, 0, 19, "ch03", "ch03.s05", "ch04", 3, "both"),
-    ("p1d", "0x207", 29, 0, 19, "ch07", "ch07.s03", "ch08", 7, "both"),
-    ("p2b", "0x2DF", 43, -1, -1, "ch11", "ch11.s01", "ch12", 3, "eu"),
+    ("pe", "0x207", 14, 0, 19, "ch03", "ch03.s05", "ch04", 1, 3, "both"),
+    ("p1d", "0x207", 29, 0, 19, "ch07", "ch07.s03", "ch08", 2, 7, "both"),
+    ("p2b", "0x2DF", 43, -1, -1, "ch11", "ch11.s01", "ch12", 3, 3, "eu"),
 )
 for _v, _reg in (("us", "US"), ("eu", "EU")):
     _open = (r"dw3-port-options: open in game(?s:.*)dw3-walkthrough: open \(from field, region " + _reg +
-             rf", platform pc, language en, {_WT_COUNT[_reg][0]} chapters, {_WT_COUNT[_reg][1]} steps\)(?s:.*)")
+             _wt_open_re(_reg))
     for _tag, _mode, _prog, _half, _area, _ch, _step, _rule, _ids, _who in _WT_SIDE_SHOWN:
         if _who == "eu" and _v == "us":
             continue
@@ -2857,7 +2861,7 @@ for _v, _reg in (("us", "US"), ("eu", "EU")):
                                                (0, r"chapter ch(04|08|12) optional rows listed [01] of")),
                       note=f"P6.35 slice 4: at progress {_prog} ({_ch} starts) the steps list shows the chapter's "
                            f"optional block; both rows open as SIDE pages with the answer behind the two actions"))
-    for _tag, _mode, _prog, _half, _area, _ch, _step, _ahead, _nmain, _who in _WT_SIDE_HIDDEN:
+    for _tag, _mode, _prog, _half, _area, _ch, _step, _ahead, _npages, _nmain, _who in _WT_SIDE_HIDDEN:
         if _who == "eu" and _v == "us":
             continue
         _add(Scenario(f"{_v}-walkthrough-screen-side-{_tag}", _v, "full", turbo=4, timeout=300,
@@ -2866,7 +2870,7 @@ for _v, _reg in (("us", "US"), ("eu", "EU")):
                                       rf"dw3-walkthrough: progress {_prog} half {_half} area {_area} -> chapter {_ch} "
                                       rf"step {re.escape(_step)} \(rule progress\) \[open mode {_mode.lower()}\](?s:.*)"
                                       rf"dw3-walkthrough: chapter {_ahead} optional rows listed 0 of 2(?s:.*)"
-                                      rf"dw3-walkthrough: chapter {_ahead} opened \(reached n, current n, {_nmain} steps\)(?s:.*)"
+                                      rf"dw3-walkthrough: chapter {_ahead} opened \(reached n, current n, {_npages} pages, {_nmain} steps\)(?s:.*)"
                                       r"dw3-walkthrough: closed after \d+ ms \(pages opened 1, spoilers shown 0\)(?s:.*)"
                                       + _WT_CLOSE + r"(?s:.*)dw3-port-options: close in game \(back to the field menu\)"),),
                       forbid_log=_WT_FORBID + ((0, r"widescreen (enabled|disabled)"),
@@ -3395,9 +3399,68 @@ for _v in ("us", "eu"):
                 note="Switch glyphs on, custom map with L1 on ZL and R1 on ZR: the page-turn "
                      "prompt is a ZR glyph (P10.6 page-turn)"),
         _glyphs(f"{_v}-save-screen", f"{_v}-glyphs-on-save",
-                note="Switch glyphs on: the save screen's Back prompt is an X glyph, and on EU "
-                     "the Save prompt (the Cross disc) a B glyph (P10.6)"),
+                note="Switch glyphs on: the save screen's Back prompt is an X glyph and its "
+                     "Save prompt (the Cross: the EU disc, the US letter X since bug 4) a B glyph "
+                     "(P10.6)"),
+        _glyphs(f"{_v}-save-screen", f"{_v}-glyphs-nintendo-save", layout="nintendo",
+                note="Switch glyphs on, Nintendo layout: the save screen's Save prompt is an A "
+                     "glyph, its Back prompt a B glyph, on both discs (bug 4)"),
     )
+# Bug 4 (p56 OLED): the Load Game screen with a save on the card. The game saves from
+# the forced save screen (phase 0, as xr-save), then the title's Load Game opens the slot
+# list with the footer prompts (phase 1: the slot choice and the list are the checkpoints).
+#  load-saved             the plain screen (the references of the glyph cases below)
+#  glyphs-off-load        switch_glyphs=0: bit-identical to load-saved
+#  glyphs-on-load         glyphs on, PlayStation layout
+#  glyphs-nintendo-load   glyphs on, button_layout=nintendo (the case of the bug)
+for _v, _ids in (("us", (0x158, 0x1E3, 0x1C1)), ("eu", (0x166, 0x1EE, 0x1D0))):
+    _lf, _lm, _lt = _ids
+    _add(Scenario(f"{_v}-load-saved", _v, "full", timeout=600,
+                  phases=(f"{_v}-xr-save", f"{_v}-load-view"),
+                  phase_env=(_SAVE_ENV, ()),
+                  expect_log=(_XR_WRITE,),
+                  forbid_log=_XR_BAD,
+                  note="the Load Game screen with a saved game: the slot list and its "
+                       "confirm / back prompts (bug 4)"))
+
+
+def _glyphs_load(v, name, layout, glyphs, note, env=()):
+    b = by_name()[f"{v}-load-saved"]
+    cfg = b.cfg + (("switch_glyphs", "1" if glyphs else "0"),)
+    if layout == "nintendo":
+        cfg += (("button_layout", "nintendo"),)
+    if glyphs:
+        expect = ((1, rf"dw3-options: switch_glyphs=on(?s:.*)dw3-glyphs: on, map={layout}, "
+                      + _GLY_CELLS[(v, layout)] + r" \[font load\]"),)
+        forbid = ((1, r"dw3-glyphs: .*(cell is not a 12x12|not a role colour|size-1 icon table has)"),)
+    else:
+        expect = ((1, r"dw3-options: switch_glyphs=off(?s:.*)dw3-glyphs: off, map=playstation, "
+                      r"patched 0 cells"),)
+        forbid = ((1, r"dw3-glyphs: (on|page-turn)"),)
+    return dataclasses.replace(b, name=name, cfg=cfg, env=b.env + env,
+                               expect_log=b.expect_log + expect,
+                               forbid_log=b.forbid_log + forbid,
+                               ref_from=f"{v}-load-saved" if not glyphs else "", note=note)
+
+
+for _v in ("us", "eu"):
+    _add(
+        _glyphs_load(_v, f"{_v}-glyphs-off-load", "playstation", False,
+                     "switch_glyphs=0: the Load Game screen is bit-identical to the plain run (bug 4)"),
+        _glyphs_load(_v, f"{_v}-glyphs-on-load", "playstation", True,
+                     "Switch glyphs on, PlayStation layout: the Load Game screen's confirm prompt "
+                     "is a B glyph, its back prompt an X glyph (bug 4)"),
+        _glyphs_load(_v, f"{_v}-glyphs-nintendo-load", "nintendo", True,
+                     "Switch glyphs on, Nintendo layout: the Load Game screen's confirm prompt is "
+                     "an A glyph, its back prompt a B glyph (bug 4)"),
+    )
+# The EU disc draws the Load prompts with the n = 27 icon, the same cell in the five
+# languages: the Nintendo layout case in the four other languages (DW3_LANGUAGE).
+for _lang, _id in (("fr", 3), ("it", 4), ("de", 5), ("es", 6)):
+    _add(_glyphs_load("eu", f"eu-glyphs-nintendo-load-{_lang}", "nintendo", True,
+                      f"Switch glyphs on, Nintendo layout, EU {_lang}: the Load Game screen's "
+                      "confirm prompt is an A glyph, its back prompt a B glyph (bug 4)",
+                      env=(("DW3_LANGUAGE", str(_id)),)))
 # The field menu's item list (menu-screens: page 1, then page 2 with both prompts). The
 # base has no log expectation of its own (log_only is off, it is a picture scenario).
 for _v in ("us", "eu"):
