@@ -68,6 +68,11 @@ static SDL_GPUTexture *g_logo_texture;
 static SDL_GPUTexture *g_dialog_texture;
 static int g_dialog_active, g_dialog_kind, g_dialog_focus = -1;
 static unsigned g_dialog_language = ~0u;
+/* The title's version label (title_overlay_art.c dw3_pc_title_version_art): a
+ * small texture of its own, drawn at the real right edge of the picture. */
+static SDL_GPUTexture *g_version_texture;
+static unsigned g_version_generation;
+static int g_version_visible;
 /* P6.30 technical help: its own 960x720 layer (title_overlay_art.c
  * dw3_pc_help_render), drawn instead of the Options layer while it is open.
  * Created when the help opens, released when it closes. */
@@ -311,6 +316,7 @@ static void release_gpu_resources(void) {
     if (g_texture) SDL_ReleaseGPUTexture(g_device, g_texture);
     if (g_logo_texture) SDL_ReleaseGPUTexture(g_device, g_logo_texture);
     if (g_dialog_texture) SDL_ReleaseGPUTexture(g_device, g_dialog_texture);
+    if (g_version_texture) SDL_ReleaseGPUTexture(g_device, g_version_texture);
     if (g_help_texture) SDL_ReleaseGPUTexture(g_device, g_help_texture);
     if (g_fade_texture) SDL_ReleaseGPUTexture(g_device, g_fade_texture);
     if (g_background_texture) SDL_ReleaseGPUTexture(g_device, g_background_texture);
@@ -323,6 +329,9 @@ static void release_gpu_resources(void) {
     g_texture = NULL;
     g_logo_texture = NULL;
     g_dialog_texture = NULL;
+    g_version_texture = NULL;
+    g_version_generation = 0;
+    g_version_visible = 0;
     g_help_texture = NULL;
     g_help_uploaded = 0;
     g_dialog_active = 0;
@@ -395,6 +404,9 @@ static int upload_art_and_quad(void) {
         dialog_info.width = DW3_DIALOG_W;
         dialog_info.height = DW3_DIALOG_H;
         g_dialog_texture = SDL_CreateGPUTexture(g_device, &dialog_info);
+        dialog_info.width = DW3_TITLE_VERSION_W;
+        dialog_info.height = DW3_TITLE_VERSION_H;
+        g_version_texture = SDL_CreateGPUTexture(g_device, &dialog_info);
     }
     const SDL_GPUSamplerCreateInfo logo_sampler_info = {
         .min_filter = SDL_GPU_FILTER_LINEAR,
@@ -1051,6 +1063,28 @@ static void help_refresh(void) {
 /* The SDL3 GPU shader has no tint input; the edge fade is not followed here. */
 void dw3_pc_title_menu_set_fade(int level) { (void)level; }
 
+/* The version label: uploaded when its text changed (a combined image picks its
+ * region after the first draw), shown while the title menu is up and the
+ * show_version setting is on. */
+static void version_label_refresh(void) {
+    g_version_visible = 0;
+    if (!g_version_texture || !dw3_pc_title_overlay_version_shown()) return;
+    const unsigned generation = dw3_pc_title_version_generation();
+    if (generation != g_version_generation) {
+        uint8_t *pixels = (uint8_t *)malloc((size_t)DW3_TITLE_VERSION_W *
+                                            DW3_TITLE_VERSION_H * 4);
+        int rc;
+        if (!pixels) return;
+        dw3_pc_title_version_art(pixels, DW3_TITLE_VERSION_W * 4);
+        rc = upload_rgba(g_version_texture, pixels, DW3_TITLE_VERSION_W,
+                         DW3_TITLE_VERSION_H, DW3_TITLE_VERSION_W * 4);
+        free(pixels);
+        if (rc != 0) return;
+        g_version_generation = generation;
+    }
+    g_version_visible = 1;
+}
+
 void dw3_pc_title_menu_set_state(int active, int selected) {
     const int composition = menu_composition_mode();
     profile_begin();
@@ -1074,17 +1108,20 @@ void dw3_pc_title_menu_set_state(int active, int selected) {
         help_refresh();
         g_selection = STATE_OPTIONS;
         g_overlay_active = 1;
+        g_version_visible = 0;
         profile_end();
         return;
     }
     help_refresh();
     if (!active || !g_pipeline || !g_texture || !g_vertices || !g_sampler) {
         g_overlay_active = 0;
+        g_version_visible = 0;
         profile_end();
         return;
     }
     if (selected == -2) {
         g_overlay_active = 0;
+        g_version_visible = 0;
         profile_end();
         return;
     }
@@ -1093,6 +1130,7 @@ void dw3_pc_title_menu_set_state(int active, int selected) {
     else g_selection = selected + 1;
     refresh_art();
     g_overlay_active = 1;
+    version_label_refresh();
     profile_end();
 }
 
@@ -1286,6 +1324,32 @@ static void render_overlay_layers(SDL_GPUCommandBuffer *cmd, SDL_GPURenderPass *
         SDL_DrawGPUPrimitives(pass, 6, 1,
                               (Uint32)((help_on ? STATE_COUNT + 4 : g_selection) * 6), 0);
         profile_overlay_draw_complete();
+    }
+    if (g_overlay_active && g_version_visible && g_selection != STATE_OPTIONS &&
+        g_version_texture && g_logo_sampler) {
+        /* The label belongs to the picture, not to the 4:3 middle: its right
+         * edge is DW3_TITLE_VERSION_MARGIN canvas pixels inside the picture's
+         * right edge (the 16:9 edge in widescreen; in 4:3 the canvas corner),
+         * scaled like the canvas (viewport_h / 720). */
+        const float scale = (float)viewport_h / (float)CANVAS_H;
+        const SDL_GPUViewport label_viewport = {
+            .x = picture_x + (float)picture_w -
+                 (float)(DW3_TITLE_VERSION_W + DW3_TITLE_VERSION_MARGIN) * scale,
+            .y = viewport.y + (float)DW3_TITLE_VERSION_Y * scale,
+            .w = (float)DW3_TITLE_VERSION_W * scale,
+            .h = (float)DW3_TITLE_VERSION_H * scale,
+            .min_depth = 0.0f,
+            .max_depth = 1.0f,
+        };
+        const SDL_GPUTextureSamplerBinding version_binding = {
+            .texture = g_version_texture, .sampler = g_logo_sampler,
+        };
+        SDL_BindGPUGraphicsPipeline(pass, g_pipeline);
+        SDL_BindGPUVertexBuffers(pass, 0, &binding, 1);
+        SDL_BindGPUFragmentSamplers(pass, 0, &version_binding, 1);
+        SDL_SetGPUViewport(pass, &label_viewport);
+        SDL_DrawGPUPrimitives(pass, 6, 1, (STATE_COUNT + 4) * 6, 0);
+        SDL_SetGPUViewport(pass, &viewport);
     }
     if (g_dialog_active && g_dialog_texture && g_logo_sampler) {
         const SDL_GPUTextureSamplerBinding dialog_binding = {

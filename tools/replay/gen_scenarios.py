@@ -3081,6 +3081,20 @@ RESTART_RECS = (("restart-after-battle", restart_after_battle),
                 ("restart-save-continue", restart_save_continue))
 
 
+def title_ready(version):
+    """PRESS START only when the game is ready to answer it (patch 0199): Start
+    is pressed on every other frame from the first frame of the boot (a press
+    is the odd frames, a release the even ones, since the game sees an edge),
+    through the EU language select and the movie skip, until the title takes
+    it. The log carries the proof: the frame the prompt is drawn, the frame
+    the pad starts to be read for it, and the first press accepted."""
+    r = Rec(f"{version.upper()}: Start pressed every other frame from boot (title readiness)")
+    for f in range(1, 700):
+        r.press(f, START if f % 2 else 0)
+    r.end(700)
+    return r
+
+
 def title_quit(version):
     """P6.28: the title menu's Quit game. Down to the fourth row (checkpoint
     `quit-focus`), Cross opens the Yes / No window with the cursor on No
@@ -3825,6 +3839,7 @@ def main(out):
         (out / f"{v}-cheat-fill-bag.rec").write_text(cheat_fill_bag(v).text(True))
         (out / f"{v}-cheats-screen2.rec").write_text(cheats_screen2(v).text(True))
         (out / f"{v}-title-quit.rec").write_text(title_quit(v).text(True))
+        (out / f"{v}-title-ready.rec").write_text(title_ready(v).text(True))
         (out / f"{v}-return-title.rec").write_text(return_title(v).text(True))
         (out / f"{v}-return-title-rows7.rec").write_text(
             return_title(v, rows7=True).text(True))

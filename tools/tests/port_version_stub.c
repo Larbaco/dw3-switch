@@ -7,3 +7,7 @@
 void dw3_version_text(char *buf, size_t cap) {
     snprintf(buf, cap, "dw3-switch test US");
 }
+
+void dw3_version_short_text(char *buf, size_t cap) {
+    snprintf(buf, cap, "vtest US");
+}

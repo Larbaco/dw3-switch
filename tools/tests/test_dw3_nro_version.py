@@ -200,6 +200,7 @@ def test_header_text_defines_and_escapes():
     assert '#define DW3_VERSION_SHA "abc1234"' in text
     assert '#define DW3_VERSION_BUILD_DATE "2026-10-30"' in text
     assert "#define DW3_VERSION_LABEL" in text
+    assert "#define DW3_VERSION_SHORT" in text
 
 
 def test_write_header_only_when_changed(tmp_path):
@@ -313,3 +314,21 @@ def test_cli_nacp_for_a_final_release(monkeypatch, capsys):
     assert capsys.readouterr().out.strip() == "1.0.0"
     assert mod.main(["--auto", "--format", "label"]) == 0
     assert capsys.readouterr().out.strip() == "dw3-switch v1.0.0 (962462d)"
+
+
+@pytest.mark.parametrize(
+    "raw,expected",
+    [
+        ("0.9.0-preview.1", "v0.9.0-p.1"),
+        ("v0.9.0-preview.12", "v0.9.0-p.12"),
+        ("0.6.5-preview.57", "v0.6.5-p.57"),
+        ("0.6.5-preview.57-9-gf99fb4e-dirty", "v0.6.5-p.57+f99f"),
+        ("1.0.0-rc.2", "v1.0.0-rc.2"),
+        ("0.9.0", "v0.9.0"),
+        ("8574e58", "8574e58"),
+        ("unknown", "unknown"),
+    ],
+)
+def test_short_label_for_the_title(raw, expected):
+    assert mod.short_label(raw) == expected
+    assert len(mod.short_label(raw)) <= 16

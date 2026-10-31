@@ -40,7 +40,7 @@ Files are named by roadmap item id (`P6.4_...`) or by topic.
 - [SINGLE_BUILD](SINGLE_BUILD.md): one build for US and EU (P6.24).
 - [PER_USER_SAVES](PER_USER_SAVES.md): per-user saves design (P6.26).
 - [MENU_COMPOSITION_PLAN](MENU_COMPOSITION_PLAN.md): native menu composition plan.
-- [TITLE_MENU_DESIGN](TITLE_MENU_DESIGN.md): the title menu design direction.
+- [TITLE_MENU_DESIGN](TITLE_MENU_DESIGN.md): the title menu design direction, and when PRESS START may be drawn (patch 0199).
 - [PC_TITLE_OVERLAY_ART](PC_TITLE_OVERLAY_ART.md): native-resolution PC title overlay art.
 - [PC_TITLE_LOGO_RESAMPLING](PC_TITLE_LOGO_RESAMPLING.md): PC original-logo resampling.
 - [PC_TITLE_WIDESCREEN](PC_TITLE_WIDESCREEN.md): PC title widescreen background.

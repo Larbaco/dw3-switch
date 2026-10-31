@@ -1,0 +1,76 @@
+Upstream-bound: no
+Subject: [PORT_HOST] title: PRESS START is drawn only on the frames the pad is read
+
+STDWTITL_tickMenu starts the "PRESS START" prompt in runPressStart substate 1,
+which only counts seven ticks (`timer++ >= 6`) before it moves to substate 2.
+STDWTITL_drawMenu runs at the end of every one of those ticks, so the prompt is
+on screen from the first tick, but PAD_PRESSED(PAD_START) is read only in
+substate 2: a press made in the first seven frames after the prompt appears is
+dropped (117 ms at 60 Hz, 140 ms on the 50 Hz EU build; more when the frame
+rate dips). Measured on PC: US prompt drawn at frame 54, Start read from 61;
+EU 167 and 174; after Return to title the same seven frames.
+
+port/options/title_ready.c decides: the menu does not draw while the original
+is still in substate 1 (the check uses the substate at the start of the tick,
+so the tick that moves to substate 2 does not draw either: the prompt appears
+on the tick whose runPressStart already reads Start). Nothing the player can
+press changes, and no press is buffered. On EU the prompt also waits (at most
+30 frames) for the logo, which is composed on the first frame its animations
+are done and costs 0.24 s on the PC build. The module also logs
+`dw3-title: press start shown at frame N, input ready at frame M (cause ...)`.
+
+--- a/src/menus/title/menu.c	2026-10-31 05:06:08.244601313 -0300
++++ b/src/menus/title/menu.c	2026-10-31 05:06:08.246127971 -0300
+@@ -23,6 +23,11 @@
+ void STDWTITL_drawMenu(TitleMenuTask *task) {
+     SpriteDrawer sprite;
+ 
++#if PORT_HOST
++    if (task->state == TASK_RUN && task->showOptions == 0) {
++        dw3_port_title_prompt_drawn();
++    }
++#endif
+ #if defined(DW3_TITLE_NATIVE_OVERLAY)
+     if (dw3_port_options_is_open()) {
+         dw3_port_title_options_draw(task->layerId, 78,
+@@ -286,6 +291,7 @@
+ #if PORT_HOST
+     int options_were_open = dw3_port_options_is_open();
+     int confirm_was_open = dw3_port_confirm_is_open();
++    int prompt_input_open = 1;
+ #endif
+     switch (task->state) {
+     case TASK_INIT:
+@@ -303,11 +309,20 @@
+             task->setState(task, TASK_DONE);
+         }
+         task->choice = 0;
++#if PORT_HOST
++        dw3_port_title_prompt_begin();
++#endif
+         return;
+     case TASK_RUN:
+         if (task->substate == 0) {
+             return;
+         }
++#if PORT_HOST
++        /* The original draws PRESS START from the first frame of substate 1 but
++           reads Start only from substate 2, seven frames later: a press in that
++           window is lost. The prompt is held back until the pad is polled. */
++        prompt_input_open = dw3_port_title_prompt_frame(task->substate, PAD_PRESSED(PAD_START));
++#endif
+         runPressStart(task);
+         break;
+     case TASK_DONE:
+@@ -327,6 +342,11 @@
+ #endif
+         return;
+     }
++#if PORT_HOST
++    if (!prompt_input_open) {
++        return;
++    }
++#endif
+     STDWTITL_drawMenu(task);
+ #if PORT_HOST
+     if (dw3_port_options_is_open()) {

@@ -128,6 +128,18 @@ EU_OPENING = ((0x165, M), (0x1D0, M), (0x166, M), (0x1E9, S), (0x1EA, S), (0x206
 US_DOOR = ((0x1C7, S), (0x1C5, S)) * 2     # two more door round trips
 EU_DOOR = ((0x1D6, S), (0x1D4, S)) * 2
 
+# Patch 0199: PRESS START is drawn only on the frames the pad is read. The log
+# line names the frame the prompt is drawn (N) and the frame Start starts to be
+# read (M); the game prints `cause none` only when M <= N and `cause dead window`
+# when the prompt came first (the original drew it seven frames before it read
+# Start). `title-ready` presses Start every other frame from the first frame of
+# the boot, so the first press the title can take is accepted at M or one frame
+# later; the return to title (`-return-title` below) is the same check after the
+# field menu's Return to title.
+_READY = r"dw3-title: press start shown at frame \d+, input ready at frame \d+ \(cause none: "
+_READY_ACC = r"dw3-title: first Start accepted at frame \d+ \(\+[01] after input opened\)"
+_READY_BAD = r"dw3-title: press start shown at frame \d+, input ready at frame \d+ \(cause dead window"
+
 SCENARIOS: list[Scenario] = []
 
 
@@ -137,14 +149,17 @@ def _add(*s: Scenario) -> None:
 
 _add(Scenario("us-title", "us", "quick", expect_restore=((0x1C1, M),),
               expect_log=((0, r"dw3-title-menu: no autosave\.bin: plaques New Game, Options, "
-                              r"Load Game \(slot list\), Quit game"),)))
+                              r"Load Game \(slot list\), Quit game"),
+                          # the title's short version label (replays pin the text)
+                          (0, r'dw3-title-overlay: version label "replay US" \(short form')),))
 for _lang in EU_LANGS:
     # P6.1 (patch 0177): the language select takes the 16:9 gutter; the
     # title that follows still has the four plaques (no auto-save file).
     _add(Scenario(f"eu-lang-{_lang}", "eu", "quick",
                   expect_log=((0, r"dw3-widescreen: gutter 53 px per side \(was -?\d+; 16:9\) mode file 0x165"
                                   r"(?s:.*)dw3-title-menu: no autosave\.bin: plaques New Game, Options, "
-                                  r"Load Game \(slot list\), Quit game"),)))
+                                  r"Load Game \(slot list\), Quit game"),
+                              (0, r'dw3-title-overlay: version label "replay EU" \(short form')),))
 
 # Patch 0187: Cross (the confirm button) picks the language as well as Start;
 # the log names the button and the title follows.
@@ -783,7 +798,8 @@ for _v, _rec in (("us", "us-title"), ("eu", "eu-lang-en")):
     _add(Scenario(f"{_v}-title-noversion", _v, "full", phases=(_rec,), timeout=300,
                   cfg=(("show_version", "0"),),
                   expect_log=((0, r"dw3-options: file keys .* show_version=0"),),
-                  note="show_version=0: the title's corner is clear (P6.37)"))
+                  forbid_log=((0, r"dw3-title-overlay: version label"),),
+                  note="show_version=0: the title's corner is clear, no label is rendered (P6.37)"))
     _add(Scenario(f"{_v}-options-noversion", _v, "full", phases=(f"{_v}-options-cheats-listed",),
                   timeout=300, cfg=(("show_version", "0"),),
                   expect_log=((0, r"dw3-options: file keys .* show_version=0(?s:.*)"
@@ -2330,8 +2346,8 @@ for _v, _title in (("us", 0x1C1), ("eu", 0x1D0)):
                                   + (r"dw3-widescreen: gutter 0 px per side \(was 53; 4:3 picture\)(?s:.*)"
                                      if _v == "us" else "") +
                                   r"dw3-port-restart: new screen ready after \d+ black frames; fading in(?s:.*)"
-                                  r"dw3-port-restart: fade finished"),),
-                  forbid_log=((0, r"save flush failed"),),
+                                  r"dw3-port-restart: fade finished"), (0, _READY)),
+                  forbid_log=((0, r"save flush failed"), (0, _READY_BAD)),
                   note="field menu Return to title: No keeps the menu, Yes fades to black, runs the P6.9 reset on black and fades the title in (P6.27); the 4:3 gutter switch falls inside the black (US; EU stays 16:9 since patch 0177)"),
          Scenario(f"{_v}-return-title-rows7", _v, "full", turbo=4, timeout=600,
                   env=_ITEMS_ENV, cfg=_RT_CFG,
@@ -2339,6 +2355,12 @@ for _v, _title in (("us", 0x1C1), ("eu", 0x1D0)):
                                   r"dw3-port-confirm: cancelled \(return to title\); nothing changed"),),
                   forbid_log=((0, r"dw3-port-restart"),),
                   note="the field menu with the card folders row and Return to title: seven rows, cancelled (P6.27)"))
+
+for _v in ("us", "eu"):
+    _add(Scenario(f"{_v}-title-ready", _v, "full", timeout=300, log_only=True,
+                  expect_log=((0, _READY), (0, _READY_ACC)),
+                  forbid_log=((0, _READY_BAD),),
+                  note="PRESS START is drawn on the frame the pad is read, never before (patch 0199); Start pressed every other frame from boot"))
 
 # P9.7 slice 1: the port Options screen from the field menu's Options row
 # (patch 0160, port/options/field_options.c). Phase 1: Widescreen refuses a

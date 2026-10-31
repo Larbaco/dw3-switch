@@ -93,6 +93,67 @@ renderer. No new logo filter is applied. The original background code is not
 modified. The GPU overlay replaces the original menu and footer sprites with
 the native-resolution labels and three-line credits.
 
+## PRESS START readiness (patch 0199)
+
+The prompt must be on screen only while the next Start press is taken. The
+original title menu (`src/menus/title/menu.c`, `runPressStart`) starts the
+prompt in substate 1 and draws it at the end of every tick (`STDWTITL_drawMenu`),
+but it reads Start (`PAD_PRESSED(PAD_START)`) only in substate 2, after
+`timer++ >= 6`: seven ticks later. A press in those seven frames (117 ms at 60 Hz,
+140 ms on the 50 Hz EU build) was dropped, and a press needs a fresh edge, so a
+tap that fell inside it was simply lost. Measured on the PC build (frames are
+`PadChkVsync` counts, the replay clock; Start pressed every other frame from the
+boot, or no input):
+
+| Case | Before: N / M (M - N) | After: N / M |
+|---|---|---|
+| US cold boot (movie skipped) | 54 / 61 (7) | 61 / 61 |
+| EU cold boot (language select, movie skipped) | 167 / 174 (7) | 174 / 174 |
+| US Return to title (field menu) | 1944 / 1951 (7) | 1951 / 1951 |
+| EU Return to title | 2220 / 2227 (7) | 2227 / 2227 |
+| US through the region picker (combined launcher) | not run before | 61 / 61 |
+| EU through the region picker | not run before | 248 / 248 |
+| US later visits (after the opening movie, no input) | not run before | 2530 / 2530, 4999 / 4999 |
+
+"Before" is the build with `DW3_TITLE_EARLY_PROMPT=1`, which draws the prompt where
+the original did.
+
+The other candidates were measured and are not the cause: the port's 4:3 to 16:9
+fade of Return to title ends (frame 1897 + 15) before the prompt (1944); the
+menu task polls the pad on every frame; the edge detection is the original's
+(`readPadButtons`: `pressed = buttons & (held ^ buttons)`), so a held Start from
+the movie skip is only lost if it is still held, and none was at the prompt in
+the runs; no tick took 30 ms or more on the US title. One port-side hitch exists
+on EU: the logo is composed (resampled) on the first frame its animations are
+done, 237 to 256 ms on the PC build, two frames after the prompt would appear.
+With the patch it falls inside the hidden frames; and in case a slower host
+reaches the prompt before the logo is composed, the prompt also waits for the
+logo (at most 30 frames after Start is read).
+
+**Fix, and why this one.** The prompt is not drawn until the tick that reads
+Start (`dw3_port_title_prompt_frame` in `port/options/title_ready.c`, called by
+`STDWTITL_tickMenu`; the decision uses the substate at the start of the tick, so
+the tick that moves to substate 2 does not draw either). The alternative, to
+buffer one press made in the window, would make the game accept a press the
+original drops (a behaviour change that needs an Options row such as "Title:
+accept early Start"), and the prompt would still be on screen while the game
+ignores a second press; hiding it moves a prompt by seven frames and changes no
+input, which is a bug fix of the original's display (class D, flagged for the
+owner in [PORT_OPTIONS](PORT_OPTIONS.md#port-wide-rule-every-change-is-switchable)).
+Nothing is buffered.
+
+**Proof.** Every visit to the title logs
+`dw3-title: press start shown at frame N, input ready at frame M (cause ...)`
+(`cause none` when M <= N, `cause dead window` when the prompt came first) and
+`dw3-title: first Start accepted at frame K (+D after input opened)`; a frame of
+100 ms or more while the title waits for Start adds `dw3-title: slow frame of X
+ms ...` (on a console that is the log of a port-side hitch). Replay scenarios
+`us-title-ready` and `eu-title-ready` (Start every other frame from boot) and the
+`return-title` pair assert `cause none` and fail on `cause dead window`.
+`DW3_TITLE_EARLY_PROMPT=1` (PC test aid, not an option) draws the prompt in the
+dead window again, to show that these scenarios fail on the original behaviour.
+OLED row: A21 in [OLED_TEST_PLAN](OLED_TEST_PLAN.md).
+
 ## EU disc
 
 The EU title bank is per `LANGUAGE`, and the overlay follows it. At title

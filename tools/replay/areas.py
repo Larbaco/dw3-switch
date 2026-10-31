@@ -177,6 +177,7 @@ RULES: list[tuple[str, object]] = [
     (r"^port/patches/\d+-PORT_HOST-p617-", ("*volume*", "*music*", "*options-sound*")),
     (r"^port/patches/\d+-PORT_HOST-p618-", ("*text-*", "*encounter*", "*banner*", "*persist*")),
     (r"^port/patches/\d+-PORT_HOST-p627-", ("*title-quit*", "*return-title*")),
+    (r"^port/patches/\d+-PORT_HOST-title-press-start-ready", _TITLE),
     (r"^port/patches/\d+-PORT_HOST-p69-restart", ("*restart*",)),
     (r"^port/patches/\d+-PORT_HOST-p64-", ("*turbo*",)),
     (r"^port/patches/\d+-PORT_HOST-(p38|p55)-stage-sweep", ("*stage-sweep*",)),

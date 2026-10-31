@@ -361,6 +361,7 @@ add_library(dw3_port_options${_S} OBJECT
   "${CMAKE_CURRENT_SOURCE_DIR}/options/switch_glyphs.c"
   "${CMAKE_CURRENT_SOURCE_DIR}/options/title_entry.c"
   "${CMAKE_CURRENT_SOURCE_DIR}/options/title_logo_capture.c"
+  "${CMAKE_CURRENT_SOURCE_DIR}/options/title_ready.c"
   "${CMAKE_CURRENT_SOURCE_DIR}/options/turbo.c"
   "${CMAKE_CURRENT_SOURCE_DIR}/options/widescreen.c"
   "${CMAKE_CURRENT_SOURCE_DIR}/pacing/pacing.c"

@@ -21,6 +21,11 @@ extern "C" {
 
 /* "dw3-switch v0.6.5-preview.57 (962462d) US" into buf (always terminated). */
 void dw3_version_text(char *buf, size_t cap);
+/* The short form for the title corner: "v0.9.0-p.1 US" (the NACP display
+ * version with the preview token compressed, tools/dw3_nro_version.py
+ * short_label, plus the region). The Options footer and the log keep the full
+ * text above. DW3_VERSION_OVERRIDE / the replay build replace the version part. */
+void dw3_version_short_text(char *buf, size_t cap);
 /* The build date, YYYY-MM-DD (commit date of a clean tree). */
 const char *dw3_version_build_date(void);
 /* "dw3-version: <text> build=<date>": the one log line, same on every host. */

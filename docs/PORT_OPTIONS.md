@@ -26,7 +26,7 @@ doubtful change is flagged to the owner in the PR):
 | A. Crash and 64-bit fixes | the PS1 read or wrote kernel RAM, or the host heap behaves differently: patches `0057`, `0058`, `0059`, `0069`, `0096`, `0111`, `0197`, `0198` |
 | B. Host plumbing | focus-loss pause, delta clamp, rotating `.mcr` backups, write-through, docked/handheld re-present, vsync wait, `0043` save/load panel pace, `0041` / `0042` field-tile preload, per-profile saves (P6.26), the cross-region import (P6.25 slice 1) |
 | C. The port's own screens | the Options entry (title row, field-menu row, battle Select), Return to title, Quit game, Help, Walkthrough, the version footer line, the Options menu background |
-| D. Original bugs fixed, always on | `0065` HUD form name, `0066` Claw steal on the killing blow, the area-name banner fix, `0187` EU language select Cross, `0129` title logo scale |
+| D. Original bugs fixed, always on | `0065` HUD form name, `0066` Claw steal on the killing blow, the area-name banner fix, `0187` EU language select Cross, `0129` title logo scale, `0199` PRESS START drawn only when Start is read (proposed 2026-10-31, **owner to confirm**: it moves the prompt 7 frames later and changes no input) |
 
 Test, dev and experimental keys are **not** exempt: the owner decided on 2026-10-31 that
 `show_version`, `map_mod`, `save_store` (labelled experimental, title only, with a warning

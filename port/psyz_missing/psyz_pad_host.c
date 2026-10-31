@@ -186,6 +186,14 @@ unsigned dw3_pad_host_frame(void) {
 }
 static FILE *g_rec_fp;
 
+/* Game frames (PadChkVsync calls) since the pad started, replay or not: the
+ * clock the title probe (port/options/title_ready.c) and the replay frames
+ * share. Equal to the replay frame while a recording plays. */
+static unsigned g_pad_vsyncs;
+unsigned dw3_pad_host_vsync_count(void) {
+    return g_pad_vsyncs;
+}
+
 static void replay_shot_fire(const char *name, unsigned frame, void *ctx) {
     (void)ctx;
 #ifdef DW3_NX_REPLAY
@@ -534,6 +542,7 @@ int PadChkVsync(void) {
     if (!g_pad_started) {
         return 0;
     }
+    g_pad_vsyncs++;
     dw3_replay_vsync();
     if (g_rp_state != 1 && g_rp_state != 2) {
         dw3_auto_pad_inject();
