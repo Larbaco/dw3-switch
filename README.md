@@ -11,7 +11,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/Larbaco/dw3-switch/releases/latest"><img alt="Latest preview" src="https://img.shields.io/github/v/release/Larbaco/dw3-switch?include_prereleases&label=latest%20preview&color=8a2be2"></a>
+  <a href="https://github.com/Larbaco/dw3-switch/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/Larbaco/dw3-switch?include_prereleases&label=latest%20release&color=8a2be2"></a>
   <a href="https://github.com/Larbaco/dw3-switch/releases"><img alt="Downloads" src="https://img.shields.io/github/downloads/Larbaco/dw3-switch/total?color=2ea44f"></a>
   <img alt="Platforms: Switch and PC" src="https://img.shields.io/badge/platform-Switch%20%7C%20PC-e60012">
   <img alt="Regions: US and EU" src="https://img.shields.io/badge/region-US%20%7C%20EU-1e90ff">
@@ -176,7 +176,7 @@ Full table, PC keys and every hotkey: [HOTKEYS](docs/HOTKEYS.md) and the
 
 ## Status
 
-**Early preview, playable.** On the PC the game plays from the title to the
+**Early preview, playable.** Tags are `v0.9.0-preview.N` until the 0.9 public beta (`v0.9.0`), then `v1.0.0-rc.N` and `v1.0.0`; see [RELEASES](docs/RELEASES.md#naming). On the PC the game plays from the title to the
 field and to battle, on a US or EU disc. On a Switch OLED the title, field,
 battles, movies, audio and saves work (US is the most tested; EU came later).
 
@@ -212,7 +212,7 @@ no game data.
 user and per region. See [Saves](docs/PLAYER_GUIDE.md#saves).
 
 **Which version am I running?** A dim line under the Options screens and in
-the title's bottom right corner, such as `dw3-switch v0.6.5-preview.57
+the title's bottom right corner, such as `dw3-switch v0.9.0-preview.1
 (962462d) US`. It is also the first line of `dw3.log`.
 
 ## For developers
@@ -273,7 +273,7 @@ tests (`tools/build_pc.sh`, ccache, `--changed` replay selection):
 | [PLAYER_GUIDE](docs/PLAYER_GUIDE.md) | Setup, controls, menus, saves and crash reports for players. |
 | [Docs index](docs/README.md) | One line per doc in `docs/`. |
 | [ROADMAP](docs/ROADMAP.md) | Priority, status and phases. |
-| [RELEASES](docs/RELEASES.md) | Preview index, builds to avoid. |
+| [RELEASES](docs/RELEASES.md) | Release naming, index, builds to avoid. |
 | [PORT_OPTIONS](docs/PORT_OPTIONS.md) | Every option, its key in `port_options.cfg` and its design note. |
 | [CONTRIBUTING](CONTRIBUTING.md) and [AGENTS.md](AGENTS.md) | Rules, build and test commands for contributors and AI agents. |
 | [REPORTING_ISSUES](docs/REPORTING_ISSUES.md) | How to report a bug. Never attach disc images or game files. |

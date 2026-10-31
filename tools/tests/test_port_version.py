@@ -15,15 +15,16 @@ SRC = ROOT / "port" / "version" / "port_version.c"
 MAIN = ROOT / "tools" / "tests" / "port_version_main.c"
 PSYZ_INC = ROOT / "vendor" / "psyz" / "psyz" / "include"
 SCRIPT = ROOT / "tools" / "dw3_nro_version.py"
+VERSION = "v0.9.0-preview.1"
 
 
-def build(tmp: Path, *defs: str) -> Path:
+def build(tmp: Path, *defs: str, version: str | None = None) -> Path:
     if not (PSYZ_INC / "psyz.h").exists():
         pytest.skip("vendor/psyz is not checked out")
     gen = tmp / "gen"
     gen.mkdir(exist_ok=True)
     subprocess.run(
-        [sys.executable, str(SCRIPT), "--version", "v0.6.5-preview.57", "--repo", str(tmp),
+        [sys.executable, str(SCRIPT), "--version", version or VERSION, "--repo", str(tmp),
          "--write-header", str(gen / "dw3_version_gen.h"), "--format", "full"],
         check=True, capture_output=True, text=True)
     out = tmp / ("pv" + "".join(d.replace("=", "") for d in defs))
@@ -46,12 +47,12 @@ def run(binary: Path, **env) -> dict[str, str]:
 def test_us_label_region_and_log_line(tmp_path):
     out = run(build(tmp_path, "-DVERSION_US=1"))
     # no git sha in a fresh temp dir: the tag alone
-    assert out["text"].startswith("dw3-switch v0.6.5-preview.57")
+    assert out["text"].startswith("dw3-switch v0.9.0-preview.1")
     assert out["text"].endswith(" US")
-    assert out["line"].startswith("dw3-version: dw3-switch v0.6.5-preview.57")
+    assert out["line"].startswith("dw3-version: dw3-switch v0.9.0-preview.1")
     assert " US build=" in out["line"]
     assert out["logged"].startswith("1 ")  # announce twice, logged once
-    assert "dw3-pc - dw3-switch v0.6.5-preview.57" in out["logged"]
+    assert "dw3-pc - dw3-switch v0.9.0-preview.1" in out["logged"]
 
 
 def test_eu_region_tag(tmp_path):
@@ -67,4 +68,12 @@ def test_override_replaces_the_label(tmp_path):
 def test_both_image_announces_again_once_the_region_is_picked(tmp_path):
     out = run(build(tmp_path, "-DDW3_BOTH=1"))
     assert out["text"].endswith(" US+EU")
-    assert out["picked"].startswith("dw3-switch v0.6.5-preview.57") and " EU logged=2" in out["picked"]
+    assert out["picked"].startswith("dw3-switch v0.9.0-preview.1") and " EU logged=2" in out["picked"]
+
+
+@pytest.mark.parametrize("tag", ["v0.6.5-preview.57", "v1.0.0-rc.2", "v0.9.0"])
+def test_label_for_the_other_tag_forms(tmp_path, tag):
+    """The old series, a release candidate and a plain release all show as
+    `dw3-switch <tag> <REGION>`."""
+    out = run(build(tmp_path, "-DVERSION_US=1", version=tag))
+    assert out["text"] == f"dw3-switch {tag} US"

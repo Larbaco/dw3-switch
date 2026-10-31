@@ -1,10 +1,44 @@
-# Preview releases
+# Releases
 
-All releases are GitHub prereleases. Each ships ONE `.nro`, `dw3-switch.nro` (US + EU in one image; before the
+Each release ships ONE `.nro`, `dw3-switch.nro` (US + EU in one image; before the
 release after preview.53 there were six files, see the index), and (from the
 release after preview.30, `dw3-switch-elf.zip` with the matching `.elf`
-files for crash reports), never game data. Tags are named `v0.6.5-preview.N`; hbmenu shows the short form
-`0.6.5-p.N`. Pick the newest unless a note below says otherwise.
+files for crash reports), never game data. Pick the newest unless a note below
+says otherwise. Every release up to now is a GitHub prerelease; the first
+normal release will be `v0.9.0` (the public beta, see
+[Release criteria](ROADMAP.md#release-criteria)).
+
+## Naming
+
+Tags follow SemVer (owner decision 2026-10-31):
+
+| Tag | What it is | GitHub | hbmenu shows (15 characters at most) |
+|---|---|---|---|
+| `v0.9.0-preview.N` (N from 1) | A preview on the way to the 0.9 public beta | prerelease | `0.9.0-p.N` (`0.9.0-preview.N` while N is 1 to 9) |
+| `v1.0.0-rc.N` (N from 1) | A release candidate for 1.0, after the beta | prerelease | `1.0.0-rc.N` |
+| `v0.9.0` | The public beta | release, marked latest | `0.9.0` |
+| `v1.0.0` | The first full release | release, marked latest | `1.0.0` |
+| `v0.6.5-preview.N` (1 to 57) | The old series, kept as published | prerelease | `0.6.5-p.N` |
+
+**Why the change.** `0.6.5` was the roadmap id of the packaging task (P6.5)
+when the first release workflow was written on 2026-10-10 (commit `6a1a9fd`).
+It was never bumped, so all 57 previews carry it. The old tags, release
+pages and index rows below stay as they are.
+
+**Where the new series starts.** Previews from here on are
+`v0.9.0-preview.1`, `v0.9.0-preview.2` and so on; preview numbers restart at 1.
+The index rows below keep the short names `preview.N` for the old series; a row
+for the new series is written `0.9.0-preview.N`. The next tag is
+`v0.9.0-preview.1`. A build past a tag shows the `git describe` form
+(`0.9.0-p.12+a0e4`, see [P6.37](P6.37_VERSION.md)).
+
+**Gates** (the full text is in [Release criteria](ROADMAP.md#release-criteria)):
+
+- `v0.9.0`, the public beta: plan p57 passes on the OLED with no blockers, and
+  the options decisions D1 to D5 ([OPTIONS_REORG](OPTIONS_REORG.md)) are on `main`.
+- `v1.0.0`: a full playthrough to the ending on the OLED (one region at least)
+  with no known crash (BUG-1, the Sphaira exit crash, included) and the Phase 5
+  gate ticked in the roadmap. `v1.0.0-rc.N` tags lead up to it.
 
 All releases are on the
 [releases page](https://github.com/Larbaco/dw3-switch/releases). Install
@@ -22,7 +56,8 @@ that have no tag (11 to 17) were never published.
 
 ## Index
 
-Newest first.
+Newest first. The old series is `preview.N` (tags `v0.6.5-preview.N`); the new
+series starts at `0.9.0-preview.1` and its rows go above `preview.57`.
 
 | Tag | What it was for |
 |---|---|
@@ -79,8 +114,13 @@ Previews 3 and 4 have no separate notes in this repository.
 
 ## Publishing a release
 
-A `v*` tag (or `workflow_dispatch` with a tag) runs
-`.github/workflows/switch-release.yml`, which builds the combined US + EU image
+A tag `vX.Y.Z`, `vX.Y.Z-preview.N` or `vX.Y.Z-rc.N` (or `workflow_dispatch` with
+such a tag) runs `.github/workflows/switch-release.yml`. It rejects any other
+shape, and `tools/dw3_nro_version.py --release-kind <tag>` is the one place that
+decides what the tag is: a `-preview.N` or `-rc.N` tag is published as a
+GitHub prerelease and is not marked latest; a plain `vX.Y.Z` is a normal
+release, marked latest (title `dw3-switch v0.9.0 public beta` for 0.x.y). The
+workflow builds the combined US + EU image
 (`tools/build_switch_game.sh --both`) and publishes exactly three files:
 `dw3-switch.nro`, `dw3-switch-elf.zip` and `README.txt`. The zip holds the
 unstripped `dw3-switch.elf` plus `BUILD_IDS.txt` (GNU build id, `.elf` and
@@ -101,6 +141,18 @@ reports are symbolized with `dw3-switch-elf.zip`; the report's `disc:` line
 says the region. Upgrade note for the release notes: delete the old
 `dw3-switch-eu.nro` / `-both` / `-nxlink` files, recreate any forwarder; saves
 and region folders are unchanged.
+
+**Cutting a tag.** From an up-to-date `main` whose notes PR is merged:
+
+```
+git fetch origin && git checkout main && git pull --ff-only
+git tag -a v0.9.0-preview.1 -m "dw3-switch v0.9.0-preview.1" <sha>
+git push origin v0.9.0-preview.1
+```
+
+Without a local tag, `gh workflow run switch-release.yml --ref main -f
+tag=v0.9.0-preview.1` does the same from the GitHub side. Watch the run and do
+not cancel it.
 
 To test the packing without a release, run the script on local builds
 (`tools/tests/test_pack_release_elfs.py` covers it in `pytest`). The

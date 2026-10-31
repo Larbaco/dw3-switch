@@ -64,14 +64,19 @@ The CMake game `.nro` sets NACP `display_version` from git / the release tag
 via [`tools/dw3_nro_version.py`](../../tools/dw3_nro_version.py) and
 `-DDW3_NACP_VERSION` in [`CMakeLists.txt`](CMakeLists.txt). libnx stores that
 field in 16 bytes (15 printable chars + NUL); the helper compresses
-`0.6.5-preview.18` to `0.6.5-p.18` so nacptool does not truncate it to
-`0.6.5-preview.1`.
+`0.9.0-preview.12` to `0.9.0-p.12` so nacptool does not truncate it to
+`0.9.0-preview.1`.
 
 | Build | Full label (`DW3_NRO_VERSION`) | hbmenu version |
 |---|---|---|
-| Tagged release (`RELEASE_TAG=v0.6.5-preview.18`) | `0.6.5-preview.18` | `0.6.5-p.18` |
+| Preview (`RELEASE_TAG=v0.9.0-preview.12`) | `0.9.0-preview.12` | `0.9.0-p.12` |
+| Release candidate (`v1.0.0-rc.3`) | `1.0.0-rc.3` | `1.0.0-rc.3` |
+| Release (`v0.9.0`, `v1.0.0`) | `0.9.0` | `0.9.0` |
 | Untagged CI / PR (`GITHUB_SHA`) | short SHA | same short SHA |
-| Local `build_switch_game.sh` | `git describe --tags --dirty --always` | compressed ≤15 |
+| Local `build_switch_game.sh` | `git describe --tags --dirty --always` | compressed ≤15 (`0.9.0-p.12+a0e4`) |
+
+The old series `v0.6.5-preview.N` (1 to 57) compresses the same way
+(`0.6.5-p.57`). Tag naming: [RELEASES.md](../../docs/RELEASES.md#naming).
 
 hbmenu shows the NACP version for copies installed on the SD card. An
 `nxlink` load may not refresh that metadata; the same full label is logged
