@@ -1,0 +1,26 @@
+# US: P6.11 Internal resolution rows, phase 1
+pad 20 0x0008
+pad 25 0x0000
+pad 210 0x0008
+pad 215 0x0000
+pad 320 0x0040
+pad 325 0x0000
+pad 340 0x4000
+pad 345 0x0000
+pad 390 0x4000
+pad 395 0x0000
+pad 430 0x0040
+pad 435 0x0000
+pad 470 0x4000
+pad 475 0x0000
+shot 510 res-2x
+pad 530 0x0040
+pad 535 0x0000
+pad 550 0x4000
+pad 555 0x0000
+shot 610 res-turbo-off
+pad 630 0x1000
+pad 635 0x0000
+pad 650 0x1000
+pad 655 0x0000
+end 710

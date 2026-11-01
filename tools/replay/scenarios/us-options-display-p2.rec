@@ -17,9 +17,13 @@ pad 470 0x0040
 pad 475 0x0000
 pad 490 0x0040
 pad 495 0x0000
-shot 550 display-restored
-pad 570 0x1000
-pad 575 0x0000
-pad 590 0x1000
-pad 595 0x0000
-end 650
+pad 510 0x0040
+pad 515 0x0000
+pad 530 0x0040
+pad 535 0x0000
+shot 590 display-restored
+pad 610 0x1000
+pad 615 0x0000
+pad 630 0x1000
+pad 635 0x0000
+end 690
