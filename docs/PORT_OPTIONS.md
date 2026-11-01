@@ -2262,7 +2262,7 @@ overlay's page codes did not change, so the order table is the only thing that m
 
 | # | Group | Rows (registry index) | Rows on screen: PC US plain / Switch combined |
 |---|---|---|---|
-| 1 | Display | Widescreen (0), Full-screen map (15), **Map scaler (28, D5)**, Map mod pack (22), Version label (21) | 5 / 5 |
+| 1 | Display | Widescreen (0), **Internal resolution (29, P6.11)**, **Native res while turbo (30, P6.11)**, Full-screen map (15), Map scaler (28, D5), Map mod pack (22), Version label (21) | 7 (the list scrolls) |
 | 2 | Sound | Music volume (3), SFX volume (4), Turbo music (13) | 3 / 3 |
 | 3 | Gameplay | Fast-forward (1), Encounter rate (5), Text speed (6), Battle cursor (7) | 4 / 4 |
 | 4 | Menus | Equip from Items (16), Equip stays on list (17), Whole bag (18), Use item stays (19), Partner switch (20), Instant menu exit (27) | 6 / 6 |
@@ -2544,3 +2544,40 @@ cheat may write a save file by itself.
   game's text archive in the overlay); P9.7 (Options in game).
 - *Defaults chosen without the owner (the owner can change them):* see
   [Cheats, page 2](#cheats-p620) and ROADMAP P6.20.
+
+
+## Internal resolution (P6.11)
+
+Registry rows 29 and 30 (the next free ones after Map scaler), the second and third rows of
+Display. Design, numbers and the build: [P6.11_INTERNAL_RES](P6.11_INTERNAL_RES.md).
+
+| Row | Key | Values | Default | Applies |
+|---|---|---|---|---|
+| **Internal resolution** (29) | `internal_res` (a number) | 0 = 1x, 1 = 2x, 2 = 3x | 0 (1x: the original picture, the replays pin it) | at once, also in game; the targets are allocated when the value changes |
+| **Native res while turbo** (30) | `internal_res_turbo` | 0 / 1 | 1 (ON) | at once |
+
+* **What scales.** The PC scales the whole picture through PSY-Z. The Switch scales the battle
+  3D (the mesh), the only thing it draws on the GPU; the field, the menus and the movies are CPU
+  sprites at 1x and would only get bigger blocks. The vertices are the PS1's integer
+  coordinates, so the wobble stays. The dither matrix is indexed by the fragment, so it is N times
+  finer at Nx (owner, 2026-11-01).
+* **Clamp.** `port/options/internal_res.c` lowers a request to what the host offers
+  (`dw3_platform_max_internal_res`): the PC 3x, the Switch the table in
+  `platforms/switch/psyz_backend/nx_res_clamp.h` (2x in handheld and docked until the OLED run
+  fills it from `tools/res_probe_summary.py`). It logs `dw3-res: clamp 3x -> 2x (handheld max)`
+  once per request and mode, and a dock change applies the other mode's limit.
+* **Turbo.** While fast-forward runs (`dw3_port_turbo_speed() >= 2`) and Native res while turbo
+  is ON, the host draws at 1x with the Nx targets still allocated, and logs `dw3-res: turbo on -> 1x`
+  and `dw3-res: turbo off -> Nx` (only when Internal resolution is above 1x). On the Switch the
+  frames fast-forward will not show also draw no mesh (`dw3-res: mesh skip on`, `mesh skip off (N
+  frames skipped)`); skipping changes no shown picture and no game state (host plumbing, rule 8 B;
+  it rides on this row, the owner can ask for a row of its own).
+* **Not locked in game.** Neither row is locked; row 30 shares its bit with the Cheats lock in the
+  overlay's mask, so the overlay reads lock bits for rows 0 to 28 only.
+* **Environment aids** (not options): `DW3_INTERNAL_RES=1|2|3` pins the multiplier for a run,
+  `DW3_INTERNAL_RES_TURBO=0|1` the switch row; on the PC `DW3_PC_INTERNAL_RES` is an alias for one
+  release. The Switch probe NRO keeps `DW3_NX_MESH_FILTER` and `DW3_RES_DITHER=ps1` as A/B aids.
+* **Log lines.** `dw3-res: set Nx (handheld|docked|pc)`, `dw3-res: clamp ...`, `dw3-res: turbo on -> 1x`,
+  `dw3-res: turbo off -> Nx`, `dw3-res: targets Nx WxH x2 allocated in N ms (mode) bytes=...`,
+  `dw3-res: mesh targets now Nx (mode)`, `dw3-res: mesh skip on / off`, and `internal_res=N
+  internal_res_turbo=N` in the boot `file keys` line.

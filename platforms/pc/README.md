@@ -92,21 +92,27 @@ python3 tools/pack_runtime.py --version us --disks disks/us --out runtime/us --f
 # env alternatives: DW3_RUNTIME, DW3_MEMCARD_DIR
 ```
 
-### Experimental internal 720p render
+### Internal resolution (P6.11)
 
-The SDL3 GPU backend can render at a 3× internal scale. Opt in on PC only:
+Options > Display > **Internal resolution** (1x, 2x or 3x, default 1x) draws the whole picture
+at that multiple of the PS1 pixels through PSY-Z's scaled render target; the vertices stay
+integer PS1 coordinates, so the polygon wobble stays and the 2D layers become N x N blocks.
+**Native res while turbo** (default ON) drops to 1x while fast-forward runs and returns to
+your setting afterwards (PSY-Z keeps the scaled target allocated, so the switch is one
+VRAM copy). Both are saved in `port_options.cfg` (`internal_res=0|1|2`, `internal_res_turbo`).
+`DW3_INTERNAL_RES=1|2|3` sets it for one run (and `DW3_INTERNAL_RES_TURBO=0|1`), never saved.
+The old experiment `DW3_PC_INTERNAL_RES=3` is an alias of `DW3_INTERNAL_RES=3` for one release.
 
 ```bash
-DW3_PC_INTERNAL_RES=3 ./build/pc/dw3-pc --runtime runtime/us
+DW3_INTERNAL_RES=3 ./build/pc/dw3-pc --runtime runtime/us
 ```
 
-With a 320×240 game display mode, the game image occupies 960×720 pixels.
-The SDL3 GPU host sets the initial 3× presentation window to 1280×720 pixels;
-the 4:3 image is centered with 160-pixel side bars. The menu atlas is sampled
-linearly from exact pixel-edge UVs, so the 960×720 content maps pixel-for-pixel
-at this output size and scales smoothly if the user resizes the window. The
-normal internal scale remains 1× when the variable is unset; this option is not
-compiled into the Switch host.
+At 3x with a 320×240 game display mode the image is 960×720. The SDL3 GPU host sets the
+presentation window to 1280×720 pixels when the window is smaller than that (a window you made
+larger stays), the 4:3 image is centered with 160-pixel side bars, and the US title's
+background is widened to 16:9. The menu atlas is sampled linearly from exact pixel-edge UVs,
+so the content maps pixel-for-pixel at that size and scales smoothly if you resize the window.
+Details and the Switch design: [P6.11_INTERNAL_RES](../../docs/P6.11_INTERNAL_RES.md).
 
 Widescreen (P6.1) is on by default for field and battle; start in 4:3 with:
 
