@@ -394,9 +394,11 @@ static void po_push_view(void) {
             const int reg = dw3_optgroups[g_group].rows[i];
 
             values[i] = g_stubs[reg].value;
-            if (reg == DW3_PORT_OPT_TEXT_LANGUAGE && values[i] == DW3_TEXTLANG_ORIGINAL &&
-                !dw3_l10n_pack_available()) {
-                values[i] = 2; /* P6.7: Original, greyed, "no text pack found" in the message line */
+            if (reg == DW3_PORT_OPT_TEXT_LANGUAGE && !dw3_l10n_pack_available()) {
+                /* P6.7 phase 3: 2 = Original and 3 = Português (BR) with no usable pack. Both can be
+                 * chosen (PT-BR still puts the port's own screens in Portuguese); the message line
+                 * says that only those change. */
+                values[i] += 2;
             }
         }
     }
@@ -609,6 +611,7 @@ void dw3_port_options_set(int index, int value) {
 static int po_is_volume(int index);
 static void po_audio_apply(void);
 static int po_valid_layout(int v);
+static void po_port_language_apply(int level);
 static void po_layout_boot(int from_cfg);
 static void po_glyphs_boot(void);
 
@@ -635,6 +638,7 @@ void dw3_port_options_set_level(int index, int level) {
         dw3_button_map_change(level, "api");
     }
     if (index == DW3_PORT_OPT_TEXT_LANGUAGE) {
+        po_port_language_apply(level);
         dw3_l10n_option_changed(level);
     }
 }
@@ -807,11 +811,33 @@ static void po_stepped_env(void) {
     }
 }
 
+/* P6.7 phase 3: the port's own screens follow the Text language row. Português (BR) puts the
+ * Options, Help, Walkthrough, the title's Options and Quit plaques and the confirmation windows
+ * in PT-BR; Original follows the disc's language as before. It does not depend on a text pack: with none
+ * (or on the US disc, until the glyph atlas of phase 5) the game text stays original and only
+ * these screens change. Logged once per change. */
+static int g_port_pt = -1;
+
+static void po_port_language_apply(int level) {
+    const int pt = level == DW3_TEXTLANG_PTBR;
+
+    if (pt != g_port_pt) {
+        g_port_pt = pt;
+        PO_INFO("dw3-l10n: port screens in %s (text_language=%s, game text %s)",
+                pt ? "Portuguese (BR)" : "the disc's language", dw3_textlang_word(level),
+                pt && dw3_l10n_pack_available() ? "from the pack"
+                : pt ? "original (no usable text pack)" : "original");
+    }
+#if !defined(DW3_PORT_OPTIONS_TEST) && defined(DW3_TITLE_NATIVE_OVERLAY)
+    dw3_pc_title_overlay_set_text_pt(pt);
+#endif
+}
+
 /* P6.7: DW3_LANG=ptbr|original pins the Text language for this run (never written, like the
  * other DW3_* pins), then the text pack loader looks for its pack and applies it when the
- * row says Português. A choice of ptbr with no usable pack plays the original text this
- * run and stays in the file: the row is pinned (g_saved keeps the file's word), so removing
- * the pack never rewrites the owner's choice. The loader logs why (dw3-l10n: off reason=). */
+ * row says Português. A choice of ptbr with no usable pack keeps the row on Português: the port's
+ * screens are PT-BR and the game plays the original text (the loader logs why,
+ * dw3-l10n: off reason=). */
 static void po_textlang_boot(void) {
     const char *env = getenv("DW3_LANG");
     int n = env != NULL ? dw3_textlang_parse(env) : -1;
@@ -824,10 +850,7 @@ static void po_textlang_boot(void) {
         PO_WARN("dw3-options: DW3_LANG=%s is not original or ptbr; ignored", env);
     }
     dw3_l10n_boot(*value);
-    if (*value == DW3_TEXTLANG_PTBR && !dw3_l10n_pack_available()) {
-        *value = DW3_TEXTLANG_ORIGINAL;
-        g_env_pinned |= UINT64_C(1) << DW3_PORT_OPT_TEXT_LANGUAGE;
-    }
+    po_port_language_apply(*value);
 }
 
 /* Boot: the layout in force becomes the map the pad host reads, and the log
@@ -1463,12 +1486,6 @@ static void po_step(int index, int delta) {
     if (index == DW3_PORT_OPT_STAGE_SWEEP && v != 0 && po_ask_first(index, v)) {
         return; /* the window answers (dw3_port_options_ask_answer) */
     }
-    if (index == DW3_PORT_OPT_TEXT_LANGUAGE && v == DW3_TEXTLANG_PTBR && !dw3_l10n_pack_available()) {
-        fprintf(stderr, "dw3-port-options: text language ptbr refused: no usable text pack (%s)\n",
-                dw3_l10n_off_reason());
-        fflush(stderr);
-        return;
-    }
     g_stubs[index].value = v;
     g_env_pinned &= ~(UINT64_C(1) << index);
     if (po_is_volume(index)) {
@@ -1494,6 +1511,7 @@ static void po_step(int index, int delta) {
         po_audio_apply();
     }
     if (index == DW3_PORT_OPT_TEXT_LANGUAGE) {
+        po_port_language_apply(v);
         dw3_l10n_option_changed(v); /* applies or restores the pack; the next text load reads it */
     }
     if (index == DW3_PORT_OPT_BUTTON_LAYOUT) {

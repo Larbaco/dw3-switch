@@ -69,15 +69,23 @@ enum {
     DW3_TITLE_LANG_DE = 2,
     DW3_TITLE_LANG_ES = 3,
     DW3_TITLE_LANG_IT = 4,
+    /* P6.7 phase 3: Português (BR), the port's own text (never a disc language). It is the
+     * lettering in force while Display > Text language says Português (BR). */
+    DW3_TITLE_LANG_PT = 5,
 };
 /* 8-bit coverage mask (copied; at most 440x48). NULL restores the default.
  * Returns 0, or -1 when the mask is rejected. */
 int dw3_pc_title_overlay_set_label(int slot, const uint8_t *coverage, int w,
                                    int h);
-/* The language the Options lettering is in (DW3_TITLE_LANG_*). */
+/* The language the Options lettering is in (DW3_TITLE_LANG_*): Português (BR) while
+ * dw3_pc_title_overlay_set_text_pt(1), else the disc's (set_options_language). */
 int dw3_pc_title_overlay_get_options_language(void);
-/* Authored lettering for the port-only Options row. */
+/* Authored lettering for the port-only Options row: the disc's language (EN..IT). */
 void dw3_pc_title_overlay_set_options_language(int lang);
+/* Display > Text language: 1 puts every port screen in Português (BR) (the Options, Help,
+ * Walkthrough, the title's Options and Quit plaques, the confirmation windows), 0 follows
+ * the disc's language again. Not tied to a text pack: it works with none, and on the US disc. */
+void dw3_pc_title_overlay_set_text_pt(int on);
 /* 0 drops the three-line credits drawn at the foot of the title canvas (the
  * game then draws its own sprites); on by default, US and EU alike. */
 void dw3_pc_title_overlay_set_footer(int show);

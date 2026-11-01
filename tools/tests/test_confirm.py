@@ -70,7 +70,8 @@ def test_dialog_art_writes_evidence(dialog_art_bin: Path, tmp_path: Path):
     assert "dialog-fr-return-yes.ppm" in names
     assert "dialog-de-restart-game-eu-yes.ppm" in names and "dialog-it-restart-notice.ppm" in names
     assert "title-es-3.ppm" in names
-    assert len(names) == 5 * (4 + 9 + 4 + 5)
+    assert "dialog-pt-return-yes.ppm" in names and "title-pt-3.ppm" in names  # P6.7 phase 3
+    assert len(names) == 6 * (4 + 9 + 4 + 5)
 
 
 def test_options_art_selector_moved_to_five():

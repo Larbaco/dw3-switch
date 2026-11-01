@@ -91,7 +91,11 @@ def buffer_problem(key: str, text: str, codec: T.Codec) -> str | None:
             if stem == st and lo <= index and (hi is None or index <= hi) and len(raw) > limit:
                 return f"{len(raw)} bytes, {what} holds {limit}"
     if stem.startswith(("TALK", "DMG")) and "{start}" in text:
-        speaker = T.encode(text.split("{start}", 1)[0], codec)
+        # The game's form is `{start}Speaker{start}text` (createTalkBox: the name is what lies between the
+        # first two 02 07 codes, copied into char name[0x20]); the text before a first {start} is checked too.
+        parts_ = text.split("{start}")
+        speaker_text = parts_[1] if parts_[0] == "" and len(parts_) > 2 else parts_[0]
+        speaker = T.encode(speaker_text, codec)
         if len(speaker) > SPEAKER_MAX:
             return f"the speaker's name is {len(speaker)} bytes, the talk box's buffer holds {SPEAKER_MAX}"
     return None

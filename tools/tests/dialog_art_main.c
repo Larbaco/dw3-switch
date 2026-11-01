@@ -103,7 +103,7 @@ static long opaque_pixels(const uint8_t *rgba, int w, int h, int pitch, int x0,
 }
 
 int main(int argc, char **argv) {
-    static const char *const lang_name[5] = {"en", "fr", "de", "es", "it"};
+    static const char *const lang_name[6] = {"en", "fr", "de", "es", "it", "pt"};
     const char *dir = argc > 1 ? argv[1] : NULL;
     const int pitch = DW3_DIALOG_W * 4;
     uint8_t *a = (uint8_t *)malloc((size_t)pitch * DW3_DIALOG_H);
@@ -121,8 +121,26 @@ int main(int argc, char **argv) {
     CHECK(DW3_DIALOG_X >= 0 && DW3_DIALOG_X + DW3_DIALOG_W <= 960);
     CHECK(DW3_DIALOG_Y >= 0 && DW3_DIALOG_Y + DW3_DIALOG_H <= 720);
 
-    for (lang = DW3_TITLE_LANG_EN; lang <= DW3_TITLE_LANG_IT; lang++) {
-        dw3_pc_title_overlay_set_options_language(lang);
+    /* The Text language row wins over the disc's language, which stays underneath and comes back. */
+    dw3_pc_title_overlay_set_text_pt(0);
+    dw3_pc_title_overlay_set_options_language(DW3_TITLE_LANG_FR);
+    CHECK(dw3_pc_title_overlay_get_options_language() == DW3_TITLE_LANG_FR);
+    dw3_pc_title_overlay_set_text_pt(1);
+    CHECK(dw3_pc_title_overlay_get_options_language() == DW3_TITLE_LANG_PT);
+    dw3_pc_title_overlay_set_options_language(DW3_TITLE_LANG_DE); /* the EU country select changed under it */
+    CHECK(dw3_pc_title_overlay_get_options_language() == DW3_TITLE_LANG_PT);
+    dw3_pc_title_overlay_set_text_pt(0);
+    CHECK(dw3_pc_title_overlay_get_options_language() == DW3_TITLE_LANG_DE);
+    dw3_pc_title_overlay_set_options_language(DW3_TITLE_LANG_PT); /* not a disc language: English */
+    CHECK(dw3_pc_title_overlay_get_options_language() == DW3_TITLE_LANG_EN);
+
+    for (lang = DW3_TITLE_LANG_EN; lang <= DW3_TITLE_LANG_PT; lang++) {
+        /* P6.7 phase 3: Português (BR) is the Text language row's, not a disc language */
+        dw3_pc_title_overlay_set_text_pt(lang == DW3_TITLE_LANG_PT);
+        if (lang <= DW3_TITLE_LANG_IT) {
+            dw3_pc_title_overlay_set_options_language(lang);
+        }
+        CHECK(dw3_pc_title_overlay_get_options_language() == lang);
         for (kind = DW3_DIALOG_QUIT; kind <= DW3_DIALOG_RETURN; kind++) {
             char name[64];
             long solid;

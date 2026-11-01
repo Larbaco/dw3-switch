@@ -3927,20 +3927,72 @@ _add(
              note="Options > Display > Text language: Original, Right to Portugues (BR) applies the pack, Left restores it"),
     Scenario("eu-l10n-row-nopack", "eu", "full", timeout=300, l10n="none",
              expect_log=((0, r"dw3-l10n: off reason=no_pack(?s:.*)"
-                             r"dw3-port-options: text language ptbr refused: no usable text pack \(no_pack\)"),),
-             forbid_log=_NO_BAD + ((0, r"dw3-l10n: (override|pack ok)"), (0, r"dw3-port-options: text language ptbr\n")),
-             note="With no pack the Text language row is greyed (message: no text pack found) and Right is refused"),
+                             r"dw3-port-options: text language ptbr\n(?s:.*)"
+                             r"dw3-l10n: port screens in Portuguese \(BR\) \(text_language=ptbr, game text original "
+                             r"\(no usable text pack\)\)(?s:.*)"
+                             r"dw3-l10n: option text_language=ptbr region=eu but off reason=no_pack \(English\)"),),
+             forbid_log=_NO_BAD + ((0, r"dw3-l10n: (override|pack ok)"), (0, r"refused")),
+             note="With no pack Right still steps the Text language row to Portugues (BR) (since phase 3): the port's "
+                  "screens turn Portuguese, the game text stays English, the log says why"),
     Scenario("us-l10n-row-nopack", "us", "full", timeout=300, l10n="none",
              expect_log=((0, r"dw3-l10n: off reason=no_pack(?s:.*)"
-                             r"dw3-port-options: text language ptbr refused: no usable text pack \(no_pack\)"),),
-             forbid_log=_NO_BAD + ((0, r"dw3-l10n: (override|pack ok)"),),
-             note="The same on the US disc: the row is there and greyed until phase 5 brings the US pack"),
+                             r"dw3-port-options: text language ptbr\n(?s:.*)"
+                             r"dw3-l10n: port screens in Portuguese \(BR\) \(text_language=ptbr, game text original "
+                             r"\(no usable text pack\)\)(?s:.*)"
+                             r"dw3-l10n: option text_language=ptbr region=us but off reason=no_pack \(English\)"),),
+             forbid_log=_NO_BAD + ((0, r"dw3-l10n: (override|pack ok)"), (0, r"refused")),
+             note="The same on the US disc: Portuguese port screens, English game text (the US pack is phase 5)"),
     Scenario("eu-l10n-original", "eu", "full", timeout=300, phases=("eu-load-menu",), l10n="upper",
              ref_from="eu-load-menu",
              expect_log=((0, r"dw3-l10n: pack ok region=eu(?s:.*)dw3-l10n: off reason=option_original"),),
              forbid_log=((0, r"dw3-l10n: override"),),
              note="a pack is installed and the option is Original: English, the original pictures"),
 )
+
+# P6.7 phase 3 (docs/LOCALIZATION.md section 6a): the port's own screens in Portuguese on EU and US.
+# text_language=ptbr is in the cfg and there is no text pack (l10n="none": a private runtime without
+# the owner's l10n folder), so these prove that the port screens do not need one and that the game
+# text stays original. The recordings are the plain ones (Help from the title, the Walkthrough from the
+# title, the title's Quit game) plus `ptbr-options` (title, Options list, four groups); the references
+# are their own (local, never committed).
+_PT_LOG = (0, r"dw3-l10n: off reason=no_pack(?s:.*)dw3-l10n: port screens in Portuguese \(BR\) "
+              r"\(text_language=ptbr, game text original \(no usable text pack\)\)")
+_PT_FORBID = ((0, r"dw3-l10n: (override|pack ok)"), (0, r"refused"), (0, r"dw3-pages: text fallback"),
+              (0, r"cannot be (opened|allocated|laid out)"), (0, r"CRASH|Segmentation fault"))
+for _v, _reg in (("us", "US"), ("eu", "EU")):
+    _add(
+        Scenario(f"{_v}-ptbr-options", _v, "full", timeout=300, l10n="none", cfg=_L10N_CFG,
+                 expect_log=(_PT_LOG, (0, r"dw3-port-options: group open display \(8 row\(s\), title\)(?s:.*)"
+                                          r"dw3-port-options: group open gameplay(?s:.*)"
+                                          r"dw3-port-options: group open controls(?s:.*)"
+                                          r"dw3-port-options: group open saves")),
+                 forbid_log=_NO_BAD + _PT_FORBID,
+                 note="Options in Portuguese (cfg text_language=ptbr, no pack): the title's Options plaque, the "
+                      "group list, Display down to Text language, Gameplay, Controls, Saves (P6.7 phase 3)"),
+        Scenario(f"{_v}-ptbr-help", _v, "full", timeout=300, l10n="none", cfg=_L10N_CFG,
+                 phases=(f"{_v}-help-title",),
+                 expect_log=(_PT_LOG, (0, r"dw3-help: open \(from title, region " + _reg +
+                                          r", platform pc, language pt, 10 pages\)(?s:.*)"
+                                          r"dw3-port-options: group open help \(title\)(?s:.*)" + _HELP_READ),
+                             (0, r"dw3-pages: text help pt loaded \(\d+ keys, \d+ qualified, \d+ filtered "
+                                 r"out, \d+ bytes\)")),
+                 forbid_log=_HELP_FORBID + _PT_FORBID,
+                 note="Help from the title's Options in Portuguese: page list, Controls scrolled to its end, "
+                      "L1 / R1 between pages (the AI draft, owner review pending)"),
+        Scenario(f"{_v}-ptbr-walkthrough", _v, "full", timeout=300, l10n="none", cfg=_L10N_CFG,
+                 phases=(f"{_v}-walkthrough-screen-title",),
+                 expect_log=(_PT_LOG,) + _wt_title("pt", _reg),
+                 forbid_log=_WT_FORBID + _PT_FORBID + ((0, r"step not recognised"),),
+                 note="Walkthrough from the title in Portuguese: chapter list, steps, first page, the spoiler "
+                      "(the AI draft, owner review pending)"),
+        Scenario(f"{_v}-ptbr-title-quit", _v, "full", timeout=300, quits=True, l10n="none", cfg=_L10N_CFG,
+                 phases=(f"{_v}-title-quit",),
+                 expect_log=(_PT_LOG, (0, r"dw3-port-confirm: open quit \(cursor on No\)(?s:.*)"
+                                          r"dw3-port-confirm: Yes \(quit\)(?s:.*)"
+                                          r"dw3-port-quit: saves flushed; asking the host to quit")),
+                 forbid_log=((0, r"save flush failed"),) + _PT_FORBID,
+                 note="Quit game plaque (Sair do jogo) and its window in Portuguese; No keeps the menu, Yes quits"),
+    )
 
 # P6.7 phase 2, the measuring pass (docs/LOCALIZATION.md section 7a): the same recordings with a
 # "stress" pack, every line as wide as the widest of the other four EU languages at that index
