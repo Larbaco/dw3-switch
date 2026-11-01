@@ -3916,7 +3916,7 @@ _add(
              forbid_log=_L10N_OFF_BAD + ((0, r"show keys: this pack has no key variants"),),
              note="DW3_L10N_SHOW_KEYS=1: every string starts with its key, \"(MEMCRD:3) \""),
     Scenario("eu-l10n-row", "eu", "full", timeout=300, l10n="upper",
-             expect_log=((0, r"dw3-port-options: group open display \(6 row\(s\), title\)(?s:.*)"
+             expect_log=((0, r"dw3-port-options: group open display \(8 row\(s\), title\)(?s:.*)"
                              r"dw3-port-options: text language ptbr(?s:.*)"
                              r"dw3-l10n: option text_language=ptbr region=eu(?s:.*)"
                              r"dw3-l10n: override id=\d+(?s:.*)"
