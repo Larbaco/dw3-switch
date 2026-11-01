@@ -212,9 +212,11 @@ static Dw3PortOptStub g_stubs[DW3_PORT_OPT_COUNT] = {
     /* Display: how the 2D picture is stretched to the screen (docs/OUTPUT_FILTER.md).
      * The file holds a word (output_filter=nearest|bilinear|sharp); the stored value
      * is a DW3_OUTFILTER_*. Default Nearest, the look the port always had. Read at
-     * every present, so a change shows at once. No env pin (a word key). */
+     * every present, so a change shows at once. DW3_OUTPUT_FILTER (0 nearest, 1 bilinear,
+     * 2 sharp) pins it for one run: the replay runner pins every scenario that does not
+     * set output_filter itself to 0, so a later change of the default moves no reference. */
     {"Output filter", "output_filter", DW3_OUTFILTER_DEFAULT, DW3_OUTFILTER_DEFAULT,
-     NULL},
+     "DW3_OUTPUT_FILTER"},
 };
 
 /* D5: the words of the Map scaler row in port_options.cfg, by stored value. */

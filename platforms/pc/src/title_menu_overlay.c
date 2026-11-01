@@ -282,6 +282,25 @@ static void set_three_x_presentation_size(void) {
 
     if (g_presentation_size_checked || !g_window ||
         (SDL_GetWindowFlags(g_window) & SDL_WINDOW_HIDDEN)) return;
+    /* Test aid: DW3_PC_WINDOW=1440x1080 opens the window at that size in pixels, so
+     * the replays can look at a non-integer stretch (the docked Switch is 4.5x) for the
+     * Output filter. Not an option. */
+    {
+        const char *want = getenv("DW3_PC_WINDOW");
+        int ww = 0, wh = 0;
+
+        if (want && sscanf(want, "%dx%d", &ww, &wh) == 2 && ww >= 320 && wh >= 240 &&
+            ww <= 7680 && wh <= 4320) {
+            float d = SDL_GetWindowPixelDensity(g_window);
+
+            if (d <= 0.0f) d = 1.0f;
+            g_presentation_size_checked = 1;
+            SDL_SetWindowSize(g_window, (int)((float)ww / d + 0.5f), (int)((float)wh / d + 0.5f));
+            SDL_SetWindowPosition(g_window, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED);
+            fprintf(stderr, "dw3-title-overlay: test window set to %dx%d pixels (DW3_PC_WINDOW)\n", ww, wh);
+            return;
+        }
+    }
     internal_res = getenv("DW3_PC_INTERNAL_RES");
     if (!internal_res || strcmp(internal_res, "3") != 0) {
         g_presentation_size_checked = 1;

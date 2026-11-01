@@ -3077,13 +3077,18 @@ for _v in ("us", "eu"):
                   note="Options > Menus: the six switches (the five Items-menu ones and Instant menu exit) turned OFF are read back by the next process (D1, patch 0200)"),
          Scenario(f"{_v}-options-display", _v, "full", timeout=300,
                   phases=(f"{_v}-options-display-p1", f"{_v}-options-display-p2"),
-                  expect_log=((0, r"dw3-port-options: group open display \(5 row\(s\), title\)(?s:.*)"
+                  cfg=(("output_filter", "nearest"),),  # the file is seeded: phase 2 must read what phase 1 wrote
+                  expect_log=((0, r"dw3-port-options: group open display \(6 row\(s\), title\)(?s:.*)"
                                   r"dw3-port-options: map scaler lanczos2(?s:.*)"
+                                  r"dw3-port-options: output filter bilinear(?s:.*)"
+                                  r"dw3-port-options: output filter sharp bilinear(?s:.*)"
                                   r"dw3-port-options: map mod pack disabled(?s:.*)"
                                   r"dw3-port-options: version label disabled"),
-                              (1, r"dw3-options: file keys .* show_version=0 map_mod=0 .*map_scaler=lanczos2")),
-                  forbid_log=_NO_BAD + ((1, r"is not valid"),),
-                  note="Options > Display: Map scaler (FSR 1 to Lanczos2, D5), Map mod pack and Version label turned OFF are read back by the next process (D1)"),
+                              (0, r"dw3-present: output filter nearest(?s:.*)dw3-present: output filter sharp"),
+                              (1, r"dw3-options: file keys .* show_version=0 map_mod=0 .*map_scaler=lanczos2 output_filter=sharp"),
+                              (1, r"dw3-present: output filter sharp")),
+                  forbid_log=_NO_BAD + ((1, r"is not valid"), (0, r"output filter \S+ is not supported")),
+                  note="Options > Display: Map scaler (FSR 1 to Lanczos2, D5), Output filter (Nearest to Sharp bilinear), Map mod pack and Version label turned OFF are read back by the next process (D1)"),
          Scenario(f"{_v}-options-saves", _v, "full", timeout=300,
                   expect_log=((0, r"dw3-port-options: group open saves \(2 row\(s\), title\)(?s:.*)"
                                   r"dw3-port-confirm: open shared saves \(cursor on No\)(?s:.*)"
@@ -3750,9 +3755,11 @@ for _i, _s in enumerate(SCENARIOS):
     if _pins:
         SCENARIOS[_i] = _pin_cfg(_s, *_pins)
 
-# The Display group has five rows since D5 (Map scaler), and the layout flows start from the file now.
+# The Display group has six rows since the Output filter (five since D5's Map scaler), and the
+# layout flows start from the file now.
 for _i, _s in enumerate(SCENARIOS):
-    _rep = lambda es: tuple((p, r.replace(r"group open display \(4 row\(s\)", r"group open display \(5 row\(s\)"))
+    _rep = lambda es: tuple((p, r.replace(r"group open display \(4 row\(s\)", r"group open display \(6 row\(s\)")
+                             .replace(r"group open display \(5 row\(s\)", r"group open display \(6 row\(s\)"))
                             for p, r in es)
     _new = dataclasses.replace(_s, expect_log=_rep(_s.expect_log), expect_log_both=_rep(_s.expect_log_both))
     if _new.name.endswith(("-controls-layout", "-controls-custom")):
@@ -3764,3 +3771,31 @@ for _i, _s in enumerate(SCENARIOS):
                                 for p, r in es)
         _new = dataclasses.replace(_new, expect_log=_fix(_new.expect_log), expect_log_both=_fix(_new.expect_log_both))
     SCENARIOS[_i] = _new
+
+
+# --- Output filter (docs/OUTPUT_FILTER.md) ---------------------------------------------------
+# The window grab (the .png) is the only reference a filter changes; the PS1 frame (the .ppm) is
+# the same. The runner pins every other scenario to Nearest (DW3_OUTPUT_FILTER=0, replay_tests.py),
+# so nothing moves when the default does. These run the battle report at a window size that is not
+# a whole multiple of the picture: 1200x900 (the largest the 1280x960 Xvfb screen takes) is 3.75x for 4:3
+# and 2.82x for 16:9; the docked Switch's 4.5x is covered by tools/output_filter_gpu_test.c.
+#  output-sharp-bilinear      widescreen (the default), `output_filter=sharp`
+#  output-sharp-bilinear-43   `widescreen=0` too: the 4:3 picture, no gutters
+#  output-bilinear            `output_filter=bilinear`
+# They run the recording of battle-report and have references of their own.
+for _v in ("us", "eu"):
+    _r = by_name()[f"{_v}-battle-report"]
+    for _suffix, _word, _extra, _what in (
+            ("output-sharp-bilinear", "sharp", (), "widescreen"),
+            ("output-sharp-bilinear-43", "sharp", (("widescreen", "0"),), "4:3"),
+            ("output-bilinear", "bilinear", (), "widescreen")):
+        _add(dataclasses.replace(
+            _r, name=f"{_v}-{_suffix}", cfg=_r.cfg + (("output_filter", _word),) + _extra,
+            env=_r.env + (("DW3_PC_WINDOW", "1200x900"),),
+            expect_log=_r.expect_log + ((0, r"dw3-title-overlay: test window set to 1200x900 pixels"),
+                                        (0, r"dw3-present: output filter %s" % _word)),
+            # the report's "no 4:3 gutter" check is about widescreen; the 4:3 run has none by design
+            forbid_log=(_r.forbid_log if not _extra else ()) + ((0, r"output filter \S+ is not supported"),),
+            own_refs=(), ref_from="",
+            note=f"Options > Display > Output filter = {_word} ({_what}) on the battle report in a 1200x900 window "
+                 f"(a non-integer stretch): the window grab differs from battle-report's, the PS1 frame does not"))

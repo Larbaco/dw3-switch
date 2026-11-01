@@ -886,21 +886,24 @@ def options_menus(version, phase):
 
 
 def options_display(version, phase):
-    """D1 + D5: Display has five rows. Phase 1: Down x2 to Map scaler and Left (FSR 1 ->
-    Lanczos2, `scaler-changed`), Down to Map mod pack and Confirm (OFF), Down to Version
-    label and Confirm (OFF) (`display-off`); phase 2 reads them back from the file
-    (`display-restored`)."""
-    r = Rec(f"{version.upper()}: D1 / D5 Display rows Map scaler, Map mod pack and Version label, phase {phase}")
+    """D1 + D5 + Output filter: Display has six rows. Phase 1: Down x2 to Map scaler and
+    Left (FSR 1 -> Lanczos2, `scaler-changed`), Down to Output filter and Right x2 (Nearest
+    -> Bilinear -> Sharp bilinear, `filter-changed`), Down to Map mod pack and Confirm (OFF),
+    Down to Version label and Confirm (OFF) (`display-off`); phase 2 reads them back from the
+    file (`display-restored`)."""
+    r = Rec(f"{version.upper()}: D1 / D5 Display rows Map scaler, Output filter, Map mod pack and Version label, phase {phase}")
     m = _to_options(r, version)
     f = _group(r, m + 70, GRP_DISPLAY, GRP_DISPLAY)
     if phase == 1:
         r.shot(f + 20, "display-rows")
         f = _keys(r, f + 40, DOWN, DOWN, LEFT)
         r.shot(f + 40, "scaler-changed")
+        f = _keys(r, f + 60, DOWN, RIGHT, RIGHT)
+        r.shot(f + 40, "filter-changed")
         f = _keys(r, f + 60, DOWN, CROSS, DOWN, CROSS)
         r.shot(f + 40, "display-off")
     else:
-        f = _keys(r, f + 20, DOWN, DOWN, DOWN, DOWN)
+        f = _keys(r, f + 20, DOWN, DOWN, DOWN, DOWN, DOWN)
         r.shot(f + 40, "display-restored")
     f = _keys(r, f + 60, TRIANGLE, TRIANGLE)
     r.end(f + 40)

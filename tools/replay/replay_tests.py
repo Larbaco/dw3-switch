@@ -466,7 +466,7 @@ def run_phase(rec: Path, version, binary, runtime, display, outdir: Path, memdir
               "DW3_FILE_CACHE_SLOTS", "DW3_MODS_DIR", "DW3_MOD_PACK", "DW3_FORCE_MENU", "DW3_CHEATS_ARM", "DW3_STAGE_SWEEP", "DW3_STAGE_SWEEP_EXIT", "DW3_STAGE_SWEEP_FRAMES", "DW3_STAGE_SWEEP_ONLY", "DW3_STAGE_SWEEP_DIR", "DW3_STAGE_SWEEP_HANG_MS", "DW3_FORCE_EXIT", "DW3_START_MODE_EVERY", "DW3_WALKTHROUGH_PROBE",
               "DW3_MEMCARD_IMPORT_DIR", "DW3_CROSS_IMPORT", "DW3_SAVE_STORE", "DW3_SAVE_STORE_DIR", "DW3_REGION", "DW3_REGION_PICK",
               "DW3_REGION_PICK_KEYS", "DW3_SAVE_PROFILE", "DW3_RUNTIME_BASE", "DW3_PC_BIN_US", "DW3_PC_BIN_EU",
-              "DW3_RELAUNCH_TEST", "DW3_REPLAY_PACED"):
+              "DW3_RELAUNCH_TEST", "DW3_REPLAY_PACED", "DW3_OUTPUT_FILTER", "DW3_PC_WINDOW"):
         env.pop(k, None)
     if PACED:
         env["DW3_REPLAY_PACED"] = "1"
@@ -682,6 +682,11 @@ def run_scenario(sc, binary, runtime, out: Path, stamp, label, stall, timeout_sc
         for i, phase in enumerate(sc.phases):
             pv, pbin, prt, pmem = sc.version, binary, runtime, memdir
             penv = tuple(sc.env)
+            # Output filter: a scenario that does not set `output_filter` in its cfg runs
+            # on Nearest whatever the default is (a pin, not a seeded file: the boot path
+            # without a config file stays as it is). The sharp-bilinear scenarios set the key.
+            if "output_filter" not in dict(sc.cfg) and not any(k == "DW3_OUTPUT_FILTER" for k, _ in penv):
+                penv += (("DW3_OUTPUT_FILTER", "0"),)
             if sc.phase_versions:
                 pv = sc.phase_versions[i]
                 pbin, prt = by_version[pv]
