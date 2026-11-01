@@ -22,7 +22,7 @@ the overlay darkens with it; each title visit resets it.
  
  /* The edge fade's darkness after time frames: 0 to 255 along a quarter sine over 30 frames */
  s32 STDWTITL_getEdgeFadeLevel(s32 time) {
-@@ -81,6 +84,10 @@
+@@ -81,6 +84,10 @@ void STDWTITL_tickEdgeFade(EdgeFadeTask *task) {
              }
              break;
          }
@@ -52,7 +52,7 @@ the overlay darkens with it; each title visit resets it.
  
      initSpriteDrawer(&sprite);
      if (task->lit) {
-@@ -85,12 +91,19 @@
+@@ -85,12 +91,19 @@ GlintTask *STDWTITL_startGlintAltTask(s32 skip) {
  /* Draws the glint (sprite 4) while it plays, and sprite 2 once lit */
  void STDWTITL_drawGlint(GlintTask *task) {
      SpriteDrawer sprite;
@@ -72,7 +72,7 @@ the overlay darkens with it; each title visit resets it.
          sprite.draw(FILE_CACHE.getEntry(STDWTITL_spriteBank), 2, 253, 100);
          initSpriteDrawer(&sprite);
      }
-@@ -98,6 +111,10 @@
+@@ -98,6 +111,10 @@ void STDWTITL_drawGlint(GlintTask *task) {
          sprite.setLayerId(task->layerId, 0);
          sprite.setTexture(0x280, STDWTITL_TEXTURE_Y);
          sprite.setClutRow(task->frame);
@@ -114,7 +114,7 @@ the overlay darkens with it; each title visit resets it.
  
  /* Draws the logo once it is visible: sprite 6, and sprites 3 and 5 at their
     animations' current CLUT rows */
-@@ -8,20 +30,40 @@
+@@ -8,20 +30,40 @@ void STDWTITL_drawLogo(LogoTask *task) {
      SpriteDrawer sprite;
  
      if (task->visible) {
@@ -155,7 +155,7 @@ the overlay darkens with it; each title visit resets it.
      }
  }
  
-@@ -77,6 +119,9 @@
+@@ -77,6 +119,9 @@ void STDWTITL_tickLogo(LogoTask *task) {
          STDWTITL_drawLogo(task);
          break;
      case TASK_KILL:
@@ -188,7 +188,7 @@ the overlay darkens with it; each title visit resets it.
  #if PORT_HOST && defined(DW3_PC_HOST)
      if (task->showCursor && !(task->showOptions && task->state == TASK_DONE)) {
  #else
-@@ -85,6 +99,7 @@
+@@ -85,6 +99,7 @@ void STDWTITL_drawMenu(TitleMenuTask *task) {
  #if defined(DW3_PC_HOST)
      }
  #endif
@@ -196,7 +196,7 @@ the overlay darkens with it; each title visit resets it.
  }
  
  /* "PRESS START": waits a moment, then for Start (choice 3 after ten seconds),
-@@ -272,6 +287,9 @@
+@@ -272,6 +287,9 @@ void STDWTITL_tickMenu(TitleMenuTask *task) {
  #endif
          break;
      case TASK_KILL:
@@ -225,7 +225,7 @@ the overlay darkens with it; each title visit resets it.
  
      initSpriteDrawer(&sprite);
      sprite.setLayerId(task->layerId, 0);
-@@ -78,11 +84,18 @@
+@@ -78,11 +84,18 @@ SlideTask *STDWTITL_startTitle1AltTask(s32 skip) {
  /* Draws the second part of the title (sprite 1) */
  void STDWTITL_drawTitle1(SlideTask *task) {
      SpriteDrawer sprite;
@@ -244,7 +244,7 @@ the overlay darkens with it; each title visit resets it.
      sprite.draw(FILE_CACHE.getEntry(STDWTITL_spriteBank), 1, task->x, task->y);
  }
  
-@@ -140,6 +153,9 @@
+@@ -140,6 +153,9 @@ SlideTask *STDWTITL_startTitle1Task(s32 skip) {
  /* Draws the first part of the title (sprite 0) for the European version's language 0 */
  void STDWTITL_drawTitle0Alt(SlideTask *task) {
      SpriteDrawer sprite;
@@ -254,7 +254,7 @@ the overlay darkens with it; each title visit resets it.
  
      initSpriteDrawer(&sprite);
      sprite.setLayerId(task->layerId, 0);
-@@ -213,11 +229,18 @@
+@@ -213,11 +229,18 @@ SlideTask *STDWTITL_startTitle0AltTask(s32 skip) {
  /* Draws the first part of the title (sprite 0) */
  void STDWTITL_drawTitle0(SlideTask *task) {
      SpriteDrawer sprite;
@@ -302,7 +302,7 @@ the overlay darkens with it; each title visit resets it.
          switch (task->choice) {
          case 0:
              break;
-@@ -173,6 +187,10 @@
+@@ -173,6 +187,10 @@ void STDWTITL_tickTitle(TitleTask *task, TitleChildren *children) {
  /* Creates the title screen (task), under its title loader parent */
  TitleTask *STDWTITL_startTitleTask(TitleLoaderTask *parent) {
      TitleTask *task = createTask(STDWTITL_tickTitle, sizeof(TitleTask), sizeof(TitleChildren));
@@ -313,15 +313,15 @@ the overlay darkens with it; each title visit resets it.
  
      task->layerId = STDWTITL_TITLE_LAYER;
      task->depth = 2;
-@@ -191,11 +209,17 @@
+@@ -191,11 +209,17 @@ void STDWTITL_loadTitleImages(void) {
      loader.setClutPos(0, 0x1F0);
      loader.loadArchive(FILE_CACHE.getEntry(STDWTITL_titleImages[1].images));
      STDWTITL_spriteBank = STDWTITL_titleImages[1].sprites;
 +#if defined(DW3_TITLE_NATIVE_OVERLAY)
 +    dw3_port_title_logo_capture(FILE_CACHE.getEntry(STDWTITL_spriteBank));
 +#endif
- #elif VERSION_EU
-     loader.setImagePos(0x280, 0x100);
+ #elif VERSION_EU || VERSION_JP
+     loader.setImagePos(0x280, STDWTITL_TEXTURE_Y);
      loader.setClutPos(0, 0x1F0);
      loader.loadArchive(FILE_CACHE.getEntry(STDWTITL_titleImages[LANGUAGE].images));
      STDWTITL_spriteBank = STDWTITL_titleImages[LANGUAGE].sprites;

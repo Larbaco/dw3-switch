@@ -24,8 +24,8 @@ port writes it to the target slot (rename-atomic, rolled back on failure).
  char *getenv(const char *name);
  long strtol(const char *nptr, char **endptr, int base);
  #ifdef DW3_CHEATS
-@@ -559,6 +560,53 @@
-  * From the story point 4 on, START opens the field menu (STSTATUS) while
+@@ -559,6 +560,53 @@ static inline void warpAway(FieldTask *task, FieldChildren *children) {
+  * From the STORY_GENJI_BEATEN on, START opens the field menu (STSTATUS) while
   * the field is idle; the player's place is kept to come back to
   */
 +#if PORT_HOST
@@ -78,13 +78,10 @@ port writes it to the target slot (rename-atomic, rolled back on failure).
  static inline void openFieldMenu(FieldTask *task, FieldChildren *children) {
      if (FIELDSTG_state.menuOpen != 1 && FIELDSTG_state.busy == 0 && FIELDSTG_state.acting == 0) {
          do {
-@@ -606,6 +654,25 @@
-                             (unsigned)GAME.funcs.getMode(), (unsigned)cheatMode);
-                     FIELDSTG_leaveField(cheatMode, 0, 0, 0, 0);
-                     break;
-+                }
-+            }
-+#endif
+@@ -609,6 +657,25 @@ static inline void openFieldMenu(FieldTask *task, FieldChildren *children) {
+                 }
+             }
+ #endif
 +#if PORT_HOST
 +            /* P6.31 Auto-save: with the option on, the first idle frame of a
 +               new area writes the game (see autosaveField); with it off the
@@ -101,6 +98,9 @@ port writes it to the target slot (rename-atomic, rolled back on failure).
 +                autosave.frozen = FIELDSTG_state.frozen;
 +                if (dw3_autosave_field_idle(&autosave)) {
 +                    autosaveField(children);
-                 }
-             }
- #endif
++                }
++            }
++#endif
+ #if PORT_HOST
+             {
+                 const char *force = getenv("DW3_FORCE_MENU");

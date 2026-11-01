@@ -43,7 +43,9 @@ def _tables() -> dict[str, dict[int, int]]:
         out[name] = {int(n): int(f) for _m, f, n in ENTRY.findall(body)}
     extra = re.search(r"StageEntry FIELDSTG_extraStages\[\] = \{(.*?)\n\};", text, re.S)
     assert extra is not None
-    out["extra"] = {int(n): int(f) for _m, f, n in ENTRY.findall(extra.group(1))}
+    # the table also has the Japanese version's entries (#elif VERSION_JP); the port builds US and EU
+    eu_entries = extra.group(1).split("#elif VERSION_JP")[0]
+    out["extra"] = {int(n): int(f) for _m, f, n in ENTRY.findall(eu_entries)}
     return out
 
 

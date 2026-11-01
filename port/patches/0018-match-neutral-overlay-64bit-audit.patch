@@ -6,9 +6,9 @@ stage_select save arg STAGE_SELECT_MODE_ARG_SAVE + sizeof(StageSelect),
 and pointer-safe casts (void* scripts/vsyncArg/create; MAP_PART; fighter face;
 battle menu pointer+offset). ROADMAP P3.1.
 
---- a/include/battle/battle_mode/battle.h	2026-10-10 05:05:46.588943300 -0300
-+++ b/include/battle/battle_mode/battle.h	2026-10-10 05:16:15.789362300 -0300
-@@ -491,7 +491,7 @@
+--- a/include/battle/battle_mode/battle.h
++++ b/include/battle/battle_mode/battle.h
+@@ -498,7 +498,7 @@ static inline BattleFighter *FIGHTSTG_getActiveFighter(s32 row) {
      s32 offset = row * sizeof(FIGHTSTG_battle.state.fighters[0]);
      BattleFighter *slot = &FIGHTSTG_battle.state.fighters[0][FIGHTSTG_battle.state.active[row]];
  
@@ -17,9 +17,9 @@ battle menu pointer+offset). ROADMAP P3.1.
  }
  
  #endif /* FIGHTSTG_BATTLE_H */
---- a/include/battle/battle_mode/menu.h	2026-10-10 05:05:46.591959800 -0300
-+++ b/include/battle/battle_mode/menu.h	2026-10-10 05:16:15.789719000 -0300
-@@ -439,6 +439,6 @@
+--- a/include/battle/battle_mode/menu.h
++++ b/include/battle/battle_mode/menu.h
+@@ -439,6 +439,6 @@ void FIGHTSTG_stepConfusedMessage(ConfusedMenu *task, ConfusedMenuWindows *w);
  void FIGHTSTG_setConfusedName(ConfusedMenu *task, ConfusedMenuWindows *windows, s32 side);
  void FIGHTSTG_showConfusedMessage(ConfusedMenu *task, s32 index, s32 unused);
  void FIGHTSTG_drawCursorSprites(MenuCursor *task);
@@ -27,8 +27,8 @@ battle menu pointer+offset). ROADMAP P3.1.
 +void FIGHTSTG_drawCursorBar(void *arg);
  
  #endif /* FIGHTSTG_MENU_H */
---- a/include/debug/stage_select.h	2026-10-10 05:05:46.598385100 -0300
-+++ b/include/debug/stage_select.h	2026-10-10 05:16:15.790013300 -0300
+--- a/include/debug/stage_select.h
++++ b/include/debug/stage_select.h
 @@ -8,6 +8,9 @@
  
  /* One line of the menu; the list ends with scene -1 and scene 0 lines are
@@ -39,9 +39,9 @@ battle menu pointer+offset). ROADMAP P3.1.
  typedef struct StageSelectEntry {
      /* 0x0 */ char *name;
      /* 0x4 */ char *title;
---- a/include/engine/gfx.h	2026-10-10 05:16:08.353176400 -0300
-+++ b/include/engine/gfx.h	2026-10-10 05:16:15.790483600 -0300
-@@ -58,8 +58,8 @@
+--- a/include/engine/gfx.h
++++ b/include/engine/gfx.h
+@@ -58,8 +58,8 @@ typedef struct GfxFuncs {
   * Times are in vsyncs; the counters keep 8 fractional bits.
   */
  typedef struct GfxState {
@@ -52,9 +52,9 @@ battle menu pointer+offset). ROADMAP P3.1.
      /* 0x08 */ s32 frameCount;
      /* 0x0C */ s32 frameCounter;
      /* 0x10 */ s32 time; /* vsyncs since boot */
---- a/include/field/field_mode.h	2026-10-10 05:05:46.605309300 -0300
-+++ b/include/field/field_mode.h	2026-10-10 05:16:15.791075100 -0300
-@@ -291,7 +291,7 @@
+--- a/include/field/field_mode.h
++++ b/include/field/field_mode.h
+@@ -291,7 +291,7 @@ typedef struct EventTask {
  typedef struct EventChildren {
      /* 0x00 */ struct Task *task; /* start's */
      /* 0x04 */ struct Speech *boxes[3]; /* the script's message boxes */
@@ -63,16 +63,16 @@ battle menu pointer+offset). ROADMAP P3.1.
  } EventChildren;
  
  /* --- script.c --- */
-@@ -299,7 +299,7 @@
+@@ -299,7 +299,7 @@ typedef struct EventChildren {
  /* An entry of the script command table FIELDSTG_scriptCommands (ids from 0x320) */
  typedef struct ScriptCommand {
      /* 0x0 */ s32 id;
--    /* 0x4 */ s32 (*create)(s32 id); /* creates the command's task */
-+    /* 0x4 */ void *(*create)(s32 id); /* creates the command's task */
+-    /* 0x4 */ s32 (*create)(s32 id); /* creates the command's task; FIELDSTG's own return
++    /* 0x4 */ void *(*create)(s32 id); /* creates the command's task; FIELDSTG's own return
+                                          nothing or a Lift, so the table casts them */
      /* 0x8 */ void (*handle)(); /* (task, command, arg): each command's task has its own type */
  } ScriptCommand;
- 
-@@ -963,8 +963,8 @@
+@@ -964,8 +964,8 @@ void FIELDSTG_waitWalkDone(s32 id, s32 *pc);
  void FIELDSTG_toScreenPos(Vec2 *pos);
  void FIELDSTG_clearScriptFlag(void);
  ScriptCommand *FIELDSTG_findScriptCommand(s32 id);
@@ -83,9 +83,9 @@ battle menu pointer+offset). ROADMAP P3.1.
  
  /* battle.c */
  void FIELDSTG_rollBattleSteps(void);
---- a/src/battle/battle_mode/counterattack.c	2026-10-10 05:05:46.618298300 -0300
-+++ b/src/battle/battle_mode/counterattack.c	2026-10-10 05:16:15.791604700 -0300
-@@ -199,7 +199,7 @@
+--- a/src/battle/battle_mode/counterattack.c
++++ b/src/battle/battle_mode/counterattack.c
+@@ -198,7 +198,7 @@ void FIGHTSTG_updateCounterattack(Counterattack *task, BattleChild *children) {
  /* Starts SIDE's counterattack (FIGHTSTG_updateCounterattack) to RECEIVED
     damage; NOKNOCKOUTEVENT keeps a knockout from queueing its event */
  Counterattack *FIGHTSTG_startCounterattack(s32 side, s32 received, s32 noKnockOutEvent) {
@@ -94,9 +94,9 @@ battle menu pointer+offset). ROADMAP P3.1.
  
      task->side = side;
      task->received = received;
---- a/src/battle/battle_mode/cursor.c	2026-10-10 05:05:46.618555400 -0300
-+++ b/src/battle/battle_mode/cursor.c	2026-10-10 05:16:15.792152600 -0300
-@@ -8,8 +8,8 @@
+--- a/src/battle/battle_mode/cursor.c
++++ b/src/battle/battle_mode/cursor.c
+@@ -8,8 +8,8 @@ RECT FIGHTSTG_cursorBarRect = { 0, 0xF4, 12, 12 };
  /* The vsync callback while the list is open: draws the picked line's bar,
     moving through its frames, and the bar off the line picked before when the
     pick has changed, over the frame being drawn. The match depends on the task
@@ -107,7 +107,7 @@ battle menu pointer+offset). ROADMAP P3.1.
      MenuCursor *task = (MenuCursor *)arg;
      u_long *saved;
      s32 i;
-@@ -97,7 +97,7 @@
+@@ -97,7 +97,7 @@ void FIGHTSTG_updateCursor(MenuCursor *task) {
          case 2:
          default:
              GFX.vsyncFunc = FIGHTSTG_drawCursorBar;
@@ -116,9 +116,9 @@ battle menu pointer+offset). ROADMAP P3.1.
              /* fallthrough */
          case 0:
          case 1:
---- a/src/battle/battle_mode/entrance.c	2026-10-10 05:05:46.622503100 -0300
-+++ b/src/battle/battle_mode/entrance.c	2026-10-10 05:16:15.792499100 -0300
-@@ -174,7 +174,7 @@
+--- a/src/battle/battle_mode/entrance.c
++++ b/src/battle/battle_mode/entrance.c
+@@ -173,7 +173,7 @@ void FIGHTSTG_updateEntrance(Entrance *task, WhiteFlash **children) {
  /* Starts a fighter's entrance: Digimon id on the player's side (side 0) or
     the enemy's */
  Entrance *FIGHTSTG_startEntrance(s32 id, s32 side, s32 weak) {
@@ -127,9 +127,9 @@ battle menu pointer+offset). ROADMAP P3.1.
  
      task->key1 = id;
      if (side) {
---- a/src/battle/battle_mode/fighter_info.c	2026-10-10 05:05:46.624031700 -0300
-+++ b/src/battle/battle_mode/fighter_info.c	2026-10-10 05:16:15.792823000 -0300
-@@ -82,7 +82,7 @@
+--- a/src/battle/battle_mode/fighter_info.c
++++ b/src/battle/battle_mode/fighter_info.c
+@@ -82,7 +82,7 @@ FaceRect *FIGHTSTG_getFighterFace(s32 id) {
      FightersFile *file = FILE_CACHE.load(FILE_FIGHTERS);
  
      /* face assumes the file is at base: move it to where the file is */
@@ -138,9 +138,9 @@ battle menu pointer+offset). ROADMAP P3.1.
  }
  
  /* The first and last entries of the fighters file that are enemies (enemy
---- a/src/battle/battle_mode/message.c	2026-10-10 05:05:46.626490200 -0300
-+++ b/src/battle/battle_mode/message.c	2026-10-10 05:16:15.793227200 -0300
-@@ -438,7 +438,7 @@
+--- a/src/battle/battle_mode/message.c
++++ b/src/battle/battle_mode/message.c
+@@ -438,7 +438,7 @@ void FIGHTSTG_finishMessage(BattleMessageBox *task) {
  
  /* Creates a battle message box (FIGHTSTG_updateMessage) */
  BattleMessageBox *FIGHTSTG_createMessage(void) {
@@ -149,9 +149,9 @@ battle menu pointer+offset). ROADMAP P3.1.
  
      task->show = FIGHTSTG_showMessage;
      task->finish = FIGHTSTG_finishMessage;
---- a/src/battle/battle_mode/model_mesh.c	2026-10-10 05:05:46.627112300 -0300
-+++ b/src/battle/battle_mode/model_mesh.c	2026-10-10 05:16:15.793664600 -0300
-@@ -453,7 +453,7 @@
+--- a/src/battle/battle_mode/model_mesh.c
++++ b/src/battle/battle_mode/model_mesh.c
+@@ -453,7 +453,7 @@ Model *FIGHTSTG_createModel(s32 file, s32 motionFile, Vec2 texPos, ModelControl
      s32 high = file & 0xFFFF0000;
      s32 *entry = FILE_CACHE.getEntry(file);
      s32 count = entry[1] + 1;
@@ -160,9 +160,9 @@ battle menu pointer+offset). ROADMAP P3.1.
      s32 i;
  
      model->bones = HEAP.alloc(count * sizeof(ModelBone), 2);
---- a/src/battle/battle_mode/stage.c	2026-10-10 05:05:46.630443100 -0300
-+++ b/src/battle/battle_mode/stage.c	2026-10-10 05:16:15.793943600 -0300
-@@ -211,7 +211,7 @@
+--- a/src/battle/battle_mode/stage.c
++++ b/src/battle/battle_mode/stage.c
+@@ -211,7 +211,7 @@ s32 FIGHTSTG_getStageMotionsFile(s32 id) {
  /* Creates the fight stage (id 0x15), which loads stage id and fades it in
     over fadeInTime */
  FightStage *FIGHTSTG_createStage(s32 id, s32 fadeInTime) {
@@ -171,9 +171,9 @@ battle menu pointer+offset). ROADMAP P3.1.
  
      task->setStage = FIGHTSTG_setStage;
      task->stage = id;
---- a/src/battle/normal_battle/menu.c	2026-10-10 05:05:46.635010600 -0300
-+++ b/src/battle/normal_battle/menu.c	2026-10-10 05:16:15.794462500 -0300
-@@ -499,7 +499,7 @@
+--- a/src/battle/normal_battle/menu.c
++++ b/src/battle/normal_battle/menu.c
+@@ -498,7 +498,7 @@ void WFIGHTMN_endBattle(BattleMenu *task, BattleMenuChildren *children) {
              }
              /* an address sum with the offset first: the match depends on it, which
                 puts the offset first in the addu */
@@ -182,9 +182,9 @@ battle menu pointer+offset). ROADMAP P3.1.
              info = FIGHTSTG_battleTableFunc(unit->id);
              if (unit->item > 0 && info->itemChance + 1 > RANDOM.next() % 1024) {
                  BATTLE_RESULT.item = unit->item;
---- a/src/battle/report/partner.c	2026-10-10 05:05:46.638032500 -0300
-+++ b/src/battle/report/partner.c	2026-10-10 05:16:15.794935100 -0300
-@@ -509,7 +509,7 @@
+--- a/src/battle/report/partner.c
++++ b/src/battle/report/partner.c
+@@ -509,7 +509,7 @@ void STFGTREP_selectPartner(ReportPartner *partner) {
  
  /* Creates the panel of party member index, who gets exp */
  ReportPartner *STFGTREP_createPartner(FightReport *report, s32 index, s32 exp) {
@@ -193,9 +193,9 @@ battle menu pointer+offset). ROADMAP P3.1.
  
      partner->show = STFGTREP_showPartner;
      partner->hide = STFGTREP_hidePartner;
---- a/src/battle/report/report.c	2026-10-10 05:05:46.638416700 -0300
-+++ b/src/battle/report/report.c	2026-10-10 05:16:15.795287200 -0300
-@@ -361,7 +361,7 @@
+--- a/src/battle/report/report.c
++++ b/src/battle/report/report.c
+@@ -361,7 +361,7 @@ void STFGTREP_updateReport(FightReport *report, FightReportChildren *children) {
  
  /* Creates the report (STFGTREP_updateReport) on the screen layer */
  FightReport *STFGTREP_createScreen(void) {
@@ -204,9 +204,9 @@ battle menu pointer+offset). ROADMAP P3.1.
  
      report->layer = SCREEN_LAYER;
      report->depth = 7;
---- a/src/battle/report/scene.c	2026-10-10 05:05:46.638694900 -0300
-+++ b/src/battle/report/scene.c	2026-10-10 05:16:15.795590600 -0300
-@@ -33,7 +33,7 @@
+--- a/src/battle/report/scene.c
++++ b/src/battle/report/scene.c
+@@ -33,7 +33,7 @@ void STFGTREP_updateScene(Task *task, FightReport **children) {
  
  /* The mode's entry point (MODE_ENTRY_POINTS) */
  Task *STFGTREP_start(void) {
@@ -215,9 +215,9 @@ battle menu pointer+offset). ROADMAP P3.1.
  }
  
  #include "shared/start_fader.inc.c"
---- a/src/cardgame/card_battle/battle.c	2026-10-10 05:05:46.640180800 -0300
-+++ b/src/cardgame/card_battle/battle.c	2026-10-10 05:16:15.796411500 -0300
-@@ -2552,7 +2552,7 @@
+--- a/src/cardgame/card_battle/battle.c
++++ b/src/cardgame/card_battle/battle.c
+@@ -2552,7 +2552,7 @@ void CARDGAME_updateBattle(CardBattle *battle, CardBattleItems *items) {
  /* Creates the card battle against opponent arg (CARDGAME_loadOpponent), with
     its functions, and loads its sound bank */
  CardBattle *CARDGAME_createBattle(s32 arg) {
@@ -226,9 +226,9 @@ battle menu pointer+offset). ROADMAP P3.1.
  
      battle->shufflePile = CARDGAME_shufflePile;
      battle->sortCards = CARDGAME_sortCards;
---- a/src/cardgame/card_battle/deck_choice.c	2026-10-10 05:05:46.641986800 -0300
-+++ b/src/cardgame/card_battle/deck_choice.c	2026-10-10 05:16:15.796787900 -0300
-@@ -229,7 +229,7 @@
+--- a/src/cardgame/card_battle/deck_choice.c
++++ b/src/cardgame/card_battle/deck_choice.c
+@@ -229,7 +229,7 @@ CardDeckWindow *CARDGAME_createDeckWindow(s32 deck, s32 x, s32 y) {
      s32 i;
  
      initCardDrawer(&drawer);
@@ -237,9 +237,9 @@ battle menu pointer+offset). ROADMAP P3.1.
      for (i = 0; i < 6; i++) {
          window->counts[i] = 0;
      }
---- a/src/cardgame/card_battle/fader.c	2026-10-10 05:05:46.642708400 -0300
-+++ b/src/cardgame/card_battle/fader.c	2026-10-10 05:16:15.797108100 -0300
-@@ -110,7 +110,7 @@
+--- a/src/cardgame/card_battle/fader.c
++++ b/src/cardgame/card_battle/fader.c
+@@ -110,7 +110,7 @@ void CARDGAME_tickFader(CardFader *fader) {
  
  /* Creates a fader, with the semi-transparency rate BLEND */
  CardFader *CARDGAME_createFader(u8 blend) {
@@ -248,18 +248,18 @@ battle menu pointer+offset). ROADMAP P3.1.
  
      fader->setColor = CARDGAME_setFaderColor;
      fader->start = CARDGAME_startFade;
---- a/src/cardgame/card_battle/scene.c	2026-10-10 05:05:46.647318600 -0300
-+++ b/src/cardgame/card_battle/scene.c	2026-10-10 05:16:15.797468600 -0300
-@@ -49,5 +49,5 @@
+--- a/src/cardgame/card_battle/scene.c
++++ b/src/cardgame/card_battle/scene.c
+@@ -49,5 +49,5 @@ void CARDGAME_updateScene(Task *task, CardBattle **items) {
  
  /* The mode's entry point (MODE_ENTRY_POINTS) */
  Task *CARDGAME_start(void) {
 -    return createTask(CARDGAME_updateScene, sizeof(Task), 4);
 +    return createTask(CARDGAME_updateScene, sizeof(Task), sizeof(Task *));
  }
---- a/src/cardgame/card_battle/screen.c	2026-10-10 05:05:46.647907200 -0300
-+++ b/src/cardgame/card_battle/screen.c	2026-10-10 05:16:15.797879200 -0300
-@@ -682,7 +682,7 @@
+--- a/src/cardgame/card_battle/screen.c
++++ b/src/cardgame/card_battle/screen.c
+@@ -682,7 +682,7 @@ s32 CARDGAME_loadCardImages(s16 *dst, s16 *player, s16 *opponent) {
  
  /* Creates the card screen over cards, with its functions */
  CardScreen *CARDGAME_createScreen(s16 *cards) {
@@ -268,9 +268,9 @@ battle menu pointer+offset). ROADMAP P3.1.
  
      screen->setPanelValue = CARDGAME_setPanelValue;
      screen->openGauge = CARDGAME_openGauge;
---- a/src/debug/battle_test/battle_test.c	2026-10-10 05:05:46.660015600 -0300
-+++ b/src/debug/battle_test/battle_test.c	2026-10-10 05:16:15.798614100 -0300
-@@ -390,7 +390,7 @@
+--- a/src/debug/battle_test/battle_test.c
++++ b/src/debug/battle_test/battle_test.c
+@@ -391,7 +391,7 @@ void WFIGHTTS_battleTest(BattleTest *task, BattleTestChildren *children) {
  /* WFIGHTTS's entry point: creates the battle test, though with 0 bytes for
     its fields and for its children */
  Task *WFIGHTTS_start(void) {
@@ -279,9 +279,9 @@ battle menu pointer+offset). ROADMAP P3.1.
  }
  
  /* The fighter list: the partners on the right and the enemies on the left,
---- a/src/debug/sound_test/sound_test.c	2026-10-10 05:05:46.661358100 -0300
-+++ b/src/debug/sound_test/sound_test.c	2026-10-10 05:16:15.799130800 -0300
-@@ -631,7 +631,7 @@
+--- a/src/debug/sound_test/sound_test.c
++++ b/src/debug/sound_test/sound_test.c
+@@ -631,7 +631,7 @@ void SOUNDTST_updateScene(Task *task, Task **items) {
  
  /* Creates the sound test's root task */
  Task *SOUNDTST_start(void) {
@@ -290,9 +290,9 @@ battle menu pointer+offset). ROADMAP P3.1.
  }
  
  /* Moves a list's cursor by delta within its count, scrolling the eight lines
---- a/src/debug/stage_select/stage_select.c	2026-10-10 05:05:46.662868400 -0300
-+++ b/src/debug/stage_select/stage_select.c	2026-10-10 05:16:15.800043900 -0300
-@@ -55,7 +55,7 @@
+--- a/src/debug/stage_select/stage_select.c
++++ b/src/debug/stage_select/stage_select.c
+@@ -57,7 +57,7 @@ StageSelectEntry STAGSLCT_entries[] = {
      {"\x82\x72\x82\x73\x82\x63\x82\x64\x82\x62\x82\x6A", "\x83\x74\x83\x48\x83\x8B\x83\x5F\x82\xD6\x82\xF1\x82\xB5\x82\xE3\x82\xA4", MODE_DECK_EDITOR, 0}, /* "ＳＴＤＥＣＫ" "フォルダへんしゅう" */
      {"\x82\x72\x82\x73\x82\x62\x82\x63\x82\x72\x82\x6F", "\x83\x4A\x81\x5B\x83\x68\x83\x56\x83\x87\x83\x62\x83\x76", MODE_CARD_SHOP, 0}, /* "ＳＴＣＤＳＰ" "カードショップ" */
      {SEPARATOR, SEPARATOR, 0, 0},
@@ -301,7 +301,7 @@ battle menu pointer+offset). ROADMAP P3.1.
      {"\x82\x72\x82\x73\x82\x6C\x82\x62\x82\x71\x82\x63", "\x83\x8D\x81\x5B\x83\x68", MODE_CONTINUE, 0}, /* "ＳＴＭＣＲＤ" "ロード" */
      {SEPARATOR, SEPARATOR, 0, 0},
      {"\x82\x72\x82\x73\x82\x73\x82\x68\x82\x73\x82\x6B", "\x83\x5E\x83\x43\x83\x67\x83\x8B\x82\xAA\x82\xDF\x82\xF1", MODE_TITLE, 0}, /* "ＳＴＴＩＴＬ" "タイトルがめん" */
-@@ -398,7 +398,7 @@
+@@ -400,7 +400,7 @@ StageSelectEntry STAGSLCT_entries[] = {
      {"\x82\x72\x82\x73\x82\x63\x82\x64\x82\x62\x82\x6A", "\x83\x74\x83\x48\x83\x8B\x83\x5F\x82\xD6\x82\xF1\x82\xB5\x82\xE3\x82\xA4", MODE_DECK_EDITOR, 0}, /* "ＳＴＤＥＣＫ" "フォルダへんしゅう" */
      {"\x82\x72\x82\x73\x82\x62\x82\x63\x82\x72\x82\x6F", "\x83\x4A\x81\x5B\x83\x68\x83\x56\x83\x87\x83\x62\x83\x76", MODE_CARD_SHOP, 0}, /* "ＳＴＣＤＳＰ" "カードショップ" */
      {SEPARATOR, SEPARATOR, 0, 0},
@@ -310,7 +310,7 @@ battle menu pointer+offset). ROADMAP P3.1.
      {"\x82\x72\x82\x73\x82\x6C\x82\x62\x82\x71\x82\x63", "\x83\x8D\x81\x5B\x83\x68", MODE_CONTINUE, 0}, /* "ＳＴＭＣＲＤ" "ロード" */
      {SEPARATOR, SEPARATOR, 0, 0},
      {"\x82\x72\x82\x73\x82\x73\x82\x68\x82\x73\x82\x6B", "\x83\x5E\x83\x43\x83\x67\x83\x8B\x82\xAA\x82\xDF\x82\xF1", MODE_TITLE, 0}, /* "ＳＴＴＩＴＬ" "タイトルがめん" */
-@@ -701,7 +701,7 @@
+@@ -754,7 +754,7 @@ void STAGSLCT_updateScene(Task *task, Task **items) {
  
  /* Creates the stage select's root task */
  Task *STAGSLCT_start(void) {
@@ -319,7 +319,7 @@ battle menu pointer+offset). ROADMAP P3.1.
  }
  
  /* Moves the cursor by delta to the next line with a scene, scrolling the
-@@ -1063,7 +1063,7 @@
+@@ -1125,7 +1125,7 @@ void STAGSLCT_updateStageSelect(Task *task, StageSelectWindows *win) {
  
  /* Creates the stage select */
  Task *STAGSLCT_createStageSelect(void) {
@@ -328,9 +328,9 @@ battle menu pointer+offset). ROADMAP P3.1.
  }
  
  #if VERSION_EU
---- a/src/field/field_mode/actor.c	2026-10-10 05:05:46.682093800 -0300
-+++ b/src/field/field_mode/actor.c	2026-10-10 05:16:15.800476900 -0300
-@@ -126,7 +126,7 @@
+--- a/src/field/field_mode/actor.c
++++ b/src/field/field_mode/actor.c
+@@ -126,7 +126,7 @@ static inline void takePartyDepth(Actor *actor) {
   * global allocator (the European version matches either way).
   */
  Actor *FIELDSTG_createActor(s32 key1, s32 kind, s32 image, FieldActorEntry *entry) {
@@ -339,9 +339,9 @@ battle menu pointer+offset). ROADMAP P3.1.
      s32 keepsDir;
  
      setActorMethods(actor);
---- a/src/field/field_mode/banner.c	2026-10-10 05:05:46.683761600 -0300
-+++ b/src/field/field_mode/banner.c	2026-10-10 05:16:15.800919500 -0300
-@@ -239,7 +239,7 @@
+--- a/src/field/field_mode/banner.c
++++ b/src/field/field_mode/banner.c
+@@ -239,7 +239,7 @@ void FIELDSTG_updateBanner(AreaBanner *task, AreaNameWindows *windows) {
  /* Creates the area name banner, which closes at once unless show; the
     player is frozen until it ends */
  Task *FIELDSTG_createBanner(s32 show) {
@@ -350,9 +350,9 @@ battle menu pointer+offset). ROADMAP P3.1.
  
      task->key1 = show;
      FIELDSTG_state.frozen = 1;
---- a/src/field/field_mode/event.c	2026-10-10 05:05:46.687758200 -0300
-+++ b/src/field/field_mode/event.c	2026-10-10 05:16:15.801270200 -0300
-@@ -30,7 +30,7 @@
+--- a/src/field/field_mode/event.c
++++ b/src/field/field_mode/event.c
+@@ -30,7 +30,7 @@ s32 FIELDSTG_setEventPose(EventTask *task, s16 *op, EventChildren *children) {
      s32 set = op[2]; /* or the command */
      s32 dir = op[3]; /* or its argument */
      Actor *actor;
@@ -361,7 +361,7 @@ battle menu pointer+offset). ROADMAP P3.1.
      s32 i;
  
      if (id < 0x320) {
-@@ -39,19 +39,19 @@
+@@ -39,19 +39,19 @@ s32 FIELDSTG_setEventPose(EventTask *task, s16 *op, EventChildren *children) {
              actor->setPose(actor, set, dir);
          }
      } else {
@@ -386,7 +386,7 @@ battle menu pointer+offset). ROADMAP P3.1.
              FIELDSTG_handleScriptCommand(target, id, set, dir);
          }
      }
-@@ -248,7 +248,7 @@
+@@ -248,7 +248,7 @@ void FIELDSTG_runEvent(EventTask *task, EventChildren *children) {
  /* Starts the event id of FieldState.events: its script, start and end, and
     its text; the player stands still, except for the events 8000 to 8999 */
  EventTask *FIELDSTG_startEvent(s32 id) {
@@ -395,9 +395,9 @@ battle menu pointer+offset). ROADMAP P3.1.
      FieldEvent *entry;
      Task *other;
      s32 text;
---- a/src/field/field_mode/hidden_spots.c	2026-10-10 05:05:46.689232300 -0300
-+++ b/src/field/field_mode/hidden_spots.c	2026-10-10 05:16:15.801712800 -0300
-@@ -151,7 +151,7 @@
+--- a/src/field/field_mode/hidden_spots.c
++++ b/src/field/field_mode/hidden_spots.c
+@@ -151,7 +151,7 @@ void FIELDSTG_updateHiddenSpots(HiddenSpots *task, HiddenSpotsChildren *children
  /* Creates the hidden spots, the map objects of animation 0xFF, and hides the
     prize in one (or where it was, in the same mode) */
  HiddenSpots *FIELDSTG_createHiddenSpots(s32 count) {
@@ -406,8 +406,8 @@ battle menu pointer+offset). ROADMAP P3.1.
      StageTile *object;
      s32 i;
      s32 n;
---- a/src/field/field_mode/map.c	2026-10-10 05:05:46.689989700 -0300
-+++ b/src/field/field_mode/map.c	2026-10-10 05:16:15.802097000 -0300
+--- a/src/field/field_mode/map.c
++++ b/src/field/field_mode/map.c
 @@ -4,7 +4,7 @@
  #include "field/field_mode.h"
  
@@ -417,9 +417,9 @@ battle menu pointer+offset). ROADMAP P3.1.
  
  /*
   * Points the map at the file of map index: the grid, whose first two bytes
---- a/src/field/field_mode/map_objects.c	2026-10-10 05:05:46.690257300 -0300
-+++ b/src/field/field_mode/map_objects.c	2026-10-10 05:16:15.802422500 -0300
-@@ -140,7 +140,7 @@
+--- a/src/field/field_mode/map_objects.c
++++ b/src/field/field_mode/map_objects.c
+@@ -140,7 +140,7 @@ void FIELDSTG_updateMapObjects(MapObjects *task, HiddenSpots **children) {
  
  /* Creates the map's objects, with their sprites */
  MapObjects *FIELDSTG_createMapObjects(s32 sprites, StageTile *objects) {
@@ -428,9 +428,9 @@ battle menu pointer+offset). ROADMAP P3.1.
  
      task->objects = objects;
      task->sprites = sprites;
---- a/src/field/field_mode/map_streamer.c	2026-10-10 05:05:46.690539500 -0300
-+++ b/src/field/field_mode/map_streamer.c	2026-10-10 05:16:15.802749900 -0300
-@@ -365,7 +365,7 @@
+--- a/src/field/field_mode/map_streamer.c
++++ b/src/field/field_mode/map_streamer.c
+@@ -365,7 +365,7 @@ Vec2 *FIELDSTG_getMapSize(MapStreamer *task) {
  
  /* Creates the map streamer of a file */
  MapStreamer *FIELDSTG_createMapStreamer(s32 file) {
@@ -439,9 +439,9 @@ battle menu pointer+offset). ROADMAP P3.1.
  
      task->file = file;
      task->getSize = FIELDSTG_getMapSize;
---- a/src/field/field_mode/script.c	2026-10-10 05:05:46.690698400 -0300
-+++ b/src/field/field_mode/script.c	2026-10-10 05:16:52.773561700 -0300
-@@ -78,9 +78,9 @@
+--- a/src/field/field_mode/script.c
++++ b/src/field/field_mode/script.c
+@@ -78,9 +78,9 @@ ScriptCommand *FIELDSTG_findScriptCommand(s32 id) {
  }
  
  /* Creates the task of script command id, or returns 0 */
@@ -453,7 +453,7 @@ battle menu pointer+offset). ROADMAP P3.1.
  
      if (cmd != NULL) {
          ret = cmd->create(id);
-@@ -90,7 +90,7 @@
+@@ -90,7 +90,7 @@ s32 FIELDSTG_createScriptCommand(s32 id) {
  
  /* Hands the task of script command id a command and its argument, through
     the command's handle */
@@ -462,9 +462,9 @@ battle menu pointer+offset). ROADMAP P3.1.
      ScriptCommand *cmd = FIELDSTG_findScriptCommand(id);
  
      if (cmd != NULL && cmd->handle != NULL) {
---- a/src/field/field_mode/speech.c	2026-10-10 05:05:46.690927100 -0300
-+++ b/src/field/field_mode/speech.c	2026-10-10 05:16:15.803410400 -0300
-@@ -62,7 +62,7 @@
+--- a/src/field/field_mode/speech.c
++++ b/src/field/field_mode/speech.c
+@@ -62,7 +62,7 @@ void FIELDSTG_updateSpeech(Speech *task, void **box) {
  /* Creates the speech of an event's text entry: a message box, or a talk box
     of a type */
  Speech *FIELDSTG_createSpeech(Actor *actor, s32 entry, s32 type, s32 isMessage) {
@@ -473,7 +473,7 @@ battle menu pointer+offset). ROADMAP P3.1.
  
      task->actor = actor;
      task->entry = entry;
-@@ -75,7 +75,7 @@
+@@ -75,7 +75,7 @@ Speech *FIELDSTG_createSpeech(Actor *actor, s32 entry, s32 type, s32 isMessage)
  /* Creates the talk box of an actor's text entry, on the side of the screen
     away from where it faces and the edges */
  Speech *FIELDSTG_createTalk(Actor *actor, s32 entry) {
@@ -482,18 +482,18 @@ battle menu pointer+offset). ROADMAP P3.1.
      Vec2 pos;
  
      task->actor = actor;
---- a/src/field/field_mode/start.c	2026-10-10 05:05:46.691412800 -0300
-+++ b/src/field/field_mode/start.c	2026-10-10 05:16:15.803699900 -0300
-@@ -32,5 +32,5 @@
+--- a/src/field/field_mode/start.c
++++ b/src/field/field_mode/start.c
+@@ -32,5 +32,5 @@ void FIELDSTG_updateRoot(Task *task, Task **children) {
  
  /* FIELDSTG's entry point: creates its root task */
  Task *FIELDSTG_start(void) {
 -    return createTask(FIELDSTG_updateRoot, sizeof(Task), 0xC);
 +    return createTask(FIELDSTG_updateRoot, sizeof(Task), 3 * sizeof(Task *));
  }
---- a/src/field/field_mode/story.c	2026-10-10 05:05:46.692440900 -0300
-+++ b/src/field/field_mode/story.c	2026-10-10 05:16:15.804154600 -0300
-@@ -70,7 +70,7 @@
+--- a/src/field/field_mode/story.c
++++ b/src/field/field_mode/story.c
+@@ -70,7 +70,7 @@ void FIELDSTG_runStoryEvents(StoryEvents *task, StoryEventsChildren *children) {
  
  /* Creates the story events, and loads the field's sound bank and files */
  StoryEvents *FIELDSTG_createStoryEvents(void *owner) {
@@ -502,9 +502,9 @@ battle menu pointer+offset). ROADMAP P3.1.
  
      task->owner = owner;
      FIELDSTG_initFuncs[0]();
---- a/src/field/field_mode/trigger.c	2026-10-10 05:05:46.693197000 -0300
-+++ b/src/field/field_mode/trigger.c	2026-10-10 05:16:15.804488400 -0300
-@@ -237,7 +237,7 @@
+--- a/src/field/field_mode/trigger.c
++++ b/src/field/field_mode/trigger.c
+@@ -237,7 +237,7 @@ void FIELDSTG_updateTriggers(Triggers *task, TriggerChildren *children) {
  
  /* Creates the triggers */
  Triggers *FIELDSTG_createTriggers(s32 sheetEntry, StageSlot *slots) {
@@ -513,9 +513,9 @@ battle menu pointer+offset). ROADMAP P3.1.
  
      task->sheetEntry = sheetEntry;
      return task;
---- a/src/field/stages/amaterasu_city/wstag226.c	2026-10-10 05:05:46.695685400 -0300
-+++ b/src/field/stages/amaterasu_city/wstag226.c	2026-10-10 05:16:15.805068600 -0300
-@@ -141,7 +141,7 @@
+--- a/src/field/stages/amaterasu_city/wstag226.c
++++ b/src/field/stages/amaterasu_city/wstag226.c
+@@ -141,7 +141,7 @@ void updateStage(StageTask *task, void **children) {
      }
  }
  
@@ -523,10 +523,10 @@ battle menu pointer+offset). ROADMAP P3.1.
 +#define STAGE_CHILDREN_SIZE (2 * sizeof(Task *))
  #include "common/start_stage.inc.c"
  
- /* After event 935, with Teddy, Kail and Kurt: moves the story on to its step 0x26 */
---- a/src/field/stages/amaterasu_city/wstag233.c	2026-10-10 05:05:46.696414400 -0300
-+++ b/src/field/stages/amaterasu_city/wstag233.c	2026-10-10 05:16:15.805427700 -0300
-@@ -15,7 +15,7 @@
+ /* After event 935, with Teddy, Kail and Kurt: moves the story on to STORY_PRESIDENT_ARRESTED */
+--- a/src/field/stages/amaterasu_city/wstag233.c
++++ b/src/field/stages/amaterasu_city/wstag233.c
+@@ -15,7 +15,7 @@ extern AnimFrame updateTileAnimsFrames1[];
  #include "common/create_tile_anims_58.inc.c"
  
  #include "common/update_stage_tile_anims.inc.c"
@@ -534,10 +534,10 @@ battle menu pointer+offset). ROADMAP P3.1.
 +#define STAGE_CHILDREN_SIZE sizeof(Task *)
  #include "common/start_stage.inc.c"
  
- #if VERSION_US
---- a/src/field/stages/amaterasu_city/wstag261.c	2026-10-10 05:05:46.699274900 -0300
-+++ b/src/field/stages/amaterasu_city/wstag261.c	2026-10-10 05:16:15.805804200 -0300
-@@ -53,7 +53,7 @@
+ #if VERSION_US || VERSION_JP
+--- a/src/field/stages/amaterasu_city/wstag261.c
++++ b/src/field/stages/amaterasu_city/wstag261.c
+@@ -53,7 +53,7 @@ void updateStage(StageTask *task, void **children) {
      }
  }
  
@@ -546,9 +546,9 @@ battle menu pointer+offset). ROADMAP P3.1.
  #include "common/start_stage.inc.c"
  
  /* the color the setup copies to FIELDSTG_state.spriteColor */
---- a/src/field/stages/amaterasu_city/wstag306.c	2026-10-10 05:05:46.702711100 -0300
-+++ b/src/field/stages/amaterasu_city/wstag306.c	2026-10-10 05:16:15.806271700 -0300
-@@ -52,7 +52,7 @@
+--- a/src/field/stages/amaterasu_city/wstag306.c
++++ b/src/field/stages/amaterasu_city/wstag306.c
+@@ -52,7 +52,7 @@ void updateStage(StageTask *task, void **children) {
      }
  }
  
@@ -556,10 +556,10 @@ battle menu pointer+offset). ROADMAP P3.1.
 +#define STAGE_CHILDREN_SIZE (2 * sizeof(Task *))
  #include "common/start_stage.inc.c"
  
- #if VERSION_US
---- a/src/field/stages/amaterasu_city/wstag311.c	2026-10-10 05:05:46.703167100 -0300
-+++ b/src/field/stages/amaterasu_city/wstag311.c	2026-10-10 05:16:15.806878400 -0300
-@@ -436,7 +436,7 @@
+ #if VERSION_US || VERSION_JP
+--- a/src/field/stages/amaterasu_city/wstag311.c
++++ b/src/field/stages/amaterasu_city/wstag311.c
+@@ -436,7 +436,7 @@ void updateStage(StageTask *task, void **children) {
      }
  }
  
@@ -568,9 +568,9 @@ battle menu pointer+offset). ROADMAP P3.1.
  #include "common/start_stage.inc.c"
  #include "common/step_animation.inc.c"
  #include "common/draw_stage_effect.inc.c"
---- a/src/field/stages/amaterasu_city/wstag326.c	2026-10-10 05:05:46.704054100 -0300
-+++ b/src/field/stages/amaterasu_city/wstag326.c	2026-10-10 05:16:15.807260400 -0300
-@@ -62,7 +62,7 @@
+--- a/src/field/stages/amaterasu_city/wstag326.c
++++ b/src/field/stages/amaterasu_city/wstag326.c
+@@ -62,7 +62,7 @@ void updateCommand834(StageTask *task) {
  
  /* Command 834 of the event scripts: creates its task (updateCommand834) with the given id */
  void *createCommand834(s32 arg) {
@@ -579,7 +579,7 @@ battle menu pointer+offset). ROADMAP P3.1.
  }
  
  /* Command 834 of the event scripts: told 0x35A, swaps the map objects back (TASK_DONE) */
-@@ -92,7 +92,7 @@
+@@ -92,7 +92,7 @@ void updateStage(StageTask *task, void **children) {
      }
  }
  
@@ -588,8 +588,8 @@ battle menu pointer+offset). ROADMAP P3.1.
  #include "common/start_stage.inc.c"
  
  /*
---- a/src/field/stages/amaterasu_city/wstag923.c	2026-10-10 05:05:46.704425600 -0300
-+++ b/src/field/stages/amaterasu_city/wstag923.c	2026-10-10 05:16:15.807594000 -0300
+--- a/src/field/stages/amaterasu_city/wstag923.c
++++ b/src/field/stages/amaterasu_city/wstag923.c
 @@ -9,7 +9,7 @@
  #include "field/stage.h"
  
@@ -599,9 +599,9 @@ battle menu pointer+offset). ROADMAP P3.1.
  #include "common/start_stage.inc.c"
  
  const CVECTOR stageColor = { 0x54, 0x67, 0x96, 0x00 };
---- a/src/field/stages/amaterasu_city/wstag925.c	2026-10-10 05:05:46.705157300 -0300
-+++ b/src/field/stages/amaterasu_city/wstag925.c	2026-10-10 05:16:15.807885900 -0300
-@@ -28,7 +28,7 @@
+--- a/src/field/stages/amaterasu_city/wstag925.c
++++ b/src/field/stages/amaterasu_city/wstag925.c
+@@ -28,7 +28,7 @@ void updateStage(StageTask *task, void **children) {
      }
  }
  
@@ -610,9 +610,9 @@ battle menu pointer+offset). ROADMAP P3.1.
  #include "common/start_stage.inc.c"
  
  /*
---- a/src/field/stages/amaterasu_city/wstag927.c	2026-10-10 05:05:46.705821300 -0300
-+++ b/src/field/stages/amaterasu_city/wstag927.c	2026-10-10 05:16:15.808190000 -0300
-@@ -37,7 +37,7 @@
+--- a/src/field/stages/amaterasu_city/wstag927.c
++++ b/src/field/stages/amaterasu_city/wstag927.c
+@@ -37,7 +37,7 @@ void updateStage(StageTask *task, void **children) {
      }
  }
  
@@ -621,8 +621,8 @@ battle menu pointer+offset). ROADMAP P3.1.
  #include "common/start_stage.inc.c"
  
  /* After event 1608, with Kurt: starts the stage's event battle 0 and keeps it from playing again */
---- a/src/field/stages/amaterasu_city/wstag931.c	2026-10-10 05:05:46.706802300 -0300
-+++ b/src/field/stages/amaterasu_city/wstag931.c	2026-10-10 05:16:15.808509900 -0300
+--- a/src/field/stages/amaterasu_city/wstag931.c
++++ b/src/field/stages/amaterasu_city/wstag931.c
 @@ -8,7 +8,7 @@
  #include "field/stage.h"
  
@@ -631,10 +631,10 @@ battle menu pointer+offset). ROADMAP P3.1.
 +#define STAGE_CHILDREN_SIZE sizeof(Task *)
  #include "common/start_stage.inc.c"
  
- /* Sets the stage up: its map, actors and events, playing SHOP1BGM */
---- a/src/field/stages/amaterasu_city/wstag934.c	2026-10-10 05:05:46.707525600 -0300
-+++ b/src/field/stages/amaterasu_city/wstag934.c	2026-10-10 05:16:15.808860500 -0300
-@@ -44,7 +44,7 @@
+ #if VERSION_EU
+--- a/src/field/stages/amaterasu_city/wstag934.c
++++ b/src/field/stages/amaterasu_city/wstag934.c
+@@ -44,7 +44,7 @@ Lift *createTileLift(s32 id) {
  
  /* Creates the stage task (updateStage) of the given owner */
  StageTask *startStage(void *owner) {
@@ -643,8 +643,8 @@ battle menu pointer+offset). ROADMAP P3.1.
  
      task->owner = owner;
      stageFuncs.setup();
---- a/src/field/stages/amaterasu_city/wstag937.c	2026-10-10 05:05:46.708401400 -0300
-+++ b/src/field/stages/amaterasu_city/wstag937.c	2026-10-10 05:16:15.809223900 -0300
+--- a/src/field/stages/amaterasu_city/wstag937.c
++++ b/src/field/stages/amaterasu_city/wstag937.c
 @@ -9,7 +9,7 @@
  #include "field/stage.h"
  
@@ -653,9 +653,9 @@ battle menu pointer+offset). ROADMAP P3.1.
 +#define STAGE_CHILDREN_SIZE sizeof(Task *)
  #include "common/start_stage.inc.c"
  
- /* Sets the stage up: its map and actors, playing SHOP2BGM */
---- a/src/field/stages/amaterasu_city/wstag939.c	2026-10-10 05:05:46.708850500 -0300
-+++ b/src/field/stages/amaterasu_city/wstag939.c	2026-10-10 05:16:15.809652600 -0300
+ #if VERSION_EU
+--- a/src/field/stages/amaterasu_city/wstag939.c
++++ b/src/field/stages/amaterasu_city/wstag939.c
 @@ -8,7 +8,7 @@
  #include "field/stage.h"
  
@@ -664,10 +664,10 @@ battle menu pointer+offset). ROADMAP P3.1.
 +#define STAGE_CHILDREN_SIZE sizeof(Task *)
  #include "common/start_stage.inc.c"
  
- /* Sets the stage up: its map and actors, playing the ambience ENV_0003 */
---- a/src/field/stages/asuka_city/wstag210.c	2026-10-10 05:05:46.709557400 -0300
-+++ b/src/field/stages/asuka_city/wstag210.c	2026-10-10 05:16:15.810401800 -0300
-@@ -398,7 +398,7 @@
+ #if VERSION_EU
+--- a/src/field/stages/asuka_city/wstag210.c
++++ b/src/field/stages/asuka_city/wstag210.c
+@@ -398,7 +398,7 @@ void updateStage(StageTask *task, void **children) {
      }
  }
  
@@ -676,9 +676,9 @@ battle menu pointer+offset). ROADMAP P3.1.
  #include "common/start_stage.inc.c"
  
  /* After event 310, with Kail: sets flag 0x4005 and keeps it from playing again */
---- a/src/field/stages/asuka_city/wstag212.c	2026-10-10 05:05:46.710331900 -0300
-+++ b/src/field/stages/asuka_city/wstag212.c	2026-10-10 05:16:15.810964400 -0300
-@@ -152,7 +152,7 @@
+--- a/src/field/stages/asuka_city/wstag212.c
++++ b/src/field/stages/asuka_city/wstag212.c
+@@ -152,7 +152,7 @@ void updateStage(StageTask *task, void **children) {
      }
  }
  
@@ -687,9 +687,9 @@ battle menu pointer+offset). ROADMAP P3.1.
  #include "common/start_stage.inc.c"
  
  /*
---- a/src/field/stages/asuka_city/wstag225.c	2026-10-10 05:05:46.710962400 -0300
-+++ b/src/field/stages/asuka_city/wstag225.c	2026-10-10 05:16:15.811335900 -0300
-@@ -142,7 +142,7 @@
+--- a/src/field/stages/asuka_city/wstag225.c
++++ b/src/field/stages/asuka_city/wstag225.c
+@@ -142,7 +142,7 @@ void updateStage(StageTask *task, void **children) {
      }
  }
  
@@ -697,10 +697,10 @@ battle menu pointer+offset). ROADMAP P3.1.
 +#define STAGE_CHILDREN_SIZE sizeof(Task *)
  #include "common/start_stage.inc.c"
  
- /* After event 5, with Account Clerk: moves the story on to its step 2 */
---- a/src/field/stages/asuka_city/wstag232.c	2026-10-10 05:05:46.711622300 -0300
-+++ b/src/field/stages/asuka_city/wstag232.c	2026-10-10 05:16:15.811781100 -0300
-@@ -15,7 +15,7 @@
+ /* After event 5, with Account Clerk: moves the story on to STORY_LOGGED_IN */
+--- a/src/field/stages/asuka_city/wstag232.c
++++ b/src/field/stages/asuka_city/wstag232.c
+@@ -15,7 +15,7 @@ extern AnimFrame updateTileAnimsFrames1[];
  #include "common/create_tile_anims_58.inc.c"
  
  #include "common/update_stage_tile_anims.inc.c"
@@ -708,9 +708,9 @@ battle menu pointer+offset). ROADMAP P3.1.
 +#define STAGE_CHILDREN_SIZE sizeof(Task *)
  #include "common/start_stage.inc.c"
  
- #if VERSION_US
---- a/src/field/stages/asuka_city/wstag245.c	2026-10-10 05:05:46.713251500 -0300
-+++ b/src/field/stages/asuka_city/wstag245.c	2026-10-10 05:16:15.812346500 -0300
+ #if VERSION_US || VERSION_JP
+--- a/src/field/stages/asuka_city/wstag245.c
++++ b/src/field/stages/asuka_city/wstag245.c
 @@ -6,7 +6,7 @@
  #include "field/stage.h"
  
@@ -719,10 +719,10 @@ battle menu pointer+offset). ROADMAP P3.1.
 +#define STAGE_CHILDREN_SIZE sizeof(Task *)
  #include "common/start_stage.inc.c"
  
- #if VERSION_US
---- a/src/field/stages/asuka_city/wstag280.c	2026-10-10 05:05:46.716174600 -0300
-+++ b/src/field/stages/asuka_city/wstag280.c	2026-10-10 05:16:15.812965600 -0300
-@@ -145,7 +145,7 @@
+ #if VERSION_US || VERSION_JP
+--- a/src/field/stages/asuka_city/wstag280.c
++++ b/src/field/stages/asuka_city/wstag280.c
+@@ -146,7 +146,7 @@ void updateStage(StageTask *task, void **children) {
      }
  }
  
@@ -730,10 +730,10 @@ battle menu pointer+offset). ROADMAP P3.1.
 +#define STAGE_CHILDREN_SIZE sizeof(Task *)
  #include "common/start_stage.inc.c"
  
- #if VERSION_US
---- a/src/field/stages/asuka_city/wstag285.c	2026-10-10 05:05:46.716664600 -0300
-+++ b/src/field/stages/asuka_city/wstag285.c	2026-10-10 05:16:15.813448100 -0300
-@@ -33,7 +33,7 @@
+ #if VERSION_US || VERSION_JP
+--- a/src/field/stages/asuka_city/wstag285.c
++++ b/src/field/stages/asuka_city/wstag285.c
+@@ -33,7 +33,7 @@ void updateStage(StageTask *task, void **children) {
      }
  }
  
@@ -742,9 +742,9 @@ battle menu pointer+offset). ROADMAP P3.1.
  #include "common/start_stage.inc.c"
  
  /* Clears the flag of the story so far */
---- a/src/field/stages/asuka_city/wstag295.c	2026-10-10 05:05:46.717749400 -0300
-+++ b/src/field/stages/asuka_city/wstag295.c	2026-10-10 05:16:15.813987900 -0300
-@@ -26,7 +26,7 @@
+--- a/src/field/stages/asuka_city/wstag295.c
++++ b/src/field/stages/asuka_city/wstag295.c
+@@ -26,7 +26,7 @@ void updateStage(StageTask *task, void **children) {
      }
  }
  
@@ -753,9 +753,9 @@ battle menu pointer+offset). ROADMAP P3.1.
  #include "common/start_stage.inc.c"
  
  /*
---- a/src/field/stages/asuka_city/wstag300.c	2026-10-10 05:05:46.718206500 -0300
-+++ b/src/field/stages/asuka_city/wstag300.c	2026-10-10 05:16:15.814643300 -0300
-@@ -24,7 +24,7 @@
+--- a/src/field/stages/asuka_city/wstag300.c
++++ b/src/field/stages/asuka_city/wstag300.c
+@@ -24,7 +24,7 @@ void updateStage(StageTask *task, void **children) {
      }
  }
  
@@ -764,9 +764,9 @@ battle menu pointer+offset). ROADMAP P3.1.
  #include "common/start_stage.inc.c"
  
  /*
---- a/src/field/stages/asuka_city/wstag305.c	2026-10-10 05:05:46.718731500 -0300
-+++ b/src/field/stages/asuka_city/wstag305.c	2026-10-10 05:16:15.815413000 -0300
-@@ -80,7 +80,7 @@
+--- a/src/field/stages/asuka_city/wstag305.c
++++ b/src/field/stages/asuka_city/wstag305.c
+@@ -80,7 +80,7 @@ void updateStage(StageTask *task, void **children) {
      }
  }
  
@@ -775,9 +775,9 @@ battle menu pointer+offset). ROADMAP P3.1.
  #include "common/start_stage.inc.c"
  
  /* After event 350, with Kail, Game Master and DO Guard: keeps it from playing again */
---- a/src/field/stages/asuka_city/wstag310.c	2026-10-10 05:05:46.719216300 -0300
-+++ b/src/field/stages/asuka_city/wstag310.c	2026-10-10 05:16:15.816057800 -0300
-@@ -451,7 +451,7 @@
+--- a/src/field/stages/asuka_city/wstag310.c
++++ b/src/field/stages/asuka_city/wstag310.c
+@@ -451,7 +451,7 @@ void updateStage(StageTask *task, void **children) {
      }
  }
  
@@ -786,9 +786,9 @@ battle menu pointer+offset). ROADMAP P3.1.
  #include "common/start_stage.inc.c"
  #include "common/step_animation.inc.c"
  
---- a/src/field/stages/asuka_city/wstag325.c	2026-10-10 05:05:46.720873500 -0300
-+++ b/src/field/stages/asuka_city/wstag325.c	2026-10-10 05:16:15.816520600 -0300
-@@ -61,7 +61,7 @@
+--- a/src/field/stages/asuka_city/wstag325.c
++++ b/src/field/stages/asuka_city/wstag325.c
+@@ -61,7 +61,7 @@ void updateCommand833(StageTask *task) {
  
  /* Command 833 of the event scripts: creates its task (updateCommand833) with the given id */
  void *createCommand833(s32 arg) {
@@ -797,7 +797,7 @@ battle menu pointer+offset). ROADMAP P3.1.
  }
  
  /* Ends the task when map object 0x35A is triggered */
-@@ -88,7 +88,7 @@
+@@ -88,7 +88,7 @@ void updateStage(StageTask *task, void **children) {
      }
  }
  
@@ -806,9 +806,9 @@ battle menu pointer+offset). ROADMAP P3.1.
  #include "common/start_stage.inc.c"
  
  /* After event 375, with Datamon: lets event 376 start and starts the stage's event battle 0 */
---- a/src/field/stages/bai_hu_city/wstag676.c	2026-10-10 05:05:46.721285700 -0300
-+++ b/src/field/stages/bai_hu_city/wstag676.c	2026-10-10 05:16:15.817082600 -0300
-@@ -23,7 +23,7 @@
+--- a/src/field/stages/bai_hu_city/wstag676.c
++++ b/src/field/stages/bai_hu_city/wstag676.c
+@@ -23,7 +23,7 @@ void updateStage(StageTask *task, void **children) {
      }
  }
  
@@ -817,9 +817,9 @@ battle menu pointer+offset). ROADMAP P3.1.
  #include "common/start_stage.inc.c"
  
  /*
---- a/src/field/stages/byakko_city/wstag675.c	2026-10-10 05:05:46.722203200 -0300
-+++ b/src/field/stages/byakko_city/wstag675.c	2026-10-10 05:16:15.817713000 -0300
-@@ -22,7 +22,7 @@
+--- a/src/field/stages/byakko_city/wstag675.c
++++ b/src/field/stages/byakko_city/wstag675.c
+@@ -22,7 +22,7 @@ void updateStage(StageTask *task, void **children) {
      }
  }
  
@@ -828,9 +828,9 @@ battle menu pointer+offset). ROADMAP P3.1.
  #include "common/start_stage.inc.c"
  
  /* After event 390: keeps it from playing again */
---- a/src/field/stages/byakko_city/wstag680.c	2026-10-10 05:05:46.722495600 -0300
-+++ b/src/field/stages/byakko_city/wstag680.c	2026-10-10 05:16:15.818027100 -0300
-@@ -188,7 +188,7 @@
+--- a/src/field/stages/byakko_city/wstag680.c
++++ b/src/field/stages/byakko_city/wstag680.c
+@@ -188,7 +188,7 @@ void updateStage(StageTask *task, void **children) {
      }
  }
  
@@ -838,10 +838,10 @@ battle menu pointer+offset). ROADMAP P3.1.
 +#define STAGE_CHILDREN_SIZE sizeof(Task *)
  #include "common/start_stage.inc.c"
  
- #if VERSION_US
---- a/src/field/stages/byakko_city/wstag685.c	2026-10-10 05:05:46.723115300 -0300
-+++ b/src/field/stages/byakko_city/wstag685.c	2026-10-10 05:16:15.818417100 -0300
-@@ -22,7 +22,7 @@
+ #if VERSION_US || VERSION_JP
+--- a/src/field/stages/byakko_city/wstag685.c
++++ b/src/field/stages/byakko_city/wstag685.c
+@@ -22,7 +22,7 @@ void updateStage(StageTask *task, void **children) {
      }
  }
  
@@ -849,21 +849,10 @@ battle menu pointer+offset). ROADMAP P3.1.
 +#define STAGE_CHILDREN_SIZE sizeof(Task *)
  #include "common/start_stage.inc.c"
  
- /* After event 413, with the player: moves the story on to its step 0x10 */
---- a/src/field/stages/central_sector/wstag200.c	2026-10-10 05:05:46.724034600 -0300
-+++ b/src/field/stages/central_sector/wstag200.c	2026-10-10 05:16:15.819069200 -0300
-@@ -24,7 +24,7 @@
-     }
- }
- 
--#define STAGE_CHILDREN_SIZE 4
-+#define STAGE_CHILDREN_SIZE sizeof(Task *)
- #include "common/start_stage.inc.c"
- 
- /*
---- a/src/field/stages/central_sector/wstag205.c	2026-10-10 05:05:46.728720800 -0300
-+++ b/src/field/stages/central_sector/wstag205.c	2026-10-10 05:16:15.819582600 -0300
-@@ -98,7 +98,7 @@
+ /* After event 413, with the player: moves the story on to STORY_NUMEMON_FOUND */
+--- a/src/field/stages/central_sector/wstag200.c
++++ b/src/field/stages/central_sector/wstag200.c
+@@ -24,7 +24,7 @@ void updateStage(StageTask *task, void **children) {
      }
  }
  
@@ -872,9 +861,20 @@ battle menu pointer+offset). ROADMAP P3.1.
  #include "common/start_stage.inc.c"
  
  /*
---- a/src/field/stages/central_sector/wstag206.c	2026-10-10 05:05:46.729304400 -0300
-+++ b/src/field/stages/central_sector/wstag206.c	2026-10-10 05:16:15.819983400 -0300
-@@ -30,7 +30,7 @@
+--- a/src/field/stages/central_sector/wstag205.c
++++ b/src/field/stages/central_sector/wstag205.c
+@@ -98,7 +98,7 @@ void updateStage(StageTask *task, void **children) {
+     }
+ }
+ 
+-#define STAGE_CHILDREN_SIZE 4
++#define STAGE_CHILDREN_SIZE sizeof(Task *)
+ #include "common/start_stage.inc.c"
+ 
+ /*
+--- a/src/field/stages/central_sector/wstag206.c
++++ b/src/field/stages/central_sector/wstag206.c
+@@ -30,7 +30,7 @@ void updateStage(StageTask *task, void **children) {
      }
  }
  
@@ -883,8 +883,8 @@ battle menu pointer+offset). ROADMAP P3.1.
  #include "common/start_stage.inc.c"
  
  /* After event 730, with Knightmon: starts the stage's event battle 0 */
---- a/src/field/stages/central_sector/wstag330.c	2026-10-10 05:05:46.732715700 -0300
-+++ b/src/field/stages/central_sector/wstag330.c	2026-10-10 05:16:15.820431300 -0300
+--- a/src/field/stages/central_sector/wstag330.c
++++ b/src/field/stages/central_sector/wstag330.c
 @@ -6,7 +6,7 @@
  #include "field/stage.h"
  
@@ -894,9 +894,9 @@ battle menu pointer+offset). ROADMAP P3.1.
  #include "common/start_stage.inc.c"
  
  const CVECTOR stageColor = { 0x80, 0x80, 0x80, 0x00 };
---- a/src/field/stages/central_sector/wstag335.c	2026-10-10 05:05:46.734911500 -0300
-+++ b/src/field/stages/central_sector/wstag335.c	2026-10-10 05:16:15.820870700 -0300
-@@ -23,7 +23,7 @@
+--- a/src/field/stages/central_sector/wstag335.c
++++ b/src/field/stages/central_sector/wstag335.c
+@@ -23,7 +23,7 @@ void updateStage(StageTask *task, void **children) {
      }
  }
  
@@ -905,8 +905,8 @@ battle menu pointer+offset). ROADMAP P3.1.
  #include "common/start_stage.inc.c"
  
  /* Defined below, after the code that uses them */
---- a/src/field/stages/central_sector/wstag920.c	2026-10-10 05:05:46.738141600 -0300
-+++ b/src/field/stages/central_sector/wstag920.c	2026-10-10 05:16:15.821177800 -0300
+--- a/src/field/stages/central_sector/wstag920.c
++++ b/src/field/stages/central_sector/wstag920.c
 @@ -8,7 +8,7 @@
  #include "field/stage.h"
  
@@ -916,8 +916,8 @@ battle menu pointer+offset). ROADMAP P3.1.
  #include "common/start_stage.inc.c"
  
  const CVECTOR stageColor = { 0x54, 0x67, 0x96, 0x00 };
---- a/src/field/stages/central_sector/wstag922.c	2026-10-10 05:05:46.739382500 -0300
-+++ b/src/field/stages/central_sector/wstag922.c	2026-10-10 05:16:15.821629400 -0300
+--- a/src/field/stages/central_sector/wstag922.c
++++ b/src/field/stages/central_sector/wstag922.c
 @@ -8,7 +8,7 @@
  #include "field/stage.h"
  
@@ -927,8 +927,8 @@ battle menu pointer+offset). ROADMAP P3.1.
  #include "common/start_stage.inc.c"
  
  const CVECTOR stageColor = { 0x54, 0x67, 0x96, 0x00 };
---- a/src/field/stages/central_sector/wstag940.c	2026-10-10 05:05:46.739750900 -0300
-+++ b/src/field/stages/central_sector/wstag940.c	2026-10-10 05:16:15.822168700 -0300
+--- a/src/field/stages/central_sector/wstag940.c
++++ b/src/field/stages/central_sector/wstag940.c
 @@ -8,7 +8,7 @@
  #include "field/stage.h"
  
@@ -938,16 +938,16 @@ battle menu pointer+offset). ROADMAP P3.1.
  #include "common/start_stage.inc.c"
  
  const CVECTOR stageColor = { 0x80, 0x80, 0x80, 0x00 };
---- a/src/field/stages/common/create_far_sprites.inc.c	2026-10-10 05:05:46.741891600 -0300
-+++ b/src/field/stages/common/create_far_sprites.inc.c	2026-10-10 05:16:15.822590300 -0300
+--- a/src/field/stages/common/create_far_sprites.inc.c
++++ b/src/field/stages/common/create_far_sprites.inc.c
 @@ -1,4 +1,4 @@
  /* Creates the updateFarSprites task */
  void *createFarSprites(void) {
 -    return createTask(updateFarSprites, 0x50, 0);
 +    return createTask(updateFarSprites, sizeof(Task), 0);
  }
---- a/src/field/stages/common/create_tile_anims_54.inc.c	2026-10-10 05:05:46.743572800 -0300
-+++ b/src/field/stages/common/create_tile_anims_54.inc.c	2026-10-10 05:16:15.822913900 -0300
+--- a/src/field/stages/common/create_tile_anims_54.inc.c
++++ b/src/field/stages/common/create_tile_anims_54.inc.c
 @@ -1,4 +1,5 @@
 +#include <stddef.h>
  /* Creates the updateTileAnims task, 0x54 bytes */
@@ -955,8 +955,8 @@ battle menu pointer+offset). ROADMAP P3.1.
 -    return createTask(updateTileAnims, 0x54, 0);
 +    return createTask(updateTileAnims, offsetof(StageTileAnims, anims) + 1 * sizeof(AnimState), 0);
  }
---- a/src/field/stages/common/create_tile_anims_58.inc.c	2026-10-10 05:05:46.743777400 -0300
-+++ b/src/field/stages/common/create_tile_anims_58.inc.c	2026-10-10 05:16:15.823245100 -0300
+--- a/src/field/stages/common/create_tile_anims_58.inc.c
++++ b/src/field/stages/common/create_tile_anims_58.inc.c
 @@ -1,4 +1,5 @@
 +#include <stddef.h>
  /* Creates the updateTileAnims task, 0x58 bytes */
@@ -964,8 +964,8 @@ battle menu pointer+offset). ROADMAP P3.1.
 -    return createTask(updateTileAnims, 0x58, 0);
 +    return createTask(updateTileAnims, offsetof(StageTileAnims, anims) + 2 * sizeof(AnimState), 0);
  }
---- a/src/field/stages/common/create_tile_anims_5c.inc.c	2026-10-10 05:05:46.743966200 -0300
-+++ b/src/field/stages/common/create_tile_anims_5c.inc.c	2026-10-10 05:16:15.823590900 -0300
+--- a/src/field/stages/common/create_tile_anims_5c.inc.c
++++ b/src/field/stages/common/create_tile_anims_5c.inc.c
 @@ -1,4 +1,5 @@
 +#include <stddef.h>
  /* Creates the updateTileAnims task, 0x5C bytes */
@@ -973,16 +973,16 @@ battle menu pointer+offset). ROADMAP P3.1.
 -    return createTask(updateTileAnims, 0x5C, 0);
 +    return createTask(updateTileAnims, offsetof(StageTileAnims, anims) + 3 * sizeof(AnimState), 0);
  }
---- a/src/field/stages/common/create_timer.inc.c	2026-10-10 05:05:46.745102400 -0300
-+++ b/src/field/stages/common/create_timer.inc.c	2026-10-10 05:16:15.824028600 -0300
+--- a/src/field/stages/common/create_timer.inc.c
++++ b/src/field/stages/common/create_timer.inc.c
 @@ -1,4 +1,4 @@
  /* Creates the updateTimer task */
  void *createTimer(void) {
 -    return createTask(updateTimer, sizeof(StageTask), 0x4);
 +    return createTask(updateTimer, sizeof(StageTask), sizeof(Task *));
  }
---- a/src/field/stages/common/start_stage.inc.c	2026-10-10 05:05:46.747037100 -0300
-+++ b/src/field/stages/common/start_stage.inc.c	2026-10-10 05:16:15.824471500 -0300
+--- a/src/field/stages/common/start_stage.inc.c
++++ b/src/field/stages/common/start_stage.inc.c
 @@ -7,7 +7,7 @@
   */
  
@@ -992,8 +992,8 @@ battle menu pointer+offset). ROADMAP P3.1.
  #endif
  StageTask *startStage(void *owner) {
      StageTask *task = createTask(updateStage, sizeof(StageTask), STAGE_CHILDREN_SIZE);
---- a/src/field/stages/east_sector/wstag355.c	2026-10-10 05:05:46.754963500 -0300
-+++ b/src/field/stages/east_sector/wstag355.c	2026-10-10 05:16:15.825369500 -0300
+--- a/src/field/stages/east_sector/wstag355.c
++++ b/src/field/stages/east_sector/wstag355.c
 @@ -6,7 +6,7 @@
  #include "field/stage.h"
  
@@ -1003,9 +1003,9 @@ battle menu pointer+offset). ROADMAP P3.1.
  #include "common/start_stage.inc.c"
  
  /* Defined below, after the code that uses them */
---- a/src/field/stages/east_sector/wstag375.c	2026-10-10 05:05:46.758125900 -0300
-+++ b/src/field/stages/east_sector/wstag375.c	2026-10-10 05:16:15.825897300 -0300
-@@ -66,7 +66,7 @@
+--- a/src/field/stages/east_sector/wstag375.c
++++ b/src/field/stages/east_sector/wstag375.c
+@@ -66,7 +66,7 @@ void updateStage(StageTask *task, void **children) {
      }
  }
  
@@ -1014,9 +1014,9 @@ battle menu pointer+offset). ROADMAP P3.1.
  #include "common/start_stage.inc.c"
  
  /* After event 1260, with Pharaohmon: lets event 1261 start and starts the stage's event battle 0 */
---- a/src/field/stages/east_sector/wstag376.c	2026-10-10 05:05:46.758420000 -0300
-+++ b/src/field/stages/east_sector/wstag376.c	2026-10-10 05:16:15.826362800 -0300
-@@ -26,7 +26,7 @@
+--- a/src/field/stages/east_sector/wstag376.c
++++ b/src/field/stages/east_sector/wstag376.c
+@@ -26,7 +26,7 @@ void updateStage(StageTask *task, void **children) {
      }
  }
  
@@ -1025,9 +1025,9 @@ battle menu pointer+offset). ROADMAP P3.1.
  #include "common/start_stage.inc.c"
  
  /*
---- a/src/field/stages/east_sector/wstag385.c	2026-10-10 05:05:46.759723200 -0300
-+++ b/src/field/stages/east_sector/wstag385.c	2026-10-10 05:16:15.826897300 -0300
-@@ -23,7 +23,7 @@
+--- a/src/field/stages/east_sector/wstag385.c
++++ b/src/field/stages/east_sector/wstag385.c
+@@ -23,7 +23,7 @@ void updateStage(StageTask *task, void **children) {
      }
  }
  
@@ -1036,9 +1036,9 @@ battle menu pointer+offset). ROADMAP P3.1.
  #include "common/start_stage.inc.c"
  
  /* After event 1275, with Armormon: lets event 1276 start and starts the stage's event battle 0 */
---- a/src/field/stages/east_sector/wstag395.c	2026-10-10 05:05:46.761327500 -0300
-+++ b/src/field/stages/east_sector/wstag395.c	2026-10-10 05:16:15.827471900 -0300
-@@ -29,7 +29,7 @@
+--- a/src/field/stages/east_sector/wstag395.c
++++ b/src/field/stages/east_sector/wstag395.c
+@@ -29,7 +29,7 @@ void updateStage(StageTask *task, void **children) {
      }
  }
  
@@ -1047,9 +1047,9 @@ battle menu pointer+offset). ROADMAP P3.1.
  #include "common/start_stage.inc.c"
  
  /* After event 80, with Teddy: keeps it from playing again */
---- a/src/field/stages/east_sector/wstag400.c	2026-10-10 05:05:46.762185100 -0300
-+++ b/src/field/stages/east_sector/wstag400.c	2026-10-10 05:16:15.828241400 -0300
-@@ -22,7 +22,7 @@
+--- a/src/field/stages/east_sector/wstag400.c
++++ b/src/field/stages/east_sector/wstag400.c
+@@ -22,7 +22,7 @@ void updateStage(StageTask *task, void **children) {
      }
  }
  
@@ -1058,9 +1058,9 @@ battle menu pointer+offset). ROADMAP P3.1.
  #include "common/start_stage.inc.c"
  
  /* After event 1300, with the player: keeps it from playing again */
---- a/src/field/stages/east_sector/wstag405.c	2026-10-10 05:05:46.762961600 -0300
-+++ b/src/field/stages/east_sector/wstag405.c	2026-10-10 05:16:15.828717000 -0300
-@@ -31,7 +31,7 @@
+--- a/src/field/stages/east_sector/wstag405.c
++++ b/src/field/stages/east_sector/wstag405.c
+@@ -31,7 +31,7 @@ void updateStage(StageTask *task, void **children) {
      }
  }
  
@@ -1069,9 +1069,9 @@ battle menu pointer+offset). ROADMAP P3.1.
  #include "common/start_stage.inc.c"
  
  /* After event 60, with MasterTyranno: lets event 61 start and starts the stage's event battle 0 */
---- a/src/field/stages/east_sector/wstag406.c	2026-10-10 05:05:46.764085800 -0300
-+++ b/src/field/stages/east_sector/wstag406.c	2026-10-10 05:16:15.829084100 -0300
-@@ -32,7 +32,7 @@
+--- a/src/field/stages/east_sector/wstag406.c
++++ b/src/field/stages/east_sector/wstag406.c
+@@ -32,7 +32,7 @@ void updateStage(StageTask *task, void **children) {
      }
  }
  
@@ -1080,9 +1080,9 @@ battle menu pointer+offset). ROADMAP P3.1.
  #include "common/start_stage.inc.c"
  
  /*
---- a/src/field/stages/east_sector/wstag415.c	2026-10-10 05:05:46.765626500 -0300
-+++ b/src/field/stages/east_sector/wstag415.c	2026-10-10 05:16:15.829671100 -0300
-@@ -464,7 +464,7 @@
+--- a/src/field/stages/east_sector/wstag415.c
++++ b/src/field/stages/east_sector/wstag415.c
+@@ -464,7 +464,7 @@ void updateStage(StageTask *task, void **children) {
      }
  }
  
@@ -1091,9 +1091,9 @@ battle menu pointer+offset). ROADMAP P3.1.
  #include "common/start_stage.inc.c"
  
  /* After event 150, with the player: starts the stage's event battle 0 and sets flag 0x4018 */
---- a/src/field/stages/east_sector/wstag420.c	2026-10-10 05:05:46.766610900 -0300
-+++ b/src/field/stages/east_sector/wstag420.c	2026-10-10 05:16:15.830202400 -0300
-@@ -22,7 +22,7 @@
+--- a/src/field/stages/east_sector/wstag420.c
++++ b/src/field/stages/east_sector/wstag420.c
+@@ -22,7 +22,7 @@ void updateStage(StageTask *task, void **children) {
      }
  }
  
@@ -1102,9 +1102,9 @@ battle menu pointer+offset). ROADMAP P3.1.
  #include "common/start_stage.inc.c"
  
  /* After event 70, with Seiryu Leader: lets event 71 start and starts the stage's event battle 1 */
---- a/src/field/stages/east_sector/wstag421.c	2026-10-10 05:05:46.766958400 -0300
-+++ b/src/field/stages/east_sector/wstag421.c	2026-10-10 05:16:15.830602800 -0300
-@@ -39,7 +39,7 @@
+--- a/src/field/stages/east_sector/wstag421.c
++++ b/src/field/stages/east_sector/wstag421.c
+@@ -39,7 +39,7 @@ void updateStage(StageTask *task, void **children) {
      }
  }
  
@@ -1113,9 +1113,9 @@ battle menu pointer+offset). ROADMAP P3.1.
  #include "common/start_stage.inc.c"
  
  /*
---- a/src/field/stages/east_sector/wstag949.c	2026-10-10 05:05:46.769258700 -0300
-+++ b/src/field/stages/east_sector/wstag949.c	2026-10-10 05:16:15.830950500 -0300
-@@ -58,7 +58,7 @@
+--- a/src/field/stages/east_sector/wstag949.c
++++ b/src/field/stages/east_sector/wstag949.c
+@@ -68,7 +68,7 @@ void updateStage(StageTask *task, void **children) {
      }
  }
  
@@ -1124,8 +1124,8 @@ battle menu pointer+offset). ROADMAP P3.1.
  #include "common/start_stage.inc.c"
  
  const CVECTOR stageColor = { 0x80, 0x80, 0x80, 0x00 };
---- a/src/field/stages/east_sector/wstag951.c	2026-10-10 05:05:46.770967900 -0300
-+++ b/src/field/stages/east_sector/wstag951.c	2026-10-10 05:16:15.831388900 -0300
+--- a/src/field/stages/east_sector/wstag951.c
++++ b/src/field/stages/east_sector/wstag951.c
 @@ -8,7 +8,7 @@
  #include "field/stage.h"
  
@@ -1135,8 +1135,8 @@ battle menu pointer+offset). ROADMAP P3.1.
  #include "common/start_stage.inc.c"
  
  const CVECTOR stageColor = { 0x54, 0x67, 0x96, 0x00 };
---- a/src/field/stages/east_sector/wstag952.c	2026-10-10 05:05:46.771534600 -0300
-+++ b/src/field/stages/east_sector/wstag952.c	2026-10-10 05:16:15.831725000 -0300
+--- a/src/field/stages/east_sector/wstag952.c
++++ b/src/field/stages/east_sector/wstag952.c
 @@ -8,7 +8,7 @@
  #include "field/stage.h"
  
@@ -1145,9 +1145,9 @@ battle menu pointer+offset). ROADMAP P3.1.
 +#define STAGE_CHILDREN_SIZE sizeof(Task *)
  #include "common/start_stage.inc.c"
  
- /* Sets the stage up: its map, actors and battles, playing the ambience ENV_0006 */
---- a/src/field/stages/east_sector/wstag953.c	2026-10-10 05:05:46.771889300 -0300
-+++ b/src/field/stages/east_sector/wstag953.c	2026-10-10 05:16:15.832103100 -0300
+ #if VERSION_EU
+--- a/src/field/stages/east_sector/wstag953.c
++++ b/src/field/stages/east_sector/wstag953.c
 @@ -8,7 +8,7 @@
  #include "field/stage.h"
  
@@ -1157,9 +1157,9 @@ battle menu pointer+offset). ROADMAP P3.1.
  #include "common/start_stage.inc.c"
  
  const CVECTOR stageColor = { 0x54, 0x67, 0x96, 0x00 };
---- a/src/field/stages/east_sector/wstag954.c	2026-10-10 05:05:46.772189700 -0300
-+++ b/src/field/stages/east_sector/wstag954.c	2026-10-10 05:16:15.832453200 -0300
-@@ -30,7 +30,7 @@
+--- a/src/field/stages/east_sector/wstag954.c
++++ b/src/field/stages/east_sector/wstag954.c
+@@ -30,7 +30,7 @@ void updateStage(StageTask *task, void **children) {
      }
  }
  
@@ -1167,9 +1167,9 @@ battle menu pointer+offset). ROADMAP P3.1.
 +#define STAGE_CHILDREN_SIZE (2 * sizeof(Task *))
  #include "common/start_stage.inc.c"
  
- /* Sets the stage up: its map, actors and battles, playing the ambience ENV_0007 */
---- a/src/field/stages/east_sector/wstag956.c	2026-10-10 05:05:46.772974400 -0300
-+++ b/src/field/stages/east_sector/wstag956.c	2026-10-10 05:16:15.832882000 -0300
+ #if VERSION_EU
+--- a/src/field/stages/east_sector/wstag956.c
++++ b/src/field/stages/east_sector/wstag956.c
 @@ -8,7 +8,7 @@
  #include "field/stage.h"
  
@@ -1178,9 +1178,9 @@ battle menu pointer+offset). ROADMAP P3.1.
 +#define STAGE_CHILDREN_SIZE sizeof(Task *)
  #include "common/start_stage.inc.c"
  
- /* Sets the stage up: its map, actors and battles, playing SEIR_BGM */
---- a/src/field/stages/kusanagi_city/wstag780.c	2026-10-10 05:05:46.773609600 -0300
-+++ b/src/field/stages/kusanagi_city/wstag780.c	2026-10-10 05:16:15.833476500 -0300
+ #if VERSION_EU
+--- a/src/field/stages/kusanagi_city/wstag780.c
++++ b/src/field/stages/kusanagi_city/wstag780.c
 @@ -5,6 +5,7 @@
   */
  
@@ -1189,7 +1189,7 @@ battle menu pointer+offset). ROADMAP P3.1.
  #include "field/stage.h"
  /* Defined below, after the code that uses them */
  extern u8 flyerFrames[];
-@@ -206,7 +207,7 @@
+@@ -206,7 +207,7 @@ void updateEffect(StageEffect *task) {
  
  /* Creates the task of updateEffect with KEY as its key1 */
  void *createEffect(s32 key) {
@@ -1198,7 +1198,7 @@ battle menu pointer+offset). ROADMAP P3.1.
  
      task->key1 = key;
      return task;
-@@ -307,7 +308,7 @@
+@@ -307,7 +308,7 @@ void updateEffectSet(StageTask *task, void **children) {
  
  /* Creates the stage's six effects and its looping map objects (updateEffectSet) */
  void *createEffectSet(void) {
@@ -1207,7 +1207,7 @@ battle menu pointer+offset). ROADMAP P3.1.
  }
  
  /* Lets out the flyers of the sets that are on, where their children are free */
-@@ -460,7 +461,7 @@
+@@ -460,7 +461,7 @@ void handleCommand800(Task *task, s32 id) {
  
  /* Creates the task of updateFlyerGate with id ARG */
  void *createCommand800(s32 arg) {
@@ -1216,7 +1216,7 @@ battle menu pointer+offset). ROADMAP P3.1.
  }
  
  /* Draws the 40 quads, those of kind 0 and 1 with the frames of the animations */
-@@ -607,7 +608,7 @@
+@@ -607,7 +608,7 @@ void updateStage(StageTask *task, void **children) {
      }
  }
  
@@ -1224,10 +1224,10 @@ battle menu pointer+offset). ROADMAP P3.1.
 +#define STAGE_CHILDREN_SIZE (3 * sizeof(Task *))
  #include "common/start_stage.inc.c"
  
- /* After event 0, with Junior, Ivy and Teddy: moves the story on to its step 0 */
---- a/src/field/stages/kusanagi_city/wstag785.c	2026-10-10 05:05:46.774139800 -0300
-+++ b/src/field/stages/kusanagi_city/wstag785.c	2026-10-10 05:16:15.833976800 -0300
-@@ -268,7 +268,7 @@
+ /* After event 0, with Junior, Ivy and Teddy: moves the story on to STORY_START */
+--- a/src/field/stages/kusanagi_city/wstag785.c
++++ b/src/field/stages/kusanagi_city/wstag785.c
+@@ -268,7 +268,7 @@ void updateStage(StageTask *task, void **children) {
      }
  }
  
@@ -1235,10 +1235,10 @@ battle menu pointer+offset). ROADMAP P3.1.
 +#define STAGE_CHILDREN_SIZE (2 * sizeof(Task *))
  #include "common/start_stage.inc.c"
  
- /* After event 1, with Junior, Teddy, Account Clerk and Ivy: moves the story on to its step 1 */
---- a/src/field/stages/kusanagi_city/wstag790.c	2026-10-10 05:05:46.774527000 -0300
-+++ b/src/field/stages/kusanagi_city/wstag790.c	2026-10-10 05:16:15.834337700 -0300
-@@ -170,7 +170,7 @@
+ /* After event 1, with Junior, Teddy, Account Clerk and Ivy: moves the story on to STORY_ACCOUNT_REGISTERED */
+--- a/src/field/stages/kusanagi_city/wstag790.c
++++ b/src/field/stages/kusanagi_city/wstag790.c
+@@ -170,7 +170,7 @@ void updateStage(StageTask *task, void **children) {
      }
  }
  
@@ -1246,10 +1246,10 @@ battle menu pointer+offset). ROADMAP P3.1.
 +#define STAGE_CHILDREN_SIZE (3 * sizeof(Task *))
  #include "common/start_stage.inc.c"
  
- #if VERSION_US
---- a/src/field/stages/network_break/wstag545.c	2026-10-10 05:05:46.775600200 -0300
-+++ b/src/field/stages/network_break/wstag545.c	2026-10-10 05:16:15.834788700 -0300
-@@ -305,7 +305,7 @@
+ #if VERSION_US || VERSION_JP
+--- a/src/field/stages/network_break/wstag545.c
++++ b/src/field/stages/network_break/wstag545.c
+@@ -305,7 +305,7 @@ void updateStage(StageTask *task, void **children) {
      }
  }
  
@@ -1258,9 +1258,9 @@ battle menu pointer+offset). ROADMAP P3.1.
  #include "common/start_stage.inc.c"
  
  /*
---- a/src/field/stages/north_sector/wstag730.c	2026-10-10 05:05:46.782378300 -0300
-+++ b/src/field/stages/north_sector/wstag730.c	2026-10-10 05:16:15.835188200 -0300
-@@ -14,7 +14,7 @@
+--- a/src/field/stages/north_sector/wstag730.c
++++ b/src/field/stages/north_sector/wstag730.c
+@@ -14,7 +14,7 @@ extern AnimFrame updateTileAnimsFrames[];
  #include "common/create_tile_anims_54.inc.c"
  
  #include "common/update_stage_tile_anims.inc.c"
@@ -1268,10 +1268,10 @@ battle menu pointer+offset). ROADMAP P3.1.
 +#define STAGE_CHILDREN_SIZE sizeof(Task *)
  #include "common/start_stage.inc.c"
  
- #if VERSION_US
---- a/src/field/stages/north_sector/wstag731.c	2026-10-10 05:05:46.782749900 -0300
-+++ b/src/field/stages/north_sector/wstag731.c	2026-10-10 05:16:15.835575300 -0300
-@@ -15,7 +15,7 @@
+ #if VERSION_US || VERSION_JP
+--- a/src/field/stages/north_sector/wstag731.c
++++ b/src/field/stages/north_sector/wstag731.c
+@@ -15,7 +15,7 @@ extern AnimFrame updateTileAnimsFrames[];
  #include "common/create_tile_anims_54.inc.c"
  
  #include "common/update_stage_tile_anims.inc.c"
@@ -1279,10 +1279,10 @@ battle menu pointer+offset). ROADMAP P3.1.
 +#define STAGE_CHILDREN_SIZE sizeof(Task *)
  #include "common/start_stage.inc.c"
  
- #if VERSION_US
---- a/src/field/stages/north_sector/wstag735.c	2026-10-10 05:05:46.783009300 -0300
-+++ b/src/field/stages/north_sector/wstag735.c	2026-10-10 05:16:15.835941500 -0300
-@@ -31,7 +31,7 @@
+ #if VERSION_US || VERSION_JP
+--- a/src/field/stages/north_sector/wstag735.c
++++ b/src/field/stages/north_sector/wstag735.c
+@@ -31,7 +31,7 @@ void updateStage(StageTask *task, void **children) {
      }
  }
  
@@ -1291,9 +1291,9 @@ battle menu pointer+offset). ROADMAP P3.1.
  #include "common/start_stage.inc.c"
  #include "common/step_animation.inc.c"
  #include "common/draw_stage_effect.inc.c"
---- a/src/field/stages/north_sector/wstag736.c	2026-10-10 05:05:46.783299200 -0300
-+++ b/src/field/stages/north_sector/wstag736.c	2026-10-10 05:16:15.836333100 -0300
-@@ -32,7 +32,7 @@
+--- a/src/field/stages/north_sector/wstag736.c
++++ b/src/field/stages/north_sector/wstag736.c
+@@ -32,7 +32,7 @@ void updateStage(StageTask *task, void **children) {
      }
  }
  
@@ -1302,9 +1302,9 @@ battle menu pointer+offset). ROADMAP P3.1.
  #include "common/start_stage.inc.c"
  #include "common/step_animation.inc.c"
  #include "common/draw_stage_effect.inc.c"
---- a/src/field/stages/north_sector/wstag740.c	2026-10-10 05:05:46.783633900 -0300
-+++ b/src/field/stages/north_sector/wstag740.c	2026-10-10 05:16:15.836721600 -0300
-@@ -34,7 +34,7 @@
+--- a/src/field/stages/north_sector/wstag740.c
++++ b/src/field/stages/north_sector/wstag740.c
+@@ -34,7 +34,7 @@ void updateStage(StageTask *task, void **children) {
      }
  }
  
@@ -1313,9 +1313,9 @@ battle menu pointer+offset). ROADMAP P3.1.
  #include "common/start_stage.inc.c"
  
  #include "common/step_state_animation_once.inc.c"
---- a/src/field/stages/north_sector/wstag741.c	2026-10-10 05:05:46.783935300 -0300
-+++ b/src/field/stages/north_sector/wstag741.c	2026-10-10 05:16:15.837179500 -0300
-@@ -38,7 +38,7 @@
+--- a/src/field/stages/north_sector/wstag741.c
++++ b/src/field/stages/north_sector/wstag741.c
+@@ -38,7 +38,7 @@ void updateStage(StageTask *task, void **children) {
      }
  }
  
@@ -1324,9 +1324,9 @@ battle menu pointer+offset). ROADMAP P3.1.
  #include "common/start_stage.inc.c"
  
  #include "common/step_state_animation_once.inc.c"
---- a/src/field/stages/north_sector/wstag745.c	2026-10-10 05:05:46.784231100 -0300
-+++ b/src/field/stages/north_sector/wstag745.c	2026-10-10 05:16:15.837559800 -0300
-@@ -81,7 +81,7 @@
+--- a/src/field/stages/north_sector/wstag745.c
++++ b/src/field/stages/north_sector/wstag745.c
+@@ -81,7 +81,7 @@ void updateStage(StageTask *task, void **children) {
      }
  }
  
@@ -1335,9 +1335,9 @@ battle menu pointer+offset). ROADMAP P3.1.
  #include "common/start_stage.inc.c"
  #include "common/step_animation.inc.c"
  #include "common/draw_stage_effect.inc.c"
---- a/src/field/stages/north_sector/wstag746.c	2026-10-10 05:05:46.784562700 -0300
-+++ b/src/field/stages/north_sector/wstag746.c	2026-10-10 05:16:15.837910700 -0300
-@@ -82,7 +82,7 @@
+--- a/src/field/stages/north_sector/wstag746.c
++++ b/src/field/stages/north_sector/wstag746.c
+@@ -82,7 +82,7 @@ void updateStage(StageTask *task, void **children) {
      }
  }
  
@@ -1346,9 +1346,9 @@ battle menu pointer+offset). ROADMAP P3.1.
  #include "common/start_stage.inc.c"
  #include "common/step_animation.inc.c"
  #include "common/draw_stage_effect.inc.c"
---- a/src/field/stages/north_sector/wstag750.c	2026-10-10 05:05:46.784947600 -0300
-+++ b/src/field/stages/north_sector/wstag750.c	2026-10-10 05:16:15.838302600 -0300
-@@ -144,7 +144,7 @@
+--- a/src/field/stages/north_sector/wstag750.c
++++ b/src/field/stages/north_sector/wstag750.c
+@@ -144,7 +144,7 @@ void updateStage(StageTask *task, void **children) {
      }
  }
  
@@ -1357,9 +1357,9 @@ battle menu pointer+offset). ROADMAP P3.1.
  #include "common/start_stage.inc.c"
  #include "common/step_animation.inc.c"
  #include "common/draw_stage_effect.inc.c"
---- a/src/field/stages/north_sector/wstag755.c	2026-10-10 05:05:46.785236800 -0300
-+++ b/src/field/stages/north_sector/wstag755.c	2026-10-10 05:16:15.838738000 -0300
-@@ -23,7 +23,7 @@
+--- a/src/field/stages/north_sector/wstag755.c
++++ b/src/field/stages/north_sector/wstag755.c
+@@ -23,7 +23,7 @@ void updateStage(StageTask *task, void **children) {
      }
  }
  
@@ -1368,9 +1368,9 @@ battle menu pointer+offset). ROADMAP P3.1.
  #include "common/start_stage.inc.c"
  
  /*
---- a/src/field/stages/north_sector/wstag756.c	2026-10-10 05:05:46.785532700 -0300
-+++ b/src/field/stages/north_sector/wstag756.c	2026-10-10 05:16:15.839135400 -0300
-@@ -26,7 +26,7 @@
+--- a/src/field/stages/north_sector/wstag756.c
++++ b/src/field/stages/north_sector/wstag756.c
+@@ -26,7 +26,7 @@ void updateStage(StageTask *task, void **children) {
      }
  }
  
@@ -1379,9 +1379,9 @@ battle menu pointer+offset). ROADMAP P3.1.
  #include "common/start_stage.inc.c"
  
  /*
---- a/src/field/stages/south_sector/wstag440.c	2026-10-10 05:05:46.790085300 -0300
-+++ b/src/field/stages/south_sector/wstag440.c	2026-10-10 05:16:15.839604200 -0300
-@@ -22,7 +22,7 @@
+--- a/src/field/stages/south_sector/wstag440.c
++++ b/src/field/stages/south_sector/wstag440.c
+@@ -22,7 +22,7 @@ void updateStage(StageTask *task, void **children) {
      }
  }
  
@@ -1389,10 +1389,10 @@ battle menu pointer+offset). ROADMAP P3.1.
 +#define STAGE_CHILDREN_SIZE sizeof(Task *)
  #include "common/start_stage.inc.c"
  
- /* After event 152, with the player: moves the story on to its step 7 */
---- a/src/field/stages/south_sector/wstag445.c	2026-10-10 05:05:46.790693200 -0300
-+++ b/src/field/stages/south_sector/wstag445.c	2026-10-10 05:16:15.839947900 -0300
-@@ -25,7 +25,7 @@
+ /* After event 152, with the player: moves the story on to STORY_SOUTH_STATION_GHOST */
+--- a/src/field/stages/south_sector/wstag445.c
++++ b/src/field/stages/south_sector/wstag445.c
+@@ -25,7 +25,7 @@ void updateStage(StageTask *task, void **children) {
      }
  }
  
@@ -1401,9 +1401,9 @@ battle menu pointer+offset). ROADMAP P3.1.
  #include "common/start_stage.inc.c"
  
  /*
---- a/src/field/stages/south_sector/wstag450.c	2026-10-10 05:05:46.791415800 -0300
-+++ b/src/field/stages/south_sector/wstag450.c	2026-10-10 05:16:15.840292000 -0300
-@@ -25,7 +25,7 @@
+--- a/src/field/stages/south_sector/wstag450.c
++++ b/src/field/stages/south_sector/wstag450.c
+@@ -25,7 +25,7 @@ void updateStage(StageTask *task, void **children) {
      }
  }
  
@@ -1412,9 +1412,9 @@ battle menu pointer+offset). ROADMAP P3.1.
  #include "common/start_stage.inc.c"
  
  /* After event 1279, with Paildramon: lets event 1280 start and starts the stage's event battle 1 */
---- a/src/field/stages/south_sector/wstag455.c	2026-10-10 05:05:46.792096500 -0300
-+++ b/src/field/stages/south_sector/wstag455.c	2026-10-10 05:16:15.840705500 -0300
-@@ -77,7 +77,7 @@
+--- a/src/field/stages/south_sector/wstag455.c
++++ b/src/field/stages/south_sector/wstag455.c
+@@ -77,7 +77,7 @@ void updateStage(StageTask *task, void **children) {
      }
  }
  
@@ -1423,9 +1423,9 @@ battle menu pointer+offset). ROADMAP P3.1.
  #include "common/start_stage.inc.c"
  
  /* After event 360, with the player: sets flag 0x4007 (which decides whether actor 0 appears) */
---- a/src/field/stages/south_sector/wstag460.c	2026-10-10 05:05:46.793360900 -0300
-+++ b/src/field/stages/south_sector/wstag460.c	2026-10-10 05:16:15.841040100 -0300
-@@ -66,7 +66,7 @@
+--- a/src/field/stages/south_sector/wstag460.c
++++ b/src/field/stages/south_sector/wstag460.c
+@@ -66,7 +66,7 @@ void handleCommand830(Task *task, s32 id) {
  
  /* Creates the task of updateCommand830 with the given id */
  void *createCommand830(s32 id) {
@@ -1434,7 +1434,7 @@ battle menu pointer+offset). ROADMAP P3.1.
  }
  
  #include "common/step_tile_animation.inc.c"
-@@ -426,7 +426,7 @@
+@@ -426,7 +426,7 @@ void updateStage(StageTask *task, void **children) {
      }
  }
  
@@ -1443,9 +1443,9 @@ battle menu pointer+offset). ROADMAP P3.1.
  #include "common/start_stage.inc.c"
  
  /*
---- a/src/field/stages/south_sector/wstag475.c	2026-10-10 05:05:46.795548000 -0300
-+++ b/src/field/stages/south_sector/wstag475.c	2026-10-10 05:16:15.841370900 -0300
-@@ -31,7 +31,7 @@
+--- a/src/field/stages/south_sector/wstag475.c
++++ b/src/field/stages/south_sector/wstag475.c
+@@ -31,7 +31,7 @@ void updateStage(StageTask *task, void **children) {
      }
  }
  
@@ -1454,9 +1454,9 @@ battle menu pointer+offset). ROADMAP P3.1.
  #include "common/start_stage.inc.c"
  
  /* After event 180, with Voice and Sepikmon: keeps it from playing again */
---- a/src/field/stages/south_sector/wstag480.c	2026-10-10 05:05:46.796333800 -0300
-+++ b/src/field/stages/south_sector/wstag480.c	2026-10-10 05:16:15.841771900 -0300
-@@ -31,7 +31,7 @@
+--- a/src/field/stages/south_sector/wstag480.c
++++ b/src/field/stages/south_sector/wstag480.c
+@@ -31,7 +31,7 @@ void updateStage(StageTask *task, void **children) {
      }
  }
  
@@ -1465,9 +1465,9 @@ battle menu pointer+offset). ROADMAP P3.1.
  #include "common/start_stage.inc.c"
  
  /* After event 170, with Zanbamon: lets event 171 start and starts the stage's event battle 0 */
---- a/src/field/stages/south_sector/wstag481.c	2026-10-10 05:05:46.796989700 -0300
-+++ b/src/field/stages/south_sector/wstag481.c	2026-10-10 05:16:15.842075700 -0300
-@@ -32,7 +32,7 @@
+--- a/src/field/stages/south_sector/wstag481.c
++++ b/src/field/stages/south_sector/wstag481.c
+@@ -32,7 +32,7 @@ void updateStage(StageTask *task, void **children) {
      }
  }
  
@@ -1476,9 +1476,9 @@ battle menu pointer+offset). ROADMAP P3.1.
  #include "common/start_stage.inc.c"
  
  /* the color the setup copies to FIELDSTG_state.spriteColor */
---- a/src/field/stages/south_sector/wstag490.c	2026-10-10 05:05:46.798084400 -0300
-+++ b/src/field/stages/south_sector/wstag490.c	2026-10-10 05:16:15.842482300 -0300
-@@ -25,7 +25,7 @@
+--- a/src/field/stages/south_sector/wstag490.c
++++ b/src/field/stages/south_sector/wstag490.c
+@@ -25,7 +25,7 @@ void updateStage(StageTask *task, void **children) {
      }
  }
  
@@ -1487,8 +1487,8 @@ battle menu pointer+offset). ROADMAP P3.1.
  #include "common/start_stage.inc.c"
  
  /*
---- a/src/field/stages/south_sector/wstag500.c	2026-10-10 05:05:46.799809700 -0300
-+++ b/src/field/stages/south_sector/wstag500.c	2026-10-10 05:16:15.842908600 -0300
+--- a/src/field/stages/south_sector/wstag500.c
++++ b/src/field/stages/south_sector/wstag500.c
 @@ -6,7 +6,7 @@
  #include "field/stage.h"
  
@@ -1498,9 +1498,9 @@ battle menu pointer+offset). ROADMAP P3.1.
  #include "common/start_stage.inc.c"
  
  /*
---- a/src/field/stages/south_sector/wstag525.c	2026-10-10 05:05:46.800933200 -0300
-+++ b/src/field/stages/south_sector/wstag525.c	2026-10-10 05:16:15.843300500 -0300
-@@ -22,7 +22,7 @@
+--- a/src/field/stages/south_sector/wstag525.c
++++ b/src/field/stages/south_sector/wstag525.c
+@@ -22,7 +22,7 @@ void updateStage(StageTask *task, void **children) {
      }
  }
  
@@ -1509,9 +1509,9 @@ battle menu pointer+offset). ROADMAP P3.1.
  #include "common/start_stage.inc.c"
  
  /* After event 550, with Nick and Keith: lets event 551 of WSTAG620 start */
---- a/src/field/stages/south_sector/wstag526.c	2026-10-10 05:05:46.801325300 -0300
-+++ b/src/field/stages/south_sector/wstag526.c	2026-10-10 05:16:15.843808300 -0300
-@@ -74,7 +74,7 @@
+--- a/src/field/stages/south_sector/wstag526.c
++++ b/src/field/stages/south_sector/wstag526.c
+@@ -74,7 +74,7 @@ void handleCommand829(StageTask *task, s32 id) {
  
  /* Creates the task of updateCommand829 with an id */
  void *createCommand829(s32 arg) {
@@ -1520,7 +1520,7 @@ battle menu pointer+offset). ROADMAP P3.1.
  }
  
  #include "common/step_tile_animation.inc.c"
-@@ -570,7 +570,7 @@
+@@ -570,7 +570,7 @@ void updateStage(StageTask *task, void **children) {
      }
  }
  
@@ -1529,9 +1529,9 @@ battle menu pointer+offset). ROADMAP P3.1.
  #include "common/start_stage.inc.c"
  
  /*
---- a/src/field/stages/south_sector/wstag535.c	2026-10-10 05:05:46.805001800 -0300
-+++ b/src/field/stages/south_sector/wstag535.c	2026-10-10 05:16:15.844264100 -0300
-@@ -23,7 +23,7 @@
+--- a/src/field/stages/south_sector/wstag535.c
++++ b/src/field/stages/south_sector/wstag535.c
+@@ -23,7 +23,7 @@ void updateStage(StageTask *task, void **children) {
      }
  }
  
@@ -1540,9 +1540,9 @@ battle menu pointer+offset). ROADMAP P3.1.
  #include "common/start_stage.inc.c"
  
  /* After event 1262, with Zanbamon: lets event 1263 start and starts the stage's event battle 0 */
---- a/src/field/stages/south_sector/wstag537.c	2026-10-10 05:05:46.805595000 -0300
-+++ b/src/field/stages/south_sector/wstag537.c	2026-10-10 05:16:15.844742000 -0300
-@@ -24,7 +24,7 @@
+--- a/src/field/stages/south_sector/wstag537.c
++++ b/src/field/stages/south_sector/wstag537.c
+@@ -24,7 +24,7 @@ void updateStage(StageTask *task, void **children) {
      }
  }
  
@@ -1551,9 +1551,9 @@ battle menu pointer+offset). ROADMAP P3.1.
  #include "common/start_stage.inc.c"
  
  /* After event 700, with Suzaku Leader: keeps it from playing again */
---- a/src/field/stages/south_sector/wstag538.c	2026-10-10 05:05:46.806856900 -0300
-+++ b/src/field/stages/south_sector/wstag538.c	2026-10-10 05:16:15.845141300 -0300
-@@ -27,7 +27,7 @@
+--- a/src/field/stages/south_sector/wstag538.c
++++ b/src/field/stages/south_sector/wstag538.c
+@@ -27,7 +27,7 @@ void updateStage(StageTask *task, void **children) {
      }
  }
  
@@ -1562,9 +1562,9 @@ battle menu pointer+offset). ROADMAP P3.1.
  #include "common/start_stage.inc.c"
  
  /*
---- a/src/field/stages/spy_satellite/wstag810.c	2026-10-10 05:05:46.808263400 -0300
-+++ b/src/field/stages/spy_satellite/wstag810.c	2026-10-10 05:16:15.845853100 -0300
-@@ -112,7 +112,7 @@
+--- a/src/field/stages/spy_satellite/wstag810.c
++++ b/src/field/stages/spy_satellite/wstag810.c
+@@ -112,7 +112,7 @@ void handleCommands842To844(StageTilePairN *task, s32 id) {
  
  /* Creates the tile pair object of animations ANIM and ANIM + 1 with the id ARG */
  static inline void *createTilePairN(s32 arg, s32 anim) {
@@ -1573,7 +1573,7 @@ battle menu pointer+offset). ROADMAP P3.1.
  
      task->anim = anim;
      task->done = 0;
-@@ -136,7 +136,7 @@
+@@ -136,7 +136,7 @@ void *createTilePairN5(s32 arg) {
  
  /* Creates the tile pair object of animations anim and anim + 1, started in TASK_DONE */
  void *createTilePairNDone(s32 anim) {
@@ -1582,7 +1582,7 @@ battle menu pointer+offset). ROADMAP P3.1.
  
      task->anim = anim;
      task->done = 1;
-@@ -179,7 +179,7 @@
+@@ -179,7 +179,7 @@ void updateStage(StageTask *task, void **children) {
      }
  }
  
@@ -1591,9 +1591,9 @@ battle menu pointer+offset). ROADMAP P3.1.
  #include "common/start_stage.inc.c"
  #include "common/step_animation.inc.c"
  #include "common/draw_stage_effect.inc.c"
---- a/src/field/stages/spy_satellite/wstag815.c	2026-10-10 05:05:46.809166300 -0300
-+++ b/src/field/stages/spy_satellite/wstag815.c	2026-10-10 05:16:15.846345100 -0300
-@@ -65,7 +65,7 @@
+--- a/src/field/stages/spy_satellite/wstag815.c
++++ b/src/field/stages/spy_satellite/wstag815.c
+@@ -65,7 +65,7 @@ void updateBackground(StageTask *task) {
  
  /* Creates the spy satellite's background (updateBackground) */
  void *createBackground(void) {
@@ -1602,7 +1602,7 @@ battle menu pointer+offset). ROADMAP P3.1.
  }
  
  /* Creates the background, the stage's five effects and the event object of flags 0x4072/0x40A9 */
-@@ -95,7 +95,7 @@
+@@ -95,7 +95,7 @@ void updateStage(StageTask *task, void **children) {
  
  /* Creates the stage task (id 0x17) and calls the first function of its table */
  StageTask *startStage(void *owner) {
@@ -1611,9 +1611,9 @@ battle menu pointer+offset). ROADMAP P3.1.
  
      task->owner = owner;
      stageFuncs[0]();
---- a/src/field/stages/spy_satellite/wstag820.c	2026-10-10 05:05:46.809725600 -0300
-+++ b/src/field/stages/spy_satellite/wstag820.c	2026-10-10 05:16:15.846856900 -0300
-@@ -88,7 +88,7 @@
+--- a/src/field/stages/spy_satellite/wstag820.c
++++ b/src/field/stages/spy_satellite/wstag820.c
+@@ -88,7 +88,7 @@ void updateStage(StageTask *task, void **children) {
      }
  }
  
@@ -1622,9 +1622,9 @@ battle menu pointer+offset). ROADMAP P3.1.
  #include "common/start_stage.inc.c"
  #include "common/step_animation.inc.c"
  #include "common/draw_stage_effect.inc.c"
---- a/src/field/stages/suzaku_city/wstag520.c	2026-10-10 05:05:46.810630600 -0300
-+++ b/src/field/stages/suzaku_city/wstag520.c	2026-10-10 05:16:15.847380600 -0300
-@@ -22,7 +22,7 @@
+--- a/src/field/stages/suzaku_city/wstag520.c
++++ b/src/field/stages/suzaku_city/wstag520.c
+@@ -22,7 +22,7 @@ void updateStage(StageTask *task, void **children) {
      }
  }
  
@@ -1633,9 +1633,9 @@ battle menu pointer+offset). ROADMAP P3.1.
  #include "common/start_stage.inc.c"
  
  /*
---- a/src/field/stages/undersea_base/wstag795.c	2026-10-10 05:05:46.825300100 -0300
-+++ b/src/field/stages/undersea_base/wstag795.c	2026-10-10 05:16:15.847853500 -0300
-@@ -184,7 +184,7 @@
+--- a/src/field/stages/undersea_base/wstag795.c
++++ b/src/field/stages/undersea_base/wstag795.c
+@@ -184,7 +184,7 @@ void updateStage(StageTask *task, void **children) {
      }
  }
  
@@ -1644,9 +1644,9 @@ battle menu pointer+offset). ROADMAP P3.1.
  #include "common/start_stage.inc.c"
  
  /* After event 830, with the player: keeps it from playing again */
---- a/src/field/stages/undersea_base/wstag800.c	2026-10-10 05:05:46.825753900 -0300
-+++ b/src/field/stages/undersea_base/wstag800.c	2026-10-10 05:16:15.848240600 -0300
-@@ -289,7 +289,7 @@
+--- a/src/field/stages/undersea_base/wstag800.c
++++ b/src/field/stages/undersea_base/wstag800.c
+@@ -289,7 +289,7 @@ void updateStage(StageTask *task, void **children) {
      }
  }
  
@@ -1655,9 +1655,9 @@ battle menu pointer+offset). ROADMAP P3.1.
  #include "common/start_stage.inc.c"
  #include "common/step_animation.inc.c"
  #include "common/draw_stage_effect.inc.c"
---- a/src/field/stages/undersea_base/wstag805.c	2026-10-10 05:05:46.826113100 -0300
-+++ b/src/field/stages/undersea_base/wstag805.c	2026-10-10 05:16:15.848631000 -0300
-@@ -345,7 +345,7 @@
+--- a/src/field/stages/undersea_base/wstag805.c
++++ b/src/field/stages/undersea_base/wstag805.c
+@@ -345,7 +345,7 @@ void updateStage(StageTask *task, void **children) {
      }
  }
  
@@ -1666,9 +1666,9 @@ battle menu pointer+offset). ROADMAP P3.1.
  #include "common/start_stage.inc.c"
  
  /*
---- a/src/field/stages/west_sector/wstag550.c	2026-10-10 05:05:46.826611800 -0300
-+++ b/src/field/stages/west_sector/wstag550.c	2026-10-10 05:16:15.849054400 -0300
-@@ -25,7 +25,7 @@
+--- a/src/field/stages/west_sector/wstag550.c
++++ b/src/field/stages/west_sector/wstag550.c
+@@ -25,7 +25,7 @@ void updateStage(StageTask *task, void **children) {
      }
  }
  
@@ -1677,9 +1677,9 @@ battle menu pointer+offset). ROADMAP P3.1.
  #include "common/start_stage.inc.c"
  
  /*
---- a/src/field/stages/west_sector/wstag555.c	2026-10-10 05:05:46.827102200 -0300
-+++ b/src/field/stages/west_sector/wstag555.c	2026-10-10 05:16:15.849342400 -0300
-@@ -16,7 +16,7 @@
+--- a/src/field/stages/west_sector/wstag555.c
++++ b/src/field/stages/west_sector/wstag555.c
+@@ -16,7 +16,7 @@ extern AnimFrame updateTileAnimsFrames2[];
  #include "common/create_tile_anims_5c.inc.c"
  
  #include "common/update_stage_tile_anims.inc.c"
@@ -1688,9 +1688,9 @@ battle menu pointer+offset). ROADMAP P3.1.
  #include "common/start_stage.inc.c"
  
  /* After event 380, with Numemon: keeps it from playing again */
---- a/src/field/stages/west_sector/wstag565.c	2026-10-10 05:05:46.828396600 -0300
-+++ b/src/field/stages/west_sector/wstag565.c	2026-10-10 05:16:15.849651900 -0300
-@@ -22,7 +22,7 @@
+--- a/src/field/stages/west_sector/wstag565.c
++++ b/src/field/stages/west_sector/wstag565.c
+@@ -22,7 +22,7 @@ void updateStage(StageTask *task, void **children) {
      }
  }
  
@@ -1699,9 +1699,9 @@ battle menu pointer+offset). ROADMAP P3.1.
  #include "common/start_stage.inc.c"
  
  /* After event 1271, with Taomon: lets event 1272 start and starts the stage's event battle 0 */
---- a/src/field/stages/west_sector/wstag575.c	2026-10-10 05:05:46.829398500 -0300
-+++ b/src/field/stages/west_sector/wstag575.c	2026-10-10 05:16:15.849965600 -0300
-@@ -22,7 +22,7 @@
+--- a/src/field/stages/west_sector/wstag575.c
++++ b/src/field/stages/west_sector/wstag575.c
+@@ -22,7 +22,7 @@ void updateStage(StageTask *task, void **children) {
      }
  }
  
@@ -1710,9 +1710,9 @@ battle menu pointer+offset). ROADMAP P3.1.
  #include "common/start_stage.inc.c"
  
  /* After event 422, with Numemon: keeps it from playing again */
---- a/src/field/stages/west_sector/wstag580.c	2026-10-10 05:05:46.830421300 -0300
-+++ b/src/field/stages/west_sector/wstag580.c	2026-10-10 05:16:15.850349000 -0300
-@@ -29,7 +29,7 @@
+--- a/src/field/stages/west_sector/wstag580.c
++++ b/src/field/stages/west_sector/wstag580.c
+@@ -29,7 +29,7 @@ void updateStage(StageTask *task, void **children) {
      }
  }
  
@@ -1721,9 +1721,9 @@ battle menu pointer+offset). ROADMAP P3.1.
  #include "common/start_stage.inc.c"
  
  /* After event 440, with Numemon: sets flag 0x1C1F and keeps it from playing again */
---- a/src/field/stages/west_sector/wstag585.c	2026-10-10 05:05:46.830957400 -0300
-+++ b/src/field/stages/west_sector/wstag585.c	2026-10-10 05:16:15.850657100 -0300
-@@ -22,7 +22,7 @@
+--- a/src/field/stages/west_sector/wstag585.c
++++ b/src/field/stages/west_sector/wstag585.c
+@@ -22,7 +22,7 @@ void updateStage(StageTask *task, void **children) {
      }
  }
  
@@ -1732,9 +1732,9 @@ battle menu pointer+offset). ROADMAP P3.1.
  #include "common/start_stage.inc.c"
  
  /* After event 460, with the player: keeps it from playing again */
---- a/src/field/stages/west_sector/wstag605.c	2026-10-10 05:05:46.833422500 -0300
-+++ b/src/field/stages/west_sector/wstag605.c	2026-10-10 05:16:15.850974500 -0300
-@@ -22,7 +22,7 @@
+--- a/src/field/stages/west_sector/wstag605.c
++++ b/src/field/stages/west_sector/wstag605.c
+@@ -22,7 +22,7 @@ void updateStage(StageTask *task, void **children) {
      }
  }
  
@@ -1743,9 +1743,9 @@ battle menu pointer+offset). ROADMAP P3.1.
  #include "common/start_stage.inc.c"
  
  /*
---- a/src/field/stages/west_sector/wstag606.c	2026-10-10 05:05:46.833946200 -0300
-+++ b/src/field/stages/west_sector/wstag606.c	2026-10-10 05:16:15.851263700 -0300
-@@ -26,7 +26,7 @@
+--- a/src/field/stages/west_sector/wstag606.c
++++ b/src/field/stages/west_sector/wstag606.c
+@@ -26,7 +26,7 @@ void updateStage(StageTask *task, void **children) {
      }
  }
  
@@ -1754,9 +1754,9 @@ battle menu pointer+offset). ROADMAP P3.1.
  #include "common/start_stage.inc.c"
  
  /*
---- a/src/field/stages/west_sector/wstag615.c	2026-10-10 05:05:46.834749000 -0300
-+++ b/src/field/stages/west_sector/wstag615.c	2026-10-10 05:16:15.851596500 -0300
-@@ -22,7 +22,7 @@
+--- a/src/field/stages/west_sector/wstag615.c
++++ b/src/field/stages/west_sector/wstag615.c
+@@ -22,7 +22,7 @@ void updateStage(StageTask *task, void **children) {
      }
  }
  
@@ -1765,9 +1765,9 @@ battle menu pointer+offset). ROADMAP P3.1.
  #include "common/start_stage.inc.c"
  
  /*
---- a/src/field/stages/west_sector/wstag616.c	2026-10-10 05:05:46.834989600 -0300
-+++ b/src/field/stages/west_sector/wstag616.c	2026-10-10 05:16:15.852010400 -0300
-@@ -26,7 +26,7 @@
+--- a/src/field/stages/west_sector/wstag616.c
++++ b/src/field/stages/west_sector/wstag616.c
+@@ -26,7 +26,7 @@ void updateStage(StageTask *task, void **children) {
      }
  }
  
@@ -1776,20 +1776,9 @@ battle menu pointer+offset). ROADMAP P3.1.
  #include "common/start_stage.inc.c"
  
  /*
---- a/src/field/stages/west_sector/wstag620.c	2026-10-10 05:05:46.835351300 -0300
-+++ b/src/field/stages/west_sector/wstag620.c	2026-10-10 05:16:15.852438400 -0300
-@@ -157,7 +157,7 @@
-     }
- }
- 
--#define STAGE_CHILDREN_SIZE 0x8
-+#define STAGE_CHILDREN_SIZE (2 * sizeof(Task *))
- #include "common/start_stage.inc.c"
- 
- /*
---- a/src/field/stages/west_sector/wstag625.c	2026-10-10 05:05:46.836375100 -0300
-+++ b/src/field/stages/west_sector/wstag625.c	2026-10-10 05:16:15.852826600 -0300
-@@ -143,7 +143,7 @@
+--- a/src/field/stages/west_sector/wstag620.c
++++ b/src/field/stages/west_sector/wstag620.c
+@@ -157,7 +157,7 @@ void updateStage(StageTask *task, void **children) {
      }
  }
  
@@ -1798,9 +1787,20 @@ battle menu pointer+offset). ROADMAP P3.1.
  #include "common/start_stage.inc.c"
  
  /*
---- a/src/field/stages/west_sector/wstag630.c	2026-10-10 05:05:46.837399900 -0300
-+++ b/src/field/stages/west_sector/wstag630.c	2026-10-10 05:16:15.853186200 -0300
-@@ -16,7 +16,7 @@
+--- a/src/field/stages/west_sector/wstag625.c
++++ b/src/field/stages/west_sector/wstag625.c
+@@ -143,7 +143,7 @@ void updateStage(StageTask *task, void **children) {
+     }
+ }
+ 
+-#define STAGE_CHILDREN_SIZE 0x8
++#define STAGE_CHILDREN_SIZE (2 * sizeof(Task *))
+ #include "common/start_stage.inc.c"
+ 
+ /*
+--- a/src/field/stages/west_sector/wstag630.c
++++ b/src/field/stages/west_sector/wstag630.c
+@@ -16,7 +16,7 @@ extern AnimFrame updateTileAnimsFrames2[];
  #include "common/create_tile_anims_5c.inc.c"
  
  #include "common/update_stage_tile_anims.inc.c"
@@ -1808,10 +1808,10 @@ battle menu pointer+offset). ROADMAP P3.1.
 +#define STAGE_CHILDREN_SIZE sizeof(Task *)
  #include "common/start_stage.inc.c"
  
- #if VERSION_US
---- a/src/field/stages/west_sector/wstag635.c	2026-10-10 05:05:46.838118700 -0300
-+++ b/src/field/stages/west_sector/wstag635.c	2026-10-10 05:16:15.853583500 -0300
-@@ -20,7 +20,7 @@
+ #if VERSION_US || VERSION_JP
+--- a/src/field/stages/west_sector/wstag635.c
++++ b/src/field/stages/west_sector/wstag635.c
+@@ -20,7 +20,7 @@ extern AnimFrame updateTileAnimsFrames2[];
  
  #include "common/update_stage_tile_anims_places.inc.c"
  
@@ -1819,10 +1819,10 @@ battle menu pointer+offset). ROADMAP P3.1.
 +#define STAGE_CHILDREN_SIZE sizeof(Task *)
  #include "common/start_stage.inc.c"
  
- #if VERSION_US
---- a/src/field/stages/west_sector/wstag640.c	2026-10-10 05:05:46.838626300 -0300
-+++ b/src/field/stages/west_sector/wstag640.c	2026-10-10 05:16:15.853890400 -0300
-@@ -20,7 +20,7 @@
+ #if VERSION_US || VERSION_JP
+--- a/src/field/stages/west_sector/wstag640.c
++++ b/src/field/stages/west_sector/wstag640.c
+@@ -20,7 +20,7 @@ extern AnimFrame updateTileAnimsFrames2[];
  
  #include "common/update_stage_tile_anims_places.inc.c"
  
@@ -1830,10 +1830,10 @@ battle menu pointer+offset). ROADMAP P3.1.
 +#define STAGE_CHILDREN_SIZE sizeof(Task *)
  #include "common/start_stage.inc.c"
  
- #if VERSION_US
---- a/src/field/stages/west_sector/wstag645.c	2026-10-10 05:05:46.839047500 -0300
-+++ b/src/field/stages/west_sector/wstag645.c	2026-10-10 05:16:15.854174900 -0300
-@@ -16,7 +16,7 @@
+ #if VERSION_US || VERSION_JP
+--- a/src/field/stages/west_sector/wstag645.c
++++ b/src/field/stages/west_sector/wstag645.c
+@@ -16,7 +16,7 @@ extern AnimFrame updateTileAnimsFrames2[];
  #include "common/create_tile_anims_5c.inc.c"
  
  #include "common/update_stage_tile_anims.inc.c"
@@ -1841,10 +1841,10 @@ battle menu pointer+offset). ROADMAP P3.1.
 +#define STAGE_CHILDREN_SIZE sizeof(Task *)
  #include "common/start_stage.inc.c"
  
- #if VERSION_US
---- a/src/field/stages/west_sector/wstag655.c	2026-10-10 05:05:46.840257300 -0300
-+++ b/src/field/stages/west_sector/wstag655.c	2026-10-10 05:16:15.854484300 -0300
-@@ -22,7 +22,7 @@
+ #if VERSION_US || VERSION_JP
+--- a/src/field/stages/west_sector/wstag655.c
++++ b/src/field/stages/west_sector/wstag655.c
+@@ -22,7 +22,7 @@ void updateStage(StageTask *task, void **children) {
      }
  }
  
@@ -1853,9 +1853,9 @@ battle menu pointer+offset). ROADMAP P3.1.
  #include "common/start_stage.inc.c"
  
  /*
---- a/src/field/stages/zhu_que_city/wstag521.c	2026-10-10 05:05:46.843451300 -0300
-+++ b/src/field/stages/zhu_que_city/wstag521.c	2026-10-10 05:16:15.854937900 -0300
-@@ -23,7 +23,7 @@
+--- a/src/field/stages/zhu_que_city/wstag521.c
++++ b/src/field/stages/zhu_que_city/wstag521.c
+@@ -23,7 +23,7 @@ void updateStage(StageTask *task, void **children) {
      }
  }
  
@@ -1864,9 +1864,9 @@ battle menu pointer+offset). ROADMAP P3.1.
  #include "common/start_stage.inc.c"
  
  /*
---- a/src/menus/digimon_lab/entry_list.c	2026-10-10 05:05:46.844882900 -0300
-+++ b/src/menus/digimon_lab/entry_list.c	2026-10-10 05:16:15.855306300 -0300
-@@ -342,7 +342,7 @@
+--- a/src/menus/digimon_lab/entry_list.c
++++ b/src/menus/digimon_lab/entry_list.c
+@@ -337,7 +337,7 @@ void STGDGLAB_updateEntryList(LabEntryList *panel, LabEntryListWindows *windows)
  /* Creates the list of a partner's entries (task): only its slots unless
     ALLENTRIES; CLOSABLE lets triangle close it */
  LabEntryList *STGDGLAB_createEntryList(s32 partner, s32 allEntries, s32 closable) {
@@ -1875,9 +1875,9 @@ battle menu pointer+offset). ROADMAP P3.1.
  
      panel->close = STGDGLAB_closeEntryList;
      panel->layer = SCREEN_LAYER;
---- a/src/menus/digimon_lab/entry_panel.c	2026-10-10 05:05:46.845345300 -0300
-+++ b/src/menus/digimon_lab/entry_panel.c	2026-10-10 05:16:15.855715800 -0300
-@@ -491,7 +491,7 @@
+--- a/src/menus/digimon_lab/entry_panel.c
++++ b/src/menus/digimon_lab/entry_panel.c
+@@ -491,7 +491,7 @@ void STGDGLAB_updateEntryPanel(LabEntryPanel *panel, LabEntryPanelWindows *windo
  /* Creates the second screen's panel (task) where one of the partner's entries
     is picked for one of its three slots */
  LabEntryPanel *STGDGLAB_createEntryPanel(s32 partner, s32 slot) {
@@ -1886,9 +1886,9 @@ battle menu pointer+offset). ROADMAP P3.1.
  
      panel->layer = SCREEN_LAYER;
      panel->depth = 6;
---- a/src/menus/digimon_lab/party_screen.c	2026-10-10 05:05:46.846703500 -0300
-+++ b/src/menus/digimon_lab/party_screen.c	2026-10-10 05:16:15.856368100 -0300
-@@ -435,7 +435,7 @@
+--- a/src/menus/digimon_lab/party_screen.c
++++ b/src/menus/digimon_lab/party_screen.c
+@@ -415,7 +415,7 @@ void STGDGLAB_updatePartyScreen(LabPartyScreen *screen, void *children) {
  /* Creates the main menu's first screen (task), where a partner joins the party
     in the member's place */
  Task *STGDGLAB_createPartyScreen(Lab *lab) {
@@ -1897,9 +1897,9 @@ battle menu pointer+offset). ROADMAP P3.1.
  
      screen->layer = SCREEN_LAYER;
      screen->depth = 2;
---- a/src/menus/digimon_lab/recipe_screen.c	2026-10-10 05:05:46.847002400 -0300
-+++ b/src/menus/digimon_lab/recipe_screen.c	2026-10-10 05:16:15.856992300 -0300
-@@ -666,7 +666,7 @@
+--- a/src/menus/digimon_lab/recipe_screen.c
++++ b/src/menus/digimon_lab/recipe_screen.c
+@@ -641,7 +641,7 @@ void STGDGLAB_updateRecipeScreen(LabRecipeScreen *screen, LabRecipeScreenWindows
  /* Creates the main menu's third screen (task), the recipes, and fades the
     menu's page out */
  Task *STGDGLAB_createRecipeScreen(Lab *lab) {
@@ -1908,9 +1908,9 @@ battle menu pointer+offset). ROADMAP P3.1.
  
      screen->layer = SCREEN_LAYER;
      screen->depth = 2;
---- a/src/menus/digimon_lab/skill_panel.c	2026-10-10 05:05:46.847600500 -0300
-+++ b/src/menus/digimon_lab/skill_panel.c	2026-10-10 05:16:15.898868300 -0300
-@@ -346,7 +346,7 @@
+--- a/src/menus/digimon_lab/skill_panel.c
++++ b/src/menus/digimon_lab/skill_panel.c
+@@ -337,7 +337,7 @@ void STGDGLAB_updateSkillPanel(LabSkillPanel *panel, LabSkillPanelWindows *windo
  /* Creates the second screen's skill panel (task) for a slot of a partner (the
     MEMBER parameter is a partner id, from getPartyMember) */
  LabSkillPanel *STGDGLAB_createSkillPanel(s32 member, s32 slot) {
@@ -1919,9 +1919,9 @@ battle menu pointer+offset). ROADMAP P3.1.
  
      panel->layer = SCREEN_LAYER;
      panel->depth = 2;
---- a/src/menus/digimon_lab/slot_screen.c	2026-10-10 05:05:46.847984200 -0300
-+++ b/src/menus/digimon_lab/slot_screen.c	2026-10-10 05:16:15.899567900 -0300
-@@ -430,7 +430,7 @@
+--- a/src/menus/digimon_lab/slot_screen.c
++++ b/src/menus/digimon_lab/slot_screen.c
+@@ -410,7 +410,7 @@ void STGDGLAB_updateSlotScreen(LabSlotScreen *screen, void *children) {
  
  /* Creates the main menu's second screen (task), the party member's three slots */
  Task *STGDGLAB_createSlotScreen(Lab *lab) {
@@ -1930,9 +1930,9 @@ battle menu pointer+offset). ROADMAP P3.1.
  
      screen->layer = SCREEN_LAYER;
      screen->depth = 6;
---- a/src/menus/field_menu/demo_screen.c	2026-10-10 05:05:46.848761900 -0300
-+++ b/src/menus/field_menu/demo_screen.c	2026-10-10 05:16:15.900008500 -0300
-@@ -437,7 +437,7 @@
+--- a/src/menus/field_menu/demo_screen.c
++++ b/src/menus/field_menu/demo_screen.c
+@@ -406,7 +406,7 @@ void STSTATUS_updateDemoScreen(PartyScreen *screen, PartyScreenWindows *windows)
     set GAME.digivolveDemo */
  Task *STSTATUS_createDemoScreen(FieldMenuScreen *menu, s32 extra) {
      /* its windows are PartyScreenWindows without the fader */
@@ -1941,9 +1941,9 @@ battle menu pointer+offset). ROADMAP P3.1.
  
      screen->layer = SCREEN_LAYER;
      screen->depth = 6;
---- a/src/menus/field_menu/map_screen.c	2026-10-10 05:05:46.850746100 -0300
-+++ b/src/menus/field_menu/map_screen.c	2026-10-10 05:16:15.900269600 -0300
-@@ -320,7 +320,7 @@
+--- a/src/menus/field_menu/map_screen.c
++++ b/src/menus/field_menu/map_screen.c
+@@ -320,7 +320,7 @@ void STSTATUS_updateMapScreen(StatusMapScreen *screen, TextWindow **windows) {
  /* Creates the map screen (task): the map of the first half of the game or, in the
     late game, of the second (FILE_STATUS_BG + 2), and requests its area names */
  Task *STSTATUS_createMapScreen(FieldMenuScreen *menu, s32 extra) {
@@ -1952,9 +1952,9 @@ battle menu pointer+offset). ROADMAP P3.1.
  
      screen->layer = SCREEN_LAYER;
      screen->depth = 5;
---- a/src/menus/gym/menu.c	2026-10-10 05:05:46.853190200 -0300
-+++ b/src/menus/gym/menu.c	2026-10-10 05:16:15.900814100 -0300
-@@ -435,7 +435,7 @@
+--- a/src/menus/gym/menu.c
++++ b/src/menus/gym/menu.c
+@@ -435,7 +435,7 @@ void STGTRAIN_showMenuInfo(TrainMenu *menu) {
  
  /* Creates the training menu */
  TrainMenu *STGTRAIN_createMenu(TrainScreen *screen) {
@@ -1963,18 +1963,9 @@ battle menu pointer+offset). ROADMAP P3.1.
  
      menu->open = STGTRAIN_openMenu;
      menu->close = STGTRAIN_closeMenu;
---- a/src/menus/gym/scene.c	2026-10-10 05:05:46.853780500 -0300
-+++ b/src/menus/gym/scene.c	2026-10-10 05:16:15.901074000 -0300
-@@ -43,5 +43,5 @@
- 
- /* The mode's entry point (MODE_ENTRY_POINTS): starts the root task */
- Task *STGTRAIN_start(void) {
--    return createTask(STGTRAIN_updateRoot, sizeof(Task), 4);
-+    return createTask(STGTRAIN_updateRoot, sizeof(Task), sizeof(Task *));
- }
---- a/src/menus/gym/screen.c	2026-10-10 05:05:46.854213200 -0300
-+++ b/src/menus/gym/screen.c	2026-10-10 05:16:15.901421800 -0300
-@@ -654,7 +654,7 @@
+--- a/src/menus/gym/screen.c
++++ b/src/menus/gym/screen.c
+@@ -644,7 +644,7 @@ void STGTRAIN_updateScreen(TrainScreen *screen, TrainScreenWindows *win) {
  
  /* Creates the training screen */
  TrainScreen *STGTRAIN_createScreen(void) {
@@ -1983,9 +1974,9 @@ battle menu pointer+offset). ROADMAP P3.1.
      s32 sign;
  
      screen->showStats = STGTRAIN_showStatChanges;
---- a/src/menus/item_shop/info.c	2026-10-10 05:05:46.857372700 -0300
-+++ b/src/menus/item_shop/info.c	2026-10-10 05:16:15.901967500 -0300
-@@ -868,7 +868,7 @@
+--- a/src/menus/item_shop/info.c
++++ b/src/menus/item_shop/info.c
+@@ -863,7 +863,7 @@ void STITSHOP_refreshPartner(ShopInfo *info, s32 member) {
  /* Creates the details panel (task) of the item selected, when buying or
     selling */
  ShopInfo *STITSHOP_createInfo(s32 selling, s32 item) {
@@ -1994,9 +1985,9 @@ battle menu pointer+offset). ROADMAP P3.1.
  
      info->showItem = STITSHOP_setInfoItem;
      info->close = STITSHOP_closeInfo;
---- a/src/menus/item_shop/item_list.c	2026-10-10 05:05:46.857771500 -0300
-+++ b/src/menus/item_shop/item_list.c	2026-10-10 05:16:15.902316500 -0300
-@@ -344,7 +344,7 @@
+--- a/src/menus/item_shop/item_list.c
++++ b/src/menus/item_shop/item_list.c
+@@ -344,7 +344,7 @@ void STITSHOP_listSellable(ShopItemList *list) {
  /* Creates the item list (task) of a dialog: the items of the shop type when
     buying, the bag's of the item type when selling */
  ShopItemList *STITSHOP_createItemList(ShopDialog *dialog, s32 type, s32 selling) {
@@ -2005,9 +1996,9 @@ battle menu pointer+offset). ROADMAP P3.1.
  
      list->start = STITSHOP_startItemList;
      list->close = STITSHOP_closeItemList;
---- a/src/menus/memory_card/info.c	2026-10-10 05:05:46.860763100 -0300
-+++ b/src/menus/memory_card/info.c	2026-10-10 05:16:15.902649700 -0300
-@@ -200,7 +200,7 @@
+--- a/src/menus/memory_card/info.c
++++ b/src/menus/memory_card/info.c
+@@ -200,7 +200,7 @@ void STGMCARD_updateInfo(MemCardInfo *info) {
  
  /* Creates the details window (task) of the save list */
  MemCardInfo *STGMCARD_createInfo(MemCardSaves *saves) {
@@ -2016,9 +2007,9 @@ battle menu pointer+offset). ROADMAP P3.1.
  
      info->show = STGMCARD_showInfo;
      info->hide = STGMCARD_hideInfo;
---- a/src/menus/memory_card/menu.c	2026-10-10 05:05:46.861040200 -0300
-+++ b/src/menus/memory_card/menu.c	2026-10-10 05:16:15.902911500 -0300
-@@ -185,7 +185,7 @@
+--- a/src/menus/memory_card/menu.c
++++ b/src/menus/memory_card/menu.c
+@@ -185,7 +185,7 @@ void STGMCARD_updateMenu(MemCardMenu *menu, TextWindow **windows) {
  
  /* Creates the slot picker (task) of the save list */
  MemCardMenu *STGMCARD_createMenu(MemCardSaves *saves) {
@@ -2027,9 +2018,9 @@ battle menu pointer+offset). ROADMAP P3.1.
  
      menu->reset = STGMCARD_resetMenu;
      menu->slideInHeader = STGMCARD_slideInHeader;
---- a/src/menus/memory_card/screen.c	2026-10-10 05:05:46.862527600 -0300
-+++ b/src/menus/memory_card/screen.c	2026-10-10 05:16:15.903213000 -0300
-@@ -81,7 +81,7 @@
+--- a/src/menus/memory_card/screen.c
++++ b/src/menus/memory_card/screen.c
+@@ -81,7 +81,7 @@ void STGMCARD_updateScreen(MemCardScreen *screen, MemCardScreenTasks *tasks) {
  /* Creates the screen's main task, with what it needs from the mode it was
     opened from and the one it was opened for */
  MemCardScreen *STGMCARD_createScreen(void) {
@@ -2038,9 +2029,9 @@ battle menu pointer+offset). ROADMAP P3.1.
      s32 mode;
      s32 prev;
      s32 i;
---- a/src/menus/player_name/welcome.c	2026-10-10 05:05:46.872819700 -0300
-+++ b/src/menus/player_name/welcome.c	2026-10-10 05:16:15.903697600 -0300
-@@ -93,7 +93,7 @@
+--- a/src/menus/player_name/welcome.c
++++ b/src/menus/player_name/welcome.c
+@@ -93,7 +93,7 @@ void STPLNMET_updateWelcome(NameDialog *task, NameDialogWindows *windows) {
  
  /* Creates the welcome (task), the first thing the screen shows */
  NameDialog *STPLNMET_createWelcome(PlayerNameScreen *screen) {

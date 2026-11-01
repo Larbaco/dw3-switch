@@ -27,7 +27,7 @@ has run the game on the new code).
 
 | Dependency | Pin (source) | Latest | Behind | Impact |
 |---|---|---|---|---|
-| `vendor/dw3_decomp` (ReGame-Labs) | `b9caa6c`, 2026-10-09 (submodule + `port/patches/DECOMP_PIN`) | `791932b`, 2026-10-15 | 9 commits (#40 to #48) | **Affects us, risky.** 11 of 131 patches conflict; `FIELD_PROGRESS_*` renamed; see 2.1 |
+| `vendor/dw3_decomp` (ReGame-Labs) | `791932b`, 2026-10-15 (submodule + `port/patches/DECOMP_PIN`); **bumped in B2, 2026-11-01** (was `b9caa6c`) | `791932b` | 0 | Done, see section 7 |
 | `vendor/psyz` (our fork Larbaco/psyz) | `192c006`, 2026-10-28 (submodule) | upstream Xeeynamo/psyz `f8780dc`, 2026-10-25 | merge-base `6d01339` (2026-10-11): 32 upstream commits not in the fork, 26 fork commits not upstream | **Affects us, risky.** 7 files / ~18 hunks conflict; overlaps our widescreen gutters, SPU buses, pacing; see 2.2 |
 | psyz `external/SDL` | `fa2c02b` = `release-3.4.16`, 2026-09-02 | `release-3.4.18`, 2026-10-02 | 73 commits, 1 release | Neutral (bugfixes, nothing we use). Safe |
 | psyz `nugget` | `020793e`, 2026-09-27 | `eb6cac5` (main) | 599 commits | We build only `nugget/bsdec` (movies). bsdec changed (`463ad72`, 2026-10-14, new lookup tables). **Risky for movies**, no benefit besides speed |
@@ -189,3 +189,59 @@ commit per dependency either way.
 * Actions bumps are only exercised by this PR's CI run; `switch-release.yml`
   (action-gh-release v3) can only be proven by a real tag, inputs were checked
   against v3's `action.yml`.
+
+## 7. Phase B2 results (2026-11-01)
+
+### 7.1 dw3_decomp b9caa6c to 791932b (this PR)
+
+* **Patches.** 28 of the 132 patches needed a rebase, not only the 11 the survey
+  listed: 0010 0018 0026 0029 0030 0031 0035 0041 0042 0043 0044 0050 0051 0055
+  0060 0076 0080 0102 0103 0104 0123 0140 0160 0165 0175 0179 0185 0191. The
+  other 17 stack on the 11 (they touch the same lines). Numbers and intent are
+  unchanged; the next free number is still 0201. The rebase was done in a scratch
+  clone (one commit per patch, `git rebase --onto 791932b`), and the patch files
+  were regenerated from the rebased commits. Check: the patched tree equals the
+  rebased branch tip tree for tree; `tools/apply_patches.sh --check` passes.
+* **STRETCH_SPRITE (#48).** The widescreen menu patches (0076, 0103, 0104,
+  0179) now pass the shifted x through upstream's `STRETCH_SPRITE` /
+  `ZOOM_SPRITE` macros instead of the expanded `setScale` / `setPivot` blocks.
+  `DRAW_PAGE_PANELS` has a `DRAW_PAGE_PANELS_AT(sprite, screen, i, left)` form
+  (`left` is `DW3_MENU_LEFT` for the widened screens); `DRAW_PAGE_PANELS` is the
+  same macro with no shift, for the demo screen, which 0076 never widened.
+  0175 (battle spiral gutters) follows upstream's `PrimPtr` union.
+* **Renames.** `FIELD_PROGRESS_*` is `STORY_*` (`include/engine/story.h`). Updated:
+  `port/walkthrough/walkthrough_steps.c`, `tools/replay/manifest.py`,
+  `docs/P6.35_WALKTHROUGH.md`, `tools/tests/test_walkthrough.py`. The walkthrough
+  tests read the decomp's text: they now read the `STORY_*` values from
+  `story.h`, expand the named flags, items and special conditions back to
+  `FLAG(g, i)` / `ITEM(k, i)` / `SPECIAL(n)`, put the `u16` code lists on one
+  line, and use `PLACE` / `PLACE_ARG` for what was `WARP_ARG`.
+  `test_overlay_table_stages.py` and `test_save_convert.py` ignore the JP
+  entries and accept `#elif VERSION_EU || VERSION_JP`.
+* **JP.** Not built, no support added. `VERSION_US=1` / `VERSION_EU=1` still
+  select the build; the JP blocks are never compiled.
+* **Builds.** PC US, EU and combined; the Switch combined `.nro` (digest-pinned
+  image). Same warnings as before (55 in the US PC build; the ScriptCommand
+  `create` pointer type, `OVL_NAME`).
+* **Tests.** `pytest tools/tests`: all pass.
+* **Replay (full tier, both regions, `--jobs 1`, `nice`, private refs copy).**
+  US 240, EU 296, cross-region 12, and `--bin-both --both-subset` with the
+  combined binary. Every picture drift and every failed check is also present,
+  with pixel-identical captures, on an unmodified `main` (`aed7647`) build of the
+  same scenarios, so there is **no regression from the bump** (0 px of
+  difference between the decomp bump and `main`). What fails on `main` and here
+  alike (stale expectations, not touched by this PR):
+  * `us|eu-glyphs-*` log lines expect `map=playstation`; the default is
+    `nintendo` since D2 (#408);
+  * controls and help pictures (`us|eu-controls-custom`, `us-help-field`,
+    `eu-help-field`, `eu-help-title`, `us|eu-options-mapbtn`);
+  * 112 to 125 px drifts in the field menu family (`eu-field-options*`,
+    `us|eu-nintendo-menu`, `eu-return-title*`, `eu-items-use-stays*`,
+    `eu-map-view-43|off`, `eu-restart-save-continue`,
+    `eu-options-region-relaunch-game`).
+    The combined-binary subset (`--bin-both --both-subset`, 65 scenarios, 865 checks)
+  gives the same 31 failed checks on this branch and on `main`, with identical captures.
+  References were not refreshed. A reference refresh for these is a separate
+  change.
+* **Evidence:** logs and the drift table in `tmp/evidence/2026-11-01-deps-b2/` of the main
+  checkout (not committed). Not covered: nothing ran on the Switch; the new `.nro` was only built.

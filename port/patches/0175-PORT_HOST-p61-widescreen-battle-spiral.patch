@@ -21,7 +21,7 @@ and its frame count. 0051's widened darkening quad is unchanged.
 
 --- a/src/field/field_mode/field.c
 +++ b/src/field/field_mode/field.c
-@@ -36,6 +36,12 @@
+@@ -37,6 +37,12 @@ static inline void requestBattleFiles(void) {
  #endif
  }
  
@@ -34,7 +34,7 @@ and its frame count. 0051's widened darkening quad is unchanged.
  /* Puts the transition's tiles where they cover the screen */
  static inline void placeTransitionTiles(void) {
      s32 row;
-@@ -128,7 +134,20 @@
+@@ -129,7 +135,20 @@ void FIELDSTG_playBattleTransition(FieldTask *task, FieldChildren *fieldChildren
      case 0:
          FILE_CACHE.markCached();
          setRECT(&FIELDSTG_screenRect, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
@@ -55,7 +55,7 @@ and its frame count. 0051's widened darkening quad is unchanged.
          layer = GFX.funcs.getLayer(FIELD_LAYER_BACK);
          layer->setBgColor(layer, 0, 0, 0);
          layer = GFX.funcs.getLayer(FIELD_LAYER_MAP);
-@@ -203,6 +222,43 @@
+@@ -204,6 +223,43 @@ void FIELDSTG_playBattleTransition(FieldTask *task, FieldChildren *fieldChildren
                      }
                  }
              }
@@ -71,31 +71,31 @@ and its frame count. 0051's widened darkening quad is unchanged.
 +                        continue;
 +                    }
 +                    /* opaque: a gutter has no picture under it to blend with */
-+                    setPolyFT4(poly);
-+                    setRGB0(poly, 0x80, 0x80, 0x80);
++                    setPolyFT4(prim.ft4);
++                    setRGB0(prim.ft4, 0x80, 0x80, 0x80);
 +                    if (k == 0) {
 +                        x = tile->x - sTransitionGutter;
-+                        poly->u0 = poly->u2 = TRANSITION_TILE_WIDTH - sTransitionGutter;
-+                        poly->u1 = poly->u3 = TRANSITION_TILE_WIDTH;
-+                        poly->tpage = getTPage(2, 0, TRANSITION_IMAGE_X - TRANSITION_TILE_WIDTH, 0);
++                        prim.ft4->u0 = prim.ft4->u2 = TRANSITION_TILE_WIDTH - sTransitionGutter;
++                        prim.ft4->u1 = prim.ft4->u3 = TRANSITION_TILE_WIDTH;
++                        prim.ft4->tpage = getTPage(2, 0, TRANSITION_IMAGE_X - TRANSITION_TILE_WIDTH, 0);
 +                    } else {
 +                        x = tile->x + TRANSITION_TILE_WIDTH;
-+                        poly->u0 = poly->u2 = 0;
-+                        poly->u1 = poly->u3 = sTransitionGutter;
-+                        poly->tpage = getTPage(2, 0, TRANSITION_IMAGE_X + SCREEN_WIDTH, 0);
++                        prim.ft4->u0 = prim.ft4->u2 = 0;
++                        prim.ft4->u1 = prim.ft4->u3 = sTransitionGutter;
++                        prim.ft4->tpage = getTPage(2, 0, TRANSITION_IMAGE_X + SCREEN_WIDTH, 0);
 +                    }
-+                    poly->x0 = poly->x2 = x;
-+                    poly->x1 = poly->x3 = x + sTransitionGutter;
++                    prim.ft4->x0 = prim.ft4->x2 = x;
++                    prim.ft4->x1 = prim.ft4->x3 = x + sTransitionGutter;
 +                    y = tile->y;
-+                    poly->v0 = poly->v1 = i * TRANSITION_TILE_HEIGHT;
-+                    poly->v2 = poly->v3 = i * TRANSITION_TILE_HEIGHT + TRANSITION_TILE_HEIGHT;
-+                    poly->y0 = poly->y1 = y;
-+                    poly->y2 = poly->y3 = y + TRANSITION_TILE_HEIGHT;
-+                    addPrim(ot, poly);
-+                    poly++;
++                    prim.ft4->v0 = prim.ft4->v1 = i * TRANSITION_TILE_HEIGHT;
++                    prim.ft4->v2 = prim.ft4->v3 = i * TRANSITION_TILE_HEIGHT + TRANSITION_TILE_HEIGHT;
++                    prim.ft4->y0 = prim.ft4->y1 = y;
++                    prim.ft4->y2 = prim.ft4->y3 = y + TRANSITION_TILE_HEIGHT;
++                    addPrim(ot, prim.ft4);
++                    prim.ft4++;
 +                }
 +            }
 +#endif
-             GFX.funcs.setPrim(poly);
+             GFX.funcs.setPrim(prim.ft4);
          } else {
              task->nextSubstate(task);

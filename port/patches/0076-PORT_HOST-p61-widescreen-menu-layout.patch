@@ -35,6 +35,59 @@ unreachable demo screen are unchanged.
  
  /* The name of this overlay's copy of a function of src/shared/ */
  #define OVL_NAME(name) STSTATUS_##name
+@@ -452,28 +459,32 @@ typedef struct StatusData {
+  * branches drawing the panel's last part: drawn once after the if, the saved
+  * registers change.
+  */
+-#define DRAW_PAGE_PANELS(sprite, screen, i)                                                           \
+-    for (i = 0; i < (screen)->count; i++) {                                                          \
+-        if ((screen)->pageFades[i].level != 0) {                                                     \
+-            if ((screen)->pageFades[i].level != ONE) {                                               \
+-                (sprite).setScale((screen)->pageFades[i].level, ONE, ONE);                           \
+-                (sprite).setPivot(0, i * 0x2E + 0x25);                                               \
+-                (sprite).draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x15, 0, i * 0x2E + 0x11);    \
+-                (sprite).setScale((screen)->pageFades[i].level, (screen)->pageFades[i].level, ONE);  \
+-                (sprite).setPivot(0x7C, i * 0x2E + 0x27);                                            \
+-                (sprite).draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x16, 0x67, i * 0x2E + 0x13); \
+-                (sprite).setScale((screen)->pageFades[i].level, ONE, ONE);                           \
+-                (sprite).setPivot(0, i * 0x2E + 0x25);                                               \
+-                (sprite).draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x17, 0, i * 0x2E + 0x11);    \
+-            } else {                                                                                 \
+-                (sprite).setScale(ONE, ONE, ONE);                                                    \
+-                (sprite).draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x15, 0, i * 0x2E + 0x11);    \
+-                (sprite).draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x16, 0x67, i * 0x2E + 0x13); \
+-                (sprite).draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x17, 0, i * 0x2E + 0x11);    \
+-            }                                                                                        \
+-        }                                                                                            \
++#define DRAW_PAGE_PANELS_AT(sprite, screen, i, left) \
++    for (i = 0; i < (screen)->count; i++) {                                                                       \
++        if ((screen)->pageFades[i].level != 0) {                                                                  \
++            if ((screen)->pageFades[i].level != ONE) {                                                            \
++                (sprite).setScale((screen)->pageFades[i].level, ONE, ONE);                                        \
++                (sprite).setPivot(left(0), i * 0x2E + 0x25);                                                      \
++                (sprite).draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x15, left(0), i * 0x2E + 0x11);      \
++                (sprite).setScale((screen)->pageFades[i].level, (screen)->pageFades[i].level, ONE);               \
++                (sprite).setPivot(left(0x7C), i * 0x2E + 0x27);                                                   \
++                (sprite).draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x16, left(0x67), i * 0x2E + 0x13);   \
++                (sprite).setScale((screen)->pageFades[i].level, ONE, ONE);                                        \
++                (sprite).setPivot(left(0), i * 0x2E + 0x25);                                                      \
++                (sprite).draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x17, left(0), i * 0x2E + 0x11);      \
++            } else {                                                                                              \
++                (sprite).setScale(ONE, ONE, ONE);                                                                 \
++                (sprite).draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x15, left(0), i * 0x2E + 0x11);      \
++                (sprite).draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x16, left(0x67), i * 0x2E + 0x13);   \
++                (sprite).draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x17, left(0), i * 0x2E + 0x11);      \
++            }                                                                                                     \
++        }                                                                                                         \
+     }
+ 
++/* The same without the widescreen shift, for the screens that are not widened */
++#define DW3_NO_SHIFT(x) (x)
++#define DRAW_PAGE_PANELS(sprite, screen, i) DRAW_PAGE_PANELS_AT(sprite, screen, i, DW3_NO_SHIFT)
++
+ /* card_screen.c */
+ void STSTATUS_updateScene(Task *task, FieldMenuScreen **child);
+ void STSTATUS_createCardWindows(PartyScreen *screen, PartyScreenWindows *windows);
 --- a/src/engine/menu/field_menu.c
 +++ b/src/engine/menu/field_menu.c
 @@ -1,7 +1,13 @@
@@ -51,7 +104,7 @@ unreachable demo screen are unchanged.
  #endif
  #include <libgs.h>
  #include <libetc.h>
-@@ -65,24 +71,24 @@
+@@ -65,24 +71,24 @@ void createFieldMenuWindows(FieldMenu *task, FieldMenuWindows *win) {
      s32 j;
      WindowPos *pos;
  
@@ -84,7 +137,7 @@ unreachable demo screen are unchanged.
          }
      }
  }
-@@ -211,7 +217,7 @@
+@@ -211,7 +217,7 @@ static inline void chooseFieldMenuOption(FieldMenu *task, FieldMenuWindows *win)
      }
      if (prev != task->cursor) {
          SOUND.playSound(SOUND_CURSOR);
@@ -93,61 +146,43 @@ unreachable demo screen are unchanged.
          return;
      }
      done = 0;
-@@ -422,12 +428,12 @@
+@@ -420,24 +426,24 @@ void updateFieldMenu(FieldMenu *task, FieldMenuWindows *win) {
+         obj.setFollowScroll(0);
+         for (i = 0, y = 0x11, y2 = 0x25; i < 3; i++) {
              if (task->panels[i].level != 0) {
-                 if (task->panels[i].level != ONE) {
-                     obj.setScale(task->panels[i].level, ONE, ONE);
--                    obj.setPivot(0, y2);
-+                    obj.setPivot(DW3_MENU_LEFT(0), y2);
-                 } else {
-                     obj.setScale(ONE, ONE, ONE);
-                 }
+-                STRETCH_SPRITE(obj, task->panels[i].level, 0, y2);
 -                obj.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x15, 0, y);
 -                obj.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x17, 0, y);
++                STRETCH_SPRITE(obj, task->panels[i].level, DW3_MENU_LEFT(0), y2);
 +                obj.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x15, DW3_MENU_LEFT(0), y);
 +                obj.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x17, DW3_MENU_LEFT(0), y);
              }
              y += 0x2E;
              y2 += 0x2E;
-@@ -435,29 +441,29 @@
+         }
          if (task->panels[0].level != 0) {
-             if (task->panels[0].level != ONE) {
-                 obj.setScale(task->panels[0].level, ONE, ONE);
--                obj.setPivot(0x140, 0x19);
-+                obj.setPivot(DW3_MENU_RIGHT(0x140), 0x19);
-             } else {
-                 obj.setScale(ONE, ONE, ONE);
-             }
+-            STRETCH_SPRITE(obj, task->panels[0].level, 0x140, 0x19);
 -            obj.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x18, 0x22, 0xD);
++            STRETCH_SPRITE(obj, task->panels[0].level, DW3_MENU_RIGHT(0x140), 0x19);
 +            obj.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x18, DW3_MENU_RIGHT(0x22), 0xD);
          }
          if (task->panels[1].level != 0) {
-             if (task->panels[1].level != ONE) {
-                 obj.setScale(task->panels[1].level, ONE, ONE);
--                obj.setPivot(0x140, 0x52);
-+                obj.setPivot(DW3_MENU_RIGHT(0x140), 0x52);
-             } else {
-                 obj.setScale(ONE, ONE, ONE);
-             }
+-            STRETCH_SPRITE(obj, task->panels[1].level, 0x140, 0x52);
 -            obj.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x1C - task->extraOption, 0xA8, 0x28);
++            STRETCH_SPRITE(obj, task->panels[1].level, DW3_MENU_RIGHT(0x140), 0x52);
 +            obj.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x1C - task->extraOption, DW3_MENU_RIGHT(0xA8), 0x28);
          }
          if (task->panels[2].level != 0) {
-             if (task->panels[2].level != ONE) {
-                 obj.setScale(task->panels[2].level, ONE, ONE);
--                obj.setPivot(0, 0xA8);
-+                obj.setPivot(DW3_MENU_LEFT(0), 0xA8);
-             } else {
-                 obj.setScale(ONE, ONE, ONE);
-             }
+-            STRETCH_SPRITE(obj, task->panels[2].level, 0, 0xA8);
 -            obj.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x1A, 0, 0x9E);
++            STRETCH_SPRITE(obj, task->panels[2].level, DW3_MENU_LEFT(0), 0xA8);
 +            obj.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x1A, DW3_MENU_LEFT(0), 0x9E);
          }
          break;
      case 2:
 --- a/src/menus/field_menu/card_screen.c
 +++ b/src/menus/field_menu/card_screen.c
-@@ -26,25 +26,25 @@
+@@ -26,25 +26,25 @@ void STSTATUS_createCardWindows(PartyScreen *screen, PartyScreenWindows *windows
  
      for (j = 0; j < 3; j++) {
          pos = &STSTATUS_data.layout[0];
@@ -181,15 +216,12 @@ unreachable demo screen are unchanged.
      windows->cursor->setVisible(windows->cursor, 0);
      children = screen->children;
      for (i = 0; i < screen->childCount - 2; i++, children++) {
-@@ -126,14 +126,14 @@
+@@ -124,20 +124,20 @@ void STSTATUS_drawCardScreen(PartyScreen *screen) {
+     for (i = 0; i < screen->count; i++) {
+         level = screen->pageFades[i].level;
          if (level != 0) {
-             if (level != ONE) {
-                 sprite.setScale(level, level, ONE);
--                sprite.setPivot(0x7C, i * 46 + 0x27);
-+                sprite.setPivot(DW3_MENU_LEFT(0x7C), i * 46 + 0x27);
-             } else {
-                 sprite.setScale(ONE, ONE, ONE);
-             }
+-            ZOOM_SPRITE(sprite, level, 0x7C, i * 46 + 0x27);
++            ZOOM_SPRITE(sprite, level, DW3_MENU_LEFT(0x7C), i * 46 + 0x27);
              member = GAME.funcs.getPartyMember(i);
              sprite.setTexture(0x280, 0x100);
              sprite.draw(FILE_CACHE.getEntry(FILE_STATUS_SPRITES << 16),
@@ -198,51 +230,19 @@ unreachable demo screen are unchanged.
          }
      }
      sprite.setTexture(0x140, 0);
-@@ -143,19 +143,19 @@
-             /* both branches draw the frame's last part: the match depends on it */
-             if (level != ONE) {
-                 sprite.setScale(level, ONE, ONE);
--                sprite.setPivot(0, i * 46 + 0x25);
--                sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x15, 0, i * 46 + 0x11);
-+                sprite.setPivot(DW3_MENU_LEFT(0), i * 46 + 0x25);
-+                sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x15, DW3_MENU_LEFT(0), i * 46 + 0x11);
-                 sprite.setScale(screen->pageFades[i].level, screen->pageFades[i].level, ONE);
--                sprite.setPivot(0x7C, i * 46 + 0x27);
--                sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x16, 0x67, i * 46 + 0x13);
-+                sprite.setPivot(DW3_MENU_LEFT(0x7C), i * 46 + 0x27);
-+                sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x16, DW3_MENU_LEFT(0x67), i * 46 + 0x13);
-                 sprite.setScale(screen->pageFades[i].level, ONE, ONE);
--                sprite.setPivot(0, i * 46 + 0x25);
--                sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x17, 0, i * 46 + 0x11);
-+                sprite.setPivot(DW3_MENU_LEFT(0), i * 46 + 0x25);
-+                sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x17, DW3_MENU_LEFT(0), i * 46 + 0x11);
-             } else {
-                 sprite.setScale(ONE, ONE, ONE);
--                sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x15, 0, i * 46 + 0x11);
--                sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x16, 0x67, i * 46 + 0x13);
--                sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x17, 0, i * 46 + 0x11);
-+                sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x15, DW3_MENU_LEFT(0), i * 46 + 0x11);
-+                sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x16, DW3_MENU_LEFT(0x67), i * 46 + 0x13);
-+                sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x17, DW3_MENU_LEFT(0), i * 46 + 0x11);
-             }
-         }
-     }
-@@ -163,12 +163,12 @@
+-    DRAW_PAGE_PANELS(sprite, screen, i);
++    DRAW_PAGE_PANELS_AT(sprite, screen, i, DW3_MENU_LEFT);
+     level = screen->fades[1].level;
      if (level != 0) {
-         if (level != ONE) {
-             sprite.setScale(level, ONE, ONE);
--            sprite.setPivot(0, 0xD3);
-+            sprite.setPivot(DW3_MENU_LEFT(0), 0xD3);
-         } else {
-             sprite.setScale(ONE, ONE, ONE);
-         }
+-        STRETCH_SPRITE(sprite, level, 0, 0xD3);
++        STRETCH_SPRITE(sprite, level, DW3_MENU_LEFT(0), 0xD3);
          sprite.setTexture(0x280, 0x100);
 -        sprite.draw(FILE_CACHE.getEntry(FILE_STATUS_SPRITES << 16), 0x20, 0, 0xC2);
 +        sprite.draw(DW3_MENU_BAND(FILE_CACHE.getEntry(FILE_STATUS_SPRITES << 16), 0x20, 160), 0x20, 0, 0xC2);
      }
      if (screen->fade.level != 0) {
          initSpriteDrawer(&sprite);
-@@ -177,9 +177,9 @@
+@@ -146,9 +146,9 @@ void STSTATUS_drawCardScreen(PartyScreen *screen) {
          level = screen->fade.level;
          if (level != ONE) {
              sprite.setScale(level, ONE, ONE);
@@ -254,7 +254,7 @@ unreachable demo screen are unchanged.
      }
  }
  
-@@ -280,7 +280,7 @@
+@@ -249,7 +249,7 @@ static inline void STSTATUS_chooseCardOption(PartyScreen *screen, PartyScreenWin
      }
      if (choice != screen->choice) {
          SOUND.playSound(SOUND_CURSOR);
@@ -265,7 +265,7 @@ unreachable demo screen are unchanged.
          SOUND.playSound(SOUND_SELECT);
 --- a/src/menus/field_menu/digivolve_panel.c
 +++ b/src/menus/field_menu/digivolve_panel.c
-@@ -11,39 +11,39 @@
+@@ -11,39 +11,39 @@ void STSTATUS_createDigivolveWindows(DigivolvePanel *panel, DigivolvePanelWindow
      s32 i;
  
      for (i = 0; i < 3; i++) {
@@ -322,10 +322,10 @@ unreachable demo screen are unchanged.
  }
  
  /* The Digimon in the partner's three slots, the one it is highlighted, and
-@@ -235,17 +235,17 @@
-     s32 i;
+@@ -236,17 +236,17 @@ void STSTATUS_scrollTechList(DigivolvePanel *panel, DigivolvePanelWindows *windo
  
-     /* the match depends on the (s16) casts in the loops */
+     /* the match depends on the (s16) casts in the loops: without them, the
+        0x7C and 0x88 go into i * 14's induction variable */
 -    windows->entryName->setPos(windows->entryName, 0x4F, panel->scroll.value + 0x68);
 -    windows->skillLabel->setPos(windows->skillLabel, 0xEB, panel->scroll.value + 0x68);
 -    windows->skillLevel->setPos(windows->skillLevel, 0x12F, panel->scroll.value + 0x68);
@@ -346,7 +346,7 @@ unreachable demo screen are unchanged.
      }
  }
  
-@@ -300,28 +300,28 @@
+@@ -301,18 +301,18 @@ void STSTATUS_drawDigivolvePanel(DigivolvePanel *panel) {
      if (panel->fades[1].level != 0) {
          if (panel->fades[1].level != ONE) {
              sprite.setScale(panel->fades[1].level, ONE, ONE);
@@ -357,31 +357,21 @@ unreachable demo screen are unchanged.
 +        sprite.draw(FILE_CACHE.getEntry(FILE_STATUS_SPRITES << 16), 0x24, DW3_MENU_RIGHT(0xA8), 0x28);
      }
      if (panel->fades[2].level != 0) {
-         if (panel->fades[2].level != ONE) {
-             sprite.setScale(panel->fades[2].level, ONE, ONE);
--            sprite.setPivot(0x140, 0x41);
-+            sprite.setPivot(DW3_MENU_RIGHT(0x140), 0x41);
-         } else {
-             sprite.setScale(ONE, ONE, ONE);
-         }
+-        STRETCH_SPRITE(sprite, panel->fades[2].level, 0x140, 0x41);
 -        sprite.draw(FILE_CACHE.getEntry(FILE_STATUS_SPRITES << 16), 0x26, 0xA8, 0x28);
++        STRETCH_SPRITE(sprite, panel->fades[2].level, DW3_MENU_RIGHT(0x140), 0x41);
 +        sprite.draw(FILE_CACHE.getEntry(FILE_STATUS_SPRITES << 16), 0x26, DW3_MENU_RIGHT(0xA8), 0x28);
      }
      if (panel->fades[3].level != 0) {
-         if (panel->fades[3].level != ONE) {
-             sprite.setScale(panel->fades[3].level, ONE, ONE);
--            sprite.setPivot(0x140, 0xA2);
-+            sprite.setPivot(DW3_MENU_RIGHT(0x140), 0xA2);
-         } else {
-             sprite.setScale(ONE, ONE, ONE);
-         }
+-        STRETCH_SPRITE(sprite, panel->fades[3].level, 0x140, 0xA2);
++        STRETCH_SPRITE(sprite, panel->fades[3].level, DW3_MENU_RIGHT(0x140), 0xA2);
          sprite.setTexture(0x140, 0);
 -        sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x14, 0x4F, panel->scroll.value + 0x7C);
 +        sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x14, DW3_MENU_RIGHT(0x4F), panel->scroll.value + 0x7C);
          if (panel->listShown) {
              id = GAME.funcs.getPartyMember(panel->member);
              if (panel->fromEntry) {
-@@ -329,7 +329,7 @@
+@@ -320,7 +320,7 @@ void STSTATUS_drawDigivolvePanel(DigivolvePanel *panel) {
                  for (i = 0; i < 6; i++) {
                      tech = entry.skills[i] & SKILL_ID;
                      if (tech != 0) {
@@ -390,7 +380,7 @@ unreachable demo screen are unchanged.
                                      panel->scroll.value + 0x88 + i * 14);
                      }
                  }
-@@ -338,14 +338,14 @@
+@@ -329,14 +329,14 @@ void STSTATUS_drawDigivolvePanel(DigivolvePanel *panel) {
                  for (i = 0; i < 6; i++) {
                      tech = data->skills[i + 1];
                      if (tech > 0) {
@@ -407,7 +397,7 @@ unreachable demo screen are unchanged.
      }
      if (panel->fades[4].level != 0) {
          if (panel->blink) {
-@@ -358,27 +358,27 @@
+@@ -349,17 +349,17 @@ void STSTATUS_drawDigivolvePanel(DigivolvePanel *panel) {
              }
              sprite.setTexture(0x140, 0);
              sprite.setClutRow(panel->blinkFrame);
@@ -415,32 +405,22 @@ unreachable demo screen are unchanged.
 +            sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0xA, DW3_MENU_RIGHT(0x123), 0xD6);
              sprite.setClutRow(0);
          }
-         if (panel->fades[4].level != ONE) {
-             sprite.setScale(panel->fades[4].level, ONE, ONE);
--            sprite.setPivot(0, 0xD3);
-+            sprite.setPivot(DW3_MENU_LEFT(0), 0xD3);
-         } else {
-             sprite.setScale(ONE, ONE, ONE);
-         }
+-        STRETCH_SPRITE(sprite, panel->fades[4].level, 0, 0xD3);
++        STRETCH_SPRITE(sprite, panel->fades[4].level, DW3_MENU_LEFT(0), 0xD3);
          sprite.setTexture(0x280, 0x100);
 -        sprite.draw(FILE_CACHE.getEntry(FILE_STATUS_SPRITES << 16), 0x20, 0, 0xC2);
 +        sprite.draw(DW3_MENU_BAND(FILE_CACHE.getEntry(FILE_STATUS_SPRITES << 16), 0x20, 160), 0x20, 0, 0xC2);
      }
      if (panel->fades[0].level != 0) {
-         if (panel->fades[0].level != ONE) {
-             sprite.setScale(panel->fades[0].level, ONE, ONE);
--            sprite.setPivot(0x140, 0xD);
-+            sprite.setPivot(DW3_MENU_RIGHT(0x140), 0xD);
-         } else {
-             sprite.setScale(ONE, ONE, ONE);
-         }
+-        STRETCH_SPRITE(sprite, panel->fades[0].level, 0x140, 0xD);
++        STRETCH_SPRITE(sprite, panel->fades[0].level, DW3_MENU_RIGHT(0x140), 0xD);
          sprite.setTexture(0x140, 0);
 -        sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x18, 0x22, 0xD);
 +        sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x18, DW3_MENU_RIGHT(0x22), 0xD);
      }
  }
  
-@@ -404,7 +404,7 @@
+@@ -385,7 +385,7 @@ static inline void STSTATUS_openDigivolveSlots(DigivolvePanel *panel, DigivolveP
  static inline void STSTATUS_openDigivolveStats(DigivolvePanel *panel, DigivolvePanelWindows *windows) {
      if (STSTATUS_data.funcs.updateFade(&panel->fades[3])) {
          STSTATUS_showDigivolveStats(panel, windows, 1);
@@ -449,7 +429,7 @@ unreachable demo screen are unchanged.
          windows->slotCursor->setVisible(windows->slotCursor, 1);
          panel->substate++;
      }
-@@ -421,7 +421,7 @@
+@@ -402,7 +402,7 @@ static inline void STSTATUS_chooseDigivolveSlot(DigivolvePanel *panel, Digivolve
          if (PAD_PRESSED(PAD_LEFT)) {
              panel->fromEntry = 0;
              STSTATUS_showDigivolveStats(panel, windows, 1);
@@ -458,7 +438,7 @@ unreachable demo screen are unchanged.
              SOUND.playSound(SOUND_CURSOR);
              return;
          }
-@@ -438,7 +438,7 @@
+@@ -419,7 +419,7 @@ static inline void STSTATUS_chooseDigivolveSlot(DigivolvePanel *panel, Digivolve
          }
          if (slot != panel->slot) {
              STSTATUS_showDigivolveStats(panel, windows, 1);
@@ -467,7 +447,7 @@ unreachable demo screen are unchanged.
              SOUND.playSound(SOUND_CURSOR);
          } else if (PAD_PRESSED(PAD_CROSS)) {
              SOUND.playSound(SOUND_SELECT);
-@@ -450,7 +450,7 @@
+@@ -431,7 +431,7 @@ static inline void STSTATUS_chooseDigivolveSlot(DigivolvePanel *panel, Digivolve
      } else if (panel->slotCount > 0 && PAD_PRESSED(PAD_RIGHT)) {
          panel->fromEntry = 1;
          STSTATUS_showDigivolveStats(panel, windows, 1);
@@ -476,7 +456,7 @@ unreachable demo screen are unchanged.
          SOUND.playSound(SOUND_CURSOR);
      } else if (PAD_PRESSED(PAD_CROSS)) {
          SOUND.playSound(SOUND_SELECT);
-@@ -502,7 +502,7 @@
+@@ -483,7 +483,7 @@ static inline void STSTATUS_answerDigivolveQuestion(DigivolvePanel *panel, Digiv
      }
      if (option != panel->option) {
          SOUND.playSound(SOUND_CURSOR);
@@ -485,7 +465,7 @@ unreachable demo screen are unchanged.
      }
      if (PAD_PRESSED(PAD_CROSS)) {
          SOUND.playSound(SOUND_SELECT);
-@@ -729,7 +729,7 @@
+@@ -710,7 +710,7 @@ static inline void STSTATUS_showPartnerTech(DigivolvePanel *panel, DigivolvePane
          data = &DIGIMON_DATA[GAME.funcs.getPartyMember(panel->member)];
          tech = data->skills[6];
          panel->tech = 5;
@@ -494,16 +474,16 @@ unreachable demo screen are unchanged.
          windows->listCursor->setVisible(windows->listCursor, 1);
          windows->help->setString(windows->help, FILE_CACHE.load(TEXT_FILE(TEXT_SKILL_INFO)), tech);
          windows->mpLabel->setString(windows->mpLabel, FILE_CACHE.load(TEXT_FILE(TEXT_STATUS)), 3);
-@@ -869,7 +869,7 @@
-             }
+@@ -851,7 +851,7 @@ void STSTATUS_runDigivolvePanel(DigivolvePanel *panel, DigivolvePanelWindows *wi
              if (panel->techCount != 0) {
-                 /* the match depends on this order of the terms */
+                 /* the match depends on this order of the terms, here and in case
+                    0x2C: the scroll first, or the row last, gives other adds */
 -                windows->listCursor->setPos(windows->listCursor, 0xA9, panel->tech * 0xE + 0x88 + panel->scroll.value);
 +                windows->listCursor->setPos(windows->listCursor, DW3_MENU_RIGHT(0xA9), panel->tech * 0xE + 0x88 + panel->scroll.value);
                  windows->listCursor->setVisible(windows->listCursor, 1);
                  STSTATUS_showTechCost(panel, windows, 1);
                  panel->substate++; /* in both branches: the match depends on it */
-@@ -902,7 +902,7 @@
+@@ -884,7 +884,7 @@ void STSTATUS_runDigivolvePanel(DigivolvePanel *panel, DigivolvePanelWindows *wi
              }
              if (old != panel->tech) {
                  SOUND.playSound(SOUND_CURSOR);
@@ -536,15 +516,14 @@ unreachable demo screen are unchanged.
 -        windows->rows[i].name = createTextWindow(panel->layer, 1, 0xA0, i * 14 + 0x4B);
 -        windows->rows[i].times = createTextWindow(panel->layer, 1, 0x10D, i * 14 + 0x4B);
 -        windows->rows[i].count = createTextWindow(panel->layer, 1, 0x120, i * 14 + 0x4B);
--    }
++        windows->rows[i].name = createTextWindow(panel->layer, 1, DW3_MENU_RIGHT(0xA0), i * 14 + 0x4B);
++        windows->rows[i].times = createTextWindow(panel->layer, 1, DW3_MENU_RIGHT(0x10D), i * 14 + 0x4B);
++        windows->rows[i].count = createTextWindow(panel->layer, 1, DW3_MENU_RIGHT(0x120), i * 14 + 0x4B);
+     }
 -    windows->help = createTextWindow(panel->layer, 1, 0x14, 0xC6);
 -    windows->kind = createTextWindow(panel->layer, 1, 0x14, 0xD5);
 -    windows->slotTitle = createTextWindow(panel->layer, 1, 0xA7, 0x13);
 -    windows->slotItem = createTextWindow(panel->layer, 1, 0xC0, 0x23);
-+        windows->rows[i].name = createTextWindow(panel->layer, 1, DW3_MENU_RIGHT(0xA0), i * 14 + 0x4B);
-+        windows->rows[i].times = createTextWindow(panel->layer, 1, DW3_MENU_RIGHT(0x10D), i * 14 + 0x4B);
-+        windows->rows[i].count = createTextWindow(panel->layer, 1, DW3_MENU_RIGHT(0x120), i * 14 + 0x4B);
-+    }
 +    windows->help = createTextWindow(panel->layer, 1, DW3_MENU_LEFT(0x14), 0xC6);
 +    windows->kind = createTextWindow(panel->layer, 1, DW3_MENU_LEFT(0x14), 0xD5);
 +    windows->slotTitle = createTextWindow(panel->layer, 1, DW3_MENU_RIGHT(0xA7), 0x13);
@@ -552,7 +531,7 @@ unreachable demo screen are unchanged.
  }
  
  /* The partner's equipment, or the slots' names where it has none */
-@@ -157,34 +157,34 @@
+@@ -157,34 +157,34 @@ void STSTATUS_drawEquipPanel(EquipPanel *panel) {
          level = panel->panels[0].level;
          if (level != ONE) {
              sprite.setScale(level, ONE, ONE);
@@ -593,7 +572,7 @@ unreachable demo screen are unchanged.
          } else {
              sprite.setScale(ONE, ONE, ONE);
              for (i = 0; i < 8; i++) {
-@@ -193,10 +193,10 @@
+@@ -193,10 +193,10 @@ void STSTATUS_drawEquipPanel(EquipPanel *panel) {
                      item = panel->items[index];
                      if (item == -1 || item > 0) {
                          sprite.setTexture(0x280, 0x100);
@@ -606,7 +585,7 @@ unreachable demo screen are unchanged.
                          }
                      }
                  }
-@@ -209,38 +209,38 @@
+@@ -209,38 +209,38 @@ void STSTATUS_drawEquipPanel(EquipPanel *panel) {
                  sprite.setTexture(0x280, 0x100);
                  if (panel->arrowShown) {
                      if (panel->scroll > 0) {
@@ -639,7 +618,7 @@ unreachable demo screen are unchanged.
          } else {
              sprite.setScale(ONE, ONE, ONE);
              if (panel->showSlot) {
-                 item = *(stats->equip + panel->slot); /* the match depends on this form */
+                 item = *(stats->equip + panel->slot); /* the match depends on this form: equip[slot] adds the base to the index */
                  if (item > 0) {
                      sprite.setTexture(0x140, 0);
 -                    sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), ITEM_FUNCS.getCategory(item), 0xB2, 0x23);
@@ -653,7 +632,7 @@ unreachable demo screen are unchanged.
      }
  }
  
-@@ -285,7 +285,7 @@
+@@ -285,7 +285,7 @@ static inline void STSTATUS_chooseEquipSlot(EquipPanel *panel, EquipPanelWindows
      }
      if (oldSlot != panel->slot) {
          SOUND.playSound(SOUND_CURSOR);
@@ -662,7 +641,7 @@ unreachable demo screen are unchanged.
      } else if (PAD_PRESSED(PAD_CROSS)) {
          SOUND.playSound(SOUND_SELECT);
          n = 1;
-@@ -344,12 +344,12 @@
+@@ -344,12 +344,12 @@ static inline void STSTATUS_openEquipList(EquipPanel *panel, EquipPanelWindows *
  static inline void STSTATUS_enterEquipList(EquipPanel *panel, EquipPanelWindows *windows) {
      if (STSTATUS_data.funcs.updateFade(&panel->panels[2])) {
          STSTATUS_showEquipList(panel, windows, 1);
@@ -677,7 +656,7 @@ unreachable demo screen are unchanged.
              windows->scrollBar->setRange(windows->scrollBar, 0x4E, 0xB3);
              windows->scrollBar->setCount(windows->scrollBar, 8, panel->count);
              windows->scrollBar->setPos(windows->scrollBar, 0);
-@@ -408,7 +408,7 @@
+@@ -408,7 +408,7 @@ static inline void STSTATUS_chooseEquipItem(EquipPanel *panel, EquipPanelWindows
      }
      if (oldCursor != panel->cursor) {
          SOUND.playSound(SOUND_CURSOR);
@@ -688,7 +667,7 @@ unreachable demo screen are unchanged.
              windows->scrollBar->setPos(windows->scrollBar, panel->cursor + panel->scroll);
 --- a/src/menus/field_menu/item_list.c
 +++ b/src/menus/field_menu/item_list.c
-@@ -10,7 +10,7 @@
+@@ -10,7 +10,7 @@ void STSTATUS_createItemListWindows(ItemList *panel, ItemListWindows *windows) {
      s32 i;
      s32 j;
  
@@ -697,7 +676,7 @@ unreachable demo screen are unchanged.
      for (i = 0; i < 8; i++) {
          for (j = 0; j < 2; j++) {
              window = createTextWindow(panel->layer, 1, j * 0x83 + 0x38, i * 14 + 0x25);
-@@ -290,25 +290,25 @@
+@@ -290,15 +290,15 @@ void STSTATUS_drawItemList(ItemList *panel) {
      }
      if (panel->fades[1].level != ONE) {
          sprite.setScale(panel->fades[1].level, ONE, ONE);
@@ -706,31 +685,21 @@ unreachable demo screen are unchanged.
      }
 -    sprite.draw(FILE_CACHE.getEntry(FILE_STATUS_SPRITES << 16), 0x30, 0xC, 0x12);
 +    sprite.draw(FILE_CACHE.getEntry(FILE_STATUS_SPRITES << 16), 0x30, DW3_MENU_LEFT(0xC), 0x12);
-     if (panel->fades[0].level != ONE) {
-         sprite.setScale(ONE, panel->fades[0].level, ONE);
-         sprite.setPivot(0xA0, 0x60);
-     } else {
-         sprite.setScale(ONE, ONE, ONE);
-     }
+     STRETCH_SPRITE_V(sprite, panel->fades[0].level, 0xA0, 0x60);
 -    sprite.draw(FILE_CACHE.getEntry(FILE_STATUS_SPRITES << 16), 0x2E, 0, 0x1E);
 +    sprite.draw(DW3_MENU_BAND(FILE_CACHE.getEntry(FILE_STATUS_SPRITES << 16), 0x2E, 160), 0x2E, 0, 0x1E);
      if (panel->fades[2].level) {
          sprite.setLayerId(panel->layer, panel->depth - 2);
-         if (panel->fades[2].level != ONE) {
-             sprite.setScale(panel->fades[2].level, ONE, ONE);
--            sprite.setPivot(0x140, 0x26);
-+            sprite.setPivot(DW3_MENU_RIGHT(0x140), 0x26);
-         } else {
-             sprite.setScale(ONE, ONE, ONE);
-         }
+-        STRETCH_SPRITE(sprite, panel->fades[2].level, 0x140, 0x26);
 -        sprite.draw(FILE_CACHE.getEntry(FILE_STATUS_SPRITES << 16), 0x26, 0xA0, 0x12);
++        STRETCH_SPRITE(sprite, panel->fades[2].level, DW3_MENU_RIGHT(0x140), 0x26);
 +        sprite.draw(FILE_CACHE.getEntry(FILE_STATUS_SPRITES << 16), 0x26, DW3_MENU_RIGHT(0xA0), 0x12);
      }
  }
  
 --- a/src/menus/field_menu/item_screen.c
 +++ b/src/menus/field_menu/item_screen.c
-@@ -14,39 +14,39 @@
+@@ -14,39 +14,39 @@ void STSTATUS_createItemWindows(ItemScreen *screen, ItemScreenWindows *windows)
      s32 j;
  
      pos = &STSTATUS_data.layout[11];
@@ -788,15 +757,12 @@ unreachable demo screen are unchanged.
  }
  
  /* As STSTATUS_showCardPage */
-@@ -291,14 +291,14 @@
+@@ -289,27 +289,27 @@ void STSTATUS_drawItemScreen(ItemScreen *screen) {
+     STSTATUS_animateItemPortraits(screen);
+     for (i = 0; i < screen->count; i++) {
          if (screen->pageFades[i].level != 0) {
-             if (screen->pageFades[i].level != ONE) {
-                 sprite.setScale(screen->pageFades[i].level, screen->pageFades[i].level, ONE);
--                sprite.setPivot(0x7C, i * 0x2E + 0x27);
-+                sprite.setPivot(DW3_MENU_LEFT(0x7C), i * 0x2E + 0x27);
-             } else {
-                 sprite.setScale(ONE, ONE, ONE);
-             }
+-            ZOOM_SPRITE(sprite, screen->pageFades[i].level, 0x7C, i * 0x2E + 0x27);
++            ZOOM_SPRITE(sprite, screen->pageFades[i].level, DW3_MENU_LEFT(0x7C), i * 0x2E + 0x27);
              id = GAME.funcs.getPartyMember(i);
              sprite.setTexture(0x280, 0x100);
              sprite.draw(FILE_CACHE.getEntry(FILE_STATUS_SPRITES << 16),
@@ -805,71 +771,30 @@ unreachable demo screen are unchanged.
                          i * 0x2E + 0x13);
          }
      }
-@@ -308,48 +308,48 @@
-             /* both branches draw the frame's last part: the match depends on it */
-             if (screen->pageFades[i].level != ONE) {
-                 sprite.setScale(screen->pageFades[i].level, ONE, ONE);
--                sprite.setPivot(0, i * 0x2E + 0x25);
--                sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x15, 0, i * 0x2E + 0x11);
-+                sprite.setPivot(DW3_MENU_LEFT(0), i * 0x2E + 0x25);
-+                sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x15, DW3_MENU_LEFT(0), i * 0x2E + 0x11);
-                 sprite.setScale(screen->pageFades[i].level, screen->pageFades[i].level, ONE);
--                sprite.setPivot(0x7C, i * 0x2E + 0x27);
--                sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x16, 0x67, i * 0x2E + 0x13);
-+                sprite.setPivot(DW3_MENU_LEFT(0x7C), i * 0x2E + 0x27);
-+                sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x16, DW3_MENU_LEFT(0x67), i * 0x2E + 0x13);
-                 sprite.setScale(screen->pageFades[i].level, ONE, ONE);
--                sprite.setPivot(0, i * 0x2E + 0x25);
--                sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x17, 0, i * 0x2E + 0x11);
-+                sprite.setPivot(DW3_MENU_LEFT(0), i * 0x2E + 0x25);
-+                sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x17, DW3_MENU_LEFT(0), i * 0x2E + 0x11);
-             } else {
-                 sprite.setScale(ONE, ONE, ONE);
--                sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x15, 0, i * 0x2E + 0x11);
--                sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x16, 0x67, i * 0x2E + 0x13);
--                sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x17, 0, i * 0x2E + 0x11);
-+                sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x15, DW3_MENU_LEFT(0), i * 0x2E + 0x11);
-+                sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x16, DW3_MENU_LEFT(0x67), i * 0x2E + 0x13);
-+                sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x17, DW3_MENU_LEFT(0), i * 0x2E + 0x11);
-             }
-         }
-     }
+     sprite.setTexture(0x140, 0);
+-    DRAW_PAGE_PANELS(sprite, screen, i);
++    DRAW_PAGE_PANELS_AT(sprite, screen, i, DW3_MENU_LEFT);
      if (screen->fades[0].level != 0) {
-         if (screen->fades[0].level != ONE) {
-             sprite.setScale(screen->fades[0].level, ONE, ONE);
--            sprite.setPivot(0x140, 0x19);
-+            sprite.setPivot(DW3_MENU_RIGHT(0x140), 0x19);
-         } else {
-             sprite.setScale(ONE, ONE, ONE);
-         }
+-        STRETCH_SPRITE(sprite, screen->fades[0].level, 0x140, 0x19);
 -        sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x18, 0x22, 0xD);
++        STRETCH_SPRITE(sprite, screen->fades[0].level, DW3_MENU_RIGHT(0x140), 0x19);
 +        sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x18, DW3_MENU_RIGHT(0x22), 0xD);
      }
      if (screen->fades2[0].level != 0) {
-         if (screen->fades2[0].level != ONE) {
-             sprite.setScale(screen->fades2[0].level, ONE, ONE);
--            sprite.setPivot(0x140, 0x52);
-+            sprite.setPivot(DW3_MENU_RIGHT(0x140), 0x52);
-         } else {
-             sprite.setScale(ONE, ONE, ONE);
-         }
+-        STRETCH_SPRITE(sprite, screen->fades2[0].level, 0x140, 0x52);
 -        sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x1C, 0xA8, 0x28);
++        STRETCH_SPRITE(sprite, screen->fades2[0].level, DW3_MENU_RIGHT(0x140), 0x52);
 +        sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x1C, DW3_MENU_RIGHT(0xA8), 0x28);
      }
      if (screen->fades2[1].level != 0) {
-         if (screen->fades2[1].level != ONE) {
-             sprite.setScale(screen->fades2[1].level, ONE, ONE);
--            sprite.setPivot(0, 0xA8);
-+            sprite.setPivot(DW3_MENU_LEFT(0), 0xA8);
-         } else {
-             sprite.setScale(ONE, ONE, ONE);
-         }
+-        STRETCH_SPRITE(sprite, screen->fades2[1].level, 0, 0xA8);
 -        sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x1A, 0, 0x9E);
++        STRETCH_SPRITE(sprite, screen->fades2[1].level, DW3_MENU_LEFT(0), 0xA8);
 +        sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x1A, DW3_MENU_LEFT(0), 0x9E);
      }
      if (screen->fades[1].level != 0) {
          if (screen->blink) {
-@@ -362,22 +362,22 @@
+@@ -322,17 +322,17 @@ void STSTATUS_drawItemScreen(ItemScreen *screen) {
              }
              sprite.setTexture(0x140, 0);
              sprite.setClutRow(screen->blinkFrame);
@@ -877,13 +802,8 @@ unreachable demo screen are unchanged.
 +            sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0xA, DW3_MENU_RIGHT(0x123), 0xD6);
              sprite.setClutRow(0);
          }
-         if (screen->fades[1].level != ONE) {
-             sprite.setScale(screen->fades[1].level, ONE, ONE);
--            sprite.setPivot(0, 0xD3);
-+            sprite.setPivot(DW3_MENU_LEFT(0), 0xD3);
-         } else {
-             sprite.setScale(ONE, ONE, ONE);
-         }
+-        STRETCH_SPRITE(sprite, screen->fades[1].level, 0, 0xD3);
++        STRETCH_SPRITE(sprite, screen->fades[1].level, DW3_MENU_LEFT(0), 0xD3);
          sprite.setTexture(0x280, 0x100);
 -        sprite.draw(FILE_CACHE.getEntry(FILE_STATUS_SPRITES << 16), 0x20, 0, 0xC2);
 +        sprite.draw(DW3_MENU_BAND(FILE_CACHE.getEntry(FILE_STATUS_SPRITES << 16), 0x20, 160), 0x20, 0, 0xC2);
@@ -896,7 +816,7 @@ unreachable demo screen are unchanged.
          } else {
              sprite.setScale(ONE, ONE, ONE);
              sprite.setTexture(0x140, 0);
-@@ -392,20 +392,20 @@
+@@ -347,20 +347,20 @@ void STSTATUS_drawItemScreen(ItemScreen *screen) {
                  fprintf(stderr, "dw3: items screen: panel icon skipped, no item chosen yet (patch 0069)\n");
              } else {
  #endif
@@ -920,7 +840,7 @@ unreachable demo screen are unchanged.
      }
  }
  
-@@ -556,7 +556,7 @@
+@@ -511,7 +511,7 @@ static inline void STSTATUS_chooseItemList(ItemScreen *screen, ItemScreenWindows
      if (old != screen->option) {
          SOUND.playSound(SOUND_CURSOR);
          windows->help->setString(windows->help, FILE_CACHE.load(TEXT_FILE(TEXT_STATUS)), screen->option + 0x1B);
@@ -931,7 +851,7 @@ unreachable demo screen are unchanged.
          screen->itemCount = ITEM_FUNCS.list(STSTATUS_itemLists[screen->option], screen->items);
 --- a/src/menus/field_menu/sort_screen.c
 +++ b/src/menus/field_menu/sort_screen.c
-@@ -11,19 +11,19 @@
+@@ -11,19 +11,19 @@ void STSTATUS_createSortWindows(SortScreen *screen, SortScreenWindows *windows)
      WindowPos *pos;
  
      pos = &STSTATUS_data.layout[11];
@@ -956,7 +876,7 @@ unreachable demo screen are unchanged.
          }
      }
  }
-@@ -112,19 +112,19 @@
+@@ -112,19 +112,19 @@ void STSTATUS_drawSortScreen(SortScreen *screen) {
      if (screen->cursorShown) {
          if (screen->substate == 6) {
              sprite.setClutRow(screen->cursorFrame);
@@ -983,7 +903,7 @@ unreachable demo screen are unchanged.
          }
          sprite.setClutRow(0);
      }
-@@ -133,10 +133,10 @@
+@@ -133,10 +133,10 @@ void STSTATUS_drawSortScreen(SortScreen *screen) {
          if (screen->pageFades[i].level != 0) {
              if (screen->pageFades[i].level != ONE) {
                  sprite.setScale(screen->pageFades[i].level, screen->pageFades[i].level, ONE);
@@ -996,7 +916,7 @@ unreachable demo screen are unchanged.
              } else {
                  sprite.setScale(ONE, ONE, ONE);
              }
-@@ -144,7 +144,7 @@
+@@ -144,7 +144,7 @@ void STSTATUS_drawSortScreen(SortScreen *screen) {
              /* the match depends on (*&...): FILE_CACHE.getEntry would keep the
                 cache's address in a register through the loop */
              sprite.draw((*&FILE_CACHE.getEntry)(FILE_STATUS_SPRITES << 16),
@@ -1005,7 +925,7 @@ unreachable demo screen are unchanged.
          }
      }
      sprite.setTexture(0x140, 0);
-@@ -154,55 +154,55 @@
+@@ -154,45 +154,45 @@ void STSTATUS_drawSortScreen(SortScreen *screen) {
          if (screen->pageFades[i].level != 0) {
              if (screen->pageFades[i].level != ONE) {
                  sprite.setScale(screen->pageFades[i].level, ONE, ONE);
@@ -1059,31 +979,21 @@ unreachable demo screen are unchanged.
          }
      }
      if (screen->fades[0].level != 0) {
-         if (screen->fades[0].level != ONE) {
-             sprite.setScale(screen->fades[0].level, ONE, ONE);
--            sprite.setPivot(0x140, 0x19);
-+            sprite.setPivot(DW3_MENU_RIGHT(0x140), 0x19);
-         } else {
-             sprite.setScale(ONE, ONE, ONE);
-         }
+-        STRETCH_SPRITE(sprite, screen->fades[0].level, 0x140, 0x19);
 -        sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x18, 0x22, 0xD);
++        STRETCH_SPRITE(sprite, screen->fades[0].level, DW3_MENU_RIGHT(0x140), 0x19);
 +        sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x18, DW3_MENU_RIGHT(0x22), 0xD);
      }
      if (screen->fades[1].level != 0) {
-         if (screen->fades[1].level != ONE) {
-             sprite.setScale(screen->fades[1].level, ONE, ONE);
--            sprite.setPivot(0, 0xD3);
-+            sprite.setPivot(DW3_MENU_LEFT(0), 0xD3);
-         } else {
-             sprite.setScale(ONE, ONE, ONE);
-         }
+-        STRETCH_SPRITE(sprite, screen->fades[1].level, 0, 0xD3);
++        STRETCH_SPRITE(sprite, screen->fades[1].level, DW3_MENU_LEFT(0), 0xD3);
          sprite.setTexture(0x280, 0x100);
 -        sprite.draw(FILE_CACHE.getEntry(FILE_STATUS_SPRITES << 16), 0x20, 0, 0xC2);
 +        sprite.draw(DW3_MENU_BAND(FILE_CACHE.getEntry(FILE_STATUS_SPRITES << 16), 0x20, 160), 0x20, 0, 0xC2);
      }
      if (screen->arrowShown) {
          STSTATUS_stepSortArrow(screen);
-@@ -212,23 +212,23 @@
+@@ -202,23 +202,23 @@ void STSTATUS_drawSortScreen(SortScreen *screen) {
          case 0:
          default:
              if (screen->second == 1) {
@@ -1115,7 +1025,7 @@ unreachable demo screen are unchanged.
          }
 --- a/src/menus/field_menu/status_screen.c
 +++ b/src/menus/field_menu/status_screen.c
-@@ -10,47 +10,47 @@
+@@ -10,47 +10,47 @@ void STSTATUS_createStatusWindows(StatsScreen *screen, StatsScreenWindows *windo
      s32 j;
  
      pos = &STSTATUS_data.layout[11];
@@ -1181,15 +1091,12 @@ unreachable demo screen are unchanged.
      windows->tp->setDepth(windows->tp, screen->depth - 1);
  }
  
-@@ -401,13 +401,13 @@
+@@ -399,70 +399,70 @@ void STSTATUS_drawStatusScreen(StatsScreen *screen) {
+     sprite.setTexture(0x280, 0x100);
+     for (i = 0; i < screen->count; i++) {
          if (screen->pageFades[i].level != 0) {
-             if (screen->pageFades[i].level != ONE) {
-                 sprite.setScale(screen->pageFades[i].level, screen->pageFades[i].level, ONE);
--                sprite.setPivot(0x7C, i * 0x2E + 0x27);
-+                sprite.setPivot(DW3_MENU_LEFT(0x7C), i * 0x2E + 0x27);
-             } else {
-                 sprite.setScale(ONE, ONE, ONE);
-             }
+-            ZOOM_SPRITE(sprite, screen->pageFades[i].level, 0x7C, i * 0x2E + 0x27);
++            ZOOM_SPRITE(sprite, screen->pageFades[i].level, DW3_MENU_LEFT(0x7C), i * 0x2E + 0x27);
              id = GAME.funcs.getPartyMember(i);
              sprite.draw(FILE_CACHE.getEntry(FILE_STATUS_SPRITES << 16),
 -                        STSTATUS_data.partnerAnims[id].frames[screen->frames[i]], 0x6B,
@@ -1197,44 +1104,13 @@ unreachable demo screen are unchanged.
                          i * 0x2E + 0x13);
          }
      }
-@@ -417,19 +417,19 @@
-             /* both branches draw the frame's last part: the match depends on it */
-             if (screen->pageFades[i].level != ONE) {
-                 sprite.setScale(screen->pageFades[i].level, ONE, ONE);
--                sprite.setPivot(0, i * 0x2E + 0x25);
--                sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x15, 0, i * 0x2E + 0x11);
-+                sprite.setPivot(DW3_MENU_LEFT(0), i * 0x2E + 0x25);
-+                sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x15, DW3_MENU_LEFT(0), i * 0x2E + 0x11);
-                 sprite.setScale(screen->pageFades[i].level, screen->pageFades[i].level, ONE);
--                sprite.setPivot(0x7C, i * 0x2E + 0x27);
--                sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x16, 0x67, i * 0x2E + 0x13);
-+                sprite.setPivot(DW3_MENU_LEFT(0x7C), i * 0x2E + 0x27);
-+                sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x16, DW3_MENU_LEFT(0x67), i * 0x2E + 0x13);
-                 sprite.setScale(screen->pageFades[i].level, ONE, ONE);
--                sprite.setPivot(0, i * 0x2E + 0x25);
--                sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x17, 0, i * 0x2E + 0x11);
-+                sprite.setPivot(DW3_MENU_LEFT(0), i * 0x2E + 0x25);
-+                sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x17, DW3_MENU_LEFT(0), i * 0x2E + 0x11);
-             } else {
-                 sprite.setScale(ONE, ONE, ONE);
--                sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x15, 0, i * 0x2E + 0x11);
--                sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x16, 0x67, i * 0x2E + 0x13);
--                sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x17, 0, i * 0x2E + 0x11);
-+                sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x15, DW3_MENU_LEFT(0), i * 0x2E + 0x11);
-+                sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x16, DW3_MENU_LEFT(0x67), i * 0x2E + 0x13);
-+                sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x17, DW3_MENU_LEFT(0), i * 0x2E + 0x11);
-             }
-         }
-     }
-@@ -437,87 +437,87 @@
+     sprite.setTexture(0x140, 0);
+-    DRAW_PAGE_PANELS(sprite, screen, i);
++    DRAW_PAGE_PANELS_AT(sprite, screen, i, DW3_MENU_LEFT);
+     if (screen->panelFades[0].level != 0) {
          sprite.setTexture(0x280, 0x100);
-         if (screen->panelFades[0].level != ONE) {
-             sprite.setScale(screen->panelFades[0].level, screen->panelFades[0].level, ONE);
--            sprite.setPivot(0x7C, 0x27);
-+            sprite.setPivot(DW3_MENU_LEFT(0x7C), 0x27);
-         } else {
-             sprite.setScale(ONE, ONE, ONE);
-         }
+-        ZOOM_SPRITE(sprite, screen->panelFades[0].level, 0x7C, 0x27);
++        ZOOM_SPRITE(sprite, screen->panelFades[0].level, DW3_MENU_LEFT(0x7C), 0x27);
          id = GAME.funcs.getPartyMember(screen->member);
          sprite.draw(FILE_CACHE.getEntry(FILE_STATUS_SPRITES << 16),
 -                    STSTATUS_data.partnerAnims[id].frames[screen->frames[screen->member]], 0x6B, 0x13);
@@ -1266,47 +1142,27 @@ unreachable demo screen are unchanged.
          }
      }
      if (screen->fades[0].level != 0) {
-         if (screen->fades[0].level != ONE) {
-             sprite.setScale(screen->fades[0].level, ONE, ONE);
--            sprite.setPivot(0x140, 0x19);
-+            sprite.setPivot(DW3_MENU_RIGHT(0x140), 0x19);
-         } else {
-             sprite.setScale(ONE, ONE, ONE);
-         }
+-        STRETCH_SPRITE(sprite, screen->fades[0].level, 0x140, 0x19);
 -        sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x18, 0x22, 0xD);
++        STRETCH_SPRITE(sprite, screen->fades[0].level, DW3_MENU_RIGHT(0x140), 0x19);
 +        sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x18, DW3_MENU_RIGHT(0x22), 0xD);
      }
      if (screen->panelFades[5].level != 0) {
-         if (screen->panelFades[5].level != ONE) {
-             sprite.setScale(screen->panelFades[5].level, ONE, ONE);
--            sprite.setPivot(0, 0x47);
-+            sprite.setPivot(DW3_MENU_LEFT(0), 0x47);
-         } else {
-             sprite.setScale(ONE, ONE, ONE);
-         }
+-        STRETCH_SPRITE(sprite, screen->panelFades[5].level, 0, 0x47);
 -        sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x1A, 0, 0x3D);
++        STRETCH_SPRITE(sprite, screen->panelFades[5].level, DW3_MENU_LEFT(0), 0x47);
 +        sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x1A, DW3_MENU_LEFT(0), 0x3D);
      }
      sprite.setTexture(0x280, 0x100);
      if (screen->fades[1].level != 0) {
-         if (screen->fades[1].level != ONE) {
-             sprite.setScale(screen->fades[1].level, ONE, ONE);
--            sprite.setPivot(0, 0xD3);
-+            sprite.setPivot(DW3_MENU_LEFT(0), 0xD3);
-         } else {
-             sprite.setScale(ONE, ONE, ONE);
-         }
+-        STRETCH_SPRITE(sprite, screen->fades[1].level, 0, 0xD3);
 -        sprite.draw(FILE_CACHE.getEntry(FILE_STATUS_SPRITES << 16), 0x20, 0, 0xC2);
++        STRETCH_SPRITE(sprite, screen->fades[1].level, DW3_MENU_LEFT(0), 0xD3);
 +        sprite.draw(DW3_MENU_BAND(FILE_CACHE.getEntry(FILE_STATUS_SPRITES << 16), 0x20, 160), 0x20, 0, 0xC2);
      }
      if (screen->panelFades[2].level != 0) {
-         if (screen->panelFades[2].level != ONE) {
-             sprite.setScale(screen->panelFades[2].level, ONE, ONE);
--            sprite.setPivot(0, 0x88);
-+            sprite.setPivot(DW3_MENU_LEFT(0), 0x88);
-         } else {
-             sprite.setScale(ONE, ONE, ONE);
-         }
+-        STRETCH_SPRITE(sprite, screen->panelFades[2].level, 0, 0x88);
++        STRETCH_SPRITE(sprite, screen->panelFades[2].level, DW3_MENU_LEFT(0), 0x88);
          sprite.setTexture(0x140, 0);
 -        sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0xF, 0, 0x57);
 +        sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0xF, DW3_MENU_LEFT(0), 0x57);
@@ -1321,14 +1177,9 @@ unreachable demo screen are unchanged.
 +        sprite.draw(FILE_CACHE.getEntry(FILE_STATUS_SPRITES << 16), 0x3C, DW3_MENU_LEFT(0), 0xC4);
      }
      if (screen->panelFades[3].level != 0) {
-         if (screen->panelFades[3].level != ONE) {
-             sprite.setScale(screen->panelFades[3].level, ONE, ONE);
--            sprite.setPivot(0x140, 0x55);
-+            sprite.setPivot(DW3_MENU_RIGHT(0x140), 0x55);
-         } else {
-             sprite.setScale(ONE, ONE, ONE);
-         }
+-        STRETCH_SPRITE(sprite, screen->panelFades[3].level, 0x140, 0x55);
 -        sprite.draw(FILE_CACHE.getEntry(FILE_STATUS_SPRITES << 16), 0x22, 0xA0, 0x35);
++        STRETCH_SPRITE(sprite, screen->panelFades[3].level, DW3_MENU_RIGHT(0x140), 0x55);
 +        sprite.draw(FILE_CACHE.getEntry(FILE_STATUS_SPRITES << 16), 0x22, DW3_MENU_RIGHT(0xA0), 0x35);
      }
      if (screen->panelFades[4].level != 0) {
@@ -1339,7 +1190,7 @@ unreachable demo screen are unchanged.
          } else {
              sprite.setScale(ONE, ONE, ONE);
              stats = GAME.funcs.getPartnerStats(GAME.funcs.getPartyMember(screen->member));
-@@ -525,22 +525,22 @@
+@@ -470,17 +470,17 @@ void STSTATUS_drawStatusScreen(StatsScreen *screen) {
                  item = stats->equip[i];
                  if (item > 0) {
                      sprite.setTexture(0x140, 0);
@@ -1354,19 +1205,14 @@ unreachable demo screen are unchanged.
 +        sprite.draw(FILE_CACHE.getEntry(FILE_STATUS_SPRITES << 16), 0x23, DW3_MENU_RIGHT(0xA0), 0x77);
      }
      if (screen->panelFades[1].level != 0) {
-         if (screen->panelFades[1].level != ONE) {
-             sprite.setScale(screen->panelFades[1].level, ONE, ONE);
--            sprite.setPivot(0x140, 0x20);
-+            sprite.setPivot(DW3_MENU_RIGHT(0x140), 0x20);
-         } else {
-             sprite.setScale(ONE, ONE, ONE);
-         }
+-        STRETCH_SPRITE(sprite, screen->panelFades[1].level, 0x140, 0x20);
 -        sprite.draw(FILE_CACHE.getEntry(FILE_STATUS_SPRITES << 16), 0x1F, 0x14, 0xD);
++        STRETCH_SPRITE(sprite, screen->panelFades[1].level, DW3_MENU_RIGHT(0x140), 0x20);
 +        sprite.draw(FILE_CACHE.getEntry(FILE_STATUS_SPRITES << 16), 0x1F, DW3_MENU_RIGHT(0x14), 0xD);
      }
      if (screen->cursorShown) {
          STSTATUS_stepStatusCursor(screen);
-@@ -548,7 +548,7 @@
+@@ -488,7 +488,7 @@ void STSTATUS_drawStatusScreen(StatsScreen *screen) {
          sprite.setLayerId(screen->layer, screen->depth - 1);
          sprite.setTexture(0x280, 0x100);
          sprite.setClutRow(screen->cursorFrame);
@@ -1375,7 +1221,7 @@ unreachable demo screen are unchanged.
      }
  }
  
-@@ -593,7 +593,7 @@
+@@ -533,7 +533,7 @@ void STSTATUS_runStatusChoice(StatsScreen *screen, StatsScreenWindows *windows)
                                        GAME.funcs.getPartnerStats(GAME.funcs.getPartyMember(screen->member))->exp);
              windows->exp->setRightAlign(windows->exp, 1);
              windows->expLabel->setString(windows->expLabel, FILE_CACHE.load(TEXT_FILE(TEXT_STATUS)), 0x35);
@@ -1384,7 +1230,7 @@ unreachable demo screen are unchanged.
              windows->cursor->setVisible(windows->cursor, 1);
              screen->step++;
          }
-@@ -615,7 +615,7 @@
+@@ -555,7 +555,7 @@ void STSTATUS_runStatusChoice(StatsScreen *screen, StatsScreenWindows *windows)
          }
          if (option != screen->option) {
              SOUND.playSound(SOUND_CURSOR);
@@ -1395,7 +1241,7 @@ unreachable demo screen are unchanged.
              screen->step = 10;
 --- a/src/menus/field_menu/tech_screen.c
 +++ b/src/menus/field_menu/tech_screen.c
-@@ -176,33 +176,33 @@
+@@ -178,33 +178,33 @@ void STSTATUS_createTechWindows(TechScreen *screen, TechScreenWindows *windows)
      WindowPos *layout;
  
      pos = &STSTATUS_data.layout[11];
@@ -1440,15 +1286,12 @@ unreachable demo screen are unchanged.
      windows->cursor->setVisible(windows->cursor, 0);
  }
  
-@@ -314,14 +314,14 @@
+@@ -314,19 +314,19 @@ void STSTATUS_drawTechScreen(TechScreen *screen) {
+     STSTATUS_animateTechPortraits(screen);
+     for (i = 0; i < screen->count; i++) {
          if (screen->pageFades[i].level != 0) {
-             if (screen->pageFades[i].level != ONE) {
-                 sprite.setScale(screen->pageFades[i].level, screen->pageFades[i].level, ONE);
--                sprite.setPivot(0x7C, i * 0x2E + 0x27);
-+                sprite.setPivot(DW3_MENU_LEFT(0x7C), i * 0x2E + 0x27);
-             } else {
-                 sprite.setScale(ONE, ONE, ONE);
-             }
+-            ZOOM_SPRITE(sprite, screen->pageFades[i].level, 0x7C, i * 0x2E + 0x27);
++            ZOOM_SPRITE(sprite, screen->pageFades[i].level, DW3_MENU_LEFT(0x7C), i * 0x2E + 0x27);
              id = GAME.funcs.getPartyMember(i);
              sprite.setTexture(0x280, 0x100);
              sprite.draw(FILE_CACHE.getEntry(FILE_STATUS_SPRITES << 16),
@@ -1457,49 +1300,18 @@ unreachable demo screen are unchanged.
                          i * 0x2E + 0x13);
          }
      }
-@@ -331,30 +331,30 @@
-             /* both branches draw the frame's last part: the match depends on it */
-             if (screen->pageFades[i].level != ONE) {
-                 sprite.setScale(screen->pageFades[i].level, ONE, ONE);
--                sprite.setPivot(0, i * 0x2E + 0x25);
--                sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x15, 0, i * 0x2E + 0x11);
-+                sprite.setPivot(DW3_MENU_LEFT(0), i * 0x2E + 0x25);
-+                sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x15, DW3_MENU_LEFT(0), i * 0x2E + 0x11);
-                 sprite.setScale(screen->pageFades[i].level, screen->pageFades[i].level, ONE);
--                sprite.setPivot(0x7C, i * 0x2E + 0x27);
--                sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x16, 0x67, i * 0x2E + 0x13);
-+                sprite.setPivot(DW3_MENU_LEFT(0x7C), i * 0x2E + 0x27);
-+                sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x16, DW3_MENU_LEFT(0x67), i * 0x2E + 0x13);
-                 sprite.setScale(screen->pageFades[i].level, ONE, ONE);
--                sprite.setPivot(0, i * 0x2E + 0x25);
--                sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x17, 0, i * 0x2E + 0x11);
-+                sprite.setPivot(DW3_MENU_LEFT(0), i * 0x2E + 0x25);
-+                sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x17, DW3_MENU_LEFT(0), i * 0x2E + 0x11);
-             } else {
-                 sprite.setScale(ONE, ONE, ONE);
--                sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x15, 0, i * 0x2E + 0x11);
--                sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x16, 0x67, i * 0x2E + 0x13);
--                sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x17, 0, i * 0x2E + 0x11);
-+                sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x15, DW3_MENU_LEFT(0), i * 0x2E + 0x11);
-+                sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x16, DW3_MENU_LEFT(0x67), i * 0x2E + 0x13);
-+                sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x17, DW3_MENU_LEFT(0), i * 0x2E + 0x11);
-             }
-         }
-     }
+     sprite.setTexture(0x140, 0);
+-    DRAW_PAGE_PANELS(sprite, screen, i);
++    DRAW_PAGE_PANELS_AT(sprite, screen, i, DW3_MENU_LEFT);
      if (screen->fades[0].level != 0) {
-         if (screen->fades[0].level != ONE) {
-             sprite.setScale(screen->fades[0].level, ONE, ONE);
--            sprite.setPivot(0x140, 0x19);
-+            sprite.setPivot(DW3_MENU_RIGHT(0x140), 0x19);
-         } else {
-             sprite.setScale(ONE, ONE, ONE);
-         }
+-        STRETCH_SPRITE(sprite, screen->fades[0].level, 0x140, 0x19);
 -        sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x18, 0x22, 0xD);
++        STRETCH_SPRITE(sprite, screen->fades[0].level, DW3_MENU_RIGHT(0x140), 0x19);
 +        sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x18, DW3_MENU_RIGHT(0x22), 0xD);
      }
      if (screen->fades[1].level != 0) {
          if (screen->blink) {
-@@ -367,17 +367,17 @@
+@@ -339,12 +339,12 @@ void STSTATUS_drawTechScreen(TechScreen *screen) {
              }
              sprite.setTexture(0x140, 0);
              sprite.setClutRow(screen->blinkFrame);
@@ -1507,20 +1319,15 @@ unreachable demo screen are unchanged.
 +            sprite.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0xA, DW3_MENU_RIGHT(0x123), 0xD6);
              sprite.setClutRow(0);
          }
-         if (screen->fades[1].level != ONE) {
-             sprite.setScale(screen->fades[1].level, ONE, ONE);
--            sprite.setPivot(0, 0xD3);
-+            sprite.setPivot(DW3_MENU_LEFT(0), 0xD3);
-         } else {
-             sprite.setScale(ONE, ONE, ONE);
-         }
+-        STRETCH_SPRITE(sprite, screen->fades[1].level, 0, 0xD3);
++        STRETCH_SPRITE(sprite, screen->fades[1].level, DW3_MENU_LEFT(0), 0xD3);
          sprite.setTexture(0x280, 0x100);
 -        sprite.draw(FILE_CACHE.getEntry(FILE_STATUS_SPRITES << 16), 0x20, 0, 0xC2);
 +        sprite.draw(DW3_MENU_BAND(FILE_CACHE.getEntry(FILE_STATUS_SPRITES << 16), 0x20, 160), 0x20, 0, 0xC2);
      }
      STSTATUS_stepTechCursor(screen);
      if (screen->targetShown) {
-@@ -385,7 +385,7 @@
+@@ -352,7 +352,7 @@ void STSTATUS_drawTechScreen(TechScreen *screen) {
          sprite.setLayerId(screen->layer, screen->depth - 1);
          sprite.setTexture(0x280, 0x100);
          sprite.setClutRow(screen->cursorFrame);
@@ -1529,7 +1336,7 @@ unreachable demo screen are unchanged.
      }
      if (screen->memberShown) {
          initSpriteDrawer(&sprite);
-@@ -397,7 +397,7 @@
+@@ -364,7 +364,7 @@ void STSTATUS_drawTechScreen(TechScreen *screen) {
          } else {
              sprite.setClutRow(screen->cursorFrame);
          }
@@ -1538,7 +1345,7 @@ unreachable demo screen are unchanged.
      }
      if (screen->fade.level != 0) {
          initSpriteDrawer(&sprite);
-@@ -405,10 +405,10 @@
+@@ -372,10 +372,10 @@ void STSTATUS_drawTechScreen(TechScreen *screen) {
          sprite.setTexture(0x280, 0x100);
          if (screen->fade.level != ONE) {
              sprite.setScale(screen->fade.level, ONE, ONE);
@@ -1551,7 +1358,7 @@ unreachable demo screen are unchanged.
      }
  }
  
-@@ -569,7 +569,7 @@
+@@ -536,7 +536,7 @@ static inline void STSTATUS_enterTechList(TechScreen *screen, TechScreenWindows
          screen->cursor = 0;
          STSTATUS_showTechList(screen, windows, 1);
          STSTATUS_showChosenTech(screen, windows, 1);
@@ -1560,7 +1367,7 @@ unreachable demo screen are unchanged.
          windows->cursor->setVisible(windows->cursor, 1);
          screen->substate++;
      }
-@@ -595,7 +595,7 @@
+@@ -562,7 +562,7 @@ static inline void STSTATUS_chooseTech(TechScreen *screen, TechScreenWindows *wi
          }
      }
      if (old != screen->cursor) {

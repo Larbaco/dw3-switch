@@ -24,67 +24,6 @@ chord while held forgets the hold.
 Without the native overlay the entry is not offered
 (dw3_port_battle_options_enabled() is 0).
 
---- a/src/engine/system/main.c
-+++ b/src/engine/system/main.c
-@@ -6,6 +6,7 @@
- /* Avoid psyz.h here: it pulls POSIX open/read that clash with game.h. */
- int Psyz_QuitRequested(void);
- #include "port_audio.h"
-+#include "port_battle_options.h"
- #include "port_restart.h"
- #include "port_turbo.h"
- #include "port_widescreen.h"
-@@ -25,6 +26,9 @@
-     RECT rect;
-     GsIMAGE tim;
-     u_char param[8];
-+#if PORT_HOST
-+    int held; /* P9.7: the battle is held under the port Options screen */
-+#endif
- 
- #if VERSION_US
-     SetVideoMode(MODE_NTSC);
-@@ -104,16 +108,30 @@
-             GAME.funcs.commitMode();
-             ROOT_TASK = createModeTask();
-         }
-+#if PORT_HOST
-+        /* P9.7 slice 2: while the port Options screen is open over a battle
-+           the task list does not run and nothing is drawn (the display keeps
-+           the last picture); the frame is still paced (VSync) and the pad,
-+           the music, the loaders and the screen go on. */
-+        held = dw3_port_battle_options_hold_frame();
-+        if (held) {
-+            VSync(0);
-+        } else {
-+#endif
-         ROOT_TASK = TASK_REGISTRY.funcs.run(ROOT_TASK);
- #if PORT_HOST
-         dw3_port_widescreen_frame();
- #endif
-         GFX.funcs.drawFrame(ROOT_TASK);
-+#if PORT_HOST
-+        }
-+#endif
-         PAD.update();
- #if PORT_HOST
-         dw3_port_turbo_poll();
-         dw3_port_audio_poll();
-         if (dw3_port_restart_poll()) {
-+            dw3_port_battle_options_reset();
-             GAME.funcs.newGame();
-             OVERLAY_LOADER.mode = -1;
-             OVERLAY_LOADER.subOverlay = -1;
-@@ -121,6 +139,9 @@
-             continue;
-         }
- #endif
-+#if PORT_HOST
-+        if (!held)
-+#endif
-         RANDOM.next();
-         FILE_CACHE.update();
-         SOUND.updateLoading();
 --- a/src/battle/battle_mode/command_menu.c
 +++ b/src/battle/battle_mode/command_menu.c
 @@ -1,6 +1,38 @@
@@ -126,7 +65,7 @@ Without the native overlay the entry is not offered
  
  /* Shows the six commands once, greying out attack, techniques and digivolve
     when the active fighter is asleep and digivolve when it has flag 0x20 (the
-@@ -51,6 +83,13 @@
+@@ -51,6 +83,13 @@ void FIGHTSTG_updateCommandMenu(CommandMenu *task, CommandMenuWindows *w) {
          task->nextState(task);
          break;
      case TASK_RUN:
@@ -140,3 +79,63 @@ Without the native overlay the entry is not offered
          do {
              if (!(PAD.getPressed(0) & (1 << PAD_CROSS))) {
                  break;
+--- a/src/engine/system/main.c
++++ b/src/engine/system/main.c
+@@ -6,6 +6,7 @@
+ /* Avoid psyz.h here: it pulls POSIX open/read that clash with game.h. */
+ int Psyz_QuitRequested(void);
+ #include "port_audio.h"
++#include "port_battle_options.h"
+ #include "port_restart.h"
+ #include "port_turbo.h"
+ #include "port_widescreen.h"
+@@ -25,6 +26,9 @@ int main(void) {
+     RECT rect;
+     GsIMAGE tim;
+     u_char param[8];
++#if PORT_HOST
++    int held; /* P9.7: the battle is held under the port Options screen */
++#endif
+ 
+ #if PAL_VIDEO
+     if (NTSC_MODE) {
+@@ -104,22 +108,39 @@ int main(void) {
+             GAME.funcs.commitMode();
+             ROOT_TASK = createModeTask();
+         }
++#if PORT_HOST
++        /* P9.7 slice 2: while the port Options screen is open over a battle
++           the task list does not run and nothing is drawn (the display keeps
++           the last picture); the frame is still paced (VSync) and the pad,
++           the music, the loaders and the screen go on. */
++        held = dw3_port_battle_options_hold_frame();
++        if (held) {
++            VSync(0);
++        } else {
++#endif
+         ROOT_TASK = TASK_REGISTRY.funcs.run(ROOT_TASK);
+ #if PORT_HOST
+         dw3_port_widescreen_frame();
+ #endif
+         GFX.funcs.drawFrame(ROOT_TASK);
++#if PORT_HOST
++        }
++#endif
+         PAD.update();
+ #if PORT_HOST
+         dw3_port_turbo_poll();
+         dw3_port_audio_poll();
+         if (dw3_port_restart_poll()) {
++            dw3_port_battle_options_reset();
+             GAME.funcs.newGame();
+             OVERLAY_LOADER.mode = -1;
+             OVERLAY_LOADER.subOverlay = -1;
+             ROOT_TASK = NULL;
+             continue;
+         }
++#endif
++#if PORT_HOST
++        if (!held)
+ #endif
+         RANDOM.next();
+         FILE_CACHE.update();

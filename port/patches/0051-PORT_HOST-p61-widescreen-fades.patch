@@ -66,17 +66,17 @@ shade and the field cover. Off, the gutter is 0 and they are unchanged.
  #include "overlay_host.h"
  char *getenv(const char *name);
 @@ -156,6 +159,11 @@ void FIELDSTG_playBattleTransition(FieldTask *task, FieldChildren *fieldChildren
-             ((POLY_F4 *)poly)->x1 = SCREEN_WIDTH;
-             ((POLY_F4 *)poly)->x2 = 0;
-             ((POLY_F4 *)poly)->x3 = SCREEN_WIDTH;
+             prim.f4->x1 = SCREEN_WIDTH;
+             prim.f4->x2 = 0;
+             prim.f4->x3 = SCREEN_WIDTH;
 +#if PORT_HOST
 +            /* Widescreen: the shade covers the side gutters too */
-+            ((POLY_F4 *)poly)->x0 = ((POLY_F4 *)poly)->x2 = -dw3_port_widescreen_px();
-+            ((POLY_F4 *)poly)->x1 = ((POLY_F4 *)poly)->x3 = SCREEN_WIDTH + dw3_port_widescreen_px();
++            prim.f4->x0 = prim.f4->x2 = -dw3_port_widescreen_px();
++            prim.f4->x1 = prim.f4->x3 = SCREEN_WIDTH + dw3_port_widescreen_px();
 +#endif
-             ((POLY_F4 *)poly)->y0 = 0;
-             ((POLY_F4 *)poly)->y1 = 0;
-             ((POLY_F4 *)poly)->y2 = SCREEN_HEIGHT;
+             prim.f4->y0 = 0;
+             prim.f4->y1 = 0;
+             prim.f4->y2 = SCREEN_HEIGHT;
 --- a/src/field/field_mode/map_streamer.c
 +++ b/src/field/field_mode/map_streamer.c
 @@ -2,6 +2,9 @@

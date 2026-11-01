@@ -7,97 +7,35 @@ log CARDGAME return before setState(3)/TASK_KILL (avoids SEGV);
 DW3_AFTER_CARD_ALBUM opens album after field return; AUTO_MENU_RETURN
 for deck/album/shop; host CARDGAME_markedCounts (PS1 undefined_syms alias).
 
---- a/src/engine/game/state.c
-+++ b/src/engine/game/state.c
-@@ -81,16 +81,22 @@
-         }
-         if (mode == MODE_STATUS || mode == MODE_ITEM_SHOP || mode == MODE_TRAINING ||
-             mode == MODE_DIGI_LAB || mode == MODE_CONTINUE || mode == MODE_NAMING ||
--            mode == MODE_PLAYER_NAME || (force != NULL && force[0] != '\0')) {
-+            mode == MODE_PLAYER_NAME || mode == MODE_CARD_GAME ||
-+            mode == MODE_DECK_EDITOR || mode == MODE_CARD_ALBUM ||
-+            mode == MODE_CARD_SHOP || (force != NULL && force[0] != '\0')) {
-             if (GAME.funcs.getPartyMember(0) < 0) {
-                 GAME.funcs.setParty(0);
--                fprintf(stderr, "dw3: P3.4 setParty(0) for menu bring-up\n");
-+                fprintf(stderr, "dw3: P3.4/P3.5 setParty(0) for menu/card bring-up\n");
-             }
-             if (GAME.fieldMode == 0) {
-                 GAME.fieldMode = MODE_NEW_GAME;
--                fprintf(stderr, "dw3: P3.4 seed fieldMode=0x%x\n",
-+                fprintf(stderr, "dw3: P3.4/P3.5 seed fieldMode=0x%x\n",
-                         (unsigned)GAME.fieldMode);
-             }
-+            if (mode == MODE_CARD_GAME && GAME.modeArg == 0) {
-+                GAME.modeArg = 1; /* opponent index is arg-1 */
-+                fprintf(stderr, "dw3: P3.5 default CARDGAME modeArg=1\n");
-+            }
-         }
-     }
- #endif
---- a/src/cardgame/card_battle/scene.c
-+++ b/src/cardgame/card_battle/scene.c
-@@ -1,6 +1,11 @@
- /* CARDGAME's scene, which the mode starts (CARDGAME_start). */
- 
- #include "cardgame/card_battle.h"
+--- a/src/cardgame/album/album.c
++++ b/src/cardgame/album/album.c
+@@ -1,4 +1,7 @@
+ #include "cardgame/album.h"
 +#if PORT_HOST
 +#include <stdio.h>
-+char *getenv(const char *name);
-+extern s32 DW3_afterCardAlbumArm;
 +#endif
  
- /* The mode's task: sets up the display and starts the battle, then returns
-    to the field once it is over (or to MODE_STAGE_SELECT when the mode's low
-@@ -23,10 +28,22 @@
-         layer = GFX.funcs.createLayer(&CARDGAME_screenRect, 3, 0x100);
-         layer->setBgColor(layer, 0x1F, 0x1F, 0x1F);
-         items[0] = CARDGAME_createBattle(GAME.funcs.getModeArg());
+ /* The cursor's CLUT row on each frame of its blink */
+ s32 STCRDABM_cursorBlink[6] = {0, 1, 2, 3, 2, 1};
+@@ -723,6 +726,18 @@ void STCRDABM_updateAlbum(CardAlbum *album, CardAlbumWindows *win) {
+ /* Creates the album (task), on the top layer */
+ CardAlbum *STCRDABM_createAlbum(void) {
+     CardAlbum *album = createTask(STCRDABM_updateAlbum, sizeof(CardAlbum), sizeof(CardAlbumWindows));
 +#if PORT_HOST
-+        fprintf(stderr, "dw3: CARDGAME createBattle arg=%d fieldMode=0x%x\n",
-+                (int)GAME.funcs.getModeArg(), (unsigned)GAME.fieldMode);
-+#endif
-         task->nextState(task);
-         break;
-     case 1:
-         if (items[0]->result == 2) {
-+#if PORT_HOST
-+            /* setState(3) is TASK_KILL: battle (and items[0]) is freed this
-+               frame after its stopSound update. Log before teardown. */
-+            fprintf(stderr,
-+                    "dw3: CARDGAME return fieldMode=0x%x playerLost=%d prizeItem=%d\n",
-+                    (unsigned)GAME.fieldMode, (int)items[0]->playerLost,
-+                    (int)items[0]->prize);
-+#endif
-             task->setState(task, 2);
-             items[0]->setState(items[0], 3);
-         }
-@@ -36,6 +53,16 @@
-         case 0:
-         default:
-             GAME.funcs.requestMode((GAME.funcs.getMode() & 0xF) ? MODE_STAGE_SELECT : GAME.fieldMode, 0);
-+#if PORT_HOST
-+            {
-+                const char *after = getenv("DW3_AFTER_CARD_ALBUM");
-+
-+                if (after != NULL && after[0] != '\0' && after[0] != '0') {
-+                    DW3_afterCardAlbumArm = 1;
-+                    fprintf(stderr, "dw3: DW3_AFTER_CARD_ALBUM armed (open album after field)\n");
-+                }
++    {
++        s32 seen = 0;
++        s32 i;
++        for (i = 0; i < CARD_COUNT; i++) {
++            if (GAME.cardsSeen[i] != 0) {
++                seen++;
 +            }
++        }
++        fprintf(stderr, "dw3: STCRDABM_createAlbum cardsSeen=%d\n", (int)seen);
++    }
 +#endif
-             task->nextSubstate(task);
-             break;
-         case 1:
-@@ -49,5 +76,8 @@
  
- /* The mode's entry point (MODE_ENTRY_POINTS) */
- Task *CARDGAME_start(void) {
-+#if PORT_HOST
-+    fprintf(stderr, "dw3: CARDGAME_start\n");
-+#endif
-     return createTask(CARDGAME_updateScene, sizeof(Task), sizeof(Task *));
- }
+     album->layer = SCREEN_LAYER;
+     album->depth = 7;
 --- a/src/cardgame/card_battle/battle.c
 +++ b/src/cardgame/card_battle/battle.c
 @@ -2,6 +2,11 @@
@@ -112,7 +50,7 @@ for deck/album/shop; host CARDGAME_markedCounts (PS1 undefined_syms alias).
  
  /* Loads the opponent's data (FILE_CARDGAME_OPPONENTS, entry arg - 1): its deck and its card order */
  void CARDGAME_loadOpponent(CardBattle *battle, CardBattleItems *items) {
-@@ -2509,7 +2514,23 @@
+@@ -2509,7 +2514,23 @@ void CARDGAME_updateBattle(CardBattle *battle, CardBattleItems *items) {
          }
          break;
      case 1:
@@ -136,7 +74,7 @@ for deck/album/shop; host CARDGAME_markedCounts (PS1 undefined_syms alias).
              fader = CARDGAME_createFader(2);
              items->fader = fader;
              fader->setColor(fader, 0, 0, 0);
-@@ -2517,6 +2538,9 @@
+@@ -2517,6 +2538,9 @@ void CARDGAME_updateBattle(CardBattle *battle, CardBattleItems *items) {
              battle->setState(battle, 2);
              battle->result = 1;
          }
@@ -146,10 +84,10 @@ for deck/album/shop; host CARDGAME_markedCounts (PS1 undefined_syms alias).
          break;
      case 2:
          if (battle->substate == 0 && items->fader->isDone(items->fader)) {
-@@ -2528,8 +2552,43 @@
+@@ -2528,8 +2552,43 @@ void CARDGAME_updateBattle(CardBattle *battle, CardBattleItems *items) {
                              GAME.items[battle->prize]++;
                          }
-                         FLAGS_00.pendingFlag10 = 1;
+                         FLAGS_00.cardBattleWon = 1;
 +#if PORT_HOST
 +                        {
 +                            s32 card;
@@ -183,42 +121,115 @@ for deck/album/shop; host CARDGAME_markedCounts (PS1 undefined_syms alias).
 +                        }
 +#endif
                      } else {
-                         FLAGS_00.pendingFlag10 = 0;
+                         FLAGS_00.cardBattleWon = 0;
 +#if PORT_HOST
 +                        fprintf(stderr, "dw3: CARDGAME loss (no prize)\n");
 +#endif
                      }
                  }
                  battle->result = 2;
---- a/src/cardgame/album/album.c
-+++ b/src/cardgame/album/album.c
-@@ -1,4 +1,7 @@
- #include "cardgame/album.h"
+--- a/src/cardgame/card_battle/data/cardgame_3.c
++++ b/src/cardgame/card_battle/data/cardgame_3.c
+@@ -190,4 +190,8 @@ u8 CARDGAME_slotMoves[2][6][2] = {{{0}}};
+    would: two 2-byte variables 2 bytes apart fit commons that the linker laid
+    out, not word-aligned C definitions. */
+ u8 CARDGAME_slotMoveCounts[8] = {0};
++#if PORT_HOST
++/* PS1 links this as CARDGAME_slotMoveCounts+2 (undefined_syms_cardgame.txt). */
++u8 CARDGAME_markedCounts[2] = {0};
++#endif
+ CardMessageWindow CARDGAME_savedScreenState = {0};
+--- a/src/cardgame/card_battle/scene.c
++++ b/src/cardgame/card_battle/scene.c
+@@ -1,6 +1,11 @@
+ /* CARDGAME's scene, which the mode starts (CARDGAME_start). */
+ 
+ #include "cardgame/card_battle.h"
 +#if PORT_HOST
 +#include <stdio.h>
++char *getenv(const char *name);
++extern s32 DW3_afterCardAlbumArm;
 +#endif
  
- /* The cursor's CLUT row on each frame of its blink */
- s32 STCRDABM_cursorBlink[6] = {0, 1, 2, 3, 2, 1};
-@@ -723,6 +726,18 @@
- /* Creates the album (task), on the top layer */
- CardAlbum *STCRDABM_createAlbum(void) {
-     CardAlbum *album = createTask(STCRDABM_updateAlbum, sizeof(CardAlbum), sizeof(CardAlbumWindows));
+ /* The mode's task: sets up the display and starts the battle, then returns
+    to the field once it is over (or to MODE_STAGE_SELECT when the mode's low
+@@ -23,10 +28,22 @@ void CARDGAME_updateScene(Task *task, CardBattle **items) {
+         layer = GFX.funcs.createLayer(&CARDGAME_screenRect, 3, 0x100);
+         layer->setBgColor(layer, 0x1F, 0x1F, 0x1F);
+         items[0] = CARDGAME_createBattle(GAME.funcs.getModeArg());
 +#if PORT_HOST
-+    {
-+        s32 seen = 0;
-+        s32 i;
-+        for (i = 0; i < CARD_COUNT; i++) {
-+            if (GAME.cardsSeen[i] != 0) {
-+                seen++;
-+            }
-+        }
-+        fprintf(stderr, "dw3: STCRDABM_createAlbum cardsSeen=%d\n", (int)seen);
-+    }
++        fprintf(stderr, "dw3: CARDGAME createBattle arg=%d fieldMode=0x%x\n",
++                (int)GAME.funcs.getModeArg(), (unsigned)GAME.fieldMode);
 +#endif
+         task->nextState(task);
+         break;
+     case 1:
+         if (items[0]->result == 2) {
++#if PORT_HOST
++            /* setState(3) is TASK_KILL: battle (and items[0]) is freed this
++               frame after its stopSound update. Log before teardown. */
++            fprintf(stderr,
++                    "dw3: CARDGAME return fieldMode=0x%x playerLost=%d prizeItem=%d\n",
++                    (unsigned)GAME.fieldMode, (int)items[0]->playerLost,
++                    (int)items[0]->prize);
++#endif
+             task->setState(task, 2);
+             items[0]->setState(items[0], 3);
+         }
+@@ -36,6 +53,16 @@ void CARDGAME_updateScene(Task *task, CardBattle **items) {
+         case 0:
+         default:
+             GAME.funcs.requestMode((GAME.funcs.getMode() & 0xF) ? MODE_STAGE_SELECT : GAME.fieldMode, 0);
++#if PORT_HOST
++            {
++                const char *after = getenv("DW3_AFTER_CARD_ALBUM");
++
++                if (after != NULL && after[0] != '\0' && after[0] != '0') {
++                    DW3_afterCardAlbumArm = 1;
++                    fprintf(stderr, "dw3: DW3_AFTER_CARD_ALBUM armed (open album after field)\n");
++                }
++            }
++#endif
+             task->nextSubstate(task);
+             break;
+         case 1:
+@@ -49,5 +76,8 @@ void CARDGAME_updateScene(Task *task, CardBattle **items) {
  
-     album->layer = SCREEN_LAYER;
-     album->depth = 7;
+ /* The mode's entry point (MODE_ENTRY_POINTS) */
+ Task *CARDGAME_start(void) {
++#if PORT_HOST
++    fprintf(stderr, "dw3: CARDGAME_start\n");
++#endif
+     return createTask(CARDGAME_updateScene, sizeof(Task), sizeof(Task *));
+ }
+--- a/src/engine/game/state.c
++++ b/src/engine/game/state.c
+@@ -81,16 +81,22 @@ void newGame(void) {
+         }
+         if (mode == MODE_STATUS || mode == MODE_ITEM_SHOP || mode == MODE_TRAINING ||
+             mode == MODE_DIGI_LAB || mode == MODE_CONTINUE || mode == MODE_NAMING ||
+-            mode == MODE_PLAYER_NAME || (force != NULL && force[0] != '\0')) {
++            mode == MODE_PLAYER_NAME || mode == MODE_CARD_GAME ||
++            mode == MODE_DECK_EDITOR || mode == MODE_CARD_ALBUM ||
++            mode == MODE_CARD_SHOP || (force != NULL && force[0] != '\0')) {
+             if (GAME.funcs.getPartyMember(0) < 0) {
+                 GAME.funcs.setParty(0);
+-                fprintf(stderr, "dw3: P3.4 setParty(0) for menu bring-up\n");
++                fprintf(stderr, "dw3: P3.4/P3.5 setParty(0) for menu/card bring-up\n");
+             }
+             if (GAME.fieldMode == 0) {
+                 GAME.fieldMode = MODE_NEW_GAME;
+-                fprintf(stderr, "dw3: P3.4 seed fieldMode=0x%x\n",
++                fprintf(stderr, "dw3: P3.4/P3.5 seed fieldMode=0x%x\n",
+                         (unsigned)GAME.fieldMode);
+             }
++            if (mode == MODE_CARD_GAME && GAME.modeArg == 0) {
++                GAME.modeArg = 1; /* opponent index is arg-1 */
++                fprintf(stderr, "dw3: P3.5 default CARDGAME modeArg=1\n");
++            }
+         }
+     }
+ #endif
 --- a/src/engine/system/overlay.c
 +++ b/src/engine/system/overlay.c
 @@ -5,6 +5,8 @@
@@ -230,10 +241,11 @@ for deck/album/shop; host CARDGAME_markedCounts (PS1 undefined_syms alias).
  #endif
  
  /* Each mode's overlay (mode >> 8): its entry point and its file */
-@@ -72,6 +74,29 @@
+@@ -71,6 +73,29 @@ void updateModeTask(Task *task, Task **children) {
+                 }
              }
          }
-         {
++        {
 +            /* P3.5: after CARDGAME returns to field, open album once. */
 +            static s32 after_frames;
 +            s32 mode = GAME.funcs.getMode();
@@ -256,11 +268,10 @@ for deck/album/shop; host CARDGAME_markedCounts (PS1 undefined_syms alias).
 +                after_frames = 0;
 +            }
 +        }
-+        {
+         {
              const char *ret = getenv("DW3_AUTO_MENU_RETURN");
              static s32 menu_frames;
-             static s32 menu_mode;
-@@ -96,7 +121,8 @@
+@@ -96,7 +121,8 @@ void updateModeTask(Task *task, Task **children) {
                  if (overlay == MODE_STATUS || overlay == MODE_ITEM_SHOP ||
                      overlay == MODE_TRAINING || overlay == MODE_DIGI_LAB ||
                      overlay == MODE_CONTINUE || overlay == MODE_NAMING ||
@@ -270,14 +281,3 @@ for deck/album/shop; host CARDGAME_markedCounts (PS1 undefined_syms alias).
                      if (menu_mode != mode) {
                          menu_mode = mode;
                          menu_frames = 0;
---- a/src/cardgame/card_battle/data/cardgame_3.c
-+++ b/src/cardgame/card_battle/data/cardgame_3.c
-@@ -187,4 +187,8 @@
-    would: two 2-byte variables 2 bytes apart fit commons that the linker laid
-    out, not word-aligned C definitions. */
- u8 CARDGAME_slotMoveCounts[8] = {0};
-+#if PORT_HOST
-+/* PS1 links this as CARDGAME_slotMoveCounts+2 (undefined_syms_cardgame.txt). */
-+u8 CARDGAME_markedCounts[2] = {0};
-+#endif
- CardMessageWindow CARDGAME_savedScreenState = {0};

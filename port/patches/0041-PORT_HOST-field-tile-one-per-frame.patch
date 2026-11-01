@@ -8,7 +8,7 @@ FILE_CACHE.load releases that hold: the tile bytes are already copied.
 
 --- a/src/engine/file/cd_reader.c
 +++ b/src/engine/file/cd_reader.c
-@@ -96,6 +96,12 @@
+@@ -96,6 +96,12 @@ void cdSyncCallback(s32 status, u_char *result) {
  
  /* Whether the CD reader is busy */
  s32 isCdReading(void) {
@@ -21,7 +21,7 @@ FILE_CACHE.load releases that hold: the tile bytes are already copied.
      return CD_READER.state != CD_READ_IDLE;
  }
  
-@@ -142,9 +148,15 @@
+@@ -142,9 +148,15 @@ void readFile(s32 file, s32 offset, s32 size, void *buffer, s32 *done) {
      if (fileSize == (uint32_t)-1) {
          return;
      }
@@ -52,7 +52,7 @@ FILE_CACHE.load releases that hold: the tile bytes are already copied.
  
  /* The file cache */
  FileCache FILE_CACHE = {
-@@ -165,6 +168,11 @@
+@@ -165,6 +168,11 @@ void *loadFile(u32 file) {
          return slot->data;
      }
      while (CD_READER.isBusy() != 0) {
@@ -76,7 +76,7 @@ FILE_CACHE.load releases that hold: the tile bytes are already copied.
  
  /* Small variables, addressed through $gp (see the Makefile) */
  static s32 GFX_STARTED = 0;
-@@ -13,6 +16,10 @@
+@@ -13,6 +16,10 @@ static s32 FLIP_PENDING;
   * finished buffer and ticks the music
   */
  void vsyncCallback(void) {
@@ -84,6 +84,6 @@ FILE_CACHE.load releases that hold: the tile bytes are already copied.
 +    /* One field tile per frame. Runs once per VSync, before the next update. */
 +    cdfs_poll();
 +#endif
- #if VERSION_US
-     GFX.timeCounter += VSYNC_STEP_NTSC;
-     GFX.frameTimeCounter += VSYNC_STEP_NTSC;
+ #if PAL_VIDEO
+     if (NTSC_MODE) {
+         GFX.timeCounter += VSYNC_STEP_NTSC;

@@ -8,6 +8,21 @@ Quit when PSY-Z requests window close. Log mode entry for host bring-up.
 Call ResetGraph before the first SetDispMask (PSY-Z GPU table).
 Skip the TIM ID with a +4 byte offset on 64-bit hosts.
 
+--- a/src/engine/game/state.c
++++ b/src/engine/game/state.c
+@@ -4,7 +4,11 @@
+ /* Clears the save data and sets up a new game */
+ void newGame(void) {
+     HEAP.zero(&GAME, GAME_SAVE_SIZE);
+-#if VERSION_US || VERSION_JP
++#if PORT_HOST
++    /* Phase 2: skip opening STR movies; go straight to the title screen. */
++    GAME.mode = MODE_TITLE;
++    GAME.nextMode = MODE_TITLE;
++#elif VERSION_US || VERSION_JP
+     GAME.mode = MODE_OPENING;
+     GAME.nextMode = MODE_OPENING;
+ #elif VERSION_EU
 --- a/src/engine/system/main.c
 +++ b/src/engine/system/main.c
 @@ -2,6 +2,10 @@
@@ -21,7 +36,7 @@ Skip the TIM ID with a +4 byte offset on 64-bit hosts.
  
  /* -G8 unit: small variables defined here are reached through $gp, in the small data (.sdata) */
  /* Where the boot image, the 320x480 TIM loaded after the executable, goes in VRAM */
-@@ -9,7 +13,11 @@
+@@ -9,7 +13,11 @@ static RECT BOOT_IMAGE_RECT = { 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT * 2 };
  static void *ROOT_TASK = NULL; /* the task that runs the game mode */
  
  /* Starts the hardware, the libraries and the engine, then runs a frame per iteration */
@@ -33,7 +48,7 @@ Skip the TIM ID with a +4 byte offset on 64-bit hosts.
      RECT rect;
      GsIMAGE tim;
      u_char param[8];
-@@ -25,6 +33,10 @@
+@@ -25,6 +33,10 @@ int main(void) {
  #endif
      ResetCallback();
      VSync(0);
@@ -44,7 +59,7 @@ Skip the TIM ID with a +4 byte offset on 64-bit hosts.
      SetDispMask(0);
      ResetGraph(0);
      GFX.funcs.reset();
-@@ -42,23 +54,18 @@
+@@ -42,23 +54,18 @@ int main(void) {
      GFX.funcs.setDisplayMode(320, 640, 1, 0);
      PutDispEnv(&GFX.disp[0]);
      VSync(0);
@@ -74,7 +89,7 @@ Skip the TIM ID with a +4 byte offset on 64-bit hosts.
      SetDispMask(1);
      CdInit();
      CdSetDebug(0);
-@@ -80,6 +87,11 @@
+@@ -80,6 +87,11 @@ int main(void) {
       * requested), free everything the mode allocated and start the new one.
       */
      for (;;) {
@@ -86,21 +101,6 @@ Skip the TIM ID with a +4 byte offset on 64-bit hosts.
          if (ROOT_TASK == NULL) {
              GFX.funcs.freePrimBuffers();
              GFX.funcs.reset();
---- a/src/engine/game/state.c
-+++ b/src/engine/game/state.c
-@@ -4,7 +4,11 @@
- /* Clears the save data and sets up a new game */
- void newGame(void) {
-     HEAP.zero(&GAME, GAME_SAVE_SIZE);
--#if VERSION_US
-+#if PORT_HOST
-+    /* Phase 2: skip opening STR movies; go straight to the title screen. */
-+    GAME.mode = MODE_TITLE;
-+    GAME.nextMode = MODE_TITLE;
-+#elif VERSION_US
-     GAME.mode = MODE_OPENING;
-     GAME.nextMode = MODE_OPENING;
- #elif VERSION_EU
 --- a/src/engine/system/overlay.c
 +++ b/src/engine/system/overlay.c
 @@ -2,6 +2,7 @@
@@ -111,7 +111,7 @@ Skip the TIM ID with a +4 byte offset on 64-bit hosts.
  #endif
  
  /* Each mode's overlay (mode >> 8): its entry point and its file */
-@@ -35,6 +36,10 @@
+@@ -35,6 +36,10 @@ void updateModeTask(Task *task, Task **children) {
      default:
          OVERLAY_LOADER.loadModeOverlay();
          children[0] = MODE_ENTRY_POINTS[GAME.funcs.getMode() >> 8]();

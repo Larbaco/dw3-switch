@@ -188,7 +188,7 @@ def test_c_table_matches_independent_table(tool: Path):
 
 def _parse_header_layout():
     text = GAME_STATE_H.read_text()
-    m = re.search(r"#if VERSION_US\n(\s*/\* 0x2644.*?)#elif VERSION_EU\n(.*?)#endif", text, re.S)
+    m = re.search(r"#if VERSION_US\n(\s*/\* 0x2644.*?)#elif VERSION_EU(?: \|\| VERSION_JP)?\n(.*?)#endif", text, re.S)
     assert m
     out = {}
     for region, body in (("us", m.group(1)), ("eu", m.group(2))):
@@ -208,7 +208,7 @@ def test_table_matches_decomp_header():
         assert layout["us"][g] == us, hex(g)
         assert layout["eu"][g] == eu, hex(g)
     m = re.search(r"#if VERSION_US\n#define GAME_SAVE_SIZE (0x[0-9A-Fa-f]+)\n"
-                  r"#elif VERSION_EU\n#define GAME_SAVE_SIZE (0x[0-9A-Fa-f]+)", text)
+                  r"#elif VERSION_EU(?: \|\| VERSION_JP)?\n#define GAME_SAVE_SIZE (0x[0-9A-Fa-f]+)", text)
     assert m and (int(m.group(1), 16), int(m.group(2), 16)) == (SIZE["us"], SIZE["eu"])
     # the common block is 0x2644 bytes and both layouts start flags there
     assert layout["us"][0x02][0] == layout["eu"][0x02][0] == FLAGS_OFF
@@ -217,7 +217,7 @@ def test_table_matches_decomp_header():
     mc = ROOT / "vendor" / "dw3_decomp" / "include" / "menus" / "memory_card.h"
     t = mc.read_text()
     assert re.search(r"#if VERSION_US\n#define MEMCARD_SAVE_VERSION 3\n"
-                     r"#elif VERSION_EU\n#define MEMCARD_SAVE_VERSION 4", t)
+                     r"#elif VERSION_EU(?: \|\| VERSION_JP)?\n#define MEMCARD_SAVE_VERSION 4", t)
 
 
 # ------------------------------------------------------------------ slot level
