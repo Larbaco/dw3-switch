@@ -3551,15 +3551,18 @@ _GLY_CELLS = {
 }
 
 
-def _glyphs(base_name, name, layout="playstation", env=(), note="", cfg_extra=(), pt="L1=L R1=R",
+def _glyphs(base_name, name, layout=None, env=(), note="", cfg_extra=(), pt="L1=L R1=R",
             use=None):
-    """`use`: a regex that must follow `dw3-glyphs: page-turn prompt ` (the prompt was drawn)."""
+    """`use`: a regex that must follow `dw3-glyphs: page-turn prompt ` (the prompt was drawn).
+    `layout` None is the default layout, which is Nintendo since D2 (#408); the scenario then
+    pins nothing, and a custom map (cfg_extra) looks up the PlayStation cells."""
     b = by_name()[base_name]
     v = b.version
     cfg = b.cfg + (("switch_glyphs", "1"),) + ((("button_layout", "nintendo"),)
                                                 if layout == "nintendo" else ()) + cfg_extra
-    map_name = "custom" if ("button_layout", "custom") in cfg_extra else layout
-    cells = _GLY_CELLS[(v, "playstation" if map_name == "custom" else layout)]
+    eff = layout or "nintendo"
+    map_name = "custom" if ("button_layout", "custom") in cfg_extra else eff
+    cells = _GLY_CELLS[(v, "playstation" if map_name == "custom" else eff)]
     expect = (
         (0, rf"dw3-options: switch_glyphs=on(?s:.*)dw3-glyphs: on, map={map_name}, "
             + cells + r" \[font load\]"),
@@ -3583,12 +3586,12 @@ for _v in ("us", "eu"):
             cfg=_b.cfg + (("switch_glyphs", "0"),), ref_from=f"{_v}-item-shop",
             forbid_log=((0, r"dw3-glyphs: (on|page-turn)"),),
             expect_log=tuple(e for e in _b.expect_log if e[0] == 0)
-            + ((0, r"dw3-options: switch_glyphs=off(?s:.*)dw3-glyphs: off, map=playstation, patched 0 cells"),),
+            + ((0, r"dw3-options: switch_glyphs=off(?s:.*)dw3-glyphs: off, map=nintendo, patched 0 cells"),),
             note="switch_glyphs=0: the item shop is bit-identical to the plain run (P10.6)"),
         _glyphs(f"{_v}-item-shop", f"{_v}-glyphs-on-shop", use=r"R1 drawn as glyph R \(scene=STITSHOP",
-                note="Switch glyphs on, PlayStation layout: the item shop's Circle prompt is an A "
-                     "glyph (US also keeps its multiplication sign) and its page-turn prompt R1 "
-                     "an R glyph (P10.6)"),
+                note="Switch glyphs on, the default (Nintendo, since D2) layout: the item shop's "
+                     "Circle prompt is an X glyph (US also keeps its multiplication sign) and "
+                     "its page-turn prompt R1 an R glyph (P10.6)"),
         _glyphs(f"{_v}-item-shop", f"{_v}-glyphs-nintendo-shop", layout="nintendo",
                 use=r"R1 drawn as glyph R \(scene=STITSHOP",
                 note="Switch glyphs on, Nintendo layout: the Circle prompt is an X glyph, the "
@@ -3599,9 +3602,9 @@ for _v in ("us", "eu"):
                 note="Switch glyphs on, custom map with L1 on ZL and R1 on ZR: the page-turn "
                      "prompt is a ZR glyph (P10.6 page-turn)"),
         _glyphs(f"{_v}-save-screen", f"{_v}-glyphs-on-save",
-                note="Switch glyphs on: the save screen's Back prompt is an X glyph and its "
-                     "Save prompt (the Cross: the EU disc, the US letter X since bug 4) a B glyph "
-                     "(P10.6)"),
+                note="Switch glyphs on, the default (Nintendo) layout: the save screen's Back "
+                     "prompt is a B glyph and its Save prompt (the Cross: the EU disc, the US "
+                     "letter X since bug 4) an A glyph (P10.6)"),
         _glyphs(f"{_v}-save-screen", f"{_v}-glyphs-nintendo-save", layout="nintendo",
                 note="Switch glyphs on, Nintendo layout: the save screen's Save prompt is an A "
                      "glyph, its Back prompt a B glyph, on both discs (bug 4)"),
@@ -3629,12 +3632,13 @@ def _glyphs_load(v, name, layout, glyphs, note, env=()):
     cfg = b.cfg + (("switch_glyphs", "1" if glyphs else "0"),)
     if layout == "nintendo":
         cfg += (("button_layout", "nintendo"),)
+    eff = layout or "nintendo"      # None: the default layout, Nintendo since D2 (#408)
     if glyphs:
-        expect = ((1, rf"dw3-options: switch_glyphs=on(?s:.*)dw3-glyphs: on, map={layout}, "
-                      + _GLY_CELLS[(v, layout)] + r" \[font load\]"),)
+        expect = ((1, rf"dw3-options: switch_glyphs=on(?s:.*)dw3-glyphs: on, map={eff}, "
+                      + _GLY_CELLS[(v, eff)] + r" \[font load\]"),)
         forbid = ((1, r"dw3-glyphs: .*(cell is not a 12x12|not a role colour|size-1 icon table has)"),)
     else:
-        expect = ((1, r"dw3-options: switch_glyphs=off(?s:.*)dw3-glyphs: off, map=playstation, "
+        expect = ((1, r"dw3-options: switch_glyphs=off(?s:.*)dw3-glyphs: off, map=nintendo, "
                       r"patched 0 cells"),)
         forbid = ((1, r"dw3-glyphs: (on|page-turn)"),)
     return dataclasses.replace(b, name=name, cfg=cfg, env=b.env + env,
@@ -3645,11 +3649,11 @@ def _glyphs_load(v, name, layout, glyphs, note, env=()):
 
 for _v in ("us", "eu"):
     _add(
-        _glyphs_load(_v, f"{_v}-glyphs-off-load", "playstation", False,
+        _glyphs_load(_v, f"{_v}-glyphs-off-load", None, False,
                      "switch_glyphs=0: the Load Game screen is bit-identical to the plain run (bug 4)"),
-        _glyphs_load(_v, f"{_v}-glyphs-on-load", "playstation", True,
-                     "Switch glyphs on, PlayStation layout: the Load Game screen's confirm prompt "
-                     "is a B glyph, its back prompt an X glyph (bug 4)"),
+        _glyphs_load(_v, f"{_v}-glyphs-on-load", None, True,
+                     "Switch glyphs on, the default (Nintendo) layout: the Load Game screen's "
+                     "confirm prompt is an A glyph, its back prompt a B glyph (bug 4)"),
         _glyphs_load(_v, f"{_v}-glyphs-nintendo-load", "nintendo", True,
                      "Switch glyphs on, Nintendo layout: the Load Game screen's confirm prompt is "
                      "an A glyph, its back prompt a B glyph (bug 4)"),

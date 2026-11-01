@@ -37,9 +37,6 @@ enum {
     LOGO_OUTPUT_H = 326,
 };
 
-/* PSY-Z GPU backend's VRAM readback helper is private to its renderer TU. */
-extern void Draw_StoreImage(RECT *rect, u_long *pixels);
-
 typedef struct LogoPixel {
     uint8_t rgba[4];
 } LogoPixel;
@@ -457,7 +454,10 @@ static int capture_logo(const s32 *sheet) {
     output = (uint8_t *)malloc((size_t)LOGO_OUTPUT_W * LOGO_OUTPUT_H * 4);
     if (!vram || !source || !cropped || !output) goto fail;
 
-    Draw_StoreImage(&rect, (u_long *)vram);
+    /* PSY-Z's StoreImage is asynchronous: the pixels are in vram after DrawSync */
+    DrawSync(0);
+    StoreImage(&rect, (u_long *)vram);
+    DrawSync(0);
     if (!draw_layout(vram, sheet, layout, layout_count, source)) goto fail;
     for (y = 0; y < CANVAS_H; ++y) {
         for (x = 0; x < CANVAS_W; ++x) {
@@ -535,7 +535,9 @@ int dw3_port_title_logo_capture(const s32 *sheet) {
     if (!sheet) return 0;
     vram = (u16 *)calloc((size_t)VRAM_WIDTH * VRAM_HEIGHT, sizeof(u16));
     if (!vram) return 0;
-    Draw_StoreImage(&rect, (u_long *)vram);
+    DrawSync(0);
+    StoreImage(&rect, (u_long *)vram);
+    DrawSync(0);
     capture_menu_labels(vram, sheet, LANGUAGE);
     free(vram);
     return 1;

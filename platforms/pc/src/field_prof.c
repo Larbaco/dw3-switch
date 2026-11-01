@@ -710,8 +710,8 @@ void __wrap_Draw_SetDisplayMode(DisplayMode *mode) {
     if (!mode) {
         return;
     }
-    if (mode->horizontal_resolution_368) {
-        s_mode_w = 368;
+    if (mode->horizontal_resolution_384) {
+        s_mode_w = 384;
     } else {
         static const int widths[4] = {256, 320, 512, 640};
         s_mode_w = widths[mode->horizontal_resolution & 3];
