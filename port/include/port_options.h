@@ -116,7 +116,21 @@ enum {
      * a Display row (Nearest / Sharp bilinear / Lanczos2 / FSR 1 / Bilinear).
      * Stored as a DW3_MAPSCALER_* (the order of map_view_core.h MV_SCALER_*),
      * written as a word: map_scaler=fsr1. Default FSR 1. */
-    DW3_PORT_OPT_MAP_SCALER = 28
+    DW3_PORT_OPT_MAP_SCALER = 28,
+    /* Output filter (docs/OUTPUT_FILTER.md): how the 2D picture is stretched to the
+     * screen, a Display row (Nearest / Bilinear / Sharp bilinear). Stored as a
+     * DW3_OUTFILTER_*, written as a word: output_filter=nearest|bilinear|sharp.
+     * Default Nearest, today's look. Read at every present, in game too. */
+    DW3_PORT_OPT_OUTPUT_FILTER = 29
+};
+
+/* The values of the Output filter row, and the words of its cfg key. */
+enum {
+    DW3_OUTFILTER_NEAREST = 0,
+    DW3_OUTFILTER_BILINEAR = 1,
+    DW3_OUTFILTER_SHARP = 2,
+    DW3_OUTFILTER_COUNT = 3,
+    DW3_OUTFILTER_DEFAULT = DW3_OUTFILTER_NEAREST /* what the port always did */
 };
 
 /* D5: the values of the Map scaler row, in the order of map_view_core.h's

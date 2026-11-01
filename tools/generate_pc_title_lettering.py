@@ -349,6 +349,16 @@ EXTRA_ROWS = {
                     'Skalierung der Vollbildkarte. Beim nächsten Öffnen.',
                     'Escalado del mapa completo. Al abrirlo otra vez.',
                     'Scaler della mappa a schermo. Alla prossima apertura.')},
+    # Registry row 29 (Display): how the 2D picture is stretched to the screen. The
+    # values reuse the Map scaler's product names (SCALER_VALUES: Nearest, Bilinear,
+    # Sharp bilinear), the same in every language.
+    'of': {'row': ('Output filter', 'Filtre de sortie', 'Ausgabefilter', 'Filtro de salida',
+                   'Filtro di uscita'),
+           'desc': ('How the picture is stretched. Sharp suits a TV.',
+                    "Étirement de l'image. Sharp va bien sur TV.",
+                    'Wie das Bild gestreckt wird. Sharp passt zum TV.',
+                    'Cómo se estira la imagen. Sharp va bien en TV.',
+                    "Come si allarga l'immagine. Sharp è ideale per TV.")},
 }
 # D5: the words of the Map scaler row (the stored order: nearest, sharp, lanczos2,
 # fsr1, bilinear), product names the same in every language.

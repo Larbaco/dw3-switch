@@ -82,11 +82,12 @@ typedef struct Dw3OptGroup {
  * (Menus), 21 Version label, 22 Map mod pack (Display), 23 Shared saves
  * (Saves), 24 Stage sweep, 25 Sweep frames (Advanced), 26 Map buttons (the
  * action row of Controls). Instant menu exit (27, Menus, patch 0200) and, from D5,
- * Map scaler (28, Display, third row) come after them. Restart hotkey (2) moved to
+ * Map scaler (28, Display, third row) come after them, then Output filter (29, Display,
+ * fourth row). Restart hotkey (2) moved to
  * Controls and Region at start (10) to Saves; their numbers and cfg keys did not change.
  * The rows are listed here in screen order. */
 static const Dw3OptGroup dw3_optgroups[DW3_OPTGRP_COUNT] = {
-    /* Display  */ {1, 5, {0, 15, 28, 22, 21}},
+    /* Display  */ {1, 6, {0, 15, 28, 29, 22, 21}},
     /* Sound    */ {1, 3, {3, 4, 13}},
     /* Gameplay */ {1, 4, {1, 5, 6, 7}},
 #if DW3_OPT_REGION_ROW

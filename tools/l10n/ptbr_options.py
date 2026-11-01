@@ -92,6 +92,8 @@ PT_LETTERING = {
     'opt_desc_x_mb': 'Quais botões controlam o mapa em tela cheia.',
     'opt_row_x_sc': 'Filtro do mapa',
     'opt_desc_x_sc': 'Filtro de imagem do mapa em tela cheia. Na próxima.',
+    'opt_row_x_of': 'Filtro de saída',
+    'opt_desc_x_of': 'Como a imagem é esticada. Sharp fica bem na TV.',
     'opt_val_sw_run': 'Executar',
     'opt_val_sw_over': 'Recomeçar',
     'opt_row_mb0': 'Abrir o mapa',

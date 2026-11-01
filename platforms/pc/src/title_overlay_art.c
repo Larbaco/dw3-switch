@@ -198,7 +198,7 @@ int dw3_pc_title_overlay_options_cursor(void) { return option_cursor; }
 int dw3_pc_title_overlay_options_value(int row) {
     return row>=0&&row<DW3_TITLE_OPTION_ROWS?option_values[row]:0;
 }
-enum { OPT_LOCK_ROWS = 29 }; /* registry rows 0..28: the lock mask's width (D1, patch 0200, D5) */
+enum { OPT_LOCK_ROWS = 30 }; /* registry rows 0..29: the lock mask's width (D1, patch 0200, D5, Output filter) */
 void dw3_pc_title_overlay_set_options_locked(unsigned mask) {
     mask&=((1u<<OPT_LOCK_ROWS)-1u)|DW3_TITLE_LOCK_CHEATS;
     if(mask!=options_locked){options_locked=mask;options_layout++;options_generation++;}
@@ -329,7 +329,7 @@ enum { OPT_X0 = 84, OPT_Y0 = 60, OPT_W = 792, OPT_H = 600,
 enum { ROW_SWITCH, ROW_FAST_FORWARD, ROW_VOLUME, ROW_ENCOUNTER, ROW_TEXT,
        ROW_BATTLE, ROW_AUTOSAVE, ROW_LAYOUT, ROW_REGION, ROW_CUSTOMIZE, ROW_RESET,
        ROW_TURBO_MUSIC, ROW_GLYPHS, ROW_MAP_SCREEN,
-       ROW_EXTRA /* D1: registry rows 16..28, words in extra_words */ };
+       ROW_EXTRA /* D1: registry rows 16..29, words in extra_words */ };
 static int row_kind(int row) {
     return row == 1 ? ROW_FAST_FORWARD : row == 3 || row == 4 ? ROW_VOLUME :
            row == 5 ? ROW_ENCOUNTER : row == 6 ? ROW_TEXT :
@@ -337,7 +337,7 @@ static int row_kind(int row) {
            row == 9 ? ROW_LAYOUT : row == 10 ? ROW_REGION :
            row == 11 ? ROW_CUSTOMIZE : row == 12 ? ROW_RESET :
            row == 13 ? ROW_TURBO_MUSIC : row == 14 ? ROW_GLYPHS :
-           row == 15 ? ROW_MAP_SCREEN : row >= 16 && row <= 28 ? ROW_EXTRA : ROW_SWITCH;
+           row == 15 ? ROW_MAP_SCREEN : row >= 16 && row <= 29 ? ROW_EXTRA : ROW_SWITCH;
 }
 /* P6.31: the Auto-save row's lettering, in the language of the disc (en, fr,
  * de, es, it: the DW3_TITLE_LANG_* order). OFF is the Options screen's word. */
@@ -420,13 +420,13 @@ static const MapscrWords *mapscr_lang(void) {
  * three message lines, the Select / Minus values). */
 #define XW(k,l) {WORD(opt_row_x_##k##_##l),WORD(opt_desc_x_##k##_##l)}
 #define EXTRA_WORDS(l) {{XW(eq,l),XW(st,l),XW(bg,l),XW(us,l),XW(ps,l),XW(vr,l),XW(mm,l),XW(ss,l), \
-    XW(sw,l),XW(sf,l),XW(mb,l),XW(mx,l),XW(sc,l)}, WORD(opt_val_sw_run_##l),WORD(opt_val_sw_over_##l), \
+    XW(sw,l),XW(sf,l),XW(mb,l),XW(mx,l),XW(sc,l),XW(of,l)}, WORD(opt_val_sw_run_##l),WORD(opt_val_sw_over_##l), \
     {WORD(opt_row_mb0_##l),WORD(opt_row_mb1_##l),WORD(opt_row_mb2_##l),WORD(opt_row_mb3_##l), \
      WORD(opt_row_mb4_##l),WORD(opt_row_mb5_##l),WORD(opt_row_mb6_##l),WORD(opt_row_mb7_##l)}, \
     {WORD(opt_desc_mb_bind_##l),WORD(opt_desc_mb_field_##l),WORD(opt_desc_mb_reset_##l)}}
 typedef struct ExtraWords { Word row,desc; } ExtraWords;
 typedef struct ExtraSet {
-    ExtraWords reg[13];       /* registry rows 16..28 (27 = Instant menu exit, 28 = D5 Map scaler) */
+    ExtraWords reg[14];       /* registry rows 16..29 (27 = Instant menu exit, 28 = D5 Map scaler, 29 = Output filter) */
     Word sweep_run,sweep_over;
     Word mb_row[8];
     Word mb_desc[3];          /* bind, field, reset */
@@ -819,6 +819,11 @@ static const Word *list_value(const ListWords *t,int reg,int v,int *dim) {
                                           WORD(opt_val_sc_fsr1),WORD(opt_val_sc_bilinear)};
             if(v>4)v=4;
             return &v_scaler[v];
+        }
+        if(reg==29) {       /* Output filter: Nearest, Bilinear, Sharp bilinear (product names, the same in every language) */
+            static const Word v_ofilter[]={WORD(opt_val_sc_nearest),WORD(opt_val_sc_bilinear),WORD(opt_val_sc_sharp)};
+            if(v>2)v=2;
+            return &v_ofilter[v];
         }
         if(v>1)v=1;
         *dim=v==0;

@@ -224,13 +224,21 @@ int main(void) {
     /* P6.32 phase 4: the Full-screen map row is the second row of the Display
      * group, off by default, a plain switch (Confirm toggles), not locked in game.
      * D1 adds Map mod pack and Version label after it (both default ON). */
-    if (dw3_optgroups[DW3_OPTGRP_DISPLAY].nrows != 5 ||
+    if (dw3_optgroups[DW3_OPTGRP_DISPLAY].nrows != 6 ||
         dw3_optgroups[DW3_OPTGRP_DISPLAY].rows[0] != 0 /* Widescreen */ ||
         dw3_optgroups[DW3_OPTGRP_DISPLAY].rows[1] != DW3_PORT_OPT_MAP_SCREEN ||
         dw3_optgroups[DW3_OPTGRP_DISPLAY].rows[2] != DW3_PORT_OPT_MAP_SCALER ||
-        dw3_optgroups[DW3_OPTGRP_DISPLAY].rows[3] != DW3_PORT_OPT_MAP_MOD ||
-        dw3_optgroups[DW3_OPTGRP_DISPLAY].rows[4] != DW3_PORT_OPT_SHOW_VERSION) {
-        return fail("Display group is Widescreen, Map screen, Map scaler, Map mod pack, Version label");
+        dw3_optgroups[DW3_OPTGRP_DISPLAY].rows[3] != DW3_PORT_OPT_OUTPUT_FILTER ||
+        dw3_optgroups[DW3_OPTGRP_DISPLAY].rows[4] != DW3_PORT_OPT_MAP_MOD ||
+        dw3_optgroups[DW3_OPTGRP_DISPLAY].rows[5] != DW3_PORT_OPT_SHOW_VERSION) {
+        return fail("Display group is Widescreen, Map screen, Map scaler, Output filter, Map mod pack, Version label");
+    }
+    /* Output filter: the fourth row of Display, Nearest by default (the look the port
+     * always had), a word key output_filter. */
+    if (dw3_port_options_level(DW3_PORT_OPT_OUTPUT_FILTER) != DW3_OUTFILTER_NEAREST ||
+        DW3_OUTFILTER_DEFAULT != DW3_OUTFILTER_NEAREST ||
+        strcmp(dw3_port_options_key(DW3_PORT_OPT_OUTPUT_FILTER), "output_filter") != 0) {
+        return fail("Output filter defaults to Nearest, key output_filter");
     }
     /* D5: the Map scaler row is the third of Display, FSR 1 by default (owner
      * 2026-10-31), a stepped row of five values that is not locked in game. */
