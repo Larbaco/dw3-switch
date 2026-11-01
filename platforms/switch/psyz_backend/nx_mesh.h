@@ -93,6 +93,17 @@ void dw3_nx_mesh_note_soft_view(int x0, int y0, int x1, int y1);
 bool dw3_nx_mesh_soft_view_in(int dx, int dy, int dw, int dh, int *x, int *y,
                               int *w, int *h);
 
+/* P6.11 phase 0 test aids (nx_res_probe.h). The mesh and gutter targets are
+ * scale times the VRAM size; 1 is the shipped path. set_scale / cycle_scale
+ * apply at the next frame boundary. target_bytes is 0 before init. */
+int dw3_nx_mesh_scale(void);
+uint64_t dw3_nx_mesh_target_bytes(void);
+void dw3_nx_mesh_set_scale(int n);
+int dw3_nx_mesh_cycle_scale(void);
+/* Drop the queued triangles without drawing them (a frame turbo does not
+ * show, DW3_NX_MESH_SKIP). Leaves every other state alone. */
+void dw3_nx_mesh_drop_pending(void);
+
 /* Drop the per-frame "had mesh" flag after present (FBO contents stay). */
 void dw3_nx_mesh_end_frame(void);
 

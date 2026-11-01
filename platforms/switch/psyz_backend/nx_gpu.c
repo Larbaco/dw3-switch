@@ -7,6 +7,7 @@
 #include "nx_map_view.h"
 #include "nx_mesh.h"
 #include "nx_mesh_debug.h"
+#include "nx_res_probe.h"
 #include "nx_vram_dump.h"
 #include "nx_vram_pack.h"
 
@@ -397,10 +398,16 @@ int Psyz_VideoVSync(int mode) {
         /* P6.22: the frames turbo does not show are queued, not drawn. */
         dw3_nx_switch_gpu_set_defer(speed > 1);
         if (speed > 1 && !dw3_port_turbo_present_due()) {
+            uint64_t t_skip = gpu_now_us();
+
             dw3_nx_gpu_skip_present(dw3_nx_switch_gpu_vram_nosync());
+            dw3_nx_res_probe_note_skipped(gpu_now_us() - t_skip);
             last_vsync_us = now_us;
             return lines;
         }
+        unsigned long long probe_sync0 = s_pace.sync_us;
+        unsigned long long probe_pres0 = s_pace.present_us;
+        unsigned long long probe_swap0 = s_pace.swap_us;
 
         dw3_nx_switch_gpu_display(&disp);
         if (disp.on) {
@@ -446,6 +453,9 @@ int Psyz_VideoVSync(int mode) {
             dw3_nx_gpu_swap();
             s_pace.swap_us += gpu_now_us() - t_swap;
         }
+        dw3_nx_res_probe_note_shown(s_pace.sync_us - probe_sync0,
+                                    s_pace.present_us - probe_pres0,
+                                    s_pace.swap_us - probe_swap0);
 #else
         dw3_nx_gpu_swap();
 #endif
@@ -496,6 +506,8 @@ void dw3_nx_gpu_pace_log(unsigned long long dt_us) {
         s_pace.sync_us + s_pace.present_us + s_pace.swap_us;
     unsigned long long mix_us = dw3_nx_audio_mix_us_take();
 
+    dw3_nx_res_probe_emit(dt_us, dw3_port_turbo_speed(), s_docked, s_width,
+                          s_height, dw3_nx_mesh_scale());
     if (frames == 0 || dt_us == 0) {
         memset(&s_pace, 0, sizeof(s_pace));
         return;
@@ -756,7 +768,13 @@ static void dw3_nx_gpu_skip_present(const uint16_t *vram) {
     if (!s_ready || !vram) {
         return;
     }
-    dw3_nx_mesh_flush(vram);
+    if (dw3_nx_res_probe_skip_unshown()) {
+        /* P6.11 phase 0 measurement: the mesh of a frame nobody sees is not
+         * drawn at all. */
+        dw3_nx_mesh_drop_pending();
+    } else {
+        dw3_nx_mesh_flush(vram);
+    }
     dw3_nx_mesh_end_frame();
 }
 #endif
@@ -839,6 +857,7 @@ void dw3_nx_gpu_present(const uint16_t *vram, int dx, int dy, int dw, int dh,
     /* Flush any deferred mesh before we composite. */
     dw3_nx_mesh_flush(vram);
     use_mesh = dw3_nx_mesh_has_content();
+    dw3_nx_res_probe_present_begin(); /* P6.11 phase 0 test aid; off = no-op */
 #if DW3_NX_DEBUG_MESH
     /* present_us is composite/blit only; flush/upload are counted separately. */
     present_t0 = gpu_now_us();
@@ -1056,6 +1075,7 @@ void dw3_nx_gpu_present(const uint16_t *vram, int dx, int dy, int dw, int dh,
     dw3_nx_vram_dump_battle_once(vram, dx, dy, dw, dh, use_mesh,
                                  dw3_nx_mesh_prims_flushed());
 #endif
+    dw3_nx_res_probe_present_end();
     dw3_nx_mesh_end_frame();
     /* Native title menu/logo over the 4:3 title picture (inactive elsewhere). */
     dw3_nx_title_overlay_draw(vx, vy, vw, vh);
