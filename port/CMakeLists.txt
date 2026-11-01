@@ -341,6 +341,9 @@ add_library(dw3_port_options${_S} OBJECT
   "${CMAKE_CURRENT_SOURCE_DIR}/file_cache/file_cache_host.c"
   "${CMAKE_CURRENT_SOURCE_DIR}/help/help.c"
   "${CMAKE_CURRENT_SOURCE_DIR}/items_menu/items_menu.c"
+  "${CMAKE_CURRENT_SOURCE_DIR}/l10n/l10n.c"
+  "${CMAKE_CURRENT_SOURCE_DIR}/l10n/l10n_core.c"
+  "${CMAKE_CURRENT_SOURCE_DIR}/l10n/sha256.c"
   "${CMAKE_CURRENT_SOURCE_DIR}/map_view/map_view.c"
   "${CMAKE_CURRENT_SOURCE_DIR}/map_view/field_map.c"
   "${CMAKE_CURRENT_SOURCE_DIR}/map_view/map_view_core.c"
@@ -396,6 +399,7 @@ add_dependencies(dw3_port_options${_S} dw3_decomp_patched)
 target_include_directories(dw3_port_options${_S} PRIVATE ${_DW3_GAME_INCLUDES}
   "${CMAKE_CURRENT_SOURCE_DIR}/region"
   "${CMAKE_CURRENT_SOURCE_DIR}/map_view"
+  "${CMAKE_CURRENT_SOURCE_DIR}/l10n"
   "${CMAKE_CURRENT_SOURCE_DIR}/mods")
 target_compile_definitions(dw3_port_options${_S} PRIVATE ${_DW3_GAME_DEFS})
 target_compile_options(dw3_port_options${_S} PRIVATE ${_DW3_GAME_OPTS})

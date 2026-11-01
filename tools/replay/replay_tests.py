@@ -466,7 +466,7 @@ def run_phase(rec: Path, version, binary, runtime, display, outdir: Path, memdir
               "DW3_FILE_CACHE_SLOTS", "DW3_MODS_DIR", "DW3_MOD_PACK", "DW3_FORCE_MENU", "DW3_CHEATS_ARM", "DW3_STAGE_SWEEP", "DW3_STAGE_SWEEP_EXIT", "DW3_STAGE_SWEEP_FRAMES", "DW3_STAGE_SWEEP_ONLY", "DW3_STAGE_SWEEP_DIR", "DW3_STAGE_SWEEP_HANG_MS", "DW3_FORCE_EXIT", "DW3_START_MODE_EVERY", "DW3_WALKTHROUGH_PROBE",
               "DW3_MEMCARD_IMPORT_DIR", "DW3_CROSS_IMPORT", "DW3_SAVE_STORE", "DW3_SAVE_STORE_DIR", "DW3_REGION", "DW3_REGION_PICK",
               "DW3_REGION_PICK_KEYS", "DW3_SAVE_PROFILE", "DW3_RUNTIME_BASE", "DW3_PC_BIN_US", "DW3_PC_BIN_EU",
-              "DW3_RELAUNCH_TEST", "DW3_REPLAY_PACED"):
+              "DW3_RELAUNCH_TEST", "DW3_REPLAY_PACED", "DW3_LANG", "DW3_L10N_SHOW_KEYS"):
         env.pop(k, None)
     if PACED:
         env["DW3_REPLAY_PACED"] = "1"
@@ -646,6 +646,26 @@ def make_launch_base(sc, by_version, launcher) -> tuple[Path, dict]:
     return base, dict(base=base, us=by_version["us"][0], eu=by_version["eu"][0])
 
 
+def make_l10n_runtime(runtime: Path, version: str, kind: str) -> Path:
+    """P6.7: a private runtime folder of symlinks to `runtime`, minus its l10n/ folder, plus a
+    synthetic text pack of `kind` (tools/l10n/build_pack.py); kind "none" adds no pack. The
+    owner's real pack (if any) is never seen by a scenario, and nothing is written to the
+    shared runtime."""
+    sys.path.insert(0, str(ROOT / "tools" / "l10n"))
+    import build_pack
+    kind, _, flag = kind.partition("+")  # "upper+keys": the pack also has the key variants
+    overlay = Path(tempfile.mkdtemp(prefix="dw3-replay-l10n-"))
+    root = overlay / version
+    root.mkdir()
+    for item in runtime.iterdir():
+        if item.name not in ("l10n", "memcard"):
+            (root / item.name).symlink_to(item.resolve())
+    if kind != "none":
+        tpls = build_pack.synthetic_templates(kind, version, overlay, ROOT / "vendor" / "dw3_decomp")
+        build_pack.build_pack(tpls, overlay, version, "ptbr", root / "l10n" / "ptbr", kind, flag == "keys")
+    return root
+
+
 def run_scenario(sc, binary, runtime, out: Path, stamp, label, stall, timeout_scale=1.0,
                  no_turbo=False, by_version=None, launcher=None):
     """Run all phases of one scenario under its own Xvfb. Returns
@@ -668,6 +688,10 @@ def run_scenario(sc, binary, runtime, out: Path, stamp, label, stall, timeout_sc
         make_synthetic_pack.make_pack(cfgdir / "mods", ("us", "eu"), shared=True)
     elif os.environ.get("DW3_REPLAY_MODS"):  # a local aid: look at a real pack
         (cfgdir / "mods").symlink_to(Path(os.environ["DW3_REPLAY_MODS"]).resolve())
+    l10n_root = None
+    if sc.l10n:
+        l10n_root = make_l10n_runtime(runtime, sc.version, sc.l10n)
+        runtime = l10n_root
     xvfb, display = start_xvfb(sdir)
     results = []
     launch, base, run_base = None, None, None
@@ -717,6 +741,8 @@ def run_scenario(sc, binary, runtime, out: Path, stamp, label, stall, timeout_sc
             shutil.rmtree(base, ignore_errors=True)
         if run_base is not None:
             shutil.rmtree(run_base, ignore_errors=True)
+        if l10n_root is not None:
+            shutil.rmtree(l10n_root.parent, ignore_errors=True)
     return results, sdir
 
 

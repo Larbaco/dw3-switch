@@ -121,17 +121,22 @@ enum {
      * Stored as a DW3_MAPSCALER_* (the order of map_view_core.h MV_SCALER_*),
      * written as a word: map_scaler=fsr1. Default FSR 1. */
     DW3_PORT_OPT_MAP_SCALER = 28,
+    /* P6.7 (docs/LOCALIZATION.md): the language of the game's text, a Display row.
+     * 0 = Original (the disc's own text), 1 = Portuguese (BR) from a local text pack
+     * (port_l10n.h). The file holds the words, text_language=original|ptbr;
+     * DW3_LANG=ptbr pins it for one run. The lock mask is 64 bits wide now, so rows past 29 can be locked. */
+    DW3_PORT_OPT_TEXT_LANGUAGE = 29,
     /* P6.11 phase 1 (docs/P6.11_INTERNAL_RES.md): Internal resolution, a Display
      * row. Stored 0 = 1x (native, the default), 1 = 2x, 2 = 3x; key internal_res
      * (the number, so the file reads internal_res=1 for 2x). The 3D of the battle
      * is drawn at that many times the PS1 pixels (the whole picture on the PC);
      * port/options/internal_res.c clamps it to what the machine offers. */
-    DW3_PORT_OPT_INTERNAL_RES = 29,
+    DW3_PORT_OPT_INTERNAL_RES = 30,
     /* P6.11 phase 3: Native res while turbo, a Display switch, default ON. While
      * fast-forward is on the game draws at 1x, then returns to the chosen
      * resolution; on the Switch it also skips the mesh frames turbo never shows.
      * Key internal_res_turbo. */
-    DW3_PORT_OPT_INTERNAL_RES_TURBO = 30
+    DW3_PORT_OPT_INTERNAL_RES_TURBO = 31
 };
 
 /* P6.11: the values of the Internal resolution row (stored 0..2 = 1x..3x). */

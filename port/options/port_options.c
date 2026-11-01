@@ -15,6 +15,7 @@
 #include "port_options_cfg.h"
 #include "port_options_groups.h"
 #include "port_internal_res.h"
+#include "port_l10n.h"
 #include "port_pacing.h"
 #include "port_turbo.h"
 #include "port_version.h"
@@ -65,7 +66,7 @@
  * port_options.h: port/pacing/pacing.c, port/battle_menu/battle_menu_memory.c
  * and port/autosave/autosave.c read them. */
 enum {
-    DW3_PORT_OPT_COUNT = 31,
+    DW3_PORT_OPT_COUNT = 32,
     DW3_PORT_OPT_WIDESCREEN = 0,
     DW3_PORT_OPT_FAST_FORWARD = 1,
     DW3_PORT_OPT_RESTART = 2,
@@ -90,8 +91,9 @@ _Static_assert(DW3_PORT_OPT_WIDESCREEN == 0 && DW3_PORT_OPT_FAST_FORWARD == 1 &&
                DW3_PORT_OPT_MAP_MOD == 22 && DW3_PORT_OPT_SAVE_STORE == 23 &&
                DW3_PORT_OPT_STAGE_SWEEP == 24 && DW3_PORT_OPT_SWEEP_FRAMES == 25 &&
                DW3_PORT_OPT_MAP_BUTTONS == 26 && DW3_PORT_OPT_MENU_EXIT == 27 &&
-               DW3_PORT_OPT_MAP_SCALER == 28 && DW3_PORT_OPT_INTERNAL_RES == 29 &&
-               DW3_PORT_OPT_INTERNAL_RES_TURBO == 30 && DW3_PORT_OPT_COUNT == 31,
+               DW3_PORT_OPT_MAP_SCALER == 28 && DW3_PORT_OPT_TEXT_LANGUAGE == 29 &&
+               DW3_PORT_OPT_INTERNAL_RES == 30 && DW3_PORT_OPT_INTERNAL_RES_TURBO == 31 &&
+               DW3_PORT_OPT_COUNT == 32,
                "registry indexes changed: update port_options_groups.h");
 
 typedef struct Dw3PortOptStub {
@@ -211,6 +213,10 @@ static Dw3PortOptStub g_stubs[DW3_PORT_OPT_COUNT] = {
      * (map_scaler=nearest|sharp|lanczos2|fsr1|bilinear); the stored value is a
      * DW3_MAPSCALER_*. Default FSR 1. Read at each open of the map view. */
     {"Map scaler", "map_scaler", DW3_MAPSCALER_DEFAULT, DW3_MAPSCALER_DEFAULT, NULL},
+    /* P6.7 Display: the language of the game's text. The file holds a word
+     * (text_language=original|ptbr); DW3_LANG pins it for one run (a word too, so
+     * po_stepped_env skips it: po_textlang_boot reads it). Default Original. */
+    {"Text language", "text_language", DW3_TEXTLANG_ORIGINAL, DW3_TEXTLANG_ORIGINAL, NULL},
     /* P6.11: 0 = 1x (native), 1 = 2x, 2 = 3x. The battle's 3D (the whole picture
      * on the PC) is drawn at that multiple, clamped to what the machine offers
      * (port/options/internal_res.c). DW3_INTERNAL_RES=1..3 pins it for one run. */
@@ -385,7 +391,13 @@ static void po_push_view(void) {
         }
     } else if (g_level) {
         for (i = 0; i < dw3_optgroups[g_group].nrows; i++) {
-            values[i] = g_stubs[dw3_optgroups[g_group].rows[i]].value;
+            const int reg = dw3_optgroups[g_group].rows[i];
+
+            values[i] = g_stubs[reg].value;
+            if (reg == DW3_PORT_OPT_TEXT_LANGUAGE && values[i] == DW3_TEXTLANG_ORIGINAL &&
+                !dw3_l10n_pack_available()) {
+                values[i] = 2; /* P6.7: Original, greyed, "no text pack found" in the message line */
+            }
         }
     }
     dw3_pc_title_overlay_set_options_page(
@@ -622,6 +634,9 @@ void dw3_port_options_set_level(int index, int level) {
     if (index == DW3_PORT_OPT_BUTTON_LAYOUT && po_valid_layout(level)) {
         dw3_button_map_change(level, "api");
     }
+    if (index == DW3_PORT_OPT_TEXT_LANGUAGE) {
+        dw3_l10n_option_changed(level);
+    }
 }
 
 
@@ -641,6 +656,7 @@ static int po_is_mode(int index) {
            index == DW3_PORT_OPT_TURBO_MUSIC ||
            index == DW3_PORT_OPT_STAGE_SWEEP ||
            index == DW3_PORT_OPT_MAP_SCALER ||
+           index == DW3_PORT_OPT_TEXT_LANGUAGE ||
            index == DW3_PORT_OPT_INTERNAL_RES;
 }
 
@@ -659,6 +675,7 @@ static int po_value_max(int index) {
            : index == DW3_PORT_OPT_TURBO_MUSIC ? 1
            : index == DW3_PORT_OPT_STAGE_SWEEP ? 2
            : index == DW3_PORT_OPT_MAP_SCALER ? DW3_MAPSCALER_COUNT - 1
+           : index == DW3_PORT_OPT_TEXT_LANGUAGE ? DW3_TEXTLANG_COUNT - 1
            : index == DW3_PORT_OPT_INTERNAL_RES ? DW3_INTERNAL_RES_COUNT - 1
                                                    : DW3_PACING_MODE_MAX;
 }
@@ -743,6 +760,23 @@ __attribute__((weak)) int dw3_mapbtn_step(int row, int dir) {
 __attribute__((weak)) void dw3_mapbtn_reset(void) {}
 #endif
 
+#ifdef DW3_PORT_OPTIONS_TEST
+/* P6.7: the text pack loader (port/l10n) is not linked by the host tests; with no loader a
+ * pack is "installed" so a test can step the Text language row, and nothing happens. */
+__attribute__((weak)) void dw3_l10n_boot(int level) {
+    (void)level;
+}
+__attribute__((weak)) void dw3_l10n_option_changed(int level) {
+    (void)level;
+}
+__attribute__((weak)) int dw3_l10n_pack_available(void) {
+    return 1;
+}
+__attribute__((weak)) const char *dw3_l10n_off_reason(void) {
+    return "";
+}
+#endif
+
 /* Hand the two volume steps to the mixer (port/audio/audio_bus.c). */
 static void po_audio_apply(void) {
     dw3_port_audio_apply(g_stubs[DW3_PORT_OPT_MUSIC_VOLUME].value,
@@ -770,6 +804,29 @@ static void po_stepped_env(void) {
         }
         g_stubs[row].value = n;
         g_env_pinned |= UINT64_C(1) << row;
+    }
+}
+
+/* P6.7: DW3_LANG=ptbr|original pins the Text language for this run (never written, like the
+ * other DW3_* pins), then the text pack loader looks for its pack and applies it when the
+ * row says Português. A choice of ptbr with no usable pack plays the original text this
+ * run and stays in the file: the row is pinned (g_saved keeps the file's word), so removing
+ * the pack never rewrites the owner's choice. The loader logs why (dw3-l10n: off reason=). */
+static void po_textlang_boot(void) {
+    const char *env = getenv("DW3_LANG");
+    int n = env != NULL ? dw3_textlang_parse(env) : -1;
+    int *value = &g_stubs[DW3_PORT_OPT_TEXT_LANGUAGE].value;
+
+    if (n >= 0) {
+        *value = n;
+        g_env_pinned |= UINT64_C(1) << DW3_PORT_OPT_TEXT_LANGUAGE;
+    } else if (env != NULL && env[0] != '\0') {
+        PO_WARN("dw3-options: DW3_LANG=%s is not original or ptbr; ignored", env);
+    }
+    dw3_l10n_boot(*value);
+    if (*value == DW3_TEXTLANG_PTBR && !dw3_l10n_pack_available()) {
+        *value = DW3_TEXTLANG_ORIGINAL;
+        g_env_pinned |= UINT64_C(1) << DW3_PORT_OPT_TEXT_LANGUAGE;
     }
 }
 
@@ -897,6 +954,8 @@ static int po_save(void) {
             snprintf(num, sizeof(num), "%s",
                      g_mapscaler_word[out[i] >= 0 && out[i] < DW3_MAPSCALER_COUNT
                                           ? out[i] : DW3_MAPSCALER_DEFAULT]);
+        } else if (i == DW3_PORT_OPT_TEXT_LANGUAGE) {
+            snprintf(num, sizeof(num), "%s", dw3_textlang_word(out[i]));
         } else {
             snprintf(num, sizeof(num), "%d", out[i]);
         }
@@ -987,7 +1046,8 @@ int dw3_port_options_file_int(const char *key, int def) {
      * change on the screen is seen at once, with or without a file. */
     for (i = 0; i < DW3_PORT_OPT_COUNT; i++) {
         if (g_stubs[i].key != NULL && i != DW3_PORT_OPT_BUTTON_LAYOUT &&
-            i != DW3_PORT_OPT_MAP_SCALER && strcmp(g_stubs[i].key, key) == 0) {
+            i != DW3_PORT_OPT_MAP_SCALER && i != DW3_PORT_OPT_TEXT_LANGUAGE &&
+            strcmp(g_stubs[i].key, key) == 0) {
             return g_stubs[i].value;
         }
     }
@@ -1114,6 +1174,7 @@ int dw3_port_options_persist_init(const char *dir) {
         po_audio_apply();
         po_layout_boot(0);
         po_glyphs_boot();
+        po_textlang_boot();
         return -1;
     }
     strcpy(g_cfg_dir, dir);
@@ -1207,6 +1268,17 @@ int dw3_port_options_persist_init(const char *dir) {
                 g_stubs[i].value = n;
                 continue;
             }
+            if (i == DW3_PORT_OPT_TEXT_LANGUAGE) {
+                n = dw3_textlang_parse(v);
+                if (n < 0) {
+                    PO_WARN("dw3-options: %s=%s is not valid; using default %s",
+                            g_stubs[i].key, v, dw3_textlang_word(g_stubs[i].def));
+                    bad++;
+                    continue;
+                }
+                g_stubs[i].value = n;
+                continue;
+            }
             if (dw3_optcfg_parse_int(v, &n) != 0 || !po_valid(i, n)) {
                 PO_WARN("dw3-options: %s=%s is not valid; using default %d",
                         g_stubs[i].key, v, g_stubs[i].def);
@@ -1273,6 +1345,7 @@ int dw3_port_options_persist_init(const char *dir) {
             (g_env_pinned >> DW3_PORT_OPT_TURBO_MUSIC) & UINT64_C(1) ? " [env]" : "");
     po_layout_boot(layout_from_cfg);
     po_glyphs_boot();
+    po_textlang_boot();
     if (migrate) {
         /* D2: write the migrated file at once so it runs once; a failed write is
          * kept in memory and retried by the next save and the next boot. This is
@@ -1303,6 +1376,7 @@ static const char *po_mode_name(int index, int v) {
     static const char *const scaler[DW3_MAPSCALER_COUNT] = {
         "nearest", "sharp bilinear", "lanczos2", "fsr 1", "bilinear"};
     static const char *const ires[DW3_INTERNAL_RES_COUNT] = {"1x", "2x", "3x"};
+    static const char *const textlang[DW3_TEXTLANG_COUNT] = {"original", "ptbr"};
 
     if (v < 0 || v > po_value_max(index)) {
         return "?";
@@ -1310,6 +1384,7 @@ static const char *po_mode_name(int index, int v) {
     return index == DW3_PORT_OPT_STAGE_SWEEP ? sweep[v]
            : index == DW3_PORT_OPT_MAP_SCALER ? scaler[v]
            : index == DW3_PORT_OPT_INTERNAL_RES ? ires[v]
+           : index == DW3_PORT_OPT_TEXT_LANGUAGE ? textlang[v]
            : index == DW3_PORT_OPT_ENCOUNTER_RATE ? encounter[v]
            : index == DW3_PORT_OPT_BUTTON_LAYOUT ? layout[v]
            : index == DW3_PORT_OPT_REGION ? region[v]
@@ -1388,6 +1463,12 @@ static void po_step(int index, int delta) {
     if (index == DW3_PORT_OPT_STAGE_SWEEP && v != 0 && po_ask_first(index, v)) {
         return; /* the window answers (dw3_port_options_ask_answer) */
     }
+    if (index == DW3_PORT_OPT_TEXT_LANGUAGE && v == DW3_TEXTLANG_PTBR && !dw3_l10n_pack_available()) {
+        fprintf(stderr, "dw3-port-options: text language ptbr refused: no usable text pack (%s)\n",
+                dw3_l10n_off_reason());
+        fflush(stderr);
+        return;
+    }
     g_stubs[index].value = v;
     g_env_pinned &= ~(UINT64_C(1) << index);
     if (po_is_volume(index)) {
@@ -1404,12 +1485,16 @@ static void po_step(int index, int delta) {
                 : index == DW3_PORT_OPT_STAGE_SWEEP ? "stage sweep"
                 : index == DW3_PORT_OPT_MAP_SCALER ? "map scaler"
                 : index == DW3_PORT_OPT_INTERNAL_RES ? "internal resolution"
+                : index == DW3_PORT_OPT_TEXT_LANGUAGE ? "text language"
                                                     : "text speed",
                 po_mode_name(index, v));
     }
     fflush(stderr);
     if (po_is_volume(index)) {
         po_audio_apply();
+    }
+    if (index == DW3_PORT_OPT_TEXT_LANGUAGE) {
+        dw3_l10n_option_changed(v); /* applies or restores the pack; the next text load reads it */
     }
     if (index == DW3_PORT_OPT_BUTTON_LAYOUT) {
         /* In force from the next pad poll (the pad host reads the map every

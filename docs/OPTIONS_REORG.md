@@ -84,6 +84,7 @@ Item count, Give item) are one-shot actions, not stored keys.
 | `stage_sweep`, `stage_sweep_frames` | 0 / 90 | build with `DW3_CHEATS`; PC + Switch; read at boot | The opt-in stage sweep walks every stage | **Advanced > Stage sweep, Sweep frames** (new group, [3.9](#39-advanced-new)) |
 | `map_view_open`, `_zoom_out`, `_zoom_in`, `_centre`, `_scaler_prev`, `_scaler_next`, `_field_open` | square, l1, r1, select, l2, r2, select | all | Which PS button does each action of the full-screen map | **Controls > Map buttons** sub-page ([3.10](#310-map-buttons-sub-page-under-controls)) |
 | `map_scaler` (a word; new in D5) | `fsr1` (owner 7a) | all | The full-screen map's picture scaler | **Display > Map scaler** (D5, built) |
+| `text_language` (a word; P6.7) | `original` | all; `ptbr` needs a local text pack (EU first) | The game's text comes from a local PT-BR pack instead of the disc | **Display > Text language** (P6.7, built; [PORT_OPTIONS](PORT_OPTIONS.md#text-language-p67)) |
 
 Internal state, not options and never a row: `last_region` (top-level file), `button_map`
 (companion of `custom`), `version`, `end`, and the two migration markers
@@ -197,7 +198,7 @@ P6.34 phase 5. The Walkthrough keeps its place at the end of the list.
 | Page | Rows, PC US plain | Rows, Switch combined | Fits in 6? |
 |---|---|---|---|
 | Group list | 10 | 10 | no, scrolls (offsets 0 to 4; today 0 to 2) |
-| Display | 5 | 5 | yes |
+| Display | 6 | 6 | yes (exactly full) |
 | Sound | 3 | 3 | yes |
 | Gameplay | 4 | 4 | yes |
 | Menus | 5 | 5 | yes |

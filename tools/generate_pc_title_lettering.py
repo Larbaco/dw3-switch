@@ -349,7 +349,7 @@ EXTRA_ROWS = {
                     'Skalierung der Vollbildkarte. Beim nächsten Öffnen.',
                     'Escalado del mapa completo. Al abrirlo otra vez.',
                     'Scaler della mappa a schermo. Alla prossima apertura.')},
-    # P6.11 (registry rows 29 and 30, Display): the battle's 3D resolution and the
+    # P6.11 (registry rows 30 and 31, Display): the battle's 3D resolution and the
     # fast-forward switch. FR / DE / IT / ES are machine drafts.
     'ir': {'row': ('Internal resolution', 'Résolution interne', 'Interne Auflösung',
                    'Resolución interna', 'Risoluzione interna'),
@@ -366,6 +366,23 @@ EXTRA_ROWS = {
                     'El turbo usa 1x y luego vuelve a tu ajuste.',
                     'Il turbo usa 1x, poi torna alla tua impostazione.')},
 }
+# P6.7 (registry row 29, Display, the last row): the language of the game's text. The values
+# are Original and the language's own name, Português (BR) (TEXTLANG_VALUES); the second
+# message line is shown while no usable text pack is installed (TEXTLANG_NOPACK).
+EXTRA_ROWS['tl'] = {
+    'row': ('Text language', 'Langue du texte', 'Textsprache', 'Idioma del texto', 'Lingua del testo'),
+    'desc': ('Game text language. Português (BR) needs a pack.',
+             'Langue du texte. Português (BR) exige un pack local.',
+             'Spieltext-Sprache. Português (BR): lokales Paket nötig.',
+             'Idioma del texto. Português (BR) requiere un paquete.',
+             'Lingua del testo. Português (BR): serve un pacchetto.')}
+TEXTLANG_NOPACK = ('No text pack found: the game text stays original.',
+                   'Aucun pack de texte trouvé : le texte reste d\u2019origine.',
+                   'Kein Textpaket gefunden: Der Spieltext bleibt original.',
+                   'Sin paquete de texto: se usa el texto original.',
+                   'Nessun pacchetto di testo: il testo resta originale.')
+TEXTLANG_ORIGINAL = ('Original', 'Original', 'Original', 'Original', 'Originale')
+TEXTLANG_PT = 'Português (BR)'
 # D5: the words of the Map scaler row (the stored order: nearest, sharp, lanczos2,
 # fsr1, bilinear), product names the same in every language.
 SCALER_VALUES = (('nearest', 'Nearest'), ('sharp', 'Sharp bilinear'),
@@ -442,6 +459,8 @@ for _i, _lang in enumerate(LANGS):
     for _key, _t in EXTRA_ROWS.items():
         LETTERS.append(('opt_row_x_%s_%s' % (_key, _lang), _t['row'][_i], 26, 'DejaVuSans.ttf'))
         LETTERS.append(('opt_desc_x_%s_%s' % (_key, _lang), _t['desc'][_i], 25, 'DejaVuSans.ttf'))
+    LETTERS.append(('opt_desc_tl_nopack_%s' % _lang, TEXTLANG_NOPACK[_i], 25, 'DejaVuSans.ttf'))
+    LETTERS.append(('opt_val_tl_orig_%s' % _lang, TEXTLANG_ORIGINAL[_i], 26, 'DejaVuSans.ttf'))
     for _key, _t in SWEEP_VALUES.items():
         LETTERS.append(('opt_val_sw_%s_%s' % (_key, _lang), _t[_i], 26, 'DejaVuSans.ttf'))
     for _r, _row in enumerate(MAPBTN_ROWS):
@@ -456,6 +475,7 @@ for _key, _name in MAPBTN_SELECT.items():
     LETTERS.append(('opt_val_btn_' + _key, _name, 26, 'DejaVuSans.ttf'))
 for _key, _name in SCALER_VALUES:
     LETTERS.append(('opt_val_sc_' + _key, _name, 26, 'DejaVuSans.ttf'))
+LETTERS.append(('opt_val_tl_pt', TEXTLANG_PT, 26, 'DejaVuSans.ttf'))
 # P6.27 / P6.28 title Quit plaque and the Yes / No confirmation (docs/PORT_OPTIONS.md
 # "Quit and return to title"), in the five languages of the EU disc (en is also
 # the US disc's). The plaque word is bold like the other plaques; the window
