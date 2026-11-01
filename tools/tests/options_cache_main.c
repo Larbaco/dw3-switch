@@ -93,6 +93,61 @@ static void list_page(int group, int scroll, int cheats_on) {
     dw3_pc_title_overlay_set_options_page(dw3_optlist_page(group, scroll), cheats_on);
 }
 
+#ifdef WITH_MENU_BG_TILE
+/* D4 / A18: with a tile the title backdrop is transparent (the hosts draw the
+ * scrolling quad under the canvas), the dimmed 3x texture is handed out, and the
+ * in-game layout keeps its near-opaque dim. */
+static void tile_checks(void) {
+    Dw3OptionsDirty d;
+    int v[DW3_TITLE_OPTION_ROWS] = {0};
+    const uint8_t *tex;
+
+    dw3_pc_title_overlay_menu_tile_prepare();
+    tex = dw3_pc_title_overlay_menu_bg_texture();
+    if (!tex) { printf("FAIL: no menu background texture with a tile\n"); g_failures++; return; }
+    /* texel (x, y) of the 288 texture = tile texel (x / 3, y / 3), dimmed by 90/255 */
+    for (int y = 0; y < DW3_MENU_BG_TEX; y += 7)
+        for (int x = 0; x < DW3_MENU_BG_TEX; x += 5) {
+            const uint8_t *t = tex + ((size_t)y * DW3_MENU_BG_TEX + (size_t)x) * 4;
+            const int tx = x / DW3_MENU_BG_SCALE, ty = y / DW3_MENU_BG_SCALE;
+            const int want_r = (tx * 2) * (255 - 90) / 255, want_g = (ty * 2) * (255 - 90) / 255;
+            if (t[0] != want_r || t[1] != want_g || t[3] != 255) {
+                printf("FAIL: texture texel %d,%d is %d,%d,%d,%d\n", x, y, t[0], t[1], t[2], t[3]);
+                g_failures++;
+                return;
+            }
+        }
+    /* the tile repeats every period: the texture's own wrap is the host's job, but
+     * the data must be the same one period apart */
+    list_page(-1, 0, 0);
+    dw3_options_cache_release();
+    dw3_pc_title_overlay_set_options_view(0, v, DW3_TITLE_OPTION_ROWS);
+    if (dw3_options_cache_update(&d) != 0) { printf("FAIL: update\n"); g_failures++; return; }
+    {
+        const uint8_t *px = dw3_options_cache_pixels();
+        int clear = 0, total = 0;
+        for (int y = 0; y < 720; y += 11)
+            for (int x = 0; x < 960; x += 13) {
+                total++;
+                if (px[(size_t)y * PITCH + (size_t)x * 4 + 3] == 0) clear++;
+            }
+        /* the corner is backdrop only; the plaques are a minority of the sampled points */
+        if (px[3] != 0 || clear * 2 < total) {
+            printf("FAIL: the title canvas backdrop is not transparent (corner alpha %d, %d of %d clear)\n",
+                   px[3], clear, total);
+            g_failures++;
+        }
+        /* a clear pixel carries the dimmed average colour, not black, so a linear
+         * sample across a plaque edge does not darken */
+        if (px[0] == 0 && px[1] == 0 && px[2] == 0) {
+            printf("FAIL: the clear backdrop is black (fringe)\n");
+            g_failures++;
+        }
+    }
+    printf("tile checks done\n");
+}
+#endif
+
 int main(void) {
     Dw3OptionsDirty d;
     int v[DW3_TITLE_OPTION_ROWS] = {0};
@@ -347,6 +402,9 @@ int main(void) {
            g_max_cursor_bytes, g_max_value_bytes);
     if (g_max_cursor_bytes > CANVAS_BYTES / 4 || g_max_value_bytes > CANVAS_BYTES / 20)
         g_failures++;
+#ifdef WITH_MENU_BG_TILE
+    tile_checks();
+#endif
     if (g_failures) {
         printf("%d failure(s)\n", g_failures);
         return 1;

@@ -84,6 +84,17 @@ static SDL_GPUTexture *g_fade_texture;
 enum { FADE_LEVELS = 64 };
 static SDL_GPUSampler *g_background_sampler;
 static int g_background_ready;
+/* D4 / A18: the Options screen's scrolling background (title_overlay_art.c,
+ * dw3_pc_title_overlay_menu_bg_texture): the game's tile, dimmed and expanded to
+ * the canvas's scale, in a repeating texture, drawn as a tiled quad under the
+ * retained canvas. The quad is one of TILE_PHASES precomputed ones in the vertex
+ * buffer, one per scroll step (the shader has no uniform for a UV offset); a
+ * scroll is a different first vertex, no upload and no recompose. */
+enum { TILE_PHASES = 96, TILE_PAD = 480 };
+static SDL_GPUTexture *g_tile_texture;
+static SDL_GPUSampler *g_tile_sampler;
+static int g_tile_state; /* 0 not tried, 1 uploaded, -1 not available */
+static int g_tile_logged_open;
 static SDL_GPUSampler *g_sampler;
 static SDL_GPUSampler *g_logo_sampler;
 static int g_selection;
@@ -320,6 +331,8 @@ static void release_gpu_resources(void) {
     if (g_help_texture) SDL_ReleaseGPUTexture(g_device, g_help_texture);
     if (g_fade_texture) SDL_ReleaseGPUTexture(g_device, g_fade_texture);
     if (g_background_texture) SDL_ReleaseGPUTexture(g_device, g_background_texture);
+    if (g_tile_texture) SDL_ReleaseGPUTexture(g_device, g_tile_texture);
+    if (g_tile_sampler) SDL_ReleaseGPUSampler(g_device, g_tile_sampler);
     if (g_background_sampler) SDL_ReleaseGPUSampler(g_device, g_background_sampler);
     if (g_sampler) SDL_ReleaseGPUSampler(g_device, g_sampler);
     if (g_logo_sampler) SDL_ReleaseGPUSampler(g_device, g_logo_sampler);
@@ -340,6 +353,9 @@ static void release_gpu_resources(void) {
     g_background_texture = NULL;
     g_background_sampler = NULL;
     g_background_ready = 0;
+    g_tile_texture = NULL;
+    g_tile_sampler = NULL;
+    g_tile_state = 0;
     g_sampler = NULL;
     g_logo_sampler = NULL;
     g_window = NULL;
@@ -441,7 +457,7 @@ static int upload_art_and_quad(void) {
         return -1;
     }
 
-    OverlayVertex quads[STATE_COUNT * 6 + 36 + FADE_LEVELS * 6];
+    OverlayVertex quads[STATE_COUNT * 6 + 36 + FADE_LEVELS * 6 + TILE_PHASES * 6];
     for (int row = 0; row < STATE_COUNT; ++row) {
         const float u0 = 0.0f;
         const float u1 = 1.0f;
@@ -526,6 +542,27 @@ static int upload_art_and_quad(void) {
         const OverlayVertex c = {{1, 1}, {u, 0.5f}};
         const OverlayVertex d = {{0, 1}, {u, 0.5f}};
         OverlayVertex *q = &quads[(STATE_COUNT + 6 + level) * 6];
+        q[0] = a; q[1] = b; q[2] = c;
+        q[3] = a; q[4] = c; q[5] = d;
+    }
+
+    /* D4: the scrolling background's quads, one per phase. A quad spans the canvas
+     * from -TILE_PAD to 960 + TILE_PAD in x and 0 to 720 in y (the draw sets a
+     * viewport of that extent and a scissor on the part to cover), and a UV of
+     * canvas pixel / 288 minus the scroll: the game's bgScroll moves the tile
+     * down and right by one game pixel (3 canvas pixels) per phase. */
+    for (int phase = 0; phase < TILE_PHASES; ++phase) {
+        const float k = 1.0f / (float)DW3_MENU_BG_TEX;
+        const float shift = (float)(phase * DW3_MENU_BG_SCALE);
+        const float u0 = (-(float)TILE_PAD - shift) * k;
+        const float u1 = ((float)(CANVAS_W + TILE_PAD) - shift) * k;
+        const float v0 = -shift * k;
+        const float v1 = ((float)CANVAS_H - shift) * k;
+        const OverlayVertex a = {{0, 0}, {u0, v0}};
+        const OverlayVertex b = {{1, 0}, {u1, v0}};
+        const OverlayVertex c = {{1, 1}, {u1, v1}};
+        const OverlayVertex d = {{0, 1}, {u0, v1}};
+        OverlayVertex *q = &quads[(STATE_COUNT + 6 + FADE_LEVELS + phase) * 6];
         q[0] = a; q[1] = b; q[2] = c;
         q[3] = a; q[4] = c; q[5] = d;
     }
@@ -1194,6 +1231,55 @@ static void *options_prewarm_thread(void *arg) {
     return NULL;
 }
 
+/* D4: once the tile is known (the first prewarm reads it from the disc), make
+ * the repeating texture and its sampler and upload the dimmed tile, while the
+ * screen is closed, so the open has nothing left to do. */
+static void tile_ensure(void) {
+    const uint8_t *rgba;
+
+    if (g_tile_state != 0 || !g_device) return;
+    rgba = dw3_pc_title_overlay_menu_bg_texture();
+    if (!rgba) return; /* not read yet, or not available (the canvas has its backdrop) */
+    {
+        const Uint64 t0 = SDL_GetPerformanceCounter();
+        const SDL_GPUTextureCreateInfo info = {
+            .type = SDL_GPU_TEXTURETYPE_2D,
+            .format = SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UNORM,
+            .usage = SDL_GPU_TEXTUREUSAGE_SAMPLER,
+            .width = DW3_MENU_BG_TEX, .height = DW3_MENU_BG_TEX,
+            .layer_count_or_depth = 1, .num_levels = 1,
+            .sample_count = SDL_GPU_SAMPLECOUNT_1,
+        };
+        const SDL_GPUSamplerCreateInfo sampler = {
+            .min_filter = SDL_GPU_FILTER_LINEAR,
+            .mag_filter = SDL_GPU_FILTER_LINEAR,
+            .mipmap_mode = SDL_GPU_SAMPLERMIPMAPMODE_NEAREST,
+            .address_mode_u = SDL_GPU_SAMPLERADDRESSMODE_REPEAT,
+            .address_mode_v = SDL_GPU_SAMPLERADDRESSMODE_REPEAT,
+            .address_mode_w = SDL_GPU_SAMPLERADDRESSMODE_REPEAT,
+        };
+        g_tile_texture = SDL_CreateGPUTexture(g_device, &info);
+        g_tile_sampler = SDL_CreateGPUSampler(g_device, &sampler);
+        if (!g_tile_texture || !g_tile_sampler ||
+            upload_rgba(g_tile_texture, rgba, DW3_MENU_BG_TEX, DW3_MENU_BG_TEX,
+                        DW3_MENU_BG_TEX * 4) != 0) {
+            fprintf(stderr, "dw3-options: menu background texture failed on the GPU "
+                    "(%s), the canvas keeps the dimmed title backdrop\n", SDL_GetError());
+            if (g_tile_texture) SDL_ReleaseGPUTexture(g_device, g_tile_texture);
+            if (g_tile_sampler) SDL_ReleaseGPUSampler(g_device, g_tile_sampler);
+            g_tile_texture = NULL;
+            g_tile_sampler = NULL;
+            g_tile_state = -1;
+            return;
+        }
+        g_tile_state = 1;
+        fprintf(stderr, "dw3-options: menu background quad ready (%dx%d texture, repeat, "
+                "%d scroll phases, GPU) in %.0f us\n", DW3_MENU_BG_TEX, DW3_MENU_BG_TEX,
+                TILE_PHASES, (double)(SDL_GetPerformanceCounter() - t0) * 1.0e6 /
+                (double)SDL_GetPerformanceFrequency());
+    }
+}
+
 static void overlay_frame(void) {
     /* Compose the options window layers (title and in-game layouts) on a
      * low-priority worker thread while the screen is closed, so opening it
@@ -1210,6 +1296,7 @@ static void overlay_frame(void) {
             worker_failed = 1;
         }
     }
+    tile_ensure();
     set_three_x_presentation_size();
     dw3_pc_map_view_prepare();
 }
@@ -1299,6 +1386,51 @@ static void render_overlay_layers(SDL_GPUCommandBuffer *cmd, SDL_GPURenderPass *
                 SDL_DrawGPUPrimitives(pass, 6, 1, (STATE_COUNT + 3) * 6, 0);
             }
         }
+    }
+    if (g_overlay_active && g_selection == STATE_OPTIONS && g_tile_state == 1 &&
+        !dw3_port_options_in_game()) {
+        /* D4 / A18: the scrolling background, under the retained canvas, over the
+         * picture (its 16:9 width with gutters, else the window when the title
+         * background fills the sides, else the 4:3 middle). In game the canvas has
+         * the near-opaque dim and no quad is drawn. */
+        const float s = (float)viewport_h / (float)CANVAS_H;
+        const SDL_GPUViewport tile_vp = {
+            .x = viewport.x - (float)TILE_PAD * s, .y = viewport.y,
+            .w = (float)(CANVAS_W + 2 * TILE_PAD) * s, .h = viewport.h,
+            .min_depth = 0.0f, .max_depth = 1.0f,
+        };
+        float cx0 = viewport.x, cx1 = viewport.x + viewport.w;
+        if (gutter > 0) {
+            cx0 = picture_x;
+            cx1 = picture_x + (float)picture_w;
+        } else if (g_background_ready) {
+            cx0 = 0.0f;
+            cx1 = (float)window_w;
+        }
+        if (cx0 < tile_vp.x) cx0 = tile_vp.x;
+        if (cx1 > tile_vp.x + tile_vp.w) cx1 = tile_vp.x + tile_vp.w;
+        const SDL_Rect clip = {
+            (int)cx0, (int)viewport.y, (int)(cx1 + 0.999f) - (int)cx0, (int)(viewport.h + 0.5f),
+        };
+        const SDL_Rect whole = {0, 0, window_w, window_h};
+        const SDL_GPUTextureSamplerBinding tile_binding = {
+            .texture = g_tile_texture, .sampler = g_tile_sampler,
+        };
+        const int phase = dw3_port_options_bg_phase();
+        SDL_BindGPUFragmentSamplers(pass, 0, &tile_binding, 1);
+        SDL_SetGPUViewport(pass, &tile_vp);
+        SDL_SetGPUScissor(pass, &clip);
+        SDL_DrawGPUPrimitives(pass, 6, 1,
+            (Uint32)((STATE_COUNT + 6 + FADE_LEVELS + (phase % TILE_PHASES)) * 6), 0);
+        SDL_SetGPUScissor(pass, &whole);
+        if (!g_tile_logged_open) {
+            g_tile_logged_open = 1;
+            fprintf(stderr, "dw3-options: menu background scrolling (phase %d, 1 px every 2 "
+                    "ticks, period %d; first draw, retained canvas untouched)\n",
+                    phase, TILE_PHASES);
+        }
+    } else if (!g_overlay_active || g_selection != STATE_OPTIONS) {
+        g_tile_logged_open = 0;
     }
     SDL_SetGPUViewport(pass, &viewport);
     if (g_logo_active && g_logo_texture_ready && g_logo_texture &&
