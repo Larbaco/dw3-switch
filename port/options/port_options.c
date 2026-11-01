@@ -14,6 +14,7 @@
 #include "port_walkthrough_ui.h"
 #include "port_options_cfg.h"
 #include "port_options_groups.h"
+#include "port_internal_res.h"
 #include "port_pacing.h"
 #include "port_turbo.h"
 #include "port_version.h"
@@ -63,7 +64,7 @@
  * port_options.h: port/pacing/pacing.c, port/battle_menu/battle_menu_memory.c
  * and port/autosave/autosave.c read them. */
 enum {
-    DW3_PORT_OPT_COUNT = 29,
+    DW3_PORT_OPT_COUNT = 31,
     DW3_PORT_OPT_WIDESCREEN = 0,
     DW3_PORT_OPT_FAST_FORWARD = 1,
     DW3_PORT_OPT_RESTART = 2,
@@ -88,7 +89,8 @@ _Static_assert(DW3_PORT_OPT_WIDESCREEN == 0 && DW3_PORT_OPT_FAST_FORWARD == 1 &&
                DW3_PORT_OPT_MAP_MOD == 22 && DW3_PORT_OPT_SAVE_STORE == 23 &&
                DW3_PORT_OPT_STAGE_SWEEP == 24 && DW3_PORT_OPT_SWEEP_FRAMES == 25 &&
                DW3_PORT_OPT_MAP_BUTTONS == 26 && DW3_PORT_OPT_MENU_EXIT == 27 &&
-               DW3_PORT_OPT_MAP_SCALER == 28 && DW3_PORT_OPT_COUNT == 29,
+               DW3_PORT_OPT_MAP_SCALER == 28 && DW3_PORT_OPT_INTERNAL_RES == 29 &&
+               DW3_PORT_OPT_INTERNAL_RES_TURBO == 30 && DW3_PORT_OPT_COUNT == 31,
                "registry indexes changed: update port_options_groups.h");
 
 typedef struct Dw3PortOptStub {
@@ -208,6 +210,14 @@ static Dw3PortOptStub g_stubs[DW3_PORT_OPT_COUNT] = {
      * (map_scaler=nearest|sharp|lanczos2|fsr1|bilinear); the stored value is a
      * DW3_MAPSCALER_*. Default FSR 1. Read at each open of the map view. */
     {"Map scaler", "map_scaler", DW3_MAPSCALER_DEFAULT, DW3_MAPSCALER_DEFAULT, NULL},
+    /* P6.11: 0 = 1x (native), 1 = 2x, 2 = 3x. The battle's 3D (the whole picture
+     * on the PC) is drawn at that multiple, clamped to what the machine offers
+     * (port/options/internal_res.c). DW3_INTERNAL_RES=1..3 pins it for one run. */
+    {"Internal resolution", "internal_res", DW3_INTERNAL_RES_1X, DW3_INTERNAL_RES_1X, NULL},
+    /* P6.11: a switch row, default ON: fast-forward draws at 1x (and on the
+     * Switch skips the mesh frames it never shows), then returns to the chosen
+     * resolution. DW3_INTERNAL_RES_TURBO=0|1 pins it for one run. */
+    {"Native res while turbo", "internal_res_turbo", 1, 1, "DW3_INTERNAL_RES_TURBO"},
 };
 
 /* D5: the words of the Map scaler row in port_options.cfg, by stored value. */
@@ -629,7 +639,8 @@ static int po_is_mode(int index) {
            index == DW3_PORT_OPT_REGION ||
            index == DW3_PORT_OPT_TURBO_MUSIC ||
            index == DW3_PORT_OPT_STAGE_SWEEP ||
-           index == DW3_PORT_OPT_MAP_SCALER;
+           index == DW3_PORT_OPT_MAP_SCALER ||
+           index == DW3_PORT_OPT_INTERNAL_RES;
 }
 
 /* Rows that Left / Right step and Confirm cycles: the volumes and the modes. */
@@ -647,6 +658,7 @@ static int po_value_max(int index) {
            : index == DW3_PORT_OPT_TURBO_MUSIC ? 1
            : index == DW3_PORT_OPT_STAGE_SWEEP ? 2
            : index == DW3_PORT_OPT_MAP_SCALER ? DW3_MAPSCALER_COUNT - 1
+           : index == DW3_PORT_OPT_INTERNAL_RES ? DW3_INTERNAL_RES_COUNT - 1
                                                    : DW3_PACING_MODE_MAX;
 }
 
@@ -864,6 +876,12 @@ static int po_save(void) {
     char num[16];
     int i;
 
+#ifndef DW3_PORT_OPTIONS_TEST
+    /* P6.11: every change of a row passes here; the resolution and the turbo
+     * behaviour follow Internal resolution and Native res while turbo at once
+     * (a no-op when neither moved). */
+    dw3_port_internal_res_sync();
+#endif
     if (!g_persist_on) {
         return 0;
     }
@@ -1220,7 +1238,8 @@ int dw3_port_options_persist_init(const char *dir) {
      * way the test ran. */
     PO_INFO("dw3-options: file keys items_equip_from_items=%d items_equip_stays=%d items_bag_view=%d items_use_stays=%d items_partner_switch=%d "
             "map_screen=%d battle_menu_memory=%d show_version=%d map_mod=%d save_store=%d "
-            "stage_sweep=%d stage_sweep_frames=%d menu_instant_exit=%d map_scaler=%s",
+            "stage_sweep=%d stage_sweep_frames=%d menu_instant_exit=%d map_scaler=%s "
+            "internal_res=%d internal_res_turbo=%d",
             dw3_port_options_file_int("items_equip_from_items", 1),
             dw3_port_options_file_int("items_equip_stays", 1),
             dw3_port_options_file_int("items_bag_view", 1),
@@ -1234,7 +1253,9 @@ int dw3_port_options_persist_init(const char *dir) {
             g_stubs[DW3_PORT_OPT_STAGE_SWEEP].value,
             g_stubs[DW3_PORT_OPT_SWEEP_FRAMES].value,
             g_stubs[DW3_PORT_OPT_MENU_EXIT].value,
-            g_mapscaler_word[g_stubs[DW3_PORT_OPT_MAP_SCALER].value]);
+            g_mapscaler_word[g_stubs[DW3_PORT_OPT_MAP_SCALER].value],
+            g_stubs[DW3_PORT_OPT_INTERNAL_RES].value,
+            g_stubs[DW3_PORT_OPT_INTERNAL_RES_TURBO].value);
 #if defined(DW3_TITLE_NATIVE_OVERLAY)
     /* P6.37: the port version in the title's corner (docs/P6.37_VERSION.md). */
     dw3_pc_title_overlay_set_version(dw3_port_options_file_int("show_version", 1) != 0);
@@ -1243,6 +1264,9 @@ int dw3_port_options_persist_init(const char *dir) {
     /* DW3_MUSIC_VOLUME / DW3_SFX_VOLUME force a value for this run only. */
     po_stepped_env();
     po_audio_apply();
+#ifndef DW3_PORT_OPTIONS_TEST
+    dw3_port_internal_res_boot();
+#endif
     PO_INFO("dw3-options: turbo_music=%s%s (docs/P6.36_TURBO_MUSIC.md)",
             g_stubs[DW3_PORT_OPT_TURBO_MUSIC].value ? "fast" : "1x",
             (g_env_pinned >> DW3_PORT_OPT_TURBO_MUSIC) & 1u ? " [env]" : "");
@@ -1277,12 +1301,14 @@ static const char *po_mode_name(int index, int v) {
     static const char *const sweep[3] = {"off", "run", "start over"};
     static const char *const scaler[DW3_MAPSCALER_COUNT] = {
         "nearest", "sharp bilinear", "lanczos2", "fsr 1", "bilinear"};
+    static const char *const ires[DW3_INTERNAL_RES_COUNT] = {"1x", "2x", "3x"};
 
     if (v < 0 || v > po_value_max(index)) {
         return "?";
     }
     return index == DW3_PORT_OPT_STAGE_SWEEP ? sweep[v]
            : index == DW3_PORT_OPT_MAP_SCALER ? scaler[v]
+           : index == DW3_PORT_OPT_INTERNAL_RES ? ires[v]
            : index == DW3_PORT_OPT_ENCOUNTER_RATE ? encounter[v]
            : index == DW3_PORT_OPT_BUTTON_LAYOUT ? layout[v]
            : index == DW3_PORT_OPT_REGION ? region[v]
@@ -1376,6 +1402,7 @@ static void po_step(int index, int delta) {
                 : index == DW3_PORT_OPT_TURBO_MUSIC ? "turbo music"
                 : index == DW3_PORT_OPT_STAGE_SWEEP ? "stage sweep"
                 : index == DW3_PORT_OPT_MAP_SCALER ? "map scaler"
+                : index == DW3_PORT_OPT_INTERNAL_RES ? "internal resolution"
                                                     : "text speed",
                 po_mode_name(index, v));
     }
@@ -1604,6 +1631,7 @@ static const char *po_switch_name(int index) {
            : index == DW3_PORT_OPT_MAP_MOD ? "map mod pack"
            : index == DW3_PORT_OPT_SAVE_STORE ? "shared saves"
            : index == DW3_PORT_OPT_MENU_EXIT ? "instant menu exit"
+           : index == DW3_PORT_OPT_INTERNAL_RES_TURBO ? "native res while turbo"
                                               : "widescreen";
 }
 

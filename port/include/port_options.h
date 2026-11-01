@@ -40,6 +40,9 @@ unsigned dw3_port_options_locked_mask_for(int in_game);
 /* D1: registry rows now run to 28 (D5 added one), so the Cheats entry moved from bit 16 to
  * bit 30 (bit 31 is the in-game mark of the overlay's layer key). */
 enum { DW3_PORT_OPTIONS_LOCK_CHEATS = 1u << 30 };
+/* P6.11 added rows 29 and 30, neither ever locked in game. Row 30's bit is the Cheats
+ * bit above, so the overlay reads the lock mask for rows 0..28 only
+ * (OPT_LOCK_ROWS in title_overlay_art.c); a locked row would need a wider mask. */
 void dw3_port_options_close(void);
 
 /* P6.38 (combined image): the folder holding the global port_options.cfg
@@ -116,7 +119,26 @@ enum {
      * a Display row (Nearest / Sharp bilinear / Lanczos2 / FSR 1 / Bilinear).
      * Stored as a DW3_MAPSCALER_* (the order of map_view_core.h MV_SCALER_*),
      * written as a word: map_scaler=fsr1. Default FSR 1. */
-    DW3_PORT_OPT_MAP_SCALER = 28
+    DW3_PORT_OPT_MAP_SCALER = 28,
+    /* P6.11 phase 1 (docs/P6.11_INTERNAL_RES.md): Internal resolution, a Display
+     * row. Stored 0 = 1x (native, the default), 1 = 2x, 2 = 3x; key internal_res
+     * (the number, so the file reads internal_res=1 for 2x). The 3D of the battle
+     * is drawn at that many times the PS1 pixels (the whole picture on the PC);
+     * port/options/internal_res.c clamps it to what the machine offers. */
+    DW3_PORT_OPT_INTERNAL_RES = 29,
+    /* P6.11 phase 3: Native res while turbo, a Display switch, default ON. While
+     * fast-forward is on the game draws at 1x, then returns to the chosen
+     * resolution; on the Switch it also skips the mesh frames turbo never shows.
+     * Key internal_res_turbo. */
+    DW3_PORT_OPT_INTERNAL_RES_TURBO = 30
+};
+
+/* P6.11: the values of the Internal resolution row (stored 0..2 = 1x..3x). */
+enum {
+    DW3_INTERNAL_RES_1X = 0,
+    DW3_INTERNAL_RES_2X = 1,
+    DW3_INTERNAL_RES_3X = 2,
+    DW3_INTERNAL_RES_COUNT = 3
 };
 
 /* D5: the values of the Map scaler row, in the order of map_view_core.h's

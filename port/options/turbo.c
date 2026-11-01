@@ -4,6 +4,7 @@
 #include "port_turbo.h"
 
 #include "port_options.h"
+#include "port_internal_res.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -49,6 +50,7 @@ static unsigned g_menu_stamp;    /* g_poll_frames when the field menu last ran *
 static int g_menu_seen;
 static int g_menu_logged;        /* the menu rate is in force (for the log) */
 static int g_credit_x2;          /* present_due: game frames owed, in halves */
+static int g_frame_skip;         /* this frame will not be shown (see frame_will_skip) */
 static unsigned g_menu_frames;   /* game frames at the menu rate, for the log */
 
 #ifdef DW3_PORT_TURBO_TEST
@@ -202,6 +204,22 @@ int dw3_port_turbo_present_due(void) {
     return due;
 }
 
+int dw3_port_turbo_frame_will_skip(void) {
+    return g_frame_skip;
+}
+
+/* What dw3_port_turbo_present_due() will answer at the end of this frame, from
+ * the credit it holds now (its arithmetic, on a copy). */
+static int turbo_peek_skip(void) {
+    int rate;
+
+    if (dw3_port_turbo_speed() < 2) {
+        return 0;
+    }
+    rate = dw3_port_turbo_rate_x2();
+    return rate > 2 && g_credit_x2 + 2 < rate;
+}
+
 void dw3_port_turbo_poll(void) {
     int speed;
 
@@ -243,4 +261,9 @@ void dw3_port_turbo_poll(void) {
     } else {
         turbo_menu_track(0);
     }
+    g_frame_skip = turbo_peek_skip();
+#ifndef DW3_PORT_TURBO_TEST
+    /* P6.11: the multiplier and the mesh skip of this frame, before it draws. */
+    dw3_port_internal_res_poll();
+#endif
 }

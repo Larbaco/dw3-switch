@@ -1,6 +1,7 @@
 /* Runtime-only title background compositor for PC widescreen side panels.
  * The center remains the original renderer output. No disc artwork is embedded. */
 #include "engine/gfx.h"
+#include "port_internal_res.h"
 #include <stdint.h>
 #include <string.h>
 #include <stdlib.h>
@@ -116,8 +117,8 @@ void dw3_port_title_background_frame(const s32 *s0, const s32 *s1,
     const s32 *s2, const s32 *s3, const s32 *s8, const int frames[8],
     int pos6x, int pos6y, int pos7x, int pos7y) {
     int i;
-    const char *scale = getenv("DW3_PC_INTERNAL_RES");
-    if (!scale || strcmp(scale, "3") != 0) return;
+    /* P6.11: only at the Internal resolution row's 3x (it was DW3_PC_INTERNAL_RES=3). */
+    if (dw3_port_internal_res_target() != 3) return;
     if (GAME.funcs.getMode() != MODE_TITLE) {
         dw3_port_title_background_reset(); return;
     }

@@ -348,6 +348,22 @@ EXTRA_ROWS = {
                     'Skalierung der Vollbildkarte. Beim nächsten Öffnen.',
                     'Escalado del mapa completo. Al abrirlo otra vez.',
                     'Scaler della mappa a schermo. Alla prossima apertura.')},
+    # P6.11 (registry rows 29 and 30, Display): the battle's 3D resolution and the
+    # fast-forward switch. FR / DE / IT / ES are machine drafts.
+    'ir': {'row': ('Internal resolution', 'Résolution interne', 'Interne Auflösung',
+                   'Resolución interna', 'Risoluzione interna'),
+           'desc': ('Smoother 3D in battle. Higher uses more battery.',
+                    'Combat en 3D plus lisse. Plus haut = plus de batterie.',
+                    'Glattere 3D im Kampf. Höher braucht mehr Akku.',
+                    '3D más suave en combate. Más alto = más batería.',
+                    '3D più fluido in battaglia. Più alto = più batteria.')},
+    'rt': {'row': ('Native res while turbo', 'Rés. native en turbo', 'Native Auflös. Turbo',
+                   'Res. nativa en turbo', 'Risol. nativa in turbo'),
+           'desc': ('Turbo draws at 1x, then returns to your setting.',
+                    'Le turbo dessine en 1x, puis revient à votre réglage.',
+                    'Turbo zeichnet in 1x, danach wieder Ihre Stufe.',
+                    'El turbo usa 1x y luego vuelve a tu ajuste.',
+                    'Il turbo usa 1x, poi torna alla tua impostazione.')},
 }
 # D5: the words of the Map scaler row (the stored order: nearest, sharp, lanczos2,
 # fsr1, bilinear), product names the same in every language.
