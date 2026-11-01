@@ -364,6 +364,31 @@ def test_speaker_name_buffer():
     assert X.buffer_problem("TALK03:12", "Sem orador, " + "ã" * 40, EU) is None
 
 
+def test_speaker_name_in_the_real_start_form():
+    """The game writes `{start}Speaker{start}text` (the name lies between the first two 02 07 codes);
+    --check used to look only before the first {start}, which is empty there, and passed a 39-byte name."""
+    assert X.buffer_problem("TALK03:12", "{start}Guarda{start}Oi!", EU) is None
+    assert X.buffer_problem("TALK03:12", "{start}" + "x" * 31 + "{start}Oi!", EU) is None   # the limit itself
+    assert "39 bytes" in X.buffer_problem("TALK03:12", "{start}" + "x" * 39 + "{start}Oi!", EU)
+    assert "speaker" in X.buffer_problem("DMG200:3:12", "{start}" + "ã" * 16 + "{start}Oi!", EU)  # accents are 2 bytes
+    assert X.buffer_problem("TALK03:12", "{start}{raw:0209}{start}Oi!", EU) is None            # the player's name
+    # a long text after the speaker is not the speaker
+    assert X.buffer_problem("TALK03:12", "{start}Guarda{start}" + "x" * 60, EU) is None
+    # not a talk box: no check
+    assert X.buffer_problem("ITMNAM:12", "{start}" + "x" * 39 + "{start}Oi!", EU) is None
+
+
+def test_check_reports_a_long_speaker_in_the_start_form(rt, tpls, tmp_path):
+    tdir = tmp_path / "tpl"
+    tpls["SYSTEM"]["stem"] = "TALK03"
+    tpls["SYSTEM"]["entries"] = [{"key": "TALK03:12", "en": "{start}Guard{start}Hi!",
+                                  "pt": "{start}" + "x" * 39 + "{start}Oi!", "limit_px": None, "max_lines": 3}]
+    X.write_templates(tdir, "eu", {"TALK03": tpls["SYSTEM"]}, X.stats({"TALK03": tpls["SYSTEM"]}))
+    rep = X.check_paths([tdir / "eu"], strict=False, decomp=tmp_path / "none", max_width=None, glossary=None,
+                        against=None, with_widths=False)
+    assert any("fixed buffer" in e and "TALK03:12" in e and "speaker" in e for e in rep.errors), rep.errors
+
+
 def test_check_reports_a_string_that_overflows_a_buffer(rt, tpls, tmp_path):
     tdir = tmp_path / "tpl"
     tpls["SYSTEM"]["stem"] = "NAMEDT"  # pretend: the file the default name lives in

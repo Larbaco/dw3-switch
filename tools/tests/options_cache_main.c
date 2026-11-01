@@ -158,8 +158,11 @@ int main(void) {
     g_pack = (uint8_t *)malloc(CANVAS_BYTES);
     if (!g_ref || !g_tex || !g_pack) return 2;
 
-    for (int lang = DW3_TITLE_LANG_EN; lang <= DW3_TITLE_LANG_IT; ++lang) {
-        dw3_pc_title_overlay_set_options_language(lang);
+    for (int lang = DW3_TITLE_LANG_EN; lang <= DW3_TITLE_LANG_PT; ++lang) {
+        dw3_pc_title_overlay_set_text_pt(lang == DW3_TITLE_LANG_PT);
+        if (lang <= DW3_TITLE_LANG_IT) {
+            dw3_pc_title_overlay_set_options_language(lang);
+        }
         for (int row = 0; row < DW3_TITLE_OPTION_ROWS; ++row) v[row] = 0;
         step(lang, 0, v, 1, &d);
         if (!d.full || !d.rebuilt || d.bytes != CANVAS_BYTES) {

@@ -1,6 +1,7 @@
 /* Headless P9.2 port-options state machine (no disc / GPU). */
 #include "port_audio.h"
 #include "port_button_map.h"
+#include "port_l10n.h"
 #include "port_options.h"
 #include "port_options_groups.h"
 
@@ -10,6 +11,14 @@
 void dw3_port_options_test_set_pressed(unsigned mask);
 void dw3_port_options_test_goto_row(int reg);
 int dw3_port_options_test_sound_count(int kind);
+
+/* P6.7 phase 3: the text pack loader is not linked here. g_test_pack says whether a usable pack
+ * is installed; Português (BR) must be choosable either way (it still puts the port's own
+ * screens in Portuguese). */
+static int g_test_pack = 1;
+int dw3_l10n_pack_available(void) {
+    return g_test_pack;
+}
 
 void dw3_port_audio_apply(int music_step, int sfx_step) {
     (void)music_step;
@@ -328,6 +337,32 @@ int main(void) {
             return fail("Back twice closes");
         }
     }
+
+    /* P6.7 phase 3: Text language steps Original -> Português (BR) -> Original with no usable text
+     * pack (it used to be refused): the port's own screens follow the row, the game text stays
+     * original. The same with a pack. */
+    for (g_test_pack = 0; g_test_pack <= 1; g_test_pack++) {
+        dw3_port_options_open();
+        dw3_port_options_test_goto_row(DW3_PORT_OPT_TEXT_LANGUAGE);
+        if (dw3_port_options_level(DW3_PORT_OPT_TEXT_LANGUAGE) != DW3_TEXTLANG_ORIGINAL) {
+            return fail("Text language starts on Original");
+        }
+        dw3_port_options_test_set_pressed(1u << BIT_CROSS);
+        dw3_port_options_tick();
+        if (dw3_port_options_level(DW3_PORT_OPT_TEXT_LANGUAGE) != DW3_TEXTLANG_PTBR) {
+            return fail(g_test_pack ? "Confirm steps Text language to Português (BR)"
+                                    : "Português (BR) can be chosen with no text pack (port screens only)");
+        }
+        dw3_port_options_test_set_pressed(1u << BIT_CROSS);
+        dw3_port_options_tick();
+        if (dw3_port_options_level(DW3_PORT_OPT_TEXT_LANGUAGE) != DW3_TEXTLANG_ORIGINAL) {
+            return fail("Text language wraps back to Original");
+        }
+        dw3_port_options_set_level(DW3_PORT_OPT_TEXT_LANGUAGE, DW3_TEXTLANG_PTBR);
+        dw3_port_options_set_level(DW3_PORT_OPT_TEXT_LANGUAGE, DW3_TEXTLANG_ORIGINAL);
+        dw3_port_options_close();
+    }
+    g_test_pack = 1;
 
     /* P10.6: the Switch glyphs row is the last row of the Controls group on the
      * Switch only (here: the build that forces it); the PC keeps three rows. */

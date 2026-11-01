@@ -911,8 +911,9 @@ def options_display(version, phase):
 def l10n_row(version, with_pack):
     """P6.7 phase 2: Options > Display, Down x7 to Text language (the eighth and last row; P6.11 put two rows before the map ones). With a pack:
     `row-original` (Original), Right (Portugues (BR), `row-ptbr`), Left (`row-back`). With no
-    pack: `row-greyed` (Original greyed, the message line says why) and Right, which is
-    refused (`row-refused`)."""
+    pack: `row-original-nopack` (the message line says no pack is found) and Right, which
+    is not refused since phase 3 (`row-ptbr-nopack`): the port's own screens are in Portuguese,
+    the game text stays original."""
     r = Rec(f"{version.upper()}: P6.7 Display > Text language, {'pack installed' if with_pack else 'no pack'}")
     m = _to_options(r, version)
     f = _group(r, m + 70, GRP_DISPLAY, GRP_DISPLAY)
@@ -924,10 +925,34 @@ def l10n_row(version, with_pack):
         f = _keys(r, f + 60, LEFT)
         r.shot(f + 40, "row-back")
     else:
-        r.shot(f + 40, "row-greyed")
+        r.shot(f + 40, "row-original-nopack")
         f = _keys(r, f + 60, RIGHT)
-        r.shot(f + 40, "row-refused")
+        r.shot(f + 40, "row-ptbr-nopack")
     f = _keys(r, f + 60, TRIANGLE, TRIANGLE)
+    r.end(f + 40)
+    return r
+
+
+def ptbr_options(version):
+    """P6.7 phase 3: the port's own screens in Portuguese (text_language=ptbr in the cfg, no
+    text pack). The title menu (`menu`: the Options plaque reads Opcoes), the Options list
+    (`options-list`), Display (`display`) down to its last row, Text language
+    (`row-text-language`: the value and the "no text pack" line), Gameplay, Controls and Saves."""
+    r = Rec(f"{version.upper()}: P6.7 phase 3, the Options in Portuguese (cfg text_language=ptbr, no pack)")
+    m = _to_options(r, version)
+    r.shot(m - 20, "menu")
+    r.shot(m + 60, "options-list")
+    f = _group(r, m + 70, GRP_DISPLAY, GRP_DISPLAY)
+    r.shot(f + 30, "display")
+    f = _keys(r, f + 40, *([DOWN] * 7))
+    r.shot(f + 40, "row-text-language")
+    f = _keys(r, f + 60, TRIANGLE)
+    for frm, to, tag in ((GRP_DISPLAY, GRP_GAMEPLAY, "gameplay"), (GRP_GAMEPLAY, GRP_CONTROLS, "controls"),
+                         (GRP_CONTROLS, GRP_SAVES, "saves")):
+        f = _group(r, f + 20, frm, to)
+        r.shot(f + 40, tag)
+        f = _keys(r, f + 60, TRIANGLE)
+    f = _keys(r, f + 20, TRIANGLE)
     r.end(f + 40)
     return r
 
@@ -4019,9 +4044,10 @@ def main(out):
                 options_menus(v, phase).text(True))
             (out / f"{v}-options-display-p{phase}.rec").write_text(
                 options_display(v, phase).text(True))
-        if v == "eu":  # the pack is EU-only until phase 5; both regions show the greyed row
+        if v == "eu":  # the pack is EU-only until phase 5; both regions run the no-pack row
             (out / f"{v}-l10n-row.rec").write_text(l10n_row(v, True).text(True))
         (out / f"{v}-l10n-row-nopack.rec").write_text(l10n_row(v, False).text(True))
+        (out / f"{v}-ptbr-options.rec").write_text(ptbr_options(v).text(True))
         for phase in (1, 2):
             (out / f"{v}-defaults-migrate-p{phase}.rec").write_text(
                 defaults_migrate(v, phase).text(True))

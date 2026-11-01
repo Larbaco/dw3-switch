@@ -48,7 +48,7 @@ typedef struct Dw3HelpConfig {
     int from;           /* DW3_HELP_FROM_* */
     int region;         /* DW3_PAGES_US or DW3_PAGES_EU */
     int platform;       /* DW3_PAGES_SWITCH or DW3_PAGES_PC */
-    int lang;           /* 0 EN, 1 FR, 2 DE, 3 ES, 4 IT (the Options lettering order) */
+    int lang;           /* 0 EN, 1 FR, 2 DE, 3 ES, 4 IT, 5 PT-BR (the Options lettering order) */
     int in_game;
     const char *root;       /* {path:root} */
     const char *memcard;    /* {path:memcard} */
