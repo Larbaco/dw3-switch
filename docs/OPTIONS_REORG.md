@@ -7,7 +7,8 @@ separate PRs ([order](#8-build-order)). **Step 1 (reorganization and new rows) i
 **Step 2 (D2 + D5) is built** (branch `feat/d2-d5-defaults-fsr`, 2026-10-31; as built:
 [section 8.1](#81-step-2-as-built-d2--d5)). **Step 3 (D3, one global options file) is built**
 (branch `feat/d3-global-options`, 2026-10-31; as built: [section 6.2](#62-d3-one-global-options-file-as-built)).
-Step 4 (D4) is not. Differences of step 1 from
+**Step 4 (D4, the scrolling background) is built** (branch `feat/d4-options-bg-scroll`, 2026-11-01; as built:
+[section 8.2](#82-step-4-as-built-d4)). Differences of step 1 from
 the text below: the Map scaler row is not in it (it came with D5, step 2), so Display had four rows
 (Widescreen, Full-screen map, Map mod pack, Version label) until then; the label "Shared saves (exp.)"
 and "Frames per stage" are shorter than the design's (the generator's 290 px limit); the message
@@ -32,7 +33,7 @@ Code facts this design rests on (checked on `main` at `95c9861`):
 | Every row change rewrites **all** registry keys, so a value that equals the default is still written to the file | `po_save()` |
 | The cfg holds at most **48 keys** and 4096 bytes (`DW3_OPTCFG_MAX_ENTRIES`, `DW3_OPTCFG_TEXT_MAX`); a key is 32 characters at most, a value 48 | `port/include/port_options_cfg.h` |
 | Lettering limits: group name 330 px, row label 290 px, value 236 px, message line 690 px; the generator fails when a text is wider | `tools/generate_pc_title_lettering.py` |
-| The Options layer is a 960x720 RGBA canvas (the compose logs say `bytes=2764800`); 16:9 hosts add flat side strips | [Menu background](PORT_OPTIONS.md#menu-background-p51-item-6) |
+| The Options layer is a 960x720 RGBA canvas (the compose logs say `bytes=2764800`); 16:9 hosts add flat side strips | [Menu background](PORT_OPTIONS.md#menu-background-p51-item-6-d4--a18) |
 | Sub-screens that are never on the group list already exist (`DW3_OPTGRP_CUSTOM`, ten rows, scrolls) | `port_options_groups.h` |
 
 ## 1. Audit of the port's behaviour keys
@@ -546,7 +547,7 @@ Display values). The build order below keeps the regenerations to three.
 |---|---|---|
 | **D2** `button_layout` default `nintendo`, `switch_glyphs` default ON, **one-shot migration of existing files** | Controls (rows 1 and 5) | no placement change. Values on the page and the Help text change. **"Reset to default" goes to Nintendo**, so its message and the Help text say so. Migration: the marker key below. `DW3_BUTTON_MAP=default` stays the PlayStation pin for tests (a test aid, not an option) |
 | **D3** one global options file (built, [6.2](#62-d3-one-global-options-file-as-built)) | no page change | `sdmc:/switch/dw3/port_options.cfg` holds every key, including `save_store` and `stage_sweep`. The rows read and write the global file. Region at start already lives there. The Shared saves row is no longer "set it in both regions" |
-| **D4** A18 scrolling background | the look of all pages | the scroll is under the retained canvas, so no row or group is affected; the side strips of 16:9 are tiled by the quad. Plaques, strip and hints do not move. All Options refs change again, so D4 comes last |
+| **D4** A18 scrolling background (built, [8.2](#82-step-4-as-built-d4)) | the look of all pages | the scroll is under the retained canvas, so no row or group is affected; the side strips of 16:9 are tiled by the quad. Plaques, strip and hints do not move. All Options refs change again, so D4 comes last |
 | **D5** FSR 1 map scaler, default always | Display, row 3 **Map scaler** | the row set by 7a. FSR 1 is the default, the map cache builds off the game thread as today; the GPU FSR form (P6.32 7.8 item 2) removes the first-open build |
 
 ### 6.1 D2 migration marker (owner, 2026-10-31, question 4)
@@ -712,8 +713,9 @@ the log lines and the edge cases are in [6.1](#61-d2-migration-marker-owner-2026
    FSR 1 default and the GPU FSR form; only the values on the Controls and Display pages
    change.
 3. **D3**: one global options file (no picture changes; built, [6.2](#62-d3-one-global-options-file-as-built)).
-4. **D4**: the scrolling background, last; the replays pin the scroll offset to 0 so its
-   references are stable.
+4. **D4**: the scrolling background, last (built, [8.2](#82-step-4-as-built-d4)). The design
+   said the replays would pin the scroll offset to 0; as built they do not need to: the phase comes
+   from the game's tick count since the open, and two runs are byte-identical.
 
 The Options references are regenerated three times (after 1, 2 and 4) instead of five.
 
@@ -789,3 +791,32 @@ Built on top of step 1 (#404), one PR (2026-10-31). Registry row **28 Map scaler
 
 Replay references that changed, and why, are in [P6.15_REPLAY_TESTS](P6.15_REPLAY_TESTS.md#d2--d5-reference-refresh);
 the OLED rows are P1 to P8 of [OLED_TEST_PLAN](OLED_TEST_PLAN.md#session-p-defaults-generation-d2-and-map-scaler-d5).
+
+### 8.2 Step 4 as built (D4)
+
+Built on top of D3 (#410), one PR (2026-11-01). Owner decision of 2026-10-31, item 1 (A18): **A**, the
+Options background scrolls as the Items menu's does. **No registry row, no cfg key, no decomp patch**
+(0201 stays free): the background is the port's own screen (exemption C, [1.3](#13-changes-versus-the-original-with-no-key-exempt-owner-2026-10-31)).
+Full description, the hosts' table and the logs are in
+[PORT_OPTIONS "Menu background"](PORT_OPTIONS.md#menu-background-p51-item-6-d4--a18); in short:
+
+- **Speed and tile from the decomp.** `STSTATUS_drawBackground` (`field_menu/menu.c`) draws sprite 0x1D at
+  `(bgScroll, bgScroll)`; `bgScroll` goes up by 1 every other call and wraps to 0 at 0x60. So the tile moves
+  down and right, 1 game pixel per 2 frames, period 96: the port's tile (the 96 x 96 period decoded from that
+  sprite) at phase p is the tile shifted by p, which is a UV offset of `p * 3 / 288` on the canvas's 3x texture.
+- **Where.** A tiled textured quad under the retained canvas in both hosts. The canvas's title backdrop is
+  transparent (alpha 0 with the dimmed average RGB, so a linear sample at a plaque edge does not darken); the
+  dirty-row cache, the cached layers and the 690 px message strip are unchanged, and a scroll step does no
+  compose and no upload. PC: 96 precomputed quads (one per phase) in the existing vertex buffer, a repeating
+  288 x 288 texture and a scissor, because the overlay shader has no uniform to offset a UV. Switch: `draw_quad`
+  with the UVs of the phase and `GL_REPEAT`. **ABI:** `DW3_GAME_API_ABI` 6, one new entry
+  (`port_options_bg_phase`) so the combined image's host reads the phase from the running region's copy.
+- **16:9.** The quad covers the picture's full width (the gutters of patch 0085 too), so the side strips
+  are the same scrolling tiles, not flat navy.
+- **In game** the near-opaque dim (alpha 252) stays and no quad is drawn: the canvas is opaque there as before.
+- **The phase** is counted from the open in `dw3_port_options_tick`, ahead of the Yes / No windows and the Help
+  screens, and is 0 at each open. Deterministic, so no pinned replay offset is needed.
+- **Replay references.** Every Options-family reference whose picture shows the title's Options, Cheats or Help
+  background changed (the tile is scrolled by the phase at that checkpoint instead of fixed). The list and the
+  separate stale references from D2 that were refreshed with it are in
+  [P6.15_REPLAY_TESTS](P6.15_REPLAY_TESTS.md#d4-reference-refresh). The OLED row is A18 (recheck).

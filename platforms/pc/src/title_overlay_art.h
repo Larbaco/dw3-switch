@@ -174,6 +174,18 @@ void dw3_pc_title_overlay_set_options_page(int page, int cheats_on);
 /* P51 item 6: reads the game's menu background tile once (frame thread), before
  * any Options layer is composed; logs `dw3-options: menu background tile ...`. */
 void dw3_pc_title_overlay_menu_tile_prepare(void);
+/* D4 / A18: the scrolling background. The tile is not baked into the canvas any
+ * more: the retained 960x720 canvas keeps a transparent backdrop at the title
+ * and the hosts draw this texture under it as a tiled quad with a UV offset
+ * (the scroll costs no recompose). The texture is the game's 96 x 96 period,
+ * dimmed (alpha 90) and expanded 3x to the canvas's scale: DW3_MENU_BG_TEX
+ * square RGBA, opaque, to be sampled with a repeating wrap. `*ready` is 0 until
+ * menu_tile_prepare found the tile (and when the disc could not give it: the
+ * canvas then keeps the dimmed title backdrop and there is no quad); in game the
+ * near-opaque dim stays and the hosts draw no quad either. */
+enum { DW3_MENU_BG_SCALE = 3, DW3_MENU_BG_PERIOD = 96,
+       DW3_MENU_BG_TEX = DW3_MENU_BG_PERIOD * DW3_MENU_BG_SCALE };
+const uint8_t *dw3_pc_title_overlay_menu_bg_texture(void);
 /* Layout of a page for the retained cache. kind: the rectangle of a plaque
  * (with its halo), of its value cell, or of the message strip; `slot` is the
  * plaque's place on screen (the strip ignores it). */

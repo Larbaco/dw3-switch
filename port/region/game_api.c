@@ -76,6 +76,7 @@ const Dw3GameApi dw3_game_api = {
     dw3_port_options_level,
     dw3_port_options_locked_mask_for,
     dw3_port_options_note_shown,
+    dw3_port_options_bg_phase,
     dw3_port_screen_fade_level,
     dw3_port_turbo_speed,
     dw3_port_turbo_present_due,
