@@ -1280,7 +1280,35 @@ static void tile_ensure(void) {
     }
 }
 
+/* Options > Display > Output filter (registry 29): handed to the renderer when the
+ * row changes. Runs from the frame callback (which comes after the blit of the frame,
+ * so a change shows on the next one) and once at registration for the boot value. */
+static void output_filter_sync(void) {
+    static int applied = -1;
+    static const char *const names[DW3_OUTFILTER_COUNT] = {"nearest", "bilinear",
+                                                            "sharp"};
+    static const PsyzOutputFilter map[DW3_OUTFILTER_COUNT] = {
+        PSYZ_OUTPUT_NEAREST, PSYZ_OUTPUT_BILINEAR, PSYZ_OUTPUT_SHARP};
+    int level = dw3_port_options_level(DW3_PORT_OPT_OUTPUT_FILTER);
+
+    if (level < 0 || level >= DW3_OUTFILTER_COUNT) {
+        level = DW3_OUTFILTER_DEFAULT;
+    }
+    if (level == applied) {
+        return;
+    }
+    if (Psyz_VideoSetOutputFilter(map[level]) != 0) {
+        fprintf(stderr, "dw3-present: output filter %s is not supported by this "
+                "renderer; staying on nearest\n", names[level]);
+        level = DW3_OUTFILTER_NEAREST;
+        (void)Psyz_VideoSetOutputFilter(PSYZ_OUTPUT_NEAREST);
+    }
+    applied = level;
+    fprintf(stderr, "dw3-present: output filter %s\n", names[level]);
+}
+
 static void overlay_frame(void) {
+    output_filter_sync();
     /* Compose the options window layers (title and in-game layouts) on a
      * low-priority worker thread while the screen is closed, so opening it
      * never rasters on the frame thread (title_options_cache.h). */
@@ -1543,6 +1571,7 @@ static void destroy_overlay(void) {
 }
 
 void dw3_pc_title_menu_overlay_register(void) {
+    output_filter_sync();
     Psyz_OverlayInit_SDL3GPU(init_overlay);
     Psyz_OverlayFrameCB(overlay_frame);
     Psyz_OverlayRender_SDL3GPU(render_overlay);

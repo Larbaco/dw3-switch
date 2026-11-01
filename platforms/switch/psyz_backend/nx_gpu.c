@@ -21,6 +21,7 @@
 #include "nx_present16.h"
 
 #ifdef DW3_NX_GAME_IMAGE
+#include "port_options.h"
 #include "port_turbo.h"
 #endif
 #include "nx_game_api.h" /* last: a `both` image redirects the game calls */
@@ -550,6 +551,25 @@ static GLint s_ui_uv0 = -1;
 static GLint s_ui_uv1 = -1;
 static GLint s_ui_tex = -1;
 static GLint s_ui_keep = -1;
+/* Output filter (nx_output_filter.h): the same two programs with a bilinear or
+ * sharp-bilinear lookup, built the first time a filter is wanted. Their own
+ * attribute and uniform locations, because GLSL ES 3.00 assigns them per program. */
+static GLuint s_quad_prog_f;
+static GLuint s_ui_prog_f;
+static GLint s_qf_attr_pos = -1;
+static GLint s_qf_attr_t = -1;
+static GLint s_qf_uv0 = -1;
+static GLint s_qf_uv1 = -1;
+static GLint s_qf_tex = -1;
+static GLint s_qf_flt = -1;
+static GLint s_uf_attr_pos = -1;
+static GLint s_uf_attr_t = -1;
+static GLint s_uf_uv0 = -1;
+static GLint s_uf_uv1 = -1;
+static GLint s_uf_tex = -1;
+static GLint s_uf_keep = -1;
+static GLint s_uf_flt = -1;
+static int s_flt_failed; /* the filtered programs did not build: Nearest only */
 /* P6.22 pass 4: 1 when the present textures are R16UI and the programs expand
  * RGB555 themselves (nx_present16_shader.h); 0 for the RGBA8888 pack. */
 static int s_p16;
@@ -627,6 +647,12 @@ static void present_release(void) {
     if (s_ui_prog) {
         glDeleteProgram(s_ui_prog);
     }
+    if (s_quad_prog_f) {
+        glDeleteProgram(s_quad_prog_f);
+    }
+    if (s_ui_prog_f) {
+        glDeleteProgram(s_ui_prog_f);
+    }
     if (s_vram_tex) {
         glDeleteTextures(1, &s_vram_tex);
     }
@@ -635,6 +661,8 @@ static void present_release(void) {
     }
     s_quad_prog = 0;
     s_ui_prog = 0;
+    s_quad_prog_f = 0;
+    s_ui_prog_f = 0;
     s_vram_tex = 0;
     s_wide_tex = 0;
 }
@@ -664,6 +692,9 @@ static bool present_build(int p16) {
      * ours to delete in this one. */
     s_quad_prog = 0;
     s_ui_prog = 0;
+    s_quad_prog_f = 0;
+    s_ui_prog_f = 0;
+    s_flt_failed = 0;
     s_vram_tex = 0;
     s_wide_tex = 0;
     vs = compile_shader(GL_VERTEX_SHADER,
@@ -702,6 +733,81 @@ static bool present_build(int p16) {
         return false;
     }
     return true;
+}
+
+/* Builds the filtered programs of the 16-bit path (once per context). On failure
+ * the present stays on Nearest and says so once. */
+static bool present_build_filter(void) {
+    GLuint vs = compile_shader(GL_VERTEX_SHADER, DW3_NX_P16_VS);
+
+    if (vs) {
+        s_quad_prog_f = link_simple(vs, DW3_NX_P16_QUAD_FS_F);
+        s_ui_prog_f = link_simple(vs, DW3_NX_P16_UI_FS_F);
+        glDeleteShader(vs);
+    }
+    if (!s_quad_prog_f || !s_ui_prog_f) {
+        if (s_quad_prog_f) {
+            glDeleteProgram(s_quad_prog_f);
+        }
+        if (s_ui_prog_f) {
+            glDeleteProgram(s_ui_prog_f);
+        }
+        s_quad_prog_f = 0;
+        s_ui_prog_f = 0;
+        s_flt_failed = 1;
+        psyz_log(2, "nx_gpu.c", __LINE__, __func__,
+                 "dw3-present: the output filter programs failed to build on "
+                 "this driver; staying on nearest");
+        return false;
+    }
+    s_qf_attr_pos = glGetAttribLocation(s_quad_prog_f, "a_pos");
+    s_qf_attr_t = glGetAttribLocation(s_quad_prog_f, "a_t");
+    s_qf_uv0 = glGetUniformLocation(s_quad_prog_f, "u_uv0");
+    s_qf_uv1 = glGetUniformLocation(s_quad_prog_f, "u_uv1");
+    s_qf_tex = glGetUniformLocation(s_quad_prog_f, "u_tex");
+    s_qf_flt = glGetUniformLocation(s_quad_prog_f, "u_flt");
+    s_uf_attr_pos = glGetAttribLocation(s_ui_prog_f, "a_pos");
+    s_uf_attr_t = glGetAttribLocation(s_ui_prog_f, "a_t");
+    s_uf_uv0 = glGetUniformLocation(s_ui_prog_f, "u_uv0");
+    s_uf_uv1 = glGetUniformLocation(s_ui_prog_f, "u_uv1");
+    s_uf_tex = glGetUniformLocation(s_ui_prog_f, "u_tex");
+    s_uf_keep = glGetUniformLocation(s_ui_prog_f, "u_keep");
+    s_uf_flt = glGetUniformLocation(s_ui_prog_f, "u_flt");
+    return true;
+}
+
+/* The filter this present uses: the Options > Display > Output filter row
+ * (read at every present, so a change shows at once), or Nearest where the
+ * filtered programs cannot run (the ES 2 context, DW3_PRESENT_16=0, a build that
+ * failed). Logs `dw3-present: output filter <name>` when it changes. */
+static int output_filter_now(void) {
+    static int logged = -1;
+    int want = DW3_NX_FILTER_NEAREST;
+    int mode;
+
+#ifdef DW3_NX_GAME_IMAGE
+    want = dw3_port_options_level(DW3_PORT_OPT_OUTPUT_FILTER);
+    if (want < 0 || want >= DW3_NX_FILTER_COUNT) {
+        want = DW3_NX_FILTER_NEAREST;
+    }
+#endif
+    mode = want;
+    if (mode != DW3_NX_FILTER_NEAREST &&
+        (!s_p16 || s_flt_failed || (!s_quad_prog_f && !present_build_filter()))) {
+        mode = DW3_NX_FILTER_NEAREST;
+    }
+    if (mode != logged) {
+        logged = mode;
+        if (mode != want) {
+            psyz_log(1, "nx_gpu.c", __LINE__, __func__,
+                     "dw3-present: output filter %s is not available (%s); "
+                     "using nearest", dw3_nx_filter_name(want),
+                     s_p16 ? "the programs did not build" : "needs the 16-bit present");
+        }
+        psyz_log(1, "nx_gpu.c", __LINE__, __func__,
+                 "dw3-present: output filter %s", dw3_nx_filter_name(mode));
+    }
+    return mode;
 }
 
 static bool present_init(void) {
@@ -846,6 +952,7 @@ void dw3_nx_gpu_present(const uint16_t *vram, int dx, int dy, int dw, int dh,
     int keep_w;
     int keep_h;
     int wide16 = 0;
+    int flt;
     uint64_t t_pack = 0;
 #if DW3_NX_DEBUG_MESH
     uint64_t present_t0 = 0;
@@ -957,6 +1064,7 @@ void dw3_nx_gpu_present(const uint16_t *vram, int dx, int dy, int dw, int dh,
     s_pace.upload_us += gpu_now_us() - t_pack;
 #endif
 
+    flt = output_filter_now();
     /* Fit the display aspect into the framebuffer. Full height, side bars
      * on 16:9. Do not crop, and do not use the VRAM pixel ratio: dw/dh for
      * the movie is 320/480. */
@@ -977,6 +1085,8 @@ void dw3_nx_gpu_present(const uint16_t *vram, int dx, int dy, int dw, int dh,
         static int prev_vw = -1;
         static int prev_vh = -1;
         static uint64_t prev_mesh_prims;
+        static int prev_vw_f = -1;
+        static int prev_vh_f = -1;
 #if DW3_NX_DEBUG_MESH
         static int prev_use_mesh = -1;
 #endif
@@ -989,6 +1099,29 @@ void dw3_nx_gpu_present(const uint16_t *vram, int dx, int dy, int dw, int dh,
                      "(vram %d,%d %dx%d) mesh_avail=%d",
                      vx, vy, vw, vh, src_aspect, s_width, s_height, dx, dy,
                      dw, dh, dw3_nx_mesh_available() ? 1 : 0);
+        }
+        if (flt != DW3_NX_FILTER_NEAREST) {
+            static int prev_f = -1;
+            static int prev_sw = -1;
+            static int prev_sh = -1;
+            const int shown_w = wide16 ? pw : dw;
+
+            if (flt != prev_f || vw != prev_vw_f || vh != prev_vh_f ||
+                shown_w != prev_sw || dh != prev_sh) {
+                prev_f = flt;
+                prev_vw_f = vw;
+                prev_vh_f = vh;
+                prev_sw = shown_w;
+                prev_sh = dh;
+                psyz_log(1, "nx_gpu.c", __LINE__, __func__,
+                         "dw3-present: output filter %s scale %.3fx%.3f "
+                         "(%dx%d texels on %dx%d), prescale %dx%d",
+                         dw3_nx_filter_name(flt), (double)vw / shown_w,
+                         (double)vh / dh, shown_w, dh, vw, vh,
+                         flt == DW3_NX_FILTER_SHARP && vw / shown_w > 1
+                             ? vw / shown_w : 1,
+                         flt == DW3_NX_FILTER_SHARP && vh / dh > 1 ? vh / dh : 1);
+            }
         }
 #if DW3_NX_DEBUG_MESH
         if (use_mesh != prev_use_mesh) {
@@ -1029,39 +1162,53 @@ void dw3_nx_gpu_present(const uint16_t *vram, int dx, int dy, int dw, int dh,
         keep[3] = (float)(keep_y + keep_h) / qh;
     }
     if (use_mesh) {
+        const int f = flt != DW3_NX_FILTER_NEAREST;
+
+        dw3_nx_mesh_set_filter(flt);
         dw3_nx_mesh_present(dx, dy, dw, dh, vx, vy, vw, vh);
         glViewport(vx, vy, vw, vh);
-        glUseProgram(s_ui_prog);
-        glUniform2f(s_ui_uv0, uv0[0], uv0[1]);
-        glUniform2f(s_ui_uv1, uv1[0], uv1[1]);
-        glUniform4f(s_ui_keep, keep[0], keep[1], keep[2], keep[3]);
-        glUniform1i(s_ui_tex, 0);
+        glUseProgram(f ? s_ui_prog_f : s_ui_prog);
+        glUniform2f(f ? s_uf_uv0 : s_ui_uv0, uv0[0], uv0[1]);
+        glUniform2f(f ? s_uf_uv1 : s_ui_uv1, uv1[0], uv1[1]);
+        glUniform4f(f ? s_uf_keep : s_ui_keep, keep[0], keep[1], keep[2],
+                    keep[3]);
+        if (f) {
+            glUniform3f(s_uf_flt, (float)flt, (float)vw, (float)vh);
+        }
+        glUniform1i(f ? s_uf_tex : s_ui_tex, 0);
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, ui_tex);
         glBindBuffer(GL_ARRAY_BUFFER, s_quad_vbo);
-        glEnableVertexAttribArray((GLuint)s_ui_attr_pos);
-        glVertexAttribPointer((GLuint)s_ui_attr_pos, 2, GL_FLOAT, GL_FALSE,
-                              sizeof(float) * 4, (const void *)0);
-        glEnableVertexAttribArray((GLuint)s_ui_attr_t);
-        glVertexAttribPointer((GLuint)s_ui_attr_t, 2, GL_FLOAT, GL_FALSE,
-                              sizeof(float) * 4,
+        glEnableVertexAttribArray((GLuint)(f ? s_uf_attr_pos : s_ui_attr_pos));
+        glVertexAttribPointer((GLuint)(f ? s_uf_attr_pos : s_ui_attr_pos), 2,
+                              GL_FLOAT, GL_FALSE, sizeof(float) * 4,
+                              (const void *)0);
+        glEnableVertexAttribArray((GLuint)(f ? s_uf_attr_t : s_ui_attr_t));
+        glVertexAttribPointer((GLuint)(f ? s_uf_attr_t : s_ui_attr_t), 2,
+                              GL_FLOAT, GL_FALSE, sizeof(float) * 4,
                               (const void *)(sizeof(float) * 2));
         glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
     } else {
+        const int f = flt != DW3_NX_FILTER_NEAREST;
+
         glViewport(vx, vy, vw, vh);
-        glUseProgram(s_quad_prog);
-        glUniform2f(s_uni_uv0, uv0[0], uv0[1]);
-        glUniform2f(s_uni_uv1, uv1[0], uv1[1]);
-        glUniform1i(s_uni_tex, 0);
+        glUseProgram(f ? s_quad_prog_f : s_quad_prog);
+        glUniform2f(f ? s_qf_uv0 : s_uni_uv0, uv0[0], uv0[1]);
+        glUniform2f(f ? s_qf_uv1 : s_uni_uv1, uv1[0], uv1[1]);
+        if (f) {
+            glUniform3f(s_qf_flt, (float)flt, (float)vw, (float)vh);
+        }
+        glUniform1i(f ? s_qf_tex : s_uni_tex, 0);
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, ui_tex);
         glBindBuffer(GL_ARRAY_BUFFER, s_quad_vbo);
-        glEnableVertexAttribArray((GLuint)s_attr_pos);
-        glVertexAttribPointer((GLuint)s_attr_pos, 2, GL_FLOAT, GL_FALSE,
-                              sizeof(float) * 4, (const void *)0);
-        glEnableVertexAttribArray((GLuint)s_attr_t);
-        glVertexAttribPointer((GLuint)s_attr_t, 2, GL_FLOAT, GL_FALSE,
-                              sizeof(float) * 4,
+        glEnableVertexAttribArray((GLuint)(f ? s_qf_attr_pos : s_attr_pos));
+        glVertexAttribPointer((GLuint)(f ? s_qf_attr_pos : s_attr_pos), 2,
+                              GL_FLOAT, GL_FALSE, sizeof(float) * 4,
+                              (const void *)0);
+        glEnableVertexAttribArray((GLuint)(f ? s_qf_attr_t : s_attr_t));
+        glVertexAttribPointer((GLuint)(f ? s_qf_attr_t : s_attr_t), 2,
+                              GL_FLOAT, GL_FALSE, sizeof(float) * 4,
                               (const void *)(sizeof(float) * 2));
         glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
     }

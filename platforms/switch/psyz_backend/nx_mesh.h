@@ -78,6 +78,11 @@ uint64_t dw3_nx_mesh_prims_flushed(void);
 void dw3_nx_mesh_present(int dx, int dy, int dw, int dh, int vx, int vy, int vw,
                          int vh);
 
+/* The output filter (nx_output_filter.h, DW3_NX_FILTER_*) of the next
+ * dw3_nx_mesh_present: the composite of the battle mesh. Builds the filtered blit
+ * program the first time; a failure leaves the battle picture on nearest. */
+void dw3_nx_mesh_set_filter(int mode);
+
 /* Read the mesh FBO display rect into tightly packed RGBA8888 (GL origin).
  * Returns bytes written, or 0 on failure. */
 size_t dw3_nx_mesh_read_rect_rgba(int dx, int dy, int dw, int dh, uint8_t *dst,
