@@ -104,7 +104,7 @@ strings carry `02 09`, right after the speaker). A line is ended only by the exp
 never wraps text**, so line breaks are part of the translation.
 
 The editable form used by the tools is plain text and round-trips every byte (proved
-on every string of all five EU languages, the US row and the Japanese row, 0 errors):
+on every string of all five EU languages, the US row of the EU disc, the Japanese row and the US disc, 0 errors; three 512-byte placeholders in the EU disc's US row are not text and are skipped):
 letters as themselves, a new line as `\n`, and tokens `{pg}` `{start}` `{wait:N}`
 `{buf:N}` `{pause:N}` `{name:N}` `{raw:0209}` (code 9; copy it unchanged),
 `{i:N}` and `{g:N}` for icons and glyphs that are not text (button symbols, kana),
