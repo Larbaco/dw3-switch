@@ -240,8 +240,8 @@ int main(void) {
         strcmp(dw3_port_options_key(DW3_PORT_OPT_INTERNAL_RES), "internal_res") != 0 ||
         dw3_port_options_level(DW3_PORT_OPT_INTERNAL_RES_TURBO) != 1 ||
         strcmp(dw3_port_options_key(DW3_PORT_OPT_INTERNAL_RES_TURBO), "internal_res_turbo") != 0 ||
-        (dw3_port_options_locked_mask_for(1) & (1u << DW3_PORT_OPT_INTERNAL_RES)) != 0) {
-        /* row 30's bit is DW3_PORT_OPTIONS_LOCK_CHEATS: the overlay never reads a lock for rows 29 and 30 */
+        (dw3_port_options_locked_mask_for(1) &
+         ((UINT64_C(1) << DW3_PORT_OPT_INTERNAL_RES) | (UINT64_C(1) << DW3_PORT_OPT_INTERNAL_RES_TURBO))) != 0) {
         return fail("Internal resolution 1x / Native res while turbo ON by default, keys, not locked in game");
     }
     /* D5: the Map scaler row is the third of Display, FSR 1 by default (owner

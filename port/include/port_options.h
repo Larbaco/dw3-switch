@@ -2,6 +2,8 @@
 #ifndef DW3_PORT_OPTIONS_H
 #define DW3_PORT_OPTIONS_H
 
+#include <stdint.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -33,16 +35,15 @@ void dw3_port_options_set_origin(const char *where, const char *back);
 /* 1 when `index` is a row that cannot change in game; always 0 from the title. */
 int dw3_port_options_row_locked(int index);
 /* Bit i: row i locked; DW3_PORT_OPTIONS_LOCK_CHEATS: the Cheats entry. */
-unsigned dw3_port_options_locked_mask(void);
+uint64_t dw3_port_options_locked_mask(void);
 /* The mask the screen opens with at the title (0) or in game: lets the
  * native overlay draw that layout before the screen is opened. */
-unsigned dw3_port_options_locked_mask_for(int in_game);
-/* D1: registry rows now run to 28 (D5 added one), so the Cheats entry moved from bit 16 to
- * bit 30 (bit 31 is the in-game mark of the overlay's layer key). */
-enum { DW3_PORT_OPTIONS_LOCK_CHEATS = 1u << 30 };
-/* P6.11 added rows 29 and 30, neither ever locked in game. Row 30's bit is the Cheats
- * bit above, so the overlay reads the lock mask for rows 0..28 only
- * (OPT_LOCK_ROWS in title_overlay_art.c); a locked row would need a wider mask. */
+uint64_t dw3_port_options_locked_mask_for(int in_game);
+/* The lock mask is 64 bits wide (P6.11): bit i is registry row i (rows 0..61), the Cheats entry's
+ * lock is bit 62 and bit 63 is the overlay's in-game mark of its layer key. It was 32 bits and
+ * could not hold a row past 28 with the Cheats bit at 30 (the Internal resolution rows, the
+ * PT-BR loader's Text language row). */
+#define DW3_PORT_OPTIONS_LOCK_CHEATS (UINT64_C(1) << 62)
 void dw3_port_options_close(void);
 
 /* P6.38 (combined image): the folder holding the global port_options.cfg

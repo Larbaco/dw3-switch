@@ -30,7 +30,8 @@ enum { SLOTS = 6, BAND_ROWS = 48 };
 enum { S_EMPTY, S_COMPLETE, S_WORKER, S_MAIN };
 typedef struct StaticSlot {
     uint8_t *px;
-    unsigned art_generation, locked;
+    unsigned art_generation;
+    uint64_t locked;
     int page, cheats_on;
     int state;
     unsigned stamp;     /* last use, for eviction */
@@ -39,7 +40,7 @@ static StaticSlot g_slots[SLOTS];
 static unsigned g_stamp;
 static atomic_flag g_lock = ATOMIC_FLAG_INIT;
 static atomic_int g_worker_running;
-static unsigned g_worker_mask;
+static uint64_t g_worker_mask;
 static const uint8_t *g_static;   /* the complete slot the canvas mirrors */
 static uint8_t *g_canvas;
 static int g_valid;
@@ -152,7 +153,7 @@ static int key_cheats(int page, int cheats_on) {
     return dw3_pc_title_overlay_options_dynamic_labels(page) ? 0 : cheats_on;
 }
 
-static StaticSlot *find_complete(unsigned art, unsigned locked, int page,
+static StaticSlot *find_complete(unsigned art, uint64_t locked, int page,
                                  int cheats_on) {
     for (int i = 0; i < SLOTS; ++i) {
         StaticSlot *s = &g_slots[i];
@@ -166,7 +167,7 @@ static StaticSlot *find_complete(unsigned art, unsigned locked, int page,
 /* Caller holds the lock: an empty slot, else the least recently used complete
  * one that the canvas does not mirror; claimed for `state`. NULL when none
  * (or memory is short). */
-static StaticSlot *claim_slot(int state, unsigned art, unsigned locked,
+static StaticSlot *claim_slot(int state, unsigned art, uint64_t locked,
                               int page, int cheats_on) {
     StaticSlot *victim = NULL;
     const size_t bytes = (size_t)DW3_OPTIONS_CANVAS_PITCH * DW3_OPTIONS_CANVAS_H;
@@ -224,7 +225,7 @@ static int slot_compose(StaticSlot *s, int check_generation) {
 static int slot_compose_over_base(StaticSlot *s) {
     const size_t bytes = (size_t)DW3_OPTIONS_CANVAS_PITCH * DW3_OPTIONS_CANVAS_H;
     const unsigned art = s->art_generation;
-    const unsigned base_key = s->locked & (1u << 31);
+    const uint64_t base_key = s->locked & (UINT64_C(1) << 63);
     StaticSlot *base;
     int raster = 0;
 
@@ -281,7 +282,7 @@ int dw3_options_cache_update(Dw3OptionsDirty *out) {
         g_layout != dw3_pc_title_overlay_options_layout()) {
         StaticSlot *slot;
         const int page = dw3_pc_title_overlay_options_static_page(g_page);
-        const unsigned locked = dw3_pc_title_overlay_options_lock_key(page,
+        const uint64_t locked = dw3_pc_title_overlay_options_lock_key(page,
             dw3_pc_title_overlay_options_locked());
         const int cheats_on = key_cheats(page,
             dw3_pc_title_overlay_options_cheats_on());
@@ -434,7 +435,7 @@ void dw3_options_cache_release(void) {
     tbl_unlock();
 }
 
-int dw3_options_cache_layers_ready(unsigned in_game_locked) {
+int dw3_options_cache_layers_ready(uint64_t in_game_locked) {
     const unsigned art = dw3_pc_title_overlay_generation();
     const int cheats = dw3_pc_title_overlay_options_cheats_on();
     int ready;
@@ -446,7 +447,7 @@ int dw3_options_cache_layers_ready(unsigned in_game_locked) {
     return ready;
 }
 
-int dw3_options_cache_prewarm_begin(unsigned in_game_locked) {
+int dw3_options_cache_prewarm_begin(uint64_t in_game_locked) {
     dw3_pc_title_overlay_menu_tile_prepare(); /* P51 item 6: once, before any layer */
     const unsigned art = dw3_pc_title_overlay_generation();
     const int cheats = dw3_pc_title_overlay_options_cheats_on();
@@ -479,7 +480,7 @@ void dw3_options_cache_prewarm_worker(void) {
         const unsigned art = dw3_pc_title_overlay_generation();
         const int base = k >= 2;
         const int page = base ? DW3_TITLE_OPTIONS_PAGE_SUB_BASE : 0;
-        const unsigned locked = (k & 1) == 0 ? 0u
+        const uint64_t locked = (k & 1) == 0 ? 0u
             : dw3_pc_title_overlay_options_lock_key(page, g_worker_mask);
         const int cheats = base ? 0 : dw3_pc_title_overlay_options_cheats_on();
         StaticSlot *slot;

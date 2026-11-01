@@ -24,6 +24,7 @@
 #endif
 
 #include <errno.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -250,7 +251,7 @@ static int g_persist_on;
 static char g_cfg_dir[DW3_OPTCFG_PATH_MAX];
 static Dw3OptCfg g_cfg;          /* the loaded file; keeps unknown keys */
 static int g_saved[DW3_PORT_OPT_COUNT]; /* what the file holds */
-static unsigned g_env_pinned;    /* values forced by DW3_WIDESCREEN/DW3_TURBO */
+static uint64_t g_env_pinned;    /* values forced by DW3_WIDESCREEN/DW3_TURBO */
 static int g_dirty;              /* a write failed; retried by _flush */
 /* D3: the migration into the global file failed this boot (old region files
  * kept). The marker is then not written, so the next start retries it. */
@@ -411,17 +412,17 @@ int dw3_port_options_row_locked(int index) {
 
 /* Bit i = row i is locked; DW3_PORT_OPTIONS_LOCK_CHEATS = the Cheats entry
  * (Square / Y), which is title-only: cheats are armed at the title. */
-unsigned dw3_port_options_locked_mask_for(int in_game) {
+uint64_t dw3_port_options_locked_mask_for(int in_game) {
     if (!in_game) {
         return 0;
     }
     /* The same rows dw3_port_options_row_locked() reports in game. */
-    return (1u << DW3_PORT_OPT_WIDESCREEN) | (1u << DW3_PORT_OPT_CUSTOMIZE) |
-           (1u << DW3_PORT_OPT_SAVE_STORE) | (1u << DW3_PORT_OPT_STAGE_SWEEP) |
-           (1u << DW3_PORT_OPT_SWEEP_FRAMES) | DW3_PORT_OPTIONS_LOCK_CHEATS;
+    return (UINT64_C(1) << DW3_PORT_OPT_WIDESCREEN) | (UINT64_C(1) << DW3_PORT_OPT_CUSTOMIZE) |
+           (UINT64_C(1) << DW3_PORT_OPT_SAVE_STORE) | (UINT64_C(1) << DW3_PORT_OPT_STAGE_SWEEP) |
+           (UINT64_C(1) << DW3_PORT_OPT_SWEEP_FRAMES) | DW3_PORT_OPTIONS_LOCK_CHEATS;
 }
 
-unsigned dw3_port_options_locked_mask(void) {
+uint64_t dw3_port_options_locked_mask(void) {
     return dw3_port_options_locked_mask_for(g_in_game);
 }
 
@@ -768,7 +769,7 @@ static void po_stepped_env(void) {
             continue;
         }
         g_stubs[row].value = n;
-        g_env_pinned |= 1u << row;
+        g_env_pinned |= UINT64_C(1) << row;
     }
 }
 
@@ -781,7 +782,7 @@ static void po_layout_boot(int from_cfg) {
 
     if (env != NULL && strcmp(env, "default") == 0) {
         g_stubs[DW3_PORT_OPT_BUTTON_LAYOUT].value = DW3_LAYOUT_PLAYSTATION;
-        g_env_pinned |= 1u << DW3_PORT_OPT_BUTTON_LAYOUT;
+        g_env_pinned |= UINT64_C(1) << DW3_PORT_OPT_BUTTON_LAYOUT;
         dw3_button_map_load(DW3_LAYOUT_PLAYSTATION, "env");
         return;
     }
@@ -798,7 +799,7 @@ static void po_layout_boot(int from_cfg) {
 static void po_glyphs_boot(void) {
     PO_INFO("dw3-options: switch_glyphs=%s%s (docs/P10.6_GLYPHS.md)",
             g_stubs[DW3_PORT_OPT_SWITCH_GLYPHS].value ? "on" : "off",
-            (g_env_pinned >> DW3_PORT_OPT_SWITCH_GLYPHS) & 1u ? " [env]" : "");
+            (g_env_pinned >> DW3_PORT_OPT_SWITCH_GLYPHS) & UINT64_C(1) ? " [env]" : "");
     dw3_glyphs_init();
 }
 
@@ -807,7 +808,7 @@ void dw3_port_options_apply_env(int index, int level) {
         return;
     }
     g_stubs[index].value = level;
-    g_env_pinned |= 1u << index;
+    g_env_pinned |= UINT64_C(1) << index;
     if (po_is_volume(index)) {
         po_audio_apply();
     }
@@ -886,7 +887,7 @@ static int po_save(void) {
         return 0;
     }
     for (i = 0; i < DW3_PORT_OPT_COUNT; i++) {
-        out[i] = (g_env_pinned >> i) & 1u ? g_saved[i] : g_stubs[i].value;
+        out[i] = (g_env_pinned >> i) & UINT64_C(1) ? g_saved[i] : g_stubs[i].value;
         if (g_stubs[i].key == NULL) {
             continue; /* the Region at start row: the top-level file */
         }
@@ -917,7 +918,7 @@ static int po_save(void) {
     }
     /* P6.12: button_map only exists while the layout is custom. A layout the
      * environment pinned leaves the file's map alone. */
-    if (!((g_env_pinned >> DW3_PORT_OPT_BUTTON_LAYOUT) & 1u)) {
+    if (!((g_env_pinned >> DW3_PORT_OPT_BUTTON_LAYOUT) & UINT64_C(1))) {
         if (out[DW3_PORT_OPT_BUTTON_LAYOUT] == DW3_LAYOUT_CUSTOM) {
             char digits[DW3_BTN_COUNT + 1];
 
@@ -1269,7 +1270,7 @@ int dw3_port_options_persist_init(const char *dir) {
 #endif
     PO_INFO("dw3-options: turbo_music=%s%s (docs/P6.36_TURBO_MUSIC.md)",
             g_stubs[DW3_PORT_OPT_TURBO_MUSIC].value ? "fast" : "1x",
-            (g_env_pinned >> DW3_PORT_OPT_TURBO_MUSIC) & 1u ? " [env]" : "");
+            (g_env_pinned >> DW3_PORT_OPT_TURBO_MUSIC) & UINT64_C(1) ? " [env]" : "");
     po_layout_boot(layout_from_cfg);
     po_glyphs_boot();
     if (migrate) {
@@ -1381,14 +1382,14 @@ static void po_step(int index, int delta) {
         pos = po_step_max(index);
     }
     v = po_value_at(index, pos);
-    if (v == g_stubs[index].value && !((g_env_pinned >> index) & 1u)) {
+    if (v == g_stubs[index].value && !((g_env_pinned >> index) & UINT64_C(1))) {
         return;
     }
     if (index == DW3_PORT_OPT_STAGE_SWEEP && v != 0 && po_ask_first(index, v)) {
         return; /* the window answers (dw3_port_options_ask_answer) */
     }
     g_stubs[index].value = v;
-    g_env_pinned &= ~(1u << index);
+    g_env_pinned &= ~(UINT64_C(1) << index);
     if (po_is_volume(index)) {
         fprintf(stderr, "dw3-port-options: %s %d\n",
                 index == DW3_PORT_OPT_MUSIC_VOLUME ? "music volume"
@@ -1459,7 +1460,7 @@ static void po_custom_back(void) {
  * Nintendo after a reset, D2) and the file is written. */
 static void po_map_changed(int layout) {
     g_stubs[DW3_PORT_OPT_BUTTON_LAYOUT].value = layout;
-    g_env_pinned &= ~(1u << DW3_PORT_OPT_BUTTON_LAYOUT);
+    g_env_pinned &= ~(UINT64_C(1) << DW3_PORT_OPT_BUTTON_LAYOUT);
     (void)po_save();
 }
 
@@ -1521,7 +1522,7 @@ static void po_apply_asked(int index, int v, const char *how) {
     const int old = g_stubs[index].value;
 
     g_stubs[index].value = v;
-    g_env_pinned &= ~(1u << index);
+    g_env_pinned &= ~(UINT64_C(1) << index);
     PO_INFO("dw3-options: %s %d->%d (%s, next start)", g_stubs[index].key, old, v, how);
     (void)po_save();
 }
@@ -1562,7 +1563,7 @@ void dw3_port_options_ask_answer(int what, int yes) {
 
 void dw3_port_options_sweep_started(void) {
     if (g_stubs[DW3_PORT_OPT_STAGE_SWEEP].value != 2 ||
-        ((g_env_pinned >> DW3_PORT_OPT_STAGE_SWEEP) & 1u)) {
+        ((g_env_pinned >> DW3_PORT_OPT_STAGE_SWEEP) & UINT64_C(1))) {
         return;
     }
     g_stubs[DW3_PORT_OPT_STAGE_SWEEP].value = 1;
@@ -1583,11 +1584,11 @@ static void po_frames_set(int v) {
     if (v > DW3_SWEEP_FRAMES_MAX) {
         v = DW3_SWEEP_FRAMES_MAX;
     }
-    if (v == old && !((g_env_pinned >> DW3_PORT_OPT_SWEEP_FRAMES) & 1u)) {
+    if (v == old && !((g_env_pinned >> DW3_PORT_OPT_SWEEP_FRAMES) & UINT64_C(1))) {
         return;
     }
     g_stubs[DW3_PORT_OPT_SWEEP_FRAMES].value = v;
-    g_env_pinned &= ~(1u << DW3_PORT_OPT_SWEEP_FRAMES);
+    g_env_pinned &= ~(UINT64_C(1) << DW3_PORT_OPT_SWEEP_FRAMES);
     fprintf(stderr, "dw3-port-options: sweep frames %d (next start)\n", v);
     fflush(stderr);
     (void)po_save();
@@ -1675,7 +1676,7 @@ static void po_toggle(int index) {
             v = 0;
         }
         g_stubs[index].value = v;
-        g_env_pinned &= ~(1u << index);
+        g_env_pinned &= ~(UINT64_C(1) << index);
         if (v) {
             fprintf(stderr, "dw3-port-options: fast-forward %dx (R3)\n", v);
         } else {
@@ -1698,7 +1699,7 @@ static void po_toggle(int index) {
         return; /* the window answers (dw3_port_options_ask_answer) */
     }
     g_stubs[index].value = v;
-    g_env_pinned &= ~(1u << index);
+    g_env_pinned &= ~(UINT64_C(1) << index);
     fprintf(stderr, "dw3-port-options: %s %s\n", po_switch_name(index),
             v ? "enabled" : "disabled");
     fflush(stderr);

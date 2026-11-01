@@ -227,7 +227,7 @@ int main(void) {
         /* The rows locked in game (Widescreen, the Cheats group): the static
          * layer follows, and Sound / Gameplay do not change with it. */
         {
-            static const unsigned game_locked = 1u | (1u << 16);
+            static const uint64_t game_locked = UINT64_C(1) | (UINT64_C(1) << 16);
             dw3_pc_title_overlay_set_options_locked(game_locked);
             list_page(-1, 0, 1);
             for (int c = 0; c < 5; ++c) step(lang, c, v, 1, &d);
@@ -239,7 +239,7 @@ int main(void) {
             list_page(DW3_OPTGRP_SOUND, 0, 0);
             step(lang, 1, v, 1, &d);
             if ((dw3_pc_title_overlay_options_lock_key(dw3_optlist_page(DW3_OPTGRP_SOUND, 0), game_locked) &
-                 0x7fffffffu) != 0)
+                 UINT64_C(0x7fffffffffffffff)) != 0)
                 fail("Sound page depends on the locked rows", lang, 1, v);
             dw3_pc_title_overlay_set_options_locked(0);
         }
@@ -339,7 +339,7 @@ int main(void) {
          * are prewarmed a band at a time, then an open is a copy that must
          * equal the reference render of that layout. */
         {
-            static const unsigned game_mask = 1u | (1u << 16);
+            static const uint64_t game_mask = UINT64_C(1) | (UINT64_C(1) << 16);
             double t0;
             dw3_pc_title_overlay_set_options_locked(0);
             dw3_options_cache_idle();

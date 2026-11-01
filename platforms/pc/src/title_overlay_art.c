@@ -42,7 +42,7 @@ static _Thread_local int options_layer_row;
  * or (P9.7) the locked rows change, so the retained canvas rebuilds it. */
 static unsigned options_layout;
 /* P9.7: rows greyed in game (bit i = row i, bit 16 = the Cheats entry). */
-static unsigned options_locked;
+static uint64_t options_locked;
 /* Which page the Options screen shows (the group list, a group's sub-screen,
  * P6.20 the Cheats pages) and whether the cheats master switch is on. */
 static int options_page = DW3_TITLE_OPTIONS_PAGE_OPTIONS;
@@ -53,7 +53,7 @@ static int options_cheats_on;
  * draws (locked rows, page, cheats switch) overrides the live one for that
  * thread only, so the main thread's view is never touched. */
 static _Thread_local int ovr_on;
-static _Thread_local unsigned ovr_locked;
+static _Thread_local uint64_t ovr_locked;
 static _Thread_local int ovr_page,ovr_cheats;
 /* Which part of a sub-screen's static layer is drawn: 0 all, 1 the part shared by
  * every group (backdrop, message strip, hints), 2 the part of the open group
@@ -198,13 +198,13 @@ int dw3_pc_title_overlay_options_cursor(void) { return option_cursor; }
 int dw3_pc_title_overlay_options_value(int row) {
     return row>=0&&row<DW3_TITLE_OPTION_ROWS?option_values[row]:0;
 }
-enum { OPT_LOCK_ROWS = 29 }; /* registry rows 0..28: the lock mask's width (D1, patch 0200, D5). Rows 29 and 30 (P6.11) are never locked: bit 30 is DW3_TITLE_LOCK_CHEATS */
-#define ROW_LOCKED(locked,reg) ((reg)<OPT_LOCK_ROWS&&(((locked)>>(reg))&1u))
-void dw3_pc_title_overlay_set_options_locked(unsigned mask) {
-    mask&=((1u<<OPT_LOCK_ROWS)-1u)|DW3_TITLE_LOCK_CHEATS;
+enum { OPT_LOCK_ROWS = 62 }; /* registry rows 0..61: the lock mask's width; bit 62 is DW3_TITLE_LOCK_CHEATS, bit 63 the in-game mark */
+#define ROW_LOCKED(locked,reg) ((reg)<OPT_LOCK_ROWS&&(((locked)>>(reg))&UINT64_C(1)))
+void dw3_pc_title_overlay_set_options_locked(uint64_t mask) {
+    mask&=((UINT64_C(1)<<OPT_LOCK_ROWS)-1u)|DW3_TITLE_LOCK_CHEATS;
     if(mask!=options_locked){options_locked=mask;options_layout++;options_generation++;}
 }
-unsigned dw3_pc_title_overlay_options_locked(void) { return options_locked; }
+uint64_t dw3_pc_title_overlay_options_locked(void) { return options_locked; }
 unsigned dw3_pc_title_overlay_options_layout(void) { return options_layout; }
 int dw3_pc_title_overlay_options_desc_follows_value(int page) {
     int group,scroll;
@@ -751,13 +751,13 @@ static const GroupWords *group_lang(int group) {
 }
 /* The registry rows of every locked bit of a group: a group whose rows are all
  * locked in game (Display: Widescreen) greys its plaque. */
-static unsigned group_row_mask(int group) {
-    unsigned m=0;
+static uint64_t group_row_mask(int group) {
+    uint64_t m=0;
     if(group==DW3_OPTGRP_CHEATS||group==DW3_OPTGRP_CUSTOM||group==DW3_OPTGRP_MAPBTN)return 0; /* not registry rows */
-    for(int k=0;k<dw3_optgroups[group].nrows;k++)if(dw3_optgroups[group].rows[k]<OPT_LOCK_ROWS)m|=1u<<dw3_optgroups[group].rows[k];
+    for(int k=0;k<dw3_optgroups[group].nrows;k++)if(dw3_optgroups[group].rows[k]<OPT_LOCK_ROWS)m|=UINT64_C(1)<<dw3_optgroups[group].rows[k];
     return m;
 }
-static int group_locked(int group,unsigned locked) {
+static int group_locked(int group,uint64_t locked) {
     if(group==DW3_OPTGRP_CHEATS)return (locked&DW3_TITLE_LOCK_CHEATS)!=0;
     return dw3_optgroups[group].nrows>0&&group_row_mask(group)!=0&&
            (locked&group_row_mask(group))==group_row_mask(group);
@@ -870,7 +870,7 @@ static void options_list_screen(int group,int scroll) {
     const int mbt=group==DW3_OPTGRP_MAPBTN; /* D1 Map buttons: the seven bindings and Reset */
     int ids[DW3_OPTGRP_COUNT];
     const int n=on_groups?dw3_optgroups_visible(DW3_OPTGRP_CHEATS_LISTED,ids):dw3_optgroups[group].nrows;
-    const unsigned locked=ELOCKED;
+    const uint64_t locked=ELOCKED;
     const int cursor=options_layer==OPTIONS_LAYER_STATIC?-1:option_cursor;
     const int shared=static_part!=2,specific=static_part!=1;
 
@@ -1221,7 +1221,7 @@ void dw3_pc_title_overlay_options_component(uint8_t *rgba,int pitch,
  * that layout; safe to call from the worker thread while the main thread
  * draws (only thread-local state is written). */
 void dw3_pc_title_overlay_options_static_part(uint8_t *rgba,int pitch,
-        unsigned locked,int page,int cheats_on,int part,int y,int h,int clear) {
+        uint64_t locked,int page,int cheats_on,int part,int y,int h,int clear) {
     if(!rgba||pitch<960*4||y<0||h<=0||y+h>720)return;
     if(page==DW3_TITLE_OPTIONS_PAGE_SUB_BASE){page=dw3_optlist_page(DW3_OPTGRP_DISPLAY,0);part=1;}
     ovr_on=1;ovr_locked=locked;ovr_page=page;ovr_cheats=cheats_on;
@@ -1239,7 +1239,7 @@ void dw3_pc_title_overlay_options_static_part(uint8_t *rgba,int pitch,
     ovr_on=0;
 }
 void dw3_pc_title_overlay_options_static_band(uint8_t *rgba,int pitch,
-        unsigned locked,int page,int cheats_on,int y,int h) {
+        uint64_t locked,int page,int cheats_on,int y,int h) {
     dw3_pc_title_overlay_options_static_part(rgba,pitch,locked,page,cheats_on,0,y,h,1);
 }
 int dw3_pc_title_overlay_options_cheats_on(void) {
@@ -1272,10 +1272,10 @@ void dw3_pc_title_overlay_options_rect(int page,int kind,int slot,int *x,int *y,
 }
 /* The part of the locked mask that changes the static layer of `page`, so a
  * layout that cannot differ (Sound in game and at the title) shares one layer. */
-unsigned dw3_pc_title_overlay_options_lock_key(int page,unsigned locked) {
+uint64_t dw3_pc_title_overlay_options_lock_key(int page,uint64_t locked) {
     int group,sc;
-    /* In game (a locked mask) the backdrop is dimmed deeper: bit 31 keeps those layers apart. */
-    const unsigned in_game=locked?1u<<31:0;
+    /* In game (a locked mask) the backdrop is dimmed deeper: bit 63 keeps those layers apart. */
+    const uint64_t in_game=locked?UINT64_C(1)<<63:0;
     if(page==DW3_TITLE_OPTIONS_PAGE_SUB_BASE)return in_game;
     if(!dw3_optlist_decode(page,&group,&sc))return 0;
     if(group<0)return in_game|(locked&(DW3_TITLE_LOCK_CHEATS|group_row_mask(DW3_OPTGRP_DISPLAY)|

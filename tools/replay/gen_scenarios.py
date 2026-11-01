@@ -4045,9 +4045,10 @@ def main(out):
         (out / f"{v}-res-switch.rec").write_text(res_switch(v).text(True))
         if v == "eu":
             (out / f"{v}-res-movie.rec").write_text(res_movie(v).text(True))
-        for phase in (1, 2):
-            (out / f"{v}-options-res-p{phase}.rec").write_text(
-                options_res(v, phase).text(True))
+        if v == "eu":
+            for phase in (1, 2):
+                (out / f"{v}-options-res-p{phase}.rec").write_text(
+                    options_res(v, phase).text(True))
         (out / f"{v}-battle-options.rec").write_text(battle_options(v).text(True))
     for i, lang in enumerate(EU_LANGS):
         if lang != "en":

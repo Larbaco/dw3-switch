@@ -27,7 +27,7 @@ extern "C" {
 
 struct Dw3MapViewDraw;
 
-#define DW3_GAME_API_ABI 6
+#define DW3_GAME_API_ABI 7
 
 typedef struct Dw3GameApi {
     unsigned abi;       /* DW3_GAME_API_ABI */
@@ -59,7 +59,7 @@ typedef struct Dw3GameApi {
     int (*port_options_in_game)(void);
     int (*port_battle_options_holding)(void);
     int (*port_options_level)(int index);
-    unsigned (*port_options_locked_mask_for)(int in_game);
+    uint64_t (*port_options_locked_mask_for)(int in_game);
     void (*port_options_note_shown)(void);
     int (*port_options_bg_phase)(void); /* ABI 6: D4, the menu background's scroll */
     int (*port_screen_fade_level)(void);

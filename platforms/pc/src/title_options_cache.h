@@ -67,8 +67,8 @@ void dw3_options_cache_idle(void);
  * composes synchronously, as before. Pixels are the same as a synchronous
  * compose (the worker draws with thread-local state only). */
 /* 1 when both layers are composed (an open is then a copy). */
-int dw3_options_cache_layers_ready(unsigned in_game_locked);
-int dw3_options_cache_prewarm_begin(unsigned in_game_locked);
+int dw3_options_cache_layers_ready(uint64_t in_game_locked);
+int dw3_options_cache_prewarm_begin(uint64_t in_game_locked);
 void dw3_options_cache_prewarm_cancel(void);
 void dw3_options_cache_prewarm_worker(void);
 
