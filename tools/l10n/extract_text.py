@@ -69,9 +69,9 @@ def category_of(stem: str) -> str:
 
 
 def stem_of(name: str) -> str:
-    """ESITMNAM.BIN, USITMNAM.BIN, FSITMNAM.BIN ... -> ITMNAM (a two-letter language prefix)."""
+    """ESITMNAM.BIN, USITMNAM.BIN, SSITMNAM.BIN (Spanish) ... -> ITMNAM (a two-letter language prefix)."""
     base = Path(name).stem
-    return base[2:] if len(base) > 4 and base[1] == "S" and base[0] in "EFDIUM" else base
+    return base[2:] if len(base) > 4 and base[1] == "S" and base[0] in "EFDISUM" else base
 
 
 def words_of(text: str) -> int:

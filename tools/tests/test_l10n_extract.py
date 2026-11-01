@@ -227,6 +227,7 @@ def test_stem_and_category_names():
     assert X.stem_of("AAA/DAT/COUNTRY/ENG/ESITMNAM.BIN") == "ITMNAM"
     assert X.stem_of("AAA/DAT/COUNTRY/USA/USTALK03.BIN") == "TALK03"
     assert X.stem_of("AAA/DAT/COUNTRY/GER/DSDMG305.BIN") == "DMG305"
+    assert X.stem_of("AAA/DAT/COUNTRY/SPN/SSITMNAM.BIN") == "ITMNAM"  # the Spanish prefix is SS
     assert X.category_of("DIGNAM") == "names" and X.category_of("TALK04") == "dialogue_talk"
     assert X.category_of("XYZ") == "other"
 
