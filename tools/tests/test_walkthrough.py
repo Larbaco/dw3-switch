@@ -192,7 +192,8 @@ DONE_SETTER = {
     "ch03.s03": 305, "ch05.s03": 525, "ch05.s07": 310, "ch08.s03": 780, "ch08.s05": 305,
     "ch08.s06": 295, "ch10.s01": 311, "ch10.s06": 820,
 }
-# GAME.progress assignments of src/field/stages (value -> stage numbers), FIELD_PROGRESS_* by name
+# GAME.progress assignments of src/field/stages (value -> stage numbers); the stages write them by
+# name (STORY_*, include/engine/story.h), the two past 0x29 keep their names here
 WRITERS = {
     0: [780], 1: [785], 2: [225], 3: [212], 4: [200], 5: [420], 6: [410], 7: [440], 8: [480],
     9: [380], 0xA: [475], 0xB: [520], 0xC: [212], 0xD: [237], 0xE: [212], 0xF: [460],
@@ -202,6 +203,43 @@ WRITERS = {
     0x25: [206], 0x26: [226], 0x27: [310], 0x28: [311], 0x29: [810],
     "MOVIE_BATTLES": [820], "EXTRA": [780],
 }
+
+
+def story_values() -> dict[str, int]:
+    """The STORY_* constants (include/engine/story.h, the enum of GAME.progress values)."""
+    text = (ROOT / "vendor" / "dw3_decomp" / "include" / "engine" / "story.h").read_text()
+    return {m.group(1): int(m.group(2), 0)
+            for m in re.finditer(r"^\s*(STORY_\w+)\s*=\s*(0x[0-9A-Fa-f]+|\d+)\s*,", text, re.M)}
+
+
+_NAMED = None
+
+
+def named_codes() -> dict[str, str]:
+    """NAME -> 'FLAG(g, i)' / 'ITEM(k, i)' / 'SPECIAL(n)' for the named flags, items and special conditions
+    of the decomp's headers (the stage scripts write FLAG_X, the tests below look for the FLAG(g, i) the
+    walkthrough table holds)."""
+    global _NAMED
+    if _NAMED is None:
+        _NAMED = {}
+        for h in (ROOT / "vendor" / "dw3_decomp" / "include").rglob("*.h"):
+            for m in re.finditer(r"^#define (\w+)\s+((?:FLAG|ITEM|SPECIAL)\([^)]*\))", h.read_text(), re.M):
+                _NAMED[m.group(1)] = m.group(2)
+    return _NAMED
+
+
+def read_stage(path: Path) -> str:
+    """A stage script with its named flags, items and special conditions written as FLAG(g, i) /
+    ITEM(k, i) / SPECIAL(n) again."""
+    names = named_codes()
+    text = re.sub(r"\b(?:FLAG|ITEM|SPECIAL)_\w+\b", lambda m: names.get(m.group(0), m.group(0)),
+                  path.read_text())
+
+    def one_line(m: re.Match) -> str:      # u16 x[] = {\n A, 1,\n CODES_END,\n};  ->  u16 x[] = { A, 1, CODES_END };
+        body = re.sub(r"\s+", " ", m.group(2)).strip().rstrip(",")
+        return f"{m.group(1)}{{ {body} }};"
+
+    return re.sub(r"(u16 \w+\[\] = )\{([^{}]*)\};", one_line, text)
 
 
 def stage_files() -> dict[int, Path]:
@@ -236,16 +274,16 @@ def test_progress_values_match_decomp_scripts():
     files = stage_files()
     found: dict = {}
     for num, path in files.items():
-        for m in re.finditer(r"GAME\.progress = (0x[0-9A-Fa-f]+|\d+|FIELD_PROGRESS_\w+);", path.read_text()):
+        for m in re.finditer(r"GAME\.progress = (0x[0-9A-Fa-f]+|\d+|STORY_\w+);", read_stage(path)):
             tok = m.group(1)
-            key = {"FIELD_PROGRESS_MOVIE_BATTLES": "MOVIE_BATTLES",
-                   "FIELD_PROGRESS_EXTRA": "EXTRA"}.get(tok) or int(tok, 0)
+            val = story_values()[tok] if tok.startswith("STORY_") else int(tok, 0)
+            key = {0x2B: "MOVIE_BATTLES", 0x2D: "EXTRA"}.get(val, val)
             found.setdefault(key, set()).add(num)
     assert {k: sorted(v) for k, v in found.items()} == {k: sorted(v) for k, v in WRITERS.items()}
     # the engine's own constants the table relies on
-    fm = (ROOT / "vendor" / "dw3_decomp" / "include" / "field" / "field_map.h").read_text()
-    assert re.search(r"FIELD_PROGRESS_MOVIE_BATTLES 0x2B\b", fm)
-    assert re.search(r"FIELD_PROGRESS_EXTRA 0x2D\b", fm)
+    sv = story_values()
+    assert sv["STORY_MOVIE_BATTLES"] == 0x2B
+    assert sv["STORY_EXTRA"] == 0x2D
 
 
 def test_every_step_is_the_writer_of_the_next_value(wt_bin: Path):
@@ -291,13 +329,13 @@ def test_row_conditions_match_the_decomp(wt_bin: Path):
         if not r["ndone"] or r["chapter"] == "ch01":
             continue
         code, what = r["done"], pattern(r["done"])
-        setter = files[DONE_SETTER[r["id"]]].read_text()
+        setter = read_stage(files[DONE_SETTER[r["id"]]])
         flag = what
         # set by an action: applyAction(FLAG(g, i), 1) or an `Actions[]` list { FLAG(g, i), 1 ... }
         assert re.search(flag + r",\s*1\b", setter), f"{r['id']}: {what} is not set in wstag{DONE_SETTER[r['id']]}"
         later = [x for x in rows[i + 1:] if x["frm"] == r["frm"]]
         assert later, f"{r['id']}: nothing follows it at progress {r['frm']:#x}"
-        assert any(re.search(flag, files[STEP_STAGE[x["id"]]].read_text()) for x in later), \
+        assert any(re.search(flag, read_stage(files[STEP_STAGE[x["id"]]])) for x in later), \
             f"{r['id']}: no later row of progress {r['frm']:#x} is in a stage that tests {what}"
         seen.append(r["id"])
     assert sorted(seen) == sorted(k for k in DONE_SETTER if k != "ch01.s04")
@@ -365,19 +403,19 @@ def test_chapters_cover_the_story(wt_bin: Path):
 
 
 def stage_text(num: int) -> str:
-    return stage_files()[num].read_text()
+    return read_stage(stage_files()[num])
 
 
 def test_last_battle_matches_decomp():
     """ch11: endEvent1080 of the Control Room (820) writes 0x2B and starts event battle 1, which is
     battle 0x144 (324) with three enemies; winning its last enemy plays the ending; the ending's
     movies lead to MODE_NEW_GAME (Kusanagi City, 780), whose updateStage starts event 1500 at 0x2B
-    (on EU it ends by writing FIELD_PROGRESS_EXTRA)."""
+    (on EU it ends by writing STORY_EXTRA)."""
     need_decomp()
     d = ROOT / "vendor" / "dw3_decomp"
     s820 = stage_text(820)
     m = re.search(r"void endEvent1080\(void\) \{(.*?)\n\}", s820, re.S)
-    assert m and "GAME.progress = FIELD_PROGRESS_MOVIE_BATTLES;" in m.group(1)
+    assert m and "GAME.progress = STORY_MOVIE_BATTLES;" in m.group(1)
     assert "FLAGS_00.applyAction(EVENT_BATTLE(1), 1);" in m.group(1)
     assert "AreaBattle area3Battle1 = { 324," in s820
     stg = (d / "src" / "field" / "field_mode" / "data" / "fieldstg.c").read_text()
@@ -392,10 +430,10 @@ def test_last_battle_matches_decomp():
     movies = (d / "src" / "menus" / "title" / "data" / "stdwtitl.c").read_text()
     assert movies.count("MODE_ENDING + 1}") == 2 and "MODE_NEW_GAME}" in movies
     s780 = stage_text(780)
-    assert "} else if (GAME.progress == FIELD_PROGRESS_MOVIE_BATTLES) {\n            children[0] = FIELDSTG_startEvent(0x5DC);" in s780
+    assert "} else if (GAME.progress == STORY_MOVIE_BATTLES) {\n            children[0] = FIELDSTG_startEvent(0x5DC);" in s780
     assert "{ 1500, script1500, EVENT_TEXT(0x24), NULL, NULL }," in s780            # US: nothing follows
     assert "{ 1500, script1500, EVENT_TEXT(0x24), NULL, endEvent1500 }," in s780    # EU: the extra chapter
-    assert "void endEvent1500(void) {\n    GAME.progress = FIELD_PROGRESS_EXTRA;" in s780
+    assert "void endEvent1500(void) {\n    GAME.progress = STORY_EXTRA;" in s780
     # no script writes 0x2A or 0x2C
     assert 0x2A not in WRITERS and 0x2C not in WRITERS
 
@@ -408,13 +446,15 @@ def test_extra_chapter_matches_decomp():
     d = ROOT / "vendor" / "dw3_decomp"
     stg = (d / "src" / "field" / "field_mode" / "data" / "fieldstg.c").read_text()
     ex = stg.index("StageEntry FIELDSTG_extraStages[] = {")
-    entries = re.findall(r"\{(\d+), (\d+), WSTAG(\d+)_startStage\}", stg[ex:stg.index("};", ex)])
+    table = stg[ex:stg.index("};", ex)]
+    table = table[:table.index("#elif VERSION_JP")] if "#elif VERSION_JP" in table else table   # the EU entries
+    entries = re.findall(r"\{(\d+), (\d+), WSTAG(\d+)_startStage\}", table)
     assert [int(e[2]) for e in entries] == list(range(920, 975))      # the 55 extra stages
     mode_of = {int(e[2]): int(e[0]) for e in entries}
     assert mode_of[925] == 0x276 and mode_of[927] == 0x278
     assert mode_of[956] == 0x29C and mode_of[949] == 0x295 and mode_of[954] == 0x29A
     movie = (d / "src" / "menus" / "title" / "movie.c").read_text()
-    assert "if (task->movie == 2 && GAME.progress == 0x2D) {\n                task->nextMode = 0x276;" in movie
+    assert "if (task->movie == 2 && GAME.progress == STORY_EXTRA) {\n                task->nextMode = 0x276;" in movie
     assert "SCRIPT_LEAVE(0xE03" in stage_text(790)                    # the Chamber Room: movie index 2
     s925 = stage_text(925)
     assert re.search(r"if \(FLAGS_00\.checkCondition\(FLAG\(0x40, 0xCD\), 0\)\) \{\s+"
@@ -430,7 +470,7 @@ def test_extra_chapter_matches_decomp():
             assert re.search(r"Talk1Actions\[\] = \{[^}]*FLAG\(0x10, %s\), 1[^}]*EVENT_BATTLE\(\d\), 1" % f
                              + r"|Talk1Actions\[\] = \{ EVENT_BATTLE\(\d\), 1, FLAG\(0x10, %s\), 1" % f, text), (stage, f)
     ev = (d / "src" / "engine" / "game" / "events.c").read_text()
-    eu = ev[ev.index("#elif VERSION_EU\n    { 0x3A, 0x00, 0x00 }"):]
+    eu = ev[ev.index("#elif VERSION_EU || VERSION_JP\n    { 0x3A, 0x00, 0x00 }"):]
     assert "{ 0x54, 0x41, 0x00 }" in eu and "{ 0x96, 0x01, 0x00 }" in eu
     chk = ev[ev.index("s32 checkFlagCount(s32 group, s32 mode) {"):]
     assert re.search(r"case 1:\s+if \(testBit\(GAME\.flags10, 0xD, 1\)\s*&&\s*testBit\(GAME\.flags10, 0xE, 1\)\s*&&\s*"
@@ -602,7 +642,7 @@ def special_table(region: str) -> dict[int, tuple[int, int]]:
     if region == "US":
         body = cut[cut.index("#if VERSION_US"):cut.index("#elif VERSION_EU")]
     else:
-        body = cut[cut.index("#elif VERSION_EU"):]
+        body = cut[cut.index("#elif VERSION_EU"):]   # "#elif VERSION_EU || VERSION_JP"
     return {int(i, 16): (int(c, 16), int(g, 16))
             for i, c, g in re.findall(r"\{ (0x[0-9A-F]{2}), (0x[0-9A-F]{2}), (0x[0-9A-F]{2}) \}", body)}
 
@@ -610,8 +650,12 @@ def special_table(region: str) -> dict[int, tuple[int, int]]:
 def progress_ranges() -> list[tuple[int, int]]:
     ev = (decomp() / "src" / "engine" / "game" / "events.c").read_text()
     a = ev.index("u8 PROGRESS_RANGES[][2] = {")
-    return [(int(x, 16), int(y, 16)) for x, y in re.findall(r"\{ (0x[0-9A-F]{2}), (0x[0-9A-F]{2}) \}",
-                                                           ev[a:ev.index("};", a)])]
+    sv = story_values()
+
+    def value(tok: str) -> int:      # the ranges are written by name (STORY_*) or number
+        return sv[tok] if tok in sv else int(tok, 0)
+
+    return [(value(x), value(y)) for x, y in re.findall(r"\{ (\w+), (\w+) \}", ev[a:ev.index("};", a)])]
 
 
 def chapter_start(rows: list[dict], chapter: str) -> int:
@@ -714,7 +758,8 @@ def test_seabed_forge_and_chests_match_decomp():
     c = stage_text(860)
     assert re.search(r"actor0Talk0Actions\[\] = \{ FLAG\(2, 0x2C\), 1, ITEM\(1, 0x36\), 1, CODES_END \}", c)
     assert re.search(r"actor1Talk0Actions\[\] = \{ FLAG\(2, 0x55\), 1, ITEM\(1, 0x40\), 1, CODES_END \}", c)
-    assert "actor0Conditions[] = { WARP_ARG(5), 1, WARP_ARG(0x1E), 1, FLAG(2, 0x2C), 0," in c
+    # GAME.place is 6 (WARP_ARG(5)), GAME.placeArg is 1 (WARP_ARG(0x1E)), the flag is clear
+    assert re.search(r"actor0Conditions\[\] = \{\s*PLACE\(6\), 1,\s*PLACE_ARG\(1\), 1,\s*FLAG\(2, 0x2C\), 0,", c)
     gs = (decomp() / "include" / "engine" / "game_state.h").read_text()
     assert "#define ITEM_KIND_USABLE 2" in gs and "#define ITEM_KIND_WEAPON 3" in gs
 
@@ -735,7 +780,9 @@ def test_black_kingz_den_matches_decomp():
     assert re.search(r"actor3Talk0Conditions\[\] = \{ FLAG\(0x1C, 0x40\), 0,", s)
     assert re.search(r"actor2Talk3Actions\[\] = \{[^}]*FLAG\(0x1C, 0x3F\), 1", s)    # the other one only sets a flag
     ev = (decomp() / "src" / "engine" / "game" / "events.c").read_text()
-    assert "pendingFlag10" in ev and "applyAction(0x10, 1)" in ev                     # flag (0, 0x10) = won the duel
+    # flag (0, 0x10) = FLAG_CARD_BATTLE_WON, set when the duel was won (cardBattleWon)
+    assert "cardBattleWon" in ev and "applyAction(FLAG_CARD_BATTLE_WON, 1)" in ev
+    assert named_codes()["FLAG_CARD_BATTLE_WON"] == "FLAG(0, 0x10)"
     assert "GAME.funcs.getPrevMode() == MODE_CARD_GAME" in ev
 
 
@@ -804,8 +851,8 @@ def test_tunnel_partners_match_decomp():
     ex = stg[stg.index("StageEntry FIELDSTG_extraStages[] = {"):]
     assert "{746, 2267, WSTAG970_startStage}" in ex and "{747, 2268, WSTAG971_startStage}" in ex
     assert "Black Kingz' den" in stage_text(970)[:300] and "reached only from the other tunnels" in stage_text(971)[:300]
-    # the fighters' spots depend on how the player arrived (WARP_ARG), which the help says
-    assert "WARP_ARG(4), 1" in stage_text(970)
+    # the fighters' spots depend on how the player arrived (PLACE), which the help says
+    assert "PLACE(5), 1" in stage_text(970)
 
 
 def test_duel_island_has_no_confirmed_entry():
