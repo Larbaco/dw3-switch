@@ -7,7 +7,6 @@
 #if defined(DW3_PC_SDL3_GPU) && defined(VERSION_US) && VERSION_US
 #include "engine/game_state.h"
 enum { BG_W = 320, BG_H = 240, VRAM_W = 1024, VRAM_H = 512 };
-extern void Draw_StoreImage(RECT *rect, u_long *pixels);
 extern int dw3_pc_title_background_rgba(const uint8_t *rgba, int w, int h, int pitch);
 static uint16_t g_vram[VRAM_W * VRAM_H];
 static uint8_t g_base[BG_W * BG_H * 4];
@@ -123,7 +122,10 @@ void dw3_port_title_background_frame(const s32 *s0, const s32 *s1,
     }
     if (!g_ready) {
         RECT rect = {0, 0, VRAM_W, VRAM_H};
-        Draw_StoreImage(&rect, (u_long *)g_vram);
+        /* PSY-Z's StoreImage is asynchronous: the pixels are in g_vram after DrawSync */
+        DrawSync(0);
+        StoreImage(&rect, (u_long *)g_vram);
+        DrawSync(0);
         memset(g_base, 0, sizeof(g_base));
         for (i = 0; i < BG_W * BG_H; ++i) g_base[i * 4 + 3] = 255;
         /* Static sprites are queued 0,1,2, so rendered 2,1,0. */

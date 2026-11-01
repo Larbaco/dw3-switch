@@ -22,8 +22,6 @@
 #include "port_turbo.h"
 #include "port_widescreen.h"
 
-/* PSY-Z GPU backend's VRAM readback (private to its renderer TU). */
-extern void Draw_StoreImage(RECT *rect, u_long *pixels);
 extern const uint8_t dw3_port_font8x8[95][8];
 
 #if defined(VERSION_EU) && VERSION_EU
@@ -468,7 +466,10 @@ static uint16_t *capture_vram(void) {
     rect.h = MV_VRAM_H;
     vram = (u_long *)calloc((size_t)MV_VRAM_W * MV_VRAM_H, 2);
     if (!vram) return NULL;
-    Draw_StoreImage(&rect, vram);
+    /* PSY-Z's StoreImage is asynchronous: the pixels are in vram after DrawSync */
+    DrawSync(0);
+    StoreImage(&rect, vram);
+    DrawSync(0);
     return (uint16_t *)vram;
 }
 
