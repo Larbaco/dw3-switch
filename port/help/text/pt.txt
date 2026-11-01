@@ -1,8 +1,8 @@
 # DW3NX technical help, Brazilian Portuguese text (P6.30, P6.7).
 # AI-DRAFTED, OWNER REVIEW PENDING (a Brazilian reader). Written from en.txt by an
-# AI agent (docs/LOCALIZATION.md section 6). Not shipped in the build until the C side
-# reads index 5 (phase 3): tools/generate_help_assets.py validates it and embeds it
-# only with --with-pt. Option and group names follow the PT-BR Options lettering
+# AI agent (docs/LOCALIZATION.md section 6). Shipped since phase 3 as language index 5:
+# tools/generate_help_assets.py validates it and embeds it (port/help/help_text.inc), and the
+# Help follows Display > Text language. Option and group names follow the PT-BR Options lettering
 # (tools/l10n/ptbr_options.py). The game's own words (field menu rows such as OPÇÕES and
 # TELA DE TÍTULO) are the ones the PT-BR pack will use; align them when the pack's
 # glossary exists. Original wording: no text from any external guide.
@@ -89,7 +89,7 @@ help.options.p.2 = Abra pelo menu do título, pela linha OPÇÕES do menu de cam
 help.options.h.1 = Tela
 help.options.li.1 = Tela panorâmica: ON ou OFF, padrão ON. Cerca de 16:9 no campo, nas batalhas e em vários menus. O título e os filmes continuam em 4:3. Mapa em tela cheia: OFF ou ON, padrão OFF. ON deixa o botão {btn:square} na tela Mapa abrir um mapa em tela cheia (veja Visão do mapa e mods). Vale na hora, também durante o jogo, e fica salvo.
 help.options.li.2 = Filtro do mapa: Nearest, Sharp bilinear, Lanczos2, FSR 1 ou Bilinear, padrão FSR 1. O filtro de imagem do mapa em tela cheia; vale na próxima vez que o mapa abrir. O mapa aparece como Nearest por um instante enquanto FSR 1 ou Lanczos2 é montado em segundo plano. {btn:l2} e {btn:r2} na visão mudam o filtro naquela sessão. Filtro de saída: Nearest, Bilinear ou Sharp bilinear, padrão Nearest. Como a imagem é esticada na tela. Nearest mantém pixels duros; Sharp bilinear os mantém nítidos e suaviza só as emendas, o que ajuda numa TV (na TV a ampliação é de 4,5x); Bilinear deixa a imagem borrada. Vale na hora. Pacote de mapa: ON ou OFF, padrão ON. Usa um pacote de ampliação de mapa instalado para o mapa em tela cheia (veja Visão do mapa e mods); OFF mostra o mapa original. Vale na próxima vez que o mapa abrir.
-help.options.li.3 = Rótulo de versão: ON ou OFF, padrão ON. Mostra a versão do port no canto da tela de título. As telas de Opções sempre a mostram.
+help.options.li.3 = Rótulo de versão: ON ou OFF, padrão ON. Mostra a versão do port no canto da tela de título. As telas de Opções sempre a mostram. Idioma do texto: Original ou Português (BR), padrão Original. O Português (BR) põe as telas do próprio port (Opções, Ajuda, Passo a passo e as janelas de Sair) em português do Brasil na hora, com ou sem pacote de texto, no US e no EU. O texto do jogo só muda quando há um pacote de texto feito do seu próprio disco; sem ele fica como o disco o tem, e a linha de mensagem sob a linha avisa.
 help.options.h.2 = Som
 help.options.li.4 = Volume da música e Volume dos efeitos: OFF, ou de 1 a 10, padrão 10, que é a mixagem original. Esquerda e Direita mudam o passo; {btn:cross} sobe um passo e volta de 10 para 0. A tela toca os sons de menu do jogo para você ouvir a mudança. Música turbo: 1x ou Rápido, padrão 1x. Com 1x a música mantém a velocidade normal enquanto o avanço rápido roda; Rápido faz a música acelerar junto com o jogo.
 help.options.h.3 = Jogabilidade

@@ -53,8 +53,8 @@ static double now_ms(void) {
     return (double)ts.tv_sec * 1000.0 + (double)ts.tv_nsec / 1.0e6;
 }
 
-static const char *const k_lang_codes[5] = {"en", "fr", "de", "es", "it"};
-static const char *g_test_text[5];
+static const char *const k_lang_codes[6] = {"en", "fr", "de", "es", "it", "pt"};
+static const char *g_test_text[6];
 
 static const char *embedded_text(int lang) {
     if (g_test_text[lang] != NULL) {
@@ -65,12 +65,13 @@ static const char *embedded_text(int lang) {
     case 2: return wt_text_de;
     case 3: return wt_text_es;
     case 4: return wt_text_it;
+    case 5: return wt_text_pt;
     default: return wt_text_en;
     }
 }
 
 void dw3_wt_test_set_text(int lang, const char *text) {
-    if (lang >= 0 && lang < 5) {
+    if (lang >= 0 && lang < 6) {
         g_test_text[lang] = text;
     }
 }
@@ -986,7 +987,7 @@ int dw3_wt_open(const Dw3WtConfig *cfg) {
     if (g_cfg.platform != DW3_PAGES_SWITCH) {
         g_cfg.platform = DW3_PAGES_PC;
     }
-    lang = g_cfg.lang >= 0 && g_cfg.lang < 5 ? g_cfg.lang : 0;
+    lang = g_cfg.lang >= 0 && g_cfg.lang < 6 ? g_cfg.lang : 0;
     g_cfg.lang = lang;
     env = g_cfg.region | g_cfg.platform;
     g_t_open = now_ms();

@@ -2,9 +2,9 @@
 # AI-DRAFTED, OWNER REVIEW PENDING (a Brazilian reader). Written from en.txt by an AI
 # agent (docs/LOCALIZATION.md section 6); en.txt is our own writing from the decomp's
 # stage scripts, so nothing here comes from an external guide, and the owner's PT-BR
-# guide catalog (tools/guide_walkthrough_ptbr.json) is not a source. Not shipped in the
-# build until the C side reads index 5 (phase 3): tools/generate_walkthrough_text.py
-# embeds it only with --with-pt.
+# guide catalog (tools/guide_walkthrough_ptbr.json) is not a source. Shipped since phase 3
+# as language index 5: tools/generate_walkthrough_text.py embeds it
+# (port/walkthrough/walkthrough_text.inc) and the Walkthrough follows Display > Text language.
 # Names of places, characters, items and Digimon stay exactly as the EU English disc
 # shows them (Asuka City, Main Lobby, Account Clerk, Digi-Egg ...) until the PT-BR
 # pack's glossary exists; then align them with a find and replace.

@@ -98,10 +98,13 @@ int main(int argc, char **argv) {
     if (!open_ref || !locked || !other) {
         return 2;
     }
-    for (lang = 0; lang < 5; lang++) {
+    for (lang = 0; lang < 6; lang++) {
         long label, value, message, other_row, window;
 
-        dw3_pc_title_overlay_set_options_language(lang);
+        dw3_pc_title_overlay_set_text_pt(lang == DW3_TITLE_LANG_PT); /* 5 = Português (BR) */
+        if (lang <= DW3_TITLE_LANG_IT) {
+            dw3_pc_title_overlay_set_options_language(lang);
+        }
         dw3_pc_title_overlay_set_options_page(dw3_optlist_page(DW3_OPTGRP_DISPLAY, 0), 0);
         dw3_pc_title_overlay_set_options_locked(0);
         dw3_pc_title_overlay_set_options_view(0, values, DW3_TITLE_OPTION_ROWS);
@@ -164,6 +167,7 @@ int main(int argc, char **argv) {
 
     /* Retained canvas: byte-identical to the reference after the lock appears
      * and while the cursor and the values move, locked and not. */
+    dw3_pc_title_overlay_set_text_pt(0);
     dw3_pc_title_overlay_set_options_language(DW3_TITLE_LANG_EN);
     dw3_pc_title_overlay_set_options_locked(0);
     dw3_pc_title_overlay_set_options_page(dw3_optlist_page(DW3_OPTGRP_DISPLAY, 0), 0);

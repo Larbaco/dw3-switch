@@ -1,7 +1,7 @@
 # Localization (P6.6, P6.7 and P6.8): PT-BR first
 
-Status: **phases 0 to 2 built, 2026-11-01** (phase 0 #415; phases 1 and 2 in the PR that adds sections 7a and 9's
-"As built"). The loader, the pack builder and the `Text language` row exist and are proven on the EU PC with synthetic
+Status: **phases 0 to 3 built, 2026-11-01** (phase 0 #415; phases 1 and 2 #416; phase 3, the port's own screens in
+PT-BR, in the PR that adds section 9's "Phase 3" paragraph). The loader, the pack builder and the `Text language` row exist and are proven on the EU PC with synthetic
 packs (no translation yet); the Switch combined image builds with them. Owner decision, 2026-11-01:
 **translation is the priority: Brazilian Portuguese for the game and for the port's
 own screens.** Roadmap: [P6.6](ROADMAP.md) (this note), [P6.7](ROADMAP.md) (the
@@ -355,16 +355,18 @@ rendered locally), not a copy of the game's art, and they stay in the pack folde
   exempt list). **Built (phase 2) as the last row of Display**, registry row 29 (the orchestrator's
   choice, owner to confirm; the alternative is a one-row group at the top of the list, and either is a
   one-line change of `dw3_optgroups` in `port_options_groups.h`). The values are Original and Português (BR);
-  the five EU languages are not rows of it, because the country select still chooses `LANGUAGE`. With no usable
-  pack the value shows Original greyed and the message line says "No text pack found", Right is refused.
-  `DW3_LANG=ptbr` pins it for one run. Details: [PORT_OPTIONS](PORT_OPTIONS.md#text-language-p67).
+  the five EU languages are not rows of it, because the country select still chooses `LANGUAGE`. **The row picks
+  the language of the port's own screens as well as of the game text** (phase 3, section 6a): it is choosable with
+  no usable pack, and then only the port's screens change (the message line says so, the log says so). Until phase 3
+  it was greyed and refused without a pack. `DW3_LANG=ptbr` pins it for one run. Details: [PORT_OPTIONS](PORT_OPTIONS.md#text-language-p67).
 * **EU and the combined image** (US+EU build, `docs/SINGLE_BUILD.md`): the row is on
   both regions, the same cfg key (one global `port_options.cfg`, P6.26). A region with
   no installed pack shows the row greyed with the reason ("pack not found") and the
   log line below.
 * **US gets it too**, in phase 5, because the translation is shared (section 2.8) and
-  the only extra work is the atlas (3.5). Until then the US row shows "needs the EU
-  font" greyed.
+  the only extra work is the atlas (3.5). **The port's own screens are Portuguese on US since phase 3**
+  (they use the port's DejaVu lettering, not the game's font); the US game text stays English until phase 5
+  (no US pack exists: the row's message line says "No text pack").
 * Switching applies at the next text load; the Options screen itself changes
   language at once (section 7), since it does not use the game's text. **At the title** the loader drops the
   cached text files, so the next screen reads the new text. **In game it does not**: a text window copies its string
@@ -504,16 +506,48 @@ The port's screens read no game text, so they are finished in the repo, flagged 
 
 | Screen | Source | PT-BR | Status |
 |---|---|---|---|
-| Help (P6.30) | `port/help/text/en.txt` (221 lines) | `port/help/text/pt.txt` | drafted in this PR; `tools/generate_help_assets.py` validates it (keys, tokens, widths, atlas glyphs), `--with-pt` embeds it |
-| Walkthrough (P6.35) | `port/walkthrough/text/en.txt` (353 lines) | `port/walkthrough/text/pt.txt` | drafted; budgets and keys checked by `test_ptbr_port_text.py`; `tools/generate_walkthrough_text.py --with-pt` embeds it |
-| Options, Cheats, quit, restart, region, locked row, title labels | the `_en` entries of `tools/generate_pc_title_lettering.py` | `tools/l10n/ptbr_options.py` (one PT string per English entry, 177 of them) | drafted; `generate_pc_title_lettering.py --check-pt` checks coverage and the same pixel limits as the five languages; `--with-pt` bakes them |
+| Help (P6.30) | `port/help/text/en.txt` (221 lines) | `port/help/text/pt.txt` | drafted (#415), embedded as `help_text_pt` since phase 3; `tools/generate_help_assets.py` validates it (keys, tokens, widths, atlas glyphs) |
+| Walkthrough (P6.35) | `port/walkthrough/text/en.txt` (353 lines) | `port/walkthrough/text/pt.txt` | drafted, embedded as `wt_text_pt` since phase 3; budgets and keys checked by `test_ptbr_port_text.py` |
+| Options, Cheats, quit, restart, region, locked row, title labels | the `_en` entries of `tools/generate_pc_title_lettering.py` | `tools/l10n/ptbr_options.py` (one PT string per English entry, 187 with the Options plaque) | drafted, baked as `_pt` since phase 3 (`title_overlay_lettering.inc`); `generate_pc_title_lettering.py --check-pt` checks coverage and the pixel limits of the five languages |
 
-All three generators gain `pt` **without changing their default output**: the committed
-`.inc` files are byte-identical, so nothing in the binary or the replays moves. The C
-side (language index 5, the `pt` Options lettering and text tables) is wired in
-phase 3. FR/DE/IT/ES of the same screens remain machine-drafted pending native review
-(P6.30); the PT-BR draft is in the same state, **drafted by an AI, owner review
-pending**, and its `@status` says so.
+Phase 3 made `pt` **language index 5 by default** in all three generators (the `--with-pt` flag is gone: there is
+no unused array any more) and the C side reads it (section 6a). FR/DE/IT/ES of the same screens remain
+machine-drafted pending native review (P6.30); the PT-BR draft is in the same state, **drafted by an AI, owner review
+pending**, and its `@status` says so (`draft, AI-drafted, owner review pending`; the Help and Walkthrough titles carry the
+word `(rascunho)` while it does).
+
+### 6a. Which language the port's screens use (phase 3)
+
+The port's screens follow **Display > Text language**, not the disc's language, when it says Português (BR):
+
+| Text language | Port screens (Options, Help, Walkthrough, title Options and Quit plaques, confirmation windows, message lines) | Game text |
+|---|---|---|
+| Original | the disc's language (EN, or the EU country select's choice), as before | the disc's |
+| Português (BR), pack installed | **PT-BR** | the pack's |
+| Português (BR), **no pack** | **PT-BR** | the disc's (English), one log line |
+
+**Decision (the owner's suggestion, kept): PT for the port screens works without a game pack.** The port's screens are
+our own text, drawn with DejaVu (Latin-1, every PT-BR letter), so nothing about them needs the pack, the EU font or
+a disc. Making the row dead without a pack would hide the one part of the translation that is already finished and
+force a player to build a pack to read the Options in Portuguese. The row's message line then reads "No text pack:
+only the port screens change", the value is not greyed, and the log says:
+
+```
+dw3-l10n: port screens in Portuguese (BR) (text_language=ptbr, game text original (no usable text pack))
+dw3-l10n: port screens in Portuguese (BR) (text_language=ptbr, game text from the pack)
+dw3-l10n: port screens in the disc's language (text_language=original, game text original)
+```
+
+(once per change, and at boot for the cfg's value). **US:** the same: PT-BR port screens, English game text (there is
+no US pack until phase 5), and the same message line. **Not yet in PT-BR (the follow-ups):** the port screens that
+draw with the **game's own font**, which still follow the disc's language: the field Items menu words
+(`port/items_menu`), the Map view help line and a few host messages. They are in-game screens that need the game
+font's accent icons (EU only) and the pack's glossary, so they belong with phase 4.
+
+Mechanism: `dw3_pc_title_overlay_set_text_pt(1)` (called by `port_options.c` at boot, from the cfg or `DW3_LANG`, and
+on every change of the row) makes the Options lettering language `DW3_TITLE_LANG_PT` (5) over the disc's language,
+which `dw3_pc_title_overlay_set_options_language` keeps underneath (a country select or a field-menu open under it
+does not lose it). Help and Walkthrough read the same index (`Dw3HelpConfig.lang`, `Dw3WtConfig.lang`).
 
 ## 7. Phased build plan
 
@@ -524,7 +558,7 @@ Efforts are worker-days (one agent, with the build and replay time included).
 | **0** (this PR) | Design note, `extract_text.py` + `textfmt.py` + tests, `pt` drafts of Help, Walkthrough and Options lettering, `--check-pt` / `--with-pt` generators | done | the PR merges; the owner reviews the PT drafts |
 | **1** Pack and loader (EU, PC), **built 2026-11-01** | `build_pack.py` (+ synthetic tests), `port/l10n/` loader (virtual LBA entries, `FILE_SECTORS` / `COUNTS` patch and restore, hash check, logs), `text_language` cfg key (no UI yet, `DW3_LANG=ptbr` for tests), synthetic-pack replays on EU, heap high-water | 4 | a synthetic upper-cased pack shows in the title, field dialogue, battle menu and Digimon lab on EU PC, and removing the pack gives English with one log line |
 | **2** Options row, glyph proof, boxes, **built 2026-11-01** (the OLED run is the owner's: TL1 to TL8) | the Language row (5 languages + PT) in the registry and the lettering, the on-screen accent proof (all 26 letters, `¡ ¿ °`), a measuring pass of every window (message box, talk box types, battle menu, field menu, shop, card game) with the longest PT-like strings, `DW3_L10N_SHOW_KEYS=1`; Switch build and a first OLED run | 3 | OLED L1 to L7 pass with the synthetic pack on EU |
-| **3** Port screens PT | `pt` index 5 in the Options lettering table and the Help / Walkthrough embeds (generators with `--with-pt` on by default), the language follows the Language row, title Options plaque and Quit in PT, replays of the Options / Help / Walkthrough in PT on EU and US | 3 | OLED L9 and L10; the owner signs off the PT drafts |
+| **3** Port screens PT, **built 2026-11-01** (the OLED run is the owner's: TL9 to TL12) | `pt` index 5 in the Options lettering table and the Help / Walkthrough embeds (generators with `--with-pt` on by default), the language follows the Language row, title Options plaque and Quit in PT, replays of the Options / Help / Walkthrough in PT on EU and US | 3 | OLED L9 and L10; the owner signs off the PT drafts |
 | **4** Translation, first pass | Owner + local AI: names, menus, descriptions (2,469 strings), then `TALK00..09` and `DMG` by chapter (the 90%); check and pack after each batch; PT title labels and bar labels drawn with our lettering | owner/AI time, not worker time: about 3 days of AI drafting and 25 to 40 h of owner review for 67k words | a short playthrough title to field dialogue in PT-BR (the P6.7 done-when) |
 | **5** US | The owner-built atlas (3.5), the US template filled by `--propagate`, the 72 differing US strings, US replays, the combined-image row | 4 | the same playthrough on a US disc |
 | **6** P6.8: a second language | `build_pack.py --lang <code>`, `l10n/<code>/` folders, a `languages` list in the Language row, country-select integration, and the decision of option B (a real `LANGUAGE` id) only if a language needs its own art | 4 | a second owner-supplied language switches and renders |
@@ -581,7 +615,7 @@ photos to take; the table below is the design. The `dw3-l10n: ...` line formats 
 | L7 | A shop, the inn, the Digimon lab, the training gym, the card game | Menus fit | same |
 | L8 | Pack with deleted strings | The missing lines show in English | `dw3-l10n: fallback key=...` |
 | L9 | Switch the row back to Original, play on, save, switch again | English at once; saves are unaffected | `dw3-l10n: off reason=option_original` |
-| L10 | Options, Help, Walkthrough in PT-BR (phase 3) | Texts fit, no clipped accents; drafts approved | no log line (visual) |
+| L10 | Options, Help, Walkthrough in PT-BR (phase 3; TL9 to TL12 in the OLED plan: no pack, Help and Walkthrough, title plaques and windows, US) | Texts fit, no clipped accents; drafts approved | `dw3-l10n: port screens in Portuguese (BR) ...` |
 | L11 | Delete the pack with the game closed, start | English, no error | `dw3-l10n: off reason=no_pack` |
 | L12 | Timing: the title to field load times with and without the pack | No extra wait | `dw3-l10n:` timing line |
 | L13 | US build (phase 5): L2, L4, L5 | Same as EU | same, `region=us` |
@@ -594,6 +628,18 @@ registry row 29 `text_language`, the Display row and its lettering, `DW3_LANG`, 
 buffer limits of section 2.6a in `extract_text.py --check`, the `Scenario.l10n` replay field and the `eu-l10n-*` scenarios,
 tests `test_l10n_pack.py`, `test_l10n_loader.py` (`tools/tests/l10n_main.c`), the OLED session R. No decomp patch
 (0201 is still free). The PT-BR drafts of the port's screens are unchanged (phase 3 wires them).
+
+Phase 3 (2026-11-01): `pt` is language index 5 of the Options lettering (`DW3_TITLE_LANG_PT`, `options_pt` for the
+title's Options plaque, 187 `_pt` strings), of `help_text.inc` and of `walkthrough_text.inc`, baked by default (no
+`--with-pt`). The port's screens follow Display > Text language (section 6a), with or without a pack and on US; the
+row is no longer greyed or refused. The Text language row's own two message lines were rewritten in the six
+languages for that. Every row added since the drafts is covered (Instant menu exit, Map scaler, Text language,
+Internal resolution, Native res while turbo): `--check-pt` fails when an English entry has no PT string, when a PT
+string is unused, and now also checks the Auto-save and dialog strings against their pixel limits (it found one
+PT line 48 px too wide, shortened). The Help's Display list gained the Text language sentence (EN and PT; FR/DE/IT/ES
+fall back to their old line until a native reviewer adds it). `extract_text.py --check` now catches a long speaker in
+the real `{start}Speaker{start}` form. No decomp patch (0201 is still free). Replays: the Options, Help and
+Walkthrough in PT on EU and US (`*-ptbr-*`, section 9a).
 
 Phase 0 (2026-11-01): `tools/l10n/extract_text.py`, `tools/l10n/textfmt.py`,
 `tools/tests/test_l10n_extract.py` (synthetic data), the note you are reading, and the

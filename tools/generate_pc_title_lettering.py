@@ -376,21 +376,23 @@ EXTRA_ROWS = {
                     'Cómo se estira la imagen. Sharp va bien en TV.',
                     "Come si allarga l'immagine. Sharp è ideale per TV.")},
 }
-# P6.7 (registry row 29, Display, the last row): the language of the game's text. The values
-# are Original and the language's own name, Português (BR) (TEXTLANG_VALUES); the second
-# message line is shown while no usable text pack is installed (TEXTLANG_NOPACK).
+# P6.7 (registry row 29, Display, the last row): the language of the game's text and, since
+# phase 3, of the port's own screens. The values are Original and the language's own name,
+# Português (BR); the second message line is shown while no usable text pack is installed
+# (TEXTLANG_NOPACK): Português (BR) can still be chosen then and changes only the port's
+# screens (Options, Help, Walkthrough, Quit), the game text stays original.
 EXTRA_ROWS['tl'] = {
     'row': ('Text language', 'Langue du texte', 'Textsprache', 'Idioma del texto', 'Lingua del testo'),
-    'desc': ('Game text language. Português (BR) needs a pack.',
-             'Langue du texte. Português (BR) exige un pack local.',
-             'Spieltext-Sprache. Português (BR): lokales Paket nötig.',
-             'Idioma del texto. Português (BR) requiere un paquete.',
-             'Lingua del testo. Português (BR): serve un pacchetto.')}
-TEXTLANG_NOPACK = ('No text pack found: the game text stays original.',
-                   'Aucun pack de texte trouvé : le texte reste d\u2019origine.',
-                   'Kein Textpaket gefunden: Der Spieltext bleibt original.',
-                   'Sin paquete de texto: se usa el texto original.',
-                   'Nessun pacchetto di testo: il testo resta originale.')
+    'desc': ('Port screens in PT-BR; the game text needs a pack.',
+             'Écrans du port en PT-BR ; le texte exige un pack.',
+             'Port-Bildschirme auf PT-BR; Text braucht ein Paket.',
+             'Pantallas del port en PT-BR; el texto pide un paquete.',
+             'Schermate in PT-BR; il testo richiede un pacchetto.')}
+TEXTLANG_NOPACK = ('No text pack: only the port screens change.',
+                   'Pas de pack : seuls les écrans du port changent.',
+                   'Kein Paket: nur die Port-Bildschirme ändern sich.',
+                   'Sin paquete: solo cambian las pantallas del port.',
+                   'Nessun pacchetto: cambiano solo le schermate.')
 TEXTLANG_ORIGINAL = ('Original', 'Original', 'Original', 'Original', 'Originale')
 TEXTLANG_PT = 'Português (BR)'
 # D5: the words of the Map scaler row (the stored order: nearest, sharp, lanczos2,
@@ -824,33 +826,32 @@ for lang, t in CHEAT_TEXT.items():
         CHEAT_LETTERS.append(('opt_cht_%s_%s' % (key, lang), t[key], 26, 'DejaVuSans.ttf'))
     for key in ('change', 'back', 'hint'):
         CHEAT_LETTERS.append(('opt_cht_%s_%s' % (key, lang), t[key], 24, 'DejaVuSans.ttf'))
-# P6.7 (docs/LOCALIZATION.md section 6): Brazilian Portuguese of the same entries.
-# Every English entry ("<name>_en") has a drafted string in tools/l10n/ptbr_options.py
-# and becomes "<name>_pt". Nothing changes by default: the committed .inc stays
-# byte-identical until the C side reads index 5 (phase 3).
+# P6.7 (docs/LOCALIZATION.md section 6): Brazilian Portuguese of the same entries, language
+# index 5 of the Options lettering (phase 3: baked by default). Every English entry
+# ("<name>_en") has a drafted string in tools/l10n/ptbr_options.py and becomes "<name>_pt";
+# the title's Options plaque (options_pt) is the one entry of its own.
 #   --check-pt   check coverage and the same pixel limits as the other languages,
 #                write nothing
-#   --with-pt    also bake the _pt entries (they are unused until phase 3)
 PT_ERRORS = []
-if '--check-pt' in sys.argv or '--with-pt' in sys.argv:
-    sys.path.insert(0, str(ROOT / 'tools' / 'l10n'))
-    from ptbr_options import PT_LETTERING
-    _pt_used = set()
+sys.path.insert(0, str(ROOT / 'tools' / 'l10n'))
+from ptbr_options import PT_LETTERING
+_pt_used = {'options_plaque'}
 
-    def _pt_entries(entries):
-        out = []
-        for _e in entries:
-            if _e[0].endswith('_en'):
-                _stem = _e[0][:-3]
-                if _stem not in PT_LETTERING:
-                    PT_ERRORS.append('no PT-BR string for %s (%r)' % (_stem, _e[1]))
-                    continue
-                _pt_used.add(_stem)
-                out.append((_stem + '_pt', PT_LETTERING[_stem]) + tuple(_e[2:]))
-        return out
-    LETTERS += _pt_entries(LETTERS)
-    CHEAT_LETTERS += _pt_entries(CHEAT_LETTERS)
-    PT_ERRORS += ['unused PT-BR string %s' % _k for _k in sorted(set(PT_LETTERING) - _pt_used)]
+def _pt_entries(entries):
+    out = []
+    for _e in entries:
+        if _e[0].endswith('_en'):
+            _stem = _e[0][:-3]
+            if _stem not in PT_LETTERING:
+                PT_ERRORS.append('no PT-BR string for %s (%r)' % (_stem, _e[1]))
+                continue
+            _pt_used.add(_stem)
+            out.append((_stem + '_pt', PT_LETTERING[_stem]) + tuple(_e[2:]))
+    return out
+LETTERS += _pt_entries(LETTERS)
+LETTERS.append(('options_pt', PT_LETTERING['options_plaque'], 29, 'DejaVuSansCondensed-Bold.ttf'))
+CHEAT_LETTERS += _pt_entries(CHEAT_LETTERS)
+PT_ERRORS += ['unused PT-BR string %s' % _k for _k in sorted(set(PT_LETTERING) - _pt_used)]
 TOO_WIDE = []
 lines = ['/* Generated by tools/generate_pc_title_lettering.py. DejaVu font license applies. */']
 ENTRIES = [(e, False) for e in LETTERS] + [(e, True) for e in CHEAT_LETTERS]
@@ -868,11 +869,12 @@ for index, (entry, cheat) in enumerate(ENTRIES):
         # Fixed advance: the glyph keeps its own side bearing.
         image = Image.new('L', (advance, bounds[3]-bounds[1]))
         ImageDraw.Draw(image).text((0, -bounds[1]), text, font=font, fill=255)
-    limit = (LIMITS['dlg'] if name.startswith(('opt_dlg_ask_q', 'opt_dlg_ask_warn')) else
-             LIMITS['grp'] if name.startswith('opt_grp_') else LIMITS['row'] if name.startswith(('opt_row', 'opt_cht_row')) else
-             LIMITS['val'] if name.startswith(('opt_val_', 'opt_cht_warp', 'opt_cht_ready', 'opt_cht_none',
+    limit = (LIMITS['dlg'] if name.startswith(('opt_dlg_ask_q', 'opt_dlg_ask_warn', 'opt_dlg_warn', 'opt_dlg_quit_q',
+                                               'opt_dlg_ret_q', 'opt_dlg_rst_q', 'opt_dlg_rst_note')) else
+             LIMITS['grp'] if name.startswith('opt_grp_') else LIMITS['row'] if name.startswith(('opt_row', 'opt_cht_row', 'opt_as_row')) else
+             LIMITS['val'] if name.startswith(('opt_val_', 'opt_cht_warp', 'opt_cht_ready', 'opt_cht_none', 'opt_as_area',
                                                'opt_cht_m10k', 'opt_cht_m100k', 'opt_cht_mmax')) else
-             LIMITS['desc'] if name.startswith(('opt_desc', 'opt_grpdesc', 'opt_lock', 'opt_cht_desc')) else None)
+             LIMITS['desc'] if name.startswith(('opt_desc', 'opt_grpdesc', 'opt_lock', 'opt_cht_desc', 'opt_as_desc')) else None)
     if limit is not None and image.width > limit:
         TOO_WIDE.append('%s is %d px wide (limit %d): %r' % (name, image.width, limit, text))
     pixels = image.tobytes()
@@ -884,13 +886,11 @@ for index, (entry, cheat) in enumerate(ENTRIES):
             count += 1
         runs.extend((count, pixels[position]))
         position += count
-    # The _pt entries (--with-pt) are unused until the C side reads them (phase 3).
-    unused = ' __attribute__((unused))' if name.endswith('_pt') else ''
-    lines.append('static const unsigned char%s title_%s[] = {%s};' % (unused, name, ','.join(map(str, runs))))
-    lines.append('static const int%s title_%s_width=%d, title_%s_height=%d;' % (unused, name, image.width, name, image.height))
+    lines.append('static const unsigned char title_%s[] = {%s};' % (name, ','.join(map(str, runs))))
+    lines.append('static const int title_%s_width=%d, title_%s_height=%d;' % (name, image.width, name, image.height))
     if name.startswith('opt_'):
         # Offset from the text origin, so words on one line share a baseline.
-        lines.append('static const int%s title_%s_top=%d;' % (unused, name, bounds[1]))
+        lines.append('static const int title_%s_top=%d;' % (name, bounds[1]))
     if cheat and index == len(ENTRIES) - 1:
         lines.append('#endif /* DW3_CHEATS */')
 if '--check-pt' not in sys.argv:

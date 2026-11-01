@@ -1,7 +1,7 @@
 """P6.7: the PT-BR drafts of the port's own screens (Help, Walkthrough, Options lettering).
-They are our own writing; no game data is read. The C side does not use them yet (phase 3),
-so these tests prove only that the drafts are complete, fit and leave every generated file
-unchanged by default."""
+They are our own writing; no game data is read. Since phase 3 the generators embed them by
+default (language index 5), so these tests prove that the drafts are complete, fit and are what
+the committed generated files carry."""
 
 from __future__ import annotations
 
@@ -84,30 +84,51 @@ def test_help_pt_validates_and_is_complete():
         assert gen.expand_chars(v)[1] == pt_tokens[k], f"{k}: tokens differ"
 
 
-def test_embedded_text_files_do_not_change_by_default():
-    """pt is validated everywhere, but only embedded with --with-pt: the committed .inc files
-    are the five-language ones, byte for byte."""
+def test_embedded_text_files_carry_pt_by_default():
+    """Phase 3: pt is language index 5 of every embedded table, with no flag: the committed .inc files
+    are what the generators write, and pt is neither optional nor an unused array any more."""
     gen = load(ROOT / "tools" / "generate_help_assets.py", "gen_help2")
+    assert gen.LANGS == ("en", "fr", "de", "es", "it", "pt")
     assert gen.TEXT_INC.read_text(encoding="utf-8") == gen.build_text_inc()
-    assert "help_text_pt" not in gen.build_text_inc()
-    assert "help_text_pt" in gen.build_text_inc(with_pt=True)
+    assert "help_text_pt" in gen.build_text_inc()
     wt = load(ROOT / "tools" / "generate_walkthrough_text.py", "gen_wt")
+    assert wt.LANGS == ("en", "fr", "de", "es", "it", "pt")
     assert wt.OUT.read_text(encoding="utf-8") == wt.build()
-    assert "wt_text_pt" not in wt.build() and "wt_text_pt" in wt.build(with_pt=True)
+    assert "wt_text_pt" in wt.build()
+    for inc in (gen.TEXT_INC, wt.OUT):
+        assert "__attribute__((unused))" not in inc.read_text(encoding="utf-8")
+    # the Help text itself: the Portuguese the player reads is the draft file
+    assert 'help_text_pt[] =' in gen.TEXT_INC.read_text(encoding="utf-8")
+    assert "Instalação" in gen.TEXT_INC.read_text(encoding="utf-8")
+
+
+def test_lettering_inc_bakes_pt_for_every_english_entry():
+    inc = (ROOT / "platforms" / "pc" / "src" / "title_overlay_lettering.inc").read_text(encoding="utf-8")
+    assert "__attribute__((unused))" not in inc
+    import ptbr_options as po
+
+    names = set(re.findall(r"static const unsigned char title_(\w+)\[\]", inc))
+    for stem in po.PT_LETTERING:
+        name = "options_pt" if stem == "options_plaque" else stem + "_pt"
+        assert name in names, f"{name} is not baked"
+    # every English entry has its _pt twin (the generator fails otherwise, this proves the output)
+    for n in names:
+        if n.endswith("_en") and not n.startswith(("title_", "credit")) and n not in ("start",):
+            assert n[:-3] + "_pt" in names or n[:-3] in ("start",), f"no _pt for {n}"
 
 
 def test_options_lettering_pt_covers_every_english_entry_and_fits():
     pytest.importorskip("PIL")
     if not Path("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf").exists():
         pytest.skip("DejaVu fonts not installed")
+    inc = ROOT / "platforms" / "pc" / "src" / "title_overlay_lettering.inc"
+    before = inc.read_bytes()
     r = subprocess.run([sys.executable, str(ROOT / "tools" / "generate_pc_title_lettering.py"), "--check-pt"],
                        capture_output=True, text=True, cwd=ROOT)
     assert r.returncode == 0, r.stdout + r.stderr
     assert "PT-BR lettering ok" in r.stdout
     # --check-pt writes nothing
-    ignored = subprocess.run(["git", "status", "--porcelain", "platforms/pc/src/title_overlay_lettering.inc"],
-                             capture_output=True, text=True, cwd=ROOT)
-    assert ignored.stdout.strip() == ""
+    assert inc.read_bytes() == before
 
 
 def test_options_lettering_pt_text_is_latin1_and_non_empty():

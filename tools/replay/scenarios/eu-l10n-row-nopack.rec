@@ -31,10 +31,10 @@ pad 620 0x0040
 pad 625 0x0000
 pad 640 0x0040
 pad 645 0x0000
-shot 700 row-greyed
+shot 700 row-original-nopack
 pad 720 0x0020
 pad 725 0x0000
-shot 780 row-refused
+shot 780 row-ptbr-nopack
 pad 800 0x1000
 pad 805 0x0000
 pad 820 0x1000

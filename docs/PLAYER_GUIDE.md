@@ -246,8 +246,11 @@ changes nothing in the game.
   says **(draft)** while the owner has not yet signed off the text.
 - The pages are in English for now. The EU disc has the screen's own words in French, German,
   Italian and Spanish; the page text for those languages is still to come, so the game shows
-  the English page and writes a line in `dw3.log`. Brazilian Portuguese arrives with the
-  game's own pt-BR language.
+  the English page and writes a line in `dw3.log`. **Brazilian Portuguese** is there already for
+  the port's own screens (Options, Help, Walkthrough, the title plaques and the Quit windows): set
+  Options > Display > **Text language** to Português (BR). It works with no text pack, on US and EU; the
+  game's own text stays as the disc has it until a text pack is installed. The Portuguese is an
+  AI draft, owner review pending, so its page titles say **(rascunho)**.
 - The Cheats screen is not described in the help.
 
 ## Walkthrough

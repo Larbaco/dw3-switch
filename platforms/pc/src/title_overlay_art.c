@@ -22,7 +22,16 @@ enum { LABEL_MAX_W = 440, LABEL_MAX_H = 48 };
 /* Runtime label masks (raw coverage), the Options language and the footer. */
 static uint8_t *label_mask[DW3_TITLE_LABEL_COUNT];
 static int label_w[DW3_TITLE_LABEL_COUNT], label_h[DW3_TITLE_LABEL_COUNT];
+/* The lettering language in force. game_lang is the disc's (EN, or the EU country select's
+ * choice); text_pt is 1 while Display > Text language says Português (BR), which puts the
+ * port's own screens in DW3_TITLE_LANG_PT whatever the disc's language is (P6.7 phase 3,
+ * docs/LOCALIZATION.md section 6). options_lang is the one that is read: pt wins. */
 static int options_lang = DW3_TITLE_LANG_EN;
+static int game_lang = DW3_TITLE_LANG_EN;
+static int text_pt;
+static int lang_ix(void) {
+    return options_lang>=DW3_TITLE_LANG_EN&&options_lang<=DW3_TITLE_LANG_PT?options_lang:0;
+}
 static int footer_shown = 1;
 /* P6.37: the port version in a corner of the title canvas (show_version=0 in
  * port_options.cfg hides it; the Options footer is always drawn). */
@@ -167,9 +176,17 @@ int dw3_pc_title_overlay_set_label(int slot,const uint8_t *coverage,int w,int h)
     return 0;
 }
 int dw3_pc_title_overlay_get_options_language(void) { return options_lang; }
+static void options_language_changed(int lang) {
+    if(lang!=options_lang){options_lang=lang;art_generation++;options_generation++;dialog_language_generation++;}
+}
 void dw3_pc_title_overlay_set_options_language(int lang) {
     if(lang<DW3_TITLE_LANG_EN||lang>DW3_TITLE_LANG_IT)lang=DW3_TITLE_LANG_EN;
-    if(lang!=options_lang){options_lang=lang;art_generation++;options_generation++;dialog_language_generation++;}
+    game_lang=lang;
+    options_language_changed(text_pt?DW3_TITLE_LANG_PT:game_lang);
+}
+void dw3_pc_title_overlay_set_text_pt(int on) {
+    text_pt=on?1:0;
+    options_language_changed(text_pt?DW3_TITLE_LANG_PT:game_lang);
 }
 unsigned dw3_pc_dialog_language_generation(void) { return dialog_language_generation; }
 void dw3_pc_title_overlay_set_footer(int show) {
@@ -345,19 +362,19 @@ static int row_kind(int row) {
  * de, es, it: the DW3_TITLE_LANG_* order). OFF is the Options screen's word. */
 #define AUTOSAVE_WORDS(l) {WORD(opt_as_row_##l),WORD(opt_as_area_##l),WORD(opt_as_desc_##l)}
 typedef struct AutosaveWords { Word row,area,desc; } AutosaveWords;
-static const AutosaveWords autosave_words[5]={AUTOSAVE_WORDS(en),AUTOSAVE_WORDS(fr),AUTOSAVE_WORDS(de),
-                                              AUTOSAVE_WORDS(es),AUTOSAVE_WORDS(it)};
+static const AutosaveWords autosave_words[6]={AUTOSAVE_WORDS(en),AUTOSAVE_WORDS(fr),AUTOSAVE_WORDS(de),
+                                              AUTOSAVE_WORDS(es),AUTOSAVE_WORDS(it),AUTOSAVE_WORDS(pt)};
 static const AutosaveWords *autosave_lang(void) {
-    return &autosave_words[options_lang>=DW3_TITLE_LANG_EN&&options_lang<=DW3_TITLE_LANG_IT?options_lang:0];
+    return &autosave_words[lang_ix()];
 }
 /* P9.8: the Button layout row's lettering, in the language of the disc. The two
  * values are product names, the same in every language. */
 #define LAYOUT_WORDS(l) {WORD(opt_row_bl_##l),WORD(opt_val_bl_ps_##l),WORD(opt_val_bl_nin_##l),WORD(opt_desc_bl_##l)}
 typedef struct LayoutWords { Word row,ps,nintendo,desc; } LayoutWords;
-static const LayoutWords layout_words[5]={LAYOUT_WORDS(en),LAYOUT_WORDS(fr),LAYOUT_WORDS(de),
-                                          LAYOUT_WORDS(es),LAYOUT_WORDS(it)};
+static const LayoutWords layout_words[6]={LAYOUT_WORDS(en),LAYOUT_WORDS(fr),LAYOUT_WORDS(de),
+                                          LAYOUT_WORDS(es),LAYOUT_WORDS(it),LAYOUT_WORDS(pt)};
 static const LayoutWords *layout_lang(void) {
-    return &layout_words[options_lang>=DW3_TITLE_LANG_EN&&options_lang<=DW3_TITLE_LANG_IT?options_lang:0];
+    return &layout_words[lang_ix()];
 }
 /* P6.12: the Customize buttons and Reset to default rows of Controls, the Custom
  * value of Button layout and the prompt of the Customize screen, in the language
@@ -366,10 +383,10 @@ static const LayoutWords *layout_lang(void) {
     WORD(opt_val_cp_##l),WORD(opt_desc_cp_##l),WORD(opt_val_bl_cus_##l),WORD(opt_grp_custom_##l), \
     WORD(opt_grpdesc_custom_##l)}
 typedef struct CustomWords { Word row,rowdesc,reset,resetdesc,prompt,promptdesc,custom,name,desc; } CustomWords;
-static const CustomWords custom_words[5]={CUSTOM_WORDS(en),CUSTOM_WORDS(fr),CUSTOM_WORDS(de),
-                                          CUSTOM_WORDS(es),CUSTOM_WORDS(it)};
+static const CustomWords custom_words[6]={CUSTOM_WORDS(en),CUSTOM_WORDS(fr),CUSTOM_WORDS(de),
+                                          CUSTOM_WORDS(es),CUSTOM_WORDS(it),CUSTOM_WORDS(pt)};
 static const CustomWords *custom_lang(void) {
-    return &custom_words[options_lang>=DW3_TITLE_LANG_EN&&options_lang<=DW3_TITLE_LANG_IT?options_lang:0];
+    return &custom_words[lang_ix()];
 }
 /* The Customize screen's rows (the PS buttons, map order) and their values (the
  * Switch button that makes each one). */
@@ -383,38 +400,38 @@ static const Word btn_words[10]={WORD(opt_val_btn_b),WORD(opt_val_btn_a),WORD(op
  * of the disc, US and EU the same everywhere. */
 #define REGION_WORDS(l) {WORD(opt_row_rg_##l),WORD(opt_val_rg_ask_##l),WORD(opt_desc_rg_##l)}
 typedef struct RegionWords { Word row,ask,desc; } RegionWords;
-static const RegionWords region_words[5]={REGION_WORDS(en),REGION_WORDS(fr),REGION_WORDS(de),
-                                          REGION_WORDS(es),REGION_WORDS(it)};
+static const RegionWords region_words[6]={REGION_WORDS(en),REGION_WORDS(fr),REGION_WORDS(de),
+                                          REGION_WORDS(es),REGION_WORDS(it),REGION_WORDS(pt)};
 static const Word v_region_us=WORD(opt_val_rg_us),v_region_eu=WORD(opt_val_rg_eu);
 static const RegionWords *region_lang(void) {
-    return &region_words[options_lang>=DW3_TITLE_LANG_EN&&options_lang<=DW3_TITLE_LANG_IT?options_lang:0];
+    return &region_words[lang_ix()];
 }
 /* P6.36: the Turbo music row (Sound group): label and message line in the
  * language of the disc; the values are the Options screen's 1x and Fast. */
 #define TMUSIC_WORDS(l) {WORD(opt_row_tm_##l),WORD(opt_desc_tm_##l)}
 typedef struct TmusicWords { Word row,desc; } TmusicWords;
-static const TmusicWords tmusic_words[5]={TMUSIC_WORDS(en),TMUSIC_WORDS(fr),TMUSIC_WORDS(de),
-                                          TMUSIC_WORDS(es),TMUSIC_WORDS(it)};
+static const TmusicWords tmusic_words[6]={TMUSIC_WORDS(en),TMUSIC_WORDS(fr),TMUSIC_WORDS(de),
+                                          TMUSIC_WORDS(es),TMUSIC_WORDS(it),TMUSIC_WORDS(pt)};
 static const TmusicWords *tmusic_lang(void) {
-    return &tmusic_words[options_lang>=DW3_TITLE_LANG_EN&&options_lang<=DW3_TITLE_LANG_IT?options_lang:0];
+    return &tmusic_words[lang_ix()];
 }
 /* P10.6: the Switch glyphs row (Controls group, Switch only): label and message
  * line in the language of the disc; the values are the Options screen's OFF / ON. */
 #define GLYPHS_WORDS(l) {WORD(opt_row_sg_##l),WORD(opt_desc_sg_##l)}
 typedef struct GlyphsWords { Word row,desc; } GlyphsWords;
-static const GlyphsWords glyphs_words[5]={GLYPHS_WORDS(en),GLYPHS_WORDS(fr),GLYPHS_WORDS(de),
-                                          GLYPHS_WORDS(es),GLYPHS_WORDS(it)};
+static const GlyphsWords glyphs_words[6]={GLYPHS_WORDS(en),GLYPHS_WORDS(fr),GLYPHS_WORDS(de),
+                                          GLYPHS_WORDS(es),GLYPHS_WORDS(it),GLYPHS_WORDS(pt)};
 static const GlyphsWords *glyphs_lang(void) {
-    return &glyphs_words[options_lang>=DW3_TITLE_LANG_EN&&options_lang<=DW3_TITLE_LANG_IT?options_lang:0];
+    return &glyphs_words[lang_ix()];
 }
 /* P6.32 phase 4: the Full-screen map row (Display group): label and message
  * line in the language of the disc; the values are the Options screen's OFF / ON. */
 #define MAPSCR_WORDS(l) {WORD(opt_row_ms_##l),WORD(opt_desc_ms_##l)}
 typedef struct MapscrWords { Word row,desc; } MapscrWords;
-static const MapscrWords mapscr_words[5]={MAPSCR_WORDS(en),MAPSCR_WORDS(fr),MAPSCR_WORDS(de),
-                                          MAPSCR_WORDS(es),MAPSCR_WORDS(it)};
+static const MapscrWords mapscr_words[6]={MAPSCR_WORDS(en),MAPSCR_WORDS(fr),MAPSCR_WORDS(de),
+                                          MAPSCR_WORDS(es),MAPSCR_WORDS(it),MAPSCR_WORDS(pt)};
 static const MapscrWords *mapscr_lang(void) {
-    return &mapscr_words[options_lang>=DW3_TITLE_LANG_EN&&options_lang<=DW3_TITLE_LANG_IT?options_lang:0];
+    return &mapscr_words[lang_ix()];
 }
 /* D1: the rows that were file-only keys (registry 16..28: the five Menus switches,
  * Version label, Map mod pack, Shared saves, Stage sweep, Sweep frames, Map
@@ -435,10 +452,10 @@ typedef struct ExtraSet {
     Word mb_desc[3];          /* bind, field, reset */
     Word tl_nopack,tl_orig;   /* P6.7 Text language: the message line with no pack, the Original value */
 } ExtraSet;
-static const ExtraSet extra_words[5]={EXTRA_WORDS(en),EXTRA_WORDS(fr),EXTRA_WORDS(de),
-                                      EXTRA_WORDS(es),EXTRA_WORDS(it)};
+static const ExtraSet extra_words[6]={EXTRA_WORDS(en),EXTRA_WORDS(fr),EXTRA_WORDS(de),
+                                      EXTRA_WORDS(es),EXTRA_WORDS(it),EXTRA_WORDS(pt)};
 static const ExtraSet *extra_lang(void) {
-    return &extra_words[options_lang>=DW3_TITLE_LANG_EN&&options_lang<=DW3_TITLE_LANG_IT?options_lang:0];
+    return &extra_words[lang_ix()];
 }
 #if defined(__SWITCH__)
 static const Word v_btn_minus=WORD(opt_val_btn_minus);
@@ -447,10 +464,10 @@ static const Word v_btn_select=WORD(opt_val_btn_select);
 #endif
 /* P9.7: the message line of a row that is locked in game, in the language of
  * the disc (en, fr, de, es, it: the DW3_TITLE_LANG_* order). */
-static const Word lock_words[5]={WORD(opt_lock_en),WORD(opt_lock_fr),WORD(opt_lock_de),
-                                 WORD(opt_lock_es),WORD(opt_lock_it)};
+static const Word lock_words[6]={WORD(opt_lock_en),WORD(opt_lock_fr),WORD(opt_lock_de),
+                                 WORD(opt_lock_es),WORD(opt_lock_it),WORD(opt_lock_pt)};
 static const Word *lock_lang(void) {
-    return &lock_words[options_lang>=DW3_TITLE_LANG_EN&&options_lang<=DW3_TITLE_LANG_IT?options_lang:0];
+    return &lock_words[lang_ix()];
 }
 #ifdef DW3_CHEATS
 /* The cheat lettering of one language (en, fr, de, es, it: the
@@ -472,10 +489,10 @@ typedef struct CheatWords {
     Word rows[10],desc[10];
     Word warp[DW3_TITLE_CHEAT_WARPS];
 } CheatWords;
-static const CheatWords cheat_words[5]={CHEAT_WORDS(en),CHEAT_WORDS(fr),CHEAT_WORDS(de),
-                                        CHEAT_WORDS(es),CHEAT_WORDS(it)};
+static const CheatWords cheat_words[6]={CHEAT_WORDS(en),CHEAT_WORDS(fr),CHEAT_WORDS(de),
+                                        CHEAT_WORDS(es),CHEAT_WORDS(it),CHEAT_WORDS(pt)};
 static const CheatWords *cheat_lang(void) {
-    return &cheat_words[options_lang>=DW3_TITLE_LANG_EN&&options_lang<=DW3_TITLE_LANG_IT?options_lang:0];
+    return &cheat_words[lang_ix()];
 }
 /* A number of the Give item rows: the digits (fixed advance), right edge at x. */
 static void number_plain(int v,int x,int y,int r,int g,int b) {
@@ -727,8 +744,8 @@ static void arrow(int cx,int y,int up) {
     {WORD(opt_grp_mapbtn_##l),WORD(opt_grpdesc_mapbtn_##l)}}
 typedef struct GroupWords { Word name,desc; } GroupWords;
 enum { LISTED_GROUPS = 12 }; /* the groups with lettering: indexed by group id (D1: up to Map buttons) */
-static const GroupWords group_words[5][LISTED_GROUPS]={GROUP_WORDS(en),GROUP_WORDS(fr),GROUP_WORDS(de),
-                                                       GROUP_WORDS(es),GROUP_WORDS(it)};
+static const GroupWords group_words[6][LISTED_GROUPS]={GROUP_WORDS(en),GROUP_WORDS(fr),GROUP_WORDS(de),
+                                                       GROUP_WORDS(es),GROUP_WORDS(it),GROUP_WORDS(pt)};
 #if defined(__SWITCH__)
 #define DESC_P(n,l) WORD(opt_desc##n##_nx_##l)
 #else
@@ -744,12 +761,12 @@ static const GroupWords group_words[5][LISTED_GROUPS]={GROUP_WORDS(en),GROUP_WOR
 typedef struct ListWords {
     Word row[8],desc[8],value[5],title,open,change,back;
 } ListWords;
-static const ListWords list_words[5]={ROW_WORDS(en),ROW_WORDS(fr),ROW_WORDS(de),ROW_WORDS(es),ROW_WORDS(it)};
+static const ListWords list_words[6]={ROW_WORDS(en),ROW_WORDS(fr),ROW_WORDS(de),ROW_WORDS(es),ROW_WORDS(it),ROW_WORDS(pt)};
 static const ListWords *list_lang(void) {
-    return &list_words[options_lang>=DW3_TITLE_LANG_EN&&options_lang<=DW3_TITLE_LANG_IT?options_lang:0];
+    return &list_words[lang_ix()];
 }
 static const GroupWords *group_lang(int group) {
-    return &group_words[options_lang>=DW3_TITLE_LANG_EN&&options_lang<=DW3_TITLE_LANG_IT?options_lang:0]
+    return &group_words[lang_ix()]
                        [group>=0&&group<LISTED_GROUPS?group:0];
 }
 /* The registry rows of every locked bit of a group: a group whose rows are all
@@ -824,11 +841,10 @@ static const Word *list_value(const ListWords *t,int reg,int v,int *dim) {
             if(v>4)v=4;
             return &v_scaler[v];
         }
-        if(reg==29) {       /* P6.7 Text language: Original, Português (BR); 2 = Original with no usable pack (greyed) */
+        if(reg==29) {       /* P6.7 Text language: Original, Português (BR); 2 / 3 = the same with no usable text pack (the message line says so) */
             static const Word v_pt=WORD(opt_val_tl_pt);
-            if(v>2)v=2;
-            if(v==1)return &v_pt;
-            *dim=v==2?2:0;
+            if(v>3)v=3;
+            if(v==1||v==3)return &v_pt;
             return &extra_lang()->tl_orig;
         }
         if(reg==30) {       /* P6.11 Internal resolution: 1x, 2x, 3x */
@@ -1012,7 +1028,7 @@ static void options_list_screen(int group,int scroll) {
 #endif
             d=cus?(option_values[cursor]>=10?&custom_lang()->promptdesc:&custom_lang()->desc)
               :mbt?&extra_lang()->mb_desc[reg==DW3_MAPBTN_RESET?2:reg==6?1:0]
-              :ROW_LOCKED(locked,reg)?lock_lang():reg==29&&option_values[cursor]==2?&extra_lang()->tl_nopack
+              :ROW_LOCKED(locked,reg)?lock_lang():reg==29&&option_values[cursor]>=2?&extra_lang()->tl_nopack
               :row_kind(reg)==ROW_EXTRA?&extra_lang()->reg[reg-16].desc
               :row_kind(reg)==ROW_CUSTOMIZE?&custom_lang()->rowdesc
               :row_kind(reg)==ROW_RESET?&custom_lang()->resetdesc
@@ -1049,11 +1065,11 @@ static void options_screen(void) {
     {WORD(opt_dlg_ask_warn_ss_##l),WORD(opt_dlg_ask_warn_sw_##l)}}
 typedef struct DialogWords { Word title[2],question[2],warn,yes,no,select,cancel,rst_title,rst_q[2],rst_note,
                              ask_title[2],ask_q[2],ask_warn[2]; } DialogWords;
-static const DialogWords dialog_words[5]={DLG_WORDS(en),DLG_WORDS(fr),DLG_WORDS(de),
-                                          DLG_WORDS(es),DLG_WORDS(it)};
+static const DialogWords dialog_words[6]={DLG_WORDS(en),DLG_WORDS(fr),DLG_WORDS(de),
+                                          DLG_WORDS(es),DLG_WORDS(it),DLG_WORDS(pt)};
 static const Word dialog_ok=WORD(opt_dlg_ok);
 void dw3_pc_dialog_art(uint8_t *rgba,int pitch,int kind,int focus) {
-    const DialogWords *t=&dialog_words[options_lang>=DW3_TITLE_LANG_EN&&options_lang<=DW3_TITLE_LANG_IT?options_lang:0];
+    const DialogWords *t=&dialog_words[lang_ix()];
     const int w=DW3_DIALOG_W-8,h=DW3_DIALOG_H-8,x1=w,y1=h;
     const int restart=kind>=DW3_DIALOG_RESTART_US&&kind<=DW3_DIALOG_RESTART_EU_GAME;
     const int notice=kind==DW3_DIALOG_NOTICE;
@@ -1141,50 +1157,52 @@ void dw3_pc_title_overlay_art(uint8_t *rgba,int pitch,int selected) {
         int y=384+row*(compact?44:52);
         title_plaque(x,y,w,h,focus,compact);
         if(row==quit_row) {
-            const int li=options_lang>=DW3_TITLE_LANG_EN&&options_lang<=DW3_TITLE_LANG_IT?options_lang:0;
-            const unsigned char *runs[]={title_quit_en,title_quit_fr,title_quit_de,title_quit_es,title_quit_it};
-            const int ws[]={title_quit_en_width,title_quit_fr_width,title_quit_de_width,title_quit_es_width,title_quit_it_width};
-            const int hs[]={title_quit_en_height,title_quit_fr_height,title_quit_de_height,title_quit_es_height,title_quit_it_height};
+            const int li=lang_ix();
+            const unsigned char *runs[]={title_quit_en,title_quit_fr,title_quit_de,title_quit_es,title_quit_it,title_quit_pt};
+            const int ws[]={title_quit_en_width,title_quit_fr_width,title_quit_de_width,title_quit_es_width,title_quit_it_width,title_quit_pt_width};
+            const int hs[]={title_quit_en_height,title_quit_fr_height,title_quit_de_height,title_quit_es_height,title_quit_it_height,title_quit_pt_height};
             text_mask(480,y+(h-hs[li])/2-1,runs[li],ws[li],hs[li],focus);
             continue;
         }
         if(load_row&&row==2) {
             /* P6.31: Continue (loads the auto-save); the game's own label
              * moves to the Load row below it. */
-            const int li=options_lang>=DW3_TITLE_LANG_EN&&options_lang<=DW3_TITLE_LANG_IT?options_lang:0;
-            const unsigned char *runs[]={title_continue_en,title_continue_fr,title_continue_de,title_continue_es,title_continue_it};
-            const int ws[]={title_continue_en_width,title_continue_fr_width,title_continue_de_width,title_continue_es_width,title_continue_it_width};
-            const int hs[]={title_continue_en_height,title_continue_fr_height,title_continue_de_height,title_continue_es_height,title_continue_it_height};
+            const int li=lang_ix();
+            const unsigned char *runs[]={title_continue_en,title_continue_fr,title_continue_de,title_continue_es,title_continue_it,title_continue_pt};
+            const int ws[]={title_continue_en_width,title_continue_fr_width,title_continue_de_width,title_continue_es_width,title_continue_it_width,title_continue_pt_width};
+            const int hs[]={title_continue_en_height,title_continue_fr_height,title_continue_de_height,title_continue_es_height,title_continue_it_height,title_continue_pt_height};
             text_mask(480,y+(h-hs[li])/2-1,runs[li],ws[li],hs[li],focus);
             continue;
         }
         if(load_row&&row==3) {
             /* P6.31: Load Game (the slot list) in the port's own lettering:
              * the EU disc's label for this row says "Continue". */
-            const int li=options_lang>=DW3_TITLE_LANG_EN&&options_lang<=DW3_TITLE_LANG_IT?options_lang:0;
-            const unsigned char *runs[]={title_loadgame_en,title_loadgame_fr,title_loadgame_de,title_loadgame_es,title_loadgame_it};
-            const int ws[]={title_loadgame_en_width,title_loadgame_fr_width,title_loadgame_de_width,title_loadgame_es_width,title_loadgame_it_width};
-            const int hs[]={title_loadgame_en_height,title_loadgame_fr_height,title_loadgame_de_height,title_loadgame_es_height,title_loadgame_it_height};
+            const int li=lang_ix();
+            const unsigned char *runs[]={title_loadgame_en,title_loadgame_fr,title_loadgame_de,title_loadgame_es,title_loadgame_it,title_loadgame_pt};
+            const int ws[]={title_loadgame_en_width,title_loadgame_fr_width,title_loadgame_de_width,title_loadgame_es_width,title_loadgame_it_width,title_loadgame_pt_width};
+            const int hs[]={title_loadgame_en_height,title_loadgame_fr_height,title_loadgame_de_height,title_loadgame_es_height,title_loadgame_it_height,title_loadgame_pt_height};
             text_mask(480,y+(h-hs[li])/2-1,runs[li],ws[li],hs[li],focus);
             continue;
         }
-        if((row==0&&label_mask[DW3_TITLE_LABEL_NEW_GAME])||
-           (row==2&&label_mask[DW3_TITLE_LABEL_LOAD_GAME])) {
-            /* EU: the disc's own words, in the lettering of the other
+        if((row==0&&(label_mask[DW3_TITLE_LABEL_NEW_GAME]||options_lang==DW3_TITLE_LANG_PT))||
+           (row==2&&(label_mask[DW3_TITLE_LABEL_LOAD_GAME]||options_lang==DW3_TITLE_LANG_PT))) {
+            /* P6.7 phase 3: Português (BR) has no disc art, on any disc: US too draws these
+             * two plaques in the port's lettering (Iniciar, Carregar jogo).
+             * EU: the disc's own words, in the lettering of the other
              * plaques. Its sprites (a white bubble round a dark word, a
              * different look) are not drawn. The third plaque with no
              * auto-save file is Load Game (it opens the slot list); the
              * disc's sprite for it says "Continue". */
-            const int li=options_lang>=DW3_TITLE_LANG_EN&&options_lang<=DW3_TITLE_LANG_IT?options_lang:0;
+            const int li=lang_ix();
             const unsigned char *const *runs=row==0?
-                (const unsigned char *const[]){title_newgame_en,title_newgame_fr,title_newgame_de,title_newgame_es,title_newgame_it}:
-                (const unsigned char *const[]){title_loadgame_en,title_loadgame_fr,title_loadgame_de,title_loadgame_es,title_loadgame_it};
+                (const unsigned char *const[]){title_newgame_en,title_newgame_fr,title_newgame_de,title_newgame_es,title_newgame_it,title_newgame_pt}:
+                (const unsigned char *const[]){title_loadgame_en,title_loadgame_fr,title_loadgame_de,title_loadgame_es,title_loadgame_it,title_loadgame_pt};
             const int ws[]={row==0?title_newgame_en_width:title_loadgame_en_width,row==0?title_newgame_fr_width:title_loadgame_fr_width,
                 row==0?title_newgame_de_width:title_loadgame_de_width,row==0?title_newgame_es_width:title_loadgame_es_width,
-                row==0?title_newgame_it_width:title_loadgame_it_width};
+                row==0?title_newgame_it_width:title_loadgame_it_width,row==0?title_newgame_pt_width:title_loadgame_pt_width};
             const int hs[]={row==0?title_newgame_en_height:title_loadgame_en_height,row==0?title_newgame_fr_height:title_loadgame_fr_height,
                 row==0?title_newgame_de_height:title_loadgame_de_height,row==0?title_newgame_es_height:title_loadgame_es_height,
-                row==0?title_newgame_it_height:title_loadgame_it_height};
+                row==0?title_newgame_it_height:title_loadgame_it_height,row==0?title_newgame_pt_height:title_loadgame_pt_height};
             text_mask(480,y+(h-hs[li])/2-1,runs[li],ws[li],hs[li],focus);
             continue;
         }
@@ -1198,6 +1216,7 @@ void dw3_pc_title_overlay_art(uint8_t *rgba,int pitch,int selected) {
         if(row==1&&options_lang==DW3_TITLE_LANG_DE){labels[1]=title_options_de;widths[1]=title_options_de_width;heights[1]=title_options_de_height;}
         if(row==1&&options_lang==DW3_TITLE_LANG_ES){labels[1]=title_options_es;widths[1]=title_options_es_width;heights[1]=title_options_es_height;}
         if(row==1&&options_lang==DW3_TITLE_LANG_IT){labels[1]=title_options_it;widths[1]=title_options_it_width;heights[1]=title_options_it_height;}
+        if(row==1&&options_lang==DW3_TITLE_LANG_PT){labels[1]=title_options_pt;widths[1]=title_options_pt_width;heights[1]=title_options_pt_height;}
         text_mask(480,y+(h-heights[row>2?2:row])/2-1,labels[row>2?2:row],widths[row>2?2:row],heights[row>2?2:row],focus);
     }
 }
@@ -1432,7 +1451,7 @@ static void help_draw(const Dw3HelpView *v) {
     backdrop(v->in_game!=0);
     options_plaque(L_GRP_X,L_HEAD_Y,L_GRP_W,0,0);
     if(on_list) {
-        const int lang=v->lang>=DW3_TITLE_LANG_EN&&v->lang<=DW3_TITLE_LANG_IT?v->lang:DW3_TITLE_LANG_EN;
+        const int lang=v->lang>=DW3_TITLE_LANG_EN&&v->lang<=DW3_TITLE_LANG_PT?v->lang:DW3_TITLE_LANG_EN;
         if(v->header[0])atlas_centered(DW3_ATLAS_TITLE,480,L_HEAD_Y+35,v->header,255,198,98); /* P6.35: the walkthrough's group name */
         else plaque_word(&group_words[lang][DW3_OPTGRP_HELP].name,480,L_HEAD_Y+9,255,198,98);
     } else {

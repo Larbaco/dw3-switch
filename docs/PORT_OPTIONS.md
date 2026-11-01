@@ -2415,11 +2415,18 @@ country select is unchanged: the pack overlays the English slot, so the title ba
 that follow `LANGUAGE` keep working. (The row's label and message lines are in the five languages; the values are
 Original and Português (BR), not one per EU language.)
 
-- **No usable pack** (none installed, built from another disc dump, a file short or the wrong region): the
-  value reads **Original, greyed**, the message line says "No text pack found: the game text stays original.",
-  and Right is refused with `dw3-port-options: text language ptbr refused: no usable text pack (<reason>)`.
-  A file that says `ptbr` while the pack is missing keeps its word (the row is pinned for the run, like a `DW3_*`
-  pin) and plays English; the next change of the row writes the user's new choice.
+- **The port's own screens follow the row** (P6.7 phase 3, [LOCALIZATION](LOCALIZATION.md) section 6a): with
+  Português (BR) the Options, Help, Walkthrough, the title's Options / New Game / Load Game / Quit plaques and the
+  confirmation windows are in Brazilian Portuguese, **with or without a text pack, on US and EU**
+  (`dw3_pc_title_overlay_set_text_pt`, language index 5 of the Options lettering). With Original they follow the
+  disc's language as before. The change is at once; the log says `dw3-l10n: port screens in Portuguese (BR)
+  (text_language=ptbr, game text ...)` or `... in the disc's language ...`, once per change and at boot.
+- **No usable pack** (none installed, built from another disc dump, a file short or the wrong region, or US until
+  phase 5): the row **can still be set to Português (BR)** (it used to be greyed and refused): only the port's
+  screens change, the game text stays original, the message line says "No text pack: only the port screens change."
+  (view values 2 and 3 of the row, the same Original / Português (BR) words, not greyed), and the loader logs
+  `dw3-l10n: option text_language=ptbr region=<r> but off reason=<why> (English)`. A file that says `ptbr` keeps its
+  word whether or not a pack is there (nothing is pinned any more).
 - **Applying**: the loader repoints the 50 text file ids (`port/l10n/`), logs `dw3-l10n: option
   text_language=ptbr region=eu`, `override id=...`. At the **title** the cached text files are dropped, so the next
   load reads the new text. **In game** the files already in the cache keep their language until the game loads them
@@ -2430,12 +2437,14 @@ Original and Português (BR), not one per EU language.)
   variants (`build_pack.py --keys`): every string starts with `(KEY) `, to find a line seen in the game.
 - A bad word falls back to `original` with `dw3-options: text_language=<v> is not valid; using default original`.
   Lettering: `EXTRA_ROWS['tl']`, `TEXTLANG_NOPACK`, `TEXTLANG_ORIGINAL`, `TEXTLANG_PT` in
-  `tools/generate_pc_title_lettering.py`; PT-BR drafts in `tools/l10n/ptbr_options.py`.
+  `tools/generate_pc_title_lettering.py` (the row's own two message lines were rewritten for phase 3); PT-BR drafts
+  (AI-drafted, owner review pending) in `tools/l10n/ptbr_options.py`, baked as `_pt` (`--check-pt` checks them).
 - Registry rows now run 0 to 29: the lock mask has room for **no further row** (bit 30 is the Cheats entry, bit 31 the
   overlay's in-game mark). (Widened to 64 bits by P6.11: rows 0..61, Cheats bit 62, in-game mark bit 63.)
 
 Tests: `tools/tests/test_l10n_loader.py` (the loader on synthetic packs), `test_l10n_pack.py` (the builder),
-`test_options_persist.py` (the key order), replays `eu-l10n-*`
+`test_options_persist.py` (the key order), `test_port_options.py` (Português (BR) steps with and without a pack),
+`test_ptbr_port_text.py` (the PT drafts), replays `eu-l10n-*` and `{us,eu}-ptbr-*`
 ([P6.15](P6.15_REPLAY_TESTS.md)).
 
 ## Output filter (registry 32)

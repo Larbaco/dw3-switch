@@ -45,6 +45,12 @@ def test_port_options_open_close_tick(port_options_bin: Path):
     assert "dw3-port-options: open" in run.stderr
     assert "dw3-port-options: close" in run.stderr
     assert "widescreen_default=1" in run.stdout
+    # P6.7 phase 3: Português (BR) is choosable with no text pack; the port screens follow the row
+    assert "dw3-port-options: text language ptbr" in run.stderr
+    assert "dw3-l10n: port screens in Portuguese (BR) (text_language=ptbr, game text original (no usable text pack))" in run.stderr
+    assert "dw3-l10n: port screens in Portuguese (BR) (text_language=ptbr, game text from the pack)" in run.stderr
+    assert "dw3-l10n: port screens in the disc's language (text_language=original, game text original)" in run.stderr
+    assert "refused" not in run.stderr
 
 
 def test_port_glyph_lsb_left(tmp_path: Path):
