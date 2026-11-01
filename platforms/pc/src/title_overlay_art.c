@@ -207,7 +207,8 @@ unsigned dw3_pc_title_overlay_options_locked(void) { return options_locked; }
 unsigned dw3_pc_title_overlay_options_layout(void) { return options_layout; }
 int dw3_pc_title_overlay_options_desc_follows_value(int page) {
     int group,scroll;
-    return dw3_optlist_decode(page,&group,&scroll)&&group==DW3_OPTGRP_CUSTOM;
+    /* Customize: the prompt line follows the row's value. Display: P6.7 Text language says "no text pack" in its value 2. */
+    return dw3_optlist_decode(page,&group,&scroll)&&(group==DW3_OPTGRP_CUSTOM||group==DW3_OPTGRP_DISPLAY);
 }
 int dw3_pc_title_overlay_options_dynamic_labels(int page) {
 #ifdef DW3_CHEATS
