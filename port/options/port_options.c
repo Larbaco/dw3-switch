@@ -154,8 +154,8 @@ static Dw3PortOptStub g_stubs[DW3_PORT_OPT_COUNT] = {
     {"Button layout", "button_layout", DW3_LAYOUT_DEFAULT,
      DW3_LAYOUT_DEFAULT, NULL},
     /* P51 item 4: 0 = Ask, 1 = US, 2 = EU; the combined image only lists it.
-     * No key of this file: region_default lives in the top-level file next to
-     * the region folders (po_region_load / po_region_save). */
+     * No registry key: region_default is read and written by po_region_load /
+     * po_region_save (D3: the same global file as every other key). */
     {"Region at start", NULL, 0, 0, NULL},
     /* P6.12: action rows, no value and no key. */
     {"Customize buttons", NULL, 0, 0, NULL},
@@ -242,6 +242,9 @@ static Dw3OptCfg g_cfg;          /* the loaded file; keeps unknown keys */
 static int g_saved[DW3_PORT_OPT_COUNT]; /* what the file holds */
 static unsigned g_env_pinned;    /* values forced by DW3_WIDESCREEN/DW3_TURBO */
 static int g_dirty;              /* a write failed; retried by _flush */
+/* D3: the migration into the global file failed this boot (old region files
+ * kept). The marker is then not written, so the next start retries it. */
+static int g_global_failed;
 /* P6.12: the map of button_layout=custom as read from the file. */
 static unsigned char g_custom_map[DW3_BTN_COUNT] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
 /* P6.12: the PS button the Customize screen is waiting for a press for (-1 =
@@ -787,84 +790,53 @@ void dw3_port_options_apply_env(int index, int level) {
 }
 
 /* P51 item 4: the Region at start row (combined image). The key is
- * region_default of the TOP-LEVEL port_options.cfg (`ask`, `us`, `eu`), the
- * file the region boot reads (port/region/dw3_region.h); the region folder's
- * own file is never touched by this row. The folder is the parent of the
- * region's config dir (sdmc:/switch/dw3 beside us/ and eu/), or DW3_CONFIG_DIR
- * when that is set (the PC replays keep both files in one folder). */
+ * region_default (`ask`, `us`, `eu`). D3: it lives in the one global
+ * port_options.cfg with every other key, so the row reads and writes the loaded
+ * file (g_cfg) and saves it with the rest; `last_region` is the region boot's key
+ * in the same file and is kept as it is. */
 #if DW3_OPT_REGION_ROW
-static char g_region_base[DW3_OPTCFG_PATH_MAX];
-
-static const char *po_region_base(void) {
-    const char *env = getenv("DW3_CONFIG_DIR");
-    char *slash;
-    size_t n;
-
-    if (env != NULL && env[0] != '\0' && strlen(env) < sizeof(g_region_base)) {
-        strcpy(g_region_base, env);
-        return g_region_base;
-    }
-    if (!g_persist_on || g_cfg_dir[0] == '\0') {
-        return NULL;
-    }
-    strcpy(g_region_base, g_cfg_dir);
-    n = strlen(g_region_base);
-    while (n > 1 && g_region_base[n - 1] == '/') {
-        g_region_base[--n] = '\0';
-    }
-    slash = strrchr(g_region_base, '/');
-    if (slash == NULL || slash == g_region_base) {
-        return NULL;
-    }
-    *slash = '\0';
-    return g_region_base;
-}
-
-/* The folder holding the top-level port_options.cfg (the region boot's file),
- * or NULL when options are session-only. P6.38: the restart writes the choice
- * there before it relaunches. */
+/* The folder holding the global port_options.cfg, or NULL when options are
+ * session-only. P6.38: the restart writes the choice there before it relaunches. */
 const char *dw3_port_options_region_base(void) {
-    return po_region_base();
+    return g_persist_on && g_cfg_dir[0] != '\0' ? g_cfg_dir : NULL;
 }
 
 static void po_region_load(void) {
-    const char *base = po_region_base();
-    Dw3Region pref = DW3_REGION_NONE;
-    Dw3Region last = DW3_REGION_NONE;
+    const char *v;
+    Dw3Region pref;
 
     g_stubs[DW3_PORT_OPT_REGION].value = 0;
-    if (base == NULL) {
+    if (!g_persist_on) {
         return;
     }
-    dw3_region_cfg_read(base, &pref, &last);
+    v = dw3_optcfg_get(&g_cfg, DW3_REGION_KEY_DEFAULT);
+    pref = v != NULL ? dw3_region_parse(v) : DW3_REGION_NONE; /* "ask" and junk both mean ask */
     g_stubs[DW3_PORT_OPT_REGION].value =
         pref == DW3_REGION_US ? 1 : pref == DW3_REGION_EU ? 2 : 0;
     PO_INFO("dw3-options: region_default %s read from %s/%s",
-            pref == DW3_REGION_NONE ? "ask" : dw3_region_name(pref), base,
+            pref == DW3_REGION_NONE ? "ask" : dw3_region_name(pref), g_cfg_dir,
             DW3_OPTCFG_FILE);
 }
 
+static int po_save(void);
+
 static void po_region_save(int v) {
-    const char *base = po_region_base();
     Dw3Region pref = v == 1 ? DW3_REGION_US : v == 2 ? DW3_REGION_EU
                                                       : DW3_REGION_NONE;
+    const char *word = pref == DW3_REGION_NONE ? "ask" : dw3_region_name(pref);
 
-    if (base == NULL) {
-        PO_WARN("dw3-options: region_default not saved: no top-level folder "
+    if (!g_persist_on) {
+        PO_WARN("dw3-options: region_default not saved: no config folder "
                 "(options are session-only)");
         return;
     }
-    if (dw3_region_cfg_write(base, DW3_REGION_NONE, 1, pref) != 0) {
+    if (dw3_optcfg_set(&g_cfg, DW3_REGION_KEY_DEFAULT, word) != 0 || po_save() != 0) {
         PO_WARN("dw3-options: region_default %s NOT saved to %s/%s "
-                "(cannot read or write it)",
-                pref == DW3_REGION_NONE ? "ask" : dw3_region_name(pref), base,
-                DW3_OPTCFG_FILE);
+                "(cannot read or write it)", word, g_cfg_dir, DW3_OPTCFG_FILE);
         return;
     }
     PO_INFO("dw3-options: region_default %s saved to %s/%s (takes effect at "
-            "the next start)",
-            pref == DW3_REGION_NONE ? "ask" : dw3_region_name(pref), base,
-            DW3_OPTCFG_FILE);
+            "the next start)", word, g_cfg_dir, DW3_OPTCFG_FILE);
 }
 #else
 const char *dw3_port_options_region_base(void) { return NULL; }
@@ -905,6 +877,13 @@ static int po_save(void) {
     snprintf(num, sizeof(num), "%d", g_defaults_gen);
     if (dw3_optcfg_set(&g_cfg, "defaults_gen", num) != 0) {
         PO_WARN("dw3-options: cannot stage defaults_gen");
+    }
+    /* D3: this is the one global file; the migration of the old per-region
+     * files is done (or had nothing to do). Not while it failed: the marker
+     * would stop the retry. */
+    if (!g_global_failed &&
+        dw3_optcfg_set(&g_cfg, DW3_OPTCFG_MARKER_KEY, "1") != 0) {
+        PO_WARN("dw3-options: cannot stage %s", DW3_OPTCFG_MARKER_KEY);
     }
     /* P6.12: button_map only exists while the layout is custom. A layout the
      * environment pinned leaves the file's map alone. */
@@ -1066,6 +1045,21 @@ static int po_defaults_migrate(char *msg, size_t cap) {
     return 1;
 }
 
+/* The migration's lines go to the same log as the rest of the options. */
+static void po_global_log(void *ud, int warn, const char *line) {
+    (void)ud;
+#ifdef DW3_PORT_OPTIONS_TEST
+    fprintf(stderr, "%s\n", line);
+    (void)warn;
+#else
+    if (warn) {
+        PO_WARN("%s", line);
+    } else {
+        PO_INFO("%s", line);
+    }
+#endif
+}
+
 int dw3_port_options_persist_init(const char *dir) {
     char path[DW3_OPTCFG_PATH_MAX];
     char migrate_msg[320];
@@ -1077,6 +1071,7 @@ int dw3_port_options_persist_init(const char *dir) {
 
     g_persist_on = 0;
     g_dirty = 0;
+    g_global_failed = 0;
     g_env_pinned = 0;
     g_defaults_gen = DW3_DEFAULTS_GEN;
     migrate_msg[0] = '\0';
@@ -1091,6 +1086,10 @@ int dw3_port_options_persist_init(const char *dir) {
         return -1;
     }
     strcpy(g_cfg_dir, dir);
+    /* D3: fold the old us/ and eu/ files into the global one (once; the
+     * combined image's region boot already ran it before it stored last_region). */
+    g_global_failed = dw3_optcfg_migrate_global(dir, po_global_log, NULL) ==
+                      DW3_OPTGLOBAL_FAILED;
     rc = dw3_optcfg_load(&g_cfg, dir);
     g_persist_on = 1;
     for (i = 0; i < DW3_PORT_OPT_COUNT; i++) {

@@ -363,7 +363,7 @@ def test_volume_keys_are_in_the_written_file_order(persist_bin: Path, tmp_path: 
                     "items_equip_from_items", "items_equip_stays", "items_bag_view",
                     "items_use_stays", "items_partner_switch", "show_version", "map_mod",
                     "save_store", "stage_sweep", "stage_sweep_frames", "menu_instant_exit",
-                    "map_scaler", "defaults_gen", "end"]
+                    "map_scaler", "defaults_gen", "options_global", "end"]
 
 
 # --- P6.18 Encounter rate / Text speed rows ---------------------------------
@@ -985,7 +985,8 @@ def test_dw3_button_map_default_keeps_the_custom_map_in_the_file(persist_bin: Pa
 
 
 def region_tree(tmp_path: Path, top: str = "") -> tuple[Path, Path]:
-    """<tmp>/dw3 (the top-level folder) with the region folder <tmp>/dw3/eu."""
+    """<tmp>/dw3: the folder of the ONE global port_options.cfg (D3), with the
+    region folder <tmp>/dw3/eu beside the file. Returns (global folder, region folder)."""
     base = tmp_path / "dw3"
     (base / "eu").mkdir(parents=True)
     if top:
@@ -998,46 +999,47 @@ def test_region_row_is_off_the_list_of_a_single_region_build(persist_bin: Path, 
     assert out == ["region_row=0"]          # registry slot exists, never listed (groups test)
 
 
-def test_region_row_reads_the_top_level_file(region_bin: Path, tmp_path: Path):
+def test_region_row_reads_the_global_file(region_bin: Path, tmp_path: Path):
     base, eu = region_tree(tmp_path, "region_default=us\nlast_region=eu\nend=1\n")
-    out, err = session(region_bin, eu, "region")
+    out, err = session(region_bin, base, "region")
     assert out == ["region_row=1"]
     assert f"dw3-options: region_default us read from {base}/{CFG}" in err
     base2, eu2 = region_tree(tmp_path / "b", "region_default=bogus\nend=1\n")
-    out, _ = session(region_bin, eu2, "region")
+    out, _ = session(region_bin, base2, "region")
     assert out == ["region_row=0"]          # an unreadable value is Ask
 
 
-def test_region_row_confirm_cycles_and_writes_only_the_top_level_file(region_bin: Path, tmp_path: Path):
+def test_region_row_confirm_cycles_and_keeps_the_other_keys(region_bin: Path, tmp_path: Path):
     base, eu = region_tree(tmp_path, "last_region=eu\nstage_sweep=0\nend=1\n")
-    out, err = session(region_bin, eu, "open", "row", "10", "press", "region")
+    out, err = session(region_bin, base, "open", "row", "10", "press", "region")
     assert out == ["region_row=1"]          # Ask -> US
     assert f"dw3-options: region_default us saved to {base}/{CFG} (takes effect at the next start)" in err
     top = (base / CFG).read_text()
     assert "region_default=us\n" in top and "last_region=eu\n" in top and "stage_sweep=0\n" in top
     assert top.rstrip().endswith("end=1")
-    # the region folder gets no file from this row
-    assert not (eu / CFG).exists()          # this row never creates the region file
-    out, err = session(region_bin, eu, "open", "row", "10", "press", "region")
+    # D3: the same file also holds every registry key and the one-shot marker; the region
+    # folder gets no file from this row
+    assert "widescreen=" in top and "options_global=1\n" in top
+    assert not (eu / CFG).exists()
+    out, err = session(region_bin, base, "open", "row", "10", "press", "region")
     assert out == ["region_row=2"]          # US -> EU
     assert "region_default=eu\n" in (base / CFG).read_text()
-    out, err = session(region_bin, eu, "open", "row", "10", "press", "region")
+    out, err = session(region_bin, base, "open", "row", "10", "press", "region")
     assert out == ["region_row=0"]          # EU -> Ask
     assert "region_default=ask\n" in (base / CFG).read_text()
-    out, _ = session(region_bin, eu, "region")
+    out, _ = session(region_bin, base, "region")
     assert out == ["region_row=0"]
 
 
-def test_region_row_never_overwrites_a_top_level_file_it_cannot_read(region_bin: Path, tmp_path: Path):
+def test_region_row_on_an_unreadable_global_file_follows_the_usual_rule(region_bin: Path, tmp_path: Path):
+    """D3: region_default is a key of the one file, so an unreadable file is handled as for
+    every other row ("cannot read ...; the next change will replace it", port_options.c)."""
     base, eu = region_tree(tmp_path, "region_default=eu\nend=1\n")
     os.chmod(base / CFG, 0)
-    try:
-        out, err = session(region_bin, eu, "open", "row", "10", "press", "region")
-        assert out == ["region_row=1"]      # the screen shows the choice
-        assert "NOT saved" in err
-    finally:
-        os.chmod(base / CFG, stat.S_IRUSR | stat.S_IWUSR)
-    assert (base / CFG).read_text() == "region_default=eu\nend=1\n"
+    out, err = session(region_bin, base, "open", "row", "10", "press", "region")
+    assert out == ["region_row=1"]          # the screen shows the choice
+    assert "cannot read" in err and "the next change will replace it" in err
+    assert "region_default=us\n" in (base / CFG).read_text()
 
 
 # --- D2: defaults_gen, the one-shot migration of the defaults (docs/OPTIONS_REORG.md 6.1) ---

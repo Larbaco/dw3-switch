@@ -225,7 +225,7 @@ listed once, in [Pending OLED checks](#pending-oled-checks).
 | P6.23 | Documentation: player guide, docs index, contributor and modder docs (future goal) | in progress (slice 1 done: player guide and docs index; slice 2 merged as #256: `CONTRIBUTING.md` and a pytest for all doc links; modder docs open) | [PLAYER_GUIDE](PLAYER_GUIDE.md), [docs index](README.md), [roadmap](#phase-6-goal-notes) |
 | P6.24 | One build for US and EU: one `.nro` and one PC binary, region found at boot, a boot picker with both discs (**owner priority 2026-10-28, Tier 0**; P6.25 and P6.26 are built) | built and shipped in preview.48 (`dw3-switch-both.nro`, #316 Switch; `dw3-pc` with both game copies, #314 PC); OLED check G9.x open; **owner decision 2026-10-29: releases ship one `dw3-switch.nro` = this combined image, nxlink detected at run time; separate US / EU / nxlink `.nro` retired** (G9.14, G9.15); the Switch stop-gap launcher `dw3.nro` is a CI artifact only (slice 2) | [SINGLE_BUILD](SINGLE_BUILD.md#as-built-slice-1), [slice 2](SINGLE_BUILD.md#as-built-slice-2-the-switch-launcher), [slice 3](SINGLE_BUILD.md#as-built-slice-3-the-dual-image-link-pc), [roadmap](#phase-6-goal-notes) |
 | P6.25 | Cross-region saves: a US save loads in EU and the reverse, one canonical save container (future goal) | in progress (slice 1 built: converter and one-way import on load; **slice 2 built (2026-10-30): the `.dw3s` container and the shared per-profile store, two-way flow, opt-in `save_store=1`, default off**; PC replays and unit tests pass on US, EU and the combined binary; OLED check, Options row and default-on open) | [CROSS_REGION_SAVES](CROSS_REGION_SAVES.md), [roadmap](#phase-6-goal-notes) |
-| P6.26 | Per-user saves: saves bound to the Switch user profile chosen in the Switch profile selector, global options (future goal) | in progress (slice 1 built: user-resolution seam, Switch account + profile selector, saves per profile with a safe legacy copy; owner OLED, preview.43/44 (2026-10-27/28): each profile has its own Continue, cancelling the profile selector returns to the Switch HOME; E5.1, E5.2 and the logs not reported; import prompt, canonical store and global options open) | [PER_USER_SAVES](PER_USER_SAVES.md), [roadmap](#phase-6-goal-notes) |
+| P6.26 | Per-user saves: saves bound to the Switch user profile chosen in the Switch profile selector, global options | in progress (**global options built, D3, 2026-10-31: one `port_options.cfg` for both regions and every profile, the old `us/` and `eu/` files merged once, backed up and deleted after a read-back; OLED Q1 to Q6 open**; slice 1 built: user-resolution seam, Switch account + profile selector, saves per profile with a safe legacy copy; owner OLED, preview.43/44 (2026-10-27/28): each profile has its own Continue, cancelling the profile selector returns to the Switch HOME; E5.1, E5.2 and the logs not reported; import prompt, canonical store and global options open) | [PER_USER_SAVES](PER_USER_SAVES.md), [roadmap](#phase-6-goal-notes) |
 | P6.27 | Return to title from the pause (field) menu | in progress (built, PC US and EU replays; owner OLED, 2026-10-27, preview.41: Return to title works and Continue after it works; the Yes / No window, fade and card checks not reported) | [PORT_OPTIONS](PORT_OPTIONS.md#quit-and-return-to-title-p627-p628), [roadmap](#phase-6-goal-notes) |
 | P6.28 | Quit game on the title menu, back to hbmenu | in progress (built, PC US and EU replays; owner OLED, 2026-10-27, preview.41: Quit through the Sphaira forwarder works and returns to hbmenu; the full-app Sphaira launch shows errors, the forwarder is fine; card files, flush line and the US / EU split not reported) | [PORT_OPTIONS](PORT_OPTIONS.md#quit-and-return-to-title-p627-p628), [roadmap](#phase-6-goal-notes) |
 | P6.29 | Save editor: external tool on the owner's own saves, builds on P6.25 (future goal) | future | [roadmap](#phase-6-goal-notes), [CROSS_REGION_SAVES](CROSS_REGION_SAVES.md) |
@@ -895,7 +895,7 @@ speed.
   ([BALLOON_NULL_ACTOR.md](BALLOON_NULL_ACTOR.md)).
   **Stage sweep built (2026-10-28):** one opt-in run that logs, per stage,
   whether it loads and returns, so the owner's `dw3.log` is the whole report.
-  Set `stage_sweep=1` in the region's `port_options.cfg` (builds with the
+  Set `stage_sweep=1` in the global `port_options.cfg` (D3; before it, the region's; builds with the
   Cheats screen; off by default; it never writes a save) and start the game:
   it goes `STAGSLCT` → stage → `STAGSLCT` through the stages (237 loadable
   ones; `WSTAG460` was skipped as a stub until 2026-10-30, now 238), logs `dw3-sweep: stage WSTAGxxx ok in
@@ -2301,8 +2301,17 @@ Statuses are in the [table](#status-at-a-glance).
   `default` / `DW3_SAVE_PROFILE`; the uid hash in the log and the crash report.
   **Still open:** the interactive import prompt, the P6.25 canonical store as the
   default (built 2026-10-30 as the opt-in `save_store=1`, inside the profile folder),
-  global options (`port_options.cfg` stays per region), the applet-mode
-  fallback if `psel` cannot launch there. As built:
+  the applet-mode fallback if `psel` cannot launch there.
+  **Global options built (D3, 2026-10-31, owner a1 b2 c1 d2):** one
+  `sdmc:/switch/dw3/port_options.cfg` (PC: the top-level file) for both regions and every
+  profile; nothing stays per region (`save_store`, `stage_sweep`, `button_layout`, the
+  `items_*` and `map_*` keys, cheats, `region_default`, `last_region`); the first start
+  merges `us/` and `eu/` per key (the `last_region` region wins, US if unknown, every conflict
+  logged), writes the file, reads it back, copies each old file to `port_options.cfg.us.bak` /
+  `.eu.bak` and only then deletes it; any failure deletes nothing and retries next start; the
+  stage sweep names its region in every log line. No decomp patch. As built:
+  [PORT_OPTIONS](PORT_OPTIONS.md#one-global-file-d3), [OPTIONS_REORG 6.2](OPTIONS_REORG.md#62-d3-one-global-options-file-as-built);
+  OLED [Session Q](OLED_TEST_PLAN.md#session-q-one-global-options-file-d3) (Q1 is ⚠ destructive). As built:
   [PER_USER_SAVES.md](PER_USER_SAVES.md#as-built-slice-1-2026-10-27); OLED
   items: [OLED_TEST_PLAN E5](OLED_TEST_PLAN.md#e5-per-user-saves-p626). **Owner OLED (preview.43/44, 2026-10-27/28):** each Switch profile has its own Continue, and cancelling the profile selector returns to the Switch HOME (E5.3 to E5.5; the logs were not sent).
   Original entry. Dated 2026-10-24, owner decision:

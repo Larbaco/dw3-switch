@@ -22,14 +22,30 @@
 #include <unistd.h>
 
 #ifdef DW3_SWEEP_TEST
-#define SW_INFO(...) (fprintf(stderr, __VA_ARGS__), fputc('\n', stderr))
-#define SW_WARN(...) (fprintf(stderr, __VA_ARGS__), fputc('\n', stderr))
+/* The host test has no region: DW3_SWEEP_TEST_REGION or "us". */
+static const char *sw_region(void) {
+    const char *r = getenv("DW3_SWEEP_TEST_REGION");
+
+    return r != NULL && r[0] != '\0' ? r : "us";
+}
+/* D3: every line names the region it ran on (a run is never mistaken for the
+ * other region's). */
+#define SW_INFO(fmt, ...) \
+    (fprintf(stderr, fmt " region=%s", ##__VA_ARGS__, sw_region()), fputc('\n', stderr))
+#define SW_WARN(fmt, ...) SW_INFO(fmt, ##__VA_ARGS__)
 #else
+#include "dw3_region_rt.h"
 #include "port_options.h"
 #include <psyz/log.h>
-/* psyz_log: on the Switch the lines reach sdmc:/switch/dw3/dw3.log. */
-#define SW_INFO(...) INFOF(__VA_ARGS__)
-#define SW_WARN(...) WARNF(__VA_ARGS__)
+static const char *sw_region(void);
+/* psyz_log: on the Switch the lines reach sdmc:/switch/dw3/dw3.log. D3: every
+ * line names the region it ran on. */
+#define SW_INFO(fmt, ...) INFOF(fmt " region=%s", ##__VA_ARGS__, sw_region())
+#define SW_WARN(fmt, ...) WARNF(fmt " region=%s", ##__VA_ARGS__, sw_region())
+#endif
+
+#ifndef DW3_SWEEP_TEST
+static const char *sw_region(void) { return dw3_region_name(dw3_region()); }
 #endif
 
 typedef struct SweepStage {
@@ -48,6 +64,9 @@ enum { S_INIT, S_GOTO_SELECT, S_SELECT_DWELL, S_ARRIVE, S_DWELL, S_RETURN,
 
 #define SW_KEY "stage_sweep"
 #define SW_KEY_FRAMES "stage_sweep_frames"
+/* D3 (owner b2): the options are global, so the sweep runs in whichever region
+ * boots; its progress is per region (the stage lists differ) and every line of
+ * its log names the region. */
 #define SW_FILE "stage_sweep.txt"
 #define SW_DEFAULT_FRAMES 90
 #define SW_SELECT_FRAMES 30
@@ -183,7 +202,11 @@ static void sw_path(char *out, size_t n) {
         out[0] = '\0';
         return;
     }
+#ifdef DW3_SWEEP_TEST
     snprintf(out, n, "%s/%s", g_dir, SW_FILE);
+#else
+    snprintf(out, n, "%s/stage_sweep_%s.txt", g_dir, sw_region());
+#endif
 }
 
 /* One line of the progress file: "<kind> 0x<mode> <text>". Opened and closed
@@ -311,50 +334,6 @@ static void sw_parse_only(const char *s) {
     }
 }
 
-/* P51 item 7: `stage_sweep=1` in the TOP-LEVEL port_options.cfg (the region
- * picker's file, beside the us/ and eu/ folders) is not read: the sweep reads
- * its key from the region folder's file. When the owner put it in the wrong one
- * the log says so, once per boot, and nothing else changes. */
-static void sw_note_stray_key(void) {
-    char top[300];
-    char path[320];
-    char line[160];
-    char *slash;
-    size_t n;
-    FILE *f;
-    int found = 0;
-
-    if (g_dir[0] == '\0' || strlen(g_dir) >= sizeof(top)) {
-        return;
-    }
-    strcpy(top, g_dir);
-    n = strlen(top);
-    while (n > 1 && top[n - 1] == '/') {
-        top[--n] = '\0';
-    }
-    slash = strrchr(top, '/');
-    if (slash == NULL || slash == top) {
-        return;
-    }
-    *slash = '\0';
-    snprintf(path, sizeof(path), "%s/port_options.cfg", top);
-    f = fopen(path, "r");
-    if (f == NULL) {
-        return;
-    }
-    while (fgets(line, sizeof(line), f) != NULL) {
-        if (strncmp(line, SW_KEY "=", sizeof(SW_KEY)) == 0 &&
-            strtol(line + sizeof(SW_KEY), NULL, 0) != 0) {
-            found = 1;
-        }
-    }
-    fclose(f);
-    if (found) {
-        SW_INFO("dw3-sweep: stage_sweep found in %s, ignored; put it in %s/port_options.cfg",
-                path, g_dir);
-    }
-}
-
 /* Reads the key (or the environment). Returns the key value: 0 off, 1 run or
  * resume, 2 start from the beginning. */
 static int sw_read_config(void) {
@@ -399,9 +378,6 @@ static int sw_read_config(void) {
     v = getenv("DW3_STAGE_SWEEP_ONLY");
     if (v != NULL && v[0] != '\0') {
         sw_parse_only(v);
-    }
-    if (level == 0) {
-        sw_note_stray_key();
     }
     return level;
 }

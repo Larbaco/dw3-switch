@@ -482,10 +482,10 @@ region's binary" with "call the region's entry" later and reuses all of it.
   100 ms step, `.` idles). With no terminal and no keys it starts the default
   entry at once instead of waiting (default chosen, owner can change). `--pick`
   / `DW3_REGION_PICK=1` is the PC stand-in for holding Minus.
-- Stored choice: `<DW3_CONFIG_DIR or base>/port_options.cfg`. Until P6.26 makes
-  the options file global this is the launcher's own file in the base folder;
-  the per-region `runtime/<r>/port_options.cfg` files are not touched (default
-  chosen, owner can change). The picker's default entry is `last_region`, else
+- Stored choice: `<DW3_CONFIG_DIR or base>/port_options.cfg`. Since D3 / P6.26 this
+  file is the one global options file (every key lives in it); the old per-region
+  `runtime/<r>/port_options.cfg` files are merged into it once and deleted after a backup
+  ([PORT_OPTIONS](PORT_OPTIONS.md#one-global-file-d3)). The picker's default entry is `last_region`, else
   US (the "save modified last" tie-break of the design is not done).
 
 **Tests.** `tools/tests/test_region.py` (C test of the table, the picker and the

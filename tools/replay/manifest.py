@@ -53,6 +53,16 @@ class Scenario:
     # `defaults_gen` marker (the runner adds `defaults_gen=2` to every other seeded
     # cfg), so the one-shot migration of the defaults runs on it.
     legacy_cfg: bool = False
+    # D3 (docs/OPTIONS_REORG.md 6.2): the per-region files an older build wrote, seeded
+    # as `<config dir>/us/port_options.cfg` and `.../eu/port_options.cfg` (no
+    # `defaults_gen` unless the tuple holds it) next to the global file. `cfg` then is the
+    # old top-level file (e.g. `last_region`), also seeded without a marker. The
+    # `*-options-global-migrate*` scenarios use them; nothing else writes a per-region cfg.
+    cfg_us: tuple[tuple[str, str], ...] = ()
+    cfg_eu: tuple[tuple[str, str], ...] = ()
+    # D3: block the global file's temp name with a directory, so the migration cannot
+    # write the new file (a failed-write case): the old files must stay.
+    block_global_write: bool = False
     # Extra environment for the PC run (debug aids such as DW3_START_MODE).
     # The Switch build has no environment, so the Ryubing runner skips these.
     env: tuple[tuple[str, str], ...] = ()
@@ -3250,6 +3260,73 @@ for _v in ("us", "eu"):
                  forbid_log=_MIG_BAD + ((0, r"migrate defaults_gen"), (0, r"nothing to flip")),
                  note="A fresh install is born on the new defaults (Nintendo; glyphs OFF on the PC, ON on the "
                       "Switch) and is not migrated (D2)"),
+    )
+
+# D3 / P6.26 (docs/OPTIONS_REORG.md 6.2): ONE global port_options.cfg. The scenarios seed the
+# per-region files an older build wrote (`us/` and `eu/` under the config folder, no marker) and
+# the old top-level file (`last_region`), boot, and read the proof in the log. They carry no
+# picture: the proof is the three log lines of the migration, the merged values at boot, and the
+# second process finding nothing left to do. The recording is the same for all four cases.
+_G_FILE = r"\S+port_options\.cfg"
+_G_BOOT = (r"dw3-options: " + _G_FILE + r" \(widescreen=%s fast_forward=2 restart_hotkey=0 music_volume=%s "
+           r"sfx_volume=10 encounter_rate=0 text_speed=%s battle_menu_memory=0\)")
+_G_QUIET = ((1, r"dw3-options: migrate "), (1, r"dw3-options: deleted "), (1, r"migrated from"),
+            (1, r"no us/eu port_options"), (1, r"migration NOT done"))
+for _v in ("us", "eu"):
+    _o = "eu" if _v == "us" else "us"      # the region that is NOT running: its file wins the conflict
+    _add(
+        Scenario(f"{_v}-options-global-migrate", _v, "full", timeout=300, log_only=True,
+                 phases=(f"{_v}-options-global-view", f"{_v}-options-global-view"),
+                 cfg=(("region_default", "ask"), ("last_region", _o)),
+                 cfg_us=(("defaults_gen", "2"), ("widescreen", "0"), ("music_volume", "4"),
+                         ("items_bag_view", "0"), ("sfx_volume", "10")),
+                 cfg_eu=(("defaults_gen", "2"), ("widescreen", "1"), ("music_volume", "6"),
+                         ("text_speed", "2"), ("sfx_volume", "10")),
+                 expect_log=((0, rf"dw3-options: migrate winner={_o} \(last_region={_o}\)"),
+                             (0, r"dw3-options: migrate key=widescreen us=0 eu=1 kept=" + ("1" if _o == "eu" else "0")),
+                             (0, r"dw3-options: migrate key=music_volume us=4 eu=6 kept=" + ("6" if _o == "eu" else "4")),
+                             (0, r"dw3-options: global file " + _G_FILE + r" \(migrated from us\+eu, \d+ keys, "
+                                 r"2 conflicts: (widescreen, music_volume|music_volume, widescreen)\)"),
+                             (0, r"dw3-options: backup us/port_options\.cfg -> " + _G_FILE + r"\.us\.bak \(\d+ bytes, verified\)"),
+                             (0, r"dw3-options: backup eu/port_options\.cfg -> " + _G_FILE + r"\.eu\.bak \(\d+ bytes, verified\)"),
+                             (0, r"dw3-options: deleted us/port_options\.cfg after read-back ok"),
+                             (0, r"dw3-options: deleted eu/port_options\.cfg after read-back ok"),
+                             (0, _G_BOOT % (("1", "6", "2") if _o == "eu" else ("0", "4", "2"))),
+                             (1, _G_BOOT % (("1", "6", "2") if _o == "eu" else ("0", "4", "2")))),
+                 forbid_log=_G_QUIET + _MIG_BAD + ((0, r"migrate defaults_gen"), (0, r"migration NOT done")),
+                 note=f"The old us/ and eu/ files are merged into the one global file: the {_o.upper()} file (last_region) wins "
+                      "the two conflicts, a key in one file is taken, the old files are backed up and deleted after the "
+                      "read-back; the second process finds nothing to do (D3)"),
+        Scenario(f"{_v}-options-global-migrate-single", _v, "full", timeout=300, log_only=True,
+                 phases=(f"{_v}-options-global-view",),
+                 **{f"cfg_{_o}": (("defaults_gen", "2"), ("widescreen", "0"), ("music_volume", "5"), ("sfx_volume", "10"))},
+                 expect_log=((0, r"dw3-options: global file " + _G_FILE + rf" \(migrated from {_o}, \d+ keys, 0 conflicts\)"),
+                             (0, rf"dw3-options: backup {_o}/port_options\.cfg -> " + _G_FILE + rf"\.{_o}\.bak"),
+                             (0, rf"dw3-options: deleted {_o}/port_options\.cfg after read-back ok"),
+                             (0, _G_BOOT % ("0", "5", "0"))),
+                 forbid_log=_MIG_BAD + ((0, r"migrate winner"), (0, r"migrate key="), (0, rf"deleted {_v}/"),
+                                        (0, r"migration NOT done")),
+                 note=f"Only the {_o.upper()} file exists: it is taken whole, no conflict, then backed up and deleted (D3)"),
+        Scenario(f"{_v}-options-global-migrate-fresh", _v, "full", timeout=200, log_only=True,
+                 phases=(f"{_v}-options-global-view",),
+                 expect_log=((0, r"dw3-options: global file " + _G_FILE + r" \(no us/eu port_options\.cfg to migrate\)"),
+                             (0, r"dw3-options: defaults_gen=2 \(new file\)")),
+                 forbid_log=_MIG_BAD + ((0, r"dw3-options: migrate "), (0, r"dw3-options: deleted "),
+                                        (0, r"migrated from"), (0, r"migration NOT done")),
+                 note="A fresh install has no per-region file: nothing is migrated, nothing is created or deleted (D3)"),
+        Scenario(f"{_v}-options-global-migrate-failed", _v, "full", timeout=300, log_only=True,
+                 phases=(f"{_v}-options-global-view", f"{_v}-options-global-view"),
+                 cfg=(("last_region", _v),),
+                 cfg_us=(("defaults_gen", "2"), ("widescreen", "0")),
+                 cfg_eu=(("defaults_gen", "2"), ("widescreen", "1")),
+                 block_global_write=True,
+                 expect_log=((0, r"dw3-options: migrate winner=" + _v),
+                             (0, r"dw3-options: migration NOT done \(cannot write " + _G_FILE + r": .+\), old files kept"),
+                             (1, r"dw3-options: migration NOT done \(cannot write " + _G_FILE + r": .+\), old files kept")),
+                 forbid_log=((0, r"dw3-options: deleted "), (0, r"dw3-options: backup "), (0, r"migrated from"),
+                             (1, r"dw3-options: deleted "), (1, r"dw3-options: backup "), (1, r"migrated from")),
+                 note="The global file cannot be written: nothing is deleted or backed up, the old files are still there "
+                      "for the retry at the next start (the second process tries again and says so) (D3)"),
     )
 
 # P6.32 phase 7 (no patch): the help line of the full-screen map view names the buttons the

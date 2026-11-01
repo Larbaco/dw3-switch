@@ -26,6 +26,7 @@
 #include "overlay_host.h"
 #include "map_view.h"
 #include "port_options.h"
+#include "port_options_cfg.h"
 #include "user_switch.h"
 #include "runtime_extract.h"
 #include "str_stream.h"
@@ -775,6 +776,7 @@ static int init_paths(void) {
     const char *memdir = env_or("DW3_MEMCARD_DIR", NULL);
     const char *cfgdir = env_or("DW3_CONFIG_DIR", NULL);
     char memcard_buf[512];
+    char gdir[DW3_OPTCFG_PATH_MAX]; /* D3: folder of the global port_options.cfg */
     int memdir_explicit;
     char boot_path[512];
 
@@ -836,9 +838,18 @@ static int init_paths(void) {
                                               ? SAVE_REGION_EU
                                               : SAVE_REGION_US,
                                           memdir_explicit);
+    /* P9.4 + D3: the ONE global port_options.cfg, sdmc:/switch/dw3/port_options.cfg
+     * (DW3_CONFIG_DIR when set), loaded before anything reads widescreen /
+     * fast-forward / restart. Each change is written when it is made (nothing to
+     * flush on HOME); atexit only retries a failure. It comes before the saves
+     * store: the first start after D3 folds the old us/ and eu/ files into it,
+     * and the store key must be the merged one. */
+    (void)dw3_optcfg_global_dir(cfgdir, root, gdir, sizeof(gdir));
+    (void)dw3_port_options_persist_init(gdir);
+    atexit(dw3_nx_flush_options);
     /* P6.25 slice 2: opt-in shared store (save_store=1 in port_options.cfg),
      * inside the profile folder; off for the legacy folder and replays. */
-    (void)memcard_host_setup_store(cfgdir != NULL ? cfgdir : root,
+    (void)memcard_host_setup_store(gdir,
                                    dw3_switch_user_profile_dir(),
                                    dw3_region() == DW3_REGION_EU
                                        ? SAVE_REGION_EU
@@ -852,11 +863,6 @@ static int init_paths(void) {
     atexit(memcard_host_shutdown);
     INFOF("memcard dir=%s", memdir);
 
-    /* P9.4: sdmc:/switch/dw3/<ver>/port_options.cfg, loaded before anything
-     * reads widescreen / fast-forward / restart. Each change is written when
-     * it is made (nothing to flush on HOME); atexit only retries a failure. */
-    (void)dw3_port_options_persist_init(cfgdir != NULL ? cfgdir : root);
-    atexit(dw3_nx_flush_options);
     map_view_precompute_start(cfgdir != NULL ? cfgdir : root);
 
     snprintf(boot_path, sizeof(boot_path), "%s/boot_tim.bin", root);

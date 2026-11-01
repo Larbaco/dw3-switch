@@ -95,6 +95,51 @@ int dw3_optcfg_load(Dw3OptCfg *cfg, const char *dir);
  * errno set. */
 int dw3_optcfg_save(const Dw3OptCfg *cfg, const char *dir);
 
+/* ---- D3 / P6.26: one global options file (docs/OPTIONS_REORG.md section 6.2) ----
+ *
+ * Every key lives in ONE port_options.cfg: `sdmc:/switch/dw3/port_options.cfg` on
+ * the Switch, the top-level file beside the region folders on the PC. Builds up
+ * to D2 kept one file per region (`us/port_options.cfg`, `eu/port_options.cfg`)
+ * and a top-level file for `region_default` / `last_region`. */
+
+/* The one-shot marker, written by every save of the global file. */
+#define DW3_OPTCFG_MARKER_KEY "options_global"
+
+/* The folder of the global file. `cfgdir_env` (DW3_CONFIG_DIR / --config-dir)
+ * wins when set. Otherwise `root` is the region's runtime folder
+ * (`<base>/us`, `<base>/eu`): the global folder is its parent. A root that is
+ * not a us / eu folder (a hand-made runtime) is its own global folder. Returns
+ * 0, or -1 if `out` is too small. */
+int dw3_optcfg_global_dir(const char *cfgdir_env, const char *root, char *out,
+                          size_t cap);
+
+/* One log line, no newline; warn != 0 for a failure. NULL = stderr. */
+typedef void (*Dw3OptCfgLogFn)(void *ud, int warn, const char *line);
+
+enum { /* result of dw3_optcfg_migrate_global */
+    DW3_OPTGLOBAL_FAILED = -1, /* old files kept, retried at the next start */
+    DW3_OPTGLOBAL_NONE = 0,    /* nothing to do (marker present, or no old files) */
+    DW3_OPTGLOBAL_DONE = 1     /* merged, written, read back; old files backed up
+                                * and deleted */
+};
+
+/* The one-shot migration into `<gdir>/port_options.cfg`:
+ *   - merges `<gdir>/us/port_options.cfg` and `<gdir>/eu/port_options.cfg` per
+ *     key: the file of the region named by `last_region` (read from the global
+ *     file; US when it is missing or invalid) wins a conflict, a key in one file
+ *     only is taken from it, every conflict is logged;
+ *   - `defaults_gen` (D2) takes the older generation, so the D2 migration still
+ *     runs on the merged file;
+ *   - writes the global file with the marker `options_global=1`, reads it back
+ *     and compares it;
+ *   - only then copies each old file to `port_options.cfg.us.bak` /
+ *     `.eu.bak` beside the global file (verified; an existing different .bak is
+ *     never overwritten, the copy goes to .bak.1 ...) and deletes the old file.
+ * A failure at any step before the delete deletes nothing, puts the previous
+ * global file back, and returns FAILED. Safe to call at every start: with the
+ * marker present it only reads the global file. */
+int dw3_optcfg_migrate_global(const char *gdir, Dw3OptCfgLogFn log, void *ud);
+
 #ifdef __cplusplus
 }
 #endif

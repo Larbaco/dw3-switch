@@ -136,32 +136,17 @@ def test_off_by_default(sweep_bin, tmp_path):
     assert r.returncode == 0 and r.stderr == ""
 
 
-def test_stage_sweep_in_the_top_level_file_is_logged_and_ignored(tmp_path):
-    """P51 item 7: the picker's file holds stage_sweep=1 (the wrong file): one
-    log line names both files, the sweep stays off."""
-    top = tmp_path / "dw3"
-    region = top / "eu"
-    region.mkdir(parents=True)
-    env = {k: v for k, v in os.environ.items() if not k.startswith("DW3_")}
-    env["DW3_STAGE_SWEEP_DIR"] = str(region)
-    src = tmp_path / "stray.c"
-    src.write_text(
-        '#include "port_stage_sweep.h"\n'
-        "int main(void){ int i; for(i=0;i<1000;i++) if(dw3_sweep_tick(0xE00)) "
-        "return 1; return dw3_sweep_enabled(); }\n")
-    exe = tmp_path / "stray"
-    r = subprocess.run(["gcc", "-std=gnu11", "-DDW3_SWEEP_TEST", "-pthread", "-o", str(exe),
-                        str(src), str(SWEEP / "stage_sweep.c"),
-                        f"-I{ROOT / 'port' / 'include'}", f"-I{SWEEP}"],
-                       capture_output=True, text=True)
-    assert r.returncode == 0, r.stderr
-    (top / "port_options.cfg").write_text("region_default=eu\nstage_sweep=1\nend=1\n")
-    r = subprocess.run([str(exe)], env=env, capture_output=True, text=True)
-    assert r.returncode == 0                 # the sweep stays off
-    assert r.stderr.count("dw3-sweep: stage_sweep found in") == 1
-    assert (f"dw3-sweep: stage_sweep found in {top}/port_options.cfg, ignored; "
-            f"put it in {region}/port_options.cfg") in r.stderr
-    # no stray key, no line
-    (top / "port_options.cfg").write_text("region_default=eu\nstage_sweep=0\nend=1\n")
-    r = subprocess.run([str(exe)], env=env, capture_output=True, text=True)
-    assert r.returncode == 0 and r.stderr == ""
+def test_every_sweep_line_names_the_region(sweep_bin, tmp_path):
+    """D3 (owner b2): the options are global, so the sweep runs in whichever region boots;
+    each line of its log says which one, so a run is never mistaken for the other."""
+    for region in ("us", "eu"):
+        env = {k: v for k, v in os.environ.items() if not k.startswith("DW3_")}
+        env["DW3_SWEEP_TEST_REGION"] = region
+        d = tmp_path / region
+        d.mkdir()
+        r = subprocess.run([str(sweep_bin), str(d), "only", "0x206,0x209"], env=env,
+                           capture_output=True, text=True, timeout=120)
+        assert r.returncode == 0, r.stderr
+        lines = [l for l in r.stderr.splitlines() if l.startswith("dw3-sweep:")]
+        assert len(lines) > 4, r.stderr
+        assert all(l.endswith(f" region={region}") for l in lines), lines

@@ -35,9 +35,9 @@ unsigned dw3_port_options_locked_mask_for(int in_game);
 enum { DW3_PORT_OPTIONS_LOCK_CHEATS = 1u << 30 };
 void dw3_port_options_close(void);
 
-/* P6.38 (combined image): the folder holding the top-level port_options.cfg
- * (region_default / last_region), or NULL when options are session-only or the
- * build has no Region at start row. */
+/* P6.38 (combined image): the folder holding the global port_options.cfg
+ * (region_default / last_region and, since D3, every other key too), or NULL when
+ * options are session-only or the build has no Region at start row. */
 const char *dw3_port_options_region_base(void);
 int dw3_port_options_is_open(void);
 
@@ -144,8 +144,8 @@ enum {
  * <config dir>/port_options.cfg (P9.4, docs/PORT_OPTIONS.md). */
 int dw3_port_options_count(void);
 const char *dw3_port_options_label(int index);
-/* The cfg key of a row (NULL for a row with none: Region at start, which lives
- * in the top-level file, and the action rows). The key-budget test lists them. */
+/* The cfg key of a row (NULL for a row with none: Region at start, which is
+ * saved as region_default by its own code, and the action rows). The key-budget test lists them. */
 const char *dw3_port_options_key(int index);
 int dw3_port_options_value(int index);
 void dw3_port_options_set(int index, int value);
@@ -161,6 +161,9 @@ int dw3_port_options_restart_enabled(void);
 
 /* P9.4. Call once at boot, after the runtime/config directory is known and
  * before anything reads a flag (widescreen, fast-forward, restart hotkey).
+ * `dir` is the folder of the global file (dw3_optcfg_global_dir derives it from
+ * the region's runtime folder). D3: first folds the old <dir>/us/ and <dir>/eu/
+ * port_options.cfg into it, once (port_options_cfg.h).
  * Loads <dir>/port_options.cfg over the defaults: a missing file keeps the
  * defaults, an invalid value falls back to its default with a log line,
  * unknown keys are kept for the next write. Returns 0, or -1 if `dir` is
@@ -205,9 +208,10 @@ void dw3_port_options_sweep_started(void);
  * (port/options/confirm.c). `what` is a DW3_PORT_ASK_* of port_confirm.h. */
 void dw3_port_options_ask_answer(int what, int yes);
 
-/* The directory port_options.cfg lives in (the dir given to _persist_init),
- * or "" when the options are session-only. Small files of the port's own
- * (the P5.5 stage sweep's progress) are kept beside it. */
+/* The folder of the ONE global port_options.cfg (D3: the dir given to
+ * _persist_init; sdmc:/switch/dw3 on the Switch), or "" when the options are
+ * session-only. Small files of the port's own (the P5.5 stage sweep's progress,
+ * one per region) are kept beside it. */
 const char *dw3_port_options_cfg_dir(void);
 
 /* Retry a write that failed earlier (the SD was busy); a no-op otherwise.

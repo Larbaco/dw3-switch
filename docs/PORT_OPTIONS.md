@@ -119,20 +119,25 @@ focus-loss pause + delta clamp, memcard write-through/flush, rotating
 
 ## Persistence
 
-Implemented by P9.4 (PC and Switch). The registry keeps its values in
-`port_options.cfg`, one small text file per region runtime root:
+Implemented by P9.4 (PC and Switch). The registry keeps its values in **one**
+`port_options.cfg`, a small text file for the whole port: both regions and every
+Switch user profile (D3 / P6.26, owner decisions of 2026-10-31):
 
 | Host | File |
 |---|---|
-| PC | `<runtime root>/port_options.cfg`, i.e. `runtime/us/` or `runtime/eu/` (`DW3_RUNTIME` / `--runtime`) |
-| Switch | `sdmc:/switch/dw3/us/port_options.cfg`, `sdmc:/switch/dw3/eu/port_options.cfg` |
+| Switch | `sdmc:/switch/dw3/port_options.cfg` (beside the `us/` and `eu/` folders) |
+| PC | `<runtime base>/port_options.cfg`, the top-level file beside `runtime/us/` and `runtime/eu/` |
 
-US and EU have their own file because each region has its own runtime root.
-`DW3_CONFIG_DIR` (both hosts; PC also `--config-dir`) moves the file to
-another directory; the replay runner uses it so test runs never touch the
-owner's file. The file is never written into the memory card or the `.mcr`.
-It sits next to the runtime data, so it is not part of any save and is
-gitignored with the rest of `runtime/`.
+Builds up to D2 kept one file per region (`us/port_options.cfg`, `eu/port_options.cfg`) and a
+top-level file that held only `region_default` and `last_region`. Nothing stays per region
+now: every key is in the one file, `save_store`, `stage_sweep`, `button_layout` / `button_map`,
+the `items_*` and `map_*` keys, `show_version`, the cheat keys. [How the old files are
+folded in](#one-global-file-d3) is below. `DW3_CONFIG_DIR` (both hosts; PC also `--config-dir`)
+names the folder of the file directly; the replay runner uses it so test runs never touch the
+owner's file. The folder rule is `dw3_optcfg_global_dir` (`port_options_cfg.h`): that folder
+when set, else the parent of a `us/` or `eu/` runtime root, else the runtime root itself (a
+hand-made runtime that is neither). The file is never written into the memory card or the
+`.mcr`. It is not part of any save, and on the PC it is gitignored with the rest of `runtime/`.
 
 ### Format
 
@@ -267,8 +272,8 @@ the US game is seen by the EU game and the reverse; `0` or no key is the game as
 reads as `0`. `DW3_SAVE_STORE=0|1` (PC) beats the file for one run. With `1` and no profile
 folder (the Switch fell back to the legacy folder, or `DW3_MEMCARD_DIR` forced a folder) the
 store stays off and `dw3-store: save_store=1 but there is no profile folder` is logged.
-`port_options.cfg` is still per region (`us/` and `eu/` folders; the global file is the D3 step), so the
-key must be set in both to share saves from both builds. Design,
+Since D3 the key lives in the one global `port_options.cfg`, so it no longer has to be set in both
+regions to share saves from both builds. Design,
 migration, backups and logs: [CROSS_REGION_SAVES](CROSS_REGION_SAVES.md#as-built-slice-2).
 
 `stage_sweep` (P5.5, 0, 1 or 2, default 0) and `stage_sweep_frames` (30 to 3600, default 90) are the
@@ -394,6 +399,58 @@ asks first and then runs this reset ([below](#quit-and-return-to-title-p627-p628
   (with and without cheats) and the `cheats-screen` and `cheat-*` replays; see
   [Cheats, Tests](#tests) below.
 - OLED: pending. Toggle, HOME, close the game, relaunch from hbmenu.
+
+
+### One global file (D3)
+
+`dw3_port_options_persist_init` (and, in the combined image, `dw3_region_boot` before it stores
+`last_region`) runs `dw3_optcfg_migrate_global` once per start. With the marker `options_global=1`
+in the global file it only reads it. Otherwise, when `<folder>/us/port_options.cfg` or
+`<folder>/eu/port_options.cfg` exists:
+
+1. **Merge per key** (owner c1). The file of the region named by `last_region` wins a key both
+   files have; a key in one file only is taken from it; `last_region` missing or invalid means US
+   wins (and a missing file means the other one is the winner). A key the old top-level file also
+   held (`region_default`, `last_region`) keeps its value; any other key of it (a stray
+   `stage_sweep=1`, never read) gives way to the regions' value. `defaults_gen` (D2) takes the
+   **older** generation of the two, so the D2 migration still runs on the merged file. Every
+   conflict is logged: `dw3-options: migrate key=<k> us=<v> eu=<v> kept=<v>` (`top=<v> regions=<v>`
+   for the stray case), after `dw3-options: migrate winner=<us|eu> (last_region=<v|missing>)`.
+2. **Write and read back.** The new file is written atomically with `options_global=1`, read back
+   and compared key by key.
+3. **Back up, then delete** (owner d2). Only now, each old file is copied byte for byte to
+   `port_options.cfg.us.bak` / `.eu.bak` next to the new file (verified; a *different* backup
+   already there is never overwritten, the copy goes to `.bak.1` ...), then deleted.
+
+Lines (all `dw3-options:`; the first, third and fourth are the OLED proof):
+
+| Line | When |
+|---|---|
+| `global file <path> (migrated from us+eu, N keys, M conflicts: k1, k2)` | the new file is written **and** read back. `from us`, `from eu` for a single file; N counts the entries of the new file |
+| `backup us/port_options.cfg -> <path>.us.bak (N bytes, verified)` | before each delete |
+| `deleted us/port_options.cfg after read-back ok` (and `eu/`) | after the backup |
+| `migration NOT done (<reason>), old files kept` (warning) | any failure before the delete: cannot read an old file (`cannot read eu/port_options.cfg`), too many keys (the 48-entry limit), `cannot write <path>: <strerror>`, `read-back of <path> does not match what was written`. Nothing is deleted or backed up, the previous global file is put back, and the next start tries again |
+| `global file <path> (no us/eu port_options.cfg to migrate)` | a fresh install, or a global file nobody had to merge into; written until the first save stamps the marker |
+
+A failed migration keeps the marker out of the file (`po_save` omits `options_global` for that
+boot), otherwise the retry would never happen. If a delete itself fails the file stays, unused:
+`could not delete <file> (<strerror>); it stays, unused`. To go back to an older build copy a
+`.bak` into the region folder as `port_options.cfg`.
+
+**Order at boot.** The registry loads the global file before the saves store reads
+`save_store` (`platforms/*/main.c`, `init_paths`), so the first start after the update uses the
+merged value. The Region at start row reads and writes `region_default` inside the same loaded
+file (it no longer touches a second file), and `last_region` is the region boot's key in it.
+
+**Stage sweep.** The keys `stage_sweep` and `stage_sweep_frames` are global; the sweep runs in
+whichever region boots. Its progress file stays per region (the stage lists differ):
+`<folder>/stage_sweep_us.txt`, `stage_sweep_eu.txt`; every `dw3-sweep:` line ends with
+`region=us|eu`.
+
+**Budget.** The file holds at most 48 entries and 4096 bytes. The test
+`test_the_cfg_holds_every_key_within_the_budget` (`tools/tests/test_options_d1.py`) writes every key
+the port keeps, including `options_global`, `region_default` and `last_region`, and reads them back;
+a merge that would not fit is refused (`too many keys`) and keeps the old files.
 
 ## Entry investigation (P9.2)
 
@@ -1095,11 +1152,11 @@ The second row of the Saves group (D1; it was the sixth row of Gameplay), **only
 the plain US and EU images have no other region to start, `DW3_OPT_REGION_ROW` in
 `port_options_groups.h`). Registry row 10, **Region at start: Ask / US / EU**
 (Confirm cycles, Left / Right step). It is stored as `region_default` (`ask`, `us`,
-`eu`) in the **top-level** `sdmc:/switch/dw3/port_options.cfg`, the picker's file,
-through `dw3_region_cfg_write` (which refuses to overwrite a file it cannot read, keeps
-the other keys and writes `end=1` last); the region folder's own file never gets it.
-The folder is the parent of the region's config folder, or `DW3_CONFIG_DIR` when that
-is set (the replays keep both files in one folder). It takes effect at the next start
+`eu`) in the global `sdmc:/switch/dw3/port_options.cfg`, the picker's file. Since D3 it is
+one key of the loaded file, saved with all the others (the region folder never had it);
+the region boot and the restart question still use `dw3_region_cfg_write`, which keeps the
+other keys and writes `end=1` last. The folder is `DW3_CONFIG_DIR` when that is set, else the
+parent of the region's runtime folder. It takes effect at the next start
 **unless the player answers Yes to the restart question** ([below](#restart-into-the-chosen-region-p638));
 a change in game never changes the running region by itself, and the row is not locked in
 game. Ask = the picker every start (3 s countdown), the fresh-install default.
@@ -2383,7 +2440,7 @@ patches with a row in [PATCHES.md](PATCHES.md) (the next free number); the
 `getenv` hooks keep working for the replays. Persistence: **the options file,
 not the save.** The flat PS1 save image has no spare room (found in P7.9) and
 a cheat toggle must not edit P5.3 saves; `cheat_*` keys in
-`port_options.cfg` fit the current design, per region like every key. Toggles
+`port_options.cfg` fit the current design (D3: the one global file, like every key). Toggles
 (infinite HP, walk speed) persist; one-shot actions (give items, max money)
 do not and run from the menu. A one-shot still changes the live game and the
 game's own save would then store it: say so on the screen and log it. No

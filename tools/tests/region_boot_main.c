@@ -391,6 +391,58 @@ int main(int argc, char **argv) {
     CHECK(o.result == DW3_RB_NO_DATA);
     CHECK(strstr(f.log, "disc image ignored: ") != NULL);
 
+    /* 19. D3: the old us/ and eu/ port_options.cfg are folded into the global file BEFORE the
+     * boot stores last_region, so the region last played (US) wins the conflict even though
+     * the picker now chooses EU; the choice is stored afterwards. */
+    {
+        char gpath[400], text[1024];
+        FILE *fp;
+        size_t n;
+
+        clean(base);
+        make_tree(base, "us");
+        make_tree(base, "eu");
+        path_in(base, "us/port_options.cfg", p1, sizeof(p1));
+        fp = fopen(p1, "wb");
+        fputs("version=1\nwidescreen=0\nend=1\n", fp);
+        fclose(fp);
+        path_in(base, "eu/port_options.cfg", p1, sizeof(p1));
+        fp = fopen(p1, "wb");
+        fputs("version=1\nwidescreen=1\ntext_speed=2\nend=1\n", fp);
+        fclose(fp);
+        {
+            Dw3Region pr = DW3_REGION_NONE;
+
+            CHECK(dw3_region_cfg_write(base, DW3_REGION_US, 0, pr) == 0); /* last_region=us */
+        }
+        memset(&f, 0, sizeof(f));
+        f.script[0] = DW3_PK_RIGHT; /* the player picks EU */
+        f.script[1] = DW3_PK_A;
+        f.script_len = 2;
+        o = run(base, &f, DW3_REGION_NONE);
+        CHECK(o.result == DW3_RB_RUN && o.region == DW3_REGION_EU);
+        CHECK(strstr(f.log, "dw3-options: migrate winner=us (last_region=us)") != NULL);
+        CHECK(strstr(f.log, "migrated from us+eu") != NULL);
+        CHECK(strstr(f.log, "dw3-options: deleted us/port_options.cfg after read-back ok") != NULL);
+        CHECK(strstr(f.log, "dw3-region: saved last_region=eu") != NULL);
+        path_in(base, "port_options.cfg", gpath, sizeof(gpath));
+        fp = fopen(gpath, "rb");
+        n = fp != NULL ? fread(text, 1, sizeof(text) - 1, fp) : 0;
+        text[n] = '\0';
+        if (fp != NULL) {
+            fclose(fp);
+        }
+        CHECK(strstr(text, "widescreen=0\n") != NULL);   /* the US value won */
+        CHECK(strstr(text, "text_speed=2\n") != NULL);   /* EU only: taken */
+        CHECK(strstr(text, "last_region=eu\n") != NULL && strstr(text, "options_global=1\n") != NULL);
+        path_in(base, "us/port_options.cfg", p1, sizeof(p1));
+        CHECK(fopen(p1, "rb") == NULL);
+        /* a second boot has nothing to migrate and says nothing about it */
+        f.script_len = 0;
+        o = run(base, &f, DW3_REGION_NONE);
+        CHECK(strstr(f.log, "dw3-options:") == NULL);
+    }
+
     /* 11. a picker that does not run (no screen) cannot hang the boot */
     {
         Dw3RegionBootIO io;

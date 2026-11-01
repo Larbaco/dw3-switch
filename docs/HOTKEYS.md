@@ -15,7 +15,7 @@ cancel (the game cancels with Triangle, so B produces Triangle, not Circle; see
 file written by an older build was switched to Nintendo once (`defaults_gen`, see
 [PORT_OPTIONS](PORT_OPTIONS.md#defaults-generation-and-the-map-scaler-d2--d5)); change it back in Options and it
 stays.
-The layout is stored per region in `port_options.cfg` (`button_layout=playstation|nintendo|custom`),
+The layout is stored in the one global `port_options.cfg` (both regions, D3) (`button_layout=playstation|nintendo|custom`),
 applies at once, and works the same on US, EU and the combined build. No new
 chord may use Cross or Circle, whichever physical button they are on. The PC columns
 describe the PSY-Z SDL3 keyboard map; PC gamepads use SDL's positional mapping;
