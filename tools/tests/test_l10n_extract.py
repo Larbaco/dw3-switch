@@ -355,3 +355,22 @@ def test_propagate_copies_to_identical_english(tmp_path):
     assert X.propagate([tmp_path]) == 1
     doc = json.loads(p.read_text(encoding="utf-8"))
     assert [e["pt"] for e in doc["entries"]] == ["Igual", "Igual", ""]
+
+
+# --------------------------------------------------------------------------
+# the repository never holds extracted text
+
+def test_no_template_or_pack_is_tracked():
+    """The template and the pack contain the game's text: nothing carrying the template format
+    marker may be tracked, and tmp/ (where the tool writes by default) is git-ignored."""
+    import subprocess
+
+    tracked = subprocess.run(["git", "ls-files", "*.json", "*.bin"], cwd=ROOT, capture_output=True, text=True)
+    if tracked.returncode != 0:
+        pytest.skip("not a git checkout")
+    for name in tracked.stdout.split():
+        p = ROOT / name
+        if p.suffix == ".json" and p.stat().st_size < 5_000_000:
+            head = p.read_text(encoding="utf-8", errors="ignore")[:400]
+            assert X.FORMAT not in head, f"{name} looks like an extracted template"
+    assert X.is_git_ignored(ROOT / "tmp" / "l10n" / "ptbr" / "eu")

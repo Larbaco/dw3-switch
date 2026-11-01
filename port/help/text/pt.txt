@@ -1,0 +1,208 @@
+# DW3NX technical help, Brazilian Portuguese text (P6.30, P6.7).
+# AI-DRAFTED, OWNER REVIEW PENDING (a Brazilian reader). Written from en.txt by an
+# AI agent (docs/LOCALIZATION.md section 6). Not shipped in the build until the C side
+# reads index 5 (phase 3): tools/generate_help_assets.py validates it and embeds it
+# only with --with-pt. Option and group names follow the PT-BR Options lettering
+# (tools/l10n/ptbr_options.py). The game's own words (field menu rows such as OPÇÕES and
+# TELA DE TÍTULO) are the ones the PT-BR pack will use; align them when the pack's
+# glossary exists. Original wording: no text from any external guide.
+# Keys, qualifiers and {btn:..} {path:..} tokens are exactly those of en.txt.
+
+@format = 1
+@book = help
+@lang = pt
+@status = draft, AI-drafted, owner review pending
+
+# --------------------------------------------------- the screen's own words
+help.ui.str.open = Abrir
+help.ui.str.back = Voltar
+help.ui.str.scroll = Rolar
+help.ui.str.pages = Páginas
+help.ui.str.page = Página
+help.ui.str.unverified = (não verificado)
+help.ui.str.draft = (rascunho)
+
+# ---------------------------------------------------------------- setup
+help.setup.title = Instalação
+help.setup.blurb = O que você precisa e o que o primeiro início faz.
+help.setup.p.1 = Você precisa de um Switch com Atmosphere e hbmenu, do .nro do port para a região do seu disco e do seu próprio disco, copiado como um par BIN e CUE. Nenhum arquivo do jogo vem com o port, e um disco de outra região é recusado.
+help.setup.li.1 @us = Disco US (SLUS-01436): dw3-switch.nro. Pasta de runtime {path:root}us/. Coloque o BIN e o CUE em {path:root}.
+help.setup.li.2 @eu = Disco EU (SLES-03936): dw3-switch-eu.nro. Pasta de runtime {path:root}eu/. Coloque o BIN e o CUE em {path:root}eu/.
+help.setup.p.2 = O primeiro início lê o disco, extrai os dados do jogo e mostra uma barra de progresso. Deixe rodar. Os inícios seguintes conferem os arquivos extraídos e não leem o BIN de novo.
+help.setup.warn.1 = Nunca apague nem mova os arquivos de save para forçar uma nova extração. Faça backup da pasta memcard antes de apagar a pasta de uma região.
+help.setup.note.1 = US e EU têm pastas e configurações separadas.
+
+# ------------------------------------------------------------- controls
+help.controls.title = Controles
+help.controls.blurb = Qual botão faz o quê, no jogo e nos menus.
+help.controls.p.1 = O jogo pensa em botões do PlayStation. Por padrão o port dá o layout Nintendo: A confirma e B cancela. Em Opções, Controles, Layout dos botões, escolher PlayStation faz os botões de ação seguirem a posição, como no controle original. A coluna da direita mostra o botão que produz cada botão do PlayStation agora, no layout escolhido.
+help.controls.row.1 = Mover | {btn:dpad}
+help.controls.row.2 = Cross, confirma | {btn:cross}
+help.controls.row.3 = Circle, também confirma em Opções | {btn:circle}
+help.controls.row.4 = Triangle, voltar em Opções | {btn:triangle}
+help.controls.row.5 = Square | {btn:square}
+help.controls.row.6 = Start | {btn:start}
+help.controls.row.7 = Select | {btn:select}
+help.controls.row.8 = L1 e R1 | {btn:l1} e {btn:r1}
+help.controls.row.9 = L2 e R2 | {btn:l2} e {btn:r2}
+help.controls.row.10 = L3 e R3 | {btn:l3} e {btn:r3}
+help.controls.h.1 = Menus
+help.controls.li.1 = No título, {btn:start} mostra as opções: New Game, Opções, Load Game e Sair do jogo. Cima e Baixo movem, {btn:cross} confirma.
+help.controls.li.2 = No campo, {btn:start} abre o menu do jogo. Ele tem uma linha OPÇÕES e, por último, uma linha TELA DE TÍTULO.
+help.controls.li.3 = Durante um filme de abertura, aperte ou segure {btn:start} para pular.
+help.controls.li.4 @pc = Só no PC: F4 liga e desliga a tela cheia, Escape fecha a janela.
+help.controls.note.1 = O que um botão faz depende da cena em que você está. Os atalhos do port têm uma página própria.
+
+# -------------------------------------------------------------- hotkeys
+help.hotkeys.title = Atalhos do port
+help.hotkeys.blurb = Atalhos que o port acrescenta ao jogo.
+help.hotkeys.row.1 = Avanço rápido ligado ou desligado | {btn:r3}
+help.hotkeys.row.2 = Reiniciar o jogo | {chord:restart}
+help.hotkeys.row.3 = Opções a partir do título | {btn:select}
+help.hotkeys.row.4 = Opções em uma batalha | {btn:select}
+help.hotkeys.row.5 = Visão do mapa, na tela Mapa | {btn:square}
+help.hotkeys.row.6 !unv = Visão do mapa, andando no campo | {btn:select}
+help.hotkeys.row.7 = Trocar de parceiro, painel de Equipamento | {btn:l2} e {btn:r2}
+help.hotkeys.h.1 = Reinício
+help.hotkeys.p.1 = O atalho de reinício fica desligado até você ligar Atalho de reinício em Opções. Segure os quatro botões juntos; ele age uma vez por aperto, então solte os botões antes de tentar de novo. Os slots de save são gravados primeiro, e se isso falhar o reinício é cancelado. O progresso desde o último save é perdido. A linha TELA DE TÍTULO do menu de campo faz o mesmo reinício depois de uma pergunta com Sim ou Não.
+help.hotkeys.h.2 = Opções
+help.hotkeys.p.2 = {btn:select} abre Opções a partir do título só enquanto as opções do título aparecem e nenhum botão de ombro ou gatilho está segurado. Em uma batalha só funciona enquanto o menu de comandos espera por você, nunca durante ataques nem nas listas de técnicas e itens. A batalha fica totalmente parada enquanto Opções está aberto.
+help.hotkeys.h.3 = Trocar de parceiro
+help.hotkeys.p.3 = Em Status, Equipamento, enquanto a lista de slots espera, {btn:l2} e {btn:r2} vão para o membro anterior ou seguinte do grupo. Precisa de dois ou mais parceiros.
+
+# ---------------------------------------------------------------- turbo
+help.turbo.title = Turbo
+help.turbo.blurb = Avanço rápido: o que ele acelera e o que não.
+help.turbo.p.1 = Aperte {btn:r3} para ligar ou desligar o turbo. O jogo sempre começa na velocidade normal. Solte o direcional antes de apertar de novo.
+help.turbo.p.2 = A velocidade para a qual ele muda é a linha Avanço rápido em Opções: 2x, 3x, 4x ou OFF. 2x é o padrão. OFF desativa o botão.
+help.turbo.h.1 = Onde funciona
+help.turbo.li.1 = Velocidade total: andar, texto, cenas, transições e animação de batalha no campo e nas batalhas, e o relatório da batalha.
+help.turbo.li.2 = Cerca de 1,5x com o turbo ligado: os menus abertos sobre o campo ou uma batalha, como a lista do menu de campo, Opções e o menu de comandos da batalha.
+help.turbo.li.3 = Sempre na velocidade normal: o título, os filmes, as telas de memory card, o jogo de cartas, as telas Status, Itens e Mapa do menu de campo, e as lojas.
+help.turbo.note.1 = No turbo a música mantém a velocidade normal (Opções, Som, Música turbo: 1x, o padrão). Em Rápido a música acelera junto com o jogo. Os efeitos sonoros disparados pela ação ainda vêm mais rápido. O quanto o jogo realmente acelera depende do que o console aguenta.
+
+# -------------------------------------------------------------- options
+help.options.title = Opções
+help.options.blurb = Cada linha, seus valores e seu padrão.
+help.options.p.1 = Opções é uma lista de grupos: Tela, Som, Jogabilidade, Menus, Controles, Saves, Avançado, Ajuda e Passo a passo (Avançado só em uma versão com o menu de testes). Cima e Baixo escolhem, {btn:cross} ou {btn:circle} abre um grupo ou muda uma linha, {btn:triangle} volta. Uma linha sob a lista explica a linha em foco. As mudanças valem na hora e ficam salvas em port_options.cfg, um arquivo para as duas regiões e todos os perfis. Toda mudança que este port faz no jogo original tem uma linha, e OFF é o original.
+help.options.p.2 = Abra pelo menu do título, pela linha OPÇÕES do menu de campo, ou em uma batalha com {btn:select}.
+help.options.h.1 = Tela
+help.options.li.1 = Tela panorâmica: ON ou OFF, padrão ON. Cerca de 16:9 no campo, nas batalhas e em vários menus. O título e os filmes continuam em 4:3. Mapa em tela cheia: OFF ou ON, padrão OFF. ON deixa o botão {btn:square} na tela Mapa abrir um mapa em tela cheia (veja Visão do mapa e mods). Vale na hora, também durante o jogo, e fica salvo.
+help.options.li.2 = Filtro do mapa: Nearest, Sharp bilinear, Lanczos2, FSR 1 ou Bilinear, padrão FSR 1. O filtro de imagem do mapa em tela cheia; vale na próxima vez que o mapa abrir. O mapa aparece como Nearest por um instante enquanto FSR 1 ou Lanczos2 é montado em segundo plano. {btn:l2} e {btn:r2} na visão mudam o filtro naquela sessão. Pacote de mapa: ON ou OFF, padrão ON. Usa um pacote de ampliação de mapa instalado para o mapa em tela cheia (veja Visão do mapa e mods); OFF mostra o mapa original. Vale na próxima vez que o mapa abrir.
+help.options.li.3 = Rótulo de versão: ON ou OFF, padrão ON. Mostra a versão do port no canto da tela de título. As telas de Opções sempre a mostram.
+help.options.h.2 = Som
+help.options.li.4 = Volume da música e Volume dos efeitos: OFF, ou de 1 a 10, padrão 10, que é a mixagem original. Esquerda e Direita mudam o passo; {btn:cross} sobe um passo e volta de 10 para 0. A tela toca os sons de menu do jogo para você ouvir a mudança. Música turbo: 1x ou Rápido, padrão 1x. Com 1x a música mantém a velocidade normal enquanto o avanço rápido roda; Rápido faz a música acelerar junto com o jogo.
+help.options.h.3 = Jogabilidade
+help.options.li.5 = Avanço rápido: 2x, 3x, 4x ou OFF, padrão 2x. A velocidade para a qual {btn:r3} muda.
+help.options.li.6 = Taxa de encontros: OFF, 0,5x, 1x, 1,5x ou 2x, padrão 1x. Só batalhas aleatórias; as batalhas da história continuam acontecendo.
+help.options.li.7 = Velocidade do texto: Normal, Rápido ou Instantâneo, padrão Normal, que é o original.
+help.options.li.8 = Cursor de batalha: OFF, Comando ou Comando+Téc., padrão OFF. O menu de comandos da batalha, e com Comando+Téc. também a lista de técnicas, abre na sua última escolha. A mudança vale a partir do próximo turno.
+help.options.h.4 = Menus
+help.options.li.9 = Equipar pelos Itens: ON ou OFF, padrão ON. {btn:cross} sobre uma arma, armadura ou acessório no menu de Itens equipa. OFF é o original: nada acontece.
+help.options.li.10 = Equipar fica na lista: ON ou OFF, padrão ON. Depois de equipar você volta à lista de slots na hora, com o cursor mantido. OFF traz de volta as transições longas.
+help.options.li.11 = Mochila inteira: ON ou OFF, padrão ON. {btn:square} mostra a mochila inteira na lista de equipar, e um item pode passar de um Digimon para outro. OFF é o original.
+help.options.li.12 = Usar mantém aberto: ON ou OFF, padrão ON. Depois de usar um item, o passo do parceiro continua aberto para o próximo. OFF volta à lista.
+help.options.li.13 = Trocar de parceiro: ON ou OFF, padrão ON. {btn:l2} e {btn:r2} trocam o Digimon no painel de equipar. OFF é o original.
+help.options.li.14 = Saída rápida de menu: ON ou OFF, padrão ON. Sair das telas do menu de campo (Itens, Mapa, Status e as outras) para o campo pula a dissolução em blocos e volta na hora. O jogo segue exatamente como se a transição tivesse tocado: os relógios e os números aleatórios avançam igual. OFF toca a transição original.
+help.options.h.5 = Controles
+help.options.li.15 = Layout dos botões: PlayStation ou Nintendo, padrão Nintendo. Com Nintendo, A confirma e B volta; o botão secundário (Circle) passa para o X. PlayStation mantém os botões pela posição, como no controle original. Start, Select, os ombros e os analógicos não mudam. Vale na hora e fica salvo. Configurações salvas por uma versão antiga foram passadas uma vez para Nintendo; volte aqui e fica como você deixar. Restaurar padrão traz de volta o layout Nintendo.
+help.options.li.16 = Botões do mapa: abre uma tela com os botões do mapa em tela cheia: abrir, diminuir o zoom, aumentar o zoom, focar na sua área, filtro anterior e seguinte, e abrir pelo campo. Esquerda e Direita escolhem um botão; um botão que outra ação já usa é trocado com ele. Restaurar botões do mapa traz os padrões de volta. Vale na próxima vez que o mapa abrir.
+help.options.li.17 = Atalho de reinício: ON ou OFF, padrão OFF. Ativa o atalho de reinício. Ele veio de Jogabilidade para cá; sua configuração foi mantida.
+help.options.li.18 = Glifos do Switch (só no Switch): ON ou OFF, padrão ON. ON desenha o botão do Switch, A, B, X ou Y, que de fato produz cada aviso, e segue Layout dos botões e Personalizar botões. OFF mantém os ícones de botão do próprio jogo. Vale na hora e fica salvo.
+help.options.h.6 = Saves
+help.options.li.19 = Salvar automático: OFF ou Cada área, padrão OFF. Veja a página Saves.
+help.options.li.20 = Região ao iniciar (só na versão combinada): Perguntar, US ou EU, padrão Perguntar. Escolhe qual jogo inicia. Veio de Jogabilidade para cá.
+help.options.li.21 = Saves comuns (experimental): ON ou OFF, padrão OFF. US e EU dividem um só armazenamento de saves por perfil. Ligar pergunta antes, com o cursor em Não; faça backup dos saves antes de responder Sim. Vale no próximo início e só pode ser mudado no título.
+help.options.h.7 = Avançado
+help.options.li.22 = Varredura de fases: OFF, Executar ou Recomeçar, padrão OFF. Uma ferramenta de teste: no próximo início o jogo percorre todas as fases sozinho, sem ninguém no controle. Executar também continua uma varredura que um travamento interrompeu; Recomeçar esquece o progresso antes e depois mostra Executar. Roda na região que iniciar, e as linhas do log citam essa região. Ligar pergunta antes. Só no título.
+help.options.li.23 = Quadros por fase: de 30 a 3600, padrão 90. Esquerda e Direita mudam de 30 em 30, {btn:l1} e {btn:r1} de 300 em 300. Só no título.
+help.options.note.1 = No campo e nas batalhas, Tela panorâmica fica cinza e avisa que está bloqueada. O mapa é montado quando uma área carrega, então mude no título.
+help.options.note.2 = No disco EU as linhas e os textos aparecem no idioma do jogo.
+help.options.note.3 = No campo e nas batalhas, Saves comuns e as linhas de Avançado também ficam cinza, porque são lidas quando o jogo inicia.
+
+# ---------------------------------------------------------------- saves
+help.saves.title = Saves
+help.saves.blurb = Slots, salvar automático, perfis e importação.
+help.saves.p.1 = Salvar é manual, como no jogo original. O port grava os slots alterados em pontos seguros e quando você aperta HOME ou põe o console para dormir. Ele nunca salva por você, a menos que Salvar automático esteja ligado, e então grava um arquivo próprio.
+help.saves.h.1 = Slots e arquivos
+help.saves.li.1 = Dois slots: save0.bin e save1.bin, mais autosave.bin depois que o Salvar automático rodar.
+help.saves.li.2 = Ficam em {path:memcard}
+help.saves.li.3 @switch !unv = Os saves pertencem ao perfil de usuário do Switch que está jogando. O perfil vem do seletor de perfil do launcher, senão do único usuário do console, senão do seletor do sistema. Se você cancelar o seletor do sistema, o jogo não inicia.
+help.saves.li.4 @switch !unv = Saves de previews antigas (a pasta memcard simples de us ou eu) são copiados para a pasta de cada perfil na primeira vez que esse perfil inicia. Os originais ficam. Saves feitos depois por um perfil não aparecem em outro.
+help.saves.li.5 = US e EU têm saves próprios. As configurações são comuns.
+help.saves.li.6 = Todas as configurações ficam em um arquivo, port_options.cfg em {path:root}, para as duas regiões e todos os perfis.
+help.saves.li.7 = O primeiro início depois da atualização juntou nele os arquivos de configuração antigos de us e eu, começando pela região jogada por último. Os arquivos antigos foram guardados como port_options.cfg.us.bak e .eu.bak na mesma pasta e depois apagados. Para voltar, copie um .bak para a pasta da região como port_options.cfg.
+help.saves.h.2 = Salvar automático
+help.saves.p.2 = Com Salvar automático em Cada área, o primeiro momento calmo em cada nova área do campo grava o jogo em autosave.bin. Ele nunca mexe nos seus dois slots, e só existe um save automático: um jogo novo o substitui na primeira mudança de área.
+help.saves.li.8 = Com um save automático presente, o título mostra Continue, que o carrega na hora, e Load Game, que abre a lista de slots. Sem um, o título não tem Continue.
+help.saves.li.9 = Não roda durante eventos, menus, conversas, escaladas, letreiros de área, transições ou quando uma batalha começa, antes de a história avançar o bastante para o menu de campo abrir, nem em um mapa que a lista de saves não conhece. Uma batalha que volta à mesma área não conta.
+help.saves.li.10 = Uma gravação que falha vai para o log e o jogo segue com o save automático antigo. Ainda não há mensagem na tela.
+help.saves.h.3 = Importar da outra região
+help.saves.p.3 !unv = Se uma região não tem save próprio, a versão copia uma vez o save da outra região, convertido, para o seu slot. Nunca altera o original, só roda quando a região não tem nenhum arquivo de save e não roda de novo se você apagar a cópia. Os saves feitos depois ficam na própria região. Um save do capítulo extra da EU não é importado para a US.
+help.saves.h.4 = Backups
+help.saves.p.4 = Copie a pasta memcard do cartão SD para guardar um backup. Faça isso antes de apagar a pasta de uma região.
+
+# --------------------------------------------------------- widescreen
+help.widescreen.title = Panorâmica
+help.widescreen.blurb = A imagem larga e onde ela vale.
+help.widescreen.p.1 = Tela panorâmica vem em ON por padrão. As cenas compatíveis, o campo, as batalhas e vários menus, usam áreas laterais largas para chegar a cerca de 16:9. A tela de título e os filmes continuam em 4:3. A imagem de 240 linhas do disco EU segue a mesma regra de proporção.
+help.widescreen.p.2 = É uma chave ao vivo em Opções, mas fica bloqueada enquanto um jogo roda, porque os mapas são montados quando uma área carrega. Mude no título.
+help.widescreen.note.1 = A visão do mapa precisa de Tela panorâmica em ON.
+
+# ------------------------------------------------------------ map & mods
+help.map.title = Mapa e mods
+help.map.blurb = O mapa em tela cheia e o pacote opcional de mapa.
+help.map.h.1 = Visão do mapa
+help.map.p.1 !unv = Abra o menu de campo com {btn:start}, escolha Mapa e aperte {btn:square}. O mapa preenche a imagem larga e mostra as cidades e áreas que você já revelou. Tela panorâmica precisa estar em ON, e também Opções, Tela, Mapa em tela cheia.
+help.map.li.1 = {btn:dpad} move o cursor, que começa na sua área atual. Sobre um local aparece a caixa de nome do jogo.
+help.map.li.2 = O analógico direito dá zoom suave; {btn:l1} e {btn:r1} dão zoom em passos.
+help.map.li.3 = {btn:l2} e {btn:r2} trocam o filtro. FSR 1 é o padrão (Opções, Tela, Filtro do mapa). O mapa aparece como Nearest enquanto FSR 1 e Lanczos2 são montados em segundo plano, e a tela diz BUILDING nesse meio-tempo.
+help.map.li.4 = {btn:circle} esconde o texto e a caixa de nome. {btn:triangle} fecha a visão. {btn:r3} não faz nada aqui.
+help.map.li.5 !unv = No campo, andando, {btn:select} abre esta visão na hora e deixa o campo parado, a partir do ponto 4 da história. Tela panorâmica e Mapa em tela cheia precisam estar em ON. Triangle volta ao campo.
+help.map.h.2 = Pacote de ampliação do mapa
+help.map.p.2 !unv = Um pacote troca a imagem do mapa por outra mais nítida. Nenhum vem com o port, porque é feito do seu próprio disco. Uma ferramenta de PC no repositório (tools/mods/extract_map_assets.py) extrai o mapa base, roda um ampliador que você instala e grava uma pasta que você copia para {path:root}mods/<pacote>/ no cartão SD.
+help.map.li.6 !unv = Não há linha em Opções. O pacote é usado sempre que um pacote válido para a sua região estiver na pasta mods. A visão então mostra MOD 4X.
+help.map.li.7 !unv = Um arquivo de tamanho errado, ou um pacote que falta, faz a visão voltar ao mapa original. O jogo nunca precisa de um pacote para iniciar.
+help.map.li.8 !unv = Para voltar ao mapa original, renomeie ou remova a pasta do pacote, ou ponha Opções, Tela, Pacote de mapa em OFF.
+help.map.li.9 !unv = Com um pacote, {btn:l2} e {btn:r2} só mudam o filtro, nítido ou suave.
+
+# ---------------------------------------------------------- logs & bugs
+help.logs.title = Logs e erros
+help.logs.blurb = Onde ficam os logs e o que enviar.
+help.logs.h.1 = Logs
+help.logs.p.1 = O port grava dw3.log em {path:root}. Ele guarda as últimas cinco execuções: dw3.log é o mais novo, depois dw3.1.log até dw3.4.log. Cada início grava uma linha dw3-log: rotated que diz se o log mais antigo foi renomeado, copiado ou perdido.
+help.logs.p.2 = Os recursos registram o que decidiram, uma vez por evento, com um prefixo como dw3-port-options: ou dw3-map:, então um relato com os logs costuma mostrar o que aconteceu.
+help.logs.h.2 = Depois de um travamento
+help.logs.p.3 = Um travamento grava crash_report.txt ao lado dos logs. No início seguinte um painel diz The last run crashed. e mostra a versão, o motivo e o caminho do relatório. Ele espera até 60 segundos, ou até você apertar A, B ou Mais, e aparece uma vez por travamento. O relatório é então movido para crash_report_prev.txt.
+help.logs.warn.1 = Só um relatório anterior é guardado. Se o jogo travar de novo, copie crash_report.txt, crash_report_prev.txt e todos os dw3*.log do cartão SD primeiro.
+help.logs.h.3 = Relatar um erro
+help.logs.li.1 = Abra uma issue no rastreador do projeto no GitHub (Larbaco/dw3-switch). Procure antes e acrescente a uma issue existente se for a mesma.
+help.logs.li.2 = Diga a versão ({build:version}), a região ({build:region}), o console e o modo, passos numerados, o que você esperava e o que aconteceu, e com que frequência.
+help.logs.li.3 = Anexe o conjunto completo de logs e qualquer relatório de travamento. Seja específico: o mapa, o menu, o Digimon, a técnica.
+help.logs.warn.2 = Nunca anexe uma imagem de disco, arquivos de BIOS ou dados extraídos do jogo.
+
+# ------------------------------------------------------------------ faq
+help.faq.title = Perguntas
+help.faq.blurb = Respostas curtas para dúvidas comuns.
+help.faq.q.1 = Tela panorâmica está cinza no jogo.
+help.faq.a.1 = Ela fica bloqueada enquanto um jogo roda. Volte ao título (menu de campo, última linha) e mude lá.
+help.faq.q.2 = {btn:r3} não acelera nada.
+help.faq.a.2 = Confira se Avanço rápido não está em OFF. O turbo só funciona no campo, nas batalhas e no relatório da batalha; o título, os filmes, o jogo de cartas e as telas Status, Itens e Mapa ficam na velocidade normal.
+help.faq.q.3 = O atalho de reinício não faz nada.
+help.faq.a.3 = Atalho de reinício vem em OFF por padrão. Ligue em Opções, Controles. Solte os botões antes de tentar de novo.
+help.faq.q.4 = {btn:select} não abre Opções.
+help.faq.a.4 = No título as opções precisam estar aparecendo, e em uma batalha o menu de comandos precisa estar esperando. É ignorado enquanto um botão de ombro ou gatilho estiver segurado.
+help.faq.q.5 = O título mostra Continue e Load Game.
+help.faq.a.5 = Continue carrega o save automático na hora. Load Game abre a lista de slots. O título só mostra Continue quando existe um save automático.
+help.faq.q.6 = O save automático não gravou.
+help.faq.a.6 = Ele grava no primeiro momento calmo de uma área nova. Espera eventos, menus e batalhas, não roda no começo da história, e uma gravação que falha só vai para o log. Confira Opções, Saves.
+help.faq.q.7 = Meus saves da outra região sumiram.
+help.faq.a.7 = As duas regiões têm saves separados. A única cópia é uma importação única para uma região que não tem nenhum save.
+help.faq.q.8 = O jogo fechou quando cancelei a escolha de perfil.
+help.faq.a.8 @switch !unv = É de propósito: o jogo só inicia com um perfil escolhido.
+help.faq.q.9 = Sair do jogo não saiu.
+help.faq.a.9 = Sair grava seus slots primeiro. Se isso falhar, a saída é cancelada para não perder progresso. Tente de novo e envie o log se repetir.
+help.faq.q.10 = O port faz overclock no console?
+help.faq.a.10 = Não. Ele deixa os clocks da CPU e da GPU onde o console os pôs.
+help.faq.q.11 = Onde estão os problemas conhecidos?
+help.faq.a.11 = Eles mudam a cada preview, então não são copiados aqui. Leia as notas da versão e as issues abertas na página do projeto no GitHub.
