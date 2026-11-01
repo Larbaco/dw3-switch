@@ -202,13 +202,32 @@ int main(void) {
             /* P9.9 slice 3: the first group may have to compose the shared
              * layer; every other group is made over it (never a raster). */
             if (g > 0 && !(d.based || d.cached)) fail("group open was a full raster", lang, g, v);
-            for (int c = 0; c < grp->nrows && (lang == DW3_TITLE_LANG_EN || lang == DW3_TITLE_LANG_DE); ++c)
+            /* a cursor past the visible rows needs the list scrolled: the Display group has eight rows (P6.11) */
+            for (int c = 0; c < grp->nrows && c < DW3_OPTLIST_VISIBLE && (lang == DW3_TITLE_LANG_EN || lang == DW3_TITLE_LANG_DE); ++c)
                 for (int k = 0; k < grp->nrows; ++k)
                     for (int n = 0; n <= reg_max(grp->rows[k]); ++n) {
                         v[k] = reg_value(grp->rows[k], n);
                         step(lang, c, v, 1, &d);
                         steps++;
                         if (d.full) fail("unexpected full upload", lang, c, v);
+                    }
+        }
+
+        /* P6.11: the Display group scrolls (eight rows, six visible): the last two rows on the scrolled
+         * page, every value of every row, the cursor on each of them. */
+        {
+            const Dw3OptGroup *grp = &dw3_optgroups[DW3_OPTGRP_DISPLAY];
+            const int scroll = dw3_optlist_scroll_for(0, grp->nrows - 1, grp->nrows);
+
+            list_page(DW3_OPTGRP_DISPLAY, scroll, 0);
+            for (int k = 0; k < DW3_TITLE_OPTION_ROWS; ++k) v[k] = 0;
+            step(lang, grp->nrows - 1, v, 1, &d);
+            for (int c = scroll; c < grp->nrows && (lang == DW3_TITLE_LANG_EN || lang == DW3_TITLE_LANG_DE); ++c)
+                for (int k = 0; k < grp->nrows; ++k)
+                    for (int n = 0; n <= reg_max(grp->rows[k]); ++n) {
+                        v[k] = reg_value(grp->rows[k], n);
+                        step(lang, c, v, 1, &d);
+                        steps++;
                     }
         }
 
@@ -249,7 +268,7 @@ int main(void) {
         for (int i = 0; i < 60; ++i) {
             const int g = (int)rnd(4);
             const Dw3OptGroup *grp = &dw3_optgroups[g];
-            const int c = (int)rnd((unsigned)grp->nrows);
+            const int c = (int)rnd((unsigned)(grp->nrows < DW3_OPTLIST_VISIBLE ? grp->nrows : DW3_OPTLIST_VISIBLE));
             list_page(g, 0, 0);
             for (int k = 0; k < grp->nrows; ++k)
                 v[k] = reg_value(grp->rows[k], (int)rnd((unsigned)reg_max(grp->rows[k]) + 1));
