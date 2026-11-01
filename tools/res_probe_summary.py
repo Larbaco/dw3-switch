@@ -141,6 +141,7 @@ def main(argv: list[str]) -> int:
               f"{int(statistics.median(x['mesh_tris'] for x in w)):>12}")
     print()
     print("clamp suggestion (battle windows at speed 1x):")
+    maxes: dict[str, tuple[int, bool]] = {}
     for mode in sorted({k[0] for k in groups}):
         allowed = 1
         parts = []
@@ -154,6 +155,14 @@ def main(argv: list[str]) -> int:
             if v == "ok":
                 allowed = res
         print(f"  {mode:9} max {allowed}x   " + "; ".join(parts))
+        maxes[mode] = (allowed, any("no data" not in p for p in parts))
+    print()
+    print("clamp table (P6.11): copy these over the defines in")
+    print("platforms/switch/psyz_backend/nx_res_clamp.h (a mode with no battle data keeps 2):")
+    for mode, name in (("handheld", "HANDHELD"), ("docked", "DOCKED")):
+        allowed, have = maxes.get(mode, (2, False))
+        note = "" if have else "   /* no data: kept at the default */"
+        print(f"#define DW3_NX_RES_MAX_{name} {allowed if have else 2}{note}")
     print()
     print("turbo (battle windows at speed > 1): game fps is the GPU's throughput")
     for key in sorted(groups):
