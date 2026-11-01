@@ -42,7 +42,7 @@ int main(void) {
         return fail("re-open");
     }
 
-    if (dw3_port_options_count() != 29) {
+    if (dw3_port_options_count() != 30) {
         return fail("option count");
     }
     if (dw3_port_options_level(DW3_PORT_OPT_BATTLE_MENU) != 0 ||
@@ -171,7 +171,7 @@ int main(void) {
      * every registry row is in exactly one group, a long list scrolls. */
     {
         int ids[DW3_OPTGRP_COUNT];
-        int seen[29] = {0};
+        int seen[30] = {0};
         int g, k;
 
         /* D1: Display, Sound, Gameplay, Menus, Controls, Saves, Cheats, Advanced,
@@ -195,7 +195,7 @@ int main(void) {
                 seen[dw3_optgroups[g].rows[k]]++;
             }
         }
-        for (k = 0; k < 29; k++) {
+        for (k = 0; k < 30; k++) {
             if (k == DW3_PORT_OPT_REGION) continue; /* combined image only */
             if (k == DW3_PORT_OPT_SWITCH_GLYPHS && !DW3_OPT_GLYPHS_ROW) continue; /* Switch only */
             if (seen[k] != 1) {
@@ -224,13 +224,14 @@ int main(void) {
     /* P6.32 phase 4: the Full-screen map row is the second row of the Display
      * group, off by default, a plain switch (Confirm toggles), not locked in game.
      * D1 adds Map mod pack and Version label after it (both default ON). */
-    if (dw3_optgroups[DW3_OPTGRP_DISPLAY].nrows != 5 ||
+    if (dw3_optgroups[DW3_OPTGRP_DISPLAY].nrows != 6 ||
         dw3_optgroups[DW3_OPTGRP_DISPLAY].rows[0] != 0 /* Widescreen */ ||
         dw3_optgroups[DW3_OPTGRP_DISPLAY].rows[1] != DW3_PORT_OPT_MAP_SCREEN ||
         dw3_optgroups[DW3_OPTGRP_DISPLAY].rows[2] != DW3_PORT_OPT_MAP_SCALER ||
         dw3_optgroups[DW3_OPTGRP_DISPLAY].rows[3] != DW3_PORT_OPT_MAP_MOD ||
-        dw3_optgroups[DW3_OPTGRP_DISPLAY].rows[4] != DW3_PORT_OPT_SHOW_VERSION) {
-        return fail("Display group is Widescreen, Map screen, Map scaler, Map mod pack, Version label");
+        dw3_optgroups[DW3_OPTGRP_DISPLAY].rows[4] != DW3_PORT_OPT_SHOW_VERSION ||
+        dw3_optgroups[DW3_OPTGRP_DISPLAY].rows[5] != DW3_PORT_OPT_TEXT_LANGUAGE) {
+        return fail("Display group is Widescreen, Map screen, Map scaler, Map mod pack, Version label, Text language");
     }
     /* D5: the Map scaler row is the third of Display, FSR 1 by default (owner
      * 2026-10-31), a stepped row of five values that is not locked in game. */

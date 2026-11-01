@@ -198,7 +198,7 @@ int dw3_pc_title_overlay_options_cursor(void) { return option_cursor; }
 int dw3_pc_title_overlay_options_value(int row) {
     return row>=0&&row<DW3_TITLE_OPTION_ROWS?option_values[row]:0;
 }
-enum { OPT_LOCK_ROWS = 29 }; /* registry rows 0..28: the lock mask's width (D1, patch 0200, D5) */
+enum { OPT_LOCK_ROWS = 30 }; /* registry rows 0..29: the lock mask's width (D1, patch 0200, D5, P6.7); bit 30 is the Cheats entry */
 void dw3_pc_title_overlay_set_options_locked(unsigned mask) {
     mask&=((1u<<OPT_LOCK_ROWS)-1u)|DW3_TITLE_LOCK_CHEATS;
     if(mask!=options_locked){options_locked=mask;options_layout++;options_generation++;}
@@ -207,7 +207,8 @@ unsigned dw3_pc_title_overlay_options_locked(void) { return options_locked; }
 unsigned dw3_pc_title_overlay_options_layout(void) { return options_layout; }
 int dw3_pc_title_overlay_options_desc_follows_value(int page) {
     int group,scroll;
-    return dw3_optlist_decode(page,&group,&scroll)&&group==DW3_OPTGRP_CUSTOM;
+    /* Customize: the prompt line follows the row's value. Display: P6.7 Text language says "no text pack" in its value 2. */
+    return dw3_optlist_decode(page,&group,&scroll)&&(group==DW3_OPTGRP_CUSTOM||group==DW3_OPTGRP_DISPLAY);
 }
 int dw3_pc_title_overlay_options_dynamic_labels(int page) {
 #ifdef DW3_CHEATS
@@ -337,7 +338,7 @@ static int row_kind(int row) {
            row == 9 ? ROW_LAYOUT : row == 10 ? ROW_REGION :
            row == 11 ? ROW_CUSTOMIZE : row == 12 ? ROW_RESET :
            row == 13 ? ROW_TURBO_MUSIC : row == 14 ? ROW_GLYPHS :
-           row == 15 ? ROW_MAP_SCREEN : row >= 16 && row <= 28 ? ROW_EXTRA : ROW_SWITCH;
+           row == 15 ? ROW_MAP_SCREEN : row >= 16 && row <= 29 ? ROW_EXTRA : ROW_SWITCH;
 }
 /* P6.31: the Auto-save row's lettering, in the language of the disc (en, fr,
  * de, es, it: the DW3_TITLE_LANG_* order). OFF is the Options screen's word. */
@@ -420,16 +421,18 @@ static const MapscrWords *mapscr_lang(void) {
  * three message lines, the Select / Minus values). */
 #define XW(k,l) {WORD(opt_row_x_##k##_##l),WORD(opt_desc_x_##k##_##l)}
 #define EXTRA_WORDS(l) {{XW(eq,l),XW(st,l),XW(bg,l),XW(us,l),XW(ps,l),XW(vr,l),XW(mm,l),XW(ss,l), \
-    XW(sw,l),XW(sf,l),XW(mb,l),XW(mx,l),XW(sc,l)}, WORD(opt_val_sw_run_##l),WORD(opt_val_sw_over_##l), \
+    XW(sw,l),XW(sf,l),XW(mb,l),XW(mx,l),XW(sc,l),XW(tl,l)}, WORD(opt_val_sw_run_##l),WORD(opt_val_sw_over_##l), \
     {WORD(opt_row_mb0_##l),WORD(opt_row_mb1_##l),WORD(opt_row_mb2_##l),WORD(opt_row_mb3_##l), \
      WORD(opt_row_mb4_##l),WORD(opt_row_mb5_##l),WORD(opt_row_mb6_##l),WORD(opt_row_mb7_##l)}, \
-    {WORD(opt_desc_mb_bind_##l),WORD(opt_desc_mb_field_##l),WORD(opt_desc_mb_reset_##l)}}
+    {WORD(opt_desc_mb_bind_##l),WORD(opt_desc_mb_field_##l),WORD(opt_desc_mb_reset_##l)}, \
+    WORD(opt_desc_tl_nopack_##l),WORD(opt_val_tl_orig_##l)}
 typedef struct ExtraWords { Word row,desc; } ExtraWords;
 typedef struct ExtraSet {
-    ExtraWords reg[13];       /* registry rows 16..28 (27 = Instant menu exit, 28 = D5 Map scaler) */
+    ExtraWords reg[14];       /* registry rows 16..29 (27 = Instant menu exit, 28 = D5 Map scaler, 29 = P6.7 Text language) */
     Word sweep_run,sweep_over;
     Word mb_row[8];
     Word mb_desc[3];          /* bind, field, reset */
+    Word tl_nopack,tl_orig;   /* P6.7 Text language: the message line with no pack, the Original value */
 } ExtraSet;
 static const ExtraSet extra_words[5]={EXTRA_WORDS(en),EXTRA_WORDS(fr),EXTRA_WORDS(de),
                                       EXTRA_WORDS(es),EXTRA_WORDS(it)};
@@ -820,6 +823,13 @@ static const Word *list_value(const ListWords *t,int reg,int v,int *dim) {
             if(v>4)v=4;
             return &v_scaler[v];
         }
+        if(reg==29) {       /* P6.7 Text language: Original, Português (BR); 2 = Original with no usable pack (greyed) */
+            static const Word v_pt=WORD(opt_val_tl_pt);
+            if(v>2)v=2;
+            if(v==1)return &v_pt;
+            *dim=v==2?2:0;
+            return &extra_lang()->tl_orig;
+        }
         if(v>1)v=1;
         *dim=v==0;
         return &v_onoff[v];
@@ -991,7 +1001,8 @@ static void options_list_screen(int group,int scroll) {
 #endif
             d=cus?(option_values[cursor]>=10?&custom_lang()->promptdesc:&custom_lang()->desc)
               :mbt?&extra_lang()->mb_desc[reg==DW3_MAPBTN_RESET?2:reg==6?1:0]
-              :(locked>>reg)&1u?lock_lang():row_kind(reg)==ROW_EXTRA?&extra_lang()->reg[reg-16].desc
+              :(locked>>reg)&1u?lock_lang():reg==29&&option_values[cursor]==2?&extra_lang()->tl_nopack
+              :row_kind(reg)==ROW_EXTRA?&extra_lang()->reg[reg-16].desc
               :row_kind(reg)==ROW_CUSTOMIZE?&custom_lang()->rowdesc
               :row_kind(reg)==ROW_RESET?&custom_lang()->resetdesc
               :row_kind(reg)==ROW_AUTOSAVE?&autosave_lang()->desc

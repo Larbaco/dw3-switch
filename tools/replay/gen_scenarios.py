@@ -907,6 +907,30 @@ def options_display(version, phase):
     return r
 
 
+def l10n_row(version, with_pack):
+    """P6.7 phase 2: Options > Display, Down x5 to Text language (the sixth row). With a pack:
+    `row-original` (Original), Right (Portugues (BR), `row-ptbr`), Left (`row-back`). With no
+    pack: `row-greyed` (Original greyed, the message line says why) and Right, which is
+    refused (`row-refused`)."""
+    r = Rec(f"{version.upper()}: P6.7 Display > Text language, {'pack installed' if with_pack else 'no pack'}")
+    m = _to_options(r, version)
+    f = _group(r, m + 70, GRP_DISPLAY, GRP_DISPLAY)
+    f = _keys(r, f + 20, *([DOWN] * 5))
+    if with_pack:
+        r.shot(f + 40, "row-original")
+        f = _keys(r, f + 60, RIGHT)
+        r.shot(f + 40, "row-ptbr")
+        f = _keys(r, f + 60, LEFT)
+        r.shot(f + 40, "row-back")
+    else:
+        r.shot(f + 40, "row-greyed")
+        f = _keys(r, f + 60, RIGHT)
+        r.shot(f + 40, "row-refused")
+    f = _keys(r, f + 60, TRIANGLE, TRIANGLE)
+    r.end(f + 40)
+    return r
+
+
 def defaults_migrate(version, phase):
     """D2 (docs/OPTIONS_REORG.md 6.1): the seeded file is one an older build wrote
     (button_layout=playstation, switch_glyphs=0, no defaults_gen), so the boot migrates it.
@@ -3921,6 +3945,9 @@ def main(out):
                 options_menus(v, phase).text(True))
             (out / f"{v}-options-display-p{phase}.rec").write_text(
                 options_display(v, phase).text(True))
+        if v == "eu":  # the pack is EU-only until phase 5; both regions show the greyed row
+            (out / f"{v}-l10n-row.rec").write_text(l10n_row(v, True).text(True))
+        (out / f"{v}-l10n-row-nopack.rec").write_text(l10n_row(v, False).text(True))
         for phase in (1, 2):
             (out / f"{v}-defaults-migrate-p{phase}.rec").write_text(
                 defaults_migrate(v, phase).text(True))

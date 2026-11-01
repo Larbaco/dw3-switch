@@ -128,6 +128,7 @@ remove no save, cfg or store data. Keep the backup from Before you start anyway.
 | O. Options reorganization (D1) | US + EU ordinary (O8: combined) | D1 step 1: the new tree, Menus, Display rows, Shared saves, Advanced, Map buttons, moved rows |
 | P. Defaults generation and Map scaler (D2, D5) | US + EU ordinary | D2 migration, Nintendo and glyphs defaults, Reset to default; D5 Map scaler row and FSR 1 default |
 | Q. One global options file (D3) | US + EU ordinary (Q5: combined) | D3 migration of the old `us/` and `eu/` cfgs (Q1 is ⚠ destructive), one file for both regions, fresh install, Region row, stage sweep region, Help text |
+| R. Text language (P6.7 phases 1 and 2) | EU ordinary or the combined NRO (EU data) | TL1 to TL8 (LOCALIZATION L1 to L8): the Display > Text language row, the synthetic text pack, the glyph proof, the windows with the pack's text |
 | G. Everything else | mixed | P5.4 forced crash, P10.2, P4.3, **P5.5 stage sweep (G10)**, **[LAUNCHER]**, **[COMBINED]** (G9), **BUG-1 exit from Sphaira (G13)** |
 
 **[GATE]** (New Game to the first boss, US and EU) is normal play, not a
@@ -613,6 +614,31 @@ texts are machine drafts. Every row names the `dw3.log` lines that prove it.
 | Q5 | Combined `.nro` only: Options > Saves > Region at start, set US, then EU; quit; look at the file | The row still works and shares the file with every other key: `region_default` and `last_region` sit in it beside the options | `dw3.log`, `port_options.cfg` | `dw3-options: region_default us saved to <path>/port_options.cfg (takes effect at the next start)`; next boot `region_default eu read from <path>/port_options.cfg`; the file keeps `last_region=` |
 | Q6 | Help, **Saves** and **Options explained** pages (EN, one EU language) | The Saves page says the settings are shared and in one file, and tells how the first start merged the old `us` and `eu` files and where the `.bak` copies are; Options explained says one file for both regions and every profile; the Stage sweep line says it runs in whichever region starts | photo of each page | `dw3-pages: text help <lang> loaded (...)`, `page saves`, `page options` |
 
+## Session R: Text language (P6.7 phases 1 and 2)
+
+Source: [LOCALIZATION](LOCALIZATION.md) (sections 3 and 8; its rows L1 to L8 are TL1 to TL8 here, because the
+plan already uses L1 to L29 for the button layout), [PORT_OPTIONS](PORT_OPTIONS.md#text-language-p67). An **EU** NRO (or
+the combined one with the EU data) of a build that carries P6.7. No translation is needed: the packs are made on
+the PC from your own EU disc data by `tools/l10n/build_pack.py` and copied to the SD card, to
+`sdmc:/switch/dw3/eu/l10n/ptbr/` (`--out <SD>/switch/dw3/eu/l10n/ptbr`). They hold the game's text transformed
+(`upper`: every string upper-cased, with ã õ ç added; `proof`: the accent proof; `stress`: the longest PT-like
+lines; `partial`: a third of the strings left in English). **They derive from the disc's text: keep them off the
+internet and out of git.** The packs are new files in a new folder (nothing of yours is overwritten; a pack
+replaced by the next one is a copy the PC made). The choice is the normal cfg key `text_language`, written when you change
+the row; TL8 ends with it back on Original. `DW3_L10N_SHOW_KEYS=1` is a PC aid (no
+environment on the Switch).
+
+| # | Action | Expect | If it fails, send | Ticks |
+|---|---|---|---|---|
+| TL1 | EU build, **no pack** on the SD (no `l10n/` folder). Options, Display, move down to **Text language** (the last row), press Right | The row exists and reads **Original**, greyed; the message line says "No text pack found: the game text stays original."; Right changes nothing | `dw3.log`, photo | `dw3-l10n: off reason=no_pack` at boot; `dw3-port-options: text language ptbr refused: no usable text pack (no_pack)` |
+| TL2 | Build the `upper` pack on the PC (`build_pack.py --synthetic upper --region eu --out <SD>/switch/dw3/eu/l10n/ptbr`), restart. Options, Display, Text language, Right | The row is no longer greyed and steps to **Português (BR)**; the message line says it needs a pack | `dw3.log` | `dw3-l10n: pack ok region=eu files=50 strings=13084 translated=N fallback=M src=sha256:...`; `dw3-l10n: pack checked in N ms`; after Right: `dw3-l10n: option text_language=ptbr region=eu` and `override id=` lines |
+| TL3 | Build the `proof` pack (same command, `--synthetic proof`), set Português (BR), back to the title, **Load Game**, choose a slot or wait on the "Choose MEMORY CARD slot" and "File cannot be found" windows | The two windows show the 26 accented letters (13 small, 13 capital) and `¡ ¿ °`, all legible; the tops of Ã Õ Ê Ô are not clipped. Look handheld and docked | photo of each, handheld and docked | `dw3-l10n: glyph proof n=29` |
+| TL4 | `upper` pack, Português (BR): New Game, name entry, the first field dialogue | The text is the upper-cased English with ã õ ç; no letter clipped; at most 3 lines per page | `dw3.log`, photo | `dw3-l10n: override id=` lines, no `fallback` line for the files visited |
+| TL5 | Field menu (start from the first field with the menu): Items, Techniques, Status, Map | Names and descriptions come from the pack and fit their windows | photo of each | `dw3-l10n: override` for ITMNAM, SKLNAM, STATUS in the first lines |
+| TL6 | A battle: the command menu, a technique, the damage text, the report; then quit the game | Everything fits, nothing overlaps | photo; `dw3.log` | `dw3-l10n: heap high water text=N (the same files in English M, +K bytes; ...)` at exit |
+| TL7 | A shop, the inn, the Digimon Lab, the gym, the card game | The menus fit | photo of each | same |
+| TL8 | Build the `partial` pack, set Português (BR); then switch the row back to **Original** (title) and play on | A third of the lines are English; Original gives English at the next loads; saves are unaffected | `dw3.log` | `dw3-l10n: fallback key=` lines and `fallback total=`; `dw3-l10n: restored 50 file(s) to the original text`, `dw3-l10n: off reason=option_original` |
+
 ## What to send back
 
 Send the whole `sdmc:/switch/dw3/*.log` set (the last 5 runs are kept, so no
@@ -627,6 +653,7 @@ it from Pending OLED checks.
 
 | Item | Lines in `dw3*.log` |
 |---|---|
+| TL1 to TL8 (Session R) | `dw3-l10n: off reason=no_pack\|hash_mismatch\|short_file\|bad_pack\|region_mismatch\|option_original`, `dw3-l10n: pack ok region=eu files=50 strings=N translated=N fallback=N src=sha256:...`, `option text_language=ptbr region=eu`, `override id=N stem=S bytes=N lba=0x1000000 sectors=N`, `fallback key=...`, `fallback total=N of N`, `glyph proof n=29`, `restored N file(s)`, `heap high water text=N` |
 | A1 | `dw3-run: started <date>`, `dw3: version=`, `crash report ids:` (build id), `runtime version=<region>` |
 | Log rotation | Owner check: after two launches `sdmc:/switch/dw3/` has `dw3.log` and `dw3.1.log` with different `dw3-run: started` times. Line `dw3-log: rotated (...)` in the new `dw3.log` shows each step (`r` renamed, `c` copied, `-` nothing/failed) with its rc and `kept N previous run(s)`; if dw3.log could not be moved aside the new run is appended, never truncated. **PASSED**: owner OLED, 2026-10-28, preview.45: keeps `dw3.log` to `dw3.4.log`, rc=0x0 |
 | A7, A8 | `dw3_game_main returned 0; shutting down (quit path: title Quit game or HOME / applet exit)` |

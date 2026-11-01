@@ -2262,7 +2262,7 @@ overlay's page codes did not change, so the order table is the only thing that m
 
 | # | Group | Rows (registry index) | Rows on screen: PC US plain / Switch combined |
 |---|---|---|---|
-| 1 | Display | Widescreen (0), Full-screen map (15), **Map scaler (28, D5)**, Map mod pack (22), Version label (21) | 5 / 5 |
+| 1 | Display | Widescreen (0), Full-screen map (15), **Map scaler (28, D5)**, Map mod pack (22), Version label (21), **Text language (29, P6.7)** | 6 / 6 |
 | 2 | Sound | Music volume (3), SFX volume (4), Turbo music (13) | 3 / 3 |
 | 3 | Gameplay | Fast-forward (1), Encounter rate (5), Text speed (6), Battle cursor (7) | 4 / 4 |
 | 4 | Menus | Equip from Items (16), Equip stays on list (17), Whole bag (18), Use item stays (19), Partner switch (20), Instant menu exit (27) | 6 / 6 |
@@ -2402,6 +2402,40 @@ on Nearest at once when the wanted scaler is a CPU one (FSR 1, Lanczos2) and the
 [P6.32](P6.32_MAP_ZOOM.md#d5-fsr-1-is-the-default-scaler-and-a-row-for-it). A bad word falls back to `fsr1` with
 `dw3-options: map_scaler=<v> is not valid; using default fsr1`. Lettering in the five languages
 (`EXTRA_ROWS['sc']`, `SCALER_VALUES`): the five values are algorithm names, the same in every language.
+
+## Text language (P6.7)
+
+Registry row **29**, the sixth and last row of Display (a one-line move in `dw3_optgroups` of
+`port_options_groups.h`, the owner's choice pending), key `text_language`, a **word**: `original` (default) or
+`ptbr`. Left / Right and Confirm step Original and Português (BR). It picks the language of the **game's text**:
+Original is the disc's own text, Português (BR) reads a **local text pack** built on the owner's PC
+(`tools/l10n/build_pack.py`, `<runtime>/l10n/ptbr/`, [LOCALIZATION](LOCALIZATION.md)) and never shipped. The EU
+country select is unchanged: the pack overlays the English slot, so the title banks, the sprites and the movies
+that follow `LANGUAGE` keep working. (The row's label and message lines are in the five languages; the values are
+Original and Português (BR), not one per EU language.)
+
+- **No usable pack** (none installed, built from another disc dump, a file short or the wrong region): the
+  value reads **Original, greyed**, the message line says "No text pack found: the game text stays original.",
+  and Right is refused with `dw3-port-options: text language ptbr refused: no usable text pack (<reason>)`.
+  A file that says `ptbr` while the pack is missing keeps its word (the row is pinned for the run, like a `DW3_*`
+  pin) and plays English; the next change of the row writes the user's new choice.
+- **Applying**: the loader repoints the 50 text file ids (`port/l10n/`), logs `dw3-l10n: option
+  text_language=ptbr region=eu`, `override id=...`. At the **title** the cached text files are dropped, so the next
+  load reads the new text. **In game** the files already in the cache keep their language until the game loads them
+  again (a speech task or a talk box may hold the table, so the port does not free it): dialogue and menus refresh as areas and
+  screens load. Saves are unaffected, except that a partner's name is copied into the save when a new game starts
+  (`initNewGameData`), in the language of that moment.
+- **`DW3_LANG=ptbr|original`** pins it for one run (never written); **`DW3_L10N_SHOW_KEYS=1`** reads the pack's key
+  variants (`build_pack.py --keys`): every string starts with `(KEY) `, to find a line seen in the game.
+- A bad word falls back to `original` with `dw3-options: text_language=<v> is not valid; using default original`.
+  Lettering: `EXTRA_ROWS['tl']`, `TEXTLANG_NOPACK`, `TEXTLANG_ORIGINAL`, `TEXTLANG_PT` in
+  `tools/generate_pc_title_lettering.py`; PT-BR drafts in `tools/l10n/ptbr_options.py`.
+- Registry rows now run 0 to 29: the lock mask has room for **no further row** (bit 30 is the Cheats entry, bit 31 the
+  overlay's in-game mark). The next row needs the mask widened (`OPT_LOCK_ROWS`, `DW3_PORT_OPTIONS_LOCK_CHEATS`).
+
+Tests: `tools/tests/test_l10n_loader.py` (the loader on synthetic packs), `test_l10n_pack.py` (the builder),
+`test_options_persist.py` (the key order), replays `eu-l10n-*`
+([P6.15](P6.15_REPLAY_TESTS.md)).
 
 ## History moved from ROADMAP.md (2026-10-24)
 

@@ -122,6 +122,15 @@ class Scenario:
     # (tools/mods/make_synthetic_pack.py, gradients, no game art) into the run's
     # config folder (`mods/`) before the first phase. PC only.
     mod_pack: str = ""
+    # P6.7 text pack (docs/LOCALIZATION.md): the runner runs the scenario on a private copy of
+    # the runtime (symlinks) whose l10n/ folder holds a synthetic text pack built from the
+    # disc's own English text by tools/l10n/build_pack.py: "upper" (every string upper-cased,
+    # ã õ ç added), "partial" (a third of the strings kept in English), "stress" (every line as
+    # wide as the widest of the other four EU languages), "proof" (English, but the card messages are
+    # the glyph proof) or "none" (no pack at all); "+keys" adds the key variants. The
+    # scenario selects it with `cfg` (text_language=ptbr) or `env` (DW3_LANG=ptbr). Nothing of
+    # it is committed: the references are local, like every other. PC only.
+    l10n: str = ""
     # Memory sanity (soak): analyse RSS from this game frame on.
     rss_from_frame: int = 0
     note: str = ""
@@ -3750,9 +3759,11 @@ for _i, _s in enumerate(SCENARIOS):
     if _pins:
         SCENARIOS[_i] = _pin_cfg(_s, *_pins)
 
-# The Display group has five rows since D5 (Map scaler), and the layout flows start from the file now.
+# The Display group has five rows since D5 (Map scaler) and six since P6.7 (Text language), and the
+# layout flows start from the file now.
 for _i, _s in enumerate(SCENARIOS):
-    _rep = lambda es: tuple((p, r.replace(r"group open display \(4 row\(s\)", r"group open display \(5 row\(s\)"))
+    _rep = lambda es: tuple((p, r.replace(r"group open display \(4 row\(s\)", r"group open display \(6 row\(s\)")
+                            .replace(r"group open display \(5 row\(s\)", r"group open display \(6 row\(s\)"))
                             for p, r in es)
     _new = dataclasses.replace(_s, expect_log=_rep(_s.expect_log), expect_log_both=_rep(_s.expect_log_both))
     if _new.name.endswith(("-controls-layout", "-controls-custom")):
@@ -3764,3 +3775,106 @@ for _i, _s in enumerate(SCENARIOS):
                                 for p, r in es)
         _new = dataclasses.replace(_new, expect_log=_fix(_new.expect_log), expect_log_both=_fix(_new.expect_log_both))
     SCENARIOS[_i] = _new
+
+
+# P6.7 phase 1 (docs/LOCALIZATION.md section 3.7): the text pack on the EU disc. Every scenario runs
+# on a private runtime (Scenario.l10n) whose pack is built from the disc's own English text with a
+# visible transform, so no translation is needed: "upper" upper-cases every string and adds
+# ã õ ç. Text language is set through the option file (text_language=ptbr), so the key's reader
+# is part of the test. The recordings are the ones of the plain scenarios (title and Load Game,
+# the opening's dialogue, the battle menus, the Digimon Lab); the references are local, like all
+# the others, and never committed. PC only (Scenario.l10n).
+_L10N_CFG = (("text_language", "ptbr"),)
+_L10N_OK = r"dw3-l10n: pack ok region=eu files=50 strings=\d+ translated=\d+ fallback=\d+ src=sha256:[0-9a-f]{16}"
+_L10N_NONE = (r"dw3-l10n: off reason=",)
+_L10N_ON = ((0, _L10N_OK + r" synthetic=upper(?s:.*)dw3-l10n: option text_language=ptbr region=eu(?s:.*)"
+                r"dw3-l10n: override id=\d+ stem=\w+ bytes=\d+ lba=0x1000000 sectors=\d+ \(was \d+\)"),)
+_L10N_OFF_BAD = ((0, r"dw3-l10n: off reason=(?!option_original)"),)
+_L10N_ENV_EU_LAB = _CARD_ENV + (("DW3_FORCE_MENU", "0xD00"),)
+_add(
+    Scenario("eu-l10n-title", "eu", "full", timeout=300, phases=("eu-load-menu",), l10n="upper", cfg=_L10N_CFG,
+             expect_log=_L10N_ON, forbid_log=_L10N_OFF_BAD,
+             note="Title, Continue on an empty card: the card messages (MEMCRD) read from the pack"),
+    Scenario("eu-l10n-field-dialogue", "eu", "full", turbo=4, timeout=900, phases=("eu-newgame-field",),
+             expect_restore=EU_OPENING, l10n="upper", cfg=_L10N_CFG,
+             expect_log=_L10N_ON, forbid_log=_L10N_OFF_BAD,
+             note="New Game: the name entry, the opening's dialogue and the first field, in the pack's text"),
+    Scenario("eu-l10n-battle-menu", "eu", "full", timeout=300, phases=("eu-battle-list-bar",), env=_BAR_ENV,
+             l10n="upper", cfg=_L10N_CFG, expect_log=_L10N_ON + _BAR_LOG, forbid_log=_L10N_OFF_BAD + _BAR_FORBID,
+             note="A battle: the command menu, the Items and the technique lists, in the pack's text"),
+    Scenario("eu-l10n-digimon-lab", "eu", "full", timeout=400, phases=("eu-digimon-lab",), env=_L10N_ENV_EU_LAB,
+             expect_restore=((0x166, M), (0x1EC, M)), l10n="upper", cfg=_L10N_CFG,
+             expect_log=_L10N_ON, forbid_log=_L10N_OFF_BAD,
+             note="The Digimon Lab: the menu, the party and its details, in the pack's text"),
+    Scenario("eu-l10n-fallback", "eu", "full", timeout=300, phases=("eu-load-menu",), l10n="partial", cfg=_L10N_CFG,
+             expect_log=((0, r"dw3-l10n: pack ok region=eu files=50 strings=13084 translated=\d+ fallback=[1-9]\d* "
+                             r"src=sha256:[0-9a-f]{16} synthetic=partial(?s:.*)"
+                             r"dw3-l10n: fallback key=[A-Z0-9]+:\d+ \(empty pt\)(?s:.*)"
+                             r"dw3-l10n: fallback total=[1-9]\d* of 13084"),),
+             forbid_log=_L10N_OFF_BAD,
+             note="A half-translated pack: the strings it lacks stay in English (the fallback path)"),
+    Scenario("eu-l10n-nopack", "eu", "full", timeout=300, phases=("eu-load-menu",), l10n="none", cfg=_L10N_CFG,
+             ref_from="eu-load-menu",
+             expect_log=((0, r"dw3-l10n: off reason=no_pack"),),
+             forbid_log=((0, r"dw3-l10n: off reason=no_pack(?s:.*)dw3-l10n: off reason="),
+                         (0, r"dw3-l10n: (override|pack ok)"), (0, r"CRASH|Segmentation fault")),
+             note="text_language=ptbr with no pack: English, exactly one off line, the original pictures"),
+    Scenario("eu-l10n-glyph-proof", "eu", "full", timeout=300, phases=("eu-load-menu",), l10n="proof", cfg=_L10N_CFG,
+             expect_log=((0, r"dw3-l10n: pack ok region=eu files=50 strings=13084 translated=\d+ fallback=\d+ "
+                             r"src=sha256:[0-9a-f]{16} synthetic=proof(?s:.*)dw3-l10n: glyph proof n=29 "),),
+             forbid_log=_L10N_OFF_BAD,
+             note="the glyph proof: the 26 accented letters PT-BR needs and the marks (Ã Õ Ê Ô included) in the game's own font"),
+    Scenario("eu-l10n-show-keys", "eu", "full", timeout=300, phases=("eu-load-menu",), l10n="upper+keys", cfg=_L10N_CFG,
+             env=(("DW3_L10N_SHOW_KEYS", "1"),),
+             expect_log=((0, r"dw3-l10n: override id=\d+ stem=\w+ bytes=\d+ lba=0x1000000 sectors=\d+ \(was \d+\) keys"),),
+             forbid_log=_L10N_OFF_BAD + ((0, r"show keys: this pack has no key variants"),),
+             note="DW3_L10N_SHOW_KEYS=1: every string starts with its key, \"(MEMCRD:3) \""),
+    Scenario("eu-l10n-row", "eu", "full", timeout=300, l10n="upper",
+             expect_log=((0, r"dw3-port-options: group open display \(6 row\(s\), title\)(?s:.*)"
+                             r"dw3-port-options: text language ptbr(?s:.*)"
+                             r"dw3-l10n: option text_language=ptbr region=eu(?s:.*)"
+                             r"dw3-l10n: override id=\d+(?s:.*)"
+                             r"dw3-port-options: text language original(?s:.*)"
+                             r"dw3-l10n: restored 50 file\(s\) to the original text(?s:.*)"
+                             r"dw3-l10n: off reason=option_original"),),
+             forbid_log=_NO_BAD + ((0, r"dw3-l10n: off reason=(?!option_original)"),),
+             note="Options > Display > Text language: Original, Right to Portugues (BR) applies the pack, Left restores it"),
+    Scenario("eu-l10n-row-nopack", "eu", "full", timeout=300, l10n="none",
+             expect_log=((0, r"dw3-l10n: off reason=no_pack(?s:.*)"
+                             r"dw3-port-options: text language ptbr refused: no usable text pack \(no_pack\)"),),
+             forbid_log=_NO_BAD + ((0, r"dw3-l10n: (override|pack ok)"), (0, r"dw3-port-options: text language ptbr\n")),
+             note="With no pack the Text language row is greyed (message: no text pack found) and Right is refused"),
+    Scenario("us-l10n-row-nopack", "us", "full", timeout=300, l10n="none",
+             expect_log=((0, r"dw3-l10n: off reason=no_pack(?s:.*)"
+                             r"dw3-port-options: text language ptbr refused: no usable text pack \(no_pack\)"),),
+             forbid_log=_NO_BAD + ((0, r"dw3-l10n: (override|pack ok)"),),
+             note="The same on the US disc: the row is there and greyed until phase 5 brings the US pack"),
+    Scenario("eu-l10n-original", "eu", "full", timeout=300, phases=("eu-load-menu",), l10n="upper",
+             ref_from="eu-load-menu",
+             expect_log=((0, r"dw3-l10n: pack ok region=eu(?s:.*)dw3-l10n: off reason=option_original"),),
+             forbid_log=((0, r"dw3-l10n: override"),),
+             note="a pack is installed and the option is Original: English, the original pictures"),
+)
+
+# P6.7 phase 2, the measuring pass (docs/LOCALIZATION.md section 7a): the same recordings with a
+# "stress" pack, every line as wide as the widest of the other four EU languages at that index
+# (the longest a translator was allowed), to see which windows do not hold it. Tier "repro": only
+# with --only (they are a look, with local references, not a gate). The windows: the message
+# and talk boxes (the opening), the battle menu and its lists, the battle report, the Digimon
+# Lab, the item shop, the card shop and deck editor, the card album, the gym, the field menu's
+# screens, the Items menu, the save and the load screens.
+_FIT_BASES = (("eu-newgame-field", "dialogue"), ("eu-battle-list-bar", "battle-menu"),
+              ("eu-battle-results", "battle-results"), ("eu-digimon-lab", "lab"),
+              ("eu-lab-digivolve", "lab-digivolve"), ("eu-item-shop", "item-shop"),
+              ("eu-card-shop", "card-shop"), ("eu-deck-editor", "deck-editor"),
+              ("eu-card-album", "card-album"), ("eu-gym", "gym"), ("eu-menu-screens", "menu-screens"),
+              ("eu-items-menu", "items-menu"), ("eu-save-screen", "save-screen"),
+              ("eu-load-menu", "load-menu"), ("eu-map-screen", "map-screen"))
+_by = {_s.name: _s for _s in SCENARIOS}
+for _base, _label in _FIT_BASES:
+    _b = _by[_base]
+    _add(dataclasses.replace(
+        _b, name=f"eu-l10n-fit-{_label}", tier="repro", l10n="stress", ref_from="", own_refs=(), ref_map=(),
+        cfg=_b.cfg + _L10N_CFG, expect_log=_b.expect_log + tuple((i, r.replace("synthetic=upper", "synthetic=stress")) for i, r in _L10N_ON),
+        forbid_log=_L10N_OFF_BAD,  # the longer text can change the timing a base scenario's forbid lines rely on
+        note=f"measuring pass: {_base} with the longest PT-like strings (stress pack)"))

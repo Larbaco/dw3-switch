@@ -210,7 +210,7 @@ listed once, in [Pending OLED checks](#pending-oled-checks).
 | P6.4 | Fast-forward | done (owner confirmed on the OLED, 2026-10-24; 1.5x in menus, patch 0176, confirmed 2026-10-27, preview.41) | [P6.4](P6.4_FAST_FORWARD.md) |
 | P6.5 | Release packaging | done | [P6.5](P6.5_PACKAGING.md), [RELEASES](RELEASES.md) |
 | P6.6 | Localization goal | **note written 2026-11-01** (owner decision: **translation first, PT-BR for the game and for the port's own screens**); the approach, the legal line, how the game text works and the phased plan are in the note | [LOCALIZATION](LOCALIZATION.md) |
-| P6.7 | Language packs (PT-BR first) | **in progress, phase 0 built 2026-11-01 (PR open)**: design, `tools/l10n/extract_text.py` (template and `--check`), the `pt` drafts of Help, Walkthrough and Options lettering (owner review pending); chosen base: the **English slot plus a text overlay** (`text_language=ptbr`), the EU font already has every PT-BR accent; next: phase 1 pack builder and loader | [LOCALIZATION](LOCALIZATION.md) |
+| P6.7 | Language packs (PT-BR first) | **in progress, phases 0 to 2 built 2026-11-01 (phase 0 merged #415, phases 1 and 2 PR open: the pack builder, the loader, the Display > Text language row, the glyph proof, the synthetic-pack replays and the measuring pass)**; phase 0 was: design, `tools/l10n/extract_text.py` (template and `--check`), the `pt` drafts of Help, Walkthrough and Options lettering (owner review pending); chosen base: the **English slot plus a text overlay** (`text_language=ptbr`), the EU font already has every PT-BR accent; next: phase 3, the port screens in PT-BR | [LOCALIZATION](LOCALIZATION.md) |
 | P6.8 | Extra locales | open (the same mechanism as P6.7; a real `LANGUAGE` id only if a language needs its own art, [LOCALIZATION](LOCALIZATION.md#3-pack-design) section 3.1) | [LOCALIZATION](LOCALIZATION.md) |
 | P6.9 | Restart-game hotkey | in progress (hotkey works on the OLED; PC replays pass for battle, save and Continue on US and EU; OLED retest open) | [P6.9](P6.9_RESTART.md) |
 | P6.10 | Hardware render outside battle | future | [P5.2](P5.2_BATTLE_GPU.md) |
@@ -1096,6 +1096,14 @@ gate, which stays open.
   effort and the OLED rows L1 to L13, are in [LOCALIZATION](LOCALIZATION.md) section 7.
   Open for the owner: where the Language row goes (a one-row group first, or Display),
   the review of the PT-BR drafts, and the glossary.
+  **Phases 1 and 2 built 2026-11-01 (PR open):** `tools/l10n/build_pack.py` (pack, key variants, synthetic
+  `upper` / `partial` / `stress` / `proof` packs, `--verify`), the loader `port/l10n/` (a `port/cdfs` id override plus
+  the `FILE_SECTORS` / `COUNTS` patch and restore, sha256 source check, `dw3-l10n:` logs, no engine patch), the
+  **Display > Text language** row (registry 29, key `text_language`, `DW3_LANG`, five-language label and message
+  line, greyed with no pack), the glyph proof (all 26 accented letters and `¡ ¿ °` render in the game's own font),
+  the engine's fixed buffers (MEMCRD:39 and the names, [LOCALIZATION](LOCALIZATION.md#26a-strings-the-engine-copies-into-fixed-buffers)),
+  PC replays `eu-l10n-*` on a synthetic pack, the Switch combined image builds; OLED rows TL1 to TL8
+  ([OLED_TEST_PLAN](OLED_TEST_PLAN.md) session R). Next: phase 3, the port screens in PT-BR.
 - [ ] **P6.8 Extra locales.** Same pack mechanism for other languages;
   selection via existing EU `LANGUAGE` / `CNTY_SEL` slots or a
   `port/cdfs` id remap without rebuilding the `.nro` for each locale.
