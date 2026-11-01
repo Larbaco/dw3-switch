@@ -20,6 +20,13 @@ int dw3_port_options_cursor(void);
 /* Host overlay: the Options screen was drawn for the first time since it
  * opened; logs the time from the open request (the stutter measure). */
 void dw3_port_options_note_shown(void);
+/* D4 / A18: where the Options background is in its scroll, 0..95 (game pixels).
+ * It moves one pixel every second tick of dw3_port_options_tick since the screen
+ * opened (down and right, back to 0 at 96), like the Items menu's background
+ * (STSTATUS_drawBackground), so it follows the game's own frame count and a
+ * replay sees the same phase at the same frame. The hosts draw the tile quad
+ * from it; after a close it keeps the last phase (the Switch fades the screen out). */
+int dw3_port_options_bg_phase(void);
 /* P9.7 slice 2: the words of the in-game open / close log lines ("field menu" /
  * "the field menu" by default; the battle sets its own). NULL restores them. */
 void dw3_port_options_set_origin(const char *where, const char *back);

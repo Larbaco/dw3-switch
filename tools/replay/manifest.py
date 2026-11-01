@@ -2222,7 +2222,7 @@ for _v in ("us", "eu"):
                   note="the Reliability Spot loads from the stage before it (overlay table entry, patch 0197)"))
 
 # The EU extra chapter's 55 stages (FIELDSTG_extraStages, WSTAG920 to WSTAG974,
-# picked while GAME.progress is 0x2D, FIELD_PROGRESS_EXTRA) had no overlay table
+# picked while GAME.progress is 0x2D, STORY_EXTRA) had no overlay table
 # entry either. Boot four of them (the first, the Digimon Lab whose colour
 # lives in wstag924_head.c, one in the middle, the last) at progress 0x2D and
 # idle: strict restore, the stage file the extra table names, 600 frames. All

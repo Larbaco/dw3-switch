@@ -525,16 +525,22 @@ enum { DIM_TITLE = 150, DIM_IN_GAME = 252, DIM_TILE = 90 };
 
 /* P51 item 6: the game's field-menu background (sprite 0x1D of the status
  * sprites, one 96 x 96 period) under the title's Options, Cheats and Help
- * screens, drawn once into the retained STATIC layer, so it costs no frame time.
+ * screens. D4 / A18: it scrolls, as in the Items menu (down and right, one game
+ * pixel every other frame, back to 0 at 96). The retained canvas is not
+ * recomposed for a scroll, so the tile is not drawn into it: the canvas keeps a
+ * transparent backdrop (alpha 0, the tile's dimmed average colour, so a linear
+ * sample of an edge does not darken) and the hosts draw the dimmed, 3x expanded
+ * texture below it as a tiled quad with a UV offset (platforms/pc/src/
+ * title_menu_overlay.c, platforms/switch/psyz_backend/nx_title_overlay.c).
  * In game the near-opaque dim stays (the field menu behind must not read through
- * and the tile would only show at 2 %). Untried until the first prewarm / update
- * asks (a frame-thread call: the disc read), then 1 ready or -1 not available
- * (the dimmed title backdrop stays). The game scrolls it; a scroll would need
- * the layer recomposed every frame (the cache exists to avoid that), so this is
- * the static version (docs/P51_FEEDBACK.md item 6). */
-static uint8_t menu_tile[MENU_BG_TILE*MENU_BG_TILE*4];
+ * and the tile would only show at 2 %): an opaque canvas backdrop, no quad.
+ * Untried until the first prewarm / update asks (a frame-thread call: the disc
+ * read), then 1 ready or -1 not available (the dimmed title backdrop stays). */
+static uint8_t menu_bg_tex[DW3_MENU_BG_TEX*DW3_MENU_BG_TEX*4];
+static uint8_t menu_bg_avg[3];
 static atomic_int menu_tile_state;
 void dw3_pc_title_overlay_menu_tile_prepare(void) {
+    static uint8_t tile[MENU_BG_TILE*MENU_BG_TILE*4];
     double ms=0.0;
     char why[96];
     if(atomic_load(&menu_tile_state)!=0)return;
@@ -543,9 +549,26 @@ void dw3_pc_title_overlay_menu_tile_prepare(void) {
         atomic_store(&menu_tile_state,-1);
         return;
     }
-    if(dw3_menu_bg_tile_load(menu_tile,&ms,why,sizeof(why))==0) {
+    if(dw3_menu_bg_tile_load(tile,&ms,why,sizeof(why))==0) {
+        unsigned sum[3]={0,0,0};
+        for(int i=0;i<MENU_BG_TILE*MENU_BG_TILE;i++)
+            for(int c=0;c<3;c++)sum[c]+=tile[i*4+c];
+        for(int c=0;c<3;c++)
+            menu_bg_avg[c]=(uint8_t)(sum[c]/(MENU_BG_TILE*MENU_BG_TILE)*(255-DIM_TILE)/255);
+        for(int j=0;j<DW3_MENU_BG_TEX;j++) {
+            const uint8_t *row=tile+(size_t)(j/DW3_MENU_BG_SCALE)*MENU_BG_TILE*4;
+            uint8_t *d=menu_bg_tex+(size_t)j*DW3_MENU_BG_TEX*4;
+            for(int i=0;i<DW3_MENU_BG_TEX;i++,d+=4) {
+                const uint8_t *s=row+(size_t)(i/DW3_MENU_BG_SCALE)*4;
+                d[0]=(uint8_t)(s[0]*(255-DIM_TILE)/255);
+                d[1]=(uint8_t)(s[1]*(255-DIM_TILE)/255);
+                d[2]=(uint8_t)(s[2]*(255-DIM_TILE)/255);
+                d[3]=255;
+            }
+        }
         fprintf(stderr,"dw3-options: menu background tile %dx%d from the status sprites "
-                "(sprite 0x1D) ready in %.0f us\n",MENU_BG_TILE,MENU_BG_TILE,ms*1000.0);
+                "(sprite 0x1D) ready in %.0f us (scrolls: 1 px every 2 ticks, period %d)\n",
+                MENU_BG_TILE,MENU_BG_TILE,ms*1000.0,DW3_MENU_BG_PERIOD);
         atomic_store(&menu_tile_state,1);
     } else {
         fprintf(stderr,"dw3-options: menu background tile not available (%s), using the "
@@ -553,8 +576,11 @@ void dw3_pc_title_overlay_menu_tile_prepare(void) {
         atomic_store(&menu_tile_state,-1);
     }
 }
-/* The screen's backdrop: the dimmed game tile at the title, else the dimmed
- * title picture (or the deeper in-game dim). The canvas is 3x the game's 320. */
+const uint8_t *dw3_pc_title_overlay_menu_bg_texture(void) {
+    return atomic_load(&menu_tile_state)==1?menu_bg_tex:NULL;
+}
+/* The screen's backdrop: at the title the scrolling tile's place (transparent,
+ * see above), else the dimmed title picture (or the deeper in-game dim). */
 static void backdrop(int in_game) {
     if(in_game||atomic_load(&menu_tile_state)!=1) {
         box(0,0,960,720,0,0,16,in_game?DIM_IN_GAME:DIM_TITLE);
@@ -564,26 +590,9 @@ static void backdrop(int in_game) {
     int x1=clip_x1>960?960:clip_x1,y1=clip_y1>720?720:clip_y1;
     for(int j=y0;j<y1;j++) {
         uint8_t *p=canvas+(size_t)j*stride+(size_t)x0*4;
-        const uint8_t *row=menu_tile+(size_t)((j/3)%MENU_BG_TILE)*MENU_BG_TILE*4;
         for(int i=x0;i<x1;i++,p+=4) {
-            const uint8_t *s=row+(size_t)((i/3)%MENU_BG_TILE)*4;
-            p[0]=(uint8_t)(s[0]*(255-DIM_TILE)/255);
-            p[1]=(uint8_t)(s[1]*(255-DIM_TILE)/255);
-            p[2]=(uint8_t)(s[2]*(255-DIM_TILE)/255);
-            p[3]=255;
+            p[0]=menu_bg_avg[0];p[1]=menu_bg_avg[1];p[2]=menu_bg_avg[2];p[3]=0;
         }
-    }
-    /* The hosts stretch the canvas's top-left texel over the 16:9 side strips
-     * (title_menu_overlay.c, nx_title_overlay.c): the tile's average colour,
-     * dimmed, makes those strips a flat navy beside the tiled middle. */
-    if(clip_x0<=0&&clip_y0<=0) {
-        unsigned sum[3]={0,0,0};
-        for(int i=0;i<MENU_BG_TILE*MENU_BG_TILE;i++) {
-            sum[0]+=menu_tile[i*4];sum[1]+=menu_tile[i*4+1];sum[2]+=menu_tile[i*4+2];
-        }
-        for(int c=0;c<3;c++)
-            canvas[c]=(uint8_t)(sum[c]/(MENU_BG_TILE*MENU_BG_TILE)*(255-DIM_TILE)/255);
-        canvas[3]=255;
     }
 }
 enum { L_ROW_X = 152, L_ROW_W = 656, L_ROW_Y0 = 116, L_ROW_PITCH = 66,

@@ -131,7 +131,8 @@ highest non-empty tier.
   console (A17; `port/options`, `nx_region_boot.c`, no decomp patch); a `stage_sweep` key in
   the wrong file is logged (G10); the map view opens at 1.5x with the bars hidden (B16).
 - [P51 feedback](P51_FEEDBACK.md), **PR 4 built 2026-10-29**: the game's menu background tile under the title's Options screens
-  (static, dimmed; the scroll costs a recompose per frame, left as a follow-up, OLED A18).
+  (static, dimmed; the scroll costs a recompose per frame, left as a follow-up, OLED A18). **The scroll is built as D4
+  (2026-11-01, see the D1 to D5 entry below).**
 - [P51 feedback](P51_FEEDBACK.md), **PR 3 built 2026-10-29**: one map mod pack for US and EU
   (shared files, per-region only where the 13 differing reveal sprites are; loader fallback,
   tool compares both runtimes; OLED B17).
@@ -1154,8 +1155,13 @@ gate, which stays open.
   1 to 6 ms handheld, 3 to 11 MiB), not yet measured on the OLED. Design: Options rows
   "Internal resolution" (1x/2x/3x) and "Native res while turbo" (default on, logs
   `dw3-res: turbo on -> 1x` / `turbo off -> Nx`), replays pinned at 1x plus a small 2x
-  family, six build phases of about 12 to 16 worker days. Step 2 (the build) starts with
-  an OLED measurement build and waits for D1 to D5. Owner questions are in the doc.
+  family, six build phases of about 12 to 16 worker days. Step 2 (the build) waits for D1 to D5
+  and for the OLED numbers. **Owner answers 2026-11-01** (scales 1x/2x/3x with a per-mode clamp
+  table from an OLED measurement; "Native res while turbo" default ON and skip the mesh frames
+  turbo never shows; a finer dither grid; investigate the field too) are recorded in the doc.
+  **Phase 0 (2026-11-01):** an OLED measurement NRO (`DW3_NX_RES_PROBE`, `dw3-res-probe:` log
+  line, `tools/res_probe_summary.py`) and the field investigation (doc section 10). Open: the OLED
+  rows R0.1 to R0.4 (owner), then the clamp table.
 
 - **P6.12–P6.35** (except P6.15, P6.17, P6.18, P6.20 and P6.22, which have their own entries) are goal notes, kept with their ids in
   [Backlog / future goals](#backlog--future-goals).
@@ -1562,7 +1568,18 @@ PS1 game, with vanilla-safe defaults and persistence on owner storage.
   `us/eu-defaults-migrate`, `-defaults-migrate-custom`, `-defaults-migrate-fresh`. Details:
   [OPTIONS_REORG 8.1](OPTIONS_REORG.md#81-step-2-as-built-d2--d5),
   [PORT_OPTIONS](PORT_OPTIONS.md#defaults-generation-and-the-map-scaler-d2--d5). OLED rows P1 to P8 open.
-  Next: D3 (one global file), then D4 (the scrolling background, last).
+  **D3 built (2026-10-31, #410):** one global `port_options.cfg` (see [OPTIONS_REORG 6.2](OPTIONS_REORG.md#62-d3-one-global-options-file-as-built)).
+  **D4 built (2026-11-01, branch `feat/d4-options-bg-scroll`, PR open, no decomp patch, no new row):** the Options background
+  **scrolls** as the Items menu's does (A18, owner "A"): the tile moves down and right 1 pixel every 2 frames, period 96
+  (`STSTATUS_drawBackground`), drawn as a tiled textured quad with a UV offset **under** the retained 960x720 canvas in both
+  hosts (SDL3 GPU: 96 precomputed quads and a repeating 288 x 288 texture; Switch GLES: `draw_quad` with the phase's UVs), so the
+  dirty-row cache is untouched and a scroll step does no compose. The 16:9 side strips are the same tiles. In game the
+  near-opaque dim stays, with no quad. The phase is the game's tick count since the open (`dw3_port_options_bg_phase`,
+  `DW3_GAME_API_ABI` 6), so replays are deterministic (two runs byte-identical, no pinned offset); first-frame open time measured
+  at 2.0 to 2.6 ms on the PC against 2.1 to 2.9 ms on `main` (no hitch). Options-family replay references refreshed
+  ([P6.15_REPLAY_TESTS](P6.15_REPLAY_TESTS.md#d4-reference-refresh)), together with the stale ones left by #408. Details:
+  [OPTIONS_REORG 8.2](OPTIONS_REORG.md#82-step-4-as-built-d4), [PORT_OPTIONS](PORT_OPTIONS.md#menu-background-p51-item-6-d4--a18).
+  OLED row A18b open. D1 to D5 are now all built.
   **Still open:** OLED validation (OLED_TEST_PLAN A5, A9 to A13); Controls (P6.12) and Walkthrough (P6.35) are hidden
   placeholders in `port_options_groups.h` (Help, P6.30, is built since 2026-10-28); the open questions below are answered
   by defaults (Cheats group listed only with the master switch on; the plain dim of

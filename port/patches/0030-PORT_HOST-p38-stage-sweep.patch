@@ -6,6 +6,67 @@ STAGSLCT; STAGE_SWEEP_PASS / DW3_STAGE_SWEEP_EXIT. Seed party on
 MODE_STAGE_SELECT boot. Allocate StageSelectWindows children; stub
 BIOS ROM read; skip TASK_KILL cursor requestMode when FORCE_STAGE set.
 
+--- a/src/debug/stage_select/stage_select.c
++++ b/src/debug/stage_select/stage_select.c
+@@ -1,4 +1,7 @@
+ #include "debug/stage_select.h"
++#if PORT_HOST
++char *getenv(const char *name);
++#endif
+ 
+ #if VERSION_EU || VERSION_JP
+ /* "＞": the European and Japanese overlays have junk in the byte that pads
+@@ -810,7 +813,12 @@ void STAGSLCT_showBiosVersion(StageSelect *sel, StageSelectWindows *win) {
+     if (sel->biosShown == 0) {
+         win->bios = createTextWindow(SCREEN_LAYER, 1, 0x10, 0x20);
+         /* the BIOS version string in the ROM, in full-width Shift-JIS */
++#if PORT_HOST
++        /* PS1 ROM window is not mapped on host; use a fixed SCPH-style tag. */
++        src = (u8 *)"SCPH1001  ";
++#else
+         src = (u8 *)0x1FC0012C;
++#endif
+         for (i = 0; i < 10; i++, src++) {
+             /* the match depends on the breaks out of a do/while (0): loop.c
+                moves the letter's and the dash's blocks up after the digit's,
+@@ -1108,6 +1116,16 @@ void STAGSLCT_updateStageSelect(Task *task, StageSelectWindows *win) {
+         }
+         break;
+     case TASK_KILL:
++#if PORT_HOST
++        /* P3.8: DW3_FORCE_STAGE already requested the target mode from
++           updateModeTask; do not let the cursor entry overwrite it (entry 0
++           is MODE_STAGE_SELECT). */
++        if (getenv("DW3_FORCE_STAGE") != NULL && getenv("DW3_FORCE_STAGE")[0] != '\0') {
++            GAME.stageSelectTop = sel->top;
++            GAME.stageSelectCursor = sel->cursor;
++            break;
++        }
++#endif
+         if (STAGSLCT_entries[sel->top + sel->cursor].arg & 0x8000) {
+             GAME.funcs.requestMode(STAGSLCT_entries[sel->top + sel->cursor].scene, 0);
+             GAME.progress = STAGSLCT_entries[sel->top + sel->cursor].arg & 0xFF;
+@@ -1125,7 +1143,7 @@ void STAGSLCT_updateStageSelect(Task *task, StageSelectWindows *win) {
+ 
+ /* Creates the stage select */
+ Task *STAGSLCT_createStageSelect(void) {
+-    return createTask(STAGSLCT_updateStageSelect, sizeof(StageSelect), 0);
++    return createTask(STAGSLCT_updateStageSelect, sizeof(StageSelect), sizeof(StageSelectWindows));
+ }
+ 
+ #if VERSION_EU
+--- a/src/engine/game/state.c
++++ b/src/engine/game/state.c
+@@ -83,7 +83,8 @@ void newGame(void) {
+             mode == MODE_DIGI_LAB || mode == MODE_CONTINUE || mode == MODE_NAMING ||
+             mode == MODE_PLAYER_NAME || mode == MODE_CARD_GAME ||
+             mode == MODE_DECK_EDITOR || mode == MODE_CARD_ALBUM ||
+-            mode == MODE_CARD_SHOP || (force != NULL && force[0] != '\0')) {
++            mode == MODE_CARD_SHOP || mode == MODE_STAGE_SELECT ||
++            (force != NULL && force[0] != '\0')) {
+             if (GAME.funcs.getPartyMember(0) < 0) {
+                 GAME.funcs.setParty(0);
+                 fprintf(stderr, "dw3: P3.4/P3.5 setParty(0) for menu/card bring-up\n");
 --- a/src/engine/system/overlay.c
 +++ b/src/engine/system/overlay.c
 @@ -5,6 +5,7 @@
@@ -16,10 +77,11 @@ BIOS ROM read; skip TASK_KILL cursor requestMode when FORCE_STAGE set.
  /* Armed by CARDGAME return when DW3_AFTER_CARD_ALBUM is set. */
  s32 DW3_afterCardAlbumArm;
  #endif
-@@ -97,6 +98,82 @@
+@@ -96,6 +97,82 @@ void updateModeTask(Task *task, Task **children) {
+                 after_frames = 0;
              }
          }
-         {
++        {
 +            /* P3.8: STAGSLCT → stage → return sweep aids. */
 +            const char *force = getenv("DW3_FORCE_STAGE");
 +            const char *force_frames = getenv("DW3_FORCE_STAGE_FRAMES");
@@ -95,68 +157,6 @@ BIOS ROM read; skip TASK_KILL cursor requestMode when FORCE_STAGE set.
 +                }
 +            }
 +        }
-+        {
+         {
              const char *ret = getenv("DW3_AUTO_MENU_RETURN");
              static s32 menu_frames;
-             static s32 menu_mode;
---- a/src/engine/game/state.c
-+++ b/src/engine/game/state.c
-@@ -83,7 +83,8 @@
-             mode == MODE_DIGI_LAB || mode == MODE_CONTINUE || mode == MODE_NAMING ||
-             mode == MODE_PLAYER_NAME || mode == MODE_CARD_GAME ||
-             mode == MODE_DECK_EDITOR || mode == MODE_CARD_ALBUM ||
--            mode == MODE_CARD_SHOP || (force != NULL && force[0] != '\0')) {
-+            mode == MODE_CARD_SHOP || mode == MODE_STAGE_SELECT ||
-+            (force != NULL && force[0] != '\0')) {
-             if (GAME.funcs.getPartyMember(0) < 0) {
-                 GAME.funcs.setParty(0);
-                 fprintf(stderr, "dw3: P3.4/P3.5 setParty(0) for menu/card bring-up\n");
---- a/src/debug/stage_select/stage_select.c
-+++ b/src/debug/stage_select/stage_select.c
-@@ -1,4 +1,7 @@
- #include "debug/stage_select.h"
-+#if PORT_HOST
-+char *getenv(const char *name);
-+#endif
- 
- #if VERSION_EU
- /* "＞": the European overlay has 0x39 in the byte that pads it, where GCC
-@@ -757,7 +760,12 @@
-     if (sel->biosShown == 0) {
-         win->bios = createTextWindow(SCREEN_LAYER, 1, 0x10, 0x20);
-         /* the BIOS version string in the ROM, in full-width Shift-JIS */
-+#if PORT_HOST
-+        /* PS1 ROM window is not mapped on host; use a fixed SCPH-style tag. */
-+        src = (u8 *)"SCPH1001  ";
-+#else
-         src = (u8 *)0x1FC0012C;
-+#endif
-         for (i = 0; i < 10; i++, src++) {
-             /* the match depends on the breaks out of a do/while (0): loop.c
-                moves the letter's and the dash's blocks up after the digit's,
-@@ -1046,6 +1054,16 @@
-         }
-         break;
-     case TASK_KILL:
-+#if PORT_HOST
-+        /* P3.8: DW3_FORCE_STAGE already requested the target mode from
-+           updateModeTask; do not let the cursor entry overwrite it (entry 0
-+           is MODE_STAGE_SELECT). */
-+        if (getenv("DW3_FORCE_STAGE") != NULL && getenv("DW3_FORCE_STAGE")[0] != '\0') {
-+            GAME.stageSelectTop = sel->top;
-+            GAME.stageSelectCursor = sel->cursor;
-+            break;
-+        }
-+#endif
-         if (STAGSLCT_entries[sel->top + sel->cursor].arg & 0x8000) {
-             GAME.funcs.requestMode(STAGSLCT_entries[sel->top + sel->cursor].scene, 0);
-             GAME.progress = STAGSLCT_entries[sel->top + sel->cursor].arg & 0xFF;
-@@ -1063,7 +1081,7 @@
- 
- /* Creates the stage select */
- Task *STAGSLCT_createStageSelect(void) {
--    return createTask(STAGSLCT_updateStageSelect, sizeof(StageSelect), 0);
-+    return createTask(STAGSLCT_updateStageSelect, sizeof(StageSelect), sizeof(StageSelectWindows));
- }
- 
- #if VERSION_EU

@@ -12,10 +12,10 @@ P3.6: log SsUtKeyOn / SsSepPlay from playSound (capped) for audio evidence.
 +#include <stdio.h>
 +#endif
 +
- /* Each bank's files (SOUND_BANK_FILES[id]) */
- #if VERSION_US
- SoundFiles SOUND_FILES_01 = {370, 357, 0x1650000, 0x1720000, {0x1650001, 0x1650002, 0}};
-@@ -234,8 +238,30 @@
+ /* Each bank's files (SOUND_BANK_FILES[id]), numbered in the Japanese disc as
+    in the USA one */
+ #if VERSION_US || VERSION_JP
+@@ -235,8 +239,30 @@ short playSound(s32 packed) {
              SOUND.music = packed;
          }
          if (keyOn) {

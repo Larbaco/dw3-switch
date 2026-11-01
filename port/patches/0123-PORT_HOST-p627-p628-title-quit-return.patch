@@ -25,7 +25,7 @@ FieldMenuWindows.options grows from six to seven windows (PORT_HOST only).
 
 --- a/include/engine/menu.h
 +++ b/include/engine/menu.h
-@@ -93,7 +93,11 @@
+@@ -93,7 +93,11 @@ typedef struct FieldMenuWindows {
      /* 0x00 */ TextWindow *title;
      /* 0x04 */ TextWindow *moneyLabel;
      /* 0x08 */ TextWindow *money;
@@ -55,7 +55,7 @@ FieldMenuWindows.options grows from six to seven windows (PORT_HOST only).
  #else
  #define DW3_MENU_LEFT(x) (x)
  #define DW3_MENU_RIGHT(x) (x)
-@@ -166,6 +175,12 @@
+@@ -166,6 +175,12 @@ static inline void openFieldMenu(FieldMenu *task, FieldMenuWindows *win) {
          FIELD_MENU_CHOICE.extra = 0;
      }
      task->count = task->extraOption + 5;
@@ -68,7 +68,7 @@ FieldMenuWindows.options grows from six to seven windows (PORT_HOST only).
      if (getFieldZone() >= 0) {
          task->option2Enabled = 1;
      } else {
-@@ -178,6 +193,13 @@
+@@ -178,6 +193,13 @@ static inline void openFieldMenu(FieldMenu *task, FieldMenuWindows *win) {
  static inline void showFieldMenuOptions(FieldMenu *task, FieldMenuWindows *win) {
      showPartnerPage(task, win, 1, 1);
      for (task->counter = 0; task->counter < task->count; task->counter++) {
@@ -82,7 +82,7 @@ FieldMenuWindows.options grows from six to seven windows (PORT_HOST only).
          win->options[task->counter]->setString(win->options[task->counter], FILE_CACHE.load(TEXT_FILE(TEXT_STATUS)),
                                    FIELD_MENU_OPTIONS[task->extraOption][task->counter]);
      }
-@@ -226,6 +248,14 @@
+@@ -226,6 +248,14 @@ static inline void chooseFieldMenuOption(FieldMenu *task, FieldMenuWindows *win)
          if (task->option2Enabled == 0 && task->cursor == 2) {
              return;
          }
@@ -97,7 +97,7 @@ FieldMenuWindows.options grows from six to seven windows (PORT_HOST only).
          done = 1;
          if (GAME.funcs.getMode() == MODE_STATUS) {
              task->step = 1;
-@@ -353,6 +383,63 @@
+@@ -353,6 +383,63 @@ static inline void drawFieldMenuFade(FieldMenu *task) {
      }
  }
  
@@ -161,7 +161,7 @@ FieldMenuWindows.options grows from six to seven windows (PORT_HOST only).
  /* Runs the field menu: opens its panels, moves the cursor and switches mode on a choice */
  void updateFieldMenu(FieldMenu *task, FieldMenuWindows *win) {
      SpriteDrawer obj;
-@@ -389,6 +476,13 @@
+@@ -389,6 +476,13 @@ void updateFieldMenu(FieldMenu *task, FieldMenuWindows *win) {
              }
              break;
          case 3:
@@ -175,7 +175,7 @@ FieldMenuWindows.options grows from six to seven windows (PORT_HOST only).
              chooseFieldMenuOption(task, win);
              break;
          case 4:
-@@ -448,6 +542,23 @@
+@@ -438,8 +532,26 @@ void updateFieldMenu(FieldMenu *task, FieldMenuWindows *win) {
              obj.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x18, DW3_MENU_RIGHT(0x22), 0xD);
          }
          if (task->panels[1].level != 0) {
@@ -196,17 +196,12 @@ FieldMenuWindows.options grows from six to seven windows (PORT_HOST only).
 +            }
 +            obj.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x1C - (portRows > 0 ? 1 : 0), DW3_MENU_RIGHT(0xA8), 0x28);
 +#else
-             if (task->panels[1].level != ONE) {
-                 obj.setScale(task->panels[1].level, ONE, ONE);
-                 obj.setPivot(DW3_MENU_RIGHT(0x140), 0x52);
-@@ -455,6 +566,7 @@
-                 obj.setScale(ONE, ONE, ONE);
-             }
+             STRETCH_SPRITE(obj, task->panels[1].level, DW3_MENU_RIGHT(0x140), 0x52);
              obj.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x1C - task->extraOption, DW3_MENU_RIGHT(0xA8), 0x28);
 +#endif
          }
          if (task->panels[2].level != 0) {
-             if (task->panels[2].level != ONE) {
+             STRETCH_SPRITE(obj, task->panels[2].level, DW3_MENU_LEFT(0), 0xA8);
 --- a/src/menus/title/menu.c
 +++ b/src/menus/title/menu.c
 @@ -4,6 +4,7 @@
@@ -217,7 +212,7 @@ FieldMenuWindows.options grows from six to seven windows (PORT_HOST only).
  #ifdef DW3_CHEATS
  #include "port_cheats.h"
  #endif
-@@ -194,6 +195,10 @@
+@@ -194,6 +195,10 @@ static inline void runOptions(TitleMenuTask *task) {
          if (dw3_port_options_is_open()) {
              break;
          }
@@ -228,7 +223,7 @@ FieldMenuWindows.options grows from six to seven windows (PORT_HOST only).
          if (PAD_PRESSED(PAD_SELECT) && !PAD_HELD(PAD_L1) &&
              !PAD_HELD(PAD_R1) && !PAD_HELD(PAD_L2) && !PAD_HELD(PAD_R2)) {
              dw3_port_options_open();
-@@ -215,7 +220,9 @@
+@@ -215,7 +220,9 @@ static inline void runOptions(TitleMenuTask *task) {
          }
          if (PAD_PRESSED(PAD_DOWN) || PAD_REPEATED(PAD_DOWN)) {
  #if PORT_HOST
@@ -239,7 +234,7 @@ FieldMenuWindows.options grows from six to seven windows (PORT_HOST only).
                  SOUND.playSound(SOUND_CURSOR);
                  task->selection++;
              }
-@@ -233,6 +240,12 @@
+@@ -233,6 +240,12 @@ static inline void runOptions(TitleMenuTask *task) {
                  SOUND.playSound(SOUND_SELECT);
                  break;
              }
@@ -252,7 +247,7 @@ FieldMenuWindows.options grows from six to seven windows (PORT_HOST only).
  #endif
              task->timer = 0;
              SOUND.playSound(SOUND_SELECT);
-@@ -264,6 +277,7 @@
+@@ -264,6 +277,7 @@ static inline void runOptions(TitleMenuTask *task) {
  void STDWTITL_tickMenu(TitleMenuTask *task) {
  #if PORT_HOST
      int options_were_open = dw3_port_options_is_open();
@@ -260,7 +255,7 @@ FieldMenuWindows.options grows from six to seven windows (PORT_HOST only).
  #endif
      switch (task->state) {
      case TASK_INIT:
-@@ -290,6 +304,9 @@
+@@ -290,6 +304,9 @@ void STDWTITL_tickMenu(TitleMenuTask *task) {
          if (options_were_open && dw3_port_options_is_open()) {
              dw3_port_options_tick();
          }

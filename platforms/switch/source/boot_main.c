@@ -40,6 +40,7 @@
 #include "../psyz_backend/nx_title_overlay.h"
 #include "../psyz_backend/nx_debug_overlay.h"
 #include "../psyz_backend/nx_mem_budget.h"
+#include "../psyz_backend/nx_mesh.h"
 #include "../psyz_backend/nx_mesh_debug.h"
 #include "../psyz_backend/nx_movie_debug.h"
 #if defined(DW3_BOTH) && DW3_BOTH
@@ -368,7 +369,7 @@ static void dw3_nx_vsync_pump(void) {
                 INFOF("mesh dbg: avail=%d tris_enq=%llu tris_flush=%llu "
                       "frames_mesh=%u frames_blit=%u soft=%u "
                       "flush_us=%llu upload_us=%llu uploads=%u "
-                      "upload_px=%llu present_us=%llu",
+                      "upload_px=%llu present_us=%llu res=%d",
                       mesh.mesh_available,
                       (unsigned long long)mesh.tris_enqueued,
                       (unsigned long long)mesh.tris_flushed, mesh.frames_mesh,
@@ -376,7 +377,8 @@ static void dw3_nx_vsync_pump(void) {
                       (unsigned long long)mesh.flush_us,
                       (unsigned long long)mesh.upload_us, mesh.uploads,
                       (unsigned long long)mesh.upload_px,
-                      (unsigned long long)mesh.present_us);
+                      (unsigned long long)mesh.present_us,
+                      dw3_nx_mesh_scale());
 #if DW3_NX_DEBUG_OVERLAY
                 {
                     Dw3DebugOverlayMeshSnap overlay_mesh;

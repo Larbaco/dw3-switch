@@ -12,7 +12,7 @@ unchanged. Flat-save flush policy is untouched.
 
 --- a/include/menus/memory_card.h
 +++ b/include/menus/memory_card.h
-@@ -102,7 +102,12 @@
+@@ -102,7 +102,12 @@ typedef struct MemCardFile {
  #define SAVE_CHECKED 4
  
  /* The durations of the panels shown while loading and saving */
@@ -25,4 +25,4 @@ unchanged. Flat-save flush policy is untouched.
 +#elif VERSION_US
  #define MEMCARD_LOAD_FRAMES 1239
  #define MEMCARD_SAVE_FRAMES 1266
- #elif VERSION_EU
+ #elif VERSION_EU || VERSION_JP

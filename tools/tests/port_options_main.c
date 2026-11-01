@@ -377,6 +377,44 @@ int main(void) {
     }
 
     dw3_port_options_close(); /* idempotent */
+
+    /* D4 / A18: the menu background's scroll follows the ticks since the open, one
+     * pixel every second tick, back to 0 at 96 (STSTATUS_drawBackground), starts at
+     * 0 at each open, and keeps its last value after a close. */
+    {
+        int i;
+
+        dw3_port_options_open();
+        if (dw3_port_options_bg_phase() != 0) {
+            return fail("bg phase starts at 0 on open");
+        }
+        dw3_port_options_test_set_pressed(0);
+        for (i = 1; i <= 192; i++) {
+            const int want = (i / 2) % 96;
+
+            dw3_port_options_tick();
+            if (dw3_port_options_bg_phase() != want) {
+                fprintf(stderr, "bg phase after %d ticks is %d, want %d\n", i,
+                        dw3_port_options_bg_phase(), want);
+                return fail("bg phase: 1 px every 2 ticks, period 96");
+            }
+        }
+        for (i = 0; i < 7; i++) {
+            dw3_port_options_tick();
+        }
+        if (dw3_port_options_bg_phase() != 3) {
+            return fail("bg phase wraps and goes on");
+        }
+        dw3_port_options_close();
+        if (dw3_port_options_bg_phase() != 3) {
+            return fail("bg phase keeps its value after a close (the Switch fades out)");
+        }
+        dw3_port_options_open();
+        if (dw3_port_options_bg_phase() != 0) {
+            return fail("bg phase restarts at 0 on the next open");
+        }
+        dw3_port_options_close();
+    }
     printf("open=0 options=%d widescreen_default=%d restart=%d\n",
            dw3_port_options_count(), dw3_port_options_value(0),
            dw3_port_options_restart_enabled());

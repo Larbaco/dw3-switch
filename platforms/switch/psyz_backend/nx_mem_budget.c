@@ -4,6 +4,7 @@
 #if DW3_NX_DEBUG_MEM
 
 #include "nx.h"
+#include "nx_mesh.h"
 #include "nx_vram_pack.h"
 
 #include <malloc.h>
@@ -177,7 +178,8 @@ void dw3_nx_mem_budget_log(const Dw3NxMemBudgetSample *s) {
     if (s->heap_ok) {
         psyz_log(1, "nx_mem_budget.c", __LINE__, __func__,
                  "mem dbg: heap=%lluK/%lluK hw=%lluK free=%lluK "
-                 "fcache=%lluK/hw=%lluK vram=%lluK libc=%lluK/hw=%lluK",
+                 "fcache=%lluK/hw=%lluK vram=%lluK libc=%lluK/hw=%lluK "
+                 "mesh_tgt=%lluK",
                  (unsigned long long)(s->heap_used_bytes / 1024ull),
                  (unsigned long long)(s->heap_arena_bytes / 1024ull),
                  (unsigned long long)(s->heap_used_hw / 1024ull),
@@ -186,13 +188,16 @@ void dw3_nx_mem_budget_log(const Dw3NxMemBudgetSample *s) {
                  (unsigned long long)(s->file_cache_hw / 1024ull),
                  (unsigned long long)(s->vram_emu_bytes / 1024ull),
                  (unsigned long long)(s->libc_used_bytes / 1024ull),
-                 (unsigned long long)(s->libc_used_hw / 1024ull));
+                 (unsigned long long)(s->libc_used_hw / 1024ull),
+                 (unsigned long long)(dw3_nx_mesh_target_bytes() / 1024ull));
     } else {
         psyz_log(1, "nx_mem_budget.c", __LINE__, __func__,
-                 "mem dbg: heap=n/a vram=%lluK libc=%lluK/hw=%lluK",
+                 "mem dbg: heap=n/a vram=%lluK libc=%lluK/hw=%lluK "
+                 "mesh_tgt=%lluK",
                  (unsigned long long)(s->vram_emu_bytes / 1024ull),
                  (unsigned long long)(s->libc_used_bytes / 1024ull),
-                 (unsigned long long)(s->libc_used_hw / 1024ull));
+                 (unsigned long long)(s->libc_used_hw / 1024ull),
+                 (unsigned long long)(dw3_nx_mesh_target_bytes() / 1024ull));
     }
 }
 

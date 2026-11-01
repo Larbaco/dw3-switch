@@ -13,18 +13,24 @@ SRC = ROOT / "platforms" / "pc" / "src"
 TEST_C = ROOT / "tools" / "tests" / "options_cache_main.c"
 
 
-@pytest.fixture(scope="module", params=["no-cheats", "cheats"])
+@pytest.fixture(scope="module", params=["no-cheats", "cheats", "tile"])
 def options_cache_test(request, tmp_path_factory) -> Path:
     """Built without and with DW3_CHEATS (P6.20: the Cheats page and the
-    Square/Y hint go through the same cache)."""
+    Square/Y hint go through the same cache), and with a synthetic menu
+    background tile (D4 / A18: the transparent backdrop of the scrolling quad)."""
     out = tmp_path_factory.mktemp("options_cache") / "options_cache_test"
-    defs = ["-DDW3_CHEATS"] if request.param == "cheats" else []
+    defs = ["-DDW3_CHEATS"] if request.param in ("cheats", "tile") else []
+    extra = []
+    if request.param == "tile":
+        defs.append("-DWITH_MENU_BG_TILE")
+        extra = [str(ROOT / "tools" / "tests" / "menu_bg_tile_stub.c")]
     cmd = [
         "gcc", "-std=gnu11", "-Wall", "-Wextra", "-Werror", "-O2", *defs,
         "-o", str(out),
         str(TEST_C), str(SRC / "title_options_cache.c"),
         str(SRC / "title_overlay_art.c"), str(ROOT / "tools" / "tests" / "port_version_stub.c"),
         str(ROOT / "port" / "pages" / "pages.c"), str(ROOT / "port" / "pages" / "glyph_atlas.c"),
+        *extra,
         f"-I{ROOT / 'port' / 'include'}", "-pthread", "-lm",
     ]
     r = subprocess.run(cmd, capture_output=True, text=True)

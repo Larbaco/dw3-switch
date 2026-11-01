@@ -14,6 +14,7 @@
  */
 #include "nx.h"
 #include "nx_battle_mode.h"
+#include "nx_res_probe.h"
 #include "nx_stick.h"
 
 #include <string.h>
@@ -217,6 +218,8 @@ void Psyz_PadsPoll(void) {
 
     /* FIGHTSTG A/B: Minus+ZL+ZR cycles soft → soft+bbox → gpu-solid → gpu-tex. */
     dw3_nx_battle_mode_poll();
+    /* P6.11 phase 0 measurement build: Minus+ZL+R cycles the mesh scale. */
+    dw3_nx_res_probe_poll((uint64_t)s_last_buttons);
 }
 
 uint64_t dw3_nx_input_buttons_raw(void) { return (uint64_t)s_last_buttons; }

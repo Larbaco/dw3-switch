@@ -28,7 +28,7 @@ game time as at 1x. Unchanged otherwise. Replay scenarios
  
  /* Small variables, addressed through $gp (see the Makefile) */
  static s32 GFX_STARTED = 0;
-@@ -35,7 +38,19 @@
+@@ -35,7 +38,19 @@ void vsyncCallback(void) {
          GFX.dispBuffer = !GFX.dispBuffer;
          PutDispEnv(&GFX.disp[GFX.dispBuffer]);
      }
@@ -50,25 +50,23 @@ game time as at 1x. Unchanged otherwise. Replay scenarios
  
 --- a/src/engine/sound/sound.c
 +++ b/src/engine/sound/sound.c
-@@ -327,11 +327,21 @@
- 
+@@ -329,9 +329,19 @@ void fadeOutSound(s32 packed) {
      if (slot != -1 && !keyOn) {
- #if VERSION_US
-+#if PORT_HOST
-+        /* P6.36: scaled by the game rate while turbo keeps the music at 1x */
-+        SsSepSetDecrescendo(SOUND.banks[slot].seqs[seq], sep, 0x80, dw3_port_audio_fade_ticks(0x3C));
-+#else
-         SsSepSetDecrescendo(SOUND.banks[slot].seqs[seq], sep, 0x80, 0x3C);
-+#endif
- #elif VERSION_EU
+ #if PAL_VIDEO
          /* one second, in frames */
 +#if PORT_HOST
 +        SsSepSetDecrescendo(SOUND.banks[slot].seqs[seq], sep, 0x80,
 +                            dw3_port_audio_fade_ticks(NTSC_MODE ? 0x3C : 0x32));
 +#else
          SsSepSetDecrescendo(SOUND.banks[slot].seqs[seq], sep, 0x80, NTSC_MODE ? 0x3C : 0x32);
- #endif
 +#endif
++#else
++#if PORT_HOST
++        /* P6.36: scaled by the game rate while turbo keeps the music at 1x */
++        SsSepSetDecrescendo(SOUND.banks[slot].seqs[seq], sep, 0x80, dw3_port_audio_fade_ticks(0x3C));
+ #else
+         SsSepSetDecrescendo(SOUND.banks[slot].seqs[seq], sep, 0x80, 0x3C);
++#endif
+ #endif
          if (SOUND.music == packed) {
              SOUND.music = 0;
-         }

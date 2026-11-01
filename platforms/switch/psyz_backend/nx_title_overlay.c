@@ -91,6 +91,13 @@ enum {
 static GLuint s_prog;
 static GLuint s_art_tex;
 static GLuint s_opt_tex;
+/* D4 / A18: the Options screen's scrolling background, the game's tile dimmed and
+ * expanded to the canvas's scale (title_overlay_art.c), in a repeating texture and
+ * drawn as a tiled quad with a UV offset under the retained canvas. Made with the
+ * options texture; 0 when the tile is not available (the canvas then has the
+ * dimmed title backdrop). */
+static GLuint s_tile_tex;
+static int s_tile_logged;
 static GLuint s_logo_tex;
 /* P6.27 / P6.28 Yes / No window: its own small texture, rendered on the CPU
  * when its kind, focus or language changes and uploaded on the next draw. */
@@ -402,6 +409,8 @@ static void release_title_textures(void) {
     }
     if (s_opt_tex) glDeleteTextures(1, &s_opt_tex);
     s_opt_tex = 0;
+    if (s_tile_tex) glDeleteTextures(1, &s_tile_tex);
+    s_tile_tex = 0;
     if (s_art_tex) glDeleteTextures(1, &s_art_tex);
     if (s_logo_tex) glDeleteTextures(1, &s_logo_tex);
     if (s_version_tex) glDeleteTextures(1, &s_version_tex);
@@ -550,6 +559,32 @@ static int ensure_options_tex(void) {
     return 1;
 }
 
+/* D4: the background texture, next to the options texture (the tile was read by
+ * the first prewarm, so this is one 324 KB upload and no disc access). */
+static void ensure_tile_tex(void) {
+    const uint8_t *rgba;
+
+    if (glIsTexture(s_tile_tex)) {
+        return;
+    }
+    s_tile_tex = 0;
+    rgba = dw3_pc_title_overlay_menu_bg_texture();
+    if (!rgba || !s_prog) {
+        return;
+    }
+    {
+        const uint64_t t0 = timing_now_us();
+
+        s_tile_tex = make_texture(DW3_MENU_BG_TEX, DW3_MENU_BG_TEX, rgba);
+        glBindTexture(GL_TEXTURE_2D, s_tile_tex);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+        TITLE_LOG("dw3-title-overlay: %dx%d RGBA menu background texture (GLES, "
+                  "repeat), create %u us", DW3_MENU_BG_TEX, DW3_MENU_BG_TEX,
+                  (unsigned)(timing_now_us() - t0));
+    }
+}
+
 /* Rasterize and upload the atlas state `need` (-1: none on screen) if it is
  * not there yet, else the next missing one: at most one per frame. */
 static void pump_states(int need) {
@@ -627,6 +662,7 @@ static void draw_layers(int vx, int vy, int vw, int vh) {
         s_options_in_game = dw3_port_options_in_game();
     } else if (!s_options_alpha) {
         s_options_in_game = 0;
+        s_tile_logged = 0;
     }
     const int in_game_options = s_options_alpha && s_options_in_game;
 
@@ -690,6 +726,12 @@ static void draw_layers(int vx, int vy, int vw, int vh) {
     }
     if (s_options_alpha && !ensure_options_tex()) {
         return;
+    }
+    /* D4: the background texture, ahead of the open when the title is up (the
+     * prewarm has read the tile), else with the options texture. */
+    if ((s_options_alpha && !s_options_in_game) ||
+        (s_overlay_active && s_options_prewarmed)) {
+        ensure_tile_tex();
     }
     if (need_atlas) {
         pump_states(s_overlay_active && !options_open ? s_selection : -1);
@@ -806,6 +848,10 @@ static void draw_layers(int vx, int vy, int vw, int vh) {
     }
     if (s_options_alpha) {
         GLuint shown = s_opt_tex;
+        /* D4: the quad is drawn in the title with the tile ready, never in game
+         * (the near-opaque dim stays there). */
+        const int tile_quad = !s_options_in_game && glIsTexture(s_tile_tex) &&
+                              dw3_pc_title_overlay_menu_bg_texture() != NULL;
 
         dw3_port_options_note_shown();
         if (dw3_pc_help_active()) {
@@ -830,9 +876,35 @@ static void draw_layers(int vx, int vy, int vw, int vh) {
             release_help_texture();
         }
         glUniform1f(s_uni_alpha, (float)s_options_alpha / 255.0f);
+        if (tile_quad) {
+            /* D4 / A18: the scrolling background, a tiled quad with a UV offset
+             * over the whole picture (the 16:9 width with gutters), under the
+             * retained canvas, which has a transparent backdrop in this mode. The
+             * game's bgScroll moves the tile down and right by one game pixel
+             * (3 canvas pixels) per phase. Canvas x at the picture's edges:
+             * (wide_x - vx) / s and (wide_x + wide_w - vx) / s, s = vh / 720. */
+            const float scale = (float)vh / (float)CANVAS_H;
+            const float shift = (float)(dw3_port_options_bg_phase() *
+                                        DW3_MENU_BG_SCALE);
+            const float k = 1.0f / (float)DW3_MENU_BG_TEX;
+            const float cx0 = (float)(wide_x - vx) / scale;
+            const float cx1 = (float)(wide_x + wide_w - vx) / scale;
+
+            glViewport(wide_x, vy, wide_w, vh);
+            draw_quad(s_tile_tex, 0.0f, 0.0f, CANVAS_W, CANVAS_H,
+                      (cx0 - shift) * k, -shift * k,
+                      (cx1 - shift) * k, ((float)CANVAS_H - shift) * k);
+            glViewport(vx, vy, vw, vh);
+            if (!s_tile_logged) {
+                s_tile_logged = 1;
+                TITLE_LOG("dw3-title-overlay: menu background scrolling (phase %d, "
+                          "1 px every 2 ticks, period 96; retained canvas untouched)",
+                          dw3_port_options_bg_phase());
+            }
+        }
         draw_quad(shown, 0.0f, 0.0f, CANVAS_W, CANVAS_H,
                   0.0f, 0.0f, 1.0f, 1.0f);
-        if (vx > wide_x) {
+        if (vx > wide_x && !tile_quad) {
             /* The gutters (patch 0085): one texel of the screen's uniformly
              * dimmed corner over each, as the PC overlay does. */
             const float u = 0.5f / (float)CANVAS_W;
@@ -927,6 +999,8 @@ void dw3_nx_title_overlay_invalidate_gl(void) {
     if (s_prog) glDeleteProgram(s_prog);
     if (s_art_tex) glDeleteTextures(1, &s_art_tex);
     if (s_opt_tex) glDeleteTextures(1, &s_opt_tex);
+    if (s_tile_tex) glDeleteTextures(1, &s_tile_tex);
+    s_tile_tex = 0;
     if (s_logo_tex) glDeleteTextures(1, &s_logo_tex);
     if (s_dialog_tex) glDeleteTextures(1, &s_dialog_tex);
     if (s_version_tex) glDeleteTextures(1, &s_version_tex);

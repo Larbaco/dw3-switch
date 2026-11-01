@@ -53,6 +53,7 @@ static const Dw3GameApi g_no_game = {
     .port_options_level = none_int_i,
     .port_options_locked_mask_for = none_mask,
     .port_options_note_shown = none_void,
+    .port_options_bg_phase = none_int,
     .port_screen_fade_level = none_int,
     .port_turbo_speed = none_int,
     .port_turbo_present_due = none_int,

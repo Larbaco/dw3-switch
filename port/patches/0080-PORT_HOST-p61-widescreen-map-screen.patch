@@ -13,7 +13,7 @@ positions change. Off (or a map wider than the picture) nothing changes.
 
 --- a/src/menus/field_menu/map_screen.c
 +++ b/src/menus/field_menu/map_screen.c
-@@ -172,6 +172,72 @@
+@@ -172,6 +172,72 @@ void STSTATUS_runMapScreen(StatusMapScreen *screen, TextWindow **windows) {
      }
  }
  
@@ -86,7 +86,7 @@ positions change. Off (or a map wider than the picture) nothing changes.
  /* Draws the map, the visited areas, the towns and the cursor */
  void STSTATUS_drawMapScreen(StatusMapScreen *screen) {
      SpriteDrawer sprite;
-@@ -181,6 +247,14 @@
+@@ -181,6 +247,14 @@ void STSTATUS_drawMapScreen(StatusMapScreen *screen) {
  #endif
      s32 frame;
      s32 i;
@@ -101,7 +101,7 @@ positions change. Off (or a map wider than the picture) nothing changes.
  
      if (screen->hovering) {
          initSpriteDrawer(&sprite);
-@@ -209,12 +283,12 @@
+@@ -209,12 +283,12 @@ void STSTATUS_drawMapScreen(StatusMapScreen *screen) {
          if (screen->hovering) {
              sprite.setLayerId(screen->layer, screen->depth);
              sprite.draw(FILE_CACHE.getEntry(screen->archive2), STSTATUS_cursorFrames[screen->cursorFrame] + 0x38,
@@ -115,8 +115,8 @@ positions change. Off (or a map wider than the picture) nothing changes.
 +                        MAP_CURSOR_X(screen), screen->cursorY + screen->top);
          }
          sprite.setLayerId(screen->layer, screen->depth - 2);
- #if VERSION_EU
-@@ -231,7 +305,7 @@
+ #if VERSION_EU || VERSION_JP
+@@ -231,7 +305,7 @@ void STSTATUS_drawMapScreen(StatusMapScreen *screen) {
  #else
          frame = 0x35;
  #endif
@@ -125,7 +125,7 @@ positions change. Off (or a map wider than the picture) nothing changes.
                      screen->homeY + screen->scrollY + screen->top);
      }
      sprite.setLayerId(screen->layer, screen->depth - 1);
-@@ -240,7 +314,7 @@
+@@ -240,7 +314,7 @@ void STSTATUS_drawMapScreen(StatusMapScreen *screen) {
          for (i = 1; i < 47; i++) {
              if (screen->visited[i - 1]) {
                  sprite.draw(FILE_CACHE.getEntry(screen->archive2), STSTATUS_data.spots[i].sprite,
@@ -134,7 +134,7 @@ positions change. Off (or a map wider than the picture) nothing changes.
                              STSTATUS_data.spots[i].y + screen->scrollY + screen->top);
              }
          }
-@@ -261,12 +335,17 @@
+@@ -261,12 +335,17 @@ void STSTATUS_drawMapScreen(StatusMapScreen *screen) {
      sprite.setTexture(0x380, 0x100);
      /* the match depends on indexing the list rather than walking a pointer */
      for (i = 0; towns[i] != 0; i++) {

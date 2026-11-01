@@ -2,6 +2,7 @@
  * Shaders adapted from vendor/psyz sdl3_gl.c (ES 3.00). UI stays on CPU VRAM. */
 #include "nx_mesh.h"
 #include "nx_mesh_debug.h"
+#include "nx_res_probe.h"
 #include "nx_vram_pack.h"
 #ifdef DW3_NX_GAME_IMAGE
 #include "port_battle_options.h"
@@ -26,6 +27,9 @@ static uint64_t mesh_now_us(void) {
     return armTicksToNs(armGetSystemTick()) / 1000ULL;
 }
 #endif
+
+/* The probe's clock, independent of DW3_NX_DEBUG_MESH. */
+#define probe_now_us() dw3_nx_res_probe_clock_us()
 
 enum { MESH_MAX_VTX = 8192, MESH_MAX_IDX = MESH_MAX_VTX / 4 * 6 };
 
@@ -67,6 +71,16 @@ static int s_gutter_px;
 static int s_gutter_x0;
 static int s_gutter_w;
 static GLuint s_sample_tex;
+/* P6.11 phase 0 (test aid, docs/P6.11_INTERNAL_RES.md): the mesh and gutter
+ * targets are s_scale times the VRAM size. The vertices, the draw offset and
+ * the OT order do not change: the vertex shader writes NDC across the whole
+ * target, so only the viewport, the scissors, the clears and the gutter blit
+ * are multiplied. 1 (the default) is the shipped path. */
+enum { MESH_SCALE_MAX = 3 };
+static int s_scale = 1;
+static int s_scale_want = 1;
+static int s_filter_linear;
+static int s_dither_ps1;
 static GLuint s_prog;
 static GLuint s_blit_prog;
 static GLuint s_vbo;
@@ -74,6 +88,7 @@ static GLuint s_ebo;
 static GLuint s_blit_vbo;
 static GLint s_u_draw_offset = -1;
 static GLint s_u_tex_vram = -1;
+static GLint s_u_dither_div = -1;
 static GLint s_blit_uv0 = -1;
 static GLint s_blit_uv1 = -1;
 static GLint s_blit_tex = -1;
@@ -163,6 +178,7 @@ static const char *MESH_FS =
     "flat in ivec2 v_pageBase;\n"
     "flat in uvec4 v_texWindow;\n"
     "uniform sampler2D u_texVram;\n"
+    "uniform float u_ditherDiv;\n"
     "out vec4 FragColor;\n"
     /* No dFdx/dFdy: Tegra/nouveau GLES helpers can widen UV steps and push
      * CLUT samples off the page (black FBO while tris_flush stays huge). */
@@ -185,8 +201,10 @@ static const char *MESH_FS =
     "  +3.0, -1.0, +2.0, -2.0);\n"
     "vec3 applyDither(vec3 c) {\n"
     "  if (v_dither == 0u) return c;\n"
-    "  int dx = int(gl_FragCoord.x) & 3;\n"
-    "  int dy = int(gl_FragCoord.y) & 3;\n"
+    /* u_ditherDiv is 1.0 (exact) unless DW3_RES_DITHER=ps1 at Nx, which
+     * makes each PS1 pixel keep one matrix cell. */
+    "  int dx = int(gl_FragCoord.x / u_ditherDiv) & 3;\n"
+    "  int dy = int(gl_FragCoord.y / u_ditherDiv) & 3;\n"
     "  float off = ditherMatrix[dy][dx];\n"
     "  vec3 c8 = c * 255.0 + off;\n"
     "  return clamp(floor(c8 / 8.0), 0.0, 31.0) / 31.0;\n"
@@ -303,6 +321,7 @@ static GLuint link_program(const char *vs_src, const char *fs_src) {
 }
 
 static void destroy_gl(void) {
+    dw3_nx_res_probe_gl_shutdown();
     if (s_prog) {
         glDeleteProgram(s_prog);
         s_prog = 0;
@@ -459,7 +478,7 @@ static void clear_fbo_rect(GLuint fbo, int x, int y, int w, int h, float r,
     glGetIntegerv(GL_FRAMEBUFFER_BINDING, &prev_fbo);
     glBindFramebuffer(GL_FRAMEBUFFER, fbo);
     glEnable(GL_SCISSOR_TEST);
-    glScissor(x, y, w, h);
+    glScissor(x * s_scale, y * s_scale, w * s_scale, h * s_scale);
     glClearColor(r, g, b, 0.0f);
     glClear(GL_COLOR_BUFFER_BIT);
     glDisable(GL_SCISSOR_TEST);
@@ -493,7 +512,7 @@ static void apply_scissor(void) {
         return;
     }
     glEnable(GL_SCISSOR_TEST);
-    glScissor(x0, y0, w, h);
+    glScissor(x0 * s_scale, y0 * s_scale, w * s_scale, h * s_scale);
 }
 
 static void draw_indices(int start, int end) {
@@ -571,14 +590,23 @@ static void flush_locked(const uint16_t *cpu_vram) {
     /* Full 1024×512 RGBA pack+upload dominates OLED when done every flush.
      * Fight-menu idle rarely touches VRAM; reuse the GL sample until dirty. */
     if (sample_dirty()) {
+        uint64_t probe_t = 0;
+
+        if (dw3_nx_res_probe_on()) {
+            probe_t = probe_now_us();
+        }
         upload_sample_vram(cpu_vram);
+        if (probe_t) {
+            dw3_nx_res_probe_note_upload((uint32_t)(probe_now_us() - probe_t));
+        }
 #if DW3_NX_DEBUG_MESH
         t1 = mesh_now_us();
 #endif
     }
 
+    dw3_nx_res_probe_mesh_begin();
     glBindFramebuffer(GL_FRAMEBUFFER, s_mesh_fbo);
-    glViewport(0, 0, DW3_NX_VRAM_W, DW3_NX_VRAM_H);
+    glViewport(0, 0, DW3_NX_VRAM_W * s_scale, DW3_NX_VRAM_H * s_scale);
     apply_scissor();
     glEnable(GL_BLEND);
     glDisable(GL_DEPTH_TEST);
@@ -587,6 +615,7 @@ static void flush_locked(const uint16_t *cpu_vram) {
     glUseProgram(s_prog);
     glUniform2f(s_u_draw_offset, (float)s_off_x, (float)s_off_y);
     glUniform1i(s_u_tex_vram, 0);
+    glUniform1f(s_u_dither_div, s_dither_ps1 ? (float)s_scale : 1.0f);
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, s_sample_tex);
 
@@ -619,14 +648,16 @@ static void flush_locked(const uint16_t *cpu_vram) {
         /* Again into the gutter FBO, shifted so the display starts at
          * s_gutter_px and clipped to the display plus both gutters. */
         glBindFramebuffer(GL_FRAMEBUFFER, s_gutter_fbo);
-        glScissor(0, s_area_y0, s_gutter_w + 2 * s_gutter_px,
-                  s_area_y1 - s_area_y0 + 1);
+        glScissor(0, s_area_y0 * s_scale,
+                  (s_gutter_w + 2 * s_gutter_px) * s_scale,
+                  (s_area_y1 - s_area_y0 + 1) * s_scale);
         glUniform2f(s_u_draw_offset,
                     (float)(s_off_x + s_gutter_px - s_area_x0),
                     (float)s_off_y);
         draw_batches();
     }
 
+    dw3_nx_res_probe_mesh_end(tris);
     s_prims_flushed += (uint64_t)tris;
     s_had_content = true;
     s_n_vtx = 0;
@@ -651,6 +682,127 @@ static void flush_locked(const uint16_t *cpu_vram) {
 #endif
 }
 
+static int clamp_scale(int n) {
+    return n < 1 ? 1 : (n > MESH_SCALE_MAX ? MESH_SCALE_MAX : n);
+}
+
+/* The test aids, read once (DW3_NX_TEST_ENV bakes them into a measurement
+ * NRO). Unset = scale 1, nearest, the fine dither: the shipped behaviour. */
+static void read_test_env(void) {
+    static int done;
+    const char *v;
+
+    if (done) {
+        return;
+    }
+    done = 1;
+    v = getenv("DW3_NX_MESH_SCALE");
+    if (v && v[0]) {
+        s_scale_want = clamp_scale(atoi(v));
+        s_scale = s_scale_want;
+    }
+    v = getenv("DW3_NX_MESH_FILTER");
+    s_filter_linear = v && (v[0] == 'l' || v[0] == 'L');
+    v = getenv("DW3_RES_DITHER");
+    s_dither_ps1 = v && (v[0] == 'p' || v[0] == 'P');
+    if (s_scale != 1 || s_filter_linear || s_dither_ps1) {
+        fprintf(stderr, "nx_mesh: TEST AID scale=%d filter=%s dither=%s\n",
+                s_scale, s_filter_linear ? "linear" : "nearest",
+                s_dither_ps1 ? "ps1" : "fine");
+    }
+}
+
+/* Gives the two targets their size for s_scale. The caller has bound nothing
+ * it needs kept. Returns false on a GL error (out of memory). */
+static bool alloc_targets(void) {
+    GLenum filt = s_filter_linear ? GL_LINEAR : GL_NEAREST;
+    int w = DW3_NX_VRAM_W * s_scale;
+    int h = DW3_NX_VRAM_H * s_scale;
+    GLuint tex[2] = {s_mesh_tex, s_gutter_tex};
+    int i;
+
+    while (glGetError() != GL_NO_ERROR) {
+    }
+    for (i = 0; i < 2; i++) {
+        if (!tex[i]) {
+            continue;
+        }
+        glBindTexture(GL_TEXTURE_2D, tex[i]);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, filt);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, filt);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, w, h, 0, GL_RGBA,
+                     GL_UNSIGNED_BYTE, NULL);
+    }
+    return glGetError() == GL_NO_ERROR;
+}
+
+static uint64_t target_bytes(void) {
+    return (uint64_t)DW3_NX_VRAM_W * DW3_NX_VRAM_H * 4u * (uint64_t)s_scale *
+           (uint64_t)s_scale * ((s_mesh_tex ? 1u : 0u) + (s_gutter_tex ? 1u : 0u));
+}
+
+static void clear_both_targets(void) {
+    GLint prev_fbo = 0;
+    int i;
+    GLuint fbo[2] = {s_mesh_fbo, s_gutter_fbo};
+
+    glGetIntegerv(GL_FRAMEBUFFER_BINDING, &prev_fbo);
+    glDisable(GL_SCISSOR_TEST);
+    glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+    for (i = 0; i < 2; i++) {
+        if (fbo[i]) {
+            glBindFramebuffer(GL_FRAMEBUFFER, fbo[i]);
+            glClear(GL_COLOR_BUFFER_BIT);
+        }
+    }
+    glBindFramebuffer(GL_FRAMEBUFFER, (GLuint)prev_fbo);
+}
+
+/* Applies s_scale_want at a frame boundary (or at init). On failure it goes
+ * back to 1x, which always fits, and says so. */
+static void apply_scale(void) {
+    uint64_t t0 = probe_now_us();
+    int ok;
+    int want = s_scale_want;
+
+    s_scale = want;
+    ok = alloc_targets();
+    if (ok) {
+        GLint prev_fbo = 0;
+
+        glGetIntegerv(GL_FRAMEBUFFER_BINDING, &prev_fbo);
+        glBindFramebuffer(GL_FRAMEBUFFER, s_mesh_fbo);
+        ok = glCheckFramebufferStatus(GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE;
+        glBindFramebuffer(GL_FRAMEBUFFER, (GLuint)prev_fbo);
+    }
+    if (!ok && want != 1) {
+        fprintf(stderr, "nx_mesh: %dx targets failed, back to 1x\n", want);
+        s_scale = s_scale_want = 1;
+        ok = alloc_targets();
+    }
+    clear_both_targets();
+    glFinish(); /* the allocation time below is real, not queued */
+    s_n_vtx = 0;
+    s_n_idx = 0;
+    dw3_nx_res_probe_note_targets(
+        s_scale, DW3_NX_VRAM_W * s_scale, DW3_NX_VRAM_H * s_scale,
+        s_gutter_tex != 0, target_bytes(), (uint32_t)(probe_now_us() - t0),
+        ok && s_scale == want);
+}
+
+int dw3_nx_mesh_scale(void) { return s_scale; }
+
+uint64_t dw3_nx_mesh_target_bytes(void) { return s_ready ? target_bytes() : 0; }
+
+void dw3_nx_mesh_set_scale(int n) { s_scale_want = clamp_scale(n); }
+
+int dw3_nx_mesh_cycle_scale(void) {
+    s_scale_want = s_scale_want >= MESH_SCALE_MAX ? 1 : s_scale_want + 1;
+    fprintf(stderr, "nx_mesh: scale -> %dx at the next frame boundary\n",
+            s_scale_want);
+    return s_scale_want;
+}
+
 bool dw3_nx_mesh_init(void) {
     static const float blit_quad[] = {
         -1.0f, -1.0f, 0.0f, 1.0f, 1.0f, -1.0f, 1.0f, 1.0f,
@@ -658,6 +810,7 @@ bool dw3_nx_mesh_init(void) {
     };
 
     destroy_gl();
+    read_test_env();
 
     s_prog = link_program(MESH_VS, MESH_FS);
     s_blit_prog = link_program(BLIT_VS, BLIT_FS);
@@ -667,6 +820,7 @@ bool dw3_nx_mesh_init(void) {
     }
     s_u_draw_offset = glGetUniformLocation(s_prog, "u_drawOffset");
     s_u_tex_vram = glGetUniformLocation(s_prog, "u_texVram");
+    s_u_dither_div = glGetUniformLocation(s_prog, "u_ditherDiv");
     s_blit_uv0 = glGetUniformLocation(s_blit_prog, "u_uv0");
     s_blit_uv1 = glGetUniformLocation(s_blit_prog, "u_uv1");
     s_blit_tex = glGetUniformLocation(s_blit_prog, "u_tex");
@@ -688,6 +842,8 @@ bool dw3_nx_mesh_init(void) {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    /* Sized (and re-sized) by apply_scale below; 1x here keeps the shipped
+     * allocation order. */
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, DW3_NX_VRAM_W, DW3_NX_VRAM_H, 0,
                  GL_RGBA, GL_UNSIGNED_BYTE, NULL);
 
@@ -744,6 +900,12 @@ bool dw3_nx_mesh_init(void) {
     s_content_before_hold = false;
     mark_dirty_full();
     s_ready = true;
+    dw3_nx_res_probe_gl_init();
+    /* Only a test aid ever leaves 1x, or asks for a log of the allocation:
+     * the shipped path does not touch the targets again. */
+    if (s_scale != 1 || dw3_nx_res_probe_on()) {
+        apply_scale();
+    }
     fprintf(stderr, "nx_mesh: GLES3 mesh FBO ready\n");
     return true;
 }
@@ -995,8 +1157,10 @@ void dw3_nx_mesh_present(int dx, int dy, int dw, int dh, int vx, int vy, int vw,
         glDisable(GL_SCISSOR_TEST);
         glBindFramebuffer(GL_READ_FRAMEBUFFER, s_mesh_fbo);
         glBindFramebuffer(GL_DRAW_FRAMEBUFFER, s_gutter_fbo);
-        glBlitFramebuffer(dx, dy, dx + dw, dy + dh, s_gutter_px, dy,
-                          s_gutter_px + dw, dy + dh, GL_COLOR_BUFFER_BIT,
+        glBlitFramebuffer(dx * s_scale, dy * s_scale, (dx + dw) * s_scale,
+                          (dy + dh) * s_scale, s_gutter_px * s_scale,
+                          dy * s_scale, (s_gutter_px + dw) * s_scale,
+                          (dy + dh) * s_scale, GL_COLOR_BUFFER_BIT,
                           GL_NEAREST);
         glBindFramebuffer(GL_FRAMEBUFFER, (GLuint)prev_fbo);
         tex = s_gutter_tex;
@@ -1030,8 +1194,8 @@ size_t dw3_nx_mesh_read_rect_rgba(int dx, int dy, int dw, int dh, uint8_t *dst,
     size_t need;
     GLenum err;
 
-    if (!s_ready || !dst || dw <= 0 || dh <= 0) {
-        return 0;
+    if (!s_ready || !dst || dw <= 0 || dh <= 0 || s_scale != 1) {
+        return 0; /* the SD dump is 1x only */
     }
     if (dx < 0 || dy < 0 || dx + dw > DW3_NX_VRAM_W || dy + dh > DW3_NX_VRAM_H) {
         return 0;
@@ -1063,7 +1227,20 @@ void dw3_nx_mesh_end_frame(void) {
          * view's keep area) until the battle runs again. */
         return;
     }
+    dw3_nx_res_probe_frame_end();
     s_content_before_hold = s_had_content;
     s_had_content = false;
     soft_views_age();
+    if (s_scale_want != s_scale && s_ready) {
+        /* A test-aid scale change, at the frame boundary. The next frame
+         * redraws the whole battle, so the cleared targets cost nothing. */
+        apply_scale();
+        s_had_content = false;
+        s_content_before_hold = false;
+    }
+}
+
+void dw3_nx_mesh_drop_pending(void) {
+    s_n_vtx = 0;
+    s_n_idx = 0;
 }

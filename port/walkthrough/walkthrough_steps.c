@@ -7,7 +7,7 @@
  * `GAME.progress = N+1` (the stage and event are listed per chapter below;
  * tools/tests/test_walkthrough.py checks every assignment, every flag setter
  * and every map area against the decomp). Progress values the first half
- * assigns: 0 to 0x29; the next one, 0x2B (FIELD_PROGRESS_MOVIE_BATTLES), is
+ * assigns: 0 to 0x29; the next one, 0x2B (STORY_MOVIE_BATTLES), is
  * written by the Control Room of the Spy Satellite (wstag820) and starts the
  * last battle (ch11); the EU disc goes on to the extra chapter at 0x2D (ch12, region EU).
  *

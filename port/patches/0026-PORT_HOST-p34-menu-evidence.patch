@@ -6,10 +6,11 @@ menu return logs; DW3_FORCE_MCARD_SAVE bring-up path.
 
 --- a/src/engine/game/state.c
 +++ b/src/engine/game/state.c
-@@ -59,6 +59,41 @@
+@@ -58,6 +58,41 @@ void newGame(void) {
+             }
          }
      }
- #endif
++#endif
 +#if PORT_HOST
 +    {
 +        const char *arg = getenv("DW3_START_MODE_ARG");
@@ -44,10 +45,36 @@ menu return logs; DW3_FORCE_MCARD_SAVE bring-up path.
 +            }
 +        }
 +    }
-+#endif
+ #endif
      GAME.battleSteps = (RANDOM.next() & 0x1FF) + 0x200;
  }
- 
+--- a/src/engine/menu/field_menu.c
++++ b/src/engine/menu/field_menu.c
+@@ -1,4 +1,7 @@
+ #include "engine/game.h"
++#if PORT_HOST
++#include <stdio.h>
++#endif
+ #include <libgs.h>
+ #include <libetc.h>
+ #include <libsnd.h>
+@@ -284,8 +287,16 @@ static inline void stepFieldMenuFade(FieldMenu *task) {
+         break;
+     case 6:
+         if (GAME.funcs.getMode() == MODE_STATUS) {
++#if PORT_HOST
++            fprintf(stderr, "dw3: STSTATUS return fieldMode=0x%x\n",
++                    (unsigned)GAME.fieldMode);
++#endif
+             GAME.funcs.requestMode(GAME.fieldMode, 0);
+         } else {
++#if PORT_HOST
++            fprintf(stderr, "dw3: field menu -> MODE_STATUS option=%d\n",
++                    task->cursor);
++#endif
+             GAME.funcs.requestMode(MODE_STATUS, 0);
+             FIELD_MENU_CHOICE.option = task->cursor;
+         }
 --- a/src/field/field_mode/field.c
 +++ b/src/field/field_mode/field.c
 @@ -7,6 +7,9 @@
@@ -60,7 +87,7 @@ menu return logs; DW3_FORCE_MCARD_SAVE bring-up path.
  #endif
  
  /* Has the battle's files read while the transition plays */
-@@ -472,9 +475,53 @@
+@@ -472,9 +475,53 @@ static inline void warpAway(FieldTask *task, FieldChildren *children) {
  static inline void openFieldMenu(FieldTask *task, FieldChildren *children) {
      if (FIELDSTG_state.menuOpen != 1 && FIELDSTG_state.busy == 0 && FIELDSTG_state.acting == 0) {
          do {
@@ -104,7 +131,7 @@ menu return logs; DW3_FORCE_MCARD_SAVE bring-up path.
 +                }
 +            }
 +#endif
-             if (GAME.progress < 4 || !(PAD.getPressed(0) & (1 << PAD_START))) {
+             if (GAME.progress < STORY_GENJI_BEATEN || !(PAD.getPressed(0) & (1 << PAD_START))) {
                  break;
              }
 +#if PORT_HOST
@@ -114,47 +141,230 @@ menu return logs; DW3_FORCE_MCARD_SAVE bring-up path.
              FIELDSTG_state.menuOpen = 1;
              FIELDSTG_state.busy = 1;
              children->menu = createFieldMenu(FIELD_LAYER_MAP, 0);
---- a/src/shared/start_fade.inc.c
-+++ b/src/shared/start_fade.inc.c
-@@ -6,6 +6,11 @@
-    entry has a copy of its own, which it names with START_FADE */
- void START_FADE(PanelAnim *fade, s32 fadeIn) {
-     fade->active = 1;
-+#if PORT_HOST
-+    if (fade->duration == 0) {
-+        fade->duration = 10;
-+    }
-+#endif
-     if (fadeIn != 0) {
-         SOUND.playSound(SOUND_MENU_OPEN);
-         fade->level = 0;
---- a/src/engine/menu/field_menu.c
-+++ b/src/engine/menu/field_menu.c
-@@ -1,4 +1,7 @@
- #include "engine/game.h"
+--- a/src/menus/digimon_lab/lab.c
++++ b/src/menus/digimon_lab/lab.c
+@@ -2,6 +2,9 @@
+    its files and helpers; and the overlay's tables */
+ 
+ #include "menus/digimon_lab.h"
 +#if PORT_HOST
 +#include <stdio.h>
 +#endif
- #include <libgs.h>
- #include <libetc.h>
- #include <libsnd.h>
-@@ -284,8 +287,16 @@
+ 
+ /* Creates the main menu and opens the screen it picks, back to the menu when
+    the screen closes; once the menu is gone, ends the lab after the fade out */
+@@ -103,6 +106,10 @@ void STGDGLAB_updateLab(Lab *lab, LabChildren *children) {
+     case TASK_DONE:
          break;
-     case 6:
-         if (GAME.funcs.getMode() == MODE_STATUS) {
-+#if PORT_HOST
-+            fprintf(stderr, "dw3: STSTATUS return fieldMode=0x%x\n",
-+                    (unsigned)GAME.fieldMode);
+     case TASK_KILL:
++        #if PORT_HOST
++        fprintf(stderr, "dw3: STGDGLAB return fieldMode=0x%x\n",
++                (unsigned)GAME.fieldMode);
 +#endif
-             GAME.funcs.requestMode(GAME.fieldMode, 0);
+         GAME.funcs.requestMode(GAME.fieldMode, 0);
+         break;
+     }
+@@ -204,6 +211,9 @@ s32 STGDGLAB_filesLoading(void) {
+ #include "shared/update_fade.inc.c"
+ #include "shared/start_lerp.inc.c"
+ #include "shared/update_lerp.inc.c"
++#if PORT_HOST
++#include <stdio.h>
++#endif
+ 
+ /* The sprite of a recipe's id (STGDGLAB_entries), 0 for an id not there */
+ s32 STGDGLAB_getItemSprite(s32 id) {
+--- a/src/menus/digimon_lab/scene.c
++++ b/src/menus/digimon_lab/scene.c
+@@ -1,5 +1,8 @@
+ /* STGDGLAB's scene: the mode's root task, and the screen fade */
+ 
++#if PORT_HOST
++#include <stdio.h>
++#endif
+ #include "menus/digimon_lab.h"
+ 
+ #define SCENE_TASK Task
+@@ -11,6 +14,9 @@
+ 
+ /* Starts the mode: creates its scene task */
+ Task *STGDGLAB_createScene(void) {
++#if PORT_HOST
++    fprintf(stderr, "dw3: STGDGLAB_createScene\n");
++#endif
+     return createTask(STGDGLAB_updateScene, sizeof(Task), sizeof(Lab *));
+ }
+ 
+--- a/src/menus/gym/scene.c
++++ b/src/menus/gym/scene.c
+@@ -1,5 +1,8 @@
+ /* STGTRAIN's scene: the mode's root task */
+ 
++#if PORT_HOST
++#include <stdio.h>
++#endif
+ #include "menus/gym.h"
+ 
+ /* The mode's root task: sets up the display and starts the screen */
+@@ -43,5 +46,8 @@ void STGTRAIN_updateRoot(Task *task, TrainScreen **children) {
+ 
+ /* The mode's entry point (MODE_ENTRY_POINTS): starts the root task */
+ Task *STGTRAIN_start(void) {
++#if PORT_HOST
++    fprintf(stderr, "dw3: STGTRAIN_start\n");
++#endif
+     return createTask(STGTRAIN_updateRoot, sizeof(Task), sizeof(TrainScreen *));
+ }
+--- a/src/menus/gym/screen.c
++++ b/src/menus/gym/screen.c
+@@ -2,6 +2,9 @@
+    the screen fade; and the first object's data */
+ 
+ #include "menus/gym.h"
++#if PORT_HOST
++#include <stdio.h>
++#endif
+ 
+ /* Creates the screen's text windows */
+ void STGTRAIN_createScreenWindows(TrainScreen *screen, TrainScreenWindows *win) {
+@@ -637,6 +640,10 @@ void STGTRAIN_updateScreen(TrainScreen *screen, TrainScreenWindows *win) {
+         break;
+     case TASK_KILL:
+         SOUND.stopSound(MUSIC_TRAINING);
++        #if PORT_HOST
++        fprintf(stderr, "dw3: STGTRAIN return fieldMode=0x%x\n",
++                (unsigned)GAME.fieldMode);
++#endif
+         GAME.funcs.requestMode(GAME.fieldMode, 0);
+         break;
+     }
+@@ -687,6 +694,9 @@ TrainScreen *STGTRAIN_createScreen(void) {
+ #include "shared/update_fader.inc.c"
+ #define FADER_DEPTH 6
+ #include "shared/create_fader.inc.c"
++#if PORT_HOST
++#include <stdio.h>
++#endif
+ 
+ /* The partners' sprites while they wait, by partner: -1 ends a loop */
+ s32 STGTRAIN_waitAnims[PARTNER_COUNT][7] = {
+--- a/src/menus/item_shop/shop.c
++++ b/src/menus/item_shop/shop.c
+@@ -2,6 +2,9 @@
+    the panels' openings and moves */
+ 
+ #include "menus/item_shop.h"
++#if PORT_HOST
++#include <stdio.h>
++#endif
+ 
+ /* Creates the shop's windows: the help, the shop's name, the money, buy and sell,
+    and the cursor */
+@@ -197,6 +200,10 @@ void STITSHOP_updateShop(ItemShop *shop, ItemShopWindows *win) {
+     case TASK_DONE:
+         break;
+     case TASK_KILL:
++        #if PORT_HOST
++        fprintf(stderr, "dw3: STITSHOP return fieldMode=0x%x\n",
++                (unsigned)GAME.fieldMode);
++#endif
+         GAME.funcs.requestMode(GAME.fieldMode, 0);
+         break;
+     }
+@@ -251,3 +258,6 @@ s32 STITSHOP_filesLoading(void) {
+ #include "shared/update_fade.inc.c"
+ #include "shared/start_lerp.inc.c"
+ #include "shared/update_lerp.inc.c"
++#if PORT_HOST
++#include <stdio.h>
++#endif
+--- a/src/menus/memory_card/saves.c
++++ b/src/menus/memory_card/saves.c
+@@ -2,6 +2,10 @@
+    errors */
+ 
+ #include "menus/memory_card.h"
++#if PORT_HOST
++#include <stdio.h>
++char *getenv(const char *name);
++#endif
+ 
+ /* Shows the line with the memory card's port number, or hides it */
+ void STGMCARD_showPort(MemCardSaves *saves, MemCardSavesWindows *win, s32 show) {
+@@ -488,6 +492,13 @@ static inline void STGMCARD_fillSave(MemCardSaves *saves) {
+     s32 i;
+     s32 member;
+ 
++#if PORT_HOST
++    if (STGMCARD_funcs.infoBuf == NULL || STGMCARD_funcs.dataBuf == NULL) {
++        fprintf(stderr, "dw3: STGMCARD_fillSave missing buffers\n");
++        saves->substate = 601;
++        return;
++    }
++#endif
+     save = &STGMCARD_funcs.infoBuf->saves[STGMCARD_funcs.slot];
+     STGMCARD_funcs.dataBuf->save = GAME_SAVE;
+     STGMCARD_funcs.dataBuf->game.checksum =
+@@ -528,8 +539,21 @@ static inline void STGMCARD_writeSave(MemCardSaves *saves, MemCardSavesWindows *
+     s32 status;
+ 
+     status = saves->result = MEMCARD_SYSTEM.funcs.write(saves->port, STGMCARD_funcs.dataBuf, sizeof(GameSave), STGMCARD_funcs.slot + SAVE_SECTION_DATA);
++#if PORT_HOST
++    if (status != 0) {
++        fprintf(stderr, "dw3: STGMCARD_writeSave port=%d slot=%d status=%d\n",
++                saves->port, STGMCARD_funcs.slot, status);
++    }
++#endif
+     if (status != 0) {
+         if (status == 1) {
++#if PORT_HOST
++            if (getenv("DW3_FORCE_MCARD_SAVE") != NULL) {
++                fprintf(stderr, "dw3: STGMCARD force-save done, leaving\n");
++                saves->hide(saves);
++                return;
++            }
++#endif
+             win->panel->start(win->panel, 2, 0x14);
+             saves->substate = 500;
          } else {
+@@ -866,6 +890,18 @@ void STGMCARD_runSaves(MemCardSaves *saves, MemCardSavesWindows *win) {
+     switch (saves->substate) {
+     case 0:
+     default:
 +#if PORT_HOST
-+            fprintf(stderr, "dw3: field menu -> MODE_STATUS option=%d\n",
-+                    task->cursor);
++        {
++            const char *force = getenv("DW3_FORCE_MCARD_SAVE");
++            if (force != NULL && force[0] != '\0' && saves->screen->loading == 0) {
++                STGMCARD_funcs.slot = 0;
++                saves->port = 0;
++                fprintf(stderr, "dw3: DW3_FORCE_MCARD_SAVE from open -> fillSave slot=0\n");
++                saves->substate = 51;
++                break;
++            }
++        }
 +#endif
-             GAME.funcs.requestMode(MODE_STATUS, 0);
-             FIELD_MENU_CHOICE.option = task->cursor;
-         }
+         STGMCARD_openSaves(saves, win);
+         /* fallthrough */
+     case 1:
+@@ -893,6 +929,18 @@ void STGMCARD_runSaves(MemCardSaves *saves, MemCardSavesWindows *win) {
+         STGMCARD_checkInfo(saves, win);
+         break;
+     case 30:
++#if PORT_HOST
++        {
++            const char *force = getenv("DW3_FORCE_MCARD_SAVE");
++            if (force != NULL && force[0] != '\0' && saves->screen->loading == 0) {
++                STGMCARD_funcs.slot = 0;
++                saves->port = 0;
++                fprintf(stderr, "dw3: DW3_FORCE_MCARD_SAVE jump to fillSave slot=0\n");
++                saves->substate = 51;
++                break;
++            }
++        }
++#endif
+         STGMCARD_openSlots(saves, win);
+         break;
+     case 31:
 --- a/src/menus/memory_card/screen.c
 +++ b/src/menus/memory_card/screen.c
 @@ -2,6 +2,10 @@
@@ -168,7 +378,7 @@ menu return logs; DW3_FORCE_MCARD_SAVE bring-up path.
  
  /* The main task: loads the files, runs the save list, then fades out and
     requests the next mode */
-@@ -18,6 +22,16 @@
+@@ -18,6 +22,16 @@ void STGMCARD_updateScreen(MemCardScreen *screen, MemCardScreenTasks *tasks) {
              screen->substate++;
              break;
          case 1:
@@ -183,10 +393,10 @@ menu return logs; DW3_FORCE_MCARD_SAVE bring-up path.
 +            }
 +#endif
              if (STGMCARD_funcs.filesLoading() == 0 && SOUND.isLoading() == 0) {
-                 SOUND.playSound(MUSIC(0x20, 0));
+                 SOUND.playSound(MUSIC_MEMORY_CARD);
                  screen->nextState(screen);
-@@ -66,11 +80,23 @@
-         SOUND.stopSound(MUSIC(0x20, 0));
+@@ -66,11 +80,23 @@ void STGMCARD_updateScreen(MemCardScreen *screen, MemCardScreenTasks *tasks) {
+         SOUND.stopSound(MUSIC_MEMORY_CARD);
          if (screen->step != 0) {
              if (screen->loading == 0) {
 +#if PORT_HOST
@@ -209,7 +419,7 @@ menu return logs; DW3_FORCE_MCARD_SAVE bring-up path.
              GAME.funcs.requestMode(GAME.fieldMode, 0);
          }
          STGMCARD_funcs.freeBuffers();
-@@ -89,6 +115,11 @@
+@@ -89,6 +115,11 @@ MemCardScreen *STGMCARD_createScreen(void) {
      screen->layer = SCREEN_LAYER;
      mode = GAME.funcs.getMode() & 0xFF;
      screen->loading = (u32)GAME.funcs.getModeArg() >> 31 ^ 1;
@@ -221,189 +431,27 @@ menu return logs; DW3_FORCE_MCARD_SAVE bring-up path.
      prev = GAME.funcs.getPrevMode();
      for (i = 0; STGMCARD_prevModes[i].mode != 0; i++) {
          if (STGMCARD_prevModes[i].mode == prev) {
---- a/src/menus/memory_card/saves.c
-+++ b/src/menus/memory_card/saves.c
-@@ -2,6 +2,10 @@
-    errors */
+--- a/src/menus/partner_name/scene.c
++++ b/src/menus/partner_name/scene.c
+@@ -1,5 +1,8 @@
+ /* STDGNAME's scene: the mode's root task, and the screen fade */
  
- #include "menus/memory_card.h"
-+#if PORT_HOST
-+#include <stdio.h>
-+char *getenv(const char *name);
-+#endif
- 
- /* Shows the line with the memory card's port number, or hides it */
- void STGMCARD_showPort(MemCardSaves *saves, MemCardSavesWindows *win, s32 show) {
-@@ -488,6 +492,13 @@
-     s32 i;
-     s32 member;
- 
-+#if PORT_HOST
-+    if (STGMCARD_funcs.infoBuf == NULL || STGMCARD_funcs.dataBuf == NULL) {
-+        fprintf(stderr, "dw3: STGMCARD_fillSave missing buffers\n");
-+        saves->substate = 601;
-+        return;
-+    }
-+#endif
-     save = &STGMCARD_funcs.infoBuf->saves[STGMCARD_funcs.slot];
-     STGMCARD_funcs.dataBuf->save = GAME_SAVE;
-     STGMCARD_funcs.dataBuf->game.checksum =
-@@ -528,8 +539,21 @@
-     s32 status;
- 
-     status = saves->result = MEMCARD_SYSTEM.funcs.write(saves->port, STGMCARD_funcs.dataBuf, sizeof(GameSave), STGMCARD_funcs.slot + SAVE_SECTION_DATA);
-+#if PORT_HOST
-+    if (status != 0) {
-+        fprintf(stderr, "dw3: STGMCARD_writeSave port=%d slot=%d status=%d\n",
-+                saves->port, STGMCARD_funcs.slot, status);
-+    }
-+#endif
-     if (status != 0) {
-         if (status == 1) {
-+#if PORT_HOST
-+            if (getenv("DW3_FORCE_MCARD_SAVE") != NULL) {
-+                fprintf(stderr, "dw3: STGMCARD force-save done, leaving\n");
-+                saves->hide(saves);
-+                return;
-+            }
-+#endif
-             win->panel->start(win->panel, 2, 0x14);
-             saves->substate = 500;
-         } else {
-@@ -866,6 +890,18 @@
-     switch (saves->substate) {
-     case 0:
-     default:
-+#if PORT_HOST
-+        {
-+            const char *force = getenv("DW3_FORCE_MCARD_SAVE");
-+            if (force != NULL && force[0] != '\0' && saves->screen->loading == 0) {
-+                STGMCARD_funcs.slot = 0;
-+                saves->port = 0;
-+                fprintf(stderr, "dw3: DW3_FORCE_MCARD_SAVE from open -> fillSave slot=0\n");
-+                saves->substate = 51;
-+                break;
-+            }
-+        }
-+#endif
-         STGMCARD_openSaves(saves, win);
-         /* fallthrough */
-     case 1:
-@@ -893,6 +929,18 @@
-         STGMCARD_checkInfo(saves, win);
-         break;
-     case 30:
-+#if PORT_HOST
-+        {
-+            const char *force = getenv("DW3_FORCE_MCARD_SAVE");
-+            if (force != NULL && force[0] != '\0' && saves->screen->loading == 0) {
-+                STGMCARD_funcs.slot = 0;
-+                saves->port = 0;
-+                fprintf(stderr, "dw3: DW3_FORCE_MCARD_SAVE jump to fillSave slot=0\n");
-+                saves->substate = 51;
-+                break;
-+            }
-+        }
-+#endif
-         STGMCARD_openSlots(saves, win);
-         break;
-     case 31:
---- a/src/menus/item_shop/shop.c
-+++ b/src/menus/item_shop/shop.c
-@@ -2,6 +2,9 @@
-    the panels' openings and moves */
- 
- #include "menus/item_shop.h"
 +#if PORT_HOST
 +#include <stdio.h>
 +#endif
+ #include "menus/partner_name.h"
  
- /* Creates the shop's windows: the help, the shop's name, the money, buy and sell,
-    and the cursor */
-@@ -212,6 +215,10 @@
-     case TASK_DONE:
-         break;
-     case TASK_KILL:
-+        #if PORT_HOST
-+        fprintf(stderr, "dw3: STITSHOP return fieldMode=0x%x\n",
-+                (unsigned)GAME.fieldMode);
-+#endif
-         GAME.funcs.requestMode(GAME.fieldMode, 0);
-         break;
-     }
-@@ -266,3 +273,6 @@
- #include "shared/update_fade.inc.c"
- #include "shared/start_lerp.inc.c"
- #include "shared/update_lerp.inc.c"
+ /* The mode's root task: sets up the 320x240 display and its black layer, then
+@@ -32,6 +35,9 @@ void STDGNAME_updateScene(Task *task, ScreenTask **screen) {
+ 
+ /* The mode's entry point (MODE_ENTRY_POINTS): starts the root task */
+ Task *STDGNAME_start(void) {
 +#if PORT_HOST
-+#include <stdio.h>
++    fprintf(stderr, "dw3: STDGNAME_start\n");
 +#endif
---- a/src/menus/gym/screen.c
-+++ b/src/menus/gym/screen.c
-@@ -2,6 +2,9 @@
-    the screen fade; and the first object's data */
+     return createTask(STDGNAME_updateScene, sizeof(Task), sizeof(ScreenTask *));
+ }
  
- #include "menus/gym.h"
-+#if PORT_HOST
-+#include <stdio.h>
-+#endif
- 
- /* Creates the screen's text windows */
- void STGTRAIN_createScreenWindows(TrainScreen *screen, TrainScreenWindows *win) {
-@@ -647,6 +650,10 @@
-         break;
-     case TASK_KILL:
-         SOUND.stopSound(MUSIC(0x21, 2));
-+        #if PORT_HOST
-+        fprintf(stderr, "dw3: STGTRAIN return fieldMode=0x%x\n",
-+                (unsigned)GAME.fieldMode);
-+#endif
-         GAME.funcs.requestMode(GAME.fieldMode, 0);
-         break;
-     }
-@@ -697,6 +704,9 @@
- #include "shared/update_fader.inc.c"
- #define FADER_DEPTH 6
- #include "shared/create_fader.inc.c"
-+#if PORT_HOST
-+#include <stdio.h>
-+#endif
- 
- /* The partners' sprites while they wait, by partner: -1 ends a loop */
- s32 STGTRAIN_waitAnims[8][7] = {
---- a/src/menus/digimon_lab/lab.c
-+++ b/src/menus/digimon_lab/lab.c
-@@ -2,6 +2,9 @@
-    its files and helpers; and the overlay's tables */
- 
- #include "menus/digimon_lab.h"
-+#if PORT_HOST
-+#include <stdio.h>
-+#endif
- 
- /* Creates the main menu and opens the screen it picks, back to the menu when
-    the screen closes; once the menu is gone, ends the lab after the fade out */
-@@ -103,6 +106,10 @@
-     case TASK_DONE:
-         break;
-     case TASK_KILL:
-+        #if PORT_HOST
-+        fprintf(stderr, "dw3: STGDGLAB return fieldMode=0x%x\n",
-+                (unsigned)GAME.fieldMode);
-+#endif
-         GAME.funcs.requestMode(GAME.fieldMode, 0);
-         break;
-     }
-@@ -204,6 +211,9 @@
- #include "shared/update_fade.inc.c"
- #include "shared/start_lerp.inc.c"
- #include "shared/update_lerp.inc.c"
-+#if PORT_HOST
-+#include <stdio.h>
-+#endif
- 
- /* The sprite of a recipe's id (STGDGLAB_entries), 0 for an id not there */
- s32 STGDGLAB_getItemSprite(s32 id) {
 --- a/src/menus/partner_name/screen.c
 +++ b/src/menus/partner_name/screen.c
 @@ -2,6 +2,9 @@
@@ -416,7 +464,7 @@ menu return logs; DW3_FORCE_MCARD_SAVE bring-up path.
  
  /* Runs the renaming screen: the partner menu, then the name entry for the chosen
     partner, whose new name is stored before going back to the menu; ends once
-@@ -103,6 +106,10 @@
+@@ -103,6 +106,10 @@ void STDGNAME_updateScreen(ScreenTask *task, ScreenChildren *children) {
          STDGNAME_drawBackground(task);
          break;
      case TASK_KILL:
@@ -427,72 +475,24 @@ menu return logs; DW3_FORCE_MCARD_SAVE bring-up path.
          GAME.funcs.requestMode(GAME.fieldMode, 0);
          break;
      }
-@@ -153,3 +160,6 @@
+@@ -153,3 +160,6 @@ s32 STDGNAME_filesLoading(void) {
  
  #include "shared/start_fade.inc.c"
  #include "shared/update_fade.inc.c"
 +#if PORT_HOST
 +#include <stdio.h>
 +#endif
---- a/src/menus/gym/scene.c
-+++ b/src/menus/gym/scene.c
-@@ -1,5 +1,8 @@
- /* STGTRAIN's scene: the mode's root task */
- 
+--- a/src/shared/start_fade.inc.c
++++ b/src/shared/start_fade.inc.c
+@@ -6,6 +6,11 @@
+    entry has a copy of its own, which it names with START_FADE */
+ void START_FADE(PanelAnim *fade, s32 fadeIn) {
+     fade->active = 1;
 +#if PORT_HOST
-+#include <stdio.h>
++    if (fade->duration == 0) {
++        fade->duration = 10;
++    }
 +#endif
- #include "menus/gym.h"
- 
- /* The mode's root task: sets up the display and starts the screen */
-@@ -43,5 +46,8 @@
- 
- /* The mode's entry point (MODE_ENTRY_POINTS): starts the root task */
- Task *STGTRAIN_start(void) {
-+#if PORT_HOST
-+    fprintf(stderr, "dw3: STGTRAIN_start\n");
-+#endif
-     return createTask(STGTRAIN_updateRoot, sizeof(Task), sizeof(Task *));
- }
---- a/src/menus/digimon_lab/scene.c
-+++ b/src/menus/digimon_lab/scene.c
-@@ -1,5 +1,8 @@
- /* STGDGLAB's scene: the mode's root task, and the screen fade */
- 
-+#if PORT_HOST
-+#include <stdio.h>
-+#endif
- #include "menus/digimon_lab.h"
- 
- #define SCENE_TASK Task
-@@ -11,6 +14,9 @@
- 
- /* Starts the mode: creates its scene task */
- Task *STGDGLAB_createScene(void) {
-+#if PORT_HOST
-+    fprintf(stderr, "dw3: STGDGLAB_createScene\n");
-+#endif
-     return createTask(STGDGLAB_updateScene, sizeof(Task), sizeof(Lab *));
- }
- 
---- a/src/menus/partner_name/scene.c
-+++ b/src/menus/partner_name/scene.c
-@@ -1,5 +1,8 @@
- /* STDGNAME's scene: the mode's root task, and the screen fade */
- 
-+#if PORT_HOST
-+#include <stdio.h>
-+#endif
- #include "menus/partner_name.h"
- 
- /* The mode's root task: sets up the 320x240 display and its black layer, then
-@@ -32,6 +35,9 @@
- 
- /* The mode's entry point (MODE_ENTRY_POINTS): starts the root task */
- Task *STDGNAME_start(void) {
-+#if PORT_HOST
-+    fprintf(stderr, "dw3: STDGNAME_start\n");
-+#endif
-     return createTask(STDGNAME_updateScene, sizeof(Task), sizeof(ScreenTask *));
- }
- 
+     if (fadeIn != 0) {
+         SOUND.playSound(SOUND_MENU_OPEN);
+         fade->level = 0;
